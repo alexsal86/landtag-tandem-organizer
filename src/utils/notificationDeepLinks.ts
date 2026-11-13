@@ -87,6 +87,10 @@ export const buildDeepLinkPath = (notification: Notification): string => {
     case 'meeting_created':
       return buildHighlightPath('/meetings', getNotificationDataId(data, 'meeting_id'));
 
+    case 'employee_meeting':
+    case 'employee_protocol_requested':
+    case 'employee_protocol_response':
+    case 'employee_preparation_ready':
     case 'employee_meeting_overdue':
     case 'employee_meeting_due_soon':
     case 'employee_meeting_due':

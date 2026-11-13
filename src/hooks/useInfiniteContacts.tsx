@@ -2,11 +2,9 @@ import { useState, useEffect, useCallback, useRef } from "react";
 import { supabase } from "@/integrations/supabase/client";
 import { useAuth } from "@/hooks/useAuth";
 import { useTenant } from "@/hooks/useTenant";
-import { debounce } from "@/utils/debounce";
 import { debugConsole } from '@/utils/debugConsole';
 import type { Contact } from "@/types/contact";
 import { notify } from "@/lib/notify";
-import { toast } from "@/hooks/use-toast";
 export type { Contact } from "@/types/contact";
 
 interface UseInfiniteContactsProps {
@@ -33,15 +31,19 @@ export const useInfiniteContacts = ({
   const [contacts, setContacts] = useState<Contact[]>([]);
   const [loading, setLoading] = useState(true);
   const [loadingMore, setLoadingMore] = useState(false);
+  const [loadError, setLoadError] = useState(false);
   const [hasMore, setHasMore] = useState(true);
   const [totalCount, setTotalCount] = useState(0);
 
   // Refs for pagination offset and stale-request cancellation
+  const inFlightGenerationRef = useRef<number | null>(null);
   const pageRef = useRef(0);            // current loaded page count (for offset calc)
   const fetchGenerationRef = useRef(0); // monotonic counter; stale fetches check this
 
   const { user } = useAuth();
   const { currentTenant } = useTenant();
+  const userId = user?.id;
+  const tenantId = currentTenant?.id;
 
   const buildQuery = useCallback((offset: number, limit: number) => {
     let query = supabase
@@ -53,7 +55,7 @@ export const useInfiniteContacts = ({
         'address, business_city, birthday, notes, linkedin',
         { count: 'planned' }
       )
-      .eq('tenant_id', currentTenant?.id || '');
+      .eq('tenant_id', tenantId || '');
 
     // Filter by tab
     if (activeTab === "contacts") {
@@ -111,13 +113,13 @@ export const useInfiniteContacts = ({
     query = query.range(offset, offset + limit - 1);
 
     return query;
-  }, [currentTenant?.id, activeTab, searchTerm, selectedCategory, selectedType, selectedTagFilter, sortColumn, sortDirection]);
+  }, [tenantId, activeTab, searchTerm, selectedCategory, selectedType, selectedTagFilter, sortColumn, sortDirection]);
 
   const insertSampleContacts = useCallback(async () => {
-    if (!user) return false;
+    if (!userId) return false;
     try {
       const { error } = await supabase.rpc('insert_sample_contacts', {
-        target_user_id: user.id
+        target_user_id: userId
       });
 
       if (error) throw error;
@@ -134,14 +136,18 @@ export const useInfiniteContacts = ({
 });
       return false;
     }
-  }, [user, toast]);
+  }, [userId]);
 
   const fetchContacts = useCallback(async (isLoadMore: boolean, generation: number) => {
-    if (!user || !currentTenant) {
+    if (!userId || !tenantId) {
       setLoading(false);
       setLoadingMore(false);
       return;
     }
+
+    if (inFlightGenerationRef.current === generation) return;
+    inFlightGenerationRef.current = generation;
+    setLoadError(false);
 
     try {
       if (isLoadMore) {
@@ -238,23 +244,28 @@ export const useInfiniteContacts = ({
 
     } catch (error) {
       if (generation !== fetchGenerationRef.current) return;
+      setLoadError(true);
+      setHasMore(false);
       debugConsole.error('Error fetching contacts:', error);
       notify.error("Fehler", {
         description: "Kontakte konnten nicht geladen werden."
 });
     } finally {
+      if (inFlightGenerationRef.current === generation) {
+        inFlightGenerationRef.current = null;
+      }
       if (generation === fetchGenerationRef.current) {
         setLoading(false);
         setLoadingMore(false);
       }
     }
-  }, [user, currentTenant, buildQuery, searchTerm, selectedCategory, selectedType, selectedTagFilter, activeTab, insertSampleContacts, toast]);
+  }, [userId, tenantId, buildQuery, searchTerm, selectedCategory, selectedType, activeTab, insertSampleContacts]);
 
   const loadMore = useCallback(() => {
-    if (!loadingMore && hasMore) {
+    if (!loading && !loadingMore && hasMore) {
       fetchContacts(true, fetchGenerationRef.current);
     }
-  }, [fetchContacts, loadingMore, hasMore]);
+  }, [fetchContacts, loading, loadingMore, hasMore]);
 
   const toggleFavorite = useCallback(async (contactId: string, isFavorite: boolean) => {
     try {
@@ -283,7 +294,7 @@ export const useInfiniteContacts = ({
         description: "Favorit konnte nicht aktualisiert werden."
 });
     }
-  }, [toast]);
+  }, []);
 
   // Single consolidated effect: resets state AND fetches when filters/auth change.
   // fetchContacts is in deps so it always uses the current closure (no stale-closure bug).
@@ -298,13 +309,18 @@ export const useInfiniteContacts = ({
     setHasMore(true);
     setTotalCount(0);
 
-    if (user && currentTenant) {
-      fetchContacts(false, generation);
+    setLoadError(false);
+    if (userId && tenantId) {
+      void fetchContacts(false, generation);
+    } else {
+      setLoading(false);
+      setLoadingMore(false);
     }
-  }, [user, currentTenant, searchTerm, selectedCategory, selectedType, selectedTagFilter, activeTab, sortColumn, sortDirection, fetchContacts]);
+    return () => { fetchGenerationRef.current += 1; };
+  }, [userId, tenantId, searchTerm, selectedCategory, selectedType, selectedTagFilter, activeTab, sortColumn, sortDirection, fetchContacts]);
 
   const refreshContacts = useCallback(() => {
-    if (!user || !currentTenant) return;
+    if (!userId || !tenantId) return;
 
     fetchGenerationRef.current += 1;
     const generation = fetchGenerationRef.current;
@@ -314,12 +330,13 @@ export const useInfiniteContacts = ({
     setHasMore(true);
     setTotalCount(0);
     fetchContacts(false, generation);
-  }, [user, currentTenant, fetchContacts]);
+  }, [userId, tenantId, fetchContacts]);
 
   return {
     contacts,
     loading,
     loadingMore,
+    loadError,
     hasMore,
     totalCount,
     loadMore,

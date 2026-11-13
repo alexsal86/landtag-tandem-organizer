@@ -33,3 +33,13 @@
 
 - Annotation follow-up tasks are created only through create_document_annotation_task: it locks the root annotation, validates tenant/assignee membership and atomically writes the Stafette task and unique document_annotation_tasks link. Task links are read-only to clients; deleting an annotation keeps its existing task and document backlink.
 - Employee responsibility matching and coverage rules live in src/features/responsibilities/suggest.ts; matrix writes and confirmed task/file assignments use tenant-checked RPCs, while case-item handovers reuse handover_case_items and preserve the existing ball_owner category.
+
+- Employee protocol release/objection/reopening goes only through role-checked RPCs; frozen content is guarded in the database, private notes have per-user storage, and autosave compares a version before writing.
+
+- Employee action tasks are created atomically only after uncontested acknowledgement; both means one task with the employee holding the ball and the supervisor collaborating. Database triggers synchronize completion in both directions.
+
+- Employee review baselines select only the latest earlier completed/acknowledged conversation; open measures keep their original task and review reasons are stored on the current protocol instead of duplicating work.
+
+- Employee preparation opens seven Berlin calendar days before the meeting; the cron dispatcher claims each reminder under a row lock, and optional protocol suggestions fill only empty fields.
+
+- Employee wellbeing JSON and trend RPCs are restricted to the employee and current direct supervisor by database policy, including against older admin ALL policies; thresholds live in the pure wellbeing module and never feed team-wide reports.

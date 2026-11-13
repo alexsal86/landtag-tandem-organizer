@@ -5,14 +5,6 @@ import SimpleRichTextEditor from "@/components/ui/SimpleRichTextEditor";
 import { RichTextDisplay } from "@/components/ui/RichTextDisplay";
 import { cn } from "@/lib/utils";
 
-export const ACTION_ITEM_MIN_LENGTH = 3;
-
-export function extractPlainTextFromHtml(html: string | undefined | null): string {
-  if (!html) return '';
-  const doc = new DOMParser().parseFromString(html, 'text/html');
-  return (doc.body.textContent || '').trim();
-}
-
 // ─── Rating Scale Component ──────────────────────────────
 export function RatingScale({
   value,
@@ -28,11 +20,25 @@ export function RatingScale({
   return (
     <div className="flex items-center gap-3">
       <span className="text-xs text-muted-foreground w-24 text-right">{labels[0]}</span>
-      <div className="flex gap-1">
+      <div className="flex gap-1" role="radiogroup" aria-label={`${labels[0]} bis ${labels[1]}`} aria-disabled={disabled}>
         {[1, 2, 3, 4, 5].map((n) => (
           <button
             key={n}
             type="button"
+            role="radio"
+            aria-checked={value === n}
+            aria-label={`${n} von 5`}
+            tabIndex={disabled ? -1 : (value ?? 1) === n ? 0 : -1}
+            onKeyDown={event => {
+              if (disabled) return;
+              const direction = ["ArrowRight", "ArrowUp"].includes(event.key) ? 1 : ["ArrowLeft", "ArrowDown"].includes(event.key) ? -1 : 0;
+              const next = event.key === "Home" ? 1 : event.key === "End" ? 5 : direction ? ((n - 1 + direction + 5) % 5) + 1 : null;
+              if (next !== null) {
+                event.preventDefault(); onChange(next);
+                const buttons = event.currentTarget.parentElement?.querySelectorAll<HTMLButtonElement>('button');
+                buttons?.[next - 1]?.focus();
+              }
+            }}
             disabled={disabled}
             onClick={() => onChange(n)}
             className={cn(
@@ -72,11 +78,13 @@ export function StatusProgress({ status }: { status: string }) {
     { key: "scheduled", label: "Geplant" },
     { key: "in_progress", label: "In Durchführung" },
     { key: "completed", label: "Abgeschlossen" },
+    { key: "pending_acknowledgement", label: "Bestätigung offen" },
+    { key: "acknowledged", label: "Bestätigt" },
   ];
   const currentIndex = steps.findIndex((s) => s.key === status);
 
   return (
-    <div className="flex items-center gap-2">
+    <div className="flex items-center gap-2 flex-wrap">
       {steps.map((step, i) => (
         <div key={step.key} className="flex items-center gap-1">
           {i <= currentIndex ? (

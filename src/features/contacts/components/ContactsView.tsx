@@ -152,6 +152,12 @@ export function ContactsView() {
             </div>
           )}
 
+          {s.loadError && (
+            <div role="alert" className="rounded-lg border border-destructive p-4 space-y-2">
+              <p>Kontakte konnten nicht geladen werden.</p>
+              <Button variant="outline" onClick={s.refreshContacts}>Erneut versuchen</Button>
+            </div>
+          )}
           {/* Tab Content */}
           {s.activeTab === "contacts" ? (
             <div className="space-y-6">
@@ -176,8 +182,8 @@ export function ContactsView() {
                   {!s.loadingMore && s.hasMore && s.contacts.length > 0 && (
                     <div className="text-center py-6"><Button variant="outline" onClick={s.loadMore} disabled={s.loadingMore} className="gap-2">Weitere Kontakte laden ({s.totalCount - s.contacts.length} verbleibend)</Button></div>
                   )}
-                  {!s.hasMore && s.contacts.length > 0 && <div className="text-center py-6 text-muted-foreground"><p>Alle Kontakte wurden geladen.</p></div>}
-                  {!s.loading && s.contacts.length === 0 && (
+                  {!s.loadError && !s.hasMore && s.contacts.length > 0 && <div className="text-center py-6 text-muted-foreground"><p>Alle Kontakte wurden geladen.</p></div>}
+                  {!s.loadError && !s.loading && s.contacts.length === 0 && (
                     <Card className="bg-card shadow-card border-border"><CardContent className="text-center py-12">
                       <User className="h-12 w-12 text-muted-foreground mx-auto mb-4" />
                       <h3 className="text-lg font-semibold mb-2">Keine Kontakte gefunden</h3>

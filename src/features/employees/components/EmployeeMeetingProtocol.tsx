@@ -10,26 +10,33 @@ import { Label } from "@/components/ui/label";
 import { Input } from "@/components/ui/input";
 import { Badge } from "@/components/ui/badge";
 import { Textarea } from "@/components/ui/textarea";
-import { AlertCircle, Save, Check, Lock, Unlock, Plus, Trash2, Play, CheckCircle2, Circle, Loader2, XCircle, CalendarClock, Ban } from "lucide-react";
+import { AlertCircle, Save, Check, Lock, Unlock, Plus, Trash2, Play, Loader2, XCircle, CalendarClock } from "lucide-react";
 import { format } from "date-fns";
 import { de } from "date-fns/locale";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
-import { Dialog, DialogContent, DialogDescription, DialogFooter, DialogHeader, DialogTitle, DialogTrigger } from "@/components/ui/dialog";
+import { Dialog, DialogContent, DialogDescription, DialogFooter, DialogHeader, DialogTitle } from "@/components/ui/dialog";
 import { EmployeeMeetingPDFExport } from "@/features/employees/components/EmployeeMeetingPDFExport";
 import SimpleRichTextEditor from "@/components/ui/SimpleRichTextEditor";
 import { RichTextDisplay } from "@/components/ui/RichTextDisplay";
-import { cn } from "@/lib/utils";
 import type { ActionItem, ActionItemOwner, EmployeeMeeting, MeetingPreparationData, ProtocolData } from "@/components/employees/types";
-import { toast } from "@/hooks/use-toast";
 
 import {
-  ACTION_ITEM_MIN_LENGTH,
-  extractPlainTextFromHtml,
   RatingScale,
   StatusProgress,
   SaveIndicator,
   ProtocolField,
 } from "./employeeMeetingProtocol/parts";
+import { ACTION_ITEM_MIN_LENGTH, extractPlainTextFromHtml } from "../protocolText";
+import type { Json } from "@/integrations/supabase/types";
+import type { WellbeingPoint } from "../wellbeing";
+import { WellbeingTrend } from "./WellbeingTrend";
+import { isPreparationAvailable, suggestPreparationFields } from "../preparation";
+import { getPreviousMeetingContext, type PreviousMeetingContext } from "../previousMeeting";
+import { PreviousMeetingReview } from "./PreviousMeetingReview";
+import { resolveActionTaskResponsibility } from "../actionTasks";
+import { Link } from "react-router-dom";
+import { canEditProtocol, isProtocolLocked } from "../protocolWorkflow";
+import { getErrorMessage } from "@/utils/errorHandler";
 import { notify } from "@/lib/notify";
 
 interface EmployeeMeetingProtocolProps {
@@ -41,6 +48,16 @@ export function EmployeeMeetingProtocol({ meetingId, onBack }: EmployeeMeetingPr
   const { user } = useAuth();
   const { currentTenant } = useTenant();
 
+  const [trendPoints, setTrendPoints] = useState<WellbeingPoint[]>([]);
+  const [previousContext, setPreviousContext] = useState<PreviousMeetingContext>(null);
+  const [hasConflict, setHasConflict] = useState(false);
+  const [isTenantAdmin, setIsTenantAdmin] = useState(false);
+  const [workflowBusy, setWorkflowBusy] = useState(false);
+  const [workflowComment, setWorkflowComment] = useState("");
+  const versionRef = useRef(0);
+  const changeRef = useRef(0);
+  const conflictRef = useRef(false);
+  const [loadError, setLoadError] = useState(false);
   const [loading, setLoading] = useState(true);
   const [saving, setSaving] = useState(false);
   const [meeting, setMeeting] = useState<EmployeeMeeting | null>(null);
@@ -66,7 +83,7 @@ export function EmployeeMeetingProtocol({ meetingId, onBack }: EmployeeMeetingPr
   const [saveState, setSaveState] = useState<"saved" | "saving" | "unsaved">("saved");
   const [lastSaved, setLastSaved] = useState<Date | null>(null);
   const autoSaveTimerRef = useRef<ReturnType<typeof setTimeout> | null>(null);
-  const saveProtocolRef = useRef<(isAutoSave?: boolean) => Promise<void>>(async () => {});
+  const saveProtocolRef = useRef<(isAutoSave?: boolean) => Promise<boolean>>(async () => false);
   const savingRef = useRef(false);
   const dataChangedRef = useRef(false);
 
@@ -76,19 +93,17 @@ export function EmployeeMeetingProtocol({ meetingId, onBack }: EmployeeMeetingPr
   const [rescheduleDialogOpen, setRescheduleDialogOpen] = useState(false);
   const [rescheduleReason, setRescheduleReason] = useState("");
 
-  // Load meeting data
-  useEffect(() => {
-    if (!meetingId || !user) return;
-    loadMeetingData();
-  }, [meetingId, user]);
-
-  const loadMeetingData = async () => {
+  const userId = user?.id;
+  const loadMeetingData = useCallback(async () => {
     try {
       setLoading(true);
+      setLoadError(false);
+      if (autoSaveTimerRef.current) clearTimeout(autoSaveTimerRef.current);
+      dataChangedRef.current = false;
       // Fetch meeting without profile joins (FK points to auth.users, not profiles)
       const { data: meetingData, error: meetingError } = await supabase
         .from("employee_meetings")
-        .select("id, employee_id, conducted_by, tenant_id, meeting_date, next_meeting_due, meeting_type, status, protocol, employee_notes, supervisor_notes, action_items, created_at, updated_at, employee_preparation, supervisor_preparation, shared_during_meeting, protocol_data, cancellation_reason, reschedule_request_reason, completed_at")
+        .select("id, employee_id, conducted_by, tenant_id, meeting_date, next_meeting_due, meeting_type, status, protocol, employee_notes, supervisor_notes, action_items, created_at, updated_at, employee_preparation, supervisor_preparation, shared_during_meeting, protocol_data, cancellation_reason, reschedule_request_reason, completed_at, version, acknowledgement_requested_at, acknowledged_at, acknowledged_by, protocol_hash, acknowledgement_comment")
         .eq("id", meetingId)
         .maybeSingle();
 
@@ -105,7 +120,7 @@ export function EmployeeMeetingProtocol({ meetingId, onBack }: EmployeeMeetingPr
         .select("user_id, display_name")
         .in("user_id", userIds);
 
-      const profileMap = new Map(profiles?.map((p: Record<string, any>) => [p.user_id, p.display_name]) || []);
+      const profileMap = new Map(profiles?.map((p) => [p.user_id, p.display_name]) || []);
 
       const enrichedMeeting = {
         ...meetingData,
@@ -114,28 +129,38 @@ export function EmployeeMeetingProtocol({ meetingId, onBack }: EmployeeMeetingPr
       };
 
       setMeeting(enrichedMeeting as EmployeeMeeting);
-      const uid = user?.id;
+      versionRef.current = meetingData.version;
+      conflictRef.current = false;
+      setHasConflict(false);
+      setSaveState("saved");
+      const { data: privateData, error: privateError } = await supabase.from("employee_meeting_private_notes").select("notes").eq("meeting_id", meetingId).eq("user_id", userId!).maybeSingle();
+      if (privateError) throw privateError;
+      setPrivateNotes(privateData?.notes ?? "");
+      const { data: tenantAdmin, error: adminError } = await supabase.rpc("is_tenant_admin", { _tenant_id: meetingData.tenant_id, _user_id: userId! });
+      if (adminError) throw adminError;
+      setIsTenantAdmin(tenantAdmin);
+      const uid = userId;
       setIsEmployee(meetingData.employee_id === uid);
       setIsSupervisor(meetingData.conducted_by === uid);
 
+      setProtocolData({});
+      setEmployeePrep({});
+      setSupervisorPrep({});
       if (meetingData.protocol_data) {
         setProtocolData(meetingData.protocol_data as ProtocolData);
       }
       if (meetingData.employee_preparation) {
         const empPrep = meetingData.employee_preparation as MeetingPreparationData;
         setEmployeePrep(empPrep);
-        if (uid === meetingData.employee_id && empPrep?.private_notes) {
-          setPrivateNotes(empPrep.private_notes);
-        }
       }
       if (meetingData.supervisor_preparation) {
         const supPrep = meetingData.supervisor_preparation as MeetingPreparationData;
         setSupervisorPrep(supPrep);
-        if (uid === meetingData.conducted_by && supPrep?.private_notes) {
-          setPrivateNotes(supPrep.private_notes);
-        }
       }
       setSharedDuringMeeting(meetingData.shared_during_meeting || false);
+      const { data: trend, error: trendError } = await supabase.rpc("get_employee_meeting_trend", { p_employee_id: meetingData.employee_id, p_tenant_id: meetingData.tenant_id });
+      setTrendPoints(trendError ? [] : trend ?? []);
+
 
       const { data: actionData, error: actionError } = await supabase
         .from("employee_meeting_action_items")
@@ -145,19 +170,47 @@ export function EmployeeMeetingProtocol({ meetingId, onBack }: EmployeeMeetingPr
 
       if (actionError) throw actionError;
       setActionItems((actionData || []) as ActionItem[]);
+      const { data: priorMeetings, error: priorError } = await supabase.from("employee_meetings").select("id, employee_id, conducted_by, meeting_date, meeting_type, status, protocol_data, version")
+        .eq("employee_id", meetingData.employee_id).eq("tenant_id", meetingData.tenant_id)
+        .in("status", ["completed", "acknowledged"]).lt("meeting_date", meetingData.meeting_date)
+        .order("meeting_date", { ascending: false }).order("id", { ascending: false }).limit(1);
+      if (priorError) throw priorError;
+      const previous = priorMeetings?.[0];
+      const priorActions = previous ? await supabase.from("employee_meeting_action_items").select("id, meeting_id, description, owner, assigned_to, due_date, status, completed_at, task_id").eq("meeting_id", previous.id) : null;
+      if (priorActions?.error) throw priorActions.error;
+      setPreviousContext(getPreviousMeetingContext(meetingData.employee_id, meetingData, (priorMeetings ?? []) as EmployeeMeeting[], (priorActions?.data ?? []) as ActionItem[]));
+
     } catch (error: unknown) {
+      setLoadError(true);
       debugConsole.error("Error loading meeting:", error);
       notify.error("Fehler", { description: "Besprechungsdaten konnten nicht geladen werden"
 });
     } finally {
       setLoading(false);
     }
-  };
+  }, [meetingId, userId]);
+
+  useEffect(() => {
+    if (meetingId && userId) void loadMeetingData();
+  }, [meetingId, userId, loadMeetingData]);
+
+  useEffect(() => {
+    if (!meetingId || !userId) return;
+    let active = true;
+    const channel = supabase.channel(`employee-actions-${meetingId}`).on("postgres_changes", {
+      event: "*", schema: "public", table: "employee_meeting_action_items", filter: `meeting_id=eq.${meetingId}`,
+    }, async () => {
+      const { data, error } = await supabase.from("employee_meeting_action_items")
+        .select("id, meeting_id, tenant_id, description, owner, assigned_to, due_date, status, completed_at, notes, created_at, updated_at, task_id")
+        .eq("meeting_id", meetingId).order("created_at", { ascending: false });
+      if (active && !error) setActionItems((data ?? []) as ActionItem[]);
+    }).subscribe();
+    return () => { active = false; void supabase.removeChannel(channel); };
+  }, [meetingId, userId]);
 
   const saveProtocol = useCallback(async (isAutoSave = false) => {
-    if (!meeting || !user) return;
-    if (savingRef.current) return;
-
+    if (!meeting || !user || !canEditProtocol(meeting.status) || conflictRef.current || savingRef.current) return false;
+    const savedChange = changeRef.current;
     savingRef.current = true;
     setSaving(true);
     setSaveState("saving");
@@ -168,38 +221,42 @@ export function EmployeeMeetingProtocol({ meetingId, onBack }: EmployeeMeetingPr
       supervisor_preparation?: MeetingPreparationData;
     } = { protocol_data: protocolData };
       if (isEmployee) {
-        updates.employee_preparation = { ...employeePrep, private_notes: privateNotes };
+        updates.employee_preparation = employeePrep;
       } else if (isSupervisor) {
-        updates.supervisor_preparation = { ...supervisorPrep, private_notes: privateNotes };
+        updates.supervisor_preparation = supervisorPrep;
       }
 
-      const { error } = await supabase
-        .from("employee_meetings")
-        .update(updates)
-        .eq("id", meetingId);
-
-      if (error) throw error;
-
-      setSaveState("saved");
+      const { data, error } = await supabase.rpc("save_employee_meeting", {
+        p_meeting_id: meetingId, p_version: versionRef.current, p_patch: updates as Json, p_private_notes: privateNotes,
+      });
+      if (error) {
+        if (error.code === "40001") { conflictRef.current = true; setHasConflict(true); }
+        throw error;
+      }
+      versionRef.current = data;
+      const stillDirty = savedChange !== changeRef.current;
+      setSaveState(stillDirty ? "unsaved" : "saved");
       setLastSaved(new Date());
-      dataChangedRef.current = false;
-
+      dataChangedRef.current = stillDirty;
+      if (stillDirty) autoSaveTimerRef.current = setTimeout(() => void saveProtocolRef.current(true), 3000);
       if (!isAutoSave) {
         notify.success("Gespeichert", { description: "Protokoll wurde gespeichert" 
 });
       }
+      return !stillDirty;
     } catch (error: unknown) {
       debugConsole.error("Error saving protocol:", error);
       setSaveState("unsaved");
-      if (!isAutoSave) {
-        notify.error("Fehler", { description: "Protokoll konnte nicht gespeichert werden"
+      if (!isAutoSave || conflictRef.current) {
+        notify.error("Speichern fehlgeschlagen", { description: conflictRef.current ? "Parallel geändert. Bitte lokale Änderungen sichern und das Gespräch neu laden." : "Protokoll konnte nicht gespeichert werden"
 });
       }
+      return false;
     } finally {
       savingRef.current = false;
       setSaving(false);
     }
-  }, [meeting, user, protocolData, employeePrep, supervisorPrep, privateNotes, isEmployee, isSupervisor, meetingId, toast]);
+  }, [meeting, user, protocolData, employeePrep, supervisorPrep, privateNotes, isEmployee, isSupervisor, meetingId]);
 
   useEffect(() => {
     saveProtocolRef.current = saveProtocol;
@@ -207,13 +264,14 @@ export function EmployeeMeetingProtocol({ meetingId, onBack }: EmployeeMeetingPr
 
   // Debounced auto-save (3s after last change)
   const triggerAutoSave = useCallback(() => {
+    changeRef.current += 1;
     dataChangedRef.current = true;
     setSaveState("unsaved");
     if (autoSaveTimerRef.current) clearTimeout(autoSaveTimerRef.current);
     autoSaveTimerRef.current = setTimeout(() => {
       void saveProtocolRef.current(true);
     }, 3000);
-  }, [saveProtocol]);
+  }, []);
 
   // Cleanup timer
   useEffect(() => {
@@ -222,11 +280,45 @@ export function EmployeeMeetingProtocol({ meetingId, onBack }: EmployeeMeetingPr
     };
   }, []);
 
+  const savePatch = async (patch: Json) => {
+    if (savingRef.current || conflictRef.current) throw new Error("Bitte den laufenden Speichervorgang abwarten oder neu laden.");
+    setWorkflowBusy(true);
+    try {
+      if (autoSaveTimerRef.current) clearTimeout(autoSaveTimerRef.current);
+      if (dataChangedRef.current && !await saveProtocolRef.current()) throw new Error("Ungespeicherte Änderungen");
+      savingRef.current = true;
+      setSaving(true);
+      const { data, error } = await supabase.rpc("save_employee_meeting", { p_meeting_id: meetingId, p_version: versionRef.current, p_patch: patch });
+      if (error) {
+        if (error.code === "40001") { conflictRef.current = true; setHasConflict(true); }
+        throw error;
+      }
+      versionRef.current = data;
+    } finally { savingRef.current = false; setSaving(false); setWorkflowBusy(false); }
+  };
+
+  const protocolWorkflow = async (action: "request" | "acknowledge" | "object" | "reopen") => {
+    if (workflowBusy || savingRef.current) return;
+    setWorkflowBusy(true);
+    try {
+      if (autoSaveTimerRef.current) clearTimeout(autoSaveTimerRef.current);
+      if (dataChangedRef.current && !await saveProtocolRef.current()) throw new Error("Bitte Änderungen zuerst speichern.");
+      const result = action === "request" ? await supabase.rpc("request_protocol_acknowledgement", { p_meeting_id: meetingId })
+        : action === "reopen" ? await supabase.rpc("reopen_meeting_protocol", { p_meeting_id: meetingId, p_reason: workflowComment })
+        : await supabase.rpc("acknowledge_meeting_protocol", { p_meeting_id: meetingId, p_protocol_hash: meeting?.protocol_hash ?? undefined, ...(action === "object" ? { p_comment: workflowComment } : {}) });
+      if (result.error) throw result.error;
+      setWorkflowComment("");
+      await loadMeetingData();
+      notify.success("Protokoll aktualisiert");
+    } catch (error: unknown) {
+      notify.error("Protokoll konnte nicht aktualisiert werden", { description: getErrorMessage(error) });
+    } finally { setWorkflowBusy(false); }
+  };
+
   const sharePreparation = async () => {
     if (!meeting) return;
     try {
-      const { error } = await supabase.from("employee_meetings").update({ shared_during_meeting: true }).eq("id", meetingId);
-      if (error) throw error;
+      await savePatch({ shared_during_meeting: true });
       setSharedDuringMeeting(true);
       notify.success("Vorbereitung geteilt", { description: "Beide Parteien können jetzt die Vorbereitungen sehen" 
 });
@@ -237,46 +329,12 @@ export function EmployeeMeetingProtocol({ meetingId, onBack }: EmployeeMeetingPr
     }
   };
 
-  const sendMeetingNotification = async (recipientId: string, title: string, message: string, type: string = "employee_meeting") => {
-    if (!currentTenant) return;
-    try {
-      await supabase.rpc("create_notification", {
-        user_id_param: recipientId,
-        type_name: type,
-        title_param: title,
-        message_param: message,
-        priority_param: "medium",
-        data_param: JSON.stringify({ meeting_id: meetingId }),
-      });
-    } catch (e) {
-      debugConsole.error("Notification error:", e);
-    }
-  };
-
   const updateStatus = async (newStatus: string) => {
     if (!meeting) return;
     try {
-      const updates: { status: string; completed_at?: string } = { status: newStatus };
-      if (newStatus === "completed") {
-        updates.completed_at = new Date().toISOString();
-      }
-
-      const { error } = await supabase.from("employee_meetings").update(updates).eq("id", meetingId);
-      if (error) throw error;
-
-      // Notifications
-      if (newStatus === "in_progress") {
-        sendMeetingNotification(meeting.employee_id, "Gespräch gestartet", `Ihr Mitarbeitergespräch wurde gestartet.`);
-      }
+      await savePatch({ status: newStatus });
 
       if (newStatus === "completed") {
-        const { error: settingsError } = await supabase
-          .from("employee_settings")
-          .update({ last_meeting_date: meeting.meeting_date })
-          .eq("user_id", meeting.employee_id);
-        if (settingsError) debugConsole.error("Error updating employee_settings:", settingsError);
-
-        sendMeetingNotification(meeting.employee_id, "Gespräch abgeschlossen", `Ihr Mitarbeitergespräch wurde abgeschlossen.`);
 
         const openItems = actionItems.filter(i => i.status !== "completed");
         if (openItems.length > 0) {
@@ -304,21 +362,8 @@ export function EmployeeMeetingProtocol({ meetingId, onBack }: EmployeeMeetingPr
   const cancelMeeting = async (reason: string) => {
     if (!meeting) return;
     try {
-      const newStatus = isSupervisor ? "cancelled" : "cancelled_by_employee";
-      const { error } = await supabase.from("employee_meetings")
-        .update({ status: newStatus, cancellation_reason: reason })
-        .eq("id", meetingId);
-      if (error) throw error;
-
-      const recipientId = isSupervisor ? meeting.employee_id : meeting.conducted_by;
-      const dateStr = format(new Date(meeting.meeting_date), "dd.MM.yyyy", { locale: de });
-      const senderName = isSupervisor ? meeting.supervisor_name : meeting.employee_name;
-
-      if (isSupervisor) {
-        sendMeetingNotification(recipientId, "Gespräch abgesagt", `Ihr Gespräch am ${dateStr} wurde abgesagt. Grund: ${reason}`);
-      } else {
-        sendMeetingNotification(recipientId, "Gespräch abgesagt", `${senderName} hat das Gespräch am ${dateStr} abgesagt. Grund: ${reason}`);
-      }
+      const newStatus = isSupervisor || isTenantAdmin ? "cancelled" : "cancelled_by_employee";
+      await savePatch({ status: newStatus, cancellation_reason: reason });
 
       notify.success("Abgesagt", { description: "Gespräch wurde abgesagt" 
 });
@@ -333,16 +378,7 @@ export function EmployeeMeetingProtocol({ meetingId, onBack }: EmployeeMeetingPr
   const requestReschedule = async (reason: string) => {
     if (!meeting) return;
     try {
-      const { error } = await supabase.from("employee_meetings")
-        .update({ reschedule_request_reason: reason })
-        .eq("id", meetingId);
-      if (error) throw error;
-
-      sendMeetingNotification(
-        meeting.conducted_by,
-        "Umterminierung angefragt",
-        `${meeting.employee_name} möchte das Gespräch am ${format(new Date(meeting.meeting_date), "dd.MM.yyyy", { locale: de })} umterminieren. Grund: ${reason}`
-      );
+      await savePatch({ reschedule_request_reason: reason });
 
       notify.success("Anfrage gesendet", { description: "Umterminierungsanfrage wurde an den Vorgesetzten gesendet" 
 });
@@ -354,7 +390,7 @@ export function EmployeeMeetingProtocol({ meetingId, onBack }: EmployeeMeetingPr
   };
 
   const addActionItem = async () => {
-    if (!currentTenant) return;
+    if (!currentTenant || savingRef.current || workflowBusy) return;
 
     const plainDescription = extractPlainTextFromHtml(newActionItem.description);
     if (!plainDescription) {
@@ -371,23 +407,12 @@ export function EmployeeMeetingProtocol({ meetingId, onBack }: EmployeeMeetingPr
       return;
     }
 
+    setWorkflowBusy(true);
     try {
-      const { data, error } = await supabase
-        .from("employee_meeting_action_items")
-        .insert([{
-          meeting_id: meetingId,
-          tenant_id: currentTenant.id,
-          description: newActionItem.description,
-          owner: newActionItem.owner,
-          assigned_to: newActionItem.assigned_to || (isEmployee ? meeting?.employee_id : meeting?.conducted_by),
-          due_date: newActionItem.due_date,
-          status: "open",
-        }])
-        .select()
-        .single();
-
+      if (dataChangedRef.current && !await saveProtocolRef.current()) return;
+      const { error } = await supabase.rpc("mutate_employee_meeting_action", { p_meeting_id: meetingId, p_action: "add", p_data: { description: newActionItem.description, owner: newActionItem.owner, due_date: newActionItem.due_date || null } });
       if (error) throw error;
-      setActionItems([data as ActionItem, ...actionItems]);
+      await loadMeetingData();
       setNewActionItem({ description: "", owner: "employee", status: "open" });
       notify.success("Action Item hinzugefügt", { description: "Neue Maßnahme wurde erfolgreich erstellt" 
 });
@@ -395,12 +420,12 @@ export function EmployeeMeetingProtocol({ meetingId, onBack }: EmployeeMeetingPr
       debugConsole.error("Error adding action item:", error);
       notify.error("Fehler", { description: "Action Item konnte nicht erstellt werden"
 });
-    }
+    } finally { setWorkflowBusy(false); }
   };
 
   const updateActionItem = async (itemId: string, updates: Partial<ActionItem>) => {
     try {
-      const { error } = await supabase.from("employee_meeting_action_items").update(updates).eq("id", itemId);
+      const { error } = await supabase.rpc("mutate_employee_meeting_action", { p_meeting_id: meetingId, p_action: "status", p_item_id: itemId, p_data: updates as Json });
       if (error) throw error;
       setActionItems(actionItems.map(item => item.id === itemId ? { ...item, ...updates } : item));
       notify.success("Aktualisiert", { description: "Action Item wurde aktualisiert" 
@@ -414,7 +439,7 @@ export function EmployeeMeetingProtocol({ meetingId, onBack }: EmployeeMeetingPr
 
   const deleteActionItem = async (itemId: string) => {
     try {
-      const { error } = await supabase.from("employee_meeting_action_items").delete().eq("id", itemId);
+      const { error } = await supabase.rpc("mutate_employee_meeting_action", { p_meeting_id: meetingId, p_action: "delete", p_item_id: itemId });
       if (error) throw error;
       setActionItems(actionItems.filter(item => item.id !== itemId));
       notify.success("Gelöscht", { description: "Action Item wurde entfernt" 
@@ -434,6 +459,11 @@ export function EmployeeMeetingProtocol({ meetingId, onBack }: EmployeeMeetingPr
     triggerAutoSave();
   }, [triggerAutoSave]);
 
+  const updatePreviousReason = (id: string, value: string) => {
+    setProtocolData(prev => ({ ...prev, previous_action_reasons: { ...prev.previous_action_reasons, [id]: value } }));
+    triggerAutoSave();
+  };
+
   if (loading) {
     return (
       <div className="flex items-center justify-center h-64 gap-2">
@@ -442,6 +472,8 @@ export function EmployeeMeetingProtocol({ meetingId, onBack }: EmployeeMeetingPr
       </div>
     );
   }
+
+  if (loadError) return <Card><CardContent className="py-6 space-y-3"><p>Das Gespräch konnte nicht vollständig geladen werden. Bitte erneut versuchen.</p><Button onClick={() => void loadMeetingData()}>Erneut laden</Button></CardContent></Card>;
 
   if (!meeting) {
     return (
@@ -453,11 +485,13 @@ export function EmployeeMeetingProtocol({ meetingId, onBack }: EmployeeMeetingPr
     );
   }
 
-  const isCompleted = meeting.status === "completed";
+  const canManage = isSupervisor || isTenantAdmin;
+  const isCompleted = meeting.status === "completed" || isProtocolLocked(meeting.status);
   const isScheduled = meeting.status === "scheduled";
   const isInProgress = meeting.status === "in_progress";
   const isCancelled = meeting.status === "cancelled" || meeting.status === "cancelled_by_employee" || meeting.status === "rescheduled";
-  const canEdit = !isCompleted && !isCancelled && (isEmployee || isSupervisor);
+  const preparationAvailable = isPreparationAvailable(meeting.meeting_date);
+  const canEdit = canEditProtocol(meeting.status) && (isEmployee || isSupervisor || isTenantAdmin) && !workflowBusy && !hasConflict;
 
   return (
     <div className="space-y-6">
@@ -521,8 +555,8 @@ export function EmployeeMeetingProtocol({ meetingId, onBack }: EmployeeMeetingPr
                 meeting={meeting}
                 protocolData={protocolData}
                 actionItems={actionItems}
-                employeePrep={employeePrep}
-                supervisorPrep={supervisorPrep}
+                employeePrep={sharedDuringMeeting || isEmployee ? employeePrep : undefined}
+                supervisorPrep={sharedDuringMeeting || isSupervisor ? supervisorPrep : undefined}
               />
             )}
           </div>
@@ -532,13 +566,13 @@ export function EmployeeMeetingProtocol({ meetingId, onBack }: EmployeeMeetingPr
         <div className="flex items-center justify-between flex-wrap gap-3">
           <StatusProgress status={meeting.status} />
           <div className="flex gap-2">
-            {isScheduled && isSupervisor && (
+            {isScheduled && canManage && (
               <Button onClick={() => updateStatus("in_progress")} size="sm">
                 <Play className="h-4 w-4 mr-1" />
                 Gespräch starten
               </Button>
             )}
-            {isScheduled && isSupervisor && (
+            {isScheduled && canManage && (
               <Button onClick={() => setCancelDialogOpen(true)} size="sm" variant="destructive">
                 <XCircle className="h-4 w-4 mr-1" />
                 Absagen
@@ -556,7 +590,7 @@ export function EmployeeMeetingProtocol({ meetingId, onBack }: EmployeeMeetingPr
                 </Button>
               </>
             )}
-            {isInProgress && isSupervisor && (
+            {isInProgress && canManage && (
               <Button onClick={() => updateStatus("completed")} size="sm" variant="default">
                 <Check className="h-4 w-4 mr-1" />
                 Gespräch abschließen
@@ -584,6 +618,35 @@ export function EmployeeMeetingProtocol({ meetingId, onBack }: EmployeeMeetingPr
         )}
       </div>
 
+      {hasConflict && <Card><CardContent className="pt-6 space-y-3">
+        <p role="alert">Das Gespräch wurde parallel geändert. Automatisches Speichern ist angehalten. Sichern Sie Ihre lokalen Änderungen, bevor Sie den Serverstand laden.</p>
+        <Button variant="outline" onClick={() => {
+          const blob = new Blob([JSON.stringify({ protocol: protocolData, preparation: isEmployee ? employeePrep : supervisorPrep, private_notes: privateNotes }, null, 2)], { type: "application/json" });
+          const url = URL.createObjectURL(blob); const link = document.createElement("a"); link.href = url; link.download = `gespraech-${meetingId}-lokaler-entwurf.json`; link.click(); URL.revokeObjectURL(url);
+        }}>Lokalen Entwurf sichern</Button>
+        <Button variant="outline" onClick={() => void loadMeetingData()}>Serverstand laden</Button>
+      </CardContent></Card>}
+      {(isProtocolLocked(meeting.status) || meeting.status === "completed") && (
+        <Card><CardContent className="pt-6 space-y-3">
+          {isProtocolLocked(meeting.status) && <Badge variant="secondary"><Lock className="h-3 w-3 mr-1" />Protokoll gesperrt</Badge>}
+          {meeting.status === "acknowledged" && <p>Bestätigt am {meeting.acknowledged_at && format(new Date(meeting.acknowledged_at), "dd.MM.yyyy HH:mm")} · Prüfsumme {meeting.protocol_hash?.slice(0, 12)}</p>}
+          {meeting.acknowledgement_comment && <p className="text-sm">Einspruch/Ergänzung: {meeting.acknowledgement_comment}</p>}
+          {meeting.status === "completed" && canManage && <Button disabled={workflowBusy || saving} onClick={() => void protocolWorkflow("request")}>Zur Bestätigung senden</Button>}
+          {meeting.status === "pending_acknowledgement" && isEmployee && <>
+            <p>Bitte das Protokoll innerhalb von 7 Tagen prüfen. Ein Einspruch hält die Bestätigung offen.</p>
+            <Button disabled={workflowBusy || !!meeting.acknowledgement_comment} onClick={() => void protocolWorkflow("acknowledge")}>Gelesen &amp; Einverstanden</Button>
+            <Label htmlFor="protocol-objection">Einspruch/Ergänzung</Label>
+            <Textarea id="protocol-objection" value={workflowComment} onChange={e => setWorkflowComment(e.target.value)} />
+            <Button variant="outline" disabled={workflowBusy || !workflowComment.trim()} onClick={() => void protocolWorkflow("object")}>Einspruch/Ergänzung senden</Button>
+          </>}
+          {canManage && <>
+            <Label htmlFor="protocol-reopen">Grund für die Wiederöffnung</Label>
+            <Textarea id="protocol-reopen" value={workflowComment} onChange={e => setWorkflowComment(e.target.value)} />
+            <Button variant="outline" disabled={workflowBusy || !workflowComment.trim()} onClick={() => void protocolWorkflow("reopen")}>Protokoll wieder öffnen</Button>
+          </>}
+        </CardContent></Card>
+      )}
+
       <Tabs defaultValue="preparation" className="w-full">
         <TabsList className="grid w-full grid-cols-3">
           <TabsTrigger value="preparation">Vorbereitung</TabsTrigger>
@@ -593,6 +656,7 @@ export function EmployeeMeetingProtocol({ meetingId, onBack }: EmployeeMeetingPr
 
         {/* Tab: Vorbereitung */}
         <TabsContent value="preparation" className="space-y-4">
+          <PreviousMeetingReview context={previousContext} reasons={protocolData.previous_action_reasons ?? {}} onReason={updatePreviousReason} disabled={!canEdit} />
           <Card>
             <CardHeader>
               <div className="flex items-center justify-between">
@@ -606,11 +670,21 @@ export function EmployeeMeetingProtocol({ meetingId, onBack }: EmployeeMeetingPr
               </div>
             </CardHeader>
             <CardContent className="space-y-6">
+              {!preparationAvailable && <p className="text-sm text-muted-foreground">Der Vorbereitungsbogen wird 7 Tage vor dem Termin freigeschaltet.</p>}
+              <div className={sharedDuringMeeting ? "grid gap-6 md:grid-cols-2" : "space-y-6"}>
               {/* Employee preparation */}
               <div>
                 <h3 className="font-semibold mb-2">Vorbereitung Mitarbeiter</h3>
+                {(sharedDuringMeeting || isEmployee) && <div className="space-y-3 mb-4">
+                  {([
+                    ["proud_of", "Worauf bin ich stolz?"],
+                    ["need_support", "Wo brauche ich Unterstützung?"],
+                    ["skills_to_deepen", "Welche Fähigkeiten möchte ich vertiefen?"],
+                  ] as const).map(([field, label]) => <ProtocolField key={field} label={label} value={employeePrep[field]}
+                    canEdit={canEdit && isEmployee && preparationAvailable} placeholder={label} onChange={value => { setEmployeePrep(prev => ({ ...prev, [field]: value })); triggerAutoSave(); }} />)}
+                </div>}
                 {sharedDuringMeeting || isEmployee ? (
-                  isEmployee && !isCompleted ? (
+                  isEmployee && canEdit && preparationAvailable ? (
                     <SimpleRichTextEditor
                       initialContent={employeePrep.notes || ""}
                       onChange={(html) => {
@@ -618,7 +692,7 @@ export function EmployeeMeetingProtocol({ meetingId, onBack }: EmployeeMeetingPr
                         triggerAutoSave();
                       }}
                       placeholder="Notizen zur Vorbereitung..."
-                      disabled={isCompleted}
+                      disabled={!canEdit}
                       minHeight="120px"
                     />
                   ) : (
@@ -635,7 +709,7 @@ export function EmployeeMeetingProtocol({ meetingId, onBack }: EmployeeMeetingPr
               <div>
                 <h3 className="font-semibold mb-2">Vorbereitung Vorgesetzter</h3>
                 {sharedDuringMeeting || isSupervisor ? (
-                  isSupervisor && !isCompleted ? (
+                  isSupervisor && canEdit ? (
                     <SimpleRichTextEditor
                       initialContent={supervisorPrep.notes || ""}
                       onChange={(html) => {
@@ -643,7 +717,7 @@ export function EmployeeMeetingProtocol({ meetingId, onBack }: EmployeeMeetingPr
                         triggerAutoSave();
                       }}
                       placeholder="Notizen zur Vorbereitung..."
-                      disabled={isCompleted}
+                      disabled={!canEdit}
                       minHeight="120px"
                     />
                   ) : (
@@ -656,13 +730,14 @@ export function EmployeeMeetingProtocol({ meetingId, onBack }: EmployeeMeetingPr
                 )}
               </div>
 
+              </div>
               {/* Private notes */}
               <div className="border-t pt-4">
                 <h3 className="font-semibold mb-2 flex items-center gap-2">
                   <Lock className="h-4 w-4" />
                   Meine privaten Notizen
                 </h3>
-                {!isCompleted ? (
+                {canEdit ? (
                   <SimpleRichTextEditor
                     initialContent={privateNotes}
                     onChange={(html) => {
@@ -670,7 +745,7 @@ export function EmployeeMeetingProtocol({ meetingId, onBack }: EmployeeMeetingPr
                       triggerAutoSave();
                     }}
                     placeholder="Nur für Sie sichtbar..."
-                    disabled={isCompleted}
+                    disabled={!canEdit}
                     minHeight="80px"
                   />
                 ) : (
@@ -690,11 +765,16 @@ export function EmployeeMeetingProtocol({ meetingId, onBack }: EmployeeMeetingPr
 
         {/* Tab: Protokoll */}
         <TabsContent value="protocol" className="space-y-4">
+          <PreviousMeetingReview context={previousContext} reasons={protocolData.previous_action_reasons ?? {}} onReason={updatePreviousReason} disabled={!canEdit} />
           <Card>
             <CardHeader>
               <CardTitle>Strukturiertes Protokoll</CardTitle>
             </CardHeader>
             <CardContent className="space-y-6">
+              {canEdit && (isEmployee || sharedDuringMeeting) && <Button variant="outline" onClick={() => {
+                setProtocolData(prev => suggestPreparationFields(prev, employeePrep)); triggerAutoSave();
+              }}>Vorbereitung als Vorschlag in leere Protokollfelder übernehmen</Button>}
+              <WellbeingTrend meetings={trendPoints} />
               {/* Befinden & Work-Life-Balance */}
               <div className="space-y-4">
                 <h3 className="font-semibold text-lg">Befinden & Work-Life-Balance</h3>
@@ -891,8 +971,10 @@ export function EmployeeMeetingProtocol({ meetingId, onBack }: EmployeeMeetingPr
                           )}
                         </div>
                         <RichTextDisplay content={item.description} />
+                        {item.task_id && <Link className="text-sm text-primary underline" to={`/tasks?highlight=${item.task_id}`}>Aufgabe öffnen · Status wird synchronisiert</Link>}
+                        {item.owner === "both" && <p className="text-xs text-muted-foreground">{resolveActionTaskResponsibility(item.owner, meeting.employee_id, meeting.conducted_by).ballAssigneeId === meeting.employee_id ? "Mitarbeiter führt, Gesprächsleitung wirkt mit." : "Gesprächsleitung führt."}</p>}
                         {item.notes && <RichTextDisplay content={item.notes} className="italic" />}
-                        {canEdit && item.status !== "completed" && (
+                        {(canEdit || (meeting.status === "acknowledged" && (isEmployee || isSupervisor))) && item.status !== "completed" && (
                           <div className="flex gap-2 mt-2">
                             {item.status === "open" && (
                               <Button size="sm" variant="outline" onClick={() => updateActionItem(item.id!, { status: "in_progress" })}>
@@ -908,7 +990,7 @@ export function EmployeeMeetingProtocol({ meetingId, onBack }: EmployeeMeetingPr
                           </div>
                         )}
                       </div>
-                      {canEdit && isSupervisor && (
+                      {canEdit && canManage && !item.task_id && (
                         <Button size="sm" variant="ghost" onClick={() => deleteActionItem(item.id!)}>
                           <Trash2 className="h-4 w-4" />
                         </Button>
