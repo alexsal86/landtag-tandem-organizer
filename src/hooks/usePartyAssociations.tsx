@@ -109,7 +109,7 @@ export function usePartyAssociations() {
           if (boundaries && Array.isArray(boundaries) && boundaries.length > 0) {
             const { data: boundaryDistricts, error: boundaryError } = await supabase
               .from('election_districts')
-              .select('id, district_name, district_type, region')
+              .select('id, district_number, district_name, district_type, region, boundaries, center_coordinates, population, area_km2, created_at, updated_at')
               .in('id', boundaries);
 
             if (boundaryError) {

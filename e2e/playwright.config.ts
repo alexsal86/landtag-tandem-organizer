@@ -22,6 +22,7 @@ export default defineConfig({
   projects: [
     { name: "knowledge", testMatch: ["knowledge.spec.ts", "knowledge-workspace.spec.ts"], use: { trace: "off", video: "off" } },
     { name: "admin-mocked", testMatch: "admin-mocked.spec.ts", use: { trace: "off", video: "off" } },
+    { name: "election-map", testMatch: "election-map.spec.ts", use: { trace: "retain-on-failure" } },
     { name: "public", testMatch: "public.spec.ts", use: { trace: "retain-on-failure" } },
     // Keine Traces/Session-Dateien mit Anmeldung oder JWTs als CI-Artefakte speichern.
     { name: "live", testMatch: "selftest-live.spec.ts", use: { trace: "off", video: "off" } },

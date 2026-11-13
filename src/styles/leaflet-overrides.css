@@ -1,49 +1,13 @@
-/* Leaflet popup z-index fixes - loaded only when map components are used */
-
-.leaflet-map-pane {
-  z-index: 1 !important;
+/* Keep Leaflet's pane order: tiles (200), polygons (400), markers (600),
+   tooltips (650), popups (700). Lowering individual panes hides their content
+   behind tiles or markers. Isolate the map from surrounding app stacking. */
+.leaflet-container {
+  isolation: isolate;
 }
 
-.leaflet-popup-pane {
-  z-index: 99999 !important;
-}
-
-.leaflet-popup {
-  z-index: 99999 !important;
-}
-
-.leaflet-popup-content-wrapper {
-  z-index: 400 !important;
-}
-
-.leaflet-popup-tip {
-  z-index: 399 !important;
-}
-
-.leaflet-tooltip-pane {
-  z-index: 398 !important;
-}
-
-.leaflet-control-container {
-  z-index: 397 !important;
-}
-
-/* Additional popup visibility fixes */
 .leaflet-popup-content {
   margin: 0 !important;
   line-height: 1.4 !important;
-}
-
-.leaflet-container {
-  z-index: 1 !important;
-}
-
-.leaflet-overlay-pane {
-  z-index: 2 !important;
-}
-
-.leaflet-marker-pane {
-  z-index: 600 !important;
 }
 
 /* Grayscale filter for OpenStreetMap tiles */

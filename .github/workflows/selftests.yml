@@ -41,7 +41,7 @@ jobs:
         id: chromium-install
         run: npx --prefix e2e playwright install --with-deps chromium
       - if: ${{ !cancelled() && steps.chromium-install.outcome == 'success' }}
-        run: npm run test:e2e -- --project=public
+        run: npm run test:e2e -- --project=public --project=election-map
       - uses: actions/upload-artifact@v4
         if: failure()
         with:

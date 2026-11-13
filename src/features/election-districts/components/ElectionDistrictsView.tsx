@@ -1,8 +1,10 @@
 import React, { useState } from "react";
-import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
+import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Badge } from "@/components/ui/badge";
+import { Input } from "@/components/ui/input";
+import { hasRenderableBoundary, searchElectionDistricts } from "../mapModel";
 import { Button } from "@/components/ui/button";
-import { Users, BarChart3, Crown, Award } from "lucide-react";
+import { Users, BarChart3, Crown, Award, Search, SlidersHorizontal } from "lucide-react";
 import { useElectionDistricts } from "@/hooks/useElectionDistricts";
 import { DistrictDetailDialog } from "@/features/election-districts/components/DistrictDetailDialog";
 import SimpleLeafletMap from "@/features/election-districts/components/SimpleLeafletMap";
@@ -64,6 +66,11 @@ export const ElectionDistrictsView = () => {
   const [useMapFallback, setUseMapFallback] = useState(false);
   const [showElectionDistricts, setShowElectionDistricts] = useState(true);
   const [showAdministrativeBoundaries, setShowAdministrativeBoundaries] = useState(false);
+  const [showDistrictPolygons, setShowDistrictPolygons] = useState(true);
+  const [showDistrictMarkers, setShowDistrictMarkers] = useState(true);
+  const [sidebarOpen, setSidebarOpen] = useState(false);
+  const [searchQuery, setSearchQuery] = useState('');
+  const [focusedDistrict, setFocusedDistrict] = useState<ElectionDistrict>();
   const [showPartyAssociations, setShowPartyAssociations] = useState(false);
 
   const handleDistrictClick = (district: ElectionDistrict) => {
@@ -88,6 +95,17 @@ export const ElectionDistrictsView = () => {
     return showElectionDistricts;
   });
 
+  const searchResults = searchElectionDistricts(districts, searchQuery);
+  const missingBoundaries = displayedDistricts.filter(d => !hasRenderableBoundary(d.boundaries)
+    && (d.district_type === 'verwaltungsgrenze' || showDistrictPolygons));
+  const focusDistrict = (district: ElectionDistrict) => {
+    setSelectedDistrict(district);
+    setFocusedDistrict({ ...district });
+    if (district.district_type === 'verwaltungsgrenze') setShowAdministrativeBoundaries(true);
+    else setShowElectionDistricts(true);
+    setSearchQuery('');
+  };
+
   if (loading) {
     return (
       <div className="flex items-center justify-center h-[400px]">
@@ -101,9 +119,54 @@ export const ElectionDistrictsView = () => {
 
   return (
     <div className="h-full flex flex-col">
-      <div className="flex-1 flex overflow-hidden">
+      <div className="flex flex-wrap items-end gap-3 p-3 border-b">
+        <form className="relative flex-1 min-w-0" onSubmit={event => {
+          event.preventDefault();
+          if (searchResults[0]) focusDistrict(searchResults[0]);
+        }} role="search" aria-label="Wahlkreissuche">
+          <label htmlFor="district-search" className="text-sm font-medium">Wahlkreis suchen</label>
+          <div className="relative mt-1">
+            <Search className="absolute left-3 top-2.5 h-4 w-4 text-muted-foreground" aria-hidden="true" />
+            <Input id="district-search" type="search" placeholder="Name oder Nummer eingeben …"
+              className="pl-9" value={searchQuery} onChange={event => setSearchQuery(event.target.value)}
+              aria-controls="district-search-results" onKeyDown={event => {
+                if (event.key === 'Escape') setSearchQuery('');
+              }} />
+          </div>
+          {searchQuery.trim() && (
+            <div id="district-search-results" className="absolute top-full left-0 right-0 mt-1 z-[1100] rounded-md border bg-popover text-popover-foreground shadow-md max-h-64 overflow-y-auto">
+              <p className="p-2 text-xs text-muted-foreground" role="status">{searchResults.length} Treffer</p>
+              {searchResults.map(district => (
+                <button key={district.id} type="button" className="block w-full px-3 py-2 text-left text-sm hover:bg-accent focus-visible:bg-accent"
+                  onClick={() => focusDistrict(district)}>
+                  WK {district.district_number}: {district.district_name}
+                </button>
+              ))}
+            </div>
+          )}
+        </form>
+        <Button variant="outline" className="md:hidden" aria-expanded={sidebarOpen}
+          aria-controls="district-sidebar" onClick={() => setSidebarOpen(open => !open)}>
+          <SlidersHorizontal className="h-4 w-4 mr-2" />
+          {sidebarOpen ? 'Optionen schließen' : 'Ebenen & Infos'}
+        </Button>
+      </div>
+      {missingBoundaries.length > 0 && (
+        <details className="mx-3 my-2 rounded-md border border-amber-500/40 bg-amber-500/10 px-3 py-2 text-sm">
+          <summary className="cursor-pointer">Bei {missingBoundaries.length} angezeigten Gebieten fehlen nutzbare Grenzdaten.</summary>
+          <p className="mt-2 text-muted-foreground">Diese Flächen können nicht gezeichnet werden. Vorhandene Nummernkreise bleiben über die Ebenenschalter verfügbar.</p>
+          <ul className="mt-1 max-h-32 overflow-y-auto">
+            {missingBoundaries.map(district => <li key={district.id}>
+              <button type="button" className="text-left underline py-1" onClick={() => focusDistrict(district)}>
+                {district.district_number}: {district.district_name}
+              </button>
+            </li>)}
+          </ul>
+        </details>
+      )}
+      <div className="flex-1 flex flex-col md:flex-row min-h-0">
         {/* Map */}
-        <div className="flex-1 relative">
+        <div className="flex-1 min-w-0 relative">
           {useMapFallback ? (
             <LeafletMapFallback
               districts={displayedDistricts}
@@ -117,13 +180,16 @@ export const ElectionDistrictsView = () => {
                 onDistrictClick={handleDistrictClick}
                 selectedDistrict={selectedDistrict ?? undefined}
                 showPartyAssociations={showPartyAssociations}
+                showDistrictPolygons={showDistrictPolygons}
+                showDistrictMarkers={showDistrictMarkers}
+                focusedDistrict={focusedDistrict}
               />
             </ErrorBoundary>
           )}
         </div>
 
         {/* Sidebar */}
-        <div className="w-80 border-l bg-muted/30 overflow-y-auto p-4 space-y-4">
+        <div id="district-sidebar" className={`${sidebarOpen ? 'block' : 'hidden'} md:block w-full md:w-80 md:shrink-0 border-t md:border-t-0 md:border-l bg-muted/30 overflow-y-auto max-h-[60vh] md:max-h-none p-4 space-y-4`}>
           {/* Layer toggles */}
           <Card>
             <CardHeader>
@@ -142,6 +208,17 @@ export const ElectionDistrictsView = () => {
                   Wahlkreise ({electionDistricts.length})
                 </label>
               </div>
+              <fieldset className="ml-4 space-y-2" disabled={!showElectionDistricts}>
+                <legend className="sr-only">Darstellung der Wahlkreise</legend>
+                <label className="flex items-center gap-2 text-sm">
+                  <input type="checkbox" checked={showDistrictPolygons} onChange={event => setShowDistrictPolygons(event.target.checked)} className="rounded" />
+                  Farbige Flächen
+                </label>
+                <label className="flex items-center gap-2 text-sm">
+                  <input type="checkbox" checked={showDistrictMarkers} onChange={event => setShowDistrictMarkers(event.target.checked)} className="rounded" />
+                  Nummernkreise
+                </label>
+              </fieldset>
               <div className="flex items-center gap-2">
                 <input
                   type="checkbox"
@@ -163,7 +240,7 @@ export const ElectionDistrictsView = () => {
                   className="rounded"
                 />
                 <label htmlFor="party-associations" className="text-sm font-medium">
-                  Grüne Kreisverbände (46)
+                  Grüne Kreisverbände
                 </label>
               </div>
             </CardContent>
@@ -237,6 +314,9 @@ export const ElectionDistrictsView = () => {
                     </div>
                   )}
                   
+                  {!hasRenderableBoundary(selectedDistrict.boundaries) && (
+                    <p className="text-sm text-muted-foreground">Für dieses Gebiet fehlen nutzbare Grenzdaten.</p>
+                  )}
                   <Button 
                     variant="outline" 
                     size="sm" 
