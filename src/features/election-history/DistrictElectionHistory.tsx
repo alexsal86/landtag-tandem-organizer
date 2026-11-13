@@ -1,7 +1,7 @@
 import { PersonElectionSummary } from './PersonElectionSummary';
 import { Badge } from '@/components/ui/badge';
 import { getPartyColor, getPartyTextColor } from '@/features/election-districts/partyColors';
-import { formatPersonalResult } from './model';
+import { formatPersonalResult, formatMandateDateRange } from './model';
 import type { ElectionHistoryData, HistoricalDistrict } from './types';
 
 export function historicalDistrictLabel(district: HistoricalDistrict): string {
@@ -24,7 +24,7 @@ export function DistrictElectionHistory({ data, periodId, districtId }: { data: 
         <div className="flex flex-wrap items-center gap-2 text-sm"><span className="font-medium">{person?.name || m.person_name}</span><Badge variant="outline" className="border-0 px-2 py-0 text-xs" style={{ backgroundColor: getPartyColor(m.party), color: getPartyTextColor(m.party) }}>{m.party}</Badge><span className="text-xs text-muted-foreground">{m.original_mandate || (m.mandate_type === 'direct' ? '★ Direkt' : 'Liste')}{m.entry_type === 'succession' ? ' · nachgerückt' : ''}</span></div>
         {m.party_label && m.party_label !== m.party && <p className="text-xs text-muted-foreground">{m.party_label}</p>}
         {result && <p className="text-xs text-muted-foreground">{formatPersonalResult(result)}</p>}
-        {(m.starts_on || m.ends_on || m.left_early) && <p className="text-xs text-muted-foreground">{m.starts_on ? `Ab ${new Date(`${m.starts_on}T12:00:00`).toLocaleDateString('de-DE')}` : 'Beginn nicht erfasst'}{m.ends_on ? ` – ${new Date(`${m.ends_on}T12:00:00`).toLocaleDateString('de-DE')}` : m.left_early ? ' · vorzeitig ausgeschieden' : ''}</p>}
+        {(m.starts_on || m.ends_on || m.left_early) && <p className="text-xs text-muted-foreground">{formatMandateDateRange(m)}{m.left_early ? ' · vorzeitig ausgeschieden' : ''}{m.start_from_period || m.end_from_period ? ' · Periodendaten übernommen' : ''}</p>}
         {m.person_id && <PersonElectionSummary personId={m.person_id} periodId={periodId} />}
         {m.notes && <p className="text-xs text-muted-foreground">{m.notes}</p>}
       </div>;

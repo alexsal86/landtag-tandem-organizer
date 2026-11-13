@@ -91,3 +91,26 @@ oder erfundene Wahlkreisnummer.
   gepflegt; RLS und das vorhandene Änderungsprotokoll bleiben wirksam.
 - Ohne freigegebene historische Perioden bleibt die bestehende Wahlkreiskarte nutzbar.
   Fremdschlüssel verhindern Verknüpfungen zwischen verschiedenen Perioden.
+
+### Periodendaten für Mandate übernehmen
+
+`20261114120000_inherit_election_mandate_dates.sql` ergänzt getrennte Kennzeichen
+für aus der Periode übernommene Anfangs-/Enddaten. Die Migration ergänzt nur bei
+der 18. Periode bereits fehlende Daten aus den in der Administration gespeicherten
+Periodenwerten. Es werden keine Kalendertage fest im SQL hinterlegt und der Wahltag
+wird nicht als Mandatsbeginn verwendet.
+
+Künftige Änderungen am Periodenbeginn/-ende aktualisieren geerbte Mandatsdaten
+transaktional. Individuell gesetzte Daten bleiben erhalten. Nachrücker erhalten
+keinen geerbten Beginn; bekannte vorzeitige Austritte (Kennzeichen oder eindeutiger
+Hinweis im Bemerkungstext) erhalten kein pauschales Periodenende. Leere Eingaben
+verwenden wieder die verfügbaren Periodenvorgaben, soweit diese Regeln es erlauben.
+Bei individuellen Änderungen im Editor wird die Übernahme für das jeweilige Datum
+aufgehoben. Ungültige Zeiträume werden durch Datenbankregeln zurückgewiesen.
+
+Die Periodenvorschau unterscheidet Wahlkreiszuordnung und persönliche
+Wahlergebnisse. Zugeordnete Mandate erscheinen ausschließlich beim jeweiligen
+Wahlkreis, einschließlich Zeitraum. Nur Mandate ohne `district_id` stehen im
+separaten Abschnitt „Mandate ohne Wahlkreis“. Die importierte 18. Periode enthält
+154 zugeordnete und drei reine Landeslistenmandate; fehlende verknüpfte Kandidaturen
+werden nicht als fehlende Wahlkreiszuordnung bezeichnet.

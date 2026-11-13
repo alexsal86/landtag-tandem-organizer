@@ -85,6 +85,7 @@ export function parseHistoryForm(entity: HistoryEntity, v: FormValues): ParsedHi
       return { entity, data: { period_id: required(v, 'period_id'), person_id, person_name,
         original_mandate: optional(v, 'original_mandate'), party_label: optional(v, 'party_label'), left_early: v.left_early === true,
         district_id, candidacy_id: optional(v, 'candidacy_id'), party: required(v, 'party'),
+        start_from_period: v.start_from_period === true, end_from_period: v.end_from_period === true,
         starts_on, ends_on, mandate_type: mandate_type as HistoricalMandate['mandate_type'], entry_type: entry_type as HistoricalMandate['entry_type'], source_url, notes } } as const;
     }
   }
@@ -104,4 +105,9 @@ export function formatPersonalResult(result: ElectionCandidacy): string {
   if (result.votes !== null) parts.push(`${result.votes.toLocaleString('de-DE')} Stimmen`);
   if (result.district_rank !== null) parts.push(`Platz ${result.district_rank}`);
   return parts.join(' · ') || 'Ergebnis noch nicht erfasst';
+}
+
+export function formatMandateDateRange(mandate: Pick<HistoricalMandate, 'starts_on' | 'ends_on'>): string {
+  const date = (value: string) => new Date(`${value}T12:00:00`).toLocaleDateString('de-DE');
+  return `${mandate.starts_on ? date(mandate.starts_on) : 'Beginn nicht erfasst'} – ${mandate.ends_on ? date(mandate.ends_on) : 'Ende nicht erfasst'}`;
 }

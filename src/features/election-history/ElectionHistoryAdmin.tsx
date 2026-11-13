@@ -11,7 +11,7 @@ import { notify } from '@/lib/notify';
 import { useAuth } from '@/hooks/useAuth';
 import { useAdministrationAccess } from '@/components/administration/useAdministrationAccess';
 import { useElectionHistory, useElectionPeriods, useElectionPersonSearch, saveHistoryEntry, deleteHistoryEntry, historyError } from './useElectionHistory';
-import { formatPersonalResult, type FormValues, type HistoryEntity } from './model';
+import { formatPersonalResult, formatMandateDateRange, type FormValues, type HistoryEntity } from './model';
 import type { ElectionHistoryData } from './types';
 import { ElectionHistoryAudit } from './ElectionHistoryAudit';
 import { ElectionPeriodPreview } from './ElectionPeriodPreview';
@@ -103,7 +103,7 @@ function ElectionHistoryWorkspace() {
     if (entity === 'periods') return `${v.name} · ${v.is_published ? 'Freigegeben' : 'Entwurf'}${v.is_current ? ' · Aktuell' : ''}`;
     if (entity === 'people') return `${v.name}${v.biography ? ` · ${v.biography}` : ''}`;
     if (entity === 'districts') return `${v.district_number || v.number_label || '–'}: ${v.name} · ${periodName(String(v.period_id))}`;
-    return `${personName(String(v.person_id)) || v.person_name || 'Name fehlt'} · ${v.party} · ${periodName(String(v.period_id))} · ${data.districts.find(d => d.id === v.district_id)?.name || 'ohne Wahlkreis'} · ${entity === 'mandates' ? `${v.mandate_type === 'direct' ? 'Direkt' : 'Liste'} (${v.entry_type === 'succession' ? 'nachgerückt' : 'gewählt'}) · ${v.starts_on || 'Beginn unbekannt'}–${v.ends_on || 'Ende unbekannt'}` : `${v.outcome === 'direct' ? 'Direkt gewählt' : v.outcome === 'list' ? 'Über Liste gewählt' : v.outcome === 'not_elected' ? 'Nicht gewählt' : 'Ausgang offen'}`}`;
+    return `${personName(String(v.person_id)) || v.person_name || 'Name fehlt'} · ${v.party} · ${periodName(String(v.period_id))} · ${data.districts.find(d => d.id === v.district_id)?.name || 'ohne Wahlkreis'} · ${entity === 'mandates' ? `${v.mandate_type === 'direct' ? 'Direkt' : 'Liste'} (${v.entry_type === 'succession' ? 'nachgerückt' : 'gewählt'}) · ${formatMandateDateRange({ starts_on: typeof v.starts_on === 'string' && v.starts_on ? v.starts_on : null, ends_on: typeof v.ends_on === 'string' && v.ends_on ? v.ends_on : null })}${v.start_from_period || v.end_from_period ? ' · Periodendaten übernommen' : ''}` : `${v.outcome === 'direct' ? 'Direkt gewählt' : v.outcome === 'list' ? 'Über Liste gewählt' : v.outcome === 'not_elected' ? 'Nicht gewählt' : 'Ausgang offen'}`}`;
   };
   const rows = data[entity].map(row => ({ id: row.id, values: rowValues(row) })).filter(row =>
     (entity === 'periods' || entity === 'people' || !periodFilter || row.values.period_id === periodFilter)
@@ -111,7 +111,7 @@ function ElectionHistoryWorkspace() {
   ).sort((a, b) => entity === 'periods' ? Number(b.values.number) - Number(a.values.number) : describe(a.values).localeCompare(describe(b.values), 'de', { numeric: true }));
   const startNew = () => {
     const period = data.periods.find(p => p.id === selectedPeriod) || data.periods.find(p => p.is_current) || data.periods[0];
-    setValues({ period_id: period?.id || '', starts_on: entity === 'mandates' ? period?.starts_on || '' : '', is_current: false, is_published: false, history_complete: false,
+    setValues({ period_id: period?.id || '', starts_on: '', ends_on: '', start_from_period: false, end_from_period: false, is_current: false, is_published: false, history_complete: false,
       ballot_type: 'candidate', outcome: 'unknown', mandate_type: 'list', entry_type: 'election' });
     setEditing(null); setFormError('');
   };
@@ -142,7 +142,15 @@ function ElectionHistoryWorkspace() {
     const next = { ...previous, [key]: value };
     if (key === 'period_id') {
       next.district_id = ''; next.candidacy_id = '';
-      if (entity === 'mandates' && !editing) next.starts_on = data.periods.find(p => p.id === value)?.starts_on || '';
+      if (entity === 'mandates' && !editing) { next.starts_on = ''; next.ends_on = ''; }
+    }
+    if (key === 'starts_on') next.start_from_period = false;
+    if (key === 'ends_on') next.end_from_period = false;
+    if (key === 'entry_type' && value === 'succession' && previous.start_from_period === true) {
+      next.starts_on = ''; next.start_from_period = false;
+    }
+    if (key === 'left_early' && value === true && previous.end_from_period === true) {
+      next.ends_on = ''; next.end_from_period = false;
     }
     if (key === 'person_id') next.candidacy_id = '';
     if (key === 'candidacy_id') {
@@ -157,7 +165,7 @@ function ElectionHistoryWorkspace() {
       <TabsList className="h-auto flex flex-wrap justify-start gap-1">{Object.entries(sections).map(([key, label]) => <TabsTrigger disabled={saving} key={key} value={key}>{label} ({data[key as HistoryEntity].length})</TabsTrigger>)}</TabsList>
     </Tabs>
     <div className="flex flex-wrap items-end gap-3">
-      <div><Label htmlFor="history-period-filter">Periode / Vorschau</Label><select id="history-period-filter" className={selectClass} value={selectedPeriod} disabled={saving} onChange={e => { setPeriodFilter(e.target.value); setEditing(undefined); setPageSize(25); setSearch(''); setPageSize(25); setPersonSearch(''); }}><option value="" disabled>Legislaturperiode auswählen</option>{data.periods.map(p => <option key={p.id} value={p.id}>{p.name}{p.is_published ? '' : ' · Entwurf'}</option>)}</select></div>
+      <div><Label htmlFor="history-period-filter">Periode / Vorschau</Label><select id="history-period-filter" className={selectClass} value={selectedPeriod} disabled={saving} onChange={e => { setPeriodFilter(e.target.value); setEditing(undefined); setPageSize(25); setSearch(''); setPersonSearch(''); }}><option value="" disabled>Legislaturperiode auswählen</option>{data.periods.map(p => <option key={p.id} value={p.id}>{p.name}{p.is_published ? '' : ' · Entwurf'}</option>)}</select></div>
       <div className="flex-1"><Label htmlFor="history-search">Datensätze suchen</Label><Input id="history-search" value={search} onChange={e => { setSearch(e.target.value); setPageSize(25); }} placeholder="Name, Partei oder Wahlkreis …" /></div>
       <Button variant="outline" disabled={!selectedPeriod} onClick={() => setPreview(v => !v)}>{preview ? 'Vorschau schließen' : 'Periode prüfen'}</Button>
       <Button disabled={saving} onClick={startNew}>+ Neu anlegen</Button>
@@ -175,6 +183,7 @@ function ElectionHistoryWorkspace() {
             {field.type === 'select' ? <select id={`history-${field.key}`} className={selectClass} required={field.required} value={String(values[field.key] || '')} onChange={e => changeField(field.key, e.target.value)}><option value="">Bitte auswählen / keine Zuordnung</option>{optionsFor(field.key, data, values).map(o => <option key={o.value} value={o.value}>{o.label}</option>)}</select>
               : field.type === 'textarea' ? <Textarea id={`history-${field.key}`} value={String(values[field.key] || '')} onChange={e => changeField(field.key, e.target.value)} />
               : field.type !== 'checkbox' && <Input id={`history-${field.key}`} type={field.type || 'text'} required={field.required} min={field.min} max={field.max} step={field.step || (field.type === 'number' ? '1' : undefined)} value={String(values[field.key] ?? '')} onChange={e => changeField(field.key, e.target.value)} />}
+            {entity === 'mandates' && (field.key === 'starts_on' || field.key === 'ends_on') && <p className="mt-1 text-xs text-muted-foreground">{values[field.key === 'starts_on' ? 'start_from_period' : 'end_from_period'] === true ? 'Aus der Legislaturperiode übernommen; ein eigener Datumseintrag hebt die Übernahme auf.' : field.key === 'starts_on' ? 'Leer: Periodenbeginn für gewählte Mandate übernehmen. Nachrücker benötigen ihr eigenes Eintrittsdatum.' : 'Leer: Periodenende übernehmen, sofern kein vorzeitiger Austritt bekannt ist.'}</p>}
             {field.help && <p className="mt-1 text-xs text-muted-foreground">{field.help}</p>}
           </div>)}
           {formError && <p className="md:col-span-2 text-sm text-destructive" role="alert">{formError}</p>}

@@ -17,7 +17,7 @@ export interface ElectionCandidacy {
 export interface HistoricalMandate {
   id: string; period_id: string; person_id: string | null; person_name: string | null; original_mandate: string | null; party_label: string | null; left_early: boolean; district_id: string | null; candidacy_id: string | null;
   party: string; mandate_type: 'direct' | 'list'; entry_type: 'election' | 'succession';
-  starts_on: string | null; ends_on: string | null; source_url: string | null; notes: string | null;
+  start_from_period: boolean; end_from_period: boolean; starts_on: string | null; ends_on: string | null; source_url: string | null; notes: string | null;
 }
 export interface ElectionAudit {
   id: string; table_name: string; record_id: string; action: string; actor_id: string | null; occurred_at: string;
