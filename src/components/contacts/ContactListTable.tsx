@@ -5,7 +5,6 @@ import { Tooltip, TooltipContent, TooltipProvider, TooltipTrigger } from "@/comp
 import { HoverCard, HoverCardContent, HoverCardTrigger } from "@/components/ui/hover-card";
 import { Badge } from "@/components/ui/badge";
 import { Checkbox } from "@/components/ui/checkbox";
-import { Switch } from "@/components/ui/switch";
 import { Mail, Phone, CalendarDays, User, Star, ChevronUp, ChevronDown, Clock, Tag } from "lucide-react";
 import { Contact } from "@/hooks/useInfiniteContacts";
 import { getGenderLabel } from "./hooks/useContactsViewState";
@@ -72,17 +71,17 @@ export function ContactListTable({
   const toggleSplitName = () => {
     const next = !splitNameMode;
     setSplitNameMode(next);
-    try { localStorage.setItem("contacts-split-name", String(next)); } catch {}
+    try { localStorage.setItem("contacts-split-name", String(next)); } catch { /* Preferences remain usable when storage is unavailable. */ }
   };
   const toggleSalutation = () => {
     const next = !showSalutation;
     setShowSalutation(next);
-    try { localStorage.setItem("contacts-show-salutation", String(next)); } catch {}
+    try { localStorage.setItem("contacts-show-salutation", String(next)); } catch { /* Preferences remain usable when storage is unavailable. */ }
   };
   const toggleOrgColumn = () => {
     const next = !orgColumn;
     setOrgColumn(next);
-    try { localStorage.setItem("contacts-org-column", String(next)); } catch {}
+    try { localStorage.setItem("contacts-org-column", String(next)); } catch { /* Preferences remain usable when storage is unavailable. */ }
   };
 
   return (
@@ -113,60 +112,48 @@ export function ContactListTable({
             <SortableTableHead sortKey="address" sortColumn={sortColumn} sortDirection={sortDirection} onSort={onSort} className="sticky top-0 z-20 bg-background/95 backdrop-blur supports-[backdrop-filter]:bg-background/80">Adresse</SortableTableHead>
             <TableHead className="w-44 sticky top-0 z-20 bg-background/95 backdrop-blur supports-[backdrop-filter]:bg-background/80">
               <div className="flex items-center gap-3">
-                <TooltipProvider>
-                  <Tooltip>
-                    <TooltipTrigger asChild>
-                      <button
-                        type="button"
-                        className="flex items-center gap-1 rounded-sm px-1 py-0.5 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-offset-1"
-                        onClick={toggleSplitName}
-                        role="switch"
-                        aria-checked={splitNameMode}
-                        aria-label="Vor-/Nachname aufteilen"
-                      >
-                        <Switch checked={splitNameMode} className="scale-[0.6]" tabIndex={-1} aria-hidden="true" />
-                        <span className="text-[10px]">V/N</span>
-                      </button>
-                    </TooltipTrigger>
-                    <TooltipContent>Vor-/Nachname aufteilen</TooltipContent>
-                  </Tooltip>
-                </TooltipProvider>
-                <TooltipProvider>
-                  <Tooltip>
-                    <TooltipTrigger asChild>
-                      <button
-                        type="button"
-                        className="flex items-center gap-1 rounded-sm px-1 py-0.5 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-offset-1"
-                        onClick={toggleSalutation}
-                        role="switch"
-                        aria-checked={showSalutation}
-                        aria-label="Anrede inline anzeigen"
-                      >
-                        <Switch checked={showSalutation} className="scale-[0.6]" tabIndex={-1} aria-hidden="true" />
-                        <span className="text-[10px]">Hr/Fr</span>
-                      </button>
-                    </TooltipTrigger>
-                    <TooltipContent>Anrede inline anzeigen</TooltipContent>
-                  </Tooltip>
-                </TooltipProvider>
-                <TooltipProvider>
-                  <Tooltip>
-                    <TooltipTrigger asChild>
-                      <button
-                        type="button"
-                        className="flex items-center gap-1 rounded-sm px-1 py-0.5 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-offset-1"
-                        onClick={toggleOrgColumn}
-                        role="switch"
-                        aria-checked={orgColumn}
-                        aria-label="Organisation als eigene Spalte"
-                      >
-                        <Switch checked={orgColumn} className="scale-[0.6]" tabIndex={-1} aria-hidden="true" />
-                        <span className="text-[10px]">Org</span>
-                      </button>
-                    </TooltipTrigger>
-                    <TooltipContent>Organisation als eigene Spalte</TooltipContent>
-                  </Tooltip>
-                </TooltipProvider>
+                <button
+                  type="button"
+                  className="flex items-center gap-1 rounded-sm px-1 py-0.5 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-offset-1"
+                  onClick={toggleSplitName}
+                  role="switch"
+                  aria-checked={splitNameMode}
+                  aria-label="Vor-/Nachname aufteilen"
+                  title="Vor-/Nachname aufteilen"
+                >
+                  <span aria-hidden="true" className={`inline-flex h-3.5 w-6 shrink-0 items-center rounded-full p-0.5 transition-colors ${splitNameMode ? "bg-primary" : "bg-input"}`}>
+                    <span className={`h-2.5 w-2.5 rounded-full bg-background shadow-sm transition-transform ${splitNameMode ? "translate-x-2.5" : "translate-x-0"}`} />
+                  </span>
+                  <span className="text-[10px]">V/N</span>
+                </button>
+                <button
+                  type="button"
+                  className="flex items-center gap-1 rounded-sm px-1 py-0.5 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-offset-1"
+                  onClick={toggleSalutation}
+                  role="switch"
+                  aria-checked={showSalutation}
+                  aria-label="Anrede inline anzeigen"
+                  title="Anrede inline anzeigen"
+                >
+                  <span aria-hidden="true" className={`inline-flex h-3.5 w-6 shrink-0 items-center rounded-full p-0.5 transition-colors ${showSalutation ? "bg-primary" : "bg-input"}`}>
+                    <span className={`h-2.5 w-2.5 rounded-full bg-background shadow-sm transition-transform ${showSalutation ? "translate-x-2.5" : "translate-x-0"}`} />
+                  </span>
+                  <span className="text-[10px]">Hr/Fr</span>
+                </button>
+                <button
+                  type="button"
+                  className="flex items-center gap-1 rounded-sm px-1 py-0.5 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-offset-1"
+                  onClick={toggleOrgColumn}
+                  role="switch"
+                  aria-checked={orgColumn}
+                  aria-label="Organisation als eigene Spalte"
+                  title="Organisation als eigene Spalte"
+                >
+                  <span aria-hidden="true" className={`inline-flex h-3.5 w-6 shrink-0 items-center rounded-full p-0.5 transition-colors ${orgColumn ? "bg-primary" : "bg-input"}`}>
+                    <span className={`h-2.5 w-2.5 rounded-full bg-background shadow-sm transition-transform ${orgColumn ? "translate-x-2.5" : "translate-x-0"}`} />
+                  </span>
+                  <span className="text-[10px]">Org</span>
+                </button>
               </div>
             </TableHead>
           </TableRow>
