@@ -160,7 +160,7 @@ export function HrTemplateEditor() {
               name: "save_employee_hr_template",
               args: {
                 p_tenant: model.tenantId,
-                p_id: draft.id || null,
+                p_id: draft.id || undefined,
                 p_name: draft.name,
                 p_type: draft.type,
                 p_direction: draft.direction,
