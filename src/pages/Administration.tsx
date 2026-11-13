@@ -16,6 +16,7 @@ import { useAdministrationAccess } from "@/components/administration/useAdminist
 import { resolveNavigationState } from "@/components/administration/adminNavigation";
 import { normalizeAutomationParams } from "@/components/administration/automationNavigation";
 
+const HrTemplateEditor = lazy(() => import("@/features/onboarding-hr/HrTemplateEditor"));
 const PlanningDefaultCollaboratorsSettings = lazy(() => import("@/components/administration/PlanningDefaultCollaboratorsSettings").then(module => ({ default: module.PlanningDefaultCollaboratorsSettings })));
 const GeneralSettings = lazy(() => import("@/components/admin/GeneralSettings").then(module => ({ default: module.GeneralSettings })));
 const ExpenseManagement = lazy(() => import("@/features/expenses/components/ExpenseManagement").then(module => ({ default: module.ExpenseManagement })));
@@ -400,6 +401,7 @@ export default function Administration(): React.JSX.Element | null {
       switch (activeSubSection) {
         case "rules":
           return <AutomationRulesManager />;
+        case "hr": return <HrTemplateEditor />;
         case "rss":
           return <RSSMonitoringManager />;
         case "annual": return <AutomationRulesManager />;

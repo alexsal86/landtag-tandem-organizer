@@ -1,3 +1,4 @@
+import {onboardingHrScenario} from "./scenarios/onboarding-hr";
 import { responsibilitiesScenario } from "./scenarios/responsibilities";
 import { documentListScenario } from "./scenarios/document-list";
 import { documentAnnotationScenario } from "./scenarios/document-annotation";
@@ -24,6 +25,7 @@ import { accessBoundariesScenario } from "./scenarios/access-boundaries";
 import { jourFixePlatformIntegrationScenario } from './scenarios/jour-fixe-platform-integration';
 
 export const SELFTEST_SCENARIOS: TestScenario[] = [
+  onboardingHrScenario,
   responsibilitiesScenario,
   documentListScenario,
   documentAnnotationScenario,

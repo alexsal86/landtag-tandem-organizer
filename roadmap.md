@@ -67,4 +67,17 @@
 - [ ] Gesamtchecks grün: Gesamt-Vitest nach Einbeziehen von `main` (`5eaf988b9`): 656 bestandene und 33 fehlgeschlagene Tests in denselben 21 fehlerhaften Dateien; Ausgangscommit `8333462be` reproduziert dieselben 21 fehlerhaften Dateien (32 fehlgeschlagene Tests, Parser-Suite bereits beim Import defekt). Breite Selftest-/Komponenten-/Features-Typechecks sind schon im Ausgangsstand rot; keine zusätzlichen Fehler pro Datei/TS-Code.
 - [ ] Echte Supabase-Session: Live-Migration, bestehende Produktions-Trigger/RLS im Zusammenspiel, Anmeldung und persistente Selbsttest-Läufe noch nicht geprüft. PGlite verwendet ein isoliertes Minimalschema mit den benötigten bestehenden Helfer-/Tabellenschnittstellen.
 - [x] Draft-PR veröffentlicht: https://github.com/alexsal86/landtag-tandem-organizer/pull/1422 (über verbundenen GitHub-Dienst; CLI-API ist gesperrt).
-- [ ] Phase 1 vollständig abnehmen; Phase 2 erst danach. Phase-2-Spezifikation fehlt im Auftrag und wurde angefragt; Phase 3 bleibt nachgelagert, insbesondere `handover_tasks_to_deputy` aus Phase 2 fehlt noch.
+- [ ] Phase 1 vollständig abnehmen (Bestandsfehler und echte Sitzung offen). Phase 2 entfällt laut aktualisiertem Auftrag; Phase 3 ist ausdrücklich zur Umsetzung freigegeben.
+
+# Büro-Team-Features — Phase 3: HR-Onboarding & Offboarding
+- [x] Eigener Branch `feat/employee-lifecycle-phase-3`; Phase 1 inzwischen zusammengeführt, separater PR gegen `main`; keine Phase 2.
+- [x] Beschäftigungsdaten und Mentor:in; tenant- und rollenbeschränkte RPCs, RLS und aktualisierte Supabase-Typen.
+- [x] Bestehende Routine-Pakete um personenbezogenen Start, Eintritt/Austritt, Phasen, Pflicht und Nachweis ergänzt; keine zweite Engine, vorhandener 15-Minuten-Dispatcher bleibt zuständig.
+- [x] Drei editierbare Rollenvorlagen und allgemeines Offboarding im bestehenden Routinen-Editor unter Administration; laufende Pakete behalten ihre Snapshots.
+- [x] HR-Tab unter `/employee`: Pflicht-/Optionalfortschritt, eigene Punkte, Nachweisbestätigung durch Leitung und Dokumentverweise. Kein Vermischen mit Produkt-Onboarding und keine Ausweis-/Schlüsselnummern.
+- [x] Team-Erinnerungen für Pflichtpunkte und Austritte; manuelle sowie täglich deduplizierte Benachrichtigungen durch den vorhandenen Dispatcher.
+- [x] DSGVO-Nachweise mit Datum und bestätigender Person; normale Aufgaben-Haken können die Nachweissperre nicht umgehen.
+- [x] Minimale Offboarding-Abhängigkeit `handover_tasks_to_deputy`: Tenant/Rolle/Empfänger prüfen, Ball-Typ erhalten, HR-Aufgaben ausnehmen, wiederholbar ohne doppelte Übergaben.
+- [x] Sieben gezielte Vitest-Tests, HR-/Mitarbeiter-Typecheck, Feature-Lint und fokussierter PGlite-Test; Migration wiederholt, Rollen/Tenants, echter Start und Wiederholung, Nachweis, Übergabe und tägliche Erinnerungen geprüft. Neue Selftest-Schritte registriert.
+- [ ] Live-Migration, echte Supabase-Sitzung, HR-Selbsttest auf der externen Instanz und Zustellung durch den echten Cron-Job prüfen. PGlite nutzt isolierte Fixtures.
+- [ ] Gesamtsuite/Browser-Testserie bewusst nicht erneut ausgeführt: aktueller Auftrag verlangt weniger Tests. Bekannte Bestandsfehler aus Phase 1 bleiben separat dokumentiert.

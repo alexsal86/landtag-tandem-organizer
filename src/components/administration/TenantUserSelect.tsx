@@ -17,7 +17,7 @@ import {
   PopoverTrigger,
 } from "@/components/ui/popover";
 import { Avatar, AvatarFallback, AvatarImage } from "@/components/ui/avatar";
-import { useTenantUsers, type TenantUser } from "@/hooks/useTenantUsers";
+import { useTenantUsers } from "@/hooks/useTenantUsers";
 
 interface TenantUserSelectProps {
   validationField?: string;

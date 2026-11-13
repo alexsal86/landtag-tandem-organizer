@@ -1,0 +1,370 @@
+[
+  {
+    "employment_type": "praktikum",
+    "direction": "onboarding",
+    "name": "Praktikum (4–12 Wochen)",
+    "steps": [
+      {
+        "title": "Vertrag abschließen",
+        "phase": "before_start",
+        "anchor": "start",
+        "offset_days": -14,
+        "is_mandatory": true,
+        "evidence": "none",
+        "kind": "subtask",
+        "release": "package_start"
+      },
+      {
+        "title": "Landtagsausweis beantragen",
+        "phase": "before_start",
+        "anchor": "start",
+        "offset_days": -7,
+        "is_mandatory": true,
+        "evidence": "none",
+        "kind": "subtask",
+        "release": "package_start"
+      },
+      {
+        "title": "Hardware und Arbeitsplatz vorbereiten",
+        "phase": "before_start",
+        "anchor": "start",
+        "offset_days": -3,
+        "is_mandatory": true,
+        "evidence": "none",
+        "kind": "subtask",
+        "release": "package_start"
+      },
+      {
+        "title": "Vorstellungsrunde und System-Tour",
+        "phase": "first_week",
+        "anchor": "start",
+        "offset_days": 0,
+        "is_mandatory": true,
+        "evidence": "none",
+        "kind": "subtask",
+        "release": "package_start"
+      },
+      {
+        "title": "Mentor-Zuweisung besprechen",
+        "phase": "first_week",
+        "anchor": "start",
+        "offset_days": 1,
+        "is_mandatory": true,
+        "evidence": "none",
+        "kind": "subtask",
+        "release": "package_start"
+      },
+      {
+        "title": "IT-Einweisung",
+        "phase": "first_week",
+        "anchor": "start",
+        "offset_days": 1,
+        "is_mandatory": true,
+        "evidence": "none",
+        "kind": "subtask",
+        "release": "package_start"
+      },
+      {
+        "title": "DSGVO-Verpflichtung",
+        "phase": "first_week",
+        "anchor": "start",
+        "offset_days": 14,
+        "is_mandatory": true,
+        "evidence": "gdpr",
+        "kind": "subtask",
+        "release": "package_start"
+      },
+      {
+        "title": "Halbzeitgespräch",
+        "phase": "probation_or_end",
+        "anchor": "end",
+        "offset_days": -14,
+        "is_mandatory": false,
+        "evidence": "none",
+        "kind": "subtask",
+        "release": "package_start"
+      },
+      {
+        "title": "Abschlusszeugnis und Feedback",
+        "phase": "probation_or_end",
+        "anchor": "end",
+        "offset_days": 0,
+        "is_mandatory": true,
+        "evidence": "none",
+        "kind": "subtask",
+        "release": "package_start"
+      }
+    ]
+  },
+  {
+    "employment_type": "hilfskraft",
+    "direction": "onboarding",
+    "name": "Studentische Hilfskraft",
+    "steps": [
+      {
+        "title": "Vertrag abschließen",
+        "phase": "before_start",
+        "anchor": "start",
+        "offset_days": -14,
+        "is_mandatory": true,
+        "evidence": "none",
+        "kind": "subtask",
+        "release": "package_start"
+      },
+      {
+        "title": "Landtagsausweis beantragen",
+        "phase": "before_start",
+        "anchor": "start",
+        "offset_days": -7,
+        "is_mandatory": true,
+        "evidence": "none",
+        "kind": "subtask",
+        "release": "package_start"
+      },
+      {
+        "title": "Hardware und Arbeitsplatz vorbereiten",
+        "phase": "before_start",
+        "anchor": "start",
+        "offset_days": -3,
+        "is_mandatory": true,
+        "evidence": "none",
+        "kind": "subtask",
+        "release": "package_start"
+      },
+      {
+        "title": "Vorstellungsrunde und System-Tour",
+        "phase": "first_week",
+        "anchor": "start",
+        "offset_days": 0,
+        "is_mandatory": true,
+        "evidence": "none",
+        "kind": "subtask",
+        "release": "package_start"
+      },
+      {
+        "title": "Mentor-Zuweisung besprechen",
+        "phase": "first_week",
+        "anchor": "start",
+        "offset_days": 1,
+        "is_mandatory": true,
+        "evidence": "none",
+        "kind": "subtask",
+        "release": "package_start"
+      },
+      {
+        "title": "DSGVO-Verpflichtung",
+        "phase": "first_week",
+        "anchor": "start",
+        "offset_days": 14,
+        "is_mandatory": true,
+        "evidence": "gdpr",
+        "kind": "subtask",
+        "release": "package_start"
+      },
+      {
+        "title": "Zeiterfassungs-Einweisung",
+        "phase": "first_week",
+        "anchor": "start",
+        "offset_days": 1,
+        "is_mandatory": true,
+        "evidence": "none",
+        "kind": "subtask",
+        "release": "package_start"
+      },
+      {
+        "title": "E-Mail-Signatur einrichten",
+        "phase": "first_week",
+        "anchor": "start",
+        "offset_days": 2,
+        "is_mandatory": true,
+        "evidence": "none",
+        "kind": "subtask",
+        "release": "package_start"
+      },
+      {
+        "title": "Schlüsselübergabe",
+        "phase": "first_week",
+        "anchor": "start",
+        "offset_days": 0,
+        "is_mandatory": true,
+        "evidence": "none",
+        "kind": "subtask",
+        "release": "package_start"
+      },
+      {
+        "title": "Probezeitgespräch",
+        "phase": "probation_or_end",
+        "anchor": "start",
+        "offset_days": 90,
+        "is_mandatory": false,
+        "evidence": "none",
+        "kind": "subtask",
+        "release": "package_start"
+      }
+    ]
+  },
+  {
+    "employment_type": "referent",
+    "direction": "onboarding",
+    "name": "Wissenschaftliche:r Referent:in",
+    "steps": [
+      {
+        "title": "Vertrag abschließen",
+        "phase": "before_start",
+        "anchor": "start",
+        "offset_days": -14,
+        "is_mandatory": true,
+        "evidence": "none",
+        "kind": "subtask",
+        "release": "package_start"
+      },
+      {
+        "title": "Landtagsausweis beantragen",
+        "phase": "before_start",
+        "anchor": "start",
+        "offset_days": -7,
+        "is_mandatory": true,
+        "evidence": "none",
+        "kind": "subtask",
+        "release": "package_start"
+      },
+      {
+        "title": "Hardware und Arbeitsplatz vorbereiten",
+        "phase": "before_start",
+        "anchor": "start",
+        "offset_days": -3,
+        "is_mandatory": true,
+        "evidence": "none",
+        "kind": "subtask",
+        "release": "package_start"
+      },
+      {
+        "title": "Vorstellungsrunde und System-Tour",
+        "phase": "first_week",
+        "anchor": "start",
+        "offset_days": 0,
+        "is_mandatory": true,
+        "evidence": "none",
+        "kind": "subtask",
+        "release": "package_start"
+      },
+      {
+        "title": "Mentor-Zuweisung besprechen",
+        "phase": "first_week",
+        "anchor": "start",
+        "offset_days": 1,
+        "is_mandatory": true,
+        "evidence": "none",
+        "kind": "subtask",
+        "release": "package_start"
+      },
+      {
+        "title": "Mandats-Zugänge bereitstellen",
+        "phase": "before_start",
+        "anchor": "start",
+        "offset_days": -1,
+        "is_mandatory": true,
+        "evidence": "none",
+        "kind": "subtask",
+        "release": "package_start"
+      },
+      {
+        "title": "Einweisung Ausschussdienst",
+        "phase": "first_week",
+        "anchor": "start",
+        "offset_days": 3,
+        "is_mandatory": true,
+        "evidence": "none",
+        "kind": "subtask",
+        "release": "package_start"
+      },
+      {
+        "title": "Vertretungsregelung abstimmen",
+        "phase": "first_week",
+        "anchor": "start",
+        "offset_days": 4,
+        "is_mandatory": true,
+        "evidence": "none",
+        "kind": "subtask",
+        "release": "package_start"
+      },
+      {
+        "title": "Vorstellungsgespräch mit Fraktion",
+        "phase": "first_week",
+        "anchor": "start",
+        "offset_days": 5,
+        "is_mandatory": true,
+        "evidence": "none",
+        "kind": "subtask",
+        "release": "package_start"
+      },
+      {
+        "title": "DSGVO-Verpflichtung",
+        "phase": "first_week",
+        "anchor": "start",
+        "offset_days": 14,
+        "is_mandatory": true,
+        "evidence": "gdpr",
+        "kind": "subtask",
+        "release": "package_start"
+      },
+      {
+        "title": "Probezeitgespräch",
+        "phase": "probation_or_end",
+        "anchor": "start",
+        "offset_days": 90,
+        "is_mandatory": false,
+        "evidence": "none",
+        "kind": "subtask",
+        "release": "package_start"
+      }
+    ]
+  },
+  {
+    "employment_type": "all",
+    "direction": "offboarding",
+    "name": "Offboarding",
+    "steps": [
+      {
+        "title": "Offene Aufgaben übergeben",
+        "phase": "probation_or_end",
+        "anchor": "end",
+        "offset_days": -3,
+        "is_mandatory": true,
+        "evidence": "handover",
+        "kind": "subtask",
+        "release": "package_start"
+      },
+      {
+        "title": "Zeugnis und Feedback",
+        "phase": "probation_or_end",
+        "anchor": "end",
+        "offset_days": -1,
+        "is_mandatory": true,
+        "evidence": "none",
+        "kind": "subtask",
+        "release": "package_start"
+      },
+      {
+        "title": "Schlüssel zurücknehmen",
+        "phase": "probation_or_end",
+        "anchor": "end",
+        "offset_days": 0,
+        "is_mandatory": true,
+        "evidence": "none",
+        "kind": "subtask",
+        "release": "package_start"
+      },
+      {
+        "title": "Zugänge, Matrix-Konto und Postfach sperren",
+        "phase": "probation_or_end",
+        "anchor": "end",
+        "offset_days": 0,
+        "is_mandatory": true,
+        "evidence": "none",
+        "kind": "subtask",
+        "release": "package_start"
+      }
+    ]
+  }
+]

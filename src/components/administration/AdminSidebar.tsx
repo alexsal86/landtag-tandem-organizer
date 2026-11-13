@@ -157,6 +157,7 @@ export const adminMenuItems: AdminMenuItem[] = [
     icon: Workflow,
     children: [
       { id: "rules", label: "Regeln & Workflows", icon: Workflow },
+      { id: "hr", label: "HR-Rollenvorlagen", icon: Users2 },
             { id: "rss", label: "RSS-Monitoring", icon: Rss },
     ],
   },

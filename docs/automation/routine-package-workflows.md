@@ -120,3 +120,57 @@ zu sperren. Bei Entscheidungen zählt der tatsächliche Antwortzeitpunkt. Für s
 vor der Erweiterung abgeschlossene, noch nicht abgeglichene Ziele dienen die
 vorhandenen Abschluss-/Änderungszeitpunkte als Rückfall. Damit verschiebt ein
 verspäteter Prüflauf den relativen Bezugstag bei neuen Abschlüssen nicht.
+
+## HR-Onboarding und Offboarding
+
+`20261113150000_employee_hr_lifecycle.sql` ergänzt einen zweiten fachlichen Kontext
+für dieselben `routine_package_runs` und `routine_package_steps`. Jahrespakete
+behalten ihren bisherigen Kontext; HR-Pakete referenzieren eine Beschäftigung in
+`employee_lifecycle`. Der vorhandene 15-Minuten-Dispatcher und ausschließlich
+`automation_private.advance_routine_package` erstellen und verfolgen die Ziele.
+Eine zusätzliche Workflow-Engine entsteht nicht.
+
+Die Lücken des bisherigen Modells waren der zwingende Jahresaufgaben-Bezug,
+Fristbegrenzung auf den Planungsbeginn, fehlende Eintritts-/Austrittsanker sowie
+Pflicht- und Nachweismetadaten. Für HR speichert jeder Schritt seinen konkreten
+Bezugs-Kalendertag beim Start; negative und positive Abstände bleiben dadurch
+auch vor dem ersten Arbeitstag korrekt. Alle Fristen zählen Kalendertage.
+
+Unter `/employee?tab=hr` verwaltet die Leitung Beschäftigungsart, Eintritt,
+Austritt und Mentor:in. Onboarding und Offboarding werden je Beschäftigung genau
+einmal gestartet. Gleichzeitige und wiederholte Starts erzeugen keine neuen
+Pakete. Ein erneutes Beschäftigungsverhältnis erhält einen eigenen Datensatz mit
+neuem Eintritt. Änderungen an Beschäftigung oder Vorlage ändern laufende
+Snapshots nicht. Offboarding bleibt für bereits deaktivierte Tenant-Mitglieder
+möglich; Onboarding benötigt eine aktive Mitgliedschaft.
+
+Die Administration bietet unter Automatisierung → HR-Rollenvorlagen denselben
+`RoutineStepsEditor`, ergänzt um Phase, Pflichtkennzeichen, Eintritt/Austritt und
+Nachweisart. Ziele sind bestehende Teilaufgaben als Checklistenpunkte oder
+Aufgaben. Anfangsvorlagen: Praktikum, studentische Hilfskraft, wissenschaftliche
+Referent:innen und allgemeines Offboarding. Bei fehlendem Austrittsdatum startet
+eine Vorlage mit Austrittsbezug nicht. Optionale Punkte zählen getrennt; der
+vorhandene Paketabschluss wartet weiterhin auf sämtliche Schritte.
+
+DSGVO-Verpflichtungen erhalten einen unveränderlichen Nachweis mit Datum,
+bestätigender Person und optionalem Dokumentverweis im selben Tenant. Ein
+normaler Aufgaben-/Teilaufgaben-Haken kann diesen Nachweis nicht ersetzen.
+Leitung bestätigt Nachweise und Offboarding-Übergaben; Mitarbeitende erledigen
+ihre gewöhnlichen eigenen Punkte. Zusätzliche restriktive Policies schützen
+auch die zugrunde liegenden Aufgaben und Teilaufgaben vor teamweitem Lesen.
+Es werden keine Ausweis- oder Schlüsselnummern erhoben.
+
+Da Phase 2 entfällt, ergänzt diese Migration die benötigte minimale
+`handover_tasks_to_deputy`-RPC. Sie überträgt offene fachliche Aufgaben atomar an
+eine aktive Person desselben Büros, behält `ball_owner` bei und lässt persönliche
+HR-Aufgaben aus. Erneute Ausführung überträgt nichts doppelt. Zugänge, Postfach
+und Schlüssel werden als menschlich zu bestätigende Arbeitsschritte behandelt;
+diese Erweiterung sperrt keine externen Konten automatisch.
+
+Team-Hinweise zeigen überfällige Pflichtpunkte und Austritte in den nächsten
+30 Tagen. Leitung kann eine Erinnerung auslösen; der vorhandene Dispatcher
+übernimmt dieselbe Prüfung regelmäßig. Pro Beschäftigung, Empfänger:in und
+Berliner Kalendertag wird eine Erinnerung beansprucht, bevor Benachrichtigungen
+entstehen. Der Tenant-Kill-Switch bleibt wirksam. Der HR-Selbsttest startet die
+Vorlage tatsächlich zweimal und prüft den Nachweisschutz; seine gesamten
+Fixtures werden durch eine Datenbank-Subtransaktion zurückgerollt.
