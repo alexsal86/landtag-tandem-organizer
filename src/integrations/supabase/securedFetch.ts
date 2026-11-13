@@ -4,11 +4,28 @@ export function securedSelect(select: string): string {
 }
 function readerArguments(url: URL) {
   const tenant = url.searchParams.get('tenant_id');
-  if (tenant?.startsWith('eq.')) url.searchParams.set('_tenant_id', tenant.slice(3));
+  if (tenant?.startsWith('eq.')) { url.searchParams.set('_tenant_id', tenant.slice(3)); url.searchParams.delete('tenant_id'); }
   const id = url.searchParams.get('id');
   const uuid = /^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/i;
   const ids = id?.startsWith('eq.') ? [id.slice(3)] : id?.startsWith('in.(') && id.endsWith(')') ? id.slice(4,-1).split(',') : [];
-  if (ids.length && ids.every(value => uuid.test(value))) url.searchParams.set('_ids', `{${ids.join(',')}}`);
+  if (ids.length && ids.every(value => uuid.test(value))) { url.searchParams.set('_ids', `{${ids.join(',')}}`); url.searchParams.delete('id'); }
+  includeFilteredColumns(url);
+}
+const RESERVED = new Set(['select', 'order', 'limit', 'offset', 'on_conflict', 'columns', 'or', 'and', 'not.or', 'not.and']);
+/** PostgREST filters RPC results after projection, so filtered/sorted columns must be selected. */
+export function includeFilteredColumns(url: URL) {
+  const select = url.searchParams.get('select');
+  if (!select || select.split(',').some(part => part.trim() === '*')) return;
+  const columns = new Set<string>();
+  for (const [key, value] of url.searchParams) {
+    if (key.startsWith('_')) continue;
+    if (key === 'order') value.split(',').forEach(part => columns.add(part.split('.')[0]));
+    else if (/^(not\.)?(or|and)$/.test(key)) for (const m of value.matchAll(/(?:^|[(,])(?:not\.)?([a-z_][\w]*)\.(?:eq|neq|gt|gte|lt|lte|like|ilike|is|in|cs|cd|fts|plfts|phfts|wfts|match|imatch)\b/gi)) columns.add(m[1]);
+    else if (!RESERVED.has(key) && !key.includes('.')) columns.add(key);
+  }
+  const top = new Set(select.split(',').map(part => part.trim().split(':').pop()!.split('(')[0]));
+  const missing = [...columns].filter(col => /^[a-z_]\w*$/i.test(col) && !top.has(col));
+  if (missing.length) url.searchParams.set('select', `${select},${missing.join(',')}`);
 }
 function errorResponse(message: string, status = 400) {
   return new Response(JSON.stringify({ message, code: 'SECURED_API', details: null, hint: null }), { status, headers: { 'Content-Type': 'application/json' } });
