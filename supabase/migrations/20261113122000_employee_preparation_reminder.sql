@@ -12,8 +12,12 @@ END $$;
 DROP TRIGGER IF EXISTS guard_employee_preparation_window ON public.employee_meetings;
 CREATE TRIGGER guard_employee_preparation_window BEFORE UPDATE ON public.employee_meetings FOR EACH ROW EXECUTE FUNCTION public.guard_employee_preparation_window();
 REVOKE ALL ON FUNCTION public.guard_employee_preparation_window() FROM PUBLIC,anon,authenticated;
-INSERT INTO public.notification_types(name,label,description,is_active) VALUES
-  ('employee_preparation_ready','Gespräch vorbereiten','Vorbereitungsbogen ist freigeschaltet',true) ON CONFLICT(name) DO NOTHING;
+-- Seed each tenant using the existing composite unique constraint.
+INSERT INTO public.notification_types(tenant_id,name,label,description,is_active)
+SELECT t.id,'employee_preparation_ready','Gespräch vorbereiten','Vorbereitungsbogen ist freigeschaltet',true
+FROM public.tenants t
+WHERE true
+ON CONFLICT(tenant_id,name) DO NOTHING;
 CREATE OR REPLACE FUNCTION public.dispatch_employee_preparation_reminders()
 RETURNS integer LANGUAGE plpgsql SECURITY DEFINER SET search_path=public AS $$
 DECLARE m record; total integer:=0;

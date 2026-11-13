@@ -239,10 +239,17 @@ END $$;
 REVOKE ALL ON FUNCTION public.request_protocol_acknowledgement(uuid),public.acknowledge_meeting_protocol(uuid,text,text),public.reopen_meeting_protocol(uuid,text),public.save_employee_meeting(uuid,integer,jsonb,text),public.mutate_employee_meeting_action(uuid,text,uuid,jsonb) FROM PUBLIC,anon;
 GRANT EXECUTE ON FUNCTION public.request_protocol_acknowledgement(uuid),public.acknowledge_meeting_protocol(uuid,text,text),public.reopen_meeting_protocol(uuid,text),public.save_employee_meeting(uuid,integer,jsonb,text),public.mutate_employee_meeting_action(uuid,text,uuid,jsonb) TO authenticated;
 REVOKE ALL ON FUNCTION public.guard_employee_protocol(),public.guard_employee_action_content() FROM PUBLIC,anon,authenticated;
-INSERT INTO public.notification_types(name,label,description,is_active) VALUES
-  ('employee_meeting','Mitarbeitergespräch','Aktualisierung zu Ihrem Mitarbeitergespräch',true),
-  ('employee_protocol_requested','Protokoll zur Bestätigung','Mitarbeitergespräch freigegeben',true),
-  ('employee_protocol_response','Protokoll-Rückmeldung','Bestätigung oder Einspruch zum Mitarbeitergespräch',true) ON CONFLICT(name) DO NOTHING;
+-- Notification names are unique per tenant since the tenant-isolation migration.
+INSERT INTO public.notification_types(tenant_id,name,label,description,is_active)
+SELECT t.id, n.name, n.label, n.description, true
+FROM public.tenants t
+CROSS JOIN (VALUES
+  ('employee_meeting','Mitarbeitergespräch','Aktualisierung zu Ihrem Mitarbeitergespräch'),
+  ('employee_protocol_requested','Protokoll zur Bestätigung','Mitarbeitergespräch freigegeben'),
+  ('employee_protocol_response','Protokoll-Rückmeldung','Bestätigung oder Einspruch zum Mitarbeitergespräch')
+) AS n(name,label,description)
+WHERE true
+ON CONFLICT(tenant_id,name) DO NOTHING;
 
 REVOKE UPDATE ON public.employee_meetings FROM authenticated;
 REVOKE INSERT, UPDATE, DELETE ON public.employee_meeting_action_items FROM authenticated;
