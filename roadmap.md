@@ -68,3 +68,19 @@
 - [ ] Echte Supabase-Session: Live-Migration, bestehende Produktions-Trigger/RLS im Zusammenspiel, Anmeldung und persistente Selbsttest-Läufe noch nicht geprüft. PGlite verwendet ein isoliertes Minimalschema mit den benötigten bestehenden Helfer-/Tabellenschnittstellen.
 - [x] Draft-PR veröffentlicht: https://github.com/alexsal86/landtag-tandem-organizer/pull/1422 (über verbundenen GitHub-Dienst; CLI-API ist gesperrt).
 - [ ] Phase 1 vollständig abnehmen; Phase 2 erst danach. Phase-2-Spezifikation fehlt im Auftrag und wurde angefragt; Phase 3 bleibt nachgelagert, insbesondere `handover_tasks_to_deputy` aus Phase 2 fehlt noch.
+
+# Team-Rituale – Phase 1
+- [x] Freiwilliges Widget `weekly_question`, standardmäßig nicht in bestehenden Layouts; Mandant standardmäßig ausgeschaltet.
+- [x] Fragenbank mit 20 neutralen Fragen, Verwaltung für tenant-lokale Büroleitung/Abgeordnete, archivieren statt historische Fragen löschen.
+- [x] Berliner Wochenfrage beim ersten Abruf ab Montag, Unique-Index und Tenant-Sperre für idempotente Vergabe; keine Wiederholung vor vollständigem Durchlauf.
+- [x] Eigene Antworten bis 280 Zeichen nur per RPC; Abmelden löscht eigene Antworten.
+- [x] Freiwillige Datumsfelder pro Person/Mandant in `team_ritual_profiles` mit separater Sichtbarkeitsfreigabe. Dashboard-Wochenvorschau und Konfetti auf Wunsch; 29.02. in Gemeinjahren am 28.02.
+- [x] RLS und Tenant-/Rollenprüfungen; alle Schreibaktionen per RPC, keine direkten Client-Schreibrechte.
+- [x] GDPR-Kontolöschung über bestehendes `manage-tenant-user/deleteUser` entfernt Profilfelder und Antworten per `auth.users`-FK-Cascade; Entfernen/Deaktivieren der Mitgliedschaft löscht tenant-lokale Rituale. Bestehende Kontakt-GDPR-Löschung bleibt getrennt, da diese Daten ausschließlich Benutzerkonten gehören.
+- [x] Ein Unit-Test-File für reine Regeln und Logic-Selbsttest-Schritte; keine neuen Abhängigkeiten.
+- [ ] Migration in Supabase anwenden und mit echter Anmeldung prüfen: Mandantenisolation, Büroleitungsrechte, Opt-in/Opt-out, eigene Antwort ändern/löschen, paralleles `ensure_weekly_question`, Widerruf und GDPR-Kontolöschung — keine angemeldete Supabase-Testsitzung verfügbar.
+- Optionale Benachrichtigung „Neue Frage der Woche“ nicht aktiviert; keine automatische Nachricht ohne Einwilligung.
+- Phasen 2–4 bleiben außerhalb dieses Commit-Satzes.
+- [x] Gezielte lokale Checks: `npx vitest run src/features/team-rituals/logic.test.ts` (4 Tests bestanden); ESLint aller geänderten TS/TSX-Dateien (0 Fehler, 20 bestehende Warnungen); `npx tsc -p tsconfig.app.json --noEmit --types node,react,react-dom,vite/client` erfolgreich. Die explizite Typenliste umgeht den bestehenden defekten `@types/react-grid-layout@2.1.0`-Stub; der unveränderte Standardaufruf bleibt dadurch blockiert.
+- Lokale Paketinstallation ohne Manifest-/Lockfile-Änderung: bestehende Peer-/Lockfile-Inkonsistenz verhindert `npm ci`; deshalb `npm install --legacy-peer-deps --ignore-scripts --no-package-lock --no-save`.
+- [x] Integration auf aktuellem `main`: additive Konflikte in Roadmap, Selbsttest-Registry und RPC-Typen zusammengeführt; fehlende `regionIds`/`committeeIds` beim Aufgabenformular-Reset aus parallel integrierter Zuständigkeitsmatrix ergänzt.

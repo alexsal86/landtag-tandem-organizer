@@ -37,6 +37,7 @@ interface WidgetPaletteProps {
 }
 
 const WIDGET_TYPES = [
+  { type: 'weekly_question' as const, title: 'Frage der Woche', description: 'Freiwillige Team-Fragen, Geburtstage und Jubiläen', icon: Calendar, category: 'productivity', popular: false },
   {
     type: 'stats' as const,
     title: 'Statistiken',

@@ -220,6 +220,8 @@ export default function CreateTask() {
           dueDate: "",
           assignedTo: [],
           topicIds: [],
+          regionIds: [],
+          committeeIds: [],
         });
 
         navigate("/tasks");

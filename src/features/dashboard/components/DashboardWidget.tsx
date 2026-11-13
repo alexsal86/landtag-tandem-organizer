@@ -1,3 +1,4 @@
+import { WeeklyQuestionWidget } from '@/features/team-rituals/WeeklyQuestionWidget';
 import { useState, useEffect } from "react";
 import { WidgetOverlayMenu } from '@/components/dashboard/WidgetOverlayMenu';
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
@@ -211,7 +212,7 @@ export function DashboardWidget({ widget, isDragging, isEditMode, onResize, onDe
       
       if (usersData) {
         const userMap: {[key: string]: string} = {};
-        usersData.forEach((profile: Record<string, any>) => {
+        usersData.forEach((profile) => {
           userMap[profile.user_id] = profile.display_name || profile.user_id;
         });
         setUsers(userMap);
@@ -225,7 +226,7 @@ export function DashboardWidget({ widget, isDragging, isEditMode, onResize, onDe
         .order('due_date', { ascending: true, nullsFirst: false });
 
       if (tasksData) {
-        const userAssignedTasks = tasksData.filter((task: Record<string, any>) => {
+        const userAssignedTasks = tasksData.filter((task) => {
           if (!task.assigned_to) return false;
           const assignees = task.assigned_to.split(',').map((id: string) => id.trim());
           return assignees.includes(user.id) || 
@@ -245,14 +246,14 @@ export function DashboardWidget({ widget, isDragging, isEditMode, onResize, onDe
 
       if (childTasksData) {
         const mapped = childTasksData
-          .filter((task: Record<string, any>) => {
+          .filter((task) => {
             if (!task.assigned_to) return false;
             const assignees = String(task.assigned_to).split(',').map((id: string) => id.trim());
             return assignees.includes(user.id) ||
               assignees.includes(user.email || '') ||
               assignees.includes((user.email || '').toLowerCase());
           })
-          .map((task: Record<string, any>) => ({
+          .map((task) => ({
             id: task.id,
             task_id: task.parent_task_id,
             title: task.title,
@@ -276,7 +277,7 @@ export function DashboardWidget({ widget, isDragging, isEditMode, onResize, onDe
         const taskSnoozesMap: {[key: string]: string} = {};
         const subtaskSnoozesMap: {[key: string]: string} = {};
         
-        snoozesData.forEach((snooze: Record<string, any>) => {
+        snoozesData.forEach((snooze) => {
           if (snooze.task_id) {
             taskSnoozesMap[snooze.task_id] = snooze.snoozed_until;
           }
@@ -591,6 +592,8 @@ export function DashboardWidget({ widget, isDragging, isEditMode, onResize, onDe
         return <NewsWidget widgetId={widget.id} />;
       case 'appointmentfeedback':
         return <AppointmentFeedbackWidget widgetSize={widget.widgetSize} isEditMode={isEditMode} />;
+      case 'weekly_question':
+        return <WeeklyQuestionWidget />;
       case 'stakeholder-network':
         return <StakeholderNetworkWidget />;
 
@@ -600,7 +603,7 @@ export function DashboardWidget({ widget, isDragging, isEditMode, onResize, onDe
   };
 
   // For new widget types that handle their own layout, render them directly
-  if (['quicknotes', 'pomodoro', 'habits', 'calllog', 'combined-messages', 'quickactions', 'news', 'appointmentfeedback', 'stakeholder-network', 'stats', 'actions', 'tasks', 'schedule', 'messages', 'blackboard'].includes(widget.type)) {
+  if (['weekly_question', 'quicknotes', 'pomodoro', 'habits', 'calllog', 'combined-messages', 'quickactions', 'news', 'appointmentfeedback', 'stakeholder-network', 'stats', 'actions', 'tasks', 'schedule', 'messages', 'blackboard'].includes(widget.type)) {
     return (
       <div 
         className={`group relative h-full w-full max-w-full overflow-hidden ${isDragging ? 'opacity-50 rotate-1' : ''}`}
