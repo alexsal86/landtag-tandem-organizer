@@ -2,7 +2,7 @@ import React, { useState } from "react";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Badge } from "@/components/ui/badge";
 import { Input } from "@/components/ui/input";
-import { hasRenderableBoundary, searchElectionDistricts } from "../mapModel";
+import { boundaryAreaKm2, directMandateParty, partyColors, hasRenderableBoundary, searchElectionDistricts } from "../mapModel";
 import { Button } from "@/components/ui/button";
 import { Users, BarChart3, Crown, Award, Search, SlidersHorizontal } from "lucide-react";
 import { useElectionDistricts } from "@/hooks/useElectionDistricts";
@@ -13,6 +13,7 @@ import LeafletMapFallback from "@/features/election-districts/components/Leaflet
 import { debugConsole } from '@/utils/debugConsole';
 import { ElectionDistrict } from "@/hooks/useElectionDistricts";
 
+import { SunflowerThemeToggle } from '@/components/ui/sunflower-theme-toggle';
 // Error Boundary Component
 class ErrorBoundary extends React.Component<
   { children: React.ReactNode; onError: () => void },
@@ -58,12 +59,15 @@ export const ElectionDistrictsView = () => {
   const [showDistrictMarkers, setShowDistrictMarkers] = useState(true);
   const [sidebarOpen, setSidebarOpen] = useState(false);
   const [searchQuery, setSearchQuery] = useState('');
+  const [activeResult, setActiveResult] = useState(0);
+  const [partyFilter, setPartyFilter] = useState<string | null>(null);
   const [focusedDistrict, setFocusedDistrict] = useState<ElectionDistrict>();
   const [showPartyAssociations, setShowPartyAssociations] = useState(false);
 
   const handleDistrictClick = (district: ElectionDistrict) => {
     setSelectedDistrict(district);
     setSidebarOpen(true);
+    setFocusedDistrict({ ...district });
   };
 
   const handleMapError = () => {
@@ -80,7 +84,7 @@ export const ElectionDistrictsView = () => {
   // Filter displayed districts based on toggles
   const displayedDistricts = districts.filter(d => {
     if (d.district_type === 'verwaltungsgrenze') return showAdministrativeBoundaries;
-    return showElectionDistricts;
+    return showElectionDistricts && (!partyFilter || directMandateParty(d) === partyFilter);
   });
 
   const searchResults = searchElectionDistricts(districts, searchQuery);
@@ -93,6 +97,7 @@ export const ElectionDistrictsView = () => {
     if (district.district_type === 'verwaltungsgrenze') setShowAdministrativeBoundaries(true);
     else setShowElectionDistricts(true);
     setSearchQuery('');
+    setPartyFilter(null);
   };
 
   if (loading) {
@@ -111,22 +116,30 @@ export const ElectionDistrictsView = () => {
       <div className="flex flex-wrap items-end gap-3 p-3 border-b">
         <form className="relative flex-1 min-w-0" onSubmit={event => {
           event.preventDefault();
-          if (searchResults[0]) focusDistrict(searchResults[0]);
+          if (searchResults[activeResult]) focusDistrict(searchResults[activeResult]);
         }} role="search" aria-label="Wahlkreissuche">
           <label htmlFor="district-search" className="text-sm font-medium">Wahlkreis suchen</label>
           <div className="relative mt-1">
             <Search className="absolute left-3 top-2.5 h-4 w-4 text-muted-foreground" aria-hidden="true" />
             <Input id="district-search" type="search" placeholder="Name oder Nummer eingeben …"
-              className="pl-9" value={searchQuery} onChange={event => setSearchQuery(event.target.value)}
+              className="pl-9" value={searchQuery} onChange={event => { setSearchQuery(event.target.value); setActiveResult(0); }}
+              role="combobox" aria-autocomplete="list" aria-expanded={!!searchQuery.trim()}
+              aria-activedescendant={searchResults[activeResult] ? `district-result-${searchResults[activeResult].id}` : undefined}
               aria-controls="district-search-results" onKeyDown={event => {
                 if (event.key === 'Escape') setSearchQuery('');
+                if (event.key === 'ArrowDown' || event.key === 'ArrowUp') {
+                  event.preventDefault();
+                  const next = (activeResult + (event.key === 'ArrowDown' ? 1 : -1) + searchResults.length) % Math.max(1, searchResults.length);
+                  setActiveResult(next);
+                  document.getElementById(`district-result-${searchResults[next]?.id}`)?.scrollIntoView({ block: 'nearest' });
+                }
               }} />
           </div>
           {searchQuery.trim() && (
-            <div id="district-search-results" className="absolute top-full left-0 right-0 mt-1 z-[1100] rounded-md border bg-popover text-popover-foreground shadow-md max-h-64 overflow-y-auto">
+            <div id="district-search-results" role="listbox" className="absolute top-full left-0 right-0 mt-1 z-[1100] rounded-md border bg-popover text-popover-foreground shadow-md max-h-64 overflow-y-auto">
               <p className="p-2 text-xs text-muted-foreground" role="status">{searchResults.length} Treffer</p>
-              {searchResults.map(district => (
-                <button key={district.id} type="button" className="block w-full px-3 py-2 text-left text-sm hover:bg-accent focus-visible:bg-accent"
+              {searchResults.map((district, index) => (
+                <button id={`district-result-${district.id}`} role="option" aria-selected={index === activeResult} style={index === activeResult ? { background: 'hsl(var(--accent))' } : undefined} key={district.id} type="button" className="block w-full px-3 py-2 text-left text-sm hover:bg-accent focus-visible:bg-accent"
                   onClick={() => focusDistrict(district)}>
                   WK {district.district_number}: {district.district_name}
                 </button>
@@ -134,6 +147,7 @@ export const ElectionDistrictsView = () => {
             </div>
           )}
         </form>
+        <SunflowerThemeToggle />
         <Button variant="outline" className="md:hidden" aria-expanded={sidebarOpen}
           aria-controls="district-sidebar" onClick={() => setSidebarOpen(open => !open)}>
           <SlidersHorizontal className="h-4 w-4 mr-2" />
@@ -179,6 +193,18 @@ export const ElectionDistrictsView = () => {
 
         {/* Sidebar */}
         <div id="district-sidebar" className={`${sidebarOpen ? 'block' : 'hidden'} md:block w-full md:w-80 md:shrink-0 border-t md:border-t-0 md:border-l bg-muted/30 overflow-y-auto max-h-[60vh] md:max-h-none p-4 space-y-4`}>
+          <Card>
+            <CardHeader><CardTitle className="text-lg">Direktmandate · Legende</CardTitle></CardHeader>
+            <CardContent className="flex flex-wrap gap-2">
+              <Button size="sm" variant={partyFilter === null ? 'default' : 'outline'} onClick={() => setPartyFilter(null)}>Alle ({electionDistricts.length})</Button>
+              {Array.from(new Set([...Object.keys(partyColors), ...electionDistricts.map(directMandateParty)])).map(party => (
+                <Button key={party} size="sm" variant={partyFilter === party ? 'default' : 'outline'} aria-pressed={partyFilter === party} onClick={() => setPartyFilter(partyFilter === party ? null : party)}>
+                  <span className="mr-2 h-3 w-3 rounded-full" style={{ background: partyColors[party] || '#9ca3af' }} />
+                  {party} ({electionDistricts.filter(d => directMandateParty(d) === party).length})
+                </Button>
+              ))}
+            </CardContent>
+          </Card>
           {/* Layer toggles */}
           <Card>
             <CardHeader>
@@ -346,7 +372,7 @@ export const ElectionDistrictsView = () => {
                   </div>
                   <div className="flex justify-between items-center gap-2">
                     <span className="text-sm text-muted-foreground">Fläche:</span>
-                    <Badge variant="secondary">{selectedDistrict.area_km2 != null ? `${selectedDistrict.area_km2.toLocaleString('de-DE')} km²` : 'Unbekannt'}</Badge>
+                    <Badge variant="secondary">{boundaryAreaKm2(selectedDistrict.boundaries) != null ? `${boundaryAreaKm2(selectedDistrict.boundaries)!.toLocaleString('de-DE', { maximumFractionDigits: 1 })} km² (Geometrie)` : 'Unbekannt'}</Badge>
                   </div>
                   {selectedDistrict.rural_percentage != null && (
                     <div className="flex justify-between items-center gap-2">
@@ -365,7 +391,7 @@ export const ElectionDistrictsView = () => {
                       {[
                         ['Wahlkreise gesamt:', electionDistricts.length.toLocaleString('de-DE')],
                         ['Gesamtbevölkerung:', electionDistricts.reduce((sum, d) => sum + (d.population ?? 0), 0).toLocaleString('de-DE')],
-                        ['Gesamtfläche:', `${electionDistricts.reduce((sum, d) => sum + (d.area_km2 ?? 0), 0).toLocaleString('de-DE')} km²`],
+                        ['Gesamtfläche:', `${electionDistricts.reduce((sum, d) => sum + (boundaryAreaKm2(d.boundaries) ?? 0), 0).toLocaleString('de-DE')} km²`],
                       ].map(([label, value]) => (
                         <div key={label} className="flex justify-between items-center gap-2">
                           <span className="text-sm text-muted-foreground">{label}</span>
@@ -379,7 +405,7 @@ export const ElectionDistrictsView = () => {
                       {[
                         ['Verwaltungsgrenzen:', administrativeBoundaries.length.toLocaleString('de-DE')],
                         ['Bevölkerung (Verwaltung):', administrativeBoundaries.reduce((sum, d) => sum + (d.population ?? 0), 0).toLocaleString('de-DE')],
-                        ['Fläche (Verwaltung):', `${administrativeBoundaries.reduce((sum, d) => sum + (d.area_km2 ?? 0), 0).toLocaleString('de-DE')} km²`],
+                        ['Fläche (Verwaltung):', `${administrativeBoundaries.reduce((sum, d) => sum + (boundaryAreaKm2(d.boundaries) ?? 0), 0).toLocaleString('de-DE')} km²`],
                       ].map(([label, value]) => (
                         <div key={label} className="flex justify-between items-center gap-2">
                           <span className="text-sm text-muted-foreground">{label}</span>
@@ -393,47 +419,7 @@ export const ElectionDistrictsView = () => {
             </CardContent>
           </Card>
 
-          {/* Legend */}
-          <Card>
-            <CardHeader>
-              <CardTitle className="text-lg">Legende</CardTitle>
-            </CardHeader>
-            <CardContent>
-              <div className="space-y-3">
-                {hasElectionData && (
-                  <>
-                    <div className="text-sm text-muted-foreground">Parteifarben (Direktmandate):</div>
-                    <div className="grid grid-cols-2 gap-2 text-xs">
-                      {['CDU', 'SPD', 'GRÜNE', 'FDP/DVP', 'AfD'].map(party => (
-                        <div key={party} className="flex items-center gap-1">
-                          <div className="w-3 h-3 rounded" style={{ backgroundColor: getPartyColor(party) }} />
-                          <span>{party}</span>
-                        </div>
-                      ))}
-                    </div>
-                    <div className="pt-2 border-t">
-                      <div className="flex items-center gap-2 mb-1">
-                        <Award className="h-3 w-3 text-palette-yellow" />
-                        <span className="text-xs">Direktmandat</span>
-                      </div>
-                      <p className="text-xs text-muted-foreground">
-                        Farben zeigen die Partei des Direktmandats
-                      </p>
-                    </div>
-                  </>
-                )}
-                {hasAdministrativeData && (
-                  <div className={hasElectionData ? "pt-2 border-t" : ""}>
-                    <div className="text-sm text-muted-foreground mb-2">Verwaltungsgrenzen:</div>
-                    <div className="flex items-center gap-1">
-                      <div className="w-3 h-3 bg-palette-purple rounded-sm opacity-60"></div>
-                      <span className="text-xs">Landkreise (gestrichelt)</span>
-                    </div>
-                  </div>
-                )}
-              </div>
-            </CardContent>
-          </Card>
+
         </div>
       </div>
     </div>

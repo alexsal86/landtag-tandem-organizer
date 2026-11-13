@@ -1,18 +1,15 @@
+export const partyColors: Record<string, string> = {
+  CDU: '#4b5563', SPD: '#dc2626', GRÜNE: '#16a34a', FDP: '#facc15',
+  AFD: '#009ee0', LINKE: '#be3075', 'Ohne Direktmandat': '#9ca3af',
+};
+
 export function getPartyColor(party?: string): string {
   const name = party?.trim().toUpperCase().replace(/[\s/–-]+/g, '');
-  switch (name) {
-    case 'CDU': return '#000000';
-    case 'FDP':
-    case 'DVP':
-    case 'FDPDVP': return '#ffed00';
-    case 'GRÜNE':
-    case 'BÜNDNIS90DIEGRÜNEN': return '#16a34a';
-    case 'SPD': return '#dc2626';
-    case 'AFD': return '#1e40af';
-    default: return '#6b7280';
-  }
+  const normalized = name === 'FDPDVP' || name === 'DVP' ? 'FDP'
+    : name === 'BÜNDNIS90DIEGRÜNEN' ? 'GRÜNE' : name === 'DIELINKE' ? 'LINKE' : name;
+  return partyColors[normalized || ''] || '#9ca3af';
 }
 
 export function getPartyTextColor(party?: string): string {
-  return getPartyColor(party) === '#ffed00' ? '#000000' : '#ffffff';
+  return getPartyColor(party) === '#facc15' ? '#000000' : '#ffffff';
 }
