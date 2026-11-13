@@ -11,6 +11,10 @@ Stand: 13.11.2026. Zuständig: `team-platform`, Vertretung: `team-office`.
 - **Erste Schritte**: „Lerne dein Team kennen“ erscheint bei aktiviertem Mandantenfeature und führt zur Mitarbeiterverwaltung. Der Schritt und die Spielteilnahme sind freiwillig.
 - **Administration → Automatisierung → Jahresroutinen → Vorlagen fürs Bürojahr**: „Walk & Talk mit Eis-Check“, „Heimat-Snack im Büro“, „Mini-Ausflug im Wahlkreis“. Auch im vorhandenen Regel-Assistenten auswählbar. Vorlagen werden erst nach ausdrücklich gespeicherter/aktivierter Regel ausgeführt und lassen sich dort deaktivieren.
 
+## Kompakte Fragenbank
+
+Neue Fragen stehen oberhalb der bestehenden Fragen, durch Linien abgesetzt. Jede Zeile enthält Aktiv-Status, Fragetext, letzte Einsatzwoche und Speichern. Die letzte Einsatzwoche stammt aus `max(team_question_weeks.week_start)` je Mandant und Frage; ohne Einsatz erscheint „Noch nie gestellt“. Vor Anwendung der Migration `20261113170000_team_question_last_used.sql` erscheint stattdessen „Letzter Einsatz unbekannt“. Die bestehende Rotation (unbenutzte, dann am längsten nicht verwendete aktive Fragen) bleibt erhalten.
+
 ## Annahmen und Datenwege
 
 Eintrittsdaten bleiben ausschließlich im bestehenden Mitarbeiter-Datenbestand. Eine tenant-geprüfte Projektion liefert nur User-ID, Anzeigename und Eintrittsdatum; keine privaten HR-Felder. Das frühere doppelte Ritual-Eintrittsdatum wird geleert und bei Schreibaufrufen ignoriert. Geburtstag und Fun Facts bleiben separat freiwillig.
