@@ -103,7 +103,7 @@
 - [x] Reiter „Team-Rituale“ unter `/employee?tab=rituals` für alle aktiven Mitglieder; Fragenbank und Mandantenfreigabe für Abgeordnete und Büroleitung. Dashboard verweist direkt darauf.
 - [x] Eintrittsjubiläen automatisch aus `employee_settings.employment_start_date`, ohne persönliche Teilnahme-/Geburtstagsfreigabe. Schmale tenant-geprüfte Projektion statt Erweiterung der HR-Leserechte. Das doppelte Eintrittsdatum im Ritualprofil wird geleert und nicht mehr verwendet.
 - [x] Geburtstage bleiben freiwillig; Kalenderwoche und Konfetti berücksichtigen automatisch ermittelte Jubiläen.
-- [ ] Migration `20261113160000_team_ritual_employee_access.sql` anwenden und Rollen, zugeordnetes Eintrittsdatum und Mandantenwechsel mit echter Anmeldung prüfen — externe Supabase-Testsitzung fehlt.
+- [ ] Migration `20261113160500_team_ritual_employee_access.sql` anwenden und Rollen, zugeordnetes Eintrittsdatum und Mandantenwechsel mit echter Anmeldung prüfen — externe Supabase-Testsitzung fehlt.
 - [x] Gesammelte gezielte Prüfungen nach Phasen 2–4: 8 reine Logiktests bestanden, ein Typecheck mit dokumentierter expliziter Typenliste erfolgreich, ESLint 0 Fehler/19 bestehende Warnungen. Keine Hook-/Komponenten-/Datenbanktests.
 
 # Team-Rituale – Phase 2: Zwei Wahrheiten, eine Lüge

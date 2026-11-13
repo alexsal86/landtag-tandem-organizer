@@ -31,7 +31,7 @@ Ein Typecheck: `npx tsc -p tsconfig.app.json --noEmit --types node,react,react-d
 
 Neue Migrationen nach der bereits gelieferten Phase-1-Migration in dieser Reihenfolge anwenden:
 
-1. `20261113160000_team_ritual_employee_access.sql`
+1. `20261113160500_team_ritual_employee_access.sql`
 2. `20261113161000_team_two_truths.sql`
 3. `20261113162000_team_bingo.sql`
 
@@ -52,7 +52,7 @@ Offen bleiben echte Rollen-/Tenant-Prüfungen, eigene Antwort und Quiz-Auflösun
 - `src/features/team-rituals/data.ts`
 - `src/features/team-rituals/logic.test.ts`
 - `src/features/team-rituals/logic.ts`
-- `supabase/migrations/20261113160000_team_ritual_employee_access.sql`
+- `supabase/migrations/20261113160500_team_ritual_employee_access.sql`
 
 ### Phase 2
 
@@ -93,3 +93,5 @@ Offen bleiben echte Rollen-/Tenant-Prüfungen, eigene Antwort und Quiz-Auflösun
 - `roadmap.md`
 - `src/features/automation/officeRoutineTemplates.ts`
 - `src/features/selftest/scenarios/team-rituals.ts`
+
+Die parallel eingegangenen Annotationserweiterungen auf `main` wurden danach ohne inhaltliche Konflikte übernommen. Die neue Eintrittsdatum-Migration verwendet deshalb Version `20261113160500`, damit sie nicht mit der dortigen Annotation-Audit-Migration kollidiert. Die fachlichen Ritual-Implementierungen blieben unverändert; keine zusätzlichen breiten Prüfläufe.
