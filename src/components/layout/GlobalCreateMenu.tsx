@@ -6,7 +6,8 @@ import {
   Plus,
   CalendarClock,
 } from "lucide-react";
-import { Button } from "@/components/ui/button";
+import { buttonVariants } from "@/components/ui/button";
+import { cn } from "@/lib/utils";
 import {
   DropdownMenu,
   DropdownMenuTrigger,
@@ -31,17 +32,15 @@ export function GlobalCreateMenu() {
   if (!user || !currentTenant) return null;
   return (
     <DropdownMenu>
-      <DropdownMenuTrigger asChild>
-        <Button
-          type="button"
-          variant="ghost"
-          size="icon"
-          className="h-8 w-8 shrink-0"
-          aria-label="Globales Erstellen-Menü öffnen"
-          title="Erstellen"
-        >
-          <Plus className="h-4 w-4" />
-        </Button>
+      {/* Rendered without `asChild` on purpose: nesting Button inside the trigger
+          stacks two Radix Slots, and the duplicated ref composition loops under React 19. */}
+      <DropdownMenuTrigger
+        type="button"
+        className={cn(buttonVariants({ variant: "ghost", size: "icon" }), "h-8 w-8 shrink-0")}
+        aria-label="Globales Erstellen-Menü öffnen"
+        title="Erstellen"
+      >
+        <Plus className="h-4 w-4" />
       </DropdownMenuTrigger>
       <DropdownMenuContent
         align="start"
