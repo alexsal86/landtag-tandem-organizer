@@ -1,5 +1,5 @@
 export const partyColors: Record<string, string> = {
-  CDU: '#4b5563', SPD: '#dc2626', GRÜNE: '#16a34a', FDP: '#facc15',
+  CDU: '#343a40', SPD: '#dc2626', GRÜNE: '#15803d', FDP: '#facc15',
   AFD: '#009ee0', LINKE: '#be3075', 'Ohne Direktmandat': '#9ca3af',
 };
 

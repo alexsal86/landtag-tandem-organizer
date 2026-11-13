@@ -34,7 +34,7 @@
 }
 .bw-map-control:hover { background: hsl(var(--accent)); }
 .bw-map-control:focus-visible { outline: 2px solid hsl(var(--ring)); outline-offset: 2px; }
-.bw-district-path { transition: fill-opacity .25s ease, stroke .25s ease; }
+.bw-district-path { transition: fill .2s ease, fill-opacity .25s ease, stroke .25s ease; }
 .bw-election-map .custom-district-marker { transition: opacity .25s ease; }
 @media (prefers-reduced-motion: reduce) {
   .bw-district-path, .bw-map-control, .bw-election-map .custom-district-marker { transition: none; }

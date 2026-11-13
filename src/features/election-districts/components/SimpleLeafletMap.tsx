@@ -235,14 +235,20 @@ const SimpleLeafletMap: React.FC<LeafletKarlsruheMapProps> = ({
           const isSelected = selectedDistrict?.id === district.id;
           const directMandate = district.representatives?.find(rep => rep.mandate_type === 'direct');
 
+          const baseColor = getPartyColorHex(district, isPartyBoundary);
+          const hoverColor = '#' + baseColor.slice(1).match(/.{2}/g)!.map(channel =>
+            Math.round(parseInt(channel, 16) * 0.7).toString(16).padStart(2, '0')
+          ).join('');
           layer.on('mouseover', () => {
             (layer as L.Path).setStyle({ 
-              weight: 4
+              weight: 4,
+              fillColor: hoverColor
             });
           });
           layer.on('mouseout', () => {
             (layer as L.Path).setStyle({ 
-              weight: isSelected ? 4 : (isPartyBoundary ? 3 : 1.5)
+              weight: isSelected ? 4 : (isPartyBoundary ? 3 : 1.5),
+              fillColor: baseColor
             });
           });
           const tooltip = document.createElement('span');

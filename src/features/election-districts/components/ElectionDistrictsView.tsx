@@ -253,7 +253,7 @@ export const ElectionDistrictsView = ({ sidebarHeader }: { sidebarHeader?: React
                         if (next.has(party)) next.delete(party); else next.add(party);
                         return next;
                       })}
-                      className={`inline-flex items-center gap-1.5 rounded-full border px-2.5 py-1 text-xs transition-all duration-200 motion-reduce:transition-none ${selectedParties.has(party) ? 'border-[#aeb4a6] bg-[#f0f2ed] dark:border-[#676e60] dark:bg-[#292c26] shadow-sm' : 'border-border bg-transparent opacity-50 hover:opacity-80'}`}>
+                      className={`inline-flex items-center gap-1.5 rounded-full border px-2.5 py-1 text-xs transition-all duration-200 motion-reduce:transition-none ${selectedParties.has(party) ? 'border-[#626a59] bg-[#f0f2ed] dark:border-[#929b86] dark:bg-[#292c26] shadow-sm' : 'border-[#858d7b] dark:border-[#767e6b] bg-transparent text-muted-foreground hover:border-[#626a59]'}`}>
                       <span className="h-2.5 w-2.5 rounded-full" style={{ backgroundColor: partyColors[party] }} />
                       {party === 'AFD' ? 'AfD' : party}
                       <span className="text-muted-foreground">{electionDistricts.filter(d => directMandateParty(d) === party).length}</span>
