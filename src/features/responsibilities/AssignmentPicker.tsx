@@ -173,20 +173,28 @@ export function AreaAssignmentPicker({
   busy: boolean;
   onChange: ChangeResponsibility;
 }) {
+  const hasAssignments = rows.some(
+    (row) =>
+      row.kind === area.kind &&
+      referenceOf(row) === area.id &&
+      row.level === level,
+  );
   return (
     <Popover>
       <PopoverTrigger asChild>
         <Button
           variant="outline"
           size="sm"
-          className="rounded-full border-dashed"
+          className={cn(
+            "rounded-full",
+            hasAssignments
+              ? "h-8 w-8 border-dashed p-0 hover:border-solid focus-visible:border-solid"
+              : "border-solid",
+          )}
           aria-label={`${area.name}: ${level === "primary" ? "Primärpersonen" : "Sekundärpersonen"} auswählen`}
         >
-          <Plus className="h-3.5 w-3.5" />
-          <span className="sr-only">
-            {level === "primary" ? "Primär" : "Sekundär"}{" "}
-          </span>
-          Zuweisen
+          <Plus className="h-3.5 w-3.5" aria-hidden="true" />
+          {!hasAssignments && "Zuweisen"}
         </Button>
       </PopoverTrigger>
       <PopoverContent className="w-72 p-0" align="start">

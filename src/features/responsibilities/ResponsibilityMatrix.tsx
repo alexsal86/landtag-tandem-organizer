@@ -5,6 +5,7 @@ import {
   AlertCircle,
   CheckCircle2,
   Eye,
+  ChevronDown,
 } from "lucide-react";
 import {
   Dialog,
@@ -325,14 +326,15 @@ export function ResponsibilityMatrix() {
             );
             if (!areas.length) return null;
             return (
-              <section
+              <details
+                open
                 key={group.kind}
-                className="overflow-hidden rounded-xl border bg-card"
+                className="group overflow-hidden rounded-xl border bg-card"
               >
-                <div className="flex items-center justify-between border-b bg-primary/5 px-4 py-3">
-                  <h3 className="font-semibold">
+                <summary className="flex cursor-pointer list-none flex-wrap items-center justify-between gap-2 bg-primary/5 px-4 py-3 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-inset focus-visible:ring-ring [&::-webkit-details-marker]:hidden">
+                  <span className="font-semibold">
                     {group.label} ({areas.length})
-                  </h3>
+                  </span>
                   <span className="text-sm text-muted-foreground">
                     {
                       areas.filter((a) => coverage(a).state !== "covered")
@@ -340,8 +342,9 @@ export function ResponsibilityMatrix() {
                     }{" "}
                     ohne Primärzuständige
                   </span>
-                </div>
-                <div className="hidden grid-cols-[1.1fr_1.4fr_1.4fr] gap-4 border-b px-4 py-2 text-xs uppercase tracking-wide text-muted-foreground md:grid">
+                  <ChevronDown className="h-4 w-4 shrink-0 transition-transform group-open:rotate-180" aria-hidden="true" />
+                </summary>
+                <div className="hidden grid-cols-[1.1fr_1.4fr_1.4fr] gap-4 border-y px-4 py-2 text-xs uppercase tracking-wide text-muted-foreground md:grid">
                   <span>Bereich</span>
                   <span>Primär</span>
                   <span>Sekundär</span>
@@ -399,7 +402,7 @@ export function ResponsibilityMatrix() {
                     </div>
                   ))}
                 </div>
-              </section>
+              </details>
             );
           })}
           {!visibleAreas.length && (
