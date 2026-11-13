@@ -101,10 +101,10 @@ export function usePartyAssociations() {
 
       const normalizedAssociations = (data ?? [])
         .map((association: Record<string, any>) => normalizeAssociation(association as unknown))
-        .filter((association: Record<string, any>): association is PartyAssociation => association !== null);
+        .filter((association): association is PartyAssociation => association !== null);
 
       const associationsWithBoundaries = await Promise.all(
-        normalizedAssociations.map(async (association: Record<string, any>) => {
+        normalizedAssociations.map(async association => {
           const boundaries = association.administrative_boundaries;
           if (boundaries && Array.isArray(boundaries) && boundaries.length > 0) {
             const { data: boundaryDistricts, error: boundaryError } = await supabase

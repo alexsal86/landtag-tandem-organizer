@@ -161,8 +161,8 @@ export function useElectionDistricts() {
     if (error) throw error;
 
     return (data ?? [])
-      .map((district: Record<string, any>) => normalizeDistrict(district as unknown))
-      .filter((district: Record<string, any>): district is ElectionDistrict => district !== null);
+      .map(district => normalizeDistrict(district))
+      .filter((district): district is ElectionDistrict => district !== null);
   };
 
   const {

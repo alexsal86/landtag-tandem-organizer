@@ -167,6 +167,7 @@ export const adminMenuItems: AdminMenuItem[] = [
     icon: ShieldAlert,
     superAdminOnly: true,
     children: [
+      { id: "election-history", label: "Wahldaten & Mandatshistorie", icon: Landmark },
       { id: "tenants", label: "Tenants", icon: Building2 },
       { id: "push-tests", label: "Push-System Tests", icon: Bell },
       { id: "roles", label: "Rechte & Rollen", icon: UserCheck },

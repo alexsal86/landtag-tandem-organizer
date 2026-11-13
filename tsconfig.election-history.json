@@ -1,0 +1,6 @@
+{
+  "extends": "./tsconfig.app.json",
+  "compilerOptions": { "types": ["vite/client"], "noImplicitAny": true },
+  "include": ["src/features/election-history/**/*.ts", "src/features/election-history/**/*.tsx", "src/features/election-districts/components/ElectionDistrictsView.tsx"],
+  "exclude": ["src/**/*.test.ts", "src/**/*.test.tsx"]
+}

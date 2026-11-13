@@ -261,7 +261,7 @@ const SimpleLeafletMap: React.FC<LeafletKarlsruheMapProps> = ({
             element.setAttribute('aria-label', tooltip.textContent || 'Wahlkreis');
             element.setAttribute('aria-pressed', String(isSelected));
             element.addEventListener('keydown', event => {
-              if (event.key === 'Enter' || event.key === ' ') {
+              if (event instanceof KeyboardEvent && (event.key === 'Enter' || event.key === ' ')) {
                 event.preventDefault();
                 event.stopPropagation();
                 onDistrictClickRef.current(district);
@@ -275,7 +275,8 @@ const SimpleLeafletMap: React.FC<LeafletKarlsruheMapProps> = ({
       geoLayer.addTo(districtLayerRef.current);
       renderedBounds = geoLayer.getBounds();
       geoLayer.eachLayer(layer => {
-        if ((layer as L.GeoJSON).feature?.properties?.district_id === selectedDistrict?.id) (layer as L.Path).bringToFront();
+        const feature = (layer as L.GeoJSON).feature;
+        if (feature?.type === 'Feature' && feature.properties?.district_id === selectedDistrict?.id) (layer as L.Path).bringToFront();
       });
       
     }

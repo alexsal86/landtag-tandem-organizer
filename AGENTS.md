@@ -51,3 +51,5 @@
 - Responsibility areas may have multiple primary people; UI assignment changes affect only the chosen person, and coverage distinguishes a missing primary contact from a completely unassigned area.
 
 - Topic-to-catalog conversion runs atomically through convert_topic_to_catalog: preserve historical topic links, move employee responsibilities without removing other primaries, and keep topic_catalog_links valid when merging committees or regions.
+
+- Platform election history lives in src/features/election-history and election_history_* tables: only is_superadmin may write, tenants read released periods, candidacies store personal results independently of actual mandate intervals, and succession never counts as re-election. Do not infer person identity from names or overwrite legacy representatives/tenant notes. Historical map projections explicitly retain the imported boundary geometry.

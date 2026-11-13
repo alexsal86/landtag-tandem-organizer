@@ -1,3 +1,6 @@
+import { useElectionHistory } from '@/features/election-history/useElectionHistory';
+import { projectHistoricalDistricts } from '@/features/election-history/mapProjection';
+import { DistrictElectionHistory } from '@/features/election-history/DistrictElectionHistory';
 import React, { useMemo, useState } from "react";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Badge } from "@/components/ui/badge";
@@ -49,8 +52,14 @@ class ErrorBoundary extends React.Component<
 }
 
 export const ElectionDistrictsView = ({ sidebarHeader }: { sidebarHeader?: React.ReactNode }) => {
-  const { districts, loading } = useElectionDistricts();
-  const [selectedDistrict, setSelectedDistrict] = useState<ElectionDistrict | null>(null);
+  const { districts: baseDistricts, loading } = useElectionDistricts();
+  const history = useElectionHistory();
+  const [historyPeriodId, setHistoryPeriodId] = useState('');
+  const publishedPeriods = history.data?.periods.filter(p => p.is_published) || [];
+  const historyPeriod = publishedPeriods.find(p => p.id === historyPeriodId) || publishedPeriods.find(p => p.is_current) || publishedPeriods[0];
+  const districts = useMemo(() => history.data && historyPeriod ? projectHistoricalDistricts(baseDistricts, history.data, historyPeriod.id) : baseDistricts, [baseDistricts, history.data, historyPeriod?.id]);
+  const [selectedDistrictRecord, setSelectedDistrict] = useState<ElectionDistrict | null>(null);
+  const selectedDistrict = districts.find(d => d.id === selectedDistrictRecord?.id) || null;
   const [useMapFallback, setUseMapFallback] = useState(false);
   const [showElectionDistricts, setShowElectionDistricts] = useState(true);
   const [showAdministrativeBoundaries, setShowAdministrativeBoundaries] = useState(false);
@@ -186,6 +195,15 @@ export const ElectionDistrictsView = ({ sidebarHeader }: { sidebarHeader?: React
           </ul>
         </details>
       )}
+          {historyPeriod && (
+            <div className="rounded-xl border bg-card p-3 shadow-sm">
+              <label htmlFor="map-legislature" className="text-sm font-medium">Legislaturperiode</label>
+              <select id="map-legislature" className="mt-1 w-full rounded-md border bg-background p-2 text-sm" value={historyPeriod.id} onChange={event => { setHistoryPeriodId(event.target.value); setFocusedDistrict(undefined); }}>
+                {publishedPeriods.map(p => <option key={p.id} value={p.id}>{p.name}{p.is_current ? ' · aktuell' : ''}</option>)}
+              </select>
+              <p className="mt-2 text-xs text-muted-foreground">Namen, Mandate und Ergebnisse aus der gewählten Periode. Die Karte verwendet die vorhandenen Grenzdaten; frühere Zuschnitte können abweichen.</p>
+            </div>
+          )}
           {/* Layer toggles */}
           <Card>
             <CardHeader>
@@ -269,7 +287,12 @@ export const ElectionDistrictsView = ({ sidebarHeader }: { sidebarHeader?: React
             <CardContent className="pt-5">
               {selectedDistrict ? (
                 <div className="space-y-3">
-                  {(() => {
+                  {history.data && historyPeriod && selectedDistrict.district_type !== 'verwaltungsgrenze' ? (
+                    <DistrictElectionHistory data={{ ...history.data, periods: publishedPeriods,
+                      mandates: history.data.mandates.filter(m => publishedPeriods.some(p => p.id === m.period_id)),
+                      candidacies: history.data.candidacies.filter(c => publishedPeriods.some(p => p.id === c.period_id)) }}
+                      periodId={historyPeriod.id} districtNumber={selectedDistrict.district_number} />
+                  ) : (() => {
                     const representatives = selectedDistrict.representatives || [];
                     const byLegislature = representatives.reduce<Record<string, typeof representatives>>((groups, rep) => {
                       const period = rep.legislature_period?.trim() || '18. Legislaturperiode';

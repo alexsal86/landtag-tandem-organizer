@@ -1,3 +1,5 @@
+import type { ElectionHistoryTables } from '@/features/election-history/types';
+
 export type Json =
   | string
   | number
@@ -13,7 +15,7 @@ export type Database = {
     PostgrestVersion: "12.2.3"
   }
   public: {
-    Tables: {
+    Tables: ElectionHistoryTables & {
       topic_catalog_links: {
         Row: {
           id: string
@@ -15359,6 +15361,7 @@ export type Database = {
       }
     }
     Functions: {
+      set_current_election_history_period: { Args: { period: string }; Returns: undefined }
       convert_topic_to_catalog: { Args: {p_topic:string;p_kind:string;p_region_kind?:string}; Returns:Json }
       _briefing_task_event: {
         Args: { _task: string; _text: string }

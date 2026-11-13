@@ -16,6 +16,7 @@ import { useAdministrationAccess } from "@/components/administration/useAdminist
 import { resolveNavigationState } from "@/components/administration/adminNavigation";
 import { normalizeAutomationParams } from "@/components/administration/automationNavigation";
 
+const ElectionHistoryAdmin = lazy(() => import("@/features/election-history/ElectionHistoryAdmin"));
 const HrTemplateEditor = lazy(() => import("@/features/onboarding-hr/HrTemplateEditor"));
 const PlanningDefaultCollaboratorsSettings = lazy(() => import("@/components/administration/PlanningDefaultCollaboratorsSettings").then(module => ({ default: module.PlanningDefaultCollaboratorsSettings })));
 const GeneralSettings = lazy(() => import("@/components/admin/GeneralSettings").then(module => ({ default: module.GeneralSettings })));
@@ -354,6 +355,7 @@ export default function Administration(): React.JSX.Element | null {
     if (activeSection === "superadmin" && isSuperAdmin) {
       switch (activeSubSection) {
         case "tenants": return <SuperadminTenantManagement />;
+        case "election-history": return <ElectionHistoryAdmin />;
         case "push-tests":
           return (
             <Card>
