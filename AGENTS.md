@@ -43,3 +43,5 @@
 - Employee preparation opens seven Berlin calendar days before the meeting; the cron dispatcher claims each reminder under a row lock, and optional protocol suggestions fill only empty fields.
 
 - Employee wellbeing JSON and trend RPCs are restricted to the employee and current direct supervisor by database policy, including against older admin ALL policies; thresholds live in the pure wellbeing module and never feed team-wide reports.
+
+- HR onboarding/offboarding reuse routine_package_runs/steps and the existing advance job with immutable employment-date anchors; evidence completion is database-guarded, underlying HR tasks use restrictive privacy policies, and offboarding handovers preserve ball_owner and exclude personal HR targets.

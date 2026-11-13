@@ -14,6 +14,133 @@ export type Database = {
   }
   public: {
     Tables: {
+      employee_lifecycle: {
+        Row: {
+          id: string
+          tenant_id: string
+          user_id: string
+          employment_type: string
+          start_date: string
+          end_date: string | null
+          mentor_user_id: string | null
+          created_at: string
+        }
+        Insert: {
+          id?: string
+          tenant_id: string
+          user_id: string
+          employment_type: string
+          start_date: string
+          end_date?: string | null
+          mentor_user_id?: string | null
+          created_at?: string
+        }
+        Update: {
+          id?: string
+          tenant_id?: string
+          user_id?: string
+          employment_type?: string
+          start_date?: string
+          end_date?: string | null
+          mentor_user_id?: string | null
+          created_at?: string
+        }
+        Relationships: []
+      }
+
+      employee_hr_templates: {
+        Row: {
+          id: string
+          tenant_id: string
+          name: string
+          employment_type: string
+          direction: string
+          steps: Json
+          revision: number
+          created_at: string
+        }
+        Insert: {
+          id?: string
+          tenant_id: string
+          name: string
+          employment_type: string
+          direction: string
+          steps: Json
+          revision?: number
+          created_at?: string
+        }
+        Update: {
+          id?: string
+          tenant_id?: string
+          name?: string
+          employment_type?: string
+          direction?: string
+          steps?: Json
+          revision?: number
+          created_at?: string
+        }
+        Relationships: []
+      }
+
+      employee_hr_evidence: {
+        Row: {
+          id: string
+          tenant_id: string
+          step_id: string
+          user_id: string
+          confirmed_on: string
+          confirmed_by: string
+          document_id: string | null
+          created_at: string
+        }
+        Insert: {
+          id?: string
+          tenant_id: string
+          step_id: string
+          user_id: string
+          confirmed_on: string
+          confirmed_by: string
+          document_id?: string | null
+          created_at?: string
+        }
+        Update: {
+          id?: string
+          tenant_id?: string
+          step_id?: string
+          user_id?: string
+          confirmed_on?: string
+          confirmed_by?: string
+          document_id?: string | null
+          created_at?: string
+        }
+        Relationships: []
+      }
+
+      employee_hr_reminder_log: {
+        Row: {
+          id: string
+          tenant_id: string
+          lifecycle_id: string
+          recipient_id: string
+          reminder_day: string
+        }
+        Insert: {
+          id?: string
+          tenant_id: string
+          lifecycle_id: string
+          recipient_id: string
+          reminder_day: string
+        }
+        Update: {
+          id?: string
+          tenant_id?: string
+          lifecycle_id?: string
+          recipient_id?: string
+          reminder_day?: string
+        }
+        Relationships: []
+      }
+
       committees: {
         Row: {
           id: string
@@ -10890,7 +11017,12 @@ export type Database = {
       }
       routine_package_runs: {
         Row: {
-          annual_task_id: string
+          employee_lifecycle_id: string | null
+          hr_direction: string | null
+          hr_template_id: string | null
+          hr_template_revision: number | null
+
+          annual_task_id: string | null
           created_at: string
           finish_day: string
           id: string
@@ -10901,7 +11033,12 @@ export type Database = {
           year: number
         }
         Insert: {
-          annual_task_id: string
+          employee_lifecycle_id?: string | null
+          hr_direction?: string | null
+          hr_template_id?: string | null
+          hr_template_revision?: number | null
+
+          annual_task_id: string | null
           created_at?: string
           finish_day: string
           id?: string
@@ -10912,7 +11049,12 @@ export type Database = {
           year: number
         }
         Update: {
-          annual_task_id?: string
+          employee_lifecycle_id?: string | null
+          hr_direction?: string | null
+          hr_template_id?: string | null
+          hr_template_revision?: number | null
+
+          annual_task_id?: string | null
           created_at?: string
           finish_day?: string
           id?: string
@@ -10955,6 +11097,11 @@ export type Database = {
       }
       routine_package_steps: {
         Row: {
+          hr_phase: string | null
+          is_mandatory: boolean
+          hr_anchor_day: string | null
+          hr_evidence_kind: string
+
           approval_id: string | null
           approver_id: string | null
           assignee_id: string
@@ -10977,6 +11124,11 @@ export type Database = {
           use_deputy: boolean
         }
         Insert: {
+          hr_phase?: string | null
+          is_mandatory?: boolean
+          hr_anchor_day?: string | null
+          hr_evidence_kind?: string
+
           approval_id?: string | null
           approver_id?: string | null
           assignee_id: string
@@ -10999,6 +11151,11 @@ export type Database = {
           use_deputy?: boolean
         }
         Update: {
+          hr_phase?: string | null
+          is_mandatory?: boolean
+          hr_anchor_day?: string | null
+          hr_evidence_kind?: string
+
           approval_id?: string | null
           approver_id?: string | null
           assignee_id?: string
@@ -14708,6 +14865,16 @@ export type Database = {
       }
     }
     Functions: {
+      selftest_employee_hr: { Args: {p_tenant:string}; Returns:Json }
+      save_employee_lifecycle: { Args: {p_tenant:string;p_user:string;p_type:string;p_start:string;p_end?:string|null;p_mentor?:string|null;p_id?:string|null}; Returns:string }
+      save_employee_hr_template: { Args: {p_tenant:string;p_name:string;p_type:string;p_direction:string;p_steps:Json;p_id?:string|null}; Returns:string }
+      seed_employee_hr_templates: { Args: {p_tenant:string}; Returns:undefined }
+      start_employee_hr: { Args: {p_lifecycle:string;p_template:string}; Returns:string }
+      complete_employee_hr_step: { Args: {p_step:string;p_confirmed_on?:string|null;p_document?:string|null;p_deputy?:string|null}; Returns:undefined }
+      remind_employee_hr: { Args: {p_lifecycle:string}; Returns:number }
+      handover_tasks_to_deputy: { Args: {p_tenant:string;p_user:string;p_deputy:string}; Returns:number }
+      can_view_employee_hr: { Args: {p_tenant:string;p_user:string}; Returns:boolean }
+      hr_task_visible: { Args: {p_task:string}; Returns:boolean }
       configure_team_rituals: { Args: { p_tenant: string; p_enabled: boolean }; Returns: undefined }
       save_team_ritual_profile: { Args: { p_tenant: string; p_opted_in: boolean; p_show_events: boolean; p_birthday: string | null; p_birth_year: number | null; p_joined_on: string | null }; Returns: undefined }
       save_team_question: { Args: { p_tenant: string; p_id: string | null; p_question: string; p_active: boolean }; Returns: undefined }

@@ -1,3 +1,4 @@
+import { HrReminderPanel } from "@/features/onboarding-hr/HrWorkspace";
 import { Users } from "lucide-react";
 import { useNavigate } from "react-router-dom";
 import { TeamAnnouncementsManager } from "@/components/announcements/TeamAnnouncementsManager";
@@ -76,6 +77,7 @@ export function MyWorkTeamTab() {
         )}
       </section>
       <aside className="min-w-0 space-y-5">
+        <HrReminderPanel />
         <TeamAnnouncementsManager compact />
         <MyWorkExpenseWidget userRole={userRole} />
       </aside>
