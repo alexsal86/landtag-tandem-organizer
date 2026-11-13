@@ -5,8 +5,9 @@ import { useCallback, useEffect, useState } from "react";
 import { useSearchParams } from "react-router-dom";
 import { NewUserForm } from "@/components/admin/NewUserForm";
 import { Badge } from "@/components/ui/badge";
+import { Avatar, AvatarFallback, AvatarImage } from "@/components/ui/avatar";
 import { Button } from "@/components/ui/button";
-import { Calendar, BarChart3, Clock, Loader2, MessageSquare, Plus, Network, UserRoundCog, UsersRound } from "lucide-react";
+import { Calendar, BarChart3, Clock, Loader2, MessageSquare, Plus, Network, UserRound, UserRoundCog, UsersRound } from "lucide-react";
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import { Dialog, DialogContent, DialogDescription, DialogHeader, DialogTitle } from "@/components/ui/dialog";
 import { EmployeeMeetingScheduler } from "@/features/employees/components/EmployeeMeetingScheduler";
@@ -156,15 +157,21 @@ export function EmployeesView() {
             <DialogTitle>Gespräch planen</DialogTitle>
             <DialogDescription>Mit wem möchten Sie ein Gespräch planen?</DialogDescription>
           </DialogHeader>
-          <div className="max-h-80 space-y-2 overflow-y-auto">
+          <div className="flex max-h-80 flex-wrap gap-2 overflow-y-auto p-1">
             {data.employees.length === 0 ? (
               <p className="text-sm text-muted-foreground">Noch keine Mitarbeitenden zugewiesen.</p>
             ) : data.employees.map(employee => (
-              <Button key={employee.user_id} variant="outline" className="w-full justify-start rounded-xl" onClick={() => {
+              <Button key={employee.user_id} variant="outline" size="sm" className="h-auto min-h-9 max-w-full justify-start rounded-full py-1 pl-1 pr-3" onClick={() => {
                 setSelectedEmployee({ id: employee.user_id, name: employee.display_name || "Unbenannt" });
                 setMeetingEmployeePickerOpen(false);
                 setSchedulerOpen(true);
-              }}>{employee.display_name || "Unbenannt"}</Button>
+              }}>
+                <Avatar className="h-7 w-7" aria-hidden="true">
+                  <AvatarImage src={employee.avatar_url ?? undefined} alt="" />
+                  <AvatarFallback><UserRound className="h-4 w-4" /></AvatarFallback>
+                </Avatar>
+                <span className="min-w-0 whitespace-normal break-words text-left">{employee.display_name || "Unbenannt"}</span>
+              </Button>
             ))}
           </div>
         </DialogContent>
