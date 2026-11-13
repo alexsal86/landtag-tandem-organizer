@@ -3703,15 +3703,58 @@ export type Database = {
         ]
       }
       document_annotation_tasks: {
-        Row: { id: string; annotation_id: string | null; task_id: string; document_id: string; tenant_id: string; created_at: string }
-        Insert: { id?: string; annotation_id?: string | null; task_id: string; document_id: string; tenant_id: string; created_at?: string }
-        Update: { id?: string; annotation_id?: string | null; task_id?: string; document_id?: string; tenant_id?: string; created_at?: string }
-        Relationships: []
+        Row: {
+          annotation_id: string | null
+          created_at: string
+          document_id: string
+          id: string
+          task_id: string
+          tenant_id: string
+        }
+        Insert: {
+          annotation_id?: string | null
+          created_at?: string
+          document_id: string
+          id?: string
+          task_id: string
+          tenant_id: string
+        }
+        Update: {
+          annotation_id?: string | null
+          created_at?: string
+          document_id?: string
+          id?: string
+          task_id?: string
+          tenant_id?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "document_annotation_tasks_annotation_id_fkey"
+            columns: ["annotation_id"]
+            isOneToOne: true
+            referencedRelation: "document_annotations"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "document_annotation_tasks_document_id_fkey"
+            columns: ["document_id"]
+            isOneToOne: false
+            referencedRelation: "documents"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "document_annotation_tasks_task_id_fkey"
+            columns: ["task_id"]
+            isOneToOne: true
+            referencedRelation: "tasks"
+            referencedColumns: ["id"]
+          },
+        ]
       }
       document_annotations: {
         Row: {
-          assigned_to: string | null
           annotation_type: string
+          assigned_to: string | null
           color: string
           content: string
           created_at: string
@@ -3720,8 +3763,8 @@ export type Database = {
           file_kind: string
           file_version: string | null
           id: string
-          parent_id: string | null
           page_number: number | null
+          parent_id: string | null
           quote_text: string | null
           resolved: boolean
           target_selector: Json
@@ -3729,8 +3772,8 @@ export type Database = {
           updated_at: string
         }
         Insert: {
-          assigned_to?: string | null
           annotation_type: string
+          assigned_to?: string | null
           color?: string
           content?: string
           created_at?: string
@@ -3739,8 +3782,8 @@ export type Database = {
           file_kind: string
           file_version?: string | null
           id?: string
-          parent_id?: string | null
           page_number?: number | null
+          parent_id?: string | null
           quote_text?: string | null
           resolved?: boolean
           target_selector?: Json
@@ -3748,8 +3791,8 @@ export type Database = {
           updated_at?: string
         }
         Update: {
-          assigned_to?: string | null
           annotation_type?: string
+          assigned_to?: string | null
           color?: string
           content?: string
           created_at?: string
@@ -3758,8 +3801,8 @@ export type Database = {
           file_kind?: string
           file_version?: string | null
           id?: string
-          parent_id?: string | null
           page_number?: number | null
+          parent_id?: string | null
           quote_text?: string | null
           resolved?: boolean
           target_selector?: Json
@@ -3768,17 +3811,17 @@ export type Database = {
         }
         Relationships: [
           {
-            foreignKeyName: "document_annotations_parent_id_fkey"
-            columns: ["parent_id"]
-            isOneToOne: false
-            referencedRelation: "document_annotations"
-            referencedColumns: ["id"]
-          },
-          {
             foreignKeyName: "document_annotations_document_id_fkey"
             columns: ["document_id"]
             isOneToOne: false
             referencedRelation: "documents"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "document_annotations_parent_id_fkey"
+            columns: ["parent_id"]
+            isOneToOne: false
+            referencedRelation: "document_annotations"
             referencedColumns: ["id"]
           },
         ]
@@ -14484,30 +14527,6 @@ export type Database = {
       }
     }
     Functions: {
-      create_document_annotation_task: {
-        Args: { _annotation: string; _title?: string; _assignee?: string }
-        Returns: string
-      }
-      document_annotation_task_selftest: {
-        Args: { _tenant: string }
-        Returns: Json
-      }
-      document_annotation_can_manage: {
-        Args: { _tenant: string; _author: string }
-        Returns: boolean
-      }
-      document_annotation_mention_members: {
-        Args: { _tenant: string }
-        Returns: { user_id: string; display_name: string }[]
-      }
-      document_annotation_mention_ids: {
-        Args: { _content: string }
-        Returns: string[]
-      }
-      document_annotations_permissions_selftest: {
-        Args: { _tenant: string }
-        Returns: Json
-      }
       _briefing_task_event: {
         Args: { _task: string; _text: string }
         Returns: undefined
@@ -14821,6 +14840,10 @@ export type Database = {
             Args: { planning_id: string; template_id_param?: string }
             Returns: undefined
           }
+      create_document_annotation_task: {
+        Args: { _annotation: string; _assignee?: string; _title?: string }
+        Returns: string
+      }
       create_knowledge_document_snapshot:
         | {
             Args: {
@@ -14892,6 +14915,29 @@ export type Database = {
           _trigger_type: string
         }
         Returns: undefined
+      }
+      document_annotation_can_manage: {
+        Args: { _author: string; _tenant: string }
+        Returns: boolean
+      }
+      document_annotation_mention_ids: {
+        Args: { _content: string }
+        Returns: string[]
+      }
+      document_annotation_mention_members: {
+        Args: { _tenant: string }
+        Returns: {
+          display_name: string
+          user_id: string
+        }[]
+      }
+      document_annotation_task_selftest: {
+        Args: { _tenant: string }
+        Returns: Json
+      }
+      document_annotations_permissions_selftest: {
+        Args: { _tenant: string }
+        Returns: Json
       }
       document_meeting_decision: {
         Args: { _decision: string; _meeting: string; _result: string }
