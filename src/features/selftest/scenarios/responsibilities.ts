@@ -1,5 +1,7 @@
 import {
   suggestResponsible,
+  responsibilityCoverage,
+  matchesResponsibilityArea,
   findCoverageGaps,
 } from "@/features/responsibilities/suggest";
 import { formatInTimeZone } from "@/features/responsibilities/berlinDay";
@@ -15,6 +17,42 @@ export const responsibilitiesScenario: TestScenario = {
     "Der Fremdtenant-Lesetest verwendet für das angemeldete Konto nicht zugängliche IDs. Zwei echte Sitzungen und RPC-Schreibtests werden zusätzlich im isolierten Datenbanktest geprüft.",
   ],
   steps: [
+    {
+      id: "matrix-multiple-primary",
+      label: "Mehrere Primärpersonen und unterschiedliche Abdeckungslücken",
+      kind: "logic",
+      run: async () => {
+        const area = { id: "topic", kind: "topic" as const, name: "Presse" };
+        const rows = [
+          {
+            user_id: "a",
+            kind: "topic" as const,
+            topic_id: "topic",
+            level: "primary" as const,
+          },
+          {
+            user_id: "b",
+            kind: "topic" as const,
+            topic_id: "topic",
+            level: "primary" as const,
+          },
+        ];
+        return {
+          ok:
+            responsibilityCoverage(area, rows).primary === 2 &&
+            responsibilityCoverage(area, rows).state === "covered" &&
+            responsibilityCoverage(area, [{ ...rows[0], level: "secondary" }])
+              .state === "no_primary" &&
+            responsibilityCoverage(area, []).state === "unassigned" &&
+            matchesResponsibilityArea(area, "Anna", rows, [
+              { id: "a", name: "Anna" },
+            ]),
+          message:
+            "Mehrere Primärpersonen sind erlaubt; sekundäre und vollständig fehlende Besetzung bleiben unterscheidbar. Suche findet zugeordnete Personen.",
+        };
+      },
+    },
+
     {
       id: "priority",
       label: "Thema und Region, Primärstufe und deterministische Gleichstände",

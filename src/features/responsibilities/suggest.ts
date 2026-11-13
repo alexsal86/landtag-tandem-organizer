@@ -102,3 +102,54 @@ export function findCoverageGaps(
     )
     .sort((a, b) => compare(a.kind, b.kind) || compare(a.id, b.id));
 }
+
+export interface ResponsibilityArea {
+  id: string;
+  name: string;
+  kind: "topic" | "committee" | "region";
+}
+/** Several people can be primary. Secondary-only coverage still needs a primary contact. */
+export function responsibilityCoverage(
+  area: Pick<ResponsibilityArea, "kind" | "id">,
+  rows: readonly Responsibility[],
+) {
+  const matching = rows.filter(
+    (r) => r.kind === area.kind && referenceOf(r) === area.id,
+  );
+  const primary = new Set(
+    matching.filter((r) => r.level === "primary").map((r) => r.user_id),
+  ).size;
+  const secondary = new Set(
+    matching.filter((r) => r.level === "secondary").map((r) => r.user_id),
+  ).size;
+  return {
+    primary,
+    secondary,
+    state: primary
+      ? ("covered" as const)
+      : secondary
+        ? ("no_primary" as const)
+        : ("unassigned" as const),
+  };
+}
+export function matchesResponsibilityArea(
+  area: ResponsibilityArea,
+  query: string,
+  rows: readonly Responsibility[],
+  people: readonly { id: string; name: string }[],
+) {
+  const term = query.trim().toLocaleLowerCase("de");
+  return (
+    !term ||
+    area.name.toLocaleLowerCase("de").includes(term) ||
+    rows.some(
+      (r) =>
+        r.kind === area.kind &&
+        referenceOf(r) === area.id &&
+        people.some(
+          (p) =>
+            p.id === r.user_id && p.name.toLocaleLowerCase("de").includes(term),
+        ),
+    )
+  );
+}

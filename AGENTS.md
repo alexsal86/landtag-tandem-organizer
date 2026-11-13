@@ -47,3 +47,5 @@
 - HR onboarding/offboarding reuse routine_package_runs/steps and the existing advance job with immutable employment-date anchors; evidence completion is database-guarded, underlying HR tasks use restrictive privacy policies, and offboarding handovers preserve ball_owner and exclude personal HR targets.
 
 - Annotation history is append-only in document_annotation_events, written by its database trigger under annotation permissions; clients only read it. OCR runs locally with self-hosted worker/core/language assets. Version relocation only proposes a unique text anchor and requires explicit confirmation; export produces a separate PDF copy and never changes originals.
+
+- Responsibility areas may have multiple primary people; UI assignment changes affect only the chosen person, and coverage distinguishes a missing primary contact from a completely unassigned area.
