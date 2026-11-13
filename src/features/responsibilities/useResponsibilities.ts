@@ -51,12 +51,15 @@ export function useResponsibilities() {
       const profiles = ids.length
         ? await supabase
             .from("profiles")
-            .select("user_id,display_name")
+            .select("user_id,display_name,badge_color,avatar_url")
             .in("user_id", ids)
         : { data: [], error: null };
       if (profiles.error) throw profiles.error;
       const names = new Map<string, string | null>(
         (profiles.data ?? []).map((p) => [p.user_id, p.display_name] as const),
+      );
+      const appearances = new Map<string, { badge_color: string | null; avatar_url: string | null }>(
+        (profiles.data ?? []).map((p) => [p.user_id, p] as const),
       );
       return {
         responsibilities: (rows.data ?? []).filter((r) =>
@@ -66,7 +69,12 @@ export function useResponsibilities() {
         committees: committees.data ?? [],
         regions: regions.data ?? [],
         people: ids
-          .map((id) => ({ id, name: names.get(id) || "Unbekannt" }))
+          .map((id) => ({
+            id,
+            name: names.get(id) || "Unbekannt",
+            badgeColor: appearances.get(id)?.badge_color ?? null,
+            avatarUrl: appearances.get(id)?.avatar_url ?? null,
+          }))
           .sort((a, b) => a.name.localeCompare(b.name, "de")),
       };
     },
@@ -84,7 +92,7 @@ export function useResponsibilities() {
         p_user: args.userId,
         p_kind: args.kind,
         p_reference: args.reference,
-        p_level: args.level,
+        p_level: args.level ?? undefined,
       });
       if (error) throw error;
     },

@@ -79,7 +79,7 @@ export function EmployeesView() {
   }
 
   return (
-    <div className="min-h-screen bg-gradient-subtle p-3 sm:p-6">
+    <div className="min-h-0 bg-gradient-subtle p-3 sm:p-6">
       <header>
         <div className="flex items-center justify-between flex-wrap gap-2">
           <div>

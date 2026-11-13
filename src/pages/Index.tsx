@@ -57,7 +57,7 @@ const NotFound = lazyWithRetry(() => import("./NotFound"));
 const Index = (): React.JSX.Element => {
   const { width: navWidth, isResizing, startResize } = useNavWidth();
   const { user, loading: authLoading } = useAuth();
-  const { currentTenant, loading: tenantLoading } = useTenant();
+  const { loading: tenantLoading } = useTenant();
   const navigate = useNavigate();
   const location = useLocation();
   const { section, subId } = useParams();
@@ -277,7 +277,7 @@ const Index = (): React.JSX.Element => {
         Zum Hauptinhalt springen
       </a>
       
-      <div className={cn("flex min-h-app h-app w-full bg-background overflow-hidden", isResizing && "select-none")}>
+      <div className={cn("fixed inset-0 flex h-app w-full bg-background overflow-hidden", isResizing && "select-none")}>
         <div className="hidden md:flex sticky top-0 h-app z-30" style={{ width: navWidth }}>
           <AppNavigation 
             activeSection={activeSection} 

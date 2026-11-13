@@ -136,3 +136,12 @@
 - [x] Bestehendes App-Theme, mobile Darstellung und Tastaturbedienung mit shadcn-Popovers; Mitglieder lesen, Leitung/Abgeordnete bearbeiten.
 - [x] Vier gezielte Vitest-Tests inklusive Selbsttest-Logik, Feature-Typecheck und Lint. Chromium-Smoke mit gemocktem Service: weitere Primärperson ohne Änderung anderer Personen, Lückenfilter, Suche, Personenkarten/Profil, Mobilansicht und reine Leseansicht.
 - [ ] Persistente Bedienung mit echter Supabase-Sitzung nicht geprüft. Keine neue Migration nötig; vorhandene Tenant-/Rollen-RPCs und das bestehende Datenmodell werden verwendet.
+
+# Zuständigkeiten und Team-Rituale — Bedienungsnachbesserung
+- [x] Mitarbeiterfarben und Profilbilder in Zuweisung, Matrix und Themenübersicht; sichtbarer Abstand zwischen Avatar und Name.
+- [x] „Bereichstyp ändern“ direkt in „Themen verwalten“ und der Themenübersicht: Ausschuss, Stadtteil oder Gemeinde. Leitungsgeschützte, tenantgeprüfte RPC übernimmt Zuständigkeiten einschließlich mehrerer Primärpersonen und zeigt die Ziele im Mitarbeiterkatalog an. Historische Themenverknüpfungen bleiben erhalten; umgewandelte Themen werden inaktiv.
+- [x] Konvertierungsverweise bleiben beim Zusammenführen von Ausschüssen/Regionen erhalten. Quellthemen können nicht versehentlich erneut zugewiesen oder über Themen-Merge entfernt werden.
+- [x] App-Shell auf den Viewport begrenzt und überflüssige Mindesthöhe im Mitarbeiterbereich entfernt: Hauptinhalt bleibt scrollbar, zusätzliche Seiten-Scrollbar entfällt.
+- [x] Fester Einstieg „Team-Rituale“ im Dashboard und in „Meine Arbeit“, einschließlich ausgeschaltetem Feature, fehlender Teilnahme oder Ladefehler. Freischaltung und persönliche Teilnahme bleiben ausdrücklich freiwillig.
+- [x] Zehn gezielte Vitest-Tests, Logic-/RPC-Selbsttestschritte, lokale Datenbankprüfung mit wiederholter Migration, Rollen-/Tenant-Ablehnung und Konvertierung/Merge. Chromium-Smoke mit gemockten Daten für Avatarfarbe, Abstand, Scrollcontainer und Ritual-Einstieg.
+- [ ] Migration `20261113180000_topic_catalog_conversion.sql` auf Supabase anwenden und mit echter Sitzung bedienen; keine externe Supabase-Testsitzung verfügbar. Vollständiger App-Typecheck trifft zusätzlich auf fehlende lokale Abhängigkeiten `pdf-lib`/`tesseract.js`; gezielte Feature-Typechecks separat geprüft.

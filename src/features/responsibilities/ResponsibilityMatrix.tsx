@@ -418,7 +418,7 @@ export function ResponsibilityMatrix() {
             return (
               <article key={p.id} className="rounded-xl border bg-card p-4">
                 <header className="mb-4 flex items-start gap-3">
-                  <PersonMark name={p.name} />
+                  <PersonMark {...p} />
                   <div className="min-w-0 flex-1">
                     <h3 className="font-semibold">{p.name}</h3>
                     <p className="text-sm text-muted-foreground">

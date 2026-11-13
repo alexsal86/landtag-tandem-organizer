@@ -25,7 +25,7 @@ export function EmployeeSelfView({ loading, selfSettings, selfLeaveAgg, selfProf
     (selfLeaveAgg?.pending.other ?? 0);
 
   return (
-    <div className="min-h-screen bg-gradient-subtle p-6">
+    <div className="min-h-0 bg-gradient-subtle p-6">
       <header>
         <h1 className="text-2xl font-semibold">Mitarbeiter</h1>
         <p className="text-muted-foreground">Ihre Einstellungen & Abwesenheiten</p>

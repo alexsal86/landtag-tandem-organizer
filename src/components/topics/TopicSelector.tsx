@@ -46,7 +46,7 @@ export const TopicSelector: React.FC<TopicSelectorProps> = ({
   };
 
   const activeTopics = topics.filter(t => t.is_active);
-  const selectedTopics = activeTopics.filter(t => selectedTopicIds.includes(t.id));
+  const selectedTopics = topics.filter(t => selectedTopicIds.includes(t.id));
 
   const toggleTopic = (topicId: string) => {
     if (selectedTopicIds.includes(topicId)) {

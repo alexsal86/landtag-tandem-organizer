@@ -60,3 +60,8 @@ export function upcomingAnniversaries(profiles: readonly EmploymentProfile[], to
 export function canManageTeamRituals(role: string | null): boolean {
   return role === 'abgeordneter' || role === 'bueroleitung';
 }
+
+/** A dashboard entry must remain visible even before activation or personal opt-in. */
+export function ritualDashboardState(loading:boolean,failed:boolean,enabled:boolean,optedIn:boolean) {
+  return loading?'loading':failed?'unavailable':!enabled?'disabled':!optedIn?'join':'ready';
+}

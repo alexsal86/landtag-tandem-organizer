@@ -49,3 +49,5 @@
 - Annotation history is append-only in document_annotation_events, written by its database trigger under annotation permissions; clients only read it. OCR runs locally with self-hosted worker/core/language assets. Version relocation only proposes a unique text anchor and requires explicit confirmation; export produces a separate PDF copy and never changes originals.
 
 - Responsibility areas may have multiple primary people; UI assignment changes affect only the chosen person, and coverage distinguishes a missing primary contact from a completely unassigned area.
+
+- Topic-to-catalog conversion runs atomically through convert_topic_to_catalog: preserve historical topic links, move employee responsibilities without removing other primaries, and keep topic_catalog_links valid when merging committees or regions.

@@ -1,3 +1,4 @@
+import {TeamRitualDashboardCard} from "@/features/team-rituals/TeamRitualDashboardCard";
 import React, { useState, useEffect, useMemo } from 'react';
 import { cn } from '@/lib/utils';
 import { debugConsole } from '@/utils/debugConsole';
@@ -287,6 +288,7 @@ export const CustomizableDashboard: React.FC = () => {
           </div>
         </div>
 
+        <div className="mb-6"><TeamRitualDashboardCard /></div>
         {/* Quick Actions */}
         <div className="mb-6">
           <QuickActionsWidget 

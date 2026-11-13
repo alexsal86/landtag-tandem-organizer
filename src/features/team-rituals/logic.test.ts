@@ -1,3 +1,4 @@
+import {ritualDashboardState} from "./logic";
 import { describe, expect, it } from 'vitest';
 import { berlinDay, berlinWeek, canManageTeamRituals, upcomingAnniversaries, isValidWeeklyAnswer, pickNextQuestion, upcomingTeamEvents, type TeamProfile } from './logic';
 const profile: TeamProfile = { user_id: 'a', display_name: 'Team', opted_in: true, show_events: true, birthday: '02-29', birth_year: null, joined_on: null };
@@ -33,3 +34,5 @@ describe('Team-Rituale', () => {
     expect(upcomingTeamEvents([{ ...profile, birthday: null, joined_on: '2025-02-28' }], new Date('2025-02-28T10:00Z'))).toEqual([]);
   });
 });
+
+it("hält den Dashboard-Einstieg auch ohne Freigabe oder Teilnahme sichtbar",()=>{expect(ritualDashboardState(false,false,false,false)).toBe("disabled");expect(ritualDashboardState(false,false,true,false)).toBe("join");expect(ritualDashboardState(false,true,true,true)).toBe("unavailable");expect(ritualDashboardState(false,false,true,true)).toBe("ready");});
