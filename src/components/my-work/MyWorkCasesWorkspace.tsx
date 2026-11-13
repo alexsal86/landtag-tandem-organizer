@@ -1,3 +1,4 @@
+import { ResponsibleSuggestion } from "@/features/responsibilities/ResponsibleSuggestion";
 import { mergeStepChangeEvents } from "@/features/cases/items/timeline";
 import { useCaseWorkflow } from "@/components/my-work/hooks/useCaseWorkflow";
 import type { ComponentProps } from "react";
@@ -311,7 +312,7 @@ export function MyWorkCasesWorkspace() {
         assignee: bAssignee,
       }[itemSort.primary.key];
 
-      let primaryResult = 0;
+      let primaryResult: number;
       if (typeof aValue === "number" && typeof bValue === "number") {
         primaryResult = (aValue - bValue) * primaryDirectionFactor;
       } else {
@@ -1104,7 +1105,11 @@ export function MyWorkCasesWorkspace() {
 
   // Keep the ball controls in the central detail area; properties live in its sidebar.
   const ballPanelNode = detailItem && editableCaseItem ? (
-                    <CaseItemBallPanel
+                    <>{canHandover && <ResponsibleSuggestion context={{
+                      topicIds: Array.isArray(detailItem.intake_payload?.topic_ids) ? detailItem.intake_payload.topic_ids.filter((v):v is string=>typeof v==='string') : [],
+                      regionIds: Array.isArray(detailItem.intake_payload?.region_ids) ? detailItem.intake_payload.region_ids.filter((v):v is string=>typeof v==='string') : [],
+                      committeeIds: Array.isArray(detailItem.intake_payload?.committee_ids) ? detailItem.intake_payload.committee_ids.filter((v):v is string=>typeof v==='string') : [],
+                    }} onAccept={id=>runAsync(()=>handleHandover([detailItem.id],id))}/>}<CaseItemBallPanel
                       variant="bar"
                       item={detailItem}
                       tenantId={tenantId}
@@ -1156,7 +1161,7 @@ export function MyWorkCasesWorkspace() {
                       }}
                       onOpenMeetingSelector={() => { setMeetingSelectorItemId(detailItem.id); setIsMeetingSelectorOpen(true); }}
                       onRequestDecision={handleRequestDecision}
-                    />
+                    /></>
                   
   ) : null;
 

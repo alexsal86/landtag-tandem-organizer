@@ -1,5 +1,5 @@
 import React from "react";
-import { useTopics, Topic } from "@/hooks/useTopics";
+import { useTopics } from "@/hooks/useTopics";
 import { useNavigate } from "react-router-dom";
 import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
@@ -47,7 +47,6 @@ export const TopicSelector: React.FC<TopicSelectorProps> = ({
 
   const activeTopics = topics.filter(t => t.is_active);
   const selectedTopics = activeTopics.filter(t => selectedTopicIds.includes(t.id));
-  const availableTopics = activeTopics.filter(t => !selectedTopicIds.includes(t.id));
 
   const toggleTopic = (topicId: string) => {
     if (selectedTopicIds.includes(topicId)) {

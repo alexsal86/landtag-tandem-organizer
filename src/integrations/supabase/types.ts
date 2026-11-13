@@ -14,6 +14,102 @@ export type Database = {
   }
   public: {
     Tables: {
+      committees: {
+        Row: {
+          id: string
+          tenant_id: string
+          name: string
+          is_active: boolean
+          order_index: number
+        }
+        Insert: {
+          id?: string
+          tenant_id: string
+          name: string
+          is_active?: boolean
+          order_index?: number
+        }
+        Update: {
+          id?: string
+          tenant_id?: string
+          name?: string
+          is_active?: boolean
+          order_index?: number
+        }
+        Relationships: []
+      }
+
+      regions: {
+        Row: {
+          id: string
+          tenant_id: string
+          name: string
+          kind: string
+          election_district_id: string | null
+          is_active: boolean
+          order_index: number
+        }
+        Insert: {
+          id?: string
+          tenant_id: string
+          name: string
+          kind: string
+          election_district_id?: string | null
+          is_active?: boolean
+          order_index?: number
+        }
+        Update: {
+          id?: string
+          tenant_id?: string
+          name?: string
+          kind?: string
+          election_district_id?: string | null
+          is_active?: boolean
+          order_index?: number
+        }
+        Relationships: []
+      }
+
+      employee_responsibilities: {
+        Row: {
+          id: string
+          tenant_id: string
+          user_id: string
+          kind: string
+          topic_id: string | null
+          committee_id: string | null
+          region_id: string | null
+          role_focus: string | null
+          level: string
+          created_at: string
+        }
+        Insert: {
+          id?: string
+          tenant_id: string
+          user_id: string
+          kind: string
+          topic_id?: string | null
+          committee_id?: string | null
+          region_id?: string | null
+          role_focus?: string | null
+          level: string
+          created_at?: string
+        }
+        Update: {
+          id?: string
+          tenant_id?: string
+          user_id?: string
+          kind?: string
+          topic_id?: string | null
+          committee_id?: string | null
+          region_id?: string | null
+          role_focus?: string | null
+          level?: string
+          created_at?: string
+        }
+        Relationships: []
+      }
+
       action_permissions: {
         Row: {
           action_key: string
@@ -14612,6 +14708,27 @@ export type Database = {
       }
     }
     Functions: {
+      get_latest_employee_meetings: {
+        Args: { p_employee_ids: string[] }
+        Returns: { employee_id: string; meeting_id: string; meeting_date: string }[]
+      }
+      assign_from_responsibility_matrix: {
+        Args: { p_tenant: string; p_kind: string; p_id: string; p_user: string | null }
+        Returns: undefined
+      }
+      set_employee_responsibility: {
+        Args: { p_tenant: string; p_user: string; p_kind: string; p_reference: string; p_level?: string | null }
+        Returns: string
+      }
+      save_responsibility_catalog: {
+        Args: { p_tenant: string; p_kind: string; p_name: string; p_id?: string; p_region_kind?: string; p_election_district?: string; p_active?: boolean }
+        Returns: string
+      }
+      merge_responsibility_catalog: {
+        Args: { p_tenant: string; p_kind: string; p_source: string; p_target: string }
+        Returns: undefined
+      }
+
       _briefing_task_event: {
         Args: { _task: string; _text: string }
         Returns: undefined

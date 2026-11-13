@@ -1,3 +1,6 @@
+import { ResponsibilityContextFields } from "@/features/responsibilities/ResponsibilityContextFields";
+import { ResponsibleSuggestion } from "@/features/responsibilities/ResponsibleSuggestion";
+import { TopicSelector } from "@/components/topics/TopicSelector";
 import { useEffect, useRef, useState } from "react";
 import { addWeeks, format } from "date-fns";
 import { Briefcase, Check, ChevronLeft, ChevronRight, Mail, MessageSquare, Phone, UserRound } from "lucide-react";
@@ -94,6 +97,8 @@ function WizardStepper({ currentStep }: { currentStep: number }) {
 export function CaseItemCreateDialog({ open, onOpenChange, onCreated, createCaseItem, assignees, defaultAssigneeId, categoryOptions }: CaseItemCreateDialogProps) {
   const { user } = useAuth();
   const { currentTenant } = useTenant();
+  const [scope,setScope] = useState({regionIds:[] as string[],committeeIds:[] as string[]});
+  const [topicIds, setTopicIds] = useState<string[]>([]);
   const [step, setStep] = useState(1);
   const [subject, setSubject] = useState("");
   const [description, setDescription] = useState("");
@@ -125,7 +130,9 @@ export function CaseItemCreateDialog({ open, onOpenChange, onCreated, createCase
   useEffect(() => {
     if (open) {
       setStep(1);
-      setSubject("");
+      setTopicIds([]);
+    setScope({regionIds:[],committeeIds:[]});
+    setSubject("");
       setDescription("");
       setContactName("");
       setContactEmail("");
@@ -217,6 +224,9 @@ export function CaseItemCreateDialog({ open, onOpenChange, onCreated, createCase
       visible_to_all: visibleToAll,
       intake_payload: {
         category,
+        topic_ids: topicIds,
+        region_ids: scope.regionIds,
+        committee_ids: scope.committeeIds,
         assignee_ids: selectedAssigneeIds,
         contact_name: contactName.trim() || null,
         contact_detail: getReporterContact(),
@@ -268,6 +278,7 @@ export function CaseItemCreateDialog({ open, onOpenChange, onCreated, createCase
 
         {submitError && <p className="text-sm text-destructive">{submitError}</p>}
 
+        {step === 3 && <div className="space-y-3"><Label>Themen</Label><TopicSelector selectedTopicIds={topicIds} onTopicsChange={setTopicIds} /><ResponsibilityContextFields {...scope} onChange={patch=>setScope(previous=>({...previous,...patch}))} /><ResponsibleSuggestion context={{topicIds,...scope}} onAccept={id=>setSelectedAssigneeIds([id])} /></div>}
         {/* Step 1: Kanal & Kontakt */}
         {step === 1 && (
           <div className="space-y-4 py-2">

@@ -818,6 +818,24 @@ export const useCaseFileDetails = (caseFileId: string | null) => {
     }
   };
 
+  const assignFromMatrix = async (userId: string | null) => {
+    if (!caseFileId || !caseFile) return false;
+
+    try {
+      const { error } = await supabase.rpc('assign_from_responsibility_matrix', {
+        p_tenant: caseFile.tenant_id, p_kind: 'case_file', p_id: caseFileId, p_user: userId,
+      });
+
+      if (error) throw error;
+      await fetchCaseFile();
+      notify.success("Zuständiger Bearbeiter aktualisiert");
+      return true;
+    } catch (error) {
+      notify.error("Fehler beim Aktualisieren");
+      return false;
+    }
+  };
+
   const updateProcessingStatuses = async (statuses: string[]) => {
     if (!caseFileId) return false;
 
@@ -875,6 +893,7 @@ export const useCaseFileDetails = (caseFileId: string | null) => {
     updateRisksOpportunities,
     completeTask,
     updateAssignedTo,
+    assignFromMatrix,
     updateProcessingStatuses,
   };
 };

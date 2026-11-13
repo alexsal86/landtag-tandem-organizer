@@ -3,7 +3,7 @@
   "private": true,
   "type": "module",
   "scripts": {
-    "test": "node ../../scripts/test-workflow-consistency.mjs && node ../../scripts/test-appointment-role-workflow.mjs && node ../../scripts/test-admin-role-replacement.mjs && node ../../scripts/test-admin-integrity.mjs && node ../../scripts/test-ics-validation-access.mjs && node ../../scripts/test-admin-continuation.mjs && node ../../scripts/test-admin-edge-guards.mjs && node ../../scripts/test-office-routine-packages.mjs && node ../../scripts/test-office-routine-scheduler.mjs && node ../../scripts/test-knowledge-qa.mjs"
+    "test": "node ../../scripts/test-employee-responsibilities.mjs && node ../../scripts/test-workflow-consistency.mjs && node ../../scripts/test-appointment-role-workflow.mjs && node ../../scripts/test-admin-role-replacement.mjs && node ../../scripts/test-admin-integrity.mjs && node ../../scripts/test-ics-validation-access.mjs && node ../../scripts/test-admin-continuation.mjs && node ../../scripts/test-admin-edge-guards.mjs && node ../../scripts/test-office-routine-packages.mjs && node ../../scripts/test-office-routine-scheduler.mjs && node ../../scripts/test-knowledge-qa.mjs"
   },
   "devDependencies": {
     "@electric-sql/pglite": "0.5.15"

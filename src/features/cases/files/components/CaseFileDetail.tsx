@@ -146,6 +146,7 @@ export function CaseFileDetail({ caseFileId, onBack }: CaseFileDetailProps) {
             onTopicsChange={setAssignedTopics}
             onAddContact={() => setShowAddContact(true)}
             onAssignUser={(userId) => details.updateAssignedTo(userId)}
+            onMatrixAssign={(userId) => {void details.assignFromMatrix(userId);}}
           />
         </div>
 

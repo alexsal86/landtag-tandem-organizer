@@ -1,3 +1,6 @@
+import { ResponsibleSuggestion } from "@/features/responsibilities/ResponsibleSuggestion";
+import { ResponsibilityContextFields } from "@/features/responsibilities/ResponsibilityContextFields";
+import { TopicSelector } from "@/components/topics/TopicSelector";
 import { useState, useEffect, useMemo } from "react";
 import { useCaseFiles, CaseFileFormData } from "@/features/cases/files/hooks";
 import { useCaseFileTypes } from "@/features/cases/files/hooks";
@@ -21,6 +24,8 @@ import { RadioGroup, RadioGroupItem } from "@/components/ui/radio-group";
 import { MultiSelect } from "@/components/ui/multi-select-simple";
 import { Lock, Users, Globe } from "lucide-react";
 import { CaseFile } from "@/features/cases/files/hooks";
+import { notify } from "@/lib/notify";
+import { useTenant } from "@/hooks/useTenant";
 import { supabase } from "@/integrations/supabase/client";
 
 interface CaseFileCreateDialogProps {
@@ -38,8 +43,12 @@ interface Profile {
 
 
 export function CaseFileCreateDialog({ open, onOpenChange, onSuccess, defaultCaseType, entityLabel = "Fallakte" }: CaseFileCreateDialogProps) {
+  const { currentTenant } = useTenant();
   const { createCaseFile } = useCaseFiles();
   const { caseFileTypes } = useCaseFileTypes();
+  const [topicIds,setTopicIds] = useState<string[]>([]);
+  const [scope,setScope] = useState({regionIds:[] as string[],committeeIds:[] as string[]});
+  const [suggestedAssignee,setSuggestedAssignee] = useState<string|null>(null);
   const [isSubmitting, setIsSubmitting] = useState(false);
   const [formData, setFormData] = useState<CaseFileFormData>({
     title: "",
@@ -122,10 +131,14 @@ export function CaseFileCreateDialog({ open, onOpenChange, onSuccess, defaultCas
           }))
         : [];
 
-      const result = await createCaseFile(submitData, participants);
+      const result = await createCaseFile(submitData, participants, topicIds);
 
       if (!result) return;
 
+      if (suggestedAssignee && currentTenant) {
+        const handover = await supabase.rpc('assign_from_responsibility_matrix',{p_tenant:currentTenant.id,p_kind:'case_file',p_id:result.id,p_user:suggestedAssignee});
+        if (handover.error) notify.error("Fallakte erstellt, Übergabe fehlgeschlagen",{description:handover.error.message});
+      }
       // Reset form
       setFormData({
         title: "",
@@ -136,6 +149,7 @@ export function CaseFileCreateDialog({ open, onOpenChange, onSuccess, defaultCas
         reference_number: "",
         is_private: false,
       });
+      setTopicIds([]);setScope({regionIds:[],committeeIds:[]});setSuggestedAssignee(null);
       setVisibility('private');
       setSelectedParticipantIds([]);
       setParticipantRoles({});
@@ -160,6 +174,11 @@ export function CaseFileCreateDialog({ open, onOpenChange, onSuccess, defaultCas
           </DialogHeader>
 
           <div className="grid gap-4 py-4">
+            <Label>Themen</Label><TopicSelector selectedTopicIds={topicIds} onTopicsChange={setTopicIds}/>
+            <ResponsibilityContextFields {...scope} onChange={patch=>setScope(previous=>({...previous,...patch}))}/>
+            <ResponsibleSuggestion context={{topicIds,...scope}} onAccept={setSuggestedAssignee}/>
+            {suggestedAssignee&&<p className="text-sm">Übergabe an {profiles.find(profile=>profile.user_id===suggestedAssignee)?.display_name ?? "ausgewählte Person"} beim Erstellen vorgemerkt. <Button type="button" variant="link" onClick={()=>setSuggestedAssignee(null)}>Zurücknehmen</Button></p>}
+
             <div className="grid gap-2">
               <Label htmlFor="title">Titel *</Label>
               <Input

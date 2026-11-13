@@ -1,6 +1,5 @@
-import { useState, useEffect, useCallback } from "react";
+import { useState, useEffect, useCallback, useRef } from "react";
 import { supabase } from "@/integrations/supabase/client";
-import { useToast } from "@/components/ui/use-toast";
 import { useTenant } from "@/hooks/useTenant";
 import { debugConsole } from '@/utils/debugConsole';
 import { notify } from "@/lib/notify";
@@ -22,31 +21,38 @@ export const useTopics = () => {
   const [topics, setTopics] = useState<Topic[]>([]);
   const [loading, setLoading] = useState(true);
   const { currentTenant } = useTenant();
+  const requestVersion = useRef(0);
+  const [loadedTenantId,setLoadedTenantId] = useState<string|null>(null);
 
-  const fetchTopics = async () => {
+  const fetchTopics = useCallback(async () => {
+    const version = ++requestVersion.current;
+    if (!currentTenant?.id) {setTopics([]);setLoadedTenantId(null);setLoading(false);return;}
     try {
       setLoading(true);
       const { data, error } = await supabase
         .from('topics')
         .select('id, name, label, icon, color, description, order_index, is_active, created_at, updated_at')
+        .eq('tenant_id',currentTenant.id)
         .order('order_index');
 
+      if (version !== requestVersion.current) return;
       if (error) {
         debugConsole.error('Error fetching topics:', error);
         return;
       }
 
       setTopics(data || []);
+      setLoadedTenantId(currentTenant.id);
     } catch (error) {
       debugConsole.error('Error in fetchTopics:', error);
     } finally {
-      setLoading(false);
+      if (version === requestVersion.current) setLoading(false);
     }
-  };
+  }, [currentTenant?.id]);
 
   useEffect(() => {
-    fetchTopics();
-  }, []);
+    void fetchTopics();
+  }, [fetchTopics]);
 
   const createTopic = async (topicData: Partial<Topic>) => {
     if (!topicData.name || !topicData.label) {
@@ -181,7 +187,7 @@ export const useTopics = () => {
   };
 
   return {
-    topics,
+    topics: loadedTenantId === currentTenant?.id ? topics : [],
     loading,
     fetchTopics,
     createTopic,
@@ -211,7 +217,7 @@ export const useCaseFileTopics = (caseFileId: string | undefined) => {
         .eq('case_file_id', caseFileId);
 
       if (error) throw error;
-      setAssignedTopics(data?.map((t: Record<string, any>) => t.topic_id) || []);
+      setAssignedTopics(data?.flatMap(t => t.topic_id ? [t.topic_id] : []) || []);
     } catch (error) {
       debugConsole.error('Error fetching case file topics:', error);
     } finally {
