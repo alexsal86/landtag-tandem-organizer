@@ -64,11 +64,26 @@ serve(withSafeHandler("create-admin-user", async (req) => {
     }
 
     // Parse request body
-    const { email, displayName, role, password } = await req.json();
+    const { email, displayName, role, password, tenantId, employment } = await req.json();
 
     // Validate input
     if (!email || !displayName) {
       throw new Error('Email and display name are required');
+    }
+
+    // Validate the selected office before creating an account.
+    const callerClient = createClient(
+      Deno.env.get('SUPABASE_URL') ?? '',
+      Deno.env.get('SUPABASE_ANON_KEY') ?? '',
+      { global: { headers: { Authorization: authHeader } }, auth: { persistSession: false } },
+    );
+    if (employment) {
+      if (!tenantId || !employment.start || !employment.type) throw new Error('Employment and office are required');
+      const { data: allowed, error: permissionError } = await callerClient.rpc('is_tenant_config_admin', { _tenant_id: tenantId });
+      // Membership is checked independently; global roles do not grant cross-office access.
+      const { data: membership } = await supabaseAdmin.from('user_tenant_memberships').select('id').eq('tenant_id', tenantId).eq('user_id', user.id).eq('is_active', true).maybeSingle();
+      if (permissionError || !allowed || !membership) throw new Error('No access to selected office');
+      if (!/^\d{4}-\d{2}-\d{2}$/.test(employment.start) || (employment.end && (!/^\d{4}-\d{2}-\d{2}$/.test(employment.end) || employment.end < employment.start))) throw new Error('Invalid employment dates');
     }
 
     // Generate password if not provided
@@ -236,6 +251,24 @@ serve(withSafeHandler("create-admin-user", async (req) => {
       if (roleAssignError) {
         console.error('Error assigning role:', roleAssignError);
         // Don't throw here as the user is already created
+      }
+    }
+
+    if (employment) {
+      const { error: membershipError } = await supabaseAdmin.from('user_tenant_memberships').insert({
+        tenant_id: tenantId, user_id: newUser.user.id, role: role || 'mitarbeiter', is_active: true,
+      });
+      const lifecycleResult = membershipError ? { error: membershipError } : await callerClient.rpc('save_employee_lifecycle', {
+        p_tenant: tenantId, p_user: newUser.user.id, p_type: employment.type,
+        p_start: employment.start, p_end: employment.end || null,
+        p_mentor: employment.mentor && employment.mentor !== 'none' ? employment.mentor : null,
+      });
+      if (lifecycleResult.error) {
+        // The lifecycle RPC is atomic. Remove the new account on failure so a retry
+        // cannot leave a duplicate account without its employment and HR packages.
+        const { error: cleanupError } = await supabaseAdmin.auth.admin.deleteUser(newUser.user.id);
+        if (cleanupError) console.error('Could not roll back new employee:', cleanupError);
+        throw lifecycleResult.error;
       }
     }
 

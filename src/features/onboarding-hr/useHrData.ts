@@ -116,7 +116,12 @@ export function useHrData() {
       if (result.error) throw new Error(result.error.message);
       return result.data;
     },
-    onSuccess: () => client.invalidateQueries({ queryKey: ["employee-hr"] }),
+    onSuccess: async () => {
+      await Promise.all([
+        client.invalidateQueries({ queryKey: ["employee-hr"] }),
+        client.invalidateQueries({ queryKey: ["employee-admin-overview"] }),
+      ]);
+    },
   });
   return {
     ...query,

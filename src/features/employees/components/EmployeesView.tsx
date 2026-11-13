@@ -129,7 +129,6 @@ export function EmployeesView() {
             updateHours={ops.updateHours}
             updateDaysPerWeek={ops.updateDaysPerWeek}
             updateVacationDays={ops.updateVacationDays}
-            updateStartDate={ops.updateStartDate}
             onScheduleMeeting={(emp): void => { setSelectedEmployee(emp); setSchedulerOpen(true); }}
           />
         </TabsContent>
@@ -145,7 +144,7 @@ export function EmployeesView() {
       </Tabs>
 
       <Dialog open={newEmployeeOpen} onOpenChange={setNewEmployeeOpen}>
-        <DialogContent>
+        <DialogContent className="max-h-[90vh] overflow-y-auto sm:max-w-2xl">
           <DialogHeader><DialogTitle>Mitarbeiter hinzufügen</DialogTitle></DialogHeader>
           <NewUserForm onSuccess={() => { setNewEmployeeOpen(false); void reloadPendingRequestsCount(); }} />
         </DialogContent>

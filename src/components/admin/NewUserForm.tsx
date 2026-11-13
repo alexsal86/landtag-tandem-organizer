@@ -1,3 +1,6 @@
+import { EmploymentFields, emptyEmployment } from '@/features/onboarding-hr/EmploymentFields';
+import { useTenant } from '@/hooks/useTenant';
+import { useQueryClient } from '@tanstack/react-query';
 import React, { useState } from 'react';
 import { debugConsole } from '@/utils/debugConsole';
 import { Button } from '@/components/ui/button';
@@ -21,6 +24,9 @@ interface NewUserFormProps {
 }
 
 export const NewUserForm: React.FC<NewUserFormProps> = ({ onSuccess }) => {
+  const { currentTenant } = useTenant();
+  const queryClient = useQueryClient();
+  const [employment, setEmployment] = useState(emptyEmployment);
   const [email, setEmail] = useState('');
   const [displayName, setDisplayName] = useState('');
   const [role, setRole] = useState<string>('praktikant');
@@ -35,9 +41,9 @@ export const NewUserForm: React.FC<NewUserFormProps> = ({ onSuccess }) => {
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
     
-    if (!email || !displayName) {
+    if (!email || !displayName || !currentTenant || !employment.start) {
       notify.error('Fehler', {
-        description: 'E-Mail und Anzeigename sind erforderlich.'
+        description: 'E-Mail, Anzeigename, Büro und Eintrittsdatum sind erforderlich.'
 });
       return;
     }
@@ -49,7 +55,9 @@ export const NewUserForm: React.FC<NewUserFormProps> = ({ onSuccess }) => {
         body: {
           email,
           displayName,
-          role: role === 'none' ? null : role
+          role: role === 'none' ? null : role,
+          tenantId: currentTenant?.id,
+          employment
         }
       });
 
@@ -62,6 +70,7 @@ export const NewUserForm: React.FC<NewUserFormProps> = ({ onSuccess }) => {
       }
 
       setCreatedUser(data.user);
+      await Promise.all([queryClient.invalidateQueries({ queryKey: ['employee-hr'] }), queryClient.invalidateQueries({ queryKey: ['employee-admin-overview'] })]);
       
       notify.success('Benutzer erfolgreich erstellt', {
         description: `${displayName} wurde erfolgreich erstellt.`
@@ -195,7 +204,7 @@ export const NewUserForm: React.FC<NewUserFormProps> = ({ onSuccess }) => {
 
       <div>
         <Label htmlFor="role">Rolle</Label>
-        <Select value={role} onValueChange={setRole}>
+        <Select value={role} onValueChange={next => { setRole(next); setEmployment(previous => ({ ...previous, type: next === 'praktikant' ? 'praktikum' : 'referent' })); }}>
           <SelectTrigger>
             <SelectValue />
           </SelectTrigger>
@@ -208,6 +217,8 @@ export const NewUserForm: React.FC<NewUserFormProps> = ({ onSuccess }) => {
           </SelectContent>
         </Select>
       </div>
+
+      <EmploymentFields value={employment} onChange={setEmployment} />
 
       <div className="flex justify-end gap-2 pt-4">
         <DialogClose asChild>

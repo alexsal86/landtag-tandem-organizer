@@ -218,14 +218,6 @@ export function HrWorkspace() {
   const [params] = useSearchParams();
   const [error, setError] = useState("");
   const [notice, setNotice] = useState("");
-  const [form, setForm] = useState({
-    id: "",
-    user: "",
-    type: "praktikum",
-    start: "",
-    end: "",
-    mentor: "none",
-  });
   const nameOf = (id: string) =>
     users.find((u) => u.id === id)?.display_name ?? "Unbekannt";
   const execute = async (
@@ -259,7 +251,7 @@ export function HrWorkspace() {
     <section className="space-y-5 p-4">
       <h2 className="text-xl font-semibold">HR-Onboarding & Offboarding</h2>
       <p className="text-sm text-muted-foreground">
-        Beschäftigungen, Pflichtnachweise und Übergaben. Keine Ausweis- oder
+        Automatisch zugeordnete HR-Abläufe, Pflichtnachweise und Übergaben. Keine Ausweis- oder
         Schlüsselnummern eintragen. Laufende Pakete behalten ihre beim Start
         gespeicherten Termine und Vorlagen.
       </p>
@@ -269,129 +261,7 @@ export function HrWorkspace() {
         </p>
       )}
       {notice && <p role="status">{notice}</p>}
-      {model.isAdmin && (
-        <form
-          className="rounded-lg border p-4 space-y-3"
-          onSubmit={(e) => {
-            e.preventDefault();
-            if (!model.tenantId) return;
-            void execute({
-              name: "save_employee_lifecycle",
-              args: {
-                p_tenant: model.tenantId,
-                p_user: form.user,
-                p_type: form.type,
-                p_start: form.start,
-                p_end: form.end || undefined,
-                p_mentor: form.mentor === "none" ? undefined : form.mentor,
-                p_id: form.id || undefined,
-              },
-            });
-          }}
-        >
-          <h3 className="font-semibold">
-            {form.id ? "Beschäftigung bearbeiten" : "Beschäftigung anlegen"}
-          </h3>
-          <div className="grid gap-3 sm:grid-cols-2">
-            <Label>
-              Person
-              <Select
-                value={form.user}
-                onValueChange={(user) =>
-                  setForm((previous) => ({ ...previous, user, id: "" }))
-                }
-              >
-                <SelectTrigger>
-                  <SelectValue placeholder="Person auswählen" />
-                </SelectTrigger>
-                <SelectContent>
-                  {users.map((u) => (
-                    <SelectItem key={u.id} value={u.id}>
-                      {u.display_name}
-                    </SelectItem>
-                  ))}
-                </SelectContent>
-              </Select>
-            </Label>
-            <Label>
-              Beschäftigungsart
-              <Input
-                required
-                maxLength={40}
-                value={form.type}
-                onChange={(e) => setForm({ ...form, type: e.target.value })}
-                list="hr-employment-types"
-              />
-              <datalist id="hr-employment-types">
-                <option value="praktikum" />
-                <option value="hilfskraft" />
-                <option value="referent" />
-              </datalist>
-            </Label>
-            <Label>
-              Eintritt
-              <Input
-                required
-                type="date"
-                value={form.start}
-                onChange={(e) => setForm({ ...form, start: e.target.value })}
-              />
-            </Label>
-            <Label>
-              Austritt (optional)
-              <Input
-                type="date"
-                min={form.start}
-                value={form.end}
-                onChange={(e) => setForm({ ...form, end: e.target.value })}
-              />
-            </Label>
-            <Label>
-              Mentor:in
-              <Select
-                value={form.mentor}
-                onValueChange={(mentor) => setForm({ ...form, mentor })}
-              >
-                <SelectTrigger>
-                  <SelectValue />
-                </SelectTrigger>
-                <SelectContent>
-                  <SelectItem value="none">Noch nicht zugewiesen</SelectItem>
-                  {users.map((u) => (
-                    <SelectItem key={u.id} value={u.id}>
-                      {u.display_name}
-                    </SelectItem>
-                  ))}
-                </SelectContent>
-              </Select>
-            </Label>
-          </div>
-          <Button
-            type="submit"
-            disabled={model.mutation.isPending || !form.user || !form.start}
-          >
-            Beschäftigung speichern
-          </Button>
-          {form.id && (
-            <Button
-              type="button"
-              variant="ghost"
-              onClick={() =>
-                setForm({
-                  id: "",
-                  user: "",
-                  type: "praktikum",
-                  start: "",
-                  end: "",
-                  mentor: "none",
-                })
-              }
-            >
-              Neue Beschäftigung
-            </Button>
-          )}
-        </form>
-      )}
+      {model.isAdmin && <p className="text-sm"><a className="underline" href="/employee?tab=overview">Mitarbeitende und Beschäftigungsdaten in der Übersicht verwalten</a></p>}
       {!visible.length && (
         <p>Noch keine Beschäftigung mit HR-Ablauf vorhanden.</p>
       )}
@@ -450,49 +320,6 @@ export function HrWorkspace() {
             )}
             {model.isAdmin && (
               <div className="flex gap-2 flex-wrap">
-                <Button
-                  variant="outline"
-                  onClick={() =>
-                    setForm({
-                      id: employment.id,
-                      user: employment.user_id,
-                      type: employment.employment_type,
-                      start: employment.start_date,
-                      end: employment.end_date ?? "",
-                      mentor: employment.mentor_user_id ?? "none",
-                    })
-                  }
-                >
-                  Beschäftigung bearbeiten
-                </Button>
-                {data.templates
-                  .filter((t) =>
-                    [employment.employment_type, "all"].includes(
-                      t.employment_type,
-                    ),
-                  )
-                  .map((t) => (
-                    <Button
-                      key={t.id}
-                      disabled={
-                        model.mutation.isPending ||
-                        (t.direction === "offboarding" && !employment.end_date)
-                      }
-                      onClick={() =>
-                        void execute({
-                          name: "start_employee_hr",
-                          args: {
-                            p_lifecycle: employment.id,
-                            p_template: t.id,
-                          },
-                        })
-                      }
-                    >
-                      {runs.some((r) => r.hr_direction === t.direction)
-                        ? `${t.direction === "onboarding" ? "Onboarding" : "Offboarding"} prüfen`
-                        : `${t.name} starten`}
-                    </Button>
-                  ))}
                 <Button
                   variant="outline"
                   disabled={model.mutation.isPending}

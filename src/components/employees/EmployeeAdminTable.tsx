@@ -1,3 +1,4 @@
+import { EmployeeEmploymentEditor } from '@/features/onboarding-hr/EmployeeEmploymentEditor';
 import { useState } from "react";
 import { mentionColors } from "@/utils/mentionColors";
 import { getHashedColor } from "@/utils/userColors";
@@ -173,13 +174,12 @@ interface EmployeeListTableProps {
   updateHours: (userId: string, val: number) => Promise<unknown> | void;
   updateDaysPerWeek: (userId: string, val: number) => Promise<unknown> | void;
   updateVacationDays: (userId: string, val: number) => Promise<unknown> | void;
-  updateStartDate: (userId: string, val: string) => Promise<unknown> | void;
   onScheduleMeeting: (employee: { id: string; name: string }) => Promise<unknown> | void;
 }
 
 export function EmployeeListTable({
   loading, employees, leaves, sickDays, setEmployees, headerAction,
-  updateHours, updateDaysPerWeek, updateVacationDays, updateStartDate, onScheduleMeeting,
+  updateHours, updateDaysPerWeek, updateVacationDays, onScheduleMeeting,
 }: EmployeeListTableProps) {
   const navigate = useNavigate();
   const [query, setQuery] = useState("");
@@ -309,9 +309,10 @@ export function EmployeeListTable({
         </CardContent>
       </Card>
       <Dialog open={!!editingEmployee} onOpenChange={open => { if (!open) setEditingId(null); }}>
-        <DialogContent>
-          <DialogHeader><DialogTitle>Mitarbeiterdaten bearbeiten</DialogTitle><DialogDescription>{editingEmployee?.display_name || "Unbenannt"} · Änderungen werden automatisch gespeichert.</DialogDescription></DialogHeader>
+        <DialogContent className="max-h-[90vh] overflow-y-auto sm:max-w-2xl">
+          <DialogHeader><DialogTitle>Mitarbeiterdaten bearbeiten</DialogTitle><DialogDescription>{editingEmployee?.display_name || "Unbenannt"} · Arbeitszeit und Urlaub werden automatisch gespeichert.</DialogDescription></DialogHeader>
           {editingEmployee && (
+            <div className="space-y-4">
             <div className="grid gap-4 sm:grid-cols-2">
               <div className="space-y-2"><Label htmlFor="employee-hours">Stunden pro Woche</Label><Input id="employee-hours" type="number" min={1} max={39.5} step={0.5} value={editingEmployee.hours_per_week} onChange={event => {
                 const v = Number(event.target.value); if (v >= 1 && v <= 39.5) { setEmployees(prev => prev.map(e => e.user_id === editingId ? { ...e, hours_per_week: v } : e)); updateHours(editingEmployee.user_id, v); }
@@ -322,9 +323,9 @@ export function EmployeeListTable({
               <div className="space-y-2"><Label htmlFor="employee-vacation">Urlaubstage pro Jahr</Label><Input id="employee-vacation" type="number" min={0} max={50} value={editingEmployee.annual_vacation_days} onChange={event => {
                 const v = Number(event.target.value); if (v >= 0 && v <= 50) { setEmployees(prev => prev.map(e => e.user_id === editingId ? { ...e, annual_vacation_days: v } : e)); updateVacationDays(editingEmployee.user_id, v); }
               }} /></div>
-              <div className="space-y-2"><Label htmlFor="employee-start">Beginn Arbeitsverhältnis</Label><Input id="employee-start" type="date" value={editingEmployee.employment_start_date || ""} onChange={event => {
-                const v = event.target.value; if (v) { setEmployees(prev => prev.map(e => e.user_id === editingId ? { ...e, employment_start_date: v } : e)); updateStartDate(editingEmployee.user_id, v); }
-              }} /></div>
+
+            </div>
+            <EmployeeEmploymentEditor key={editingEmployee.user_id} userId={editingEmployee.user_id} startDate={editingEmployee.employment_start_date} onSaved={start => setEmployees(prev => prev.map(e => e.user_id === editingEmployee.user_id ? { ...e, employment_start_date: start } : e))} />
             </div>
           )}
         </DialogContent>
