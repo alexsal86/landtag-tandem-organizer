@@ -56,7 +56,10 @@ describe("useTenant (reference)", () => {
 
     const { result } = renderHookWithProviders(() => useTenant());
 
-    await waitFor(() => expect(result.current.loading).toBe(false));
+    await waitFor(() => {
+      expect(result.current.loading).toBe(false);
+      expect(result.current.currentTenant?.id).toBe("tenant-a");
+    });
     result.current.switchTenant("tenant-a");
 
     expect(localStorage.getItem("currentTenantId_user-1")).toBe("tenant-a");
