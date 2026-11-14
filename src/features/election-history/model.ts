@@ -2,6 +2,7 @@ import { electoralGeometryYear } from '@/utils/electoralTopology';
 import { normalizeGeoJsonGeometry } from '@/hooks/geoContracts';
 import { hasRenderableBoundary } from '@/features/election-districts/mapModel';
 import type { ElectionCandidacy, ElectionHistoryData, ElectionHistoryTables, HistoricalMandate } from './types';
+import type { GeoJsonGeometry } from '@/types/geoDomain';
 export type HistoryEntity = 'periods' | 'people' | 'districts' | 'candidacies' | 'mandates';
 export const historyTables = {
   periods: 'election_history_periods', people: 'election_history_people', districts: 'election_history_districts',
@@ -61,7 +62,7 @@ export function parseHistoryForm(entity: HistoryEntity, v: FormValues): ParsedHi
     case 'people': return { entity, data: { name: required(v, 'name'), biography: optional(v, 'biography'), history_complete: v.history_complete === true, source_url } } as const;
     case 'districts': {
       const district_number = numberValue(v, 'district_number', 1);
-      let boundaries = null;
+      let boundaries: GeoJsonGeometry | null = null;
       if (optional(v, 'boundaries')) {
         try { boundaries = normalizeGeoJsonGeometry(JSON.parse(String(v.boundaries))); }
         catch { throw new Error('Die Wahlkreisgrenze ist kein gültiges GeoJSON.'); }

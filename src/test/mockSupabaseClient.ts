@@ -47,6 +47,8 @@ class MockQueryBuilder {
 
   order = vi.fn((_column: string, _options?: unknown) => this);
 
+  returns = vi.fn(() => this);
+
   single = vi.fn(() => Promise.resolve(this.resolve()));
 
   in = vi.fn((_column: string, _values: unknown[]) => Promise.resolve(this.resolve()));

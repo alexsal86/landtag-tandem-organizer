@@ -2,6 +2,7 @@
 import { createClient } from '@supabase/supabase-js';
 import type { Database } from './types';
 import { createSecuredFetch } from './securedFetch';
+import { createTenantScopeFetch } from './tenantScopeFetch';
 import { brokeredPreviewStorage } from './previewAuthStorage';
 
 const SUPABASE_URL = "https://wawofclbehbkebjivdte.supabase.co";
@@ -11,7 +12,7 @@ const SUPABASE_PUBLISHABLE_KEY = "eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiO
 // import { supabase } from "@/integrations/supabase/client";
 
 export const supabase = createClient<Database>(SUPABASE_URL, SUPABASE_PUBLISHABLE_KEY, {
-  global: { fetch: createSecuredFetch(SUPABASE_URL) },
+  global: { fetch: createTenantScopeFetch(SUPABASE_URL, createSecuredFetch(SUPABASE_URL)) },
   auth: {
     storage: brokeredPreviewStorage(),
     persistSession: true,

@@ -1,24 +1,14 @@
 import { QuickNotesRuntime } from "@/features/quick-notes/useQuickNotesData";
 import type { PropsWithChildren } from "react";
 import { ThemeProvider } from "next-themes";
-import { QueryClient, QueryClientProvider } from "@tanstack/react-query";
+import { QueryClientProvider } from "@tanstack/react-query";
+import { queryClient } from "./queryClient";
 import { AuthProvider } from "@/hooks/useAuth";
 import { TenantProvider } from "@/hooks/useTenant";
 import { NotificationProvider } from "@/contexts/NotificationContext";
 import { AppSettingsProvider } from "@/hooks/useAppSettings";
 import { TooltipProvider } from "@/components/ui/tooltip";
 import { AppHeadManager } from "@/components/navigation/AppHeadManager";
-
-const queryClient = new QueryClient({
-  defaultOptions: {
-    queries: {
-      staleTime: 5 * 60 * 1000,
-      gcTime: 15 * 60 * 1000,
-      refetchOnWindowFocus: false,
-      retry: 1,
-    },
-  },
-});
 
 export const AppProviders = ({ children }: PropsWithChildren): React.JSX.Element => (
   <ThemeProvider attribute="class" defaultTheme="system" enableSystem>

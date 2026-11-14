@@ -1,8 +1,3 @@
-import type { WorkspaceTables } from '@/features/election-analysis/research/workspaceTypes';
-import type { ElectionResearchTables } from '@/features/election-analysis/research/types';
-import type { ElectionAnalysisTables } from '@/features/election-analysis/types';
-import type { ElectionHistoryTables } from '@/features/election-history/types';
-
 export type Json =
   | string
   | number
@@ -18,38 +13,7 @@ export type Database = {
     PostgrestVersion: "12.2.3"
   }
   public: {
-    Tables: WorkspaceTables & ElectionResearchTables & ElectionAnalysisTables & ElectionHistoryTables & {
-      topic_catalog_links: {
-        Row: {
-          id: string
-          tenant_id: string
-          topic_id: string
-          kind: string
-          committee_id: string | null
-          region_id: string | null
-          created_at: string
-        }
-        Insert: {
-          id?: string
-          tenant_id: string
-          topic_id: string
-          kind: string
-          committee_id?: string | null
-          region_id?: string | null
-          created_at?: string
-        }
-        Update: {
-          id?: string
-          tenant_id?: string
-          topic_id?: string
-          kind?: string
-          committee_id?: string | null
-          region_id?: string | null
-          created_at?: string
-        }
-        Relationships: []
-      }
-
+    Tables: {
       action_permissions: {
         Row: {
           action_key: string
@@ -4747,6 +4711,637 @@ export type Database = {
         }
         Relationships: []
       }
+      election_analysis_candidate_coverage: {
+        Row: {
+          expected_district_candidacies: number | null
+          is_complete: boolean
+          notes: string | null
+          period_id: string
+          reviewed_at: string | null
+          source_url: string | null
+        }
+        Insert: {
+          expected_district_candidacies?: number | null
+          is_complete?: boolean
+          notes?: string | null
+          period_id: string
+          reviewed_at?: string | null
+          source_url?: string | null
+        }
+        Update: {
+          expected_district_candidacies?: number | null
+          is_complete?: boolean
+          notes?: string | null
+          period_id?: string
+          reviewed_at?: string | null
+          source_url?: string | null
+        }
+        Relationships: [
+          {
+            foreignKeyName: "election_analysis_candidate_coverage_period_id_fkey"
+            columns: ["period_id"]
+            isOneToOne: true
+            referencedRelation: "election_history_periods"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
+      election_analysis_candidates: {
+        Row: {
+          candidate_name: string
+          data_release: string | null
+          district_number: number
+          party: string
+          person_id: string | null
+          share: number | null
+          source_url: string
+          verified: boolean
+          votes: number | null
+          year: number
+        }
+        Insert: {
+          candidate_name: string
+          data_release?: string | null
+          district_number: number
+          party: string
+          person_id?: string | null
+          share?: number | null
+          source_url: string
+          verified?: boolean
+          votes?: number | null
+          year: number
+        }
+        Update: {
+          candidate_name?: string
+          data_release?: string | null
+          district_number?: number
+          party?: string
+          person_id?: string | null
+          share?: number | null
+          source_url?: string
+          verified?: boolean
+          votes?: number | null
+          year?: number
+        }
+        Relationships: [
+          {
+            foreignKeyName: "election_analysis_candidates_person_id_fkey"
+            columns: ["person_id"]
+            isOneToOne: false
+            referencedRelation: "election_history_people"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "election_analysis_candidates_year_district_number_fkey"
+            columns: ["year", "district_number"]
+            isOneToOne: false
+            referencedRelation: "election_analysis_versions"
+            referencedColumns: ["year", "district_number"]
+          },
+          {
+            foreignKeyName: "election_analysis_candidates_year_fkey"
+            columns: ["year"]
+            isOneToOne: false
+            referencedRelation: "election_analysis_years"
+            referencedColumns: ["year"]
+          },
+        ]
+      }
+      election_analysis_demographics: {
+        Row: {
+          age_group: string
+          ballot: string
+          gender: string
+          notes: string | null
+          party: string
+          share: number | null
+          year: number
+        }
+        Insert: {
+          age_group: string
+          ballot: string
+          gender: string
+          notes?: string | null
+          party: string
+          share?: number | null
+          year: number
+        }
+        Update: {
+          age_group?: string
+          ballot?: string
+          gender?: string
+          notes?: string | null
+          party?: string
+          share?: number | null
+          year?: number
+        }
+        Relationships: [
+          {
+            foreignKeyName: "election_analysis_demographics_year_fkey"
+            columns: ["year"]
+            isOneToOne: false
+            referencedRelation: "election_analysis_years"
+            referencedColumns: ["year"]
+          },
+        ]
+      }
+      election_analysis_districts: {
+        Row: {
+          ballot: string
+          data_release: string | null
+          district_name: string
+          district_number: number
+          notes: string | null
+          party: string
+          preliminary: boolean
+          share: number | null
+          votes: number | null
+          year: number
+        }
+        Insert: {
+          ballot: string
+          data_release?: string | null
+          district_name: string
+          district_number: number
+          notes?: string | null
+          party: string
+          preliminary?: boolean
+          share?: number | null
+          votes?: number | null
+          year: number
+        }
+        Update: {
+          ballot?: string
+          data_release?: string | null
+          district_name?: string
+          district_number?: number
+          notes?: string | null
+          party?: string
+          preliminary?: boolean
+          share?: number | null
+          votes?: number | null
+          year?: number
+        }
+        Relationships: [
+          {
+            foreignKeyName: "election_analysis_districts_year_fkey"
+            columns: ["year"]
+            isOneToOne: false
+            referencedRelation: "election_analysis_years"
+            referencedColumns: ["year"]
+          },
+        ]
+      }
+      election_analysis_flows: {
+        Row: {
+          balance: number | null
+          inflow: number | null
+          notes: string | null
+          outflow: number | null
+          partner: string
+          previous_year: number
+          target_party: string
+          year: number
+        }
+        Insert: {
+          balance?: number | null
+          inflow?: number | null
+          notes?: string | null
+          outflow?: number | null
+          partner: string
+          previous_year: number
+          target_party: string
+          year: number
+        }
+        Update: {
+          balance?: number | null
+          inflow?: number | null
+          notes?: string | null
+          outflow?: number | null
+          partner?: string
+          previous_year?: number
+          target_party?: string
+          year?: number
+        }
+        Relationships: [
+          {
+            foreignKeyName: "election_analysis_flows_year_fkey"
+            columns: ["year"]
+            isOneToOne: false
+            referencedRelation: "election_analysis_years"
+            referencedColumns: ["year"]
+          },
+        ]
+      }
+      election_analysis_geographies: {
+        Row: {
+          asset_path: string | null
+          id: string
+          notes: string | null
+          sha256: string
+          source_url: string
+          verified: boolean
+          year: number
+        }
+        Insert: {
+          asset_path?: string | null
+          id: string
+          notes?: string | null
+          sha256: string
+          source_url: string
+          verified?: boolean
+          year: number
+        }
+        Update: {
+          asset_path?: string | null
+          id?: string
+          notes?: string | null
+          sha256?: string
+          source_url?: string
+          verified?: boolean
+          year?: number
+        }
+        Relationships: []
+      }
+      election_analysis_local_results: {
+        Row: {
+          ballot: string
+          boundary_key: string
+          data_release: string
+          district_number: number
+          eligible: number | null
+          is_verified: boolean
+          name: string
+          party: string
+          preliminary: boolean
+          source_url: string
+          unit_key: string
+          unit_type: string
+          valid_votes: number
+          voters: number | null
+          votes: number
+          year: number
+        }
+        Insert: {
+          ballot: string
+          boundary_key: string
+          data_release: string
+          district_number: number
+          eligible?: number | null
+          is_verified?: boolean
+          name: string
+          party: string
+          preliminary: boolean
+          source_url: string
+          unit_key: string
+          unit_type: string
+          valid_votes: number
+          voters?: number | null
+          votes: number
+          year: number
+        }
+        Update: {
+          ballot?: string
+          boundary_key?: string
+          data_release?: string
+          district_number?: number
+          eligible?: number | null
+          is_verified?: boolean
+          name?: string
+          party?: string
+          preliminary?: boolean
+          source_url?: string
+          unit_key?: string
+          unit_type?: string
+          valid_votes?: number
+          voters?: number | null
+          votes?: number
+          year?: number
+        }
+        Relationships: [
+          {
+            foreignKeyName: "election_analysis_local_results_year_fkey"
+            columns: ["year"]
+            isOneToOne: false
+            referencedRelation: "election_analysis_years"
+            referencedColumns: ["year"]
+          },
+        ]
+      }
+      election_analysis_period_proposals: {
+        Row: {
+          election_date: string | null
+          election_source_url: string
+          election_year: number
+          ends_on: string | null
+          expected_ends_on: string | null
+          notes: string | null
+          period_number: number
+          starts_on: string | null
+          term_source_url: string
+          verified: boolean
+        }
+        Insert: {
+          election_date?: string | null
+          election_source_url: string
+          election_year: number
+          ends_on?: string | null
+          expected_ends_on?: string | null
+          notes?: string | null
+          period_number: number
+          starts_on?: string | null
+          term_source_url: string
+          verified?: boolean
+        }
+        Update: {
+          election_date?: string | null
+          election_source_url?: string
+          election_year?: number
+          ends_on?: string | null
+          expected_ends_on?: string | null
+          notes?: string | null
+          period_number?: number
+          starts_on?: string | null
+          term_source_url?: string
+          verified?: boolean
+        }
+        Relationships: []
+      }
+      election_analysis_scenarios: {
+        Row: {
+          ballot: string
+          created_at: string
+          data_release: string
+          description: string
+          id: string
+          input_snapshot: Json
+          model_version: string
+          name: string
+          owner_id: string
+          params: Json
+          result_snapshot: Json
+          revision: number
+          tenant_id: string
+          updated_at: string
+          visibility: string
+          year: number
+        }
+        Insert: {
+          ballot: string
+          created_at?: string
+          data_release: string
+          description?: string
+          id?: string
+          input_snapshot: Json
+          model_version: string
+          name: string
+          owner_id: string
+          params?: Json
+          result_snapshot: Json
+          revision?: number
+          tenant_id: string
+          updated_at?: string
+          visibility?: string
+          year: number
+        }
+        Update: {
+          ballot?: string
+          created_at?: string
+          data_release?: string
+          description?: string
+          id?: string
+          input_snapshot?: Json
+          model_version?: string
+          name?: string
+          owner_id?: string
+          params?: Json
+          result_snapshot?: Json
+          revision?: number
+          tenant_id?: string
+          updated_at?: string
+          visibility?: string
+          year?: number
+        }
+        Relationships: [
+          {
+            foreignKeyName: "election_analysis_scenarios_tenant_id_fkey"
+            columns: ["tenant_id"]
+            isOneToOne: false
+            referencedRelation: "tenants"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
+      election_analysis_source_reviews: {
+        Row: {
+          id: string
+          kind: string
+          retrieved_at: string
+          sha256: string | null
+          source_url: string
+          status: string
+          summary: Json
+        }
+        Insert: {
+          id: string
+          kind: string
+          retrieved_at: string
+          sha256?: string | null
+          source_url: string
+          status: string
+          summary: Json
+        }
+        Update: {
+          id?: string
+          kind?: string
+          retrieved_at?: string
+          sha256?: string | null
+          source_url?: string
+          status?: string
+          summary?: Json
+        }
+        Relationships: []
+      }
+      election_analysis_state: {
+        Row: {
+          ballot: string
+          data_release: string | null
+          direct_seats: number | null
+          list_seats: number | null
+          notes: string | null
+          party: string
+          seats: number | null
+          share: number | null
+          valid_votes: number | null
+          votes: number | null
+          year: number
+        }
+        Insert: {
+          ballot: string
+          data_release?: string | null
+          direct_seats?: number | null
+          list_seats?: number | null
+          notes?: string | null
+          party: string
+          seats?: number | null
+          share?: number | null
+          valid_votes?: number | null
+          votes?: number | null
+          year: number
+        }
+        Update: {
+          ballot?: string
+          data_release?: string | null
+          direct_seats?: number | null
+          list_seats?: number | null
+          notes?: string | null
+          party?: string
+          seats?: number | null
+          share?: number | null
+          valid_votes?: number | null
+          votes?: number | null
+          year?: number
+        }
+        Relationships: [
+          {
+            foreignKeyName: "election_analysis_state_year_fkey"
+            columns: ["year"]
+            isOneToOne: false
+            referencedRelation: "election_analysis_years"
+            referencedColumns: ["year"]
+          },
+        ]
+      }
+      election_analysis_turnout: {
+        Row: {
+          ballot: string
+          data_release: string | null
+          district_name: string
+          district_number: number
+          eligible: number | null
+          notes: string | null
+          preliminary: boolean
+          turnout: number | null
+          valid_votes: number | null
+          voters: number | null
+          year: number
+        }
+        Insert: {
+          ballot: string
+          data_release?: string | null
+          district_name: string
+          district_number: number
+          eligible?: number | null
+          notes?: string | null
+          preliminary?: boolean
+          turnout?: number | null
+          valid_votes?: number | null
+          voters?: number | null
+          year: number
+        }
+        Update: {
+          ballot?: string
+          data_release?: string | null
+          district_name?: string
+          district_number?: number
+          eligible?: number | null
+          notes?: string | null
+          preliminary?: boolean
+          turnout?: number | null
+          valid_votes?: number | null
+          voters?: number | null
+          year?: number
+        }
+        Relationships: [
+          {
+            foreignKeyName: "election_analysis_turnout_year_fkey"
+            columns: ["year"]
+            isOneToOne: false
+            referencedRelation: "election_analysis_years"
+            referencedColumns: ["year"]
+          },
+        ]
+      }
+      election_analysis_versions: {
+        Row: {
+          district_name: string
+          district_number: number
+          geography_id: string | null
+          historical_district_id: string | null
+          history_link_verified: boolean
+          identity_key: string | null
+          notes: string | null
+          year: number
+        }
+        Insert: {
+          district_name: string
+          district_number: number
+          geography_id?: string | null
+          historical_district_id?: string | null
+          history_link_verified?: boolean
+          identity_key?: string | null
+          notes?: string | null
+          year: number
+        }
+        Update: {
+          district_name?: string
+          district_number?: number
+          geography_id?: string | null
+          historical_district_id?: string | null
+          history_link_verified?: boolean
+          identity_key?: string | null
+          notes?: string | null
+          year?: number
+        }
+        Relationships: [
+          {
+            foreignKeyName: "election_analysis_versions_geography_id_fkey"
+            columns: ["geography_id"]
+            isOneToOne: false
+            referencedRelation: "election_analysis_geographies"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "election_analysis_versions_historical_district_id_fkey"
+            columns: ["historical_district_id"]
+            isOneToOne: false
+            referencedRelation: "election_history_districts"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
+      election_analysis_years: {
+        Row: {
+          is_published: boolean
+          notes: string | null
+          period_id: string | null
+          period_number: number
+          year: number
+        }
+        Insert: {
+          is_published?: boolean
+          notes?: string | null
+          period_id?: string | null
+          period_number: number
+          year: number
+        }
+        Update: {
+          is_published?: boolean
+          notes?: string | null
+          period_id?: string | null
+          period_number?: number
+          year?: number
+        }
+        Relationships: [
+          {
+            foreignKeyName: "election_analysis_years_period_id_fkey"
+            columns: ["period_id"]
+            isOneToOne: false
+            referencedRelation: "election_history_periods"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
       election_district_municipalities: {
         Row: {
           county: string | null
@@ -4895,6 +5490,320 @@ export type Database = {
           rural_percentage?: number | null
           updated_at?: string
           website_url?: string | null
+        }
+        Relationships: []
+      }
+      election_history_audit: {
+        Row: {
+          action: string
+          actor_id: string | null
+          id: string
+          new_data: Json | null
+          occurred_at: string
+          old_data: Json | null
+          record_id: string
+          table_name: string
+        }
+        Insert: {
+          action: string
+          actor_id?: string | null
+          id?: string
+          new_data?: Json | null
+          occurred_at?: string
+          old_data?: Json | null
+          record_id: string
+          table_name: string
+        }
+        Update: {
+          action?: string
+          actor_id?: string | null
+          id?: string
+          new_data?: Json | null
+          occurred_at?: string
+          old_data?: Json | null
+          record_id?: string
+          table_name?: string
+        }
+        Relationships: []
+      }
+      election_history_candidacies: {
+        Row: {
+          ballot_type: string
+          district_id: string | null
+          district_rank: number | null
+          id: string
+          list_position: number | null
+          notes: string | null
+          outcome: string
+          party: string
+          period_id: string
+          person_id: string
+          source_url: string | null
+          vote_share: number | null
+          votes: number | null
+        }
+        Insert: {
+          ballot_type?: string
+          district_id?: string | null
+          district_rank?: number | null
+          id?: string
+          list_position?: number | null
+          notes?: string | null
+          outcome?: string
+          party: string
+          period_id: string
+          person_id: string
+          source_url?: string | null
+          vote_share?: number | null
+          votes?: number | null
+        }
+        Update: {
+          ballot_type?: string
+          district_id?: string | null
+          district_rank?: number | null
+          id?: string
+          list_position?: number | null
+          notes?: string | null
+          outcome?: string
+          party?: string
+          period_id?: string
+          person_id?: string
+          source_url?: string | null
+          vote_share?: number | null
+          votes?: number | null
+        }
+        Relationships: [
+          {
+            foreignKeyName: "election_history_candidacies_district_id_period_id_fkey"
+            columns: ["district_id", "period_id"]
+            isOneToOne: false
+            referencedRelation: "election_history_districts"
+            referencedColumns: ["id", "period_id"]
+          },
+          {
+            foreignKeyName: "election_history_candidacies_period_id_fkey"
+            columns: ["period_id"]
+            isOneToOne: false
+            referencedRelation: "election_history_periods"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "election_history_candidacies_person_id_fkey"
+            columns: ["person_id"]
+            isOneToOne: false
+            referencedRelation: "election_history_people"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
+      election_history_districts: {
+        Row: {
+          boundaries: Json | null
+          boundary_note: string | null
+          district_number: number | null
+          id: string
+          name: string
+          number_label: string | null
+          period_id: string
+          source_url: string | null
+        }
+        Insert: {
+          boundaries?: Json | null
+          boundary_note?: string | null
+          district_number?: number | null
+          id?: string
+          name: string
+          number_label?: string | null
+          period_id: string
+          source_url?: string | null
+        }
+        Update: {
+          boundaries?: Json | null
+          boundary_note?: string | null
+          district_number?: number | null
+          id?: string
+          name?: string
+          number_label?: string | null
+          period_id?: string
+          source_url?: string | null
+        }
+        Relationships: [
+          {
+            foreignKeyName: "election_history_districts_period_id_fkey"
+            columns: ["period_id"]
+            isOneToOne: false
+            referencedRelation: "election_history_periods"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
+      election_history_mandates: {
+        Row: {
+          candidacy_id: string | null
+          district_id: string | null
+          end_from_period: boolean
+          ends_on: string | null
+          entry_type: string
+          id: string
+          left_early: boolean
+          mandate_type: string
+          notes: string | null
+          original_mandate: string | null
+          party: string
+          party_label: string | null
+          period_id: string
+          person_id: string | null
+          person_name: string | null
+          source_url: string | null
+          start_from_period: boolean
+          starts_on: string | null
+        }
+        Insert: {
+          candidacy_id?: string | null
+          district_id?: string | null
+          end_from_period?: boolean
+          ends_on?: string | null
+          entry_type?: string
+          id?: string
+          left_early?: boolean
+          mandate_type: string
+          notes?: string | null
+          original_mandate?: string | null
+          party: string
+          party_label?: string | null
+          period_id: string
+          person_id?: string | null
+          person_name?: string | null
+          source_url?: string | null
+          start_from_period?: boolean
+          starts_on?: string | null
+        }
+        Update: {
+          candidacy_id?: string | null
+          district_id?: string | null
+          end_from_period?: boolean
+          ends_on?: string | null
+          entry_type?: string
+          id?: string
+          left_early?: boolean
+          mandate_type?: string
+          notes?: string | null
+          original_mandate?: string | null
+          party?: string
+          party_label?: string | null
+          period_id?: string
+          person_id?: string | null
+          person_name?: string | null
+          source_url?: string | null
+          start_from_period?: boolean
+          starts_on?: string | null
+        }
+        Relationships: [
+          {
+            foreignKeyName: "election_history_mandates_candidacy_id_person_id_period_id_fkey"
+            columns: ["candidacy_id", "person_id", "period_id"]
+            isOneToOne: false
+            referencedRelation: "election_history_candidacies"
+            referencedColumns: ["id", "person_id", "period_id"]
+          },
+          {
+            foreignKeyName: "election_history_mandates_district_id_period_id_fkey"
+            columns: ["district_id", "period_id"]
+            isOneToOne: false
+            referencedRelation: "election_history_districts"
+            referencedColumns: ["id", "period_id"]
+          },
+          {
+            foreignKeyName: "election_history_mandates_period_id_fkey"
+            columns: ["period_id"]
+            isOneToOne: false
+            referencedRelation: "election_history_periods"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "election_history_mandates_person_id_fkey"
+            columns: ["person_id"]
+            isOneToOne: false
+            referencedRelation: "election_history_people"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
+      election_history_people: {
+        Row: {
+          biography: string | null
+          history_complete: boolean
+          id: string
+          name: string
+          source_url: string | null
+        }
+        Insert: {
+          biography?: string | null
+          history_complete?: boolean
+          id?: string
+          name: string
+          source_url?: string | null
+        }
+        Update: {
+          biography?: string | null
+          history_complete?: boolean
+          id?: string
+          name?: string
+          source_url?: string | null
+        }
+        Relationships: []
+      }
+      election_history_periods: {
+        Row: {
+          boundary_geometry_confirmed: boolean
+          boundary_geometry_year: number | null
+          election_date: string | null
+          election_year: number | null
+          ends_on: string | null
+          ends_on_is_expected: boolean
+          expected_ends_on: string | null
+          id: string
+          is_current: boolean
+          is_published: boolean
+          name: string
+          notes: string | null
+          number: number
+          source_url: string | null
+          starts_on: string | null
+        }
+        Insert: {
+          boundary_geometry_confirmed?: boolean
+          boundary_geometry_year?: number | null
+          election_date?: string | null
+          election_year?: number | null
+          ends_on?: string | null
+          ends_on_is_expected?: boolean
+          expected_ends_on?: string | null
+          id?: string
+          is_current?: boolean
+          is_published?: boolean
+          name: string
+          notes?: string | null
+          number: number
+          source_url?: string | null
+          starts_on?: string | null
+        }
+        Update: {
+          boundary_geometry_confirmed?: boolean
+          boundary_geometry_year?: number | null
+          election_date?: string | null
+          election_year?: number | null
+          ends_on?: string | null
+          ends_on_is_expected?: boolean
+          expected_ends_on?: string | null
+          id?: string
+          is_current?: boolean
+          is_published?: boolean
+          name?: string
+          notes?: string | null
+          number?: number
+          source_url?: string | null
+          starts_on?: string | null
         }
         Relationships: []
       }
@@ -5072,19 +5981,13 @@ export type Database = {
           },
         ]
       }
-      employee_hr_gdpr_declarations: {
-        Row: { tenant_id: string; version: string; text: string; updated_at: string; updated_by: string }
-        Insert: { tenant_id: string; version: string; text: string; updated_at?: string; updated_by: string }
-        Update: { tenant_id?: string; version?: string; text?: string; updated_at?: string; updated_by?: string }
-        Relationships: []
-      }
       employee_hr_evidence: {
         Row: {
-          declaration_text: string | null
-          declaration_version: string | null
           confirmed_by: string
           confirmed_on: string
           created_at: string
+          declaration_text: string | null
+          declaration_version: string | null
           document_id: string | null
           id: string
           step_id: string
@@ -5092,11 +5995,11 @@ export type Database = {
           user_id: string
         }
         Insert: {
-          declaration_text?: string | null
-          declaration_version?: string | null
           confirmed_by: string
           confirmed_on: string
           created_at?: string
+          declaration_text?: string | null
+          declaration_version?: string | null
           document_id?: string | null
           id?: string
           step_id: string
@@ -5104,11 +6007,11 @@ export type Database = {
           user_id: string
         }
         Update: {
-          declaration_text?: string | null
-          declaration_version?: string | null
           confirmed_by?: string
           confirmed_on?: string
           created_at?: string
+          declaration_text?: string | null
+          declaration_version?: string | null
           document_id?: string | null
           id?: string
           step_id?: string
@@ -5134,6 +6037,38 @@ export type Database = {
             foreignKeyName: "employee_hr_evidence_tenant_id_fkey"
             columns: ["tenant_id"]
             isOneToOne: false
+            referencedRelation: "tenants"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
+      employee_hr_gdpr_declarations: {
+        Row: {
+          tenant_id: string
+          text: string
+          updated_at: string
+          updated_by: string
+          version: string
+        }
+        Insert: {
+          tenant_id: string
+          text: string
+          updated_at?: string
+          updated_by: string
+          version: string
+        }
+        Update: {
+          tenant_id?: string
+          text?: string
+          updated_at?: string
+          updated_by?: string
+          version?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "employee_hr_gdpr_declarations_tenant_id_fkey"
+            columns: ["tenant_id"]
+            isOneToOne: true
             referencedRelation: "tenants"
             referencedColumns: ["id"]
           },
@@ -14421,6 +15356,65 @@ export type Database = {
           },
         ]
       }
+      topic_catalog_links: {
+        Row: {
+          committee_id: string | null
+          created_at: string
+          id: string
+          kind: string
+          region_id: string | null
+          tenant_id: string
+          topic_id: string
+        }
+        Insert: {
+          committee_id?: string | null
+          created_at?: string
+          id?: string
+          kind: string
+          region_id?: string | null
+          tenant_id: string
+          topic_id: string
+        }
+        Update: {
+          committee_id?: string | null
+          created_at?: string
+          id?: string
+          kind?: string
+          region_id?: string | null
+          tenant_id?: string
+          topic_id?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "topic_catalog_links_tenant_id_committee_id_fkey"
+            columns: ["tenant_id", "committee_id"]
+            isOneToOne: false
+            referencedRelation: "committees"
+            referencedColumns: ["tenant_id", "id"]
+          },
+          {
+            foreignKeyName: "topic_catalog_links_tenant_id_fkey"
+            columns: ["tenant_id"]
+            isOneToOne: false
+            referencedRelation: "tenants"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "topic_catalog_links_tenant_id_region_id_fkey"
+            columns: ["tenant_id", "region_id"]
+            isOneToOne: false
+            referencedRelation: "regions"
+            referencedColumns: ["tenant_id", "id"]
+          },
+          {
+            foreignKeyName: "topic_catalog_links_tenant_id_topic_id_fkey"
+            columns: ["tenant_id", "topic_id"]
+            isOneToOne: true
+            referencedRelation: "topics"
+            referencedColumns: ["tenant_id", "id"]
+          },
+        ]
+      }
       topics: {
         Row: {
           color: string | null
@@ -15364,18 +16358,6 @@ export type Database = {
       }
     }
     Functions: {
-      get_analysis_local_page: { Args: { selected_year:number; selected_ballot:string; district:number;area_type:string;selected_party:string;search_text:string;page_offset:number }; Returns: Json }
-      import_analysis_local_rows: { Args: { rows_to_import:Json }; Returns: Json }
-      confirm_analysis_candidate_identity: { Args: { candidacy: string }; Returns: undefined }
-      get_analysis_district_series: { Args: { district: number; selected_years: number[] }; Returns: Json }
-      get_analysis_turnout_comparison: { Args: { before_year: number; after_year: number; before_ballot: string; after_ballot: string; selected_party: string }; Returns: Json }
-      get_analysis_comparison: { Args: { before_year: number; after_year: number; before_ballot: string; after_ballot: string; selected_parties: string[] }; Returns: Json }
-      get_analysis_district_history: { Args: { district: number; selected_year: number }; Returns: Json }
-      apply_verified_election_period: { Args: { period_number_to_apply: number }; Returns: Json }
-      get_election_person_summary: { Args: { person: string; through_period: string }; Returns: Json }
-      get_election_history_period: { Args: { period: string }; Returns: Json }
-      set_current_election_history_period: { Args: { period: string }; Returns: undefined }
-      convert_topic_to_catalog: { Args: {p_topic:string;p_kind:string;p_region_kind?:string}; Returns:Json }
       _briefing_task_event: {
         Args: { _task: string; _text: string }
         Returns: undefined
@@ -15408,6 +16390,10 @@ export type Database = {
       }
       answer_two_truths_quiz: {
         Args: { p_guess: number; p_quiz: string; p_tenant: string }
+        Returns: Json
+      }
+      apply_verified_election_period: {
+        Args: { period_number_to_apply: number }
         Returns: Json
       }
       approve_gdpr_delete: {
@@ -15520,14 +16506,6 @@ export type Database = {
         Args: { _appointment_id: string }
         Returns: undefined
       }
-      save_employee_hr_gdpr_declaration: {
-        Args: { p_tenant: string; p_text: string; p_expected_version: string };
-        Returns: string;
-      };
-      confirm_employee_hr_gdpr: {
-        Args: { p_step: string; p_version: string };
-        Returns: undefined;
-      };
       complete_employee_hr_step: {
         Args: {
           p_confirmed_on?: string
@@ -15539,6 +16517,14 @@ export type Database = {
       }
       configure_team_rituals: {
         Args: { p_enabled: boolean; p_tenant: string }
+        Returns: undefined
+      }
+      confirm_analysis_candidate_identity: {
+        Args: { candidacy: string }
+        Returns: undefined
+      }
+      confirm_employee_hr_gdpr: {
+        Args: { p_step: string; p_version: string }
         Returns: undefined
       }
       contacts_secured:
@@ -15702,6 +16688,10 @@ export type Database = {
               isSetofReturn: true
             }
           }
+      convert_topic_to_catalog: {
+        Args: { p_kind: string; p_region_kind?: string; p_topic: string }
+        Returns: Json
+      }
       create_appointment_poll_with_details: {
         Args: {
           p_deadline?: string
@@ -15784,6 +16774,11 @@ export type Database = {
           _request_id: string
         }
         Returns: string
+      }
+      delete_employee_hr: { Args: { p_run: string }; Returns: undefined }
+      delete_employee_lifecycle: {
+        Args: { p_lifecycle: string }
+        Returns: undefined
       }
       delete_employee_meeting: {
         Args: { p_meeting_id: string }
@@ -15936,6 +16931,46 @@ export type Database = {
         }[]
       }
       get_admin_tenant_health: { Args: never; Returns: Json }
+      get_analysis_comparison: {
+        Args: {
+          after_ballot: string
+          after_year: number
+          before_ballot: string
+          before_year: number
+          selected_parties: string[]
+        }
+        Returns: Json
+      }
+      get_analysis_district_history: {
+        Args: { district: number; selected_year: number }
+        Returns: Json
+      }
+      get_analysis_district_series: {
+        Args: { district: number; selected_years: number[] }
+        Returns: Json
+      }
+      get_analysis_local_page: {
+        Args: {
+          area_type: string
+          district: number
+          page_offset: number
+          search_text: string
+          selected_ballot: string
+          selected_party: string
+          selected_year: number
+        }
+        Returns: Json
+      }
+      get_analysis_turnout_comparison: {
+        Args: {
+          after_ballot: string
+          after_year: number
+          before_ballot: string
+          before_year: number
+          selected_party: string
+        }
+        Returns: Json
+      }
       get_authored_messages: {
         Args: { author_id_param: string }
         Returns: {
@@ -15990,6 +17025,11 @@ export type Database = {
         Returns: Json
       }
       get_database_size: { Args: never; Returns: number }
+      get_election_history_period: { Args: { period: string }; Returns: Json }
+      get_election_person_summary: {
+        Args: { person: string; through_period: string }
+        Returns: Json
+      }
       get_employee_admin_overview: {
         Args: { p_tenant_id: string }
         Returns: Json
@@ -16088,6 +17128,10 @@ export type Database = {
         Returns: boolean
       }
       hr_task_visible: { Args: { p_task: string }; Returns: boolean }
+      import_analysis_local_rows: {
+        Args: { rows_to_import: Json }
+        Returns: Json
+      }
       increment_fact_usage: { Args: { _fact_id: string }; Returns: undefined }
       insert_sample_contacts: {
         Args: { target_user_id: string }
@@ -16943,6 +17987,10 @@ export type Database = {
           scope: string
         }[]
       }
+      save_employee_hr_gdpr_declaration: {
+        Args: { p_expected_version: string; p_tenant: string; p_text: string }
+        Returns: string
+      }
       save_employee_hr_template: {
         Args: {
           p_direction: string
@@ -17015,14 +18063,10 @@ export type Database = {
         }
         Returns: undefined
       }
-      get_latest_employee_meetings: {
-        Args: { p_employee_ids: string[] }
-        Returns: { employee_id: string; meeting_id: string; meeting_date: string }[]
-      }
       save_team_question: {
         Args: {
           p_active: boolean
-          p_id: string | null
+          p_id: string
           p_question: string
           p_tenant: string
         }
@@ -17030,9 +18074,9 @@ export type Database = {
       }
       save_team_ritual_profile: {
         Args: {
-          p_birth_year: number | null
-          p_birthday: string | null
-          p_joined_on: string | null
+          p_birth_year: number
+          p_birthday: string
+          p_joined_on: string
           p_opted_in: boolean
           p_show_events: boolean
           p_tenant: string
@@ -17132,6 +18176,10 @@ export type Database = {
       }
       set_appointment_briefing_depth: {
         Args: { _appointment_id: string; _depth: string }
+        Returns: undefined
+      }
+      set_current_election_history_period: {
+        Args: { period: string }
         Returns: undefined
       }
       set_employee_responsibility: {

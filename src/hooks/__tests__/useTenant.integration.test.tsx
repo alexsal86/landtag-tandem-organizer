@@ -1,6 +1,8 @@
 import React from "react";
 import { describe, it, expect, vi, beforeEach } from "vitest";
 import { renderHook, waitFor, act } from "@testing-library/react";
+import { queryClient } from "@/providers/queryClient";
+import { getActiveTenantScope, setActiveTenantScope } from "@/integrations/supabase/tenantScope";
 
 const fixtures = {
   tenants: {
@@ -109,7 +111,11 @@ vi.mock("@/integrations/supabase/client", () => ({
               eq: vi.fn((columnB: string, valueB: unknown) => {
                 eqTracker.push({ table, column: columnB, value: valueB });
                 current = current.filter((row) => (row as Record<string, unknown>)[columnB] === valueB);
-                return Promise.resolve({ data: current, error: null });
+                return {
+                  returns: vi.fn(() => Promise.resolve({ data: current, error: null })),
+                  then: (resolve: (result: { data: unknown[]; error: null }) => unknown) =>
+                    Promise.resolve({ data: current, error: null }).then(resolve),
+                };
               }),
             };
           }),
@@ -130,6 +136,8 @@ describe("useTenant integration access paths", () => {
     vi.clearAllMocks();
     eqTracker.length = 0;
     localStorage.clear();
+    setActiveTenantScope(null);
+    queryClient.clear();
   });
 
   it("isolates tenant memberships to the active user and excludes foreign tenant data", async () => {
@@ -158,6 +166,8 @@ describe("useTenant integration access paths", () => {
 
     await waitFor(() => expect(result.current.loading).toBe(false));
     expect(result.current.currentTenant?.id).toBe("tenant-b");
+    expect(getActiveTenantScope()).toEqual({ userId: "user-admin", tenantId: "tenant-b" });
+    queryClient.setQueryData(["tenant-b", "tasks"], [{ id: "old-office-task" }]);
 
     act(() => {
       result.current.switchTenant("tenant-a");
@@ -165,5 +175,7 @@ describe("useTenant integration access paths", () => {
 
     expect(result.current.currentTenant?.id).toBe("tenant-a");
     expect(localStorage.getItem("currentTenantId_user-admin")).toBe("tenant-a");
+    expect(getActiveTenantScope()).toEqual({ userId: "user-admin", tenantId: "tenant-a" });
+    expect(queryClient.getQueryData(["tenant-b", "tasks"])).toBeUndefined();
   });
 });

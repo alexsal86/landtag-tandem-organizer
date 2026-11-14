@@ -1,5 +1,11 @@
 # Roadmap Aufgaben
 
+# Strikte Mandantenisolation
+- [x] Aktiven Mandanten zentral für alle Tabellen/Ansichten mit `tenant_id` erzwingen; fremde Filter und Schreibzugriffe ablehnen.
+- [x] Cache und verspätete Antworten beim Benutzer-/Mandantenwechsel trennen; Schema-Drift-Check und Selbsttest ergänzen.
+- [ ] Mehrfach-Mitgliedschaft mit zwei realen Büros und echter Anmeldung durchklicken — externe Supabase-Testsitzung nicht verfügbar.
+- [ ] Kindtabellen ohne eigene `tenant_id`-Spalte im zweiten Schritt statisch auf verbindliche Elternfilter prüfen; Datenbank-RLS bleibt dafür weiterhin maßgeblich.
+
 # Kalender-Reparatur
 - [x] Administrationsparameter auf die Administrationsseite begrenzen.
 - [x] Kalender-Abwesenheiten ohne nicht vorhandenen Fremdschlüssel laden — 6 Kalender-Tests bestanden.

@@ -10,6 +10,8 @@ interface BaseRechartsProps {
   children?: ReactNode;
   className?: string;
   strokeDasharray?: string;
+  vertical?: boolean;
+  horizontal?: boolean;
 }
 
 interface ResponsiveContainerProps extends BaseRechartsProps {
@@ -70,11 +72,19 @@ interface CartesianAxisProps extends BaseRechartsProps {
   hide?: boolean;
   domain?: [number, number];
   ticks?: number[];
+  type?: string;
+  unit?: RechartsPrimitive;
+  name?: RechartsPrimitive;
+  tick?: object;
+  allowDecimals?: boolean;
+  label?: ReactNode | object;
 }
 
 interface BarProps extends BaseRechartsProps {
   dataKey?: string | ((entry: RechartsDataPoint) => unknown);
   fill?: string;
+  name?: RechartsPrimitive;
+  stackId?: string | number;
 }
 
 interface LineProps extends BaseRechartsProps {
@@ -83,10 +93,13 @@ interface LineProps extends BaseRechartsProps {
   type?: string;
   name?: string;
   connectNulls?: boolean;
+  strokeWidth?: number;
 }
 
 interface ChartWrapperProps extends BaseRechartsProps {
-  data?: RechartsDataPoint[];
+  data?: unknown[];
+  layout?: string;
+  margin?: { left?: number; right?: number; top?: number; bottom?: number };
 }
 
 declare module 'recharts' {
@@ -94,7 +107,7 @@ declare module 'recharts' {
     labelFormatter?: (label: unknown) => import('react').ReactNode;
     children?: ReactNode;
     className?: string;
-    content?: ReactNode;
+    content?: ReactNode | ((props: { active?: boolean; payload?: TooltipPayloadItem[]; label?: unknown }) => ReactNode);
     cursor?: boolean | object;
     formatter?: (
       value: unknown,

@@ -1,9 +1,11 @@
-import React, { createContext, useContext, useEffect, useState } from "react";
+import React, { createContext, useContext, useEffect, useRef, useState } from "react";
 import type { Database, Json } from "@/integrations/supabase/types";
 import { supabase } from "@/integrations/supabase/client";
 import { useAuth } from "./useAuth";
 import { debugConsole } from "@/utils/debugConsole";
 import { safeGetItem, safeSetItem, safeRemoveItem } from "@/utils/storage";
+import { queryClient } from "@/providers/queryClient";
+import { getActiveTenantScope, setActiveTenantScope, type ActiveTenantScope } from "@/integrations/supabase/tenantScope";
 
 export type Tenant = Database["public"]["Tables"]["tenants"]["Row"] & {
   settings: Json;
@@ -65,9 +67,18 @@ export const TenantProvider = ({ children }: { children: React.ReactNode }): Rea
   const [currentTenant, setCurrentTenant] = useState<Tenant | null>(null);
   const [memberships, setMemberships] = useState<UserTenantMembership[]>([]);
   const [loading, setLoading] = useState<boolean>(true);
+  const membershipRequestRef = useRef(0);
+
+  const synchronizeScope = (scope: ActiveTenantScope | null): void => {
+    if (!setActiveTenantScope(scope)) return;
+    void queryClient.cancelQueries();
+    queryClient.clear();
+  };
 
   const fetchTenants = async (isBackgroundRefresh = false): Promise<void> => {
+    const requestId = ++membershipRequestRef.current;
     if (!user?.id) {
+      synchronizeScope(null);
       setTenantUserId(null);
       setTenants([]);
       setCurrentTenant(null);
@@ -83,6 +94,7 @@ export const TenantProvider = ({ children }: { children: React.ReactNode }): Rea
 
     try {
       debugConsole.log("🏢 Fetching tenant memberships for user:", user.id);
+      if (getActiveTenantScope()?.userId !== user.id) synchronizeScope(null);
 
       const legacyKey = "currentTenantId";
       if (safeGetItem(legacyKey)) {
@@ -99,6 +111,7 @@ export const TenantProvider = ({ children }: { children: React.ReactNode }): Rea
         const cached = raw ? normalizeMembershipData(JSON.parse(raw)).filter(m => m.user_id === user.id && m.is_active) : [];
         const available = cached.map(m => m.tenant).filter(isTenant);
         const selected = available.find(t => t.id === safeGetItem(tenantStorageKey)) ?? available[0] ?? null;
+        synchronizeScope(selected ? { userId: user.id, tenantId: selected.id } : null);
         setTenantUserId(user.id);
         setMemberships(cached); setTenants(available); setCurrentTenant(selected);
         return;
@@ -114,8 +127,11 @@ export const TenantProvider = ({ children }: { children: React.ReactNode }): Rea
         .eq("is_active", true)
         .returns();
 
+      if (requestId !== membershipRequestRef.current) return;
+
       if (membershipError) {
         debugConsole.error("❌ Error fetching tenant memberships:", membershipError);
+        synchronizeScope(null);
         setTenantUserId(user.id);
         safeRemoveItem(`tenant-memberships:${user.id}`);
         setTenants([]);
@@ -159,6 +175,7 @@ export const TenantProvider = ({ children }: { children: React.ReactNode }): Rea
         }
       }
 
+      synchronizeScope(currentTenantToSet ? { userId: user.id, tenantId: currentTenantToSet.id } : null);
       setCurrentTenant(currentTenantToSet);
       if (currentTenantToSet) {
         safeSetItem(tenantStorageKey, currentTenantToSet.id);
@@ -171,7 +188,7 @@ export const TenantProvider = ({ children }: { children: React.ReactNode }): Rea
       debugConsole.error("Error in fetchTenants:", error);
       // Preserve existing data on error — only clear on genuine user change (handled by the effect)
     } finally {
-      setLoading(false);
+      if (requestId === membershipRequestRef.current) setLoading(false);
     }
   };
 
@@ -185,8 +202,9 @@ export const TenantProvider = ({ children }: { children: React.ReactNode }): Rea
       return;
     }
 
-    setCurrentTenant(tenant);
     safeSetItem(`currentTenantId_${user.id}`, tenantId);
+    synchronizeScope({ userId: user.id, tenantId });
+    setCurrentTenant(tenant);
     debugConsole.log("🏢 Switched to tenant:", tenant.name);
   };
 

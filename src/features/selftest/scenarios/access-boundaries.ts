@@ -1,5 +1,6 @@
 import { supabase } from "@/integrations/supabase/client";
 import { canDecide } from "@/features/appointment-requests/logic";
+import { scopeTenantUrl } from "@/integrations/supabase/tenantScopeFetch";
 import { SELFTEST_PREFIX } from "../runner";
 import { describeError, expectFields } from "../verify";
 import type { TestScenario } from "../types";
@@ -8,9 +9,34 @@ export const accessBoundariesScenario: TestScenario = {
   id: "access-boundaries", title: "Zugriffsschutz (Bürogrenzen und Entscheiderrolle)",
   description: "Prüft Schreibsperren mit der aktuellen Anmeldung und die Entscheidung einer Terminanfrage gemäß der tatsächlichen Rolle.",
   features: ["appointment-requests", "permissions"], touches: ["appointment_requests"],
-  checks: ["Schreibversuch mit fremder Büro-ID scheitert an RLS", "Unberechtigte Rolle darf nicht entscheiden", "Berechtigte Rolle darf ablehnen"],
+  checks: ["Fachdatenabfragen werden zentral auf das aktive Büro begrenzt", "Schreibversuch mit fremder Büro-ID scheitert am Client-Schutz oder an RLS", "Unberechtigte Rolle darf nicht entscheiden", "Berechtigte Rolle darf ablehnen"],
   limitations: ["Getestet wird die aktuelle Rolle. Für die vollständige Rollenmatrix mit beiden Testkonten ausführen.", "Lesetrennung zweier existierender Büros erfordert eine separate Testumgebung mit zwei Konten."],
   steps: [
+    {
+      id: "active-tenant-query-guard", label: "Fachdatenabfragen bleiben im aktiven Büro", kind: "logic",
+      run: async () => {
+        const scope = { userId: "selftest-user", tenantId: "tenant-a" };
+        const missing = new URL("https://example.supabase.co/rest/v1/tasks?select=id");
+        scopeTenantUrl(missing, "tasks", scope);
+        const intersected = new URL("https://example.supabase.co/rest/v1/tasks?tenant_id=in.(tenant-a,tenant-b)");
+        scopeTenantUrl(intersected, "tasks", scope);
+        const fallback = new URL("https://example.supabase.co/rest/v1/app_settings?or=(tenant_id.eq.tenant-a,tenant_id.is.null)");
+        scopeTenantUrl(fallback, "app_settings", scope);
+        let foreignBlocked = false;
+        try {
+          scopeTenantUrl(new URL("https://example.supabase.co/rest/v1/tasks?tenant_id=eq.tenant-b"), "tasks", scope);
+        } catch {
+          foreignBlocked = true;
+        }
+        const checks = {
+          missing: missing.searchParams.get("tenant_id") === "eq.tenant-a",
+          intersected: intersected.searchParams.get("tenant_id") === "eq.tenant-a",
+          fallback: fallback.searchParams.get("tenant_id") === null,
+          foreignBlocked,
+        };
+        return { ok: Object.values(checks).every(Boolean), message: "Zentrale Mandantenfilter ergänzen, begrenzen und sperren wie vorgesehen.", details: checks };
+      },
+    },
     {
       id: "admin-sort-guard", label: "Konfigurationssortierung: Rollenprüfung und Tabellen-Whitelist", kind: "workflow",
       run: async ctx => {
@@ -72,7 +98,8 @@ export const accessBoundariesScenario: TestScenario = {
         const result = await supabase.from("appointment_requests").insert({ tenant_id: tenantId,
           title: `${SELFTEST_PREFIX} Bürogrenze (${ctx.runId})`, requested_date: "2099-01-15" }).select("id").single();
         if (result.data) ctx.trackRecord({ table: "appointment_requests", id: result.data.id });
-        return { ok: result.error?.code === "42501", message: result.error?.code === "42501" ? "RLS verweigert den Schreibversuch." : "Erwartete RLS-Sperre fehlt.", details: { expectedCode: "42501", actualCode: result.error?.code } };
+        const blocked = result.error?.code === "42501" || result.error?.code === "TENANT_SCOPE_CONFLICT";
+        return { ok: blocked, message: blocked ? "Client-Schutz oder RLS verweigert den Schreibversuch." : "Erwartete Mandantensperre fehlt.", details: { expectedCodes: ["TENANT_SCOPE_CONFLICT", "42501"], actualCode: result.error?.code } };
       },
     },
     {
