@@ -1,5 +1,5 @@
 import { describe, expect, it } from "vitest";
-import { waitFor } from "@testing-library/react";
+import { act, waitFor } from "@testing-library/react";
 import { useTenant } from "@/hooks/useTenant";
 import { mockSupabaseClient, renderHookWithProviders } from "@/test";
 
@@ -60,7 +60,7 @@ describe("useTenant (reference)", () => {
       expect(result.current.loading).toBe(false);
       expect(result.current.currentTenant?.id).toBe("tenant-a");
     });
-    result.current.switchTenant("tenant-a");
+    act(() => result.current.switchTenant("tenant-a"));
 
     expect(localStorage.getItem("currentTenantId_user-1")).toBe("tenant-a");
   });
