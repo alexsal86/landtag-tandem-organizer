@@ -14,11 +14,21 @@ export function AnalysisMap({
   values,
   label,
   onOpenDistrict,
+  scaleMax,
+  selectedDistrict,
+  visibleDistricts,
+  referenceValue,
+  referenceLabel = "Landes-Swing",
 }: {
   versions: DistrictVersion[];
   values: Map<number, number | null>;
   label: string;
   onOpenDistrict: (district: number) => void;
+  scaleMax?: number;
+  selectedDistrict?: number | null;
+  visibleDistricts?: Set<number>;
+  referenceValue?: number | null;
+  referenceLabel?: string;
 }) {
   const geographyId =
     versions.find((v) => v.geography_id)?.geography_id || undefined;
@@ -41,6 +51,19 @@ export function AnalysisMap({
   const element = useRef<HTMLDivElement | null>(null);
   const map = useRef<L.Map | null>(null);
   const bounds = useRef<L.LatLngBounds | null>(null);
+  const onSelect = useRef(onOpenDistrict);
+  useEffect(() => {
+    onSelect.current = onOpenDistrict;
+  }, [onOpenDistrict]);
+  const paths = useRef(new Map<number, L.Path>());
+  const maximum =
+    scaleMax ??
+    Math.max(
+      1,
+      ...[...values.values()]
+        .filter((v): v is number => v !== null)
+        .map(Math.abs),
+    );
   useEffect(() => {
     if (!element.current || !geometry.data) return;
     const instance = L.map(element.current, {
@@ -53,12 +76,8 @@ export function AnalysisMap({
     instance.attributionControl.addAttribution(
       "Geometrie: Statistisches Landesamt Baden-Württemberg",
     );
-    const max = Math.max(
-      1,
-      ...[...values.values()]
-        .filter((v): v is number => v !== null)
-        .map(Math.abs),
-    );
+    paths.current.clear();
+    const patternId = `analysis-unknown-${L.Util.stamp(instance)}`;
     const layer = L.geoJSON(geometry.data as GeoJSON.FeatureCollection, {
       style: (feature) => {
         const properties = feature?.properties || {};
@@ -76,7 +95,8 @@ export function AnalysisMap({
         return {
           color: "#fff",
           weight: 1.2,
-          fillColor: signedColor(value, max),
+          fillColor:
+            value === null ? `url(#${patternId})` : signedColor(value, maximum),
           fillOpacity: 0.85,
         };
       },
@@ -91,11 +111,41 @@ export function AnalysisMap({
             : null;
         const tooltip = document.createElement("span");
         tooltip.textContent = `${number}: ${version.district_name} · ${value === null ? "nicht vergleichbar / unbekannt" : `${value > 0 ? "+" : ""}${value.toLocaleString("de-DE", { maximumFractionDigits: 2 })} ${label}`}`;
+        paths.current.set(number, path as L.Path);
         path.bindTooltip(tooltip, { sticky: true });
-        path.on("click", () => onOpenDistrict(number));
+        path.on("click", () => onSelect.current(number));
         path.on("add", () => {
           const node = (path as L.Path).getElement();
           if (!node) return;
+          if (
+            value === null &&
+            node instanceof SVGElement &&
+            node.ownerSVGElement
+          ) {
+            const svg = node.ownerSVGElement;
+            if (!svg.querySelector(`#${patternId}`)) {
+              const ns = "http://www.w3.org/2000/svg";
+              const defs = document.createElementNS(ns, "defs");
+              const pattern = document.createElementNS(ns, "pattern");
+              pattern.id = patternId;
+              pattern.setAttribute("width", "8");
+              pattern.setAttribute("height", "8");
+              pattern.setAttribute("patternUnits", "userSpaceOnUse");
+              pattern.setAttribute("patternTransform", "rotate(45)");
+              const background = document.createElementNS(ns, "rect");
+              background.setAttribute("width", "8");
+              background.setAttribute("height", "8");
+              background.setAttribute("fill", "#e5e7eb");
+              const stripe = document.createElementNS(ns, "path");
+              stripe.setAttribute("d", "M0 0V8");
+              stripe.setAttribute("stroke", "#6b7280");
+              stripe.setAttribute("stroke-width", "3");
+              pattern.append(background, stripe);
+              defs.append(pattern);
+              svg.prepend(defs);
+            }
+            node.setAttribute("fill", `url(#${patternId})`);
+          }
           node.setAttribute("tabindex", "0");
           node.setAttribute("role", "button");
           node.setAttribute(
@@ -109,7 +159,7 @@ export function AnalysisMap({
             ) {
               event.preventDefault();
               event.stopPropagation();
-              onOpenDistrict(number);
+              onSelect.current(number);
             }
           });
         });
@@ -127,7 +177,30 @@ export function AnalysisMap({
       instance.remove();
       map.current = null;
     };
-  }, [geometry.data, versions, values, label, onOpenDistrict, geographyId]);
+  }, [geometry.data, versions, values, label, geographyId, maximum]);
+  useEffect(() => {
+    paths.current.forEach((path, number) => {
+      const selected = selectedDistrict === number;
+      const visible = !visibleDistricts || visibleDistricts.has(number);
+      path.setStyle({
+        color: selected ? "#111827" : "#fff",
+        weight: selected ? 3 : 1.2,
+        opacity: visible || selected ? 1 : 0.25,
+        fillOpacity: visible || selected ? 0.85 : 0.2,
+      });
+      path.getElement()?.setAttribute("aria-pressed", String(selected));
+      if (selected) path.bringToFront();
+    });
+  }, [
+    selectedDistrict,
+    visibleDistricts,
+    geometry.data,
+    versions,
+    values,
+    label,
+    geographyId,
+    maximum,
+  ]);
   if (geography.isLoading || geometry.isLoading)
     return (
       <p role="status" className="text-sm">
@@ -178,11 +251,58 @@ export function AnalysisMap({
           </button>
         </div>
       </div>
+      <div className="space-y-1 text-xs text-muted-foreground">
+        <div
+          className="relative h-3 rounded bg-[linear-gradient(90deg,#c26b28,#f0f1eb,#2563a6)]"
+          aria-label={`Farbskala von minus ${maximum} bis plus ${maximum} ${label}`}
+        >
+          {referenceValue != null && (
+            <span
+              className="absolute -top-1 h-5 w-0.5 bg-foreground"
+              style={{
+                left: `calc(${Math.max(0, Math.min(100, 50 + (referenceValue / maximum) * 50))}% - 1px)`,
+              }}
+              title={`${referenceLabel}: ${referenceValue.toLocaleString("de-DE")} ${label}`}
+            />
+          )}
+        </div>
+        <div className="flex justify-between tabular-nums">
+          <span>
+            −{maximum.toLocaleString("de-DE", { maximumFractionDigits: 2 })}
+          </span>
+          <span>0</span>
+          <span>
+            +{maximum.toLocaleString("de-DE", { maximumFractionDigits: 2 })}{" "}
+            {label}
+          </span>
+        </div>
+        {referenceValue != null && (
+          <p>
+            {referenceLabel}: {referenceValue > 0 ? "+" : ""}
+            {referenceValue.toLocaleString("de-DE", {
+              maximumFractionDigits: 2,
+            })}{" "}
+            {label}
+            {Math.abs(referenceValue) > maximum
+              ? " (außerhalb der Farbskala)"
+              : ""}
+          </p>
+        )}
+      </div>
       <div className="flex flex-wrap gap-4 text-xs text-muted-foreground">
         <span>🟠 negative Veränderung</span>
         <span>hell: nahe null</span>
         <span>🔵 positive Veränderung</span>
-        <span>grau: unbekannt / ausgeschlossen</span>
+        <span>
+          <span
+            className="mr-1 inline-block h-3 w-3 border align-middle"
+            style={{
+              background:
+                "repeating-linear-gradient(45deg,#e5e7eb 0 4px,#6b7280 4px 6px)",
+            }}
+          />
+          schraffiert: unbekannt / ausgeschlossen
+        </span>
       </div>
       <a
         className="text-xs underline"

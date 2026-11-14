@@ -51,9 +51,17 @@ import {
 import type { ComparisonValue, Metric } from "./types";
 import TurnoutComparison from "./TurnoutComparison";
 import { AnalysisMap } from "./AnalysisMap";
+import { SwingAtlas } from "./SwingAtlas";
 
 type Props = {
-  section: "profile" | "swing" | "split" | "quality" | "turnout-trend" | "mandates" | "research";
+  section:
+    | "profile"
+    | "swing"
+    | "split"
+    | "quality"
+    | "turnout-trend"
+    | "mandates"
+    | "research";
   year: number;
   ballot: Ballot;
   party: string;
@@ -89,8 +97,10 @@ export default function ResearchWorkbench(props: Props) {
       : 1;
   if (props.section === "profile")
     return <DistrictProfile {...props} district={district} set={set} />;
-  if (props.section === "turnout-trend") return <TurnoutComparison {...props} onOpenDistrict={open} />;
-  if (props.section === "research") return <ResearchLab {...props} onOpenDistrict={open}/>;
+  if (props.section === "turnout-trend")
+    return <TurnoutComparison {...props} onOpenDistrict={open} />;
+  if (props.section === "research")
+    return <ResearchLab {...props} onOpenDistrict={open} />;
   if (props.section === "mandates") return <MandateAnalysis />;
   if (props.section === "quality") return <QualityPanel year={props.year} />;
   return (
@@ -119,7 +129,12 @@ function DistrictProfile({
   const beforeYear =
     years.includes(requestedBefore) && requestedBefore !== year
       ? requestedBefore
-      : years.find((y) => y < year) || years.slice().sort((a, b) => a - b).find((y) => y !== year) || year;
+      : years.find((y) => y < year) ||
+        years
+          .slice()
+          .sort((a, b) => a - b)
+          .find((y) => y !== year) ||
+        year;
   const metric = params.get("profileMetric") || "share";
   const data = query.data;
   const results = data?.results || [];
@@ -427,7 +442,12 @@ function AtlasPanel({
     ? 2026
     : years.includes(requested) && requested !== year
       ? requested
-      : years.find((y) => y < year) || years.slice().sort((a, b) => a - b).find((y) => y !== year) || year;
+      : years.find((y) => y < year) ||
+        years
+          .slice()
+          .sort((a, b) => a - b)
+          .find((y) => y !== year) ||
+        year;
   const afterYear = split ? 2026 : year;
   const beforeBallot = split
     ? "first"
@@ -640,7 +660,7 @@ function AtlasPanel({
             )
           }
         >
-          CSV exportieren
+          CSV: alle ausgewählten Parteien
         </Button>
       </AnalysisControls>
       <fieldset className="flex flex-wrap gap-2">
@@ -702,7 +722,7 @@ function AtlasPanel({
       <DataState
         loading={query.isLoading}
         error={query.error}
-        empty={!rows.length}
+        empty={!data?.results.length}
         retry={() => void query.refetch()}
       >
         {split && (
@@ -731,98 +751,116 @@ function AtlasPanel({
             })}
           />
         )}
-        <div className="grid gap-3 sm:grid-cols-3">
-          {[
-            [
-              "Positive Veränderungen",
-              rows.filter((r) => (valueFor(r, metric) ?? 0) > 0).length,
-            ],
-            [
-              "Negative Veränderungen",
-              rows.filter((r) => (valueFor(r, metric) ?? 0) < 0).length,
-            ],
-            [
-              "Unbekannt / ausgeschlossen",
-              rows.filter((r) => valueFor(r, metric) === null).length,
-            ],
-          ].map(([title, count]) => (
-            <Card key={title}>
-              <CardContent className="pt-4">
-                <p className="text-xs text-muted-foreground">{title}</p>
-                <p className="text-xl font-semibold">{count}</p>
-              </CardContent>
-            </Card>
-          ))}
-        </div>
-        <Selection
-          id="map-party"
-          label="Partei für die Karte"
-          value={activeMapParty}
-          onChange={setMapParty}
-        >
-          {selectedParties.map((p) => (
-            <option key={p}>{p}</option>
-          ))}
-        </Selection>
-        <AnalysisMap
-          versions={versions}
-          values={mapValues}
-          label={unit}
-          onOpenDistrict={open}
-        />
-        <DataTable
-          headers={[
-            "Nr.",
-            "Wahlkreis",
-            "Partei",
-            split ? "Erstanteil" : `${beforeYear} Anteil`,
-            split ? "Zweitanteil" : `${afterYear} Anteil`,
-            split ? "Erststimmen" : `${beforeYear} Stimmen`,
-            split ? "Zweitstimmen" : `${afterYear} Stimmen`,
-            `${split ? "Erst − Zweit" : "Veränderung"} (${unit})`,
-            split ? "Landesdifferenz PP" : "Landes-Swing PP",
-            ...(split ? ["Verifizierte Direktkandidatur"] : []),
-            "Hinweise",
-          ]}
-          sortableColumns={[0, 1, 2, 3, 4, 5, 6, 7, 8]}
-          sortValues={rows.map((r) => [
-            r.districtNumber,
-            r.districtName,
-            r.party,
-            r.before?.share ?? null,
-            r.after?.share ?? null,
-            r.before?.votes ?? null,
-            r.after?.votes ?? null,
-            valueFor(r, metric),
-            r.stateSwing,
-          ])}
-          rows={rows.map((r) => [
-            r.districtNumber,
-            <button
-              className="text-left underline"
-              onClick={() => open(r.districtNumber)}
+        {!split ? (
+          <SwingAtlas
+            rows={rows}
+            versions={versions}
+            party={activeMapParty}
+            parties={selectedParties}
+            onPartyChange={setMapParty}
+            metric={metric}
+            beforeYear={beforeYear}
+            afterYear={afterYear}
+            beforeBallot={beforeBallot}
+            afterBallot={afterBallot}
+            onOpenDistrict={open}
+          />
+        ) : (
+          <>
+            <div className="grid gap-3 sm:grid-cols-3">
+              {[
+                [
+                  "Positive Veränderungen",
+                  rows.filter((r) => (valueFor(r, metric) ?? 0) > 0).length,
+                ],
+                [
+                  "Negative Veränderungen",
+                  rows.filter((r) => (valueFor(r, metric) ?? 0) < 0).length,
+                ],
+                [
+                  "Unbekannt / ausgeschlossen",
+                  rows.filter((r) => valueFor(r, metric) === null).length,
+                ],
+              ].map(([title, count]) => (
+                <Card key={title}>
+                  <CardContent className="pt-4">
+                    <p className="text-xs text-muted-foreground">{title}</p>
+                    <p className="text-xl font-semibold">{count}</p>
+                  </CardContent>
+                </Card>
+              ))}
+            </div>
+            <Selection
+              id="map-party"
+              label="Partei für die Karte"
+              value={activeMapParty}
+              onChange={setMapParty}
             >
-              {r.districtName}
-            </button>,
-            r.party,
-            percent(r.before?.share),
-            percent(r.after?.share),
-            number(r.before?.votes),
-            number(r.after?.votes),
-            signed(valueFor(r, metric)),
-            signed(r.stateSwing),
-            ...(split
-              ? [
-                  candidates.data?.find(
-                    (c) =>
-                      c.district_number === r.districtNumber &&
-                      c.party === r.party,
-                  )?.candidate_name || "Nicht verifiziert verfügbar",
-                ]
-              : []),
-            r.warnings.join(" ") || "Gleicher geprüfter Zuschnitt",
-          ])}
-        />
+              {selectedParties.map((p) => (
+                <option key={p}>{p}</option>
+              ))}
+            </Selection>
+            <AnalysisMap
+              versions={versions}
+              values={mapValues}
+              label={unit}
+              onOpenDistrict={open}
+            />
+            <DataTable
+              headers={[
+                "Nr.",
+                "Wahlkreis",
+                "Partei",
+                split ? "Erstanteil" : `${beforeYear} Anteil`,
+                split ? "Zweitanteil" : `${afterYear} Anteil`,
+                split ? "Erststimmen" : `${beforeYear} Stimmen`,
+                split ? "Zweitstimmen" : `${afterYear} Stimmen`,
+                `${split ? "Erst − Zweit" : "Veränderung"} (${unit})`,
+                split ? "Landesdifferenz PP" : "Landes-Swing PP",
+                ...(split ? ["Verifizierte Direktkandidatur"] : []),
+                "Hinweise",
+              ]}
+              sortableColumns={[0, 1, 2, 3, 4, 5, 6, 7, 8]}
+              sortValues={rows.map((r) => [
+                r.districtNumber,
+                r.districtName,
+                r.party,
+                r.before?.share ?? null,
+                r.after?.share ?? null,
+                r.before?.votes ?? null,
+                r.after?.votes ?? null,
+                valueFor(r, metric),
+                r.stateSwing,
+              ])}
+              rows={rows.map((r) => [
+                r.districtNumber,
+                <button
+                  className="text-left underline"
+                  onClick={() => open(r.districtNumber)}
+                >
+                  {r.districtName}
+                </button>,
+                r.party,
+                percent(r.before?.share),
+                percent(r.after?.share),
+                number(r.before?.votes),
+                number(r.after?.votes),
+                signed(valueFor(r, metric)),
+                signed(r.stateSwing),
+                ...(split
+                  ? [
+                      candidates.data?.find(
+                        (c) =>
+                          c.district_number === r.districtNumber &&
+                          c.party === r.party,
+                      )?.candidate_name || "Nicht verifiziert verfügbar",
+                    ]
+                  : []),
+                r.warnings.join(" ") || "Gleicher geprüfter Zuschnitt",
+              ])}
+            />
+          </>
+        )}
       </DataState>
     </div>
   );

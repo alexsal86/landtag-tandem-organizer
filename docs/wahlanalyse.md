@@ -707,3 +707,8 @@ Vollständige Wahlkreiskandidaturen und Landeslisten für Personensimulationen s
 echte Gemeindequellen anschließend amtlich einlesen. Der komplette Originalabgleich
 aller Wahlkreise und Geometrien bleibt wegen HTTP 403 weiterhin offen; der neue
 Landesabgleich löst ausschließlich die vollständig belegte Landesebene 2026.
+### Swing-Atlas: Karte, Auswahl und Vergleich
+
+Der Swing-Atlas verwendet die vorhandene `AnalysisMap` und die geprüften Vergleiche aus `research/calculations.ts`. Kartenklick, Tastaturauswahl, Rangliste und Tabellenlink wählen einen Wahlkreis im Atlas aus; der Steckbrief bleibt eine separate Aktion. Die Auswahl wird als `atlasDistrict` in der URL erhalten. Suche nach Namen oder exakter Nummer filtert Tabelle, Kennzahlen, Ranglisten und den Export der Kartenpartei; andere Kartenflächen werden abgeblendet. Der Landeswert bleibt ein Landeswert.
+
+Prozentpunkte sind die Standardansicht, die Abweichung vom Landestrend ist eine eigene Kennzahl mit den bestehenden gemeinsamen Datenstandbedingungen. Stimmenveränderungen verwenden tatsächliche Parteistimmen, keine Hochrechnung aus Prozentpunkten. Die feste symmetrische Farbskala beträgt ±10 PP beziehungsweise ±10.000 Stimmen. Extremwerte werden farblich gesättigt, numerisch vollständig angezeigt. Die optionale automatische Skala orientiert sich an allen Wahlkreisen der Kartenpartei. Unbekannte oder ausgeschlossene Vergleiche sind schraffiert und gehen weder als Null noch als Gewinne/Verluste in Ranglisten ein. Eine gemessene Null wird separat gezählt. Stimmenarten, vorläufige Ergebnisse, Ergebnisstände und Warnungen bleiben sichtbar. Der Vergleich zwischen Einzelstimme und Erst-/Zweitstimme ist kein Nachweis individueller Wählerwechsel.

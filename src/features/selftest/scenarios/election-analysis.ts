@@ -1,3 +1,5 @@
+import { atlasRows, atlasRankings, atlasScale } from "@/features/election-analysis/research/atlasModel";
+import type { ComparisonValue } from "@/features/election-analysis/research/types";
 import { analysisReport } from "@/features/election-analysis/research/reports";
 import {
   allocateBw2026,
@@ -64,6 +66,42 @@ export const electionAnalysisScenario: TestScenario = {
     "Amtliche Downloads, Datenbank-RLS und Vollständigkeit historischer Kandidaturen sind separate Prüfungen.",
   ],
   steps: [
+    {
+      id: "swing-atlas-selection",
+      label: "Swing-Atlas: exakte Suche, getrennte Ranglisten und feste Skala",
+      kind: "logic",
+      run: async () => {
+        const row = (n: number, swing: number | null): ComparisonValue => ({
+          districtNumber: n,
+          districtName: `Stuttgart ${n}`,
+          party: "GRÜNE",
+          before: undefined,
+          after: undefined,
+          swing,
+          voteDelta: swing,
+          stateSwing: null,
+          relativeSwing: null,
+          comparable: swing !== null,
+          warnings: [],
+        });
+        const rows = [row(1, -2), row(11, -1), row(2, 0), row(3, null)];
+        const ranked = atlasRankings(rows, "pp");
+        return {
+          ok:
+            atlasRows(rows, "GRÜNE", "1").length === 1 &&
+            atlasRows(rows, "GRÜNE", " STUTTGART ").length === 4 &&
+            atlasRows(rows, "CDU", "").length === 0 &&
+            ranked.gains.length === 0 &&
+            ranked.losses[0].districtNumber === 1 &&
+            ranked.unknown === 1 &&
+            ranked.unchanged === 1 &&
+            atlasScale("pp") === atlasScale("relative") &&
+            atlasScale("votes") === 10000,
+          message:
+            "Verluste werden nie als Zugewinne gelistet; unbekannt bleibt getrennt von Null.",
+        };
+      },
+    },
     {
       id: "analysis-reports",
       label: "Bericht: sichtbare Werte einfrieren und aktive Inhalte entfernen",
