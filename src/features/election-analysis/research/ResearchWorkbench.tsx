@@ -453,9 +453,9 @@ function AtlasPanel({
     ? "first"
     : ballotForComparison(beforeYear, ballot);
   const afterBallot = split ? "second" : ballotForComparison(afterYear, ballot);
-  const chosen = (params.get("analysisParties") || party)
+  const chosen: string[] = (params.get("analysisParties") || party)
     .split(",")
-    .filter((p) => parties.includes(p));
+    .filter((p) => parties.some((knownParty) => knownParty === p));
   const selectedParties = chosen.length ? [...new Set(chosen)] : [party];
   const [mapParty, setMapParty] = useState(selectedParties[0]);
   const activeMapParty = selectedParties.includes(mapParty)
