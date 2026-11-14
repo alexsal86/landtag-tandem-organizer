@@ -31,3 +31,14 @@ export function exportAnalysisCsv(rows: object[], filename: string): void {
   const url = URL.createObjectURL(new Blob([csv], { type: 'text/csv;charset=utf-8;' }));
   const link = document.createElement('a'); link.href = url; link.download = filename; link.click(); URL.revokeObjectURL(url);
 }
+
+
+/** Compare original values, never formatted German number strings. Missing
+ * values stay at the bottom for both sort directions. */
+export function compareAnalysisValues(a: string | number | null, b: string | number | null, direction: 'asc' | 'desc'): number {
+  if (a === null && b === null) return 0;
+  if (a === null) return 1;
+  if (b === null) return -1;
+  const result = typeof a === 'number' && typeof b === 'number' ? a - b : String(a).localeCompare(String(b), 'de', { numeric: true, sensitivity: 'base' });
+  return direction === 'asc' ? result : -result;
+}

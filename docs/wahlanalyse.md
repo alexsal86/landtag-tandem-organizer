@@ -78,3 +78,10 @@ und Teilen des Links erhalten. Vergleichswahl und Tabellen-Altersgruppe sind lok
 Ansichtseinstellungen. Zahlen sind zusätzlich zu den Diagrammen als Tabelle zugänglich.
 
 Typprüfung: `npm run typecheck:election-analysis`.
+
+Wahlkreisvergleich und Wahlbeteiligung haben getrennte Spalten für Nummer und
+Wahlkreisname. Die Spaltenköpfe mit Doppelpfeil sortieren per Klick auf-/absteigend;
+der aktive Pfeil zeigt die Richtung. Zahlen werden nach ihrem Rohwert sortiert,
+fehlende Angaben bleiben in beiden Richtungen unten. Die Sortierung umfasst alle
+gefilterten Zeilen vor der Begrenzung auf zunächst 25 sichtbare Einträge und löst
+keine zusätzlichen Datenbankabfragen aus.

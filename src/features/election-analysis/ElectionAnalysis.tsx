@@ -1,3 +1,4 @@
+import { ArrowDown, ArrowUp, ArrowUpDown } from 'lucide-react';
 import { useState, type ReactNode } from 'react';
 import { useSearchParams } from 'react-router-dom';
 import { Bar, BarChart, CartesianGrid, Cell, Legend, Line, LineChart, ReferenceLine, ResponsiveContainer, Tooltip, XAxis, YAxis } from 'recharts';
@@ -7,7 +8,7 @@ import { Input } from '@/components/ui/input';
 import { Label } from '@/components/ui/label';
 import { getPartyColor } from '@/features/election-districts/partyColors';
 import { useAnalysisRows, useAnalysisYears, analysisError } from './useElectionAnalysis';
-import { ballotLabels, ballotsForYear, effectiveBallot, parties, sectionLabels, percent, number, difference, stateComparison, exportAnalysisCsv } from './model';
+import { ballotLabels, ballotsForYear, effectiveBallot, parties, sectionLabels, percent, number, difference, stateComparison, exportAnalysisCsv, compareAnalysisValues } from './model';
 import type { AnalysisSection, Ballot } from './types';
 
 const selectClass = 'h-10 rounded-md border border-input bg-background px-3 text-sm';
@@ -21,9 +22,28 @@ function DataState({ loading, error, empty, retry, children }: { loading: boolea
   if (empty) return <p className="rounded-lg border p-4 text-sm text-muted-foreground">Für diese Auswahl sind keine Daten hinterlegt. Fehlende Angaben sind keine Nullwerte.</p>;
   return <>{children}</>;
 }
-function DataTable({ headers, rows }: { headers: string[]; rows: ReactNode[][] }) {
+function DataTable({ headers, rows, sortValues, sortableColumns = [] }: { headers: string[]; rows: ReactNode[][]; sortValues?: (string | number | null)[][]; sortableColumns?: number[] }) {
   const [limit, setLimit] = useState(25);
-  return <div><div className="overflow-x-auto rounded-lg border"><table className="w-full text-sm"><thead className="bg-muted/30"><tr>{headers.map(header => <th key={header} scope="col" className="whitespace-nowrap p-3 text-left font-medium">{header}</th>)}</tr></thead><tbody>{rows.slice(0, limit).map((row, index) => <tr key={index} className="border-t">{row.map((cell, cellIndex) => <td key={cellIndex} className="p-3 align-top">{cell}</td>)}</tr>)}</tbody></table></div>{rows.length > limit && <Button className="mt-3" variant="outline" onClick={() => setLimit(value => value + 25)}>Weitere 25 anzeigen ({limit} von {rows.length})</Button>}</div>;
+  const [sort, setSort] = useState<{ column: number; direction: 'asc' | 'desc' } | null>(null);
+  const sortedRows = rows.map((row, index) => ({ row, index }));
+  if (sort && sortValues) sortedRows.sort((a, b) => compareAnalysisValues(sortValues[a.index]?.[sort.column] ?? null, sortValues[b.index]?.[sort.column] ?? null, sort.direction) || a.index - b.index);
+  const changeSort = (column: number) => {
+    setSort(previous => ({ column, direction: previous?.column === column && previous.direction === 'asc' ? 'desc' : 'asc' }));
+    setLimit(25);
+  };
+  return <div><div className="overflow-x-auto rounded-lg border"><table className="w-full text-sm">
+    <thead className="bg-muted/30"><tr>{headers.map((header, index) => {
+      const sortable = !!sortValues && sortableColumns.includes(index);
+      const active = sort?.column === index;
+      const Icon = active ? sort.direction === 'asc' ? ArrowUp : ArrowDown : ArrowUpDown;
+      return <th key={header} scope="col" aria-sort={sortable ? active ? sort.direction === 'asc' ? 'ascending' : 'descending' : 'none' : undefined} className="whitespace-nowrap p-3 text-left font-medium">
+        {sortable ? <button type="button" className="inline-flex items-center gap-2 rounded-sm focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring" onClick={() => changeSort(index)} aria-label={`${header}: ${active && sort.direction === 'asc' ? 'absteigend' : 'aufsteigend'} sortieren`}>
+          {header}<Icon aria-hidden="true" className={`h-3.5 w-3.5 ${active ? 'text-foreground' : 'text-muted-foreground'}`} />
+        </button> : header}
+      </th>;
+    })}</tr></thead>
+    <tbody>{sortedRows.slice(0, limit).map(({ row, index }) => <tr key={index} className="border-t">{row.map((cell, cellIndex) => <td key={cellIndex} className="p-3 align-top">{cell}</td>)}</tr>)}</tbody>
+  </table></div>{rows.length > limit && <Button className="mt-3" variant="outline" onClick={() => setLimit(value => value + 25)}>Weitere 25 anzeigen ({limit} von {rows.length})</Button>}</div>;
 }
 function StatusNote({ children }: { children: ReactNode }) { return <p className="rounded-lg border bg-muted/20 p-3 text-xs leading-relaxed text-muted-foreground">{children}</p>; }
 function PartyLabel({ party }: { party: string }) { return <span className="inline-flex items-center gap-2"><span className="h-2.5 w-2.5 rounded-full" style={{ background: chartColor(party) }} />{party}</span>; }
@@ -93,7 +113,7 @@ function DistrictPanel({ year, ballot, party, gender }: PanelProps) {
     <StatusNote>{query.data?.some(r => r.preliminary) ? 'Vorläufige Wahlkreiswerte aus dem Wahlnachtsbericht; Abweichungen von endgültigen Landeswerten sind möglich.' : 'Wahlkreiswerte laut Datensatz endgültig.'} Wahlkreiszuschnitte können sich zwischen Wahlen ändern. Ergebnisse beziehen sich auf die ausgewählte Stimmenart und werden keinen einzelnen Mandatsträgern zugeschrieben.</StatusNote>
     <DataState loading={query.isLoading} error={query.error} empty={!rows.length || rows.every(r => r.share === null && r.votes === null)} retry={() => void query.refetch()}>
       <Card><CardHeader><CardTitle className="text-lg">{party}: zehn stärkste Wahlkreise dieser Auswahl</CardTitle></CardHeader><CardContent><div className="h-80" role="img" aria-label="Wahlkreise nach Parteianteil; Werte folgen in der Tabelle"><ResponsiveContainer><BarChart data={rows.filter(r => r.share !== null).slice(0, 10)} layout="vertical" margin={{ left: 30 }}><XAxis type="number" unit=" %" /><YAxis type="category" dataKey="district_name" width={130} tick={{ fontSize: 11 }} /><Tooltip formatter={value => percent(typeof value === 'number' ? value : null)} /><Bar dataKey="share" fill={chartColor(party)} name="Anteil" /></BarChart></ResponsiveContainer></div></CardContent></Card>
-      <DataTable key={search} headers={['Wahlkreis', 'Stimmen', 'Anteil', 'Datenstatus / Hinweis']} rows={rows.map(r => [`${r.district_number}: ${r.district_name}`, number(r.votes), percent(r.share), r.notes || (r.preliminary ? 'Vorläufig' : 'Endgültig')])} />
+      <DataTable key={search} headers={['Nr.', 'Wahlkreis', 'Stimmen', 'Anteil', 'Datenstatus / Hinweis']} sortableColumns={[0, 1, 2, 3]} sortValues={rows.map(r => [r.district_number, r.district_name, r.votes, r.share])} rows={rows.map(r => [number(r.district_number), r.district_name, number(r.votes), percent(r.share), r.notes || (r.preliminary ? 'Vorläufig' : 'Endgültig')])} />
     </DataState>
   </div>;
 }
@@ -111,7 +131,7 @@ function TurnoutPanel({ year, ballot, party, gender }: PanelProps) {
     <DataState loading={query.isLoading} error={query.error} empty={!all.length} retry={() => void query.refetch()}>
       <div className="grid gap-3 sm:grid-cols-3">{[['Wahlberechtigte', number(eligible)], ['Wählende', number(voters)], ['Beteiligung aus 70 Wahlkreisen', eligible && voters !== null ? percent(voters / eligible * 100) : 'Nicht vollständig erfasst']].map(([label, value]) => <Card key={label}><CardContent className="pt-5"><p className="text-xs text-muted-foreground">{label}</p><p className="mt-1 text-xl font-semibold">{value}</p></CardContent></Card>)}</div>
       <div className="flex flex-wrap gap-3"><Input className="max-w-sm" aria-label="Wahlkreis filtern" placeholder="Wahlkreisname oder Nummer …" value={search} onChange={event => setSearch(event.target.value)} /><Button variant="outline" onClick={() => exportAnalysisCsv(rows.map(r => ({ Wahljahr: year, Stimmenart: ballotLabels[ballot], Wahlkreis: r.district_name, Nummer: r.district_number, Wahlberechtigte: r.eligible, Waehlende: r.voters, Beteiligung_Prozent: r.turnout, Gueltige_Stimmen: r.valid_votes, Vorlaeufig: r.preliminary, Hinweis: r.notes })), `Wahlbeteiligung-${year}.csv`)}>CSV exportieren</Button></div>
-      <DataTable key={search} headers={['Wahlkreis', 'Wahlberechtigte', 'Wählende', 'Beteiligung', 'Gültige Stimmen', 'Hinweis']} rows={rows.map(r => [`${r.district_number}: ${r.district_name}`, number(r.eligible), number(r.voters), percent(r.turnout), number(r.valid_votes), r.notes || '—'])} />
+      <DataTable key={search} headers={['Nr.', 'Wahlkreis', 'Wahlberechtigte', 'Wählende', 'Beteiligung', 'Gültige Stimmen', 'Hinweis']} sortableColumns={[0, 1, 2, 3, 4, 5]} sortValues={rows.map(r => [r.district_number, r.district_name, r.eligible, r.voters, r.turnout, r.valid_votes])} rows={rows.map(r => [number(r.district_number), r.district_name, number(r.eligible), number(r.voters), percent(r.turnout), number(r.valid_votes), r.notes || '—'])} />
     </DataState>
   </div>;
 }
