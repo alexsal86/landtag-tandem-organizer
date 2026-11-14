@@ -15,7 +15,7 @@ export function AnalysisToolbarLayout({
   if (filters == null) return <>{children}</>;
   return (
     <ControlsTarget.Provider value={target}>
-      <div className="flex flex-col gap-4 rounded-lg border bg-muted/20 p-4 sm:flex-row sm:flex-wrap sm:items-end sm:gap-5">
+      <div className="flex flex-col gap-4 rounded-lg border bg-white p-4 sm:flex-row sm:flex-wrap sm:items-end sm:gap-5">
         <div className="flex flex-wrap items-end gap-4">{filters}</div>
         <div
           ref={setTarget}

@@ -62,7 +62,7 @@ export function HistoryLinkReview({
       <label htmlFor="history-analysis-link">Wahlkreis</label>
       <select
         id="history-analysis-link"
-        className="mx-2 rounded border bg-background p-2"
+        className="mx-2 rounded border bg-white text-slate-900 p-2"
         value={number}
         disabled={confirm.isPending}
         onChange={(event) => {

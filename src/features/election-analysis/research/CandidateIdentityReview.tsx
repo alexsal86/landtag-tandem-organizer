@@ -74,7 +74,7 @@ function IdentityForm({
       <label className="block">
         Persönliche Erststimmenkandidatur
         <select
-          className="mt-1 w-full rounded border bg-background p-2"
+          className="mt-1 w-full rounded border bg-white text-slate-900 p-2"
           value={selected}
           disabled={disabled || confirm.isPending}
           onChange={(e) => {

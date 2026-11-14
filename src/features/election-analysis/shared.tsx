@@ -6,7 +6,7 @@ import { Label } from "@/components/ui/label";
 import { getPartyColor } from "@/features/election-districts/partyColors";
 import { compareAnalysisValues } from "./model";
 const selectClass =
-  "h-10 rounded-md border border-input bg-background px-3 text-sm";
+  "h-10 rounded-md border border-input bg-white text-slate-900 px-3 text-sm";
 export const chartColor = (party: string) =>
   party === "FDP" ? "#a68a00" : getPartyColor(party);
 export function Selection({
