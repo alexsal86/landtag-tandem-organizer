@@ -1,0 +1,63 @@
+/**
+ * Runtime counterpart of every generated public table/view Row with tenant_id.
+ * scripts/check-tenant-scope.mjs fails when the generated schema drifts.
+ */
+const TENANT_SCOPED_TABLE_NAMES = `
+action_permissions admin_status_options annual_tasks app_settings appointment_categories
+appointment_feedback appointment_feedback_settings appointment_guests appointment_locations
+appointment_polls appointment_preparation_templates appointment_preparations appointment_requests
+appointment_statuses appointments audit_log_entries automation_rate_limits automation_rule_run_steps
+automation_rule_runs automation_rule_versions automation_rules bulk_action_audit calendar_sync_settings
+call_logs case_file_processing_statuses case_file_types case_files case_item_categories
+case_item_escalation_suggestions case_item_handover_log case_item_interactions case_item_timeline
+case_items committees contact_activities contact_briefing_memory contact_usage_stats contacts
+daily_briefings data_lint_findings day_slips decision_archive_settings decision_email_templates
+default_appointment_guests distribution_lists district_notes document_annotation_events
+document_annotation_tasks document_annotations document_categories document_folders documents
+dossier_entries dossier_position_versions dossier_source_watchers dossier_stakeholders
+dossier_talking_points dossiers election_analysis_scenarios election_district_notes email_logs
+email_templates employee_hr_evidence employee_hr_gdpr_declarations employee_hr_reminder_log
+employee_hr_templates employee_lifecycle employee_meeting_action_items employee_meeting_requests
+employee_meetings employee_responsibilities event_email_templates event_planning_documents
+event_plannings event_rsvps expense_budgets expense_categories expenses external_calendars facts
+field_permissions fundings gdpr_requests habits information_blocks knowledge_document_versions
+knowledge_documents knowledge_question_attachments knowledge_question_cards
+knowledge_question_comment_cards knowledge_question_comments knowledge_question_events
+knowledge_question_followers knowledge_question_outdated_reports knowledge_question_sources
+knowledge_question_summaries knowledge_question_tags knowledge_questions knowledge_tags
+letter_archive_settings letter_occasions letter_template_assets letter_template_settings
+letter_templates letters login_customization map_flag_types map_flags map_layers map_routes
+matrix_subscriptions matrix_widget_feedback_admin_stats matrix_widget_improvement_triggers
+matrix_widget_message_feedback meeting_templates meetings messages news_email_templates
+notification_types notifications parliament_protocols party_associations planning_item_documents
+planning_templates preparation_templates press_releases profiles public_holidays
+quick_note_global_shares quick_note_shares quick_note_versions quick_note_write_receipts quick_notes
+regions routine_package_runs rss_settings rss_sources scheduled_emails search_analytics selftest_runs
+sender_information social_approval_comments social_assets social_campaigns social_content_channels
+social_content_item_channels social_content_items social_content_variants social_hashtag_sets
+social_planner_notes starred_appointments tags task_categories task_decisions tasks team_announcements
+team_bingo_settings team_dashboards team_fun_facts team_question_answers team_question_weeks
+team_questions team_ritual_profiles team_ritual_settings team_two_truths_answers
+team_two_truths_months tenant_feature_flags tenant_onboarding_checklist_items tenant_onboarding_slides
+time_entries todos topic_backlog topic_catalog_links topics user_onboarding_state
+user_planning_preferences user_preferences user_status vacation_checklist_templates
+workflow_definitions workflow_runs
+`;
+
+export const TENANT_SCOPED_TABLES: ReadonlySet<string> = new Set(
+  TENANT_SCOPED_TABLE_NAMES.trim().split(/\s+/),
+);
+
+/** Membership discovery must see every active membership before a tenant can be selected. */
+export const TENANT_SCOPE_EXEMPT_TABLES: ReadonlySet<string> = new Set([
+  "user_tenant_memberships",
+]);
+
+/** These settings deliberately support tenant rows plus global NULL fallback rows. */
+export const GLOBAL_TENANT_OPTIONAL_TABLES: ReadonlySet<string> = new Set([
+  "app_settings",
+]);
+
+export function isTenantScopedTable(table: string): boolean {
+  return TENANT_SCOPED_TABLES.has(table) && !TENANT_SCOPE_EXEMPT_TABLES.has(table);
+}
