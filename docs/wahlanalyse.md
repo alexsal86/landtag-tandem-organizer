@@ -36,7 +36,12 @@ nicht zu einem endgültigen Ergebnis umgedeutet.
 - Landesergebnisse: Parteianteile, absolute Stimmen und Sitze für fünf ausgewählte
   Parteien. Optional wird genau eine Vergleichswahl zusätzlich geladen. Änderungen
   sind Prozentpunkte; es erfolgt keine Sitzberechnung aus den importierten Anteilen.
-  Sitze 2026 stehen nur in der maßgeblichen Zweitstimmenzeile.
+  Sitze 2026 stehen nur in der maßgeblichen Zweitstimmenzeile. Unter der
+  Ergebnistabelle zeigt ein skalierender Halbkreis je hinterlegtem Sitz einen
+  Punkt, von links nach rechts SPD, GRÜNE, FDP, CDU, AfD. Parteien ohne Sitze
+  werden ausgelassen; fehlende Sitzangaben werden nicht ergänzt. Die Zahl in
+  der Mitte zählt die dargestellten Sitze, keine aus Parteianteilen errechneten
+  Mandate und keine abgeleitete Parlamentsmehrheit.
 - Wahlkreisvergleich: eine Partei, Wahl und Stimmenart, Rangliste und zehn stärkste
   Wahlkreise. Die beiden Tabellenblätter mit Prozenten und absoluten Stimmen werden
   je Jahr/Stimmenart/Wahlkreis verknüpft. Diese Resultate werden keinem Mandat oder

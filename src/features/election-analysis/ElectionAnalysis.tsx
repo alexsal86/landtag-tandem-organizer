@@ -1,3 +1,4 @@
+import { StateSeatDistribution } from './StateSeatDistribution';
 import { AnalysisControls, AnalysisToolbarLayout } from './AnalysisToolbar';
 import { ReportActions } from './research/ReportActions';
 import { Selection, DataState, DataTable, StatusNote, PartyLabel, chartColor } from './shared';
@@ -69,7 +70,9 @@ function StatePanel({ year, ballot, party, gender, years }: PanelProps & { years
         <Card className="min-w-0"><CardHeader><CardTitle className="text-lg">Parteianteile · {year}</CardTitle></CardHeader><CardContent>
           <div className="h-72" role="img" aria-label="Parteianteile in Prozent; genaue Werte stehen in der Ergebnistabelle"><ResponsiveContainer><BarChart data={rows}><CartesianGrid strokeDasharray="3 3" vertical={false} /><XAxis dataKey="party" /><YAxis unit=" %" /><Tooltip formatter={value => percent(typeof value === 'number' ? value : null)} /><Bar dataKey="share" name={String(year)}>{rows.map(r => <Cell key={r.party} fill={chartColor(r.party)} />)}</Bar>{previousYear > 0 && <Bar dataKey="previousShare" fill="#a8ae9e" name={String(previousYear)} />}{previousYear > 0 && <Legend />}</BarChart></ResponsiveContainer></div>
         </CardContent></Card>
-        <div className="min-w-0"><DataTable headers={['Partei', 'Stimmen', 'Anteil', 'Sitze', ...(previousYear ? ['Vergleichsanteil', 'Änderung'] : [])]} rows={rows.map(r => [<PartyLabel party={r.party} />, number(r.votes), percent(r.share), number(r.seats), ...(previousYear ? [percent(r.previousShare), difference(r.share, r.previousShare)] : [])])} /></div>
+        <div className="min-w-0 space-y-4"><div className="[&_tbody]:bg-white"><DataTable headers={['Partei', 'Stimmen', 'Anteil', 'Sitze', ...(previousYear ? ['Vergleichsanteil', 'Änderung'] : [])]} rows={rows.map(r => [<PartyLabel party={r.party} />, number(r.votes), percent(r.share), number(r.seats), ...(previousYear ? [percent(r.previousShare), difference(r.share, r.previousShare)] : [])])} /></div>
+          <StateSeatDistribution rows={rows} year={year} ballot={ballot} />
+        </div>
       </div>
       {rows.map(r => r.notes && <p key={r.party} className="text-xs text-muted-foreground">{r.party}: {r.notes}</p>)}
     </DataState>
