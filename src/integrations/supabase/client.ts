@@ -2,6 +2,7 @@
 import { createClient } from '@supabase/supabase-js';
 import type { Database } from './types';
 import { createSecuredFetch } from './securedFetch';
+import { createTenantScopeFetch } from './tenantScopeFetch';
 import { brokeredPreviewStorage } from './previewAuthStorage';
 
 const SUPABASE_URL = "https://wawofclbehbkebjivdte.supabase.co";

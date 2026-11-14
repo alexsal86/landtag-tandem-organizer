@@ -4,6 +4,8 @@ import { supabase } from "@/integrations/supabase/client";
 import { useAuth } from "./useAuth";
 import { debugConsole } from "@/utils/debugConsole";
 import { safeGetItem, safeSetItem, safeRemoveItem } from "@/utils/storage";
+import { queryClient } from "@/providers/queryClient";
+import { getActiveTenantScope, setActiveTenantScope, type ActiveTenantScope } from "@/integrations/supabase/tenantScope";
 
 export type Tenant = Database["public"]["Tables"]["tenants"]["Row"] & {
   settings: Json;
