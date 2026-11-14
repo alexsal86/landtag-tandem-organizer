@@ -136,6 +136,8 @@ describe("useTenant integration access paths", () => {
     vi.clearAllMocks();
     eqTracker.length = 0;
     localStorage.clear();
+    setActiveTenantScope(null);
+    queryClient.clear();
   });
 
   it("isolates tenant memberships to the active user and excludes foreign tenant data", async () => {
