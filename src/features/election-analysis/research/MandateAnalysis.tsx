@@ -1,3 +1,4 @@
+import { AnalysisControls, AnalysisToolbarLayout } from "../AnalysisToolbar";
 import { useMemo, useState } from "react";
 import { useSearchParams } from "react-router-dom";
 import { Button } from "@/components/ui/button";
@@ -118,7 +119,7 @@ export default function MandateAnalysis() {
         empty={!period}
         retry={() => void periods.refetch()}
       >
-        <Selection
+        <AnalysisToolbarLayout filters={<Selection
           id="mandate-period"
           label="Legislaturperiode"
           value={period?.id || ""}
@@ -138,7 +139,7 @@ export default function MandateAnalysis() {
               {p.election_year ? ` · ${p.election_year}` : ""}
             </option>
           ))}
-        </Selection>
+        </Selection>}>
         <StatusNote>
           Gezählt werden erfasste, bei der Wahl gewonnene Mandate; dies ist
           keine Bestätigung einer vollständigen Sitzverteilung. Nachrücker
@@ -293,21 +294,23 @@ export default function MandateAnalysis() {
               ),
             ])}
           />
-          <Selection
-            id="mandate-before"
-            label="Eine frühere Periode ausdrücklich zum Vergleich laden"
-            value={previous?.id || ""}
-            onChange={(v) => set("mandateBefore", v)}
-          >
-            <option value="">Kein Periodenvergleich</option>
-            {published
-              .filter((p) => p.number < (period?.number || 0))
-              .map((p) => (
-                <option key={p.id} value={p.id}>
-                  {p.name}
-                </option>
-              ))}
-          </Selection>
+          <AnalysisControls>
+            <Selection
+              id="mandate-before"
+              label="Eine frühere Periode ausdrücklich zum Vergleich laden"
+              value={previous?.id || ""}
+              onChange={(v) => set("mandateBefore", v)}
+            >
+              <option value="">Kein Periodenvergleich</option>
+              {published
+                .filter((p) => p.number < (period?.number || 0))
+                .map((p) => (
+                  <option key={p.id} value={p.id}>
+                    {p.name}
+                  </option>
+                ))}
+            </Selection>
+          </AnalysisControls>
           {previous && (
             <DataState
               loading={
@@ -516,6 +519,7 @@ export default function MandateAnalysis() {
             )}
           </details>
         </DataState>
+        </AnalysisToolbarLayout>
       </DataState>
     </div>
   );

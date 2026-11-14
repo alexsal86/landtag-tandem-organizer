@@ -1,3 +1,4 @@
+import { AnalysisControls } from "../../AnalysisToolbar";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { DataState, DataTable, Selection, StatusNote } from "../../shared";
@@ -34,16 +35,18 @@ export default function FlowResearchPanel({
       <h3 className="text-lg font-semibold">
         Wählerwanderung: Annahmen und Sensitivität
       </h3>
-      <Selection
-        id="research-flow-party"
-        label="Zielpartei"
-        value={party}
-        onChange={(v) => set("analysisParty", v)}
-      >
-        {parties.map((p) => (
-          <option key={p}>{p}</option>
-        ))}
-      </Selection>
+      <AnalysisControls>
+        <Selection
+          id="research-flow-party"
+          label="Zielpartei"
+          value={party}
+          onChange={(v) => set("analysisParty", v)}
+        >
+          {parties.map((p) => (
+            <option key={p}>{p}</option>
+          ))}
+        </Selection>
+      </AnalysisControls>
       <StatusNote>
         Alle vorhandenen Wanderungsdaten sind landesweite Modellschätzungen,
         keine beobachteten individuellen Wechsel. 2011 und 2021 enthalten

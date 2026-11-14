@@ -1,3 +1,4 @@
+import { AnalysisControls } from "../../AnalysisToolbar";
 import { useMemo } from "react";
 import { Button } from "@/components/ui/button";
 import { DataState, DataTable, Selection, StatusNote } from "../../shared";
@@ -78,7 +79,7 @@ export default function TypologyPanel({
   return (
     <div className="space-y-4">
       <h3 className="text-lg font-semibold">Explorative Wahlkreis-Typologie</h3>
-      <div className="flex flex-wrap items-end gap-3">
+      <AnalysisControls>
         <Selection
           id="cluster-before"
           label="Zeitfenster"
@@ -113,7 +114,7 @@ export default function TypologyPanel({
             <option key={n}>{n}</option>
           ))}
         </Selection>
-      </div>
+      </AnalysisControls>
       <StatusNote>
         Explorative Gruppen, keine objektiven politischen Gebietstypen.
         k-means++ mit 8 festen Startwerten; ausgewählt wird die kleinste

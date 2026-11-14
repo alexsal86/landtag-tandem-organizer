@@ -1,3 +1,4 @@
+import { AnalysisControls } from "../AnalysisToolbar";
 import ResearchLab from "./lab/ResearchLab";
 import MandateAnalysis from "./MandateAnalysis";
 import { useCallback, useMemo, useState } from "react";
@@ -180,7 +181,7 @@ function DistrictProfile({
     `Wahlkreis ${district}`;
   return (
     <div className="space-y-4">
-      <div className="flex flex-wrap items-end gap-3">
+      <AnalysisControls>
         <Selection
           id="research-district"
           label="Wahlkreis-Steckbrief"
@@ -229,7 +230,7 @@ function DistrictProfile({
         >
           Zeitreihe exportieren
         </Button>
-      </div>
+      </AnalysisControls>
       <h2 className="text-xl font-semibold">
         {district}: {name}
       </h2>
@@ -581,7 +582,7 @@ function AtlasPanel({
           ? "Erst- minus Zweitstimmen 2026"
           : `Veränderungsatlas ${beforeYear} → ${afterYear}`}
       </h2>
-      <div className="flex flex-wrap items-end gap-3">
+      <AnalysisControls>
         {!split && (
           <Selection
             id="atlas-before"
@@ -640,7 +641,7 @@ function AtlasPanel({
         >
           CSV exportieren
         </Button>
-      </div>
+      </AnalysisControls>
       <fieldset className="flex flex-wrap gap-2">
         <legend className="mb-2 text-sm font-medium">Parteien</legend>
         {parties.map((p) => (

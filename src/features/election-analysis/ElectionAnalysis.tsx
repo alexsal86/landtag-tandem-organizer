@@ -1,3 +1,4 @@
+import { AnalysisControls, AnalysisToolbarLayout } from './AnalysisToolbar';
 import { Selection, DataState, DataTable, StatusNote, PartyLabel, chartColor } from './shared';
 import { lazy, Suspense, useState } from 'react';
 import { useSearchParams } from 'react-router-dom';
@@ -27,13 +28,13 @@ export default function ElectionAnalysis() {
   return <div className="space-y-5">
     <header><h1 className="text-2xl font-semibold">Wahlanalyse Baden-Württemberg</h1><p className="mt-1 text-sm text-muted-foreground">Wahlergebnisse, Beteiligung und Wahlverhalten vergleichen. Es wird nur die gewählte Auswertung geladen.</p></header>
     <DataState loading={years.isLoading} error={years.error} empty={!years.data?.length} retry={() => void years.refetch()}>
-      <div className="flex flex-wrap items-end gap-4">
+      <nav aria-label="Auswertung auswählen" className="flex flex-wrap gap-2 border-b pb-3">{(Object.keys(sectionLabels) as AnalysisView[]).map(key => <Button key={key} variant={section === key ? 'default' : 'outline'} aria-pressed={section === key} onClick={() => change('analysisSection', key)}>{sectionLabels[key]}</Button>)}</nav>
+      <AnalysisToolbarLayout filters={section === 'mandates' ? null : <>
         {section !== 'mandates' && <Selection id="analysis-year" label="Wahl / Legislaturperiode" value={String(year)} onChange={value => change('analysisYear', value)}>{years.data?.filter(y => section !== 'split' || y.year === 2026).map(y => <option key={y.year} value={y.year}>{y.year} · {y.period_number}. Legislaturperiode</option>)}</Selection>}
         {section !== 'flows' && section !== 'split' && section !== 'quality' && section !== 'mandates' && <Selection id="analysis-ballot" label="Stimmenart" value={ballot} onChange={value => change('analysisBallot', value)}>{(section === 'demographics' && year >= 2026 ? ['second'] as Ballot[] : ballotsForYear(year)).map(b => <option key={b} value={b}>{ballotLabels[b]}</option>)}</Selection>}
         {(section === 'flows' || section === 'districts') && <Selection id="analysis-party" label={section === 'flows' ? 'Zielpartei' : 'Partei'} value={party} onChange={value => change('analysisParty', value)}>{parties.map(p => <option key={p}>{p}</option>)}</Selection>}
         {section === 'demographics' && <Selection id="analysis-gender" label="Geschlecht" value={gender} onChange={value => change('analysisGender', value)}>{['Insgesamt', 'Frauen', 'Männer'].map(g => <option key={g}>{g}</option>)}</Selection>}
-      </div>
-      <nav aria-label="Auswertung auswählen" className="flex flex-wrap gap-2 border-b pb-3">{(Object.keys(sectionLabels) as AnalysisView[]).map(key => <Button key={key} variant={section === key ? 'default' : 'outline'} aria-pressed={section === key} onClick={() => change('analysisSection', key)}>{sectionLabels[key]}</Button>)}</nav>
+      </>}>
       {year > 0 && <div key={`${section}:${year}:${ballot}:${party}:${gender}`}>
         {section === 'state' && <StatePanel {...selection} years={years.data?.map(y => y.year) || []} />}
         {section === 'districts' && <DistrictPanel {...selection} />}
@@ -42,6 +43,7 @@ export default function ElectionAnalysis() {
         {section === 'demographics' && <DemographicPanel {...selection} />}
         {(['profile','swing','split','quality','turnout-trend','mandates','research'] as string[]).includes(section) && <Suspense fallback={<p role="status">Analysemodul lädt …</p>}><ResearchWorkbench section={section as 'profile'|'swing'|'split'|'quality'|'turnout-trend'|'mandates'|'research'} {...selection} years={years.data?.map(y => y.year) || []} /></Suspense>}
       </div>}
+      </AnalysisToolbarLayout>
     </DataState>
   </div>;
 }
@@ -56,7 +58,7 @@ function StatePanel({ year, ballot, party, gender, years }: PanelProps & { years
     compareAnalysisValues(a.share, b.share, 'desc') || compareAnalysisValues(a.votes, b.votes, 'desc') || a.party.localeCompare(b.party, 'de')
   );
   return <div className="space-y-4">
-    <div className="flex flex-wrap items-end justify-between gap-3"><Selection id="analysis-compare" label="Mit Wahl vergleichen" value={String(previousYear)} onChange={value => setPreviousYear(Number(value))}><option value="0">Kein Vergleich</option>{years.filter(y => y !== year).map(y => <option key={y} value={y}>{y} · {ballotLabels[effectiveBallot(y, ballot)]}</option>)}</Selection><Button variant="outline" disabled={!rows.length} onClick={() => exportAnalysisCsv(rows.map(r => ({ Wahljahr: year, Stimmenart: ballotLabels[ballot], Partei: r.party, Stimmen: r.votes, Prozent: r.share, Sitze: r.seats, Vergleichsjahr: previousYear || null, Vergleichsprozent: r.previousShare })), `Landesergebnis-${year}.csv`)}>CSV exportieren</Button></div>
+    <AnalysisControls><Selection id="analysis-compare" label="Mit Wahl vergleichen" value={String(previousYear)} onChange={value => setPreviousYear(Number(value))}><option value="0">Kein Vergleich</option>{years.filter(y => y !== year).map(y => <option key={y} value={y}>{y} · {ballotLabels[effectiveBallot(y, ballot)]}</option>)}</Selection><Button variant="outline" disabled={!rows.length} onClick={() => exportAnalysisCsv(rows.map(r => ({ Wahljahr: year, Stimmenart: ballotLabels[ballot], Partei: r.party, Stimmen: r.votes, Prozent: r.share, Sitze: r.seats, Vergleichsjahr: previousYear || null, Vergleichsprozent: r.previousShare })), `Landesergebnis-${year}.csv`)}>CSV exportieren</Button></AnalysisControls>
     {previousYear > 0 && previous.isLoading && <p role="status" className="text-sm">Lade Vergleichswahl …</p>}
     {previous.error && <p role="alert" className="text-sm">Die Vergleichswahl konnte nicht geladen werden.</p>}
     <DataState loading={query.isLoading} error={query.error} empty={!rows.length} retry={() => void query.refetch()}>
@@ -77,7 +79,7 @@ function DistrictPanel({ year, ballot, party, gender }: PanelProps) {
   const [search, setSearch] = useState('');
   const rows = (query.data || []).filter(r => `${r.district_number} ${r.district_name}`.toLocaleLowerCase('de').includes(search.toLocaleLowerCase('de'))).sort((a, b) => (b.share ?? -1) - (a.share ?? -1));
   return <div className="space-y-4">
-    <div className="flex flex-wrap gap-3"><Input className="max-w-sm" aria-label="Wahlkreis filtern" placeholder="Wahlkreisname oder Nummer …" value={search} onChange={event => setSearch(event.target.value)} /><Button variant="outline" disabled={!rows.length} onClick={() => exportAnalysisCsv(rows.map(r => ({ Wahljahr: year, Stimmenart: ballotLabels[ballot], Wahlkreisnummer: r.district_number, Wahlkreis: r.district_name, Partei: r.party, Stimmen: r.votes, Prozent: r.share, Vorlaeufig: r.preliminary, Hinweis: r.notes })), `Wahlkreise-${party}-${year}.csv`)}>CSV exportieren</Button></div>
+    <AnalysisControls><Input className="max-w-sm" aria-label="Wahlkreis filtern" placeholder="Wahlkreisname oder Nummer …" value={search} onChange={event => setSearch(event.target.value)} /><Button variant="outline" disabled={!rows.length} onClick={() => exportAnalysisCsv(rows.map(r => ({ Wahljahr: year, Stimmenart: ballotLabels[ballot], Wahlkreisnummer: r.district_number, Wahlkreis: r.district_name, Partei: r.party, Stimmen: r.votes, Prozent: r.share, Vorlaeufig: r.preliminary, Hinweis: r.notes })), `Wahlkreise-${party}-${year}.csv`)}>CSV exportieren</Button></AnalysisControls>
     <StatusNote>{query.data?.some(r => r.preliminary) ? 'Vorläufige Wahlkreiswerte aus dem Wahlnachtsbericht; Abweichungen von endgültigen Landeswerten sind möglich.' : 'Wahlkreiswerte laut Datensatz endgültig.'} Wahlkreiszuschnitte können sich zwischen Wahlen ändern. Ergebnisse beziehen sich auf die ausgewählte Stimmenart und werden keinen einzelnen Mandatsträgern zugeschrieben.</StatusNote>
     <DataState loading={query.isLoading} error={query.error} empty={!rows.length || rows.every(r => r.share === null && r.votes === null)} retry={() => void query.refetch()}>
       <Card><CardHeader><CardTitle className="text-lg">{party}: zehn stärkste Wahlkreise dieser Auswahl</CardTitle></CardHeader><CardContent><div className="h-80" role="img" aria-label="Wahlkreise nach Parteianteil; Werte folgen in der Tabelle"><ResponsiveContainer><BarChart data={rows.filter(r => r.share !== null).slice(0, 10)} layout="vertical" margin={{ left: 30 }}><XAxis type="number" unit=" %" /><YAxis type="category" dataKey="district_name" width={130} tick={{ fontSize: 11 }} /><Tooltip formatter={value => percent(typeof value === 'number' ? value : null)} /><Bar dataKey="share" fill={chartColor(party)} name="Anteil" /></BarChart></ResponsiveContainer></div></CardContent></Card>
@@ -98,7 +100,7 @@ function TurnoutPanel({ year, ballot, party, gender }: PanelProps) {
     <StatusNote>Erst- und Zweitstimmenzeilen derselben Wahl enthalten dieselben Wahlberechtigten und Wählenden. Die Ansicht berücksichtigt nur die ausgewählte Stimmenart und zählt niemanden doppelt. {all.some(r => r.preliminary) && '2026: vorläufige Wahlkreiszahlen.'}</StatusNote>
     <DataState loading={query.isLoading} error={query.error} empty={!all.length} retry={() => void query.refetch()}>
       <div className="grid gap-3 sm:grid-cols-3">{[['Wahlberechtigte', number(eligible)], ['Wählende', number(voters)], ['Beteiligung aus 70 Wahlkreisen', eligible && voters !== null ? percent(voters / eligible * 100) : 'Nicht vollständig erfasst']].map(([label, value]) => <Card key={label}><CardContent className="pt-5"><p className="text-xs text-muted-foreground">{label}</p><p className="mt-1 text-xl font-semibold">{value}</p></CardContent></Card>)}</div>
-      <div className="flex flex-wrap gap-3"><Input className="max-w-sm" aria-label="Wahlkreis filtern" placeholder="Wahlkreisname oder Nummer …" value={search} onChange={event => setSearch(event.target.value)} /><Button variant="outline" onClick={() => exportAnalysisCsv(rows.map(r => ({ Wahljahr: year, Stimmenart: ballotLabels[ballot], Wahlkreis: r.district_name, Nummer: r.district_number, Wahlberechtigte: r.eligible, Waehlende: r.voters, Beteiligung_Prozent: r.turnout, Gueltige_Stimmen: r.valid_votes, Vorlaeufig: r.preliminary, Hinweis: r.notes })), `Wahlbeteiligung-${year}.csv`)}>CSV exportieren</Button></div>
+      <AnalysisControls><Input className="max-w-sm" aria-label="Wahlkreis filtern" placeholder="Wahlkreisname oder Nummer …" value={search} onChange={event => setSearch(event.target.value)} /><Button variant="outline" onClick={() => exportAnalysisCsv(rows.map(r => ({ Wahljahr: year, Stimmenart: ballotLabels[ballot], Wahlkreis: r.district_name, Nummer: r.district_number, Wahlberechtigte: r.eligible, Waehlende: r.voters, Beteiligung_Prozent: r.turnout, Gueltige_Stimmen: r.valid_votes, Vorlaeufig: r.preliminary, Hinweis: r.notes })), `Wahlbeteiligung-${year}.csv`)}>CSV exportieren</Button></AnalysisControls>
       <DataTable key={search} headers={['Nr.', 'Wahlkreis', 'Wahlberechtigte', 'Wählende', 'Beteiligung', 'Gültige Stimmen', 'Hinweis']} sortableColumns={[0, 1, 2, 3, 4, 5]} sortValues={rows.map(r => [r.district_number, r.district_name, r.eligible, r.voters, r.turnout, r.valid_votes])} rows={rows.map(r => [number(r.district_number), r.district_name, number(r.eligible), number(r.voters), percent(r.turnout), number(r.valid_votes), r.notes || '—'])} />
     </DataState>
   </div>;

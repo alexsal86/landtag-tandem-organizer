@@ -1,3 +1,4 @@
+import { AnalysisControls } from "../AnalysisToolbar";
 import { useMemo } from "react";
 import { useSearchParams } from "react-router-dom";
 import {
@@ -167,7 +168,7 @@ export default function TurnoutComparison({
       <h2 className="text-xl font-semibold">
         Wahlbeteiligung und Stimmenentwicklung {beforeYear} → {year}
       </h2>
-      <div className="flex flex-wrap items-end gap-3">
+      <AnalysisControls>
         <Selection
           id="turnout-before"
           label="Ausgangswahl"
@@ -193,7 +194,7 @@ export default function TurnoutComparison({
         <Button variant="outline" disabled={!rows.length} onClick={exportRows}>
           CSV exportieren
         </Button>
-      </div>
+      </AnalysisControls>
       <StatusNote>
         Verglichen werden {ballotLabels[beforeBallot]} {beforeYear} und{" "}
         {ballotLabels[afterBallot]} {year}. Beteiligung zählt Wählende einmal je
