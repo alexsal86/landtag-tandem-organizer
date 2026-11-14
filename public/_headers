@@ -1,0 +1,3 @@
+/data/geometry/*
+  Cache-Control: public, max-age=157680000, immutable
+  X-Content-Type-Options: nosniff

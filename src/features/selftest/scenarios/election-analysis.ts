@@ -1,3 +1,4 @@
+import { decodeElectoralTopology, electoralGeometryYear } from "@/utils/electoralTopology";
 import { atlasRows, atlasRankings, atlasScale } from "@/features/election-analysis/research/atlasModel";
 import type { ComparisonValue } from "@/features/election-analysis/research/types";
 import { analysisReport } from "@/features/election-analysis/research/reports";
@@ -66,6 +67,27 @@ export const electionAnalysisScenario: TestScenario = {
     "Amtliche Downloads, Datenbank-RLS und Vollständigkeit historischer Kandidaturen sind separate Prüfungen.",
   ],
   steps: [
+    {
+      id: "election-topology-years",
+      label: "TopoJSON: Grenzstände, gemeinsame und umgekehrte Grenzlinien",
+      kind: "logic",
+      run: async () => {
+        const fixture = { type: "Topology", arcs: [[[8, 48], [9, 48]], [[8, 48], [8, 49], [9, 48]]],
+          objects: { year2016: { type: "GeometryCollection", geometries: [
+            { type: "Polygon", arcs: [[0, -2]], properties: { Nummer: "1" } },
+          ] } } };
+        const decoded = decodeElectoralTopology(fixture, "year2016");
+        let rejectsUnknown = false;
+        try { decodeElectoralTopology(fixture, "year1900"); } catch { rejectsUnknown = true; }
+        return {
+          ok: electoralGeometryYear(2016) === 2016 && electoralGeometryYear(2021) === 2021 &&
+            electoralGeometryYear(2026) === 2021 && electoralGeometryYear(2011) === null &&
+            rejectsUnknown && JSON.stringify(decoded.features[0].geometry.coordinates) ===
+              JSON.stringify([[[8, 48], [9, 48], [8, 49], [8, 48]]]),
+          message: "2026 verwendet 2021; andere Jahre werden nicht erfunden. Gemeinsame Grenzen bleiben unverändert.",
+        };
+      },
+    },
     {
       id: "swing-atlas-selection",
       label: "Swing-Atlas: exakte Suche, getrennte Ranglisten und feste Skala",

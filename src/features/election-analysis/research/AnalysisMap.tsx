@@ -5,6 +5,7 @@ import { Plus, Minus, MoveDiagonal } from "lucide-react";
 import "leaflet/dist/leaflet.css";
 import "@/styles/leaflet-overrides.css";
 import { normalizeElectoralGeoJson } from "@/utils/geoJsonLoader";
+import { electoralGeometryYear, loadElectoralTopology } from "@/utils/electoralTopology";
 import { useGeography } from "./hooks";
 import type { DistrictVersion } from "./types";
 import { signedColor } from "./mapModel";
@@ -20,6 +21,7 @@ export function AnalysisMap({
   referenceValue,
   referenceLabel = "Landes-Swing",
   allowGeometryPreview = false,
+  geometryYear,
 }: {
   versions: DistrictVersion[];
   values: Map<number, number | null>;
@@ -31,19 +33,25 @@ export function AnalysisMap({
   referenceValue?: number | null;
   referenceLabel?: string;
   allowGeometryPreview?: boolean;
+  geometryYear?: number;
 }) {
   const geographyId =
     versions.find((v) => v.geography_id)?.geography_id || undefined;
   const geography = useGeography(geographyId);
   const preview = allowGeometryPreview && !geography.isLoading &&
     (!geography.data?.asset_path || geography.data?.verified !== true);
-  const asset = preview
-    ? "/data/LTWahlkreise2021-BW.geojson"
+  const selectedYear = geometryYear ?? versions[0]?.year;
+  const bundledYear = selectedYear === undefined ? null : electoralGeometryYear(selectedYear);
+  const asset = bundledYear
+    ? `bundled:${bundledYear}`
+    : preview
+    ? "bundled:2021"
     : geography.data?.asset_path;
   const geometry = useQuery({
     queryKey: ["election-research", "geometry", geographyId, asset],
     enabled: !!asset && (preview || geography.data?.verified === true),
     queryFn: async ({ signal }) => {
+      if (bundledYear || preview) return loadElectoralTopology(bundledYear ?? 2021);
       if (!asset || !asset.startsWith("/data/") || asset.includes(".."))
         throw new Error("Ungültiger Geometriepfad");
       const response = await fetch(asset, { signal });
@@ -81,7 +89,7 @@ export function AnalysisMap({
     map.current = instance;
     instance.attributionControl.addAttribution(
       preview
-        ? "Geometrie: Wahlkreisgrenzen 2021 · Zuordnung ungeprüft"
+        ? `Geometrie: Wahlkreisgrenzen ${bundledYear ?? 2021} · Zuordnung ungeprüft`
         : "Geometrie: Statistisches Landesamt Baden-Württemberg",
     );
     paths.current.clear();
@@ -185,7 +193,7 @@ export function AnalysisMap({
       instance.remove();
       map.current = null;
     };
-  }, [geometry.data, versions, values, label, geographyId, maximum, preview]);
+  }, [geometry.data, versions, values, label, geographyId, maximum, preview, bundledYear]);
   useEffect(() => {
     paths.current.forEach((path, number) => {
       const selected = selectedDistrict === number;
@@ -228,7 +236,7 @@ export function AnalysisMap({
       {preview && (
         <p role="status" className="rounded-lg border border-amber-500 bg-amber-50 p-3 text-sm text-amber-950 dark:bg-amber-950 dark:text-amber-100">
           Ungeprüfte Kartenvorschau: Angezeigt werden die vorhandenen
-          Wahlkreisgrenzen von 2021. Ihre Übereinstimmung mit den ausgewählten
+          Wahlkreisgrenzen von {bundledYear ?? 2021}. Ihre Übereinstimmung mit den ausgewählten
           Wahljahren und die Zuordnung nach Wahlkreisnummer müssen noch geprüft
           werden. Die Flächen bleiben deshalb schraffiert; Ergebnisse stehen
           weiterhin in der Tabelle und im Wahlkreisdetail zur Verfügung.
@@ -323,7 +331,7 @@ export function AnalysisMap({
       </div>
       {preview ? (
         <p className="text-xs text-muted-foreground">
-          Kartengrundlage: Wahlkreisgrenzen 2021 · Prüfung für diese Auswahl ausstehend
+          Kartengrundlage: Wahlkreisgrenzen {bundledYear ?? 2021} · Prüfung für diese Auswahl ausstehend
         </p>
       ) : <a
         className="text-xs underline"

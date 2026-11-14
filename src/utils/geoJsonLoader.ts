@@ -221,6 +221,13 @@ const getDistrictNumberFromProps = (props: Record<string, unknown>): number | un
   return undefined;
 };
 export const loadElectoralDistrictsGeoJson = async (): Promise<GeoJsonData> => {
+  // The current map uses the same boundaries for 2021 and 2026.
+  const { loadElectoralTopology } = await import('./electoralTopology');
+  return loadElectoralTopology(2021);
+};
+
+/** Legacy import fallback; not used for the current map. */
+export const loadLegacyElectoralDistrictsGeoJson = async (): Promise<GeoJsonData> => {
   const candidates = [
     '/data/LTWahlkreise2021-BW.geojson',
     '/data/LTWahlkreise2021-BW_GEOJSON.geojson',
