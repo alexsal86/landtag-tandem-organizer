@@ -2,7 +2,8 @@
 
 P0–P3 schaffen gemeinsame Berechnungen, quellengestützte Versionen und begrenzte
 Zugriffe. Der P4-Vergleich ist inzwischen separat implementiert. Seine Stimmenzerlegung bleibt
-vorbereitet; P5 und P6 werden ohne zusätzliche Prüfung nicht produktiv aktiviert.
+vorbereitet; P5 enthält inzwischen die unten abgegrenzte Mandats-/Kandidaturansicht;
+wissenschaftliche Modelle und P6 bleiben ohne zusätzliche Prüfung deaktiviert.
 
 ## P4: Beteiligung, absolute Stimmen und deskriptiver Zusammenhang
 
@@ -30,6 +31,10 @@ für Summenidentität, vertauschte Zeitrichtung, identische Wahlen, reine Ein-Fa
 Änderung, Faktorpermutation und numerische Toleranz ergänzen und ausführen.
 
 ## P5: Mandate und Kandidaturen
+
+Status: Erfasste Mandatszahlen, tatsächliche abgeschlossene Amtsdauern und explizite
+Periodenvergleiche sind implementiert. Kandidaturvergleiche haben eine zentrale
+Vollständigkeits- und Identitätsprüfung. Amtsinhabermodelle bleiben deaktiviert.
 
 Voraussetzungen: veröffentlichte Perioden, bestätigte Wahlkreisverbindungen,
 verifizierte Personenidentitäten und ausdrücklich geprüfte Vollständigkeit.

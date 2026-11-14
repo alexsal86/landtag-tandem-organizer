@@ -275,8 +275,7 @@ bleiben auswertbar; unbestätigte historische Vergleiche sind ausdrücklich gewa
    ergänzen, bevor Wiederwahl-/Amtsinhabereffekte statistisch ausgewertet werden.
 
 Amtliche Quellen und Befunde: [Quellenprotokoll](elections/sources-and-gaps.md).
-P4 ist als separate Erweiterung unten beschrieben; P5 bleibt ein gesondertes
-Folgepaket. P6 bleibt ein
+P4 ist als separate Erweiterung unten beschrieben; P5 ist als dritte Erweiterung unten beschrieben. P6 bleibt ein
 [technisches und wissenschaftliches Konzept](elections/research-concept.md).
 
 
@@ -333,3 +332,86 @@ Amtliche Originaldownloads sind weiterhin durch HTTP 403 blockiert; diese Stufe
 historische Gebietsidentität. Ohne Originalprüfung bleiben die entsprechenden
 Vergleiche standardmäßig ausgeschlossen. Kein administrativer Live-DB-Zugang
 stand zum Einspielen der Migration zur Verfügung.
+
+
+## Dritte Ausbaustufe: P5 – Mandate und Kandidaturen
+
+**Mandate & Kandidaturen** (`analysisSection=mandates`) bietet eine eigene
+Legislaturauswahl über alle veröffentlichten historischen Perioden. Zunächst wird
+nur diese Periode über den bestehenden `get_election_history_period` geladen.
+Eine frühere Periode wird erst nach ausdrücklicher Auswahl zusätzlich geladen;
+kein Vorladen der gesamten Mandats- oder Personenhistorie.
+
+Die Ansicht enthält erfasste Direkt-, historische Zweit- und Listenmandate je
+Partei, separat Nachrücker-Einträge und ungeklärte Listenarten. Die Zählung ist
+keine Bestätigung der vollständigen Sitzverteilung. Identische Wahleinträge einer
+bestätigten Personen-ID werden zusammengefasst; widersprüchliche Kombinationen
+von Partei/Mandatsart werden ausgeschlossen und gezählt. Unverknüpfte historische
+Namen bleiben eigenständige erfasste Einträge und werden niemals zusammengeführt.
+
+Mandatstabelle: Partei, Wahlkreis, Mandatsart/Eintritt, Amtsintervall, abgeschlossene
+Kalendertage (einschließlich Anfang und Ende), CSV und Sortierung. Fehlende,
+zukünftige oder nur regulär erwartete Endtermine ergeben keine abgeschlossene
+Dauer. Es wird keine Gesamtdauer über möglicherweise überlappende Intervalle
+summiert. Wiederwahlzahlen laden über die bestehende personenbezogene
+Zusammenfassung erst beim Aufklappen und bleiben bei unvollständiger
+Personenhistorie als „erfasste gewählte Perioden“ gekennzeichnet.
+
+Zwei ausdrücklich ausgewählte Perioden zeigen dieselben bestätigten Personen,
+erneute Wahl und Wechsel zwischen Direkt- und Listenmandat. Nachrücker zählen
+nicht als gewählte Vorperiode. Lücken zwischen den ausgewählten Perioden bleiben
+möglich; die Darstellung behauptet keine lückenlose Amtsinhaberschaft.
+Direktparteiwechsel benötigen explizit bestätigte historische Verknüpfungen,
+dieselbe geprüfte Gebietsidentität und eindeutige Direktwahleinträge. Gleiche
+Nummern oder Namen genügen nicht. Fehlende Vergleichspaare sind unbekannt,
+keine nachgewiesene Zahl null von Wechseln.
+
+### Kandidaturvollständigkeit und Personenverknüpfung
+
+Migration `20261114143000_election_candidate_coverage.sql` legt nur Prüfmetadaten
+an und ergänzt `election_analysis_candidates.data_release`; Mandate oder
+Kandidaturergebnisse werden nicht importiert oder verändert.
+
+Im Super-Admin unter **Kandidaturen & Ergebnisse**:
+
+1. Alle Wahlkreiskandidaturen einschließlich erfolgloser Personen erfassen und
+   bestätigte Personen verknüpfen. Keine Rekonstruktion aus Mandaten.
+2. „Amtliche Kandidatur einer bestätigten Person zuordnen“ öffnen. Namen,
+   persönliche Ergebnisse und amtliche Quelle gegenüberstellen; dann jeweils
+   ausdrücklich die Identität bestätigen. Der RPC
+   `confirm_analysis_candidate_identity` ist ausschließlich Super-Admins erlaubt,
+   sperrt die beteiligten Datensätze und prüft Stimmen, Anteile, Stimmenart,
+   Wahlkreis-/Periodenbeziehung und einen geprüften endgültigen Datenstand.
+   Bereits anders verknüpfte amtliche Personen werden nicht überschrieben.
+3. Amtliche vollständige Sollzahl der Wahlkreiskandidaturen und HTTPS-Quelle
+   eintragen. Vollständigkeit erst nach unabhängiger Quellenprüfung bestätigen.
+   Die DB verlangt die Sollzahl, alle historischen Wahlkreise und für jede
+   Wahlkreiskandidatur Stimmen, Anteil und bekannten Wahlausgang. Reine
+   Listenkandidaturen ohne Wahlkreis sind nicht Teil dieser Sollzahl.
+4. Änderungen an Kandidaturen oder historischen Wahlkreisen setzen den Prüfvermerk
+   automatisch zurück. Bei erneuter Prüfung ist eine neue Bestätigung erforderlich.
+
+`review-election-2026.py` schreibt bei neuen amtlichen Kandidaturen nun den
+geprüften Ergebnisstand mit. Bereits vorhandene leere Metadaten lassen sich bei
+expliziter Identitätsbestätigung nur gegen das passende amtliche endgültige
+Erststimmenergebnis und dessen verifizierten Quellenbericht ergänzen.
+Bestehende abweichende Stände bleiben geschützt. Die neue Migration deshalb vor
+neuen amtlichen Ergebnispatches anwenden.
+
+Erst nach bestätigter Vollständigkeit öffnet die Auswertung persönliche
+Kandidaturergebnisse. Parteireferenzen und amtliche Kandidaturdaten werden erst
+beim Aufklappen geladen (ein Jahr, Zweitstimmen, höchstens 350 Parteizeilen und
+350 amtliche Kandidaturen für die fünf erfassten Parteien). Eine Differenz in PP
+erscheint nur bei zusätzlich bestätigter Person, geprüfter Wahlkreisverbindung,
+übereinstimmenden Kandidatenstimmen/-anteilen und gleichem endgültigem Datenstand.
+Vor 2026 gibt es keine unabhängige Parteizweitstimme; bei nicht erfassten Parteien
+bleibt die Referenz unbekannt. Die Kennzahl ist deskriptiv und weder individuelle
+Stimmensplittingzahl noch kausaler Amtsinhabereffekt. Wissenschaftliche
+Amtsinhabermodelle werden auch bei vollständigen Daten nicht automatisch aktiviert.
+
+Ergänzt, **nicht ausgeführt**: `mandateModel.test.ts`, `mandateHooks.test.ts`,
+SQL-Fixtures in `supabase/tests/election_candidate_coverage.sql` und ein weiterer
+Logikschritt im Selbsttest-Center. TypeScript wird separat geprüft.
+Die Migration wurde hier mangels administrativem Live-DB-Zugang nicht eingespielt.
+Amtliche Vollimporte, bestätigte historische Grenzen und Personenverbindungen
+bleiben Datenvoraussetzungen; die Auswertung ersetzt diese Prüfungen nicht.

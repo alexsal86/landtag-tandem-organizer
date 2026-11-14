@@ -1,4 +1,13 @@
 import {
+  electedMandates,
+  mandateDays,
+  candidateCoverageReady,
+} from "@/features/election-analysis/research/mandateModel";
+import type {
+  ElectionHistoryData,
+  HistoricalMandate,
+} from "@/features/election-history/types";
+import {
   decomposeVotes,
   turnoutCorrelation,
   turnoutChanges,
@@ -34,6 +43,85 @@ export const electionAnalysisScenario: TestScenario = {
     "Amtliche Downloads, Datenbank-RLS und Vollständigkeit historischer Kandidaturen sind separate Prüfungen.",
   ],
   steps: [
+    {
+      id: "mandate-analysis",
+      label: "Mandate: Identitäten, Nachrücker und tatsächliche Amtszeit",
+      kind: "logic",
+      run: async () => {
+        const m: HistoricalMandate = {
+          id: "m",
+          period_id: "p",
+          person_id: "confirmed",
+          person_name: "Beispiel",
+          party: "CDU",
+          mandate_type: "direct",
+          entry_type: "election",
+          district_id: null,
+          candidacy_id: null,
+          original_mandate: "Direktmandat",
+          party_label: null,
+          left_early: false,
+          start_from_period: false,
+          end_from_period: false,
+          starts_on: "2024-02-28",
+          ends_on: "2024-03-01",
+          source_url: null,
+          notes: null,
+        };
+        const data: ElectionHistoryData = {
+          periods: [
+            {
+              id: "p",
+              number: 18,
+              name: "Beispiel",
+              election_year: 2026,
+              election_date: null,
+              starts_on: null,
+              ends_on: null,
+              ends_on_is_expected: true,
+              is_current: true,
+              is_published: true,
+              source_url: null,
+              notes: null,
+            },
+          ],
+          people: [],
+          districts: [],
+          candidacies: [],
+          mandates: [m],
+        };
+        const checks = {
+          successorNotWin:
+            electedMandates([{ ...m, entry_type: "succession" }]).rows
+              .length === 0,
+          confirmedDuplicate:
+            electedMandates([m, { ...m, id: "duplicate" }]).rows.length === 1,
+          unlinkedNamesDistinct:
+            electedMandates([
+              { ...m, person_id: null },
+              { ...m, id: "other", person_id: null },
+            ]).rows.length === 2,
+          conflictsExcluded:
+            electedMandates([m, { ...m, id: "conflict", party: "SPD" }]).rows
+              .length === 0,
+          inclusiveLeapDays:
+            mandateDays(m, data.periods[0], "2026-11-14") === 3,
+          expectedEndUnknown:
+            mandateDays(
+              { ...m, end_from_period: true },
+              data.periods[0],
+              "2026-11-14",
+            ) === null,
+          candidatesNotInferred: !candidateCoverageReady(data, null),
+        };
+        return {
+          ok: Object.values(checks).every(Boolean),
+          message:
+            "Keine erfundenen Identitäten, Wahlsiege oder Kandidaturen; nur abgeschlossene Amtsintervalle.",
+          details: checks,
+        };
+      },
+    },
     {
       id: "turnout-statistics",
       label:

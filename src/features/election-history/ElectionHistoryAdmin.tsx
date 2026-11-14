@@ -1,3 +1,5 @@
+import { CandidateIdentityReview } from '@/features/election-analysis/research/CandidateIdentityReview';
+import { CandidateCoverageReview } from '@/features/election-analysis/research/CandidateCoverageReview';
 import { HistoryLinkReview } from '@/features/election-analysis/research/HistoryLinkReview';
 import { PeriodSourceReview } from '@/features/election-analysis/research/PeriodSourceReview';
 import { useElectionEditorDrafts, type ElectionEditorDraft } from './editorDrafts';
@@ -215,6 +217,8 @@ function ElectionHistoryWorkspace({ userId }: { userId: string }) {
       <Button variant="outline" disabled={!selectedPeriod} onClick={() => setPreview(v => !v)}>{preview ? 'Vorschau schließen' : 'Periode prüfen'}</Button>
       <Button disabled={saving} onClick={startNew}>+ Neu anlegen</Button>
     </div>
+    {entity === 'candidacies' && <CandidateIdentityReview key={`identity-${selectedPeriod}`} data={{...data,periods:data.periods.filter(p=>p.id===selectedPeriod)}} disabled={saving || dirty} />}
+    {entity === 'candidacies' && <CandidateCoverageReview key={selectedPeriod} periodId={selectedPeriod} disabled={saving || dirty} />}
     {entity === 'districts' && data.periods.find(p => p.id === selectedPeriod) && <HistoryLinkReview key={selectedPeriod} period={data.periods.find(p => p.id === selectedPeriod)!} districts={data.districts} disabled={saving || dirty} />}
     {entity === 'periods' && data.periods.find(p => p.id === selectedPeriod) && <PeriodSourceReview key={selectedPeriod} period={data.periods.find(p => p.id === selectedPeriod)!} disabled={saving || dirty} />}
     {preview && selectedPeriod && <ElectionPeriodPreview data={data} periodId={selectedPeriod} />}

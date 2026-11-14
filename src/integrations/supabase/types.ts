@@ -15363,6 +15363,7 @@ export type Database = {
       }
     }
     Functions: {
+      confirm_analysis_candidate_identity: { Args: { candidacy: string }; Returns: undefined }
       get_analysis_district_series: { Args: { district: number; selected_years: number[] }; Returns: Json }
       get_analysis_turnout_comparison: { Args: { before_year: number; after_year: number; before_ballot: string; after_ballot: string; selected_party: string }; Returns: Json }
       get_analysis_comparison: { Args: { before_year: number; after_year: number; before_ballot: string; after_ballot: string; selected_parties: string[] }; Returns: Json }

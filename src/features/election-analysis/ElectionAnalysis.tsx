@@ -10,7 +10,7 @@ import { ballotLabels, ballotsForYear, effectiveBallot, parties, sectionLabels, 
 import type { AnalysisSection, Ballot } from './types';
 
 const ResearchWorkbench = lazy(() => import('./research/ResearchWorkbench'));
-type AnalysisView = AnalysisSection | 'profile' | 'swing' | 'split' | 'quality' | 'turnout-trend';
+type AnalysisView = AnalysisSection | 'profile' | 'swing' | 'split' | 'quality' | 'turnout-trend' | 'mandates';
 export default function ElectionAnalysis() {
   const years = useAnalysisYears();
   const [params, setParams] = useSearchParams();
@@ -28,8 +28,8 @@ export default function ElectionAnalysis() {
     <header><h1 className="text-2xl font-semibold">Wahlanalyse Baden-Württemberg</h1><p className="mt-1 text-sm text-muted-foreground">Wahlergebnisse, Beteiligung und Wahlverhalten vergleichen. Es wird nur die gewählte Auswertung geladen.</p></header>
     <DataState loading={years.isLoading} error={years.error} empty={!years.data?.length} retry={() => void years.refetch()}>
       <div className="flex flex-wrap items-end gap-4">
-        <Selection id="analysis-year" label="Wahl / Legislaturperiode" value={String(year)} onChange={value => change('analysisYear', value)}>{years.data?.filter(y => section !== 'split' || y.year === 2026).map(y => <option key={y.year} value={y.year}>{y.year} · {y.period_number}. Legislaturperiode</option>)}</Selection>
-        {section !== 'flows' && section !== 'split' && section !== 'quality' && <Selection id="analysis-ballot" label="Stimmenart" value={ballot} onChange={value => change('analysisBallot', value)}>{(section === 'demographics' && year >= 2026 ? ['second'] as Ballot[] : ballotsForYear(year)).map(b => <option key={b} value={b}>{ballotLabels[b]}</option>)}</Selection>}
+        {section !== 'mandates' && <Selection id="analysis-year" label="Wahl / Legislaturperiode" value={String(year)} onChange={value => change('analysisYear', value)}>{years.data?.filter(y => section !== 'split' || y.year === 2026).map(y => <option key={y.year} value={y.year}>{y.year} · {y.period_number}. Legislaturperiode</option>)}</Selection>}
+        {section !== 'flows' && section !== 'split' && section !== 'quality' && section !== 'mandates' && <Selection id="analysis-ballot" label="Stimmenart" value={ballot} onChange={value => change('analysisBallot', value)}>{(section === 'demographics' && year >= 2026 ? ['second'] as Ballot[] : ballotsForYear(year)).map(b => <option key={b} value={b}>{ballotLabels[b]}</option>)}</Selection>}
         {(section === 'flows' || section === 'districts') && <Selection id="analysis-party" label={section === 'flows' ? 'Zielpartei' : 'Partei'} value={party} onChange={value => change('analysisParty', value)}>{parties.map(p => <option key={p}>{p}</option>)}</Selection>}
         {section === 'demographics' && <Selection id="analysis-gender" label="Geschlecht" value={gender} onChange={value => change('analysisGender', value)}>{['Insgesamt', 'Frauen', 'Männer'].map(g => <option key={g}>{g}</option>)}</Selection>}
       </div>
@@ -40,7 +40,7 @@ export default function ElectionAnalysis() {
         {section === 'turnout' && <TurnoutPanel {...selection} />}
         {section === 'flows' && <FlowPanel {...selection} />}
         {section === 'demographics' && <DemographicPanel {...selection} />}
-        {(['profile','swing','split','quality','turnout-trend'] as string[]).includes(section) && <Suspense fallback={<p role="status">Analysemodul lädt …</p>}><ResearchWorkbench section={section as 'profile'|'swing'|'split'|'quality'|'turnout-trend'} {...selection} years={years.data?.map(y => y.year) || []} /></Suspense>}
+        {(['profile','swing','split','quality','turnout-trend','mandates'] as string[]).includes(section) && <Suspense fallback={<p role="status">Analysemodul lädt …</p>}><ResearchWorkbench section={section as 'profile'|'swing'|'split'|'quality'|'turnout-trend'|'mandates'} {...selection} years={years.data?.map(y => y.year) || []} /></Suspense>}
       </div>}
     </DataState>
   </div>;

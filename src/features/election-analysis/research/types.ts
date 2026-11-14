@@ -20,6 +20,7 @@ export interface DistrictVersion {
   notes: string | null;
 }
 export interface VerifiedCandidate {
+  data_release?: string | null;
   year: number;
   district_number: number;
   party: string;
@@ -57,7 +58,16 @@ type Table<T> = {
   Update: Partial<T>;
   Relationships: [];
 };
+export interface CandidateCoverage {
+  period_id: string;
+  is_complete: boolean;
+  expected_district_candidacies: number | null;
+  source_url: string | null;
+  reviewed_at: string | null;
+  notes: string | null;
+}
 export type ElectionResearchTables = {
+  election_analysis_candidate_coverage: Table<CandidateCoverage>;
   election_analysis_geographies: Table<Geography>;
   election_analysis_versions: Table<DistrictVersion>;
   election_analysis_candidates: Table<VerifiedCandidate>;

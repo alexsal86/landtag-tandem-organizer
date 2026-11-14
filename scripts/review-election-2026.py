@@ -117,7 +117,7 @@ def main():
                 else: row['valid_votes']=p['valid'][i];new['state'].append(row)
             if n: new['turnout'].append(dict(year=2026,ballot=ballot,district_number=n,eligible=p['eligible'],voters=p['voters'],valid_votes=p['valid'][i],turnout=round(p['voters']/p['eligible']*100,5),preliminary=False,data_release=release))
         if n:
-            for party,name in p['candidates'].items(): candidate_rows.append(dict(year=2026,district_number=n,party=party,candidate_name=name,votes=p['parties'][party][0],share=round(p['parties'][party][0]/p['valid'][0]*100,5),source_url=source['url'],verified=True,person_id=None))
+            for party,name in p['candidates'].items(): candidate_rows.append(dict(year=2026,district_number=n,party=party,candidate_name=name,votes=p['parties'][party][0],share=round(p['parties'][party][0]/p['valid'][0]*100,5),source_url=source['url'],verified=True,person_id=None,data_release=release))
     changes=[];sql=['BEGIN;','-- Optimistic full-row checks protect manual corrections; an unexpected row aborts all updates.']
     sql.append('LOCK TABLE public.election_analysis_state,public.election_analysis_districts,public.election_analysis_turnout IN SHARE ROW EXCLUSIVE MODE;')
     updates=[]

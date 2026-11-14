@@ -1,3 +1,4 @@
+import MandateAnalysis from "./MandateAnalysis";
 import { useCallback, useMemo, useState } from "react";
 import { useSearchParams } from "react-router-dom";
 import {
@@ -49,7 +50,7 @@ import TurnoutComparison from "./TurnoutComparison";
 import { AnalysisMap } from "./AnalysisMap";
 
 type Props = {
-  section: "profile" | "swing" | "split" | "quality" | "turnout-trend";
+  section: "profile" | "swing" | "split" | "quality" | "turnout-trend" | "mandates";
   year: number;
   ballot: Ballot;
   party: string;
@@ -86,6 +87,7 @@ export default function ResearchWorkbench(props: Props) {
   if (props.section === "profile")
     return <DistrictProfile {...props} district={district} set={set} />;
   if (props.section === "turnout-trend") return <TurnoutComparison {...props} onOpenDistrict={open} />;
+  if (props.section === "mandates") return <MandateAnalysis />;
   if (props.section === "quality") return <QualityPanel year={props.year} />;
   return (
     <AtlasPanel
