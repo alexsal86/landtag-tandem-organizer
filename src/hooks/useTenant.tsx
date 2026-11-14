@@ -67,6 +67,7 @@ export const TenantProvider = ({ children }: { children: React.ReactNode }): Rea
   const [currentTenant, setCurrentTenant] = useState<Tenant | null>(null);
   const [memberships, setMemberships] = useState<UserTenantMembership[]>([]);
   const [loading, setLoading] = useState<boolean>(true);
+  const membershipRequestRef = useRef(0);
 
   const synchronizeScope = (scope: ActiveTenantScope | null): void => {
     if (!setActiveTenantScope(scope)) return;
@@ -75,6 +76,7 @@ export const TenantProvider = ({ children }: { children: React.ReactNode }): Rea
   };
 
   const fetchTenants = async (isBackgroundRefresh = false): Promise<void> => {
+    const requestId = ++membershipRequestRef.current;
     if (!user?.id) {
       synchronizeScope(null);
       setTenantUserId(null);
@@ -124,6 +126,8 @@ export const TenantProvider = ({ children }: { children: React.ReactNode }): Rea
         .eq("user_id", user.id)
         .eq("is_active", true)
         .returns();
+
+      if (requestId !== membershipRequestRef.current) return;
 
       if (membershipError) {
         debugConsole.error("❌ Error fetching tenant memberships:", membershipError);
@@ -184,7 +188,7 @@ export const TenantProvider = ({ children }: { children: React.ReactNode }): Rea
       debugConsole.error("Error in fetchTenants:", error);
       // Preserve existing data on error — only clear on genuine user change (handled by the effect)
     } finally {
-      setLoading(false);
+      if (requestId === membershipRequestRef.current) setLoading(false);
     }
   };
 
