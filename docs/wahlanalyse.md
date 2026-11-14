@@ -275,8 +275,8 @@ bleiben auswertbar; unbestätigte historische Vergleiche sind ausdrücklich gewa
    ergänzen, bevor Wiederwahl-/Amtsinhabereffekte statistisch ausgewertet werden.
 
 Amtliche Quellen und Befunde: [Quellenprotokoll](elections/sources-and-gaps.md).
-P4 ist als separate Erweiterung unten beschrieben; P5 ist als dritte Erweiterung unten beschrieben. P6 bleibt ein
-[technisches und wissenschaftliches Konzept](elections/research-concept.md).
+P4 ist als separate Erweiterung unten beschrieben; P5 ist als dritte Erweiterung unten beschrieben. P6 ist nach ausdrücklicher Scope-Erweiterung als exploratives Forschungslabor
+umgesetzt; siehe [Methodik und Grenzen](elections/research-concept.md).
 
 
 ## Zweite Ausbaustufe: P4 – Beteiligung und Stimmenentwicklung
@@ -415,3 +415,111 @@ Logikschritt im Selbsttest-Center. TypeScript wird separat geprüft.
 Die Migration wurde hier mangels administrativem Live-DB-Zugang nicht eingespielt.
 Amtliche Vollimporte, bestätigte historische Grenzen und Personenverbindungen
 bleiben Datenvoraussetzungen; die Auswertung ersetzt diese Prüfungen nicht.
+
+
+## Vierte Ausbaustufe: P6 – exploratives Forschungslabor
+
+Unter **Wahlforschung** (`analysisSection=research`) sind vier getrennt geladene
+Werkzeuge verfügbar. `researchTool=typology|structure|flows|scenario` steuert den
+aktiven Bereich. Bestehende RLS gelten; das Labor hat keine Schreibzugriffe.
+Es gibt keine neuen Datenbanktabellen oder Migrationen für P6.
+
+### Wahlkreisgruppen
+
+Eine Wahl oder optional zwei ausdrücklich ausgewählte Wahlen, zwei bis sechs
+Gruppen. Ergebnisse werden mit Silhouette, Adjusted Rand Index (ARI) zwischen
+k-means-/Ward-Zuordnung, mehreren k-means-Startwerten und 12 reproduzierbaren
+80-Prozent-Teilstichproben beurteilt. Fehlgeschlagene Teilstichproben werden gezählt.
+Eine hohe Übereinstimmung bestätigt Stabilität innerhalb dieser Annahmen, keine
+inhaltliche Wahrheit oder unabhängige Prognosegüte.
+
+Merkmale: Parteianteile einschließlich Rest und Wahlbeteiligung; bei zwei Wahlen
+zusätzlich Änderungen. Parteianteile werden wurzeltransformiert, danach werden
+alle Merkmale standardisiert. Konstante Merkmale haben keinen Einfluss. Historisch
+nicht vorhandene AfD-Werte werden nicht nullgefüllt; gemeinsame Merkmale lassen
+AfD dann weg, die jeweilige Restkategorie enthält alle übrigen Parteien.
+
+k-means++ verwendet acht feste Starts und die kleinste Fehlerquadratsumme, Ward
+minimiert den Zuwachs innerhalb der Gruppen. Silhouette nutzt euklidische Abstände
+im transformierten Merkmalsraum. Resampling verwendet dieselbe Skalierung; es ist
+keine unabhängige Validierung. Gruppenmittel sind ungewichtete Wahlkreismittel.
+Grenzänderungen sind ausgeschlossen; unbekannte Grenzen und gemischte Stände sind
+nur nach ausdrücklicher Warnbestätigung einzubeziehen. Ein Zweijahresvergleich ist
+keine vollständige Langzeittypologie. Gruppen und Methodik können exportiert werden.
+
+### Strukturmodelle
+
+CSV lokal einlesen: UTF-8, maximal 2 MB und 70 Zeilen, Pflichtspalten
+`district_number` und `year`, optional `district_name`, ein bis sechs numerische
+Merkmale. Nummern müssen eindeutig 1–70 sein, Jahr muss zur ausgewählten Wahl
+passen. Namen werden nicht zum Verknüpfen benutzt. Leere Zahlen bleiben unbekannt;
+keine implizite Ersetzung durch 0. Dezimalkomma ist bei Semikolontrennung möglich,
+Tausendertrennzeichen sind nicht erlaubt.
+
+Vor Berechnung sind eine HTTPS-Quelle, Definition/Einheit und die persönliche
+Bestätigung des amtlichen Ursprungs sowie des korrekten Gebietszuschnitts nötig.
+Die App verifiziert diese externe Quelle nicht. Datei und Metadaten bleiben im
+Arbeitsspeicher dieser Ansicht; es erfolgt kein Upload und keine Wahldatenänderung.
+Ein Ansichts-/Wahlwechsel verwirft die Datei. Dateiname und SHA-256 stehen im Export.
+
+Das Modell erklärt jeweils einen Parteianteil durch genau ein ausgewähltes
+Strukturmerkmal mit Achsenabschnitt. Mindestens zehn vollständige Paare sind nötig.
+Anzeige: Koeffizienten, R², RMSE, Leave-one-out-RMSE, Residuen, Hebelwerte und
+Cook-Distanz. Unberechenbare Kennzahlen bleiben unbekannt. Die Zuordnung nach
+Nummer ist erst nach der ausdrücklichen Zuschnittprüfung verwendbar. Es gibt keine
+multivariate Kontrolle, räumliche Unabhängigkeit, Signifikanzbehauptung, kausale
+Aussage oder individuelle Inferenz. OLS-Werte können außerhalb 0–100 liegen.
+
+### Wanderungsannahmen
+
+Vorhandene landesweite Schätzungen werden nach Wahl und Zielpartei geladen.
+Für eine Partnerbeziehung kann ein angenommener Gegenstrom und eine selbst
+gewählte Saldo-Sensitivität angegeben werden. Für Saldo s und Gegenstrom c:
+`Zustrom = max(s, 0) + c`, `Abstrom = max(-s, 0) + c`.
+
+Bandbreiten entstehen ausschließlich aus eingegebenen Annahmen, nicht aus einer
+statistischen Unsicherheitsschätzung. Vorhandene Bruttoströme bleiben erhalten.
+Bestandsgrößen der Partner/Gesamtwählerzahl werden nicht abgeglichen; die Rechnung
+ist keine empirische Wanderungsrekonstruktion oder konsistente Gesamtmatrix.
+Keine lokale Verteilung oder individuellen Wechsel. CSV enthält Quellenhinweise,
+vorhandene Werte, Eingabeannahmen und hypothetische Intervalle.
+
+### Szenariolabor
+
+Voraussetzung: 70 vollständige Wahlkreise einer Stimmenart mit demselben
+Ergebnisstand. Landesbasis wird aus deren gültigen Stimmen gewichtet berechnet,
+nicht aus gemischten finalen Landes-/vorläufigen Wahlkreiswerten. Quelle und
+Vorläufigkeit bleiben sichtbar. Gewünschte Parteiveränderungen gelten als uniformer
+Swing in PP, Gegenbuchung erfolgt in der Restkategorie. Optional kann eine einzelne
+regionale Abweichung gewählt werden. Beteiligung/Bezugsgrößen bleiben konstant.
+
+Ungültige Landesannahmen werden zurückgewiesen. Lokale Werte außerhalb des
+zulässigen Bereichs werden auf den Simplex `Anteil >= 0, Summe = 100` projiziert:
+kleinster euklidischer Abstand zur angenommenen Anteilsliste. Die Oberfläche zeigt
+Anzahl korrigierter Wahlkreise sowie angenommene und tatsächlich erreichte
+Landesanteile getrennt. Die Karte verwendet dieselben Änderungen wie die Tabelle
+und nur verifizierte periodenspezifische Geometrien. Ergebnisse und Annahmen sind
+exportierbar; URL-Parameter teilen das hypothetische Szenario.
+
+Aus diesen Anteilen werden keine Direktmandate oder Sitze berechnet. Es fehlen ein
+vollständig geprüftes Wahlrechtsmodell und vollständige Kandidaturen je Periode.
+Das Labor wird ausdrücklich nicht als belastbare Wahlprognose bezeichnet.
+
+### Datenumfang und Verifikation
+
+Nur der aktive Bereich wird geladen. Gruppenbildung lädt höchstens zwei ausdrücklich
+ausgewählte Wahljahre, Strukturmodell und Szenario eines; Wanderung lädt nur Wahl,
+Zielpartei und die kleine Partnerliste. Die vorhandene Query-Infrastruktur mit gezielten Jahr-/Stimmenart-/Partei-Filtern,
+Abbruchsignalen und nutzerbezogenen Caches wird wiederverwendet. Der Labor-Hook lädt höchstens
+350 Parteizeilen, 70 Beteiligungszeilen und 70 Versionen je ausgewählter Wahl;
+OLS nur 70 Zeilen einer Partei und die 70 passenden Beteiligungszeilen, keine
+Landestabelle oder anderen Stimmenarten. Rohdaten aus
+anderen Perioden oder vollständige Mandats-/Personenregister werden nicht geladen.
+
+`research/lab/models.test.ts` und das Logikszenario im Selbsttest-Center wurden
+**ergänzt, nicht ausgeführt**. Sie enthalten Rechenfälle für Gruppenstabilität,
+CSV-Jahr/Nullwerte, bekannte Geraden/Leave-one-out, Simplex-Summen und lokale
+Korrekturen sowie Saldoerhaltung. Der TypeScript-Abgleich ersetzt diese Tests nicht.
+Es gibt keine behauptete empirische, wissenschaftliche oder Wahlrechtsvalidierung.
+Die amtlichen Originaldownloads sind weiterhin durch HTTP 403 blockiert; P6 hebt
+keine offenen P0-Daten- oder Geometrieprüfungen auf.

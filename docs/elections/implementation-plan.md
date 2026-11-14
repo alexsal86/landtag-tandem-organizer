@@ -37,3 +37,11 @@ per RLS auf Super-Admins beschränkt. Keine Testausführung in dieser Sitzung.
 - Bestehende öffentliche GeoJSON-Datei ist EPSG:31467, kein Leaflet-WGS84.
 - Amtliche Originaldownloads benötigen Freigabe der offiziellen Domains; bis zum
   tatsächlich erfolgreichen Download kein Endgültigkeits-/Geometrievermerk.
+
+## Nachträgliche Scope-Erweiterung
+
+Der Nutzer hat P6 anschließend ausdrücklich zur Implementierung beauftragt.
+P6 wird als exploratives Labor mit begrenzten Datenzugriffen umgesetzt.
+Fehlende Struktur-/Kandidatur-/Wahlrechtsdaten werden nicht erfunden; eine
+Sitzberechnung und wissenschaftliche Validierung werden nicht behauptet.
+Die frühere reine Konzeptstufe gilt für diesen neuen Auftrag nicht mehr.

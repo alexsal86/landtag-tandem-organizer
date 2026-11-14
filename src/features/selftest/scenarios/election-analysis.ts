@@ -1,4 +1,14 @@
 import {
+  adjustedRand,
+  clusterDistricts,
+} from "@/features/election-analysis/research/lab/clustering";
+import { linearModel } from "@/features/election-analysis/research/lab/regression";
+import {
+  flowSensitivity,
+  projectShares,
+} from "@/features/election-analysis/research/lab/scenarios";
+import { parseStructureCsv } from "@/features/election-analysis/research/lab/structureCsv";
+import {
   electedMandates,
   mandateDays,
   candidateCoverageReady,
@@ -43,6 +53,51 @@ export const electionAnalysisScenario: TestScenario = {
     "Amtliche Downloads, Datenbank-RLS und Vollständigkeit historischer Kandidaturen sind separate Prüfungen.",
   ],
   steps: [
+    {
+      id: "research-lab",
+      label: "Wahlforschung: explorative Gruppen, OLS, Szenarien und Annahmen",
+      kind: "logic",
+      run: async () => {
+        const projected = projectShares([-5, 50, 55]);
+        const regression = linearModel(
+          Array.from({ length: 12 }, (_, i) => ({
+            number: i + 1,
+            name: "Synthetic",
+            x: i,
+            y: 1 + 2 * i,
+          })),
+        );
+        const flow = flowSensitivity(500, 100, 300, 50)!;
+        const grouped = clusterDistricts(
+          Array.from({ length: 20 }, (_, i) => ({
+            number: i + 1,
+            name: "Synthetic",
+            values: [i < 10 ? -10 : 10, (i % 10) / 100],
+            raw: {},
+          })),
+          2,
+        );
+        const checks = {
+          nonnegative: projected.every((v) => v >= 0),
+          total100: Math.abs(projected.reduce((a, b) => a + b, 0) - 100) < 1e-9,
+          linearSlope: Math.abs(regression.slope - 2) < 1e-9,
+          holdout: regression.looRmse != null && regression.looRmse < 1e-9,
+          groupAgreement: grouped.methodAgreement === 1,
+          labelInvariant: adjustedRand([0, 0, 1, 1], [4, 4, 7, 7]) === 1,
+          balancePreserved: flow.assumedIn - flow.assumedOut === 500,
+          missingFlow: flowSensitivity(null, 0, 100, 0) === null,
+          missingCsv:
+            parseStructureCsv("district_number;year;value\n1;2026;\n", 2026)
+              .rows[0].values.value === null,
+        };
+        return {
+          ok: Object.values(checks).every(Boolean),
+          message:
+            "Gemeinsame Rechenregeln des explorativen Forschungslabors; keine wissenschaftliche Validierung.",
+          details: checks,
+        };
+      },
+    },
     {
       id: "mandate-analysis",
       label: "Mandate: Identitäten, Nachrücker und tatsächliche Amtszeit",

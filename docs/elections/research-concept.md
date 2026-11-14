@@ -3,7 +3,9 @@
 P0–P3 schaffen gemeinsame Berechnungen, quellengestützte Versionen und begrenzte
 Zugriffe. Der P4-Vergleich ist inzwischen separat implementiert. Seine Stimmenzerlegung bleibt
 vorbereitet; P5 enthält inzwischen die unten abgegrenzte Mandats-/Kandidaturansicht;
-wissenschaftliche Modelle und P6 bleiben ohne zusätzliche Prüfung deaktiviert.
+P6 ist auf ausdrücklichen Nutzerwunsch als exploratives Labor umgesetzt.
+Wissenschaftlich validierte Modelle, kausale Amtsinhabereffekte und Sitzsimulationen
+bleiben ohne zusätzliche Daten und Prüfung deaktiviert.
 
 ## P4: Beteiligung, absolute Stimmen und deskriptiver Zusammenhang
 
@@ -51,6 +53,11 @@ und Selektionsprobleme prüfen. Keine fehlenden Kandidaturen aus Mandaten ergän
 
 ## P6 A: Wahlkreis-Typologie
 
+Umgesetzt: k-means++ und hierarchisches Ward-Verfahren für eine Wahl oder zwei
+ausdrücklich ausgewählte Wahlen; Hellinger-Transformation, Standardisierung,
+Silhouette, ARI-Verfahrens-/Startwertvergleich und 12 Teilstichproben. Gruppen sind
+explorativ. Grenzen/Status werden vor Zweijahresmerkmalen geprüft.
+
 Gemeinsamer Gebietsstand oder dokumentierte Umrechnung erforderlich. Merkmale:
 Parteianteile einschließlich Restkategorie, Beteiligung, langfristige Änderungen,
 Schwankungen; Strukturmerkmale erst nach amtlichem Datenimport. Fehlende Werte
@@ -62,6 +69,12 @@ Keine dauerhaften politischen Etiketten als objektive Gebietsmerkmale ausgeben.
 
 ## P6 B: Regionale Strukturmodelle
 
+Umgesetzt: lokaler CSV-Import von bis zu sechs Strukturmerkmalen für höchstens
+70 Wahlkreise; jeweils ein erklärendes Merkmal, OLS mit Achsenabschnitt, R²,
+RMSE, Leave-one-out-RMSE, Residuen, Hebelwerte und Cook-Distanz. Keine automatische
+Beschaffung oder Bestätigung amtlicher Strukturquellen. Quelle, Bezugsjahr, Einheit
+und Zuschnitt müssen vor Nutzung selbst geprüft werden.
+
 Amtliche Altersstruktur, Bevölkerung, Urbanisierung, Arbeitsmarkt, Einkommen und
 Bildung benötigen Bezugsjahr, Definition und räumliche Zuordnung. Zunächst einfache,
 transparent dokumentierte Regressionsmodelle, Diagnose von Kollinearität, Ausreißern,
@@ -70,6 +83,10 @@ Hierarchische Modelle nur bei ausreichenden Beobachtungen und Datenqualität.
 Ökologische Zusammenhänge sind keine Aussagen über individuelles Wahlverhalten.
 
 ## P6 C: Modellierte Wählerwanderung
+
+Umgesetzt: vorhandene landesweite Modellwerte plus ausdrücklich parametrisierte
+Sensitivitätsrechnung einer Partnerbeziehung. Bandbreiten sind Annahmen, keine
+Konfidenzintervalle, keine identifizierte Gesamtmatrix oder lokalen Wanderungen.
 
 Bestehende landesweite Schätzungen weiterverwenden. 2011 und 2021 enthalten
 Bruttoströme; 2016 und 2026 überwiegend/ausschließlich Salden. Nicht vorhandene
@@ -80,6 +97,11 @@ Nichtwählende, transparente Annahmen, Unsicherheitsintervalle und Sensitivität
 Eine erst-/zweitstimmenbezogene Aggregatdifferenz ist keine individuelle Wanderung.
 
 ## P6 D: Szenariolabor
+
+Umgesetzt: hypothetischer uniformer Swing und eine ausdrücklich gewählte lokale
+Abweichung, vollständige Restkategorie und Projektion auf Anteile ≥ 0 mit Summe
+100. Korrekturen und Abweichungen vom angenommenen Landesziel sind sichtbar.
+Keine Sitzberechnung oder tatsächlichen Direktmandatsprognosen.
 
 Annahmen und Wahlsystem je Periode versionieren. Zunächst uniformer Swing als
 explizite Annahme; danach regionale Varianten mit nachvollziehbaren Parametern.
@@ -97,3 +119,10 @@ Jahr-/Gebiet-/Partei-begrenzte Queries, CSV, Quellen-/Methodeninformationen und
 barrierearme Tabellen. Bestehende RLS und zentrale Super-Admin-Schreibrechte bleiben.
 Keine personenbezogenen Wählerprofile oder individuelle Entscheidungsinferenz.
 Freigabe erst nach dokumentierter Datenvollständigkeit und methodischer Prüfung.
+
+## Verifikationsstand dieser Erweiterung
+
+Auf Nutzerwunsch wurden automatisierte Tests ergänzt, aber nicht ausgeführt.
+TypeScript wurde separat abgeglichen. Die Werkzeuge sind explorative Rechenhilfen,
+keine behauptete wissenschaftliche oder rechtliche Freigabe. Die vorhandenen
+Anforderungen zur späteren Validierung bleiben für entsprechende Aussagen gültig.
