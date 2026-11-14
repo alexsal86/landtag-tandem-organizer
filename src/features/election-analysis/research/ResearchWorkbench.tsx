@@ -1,4 +1,5 @@
 import { AnalysisControls } from "../AnalysisToolbar";
+import { ReleaseCockpit } from "./ReleaseCockpit";
 import ResearchLab from "./lab/ResearchLab";
 import MandateAnalysis from "./MandateAnalysis";
 import { useCallback, useMemo, useState } from "react";
@@ -838,6 +839,7 @@ function QualityPanel({ year }: { year: number }) {
   return (
     <div className="space-y-4">
       <h2 className="text-xl font-semibold">Datenprüfung {year}</h2>
+      <ReleaseCockpit year={year}/>
       <StatusNote>
         Prüft die ausgewählte Wahl, keine vollständigen Datenbestände anderer
         Jahre. Ein fehlerfreier Zahlenabgleich ersetzt keine Bestätigung von

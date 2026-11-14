@@ -4,8 +4,10 @@ P0–P3 schaffen gemeinsame Berechnungen, quellengestützte Versionen und begren
 Zugriffe. Der P4-Vergleich ist inzwischen separat implementiert. Seine Stimmenzerlegung bleibt
 vorbereitet; P5 enthält inzwischen die unten abgegrenzte Mandats-/Kandidaturansicht;
 P6 ist auf ausdrücklichen Nutzerwunsch als exploratives Labor umgesetzt.
-Wissenschaftlich validierte Modelle, kausale Amtsinhabereffekte und Sitzsimulationen
-bleiben ohne zusätzliche Daten und Prüfung deaktiviert.
+Wissenschaftlich validierte Modelle und kausale Amtsinhabereffekte bleiben
+ohne zusätzliche Daten und Prüfung deaktiviert. Der nachträglich beauftragte
+BW-2026-Sitzsimulator ist als getrenntes Rechtsmodell implementiert; seine
+Laufzeit-/Testfreigabe wird nicht behauptet.
 
 ## P4: Beteiligung, absolute Stimmen und deskriptiver Zusammenhang
 

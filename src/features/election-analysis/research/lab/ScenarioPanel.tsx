@@ -1,3 +1,7 @@
+import { useSearchParams } from "react-router-dom";
+import { useSavedScenario } from "../workspaceHooks";
+import { pinnedShares } from "../scenarioStorage";
+import { SaveScenarioAction } from "../SaveScenarioAction";
 import { useMemo } from "react";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
@@ -19,11 +23,24 @@ export default function ScenarioPanel({
   onOpenDistrict: (n: number) => void;
 }) {
   const { params, set } = useLabParams();
-  const query = useLabDistrictData(year, ballot);
-  const data = useMemo(
-    () => researchDataset(query.data, year, ballot),
-    [query.data, year, ballot],
+  const [, setParams] = useSearchParams();
+  const saved = useSavedScenario(params.get("savedScenario"));
+  const query = useLabDistrictData(
+    params.get("savedScenario") ? 0 : year,
+    ballot,
   );
+  const loadedData = useMemo(
+    () =>
+      attempt(() =>
+        params.get("savedScenario")
+          ? saved.data
+            ? pinnedShares(saved.data, year, ballot)
+            : { rows: [], parties: [], excluded: [] }
+          : researchDataset(query.data, year, ballot),
+      ),
+    [query.data, year, ballot, saved.data, params.get("savedScenario")],
+  );
+  const data = loadedData.value || { rows: [], parties: [], excluded: [] };
   const deltas = Object.fromEntries(
     data.parties.map((p) => [p, labNumber(params, `scenarioDelta_${p}`, 0)]),
   );
@@ -63,6 +80,7 @@ export default function ScenarioPanel({
   );
   return (
     <div className="space-y-4">
+      {loadedData.error && <p role="alert">{loadedData.error}</p>}
       <h3 className="text-lg font-semibold">Hypothetisches Szenariolabor</h3>
       <StatusNote>
         Keine Wahlprognose. Ausgangspunkt sind die 70 Wahlkreise der gewählten
@@ -75,6 +93,28 @@ export default function ScenarioPanel({
         erreichte Landesveränderung von der Annahme abweichen. Gültige Stimmen
         und Beteiligung bleiben rechnerisch konstant.
       </StatusNote>
+      {params.get("savedScenario") && (
+        <>
+          <StatusNote>
+            Gespeicherter eingefrorener Datenstand:{" "}
+            {saved.data?.data_release || "lädt"}. Änderungen an Annahmen
+            verändern keine gespeicherten Ergebnisse bis zum ausdrücklichen
+            Speichern.
+          </StatusNote>
+          <Button
+            variant="outline"
+            onClick={() =>
+              setParams((old) => {
+                const next = new URLSearchParams(old);
+                next.delete("savedScenario");
+                return next;
+              })
+            }
+          >
+            Gespeicherte Grundlage lösen / aktuelle Daten laden
+          </Button>
+        </>
+      )}
       <div className="grid gap-3 sm:grid-cols-3 lg:grid-cols-5">
         {data.parties.map((p) => (
           <label key={p} className="text-sm">
@@ -132,9 +172,9 @@ export default function ScenarioPanel({
         </p>
       </details>
       <DataState
-        loading={query.isLoading}
-        error={query.error}
-        empty={!query.data}
+        loading={query.isLoading || saved.isLoading}
+        error={query.error || saved.error}
+        empty={!query.data && !saved.data}
         retry={() => void query.refetch()}
       >
         {simulated.error ? (
@@ -178,6 +218,14 @@ export default function ScenarioPanel({
                 und ein geprüftes Wahlrechtsmodell je Periode fehlen. Auch
                 theoretische Sitzprognosen bleiben deshalb deaktiviert.
               </StatusNote>
+              <SaveScenarioAction
+                year={year}
+                ballot={ballot}
+                model="shares-v1"
+                release={data.rows[0]?.release || "unbekannt"}
+                input={data}
+                result={simulated.value}
+              />
               <Button
                 variant="outline"
                 onClick={() =>
@@ -229,7 +277,9 @@ export default function ScenarioPanel({
                 ))}
               </Selection>
               <AnalysisMap
-                versions={query.data?.versions || []}
+                versions={
+                  params.get("savedScenario") ? [] : query.data?.versions || []
+                }
                 values={values}
                 label="PP (hypothetisch)"
                 onOpenDistrict={onOpenDistrict}

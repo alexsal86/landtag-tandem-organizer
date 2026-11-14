@@ -1,3 +1,4 @@
+import { parties as focusParties } from './model';
 import { useQuery, type UseQueryResult } from '@tanstack/react-query';
 import { supabase } from '@/integrations/supabase/client';
 import { useAuth } from '@/hooks/useAuth';
@@ -22,7 +23,7 @@ export function useAnalysisRows<K extends AnalysisSection>(section: K, year: num
       const table = tables[section];
       const result = await (() => {
         switch (table) {
-          case 'election_analysis_state': return supabase.from('election_analysis_state').select('*').eq('year', year).eq('ballot', ballot).order('party').limit(100).abortSignal(signal);
+          case 'election_analysis_state': return supabase.from('election_analysis_state').select('*').eq('year', year).eq('ballot', ballot).in('party',focusParties).order('party').limit(100).abortSignal(signal);
           case 'election_analysis_districts': return supabase.from('election_analysis_districts').select('*').eq('year', year).eq('ballot', ballot).eq('party', party).order('district_number').limit(200).abortSignal(signal);
           case 'election_analysis_turnout': return supabase.from('election_analysis_turnout').select('*').eq('year', year).eq('ballot', ballot).order('district_number').limit(200).abortSignal(signal);
           case 'election_analysis_flows': return supabase.from('election_analysis_flows').select('*').eq('year', year).eq('target_party', party).order('partner').limit(100).abortSignal(signal);

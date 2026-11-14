@@ -1,3 +1,14 @@
+import { analysisReport } from "@/features/election-analysis/research/reports";
+import {
+  allocateBw2026,
+  sainteLague,
+} from "@/features/election-analysis/research/simulator/seats";
+import { directTransferThreshold } from "@/features/election-analysis/research/simulator/model";
+import { scenarioParams } from "@/features/election-analysis/research/scenarioStorage";
+import {
+  localMetrics,
+  parseLocalCsv,
+} from "@/features/election-analysis/research/localModel";
 import {
   adjustedRand,
   clusterDistricts,
@@ -53,6 +64,116 @@ export const electionAnalysisScenario: TestScenario = {
     "Amtliche Downloads, Datenbank-RLS und Vollständigkeit historischer Kandidaturen sind separate Prüfungen.",
   ],
   steps: [
+    {
+      id: "analysis-reports",
+      label: "Bericht: sichtbare Werte einfrieren und aktive Inhalte entfernen",
+      kind: "logic",
+      run: async () => {
+        const root = document.createElement("div");
+        root.innerHTML =
+          '<h2>Synthetic</h2><input value="old"><script>unsafe()</script><a href="javascript:unsafe()">X</a><span data-report-exclude>omit-me</span>';
+        root.querySelector("input")!.value = "current";
+        const html = analysisReport(
+          root,
+          "Synthetic <title>",
+          "/daten",
+          "synthetic",
+        );
+        const checks = {
+          value: html.includes("current"),
+          escapedTitle: html.includes("Synthetic &lt;title&gt;"),
+          noScript: !html.includes("<script"),
+          noJavascript: !html.includes("javascript:"),
+          noForms: !html.includes("omit-me"),
+        };
+        return {
+          ok: Object.values(checks).every(Boolean),
+          message:
+            "Statischer separater Bericht ohne Druck-/Download-Nebenwirkung.",
+          details: checks,
+        };
+      },
+    },
+    {
+      id: "election-workspaces",
+      label:
+        "Sitze, Mandatsschwellen, private Szenarien und Gemeinde-Nullwerte",
+      kind: "logic",
+      run: async () => {
+        const seats = allocateBw2026({
+          parties: [
+            {
+              id: "A",
+              name: "Synthetic A",
+              votes: 501,
+              hasList: true,
+              direct: 35,
+            },
+            {
+              id: "B",
+              name: "Synthetic B",
+              votes: 499,
+              hasList: true,
+              direct: 35,
+            },
+          ],
+          validSecond: 1000,
+        });
+        const row = parseLocalCsv(
+          "unit_key;name;party;eligible;voters;valid_votes;votes\n08111000;Synthetic;A;;;0;0",
+          {
+            year: 2026,
+            ballot: "second",
+            district: 1,
+            type: "municipality",
+            release: "synthetic",
+            source: "https://example.org/synthetic",
+            boundary: "synthetic-2026",
+            preliminary: false,
+            verified: true,
+          },
+        )[0];
+        const params = scenarioParams(
+          new URLSearchParams(
+            "researchTool=scenario&analysisYear=2026&scenarioDelta_CDU=3&redirect=https://example.org",
+          ),
+        );
+        const checks = {
+          majority:
+            seats.total === 121 &&
+            seats.majorityBonus === 1 &&
+            seats.rows[0].total === 61,
+          exactTie:
+            sainteLague(
+              [
+                { id: "A", votes: 1 },
+                { id: "B", votes: 1 },
+              ],
+              1,
+              true,
+            ).A === 1,
+          threshold:
+            directTransferThreshold(
+              [
+                { id: "A", votes: 60 },
+                { id: "B", votes: 40 },
+              ],
+              "B",
+            ) === 11,
+          noRedirect: !("redirect" in params),
+          zeroUnknown:
+            row.votes === 0 &&
+            row.eligible === null &&
+            localMetrics(row).share === null,
+        };
+        return {
+          ok: Object.values(checks).every(Boolean),
+          message:
+            "Gemeinsame fachliche Regeln; Datenbank-Tenantrechte werden separat in SQL-Fixtures geprüft.",
+          details: checks,
+        };
+      },
+    },
     {
       id: "research-lab",
       label: "Wahlforschung: explorative Gruppen, OLS, Szenarien und Annahmen",

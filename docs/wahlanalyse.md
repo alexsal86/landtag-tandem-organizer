@@ -523,3 +523,187 @@ Korrekturen sowie Saldoerhaltung. Der TypeScript-Abgleich ersetzt diese Tests ni
 Es gibt keine behauptete empirische, wissenschaftliche oder Wahlrechtsvalidierung.
 Die amtlichen Originaldownloads sind weiterhin durch HTTP 403 blockiert; P6 hebt
 keine offenen P0-Daten- oder Geometrieprüfungen auf.
+
+## Fünfte Erweiterung: Sitzmodell, Freigabecockpit und Analysearbeitsräume
+
+Beauftragt wurden alle vorgeschlagenen Erweiterungen **außer regionalen Szenarien**.
+Die vorhandene einzelne regionale P6-Annahme wird nicht erweitert; neu gespeicherte
+Arbeitsräume dieses Ausbaus betreffen landesweite Szenarien.
+
+### Migrationen und amtliche Landesbasis
+
+1. `20261114144000_analysis_workspaces.sql`: tenantbezogene Szenariospeicherung,
+   feinräumige Ergebnistabelle, RLS, Import-/Lese-RPCs; direkte/Listen-Sitze in der
+   vorhandenen Landestabelle. Ein fehlender Original-Hash in Quellenprüfungen darf
+   nun NULL sein, statt einen Hash zu erfinden.
+2. `20261114145000_verified_2026_state_parties.sql`: alle 21 Landeslisten aus der
+   amtlichen Endfeststellung des Landeswahlausschusses vom 27.03.2026 ergänzen.
+   Zahlen/Metadaten nur bei fehlenden oder bereits passenden Werten vervollständigen.
+   Abweichende manuelle Zahlen bleiben geschützt. Die bestehende Landestabelle
+   bleibt die einzige Quelle; es gibt keine zweite konkurrierende Ergebnisdatenbank.
+
+Die Quelle enthält 157 Sitze: GRÜNE 56, CDU 56, AfD 35, SPD 10. Die fünf bisherigen
+Fokusparteien bleiben in den bisherigen Ansichten erhalten; der Simulator liest
+ausdrücklich die vollständige Landesliste. Wahlkreiswerte werden dadurch nicht
+endgültig, frühere Wahlrechte nicht nachträglich verändert. Quellen und offene
+Originaldownloads sind in [sources-and-gaps.md](elections/sources-and-gaps.md) dokumentiert.
+
+### Sitz- und Mandatssimulator 2026
+
+**Wahlforschung → Sitze & Mandate 2026**, `researchTool=seats`. Version
+`bw-lwg-2026-v1`, ausschließlich für 2026. Der Rechenkern liegt in
+`research/simulator/seats.ts`, Eingabe-/Personenlogik in `electionFile.ts`.
+
+- Alle einzeln erfassten Landeslisten; keine aggregierte „Restpartei“.
+- Mindestens 5 % aller ursprünglichen gültigen Zweitstimmen, exakt ganzzahlig geprüft.
+- Sainte-Laguë-Höchstzahlen durch ganzzahlige Kreuzprodukte, kein Fließkomma-Los.
+- 120 Grundsitze abzüglich Sonderdirektmandate; erfolgreiche Einzelbewerber und
+  Direktgewinner nicht teilnehmender Parteien behalten ihre Direktmandate.
+- Erforderliche Zweitstimmenbereinigung ist eine gesonderte Kreuzinformation.
+  Fehlt sie, erfolgt keine erfundene Verteilung. Auch Nullabzüge müssen für jede
+  teilnehmende Partei explizit angegeben werden. Die sitzwirksame Erststimmensumme
+  dieser Gewinner muss angegeben oder aus vollständigen Kandidaturen berechnet sein.
+- Überhang verbleibt bei der Partei; die kleinste ausreichende Gesamtgröße wird
+  über monotone Höchstzahlverteilung gesucht. Beim letzten Ausgleichsgleichstand
+  erhalten alle gleichrangigen Parteien einen Sitz. Ein Grundsitzgleichstand
+  benötigt dagegen eine ausdrückliche Losannahme.
+- Die Mehrheitsklausel berücksichtigt alle sitzwirksamen Stimmen; ihre Zusatzsitze
+  werden separat ausgewiesen. Erschöpfte Listen werden nicht mit anderen Personen
+  oder Parteien aufgefüllt. Nicht verteilbare Sitze bleiben unbesetzt.
+- Die Rechengrenze von 10.000 Sitzen ist ein Abbruch, keine gesetzliche Obergrenze.
+  Nicht unterstützte degenerierte Sonderfälle werden zurückgewiesen.
+
+Standardmodus: Landes-Zweitstimmen aus der vollständigen vorhandenen Tabelle und
+getrennt eingegebene Direktmandatsannahmen. Erststimmen werden nicht aus Zweitstimmen
+abgeleitet. Ohne vollständige Kandidaturen kann kein automatischer Wahlkreissieger
+oder tatsächlicher Personeneinzug behauptet werden.
+
+Vollmodus: lokale JSON-Datei (maximal 2 MB) mit Modellversion, Quelle, Datenstand,
+allen Parteien, gültigen Zweitstimmen, exakt 70 Wahlkreisen und sämtlichen
+Kandidaturen/Erststimmen sowie optional vollständigen Landeslisten. Eine Datenvorlage
+ist im Simulator herunterladbar. Partei-/Personen-IDs sind explizit; gleiche Namen
+begründen keine Identität. Unvollständige Erststimmensummen und doppelte Kandidaturen
+werden zurückgewiesen. Eine Landesliste nutzt dieselben Personen-IDs wie die
+Wahlkreiskandidaturen; Direktgewinner werden bei der Listenbesetzung übersprungen.
+`listsComplete=false` lässt Listenpersonen ausdrücklich unbekannt. Bei vollständigen,
+aber erschöpften Listen werden die unbesetzten Ansprüche angezeigt.
+
+Erst- und Zweitstimmenänderungen sind getrennte Eingaben. Zweitstimmenänderungen
+werden gegen eine ausdrücklich gewählte Ausgleichspartei gebucht. Erststimmenanteile
+werden nur bei vorhandener Nominierung geändert und ggf. projiziert; die Zahl
+korrigierter Wahlkreise ist sichtbar. Anteile werden summenerhaltend in ganze Stimmen
+umgerechnet; diese numerische Rundung ist kein amtlicher Losentscheid. Bei Änderungen
+werden alte Sonderfallbereinigungen nicht automatisch übernommen. Auch manuelle
+Bereinigungsfelder werden bei Änderungen der Annahmen zurückgesetzt.
+
+Der unveränderte amtliche Referenzfall wird beim Öffnen separat verglichen. Bei
+Abweichung bleibt die Szenarioausgabe gesperrt. Dies ersetzt keine ausgeführten
+Unit-/Integrations-/Wahlrechtstests und ist keine amtliche Freigabe. Kein Ergebnis
+wird als belastbare Wahlprognose bezeichnet und keine historische Mandatszeile geändert.
+
+### Schwellenanalyse
+
+Parteisitze: Raster −2 bis +2 PP um das aktuelle Szenario, Auflösung 0,1 PP und
+Gegenbuchung bei der gewählten Ausgleichspartei. Direktmandate bleiben konstant.
+Fehlende Sonderfallinformationen ergeben unbekannte Rasterpunkte. Das Raster
+behauptet keine exakten kontinuierlichen Übergangsschwellen und ist exportierbar.
+
+Wahlkreise bei vollständigen Kandidaturen: minimale ganze Erststimmenübertragung
+vom stärksten Gegenbewerber zur gewählten Kandidatur, damit diese **alle** anderen
+Kandidaturen strikt überholt. Übrige Stimmen bleiben konstant; ein bloßer Gleichstand
+ist kein sicherer Sieg. Dies ist eine explizite hypothetische Übertragungsrechnung,
+keine beobachtete Wählerbewegung und keine individuelle Wechselanalyse.
+
+### Daten- und Freigabecockpit
+
+Unter **Datenqualität** werden Zahlenplausibilität, endgültiger Quellenabgleich,
+Landesparteivollständigkeit, Geometrien, historische Links, Periodentermine,
+Mandatseinträge, Kandidaturvollständigkeit und Wahlrechtsverifikation getrennt gezeigt.
+Ein veröffentlichter Datensatz ist nicht automatisch endgültig oder vollständig.
+Nur passende Quellenprüfungen belegen die jeweilige Ebene; die neue Landesquelle
+bestätigt keine Wahlkreiswerte. Das Cockpit ist lesend und lädt keinen kompletten
+Personenbestand. Einträge/Anzahlen und vorhandene Termine werden nicht als extern
+bestätigte historische Vollständigkeit ausgegeben.
+
+### Szenarien speichern, teilen und vergleichen
+
+`election_analysis_scenarios` speichert Name, Beschreibung, Modellversion, Auswahl,
+Datenstand sowie eingefrorene Eingabe- und Ergebnisschnappschüsse. Standard ist
+„Nur ich“; optional lesen aktive Mitglieder des gleichen Büros mit. Fremde Tenants
+haben keinen Zugriff. Nur der Eigentümer ändert/löscht, Updates vergleichen eine
+Revision und scheitern bei zwischenzeitlichen Änderungen. Tenant und Eigentümer
+sind unveränderlich. Account-/Tenant-Löschung entfernt die zugehörigen Szenarien.
+Szenarien verändern keine amtlichen oder historischen Wahldaten.
+
+**Gespeicherte Szenarien** lädt 20 Metadatensätze pro Seite. Öffnen lädt eine einzelne
+Grundlage; Vergleich lädt nur zwei ausdrücklich ausgewählte Ergebnisse ohne ihre
+vollen Eingabedateien. Direkter Vergleich nur bei gleicher Wahl, Stimmenart und
+Modellversion. Unterschiedliche Datenstände werden gekennzeichnet. Shares werden
+in PP, Sitzmodelle in Sitzen verglichen. Export und tenantgeschützte Links sind möglich.
+
+Ein gespeicherter Share-Datenstand verwendet keine still aktualisierte Karte.
+Ohne im Schnappschuss gesicherte Originalgeometrie bleibt die Karte unbekannt;
+Tabellen/Annahmen bleiben reproduzierbar. „Grundlage lösen“ wechselt ausdrücklich
+zu aktuellen Daten. Lokale Dateien werden nur beim ausdrücklichen Speichern als
+Szenario ins aktive Büro übertragen; eine öffentliche Freigabe gibt es nicht.
+
+### Analyseberichte
+
+Die gesamte Wahlanalyse bietet **Bericht herunterladen** und **Drucken / PDF**.
+Ein Bericht ist eine eigenständige statische HTML-Datei mit den aktuell dargestellten
+Tabellen, SVG-Diagrammen/Kartenausschnitten, Eingabeannahmen, Auswahl-URL, Zeitpunkt,
+Quellen und Einschränkungen. Skripte/aktive Inhalte und Verwaltungs-/Speicherformulare
+werden entfernt, Kontrollwerte als Text eingefroren. Zum PDF wird die Druckfunktion
+des Browsers verwendet. Die Datei lädt keine externen Ressourcen nach.
+
+Der Bericht umfasst ausdrücklich sichtbare Tabellenzeilen, nicht verdeckte
+Vollbestände. Vorher „Weitere anzeigen“ benutzen oder den vollständigen CSV-Export
+der jeweiligen Ansicht verwenden. Gemeinde-/Szenariolisten sind weiterhin paginiert.
+Ein Bericht behauptet keine wissenschaftliche oder amtliche Freigabe der Ergebnisse.
+
+### Gemeinde- und Wahlbezirksebene
+
+**Gemeinden & Wahlbezirke**, `researchTool=municipal`: Filter nach Wahl, Stimmenart,
+Wahlkreis, Gebietsebene und Partei; Suche, Seitensortierung und CSV der geladenen
+Seite. Abfragen liefern maximal 25 Ergebniszeilen und einen kleinen Parteienindex.
+Fehlende Gemeindedaten werden nicht aus Wahlkreisergebnissen herunterskaliert.
+Ohne echte historische Geometrien wird keine Gemeindekarte erfunden.
+
+Zentrale Tabelle `election_analysis_local_results`: natürliche Schlüssel aus Jahr,
+Stimmenart, Wahlkreis, Ebene, amtlichem Gebietsschlüssel und Partei. Gemeinden/
+Gemeindeanteile nutzen den achtstelligen AGS, Wahlbezirke `AGS:Bezirk`. Der Wahlkreis
+ist Teil des Schlüssels, weil Gemeinden mehrere Wahlkreise berühren können.
+`boundary_key`, Quelle, Datenstand und Vorläufigkeit sind explizit. Gemeinde- und
+Wahlbezirksebene werden nie zusammenaddiert. Leere Wahlberechtigte/Wählende bleiben
+NULL, tatsächliche Nullwerte bleiben 0; bei gültigen Stimmen 0 ist der Anteil unbekannt.
+
+Super-Admins können CSV bis 5.000 Zeilen / 2 MB strukturell prüfen, eine Vorschau
+ansehen und erst nach Quellen-/Zuschnittprüfung übernehmen. Pflichtspalten:
+`unit_key;name;party;eligible;voters;valid_votes;votes`. Die gewählte Wahl/Stimmenart/
+Nummer/Ebene gilt für den Import. Änderungen der Auswahl heben die Prüfung auf.
+Nur geprüfte Zeilen veröffentlichten Wahljahrs sind für reguläre Nutzer lesbar.
+RLS begrenzt alle zentralen Schreibrechte auf Super-Admins. Der Import ist
+wiederholbar: identische Zeilen werden übersprungen, abweichende vorhandene Werte
+bleiben geschützt und werden als Konflikte gemeldet. Datenbank-Constraints prüfen
+auch über Parteizeilen hinweg Nenner, Datenstand, Zuschnitt und Stimmenobergrenze;
+ein widersprüchlicher Batch wird vollständig zurückgerollt.
+
+Echte Gemeinde-/Wahlbezirksdaten sind noch nicht bereitgestellt. Die Oberfläche und
+Übernahmewege sind funktionsfähig vorbereitet, es werden keine fiktiven Gemeinden
+oder Messwerte angelegt.
+
+### Verifikation und manuelle Schritte
+
+Ergänzte, **nicht ausgeführte** Tests: `simulator/seats.test.ts`, `workspaces.test.ts`,
+SQL-Fixtures `supabase/tests/analysis_workspaces.sql` und ein Logikschritt im
+Selbsttest-Center. Sie decken amtliche Referenz, Sperrklausel, Los, Überhang/Ausgleich,
+Mehrheitsklausel, Sonderbereinigung, Listenerschöpfung, Snapshot-Auswahl,
+Tenant-/Eigentümerrechte, CSV-Nullwerte und Berichtssanitierung ab.
+TypeScript wird separat geprüft; keine bestandenen Laufzeit-/E2E-Tests behauptet.
+
+Die beiden neuen Migrationen nach den bisherigen Wahlanalyse-Migrationen anwenden.
+Kein administrativer Live-Datenbankzugang steht hier zum Einspielen zur Verfügung.
+Vollständige Wahlkreiskandidaturen und Landeslisten für Personensimulationen sowie
+echte Gemeindequellen anschließend amtlich einlesen. Der komplette Originalabgleich
+aller Wahlkreise und Geometrien bleibt wegen HTTP 403 weiterhin offen; der neue
+Landesabgleich löst ausschließlich die vollständig belegte Landesebene 2026.

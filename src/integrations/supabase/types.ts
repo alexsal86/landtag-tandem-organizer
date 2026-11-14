@@ -1,3 +1,4 @@
+import type { WorkspaceTables } from '@/features/election-analysis/research/workspaceTypes';
 import type { ElectionResearchTables } from '@/features/election-analysis/research/types';
 import type { ElectionAnalysisTables } from '@/features/election-analysis/types';
 import type { ElectionHistoryTables } from '@/features/election-history/types';
@@ -17,7 +18,7 @@ export type Database = {
     PostgrestVersion: "12.2.3"
   }
   public: {
-    Tables: ElectionResearchTables & ElectionAnalysisTables & ElectionHistoryTables & {
+    Tables: WorkspaceTables & ElectionResearchTables & ElectionAnalysisTables & ElectionHistoryTables & {
       topic_catalog_links: {
         Row: {
           id: string
@@ -15363,6 +15364,8 @@ export type Database = {
       }
     }
     Functions: {
+      get_analysis_local_page: { Args: { selected_year:number; selected_ballot:string; district:number;area_type:string;selected_party:string;search_text:string;page_offset:number }; Returns: Json }
+      import_analysis_local_rows: { Args: { rows_to_import:Json }; Returns: Json }
       confirm_analysis_candidate_identity: { Args: { candidacy: string }; Returns: undefined }
       get_analysis_district_series: { Args: { district: number; selected_years: number[] }; Returns: Json }
       get_analysis_turnout_comparison: { Args: { before_year: number; after_year: number; before_ballot: string; after_ballot: string; selected_party: string }; Returns: Json }

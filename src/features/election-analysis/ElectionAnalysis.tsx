@@ -1,6 +1,7 @@
 import { AnalysisControls, AnalysisToolbarLayout } from './AnalysisToolbar';
+import { ReportActions } from './research/ReportActions';
 import { Selection, DataState, DataTable, StatusNote, PartyLabel, chartColor } from './shared';
-import { lazy, Suspense, useState } from 'react';
+import { lazy, Suspense, useState, useRef } from 'react';
 import { useSearchParams } from 'react-router-dom';
 import { Bar, BarChart, CartesianGrid, Cell, Legend, Line, LineChart, ReferenceLine, ResponsiveContainer, Tooltip, XAxis, YAxis } from 'recharts';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
@@ -13,6 +14,7 @@ import type { AnalysisSection, Ballot } from './types';
 const ResearchWorkbench = lazy(() => import('./research/ResearchWorkbench'));
 type AnalysisView = AnalysisSection | 'profile' | 'swing' | 'split' | 'quality' | 'turnout-trend' | 'mandates' | 'research';
 export default function ElectionAnalysis() {
+  const reportRoot=useRef<HTMLDivElement|null>(null);
   const years = useAnalysisYears();
   const [params, setParams] = useSearchParams();
   const rawSection = params.get('analysisSection') || 'state';
@@ -25,16 +27,17 @@ export default function ElectionAnalysis() {
   const gender = ['Insgesamt', 'Frauen', 'Männer'].find(g => g === params.get('analysisGender')) || 'Insgesamt';
   const change = (key: string, value: string) => setParams(previous => { const next = new URLSearchParams(previous); next.set(key, value); return next; });
   const selection = { year, ballot, party, gender };
-  return <div className="space-y-5">
+  return <div ref={reportRoot} className="space-y-5">
     <header><h1 className="text-2xl font-semibold">Wahlanalyse Baden-Württemberg</h1><p className="mt-1 text-sm text-muted-foreground">Wahlergebnisse, Beteiligung und Wahlverhalten vergleichen. Es wird nur die gewählte Auswertung geladen.</p></header>
     <DataState loading={years.isLoading} error={years.error} empty={!years.data?.length} retry={() => void years.refetch()}>
       <nav aria-label="Auswertung auswählen" className="flex flex-wrap gap-2 border-b pb-3">{(Object.keys(sectionLabels) as AnalysisView[]).map(key => <Button key={key} variant={section === key ? 'default' : 'outline'} aria-pressed={section === key} onClick={() => change('analysisSection', key)}>{sectionLabels[key]}</Button>)}</nav>
-      <AnalysisToolbarLayout filters={section === 'mandates' ? null : <>
-        {section !== 'mandates' && <Selection id="analysis-year" label="Wahl / Legislaturperiode" value={String(year)} onChange={value => change('analysisYear', value)}>{years.data?.filter(y => section !== 'split' || y.year === 2026).map(y => <option key={y.year} value={y.year}>{y.year} · {y.period_number}. Legislaturperiode</option>)}</Selection>}
-        {section !== 'flows' && section !== 'split' && section !== 'quality' && section !== 'mandates' && <Selection id="analysis-ballot" label="Stimmenart" value={ballot} onChange={value => change('analysisBallot', value)}>{(section === 'demographics' && year >= 2026 ? ['second'] as Ballot[] : ballotsForYear(year)).map(b => <option key={b} value={b}>{ballotLabels[b]}</option>)}</Selection>}
+      <AnalysisToolbarLayout filters={section === 'mandates' || (section === 'research' && params.get('researchTool') === 'saved') ? null : <>
+        {<Selection id="analysis-year" label="Wahl / Legislaturperiode" value={String(year)} onChange={value => change('analysisYear', value)}>{years.data?.filter(y => section !== 'split' || y.year === 2026).map(y => <option key={y.year} value={y.year}>{y.year} · {y.period_number}. Legislaturperiode</option>)}</Selection>}
+        {section !== 'flows' && section !== 'split' && section !== 'quality' && !(section === 'research' && ['seats','saved','flows'].includes(params.get('researchTool') || '')) && <Selection id="analysis-ballot" label="Stimmenart" value={ballot} onChange={value => change('analysisBallot', value)}>{(section === 'demographics' && year >= 2026 ? ['second'] as Ballot[] : ballotsForYear(year)).map(b => <option key={b} value={b}>{ballotLabels[b]}</option>)}</Selection>}
         {(section === 'flows' || section === 'districts') && <Selection id="analysis-party" label={section === 'flows' ? 'Zielpartei' : 'Partei'} value={party} onChange={value => change('analysisParty', value)}>{parties.map(p => <option key={p}>{p}</option>)}</Selection>}
         {section === 'demographics' && <Selection id="analysis-gender" label="Geschlecht" value={gender} onChange={value => change('analysisGender', value)}>{['Insgesamt', 'Frauen', 'Männer'].map(g => <option key={g}>{g}</option>)}</Selection>}
       </>}>
+      <ReportActions root={reportRoot} title={`${sectionLabels[section]} · Wahlanalyse Baden-Württemberg${section === 'mandates' || (section === 'research' && params.get('researchTool') === 'saved') ? '' : ` ${year || ''}${section === 'research' && params.get('researchTool') === 'seats' ? ' · Erst-/Zweitstimmen' : section === 'flows' || (section === 'research' && params.get('researchTool') === 'flows') ? ' · Landesebene' : ` · ${ballotLabels[ballot]}`}`}`} />
       {year > 0 && <div key={`${section}:${year}:${ballot}:${party}:${gender}`}>
         {section === 'state' && <StatePanel {...selection} years={years.data?.map(y => y.year) || []} />}
         {section === 'districts' && <DistrictPanel {...selection} />}

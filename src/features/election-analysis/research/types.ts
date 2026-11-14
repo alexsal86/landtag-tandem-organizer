@@ -35,7 +35,7 @@ export interface SourceReview {
   id: string;
   kind: string;
   source_url: string;
-  sha256: string;
+  sha256: string | null;
   retrieved_at: string;
   status: "pending" | "verified" | "conflict";
   summary: Json;
