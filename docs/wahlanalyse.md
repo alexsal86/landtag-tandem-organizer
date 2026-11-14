@@ -275,5 +275,61 @@ bleiben auswertbar; unbestätigte historische Vergleiche sind ausdrücklich gewa
    ergänzen, bevor Wiederwahl-/Amtsinhabereffekte statistisch ausgewertet werden.
 
 Amtliche Quellen und Befunde: [Quellenprotokoll](elections/sources-and-gaps.md).
-P4/P5 sind gesonderte Folgepakete. P6 bleibt ein
+P4 ist als separate Erweiterung unten beschrieben; P5 bleibt ein gesondertes
+Folgepaket. P6 bleibt ein
 [technisches und wissenschaftliches Konzept](elections/research-concept.md).
+
+
+## Zweite Ausbaustufe: P4 – Beteiligung und Stimmenentwicklung
+
+`analysisSection=turnout-trend` öffnet **Beteiligung & Stimmen**. Die bestehende
+Beteiligungsansicht bleibt unverändert. Der neue Vergleich verwendet zwei Wahlen,
+eine ausgewählte Partei und genau eine Stimmenart je Wahl. Bei 2026 kann die
+Stimmenart gewählt werden; vor 2026 gilt die Einzelstimme.
+
+Die Ansicht zeigt:
+
+- Änderungen von Beteiligung und Parteianteil in Prozentpunkten;
+- Änderungen von Wahlberechtigten, Wählenden, gültigen Stimmen und Parteistimmen
+  in absoluten Zahlen;
+- die Grunddaten beider Wahlen in einer umschaltbaren, sortierbaren Tabelle;
+- ein Streudiagramm mit Beteiligungsänderung auf X und Anteilsänderung auf Y;
+- deskriptives Pearson-r mit Zahl vollständiger Paare und ausgeschlossener Fälle;
+- Wahlkreisfilter, Einstieg in den Steckbrief und CSV einschließlich Rohwerten,
+  Veränderungen, Ergebnisständen und Ausschlussgründen.
+
+Tabelle, Diagramm, Korrelation und Export verwenden dieselbe gefilterte Auswahl.
+Für das Diagramm werden zusätzlich beide Kennzahlen benötigt. Bei weniger als
+3 vollständigen Paaren oder konstanter X-/Y-Kennzahl bleibt r unbekannt. Es gibt
+keine Kausalaussage und keinen Rückschluss auf individuelle Wählerbewegungen.
+Ungeprüfte Grenzen und gemischte vorläufige/finale Ergebnisse sind standardmäßig
+ausgeschlossen und nur ausdrücklich mit Warnung einzubeziehen. Unterschiedliche
+Stände von Parteiergebnis und Beteiligungsnenner innerhalb derselben Wahl werden
+auch dann nicht verrechnet. Fehlende Einzelwerte bleiben unbekannt; keine
+Division und kein Aufsummieren von Erst- und Zweitstimmen-Wählenden.
+
+Migration `20261114142000_election_turnout_comparison.sql` ergänzt ausschließlich
+einen lesenden `SECURITY INVOKER`-RPC. Er fragt höchstens zwei Jahre × 70 Wahlkreise
+für eine Partei, passende Beteiligungsdaten und explizite Wahlkreisversionen ab.
+Die vorhandenen RLS-Regeln gelten unverändert. Es werden keine Wahlergebnisse,
+Mandate oder Verwaltungsdaten verändert. Anfragen sind abbrechbar, nach Nutzer und
+Auswahl gecacht und laden keine anderen Wahljahre vor.
+
+`research/turnoutModel.ts` kapselt Vergleich und Korrelation. `voteFactors` und
+`decomposeVotes` bereiten die in [research-concept.md](elections/research-concept.md)
+definierte Shapley-Zerlegung über alle 24 Reihenfolgen vor. Die Zerlegung wird
+**noch nicht in der produktiven Oberfläche angeboten**, da mathematische Tests
+auf Wunsch nicht ausgeführt und die methodische Freigabe noch offen sind.
+
+Ergänzt, nicht ausgeführt: `turnoutModel.test.ts` (Differenzen, fehlende Werte,
+Grenzen/Status, keine doppelte Beteiligung, Korrelation, Summenidentität und
+Symmetrie der Zerlegung), begrenzte RPC-Hooktests, SQL-Zugriffstests und ein weiterer
+Logikschritt im Selbsttest-Center. Der separat ausgeführte TypeScript-Abgleich
+ersetzt keine Laufzeit- oder Integrationstests.
+
+Die neue Migration muss nach den beiden P0–P3-Migrationen angewendet werden.
+Amtliche Originaldownloads sind weiterhin durch HTTP 403 blockiert; diese Stufe
+ändert deshalb keine Vorläufigkeitskennzeichen und behauptet keine bestätigte
+historische Gebietsidentität. Ohne Originalprüfung bleiben die entsprechenden
+Vergleiche standardmäßig ausgeschlossen. Kein administrativer Live-DB-Zugang
+stand zum Einspielen der Migration zur Verfügung.

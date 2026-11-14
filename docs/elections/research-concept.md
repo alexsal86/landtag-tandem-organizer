@@ -1,9 +1,14 @@
 # Folgepakete und wissenschaftliches Konzept
 
 P0–P3 schaffen gemeinsame Berechnungen, quellengestützte Versionen und begrenzte
-Zugriffe. Die folgenden Funktionen werden in dieser Stufe nicht produktiv aktiviert.
+Zugriffe. Der P4-Vergleich ist inzwischen separat implementiert. Seine Stimmenzerlegung bleibt
+vorbereitet; P5 und P6 werden ohne zusätzliche Prüfung nicht produktiv aktiviert.
 
 ## P4: Beteiligung, absolute Stimmen und deskriptiver Zusammenhang
+
+Status: Tabellen, Streudiagramm und deskriptives Pearson-r sind im Reiter
+„Beteiligung & Stimmen“ implementiert. Die folgende Zerlegung ist als reine
+Funktion vorbereitet und noch nicht in der produktiven Oberfläche aktiviert.
 
 Ein Punkt je räumlich vergleichbarem Wahlkreis: X = Änderung der Beteiligung in PP,
 Y = Änderung des Parteianteils in PP. Die Tabelle muss dieselben Zahlen, Nenner,

@@ -13,6 +13,7 @@ vi.mock("@/integrations/supabase/client", () => ({
 }));
 import {
   useComparison,
+  useTurnoutComparison,
   useDistrictHistory,
   useDistrictSeries,
   useDistrictVersions,
@@ -20,7 +21,7 @@ import {
 } from "./hooks";
 beforeEach(() => vi.clearAllMocks());
 describe("Wahlanalyse: begrenzte, abbrechbare Datenzugriffe", () => {
-  it("lädt nur einen gewählten Wahlkreis und die ausgewählten Jahre", async () => {
+  it("lädt für Beteiligungsänderungen genau zwei Wahlen und eine Partei", async () => {
     mock.rpc.mockReturnValue({
       abortSignal: vi
         .fn()
@@ -28,6 +29,33 @@ describe("Wahlanalyse: begrenzte, abbrechbare Datenzugriffe", () => {
           data: { results: [], turnout: [], state: [], versions: [] },
           error: null,
         }),
+    });
+    useTurnoutComparison(2021, 2026, "single", "second", "CDU");
+    const config = mock.useQuery.mock.calls[0][0];
+    const signal = new AbortController().signal;
+    await config.queryFn({ signal });
+    expect(mock.rpc).toHaveBeenCalledWith("get_analysis_turnout_comparison", {
+      before_year: 2021,
+      after_year: 2026,
+      before_ballot: "single",
+      after_ballot: "second",
+      selected_party: "CDU",
+    });
+    expect(mock.rpc.mock.results[0].value.abortSignal).toHaveBeenCalledWith(
+      signal,
+    );
+    expect(config.queryKey).toContain("reader");
+  });
+  it("lädt keine Beteiligungsvergleiche derselben Wahl", () => {
+    useTurnoutComparison(2026, 2026, "first", "second", "CDU");
+    expect(mock.useQuery.mock.calls[0][0].enabled).toBe(false);
+  });
+  it("lädt nur einen gewählten Wahlkreis und die ausgewählten Jahre", async () => {
+    mock.rpc.mockReturnValue({
+      abortSignal: vi.fn().mockResolvedValue({
+        data: { results: [], turnout: [], state: [], versions: [] },
+        error: null,
+      }),
     });
     useDistrictSeries(3, [2021, 2026]);
     const config = mock.useQuery.mock.calls[0][0];
@@ -44,12 +72,10 @@ describe("Wahlanalyse: begrenzte, abbrechbare Datenzugriffe", () => {
   });
   it("begrenzt den Vergleich auf zwei Jahre, Stimmenarten und ausgewählte Parteien", async () => {
     mock.rpc.mockReturnValue({
-      abortSignal: vi
-        .fn()
-        .mockResolvedValue({
-          data: { results: [], turnout: [], state: [], versions: [] },
-          error: null,
-        }),
+      abortSignal: vi.fn().mockResolvedValue({
+        data: { results: [], turnout: [], state: [], versions: [] },
+        error: null,
+      }),
     });
     useComparison(2021, 2026, "single", "second", ["SPD", "CDU"]);
     await mock.useQuery.mock.calls[0][0].queryFn({
@@ -113,12 +139,10 @@ describe("Wahlanalyse: begrenzte, abbrechbare Datenzugriffe", () => {
   });
   it("zeigt RPC-Fehler statt fehlgeschlagene Zugriffe als leere Ergebnisse zu maskieren", async () => {
     mock.rpc.mockReturnValue({
-      abortSignal: vi
-        .fn()
-        .mockResolvedValue({
-          data: null,
-          error: new Error("permission denied"),
-        }),
+      abortSignal: vi.fn().mockResolvedValue({
+        data: null,
+        error: new Error("permission denied"),
+      }),
     });
     useDistrictSeries(1, [2026]);
     await expect(

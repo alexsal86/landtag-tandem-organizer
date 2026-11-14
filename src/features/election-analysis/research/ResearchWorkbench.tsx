@@ -45,10 +45,11 @@ import {
   validateElectionData,
 } from "./calculations";
 import type { ComparisonValue, Metric } from "./types";
+import TurnoutComparison from "./TurnoutComparison";
 import { AnalysisMap } from "./AnalysisMap";
 
 type Props = {
-  section: "profile" | "swing" | "split" | "quality";
+  section: "profile" | "swing" | "split" | "quality" | "turnout-trend";
   year: number;
   ballot: Ballot;
   party: string;
@@ -84,6 +85,7 @@ export default function ResearchWorkbench(props: Props) {
       : 1;
   if (props.section === "profile")
     return <DistrictProfile {...props} district={district} set={set} />;
+  if (props.section === "turnout-trend") return <TurnoutComparison {...props} onOpenDistrict={open} />;
   if (props.section === "quality") return <QualityPanel year={props.year} />;
   return (
     <AtlasPanel

@@ -15364,6 +15364,7 @@ export type Database = {
     }
     Functions: {
       get_analysis_district_series: { Args: { district: number; selected_years: number[] }; Returns: Json }
+      get_analysis_turnout_comparison: { Args: { before_year: number; after_year: number; before_ballot: string; after_ballot: string; selected_party: string }; Returns: Json }
       get_analysis_comparison: { Args: { before_year: number; after_year: number; before_ballot: string; after_ballot: string; selected_parties: string[] }; Returns: Json }
       get_analysis_district_history: { Args: { district: number; selected_year: number }; Returns: Json }
       apply_verified_election_period: { Args: { period_number_to_apply: number }; Returns: Json }

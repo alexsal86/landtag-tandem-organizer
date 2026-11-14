@@ -1,4 +1,9 @@
 import {
+  decomposeVotes,
+  turnoutCorrelation,
+  turnoutChanges,
+} from "@/features/election-analysis/research/turnoutModel";
+import {
   boundaryCompatibility,
   compareDistrict,
   firstSecondDifference,
@@ -29,6 +34,76 @@ export const electionAnalysisScenario: TestScenario = {
     "Amtliche Downloads, Datenbank-RLS und Vollständigkeit historischer Kandidaturen sind separate Prüfungen.",
   ],
   steps: [
+    {
+      id: "turnout-statistics",
+      label:
+        "Beteiligung: vollständige Paare und symmetrische Stimmenzerlegung",
+      kind: "logic",
+      run: async () => {
+        const correlation = turnoutCorrelation([
+          { turnoutDelta: 1, shareDelta: 2 },
+          { turnoutDelta: 2, shareDelta: 4 },
+          { turnoutDelta: 3, shareDelta: 6 },
+          { turnoutDelta: null, shareDelta: 0 },
+        ]);
+        const before = {
+          eligible: 1000,
+          participation: 0.6,
+          validity: 0.95,
+          partyShare: 0.2,
+        };
+        const after = {
+          eligible: 1100,
+          participation: 0.7,
+          validity: 0.97,
+          partyShare: 0.3,
+        };
+        const d = decomposeVotes(before, after)!;
+        const reverse = decomposeVotes(after, before)!;
+        const rows = turnoutChanges(
+          { results: [], turnout: [], state: [], versions: [] },
+          {
+            beforeYear: 2021,
+            afterYear: 2026,
+            ballot: "second",
+            party: "CDU",
+            allowUnknownBoundaries: false,
+            allowMixedStatus: false,
+          },
+        );
+        const checks = {
+          correlation:
+            correlation.value === 1 &&
+            correlation.pairs === 3 &&
+            correlation.excluded === 1,
+          constantUndefined:
+            turnoutCorrelation([
+              { turnoutDelta: 1, shareDelta: 1 },
+              { turnoutDelta: 1, shareDelta: 2 },
+              { turnoutDelta: 1, shareDelta: 3 },
+            ]).value === null,
+          decompositionSum:
+            Math.abs(
+              d.eligible +
+                d.participation +
+                d.validity +
+                d.partyShare -
+                d.total,
+            ) < 1e-9,
+          reverse: Math.abs(d.total + reverse.total) < 1e-9,
+          missingRemainsUnknown:
+            rows.length === 70 &&
+            rows.every((r) => r.turnoutDelta === null && r.votesDelta === null),
+          zeroDenominator: decomposeVotes(null, after) === null,
+        };
+        return {
+          ok: Object.values(checks).every(Boolean),
+          message:
+            "Deskriptive Korrelation, fehlende Paare und vorbereitete Shapley-Zerlegung.",
+          details: checks,
+        };
+      },
+    },
     {
       id: "election-quality",
       label: "Fehlende Werte, Stimmenarten, Beteiligung und Grenzen",

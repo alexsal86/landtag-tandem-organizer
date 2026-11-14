@@ -327,3 +327,44 @@ export function useQualityData(
     retry: false,
   });
 }
+
+/** P4: two years, one party and one ballot per year; no historical full download. */
+export function useTurnoutComparison(
+  beforeYear: number,
+  afterYear: number,
+  beforeBallot: Ballot,
+  afterBallot: Ballot,
+  party: string,
+): UseQueryResult<DistrictSeries, Error> {
+  const { user } = useAuth();
+  return useQuery({
+    queryKey: [
+      "election-research",
+      user?.id,
+      "turnout-comparison",
+      beforeYear,
+      afterYear,
+      beforeBallot,
+      afterBallot,
+      party,
+    ],
+    enabled:
+      !!user && beforeYear !== afterYear && beforeYear > 0 && afterYear > 0,
+    queryFn: async ({ signal }) => {
+      const { data, error } = await supabase
+        .rpc("get_analysis_turnout_comparison", {
+          before_year: beforeYear,
+          after_year: afterYear,
+          before_ballot: beforeBallot,
+          after_ballot: afterBallot,
+          selected_party: party,
+        })
+        .abortSignal(signal);
+      if (error) throw error;
+      return series(data);
+    },
+    staleTime: 60_000,
+    gcTime: 120_000,
+    retry: false,
+  });
+}

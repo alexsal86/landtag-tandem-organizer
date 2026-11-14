@@ -10,7 +10,7 @@ import { ballotLabels, ballotsForYear, effectiveBallot, parties, sectionLabels, 
 import type { AnalysisSection, Ballot } from './types';
 
 const ResearchWorkbench = lazy(() => import('./research/ResearchWorkbench'));
-type AnalysisView = AnalysisSection | 'profile' | 'swing' | 'split' | 'quality';
+type AnalysisView = AnalysisSection | 'profile' | 'swing' | 'split' | 'quality' | 'turnout-trend';
 export default function ElectionAnalysis() {
   const years = useAnalysisYears();
   const [params, setParams] = useSearchParams();
@@ -40,7 +40,7 @@ export default function ElectionAnalysis() {
         {section === 'turnout' && <TurnoutPanel {...selection} />}
         {section === 'flows' && <FlowPanel {...selection} />}
         {section === 'demographics' && <DemographicPanel {...selection} />}
-        {(['profile','swing','split','quality'] as string[]).includes(section) && <Suspense fallback={<p role="status">Analysemodul lädt …</p>}><ResearchWorkbench section={section as 'profile'|'swing'|'split'|'quality'} {...selection} years={years.data?.map(y => y.year) || []} /></Suspense>}
+        {(['profile','swing','split','quality','turnout-trend'] as string[]).includes(section) && <Suspense fallback={<p role="status">Analysemodul lädt …</p>}><ResearchWorkbench section={section as 'profile'|'swing'|'split'|'quality'|'turnout-trend'} {...selection} years={years.data?.map(y => y.year) || []} /></Suspense>}
       </div>}
     </DataState>
   </div>;
