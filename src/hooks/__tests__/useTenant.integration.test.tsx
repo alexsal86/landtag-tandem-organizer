@@ -166,6 +166,8 @@ describe("useTenant integration access paths", () => {
 
     await waitFor(() => expect(result.current.loading).toBe(false));
     expect(result.current.currentTenant?.id).toBe("tenant-b");
+    expect(getActiveTenantScope()).toEqual({ userId: "user-admin", tenantId: "tenant-b" });
+    queryClient.setQueryData(["tenant-b", "tasks"], [{ id: "old-office-task" }]);
 
     act(() => {
       result.current.switchTenant("tenant-a");
@@ -173,5 +175,7 @@ describe("useTenant integration access paths", () => {
 
     expect(result.current.currentTenant?.id).toBe("tenant-a");
     expect(localStorage.getItem("currentTenantId_user-admin")).toBe("tenant-a");
+    expect(getActiveTenantScope()).toEqual({ userId: "user-admin", tenantId: "tenant-a" });
+    expect(queryClient.getQueryData(["tenant-b", "tasks"])).toBeUndefined();
   });
 });
