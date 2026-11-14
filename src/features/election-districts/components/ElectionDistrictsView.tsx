@@ -1,3 +1,4 @@
+import { usePeriodGeometry } from '@/features/election-history/usePeriodGeometry';
 import { Link } from 'react-router-dom';
 import { PeriodMembersOverview } from '@/features/election-history/PeriodMembersOverview';
 import { useElectionHistory, useElectionPeriods, historyError } from '@/features/election-history/useElectionHistory';
@@ -62,7 +63,9 @@ export const ElectionDistrictsView = ({ sidebarHeader }: { sidebarHeader?: React
   const [showAdministrativeBoundaries, setShowAdministrativeBoundaries] = useState(false);
   const { districts: baseDistricts, loading } = useElectionDistricts({ enabled: !periodIndex.isLoading && (!historyPeriod || showAdministrativeBoundaries) });
   const history = useElectionHistory(historyPeriod?.id);
-  const districts = useMemo(() => historyPeriod ? (history.data ? projectHistoricalDistricts(baseDistricts, history.data, historyPeriod.id) : baseDistricts.filter(d => d.district_type === 'verwaltungsgrenze')) : baseDistricts, [baseDistricts, history.data, historyPeriod?.id]);
+  const periodGeometry = usePeriodGeometry(history.data, historyPeriod?.id);
+  const mapHistory = periodGeometry.data;
+  const districts = useMemo(() => historyPeriod ? (mapHistory ? projectHistoricalDistricts(baseDistricts, mapHistory, historyPeriod.id) : baseDistricts.filter(d => d.district_type === 'verwaltungsgrenze')) : baseDistricts, [baseDistricts, mapHistory, historyPeriod?.id]);
   const [selectedDistrictRecord, setSelectedDistrict] = useState<ElectionDistrict | null>(null);
   const selectedDistrict = districts.find(d => d.id === selectedDistrictRecord?.id) || null;
   const [useMapFallback, setUseMapFallback] = useState(false);
@@ -219,9 +222,11 @@ export const ElectionDistrictsView = ({ sidebarHeader }: { sidebarHeader?: React
             </div>
           )}
           {history.isLoading && <p role="status" className="text-sm text-muted-foreground">Lade ausgewählte Legislatur …</p>}
+          {periodGeometry.isLoading && <p role="status" className="text-sm text-muted-foreground">Lade bestätigten historischen Grenzstand …</p>}
+          {periodGeometry.error && <p role="alert" className="text-sm">Der bestätigte Grenzstand konnte nicht geladen werden. <button className="underline" onClick={() => void periodGeometry.refetch()}>Erneut laden</button></p>}
           {history.error && <p role="alert" className="text-sm">{historyError(history.error)}</p>}
           {history.data && historyPeriod && <>
-            {!history.data.districts.some(d => hasRenderableBoundary(d.boundaries)) && <p className="rounded-lg border p-3 text-xs text-muted-foreground">Für diese Legislatur sind noch keine historischen Grenzumrisse hinterlegt. Die Abgeordneten und damaligen Wahlkreise stehen in der Übersicht.</p>}
+            {!periodGeometry.isLoading && !periodGeometry.error && !mapHistory?.districts.some(d => hasRenderableBoundary(d.boundaries)) && <p className="rounded-lg border p-3 text-xs text-muted-foreground">Für diese Legislatur sind noch keine historischen Grenzumrisse hinterlegt oder bestätigt. Die Abgeordneten und damaligen Wahlkreise stehen in der Übersicht.</p>}
             <PeriodMembersOverview key={historyPeriod.id} data={history.data} onSelectDistrict={setSelectedHistoricalDistrict} />
             <div className="rounded-xl border bg-card p-3">
               <label htmlFor="historical-district" className="text-sm font-medium">Historischer Wahlkreis</label>

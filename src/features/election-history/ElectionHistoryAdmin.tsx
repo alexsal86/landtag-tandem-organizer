@@ -38,6 +38,8 @@ const fields: Record<HistoryEntity, Field[]> = {
     { key: 'ends_on', label: 'Ende der Legislaturperiode / übernommener Endtermin', type: 'date' },
     { key: 'ends_on_is_expected', label: 'Endtermin ist voraussichtlich, noch kein tatsächliches Ende', type: 'checkbox' },
     { key: 'expected_ends_on', label: 'Voraussichtliches reguläres Ende (separat)', type: 'date' }, notesField,
+    { key: 'boundary_geometry_year', label: 'Historischer Grenzstand für die Karte', type: 'select', help: 'Gemeinsame TopoJSON-Datei: 2016 oder 2021 (auch für die Wahl 2026). Es werden keine Einzelgeometrien kopiert.' },
+    { key: 'boundary_geometry_confirmed', label: 'Grenzstand und Zuordnung der Wahlkreisnummern für diese Legislatur geprüft und bestätigt', type: 'checkbox', help: 'Erst nach dieser Bestätigung verwendet die historische Karte den gewählten Grenzstand. Die Veröffentlichung der Legislatur wird separat gesteuert.' },
     { key: 'is_published', label: 'Für alle Tenants freigeben', type: 'checkbox', help: 'Erst nach der Prüfung freigeben. Die aktuelle Periode muss freigegeben bleiben.' },
   ],
   people: [{ key: 'name', label: 'Vollständiger Name', required: true }, { key: 'biography', label: 'Kurzbiografie / Identifikationshinweis', type: 'textarea', help: 'Hilft, namensgleiche Personen auseinanderzuhalten.' },
@@ -58,6 +60,7 @@ const fields: Record<HistoryEntity, Field[]> = {
 };
 const selectClass = 'flex h-10 w-full rounded-md border border-input bg-background px-3 py-2 text-sm';
 function optionsFor(key: string, data: ElectionHistoryData, values: FormValues): { value: string; label: string }[] {
+  if (key === 'boundary_geometry_year') return [{ value: '2016', label: 'Grenzen 2016' }, { value: '2021', label: 'Grenzen 2021 / 2026' }];
   if (key === 'period_id') return data.periods.filter(p => !values.period_id || p.id === values.period_id).map(p => ({ value: p.id, label: p.name }));
   if (key === 'person_id') return data.people.map(p => ({ value: p.id, label: `${p.name}${p.biography ? ` · ${p.biography.slice(0, 60)}` : ''}` }));
   if (key === 'district_id') return data.districts.filter(d => d.period_id === values.period_id).sort((a, b) => (a.district_number ?? Infinity) - (b.district_number ?? Infinity)).map(d => ({ value: d.id, label: `${d.district_number ?? d.number_label ?? "–"}: ${d.name}` }));
@@ -180,6 +183,7 @@ function ElectionHistoryWorkspace({ userId }: { userId: string }) {
   const changeField = (key: string, value: string | boolean) => {
     const previous = values;
     const next = { ...previous, [key]: value };
+    if (key === 'boundary_geometry_year' || key === 'election_year') next.boundary_geometry_confirmed = false;
     if (key === 'period_id') {
       next.district_id = ''; next.candidacy_id = '';
       if (entity === 'mandates' && !editing) { next.starts_on = ''; next.ends_on = ''; }

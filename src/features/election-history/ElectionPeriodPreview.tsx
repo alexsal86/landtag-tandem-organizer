@@ -1,13 +1,16 @@
+import { usePeriodGeometry } from './usePeriodGeometry';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 import { formatPersonalResult, formatMandateDateRange } from './model';
 import type { ElectionHistoryData, HistoricalMandate } from './types';
 const outcomes = { direct: 'Direkt gewählt', list: 'Über Liste gewählt', not_elected: 'Nicht gewählt', unknown: 'Ausgang offen' };
 
 export function ElectionPeriodPreview({ data, periodId }: { data: ElectionHistoryData; periodId: string }) {
+  const geometry = usePeriodGeometry(data, periodId);
+  const resolved = geometry.data ?? data;
   const period = data.periods.find(p => p.id === periodId);
   const candidates = data.candidacies.filter(c => c.period_id === periodId);
   const mandates = data.mandates.filter(m => m.period_id === periodId);
-  const districts = data.districts.filter(d => d.period_id === periodId).sort((a, b) => (a.district_number ?? Infinity) - (b.district_number ?? Infinity) || a.name.localeCompare(b.name, 'de'));
+  const districts = resolved.districts.filter(d => d.period_id === periodId).sort((a, b) => (a.district_number ?? Infinity) - (b.district_number ?? Infinity) || a.name.localeCompare(b.name, 'de'));
   const districtIds = new Set(districts.map(d => d.id));
   const withoutDistrict = mandates.filter(m => !m.district_id);
   const unresolved = mandates.filter(m => m.district_id && !districtIds.has(m.district_id));
@@ -20,7 +23,10 @@ export function ElectionPeriodPreview({ data, periodId }: { data: ElectionHistor
   return <Card><CardHeader><CardTitle>Vorschau: {period?.name}</CardTitle></CardHeader><CardContent className="space-y-3">
     <p className="text-sm">{districts.length} Wahlkreise · {mandates.length} Mandate · {period?.is_published ? 'Freigegeben' : 'Entwurf'}</p>
     <p className="text-xs text-muted-foreground">{assigned} Mandate einem Wahlkreis zugeordnet · {withoutDistrict.length} ohne Wahlkreis · {candidates.length} persönliche Wahlergebnisse erfasst.</p>
-    {missingBoundaries > 0 && <p className="text-xs text-muted-foreground">{missingBoundaries} Wahlkreise haben noch keinen historischen Grenzumriss.</p>}
+    <p className="text-xs text-muted-foreground">Grenzstand: {period?.boundary_geometry_year ?? 'nicht ausgewählt'} · {period?.boundary_geometry_confirmed ? 'bestätigt' : 'nicht bestätigt'}</p>
+    {geometry.isLoading && <p role="status" className="text-xs">Lade bestätigten Grenzstand …</p>}
+    {geometry.error && <p role="alert" className="text-sm text-destructive">Grenzstand konnte nicht geladen werden. <button className="underline" onClick={() => void geometry.refetch()}>Erneut laden</button></p>}
+    {!geometry.isLoading && missingBoundaries > 0 && <p className="text-xs text-muted-foreground">{missingBoundaries} Wahlkreise haben noch keinen historischen Grenzumriss.</p>}
     {unresolved.length > 0 && <p className="text-sm text-destructive" role="alert">Bei {unresolved.length} Mandaten verweist die Zuordnung auf einen Wahlkreis, der in dieser Periode nicht geladen wurde. Bitte unter „Mandate“ prüfen.</p>}
     {districts.map(d => {
       const districtMandates = mandates.filter(m => m.district_id === d.id).sort((a, b) => Number(b.mandate_type === 'direct') - Number(a.mandate_type === 'direct') || Number(a.entry_type === 'succession') - Number(b.entry_type === 'succession'));

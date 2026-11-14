@@ -1,3 +1,4 @@
+import { electoralGeometryYear } from '@/utils/electoralTopology';
 import { normalizeGeoJsonGeometry } from '@/hooks/geoContracts';
 import { hasRenderableBoundary } from '@/features/election-districts/mapModel';
 import type { ElectionCandidacy, ElectionHistoryData, ElectionHistoryTables, HistoricalMandate } from './types';
@@ -45,10 +46,17 @@ export function parseHistoryForm(entity: HistoryEntity, v: FormValues): ParsedHi
       const ends_on = dateValue(v, 'ends_on', false);
       const election_date = dateValue(v, 'election_date', false);
       if ((election_date && starts_on && election_date > starts_on) || (starts_on && ends_on && ends_on < starts_on)) throw new Error('Wahltag und Legislaturzeitraum passen nicht zusammen.');
+      const election_year = numberValue(v, 'election_year', 1900, 2200);
+      const boundary_geometry_year = numberValue(v, 'boundary_geometry_year', 2016, 2021);
+      const boundary_geometry_confirmed = v.boundary_geometry_confirmed === true;
+      if (boundary_geometry_year !== null && (election_year === null || electoralGeometryYear(election_year) !== boundary_geometry_year))
+        throw new Error('Der Grenzstand muss zum Wahljahr passen: 2016 oder 2021 für die Wahlen 2021/2026.');
+      if (boundary_geometry_confirmed && boundary_geometry_year === null)
+        throw new Error('Bitte vor der Bestätigung einen Grenzstand auswählen.');
       const number = numberValue(v, 'number', 1);
       if (number === null) throw new Error('Bitte eine Legislatur-Nummer angeben.');
       if (v.is_current === true && v.is_published !== true) throw new Error('Die aktuelle Periode muss freigegeben sein.');
-      return { entity, data: { number, name: required(v, 'name'), election_year: numberValue(v, 'election_year', 1900, 2200), election_date, starts_on, ends_on, expected_ends_on: dateValue(v, 'expected_ends_on', false), ends_on_is_expected: v.ends_on_is_expected === true, is_current: v.is_current === true, is_published: v.is_published === true, source_url, notes } } as const;
+      return { entity, data: { number, name: required(v, 'name'), election_year, boundary_geometry_year, boundary_geometry_confirmed, election_date, starts_on, ends_on, expected_ends_on: dateValue(v, 'expected_ends_on', false), ends_on_is_expected: v.ends_on_is_expected === true, is_current: v.is_current === true, is_published: v.is_published === true, source_url, notes } } as const;
     }
     case 'people': return { entity, data: { name: required(v, 'name'), biography: optional(v, 'biography'), history_complete: v.history_complete === true, source_url } } as const;
     case 'districts': {

@@ -50,3 +50,24 @@ Content-Encoding on a gzip sidecar unless the server actually sends gzip bytes.
 The existing verified district-identity rules remain independent of rendering:
 using a supplied boundary asset does not automatically attest cross-year result
 comparability. Unknown or unverified comparisons remain unknown.
+
+## Historical member map: enable a legislature
+
+Deploy migration `20261115010000_election_history_shared_geometry.sql` before the
+updated frontend. No existing legislature is automatically assigned or confirmed.
+As superadmin, open **Administration → Wahldaten & Mandatshistorie →
+Legislaturperioden**, edit the desired period and choose **Historischer Grenzstand
+für die Karte**. Select 2016 for the 2016 election or 2021 for 2021/2026. Confirm
+that the boundary version and district-number assignments have been checked, then
+save. **Für alle Tenants freigeben** remains the separate legislature publication
+switch. Use **Periode prüfen** to see the confirmed version and remaining gaps.
+
+The selected legislature is loaded through the existing scoped RPC. Only after
+confirmation does the browser load its shared topology object and attach shapes
+in memory by the explicitly confirmed district numbers. Existing individual
+historical shapes take precedence. No geometry is copied into district rows, no
+mandates or analysis identities are changed. Changing the year/version in the
+editor clears confirmation. Adding/removing districts or changing their number
+assignments clears confirmation in the database. Existing superadmin RLS and the
+history audit cover these updates. Published periods expose the confirmed map to
+tenants; drafts remain restricted by the existing policies.
