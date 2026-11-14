@@ -35,6 +35,6 @@ export function useAnalysisRows<K extends AnalysisSection>(section: K, year: num
     }, staleTime: 60_000, gcTime: 120_000, retry: false });
 }
 export function analysisError(error: unknown): string {
-  if (typeof error === 'object' && error !== null && 'code' in error && (error.code === '42P01' || error.code === 'PGRST205')) return 'Die Wahlanalyse ist noch nicht in der Datenbank eingerichtet. Bitte die neuen Migrationen einspielen.';
+  if (typeof error === 'object' && error !== null && 'code' in error && (error.code === '42P01' || error.code === 'PGRST205' || error.code === 'PGRST202')) return 'Die Wahlanalyse ist noch nicht in der Datenbank eingerichtet. Bitte die neuen Migrationen einspielen.';
   return 'Die Analysedaten konnten nicht geladen werden. Bitte erneut versuchen.';
 }

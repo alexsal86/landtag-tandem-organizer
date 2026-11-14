@@ -1,3 +1,4 @@
+import type { ElectionResearchTables } from '@/features/election-analysis/research/types';
 import type { ElectionAnalysisTables } from '@/features/election-analysis/types';
 import type { ElectionHistoryTables } from '@/features/election-history/types';
 
@@ -16,7 +17,7 @@ export type Database = {
     PostgrestVersion: "12.2.3"
   }
   public: {
-    Tables: ElectionAnalysisTables & ElectionHistoryTables & {
+    Tables: ElectionResearchTables & ElectionAnalysisTables & ElectionHistoryTables & {
       topic_catalog_links: {
         Row: {
           id: string
@@ -15362,6 +15363,10 @@ export type Database = {
       }
     }
     Functions: {
+      get_analysis_district_series: { Args: { district: number; selected_years: number[] }; Returns: Json }
+      get_analysis_comparison: { Args: { before_year: number; after_year: number; before_ballot: string; after_ballot: string; selected_parties: string[] }; Returns: Json }
+      get_analysis_district_history: { Args: { district: number; selected_year: number }; Returns: Json }
+      apply_verified_election_period: { Args: { period_number_to_apply: number }; Returns: Json }
       get_election_person_summary: { Args: { person: string; through_period: string }; Returns: Json }
       get_election_history_period: { Args: { period: string }; Returns: Json }
       set_current_election_history_period: { Args: { period: string }; Returns: undefined }

@@ -291,3 +291,15 @@ export const loadElectoralDistrictsGeoJson = async (): Promise<GeoJsonData> => {
   if (lastError) throw lastError;
   throw new Error('Unable to load any GeoJSON source');
 };
+
+
+/** Strict adapter for explicitly sourced analysis map assets. */
+export function normalizeElectoralGeoJson(value: unknown): GeoJsonData {
+  if (!isGeoJsonFeatureCollection(value)) throw new Error('Ungültige Wahlkreisgeometrie');
+  const data = reprojectIfNeeded(value);
+  const check = (coordinates: unknown): boolean => Array.isArray(coordinates) && coordinates.length > 0
+    && (typeof coordinates[0] === 'number' ? coordinates.length >= 2 && Number.isFinite(coordinates[0])
+      && typeof coordinates[1] === 'number' && Number.isFinite(coordinates[1]) && Math.abs(coordinates[0]) <= 180 && Math.abs(coordinates[1]) <= 90 : coordinates.every(check));
+  if (!data.features.every(feature => check(feature.geometry.coordinates))) throw new Error('Geometrie ist nicht in WGS84 darstellbar');
+  return data;
+}

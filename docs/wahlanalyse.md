@@ -2,8 +2,9 @@
 
 `/daten?dataTool=wahlanalyse` öffnet die zentrale Wahlanalyse. Unter
 `dataTool=rechner` bleiben Sitzrechner, Kandidatenpflege und die bisherigen
-Werkzeuge erreichbar. Die neue Analyse verändert weder Mandate, Personen noch
-Legislaturperioden; sie verwendet einen eigenen Datenbestand.
+Werkzeuge erreichbar. Die Ergebnisimporte verändern keine Mandate oder Personen. Wahlergebnisse bleiben
+in den vorhandenen Analysetabellen; historische Perioden werden explizit verknüpft.
+Belegte fehlende Periodentermine lassen sich separat durch Super-Admins ergänzen.
 
 ## Einrichtung
 
@@ -17,7 +18,8 @@ Legislaturperioden; sie verwendet einen eigenen Datenbestand.
 Der Generator `scripts/import-election-analysis.py workbook.xlsx output.sql`
 benötigt openpyxl. Er liest ausschließlich die Ergebnis-, Beteiligungs-, Wanderungs-
 und Demografieblätter. Er liest/importiert keine Abgeordneten oder Periodentermine.
-Quellenlinks und Datei-/Zeilenherkunft werden nicht gespeichert; fachliche Hinweise,
+Der ursprüngliche Workbook-Seed speichert keine Quellenlinks oder Datei-/Zeilenherkunft;
+die neue amtliche Prüfung dokumentiert Quelle, Prüfsumme und Datenstand gesondert. Fachliche Hinweise,
 Vorläufigkeit und Vergleichseinschränkungen bleiben erhalten. Stabile fachliche
 Primärschlüssel und `ON CONFLICT DO NOTHING` verhindern, dass eine erneute Übernahme
 Daten dupliziert oder bereits korrigierte Analysewerte überschreibt. Ungültige oder
@@ -85,3 +87,193 @@ der aktive Pfeil zeigt die Richtung. Zahlen werden nach ihrem Rohwert sortiert,
 fehlende Angaben bleiben in beiden Richtungen unten. Die Sortierung umfasst alle
 gefilterten Zeilen vor der Begrenzung auf zunächst 25 sichtbare Einträge und löst
 keine zusätzlichen Datenbankabfragen aus.
+
+## Historische Analyse: erste Ausbaustufe P0–P3 (14.11.2026)
+
+Neue Bereiche unter **Daten → Wahlanalyse**:
+
+- **Wahlkreis-Steckbrief**: einer der 70 Wahlkreise, verfügbare Wahlen 2006–2026,
+  Stimmenanteile/absolute Stimmen, Veränderungen zur Vorwahl, Grunddaten,
+  Zwei-Jahres-Vergleich, CSV und erst beim Aufklappen geladene Mandatshistorie.
+- **Swing / Veränderungsatlas**: zwei Wahlen, bis zu fünf Parteien,
+  Prozentpunktdifferenz, absolute Stimmendifferenz oder Abweichung vom Landestrend.
+  Tabellen lassen sich auf-/absteigend sortieren. Die Karte verwendet dieselben
+  berechneten Werte wie die Tabelle, für eine ausgewählte Partei.
+- **Erst-/Zweitstimmen 2026**: getrennte absolute Ergebnisse und Anteile,
+  Differenzen, Rangliste, Landesvergleich, CSV und Karte, sobald amtliche
+  periodenspezifische Geometrien verifiziert und eingebunden sind.
+- **Datenprüfung**: ausgewähltes Jahr, nachvollziehbare Codes und CSV-Bericht für
+  Zahlen-, Nenner-, Beteiligungs-, Summen- und Statuskonflikte.
+
+Aus der historischen Wahlkreiskarte führt „Wahlkreis-Steckbrief öffnen“ zum
+entsprechenden Jahr und zur gesicherten Nummer. Der Link ist bei unbekannten
+Nummern und Wahlen außerhalb des vorhandenen Analysedatensatzes nicht verfügbar.
+Die URL verwendet `dataTool=wahlanalyse`, `analysisSection=profile|swing|split|quality`,
+`analysisYear`, `analysisBallot`, `analysisDistrict`, `analysisBefore`,
+`analysisParties`, `analysisMetric` und `profileMetric`. Filterwechsel navigieren
+innerhalb der Anwendung, ohne vollständiges Neuladen.
+
+### Vergleichsregeln
+
+`research/calculations.ts` enthält die gemeinsamen fachlichen Funktionen:
+
+- Swing: neuer Anteil − alter Anteil, in **Prozentpunkten**, nicht Prozent.
+- Stimmendifferenz: neue Stimmen − alte Stimmen.
+- Relativer Swing: Wahlkreis-Swing − Landes-Swing. Nur bei gemeinsam bestätigtem,
+  finalem Landes-/Wahlkreisstand je Wahl (`data_release`) verfügbar.
+- Erst-/Zweitstimmendifferenz: Erstanteil − Zweitanteil beziehungsweise
+  Erststimmen − Zweitstimmen; jeder Anteil verwendet seinen eigenen gültigen Nenner.
+- Beteiligung: Wählende / Wahlberechtigte × 100. Erst- und Zweitstimmen zählen
+  dieselben Menschen, deshalb je Wahl und Wahlkreis nur ein Beteiligungsdatensatz.
+- Fehlend bleibt `null`; eine echte gemessene Null bleibt 0. AfD vor 2013 ist
+  unbekannt/nicht angetreten, kein gemessener Nullwert. Linien überspringen diese
+  Werte nicht durch Verbindung. Nicht erfasste Parteien bleiben eine Restkategorie;
+  fünf Parteien ergeben keine vollständige Wahl.
+
+Gleiche Namen und Nummern beweisen keine historische Gebietsidentität.
+`election_analysis_versions` speichert die explizite Version je Wahl und Nummer;
+`identity_key` wird erst auf Grundlage geprüfter Geometrien gesetzt. Unbekannte
+Grenzen sind standardmäßig ausgeschlossen. Ein gesonderter Schalter erlaubt einen
+explizit gewarnten explorativen Vergleich; bestätigte unterschiedliche Zuschnitte
+bleiben ausgeschlossen. Vorläufig/final hat einen eigenen ausdrücklichen Schalter.
+Der rekonstruierte Waldshuter Vergleichswert 2006 bleibt gekennzeichnet.
+Einzelstimme bis 2021 und Zweitstimme ab 2026 sind keine identischen Wahlsysteme.
+Die Rohzeitreihe zeigt vorhandene Messwerte, behauptet aber keine unveränderten Grenzen.
+
+### Datenbank und Zugriffe
+
+Migrationen `20261114140000_election_analysis_research.sql` und
+`20261114141000_election_period_sources.sql` ergänzen die vorhandenen Tabellen;
+sie ersetzen keine Ergebnisdaten und ändern keine Mandatszuordnungen.
+
+- `election_analysis_years.period_id`: Fremdschlüssel zur vorhandenen Periode.
+- `election_analysis_versions`: explizite Wahlkreisversion und separat bestätigte
+  Verbindung zum historischen Wahlkreis. Die Datenbank prüft Periode und Nummer.
+- `election_analysis_geographies`: amtliche Quelle, Prüfsumme, Jahr, Asset und Prüfung.
+- `election_analysis_candidates`: verifizierte Direktkandidaturergebnisse mit
+  Version-Fremdschlüssel. `person_id` bleibt ohne bestätigte Identität leer. Diese
+  fünf Parteikandidaturen sind keine vollständige Kandidatenliste aller Parteien.
+- `election_analysis_source_reviews`: Datenstand, Quellenarchiv-Prüfsummen und Bericht.
+- `election_analysis_period_proposals`: getrennte belegte Terminvorschläge.
+
+RLS bleibt aktiv: zentrale Schreibrechte ausschließlich Super-Admins,
+veröffentlichte Analysejahre und geprüfte Quellen/Geometrien für authentifizierte
+Leser. RPCs laufen mit **SECURITY INVOKER**, nicht mit erweiterten Leserechten.
+Es gibt keinen Vollimport historischer Personen in den Browser.
+
+Steckbrief-RPC: ein Wahlkreis, höchstens zehn ausgewählte Jahre.
+Vergleichs-RPC: zwei Wahlen und höchstens fünf ausgewählte Parteien.
+Kandidaturen: gewähltes Jahr/Parteien, höchstens 350 Zeilen.
+Mandatshistorie: erst nach Öffnen, nur ausdrücklich bestätigte Zuordnungen und
+freigegebene Perioden. React Query trennt Nutzer und Filter im Cache; Filterwechsel
+können laufende Anfragen abbrechen. Tabellen zeigen zunächst 25 Zeilen, sortieren
+aber vor der Darstellung den gesamten bereits begrenzten Ergebnissatz.
+
+### Administration: Perioden und historische Verbindungen
+
+Unter **Wahldaten & Mandatshistorie → Legislaturperioden** zeigt die gewählte
+Periode amtliche Vorschläge. „Fehlende belegte Termine ergänzen“ ruft den
+superadminbeschränkten RPC `apply_verified_election_period` auf. Er sperrt den
+Periodendatensatz und ergänzt ausschließlich leere Felder. Vorhandene Termine und
+Quellen werden nicht überschrieben; die bestehende Mandatsvererbung bleibt wirksam.
+Der bestehende Audit-Trigger protokolliert die Änderung. Entwürfe zuerst speichern.
+
+Unter **Wahlkreise → Verbindung zur Wahlanalyse prüfen** kann der Super-Admin
+jeweils einen Wahlkreis innerhalb derselben Wahl bestätigen. Vorher werden beide
+Bezeichnungen angezeigt. Dies bestätigt **keine** Gebietsidentität mit anderen
+Jahren. Erst dann werden bereits freigegebene Mandate im Analyse-Steckbrief gelesen.
+Es werden keine Personen anhand ihrer Namen zusammengeführt.
+
+Voraussichtliches Periodenende und tatsächliches Ende sind getrennt. Bestehende
+in der Zukunft liegende Endtermine bleiben gespeichert und werden als
+`ends_on_is_expected` markiert; die Ansichten weisen den Erwartungscharakter aus.
+Administratoren können dieses Kennzeichen und `expected_ends_on` bearbeiten.
+Ein noch nicht feststehendes Ende gilt nicht als belegtes Ausscheiden.
+
+### Wiederholbarer amtlicher Ergebnisabgleich 2026
+
+```sh
+python scripts/review-election-2026.py --output work/official-2026
+# vorzugsweise mit einem aktuellen Export der drei bestehenden Tabellen:
+python scripts/review-election-2026.py --baseline snapshot.json --output work/official-2026
+# erneute Verarbeitung archivierter Originalseiten ohne Netzwerk:
+python scripts/review-election-2026.py --archive work/official-2026/originals --output work/review-again
+```
+
+Snapshotformat: `{ "state": [...], "districts": [...], "turnout": [...] }`,
+jeweils vollständige aktuelle Tabellenzeilen einschließlich `data_release`, Notizen
+und Sitzangaben. Ohne Snapshot wird der Repository-Seed als **nicht live geprüfte**
+Vergleichsbasis verwendet. Die generierte SQL prüft erwartete Altwerte trotzdem
+gegen die tatsächliche Datenbank und bricht bei manuellen Abweichungen vollständig ab.
+
+Das Skript lädt die amtliche Landespräsentation und 70 Wahlkreisseiten, verlangt
+explizit „Endgültiges Ergebnis“, prüft Vollständigkeit, getrennte Nenner, alle
+Parteistimmen und Landes-/Wahlkreissummen. Formatänderungen führen zum Abbruch.
+Original-HTML, SHA-256, normalisierte Werte, Feldabweichungen (`review.json`) und
+`apply.sql` werden archiviert. Sitzangaben, manuelle Notizen und Namen bleiben
+unangetastet; Kandidatur-Neuanlagen überschreiben keine vorhandenen Einträge.
+Erst nach vollständiger Zahlenprüfung erzeugt die SQL einen gemeinsamen finalen
+Datenstand. Wiederholung desselben Patches ist idempotent. Bei Konflikten neuen
+Live-Snapshot erzeugen, Bericht prüfen und manuelle Werte ausdrücklich entscheiden.
+Keine stillen `ON CONFLICT DO UPDATE`-Ergebnisimporte.
+
+### Amtliche Geometrien
+
+```sh
+python scripts/review-election-geographies.py --output work/geographies
+# anschließend Bericht prüfen, die beiden originalen GeoJSON-Assets nach
+# public/data/election-analysis/ kopieren und die erzeugte apply.sql anwenden.
+```
+
+Das Skript lädt die offiziellen 2021-/2026-ZIP-Dateien, prüft je 70 eindeutige
+Nummern und vergleicht die Koordinaten bei gleichem CRS nach Normalisierung der
+Ringorientierung und Startpunkte. Nur exakte kanonische Gleichheit setzt eine
+gemeinsame Identität. Abweichende Digitalisierung wird nicht als bewiesene
+Grenzänderung ausgegeben, sondern bleibt für die Identitätsprüfung offen.
+Keine heutigen Grenzen werden für frühere Wahlperioden eingesetzt.
+Der Browser reprojiziert amtliches EPSG:31467 über den vorhandenen GeoJSON-Adapter
+in WGS84 und verwirft ungültige Koordinaten. Die bisherige Karten-GeoJSON wird
+nicht ohne Originalabgleich als bestätigte 2026-Geometrie verwendet.
+
+### Prüffunktionen und ergänzte Tests
+
+```sh
+node scripts/validate-election-analysis.mjs snapshot-for-validation.json
+```
+
+Validierungsformat: `{ "results": [...], "turnout": [...], "state": [...] }`.
+Die CLI verwendet dieselben TypeScript-Funktionen wie die Oberfläche und liefert
+JSON mit Fehlercodes sowie Exitcode 1 bei Zahlenfehlern. Abweichungen von mehr als
+0,051 Prozentpunkten überschreiten die Toleranz amtlich gerundeter Angaben.
+
+Neu hinterlegt: `research/calculations.test.ts`, `research/hooks.test.ts`,
+`supabase/tests/election_analysis_access.sql` sowie das Logikszenario
+„Wahlanalyse: Datenqualität und Vergleichbarkeit“ im Selbsttest-Center.
+**Auf ausdrücklichen Wunsch wurden diese Tests in dieser Sitzung nicht ausgeführt.**
+Es gibt deshalb keine Aussage über bestandene Laufzeit-, Integrations-, E2E- oder
+Performance-Tests. TypeScript-Kompilierung ist davon getrennt.
+
+### Offene Datenlücken und notwendige Schritte
+
+Stand 14.11.2026: Die Cloud-Allowlist blockiert die Originaldownloads noch mit
+HTTP 403. Einzelne amtliche Webseiten waren über die Recherche lesbar, aber ein
+vollständiger Abgleich aller 70 Originalseiten und beider Geodatensätze war nicht
+möglich. **Es wird deshalb kein endgültiger Ergebnispatch und keine behauptete
+Geometriegleichheit mitgeliefert.** Karten zeigen bis zur Verifikation einen
+verständlichen Hinweis, keine ungeprüfte Ersatzgeometrie. Die vorhandenen Zahlen
+bleiben auswertbar; unbestätigte historische Vergleiche sind ausdrücklich gewarnt.
+
+1. Die beiden Schema-/Quellenmigrationen über den bestehenden Supabase-Prozess
+   anwenden; hier bestand kein administrativer Live-Datenbankzugang.
+2. Downloads freigeben und die beiden Review-Skripte ausführen. Formatparser und
+   GIS-Vergleich müssen beim ersten vollständigen Lauf gegen Originale überprüft
+   werden. Berichte prüfen, Assets versionieren und Ergebnis-/Geometriepatch anwenden.
+3. Historische Verbindungen im Super-Admin bestätigen und Perioden freigeben.
+4. Fehlende tatsächliche Periodenanfänge/-enden separat amtlich belegen. Die
+   Wahltage aller 18 Perioden sind belegt; daraus werden keine Mandatsanfänge abgeleitet.
+5. Frühere Grenzstände, vollständige Kandidaturen und verifizierte Personenbezüge
+   ergänzen, bevor Wiederwahl-/Amtsinhabereffekte statistisch ausgewertet werden.
+
+Amtliche Quellen und Befunde: [Quellenprotokoll](elections/sources-and-gaps.md).
+P4/P5 sind gesonderte Folgepakete. P6 bleibt ein
+[technisches und wissenschaftliches Konzept](elections/research-concept.md).

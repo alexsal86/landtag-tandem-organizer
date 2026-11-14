@@ -1,3 +1,4 @@
+import { Link } from 'react-router-dom';
 import { PeriodMembersOverview } from '@/features/election-history/PeriodMembersOverview';
 import { useElectionHistory, useElectionPeriods, historyError } from '@/features/election-history/useElectionHistory';
 import { projectHistoricalDistricts } from '@/features/election-history/mapProjection';
@@ -229,6 +230,7 @@ export const ElectionDistrictsView = ({ sidebarHeader }: { sidebarHeader?: React
                 {history.data.districts.map(d => <option key={d.id} value={d.id}>{d.district_number ?? d.number_label ?? '–'}: {d.name}</option>)}
               </select>
             </div>
+            {selectedHistoricalDistrict && historyPeriod.election_year && [2006,2011,2016,2021,2026].includes(historyPeriod.election_year) && history.data.districts.find(d => d.id === selectedHistoricalDistrict)?.district_number != null && <Button variant="outline" asChild><Link to={`/daten?dataTool=wahlanalyse&analysisSection=profile&analysisYear=${historyPeriod.election_year}&analysisDistrict=${history.data.districts.find(d => d.id === selectedHistoricalDistrict)?.district_number}`}>Wahlkreis-Steckbrief öffnen</Link></Button>}
             {selectedHistoricalDistrict && <Card><CardContent className="pt-5"><DistrictElectionHistory data={history.data} periodId={historyPeriod.id} districtId={selectedHistoricalDistrict} /></CardContent></Card>}
           </>}
           {/* Layer toggles */}

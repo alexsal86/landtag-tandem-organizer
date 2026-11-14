@@ -1,3 +1,5 @@
+import { HistoryLinkReview } from '@/features/election-analysis/research/HistoryLinkReview';
+import { PeriodSourceReview } from '@/features/election-analysis/research/PeriodSourceReview';
 import { useElectionEditorDrafts, type ElectionEditorDraft } from './editorDrafts';
 import { useEffect, useState, type FormEvent } from 'react';
 import { useQueryClient } from '@tanstack/react-query';
@@ -31,7 +33,9 @@ const fields: Record<HistoryEntity, Field[]> = {
     { key: 'election_year', label: 'Wahljahr', type: 'number', min: 1900, max: 2200 },
     { key: 'election_date', label: 'Wahltag (falls bekannt)', type: 'date' },
     { key: 'starts_on', label: 'Beginn der Legislaturperiode (falls bekannt)', type: 'date' },
-    { key: 'ends_on', label: 'Ende der Legislaturperiode', type: 'date' }, notesField,
+    { key: 'ends_on', label: 'Ende der Legislaturperiode / übernommener Endtermin', type: 'date' },
+    { key: 'ends_on_is_expected', label: 'Endtermin ist voraussichtlich, noch kein tatsächliches Ende', type: 'checkbox' },
+    { key: 'expected_ends_on', label: 'Voraussichtliches reguläres Ende (separat)', type: 'date' }, notesField,
     { key: 'is_published', label: 'Für alle Tenants freigeben', type: 'checkbox', help: 'Erst nach der Prüfung freigeben. Die aktuelle Periode muss freigegeben bleiben.' },
   ],
   people: [{ key: 'name', label: 'Vollständiger Name', required: true }, { key: 'biography', label: 'Kurzbiografie / Identifikationshinweis', type: 'textarea', help: 'Hilft, namensgleiche Personen auseinanderzuhalten.' },
@@ -211,6 +215,8 @@ function ElectionHistoryWorkspace({ userId }: { userId: string }) {
       <Button variant="outline" disabled={!selectedPeriod} onClick={() => setPreview(v => !v)}>{preview ? 'Vorschau schließen' : 'Periode prüfen'}</Button>
       <Button disabled={saving} onClick={startNew}>+ Neu anlegen</Button>
     </div>
+    {entity === 'districts' && data.periods.find(p => p.id === selectedPeriod) && <HistoryLinkReview key={selectedPeriod} period={data.periods.find(p => p.id === selectedPeriod)!} districts={data.districts} disabled={saving || dirty} />}
+    {entity === 'periods' && data.periods.find(p => p.id === selectedPeriod) && <PeriodSourceReview key={selectedPeriod} period={data.periods.find(p => p.id === selectedPeriod)!} disabled={saving || dirty} />}
     {preview && selectedPeriod && <ElectionPeriodPreview data={data} periodId={selectedPeriod} />}
     {editing !== undefined && <Card><CardHeader><CardTitle>{editing ? 'Datensatz bearbeiten' : `${sections[entity]}: neuer Datensatz`}</CardTitle></CardHeader><CardContent>
       <form onSubmit={submit} className="grid gap-4 md:grid-cols-2">

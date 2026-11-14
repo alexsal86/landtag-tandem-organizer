@@ -15,7 +15,7 @@ export function ElectionPeriodPreview({ data, periodId }: { data: ElectionHistor
   const missingBoundaries = districts.filter(d => !d.boundaries).length;
   const mandateRow = (m: HistoricalMandate) => <li key={m.id} className="text-sm">
     <p>{data.people.find(p => p.id === m.person_id)?.name || m.person_name} · {m.party} · {m.original_mandate || (m.mandate_type === 'direct' ? 'Direktmandat' : 'Listenmandat')}{m.entry_type === 'succession' ? ' · nachgerückt' : ''}</p>
-    <p className="text-xs text-muted-foreground">{formatMandateDateRange(m)}{m.start_from_period || m.end_from_period ? ' · Periodendaten übernommen' : ''}</p>
+    <p className="text-xs text-muted-foreground">{formatMandateDateRange(m)}{m.end_from_period && period?.ends_on_is_expected ? ' (voraussichtliches Periodenende, kein tatsächliches Ausscheiden)' : ''}{m.start_from_period || m.end_from_period ? ' · Periodendaten übernommen' : ''}</p>
   </li>;
   return <Card><CardHeader><CardTitle>Vorschau: {period?.name}</CardTitle></CardHeader><CardContent className="space-y-3">
     <p className="text-sm">{districts.length} Wahlkreise · {mandates.length} Mandate · {period?.is_published ? 'Freigegeben' : 'Entwurf'}</p>

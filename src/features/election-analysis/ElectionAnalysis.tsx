@@ -1,60 +1,23 @@
-import { ArrowDown, ArrowUp, ArrowUpDown } from 'lucide-react';
-import { useState, type ReactNode } from 'react';
+import { Selection, DataState, DataTable, StatusNote, PartyLabel, chartColor } from './shared';
+import { lazy, Suspense, useState } from 'react';
 import { useSearchParams } from 'react-router-dom';
 import { Bar, BarChart, CartesianGrid, Cell, Legend, Line, LineChart, ReferenceLine, ResponsiveContainer, Tooltip, XAxis, YAxis } from 'recharts';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
-import { Label } from '@/components/ui/label';
-import { getPartyColor } from '@/features/election-districts/partyColors';
 import { useAnalysisRows, useAnalysisYears, analysisError } from './useElectionAnalysis';
-import { ballotLabels, ballotsForYear, effectiveBallot, parties, sectionLabels, percent, number, difference, stateComparison, exportAnalysisCsv, compareAnalysisValues } from './model';
+import { ballotLabels, ballotsForYear, effectiveBallot, parties, sectionLabels, percent, number, difference, stateComparison, exportAnalysisCsv } from './model';
 import type { AnalysisSection, Ballot } from './types';
 
-const selectClass = 'h-10 rounded-md border border-input bg-background px-3 text-sm';
-const chartColor = (party: string) => party === 'FDP' ? '#a68a00' : getPartyColor(party);
-function Selection({ id, label, value, onChange, children }: { id: string; label: string; value: string; onChange: (value: string) => void; children: ReactNode }) {
-  return <div className="flex flex-col gap-1"><Label htmlFor={id}>{label}</Label><select id={id} className={selectClass} value={value} onChange={event => onChange(event.target.value)}>{children}</select></div>;
-}
-function DataState({ loading, error, empty, retry, children }: { loading: boolean; error: unknown; empty: boolean; retry: () => void; children: ReactNode }) {
-  if (loading) return <p role="status" className="py-8 text-sm text-muted-foreground">Lade ausgewählte Auswertung …</p>;
-  if (error) return <div className="rounded-lg border p-4"><p role="alert">{analysisError(error)}</p><Button className="mt-3" variant="outline" onClick={retry}>Erneut laden</Button></div>;
-  if (empty) return <p className="rounded-lg border p-4 text-sm text-muted-foreground">Für diese Auswahl sind keine Daten hinterlegt. Fehlende Angaben sind keine Nullwerte.</p>;
-  return <>{children}</>;
-}
-function DataTable({ headers, rows, sortValues, sortableColumns = [] }: { headers: string[]; rows: ReactNode[][]; sortValues?: (string | number | null)[][]; sortableColumns?: number[] }) {
-  const [limit, setLimit] = useState(25);
-  const [sort, setSort] = useState<{ column: number; direction: 'asc' | 'desc' } | null>(null);
-  const sortedRows = rows.map((row, index) => ({ row, index }));
-  if (sort && sortValues) sortedRows.sort((a, b) => compareAnalysisValues(sortValues[a.index]?.[sort.column] ?? null, sortValues[b.index]?.[sort.column] ?? null, sort.direction) || a.index - b.index);
-  const changeSort = (column: number) => {
-    setSort(previous => ({ column, direction: previous?.column === column && previous.direction === 'asc' ? 'desc' : 'asc' }));
-    setLimit(25);
-  };
-  return <div><div className="overflow-x-auto rounded-lg border"><table className="w-full text-sm">
-    <thead className="bg-muted/30"><tr>{headers.map((header, index) => {
-      const sortable = !!sortValues && sortableColumns.includes(index);
-      const active = sort?.column === index;
-      const Icon = active ? sort.direction === 'asc' ? ArrowUp : ArrowDown : ArrowUpDown;
-      return <th key={header} scope="col" aria-sort={sortable ? active ? sort.direction === 'asc' ? 'ascending' : 'descending' : 'none' : undefined} className="whitespace-nowrap p-3 text-left font-medium">
-        {sortable ? <button type="button" className="inline-flex items-center gap-2 rounded-sm focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring" onClick={() => changeSort(index)} aria-label={`${header}: ${active && sort.direction === 'asc' ? 'absteigend' : 'aufsteigend'} sortieren`}>
-          {header}<Icon aria-hidden="true" className={`h-3.5 w-3.5 ${active ? 'text-foreground' : 'text-muted-foreground'}`} />
-        </button> : header}
-      </th>;
-    })}</tr></thead>
-    <tbody>{sortedRows.slice(0, limit).map(({ row, index }) => <tr key={index} className="border-t">{row.map((cell, cellIndex) => <td key={cellIndex} className="p-3 align-top">{cell}</td>)}</tr>)}</tbody>
-  </table></div>{rows.length > limit && <Button className="mt-3" variant="outline" onClick={() => setLimit(value => value + 25)}>Weitere 25 anzeigen ({limit} von {rows.length})</Button>}</div>;
-}
-function StatusNote({ children }: { children: ReactNode }) { return <p className="rounded-lg border bg-muted/20 p-3 text-xs leading-relaxed text-muted-foreground">{children}</p>; }
-function PartyLabel({ party }: { party: string }) { return <span className="inline-flex items-center gap-2"><span className="h-2.5 w-2.5 rounded-full" style={{ background: chartColor(party) }} />{party}</span>; }
-
+const ResearchWorkbench = lazy(() => import('./research/ResearchWorkbench'));
+type AnalysisView = AnalysisSection | 'profile' | 'swing' | 'split' | 'quality';
 export default function ElectionAnalysis() {
   const years = useAnalysisYears();
   const [params, setParams] = useSearchParams();
   const rawSection = params.get('analysisSection') || 'state';
-  const section: AnalysisSection = Object.prototype.hasOwnProperty.call(sectionLabels, rawSection) ? rawSection as AnalysisSection : 'state';
+  const section: AnalysisView = Object.prototype.hasOwnProperty.call(sectionLabels, rawSection) ? rawSection as AnalysisView : 'state';
   const requestedYear = Number(params.get('analysisYear'));
-  const year = years.data?.some(y => y.year === requestedYear) ? requestedYear : years.data?.[0]?.year || 0;
+  const year = section === 'split' && years.data?.some(y => y.year === 2026) ? 2026 : years.data?.some(y => y.year === requestedYear) ? requestedYear : years.data?.[0]?.year || 0;
   const requestedBallot = params.get('analysisBallot');
   const ballot = section === 'demographics' && year >= 2026 ? 'second' : effectiveBallot(year, requestedBallot === 'first' || requestedBallot === 'single' ? requestedBallot : 'second');
   const party = parties.find(p => p === params.get('analysisParty')) || 'GRÜNE';
@@ -65,18 +28,19 @@ export default function ElectionAnalysis() {
     <header><h1 className="text-2xl font-semibold">Wahlanalyse Baden-Württemberg</h1><p className="mt-1 text-sm text-muted-foreground">Wahlergebnisse, Beteiligung und Wahlverhalten vergleichen. Es wird nur die gewählte Auswertung geladen.</p></header>
     <DataState loading={years.isLoading} error={years.error} empty={!years.data?.length} retry={() => void years.refetch()}>
       <div className="flex flex-wrap items-end gap-4">
-        <Selection id="analysis-year" label="Wahl / Legislaturperiode" value={String(year)} onChange={value => change('analysisYear', value)}>{years.data?.map(y => <option key={y.year} value={y.year}>{y.year} · {y.period_number}. Legislaturperiode</option>)}</Selection>
-        {section !== 'flows' && <Selection id="analysis-ballot" label="Stimmenart" value={ballot} onChange={value => change('analysisBallot', value)}>{(section === 'demographics' && year >= 2026 ? ['second'] as Ballot[] : ballotsForYear(year)).map(b => <option key={b} value={b}>{ballotLabels[b]}</option>)}</Selection>}
+        <Selection id="analysis-year" label="Wahl / Legislaturperiode" value={String(year)} onChange={value => change('analysisYear', value)}>{years.data?.filter(y => section !== 'split' || y.year === 2026).map(y => <option key={y.year} value={y.year}>{y.year} · {y.period_number}. Legislaturperiode</option>)}</Selection>
+        {section !== 'flows' && section !== 'split' && section !== 'quality' && <Selection id="analysis-ballot" label="Stimmenart" value={ballot} onChange={value => change('analysisBallot', value)}>{(section === 'demographics' && year >= 2026 ? ['second'] as Ballot[] : ballotsForYear(year)).map(b => <option key={b} value={b}>{ballotLabels[b]}</option>)}</Selection>}
         {(section === 'flows' || section === 'districts') && <Selection id="analysis-party" label={section === 'flows' ? 'Zielpartei' : 'Partei'} value={party} onChange={value => change('analysisParty', value)}>{parties.map(p => <option key={p}>{p}</option>)}</Selection>}
         {section === 'demographics' && <Selection id="analysis-gender" label="Geschlecht" value={gender} onChange={value => change('analysisGender', value)}>{['Insgesamt', 'Frauen', 'Männer'].map(g => <option key={g}>{g}</option>)}</Selection>}
       </div>
-      <nav aria-label="Auswertung auswählen" className="flex flex-wrap gap-2 border-b pb-3">{(Object.keys(sectionLabels) as AnalysisSection[]).map(key => <Button key={key} variant={section === key ? 'default' : 'outline'} aria-pressed={section === key} onClick={() => change('analysisSection', key)}>{sectionLabels[key]}</Button>)}</nav>
+      <nav aria-label="Auswertung auswählen" className="flex flex-wrap gap-2 border-b pb-3">{(Object.keys(sectionLabels) as AnalysisView[]).map(key => <Button key={key} variant={section === key ? 'default' : 'outline'} aria-pressed={section === key} onClick={() => change('analysisSection', key)}>{sectionLabels[key]}</Button>)}</nav>
       {year > 0 && <div key={`${section}:${year}:${ballot}:${party}:${gender}`}>
         {section === 'state' && <StatePanel {...selection} years={years.data?.map(y => y.year) || []} />}
         {section === 'districts' && <DistrictPanel {...selection} />}
         {section === 'turnout' && <TurnoutPanel {...selection} />}
         {section === 'flows' && <FlowPanel {...selection} />}
         {section === 'demographics' && <DemographicPanel {...selection} />}
+        {(['profile','swing','split','quality'] as string[]).includes(section) && <Suspense fallback={<p role="status">Analysemodul lädt …</p>}><ResearchWorkbench section={section as 'profile'|'swing'|'split'|'quality'} {...selection} years={years.data?.map(y => y.year) || []} /></Suspense>}
       </div>}
     </DataState>
   </div>;

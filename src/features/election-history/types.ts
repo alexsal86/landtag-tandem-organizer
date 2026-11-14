@@ -1,4 +1,4 @@
-export interface ElectionPeriod {
+export interface ElectionPeriod { expected_ends_on?: string | null; ends_on_is_expected?: boolean;
   id: string; number: number; name: string; election_date: string | null; starts_on: string | null; election_year: number | null; ends_on: string | null;
   is_current: boolean; is_published: boolean; source_url: string | null; notes: string | null;
 }
