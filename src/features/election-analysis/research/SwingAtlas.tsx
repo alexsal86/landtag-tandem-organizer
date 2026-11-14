@@ -222,6 +222,7 @@ export function SwingAtlas({
       </p>
       <div className="grid items-start gap-4 lg:grid-cols-[minmax(0,1fr)_340px]">
         <AnalysisMap
+          allowGeometryPreview
           versions={versions}
           values={values}
           label={relative ? "PP gegenüber Landestrend" : unit}

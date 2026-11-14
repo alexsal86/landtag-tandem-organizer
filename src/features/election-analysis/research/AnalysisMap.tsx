@@ -19,6 +19,7 @@ export function AnalysisMap({
   visibleDistricts,
   referenceValue,
   referenceLabel = "Landes-Swing",
+  allowGeometryPreview = false,
 }: {
   versions: DistrictVersion[];
   values: Map<number, number | null>;
@@ -29,14 +30,19 @@ export function AnalysisMap({
   visibleDistricts?: Set<number>;
   referenceValue?: number | null;
   referenceLabel?: string;
+  allowGeometryPreview?: boolean;
 }) {
   const geographyId =
     versions.find((v) => v.geography_id)?.geography_id || undefined;
   const geography = useGeography(geographyId);
-  const asset = geography.data?.asset_path;
+  const preview = allowGeometryPreview && !geography.isLoading &&
+    (!geography.data?.asset_path || geography.data?.verified !== true);
+  const asset = preview
+    ? "/data/LTWahlkreise2021-BW.geojson"
+    : geography.data?.asset_path;
   const geometry = useQuery({
     queryKey: ["election-research", "geometry", geographyId, asset],
-    enabled: !!asset && geography.data?.verified === true,
+    enabled: !!asset && (preview || geography.data?.verified === true),
     queryFn: async ({ signal }) => {
       if (!asset || !asset.startsWith("/data/") || asset.includes(".."))
         throw new Error("Ungültiger Geometriepfad");
@@ -74,7 +80,9 @@ export function AnalysisMap({
     });
     map.current = instance;
     instance.attributionControl.addAttribution(
-      "Geometrie: Statistisches Landesamt Baden-Württemberg",
+      preview
+        ? "Geometrie: Wahlkreisgrenzen 2021 · Zuordnung ungeprüft"
+        : "Geometrie: Statistisches Landesamt Baden-Württemberg",
     );
     paths.current.clear();
     const patternId = `analysis-unknown-${L.Util.stamp(instance)}`;
@@ -89,7 +97,7 @@ export function AnalysisMap({
         );
         const version = versions.find((v) => v.district_number === number);
         const value =
-          version?.geography_id === geographyId
+          !preview && version?.geography_id === geographyId
             ? (values.get(number) ?? null)
             : null;
         return {
@@ -106,11 +114,11 @@ export function AnalysisMap({
         const version = versions.find((v) => v.district_number === number);
         if (!version) return;
         const value =
-          version.geography_id === geographyId
+          !preview && version.geography_id === geographyId
             ? (values.get(number) ?? null)
             : null;
         const tooltip = document.createElement("span");
-        tooltip.textContent = `${number}: ${version.district_name} · ${value === null ? "nicht vergleichbar / unbekannt" : `${value > 0 ? "+" : ""}${value.toLocaleString("de-DE", { maximumFractionDigits: 2 })} ${label}`}`;
+        tooltip.textContent = `${number}: ${version.district_name} · ${preview ? "Zuordnung nach Wahlkreisnummer ungeprüft · " : ""}${value === null ? "nicht vergleichbar / unbekannt" : `${value > 0 ? "+" : ""}${value.toLocaleString("de-DE", { maximumFractionDigits: 2 })} ${label}`}`;
         paths.current.set(number, path as L.Path);
         path.bindTooltip(tooltip, { sticky: true });
         path.on("click", () => onSelect.current(number));
@@ -177,7 +185,7 @@ export function AnalysisMap({
       instance.remove();
       map.current = null;
     };
-  }, [geometry.data, versions, values, label, geographyId, maximum]);
+  }, [geometry.data, versions, values, label, geographyId, maximum, preview]);
   useEffect(() => {
     paths.current.forEach((path, number) => {
       const selected = selectedDistrict === number;
@@ -204,10 +212,10 @@ export function AnalysisMap({
   if (geography.isLoading || geometry.isLoading)
     return (
       <p role="status" className="text-sm">
-        Verifizierte Geometrie lädt …
+        Wahlkreisgeometrie lädt …
       </p>
     );
-  if (!asset || geography.error || geometry.error)
+  if (!asset || (!preview && geography.error) || geometry.error)
     return (
       <p className="rounded-lg border p-3 text-sm text-muted-foreground">
         Für diese Auswahl ist noch keine geprüfte Geometrie verfügbar. Die
@@ -217,6 +225,15 @@ export function AnalysisMap({
     );
   return (
     <div className="space-y-2">
+      {preview && (
+        <p role="status" className="rounded-lg border border-amber-500 bg-amber-50 p-3 text-sm text-amber-950 dark:bg-amber-950 dark:text-amber-100">
+          Ungeprüfte Kartenvorschau: Angezeigt werden die vorhandenen
+          Wahlkreisgrenzen von 2021. Ihre Übereinstimmung mit den ausgewählten
+          Wahljahren und die Zuordnung nach Wahlkreisnummer müssen noch geprüft
+          werden. Die Flächen bleiben deshalb schraffiert; Ergebnisse stehen
+          weiterhin in der Tabelle und im Wahlkreisdetail zur Verfügung.
+        </p>
+      )}
       <div className="bw-election-map relative h-[380px] md:h-[520px] rounded-lg overflow-hidden border bg-[#e6eadf]">
         <div
           ref={element}
@@ -304,14 +321,18 @@ export function AnalysisMap({
           schraffiert: unbekannt / ausgeschlossen
         </span>
       </div>
-      <a
+      {preview ? (
+        <p className="text-xs text-muted-foreground">
+          Kartengrundlage: Wahlkreisgrenzen 2021 · Prüfung für diese Auswahl ausstehend
+        </p>
+      ) : <a
         className="text-xs underline"
         href={geography.data?.source_url}
         target="_blank"
         rel="noopener noreferrer"
       >
         Amtliche Geometrie · {geography.data?.year}
-      </a>
+      </a>}
     </div>
   );
 }
