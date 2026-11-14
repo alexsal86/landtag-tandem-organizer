@@ -109,7 +109,11 @@ vi.mock("@/integrations/supabase/client", () => ({
               eq: vi.fn((columnB: string, valueB: unknown) => {
                 eqTracker.push({ table, column: columnB, value: valueB });
                 current = current.filter((row) => (row as Record<string, unknown>)[columnB] === valueB);
-                return Promise.resolve({ data: current, error: null });
+                return {
+                  returns: vi.fn(() => Promise.resolve({ data: current, error: null })),
+                  then: (resolve: (result: { data: unknown[]; error: null }) => unknown) =>
+                    Promise.resolve({ data: current, error: null }).then(resolve),
+                };
               }),
             };
           }),
