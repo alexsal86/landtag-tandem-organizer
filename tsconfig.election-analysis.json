@@ -1,0 +1,6 @@
+{
+  "extends": "./tsconfig.app.json",
+  "compilerOptions": { "types": ["vite/client"], "noImplicitAny": true },
+  "include": ["src/features/election-analysis/**/*.ts", "src/features/election-analysis/**/*.tsx", "src/components/admin/DataView.tsx"],
+  "exclude": ["src/**/*.test.ts", "src/**/*.test.tsx"]
+}

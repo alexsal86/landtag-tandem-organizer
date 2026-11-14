@@ -18,6 +18,7 @@
     "typecheck:onboarding-hr": "tsc -p tsconfig.onboarding-hr.json --noEmit",
     "test:onboarding-hr:db": "node scripts/test-employee-hr.mjs",
     "test:onboarding-hr": "vitest run src/features/onboarding-hr",
+    "typecheck:election-analysis": "tsc -p tsconfig.election-analysis.json --noEmit",
     "typecheck:election-history": "tsc -p tsconfig.election-history.json --noEmit",
     "typecheck:responsibilities": "tsc -p tsconfig.responsibilities-strict.json --noEmit",
     "test:responsibilities": "vitest run src/features/responsibilities src/features/selftest/scenarios/responsibilities.test.ts",

@@ -1,4 +1,6 @@
-import { useEffect, useMemo, useState } from "react";
+import { useSearchParams } from 'react-router-dom';
+import { Button } from '@/components/ui/button';
+import { lazy, Suspense, useEffect, useMemo, useState } from "react";
 import {
   Card,
   CardContent,
@@ -145,7 +147,7 @@ const buildDefaultAssignments = (
   return assignments;
 };
 
-export function DataView() {
+function LegacyDataTools() {
   const { currentTenant } = useTenant();
   const [parties, setParties] = useState<PartyInput[]>(initialParties);
   const [feedbackStats, setFeedbackStats] = useState<WidgetFeedbackStats | null>(
@@ -561,4 +563,22 @@ export function DataView() {
       </Card>
     </div>
   );
+}
+
+
+const ElectionAnalysis = lazy(() => import('@/features/election-analysis/ElectionAnalysis'));
+
+export function DataView() {
+  const [params, setParams] = useSearchParams();
+  const legacy = params.get('dataTool') === 'rechner';
+  const selectTool = (tool: string) => setParams(previous => {
+    const next = new URLSearchParams(previous); next.set('dataTool', tool); return next;
+  });
+  return <div className="h-full overflow-y-auto">
+    <nav aria-label="Datenwerkzeug" className="flex flex-wrap gap-2 border-b p-4">
+      <Button variant={legacy ? 'outline' : 'default'} aria-pressed={!legacy} onClick={() => selectTool('wahlanalyse')}>Wahlanalyse</Button>
+      <Button variant={legacy ? 'default' : 'outline'} aria-pressed={legacy} onClick={() => selectTool('rechner')}>Sitzrechner & weitere Werkzeuge</Button>
+    </nav>
+    {legacy ? <LegacyDataTools /> : <div className="p-4 md:p-6"><Suspense fallback={<p role="status">Wahlanalyse wird geladen …</p>}><ElectionAnalysis /></Suspense></div>}
+  </div>;
 }

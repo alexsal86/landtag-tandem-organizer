@@ -1,3 +1,4 @@
+import type { ElectionAnalysisTables } from '@/features/election-analysis/types';
 import type { ElectionHistoryTables } from '@/features/election-history/types';
 
 export type Json =
@@ -15,7 +16,7 @@ export type Database = {
     PostgrestVersion: "12.2.3"
   }
   public: {
-    Tables: ElectionHistoryTables & {
+    Tables: ElectionAnalysisTables & ElectionHistoryTables & {
       topic_catalog_links: {
         Row: {
           id: string
