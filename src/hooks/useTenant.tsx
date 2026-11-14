@@ -68,8 +68,15 @@ export const TenantProvider = ({ children }: { children: React.ReactNode }): Rea
   const [memberships, setMemberships] = useState<UserTenantMembership[]>([]);
   const [loading, setLoading] = useState<boolean>(true);
 
+  const synchronizeScope = (scope: ActiveTenantScope | null): void => {
+    if (!setActiveTenantScope(scope)) return;
+    void queryClient.cancelQueries();
+    queryClient.clear();
+  };
+
   const fetchTenants = async (isBackgroundRefresh = false): Promise<void> => {
     if (!user?.id) {
+      synchronizeScope(null);
       setTenantUserId(null);
       setTenants([]);
       setCurrentTenant(null);
@@ -85,6 +92,7 @@ export const TenantProvider = ({ children }: { children: React.ReactNode }): Rea
 
     try {
       debugConsole.log("🏢 Fetching tenant memberships for user:", user.id);
+      if (getActiveTenantScope()?.userId !== user.id) synchronizeScope(null);
 
       const legacyKey = "currentTenantId";
       if (safeGetItem(legacyKey)) {
@@ -101,6 +109,7 @@ export const TenantProvider = ({ children }: { children: React.ReactNode }): Rea
         const cached = raw ? normalizeMembershipData(JSON.parse(raw)).filter(m => m.user_id === user.id && m.is_active) : [];
         const available = cached.map(m => m.tenant).filter(isTenant);
         const selected = available.find(t => t.id === safeGetItem(tenantStorageKey)) ?? available[0] ?? null;
+        synchronizeScope(selected ? { userId: user.id, tenantId: selected.id } : null);
         setTenantUserId(user.id);
         setMemberships(cached); setTenants(available); setCurrentTenant(selected);
         return;
@@ -118,6 +127,7 @@ export const TenantProvider = ({ children }: { children: React.ReactNode }): Rea
 
       if (membershipError) {
         debugConsole.error("❌ Error fetching tenant memberships:", membershipError);
+        synchronizeScope(null);
         setTenantUserId(user.id);
         safeRemoveItem(`tenant-memberships:${user.id}`);
         setTenants([]);
@@ -161,6 +171,7 @@ export const TenantProvider = ({ children }: { children: React.ReactNode }): Rea
         }
       }
 
+      synchronizeScope(currentTenantToSet ? { userId: user.id, tenantId: currentTenantToSet.id } : null);
       setCurrentTenant(currentTenantToSet);
       if (currentTenantToSet) {
         safeSetItem(tenantStorageKey, currentTenantToSet.id);
@@ -187,8 +198,9 @@ export const TenantProvider = ({ children }: { children: React.ReactNode }): Rea
       return;
     }
 
-    setCurrentTenant(tenant);
     safeSetItem(`currentTenantId_${user.id}`, tenantId);
+    synchronizeScope({ userId: user.id, tenantId });
+    setCurrentTenant(tenant);
     debugConsole.log("🏢 Switched to tenant:", tenant.name);
   };
 
