@@ -107,7 +107,7 @@ declare module 'recharts' {
     labelFormatter?: (label: unknown) => import('react').ReactNode;
     children?: ReactNode;
     className?: string;
-    content?: ReactNode;
+    content?: ReactNode | ((props: { active?: boolean; payload?: TooltipPayloadItem[]; label?: unknown }) => ReactNode);
     cursor?: boolean | object;
     formatter?: (
       value: unknown,
