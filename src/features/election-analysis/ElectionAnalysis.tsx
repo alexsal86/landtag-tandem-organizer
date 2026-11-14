@@ -6,7 +6,7 @@ import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
 import { useAnalysisRows, useAnalysisYears, analysisError } from './useElectionAnalysis';
-import { ballotLabels, ballotsForYear, effectiveBallot, parties, sectionLabels, percent, number, difference, stateComparison, exportAnalysisCsv } from './model';
+import { ballotLabels, ballotsForYear, effectiveBallot, parties, sectionLabels, percent, number, difference, stateComparison, compareAnalysisValues, exportAnalysisCsv } from './model';
 import type { AnalysisSection, Ballot } from './types';
 
 const ResearchWorkbench = lazy(() => import('./research/ResearchWorkbench'));
@@ -52,7 +52,9 @@ function StatePanel({ year, ballot, party, gender, years }: PanelProps & { years
   const [previousYear, setPreviousYear] = useState(0);
   const previousBallot = effectiveBallot(previousYear, ballot);
   const previous = useAnalysisRows('state', previousYear, previousBallot, party, gender, previousYear > 0);
-  const rows = stateComparison(query.data || [], previous.data || []);
+  const rows = stateComparison(query.data || [], previous.data || []).sort((a, b) =>
+    compareAnalysisValues(a.share, b.share, 'desc') || compareAnalysisValues(a.votes, b.votes, 'desc') || a.party.localeCompare(b.party, 'de')
+  );
   return <div className="space-y-4">
     <div className="flex flex-wrap items-end justify-between gap-3"><Selection id="analysis-compare" label="Mit Wahl vergleichen" value={String(previousYear)} onChange={value => setPreviousYear(Number(value))}><option value="0">Kein Vergleich</option>{years.filter(y => y !== year).map(y => <option key={y} value={y}>{y} · {ballotLabels[effectiveBallot(y, ballot)]}</option>)}</Selection><Button variant="outline" disabled={!rows.length} onClick={() => exportAnalysisCsv(rows.map(r => ({ Wahljahr: year, Stimmenart: ballotLabels[ballot], Partei: r.party, Stimmen: r.votes, Prozent: r.share, Sitze: r.seats, Vergleichsjahr: previousYear || null, Vergleichsprozent: r.previousShare })), `Landesergebnis-${year}.csv`)}>CSV exportieren</Button></div>
     {previousYear > 0 && previous.isLoading && <p role="status" className="text-sm">Lade Vergleichswahl …</p>}
