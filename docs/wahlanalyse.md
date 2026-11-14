@@ -721,3 +721,9 @@ Prozentpunkte sind die Standardansicht, die Abweichung vom Landestrend ist eine 
 ### Korrektur bei `verified_bw_state` (SQL-Editor)
 
 Falls `20261114145000_verified_2026_state_parties.sql` mit „relation verified_bw_state does not exist“ abbricht, die aktualisierte Datei vollständig erneut ausführen. Sie verwendet einen einzigen atomaren `DO`-Block mit einer lokalen JSON-Konstante statt einer temporären Tabelle. Der erneute Aufruf ist auch bei bereits vorhandenen Teilständen möglich: vorhandene Datensätze werden nicht dupliziert und abweichende manuelle Werte bleiben geschützt. Voraussetzung bleibt die vorherige Migration `20261114144000_analysis_workspaces.sql`.
+
+### Wahlperioden aus der ergänzten Arbeitsmappe
+
+`20261114150000_workbook_election_periods.sql` übernimmt das Blatt „Wahlperioden“ mit Wahltag, Beginn und Ende aller 18 Perioden samt Quellen. Fehlende Historienfelder werden ergänzt; abweichende vorhandene Termine bleiben zur manuellen Prüfung erhalten. Die bestehenden Trigger übernehmen Periodentermine auf geeignete Mandate. Das reguläre Ende 30.04.2031 bleibt voraussichtlich. Das Freigabecockpit meldet übereinstimmende belegte Termine als „Belegt“ statt pauschal „Prüfen“.
+
+Reproduzierbar mit `python scripts/import-election-periods.py workbook.xlsx output.sql`. Dieser separate Periodenimport ergänzt ausdrücklich die Historie; Ergebnisimporte bleiben davon unabhängig. Die Migration enthält zusätzlich die Anpassung des bestehenden Übernahme-RPC für voraussichtliche Endtermine. Auf Wunsch wurden keine Tests ausgeführt.

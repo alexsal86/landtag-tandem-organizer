@@ -38,6 +38,7 @@ export function PeriodSourceReview({
     },
     onSuccess: () => {
       void cache.invalidateQueries({ queryKey: ["election-history"] });
+      void cache.invalidateQueries({ queryKey: ["election-research"] });
     },
   });
   if (!proposal.data) return null;
@@ -57,7 +58,7 @@ export function PeriodSourceReview({
       </p>
       <p>
         Beginn: {p.starts_on || "noch nicht amtlich belegt"} · tatsächliches
-        Ende: {p.ends_on || "noch nicht amtlich belegt"}
+        Ende: {p.ends_on || (p.expected_ends_on ? `${p.expected_ends_on} (voraussichtlich)` : "noch nicht amtlich belegt")}
       </p>
       <a
         className="my-2 block underline"
@@ -67,6 +68,7 @@ export function PeriodSourceReview({
       >
         Amtliche Quelle zum Wahltag
       </a>
+      {p.term_source_url && <a className="my-2 block underline" href={p.term_source_url} target="_blank" rel="noreferrer">Quelle zum Wahlperiodenzeitraum</a>}
       {p.notes && <p className="mb-2 text-muted-foreground">{p.notes}</p>}
       <Button
         size="sm"

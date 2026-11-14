@@ -91,9 +91,13 @@ export function ReleaseCockpit({ year }: { year: number }) {
               .eq("period_id", id)
               .abortSignal(signal)
           : Promise.resolve({ data: null, error: null, count: 0 }),
+        supabase.from("election_analysis_period_proposals").select("*")
+          .eq("election_year", year).eq("verified", true)
+          .abortSignal(signal).maybeSingle(),
       ]);
       for (const r of replies) if (r.error) throw r.error;
       return {
+        proposal: replies[6].data,
         year: y.data,
         reviews: replies[0].data || [],
         geographies: replies[1].data || [],
@@ -190,9 +194,15 @@ export function ReleaseCockpit({ year }: { year: number }) {
       },
       {
         Bereich: "Wahlperiode und Termine",
-        Status: period ? "Prüfen" : "Fehlt",
+        Status: period && m.proposal?.starts_on &&
+          period.election_date === m.proposal.election_date &&
+          period.starts_on === m.proposal.starts_on &&
+          (m.proposal.ends_on || m.proposal.expected_ends_on) &&
+          period.ends_on === (m.proposal.ends_on || m.proposal.expected_ends_on) &&
+          !!period.ends_on_is_expected === !m.proposal.ends_on
+          ? "Belegt" : period ? "Prüfen" : "Fehlt",
         Hinweis: period
-          ? `${period.name}; Wahltag ${period.election_date || "fehlt"}, Beginn ${period.starts_on || "fehlt"}, Ende ${period.ends_on || "offen"}${period.ends_on_is_expected ? " (voraussichtlich)" : ""}. Eingetragene Termine sind nicht automatisch rechtlich bestätigt.`
+          ? `${period.name}; Wahltag ${period.election_date || "fehlt"}, Beginn ${period.starts_on || "fehlt"}, Ende ${period.ends_on || "offen"}${period.ends_on_is_expected ? " (voraussichtlich)" : ""}. Abgleich mit den belegten Terminen aus dem Tabellenblatt Wahlperioden.`
           : "Analysejahr hat keine zugängliche Periodenverknüpfung.",
       },
       {
