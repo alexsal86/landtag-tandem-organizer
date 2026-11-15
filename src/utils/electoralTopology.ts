@@ -1,4 +1,5 @@
 import { boundaryYearCandidate, expectedElectoralDistrictCount, historical1952SourceByTechnical } from './electoralGeometryCatalog';
+import { ELECTORAL_DISTRICT_MANIFESTS } from './electoralDistrictAsset';
 import { normalizeElectoralGeoJson, type GeoJsonData } from './geoJsonLoader';
 import { ELECTORAL_TOPOLOGY_MANIFESTS } from './electoralTopologyAsset';
 
@@ -183,4 +184,32 @@ export async function loadElectoralTopology(year: number): Promise<GeoJsonData> 
     years.set(geometryYear, result);
   }
   return result;
+}
+
+/** Detail views fetch only the selected form and explicitly requested neighbors. */
+export async function loadElectoralDistrict(year: number, number: number, neighbors = false): Promise<GeoJsonData> {
+  const boundaryYear = electoralGeometryYear(year);
+  const path = boundaryYear === null ? undefined : ELECTORAL_DISTRICT_MANIFESTS[boundaryYear];
+  if (!path) throw new Error('Kein hinterlegter Grenzstand');
+  const manifest = await loadGeometryJson(path) as Omit<ElectoralGeometryManifest, 'districts'> & {
+    districts: (ManifestDistrict & { neighbors: number[] })[];
+  };
+  if (manifest.version !== 1 || manifest.year !== boundaryYear || manifest.districts.length !== expectedElectoralDistrictCount(boundaryYear!))
+    throw new Error('Ungültige Wahlkreiszuordnung');
+  const selected = manifest.districts.find(d => Number(d.properties.Nummer) === number);
+  if (!selected) throw new Error('Wahlkreis fehlt im Grenzstand');
+  const numbers = new Set([number, ...(neighbors ? selected.neighbors : [])]);
+  const features = await Promise.all(manifest.districts.filter(d => numbers.has(Number(d.properties.Nummer))).map(async district => {
+    if (!/^[a-f0-9]{64}$/.test(district.shape) || district.package !== `/data/geometry/district-${district.shape}.topojson`)
+      throw new Error('Ungültige Wahlkreisform');
+    let geometry = shapes.get(district.shape);
+    if (!geometry) {
+      const decoded = decodeElectoralTopology(await loadGeometryJson(district.package), district.shape);
+      if (decoded.features.length !== 1) throw new Error('Wahlkreisform ist nicht eindeutig');
+      geometry = decoded.features[0].geometry;
+      shapes.set(district.shape, geometry);
+    }
+    return { type: 'Feature' as const, properties: district.properties, geometry };
+  }));
+  return { type: 'FeatureCollection', features };
 }

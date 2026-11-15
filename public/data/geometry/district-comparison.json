@@ -1,0 +1,65 @@
+{
+  "uniqueExactForms": 261,
+  "boundaryVersions": [
+    {
+      "year": 1952,
+      "districts": 74,
+      "reusedExactFormsFromPreviousBoundary": null
+    },
+    {
+      "year": 1960,
+      "districts": 70,
+      "reusedExactFormsFromPreviousBoundary": 49
+    },
+    {
+      "year": 1968,
+      "districts": 70,
+      "reusedExactFormsFromPreviousBoundary": 70
+    },
+    {
+      "year": 1972,
+      "districts": 70,
+      "reusedExactFormsFromPreviousBoundary": 41
+    },
+    {
+      "year": 1988,
+      "districts": 70,
+      "reusedExactFormsFromPreviousBoundary": 0
+    },
+    {
+      "year": 1992,
+      "districts": 70,
+      "reusedExactFormsFromPreviousBoundary": 53
+    },
+    {
+      "year": 1996,
+      "districts": 70,
+      "reusedExactFormsFromPreviousBoundary": 70
+    },
+    {
+      "year": 2001,
+      "districts": 70,
+      "reusedExactFormsFromPreviousBoundary": 70
+    },
+    {
+      "year": 2006,
+      "districts": 70,
+      "reusedExactFormsFromPreviousBoundary": 59
+    },
+    {
+      "year": 2011,
+      "districts": 70,
+      "reusedExactFormsFromPreviousBoundary": 33
+    },
+    {
+      "year": 2016,
+      "districts": 70,
+      "reusedExactFormsFromPreviousBoundary": 70
+    },
+    {
+      "year": 2021,
+      "districts": 70,
+      "reusedExactFormsFromPreviousBoundary": 68
+    }
+  ]
+}

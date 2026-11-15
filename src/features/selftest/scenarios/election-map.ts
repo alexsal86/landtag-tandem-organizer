@@ -1,6 +1,8 @@
 import { projectHistoricalDistricts } from '@/features/election-history/mapProjection';
 import { HISTORICAL_DISTRICTS_1952 } from '@/utils/electoralGeometryCatalog';
 import { parseElectoralManifest } from '@/utils/electoralTopology';
+import { ELECTORAL_DISTRICT_MANIFESTS } from '@/utils/electoralDistrictAsset';
+import { electoralGeometryYear } from '@/utils/electoralTopology';
 import { withHistoricalDistrictNames } from '@/features/election-history/historicalDistrictNames';
 import { sourceHistoricalDistrictName, isReconstructedBoundary } from '@/utils/electoralGeometryCatalog';
 import { confirmedPeriodGeometryYear, withPeriodGeometry } from '@/features/election-history/periodGeometry';
@@ -44,6 +46,13 @@ export const electionMapScenario: TestScenario = {
         && searchElectionDistricts(projected,'46').length===0 && resolved.mandates[0].district_id==='legacy',
         message:'Regionale Nummern sind eindeutig; technische 46 bindet kein Mandat an SB 1. Alle übrigen Jahre erwarten weiterhin 70 Wahlkreise.' };
     } },
+    { id: 'district-detail-assets', label: 'Detailkarten teilen bestätigte Grenzstände ohne Ersatz für fehlende Jahre', kind: 'logic', run: async () => ({
+      ok: [1952, 1956, 1960, 1964, 1968, 1972, 1976, 1980, 1984, 1988, 1992, 1996, 2001, 2006, 2011, 2016, 2021, 2026]
+        .every(year => !!ELECTORAL_DISTRICT_MANIFESTS[electoralGeometryYear(year)!])
+        && electoralGeometryYear(1952) === 1952
+        && electoralGeometryYear(2026) === electoralGeometryYear(2021),
+      message: 'Einzelformen sind für alle hinterlegten Grenzstände abrufbar; 1952 behält seine regionalen Quellenkennungen.'
+    }) },
     { id: 'historical-geometry-confirmation', label: 'Historische Geometrie nur nach Bestätigung und nur für die gewählte Periode', kind: 'logic', run: async () => {
       const period: ElectionPeriod = { id: 'p', number: 18, name: '2026', election_year: 2026,
         election_date: null, starts_on: null, ends_on: null, is_current: false, is_published: true,

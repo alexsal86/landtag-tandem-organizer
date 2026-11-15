@@ -131,3 +131,34 @@ Anzeige unterscheidet lokale Zwischenspeicherung von erfolgreicher DB-Speicherun
 Bei blockiertem Browser-Speicher erscheint ein entsprechender Hinweis. Nach
 erfolgreichem Speichern oder explizitem Verwerfen wird nur der passende lokale
 Entwurf entfernt; neuere Eingaben werden nicht durch verspätete Antworten gelöscht.
+
+### Wahlkreis-Detailkarten bei Bedarf
+
+In der historischen Wahlkreisansicht und der Administrationsvorschau lädt
+„Wahlkreiskarte öffnen“ erst beim Aufklappen die Leaflet-Komponente, das kleine
+Manifest des bestätigten Grenzstands und eine einzelne TopoJSON-Form. Der Schalter
+„Angrenzende Wahlkreise anzeigen“ lädt ausschließlich zusätzliche Nachbarformen.
+Die Kartenkacheln werden ebenfalls erst mit der geöffneten Karte angefordert.
+Individuelle historische Umrisse haben Vorrang; für sie werden keine Nachbarn aus
+einem anderen Grenzstand ergänzt. Fehlende oder unbestätigte Grenzen bleiben sichtbar
+als Datenlücke. Für 1952 werden ausschließlich die bestätigten regionalen
+Quellenkennungen verwendet; technische Nummern ersetzen keine Mandatszuordnung.
+Die Gesamtkarte verwendet weiterhin ihre für die Übersicht gepackten Jahresdaten.
+
+`node scripts/geometry/pack-district-details.mjs` erzeugt aus den vorhandenen
+Jahresmanifesten und TopoJSON-Paketen die Detailassets. Die bereits kanonisierten
+Form-Hashes vergleichen vollständige Koordinaten ohne Rundung oder Vereinfachung;
+identische Formen werden über alle Grenzstände nur einmal gespeichert. Die 844
+Zuordnungen der zwölf Grenzstände benötigen 261 unterschiedliche Formen.
+1952 enthält 74 regionale Wahlkreise, die übrigen Grenzstände jeweils 70. Die
+Jahres-Aliase bleiben unverändert. Koordinatengleichheit bestätigt keine historische
+Identität und hebt die periodenspezifische Freigabe nicht auf.
+
+Nachbarschaften werden pro Grenzstand anhand exakt gemeinsamer Liniensegmente
+ermittelt; ein gemeinsamer Punkt allein zählt nicht. Abweichend digitalisierte
+Grenzlinien werden nicht durch Toleranzen als gemeinsame Grenze ausgegeben.
+`public/data/geometry/district-comparison.json` dokumentiert die Wiederverwendung
+zwischen aufeinanderfolgenden Grenzständen, unabhängig von Wahlkreisnummern.
+Nach Änderungen an den Quellpaketen zunächst den bisherigen Packer und danach
+den Detailpacker ausführen. Die Detailmanifeste haben Inhalts-Hashes; die
+Einzelformen nutzen ihre exakten Form-Hashes und den bestehenden Browser-Cache.
