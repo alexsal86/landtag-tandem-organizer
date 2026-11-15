@@ -50,8 +50,11 @@ export function parseHistoryForm(entity: HistoryEntity, v: FormValues): ParsedHi
       const election_year = numberValue(v, 'election_year', 1900, 2200);
       const boundary_geometry_year = numberValue(v, 'boundary_geometry_year', 1900, 2200);
       const boundary_geometry_confirmed = v.boundary_geometry_confirmed === true;
-      if (boundary_geometry_year !== null && (election_year === null || electoralGeometryYear(election_year) !== boundary_geometry_year))
-        throw new Error('Bitte einen zum Wahljahr passenden Grenzstand auswählen: 1964 verwendet 1968, 1976/1980/1984 verwenden 1988, 2026 verwendet 2021.');
+      const expectedBoundaryYear = election_year === null ? null : electoralGeometryYear(election_year);
+      if (boundary_geometry_year !== null && expectedBoundaryYear !== boundary_geometry_year)
+        throw new Error(expectedBoundaryYear === null
+          ? 'Bitte ein Wahljahr mit hinterlegtem Grenzstand auswählen.'
+          : `Für die Wahl ${election_year} bitte den Grenzstand ${expectedBoundaryYear} auswählen.`);
       if (boundary_geometry_confirmed && boundary_geometry_year === null)
         throw new Error('Bitte vor der Bestätigung einen Grenzstand auswählen.');
       const number = numberValue(v, 'number', 1);

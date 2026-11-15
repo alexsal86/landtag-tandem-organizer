@@ -16,14 +16,14 @@ repeated closing point; stored rings retain it.
 
 Unique forms are grouped by the set of boundary years which need them. This
 keeps requests bounded without fetching other years' unused forms. Shared arcs
-within each package are deduplicated as well. There are now 236 distinct
-forms across ten boundary datasets (700 district entries). Explicit aliases:
-1964 → 1968, 1976/1980/1984 → 1988, and 2026 → 2021.
+within each package are deduplicated as well. There are still 236 distinct
+forms across eleven boundary datasets (770 district entries). Explicit aliases:
+1956 → 1960, 1964 → 1968, 1976/1980/1984 → 1988, and 2026 → 2021.
 
 | Package usage | Distinct forms | Gzip bytes | Brotli bytes |
 | --- | ---: | ---: | ---: |
-| 1968 | 29 | 2,676,637 | 1,979,304 |
-| 1968,1972 | 41 | 2,796,752 | 2,092,938 |
+| 1960,1968 | 29 | 2,676,637 | 1,979,304 |
+| 1960,1968,1972 | 41 | 2,796,752 | 2,092,938 |
 | 1972 | 29 | 2,665,592 | 1,952,632 |
 | 1988 | 17 | 1,053,298 | 785,391 |
 | 1988,1992,1996,2001 | 10 | 630,055 | 477,771 |
@@ -37,6 +37,10 @@ forms across ten boundary datasets (700 district entries). Explicit aliases:
 | 2011,2016,2021 | 35 | 1,663,006 | 1,251,662 |
 | 2021 | 2 | 115,519 | 87,298 |
 
+The supplied 1960 shape coordinates are exactly the same as those in 1968;
+1956 uses the 1960 manifest directly. The two source families retain separate
+source dates and metadata without duplicating any geometry packages.
+
 1968 shares 41 exact forms with 1972 and retains 29 geometrically different
 forms. Names/numbers are equal in these two supplied lists; that does not imply
 geographic identity. These reconstructed differences are not a claim of 29
@@ -47,6 +51,7 @@ reuse all 70 forms. No tolerance is used to declare geometries identical.
 
 | Selected year | Cold requests (manifest + packages) | Gzip bytes | Brotli bytes |
 | --- | ---: | ---: | ---: |
+| 1956 / 1960 | 3 | 5,477,095 | 4,075,583 |
 | 1964 / 1968 | 3 | 5,477,098 | 4,075,562 |
 | 1972 | 3 | 5,466,103 | 4,048,935 |
 | 1976 / 1980 / 1984 / 1988 | 5 | 3,843,172 | 2,895,829 |
@@ -58,7 +63,9 @@ reuse all 70 forms. No tolerance is used to declare geometries identical.
 | 2016 | 5 | 3,262,496 | 2,461,135 |
 | 2021 / 2026 | 5 | 3,271,642 | 2,468,017 |
 
-Switching 1972 → 1968 adds 2,680,346 gzip bytes for its manifest
+Switching 1956 → 1960 needs no additional manifest or geometry. Switching
+1960 → 1964/1968 needs only the selected source-family manifest, as all 70 forms
+are already cached. Switching 1972 → 1968 adds 2,680,346 gzip bytes for its manifest
 and 29 distinct forms; the shared 41 forms stay cached. 1964 → 1968 needs no
 additional geometry or manifest. Switching 1992 → 1988 adds 1,056,992
 bytes; 1992 → 1996 adds only 3,772 bytes. 1976/1980/1984 → 1988 and
@@ -100,7 +107,7 @@ retains it. Published existing frontend sessions should reload after deployment.
 Use the original unquantized sources, including the cleaned 2021 replacement:
 
 ```sh
-node scripts/geometry/pack-election-topology.mjs 1968=path/to/LTWahlkreise1968-BW_konsistent.topojson 1972=path/to/LTWahlkreise1972-BW_konsistent.topojson 1988=path/to/LTWahlkreise1988-BW_konsistent.topojson 1992=path/to/LTWahlkreise1992-BW_konsistent.topojson 1996=path/to/LTWahlkreise1996-BW_konsistent.topojson 2001=path/to/LTWahlkreise2001-BW_konsistent.topojson 2006=path/to/LTWahlkreise2006-BW_konsistent.topojson 2011=path/to/LTWahlkreise2011-BW.topojson.json 2016=path/to/LTWahlkreise2016-BW.topojson 2021=path/to/LTWahlkreise2021_bereinigt.topojson.json
+node scripts/geometry/pack-election-topology.mjs 1960=path/to/LTWahlkreise1960-BW_konsistent.topojson 1968=path/to/LTWahlkreise1968-BW_konsistent.topojson 1972=path/to/LTWahlkreise1972-BW_konsistent.topojson 1988=path/to/LTWahlkreise1988-BW_konsistent.topojson 1992=path/to/LTWahlkreise1992-BW_konsistent.topojson 1996=path/to/LTWahlkreise1996-BW_konsistent.topojson 2001=path/to/LTWahlkreise2001-BW_konsistent.topojson 2006=path/to/LTWahlkreise2006-BW_konsistent.topojson 2011=path/to/LTWahlkreise2011-BW.topojson.json 2016=path/to/LTWahlkreise2016-BW.topojson 2021=path/to/LTWahlkreise2021_bereinigt.topojson.json
 ```
 
 The script writes hashed packages/manifests with gzip/Brotli representations and
@@ -122,14 +129,17 @@ adds 1988 and corrects its district-37 name.
 any 1972 geometry attestation pending explicit review.
 `20261115120000_election_history_1964_1968_geometry.sql` adds 1968 and its 1964
 alias, fills missing registry entries using their source-local numbering and
-requires explicit confirmation for these reconstructed elections. Other existing selections
+requires explicit confirmation for these reconstructed elections.
+`20261115130000_election_history_1956_1960_geometry.sql` permits the shared 1960
+source for 1956/1960, maintains their historical registry and requires explicit
+confirmation for these additional reconstructed elections. Other existing selections
 and confirmations are preserved;
 no new legislature is assigned or confirmed automatically.
 
 As superadmin, open **Administration → Wahldaten & Mandatshistorie →
 Legislaturperioden**, edit the desired period, select **Historischer Grenzstand
 für die Karte**, confirm the checked boundary/district-number assignment, then
-save. Choose 1968 for 1964/1968, 1972 for its separate pre-reform reconstruction, 1988 for 1976/1980/1984/1988,
+save. Choose 1960 for 1956/1960, 1968 for 1964/1968, 1972 for its separate pre-reform reconstruction, 1988 for 1976/1980/1984/1988,
 the matching year for 1992/1996/2001/2006/2011/2016, or 2021 for 2021/2026.
 The editor derives its options from the generated manifest catalog.
 **Für alle Tenants freigeben** remains the separate publication switch.
@@ -226,3 +236,30 @@ Reconstruction notices and BKG/LGL attribution now select the correct source
 for both reconstructed families. The analysis adapter's existing reconstruction
 guard therefore also excludes 1964/1968 from automatically inferred verified
 cross-year identities. Merely sharing a name/number never establishes identity.
+
+## 1956/1960 reconstruction (2026-11-15)
+
+The user confirmed identical boundaries for 1956 and 1960. The supplied
+`LTWahlkreise1960-BW_konsistent.zip` contains 70 uniquely numbered districts with
+names matching the source CSV. It also contains exactly the same arc arrays,
+polygon types and polygon references as the previously supplied 1968 topology.
+Consequently all 70 forms reuse existing packages: there are **no new geometry
+packages**, only a small 1960 manifest with its own historical properties.
+The supplied archive's reconstruction scripts were not executed.
+
+[Source notes](sources/1960-source-notes.md) and the
+[historical name list](sources/1960-district-names.csv) are retained. The 1960
+source uses 1960-05-15 as reference date and cites the 1955 electoral law. This
+is kept separate from the 1968 source's 1967-10-28 reference date. The 1956 alias
+reflects the user's confirmation, not a claimed 1960 legal reference date for
+1956. Equal reconstructed coordinates are not proof of unchanged original
+small-area boundaries. All reconstructed source families retain their notices,
+source links and BKG/LGL credits and are excluded from automatically inferred
+verified cross-year identities.
+
+The migration corrects same-year source labels and fills missing registry rows
+only in existing 1956/1960 periods. It preserves IDs, district numbers,
+individual shapes, mandates and candidacy links and never renumbers or reconnects
+records by matching later labels. Publication and geometry confirmation remain
+explicit. The UI offers the source family as **Grenzen 1956 / 1960 (Rekonstruktion)**.
+No additional quantization, simplification, rounding or reprojection is applied.

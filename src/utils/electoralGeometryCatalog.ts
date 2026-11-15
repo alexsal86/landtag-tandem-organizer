@@ -145,19 +145,98 @@ export const HISTORICAL_DISTRICT_NAMES_1968: Readonly<Record<number, string>> = 
   "70": "Wangen"
 };
 
+export const HISTORICAL_DISTRICT_NAMES_1960: Readonly<Record<number, string>> = {
+  "1": "Stuttgart I",
+  "2": "Stuttgart II",
+  "3": "Stuttgart III",
+  "4": "Stuttgart IV",
+  "5": "Stuttgart V",
+  "6": "Heilbronn-Stadt",
+  "7": "Ulm-Stadt",
+  "8": "Böblingen",
+  "9": "Leonberg",
+  "10": "Ludwigsburg I",
+  "11": "Ludwigsburg II",
+  "12": "Heilbronn-Land I",
+  "13": "Heilbronn-Land II",
+  "14": "Öhringen",
+  "15": "Crailsheim",
+  "16": "Aalen",
+  "17": "Heidenheim",
+  "18": "Ulm-Land",
+  "19": "Göppingen I",
+  "20": "Göppingen II",
+  "21": "Schwäbisch Gmünd",
+  "22": "Backnang",
+  "23": "Waiblingen I",
+  "24": "Waiblingen II",
+  "25": "Esslingen I",
+  "26": "Esslingen II",
+  "27": "Nürtingen",
+  "28": "Karlsruhe-Stadt I",
+  "29": "Karlsruhe-Stadt II",
+  "30": "Heidelberg-Stadt",
+  "31": "Mannheim-Stadt I",
+  "32": "Mannheim-Stadt II",
+  "33": "Mannheim-Stadt III",
+  "34": "Karlsruhe-Land I",
+  "35": "Karlsruhe-Land II",
+  "36": "Pforzheim",
+  "37": "Bruchsal",
+  "38": "Mannheim-Land I",
+  "39": "Mannheim-Land II",
+  "40": "Heidelberg-Land",
+  "41": "Sinsheim",
+  "42": "Mosbach",
+  "43": "Tauberbischofsheim",
+  "44": "Freiburg-Stadt",
+  "45": "Überlingen",
+  "46": "Konstanz I",
+  "47": "Konstanz II",
+  "48": "Donaueschingen",
+  "49": "Waldshut",
+  "50": "Lörrach",
+  "51": "Freiburg-Land",
+  "52": "Emmendingen",
+  "53": "Villingen",
+  "54": "Lahr",
+  "55": "Offenburg",
+  "56": "Baden-Baden",
+  "57": "Rastatt",
+  "58": "Tübingen",
+  "59": "Calw",
+  "60": "Freudenstadt",
+  "61": "Rottweil",
+  "62": "Tuttlingen",
+  "63": "Balingen",
+  "64": "Hechingen",
+  "65": "Reutlingen",
+  "66": "Ehingen",
+  "67": "Saulgau",
+  "68": "Biberach",
+  "69": "Ravensburg",
+  "70": "Wangen"
+};
+
 export const ELECTORAL_BOUNDARY_ALIASES: Readonly<Record<number, number>> = {
-  1964: 1968, 1976: 1988, 1980: 1988, 1984: 1988, 2026: 2021,
+  1956: 1960, 1964: 1968, 1976: 1988, 1980: 1988, 1984: 1988, 2026: 2021,
 };
 export const boundaryYearCandidate = (year: number) => ELECTORAL_BOUNDARY_ALIASES[year] ?? year;
 
 export function sourceHistoricalDistrictName(year: number | null | undefined, number: number | null): string | null {
   if (number === null) return null;
+  if (year === 1956 || year === 1960) return HISTORICAL_DISTRICT_NAMES_1960[number] ?? null;
   if (year === 1964 || year === 1968) return HISTORICAL_DISTRICT_NAMES_1968[number] ?? null;
   if (year === 1972) return HISTORICAL_DISTRICT_NAMES_1972[number] ?? null;
   if (year !== null && year !== undefined && [1976, 1980, 1984, 1988].includes(year) && number === 37) return 'Mannheim III';
   return null;
 }
 const RECONSTRUCTION_SOURCES: Readonly<Record<number, { title: string; reference: string; sourceUrl: string }>> = {
+  1960: {
+    title: '1956 / 1960',
+    reference: 'Quelle 1960: Gebietsstand 15. Mai 1960. Für 1956 werden die ausdrücklich als identisch bestätigten Grenzen verwendet. Identische rekonstruierte Koordinaten beweisen keine unveränderten kleinräumigen Originalgrenzen.',
+    sourceUrl: 'https://d-nb.info/1278245642/34',
+  },
   1968: {
     title: '1964 / 1968',
     reference: 'Quelle 1968: Gebietsstand 28. Oktober 1967. Für 1964 werden die ausdrücklich als identisch bestätigten Grenzen verwendet.',
