@@ -1,5 +1,11 @@
 # Roadmap Aufgaben
 
+# Tenant-Härtung: privilegierte Funktionen und Trigger
+- [ ] Service-Role-Zugriffe: eindeutige Büroauswahl, Rollen im Zielbüro und Elternreferenzen absichern.
+- [ ] Datenbank-Trigger gegen bürofremde Verknüpfungen absichern und Sicherheitsselbsttest ergänzen.
+- [ ] Geänderte Funktionen ausrollen, gezielte Tests und negative Live-Anfragen prüfen.
+- [ ] Übrige privilegierte Funktionen vollständig einzeln auditieren; vollständiger Live-Test benötigt eine externe Testsitzung.
+
 # Strikte Mandantenisolation
 - [x] Aktiven Mandanten zentral für alle Tabellen/Ansichten mit `tenant_id` erzwingen; fremde Filter und Schreibzugriffe ablehnen.
 - [x] Cache und verspätete Antworten beim Benutzer-/Mandantenwechsel trennen; Schema-Drift-Check und Selbsttest ergänzen.
