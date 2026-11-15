@@ -51,6 +51,13 @@ export default function ElectionAnalysis() {
     </DataState>
   </div>;
 }
+const stateShareLabel = {
+  position: 'top' as const,
+  fill: 'currentColor',
+  fontSize: 11,
+  formatter: (value: unknown) => typeof value === 'number' ? percent(value) : '',
+};
+
 type PanelProps = { year: number; ballot: Ballot; party: string; gender: string };
 
 function StatePanel({ year, ballot, party, gender, years }: PanelProps & { years: number[] }) {
@@ -68,7 +75,7 @@ function StatePanel({ year, ballot, party, gender, years }: PanelProps & { years
     <DataState loading={query.isLoading} error={query.error} empty={!rows.length} retry={() => void query.refetch()}>
       <div className="grid items-start gap-4 xl:grid-cols-2">
         <Card className="min-w-0"><CardHeader><CardTitle className="text-lg">Parteianteile · {year}</CardTitle></CardHeader><CardContent>
-          <div className="h-72" role="img" aria-label="Parteianteile in Prozent; genaue Werte stehen in der Ergebnistabelle"><ResponsiveContainer><BarChart data={rows}><CartesianGrid strokeDasharray="3 3" vertical={false} /><XAxis dataKey="party" /><YAxis unit=" %" /><Tooltip formatter={value => percent(typeof value === 'number' ? value : null)} /><Bar dataKey="share" name={String(year)}>{rows.map(r => <Cell key={r.party} fill={chartColor(r.party)} />)}</Bar>{previousYear > 0 && <Bar dataKey="previousShare" fill="#a8ae9e" name={String(previousYear)} />}{previousYear > 0 && <Legend />}</BarChart></ResponsiveContainer></div>
+          <div className="h-72" role="img" aria-label="Parteianteile in Prozent; genaue Werte stehen in der Ergebnistabelle"><ResponsiveContainer><BarChart data={rows} margin={{ top: 24 }}><CartesianGrid strokeDasharray="3 3" vertical={false} /><XAxis dataKey="party" /><YAxis unit=" %" /><Tooltip formatter={value => percent(typeof value === 'number' ? value : null)} /><Bar dataKey="share" name={String(year)} label={stateShareLabel}>{rows.map(r => <Cell key={r.party} fill={chartColor(r.party)} />)}</Bar>{previousYear > 0 && <Bar dataKey="previousShare" fill="#a8ae9e" name={String(previousYear)} label={stateShareLabel} />}{previousYear > 0 && <Legend />}</BarChart></ResponsiveContainer></div>
         </CardContent></Card>
         <div className="min-w-0 space-y-4"><div className="[&_tbody]:bg-white"><DataTable headers={['Partei', 'Stimmen', 'Anteil', 'Sitze', ...(previousYear ? ['Vergleichsanteil', 'Änderung'] : [])]} rows={rows.map(r => [<PartyLabel party={r.party} />, number(r.votes), percent(r.share), number(r.seats), ...(previousYear ? [percent(r.previousShare), difference(r.share, r.previousShare)] : [])])} /></div>
           <StateSeatDistribution rows={rows} year={year} ballot={ballot} />

@@ -81,6 +81,12 @@ interface CartesianAxisProps extends BaseRechartsProps {
 }
 
 interface BarProps extends BaseRechartsProps {
+  label?: boolean | {
+    position?: "top";
+    fill?: string;
+    fontSize?: number;
+    formatter?: (value: unknown) => ReactNode;
+  };
   dataKey?: string | ((entry: RechartsDataPoint) => unknown);
   fill?: string;
   name?: RechartsPrimitive;
