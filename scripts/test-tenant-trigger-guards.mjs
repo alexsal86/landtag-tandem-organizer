@@ -16,6 +16,7 @@ try {
  const sql=await migration('20261115075438_abfdb62e-9b3d-4255-8604-edbcc40eb04f.sql');
  await db.exec(sql.slice(0,sql.indexOf('CREATE OR REPLACE FUNCTION public.return_task_ball_after_vote')));
  await db.exec(await migration('20261115075450_b7bb29de-25ed-4b2c-8bc4-faf596e650c6.sql'));
+ await db.exec(await migration('20261115075759_2fd634d6-3737-497e-8aad-0b9362d862dd.sql'));
  await db.exec('GRANT ALL ON parents,children,identity_links TO service_role; SET ROLE service_role;');
  await db.query('INSERT INTO children VALUES($1,$2,$3)',[parent,a,parent]);
  await assert.rejects(db.query('INSERT INTO children VALUES($1,$2,$3)',[foreign,a,foreign]), e=>e.code==='42501');

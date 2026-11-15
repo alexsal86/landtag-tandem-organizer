@@ -1,10 +1,11 @@
 # Roadmap Aufgaben
 
 # Tenant-Härtung: privilegierte Funktionen und Trigger
-- [ ] Service-Role-Zugriffe: eindeutige Büroauswahl, Rollen im Zielbüro und Elternreferenzen absichern.
-- [ ] Datenbank-Trigger gegen bürofremde Verknüpfungen absichern und Sicherheitsselbsttest ergänzen.
-- [ ] Geänderte Funktionen ausrollen, gezielte Tests und negative Live-Anfragen prüfen.
-- [ ] Übrige privilegierte Funktionen vollständig einzeln auditieren; vollständiger Live-Test benötigt eine externe Testsitzung.
+- [x] Gemeinsame Büroprüfung und zwölf Funktionen gehärtet: eindeutige Auswahl, Rollen im Zielbüro, Kalender/Briefe/Kontakte/Workflows/Automation; Matrix-Absenderfälschung blockiert.
+- [x] Schutztrigger auf 176 Tabellen aktiv; Elternreferenzen und unveränderliche Büro-ID geprüft, Sicherheitsselbsttest ergänzt.
+- [x] Geänderte Funktionen ausgerollt; 23 Logiktests, isolierte PostgreSQL-Negativtests und Live-401-Anfragen bestanden.
+- [ ] Angemeldete Mehrbüroflüsse prüfen — externe Supabase-Testsitzung nicht verfügbar.
+- [ ] Gesamtaudit weiterer Einladungs-, Push-, Benachrichtigungs- und Schedulerpfade abschließen; noch nicht als vollständig gehärtet bestätigt.
 
 # Strikte Mandantenisolation
 - [x] Aktiven Mandanten zentral für alle Tabellen/Ansichten mit `tenant_id` erzwingen; fremde Filter und Schreibzugriffe ablehnen.
