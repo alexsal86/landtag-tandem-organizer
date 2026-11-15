@@ -38,10 +38,11 @@ export function AnalysisMap({
   const geographyId =
     versions.find((v) => v.geography_id)?.geography_id || undefined;
   const geography = useGeography(geographyId);
-  const preview = allowGeometryPreview && !geography.isLoading &&
+  const confirmedBundledYear = versions.find(v => v.bundled_geometry_year)?.bundled_geometry_year;
+  const preview = !confirmedBundledYear && allowGeometryPreview && !geography.isLoading &&
     (!geography.data?.asset_path || geography.data?.verified !== true);
   const selectedYear = geometryYear ?? versions[0]?.year;
-  const bundledYear = selectedYear === undefined ? null : electoralGeometryYear(selectedYear);
+  const bundledYear = confirmedBundledYear ?? (allowGeometryPreview && selectedYear !== undefined ? electoralGeometryYear(selectedYear) : null);
   const asset = bundledYear
     ? `bundled:${bundledYear}`
     : preview
@@ -49,7 +50,7 @@ export function AnalysisMap({
     : geography.data?.asset_path;
   const geometry = useQuery({
     queryKey: ["election-research", "geometry", geographyId, asset],
-    enabled: !!asset && (preview || geography.data?.verified === true),
+    enabled: !!asset && (!!confirmedBundledYear || preview || geography.data?.verified === true),
     queryFn: async ({ signal }) => {
       if (bundledYear || preview) return loadElectoralTopology(bundledYear ?? 2021);
       if (!asset || !asset.startsWith("/data/") || asset.includes(".."))
@@ -105,7 +106,7 @@ export function AnalysisMap({
         );
         const version = versions.find((v) => v.district_number === number);
         const value =
-          !preview && version?.geography_id === geographyId
+          !preview && (confirmedBundledYear ? version?.bundled_geometry_year === confirmedBundledYear : version?.geography_id === geographyId)
             ? (values.get(number) ?? null)
             : null;
         return {
@@ -122,7 +123,7 @@ export function AnalysisMap({
         const version = versions.find((v) => v.district_number === number);
         if (!version) return;
         const value =
-          !preview && version.geography_id === geographyId
+          !preview && (confirmedBundledYear ? version.bundled_geometry_year === confirmedBundledYear : version.geography_id === geographyId)
             ? (values.get(number) ?? null)
             : null;
         const tooltip = document.createElement("span");
@@ -193,7 +194,7 @@ export function AnalysisMap({
       instance.remove();
       map.current = null;
     };
-  }, [geometry.data, versions, values, label, geographyId, maximum, preview, bundledYear]);
+  }, [geometry.data, versions, values, label, geographyId, maximum, preview, bundledYear, confirmedBundledYear]);
   useEffect(() => {
     paths.current.forEach((path, number) => {
       const selected = selectedDistrict === number;
@@ -223,7 +224,7 @@ export function AnalysisMap({
         Wahlkreisgeometrie lädt …
       </p>
     );
-  if (!asset || (!preview && geography.error) || geometry.error)
+  if (!asset || (!confirmedBundledYear && !preview && geography.error) || geometry.error)
     return (
       <p className="rounded-lg border p-3 text-sm text-muted-foreground">
         Für diese Auswahl ist noch keine geprüfte Geometrie verfügbar. Die
@@ -335,11 +336,11 @@ export function AnalysisMap({
         </p>
       ) : <a
         className="text-xs underline"
-        href={geography.data?.source_url}
+        href={confirmedBundledYear ? "https://www.statistik-bw.de/Wahlen/Landtag/" : geography.data?.source_url}
         target="_blank"
         rel="noopener noreferrer"
       >
-        Amtliche Geometrie · {geography.data?.year}
+        Amtliche Geometrie · {confirmedBundledYear ?? geography.data?.year}
       </a>}
     </div>
   );

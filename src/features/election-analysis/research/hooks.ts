@@ -1,3 +1,4 @@
+import { withConfirmedGeometry } from "./confirmedGeometry";
 import { useQuery, type UseQueryResult } from "@tanstack/react-query";
 import { supabase } from "@/integrations/supabase/client";
 import { useAuth } from "@/hooks/useAuth";
@@ -125,7 +126,8 @@ export function useDistrictSeries(
         })
         .abortSignal(signal);
       if (error) throw error;
-      return series(data);
+      const parsed = series(data);
+      return { ...parsed, versions: await withConfirmedGeometry(parsed.versions, signal) };
     },
     staleTime: 60_000,
     gcTime: 120_000,
@@ -148,7 +150,7 @@ export function useDistrictVersions(
         .limit(100)
         .abortSignal(signal);
       if (error) throw error;
-      return data || [];
+      return withConfirmedGeometry(data || [], signal);
     },
     staleTime: 300_000,
     gcTime: 300_000,
@@ -211,7 +213,8 @@ export function useComparison(
         })
         .abortSignal(signal);
       if (error) throw error;
-      return series(data);
+      const parsed = series(data);
+      return { ...parsed, versions: await withConfirmedGeometry(parsed.versions, signal) };
     },
     staleTime: 60_000,
     gcTime: 120_000,
@@ -361,7 +364,8 @@ export function useTurnoutComparison(
         })
         .abortSignal(signal);
       if (error) throw error;
-      return series(data);
+      const parsed = series(data);
+      return { ...parsed, versions: await withConfirmedGeometry(parsed.versions, signal) };
     },
     staleTime: 60_000,
     gcTime: 120_000,

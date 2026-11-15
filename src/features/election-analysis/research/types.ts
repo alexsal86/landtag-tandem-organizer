@@ -10,6 +10,7 @@ export interface Geography {
   notes: string | null;
 }
 export interface DistrictVersion {
+  bundled_geometry_year?: number;
   year: number;
   district_number: number;
   district_name: string;
