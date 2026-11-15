@@ -61,8 +61,9 @@ for (const { year, file } of sources) {
       polygon.slice(1).map(references => canonicalRing(ring(references, topology))).sort(),
     ])).sort());
     const shape = hash(key);
-    if (!forms.has(shape)) forms.set(shape, { geometry, topology, years: new Set() });
+    if (!forms.has(shape)) forms.set(shape, { representatives: new Map(), years: new Set() });
     forms.get(shape).years.add(year);
+    forms.get(shape).representatives.set(year, { geometry, topology });
     districts.push({ shape, properties: geometry.properties });
   }
   if (districts.length !== 70) throw new Error('Expected all 70 districts');
@@ -91,7 +92,7 @@ function writeAsset(prefix, extension, value) {
 }
 const packages = new Map();
 const formPackages = new Map();
-for (const [signature, group] of groups) {
+function packageTopology(group, sourceYear) {
   const topology = { type: 'Topology', objects: {}, arcs: [] };
   const index = new Map();
   const addArc = points => {
@@ -105,11 +106,24 @@ for (const [signature, group] of groups) {
     return reference;
   };
   for (const [shape, form] of group.sort(([a], [b]) => a.localeCompare(b))) {
+    const { geometry, topology: source } = form.representatives.get(sourceYear);
     const remap = references => Array.isArray(references) ? references.map(remap) : references < 0
-      ? ~addArc(form.topology.arcs[~references]) : addArc(form.topology.arcs[references]);
+      ? ~addArc(source.arcs[~references]) : addArc(source.arcs[references]);
     topology.objects[shape] = { type: 'GeometryCollection', geometries: [{
-      type: form.geometry.type, arcs: remap(form.geometry.arcs), properties: {},
+      type: geometry.type, arcs: remap(geometry.arcs), properties: {},
     }] };
+  }
+  return topology;
+}
+for (const [signature, group] of groups) {
+  // Same exact forms can have different arc segmentation in different sources.
+  // Choose the smallest existing representation for the whole package; this
+  // does not round, thin, or change coordinates or the matching criterion.
+  let topology, smallest = Infinity;
+  for (const sourceYear of signature.split(',').map(Number)) {
+    const candidate = packageTopology(group, sourceYear);
+    const size = Buffer.byteLength(JSON.stringify(candidate));
+    if (size < smallest) { topology = candidate; smallest = size; }
   }
   const asset = writeAsset('shapes', 'topojson', topology);
   packages.set(signature, { ...asset, forms: group.length });

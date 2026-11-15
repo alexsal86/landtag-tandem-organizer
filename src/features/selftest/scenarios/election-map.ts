@@ -25,6 +25,8 @@ export const electionMapScenario: TestScenario = {
         && confirmedPeriodGeometryYear({ ...period, election_year: 2006, boundary_geometry_year: 2006 }) === 2006
         && confirmedPeriodGeometryYear({ ...period, election_year: 2011, boundary_geometry_year: 2011 }) === 2011
         && confirmedPeriodGeometryYear({ ...period, election_year: 2006, boundary_geometry_year: 2011 }) === null
+        && [1992, 1996, 2001].every(year => confirmedPeriodGeometryYear({ ...period, election_year: year, boundary_geometry_year: year }) === year)
+        && confirmedPeriodGeometryYear({ ...period, election_year: 1992, boundary_geometry_year: 2001 }) === null
         && confirmedPeriodGeometryYear({ ...period, election_year: 1952 }) === null
         && confirmedPeriodGeometryYear({ ...period, boundary_geometry_year: 2016 }) === null
         && resolved.districts[0].boundaries === shape && resolved.districts[1].boundaries === null
