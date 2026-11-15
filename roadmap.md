@@ -1,5 +1,12 @@
 # Roadmap Aufgaben
 
+# Log-Aufkommen reduzieren (15.11.2026)
+- [x] Zentrale Statusverwaltung, Profil-Cache und höchstens ein Aktivitäts-Write pro fünf Minuten im Frontend vorbereitet.
+- [ ] Migration `20261115120000_reduce_log_ingestion.sql` anwenden und Cron-Ergebnis prüfen.
+- [ ] Sechs aktualisierte Hintergrundfunktionen deployen und ohne fällige Arbeit bzw. mit Fehlerfall prüfen.
+- [ ] Aktivitätsdrosselung mit einem konkreten Regressionstest absichern; Build und Vorschau prüfen.
+- [ ] Vorher/Nachher-Aufrufe messen; Einsparungen und verbleibende Kandidaten evidenzbasiert berichten.
+
 # Aktueller Build-Fehler
 - [x] Typfehler in bestätigten Wahlkreisgrenzen behoben; automatische Prüfung meldet Build OK, 26 gezielte Tests bestanden.
 - [ ] Sichtbare Vorschau prüfen — lokaler Vorschauzugriff läuft auch nach Neustart in ein Zeitlimit.

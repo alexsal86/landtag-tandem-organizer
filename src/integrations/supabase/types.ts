@@ -1,5 +1,3 @@
-import type { StateHistoryTables } from '@/features/election-analysis/stateHistoryModel';
-
 export type Json =
   | string
   | number
@@ -16,9 +14,6 @@ export type Database = {
   }
   public: {
     Tables: {
-      election_analysis_state_totals: StateHistoryTables["election_analysis_state_totals"]
-      election_analysis_flow_matrix: StateHistoryTables["election_analysis_flow_matrix"]
-      election_analysis_workbook_audit: StateHistoryTables["election_analysis_workbook_audit"]
       action_permissions: {
         Row: {
           action_key: string
@@ -4897,6 +4892,53 @@ export type Database = {
           },
         ]
       }
+      election_analysis_flow_matrix: {
+        Row: {
+          destination: string
+          origin: string
+          persons: number
+          previous_year: number
+          source_row: number
+          source_sheet: string
+          source_url: string
+          source_verified: boolean
+          workbook_sha256: string
+          year: number
+        }
+        Insert: {
+          destination: string
+          origin: string
+          persons: number
+          previous_year: number
+          source_row: number
+          source_sheet: string
+          source_url: string
+          source_verified?: boolean
+          workbook_sha256: string
+          year: number
+        }
+        Update: {
+          destination?: string
+          origin?: string
+          persons?: number
+          previous_year?: number
+          source_row?: number
+          source_sheet?: string
+          source_url?: string
+          source_verified?: boolean
+          workbook_sha256?: string
+          year?: number
+        }
+        Relationships: [
+          {
+            foreignKeyName: "election_analysis_flow_matrix_year_fkey"
+            columns: ["year"]
+            isOneToOne: false
+            referencedRelation: "election_analysis_years"
+            referencedColumns: ["year"]
+          },
+        ]
+      }
       election_analysis_flows: {
         Row: {
           balance: number | null
@@ -5217,6 +5259,59 @@ export type Database = {
           },
         ]
       }
+      election_analysis_state_totals: {
+        Row: {
+          ballot: string
+          election_date: string
+          eligible: number
+          invalid_votes: number
+          source_row: number
+          source_sheet: string
+          source_url: string
+          source_verified: boolean
+          valid_votes: number
+          voters: number
+          workbook_sha256: string
+          year: number
+        }
+        Insert: {
+          ballot: string
+          election_date: string
+          eligible: number
+          invalid_votes: number
+          source_row: number
+          source_sheet: string
+          source_url: string
+          source_verified?: boolean
+          valid_votes: number
+          voters: number
+          workbook_sha256: string
+          year: number
+        }
+        Update: {
+          ballot?: string
+          election_date?: string
+          eligible?: number
+          invalid_votes?: number
+          source_row?: number
+          source_sheet?: string
+          source_url?: string
+          source_verified?: boolean
+          valid_votes?: number
+          voters?: number
+          workbook_sha256?: string
+          year?: number
+        }
+        Relationships: [
+          {
+            foreignKeyName: "election_analysis_state_totals_year_fkey"
+            columns: ["year"]
+            isOneToOne: false
+            referencedRelation: "election_analysis_years"
+            referencedColumns: ["year"]
+          },
+        ]
+      }
       election_analysis_turnout: {
         Row: {
           ballot: string
@@ -5312,6 +5407,62 @@ export type Database = {
             isOneToOne: false
             referencedRelation: "election_history_districts"
             referencedColumns: ["id"]
+          },
+        ]
+      }
+      election_analysis_workbook_audit: {
+        Row: {
+          compared_at: string
+          existing: Json | null
+          id: string
+          incoming: Json
+          notes: string
+          record_key: string
+          section: string
+          source_row: number
+          source_sheet: string
+          source_url: string
+          status: string
+          workbook_sha256: string
+          year: number
+        }
+        Insert: {
+          compared_at?: string
+          existing?: Json | null
+          id: string
+          incoming: Json
+          notes?: string
+          record_key: string
+          section: string
+          source_row: number
+          source_sheet: string
+          source_url: string
+          status: string
+          workbook_sha256: string
+          year: number
+        }
+        Update: {
+          compared_at?: string
+          existing?: Json | null
+          id?: string
+          incoming?: Json
+          notes?: string
+          record_key?: string
+          section?: string
+          source_row?: number
+          source_sheet?: string
+          source_url?: string
+          status?: string
+          workbook_sha256?: string
+          year?: number
+        }
+        Relationships: [
+          {
+            foreignKeyName: "election_analysis_workbook_audit_year_fkey"
+            columns: ["year"]
+            isOneToOne: false
+            referencedRelation: "election_analysis_years"
+            referencedColumns: ["year"]
           },
         ]
       }
@@ -16810,6 +16961,7 @@ export type Database = {
       dispatch_due_knowledge_reviews: { Args: never; Returns: number }
       dispatch_due_task_reminders: { Args: never; Returns: number }
       dispatch_employee_preparation_reminders: { Args: never; Returns: number }
+      dispatch_scheduled_emails_if_due: { Args: never; Returns: undefined }
       dispatch_workflow_trigger: {
         Args: {
           _entity_id: string
@@ -16854,6 +17006,20 @@ export type Database = {
           p_title: string
         }
         Returns: boolean
+      }
+      election_history_1952_source: {
+        Args: never
+        Returns: {
+          historical_number: number
+          name: string
+          region: string
+          source_key: string
+          technical_number: number
+        }[]
+      }
+      election_history_source_district_name: {
+        Args: { source_number: number; source_year: number }
+        Returns: string
       }
       employee_protocol_hash: {
         Args: { p_meeting_id: string }
