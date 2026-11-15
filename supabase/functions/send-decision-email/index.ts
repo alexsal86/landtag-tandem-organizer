@@ -30,9 +30,11 @@ const handler = async (req: Request): Promise<Response> => {
   try {
     const supabase = createServiceRoleClient();
 
+    const requestBody = await req.json();
     const tenantAccess = await requireTenantAccess({
       req,
       functionName: "send-decision-email",
+      requestedTenantId: requestBody.tenant_id,
     });
 
     if ("response" in tenantAccess) {
@@ -45,7 +47,7 @@ const handler = async (req: Request): Promise<Response> => {
       decisionId,
       taskId,
       participantIds,
-    }: DecisionEmailRequest = await req.json();
+    }: DecisionEmailRequest = requestBody;
 
     console.log("=== SEND DECISION EMAIL DEBUG ===");
     console.log("Decision ID:", decisionId);

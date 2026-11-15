@@ -89,7 +89,6 @@ serve(withSafeHandler("force-resync-calendar", async (req) => {
       const { error: deleteError } = await supabase
         .from('external_events')
         .delete()
-        .eq('tenant_id', access.tenantId)
         .eq('external_calendar_id', calendar_id);
 
       if (deleteError) {
@@ -108,7 +107,8 @@ serve(withSafeHandler("force-resync-calendar", async (req) => {
         sync_errors_count: 0,
         last_sync_error: null
       })
-      .eq('id', calendar_id);
+      .eq('id', calendar_id)
+      .eq('tenant_id', access.tenantId);
     // The calendar ID was authorized in the selected office above.
 
     if (resetError) {

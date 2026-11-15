@@ -19,11 +19,12 @@ serve(withSafeHandler("batch-geocode-contacts", async (req) => {
       Deno.env.get('SUPABASE_SERVICE_ROLE_KEY') ?? ''
     );
 
-    const { contactIds, limit = 50 } = await req.json();
+    const { contactIds, limit = 50, tenant_id } = await req.json();
 
     const tenantAccess = await requireTenantAccess({
       req,
       functionName: "batch-geocode-contacts",
+      requestedTenantId: tenant_id,
     });
 
     if ("response" in tenantAccess) {

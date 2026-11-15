@@ -112,11 +112,12 @@ serve(withSafeHandler("fetch-rss-feeds", async (req) => {
   }
 
   try {
-    const { category, limit } = await req.json();
+    const { category, limit, tenant_id: requestedTenantId } = await req.json();
 
     const tenantAccess = await requireTenantAccess({
       req,
       functionName: "fetch-rss-feeds",
+      requestedTenantId: requestedTenantId,
     });
 
     if ("response" in tenantAccess) {

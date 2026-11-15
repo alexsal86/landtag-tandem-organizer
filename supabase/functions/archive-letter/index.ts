@@ -3,6 +3,7 @@ import { createClient } from 'https://esm.sh/@supabase/supabase-js@2.7.1';
 import { PDFDocument, rgb, StandardFonts } from 'https://esm.sh/pdf-lib@1.17.1';
 
 import { withSafeHandler, requireAuth, unauthorizedResponse } from "../_shared/security.ts";
+import { requireTenantAccess } from "../_shared/tenant-access.ts";
 const corsHeaders = {
   'Access-Control-Allow-Origin': '*',
   'Access-Control-Allow-Headers': 'authorization, x-client-info, apikey, content-type',
@@ -21,7 +22,9 @@ serve(withSafeHandler("archive-letter", async (req) => {
   if (!auth) return unauthorizedResponse();
 
   try {
-    const { letterId } = await req.json();
+    const { letterId, tenant_id } = await req.json();
+    const access = await requireTenantAccess({ req, functionName: "archive-letter", requestedTenantId: tenant_id });
+    if ("response" in access) return access.response;
     const userId = auth.userId;
     console.log('Processing letter archive for ID:', letterId, 'requested by:', userId);
 
@@ -32,6 +35,7 @@ serve(withSafeHandler("archive-letter", async (req) => {
       .from('letters')
       .select('*')
       .eq('id', letterId)
+      .eq('tenant_id', access.tenantId)
       .single();
 
     if (letterError || !letter) {
@@ -81,6 +85,7 @@ serve(withSafeHandler("archive-letter", async (req) => {
         .from('letter_templates')
         .select('*')
         .eq('id', letter.template_id)
+        .eq('tenant_id', access.tenantId)
         .single();
       template = templateData;
     }
@@ -90,6 +95,7 @@ serve(withSafeHandler("archive-letter", async (req) => {
         .from('sender_information')
         .select('*')
         .eq('id', letter.sender_info_id)
+        .eq('tenant_id', access.tenantId)
         .single();
       senderInfo = senderData;
     }
@@ -99,6 +105,7 @@ serve(withSafeHandler("archive-letter", async (req) => {
         .from('information_blocks')
         .select('*')
         .eq('id', letter.information_block_ids[0])
+        .eq('tenant_id', access.tenantId)
         .single();
       informationBlock = blockData;
     }
@@ -108,7 +115,7 @@ serve(withSafeHandler("archive-letter", async (req) => {
 
     // Create document file name
     const documentFileName = `letter_${letter.title.replace(/[^a-zA-Z0-9]/g, '_')}_${Date.now()}.pdf`;
-    const filePath = `archived_letters/${documentFileName}`;
+    const filePath = `${userId}/archived_letters/${documentFileName}`;
 
     // Upload the PDF content to Supabase Storage
     const { data: uploadData, error: uploadError } = await supabase.storage
@@ -210,7 +217,8 @@ serve(withSafeHandler("archive-letter", async (req) => {
         archived_at: archiveTimestamp,
         archived_by: archivalUserId
       })
-      .eq('id', letterId);
+      .eq('id', letterId)
+      .eq('tenant_id', access.tenantId);
 
     if (updateError) {
       console.error('Error updating letter:', updateError);
