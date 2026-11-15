@@ -28,15 +28,21 @@ export const electionMapScenario: TestScenario = {
         && confirmedPeriodGeometryYear({ ...period, election_year: 2006, boundary_geometry_year: 2006 }) === 2006
         && confirmedPeriodGeometryYear({ ...period, election_year: 2011, boundary_geometry_year: 2011 }) === 2011
         && confirmedPeriodGeometryYear({ ...period, election_year: 2006, boundary_geometry_year: 2011 }) === null
+        && confirmedPeriodGeometryYear({ ...period, election_year: 1964, boundary_geometry_year: 1968 }) === 1968
+        && confirmedPeriodGeometryYear({ ...period, election_year: 1964, boundary_geometry_year: 1972 }) === null
+        && confirmedPeriodGeometryYear({ ...period, election_year: 1968, boundary_geometry_year: 1972 }) === null
         && [1976, 1980, 1984].every(year => confirmedPeriodGeometryYear({ ...period, election_year: year, boundary_geometry_year: 1988 }) === 1988)
         && confirmedPeriodGeometryYear({ ...period, election_year: 1972, boundary_geometry_year: 1988 }) === null
         && confirmedPeriodGeometryYear({ ...period, election_year: 1976, boundary_geometry_year: 1976 }) === null
-        && [1972, 1988, 1992, 1996, 2001].every(year => confirmedPeriodGeometryYear({ ...period, election_year: year, boundary_geometry_year: year }) === year)
+        && [1968, 1972, 1988, 1992, 1996, 2001].every(year => confirmedPeriodGeometryYear({ ...period, election_year: year, boundary_geometry_year: year }) === year)
         && confirmedPeriodGeometryYear({ ...period, election_year: 1992, boundary_geometry_year: 2001 }) === null
         && confirmedPeriodGeometryYear({ ...period, election_year: 1952 }) === null
         && confirmedPeriodGeometryYear({ ...period, boundary_geometry_year: 2016 }) === null
         && resolved.districts[0].boundaries === shape && resolved.districts[1].boundaries === null
         && resolved.districts[2] === data.districts[2] && resolved.districts[3].boundaries === null
+        && sourceHistoricalDistrictName(1964, 37) === 'Bruchsal' && sourceHistoricalDistrictName(1968, 37) === 'Bruchsal'
+        && sourceHistoricalDistrictName(1968, 33) === 'Mannheim-Stadt III' && sourceHistoricalDistrictName(1968, 5) === 'Stuttgart V'
+        && isReconstructedBoundary(1964) && isReconstructedBoundary(1968)
         && sourceHistoricalDistrictName(1972, 37) === 'Bruchsal' && sourceHistoricalDistrictName(1972, 33) === 'Mannheim-Stadt III'
         && sourceHistoricalDistrictName(1972, 5) === 'Stuttgart V' && sourceHistoricalDistrictName(1984, 37) === 'Mannheim III'
         && sourceHistoricalDistrictName(1992, 37) === null && isReconstructedBoundary(1972) && !isReconstructedBoundary(1988)

@@ -1,4 +1,4 @@
-import { RECONSTRUCTED_1972_ATTRIBUTION } from '@/utils/electoralGeometryCatalog';
+import { reconstructedGeometryAttribution } from '@/utils/electoralGeometryCatalog';
 import { HistoricalGeometryNotice } from '@/features/election-history/HistoricalGeometryNotice';
 import { usePeriodGeometry } from '@/features/election-history/usePeriodGeometry';
 import { Link } from 'react-router-dom';
@@ -149,7 +149,7 @@ export const ElectionDistrictsView = ({ sidebarHeader }: { sidebarHeader?: React
               <SimpleLeafletMap
                 key={historyPeriod?.id || 'legacy'}
                 districtCount={history.data?.districts.length}
-                geometryAttribution={historyPeriod?.boundary_geometry_year === 1972 ? RECONSTRUCTED_1972_ATTRIBUTION : undefined}
+                geometryAttribution={reconstructedGeometryAttribution(historyPeriod?.boundary_geometry_year)}
                 districts={displayedDistricts}
                 onDistrictClick={handleDistrictClick}
                 selectedDistrict={selectedDistrict ?? undefined}

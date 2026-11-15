@@ -1,4 +1,4 @@
-import { isReconstructedBoundary, RECONSTRUCTED_1972_ATTRIBUTION } from "@/utils/electoralGeometryCatalog";
+import { isReconstructedBoundary, reconstructedGeometryAttribution } from "@/utils/electoralGeometryCatalog";
 import { HistoricalGeometryNotice } from "@/features/election-history/HistoricalGeometryNotice";
 import { ELECTORAL_TOPOLOGY_VERSION } from "@/utils/electoralTopologyAsset";
 import { useEffect, useRef } from "react";
@@ -92,8 +92,8 @@ export function AnalysisMap({
     });
     map.current = instance;
     instance.attributionControl.addAttribution(
-      bundledYear === 1972
-        ? RECONSTRUCTED_1972_ATTRIBUTION
+      bundledYear != null && isReconstructedBoundary(bundledYear)
+        ? reconstructedGeometryAttribution(bundledYear)!
         : preview
         ? `Geometrie: Wahlkreisgrenzen ${bundledYear ?? 2021} · Zuordnung ungeprüft`
         : "Geometrie: Statistisches Landesamt Baden-Württemberg",
@@ -336,7 +336,7 @@ export function AnalysisMap({
           schraffiert: unbekannt / ausgeschlossen
         </span>
       </div>
-      {bundledYear != null && isReconstructedBoundary(bundledYear) ? <p className="text-xs text-muted-foreground">Rekonstruierte Kartengrundlage 1972 · historische Zuordnung separat prüfen</p> : preview ? (
+      {bundledYear != null && isReconstructedBoundary(bundledYear) ? <p className="text-xs text-muted-foreground">Rekonstruierte Kartengrundlage {bundledYear} · historische Zuordnung separat prüfen</p> : preview ? (
         <p className="text-xs text-muted-foreground">
           Kartengrundlage: Wahlkreisgrenzen {bundledYear ?? 2021} · Prüfung für diese Auswahl ausstehend
         </p>

@@ -41,7 +41,7 @@ const fields: Record<HistoryEntity, Field[]> = {
     { key: 'ends_on', label: 'Ende der Legislaturperiode / übernommener Endtermin', type: 'date' },
     { key: 'ends_on_is_expected', label: 'Endtermin ist voraussichtlich, noch kein tatsächliches Ende', type: 'checkbox' },
     { key: 'expected_ends_on', label: 'Voraussichtliches reguläres Ende (separat)', type: 'date' }, notesField,
-    { key: 'boundary_geometry_year', label: 'Historischer Grenzstand für die Karte', type: 'select', help: 'Verfügbare historische Grenzstände werden aus den hinterlegten Kartendaten angeboten. Für 1976/1980/1984 gilt der Stand 1988, für 2026 der Stand 2021. Es werden keine Einzelgeometrien kopiert.' },
+    { key: 'boundary_geometry_year', label: 'Historischer Grenzstand für die Karte', type: 'select', help: 'Verfügbare historische Grenzstände werden aus den hinterlegten Kartendaten angeboten. Für 1964 gilt der Stand 1968, für 1976/1980/1984 gilt der Stand 1988, für 2026 der Stand 2021. Es werden keine Einzelgeometrien kopiert.' },
     { key: 'boundary_geometry_confirmed', label: 'Grenzstand und Zuordnung der Wahlkreisnummern für diese Legislatur geprüft und bestätigt', type: 'checkbox', help: 'Erst nach dieser Bestätigung verwendet die historische Karte den gewählten Grenzstand. Die Veröffentlichung der Legislatur wird separat gesteuert.' },
     { key: 'is_published', label: 'Für alle Tenants freigeben', type: 'checkbox', help: 'Erst nach der Prüfung freigeben. Die aktuelle Periode muss freigegeben bleiben.' },
   ],
