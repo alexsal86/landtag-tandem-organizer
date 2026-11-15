@@ -79,6 +79,9 @@ export const electionAnalysisScenario: TestScenario = {
           properties: { Nummer: String(i + 1) },
         }));
         const manifest = parseElectoralManifest({ version: 1, year: 2021, districts }, 2021);
+        const oldDistricts = districts.map(d => ({ ...d, shape: d.properties.Nummer === "37" ? "c".repeat(64) : d.shape, properties: { ...d.properties, "WK Name": d.properties.Nummer === "37" ? "Mannheim III" : "Historischer Wahlkreis" } }));
+        const old = parseElectoralManifest({ version: 1, year: 1988, districts: oldDistricts }, 1988);
+        const newer = parseElectoralManifest({ version: 1, year: 1992, districts: oldDistricts.map(d => ({ ...d, shape: districts[Number(d.properties.Nummer) - 1].shape, properties: { ...d.properties, "WK Name": d.properties.Nummer === "37" ? "Wiesloch" : d.properties["WK Name"] } })) }, 1992);
         const existing = new Set(districts.slice(0, 68).map(d => d.shape));
         const missing = requiredElectoralPackages(manifest, existing);
         let wrongYear = false, duplicateNumber = false, foreignPackage = false;
@@ -88,6 +91,10 @@ export const electionAnalysisScenario: TestScenario = {
         return {
           ok: requiredElectoralPackages(manifest, new Set()).length === 2 && missing.length === 1 && missing[0] === changed
             && requiredElectoralPackages(manifest, new Set(districts.map(d => d.shape))).length === 0
+            && old.districts.find(d => d.properties.Nummer === "37")?.properties["WK Name"] === "Mannheim III"
+            && !old.districts.some(d => d.properties["WK Name"] === "Wiesloch")
+            && newer.districts.find(d => d.properties.Nummer === "37")?.properties["WK Name"] === "Wiesloch"
+            && old.districts.find(d => d.properties.Nummer === "37")?.shape !== newer.districts.find(d => d.properties.Nummer === "37")?.shape
             && wrongYear && duplicateNumber && foreignPackage,
           message: "Kein Nachladen gemeinsamer Formen; nur das Änderungspaket der gewählten Wahl, gültige Nummern und lokale Hash-Adressen.",
         };
@@ -110,7 +117,7 @@ export const electionAnalysisScenario: TestScenario = {
             electoralGeometryYear(2026) === 2021 && electoralGeometryYear(2006) === 2006 &&
             electoralGeometryYear(2011) === 2011 && electoralGeometryYear(1992) === 1992 &&
             electoralGeometryYear(1996) === 1996 && electoralGeometryYear(2001) === 2001 &&
-            electoralGeometryYear(1988) === null &&
+            electoralGeometryYear(1988) === 1988 && electoralGeometryYear(1984) === null &&
             rejectsUnknown && JSON.stringify(decoded.features[0].geometry.coordinates) ===
               JSON.stringify([[[8, 48], [9, 48], [8, 49], [8, 48]]]),
           message: "2026 verwendet 2021; andere Jahre werden nicht erfunden. Gemeinsame Grenzen bleiben unverändert.",

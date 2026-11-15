@@ -70,3 +70,5 @@
 
 - Historical member maps may use the shared electoral TopoJSON only through a period-specific boundary_geometry_year and explicit boundary_geometry_confirmed attestation; 2026 uses 2021. Attach shapes only in memory to that period by its confirmed district numbers, preserve individual historical shapes, and never infer this confirmation from year/name/number alone. District-number assignment changes invalidate the attestation in PostgreSQL.
 - Electoral TopoJSON loading uses selected-year manifests and content-addressed district-form packages grouped by exact year usage. Never restore an all-years download or delete other years' cached packages during a fetch. Preserve all supplied coordinates without quantization; shared shape identities alone do not authorize historical assignment.
+
+- The 1988 historical district 37 is Mannheim III, not Wiesloch (district 37 from 1992 onward). Preserve year-specific names and geometries; never create a separate Wiesloch district for 1988 or infer cross-year identity from district number 37.
