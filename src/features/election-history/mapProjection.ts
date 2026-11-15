@@ -2,7 +2,8 @@ import type { ElectionDistrict } from '@/hooks/useElectionDistricts';
 import { hasRenderableBoundary } from '@/features/election-districts/mapModel';
 import type { ElectionHistoryData } from './types';
 
-/** Only genuine historical geometry is drawn. Neither numbers nor names prove
+/** Only period-authorized geometry is drawn, with reconstruction notices where
+ * applicable. Neither numbers nor names prove
  * that the current boundaries describe the same historical constituency. */
 export function projectHistoricalDistricts(base: ElectionDistrict[], data: ElectionHistoryData, periodId: string): ElectionDistrict[] {
   const period = data.periods.find(p => p.id === periodId);

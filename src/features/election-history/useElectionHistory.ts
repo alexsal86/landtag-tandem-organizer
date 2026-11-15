@@ -1,3 +1,4 @@
+import { withHistoricalDistrictNames } from './historicalDistrictNames';
 import { useQuery, type UseQueryResult } from '@tanstack/react-query';
 import { supabase } from '@/integrations/supabase/client';
 import { useAuth } from '@/hooks/useAuth';
@@ -27,7 +28,7 @@ export function useElectionHistory(periodId?: string): UseQueryResult<ElectionHi
       if (!data || typeof data !== 'object' || Array.isArray(data)
           || !Array.isArray(data.periods) || !Array.isArray(data.people) || !Array.isArray(data.districts)
           || !Array.isArray(data.candidacies) || !Array.isArray(data.mandates)) throw new Error('Ungültige Periodendaten.');
-      return data as unknown as ElectionHistoryData;
+      return withHistoricalDistrictNames(data as unknown as ElectionHistoryData);
     }, staleTime: 60_000, gcTime: 120_000, retry: false,
   });
 }

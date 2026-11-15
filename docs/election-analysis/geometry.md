@@ -16,11 +16,13 @@ repeated closing point; stored rings retain it.
 
 Unique forms are grouped by the set of boundary years which need them. This
 keeps requests bounded without fetching other years' unused forms. Shared arcs
-within each package are deduplicated as well. There are now 137 distinct
-forms across eight boundary years (560 district entries):
+within each package are deduplicated as well. There are now 207 distinct
+forms across nine boundary datasets (630 district entries). The elections 1976,
+1980 and 1984 are explicit aliases of 1988, and 2026 is an alias of 2021:
 
 | Package usage | Distinct forms | Gzip bytes | Brotli bytes |
 | --- | ---: | ---: | ---: |
+| 1972 (reconstruction) | 70 | 4,187,375 | 3,120,503 |
 | 1988 | 17 | 1,053,298 | 785,391 |
 | 1988,1992,1996,2001 | 10 | 630,055 | 477,771 |
 | 1988,1992,1996,2001,2006 | 17 | 826,199 | 624,370 |
@@ -33,13 +35,16 @@ forms across eight boundary years (560 district entries):
 | 2011,2016,2021 | 35 | 1,663,006 | 1,251,662 |
 | 2021 | 2 | 115,519 | 87,298 |
 
-1988 shares 53 forms with 1992 and adds 17 distinct forms. 1992, 1996 and
+The reconstructed 1972 shapes remain independent of the later datasets.
+1976/1980/1984 use the 1988 manifest directly, with no additional geometry files
+or download on switches within that group. 1988 shares 53 forms with 1992 and adds 17 distinct forms. 1992, 1996 and
 2001 reuse all 70 forms. The consistent 2006 source shares 33 forms with the
 newer years. No tolerance is used to declare geometries identical.
 
 | Selected year | Cold requests (manifest + packages) | Gzip bytes | Brotli bytes |
 | --- | ---: | ---: | ---: |
-| 1988 | 5 | 3,843,172 | 2,895,829 |
+| 1972 | 2 | 4,191,067 | 3,123,776 |
+| 1976 / 1980 / 1984 / 1988 | 5 | 3,843,172 | 2,895,829 |
 | 1992 | 7 | 3,678,214 | 2,782,168 |
 | 1996 | 7 | 3,678,214 | 2,782,168 |
 | 2001 | 7 | 3,678,214 | 2,782,173 |
@@ -91,7 +96,7 @@ retains it. Published existing frontend sessions should reload after deployment.
 Use the original unquantized sources, including the cleaned 2021 replacement:
 
 ```sh
-node scripts/geometry/pack-election-topology.mjs 1988=path/to/LTWahlkreise1988-BW_konsistent.topojson 1992=path/to/LTWahlkreise1992-BW_konsistent.topojson 1996=path/to/LTWahlkreise1996-BW_konsistent.topojson 2001=path/to/LTWahlkreise2001-BW_konsistent.topojson 2006=path/to/LTWahlkreise2006-BW_konsistent.topojson 2011=path/to/LTWahlkreise2011-BW.topojson.json 2016=path/to/LTWahlkreise2016-BW.topojson 2021=path/to/LTWahlkreise2021_bereinigt.topojson.json
+node scripts/geometry/pack-election-topology.mjs 1972=path/to/LTWahlkreise1972-BW_konsistent.topojson 1988=path/to/LTWahlkreise1988-BW_konsistent.topojson 1992=path/to/LTWahlkreise1992-BW_konsistent.topojson 1996=path/to/LTWahlkreise1996-BW_konsistent.topojson 2001=path/to/LTWahlkreise2001-BW_konsistent.topojson 2006=path/to/LTWahlkreise2006-BW_konsistent.topojson 2011=path/to/LTWahlkreise2011-BW.topojson.json 2016=path/to/LTWahlkreise2016-BW.topojson 2021=path/to/LTWahlkreise2021_bereinigt.topojson.json
 ```
 
 The script writes hashed packages/manifests with gzip/Brotli representations and
@@ -107,13 +112,18 @@ Existing database migrations remain necessary for period-specific selection:
 `20261115080000_election_history_2006_2011_geometry.sql`, followed by
 `20261115090000_election_history_1992_2001_geometry.sql` to permit the additional
 1992/1996/2001 selections. `20261115100000_election_history_1988_geometry.sql`
-adds 1988 and corrects its district-37 name. Existing selections and confirmations are preserved;
+adds 1988 and corrects its district-37 name.
+`20261115110000_election_history_1972_1984_geometry.sql` permits 1972 and the
+1976/1980/1984 → 1988 aliases, supplies the pre-reform name registry, and resets
+any 1972 geometry attestation pending explicit review. Other existing selections
+and confirmations are preserved;
 no new legislature is assigned or confirmed automatically.
 
 As superadmin, open **Administration → Wahldaten & Mandatshistorie →
 Legislaturperioden**, edit the desired period, select **Historischer Grenzstand
 für die Karte**, confirm the checked boundary/district-number assignment, then
-save. Choose the matching year (1988, 1992, 1996, 2001, 2006, 2011, 2016), or 2021 for 2021/2026.
+save. Choose 1972 for the pre-reform reconstruction, 1988 for 1976/1980/1984/1988,
+the matching year for 1992/1996/2001/2006/2011/2016, or 2021 for 2021/2026.
 The editor derives its options from the generated manifest catalog.
 **Für alle Tenants freigeben** remains the separate publication switch.
 
@@ -149,3 +159,39 @@ and later years, and inserts no additional district. A database trigger also
 normalizes future 1988 district-37 writes to Mannheim III and rejects a separate
 district named Wiesloch in that year. Apply this migration before using the new
 1988 selection. Period confirmation remains explicit.
+
+## 1972 reconstruction and 1976–1984 aliases (2026-11-15)
+
+The user explicitly confirmed that 1976, 1980 and 1984 have the same boundaries
+as 1988. This correspondence lives in `electoralGeometryCatalog.ts` and the
+period constraint. No extra manifest is necessary; confirmation remains per
+legislature. District 37 is Mannheim III for each of these four elections.
+
+The supplied `LTWahlkreise1972-BW_konsistent.zip` is a **historical reconstruction**,
+not an official original boundary map. Its stated reference date is 1971-10-01;
+modern subdivisions were used to approximate some inner-city and former municipal
+boundaries. [Supplied methodology and licenses](sources/1972-source-notes.md) and
+[the source name list](sources/1972-district-names.csv) are retained as provenance.
+The included Python reconstruction scripts were not executed. No simplification,
+quantization, reprojection or further repair was performed during packaging.
+
+The 70 1972 names/numbers are used independently of later years: 37 Bruchsal,
+31–33 Mannheim-Stadt I/II/III, and 1–5 Stuttgart I–V. The migration corrects
+same-year labels, inserts only missing 1972 registry numbers and preserves
+existing IDs, district numbers, individual boundaries, mandates and candidacy
+links. It does not map a post-reform district to a 1972 district. The read adapter
+also normalizes these explicit source labels so lists, search and map labels
+agree. The reconstruction notice asks administrators to review the associations.
+
+Historical map/editor/preview and analysis previews display the reconstruction
+status, limitations and source/license credits. Leaflet attribution includes BKG
+and LGL for 1972. The confirmed-geometry analysis adapter excludes reconstructed
+1972 from automatically deriving verified cross-year identities. Explicitly
+assigned analysis geometry keeps precedence; a reconstruction cannot silently
+replace it. Displaying a reconstructed map is distinct from confirming official
+historical comparability.
+
+The new 1972 dataset adds only its own manifest/package. The existing datasets'
+package URLs and cold-transfer sizes remain unchanged. 1972 consumes about
+4.19 MB over the active gzip route, only when selected. Its explicit full geometry
+is not preloaded by other elections.

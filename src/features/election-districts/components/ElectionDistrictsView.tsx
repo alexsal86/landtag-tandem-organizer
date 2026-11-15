@@ -1,3 +1,5 @@
+import { RECONSTRUCTED_1972_ATTRIBUTION } from '@/utils/electoralGeometryCatalog';
+import { HistoricalGeometryNotice } from '@/features/election-history/HistoricalGeometryNotice';
 import { usePeriodGeometry } from '@/features/election-history/usePeriodGeometry';
 import { Link } from 'react-router-dom';
 import { PeriodMembersOverview } from '@/features/election-history/PeriodMembersOverview';
@@ -147,6 +149,7 @@ export const ElectionDistrictsView = ({ sidebarHeader }: { sidebarHeader?: React
               <SimpleLeafletMap
                 key={historyPeriod?.id || 'legacy'}
                 districtCount={history.data?.districts.length}
+                geometryAttribution={historyPeriod?.boundary_geometry_year === 1972 ? RECONSTRUCTED_1972_ATTRIBUTION : undefined}
                 districts={displayedDistricts}
                 onDistrictClick={handleDistrictClick}
                 selectedDistrict={selectedDistrict ?? undefined}
@@ -221,6 +224,7 @@ export const ElectionDistrictsView = ({ sidebarHeader }: { sidebarHeader?: React
               <p className="mt-2 text-xs text-muted-foreground">Es wird nur diese Legislatur geladen. Historische Umrisse werden nur angezeigt, wenn sie für diese Periode hinterlegt sind.</p>
             </div>
           )}
+          <HistoricalGeometryNotice year={historyPeriod?.boundary_geometry_year} />
           {history.isLoading && <p role="status" className="text-sm text-muted-foreground">Lade ausgewählte Legislatur …</p>}
           {periodGeometry.isLoading && <p role="status" className="text-sm text-muted-foreground">Lade bestätigten historischen Grenzstand …</p>}
           {periodGeometry.error && <p role="alert" className="text-sm">Der bestätigte Grenzstand konnte nicht geladen werden. <button className="underline" onClick={() => void periodGeometry.refetch()}>Erneut laden</button></p>}

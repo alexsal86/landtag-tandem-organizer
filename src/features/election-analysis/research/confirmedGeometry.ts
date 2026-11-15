@@ -1,3 +1,4 @@
+import { isReconstructedBoundary } from '@/utils/electoralGeometryCatalog';
 import { supabase } from '@/integrations/supabase/client';
 import { electoralGeometryYear, loadElectoralTopology } from '@/utils/electoralTopology';
 import type { DistrictVersion } from './types';
@@ -21,7 +22,7 @@ function canonicalGeometry(geometry: { type: string; coordinates: number[][][] |
 
 /** Reuse explicit period attestations without persisting or guessing analysis identities. */
 export async function withConfirmedGeometry(versions: DistrictVersion[], signal: AbortSignal): Promise<DistrictVersion[]> {
-  const years = [...new Set(versions.map(v => v.year))].filter(y => electoralGeometryYear(y) !== null);
+  const years = [...new Set(versions.map(v => v.year))].filter(y => electoralGeometryYear(y) !== null && !isReconstructedBoundary(y));
   if (!years.length) return versions;
   const { data: periods, error } = await supabase.from('election_history_periods')
     .select('id,election_year,boundary_geometry_year,boundary_geometry_confirmed')

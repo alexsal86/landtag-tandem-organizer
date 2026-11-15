@@ -1,3 +1,4 @@
+import { boundaryYearCandidate } from './electoralGeometryCatalog';
 import { normalizeElectoralGeoJson, type GeoJsonData } from './geoJsonLoader';
 import { ELECTORAL_TOPOLOGY_MANIFESTS } from './electoralTopologyAsset';
 
@@ -13,7 +14,7 @@ type DistrictTopology = {
   objects: Record<string, { type: 'GeometryCollection'; geometries: DistrictGeometry[] }>;
 };
 export const electoralGeometryYear = (year: number): number | null => {
-  const boundaryYear = year === 2026 ? 2021 : year;
+  const boundaryYear = boundaryYearCandidate(year);
   return Object.prototype.hasOwnProperty.call(ELECTORAL_TOPOLOGY_MANIFESTS, boundaryYear) ? boundaryYear : null;
 };
 

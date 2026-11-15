@@ -1,3 +1,5 @@
+import { isReconstructedBoundary, RECONSTRUCTED_1972_ATTRIBUTION } from "@/utils/electoralGeometryCatalog";
+import { HistoricalGeometryNotice } from "@/features/election-history/HistoricalGeometryNotice";
 import { ELECTORAL_TOPOLOGY_VERSION } from "@/utils/electoralTopologyAsset";
 import { useEffect, useRef } from "react";
 import { useQuery } from "@tanstack/react-query";
@@ -43,7 +45,7 @@ export function AnalysisMap({
   const preview = !confirmedBundledYear && allowGeometryPreview && !geography.isLoading &&
     (!geography.data?.asset_path || geography.data?.verified !== true);
   const selectedYear = geometryYear ?? versions[0]?.year;
-  const bundledYear = confirmedBundledYear ?? (allowGeometryPreview && selectedYear !== undefined ? electoralGeometryYear(selectedYear) : null);
+  const bundledYear = confirmedBundledYear ?? (preview && selectedYear !== undefined ? electoralGeometryYear(selectedYear) : null);
   const asset = bundledYear
     ? `bundled:${bundledYear}`
     : preview
@@ -90,7 +92,9 @@ export function AnalysisMap({
     });
     map.current = instance;
     instance.attributionControl.addAttribution(
-      preview
+      bundledYear === 1972
+        ? RECONSTRUCTED_1972_ATTRIBUTION
+        : preview
         ? `Geometrie: Wahlkreisgrenzen ${bundledYear ?? 2021} · Zuordnung ungeprüft`
         : "Geometrie: Statistisches Landesamt Baden-Württemberg",
     );
@@ -235,6 +239,7 @@ export function AnalysisMap({
     );
   return (
     <div className="space-y-2">
+      <HistoricalGeometryNotice year={bundledYear} />
       {preview && (
         <p role="status" className="rounded-lg border border-amber-500 bg-amber-50 p-3 text-sm text-amber-950 dark:bg-amber-950 dark:text-amber-100">
           Ungeprüfte Kartenvorschau: Angezeigt werden die vorhandenen
@@ -331,7 +336,7 @@ export function AnalysisMap({
           schraffiert: unbekannt / ausgeschlossen
         </span>
       </div>
-      {preview ? (
+      {bundledYear != null && isReconstructedBoundary(bundledYear) ? <p className="text-xs text-muted-foreground">Rekonstruierte Kartengrundlage 1972 · historische Zuordnung separat prüfen</p> : preview ? (
         <p className="text-xs text-muted-foreground">
           Kartengrundlage: Wahlkreisgrenzen {bundledYear ?? 2021} · Prüfung für diese Auswahl ausstehend
         </p>

@@ -1,3 +1,5 @@
+import { withHistoricalDistrictNames } from '@/features/election-history/historicalDistrictNames';
+import { sourceHistoricalDistrictName, isReconstructedBoundary } from '@/utils/electoralGeometryCatalog';
 import { confirmedPeriodGeometryYear, withPeriodGeometry } from '@/features/election-history/periodGeometry';
 import type { ElectionHistoryData, ElectionPeriod } from '@/features/election-history/types';
 import { hasRenderableBoundary, searchElectionDistricts } from '@/features/election-districts/mapModel';
@@ -20,17 +22,25 @@ export const electionMapScenario: TestScenario = {
         { ...district, id: 'individual', boundaries: shape }, { ...district, id: 'missing', district_number: null }], people: [], mandates: [], candidacies: [] };
       const geometry = { type: 'FeatureCollection' as const, features: [{ type: 'Feature' as const, properties: { Nummer: '1' }, geometry: shape }] };
       const resolved = withPeriodGeometry(data, 'p', geometry);
+      const historical = withHistoricalDistrictNames({ ...data, periods: [{ ...period, election_year: 1972 }], districts: [{ ...district, district_number: 37, name: 'Wiesloch' }] });
       return { ok: confirmedPeriodGeometryYear(period) === 2021
         && confirmedPeriodGeometryYear({ ...period, boundary_geometry_confirmed: false }) === null
         && confirmedPeriodGeometryYear({ ...period, election_year: 2006, boundary_geometry_year: 2006 }) === 2006
         && confirmedPeriodGeometryYear({ ...period, election_year: 2011, boundary_geometry_year: 2011 }) === 2011
         && confirmedPeriodGeometryYear({ ...period, election_year: 2006, boundary_geometry_year: 2011 }) === null
-        && [1988, 1992, 1996, 2001].every(year => confirmedPeriodGeometryYear({ ...period, election_year: year, boundary_geometry_year: year }) === year)
+        && [1976, 1980, 1984].every(year => confirmedPeriodGeometryYear({ ...period, election_year: year, boundary_geometry_year: 1988 }) === 1988)
+        && confirmedPeriodGeometryYear({ ...period, election_year: 1972, boundary_geometry_year: 1988 }) === null
+        && confirmedPeriodGeometryYear({ ...period, election_year: 1976, boundary_geometry_year: 1976 }) === null
+        && [1972, 1988, 1992, 1996, 2001].every(year => confirmedPeriodGeometryYear({ ...period, election_year: year, boundary_geometry_year: year }) === year)
         && confirmedPeriodGeometryYear({ ...period, election_year: 1992, boundary_geometry_year: 2001 }) === null
         && confirmedPeriodGeometryYear({ ...period, election_year: 1952 }) === null
         && confirmedPeriodGeometryYear({ ...period, boundary_geometry_year: 2016 }) === null
         && resolved.districts[0].boundaries === shape && resolved.districts[1].boundaries === null
         && resolved.districts[2] === data.districts[2] && resolved.districts[3].boundaries === null
+        && sourceHistoricalDistrictName(1972, 37) === 'Bruchsal' && sourceHistoricalDistrictName(1972, 33) === 'Mannheim-Stadt III'
+        && sourceHistoricalDistrictName(1972, 5) === 'Stuttgart V' && sourceHistoricalDistrictName(1984, 37) === 'Mannheim III'
+        && sourceHistoricalDistrictName(1992, 37) === null && isReconstructedBoundary(1972) && !isReconstructedBoundary(1988)
+        && historical.districts[0].name === 'Bruchsal' && historical.districts[0].id === district.id && historical.districts[0].district_number === 37
         && data.districts[0].boundaries === null
         && withPeriodGeometry({ ...data, periods: [{ ...period, boundary_geometry_confirmed: false }] }, 'p', geometry).districts[0].boundaries === null,
         message: 'Keine ungeprüften Grenzstände; 2026 nutzt bestätigt 2021. Einzelumrisse, fremde Perioden und fehlende Nummern bleiben unverändert.' };

@@ -1,3 +1,5 @@
+import { boundaryYearLabel } from "@/utils/electoralGeometryCatalog";
+import { HistoricalGeometryNotice } from "./HistoricalGeometryNotice";
 import { ELECTORAL_TOPOLOGY_MANIFESTS } from "@/utils/electoralTopologyAsset";
 import { CandidateIdentityReview } from '@/features/election-analysis/research/CandidateIdentityReview';
 import { CandidateCoverageReview } from '@/features/election-analysis/research/CandidateCoverageReview';
@@ -39,7 +41,7 @@ const fields: Record<HistoryEntity, Field[]> = {
     { key: 'ends_on', label: 'Ende der Legislaturperiode / übernommener Endtermin', type: 'date' },
     { key: 'ends_on_is_expected', label: 'Endtermin ist voraussichtlich, noch kein tatsächliches Ende', type: 'checkbox' },
     { key: 'expected_ends_on', label: 'Voraussichtliches reguläres Ende (separat)', type: 'date' }, notesField,
-    { key: 'boundary_geometry_year', label: 'Historischer Grenzstand für die Karte', type: 'select', help: 'Verfügbare historische Grenzstände werden aus den hinterlegten Kartendaten angeboten. Für 2026 gilt der Stand 2021. Es werden keine Einzelgeometrien kopiert.' },
+    { key: 'boundary_geometry_year', label: 'Historischer Grenzstand für die Karte', type: 'select', help: 'Verfügbare historische Grenzstände werden aus den hinterlegten Kartendaten angeboten. Für 1976/1980/1984 gilt der Stand 1988, für 2026 der Stand 2021. Es werden keine Einzelgeometrien kopiert.' },
     { key: 'boundary_geometry_confirmed', label: 'Grenzstand und Zuordnung der Wahlkreisnummern für diese Legislatur geprüft und bestätigt', type: 'checkbox', help: 'Erst nach dieser Bestätigung verwendet die historische Karte den gewählten Grenzstand. Die Veröffentlichung der Legislatur wird separat gesteuert.' },
     { key: 'is_published', label: 'Für alle Tenants freigeben', type: 'checkbox', help: 'Erst nach der Prüfung freigeben. Die aktuelle Periode muss freigegeben bleiben.' },
   ],
@@ -61,7 +63,7 @@ const fields: Record<HistoryEntity, Field[]> = {
 };
 const selectClass = 'flex h-10 w-full rounded-md border border-input bg-background px-3 py-2 text-sm';
 function optionsFor(key: string, data: ElectionHistoryData, values: FormValues): { value: string; label: string }[] {
-  if (key === 'boundary_geometry_year') return Object.keys(ELECTORAL_TOPOLOGY_MANIFESTS).sort((a, b) => Number(a) - Number(b)).map(year => ({ value: year, label: year === '2021' ? 'Grenzen 2021 / 2026' : `Grenzen ${year}` }));
+  if (key === 'boundary_geometry_year') return Object.keys(ELECTORAL_TOPOLOGY_MANIFESTS).sort((a, b) => Number(a) - Number(b)).map(year => ({ value: year, label: `Grenzen ${boundaryYearLabel(Number(year))}` }));
   if (key === 'period_id') return data.periods.filter(p => !values.period_id || p.id === values.period_id).map(p => ({ value: p.id, label: p.name }));
   if (key === 'person_id') return data.people.map(p => ({ value: p.id, label: `${p.name}${p.biography ? ` · ${p.biography.slice(0, 60)}` : ''}` }));
   if (key === 'district_id') return data.districts.filter(d => d.period_id === values.period_id).sort((a, b) => (a.district_number ?? Infinity) - (b.district_number ?? Infinity)).map(d => ({ value: d.id, label: `${d.district_number ?? d.number_label ?? "–"}: ${d.name}` }));
@@ -242,6 +244,7 @@ function ElectionHistoryWorkspace({ userId }: { userId: string }) {
             {entity === 'mandates' && (field.key === 'starts_on' || field.key === 'ends_on') && <p className="mt-1 text-xs text-muted-foreground">{values[field.key === 'starts_on' ? 'start_from_period' : 'end_from_period'] === true ? 'Aus der Legislaturperiode übernommen; ein eigener Datumseintrag hebt die Übernahme auf.' : field.key === 'starts_on' ? 'Leer: Periodenbeginn für gewählte Mandate übernehmen. Nachrücker benötigen ihr eigenes Eintrittsdatum.' : 'Leer: Periodenende übernehmen, sofern kein vorzeitiger Austritt bekannt ist.'}</p>}
             {field.help && <p className="mt-1 text-xs text-muted-foreground">{field.help}</p>}
           </div>)}
+          {entity === 'periods' && <div className="md:col-span-2"><HistoricalGeometryNotice year={Number(values.election_year) || null} /></div>}
           {draftStatus && <p role="status" className="md:col-span-2 text-xs text-muted-foreground">{draftStatus}</p>}
           {formError && <p className="md:col-span-2 text-sm text-destructive" role="alert">{formError}</p>}
           <div className="md:col-span-2 flex gap-2"><Button type="submit">{saving ? 'Speichert …' : canAutosave ? 'Entwurf speichern' : 'Speichern'}</Button><Button type="button" variant="outline" onClick={() => { browserDrafts.remove(entity, editing || null, editorPeriod); setDirty(false); setDraftStatus(''); setEditing(undefined); }}>{dirty ? 'Ungespeicherte Änderungen verwerfen' : 'Schließen'}</Button></div>

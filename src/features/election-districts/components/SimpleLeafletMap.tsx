@@ -12,6 +12,7 @@ import sunflowerIcon from '@/assets/sunflower.svg';
 interface LeafletKarlsruheMapProps {
   districts: ElectionDistrict[];
   districtCount?: number;
+  geometryAttribution?: string;
   onDistrictClick: (district: ElectionDistrict) => void;
   selectedDistrict?: ElectionDistrict;
   showPartyAssociations?: boolean;
@@ -51,6 +52,7 @@ const getDistrictMarkerDimensions = (zoomLevel: number) => {
 const SimpleLeafletMap: React.FC<LeafletKarlsruheMapProps> = ({ 
   districts,
   districtCount,
+  geometryAttribution,
   onDistrictClick, 
   selectedDistrict,
   showPartyAssociations = false,
@@ -77,6 +79,13 @@ const SimpleLeafletMap: React.FC<LeafletKarlsruheMapProps> = ({
   useEffect(() => {
     onDistrictClickRef.current = onDistrictClick;
   });
+
+  useEffect(() => {
+    const instance = mapRef.current;
+    if (!mapReady || !instance || !geometryAttribution) return;
+    instance.attributionControl.addAttribution(geometryAttribution);
+    return () => { instance.attributionControl.removeAttribution(geometryAttribution); };
+  }, [geometryAttribution, mapReady]);
 
   // Initialize map once
   useEffect(() => {
