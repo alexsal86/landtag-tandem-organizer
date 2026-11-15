@@ -727,3 +727,16 @@ Falls `20261114145000_verified_2026_state_parties.sql` mit „relation verified_
 `20261114150000_workbook_election_periods.sql` übernimmt das Blatt „Wahlperioden“ mit Wahltag, Beginn und Ende aller 18 Perioden samt Quellen. Fehlende Historienfelder werden ergänzt; abweichende vorhandene Termine bleiben zur manuellen Prüfung erhalten. Die bestehenden Trigger übernehmen Periodentermine auf geeignete Mandate. Das reguläre Ende 30.04.2031 bleibt voraussichtlich. Das Freigabecockpit meldet übereinstimmende belegte Termine als „Belegt“ statt pauschal „Prüfen“.
 
 Reproduzierbar mit `python scripts/import-election-periods.py workbook.xlsx output.sql`. Dieser separate Periodenimport ergänzt ausdrücklich die Historie; Ergebnisimporte bleiben davon unabhängig. Die Migration enthält zusätzlich die Anpassung des bestehenden Übernahme-RPC für voraussichtliche Endtermine. Auf Wunsch wurden keine Tests ausgeführt.
+
+## Landesgeschichte 1952–2026 und Wanderungsmatrix 2006
+
+Migration `20261115140000_election_state_history.sql` ergänzt historische
+Landesergebnisse ausschließlich der bisherigen Fokusparteien, landesweite
+Beteiligungsbezugsgrößen sowie die vollständige modellierte Wanderungsmatrix
+2001 → 2006. Neue Ansichten: „Landesgeschichte“, „Wanderungsmatrix“ und
+„Quellenabgleich“. Weitere historische Parteien werden nicht importiert.
+Quellenkonflikte bleiben dokumentiert; bestehende Zahlen werden nicht ersetzt.
+Umfang, Herkunft, offener Konflikt 2021 und der nicht auf Live ausgeführte
+Migrationsstand sind in
+[der Importdokumentation](election-analysis/sources/state-history-workbook.md)
+beschrieben. Keine Tests ausgeführt.

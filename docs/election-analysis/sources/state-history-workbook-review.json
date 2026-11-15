@@ -1,0 +1,74 @@
+{
+  "comparison_scope": "Repository seed, not live database. Later verified 2026 state migration does not change the five focus-party vote counts. Original source documents not independently verified.",
+  "workbook_sha256": "f5afc9d95e0b291d3656ff8f3327d71f0e5839be1380a168a6c3e8d1601933c9",
+  "sections": {
+    "state": {
+      "rows": 68,
+      "comparison": {
+        "added": 45,
+        "matched": 23
+      },
+      "conflicts": []
+    },
+    "flows": {
+      "rows": 102,
+      "comparison": {
+        "matched": 76,
+        "conflict": 1,
+        "added": 25
+      },
+      "conflicts": [
+        {
+          "key": {
+            "year": 2021,
+            "previous_year": 2016,
+            "target_party": "GRÜNE",
+            "partner": "ERSTWÄHLENDE/VERSTORBENE"
+          },
+          "workbook": {
+            "inflow": 90000,
+            "outflow": 105000,
+            "balance": -15000
+          },
+          "existing_seed": {
+            "inflow": 95000,
+            "outflow": 105000,
+            "balance": -10000
+          },
+          "source_url": "https://www.boell-bw.de/sites/default/files/importedFiles/2024/09/24/LTW_BaW%25C3%25BC_Text_2021-final_korr1.pdf",
+          "sheet": "Wanderung Brutto",
+          "row": 32,
+          "action": "Preserve existing value; original source review pending."
+        }
+      ]
+    },
+    "totals": {
+      "rows": 18,
+      "years": [
+        1952,
+        1956,
+        1960,
+        1964,
+        1968,
+        1972,
+        1976,
+        1980,
+        1984,
+        1988,
+        1992,
+        1996,
+        2001,
+        2006,
+        2011,
+        2016,
+        2021,
+        2026
+      ]
+    },
+    "matrix": {
+      "rows": 64,
+      "year": 2006,
+      "previous_year": 2001
+    }
+  }
+}

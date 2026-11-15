@@ -1,3 +1,5 @@
+import type { StateHistoryTables } from '@/features/election-analysis/stateHistoryModel';
+
 export type Json =
   | string
   | number
@@ -14,6 +16,9 @@ export type Database = {
   }
   public: {
     Tables: {
+      election_analysis_state_totals: StateHistoryTables["election_analysis_state_totals"]
+      election_analysis_flow_matrix: StateHistoryTables["election_analysis_flow_matrix"]
+      election_analysis_workbook_audit: StateHistoryTables["election_analysis_workbook_audit"]
       action_permissions: {
         Row: {
           action_key: string

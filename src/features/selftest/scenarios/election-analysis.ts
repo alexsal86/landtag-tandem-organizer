@@ -1,4 +1,5 @@
 import { boundaryDifferencePath } from "@/features/election-analysis/research/boundaryOverlay";
+import { matrixAxes, matrixCell, stateTotalMetrics, type FlowCell, type StateTotal } from '@/features/election-analysis/stateHistoryModel';
 import { decodeElectoralTopology, electoralGeometryYear, parseElectoralManifest, requiredElectoralPackages } from "@/utils/electoralTopology";
 import { atlasRows, atlasRankings, atlasScale } from "@/features/election-analysis/research/atlasModel";
 import type { ComparisonValue } from "@/features/election-analysis/research/types";
@@ -77,6 +78,32 @@ export const electionAnalysisScenario: TestScenario = {
         message: "Beide Originalgeometrien bleiben unverändert; SVG even-odd schraffiert die Differenz ohne Stimmenumrechnung." };
     } },
 
+    {
+      id: "state-history-denominators-and-matrix",
+      label: "Landesgeschichte: Bezugsgrößen und gerichtete Wanderungsmatrix",
+      kind: "logic",
+      run: async () => {
+        const source = { source_url: "https://example.org/source", source_sheet: "Wahlgesamt", source_row: 2, workbook_sha256: "a".repeat(64), source_verified: false };
+        const total: StateTotal = { ...source, year: 2026, ballot: "second", election_date: "2026-03-08", eligible: 1000, voters: 700, valid_votes: 690, invalid_votes: 10 };
+        const metrics = stateTotalMetrics(total);
+        const cells: FlowCell[] = [
+          { ...source, year: 2006, previous_year: 2001, origin: "GRÜNE", destination: "CDU", persons: 11000 },
+          { ...source, year: 2006, previous_year: 2001, origin: "Erstwähler", destination: "CDU", persons: 0 },
+          { ...source, year: 2006, previous_year: 2001, origin: "CDU", destination: "Gestorbene", persons: 170000 },
+        ];
+        const axes = matrixAxes(cells);
+        return {
+          ok: metrics.nonvoters === 300 && metrics.turnout === 70
+            && metrics.invalidShare === 10 / 700 * 100
+            && matrixCell(cells, "GRÜNE", "CDU") === 11000
+            && matrixCell(cells, "CDU", "GRÜNE") === null
+            && matrixCell(cells, "Erstwähler", "CDU") === 0
+            && axes.origins.includes("Erstwähler") && !axes.destinations.includes("Erstwähler")
+            && axes.destinations.includes("Gestorbene") && !axes.origins.includes("Gestorbene"),
+          message: "Eine Bezugsgröße pro Wahl; Ungültigenquote bezogen auf Wählende, fehlende Zellen bleiben unbekannt, Herkunft und Ziel werden nicht gespiegelt.",
+        };
+      },
+    },
     {
       id: "election-shape-packages",
       label: "Wahlkreisformen: gemeinsame 68 Formen wiederverwenden, nur Änderungen laden",

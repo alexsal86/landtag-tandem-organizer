@@ -49,7 +49,7 @@ export default function FlowResearchPanel({
       </AnalysisControls>
       <StatusNote>
         Alle vorhandenen Wanderungsdaten sind landesweite Modellschätzungen,
-        keine beobachteten individuellen Wechsel. 2011 und 2021 enthalten
+        keine beobachteten individuellen Wechsel. 2006, 2011 und 2021 enthalten
         Bruttoströme; 2016 und 2026 überwiegend beziehungsweise ausschließlich
         Salden. Ein Saldo bestimmt keine eindeutigen Gegenströme. Das Werkzeug
         erzeugt ausdrücklich angenommene Bruttoströme für eine einzelne
