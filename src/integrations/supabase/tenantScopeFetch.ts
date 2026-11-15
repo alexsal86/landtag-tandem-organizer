@@ -142,14 +142,15 @@ export function createTenantScopeFetch(
       const scope = getActiveTenantScope();
       const revision = getTenantScopeRevision();
       const headers = new Headers(init.headers ?? original?.headers);
-      // These legacy/global endpoints do not yet accept the office header in CORS.
-      const legacyGlobalEndpoints = new Set([
-        "check-egress-anomaly", "collect-egress-metrics", "dispatch-mobile-push",
-        "extract-photo-data", "generate-preparation-suggestions", "get-poll-by-token",
-        "register-mobile-push-token", "selftest-backup-pointer", "social-planner-reminders",
-        "submit-poll-response-by-token",
+      // Only deployed endpoints with tenant-header CORS support receive this header.
+      const scopedEndpoints = new Set([
+        "archive-letter", "geocode-contact-address", "batch-geocode-contacts",
+        "fetch-rss-feeds", "send-document-email", "send-decision-email",
+        "force-resync-calendar", "sync-external-calendar", "workflow-dispatcher",
+        "test-rss-feed", "run-automation-rule", "matrix-decision-handler",
+        "send-event-invitation", "send-appointment-invitation", "manage-tenant-user",
       ]);
-      if (scope && !legacyGlobalEndpoints.has(url.pathname.split("/").pop() ?? "")) headers.set("x-tenant-id", scope.tenantId);
+      if (scope && scopedEndpoints.has(url.pathname.split("/").pop() ?? "")) headers.set("x-tenant-id", scope.tenantId);
       const response = await send(input, { ...init, headers });
       if (revision !== getTenantScopeRevision()) return errorResponse(new TenantScopeError(
         "Der Arbeitsbereich wurde während der Anfrage gewechselt.", "TENANT_SCOPE_CHANGED", 409,
