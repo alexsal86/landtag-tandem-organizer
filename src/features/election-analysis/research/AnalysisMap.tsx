@@ -242,12 +242,12 @@ export function AnalysisMap({
     const displayBounds = layer.getBounds();
     if (changedShapes.size) {
       for (const [number, feature] of changedShapes) {
-        const overlay = L.geoJSON(feature, { interactive: false, pane: "boundaryChanges", smoothFactor: 0, style: {
+        const overlay = L.geoJSON(feature, { interactive: false, pane: "boundaryChanges", style: { smoothFactor: 0,
           stroke: false, fillColor: `url(#${patternId})`, fillOpacity: 0.85, fillRule: "evenodd",
         } }).addTo(instance);
         overlay.eachLayer(path => applyUnknownPattern(path as L.Path));
         const old = comparisonGeometry.data!.features.find(f => Number(f.properties.Nummer) === number)!;
-        const outline = L.geoJSON(old as GeoJSON.Feature, { interactive: false, pane: "boundaryChanges", smoothFactor: 0, style: {
+        const outline = L.geoJSON(old as GeoJSON.Feature, { interactive: false, pane: "boundaryChanges", style: { smoothFactor: 0,
           color: "#4b5563", weight: 1, dashArray: "4 4", fill: false,
         } }).addTo(instance);
         overlays.current.set(number, [overlay, outline]);
