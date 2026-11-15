@@ -1,5 +1,6 @@
 import { createContext, useContext, useState, useEffect, useRef, type PropsWithChildren } from 'react';
 import { useQuery } from '@tanstack/react-query';
+import type { RealtimePostgresChangesPayload } from '@supabase/supabase-js';
 import { supabase } from '@/integrations/supabase/client';
 import { useAuth } from './useAuth';
 import { useTenant } from './useTenant';
@@ -180,7 +181,7 @@ const useUserStatusRuntime = () => {
           table: 'user_status',
           filter: `user_id=eq.${user.id}`
         },
-        (payload: Record<string, any>) => {
+        (payload: RealtimePostgresChangesPayload<UserStatus & { tenant_id?: string }>) => {
           debugConsole.log('Status changed:', payload);
           if (!isMounted) return;
 
