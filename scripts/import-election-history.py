@@ -20,9 +20,16 @@ def text(value):
 def generate(input_path, output_path):
     workbook = openpyxl.load_workbook(input_path, read_only=True, data_only=True)
     sheet = workbook['Abgeordnete je Wahlkreis']
-    rows = [row for row in sheet.values if len(row) >= 12 and isinstance(row[3], int)]
+    rows = [list(row) for row in sheet.values if len(row) >= 12 and isinstance(row[3], int)]
     if not rows:
         raise ValueError('Keine Mandatseinträge gefunden')
+    # Reviewed workbook errata, scoped to the exact legislature/member/label.
+    # See docs/election-analysis/sources/1956-1964-import-corrections.md.
+    for row in rows:
+        if (row[3], text(row[4]), text(row[0]), text(row[1])) == (2, 'Ludwig Leber', 'Stuttgart IV', '05'):
+            row[1] = '04'
+        if (row[3], text(row[4]), text(row[0]), text(row[1])) == (4, 'Alfred Entenmann', 'Waiblingen', '23'):
+            row[0] = 'Waiblingen I'
     periods = {}
     numbered_names = collections.defaultdict(set)
     for row in rows:
@@ -75,13 +82,20 @@ ON CONFLICT (number) DO NOTHING;''')
         d['period_number'] = p_numbers[d.pop('period_id')]
     for m in mandates:
         m['period_number'] = p_numbers[m.pop('period_id')]
-    sql.append('''INSERT INTO public.election_history_districts(id,period_id,district_number,number_label,name,boundary_note)
-SELECT x.id,p.id,CASE WHEN EXISTS (SELECT 1 FROM public.election_history_districts existing WHERE existing.period_id=p.id AND existing.district_number=x.district_number AND existing.id<>x.id) THEN NULL ELSE x.district_number END,x.number_label,x.name,x.boundary_note FROM jsonb_to_recordset(''' + payload(list(districts.values())) + ''') AS x(id uuid,period_number integer,district_number integer,number_label text,name text,boundary_note text)
+    # Reuse numbered registry entries (including those filled by geometry migrations).
+    # Mandates must resolve to the same IDs, rather than create numberless duplicates.
+    sql.append('''CREATE TEMP TABLE election_history_import_districts ON COMMIT DROP AS
+SELECT x.*,p.id AS period_id,coalesce(existing.id,x.id) AS resolved_id
+FROM jsonb_to_recordset(''' + payload(list(districts.values())) + ''') AS x(id uuid,period_number integer,district_number integer,number_label text,name text,boundary_note text)
 JOIN public.election_history_periods p ON p.number=x.period_number
+LEFT JOIN public.election_history_districts existing ON existing.period_id=p.id AND existing.district_number=x.district_number;
+INSERT INTO public.election_history_districts(id,period_id,district_number,number_label,name,boundary_note)
+SELECT resolved_id,period_id,district_number,number_label,name,boundary_note FROM election_history_import_districts
 ON CONFLICT (id) DO NOTHING;''')
     sql.append('''INSERT INTO public.election_history_mandates(id,period_id,person_name,party,party_label,district_id,mandate_type,original_mandate,entry_type,left_early,notes)
-SELECT x.id,p.id,x.person_name,x.party,x.party_label,x.district_id,x.mandate_type,x.original_mandate,x.entry_type,x.left_early,x.notes FROM jsonb_to_recordset(''' + payload(mandates) + ''') AS x(id uuid,period_number integer,person_name text,party text,party_label text,district_id uuid,mandate_type text,original_mandate text,entry_type text,left_early boolean,notes text)
+SELECT x.id,p.id,x.person_name,x.party,x.party_label,d.resolved_id,x.mandate_type,x.original_mandate,x.entry_type,x.left_early,x.notes FROM jsonb_to_recordset(''' + payload(mandates) + ''') AS x(id uuid,period_number integer,person_name text,party text,party_label text,district_id uuid,mandate_type text,original_mandate text,entry_type text,left_early boolean,notes text)
 JOIN public.election_history_periods p ON p.number=x.period_number
+LEFT JOIN election_history_import_districts d ON d.id=x.district_id AND d.period_id=p.id
 ON CONFLICT (id) DO NOTHING;''')
     sql.append('COMMIT;')
     Path(output_path).write_text('\n'.join(sql) + '\n')
