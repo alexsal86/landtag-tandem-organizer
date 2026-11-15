@@ -162,3 +162,10 @@ zwischen aufeinanderfolgenden Grenzständen, unabhängig von Wahlkreisnummern.
 Nach Änderungen an den Quellpaketen zunächst den bisherigen Packer und danach
 den Detailpacker ausführen. Die Detailmanifeste haben Inhalts-Hashes; die
 Einzelformen nutzen ihre exakten Form-Hashes und den bestehenden Browser-Cache.
+
+Unter **Daten → Wahlkreis-Steckbrief** steht derselbe aufklappbare Kartenbereich
+unter dem Wahlkreisnamen. Er verwendet ausschließlich den für das ausgewählte
+Wahljahr und den Wahlkreis bereits bestätigten `bundled_geometry_year` aus der
+Wahlanalyse. Ohne bestätigte Zuordnung zeigt er eine Datenlücke. Beim Wechsel von
+Wahljahr oder Wahlkreis schließt der Bereich; erst erneutes Öffnen lädt die Karte.
+Das Öffnen lädt weder Mandatshistorien noch andere Wahljahre.

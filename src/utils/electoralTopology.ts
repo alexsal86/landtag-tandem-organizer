@@ -213,3 +213,10 @@ export async function loadElectoralDistrict(year: number, number: number, neighb
   }));
   return { type: 'FeatureCollection', features };
 }
+
+/** Read form identities without downloading or decoding any coordinates. */
+export async function loadElectoralManifest(year: number): Promise<ElectoralGeometryManifest> {
+  const boundaryYear = electoralGeometryYear(year);
+  if (boundaryYear === null) throw new Error('Kein hinterlegter Grenzstand');
+  return parseElectoralManifest(await loadGeometryJson(ELECTORAL_TOPOLOGY_MANIFESTS[boundaryYear]), boundaryYear);
+}

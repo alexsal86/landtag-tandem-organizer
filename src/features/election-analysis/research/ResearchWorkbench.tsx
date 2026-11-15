@@ -1,3 +1,4 @@
+import { ProfileBoundarySection } from "./ProfileBoundarySection";
 import { AnalysisControls } from "../AnalysisToolbar";
 import { ReleaseCockpit } from "./ReleaseCockpit";
 import ResearchLab from "./lab/ResearchLab";
@@ -250,6 +251,13 @@ function DistrictProfile({
       <h2 className="text-xl font-semibold">
         {district}: {name}
       </h2>
+      <ProfileBoundarySection
+        key={`${year}:${district}`}
+        year={year}
+        number={district}
+        name={name}
+        confirmedGeometryYear={versions.data?.find((v) => v.year === year && v.district_number === district)?.bundled_geometry_year}
+      />
       <StatusNote>
         Die Zeitreihe zeigt vorhandene Messwerte, keine automatisch
         vergleichbaren historischen Gebiete. Grenzänderungen und Datenstände

@@ -1,24 +1,7 @@
 import { isReconstructedBoundary } from '@/utils/electoralGeometryCatalog';
 import { supabase } from '@/integrations/supabase/client';
-import { electoralGeometryYear, loadElectoralTopology } from '@/utils/electoralTopology';
+import { electoralGeometryYear, loadElectoralManifest } from '@/utils/electoralTopology';
 import type { DistrictVersion } from './types';
-
-// Canonicalize ring direction/start and polygon order; never round coordinates.
-function canonicalGeometry(geometry: { type: string; coordinates: number[][][] | number[][][][] }): string {
-  const ring = (points: number[][]) => {
-    const open = points.slice();
-    if (JSON.stringify(open[0]) === JSON.stringify(open[open.length - 1])) open.pop();
-    const candidates = [open, [...open].reverse()].flatMap(direction => {
-      const minimum = direction.map(p => JSON.stringify(p)).sort()[0];
-      return direction.flatMap((p, i) => JSON.stringify(p) === minimum
-        ? [JSON.stringify([...direction.slice(i), ...direction.slice(0, i)])] : []);
-    });
-    return candidates.sort()[0];
-  };
-  const polygon = (rings: number[][][]) => [ring(rings[0]), rings.slice(1).map(ring).sort()];
-  const polygons = geometry.type === 'Polygon' ? [geometry.coordinates as number[][][]] : geometry.coordinates as number[][][][];
-  return JSON.stringify(polygons.map(p => JSON.stringify(polygon(p))).sort());
-}
 
 /** Reuse explicit period attestations without persisting or guessing analysis identities. */
 export async function withConfirmedGeometry(versions: DistrictVersion[], signal: AbortSignal): Promise<DistrictVersion[]> {
@@ -37,8 +20,8 @@ export async function withConfirmedGeometry(versions: DistrictVersion[], signal:
   if (districtError) throw districtError;
   const geometryYears = [...new Set(confirmed.map(p => p.boundary_geometry_year))]
     .filter((year): year is number => typeof year === 'number');
-  const geometries = new Map(await Promise.all(geometryYears
-    .map(async year => [year, await loadElectoralTopology(year)] as const)));
+  const manifests = new Map(await Promise.all(geometryYears
+    .map(async year => [year, await loadElectoralManifest(year)] as const)));
   return Promise.all(versions.map(async version => {
     // An explicit analysis assignment retains precedence.
     if (version.geography_id || version.identity_key) return version;
@@ -49,11 +32,11 @@ export async function withConfirmedGeometry(versions: DistrictVersion[], signal:
     const district = districts?.find(d => d.period_id === period.id && d.district_number === version.district_number);
     // Individual historical shapes cannot be silently replaced by the shared asset.
     if (!district || (version.historical_district_id && version.historical_district_id !== district.id)) return version;
-    const geometry = geometries.get(period.boundary_geometry_year)?.features
-      .find(f => Number(f.properties.Nummer) === version.district_number)?.geometry;
-    if (!geometry) return version;
-    const digest = await crypto.subtle.digest('SHA-256', new TextEncoder().encode(canonicalGeometry(geometry)));
-    const hash = Array.from(new Uint8Array(digest), b => b.toString(16).padStart(2, '0')).join('');
-    return { ...version, bundled_geometry_year: period.boundary_geometry_year, identity_key: `confirmed-shape-${hash}` };
+    // The packer uses the same exact canonical coordinate hash as the former
+    // runtime canonicalGeometry implementation. No polygon download is needed.
+    const shape = manifests.get(period.boundary_geometry_year)?.districts
+      .find(d => Number(d.properties.Nummer) === version.district_number)?.shape;
+    if (!shape) return version;
+    return { ...version, bundled_geometry_year: period.boundary_geometry_year, identity_key: `confirmed-shape-${shape}` };
   }));
 }

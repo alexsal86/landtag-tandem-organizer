@@ -2,17 +2,33 @@ import { useEffect, useRef, useState } from 'react';
 import { useQuery } from '@tanstack/react-query';
 import * as L from 'leaflet';
 import 'leaflet/dist/leaflet.css';
-import { loadElectoralDistrict } from '@/utils/electoralTopology';
+import { electoralGeometryYear, loadElectoralDistrict } from '@/utils/electoralTopology';
 import { ELECTORAL_DISTRICT_MANIFESTS } from '@/utils/electoralDistrictAsset';
 import { historical1952Source, reconstructedGeometryAttribution } from '@/utils/electoralGeometryCatalog';
 import { confirmedPeriodGeometryYear } from './periodGeometry';
 import { HistoricalGeometryNotice } from './HistoricalGeometryNotice';
 import type { ElectionPeriod, HistoricalDistrict } from './types';
 
-export default function DistrictBoundaryMap({ period, district }: { period: ElectionPeriod | undefined; district: HistoricalDistrict }) {
+type DistrictBoundaryMapProps =
+  | { period: ElectionPeriod | undefined; district: HistoricalDistrict }
+  | { analysis: { year: number; number: number; name: string; confirmedGeometryYear?: number } };
+
+export default function DistrictBoundaryMap(props: DistrictBoundaryMapProps) {
+  const period = 'period' in props ? props.period : undefined;
+  const district = 'district' in props ? props.district : {
+    name: props.analysis.name,
+    district_number: props.analysis.number,
+    geometry_source_key: null,
+    boundaries: null,
+  };
+
   const [neighbors, setNeighbors] = useState(false);
   const container = useRef<HTMLDivElement>(null);
-  const year = confirmedPeriodGeometryYear(period);
+  const year = 'analysis' in props
+    ? (props.analysis.confirmedGeometryYear !== undefined
+      && props.analysis.confirmedGeometryYear === electoralGeometryYear(props.analysis.year)
+      ? props.analysis.confirmedGeometryYear : null)
+    : confirmedPeriodGeometryYear(period);
   const source1952 = period?.election_year === 1952 ? historical1952Source(district.geometry_source_key) : undefined;
   const number = period?.election_year === 1952 ? source1952?.technicalNumber ?? null : district.district_number;
   // Individually supplied geometry always takes precedence; it has no inferred neighbors.
