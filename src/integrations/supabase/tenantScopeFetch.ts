@@ -142,7 +142,14 @@ export function createTenantScopeFetch(
       const scope = getActiveTenantScope();
       const revision = getTenantScopeRevision();
       const headers = new Headers(init.headers ?? original?.headers);
-      if (scope) headers.set("x-tenant-id", scope.tenantId);
+      // These legacy/global endpoints do not yet accept the office header in CORS.
+      const legacyGlobalEndpoints = new Set([
+        "check-egress-anomaly", "collect-egress-metrics", "dispatch-mobile-push",
+        "extract-photo-data", "generate-preparation-suggestions", "get-poll-by-token",
+        "register-mobile-push-token", "selftest-backup-pointer", "social-planner-reminders",
+        "submit-poll-response-by-token",
+      ]);
+      if (scope && !legacyGlobalEndpoints.has(url.pathname.split("/").at(-1) ?? "")) headers.set("x-tenant-id", scope.tenantId);
       const response = await send(input, { ...init, headers });
       if (revision !== getTenantScopeRevision()) return errorResponse(new TenantScopeError(
         "Der Arbeitsbereich wurde während der Anfrage gewechselt.", "TENANT_SCOPE_CHANGED", 409,

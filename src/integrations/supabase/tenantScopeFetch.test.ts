@@ -37,6 +37,13 @@ describe("active tenant transport boundary", () => {
     expect((await pending).status).toBe(409);
   });
 
+  it("preserves legacy global endpoint CORS compatibility", async () => {
+    setActiveTenantScope(scope);
+    const send = vi.fn<typeof fetch>().mockResolvedValue(json({}));
+    await createTenantScopeFetch(base, send)(`${base}/functions/v1/register-mobile-push-token`, { method: "POST" });
+    expect(new Headers(send.mock.calls[0][1]?.headers).has("x-tenant-id")).toBe(false);
+  });
+
   it("adds a missing active-tenant filter to direct table reads", async () => {
     setActiveTenantScope(scope);
     const send = vi.fn<typeof fetch>().mockResolvedValue(json([]));
