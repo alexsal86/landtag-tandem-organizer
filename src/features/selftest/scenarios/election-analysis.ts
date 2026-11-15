@@ -81,7 +81,8 @@ export const electionAnalysisScenario: TestScenario = {
         try { decodeElectoralTopology(fixture, "year1900"); } catch { rejectsUnknown = true; }
         return {
           ok: electoralGeometryYear(2016) === 2016 && electoralGeometryYear(2021) === 2021 &&
-            electoralGeometryYear(2026) === 2021 && electoralGeometryYear(2011) === null &&
+            electoralGeometryYear(2026) === 2021 && electoralGeometryYear(2006) === 2006 &&
+            electoralGeometryYear(2011) === 2011 && electoralGeometryYear(2001) === null &&
             rejectsUnknown && JSON.stringify(decoded.features[0].geometry.coordinates) ===
               JSON.stringify([[[8, 48], [9, 48], [8, 49], [8, 48]]]),
           message: "2026 verwendet 2021; andere Jahre werden nicht erfunden. Gemeinsame Grenzen bleiben unverändert.",

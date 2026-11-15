@@ -22,6 +22,9 @@ export const electionMapScenario: TestScenario = {
       const resolved = withPeriodGeometry(data, 'p', geometry);
       return { ok: confirmedPeriodGeometryYear(period) === 2021
         && confirmedPeriodGeometryYear({ ...period, boundary_geometry_confirmed: false }) === null
+        && confirmedPeriodGeometryYear({ ...period, election_year: 2006, boundary_geometry_year: 2006 }) === 2006
+        && confirmedPeriodGeometryYear({ ...period, election_year: 2011, boundary_geometry_year: 2011 }) === 2011
+        && confirmedPeriodGeometryYear({ ...period, election_year: 2006, boundary_geometry_year: 2011 }) === null
         && confirmedPeriodGeometryYear({ ...period, election_year: 1952 }) === null
         && confirmedPeriodGeometryYear({ ...period, boundary_geometry_year: 2016 }) === null
         && resolved.districts[0].boundaries === shape && resolved.districts[1].boundaries === null

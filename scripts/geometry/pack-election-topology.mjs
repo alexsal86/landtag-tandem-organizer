@@ -3,10 +3,18 @@ import { readFileSync, writeFileSync, mkdirSync } from 'node:fs';
 import { createHash } from 'node:crypto';
 import { gzipSync, brotliCompressSync, constants } from 'node:zlib';
 const inputs = process.argv.slice(2);
-if (inputs.length !== 2) throw new Error('Usage: node scripts/geometry/pack-election-topology.mjs 2016.topojson 2021.topojson');
+if (!inputs.length) throw new Error('Usage: node scripts/geometry/pack-election-topology.mjs 2006=path.topojson 2011=path.topojson 2016=path.topojson 2021=path.topojson');
+const sources = inputs.map(input => {
+  const separator = input.indexOf('=');
+  const year = input.slice(0, separator);
+  const file = input.slice(separator + 1);
+  if (separator < 0 || !/^\d{4}$/.test(year) || !file) throw new Error('Expected YEAR=path.topojson');
+  return { year: Number(year), file };
+}).sort((a, b) => a.year - b.year);
+if (new Set(sources.map(source => source.year)).size !== sources.length) throw new Error('Duplicate boundary year');
 const topology = { type: 'Topology', objects: {}, arcs: [] };
 const index = new Map();
-for (const [i, file] of inputs.entries()) {
+for (const { year, file } of sources) {
   const source = JSON.parse(readFileSync(file, 'utf8'));
   if (source.type !== 'Topology' || source.transform) throw new Error('Expected unquantized Topology');
   const remap = source.arcs.map(arc => {
@@ -26,7 +34,7 @@ for (const [i, file] of inputs.entries()) {
   });
   const objects = Object.values(source.objects);
   if (objects.length !== 1) throw new Error('Expected one district object');
-  topology.objects[`year${i === 0 ? 2016 : 2021}`] = mapGeometry(objects[0]);
+  topology.objects[`year${year}`] = mapGeometry(objects[0]);
 }
 const data = Buffer.from(JSON.stringify(topology));
 const hash = createHash('sha256').update(data).digest('hex');

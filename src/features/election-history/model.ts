@@ -48,10 +48,10 @@ export function parseHistoryForm(entity: HistoryEntity, v: FormValues): ParsedHi
       const election_date = dateValue(v, 'election_date', false);
       if ((election_date && starts_on && election_date > starts_on) || (starts_on && ends_on && ends_on < starts_on)) throw new Error('Wahltag und Legislaturzeitraum passen nicht zusammen.');
       const election_year = numberValue(v, 'election_year', 1900, 2200);
-      const boundary_geometry_year = numberValue(v, 'boundary_geometry_year', 2016, 2021);
+      const boundary_geometry_year = numberValue(v, 'boundary_geometry_year', 2006, 2021);
       const boundary_geometry_confirmed = v.boundary_geometry_confirmed === true;
       if (boundary_geometry_year !== null && (election_year === null || electoralGeometryYear(election_year) !== boundary_geometry_year))
-        throw new Error('Der Grenzstand muss zum Wahljahr passen: 2016 oder 2021 für die Wahlen 2021/2026.');
+        throw new Error('Der Grenzstand muss zum Wahljahr passen: 2006, 2011, 2016 oder 2021 für die Wahlen 2021/2026.');
       if (boundary_geometry_confirmed && boundary_geometry_year === null)
         throw new Error('Bitte vor der Bestätigung einen Grenzstand auswählen.');
       const number = numberValue(v, 'number', 1);

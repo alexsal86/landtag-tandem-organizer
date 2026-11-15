@@ -13,7 +13,7 @@ type DistrictTopology = {
   objects: Record<string, { type: 'GeometryCollection'; geometries: DistrictGeometry[] }>;
 };
 export const electoralGeometryYear = (year: number) =>
-  year === 2016 ? 2016 : year === 2021 || year === 2026 ? 2021 : null;
+  year === 2006 || year === 2011 || year === 2016 ? year : year === 2021 || year === 2026 ? 2021 : null;
 
 /** Polygon-only TopoJSON adapter; preserves every supplied coordinate. */
 export function decodeElectoralTopology(input: unknown, objectName: string): GeoJsonData {
