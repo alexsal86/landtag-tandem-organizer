@@ -149,7 +149,7 @@ export function createTenantScopeFetch(
         "register-mobile-push-token", "selftest-backup-pointer", "social-planner-reminders",
         "submit-poll-response-by-token",
       ]);
-      if (scope && !legacyGlobalEndpoints.has(url.pathname.split("/").at(-1) ?? "")) headers.set("x-tenant-id", scope.tenantId);
+      if (scope && !legacyGlobalEndpoints.has(url.pathname.split("/").pop() ?? "")) headers.set("x-tenant-id", scope.tenantId);
       const response = await send(input, { ...init, headers });
       if (revision !== getTenantScopeRevision()) return errorResponse(new TenantScopeError(
         "Der Arbeitsbereich wurde während der Anfrage gewechselt.", "TENANT_SCOPE_CHANGED", 409,
