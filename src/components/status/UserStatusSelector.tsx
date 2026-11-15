@@ -113,16 +113,16 @@ export const UserStatusSelector: React.FC<UserStatusSelectorProps> = ({ children
             <div className="flex items-center gap-3 p-3 bg-muted/50 rounded-lg">
               <div className="relative">
                 <Avatar className="w-10 h-10">
-                  <AvatarImage src={profileData?.avatar_url || undefined} />
+                  <AvatarImage src={profile?.avatar_url || undefined} />
                   <AvatarFallback>
-                    {profileData?.display_name?.charAt(0) || user?.email?.charAt(0) || 'U'}
+                    {profile?.display_name?.charAt(0) || user?.email?.charAt(0) || 'U'}
                   </AvatarFallback>
                 </Avatar>
                 <span className="absolute -bottom-0.5 -right-0.5 text-xs" title={currentDisplay.label}>
                   {currentDisplay.emoji}
                 </span>
               </div>
-              <p className="text-sm font-medium">{profileData?.display_name || user?.email}</p>
+              <p className="text-sm font-medium">{profile?.display_name || user?.email}</p>
             </div>
           )}
 

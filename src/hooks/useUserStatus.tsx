@@ -389,18 +389,21 @@ const useUserStatusRuntime = () => {
 
   const updateLastActivity = async () => {
     const now = Date.now();
+    const userId = user?.id;
+    const tenantId = currentTenant?.id;
     if (!shouldPersistUserStatusActivity({
       now,
       lastWrite: lastActivityWrite.current,
       writePending: activityWritePending.current,
-      hasStatusContext: Boolean(user?.id && currentTenant?.id && statusRef.current),
+      hasStatusContext: Boolean(userId && tenantId && statusRef.current),
     })) return;
+    if (!userId || !tenantId) return;
     lastActivityWrite.current = now;
     activityWritePending.current = true;
     try {
       const { error } = await supabase.from('user_status')
         .update({ last_activity: new Date(now).toISOString() })
-        .eq('user_id', user.id).eq('tenant_id', currentTenant.id);
+        .eq('user_id', userId).eq('tenant_id', tenantId);
       if (error) throw error;
     } catch (error) {
       debugConsole.error('Error updating last activity:', error);
