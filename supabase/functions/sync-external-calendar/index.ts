@@ -366,8 +366,7 @@ Deno.serve(withSafeHandler("sync-external-calendar", async (req) => {
     console.log(`🚀 Starting sync for calendar: ${calendar_id}`);
 
     // Get the external calendar with its configuration
-    let calendarQuery = supabase.from('external_calendars').select('*').eq('id', calendar_id)
-      .eq('tenant_id', calendar.tenant_id);
+    let calendarQuery = supabase.from('external_calendars').select('*').eq('id', calendar_id);
     if (access && 'tenantId' in access) calendarQuery = calendarQuery.eq('tenant_id', access.tenantId);
     const { data: calendar, error: calendarError } = await calendarQuery.single();
 
