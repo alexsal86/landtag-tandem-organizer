@@ -234,7 +234,8 @@ export function sourceHistoricalDistrictName(year: number | null | undefined, nu
 const RECONSTRUCTION_SOURCES: Readonly<Record<number, { title: string; reference: string; sourceUrl?: string }>> = {
   1952: {
     title: '1952',
-    reference: 'Gebietsstand 9. März 1952. 74 Wahlkreise in vier Regionen; die durchgehenden Nummern 1–74 sind technische Kennungen, nicht die historischen Nummern.',
+    reference: 'Wahl zur Verfassunggebenden Landesversammlung am 9. März 1952. 74 Wahlkreise in vier historischen Landesteilen; die durchgehenden Nummern 1–74 sind technische Kennungen, nicht die historischen Nummern.',
+    sourceUrl: 'https://www.statistischebibliothek.de/mir/servlets/MCRFileNodeServlet/BWHeft_derivate_00023462/008_2612_52001.pdf',
   },
   1960: {
     title: '1956 / 1960',
@@ -258,7 +259,6 @@ export const boundaryYearLabel = (year: number) => year === 1988 ? '1976 / 1980 
   : year === 2021 ? '2021 / 2026' : reconstructedBoundaryInfo(year) ? `${reconstructedBoundaryInfo(year)!.title} (Rekonstruktion)` : String(year);
 export const reconstructedGeometryAttribution = (year?: number | null) => {
   const info = reconstructedBoundaryInfo(year);
-  if (year != null && boundaryYearCandidate(year) === 1952) return 'Rekonstruktion 1952 · bereitgestellter Datensatz · lokale Näherungen';
   return info ? `Rekonstruktion ${info.title} · © BKG (2026), CC BY 4.0 · © LGL BW (2026), dl-de/by-2-0 · verändert` : undefined;
 };
 

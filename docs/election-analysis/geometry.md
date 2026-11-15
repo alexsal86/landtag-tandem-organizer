@@ -264,9 +264,11 @@ No additional quantization, simplification, rounding or reprojection is applied.
 
 The supplied `LTWahlkreise1952-BW_konsistent.topojson` differs from the later
 70-district system. Its metadata give 1952-03-09 as reference date and explicitly
-state locally approximated boundaries. No accompanying source/license document
-was supplied; the UI cites the supplied reconstruction and does not reuse BKG/LGL
-license claims from the other datasets for this file.
+state locally approximated boundaries. The subsequently supplied
+[1952 source notes](sources/1952-source-notes.md) document the BKG/LGL basis,
+licenses and original election report. The UI now includes these specific
+credits and citations. This was the election to the Verfassunggebende
+Landesversammlung, not a regular Landtagswahl under the 1955 electoral law.
 
 The [source registry](sources/1952-district-registry.csv) preserves all names,
 regional historical numbers and separate technical identifiers:
@@ -305,3 +307,22 @@ The analysis preview labels regional areas but never treats 1952 technical IDs
 as result-district links or derives verified comparison identities. Reconstruction
 notices remain visible. No quantization, rounding, simplification or coordinate
 repair is performed during packaging.
+
+## Confirmed 1952 name list and provenance (2026-11-15)
+
+The subsequently supplied [historical name list](sources/1952-district-names.csv)
+matches all 74 technical IDs, region codes, historical numbers and names already
+extracted from the supplied TopoJSON. No geometry, district ID, number, name or
+mandate association needed to change; no package/manifest regeneration or new
+database migration is necessary. The CSV's historical eligible-voter counts are
+retained as source metadata only, not imported as election-analysis results.
+
+The README provides the election report for the Verfassunggebende Landesversammlung
+on 1952-03-09, the 1952 legal notices, BKG VG-Hist provenance/CC BY 4.0 and LGL
+ALKIS provenance/Datenlizenz Deutschland – Namensnennung 2.0. These credits now
+appear in map attribution and reconstruction notices. Its explicit limitations
+are also surfaced: the Freiburg SB 7/8 split is approximated, the historical
+Hartheim in Landkreis Stockach cannot be reliably equated with today's Hartheim
+near Meßstetten, and Duchtlingen lacks its own polygon in the modern input.
+The source's reported checks are retained as supplied provenance; their scripts
+were not run during this update. Original geometric accuracy remains qualified.
