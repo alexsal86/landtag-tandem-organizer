@@ -192,13 +192,13 @@ export async function loadElectoralDistrict(year: number, number: number, neighb
   const path = boundaryYear === null ? undefined : ELECTORAL_DISTRICT_MANIFESTS[boundaryYear];
   if (!path) throw new Error('Kein hinterlegter Grenzstand');
   const manifest = await loadGeometryJson(path) as Omit<ElectoralGeometryManifest, 'districts'> & {
-    districts: (ManifestDistrict & { neighbors: number[] })[];
+    districts: (ManifestDistrict & { neighbors: number[]; surroundings: number[] })[];
   };
   if (manifest.version !== 1 || manifest.year !== boundaryYear || manifest.districts.length !== expectedElectoralDistrictCount(boundaryYear!))
     throw new Error('Ungültige Wahlkreiszuordnung');
   const selected = manifest.districts.find(d => Number(d.properties.Nummer) === number);
   if (!selected) throw new Error('Wahlkreis fehlt im Grenzstand');
-  const numbers = new Set([number, ...(neighbors ? selected.neighbors : [])]);
+  const numbers = new Set([number, ...(neighbors ? selected.surroundings : [])]);
   const features = await Promise.all(manifest.districts.filter(d => numbers.has(Number(d.properties.Nummer))).map(async district => {
     if (!/^[a-f0-9]{64}$/.test(district.shape) || district.package !== `/data/geometry/district-${district.shape}.topojson`)
       throw new Error('Ungültige Wahlkreisform');

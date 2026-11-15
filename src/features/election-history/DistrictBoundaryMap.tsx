@@ -43,10 +43,10 @@ export default function DistrictBoundaryMap(props: DistrictBoundaryMapProps) {
     queryFn: () => loadElectoralDistrict(year!, number!, false),
     staleTime: Infinity, gcTime: 300_000, retry: false,
   });
-  // Warm only the direct neighbors after the selected shape is available.
+  // Warm surrounding source polygons after the selected shape is available.
   // Their data never replaces the selected query or the Leaflet instance.
   const surroundings = useQuery({
-    queryKey: ['district-boundary', year === null ? null : ELECTORAL_DISTRICT_MANIFESTS[year], number, true],
+    queryKey: ['district-boundary', year === null ? null : ELECTORAL_DISTRICT_MANIFESTS[year], number, 'surroundings'],
     enabled: shared && query.isSuccess,
     queryFn: () => loadElectoralDistrict(year!, number!, true),
     staleTime: Infinity, gcTime: 300_000, retry: false,
@@ -119,8 +119,8 @@ export default function DistrictBoundaryMap(props: DistrictBoundaryMapProps) {
   }, [neighbors, surroundings.data, year, number]);
   if (!geometry && !shared) return <p className="text-xs text-muted-foreground">Kein bestätigter Grenzumriss für diesen Wahlkreis hinterlegt.</p>;
   return <div className="space-y-2">
-    {shared && <label className="flex items-center gap-2 text-sm"><input type="checkbox" checked={neighbors} onChange={event => setNeighbors(event.target.checked)} />Angrenzende Wahlkreise anzeigen</label>}
-    {neighbors && surroundings.isFetching && <p role="status" className="text-xs">Lade angrenzende Wahlkreise …</p>}
+    {shared && <label className="flex items-center gap-2 text-sm"><input type="checkbox" checked={neighbors} onChange={event => setNeighbors(event.target.checked)} />Umliegende Wahlkreise anzeigen</label>}
+    {neighbors && surroundings.isFetching && <p role="status" className="text-xs">Lade umliegende Wahlkreise …</p>}
     {neighbors && surroundings.error && <p role="alert" className="text-sm">Nachbargrenzen konnten nicht geladen werden. <button className="underline" onClick={() => void surroundings.refetch()}>Erneut laden</button></p>}
     {query.isFetching && <p role="status" className="text-xs">Lade Wahlkreisgrenzen …</p>}
     {query.error && <p role="alert" className="text-sm">Grenzen konnten nicht geladen werden. <button className="underline" onClick={() => void query.refetch()}>Erneut laden</button></p>}

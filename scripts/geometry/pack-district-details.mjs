@@ -36,6 +36,13 @@ for (const [year, path] of Object.entries(paths)) {
       return refs < 0 ? ~index.get(id) : index.get(id);
     })();
     const topology = { type: 'Topology', objects: { [district.shape]: { type: 'GeometryCollection', geometries: [{ ...geometry, arcs: remap(geometry.arcs) }] } }, arcs };
+    // Bounds select surrounding source polygons, never alter their coordinates.
+    const points = arcs.flat();
+    district.bounds = points.reduce((bounds, point) => [
+      Math.min(bounds[0], point[0]), Math.min(bounds[1], point[1]),
+      Math.max(bounds[2], point[0]), Math.max(bounds[3], point[1]),
+    ], [Infinity, Infinity, -Infinity, -Infinity]);
+    // Exact shared segments remain metadata, not an exhaustive neighborhood.
     // Shared line segments define adjacency; point contacts alone do not.
     for (const points of arcs) for (let i = 1; i < points.length; i++) {
       const a = JSON.stringify(points[i - 1]), b = JSON.stringify(points[i]);
@@ -56,6 +63,16 @@ for (const [year, path] of Object.entries(paths)) {
     district.package = singlePath;
   }
   for (const district of manifest.districts) district.neighbors = [...neighbors.get(Number(district.properties.Nummer))].sort((a, b) => a - b);
+  for (const district of manifest.districts) {
+    const [west, south, east, north] = district.bounds;
+    const padX = (east - west) / 2, padY = (north - south) / 2;
+    // Context window: selected bounds plus half its width/height on each side.
+    // Bounding-box overlap is explicitly not a claim of shared borders.
+    district.surroundings = manifest.districts.filter(candidate => {
+      const [w, s, e, n] = candidate.bounds;
+      return e >= west - padX && w <= east + padX && n >= south - padY && s <= north + padY;
+    }).map(candidate => Number(candidate.properties.Nummer));
+  }
   detailPaths[year] = write(`district-manifest-${year}`, 'json', manifest);
   const priorForms = new Set(previous?.districts.map(d => d.shape));
   summary.push({ year: Number(year), districts: manifest.districts.length, reusedExactFormsFromPreviousBoundary: previous ? manifest.districts.filter(d => priorForms.has(d.shape)).length : null });

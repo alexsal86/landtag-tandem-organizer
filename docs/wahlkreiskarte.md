@@ -179,3 +179,17 @@ Stuttgart I benötigt 2021 etwa 19 KiB, mit den drei erkannten Nachbarn insgesam
 77 KiB komprimierte TopoJSON-Daten. Die ausgewählte Kontur liegt über den Nachbarn,
 wird ohne Linienvereinfachung/Clipping gezeichnet und nach Größenänderungen des
 Kartencontainers vollständig mit Rand eingepasst.
+
+### Umliegende Flächen ohne Eingriff in die Quelldaten
+
+Die Detailkarte verwendet für „Umliegende Wahlkreise anzeigen“ einen räumlichen
+Kontext statt einer vermeintlich vollständigen, aus exakten Segmentgleichheiten
+abgeleiteten Nachbarliste. Auswahlfenster sind die Original-Grenzkoordinaten des
+gewählten Wahlkreises, erweitert um jeweils eine halbe Breite/Höhe. Geladen werden
+die Originalflächen, deren Begrenzungsrechtecke dieses Fenster schneiden. Dies
+behauptet keine gemeinsame Grenze; dadurch bleiben auch umliegende Wahlkreise bei
+unterschiedlicher Segmentierung oder minimal abweichenden Quellkoordinaten sichtbar.
+Insbesondere werden für Stuttgart I 2006 auch Leonberg und Vaihingen berücksichtigt.
+Keine Koordinate wird gerundet, verschoben, ergänzt, geglättet oder durch eine
+berechnete Verbindung ersetzt. Die zuvor genannten 77 KiB betrafen ausschließlich
+die frühere, unvollständige Auswahl von drei Nachbarn.
