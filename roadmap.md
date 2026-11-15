@@ -1,11 +1,12 @@
 # Roadmap Aufgaben
 
 # Log-Aufkommen reduzieren (15.11.2026)
-- [x] Zentrale Statusverwaltung, Profil-Cache und höchstens ein Aktivitäts-Write pro fünf Minuten im Frontend vorbereitet.
-- [ ] Migration `20261115120000_reduce_log_ingestion.sql` anwenden und Cron-Ergebnis prüfen.
-- [ ] Sechs aktualisierte Hintergrundfunktionen deployen und ohne fällige Arbeit bzw. mit Fehlerfall prüfen.
-- [ ] Aktivitätsdrosselung mit einem konkreten Regressionstest absichern; Build und Vorschau prüfen.
-- [ ] Vorher/Nachher-Aufrufe messen; Einsparungen und verbleibende Kandidaten evidenzbasiert berichten.
+- [x] Zentrale Statusverwaltung, gemeinsamer Profil-Cache und höchstens ein Aktivitäts-Write pro fünf Minuten; drei Regressionstests bestanden.
+- [x] Fälligkeitsfunktion für geplante E-Mails migriert und im Leerlauf ohne Versand ausgeführt.
+- [x] Sechs ursprünglich aktualisierte Funktionen sowie 15 Funktionen mit reduzierter Mandanten-/Matrix-Protokollierung deployt; unberechtigter Aufruf mit 403 geprüft.
+- [x] Gesamtbuild OK, gezieltes Lint ohne Fehler, Anmeldeseite in Chromium sichtbar; angemeldeter Statusfluss mit externem Supabase nicht prüfbar.
+- [ ] Cron-Bereinigung blockiert: `permission denied for table job` auch nach Grant; doppelte E-Mail- und Matrix-Jobs sowie zwei 15-Minuten-Prüfungen bleiben aktiv.
+- [ ] Tatsächliche Vorher/Nachher-Lograte messen — Analytics-Zugang liefert aktuell keine Datensätze; bisher nur codebasiertes Einsparpotenzial.
 
 # Aktueller Build-Fehler
 - [x] Typfehler in bestätigten Wahlkreisgrenzen behoben; automatische Prüfung meldet Build OK, 26 gezielte Tests bestanden.
