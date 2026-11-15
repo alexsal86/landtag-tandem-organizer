@@ -24,7 +24,8 @@ interface TenantAccessFailure {
 }
 
 function securityLog(functionName: string, userId: string | null, requestedTenantId: string | null, allowed: boolean, reason?: string) {
-  console.log(JSON.stringify({
+  if (allowed) return;
+  console.warn(JSON.stringify({
     event: "tenant_access_check",
     function_name: functionName,
     user_id: userId,
