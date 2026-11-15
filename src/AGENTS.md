@@ -1,0 +1,1 @@
+- Tailwind class scanning excludes large data folders via `@source not` in src/index.css, because scanning the multi-MB map/election files hangs the preview server.
