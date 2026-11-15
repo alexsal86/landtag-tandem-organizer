@@ -4,7 +4,6 @@ import { defineConfig, type Plugin } from "vite";
 import react from "@vitejs/plugin-react-swc";
 import tailwindcss from "@tailwindcss/vite";
 import path from "path";
-import os from "os";
 // import { componentTagger } from "lovable-tagger";
 // import { nodePolyfills } from 'vite-plugin-node-polyfills';
 
@@ -136,8 +135,6 @@ function publicInvitationApiProxy(): Plugin {
 
 // https://vitejs.dev/config/
 export default defineConfig(({ mode }) => ({
-  // Dependency pre-bundling hangs when its cache lives inside the project tree in this sandbox; keep it in the OS temp dir.
-  cacheDir: path.join(os.tmpdir(), "landtag-vite-deps"),
   server: {
     host: "::",
     port: 8080,
