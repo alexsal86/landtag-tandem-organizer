@@ -1,3 +1,9 @@
+-- Run as the database administration role postgres, never anon/authenticated.
+-- Some Supabase installations grant postgres SELECT on cron.job but omit the
+-- write permissions needed inside cron.unschedule/schedule/alter_job.
+-- The table owner (or a role with grant option) must restore these privileges.
+GRANT SELECT, INSERT, UPDATE, DELETE ON TABLE cron.job TO postgres;
+
 -- Do not depend on installation-specific job IDs (e.g. 3 or 6).
 -- Keep the email delivery interval, but invoke the function only when work is due.
 CREATE OR REPLACE FUNCTION public.dispatch_scheduled_emails_if_due()

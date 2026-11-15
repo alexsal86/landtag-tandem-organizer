@@ -34,3 +34,15 @@ After rollout, compare ingested bytes and endpoint counts over comparable usage
 windows. Check for remaining 403 responses and inspect their actual callers before
 changing any authentication policy. Existing email processing has no new atomic
 claiming; separate concurrent manual calls are outside this cron cleanup.
+
+## Permission denied for table job
+
+Run the migration in the SQL editor with the `postgres` database role. Cron's
+functions can require write privileges on `cron.job`, even if listing jobs works.
+The migration explicitly grants SELECT/INSERT/UPDATE/DELETE to `postgres` before
+changing jobs; it does not grant cron access to application roles.
+
+If that GRANT itself fails, a table owner or administrator with grant option must
+execute it. Do not bypass the error by swallowing it or creating another email
+job: that would leave the duplicate schedules active. Once privileges are restored,
+rerun the complete migration. A failed DO block rolls back all of its cron changes.
