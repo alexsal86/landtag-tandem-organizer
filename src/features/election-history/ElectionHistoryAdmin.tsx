@@ -4,7 +4,6 @@ import { ELECTORAL_TOPOLOGY_MANIFESTS } from "@/utils/electoralTopologyAsset";
 import { CandidateIdentityReview } from '@/features/election-analysis/research/CandidateIdentityReview';
 import { CandidateCoverageReview } from '@/features/election-analysis/research/CandidateCoverageReview';
 import { HistoryLinkReview } from '@/features/election-analysis/research/HistoryLinkReview';
-import { PeriodSourceReview } from '@/features/election-analysis/research/PeriodSourceReview';
 import { useElectionEditorDrafts, type ElectionEditorDraft } from './editorDrafts';
 import { useEffect, useState, type FormEvent } from 'react';
 import { useQueryClient } from '@tanstack/react-query';
@@ -21,7 +20,6 @@ import { useAdministrationAccess } from '@/components/administration/useAdminist
 import { useElectionHistory, useElectionPeriods, useElectionPersonSearch, saveHistoryEntry, deleteHistoryEntry, historyError } from './useElectionHistory';
 import { formatPersonalResult, formatMandateDateRange, parseHistoryForm, type FormValues, type HistoryEntity } from './model';
 import type { ElectionHistoryData } from './types';
-import { ElectionHistoryAudit } from './ElectionHistoryAudit';
 import { ElectionPeriodPreview } from './ElectionPeriodPreview';
 
 const sections: Record<HistoryEntity, string> = { periods: 'Legislaturperioden', people: 'Personen', districts: 'Wahlkreise', candidacies: 'Kandidaturen & Ergebnisse', mandates: 'Mandate' };
@@ -142,11 +140,12 @@ function ElectionHistoryWorkspace({ userId }: { userId: string }) {
   const periodName = (id: string) => data.periods.find(p => p.id === id)?.name || '';
   const personName = (id: string) => data.people.find(p => p.id === id)?.name || '';
   const describe = (v: FormValues) => {
-    if (entity === 'periods') return `${v.name} · ${v.is_published ? 'Freigegeben' : 'Entwurf'}${v.is_current ? ' · Aktuell' : ''}`;
+    if (entity === 'periods') return `${v.name} · ${v.is_published ? 'Freigegeben' : 'Entwurf'}`;
     if (entity === 'people') return `${v.name}${v.biography ? ` · ${v.biography}` : ''}`;
     if (entity === 'districts') return `${v.district_number || v.number_label || '–'}: ${v.name} · ${periodName(String(v.period_id))}${data.periods.find(p => p.id === v.period_id)?.election_year === 1952 && !v.geometry_source_key ? ' · regionale Zuordnung ungeprüft' : ''}`;
     return `${personName(String(v.person_id)) || v.person_name || 'Name fehlt'} · ${v.party} · ${periodName(String(v.period_id))} · ${data.districts.find(d => d.id === v.district_id)?.name || 'ohne Wahlkreis'} · ${entity === 'mandates' ? `${v.mandate_type === 'direct' ? 'Direkt' : 'Liste'} (${v.entry_type === 'succession' ? 'nachgerückt' : 'gewählt'}) · ${formatMandateDateRange({ starts_on: typeof v.starts_on === 'string' && v.starts_on ? v.starts_on : null, ends_on: typeof v.ends_on === 'string' && v.ends_on ? v.ends_on : null })}${v.start_from_period || v.end_from_period ? ' · Periodendaten übernommen' : ''}` : `${v.outcome === 'direct' ? 'Direkt gewählt' : v.outcome === 'list' ? 'Über Liste gewählt' : v.outcome === 'not_elected' ? 'Nicht gewählt' : 'Ausgang offen'}`}`;
   };
+  const unlinkedPeople = data.mandates.filter(m => !m.person_id && m.person_name && `${m.person_name} ${m.party}`.toLocaleLowerCase('de').includes(search.toLocaleLowerCase('de')));
   const rows = data[entity].map(row => ({ id: row.id, values: rowValues(row) })).filter(row =>
     (entity === 'periods' || entity === 'people' || !periodFilter || row.values.period_id === periodFilter)
     && describe(row.values).toLocaleLowerCase('de').includes(search.toLocaleLowerCase('de'))
@@ -215,11 +214,11 @@ function ElectionHistoryWorkspace({ userId }: { userId: string }) {
     <div><h2 className="text-2xl font-semibold">Wahldaten & Mandatshistorie</h2><p className="mt-1 text-sm text-muted-foreground">Zentrale Daten für alle Tenants. Jeweils eine Legislatur auswählen. Importierte Mandate behalten ihre Namen; Personen werden erst nach Bestätigung verknüpft. Historische Umrisse lassen sich bei den damaligen Wahlkreisen ergänzen.</p></div>
     {browserDrafts.storageFailed && <p role="alert" className="text-sm text-destructive">Der Browser kann Eingaben nicht zwischenspeichern. Bitte vor dem Verlassen über Speichern sichern.</p>}
     {browserDrafts.drafts.length > 0 && <details className="rounded-lg border bg-muted/20 p-3"><summary className="cursor-pointer text-sm">{browserDrafts.drafts.length} noch nicht gespeicherte Browserentwürfe</summary><div className="mt-2 flex flex-wrap gap-2">{browserDrafts.drafts.map(draft => <Button key={`${draft.entity}:${draft.id}:${draft.periodId}`} size="sm" variant="outline" disabled={saving} onClick={() => restoreDraft(draft)}>{sections[draft.entity]}: {String(draft.values.name || draft.values.person_name || periodQuery.data?.find(p => p.id === draft.periodId)?.name || 'Datensatz')} wiederherstellen</Button>)}</div></details>}
+    <div><Label htmlFor="history-period-filter">Legislaturperiode</Label><select id="history-period-filter" className={selectClass} value={selectedPeriod} disabled={saving} onChange={e => { setPeriodFilter(e.target.value); setDirty(false); setDraftStatus(''); setEditing(undefined); setPageSize(25); setSearch(''); setPersonSearch(''); }}><option value="" disabled>Legislaturperiode auswählen</option>{data.periods.map(p => <option key={p.id} value={p.id}>{p.name}{p.is_published ? '' : ' · Entwurf'}</option>)}</select></div>
     <Tabs value={entity} onValueChange={value => { setEntity(value as HistoryEntity); setDirty(false); setDraftStatus(''); setEditing(undefined); setFormError(''); setSearch(''); setPageSize(25); setPersonSearch(''); }}>
-      <TabsList className="h-auto flex flex-wrap justify-start gap-1">{Object.entries(sections).map(([key, label]) => <TabsTrigger disabled={saving} key={key} value={key}>{label} ({data[key as HistoryEntity].length})</TabsTrigger>)}</TabsList>
+      <TabsList className="h-auto flex flex-wrap justify-start gap-1">{Object.entries(sections).map(([key, label]) => <TabsTrigger disabled={saving} key={key} value={key}>{label} ({data[key as HistoryEntity].length + (key === 'people' ? data.mandates.filter(m => !m.person_id && m.person_name).length : 0)})</TabsTrigger>)}</TabsList>
     </Tabs>
     <div className="flex flex-wrap items-end gap-3">
-      <div><Label htmlFor="history-period-filter">Periode / Vorschau</Label><select id="history-period-filter" className={selectClass} value={selectedPeriod} disabled={saving} onChange={e => { setPeriodFilter(e.target.value); setDirty(false); setDraftStatus(''); setEditing(undefined); setPageSize(25); setSearch(''); setPersonSearch(''); }}><option value="" disabled>Legislaturperiode auswählen</option>{data.periods.map(p => <option key={p.id} value={p.id}>{p.name}{p.is_published ? '' : ' · Entwurf'}</option>)}</select></div>
       <div className="flex-1"><Label htmlFor="history-search">Datensätze suchen</Label><Input id="history-search" value={search} onChange={e => { setSearch(e.target.value); setPageSize(25); }} placeholder="Name, Partei oder Wahlkreis …" /></div>
       <Button variant="outline" disabled={!selectedPeriod} onClick={() => setPreview(v => !v)}>{preview ? 'Vorschau schließen' : 'Periode prüfen'}</Button>
       <Button disabled={saving} onClick={startNew}>+ Neu anlegen</Button>
@@ -227,7 +226,6 @@ function ElectionHistoryWorkspace({ userId }: { userId: string }) {
     {entity === 'candidacies' && <CandidateIdentityReview key={`identity-${selectedPeriod}`} data={{...data,periods:data.periods.filter(p=>p.id===selectedPeriod)}} disabled={saving || dirty} />}
     {entity === 'candidacies' && <CandidateCoverageReview key={selectedPeriod} periodId={selectedPeriod} disabled={saving || dirty} />}
     {entity === 'districts' && data.periods.find(p => p.id === selectedPeriod) && <HistoryLinkReview key={selectedPeriod} period={data.periods.find(p => p.id === selectedPeriod)!} districts={data.districts} disabled={saving || dirty} />}
-    {entity === 'periods' && data.periods.find(p => p.id === selectedPeriod) && <PeriodSourceReview key={selectedPeriod} period={data.periods.find(p => p.id === selectedPeriod)!} disabled={saving || dirty} />}
     {preview && selectedPeriod && <ElectionPeriodPreview data={data} periodId={selectedPeriod} />}
     {editing !== undefined && <Card><CardHeader><CardTitle>{editing ? 'Datensatz bearbeiten' : `${sections[entity]}: neuer Datensatz`}</CardTitle></CardHeader><CardContent>
       <form onSubmit={submit} className="grid gap-4 md:grid-cols-2">
@@ -251,14 +249,21 @@ function ElectionHistoryWorkspace({ userId }: { userId: string }) {
         </fieldset>
       </form>
     </CardContent></Card>}
-    <Card><CardHeader><CardTitle>{sections[entity]} · {rows.length}</CardTitle></CardHeader><CardContent className="space-y-3">
-      {!rows.length && <p className="text-sm text-muted-foreground">Noch keine passenden Datensätze. Es wurden keine Beispiel- oder Wahlergebnisse vorausgefüllt.</p>}
+    <Card><CardHeader><CardTitle>{sections[entity]} · {rows.length + (entity === 'people' ? unlinkedPeople.length : 0)}</CardTitle></CardHeader><CardContent className="space-y-3">
+      {!rows.length && !(entity === 'people' && unlinkedPeople.length) && <p className="text-sm text-muted-foreground">Noch keine passenden Datensätze. Es wurden keine Beispiel- oder Wahlergebnisse vorausgefüllt.</p>}
+      {entity === 'people' && unlinkedPeople.slice(0, pageSize).map(mandate => <div key={mandate.id} className="flex flex-wrap items-center justify-between gap-2 border-b pb-3">
+        <div><p className="text-sm font-medium">{mandate.person_name} · {mandate.party}</p><p className="text-xs text-muted-foreground">{periodName(mandate.period_id)} · Aus Mandat übernommen; Personenidentität noch nicht bestätigt.</p></div>
+        <Button size="sm" variant="outline" disabled={saving} onClick={() => { const draft = browserDrafts.get('mandates', mandate.id, mandate.period_id); setEntity('mandates'); setSearch(''); setPersonSearch(''); setValues(draft?.values || rowValues(mandate)); setEditing(mandate.id); setDirty(!!draft); setDraftStatus(draft ? 'Browserentwurf wiederhergestellt.' : ''); setFormError(''); }}>Personenzuordnung bearbeiten</Button>
+      </div>)}
+      {entity === 'people' && unlinkedPeople.length > pageSize && <Button variant="outline" onClick={() => setPageSize(size => size + 25)}>Weitere Personen aus Mandaten anzeigen</Button>}
       {rows.slice(0, pageSize).map(row => <div key={row.id} className="flex flex-wrap items-start justify-between gap-2 border-b pb-3 last:border-0">
         <div className="min-w-0 flex-1"><p className="text-sm font-medium break-words">{describe(row.values)}</p>
+          {entity === 'periods' && <p className="text-xs text-muted-foreground">{String(row.values.starts_on || '').slice(0, 4) || 'Beginn offen'} bis {String(row.values.ends_on || row.values.expected_ends_on || '').slice(0, 4) || 'Ende offen'}</p>}
           {entity === 'candidacies' && <p className="text-xs text-muted-foreground">{(() => { const candidate = data.candidacies.find(c => c.id === row.id); return candidate ? formatPersonalResult(candidate) : ''; })()}</p>}
           {row.values.source_url && <a href={String(row.values.source_url)} target="_blank" rel="noopener noreferrer" className="text-xs underline">Quelle</a>}
         </div>
         <div className="flex flex-wrap gap-2">
+          {entity === 'periods' && row.values.is_current && <Button size="sm" disabled>Aktuell</Button>}
           {entity === 'periods' && row.values.is_published && !row.values.is_current && <Button size="sm" variant="outline" disabled={saving} onClick={() => void makeCurrent(row.id)}>Als aktuell festlegen</Button>}
           <Button size="sm" variant="outline" disabled={saving} onClick={() => { const rowPeriod = entity === 'periods' ? row.id : String(row.values.period_id || selectedPeriod); const draft = browserDrafts.get(entity, row.id, rowPeriod); setValues(draft?.values || row.values); setEditing(row.id); setDirty(!!draft); setDraftStatus(draft ? 'Browserentwurf wiederhergestellt.' : ''); setFormError(''); }}>Bearbeiten</Button>
           <Button size="sm" variant="ghost" disabled={saving} onClick={() => void remove(row.id)}>Löschen</Button>
@@ -266,6 +271,5 @@ function ElectionHistoryWorkspace({ userId }: { userId: string }) {
       </div>)}
       {rows.length > pageSize && <Button variant="outline" onClick={() => setPageSize(size => size + 25)}>Weitere 25 anzeigen ({pageSize} von {rows.length})</Button>}
     </CardContent></Card>
-    <ElectionHistoryAudit />
   </div>;
 }
