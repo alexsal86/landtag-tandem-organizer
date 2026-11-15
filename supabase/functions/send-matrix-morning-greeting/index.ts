@@ -117,10 +117,6 @@ Deno.serve(withSafeHandler("send-matrix-morning-greeting", async (req) => {
       throw settingsError;
     }
 
-    console.log(
-      `📋 Found ${settings?.length || 0} users with morning greetings enabled`,
-    );
-
     let sentCount = 0;
     let skippedCount = 0;
     let errorCount = 0;
@@ -131,9 +127,6 @@ Deno.serve(withSafeHandler("send-matrix-morning-greeting", async (req) => {
         const sendHour = parseInt(setting.send_time.split(":")[0]);
 
         if (sendHour !== currentHour) {
-          console.log(
-            `⏭️ Skipping user ${setting.user_id} - send time ${setting.send_time} doesn't match current hour ${currentHour}`,
-          );
           skippedCount++;
           continue;
         }
@@ -156,9 +149,6 @@ Deno.serve(withSafeHandler("send-matrix-morning-greeting", async (req) => {
         }
 
         if (existingLog) {
-          console.log(
-            `⏭️ Already sent greeting today to user ${setting.user_id}`,
-          );
           skippedCount++;
           continue;
         }
@@ -168,9 +158,6 @@ Deno.serve(withSafeHandler("send-matrix-morning-greeting", async (req) => {
           setting.user_id,
         );
         if (!matrixEnabled) {
-          console.log(
-            `⏭️ Skipping morning greeting for user ${setting.user_id} (matrix_enabled=false)`,
-          );
           await logMatrixSkip(
             supabaseAdmin,
             setting.user_id,
@@ -199,9 +186,6 @@ Deno.serve(withSafeHandler("send-matrix-morning-greeting", async (req) => {
           .maybeSingle();
 
         if (matrixError || !matrixSub) {
-          console.log(
-            `⚠️ No active Matrix subscription for user ${setting.user_id}`,
-          );
           skippedCount++;
           continue;
         }

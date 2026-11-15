@@ -82,6 +82,7 @@ export default function DistrictBoundaryMap(props: DistrictBoundaryMapProps) {
     const collection = geometry ? { type: 'FeatureCollection', features: [{ type: 'Feature', properties: { Nummer: number, Name: district.name }, geometry }] } : data;
     const layer = L.geoJSON(collection as GeoJSON.GeoJsonObject, {
       pane: 'district-focus',
+      // @ts-expect-error Leaflet supports noClip at runtime, but @types/leaflet omits it from PathOptions.
       style: { color: '#15803d', weight: 3, opacity: 1, fillOpacity: 0.25, noClip: true, smoothFactor: 0 },
       onEachFeature: (feature, polygon) => {
         const label = document.createElement('span');
