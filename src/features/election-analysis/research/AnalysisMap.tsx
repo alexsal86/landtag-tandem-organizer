@@ -1,3 +1,4 @@
+import { ELECTORAL_TOPOLOGY_VERSION } from "@/utils/electoralTopologyAsset";
 import { useEffect, useRef } from "react";
 import { useQuery } from "@tanstack/react-query";
 import * as L from "leaflet";
@@ -49,7 +50,7 @@ export function AnalysisMap({
     ? "bundled:2021"
     : geography.data?.asset_path;
   const geometry = useQuery({
-    queryKey: ["election-research", "geometry", geographyId, asset],
+    queryKey: ["election-research", "geometry", geographyId, asset, ELECTORAL_TOPOLOGY_VERSION],
     enabled: !!asset && (!!confirmedBundledYear || preview || geography.data?.verified === true),
     queryFn: async ({ signal }) => {
       if (bundledYear || preview) return loadElectoralTopology(bundledYear ?? 2021);

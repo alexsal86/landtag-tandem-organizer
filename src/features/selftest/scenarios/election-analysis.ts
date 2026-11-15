@@ -1,4 +1,4 @@
-import { decodeElectoralTopology, electoralGeometryYear } from "@/utils/electoralTopology";
+import { decodeElectoralTopology, electoralGeometryYear, parseElectoralManifest, requiredElectoralPackages } from "@/utils/electoralTopology";
 import { atlasRows, atlasRankings, atlasScale } from "@/features/election-analysis/research/atlasModel";
 import type { ComparisonValue } from "@/features/election-analysis/research/types";
 import { analysisReport } from "@/features/election-analysis/research/reports";
@@ -67,6 +67,32 @@ export const electionAnalysisScenario: TestScenario = {
     "Amtliche Downloads, Datenbank-RLS und Vollständigkeit historischer Kandidaturen sind separate Prüfungen.",
   ],
   steps: [
+    {
+      id: "election-shape-packages",
+      label: "Wahlkreisformen: gemeinsame 68 Formen wiederverwenden, nur Änderungen laden",
+      kind: "logic",
+      run: async () => {
+        const common = `/data/geometry/shapes-${"a".repeat(64)}.topojson`;
+        const changed = `/data/geometry/shapes-${"b".repeat(64)}.topojson`;
+        const districts = Array.from({ length: 70 }, (_, i) => ({
+          shape: i.toString(16).padStart(64, "0"), package: i < 68 ? common : changed,
+          properties: { Nummer: String(i + 1) },
+        }));
+        const manifest = parseElectoralManifest({ version: 1, year: 2021, districts }, 2021);
+        const existing = new Set(districts.slice(0, 68).map(d => d.shape));
+        const missing = requiredElectoralPackages(manifest, existing);
+        let wrongYear = false, duplicateNumber = false, foreignPackage = false;
+        try { parseElectoralManifest(manifest, 2006); } catch { wrongYear = true; }
+        try { parseElectoralManifest({ ...manifest, districts: [districts[0], ...districts.slice(0, 69)] }, 2021); } catch { duplicateNumber = true; }
+        try { parseElectoralManifest({ ...manifest, districts: [{ ...districts[0], package: "https://example.org/shape" }, ...districts.slice(1)] }, 2021); } catch { foreignPackage = true; }
+        return {
+          ok: requiredElectoralPackages(manifest, new Set()).length === 2 && missing.length === 1 && missing[0] === changed
+            && requiredElectoralPackages(manifest, new Set(districts.map(d => d.shape))).length === 0
+            && wrongYear && duplicateNumber && foreignPackage,
+          message: "Kein Nachladen gemeinsamer Formen; nur das Änderungspaket der gewählten Wahl, gültige Nummern und lokale Hash-Adressen.",
+        };
+      },
+    },
     {
       id: "election-topology-years",
       label: "TopoJSON: Grenzstände, gemeinsame und umgekehrte Grenzlinien",

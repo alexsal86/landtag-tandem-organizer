@@ -1,7 +1,7 @@
 import { useMemo } from 'react';
 import { useQuery } from '@tanstack/react-query';
 import { loadElectoralTopology } from '@/utils/electoralTopology';
-import { ELECTORAL_TOPOLOGY_ASSET } from '@/utils/electoralTopologyAsset';
+import { ELECTORAL_TOPOLOGY_VERSION } from '@/utils/electoralTopologyAsset';
 import { confirmedPeriodGeometryYear, withPeriodGeometry } from './periodGeometry';
 import type { ElectionHistoryData } from './types';
 
@@ -9,7 +9,7 @@ export function usePeriodGeometry(data: ElectionHistoryData | undefined, periodI
   const period = data?.periods.find(p => p.id === periodId);
   const year = confirmedPeriodGeometryYear(period);
   const geometry = useQuery({
-    queryKey: ['election-history', 'shared-geometry', ELECTORAL_TOPOLOGY_ASSET, year],
+    queryKey: ['election-history', 'shared-geometry', ELECTORAL_TOPOLOGY_VERSION, year],
     enabled: !!data && year !== null,
     queryFn: () => loadElectoralTopology(year!),
     staleTime: Infinity, gcTime: 300_000, retry: false,

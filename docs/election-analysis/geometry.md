@@ -1,106 +1,102 @@
-# Shared election topology
+# Election geometry: shared district forms and selected-year manifests
 
-The supplied unquantized 2006, 2011, 2016 and cleaned 2021 TopoJSON files are packed into
-one topology. 2026 selects the 2021 object (user-confirmed identical boundaries).
-No rounding, quantization, simplification or approximate matching takes place.
-Only byte-identical coordinate arrays, including reversed arcs, are shared.
-Both years retain their original geometry references and properties.
+The public map no longer downloads one archive containing all election years.
+Each distinct district shape has a SHA-256 identity. A small manifest per boundary
+year maps district numbers/properties to shape identities and their package URLs.
+2026 resolves to the 2021 manifest, as confirmed by the user. District properties
+remain year-specific; names/numbers are not inferred from another year's shape.
 
-Regenerate from the archived source files:
+The packer compares exact coordinates, canonicalizing only ring start/direction,
+hole order and polygon order. No rounding, quantization, simplification, point
+thinning or approximate matching occurs. Stored forms retain the first matching
+source's original coordinates and topology. Polygon/MultiPolygon wrappers with
+identical polygon coordinates can share a form. Comparison keys omit only the
+repeated closing point; stored rings retain it.
+
+Unique forms are grouped by the set of boundary years which need them. This
+keeps requests bounded without fetching other years' unused forms. Shared arcs
+within each package are deduplicated as well. Currently there are 142 distinct
+forms across four boundary years (280 district entries):
+
+| Package usage | Distinct forms | Gzip bytes | Brotli bytes |
+| --- | ---: | ---: | ---: |
+| 2011, 2016, 2021 | 68 | 2,583,423 | 1,945,288 |
+| 2011, 2016 | 2 | 106,409 | 80,372 |
+| 2021 | 2 | 115,519 | 87,298 |
+| 2006 | 70 | 2,693,055 | 2,015,259 |
+
+The supplied 2006 coordinates do not exactly match the later shapes, so they
+remain distinct. No tolerance is used to declare them identical.
+
+| Selected year | Cold requests (manifest + packages) | Gzip bytes | Brotli bytes |
+| --- | ---: | ---: | ---: |
+| 2006 | 2 | 2,696,609 | 2,018,506 |
+| 2011 | 3 | 2,693,446 | 2,028,957 |
+| 2016 | 3 | 2,693,446 | 2,028,960 |
+| 2021 / 2026 | 3 | 2,702,560 | 2,035,856 |
+
+The previous cold gzip download was 5,330,486 bytes regardless of year. A switch
+from 2021 to 2011 now needs just 110,023 gzip bytes: the new manifest and two
+changed forms. A switch from 2011 to 2016 needs only the 3,614-byte manifest;
+2021 to 2026 needs no additional geometry. These are generated transfer sizes,
+excluding HTTP overhead, not browser timing measurements.
+
+## Retrieval and cache
+
+`loadElectoralTopology(year)` preserves the public loader interface. It loads
+only the selected manifest, computes the missing forms, deduplicates package
+requests and assembles that year's GeoJSON for Leaflet. Compressed packages and
+manifests are shared across historical member maps and the analysis maps.
+Concurrent consumers share in-flight requests; decoded forms are also reused.
+Failed requests can be retried. No private result data enters this cache.
+
+The browser requests explicit `.gz` files and uses DecompressionStream, so gzip
+works on static hosts without special content negotiation. Brotli quality 11 and
+gzip level 9 sidecars are generated for every package/manifest. On a host with
+precompressed negotiation, the canonical URL can instead negotiate Brotli; that
+requires actual server support, not just a sidecar file.
+
+Every URL includes its content hash. The five-year immutable HTTP rule remains
+in `public/_headers` for hosts supporting that format. Other hosts must set the
+equivalent server/CDN headers. Cache Storage (`public-election-shapes-v2`) keeps
+public compressed assets for up to 1,825 days; browsers may evict them earlier.
+Reading one package never deletes the cached packages of another year. The old
+all-years cache is retired. New frontend versions include a manifest-set version
+in React Query keys, while unchanged package URLs remain reusable.
+
+The superseded all-years archive was removed from the current tree; Git history
+retains it. Published existing frontend sessions should reload after deployment.
+
+## Regeneration
+
+Use the original unquantized sources, including the cleaned 2021 replacement:
 
 ```sh
-node scripts/geometry/pack-election-topology.mjs 2006=path/to/2006.topojson 2011=path/to/2011.topojson 2016=path/to/2016.topojson 2021=path/to/2021.topojson
+node scripts/geometry/pack-election-topology.mjs 2006=path/to/LTWahlkreise2006-BW.topojson 2011=path/to/LTWahlkreise2011-BW.topojson.json 2016=path/to/LTWahlkreise2016-BW.topojson 2021=path/to/LTWahlkreise2021_bereinigt.topojson.json
 ```
 
-The resulting topology has 3,447 arcs instead of 4,202 across the input files.
-The canonical JSON is 13,388,651 bytes; gzip level 9 is 5,330,486 bytes;
-Brotli quality 11 is 3,981,882 bytes. SHA-256 in the filename identifies the
-uncompressed content. Never replace a published asset in place.
+The script writes hashed packages/manifests with gzip/Brotli representations and
+generates `src/utils/electoralTopologyAsset.ts`. Future additions recompute exact
+shape sharing; package addresses change only when their serialized contents
+change. Remove superseded generated assets from the current tree when publishing.
+The Tailwind scanner excludes `public/data` to avoid scanning large geometry JSON.
 
-The browser fetches the explicit `.gz` representation so compression also works
-on static hosting without content negotiation, then decodes it with the browser's
-DecompressionStream. The public compressed response is cached in Cache Storage
-for at most 1,825 days; failed cache access falls back to network. This is a
-best-effort cache: browsers can evict stored data earlier. Changing the content
-hash immediately selects a fresh asset. Shared in-memory loading avoids downloading
-again when switching between 2006, 2011, 2016, 2021 and 2026. No election results or private
-data enter this cache.
+## Historical member map: confirmation
 
-`public/_headers` sets a five-year immutable HTTP policy on hosts that support
-this file. Other production hosts must configure the equivalent policy. The
-repository's deployment workflow is a placeholder, so live server headers cannot
-be configured or verified here. Brotli and gzip sidecars are provided for servers
-supporting precompressed content negotiation, for example Nginx:
+Existing database migrations remain necessary for period-specific selection:
+`20261115010000_election_history_shared_geometry.sql`, then
+`20261115080000_election_history_2006_2011_geometry.sql`. This packaging change
+needs no new database migration and preserves existing selections/confirmations.
 
-```nginx
-location /data/geometry/ {
-    gzip_static on;
-    # Requires the ngx_brotli module:
-    brotli_static on;
-    add_header Cache-Control "public, max-age=157680000, immutable";
-    add_header Vary Accept-Encoding;
-}
-```
-
-To prefer negotiated Brotli on such a host, request the canonical `.topojson`
-URL in `fetchTopology`; the browser handles Content-Encoding automatically.
-Keep the explicit gzip route on hosts without that capability. Do not set
-Content-Encoding on a gzip sidecar unless the server actually sends gzip bytes.
-
-The existing verified district-identity rules remain independent of rendering:
-using a supplied boundary asset does not automatically attest cross-year result
-comparability. Unknown or unverified comparisons remain unknown.
-
-## Historical member map: enable a legislature
-
-Deploy migration `20261115010000_election_history_shared_geometry.sql` before the
-updated frontend. No existing legislature is automatically assigned or confirmed.
 As superadmin, open **Administration → Wahldaten & Mandatshistorie →
-Legislaturperioden**, edit the desired period and choose **Historischer Grenzstand
-für die Karte**. Select the matching boundary year (2006, 2011, 2016), or 2021 for 2021/2026. Confirm
-that the boundary version and district-number assignments have been checked, then
-save. **Für alle Tenants freigeben** remains the separate legislature publication
-switch. Use **Periode prüfen** to see the confirmed version and remaining gaps.
+Legislaturperioden**, edit the desired period, select **Historischer Grenzstand
+für die Karte**, confirm the checked boundary/district-number assignment, then
+save. Choose the matching year (2006, 2011, 2016), or 2021 for 2021/2026.
+**Für alle Tenants freigeben** remains the separate publication switch.
 
-The selected legislature is loaded through the existing scoped RPC. Only after
-confirmation does the browser load its shared topology object and attach shapes
-in memory by the explicitly confirmed district numbers. Existing individual
-historical shapes take precedence. No geometry is copied into district rows, no
-mandates or analysis identities are changed. Changing the year/version in the
-editor clears confirmation. Adding/removing districts or changing their number
-assignments clears confirmation in the database. Existing superadmin RLS and the
-history audit cover these updates. Published periods expose the confirmed map to
-tenants; drafts remain restricted by the existing policies.
-
-## Corrected 2021/2026 source (2026-11-15)
-
-Replaced `LTWahlkreise2021_korrigiert (1).topojson` with the user-supplied
-`LTWahlkreise2021_bereinigt.topojson.json`. The supplied cleanup removes the
-fragmented areas near Hirrlingen/Starzach: district 62 now has one polygon and
-one interior ring; district 63 has one polygon without interior rings. All 70
-districts are present. The original 2016 source is unchanged. No additional
-quantization, rounding, simplification or geometry repair was applied.
-
-That release of the shared asset used SHA-256
-`e4c714578b5f621b3c5c17b9f35d159d1e4ab3260c5960e1d4edd2c88b4b8da2`.
-The frontend now requests that new URL; older cache entries are retired by the
-existing loader. The superseded defective asset and sidecars were removed from
-the current source tree; they remain available in Git history.
-
-## Added 2006 and 2011 sources (2026-11-15)
-
-Added the supplied `LTWahlkreise2006-BW.topojson` and
-`LTWahlkreise2011-BW.topojson.json` as separate objects in the same shared
-unquantized topology, with 70 uniquely numbered districts per year. The 2016 and
-cleaned 2021 source files are unchanged. 2026 continues to use the 2021 object.
-No comparison identities or historical data are inferred or written.
-
-The current content hash is
-`dd98696d3be3b563545e70812c573ae8bf80552d8cbe4910365f0a271972ae4f`.
-Deploy `20261115080000_election_history_2006_2011_geometry.sql` after the original
-shared-geometry migration to allow 2006 and 2011 in the database constraint.
-Then select and confirm the corresponding boundary year in each legislature's
-editor. Existing confirmations remain untouched; new periods are not automatically
-confirmed. The five-year cache policy is unchanged and the new content hash
-selects the updated file on reload. Superseded sidecars are removed from the
-current source tree and remain in Git history.
+Only that selected legislature is loaded by the existing scoped RPC. Its confirmed
+shapes are attached in browser memory; individual historical shapes retain
+precedence. No geometry is copied into district rows. Year/version edits clear
+the editor confirmation; district-number assignment changes invalidate it in
+PostgreSQL. Existing superadmin RLS and history auditing apply. Packaging changes
+do not create historical result identities or attest source correctness.
