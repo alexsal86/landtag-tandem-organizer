@@ -260,7 +260,7 @@ function ElectionHistoryWorkspace({ userId }: { userId: string }) {
         <div className="min-w-0 flex-1"><p className="text-sm font-medium break-words">{describe(row.values)}</p>
           {entity === 'periods' && <p className="text-xs text-muted-foreground">{String(row.values.starts_on || '').slice(0, 4) || 'Beginn offen'} bis {String(row.values.ends_on || row.values.expected_ends_on || '').slice(0, 4) || 'Ende offen'}</p>}
           {entity === 'candidacies' && <p className="text-xs text-muted-foreground">{(() => { const candidate = data.candidacies.find(c => c.id === row.id); return candidate ? formatPersonalResult(candidate) : ''; })()}</p>}
-          {row.values.source_url && <a href={String(row.values.source_url)} target="_blank" rel="noopener noreferrer" className="text-xs underline">Quelle</a>}
+          {entity !== 'periods' && row.values.source_url && <a href={String(row.values.source_url)} target="_blank" rel="noopener noreferrer" className="text-xs underline">Quelle</a>}
         </div>
         <div className="flex flex-wrap gap-2">
           {entity === 'periods' && row.values.is_current && <Button size="sm" disabled>Aktuell</Button>}
