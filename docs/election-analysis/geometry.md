@@ -12,9 +12,9 @@ Regenerate from the archived source files:
 node scripts/geometry/pack-election-topology.mjs path/to/2016.topojson path/to/2021.topojson
 ```
 
-The resulting topology has 680 arcs instead of 1,056 across the input files.
-The canonical JSON is 6,628,461 bytes; gzip level 9 is 2,650,595 bytes;
-Brotli quality 11 is 1,974,230 bytes. SHA-256 in the filename identifies the
+The resulting topology has 522 arcs instead of 897 across the input files.
+The canonical JSON is 6,601,990 bytes; gzip level 9 is 2,642,165 bytes;
+Brotli quality 11 is 1,967,946 bytes. SHA-256 in the filename identifies the
 uncompressed content. Never replace a published asset in place.
 
 The browser fetches the explicit `.gz` representation so compression also works
@@ -71,3 +71,18 @@ editor clears confirmation. Adding/removing districts or changing their number
 assignments clears confirmation in the database. Existing superadmin RLS and the
 history audit cover these updates. Published periods expose the confirmed map to
 tenants; drafts remain restricted by the existing policies.
+
+## Corrected 2021/2026 source (2026-11-15)
+
+Replaced `LTWahlkreise2021_korrigiert (1).topojson` with the user-supplied
+`LTWahlkreise2021_bereinigt.topojson.json`. The supplied cleanup removes the
+fragmented areas near Hirrlingen/Starzach: district 62 now has one polygon and
+one interior ring; district 63 has one polygon without interior rings. All 70
+districts are present. The original 2016 source is unchanged. No additional
+quantization, rounding, simplification or geometry repair was applied.
+
+The regenerated shared asset uses SHA-256
+`e4c714578b5f621b3c5c17b9f35d159d1e4ab3260c5960e1d4edd2c88b4b8da2`.
+The frontend now requests that new URL; older cache entries are retired by the
+existing loader. The superseded defective asset and sidecars were removed from
+the current source tree; they remain available in Git history.
