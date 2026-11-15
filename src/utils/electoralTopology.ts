@@ -1,4 +1,4 @@
-import { boundaryYearCandidate } from './electoralGeometryCatalog';
+import { boundaryYearCandidate, expectedElectoralDistrictCount, historical1952SourceByTechnical } from './electoralGeometryCatalog';
 import { normalizeElectoralGeoJson, type GeoJsonData } from './geoJsonLoader';
 import { ELECTORAL_TOPOLOGY_MANIFESTS } from './electoralTopologyAsset';
 
@@ -74,15 +74,23 @@ export interface ElectoralGeometryManifest {
 
 export function parseElectoralManifest(input: unknown, year: number): ElectoralGeometryManifest {
   const manifest = input as ElectoralGeometryManifest;
+  const expected = expectedElectoralDistrictCount(year);
   if (manifest?.version !== 1 || manifest.year !== year || !Array.isArray(manifest.districts)
-      || manifest.districts.length !== 70) throw new Error('Ungültige Wahlkreiszuordnung');
+      || manifest.districts.length !== expected) throw new Error('Ungültige Wahlkreiszuordnung');
   const numbers = new Set<number>();
   for (const district of manifest.districts) {
     const number = Number(district?.properties?.Nummer);
-    if (!Number.isInteger(number) || number < 1 || number > 70 || numbers.has(number)
+    if (!Number.isInteger(number) || number < 1 || number > expected || numbers.has(number)
         || !/^[a-f0-9]{64}$/.test(district.shape)
         || !/^\/data\/geometry\/shapes-[a-f0-9]{64}\.topojson$/.test(district.package))
       throw new Error('Ungültige Wahlkreisform oder Paketadresse');
+    if (year === 1952) {
+      const source = historical1952SourceByTechnical(number);
+      if (!source || district.properties.Region !== source.region
+          || Number(district.properties.Nummer_historisch) !== source.historicalNumber
+          || Number(district.properties.Nummer_technisch_1952) !== number)
+        throw new Error('1952 benötigt Region und historische Nummer zusätzlich zur technischen Kennung');
+    }
     numbers.add(number);
   }
   return manifest;

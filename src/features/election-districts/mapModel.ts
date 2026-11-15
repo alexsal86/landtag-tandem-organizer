@@ -15,12 +15,17 @@ export function hasRenderableBoundary(geometry: GeoJsonGeometry | null | undefin
     && geometry.coordinates.length > 0 && geometry.coordinates.every(isPolygon);
 }
 
-export function searchElectionDistricts<T extends { district_number: number; district_name: string; district_type?: string | null }>(districts: T[], query: string): T[] {
+export const electionDistrictNumberLabel = (district: { district_number: number; district_number_label?: string }) => district.district_number_label || String(district.district_number || '–');
+
+export function searchElectionDistricts<T extends { district_number: number; district_number_label?: string; district_name: string; district_type?: string | null }>(districts: T[], query: string): T[] {
   const text = query.trim().toLocaleLowerCase('de-DE');
   if (!text) return [];
   return districts.filter(district => district.district_type !== 'verwaltungsgrenze'
     && (district.district_name.toLocaleLowerCase('de-DE').includes(text)
-      || String(district.district_number) === text));
+      || (district.district_number_label
+        ? district.district_number_label.toLocaleLowerCase('de-DE').replace(/\s/g, '') === text.replace(/\s/g, '')
+          || district.district_number_label.split(' ').slice(-1)[0] === text
+        : String(district.district_number) === text)));
 }
 
 

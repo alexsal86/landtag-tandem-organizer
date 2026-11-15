@@ -5,7 +5,7 @@ import '@/styles/leaflet-overrides.css';
 import * as L from 'leaflet';
 import { ElectionDistrict } from '@/hooks/useElectionDistricts';
 import { usePartyAssociations } from '@/hooks/usePartyAssociations';
-import { directMandateParty, partyColors, hasRenderableBoundary } from '../mapModel';
+import { directMandateParty, partyColors, hasRenderableBoundary, electionDistrictNumberLabel } from '../mapModel';
 import { Plus, Minus, MoveDiagonal } from 'lucide-react';
 import sunflowerIcon from '@/assets/sunflower.svg';
 
@@ -262,7 +262,7 @@ const SimpleLeafletMap: React.FC<LeafletKarlsruheMapProps> = ({
             }
           });
           const tooltip = document.createElement('span');
-          tooltip.textContent = `${district.district_number || '–'}: ${district.district_name}${directMandate ? ` · ${directMandate.party}` : ''}`;
+          tooltip.textContent = `${electionDistrictNumberLabel(district)}: ${district.district_name}${directMandate ? ` · ${directMandate.party}` : ''}`;
           layer.bindTooltip(tooltip, { sticky: true });
           layer.on('add', () => {
             const element = (layer as L.Path).getElement();
@@ -300,7 +300,13 @@ const SimpleLeafletMap: React.FC<LeafletKarlsruheMapProps> = ({
       if (!Number.isFinite(lat) || !Number.isFinite(lng)) return;
       const partyColor = getPartyColorHex(district);
       const directMandate = district.representatives?.find(rep => rep.mandate_type === 'direct');
-      const { size, fontSize, borderWidth } = getDistrictMarkerDimensions(zoomLevel);
+      const dimensions = getDistrictMarkerDimensions(zoomLevel);
+      const size = district.district_number_label ? Math.max(54, dimensions.size) : dimensions.size;
+      const fontSize = district.district_number_label ? Math.min(11, dimensions.fontSize) : dimensions.fontSize;
+      const borderWidth = dimensions.borderWidth;
+      const markerNumber = document.createElement('span');
+      markerNumber.textContent = electionDistrictNumberLabel(district);
+      const safeNumber = markerNumber.innerHTML;
       const point = map.project([lat, lng], zoomLevel);
       if (occupied.some(other => other.distanceTo(point) < size + 3)) return;
       occupied.push(point);
@@ -308,7 +314,7 @@ const SimpleLeafletMap: React.FC<LeafletKarlsruheMapProps> = ({
       const marker = L.marker([lat, lng], {
         alt: `WK:${district.id}`,
         icon: L.divIcon({
-          html: `<div style="background: white; border: ${borderWidth}px solid ${partyColor}; border-radius: 50%; width: ${size}px; height: ${size}px; display: flex; align-items: center; justify-content: center; font-weight: bold; font-size: ${fontSize}px; color: black; box-shadow: 0 2px 4px rgba(0,0,0,0.2);">${district.district_number || '–'}</div>`,
+          html: `<div style="background: white; border: ${borderWidth}px solid ${partyColor}; border-radius: 50%; width: ${size}px; height: ${size}px; display: flex; align-items: center; justify-content: center; font-weight: bold; font-size: ${fontSize}px; color: black; box-shadow: 0 2px 4px rgba(0,0,0,0.2);">${safeNumber}</div>`,
           className: 'custom-district-marker',
           iconSize: [size, size],
           iconAnchor: [size / 2, size / 2]
@@ -316,16 +322,17 @@ const SimpleLeafletMap: React.FC<LeafletKarlsruheMapProps> = ({
       });
       
       const label = document.createElement('span');
-      label.textContent = `${district.district_number || '–'}: ${district.district_name}`;
+      label.textContent = `${electionDistrictNumberLabel(district)}: ${district.district_name}`;
       marker.bindTooltip(label);
       marker.on('click', () => onDistrictClickRef.current(district));
       
       // Enhanced tooltip with representative info
       if (directMandate) {
+        const details = document.createElement('span');
+        details.className = 'whitespace-pre-line';
+        details.textContent = `WK ${electionDistrictNumberLabel(district)}: ${district.district_name}\n${directMandate.name} (${directMandate.party})\nDirektmandat`;
         marker.bindTooltip(
-          `<strong>WK ${district.district_number || '–'}: ${district.district_name}</strong><br/>
-           <strong>${directMandate.name}</strong> (${directMandate.party})<br/>
-           Direktmandat`, 
+          details,
           {
             permanent: false,
             direction: 'top',

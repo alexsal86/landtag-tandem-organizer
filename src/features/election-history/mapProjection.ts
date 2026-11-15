@@ -1,3 +1,4 @@
+import { historical1952Source } from '@/utils/electoralGeometryCatalog';
 import type { ElectionDistrict } from '@/hooks/useElectionDistricts';
 import { hasRenderableBoundary } from '@/features/election-districts/mapModel';
 import type { ElectionHistoryData } from './types';
@@ -24,8 +25,10 @@ export function projectHistoricalDistricts(base: ElectionDistrict[], data: Elect
         minLng = Math.min(minLng, point[0]); maxLng = Math.max(maxLng, point[0]);
         minLat = Math.min(minLat, point[1]); maxLat = Math.max(maxLat, point[1]);
       }
+      const regionalSource = period?.election_year === 1952 ? historical1952Source(d.geometry_source_key) : undefined;
       return {
-        id: d.id, district_number: d.district_number || 0, district_name: d.name, region: 'Baden-Württemberg',
+        id: d.id, district_number: regionalSource?.technicalNumber ?? d.district_number ?? 0,
+        district_number_label: regionalSource?.label, district_name: d.name, region: 'Baden-Württemberg',
         boundaries: d.boundaries, district_type: 'wahlkreis', created_at: '', updated_at: '',
         center_coordinates: points.length ? {
           lng: (minLng + maxLng) / 2,

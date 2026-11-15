@@ -26,6 +26,7 @@ export function ElectionPeriodPreview({ data, periodId }: { data: ElectionHistor
     <p className="text-xs text-muted-foreground">{assigned} Mandate einem Wahlkreis zugeordnet · {withoutDistrict.length} ohne Wahlkreis · {candidates.length} persönliche Wahlergebnisse erfasst.</p>
     <p className="text-xs text-muted-foreground">Grenzstand: {period?.boundary_geometry_year ?? 'nicht ausgewählt'} · {period?.boundary_geometry_confirmed ? 'bestätigt' : 'nicht bestätigt'}</p>
     <HistoricalGeometryNotice year={period?.boundary_geometry_year} />
+    {period?.election_year === 1952 && districts.some(d => !d.geometry_source_key) && <p className="text-xs text-amber-700">{districts.filter(d => !d.geometry_source_key).length} Bestandsdatensätze ohne regionale Quellenzuordnung. Ihre Mandatsverknüpfungen werden nicht auf technische Kennungen übertragen; bitte unter Mandate prüfen.</p>}
     {geometry.isLoading && <p role="status" className="text-xs">Lade bestätigten Grenzstand …</p>}
     {geometry.error && <p role="alert" className="text-sm text-destructive">Grenzstand konnte nicht geladen werden. <button className="underline" onClick={() => void geometry.refetch()}>Erneut laden</button></p>}
     {!geometry.isLoading && missingBoundaries > 0 && <p className="text-xs text-muted-foreground">{missingBoundaries} Wahlkreise haben noch keinen historischen Grenzumriss.</p>}

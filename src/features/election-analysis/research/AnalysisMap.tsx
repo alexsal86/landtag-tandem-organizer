@@ -1,4 +1,4 @@
-import { isReconstructedBoundary, reconstructedGeometryAttribution } from "@/utils/electoralGeometryCatalog";
+import { isReconstructedBoundary, reconstructedGeometryAttribution, historical1952SourceByTechnical } from "@/utils/electoralGeometryCatalog";
 import { HistoricalGeometryNotice } from "@/features/election-history/HistoricalGeometryNotice";
 import { ELECTORAL_TOPOLOGY_VERSION } from "@/utils/electoralTopologyAsset";
 import { useEffect, useRef } from "react";
@@ -100,6 +100,38 @@ export function AnalysisMap({
     );
     paths.current.clear();
     const patternId = `analysis-unknown-${L.Util.stamp(instance)}`;
+    const applyUnknownPattern = (path: L.Path) => {
+      const node = path.getElement();
+      if (!node) return;
+      if (
+        node instanceof SVGElement &&
+        node.ownerSVGElement
+      ) {
+        const svg = node.ownerSVGElement;
+        if (!svg.querySelector(`#${patternId}`)) {
+          const ns = "http://www.w3.org/2000/svg";
+          const defs = document.createElementNS(ns, "defs");
+          const pattern = document.createElementNS(ns, "pattern");
+          pattern.id = patternId;
+          pattern.setAttribute("width", "8");
+          pattern.setAttribute("height", "8");
+          pattern.setAttribute("patternUnits", "userSpaceOnUse");
+          pattern.setAttribute("patternTransform", "rotate(45)");
+          const background = document.createElementNS(ns, "rect");
+          background.setAttribute("width", "8");
+          background.setAttribute("height", "8");
+          background.setAttribute("fill", "#e5e7eb");
+          const stripe = document.createElementNS(ns, "path");
+          stripe.setAttribute("d", "M0 0V8");
+          stripe.setAttribute("stroke", "#6b7280");
+          stripe.setAttribute("stroke-width", "3");
+          pattern.append(background, stripe);
+          defs.append(pattern);
+          svg.prepend(defs);
+        }
+        node.setAttribute("fill", `url(#${patternId})`);
+      }
+    };
     const layer = L.geoJSON(geometry.data as GeoJSON.FeatureCollection, {
       style: (feature) => {
         const properties = feature?.properties || {};
@@ -111,7 +143,7 @@ export function AnalysisMap({
         );
         const version = versions.find((v) => v.district_number === number);
         const value =
-          !preview && (confirmedBundledYear ? version?.bundled_geometry_year === confirmedBundledYear : version?.geography_id === geographyId)
+          bundledYear !== 1952 && !preview && (confirmedBundledYear ? version?.bundled_geometry_year === confirmedBundledYear : version?.geography_id === geographyId)
             ? (values.get(number) ?? null)
             : null;
         return {
@@ -125,10 +157,20 @@ export function AnalysisMap({
       onEachFeature: (feature, path) => {
         const p = feature.properties || {};
         const number = Number(p.Nummer ?? p.WKR_NR ?? p.WKRNR ?? p.NR);
+        if (bundledYear === 1952) {
+          path.on('add', () => applyUnknownPattern(path as L.Path));
+          const source = historical1952SourceByTechnical(number);
+          if (source) {
+            const tooltip = document.createElement('span');
+            tooltip.textContent = `${source.label}: ${source.name} · Rekonstruktion; keine automatische Ergebniszuordnung`;
+            path.bindTooltip(tooltip, { sticky: true });
+          }
+          return;
+        }
         const version = versions.find((v) => v.district_number === number);
         if (!version) return;
         const value =
-          !preview && (confirmedBundledYear ? version.bundled_geometry_year === confirmedBundledYear : version.geography_id === geographyId)
+          bundledYear !== 1952 && !preview && (confirmedBundledYear ? version.bundled_geometry_year === confirmedBundledYear : version.geography_id === geographyId)
             ? (values.get(number) ?? null)
             : null;
         const tooltip = document.createElement("span");
@@ -139,35 +181,7 @@ export function AnalysisMap({
         path.on("add", () => {
           const node = (path as L.Path).getElement();
           if (!node) return;
-          if (
-            value === null &&
-            node instanceof SVGElement &&
-            node.ownerSVGElement
-          ) {
-            const svg = node.ownerSVGElement;
-            if (!svg.querySelector(`#${patternId}`)) {
-              const ns = "http://www.w3.org/2000/svg";
-              const defs = document.createElementNS(ns, "defs");
-              const pattern = document.createElementNS(ns, "pattern");
-              pattern.id = patternId;
-              pattern.setAttribute("width", "8");
-              pattern.setAttribute("height", "8");
-              pattern.setAttribute("patternUnits", "userSpaceOnUse");
-              pattern.setAttribute("patternTransform", "rotate(45)");
-              const background = document.createElementNS(ns, "rect");
-              background.setAttribute("width", "8");
-              background.setAttribute("height", "8");
-              background.setAttribute("fill", "#e5e7eb");
-              const stripe = document.createElementNS(ns, "path");
-              stripe.setAttribute("d", "M0 0V8");
-              stripe.setAttribute("stroke", "#6b7280");
-              stripe.setAttribute("stroke-width", "3");
-              pattern.append(background, stripe);
-              defs.append(pattern);
-              svg.prepend(defs);
-            }
-            node.setAttribute("fill", `url(#${patternId})`);
-          }
+          if (value === null) applyUnknownPattern(path as L.Path);
           node.setAttribute("tabindex", "0");
           node.setAttribute("role", "button");
           node.setAttribute(

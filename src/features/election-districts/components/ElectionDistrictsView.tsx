@@ -10,7 +10,7 @@ import React, { useEffect, useMemo, useState } from "react";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Badge } from "@/components/ui/badge";
 import { Input } from "@/components/ui/input";
-import { boundaryAreaKm2, directMandateParty, partyColors, hasRenderableBoundary, searchElectionDistricts } from "../mapModel";
+import { boundaryAreaKm2, directMandateParty, partyColors, hasRenderableBoundary, searchElectionDistricts, electionDistrictNumberLabel } from "../mapModel";
 import { Button } from "@/components/ui/button";
 import { Users, BarChart3, Search } from "lucide-react";
 import { useElectionDistricts } from "@/hooks/useElectionDistricts";
@@ -78,8 +78,12 @@ export const ElectionDistrictsView = ({ sidebarHeader }: { sidebarHeader?: React
   const [activeResult, setActiveResult] = useState(0);
   const [selectedParties, setSelectedParties] = useState<Set<string>>(() => new Set(['CDU', 'GRÜNE', 'SPD', 'FDP', 'AFD']));
   useEffect(() => {
-    if (history.data) setSelectedParties(new Set(history.data.mandates.map(m => directMandateParty({ representatives: [{ mandate_type: 'direct', party: m.party }] }))));
-  }, [history.data]);
+    if (history.data) {
+      const parties = new Set(history.data.mandates.map(m => directMandateParty({ representatives: [{ mandate_type: 'direct', party: m.party }] })));
+      if (historyPeriod?.election_year === 1952) parties.add('Ohne Direktmandat');
+      setSelectedParties(parties);
+    }
+  }, [history.data, historyPeriod?.election_year]);
   const [showBaseMap, setShowBaseMap] = useState(false);
   const [focusedDistrict, setFocusedDistrict] = useState<ElectionDistrict>();
   const [showPartyAssociations, setShowPartyAssociations] = useState(false);
@@ -98,10 +102,16 @@ export const ElectionDistrictsView = ({ sidebarHeader }: { sidebarHeader?: React
   // Separate district types
   const electionDistricts = districts.filter(d => d.district_type !== 'verwaltungsgrenze');
   const administrativeBoundaries = districts.filter(d => d.district_type === 'verwaltungsgrenze');
-  const electionDistrictCount = history.data?.districts.length ?? electionDistricts.length;
+  const unresolved1952 = historyPeriod?.election_year === 1952
+    ? history.data?.districts.filter(d => !d.geometry_source_key).length ?? 0 : 0;
+  const electionDistrictCount = historyPeriod?.election_year === 1952
+    ? history.data?.districts.filter(d => d.geometry_source_key?.startsWith('1952:')).length ?? 0
+    : history.data?.districts.length ?? electionDistricts.length;
   const hasElectionData = electionDistrictCount > 0;
-  const partyChoices = Array.from(new Set(['CDU', 'GRÜNE', 'SPD', 'FDP', 'AFD', ...(history.data?.mandates.map(m => directMandateParty({ representatives: [{ mandate_type: 'direct', party: m.party }] })) || [])]));
-  const partyCount = (party: string) => history.data ? history.data.mandates.filter(m => m.entry_type === 'election' && m.mandate_type === 'direct' && directMandateParty({ representatives: [{ mandate_type: 'direct', party: m.party }] }) === party).length : electionDistricts.filter(d => directMandateParty(d) === party).length;
+  const partyChoices = Array.from(new Set(['CDU', 'GRÜNE', 'SPD', 'FDP', 'AFD', ...(historyPeriod?.election_year === 1952 ? ['Ohne Direktmandat'] : []), ...(history.data?.mandates.map(m => directMandateParty({ representatives: [{ mandate_type: 'direct', party: m.party }] })) || [])]));
+  const partyCount = (party: string) => historyPeriod?.election_year === 1952 && party === 'Ohne Direktmandat'
+    ? electionDistricts.filter(d => directMandateParty(d) === party).length
+    : history.data ? history.data.mandates.filter(m => m.entry_type === 'election' && m.mandate_type === 'direct' && directMandateParty({ representatives: [{ mandate_type: 'direct', party: m.party }] }) === party).length : electionDistricts.filter(d => directMandateParty(d) === party).length;
   const hasAdministrativeData = administrativeBoundaries.length > 0;
 
   // Filter displayed districts based on toggles
@@ -148,7 +158,7 @@ export const ElectionDistrictsView = ({ sidebarHeader }: { sidebarHeader?: React
             <ErrorBoundary onError={handleMapError}>
               <SimpleLeafletMap
                 key={historyPeriod?.id || 'legacy'}
-                districtCount={history.data?.districts.length}
+                districtCount={electionDistrictCount}
                 geometryAttribution={reconstructedGeometryAttribution(historyPeriod?.boundary_geometry_year)}
                 districts={displayedDistricts}
                 onDistrictClick={handleDistrictClick}
@@ -195,7 +205,7 @@ export const ElectionDistrictsView = ({ sidebarHeader }: { sidebarHeader?: React
                   {searchResults.map((district, index) => (
                     <button id={`district-result-${district.id}`} role="option" aria-selected={index === activeResult} style={index === activeResult ? { background: 'hsl(var(--accent))' } : undefined} key={district.id} type="button" className="block w-full px-3 py-2 text-left text-sm hover:bg-accent focus-visible:bg-accent"
                       onClick={() => focusDistrict(district)}>
-                      WK {district.district_number}: {district.district_name}
+                      WK {electionDistrictNumberLabel(district)}: {district.district_name}
                     </button>
                   ))}
                 </div>
@@ -209,7 +219,7 @@ export const ElectionDistrictsView = ({ sidebarHeader }: { sidebarHeader?: React
           <ul className="mt-1 max-h-32 overflow-y-auto">
             {missingBoundaries.map(district => <li key={district.id}>
               <button type="button" className="text-left underline py-1" onClick={() => focusDistrict(district)}>
-                {district.district_number}: {district.district_name}
+                {electionDistrictNumberLabel(district)}: {district.district_name}
               </button>
             </li>)}
           </ul>
@@ -226,6 +236,7 @@ export const ElectionDistrictsView = ({ sidebarHeader }: { sidebarHeader?: React
           )}
           <HistoricalGeometryNotice year={historyPeriod?.boundary_geometry_year} />
           {history.isLoading && <p role="status" className="text-sm text-muted-foreground">Lade ausgewählte Legislatur …</p>}
+          {unresolved1952 > 0 && <p role="status" className="rounded-lg border border-amber-500/40 p-3 text-xs">{unresolved1952} bestehende Wahlkreiseinträge sind noch keiner regionalen 1952-Quelle zugeordnet. Ihre Mandate bleiben erhalten und werden nicht anhand technischer Nummern auf die 74 Kartenflächen übertragen. Die Zuordnung kann unter Administration → Wahldaten &amp; Mandatshistorie → Mandate geprüft werden.</p>}
           {periodGeometry.isLoading && <p role="status" className="text-sm text-muted-foreground">Lade bestätigten historischen Grenzstand …</p>}
           {periodGeometry.error && <p role="alert" className="text-sm">Der bestätigte Grenzstand konnte nicht geladen werden. <button className="underline" onClick={() => void periodGeometry.refetch()}>Erneut laden</button></p>}
           {history.error && <p role="alert" className="text-sm">{historyError(history.error)}</p>}
@@ -236,7 +247,7 @@ export const ElectionDistrictsView = ({ sidebarHeader }: { sidebarHeader?: React
               <label htmlFor="historical-district" className="text-sm font-medium">Historischer Wahlkreis</label>
               <select id="historical-district" className="mt-1 w-full rounded-md border bg-background p-2 text-sm" value={selectedHistoricalDistrict} onChange={event => setSelectedHistoricalDistrict(event.target.value)}>
                 <option value="">Wahlkreis auswählen</option>
-                {history.data.districts.map(d => <option key={d.id} value={d.id}>{d.district_number ?? d.number_label ?? '–'}: {d.name}</option>)}
+                {history.data.districts.map(d => <option key={d.id} value={d.id}>{d.district_number ?? d.number_label ?? '–'}: {d.name}{historyPeriod.election_year === 1952 && !d.geometry_source_key ? ' · Zuordnung ungeprüft' : ''}</option>)}
               </select>
             </div>
             {selectedHistoricalDistrict && historyPeriod.election_year && [2006,2011,2016,2021,2026].includes(historyPeriod.election_year) && history.data.districts.find(d => d.id === selectedHistoricalDistrict)?.district_number != null && <Button variant="outline" asChild><Link to={`/daten?dataTool=wahlanalyse&analysisSection=profile&analysisYear=${historyPeriod.election_year}&analysisDistrict=${history.data.districts.find(d => d.id === selectedHistoricalDistrict)?.district_number}`}>Wahlkreis-Steckbrief öffnen</Link></Button>}
@@ -310,8 +321,8 @@ export const ElectionDistrictsView = ({ sidebarHeader }: { sidebarHeader?: React
                         return next;
                       })}
                       className={`inline-flex items-center gap-1.5 rounded-full border px-2.5 py-1 text-xs transition-all duration-200 motion-reduce:transition-none ${selectedParties.has(party) ? 'border-[#626a59] bg-[#f0f2ed] dark:border-[#929b86] dark:bg-[#292c26] shadow-sm' : 'border-[#858d7b] dark:border-[#767e6b] bg-transparent text-muted-foreground hover:border-[#626a59]'}`}>
-                      <span className="h-2.5 w-2.5 rounded-full" style={{ backgroundColor: partyColors[party] }} />
-                      {party === 'AFD' ? 'AfD' : party}
+                      <span className="h-2.5 w-2.5 rounded-full" style={{ backgroundColor: partyColors[party] || '#9ca3af' }} />
+                      {party === 'Ohne Direktmandat' && historyPeriod?.election_year === 1952 ? 'Zuordnung offen' : party === 'AFD' ? 'AfD' : party}
                       <span className="text-muted-foreground">{partyCount(party)}</span>
                     </button>
                   ))}
@@ -344,7 +355,7 @@ export const ElectionDistrictsView = ({ sidebarHeader }: { sidebarHeader?: React
                         <section key={period} className="space-y-2">
                           <h3 className="flex flex-wrap items-center gap-x-2 gap-y-1">
                             <Badge variant="outline" className="border-0 text-xs" style={{ backgroundColor: getPartyColor(winner?.party), color: getPartyTextColor(winner?.party) }}>
-                              {selectedDistrict.district_number}
+                              {electionDistrictNumberLabel(selectedDistrict)}
                             </Badge>
                             <span className="font-semibold">{selectedDistrict.district_name}</span>
                             {period && <span className="ml-auto text-xs font-normal text-muted-foreground">{period}</span>}

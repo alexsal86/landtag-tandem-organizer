@@ -1,3 +1,4 @@
+import { electionDistrictNumberLabel } from '../mapModel';
 import React from 'react';
 import { getPartyColor, getPartyTextColor } from '../partyColors';
 import { ElectionDistrict } from '@/hooks/useElectionDistricts';
@@ -44,7 +45,7 @@ const LeafletMapFallback: React.FC<LeafletMapFallbackProps> = ({
                     style={{ backgroundColor: partyColor, color: getPartyTextColor(district.representatives?.find(rep => rep.mandate_type === 'direct')?.party) }}
                     className="text-xs"
                   >
-                    {district.district_number}
+                    {electionDistrictNumberLabel(district)}
                   </Badge>
                   <h3 className="font-semibold text-sm">{district.district_name}</h3>
                 </div>

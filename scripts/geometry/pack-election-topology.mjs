@@ -48,11 +48,12 @@ for (const { year, file } of sources) {
   if (topology.type !== 'Topology' || topology.transform) throw new Error('Expected unquantized Topology');
   const objects = Object.values(topology.objects);
   if (objects.length !== 1 || objects[0].type !== 'GeometryCollection') throw new Error('Expected one district collection');
+  const expectedCount = year === 1952 ? 74 : 70;
   const districts = [];
   const numbers = new Set();
   for (const geometry of objects[0].geometries) {
     const number = Number(geometry.properties?.Nummer);
-    if (!Number.isInteger(number) || number < 1 || number > 70 || numbers.has(number)) throw new Error('Invalid or duplicate district number');
+    if (!Number.isInteger(number) || number < 1 || number > expectedCount || numbers.has(number)) throw new Error('Invalid or duplicate district number');
     numbers.add(number);
     if (!['Polygon', 'MultiPolygon'].includes(geometry.type)) throw new Error('Expected district polygon');
     const polygons = geometry.type === 'Polygon' ? [geometry.arcs] : geometry.arcs;
@@ -66,7 +67,7 @@ for (const { year, file } of sources) {
     forms.get(shape).representatives.set(year, { geometry, topology });
     districts.push({ shape, properties: geometry.properties });
   }
-  if (districts.length !== 70) throw new Error('Expected all 70 districts');
+  if (districts.length !== expectedCount) throw new Error(`Expected all ${expectedCount} districts for ${year}`);
   manifests.set(year, { version: 1, year, districts: districts.sort((a, b) => Number(a.properties.Nummer) - Number(b.properties.Nummer)) });
 }
 const groups = new Map();

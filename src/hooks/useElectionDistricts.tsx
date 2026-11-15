@@ -34,6 +34,7 @@ interface ElectionRepresentative {
 export interface ElectionDistrict {
   id: string;
   district_number: number;
+  district_number_label?: string;
   district_name: string;
   region: string;
   boundaries?: ElectionDistrictFeature["geometry"] | null;

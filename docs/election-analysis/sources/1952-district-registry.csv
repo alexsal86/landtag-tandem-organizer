@@ -1,0 +1,75 @@
+key,technicalNumber,region,historicalNumber,name,label
+1952:NW:1,1,NW,1,Stuttgart I,NW 1
+1952:NW:2,2,NW,2,Stuttgart II,NW 2
+1952:NW:3,3,NW,3,Stuttgart III,NW 3
+1952:NW:4,4,NW,4,Stuttgart IV,NW 4
+1952:NW:5,5,NW,5,Stuttgart V,NW 5
+1952:NW:6,6,NW,6,Heilbronn-Stadt,NW 6
+1952:NW:7,7,NW,7,Ulm-Stadt,NW 7
+1952:NW:8,8,NW,8,Aalen,NW 8
+1952:NW:9,9,NW,9,Backnang,NW 9
+1952:NW:10,10,NW,10,Böblingen,NW 10
+1952:NW:11,11,NW,11,Crailsheim,NW 11
+1952:NW:12,12,NW,12,Esslingen I,NW 12
+1952:NW:13,13,NW,13,Esslingen II,NW 13
+1952:NW:14,14,NW,14,Göppingen I,NW 14
+1952:NW:15,15,NW,15,Göppingen II,NW 15
+1952:NW:16,16,NW,16,Heidenheim,NW 16
+1952:NW:17,17,NW,17,Heilbronn-Land I,NW 17
+1952:NW:18,18,NW,18,Heilbronn-Land II,NW 18
+1952:NW:19,19,NW,19,Leonberg,NW 19
+1952:NW:20,20,NW,20,Ludwigsburg I,NW 20
+1952:NW:21,21,NW,21,Ludwigsburg II,NW 21
+1952:NW:22,22,NW,22,Nürtingen,NW 22
+1952:NW:23,23,NW,23,Öhringen,NW 23
+1952:NW:24,24,NW,24,Schwäbisch Gmünd,NW 24
+1952:NW:25,25,NW,25,Ulm-Land,NW 25
+1952:NW:26,26,NW,26,Vaihingen/Enz,NW 26
+1952:NW:27,27,NW,27,Waiblingen I,NW 27
+1952:NW:28,28,NW,28,Waiblingen II,NW 28
+1952:NB:29,29,NB,29,Karlsruhe-Stadt I,NB 29
+1952:NB:30,30,NB,30,Karlsruhe-Stadt II,NB 30
+1952:NB:31,31,NB,31,Heidelberg-Stadt,NB 31
+1952:NB:32,32,NB,32,Mannheim-Stadt I,NB 32
+1952:NB:33,33,NB,33,Mannheim-Stadt II,NB 33
+1952:NB:34,34,NB,34,Mannheim-Stadt III,NB 34
+1952:NB:35,35,NB,35,Bruchsal,NB 35
+1952:NB:36,36,NB,36,Buchen,NB 36
+1952:NB:37,37,NB,37,Heidelberg-Land,NB 37
+1952:NB:38,38,NB,38,Karlsruhe-Land I,NB 38
+1952:NB:39,39,NB,39,Karlsruhe-Land II,NB 39
+1952:NB:40,40,NB,40,Mannheim-Land I,NB 40
+1952:NB:41,41,NB,41,Mannheim-Land II,NB 41
+1952:NB:42,42,NB,42,Mosbach,NB 42
+1952:NB:43,43,NB,43,Pforzheim,NB 43
+1952:NB:44,44,NB,44,Sinsheim,NB 44
+1952:NB:45,45,NB,45,Tauberbischofsheim,NB 45
+1952:SB:1,46,SB,1,Überlingen-Meßkirch,SB 1
+1952:SB:2,47,SB,2,Stockach-Engen,SB 2
+1952:SB:3,48,SB,3,Konstanz Stadt und Land,SB 3
+1952:SB:4,49,SB,4,Donaueschingen-Neustadt,SB 4
+1952:SB:5,50,SB,5,Villingen-Wolfach,SB 5
+1952:SB:6,51,SB,6,Waldshut-Säckingen,SB 6
+1952:SB:7,52,SB,7,Freiburg und westliche Vororte,SB 7
+1952:SB:8,53,SB,8,Freiburg-Stadt,SB 8
+1952:SB:9,54,SB,9,Müllheim-Lörrach,SB 9
+1952:SB:10,55,SB,10,Lörrach,SB 10
+1952:SB:11,56,SB,11,Emmendingen,SB 11
+1952:SB:12,57,SB,12,Lahr,SB 12
+1952:SB:13,58,SB,13,Offenburg,SB 13
+1952:SB:14,59,SB,14,Kehl-Achern,SB 14
+1952:SB:15,60,SB,15,Rastatt,SB 15
+1952:SB:16,61,SB,16,Baden-Baden-Bühl,SB 16
+1952:SWH:1,62,SWH,1,Reutlingen ohne Urach,SWH 1
+1952:SWH:2,63,SWH,2,Tübingen,SWH 2
+1952:SWH:3,64,SWH,3,Calw,SWH 3
+1952:SWH:4,65,SWH,4,Freudenstadt-Horb,SWH 4
+1952:SWH:5,66,SWH,5,Rottweil ohne Schwenningen,SWH 5
+1952:SWH:6,67,SWH,6,Tuttlingen mit Schwenningen und Wilflingen,SWH 6
+1952:SWH:7,68,SWH,7,Balingen,SWH 7
+1952:SWH:8,69,SWH,8,Hechingen-Sigmaringen ohne Wilflingen,SWH 8
+1952:SWH:9,70,SWH,9,Münsingen-Ehingen-Urach,SWH 9
+1952:SWH:10,71,SWH,10,Biberach ohne Schussenried,SWH 10
+1952:SWH:11,72,SWH,11,Saulgau mit Aulendorf-Wilhelmsdorf und Schussenried,SWH 11
+1952:SWH:12,73,SWH,12,Ravensburg-Friedrichshafen ohne Aulendorf-Wilhelmsdorf,SWH 12
+1952:SWH:13,74,SWH,13,Wangen mit Tettnang Mitte und Ost,SWH 13

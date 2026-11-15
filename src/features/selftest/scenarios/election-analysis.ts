@@ -120,7 +120,7 @@ export const electionAnalysisScenario: TestScenario = {
             electoralGeometryYear(1988) === 1988 && [1976, 1980, 1984].every(year => electoralGeometryYear(year) === 1988) &&
             electoralGeometryYear(1972) === 1972 && electoralGeometryYear(1968) === 1968 &&
             electoralGeometryYear(1964) === 1968 && electoralGeometryYear(1960) === 1960 &&
-            electoralGeometryYear(1956) === 1960 && electoralGeometryYear(1952) === null &&
+            electoralGeometryYear(1956) === 1960 && electoralGeometryYear(1952) === 1952 && electoralGeometryYear(1948) === null &&
             rejectsUnknown && JSON.stringify(decoded.features[0].geometry.coordinates) ===
               JSON.stringify([[[8, 48], [9, 48], [8, 49], [8, 48]]]),
           message: "2026 verwendet 2021; andere Jahre werden nicht erfunden. Gemeinsame Grenzen bleiben unverändert.",

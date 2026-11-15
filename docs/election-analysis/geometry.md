@@ -16,14 +16,18 @@ repeated closing point; stored rings retain it.
 
 Unique forms are grouped by the set of boundary years which need them. This
 keeps requests bounded without fetching other years' unused forms. Shared arcs
-within each package are deduplicated as well. There are still 236 distinct
-forms across eleven boundary datasets (770 district entries). Explicit aliases:
-1956 → 1960, 1964 → 1968, 1976/1980/1984 → 1988, and 2026 → 2021.
+within each package are deduplicated as well. There are now 261 distinct forms
+across twelve boundary datasets (844 district entries: 74 in 1952, 70 in each
+other dataset). Explicit aliases: 1956 → 1960, 1964 → 1968,
+1976/1980/1984 → 1988, and 2026 → 2021.
 
 | Package usage | Distinct forms | Gzip bytes | Brotli bytes |
 | --- | ---: | ---: | ---: |
-| 1960,1968 | 29 | 2,676,637 | 1,979,304 |
-| 1960,1968,1972 | 41 | 2,796,752 | 2,092,938 |
+| 1952 | 25 | 2,332,732 | 1,638,793 |
+| 1952,1960,1968 | 18 | 1,734,314 | 1,287,082 |
+| 1952,1960,1968,1972 | 31 | 2,029,335 | 1,508,934 |
+| 1960,1968 | 11 | 1,277,698 | 963,056 |
+| 1960,1968,1972 | 10 | 854,206 | 639,380 |
 | 1972 | 29 | 2,665,592 | 1,952,632 |
 | 1988 | 17 | 1,053,298 | 785,391 |
 | 1988,1992,1996,2001 | 10 | 630,055 | 477,771 |
@@ -37,23 +41,20 @@ forms across eleven boundary datasets (770 district entries). Explicit aliases:
 | 2011,2016,2021 | 35 | 1,663,006 | 1,251,662 |
 | 2021 | 2 | 115,519 | 87,298 |
 
-The supplied 1960 shape coordinates are exactly the same as those in 1968;
-1956 uses the 1960 manifest directly. The two source families retain separate
-source dates and metadata without duplicating any geometry packages.
+1952 reuses 49 forms and adds 25 distinct shapes. This does not associate
+people or mandates across elections: its regions and historical numbers are
+handled separately from technical IDs.
 
-1968 shares 41 exact forms with 1972 and retains 29 geometrically different
-forms. Names/numbers are equal in these two supplied lists; that does not imply
-geographic identity. These reconstructed differences are not a claim of 29
-statutory boundary reforms. The 1964 alias uses 1968 directly.
-
-1988 shares 53 forms with 1992 and adds 17 distinct forms. 1992, 1996 and 2001
-reuse all 70 forms. No tolerance is used to declare geometries identical.
+1960 and 1968 share all 70 coordinate shapes; their metadata/source dates remain
+independent. 1968 shares 41 exact forms with 1972, with 29 differing forms per
+source. 1992/1996/2001 share all 70 shapes. No approximate equality is used.
 
 | Selected year | Cold requests (manifest + packages) | Gzip bytes | Brotli bytes |
 | --- | ---: | ---: | ---: |
-| 1956 / 1960 | 3 | 5,477,095 | 4,075,583 |
-| 1964 / 1968 | 3 | 5,477,098 | 4,075,562 |
-| 1972 | 3 | 5,466,103 | 4,048,935 |
+| 1952 | 4 | 6,101,414 | 4,439,111 |
+| 1956 / 1960 | 5 | 5,899,357 | 4,401,880 |
+| 1964 / 1968 | 5 | 5,899,366 | 4,401,867 |
+| 1972 | 4 | 5,552,936 | 4,104,340 |
 | 1976 / 1980 / 1984 / 1988 | 5 | 3,843,172 | 2,895,829 |
 | 1992 | 7 | 3,678,214 | 2,782,168 |
 | 1996 | 7 | 3,678,214 | 2,782,168 |
@@ -63,18 +64,10 @@ reuse all 70 forms. No tolerance is used to declare geometries identical.
 | 2016 | 5 | 3,262,496 | 2,461,135 |
 | 2021 / 2026 | 5 | 3,271,642 | 2,468,017 |
 
-Switching 1956 → 1960 needs no additional manifest or geometry. Switching
-1960 → 1964/1968 needs only the selected source-family manifest, as all 70 forms
-are already cached. Switching 1972 → 1968 adds 2,680,346 gzip bytes for its manifest
-and 29 distinct forms; the shared 41 forms stay cached. 1964 → 1968 needs no
-additional geometry or manifest. Switching 1992 → 1988 adds 1,056,992
-bytes; 1992 → 1996 adds only 3,772 bytes. 1976/1980/1984 → 1988 and
-2021 → 2026 add no downloads.
-
-These are generated transfer sizes excluding HTTP overhead, not browser timing
-measurements. Splitting shared boundaries between more reuse groups can increase
-a cold year's download relative to earlier builds; the loader still fetches no
-other year's unused forms and preserves incremental reuse.
+These are generated compressed transfer sizes, excluding HTTP overhead, not
+browser timings. Splitting shared boundaries across reuse groups can increase
+a cold download relative to earlier builds. Only the selected year's required
+forms are fetched; cached geometry is reused on year switches.
 
 ## Retrieval and cache
 
@@ -107,7 +100,7 @@ retains it. Published existing frontend sessions should reload after deployment.
 Use the original unquantized sources, including the cleaned 2021 replacement:
 
 ```sh
-node scripts/geometry/pack-election-topology.mjs 1960=path/to/LTWahlkreise1960-BW_konsistent.topojson 1968=path/to/LTWahlkreise1968-BW_konsistent.topojson 1972=path/to/LTWahlkreise1972-BW_konsistent.topojson 1988=path/to/LTWahlkreise1988-BW_konsistent.topojson 1992=path/to/LTWahlkreise1992-BW_konsistent.topojson 1996=path/to/LTWahlkreise1996-BW_konsistent.topojson 2001=path/to/LTWahlkreise2001-BW_konsistent.topojson 2006=path/to/LTWahlkreise2006-BW_konsistent.topojson 2011=path/to/LTWahlkreise2011-BW.topojson.json 2016=path/to/LTWahlkreise2016-BW.topojson 2021=path/to/LTWahlkreise2021_bereinigt.topojson.json
+node scripts/geometry/pack-election-topology.mjs 1952=path/to/LTWahlkreise1952-BW_konsistent.topojson 1960=path/to/LTWahlkreise1960-BW_konsistent.topojson 1968=path/to/LTWahlkreise1968-BW_konsistent.topojson 1972=path/to/LTWahlkreise1972-BW_konsistent.topojson 1988=path/to/LTWahlkreise1988-BW_konsistent.topojson 1992=path/to/LTWahlkreise1992-BW_konsistent.topojson 1996=path/to/LTWahlkreise1996-BW_konsistent.topojson 2001=path/to/LTWahlkreise2001-BW_konsistent.topojson 2006=path/to/LTWahlkreise2006-BW_konsistent.topojson 2011=path/to/LTWahlkreise2011-BW.topojson.json 2016=path/to/LTWahlkreise2016-BW.topojson 2021=path/to/LTWahlkreise2021_bereinigt.topojson.json
 ```
 
 The script writes hashed packages/manifests with gzip/Brotli representations and
@@ -132,14 +125,17 @@ alias, fills missing registry entries using their source-local numbering and
 requires explicit confirmation for these reconstructed elections.
 `20261115130000_election_history_1956_1960_geometry.sql` permits the shared 1960
 source for 1956/1960, maintains their historical registry and requires explicit
-confirmation for these additional reconstructed elections. Other existing selections
+confirmation for these additional reconstructed elections.
+`20261115150000_election_history_1952_regional_geometry.sql` enables 1952, adds
+the explicit regional source-key field/registry and leaves legacy associations
+unresolved rather than matching technical integers. Other existing selections
 and confirmations are preserved;
 no new legislature is assigned or confirmed automatically.
 
 As superadmin, open **Administration → Wahldaten & Mandatshistorie →
 Legislaturperioden**, edit the desired period, select **Historischer Grenzstand
 für die Karte**, confirm the checked boundary/district-number assignment, then
-save. Choose 1960 for 1956/1960, 1968 for 1964/1968, 1972 for its separate pre-reform reconstruction, 1988 for 1976/1980/1984/1988,
+save. Choose 1952 for its regional reconstruction, 1960 for 1956/1960, 1968 for 1964/1968, 1972 for its separate pre-reform reconstruction, 1988 for 1976/1980/1984/1988,
 the matching year for 1992/1996/2001/2006/2011/2016, or 2021 for 2021/2026.
 The editor derives its options from the generated manifest catalog.
 **Für alle Tenants freigeben** remains the separate publication switch.
@@ -263,3 +259,49 @@ individual shapes, mandates and candidacy links and never renumbers or reconnect
 records by matching later labels. Publication and geometry confirmation remain
 explicit. The UI offers the source family as **Grenzen 1956 / 1960 (Rekonstruktion)**.
 No additional quantization, simplification, rounding or reprojection is applied.
+
+## 1952: 74 regional constituencies (2026-11-15)
+
+The supplied `LTWahlkreise1952-BW_konsistent.topojson` differs from the later
+70-district system. Its metadata give 1952-03-09 as reference date and explicitly
+state locally approximated boundaries. No accompanying source/license document
+was supplied; the UI cites the supplied reconstruction and does not reuse BKG/LGL
+license claims from the other datasets for this file.
+
+The [source registry](sources/1952-district-registry.csv) preserves all names,
+regional historical numbers and separate technical identifiers:
+
+| Region | District count | Historical numbers | Technical IDs |
+| --- | ---: | --- | --- |
+| NW | 28 | 1–28 | 1–28 |
+| NB | 17 | 29–45 | 29–45 |
+| SB | 16 | 1–16 | 46–61 |
+| SWH | 13 | 1–13 | 62–74 |
+
+Historical 1 is therefore not globally unique. The source identity combines
+1952 + region + historical number, e.g. `1952:SB:1`. Technical 37 is NB 37,
+Heidelberg-Land; it is not the later Bruchsal/Mannheim III/Wiesloch.
+
+The migration creates 74 source-bound registry rows per existing 1952 period,
+with null `district_number`, a regional `number_label`, and an explicit
+`geometry_source_key`. A partial unique index makes these assignments stable.
+Source-bound rows are normalized by the existing role-protected write path;
+source-key edits invalidate period geometry confirmation. Existing legacy IDs,
+numbers, individual boundaries and mandate/candidacy links are not merged,
+renumbered or matched automatically. If legacy records exist, they remain marked
+as unresolved; administrators can explicitly review their assignments under
+**Mandate**. No identity is inferred from identical names or technical integers.
+
+The loader and packer expect exactly 74 technical IDs for 1952, while every other
+year continues to require 70. Manifest validation additionally checks each 1952
+region/historical-number combination against its source registry. The historical
+map attaches shared geometry by source key only, never by the legacy bare number.
+Map markers, tooltips, search, lists and fallback views use regional labels such
+as NW 1 / SB 1 / SWH 1. The numeric 1–74 remains internal to Leaflet layout only.
+Searching SB1 finds SB 1; searching 1 finds the matching historical numbers in
+multiple regions, not arbitrary technical IDs.
+
+The analysis preview labels regional areas but never treats 1952 technical IDs
+as result-district links or derives verified comparison identities. Reconstruction
+notices remain visible. No quantization, rounding, simplification or coordinate
+repair is performed during packaging.

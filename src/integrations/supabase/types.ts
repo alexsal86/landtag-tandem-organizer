@@ -5601,6 +5601,7 @@ export type Database = {
           boundaries: Json | null
           boundary_note: string | null
           district_number: number | null
+          geometry_source_key: string | null
           id: string
           name: string
           number_label: string | null
@@ -5611,6 +5612,7 @@ export type Database = {
           boundaries?: Json | null
           boundary_note?: string | null
           district_number?: number | null
+          geometry_source_key?: string | null
           id?: string
           name: string
           number_label?: string | null
@@ -5621,6 +5623,7 @@ export type Database = {
           boundaries?: Json | null
           boundary_note?: string | null
           district_number?: number | null
+          geometry_source_key?: string | null
           id?: string
           name?: string
           number_label?: string | null

@@ -6,6 +6,7 @@ export interface ElectionPerson {
   id: string; name: string; biography: string | null; source_url: string | null; history_complete: boolean;
 }
 export interface HistoricalDistrict {
+  geometry_source_key?: string | null;
   id: string; period_id: string; district_number: number | null; number_label: string | null; boundaries: import('@/types/geoDomain').GeoJsonGeometry | null; name: string; boundary_note: string | null; source_url: string | null;
 }
 export interface ElectionCandidacy {

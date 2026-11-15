@@ -1,3 +1,6 @@
+import { projectHistoricalDistricts } from '@/features/election-history/mapProjection';
+import { HISTORICAL_DISTRICTS_1952 } from '@/utils/electoralGeometryCatalog';
+import { parseElectoralManifest } from '@/utils/electoralTopology';
 import { withHistoricalDistrictNames } from '@/features/election-history/historicalDistrictNames';
 import { sourceHistoricalDistrictName, isReconstructedBoundary } from '@/utils/electoralGeometryCatalog';
 import { confirmedPeriodGeometryYear, withPeriodGeometry } from '@/features/election-history/periodGeometry';
@@ -11,6 +14,36 @@ export const electionMapScenario: TestScenario = {
   touches: [], features: ['election-districts'],
   limitations: ['Die visuelle Ebenenreihenfolge und mobile Bedienung werden separat im Browser geprüft.'],
   steps: [
+    { id: 'regional-1952-source', label: '1952: 74 Quellen, regionale Nummern und keine technische Mandatszuordnung', kind: 'logic', run: async () => {
+      const period: ElectionPeriod = { id: 'regional', number: 1, name: '1952', election_year: 1952, election_date: null,
+        starts_on: null, ends_on: null, is_current: false, is_published: true, source_url: null, notes: null,
+        boundary_geometry_year: 1952, boundary_geometry_confirmed: true };
+      const shape = { type: 'Polygon' as const, coordinates: [[[8,48],[9,48],[9,49],[8,48]]] };
+      const other = { type: 'Polygon' as const, coordinates: [[[9,48],[10,48],[10,49],[9,48]]] };
+      const row = { period_id: period.id, district_number: null, number_label: null, boundaries: null, name: 'Quelle', boundary_note: null, source_url: null };
+      const data: ElectionHistoryData = { periods: [period], people: [], candidacies: [], mandates: [{ id:'m', period_id:period.id,
+        person_id:null, person_name:'Abgeordneter', original_mandate:null, party_label:null, left_early:false, district_id:'legacy', candidacy_id:null,
+        party:'SPD', mandate_type:'direct', entry_type:'election', start_from_period:false, end_from_period:false, starts_on:null, ends_on:null, source_url:null, notes:null }],
+        districts: [{ ...row, id:'legacy', district_number:46 }, { ...row, id:'north', geometry_source_key:'1952:NW:1' }, { ...row, id:'south', geometry_source_key:'1952:SB:1' }] };
+      const geometry = { type:'FeatureCollection' as const, features: [
+        { type:'Feature' as const, properties:{ Nummer:'1', Region:'NW', Nummer_historisch:1 }, geometry:shape },
+        { type:'Feature' as const, properties:{ Nummer:'46', Region:'SB', Nummer_historisch:1 }, geometry:other },
+      ] };
+      const resolved = withHistoricalDistrictNames(withPeriodGeometry(data, period.id, geometry));
+      const projected = projectHistoricalDistricts([], resolved, period.id);
+      const districts = HISTORICAL_DISTRICTS_1952.map((d,i) => ({ shape:i.toString(16).padStart(64,'0'), package:`/data/geometry/shapes-${'a'.repeat(64)}.topojson`,
+        properties:{ Nummer:String(d.technicalNumber), Nummer_technisch_1952:d.technicalNumber, Region:d.region, Nummer_historisch:d.historicalNumber } }));
+      const manifest = parseElectoralManifest({ version:1, year:1952, districts },1952);
+      let wrongRegion=false, wrongCount=false;
+      try { parseElectoralManifest({ ...manifest, districts:[{ ...districts[0], properties:{...districts[0].properties,Region:'SB'} },...districts.slice(1)] },1952); } catch { wrongRegion=true; }
+      try { parseElectoralManifest({ ...manifest, year:1960 },1960); } catch { wrongCount=true; }
+      return { ok: manifest.districts.length===74 && wrongRegion && wrongCount && resolved.districts[0].boundaries===null
+        && resolved.districts[1].boundaries===shape && resolved.districts[2].boundaries===other
+        && resolved.districts[2].number_label==='SB 1' && projected.length===2 && projected.every(d => !d.representatives?.length)
+        && searchElectionDistricts(projected,'SB1')[0]?.id==='south' && searchElectionDistricts(projected,'1').length===2
+        && searchElectionDistricts(projected,'46').length===0 && resolved.mandates[0].district_id==='legacy',
+        message:'Regionale Nummern sind eindeutig; technische 46 bindet kein Mandat an SB 1. Alle übrigen Jahre erwarten weiterhin 70 Wahlkreise.' };
+    } },
     { id: 'historical-geometry-confirmation', label: 'Historische Geometrie nur nach Bestätigung und nur für die gewählte Periode', kind: 'logic', run: async () => {
       const period: ElectionPeriod = { id: 'p', number: 18, name: '2026', election_year: 2026,
         election_date: null, starts_on: null, ends_on: null, is_current: false, is_published: true,
@@ -39,6 +72,7 @@ export const electionMapScenario: TestScenario = {
         && [1960, 1968, 1972, 1988, 1992, 1996, 2001].every(year => confirmedPeriodGeometryYear({ ...period, election_year: year, boundary_geometry_year: year }) === year)
         && confirmedPeriodGeometryYear({ ...period, election_year: 1992, boundary_geometry_year: 2001 }) === null
         && confirmedPeriodGeometryYear({ ...period, election_year: 1952 }) === null
+        && confirmedPeriodGeometryYear({ ...period, election_year: 1952, boundary_geometry_year: 1952 }) === 1952
         && confirmedPeriodGeometryYear({ ...period, boundary_geometry_year: 2016 }) === null
         && resolved.districts[0].boundaries === shape && resolved.districts[1].boundaries === null
         && resolved.districts[2] === data.districts[2] && resolved.districts[3].boundaries === null
