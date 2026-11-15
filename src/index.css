@@ -1,4 +1,7 @@
 @import "tailwindcss";
+/* Keep the class scanner away from large map/election data files; scanning them stalls the preview. */
+@source not "../public/data";
+@source not "../supabase/migrations";
 @config "../tailwind.config.ts";
 @plugin "tailwindcss-animate";
 
