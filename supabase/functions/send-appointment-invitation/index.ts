@@ -6,6 +6,7 @@ import { createServiceRoleClient } from "../_shared/supabase.ts";
 import { encode } from "https://deno.land/std@0.190.0/encoding/base64.ts";
 
 import { withSafeHandler, requireAuth, unauthorizedResponse } from "../_shared/security.ts";
+import { requireTenantAccess } from "../_shared/tenant-access.ts";
 console.log('🚀 send-appointment-invitation function starting...');
 
 // Initialize Resend with error handling
@@ -30,6 +31,7 @@ const corsHeaders = {
 };
 
 interface InvitationRequest {
+  tenant_id?: string;
   appointmentId: string;
   guestIds?: string[];
   sendToAll?: boolean;
@@ -105,7 +107,9 @@ const handler = async (req: Request): Promise<Response> => {
   try {
     const supabase = createServiceRoleClient();
 
-    const { appointmentId, guestIds, sendToAll }: InvitationRequest = await req.json();
+    const { appointmentId, guestIds, sendToAll, tenant_id }: InvitationRequest = await req.json();
+    const access = await requireTenantAccess({ req, functionName: "send-appointment-invitation", requestedTenantId: tenant_id });
+    if ("response" in access) return access.response;
 
     console.log("=== SEND APPOINTMENT INVITATION DEBUG ===");
     console.log("Appointment ID:", appointmentId);
@@ -118,6 +122,7 @@ const handler = async (req: Request): Promise<Response> => {
       .from('appointments')
       .select('*')
       .eq('id', appointmentId)
+      .eq('tenant_id', access.tenantId)
       .maybeSingle();
 
     if (appointmentError) {

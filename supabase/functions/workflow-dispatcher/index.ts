@@ -3,6 +3,7 @@
 // und führt Aktionen aus. Erzeugt workflow_runs + workflow_action_log.
 import { createClient } from "https://esm.sh/@supabase/supabase-js@2.45.0";
 import { requireServiceRole, requireAuth, forbiddenResponse, withSafeHandler, getCorsHeaders } from "../_shared/security.ts";
+import { requireTenantAccess } from "../_shared/tenant-access.ts";
 
 
 
@@ -69,12 +70,22 @@ Deno.serve(withSafeHandler("workflow-dispatcher", async (req) => {
     );
 
     if (!internal) {
+      if (!actor) return forbiddenResponse();
+      const access = await requireTenantAccess({ req, functionName: "workflow-dispatcher", requestedTenantId: body.tenant_id });
+      if ("response" in access) return access.response;
       const [{ data: admin }, { data: allowed, error }] = await Promise.all([
-        supabase.rpc("is_tenant_admin", { _user_id: actor!.userId, _tenant_id: body.tenant_id }),
-        supabase.rpc("is_tenant_action_allowed", { _user_id: actor!.userId, _tenant_id: body.tenant_id, _action: "workflow.execute_manual" }),
+        supabase.rpc("is_tenant_admin", { _user_id: actor.userId, _tenant_id: body.tenant_id }),
+        supabase.rpc("is_tenant_action_allowed", { _user_id: actor.userId, _tenant_id: body.tenant_id, _action: "workflow.execute_manual" }),
       ]);
       if (error || !admin || !allowed || body.dry_run !== true || !body.workflow_id) return forbiddenResponse("Nur autorisierte Workflow-Diagnose erlaubt");
     }
+
+    // Recipient/assignee IDs are not foreign keys: validate them explicitly even for cron calls.
+    const requireOfficeUser = async (userId: string) => {
+      const { data, error } = await supabase.from("user_tenant_memberships").select("user_id")
+        .eq("tenant_id", body.tenant_id).eq("user_id", userId).eq("is_active", true).maybeSingle();
+      if (error || !data) throw new Error("Recipient is not an active office member");
+    };
 
     // 1) Passende Workflows holen
     let q = supabase.from("workflow_definitions")
@@ -111,7 +122,7 @@ Deno.serve(withSafeHandler("workflow-dispatcher", async (req) => {
         results.push({ workflow_id: def.id, status: "skipped", actions: 0 });
         await supabase.from("workflow_runs").update({
           status: "skipped", finished_at: new Date().toISOString(),
-        }).eq("id", run.id);
+        }).eq("id", run.id).eq("tenant_id", body.tenant_id);
         continue;
       }
 
@@ -142,6 +153,7 @@ Deno.serve(withSafeHandler("workflow-dispatcher", async (req) => {
                   ? cfg.user_id
                   : (body.payload?.owner_user_id as string | undefined);
                 if (userId) {
+                  await requireOfficeUser(userId);
                   await supabase.from("notifications").insert({
                     user_id: userId,
                     tenant_id: body.tenant_id,
@@ -167,6 +179,7 @@ Deno.serve(withSafeHandler("workflow-dispatcher", async (req) => {
               case "assign_case_owner": {
                 const cfg = a.config as { user_id?: string };
                 if (body.entity_id && cfg.user_id) {
+                  await requireOfficeUser(cfg.user_id);
                   await supabase.from("case_items")
                     .update({ owner_user_id: cfg.user_id })
                     .eq("id", body.entity_id)
@@ -177,6 +190,9 @@ Deno.serve(withSafeHandler("workflow-dispatcher", async (req) => {
               }
               case "create_task": {
                 const cfg = a.config as { title?: string; assigned_to?: string; description?: string };
+                if (cfg.assigned_to) {
+                  for (const userId of cfg.assigned_to.split(",").map(id => id.trim()).filter(Boolean)) await requireOfficeUser(userId);
+                }
                 await supabase.from("tasks").insert({
                   tenant_id: body.tenant_id,
                   title: renderTemplate(cfg.title ?? "Workflow-Task", body.payload ?? {}),
@@ -221,7 +237,7 @@ Deno.serve(withSafeHandler("workflow-dispatcher", async (req) => {
       await supabase.from("workflow_runs").update({
         status: runFailed ? "failed" : "success",
         finished_at: new Date().toISOString(),
-      }).eq("id", run.id);
+      }).eq("id", run.id).eq("tenant_id", body.tenant_id);
 
       results.push({
         workflow_id: def.id,

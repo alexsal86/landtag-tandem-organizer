@@ -2,12 +2,14 @@ import { serve } from "https://deno.land/std@0.168.0/http/server.ts";
 import { createClient } from "https://esm.sh/@supabase/supabase-js@2.57.4";
 
 import { withSafeHandler, requireAuth, unauthorizedResponse, forbiddenResponse, callerClient } from "../_shared/security.ts";
+import { requireTenantAccess } from "../_shared/tenant-access.ts";
 const corsHeaders = {
   'Access-Control-Allow-Origin': '*',
   'Access-Control-Allow-Headers': 'authorization, x-client-info, apikey, content-type',
 };
 
 interface GeocodeRequest {
+  tenant_id?: string;
   contactId?: string;
   address?: {
     street?: string;
@@ -38,7 +40,9 @@ serve(withSafeHandler("geocode-contact-address", async (req) => {
       Deno.env.get('SUPABASE_SERVICE_ROLE_KEY') ?? ''
     );
 
-    const { contactId, address }: GeocodeRequest = await req.json();
+    const { contactId, address, tenant_id }: GeocodeRequest = await req.json();
+    const access = await requireTenantAccess({ req, functionName: "geocode-contact-address", requestedTenantId: tenant_id });
+    if ("response" in access) return access.response;
 
     let addressToGeocode = address;
 
@@ -49,6 +53,7 @@ serve(withSafeHandler("geocode-contact-address", async (req) => {
         .from('contacts')
         .select('id')
         .eq('id', contactId)
+        .eq('tenant_id', access.tenantId)
         .maybeSingle();
       if (!visible) return forbiddenResponse();
 
@@ -56,6 +61,7 @@ serve(withSafeHandler("geocode-contact-address", async (req) => {
         .from('contacts')
         .select('business_street, business_house_number, business_postal_code, business_city, business_country')
         .eq('id', contactId)
+        .eq('tenant_id', access.tenantId)
         .single();
 
       if (error) {
@@ -118,7 +124,8 @@ serve(withSafeHandler("geocode-contact-address", async (req) => {
           .update({
             geocoded_at: new Date().toISOString(),
           })
-          .eq('id', contactId);
+          .eq('id', contactId)
+        .eq('tenant_id', access.tenantId);
       }
 
       return new Response(
@@ -143,7 +150,8 @@ serve(withSafeHandler("geocode-contact-address", async (req) => {
           coordinates: coordinates,
           geocoded_at: new Date().toISOString(),
         })
-        .eq('id', contactId);
+        .eq('id', contactId)
+        .eq('tenant_id', access.tenantId);
 
       if (updateError) {
         throw new Error(`Failed to update contact: ${updateError.message}`);

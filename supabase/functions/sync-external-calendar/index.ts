@@ -332,6 +332,9 @@ async function incrementalSync(supabase: any, calendarId: string, newEvents: ICS
   return stats;
 }
 
+import { requireTenantAccess } from "../_shared/tenant-access.ts";
+import { canForceCalendarResync } from "../_shared/tenant-policy.ts";
+
 Deno.serve(withSafeHandler("sync-external-calendar", async (req) => {
   // Handle CORS preflight requests
   if (req.method === 'OPTIONS') {
@@ -349,7 +352,9 @@ Deno.serve(withSafeHandler("sync-external-calendar", async (req) => {
       Deno.env.get('SUPABASE_SERVICE_ROLE_KEY') ?? ''
     );
 
-    const { calendar_id } = await req.json();
+    const { calendar_id, tenant_id } = await req.json();
+    const access = isInternal ? null : await requireTenantAccess({ req, functionName: "sync-external-calendar", requestedTenantId: tenant_id });
+    if (access && "response" in access) return access.response;
 
     if (!calendar_id) {
       return new Response(
@@ -361,11 +366,9 @@ Deno.serve(withSafeHandler("sync-external-calendar", async (req) => {
     console.log(`🚀 Starting sync for calendar: ${calendar_id}`);
 
     // Get the external calendar with its configuration
-    const { data: calendar, error: calendarError } = await supabase
-      .from('external_calendars')
-      .select('*')
-      .eq('id', calendar_id)
-      .single();
+    let calendarQuery = supabase.from('external_calendars').select('*').eq('id', calendar_id);
+    if (access && 'tenantId' in access) calendarQuery = calendarQuery.eq('tenant_id', access.tenantId);
+    const { data: calendar, error: calendarError } = await calendarQuery.single();
 
     if (calendarError || !calendar) {
       return new Response(
@@ -374,7 +377,8 @@ Deno.serve(withSafeHandler("sync-external-calendar", async (req) => {
       );
     }
 
-    if (!isInternal && calendar.user_id !== auth?.userId) {
+    if (!calendar.tenant_id || (!isInternal && calendar.user_id !== auth?.userId
+      && !(access && 'membership' in access && canForceCalendarResync(access.membership.role)))) {
       return new Response(
         JSON.stringify({ error: 'Calendar not found' }),
         { status: 404, headers: { ...corsHeaders, 'Content-Type': 'application/json' } }
@@ -419,7 +423,8 @@ Deno.serve(withSafeHandler("sync-external-calendar", async (req) => {
         .update({
           last_sync: new Date().toISOString(),
         })
-        .eq('id', calendar_id);
+        .eq('id', calendar_id)
+      .eq('tenant_id', calendar.tenant_id);
 
       if (updateError) {
         console.error('Error updating sync timestamp:', updateError);
@@ -470,7 +475,8 @@ Deno.serve(withSafeHandler("sync-external-calendar", async (req) => {
         last_etag: etag,
         last_modified_http: lastModified,
       })
-      .eq('id', calendar_id);
+      .eq('id', calendar_id)
+      .eq('tenant_id', calendar.tenant_id);
 
     // Perform incremental sync
     const syncStats = await incrementalSync(supabase, calendar_id, events);
@@ -483,7 +489,8 @@ Deno.serve(withSafeHandler("sync-external-calendar", async (req) => {
         sync_errors_count: 0,
         last_sync_error: null
       })
-      .eq('id', calendar_id);
+      .eq('id', calendar_id)
+      .eq('tenant_id', calendar.tenant_id);
 
     console.log(`🎉 Sync completed successfully!`);
     console.log(`📊 Stats:`, syncStats);
@@ -505,32 +512,9 @@ Deno.serve(withSafeHandler("sync-external-calendar", async (req) => {
   } catch (error) {
     console.error('💥 Error syncing calendar:', error);
 
-    // Try to update error information in calendar
-    try {
-      const { calendar_id } = await req.json();
-      if (calendar_id) {
-        const supabase = createClient(
-          Deno.env.get('SUPABASE_URL') ?? '',
-          Deno.env.get('SUPABASE_SERVICE_ROLE_KEY') ?? ''
-        );
-
-        await supabase
-          .from('external_calendars')
-          .update({
-            sync_errors_count: 1, // Will be incremented by app logic if needed
-            last_sync_error: error instanceof Error ? error.message : String(error),
-            last_sync: new Date().toISOString()
-          })
-          .eq('id', calendar_id);
-      }
-    } catch (updateError) {
-      console.error('Failed to update error status:', updateError);
-    }
-
-    const errorResponse = getSyncExternalErrorResponse(error);
     return new Response(
-      JSON.stringify({ error: errorResponse.message }),
-      { status: errorResponse.status, headers: { ...corsHeaders, 'Content-Type': 'application/json' } }
+      JSON.stringify({ error: 'Calendar sync failed' }),
+      { status: 500, headers: { ...corsHeaders, 'Content-Type': 'application/json' } }
     );
   }
 }));

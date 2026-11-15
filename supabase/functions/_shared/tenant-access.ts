@@ -1,5 +1,6 @@
 import { createClient, type User } from "https://esm.sh/@supabase/supabase-js@2";
 import { getCorsHeaders } from "./security.ts";
+import { resolveTenantMembership } from "./tenant-policy.ts";
 
 interface RequireTenantAccessOptions {
   req: Request;
@@ -43,7 +44,15 @@ function getBearerToken(req: Request): string | null {
 export async function requireTenantAccess(
   options: RequireTenantAccessOptions,
 ): Promise<TenantAccessSuccess | TenantAccessFailure> {
-  const { req, functionName, requestedTenantId } = options;
+  const { req, functionName } = options;
+  const headerTenantId = req.headers.get("x-tenant-id");
+  const requestedTenantId = options.requestedTenantId ?? headerTenantId;
+  if ((options.requestedTenantId && headerTenantId && options.requestedTenantId !== headerTenantId)
+    || (requestedTenantId != null && !/^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/i.test(requestedTenantId))) {
+    return { response: new Response(JSON.stringify({ error: "Invalid tenant context" }), {
+      status: 400, headers: { ...getCorsHeaders(req), "Content-Type": "application/json" },
+    }) };
+  }
   const supabaseUrl = Deno.env.get("SUPABASE_URL") ?? "";
   const supabaseAnonKey = Deno.env.get("SUPABASE_ANON_KEY") ?? "";
   const supabaseServiceRoleKey = Deno.env.get("SUPABASE_SERVICE_ROLE_KEY") ?? "";
@@ -80,7 +89,7 @@ export async function requireTenantAccess(
     .select("tenant_id, role")
     .eq("user_id", user.id)
     .eq("is_active", true)
-    .limit(1);
+    .limit(2);
 
   if (requestedTenantId) {
     membershipQuery = membershipQuery.eq("tenant_id", requestedTenantId);
@@ -98,7 +107,13 @@ export async function requireTenantAccess(
     };
   }
 
-  const membership = memberships[0];
+  const membership = resolveTenantMembership(memberships, requestedTenantId);
+  if (!membership) {
+    securityLog(functionName, user.id, requestedTenantId ?? null, false, "ambiguous_tenant");
+    return { response: new Response(JSON.stringify({ error: "Explicit tenant context required" }), {
+      status: 403, headers: { ...getCorsHeaders(req), "Content-Type": "application/json" },
+    }) };
+  }
   const resolvedTenantId = requestedTenantId ?? membership.tenant_id;
   securityLog(functionName, user.id, resolvedTenantId, true);
 

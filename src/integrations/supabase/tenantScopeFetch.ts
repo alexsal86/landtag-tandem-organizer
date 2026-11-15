@@ -137,7 +137,27 @@ export function createTenantScopeFetch(
     const original = input instanceof Request ? input : null;
     const url = new URL(original?.url ?? String(input));
     const base = new URL(baseUrl);
-    if (url.origin !== base.origin || !url.pathname.startsWith("/rest/v1/")) return send(input, init);
+    if (url.origin !== base.origin) return send(input, init);
+    if (url.pathname.startsWith("/functions/v1/")) {
+      const scope = getActiveTenantScope();
+      const revision = getTenantScopeRevision();
+      const headers = new Headers(init.headers ?? original?.headers);
+      // Only deployed endpoints with tenant-header CORS support receive this header.
+      const scopedEndpoints = new Set([
+        "archive-letter", "geocode-contact-address", "batch-geocode-contacts",
+        "fetch-rss-feeds", "send-document-email", "send-decision-email",
+        "force-resync-calendar", "sync-external-calendar", "workflow-dispatcher",
+        "test-rss-feed", "run-automation-rule", "matrix-decision-handler",
+        "send-event-invitation", "send-appointment-invitation", "manage-tenant-user",
+      ]);
+      if (scope && scopedEndpoints.has(url.pathname.split("/").pop() ?? "")) headers.set("x-tenant-id", scope.tenantId);
+      const response = await send(input, { ...init, headers });
+      if (revision !== getTenantScopeRevision()) return errorResponse(new TenantScopeError(
+        "Der Arbeitsbereich wurde während der Anfrage gewechselt.", "TENANT_SCOPE_CHANGED", 409,
+      ));
+      return response;
+    }
+    if (!url.pathname.startsWith("/rest/v1/")) return send(input, init);
 
     const method = (init.method ?? original?.method ?? "GET").toUpperCase();
     const table = url.pathname.slice("/rest/v1/".length);

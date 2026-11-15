@@ -17,6 +17,33 @@ async function errorCode(response: Response): Promise<string> {
 describe("active tenant transport boundary", () => {
   beforeEach(() => setActiveTenantScope(null));
 
+  it("passes the active office to Edge Functions without leaking it to other origins", async () => {
+    setActiveTenantScope(scope);
+    const send = vi.fn<typeof fetch>().mockResolvedValue(json({}));
+    const scopedFetch = createTenantScopeFetch(base, send);
+    await scopedFetch(`${base}/functions/v1/send-document-email`, { method: "POST", headers: { "x-tenant-id": "tenant-b" }, body: "{}" });
+    expect(new Headers(send.mock.calls[0][1]?.headers).get("x-tenant-id")).toBe("tenant-a");
+    await scopedFetch("https://other.example/functions/v1/test");
+    expect(send.mock.calls[1][1]?.headers).toBeUndefined();
+  });
+
+  it("rejects a late function response after switching offices", async () => {
+    setActiveTenantScope(scope);
+    let finish: ((response: Response) => void) | undefined;
+    const send = vi.fn<typeof fetch>().mockReturnValue(new Promise(resolve => { finish = resolve; }));
+    const pending = createTenantScopeFetch(base, send)(`${base}/functions/v1/test`);
+    setActiveTenantScope({ ...scope, tenantId: "tenant-b" });
+    finish?.(json({ result: "old-office" }));
+    expect((await pending).status).toBe(409);
+  });
+
+  it("preserves legacy global endpoint CORS compatibility", async () => {
+    setActiveTenantScope(scope);
+    const send = vi.fn<typeof fetch>().mockResolvedValue(json({}));
+    await createTenantScopeFetch(base, send)(`${base}/functions/v1/register-mobile-push-token`, { method: "POST" });
+    expect(new Headers(send.mock.calls[0][1]?.headers).has("x-tenant-id")).toBe(false);
+  });
+
   it("adds a missing active-tenant filter to direct table reads", async () => {
     setActiveTenantScope(scope);
     const send = vi.fn<typeof fetch>().mockResolvedValue(json([]));

@@ -1,0 +1,1 @@
+- User-facing privileged operations must resolve the active tenant through tenant-access and use tenant-policy for membership selection; ambiguous memberships fail closed to prevent borrowing another office's permissions.
