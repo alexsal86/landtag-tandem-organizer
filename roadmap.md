@@ -1,5 +1,8 @@
 # Roadmap Aufgaben
 
+# Aktueller Build-Fehler
+- [ ] Gemeldeten Build-Fehler diagnostizieren, beheben und Vorschau prüfen.
+
 # Tenant-Härtung: privilegierte Funktionen und Trigger
 - [x] Gemeinsame Büroprüfung und 15 Funktionen gehärtet: eindeutige Auswahl, Rollen im Zielbüro, Kalender/Briefe/Kontakte/Workflows/Automation/Einladungen/Verwaltung; Matrix-Absenderfälschung blockiert.
 - [x] Schutztrigger auf 176 Tabellen aktiv; Elternreferenzen und unveränderliche Büro-ID geprüft, Sicherheitsselbsttest ergänzt.
