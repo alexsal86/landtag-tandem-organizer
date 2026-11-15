@@ -136,8 +136,9 @@ Entwurf entfernt; neuere Eingaben werden nicht durch verspätete Antworten gelö
 
 In der historischen Wahlkreisansicht und der Administrationsvorschau lädt
 „Wahlkreiskarte öffnen“ erst beim Aufklappen die Leaflet-Komponente, das kleine
-Manifest des bestätigten Grenzstands und eine einzelne TopoJSON-Form. Der Schalter
-„Angrenzende Wahlkreise anzeigen“ lädt ausschließlich zusätzliche Nachbarformen.
+Manifest des bestätigten Grenzstands und eine einzelne TopoJSON-Form. Anschließend
+werden direkte Nachbarformen im Hintergrund geladen. Der Schalter
+„Angrenzende Wahlkreise anzeigen“ blendet diese als eigene Ebene ein.
 Die Kartenkacheln werden ebenfalls erst mit der geöffneten Karte angefordert.
 Individuelle historische Umrisse haben Vorrang; für sie werden keine Nachbarn aus
 einem anderen Grenzstand ergänzt. Fehlende oder unbestätigte Grenzen bleiben sichtbar
@@ -169,3 +170,12 @@ Wahljahr und den Wahlkreis bereits bestätigten `bundled_geometry_year` aus der
 Wahlanalyse. Ohne bestätigte Zuordnung zeigt er eine Datenlücke. Beim Wechsel von
 Wahljahr oder Wahlkreis schließt der Bereich; erst erneutes Öffnen lädt die Karte.
 Das Öffnen lädt weder Mandatshistorien noch andere Wahljahre.
+
+Detailkarten laden nach dem Öffnen zunächst den ausgewählten Wahlkreis und danach
+seine direkten Nachbarn im Hintergrund. Der Nachbarschalter blendet ausschließlich
+eine eigene Leaflet-Ebene ein oder aus; Karte, Kacheln und gewählter Ausschnitt
+bleiben erhalten. Fehler beim Hintergrundabruf ersetzen nicht die gewählte Fläche.
+Stuttgart I benötigt 2021 etwa 19 KiB, mit den drei erkannten Nachbarn insgesamt
+77 KiB komprimierte TopoJSON-Daten. Die ausgewählte Kontur liegt über den Nachbarn,
+wird ohne Linienvereinfachung/Clipping gezeichnet und nach Größenänderungen des
+Kartencontainers vollständig mit Rand eingepasst.
