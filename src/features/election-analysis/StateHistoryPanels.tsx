@@ -96,9 +96,10 @@ export function WorkbookSourceNotice({ year, section }: {
     if (!query.data?.length)
         return null;
     const conflicts = query.data.filter(r => r.status === 'conflict');
-    const sources = query.data.reduce<string[]>((urls, r) => {
-      if (typeof r.source_url === 'string' && !urls.includes(r.source_url)) urls.push(r.source_url);
-      return urls;
-    }, []);
+    const sources: string[] = [];
+    for (const row of query.data) {
+      const url = row.source_url;
+      if (typeof url === 'string' && !sources.includes(url)) sources.push(url);
+    }
     return <details className="rounded-lg border p-3 text-sm"><summary className="cursor-pointer font-medium">Quellenabgleich · {conflicts.length} offene Abweichungen</summary><p className="my-2">Arbeitsmappe mit dem Bestand zum Importzeitpunkt verglichen. Originalquellen noch nicht unabhängig geprüft. Einzelwerte und Herkunft stehen unter „Quellenabgleich“.</p>{sources.map(url => <p key={url}><SourceLink url={url}/></p>)}{conflicts.map(r => <div key={r.id} className="mt-3"><p className="font-semibold">{r.record_key}: bisheriger Wert erhalten.</p><AuditValues row={r}/></div>)}</details>;
 }
