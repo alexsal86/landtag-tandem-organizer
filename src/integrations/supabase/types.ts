@@ -16961,6 +16961,7 @@ export type Database = {
       dispatch_due_knowledge_reviews: { Args: never; Returns: number }
       dispatch_due_task_reminders: { Args: never; Returns: number }
       dispatch_employee_preparation_reminders: { Args: never; Returns: number }
+      dispatch_scheduled_emails_if_due: { Args: never; Returns: undefined }
       dispatch_workflow_trigger: {
         Args: {
           _entity_id: string
