@@ -2,6 +2,7 @@ import { serve } from "https://deno.land/std@0.168.0/http/server.ts";
 import { createClient } from 'https://esm.sh/@supabase/supabase-js@2.52.0';
 
 import { withSafeHandler } from "../_shared/security.ts";
+import { requireTenantAccess } from "../_shared/tenant-access.ts";
 import {
   seedStandardData,
   cloneTenantData,
@@ -108,15 +109,10 @@ serve(withSafeHandler("manage-tenant-user", async (req) => {
     const isPlatformAdmin = await hasPlatformAdminAccess(supabaseAdmin, user);
     console.log(`User ${user.id} is platform admin: ${isPlatformAdmin}`);
 
-    // Resolve caller's tenant membership and role
-    const { data: callerMembershipData } = await supabaseAdmin
-      .from('user_tenant_memberships')
-      .select('tenant_id, role')
-      .eq('user_id', user.id)
-      .eq('is_active', true)
-      .limit(1)
-      .maybeSingle();
-    const callerMembership = callerMembershipData as { tenant_id: string; role: string } | null;
+    const body = await req.json();
+    const access = isPlatformAdmin ? null : await requireTenantAccess({ req, functionName: "manage-tenant-user", requestedTenantId: body.tenantId });
+    if (access && "response" in access) return access.response;
+    const callerMembership = access && "membership" in access ? access.membership : null;
     const isAbgeordneter = callerMembership?.role === 'abgeordneter';
 
     const assertTenantPermission = async (tenantId: string, requiredRole: 'abgeordneter') => {
@@ -136,7 +132,6 @@ serve(withSafeHandler("manage-tenant-user", async (req) => {
       }
     };
 
-    const body = await req.json();
     const { action } = body;
     console.log(`Action requested: ${action}`);
 

@@ -42,7 +42,12 @@ Deno.serve(withSafeHandler("matrix-decision-handler", async (req) => {
   try {
     // Parse incoming Matrix message or webhook
     const body = await req.json();
-    console.log('📨 Matrix decision request body:', JSON.stringify(body, null, 2));
+    // A logged-in user cannot impersonate Matrix senders or submit forged webhook events.
+    if (!webhookOk && (body.type === 'matrix_webhook' || (body.room_id && body.sender && body.content))) {
+      return new Response(JSON.stringify({ error: 'Trusted Matrix webhook required' }), {
+        status: 403, headers: { ...corsHeaders, 'Content-Type': 'application/json' },
+      });
+    }
 
     // Initialize Supabase
     const supabaseAdmin = createClient(
@@ -185,6 +190,10 @@ async function handleMatrixMessage(
   }
 
   const decision = participant.task_decisions;
+  const { data: activeMember } = await supabase.from('user_tenant_memberships')
+    .select('id').eq('user_id', participant.user_id).eq('tenant_id', decision.tenant_id)
+    .eq('is_active', true).maybeSingle();
+  if (!activeMember || !decision.tenant_id) return { success: false, error: 'Inactive office membership' };
 
   // Process the response
   let responseType: string;

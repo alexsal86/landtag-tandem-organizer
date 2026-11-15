@@ -41,9 +41,11 @@ serve(withSafeHandler("send-document-email", async (req) => {
   }
 
   try {
+    const requestBody = await req.json();
     const tenantAccess = await requireTenantAccess({
       req,
       functionName: "send-document-email",
+      requestedTenantId: requestBody.tenant_id,
     });
 
     if ("response" in tenantAccess) {
@@ -65,7 +67,7 @@ serve(withSafeHandler("send-document-email", async (req) => {
       sender_id,
       reply_to,
       scheduled_at,
-    }: SendEmailRequest = await req.json();
+    }: SendEmailRequest = requestBody;
 
     console.log("Email request:", {
       subject,

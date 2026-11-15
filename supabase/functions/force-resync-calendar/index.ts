@@ -2,6 +2,8 @@ import { serve } from 'https://deno.land/std@0.168.0/http/server.ts'
 import { createClient } from 'https://esm.sh/@supabase/supabase-js@2'
 
 import { withSafeHandler } from "../_shared/security.ts";
+import { requireTenantAccess } from "../_shared/tenant-access.ts";
+import { canForceCalendarResync } from "../_shared/tenant-policy.ts";
 const corsHeaders = {
   'Access-Control-Allow-Origin': '*',
   'Access-Control-Allow-Headers': 'authorization, x-client-info, apikey, content-type',
@@ -49,7 +51,13 @@ serve(withSafeHandler("force-resync-calendar", async (req) => {
       Deno.env.get('SUPABASE_SERVICE_ROLE_KEY') ?? ''
     );
 
-    const { calendar_id, clear_existing = false } = await req.json();
+    const { calendar_id, clear_existing = false, tenant_id } = await req.json();
+    const access = await requireTenantAccess({ req, functionName: "force-resync-calendar", requestedTenantId: tenant_id });
+    if ("response" in access) return access.response;
+    if (!canForceCalendarResync(access.membership.role)) return new Response(
+      JSON.stringify({ error: "Insufficient permissions" }),
+      { status: 403, headers: { ...corsHeaders, "Content-Type": "application/json" } },
+    );
 
     if (!calendar_id) {
       return new Response(
@@ -62,29 +70,13 @@ serve(withSafeHandler("force-resync-calendar", async (req) => {
       .from('external_calendars')
       .select('id, tenant_id')
       .eq('id', calendar_id)
+      .eq('tenant_id', access.tenantId)
       .single();
 
     if (calendarError || !calendar) {
       return new Response(
         JSON.stringify({ error: 'Calendar not found' }),
         { status: 404, headers: { ...corsHeaders, 'Content-Type': 'application/json' } }
-      );
-    }
-
-    const { data: isAdmin } = await supabase.rpc('is_admin', { _user_id: user.id });
-    const { data: membership } = await supabase
-      .from('user_tenant_memberships')
-      .select('role, is_active')
-      .eq('user_id', user.id)
-      .eq('tenant_id', calendar.tenant_id)
-      .eq('is_active', true)
-      .maybeSingle();
-
-    const canResync = Boolean(isAdmin) || membership?.role === 'abgeordneter';
-    if (!canResync) {
-      return new Response(
-        JSON.stringify({ error: 'Insufficient permissions' }),
-        { status: 403, headers: { ...corsHeaders, 'Content-Type': 'application/json' } }
       );
     }
 
@@ -115,7 +107,9 @@ serve(withSafeHandler("force-resync-calendar", async (req) => {
         sync_errors_count: 0,
         last_sync_error: null
       })
-      .eq('id', calendar_id);
+      .eq('id', calendar_id)
+      .eq('tenant_id', access.tenantId);
+    // The calendar ID was authorized in the selected office above.
 
     if (resetError) {
       throw new Error(`Failed to reset sync timestamps: ${resetError.message}`);
@@ -126,7 +120,7 @@ serve(withSafeHandler("force-resync-calendar", async (req) => {
     // Trigger the sync function
     console.log('🚀 Triggering sync function...');
     const { data: syncResult, error: syncError } = await supabase.functions.invoke('sync-external-calendar', {
-      body: { calendar_id }
+      body: { calendar_id, tenant_id: access.tenantId }
     });
 
     if (syncError) {
