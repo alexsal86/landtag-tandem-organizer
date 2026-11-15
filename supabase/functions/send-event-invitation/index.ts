@@ -4,6 +4,7 @@ import { createServiceRoleClient } from "../_shared/supabase.ts";
 import { escapeHtml } from "../_shared/html.ts";
 
 import { withSafeHandler, requireAuth, unauthorizedResponse, forbiddenResponse, callerClient } from "../_shared/security.ts";
+import { requireTenantAccess } from "../_shared/tenant-access.ts";
 const resend = new Resend(Deno.env.get("RESEND_API_KEY"));
 const DEFAULT_PUBLIC_LINK_TTL_DAYS = 45;
 
@@ -52,7 +53,10 @@ const handler = async (req: Request): Promise<Response> => {
       rsvpIds,
       type = "invitation",
       customMessage,
+      tenant_id,
     } = await req.json();
+    const access = await requireTenantAccess({ req, functionName: "send-event-invitation", requestedTenantId: tenant_id });
+    if ("response" in access) return access.response;
 
     console.log("Processing event email:", {
       eventPlanningId,
@@ -69,6 +73,7 @@ const handler = async (req: Request): Promise<Response> => {
       .from("event_plannings")
       .select("id")
       .eq("id", eventPlanningId)
+      .eq("tenant_id", access.tenantId)
       .maybeSingle();
     if (!visibleEvent) return forbiddenResponse();
 
@@ -77,6 +82,7 @@ const handler = async (req: Request): Promise<Response> => {
       .from("event_plannings")
       .select("title, description, confirmed_date, location, user_id")
       .eq("id", eventPlanningId)
+      .eq("tenant_id", access.tenantId)
       .single();
 
     if (eventError || !event) {

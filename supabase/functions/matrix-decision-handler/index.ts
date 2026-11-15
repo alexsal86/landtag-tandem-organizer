@@ -190,6 +190,10 @@ async function handleMatrixMessage(
   }
 
   const decision = participant.task_decisions;
+  const { data: activeMember } = await supabase.from('user_tenant_memberships')
+    .select('id').eq('user_id', participant.user_id).eq('tenant_id', decision.tenant_id)
+    .eq('is_active', true).maybeSingle();
+  if (!activeMember || !decision.tenant_id) return { success: false, error: 'Inactive office membership' };
 
   // Process the response
   let responseType: string;
