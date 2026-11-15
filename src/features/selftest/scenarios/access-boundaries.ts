@@ -1,6 +1,7 @@
 import { supabase } from "@/integrations/supabase/client";
 import { canDecide } from "@/features/appointment-requests/logic";
 import { scopeTenantUrl } from "@/integrations/supabase/tenantScopeFetch";
+import { resolveTenantMembership, canForceCalendarResync } from "../../../../supabase/functions/_shared/tenant-policy";
 import { SELFTEST_PREFIX } from "../runner";
 import { describeError, expectFields } from "../verify";
 import type { TestScenario } from "../types";
@@ -12,6 +13,19 @@ export const accessBoundariesScenario: TestScenario = {
   checks: ["Fachdatenabfragen werden zentral auf das aktive Büro begrenzt", "Schreibversuch mit fremder Büro-ID scheitert am Client-Schutz oder an RLS", "Unberechtigte Rolle darf nicht entscheiden", "Berechtigte Rolle darf ablehnen"],
   limitations: ["Getestet wird die aktuelle Rolle. Für die vollständige Rollenmatrix mit beiden Testkonten ausführen.", "Lesetrennung zweier existierender Büros erfordert eine separate Testumgebung mit zwei Konten."],
   steps: [
+    {
+      id: "edge-tenant-role-boundary", label: "Erhöhte Rechte gelten nur im ausgewählten Büro", kind: "logic",
+      run: async () => {
+        const offices = [{ tenant_id: "office-a", role: "abgeordneter" }, { tenant_id: "office-b", role: "mitarbeiter" }];
+        const checks = {
+          ambiguousBlocked: resolveTenantMembership(offices) === null,
+          foreignBlocked: resolveTenantMembership(offices, "office-c") === null,
+          roleIsolated: !canForceCalendarResync(resolveTenantMembership(offices, "office-b")?.role ?? null),
+          ownAdminAllowed: canForceCalendarResync(resolveTenantMembership(offices, "office-a")?.role ?? null),
+        };
+        return { ok: Object.values(checks).every(Boolean), message: "Büroauswahl und Rollenprüfung bleiben isoliert.", details: checks };
+      },
+    },
     {
       id: "active-tenant-query-guard", label: "Fachdatenabfragen bleiben im aktiven Büro", kind: "logic",
       run: async () => {

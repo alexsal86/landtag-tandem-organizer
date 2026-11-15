@@ -514,8 +514,8 @@ Deno.serve(withSafeHandler("sync-external-calendar", async (req) => {
     console.error('💥 Error syncing calendar:', error);
 
     return new Response(
-      JSON.stringify({ error: errorResponse.message }),
-      { status: errorResponse.status, headers: { ...corsHeaders, 'Content-Type': 'application/json' } }
+      JSON.stringify({ error: 'Calendar sync failed' }),
+      { status: 500, headers: { ...corsHeaders, 'Content-Type': 'application/json' } }
     );
   }
 }));
