@@ -5,6 +5,7 @@ import { useAuth } from './useAuth';
 import { useTenant } from './useTenant';
 import { debugConsole } from '@/utils/debugConsole';
 import { notify } from "@/lib/notify";
+import { shouldPersistUserStatusActivity } from './userStatusActivity';
 
 export interface StatusOption {
   id: string;
@@ -387,9 +388,13 @@ const useUserStatusRuntime = () => {
   automaticStatusWriter.current = updateStatus;
 
   const updateLastActivity = async () => {
-    if (!user || !currentTenant?.id || !statusRef.current || activityWritePending.current ||
-        Date.now() - lastActivityWrite.current < 5 * 60 * 1000) return;
     const now = Date.now();
+    if (!shouldPersistUserStatusActivity({
+      now,
+      lastWrite: lastActivityWrite.current,
+      writePending: activityWritePending.current,
+      hasStatusContext: Boolean(user?.id && currentTenant?.id && statusRef.current),
+    })) return;
     lastActivityWrite.current = now;
     activityWritePending.current = true;
     try {
@@ -482,6 +487,7 @@ const useUserStatusRuntime = () => {
 
   return {
     currentStatus,
+    profile,
     statusOptions,
     onlineUsers,
     usersWithStatus,

@@ -16,7 +16,6 @@ import { Badge } from "@/components/ui/badge";
 import { Separator } from "@/components/ui/separator";
 import { useUserStatus } from '@/hooks/useUserStatus';
 import { useAuth } from '@/hooks/useAuth';
-import { supabase } from '@/integrations/supabase/client';
 import { Clock, MessageSquare, X } from 'lucide-react';
 import { OnlineUsersWidget } from "@/components/status/OnlineUsersWidget";
 
@@ -41,10 +40,9 @@ export const UserStatusSelector: React.FC<UserStatusSelectorProps> = ({ children
     statusOptions, 
     updateStatus, 
     getStatusDisplay,
-    loading 
+    loading,
+    profile,
   } = useUserStatus();
-  
-  const [profileData, setProfileData] = useState<{ display_name?: string | null; avatar_url?: string | null } | null>(null);
   
   const [isOpen, setIsOpen] = useState(false);
   const [selectedType, setSelectedType] = useState<string>('online');
@@ -53,20 +51,6 @@ export const UserStatusSelector: React.FC<UserStatusSelectorProps> = ({ children
   const [statusUntil, setStatusUntil] = useState('');
   const [notificationsEnabled, setNotificationsEnabled] = useState(true);
   const [activeEmojiCategory, setActiveEmojiCategory] = useState<keyof typeof emojiCategories>('status');
-
-  // Load profile from DB for correct avatar
-  React.useEffect(() => {
-    const loadProfile = async () => {
-      if (!user) return;
-      const { data } = await supabase
-        .from('profiles')
-        .select('display_name, avatar_url')
-        .eq('user_id', user.id)
-        .maybeSingle();
-      setProfileData(data);
-    };
-    loadProfile();
-  }, [user]);
 
   React.useEffect(() => {
     if (currentStatus) {
