@@ -18,7 +18,6 @@ interface RSSSource {
 }
 
 async function parseRSSFeed(url: string, source: string, category: string, articlesPerFeed: number = 10) {
-  console.log(`Fetching RSS from: ${url}`);
 
   try {
     const response = await fetch(url, {
@@ -32,7 +31,6 @@ async function parseRSSFeed(url: string, source: string, category: string, artic
     }
 
     const xmlText = await response.text();
-    console.log(`RSS content length: ${xmlText.length}`);
 
     // Simple XML parsing for RSS
     const items = [];
@@ -65,7 +63,6 @@ async function parseRSSFeed(url: string, source: string, category: string, artic
       if (items.length >= articlesPerFeed) break;
     }
 
-    console.log(`Parsed ${items.length} items from ${source}`);
     return items;
 
   } catch (error) {
@@ -133,7 +130,6 @@ serve(withSafeHandler("fetch-rss-feeds", async (req) => {
 
     // Check cache first (5 minute TTL)
     const cacheKey = `rss_${tenant_id}_${category || 'all'}`;
-    console.log(`🔍 Checking cache with key: ${cacheKey}`);
 
     const { data: cachedData, error: cacheError } = await supabase
       .from('rss_cache')
@@ -143,8 +139,6 @@ serve(withSafeHandler("fetch-rss-feeds", async (req) => {
       .maybeSingle();
 
     if (cachedData && !cacheError) {
-      console.log('✅ Cache hit! Returning cached RSS data');
-      console.log('💰 Egress saved: No external RSS fetch needed');
       return new Response(
         JSON.stringify({
           ...cachedData.content,
@@ -160,8 +154,6 @@ serve(withSafeHandler("fetch-rss-feeds", async (req) => {
         }
       );
     }
-
-    console.log('❌ Cache miss, fetching fresh RSS data');
 
 
     // Load settings from database
@@ -207,8 +199,6 @@ serve(withSafeHandler("fetch-rss-feeds", async (req) => {
       filteredSources = sources.filter((s: RSSSource) => s.category === category);
     }
 
-    console.log(`Fetching from ${filteredSources.length} sources for tenant ${tenant_id}, category: ${category || 'all'}`);
-
     // Fetch from all sources in parallel
     const fetchPromises = filteredSources.map((source: RSSSource) =>
       parseRSSFeed(source.url, source.name, source.category, articlesPerFeed)
@@ -223,8 +213,6 @@ serve(withSafeHandler("fetch-rss-feeds", async (req) => {
       .sort((a, b) => new Date(b.pub_date).getTime() - new Date(a.pub_date).getTime())
       .slice(0, totalLimit);
 
-    console.log(`Returning ${allArticles.length} articles`);
-
     // Prepare response data
     const responseData = {
       articles: allArticles,
@@ -235,7 +223,6 @@ serve(withSafeHandler("fetch-rss-feeds", async (req) => {
 
     // Store in cache (5 minute TTL)
     const expiresAt = new Date(Date.now() + 5 * 60 * 1000).toISOString();
-    console.log(`💾 Storing RSS data in cache until ${expiresAt}`);
 
     const { error: cacheInsertError } = await supabase
       .from('rss_cache')

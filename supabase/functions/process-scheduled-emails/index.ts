@@ -12,8 +12,6 @@ serve(withSafeHandler("process-scheduled-emails", async (req) => {
     const supabaseServiceKey = Deno.env.get("SUPABASE_SERVICE_ROLE_KEY")!;
     const supabase = createClient(supabaseUrl, supabaseServiceKey);
 
-    console.log("Starting scheduled emails processing...");
-
     // Fetch scheduled emails that should be sent now
     const { data: scheduledEmails, error: fetchError } = await supabase
       .from("scheduled_emails")
@@ -28,21 +26,17 @@ serve(withSafeHandler("process-scheduled-emails", async (req) => {
     }
 
     if (!scheduledEmails || scheduledEmails.length === 0) {
-      console.log("No scheduled emails to process");
       return new Response(
         JSON.stringify({ processed: 0, message: "No emails to process" }),
         { headers: { ...corsHeaders, "Content-Type": "application/json" } }
       );
     }
 
-    console.log(`Processing ${scheduledEmails.length} scheduled emails`);
-
     let successCount = 0;
     let failCount = 0;
 
     for (const email of scheduledEmails) {
       try {
-        console.log(`Sending scheduled email ${email.id} - "${email.subject}"`);
 
         // Invoke send-document-email function
         const { data: sendData, error: sendError } = await supabase.functions.invoke(
@@ -85,7 +79,6 @@ serve(withSafeHandler("process-scheduled-emails", async (req) => {
         }
 
         successCount++;
-        console.log(`✓ Successfully sent scheduled email ${email.id}`);
       } catch (error: any) {
         failCount++;
         console.error(`✗ Failed to send scheduled email ${email.id}:`, error.message);
@@ -101,8 +94,6 @@ serve(withSafeHandler("process-scheduled-emails", async (req) => {
           .eq("id", email.id);
       }
     }
-
-    console.log(`Processing complete: ${successCount} sent, ${failCount} failed`);
 
     return new Response(
       JSON.stringify({

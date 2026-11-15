@@ -56,9 +56,6 @@ function parseICS(icsContent: string, startDate: Date, endDate: Date, maxEvents:
   const lines = icsContent.split(/\r?\n/);
   let currentEvent: Partial<ICSEvent> | null = null;
 
-  console.log(`📅 Processing ICS with date range: ${startDate.toISOString()} to ${endDate.toISOString()}`);
-  console.log(`🔢 Max events limit: ${maxEvents}`);
-
   for (let i = 0; i < lines.length; i++) {
     let line = lines[i].trim();
 
@@ -101,7 +98,6 @@ function parseICS(icsContent: string, startDate: Date, endDate: Date, maxEvents:
 
       // Use configurable event limit
       if (events.length >= maxEvents) {
-        console.log(`⚠️ Reached event limit of ${maxEvents} events, stopping parse`);
         break;
       }
     } else if (currentEvent) {
@@ -140,8 +136,6 @@ async function incrementalSync(supabase: any, calendarId: string, newEvents: ICS
     deletedEvents: 0
   };
 
-  console.log(`🔄 Starting incremental sync for ${newEvents.length} parsed events`);
-
   // Get existing events with their last_modified timestamps
   const { data: existingEvents, error: existingError } = await supabase
     .from('external_events')
@@ -160,8 +154,6 @@ async function incrementalSync(supabase: any, calendarId: string, newEvents: ICS
       existingEventsMap.set(event.external_uid, event.last_modified);
     });
   }
-
-  console.log(`📊 Found ${existingEventsMap.size} existing events in database`);
 
   // Process new events in batches for UPSERT
   const batchSize = 25; // Smaller batches for better reliability
@@ -219,8 +211,6 @@ async function incrementalSync(supabase: any, calendarId: string, newEvents: ICS
     }
   }
 
-  console.log(`🔄 Processing ${eventsToProcess.length} events (${stats.skippedEvents} skipped as unchanged)`);
-
   // Remove duplicate UIDs within the batch to prevent database conflicts
   const uniqueEventsMap = new Map();
   eventsToProcess.forEach(event => {
@@ -233,10 +223,6 @@ async function incrementalSync(supabase: any, calendarId: string, newEvents: ICS
   const dedupedEvents = Array.from(uniqueEventsMap.values());
   const duplicatesRemoved = eventsToProcess.length - dedupedEvents.length;
 
-  if (duplicatesRemoved > 0) {
-    console.log(`🔄 Removed ${duplicatesRemoved} duplicate UIDs from processing batch`);
-  }
-
   // Process events in batches using UPSERT
   for (let i = 0; i < dedupedEvents.length; i += batchSize) {
     const batch = dedupedEvents.slice(i, i + batchSize);
@@ -244,7 +230,6 @@ async function incrementalSync(supabase: any, calendarId: string, newEvents: ICS
     const totalBatches = Math.ceil(dedupedEvents.length / batchSize);
 
     try {
-      console.log(`📦 Processing batch ${batchNumber}/${totalBatches} (${batch.length} events)`);
 
       // UPSERT using ON CONFLICT - process each event individually to avoid batch conflicts
       let batchNewCount = 0;
@@ -294,8 +279,6 @@ async function incrementalSync(supabase: any, calendarId: string, newEvents: ICS
       stats.updatedEvents += batchUpdateCount;
       stats.errorEvents += batchErrorCount;
 
-      console.log(`✅ Batch ${batchNumber} completed: ${batchNewCount} new, ${batchUpdateCount} updated, ${batchErrorCount} errors`);
-
     } catch (error) {
       console.error(`❌ Batch ${batchNumber} failed completely:`, error);
       stats.errorEvents += batch.length;
@@ -313,7 +296,6 @@ async function incrementalSync(supabase: any, calendarId: string, newEvents: ICS
   }
 
   if (deletedUids.length > 0) {
-    console.log(`🗑️ Removing ${deletedUids.length} deleted events`);
 
     const { error: deleteError } = await supabase
       .from('external_events')
@@ -325,7 +307,6 @@ async function incrementalSync(supabase: any, calendarId: string, newEvents: ICS
       console.error('❌ Error deleting removed events:', deleteError);
     } else {
       stats.deletedEvents = deletedUids.length;
-      console.log(`✅ Successfully deleted ${deletedUids.length} events`);
     }
   }
 
@@ -363,8 +344,6 @@ Deno.serve(withSafeHandler("sync-external-calendar", async (req) => {
       );
     }
 
-    console.log(`🚀 Starting sync for calendar: ${calendar_id}`);
-
     // Get the external calendar with its configuration
     let calendarQuery = supabase.from('external_calendars').select('*').eq('id', calendar_id);
     if (access && 'tenantId' in access) calendarQuery = calendarQuery.eq('tenant_id', access.tenantId);
@@ -385,16 +364,12 @@ Deno.serve(withSafeHandler("sync-external-calendar", async (req) => {
       );
     }
 
-    console.log(`📅 Calendar: ${calendar.name}`);
-    console.log(`📊 Config - Start: ${calendar.sync_start_date}, End: ${calendar.sync_end_date}, Max Events: ${calendar.max_events}`);
-
     // Use configurable date range with increased default limit
     const startDate = new Date(calendar.sync_start_date);
     const endDate = new Date(calendar.sync_end_date);
     const maxEvents = calendar.max_events || 20000;
 
     // Fetch the ICS content with conditional requests (ETag and Last-Modified)
-    console.log('📥 Fetching ICS content...');
 
     const headers: HeadersInit = {
       'User-Agent': 'CalendarSync/1.0',
@@ -403,19 +378,15 @@ Deno.serve(withSafeHandler("sync-external-calendar", async (req) => {
     // Add conditional request headers if available
     if (calendar.last_etag) {
       headers['If-None-Match'] = calendar.last_etag;
-      console.log(`🔄 Using If-None-Match: ${calendar.last_etag.substring(0, 20)}...`);
     }
     if (calendar.last_modified_http) {
       headers['If-Modified-Since'] = calendar.last_modified_http;
-      console.log(`🔄 Using If-Modified-Since: ${calendar.last_modified_http}`);
     }
 
     const icsResponse = await fetch(calendar.ics_url, { headers });
 
     // Handle 304 Not Modified - calendar hasn't changed
     if (icsResponse.status === 304) {
-      console.log('📌 Calendar unchanged (304 Not Modified), skipping download');
-      console.log('💰 Egress saved: No ICS download needed');
 
       // Update last_sync timestamp without downloading
       const { error: updateError } = await supabase
@@ -449,21 +420,13 @@ Deno.serve(withSafeHandler("sync-external-calendar", async (req) => {
     if (!icsContent.includes('BEGIN:VCALENDAR')) {
       throw new Error('Invalid ICS content: missing VCALENDAR header');
     }
-    console.log(`📄 ICS content length: ${icsContent.length} characters`);
 
     // Extract ETag and Last-Modified headers for next sync
     const etag = icsResponse.headers.get('etag');
     const lastModified = icsResponse.headers.get('last-modified');
-    if (etag) {
-      console.log(`📝 Storing ETag: ${etag.substring(0, 20)}...`);
-    }
-    if (lastModified) {
-      console.log(`📝 Storing Last-Modified: ${lastModified}`);
-    }
 
     // Parse ICS content with configurable parameters
     const events = parseICS(icsContent, startDate, endDate, maxEvents);
-    console.log(`✅ Parsed ${events.length} events from ICS`);
 
     // Update calendar sync timestamp with ETag and Last-Modified
     await supabase
@@ -491,9 +454,6 @@ Deno.serve(withSafeHandler("sync-external-calendar", async (req) => {
       })
       .eq('id', calendar_id)
       .eq('tenant_id', calendar.tenant_id);
-
-    console.log(`🎉 Sync completed successfully!`);
-    console.log(`📊 Stats:`, syncStats);
 
     const message = `Successfully synced calendar "${calendar.name}": ` +
       `${syncStats.newEvents} new, ${syncStats.updatedEvents} updated, ` +

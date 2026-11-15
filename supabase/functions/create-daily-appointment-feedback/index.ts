@@ -21,14 +21,10 @@ Deno.serve(withSafeHandler("create-daily-appointment-feedback", async (req) => {
     const supabaseServiceKey = Deno.env.get('SUPABASE_SERVICE_ROLE_KEY')!;
     const supabase = createClient(supabaseUrl, supabaseServiceKey);
 
-    console.log('Starting daily appointment feedback creation...');
-
     // Get date range (last 7 days)
     const sevenDaysAgo = new Date();
     sevenDaysAgo.setDate(sevenDaysAgo.getDate() - 7);
     const now = new Date();
-
-    console.log(`Checking events from ${sevenDaysAgo.toISOString()} to ${now.toISOString()}`);
 
     // Find all completed appointments without feedback entries
     const { data: appointments, error: appointmentsError } = await supabase
@@ -52,8 +48,6 @@ Deno.serve(withSafeHandler("create-daily-appointment-feedback", async (req) => {
       throw appointmentsError;
     }
 
-    console.log(`Found ${appointments?.length || 0} appointments without feedback`);
-
     // Find all external events without feedback entries
     const { data: externalEvents, error: externalEventsError } = await supabase
       .from('external_events')
@@ -75,8 +69,6 @@ Deno.serve(withSafeHandler("create-daily-appointment-feedback", async (req) => {
       console.error('Error fetching external events:', externalEventsError);
       throw externalEventsError;
     }
-
-    console.log(`Found ${externalEvents?.length || 0} external events without feedback`);
 
     if ((!appointments || appointments.length === 0) && (!externalEvents || externalEvents.length === 0)) {
       return new Response(
@@ -128,7 +120,6 @@ Deno.serve(withSafeHandler("create-daily-appointment-feedback", async (req) => {
             errors.push({ appointment_id: appointment.id, error: skipError.message });
           } else {
             skippedCount++;
-            console.log(`Auto-skipped internal appointment: ${appointment.title}`);
           }
           continue;
         }
@@ -159,7 +150,6 @@ Deno.serve(withSafeHandler("create-daily-appointment-feedback", async (req) => {
           errors.push({ appointment_id: appointment.id, error: insertError.message });
         } else {
           processedCount++;
-          console.log(`Created feedback for: ${appointment.title} (priority: ${priorityScore})`);
         }
       } catch (error) {
         console.error(`Error processing appointment ${appointment.id}:`, error);
@@ -210,7 +200,6 @@ Deno.serve(withSafeHandler("create-daily-appointment-feedback", async (req) => {
           errors.push({ event_id: externalEvent.id, error: insertError.message });
         } else {
           processedCount++;
-          console.log(`Created feedback for external event: ${externalEvent.title} (priority: ${priorityScore})`);
         }
       } catch (error) {
         console.error(`Error processing external event ${externalEvent.id}:`, error);
@@ -220,8 +209,6 @@ Deno.serve(withSafeHandler("create-daily-appointment-feedback", async (req) => {
         });
       }
     }
-
-    console.log(`Processing complete. Created: ${processedCount}, Skipped: ${skippedCount}, Errors: ${errors.length}`);
 
     return new Response(
       JSON.stringify({

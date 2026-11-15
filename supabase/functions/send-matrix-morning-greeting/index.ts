@@ -3,7 +3,6 @@ import { createClient } from "https://esm.sh/@supabase/supabase-js@2";
 import { requireServiceRole, corsHeaders, forbiddenResponse } from "../_shared/security.ts";
 
 import { withSafeHandler } from "../_shared/security.ts";
-console.log("Matrix morning greeting function initialized");
 
 interface MorningSettings {
   user_id: string;
@@ -80,7 +79,6 @@ async function logMatrixSkip(
 }
 
 Deno.serve(withSafeHandler("send-matrix-morning-greeting", async (req) => {
-  console.log("🌅 Morning greeting function called");
 
   if (req.method === "OPTIONS") {
     return new Response(null, { headers: corsHeaders });
@@ -107,8 +105,6 @@ Deno.serve(withSafeHandler("send-matrix-morning-greeting", async (req) => {
 
     const currentHour = parseInt(berlinTime.split(":")[0]);
     const today = now.toISOString().split("T")[0];
-
-    console.log(`🕐 Current Berlin time: ${berlinTime}, Hour: ${currentHour}`);
 
     // Get all users with enabled morning settings for this hour
     const { data: settings, error: settingsError } = await supabaseAdmin
@@ -190,7 +186,6 @@ Deno.serve(withSafeHandler("send-matrix-morning-greeting", async (req) => {
         const message = await generateGreeting(supabaseAdmin, setting);
 
         if (!message) {
-          console.log(`⚠️ No message generated for user ${setting.user_id}`);
           skippedCount++;
           continue;
         }
@@ -242,7 +237,6 @@ Deno.serve(withSafeHandler("send-matrix-morning-greeting", async (req) => {
           timestamp: new Date().toISOString(),
         });
 
-        console.log(`✅ Sent morning greeting to user ${setting.user_id}`);
         sentCount++;
       } catch (userError) {
         console.error(

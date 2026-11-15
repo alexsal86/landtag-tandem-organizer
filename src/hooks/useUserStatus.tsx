@@ -1,4 +1,5 @@
-import { useState, useEffect, useRef } from 'react';
+import { createContext, useContext, useState, useEffect, useRef, type PropsWithChildren } from 'react';
+import { useQuery } from '@tanstack/react-query';
 import { supabase } from '@/integrations/supabase/client';
 import { useAuth } from './useAuth';
 import { useTenant } from './useTenant';
@@ -44,7 +45,7 @@ export interface OnlineUser {
   status?: UserStatus;
 }
 
-export const useUserStatus = () => {
+const useUserStatusRuntime = () => {
   const { user } = useAuth();
   const { currentTenant } = useTenant();
   const [currentStatus, setCurrentStatus] = useState<UserStatus | null>(null);
@@ -56,51 +57,61 @@ export const useUserStatus = () => {
   const statusChannelRef = useRef<ReturnType<typeof supabase.channel> | null>(null);
   const presenceChannelRef = useRef<ReturnType<typeof supabase.channel> | null>(null);
 
-  // Auto-away timer
+  const automaticStatusWriter = useRef<(next: 'online' | 'away') => Promise<void>>(async () => {});
+  const lastActivityWrite = useRef(0);
+  const activityWritePending = useRef(false);
+  const statusRef = useRef(currentStatus);
+  statusRef.current = currentStatus;
+  const { data: profile } = useQuery({
+    queryKey: ['user-status-profile', currentTenant?.id, user?.id],
+    enabled: Boolean(user?.id && currentTenant?.id),
+    staleTime: 5 * 60 * 1000,
+    queryFn: async () => {
+      const { data, error } = await supabase.from('profiles')
+        .select('display_name, avatar_url').eq('user_id', user!.id).single();
+      if (error) throw error;
+      return data;
+    },
+  });
+  const profileRef = useRef(profile);
+  profileRef.current = profile;
+
+  // Activity is measured locally; persistence is limited to once per five minutes.
+  useEffect(() => {
+    lastActivityWrite.current = Date.now();
+  }, [user?.id, currentTenant?.id]);
+
   useEffect(() => {
     if (!user || !currentStatus?.auto_away_enabled) return;
-
-    let awayTimer: NodeJS.Timeout;
     let lastActivity = Date.now();
-
-    const resetAwayTimer = () => {
-      lastActivity = Date.now();
-      if (awayTimer) clearTimeout(awayTimer);
-      
-      if (currentStatus.status_type === 'away') {
-        updateStatus('online');
-      }
-      
-      awayTimer = setTimeout(() => {
-        if (currentStatus.status_type === 'online') {
-          updateStatus('away');
-        }
-      }, 10 * 60 * 1000); // 10 minutes
+    let transitionPending = false;
+    const changeAutomaticStatus = async (next: 'online' | 'away') => {
+      if (transitionPending) return;
+      transitionPending = true;
+      try { await automaticStatusWriter.current(next); } finally { transitionPending = false; }
     };
-
     const handleActivity = () => {
-      if (Date.now() - lastActivity > 1000) {
-        resetAwayTimer();
-        updateLastActivity();
+      lastActivity = Date.now();
+      if (statusRef.current?.status_type === 'away') {
+        void changeAutomaticStatus('online');
+      } else {
+        void updateLastActivity();
       }
     };
-
+    const timer = setInterval(() => {
+      if (Date.now() - lastActivity >= 10 * 60 * 1000 && statusRef.current?.status_type === 'online') {
+        void changeAutomaticStatus('away');
+      }
+    }, 1000);
     const events = ['mousedown', 'mousemove', 'keypress', 'scroll', 'touchstart'];
-    events.forEach(event => {
-      document.addEventListener(event, handleActivity, true);
-    });
-
-    resetAwayTimer();
+    events.forEach(event => document.addEventListener(event, handleActivity, true));
     setIsAwayTimerActive(true);
-
     return () => {
-      if (awayTimer) clearTimeout(awayTimer);
-      events.forEach(event => {
-        document.removeEventListener(event, handleActivity, true);
-      });
+      clearInterval(timer);
+      events.forEach(event => document.removeEventListener(event, handleActivity, true));
       setIsAwayTimerActive(false);
     };
-  }, [user, currentStatus?.auto_away_enabled, currentStatus?.status_type]);
+  }, [user?.id, currentTenant?.id, currentStatus?.auto_away_enabled]);
 
   // Load status options
   useEffect(() => {
@@ -124,7 +135,10 @@ export const useUserStatus = () => {
 
   // Load current user status
   useEffect(() => {
-    if (!user?.id) return;
+    setCurrentStatus(null);
+    setOnlineUsers([]);
+    setUsersWithStatus([]);
+    if (!user?.id || !currentTenant?.id) { setLoading(false); return; }
 
     if (statusChannelRef.current) {
       supabase.removeChannel(statusChannelRef.current);
@@ -139,7 +153,8 @@ export const useUserStatus = () => {
         .from('user_status')
         .select('id, user_id, status_type, custom_message, emoji, color, notifications_enabled, auto_away_enabled, last_activity, status_until')
         .eq('user_id', user.id)
-        .single();
+        .eq('tenant_id', currentTenant.id)
+        .maybeSingle();
 
       if (error && error.code !== 'PGRST116') {
         debugConsole.error('Error loading user status:', error);
@@ -169,7 +184,10 @@ export const useUserStatus = () => {
           if (!isMounted) return;
 
           if (payload.eventType === 'UPDATE' || payload.eventType === 'INSERT') {
-            setCurrentStatus(payload.new as UserStatus);
+            const next = payload.new as UserStatus & { tenant_id?: string };
+            if (next.tenant_id === currentTenant.id) setCurrentStatus(next);
+          } else if (payload.eventType === 'DELETE') {
+            setCurrentStatus(null);
           }
         }
       );
@@ -184,7 +202,7 @@ export const useUserStatus = () => {
         statusChannelRef.current = null;
       }
     };
-  }, [user?.id]);
+  }, [user?.id, currentTenant?.id]);
 
   // Set up presence tracking for online users - TENANT SPECIFIC
   useEffect(() => {
@@ -192,13 +210,13 @@ export const useUserStatus = () => {
 
     // Cleanup previous channel if tenant changed
     if (presenceChannelRef.current) {
-      presenceChannelRef.current.unsubscribe();
+      void supabase.removeChannel(presenceChannelRef.current);
       presenceChannelRef.current = null;
     }
 
     const setupPresence = async () => {
-      // TENANT-SPECIFIC channel name for isolation — unique per mount
-      const channelName = `user_presence_${currentTenant.id}_${crypto.randomUUID()}`;
+      // All clients in this tenant must join the same presence channel.
+      const channelName = `user_presence_${currentTenant.id}`;
       debugConsole.log('🏢 Setting up presence channel:', channelName);
       
       const channel = supabase.channel(channelName, {
@@ -246,18 +264,14 @@ export const useUserStatus = () => {
 
       channel.subscribe(async (status: string) => {
         if (status === 'SUBSCRIBED') {
-          const { data: profile } = await supabase
-            .from('profiles')
-            .select('display_name, avatar_url')
-            .eq('user_id', user.id)
-            .single();
-
+          if (presenceChannelRef.current !== channel) return;
+          const profile = profileRef.current;
           await channel.track({
             user_id: user.id,
             display_name: profile?.display_name || user.email,
             avatar_url: profile?.avatar_url,
             online_at: new Date().toISOString(),
-            status: currentStatus
+            status: statusRef.current
           });
         }
       });
@@ -273,23 +287,22 @@ export const useUserStatus = () => {
 
     function channelCleanup() {
       if (presenceChannelRef.current) {
-        presenceChannelRef.current.unsubscribe();
+        void supabase.removeChannel(presenceChannelRef.current);
         presenceChannelRef.current = null;
       }
     }
   }, [user?.id, currentTenant?.id]);
 
-  // Update presence when status changes
-  useEffect(() => {
-    if (presenceChannelRef.current && currentStatus && user) {
-      const updatePresence = async () => {
-        const { data: profile } = await supabase
-          .from('profiles')
-          .select('display_name, avatar_url')
-          .eq('user_id', user.id)
-          .single();
+  const presenceStatus = currentStatus ? JSON.stringify({
+    ...currentStatus, last_activity: undefined,
+  }) : null;
 
-        await presenceChannelRef.current.track({
+  // Heartbeat timestamps do not change the visible presence status.
+  useEffect(() => {
+    const channel = presenceChannelRef.current;
+    if (channel && currentStatus && user) {
+      const updatePresence = async () => {
+        await channel.track({
           user_id: user.id,
           display_name: profile?.display_name || user.email,
           avatar_url: profile?.avatar_url,
@@ -300,7 +313,7 @@ export const useUserStatus = () => {
 
       updatePresence();
     }
-  }, [currentStatus, user]);
+  }, [presenceStatus, user?.id, profile]);
 
   // Function to update usersWithStatus based on online users and their statuses - TENANT FILTERED
   const updateUsersWithStatus = async (onlineUsersList: OnlineUser[]) => {
@@ -312,20 +325,13 @@ export const useUserStatus = () => {
         return;
       }
 
-      // Only fetch statuses for users in the same tenant
-      const { data: statuses } = await supabase
-        .from('user_status')
-        .select('id, user_id, status_type, custom_message, emoji, color, notifications_enabled, auto_away_enabled, last_activity, status_until')
-        .eq('tenant_id', currentTenant?.id ?? '')
-        .in('user_id', onlineUserIds);
-
       const usersWithStatusData = onlineUsersList.map(onlineUser => ({
         user_id: onlineUser.user_id,
         display_name: onlineUser.display_name,
         avatar_url: onlineUser.avatar_url,
         is_online: true,
         last_seen: onlineUser.online_at,
-        status: statuses?.find((status: { user_id: string }) => status.user_id === onlineUser.user_id)
+        status: onlineUser.status
       }));
 
       setUsersWithStatus(usersWithStatusData);
@@ -356,7 +362,7 @@ export const useUserStatus = () => {
         emoji: emoji || statusOption?.emoji || null,
         color: statusOption?.color || null,
         status_until: statusUntil?.toISOString() || null,
-        notifications_enabled: notificationsEnabled ?? currentStatus?.notifications_enabled ?? true,
+        notifications_enabled: notificationsEnabled ?? statusRef.current?.notifications_enabled ?? true,
         last_activity: new Date().toISOString()
       };
 
@@ -368,6 +374,8 @@ export const useUserStatus = () => {
 
       if (error) throw error;
 
+      lastActivityWrite.current = Date.now();
+      statusRef.current = data;
       setCurrentStatus(data);
       notify.success('Status aktualisiert');
     } catch (error) {
@@ -376,18 +384,23 @@ export const useUserStatus = () => {
     }
   };
 
-  const updateLastActivity = async () => {
-    if (!user) return;
+  automaticStatusWriter.current = updateStatus;
 
+  const updateLastActivity = async () => {
+    if (!user || !currentTenant?.id || !statusRef.current || activityWritePending.current ||
+        Date.now() - lastActivityWrite.current < 5 * 60 * 1000) return;
+    const now = Date.now();
+    lastActivityWrite.current = now;
+    activityWritePending.current = true;
     try {
-      await supabase
-        .from('user_status')
-        .upsert({
-          user_id: user.id,
-          last_activity: new Date().toISOString()
-        }, { onConflict: 'user_id' });
+      const { error } = await supabase.from('user_status')
+        .update({ last_activity: new Date(now).toISOString() })
+        .eq('user_id', user.id).eq('tenant_id', currentTenant.id);
+      if (error) throw error;
     } catch (error) {
       debugConsole.error('Error updating last activity:', error);
+    } finally {
+      activityWritePending.current = false;
     }
   };
 
@@ -479,4 +492,17 @@ export const useUserStatus = () => {
     getStatusDisplay,
     updateLastActivity
   };
+};
+
+const UserStatusContext = createContext<ReturnType<typeof useUserStatusRuntime> | null>(null);
+
+export const UserStatusProvider = ({ children }: PropsWithChildren) => {
+  const value = useUserStatusRuntime();
+  return <UserStatusContext.Provider value={value}>{children}</UserStatusContext.Provider>;
+};
+
+export const useUserStatus = () => {
+  const value = useContext(UserStatusContext);
+  if (!value) throw new Error('useUserStatus requires UserStatusProvider');
+  return value;
 };

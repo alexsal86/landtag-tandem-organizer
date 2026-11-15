@@ -44,8 +44,6 @@ serve(withSafeHandler("check-meeting-reminders", async (req: Request) => {
     const sevenDaysAgo = new Date(today);
     sevenDaysAgo.setDate(today.getDate() - 7);
 
-    console.log("Starting meeting reminders check...");
-
     // ============ 1. ÜBERFÄLLIGE GESPRÄCHE ============
     // Prüfe: next_meeting_due < heute UND kein scheduled meeting existiert
     const { data: overdueEmployees, error: overdueError } = await supabase
@@ -57,7 +55,6 @@ serve(withSafeHandler("check-meeting-reminders", async (req: Request) => {
     if (overdueError) {
       console.error("Error fetching overdue employees:", overdueError);
     } else if (overdueEmployees && overdueEmployees.length > 0) {
-      console.log(`Found ${overdueEmployees.length} employees with overdue meetings`);
 
       for (const emp of overdueEmployees) {
         // Check if there's a scheduled meeting
@@ -82,7 +79,6 @@ serve(withSafeHandler("check-meeting-reminders", async (req: Request) => {
             priority_param: "high",
           });
 
-          console.log(`Notification sent for overdue meeting: ${employeeName}`);
         }
       }
     }
@@ -98,7 +94,6 @@ serve(withSafeHandler("check-meeting-reminders", async (req: Request) => {
     if (upcoming14Error) {
       console.error("Error fetching upcoming 14-day meetings:", upcoming14Error);
     } else if (upcomingEmployees14 && upcomingEmployees14.length > 0) {
-      console.log(`Found ${upcomingEmployees14.length} employees with meetings due in 14 days`);
 
       for (const emp of upcomingEmployees14) {
         const daysUntilDue = Math.ceil(
@@ -119,7 +114,6 @@ serve(withSafeHandler("check-meeting-reminders", async (req: Request) => {
             priority_param: "medium",
           });
 
-          console.log(`Notification sent for upcoming meeting (${daysUntilDue} days): ${employeeName}`);
         }
       }
     }
@@ -134,7 +128,6 @@ serve(withSafeHandler("check-meeting-reminders", async (req: Request) => {
     if (requestsError) {
       console.error("Error fetching overdue requests:", requestsError);
     } else if (overdueRequests && overdueRequests.length > 0) {
-      console.log(`Found ${overdueRequests.length} overdue meeting requests`);
 
       for (const req of overdueRequests) {
         const adminId = (req as any).employee_settings?.admin_id;
@@ -158,7 +151,6 @@ serve(withSafeHandler("check-meeting-reminders", async (req: Request) => {
           priority_param: "high",
         });
 
-        console.log(`Notification sent for overdue request: ${employeeName}`);
       }
     }
 
@@ -172,7 +164,6 @@ serve(withSafeHandler("check-meeting-reminders", async (req: Request) => {
     if (actionItemsError) {
       console.error("Error fetching overdue action items:", actionItemsError);
     } else if (overdueActionItems && overdueActionItems.length > 0) {
-      console.log(`Found ${overdueActionItems.length} overdue action items`);
 
       for (const item of overdueActionItems) {
         // Send to assigned person
@@ -186,7 +177,6 @@ serve(withSafeHandler("check-meeting-reminders", async (req: Request) => {
             priority_param: "high",
           });
 
-          console.log(`Notification sent to assigned user for overdue action item: ${item.id}`);
         }
 
         // Also send to supervisor (conducted_by)
@@ -201,20 +191,17 @@ serve(withSafeHandler("check-meeting-reminders", async (req: Request) => {
             priority_param: "medium",
           });
 
-          console.log(`Notification sent to supervisor for overdue action item: ${item.id}`);
         }
       }
     }
 
     // ============ 5. AUTOMATISCHE POLL-STATUS-UPDATES ============
-    console.log("Running automatic poll status updates...");
 
     const { error: pollUpdateError } = await supabase.rpc('auto_update_poll_status');
 
     if (pollUpdateError) {
       console.error('Poll status update failed:', pollUpdateError);
     } else {
-      console.log('Poll status updates completed successfully');
 
       // Get polls that changed status in the last 24 hours
       const oneDayAgo = new Date(today);
@@ -228,7 +215,6 @@ serve(withSafeHandler("check-meeting-reminders", async (req: Request) => {
 
       // Send notifications for status changes
       if (statusChangedPolls && statusChangedPolls.length > 0) {
-        console.log(`Found ${statusChangedPolls.length} polls with recent status changes`);
 
         for (const poll of statusChangedPolls) {
           if (poll.status === 'completed') {
@@ -253,8 +239,6 @@ serve(withSafeHandler("check-meeting-reminders", async (req: Request) => {
         }
       }
     }
-
-    console.log("Meeting reminders check completed successfully");
 
     return new Response(
       JSON.stringify({
