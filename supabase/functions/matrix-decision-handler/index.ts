@@ -42,7 +42,12 @@ Deno.serve(withSafeHandler("matrix-decision-handler", async (req) => {
   try {
     // Parse incoming Matrix message or webhook
     const body = await req.json();
-    console.log('📨 Matrix decision request body:', JSON.stringify(body, null, 2));
+    // A logged-in user cannot impersonate Matrix senders or submit forged webhook events.
+    if (!webhookOk && (body.type === 'matrix_webhook' || (body.room_id && body.sender && body.content))) {
+      return new Response(JSON.stringify({ error: 'Trusted Matrix webhook required' }), {
+        status: 403, headers: { ...corsHeaders, 'Content-Type': 'application/json' },
+      });
+    }
 
     // Initialize Supabase
     const supabaseAdmin = createClient(

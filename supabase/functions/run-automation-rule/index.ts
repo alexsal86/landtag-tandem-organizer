@@ -4,6 +4,7 @@ import { Resend } from "npm:resend@2.0.0";
 
 import { evaluateAutomationTree, type AutomationConditionGroup as ConditionGroup } from "../_shared/automationConditions.ts";
 import { withSafeHandler } from "../_shared/security.ts";
+import { requireTenantAccess } from "../_shared/tenant-access.ts";
 const CORS_HEADERS = {
   "Access-Control-Allow-Origin": "*",
   "Access-Control-Allow-Headers": "authorization, x-client-info, apikey, content-type",
@@ -148,11 +149,12 @@ serve(withSafeHandler("run-automation-rule", async (req) => {
       user = { id: authUser.id };
     }
 
-    const { ruleId, dryRun = false, sourcePayload = {}, idempotencyKey }: {
+    const { ruleId, dryRun = false, sourcePayload = {}, idempotencyKey, tenant_id }: {
       ruleId: string;
       dryRun?: boolean;
       sourcePayload?: Record<string, unknown>;
       idempotencyKey?: string;
+      tenant_id?: string;
     } = await req.json();
 
     if (!ruleId) {
@@ -162,11 +164,15 @@ serve(withSafeHandler("run-automation-rule", async (req) => {
       });
     }
 
-    const { data: rule, error: ruleError } = await supabaseAdmin
+    const tenantAccess = isInternalCall ? null : await requireTenantAccess({ req, functionName: "run-automation-rule", requestedTenantId: tenant_id });
+    if (tenantAccess && "response" in tenantAccess) return tenantAccess.response;
+
+    let ruleQuery = supabaseAdmin
       .from("automation_rules")
       .select("id, tenant_id, name, module, conditions, actions, enabled, created_by")
-      .eq("id", ruleId)
-      .maybeSingle();
+      .eq("id", ruleId);
+    if (tenantAccess && "tenantId" in tenantAccess) ruleQuery = ruleQuery.eq("tenant_id", tenantAccess.tenantId);
+    const { data: rule, error: ruleError } = await ruleQuery.maybeSingle();
 
     if (ruleError || !rule) {
       return new Response(JSON.stringify({ error: "Rule not found" }), {
@@ -176,8 +182,9 @@ serve(withSafeHandler("run-automation-rule", async (req) => {
     }
 
     if (!isInternalCall) {
+      if (!user) return new Response(JSON.stringify({ error: "Unauthorized" }), { status: 401, headers: CORS_HEADERS });
       const { data: adminAllowed, error: adminError } = await supabaseAdmin.rpc("is_tenant_admin", {
-        _user_id: user!.id,
+        _user_id: user.id,
         _tenant_id: rule.tenant_id,
       });
 
@@ -190,8 +197,9 @@ serve(withSafeHandler("run-automation-rule", async (req) => {
     }
 
     if (!isInternalCall) {
+      if (!user) return new Response(JSON.stringify({ error: "Unauthorized" }), { status: 401, headers: CORS_HEADERS });
       const { data: allowed, error } = await supabaseAdmin.rpc("is_tenant_action_allowed", {
-        _user_id: user!.id, _tenant_id: rule.tenant_id, _action: "workflow.execute_manual",
+        _user_id: user.id, _tenant_id: rule.tenant_id, _action: "workflow.execute_manual",
       });
       if (error || !allowed) return new Response(JSON.stringify({ error: "Manuelle Ausführung gesperrt" }), { status: 403, headers: { ...CORS_HEADERS, "Content-Type": "application/json" } });
     }
