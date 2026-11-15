@@ -763,6 +763,7 @@ function AtlasPanel({
           <SwingAtlas
             rows={rows}
             versions={versions}
+            beforeVersions={data?.versions.filter(v => v.year === beforeYear) ?? []}
             party={activeMapParty}
             parties={selectedParties}
             onPartyChange={setMapParty}

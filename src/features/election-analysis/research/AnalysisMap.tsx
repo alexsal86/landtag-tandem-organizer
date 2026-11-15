@@ -1,3 +1,4 @@
+import { boundaryDifferencePath } from "./boundaryOverlay";
 import { isReconstructedBoundary, reconstructedGeometryAttribution, historical1952SourceByTechnical } from "@/utils/electoralGeometryCatalog";
 import { HistoricalGeometryNotice } from "@/features/election-history/HistoricalGeometryNotice";
 import { ELECTORAL_TOPOLOGY_VERSION } from "@/utils/electoralTopologyAsset";
@@ -25,6 +26,8 @@ export function AnalysisMap({
   referenceLabel = "Landes-Swing",
   allowGeometryPreview = false,
   geometryYear,
+  comparisonVersions,
+  comparisonYear,
 }: {
   versions: DistrictVersion[];
   values: Map<number, number | null>;
@@ -37,6 +40,8 @@ export function AnalysisMap({
   referenceLabel?: string;
   allowGeometryPreview?: boolean;
   geometryYear?: number;
+  comparisonVersions?: DistrictVersion[];
+  comparisonYear?: number;
 }) {
   const geographyId =
     versions.find((v) => v.geography_id)?.geography_id || undefined;
@@ -66,6 +71,33 @@ export function AnalysisMap({
     gcTime: 600_000,
     retry: false,
   });
+  // Only explicitly confirmed assignments authorize a spatial comparison.
+  const comparisonBundledYear = comparisonVersions?.find(v => v.bundled_geometry_year)?.bundled_geometry_year;
+  const comparisonGeometry = useQuery({
+    queryKey: ["election-research", "boundary-overlay", comparisonBundledYear, ELECTORAL_TOPOLOGY_VERSION],
+    enabled: comparisonBundledYear != null && confirmedBundledYear != null && !preview,
+    queryFn: () => loadElectoralTopology(comparisonBundledYear!),
+    staleTime: Infinity,
+    gcTime: 600_000,
+    retry: false,
+  });
+  const changedShapes = new Map<number, GeoJSON.Feature<GeoJSON.MultiPolygon>>();
+  if (!preview && confirmedBundledYear && comparisonBundledYear && comparisonGeometry.data && geometry.data) {
+    for (const feature of geometry.data.features) {
+      const number = Number(feature.properties.Nummer);
+      const before = comparisonVersions?.find(v => v.district_number === number);
+      const after = versions.find(v => v.district_number === number);
+      const old = comparisonGeometry.data.features.find(f => Number(f.properties.Nummer) === number);
+      if (!old || !before?.identity_key || !after?.identity_key
+        || before.identity_key === after.identity_key
+        || before.bundled_geometry_year !== comparisonBundledYear
+        || after.bundled_geometry_year !== confirmedBundledYear) continue;
+      // SVG's even-odd rule draws the symmetric difference exactly: the shared
+      // interior cancels, including holes. No rounding or area-based vote estimate.
+      changedShapes.set(number, { type: "Feature", properties: { Nummer: number },
+        geometry: boundaryDifferencePath(old.geometry, feature.geometry) });
+    }
+  }
   const element = useRef<HTMLDivElement | null>(null);
   const map = useRef<L.Map | null>(null);
   const bounds = useRef<L.LatLngBounds | null>(null);
@@ -74,6 +106,7 @@ export function AnalysisMap({
     onSelect.current = onOpenDistrict;
   }, [onOpenDistrict]);
   const paths = useRef(new Map<number, L.Path>());
+  const overlays = useRef(new Map<number, L.GeoJSON[]>());
   const maximum =
     scaleMax ??
     Math.max(
@@ -99,6 +132,10 @@ export function AnalysisMap({
         : "Geometrie: Statistisches Landesamt Baden-Württemberg",
     );
     paths.current.clear();
+    overlays.current.clear();
+    const changePane = instance.createPane("boundaryChanges");
+    changePane.style.zIndex = "450";
+    changePane.style.pointerEvents = "none";
     const patternId = `analysis-unknown-${L.Util.stamp(instance)}`;
     const applyUnknownPattern = (path: L.Path) => {
       const node = path.getElement();
@@ -108,6 +145,7 @@ export function AnalysisMap({
         node.ownerSVGElement
       ) {
         const svg = node.ownerSVGElement;
+        const patternId = `analysis-unknown-${L.Util.stamp(instance)}-${L.Util.stamp(svg)}`;
         if (!svg.querySelector(`#${patternId}`)) {
           const ns = "http://www.w3.org/2000/svg";
           const defs = document.createElementNS(ns, "defs");
@@ -150,7 +188,7 @@ export function AnalysisMap({
           color: "#fff",
           weight: 1.2,
           fillColor:
-            value === null ? `url(#${patternId})` : signedColor(value, maximum),
+            changedShapes.has(number) ? "#d1d5db" : value === null ? `url(#${patternId})` : signedColor(value, maximum),
           fillOpacity: 0.85,
         };
       },
@@ -174,14 +212,14 @@ export function AnalysisMap({
             ? (values.get(number) ?? null)
             : null;
         const tooltip = document.createElement("span");
-        tooltip.textContent = `${number}: ${version.district_name} · ${preview ? "Zuordnung nach Wahlkreisnummer ungeprüft · " : ""}${value === null ? "nicht vergleichbar / unbekannt" : `${value > 0 ? "+" : ""}${value.toLocaleString("de-DE", { maximumFractionDigits: 2 })} ${label}`}`;
+        tooltip.textContent = `${number}: ${version.district_name} · ${preview ? "Zuordnung nach Wahlkreisnummer ungeprüft · " : ""}${changedShapes.has(number) ? "Grenzen verändert · gemeinsame Fläche ohne berechenbaren Swing · schraffiert: hinzugekommen oder weggefallen" : value === null ? "nicht vergleichbar / unbekannt" : `${value > 0 ? "+" : ""}${value.toLocaleString("de-DE", { maximumFractionDigits: 2 })} ${label}`}`;
         paths.current.set(number, path as L.Path);
         path.bindTooltip(tooltip, { sticky: true });
         path.on("click", () => onSelect.current(number));
         path.on("add", () => {
           const node = (path as L.Path).getElement();
           if (!node) return;
-          if (value === null) applyUnknownPattern(path as L.Path);
+          if (value === null && !changedShapes.has(number)) applyUnknownPattern(path as L.Path);
           node.setAttribute("tabindex", "0");
           node.setAttribute("role", "button");
           node.setAttribute(
@@ -201,7 +239,23 @@ export function AnalysisMap({
         });
       },
     }).addTo(instance);
-    bounds.current = layer.getBounds();
+    const displayBounds = layer.getBounds();
+    if (changedShapes.size) {
+      for (const [number, feature] of changedShapes) {
+        const overlay = L.geoJSON(feature, { interactive: false, pane: "boundaryChanges", smoothFactor: 0, style: {
+          stroke: false, fillColor: `url(#${patternId})`, fillOpacity: 0.85, fillRule: "evenodd",
+        } }).addTo(instance);
+        overlay.eachLayer(path => applyUnknownPattern(path as L.Path));
+        const old = comparisonGeometry.data!.features.find(f => Number(f.properties.Nummer) === number)!;
+        const outline = L.geoJSON(old as GeoJSON.Feature, { interactive: false, pane: "boundaryChanges", smoothFactor: 0, style: {
+          color: "#4b5563", weight: 1, dashArray: "4 4", fill: false,
+        } }).addTo(instance);
+        overlays.current.set(number, [overlay, outline]);
+        // Keep departed areas within the reset/initial map extent.
+        displayBounds.extend(overlay.getBounds());
+      }
+    }
+    bounds.current = displayBounds;
     if (bounds.current.isValid())
       instance.fitBounds(bounds.current, { padding: [28, 28] });
     const observer = new ResizeObserver(() =>
@@ -213,7 +267,7 @@ export function AnalysisMap({
       instance.remove();
       map.current = null;
     };
-  }, [geometry.data, versions, values, label, geographyId, maximum, preview, bundledYear, confirmedBundledYear]);
+  }, [geometry.data, versions, values, label, geographyId, maximum, preview, bundledYear, confirmedBundledYear, comparisonGeometry.data, comparisonVersions, comparisonBundledYear]);
   useEffect(() => {
     paths.current.forEach((path, number) => {
       const selected = selectedDistrict === number;
@@ -226,6 +280,10 @@ export function AnalysisMap({
       });
       path.getElement()?.setAttribute("aria-pressed", String(selected));
       if (selected) path.bringToFront();
+      overlays.current.get(number)?.forEach(layer => layer.setStyle({
+        opacity: visible || selected ? 1 : 0.25,
+        fillOpacity: visible || selected ? 0.85 : 0.2,
+      }));
     });
   }, [
     selectedDistrict,
@@ -236,6 +294,9 @@ export function AnalysisMap({
     label,
     geographyId,
     maximum,
+    comparisonGeometry.data,
+    comparisonVersions,
+    comparisonBundledYear,
   ]);
   if (geography.isLoading || geometry.isLoading)
     return (
@@ -254,6 +315,20 @@ export function AnalysisMap({
   return (
     <div className="space-y-2">
       <HistoricalGeometryNotice year={bundledYear} />
+      {comparisonYear != null && (
+        <p className="rounded-lg border bg-muted/40 p-3 text-sm">
+          Grenzvergleich {comparisonYear} → {geometryYear}: Bei bestätigten, veränderten
+          Wahlkreisgrenzen sind nur hinzugekommene oder weggefallene Teilflächen schraffiert.
+          Die gestrichelte Linie zeigt die frühere Grenze. Gemeinsame Flächen bleiben grau:
+          Aus Gesamtergebnissen unterschiedlicher Zuschnitte lässt sich auch für diese
+          Teilflächen kein exakter Swing berechnen. Unveränderte, bestätigte Wahlkreise
+          erhalten bei verfügbaren Vergleichswerten die Swing-Farbe. Eine vollständige
+          Schraffur bedeutet fehlende Daten oder ungeprüfte Zuordnung. Kleine Unterschiede
+          können auch aus der Digitalisierung stammen; Flächenanteile werden nicht in Stimmen umgerechnet.
+        </p>
+      )}
+      {comparisonYear != null && comparisonGeometry.isLoading && <p role="status" className="text-sm">Frühere Wahlkreisgrenzen laden …</p>}
+      {comparisonYear != null && comparisonGeometry.error && <p role="status" className="text-sm">Der frühere Grenzstand konnte nicht geladen werden. Die Teilflächenmarkierung ist deshalb nicht verfügbar.</p>}
       {preview && (
         <p role="status" className="rounded-lg border border-amber-500 bg-amber-50 p-3 text-sm text-amber-950 dark:bg-amber-950 dark:text-amber-100">
           Ungeprüfte Kartenvorschau: Angezeigt werden die vorhandenen
@@ -347,7 +422,7 @@ export function AnalysisMap({
                 "repeating-linear-gradient(45deg,#e5e7eb 0 4px,#6b7280 4px 6px)",
             }}
           />
-          schraffiert: unbekannt / ausgeschlossen
+          schraffiert: Grenzänderung; sonst unbekannt / ausgeschlossen
         </span>
       </div>
       {bundledYear != null && isReconstructedBoundary(bundledYear) ? <p className="text-xs text-muted-foreground">Rekonstruierte Kartengrundlage {bundledYear} · historische Zuordnung separat prüfen</p> : preview ? (

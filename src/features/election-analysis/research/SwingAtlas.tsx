@@ -17,6 +17,7 @@ const signed = (value: number | null | undefined) =>
 export function SwingAtlas({
   rows,
   versions,
+  beforeVersions,
   party,
   parties,
   onPartyChange,
@@ -29,6 +30,7 @@ export function SwingAtlas({
 }: {
   rows: ComparisonValue[];
   versions: DistrictVersion[];
+  beforeVersions: DistrictVersion[];
   party: string;
   parties: string[];
   onPartyChange: (party: string) => void;
@@ -223,6 +225,8 @@ export function SwingAtlas({
       <div className="grid items-start gap-4 lg:grid-cols-[minmax(0,1fr)_340px]">
         <AnalysisMap
           geometryYear={afterYear}
+          comparisonVersions={beforeVersions}
+          comparisonYear={beforeYear}
           allowGeometryPreview
           versions={versions}
           values={values}

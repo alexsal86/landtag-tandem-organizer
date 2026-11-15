@@ -1,3 +1,4 @@
+import { boundaryDifferencePath } from "@/features/election-analysis/research/boundaryOverlay";
 import { decodeElectoralTopology, electoralGeometryYear, parseElectoralManifest, requiredElectoralPackages } from "@/utils/electoralTopology";
 import { atlasRows, atlasRankings, atlasScale } from "@/features/election-analysis/research/atlasModel";
 import type { ComparisonValue } from "@/features/election-analysis/research/types";
@@ -67,6 +68,15 @@ export const electionAnalysisScenario: TestScenario = {
     "Amtliche Downloads, Datenbank-RLS und Vollständigkeit historischer Kandidaturen sind separate Prüfungen.",
   ],
   steps: [
+    { id: "boundary-difference-rendering", label: "Grenzänderungen als Teilflächen ohne erfundene Ergebniswerte", kind: "logic", run: async () => {
+      const before = { type: "Polygon" as const, coordinates: [[[0, 0], [2, 0], [2, 2], [0, 0]]] };
+      const after = { type: "MultiPolygon" as const, coordinates: [[[[1, 0], [3, 0], [3, 2], [1, 0]]]] };
+      const difference = boundaryDifferencePath(before, after);
+      return { ok: difference.type === "MultiPolygon" && difference.coordinates.length === 2
+        && difference.coordinates[0] === before.coordinates && difference.coordinates[1] === after.coordinates[0],
+        message: "Beide Originalgeometrien bleiben unverändert; SVG even-odd schraffiert die Differenz ohne Stimmenumrechnung." };
+    } },
+
     {
       id: "election-shape-packages",
       label: "Wahlkreisformen: gemeinsame 68 Formen wiederverwenden, nur Änderungen laden",
