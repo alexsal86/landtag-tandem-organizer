@@ -177,7 +177,7 @@ export default function SavedScenariosPanel() {
               : "Unterschiedliche Datenstände: Differenzen umfassen Änderungen der Grundlage und der Annahmen."}{" "}
             A: {a.data.data_release} · B: {b.data.data_release}.{" "}
             {a.data.model_version === "shares-v1"
-              ? "Differenzen in Prozentpunkten."
+              ? "Differenzen der Stimmenanteile (%)."
               : "Differenzen in Sitzen."}
           </StatusNote>
           <Button

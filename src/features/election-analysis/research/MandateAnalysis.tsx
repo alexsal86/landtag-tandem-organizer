@@ -496,7 +496,7 @@ export default function MandateAnalysis() {
                       "Persönliche Stimmen",
                       "Persönlicher Anteil",
                       "Parteizweitanteil",
-                      "Differenz PP / Hinweis",
+                      "Differenz % / Hinweis",
                     ]}
                     rows={candidateRows.map((r) => [
                       current.data?.people.find(
@@ -511,7 +511,7 @@ export default function MandateAnalysis() {
                       `${percent(r.partyResult?.share)}${r.partyResult?.preliminary ? " · vorläufig" : ""}`,
                       r.difference == null
                         ? r.reason
-                        : `${r.difference > 0 ? "+" : ""}${r.difference.toLocaleString("de-DE", { maximumFractionDigits: 2 })} PP`,
+                        : `${r.difference > 0 ? "+" : ""}${r.difference.toLocaleString("de-DE", { maximumFractionDigits: 2 })} %`,
                     ])}
                   />
                 </DataState>

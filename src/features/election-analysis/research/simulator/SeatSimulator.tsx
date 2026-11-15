@@ -475,7 +475,7 @@ function Seat2026() {
                 ))}
             </Selection>
             <p className="text-xs text-muted-foreground">
-              Änderungen in Prozentpunkten. Die Ausgleichspartei erhält die
+              Änderungen der Stimmenanteile (%). Die Ausgleichspartei erhält die
               Gegenbuchung, damit die Summe 100 % bleibt. Nach Anteilsänderung
               werden ganze Stimmen summenerhaltend gerundet. Im
               Erststimmenmodell bleiben Nominierungen unverändert; lokale
@@ -485,9 +485,9 @@ function Seat2026() {
               headers={[
                 "Partei",
                 "Zweitstimmenbasis %",
-                "Änderung Zweitstimmen PP",
+                "Änderung Zweitstimmen %",
                 basis.value.file
-                  ? "Änderung Erststimmen PP"
+                  ? "Änderung Erststimmen %"
                   : "Angenommene Direktmandate",
               ]}
               rows={parties.map((p) => [
@@ -787,15 +787,15 @@ function Seat2026() {
                         ))}
                     </Selection>
                     <p className="my-2 text-xs text-muted-foreground">
-                      Raster −2 bis +2 PP um das aktuelle Szenario, Auflösung
-                      0,1 PP; Gegenbuchung bei {balancing}. Direktmandate
+                      Raster −2 bis +2 % um das aktuelle Szenario, Auflösung
+                      0,1 %; Gegenbuchung bei {balancing}. Direktmandate
                       bleiben gleich. Gezeigt werden berechnete Rasterpunkte,
                       keine behaupteten exakten Übergangsschwellen.
                       Sonderfall-Bereinigungen werden nicht geschätzt.
                     </p>
                     <DataTable
                       headers={[
-                        "Zusätzlich PP",
+                        "Zusätzlich %",
                         "Parteisitze",
                         "Landtagsgröße",
                         "Hinweis",

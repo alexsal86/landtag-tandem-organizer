@@ -9,7 +9,7 @@ export function number(value: number | null | undefined): string { return value 
 export function difference(current: number | null | undefined, previous: number | null | undefined): string {
   if (current == null || previous == null) return '—';
   const delta = Math.round((current - previous) * 1000) / 1000;
-  return `${delta > 0 ? '+' : ''}${delta.toLocaleString('de-DE', { maximumFractionDigits: 1 })} PP`;
+  return `${delta > 0 ? '+' : ''}${delta.toLocaleString('de-DE', { maximumFractionDigits: 1 })} %`;
 }
 /** No aggregation of selected parties into a fictitious full electorate. */
 export function stateComparison(rows: StateResult[], previous: StateResult[]) {

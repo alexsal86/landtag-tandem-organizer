@@ -273,7 +273,7 @@ export function validateElectionData(
         code: "share-mismatch",
         severity: "error",
         message:
-          "Stimmenanteil passt nicht zu absoluten und gültigen Stimmen (Toleranz 0,051 PP).",
+          "Stimmenanteil passt nicht zu absoluten und gültigen Stimmen (Toleranz 0,051 %).",
       });
     if (
       denominator &&

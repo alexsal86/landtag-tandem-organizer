@@ -87,7 +87,7 @@ export default function ScenarioPanel({
         Wahl und Stimmenart im selben gespeicherten Datenstand. Die Landesbasis
         wird daraus mit gültigen Stimmen gewichtet berechnet; ein möglicherweise
         anders datiertes Landesergebnis wird nicht beigemischt. Angenommene
-        Änderungen gelten in Prozentpunkten für jeden Wahlkreis. Die
+        Änderungen werden als Differenz der Stimmenanteile (%) für jeden Wahlkreis angegeben. Die
         Restkategorie umfasst alle weiteren Parteien. Anteile außerhalb 0–100
         werden durch eine dokumentierte Projektion korrigiert; dadurch kann die
         erreichte Landesveränderung von der Annahme abweichen. Gültige Stimmen
@@ -118,7 +118,7 @@ export default function ScenarioPanel({
       <div className="grid gap-3 sm:grid-cols-3 lg:grid-cols-5">
         {data.parties.map((p) => (
           <label key={p} className="text-sm">
-            {p}: Änderung PP
+            {p}: Änderung %
             <Input
               type="number"
               step="0.1"
@@ -157,7 +157,7 @@ export default function ScenarioPanel({
             ))}
           </Selection>
           <label className="text-sm">
-            Zusätzliche Änderung PP
+            Zusätzliche Änderung %
             <Input
               type="number"
               step="0.1"
@@ -197,7 +197,7 @@ export default function ScenarioPanel({
                   "Landesbasis %",
                   "Angenommener Anteil %",
                   "Rechnerisch erreicht %",
-                  "Erreichte Änderung PP",
+                  "Erreichte Änderung %",
                 ]}
                 rows={[...data.parties, "REST"].map((p) => [
                   p === "REST" ? "Weitere Parteien" : p,
@@ -281,7 +281,7 @@ export default function ScenarioPanel({
                   params.get("savedScenario") ? [] : query.data?.versions || []
                 }
                 values={values}
-                label="PP (hypothetisch)"
+                label="% (hypothetisch)"
                 onOpenDistrict={onOpenDistrict}
               />
               <DataTable

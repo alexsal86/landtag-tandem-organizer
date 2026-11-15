@@ -221,7 +221,7 @@ function DistrictProfile({
         >
           <option value="share">Stimmenanteil</option>
           <option value="votes">Absolute Stimmen</option>
-          <option value="pp">Veränderung zur Vorwahl (PP)</option>
+          <option value="pp">Veränderung zur Vorwahl (%)</option>
           <option value="deltaVotes">Stimmendifferenz zur Vorwahl</option>
         </Selection>
         <Button
@@ -292,7 +292,7 @@ function DistrictProfile({
                       metric === "share"
                         ? " %"
                         : metric === "pp"
-                          ? " PP"
+                          ? " %"
                           : undefined
                     }
                   />
@@ -360,7 +360,7 @@ function DistrictProfile({
             "Partei",
             `${beforeYear} Anteil`,
             `${year} Anteil`,
-            "Änderung PP",
+            "Änderung %",
             "Stimmendifferenz",
             "Vergleichbarkeit",
           ]}
@@ -603,7 +603,7 @@ function AtlasPanel({
       : [...selectedParties, p];
     if (next.length) set("analysisParties", next.join(","));
   };
-  const unit = metric === "votes" ? "Stimmen" : "PP";
+  const unit = metric === "votes" ? "Stimmen" : "%";
   return (
     <div className="space-y-4">
       <h2 className="text-xl font-semibold">
@@ -632,10 +632,10 @@ function AtlasPanel({
           value={metric}
           onChange={(v) => set("analysisMetric", v)}
         >
-          <option value="pp">Prozentpunkte</option>
+          <option value="pp">Anteilsänderung (%)</option>
           <option value="votes">Absolute Stimmendifferenz</option>
           {!split && (
-            <option value="relative">Abweichung vom Landestrend (PP)</option>
+            <option value="relative">Abweichung vom Landestrend (%)</option>
           )}
         </Selection>
         <Button
@@ -655,7 +655,7 @@ function AtlasPanel({
                 Anteil_B: r.after?.share,
                 Stimmen_A: r.before?.votes,
                 Stimmen_B: r.after?.votes,
-                Prozentpunktdifferenz: r.swing,
+                Anteilsdifferenz_Prozent: r.swing,
                 Stimmendifferenz: r.voteDelta,
                 Landestrend: r.stateSwing,
                 Relativer_Swing: r.relativeSwing,
@@ -739,7 +739,7 @@ function AtlasPanel({
               "Landesvergleich",
               "Erstanteil",
               "Zweitanteil",
-              "Differenz PP",
+              "Differenz %",
               "Stimmendifferenz",
             ]}
             rows={selectedParties.map((p) => {
@@ -825,7 +825,7 @@ function AtlasPanel({
                 split ? "Erststimmen" : `${beforeYear} Stimmen`,
                 split ? "Zweitstimmen" : `${afterYear} Stimmen`,
                 `${split ? "Erst − Zweit" : "Veränderung"} (${unit})`,
-                split ? "Landesdifferenz PP" : "Landes-Swing PP",
+                split ? "Landesdifferenz %" : "Landes-Swing %",
                 ...(split ? ["Verifizierte Direktkandidatur"] : []),
                 "Hinweise",
               ]}

@@ -199,7 +199,7 @@ export default function TurnoutComparison({
         Verglichen werden {ballotLabels[beforeBallot]} {beforeYear} und{" "}
         {ballotLabels[afterBallot]} {year}. Beteiligung zählt Wählende einmal je
         Wahlkreis; Erst- und Zweitstimmen werden nicht addiert. Unterschiede der
-        Beteiligung und Parteianteile sind Prozentpunkte (PP). Ein Zusammenhang
+        Beteiligung und Parteianteile werden als Differenz der Prozentwerte (%) angegeben, etwa 25 % − 20 % = +5 %. Ein Zusammenhang
         zwischen Wahlkreisen belegt weder individuelle Wählerbewegungen noch
         eine Ursache. Die rechnerische Zerlegung von Stimmenänderungen ist für
         eine spätere methodische Freigabe vorbereitet.
@@ -286,9 +286,9 @@ export default function TurnoutComparison({
                       type="number"
                       dataKey="turnoutDelta"
                       name="Änderung Beteiligung"
-                      unit=" PP"
+                      unit=" %"
                       label={{
-                        value: "Änderung Wahlbeteiligung (PP)",
+                        value: "Änderung Wahlbeteiligung (%)",
                         position: "bottom",
                         offset: 20,
                       }}
@@ -297,7 +297,7 @@ export default function TurnoutComparison({
                       type="number"
                       dataKey="shareDelta"
                       name="Änderung Parteianteil"
-                      unit=" PP"
+                      unit=" %"
                     />
                     <ReferenceLine x={0} stroke="#7d8175" />
                     <ReferenceLine y={0} stroke="#7d8175" />
@@ -318,7 +318,7 @@ export default function TurnoutComparison({
                                   ? value.turnoutDelta
                                   : null,
                               )}{" "}
-                              PP
+                              %
                             </p>
                             <p>
                               {party}:{" "}
@@ -327,7 +327,7 @@ export default function TurnoutComparison({
                                   ? value.shareDelta
                                   : null,
                               )}{" "}
-                              PP
+                              %
                             </p>
                           </div>
                         );
@@ -367,12 +367,12 @@ export default function TurnoutComparison({
             headers={[
               "Nr.",
               "Wahlkreis",
-              "Beteiligung Δ PP",
+              "Beteiligung Δ %",
               "Wahlberechtigte Δ",
               "Wählende Δ",
               "Gültige Stimmen Δ",
               `${party}-Stimmen Δ`,
-              `${party}-Anteil Δ PP`,
+              `${party}-Anteil Δ %`,
               "Hinweise",
             ]}
             sortableColumns={[0, 1, 2, 3, 4, 5, 6, 7]}

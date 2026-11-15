@@ -84,7 +84,7 @@ export function SwingAtlas({
   );
   const rankings = atlasRankings(filtered, metric);
   const current = partyRows.find((r) => r.districtNumber === selected);
-  const unit = metric === "votes" ? "Stimmen" : "PP";
+  const unit = metric === "votes" ? "Stimmen" : "%";
   const relative = metric === "relative";
   const land = partyRows[0]?.stateSwing ?? null;
   const scale = automatic
@@ -201,7 +201,7 @@ export function SwingAtlas({
         aria-live="polite"
       >
         {[
-          [`Landes-Swing ${party}`, `${signed(land)} PP`],
+          [`Landes-Swing ${party}`, `${signed(land)} %`],
           [
             relative ? "Über / unter Landestrend" : "Zugewinne / Verluste",
             `${rankings.positive} / ${rankings.negative}`,
@@ -230,7 +230,7 @@ export function SwingAtlas({
           allowGeometryPreview
           versions={versions}
           values={values}
-          label={relative ? "PP gegenüber Landestrend" : unit}
+          label={relative ? "% gegenüber Landestrend" : unit}
           onOpenDistrict={select}
           scaleMax={scale}
           selectedDistrict={selected}
@@ -291,9 +291,9 @@ export function SwingAtlas({
                     <p className="text-sm">
                       Stimmendifferenz: {signed(current.voteDelta)} Stimmen
                       <br />
-                      Landes-Swing: {signed(current.stateSwing)} PP
+                      Landes-Swing: {signed(current.stateSwing)} %
                       <br />
-                      Abweichung: {signed(current.relativeSwing)} PP
+                      Abweichung: {signed(current.relativeSwing)} %
                     </p>
                     <p className="text-xs text-muted-foreground">
                       {current.warnings.join(" ") ||
@@ -371,7 +371,7 @@ export function SwingAtlas({
             `${beforeYear} Stimmen`,
             `${afterYear} Stimmen`,
             `${relative ? "Abweichung vom Landestrend" : "Veränderung"} (${unit})`,
-            "Landes-Swing PP",
+            "Landes-Swing %",
             "Hinweise",
           ]}
           sortableColumns={[0, 1, 2, 3, 4, 5, 6, 7]}

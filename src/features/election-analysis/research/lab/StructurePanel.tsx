@@ -223,8 +223,8 @@ export default function StructurePanel({
                 {format(fitted.value.intercept)} +{" "}
                 {format(fitted.value.slope, 4)} × X. R² ={" "}
                 {format(fitted.value.rSquared, 3)} · RMSE ={" "}
-                {format(fitted.value.rmse)} PP · Leave-one-out-RMSE ={" "}
-                {format(fitted.value.looRmse)} PP ({fitted.value.looPairs}{" "}
+                {format(fitted.value.rmse)} % · Leave-one-out-RMSE ={" "}
+                {format(fitted.value.looRmse)} % ({fitted.value.looPairs}{" "}
                 Paare).
               </p>
               <StatusNote>
@@ -314,7 +314,7 @@ export default function StructurePanel({
                   variable,
                   `${party} %`,
                   "Modellwert",
-                  "Residuum PP",
+                  "Residuum %",
                   "Hebelwert",
                   "Cook-Distanz",
                 ]}
