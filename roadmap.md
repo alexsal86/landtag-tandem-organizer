@@ -1,5 +1,9 @@
 # Roadmap Aufgaben
 
+# Aktueller Build-Fehler
+- [x] Typfehler in bestätigten Wahlkreisgrenzen behoben; automatische Prüfung meldet Build OK, 26 gezielte Tests bestanden.
+- [ ] Sichtbare Vorschau prüfen — lokaler Vorschauzugriff läuft auch nach Neustart in ein Zeitlimit.
+
 # Tenant-Härtung: privilegierte Funktionen und Trigger
 - [x] Gemeinsame Büroprüfung und 15 Funktionen gehärtet: eindeutige Auswahl, Rollen im Zielbüro, Kalender/Briefe/Kontakte/Workflows/Automation/Einladungen/Verwaltung; Matrix-Absenderfälschung blockiert.
 - [x] Schutztrigger auf 176 Tabellen aktiv; Elternreferenzen und unveränderliche Büro-ID geprüft, Sicherheitsselbsttest ergänzt.
