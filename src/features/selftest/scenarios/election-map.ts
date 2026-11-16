@@ -1,3 +1,4 @@
+import { canConfirmDeputySelection } from '@/features/election-history/deputySelection';
 import { projectHistoricalDistricts } from '@/features/election-history/mapProjection';
 import { HISTORICAL_DISTRICTS_1952 } from '@/utils/electoralGeometryCatalog';
 import { parseElectoralManifest } from '@/utils/electoralTopology';
@@ -16,6 +17,13 @@ export const electionMapScenario: TestScenario = {
   touches: [], features: ['election-districts'],
   limitations: ['Die visuelle Ebenenreihenfolge und mobile Bedienung werden separat im Browser geprüft.'],
   steps: [
+    { id: 'deputy-explicit-selection', label: 'Abgeordnetenregister: nur ausdrücklich ausgewählte, unzugeordnete Mandate verbinden', kind: 'logic', run: async () => {
+      const rows = [{ id: 'first', person_id: null }, { id: 'second', person_id: null }, { id: 'linked', person_id: 'person' }];
+      if (canConfirmDeputySelection(rows, [])) throw new Error('Namensgleichheit darf keine automatische Zuordnung erzeugen.');
+      if (!canConfirmDeputySelection(rows, ['first', 'second'])) throw new Error('Explizite Auswahl über Perioden muss möglich sein.');
+      if (canConfirmDeputySelection(rows, ['linked']) || canConfirmDeputySelection(rows, ['missing']) || canConfirmDeputySelection(rows, ['first', 'first'])) throw new Error('Bestehende, veraltete oder doppelte Zuordnungen dürfen nicht bestätigt werden.');
+      return { ok: true, message: 'Explizite Auswahl erforderlich; bestehende Verknüpfungen geschützt.' };
+    } },
     { id: 'regional-1952-source', label: '1952: 74 Quellen, regionale Nummern und keine technische Mandatszuordnung', kind: 'logic', run: async () => {
       const period: ElectionPeriod = { id: 'regional', number: 1, name: '1952', election_year: 1952, election_date: null,
         starts_on: null, ends_on: null, is_current: false, is_published: true, source_url: null, notes: null,

@@ -17199,6 +17199,9 @@ export type Database = {
         Returns: Json
       }
       get_database_size: { Args: never; Returns: number }
+      list_election_history_deputies: { Args: { search_text?: string; page_offset?: number }; Returns: Json }
+      get_election_history_deputy: { Args: { name_key: string }; Returns: Json }
+      confirm_election_history_deputy: { Args: { mandate_ids: string[]; person_name: string; target_person?: string }; Returns: string }
       get_election_history_period: { Args: { period: string }; Returns: Json }
       get_election_person_summary: {
         Args: { person: string; through_period: string }

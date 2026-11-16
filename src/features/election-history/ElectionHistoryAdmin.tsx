@@ -1,3 +1,4 @@
+import { ElectionDeputyDirectory } from './ElectionDeputyDirectory';
 import { CircleCheck, FilePenLine, Trash2 } from 'lucide-react';
 import { boundaryYearLabel } from "@/utils/electoralGeometryCatalog";
 import { HistoricalGeometryNotice } from "./HistoricalGeometryNotice";
@@ -54,7 +55,7 @@ const fields: Record<HistoryEntity, Field[]> = {
     { key: 'district_rank', label: 'Platz im Wahlkreis', type: 'number', min: 1 },
     { key: 'list_position', label: 'Listenplatz (falls vorhanden)', type: 'number', min: 1 },
     { key: 'outcome', label: 'Wahlausgang', type: 'select', required: true }, notesField],
-  mandates: [periodField, { key: 'person_name', label: 'Name des historischen Mandatsträgers' }, { ...personField, required: false, label: 'Bestätigte Personenverknüpfung (optional)' }, districtField, { key: 'candidacy_id', label: 'Zugehörige Kandidatur', type: 'select', help: 'Es werden nur Kandidaturen dieser Person und Periode angeboten.' }, partyField,
+  mandates: [periodField, { key: 'person_name', label: 'Name des historischen Mandatsträgers' }, { ...personField, required: false, label: 'Zugeordnete Person (optional)' }, districtField, { key: 'candidacy_id', label: 'Zugehörige Kandidatur', type: 'select', help: 'Es werden nur Kandidaturen dieser Person und Periode angeboten.' }, partyField,
     { key: 'mandate_type', label: 'Mandatsart', type: 'select', required: true }, { key: 'entry_type', label: 'Eintritt in den Landtag', type: 'select', required: true },
     { key: 'original_mandate', label: 'Historische Mandatsbezeichnung' }, { key: 'party_label', label: 'Historische Partei-/Fraktionsangabe' },
     { key: 'left_early', label: 'Vorzeitig ausgeschieden', type: 'checkbox' },
@@ -89,6 +90,7 @@ function ElectionHistoryWorkspace({ userId }: { userId: string }) {
   const browserDrafts = useElectionEditorDrafts(userId);
   const periodQuery = useElectionPeriods();
   const cache = useQueryClient();
+  const [deputies, setDeputies] = useState(false);
   const [entity, setEntity] = useState<HistoryEntity>('periods');
   const [periodFilter, setPeriodFilter] = useState('');
   const selectedPeriod = periodFilter || periodQuery.data?.find(p => p.is_current)?.id || periodQuery.data?.[0]?.id || '';
@@ -208,17 +210,18 @@ function ElectionHistoryWorkspace({ userId }: { userId: string }) {
     browserDrafts.put({ entity, id: editing || null, periodId: editorPeriod, values: next });
   };
   const restoreDraft = (draft: ElectionEditorDraft) => {
-    setEntity(draft.entity); setPeriodFilter(draft.periodId); setEditing(draft.id);
+    setDeputies(false); setEntity(draft.entity); setPeriodFilter(draft.periodId); setEditing(draft.id);
     setValues(draft.values); setDirty(true); setFormError(''); setDraftStatus('Browserentwurf wiederhergestellt.');
   };
   return <div className="space-y-5">
     <div><h2 className="text-2xl font-semibold">Wahldaten & Mandatshistorie</h2><p className="mt-1 text-sm text-muted-foreground">Zentrale Daten für alle Tenants. Jeweils eine Legislatur auswählen. Importierte Mandate behalten ihre Namen; Personen werden erst nach Bestätigung verknüpft. Historische Umrisse lassen sich bei den damaligen Wahlkreisen ergänzen.</p></div>
     {browserDrafts.storageFailed && <p role="alert" className="text-sm text-destructive">Der Browser kann Eingaben nicht zwischenspeichern. Bitte vor dem Verlassen über Speichern sichern.</p>}
     {browserDrafts.drafts.length > 0 && <details className="rounded-lg border bg-muted/20 p-3"><summary className="cursor-pointer text-sm">{browserDrafts.drafts.length} noch nicht gespeicherte Browserentwürfe</summary><div className="mt-2 flex flex-wrap gap-2">{browserDrafts.drafts.map(draft => <Button key={`${draft.entity}:${draft.id}:${draft.periodId}`} size="sm" variant="outline" disabled={saving} onClick={() => restoreDraft(draft)}>{sections[draft.entity]}: {String(draft.values.name || draft.values.person_name || periodQuery.data?.find(p => p.id === draft.periodId)?.name || 'Datensatz')} wiederherstellen</Button>)}</div></details>}
-    <div><Label htmlFor="history-period-filter">Legislaturperiode</Label><select id="history-period-filter" className={selectClass} value={selectedPeriod} disabled={saving} onChange={e => { setPeriodFilter(e.target.value); setDirty(false); setDraftStatus(''); setEditing(undefined); setPageSize(25); setSearch(''); setPersonSearch(''); }}><option value="" disabled>Legislaturperiode auswählen</option>{data.periods.map(p => <option key={p.id} value={p.id}>{p.is_published ? '✓' : '✎'} {p.name}</option>)}</select></div>
-    <Tabs value={entity} onValueChange={value => { setEntity(value as HistoryEntity); setDirty(false); setDraftStatus(''); setEditing(undefined); setFormError(''); setSearch(''); setPageSize(25); setPersonSearch(''); }}>
-      <TabsList className="h-auto flex flex-wrap justify-start gap-1">{Object.entries(sections).map(([key, label]) => <TabsTrigger disabled={saving} key={key} value={key}>{label} ({data[key as HistoryEntity].length + (key === 'people' ? data.mandates.filter(m => !m.person_id && m.person_name).length : 0)})</TabsTrigger>)}</TabsList>
+    <Tabs value={deputies ? 'deputies' : entity} onValueChange={value => { if (value === 'deputies') { setDeputies(true); setDirty(false); setEditing(undefined); return; } setDeputies(false); setEntity(value as HistoryEntity); setDirty(false); setDraftStatus(''); setEditing(undefined); setFormError(''); setSearch(''); setPageSize(25); setPersonSearch(''); }}>
+      <TabsList className="h-auto flex flex-wrap justify-start gap-1"><TabsTrigger disabled={saving} value="deputies">Abgeordnete · alle Perioden</TabsTrigger>{Object.entries(sections).map(([key, label]) => <TabsTrigger disabled={saving} key={key} value={key}>{label} ({data[key as HistoryEntity].length + (key === 'people' ? data.mandates.filter(m => !m.person_id && m.person_name).length : 0)})</TabsTrigger>)}</TabsList>
     </Tabs>
+    {deputies ? <ElectionDeputyDirectory /> : <>
+    <div><Label htmlFor="history-period-filter">Legislaturperiode</Label><select id="history-period-filter" className={selectClass} value={selectedPeriod} disabled={saving} onChange={e => { setPeriodFilter(e.target.value); setDirty(false); setDraftStatus(''); setEditing(undefined); setPageSize(25); setSearch(''); setPersonSearch(''); }}><option value="" disabled>Legislaturperiode auswählen</option>{data.periods.map(p => <option key={p.id} value={p.id}>{p.is_published ? '✓' : '✎'} {p.name}</option>)}</select></div>
     <div className="flex flex-wrap items-end gap-3">
       <div className="flex-1"><Label htmlFor="history-search">Datensätze suchen</Label><Input id="history-search" value={search} onChange={e => { setSearch(e.target.value); setPageSize(25); }} placeholder="Name, Partei oder Wahlkreis …" /></div>
       <Button variant="outline" disabled={!selectedPeriod} onClick={() => setPreview(v => !v)}>{preview ? 'Vorschau schließen' : 'Periode prüfen'}</Button>
@@ -274,5 +277,6 @@ function ElectionHistoryWorkspace({ userId }: { userId: string }) {
       </form>
     </CardContent></Card>}
     </div>
+    </>}
   </div>;
 }
