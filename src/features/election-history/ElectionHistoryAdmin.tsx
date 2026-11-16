@@ -57,7 +57,7 @@ const fields: Record<HistoryEntity, Field[]> = {
     { key: 'outcome', label: 'Wahlausgang', type: 'select', required: true }, notesField],
   mandates: [periodField, { key: 'person_name', label: 'Name des historischen Mandatsträgers' }, { ...personField, required: false, label: 'Zugeordnete Person (optional)' }, districtField, { key: 'candidacy_id', label: 'Zugehörige Kandidatur', type: 'select', help: 'Es werden nur Kandidaturen dieser Person und Periode angeboten.' }, partyField,
     { key: 'mandate_type', label: 'Mandatsart', type: 'select', required: true }, { key: 'entry_type', label: 'Eintritt in den Landtag', type: 'select', required: true },
-    { key: 'original_mandate', label: 'Historische Mandatsbezeichnung' }, { key: 'party_label', label: 'Historische Partei-/Fraktionsangabe' },
+    { key: 'original_mandate', label: 'Historische Quellenbezeichnung (maßgeblich ist die Mandatsart)' }, { key: 'party_label', label: 'Historische Partei-/Fraktionsangabe' },
     { key: 'left_early', label: 'Vorzeitig ausgeschieden', type: 'checkbox' },
     { key: 'starts_on', label: 'Tatsächlicher Mandatsbeginn (falls bekannt)', type: 'date' }, { key: 'ends_on', label: 'Tatsächliches Mandatsende', type: 'date' }, notesField],
 };

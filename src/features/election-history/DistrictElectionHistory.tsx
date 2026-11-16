@@ -1,3 +1,4 @@
+import { formatMandateType } from './mandateLabel';
 import { DistrictBoundarySection } from './DistrictBoundarySection';
 import { PersonElectionSummary } from './PersonElectionSummary';
 import { Badge } from '@/components/ui/badge';
@@ -23,7 +24,7 @@ export function DistrictElectionHistory({ data, periodId, districtId }: { data: 
       const person = data.people.find(p => p.id === m.person_id);
       const result = data.candidacies.find(c => c.id === m.candidacy_id);
       return <div key={m.id} className="border-t border-border/60 pt-2 space-y-1">
-        <div className="flex flex-wrap items-center gap-2 text-sm"><span className="font-medium">{person?.name || m.person_name}</span><Badge variant="outline" className="border-0 px-2 py-0 text-xs" style={{ backgroundColor: getPartyColor(m.party), color: getPartyTextColor(m.party) }}>{m.party}</Badge><span className="text-xs text-muted-foreground">{m.original_mandate || (m.mandate_type === 'direct' ? '★ Direkt' : 'Liste')}{m.entry_type === 'succession' ? ' · nachgerückt' : ''}</span></div>
+        <div className="flex flex-wrap items-center gap-2 text-sm"><span className="font-medium">{person?.name || m.person_name}</span><Badge variant="outline" className="border-0 px-2 py-0 text-xs" style={{ backgroundColor: getPartyColor(m.party), color: getPartyTextColor(m.party) }}>{m.party}</Badge><span className="text-xs text-muted-foreground">{formatMandateType(m.mandate_type)}{m.entry_type === 'succession' ? ' · nachgerückt' : ''}</span></div>
         {m.party_label && m.party_label !== m.party && <p className="text-xs text-muted-foreground">{m.party_label}</p>}
         {result && <p className="text-xs text-muted-foreground">{formatPersonalResult(result)}</p>}
         {(m.starts_on || m.ends_on || m.left_early) && <p className="text-xs text-muted-foreground">{formatMandateDateRange(m)}{m.end_from_period && period?.ends_on_is_expected ? ' (voraussichtliches Periodenende, kein tatsächliches Ausscheiden)' : ''}{m.left_early ? ' · vorzeitig ausgeschieden' : ''}{m.start_from_period || m.end_from_period ? ' · Periodendaten übernommen' : ''}</p>}

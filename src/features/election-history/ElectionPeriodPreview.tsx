@@ -1,3 +1,4 @@
+import { formatMandateType } from './mandateLabel';
 import { HistoricalGeometryNotice } from './HistoricalGeometryNotice';
 import { DistrictBoundarySection } from './DistrictBoundarySection';
 import { historical1952Source } from '@/utils/electoralGeometryCatalog';
@@ -19,7 +20,7 @@ export function ElectionPeriodPreview({ data, periodId }: { data: ElectionHistor
   const assigned = mandates.length - withoutDistrict.length - unresolved.length;
   const missingBoundaries = districts.filter(d => !d.boundaries && (confirmedPeriodGeometryYear(period) === null || (period?.election_year === 1952 ? !historical1952Source(d.geometry_source_key) : d.district_number === null))).length;
   const mandateRow = (m: HistoricalMandate) => <li key={m.id} className="text-sm">
-    <p>{data.people.find(p => p.id === m.person_id)?.name || m.person_name} · {m.party} · {m.original_mandate || (m.mandate_type === 'direct' ? 'Direktmandat' : 'Listenmandat')}{m.entry_type === 'succession' ? ' · nachgerückt' : ''}</p>
+    <p>{data.people.find(p => p.id === m.person_id)?.name || m.person_name} · {m.party} · {formatMandateType(m.mandate_type)}{m.entry_type === 'succession' ? ' · nachgerückt' : ''}</p>
     <p className="text-xs text-muted-foreground">{formatMandateDateRange(m)}{m.end_from_period && period?.ends_on_is_expected ? ' (voraussichtliches Periodenende, kein tatsächliches Ausscheiden)' : ''}{m.start_from_period || m.end_from_period ? ' · Periodendaten übernommen' : ''}</p>
   </li>;
   return <Card><CardHeader><CardTitle>Vorschau: {period?.name}</CardTitle></CardHeader><CardContent className="space-y-3">

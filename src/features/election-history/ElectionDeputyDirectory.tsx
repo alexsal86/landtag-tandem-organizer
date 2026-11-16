@@ -1,3 +1,4 @@
+import { formatMandateType } from './mandateLabel';
 import { DeputyPortrait, DeputyPortraitThumbnail } from './DeputyPortrait';
 import { useEffect, useState } from 'react';
 import { useQuery, useQueryClient } from '@tanstack/react-query';
@@ -93,7 +94,7 @@ export function ElectionDeputyDirectory({ readOnly = false, canEditPortraits = !
                 <h4 className="font-semibold">{row.period_name}</h4>
                 <p className="text-sm">{formatMandateDateRange(row)}{row.end_is_expected ? ' (voraussichtliches Ende)' : ''}</p>
                 <p className="text-sm">{row.district_name ? `Wahlkreis ${row.district_label ? `${row.district_label}: ` : ''}${row.district_name}` : 'Ohne Wahlkreiszuordnung'}</p>
-                <p className="text-sm text-muted-foreground">{row.party_label || row.party} · {row.original_mandate || (row.mandate_type === 'direct' ? 'Direktmandat' : 'Listenmandat')} · {row.entry_type === 'succession' ? 'nachgerückt' : 'gewählt'}{row.left_early ? ' · vorzeitig ausgeschieden' : ''}</p>
+                <p className="text-sm text-muted-foreground">{row.party_label || row.party} · {formatMandateType(row.mandate_type)} · {row.entry_type === 'succession' ? 'nachgerückt' : 'gewählt'}{row.left_early ? ' · vorzeitig ausgeschieden' : ''}</p>
                 {row.name !== group.name && <p className="text-xs text-muted-foreground">Historischer Name: {row.name}</p>}
                 {row.notes && <p className="whitespace-pre-wrap text-sm text-muted-foreground">{row.notes}</p>}
               </div>

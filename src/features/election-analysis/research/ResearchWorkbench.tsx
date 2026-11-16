@@ -1,3 +1,4 @@
+import { formatMandateType } from '@/features/election-history/mandateLabel';
 import { ProfileBoundarySection } from "./ProfileBoundarySection";
 import { AnalysisControls } from "../AnalysisToolbar";
 import { ReleaseCockpit } from "./ReleaseCockpit";
@@ -370,7 +371,7 @@ function DistrictProfile({
                   m.period_name,
                   m.person_name,
                   m.party,
-                  `${m.original_mandate || m.mandate_type}${m.entry_type === "succession" ? " · nachgerückt" : ""}`,
+                  `${formatMandateType(m.mandate_type)}${m.entry_type === "succession" ? " · nachgerückt" : ""}`,
                   `${m.starts_on || "Beginn unbekannt"} – ${m.ends_on || "Ende unbekannt"}${m.end_is_expected ? " (reguläres, noch nicht feststehendes Ende)" : ""}`,
                   m.notes || "—",
                 ])}
