@@ -87,13 +87,13 @@ function StatePanel({ year, ballot, party, gender, years }: PanelProps & { years
         <StateShareChart key={previousYear} year={year} ballot={ballot} rows={rows} hidden={hiddenParties} onToggleParty={toggleParty} comparisonYears={comparisonYears} series={comparisonRows} loading={series.isLoading} error={series.error} retry={() => void series.refetch()} />
         <div className="min-w-0 space-y-4"><div className="[&_tbody]:bg-white">
           {previousYear > 0 ? <DataState loading={series.isLoading} error={series.error} empty={!comparisonRows.length} retry={() => void series.refetch()}>
-            <DataTable headers={['Partei', ...comparisonYears.map(String), `Δ ${comparisonStart}–${comparisonEnd} (PP)`]} rows={visibleParties.map(p => {
+            <DataTable headers={['Partei', ...comparisonYears.map(String), `Δ ${comparisonStart}–${comparisonEnd} (%)`]} rows={visibleParties.map(p => {
               const start = comparisonRows.find(row => row.year === comparisonStart)?.[p] ?? null;
               const end = comparisonRows.find(row => row.year === comparisonEnd)?.[p] ?? null;
               const delta = start !== null && end !== null ? Math.round((end - start) * 1000) / 1000 : null;
-              return [<PartyLabel party={p} />, ...comparisonYears.map(y => percent(comparisonRows.find(row => row.year === y)?.[p] ?? null)), <span className={delta === null || delta === 0 ? '' : delta > 0 ? 'text-green-700' : 'text-red-700'}>{delta === null ? '—' : `${delta > 0 ? '+' : ''}${delta.toLocaleString('de-DE', { maximumFractionDigits: 1 })} PP`}</span>];
+              return [<PartyLabel party={p} />, ...comparisonYears.map(y => percent(comparisonRows.find(row => row.year === y)?.[p] ?? null)), <span className={delta === null || delta === 0 ? '' : delta > 0 ? 'text-green-700' : 'text-red-700'}>{delta === null ? '—' : `${delta > 0 ? '+' : ''}${delta.toLocaleString('de-DE', { maximumFractionDigits: 1 })} %`}</span>];
             })} />
-            <p className="mt-2 text-xs text-muted-foreground">Δ: Veränderung von {comparisonStart} bis {comparisonEnd} in Prozentpunkten (PP).</p>
+            <p className="mt-2 text-xs text-muted-foreground">Δ: Veränderung von {comparisonStart} bis {comparisonEnd} (%).</p>
           </DataState> : <DataTable headers={['Partei', 'Stimmen', 'Anteil']} rows={visibleRows.map(r => [<PartyLabel party={r.party} />, number(r.votes), percent(r.share)])} />}
         </div>
           <StateSeatDistribution rows={rows} year={year} ballot={ballot} />
