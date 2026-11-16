@@ -51,7 +51,7 @@ export function StateShareChart({ year, ballot, rows, comparisonYears, series, l
         {!visibleParties.length ? <p className="py-12 text-center text-sm text-muted-foreground">Bitte mindestens eine Partei einblenden.</p> : showLine ? <div className="h-80" role="img" aria-label="Parteianteile über alle Wahlen im gewählten Zeitraum; genaue Werte per Tooltip">
           <ResponsiveContainer><LineChart data={series} margin={{ top: 20, right: 20, left: 0, bottom: 10 }}>
             <CartesianGrid strokeDasharray="3 3" vertical={false} />
-            <XAxis dataKey="year" type="number" domain={yearDomain} ticks={comparisonYears} allowDecimals={false} padding={{ left: 12, right: 12 }} />
+            <XAxis dataKey="year" type="number" domain={yearDomain} ticks={comparisonYears} allowDecimals={false} />
             <YAxis unit=" %" domain={percentageDomain} />
             <Tooltip labelFormatter={value => `Landtagswahl ${value}`} formatter={value => percent(typeof value === 'number' ? value : null)} />
             <ReferenceLine y={5} stroke="#b91c1c" strokeDasharray="4 4" />
