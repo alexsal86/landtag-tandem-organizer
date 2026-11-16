@@ -1,8 +1,8 @@
 import { AnalysisControls } from "../../AnalysisToolbar";
-import { Button } from "@/components/ui/button";
+
 import { Input } from "@/components/ui/input";
 import { DataState, DataTable, Selection, StatusNote } from "../../shared";
-import { exportAnalysisCsv, number, parties } from "../../model";
+import { number, parties } from "../../model";
 import { useAnalysisRows } from "../../useElectionAnalysis";
 import type { Ballot } from "../../types";
 import { flowSensitivity } from "./scenarios";
@@ -150,34 +150,7 @@ export default function FlowResearchPanel({
                 ],
               ]}
             />
-            <Button
-              variant="outline"
-              onClick={() =>
-                exportAnalysisCsv(
-                  [
-                    {
-                      Wahljahr: year,
-                      Vorwahl: selected?.previous_year,
-                      Zielpartei: party,
-                      Partner: selected?.partner,
-                      Modellierter_Saldo: balance,
-                      Vorhandener_Zustrom: selected?.inflow,
-                      Vorhandener_Abstrom: selected?.outflow,
-                      Gegenstrom_Minimum: low,
-                      Gegenstrom_Maximum: high,
-                      Eigene_Saldo_Sensitivitaet: tolerance,
-                      ...sensitivity,
-                      Methodik:
-                        "Hypothetische Einzelbeziehung; keine Konfidenzintervalle, keine lokalen oder individuellen Wechsel",
-                      Quellenhinweis: selected?.notes,
-                    },
-                  ],
-                  `Wanderung-Sensitivitaet-${party}-${year}.csv`,
-                )
-              }
-            >
-              Annahmen und Bandbreiten exportieren
-            </Button>
+
           </>
         )}
       </DataState>

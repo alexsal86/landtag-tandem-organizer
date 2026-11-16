@@ -6,8 +6,7 @@ import { useAuth } from "@/hooks/useAuth";
 import { DataTable, StatusNote } from "../shared";
 import { useQualityData } from "./hooks";
 import { validateElectionData } from "./calculations";
-import { exportAnalysisCsv } from "../model";
-import { Button } from "@/components/ui/button";
+
 export function ReleaseCockpit({ year }: { year: number }) {
   const { user } = useAuth(),
     query = useQualityData(year);
@@ -248,14 +247,7 @@ export function ReleaseCockpit({ year }: { year: number }) {
             headers={["Bereich", "Stand", "Nachweis / Lücke"]}
             rows={rows.map((r) => [r.Bereich, r.Status, r.Hinweis])}
           />
-          <Button
-            variant="outline"
-            onClick={() =>
-              exportAnalysisCsv(rows, `Freigabecockpit-${year}.csv`)
-            }
-          >
-            Prüfstand exportieren
-          </Button>
+
           {meta.data?.reviews.map((r) => (
             <p className="text-xs" key={r.id}>
               <a

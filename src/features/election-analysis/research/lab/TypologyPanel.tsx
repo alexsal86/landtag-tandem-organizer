@@ -1,10 +1,10 @@
 import { AnalysisControls } from "../../AnalysisToolbar";
 import { useMemo } from "react";
-import { Button } from "@/components/ui/button";
+
 import { DataState, DataTable, Selection, StatusNote } from "../../shared";
 import { ballotForComparison } from "../calculations";
 import { useLabDistrictData } from "./hooks";
-import { exportAnalysisCsv } from "../../model";
+
 import type { Ballot } from "../../types";
 import { researchDataset } from "./data";
 import { clusterDistricts, typologyFeatures } from "./clustering";
@@ -226,39 +226,7 @@ export default function TypologyPanel({
                 ),
               ])}
             />
-            <Button
-              variant="outline"
-              onClick={() =>
-                exportAnalysisCsv(
-                  rows.map((r) => ({
-                    Nummer: r.number,
-                    Wahlkreis: r.name,
-                    Gruppe: r.group,
-                    Wahljahr: year,
-                    Vergleichsjahr: beforeYear || null,
-                    Gruppenzahl: k,
-                    Methode: `Hellinger + Z-Standardisierung + ${method}`,
-                    Merkmale: features.features.join("|"),
-                    Silhouette: clustered.value?.silhouette,
-                    Resampling_ARI: clustered.value?.resampleAgreement,
-                    Ungepruefte_Grenzen: allowUnknown,
-                    Gemischte_Staende: allowMixed,
-                    Ausgangshinweis: data.rows.find(
-                      (d) => d.number === r.number,
-                    )?.notes,
-                    Vergleichshinweis: old?.rows.find(
-                      (d) => d.number === r.number,
-                    )?.notes,
-                    Vorlaeufig: data.rows.find((d) => d.number === r.number)
-                      ?.preliminary,
-                    ...r.raw,
-                  })),
-                  `Explorative-Gruppen-${year}.csv`,
-                )
-              }
-            >
-              Gruppen und Methodik exportieren
-            </Button>
+
             <DataTable
               headers={["Nr.", "Wahlkreis", "Gruppe"]}
               sortableColumns={[0, 1, 2]}

@@ -8,12 +8,12 @@ import {
   XAxis,
   YAxis,
 } from "recharts";
-import { useMemo, useState, useRef } from "react";
+import { useMemo, useState } from "react";
 import { useSearchParams } from "react-router-dom";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { DataTable, Selection, StatusNote } from "../../shared";
-import { exportAnalysisCsv } from "../../model";
+
 import { isRecord } from "@/utils/typeSafety";
 import { useFullState, useSavedScenario } from "../workspaceHooks";
 import { SaveScenarioAction } from "../SaveScenarioAction";
@@ -712,44 +712,13 @@ function Seat2026() {
                     input={snapshot()}
                     result={computed.value.seats}
                   />
-                  <Button
-                    variant="outline"
-                    onClick={() =>
-                      exportAnalysisCsv(
-                        computed.value!.seats.rows.map((r) => ({
-                          ...r,
-                          Modell: BW_RULES_VERSION,
-                          Datenstand: basis.value!.release,
-                          Quelle: basis.value!.source,
-                          Hypothetisch: true,
-                          Erststimmenannahmen: basis.value!.file
-                            ? JSON.stringify(first)
-                            : "Direktmandate als getrennte Annahme",
-                          Zweitstimmenannahmen: JSON.stringify(second),
-                          Ausgleichspartei: balancing,
-                        })),
-                        `BW-Sitzszenario-2026.csv`,
-                      )
-                    }
-                  >
-                    Sitze und Annahmen exportieren
-                  </Button>
+
                   {computed.value.people.length > 0 && (
                     <>
                       <h4 className="font-medium">
                         Einzug über Wahlkreis / Landesliste
                       </h4>
-                      <Button
-                        variant="outline"
-                        onClick={() =>
-                          exportAnalysisCsv(
-                            computed.value!.people,
-                            `Hypothetische-Mandate-2026.csv`,
-                          )
-                        }
-                      >
-                        Personenzuordnung exportieren
-                      </Button>
+
                       <DataTable
                         headers={[
                           "Name",
@@ -807,17 +776,7 @@ function Seat2026() {
                         r.error || "Berechnet",
                       ])}
                     />
-                    <Button
-                      variant="outline"
-                      onClick={() =>
-                        exportAnalysisCsv(
-                          sensitivity,
-                          `Sitzschwellen-${target}.csv`,
-                        )
-                      }
-                    >
-                      Schwellenraster exportieren
-                    </Button>
+
                   </details>
                   {computed.value.actual && (
                     <details className="rounded border p-3">

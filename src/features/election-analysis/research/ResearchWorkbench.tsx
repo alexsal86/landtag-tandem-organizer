@@ -25,13 +25,7 @@ import {
   chartColor,
   PartyLabel,
 } from "../shared";
-import {
-  ballotLabels,
-  exportAnalysisCsv,
-  number,
-  parties,
-  percent,
-} from "../model";
+import { ballotLabels, number, parties, percent } from "../model";
 import type { Ballot } from "../types";
 import {
   useComparison,
@@ -224,29 +218,6 @@ function DistrictProfile({
           <option value="pp">Veränderung zur Vorwahl (%)</option>
           <option value="deltaVotes">Stimmendifferenz zur Vorwahl</option>
         </Selection>
-        <Button
-          variant="outline"
-          disabled={!results.length}
-          onClick={() =>
-            exportAnalysisCsv(
-              results.map((r) => ({
-                Wahljahr: r.year,
-                Stimmenart: ballotLabels[r.ballot],
-                Nummer: district,
-                Wahlkreis: r.district_name,
-                Partei: r.party,
-                Stimmen: r.votes,
-                Anteil: r.share,
-                Vorlaeufig: r.preliminary,
-                Datenstand: r.data_release,
-                Hinweis: r.notes,
-              })),
-              `Wahlkreis-${district}-Zeitreihe.csv`,
-            )
-          }
-        >
-          Zeitreihe exportieren
-        </Button>
       </AnalysisControls>
       <h2 className="text-xl font-semibold">
         {district}: {name}
@@ -638,38 +609,6 @@ function AtlasPanel({
             <option value="relative">Abweichung vom Landestrend (%)</option>
           )}
         </Selection>
-        <Button
-          variant="outline"
-          disabled={!rows.length}
-          onClick={() =>
-            exportAnalysisCsv(
-              rows.map((r) => ({
-                Nummer: r.districtNumber,
-                Wahlkreis: r.districtName,
-                Partei: r.party,
-                Ausgangsjahr: beforeYear,
-                Zieljahr: afterYear,
-                Ausgangsstimmenart: ballotLabels[beforeBallot],
-                Zielstimmenart: ballotLabels[afterBallot],
-                Anteil_A: r.before?.share,
-                Anteil_B: r.after?.share,
-                Stimmen_A: r.before?.votes,
-                Stimmen_B: r.after?.votes,
-                Anteilsdifferenz_Prozent: r.swing,
-                Stimmendifferenz: r.voteDelta,
-                Landestrend: r.stateSwing,
-                Relativer_Swing: r.relativeSwing,
-                Vergleichbar: r.comparable,
-                Hinweis: r.warnings.join(" "),
-              })),
-              split
-                ? "Erst-Zweitstimmen-2026.csv"
-                : `Swing-${beforeYear}-${afterYear}.csv`,
-            )
-          }
-        >
-          CSV: alle ausgewählten Parteien
-        </Button>
       </AnalysisControls>
       <fieldset className="flex flex-wrap gap-2">
         <legend className="mb-2 text-sm font-medium">Parteien</legend>
@@ -903,14 +842,7 @@ function QualityPanel({ year }: { year: number }) {
           {issues.filter((i) => i.severity === "warning").length} Statushinweise
           · {unknown} nicht verifizierte Zuschnittidentitäten
         </p>
-        <Button
-          variant="outline"
-          onClick={() => {
-            if (data) exportAnalysisCsv(issues, `Datenprüfung-${year}.csv`);
-          }}
-        >
-          Prüfbericht exportieren
-        </Button>
+
         {issues.length ? (
           <DataTable
             headers={[

@@ -1,4 +1,4 @@
-import { useState, useMemo, useEffect, useRef } from "react";
+import { useState, useMemo, useEffect } from "react";
 import { useMutation, useQueryClient } from "@tanstack/react-query";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
@@ -6,9 +6,9 @@ import { useAuth } from "@/hooks/useAuth";
 import { useAdministrationAccess } from "@/components/administration/useAdministrationAccess";
 import { supabase } from "@/integrations/supabase/client";
 import { DataState, DataTable, Selection, StatusNote } from "../shared";
-import { exportAnalysisCsv, parties, percent, number } from "../model";
+import { parties, percent, number } from "../model";
 import type { Ballot } from "../types";
-import type { LocalResult } from "./workspaceTypes";
+
 import { useLocalPage } from "./workspaceHooks";
 import { useDistrictVersions } from "./hooks";
 import { localMetrics, parseLocalCsv } from "./localModel";
@@ -230,20 +230,7 @@ export default function MunicipalPanel({
             </span>,
           ])}
         />
-        <Button
-          variant="outline"
-          onClick={() =>
-            exportAnalysisCsv(
-              (query.data?.rows || []).map((r) => ({
-                ...r,
-                ...localMetrics(r),
-              })),
-              `Gemeindedaten-${year}-WK${district}-Seite${page + 1}.csv`,
-            )
-          }
-        >
-          Diese Seite exportieren
-        </Button>
+
       </DataState>
       <p className="text-xs text-muted-foreground">
         Sortierung bezieht sich auf die aktuell geladene Seite. Je Anfrage

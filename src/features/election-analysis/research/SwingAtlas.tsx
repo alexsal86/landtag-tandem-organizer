@@ -3,7 +3,7 @@ import { useSearchParams } from "react-router-dom";
 import { Button } from "@/components/ui/button";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { DataTable, Selection, StatusNote } from "../shared";
-import { ballotLabels, exportAnalysisCsv, number, percent } from "../model";
+import { ballotLabels, number, percent } from "../model";
 import type { Ballot } from "../types";
 import { AnalysisMap } from "./AnalysisMap";
 import { atlasRankings, atlasRows, atlasScale, atlasValue } from "./atlasModel";
@@ -149,41 +149,7 @@ export function SwingAtlas({
           />
           Automatische Farbskala
         </label>
-        <Button
-          variant="outline"
-          disabled={!filtered.length}
-          onClick={() =>
-            exportAnalysisCsv(
-              filtered.map((r) => ({
-                Nummer: r.districtNumber,
-                Wahlkreis: r.districtName,
-                Partei: r.party,
-                Ausgangsjahr: beforeYear,
-                Zieljahr: afterYear,
-                Stimmenart_A: ballotLabels[beforeBallot],
-                Stimmenart_B: ballotLabels[afterBallot],
-                Anteil_A: r.before?.share,
-                Anteil_B: r.after?.share,
-                Stimmen_A: r.before?.votes,
-                Stimmen_B: r.after?.votes,
-                Veraenderung_PP: r.swing,
-                Stimmendifferenz: r.voteDelta,
-                Landes_Swing_PP: r.stateSwing,
-                Abweichung_Land_PP: r.relativeSwing,
-                Vorlaeufig_A: r.before?.preliminary,
-                Vorlaeufig_B: r.after?.preliminary,
-                Datenstand_A: r.before?.data_release,
-                Datenstand_B: r.after?.data_release,
-                Kennzahl: metric,
-                Kartenwert: atlasValue(r, metric),
-                Hinweis: r.warnings.join(" "),
-              })),
-              `Swing-${party}-${beforeYear}-${afterYear}-Auswahl.csv`,
-            )
-          }
-        >
-          CSV: gefilterte Wahlkreise
-        </Button>
+
       </div>
       <StatusNote>
         {beforeYear}: {ballotLabels[beforeBallot]} → {afterYear}:{" "}

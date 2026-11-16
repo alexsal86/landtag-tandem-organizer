@@ -5,7 +5,7 @@ import { Button } from '@/components/ui/button';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 import { AnalysisControls } from './AnalysisToolbar';
 import { DataState, DataTable, Selection, StatusNote, chartColor } from './shared';
-import { ballotLabels, exportAnalysisCsv, number, parties, percent } from './model';
+import { ballotLabels, number, parties, percent } from './model';
 import { matrixAxes, matrixCell, stateTotalMetrics } from './stateHistoryModel';
 import { useFlowMatrix, useStateHistory, useWorkbookAudit } from './useStateHistory';
 import type { WorkbookAudit } from './stateHistoryModel';
@@ -60,7 +60,7 @@ export function FlowMatrixPanel({ year }: {
     const { origins, destinations } = matrixAxes(cells);
     const previous = cells[0]?.previous_year;
     return <div className="space-y-4">
-    <AnalysisControls><Button variant="outline" disabled={!cells.length} onClick={() => exportAnalysisCsv(cells.map(c => ({ Vorwahl: c.previous_year, Wahljahr: c.year, Herkunft: c.origin, Ziel: c.destination, Personen: c.persons, Datentyp: 'Gerundete Modellschätzung', Quelle: c.source_url, Fundstelle: 'S. 33', Blatt: c.source_sheet, Zeile: c.source_row, Arbeitsmappe_SHA256: c.workbook_sha256, Original_unabhaengig_geprueft: c.source_verified })), `Wanderungsmatrix-${year}.csv`)}>Matrix als CSV</Button></AnalysisControls>
+
     <StatusNote>Die vollständige Wanderungsmatrix liegt aus dieser Arbeitsmappe für 2001 → 2006 vor. Alle Werte sind gerundete landesweite Modellschätzungen von Infratest dimap. Zeilen zeigen das Ziel, Spalten die Herkunft. Diagonalwerte zeigen Parteibindung beziehungsweise fortgesetzte Nichtwahl. Erstwählende und Zugezogene stehen auf der Herkunftsseite, Gestorbene und Weggezogene auf der Zielseite. Keine beobachteten individuellen Wechsel, keine Wahlkreisdaten und keine amtlich ausgezählten Parteiergebnisse.</StatusNote>
     <DataState loading={query.isLoading} error={query.error} empty={!cells.length} retry={() => void query.refetch()}>
       <h2 className="text-lg font-semibold">Wählerwanderung {previous} → {year} · Personen</h2>
@@ -81,7 +81,7 @@ export function WorkbookAuditPanel({ year }: {
     const [conflictsOnly, setConflictsOnly] = useState(false);
     const rows = (query.data || []).filter(r => !conflictsOnly || r.status === 'conflict');
     return <div className="space-y-4">
-    <AnalysisControls><Button variant={conflictsOnly ? 'default' : 'outline'} aria-pressed={conflictsOnly} onClick={() => setConflictsOnly(v => !v)}>Nur Abweichungen</Button><Button variant="outline" disabled={!rows.length} onClick={() => exportAnalysisCsv(rows.map(r => ({ Wahljahr: r.year, Bereich: r.section, Datensatz: r.record_key, Status: statusLabels[r.status], Verglichen_am: r.compared_at, Quelle: r.source_url, Blatt: r.source_sheet, Zeile: r.source_row, Arbeitsmappe_SHA256: r.workbook_sha256, Arbeitsmappe: JSON.stringify(r.incoming), Bisher: JSON.stringify(r.existing), Hinweis: r.notes })), `Quellenabgleich-${year}.csv`)}>Abgleich als CSV</Button></AnalysisControls>
+    <AnalysisControls><Button variant={conflictsOnly ? 'default' : 'outline'} aria-pressed={conflictsOnly} onClick={() => setConflictsOnly(v => !v)}>Nur Abweichungen</Button></AnalysisControls>
     <StatusNote>Dieser Bericht dokumentiert den Vergleich beim Einspielen der Arbeitsmappe. Übereinstimmung bedeutet Zahlenübereinstimmung mit dem damaligen Plattformbestand, keine unabhängige Prüfung der verlinkten Originalquelle. Bestehende Werte werden bei Abweichungen erhalten. Die Prüfsumme gehört zur hochgeladenen Excel-Datei. Weitere historische Parteiergebnisse und die Restgruppe wurden nicht importiert.</StatusNote>
     <DataState loading={query.isLoading} error={query.error} empty={!rows.length} retry={() => void query.refetch()}>
       <DataTable headers={['Bereich', 'Datensatz', 'Abgleichstatus', 'Quelle', 'Fundstelle', 'Details']} rows={rows.map(r => [r.section, r.record_key, <span className={r.status === 'conflict' ? 'font-semibold text-amber-800' : ''}>{statusLabels[r.status]}</span>, <SourceLink url={r.source_url}/>, `${r.source_sheet}, Zeile ${r.source_row}`, <AuditValues row={r}/>])}/>

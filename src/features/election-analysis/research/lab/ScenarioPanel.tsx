@@ -6,7 +6,7 @@ import { useMemo } from "react";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { DataState, DataTable, Selection, StatusNote } from "../../shared";
-import { exportAnalysisCsv } from "../../model";
+
 import type { Ballot } from "../../types";
 import { useLabDistrictData } from "./hooks";
 import { AnalysisMap } from "../AnalysisMap";
@@ -226,46 +226,7 @@ export default function ScenarioPanel({
                 input={data}
                 result={simulated.value}
               />
-              <Button
-                variant="outline"
-                onClick={() =>
-                  exportAnalysisCsv(
-                    simulated.value!.rows.map((r) => ({
-                      Nummer: r.number,
-                      Wahlkreis: r.name,
-                      Wahljahr: year,
-                      Stimmenart: ballot,
-                      Methode:
-                        "Hypothetischer uniformer Swing mit Simplex-Projektion",
-                      Annahmen_PP: JSON.stringify(deltas),
-                      Regionale_Annahme: localNumber
-                        ? JSON.stringify({
-                            district: localNumber,
-                            party: localParty,
-                            delta: localDelta,
-                          })
-                        : "",
-                      Ausgangshinweis: r.notes,
-                      Vorlaeufig: r.preliminary,
-                      Datenstand: r.release,
-                      Korrigiert: r.adjusted,
-                      ...Object.fromEntries(
-                        [...data.parties, "REST"].flatMap((p) => [
-                          [
-                            `${p}_Basis`,
-                            data.rows.find((d) => d.number === r.number)
-                              ?.shares[p],
-                          ],
-                          [`${p}_Szenario`, r.shares[p]],
-                        ]),
-                      ),
-                    })),
-                    `Hypothetisches-Szenario-${year}.csv`,
-                  )
-                }
-              >
-                Szenario und Annahmen exportieren
-              </Button>
+
               <Selection
                 id="scenario-map-party"
                 label="Veränderung in der Karte"

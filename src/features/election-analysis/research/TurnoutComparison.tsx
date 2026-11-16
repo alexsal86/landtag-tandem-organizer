@@ -11,7 +11,7 @@ import {
   XAxis,
   YAxis,
 } from "recharts";
-import { Button } from "@/components/ui/button";
+
 import { Input } from "@/components/ui/input";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { isRecord } from "@/utils/typeSafety";
@@ -22,13 +22,7 @@ import {
   StatusNote,
   chartColor,
 } from "../shared";
-import {
-  ballotLabels,
-  exportAnalysisCsv,
-  number,
-  parties,
-  percent,
-} from "../model";
+import { ballotLabels, number, parties, percent } from "../model";
 import type { Ballot } from "../types";
 import { ballotForComparison } from "./calculations";
 import { useTurnoutComparison } from "./hooks";
@@ -119,43 +113,7 @@ export default function TurnoutComparison({
     if (isRecord(value) && typeof value.districtNumber === "number")
       onOpenDistrict(value.districtNumber);
   };
-  const exportRows = () =>
-    exportAnalysisCsv(
-      rows.map((r) => ({
-        Nummer: r.districtNumber,
-        Wahlkreis: r.districtName,
-        Partei: party,
-        Ausgangsjahr: beforeYear,
-        Zieljahr: year,
-        Stimmenart_A: ballotLabels[beforeBallot],
-        Stimmenart_B: ballotLabels[afterBallot],
-        Wahlberechtigte_A: r.before?.eligible,
-        Wahlberechtigte_B: r.after?.eligible,
-        Waehlende_A: r.before?.voters,
-        Waehlende_B: r.after?.voters,
-        Gueltige_A: r.before?.valid_votes,
-        Gueltige_B: r.after?.valid_votes,
-        Beteiligung_A: r.before?.turnout,
-        Beteiligung_B: r.after?.turnout,
-        Parteistimmen_A: r.resultBefore?.votes,
-        Parteistimmen_B: r.resultAfter?.votes,
-        Parteianteil_A: r.resultBefore?.share,
-        Parteianteil_B: r.resultAfter?.share,
-        Wahlberechtigte_Differenz: r.eligibleDelta,
-        Waehlende_Differenz: r.votersDelta,
-        Gueltige_Differenz: r.validDelta,
-        Beteiligung_Differenz_PP: r.turnoutDelta,
-        Parteistimmen_Differenz: r.votesDelta,
-        Parteianteil_Differenz_PP: r.shareDelta,
-        Vorlaeufig_A: r.before?.preliminary,
-        Vorlaeufig_B: r.after?.preliminary,
-        Datenstand_A: r.before?.data_release,
-        Datenstand_B: r.after?.data_release,
-        Vergleichbar: r.comparable,
-        Hinweis: r.warnings.join(" "),
-      })),
-      `Beteiligung-Stimmen-${party}-${beforeYear}-${year}.csv`,
-    );
+
   if (years.length < 2)
     return (
       <p className="rounded-lg border p-4">
@@ -191,9 +149,6 @@ export default function TurnoutComparison({
             <option key={p}>{p}</option>
           ))}
         </Selection>
-        <Button variant="outline" disabled={!rows.length} onClick={exportRows}>
-          CSV exportieren
-        </Button>
       </AnalysisControls>
       <StatusNote>
         Verglichen werden {ballotLabels[beforeBallot]} {beforeYear} und{" "}

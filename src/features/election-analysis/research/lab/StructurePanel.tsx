@@ -9,10 +9,10 @@ import {
   XAxis,
   YAxis,
 } from "recharts";
-import { Button } from "@/components/ui/button";
+
 import { Input } from "@/components/ui/input";
 import { DataState, DataTable, Selection, StatusNote } from "../../shared";
-import { exportAnalysisCsv, parties } from "../../model";
+import { parties } from "../../model";
 import type { Ballot } from "../../types";
 import { useLabDistrictData } from "./hooks";
 import { researchDataset } from "./data";
@@ -278,35 +278,7 @@ export default function StructurePanel({
                   </ScatterChart>
                 </ResponsiveContainer>
               </div>
-              <Button
-                variant="outline"
-                onClick={() =>
-                  exportAnalysisCsv(
-                    fitted.value!.residuals.map((r) => ({
-                      ...r,
-                      Wahljahr: year,
-                      Partei: party,
-                      Merkmal: variable,
-                      Definition: definition,
-                      Quelle: source,
-                      Datei: uploaded?.name,
-                      SHA256: uploaded?.sha256,
-                      R_Quadrat: fitted.value?.rSquared,
-                      LOO_RMSE: fitted.value?.looRmse,
-                      Quellenpruefung:
-                        "Vom Nutzer bestätigt; nicht extern verifiziert",
-                      Ausgangshinweis: data.rows.find(
-                        (d) => d.number === r.number,
-                      )?.notes,
-                      Vorlaeufig: data.rows.find((d) => d.number === r.number)
-                        ?.preliminary,
-                    })),
-                    `Exploratives-Strukturmodell-${year}.csv`,
-                  )
-                }
-              >
-                Modell, Residuen und Quelle exportieren
-              </Button>
+
               <DataTable
                 headers={[
                   "Nr.",

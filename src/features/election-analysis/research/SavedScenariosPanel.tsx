@@ -12,7 +12,7 @@ import {
 } from "./workspaceHooks";
 import { comparisonRows, savedScenarioUrl } from "./scenarioStorage";
 import { attempt, format, useLabParams } from "./lab/shared";
-import { ballotLabels, exportAnalysisCsv } from "../model";
+import { ballotLabels } from "../model";
 export default function SavedScenariosPanel() {
   const { params, set } = useLabParams(),
     navigate = useNavigate(),
@@ -180,17 +180,7 @@ export default function SavedScenariosPanel() {
               ? "Differenzen der Stimmenanteile (%)."
               : "Differenzen in Sitzen."}
           </StatusNote>
-          <Button
-            variant="outline"
-            onClick={() =>
-              exportAnalysisCsv(
-                compared.value!,
-                `Szenariovergleich-${a.data!.year}.csv`,
-              )
-            }
-          >
-            Vergleich exportieren
-          </Button>
+
           <DataTable
             headers={["Partei", "A", "B", "B − A"]}
             sortableColumns={[0, 1, 2, 3]}

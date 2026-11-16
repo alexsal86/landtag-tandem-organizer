@@ -1,7 +1,7 @@
 import { AnalysisControls, AnalysisToolbarLayout } from "../AnalysisToolbar";
 import { useMemo, useState } from "react";
 import { useSearchParams } from "react-router-dom";
-import { Button } from "@/components/ui/button";
+
 import { Input } from "@/components/ui/input";
 import { PersonElectionSummary } from "@/features/election-history/PersonElectionSummary";
 import {
@@ -9,7 +9,7 @@ import {
   useElectionPeriods,
 } from "@/features/election-history/useElectionHistory";
 import { DataState, DataTable, Selection, StatusNote } from "../shared";
-import { exportAnalysisCsv, parties, percent } from "../model";
+import { parties, percent } from "../model";
 import { useDistrictVersions, useVerifiedCandidates } from "./hooks";
 import {
   useCandidateCoverage,
@@ -155,18 +155,7 @@ export default function MandateAnalysis() {
           empty={!current.data}
           retry={() => void current.refetch()}
         >
-          <Button
-            variant="outline"
-            disabled={!counts}
-            onClick={() =>
-              exportAnalysisCsv(
-                counts?.rows || [],
-                `Mandatszahlen-${period?.number}.csv`,
-              )
-            }
-          >
-            Mandatszahlen exportieren
-          </Button>
+
           {counts && (
             <>
               <DataTable
@@ -219,37 +208,7 @@ export default function MandateAnalysis() {
                 placeholder="Name, Partei oder Wahlkreis …"
               />
             </div>
-            <Button
-              variant="outline"
-              onClick={() =>
-                exportAnalysisCsv(
-                  rows.map((m) => ({
-                    Name:
-                      current.data?.people.find((p) => p.id === m.person_id)
-                        ?.name || m.person_name,
-                    Partei: m.party,
-                    Wahlkreis: current.data?.districts.find(
-                      (d) => d.id === m.district_id,
-                    )?.name,
-                    Person_bestaetigt: !!m.person_id,
-                    Mandatsart: kinds[mandateKind(m)],
-                    Eintritt: m.entry_type,
-                    Beginn: m.starts_on,
-                    Ende: m.ends_on,
-                    Ende_voraussichtlich:
-                      m.end_from_period && period?.ends_on_is_expected,
-                    Abgeschlossene_Kalendertage: period
-                      ? mandateDays(m, period, today)
-                      : null,
-                    Periodendaten_uebernommen:
-                      m.start_from_period || m.end_from_period,
-                  })),
-                  `Mandate-${period?.number}.csv`,
-                )
-              }
-            >
-              Mandate exportieren
-            </Button>
+
           </div>
           <DataTable
             headers={[
@@ -338,21 +297,7 @@ export default function MandateAnalysis() {
                 benötigen dieselbe geprüfte Gebietsidentität und eindeutige
                 Direktmandate.
               </StatusNote>
-              <Button
-                variant="outline"
-                onClick={() =>
-                  exportAnalysisCsv(
-                    transitions.map((r) => ({
-                      ...r,
-                      Ausgangsperiode: previous.number,
-                      Zielperiode: period?.number,
-                    })),
-                    `Personenwechsel-${previous.number}-${period?.number}.csv`,
-                  )
-                }
-              >
-                Personenvergleich exportieren
-              </Button>
+
               <DataTable
                 headers={[
                   "Person",
@@ -379,17 +324,7 @@ export default function MandateAnalysis() {
                   bedeutet nicht null tatsächliche Wiederwahlen.
                 </p>
               )}
-              <Button
-                variant="outline"
-                onClick={() =>
-                  exportAnalysisCsv(
-                    changes,
-                    `Direktparteien-${previous.number}-${period?.number}.csv`,
-                  )
-                }
-              >
-                Direktparteien exportieren
-              </Button>
+
               <DataTable
                 headers={[
                   "Nr.",
@@ -459,35 +394,7 @@ export default function MandateAnalysis() {
                     void Promise.all([references.refetch(), verified.refetch()])
                   }
                 >
-                  <Button
-                    className="my-3"
-                    variant="outline"
-                    onClick={() =>
-                      exportAnalysisCsv(
-                        candidateRows.map((r) => ({
-                          Name: current.data?.people.find(
-                            (p) => p.id === r.candidacy.person_id,
-                          )?.name,
-                          Partei: r.candidacy.party,
-                          Wahlkreis: current.data?.districts.find(
-                            (d) => d.id === r.candidacy.district_id,
-                          )?.name,
-                          Persoenliche_Stimmen: r.candidacy.votes,
-                          Persoenlicher_Anteil: r.candidacy.vote_share,
-                          Parteizweitstimmen: r.partyResult?.votes,
-                          Parteizweitanteil: r.partyResult?.share,
-                          Parteireferenz_vorlaeufig: r.partyResult?.preliminary,
-                          Parteireferenz_Datenstand:
-                            r.partyResult?.data_release,
-                          Differenz_PP: r.difference,
-                          Hinweis: r.reason,
-                        })),
-                        `Kandidaturen-${period?.number}.csv`,
-                      )
-                    }
-                  >
-                    Kandidaturen exportieren
-                  </Button>
+
                   <DataTable
                     headers={[
                       "Name",
