@@ -24,26 +24,31 @@ export function StateHistoryPanel({ year, years }: {
     const query = useStateHistory(from, year);
     const totals = (query.data?.totals || []).map(stateTotalMetrics);
     const rows = totals.map(t => ({ ...t, ...Object.fromEntries(parties.map(p => [p, query.data?.state.find(s => s.year === t.year && s.party === p)?.share ?? null])) }));
-    const [metric, setMetric] = useState('turnout');
-    const csv = totals.map(t => ({ Wahljahr: t.year, Wahltag: t.election_date, Stimmenart: ballotLabels[t.ballot], Wahlberechtigte: t.eligible, Waehlende: t.voters, Nichtwaehlende: t.nonvoters, Beteiligung_Prozent: t.turnout, Gueltige_Stimmen: t.valid_votes, Ungueltige_Stimmen: t.invalid_votes, Ungueltige_Prozent: t.invalidShare, Quelle: t.source_url, Original_unabhaengig_geprueft: t.source_verified, Arbeitsmappe_SHA256: t.workbook_sha256, Blatt: t.source_sheet, Zeile: t.source_row }));
+    const [selectedMetrics, setSelectedMetrics] = useState<string[]>(['turnout']);
+    const metrics = [
+      { key: 'turnout', label: 'Wahlbeteiligung', color: '#4b8b39' },
+      { key: 'invalidShare', label: 'Ungültige Stimmen', color: '#b65c55' },
+      ...parties.map(p => ({ key: p, label: p, color: chartColor(p) })),
+    ];
+    const showParties = parties.some(p => selectedMetrics.includes(p));
     return <div className="space-y-4">
     <AnalysisControls>
       <Selection id="history-from" label="Zeitreihe ab Wahl" value={String(from)} onChange={v => setParams(old => { const next = new URLSearchParams(old); next.set('historyFrom', v); return next; })}>{ordered.filter(y => y <= year).map(y => <option key={y} value={y}>{y}</option>)}</Selection>
-      <Selection id="history-metric" label="Darstellung" value={metric} onChange={setMetric}>
-        <option value="turnout">Wahlbeteiligung (%)</option><option value="persons">Wahlberechtigte / Wahlteilnahme</option><option value="invalid">Ungültige Stimmen (%)</option><option value="parties">Parteianteile (%)</option>
-      </Selection>
-      <Button variant="outline" disabled={!totals.length} onClick={() => exportAnalysisCsv(csv, `Landesgeschichte-${from}-${year}.csv`)}>Bezugsgrößen als CSV</Button>
-      <Button variant="outline" disabled={!query.data?.state.length} onClick={() => exportAnalysisCsv((query.data?.state || []).map(s => ({ Wahljahr: s.year, Stimmenart: ballotLabels[s.year >= 2026 ? 'second' : 'single'], Partei: s.party, Stimmen: s.votes, Anteil_Prozent: s.share, Gueltige_Stimmen: s.valid_votes, Hinweis: s.notes })), `Landesparteien-${from}-${year}.csv`)}>Parteiergebnisse als CSV</Button>
     </AnalysisControls>
-    <StatusNote>Landesgeschichte {from}–{year}. Die oben ausgewählte Wahl ist das Ende der Zeitreihe. Bis 2021 wird die Einzelstimme, ab 2026 die Zweitstimme verwendet; 2026 beginnt ein neues Wahlsystem. 1952 war die Wahl zur Verfassunggebenden Landesversammlung. Weitere historische Parteien werden nicht ergänzt. Fehlende Parteieinträge bleiben unbekannt und werden nicht als 0 dargestellt. Quellenlinks stammen aus der Arbeitsmappe; eine unabhängige Originalprüfung wird nur bei ausdrücklicher Kennzeichnung behauptet.</StatusNote>
+    <fieldset className="flex flex-wrap gap-x-5 gap-y-3 rounded-lg border p-4">
+      <legend className="px-1 text-sm font-medium">Im Diagramm anzeigen (%)</legend>
+      {metrics.map(metric => <label key={metric.key} className="flex items-center gap-2 text-sm"><input type="checkbox" checked={selectedMetrics.includes(metric.key)} onChange={event => setSelectedMetrics(current => event.target.checked ? [...current, metric.key] : current.filter(key => key !== metric.key))} /><span style={{ color: metric.color }} aria-hidden="true">●</span>{metric.label}</label>)}
+    </fieldset>
     <DataState loading={query.isLoading} error={query.error} empty={!totals.length} retry={() => void query.refetch()}>
-      <Card><CardHeader><CardTitle className="text-lg">{metric === 'parties' ? 'Ausgewählte Parteianteile' : metric === 'persons' ? 'Wahlberechtigte, Wählende und Nichtwählende' : metric === 'invalid' ? 'Anteil ungültiger Stimmen an Wählenden' : 'Wahlbeteiligung'} · {from}–{year}</CardTitle></CardHeader><CardContent>
-        <div className="h-80" role="img" aria-label="Historische Landes-Zeitreihe; genaue Werte folgen in den Tabellen"><ResponsiveContainer><LineChart data={rows} margin={{ left: metric === 'persons' ? 35 : 0, right: 20 }}><CartesianGrid strokeDasharray="3 3"/><XAxis dataKey="year"/><YAxis unit={metric === 'persons' ? '' : ' %'} tickFormatter={v => number(Number(v))}/><Tooltip formatter={v => metric === 'persons' ? number(typeof v === 'number' ? v : null) : percent(typeof v === 'number' ? v : null)}/><Legend />
-          {metric === 'parties' ? parties.map(p => <Line key={p} dataKey={p} name={p} stroke={chartColor(p)} connectNulls={false}/>) : metric === 'persons' ? <><Line dataKey="eligible" name="Wahlberechtigte" stroke="#475569"/><Line dataKey="voters" name="Wählende" stroke="#4b8b39"/><Line dataKey="nonvoters" name="Nichtwählende" stroke="#b65c55"/></> : <Line dataKey={metric === 'invalid' ? 'invalidShare' : 'turnout'} name={metric === 'invalid' ? 'Ungültige Stimmen' : 'Wahlbeteiligung'} stroke="#4b8b39" connectNulls={false}/>}
-        </LineChart></ResponsiveContainer></div>
+      <Card><CardHeader><CardTitle className="text-lg">Vergangene Wahlen · {from}–{year}</CardTitle></CardHeader><CardContent>
+        {selectedMetrics.length ? <div className="h-96" role="img" aria-label="Gemeinsame Zeitreihe der ausgewählten Prozentwerte; genaue Werte folgen in den Tabellen"><ResponsiveContainer><LineChart data={rows} margin={{ top: 24, left: 10, right: 24, bottom: 10 }}><CartesianGrid strokeDasharray="3 3"/><XAxis dataKey="year"/><YAxis unit=" %" domain={[0, (max: number) => Math.ceil((max + 5) / 5) * 5]} tickFormatter={v => number(Number(v))}/><Tooltip formatter={v => percent(typeof v === 'number' ? v : null)}/><Legend />
+          {metrics.filter(metric => selectedMetrics.includes(metric.key)).map(metric => <Line key={metric.key} dataKey={metric.key} name={metric.label} stroke={metric.color} strokeWidth={2} connectNulls={false}/>)}
+        </LineChart></ResponsiveContainer></div> : <p className="py-12 text-center text-sm text-muted-foreground">Bitte mindestens eine Datenreihe auswählen.</p>}
       </CardContent></Card>
+    <StatusNote>Vergangene Wahlen {from}–{year}. Die oben ausgewählte Wahl ist das Ende der Zeitreihe. Bis 2021 wird die Einzelstimme, ab 2026 die Zweitstimme verwendet; 2026 beginnt ein neues Wahlsystem. 1952 war die Wahl zur Verfassunggebenden Landesversammlung. Weitere historische Parteien werden nicht ergänzt. Fehlende Parteieinträge bleiben unbekannt und werden nicht als 0 dargestellt. Quellenlinks stammen aus der Arbeitsmappe; eine unabhängige Originalprüfung wird nur bei ausdrücklicher Kennzeichnung behauptet.</StatusNote>
+      <h2 className="text-lg font-semibold">Wahlberechtigte und weitere Bezugsgrößen</h2>
       <div className="overflow-x-auto"><DataTable headers={['Wahl', 'Wahltag', 'Wahlberechtigte', 'Wählende', 'Nichtwählende', 'Beteiligung', 'Gültige Stimmen', 'Ungültige Stimmen', 'Ungültige %', 'Quelle / Prüfstatus']} rows={totals.map(t => [t.year, t.election_date.split('-').reverse().join('.'), number(t.eligible), number(t.voters), number(t.nonvoters), percent(t.turnout), number(t.valid_votes), number(t.invalid_votes), percent(t.invalidShare), <span><SourceLink url={t.source_url}/> · {t.source_verified ? 'Original geprüft' : 'Originalprüfung offen'} · {t.source_sheet}, Z. {t.source_row}</span>])}/></div>
-      {metric === 'parties' && <DataTable headers={['Wahl', 'Stimmenart', 'Partei', 'Stimmen', 'Anteil', 'Hinweis / Quelle']} rows={(query.data?.state || []).map(s => [s.year, ballotLabels[s.year >= 2026 ? 'second' : 'single'], s.party, number(s.votes), percent(s.share), s.notes || 'Bestehender Datensatz; Quellenabgleich unter „Quellenabgleich“.'])}/>}
+      {showParties && <DataTable headers={['Wahl', 'Stimmenart', 'Partei', 'Stimmen', 'Anteil', 'Hinweis / Quelle']} rows={(query.data?.state || []).map(s => [s.year, ballotLabels[s.year >= 2026 ? 'second' : 'single'], s.party, number(s.votes), percent(s.share), s.notes || 'Bestehender Datensatz; Quellenabgleich unter „Quellenabgleich“.'])}/>}
     </DataState>
   </div>;
 }
