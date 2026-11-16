@@ -1,4 +1,5 @@
 import { boundaryDifferencePath } from "@/features/election-analysis/research/boundaryOverlay";
+import { parseCandidacyImport } from "@/features/election-history/admin/candidacyImport";
 import { matrixAxes, matrixCell, stateTotalMetrics, type FlowCell, type StateTotal } from '@/features/election-analysis/stateHistoryModel';
 import { decodeElectoralTopology, electoralGeometryYear, parseElectoralManifest, requiredElectoralPackages } from "@/utils/electoralTopology";
 import { atlasRows, atlasRankings, atlasScale } from "@/features/election-analysis/research/atlasModel";
@@ -69,6 +70,12 @@ export const electionAnalysisScenario: TestScenario = {
     "Amtliche Downloads, Datenbank-RLS und Vollständigkeit historischer Kandidaturen sind separate Prüfungen.",
   ],
   steps: [
+    { id: "candidacy-admin-import", label: "Kandidatenimport: deutsche Zahlen, reine Liste und Wahlkreiszwang", kind: "logic", run: async () => {
+      const districts = [{ id: "d-36", period_id: "p-1", district_number: 36, number_label: null, name: "Nürtingen", boundaries: null, boundary_note: null, source_url: null }];
+      const rows = parseCandidacyImport("Wahlkreis-Nr\tName\tPartei\tStimmen\tProzent\tGewählt\n36\tAda Beispiel\tGRÜNE\t12.345\t42,5\tdirekt\n\tListenperson\tGRÜNE\t\t\tliste", districts, "candidate");
+      return { ok: rows.length === 2 && rows[0].districtId === "d-36" && rows[0].votes === 12345 && rows[0].voteShare === 42.5 && rows[0].outcome === "direct" && rows[1].districtId === null && rows[1].outcome === "list" && rows.every(row => row.errors.length === 0),
+        message: "Excel-Zeilen werden formal geprüft; Listenkandidaturen bleiben ohne erfundenen persönlichen Wahlkreiswert zulässig." };
+    } },
     { id: "boundary-difference-rendering", label: "Grenzänderungen als Teilflächen ohne erfundene Ergebniswerte", kind: "logic", run: async () => {
       const before = { type: "Polygon" as const, coordinates: [[[0, 0], [2, 0], [2, 2], [0, 0]]] };
       const after = { type: "MultiPolygon" as const, coordinates: [[[[1, 0], [3, 0], [3, 2], [1, 0]]]] };

@@ -271,7 +271,7 @@ export function HistoryDataGrid({ entity, data, selectedPeriodId, overview, onOp
       <Button onClick={startNew} disabled={saving || (entity !== 'periods' && !selectedPeriodId)}><Plus className="mr-2 h-4 w-4" aria-hidden="true" />Neu anlegen</Button>
     </div>
     {drafts.storageFailed && <p role="alert" className="text-sm text-destructive">Der Browser kann Eingaben nicht zwischenspeichern. Bitte zeitnah speichern.</p>}
-    {drafts.drafts.filter(draft => draft.entity === entity).length > 0 && <div className="flex flex-wrap items-center gap-2 rounded-md border bg-muted/20 p-2 text-caption"><span>Browserentwürfe:</span>{drafts.drafts.filter(draft => draft.entity === entity).map(draft => <Button key={`${draft.id}:${draft.periodId}`} size="sm" variant="outline" disabled={saving} onClick={() => { setPeriodFilterForDraft(draft.periodId); setValues(draft.values); setEditing(draft.id); setError(''); }}>{String(draft.values.name || draft.values.person_name || 'Datensatz')} wiederherstellen</Button>)}</div>}
+    {drafts.drafts.filter(draft => draft.entity === entity && (entity === 'periods' || draft.periodId === selectedPeriodId)).length > 0 && <div className="flex flex-wrap items-center gap-2 rounded-md border bg-muted/20 p-2 text-caption"><span>Browserentwürfe:</span>{drafts.drafts.filter(draft => draft.entity === entity && (entity === 'periods' || draft.periodId === selectedPeriodId)).map(draft => <Button key={`${draft.id}:${draft.periodId}`} size="sm" variant="outline" disabled={saving} onClick={() => { setValues(draft.values); setEditing(draft.id); setError(''); }}>{String(draft.values.name || draft.values.person_name || 'Datensatz')} wiederherstellen</Button>)}</div>}
     {error && editing === undefined && <p role="alert" className="text-sm text-destructive">{error}</p>}
     <div className="rounded-md border bg-card">
       <Table className="min-w-[1100px]">
@@ -297,7 +297,4 @@ export function HistoryDataGrid({ entity, data, selectedPeriodId, overview, onOp
     {rows.length > pageSize && <Button variant="outline" onClick={() => setPageSize(size => size + 100)}>Weitere 100 anzeigen ({pageSize} von {rows.length})</Button>}
   </section>;
 
-  function setPeriodFilterForDraft(_periodId: string) {
-    // The selected period remains unchanged; period_id in the restored values is authoritative for editing.
-  }
 }
