@@ -5,9 +5,9 @@ import { useAuth } from '@/hooks/useAuth';
 import type { AnalysisRows, AnalysisSection, AnalysisYear, Ballot } from './types';
 
 const tables = { state: 'election_analysis_state', districts: 'election_analysis_districts', turnout: 'election_analysis_turnout', flows: 'election_analysis_flows', demographics: 'election_analysis_demographics' } as const;
-export function useAnalysisYears(): UseQueryResult<AnalysisYear[], Error> {
+export function useAnalysisYears(enabled = true): UseQueryResult<AnalysisYear[], Error> {
   const { user } = useAuth();
-  return useQuery({ queryKey: ['election-analysis', user?.id, 'years'], enabled: !!user,
+  return useQuery({ queryKey: ['election-analysis', user?.id, 'years'], enabled: !!user && enabled,
     queryFn: async ({ signal }) => {
       const { data, error } = await supabase.from('election_analysis_years').select('*').eq('is_published', true).order('year', { ascending: false }).limit(50).abortSignal(signal);
       if (error) throw error;

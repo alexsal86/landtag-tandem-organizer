@@ -13,7 +13,7 @@ import { canConfirmDeputySelection, deputyHistoryAction } from './deputySelectio
 type DeputyGroup = { name_key: string; name: string; parties: string[]; mandates: number; periods: number; unlinked: number };
 type DeputyMandate = { id: string; person_id: string | null; connection_id: string | null; name: string; party: string; period_name: string; period_number: number; starts_on: string | null; ends_on: string | null; entry_type: string; district_name: string | null; linked_name: string | null; party_label: string | null; district_label: string | null; mandate_type: string; original_mandate: string | null; left_early: boolean; notes: string | null; end_is_expected: boolean };
 
-export function ElectionDeputyDirectory() {
+export function ElectionDeputyDirectory({ readOnly = false }: { readOnly?: boolean }) {
   const { user } = useAuth();
   const cache = useQueryClient();
   const [search, setSearch] = useState('');
@@ -26,28 +26,28 @@ export function ElectionDeputyDirectory() {
   const [status, setStatus] = useState('');
   useEffect(() => { const timer = window.setTimeout(() => { setTerm(search.trim()); setOffset(0); }, 300); return () => window.clearTimeout(timer); }, [search]);
   const groups = useQuery({
-    queryKey: ['election-history', user?.id, 'deputies-v2', term, offset], enabled: !!user,
+    queryKey: ['election-history', user?.id, 'deputies-v2', readOnly, term, offset], enabled: !!user,
     queryFn: async ({ signal }) => {
-      const { data, error } = await supabase.rpc('list_election_history_deputies', { search_text: term, page_offset: offset }).abortSignal(signal);
+      const { data, error } = await supabase.rpc(readOnly ? 'list_analysis_deputies' : 'list_election_history_deputies', { search_text: term, page_offset: offset }).abortSignal(signal);
       if (error) throw error;
       if (!Array.isArray(data)) throw new Error('Ungültiges Abgeordnetenregister.');
       return data as unknown as DeputyGroup[];
     }, retry: false, refetchInterval: 30_000,
   });
   const detail = useQuery({
-    queryKey: ['election-history', user?.id, 'deputy-v2', group?.name_key], enabled: !!user && !!group,
+    queryKey: ['election-history', user?.id, 'deputy-v2', readOnly, group?.name_key], enabled: !!user && !!group,
     queryFn: async ({ signal }) => {
-      const { data, error } = await supabase.rpc('get_election_history_deputy', { name_key: group!.name_key }).abortSignal(signal);
+      const { data, error } = await supabase.rpc(readOnly ? 'get_analysis_deputy' : 'get_election_history_deputy', { name_key: group!.name_key }).abortSignal(signal);
       if (error) throw error;
       if (!Array.isArray(data) || data.length > 200) throw new Error('Zu viele gleichnamige Mandate für eine gemeinsame Zuordnung. Bitte im Mandatseditor einzeln zuordnen.');
       return data as unknown as DeputyMandate[];
     }, retry: false, refetchInterval: 30_000,
   });
   const rows = detail.data || [];
-  const hasOpenMandates = rows.some(row => !row.connection_id);
+  const hasOpenMandates = !readOnly && rows.some(row => !row.connection_id);
   const openHistory = (entry: DeputyGroup) => { setGroup(entry); setSelected([]); setError(''); setStatus(''); };
   const confirm = async () => {
-    if (saving || !canConfirmDeputySelection(rows, selected)) return;
+    if (readOnly || saving || !canConfirmDeputySelection(rows, selected)) return;
     const periods = rows.filter(row => selected.includes(row.id)).map(row => row.period_name).join(', ');
     if (!window.confirm(`Diese Mandate von ${group?.name} gehören zusammen: ${periods}. Verbindung bestätigen?`)) return;
     setSaving(true); setError(''); setStatus('');
@@ -62,19 +62,20 @@ export function ElectionDeputyDirectory() {
     finally { setSaving(false); }
   };
   return <section className="space-y-4">
-    <div><h3 className="text-xl font-semibold">Personen und ihre Mandatshistorie</h3><p className="text-sm text-muted-foreground">Klicke auf einen Namen, um alle zugehörigen Mandate chronologisch zu sehen. Namens- und fraktionsgleiche Einträge werden gemeinsam angezeigt. Zeitraumkorrekturen erscheinen automatisch.</p></div>
+    <div><h3 className="text-xl font-semibold">Personen und ihre Mandatshistorie</h3><p className="text-sm text-muted-foreground">{readOnly ? 'Suche Abgeordnete über alle freigegebenen Legislaturperioden. Ein Klick auf den Namen öffnet die chronologische Mandatshistorie mit Zeiträumen und Wahlkreisen.' : 'Klicke auf einen Namen, um alle zugehörigen Mandate chronologisch zu sehen. Namens- und fraktionsgleiche Einträge werden gemeinsam angezeigt. Zeitraumkorrekturen erscheinen automatisch.'}</p></div>
     <div><Label htmlFor="deputy-search">Abgeordnete suchen</Label><Input id="deputy-search" value={search} disabled={saving} onChange={event => setSearch(event.target.value)} placeholder="Name, z. B. Ute Vogt …" /></div>
-    <div className="grid items-start gap-5 xl:grid-cols-2">
+    <div className="grid items-start gap-5 lg:grid-cols-[minmax(0,1fr)_minmax(0,1.4fr)]">
       <Card className="min-w-0"><CardHeader><CardTitle>Personen</CardTitle></CardHeader><CardContent className="space-y-3">
         {groups.isLoading && <p role="status">Lade Abgeordnete …</p>}
         {groups.error && <div role="alert"><p>{historyError(groups.error)}</p><Button variant="outline" onClick={() => void groups.refetch()}>Erneut laden</Button></div>}
         {groups.data?.length === 0 && <p>Keine passenden Mandatseinträge gefunden.</p>}
         {groups.data?.slice(0, 25).map(entry => <div key={entry.name_key} className="flex flex-wrap items-center justify-between gap-2 border-b pb-3">
-          <div className="min-w-0"><button type="button" disabled={saving} onClick={() => openHistory(entry)} className="text-left font-medium break-words underline-offset-4 hover:underline focus-visible:underline">{entry.name}</button><p className="text-xs text-muted-foreground">{entry.parties.join(', ')} · {entry.periods} Legislaturperioden · {entry.mandates} Mandate{entry.unlinked > 0 ? ` · ${entry.unlinked} noch offen` : ' · vollständig zusammengefasst'}</p></div>
-          <Button size="sm" variant={group?.name_key === entry.name_key ? 'default' : 'outline'} disabled={saving} onClick={() => openHistory(entry)}>{deputyHistoryAction(entry.unlinked)}</Button>
+          <div className="min-w-0"><button type="button" disabled={saving} aria-pressed={group?.name_key === entry.name_key} onClick={() => openHistory(entry)} className="text-left font-medium break-words underline-offset-4 hover:underline focus-visible:underline">{entry.name}</button><p className="text-xs text-muted-foreground">{entry.parties.join(', ')} · {entry.periods} Legislaturperioden · {entry.mandates} Mandate{!readOnly && (entry.unlinked > 0 ? ` · ${entry.unlinked} noch offen` : ' · vollständig zusammengefasst')}</p></div>
+          <Button size="sm" variant={group?.name_key === entry.name_key ? 'default' : 'outline'} disabled={saving} onClick={() => openHistory(entry)}>{readOnly ? 'Ansehen' : deputyHistoryAction(entry.unlinked)}</Button>
         </div>)}
         <div className="flex gap-2"><Button variant="outline" disabled={saving || groups.isFetching || offset === 0} onClick={() => setOffset(value => Math.max(0, value - 25))}>Zurück</Button><Button variant="outline" disabled={saving || groups.isFetching || !groups.data || groups.data.length <= 25} onClick={() => setOffset(value => value + 25)}>Weitere 25</Button></div>
       </CardContent></Card>
+      {!group && readOnly && <Card className="min-w-0"><CardHeader><CardTitle>Abgeordneten auswählen</CardTitle></CardHeader><CardContent><p className="text-sm text-muted-foreground">Wähle links einen Namen. Hier erscheinen die Mandate mit Legislaturperioden, Zeiträumen, Fraktionen und Wahlkreisen.</p></CardContent></Card>}
       {group && <Card className="min-w-0"><CardHeader><CardTitle>{group.name}: Mandatshistorie</CardTitle></CardHeader><CardContent className="space-y-4">
         {detail.isLoading && <p role="status">Lade Mandate …</p>}
         {detail.error && <div role="alert"><p>{historyError(detail.error)}</p><Button variant="outline" onClick={() => void detail.refetch()}>Erneut laden</Button></div>}

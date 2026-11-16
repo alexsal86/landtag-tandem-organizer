@@ -15,14 +15,15 @@ import { useAnalysisRows, useAnalysisYears, useStateComparisonSeries } from './u
 import { ballotLabels, ballotsForYear, effectiveBallot, parties, sectionLabels, percent, number, stateComparison, compareAnalysisValues } from './model';
 import type { AnalysisSection, Ballot } from './types';
 
+const DeputyDirectory = lazy(() => import('./DeputyDirectory'));
 const ResearchWorkbench = lazy(() => import('./research/ResearchWorkbench'));
-type AnalysisView = AnalysisSection | 'history' | 'sources' | 'profile' | 'swing' | 'split' | 'quality' | 'turnout-trend' | 'mandates' | 'research';
+type AnalysisView = AnalysisSection | 'history' | 'sources' | 'profile' | 'swing' | 'split' | 'quality' | 'turnout-trend' | 'mandates' | 'research' | 'deputies';
 export default function ElectionAnalysis() {
-  const years = useAnalysisYears();
   const [params, setParams] = useSearchParams();
   const legacyMatrix = params.get('analysisSection') === 'flow-matrix';
   const rawSection = legacyMatrix ? 'flows' : params.get('analysisSection') || 'state';
   const section: AnalysisView = Object.prototype.hasOwnProperty.call(sectionLabels, rawSection) ? rawSection as AnalysisView : 'state';
+  const years = useAnalysisYears(section !== 'deputies');
   const availableYears = years.data?.filter(y => ['state', 'history', 'sources', 'turnout'].includes(section) || y.year >= 2006);
   const requestedYear = Number(params.get('analysisYear') || (legacyMatrix ? 2006 : 0));
   const year = section === 'split' && years.data?.some(y => y.year === 2026) ? 2026 : availableYears?.some(y => y.year === requestedYear) ? requestedYear : availableYears?.[0]?.year || 0;
@@ -34,8 +35,9 @@ export default function ElectionAnalysis() {
   const selection = { year, ballot, party, gender };
   return <div className="space-y-5">
     <header><h1 className="text-2xl font-semibold">Wahlanalyse Baden-Württemberg</h1><p className="mt-1 text-sm text-muted-foreground">Wahlergebnisse, Beteiligung und Wahlverhalten vergleichen. Es wird nur die gewählte Auswertung geladen.</p></header>
-    <DataState loading={years.isLoading} error={years.error} empty={!years.data?.length} retry={() => void years.refetch()}>
       <nav aria-label="Auswertung auswählen" className="flex flex-wrap gap-2 border-b pb-3">{(Object.keys(sectionLabels) as AnalysisView[]).map(key => <Button key={key} variant={section === key ? 'default' : 'outline'} aria-pressed={section === key} onClick={() => change('analysisSection', key)}>{sectionLabels[key]}</Button>)}</nav>
+    {section === 'deputies' ? <Suspense fallback={<p role="status">Abgeordnetenübersicht lädt …</p>}><DeputyDirectory /></Suspense> : <>
+    <DataState loading={years.isLoading} error={years.error} empty={!years.data?.length} retry={() => void years.refetch()}>
       <AnalysisToolbarLayout filters={section === 'mandates' || (section === 'research' && params.get('researchTool') === 'saved') ? null : <>
         {<Selection id="analysis-year" label="Wahl / Legislaturperiode" value={String(year)} onChange={value => change('analysisYear', value)}>{availableYears?.filter(y => section !== 'split' || y.year === 2026).map(y => <option key={y.year} value={y.year}>{y.year} · {y.period_number}. Legislaturperiode</option>)}</Selection>}
         {!['flows','split','quality','history','flow-matrix','sources'].includes(section) && !(section === 'research' && ['seats','saved','flows'].includes(params.get('researchTool') || '')) && <Selection id="analysis-ballot" label="Stimmenart" value={ballot} onChange={value => change('analysisBallot', value)}>{(section === 'demographics' && year >= 2026 ? ['second'] as Ballot[] : ballotsForYear(year)).map(b => <option key={b} value={b}>{ballotLabels[b]}</option>)}</Selection>}
@@ -57,6 +59,7 @@ export default function ElectionAnalysis() {
       </div>}
       </AnalysisToolbarLayout>
     </DataState>
+    </>}
   </div>;
 }
 type PanelProps = { year: number; ballot: Ballot; party: string; gender: string };

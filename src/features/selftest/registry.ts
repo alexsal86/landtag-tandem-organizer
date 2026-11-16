@@ -1,3 +1,4 @@
+import { electionDeputyReaderScenario } from './scenarios/election-deputy-reader';
 import { electionAnalysisScenario } from './scenarios/election-analysis';
 import { electionMapScenario } from './scenarios/election-map';
 import {onboardingHrScenario} from "./scenarios/onboarding-hr";
@@ -34,6 +35,7 @@ export const SELFTEST_SCENARIOS: TestScenario[] = [
   documentListScenario,
   electionMapScenario,
   electionAnalysisScenario,
+  electionDeputyReaderScenario,
   documentAnnotationScenario,
   knowledgeLifecycleScenario,
   adminControlsScenario,
