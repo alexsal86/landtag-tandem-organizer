@@ -42,7 +42,6 @@ export default function ElectionAnalysis() {
         {(section === 'flows' || section === 'districts') && <Selection id="analysis-party" label={section === 'flows' ? 'Zielpartei' : 'Partei'} value={party} onChange={value => change('analysisParty', value)}>{parties.map(p => <option key={p}>{p}</option>)}</Selection>}
         {section === 'demographics' && <Selection id="analysis-gender" label="Geschlecht" value={gender} onChange={value => change('analysisGender', value)}>{['Insgesamt', 'Frauen', 'Männer'].map(g => <option key={g}>{g}</option>)}</Selection>}
       </>}>
-      {section !== 'history' && }
       {year > 0 && <div key={`${section}:${year}:${ballot}:${party}:${gender}`}>
         {section === 'history' && <StateHistoryPanel year={year} years={availableYears?.map(y => y.year) || []} />}
         {section === 'sources' && <WorkbookAuditPanel year={year} />}
