@@ -1,4 +1,4 @@
-import { canConfirmDeputySelection, connectedDeputyMandates } from '@/features/election-history/deputySelection';
+import { canConfirmDeputySelection, connectedDeputyMandates, deputyHistoryAction } from '@/features/election-history/deputySelection';
 import { projectHistoricalDistricts } from '@/features/election-history/mapProjection';
 import { HISTORICAL_DISTRICTS_1952 } from '@/utils/electoralGeometryCatalog';
 import { parseElectoralManifest } from '@/utils/electoralTopology';
@@ -17,6 +17,10 @@ export const electionMapScenario: TestScenario = {
   touches: [], features: ['election-districts'],
   limitations: ['Die visuelle Ebenenreihenfolge und mobile Bedienung werden separat im Browser geprüft.'],
   steps: [
+    { id: 'completed-deputy-history', label: 'Zusammengefasste Personen öffnen eine chronologische Übersicht ohne weitere Bestätigungsaufforderung', kind: 'logic', run: async () => {
+      if (deputyHistoryAction(0) !== 'Ansehen' || deputyHistoryAction(2) !== 'Mandatszeiten verbinden') throw new Error('Vollständige Mandatshistorien dürfen nicht erneut zum Verbinden auffordern.');
+      return { ok: true, message: 'Vollständige Historien öffnen als Leseansicht; offene Einträge bleiben bearbeitbar.' };
+    } },
     { id: 'deputy-explicit-selection', label: 'Mandatsverbindungen bestätigen, erweitern und bei Datumskorrekturen erhalten', kind: 'logic', run: async () => {
       const rows = [{ id: 'first', person_id: null }, { id: 'second', person_id: null }, { id: 'linked', person_id: 'person' }, { id: 'other', person_id: 'different' }];
       if (canConfirmDeputySelection(rows, []) || canConfirmDeputySelection(rows, ['first'])) throw new Error('Eine Verbindung benötigt mehrere ausdrücklich ausgewählte Mandate.');

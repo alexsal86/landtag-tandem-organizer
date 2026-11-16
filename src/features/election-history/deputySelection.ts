@@ -19,3 +19,8 @@ export function connectedDeputyMandates<T extends DeputyIdentity>(rows: readonly
   }
   return [...groups.values()].filter(group => group.length > 1);
 }
+
+/** Completed histories open as a reader, without suggesting further confirmation work. */
+export function deputyHistoryAction(openMandates: number): string {
+  return openMandates > 0 ? 'Mandatszeiten verbinden' : 'Ansehen';
+}
