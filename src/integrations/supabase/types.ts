@@ -5798,35 +5798,43 @@ export type Database = {
       }
       election_history_mandate_birthdays: {
         Row: {
-          mandate_id: string
-          birthday: string | null
           birth_year: number
-          source_name: string
+          birthday: string | null
+          mandate_id: string
           source_faction: string
+          source_name: string
           source_note: string
         }
         Insert: {
-          mandate_id: string
-          birthday?: string | null
           birth_year: number
-          source_name: string
+          birthday?: string | null
+          mandate_id: string
           source_faction: string
+          source_name: string
           source_note?: string
         }
         Update: {
-          mandate_id?: string
-          birthday?: string | null
           birth_year?: number
-          source_name?: string
+          birthday?: string | null
+          mandate_id?: string
           source_faction?: string
+          source_name?: string
           source_note?: string
         }
-        Relationships: []
+        Relationships: [
+          {
+            foreignKeyName: "election_history_mandate_birthdays_mandate_id_fkey"
+            columns: ["mandate_id"]
+            isOneToOne: true
+            referencedRelation: "election_history_mandates"
+            referencedColumns: ["id"]
+          },
+        ]
       }
       election_history_mandates: {
         Row: {
-          connection_id: string | null
           candidacy_id: string | null
+          connection_id: string | null
           district_id: string | null
           end_from_period: boolean
           ends_on: string | null
@@ -5846,8 +5854,8 @@ export type Database = {
           starts_on: string | null
         }
         Insert: {
-          connection_id?: string | null
           candidacy_id?: string | null
+          connection_id?: string | null
           district_id?: string | null
           end_from_period?: boolean
           ends_on?: string | null
@@ -5867,8 +5875,8 @@ export type Database = {
           starts_on?: string | null
         }
         Update: {
-          connection_id?: string | null
           candidacy_id?: string | null
+          connection_id?: string | null
           district_id?: string | null
           end_from_period?: boolean
           ends_on?: string | null
@@ -16712,9 +16720,21 @@ export type Database = {
         Args: { candidacy: string }
         Returns: undefined
       }
+      confirm_election_history_deputy: {
+        Args: {
+          mandate_ids: string[]
+          person_name: string
+          target_person?: string
+        }
+        Returns: string
+      }
       confirm_employee_hr_gdpr: {
         Args: { p_step: string; p_version: string }
         Returns: undefined
+      }
+      connect_election_history_mandates: {
+        Args: { mandate_ids: string[] }
+        Returns: string
       }
       contacts_secured:
         | {
@@ -17145,6 +17165,7 @@ export type Database = {
         }
         Returns: Json
       }
+      get_analysis_deputy: { Args: { name_key: string }; Returns: Json }
       get_analysis_district_history: {
         Args: { district: number; selected_year: number }
         Returns: Json
@@ -17229,13 +17250,7 @@ export type Database = {
         Returns: Json
       }
       get_database_size: { Args: never; Returns: number }
-      list_analysis_deputies: { Args: { search_text?: string; page_offset?: number; selected_period?: string; faction_text?: string; selected_mandate?: string }; Returns: Json }
-      list_analysis_deputy_factions: { Args: { selected_period?: string }; Returns: Json }
-      get_analysis_deputy: { Args: { name_key: string }; Returns: Json }
-      list_election_history_deputies: { Args: { search_text?: string; page_offset?: number }; Returns: Json }
       get_election_history_deputy: { Args: { name_key: string }; Returns: Json }
-      connect_election_history_mandates: { Args: { mandate_ids: string[] }; Returns: string }
-      confirm_election_history_deputy: { Args: { mandate_ids: string[]; person_name: string; target_person?: string }; Returns: string }
       get_election_history_period: { Args: { period: string }; Returns: Json }
       get_election_person_summary: {
         Args: { person: string; through_period: string }
@@ -17905,6 +17920,24 @@ export type Database = {
               isSetofReturn: true
             }
           }
+      list_analysis_deputies: {
+        Args: {
+          faction_text?: string
+          page_offset?: number
+          search_text?: string
+          selected_mandate?: string
+          selected_period?: string
+        }
+        Returns: Json
+      }
+      list_analysis_deputy_factions: {
+        Args: { selected_period?: string }
+        Returns: Json
+      }
+      list_election_history_deputies: {
+        Args: { page_offset?: number; search_text?: string }
+        Returns: Json
+      }
       list_quick_notes: {
         Args: { p_note_id?: string; p_tenant_id: string }
         Returns: Json
@@ -17929,6 +17962,10 @@ export type Database = {
       mask_secured_record: {
         Args: { _row: Json; _table: string }
         Returns: Json
+      }
+      match_analysis_history_district: {
+        Args: { election_district: number; election_year: number }
+        Returns: string
       }
       merge_responsibility_catalog: {
         Args: {
@@ -18412,6 +18449,10 @@ export type Database = {
       start_employee_hr: {
         Args: { p_lifecycle: string; p_template: string }
         Returns: string
+      }
+      sync_analysis_history_links: {
+        Args: { selected_year: number }
+        Returns: undefined
       }
       sync_birthday_appointments: { Args: never; Returns: undefined }
       sync_existing_contact_tags: { Args: never; Returns: undefined }
