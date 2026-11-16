@@ -164,13 +164,12 @@ export default function DeputyDirectory() {
     <Sheet open={profileOpen} onOpenChange={setProfileOpen}>
       <SheetContent side="right" className="deputy-drawer w-full p-0 sm:max-w-5xl" style={{ '--deputy-party': getPartyColor(current?.party || person?.latest?.party || person?.parties[0]) } as CSSProperties} overlayClassName="deputy-drawer-overlay" onCloseAutoFocus={event => { event.preventDefault(); lastTrigger.current?.focus(); }}>
         <SheetClose className="deputy-drawer-close" aria-label="Abgeordnetenprofil schließen"><X size={20} aria-hidden="true" /></SheetClose>
-        <div className="deputy-profile h-full overflow-y-auto">
+        <div className="deputy-profile">
         <div className="deputy-profile-side" style={{ '--deputy-party': getPartyColor(current?.party || person?.parties[0]) } as CSSProperties}>{person && <DeputyPortrait key={person.name_key} connectionId={person.name_key} name={person.name} editable={access.isSuperAdmin} variant="editorial" />}</div>
-        <div className="min-w-0 p-6 pt-12 sm:p-9">
+        <div className="deputy-profile-content" tabIndex={0} role="region" aria-label="Mandatshistorie und Profildetails">
+          <div className="deputy-profile-faction-heading"><strong>{current?.party_label || current?.party || person?.latest?.party || person?.parties.join(' · ')}</strong><span aria-hidden="true" /></div>
           <p className="deputy-caption deputy-profile-kicker" style={{ '--deputy-party': getPartyColor(current?.party || person?.latest?.party || person?.parties[0]) } as CSSProperties}>
-            <i className="deputy-faction-dot" aria-hidden="true" />
-            <span>{current?.party_label || current?.party || person?.latest?.party || person?.parties.join(' · ')}</span>
-            {(current || person?.latest) && <><span aria-hidden="true">·</span><span>{(current?.mandate_type || person?.latest?.mandate_type) === 'direct' ? 'Direktmandat' : 'Listenmandat'}</span></>}
+            {(current || person?.latest) && <span>{(current?.mandate_type || person?.latest?.mandate_type) === 'direct' ? 'Direktmandat' : 'Listenmandat'}</span>}
           </p>
           <SheetTitle className="deputy-heading deputy-profile-name mt-3"><DeputyName name={person?.name || ''} /></SheetTitle>
           <SheetDescription className="mt-4">Mandatshistorie aus freigegebenen Legislaturperioden. Die Striche zeigen dokumentierte Mitgliedschaften, einschließlich Nachrücken.</SheetDescription>

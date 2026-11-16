@@ -40,13 +40,7 @@ export function DeputyPortrait({ connectionId, name, editable, variant = 'defaul
   const metadata = saved?.metadata || query.data || null;
   const src = saved ? previewUrl : metadata ? `${portraitDirectory(connectionId)}${metadata.image}` : '';
   const validConnection = PORTRAIT_ID.test(connectionId);
-  return <section aria-label={`Porträt von ${name}`} className="space-y-3">
-    <div className={editorial ? 'deputy-editorial-portrait' : 'flex flex-wrap items-start gap-4'}>
-      <div className={editorial ? 'deputy-profile-photo' : 'contents'}>
-      {src && !failed ? <img src={src} alt={`Porträt von ${name}`} width={160} height={213} decoding="async" className="aspect-[3/4] w-40 rounded-md border object-cover" onError={() => setFailed(true)} />
-        : <div className="flex aspect-[3/4] w-32 items-center justify-center rounded-md border bg-muted text-muted-foreground" aria-label="Noch kein Porträt vorhanden">{editorial ? <span className="deputy-profile-initials" aria-hidden="true">{name.trim().split(/\s+/).map(part => part[0]).slice(0, 2).join('')}</span> : <UserRound className="h-12 w-12" aria-hidden="true" />}</div>}
-      </div>
-      <div className={editorial ? 'deputy-profile-photo-notes min-w-0 space-y-2 text-sm' : 'min-w-0 flex-1 space-y-2 text-sm'}>
+  const portraitNotes = <>
         {metadata && <div className="space-y-1 text-muted-foreground">
           {metadata.source.label && <p>Quelle: {metadata.source.label}</p>}
           {metadata.source.author && <p>Foto: {metadata.source.author}</p>}
@@ -57,6 +51,21 @@ export function DeputyPortrait({ connectionId, name, editable, variant = 'defaul
         {editable && !validConnection && <p className="text-xs text-muted-foreground">Das Bild kann nach dem Zusammenfassen der Mandatszeiten ergänzt werden.</p>}
         {query.error && <div role="alert"><p className="text-xs">Der Bildnachweis konnte nicht geladen werden.</p><Button size="sm" variant="outline" onClick={() => void query.refetch()}>Erneut laden</Button></div>}
         {saved && <p role="status" className="text-xs text-muted-foreground">In GitHub gespeichert. Die Website zeigt das Bild nach dem nächsten Lovable-Deployment für alle an. Hier siehst du bereits deine Vorschau.</p>}
+  </>;
+  return <section aria-label={`Porträt von ${name}`} className={editorial ? 'deputy-profile-portrait' : 'space-y-3'}>
+    <div className={editorial ? 'deputy-editorial-portrait' : 'flex flex-wrap items-start gap-4'}>
+      <div className={editorial ? 'deputy-profile-photo' : 'contents'}>
+      {src && !failed ? <img src={src} alt={`Porträt von ${name}`} width={160} height={213} decoding="async" className="aspect-[3/4] w-40 rounded-md border object-cover" onError={() => setFailed(true)} />
+        : <div className="flex aspect-[3/4] w-32 items-center justify-center rounded-md border bg-muted text-muted-foreground" aria-label="Noch kein Porträt vorhanden">{editorial ? <span className="deputy-profile-initials" aria-hidden="true">{name.trim().split(/\s+/).map(part => part[0]).slice(0, 2).join('')}</span> : <UserRound className="h-12 w-12" aria-hidden="true" />}</div>}
+      </div>
+      <div className={editorial ? 'deputy-profile-photo-notes min-w-0 space-y-2 text-sm' : 'min-w-0 flex-1 space-y-2 text-sm'}>
+        {editorial ? <>
+          {src && !failed && metadata?.source.author && <p className="deputy-profile-credit">Foto: {metadata.source.author}</p>}
+          <details className="deputy-profile-photo-details">
+            <summary>Bildnachweis{editable ? ' / Bild bearbeiten' : ''}</summary>
+            <div className="deputy-profile-photo-details-content space-y-2">{portraitNotes}</div>
+          </details>
+        </> : portraitNotes}
       </div>
     </div>
     {editing && <DeputyPortraitEditor connectionId={connectionId} name={name} current={metadata} initialImage={saved?.preview} onClose={() => setEditing(false)} onSaved={(next, preview) => { setSaved({ metadata: next, preview }); setFailed(false); setEditing(false); }} />}

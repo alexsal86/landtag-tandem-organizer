@@ -279,19 +279,35 @@
 .deputy-profile {
   display: grid;
   grid-template-columns: minmax(220px, .8fr) minmax(0, 1.6fr);
-  align-content: start;
+  grid-template-rows: minmax(0, 1fr);
+  height: 100%;
+  min-height: 0;
+  overflow: hidden;
   gap: 0;
-  padding-bottom: max(4px, env(safe-area-inset-bottom, 0px));
   background: var(--deputy-surface);
   color: var(--deputy-ink);
 }
 .deputy-profile-side {
   position: relative;
   min-width: 0;
+  min-height: 0;
+  height: 100%;
+  overflow: hidden;
 }
+.deputy-profile-content {
+  min-width: 0;
+  min-height: 0;
+  overflow-y: auto;
+  overscroll-behavior: contain;
+  scrollbar-gutter: stable;
+  padding: 40px 36px max(36px, env(safe-area-inset-bottom, 0px));
+}
+.deputy-profile-portrait,
+.deputy-editorial-portrait { height: 100%; }
+.deputy-editorial-portrait { position: relative; }
 .deputy-profile-photo {
   position: relative;
-  height: min(75dvh, 560px);
+  height: 100%;
   overflow: hidden;
   background: linear-gradient(145deg, #596172, #171b25);
 }
@@ -300,7 +316,7 @@
   position: absolute;
   inset: 0;
   pointer-events: none;
-  background: linear-gradient(to top, var(--deputy-surface) 0%, transparent 42%);
+  background: linear-gradient(to top, #000b 0%, #0002 14%, transparent 30%);
 }
 .deputy-profile-photo img {
   display: block;
@@ -324,7 +340,40 @@
   color: #d7dce080;
   letter-spacing: -.08em;
 }
-.deputy-profile-photo-notes { padding: 0 24px 24px; }
+.deputy-profile-photo-notes {
+  position: absolute;
+  inset: auto 0 0;
+  z-index: 1;
+  margin: 0;
+  padding: 16px 16px max(16px, env(safe-area-inset-bottom, 0px));
+  color: #fff;
+  text-shadow: 0 1px 3px #000;
+}
+.deputy-profile-credit { font-size: 11px; line-height: 1.4; }
+.deputy-profile-photo-details { font-size: 11px; line-height: 1.5; }
+.deputy-profile-photo-details summary { cursor: pointer; }
+.deputy-profile-photo-details-content {
+  max-height: 45dvh;
+  overflow-y: auto;
+  margin-top: 8px;
+  padding: 12px;
+  border-radius: 6px;
+  background: #101116ed;
+  color: #fff;
+  text-shadow: none;
+}
+.deputy-profile-photo-details-content .text-muted-foreground { color: #d1d5db; }
+.deputy-profile-photo-details-content button { color: hsl(var(--foreground)); text-shadow: none; }
+.deputy-profile-faction-heading {
+  display: flex;
+  align-items: center;
+  gap: 18px;
+  padding-right: 28px;
+  margin-bottom: 14px;
+  color: var(--deputy-party);
+}
+.deputy-profile-faction-heading strong { font-size: 26px; font-weight: 800; line-height: 1.2; overflow-wrap: anywhere; }
+.deputy-profile-faction-heading > span { min-width: 24px; height: 2px; flex: 1; background: currentColor; }
 .deputy-profile-kicker { display: flex; flex-wrap: wrap; align-items: center; gap: 9px; }
 .deputy-profile-kicker .deputy-faction-dot { background: var(--deputy-party); }
 .deputy-profile-name .deputy-given-name {
@@ -430,8 +479,11 @@
 .deputy-drawer-overlay[data-state=closed] { animation: deputy-overlay-exit 500ms ease both; }
 @media (max-width: 760px) {
   .deputy-drawer { width: 100%; max-width: none; border-left: 0; }
-  .deputy-profile { grid-template-columns: 1fr; }
-  .deputy-profile-photo { height: 340px; }
+  .deputy-profile { grid-template-columns: 1fr; grid-template-rows: minmax(140px, 32dvh) minmax(0, 1fr); }
+  .deputy-profile-photo img { object-position: 50% 25%; }
+  .deputy-profile-content { padding: 24px 20px max(24px, env(safe-area-inset-bottom, 0px)); }
+  .deputy-profile-faction-heading strong { font-size: 24px; }
+  .deputy-profile-photo-details-content { max-height: 18dvh; }
   .deputy-row { grid-template-columns: 40px minmax(0, 1fr) 60px; gap: 10px; }
   .deputy-row .deputy-party,
   .deputy-row .deputy-card-district { display: none; }
