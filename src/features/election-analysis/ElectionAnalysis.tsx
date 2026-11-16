@@ -16,15 +16,16 @@ import { ballotLabels, ballotsForYear, effectiveBallot, parties, sectionLabels, 
 import type { AnalysisSection, Ballot } from './types';
 
 const ResearchWorkbench = lazy(() => import('./research/ResearchWorkbench'));
-type AnalysisView = AnalysisSection | 'history' | 'flow-matrix' | 'sources' | 'profile' | 'swing' | 'split' | 'quality' | 'turnout-trend' | 'mandates' | 'research';
+type AnalysisView = AnalysisSection | 'history' | 'sources' | 'profile' | 'swing' | 'split' | 'quality' | 'turnout-trend' | 'mandates' | 'research';
 export default function ElectionAnalysis() {
   const reportRoot=useRef<HTMLDivElement|null>(null);
   const years = useAnalysisYears();
   const [params, setParams] = useSearchParams();
-  const rawSection = params.get('analysisSection') || 'state';
+  const legacyMatrix = params.get('analysisSection') === 'flow-matrix';
+  const rawSection = legacyMatrix ? 'flows' : params.get('analysisSection') || 'state';
   const section: AnalysisView = Object.prototype.hasOwnProperty.call(sectionLabels, rawSection) ? rawSection as AnalysisView : 'state';
-  const availableYears = years.data?.filter(y => section === 'flow-matrix' ? y.year === 2006 : ['state', 'history', 'sources', 'turnout'].includes(section) || y.year >= 2006);
-  const requestedYear = Number(params.get('analysisYear'));
+  const availableYears = years.data?.filter(y => ['state', 'history', 'sources', 'turnout'].includes(section) || y.year >= 2006);
+  const requestedYear = Number(params.get('analysisYear') || (legacyMatrix ? 2006 : 0));
   const year = section === 'split' && years.data?.some(y => y.year === 2026) ? 2026 : availableYears?.some(y => y.year === requestedYear) ? requestedYear : availableYears?.[0]?.year || 0;
   const requestedBallot = params.get('analysisBallot');
   const ballot = section === 'history' ? effectiveBallot(year, 'second') : section === 'demographics' && year >= 2026 ? 'second' : effectiveBallot(year, requestedBallot === 'first' || requestedBallot === 'single' ? requestedBallot : 'second');
@@ -45,12 +46,14 @@ export default function ElectionAnalysis() {
       {section !== 'history' && <ReportActions root={reportRoot} title={`${sectionLabels[section]} · Wahlanalyse Baden-Württemberg${section === 'mandates' || (section === 'research' && params.get('researchTool') === 'saved') ? '' : ` ${year || ''}${section === 'research' && params.get('researchTool') === 'seats' ? ' · Erst-/Zweitstimmen' : ['flows', 'flow-matrix', 'sources', 'history'].includes(section) || (section === 'research' && params.get('researchTool') === 'flows') ? ' · Landesebene' : ` · ${ballotLabels[ballot]}`}`}`} />}
       {year > 0 && <div key={`${section}:${year}:${ballot}:${party}:${gender}`}>
         {section === 'history' && <StateHistoryPanel year={year} years={availableYears?.map(y => y.year) || []} />}
-        {section === 'flow-matrix' && <FlowMatrixPanel year={year} />}
         {section === 'sources' && <WorkbookAuditPanel year={year} />}
         {section === 'state' && <StatePanel {...selection} years={availableYears?.map(y => y.year) || []} />}
         {section === 'districts' && <DistrictPanel {...selection} />}
         {section === 'turnout' && <TurnoutPanel {...selection} />}
-        {section === 'flows' && <FlowPanel {...selection} />}
+        {section === 'flows' && <div className="space-y-6">
+          <section aria-labelledby="flow-party-heading"><h2 id="flow-party-heading" className="mb-3 text-lg font-semibold">Wanderung nach Zielpartei</h2><FlowPanel {...selection} /></section>
+          <section aria-labelledby="flow-matrix-heading"><h2 id="flow-matrix-heading" className="mb-3 text-lg font-semibold">Vollständige Wanderungsmatrix</h2>{year === 2006 ? <FlowMatrixPanel year={year} /> : <StatusNote>Für die Wahl {year} liegt keine vollständige Wanderungsmatrix vor. Für die Wahl 2006 kann hier zusätzlich die Matrix für 2001 → 2006 angezeigt werden.</StatusNote>}</section>
+        </div>}
         {section === 'demographics' && <DemographicPanel {...selection} />}
         {(['profile','swing','split','quality','turnout-trend','mandates','research'] as string[]).includes(section) && <Suspense fallback={<p role="status">Analysemodul lädt …</p>}><ResearchWorkbench section={section as 'profile'|'swing'|'split'|'quality'|'turnout-trend'|'mandates'|'research'} {...selection} years={availableYears?.map(y => y.year) || []} /></Suspense>}
       </div>}
@@ -115,7 +118,7 @@ function TurnoutPanel({ year, ballot, party, gender }: PanelProps) {
   const [search, setSearch] = useState('');
   const totalQuery = useStateTotal(year, ballot);
   const total = totalQuery.data ? stateTotalMetrics(totalQuery.data) : null;
-  const all = query.data || [];
+  const all = (query.data || []).map(row => ({ ...row, invalid_votes: row.voters !== null && row.valid_votes !== null && row.voters >= row.valid_votes ? row.voters - row.valid_votes : null }));
   const complete = all.length === 70 && all.every(r => r.eligible !== null && r.voters !== null);
   const eligible = complete ? all.reduce((sum, r) => sum + (r.eligible || 0), 0) : null;
   const voters = complete ? all.reduce((sum, r) => sum + (r.voters || 0), 0) : null;
@@ -130,8 +133,8 @@ function TurnoutPanel({ year, ballot, party, gender }: PanelProps) {
     <h2 className="text-lg font-semibold">Wahlkreisdaten · {year}</h2>
     <DataState loading={query.isLoading} error={query.error} empty={!all.length} retry={() => void query.refetch()}>
       <div className="grid gap-3 sm:grid-cols-3">{[['Wahlberechtigte', number(eligible)], ['Wählende', number(voters)], ['Beteiligung aus 70 Wahlkreisen', eligible && voters !== null ? percent(voters / eligible * 100) : 'Nicht vollständig erfasst']].map(([label, value]) => <Card key={label}><CardContent className="pt-5"><p className="text-xs text-muted-foreground">{label}</p><p className="mt-1 text-xl font-semibold">{value}</p></CardContent></Card>)}</div>
-      <AnalysisControls><Input className="max-w-sm" aria-label="Wahlkreis filtern" placeholder="Wahlkreisname oder Nummer …" value={search} onChange={event => setSearch(event.target.value)} /><Button variant="outline" onClick={() => exportAnalysisCsv(rows.map(r => ({ Wahljahr: year, Stimmenart: ballotLabels[ballot], Wahlkreis: r.district_name, Nummer: r.district_number, Wahlberechtigte: r.eligible, Waehlende: r.voters, Beteiligung_Prozent: r.turnout, Gueltige_Stimmen: r.valid_votes, Vorlaeufig: r.preliminary, Hinweis: r.notes })), `Wahlbeteiligung-${year}.csv`)}>CSV exportieren</Button></AnalysisControls>
-      <DataTable key={search} headers={['Nr.', 'Wahlkreis', 'Wahlberechtigte', 'Wählende', 'Beteiligung', 'Gültige Stimmen', 'Hinweis']} sortableColumns={[0, 1, 2, 3, 4, 5]} sortValues={rows.map(r => [r.district_number, r.district_name, r.eligible, r.voters, r.turnout, r.valid_votes])} rows={rows.map(r => [number(r.district_number), r.district_name, number(r.eligible), number(r.voters), percent(r.turnout), number(r.valid_votes), r.notes || '—'])} />
+      <AnalysisControls><Input className="max-w-sm" aria-label="Wahlkreis filtern" placeholder="Wahlkreisname oder Nummer …" value={search} onChange={event => setSearch(event.target.value)} /><Button variant="outline" onClick={() => exportAnalysisCsv(rows.map(r => ({ Wahljahr: year, Stimmenart: ballotLabels[ballot], Wahlkreis: r.district_name, Nummer: r.district_number, Wahlberechtigte: r.eligible, Waehlende: r.voters, Beteiligung_Prozent: r.turnout, Gueltige_Stimmen: r.valid_votes, Ungueltige_Stimmen: r.invalid_votes, Vorlaeufig: r.preliminary })), `Wahlbeteiligung-${year}.csv`)}>CSV exportieren</Button></AnalysisControls>
+      <DataTable key={search} headers={['Nr.', 'Wahlkreis', 'Wahlberechtigte', 'Wählende', 'Beteiligung', 'Gültige Stimmen', 'Ungültige Stimmen']} sortableColumns={[0, 1, 2, 3, 4, 5, 6]} sortValues={rows.map(r => [r.district_number, r.district_name, r.eligible, r.voters, r.turnout, r.valid_votes, r.invalid_votes])} rows={rows.map(r => [number(r.district_number), r.district_name, number(r.eligible), number(r.voters), percent(r.turnout), number(r.valid_votes), number(r.invalid_votes)])} />
     </DataState>
   </div>;
 }
