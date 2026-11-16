@@ -30,33 +30,47 @@ BEGIN
  RETURN NEW;
 END $function$;
 
-CREATE OR REPLACE FUNCTION public.auto_link_analysis_history_district() RETURNS trigger
-LANGUAGE plpgsql SET search_path=public AS $function$
+-- Assign and validate in ONE trigger. Separate BEFORE triggers previously
+-- allowed the assignment and deployed validation functions to disagree.
+DROP TRIGGER IF EXISTS a_analysis_history_auto_link ON public.election_analysis_versions;
+CREATE OR REPLACE FUNCTION public.guard_analysis_version_link() RETURNS trigger
+LANGUAGE plpgsql VOLATILE SET search_path=public AS $function$
 DECLARE matching_id uuid;
 BEGIN
- -- Regional 1952 relationships require their existing explicit mapping.
- IF NEW.year=1952 THEN RETURN NEW; END IF;
- matching_id:=public.match_analysis_history_district(NEW.year,NEW.district_number);
- IF matching_id IS NOT NULL AND (NEW.historical_district_id IS NULL OR NEW.historical_district_id=matching_id) THEN
-   NEW.historical_district_id:=matching_id;
-   NEW.history_link_verified:=true;
- ELSIF NEW.history_link_verified AND NOT EXISTS (
+ IF NEW.year<>1952 THEN
+   SELECT h.id INTO matching_id
+   FROM public.election_analysis_years y
+   JOIN public.election_history_periods p ON p.id=y.period_id
+     AND p.number=y.period_number AND p.election_year=y.year
+   JOIN public.election_history_districts h ON h.period_id=p.id
+   WHERE y.year=NEW.year AND h.district_number=NEW.district_number;
+   IF matching_id IS NOT NULL AND (NEW.historical_district_id IS NULL OR NEW.historical_district_id=matching_id) THEN
+     NEW.historical_district_id:=matching_id;
+     NEW.history_link_verified:=true;
+   END IF;
+ END IF;
+ IF NEW.history_link_verified AND NOT EXISTS (
    SELECT 1 FROM public.election_history_districts h
    JOIN public.election_history_periods p ON p.id=h.period_id
-   JOIN public.election_analysis_years y ON y.period_id=p.id AND y.year=NEW.year
+   JOIN public.election_analysis_years y ON y.year=NEW.year AND y.period_id=p.id
    WHERE h.id=NEW.historical_district_id AND h.district_number=NEW.district_number
      AND p.number=y.period_number AND (p.election_year IS NULL OR p.election_year=y.year)
  ) THEN
-   -- Preserve conflicting pointers for review, but never publish a stale link.
-   NEW.history_link_verified:=false;
+   RAISE EXCEPTION 'Historischer Wahlkreis passt nicht zur verknüpften Wahlperiode/Nummer (Jahr %, Nummer %, Historien-ID %)',
+     NEW.year,NEW.district_number,NEW.historical_district_id;
+ END IF;
+ -- Preserve the original, independent geometry validation in full.
+ IF NEW.geography_id IS NOT NULL AND NOT EXISTS(SELECT 1 FROM public.election_analysis_geographies g WHERE g.id=NEW.geography_id AND g.year=NEW.year) THEN
+   RAISE EXCEPTION 'Geometriejahr passt nicht zur Wahlkreisversion';
+ END IF;
+ IF NEW.identity_key IS NOT NULL AND NOT EXISTS(SELECT 1 FROM public.election_analysis_geographies g WHERE g.id=NEW.geography_id AND g.verified) THEN
+   RAISE EXCEPTION 'Geometrie ist nicht verifiziert';
  END IF;
  RETURN NEW;
 END $function$;
-DROP TRIGGER IF EXISTS a_analysis_history_auto_link ON public.election_analysis_versions;
-CREATE TRIGGER a_analysis_history_auto_link
- BEFORE INSERT OR UPDATE OF year,district_number,historical_district_id,history_link_verified
- ON public.election_analysis_versions FOR EACH ROW
- EXECUTE FUNCTION public.auto_link_analysis_history_district();
+DROP TRIGGER IF EXISTS guard_analysis_version_link ON public.election_analysis_versions;
+CREATE TRIGGER guard_analysis_version_link BEFORE INSERT OR UPDATE
+ ON public.election_analysis_versions FOR EACH ROW EXECUTE FUNCTION public.guard_analysis_version_link();
 
 CREATE OR REPLACE FUNCTION public.sync_analysis_history_links(selected_year integer)
 RETURNS void LANGUAGE plpgsql SECURITY INVOKER SET search_path=public AS $function$
@@ -64,8 +78,8 @@ BEGIN
  IF selected_year=1952 THEN RETURN; END IF;
  -- Create missing metadata, including when history was imported after results.
  -- This creates no votes, candidates, mandates or cross-year geometry claims.
- INSERT INTO public.election_analysis_versions(year,district_number,district_name)
- SELECT y.year,h.district_number,h.name FROM public.election_analysis_years y
+ INSERT INTO public.election_analysis_versions(year,district_number,district_name,historical_district_id,history_link_verified)
+ SELECT y.year,h.district_number,h.name,h.id,true FROM public.election_analysis_years y
  JOIN public.election_history_periods p ON p.id=y.period_id
    AND p.number=y.period_number AND p.election_year=y.year
  JOIN public.election_history_districts h ON h.period_id=p.id
@@ -94,18 +108,31 @@ END $function$;
 REVOKE ALL ON FUNCTION public.sync_analysis_history_links(integer) FROM PUBLIC;
 GRANT EXECUTE ON FUNCTION public.sync_analysis_history_links(integer) TO authenticated, service_role;
 
+-- Synchronize only AFTER the whole year INSERT/UPDATE has completed.
+-- Transition tables provide the affected years without NEW/OLD row timing.
 CREATE OR REPLACE FUNCTION public.sync_analysis_history_on_year() RETURNS trigger
 LANGUAGE plpgsql SET search_path=public AS $function$
+DECLARE affected_year integer;
 BEGIN
- PERFORM public.sync_analysis_history_links(NEW.year);
- IF TG_OP='UPDATE' AND OLD.year IS DISTINCT FROM NEW.year THEN
-   PERFORM public.sync_analysis_history_links(OLD.year);
+ FOR affected_year IN SELECT DISTINCT changed.year FROM changed_analysis_years changed
+ LOOP PERFORM public.sync_analysis_history_links(affected_year); END LOOP;
+ IF TG_OP='UPDATE' THEN
+   FOR affected_year IN
+     SELECT previous.year FROM previous_analysis_years previous
+     EXCEPT SELECT changed.year FROM changed_analysis_years changed
+   LOOP PERFORM public.sync_analysis_history_links(affected_year); END LOOP;
  END IF;
  RETURN NULL;
 END $function$;
 DROP TRIGGER IF EXISTS sync_analysis_history_year ON public.election_analysis_years;
-CREATE TRIGGER sync_analysis_history_year AFTER INSERT OR UPDATE OF year,period_number,period_id
- ON public.election_analysis_years FOR EACH ROW EXECUTE FUNCTION public.sync_analysis_history_on_year();
+DROP TRIGGER IF EXISTS sync_analysis_history_year_insert ON public.election_analysis_years;
+DROP TRIGGER IF EXISTS sync_analysis_history_year_update ON public.election_analysis_years;
+CREATE TRIGGER sync_analysis_history_year_insert AFTER INSERT ON public.election_analysis_years
+ REFERENCING NEW TABLE AS changed_analysis_years
+ FOR EACH STATEMENT EXECUTE FUNCTION public.sync_analysis_history_on_year();
+CREATE TRIGGER sync_analysis_history_year_update AFTER UPDATE ON public.election_analysis_years
+ REFERENCING OLD TABLE AS previous_analysis_years NEW TABLE AS changed_analysis_years
+ FOR EACH STATEMENT EXECUTE FUNCTION public.sync_analysis_history_on_year();
 
 CREATE OR REPLACE FUNCTION public.sync_analysis_history_on_district() RETURNS trigger
 LANGUAGE plpgsql SET search_path=public AS $function$

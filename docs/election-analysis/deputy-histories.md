@@ -127,3 +127,18 @@ Block `20261116233000_auto_link_election_history_districts.sql` erneut ausführe
 Für bereits installierte Datenbanken repariert die eigenständige Folgemigration
 `20261116233100_fix_history_district_match_arguments.sql` den Matcher und führt
 die Zuordnung erneut aus.
+
+### Reparatur der vollständigen Triggerkette
+
+`20261116233200_repair_history_link_trigger_chain.sql` ist eine eigenständige,
+wiederholbare Reparatur einschließlich aller Funktionen und Trigger. Sie kann
+auch nach einer vollständig zurückgerollten Erstinstallation ausgeführt werden.
+Die ursprüngliche Migration enthält dieselbe überarbeitete Implementierung.
+
+Die Verknüpfung und ihre Prüfung laufen jetzt gemeinsam in
+`guard_analysis_version_link`, statt in getrennten BEFORE-Triggern. Die
+Geometrieprüfungen bleiben vollständig erhalten. Neue Analyseversionen erhalten
+die konkrete historische UUID direkt aus dem Join, der ihre Metadaten liefert.
+Die Synchronisierung der Analysejahre läuft über AFTER-STATEMENT-Trigger mit
+Transitionstabellen, nachdem die gesamte INSERT-/UPDATE-Anweisung abgeschlossen
+ist. Fehler enthalten zusätzlich Wahljahr, Wahlkreisnummer und historische UUID.
