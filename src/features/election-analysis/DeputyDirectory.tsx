@@ -162,7 +162,7 @@ export default function DeputyDirectory() {
     </div>
     <nav aria-label="Abgeordnetenseiten" className="flex flex-wrap items-center justify-between gap-3 border-t pt-4"><p className="text-xs text-muted-foreground">Seite {offset / 25 + 1} · alphabetisch nach Namen</p><div className="flex gap-2"><Button variant="outline" disabled={directory.isFetching || offset === 0} onClick={() => setOffset(value => Math.max(0, value - 25))}>Zurück</Button><Button variant="outline" disabled={directory.isFetching || !directory.data || directory.data.length <= 25} onClick={() => setOffset(value => value + 25)}>Weitere 25</Button></div></nav>
     <Sheet open={profileOpen} onOpenChange={setProfileOpen}>
-      <SheetContent side="right" className="deputy-drawer w-full p-0 sm:max-w-5xl" overlayClassName="deputy-drawer-overlay" onCloseAutoFocus={event => { event.preventDefault(); lastTrigger.current?.focus(); }}>
+      <SheetContent side="right" className="deputy-drawer w-full p-0 sm:max-w-5xl" style={{ '--deputy-party': getPartyColor(current?.party || person?.latest?.party || person?.parties[0]) } as CSSProperties} overlayClassName="deputy-drawer-overlay" onCloseAutoFocus={event => { event.preventDefault(); lastTrigger.current?.focus(); }}>
         <SheetClose className="deputy-drawer-close" aria-label="Abgeordnetenprofil schließen"><X size={20} aria-hidden="true" /></SheetClose>
         <div className="deputy-profile h-full overflow-y-auto">
         <div className="deputy-profile-side" style={{ '--deputy-party': getPartyColor(current?.party || person?.parties[0]) } as CSSProperties}>{person && <DeputyPortrait key={person.name_key} connectionId={person.name_key} name={person.name} editable={access.isSuperAdmin} variant="editorial" />}</div>
