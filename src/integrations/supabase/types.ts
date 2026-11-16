@@ -17981,6 +17981,10 @@ export type Database = {
         Args: { election_district: number; election_year: number }
         Returns: string
       }
+      merge_election_history_deputies: {
+        Args: { source_key: string; target_key: string }
+        Returns: string
+      }
       merge_responsibility_catalog: {
         Args: {
           p_kind: string
