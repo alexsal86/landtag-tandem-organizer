@@ -1,4 +1,4 @@
-type DeputyIdentity = { id: string; person_id: string | null; connection_id?: string | null };
+type DeputyIdentity = { id: string; person_id: string | null; connection_id?: string | null; ends_on?: string | null };
 
 /** Explicit selection can extend one connection, never overwrite existing identities or groups. */
 export function canConfirmDeputySelection(rows: readonly DeputyIdentity[], selected: readonly string[]) {

@@ -1,6 +1,7 @@
 import { useState } from 'react';
 import { useSearchParams } from 'react-router-dom';
 import { CartesianGrid, Legend, Line, LineChart, ResponsiveContainer, Tooltip, XAxis, YAxis } from 'recharts';
+import type { AxisDomain } from 'recharts/types/util/types';
 import { Button } from '@/components/ui/button';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 import { AnalysisControls } from './AnalysisToolbar';
@@ -31,6 +32,7 @@ export function StateHistoryPanel({ year, years }: {
       ...parties.map(p => ({ key: p, label: p, color: chartColor(p) })),
     ];
     const showParties = parties.some(p => selectedMetrics.includes(p));
+    const percentageDomain: AxisDomain = [0, (max: number) => Math.ceil((max + 5) / 5) * 5];
     return <div className="space-y-4">
     <AnalysisControls>
       <Selection id="history-from" label="Zeitreihe ab Wahl" value={String(from)} onChange={v => setParams(old => { const next = new URLSearchParams(old); next.set('historyFrom', v); return next; })}>{ordered.filter(y => y <= year).map(y => <option key={y} value={y}>{y}</option>)}</Selection>
@@ -41,7 +43,7 @@ export function StateHistoryPanel({ year, years }: {
     </fieldset>
     <DataState loading={query.isLoading} error={query.error} empty={!totals.length} retry={() => void query.refetch()}>
       <Card><CardHeader><CardTitle className="text-lg">Vergangene Wahlen · {from}–{year}</CardTitle></CardHeader><CardContent>
-        {selectedMetrics.length ? <div className="h-96" role="img" aria-label="Gemeinsame Zeitreihe der ausgewählten Prozentwerte; genaue Werte folgen in den Tabellen"><ResponsiveContainer><LineChart data={rows} margin={{ top: 24, left: 10, right: 24, bottom: 10 }}><CartesianGrid strokeDasharray="3 3"/><XAxis dataKey="year"/><YAxis unit=" %" domain={[0, (max: number) => Math.ceil((max + 5) / 5) * 5]} tickFormatter={v => number(Number(v))}/><Tooltip formatter={v => percent(typeof v === 'number' ? v : null)}/><Legend />
+        {selectedMetrics.length ? <div className="h-96" role="img" aria-label="Gemeinsame Zeitreihe der ausgewählten Prozentwerte; genaue Werte folgen in den Tabellen"><ResponsiveContainer><LineChart data={rows} margin={{ top: 24, left: 10, right: 24, bottom: 10 }}><CartesianGrid strokeDasharray="3 3"/><XAxis dataKey="year"/><YAxis unit=" %" domain={percentageDomain} tickFormatter={v => number(Number(v))}/><Tooltip formatter={v => percent(typeof v === 'number' ? v : null)}/><Legend />
           {metrics.filter(metric => selectedMetrics.includes(metric.key)).map(metric => <Line key={metric.key} dataKey={metric.key} name={metric.label} stroke={metric.color} strokeWidth={2} connectNulls={false}/>)}
         </LineChart></ResponsiveContainer></div> : <p className="py-12 text-center text-sm text-muted-foreground">Bitte mindestens eine Datenreihe auswählen.</p>}
       </CardContent></Card>
