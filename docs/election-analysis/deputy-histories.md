@@ -49,3 +49,22 @@ Wahlkreisgrenzen über verschiedene Jahre; Nummern allein reichen dafür nicht.
 Ein Git-Push wendet keine Supabase-Migration an. Die Migration muss über den
 Datenbank-Deploymentprozess eingespielt werden. Ohne Datenbankzugang lässt sich
 der Live-Stand nicht aus dem Repository bestätigen.
+
+## Wiederholung nach einem Überlappungsfehler
+
+Die überarbeitete Migration `20261116220000_complete_reviewed_deputy_histories.sql`
+setzt die beiden Datumstrigger vor der Zusammenführung auf fachlich relevante
+Spalten. Eine Änderung nur an `connection_id` löst weder Datumsvererbung noch
+Überlappungsprüfung aus. Das funktioniert auch, wenn auf der Datenbank noch ältere
+Versionen der Triggerfunktionen installiert sind. Neue Mandate und Änderungen an
+Person, Kandidatur, Wahlkreis, Mandatsart, Eintritt, Datumswerten,
+Vererbungskennzeichen, vorzeitigem Ausscheiden oder Notizen werden weiterhin
+geprüft. Audit und Berechtigungen bleiben aktiv.
+
+Ist die Zusammenführung mit einem Fehler abgebrochen, die vollständige korrigierte
+Migration erneut ausführen. Sie enthält eine Transaktion; eine fehlgeschlagene
+Transaktion muss zuerst zurückgerollt werden (`ROLLBACK;`, falls die SQL-Sitzung
+noch den Zustand „transaction is aborted“ meldet).
+Für bereits erfolgreich migrierte Installationen liefert
+`20261116230000_scope_mandate_date_trigger_events.sql` dieselbe Triggerkorrektur
+als eigene Folgemigration.

@@ -1,4 +1,22 @@
 BEGIN;
+-- Connection-only updates must not inherit or validate mandate dates.
+-- Restrict trigger events rather than relying on a particular deployed version
+-- of the trigger functions. INSERT and all date/identity/candidacy edits retain
+-- inheritance followed by full validation; audit and RLS remain active.
+DROP TRIGGER IF EXISTS a_election_history_inherit_dates ON public.election_history_mandates;
+CREATE TRIGGER a_election_history_inherit_dates
+BEFORE INSERT OR UPDATE OF period_id,person_id,district_id,candidacy_id,
+  mandate_type,entry_type,starts_on,ends_on,start_from_period,end_from_period,left_early,notes
+ON public.election_history_mandates
+FOR EACH ROW EXECUTE FUNCTION public.inherit_election_mandate_dates();
+
+DROP TRIGGER IF EXISTS election_history_mandate_dates ON public.election_history_mandates;
+CREATE TRIGGER election_history_mandate_dates
+BEFORE INSERT OR UPDATE OF period_id,person_id,district_id,candidacy_id,
+  mandate_type,entry_type,starts_on,ends_on,start_from_period,end_from_period,left_early,notes
+ON public.election_history_mandates
+FOR EACH ROW EXECUTE FUNCTION public.guard_election_history_dates();
+
 -- User-authorized, source-scoped consolidation of the supplied member workbook.
 -- These exact imported mandate IDs belong to 1,049 histories (2,542 mandates).
 -- Party changes and gaps do not create a different person. No person_id, dates,
@@ -2592,7 +2610,7 @@ END $$;
 
 -- Use one trigger and one lock convention for future imports. A known person's
 -- history also survives a party change. Ambiguous names remain separate.
-DROP TRIGGER b_election_history_connect_matching ON public.election_history_mandates;
+DROP TRIGGER IF EXISTS b_election_history_connect_matching ON public.election_history_mandates;
 CREATE OR REPLACE FUNCTION public.assign_election_mandate_connection() RETURNS trigger
 LANGUAGE plpgsql SET search_path=public AS $$
 DECLARE display_name text; targets uuid[];
@@ -2627,4 +2645,9 @@ BEGIN
  NEW.connection_id:=CASE WHEN cardinality(targets)=1 THEN targets[1] ELSE gen_random_uuid() END;
  RETURN NEW;
 END $$;
+DROP TRIGGER IF EXISTS election_history_assign_connection ON public.election_history_mandates;
+CREATE TRIGGER election_history_assign_connection
+BEFORE INSERT OR UPDATE OF person_name,person_id,party,party_label
+ON public.election_history_mandates
+FOR EACH ROW EXECUTE FUNCTION public.assign_election_mandate_connection();
 COMMIT;
