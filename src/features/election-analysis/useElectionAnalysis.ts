@@ -1,4 +1,4 @@
-import { parties as focusParties } from './model';
+import { effectiveBallot, parties as focusParties } from './model';
 import { useQuery, type UseQueryResult } from '@tanstack/react-query';
 import { supabase } from '@/integrations/supabase/client';
 import { useAuth } from '@/hooks/useAuth';
@@ -35,6 +35,23 @@ export function useAnalysisRows<K extends AnalysisSection>(section: K, year: num
       return (result.data || []) as unknown as AnalysisRows[K][];
     }, staleTime: 60_000, gcTime: 120_000, retry: false });
 }
+/** Load only published elections inside the explicitly selected comparison interval. */
+export function useStateComparisonSeries(years: number[], ballot: Ballot, enabled: boolean) {
+  const { user } = useAuth();
+  return useQuery({
+    queryKey: ['election-state-comparison-series', user?.id, years, ballot],
+    enabled: !!user && enabled && years.length > 0,
+    queryFn: async ({ signal }) => Promise.all(years.map(async year => {
+      const { data, error } = await supabase.from('election_analysis_state').select('*')
+        .eq('year', year).eq('ballot', effectiveBallot(year, ballot)).in('party', focusParties)
+        .order('party').limit(100).abortSignal(signal);
+      if (error) throw error;
+      return { year, ...Object.fromEntries(focusParties.map(p => [p, data?.find(row => row.party === p)?.share ?? null])) };
+    })),
+    staleTime: 60_000, gcTime: 120_000, retry: false,
+  });
+}
+
 export function analysisError(error: unknown): string {
   if (typeof error === 'object' && error !== null && 'code' in error && (error.code === '42P01' || error.code === 'PGRST205' || error.code === 'PGRST202')) return 'Die Wahlanalyse ist noch nicht in der Datenbank eingerichtet. Bitte die neuen Migrationen einspielen.';
   return 'Die Analysedaten konnten nicht geladen werden. Bitte erneut versuchen.';

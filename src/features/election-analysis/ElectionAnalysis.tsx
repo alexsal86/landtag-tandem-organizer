@@ -11,7 +11,7 @@ import { Bar, BarChart, CartesianGrid, Cell, Legend, Line, LineChart, ReferenceL
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
-import { useAnalysisRows, useAnalysisYears, analysisError } from './useElectionAnalysis';
+import { useAnalysisRows, useAnalysisYears, useStateComparisonSeries, analysisError } from './useElectionAnalysis';
 import { ballotLabels, ballotsForYear, effectiveBallot, parties, sectionLabels, percent, number, difference, stateComparison, compareAnalysisValues, exportAnalysisCsv } from './model';
 import type { AnalysisSection, Ballot } from './types';
 
@@ -79,20 +79,20 @@ function StatePanel({ year, ballot, party, gender, years }: PanelProps & { years
   const rows = stateComparison(query.data || [], previous.data || []).sort((a, b) =>
     compareAnalysisValues(a.share, b.share, 'desc') || compareAnalysisValues(a.votes, b.votes, 'desc') || a.party.localeCompare(b.party, 'de')
   );
-  const comparisonParties = Array.from(new Set([...(query.data || []), ...(previous.data || [])].map(row => row.party)));
-  const comparisonRows = previousYear > 0 ? [
-    { year: previousYear, ...Object.fromEntries(comparisonParties.map(p => [p, previous.data?.find(row => row.party === p)?.share ?? null])) },
-    { year, ...Object.fromEntries(comparisonParties.map(p => [p, query.data?.find(row => row.party === p)?.share ?? null])) },
-  ].sort((a, b) => a.year - b.year) : [];
   const showLineChart = previousYear > 0 && chartType === 'line';
+  const comparisonYears = previousYear > 0 ? years.filter(y => y >= Math.min(year, previousYear) && y <= Math.max(year, previousYear)).sort((a, b) => a - b) : [];
+  const series = useStateComparisonSeries(comparisonYears, ballot, showLineChart);
+  const comparisonRows = series.data || [];
   return <div className="space-y-4">
     <AnalysisControls><Selection id="analysis-compare" label="Mit Wahl vergleichen" value={String(previousYear)} onChange={value => { setPreviousYear(Number(value)); if (value === '0') setChartType('bar'); }}><option value="0">Kein Vergleich</option>{years.filter(y => y !== year).map(y => <option key={y} value={y}>{y} · {ballotLabels[effectiveBallot(y, ballot)]}</option>)}</Selection></AnalysisControls>
     {previousYear > 0 && previous.isLoading && <p role="status" className="text-sm">Lade Vergleichswahl …</p>}
     {previous.error && <p role="alert" className="text-sm">Die Vergleichswahl konnte nicht geladen werden.</p>}
     <DataState loading={query.isLoading} error={query.error} empty={!rows.length} retry={() => void query.refetch()}>
       <div className="grid items-start gap-4 xl:grid-cols-2">
-        <Card className="min-w-0"><CardHeader><CardTitle className="text-lg">Parteianteile · {year}</CardTitle>{previousYear > 0 && <div className="flex flex-wrap gap-2" role="group" aria-label="Diagrammtyp">{[['bar', 'Balkendiagramm'], ['line', 'Liniendiagramm']].map(([value, label]) => <Button key={value} variant={chartType === value ? 'default' : 'outline'} aria-pressed={chartType === value} onClick={() => setChartType(value)}>{label}</Button>)}</div>}</CardHeader><CardContent>
-          <div className="h-72" role="img" aria-label="Parteianteile in Prozent; genaue Werte stehen in der Ergebnistabelle"><ResponsiveContainer>{showLineChart ? <LineChart data={comparisonRows} margin={{ top: 24, right: 20 }}><CartesianGrid strokeDasharray="3 3" vertical={false} /><XAxis dataKey="year" type="number" domain={['dataMin', 'dataMax']} ticks={comparisonRows.map(row => row.year)} allowDecimals={false} padding={{ left: 20, right: 20 }} /><YAxis unit=" %" domain={[0, (max: number) => Math.ceil(max + 5)]} /><Tooltip labelFormatter={value => `Wahl ${value}`} formatter={value => percent(typeof value === 'number' ? value : null)} /><Legend />{comparisonParties.map(p => <Line key={p} dataKey={p} name={p} stroke={chartColor(p)} strokeWidth={2} connectNulls={false} />)}</LineChart> : <BarChart data={rows} margin={{ top: 24 }}><CartesianGrid strokeDasharray="3 3" vertical={false} /><XAxis dataKey="party" /><YAxis unit=" %" /><Tooltip formatter={value => percent(typeof value === 'number' ? value : null)} /><Bar dataKey="share" name={String(year)} label={stateShareLabel}>{rows.map(r => <Cell key={r.party} fill={chartColor(r.party)} />)}</Bar>{previousYear > 0 && <Bar dataKey="previousShare" fill="#a8ae9e" name={String(previousYear)} label={stateShareLabel} />}{previousYear > 0 && <Legend />}</BarChart>}</ResponsiveContainer></div>
+        <Card className="min-w-0"><CardHeader><CardTitle className="text-lg">Parteianteile · {showLineChart ? `${Math.min(year, previousYear)}–${Math.max(year, previousYear)}` : year}</CardTitle>{previousYear > 0 && <div className="flex flex-wrap gap-2" role="group" aria-label="Diagrammtyp">{[['bar', 'Balkendiagramm'], ['line', 'Liniendiagramm']].map(([value, label]) => <Button key={value} variant={chartType === value ? 'default' : 'outline'} aria-pressed={chartType === value} onClick={() => setChartType(value)}>{label}</Button>)}</div>}</CardHeader><CardContent>
+          <DataState loading={showLineChart && series.isLoading} error={showLineChart ? series.error : null} empty={showLineChart && !comparisonRows.length} retry={() => void series.refetch()}>
+          <div className="h-72" role="img" aria-label="Parteianteile in Prozent; genaue Werte stehen in der Ergebnistabelle"><ResponsiveContainer>{showLineChart ? <LineChart data={comparisonRows} margin={{ top: 24, right: 20 }}><CartesianGrid strokeDasharray="3 3" vertical={false} /><XAxis dataKey="year" type="number" domain={['dataMin', 'dataMax']} ticks={comparisonRows.map(row => row.year)} interval={0} allowDecimals={false} padding={{ left: 20, right: 20 }} /><YAxis unit=" %" domain={[0, (max: number) => Math.ceil(max + 5)]} /><Tooltip labelFormatter={value => `Wahl ${value}`} formatter={value => percent(typeof value === 'number' ? value : null)} /><Legend />{parties.map(p => <Line key={p} dataKey={p} name={p} stroke={chartColor(p)} strokeWidth={2} connectNulls={false} />)}</LineChart> : <BarChart data={rows} margin={{ top: 24 }}><CartesianGrid strokeDasharray="3 3" vertical={false} /><XAxis dataKey="party" /><YAxis unit=" %" /><Tooltip formatter={value => percent(typeof value === 'number' ? value : null)} /><Bar dataKey="share" name={String(year)} label={stateShareLabel}>{rows.map(r => <Cell key={r.party} fill={chartColor(r.party)} />)}</Bar>{previousYear > 0 && <Bar dataKey="previousShare" fill="#a8ae9e" name={String(previousYear)} label={stateShareLabel} />}{previousYear > 0 && <Legend />}</BarChart>}</ResponsiveContainer></div>
+          </DataState>
         </CardContent></Card>
         <div className="min-w-0 space-y-4"><div className="[&_tbody]:bg-white"><DataTable headers={['Partei', 'Stimmen', 'Anteil', 'Sitze', ...(previousYear ? ['Vergleichsanteil', 'Änderung'] : [])]} rows={rows.map(r => [<PartyLabel party={r.party} />, number(r.votes), percent(r.share), number(r.seats), ...(previousYear ? [percent(r.previousShare), difference(r.share, r.previousShare)] : [])])} /></div>
           <StateSeatDistribution rows={rows} year={year} ballot={ballot} />
