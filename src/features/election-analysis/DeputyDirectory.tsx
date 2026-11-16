@@ -6,7 +6,7 @@ import { useAuth } from '@/hooks/useAuth';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
 import { Label } from '@/components/ui/label';
-import { Sheet, SheetClose, SheetContent, SheetDescription, SheetTitle } from '@/components/ui/sheet';
+import { Sheet, SheetClose, SheetContent, SheetTitle } from '@/components/ui/sheet';
 import { getPartyColor } from '@/features/election-districts/partyColors';
 import { historyError, useElectionPeriods } from '@/features/election-history/useElectionHistory';
 import { formatMandateDateRange } from '@/features/election-history/model';
@@ -162,7 +162,7 @@ export default function DeputyDirectory() {
     </div>
     <nav aria-label="Abgeordnetenseiten" className="flex flex-wrap items-center justify-between gap-3 border-t pt-4"><p className="text-xs text-muted-foreground">Seite {offset / 25 + 1} · alphabetisch nach Namen</p><div className="flex gap-2"><Button variant="outline" disabled={directory.isFetching || offset === 0} onClick={() => setOffset(value => Math.max(0, value - 25))}>Zurück</Button><Button variant="outline" disabled={directory.isFetching || !directory.data || directory.data.length <= 25} onClick={() => setOffset(value => value + 25)}>Weitere 25</Button></div></nav>
     <Sheet open={profileOpen} onOpenChange={setProfileOpen}>
-      <SheetContent side="right" className="deputy-drawer w-full p-0 sm:max-w-5xl" style={{ '--deputy-party': getPartyColor(current?.party || person?.latest?.party || person?.parties[0]) } as CSSProperties} overlayClassName="deputy-drawer-overlay" onCloseAutoFocus={event => { event.preventDefault(); lastTrigger.current?.focus(); }}>
+      <SheetContent side="right" aria-describedby={undefined} className="deputy-drawer w-full p-0 sm:max-w-5xl" style={{ '--deputy-party': getPartyColor(current?.party || person?.latest?.party || person?.parties[0]) } as CSSProperties} overlayClassName="deputy-drawer-overlay" onCloseAutoFocus={event => { event.preventDefault(); lastTrigger.current?.focus(); }}>
         <SheetClose className="deputy-drawer-close" aria-label="Abgeordnetenprofil schließen"><X size={20} aria-hidden="true" /></SheetClose>
         <div className="deputy-profile">
         <div className="deputy-profile-side" style={{ '--deputy-party': getPartyColor(current?.party || person?.parties[0]) } as CSSProperties}>{person && <DeputyPortrait key={person.name_key} connectionId={person.name_key} name={person.name} editable={access.isSuperAdmin} variant="editorial" />}</div>
@@ -172,15 +172,13 @@ export default function DeputyDirectory() {
             {(current || person?.latest) && <span>{(current?.mandate_type || person?.latest?.mandate_type) === 'direct' ? 'Direktmandat' : 'Listenmandat'}</span>}
           </p>
           <SheetTitle className="deputy-heading deputy-profile-name mt-3"><DeputyName name={person?.name || ''} /></SheetTitle>
-          <SheetDescription className="mt-4">Mandatshistorie aus freigegebenen Legislaturperioden. Die Striche zeigen dokumentierte Mitgliedschaften, einschließlich Nachrücken.</SheetDescription>
           {detail.isLoading && <p role="status" className="mt-6">Lade Mandatshistorie …</p>}
           {detail.error && <div role="alert" className="mt-6">{historyError(detail.error)} <Button variant="outline" onClick={() => void detail.refetch()}>Erneut laden</Button></div>}
           {!detail.isLoading && !detail.error && rows.length === 0 && <p className="mt-6">Keine freigegebenen Mandate vorhanden.</p>}
           {rows.length > 0 && <>
-            <dl className="deputy-facts"><div><dt>Wahlkreis</dt><dd>{current?.district_name || 'Nicht erfasst'}</dd></div><div><dt>Mandat</dt><dd>{current?.original_mandate || (current?.mandate_type === 'direct' ? 'Direktmandat' : current ? 'Listenmandat' : '–')}</dd></div><div><dt>Legislaturperioden</dt><dd><Tenure count={served.length} /></dd></div><div><dt>Dokumentierter Beginn</dt><dd>{rows.filter(row => row.starts_on).map(row => row.starts_on!).sort()[0]?.slice(0, 4) || 'Nicht erfasst'}</dd></div></dl>
+            <dl className="deputy-facts"><div><dt>Wahlkreis</dt><dd>{current?.district_name || 'Nicht erfasst'}</dd></div><div><dt>Mandat</dt><dd>{current?.original_mandate || (current?.mandate_type === 'direct' ? 'Direktmandat' : current ? 'Listenmandat' : '–')}</dd></div><div><dt>Legislaturperioden</dt><dd>{served.length}</dd></div><div><dt>Dokumentierter Beginn</dt><dd>{rows.filter(row => row.starts_on).map(row => row.starts_on!).sort()[0]?.slice(0, 4) || 'Nicht erfasst'}</dd></div></dl>
             <section className="mt-8"><h4 className="deputy-caption mb-4">Mandatshistorie</h4><div className="deputy-periods">{published.slice().sort((a, b) => a.number - b.number).map(item => <button type="button" key={item.id} disabled={!served.includes(item.number)} aria-pressed={selectedPeriod === item.number} className="deputy-period" onClick={() => setActivePeriod(item.number)}><span /><b>{item.number}.</b><small>{item.starts_on?.slice(0, 4) || '–'}</small></button>)}</div><p className="mt-3 text-xs text-muted-foreground">Balken markieren Mitgliedschaften. Wähle eine Periode für die Details.</p></section>
             <section className="mt-7 space-y-5" aria-live="polite"><h4 className="deputy-caption">{selectedRows[0]?.period_name}</h4>{selectedRows.map(row => <article key={row.id} className="space-y-2 border-l-2 pl-4"><p className="font-serif text-xl">{formatMandateDateRange(row)}</p>{row.end_is_expected && <p className="text-xs text-muted-foreground">Voraussichtliches Ende</p>}<p className="text-sm">{row.district_name ? `Wahlkreis ${row.district_label ? `${row.district_label}: ` : ''}${row.district_name}` : 'Wahlkreis nicht erfasst'}</p><p className="text-sm text-muted-foreground">{row.party_label || row.party} · {row.original_mandate || (row.mandate_type === 'direct' ? 'Direktmandat' : 'Listenmandat')} · {row.entry_type === 'succession' ? 'nachgerückt' : 'gewählt'}{row.left_early ? ' · vorzeitig ausgeschieden' : ''}</p>{row.name !== person?.name && <p className="text-xs text-muted-foreground">Historischer Name: {row.name}</p>}{row.notes && <p className="whitespace-pre-wrap text-sm text-muted-foreground">{row.notes}</p>}</article>)}</section>
-            <p className="mt-8 border-t pt-4 text-xs text-muted-foreground">Dargestellt ist die dokumentierte Mandatshistorie. Unterbrechungen und mehrere Mandatsabschnitte bleiben erhalten. Fehlende Porträts werden durch Initialen ersetzt.</p>
           </>}
         </div>
       </div>
