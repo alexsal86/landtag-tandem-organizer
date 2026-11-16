@@ -53,11 +53,14 @@ export function HistoryLinkReview({
   return (
     <details className="rounded-lg border p-3 text-sm">
       <summary className="cursor-pointer font-medium">
-        Verbindung zur Wahlanalyse prüfen
+        Wahlkreis: Mandate und Wahlergebnisse verbinden
       </summary>
       <p className="my-2 text-muted-foreground">
-        Bestätigt nur die Zuordnung innerhalb derselben Wahlperiode. Eine
-        Identität der Grenzen mit anderen Jahren entsteht dadurch nicht.
+        Hier verwaltest du den historischen Wahlkreis mit seinen Abgeordneten und
+        Mandaten. Die Wahlanalyse enthält die Stimmen und Wahlergebnisse desselben
+        Wahlkreises. Diese Zuordnung macht die freigegebenen Mandate im
+        Wahlkreissteckbrief der Wahlanalyse abrufbar. Sie gilt nur für die
+        ausgewählte Wahl; gleiche Nummern in anderen Jahren können andere Grenzen haben.
       </p>
       <label htmlFor="history-analysis-link">Wahlkreis</label>
       <select
@@ -77,9 +80,9 @@ export function HistoryLinkReview({
         ))}
       </select>
       <p className="my-2">
-        Wahlanalyse: {version?.year} · {version?.district_name}
+        Wahlanalyse (Stimmen und Ergebnisse): {version?.year} · {version?.district_name}
         <br />
-        Mandatshistorie: {period.name} ·{" "}
+        Mandatshistorie (Abgeordnete und Mandate): {period.name} ·{" "}
         {historical?.name || "Keine eindeutige, gesicherte Nummer vorhanden"}
       </p>
       <Button
@@ -95,7 +98,7 @@ export function HistoryLinkReview({
       >
         {version?.history_link_verified
           ? "Verbindung bereits bestätigt"
-          : "Diesen Wahlkreis ausdrücklich zuordnen"}
+          : "Mandate mit diesen Wahlergebnissen verknüpfen"}
       </Button>
       {confirm.isError && (
         <p role="alert" className="mt-2">

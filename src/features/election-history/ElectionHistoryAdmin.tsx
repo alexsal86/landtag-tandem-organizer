@@ -228,6 +228,7 @@ function ElectionHistoryWorkspace({ userId }: { userId: string }) {
     </div>
     {entity === 'candidacies' && <CandidateIdentityReview key={`identity-${selectedPeriod}`} data={{...data,periods:data.periods.filter(p=>p.id===selectedPeriod)}} disabled={saving || dirty} />}
     {entity === 'candidacies' && <CandidateCoverageReview key={selectedPeriod} periodId={selectedPeriod} disabled={saving || dirty} />}
+    {entity === 'districts' && <p className="rounded-lg border bg-muted/20 p-3 text-sm text-muted-foreground">Die Wahlkreise hier gehören zur ausgewählten Legislaturperiode: Sie ordnen Abgeordnete und Mandate den damaligen Gebieten zu. Unter Daten → Wahlanalyse stehen die Stimmen und Wahlergebnisse. Über die Verbindung darunter lassen sich die Mandate im dortigen Wahlkreissteckbrief anzeigen. Grenzverläufe und Nummern können sich zwischen Wahlen ändern.</p>}
     {entity === 'districts' && data.periods.find(p => p.id === selectedPeriod) && <HistoryLinkReview key={selectedPeriod} period={data.periods.find(p => p.id === selectedPeriod)!} districts={data.districts} disabled={saving || dirty} />}
     {preview && selectedPeriod && <ElectionPeriodPreview data={data} periodId={selectedPeriod} />}
     <div className={editing !== undefined ? 'grid items-start gap-5 xl:grid-cols-2' : 'space-y-5'}>
