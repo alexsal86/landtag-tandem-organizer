@@ -4,6 +4,10 @@ import { supabase } from '@/integrations/supabase/client';
 import { useAuth } from '@/hooks/useAuth';
 import { historyTables, type HistoryEntity, type FormValues, parseHistoryForm } from './model';
 import type { ElectionHistoryData, ElectionPeriod } from './types';
+import type { Json } from '@/integrations/supabase/types';
+
+const periodColumns = 'id,number,name,election_date,starts_on,election_year,ends_on,is_current,is_published,source_url,notes,boundary_geometry_year,boundary_geometry_confirmed,expected_ends_on,ends_on_is_expected';
+const personColumns = 'id,name,biography,source_url,history_complete';
 
 /** The small period index is the only query made before a selection. */
 export function useElectionPeriods(): UseQueryResult<ElectionPeriod[], Error> {
@@ -11,12 +15,33 @@ export function useElectionPeriods(): UseQueryResult<ElectionPeriod[], Error> {
   return useQuery({
     queryKey: ['election-history', user?.id, 'periods'], enabled: !!user,
     queryFn: async ({ signal }) => {
-      const { data, error } = await supabase.from('election_history_periods').select('*').order('number', { ascending: false }).limit(100).abortSignal(signal);
+      const { data, error } = await supabase.from('election_history_periods').select(periodColumns).order('number', { ascending: false }).limit(100).abortSignal(signal);
       if (error) throw error;
       return data || [];
     }, staleTime: 60_000, gcTime: 300_000, retry: false,
   });
 }
+export interface ElectionPeriodOverview {
+  period_id: string;
+  district_count: number;
+  mandate_count: number;
+  candidacy_count: number;
+  open_identity_count: number;
+}
+
+export function useElectionPeriodOverview(): UseQueryResult<ElectionPeriodOverview[], Error> {
+  const { user } = useAuth();
+  return useQuery({
+    queryKey: ['election-history', user?.id, 'period-overview'], enabled: !!user,
+    queryFn: async ({ signal }) => {
+      const { data, error } = await supabase.rpc('get_election_history_period_overview').abortSignal(signal);
+      if (error) throw error;
+      if (!Array.isArray(data)) throw new Error('Ungültige Periodenübersicht.');
+      return data as ElectionPeriodOverview[];
+    }, staleTime: 60_000, gcTime: 120_000, retry: false,
+  });
+}
+
 export function useElectionHistory(periodId?: string): UseQueryResult<ElectionHistoryData, Error> {
   const { user } = useAuth();
   return useQuery({
@@ -40,7 +65,7 @@ export function useElectionPersonSearch(search: string, enabled: boolean) {
     queryKey: ['election-history', user?.id, 'people-search', term], enabled: !!user && enabled && term.length >= 2,
     queryFn: async ({ signal }) => {
       const escaped = term.replace(/[\\%_]/g, character => `\\${character}`);
-      const { data, error } = await supabase.from('election_history_people').select('*').ilike('name', `${escaped}%`).order('name').limit(20).abortSignal(signal);
+      const { data, error } = await supabase.from('election_history_people').select(personColumns).ilike('name', `${escaped}%`).order('name').limit(20).abortSignal(signal);
       if (error) throw error;
       return data || [];
     }, staleTime: 60_000, gcTime: 120_000,
@@ -53,20 +78,20 @@ export async function saveHistoryEntry(entity: HistoryEntity, values: FormValues
     switch (parsed.entity) {
       case 'periods': return id ? supabase.from('election_history_periods').update(parsed.data).eq('id', id) : supabase.from('election_history_periods').insert(parsed.data);
       case 'people': return id ? supabase.from('election_history_people').update(parsed.data).eq('id', id) : supabase.from('election_history_people').insert(parsed.data);
-      case 'districts': return id ? supabase.from('election_history_districts').update(parsed.data).eq('id', id) : supabase.from('election_history_districts').insert(parsed.data);
+      case 'districts': {
+        const districtData = { ...parsed.data, boundaries: parsed.data.boundaries as unknown as Json };
+        return id ? supabase.from('election_history_districts').update(districtData).eq('id', id) : supabase.from('election_history_districts').insert(districtData);
+      }
       case 'candidacies': return id ? supabase.from('election_history_candidacies').update(parsed.data).eq('id', id) : supabase.from('election_history_candidacies').insert(parsed.data);
       case 'mandates': return id ? supabase.from('election_history_mandates').update(parsed.data).eq('id', id) : supabase.from('election_history_mandates').insert(parsed.data);
     }
   })();
-  const { data, error } = await mutation.select('*').single();
+  const { error } = await mutation;
   if (error) throw error;
-  if (!data) throw new Error('Der Datensatz konnte nicht gespeichert werden.');
-  return data;
 }
 export async function deleteHistoryEntry(entity: HistoryEntity, id: string) {
-  const { data, error } = await supabase.from(historyTables[entity]).delete().eq('id', id).select('id').single();
+  const { error } = await supabase.from(historyTables[entity]).delete().eq('id', id);
   if (error) throw error;
-  if (!data) throw new Error('Der Datensatz wurde nicht gelöscht.');
 }
 export function historyError(error: unknown): string {
   if (typeof error === 'object' && error !== null && 'code' in error) {

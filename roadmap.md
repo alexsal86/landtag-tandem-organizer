@@ -1,5 +1,13 @@
 # Roadmap Aufgaben
 
+# Super-Admin: Wahldaten- und Mandatswerkbank (16.11.2026)
+- [ ] Periodenstammdaten als kompakte Tabelle mit Vollständigkeitszählern und Inline-Bearbeitung.
+- [ ] Wahlkreise, Mandate und Kandidaturen der ausgewählten Legislaturperiode als tabellarische Pflegegrids mit Datenqualitätshinweisen.
+- [ ] Geprüften CSV-/Excel-Einfügeimport für Kandidaturen mit ausdrücklicher Personenzuordnung und atomarem Datenbank-Import.
+- [ ] Periodenübergreifendes Abgeordnetenregister mit bestehender GitHub-Porträtverwaltung und ausdrücklicher Mandatszusammenführung.
+- [ ] Import- und Qualitätsregeln durch Vitest und einen Logik-Schritt im Selbsttest-Center absichern.
+- [ ] Angemeldeten Super-Admin-Gesamtablauf mit echter Supabase-Sitzung prüfen — externe Supabase-Testsitzung nicht verfügbar.
+
 # Log-Aufkommen reduzieren (15.11.2026)
 - [x] Zentrale Statusverwaltung, gemeinsamer Profil-Cache und höchstens ein Aktivitäts-Write pro fünf Minuten; drei Regressionstests bestanden.
 - [x] Fälligkeitsfunktion für geplante E-Mails migriert und im Leerlauf ohne Versand ausgeführt.

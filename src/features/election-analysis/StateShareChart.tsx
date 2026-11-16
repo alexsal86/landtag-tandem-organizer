@@ -29,6 +29,8 @@ export function StateShareChart({ year, ballot, rows, comparisonYears, series, l
   const bars = visibleParties.map(p => ({ party: p, share: multiple ? selected?.[p] ?? null : rows.find(row => row.party === p)?.share ?? null }))
     .sort((a, b) => (b.share ?? -1) - (a.share ?? -1));
   const maximum = Math.ceil((Math.max(10, ...(multiple ? series.flatMap(row => parties.map(p => row[p] ?? 0)) : rows.map(row => row.share ?? 0))) + 5) / 5) * 5;
+  const yearDomain: [number, number] = [Math.min(...comparisonYears), Math.max(...comparisonYears)];
+  const percentageDomain: [number, number] = [0, maximum];
   return <Card className="min-w-0 rounded-2xl">
     <CardHeader className="gap-3 pb-3">
       <div className="grid grid-cols-[minmax(0,1fr)_auto] items-start gap-x-2 gap-y-2">
@@ -49,11 +51,11 @@ export function StateShareChart({ year, ballot, rows, comparisonYears, series, l
         {!visibleParties.length ? <p className="py-12 text-center text-sm text-muted-foreground">Bitte mindestens eine Partei einblenden.</p> : showLine ? <div className="h-80" role="img" aria-label="Parteianteile über alle Wahlen im gewählten Zeitraum; genaue Werte per Tooltip">
           <ResponsiveContainer><LineChart data={series} margin={{ top: 20, right: 20, left: 0, bottom: 10 }}>
             <CartesianGrid strokeDasharray="3 3" vertical={false} />
-            <XAxis dataKey="year" type="number" domain={['dataMin', 'dataMax']} ticks={comparisonYears} allowDecimals={false} padding={{ left: 12, right: 12 }} />
-            <YAxis unit=" %" domain={[0, maximum]} />
+            <XAxis dataKey="year" type="number" domain={yearDomain} ticks={comparisonYears} allowDecimals={false} />
+            <YAxis unit=" %" domain={percentageDomain} />
             <Tooltip labelFormatter={value => `Landtagswahl ${value}`} formatter={value => percent(typeof value === 'number' ? value : null)} />
             <ReferenceLine y={5} stroke="#b91c1c" strokeDasharray="4 4" />
-            {visibleParties.map(p => <Line key={p} dataKey={p} name={p} stroke={chartColor(p)} strokeWidth={2.5} dot={{ r: 3.5 }} activeDot={{ r: 5 }} connectNulls={false} />)}
+            {visibleParties.map(p => <Line key={p} dataKey={p} name={p} stroke={chartColor(p)} strokeWidth={2.5} connectNulls={false} />)}
           </LineChart></ResponsiveContainer>
         </div> : <div className="flex h-80 flex-col justify-center gap-4 py-3" aria-label="Parteianteile in Prozent">
           {bars.map(row => <div key={row.party} className="grid grid-cols-[3.5rem_minmax(0,1fr)_4.5rem] items-center gap-3 text-sm">
