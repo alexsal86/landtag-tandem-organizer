@@ -17252,6 +17252,16 @@ export type Database = {
       get_database_size: { Args: never; Returns: number }
       get_election_history_deputy: { Args: { name_key: string }; Returns: Json }
       get_election_history_period: { Args: { period: string }; Returns: Json }
+      get_election_history_period_overview: {
+        Args: never
+        Returns: {
+          candidacy_count: number
+          district_count: number
+          mandate_count: number
+          open_identity_count: number
+          period_id: string
+        }[]
+      }
       get_election_person_summary: {
         Args: { person: string; through_period: string }
         Returns: Json
@@ -17357,6 +17367,10 @@ export type Database = {
       import_analysis_local_rows: {
         Args: { rows_to_import: Json }
         Returns: Json
+      }
+      import_election_history_candidacies: {
+        Args: { entries: Json; import_source_url: string; period: string }
+        Returns: number
       }
       increment_fact_usage: { Args: { _fact_id: string }; Returns: undefined }
       insert_sample_contacts: {
