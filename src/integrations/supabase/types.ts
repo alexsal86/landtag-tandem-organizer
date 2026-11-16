@@ -5796,9 +5796,9 @@ export type Database = {
           },
         ]
       }
-      election_history_deputy_birthdays: {
+      election_history_mandate_birthdays: {
         Row: {
-          connection_id: string
+          mandate_id: string
           birthday: string | null
           birth_year: number
           source_name: string
@@ -5806,7 +5806,7 @@ export type Database = {
           source_note: string
         }
         Insert: {
-          connection_id: string
+          mandate_id: string
           birthday?: string | null
           birth_year: number
           source_name: string
@@ -5814,7 +5814,7 @@ export type Database = {
           source_note?: string
         }
         Update: {
-          connection_id?: string
+          mandate_id?: string
           birthday?: string | null
           birth_year?: number
           source_name?: string

@@ -1,8 +1,12 @@
+-- Im Supabase SQL Editor vollständig ausführen; ersetzt den fehlgeschlagenen Import.
+-- Wiederholbar. ROLLBACK beendet gegebenenfalls die fehlgeschlagene Transaktion.
+-- Bei fehlenden/mehrdeutigen Mandaten oder widersprüchlichen Daten wird alles zurückgerollt.
 BEGIN;
 -- User-supplied birthday list, 2026-11-16. Birth years without a date stay partial.
--- Attach metadata to existing confirmed connections; never create/merge identities.
-CREATE TABLE public.election_history_deputy_birthdays (
-  connection_id uuid PRIMARY KEY,
+-- Zuordnung direkt zum vorhandenen Mandat der 18. Wahlperiode.
+-- Keine connection_id erforderlich; Mandatshistorien werden nicht verändert.
+CREATE TABLE IF NOT EXISTS public.election_history_mandate_birthdays (
+  mandate_id uuid PRIMARY KEY REFERENCES public.election_history_mandates(id) ON DELETE CASCADE,
   birthday date,
   birth_year integer NOT NULL CHECK (birth_year BETWEEN 1900 AND 2200),
   source_name text NOT NULL,
@@ -10,15 +14,17 @@ CREATE TABLE public.election_history_deputy_birthdays (
   source_note text NOT NULL DEFAULT 'Geburtstagsliste des Nutzers vom 16.11.2026',
   CHECK (birthday IS NULL OR extract(year FROM birthday) = birth_year)
 );
-ALTER TABLE public.election_history_deputy_birthdays ENABLE ROW LEVEL SECURITY;
-GRANT SELECT, INSERT, UPDATE, DELETE ON public.election_history_deputy_birthdays TO authenticated;
-CREATE POLICY deputy_birthdays_read ON public.election_history_deputy_birthdays
+ALTER TABLE public.election_history_mandate_birthdays ENABLE ROW LEVEL SECURITY;
+GRANT SELECT, INSERT, UPDATE, DELETE ON public.election_history_mandate_birthdays TO authenticated;
+DROP POLICY IF EXISTS deputy_birthdays_read ON public.election_history_mandate_birthdays;
+CREATE POLICY deputy_birthdays_read ON public.election_history_mandate_birthdays
   FOR SELECT TO authenticated USING (EXISTS (
     SELECT 1 FROM public.election_history_mandates m
     JOIN public.election_history_periods p ON p.id=m.period_id
-    WHERE m.connection_id=election_history_deputy_birthdays.connection_id AND p.is_published
+    WHERE m.id=election_history_mandate_birthdays.mandate_id AND p.is_published
   ) OR public.is_superadmin(auth.uid()));
-CREATE POLICY deputy_birthdays_admin ON public.election_history_deputy_birthdays
+DROP POLICY IF EXISTS deputy_birthdays_admin ON public.election_history_mandate_birthdays;
+CREATE POLICY deputy_birthdays_admin ON public.election_history_mandate_birthdays
   FOR ALL TO authenticated USING (public.is_superadmin(auth.uid()))
   WITH CHECK (public.is_superadmin(auth.uid()));
 
@@ -185,7 +191,7 @@ BEGIN
   ('Yannick Veits', 'GRÜNE', NULL::date, 1994)
  ) AS source(name,faction,birthday,birth_year) LOOP
    -- Bound the name/faction lookup to the supplied current legislature.
-   SELECT count(DISTINCT m.connection_id), (array_agg(DISTINCT m.connection_id))[1]
+   SELECT count(*), (array_agg(m.id ORDER BY m.id))[1]
    INTO matches,target
    FROM public.election_history_mandates m
    JOIN public.election_history_periods p ON p.id=m.period_id AND p.number=18
@@ -193,11 +199,22 @@ BEGIN
    WHERE lower(btrim(coalesce(m.person_name,person.name)))=lower(supplied.name)
      AND lower(btrim(coalesce(nullif(btrim(m.party_label),''),m.party)))=lower(supplied.faction);
    IF matches <> 1 THEN
-     RAISE EXCEPTION 'Geburtstagsimport: keine eindeutige Verbindung für % (%)', supplied.name,supplied.faction;
+     RAISE EXCEPTION 'Geburtstagsimport: kein eindeutiges Mandat der 18. Wahlperiode für % (%)', supplied.name,supplied.faction;
    END IF;
-   INSERT INTO public.election_history_deputy_birthdays
-     (connection_id,birthday,birth_year,source_name,source_faction)
-   VALUES (target,supplied.birthday,supplied.birth_year,supplied.name,supplied.faction);
+   INSERT INTO public.election_history_mandate_birthdays
+     (mandate_id,birthday,birth_year,source_name,source_faction)
+   VALUES (target,supplied.birthday,supplied.birth_year,supplied.name,supplied.faction)
+   ON CONFLICT (mandate_id) DO UPDATE SET
+     birthday=coalesce(EXCLUDED.birthday,election_history_mandate_birthdays.birthday),
+     birth_year=EXCLUDED.birth_year,
+     source_name=EXCLUDED.source_name, source_faction=EXCLUDED.source_faction
+   WHERE election_history_mandate_birthdays.birth_year=EXCLUDED.birth_year
+     AND (election_history_mandate_birthdays.birthday IS NULL
+       OR EXCLUDED.birthday IS NULL
+       OR election_history_mandate_birthdays.birthday=EXCLUDED.birthday);
+   IF NOT FOUND THEN
+     RAISE EXCEPTION 'Abweichende vorhandene Geburtsdaten für %: Import abgebrochen',supplied.name;
+   END IF;
  END LOOP;
 END $$;
 
@@ -212,11 +229,15 @@ BEGIN
      d.name AS district_name,coalesce(d.number_label,d.district_number::text) AS district_label,p.name AS linked_name
    FROM public.election_history_mandates m
    JOIN public.election_history_periods lp ON lp.id=m.period_id AND lp.is_published
-   LEFT JOIN public.election_history_deputy_birthdays b ON b.connection_id=m.connection_id
+   LEFT JOIN public.election_history_mandate_birthdays b ON b.mandate_id=m.id
    LEFT JOIN public.election_history_people p ON p.id=m.person_id
    LEFT JOIN public.election_history_districts d ON d.id=m.district_id
    WHERE coalesce(m.connection_id::text,'name:' || lower(btrim(coalesce(m.person_name,p.name))) || chr(31) || lower(btrim(coalesce(nullif(btrim(m.party_label),''),m.party))))=name_key
    ORDER BY lp.number,m.starts_on NULLS FIRST,m.id LIMIT 201
  ) g);
 END $$;
+-- Ergebnisübersicht nach erfolgreichem Import (157 / 115 / 42).
+SELECT count(*) AS personen, count(birthday) AS vollstaendige_geburtsdaten,
+       count(*) FILTER (WHERE birthday IS NULL) AS nur_geburtsjahr
+FROM public.election_history_mandate_birthdays;
 COMMIT;
