@@ -186,3 +186,6 @@ verify_jwt = true
 
 [functions.workflow-dispatcher]
 verify_jwt = true
+
+[functions.save-deputy-portrait]
+verify_jwt = true

@@ -15,6 +15,7 @@ Diese Matrix klassifiziert alle Supabase Edge Functions nach Sicherheitsmodell.
 
 | Function                          | verify_jwt | Kategorie          | Zusätzlicher Schutz / Hinweis                                                                                                                                                                             |
 | --------------------------------- | ---------: | ------------------ | --------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
+| save-deputy-portrait | true | authenticated | requireAuth und Plattformprüfung is_superadmin; nur bestehende Mandatsverbindungen; serverseitiges GitHub-Secret, feste Repository-/Pfadgrenzen, begrenzte validierte WebP-Dateien, keine Bilddaten in Supabase Storage |
 | generate-preparation-suggestions | true | authenticated | JWT und requireAuth; bestehende Funktion, weitergehende Härtung offen |
 | run-workflow-cron | false | internal-scheduled | Service-Role-Prüfung vor Konfigurationszugriff; sicherer Handler und originabhängiges CORS |
 | fetch-karlsruhe-districts         |      false | public-readonly    | Externe Datenabfrage, keine Benutzerkontext-Abhängigkeit                                                                                                                                                  |

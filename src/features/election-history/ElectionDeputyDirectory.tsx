@@ -1,3 +1,4 @@
+import { DeputyPortrait, DeputyPortraitThumbnail } from './DeputyPortrait';
 import { useEffect, useState } from 'react';
 import { useQuery, useQueryClient } from '@tanstack/react-query';
 import { supabase } from '@/integrations/supabase/client';
@@ -13,7 +14,7 @@ import { canConfirmDeputySelection, deputyHistoryAction } from './deputySelectio
 type DeputyGroup = { name_key: string; name: string; parties: string[]; mandates: number; periods: number; unlinked: number };
 type DeputyMandate = { id: string; person_id: string | null; connection_id: string | null; name: string; party: string; period_name: string; period_number: number; starts_on: string | null; ends_on: string | null; entry_type: string; district_name: string | null; linked_name: string | null; party_label: string | null; district_label: string | null; mandate_type: string; original_mandate: string | null; left_early: boolean; notes: string | null; end_is_expected: boolean };
 
-export function ElectionDeputyDirectory({ readOnly = false }: { readOnly?: boolean }) {
+export function ElectionDeputyDirectory({ readOnly = false, canEditPortraits = !readOnly }: { readOnly?: boolean; canEditPortraits?: boolean }) {
   const { user } = useAuth();
   const cache = useQueryClient();
   const [search, setSearch] = useState('');
@@ -70,13 +71,15 @@ export function ElectionDeputyDirectory({ readOnly = false }: { readOnly?: boole
         {groups.error && <div role="alert"><p>{historyError(groups.error)}</p><Button variant="outline" onClick={() => void groups.refetch()}>Erneut laden</Button></div>}
         {groups.data?.length === 0 && <p>Keine passenden Mandatseinträge gefunden.</p>}
         {groups.data?.slice(0, 25).map(entry => <div key={entry.name_key} className="flex flex-wrap items-center justify-between gap-2 border-b pb-3">
-          <div className="min-w-0"><button type="button" disabled={saving} aria-pressed={group?.name_key === entry.name_key} onClick={() => openHistory(entry)} className="text-left font-medium break-words underline-offset-4 hover:underline focus-visible:underline">{entry.name}</button><p className="text-xs text-muted-foreground">{entry.parties.join(', ')} · {entry.periods} Legislaturperioden · {entry.mandates} Mandate{!readOnly && (entry.unlinked > 0 ? ` · ${entry.unlinked} noch offen` : ' · vollständig zusammengefasst')}</p></div>
+          <DeputyPortraitThumbnail connectionId={entry.name_key} name={entry.name} />
+          <div className="min-w-0 flex-1"><button type="button" disabled={saving} aria-pressed={group?.name_key === entry.name_key} onClick={() => openHistory(entry)} className="text-left font-medium break-words underline-offset-4 hover:underline focus-visible:underline">{entry.name}</button><p className="text-xs text-muted-foreground">{entry.parties.join(', ')} · {entry.periods} Legislaturperioden · {entry.mandates} Mandate{!readOnly && (entry.unlinked > 0 ? ` · ${entry.unlinked} noch offen` : ' · vollständig zusammengefasst')}</p></div>
           <Button size="sm" variant={group?.name_key === entry.name_key ? 'default' : 'outline'} disabled={saving} onClick={() => openHistory(entry)}>{readOnly ? 'Ansehen' : deputyHistoryAction(entry.unlinked)}</Button>
         </div>)}
         <div className="flex gap-2"><Button variant="outline" disabled={saving || groups.isFetching || offset === 0} onClick={() => setOffset(value => Math.max(0, value - 25))}>Zurück</Button><Button variant="outline" disabled={saving || groups.isFetching || !groups.data || groups.data.length <= 25} onClick={() => setOffset(value => value + 25)}>Weitere 25</Button></div>
       </CardContent></Card>
       {!group && readOnly && <Card className="min-w-0"><CardHeader><CardTitle>Abgeordneten auswählen</CardTitle></CardHeader><CardContent><p className="text-sm text-muted-foreground">Wähle links einen Namen. Hier erscheinen die Mandate mit Legislaturperioden, Zeiträumen, Fraktionen und Wahlkreisen.</p></CardContent></Card>}
       {group && <Card className="min-w-0"><CardHeader><CardTitle>{group.name}: Mandatshistorie</CardTitle></CardHeader><CardContent className="space-y-4">
+        <DeputyPortrait key={group.name_key} connectionId={group.name_key} name={group.name} editable={canEditPortraits} />
         {detail.isLoading && <p role="status">Lade Mandate …</p>}
         {detail.error && <div role="alert"><p>{historyError(detail.error)}</p><Button variant="outline" onClick={() => void detail.refetch()}>Erneut laden</Button></div>}
         {!detail.isLoading && !detail.error && rows.length > 0 && <p className="text-sm text-muted-foreground">{new Set(rows.map(row => row.period_number)).size} Legislaturperioden · {rows.length} Mandate. Die Zeiträume entsprechen den aktuellen Einträgen; Unterbrechungen bleiben erhalten.</p>}

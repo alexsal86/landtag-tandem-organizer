@@ -1,3 +1,4 @@
+import { portraitCrop, portraitSource, isDeputyPortrait } from '@/features/election-history/portrait';
 import { canConfirmDeputySelection, connectedDeputyMandates, deputyHistoryAction } from '@/features/election-history/deputySelection';
 import { projectHistoricalDistricts } from '@/features/election-history/mapProjection';
 import { HISTORICAL_DISTRICTS_1952 } from '@/utils/electoralGeometryCatalog';
@@ -17,6 +18,19 @@ export const electionMapScenario: TestScenario = {
   touches: [], features: ['election-districts'],
   limitations: ['Die visuelle Ebenenreihenfolge und mobile Bedienung werden separat im Browser geprüft.'],
   steps: [
+    { id: 'deputy-portrait-crop', label: 'Porträtausschnitt füllt den 3:4-Rahmen; sichere Bildnachweise bleiben an ihrer Mandatsverbindung', kind: 'logic', run: async () => {
+      for (const [width, height] of [[1200, 600], [400, 1600], [100, 100]]) {
+        for (const zoom of [1, 4]) {
+          const crop = portraitCrop(width, height, zoom, 10000, -10000);
+          if (crop.sourceX < -0.001 || crop.sourceY < -0.001 || crop.sourceX + crop.sourceWidth > width + 0.001 || crop.sourceY + crop.sourceHeight > height + 0.001 || Math.abs(crop.sourceWidth / crop.sourceHeight - 0.75) > 0.001) throw new Error('Der Ausschnitt muss bei jedem Zoom im Bild bleiben und den Rahmen vollständig füllen.');
+        }
+      }
+      if (portraitSource({ label: 'Quelle', url: 'javascript:alert(1)', author: '', license: '' })) throw new Error('Quellen dürfen keine aktiven URL-Schemata enthalten.');
+      const id = '11111111-1111-4111-8111-111111111111';
+      const metadata = { schemaVersion: 1, connectionId: id, version: id, image: 'portrait-0123456789abcdef.webp', thumbnail: 'thumb-0123456789abcdef.webp', source: { label: 'Landtag', url: 'https://www.landtag-bw.de/', author: '', license: '' }, updatedAt: '2026-11-16' };
+      if (!isDeputyPortrait(metadata, id) || isDeputyPortrait({ ...metadata, image: '../anderes-bild.webp' }, id) || isDeputyPortrait(metadata, '22222222-2222-4222-8222-222222222222')) throw new Error('Bildnachweise dürfen weder die Verbindung noch den öffentlichen Bildordner wechseln.');
+      return { ok: true, message: '3:4-Ausschnitte bleiben im Bild; Quellen-URLs und feste Bildpfade werden validiert.' };
+    } },
     { id: 'completed-deputy-history', label: 'Zusammengefasste Personen öffnen eine chronologische Übersicht ohne weitere Bestätigungsaufforderung', kind: 'logic', run: async () => {
       if (deputyHistoryAction(0) !== 'Ansehen' || deputyHistoryAction(2) !== 'Mandatszeiten verbinden') throw new Error('Vollständige Mandatshistorien dürfen nicht erneut zum Verbinden auffordern.');
       return { ok: true, message: 'Vollständige Historien öffnen als Leseansicht; offene Einträge bleiben bearbeitbar.' };
