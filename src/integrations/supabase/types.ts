@@ -5798,6 +5798,7 @@ export type Database = {
       }
       election_history_mandates: {
         Row: {
+          connection_id: string | null
           candidacy_id: string | null
           district_id: string | null
           end_from_period: boolean
@@ -5818,6 +5819,7 @@ export type Database = {
           starts_on: string | null
         }
         Insert: {
+          connection_id?: string | null
           candidacy_id?: string | null
           district_id?: string | null
           end_from_period?: boolean
@@ -5838,6 +5840,7 @@ export type Database = {
           starts_on?: string | null
         }
         Update: {
+          connection_id?: string | null
           candidacy_id?: string | null
           district_id?: string | null
           end_from_period?: boolean
@@ -17201,6 +17204,7 @@ export type Database = {
       get_database_size: { Args: never; Returns: number }
       list_election_history_deputies: { Args: { search_text?: string; page_offset?: number }; Returns: Json }
       get_election_history_deputy: { Args: { name_key: string }; Returns: Json }
+      connect_election_history_mandates: { Args: { mandate_ids: string[] }; Returns: string }
       confirm_election_history_deputy: { Args: { mandate_ids: string[]; person_name: string; target_person?: string }; Returns: string }
       get_election_history_period: { Args: { period: string }; Returns: Json }
       get_election_person_summary: {

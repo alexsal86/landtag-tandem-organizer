@@ -1,4 +1,4 @@
-import { canConfirmDeputySelection } from '@/features/election-history/deputySelection';
+import { canConfirmDeputySelection, connectedDeputyMandates } from '@/features/election-history/deputySelection';
 import { projectHistoricalDistricts } from '@/features/election-history/mapProjection';
 import { HISTORICAL_DISTRICTS_1952 } from '@/utils/electoralGeometryCatalog';
 import { parseElectoralManifest } from '@/utils/electoralTopology';
@@ -17,12 +17,18 @@ export const electionMapScenario: TestScenario = {
   touches: [], features: ['election-districts'],
   limitations: ['Die visuelle Ebenenreihenfolge und mobile Bedienung werden separat im Browser geprüft.'],
   steps: [
-    { id: 'deputy-explicit-selection', label: 'Abgeordnetenregister: nur ausdrücklich ausgewählte, unzugeordnete Mandate verbinden', kind: 'logic', run: async () => {
-      const rows = [{ id: 'first', person_id: null }, { id: 'second', person_id: null }, { id: 'linked', person_id: 'person' }];
-      if (canConfirmDeputySelection(rows, [])) throw new Error('Namensgleichheit darf keine automatische Zuordnung erzeugen.');
-      if (!canConfirmDeputySelection(rows, ['first', 'second'])) throw new Error('Explizite Auswahl über Perioden muss möglich sein.');
-      if (canConfirmDeputySelection(rows, ['linked']) || canConfirmDeputySelection(rows, ['missing']) || canConfirmDeputySelection(rows, ['first', 'first'])) throw new Error('Bestehende, veraltete oder doppelte Zuordnungen dürfen nicht bestätigt werden.');
-      return { ok: true, message: 'Explizite Auswahl erforderlich; bestehende Verknüpfungen geschützt.' };
+    { id: 'deputy-explicit-selection', label: 'Mandatsverbindungen bestätigen, erweitern und bei Datumskorrekturen erhalten', kind: 'logic', run: async () => {
+      const rows = [{ id: 'first', person_id: null }, { id: 'second', person_id: null }, { id: 'linked', person_id: 'person' }, { id: 'other', person_id: 'different' }];
+      if (canConfirmDeputySelection(rows, []) || canConfirmDeputySelection(rows, ['first'])) throw new Error('Eine Verbindung benötigt mehrere ausdrücklich ausgewählte Mandate.');
+      if (!canConfirmDeputySelection(rows, ['first', 'second']) || !canConfirmDeputySelection(rows, ['first', 'linked'])) throw new Error('Neue und erweiterte Verbindungen müssen möglich sein.');
+      if (canConfirmDeputySelection(rows, ['linked', 'other']) || canConfirmDeputySelection(rows, ['first', 'linked', 'other']) || canConfirmDeputySelection(rows, ['missing', 'first']) || canConfirmDeputySelection(rows, ['first', 'first'])) throw new Error('Verschiedene bestätigte Identitäten, fehlende oder doppelte Mandate dürfen nicht verbunden werden.');
+      const linked = [{ id: 'six', person_id: null, connection_id: 'adam-history', ends_on: '1980-05-31' }, { id: 'seven', person_id: null, connection_id: 'adam-history', ends_on: '1984-05-31' }];
+      if (canConfirmDeputySelection(linked, ['six', 'seven'])) throw new Error('Eine bestehende Verbindung benötigt keine erneute Bestätigung.');
+      if (!canConfirmDeputySelection([...linked, { id: 'eight', person_id: null, connection_id: null, ends_on: null }], ['seven', 'eight'])) throw new Error('Eine Mandatsverbindung muss ohne Personenanlage erweiterbar sein.');
+      const corrected = linked.map(row => row.id === 'seven' ? { ...row, ends_on: '1983-12-01' } : row);
+      const connections = connectedDeputyMandates(corrected);
+      if (connections.length !== 1 || connections[0].length !== 2 || connections[0][1].ends_on !== '1983-12-01' || connections[0].some(row => row.person_id !== null)) throw new Error('Datumskorrekturen müssen ohne erneute Bestätigung in der bestehenden Verbindung erscheinen.');
+      return { ok: true, message: 'Verbindungen bleiben bei Zeitraumkorrekturen erhalten; getrennte bestätigte Identitäten sind geschützt.' };
     } },
     { id: 'regional-1952-source', label: '1952: 74 Quellen, regionale Nummern und keine technische Mandatszuordnung', kind: 'logic', run: async () => {
       const period: ElectionPeriod = { id: 'regional', number: 1, name: '1952', election_year: 1952, election_date: null,
