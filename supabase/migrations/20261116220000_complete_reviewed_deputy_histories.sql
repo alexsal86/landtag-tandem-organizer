@@ -1,4 +1,8 @@
-BEGIN;
+-- Run this complete DO block as one SQL statement. The temporary mapping is
+-- created, populated and consumed in the same statement/transaction, including
+-- in SQL editors that submit separate statements with autocommit.
+DO $deputy_histories$
+BEGIN
 -- Connection-only updates must not inherit or validate mandate dates.
 -- Restrict trigger events rather than relying on a particular deployed version
 -- of the trigger functions. INSERT and all date/identity/candidacy edits retain
@@ -2650,4 +2654,5 @@ CREATE TRIGGER election_history_assign_connection
 BEFORE INSERT OR UPDATE OF person_name,person_id,party,party_label
 ON public.election_history_mandates
 FOR EACH ROW EXECUTE FUNCTION public.assign_election_mandate_connection();
-COMMIT;
+END;
+$deputy_histories$;

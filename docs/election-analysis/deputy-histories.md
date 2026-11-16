@@ -62,9 +62,24 @@ Vererbungskennzeichen, vorzeitigem Ausscheiden oder Notizen werden weiterhin
 geprüft. Audit und Berechtigungen bleiben aktiv.
 
 Ist die Zusammenführung mit einem Fehler abgebrochen, die vollständige korrigierte
-Migration erneut ausführen. Sie enthält eine Transaktion; eine fehlgeschlagene
+Migration erneut ausführen. Sie läuft als einzelner atomarer `DO`-Block; eine zuvor fehlgeschlagene
 Transaktion muss zuerst zurückgerollt werden (`ROLLBACK;`, falls die SQL-Sitzung
 noch den Zustand „transaction is aborted“ meldet).
 Für bereits erfolgreich migrierte Installationen liefert
 `20261116230000_scope_mandate_date_trigger_events.sql` dieselbe Triggerkorrektur
 als eigene Folgemigration.
+
+## Fehlende temporäre Zuordnungstabelle
+
+`reviewed_deputy_members` ist eine temporäre Tabelle mit `ON COMMIT DROP`.
+Sie ist nach einem Commit oder in einer anderen Datenbanksitzung nicht mehr
+verfügbar. Die Migration besteht deshalb jetzt aus genau einem vollständigen
+`DO $deputy_histories$ … $deputy_histories$;`-Block. Er installiert die Trigger,
+erstellt und füllt die Zuordnungstabelle, verarbeitet alle Verbindungen und
+installiert die künftige Zuordnung atomar innerhalb einer SQL-Anweisung. Dadurch
+kann zwischen Erstellung und Verwendung kein Autocommit des SQL-Editors liegen.
+
+Nach einem Fehler die **vollständige aktuelle Datei** ausführen, vom öffnenden
+`DO` bis zum abschließenden `$deputy_histories$;`. Ein zuvor markierter Ausschnitt
+enthält möglicherweise nicht die Erstellung der Tabelle. Bereits erfolgte
+Zuordnungen bleiben beim erneuten Durchlauf stabil.
