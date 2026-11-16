@@ -83,3 +83,29 @@ Nach einem Fehler die **vollständige aktuelle Datei** ausführen, vom öffnende
 `DO` bis zum abschließenden `$deputy_histories$;`. Ein zuvor markierter Ausschnitt
 enthält möglicherweise nicht die Erstellung der Tabelle. Bereits erfolgte
 Zuordnungen bleiben beim erneuten Durchlauf stabil.
+
+## Automatische Verbindung der Wahlkreise zur Wahlanalyse
+
+`20261116233000_auto_link_election_history_districts.sql` verknüpft alle vorhandenen
+Analysejahre mit der passenden Legislaturperiode und deren Wahlkreisen. Dafür
+müssen Wahljahr, Periodennummer und eindeutige Wahlkreisnummer übereinstimmen.
+Das gilt insbesondere für 2021/17. und 2026/18. Periode. Mandate sind bereits über
+`district_id` mit den historischen Wahlkreisen verbunden; sie werden nicht erneut
+zugeordnet, dupliziert oder aus Ergebnissen abgeleitet.
+
+Die Migration läuft als eine SQL-Anweisung. Sie ergänzt fehlende
+`election_analysis_versions`-Metadaten, setzt `historical_district_id` und
+`history_link_verified` für eindeutige Beziehungen und installiert Trigger für
+künftige Importe. Analysejahr und historische Wahlkreise können in beliebiger
+Reihenfolge eintreffen. Bestehende widersprüchliche Verweise werden nicht
+überschrieben, aber nicht länger als bestätigt ausgegeben. Eine nachträgliche
+Änderung an Periode oder Wahlkreisnummer aktualisiert den Verbindungsstatus.
+Alle Funktionen arbeiten mit den vorhandenen Berechtigungen (`SECURITY INVOKER`).
+
+Die Oberfläche zeigt nur den Status und offene Datenkonflikte. Eindeutige
+Verbindungen benötigen keine Bestätigung. Freigabe und bestehende Leserechte
+bestimmen weiterhin, welche Mandate andere Nutzer sehen. 1952 mit seinen
+regionalen Nummern bleibt von der landesweiten Nummernzuordnung ausgenommen.
+Es werden keine Personenidentitäten, Kandidaturen, Stimmen, Mandate oder
+jahresübergreifenden Grenzidentitäten erzeugt; `geography_id` und `identity_key`
+bleiben unverändert.

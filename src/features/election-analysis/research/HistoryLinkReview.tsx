@@ -1,116 +1,60 @@
-import { useState } from "react";
-import { useMutation, useQueryClient } from "@tanstack/react-query";
-import { Button } from "@/components/ui/button";
-import { supabase } from "@/integrations/supabase/client";
 import { useDistrictVersions } from "./hooks";
 import type {
   ElectionPeriod,
   HistoricalDistrict,
 } from "@/features/election-history/types";
-/** Explicit confirmation of the SAME election's district, never a cross-year geometry identity. */
+
+/** Read-only status of automatic links within the SAME election. */
 export function HistoryLinkReview({
   period,
   districts,
-  disabled,
 }: {
   period: ElectionPeriod;
   districts: HistoricalDistrict[];
-  disabled: boolean;
 }) {
   const versions = useDistrictVersions(period.election_year || 0);
-  const cache = useQueryClient();
-  const [number, setNumber] = useState(1);
-  const version = versions.data?.find((v) => v.district_number === number);
-  const matches = districts.filter(
-    (d) => d.period_id === period.id && d.district_number === number,
-  );
-  const historical = matches.length === 1 ? matches[0] : undefined;
-  const confirm = useMutation({
-    mutationFn: async () => {
-      if (!version || !historical)
-        throw new Error("Keine eindeutige Zuordnung");
-      const { data, error } = await supabase
-        .from("election_analysis_versions")
-        .update({
-          historical_district_id: historical.id,
-          history_link_verified: true,
-        })
-        .eq("year", version.year)
-        .eq("district_number", number)
-        .eq("history_link_verified", false)
-        .select("district_number");
-      if (error) throw error;
-      if (!data?.length)
-        throw new Error(
-          "Zuordnung wurde zwischenzeitlich geändert. Bitte neu laden.",
-        );
-    },
-    onSuccess: () => {
-      void cache.invalidateQueries({ queryKey: ["election-research"] });
-    },
-  });
-  if (!versions.data?.length) return null;
+  const historical = districts.filter((district) => district.period_id === period.id);
+  const linked = historical.filter((district) => versions.data?.some((version) =>
+    version.history_link_verified && version.historical_district_id === district.id &&
+    version.district_number === district.district_number,
+  ));
+  const unresolved = historical.filter((district) => !linked.includes(district));
+  const conflicts = versions.data?.filter((version) => !historical.some((district) =>
+    district.id === version.historical_district_id &&
+    district.district_number === version.district_number && version.history_link_verified,
+  )) || [];
+
   return (
-    <details className="rounded-lg border p-3 text-sm">
-      <summary className="cursor-pointer font-medium">
-        Wahlkreis: Mandate und Wahlergebnisse verbinden
-      </summary>
+    <section className="rounded-lg border p-3 text-sm" aria-label="Automatische Verbindung zur Wahlanalyse">
+      <h3 className="font-medium">Automatische Verbindung zur Wahlanalyse</h3>
       <p className="my-2 text-muted-foreground">
-        Hier verwaltest du den historischen Wahlkreis mit seinen Abgeordneten und
-        Mandaten. Die Wahlanalyse enthält die Stimmen und Wahlergebnisse desselben
-        Wahlkreises. Diese Zuordnung macht die freigegebenen Mandate im
-        Wahlkreissteckbrief der Wahlanalyse abrufbar. Sie gilt nur für die
-        ausgewählte Wahl; gleiche Nummern in anderen Jahren können andere Grenzen haben.
+        Wahljahr, Legislaturperiode und eindeutige Wahlkreisnummer verbinden die
+        Wahlergebnisse automatisch mit den bereits zugeordneten Abgeordneten und
+        Mandaten. Du musst die Wahlkreise nicht einzeln bestätigen. Die Verbindung
+        gilt für dieselbe Wahl; sie setzt keine Grenzen verschiedener Jahre gleich.
       </p>
-      <label htmlFor="history-analysis-link">Wahlkreis</label>
-      <select
-        id="history-analysis-link"
-        className="mx-2 rounded border bg-white text-slate-900 p-2"
-        value={number}
-        disabled={confirm.isPending}
-        onChange={(event) => {
-          setNumber(Number(event.target.value));
-          confirm.reset();
-        }}
-      >
-        {versions.data.map((v) => (
-          <option key={v.district_number} value={v.district_number}>
-            {v.district_number}: {v.district_name}
-          </option>
-        ))}
-      </select>
-      <p className="my-2">
-        Wahlanalyse (Stimmen und Ergebnisse): {version?.year} · {version?.district_name}
-        <br />
-        Mandatshistorie (Abgeordnete und Mandate): {period.name} ·{" "}
-        {historical?.name || "Keine eindeutige, gesicherte Nummer vorhanden"}
-      </p>
-      <Button
-        size="sm"
-        variant="outline"
-        disabled={
-          disabled ||
-          !historical ||
-          version?.history_link_verified ||
-          confirm.isPending
-        }
-        onClick={() => confirm.mutate()}
-      >
-        {version?.history_link_verified
-          ? "Verbindung bereits bestätigt"
-          : "Mandate mit diesen Wahlergebnissen verknüpfen"}
-      </Button>
-      {confirm.isError && (
-        <p role="alert" className="mt-2">
-          {confirm.error.message}
-        </p>
-      )}
-      {confirm.isSuccess && (
-        <p role="status" className="mt-2">
-          Zuordnung gespeichert. Freigegebene Mandate sind im Steckbrief
-          abrufbar.
-        </p>
-      )}
-    </details>
+      {versions.isLoading && <p role="status">Verbindungen werden geladen …</p>}
+      {versions.error && <p role="alert">Der Verbindungsstatus konnte nicht geladen werden.</p>}
+      {!versions.isLoading && !versions.error && <>
+        <p role="status">{linked.length} von {historical.length} historischen Wahlkreisen mit der Wahlanalyse verbunden.</p>
+        {!period.is_published && <p className="mt-2 text-muted-foreground">Die Mandate werden für andere Nutzer sichtbar, sobald diese Legislaturperiode freigegeben ist.</p>}
+        {(unresolved.length > 0 || conflicts.length > 0) && <details className="mt-3">
+          <summary className="cursor-pointer font-medium">Noch nicht eindeutig verknüpfte Einträge</summary>
+          <p className="my-2 text-muted-foreground">
+            {period.election_year === 1952
+              ? "1952 verwendet regionale Wahlkreisnummern. Diese lassen sich nicht anhand einer landesweiten Nummer automatisch verbinden."
+              : "Hier fehlt noch das passende Analysejahr oder die automatische Datenbankzuordnung, eine Wahlkreisnummer ist unklar oder eine bestehende Verknüpfung widerspricht den Daten."}
+          </p>
+          <ul className="list-disc space-y-1 pl-5">
+            {unresolved.map((district) => <li key={district.id}>
+              Mandatshistorie: {district.number_label || district.district_number || "Nummer fehlt"} · {district.name}
+            </li>)}
+            {conflicts.map((version) => <li key={version.district_number}>
+              Wahlanalyse: {version.district_number} · {version.district_name}
+            </li>)}
+          </ul>
+        </details>}
+      </>}
+    </section>
   );
 }
