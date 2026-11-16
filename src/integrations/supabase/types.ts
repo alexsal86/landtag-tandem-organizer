@@ -17202,7 +17202,7 @@ export type Database = {
         Returns: Json
       }
       get_database_size: { Args: never; Returns: number }
-      list_analysis_deputies: { Args: { search_text?: string; page_offset?: number }; Returns: Json }
+      list_analysis_deputies: { Args: { search_text?: string; page_offset?: number; selected_period?: string; faction_text?: string; selected_mandate?: string }; Returns: Json }
       get_analysis_deputy: { Args: { name_key: string }; Returns: Json }
       list_election_history_deputies: { Args: { search_text?: string; page_offset?: number }; Returns: Json }
       get_election_history_deputy: { Args: { name_key: string }; Returns: Json }

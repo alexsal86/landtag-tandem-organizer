@@ -5,7 +5,7 @@ import { Button } from '@/components/ui/button';
 import { DeputyPortraitEditor } from './DeputyPortraitEditor';
 import { PORTRAIT_ID, isDeputyPortrait, portraitDirectory, type DeputyPortrait as PortraitData } from './portrait';
 
-function useDeputyPortrait(connectionId: string) {
+export function useDeputyPortrait(connectionId: string) {
   return useQuery({
     queryKey: ['deputy-portrait', connectionId], enabled: PORTRAIT_ID.test(connectionId),
     queryFn: async ({ signal }): Promise<PortraitData | null> => {
