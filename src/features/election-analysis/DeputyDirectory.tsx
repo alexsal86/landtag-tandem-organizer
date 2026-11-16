@@ -1,12 +1,12 @@
 import { useEffect, useRef, useState, type CSSProperties } from 'react';
 import { useQuery } from '@tanstack/react-query';
-import { ArrowRight, LayoutGrid, List, ListFilter, MapPin } from 'lucide-react';
+import { LayoutGrid, List, MapPin, X } from 'lucide-react';
 import { supabase } from '@/integrations/supabase/client';
 import { useAuth } from '@/hooks/useAuth';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
 import { Label } from '@/components/ui/label';
-import { Dialog, DialogContent, DialogDescription, DialogTitle } from '@/components/ui/dialog';
+import { Sheet, SheetClose, SheetContent, SheetDescription, SheetTitle } from '@/components/ui/sheet';
 import { getPartyColor } from '@/features/election-districts/partyColors';
 import { historyError, useElectionPeriods } from '@/features/election-history/useElectionHistory';
 import { formatMandateDateRange } from '@/features/election-history/model';
@@ -21,6 +21,13 @@ type Deputy = {
   latest: { party: string; district: string | null; mandate_type: string; period_number: number };
 };
 function initials(name: string) { return name.split(/\s+/).filter(Boolean).map(part => part[0]).filter(Boolean).slice(0, 2).join(''); }
+function DeputyName({ name }: { name: string }) {
+  const parts = name.trim().split(/\s+/);
+  return <span className="deputy-card-name">
+    {parts.length > 1 && <span className="deputy-given-name">{parts[0]}</span>}
+    <span className="deputy-family-name">{parts.length > 1 ? parts.slice(1).join(' ') : name}</span>
+  </span>;
+}
 function Tenure({ count }: { count: number }) {
   return <span className="deputy-tenure" role="img" aria-label={`${count} Legislaturperioden`} title={`${count} Legislaturperioden in der freigegebenen Mandatshistorie`}>
     {Array.from({ length: count }, (_, index) => <i key={index} aria-hidden="true" />)}
@@ -34,7 +41,7 @@ function Portrait({ person }: { person: Deputy }) {
     : initials(person.name)}</span>;
 }
 function MandateIcon({ type }: { type: string }) {
-  return type === 'direct' ? <MapPin size={14} aria-hidden="true" /> : <ListFilter size={14} aria-hidden="true" />;
+  return type === 'direct' ? <MapPin size={14} aria-hidden="true" /> : <List size={14} aria-hidden="true" />;
 }
 
 export default function DeputyDirectory() {
@@ -98,28 +105,37 @@ export default function DeputyDirectory() {
       {(search || faction || period || mandate) && <Button variant="ghost" onClick={reset}>Zurücksetzen</Button>}
     </div>
     {periods.error && <p role="alert">Legislaturperioden: {historyError(periods.error)} <Button variant="outline" onClick={() => void periods.refetch()}>Erneut laden</Button></p>}
-    <div className="flex flex-wrap gap-x-6 gap-y-2 text-xs text-muted-foreground"><span className="flex items-center gap-2"><Tenure count={1} /> Ein Strich = eine Legislaturperiode</span><span className="flex items-center gap-2"><MapPin size={14} /> Direktmandat</span><span className="flex items-center gap-2"><ListFilter size={14} /> Listenmandat</span></div>
+    <div className="flex flex-wrap gap-x-6 gap-y-2 text-xs text-muted-foreground"><span className="flex items-center gap-2"><Tenure count={1} /> Ein Strich = eine Legislaturperiode</span><span className="flex items-center gap-2"><MapPin size={14} /> Direktmandat</span><span className="flex items-center gap-2"><List size={14} /> Listenmandat</span></div>
     {directory.isLoading && <p role="status">Lade Abgeordnete …</p>}
     {directory.error && <div role="alert">{historyError(directory.error)} <Button variant="outline" onClick={() => void directory.refetch()}>Erneut laden</Button></div>}
     {directory.data?.length === 0 && <div className="rounded-xl border border-dashed p-10 text-center"><p>Keine passenden Abgeordneten gefunden.</p><Button className="mt-3" variant="outline" onClick={reset}>Filter zurücksetzen</Button></div>}
     <div className={view === 'cards' ? 'deputy-grid' : 'deputy-list'} aria-busy={directory.isFetching}>
-      {directory.data?.slice(0, 25).map(entry => <button type="button" key={entry.name_key} className={view === 'cards' ? 'deputy-card' : 'deputy-row'} style={{ '--deputy-party': getPartyColor(entry.latest?.party || entry.parties[0]) } as CSSProperties} onClick={event => { lastTrigger.current = event.currentTarget; setPerson(entry); setActivePeriod(period ? published.find(item => item.id === period)?.number ?? null : null); }} aria-label={`${entry.name}, ${entry.parties.join(', ')}. Mandatshistorie öffnen`}>
+      {directory.data?.slice(0, 25).map(entry => <button type="button" key={entry.name_key} className={view === 'cards' ? 'deputy-card' : 'deputy-row'} style={{ '--deputy-party': getPartyColor(entry.latest?.party || entry.parties[0]) } as CSSProperties} onPointerMove={event => {
+        if (view !== 'cards' || event.pointerType === 'touch') return;
+        const bounds = event.currentTarget.getBoundingClientRect();
+        event.currentTarget.style.setProperty('--deputy-mx', `${(event.clientX - bounds.left) / bounds.width * 100}%`);
+        event.currentTarget.style.setProperty('--deputy-my', `${(event.clientY - bounds.top) / bounds.height * 100}%`);
+      }} onClick={event => { lastTrigger.current = event.currentTarget; setPerson(entry); setActivePeriod(period ? published.find(item => item.id === period)?.number ?? null : null); }} aria-label={`${entry.name}, ${entry.parties.join(', ')}. Mandatshistorie öffnen`}>
         <Portrait person={entry} />
         <span className="deputy-party"><i />{entry.latest?.party || entry.parties.join(', ')}</span>
         <span className="deputy-card-tenure"><Tenure count={entry.periods} /></span>
-        <span className="deputy-card-name">{entry.name}</span>
-        <span className="deputy-card-district"><MandateIcon type={entry.latest?.mandate_type} />{entry.latest?.district || 'Wahlkreis nicht erfasst'}</span>
-        <ArrowRight className="deputy-arrow" size={18} aria-hidden="true" />
+        <span className="deputy-card-info">
+          <DeputyName name={entry.name} />
+          <span className="deputy-card-district"><MandateIcon type={entry.latest?.mandate_type} />{entry.latest?.district || 'Wahlkreis nicht erfasst'}</span>
+        </span>
+        <span className="deputy-sheen" aria-hidden="true" />
       </button>)}
     </div>
     <nav aria-label="Abgeordnetenseiten" className="flex flex-wrap items-center justify-between gap-3 border-t pt-4"><p className="text-xs text-muted-foreground">Seite {offset / 25 + 1} · alphabetisch nach Namen</p><div className="flex gap-2"><Button variant="outline" disabled={directory.isFetching || offset === 0} onClick={() => setOffset(value => Math.max(0, value - 25))}>Zurück</Button><Button variant="outline" disabled={directory.isFetching || !directory.data || directory.data.length <= 25} onClick={() => setOffset(value => value + 25)}>Weitere 25</Button></div></nav>
-    <Dialog open={!!person} onOpenChange={open => { if (!open) setPerson(null); }}>
-      <DialogContent className="deputy-profile max-h-[90dvh] w-[calc(100%-1.5rem)] max-w-5xl overflow-y-auto rounded-2xl p-0" onCloseAutoFocus={event => { event.preventDefault(); lastTrigger.current?.focus(); }}>
+    <Sheet open={!!person} onOpenChange={open => { if (!open) setPerson(null); }}>
+      <SheetContent side="right" className="deputy-drawer w-full p-0 sm:max-w-5xl" onCloseAutoFocus={event => { event.preventDefault(); lastTrigger.current?.focus(); }}>
+        <SheetClose className="deputy-drawer-close" aria-label="Abgeordnetenprofil schließen"><X size={20} aria-hidden="true" /></SheetClose>
+        <div className="deputy-profile h-full overflow-y-auto">
         <div className="deputy-profile-side" style={{ '--deputy-party': getPartyColor(current?.party || person?.parties[0]) } as CSSProperties}>{person && <DeputyPortrait key={person.name_key} connectionId={person.name_key} name={person.name} editable={access.isSuperAdmin} />}</div>
         <div className="min-w-0 p-6 pt-12 sm:p-9">
           <p className="deputy-caption">{current?.party_label || current?.party || person?.parties.join(' · ')}</p>
-          <DialogTitle className="deputy-heading mt-3">{person?.name}</DialogTitle>
-          <DialogDescription className="mt-4">Mandatshistorie aus freigegebenen Legislaturperioden. Die Striche zeigen dokumentierte Mitgliedschaften, einschließlich Nachrücken.</DialogDescription>
+          <SheetTitle className="deputy-heading mt-3">{person?.name}</SheetTitle>
+          <SheetDescription className="mt-4">Mandatshistorie aus freigegebenen Legislaturperioden. Die Striche zeigen dokumentierte Mitgliedschaften, einschließlich Nachrücken.</SheetDescription>
           {detail.isLoading && <p role="status" className="mt-6">Lade Mandatshistorie …</p>}
           {detail.error && <div role="alert" className="mt-6">{historyError(detail.error)} <Button variant="outline" onClick={() => void detail.refetch()}>Erneut laden</Button></div>}
           {!detail.isLoading && !detail.error && rows.length === 0 && <p className="mt-6">Keine freigegebenen Mandate vorhanden.</p>}
@@ -130,7 +146,8 @@ export default function DeputyDirectory() {
             <p className="mt-8 border-t pt-4 text-xs text-muted-foreground">Dargestellt ist die dokumentierte Mandatshistorie. Unterbrechungen und mehrere Mandatsabschnitte bleiben erhalten. Fehlende Porträts werden durch Initialen ersetzt.</p>
           </>}
         </div>
-      </DialogContent>
-    </Dialog>
+      </div>
+      </SheetContent>
+    </Sheet>
   </section>;
 }
