@@ -168,9 +168,7 @@ export default function DeputyDirectory() {
         <div className="deputy-profile-side" style={{ '--deputy-party': getPartyColor(current?.party || person?.parties[0]) } as CSSProperties}>{person && <DeputyPortrait key={person.name_key} connectionId={person.name_key} name={person.name} editable={access.isSuperAdmin} variant="editorial" />}</div>
         <div className="deputy-profile-content" tabIndex={0} role="region" aria-label="Mandatshistorie und Profildetails">
           <div className="deputy-profile-faction-heading"><strong>{current?.party_label || current?.party || person?.latest?.party || person?.parties.join(' · ')}</strong><span aria-hidden="true" /></div>
-          <p className="deputy-caption deputy-profile-kicker" style={{ '--deputy-party': getPartyColor(current?.party || person?.latest?.party || person?.parties[0]) } as CSSProperties}>
-            {(current || person?.latest) && <span>{(current?.mandate_type || person?.latest?.mandate_type) === 'direct' ? 'Direktmandat' : 'Listenmandat'}</span>}
-          </p>
+
           <SheetTitle className="deputy-heading deputy-profile-name mt-3"><DeputyName name={person?.name || ''} /></SheetTitle>
           {detail.isLoading && <p role="status" className="mt-6">Lade Mandatshistorie …</p>}
           {detail.error && <div role="alert" className="mt-6">{historyError(detail.error)} <Button variant="outline" onClick={() => void detail.refetch()}>Erneut laden</Button></div>}

@@ -374,8 +374,6 @@
 }
 .deputy-profile-faction-heading strong { font-size: 26px; font-weight: 900; -webkit-text-stroke: .3px currentColor; line-height: 1.2; overflow-wrap: anywhere; }
 .deputy-profile-faction-heading > span { min-width: 24px; height: 2px; flex: 1; background: currentColor; }
-.deputy-profile-kicker { display: flex; flex-wrap: wrap; align-items: center; gap: 9px; }
-.deputy-profile-kicker .deputy-faction-dot { background: var(--deputy-party); }
 .deputy-profile-name .deputy-given-name {
   margin-bottom: 0;
   line-height: 1;
