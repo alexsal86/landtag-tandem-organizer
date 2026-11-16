@@ -4,6 +4,7 @@ import { supabase } from '@/integrations/supabase/client';
 import { useAuth } from '@/hooks/useAuth';
 import { historyTables, type HistoryEntity, type FormValues, parseHistoryForm } from './model';
 import type { ElectionHistoryData, ElectionPeriod } from './types';
+import type { Json } from '@/integrations/supabase/types';
 
 /** The small period index is the only query made before a selection. */
 export function useElectionPeriods(): UseQueryResult<ElectionPeriod[], Error> {
@@ -74,7 +75,10 @@ export async function saveHistoryEntry(entity: HistoryEntity, values: FormValues
     switch (parsed.entity) {
       case 'periods': return id ? supabase.from('election_history_periods').update(parsed.data).eq('id', id) : supabase.from('election_history_periods').insert(parsed.data);
       case 'people': return id ? supabase.from('election_history_people').update(parsed.data).eq('id', id) : supabase.from('election_history_people').insert(parsed.data);
-      case 'districts': return id ? supabase.from('election_history_districts').update(parsed.data).eq('id', id) : supabase.from('election_history_districts').insert(parsed.data);
+      case 'districts': {
+        const districtData = { ...parsed.data, boundaries: parsed.data.boundaries as unknown as Json };
+        return id ? supabase.from('election_history_districts').update(districtData).eq('id', id) : supabase.from('election_history_districts').insert(districtData);
+      }
       case 'candidacies': return id ? supabase.from('election_history_candidacies').update(parsed.data).eq('id', id) : supabase.from('election_history_candidacies').insert(parsed.data);
       case 'mandates': return id ? supabase.from('election_history_mandates').update(parsed.data).eq('id', id) : supabase.from('election_history_mandates').insert(parsed.data);
     }

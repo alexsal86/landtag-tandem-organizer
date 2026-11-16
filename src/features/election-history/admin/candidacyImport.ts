@@ -133,21 +133,17 @@ export function parseCandidacyImport(
     const party = get('party');
     if (!personName) errors.push('Name fehlt.');
     if (!party) errors.push('Partei fehlt.');
-    let district: HistoricalDistrict | null = null;
-    let votes: number | null = null;
-    let voteShare: number | null = null;
-    let districtRank: number | null = null;
-    let listPosition: number | null = null;
-    let result: ElectionCandidacy['outcome'] = 'unknown';
-    let ballotType = defaultBallot;
-    const read = (callback: () => void) => { try { callback(); } catch (error) { errors.push(error instanceof Error ? error.message : 'Ungültiger Wert.'); } };
-    read(() => { district = districtFor(get('district'), districts); });
-    read(() => { votes = integer(get('votes'), 'Stimmen', 0); });
-    read(() => { voteShare = decimal(get('share')); });
-    read(() => { districtRank = integer(get('rank'), 'Wahlkreisplatz', 1); });
-    read(() => { listPosition = integer(get('list'), 'Listenplatz', 1); });
-    read(() => { result = outcome(get('outcome')); });
-    read(() => { ballotType = ballot(get('ballot'), defaultBallot); });
+    const read = <T,>(callback: () => T): T | null => {
+      try { return callback(); }
+      catch (error) { errors.push(error instanceof Error ? error.message : 'Ungültiger Wert.'); return null; }
+    };
+    const district = read(() => districtFor(get('district'), districts));
+    const votes = read(() => integer(get('votes'), 'Stimmen', 0));
+    const voteShare = read(() => decimal(get('share')));
+    const districtRank = read(() => integer(get('rank'), 'Wahlkreisplatz', 1));
+    const listPosition = read(() => integer(get('list'), 'Listenplatz', 1));
+    const result = read(() => outcome(get('outcome'))) || 'unknown';
+    const ballotType = read(() => ballot(get('ballot'), defaultBallot)) || defaultBallot;
     if (!district && (votes !== null || voteShare !== null || districtRank !== null || result === 'direct')) errors.push('Persönliche Ergebnisse und Direktgewinne brauchen einen Wahlkreis.');
     return {
       line: index + 2,

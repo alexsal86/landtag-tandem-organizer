@@ -1,4 +1,4 @@
-import { useMemo, useState } from 'react';
+import { Fragment, useMemo, useState } from 'react';
 import { AlertTriangle, Check, CircleCheck, FilePenLine, Pencil, Plus, Save, Trash2, X } from 'lucide-react';
 import { useQueryClient } from '@tanstack/react-query';
 import { Button } from '@/components/ui/button';
@@ -281,14 +281,14 @@ export function HistoryDataGrid({ entity, data, selectedPeriodId, overview, onOp
           {rows.slice(0, pageSize).map(row => {
             const isEditing = editing === row.id;
             const issues = qualityIssues(row);
-            return <>{<TableRow key={row.id} className={isEditing ? 'bg-primary/5 hover:bg-primary/5' : issues.length ? 'bg-warning/5' : ''}>{columns[entity].map(column => <TableCell key={column.key} className="p-2 align-top">{isEditing && column.fieldKey ? fieldInput(gridFields[entity].find(field => field.key === column.fieldKey)!, true) : displayCell(column.key, row)}</TableCell>)}<TableCell className="p-2 align-top"><div className="flex flex-wrap gap-1">
+            return <Fragment key={row.id}>{<TableRow className={isEditing ? 'bg-primary/5 hover:bg-primary/5' : issues.length ? 'bg-warning/5' : ''}>{columns[entity].map(column => <TableCell key={column.key} className="p-2 align-top">{isEditing && column.fieldKey ? fieldInput(gridFields[entity].find(field => field.key === column.fieldKey)!, true) : displayCell(column.key, row)}</TableCell>)}<TableCell className="p-2 align-top"><div className="flex flex-wrap gap-1">
               {isEditing ? <><Button size="icon" className="h-8 w-8" aria-label="Änderungen speichern" disabled={saving} onClick={() => void save()}><Save className="h-4 w-4" /></Button><Button size="icon" variant="ghost" className="h-8 w-8" aria-label="Bearbeitung verwerfen" disabled={saving} onClick={cancel}><X className="h-4 w-4" /></Button></> : <>
                 {entity === 'periods' && onOpenPeriod && <Button size="sm" variant="outline" className="h-8" onClick={() => onOpenPeriod(row.id)}>Öffnen</Button>}
                 {entity === 'periods' && (row as ElectionPeriod).is_published && !(row as ElectionPeriod).is_current && <Button size="sm" variant="ghost" className="h-8" disabled={saving} onClick={() => void makeCurrent(row.id)}>Aktuell</Button>}
                 <Button size="icon" variant="ghost" className="h-8 w-8" aria-label="Datensatz bearbeiten" disabled={saving} onClick={() => startEdit(row)}><Pencil className="h-4 w-4" /></Button>
               </>}
               <Button size="icon" variant="ghost" className="h-8 w-8 text-destructive" aria-label="Datensatz löschen" disabled={saving} onClick={() => void remove(row)}><Trash2 className="h-4 w-4" /></Button>
-            </div></TableCell></TableRow>}{isEditing && editorDetails}</>;
+            </div></TableCell></TableRow>}{isEditing && editorDetails}</Fragment>;
           })}
         </TableBody>
       </Table>

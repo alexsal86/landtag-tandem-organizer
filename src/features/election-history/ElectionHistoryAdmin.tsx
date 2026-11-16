@@ -20,7 +20,7 @@ type WorkspaceSection = GridEntity | 'deputies';
 export default function ElectionHistoryAdmin() {
   const { user, loading } = useAuth();
   const access = useAdministrationAccess(user?.id, undefined, loading);
-  if (access.checkingAdmin) return <LoadingState title="Berechtigung wird geprüft" />;
+  if (access.checkingAdmin) return <LoadingState label="Berechtigung wird geprüft" />;
   if (!access.isSuperAdmin) return <p>Nur Super-Admins können zentrale Wahldaten verwalten.</p>;
   return <ElectionHistoryWorkspace key={user?.id} />;
 }
@@ -37,7 +37,7 @@ function ElectionHistoryWorkspace() {
   const period = data?.periods.find(item => item.id === selectedPeriod);
   const periodOverview = overviewQuery.data?.find(item => item.period_id === selectedPeriod);
 
-  if (periodQuery.isLoading || (query.isLoading && section !== 'deputies')) return <LoadingState title="Zentrale Wahldaten werden geladen" />;
+  if (periodQuery.isLoading || (query.isLoading && section !== 'deputies')) return <LoadingState label="Zentrale Wahldaten werden geladen" />;
   if (periodQuery.error || query.error || !data) return <ErrorState title="Wahldatenbank konnte nicht geladen werden" description={historyError(periodQuery.error || query.error)} onRetry={() => void Promise.all([periodQuery.refetch(), query.refetch()])} />;
 
   return <div className="space-y-5">

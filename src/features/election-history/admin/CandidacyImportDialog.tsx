@@ -69,7 +69,7 @@ export function CandidacyImportDialog({ open, onOpenChange, data, periodId, onIm
         outcome: row.outcome,
       }));
       const { data: imported, error: rpcError } = await supabase.rpc('import_election_history_candidacies', {
-        period: periodId, import_source_url: sourceUrl || null, entries,
+        period: periodId, import_source_url: sourceUrl, entries,
       });
       if (rpcError) throw rpcError;
       await onImported();
