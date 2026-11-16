@@ -1,7 +1,6 @@
 import { useState } from 'react';
 import { useSearchParams } from 'react-router-dom';
 import { CartesianGrid, Legend, Line, LineChart, ResponsiveContainer, Tooltip, XAxis, YAxis } from 'recharts';
-import type { AxisDomain } from 'recharts/types/util/types';
 import { Button } from '@/components/ui/button';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 import { AnalysisControls } from './AnalysisToolbar';
@@ -32,7 +31,8 @@ export function StateHistoryPanel({ year, years }: {
       ...parties.map(p => ({ key: p, label: p, color: chartColor(p) })),
     ];
     const showParties = parties.some(p => selectedMetrics.includes(p));
-    const percentageDomain: AxisDomain = [0, (max: number) => Math.ceil((max + 5) / 5) * 5];
+    const maximum = Math.ceil((Math.max(10, ...rows.flatMap(row => selectedMetrics.map(key => { const value = row[key as keyof typeof row]; return typeof value === 'number' ? value : 0; }))) + 5) / 5) * 5;
+    const percentageDomain: [number, number] = [0, maximum];
     return <div className="space-y-4">
     <AnalysisControls>
       <Selection id="history-from" label="Zeitreihe ab Wahl" value={String(from)} onChange={v => setParams(old => { const next = new URLSearchParams(old); next.set('historyFrom', v); return next; })}>{ordered.filter(y => y <= year).map(y => <option key={y} value={y}>{y}</option>)}</Selection>

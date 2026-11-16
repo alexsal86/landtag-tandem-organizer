@@ -1,6 +1,5 @@
 import { useState } from 'react';
 import { CartesianGrid, Line, LineChart, ReferenceLine, ResponsiveContainer, Tooltip, XAxis, YAxis } from 'recharts';
-import type { AxisDomain } from 'recharts/types/util/types';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 import { ballotLabels, effectiveBallot, parties, percent } from './model';
 import { chartColor, DataState } from './shared';
@@ -30,8 +29,8 @@ export function StateShareChart({ year, ballot, rows, comparisonYears, series, l
   const bars = visibleParties.map(p => ({ party: p, share: multiple ? selected?.[p] ?? null : rows.find(row => row.party === p)?.share ?? null }))
     .sort((a, b) => (b.share ?? -1) - (a.share ?? -1));
   const maximum = Math.ceil((Math.max(10, ...(multiple ? series.flatMap(row => parties.map(p => row[p] ?? 0)) : rows.map(row => row.share ?? 0))) + 5) / 5) * 5;
-  const yearDomain: AxisDomain = ['dataMin', 'dataMax'];
-  const percentageDomain: AxisDomain = [0, maximum];
+  const yearDomain: [number, number] = [Math.min(...comparisonYears), Math.max(...comparisonYears)];
+  const percentageDomain: [number, number] = [0, maximum];
   return <Card className="min-w-0 rounded-2xl">
     <CardHeader className="gap-3 pb-3">
       <div className="grid grid-cols-[minmax(0,1fr)_auto] items-start gap-x-2 gap-y-2">
