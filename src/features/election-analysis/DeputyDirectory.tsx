@@ -133,3 +133,4 @@ export default function DeputyDirectory() {
       </DialogContent>
     </Dialog>
   </section>;
+}
