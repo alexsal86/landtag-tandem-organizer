@@ -46,7 +46,8 @@ export function useStateComparisonSeries(years: number[], ballot: Ballot, enable
         .eq('year', year).eq('ballot', effectiveBallot(year, ballot)).in('party', focusParties)
         .order('party').limit(100).abortSignal(signal);
       if (error) throw error;
-      return { year, ...Object.fromEntries(focusParties.map(p => [p, data?.find(row => row.party === p)?.share ?? null])) };
+      const point: { year: number } & Record<string, number | null> = { year, ...Object.fromEntries(focusParties.map(p => [p, data?.find(row => row.party === p)?.share ?? null])) };
+      return point;
     })),
     staleTime: 60_000, gcTime: 120_000, retry: false,
   });

@@ -12,7 +12,7 @@ import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
 import { useAnalysisRows, useAnalysisYears, useStateComparisonSeries } from './useElectionAnalysis';
-import { ballotLabels, ballotsForYear, effectiveBallot, parties, sectionLabels, percent, number, difference, stateComparison, compareAnalysisValues } from './model';
+import { ballotLabels, ballotsForYear, effectiveBallot, parties, sectionLabels, percent, number, stateComparison, compareAnalysisValues } from './model';
 import type { AnalysisSection, Ballot } from './types';
 
 const ResearchWorkbench = lazy(() => import('./research/ResearchWorkbench'));
@@ -65,6 +65,8 @@ type PanelProps = { year: number; ballot: Ballot; party: string; gender: string 
 function StatePanel({ year, ballot, party, gender, years }: PanelProps & { years: number[] }) {
   const query = useAnalysisRows('state', year, ballot, party, gender);
   const [previousYear, setPreviousYear] = useState(0);
+  const [hiddenParties, setHiddenParties] = useState<string[]>([]);
+  const toggleParty = (party: string) => setHiddenParties(current => current.includes(party) ? current.filter(p => p !== party) : [...current, party]);
   const previousBallot = effectiveBallot(previousYear, ballot);
   const previous = useAnalysisRows('state', previousYear, previousBallot, party, gender, previousYear > 0);
   const rows = stateComparison(query.data || [], previous.data || []).sort((a, b) =>
@@ -73,14 +75,28 @@ function StatePanel({ year, ballot, party, gender, years }: PanelProps & { years
   const comparisonYears = previousYear > 0 ? years.filter(y => y >= Math.min(year, previousYear) && y <= Math.max(year, previousYear)).sort((a, b) => a - b) : [];
   const series = useStateComparisonSeries(comparisonYears, ballot, previousYear > 0);
   const comparisonRows = series.data || [];
+  const visibleRows = rows.filter(row => !hiddenParties.includes(row.party));
+  const visibleParties = parties.filter(p => !hiddenParties.includes(p));
+  const comparisonStart = comparisonYears[0];
+  const comparisonEnd = comparisonYears[comparisonYears.length - 1];
   return <div className="space-y-4">
     <AnalysisControls><Selection id="analysis-compare" label="Mit Wahl vergleichen" value={String(previousYear)} onChange={value => setPreviousYear(Number(value))}><option value="0">Kein Vergleich</option>{years.filter(y => y !== year).map(y => <option key={y} value={y}>{y} · {ballotLabels[effectiveBallot(y, ballot)]}</option>)}</Selection></AnalysisControls>
     {previousYear > 0 && previous.isLoading && <p role="status" className="text-sm">Lade Vergleichswahl …</p>}
     {previous.error && <p role="alert" className="text-sm">Die Vergleichswahl konnte nicht geladen werden.</p>}
     <DataState loading={query.isLoading} error={query.error} empty={!rows.length} retry={() => void query.refetch()}>
       <div className="grid items-start gap-4 xl:grid-cols-2">
-        <StateShareChart key={previousYear} year={year} ballot={ballot} rows={rows} comparisonYears={comparisonYears} series={comparisonRows} loading={series.isLoading} error={series.error} retry={() => void series.refetch()} />
-        <div className="min-w-0 space-y-4"><div className="[&_tbody]:bg-white"><DataTable headers={['Partei', 'Stimmen', 'Anteil', 'Sitze', ...(previousYear ? ['Vergleichsanteil', 'Änderung'] : [])]} rows={rows.map(r => [<PartyLabel party={r.party} />, number(r.votes), percent(r.share), number(r.seats), ...(previousYear ? [percent(r.previousShare), difference(r.share, r.previousShare)] : [])])} /></div>
+        <StateShareChart key={previousYear} year={year} ballot={ballot} rows={rows} hidden={hiddenParties} onToggleParty={toggleParty} comparisonYears={comparisonYears} series={comparisonRows} loading={series.isLoading} error={series.error} retry={() => void series.refetch()} />
+        <div className="min-w-0 space-y-4"><div className="[&_tbody]:bg-white">
+          {previousYear > 0 ? <DataState loading={series.isLoading} error={series.error} empty={!comparisonRows.length} retry={() => void series.refetch()}>
+            <DataTable headers={['Partei', ...comparisonYears.map(String), `Δ ${comparisonStart}–${comparisonEnd} (PP)`]} rows={visibleParties.map(p => {
+              const start = comparisonRows.find(row => row.year === comparisonStart)?.[p] ?? null;
+              const end = comparisonRows.find(row => row.year === comparisonEnd)?.[p] ?? null;
+              const delta = start !== null && end !== null ? Math.round((end - start) * 1000) / 1000 : null;
+              return [<PartyLabel party={p} />, ...comparisonYears.map(y => percent(comparisonRows.find(row => row.year === y)?.[p] ?? null)), <span className={delta === null || delta === 0 ? '' : delta > 0 ? 'text-green-700' : 'text-red-700'}>{delta === null ? '—' : `${delta > 0 ? '+' : ''}${delta.toLocaleString('de-DE', { maximumFractionDigits: 1 })} PP`}</span>];
+            })} />
+            <p className="mt-2 text-xs text-muted-foreground">Δ: Veränderung von {comparisonStart} bis {comparisonEnd} in Prozentpunkten (PP).</p>
+          </DataState> : <DataTable headers={['Partei', 'Stimmen', 'Anteil']} rows={visibleRows.map(r => [<PartyLabel party={r.party} />, number(r.votes), percent(r.share)])} />}
+        </div>
           <StateSeatDistribution rows={rows} year={year} ballot={ballot} />
         </div>
       </div>
