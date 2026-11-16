@@ -5796,6 +5796,33 @@ export type Database = {
           },
         ]
       }
+      election_history_deputy_birthdays: {
+        Row: {
+          connection_id: string
+          birthday: string | null
+          birth_year: number
+          source_name: string
+          source_faction: string
+          source_note: string
+        }
+        Insert: {
+          connection_id: string
+          birthday?: string | null
+          birth_year: number
+          source_name: string
+          source_faction: string
+          source_note?: string
+        }
+        Update: {
+          connection_id?: string
+          birthday?: string | null
+          birth_year?: number
+          source_name?: string
+          source_faction?: string
+          source_note?: string
+        }
+        Relationships: []
+      }
       election_history_mandates: {
         Row: {
           connection_id: string | null
