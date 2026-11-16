@@ -17,6 +17,27 @@ export function useElectionPeriods(): UseQueryResult<ElectionPeriod[], Error> {
     }, staleTime: 60_000, gcTime: 300_000, retry: false,
   });
 }
+export interface ElectionPeriodOverview {
+  period_id: string;
+  district_count: number;
+  mandate_count: number;
+  candidacy_count: number;
+  open_identity_count: number;
+}
+
+export function useElectionPeriodOverview(): UseQueryResult<ElectionPeriodOverview[], Error> {
+  const { user } = useAuth();
+  return useQuery({
+    queryKey: ['election-history', user?.id, 'period-overview'], enabled: !!user,
+    queryFn: async ({ signal }) => {
+      const { data, error } = await supabase.rpc('get_election_history_period_overview').abortSignal(signal);
+      if (error) throw error;
+      if (!Array.isArray(data)) throw new Error('Ungültige Periodenübersicht.');
+      return data as ElectionPeriodOverview[];
+    }, staleTime: 60_000, gcTime: 120_000, retry: false,
+  });
+}
+
 export function useElectionHistory(periodId?: string): UseQueryResult<ElectionHistoryData, Error> {
   const { user } = useAuth();
   return useQuery({
