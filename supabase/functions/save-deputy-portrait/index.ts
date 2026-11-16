@@ -1,10 +1,10 @@
 import { callerClient, requireAuth, unauthorizedResponse, forbiddenResponse, badRequestResponse, jsonResponse, withSafeHandler } from '../_shared/security.ts';
-import { PORTRAIT_ID, portraitSource, isDeputyPortrait, validPortraitWebp, type DeputyPortrait } from '../_shared/deputyPortrait.ts';
+import { PORTRAIT_ID, PORTRAIT_SIZE, PORTRAIT_LARGE, PORTRAIT_THUMB, portraitSource, isDeputyPortrait, validPortraitWebp, type DeputyPortrait } from '../_shared/deputyPortrait.ts';
 
 // Platform-wide catalog operation, authorized only by is_superadmin; no tenant data is changed.
 const REPOSITORY = 'alexsal86/landtag-tandem-organizer';
 const BRANCH = 'main';
-const MAX_BODY = 180_000;
+const MAX_BODY = 750_000;
 const fail = (status: number, code: string, message: string) => jsonResponse({ error: { code, message } }, status);
 
 async function boundedJson(req: Request): Promise<Record<string, unknown> | null> {
@@ -24,8 +24,9 @@ async function boundedJson(req: Request): Promise<Record<string, unknown> | null
   } catch { return null; }
   finally { reader.releaseLock(); }
 }
-function decodeImage(value: unknown, thumb: boolean): Uint8Array | null {
-  if (typeof value !== 'string' || value.length > 140_000 || !/^[A-Za-z0-9+/]*={0,2}$/.test(value)) return null;
+function decodeImage(value: unknown, thumb: boolean | 'large'): Uint8Array | null {
+  const limits = thumb === 'large' ? PORTRAIT_LARGE : thumb ? PORTRAIT_THUMB : PORTRAIT_SIZE;
+  if (typeof value !== 'string' || value.length > 4 * Math.ceil(limits.maxBytes / 3) || !/^[A-Za-z0-9+/]*={0,2}$/.test(value)) return null;
   try { const binary = atob(value); const bytes = Uint8Array.from(binary, c => c.charCodeAt(0)); return validPortraitWebp(bytes, thumb) ? bytes : null; }
   catch { return null; }
 }
@@ -44,7 +45,8 @@ Deno.serve(withSafeHandler('save-deputy-portrait', async req => {
   if (!body || typeof body.connectionId !== 'string' || !PORTRAIT_ID.test(body.connectionId)) return badRequestResponse('Ungültige Mandatsverbindung oder zu große Anfrage.');
   const source = portraitSource(body.source);
   const image = decodeImage(body.image, false); const thumbnail = decodeImage(body.thumbnail, true);
-  if (!source || !image || !thumbnail || (body.expectedVersion !== null && (typeof body.expectedVersion !== 'string' || !PORTRAIT_ID.test(body.expectedVersion)))) return badRequestResponse('Bitte gültige WebP-Ausschnitte und eine gültige Quellenangabe übermitteln.');
+  const largeImage = body.largeImage === undefined ? null : decodeImage(body.largeImage, 'large');
+  if ((body.largeImage !== undefined && !largeImage) || !source || !image || !thumbnail || (body.expectedVersion !== null && (typeof body.expectedVersion !== 'string' || !PORTRAIT_ID.test(body.expectedVersion)))) return badRequestResponse('Bitte gültige WebP-Ausschnitte und eine gültige Quellenangabe übermitteln.');
   // Authorize the actual catalog connection before any GitHub side effect.
   const { data: mandates, error: mandateError } = await db.from('election_history_mandates').select('id').eq('connection_id', body.connectionId).limit(1);
   if (mandateError || !mandates?.length) return badRequestResponse('Die Mandatsverbindung existiert nicht mehr. Bitte neu laden.');
@@ -60,8 +62,8 @@ Deno.serve(withSafeHandler('save-deputy-portrait', async req => {
   };
   const directory = `public/images/abgeordnete/${body.connectionId}`;
   const metadata: DeputyPortrait = { schemaVersion: 1, connectionId: body.connectionId, version: crypto.randomUUID(),
-    image: `portrait-${await digest(image)}.webp`, thumbnail: `thumb-${await digest(thumbnail)}.webp`, source, updatedAt: new Date().toISOString() };
-  let blobs: { image: string; thumbnail: string; metadata: string } | null = null;
+    image: `portrait-${await digest(image)}.webp`, thumbnail: `thumb-${await digest(thumbnail)}.webp`, source, ...(largeImage ? { largeImage: `large-${await digest(largeImage)}.webp` } : {}), updatedAt: new Date().toISOString() };
+  let blobs: { image: string; thumbnail: string; largeImage: string | null; metadata: string } | null = null;
   try {
     for (let attempt = 0; attempt < 3; attempt++) {
       const ref = await required(await api(`git/ref/heads/${BRANCH}`));
@@ -77,12 +79,13 @@ Deno.serve(withSafeHandler('save-deputy-portrait', async req => {
       }
       if ((previous?.version || null) !== body.expectedVersion) return fail(409, 'portrait_conflict', 'Für diesen Abgeordneten liegt bereits ein neuerer Upload vor. Bitte nach dem Lovable-Deployment neu laden.');
       if (!blobs) {
-        const [main, small, meta] = await Promise.all([
+        const [main, small, large, meta] = await Promise.all([
           api('git/blobs', 'POST', { content: body.image, encoding: 'base64' }).then(required),
           api('git/blobs', 'POST', { content: body.thumbnail, encoding: 'base64' }).then(required),
+          largeImage ? api('git/blobs', 'POST', { content: body.largeImage, encoding: 'base64' }).then(required) : Promise.resolve(null),
           api('git/blobs', 'POST', { content: `${JSON.stringify(metadata, null, 2)}\n`, encoding: 'utf-8' }).then(required),
         ]);
-        blobs = { image: main.sha, thumbnail: small.sha, metadata: meta.sha };
+        blobs = { image: main.sha, thumbnail: small.sha, largeImage: large?.sha || null, metadata: meta.sha };
       }
       const commit = await required(await api(`git/commits/${head}`));
       const tree: { path: string; mode: string; type: string; sha: string | null }[] = [
@@ -90,6 +93,8 @@ Deno.serve(withSafeHandler('save-deputy-portrait', async req => {
         { path: `${directory}/${metadata.thumbnail}`, mode: '100644', type: 'blob', sha: blobs.thumbnail },
         { path: `${directory}/portrait.json`, mode: '100644', type: 'blob', sha: blobs.metadata },
       ];
+      if (metadata.largeImage && blobs.largeImage) tree.push({ path: `${directory}/${metadata.largeImage}`, mode: '100644', type: 'blob', sha: blobs.largeImage });
+      if (previous?.largeImage && previous.largeImage !== metadata.largeImage) tree.push({ path: `${directory}/${previous.largeImage}`, mode: '100644', type: 'blob', sha: null });
       // Remove replaced assets from the current tree; Git history remains intact.
       if (previous && previous.image !== metadata.image) tree.push({ path: `${directory}/${previous.image}`, mode: '100644', type: 'blob', sha: null });
       if (previous && previous.thumbnail !== metadata.thumbnail) tree.push({ path: `${directory}/${previous.thumbnail}`, mode: '100644', type: 'blob', sha: null });

@@ -1,4 +1,4 @@
-export { PORTRAIT_SIZE, PORTRAIT_THUMB, PORTRAIT_ID, portraitCrop, portraitSource, isDeputyPortrait, validPortraitWebp } from '../../../supabase/functions/_shared/deputyPortrait';
+export { PORTRAIT_SIZE, PORTRAIT_LARGE, PORTRAIT_THUMB, PORTRAIT_ID, portraitCrop, portraitSource, isDeputyPortrait, validPortraitWebp } from '../../../supabase/functions/_shared/deputyPortrait';
 export type { DeputyPortrait, PortraitSource } from '../../../supabase/functions/_shared/deputyPortrait';
 
 export function portraitDirectory(id: string) {

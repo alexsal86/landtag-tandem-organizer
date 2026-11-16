@@ -5,7 +5,7 @@ import { Input } from '@/components/ui/input';
 import { Label } from '@/components/ui/label';
 import { Slider } from '@/components/ui/slider';
 import { supabase } from '@/integrations/supabase/client';
-import { PORTRAIT_SIZE, PORTRAIT_THUMB, portraitCrop, portraitDirectory, portraitSource, isDeputyPortrait, webpBlob, blobBase64, type DeputyPortrait, type PortraitSource } from './portrait';
+import { PORTRAIT_SIZE, PORTRAIT_LARGE, PORTRAIT_THUMB, portraitCrop, portraitDirectory, portraitSource, isDeputyPortrait, webpBlob, blobBase64, type DeputyPortrait, type PortraitSource } from './portrait';
 
 type Props = { connectionId: string; name: string; current: DeputyPortrait | null; initialImage?: Blob; onClose: () => void; onSaved: (metadata: DeputyPortrait, preview: Blob) => void };
 export function DeputyPortraitEditor({ connectionId, name, current, initialImage, onClose, onSaved }: Props) {
@@ -22,14 +22,14 @@ export function DeputyPortraitEditor({ connectionId, name, current, initialImage
   useEffect(() => {
     const local = file || initialImage;
     if (!local && !current) return;
-    const url = local ? URL.createObjectURL(local) : `${portraitDirectory(connectionId)}${current!.image}`; let active = true;
+    const url = local ? URL.createObjectURL(local) : `${portraitDirectory(connectionId)}${current!.largeImage || current!.image}`; let active = true;
     setImageUrl(url); setImage(null); setZoom(1); setPosition({ x: 0, y: 0 });
     const loaded = new Image();
     loaded.onload = () => { if (active) { if (loaded.naturalWidth * loaded.naturalHeight > 60_000_000) setError('Bitte ein Bild mit höchstens 60 Megapixeln wählen.'); else setImage(loaded); } };
     loaded.onerror = () => { if (active) setError('Das Bild konnte nicht gelesen werden. Bitte JPEG, PNG oder WebP wählen.'); };
     loaded.src = url;
     return () => { active = false; if (local) URL.revokeObjectURL(url); };
-  }, [file, initialImage, current?.image, connectionId]);
+  }, [file, initialImage, current?.image, current?.largeImage, connectionId]);
   const move = (x: number, y: number) => {
     if (!image) return;
     const next = portraitCrop(image.naturalWidth, image.naturalHeight, zoom, x, y);
@@ -40,10 +40,15 @@ export function DeputyPortraitEditor({ connectionId, name, current, initialImage
     if (!portraitSource(source)) { setError('Bitte eine gültige Quellen-URL mit https:// oder http:// angeben.'); return; }
     setSaving(true); setError('');
     try {
+      const large = document.createElement('canvas'); large.width = PORTRAIT_LARGE.width; large.height = PORTRAIT_LARGE.height;
+      const largeCtx = large.getContext('2d'); if (!largeCtx) throw new Error('Bildverarbeitung ist in diesem Browser nicht verfügbar.');
+      largeCtx.imageSmoothingEnabled = true; largeCtx.imageSmoothingQuality = 'high';
+      largeCtx.drawImage(image, crop.sourceX, crop.sourceY, crop.sourceWidth, crop.sourceHeight, 0, 0, large.width, large.height);
+      const largeImage = await webpBlob(large, PORTRAIT_LARGE.maxBytes);
       const canvas = document.createElement('canvas'); canvas.width = PORTRAIT_SIZE.width; canvas.height = PORTRAIT_SIZE.height;
       const ctx = canvas.getContext('2d'); if (!ctx) throw new Error('Bildverarbeitung ist in diesem Browser nicht verfügbar.');
       ctx.imageSmoothingEnabled = true; ctx.imageSmoothingQuality = 'high';
-      ctx.drawImage(image, crop.sourceX, crop.sourceY, crop.sourceWidth, crop.sourceHeight, 0, 0, canvas.width, canvas.height);
+      ctx.drawImage(large, 0, 0, canvas.width, canvas.height);
       const detail = await webpBlob(canvas, PORTRAIT_SIZE.maxBytes);
       const small = document.createElement('canvas'); small.width = PORTRAIT_THUMB.width; small.height = PORTRAIT_THUMB.height;
       const smallCtx = small.getContext('2d'); if (!smallCtx) throw new Error('Die Bildvorschau konnte nicht erstellt werden.');
@@ -51,7 +56,7 @@ export function DeputyPortraitEditor({ connectionId, name, current, initialImage
       const thumbnail = await webpBlob(small, PORTRAIT_THUMB.maxBytes);
       const { data, error: uploadError } = await supabase.functions.invoke('save-deputy-portrait', { body: {
         connectionId, expectedVersion: current?.version || null, source,
-        image: await blobBase64(detail), thumbnail: await blobBase64(thumbnail),
+        largeImage: await blobBase64(largeImage), image: await blobBase64(detail), thumbnail: await blobBase64(thumbnail),
       } });
       if (uploadError) {
         let message = 'Der GitHub-Upload ist fehlgeschlagen. Bitte die Server-Konfiguration und Verbindung prüfen.';
@@ -59,7 +64,7 @@ export function DeputyPortraitEditor({ connectionId, name, current, initialImage
         throw new Error(message);
       }
       if (!isDeputyPortrait(data?.metadata, connectionId)) throw new Error('Der Server hat keine gültige Bildbestätigung geliefert.');
-      onSaved(data.metadata, detail);
+      onSaved(data.metadata, largeImage);
     } catch (failure) { setError(failure instanceof Error ? failure.message : 'Das Bild konnte nicht gespeichert werden.'); }
     finally { setSaving(false); }
   };
@@ -79,10 +84,11 @@ export function DeputyPortraitEditor({ connectionId, name, current, initialImage
           <img alt="Vorschau des Porträtausschnitts" src={imageUrl} draggable={false} className="pointer-events-none absolute select-none" style={{ maxWidth: 'none', width: image.naturalWidth * crop.scale, height: image.naturalHeight * crop.scale, left: (240 - image.naturalWidth * crop.scale) / 2 + crop.offsetX, top: (320 - image.naturalHeight * crop.scale) / 2 + crop.offsetY }} />
         </div>
         <p className="text-center text-xs text-muted-foreground">Bild verschieben und mit Zoom in den 3:4-Rahmen einpassen.</p>
+        {(crop.sourceWidth < PORTRAIT_LARGE.width || crop.sourceHeight < PORTRAIT_LARGE.height) && <p className="text-xs text-muted-foreground">Der gewählte Ausschnitt hat weniger als 1200 × 1600 Pixel. Für schärfere große Porträts bitte ein höher aufgelöstes Original wählen oder weniger stark zoomen.</p>}
         <Label htmlFor="deputy-portrait-zoom">Zoom</Label><Slider id="deputy-portrait-zoom" aria-label="Porträt vergrößern" value={[zoom]} min={1} max={4} step={0.01} onValueChange={([value]) => { setZoom(value); const next = portraitCrop(image.naturalWidth, image.naturalHeight, value, crop.offsetX, crop.offsetY); setPosition({ x: next.offsetX, y: next.offsetY }); }} />
       </div>}
       <div className="grid gap-3 sm:grid-cols-2">{([{ key: 'label', label: 'Quelle / Bildnachweis' }, { key: 'url', label: 'Quellen-URL' }, { key: 'author', label: 'Fotograf/in / Urheber/in' }, { key: 'license', label: 'Lizenz / Nutzungshinweis' }] as const).map(field => <div key={field.key}><Label htmlFor={`portrait-source-${field.key}`}>{field.label}</Label><Input id={`portrait-source-${field.key}`} type={field.key === 'url' ? 'url' : 'text'} maxLength={field.key === 'url' ? 2048 : 500} value={source[field.key]} onChange={event => setSource(previous => ({ ...previous, [field.key]: event.target.value }))} /></div>)}</div>
-      <p className="text-xs text-muted-foreground">WebP · 480 × 640 Pixel plus kleine Vorschau. Bild und Bildnachweis werden öffentlich mit der Website ausgeliefert.</p>
+      <p className="text-xs text-muted-foreground">WebP · 1200 × 1600 Pixel für Details, 480 × 640 für Karten und 96 × 128 für Listen. Bild und Bildnachweis werden öffentlich mit der Website ausgeliefert.</p>
       {error && <p role="alert" className="text-sm text-destructive">{error}</p>}
     </fieldset>
     <DialogFooter><Button variant="outline" disabled={saving} onClick={onClose}>Abbrechen</Button><Button disabled={!image || saving} onClick={() => void save()}>{saving ? 'Speichert in GitHub …' : 'Ausschnitt in GitHub speichern'}</Button></DialogFooter>

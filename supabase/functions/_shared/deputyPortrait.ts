@@ -1,9 +1,10 @@
 export const PORTRAIT_SIZE = { width: 480, height: 640, maxBytes: 102_400 } as const;
+export const PORTRAIT_LARGE = { width: 1200, height: 1600, maxBytes: 409_600 } as const;
 export const PORTRAIT_THUMB = { width: 96, height: 128, maxBytes: 12_288 } as const;
 export const PORTRAIT_ID = /^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/i;
 export type PortraitSource = { label: string; url: string; author: string; license: string };
 export type DeputyPortrait = {
-  schemaVersion: 1; connectionId: string; version: string; image: string; thumbnail: string;
+  schemaVersion: 1; connectionId: string; version: string; image: string; thumbnail: string; largeImage?: string;
   source: PortraitSource; updatedAt: string;
 };
 
@@ -24,6 +25,7 @@ export function isDeputyPortrait(value: unknown, connectionId: string): value is
   const v = value as DeputyPortrait;
   return v.schemaVersion === 1 && v.connectionId === connectionId && PORTRAIT_ID.test(v.version)
     && /^portrait-[a-f0-9]{16}\.webp$/.test(v.image) && /^thumb-[a-f0-9]{16}\.webp$/.test(v.thumbnail)
+    && (v.largeImage === undefined || /^large-[a-f0-9]{16}\.webp$/.test(v.largeImage))
     && !!portraitSource(v.source) && typeof v.updatedAt === 'string';
 }
 
@@ -39,8 +41,8 @@ export function portraitCrop(width: number, height: number, zoom: number, x: num
 }
 
 /** Verify WebP signature, declared size and dimensions, including VP8/VP8L/VP8X. */
-export function validPortraitWebp(bytes: Uint8Array, thumbnail = false): boolean {
-  const limits = thumbnail ? PORTRAIT_THUMB : PORTRAIT_SIZE;
+export function validPortraitWebp(bytes: Uint8Array, thumbnail: boolean | 'large' = false): boolean {
+  const limits = thumbnail === 'large' ? PORTRAIT_LARGE : thumbnail ? PORTRAIT_THUMB : PORTRAIT_SIZE;
   if (bytes.length < 30 || bytes.length > limits.maxBytes) return false;
   const ascii = (start: number, count: number) => String.fromCharCode(...bytes.slice(start, start + count));
   const view = new DataView(bytes.buffer, bytes.byteOffset, bytes.byteLength);

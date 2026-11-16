@@ -38,7 +38,7 @@ export function DeputyPortrait({ connectionId, name, editable, variant = 'defaul
   const [failed, setFailed] = useState(false);
   useEffect(() => { if (!saved) return; const url = URL.createObjectURL(saved.preview); setPreviewUrl(url); return () => URL.revokeObjectURL(url); }, [saved]);
   const metadata = saved?.metadata || query.data || null;
-  const src = saved ? previewUrl : metadata ? `${portraitDirectory(connectionId)}${metadata.image}` : '';
+  const src = saved ? previewUrl : metadata ? `${portraitDirectory(connectionId)}${metadata.largeImage || metadata.image}` : '';
   const validConnection = PORTRAIT_ID.test(connectionId);
   const portraitNotes = <>
         {metadata && <div className="space-y-1 text-muted-foreground">

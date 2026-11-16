@@ -5,8 +5,11 @@ Wahlanalyse → Abgeordnete ein Bild hochladen, im festen 3:4-Rahmen verschieben
 und zoomen sowie Quelle, Quellen-URL, Urheber und Lizenz angeben. Beim Ändern
 werden das aktuelle Bild und der vorhandene Bildnachweis vorgefüllt.
 
-Der Browser erzeugt WebP-Dateien mit 480 × 640 und 96 × 128 Pixeln und begrenzt
-die Dateigröße über die Qualitätsstufe. Die Canvas-Neukodierung übernimmt keine
+Der Browser erzeugt aus demselben Originalausschnitt drei WebP-Dateien:
+1200 × 1600 Pixel (max. 400 KiB) für Details, 480 × 640 Pixel (max. 100 KiB)
+für Karten und 96 × 128 Pixel (max. 12 KiB) für Listen. Die Dateigröße wird über
+die Qualitätsstufe begrenzt. Ein Hinweis macht auf zu kleine Originalausschnitte
+aufmerksam; Hochskalierung ersetzt keine Originaldetails. Die Canvas-Neukodierung übernimmt keine
 EXIF-/Kamera-Metadaten. Der Server prüft Format, Abmessungen und Dateigröße.
 
 ## Einmalige Einrichtung
@@ -32,7 +35,7 @@ keinen Upload in Supabase Storage. Repository, Branch und Pfadpräfix sind fest.
 ## Speicherung und Veröffentlichung
 
 Die Edge Function schreibt ausschließlich
-`public/images/abgeordnete/<connection_id>/`. Ein Git-Tree/Commit enthält beide
+`public/images/abgeordnete/<connection_id>/`. Ein Git-Tree/Commit enthält alle drei
 Bilder und `portrait.json`. Ein bestehendes Bild wird nur ersetzt, wenn seine
 Version der vom Benutzer geöffneten Version entspricht. Gleichzeitige Commits
 auf Main werden ohne Force-Push erneut auf dem aktuellen Head aufgebaut. Ein
@@ -50,3 +53,12 @@ zeigt sie sofort eine lokale Vorschau mit Hinweis auf das ausstehende Deployment
 Es ist keine zusätzliche Datenbankmigration für die Porträts erforderlich. Die
 vorhandenen Mandatsverbindungen müssen bereits eingerichtet sein. Bild- und
 Quellenangaben sind nach Veröffentlichung öffentlich erreichbar.
+
+Die optionale Metadatenangabe `largeImage` verweist auf `large-<hash>.webp`.
+Bestehende Bildnachweise ohne dieses Feld bleiben gültig; die Detailansicht fällt
+auf das bisherige Porträt zurück. Beim erneuten Bearbeiten lädt der Assistent
+die große Datei, sofern vorhanden. Für alte kleine Bilder muss das Original
+neu gewählt werden, um zusätzliche Details zu erhalten.
+
+Für diese Erweiterung muss `save-deputy-portrait` erneut deployt werden.
+Die neue Function akzeptiert auch ältere Uploads ohne große Datei.
