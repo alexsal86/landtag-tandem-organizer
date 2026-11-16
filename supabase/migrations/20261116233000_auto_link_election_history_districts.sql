@@ -2,13 +2,16 @@
 DO $auto_history_links$
 BEGIN
 -- A same-election relationship is independent of cross-year boundary identity.
+-- Use positional arguments: election_year is also a period-table column and an
+-- unqualified SQL name would resolve to that column instead of the argument.
+-- VOLATILE sees period links changed by the statement that fired the trigger.
 CREATE OR REPLACE FUNCTION public.match_analysis_history_district(election_year integer, election_district integer)
-RETURNS uuid LANGUAGE sql STABLE SECURITY INVOKER SET search_path=public AS $function$
+RETURNS uuid LANGUAGE sql VOLATILE SECURITY INVOKER SET search_path=public AS $function$
  SELECT h.id FROM public.election_analysis_years y
  JOIN public.election_history_periods p ON p.id=y.period_id
    AND p.number=y.period_number AND p.election_year=y.year
- JOIN public.election_history_districts h ON h.period_id=p.id AND h.district_number=election_district
- WHERE y.year=election_year AND y.year<>1952;
+ JOIN public.election_history_districts h ON h.period_id=p.id AND h.district_number=$2
+ WHERE y.year=$1 AND y.year<>1952;
 $function$;
 REVOKE ALL ON FUNCTION public.match_analysis_history_district(integer,integer) FROM PUBLIC;
 GRANT EXECUTE ON FUNCTION public.match_analysis_history_district(integer,integer) TO authenticated, service_role;

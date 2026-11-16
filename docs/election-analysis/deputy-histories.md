@@ -109,3 +109,21 @@ regionalen Nummern bleibt von der landesweiten Nummernzuordnung ausgenommen.
 Es werden keine Personenidentitäten, Kandidaturen, Stimmen, Mandate oder
 jahresübergreifenden Grenzidentitäten erzeugt; `geography_id` und `identity_key`
 bleiben unverändert.
+
+### Korrektur der SQL-Parameterauflösung
+
+Die erste Fassung des Matchers verwendete `y.year=election_year`. In einer
+SQL-Funktion hat die gleichnamige Spalte `p.election_year` Vorrang vor dem
+Parameter. Dadurch wurde nicht zuverlässig auf das angeforderte Jahr begrenzt;
+der folgende Guard wies den fremden Wahlkreis korrekt zurück.
+Die korrigierte Fassung verwendet ausschließlich `$1` (Jahr) und `$2`
+(Wahlkreisnummer). Die SQL-Funktion ist `VOLATILE`, damit auch gerade in der
+aufrufenden Anweisung gesetzte Periodenverknüpfungen sichtbar sind.
+Die Prüfungen für historische Zuordnung, Geometriejahr und verifizierte
+Grenzidentitäten bleiben unverändert aktiv.
+
+Nach einer fehlgeschlagenen Erstinstallation den vollständigen korrigierten
+Block `20261116233000_auto_link_election_history_districts.sql` erneut ausführen.
+Für bereits installierte Datenbanken repariert die eigenständige Folgemigration
+`20261116233100_fix_history_district_match_arguments.sql` den Matcher und führt
+die Zuordnung erneut aus.
