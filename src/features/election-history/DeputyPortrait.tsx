@@ -29,7 +29,8 @@ export function DeputyPortraitThumbnail({ connectionId, name }: { connectionId: 
   return <img src={`${portraitDirectory(connectionId)}${query.data.thumbnail}`} alt={`Porträt von ${name}`} width={48} height={64} loading="lazy" decoding="async" onError={() => setFailed(true)} className="h-16 w-12 shrink-0 rounded border object-cover" />;
 }
 
-export function DeputyPortrait({ connectionId, name, editable }: { connectionId: string; name: string; editable: boolean }) {
+export function DeputyPortrait({ connectionId, name, editable, variant = 'default' }: { connectionId: string; name: string; editable: boolean; variant?: 'default' | 'editorial' }) {
+  const editorial = variant === 'editorial';
   const query = useDeputyPortrait(connectionId);
   const [editing, setEditing] = useState(false);
   const [saved, setSaved] = useState<{ metadata: PortraitData; preview: Blob } | null>(null);
@@ -40,10 +41,12 @@ export function DeputyPortrait({ connectionId, name, editable }: { connectionId:
   const src = saved ? previewUrl : metadata ? `${portraitDirectory(connectionId)}${metadata.image}` : '';
   const validConnection = PORTRAIT_ID.test(connectionId);
   return <section aria-label={`Porträt von ${name}`} className="space-y-3">
-    <div className="flex flex-wrap items-start gap-4">
+    <div className={editorial ? 'deputy-editorial-portrait' : 'flex flex-wrap items-start gap-4'}>
+      <div className={editorial ? 'deputy-profile-photo' : 'contents'}>
       {src && !failed ? <img src={src} alt={`Porträt von ${name}`} width={160} height={213} decoding="async" className="aspect-[3/4] w-40 rounded-md border object-cover" onError={() => setFailed(true)} />
-        : <div className="flex aspect-[3/4] w-32 items-center justify-center rounded-md border bg-muted text-muted-foreground" aria-label="Noch kein Porträt vorhanden"><UserRound className="h-12 w-12" aria-hidden="true" /></div>}
-      <div className="min-w-0 flex-1 space-y-2 text-sm">
+        : <div className="flex aspect-[3/4] w-32 items-center justify-center rounded-md border bg-muted text-muted-foreground" aria-label="Noch kein Porträt vorhanden">{editorial ? <span className="deputy-profile-initials" aria-hidden="true">{name.trim().split(/\s+/).map(part => part[0]).slice(0, 2).join('')}</span> : <UserRound className="h-12 w-12" aria-hidden="true" />}</div>}
+      </div>
+      <div className={editorial ? 'deputy-profile-photo-notes min-w-0 space-y-2 text-sm' : 'min-w-0 flex-1 space-y-2 text-sm'}>
         {metadata && <div className="space-y-1 text-muted-foreground">
           {metadata.source.label && <p>Quelle: {metadata.source.label}</p>}
           {metadata.source.author && <p>Foto: {metadata.source.author}</p>}
