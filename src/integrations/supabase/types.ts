@@ -14,6 +14,18 @@ export type Database = {
   }
   public: {
     Tables: {
+      election_history_state_lists: {
+        Row: { id: string; period_id: string; party: string; source_url: string | null; notes: string | null }
+        Insert: { id?: string; period_id: string; party: string; source_url?: string | null; notes?: string | null }
+        Update: { id?: string; period_id?: string; party?: string; source_url?: string | null; notes?: string | null }
+        Relationships: []
+      }
+      election_history_state_list_entries: {
+        Row: { id: string; list_id: string; position: number; person_name: string; connection_id: string | null; link_mode: string; notes: string | null }
+        Insert: { id?: string; list_id: string; position: number; person_name: string; connection_id?: string | null; link_mode?: string; notes?: string | null }
+        Update: { id?: string; list_id?: string; position?: number; person_name?: string; connection_id?: string | null; link_mode?: string; notes?: string | null }
+        Relationships: []
+      }
       action_permissions: {
         Row: {
           action_key: string
@@ -16570,6 +16582,8 @@ export type Database = {
       }
     }
     Functions: {
+      search_election_state_list_people: { Args: { search_text: string }; Returns: Json }
+      get_election_history_issues: { Args: { entity_filter?: string; issue_filter?: string; period_filter?: string; search_text?: string; sort_by?: string; page_offset?: number }; Returns: Json }
       _briefing_task_event: {
         Args: { _task: string; _text: string }
         Returns: undefined

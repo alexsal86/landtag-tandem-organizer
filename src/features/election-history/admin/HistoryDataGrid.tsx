@@ -1,5 +1,5 @@
 import { candidacyResultOrigin } from '../candidateResults';
-import { Fragment, useMemo, useState } from 'react';
+import { Fragment, useEffect, useMemo, useState } from 'react';
 import { AlertTriangle, Check, CircleCheck, FilePenLine, Pencil, Plus, Save, Trash2, X } from 'lucide-react';
 import { useQueryClient } from '@tanstack/react-query';
 import { Button } from '@/components/ui/button';
@@ -76,18 +76,25 @@ interface Props {
   data: ElectionHistoryData;
   selectedPeriodId: string;
   overview: ElectionPeriodOverview[];
+  initialEditId?: string;
   onOpenPeriod?: (periodId: string) => void;
 }
 
-export function HistoryDataGrid({ entity, data, selectedPeriodId, overview, onOpenPeriod }: Props) {
+export function HistoryDataGrid({ entity, data, selectedPeriodId, overview, onOpenPeriod, initialEditId = '' }: Props) {
   const { user } = useAuth();
   const cache = useQueryClient();
   const drafts = useElectionEditorDrafts(user?.id || '');
   const [search, setSearch] = useState('');
   const [pageSize, setPageSize] = useState(100);
-  const [editing, setEditing] = useState<string | null | undefined>(undefined);
-  const [values, setValues] = useState<FormValues>({});
+  const initialRow = data[entity].find(row => row.id === initialEditId);
+  const [editing, setEditing] = useState<string | null | undefined>(initialRow?.id);
+  const [values, setValues] = useState<FormValues>(() => initialRow ? drafts.get(entity, initialRow.id, entity === 'periods' ? initialRow.id : selectedPeriodId)?.values || rowValues(initialRow) : {});
   const [personSearch, setPersonSearch] = useState('');
+  useEffect(() => {
+    if (editing === undefined) return;
+    const frame = window.requestAnimationFrame(() => document.getElementById(`history-editor-${entity}-${editing || 'new'}`)?.scrollIntoView({ block: 'start' }));
+    return () => window.cancelAnimationFrame(frame);
+  }, [editing, entity]);
   const [saving, setSaving] = useState(false);
   const [error, setError] = useState('');
   const personMatches = useElectionPersonSearch(personSearch, editing !== undefined && (entity === 'mandates' || entity === 'candidacies'));
@@ -104,6 +111,9 @@ export function HistoryDataGrid({ entity, data, selectedPeriodId, overview, onOp
     if (entity === 'districts') return ((a as HistoricalDistrict).district_number ?? Infinity) - ((b as HistoricalDistrict).district_number ?? Infinity) || (a as HistoricalDistrict).name.localeCompare((b as HistoricalDistrict).name, 'de');
     return rowSearchText(entity, viewData, a.id).localeCompare(rowSearchText(entity, viewData, b.id), 'de', { numeric: true });
   });
+  const visibleRows = rows.slice(0, pageSize);
+  const activeRow = editing ? allRows.find(row => row.id === editing) : undefined;
+  if (activeRow && !visibleRows.some(row => row.id === activeRow.id)) visibleRows.unshift(activeRow);
   const editorFields = gridFields[entity];
   const currentPeriod = data.periods.find(period => period.id === selectedPeriodId);
   const overviewByPeriod = new Map(overview.map(row => [row.period_id, row]));
@@ -264,7 +274,7 @@ export function HistoryDataGrid({ entity, data, selectedPeriodId, overview, onOp
     if (field.type === 'checkbox') return <input {...common} type="checkbox" className="h-4 w-4 accent-primary" checked={values[field.key] === true} onChange={event => changeField(field.key, event.target.checked)} />;
     return <Input {...common} type={field.type || 'text'} required={field.required} min={field.min} max={field.max} step={field.step || (field.type === 'number' ? '1' : undefined)} className="h-9 min-w-0 w-full max-w-full" value={String(values[field.key] ?? '')} onChange={event => changeField(field.key, event.target.value)} />;
   };
-  const editorDetails = editing !== undefined ? <TableRow className="block bg-muted/30 hover:bg-muted/30 xl:table-row"><TableCell colSpan={columns[entity].length + 1} className="block min-w-0 w-full p-3 xl:table-cell">
+  const editorDetails = editing !== undefined ? <TableRow id={`history-editor-${entity}-${editing || 'new'}`} className="block scroll-mt-24 bg-muted/30 hover:bg-muted/30 xl:table-row"><TableCell colSpan={columns[entity].length + 1} className="block min-w-0 w-full p-3 xl:table-cell">
     <div className="min-w-0 space-y-3">
       {(entity === 'mandates' || entity === 'candidacies') && <div className="max-w-md"><Label htmlFor={`person-search-${entity}`}>Weitere zentrale Personen suchen</Label><Input id={`person-search-${entity}`} value={personSearch} disabled={saving} onChange={event => setPersonSearch(event.target.value)} placeholder="Mindestens 2 Anfangsbuchstaben · höchstens 20 Treffer" />{personMatches.error && <p role="alert" className="mt-1 text-caption text-destructive">Personensuche fehlgeschlagen.</p>}</div>}
       <div className="grid min-w-0 grid-cols-1 gap-3 md:grid-cols-2 2xl:grid-cols-3">{editorFields.map(field => <div key={field.key} className={field.type === 'textarea' ? 'min-w-0 md:col-span-2 2xl:col-span-3' : 'min-w-0'}>
@@ -296,7 +306,7 @@ export function HistoryDataGrid({ entity, data, selectedPeriodId, overview, onOp
         <TableHeader className="hidden xl:table-header-group"><TableRow>{columns[entity].map(column => <TableHead key={column.key} className={`h-9 px-2 text-caption ${column.className || ''}`}>{column.label}</TableHead>)}<TableHead className="w-28 px-2 text-caption">Aktionen</TableHead></TableRow></TableHeader>
         <TableBody className="block xl:table-row-group">
           {editing === null && <><TableRow className="block bg-primary/5 hover:bg-primary/5 xl:table-row"><TableCell colSpan={columns[entity].length + 1} className="block p-3 font-medium xl:table-cell">Neuer Datensatz</TableCell></TableRow>{editorDetails}</>}
-          {rows.slice(0, pageSize).map(row => {
+          {visibleRows.map(row => {
             const isEditing = editing === row.id;
             const issues = qualityIssues(row);
             return <Fragment key={row.id}>{<TableRow className={`grid min-w-0 grid-cols-1 sm:grid-cols-2 xl:table-row ${isEditing ? 'bg-primary/5 hover:bg-primary/5' : issues.length ? 'bg-warning/5' : ''}`}>{columns[entity].map(column => <TableCell key={column.key} className="block min-w-0 p-2 align-top xl:table-cell"><span className="mb-1 block text-caption font-medium text-muted-foreground xl:hidden">{column.label}</span>{displayCell(column.key, row)}</TableCell>)}<TableCell className="block min-w-0 p-2 align-top xl:table-cell"><span className="mb-1 block text-caption font-medium text-muted-foreground xl:hidden">Aktionen</span><div className="flex flex-wrap gap-1">
@@ -310,7 +320,7 @@ export function HistoryDataGrid({ entity, data, selectedPeriodId, overview, onOp
           })}
         </TableBody>
       </Table>
-      {!rows.length && editing !== null && <EmptyState size="sm" title="Keine passenden Datensätze" description={search ? 'Suche anpassen oder einen neuen Datensatz anlegen.' : 'Für diese Auswahl sind noch keine Daten erfasst.'} />}
+      {!visibleRows.length && editing !== null && <EmptyState size="sm" title="Keine passenden Datensätze" description={search ? 'Suche anpassen oder einen neuen Datensatz anlegen.' : 'Für diese Auswahl sind noch keine Daten erfasst.'} />}
     </div>
     {rows.length > pageSize && <Button variant="outline" className="h-auto max-w-full whitespace-normal" onClick={() => setPageSize(size => size + 100)}>Weitere 100 anzeigen ({pageSize} von {rows.length})</Button>}
   </section>;

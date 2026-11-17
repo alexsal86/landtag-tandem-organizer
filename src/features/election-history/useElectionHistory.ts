@@ -98,7 +98,7 @@ export function historyError(error: unknown): string {
     if (error.code === '23503') return 'Der Datensatz wird noch verwendet oder eine Zuordnung gehört zu einer anderen Periode. Bitte zuerst die Verknüpfungen prüfen.';
     if (error.code === '23505') return 'Dieser Datensatz oder diese Zuordnung existiert bereits. Bitte vorhandene Mandate und Wahlkreisnummern prüfen.';
     if (error.code === '42501') return 'Nur Super-Admins dürfen zentrale Wahldaten ändern.';
-    if (error.code === '42P01' || error.code === 'PGRST205') return 'Die zentrale Wahldatenbank ist noch nicht eingerichtet. Bitte die neue Datenbankmigration einspielen.';
+    if (error.code === '42P01' || error.code === 'PGRST205' || error.code === 'PGRST202') return 'Die zentrale Wahldatenbank ist noch nicht eingerichtet. Bitte die neue Datenbankmigration einspielen.';
   }
   if (error instanceof Error) return error.message;
   if (typeof error === 'object' && error !== null && 'message' in error && typeof error.message === 'string') return error.message;

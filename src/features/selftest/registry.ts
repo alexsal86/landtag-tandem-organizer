@@ -1,3 +1,4 @@
+import { electionHistoryWorkbenchScenario } from './scenarios/election-history-workbench';
 import { electionDeputyReaderScenario } from './scenarios/election-deputy-reader';
 import { electionAnalysisScenario } from './scenarios/election-analysis';
 import { electionMapScenario } from './scenarios/election-map';
@@ -35,6 +36,7 @@ export const SELFTEST_SCENARIOS: TestScenario[] = [
   documentListScenario,
   electionMapScenario,
   electionAnalysisScenario,
+  electionHistoryWorkbenchScenario,
   electionDeputyReaderScenario,
   documentAnnotationScenario,
   knowledgeLifecycleScenario,

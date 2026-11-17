@@ -18,13 +18,13 @@ import { formatMandateDateRange } from './model';
 type DeputyGroup = { name_key: string; name: string; parties: string[]; mandates: number; periods: number; unlinked: number };
 export type DeputyMandate = { birthday?: string | null; birth_year?: number | null; id: string; person_id: string | null; connection_id: string | null; name: string; party: string; period_name: string; period_number: number; starts_on: string | null; ends_on: string | null; entry_type: string; district_name: string | null; linked_name: string | null; party_label: string | null; district_label: string | null; mandate_type: string; original_mandate: string | null; left_early: boolean; notes: string | null; end_is_expected: boolean };
 
-export function ElectionDeputyDirectory({ readOnly = false, canEditPortraits = !readOnly }: { readOnly?: boolean; canEditPortraits?: boolean }) {
+export function ElectionDeputyDirectory({ readOnly = false, canEditPortraits = !readOnly, initialConnection }: { readOnly?: boolean; canEditPortraits?: boolean; initialConnection?: { id: string; name: string } }) {
   const { user } = useAuth();
   const cache = useQueryClient();
   const [search, setSearch] = useState('');
   const [term, setTerm] = useState('');
   const [offset, setOffset] = useState(0);
-  const [group, setGroup] = useState<DeputyGroup | null>(null);
+  const [group, setGroup] = useState<DeputyGroup | null>(() => initialConnection ? { name_key: initialConnection.id, name: initialConnection.name, parties: [], periods: 0, mandates: 0, unlinked: 0 } : null);
   const [mergeMode, setMergeMode] = useState(false);
   const [mergeTarget, setMergeTarget] = useState<DeputyGroup | null>(null);
   const [merging, setMerging] = useState(false);
