@@ -757,3 +757,14 @@ beiden Darstellungen `election_analysis_state_totals` und `stateTotalMetrics`.
 Die Summe vollständiger Wahlkreisdaten bleibt separat gekennzeichnet und wird
 nicht mit dem Landesdatensatz gleichgesetzt; unterschiedliche Datenstände können
 abweichen. Keine Tests ausgeführt.
+
+### Ergänzte historische Originalwahlkreisergebnisse
+
+`20261117100000_workbook_district_history.sql` ergänzt fehlende Wahlkreisanteile
+und Beteiligungsquoten 1956–2026 sowie getrennte Erststimmendaten 2026. Bestehende
+Ergebnisse bleiben erhalten; das neue Wahlkreis-Arbeitsmappenaudit dokumentiert
+Übereinstimmungen und Konflikte beim Einspielen. Die 74 Originalwahlkreise 1952
+bleiben bis zur regional eindeutigen Zuordnung archiviert. Alle sieben Blätter,
+weitere Nutzungsmöglichkeiten und Einschränkungen sind in
+[der Quellenbewertung](election-analysis/sources/district-history-workbook.md)
+dokumentiert. Keine Tests ausgeführt; kein Live-Datenbankimport.

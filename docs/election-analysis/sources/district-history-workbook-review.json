@@ -1,0 +1,534 @@
+{
+  "workbook_sha256": "58b24038341dce23fa93fdd0e34b6f7742228e846fb82fe562ba6c37f219a93b",
+  "rows_by_sheet": {
+    "Abgeordnete 1952–2026": 2563,
+    "Wahlkreisergebnisse": 387,
+    "Landesergebnisse": 31,
+    "Abdeckung und Quellen": 41,
+    "Wahlkreise 1964–1980": 363,
+    "Wahlkreise gesamt 1952–2026": 1279,
+    "2026 Erststimmen": 75
+  },
+  "import_candidates": 6561,
+  "deferred": [
+    {
+      "sheet": "Wahlkreise gesamt 1952–2026",
+      "row": 6,
+      "year": 1952,
+      "name": "Aalen",
+      "reason": "Regionale Originalnummer/geometry_source_key fehlt; keine Namenszuordnung."
+    },
+    {
+      "sheet": "Wahlkreise gesamt 1952–2026",
+      "row": 7,
+      "year": 1952,
+      "name": "Backnang",
+      "reason": "Regionale Originalnummer/geometry_source_key fehlt; keine Namenszuordnung."
+    },
+    {
+      "sheet": "Wahlkreise gesamt 1952–2026",
+      "row": 8,
+      "year": 1952,
+      "name": "Baden-Baden-Bühl",
+      "reason": "Regionale Originalnummer/geometry_source_key fehlt; keine Namenszuordnung."
+    },
+    {
+      "sheet": "Wahlkreise gesamt 1952–2026",
+      "row": 9,
+      "year": 1952,
+      "name": "Balingen",
+      "reason": "Regionale Originalnummer/geometry_source_key fehlt; keine Namenszuordnung."
+    },
+    {
+      "sheet": "Wahlkreise gesamt 1952–2026",
+      "row": 10,
+      "year": 1952,
+      "name": "Biberach",
+      "reason": "Regionale Originalnummer/geometry_source_key fehlt; keine Namenszuordnung."
+    },
+    {
+      "sheet": "Wahlkreise gesamt 1952–2026",
+      "row": 11,
+      "year": 1952,
+      "name": "Böblingen",
+      "reason": "Regionale Originalnummer/geometry_source_key fehlt; keine Namenszuordnung."
+    },
+    {
+      "sheet": "Wahlkreise gesamt 1952–2026",
+      "row": 12,
+      "year": 1952,
+      "name": "Bruchsal",
+      "reason": "Regionale Originalnummer/geometry_source_key fehlt; keine Namenszuordnung."
+    },
+    {
+      "sheet": "Wahlkreise gesamt 1952–2026",
+      "row": 13,
+      "year": 1952,
+      "name": "Buchen",
+      "reason": "Regionale Originalnummer/geometry_source_key fehlt; keine Namenszuordnung."
+    },
+    {
+      "sheet": "Wahlkreise gesamt 1952–2026",
+      "row": 14,
+      "year": 1952,
+      "name": "Calw",
+      "reason": "Regionale Originalnummer/geometry_source_key fehlt; keine Namenszuordnung."
+    },
+    {
+      "sheet": "Wahlkreise gesamt 1952–2026",
+      "row": 15,
+      "year": 1952,
+      "name": "Crailsheim",
+      "reason": "Regionale Originalnummer/geometry_source_key fehlt; keine Namenszuordnung."
+    },
+    {
+      "sheet": "Wahlkreise gesamt 1952–2026",
+      "row": 16,
+      "year": 1952,
+      "name": "Donaueschingen-Neustadt",
+      "reason": "Regionale Originalnummer/geometry_source_key fehlt; keine Namenszuordnung."
+    },
+    {
+      "sheet": "Wahlkreise gesamt 1952–2026",
+      "row": 17,
+      "year": 1952,
+      "name": "Emmendingen",
+      "reason": "Regionale Originalnummer/geometry_source_key fehlt; keine Namenszuordnung."
+    },
+    {
+      "sheet": "Wahlkreise gesamt 1952–2026",
+      "row": 18,
+      "year": 1952,
+      "name": "Esslingen I",
+      "reason": "Regionale Originalnummer/geometry_source_key fehlt; keine Namenszuordnung."
+    },
+    {
+      "sheet": "Wahlkreise gesamt 1952–2026",
+      "row": 19,
+      "year": 1952,
+      "name": "Esslingen II",
+      "reason": "Regionale Originalnummer/geometry_source_key fehlt; keine Namenszuordnung."
+    },
+    {
+      "sheet": "Wahlkreise gesamt 1952–2026",
+      "row": 20,
+      "year": 1952,
+      "name": "Freiburg-Land",
+      "reason": "Regionale Originalnummer/geometry_source_key fehlt; keine Namenszuordnung."
+    },
+    {
+      "sheet": "Wahlkreise gesamt 1952–2026",
+      "row": 21,
+      "year": 1952,
+      "name": "Freiburg-Stadt",
+      "reason": "Regionale Originalnummer/geometry_source_key fehlt; keine Namenszuordnung."
+    },
+    {
+      "sheet": "Wahlkreise gesamt 1952–2026",
+      "row": 22,
+      "year": 1952,
+      "name": "Freudenstadt-Horb",
+      "reason": "Regionale Originalnummer/geometry_source_key fehlt; keine Namenszuordnung."
+    },
+    {
+      "sheet": "Wahlkreise gesamt 1952–2026",
+      "row": 23,
+      "year": 1952,
+      "name": "Göppingen I",
+      "reason": "Regionale Originalnummer/geometry_source_key fehlt; keine Namenszuordnung."
+    },
+    {
+      "sheet": "Wahlkreise gesamt 1952–2026",
+      "row": 24,
+      "year": 1952,
+      "name": "Göppingen II",
+      "reason": "Regionale Originalnummer/geometry_source_key fehlt; keine Namenszuordnung."
+    },
+    {
+      "sheet": "Wahlkreise gesamt 1952–2026",
+      "row": 25,
+      "year": 1952,
+      "name": "Hechingen-Sigmaringen",
+      "reason": "Regionale Originalnummer/geometry_source_key fehlt; keine Namenszuordnung."
+    },
+    {
+      "sheet": "Wahlkreise gesamt 1952–2026",
+      "row": 26,
+      "year": 1952,
+      "name": "Heidelberg-Land",
+      "reason": "Regionale Originalnummer/geometry_source_key fehlt; keine Namenszuordnung."
+    },
+    {
+      "sheet": "Wahlkreise gesamt 1952–2026",
+      "row": 27,
+      "year": 1952,
+      "name": "Heidelberg-Stadt",
+      "reason": "Regionale Originalnummer/geometry_source_key fehlt; keine Namenszuordnung."
+    },
+    {
+      "sheet": "Wahlkreise gesamt 1952–2026",
+      "row": 28,
+      "year": 1952,
+      "name": "Heidenheim",
+      "reason": "Regionale Originalnummer/geometry_source_key fehlt; keine Namenszuordnung."
+    },
+    {
+      "sheet": "Wahlkreise gesamt 1952–2026",
+      "row": 29,
+      "year": 1952,
+      "name": "Heilbronn-Land I",
+      "reason": "Regionale Originalnummer/geometry_source_key fehlt; keine Namenszuordnung."
+    },
+    {
+      "sheet": "Wahlkreise gesamt 1952–2026",
+      "row": 30,
+      "year": 1952,
+      "name": "Heilbronn-Land II",
+      "reason": "Regionale Originalnummer/geometry_source_key fehlt; keine Namenszuordnung."
+    },
+    {
+      "sheet": "Wahlkreise gesamt 1952–2026",
+      "row": 31,
+      "year": 1952,
+      "name": "Heilbronn-Stadt",
+      "reason": "Regionale Originalnummer/geometry_source_key fehlt; keine Namenszuordnung."
+    },
+    {
+      "sheet": "Wahlkreise gesamt 1952–2026",
+      "row": 32,
+      "year": 1952,
+      "name": "Karlsruhe-Land I",
+      "reason": "Regionale Originalnummer/geometry_source_key fehlt; keine Namenszuordnung."
+    },
+    {
+      "sheet": "Wahlkreise gesamt 1952–2026",
+      "row": 33,
+      "year": 1952,
+      "name": "Karlsruhe-Land II",
+      "reason": "Regionale Originalnummer/geometry_source_key fehlt; keine Namenszuordnung."
+    },
+    {
+      "sheet": "Wahlkreise gesamt 1952–2026",
+      "row": 34,
+      "year": 1952,
+      "name": "Karlsruhe-Stadt I",
+      "reason": "Regionale Originalnummer/geometry_source_key fehlt; keine Namenszuordnung."
+    },
+    {
+      "sheet": "Wahlkreise gesamt 1952–2026",
+      "row": 35,
+      "year": 1952,
+      "name": "Karlsruhe-Stadt II",
+      "reason": "Regionale Originalnummer/geometry_source_key fehlt; keine Namenszuordnung."
+    },
+    {
+      "sheet": "Wahlkreise gesamt 1952–2026",
+      "row": 36,
+      "year": 1952,
+      "name": "Kehl-Achern",
+      "reason": "Regionale Originalnummer/geometry_source_key fehlt; keine Namenszuordnung."
+    },
+    {
+      "sheet": "Wahlkreise gesamt 1952–2026",
+      "row": 37,
+      "year": 1952,
+      "name": "Konstanz",
+      "reason": "Regionale Originalnummer/geometry_source_key fehlt; keine Namenszuordnung."
+    },
+    {
+      "sheet": "Wahlkreise gesamt 1952–2026",
+      "row": 38,
+      "year": 1952,
+      "name": "Lahr",
+      "reason": "Regionale Originalnummer/geometry_source_key fehlt; keine Namenszuordnung."
+    },
+    {
+      "sheet": "Wahlkreise gesamt 1952–2026",
+      "row": 39,
+      "year": 1952,
+      "name": "Leonberg",
+      "reason": "Regionale Originalnummer/geometry_source_key fehlt; keine Namenszuordnung."
+    },
+    {
+      "sheet": "Wahlkreise gesamt 1952–2026",
+      "row": 40,
+      "year": 1952,
+      "name": "Lörrach",
+      "reason": "Regionale Originalnummer/geometry_source_key fehlt; keine Namenszuordnung."
+    },
+    {
+      "sheet": "Wahlkreise gesamt 1952–2026",
+      "row": 41,
+      "year": 1952,
+      "name": "Ludwigsburg I",
+      "reason": "Regionale Originalnummer/geometry_source_key fehlt; keine Namenszuordnung."
+    },
+    {
+      "sheet": "Wahlkreise gesamt 1952–2026",
+      "row": 42,
+      "year": 1952,
+      "name": "Ludwigsburg II",
+      "reason": "Regionale Originalnummer/geometry_source_key fehlt; keine Namenszuordnung."
+    },
+    {
+      "sheet": "Wahlkreise gesamt 1952–2026",
+      "row": 43,
+      "year": 1952,
+      "name": "Mannheim-Land I",
+      "reason": "Regionale Originalnummer/geometry_source_key fehlt; keine Namenszuordnung."
+    },
+    {
+      "sheet": "Wahlkreise gesamt 1952–2026",
+      "row": 44,
+      "year": 1952,
+      "name": "Mannheim-Land II",
+      "reason": "Regionale Originalnummer/geometry_source_key fehlt; keine Namenszuordnung."
+    },
+    {
+      "sheet": "Wahlkreise gesamt 1952–2026",
+      "row": 45,
+      "year": 1952,
+      "name": "Mannheim-Stadt I",
+      "reason": "Regionale Originalnummer/geometry_source_key fehlt; keine Namenszuordnung."
+    },
+    {
+      "sheet": "Wahlkreise gesamt 1952–2026",
+      "row": 46,
+      "year": 1952,
+      "name": "Mannheim-Stadt II",
+      "reason": "Regionale Originalnummer/geometry_source_key fehlt; keine Namenszuordnung."
+    },
+    {
+      "sheet": "Wahlkreise gesamt 1952–2026",
+      "row": 47,
+      "year": 1952,
+      "name": "Mannheim-Stadt III",
+      "reason": "Regionale Originalnummer/geometry_source_key fehlt; keine Namenszuordnung."
+    },
+    {
+      "sheet": "Wahlkreise gesamt 1952–2026",
+      "row": 48,
+      "year": 1952,
+      "name": "Mosbach",
+      "reason": "Regionale Originalnummer/geometry_source_key fehlt; keine Namenszuordnung."
+    },
+    {
+      "sheet": "Wahlkreise gesamt 1952–2026",
+      "row": 49,
+      "year": 1952,
+      "name": "Müllheim-Lörrach",
+      "reason": "Regionale Originalnummer/geometry_source_key fehlt; keine Namenszuordnung."
+    },
+    {
+      "sheet": "Wahlkreise gesamt 1952–2026",
+      "row": 50,
+      "year": 1952,
+      "name": "Münsingen-Ehingen-Urach",
+      "reason": "Regionale Originalnummer/geometry_source_key fehlt; keine Namenszuordnung."
+    },
+    {
+      "sheet": "Wahlkreise gesamt 1952–2026",
+      "row": 51,
+      "year": 1952,
+      "name": "Nürtingen",
+      "reason": "Regionale Originalnummer/geometry_source_key fehlt; keine Namenszuordnung."
+    },
+    {
+      "sheet": "Wahlkreise gesamt 1952–2026",
+      "row": 52,
+      "year": 1952,
+      "name": "Offenburg",
+      "reason": "Regionale Originalnummer/geometry_source_key fehlt; keine Namenszuordnung."
+    },
+    {
+      "sheet": "Wahlkreise gesamt 1952–2026",
+      "row": 53,
+      "year": 1952,
+      "name": "Öhringen",
+      "reason": "Regionale Originalnummer/geometry_source_key fehlt; keine Namenszuordnung."
+    },
+    {
+      "sheet": "Wahlkreise gesamt 1952–2026",
+      "row": 54,
+      "year": 1952,
+      "name": "Pforzheim",
+      "reason": "Regionale Originalnummer/geometry_source_key fehlt; keine Namenszuordnung."
+    },
+    {
+      "sheet": "Wahlkreise gesamt 1952–2026",
+      "row": 55,
+      "year": 1952,
+      "name": "Rastatt",
+      "reason": "Regionale Originalnummer/geometry_source_key fehlt; keine Namenszuordnung."
+    },
+    {
+      "sheet": "Wahlkreise gesamt 1952–2026",
+      "row": 56,
+      "year": 1952,
+      "name": "Ravensburg-Friedrichshafen",
+      "reason": "Regionale Originalnummer/geometry_source_key fehlt; keine Namenszuordnung."
+    },
+    {
+      "sheet": "Wahlkreise gesamt 1952–2026",
+      "row": 57,
+      "year": 1952,
+      "name": "Reutlingen",
+      "reason": "Regionale Originalnummer/geometry_source_key fehlt; keine Namenszuordnung."
+    },
+    {
+      "sheet": "Wahlkreise gesamt 1952–2026",
+      "row": 58,
+      "year": 1952,
+      "name": "Rottweil",
+      "reason": "Regionale Originalnummer/geometry_source_key fehlt; keine Namenszuordnung."
+    },
+    {
+      "sheet": "Wahlkreise gesamt 1952–2026",
+      "row": 59,
+      "year": 1952,
+      "name": "Saulgau",
+      "reason": "Regionale Originalnummer/geometry_source_key fehlt; keine Namenszuordnung."
+    },
+    {
+      "sheet": "Wahlkreise gesamt 1952–2026",
+      "row": 60,
+      "year": 1952,
+      "name": "Schwäbisch Gmünd",
+      "reason": "Regionale Originalnummer/geometry_source_key fehlt; keine Namenszuordnung."
+    },
+    {
+      "sheet": "Wahlkreise gesamt 1952–2026",
+      "row": 61,
+      "year": 1952,
+      "name": "Sinsheim",
+      "reason": "Regionale Originalnummer/geometry_source_key fehlt; keine Namenszuordnung."
+    },
+    {
+      "sheet": "Wahlkreise gesamt 1952–2026",
+      "row": 62,
+      "year": 1952,
+      "name": "Stockach-Engen",
+      "reason": "Regionale Originalnummer/geometry_source_key fehlt; keine Namenszuordnung."
+    },
+    {
+      "sheet": "Wahlkreise gesamt 1952–2026",
+      "row": 63,
+      "year": 1952,
+      "name": "Stuttgart I",
+      "reason": "Regionale Originalnummer/geometry_source_key fehlt; keine Namenszuordnung."
+    },
+    {
+      "sheet": "Wahlkreise gesamt 1952–2026",
+      "row": 64,
+      "year": 1952,
+      "name": "Stuttgart II",
+      "reason": "Regionale Originalnummer/geometry_source_key fehlt; keine Namenszuordnung."
+    },
+    {
+      "sheet": "Wahlkreise gesamt 1952–2026",
+      "row": 65,
+      "year": 1952,
+      "name": "Stuttgart III",
+      "reason": "Regionale Originalnummer/geometry_source_key fehlt; keine Namenszuordnung."
+    },
+    {
+      "sheet": "Wahlkreise gesamt 1952–2026",
+      "row": 66,
+      "year": 1952,
+      "name": "Stuttgart IV",
+      "reason": "Regionale Originalnummer/geometry_source_key fehlt; keine Namenszuordnung."
+    },
+    {
+      "sheet": "Wahlkreise gesamt 1952–2026",
+      "row": 67,
+      "year": 1952,
+      "name": "Stuttgart V",
+      "reason": "Regionale Originalnummer/geometry_source_key fehlt; keine Namenszuordnung."
+    },
+    {
+      "sheet": "Wahlkreise gesamt 1952–2026",
+      "row": 68,
+      "year": 1952,
+      "name": "Tauberbischofsheim",
+      "reason": "Regionale Originalnummer/geometry_source_key fehlt; keine Namenszuordnung."
+    },
+    {
+      "sheet": "Wahlkreise gesamt 1952–2026",
+      "row": 69,
+      "year": 1952,
+      "name": "Tübingen",
+      "reason": "Regionale Originalnummer/geometry_source_key fehlt; keine Namenszuordnung."
+    },
+    {
+      "sheet": "Wahlkreise gesamt 1952–2026",
+      "row": 70,
+      "year": 1952,
+      "name": "Tuttlingen",
+      "reason": "Regionale Originalnummer/geometry_source_key fehlt; keine Namenszuordnung."
+    },
+    {
+      "sheet": "Wahlkreise gesamt 1952–2026",
+      "row": 71,
+      "year": 1952,
+      "name": "Überlingen-Meßkirch",
+      "reason": "Regionale Originalnummer/geometry_source_key fehlt; keine Namenszuordnung."
+    },
+    {
+      "sheet": "Wahlkreise gesamt 1952–2026",
+      "row": 72,
+      "year": 1952,
+      "name": "Ulm-Land",
+      "reason": "Regionale Originalnummer/geometry_source_key fehlt; keine Namenszuordnung."
+    },
+    {
+      "sheet": "Wahlkreise gesamt 1952–2026",
+      "row": 73,
+      "year": 1952,
+      "name": "Ulm-Stadt",
+      "reason": "Regionale Originalnummer/geometry_source_key fehlt; keine Namenszuordnung."
+    },
+    {
+      "sheet": "Wahlkreise gesamt 1952–2026",
+      "row": 74,
+      "year": 1952,
+      "name": "Vaihingen/Enz",
+      "reason": "Regionale Originalnummer/geometry_source_key fehlt; keine Namenszuordnung."
+    },
+    {
+      "sheet": "Wahlkreise gesamt 1952–2026",
+      "row": 75,
+      "year": 1952,
+      "name": "Villingen-Wolfach",
+      "reason": "Regionale Originalnummer/geometry_source_key fehlt; keine Namenszuordnung."
+    },
+    {
+      "sheet": "Wahlkreise gesamt 1952–2026",
+      "row": 76,
+      "year": 1952,
+      "name": "Waiblingen I",
+      "reason": "Regionale Originalnummer/geometry_source_key fehlt; keine Namenszuordnung."
+    },
+    {
+      "sheet": "Wahlkreise gesamt 1952–2026",
+      "row": 77,
+      "year": 1952,
+      "name": "Waiblingen II",
+      "reason": "Regionale Originalnummer/geometry_source_key fehlt; keine Namenszuordnung."
+    },
+    {
+      "sheet": "Wahlkreise gesamt 1952–2026",
+      "row": 78,
+      "year": 1952,
+      "name": "Waldshut-Säckingen",
+      "reason": "Regionale Originalnummer/geometry_source_key fehlt; keine Namenszuordnung."
+    },
+    {
+      "sheet": "Wahlkreise gesamt 1952–2026",
+      "row": 79,
+      "year": 1952,
+      "name": "Wangen-Tettnang",
+      "reason": "Regionale Originalnummer/geometry_source_key fehlt; keine Namenszuordnung."
+    }
+  ],
+  "notes": "Additiv; Konfliktabgleich erfolgt gegen die tatsächlichen Daten erst beim Einspielen. Keine Tests ausgeführt. Kein Originalquellenabgleich."
+}
