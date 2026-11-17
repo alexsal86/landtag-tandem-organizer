@@ -1,6 +1,5 @@
 import { CandidateDistrictResults } from './CandidateDistrictResults';
 import { formatMandateType } from './mandateLabel';
-import { DistrictBoundarySection } from './DistrictBoundarySection';
 import { PersonElectionSummary } from './PersonElectionSummary';
 import { Badge } from '@/components/ui/badge';
 import { getPartyColor, getPartyTextColor } from '@/features/election-districts/partyColors';
@@ -20,7 +19,6 @@ export function DistrictElectionHistory({ data, periodId, districtId }: { data: 
   return <div className="space-y-3">
     <h3 className="flex flex-wrap items-center gap-x-2 gap-y-1"><Badge className="border-0" style={{ backgroundColor: getPartyColor(party), color: getPartyTextColor(party) }}>{district?.district_number ?? district?.number_label ?? '–'}</Badge><span className="font-semibold">{district?.name || 'Wahlkreis nicht erfasst'}</span><span className="ml-auto text-xs font-normal text-muted-foreground">{period?.name}</span></h3>
     {district?.boundary_note && <p className="text-xs text-muted-foreground">{district.boundary_note}</p>}
-    {district && <DistrictBoundarySection key={district.id} period={period} district={district} />}
     {mandates.map(m => {
       const person = data.people.find(p => p.id === m.person_id);
       const result = data.candidacies.find(c => c.id === m.candidacy_id);
