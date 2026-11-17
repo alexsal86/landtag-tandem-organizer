@@ -1,3 +1,4 @@
+import { DeputyStateListPlaces } from '@/features/election-history/DeputyStateListPlaces';
 import { DeputySeatDistribution } from './DeputySeatDistribution';
 import { deputyTenureCoverage } from './deputyTenure';
 import { DeputyElectionResult } from './DeputyElectionResult';
@@ -196,6 +197,7 @@ export default function DeputyDirectory() {
               const profileUrl = districtProfileUrl(published.find(item => item.number === row.period_number)?.election_year ?? null, row.district_label);
               return <div key={row.id}><p>{formatMandateDateRange(row)}{row.end_is_expected ? ' (voraussichtliches Ende)' : ''}</p>{profileUrl && <Button variant="link" className="h-auto p-0 text-xs" asChild><Link to={profileUrl}>Wahlkreis-Steckbrief öffnen</Link></Button>}</div>;
             })}</div>}
+            {person && profileOpen && <DeputyStateListPlaces key={person.name_key} connectionId={person.name_key} />}
             {current && profileOpen && <DeputyElectionResult key={current.id} mandateId={current.id}
               secondaryPanel={<DeputySeatDistribution period={published.find(item => item.number === current.period_number)} party={current.party} />}
             />}

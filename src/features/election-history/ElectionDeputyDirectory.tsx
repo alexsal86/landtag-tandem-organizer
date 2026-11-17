@@ -1,3 +1,4 @@
+import { DeputyStateListPlaces } from './DeputyStateListPlaces';
 import { PersonCandidacyHistory } from './PersonCareer';
 import { useEffect, useState } from 'react';
 import { GitMerge, Search, X } from 'lucide-react';
@@ -106,6 +107,7 @@ export function ElectionDeputyDirectory({ readOnly = false, canEditPortraits = !
           <TableCell className="whitespace-nowrap">{formatMandateDateRange(row)}{row.end_is_expected && <p className="text-caption text-muted-foreground">voraussichtliches Ende</p>}</TableCell>
           <TableCell>{row.district_name ? `${row.district_label ? `${row.district_label}: ` : ''}${row.district_name}` : 'Ohne Wahlkreis'}</TableCell><TableCell>{row.party_label || row.party}</TableCell><TableCell>{formatMandateType(row.mandate_type)}<p className="text-caption text-muted-foreground">{row.entry_type === 'succession' ? 'nachgerückt' : 'gewählt'}{row.left_early ? ' · vorzeitig ausgeschieden' : ''}</p></TableCell>
         </TableRow>)}</TableBody></Table></div>}
+        <DeputyStateListPlaces key={group.name_key} connectionId={group.name_key} />
         {!readOnly && personIds.length === 1 && <PersonCandidacyHistory key={personIds[0]} personId={personIds[0]} />}
       </CardContent></Card>}
     </div>

@@ -19,3 +19,5 @@
 - The mandate reader may display the selected published history period's sourced seat snapshot. It never overwrites election_analysis_* results or calculates total seats from the selected party subset.
 
 - History faction labels may be renamed centrally. Candidate comparisons and assembly resolve them through the catalog's immutable result_code; never match a renamed display label directly against official election_analysis_* party codes.
+
+- Deputy profile list positions come from the published state-list roster for the selected connection, independently of mandate admission. Show election year, party, list position and direct/substitute/list-only role; never treat list position or substitute candidacy as a mandate or direct election.

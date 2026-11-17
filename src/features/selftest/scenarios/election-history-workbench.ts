@@ -1,3 +1,4 @@
+import { stateListDistrictLabel } from '@/features/election-history/stateListPlaces';
 import { factionResultCode, resolveFaction, type HistoryFaction } from '@/features/election-history/factions';
 import { parsePeriodSeats } from '@/features/election-history/periodSeats';
 import { candidacyMandateStatus, careerPeriods, type PersonCareer } from '@/features/election-history/admin/candidateCareerModel';
@@ -10,6 +11,13 @@ export const electionHistoryWorkbenchScenario: TestScenario = {
   features: ['election-history'], touches: [],
   limitations: ['Die Schreibberechtigungen, Listenplatz-Constraints und Trigger müssen zusätzlich mit Datenbank-Rollenszenarien geprüft werden.'],
   steps: [
+    { id: 'state-list-candidacy-role', label: 'Listenplätze: Ersatzbewerbung und reine Liste bleiben von Direktbewerbung getrennt', kind: 'logic', run: async () => {
+      const district = { district_number: 5, district_name: 'Böblingen' };
+      if (!stateListDistrictLabel({ ...district, candidacy_role: 'substitute' }).startsWith('Ersatzbewerbung')) throw new Error('Eine Ersatzbewerbung darf nicht als Direktbewerbung erscheinen.');
+      if (stateListDistrictLabel({ ...district, candidacy_role: 'list_only' }) !== 'Keine Wahlkreisbewerbung') throw new Error('Eine reine Listenbewerbung darf keinen Wahlkreis behaupten.');
+      if (!stateListDistrictLabel({ ...district, candidacy_role: 'direct' }).includes('5 · Böblingen')) throw new Error('Die belegte Wahlkreisbewerbung muss ihren Wahlkreis anzeigen.');
+      return { ok: true, message: 'Die Bewerbungsart bleibt unabhängig von Listenplatz und Mandatsgewinn sichtbar.' };
+    } },
     { id: 'central-factions', label: 'Fraktionen: eindeutige Schreibweisen und historische Gruppen', kind: 'logic', run: async () => {
       const factions: HistoryFaction[] = [
         { id: 'fdp', name: 'FDP/DVP', full_name: null, aliases: ['FDP'], is_active: true },

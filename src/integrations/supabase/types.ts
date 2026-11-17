@@ -21,9 +21,9 @@ export type Database = {
         Relationships: []
       }
       election_history_state_list_entries: {
-        Row: { id: string; list_id: string; position: number; person_name: string; connection_id: string | null; link_mode: string; notes: string | null }
-        Insert: { id?: string; list_id: string; position: number; person_name: string; connection_id?: string | null; link_mode?: string; notes?: string | null }
-        Update: { id?: string; list_id?: string; position?: number; person_name?: string; connection_id?: string | null; link_mode?: string; notes?: string | null }
+        Row: { birth_year: number | null; district_number: number | null; district_name: string | null; candidacy_role: string | null; residence: string | null; source_name: string | null; source_snapshot: Json | null;  id: string; list_id: string; position: number; person_name: string; connection_id: string | null; link_mode: string; notes: string | null }
+        Insert: { birth_year?: number | null; district_number?: number | null; district_name?: string | null; candidacy_role?: string | null; residence?: string | null; source_name?: string | null; source_snapshot?: Json | null;  id?: string; list_id: string; position: number; person_name: string; connection_id?: string | null; link_mode?: string; notes?: string | null }
+        Update: { birth_year?: number | null; district_number?: number | null; district_name?: string | null; candidacy_role?: string | null; residence?: string | null; source_name?: string | null; source_snapshot?: Json | null;  id?: string; list_id?: string; position?: number; person_name?: string; connection_id?: string | null; link_mode?: string; notes?: string | null }
         Relationships: []
       }
       action_permissions: {
@@ -16606,6 +16606,8 @@ export type Database = {
       }
     }
     Functions: {
+      get_deputy_state_list_places: { Args: { connection: string; selected_period?: string }; Returns: Json }
+
       create_election_candidate_person: { Args: { person_name: string; identity_note?: string }; Returns: Json }
       search_election_person_careers: { Args: { search_text?: string; page_offset?: number }; Returns: Json }
       get_election_person_career: { Args: { person: string }; Returns: Json }
