@@ -1,3 +1,4 @@
+import { TurnoutPanel } from './TurnoutPanel';
 import { useState } from 'react';
 import { useSearchParams } from 'react-router-dom';
 import { CartesianGrid, Legend, Line, LineChart, ResponsiveContainer, Tooltip, XAxis, YAxis } from 'recharts';
@@ -5,7 +6,7 @@ import { Button } from '@/components/ui/button';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 import { AnalysisControls } from './AnalysisToolbar';
 import { DataState, DataTable, Selection, StatusNote, chartColor } from './shared';
-import { ballotLabels, number, parties, percent } from './model';
+import { ballotLabels, ballotsForYear, effectiveBallot, number, parties, percent } from './model';
 import { matrixAxes, matrixCell, stateTotalMetrics } from './stateHistoryModel';
 import { useFlowMatrix, useStateHistory, useWorkbookAudit } from './useStateHistory';
 import type { WorkbookAudit } from './stateHistoryModel';
@@ -13,11 +14,14 @@ const SourceLink = ({ url }: {
     url: string;
 }) => <a href={url} target="_blank" rel="noreferrer" className="underline">Quellenlink aus Arbeitsmappe</a>;
 const statusLabels = { added: 'Ergänzt', matched: 'Übereinstimmung', conflict: 'Abweichung – bisheriger Wert erhalten' };
-export function StateHistoryPanel({ year, years }: {
+export function StateHistoryPanel({ year, years, initiallyShowTurnout = false }: {
     year: number;
     years: number[];
+    initiallyShowTurnout?: boolean;
 }) {
     const [params, setParams] = useSearchParams();
+    const [showTurnout, setShowTurnout] = useState(initiallyShowTurnout);
+    const turnoutBallot = effectiveBallot(year, params.get('analysisBallot') === 'first' ? 'first' : 'second');
     const ordered = years.slice().sort((a, b) => a - b);
     const requestedFrom = Number(params.get('historyFrom'));
     const from = ordered.includes(requestedFrom) && requestedFrom <= year ? requestedFrom : ordered[0] || year;
@@ -52,6 +56,16 @@ export function StateHistoryPanel({ year, years }: {
       <div className="overflow-x-auto"><DataTable headers={['Wahl', 'Wahltag', 'Wahlberechtigte', 'Wählende', 'Nichtwählende', 'Beteiligung', 'Gültige Stimmen', 'Ungültige Stimmen', 'Ungültige %', 'Quelle / Prüfstatus']} rows={totals.map(t => [t.year, t.election_date.split('-').reverse().join('.'), number(t.eligible), number(t.voters), number(t.nonvoters), percent(t.turnout), number(t.valid_votes), number(t.invalid_votes), percent(t.invalidShare), <span><SourceLink url={t.source_url}/> · {t.source_verified ? 'Original geprüft' : 'Originalprüfung offen'} · {t.source_sheet}, Z. {t.source_row}</span>])}/></div>
       {showParties && <DataTable headers={['Wahl', 'Stimmenart', 'Partei', 'Stimmen', 'Anteil', 'Hinweis / Quelle']} rows={(query.data?.state || []).map(s => [s.year, ballotLabels[s.year >= 2026 ? 'second' : 'single'], s.party, number(s.votes), percent(s.share), s.notes || 'Bestehender Datensatz; Quellenabgleich unter „Quellenabgleich“.'])}/>}
     </DataState>
+    <section aria-labelledby="history-turnout-heading" className="space-y-4">
+      <div className="flex flex-wrap items-center justify-between gap-3">
+        <h2 id="history-turnout-heading" className="text-lg font-semibold">Wahlbeteiligung und Wahlkreise · {year}</h2>
+        <Button variant="outline" aria-expanded={showTurnout} aria-controls="history-turnout-details" onClick={() => setShowTurnout(value => !value)}>{showTurnout ? 'Details ausblenden' : 'Landes- und Wahlkreisdaten anzeigen'}</Button>
+      </div>
+      {showTurnout && <div id="history-turnout-details" className="space-y-4">
+        {ballotsForYear(year).length > 1 && <AnalysisControls><Selection id="history-turnout-ballot" label="Stimmenart der Beteiligungsdetails" value={turnoutBallot} onChange={value => setParams(old => { const next = new URLSearchParams(old); next.set('analysisBallot', value); return next; })}>{ballotsForYear(year).map(ballot => <option key={ballot} value={ballot}>{ballotLabels[ballot]}</option>)}</Selection></AnalysisControls>}
+        <TurnoutPanel key={`${year}:${turnoutBallot}`} year={year} ballot={turnoutBallot} party="GRÜNE" gender="Insgesamt" />
+      </div>}
+    </section>
   </div>;
 }
 export function FlowMatrixPanel({ year }: {

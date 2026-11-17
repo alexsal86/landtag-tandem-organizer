@@ -740,3 +740,20 @@ Umfang, Herkunft, offener Konflikt 2021 und der nicht auf Live ausgeführte
 Migrationsstand sind in
 [der Importdokumentation](election-analysis/sources/state-history-workbook.md)
 beschrieben. Keine Tests ausgeführt.
+
+### Wahlbeteiligung in „Vergangene Wahlen“
+
+Die Landeszeitreihe und die Beteiligungsdetails sind unter „Vergangene Wahlen“
+zusammengeführt. Für die oben ausgewählte Wahl / Legislaturperiode lassen sich
+Landes- und Wahlkreisdaten einblenden. Wahlkreise werden nur für diese Wahl und
+Stimmenart geladen; fehlende Daten werden ausdrücklich angezeigt. Suche,
+Sortierung, Vollständigkeitskennzahlen, Quellen und Datenstatus bleiben erhalten.
+Ab 2026 können die Beteiligungsdetails getrennt nach Erst- und Zweitstimme
+angezeigt werden, während die Zeitreihe weiterhin die Zweitstimme verwendet.
+Alte Links mit `analysisSection=turnout` öffnen die integrierten Details.
+
+Datenbestände und Berechnungen bleiben unverändert: Landeswerte verwenden in
+beiden Darstellungen `election_analysis_state_totals` und `stateTotalMetrics`.
+Die Summe vollständiger Wahlkreisdaten bleibt separat gekennzeichnet und wird
+nicht mit dem Landesdatensatz gleichgesetzt; unterschiedliche Datenstände können
+abweichen. Keine Tests ausgeführt.
