@@ -16582,6 +16582,9 @@ export type Database = {
       }
     }
     Functions: {
+      create_election_candidate_person: { Args: { person_name: string; identity_note?: string }; Returns: Json }
+      search_election_person_careers: { Args: { search_text?: string; page_offset?: number }; Returns: Json }
+      get_election_person_career: { Args: { person: string }; Returns: Json }
       search_election_state_list_people: { Args: { search_text: string }; Returns: Json }
       get_election_history_issues: { Args: { entity_filter?: string; issue_filter?: string; period_filter?: string; search_text?: string; sort_by?: string; page_offset?: number }; Returns: Json }
       _briefing_task_event: {

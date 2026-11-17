@@ -1,3 +1,6 @@
+import { CandidatePersonControl } from './CandidatePersonControl';
+import { PersonCareerDialog } from '../PersonCareer';
+import { candidacyOutcomeLabels, candidacyMandateStatus } from './candidateCareerModel';
 import { candidacyResultOrigin } from '../candidateResults';
 import { Fragment, useEffect, useMemo, useState } from 'react';
 import { AlertTriangle, Check, CircleCheck, FilePenLine, Pencil, Plus, Save, Trash2, X } from 'lucide-react';
@@ -15,7 +18,7 @@ import { useElectionEditorDrafts } from '../editorDrafts';
 import { deleteHistoryEntry, historyError, saveHistoryEntry, useElectionPersonSearch, type ElectionPeriodOverview } from '../useElectionHistory';
 import { formatHistoryDateInput, formatMandateDateRange, type FormValues } from '../model';
 import { formatMandateType } from '../mandateLabel';
-import type { ElectionCandidacy, ElectionHistoryData, ElectionPeriod, HistoricalDistrict, HistoricalMandate } from '../types';
+import type { ElectionCandidacy, ElectionHistoryData, ElectionPeriod, ElectionPerson, HistoricalDistrict, HistoricalMandate } from '../types';
 import { HistoricalGeometryNotice } from '../HistoricalGeometryNotice';
 import { gridFields, gridSections, optionsFor, rowValues, type Field, type GridEntity } from './historyFields';
 import { candidacyQualityIssues, districtQualityIssues, mandateQualityIssues, rowSearchText } from './historyQuality';
@@ -41,6 +44,7 @@ const columns: Record<GridEntity, Column[]> = {
     { key: 'name', label: 'Amtlicher Name', fieldKey: 'name' },
     { key: 'winner', label: 'Direktmandat' },
     { key: 'other_mandates', label: 'Weitere Mandate' },
+    { key: 'candidates', label: 'Kandidierende & Wahlausgang' },
     { key: 'geometry', label: 'Grenzstand' },
     { key: 'quality', label: 'Prüfung' },
   ],
@@ -77,14 +81,20 @@ interface Props {
   selectedPeriodId: string;
   overview: ElectionPeriodOverview[];
   initialEditId?: string;
+  initialDistrictId?: string;
+  onOpenCandidacies?: (districtId: string) => void;
   onOpenPeriod?: (periodId: string) => void;
 }
 
-export function HistoryDataGrid({ entity, data, selectedPeriodId, overview, onOpenPeriod, initialEditId = '' }: Props) {
+export function HistoryDataGrid({ entity, data, selectedPeriodId, overview, onOpenPeriod, initialEditId = '', initialDistrictId = '', onOpenCandidacies }: Props) {
   const { user } = useAuth();
   const cache = useQueryClient();
   const drafts = useElectionEditorDrafts(user?.id || '');
   const [search, setSearch] = useState('');
+  const [districtFilter, setDistrictFilter] = useState(initialDistrictId);
+  const [createdPeople, setCreatedPeople] = useState<ElectionPerson[]>([]);
+  const [creatingPerson, setCreatingPerson] = useState(false);
+  const [careerPerson, setCareerPerson] = useState<string | null>(null);
   const [pageSize, setPageSize] = useState(100);
   const initialRow = data[entity].find(row => row.id === initialEditId);
   const [editing, setEditing] = useState<string | null | undefined>(initialRow?.id);
@@ -100,11 +110,12 @@ export function HistoryDataGrid({ entity, data, selectedPeriodId, overview, onOp
   const personMatches = useElectionPersonSearch(personSearch, editing !== undefined && (entity === 'mandates' || entity === 'candidacies'));
   const viewData = useMemo<ElectionHistoryData>(() => ({
     ...data,
-    people: [...new Map([...data.people, ...(personMatches.data || [])].map(person => [person.id, person])).values()],
-  }), [data, personMatches.data]);
+    people: [...new Map([...data.people, ...(personMatches.data || []), ...createdPeople].map(person => [person.id, person])).values()],
+  }), [data, personMatches.data, createdPeople]);
   const allRows = data[entity] as GridRow[];
   const rows = allRows.filter(row => {
     if (entity !== 'periods' && (row as HistoricalDistrict | HistoricalMandate | ElectionCandidacy).period_id !== selectedPeriodId) return false;
+    if (entity === 'candidacies' && districtFilter && (row as ElectionCandidacy).district_id !== districtFilter) return false;
     return rowSearchText(entity, viewData, row.id).toLocaleLowerCase('de-DE').includes(search.trim().toLocaleLowerCase('de-DE'));
   }).sort((a, b) => {
     if (entity === 'periods') return (b as ElectionPeriod).number - (a as ElectionPeriod).number;
@@ -126,7 +137,7 @@ export function HistoryDataGrid({ entity, data, selectedPeriodId, overview, onOp
   };
   const startNew = () => {
     setValues({
-      period_id: selectedPeriodId, starts_on: '', ends_on: '', start_from_period: false, end_from_period: false,
+      period_id: selectedPeriodId, district_id: entity === 'candidacies' ? districtFilter : '', starts_on: '', ends_on: '', start_from_period: false, end_from_period: false,
       is_current: false, is_published: false, ballot_type: (currentPeriod?.election_year || 0) >= 2026 ? 'first_vote' : 'candidate',
       outcome: 'unknown', mandate_type: 'list', entry_type: 'election', boundaries: '', source_url: '',
     });
@@ -166,7 +177,7 @@ export function HistoryDataGrid({ entity, data, selectedPeriodId, overview, onOp
     drafts.put({ entity, id: editing ?? null, periodId, values: next });
   };
   const save = async () => {
-    if (saving || editing === undefined) return;
+    if (saving || creatingPerson || editing === undefined) return;
     setSaving(true); setError('');
     try {
       await saveHistoryEntry(entity, values, editing || undefined);
@@ -179,7 +190,7 @@ export function HistoryDataGrid({ entity, data, selectedPeriodId, overview, onOp
     finally { setSaving(false); }
   };
   const remove = async (row: GridRow) => {
-    if (saving || !window.confirm('Diesen zentralen Datensatz für alle Tenants löschen? Verwendete Datensätze können nicht gelöscht werden.')) return;
+    if (saving || creatingPerson || !window.confirm('Diesen zentralen Datensatz für alle Tenants löschen? Verwendete Datensätze können nicht gelöscht werden.')) return;
     setSaving(true); setError('');
     try {
       await deleteHistoryEntry(entity, row.id); await refresh(); notify.success('Datensatz gelöscht');
@@ -188,7 +199,7 @@ export function HistoryDataGrid({ entity, data, selectedPeriodId, overview, onOp
     finally { setSaving(false); }
   };
   const makeCurrent = async (periodId: string) => {
-    if (saving || !window.confirm('Diese freigegebene Legislaturperiode als aktuelle Ansicht für alle Tenants festlegen?')) return;
+    if (saving || creatingPerson || !window.confirm('Diese freigegebene Legislaturperiode als aktuelle Ansicht für alle Tenants festlegen?')) return;
     setSaving(true); setError('');
     try {
       const { error: rpcError } = await supabase.rpc('set_current_election_history_period', { period: periodId });
@@ -235,6 +246,16 @@ export function HistoryDataGrid({ entity, data, selectedPeriodId, overview, onOp
           <p className="text-caption text-muted-foreground">{formatMandateDateRange(mandate)}</p>
         </li>)}</ul> : key === 'winner' ? 'Noch nicht zugeordnet' : 'Keine weiteren Mandate zugeordnet';
       }
+      if (key === 'candidates') {
+        const candidates = data.candidacies.filter(candidate => candidate.period_id === district.period_id && candidate.district_id === district.id);
+        return <div className="space-y-2">{candidates.length ? <ul className="space-y-3">{candidates.map(candidate => <li key={candidate.id}>
+          <button type="button" className="text-left font-medium underline-offset-4 hover:underline" onClick={() => setCareerPerson(candidate.person_id)}>{personName(candidate.person_id)} ({candidate.party})</button>
+          <p className="text-caption">{candidacyOutcomeLabels[candidate.outcome]}</p>
+          <p className="text-caption text-muted-foreground">{candidacyMandateStatus(candidate, data.mandates)}</p>
+          {(candidate.votes !== null || candidate.vote_share !== null) && <p className="text-caption text-muted-foreground">{candidate.votes !== null ? `${candidate.votes.toLocaleString('de-DE')} Stimmen` : ''}{candidate.votes !== null && candidate.vote_share !== null ? ' · ' : ''}{candidate.vote_share !== null ? `${candidate.vote_share.toLocaleString('de-DE', { maximumFractionDigits: 5 })} %` : ''}</p>}
+        </li>)}</ul> : <p className="text-caption text-muted-foreground">Noch keine Kandidaturen erfasst.</p>}
+        {onOpenCandidacies && <Button size="sm" variant="outline" className="h-auto max-w-full whitespace-normal" onClick={() => onOpenCandidacies(district.id)}>Kandidaturen pflegen</Button>}</div>;
+      }
       if (key === 'geometry') {
         if (district.boundaries) return 'Eigener Umriss';
         if (district.geometry_source_key) return 'Regionale Quelle';
@@ -253,7 +274,7 @@ export function HistoryDataGrid({ entity, data, selectedPeriodId, overview, onOp
       return String(mandate[key as keyof HistoricalMandate] ?? '–');
     }
     const candidacy = row as ElectionCandidacy;
-    if (key === 'person_id') return personName(candidacy.person_id);
+    if (key === 'person_id') return <button type="button" className="text-left font-medium underline-offset-4 hover:underline" onClick={() => setCareerPerson(candidacy.person_id)}>{personName(candidacy.person_id)}</button>;
     if (key === 'district_id') return districtName(candidacy.district_id);
     if (key === 'votes') return candidacy.votes?.toLocaleString('de-DE') ?? '–';
     if (key === 'result_origin') {
@@ -261,13 +282,14 @@ export function HistoryDataGrid({ entity, data, selectedPeriodId, overview, onOp
       return <span title={[candidacy.result_data_release, candidacy.result_notes].filter(Boolean).join(' · ')}>{({ automatic: 'Automatisch', mixed: 'Automatisch / persönlich erfasst', manual: 'Persönlich erfasst', missing: 'Ergebnis fehlt' })[origin]}{candidacy.result_origin === 'district_result' ? ` · ${candidacy.result_preliminary ? 'vorläufig' : 'als endgültig geführt'}` : ''}</span>;
     }
     if (key === 'vote_share') return candidacy.vote_share === null ? '–' : `${candidacy.vote_share.toLocaleString('de-DE', { maximumFractionDigits: 5 })} %`;
-    if (key === 'outcome') return ({ direct: 'Direkt gewählt', list: 'Über Liste', not_elected: 'Nicht gewählt', unknown: 'Offen' })[candidacy.outcome];
+    if (key === 'outcome') return <div>{candidacyOutcomeLabels[candidacy.outcome]}<p className="text-caption text-muted-foreground">{candidacyMandateStatus(candidacy, data.mandates)}</p></div>;
     return String(candidacy[key as keyof ElectionCandidacy] ?? '–');
   };
 
   const fieldInput = (field: Field) => {
     const id = `grid-${entity}-${editing || 'new'}-${field.key}`;
-    const common = { id, disabled: saving, 'aria-label': field.label };
+    const common = { id, disabled: saving || creatingPerson, 'aria-label': field.label };
+    if (entity === 'candidacies' && field.key === 'person_id') return <CandidatePersonControl key={id} id={id} value={String(values.person_id || '')} people={viewData.people} search={personSearch} onSearch={setPersonSearch} onSelect={personId => changeField('person_id', personId)} onCreated={person => { setCreatedPeople(current => [...current, person]); changeField('person_id', person.id); }} onBusyChange={setCreatingPerson} disabled={saving} searchError={personMatches.error} />;
     if (field.type === 'select') return <select {...common} className="h-9 min-w-0 w-full max-w-full rounded-md border border-input bg-background px-2 text-sm" required={field.required} value={String(values[field.key] ?? '')} onChange={event => changeField(field.key, event.target.value)}><option value="">Bitte auswählen / keine Zuordnung</option>{optionsFor(field.key, viewData, values).map(option => <option key={option.value} value={option.value}>{option.label}</option>)}</select>;
     if (field.type === 'textarea') return <Textarea {...common} className="min-h-20 min-w-0 max-w-full" value={String(values[field.key] ?? '')} onChange={event => changeField(field.key, event.target.value)} />;
     if (entity === 'periods' && field.type === 'date') return <Input {...common} type="text" inputMode="numeric" lang="de" placeholder="TT.MM.JJJJ" pattern="[0-9]{2}\.[0-9]{2}\.[0-9]{4}" title="Datum im Format TT.MM.JJJJ" maxLength={10} required={field.required} className="h-9 min-w-0 w-full max-w-full tabular-nums" value={formatHistoryDateInput(String(values[field.key] || ''))} onChange={event => changeField(field.key, event.target.value)} />;
@@ -276,7 +298,7 @@ export function HistoryDataGrid({ entity, data, selectedPeriodId, overview, onOp
   };
   const editorDetails = editing !== undefined ? <TableRow id={`history-editor-${entity}-${editing || 'new'}`} className="block scroll-mt-24 bg-muted/30 hover:bg-muted/30 xl:table-row"><TableCell colSpan={columns[entity].length + 1} className="block min-w-0 w-full p-3 xl:table-cell">
     <div className="min-w-0 space-y-3">
-      {(entity === 'mandates' || entity === 'candidacies') && <div className="max-w-md"><Label htmlFor={`person-search-${entity}`}>Weitere zentrale Personen suchen</Label><Input id={`person-search-${entity}`} value={personSearch} disabled={saving} onChange={event => setPersonSearch(event.target.value)} placeholder="Mindestens 2 Anfangsbuchstaben · höchstens 20 Treffer" />{personMatches.error && <p role="alert" className="mt-1 text-caption text-destructive">Personensuche fehlgeschlagen.</p>}</div>}
+      {entity === 'mandates' && <div className="max-w-md"><Label htmlFor={`person-search-${entity}`}>Vorhandene Person suchen, auch frühere Kandidierende</Label><Input id={`person-search-${entity}`} value={personSearch} disabled={saving || creatingPerson} onChange={event => setPersonSearch(event.target.value)} placeholder="Mindestens 2 Anfangsbuchstaben · höchstens 20 Treffer" />{personMatches.error && <p role="alert" className="mt-1 text-caption text-destructive">Personensuche fehlgeschlagen.</p>}</div>}
       <div className="grid min-w-0 grid-cols-1 gap-3 md:grid-cols-2 2xl:grid-cols-3">{editorFields.map(field => <div key={field.key} className={field.type === 'textarea' ? 'min-w-0 md:col-span-2 2xl:col-span-3' : 'min-w-0'}>
         <Label htmlFor={`grid-${entity}-${editing || 'new'}-${field.key}`} className={field.type === 'checkbox' ? 'flex items-center gap-2' : ''}>{field.type === 'checkbox' && fieldInput(field)}{field.label}{field.required ? ' *' : ''}</Label>
         {field.type !== 'checkbox' && fieldInput(field)}
@@ -285,21 +307,22 @@ export function HistoryDataGrid({ entity, data, selectedPeriodId, overview, onOp
       </div>)}</div>
       {entity === 'periods' && <HistoricalGeometryNotice year={Number(values.election_year) || null} />}
       {error && <p role="alert" className="text-sm text-destructive">{error}</p>}
-      <div className="flex flex-wrap gap-2"><Button disabled={saving} onClick={() => void save()}><Save className="mr-2 h-4 w-4" aria-hidden="true" />{saving ? 'Speichert …' : 'Speichern'}</Button><Button variant="outline" disabled={saving} onClick={cancel}>Verwerfen</Button></div>
+      <div className="flex flex-wrap gap-2"><Button disabled={saving || creatingPerson} onClick={() => void save()}><Save className="mr-2 h-4 w-4" aria-hidden="true" />{saving ? 'Speichert …' : 'Speichern'}</Button><Button variant="outline" disabled={saving || creatingPerson} onClick={cancel}>Verwerfen</Button></div>
     </div>
   </TableCell></TableRow> : null;
 
   return <section className="min-w-0 w-full max-w-full space-y-3" aria-label={`${gridSections[entity]} bearbeiten`}>
     <div className="flex flex-wrap items-end gap-2">
       <div className="min-w-0 w-full flex-1 sm:min-w-56"><Label htmlFor={`grid-search-${entity}`}>In {rows.length} Datensätzen suchen</Label><Input id={`grid-search-${entity}`} type="search" value={search} onChange={event => { setSearch(event.target.value); setPageSize(100); }} placeholder="Name, Partei, Wahlkreis oder Nummer …" /></div>
-      <Button onClick={startNew} disabled={saving || (entity !== 'periods' && !selectedPeriodId)}><Plus className="mr-2 h-4 w-4" aria-hidden="true" />Neu anlegen</Button>
+      {entity === 'candidacies' && <div className="min-w-0 flex-1"><Label htmlFor="candidate-district-filter">Wahlkreis</Label><select id="candidate-district-filter" className="h-10 min-w-0 w-full rounded-md border bg-background px-2 text-sm" disabled={saving || creatingPerson} value={districtFilter} onChange={event => { setDistrictFilter(event.target.value); setPageSize(100); }}><option value="">Alle Wahlkreise / Landeslisten</option>{data.districts.map(district => <option key={district.id} value={district.id}>{district.district_number ?? district.number_label ?? '–'}: {district.name}</option>)}</select></div>}
+      <Button onClick={startNew} disabled={saving || creatingPerson || (entity !== 'periods' && !selectedPeriodId)}><Plus className="mr-2 h-4 w-4" aria-hidden="true" />Neu anlegen</Button>
     </div>
     {drafts.storageFailed && <p role="alert" className="text-sm text-destructive">Der Browser kann Eingaben nicht zwischenspeichern. Bitte zeitnah speichern.</p>}
-    {drafts.drafts.filter(draft => draft.entity === entity && (entity === 'periods' || draft.periodId === selectedPeriodId)).length > 0 && <div className="flex flex-wrap items-center gap-2 rounded-md border bg-muted/20 p-2 text-caption"><span>Browserentwürfe:</span>{drafts.drafts.filter(draft => draft.entity === entity && (entity === 'periods' || draft.periodId === selectedPeriodId)).map(draft => <Button key={`${draft.id}:${draft.periodId}`} size="sm" variant="outline" className="h-auto max-w-full whitespace-normal break-words" disabled={saving} onClick={() => { setValues(draft.values); setEditing(draft.id); setError(''); }}>{String(draft.values.name || draft.values.person_name || 'Datensatz')} wiederherstellen</Button>)}</div>}
+    {drafts.drafts.filter(draft => draft.entity === entity && (entity === 'periods' || draft.periodId === selectedPeriodId)).length > 0 && <div className="flex flex-wrap items-center gap-2 rounded-md border bg-muted/20 p-2 text-caption"><span>Browserentwürfe:</span>{drafts.drafts.filter(draft => draft.entity === entity && (entity === 'periods' || draft.periodId === selectedPeriodId)).map(draft => <Button key={`${draft.id}:${draft.periodId}`} size="sm" variant="outline" className="h-auto max-w-full whitespace-normal break-words" disabled={saving || creatingPerson} onClick={() => { setValues(draft.values); setEditing(draft.id); setError(''); }}>{String(draft.values.name || draft.values.person_name || 'Datensatz')} wiederherstellen</Button>)}</div>}
     {error && editing === undefined && <p role="alert" className="text-sm text-destructive">{error}</p>}
     {editing !== undefined && <div role="group" aria-label="Bearbeitung speichern oder verwerfen" className="sticky top-0 z-20 flex flex-wrap items-center justify-between gap-2 rounded-md border bg-card p-3 shadow-sm">
       <p className="text-sm font-medium">{editing === null ? 'Neuer Datensatz' : 'Datensatz bearbeiten'}</p>
-      <div className="flex flex-wrap gap-2"><Button disabled={saving} onClick={() => void save()}><Save className="mr-2 h-4 w-4" aria-hidden="true" />{saving ? 'Speichert …' : 'Speichern'}</Button><Button variant="outline" disabled={saving} onClick={cancel}>Verwerfen</Button></div>
+      <div className="flex flex-wrap gap-2"><Button disabled={saving || creatingPerson} onClick={() => void save()}><Save className="mr-2 h-4 w-4" aria-hidden="true" />{saving ? 'Speichert …' : 'Speichern'}</Button><Button variant="outline" disabled={saving || creatingPerson} onClick={cancel}>Verwerfen</Button></div>
     </div>}
     <div className="min-w-0 w-full max-w-full overflow-hidden rounded-md border bg-card">
       <Table className="block w-full max-w-full table-fixed xl:table [&_td]:[overflow-wrap:anywhere] [&_th]:[overflow-wrap:anywhere]">
@@ -310,18 +333,19 @@ export function HistoryDataGrid({ entity, data, selectedPeriodId, overview, onOp
             const isEditing = editing === row.id;
             const issues = qualityIssues(row);
             return <Fragment key={row.id}>{<TableRow className={`grid min-w-0 grid-cols-1 sm:grid-cols-2 xl:table-row ${isEditing ? 'bg-primary/5 hover:bg-primary/5' : issues.length ? 'bg-warning/5' : ''}`}>{columns[entity].map(column => <TableCell key={column.key} className="block min-w-0 p-2 align-top xl:table-cell"><span className="mb-1 block text-caption font-medium text-muted-foreground xl:hidden">{column.label}</span>{displayCell(column.key, row)}</TableCell>)}<TableCell className="block min-w-0 p-2 align-top xl:table-cell"><span className="mb-1 block text-caption font-medium text-muted-foreground xl:hidden">Aktionen</span><div className="flex flex-wrap gap-1">
-              {isEditing ? <><Button size="icon" className="h-8 w-8" aria-label="Änderungen speichern" disabled={saving} onClick={() => void save()}><Save className="h-4 w-4" /></Button><Button size="icon" variant="ghost" className="h-8 w-8" aria-label="Bearbeitung verwerfen" disabled={saving} onClick={cancel}><X className="h-4 w-4" /></Button></> : <>
+              {isEditing ? <><Button size="icon" className="h-8 w-8" aria-label="Änderungen speichern" disabled={saving || creatingPerson} onClick={() => void save()}><Save className="h-4 w-4" /></Button><Button size="icon" variant="ghost" className="h-8 w-8" aria-label="Bearbeitung verwerfen" disabled={saving || creatingPerson} onClick={cancel}><X className="h-4 w-4" /></Button></> : <>
                 {entity === 'periods' && onOpenPeriod && <Button size="sm" variant="outline" className="h-8" onClick={() => onOpenPeriod(row.id)}>Öffnen</Button>}
-                {entity === 'periods' && (row as ElectionPeriod).is_published && !(row as ElectionPeriod).is_current && <Button size="sm" variant="ghost" className="h-8" disabled={saving} onClick={() => void makeCurrent(row.id)}>Aktuell</Button>}
-                <Button size="icon" variant="ghost" className="h-8 w-8" aria-label="Datensatz bearbeiten" disabled={saving} onClick={() => startEdit(row)}><Pencil className="h-4 w-4" /></Button>
+                {entity === 'periods' && (row as ElectionPeriod).is_published && !(row as ElectionPeriod).is_current && <Button size="sm" variant="ghost" className="h-8" disabled={saving || creatingPerson} onClick={() => void makeCurrent(row.id)}>Aktuell</Button>}
+                <Button size="icon" variant="ghost" className="h-8 w-8" aria-label="Datensatz bearbeiten" disabled={saving || creatingPerson} onClick={() => startEdit(row)}><Pencil className="h-4 w-4" /></Button>
               </>}
-              <Button size="icon" variant="ghost" className="h-8 w-8 text-destructive" aria-label="Datensatz löschen" disabled={saving} onClick={() => void remove(row)}><Trash2 className="h-4 w-4" /></Button>
+              <Button size="icon" variant="ghost" className="h-8 w-8 text-destructive" aria-label="Datensatz löschen" disabled={saving || creatingPerson} onClick={() => void remove(row)}><Trash2 className="h-4 w-4" /></Button>
             </div></TableCell></TableRow>}{isEditing && editorDetails}</Fragment>;
           })}
         </TableBody>
       </Table>
       {!visibleRows.length && editing !== null && <EmptyState size="sm" title="Keine passenden Datensätze" description={search ? 'Suche anpassen oder einen neuen Datensatz anlegen.' : 'Für diese Auswahl sind noch keine Daten erfasst.'} />}
     </div>
+    <PersonCareerDialog personId={careerPerson} onClose={() => setCareerPerson(null)} />
     {rows.length > pageSize && <Button variant="outline" className="h-auto max-w-full whitespace-normal" onClick={() => setPageSize(size => size + 100)}>Weitere 100 anzeigen ({pageSize} von {rows.length})</Button>}
   </section>;
 

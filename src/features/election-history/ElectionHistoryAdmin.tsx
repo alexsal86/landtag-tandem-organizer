@@ -1,3 +1,4 @@
+import { PersonCareerDirectory } from './PersonCareer';
 import { useState } from 'react';
 import { FileUp } from 'lucide-react';
 import { Button } from '@/components/ui/button';
@@ -32,6 +33,8 @@ function ElectionHistoryWorkspace() {
   const overviewQuery = useElectionPeriodOverview();
   const [section, setSection] = useState<WorkspaceSection>('periods');
   const [periodFilter, setPeriodFilter] = useState('');
+  const [targetDistrictId, setTargetDistrictId] = useState('');
+  const [registerView, setRegisterView] = useState<'mandates' | 'people'>('mandates');
   const availablePeriods = periodQuery.data?.filter(period => section !== 'state_lists' || period.number >= 18);
   const selectedPeriod = availablePeriods?.find(period => period.id === periodFilter)?.id || availablePeriods?.find(period => period.is_current)?.id || availablePeriods?.[0]?.id || '';
   const needsHistory = ['districts', 'mandates', 'candidacies'].includes(section);
@@ -48,11 +51,11 @@ function ElectionHistoryWorkspace() {
   if (periodQuery.error || !data) return <ErrorState title="Wahldatenbank konnte nicht geladen werden" description={historyError(periodQuery.error)} onRetry={() => void Promise.all([periodQuery.refetch(), query.refetch()])} />;
 
   const openIssue = (issue: HistoryIssue) => {
-    setPeriodFilter(issue.period_id); setTargetRecordId(issue.record_id || ''); setTargetListId(issue.list_id || ''); setSection(issue.entity); setImportOpen(false);
+    setPeriodFilter(issue.period_id); setTargetRecordId(issue.record_id || ''); setTargetListId(issue.list_id || ''); setTargetDistrictId(''); setSection(issue.entity); setImportOpen(false);
   };
   return <div className="min-w-0 w-full max-w-full space-y-5">
     <header className="space-y-1"><h2 className="text-h2">Wahldaten & Mandatshistorie</h2><p className="max-w-4xl text-body text-muted-foreground">Zentrale Pflege- und Importwerkbank für alle Tenants. Auswertungen und Visualisierungen bleiben unter „Daten“; hier werden Stammdaten, Mandate, Kandidaturen und Quellen vollständig gepflegt.</p></header>
-    <Tabs value={section} onValueChange={value => { setSection(value as WorkspaceSection); setImportOpen(false); setTargetRecordId(''); setTargetListId(''); setDeputyTarget(null); }}>
+    <Tabs value={section} onValueChange={value => { setSection(value as WorkspaceSection); setImportOpen(false); setTargetRecordId(''); setTargetListId(''); setTargetDistrictId(''); setDeputyTarget(null); }}>
       <TabsList className="h-auto flex flex-wrap justify-start gap-1">
         <TabsTrigger value="periods">1 · Legislaturperioden</TabsTrigger>
         <TabsTrigger value="districts">2 · Wahlkreise</TabsTrigger>
@@ -65,7 +68,7 @@ function ElectionHistoryWorkspace() {
     </Tabs>
 
     {section !== 'periods' && section !== 'deputies' && section !== 'issues' && <section className="flex flex-wrap items-end gap-3 rounded-md border bg-card p-3" aria-label="Legislaturauswahl">
-      <div className="min-w-0 w-full flex-1"><Label htmlFor="history-period-filter">Legislaturperiode</Label><select id="history-period-filter" className="flex h-10 min-w-0 w-full max-w-full rounded-md border border-input bg-background px-3 py-2 text-sm" value={selectedPeriod} onChange={event => { setPeriodFilter(event.target.value); setImportOpen(false); setTargetRecordId(''); setTargetListId(''); }}>{availablePeriods?.map(item => <option key={item.id} value={item.id}>{item.is_published ? '✓' : '✎'} {item.name}</option>)}</select></div>
+      <div className="min-w-0 w-full flex-1"><Label htmlFor="history-period-filter">Legislaturperiode</Label><select id="history-period-filter" className="flex h-10 min-w-0 w-full max-w-full rounded-md border border-input bg-background px-3 py-2 text-sm" value={selectedPeriod} onChange={event => { setPeriodFilter(event.target.value); setImportOpen(false); setTargetRecordId(''); setTargetListId(''); setTargetDistrictId(''); }}>{availablePeriods?.map(item => <option key={item.id} value={item.id}>{item.is_published ? '✓' : '✎'} {item.name}</option>)}</select></div>
       {periodOverview && <p className="pb-2 text-body tabular-nums text-muted-foreground [overflow-wrap:anywhere]">{periodOverview.district_count} Wahlkreise · {periodOverview.mandate_count} Mandate · {periodOverview.candidacy_count} Kandidaturen</p>}
       {section === 'candidacies' && <Button onClick={() => setImportOpen(true)}><FileUp className="mr-2 h-4 w-4" aria-hidden="true" />Excel / CSV importieren</Button>}
     </section>}
@@ -78,17 +81,17 @@ function ElectionHistoryWorkspace() {
     </>}
     {section === 'districts' && !query.isLoading && !query.error && period && <div className="space-y-3">
       <HistoryLinkReview key={selectedPeriod} period={period} districts={data.districts} />
-      <HistoryDataGrid key={`districts-${selectedPeriod}-${targetRecordId}`} initialEditId={targetRecordId} entity="districts" data={data} selectedPeriodId={selectedPeriod} overview={overviewQuery.data || []} />
+      <HistoryDataGrid key={`districts-${selectedPeriod}-${targetRecordId}`} initialEditId={targetRecordId} entity="districts" onOpenCandidacies={districtId => { setTargetDistrictId(districtId); setTargetRecordId(''); setSection('candidacies'); }} data={data} selectedPeriodId={selectedPeriod} overview={overviewQuery.data || []} />
     </div>}
     {section === 'mandates' && !query.isLoading && !query.error && <HistoryDataGrid key={`mandates-${selectedPeriod}-${targetRecordId}`} initialEditId={targetRecordId} entity="mandates" data={data} selectedPeriodId={selectedPeriod} overview={overviewQuery.data || []} />}
     {section === 'candidacies' && !query.isLoading && !query.error && period && <div className="space-y-3">
       <CandidacyAssemblyStatus key={`assembly-${selectedPeriod}`} periodId={selectedPeriod} />
-      <HistoryDataGrid key={`candidacies-${selectedPeriod}-${targetRecordId}`} initialEditId={targetRecordId} entity="candidacies" data={data} selectedPeriodId={selectedPeriod} overview={overviewQuery.data || []} />
+      <HistoryDataGrid key={`candidacies-${selectedPeriod}-${targetRecordId}-${targetDistrictId}`} initialEditId={targetRecordId} initialDistrictId={targetDistrictId} entity="candidacies" data={data} selectedPeriodId={selectedPeriod} overview={overviewQuery.data || []} />
       <CandidateCoverageReview key={selectedPeriod} periodId={selectedPeriod} disabled={false} />
       <CandidacyImportDialog open={importOpen} onOpenChange={setImportOpen} data={data} periodId={selectedPeriod} onImported={async () => { await Promise.all([query.refetch(), overviewQuery.refetch()]); }} />
     </div>}
-    {section === 'deputies' && <ElectionDeputyDirectory key={deputyTarget?.id || 'directory'} initialConnection={deputyTarget || undefined} />}
-    {section === 'state_lists' && (period ? <StateLists key={`${period.id}-${targetListId}-${targetRecordId}`} periodId={period.id} periodNumber={period.number} initialListId={targetListId} initialEntryId={targetRecordId} onOpenDeputy={(id, name) => { setDeputyTarget({ id, name }); setSection('deputies'); }} /> : <p>Landeslisten können ab der 18. Legislaturperiode erfasst werden. Bitte zunächst die entsprechende Legislaturperiode anlegen.</p>)}
+    {section === 'deputies' && <div className="min-w-0 space-y-4"><div className="flex flex-wrap gap-2" role="group" aria-label="Personenregister auswählen"><Button variant={registerView === 'mandates' ? 'default' : 'outline'} aria-pressed={registerView === 'mandates'} onClick={() => setRegisterView('mandates')}>Abgeordnetenregister</Button><Button variant={registerView === 'people' ? 'default' : 'outline'} aria-pressed={registerView === 'people'} onClick={() => setRegisterView('people')}>Alle Personen & Kandidaturen</Button></div>{registerView === 'mandates' ? <ElectionDeputyDirectory key={deputyTarget?.id || 'directory'} initialConnection={deputyTarget || undefined} /> : <PersonCareerDirectory />}</div>}
+    {section === 'state_lists' && (period ? <StateLists key={`${period.id}-${targetListId}-${targetRecordId}`} periodId={period.id} periodNumber={period.number} initialListId={targetListId} initialEntryId={targetRecordId} onOpenDeputy={(id, name) => { setDeputyTarget({ id, name }); setRegisterView('mandates'); setSection('deputies'); }} /> : <p>Landeslisten können ab der 18. Legislaturperiode erfasst werden. Bitte zunächst die entsprechende Legislaturperiode anlegen.</p>)}
     <div hidden={section !== 'issues'}><HistoryIssueOverview active={section === 'issues'} periods={data.periods} onOpen={openIssue} /></div>
   </div>;
 }

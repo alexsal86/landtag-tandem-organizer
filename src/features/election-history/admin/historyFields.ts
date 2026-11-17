@@ -64,7 +64,7 @@ export const gridFields: Record<GridEntity, Field[]> = {
   ],
   candidacies: [
     periodField,
-    { ...personField, required: true },
+    { ...personField, required: true, label: 'Kandidierende Person' },
     districtField,
     partyField,
     { key: 'ballot_type', label: 'Stimmenart', type: 'select', required: true },

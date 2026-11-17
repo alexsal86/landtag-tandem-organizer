@@ -1,3 +1,4 @@
+import { PersonCandidacyHistory } from './PersonCareer';
 import { useEffect, useState } from 'react';
 import { GitMerge, Search, X } from 'lucide-react';
 import { useQuery, useQueryClient } from '@tanstack/react-query';
@@ -58,6 +59,7 @@ export function ElectionDeputyDirectory({ readOnly = false, canEditPortraits = !
     }, retry: false,
   });
   const rows = detail.data || [];
+  const personIds = [...new Set(rows.map(row => row.person_id).filter((id): id is string => !!id))];
   const selectGroup = (entry: DeputyGroup) => {
     if (mergeMode && group && entry.name_key !== group.name_key) { setMergeTarget(entry); setMergeError(''); return; }
     setGroup(entry); setMergeTarget(null); setMergeMode(false); setMergeError('');
@@ -104,6 +106,7 @@ export function ElectionDeputyDirectory({ readOnly = false, canEditPortraits = !
           <TableCell className="whitespace-nowrap">{formatMandateDateRange(row)}{row.end_is_expected && <p className="text-caption text-muted-foreground">voraussichtliches Ende</p>}</TableCell>
           <TableCell>{row.district_name ? `${row.district_label ? `${row.district_label}: ` : ''}${row.district_name}` : 'Ohne Wahlkreis'}</TableCell><TableCell>{row.party_label || row.party}</TableCell><TableCell>{formatMandateType(row.mandate_type)}<p className="text-caption text-muted-foreground">{row.entry_type === 'succession' ? 'nachgerückt' : 'gewählt'}{row.left_early ? ' · vorzeitig ausgeschieden' : ''}</p></TableCell>
         </TableRow>)}</TableBody></Table></div>}
+        {!readOnly && personIds.length === 1 && <PersonCandidacyHistory key={personIds[0]} personId={personIds[0]} />}
       </CardContent></Card>}
     </div>
   </section>;
