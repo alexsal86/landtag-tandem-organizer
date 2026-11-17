@@ -116,7 +116,7 @@ export function SwingAtlas({
     );
   return (
     <div className="space-y-4">
-      <div className="flex flex-wrap items-end gap-3 rounded-lg border bg-white p-4">
+      <div className="flex flex-wrap items-end gap-3 rounded-lg border bg-card p-4">
         <Selection
           id="atlas-map-party"
           label="Partei für Karte und Tabelle"
@@ -135,7 +135,7 @@ export function SwingAtlas({
           <input
             id="atlas-search"
             type="search"
-            className="h-10 rounded-md border bg-white px-3 font-normal"
+            className="h-10 rounded-md border bg-card px-3 font-normal"
             placeholder="Name oder exakte Nummer …"
             value={search}
             onChange={(e) => setSearch(e.target.value)}

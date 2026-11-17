@@ -20,7 +20,7 @@ export function StateHistoryPanel({ year, years, initiallyShowTurnout = false }:
     initiallyShowTurnout?: boolean;
 }) {
     const [params, setParams] = useSearchParams();
-    const [showTurnout, setShowTurnout] = useState(initiallyShowTurnout);
+    const showTurnout = initiallyShowTurnout || params.get('historyDetails') === 'turnout';
     const turnoutBallot = effectiveBallot(year, params.get('analysisBallot') === 'first' ? 'first' : 'second');
     const ordered = years.slice().sort((a, b) => a - b);
     const requestedFrom = Number(params.get('historyFrom'));
@@ -59,7 +59,7 @@ export function StateHistoryPanel({ year, years, initiallyShowTurnout = false }:
     <section aria-labelledby="history-turnout-heading" className="space-y-4">
       <div className="flex flex-wrap items-center justify-between gap-3">
         <h2 id="history-turnout-heading" className="text-lg font-semibold">Wahlbeteiligung und Wahlkreise · {year}</h2>
-        <Button variant="outline" aria-expanded={showTurnout} aria-controls="history-turnout-details" onClick={() => setShowTurnout(value => !value)}>{showTurnout ? 'Details ausblenden' : 'Landes- und Wahlkreisdaten anzeigen'}</Button>
+        <Button variant="outline" aria-expanded={showTurnout} aria-controls="history-turnout-details" onClick={() => setParams(previous => { const next = new URLSearchParams(previous); if (showTurnout) next.delete('historyDetails'); else next.set('historyDetails', 'turnout'); return next; })}>{showTurnout ? 'Details ausblenden' : 'Landes- und Wahlkreisdaten anzeigen'}</Button>
       </div>
       {showTurnout && <div id="history-turnout-details" className="space-y-4">
         {ballotsForYear(year).length > 1 && <AnalysisControls><Selection id="history-turnout-ballot" label="Stimmenart der Beteiligungsdetails" value={turnoutBallot} onChange={value => setParams(old => { const next = new URLSearchParams(old); next.set('analysisBallot', value); return next; })}>{ballotsForYear(year).map(ballot => <option key={ballot} value={ballot}>{ballotLabels[ballot]}</option>)}</Selection></AnalysisControls>}
@@ -100,7 +100,7 @@ export function WorkbookAuditPanel({ year }: {
     <AnalysisControls><Button variant={conflictsOnly ? 'default' : 'outline'} aria-pressed={conflictsOnly} onClick={() => setConflictsOnly(v => !v)}>Nur Abweichungen</Button></AnalysisControls>
     <StatusNote>Dieser Bericht dokumentiert den Vergleich beim Einspielen der Arbeitsmappe. Übereinstimmung bedeutet Zahlenübereinstimmung mit dem damaligen Plattformbestand, keine unabhängige Prüfung der verlinkten Originalquelle. Bestehende Werte werden bei Abweichungen erhalten. Die Prüfsumme gehört zur hochgeladenen Excel-Datei. Weitere historische Parteiergebnisse und die Restgruppe wurden nicht importiert.</StatusNote>
     <DataState loading={query.isLoading} error={query.error} empty={!rows.length} retry={() => void query.refetch()}>
-      <DataTable headers={['Bereich', 'Datensatz', 'Abgleichstatus', 'Quelle', 'Fundstelle', 'Details']} rows={rows.map(r => [r.section, r.record_key, <span className={r.status === 'conflict' ? 'font-semibold text-amber-800' : ''}>{statusLabels[r.status]}</span>, <SourceLink url={r.source_url}/>, `${r.source_sheet}, Zeile ${r.source_row}`, <AuditValues row={r}/>])}/>
+      <DataTable headers={['Bereich', 'Datensatz', 'Abgleichstatus', 'Quelle', 'Fundstelle', 'Details']} rows={rows.map(r => [r.section, r.record_key, <span className={r.status === 'conflict' ? 'font-semibold text-warning' : ''}>{statusLabels[r.status]}</span>, <SourceLink url={r.source_url}/>, `${r.source_sheet}, Zeile ${r.source_row}`, <AuditValues row={r}/>])}/>
     </DataState>
   </div>;
 }

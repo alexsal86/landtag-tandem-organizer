@@ -34,6 +34,7 @@ const CalendarSyncSettings = lazy(() => import("@/components/administration/Cale
 const LoginCustomization = lazy(() => import("@/components/administration/LoginCustomization").then(module => ({ default: module.LoginCustomization })));
 const UserColorManager = lazy(() => import("@/components/administration/UserColorManager").then(module => ({ default: module.UserColorManager })));
 const DecisionArchiveSettings = lazy(() => import("@/components/administration/DecisionArchiveSettings").then(module => ({ default: module.DecisionArchiveSettings })));
+const MatrixWidgetAdmin = lazy(() => import("@/components/administration/MatrixWidgetAdmin"));
 const MatrixSettings = lazy(() => import("@/components/admin/MatrixSettings").then(module => ({ default: module.MatrixSettings })));
 const VacationChecklistAdmin = lazy(() => import("@/components/administration/VacationChecklistAdmin").then(module => ({ default: module.VacationChecklistAdmin })));
 const NewsEmailTemplateManager = lazy(() => import("@/components/administration/NewsEmailTemplateManager").then(module => ({ default: module.NewsEmailTemplateManager })));
@@ -225,6 +226,7 @@ export default function Administration(): React.JSX.Element | null {
     if (activeSection === "users") {
       switch (activeSubSection) {
         case "status": return <StatusAdminSettings />;
+        case "matrix-widget": return <MatrixWidgetAdmin />;
         case "planning-collaborators": return <PlanningDefaultCollaboratorsSettings />;
         case "usercolors":
           if (!isSuperAdmin) return null;

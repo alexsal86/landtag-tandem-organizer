@@ -336,7 +336,7 @@ export function AnalysisMap({
       {comparisonYear != null && comparisonGeometry.isLoading && <p role="status" className="text-sm">Frühere Wahlkreisgrenzen laden …</p>}
       {comparisonYear != null && comparisonGeometry.error && <p role="status" className="text-sm">Der frühere Grenzstand konnte nicht geladen werden. Die Teilflächenmarkierung ist deshalb nicht verfügbar.</p>}
       {preview && (
-        <p role="status" className="rounded-lg border border-amber-500 bg-amber-50 p-3 text-sm text-amber-950 dark:bg-amber-950 dark:text-amber-100">
+        <p role="status" className="rounded-lg border border-warning bg-warning/10 p-3 text-sm text-foreground">
           Ungeprüfte Kartenvorschau: Angezeigt werden die vorhandenen
           Wahlkreisgrenzen von {bundledYear ?? 2021}. Ihre Übereinstimmung mit den ausgewählten
           Wahljahren und die Zuordnung nach Wahlkreisnummer müssen noch geprüft

@@ -32,7 +32,7 @@ it("keeps bookmarks valid after reorganizing personal and financial settings", (
 
 describe("automation hub navigation", () => {
   it("integrates annual routines into the rules workspace", () => {
-    expect(adminMenuItems.find(item => item.id === "automation")?.children?.map(item => item.id)).toEqual(["rules", "rss"]);
+    expect(adminMenuItems.find(item => item.id === "automation")?.children?.map(item => item.id)).toEqual(["rules", "hr", "rss"]);
   });
   it("preserves legacy engine links in the dispatcher tab", () => {
     const params = normalizeAutomationParams(new URLSearchParams("adminSection=automation&adminSubSection=engine&tab=dashboard"));
@@ -54,4 +54,9 @@ describe("automation hub navigation", () => {
     expect(automationTabFromParams(new URLSearchParams("automationTab=invalid"))).toBe("rules");
     expect(rssTabFromParams(new URLSearchParams("rssTab=invalid"))).toBe("sources");
   });
+});
+
+it("places the Matrix widget and its feedback in administration while preserving personal Matrix settings", () => {
+  expect(resolveNavigationState("users", "matrix-widget", false)).toEqual({ section: "users", subSection: "matrix-widget" });
+  expect(resolveNavigationState("users", "matrix", false)).toEqual({ section: "personal", subSection: "matrix" });
 });

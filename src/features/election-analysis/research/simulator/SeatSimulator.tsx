@@ -617,7 +617,7 @@ function Seat2026() {
                       ? "Listenbesetzung unbekannt, solange vollständige Landeslisten fehlen."
                       : `${computed.value.unfilled} unbesetzte Sitze bei erschöpften Listen / nicht verteilbaren Ansprüchen.`}
                   </p>
-                  <div className="rounded border bg-white p-3">
+                  <div className="rounded border bg-card p-3">
                     <h4 className="mb-3 font-medium">
                       Rechnerische Mandatsansprüche vor Listenerschöpfung
                     </h4>

@@ -1,19 +1,13 @@
 .deputy-directory,
 .deputy-profile,
 .deputy-drawer {
-  --deputy-surface: #f3f1ec;
-  --deputy-ink: #20212a;
-  --deputy-muted: #666976;
-}
-.dark .deputy-directory,
-.dark .deputy-profile,
-.dark .deputy-drawer {
-  --deputy-surface: #101116;
-  --deputy-ink: #f2f2f5;
-  --deputy-muted: #a3a6b1;
+  --deputy-surface: hsl(var(--card));
+  --deputy-ink: hsl(var(--card-foreground));
+  --deputy-muted: hsl(var(--muted-foreground));
+  font-family: "Inter Tight", system-ui, sans-serif;
 }
 .deputy-heading {
-  font-family: Georgia, 'Times New Roman', serif;
+  font-family: "Inter Tight", system-ui, sans-serif;
   font-weight: 400;
   font-size: clamp(2.3rem, 4vw, 4rem);
   line-height: 1.05;
@@ -48,12 +42,12 @@
   isolation: isolate;
   min-height: 340px;
   overflow: hidden;
-  border: 1px solid #ffffff24;
+  border: 1px solid hsl(var(--border));
   border-radius: 12px;
-  background: #161922;
-  color: #fff;
+  background: hsl(var(--card));
+  color: hsl(var(--card-foreground));
   text-align: left;
-  box-shadow: 0 10px 24px #0002;
+  box-shadow: 0 10px 24px hsl(var(--foreground) / .12);
   transition: transform .35s cubic-bezier(.2, .8, .2, 1), box-shadow .35s;
 }
 .deputy-card::after {
@@ -66,14 +60,14 @@
 .deputy-card:hover,
 .deputy-card:focus-visible {
   transform: translateY(-6px);
-  box-shadow: 0 24px 44px #0005;
+  box-shadow: 0 24px 44px hsl(var(--foreground) / .3);
 }
 .deputy-card::before {
   content: '';
   position: absolute;
   inset: 0;
   z-index: -1;
-  background: linear-gradient(0deg, #090a10 0%, #090a10b3 35%, transparent 80%), radial-gradient(ellipse at 50% 15%, #596172, #171b25);
+  background: linear-gradient(0deg, hsl(var(--card)) 0%, hsl(var(--card) / .7) 35%, transparent 80%), radial-gradient(ellipse at 50% 15%, hsl(var(--muted)), hsl(var(--card)));
 }
 .deputy-portrait {
   position: absolute;
@@ -81,9 +75,9 @@
   display: flex;
   align-items: center;
   justify-content: center;
-  font-family: Georgia, serif;
+  font-family: "Inter Tight", system-ui, sans-serif;
   font-size: 100px;
-  color: #d7dce03d;
+  color: hsl(var(--muted-foreground) / .24);
   letter-spacing: -.09em;
   pointer-events: none;
 }
@@ -105,13 +99,13 @@
 }
 .deputy-card:has(.deputy-portrait img)::before {
   z-index: 0;
-  background: linear-gradient(0deg, #090a10 0%, #090a10b3 37%, #090a1030 100%);
+  background: linear-gradient(0deg, hsl(var(--card)) 0%, hsl(var(--card) / .7) 37%, hsl(var(--card) / .18) 100%);
   pointer-events: none;
 }
 .deputy-sheen {
   position: absolute;
   inset: 0;
-  background: radial-gradient(circle at var(--deputy-mx, 50%) var(--deputy-my, 40%), #ffffff42, transparent 45%);
+  background: radial-gradient(circle at var(--deputy-mx, 50%) var(--deputy-my, 40%), hsl(var(--foreground) / .25), transparent 45%);
   mix-blend-mode: soft-light;
   opacity: 0;
   pointer-events: none;
@@ -140,7 +134,7 @@
   height: 9px;
   border-radius: 50%;
   background: var(--deputy-party);
-  box-shadow: 0 0 0 1px #ffffff70;
+  box-shadow: 0 0 0 1px hsl(var(--border));
 }
 .deputy-card-tenure {
   position: absolute;
@@ -170,7 +164,7 @@
 }
 .deputy-card-name {
   display: block;
-  font-family: Georgia, serif;
+  font-family: "Inter Tight", system-ui, sans-serif;
   font-weight: 400;
   line-height: 1.1;
   letter-spacing: -.025em;
@@ -194,7 +188,7 @@
   align-items: center;
   gap: 7px;
   margin-top: 8px;
-  border-bottom: 1px solid #ffffff38;
+  border-bottom: 1px solid hsl(var(--border));
   padding-bottom: 9px;
   font-size: 11px;
   letter-spacing: .04em;
@@ -309,14 +303,14 @@
   position: relative;
   height: 100%;
   overflow: hidden;
-  background: linear-gradient(145deg, #596172, #171b25);
+  background: linear-gradient(145deg, hsl(var(--muted)), hsl(var(--card)));
 }
 .deputy-profile-photo::after {
   content: '';
   position: absolute;
   inset: 0;
   pointer-events: none;
-  background: linear-gradient(to top, #000b 0%, #0002 14%, transparent 30%);
+  background: linear-gradient(to top, hsl(var(--card) / .75) 0%, hsl(var(--foreground) / .12) 14%, transparent 30%);
 }
 .deputy-profile-photo img {
   display: block;
@@ -336,8 +330,8 @@
   background: transparent;
 }
 .deputy-profile-initials {
-  font: 100px Georgia, serif;
-  color: #d7dce080;
+  font: 100px "Inter Tight", system-ui, sans-serif;
+  color: hsl(var(--muted-foreground) / .5);
   letter-spacing: -.08em;
 }
 .deputy-profile-photo-notes {
@@ -346,8 +340,8 @@
   z-index: 1;
   margin: 0;
   padding: 16px 16px max(16px, env(safe-area-inset-bottom, 0px));
-  color: #fff;
-  text-shadow: 0 1px 3px #000;
+  color: hsl(var(--card-foreground));
+  text-shadow: 0 1px 3px hsl(var(--background));
 }
 .deputy-profile-credit { font-size: 11px; line-height: 1.4; }
 .deputy-profile-photo-details { font-size: 11px; line-height: 1.5; }
@@ -358,11 +352,11 @@
   margin-top: 8px;
   padding: 12px;
   border-radius: 6px;
-  background: #101116ed;
-  color: #fff;
+  background: hsl(var(--card) / .93);
+  color: hsl(var(--card-foreground));
   text-shadow: none;
 }
-.deputy-profile-photo-details-content .text-muted-foreground { color: #d1d5db; }
+.deputy-profile-photo-details-content .text-muted-foreground { color: hsl(var(--muted-foreground)); }
 .deputy-profile-photo-details-content button { color: hsl(var(--foreground)); text-shadow: none; }
 .deputy-profile-faction-heading {
   display: flex;
@@ -399,18 +393,18 @@
   letter-spacing: .12em;
   color: var(--deputy-muted);
 }
-.deputy-facts dd { font: 19px Georgia, serif; margin-top: 6px; overflow-wrap: anywhere; }
+.deputy-facts dd { font: 19px "Inter Tight", system-ui, sans-serif; margin-top: 6px; overflow-wrap: anywhere; }
 .deputy-periods {
   display: grid;
   grid-template-columns: repeat(auto-fit, minmax(46px, 64px));
   gap: 10px 6px;
 }
 .deputy-period { text-align: left; }
-.deputy-period > .deputy-period-track { position: relative; display: block; height: 9px; overflow: hidden; border-radius: 2px; background: repeating-linear-gradient(135deg, #8885 0 2px, transparent 2px 5px); }
+.deputy-period > .deputy-period-track { position: relative; display: block; height: 9px; overflow: hidden; border-radius: 2px; background: repeating-linear-gradient(135deg, hsl(var(--muted-foreground) / .33) 0 2px, transparent 2px 5px); }
 .deputy-period-track > i { position: absolute; top: 0; bottom: 0; display: block; background: currentColor; opacity: .5; }
 .deputy-period[aria-pressed=true] .deputy-period-track > i { opacity: 1; }
 .deputy-period:disabled { opacity: .4; }
-.deputy-period b { display: block; font: 19px Georgia, serif; margin-top: 8px; }
+.deputy-period b { display: block; font: 19px "Inter Tight", system-ui, sans-serif; margin-top: 8px; }
 .deputy-period small { font-size: 10px; color: var(--deputy-muted); }
 .deputy-card:focus-visible,
 .deputy-row:focus-visible,
@@ -449,7 +443,7 @@
   height: 9px;
   flex-shrink: 0;
   border-radius: 50%;
-  box-shadow: 0 0 0 1px #8886;
+  box-shadow: 0 0 0 1px hsl(var(--muted-foreground) / .4);
 }
 .deputy-factions-toggle svg { transition: transform .3s; }
 .deputy-factions-toggle[aria-expanded=true] svg { transform: rotate(180deg); }

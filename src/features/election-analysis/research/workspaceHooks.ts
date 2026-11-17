@@ -1,3 +1,4 @@
+import { scenarioVisibility, withAnalysisBallot, withScenarioModel } from "../rowTypes";
 import { useQuery } from "@tanstack/react-query";
 import { useAuth } from "@/hooks/useAuth";
 import { useTenant } from "@/hooks/useTenant";
@@ -28,7 +29,7 @@ export function useSavedScenarios(page: number) {
         .range(page * 20, page * 20 + 19)
         .abortSignal(signal);
       if (error) throw error;
-      return { rows: data || [], total: count || 0 };
+      return { rows: (data || []).map(row => ({ ...withScenarioModel(row), visibility: scenarioVisibility(row.visibility) })), total: count || 0 };
     },
     staleTime: 30_000,
     gcTime: 120_000,
@@ -50,7 +51,7 @@ export function useSavedScenario(id: string | null) {
         .abortSignal(signal)
         .single();
       if (error) throw error;
-      return data;
+      return { ...withScenarioModel(data), visibility: scenarioVisibility(data.visibility) };
     },
     staleTime: 30_000,
     gcTime: 120_000,
@@ -86,7 +87,7 @@ export function useFullState(year: number) {
             "Amtliche Landesquelle ist noch nicht freigeprüft oder die Quellenmigration fehlt.",
           );
       }
-      return data || [];
+      return (data || []).map(withAnalysisBallot);
     },
     staleTime: 60_000,
     gcTime: 120_000,
@@ -199,7 +200,7 @@ export function useScenarioResult(id: string | null) {
         .abortSignal(signal)
         .single();
       if (error) throw error;
-      return data;
+      return withScenarioModel(data);
     },
     staleTime: 30_000,
     gcTime: 120_000,

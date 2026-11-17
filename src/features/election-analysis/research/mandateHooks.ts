@@ -1,3 +1,4 @@
+import { withAnalysisBallot } from "../rowTypes";
 import { useQuery } from "@tanstack/react-query";
 import { useAuth } from "@/hooks/useAuth";
 import { supabase } from "@/integrations/supabase/client";
@@ -41,7 +42,7 @@ export function useCandidatePartyReference(year: number, enabled: boolean) {
         .limit(350)
         .abortSignal(signal);
       if (error) throw error;
-      return data || [];
+      return (data || []).map(withAnalysisBallot);
     },
     staleTime: 60_000,
     gcTime: 120_000,

@@ -1,6 +1,6 @@
 import type { Ballot, StateResult } from './types';
 export const parties = ['GRÜNE', 'CDU', 'SPD', 'FDP', 'AfD'];
-export const sectionLabels = { state: 'Aktuelle Wahl', history: 'Vergangene Wahlen', districts: 'Wahlkreisvergleich', flows: 'Wählerwanderung', demographics: 'Alter & Geschlecht', profile: 'Wahlkreis-Steckbrief', swing: 'Swing-Atlas', split: 'Erst-/Zweitstimmen', 'turnout-trend': 'Beteiligung & Stimmen', mandates: 'Mandate & Kandidaturen', deputies: 'Abgeordnete', research: 'Wahlforschung', quality: 'Datenqualität', sources: 'Quellenabgleich' };
+export const sectionLabels = { state: 'Aktuelle Wahl', history: 'Vergangene Wahlen', districts: 'Wahlkreisvergleich', flows: 'Wählerwanderung', demographics: 'Alter & Geschlecht', profile: 'Wahlkreis-Steckbrief', swing: 'Swing-Atlas', split: 'Erst-/Zweitstimmen', 'turnout-trend': 'Beteiligung & Stimmen', mandates: 'Mandate & Kandidaturen', deputies: 'Abgeordnete', seats: 'Gesetzlicher Sitzrechner BW 2026', research: 'Szenariolabor & Typologien', quality: 'Datenqualität', sources: 'Quellenabgleich' };
 export const ballotLabels: Record<Ballot, string> = { single: 'Einzelstimme', first: 'Erststimme', second: 'Zweitstimme' };
 export function ballotsForYear(year: number): Ballot[] { return year >= 2026 ? ['first', 'second'] : ['single']; }
 export function effectiveBallot(year: number, selected: Ballot): Ballot { return ballotsForYear(year).includes(selected) ? selected : year >= 2026 ? 'second' : 'single'; }

@@ -7,7 +7,7 @@ const Typology = lazy(() => import("./TypologyPanel"));
 const Structure = lazy(() => import("./StructurePanel"));
 const Flow = lazy(() => import("./FlowResearchPanel"));
 const Scenario = lazy(() => import("./ScenarioPanel"));
-const Seats = lazy(() => import("../simulator/SeatSimulator"));
+const Turnout = lazy(() => import("../TurnoutComparison"));
 const Saved = lazy(() => import("../SavedScenariosPanel"));
 const Municipal = lazy(() => import("../MunicipalPanel"));
 const labels = {
@@ -15,7 +15,7 @@ const labels = {
   structure: "Strukturmodelle",
   flows: "Wanderungsannahmen",
   scenario: "Szenariolabor",
-  seats: "Sitze & Mandate 2026",
+  turnout: "Beteiligung & Stimmen",
   saved: "Gespeicherte Szenarien",
   municipal: "Gemeinden & Wahlbezirke",
 };
@@ -72,8 +72,8 @@ export default function ResearchLab(props: {
           <Structure {...props} />
         ) : tool === "flows" ? (
           <Flow {...props} />
-        ) : tool === "seats" ? (
-          <Seats year={props.year} />
+        ) : tool === "turnout" ? (
+          <Turnout {...props} />
         ) : tool === "saved" ? (
           <Saved />
         ) : tool === "municipal" ? (

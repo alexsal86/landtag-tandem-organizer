@@ -6,7 +6,7 @@ import { AnalysisControls } from "../AnalysisToolbar";
 import { ReleaseCockpit } from "./ReleaseCockpit";
 import ResearchLab from "./lab/ResearchLab";
 import MandateAnalysis from "./MandateAnalysis";
-import { useCallback, useMemo, useState } from "react";
+import { lazy, Suspense, useCallback, useMemo, useState } from "react";
 import { useSearchParams } from "react-router-dom";
 import {
   CartesianGrid,
@@ -51,6 +51,10 @@ import TurnoutComparison from "./TurnoutComparison";
 import { AnalysisMap } from "./AnalysisMap";
 import { SwingAtlas } from "./SwingAtlas";
 
+import { analysisDestination } from "../navigation";
+
+const SeatSimulator = lazy(() => import("./simulator/SeatSimulator"));
+
 type Props = {
   section:
     | "profile"
@@ -59,7 +63,8 @@ type Props = {
     | "quality"
     | "turnout-trend"
     | "mandates"
-    | "research";
+    | "research"
+    | "seats";
   year: number;
   ballot: Ballot;
   party: string;
@@ -80,8 +85,7 @@ export default function ResearchWorkbench(props: Props) {
   const open = useCallback(
     (district: number) =>
       setParams((previous) => {
-        const next = new URLSearchParams(previous);
-        next.set("analysisSection", "profile");
+        const next = analysisDestination(previous, "profile");
         next.set("analysisDistrict", String(district));
         next.set("analysisYear", String(props.year));
         return next;
@@ -93,6 +97,8 @@ export default function ResearchWorkbench(props: Props) {
     Number.isInteger(requested) && requested >= 1 && requested <= 70
       ? requested
       : 1;
+  if (props.section === "seats")
+    return <Suspense fallback={<p role="status">Sitzrechner lädt …</p>}><SeatSimulator year={props.year} /></Suspense>;
   if (props.section === "profile")
     return <DistrictProfile {...props} district={district} set={set} />;
   if (props.section === "turnout-trend")

@@ -3,7 +3,7 @@ import { StateShareChart } from './StateShareChart';
 import { StateSeatDistribution } from './StateSeatDistribution';
 import { AnalysisControls, AnalysisToolbarLayout } from './AnalysisToolbar';
 import { Selection, DataState, DataTable, StatusNote, PartyLabel, chartColor } from './shared';
-import { lazy, Suspense, useState } from 'react';
+import { lazy, Suspense, useEffect, useState } from 'react';
 import { useSearchParams } from 'react-router-dom';
 import { Bar, BarChart, CartesianGrid, Cell, Legend, Line, LineChart, ReferenceLine, ResponsiveContainer, Tooltip, XAxis, YAxis } from 'recharts';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
@@ -11,41 +11,53 @@ import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
 import { useAnalysisRows, useAnalysisYears, useStateComparisonSeries } from './useElectionAnalysis';
 import { ballotLabels, ballotsForYear, effectiveBallot, parties, sectionLabels, percent, number, stateComparison, compareAnalysisValues } from './model';
-import type { AnalysisSection, Ballot } from './types';
+import type { Ballot } from './types';
+import { analysisDestination, dataPillars, normalizeAnalysisParams, resolveAnalysisNavigation, type PrimaryView } from './navigation';
 
 const DeputyDirectory = lazy(() => import('./DeputyDirectory'));
 const ResearchWorkbench = lazy(() => import('./research/ResearchWorkbench'));
-type AnalysisView = Exclude<AnalysisSection, 'turnout'> | 'history' | 'sources' | 'profile' | 'swing' | 'split' | 'quality' | 'turnout-trend' | 'mandates' | 'research' | 'deputies';
 export default function ElectionAnalysis() {
   const [params, setParams] = useSearchParams();
-  const legacyMatrix = params.get('analysisSection') === 'flow-matrix';
-  const legacyTurnout = params.get('analysisSection') === 'turnout';
-  const rawSection = legacyMatrix ? 'flows' : legacyTurnout ? 'history' : params.get('analysisSection') || 'state';
-  const section: AnalysisView = Object.prototype.hasOwnProperty.call(sectionLabels, rawSection) ? rawSection as AnalysisView : 'state';
-  const years = useAnalysisYears(section !== 'deputies');
-  const availableYears = years.data?.filter(y => ['state', 'history', 'sources'].includes(section) || y.year >= 2006);
-  const requestedYear = Number(params.get('analysisYear') || (legacyMatrix ? 2006 : 0));
-  const year = section === 'split' && years.data?.some(y => y.year === 2026) ? 2026 : availableYears?.some(y => y.year === requestedYear) ? requestedYear : availableYears?.[0]?.year || 0;
+  const { section, pillar, check, researchTool, showTurnout, flowMatrix } = resolveAnalysisNavigation(params);
+  useEffect(() => {
+    const canonical = normalizeAnalysisParams(params);
+    if (canonical.toString() !== params.toString()) setParams(canonical, { replace: true });
+  }, [params, setParams]);
+  const navigate = (view: PrimaryView) => setParams(previous => {
+    const next = analysisDestination(previous, view);
+    if (view !== section) next.delete('savedScenario');
+    return next;
+  });
+  const years = useAnalysisYears(section !== 'deputies' || check !== null);
+  const availableYears = years.data?.filter(y => ['state', 'history', 'profile', 'districts'].includes(section) || y.year >= 2006);
+  const requestedYear = Number(params.get('analysisYear') || (flowMatrix ? 2006 : 0));
+  const year = ['split', 'seats'].includes(section) && years.data?.some(y => y.year === 2026) ? 2026 : availableYears?.some(y => y.year === requestedYear) ? requestedYear : availableYears?.[0]?.year || 0;
+  const requestedCheckYear = Number(params.get('analysisCheckYear') || params.get('analysisYear'));
+  const checkYear = years.data?.some(item => item.year === requestedCheckYear) ? requestedCheckYear : year;
   const requestedBallot = params.get('analysisBallot');
   const ballot = section === 'history' ? effectiveBallot(year, 'second') : section === 'demographics' && year >= 2026 ? 'second' : effectiveBallot(year, requestedBallot === 'first' || requestedBallot === 'single' ? requestedBallot : 'second');
   const party = parties.find(p => p === params.get('analysisParty')) || 'GRÜNE';
   const gender = ['Insgesamt', 'Frauen', 'Männer'].find(g => g === params.get('analysisGender')) || 'Insgesamt';
   const change = (key: string, value: string) => setParams(previous => { const next = new URLSearchParams(previous); next.set(key, value); return next; });
   const selection = { year, ballot, party, gender };
-  return <div className="space-y-5">
+  return <div className="space-y-5 font-sans">
     <header><h1 className="text-2xl font-semibold">Wahlanalyse Baden-Württemberg</h1><p className="mt-1 text-sm text-muted-foreground">Wahlergebnisse, Beteiligung und Wahlverhalten vergleichen. Es wird nur die gewählte Auswertung geladen.</p></header>
-      <nav aria-label="Auswertung auswählen" className="flex flex-wrap gap-2 border-b pb-3">{(Object.keys(sectionLabels) as AnalysisView[]).map(key => <Button key={key} variant={section === key ? 'default' : 'outline'} aria-pressed={section === key} onClick={() => change('analysisSection', key)}>{sectionLabels[key]}</Button>)}</nav>
+    <nav aria-label="Datenbereiche" className="grid gap-2 sm:grid-cols-2 xl:grid-cols-4">
+      {dataPillars.map(item => <Button key={item.id} className="h-auto min-h-11 whitespace-normal" variant={pillar.id === item.id ? 'default' : 'outline'} aria-pressed={pillar.id === item.id} onClick={() => navigate(item.sections[0])}>{item.label}</Button>)}
+    </nav>
+    <nav aria-label={`${pillar.label}: Auswertung auswählen`} className="flex flex-wrap gap-2 border-b pb-3">
+      {pillar.sections.map(view => <Button key={view} variant={section === view ? 'secondary' : 'ghost'} aria-pressed={section === view} onClick={() => navigate(view)}>{sectionLabels[view]}</Button>)}
+    </nav>
     {section === 'deputies' ? <Suspense fallback={<p role="status">Abgeordnetenübersicht lädt …</p>}><DeputyDirectory /></Suspense> : <>
     <DataState loading={years.isLoading} error={years.error} empty={!years.data?.length} retry={() => void years.refetch()}>
-      <AnalysisToolbarLayout filters={section === 'mandates' || (section === 'research' && params.get('researchTool') === 'saved') ? null : <>
-        {<Selection id="analysis-year" label="Wahl / Legislaturperiode" value={String(year)} onChange={value => change('analysisYear', value)}>{availableYears?.filter(y => section !== 'split' || y.year === 2026).map(y => <option key={y.year} value={y.year}>{y.year} · {y.period_number}. Legislaturperiode</option>)}</Selection>}
-        {!['flows','split','quality','history','flow-matrix','sources'].includes(section) && !(section === 'research' && ['seats','saved','flows'].includes(params.get('researchTool') || '')) && <Selection id="analysis-ballot" label="Stimmenart" value={ballot} onChange={value => change('analysisBallot', value)}>{(section === 'demographics' && year >= 2026 ? ['second'] as Ballot[] : ballotsForYear(year)).map(b => <option key={b} value={b}>{ballotLabels[b]}</option>)}</Selection>}
+      <AnalysisToolbarLayout filters={section === 'mandates' || (section === 'research' && researchTool === 'saved') ? null : <>
+        {<Selection id="analysis-year" label="Wahl / Legislaturperiode" value={String(year)} onChange={value => change('analysisYear', value)}>{availableYears?.filter(y => !['split', 'seats'].includes(section) || y.year === 2026).map(y => <option key={y.year} value={y.year}>{y.year} · {y.period_number}. Legislaturperiode</option>)}</Selection>}
+        {!['flows','split','history','seats'].includes(section) && !(section === 'research' && ['saved','flows'].includes(researchTool)) && <Selection id="analysis-ballot" label="Stimmenart" value={ballot} onChange={value => change('analysisBallot', value)}>{(section === 'demographics' && year >= 2026 ? ['second'] as Ballot[] : ballotsForYear(year)).map(b => <option key={b} value={b}>{ballotLabels[b]}</option>)}</Selection>}
         {(section === 'flows' || section === 'districts') && <Selection id="analysis-party" label={section === 'flows' ? 'Zielpartei' : 'Partei'} value={party} onChange={value => change('analysisParty', value)}>{parties.map(p => <option key={p}>{p}</option>)}</Selection>}
         {section === 'demographics' && <Selection id="analysis-gender" label="Geschlecht" value={gender} onChange={value => change('analysisGender', value)}>{['Insgesamt', 'Frauen', 'Männer'].map(g => <option key={g}>{g}</option>)}</Selection>}
       </>}>
       {year > 0 && <div key={`${section}:${year}:${ballot}:${party}:${gender}`}>
-        {section === 'history' && <StateHistoryPanel year={year} years={availableYears?.map(y => y.year) || []} initiallyShowTurnout={legacyTurnout} />}
-        {section === 'sources' && <WorkbookAuditPanel year={year} />}
+        {section === 'history' && <StateHistoryPanel year={year} years={availableYears?.map(y => y.year) || []} initiallyShowTurnout={showTurnout} />}
         {section === 'state' && <StatePanel {...selection} years={availableYears?.map(y => y.year) || []} />}
         {section === 'districts' && <DistrictPanel {...selection} />}
         {section === 'flows' && <div className="space-y-6">
@@ -53,11 +65,23 @@ export default function ElectionAnalysis() {
           <section aria-labelledby="flow-matrix-heading"><h2 id="flow-matrix-heading" className="mb-3 text-lg font-semibold">Vollständige Wanderungsmatrix</h2>{year === 2006 ? <FlowMatrixPanel year={year} /> : <StatusNote>Für die Wahl {year} liegt keine vollständige Wanderungsmatrix vor. Für die Wahl 2006 kann hier zusätzlich die Matrix für 2001 → 2006 angezeigt werden.</StatusNote>}</section>
         </div>}
         {section === 'demographics' && <DemographicPanel {...selection} />}
-        {(['profile','swing','split','quality','turnout-trend','mandates','research'] as string[]).includes(section) && <Suspense fallback={<p role="status">Analysemodul lädt …</p>}><ResearchWorkbench section={section as 'profile'|'swing'|'split'|'quality'|'turnout-trend'|'mandates'|'research'} {...selection} years={availableYears?.map(y => y.year) || []} /></Suspense>}
+        {(['profile','swing','split','mandates','research','seats'] as string[]).includes(section) && <Suspense fallback={<p role="status">Analysemodul lädt …</p>}><ResearchWorkbench section={section as 'profile'|'swing'|'split'|'mandates'|'research'|'seats'} {...selection} years={availableYears?.map(y => y.year) || []} /></Suspense>}
       </div>}
       </AnalysisToolbarLayout>
     </DataState>
     </>}
+    <footer className="space-y-3 border-t pt-4 text-sm text-muted-foreground">
+      <p>Datenprüfung & Quellenprotokoll</p>
+      <div className="flex flex-wrap gap-2">
+        {(['quality', 'sources'] as const).map(view => <Button key={view} size="sm" variant="ghost" aria-expanded={check === view} aria-controls="analysis-check-panel" onClick={() => setParams(previous => { const next = new URLSearchParams(previous); if (check === view) next.delete('analysisCheck'); else next.set('analysisCheck', view); return next; })}>{sectionLabels[view]}</Button>)}
+      </div>
+      {check && <section id="analysis-check-panel" aria-label={sectionLabels[check]} className="space-y-4 text-foreground">
+        <DataState loading={years.isLoading} error={years.error} empty={!years.data?.length} retry={() => void years.refetch()}>
+        <Selection id="analysis-check-year" label="Wahl für Datenprüfung" value={String(checkYear)} onChange={value => change('analysisCheckYear', value)}>{years.data?.map(item => <option key={item.year} value={item.year}>{item.year}</option>)}</Selection>
+        {checkYear > 0 && (check === 'sources' ? <WorkbookAuditPanel year={checkYear} /> : <Suspense fallback={<p role="status">Datenprüfung lädt …</p>}><ResearchWorkbench section="quality" {...selection} year={checkYear} years={years.data?.map(item => item.year) || []} /></Suspense>)}
+        </DataState>
+      </section>}
+    </footer>
   </div>;
 }
 type PanelProps = { year: number; ballot: Ballot; party: string; gender: string };
@@ -86,13 +110,13 @@ function StatePanel({ year, ballot, party, gender, years }: PanelProps & { years
     <DataState loading={query.isLoading} error={query.error} empty={!rows.length} retry={() => void query.refetch()}>
       <div className="grid items-start gap-4 xl:grid-cols-2">
         <StateShareChart key={previousYear} year={year} ballot={ballot} rows={rows} hidden={hiddenParties} onToggleParty={toggleParty} comparisonYears={comparisonYears} series={comparisonRows} loading={series.isLoading} error={series.error} retry={() => void series.refetch()} />
-        <div className="min-w-0 space-y-4"><div className="[&_tbody]:bg-white">
+        <div className="min-w-0 space-y-4"><div className="[&_tbody]:bg-card">
           {previousYear > 0 ? <DataState loading={series.isLoading} error={series.error} empty={!comparisonRows.length} retry={() => void series.refetch()}>
             <DataTable headers={['Partei', ...comparisonYears.map(String), `Δ ${comparisonStart}–${comparisonEnd} (%)`]} rows={visibleParties.map(p => {
               const start = comparisonRows.find(row => row.year === comparisonStart)?.[p] ?? null;
               const end = comparisonRows.find(row => row.year === comparisonEnd)?.[p] ?? null;
               const delta = start !== null && end !== null ? Math.round((end - start) * 1000) / 1000 : null;
-              return [<PartyLabel party={p} />, ...comparisonYears.map(y => percent(comparisonRows.find(row => row.year === y)?.[p] ?? null)), <span className={delta === null || delta === 0 ? '' : delta > 0 ? 'text-green-700' : 'text-red-700'}>{delta === null ? '—' : `${delta > 0 ? '+' : ''}${delta.toLocaleString('de-DE', { maximumFractionDigits: 1 })} %`}</span>];
+              return [<PartyLabel party={p} />, ...comparisonYears.map(y => percent(comparisonRows.find(row => row.year === y)?.[p] ?? null)), <span className={delta === null || delta === 0 ? '' : delta > 0 ? 'text-success' : 'text-destructive'}>{delta === null ? '—' : `${delta > 0 ? '+' : ''}${delta.toLocaleString('de-DE', { maximumFractionDigits: 1 })} %`}</span>];
             })} />
             <p className="mt-2 text-xs text-muted-foreground">Δ: Veränderung von {comparisonStart} bis {comparisonEnd} (%).</p>
           </DataState> : <DataTable headers={['Partei', 'Stimmen', 'Anteil']} rows={visibleRows.map(r => [<PartyLabel party={r.party} />, number(r.votes), percent(r.share)])} />}

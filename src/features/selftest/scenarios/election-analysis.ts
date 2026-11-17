@@ -1,3 +1,4 @@
+import { analysisDestination, dataPillars, normalizeAnalysisParams, resolveAnalysisNavigation } from "@/features/election-analysis/navigation";
 import { boundaryDifferencePath } from "@/features/election-analysis/research/boundaryOverlay";
 import { parseCandidacyImport } from "@/features/election-history/admin/candidacyImport";
 import { matrixAxes, matrixCell, stateTotalMetrics, type FlowCell, type StateTotal } from '@/features/election-analysis/stateHistoryModel';
@@ -70,6 +71,17 @@ export const electionAnalysisScenario: TestScenario = {
     "Amtliche Downloads, Datenbank-RLS und Vollständigkeit historischer Kandidaturen sind separate Prüfungen.",
   ],
   steps: [
+    { id: "analysis-four-pillars-navigation", label: "Wahlanalyse: vier Säulen, alte Links und dezentrale Datenprüfung", kind: "logic", run: async () => {
+      const views = dataPillars.flatMap(pillar => pillar.sections);
+      const turnout = resolveAnalysisNavigation(normalizeAnalysisParams(new URLSearchParams("analysisSection=turnout&analysisYear=2021")));
+      const check = resolveAnalysisNavigation(normalizeAnalysisParams(new URLSearchParams("analysisSection=sources&analysisYear=1952")));
+      const profile = analysisDestination(new URLSearchParams("analysisYear=2021&analysisDistrict=37"), "profile");
+      return { ok: dataPillars.length === 4 && views.length === new Set(views).size
+        && turnout.section === "history" && turnout.showTurnout && check.check === "sources"
+        && profile.get("dataTab") === "wahlkreise" && profile.get("analysisDistrict") === "37"
+        && resolveAnalysisNavigation(new URLSearchParams("dataTool=rechner")).section === "seats",
+        message: "Alle Ansichten bleiben erreichbar; alte Beteiligungs- und Rechnerlinks werden zugeordnet, Quellenprüfungen stehen in der Fußzeile." };
+    } },
     { id: "candidacy-admin-import", label: "Kandidatenimport: deutsche Zahlen, reine Liste und Wahlkreiszwang", kind: "logic", run: async () => {
       const districts = [{ id: "d-36", period_id: "p-1", district_number: 36, number_label: null, name: "Nürtingen", boundaries: null, boundary_note: null, source_url: null }];
       const rows = parseCandidacyImport("Wahlkreis-Nr\tName\tPartei\tStimmen\tProzent\tGewählt\n36\tAda Beispiel\tGRÜNE\t12.345\t42,5\tdirekt\n\tListenperson\tGRÜNE\t\t\tliste", districts, "candidate");

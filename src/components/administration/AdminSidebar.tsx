@@ -97,6 +97,7 @@ export const adminMenuItems: AdminMenuItem[] = [
     icon: Users2,
     children: [
       { id: "status", label: "Status", icon: Activity },
+      { id: "matrix-widget", label: "Matrix Chat-Widget & Feedback", icon: MessageSquare },
       { id: "planning-collaborators", label: "Standard-Mitarbeiter", icon: UserCheck },
       { id: "usercolors", label: "Benutzerfarben", icon: Palette, superAdminOnly: true },
 

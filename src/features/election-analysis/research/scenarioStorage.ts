@@ -1,3 +1,4 @@
+import { analysisDestination } from "../navigation";
 import { isRecord } from "@/utils/typeSafety";
 import type { StoredScenario } from "./workspaceTypes";
 import type { ResearchDataset, ResearchDistrict } from "./lab/data";
@@ -42,9 +43,7 @@ export function savedScenarioUrl(row: StoredScenario) {
   for (const [key, value] of Object.entries(row.params))
     if (typeof value === "string") params.set(key, value);
   const allowed = scenarioParams(params);
-  const clean = new URLSearchParams(allowed);
-  clean.set("dataTool", "wahlanalyse");
-  clean.set("analysisSection", "research");
+  const clean = analysisDestination(new URLSearchParams(allowed), row.model_version === "shares-v1" ? "research" : "seats");
   clean.set(
     "researchTool",
     row.model_version === "shares-v1" ? "scenario" : "seats",

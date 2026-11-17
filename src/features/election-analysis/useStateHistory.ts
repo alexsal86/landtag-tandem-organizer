@@ -1,3 +1,4 @@
+import { withAnalysisBallot, withAuditStatus } from './rowTypes';
 import { useQuery } from '@tanstack/react-query';
 import { useAuth } from '@/hooks/useAuth';
 import { supabase } from '@/integrations/supabase/client';
@@ -18,8 +19,8 @@ export function useStateHistory(from: number, to: number) {
             if (state.error)
                 throw state.error;
             // One selected denominator per election. Never aggregate first and second votes.
-            return { totals: (totals.data || []).filter(r => r.ballot === (r.year >= 2026 ? 'second' : 'single')),
-                state: (state.data || []).filter(r => r.ballot === (r.year >= 2026 ? 'second' : 'single') && !(r.party === 'AfD' && r.year < 2013)) };
+            return { totals: (totals.data || []).map(withAnalysisBallot).filter(r => r.ballot === (r.year >= 2026 ? 'second' : 'single')),
+                state: (state.data || []).map(withAnalysisBallot).filter(r => r.ballot === (r.year >= 2026 ? 'second' : 'single') && !(r.party === 'AfD' && r.year < 2013)) };
         }, staleTime: 300000, gcTime: 120000, retry: false });
 }
 export function useFlowMatrix(year: number) {
@@ -42,7 +43,7 @@ export function useWorkbookAudit(year: number, section?: 'state' | 'flows' | 'ma
             const { data, error } = await query.order('status').order('section').order('record_key').limit(300).abortSignal(signal);
             if (error)
                 throw error;
-            return data || [];
+            return (data || []).map(withAuditStatus);
         }, staleTime: 300000, gcTime: 120000, retry: false });
 }
 export function useStateTotal(year: number, ballot: Ballot) {
@@ -52,6 +53,6 @@ export function useStateTotal(year: number, ballot: Ballot) {
             const { data, error } = await supabase.from('election_analysis_state_totals').select('*').eq('year', year).eq('ballot', ballot).abortSignal(signal).maybeSingle();
             if (error)
                 throw error;
-            return data;
+            return data ? withAnalysisBallot(data) : null;
         }, staleTime: 300000, gcTime: 120000, retry: false });
 }

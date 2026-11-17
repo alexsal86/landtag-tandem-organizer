@@ -56,7 +56,7 @@ export function StateSeatDistribution({ rows, year, ballot }: {
   const total = seatParties.length;
   const positions = seatPositions(total);
 
-  return <Card className="min-w-0 bg-white text-slate-900">
+  return <Card className="min-w-0 bg-card text-card-foreground">
     <CardHeader className="pb-2">
       <CardTitle id={titleId} className="text-lg">Sitzverteilung · {year}</CardTitle>
     </CardHeader>

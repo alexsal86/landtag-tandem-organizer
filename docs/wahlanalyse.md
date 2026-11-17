@@ -1,8 +1,11 @@
 # Wahlanalyse unter Daten
 
-`/daten?dataTool=wahlanalyse` öffnet die zentrale Wahlanalyse. Unter
-`dataTool=rechner` bleiben Sitzrechner, Kandidatenpflege und die bisherigen
-Werkzeuge erreichbar. Die Ergebnisimporte verändern keine Mandate oder Personen. Wahlergebnisse bleiben
+`/daten` öffnet direkt die zentrale Wahlanalyse. Die Navigation verwendet vier
+Säulen mit `dataTab` und eine Unteransicht mit `sub`; `analysisSection` wird für
+bestehende Links synchron gehalten. `dataTool=rechner` führt zum gesetzlichen
+BW-2026-Sitzrechner. Der vereinfachte Rechner und die provisorische lokale
+Kandidatentabelle wurden entfernt; bestehende Browserdaten werden nicht gelöscht.
+Die Ergebnisimporte verändern keine Mandate oder Personen. Wahlergebnisse bleiben
 in den vorhandenen Analysetabellen; historische Perioden werden explizit verknüpft.
 Belegte fehlende Periodentermine lassen sich separat durch Super-Admins ergänzen.
 
@@ -949,3 +952,40 @@ Wahlkreis (gegebenenfalls mit dem Hinweis auf ein voraussichtliches Ende); doppe
 Perioden-, Parteien-, Mandatsart- und Einzugsangaben entfallen. Unter den Balken
 bleibt die zur Interpretation notwendige Stimmenart als knapper Hinweis stehen.
 Keine neue Migration; Logikschritt ergänzt, aber keine Tests ausgeführt.
+
+### Vier Säulen unter Daten
+
+| `dataTab` | Bereich | `sub` |
+| --- | --- | --- |
+| `land` | Landesdaten & Trends | `state`, `history`, `demographics`, `flows` |
+| `wahlkreise` | Wahlkreise & Regionen | `profile`, `districts`, `swing`, `split` |
+| `parlament` | Parlament & Mandate | `deputies`, `mandates` |
+| `simulation` | Rechner & Wahlforschung | `seats`, `research` |
+
+Beispiel: `/daten?dataTab=wahlkreise&sub=profile&analysisYear=2021&analysisDistrict=37`.
+Der gesetzliche Rechner unter `sub=seats` verwendet unverändert `research/simulator`
+und das BW-Wahlrecht 2026. Im Szenariolabor bleiben Wahlkreisgruppen, Strukturmodelle,
+Wanderungsannahmen, hypothetische Verschiebungen, Gemeinden/Wahlbezirke und
+gespeicherte Szenarien erreichbar. „Beteiligung & Stimmen“ ist dort ein weiteres
+Forschungswerkzeug (`researchTool=turnout`); alte `analysisSection=turnout-trend`-Links
+öffnen es weiterhin. Alte Beteiligungs- und Matrixlinks bleiben ebenfalls erhalten.
+
+Datenqualität und Quellenabgleich stehen in der Fußzeile „Datenprüfung &
+Quellenprotokoll“ (`analysisCheck=quality|sources`, optional `analysisCheckYear`).
+Ihre Jahresauswahl ist unabhängig von der Hauptansicht. Bestehende direkte Links
+auf diese Prüfungen öffnen die Fußzeile. Das Personenarchiv lädt weiterhin keinen
+Analyse-Jahresindex, solange die Datenprüfung geschlossen bleibt. Schwere Module
+bleiben lazy geladen. Alle Ansichten verwenden Inter Tight und semantische
+Oberflächenfarben; Parteifarben bleiben fachliche Diagramm-/Kartenkodierungen.
+
+Das Matrix-Widget mit Feedbackquoten und offenen FAQ-/Routing-Triggern steht jetzt
+unter `/administration?adminSection=users&adminSubSection=matrix-widget` hinter der
+bestehenden Admin-Zugriffsprüfung. Es wird nicht mehr mit Wahldaten geladen.
+
+Der zusammengeführte Stand erhält auch die inzwischen ergänzten
+Kandidatur-/Wahlkreisergebnisse und Teilzeit-Mandatsbalken im Personenprofil.
+Historische Wahlkreisansichten sind für die veröffentlichten Jahre erreichbar;
+fehlende Daten bleiben als solche erkennbar. Wahlkreislinks aus Mandaten verwenden
+nur die Nummer derselben Wahl ab 1956, keine Namens- oder jahrübergreifende
+Identitätsableitung. Beteiligungsdetails sind mit `historyDetails=turnout`
+einblendbar und bookmarkbar; Quellenhinweise historischer Wahlkreise bleiben sichtbar.

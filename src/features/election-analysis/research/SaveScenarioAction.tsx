@@ -141,7 +141,7 @@ export function SaveScenarioAction({
         <label>
           Sichtbarkeit
           <select
-            className="ml-2 rounded border bg-white p-2"
+            className="ml-2 rounded border bg-card p-2"
             value={visibility}
             onChange={(e) =>
               setVisibility(e.target.value === "tenant" ? "tenant" : "private")
