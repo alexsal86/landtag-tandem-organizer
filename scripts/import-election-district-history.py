@@ -18,10 +18,24 @@ def generate(path, output):
     archive.write_text(json.dumps(dict(filename=path.name, sha256=digest, sheets=snapshot), ensure_ascii=False, indent=2) + '\n')
     data = []
     deferred = []
+    corrections_path = Path('docs/election-analysis/sources/reviewed-election-corrections.json')
+    known_2006 = json.loads(corrections_path.read_text())['known_2006_examples'] if corrections_path.exists() else []
     for sheet, first in [('Wahlkreise gesamt 1952–2026', False), ('2026 Erststimmen', True)]:
         for rownum, row in enumerate(snapshot[sheet][5:], 6):
             if not row or not isinstance(row[0], int):
                 continue
+            correction_note = ''
+            if not first and row[0] == 2006:
+                row = list(row)
+                for correction in known_2006:
+                    if row[1] != correction['number']:
+                        continue
+                    column = 8 if correction['field'] == 'turnout' else {'CDU':9,'SPD':10,'FDP':11,'GRÜNE':12,'AfD':13,'REP':14}[correction['party']]
+                    if row[column] == correction['old_excel']:
+                        row[column] = correction['correct']
+                        correction_note += f" Nutzerbestätigte Berichtigung vom 17.11.2026: {correction['field']} {correction.get('party','')} {correction['old_excel']} → {correction['correct']}; Originalquelle 2006 hier nicht unabhängig geprüft."
+                    elif row[column] != correction['correct']:
+                        raise ValueError(f"Unerwarteter 2006-Wert in {sheet}:{rownum}; bestätigte Berichtigung nicht blind anwenden.")
             if first:
                 number, name, valid, turnout = row[:4]
                 year, ballot = 2026, 'first'
@@ -42,7 +56,7 @@ def generate(path, output):
             if number is None:
                 deferred.append(dict(sheet=sheet, row=rownum, year=year, name=name, reason='Regionale Originalnummer/geometry_source_key fehlt; keine Namenszuordnung.'))
                 continue
-            note = f'Arbeitsmappe SHA-256 {digest}; {sheet}, Zeile {rownum}; {status}; {basis}; {extra or ""}; {source}; Originalquelle nicht unabhängig geprüft.'
+            note = f'Arbeitsmappe SHA-256 {digest}; {sheet}, Zeile {rownum}; {status}; {basis}; {extra or ""}; {source}; Originalquelle nicht unabhängig geprüft.' + correction_note
             common = dict(year=year, ballot=ballot, district_number=number, district_name=name,
                           preliminary='vorläufig' in str(status).lower(), notes=note,
                           data_release=f'workbook-original-{year}-{digest[:12]}', source_sheet=sheet, source_row=rownum)

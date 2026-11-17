@@ -1,0 +1,853 @@
+{
+  "scope": "2016: Wahlkreise 62/63; 2026: Wahlkreis 70, beide Stimmenarten",
+  "original_sources_independently_read": true,
+  "checksum_scope": "Normalized extracted facts, NOT original PDF/HTML bytes",
+  "facts_sha256": "bd7372f0dae356cb59e0d699d36f58e94e8e5c56906d7f3c856ff677d932c0e5",
+  "facts": [
+    {
+      "year": 2016,
+      "number": 62,
+      "name": "Tübingen",
+      "eligible": 134421,
+      "voters": 100803,
+      "valid": {
+        "single": 100156
+      },
+      "votes": {
+        "single": {
+          "CDU": 23847,
+          "GRÜNE": 37712,
+          "SPD": 12641,
+          "FDP": 6491,
+          "AfD": 10353
+        }
+      },
+      "rep": 247,
+      "source": "https://www.statistik-bw.de/fileadmin/user_upload/Service/Veroeff/Statistische_Berichte/423216001.pdf"
+    },
+    {
+      "year": 2016,
+      "number": 63,
+      "name": "Balingen",
+      "eligible": 114805,
+      "voters": 77834,
+      "valid": {
+        "single": 77131
+      },
+      "votes": {
+        "single": {
+          "CDU": 22675,
+          "GRÜNE": 22365,
+          "SPD": 7660,
+          "FDP": 6267,
+          "AfD": 13961
+        }
+      },
+      "rep": 309,
+      "source": "https://www.statistik-bw.de/fileadmin/user_upload/Service/Veroeff/Statistische_Berichte/423216001.pdf"
+    },
+    {
+      "year": 2026,
+      "number": 70,
+      "name": "Sigmaringen",
+      "eligible": 97910,
+      "voters": 68543,
+      "valid": {
+        "first": 67784,
+        "second": 67976
+      },
+      "votes": {
+        "first": {
+          "CDU": 29183,
+          "GRÜNE": 11849,
+          "SPD": 2903,
+          "FDP": 2946,
+          "AfD": 17070
+        },
+        "second": {
+          "CDU": 24830,
+          "GRÜNE": 15061,
+          "SPD": 2477,
+          "FDP": 2716,
+          "AfD": 16657
+        }
+      },
+      "source": "https://wahlen.statistik-bw.de/ltw26/ergebnispraesentation_wahlkreis_70.html"
+    }
+  ],
+  "patches": [
+    {
+      "section": "districts",
+      "expected": {
+        "year": 2016,
+        "ballot": "single",
+        "district_number": 62,
+        "district_name": "Tübingen",
+        "party": "CDU",
+        "votes": 22569,
+        "share": 23.5,
+        "preliminary": false,
+        "notes": "Endgültig amtlich",
+        "data_release": "legacy-final-2016"
+      },
+      "replacement": {
+        "year": 2016,
+        "ballot": "single",
+        "district_number": 62,
+        "district_name": "Tübingen",
+        "party": "CDU",
+        "votes": 23847,
+        "share": 23.80986,
+        "preliminary": false,
+        "notes": "Gezielter Originalquellenabgleich 17.11.2026; https://www.statistik-bw.de/fileadmin/user_upload/Service/Veroeff/Statistische_Berichte/423216001.pdf; ursprünglicher Wahlkreis, absolute Stimmen und Anteil gemeinsam korrigiert.",
+        "data_release": "reviewed-2016-district-correction-bd7372f0dae3"
+      },
+      "source_url": "https://www.statistik-bw.de/fileadmin/user_upload/Service/Veroeff/Statistische_Berichte/423216001.pdf"
+    },
+    {
+      "section": "districts",
+      "expected": {
+        "year": 2016,
+        "ballot": "single",
+        "district_number": 62,
+        "district_name": "Tübingen",
+        "party": "GRÜNE",
+        "votes": 36572,
+        "share": 38.0,
+        "preliminary": false,
+        "notes": "Endgültig amtlich",
+        "data_release": "legacy-final-2016"
+      },
+      "replacement": {
+        "year": 2016,
+        "ballot": "single",
+        "district_number": 62,
+        "district_name": "Tübingen",
+        "party": "GRÜNE",
+        "votes": 37712,
+        "share": 37.65326,
+        "preliminary": false,
+        "notes": "Gezielter Originalquellenabgleich 17.11.2026; https://www.statistik-bw.de/fileadmin/user_upload/Service/Veroeff/Statistische_Berichte/423216001.pdf; ursprünglicher Wahlkreis, absolute Stimmen und Anteil gemeinsam korrigiert.",
+        "data_release": "reviewed-2016-district-correction-bd7372f0dae3"
+      },
+      "source_url": "https://www.statistik-bw.de/fileadmin/user_upload/Service/Veroeff/Statistische_Berichte/423216001.pdf"
+    },
+    {
+      "section": "districts",
+      "expected": {
+        "year": 2016,
+        "ballot": "single",
+        "district_number": 62,
+        "district_name": "Tübingen",
+        "party": "SPD",
+        "votes": 12243,
+        "share": 12.7,
+        "preliminary": false,
+        "notes": "Endgültig amtlich",
+        "data_release": "legacy-final-2016"
+      },
+      "replacement": {
+        "year": 2016,
+        "ballot": "single",
+        "district_number": 62,
+        "district_name": "Tübingen",
+        "party": "SPD",
+        "votes": 12641,
+        "share": 12.62131,
+        "preliminary": false,
+        "notes": "Gezielter Originalquellenabgleich 17.11.2026; https://www.statistik-bw.de/fileadmin/user_upload/Service/Veroeff/Statistische_Berichte/423216001.pdf; ursprünglicher Wahlkreis, absolute Stimmen und Anteil gemeinsam korrigiert.",
+        "data_release": "reviewed-2016-district-correction-bd7372f0dae3"
+      },
+      "source_url": "https://www.statistik-bw.de/fileadmin/user_upload/Service/Veroeff/Statistische_Berichte/423216001.pdf"
+    },
+    {
+      "section": "districts",
+      "expected": {
+        "year": 2016,
+        "ballot": "single",
+        "district_number": 62,
+        "district_name": "Tübingen",
+        "party": "FDP",
+        "votes": 6197,
+        "share": 6.4,
+        "preliminary": false,
+        "notes": "Endgültig amtlich",
+        "data_release": "legacy-final-2016"
+      },
+      "replacement": {
+        "year": 2016,
+        "ballot": "single",
+        "district_number": 62,
+        "district_name": "Tübingen",
+        "party": "FDP",
+        "votes": 6491,
+        "share": 6.48089,
+        "preliminary": false,
+        "notes": "Gezielter Originalquellenabgleich 17.11.2026; https://www.statistik-bw.de/fileadmin/user_upload/Service/Veroeff/Statistische_Berichte/423216001.pdf; ursprünglicher Wahlkreis, absolute Stimmen und Anteil gemeinsam korrigiert.",
+        "data_release": "reviewed-2016-district-correction-bd7372f0dae3"
+      },
+      "source_url": "https://www.statistik-bw.de/fileadmin/user_upload/Service/Veroeff/Statistische_Berichte/423216001.pdf"
+    },
+    {
+      "section": "districts",
+      "expected": {
+        "year": 2016,
+        "ballot": "single",
+        "district_number": 62,
+        "district_name": "Tübingen",
+        "party": "AfD",
+        "votes": 9768,
+        "share": 10.2,
+        "preliminary": false,
+        "notes": "Endgültig amtlich",
+        "data_release": "legacy-final-2016"
+      },
+      "replacement": {
+        "year": 2016,
+        "ballot": "single",
+        "district_number": 62,
+        "district_name": "Tübingen",
+        "party": "AfD",
+        "votes": 10353,
+        "share": 10.33687,
+        "preliminary": false,
+        "notes": "Gezielter Originalquellenabgleich 17.11.2026; https://www.statistik-bw.de/fileadmin/user_upload/Service/Veroeff/Statistische_Berichte/423216001.pdf; ursprünglicher Wahlkreis, absolute Stimmen und Anteil gemeinsam korrigiert.",
+        "data_release": "reviewed-2016-district-correction-bd7372f0dae3"
+      },
+      "source_url": "https://www.statistik-bw.de/fileadmin/user_upload/Service/Veroeff/Statistische_Berichte/423216001.pdf"
+    },
+    {
+      "section": "districts",
+      "expected": {
+        "year": 2016,
+        "ballot": "single",
+        "district_number": 62,
+        "district_name": "Tübingen",
+        "party": "REP",
+        "share": 0.24662,
+        "preliminary": false,
+        "notes": "Arbeitsmappe SHA-256 58b24038341dce23fa93fdd0e34b6f7742228e846fb82fe562ba6c37f219a93b; Wahlkreise gesamt 1952–2026, Zeile 1121; amtlich endgültig, Originalwahlkreis; Eine Wahlstimme, amtlich endgültig; ; https://www.statistik-bw.de/fileadmin/user_upload/Service/Veroeff/Statistische_Berichte/423216001.pdf; Originalquelle nicht unabhängig geprüft.",
+        "data_release": "workbook-original-2016-58b24038341d",
+        "votes": null
+      },
+      "replacement": {
+        "year": 2016,
+        "ballot": "single",
+        "district_number": 62,
+        "district_name": "Tübingen",
+        "party": "REP",
+        "share": 0.24662,
+        "preliminary": false,
+        "notes": "Gezielter Originalquellenabgleich 17.11.2026; https://www.statistik-bw.de/fileadmin/user_upload/Service/Veroeff/Statistische_Berichte/423216001.pdf; ursprünglicher Wahlkreis, absolute Stimmen und Anteil gemeinsam korrigiert.",
+        "data_release": "reviewed-2016-district-correction-bd7372f0dae3",
+        "votes": 247
+      },
+      "source_url": "https://www.statistik-bw.de/fileadmin/user_upload/Service/Veroeff/Statistische_Berichte/423216001.pdf"
+    },
+    {
+      "section": "turnout",
+      "expected": {
+        "year": 2016,
+        "ballot": "single",
+        "district_number": 62,
+        "district_name": "Tübingen",
+        "eligible": 128848,
+        "voters": 96788,
+        "valid_votes": 96177,
+        "turnout": 75.1,
+        "preliminary": false,
+        "notes": "Endgültig amtlich",
+        "data_release": "legacy-final-2016"
+      },
+      "replacement": {
+        "year": 2016,
+        "ballot": "single",
+        "district_number": 62,
+        "district_name": "Tübingen",
+        "eligible": 134421,
+        "voters": 100803,
+        "valid_votes": 100156,
+        "turnout": 74.99051,
+        "preliminary": false,
+        "notes": "Gezielter Originalquellenabgleich 17.11.2026; https://www.statistik-bw.de/fileadmin/user_upload/Service/Veroeff/Statistische_Berichte/423216001.pdf; Wahlberechtigte, Wählende und gültige Stimmen gemeinsam korrigiert.",
+        "data_release": "reviewed-2016-district-correction-bd7372f0dae3"
+      },
+      "source_url": "https://www.statistik-bw.de/fileadmin/user_upload/Service/Veroeff/Statistische_Berichte/423216001.pdf"
+    },
+    {
+      "section": "districts",
+      "expected": {
+        "year": 2016,
+        "ballot": "single",
+        "district_number": 63,
+        "district_name": "Balingen",
+        "party": "CDU",
+        "votes": 23953,
+        "share": 29.5,
+        "preliminary": false,
+        "notes": "Endgültig amtlich",
+        "data_release": "legacy-final-2016"
+      },
+      "replacement": {
+        "year": 2016,
+        "ballot": "single",
+        "district_number": 63,
+        "district_name": "Balingen",
+        "party": "CDU",
+        "votes": 22675,
+        "share": 29.39804,
+        "preliminary": false,
+        "notes": "Gezielter Originalquellenabgleich 17.11.2026; https://www.statistik-bw.de/fileadmin/user_upload/Service/Veroeff/Statistische_Berichte/423216001.pdf; ursprünglicher Wahlkreis, absolute Stimmen und Anteil gemeinsam korrigiert.",
+        "data_release": "reviewed-2016-district-correction-bd7372f0dae3"
+      },
+      "source_url": "https://www.statistik-bw.de/fileadmin/user_upload/Service/Veroeff/Statistische_Berichte/423216001.pdf"
+    },
+    {
+      "section": "districts",
+      "expected": {
+        "year": 2016,
+        "ballot": "single",
+        "district_number": 63,
+        "district_name": "Balingen",
+        "party": "GRÜNE",
+        "votes": 23505,
+        "share": 29.0,
+        "preliminary": false,
+        "notes": "Endgültig amtlich",
+        "data_release": "legacy-final-2016"
+      },
+      "replacement": {
+        "year": 2016,
+        "ballot": "single",
+        "district_number": 63,
+        "district_name": "Balingen",
+        "party": "GRÜNE",
+        "votes": 22365,
+        "share": 28.99612,
+        "preliminary": false,
+        "notes": "Gezielter Originalquellenabgleich 17.11.2026; https://www.statistik-bw.de/fileadmin/user_upload/Service/Veroeff/Statistische_Berichte/423216001.pdf; ursprünglicher Wahlkreis, absolute Stimmen und Anteil gemeinsam korrigiert.",
+        "data_release": "reviewed-2016-district-correction-bd7372f0dae3"
+      },
+      "source_url": "https://www.statistik-bw.de/fileadmin/user_upload/Service/Veroeff/Statistische_Berichte/423216001.pdf"
+    },
+    {
+      "section": "districts",
+      "expected": {
+        "year": 2016,
+        "ballot": "single",
+        "district_number": 63,
+        "district_name": "Balingen",
+        "party": "SPD",
+        "votes": 8058,
+        "share": 9.9,
+        "preliminary": false,
+        "notes": "Endgültig amtlich",
+        "data_release": "legacy-final-2016"
+      },
+      "replacement": {
+        "year": 2016,
+        "ballot": "single",
+        "district_number": 63,
+        "district_name": "Balingen",
+        "party": "SPD",
+        "votes": 7660,
+        "share": 9.93116,
+        "preliminary": false,
+        "notes": "Gezielter Originalquellenabgleich 17.11.2026; https://www.statistik-bw.de/fileadmin/user_upload/Service/Veroeff/Statistische_Berichte/423216001.pdf; ursprünglicher Wahlkreis, absolute Stimmen und Anteil gemeinsam korrigiert.",
+        "data_release": "reviewed-2016-district-correction-bd7372f0dae3"
+      },
+      "source_url": "https://www.statistik-bw.de/fileadmin/user_upload/Service/Veroeff/Statistische_Berichte/423216001.pdf"
+    },
+    {
+      "section": "districts",
+      "expected": {
+        "year": 2016,
+        "ballot": "single",
+        "district_number": 63,
+        "district_name": "Balingen",
+        "party": "FDP",
+        "votes": 6561,
+        "share": 8.1,
+        "preliminary": false,
+        "notes": "Endgültig amtlich",
+        "data_release": "legacy-final-2016"
+      },
+      "replacement": {
+        "year": 2016,
+        "ballot": "single",
+        "district_number": 63,
+        "district_name": "Balingen",
+        "party": "FDP",
+        "votes": 6267,
+        "share": 8.12514,
+        "preliminary": false,
+        "notes": "Gezielter Originalquellenabgleich 17.11.2026; https://www.statistik-bw.de/fileadmin/user_upload/Service/Veroeff/Statistische_Berichte/423216001.pdf; ursprünglicher Wahlkreis, absolute Stimmen und Anteil gemeinsam korrigiert.",
+        "data_release": "reviewed-2016-district-correction-bd7372f0dae3"
+      },
+      "source_url": "https://www.statistik-bw.de/fileadmin/user_upload/Service/Veroeff/Statistische_Berichte/423216001.pdf"
+    },
+    {
+      "section": "districts",
+      "expected": {
+        "year": 2016,
+        "ballot": "single",
+        "district_number": 63,
+        "district_name": "Balingen",
+        "party": "AfD",
+        "votes": 14546,
+        "share": 17.9,
+        "preliminary": false,
+        "notes": "Endgültig amtlich",
+        "data_release": "legacy-final-2016"
+      },
+      "replacement": {
+        "year": 2016,
+        "ballot": "single",
+        "district_number": 63,
+        "district_name": "Balingen",
+        "party": "AfD",
+        "votes": 13961,
+        "share": 18.10037,
+        "preliminary": false,
+        "notes": "Gezielter Originalquellenabgleich 17.11.2026; https://www.statistik-bw.de/fileadmin/user_upload/Service/Veroeff/Statistische_Berichte/423216001.pdf; ursprünglicher Wahlkreis, absolute Stimmen und Anteil gemeinsam korrigiert.",
+        "data_release": "reviewed-2016-district-correction-bd7372f0dae3"
+      },
+      "source_url": "https://www.statistik-bw.de/fileadmin/user_upload/Service/Veroeff/Statistische_Berichte/423216001.pdf"
+    },
+    {
+      "section": "districts",
+      "expected": {
+        "year": 2016,
+        "ballot": "single",
+        "district_number": 63,
+        "district_name": "Balingen",
+        "party": "REP",
+        "share": 0.40062,
+        "preliminary": false,
+        "notes": "Arbeitsmappe SHA-256 58b24038341dce23fa93fdd0e34b6f7742228e846fb82fe562ba6c37f219a93b; Wahlkreise gesamt 1952–2026, Zeile 1122; amtlich endgültig, Originalwahlkreis; Eine Wahlstimme, amtlich endgültig; ; https://www.statistik-bw.de/fileadmin/user_upload/Service/Veroeff/Statistische_Berichte/423216001.pdf; Originalquelle nicht unabhängig geprüft.",
+        "data_release": "workbook-original-2016-58b24038341d",
+        "votes": null
+      },
+      "replacement": {
+        "year": 2016,
+        "ballot": "single",
+        "district_number": 63,
+        "district_name": "Balingen",
+        "party": "REP",
+        "share": 0.40062,
+        "preliminary": false,
+        "notes": "Gezielter Originalquellenabgleich 17.11.2026; https://www.statistik-bw.de/fileadmin/user_upload/Service/Veroeff/Statistische_Berichte/423216001.pdf; ursprünglicher Wahlkreis, absolute Stimmen und Anteil gemeinsam korrigiert.",
+        "data_release": "reviewed-2016-district-correction-bd7372f0dae3",
+        "votes": 309
+      },
+      "source_url": "https://www.statistik-bw.de/fileadmin/user_upload/Service/Veroeff/Statistische_Berichte/423216001.pdf"
+    },
+    {
+      "section": "turnout",
+      "expected": {
+        "year": 2016,
+        "ballot": "single",
+        "district_number": 63,
+        "district_name": "Balingen",
+        "eligible": 120378,
+        "voters": 81849,
+        "valid_votes": 81110,
+        "turnout": 68.0,
+        "preliminary": false,
+        "notes": "Endgültig amtlich",
+        "data_release": "legacy-final-2016"
+      },
+      "replacement": {
+        "year": 2016,
+        "ballot": "single",
+        "district_number": 63,
+        "district_name": "Balingen",
+        "eligible": 114805,
+        "voters": 77834,
+        "valid_votes": 77131,
+        "turnout": 67.7967,
+        "preliminary": false,
+        "notes": "Gezielter Originalquellenabgleich 17.11.2026; https://www.statistik-bw.de/fileadmin/user_upload/Service/Veroeff/Statistische_Berichte/423216001.pdf; Wahlberechtigte, Wählende und gültige Stimmen gemeinsam korrigiert.",
+        "data_release": "reviewed-2016-district-correction-bd7372f0dae3"
+      },
+      "source_url": "https://www.statistik-bw.de/fileadmin/user_upload/Service/Veroeff/Statistische_Berichte/423216001.pdf"
+    },
+    {
+      "section": "districts",
+      "expected": {
+        "year": 2026,
+        "ballot": "first",
+        "district_number": 70,
+        "district_name": "Sigmaringen",
+        "party": "CDU",
+        "votes": 29184,
+        "share": 43.1,
+        "preliminary": true,
+        "notes": "Vorläufiges amtliches Ergebnis (Wahlnachtsbericht)",
+        "data_release": "legacy-preliminary-2026"
+      },
+      "replacement": {
+        "year": 2026,
+        "ballot": "first",
+        "district_number": 70,
+        "district_name": "Sigmaringen",
+        "party": "CDU",
+        "votes": 29183,
+        "share": 43.05293,
+        "preliminary": false,
+        "notes": "Gezielter Originalquellenabgleich 17.11.2026; https://wahlen.statistik-bw.de/ltw26/ergebnispraesentation_wahlkreis_70.html; ursprünglicher Wahlkreis, absolute Stimmen und Anteil gemeinsam korrigiert.",
+        "data_release": "reviewed-2026-district-correction-bd7372f0dae3"
+      },
+      "source_url": "https://wahlen.statistik-bw.de/ltw26/ergebnispraesentation_wahlkreis_70.html"
+    },
+    {
+      "section": "districts",
+      "expected": {
+        "year": 2026,
+        "ballot": "first",
+        "district_number": 70,
+        "district_name": "Sigmaringen",
+        "party": "GRÜNE",
+        "votes": 11849,
+        "share": 17.5,
+        "preliminary": true,
+        "notes": "Vorläufiges amtliches Ergebnis (Wahlnachtsbericht)",
+        "data_release": "legacy-preliminary-2026"
+      },
+      "replacement": {
+        "year": 2026,
+        "ballot": "first",
+        "district_number": 70,
+        "district_name": "Sigmaringen",
+        "party": "GRÜNE",
+        "votes": 11849,
+        "share": 17.48053,
+        "preliminary": false,
+        "notes": "Gezielter Originalquellenabgleich 17.11.2026; https://wahlen.statistik-bw.de/ltw26/ergebnispraesentation_wahlkreis_70.html; ursprünglicher Wahlkreis, absolute Stimmen und Anteil gemeinsam korrigiert.",
+        "data_release": "reviewed-2026-district-correction-bd7372f0dae3"
+      },
+      "source_url": "https://wahlen.statistik-bw.de/ltw26/ergebnispraesentation_wahlkreis_70.html"
+    },
+    {
+      "section": "districts",
+      "expected": {
+        "year": 2026,
+        "ballot": "first",
+        "district_number": 70,
+        "district_name": "Sigmaringen",
+        "party": "SPD",
+        "votes": 2903,
+        "share": 4.3,
+        "preliminary": true,
+        "notes": "Vorläufiges amtliches Ergebnis (Wahlnachtsbericht)",
+        "data_release": "legacy-preliminary-2026"
+      },
+      "replacement": {
+        "year": 2026,
+        "ballot": "first",
+        "district_number": 70,
+        "district_name": "Sigmaringen",
+        "party": "SPD",
+        "votes": 2903,
+        "share": 4.28272,
+        "preliminary": false,
+        "notes": "Gezielter Originalquellenabgleich 17.11.2026; https://wahlen.statistik-bw.de/ltw26/ergebnispraesentation_wahlkreis_70.html; ursprünglicher Wahlkreis, absolute Stimmen und Anteil gemeinsam korrigiert.",
+        "data_release": "reviewed-2026-district-correction-bd7372f0dae3"
+      },
+      "source_url": "https://wahlen.statistik-bw.de/ltw26/ergebnispraesentation_wahlkreis_70.html"
+    },
+    {
+      "section": "districts",
+      "expected": {
+        "year": 2026,
+        "ballot": "first",
+        "district_number": 70,
+        "district_name": "Sigmaringen",
+        "party": "FDP",
+        "votes": 2946,
+        "share": 4.3,
+        "preliminary": true,
+        "notes": "Vorläufiges amtliches Ergebnis (Wahlnachtsbericht)",
+        "data_release": "legacy-preliminary-2026"
+      },
+      "replacement": {
+        "year": 2026,
+        "ballot": "first",
+        "district_number": 70,
+        "district_name": "Sigmaringen",
+        "party": "FDP",
+        "votes": 2946,
+        "share": 4.34616,
+        "preliminary": false,
+        "notes": "Gezielter Originalquellenabgleich 17.11.2026; https://wahlen.statistik-bw.de/ltw26/ergebnispraesentation_wahlkreis_70.html; ursprünglicher Wahlkreis, absolute Stimmen und Anteil gemeinsam korrigiert.",
+        "data_release": "reviewed-2026-district-correction-bd7372f0dae3"
+      },
+      "source_url": "https://wahlen.statistik-bw.de/ltw26/ergebnispraesentation_wahlkreis_70.html"
+    },
+    {
+      "section": "districts",
+      "expected": {
+        "year": 2026,
+        "ballot": "first",
+        "district_number": 70,
+        "district_name": "Sigmaringen",
+        "party": "AfD",
+        "votes": 17069,
+        "share": 25.2,
+        "preliminary": true,
+        "notes": "Vorläufiges amtliches Ergebnis (Wahlnachtsbericht)",
+        "data_release": "legacy-preliminary-2026"
+      },
+      "replacement": {
+        "year": 2026,
+        "ballot": "first",
+        "district_number": 70,
+        "district_name": "Sigmaringen",
+        "party": "AfD",
+        "votes": 17070,
+        "share": 25.18293,
+        "preliminary": false,
+        "notes": "Gezielter Originalquellenabgleich 17.11.2026; https://wahlen.statistik-bw.de/ltw26/ergebnispraesentation_wahlkreis_70.html; ursprünglicher Wahlkreis, absolute Stimmen und Anteil gemeinsam korrigiert.",
+        "data_release": "reviewed-2026-district-correction-bd7372f0dae3"
+      },
+      "source_url": "https://wahlen.statistik-bw.de/ltw26/ergebnispraesentation_wahlkreis_70.html"
+    },
+    {
+      "section": "turnout",
+      "expected": {
+        "year": 2026,
+        "ballot": "first",
+        "district_number": 70,
+        "district_name": "Sigmaringen",
+        "eligible": 101598,
+        "voters": 68537,
+        "valid_votes": 67781,
+        "turnout": 67.5,
+        "preliminary": true,
+        "notes": "Vorläufiges amtliches Ergebnis (Wahlnachtsbericht)",
+        "data_release": "legacy-preliminary-2026"
+      },
+      "replacement": {
+        "year": 2026,
+        "ballot": "first",
+        "district_number": 70,
+        "district_name": "Sigmaringen",
+        "eligible": 97910,
+        "voters": 68543,
+        "valid_votes": 67784,
+        "turnout": 70.00613,
+        "preliminary": false,
+        "notes": "Gezielter Originalquellenabgleich 17.11.2026; https://wahlen.statistik-bw.de/ltw26/ergebnispraesentation_wahlkreis_70.html; Wahlberechtigte, Wählende und gültige Stimmen gemeinsam korrigiert.",
+        "data_release": "reviewed-2026-district-correction-bd7372f0dae3"
+      },
+      "source_url": "https://wahlen.statistik-bw.de/ltw26/ergebnispraesentation_wahlkreis_70.html"
+    },
+    {
+      "section": "districts",
+      "expected": {
+        "year": 2026,
+        "ballot": "second",
+        "district_number": 70,
+        "district_name": "Sigmaringen",
+        "party": "CDU",
+        "votes": 24831,
+        "share": 36.5,
+        "preliminary": true,
+        "notes": "Vorläufiges amtliches Ergebnis (Wahlnachtsbericht)",
+        "data_release": "legacy-preliminary-2026"
+      },
+      "replacement": {
+        "year": 2026,
+        "ballot": "second",
+        "district_number": 70,
+        "district_name": "Sigmaringen",
+        "party": "CDU",
+        "votes": 24830,
+        "share": 36.5276,
+        "preliminary": false,
+        "notes": "Gezielter Originalquellenabgleich 17.11.2026; https://wahlen.statistik-bw.de/ltw26/ergebnispraesentation_wahlkreis_70.html; ursprünglicher Wahlkreis, absolute Stimmen und Anteil gemeinsam korrigiert.",
+        "data_release": "reviewed-2026-district-correction-bd7372f0dae3"
+      },
+      "source_url": "https://wahlen.statistik-bw.de/ltw26/ergebnispraesentation_wahlkreis_70.html"
+    },
+    {
+      "section": "districts",
+      "expected": {
+        "year": 2026,
+        "ballot": "second",
+        "district_number": 70,
+        "district_name": "Sigmaringen",
+        "party": "GRÜNE",
+        "votes": 15061,
+        "share": 22.2,
+        "preliminary": true,
+        "notes": "Vorläufiges amtliches Ergebnis (Wahlnachtsbericht)",
+        "data_release": "legacy-preliminary-2026"
+      },
+      "replacement": {
+        "year": 2026,
+        "ballot": "second",
+        "district_number": 70,
+        "district_name": "Sigmaringen",
+        "party": "GRÜNE",
+        "votes": 15061,
+        "share": 22.15635,
+        "preliminary": false,
+        "notes": "Gezielter Originalquellenabgleich 17.11.2026; https://wahlen.statistik-bw.de/ltw26/ergebnispraesentation_wahlkreis_70.html; ursprünglicher Wahlkreis, absolute Stimmen und Anteil gemeinsam korrigiert.",
+        "data_release": "reviewed-2026-district-correction-bd7372f0dae3"
+      },
+      "source_url": "https://wahlen.statistik-bw.de/ltw26/ergebnispraesentation_wahlkreis_70.html"
+    },
+    {
+      "section": "districts",
+      "expected": {
+        "year": 2026,
+        "ballot": "second",
+        "district_number": 70,
+        "district_name": "Sigmaringen",
+        "party": "SPD",
+        "votes": 2477,
+        "share": 3.6,
+        "preliminary": true,
+        "notes": "Vorläufiges amtliches Ergebnis (Wahlnachtsbericht)",
+        "data_release": "legacy-preliminary-2026"
+      },
+      "replacement": {
+        "year": 2026,
+        "ballot": "second",
+        "district_number": 70,
+        "district_name": "Sigmaringen",
+        "party": "SPD",
+        "votes": 2477,
+        "share": 3.64393,
+        "preliminary": false,
+        "notes": "Gezielter Originalquellenabgleich 17.11.2026; https://wahlen.statistik-bw.de/ltw26/ergebnispraesentation_wahlkreis_70.html; ursprünglicher Wahlkreis, absolute Stimmen und Anteil gemeinsam korrigiert.",
+        "data_release": "reviewed-2026-district-correction-bd7372f0dae3"
+      },
+      "source_url": "https://wahlen.statistik-bw.de/ltw26/ergebnispraesentation_wahlkreis_70.html"
+    },
+    {
+      "section": "districts",
+      "expected": {
+        "year": 2026,
+        "ballot": "second",
+        "district_number": 70,
+        "district_name": "Sigmaringen",
+        "party": "FDP",
+        "votes": 2716,
+        "share": 4.0,
+        "preliminary": true,
+        "notes": "Vorläufiges amtliches Ergebnis (Wahlnachtsbericht)",
+        "data_release": "legacy-preliminary-2026"
+      },
+      "replacement": {
+        "year": 2026,
+        "ballot": "second",
+        "district_number": 70,
+        "district_name": "Sigmaringen",
+        "party": "FDP",
+        "votes": 2716,
+        "share": 3.99553,
+        "preliminary": false,
+        "notes": "Gezielter Originalquellenabgleich 17.11.2026; https://wahlen.statistik-bw.de/ltw26/ergebnispraesentation_wahlkreis_70.html; ursprünglicher Wahlkreis, absolute Stimmen und Anteil gemeinsam korrigiert.",
+        "data_release": "reviewed-2026-district-correction-bd7372f0dae3"
+      },
+      "source_url": "https://wahlen.statistik-bw.de/ltw26/ergebnispraesentation_wahlkreis_70.html"
+    },
+    {
+      "section": "districts",
+      "expected": {
+        "year": 2026,
+        "ballot": "second",
+        "district_number": 70,
+        "district_name": "Sigmaringen",
+        "party": "AfD",
+        "votes": 16655,
+        "share": 24.5,
+        "preliminary": true,
+        "notes": "Vorläufiges amtliches Ergebnis (Wahlnachtsbericht)",
+        "data_release": "legacy-preliminary-2026"
+      },
+      "replacement": {
+        "year": 2026,
+        "ballot": "second",
+        "district_number": 70,
+        "district_name": "Sigmaringen",
+        "party": "AfD",
+        "votes": 16657,
+        "share": 24.50424,
+        "preliminary": false,
+        "notes": "Gezielter Originalquellenabgleich 17.11.2026; https://wahlen.statistik-bw.de/ltw26/ergebnispraesentation_wahlkreis_70.html; ursprünglicher Wahlkreis, absolute Stimmen und Anteil gemeinsam korrigiert.",
+        "data_release": "reviewed-2026-district-correction-bd7372f0dae3"
+      },
+      "source_url": "https://wahlen.statistik-bw.de/ltw26/ergebnispraesentation_wahlkreis_70.html"
+    },
+    {
+      "section": "turnout",
+      "expected": {
+        "year": 2026,
+        "ballot": "second",
+        "district_number": 70,
+        "district_name": "Sigmaringen",
+        "eligible": 101598,
+        "voters": 68537,
+        "valid_votes": 67964,
+        "turnout": 67.5,
+        "preliminary": true,
+        "notes": "Vorläufiges amtliches Ergebnis (Wahlnachtsbericht)",
+        "data_release": "legacy-preliminary-2026"
+      },
+      "replacement": {
+        "year": 2026,
+        "ballot": "second",
+        "district_number": 70,
+        "district_name": "Sigmaringen",
+        "eligible": 97910,
+        "voters": 68543,
+        "valid_votes": 67976,
+        "turnout": 70.00613,
+        "preliminary": false,
+        "notes": "Gezielter Originalquellenabgleich 17.11.2026; https://wahlen.statistik-bw.de/ltw26/ergebnispraesentation_wahlkreis_70.html; Wahlberechtigte, Wählende und gültige Stimmen gemeinsam korrigiert.",
+        "data_release": "reviewed-2026-district-correction-bd7372f0dae3"
+      },
+      "source_url": "https://wahlen.statistik-bw.de/ltw26/ergebnispraesentation_wahlkreis_70.html"
+    }
+  ],
+  "version6_available": false,
+  "full_2006_127_cell_correction_pending": true,
+  "known_2006_examples": [
+    {
+      "number": 50,
+      "field": "turnout",
+      "old_excel": 58.5,
+      "correct": 46.8
+    },
+    {
+      "number": 24,
+      "party": "SPD",
+      "field": "share",
+      "old_excel": 39.4,
+      "correct": 33.7
+    },
+    {
+      "number": 24,
+      "field": "turnout",
+      "old_excel": 62.6,
+      "correct": 53.8
+    },
+    {
+      "number": 56,
+      "party": "SPD",
+      "field": "share",
+      "old_excel": 32.4,
+      "correct": 21.3
+    },
+    {
+      "number": 56,
+      "party": "GRÜNE",
+      "field": "share",
+      "old_excel": 16.0,
+      "correct": 18.9
+    }
+  ]
+}

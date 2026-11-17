@@ -871,3 +871,15 @@ Die eigentliche Zusammenführung bleibt wiederholbar und schützt manuelle Zahle
 Falls der SQL-Editor noch „current transaction is aborted“ meldet, zuerst `ROLLBACK;`
 ausführen und danach die aktualisierte Datei vollständig starten. Keine Tests
 oder Live-Datenbankausführungen in dieser Sitzung.
+
+### Bestätigte Ergebnisfehler aus dem Version-6-Abgleich
+
+`20261117130000_reviewed_district_corrections.sql` aktualisiert gezielt die
+Originalwahlkreise Tübingen/Balingen 2016 und Sigmaringen 2026 einschließlich
+absoluter Stimmen und Bezugszahlen. Ein atomarer Altstandsvergleich schützt
+abweichende manuelle Daten; Konflikte und Änderungen werden protokolliert. Der
+Excel-Generator berücksichtigt zusätzlich die fünf konkret bestätigten
+2006-Berichtigungen. Die vollständige Version 6 mit den übrigen 2006-Änderungen
+ist noch nicht als Datei verfügbar. Umfang, Originalquellen und Grenzen sind im
+[gezielten Korrekturbericht](election-analysis/sources/reviewed-election-corrections.md)
+dokumentiert. Keine Tests ausgeführt; kein Live-Datenbankimport.
