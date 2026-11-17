@@ -1,3 +1,4 @@
+import { deputyTenureCoverage } from './deputyTenure';
 import { DeputyElectionResult } from './DeputyElectionResult';
 import { formatMandateType } from '@/features/election-history/mandateLabel';
 import { useEffect, useId, useRef, useState, type CSSProperties } from 'react';
@@ -107,6 +108,15 @@ export default function DeputyDirectory() {
   const rows = detail.data || [];
   const birth = rows.find(row => row.birthday || row.birth_year);
   const served = [...new Set(rows.map(row => row.period_number))].sort((a, b) => a - b);
+  const today = new Intl.DateTimeFormat('sv-SE', { timeZone: 'Europe/Berlin', year: 'numeric', month: '2-digit', day: '2-digit' }).format(new Date());
+  const tenurePeriods = published.filter(item => item.number >= served[0] && item.number <= served[served.length-1])
+    .sort((a,b) => a.number-b.number).map(item => {
+      const mandates = rows.filter(row => row.period_number === item.number);
+      const coverage = deputyTenureCoverage(item, mandates, today);
+      const label = !mandates.length ? 'Keine Mitgliedschaft' : coverage.unknown ? 'Mandatszeit nicht vollständig dokumentiert'
+        : `${Math.round(coverage.segments.reduce((sum,segment) => sum+segment.width,0))} % dokumentierte Mandatszeit`;
+      return { period:item, member:mandates.length>0, ...coverage, label };
+    });
   const selectedPeriod = activePeriod ?? served[served.length - 1];
   const selectedRows = rows.filter(row => row.period_number === selectedPeriod);
   const current = selectedRows[selectedRows.length - 1];
@@ -177,10 +187,10 @@ export default function DeputyDirectory() {
           {detail.error && <div role="alert" className="mt-6">{historyError(detail.error)} <Button variant="outline" onClick={() => void detail.refetch()}>Erneut laden</Button></div>}
           {!detail.isLoading && !detail.error && rows.length === 0 && <p className="mt-6">Keine freigegebenen Mandate vorhanden.</p>}
           {rows.length > 0 && <>
-            <dl className="deputy-facts"><div><dt>{birth?.birthday ? 'Geburtstag' : 'Geburtsjahr'}</dt><dd>{birth?.birthday ? birth.birthday.split('-').reverse().join('.') : birth?.birth_year || 'Nicht erfasst'}</dd></div><div><dt>Wahlkreis</dt><dd>{current?.district_name || 'Nicht erfasst'}</dd></div><div><dt>Mandat</dt><dd>{current ? formatMandateType(current.mandate_type) : '–'}</dd></div><div><dt>Legislaturperioden</dt><dd>{served.length}</dd></div><div><dt>Dokumentierter Beginn</dt><dd>{rows.filter(row => row.starts_on).map(row => row.starts_on!).sort()[0]?.slice(0, 4) || 'Nicht erfasst'}</dd></div></dl>
-            <section className="mt-8"><h4 className="deputy-caption deputy-section-heading mb-4"><span aria-hidden="true">01</span> Mandatshistorie</h4><div className="deputy-periods">{published.slice().sort((a, b) => a.number - b.number).map(item => <button type="button" key={item.id} disabled={!served.includes(item.number)} aria-pressed={selectedPeriod === item.number} className="deputy-period" onClick={() => setActivePeriod(item.number)}><span /><b>{item.number}.</b><small>{item.starts_on?.slice(0, 4) || '–'}</small></button>)}</div><p className="mt-3 text-xs text-muted-foreground">Balken markieren Mitgliedschaften. Wähle eine Periode für die Details.</p></section>
+            <dl className="deputy-facts"><div><dt>{birth?.birthday ? 'Geburtstag' : 'Geburtsjahr'}</dt><dd>{birth?.birthday ? birth.birthday.split('-').reverse().join('.') : birth?.birth_year || 'Nicht erfasst'}</dd></div><div><dt>Wahlkreis</dt><dd>{current?.district_name || 'Nicht erfasst'}</dd></div><div><dt>Mandat</dt><dd>{current ? formatMandateType(current.mandate_type) : '–'}</dd></div><div><dt>Legislaturperioden</dt><dd>{served.length}</dd></div></dl>
+            <section className="mt-8"><h4 className="deputy-caption deputy-section-heading mb-4"><span aria-hidden="true">01</span> Mandatshistorie</h4><div className="deputy-periods">{tenurePeriods.map(({ period:item, member, segments, label }) => <button type="button" key={item.id} disabled={!member} aria-pressed={selectedPeriod === item.number} aria-label={`${item.number}. Legislaturperiode: ${label}`} title={label} className="deputy-period" onClick={() => setActivePeriod(item.number)}><span className="deputy-period-track" aria-hidden="true">{segments.map((segment,index) => <i key={index} style={{left:`${segment.start}%`,width:`${segment.width}%`}} />)}</span><b>{item.number}.</b><small>{item.starts_on?.slice(0, 4) || '–'}</small></button>)}</div><p className="mt-3 text-xs text-muted-foreground">Gefüllt: dokumentierte Mandatszeit · schraffiert: übrige oder unbekannte Zeit.</p></section>
             {current && profileOpen && <DeputyElectionResult key={current.id} mandateId={current.id}
-              periodDetails={<div className="space-y-5" aria-live="polite"><h5 className="deputy-caption">{selectedRows[0]?.period_name}</h5>{selectedRows.map(row => <article key={row.id} className="space-y-2 border-l-2 pl-4"><p className="font-serif text-xl">{formatMandateDateRange(row)}</p>{row.end_is_expected && <p className="text-xs text-muted-foreground">Voraussichtliches Ende</p>}<p className="text-sm">{row.district_name ? `Wahlkreis ${row.district_label ? `${row.district_label}: ` : ''}${row.district_name}` : 'Wahlkreis nicht erfasst'}</p><p className="text-sm text-muted-foreground">{row.party_label || row.party} · {formatMandateType(row.mandate_type)} · {row.entry_type === 'succession' ? 'nachgerückt' : 'gewählt'}{row.left_early ? ' · vorzeitig ausgeschieden' : ''}</p>{row.name !== person?.name && <p className="text-xs text-muted-foreground">Historischer Name: {row.name}</p>}{row.notes && <p className="whitespace-pre-wrap text-sm text-muted-foreground">{row.notes}</p>}</article>)}</div>}
+              periodDetails={<div className="space-y-4" aria-live="polite">{selectedRows.map(row => <article key={row.id} className="space-y-2"><p className="font-serif text-xl">{formatMandateDateRange(row)}</p>{row.end_is_expected && <p className="text-xs text-muted-foreground">Voraussichtliches Ende</p>}<p className="text-sm">{row.district_name ? `Wahlkreis ${row.district_label ? `${row.district_label}: ` : ''}${row.district_name}` : 'Wahlkreis nicht erfasst'}</p></article>)}</div>}
             />}
           </>}
         </div>

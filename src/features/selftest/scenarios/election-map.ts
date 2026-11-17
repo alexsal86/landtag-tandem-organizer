@@ -1,3 +1,4 @@
+import { deputyTenureCoverage } from '@/features/election-analysis/deputyTenure';
 import { deputyElectionResultBars, type DeputyElectionResultData } from '@/features/election-analysis/deputyElectionResult';
 import { candidacyResultOrigin, candidateResultConflict, type LinkedCandidateResult } from '@/features/election-history/candidateResults';
 import { portraitCrop, portraitSource, isDeputyPortrait } from '@/features/election-history/portrait';
@@ -20,6 +21,20 @@ export const electionMapScenario: TestScenario = {
   touches: [], features: ['election-districts'],
   limitations: ['Die visuelle Ebenenreihenfolge und mobile Bedienung werden separat im Browser geprüft.'],
   steps: [
+    { id: 'deputy-tenure-coverage', label: 'Mandatsbalken zeigen echte Teilzeiten, Lücken und keine zukünftige Mitgliedschaft', kind: 'logic', run: async () => {
+      const period = { starts_on: '2026-01-01', ends_on: '2026-01-10' };
+      const partial = deputyTenureCoverage(period, [{ starts_on: '2026-01-03', ends_on: '2026-01-06' }], '2026-01-20');
+      if (partial.unknown || partial.segments[0]?.start !== 20 || partial.segments[0]?.width !== 40) throw new Error('Später Eintritt und früher Austritt müssen an der richtigen Balkenposition liegen.');
+      const union = deputyTenureCoverage(period, [{ starts_on: '2026-01-01', ends_on: '2026-01-03' }, { starts_on: '2026-01-03', ends_on: '2026-01-05' }], '2026-01-20');
+      if (union.segments.length !== 1 || union.segments[0].width !== 50) throw new Error('Überlappende Mandatsabschnitte dürfen nicht doppelt zählen.');
+      const gaps = deputyTenureCoverage(period, [{ starts_on: '2026-01-01', ends_on: '2026-01-02' }, { starts_on: '2026-01-05', ends_on: '2026-01-06' }], '2026-01-20');
+      if (gaps.segments.length !== 2 || gaps.segments[1].start !== 40) throw new Error('Unterbrechungen innerhalb einer Periode bleiben sichtbar.');
+      const ongoing = deputyTenureCoverage(period, [period], '2026-01-05');
+      const missing = deputyTenureCoverage(period, [{ starts_on: null, ends_on: '2026-01-10' }], '2026-01-20');
+      if (ongoing.segments[0]?.width !== 50 || !missing.unknown || missing.segments.length) throw new Error('Zukünftige oder unbekannte Zeiten dürfen nicht als absolvierte Zeit erscheinen.');
+      if (deputyTenureCoverage(period, [], '2026-01-20').segments.length) throw new Error('Eine Periode ohne Mitgliedschaft bleibt schraffiert.');
+      return { ok: true, message: 'Teilzeiten, Überlappungen, Unterbrechungen und Datumsunsicherheit bleiben getrennt.' };
+    } },
     { id: 'deputy-profile-election-bars', label: 'Profil zeigt eigene Kandidatur, bekannte Gegenkandidaturen und nur belegte Reststimmen', kind: 'logic', run: async () => {
       const source = { preliminary: false, data_release: 'same', notes: null };
       const sample: DeputyElectionResultData = { mandate_id: 'm', period_number: 18, ballot: 'first', entry_type: 'election', mandate_type: 'list', district_name: 'Wahlkreis',

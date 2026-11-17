@@ -932,3 +932,20 @@ den Namen; Prozentwerte bleiben rechtsbündig und fett. Absolute Stimmen sind im
 aufklappbaren Quellenbereich weiterhin vorhanden. Bei wenig Platz stapeln sich die
 Spalten. Diese Layoutanpassung benötigt keine zusätzliche Datenbankmigration.
 Keine Tests ausgeführt.
+
+Das kompakte Abgeordnetenprofil blendet „Dokumentierter Beginn“ aus. Die
+Mandatshistorie reicht nur von der ersten bis zur letzten dokumentierten
+Mitgliedschaft; dazwischenliegende Perioden ohne Mitgliedschaft bleiben schraffiert
+und nicht auswählbar. `deputyTenureCoverage` vereinigt bekannte Mandatsintervalle
+pro Periode, zeigt Teilmandate an ihrer tatsächlichen relativen Position und zählt
+Überlappungen nicht doppelt. Fehlende Termine werden nicht ergänzt. Die Füllung
+endet spätestens am heutigen Berliner Kalendertag; zukünftige oder unbekannte Zeit
+bleibt schraffiert. Der Nenner ist der dokumentierte Periodenzeitraum einschließlich
+eines gegebenenfalls ausdrücklich voraussichtlichen Periodenendes.
+
+Abschnittsüberschriften und 01/02 sind kräftiger. Ergebnisnamen sind kleiner als
+die weiterhin hervorgehobenen Prozentwerte. Rechts stehen nur Zeitraum und
+Wahlkreis (gegebenenfalls mit dem Hinweis auf ein voraussichtliches Ende); doppelte
+Perioden-, Parteien-, Mandatsart- und Einzugsangaben entfallen. Unter den Balken
+bleibt die zur Interpretation notwendige Stimmenart als knapper Hinweis stehen.
+Keine neue Migration; Logikschritt ergänzt, aber keine Tests ausgeführt.

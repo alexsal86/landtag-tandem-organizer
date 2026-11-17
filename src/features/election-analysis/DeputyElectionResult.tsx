@@ -33,7 +33,7 @@ export function DeputyElectionResult({ mandateId, periodDetails }: { mandateId: 
         {row.votes!==null && <span className="sr-only">{row.votes.toLocaleString('de-DE')} Stimmen</span>}
         {row.conflict && <p className="text-xs text-muted-foreground">Abweichung zum zugeordneten Parteiergebnis; angezeigt ist das persönlich gespeicherte Ergebnis.</p>}
       </li>)}</ul> : <p className="text-sm text-muted-foreground">Für diese Periode ist kein zugeordnetes Wahlkreisergebnis erfasst.</p>}
-      {data && <p className="deputy-result-context">{data.ballot==='first' ? 'Erststimmen' : 'Einzelstimmen'}, {data.period_number}. Wahlperiode{data.district_name ? ` · ${data.district_name}` : ''}. {data.entry_type==='succession' ? 'Nachgerückt; kein erneuter Wahleinzug.' : data.mandate_type==='direct' ? 'Direkt gewählt.' : data.ballot==='first' ? 'Einzug über die Landesliste.' : 'Einzug über ein Zweit-/Listenmandat.'}</p>}
+      {data && <p className="deputy-result-context">{data.ballot==='first' ? 'Erststimmen' : 'Einzelstimmen'}</p>}
       {bars.length>0 && !own && <p className="text-xs text-muted-foreground">Eine persönliche Kandidatur ist für diese Person hier nicht eindeutig zugeordnet. Vorhandene Wahlkreisergebnisse bleiben sichtbar.</p>}
       {bars.some(row => row.preliminary===null) && <p className="text-xs text-muted-foreground">Der Ergebnisstatus ist teilweise nicht erfasst.</p>}
       {bars.some(row => row.preliminary) && <p className="text-xs text-muted-foreground">Enthält vorläufige Ergebnisse.</p>}
