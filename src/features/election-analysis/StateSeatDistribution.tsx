@@ -1,10 +1,9 @@
-import { useId } from 'react';
+import { useId, type ReactNode } from 'react';
+import { compareParliamentParties } from './seatDistributionModel';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 import { getPartyColor } from '@/features/election-districts/partyColors';
 import { number } from './model';
 import type { Ballot, StateResult } from './types';
-
-const parliamentOrder = ['SPD', 'GRÜNE', 'FDP', 'CDU', 'AfD'];
 
 /** Place exactly one dot per recorded seat, with padding on every SVG edge. */
 function seatPositions(total: number) {
@@ -34,10 +33,11 @@ function seatPositions(total: number) {
   ).sort((a, b) => b.angle - a.angle || b.radius - a.radius);
 }
 
-export function StateSeatDistribution({ rows, year, ballot }: {
+export function StateSeatDistribution({ rows, year, ballot, title, compact = false, highlightParty, sourceNote }: {
   rows: StateResult[];
   year: number;
   ballot: Ballot;
+  title?: ReactNode; compact?: boolean; highlightParty?: string; sourceNote?: string;
 }) {
   const titleId = useId();
   const descriptionId = useId();
@@ -45,20 +45,14 @@ export function StateSeatDistribution({ rows, year, ballot }: {
     .filter((row): row is StateResult & { seats: number } =>
       row.seats !== null && Number.isSafeInteger(row.seats) && row.seats > 0
     )
-    .sort((a, b) => {
-      const aIndex = parliamentOrder.indexOf(a.party);
-      const bIndex = parliamentOrder.indexOf(b.party);
-      return (aIndex < 0 ? parliamentOrder.length : aIndex)
-        - (bIndex < 0 ? parliamentOrder.length : bIndex)
-        || a.party.localeCompare(b.party, 'de');
-    });
+    .sort((a, b) => compareParliamentParties(a.party,b.party));
   const seatParties = represented.flatMap(row => Array.from({ length: row.seats }, () => row.party));
   const total = seatParties.length;
   const positions = seatPositions(total);
 
-  return <Card className="min-w-0 bg-card text-card-foreground">
+  return <Card className={`min-w-0 ${compact ? 'bg-white text-slate-900 deputy-seat-card' : 'bg-card text-card-foreground'}`}>
     <CardHeader className="pb-2">
-      <CardTitle id={titleId} className="text-lg">Sitzverteilung · {year}</CardTitle>
+      <CardTitle id={titleId} className="text-lg">{title || `Sitzverteilung · ${year}`}</CardTitle>
     </CardHeader>
     <CardContent className="space-y-4">
       {total > 0 ? <>
@@ -70,18 +64,19 @@ export function StateSeatDistribution({ rows, year, ballot }: {
             cy={position.y}
             r={7}
             fill={getPartyColor(seatParties[index])}
-            stroke="white"
-            strokeWidth={0.75}
+            stroke={highlightParty===seatParties[index] ? '#0f172a' : 'white'}
+            strokeWidth={highlightParty===seatParties[index] ? 1.5 : 0.75}
           ><title>{seatParties[index]}</title></circle>)}
           <text x="260" y="222" textAnchor="middle" fill="currentColor" fontSize="40" fontWeight="700">{number(total)}</text>
           <text x="260" y="246" textAnchor="middle" fill="#64748b" fontSize="14">Sitze dargestellt</text>
         </svg>
         <ul className="flex flex-wrap justify-center gap-x-5 gap-y-2 text-sm" aria-label="Sitze nach Partei, von links nach rechts">
-          {represented.map(row => <li key={row.party} className="flex items-center gap-2">
+          {represented.map(row => <li key={row.party} className={`flex items-center gap-2 ${highlightParty===row.party ? 'font-bold' : ''}`}>
             <span className="h-3 w-3 shrink-0 rounded-full" style={{ backgroundColor: getPartyColor(row.party) }} aria-hidden="true" />
             <span>{row.party} <strong className="tabular-nums">{number(row.seats)}</strong></span>
           </li>)}
         </ul>
+        {sourceNote && <p className="text-xs leading-relaxed text-slate-600">{sourceNote}</p>}
         <p className="text-xs leading-relaxed text-slate-500">Ein Punkt entspricht einem hinterlegten Sitz. Schematische Anordnung der erfassten Parteien, keine einzelnen Sitzplätze.</p>
       </> : <p className="text-sm text-slate-500">
         {year >= 2026 && ballot === 'first'

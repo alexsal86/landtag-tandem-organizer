@@ -989,3 +989,26 @@ fehlende Daten bleiben als solche erkennbar. Wahlkreislinks aus Mandaten verwend
 nur die Nummer derselben Wahl ab 1956, keine Namens- oder jahrübergreifende
 Identitätsableitung. Beteiligungsdetails sind mit `historyDetails=turnout`
 einblendbar und bookmarkbar; Quellenhinweise historischer Wahlkreise bleiben sichtbar.
+
+### Zusammensetzung des Landtags im Abgeordnetenprofil
+
+Die rechte Spalte neben „02 Wahlkreisergebnisse“ zeigt jetzt
+„03 Zusammensetzung des Landtags“. Sie verwendet die vorhandene weiße
+Halbkreis-Grafik der Landesergebnisse, auch bei dunklem Profil. Die gemeinsame
+Reihenfolge lautet SPD, GRÜNE, FDP, CDU, AfD, REP, NPD; weitere erfasste Parteien
+folgen danach. Sitze werden ausschließlich aus Daten der im Profil ausgewählten
+Legislaturperiode geladen. Zeitraum und gegebenenfalls voraussichtliches Ende
+stehen wieder direkt unter „01 Mandatshistorie“.
+
+Die Grafik nutzt direkt den gespeicherten Partei-/Fraktionssnapshot der gewählten
+veröffentlichten Periode in `election_history_periods`: `seat_distribution`,
+`seat_total`, Bezugsstand, Quellenadresse und gegebenenfalls Stichtag. Sie zählt
+keine Mandate und verwendet keine abgeleitete Parlamentssumme aus einer Parteiauswahl.
+Eine unvollständige Verteilung oder unbekannte Gesamtsitzzahl bleibt sichtbar.
+Wahl-, Periodenbeginn- und spätere Stichtagsverteilungen werden getrennt bezeichnet.
+Ein Punkt entspricht einem erfassten Sitz; die Umrandung markiert die zugeordnete
+Partei, keine tatsächliche Sitznummer oder persönliche Sitzposition. Historische
+Parteilabels bleiben in der Legende erhalten; FDP/DVP wird für die Anordnung bei FDP
+eingeordnet. Keine zusätzliche Migration für diese Profilansicht erforderlich;
+die vorhandenen Periodensitzzahlen müssen wie für die übrigen Ansichten verfügbar
+sein. Keine Tests ausgeführt.

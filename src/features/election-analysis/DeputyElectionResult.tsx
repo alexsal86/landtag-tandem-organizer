@@ -5,7 +5,7 @@ import { useAuth } from '@/hooks/useAuth';
 import { Button } from '@/components/ui/button';
 import { deputyElectionResultBars, type DeputyElectionResultData } from './deputyElectionResult';
 
-export function DeputyElectionResult({ mandateId, periodDetails }: { mandateId: string; periodDetails: ReactNode }) {
+export function DeputyElectionResult({ mandateId, secondaryPanel }: { mandateId: string; secondaryPanel: ReactNode }) {
   const { user } = useAuth();
   const query = useQuery({
     queryKey: ['election-history',user?.id,'deputy-election-result',mandateId], enabled: !!user && !!mandateId,
@@ -21,9 +21,9 @@ export function DeputyElectionResult({ mandateId, periodDetails }: { mandateId: 
   const bars = data ? deputyElectionResultBars(data) : [];
   const own = bars.find(row => row.own);
   return <section className="deputy-election-result" aria-label="Wahlkreisergebnis der ausgewählten Legislaturperiode" aria-busy={query.isFetching}>
-    <h4 className="deputy-caption deputy-section-heading deputy-result-heading"><span aria-hidden="true">02</span> Wahlkreisergebnisse</h4>
     <div className="deputy-election-layout">
     <div className="deputy-election-chart">
+    <h4 className="deputy-caption deputy-section-heading deputy-result-heading"><span aria-hidden="true">02</span> Wahlkreisergebnisse</h4>
     {query.isLoading && <p role="status" className="text-sm text-muted-foreground">Lade Wahlkreisergebnis …</p>}
     {query.error && <p role="alert" className="text-sm">Das Wahlkreisergebnis konnte nicht geladen werden. <Button size="sm" variant="ghost" onClick={() => void query.refetch()}>Erneut laden</Button></p>}
     {!query.isLoading && !query.error && <>
@@ -45,7 +45,7 @@ export function DeputyElectionResult({ mandateId, periodDetails }: { mandateId: 
       </details>}
     </>}
     </div>
-    <aside className="deputy-election-period" aria-label="Mandatsdetails der ausgewählten Legislaturperiode">{periodDetails}</aside>
+    <aside className="deputy-election-period" aria-label="Zusammensetzung des ausgewählten Landtags">{secondaryPanel}</aside>
     </div>
   </section>;
 }

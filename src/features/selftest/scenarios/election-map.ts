@@ -1,3 +1,4 @@
+import { compareParliamentParties } from '@/features/election-analysis/seatDistributionModel';
 import { deputyTenureCoverage } from '@/features/election-analysis/deputyTenure';
 import { deputyElectionResultBars, type DeputyElectionResultData } from '@/features/election-analysis/deputyElectionResult';
 import { candidacyResultOrigin, candidateResultConflict, type LinkedCandidateResult } from '@/features/election-history/candidateResults';
@@ -21,6 +22,12 @@ export const electionMapScenario: TestScenario = {
   touches: [], features: ['election-districts'],
   limitations: ['Die visuelle Ebenenreihenfolge und mobile Bedienung werden separat im Browser geprüft.'],
   steps: [
+    { id: 'deputy-parliament-party-order', label: 'Landes- und Profilgrafik ordnen Sitze in der vorgegebenen Parteienfolge', kind: 'logic', run: async () => {
+      const parties = ['NPD','REP','AfD','CDU','FDP','GRÜNE','SPD'].sort(compareParliamentParties);
+      if (parties.join(',') !== 'SPD,GRÜNE,FDP,CDU,AfD,REP,NPD') throw new Error('Historische Parteien müssen nach AfD stehen.');
+      if (compareParliamentParties('AFD','REP') >= 0 || compareParliamentParties('SPD','GRÜNE') >= 0) throw new Error('Schreibweisen dürfen die räumliche Parteienfolge nicht ändern.');
+      return { ok: true, message: 'Beide Sitzgrafiken verwenden dieselbe Parteienfolge einschließlich REP und NPD.' };
+    } },
     { id: 'deputy-tenure-coverage', label: 'Mandatsbalken zeigen echte Teilzeiten, Lücken und keine zukünftige Mitgliedschaft', kind: 'logic', run: async () => {
       const period = { starts_on: '2026-01-01', ends_on: '2026-01-10' };
       const partial = deputyTenureCoverage(period, [{ starts_on: '2026-01-03', ends_on: '2026-01-06' }], '2026-01-20');

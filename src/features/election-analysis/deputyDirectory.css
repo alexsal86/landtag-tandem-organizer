@@ -527,3 +527,13 @@
 .deputy-result-sources summary { cursor: pointer; }
 .deputy-result-sources p, .deputy-result-sources a { display: block; margin-top: 8px; }
 .deputy-result-sources a { text-decoration: underline; }
+
+.deputy-tenure-dates { display: flex; flex-wrap: wrap; gap: 6px 18px; margin-top: 12px; color: var(--deputy-muted); font-size: 13px; }
+.deputy-seat-card { border-color: #e2e8f0; box-shadow: none; }
+.deputy-seat-card > div { padding: 14px; }
+.deputy-seat-card > div + div { padding-top: 0; }
+.deputy-seat-card ul { font-size: 11px; gap: 6px 10px; }
+.deputy-seat-heading { display: flex; align-items: baseline; gap: 12px; font-size: 11px; font-weight: 700; line-height: 1.6; letter-spacing: .12em; text-transform: uppercase; color: #0f172a; }
+.deputy-seat-heading > span { color: #64748b; font-weight: 750; }
+.deputy-seat-status { padding: 14px; border: 1px solid #e2e8f0; border-radius: 10px; background: #fff; color: #0f172a; }
+.deputy-seat-status p { margin-top: 18px; font-size: 12px; }

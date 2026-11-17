@@ -1,3 +1,4 @@
+import { DeputySeatDistribution } from './DeputySeatDistribution';
 import { deputyTenureCoverage } from './deputyTenure';
 import { DeputyElectionResult } from './DeputyElectionResult';
 import { Link } from "react-router-dom";
@@ -191,16 +192,12 @@ export default function DeputyDirectory() {
           {rows.length > 0 && <>
             <dl className="deputy-facts"><div><dt>{birth?.birthday ? 'Geburtstag' : 'Geburtsjahr'}</dt><dd>{birth?.birthday ? birth.birthday.split('-').reverse().join('.') : birth?.birth_year || 'Nicht erfasst'}</dd></div><div><dt>Wahlkreis</dt><dd>{current?.district_name || 'Nicht erfasst'}</dd></div><div><dt>Mandat</dt><dd>{current ? formatMandateType(current.mandate_type) : '–'}</dd></div><div><dt>Legislaturperioden</dt><dd>{served.length}</dd></div></dl>
             <section className="mt-8"><h4 className="deputy-caption deputy-section-heading mb-4"><span aria-hidden="true">01</span> Mandatshistorie</h4><div className="deputy-periods">{tenurePeriods.map(({ period:item, member, segments, label }) => <button type="button" key={item.id} disabled={!member} aria-pressed={selectedPeriod === item.number} aria-label={`${item.number}. Legislaturperiode: ${label}`} title={label} className="deputy-period" onClick={() => setActivePeriod(item.number)}><span className="deputy-period-track" aria-hidden="true">{segments.map((segment,index) => <i key={index} style={{left:`${segment.start}%`,width:`${segment.width}%`}} />)}</span><b>{item.number}.</b><small>{item.starts_on?.slice(0, 4) || '–'}</small></button>)}</div><p className="mt-3 text-xs text-muted-foreground">Gefüllt: dokumentierte Mandatszeit · schraffiert: übrige oder unbekannte Zeit.</p></section>
+            {selectedRows.length>0 && <div className="deputy-tenure-dates" aria-live="polite">{selectedRows.map(row => {
+              const profileUrl = districtProfileUrl(published.find(item => item.number === row.period_number)?.election_year ?? null, row.district_label);
+              return <div key={row.id}><p>{formatMandateDateRange(row)}{row.end_is_expected ? ' (voraussichtliches Ende)' : ''}</p>{profileUrl && <Button variant="link" className="h-auto p-0 text-xs" asChild><Link to={profileUrl}>Wahlkreis-Steckbrief öffnen</Link></Button>}</div>;
+            })}</div>}
             {current && profileOpen && <DeputyElectionResult key={current.id} mandateId={current.id}
-              periodDetails={<div className="space-y-4" aria-live="polite">{selectedRows.map(row => {
-                const profileUrl = districtProfileUrl(published.find(item => item.number === row.period_number)?.election_year ?? null, row.district_label);
-                return <article key={row.id} className="space-y-2">
-                  <p className="font-sans text-xl">{formatMandateDateRange(row)}</p>
-                  {row.end_is_expected && <p className="text-xs text-muted-foreground">Voraussichtliches Ende</p>}
-                  <p className="text-sm">{row.district_name ? `Wahlkreis ${row.district_label ? `${row.district_label}: ` : ''}${row.district_name}` : 'Wahlkreis nicht erfasst'}</p>
-                  {profileUrl && <Button variant="link" className="h-auto p-0" asChild><Link to={profileUrl}>Wahlkreis-Steckbrief öffnen</Link></Button>}
-                </article>;
-              })}</div>}
+              secondaryPanel={<DeputySeatDistribution period={published.find(item => item.number === current.period_number)} party={current.party} />}
             />}
           </>}
         </div>
