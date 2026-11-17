@@ -1,7 +1,7 @@
+import { DropdownMenu, DropdownMenuTrigger, DropdownMenuContent, DropdownMenuItem } from '@/components/ui/dropdown-menu';
 import { reconstructedGeometryAttribution } from '@/utils/electoralGeometryCatalog';
 import { HistoricalGeometryNotice } from '@/features/election-history/HistoricalGeometryNotice';
 import { usePeriodGeometry } from '@/features/election-history/usePeriodGeometry';
-import { Link } from 'react-router-dom';
 import { PeriodMembersOverview } from '@/features/election-history/PeriodMembersOverview';
 import { useElectionHistory, useElectionPeriods, historyError } from '@/features/election-history/useElectionHistory';
 import { projectHistoricalDistricts } from '@/features/election-history/mapProjection';
@@ -12,7 +12,7 @@ import { Badge } from "@/components/ui/badge";
 import { Input } from "@/components/ui/input";
 import { boundaryAreaKm2, directMandateParty, partyColors, hasRenderableBoundary, searchElectionDistricts, electionDistrictNumberLabel } from "../mapModel";
 import { Button } from "@/components/ui/button";
-import { Users, BarChart3, Search } from "lucide-react";
+import { Users, BarChart3, ChevronDown } from "lucide-react";
 import { useElectionDistricts } from "@/hooks/useElectionDistricts";
 import { DistrictNotes } from "./DistrictNotes";
 import { getPartyColor, getPartyTextColor } from "../partyColors";
@@ -162,17 +162,16 @@ export const ElectionDistrictsView = ({ sidebarHeader }: { sidebarHeader?: React
       <div className="flex-1 flex flex-col md:flex-row min-h-0">
         {/* Map */}
         <div className="flex-1 min-w-0 min-h-0 flex flex-col">
-          <nav aria-label="Kartennavigation" className="relative z-[1100] flex shrink-0 flex-wrap items-end gap-3 border-b bg-background p-3">
-          <div className="min-w-0 basis-48 flex-1">
-            <form className="relative flex-1 min-w-0" onSubmit={event => {
+          <nav aria-label="Kartennavigation" className="relative z-[1100] flex shrink-0 flex-wrap items-center gap-x-6 gap-y-1 border-b bg-background px-3 py-1">
+          <div className="min-w-0">
+            <form className="relative flex min-w-0 items-center gap-2" onSubmit={event => {
               event.preventDefault();
               if (searchResults[activeResult]) focusDistrict(searchResults[activeResult]);
             }} role="search" aria-label="Wahlkreissuche">
-              <label htmlFor="district-search" className="text-sm font-medium">Wahlkreis suchen</label>
-              <div className="relative mt-1">
-                <Search className="absolute left-3 top-2.5 h-4 w-4 text-muted-foreground" aria-hidden="true" />
-                <Input id="district-search" type="search" placeholder="Name oder Nummer eingeben …"
-                  className="pl-9" value={searchQuery} onChange={event => { setSearchQuery(event.target.value); setActiveResult(0); }}
+              <label htmlFor="district-search" className="shrink-0 cursor-text text-sm font-medium">Wahlkreis suchen</label>
+              <div className="relative min-w-0">
+                <Input id="district-search" type="search" placeholder="Name oder Nummer …"
+                  className="h-8 w-40 border-0 bg-transparent px-1 shadow-none focus-visible:ring-1" value={searchQuery} onChange={event => { setSearchQuery(event.target.value); setActiveResult(0); }}
                   role="combobox" aria-autocomplete="list" aria-expanded={!!searchQuery.trim()}
                   aria-activedescendant={searchResults[activeResult] ? `district-result-${searchResults[activeResult].id}` : undefined}
                   aria-controls="district-search-results" onKeyDown={event => {
@@ -199,11 +198,18 @@ export const ElectionDistrictsView = ({ sidebarHeader }: { sidebarHeader?: React
             </form>
           </div>
           {historyPeriod && (
-            <div className="min-w-0 basis-48 flex-1">
+            <div className="flex min-w-0 items-center gap-2">
               <label htmlFor="map-legislature" className="text-sm font-medium">Legislaturperiode</label>
-              <select id="map-legislature" className="mt-1 w-full rounded-md border bg-background p-2 text-sm" value={historyPeriod.id} onChange={event => { setHistoryPeriodId(event.target.value); setFocusedDistrict(undefined); setSelectedHistoricalDistrict(''); setSelectedDistrict(null); }}>
-                {publishedPeriods.map(p => <option key={p.id} value={p.id}>{p.name}{p.is_current ? ' · aktuell' : ''}</option>)}
-              </select>
+              <DropdownMenu>
+                <DropdownMenuTrigger asChild>
+                  <button id="map-legislature" type="button" className="inline-flex items-center gap-1 py-1 text-sm hover:text-primary focus-visible:outline-none focus-visible:ring-1 focus-visible:ring-ring">
+                    {historyPeriod.name}{historyPeriod.is_current ? ' · aktuell' : ''}<ChevronDown className="h-3.5 w-3.5" aria-hidden="true" />
+                  </button>
+                </DropdownMenuTrigger>
+                <DropdownMenuContent align="start" className="z-[1200] max-h-80 overflow-y-auto">
+                  {publishedPeriods.map(p => <DropdownMenuItem key={p.id} onSelect={() => { setHistoryPeriodId(p.id); setFocusedDistrict(undefined); setSelectedHistoricalDistrict(''); setSelectedDistrict(null); }}>{p.name}{p.is_current ? ' · aktuell' : ''}</DropdownMenuItem>)}
+                </DropdownMenuContent>
+              </DropdownMenu>
             </div>
           )}
           </nav>
@@ -315,7 +321,6 @@ export const ElectionDistrictsView = ({ sidebarHeader }: { sidebarHeader?: React
 
           {history.data && historyPeriod && <>
             {selectedHistoricalDistrict && <Card><CardContent className="pt-5"><DistrictElectionHistory data={history.data} periodId={historyPeriod.id} districtId={selectedHistoricalDistrict} /></CardContent></Card>}
-            {selectedHistoricalDistrict && historyPeriod.election_year && [2006,2011,2016,2021,2026].includes(historyPeriod.election_year) && history.data.districts.find(d => d.id === selectedHistoricalDistrict)?.district_number != null && <Button variant="outline" asChild><Link to={`/daten?dataTool=wahlanalyse&analysisSection=profile&analysisYear=${historyPeriod.election_year}&analysisDistrict=${history.data.districts.find(d => d.id === selectedHistoricalDistrict)?.district_number}`}>Wahlkreis-Steckbrief öffnen</Link></Button>}
           </>}
       {missingBoundaries.length > 0 && (
         <details className="mx-3 my-2 rounded-md border border-amber-500/40 bg-amber-500/10 px-3 py-2 text-sm">
@@ -341,11 +346,11 @@ export const ElectionDistrictsView = ({ sidebarHeader }: { sidebarHeader?: React
             <PeriodMembersOverview key={historyPeriod.id} data={history.data} onSelectDistrict={selectHistoricalDistrict} />
             <details className="rounded-xl border bg-card p-3 shadow-sm">
               <summary className="cursor-pointer text-sm font-medium">Historischer Wahlkreis</summary>
-              <label htmlFor="historical-district" className="sr-only">Historischer Wahlkreis</label>
-              <select id="historical-district" className="mt-1 w-full rounded-md border bg-background p-2 text-sm" value={selectedHistoricalDistrict} onChange={event => selectHistoricalDistrict(event.target.value)}>
-                <option value="">Wahlkreis auswählen</option>
-                {history.data.districts.map(d => <option key={d.id} value={d.id}>{d.district_number ?? d.number_label ?? '–'}: {d.name}{historyPeriod.election_year === 1952 && !d.geometry_source_key ? ' · Zuordnung ungeprüft' : ''}</option>)}
-              </select>
+              <div className="mt-2 space-y-1">
+                {history.data.districts.map(d => <button key={d.id} type="button" aria-pressed={selectedHistoricalDistrict === d.id} className="block w-full border-t py-2 text-left text-sm hover:text-primary aria-pressed:font-semibold aria-pressed:text-primary" onClick={() => selectHistoricalDistrict(d.id)}>
+                  {d.district_number ?? d.number_label ?? '–'}: {d.name}{historyPeriod.election_year === 1952 && !d.geometry_source_key ? ' · Zuordnung ungeprüft' : ''}
+                </button>)}
+              </div>
             </details>
           </>}
           {/* Layer toggles */}

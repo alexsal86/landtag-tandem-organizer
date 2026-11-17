@@ -1,3 +1,5 @@
+import { Link } from 'react-router-dom';
+import { ArrowUpRight } from 'lucide-react';
 import { CandidateDistrictResults } from './CandidateDistrictResults';
 import { formatMandateType } from './mandateLabel';
 import { PersonElectionSummary } from './PersonElectionSummary';
@@ -16,8 +18,11 @@ export function DistrictElectionHistory({ data, periodId, districtId }: { data: 
     .sort((a, b) => Number(b.mandate_type === 'direct') - Number(a.mandate_type === 'direct') || Number(a.entry_type === 'succession') - Number(b.entry_type === 'succession') || (a.starts_on || '').localeCompare(b.starts_on || ''));
   const winner = data.candidacies.find(c => c.period_id === periodId && c.district_id === district?.id && c.outcome === 'direct');
   const party = winner?.party || mandates.find(m => m.mandate_type === 'direct' && m.entry_type === 'election')?.party;
+  const profileUrl = period?.election_year && [2006, 2011, 2016, 2021, 2026].includes(period.election_year) && district?.district_number != null
+    ? `/daten?dataTool=wahlanalyse&analysisSection=profile&analysisYear=${period.election_year}&analysisDistrict=${district.district_number}`
+    : undefined;
   return <div className="space-y-3">
-    <h3 className="flex flex-wrap items-center gap-x-2 gap-y-1"><Badge className="border-0" style={{ backgroundColor: getPartyColor(party), color: getPartyTextColor(party) }}>{district?.district_number ?? district?.number_label ?? '–'}</Badge><span className="font-semibold">{district?.name || 'Wahlkreis nicht erfasst'}</span><span className="ml-auto text-xs font-normal text-muted-foreground">{period?.name}</span></h3>
+    <h3 className="flex flex-wrap items-center gap-x-2 gap-y-1"><Badge className="border-0" style={{ backgroundColor: getPartyColor(party), color: getPartyTextColor(party) }}>{district?.district_number ?? district?.number_label ?? '–'}</Badge>{profileUrl ? <Link to={profileUrl} className="inline-flex items-center gap-1 font-semibold hover:underline" title="Wahlkreis-Steckbrief öffnen">{district?.name}<ArrowUpRight className="h-3.5 w-3.5" aria-hidden="true" /></Link> : <span className="font-semibold">{district?.name || 'Wahlkreis nicht erfasst'}</span>}<span className="ml-auto text-xs font-normal text-muted-foreground">{period?.name}</span></h3>
     {district?.boundary_note && <p className="text-xs text-muted-foreground">{district.boundary_note}</p>}
     {mandates.map(m => {
       const person = data.people.find(p => p.id === m.person_id);
