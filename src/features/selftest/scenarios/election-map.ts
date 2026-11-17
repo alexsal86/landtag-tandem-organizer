@@ -1,4 +1,4 @@
-import { candidateResultConflict, type LinkedCandidateResult } from '@/features/election-history/candidateResults';
+import { candidacyResultOrigin, candidateResultConflict, type LinkedCandidateResult } from '@/features/election-history/candidateResults';
 import { portraitCrop, portraitSource, isDeputyPortrait } from '@/features/election-history/portrait';
 import { canConfirmDeputySelection, connectedDeputyMandates, deputyHistoryAction } from '@/features/election-history/deputySelection';
 import { projectHistoricalDistricts } from '@/features/election-history/mapProjection';
@@ -19,6 +19,14 @@ export const electionMapScenario: TestScenario = {
   touches: [], features: ['election-districts'],
   limitations: ['Die visuelle Ebenenreihenfolge und mobile Bedienung werden separat im Browser geprüft.'],
   steps: [
+    { id: 'assembled-candidacy-result-provenance', label: 'Automatische Ergebnisübernahme bewahrt manuelle Zahlen und fehlende Werte', kind: 'logic', run: async () => {
+      const automatic = { votes: 100, vote_share: 20.12345, result_origin: 'district_result', result_snapshot: { votes: 100, share: 20.12345 } };
+      if (candidacyResultOrigin(automatic) !== 'automatic') throw new Error('Vollständig übernommene Werte müssen als automatisch erkennbar sein.');
+      if (candidacyResultOrigin({ ...automatic, votes: 101 }) !== 'mixed' || candidacyResultOrigin({ ...automatic, result_snapshot: { share: 20.12345 } }) !== 'mixed') throw new Error('Geänderte oder zuvor persönlich eingetragene Stimmen bleiben manuell.');
+      if (candidacyResultOrigin({ votes: null, vote_share: null }) !== 'missing' || candidacyResultOrigin({ votes: 0, vote_share: 0 }) !== 'manual') throw new Error('Fehlende Werte und echte Nullergebnisse sind verschieden.');
+      if (candidacyResultOrigin({ ...automatic, votes: null, result_snapshot: { share: 20.12345 } }) !== 'automatic') throw new Error('Ein belegter Anteil braucht keine erfundene absolute Stimmenzahl.');
+      return { ok: true, message: 'Feldherkunft und fünf Nachkommastellen bleiben erhalten; manuelle Zahlen werden nicht zu automatischen Werten.' };
+    } },
     { id: 'candidate-result-conflicts', label: 'Persönliche Ergebnisse und zugeordnete Wahlkreisergebnisse bleiben getrennt', kind: 'logic', run: async () => {
       const row: LinkedCandidateResult = { candidacy_id: 'c', person_id: 'p', person_name: 'Person', party: 'SPD', votes: 100, vote_share: 20, ballot_type: 'candidate', link_status: 'linked', district_result: { ballot: 'single', votes: 100, share: 20, preliminary: true, data_release: null, notes: null } };
       if (candidateResultConflict(row) || candidateResultConflict({ ...row, votes: null, vote_share: null })) throw new Error('Gleiche oder fehlende persönliche Werte sind keine Konflikte.');

@@ -69,7 +69,7 @@ export const gridFields: Record<GridEntity, Field[]> = {
     partyField,
     { key: 'ballot_type', label: 'Stimmenart', type: 'select', required: true },
     { key: 'votes', label: 'Persönliche Stimmen', type: 'number', min: 0 },
-    { key: 'vote_share', label: 'Stimmenanteil (%)', type: 'number', min: 0, max: 100, step: '0.001' },
+    { key: 'vote_share', label: 'Stimmenanteil (%)', type: 'number', min: 0, max: 100, step: '0.00001' },
     { key: 'district_rank', label: 'Platz im Wahlkreis', type: 'number', min: 1 },
     { key: 'list_position', label: 'Listenplatz', type: 'number', min: 1 },
     { key: 'outcome', label: 'Wahlausgang', type: 'select', required: true },

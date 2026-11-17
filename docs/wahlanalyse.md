@@ -797,3 +797,64 @@ Die gleiche Zuordnung ist auch im Wahlkreis-Steckbrief der Wahlanalyse sichtbar;
 dort wird ausschließlich die zum ausgewählten Jahr gehörende bestätigte Verbindung
 verwendet. Erststimmen bleiben unabhängig von einer Zweitstimmenauswahl ausdrücklich
 als Erststimmen beschriftet.
+
+### Kandidaturen automatisch hinterlegen (Administration)
+
+`20261117120000_assemble_history_candidacy_results.sql` schließt die bisherige
+Lücke zwischen importierten Mandatseinträgen und der eigenen Kandidaturtabelle.
+Die Migration führt alle vorhandenen Perioden einmal zusammen. Anschließend
+synchronisieren Statement-Trigger Änderungen an Mandaten, Kandidaturen,
+Perioden/Wahlkreisen, Analysejahren, Wahlkreisversionen und Ergebnissen automatisch
+pro betroffener Periode. Der Browser führt keine Schreiboperation beim Öffnen aus.
+
+Vorhandene `connection_id`-Verbindungen sind die Identitätsgrundlage. Eine bereits
+hinterlegte eindeutige `person_id` wird wiederverwendet; andernfalls erhält die
+bestehende Verbindung genau einen Personendatensatz. Anzeigenamen dienen nur der
+Beschriftung; gleichnamige Personen werden nicht zusammengeführt. Unterschiedliche
+bestehende Personen-IDs werden nicht überschrieben.
+
+Ursprüngliche Wahleinzüge erzeugen, soweit eindeutig, Kandidaturen mit belegtem
+Wahlausgang. Der in der vorhandenen Quelle zugeordnete Wahlkreis wird auch für
+gewählte Listenkandidierende übernommen. Echte landesweite Listeneinträge ohne
+Wahlkreis behalten ein Ergebnis ohne persönlichen Wahlkreisanteil. Bereits
+vorhandene erfolglose Kandidaturen erhalten ebenfalls passende Ergebnisse;
+fehlende erfolglose Personen oder Kandidaturen werden nicht erfunden.
+Nachrückmandate erzeugen keine neuen Wahlkandidaturen. Bestehende Mandatsdaten,
+Grenzzuordnungen, Kandidaturränge, Listenplätze und Personenverbindungen bleiben
+erhalten. Die Mandatsvalidierung und der Audit laufen weiter. Würde ein Trigger
+Mandatstermine bei der Verknüpfung ändern, wird nur diese Zuordnung zurückgerollt.
+
+Persönliche Ergebnisse kommen bis 2021 aus Einzelstimmen, ab 2026 aus Erststimmen.
+Zweitstimmen sind ausgeschlossen. Übereinstimmung von Periode, Wahljahr,
+Wahlkreisverbindung und Partei sowie eine eindeutige Parteikandidatur sind
+Voraussetzungen. Fehlende Stimmen werden nicht aus gerundeten Anteilen errechnet.
+Bekannte Vergleichswerte auf Zuschnitt 2011 (Waldshut 2006) werden nicht als
+persönliches Ergebnis des ursprünglichen Wahlkreises übernommen.
+
+Für 1952 bindet ein explizites Quellenmanifest 222 gelieferte CDU-/SPD-/FDP-Anteile
+an die exakten ursprünglichen Mandats- und Wahlkreis-UUIDs des versionierten
+Mitgliederimports. Die damalige regionale Nummer oder technische Geometrie-ID wird
+dafür nicht verwendet. Diese Bindung vergibt keine Kartengeometrien, benennt keine
+Wahlkreise um und beansprucht keine unabhängig verifizierte Quelle. Nicht separat
+ausgewiesene kleinere Parteien werden nicht aus Sonstige rekonstruiert.
+
+Die Ergebnisspalten werden tatsächlich in `election_history_candidacies` ergänzt,
+sodass die bestehende Administration und weitere Historienleser sie unmittelbar
+verwenden. Fünf Nachkommastellen, Quellenhinweise, Datenstand und Vorläufigkeit
+bleiben gespeichert. `result_snapshot` verfolgt pro Zahlenfeld ausschließlich die
+von dieser Zusammenführung übernommenen Werte. Nur unverändert automatische Werte
+werden bei einer späteren Quellenänderung aktualisiert; manuelle Zahlen bleiben
+geschützt. Abweichende vorhandene Ergebnisse werden nicht still ersetzt.
+
+Die Administration zeigt statt des bisherigen manuellen Identitätsformulars den
+Zusammenführungsstatus der gewählten Periode. Echte Konflikte, fehlende Quellen und
+Validierungsprobleme stehen separat in `election_history_assembly_issues`; sie sind
+keine ausstehende Bestätigung pro Kandidatur. Die unabhängige Vollständigkeitsprüfung
+aller Kandidierenden bleibt erhalten und wird nicht allein durch vorhandene
+Abgeordnete als erfüllt erklärt. RLS und ein expliziter Superadmincheck schützen
+die Zusammenführung; nur die ausgewählte Periode wird im Browser geladen.
+
+Keine Tests ausgeführt. Ein passender Logikschritt zur Feldherkunft wurde im
+Selbsttest-Center ergänzt, aber nicht ausgeführt. Kein Live-Datenbankzugang steht
+in dieser Sitzung zum Einspielen zur Verfügung. Die tatsächlichen Ergänzungs- und
+Konfliktzahlen zeigt der Status nach Anwendung der Migration.

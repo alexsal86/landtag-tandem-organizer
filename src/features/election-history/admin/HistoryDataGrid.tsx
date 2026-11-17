@@ -1,3 +1,4 @@
+import { candidacyResultOrigin } from '../candidateResults';
 import { Fragment, useMemo, useState } from 'react';
 import { AlertTriangle, Check, CircleCheck, FilePenLine, Pencil, Plus, Save, Trash2, X } from 'lucide-react';
 import { useQueryClient } from '@tanstack/react-query';
@@ -61,6 +62,7 @@ const columns: Record<GridEntity, Column[]> = {
     { key: 'vote_share', label: '%', fieldKey: 'vote_share' },
     { key: 'district_rank', label: 'Platz', fieldKey: 'district_rank' },
     { key: 'outcome', label: 'Ausgang', fieldKey: 'outcome' },
+    { key: 'result_origin', label: 'Ergebnisquelle' },
     { key: 'quality', label: 'Prüfung' },
   ],
 };
@@ -244,7 +246,11 @@ export function HistoryDataGrid({ entity, data, selectedPeriodId, overview, onOp
     if (key === 'person_id') return personName(candidacy.person_id);
     if (key === 'district_id') return districtName(candidacy.district_id);
     if (key === 'votes') return candidacy.votes?.toLocaleString('de-DE') ?? '–';
-    if (key === 'vote_share') return candidacy.vote_share === null ? '–' : `${candidacy.vote_share.toLocaleString('de-DE', { maximumFractionDigits: 3 })} %`;
+    if (key === 'result_origin') {
+      const origin = candidacyResultOrigin(candidacy);
+      return <span title={[candidacy.result_data_release, candidacy.result_notes].filter(Boolean).join(' · ')}>{({ automatic: 'Automatisch', mixed: 'Automatisch / persönlich erfasst', manual: 'Persönlich erfasst', missing: 'Ergebnis fehlt' })[origin]}{candidacy.result_origin === 'district_result' ? ` · ${candidacy.result_preliminary ? 'vorläufig' : 'als endgültig geführt'}` : ''}</span>;
+    }
+    if (key === 'vote_share') return candidacy.vote_share === null ? '–' : `${candidacy.vote_share.toLocaleString('de-DE', { maximumFractionDigits: 5 })} %`;
     if (key === 'outcome') return ({ direct: 'Direkt gewählt', list: 'Über Liste', not_elected: 'Nicht gewählt', unknown: 'Offen' })[candidacy.outcome];
     return String(candidacy[key as keyof ElectionCandidacy] ?? '–');
   };

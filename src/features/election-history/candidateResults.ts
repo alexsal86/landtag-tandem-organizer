@@ -13,3 +13,13 @@ export function candidateResultConflict(row: LinkedCandidateResult): boolean {
   return (row.votes !== null && result.votes !== null && row.votes !== result.votes)
     || (row.vote_share !== null && result.share !== null && Math.abs(row.vote_share - result.share) > 0.00001);
 }
+
+/** Provenance is per field: manually supplied numbers never become auto-owned. */
+export function candidacyResultOrigin(row: Pick<import('./types').ElectionCandidacy,
+  'votes' | 'vote_share' | 'result_origin' | 'result_snapshot'>): 'automatic' | 'mixed' | 'manual' | 'missing' {
+  if (row.votes === null && row.vote_share === null) return 'missing';
+  if (row.result_origin !== 'district_result' || !row.result_snapshot) return 'manual';
+  const manualVotes = row.votes !== null && row.votes !== row.result_snapshot.votes;
+  const manualShare = row.vote_share !== null && row.vote_share !== row.result_snapshot.share;
+  return manualVotes || manualShare ? 'mixed' : 'automatic';
+}

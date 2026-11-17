@@ -6,7 +6,7 @@ import { Tabs, TabsList, TabsTrigger } from '@/components/ui/tabs';
 import { ErrorState, LoadingState } from '@/components/ui-patterns';
 import { useAuth } from '@/hooks/useAuth';
 import { useAdministrationAccess } from '@/components/administration/useAdministrationAccess';
-import { CandidateIdentityReview } from '@/features/election-analysis/research/CandidateIdentityReview';
+import { CandidacyAssemblyStatus } from './CandidacyAssemblyStatus';
 import { CandidateCoverageReview } from '@/features/election-analysis/research/CandidateCoverageReview';
 import { HistoryLinkReview } from '@/features/election-analysis/research/HistoryLinkReview';
 import { ElectionDeputyDirectory } from './ElectionDeputyDirectory';
@@ -68,8 +68,9 @@ function ElectionHistoryWorkspace() {
     </div>}
     {section === 'mandates' && <HistoryDataGrid key={`mandates-${selectedPeriod}`} entity="mandates" data={data} selectedPeriodId={selectedPeriod} overview={overviewQuery.data || []} />}
     {section === 'candidacies' && period && <div className="space-y-3">
+      <CandidacyAssemblyStatus key={`assembly-${selectedPeriod}`} periodId={selectedPeriod} />
       <HistoryDataGrid key={`candidacies-${selectedPeriod}`} entity="candidacies" data={data} selectedPeriodId={selectedPeriod} overview={overviewQuery.data || []} />
-      <div className="grid items-start gap-3 xl:grid-cols-2"><CandidateIdentityReview key={`identity-${selectedPeriod}`} data={{ ...data, periods: [period] }} disabled={false} /><CandidateCoverageReview key={selectedPeriod} periodId={selectedPeriod} disabled={false} /></div>
+      <CandidateCoverageReview key={selectedPeriod} periodId={selectedPeriod} disabled={false} />
       <CandidacyImportDialog open={importOpen} onOpenChange={setImportOpen} data={data} periodId={selectedPeriod} onImported={async () => { await Promise.all([query.refetch(), overviewQuery.refetch()]); }} />
     </div>}
     {section === 'deputies' && <ElectionDeputyDirectory />}

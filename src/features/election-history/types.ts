@@ -10,6 +10,9 @@ export interface HistoricalDistrict {
   id: string; period_id: string; district_number: number | null; number_label: string | null; boundaries: import('@/types/geoDomain').GeoJsonGeometry | null; name: string; boundary_note: string | null; source_url: string | null;
 }
 export interface ElectionCandidacy {
+  result_origin?: string | null; result_preliminary?: boolean | null;
+  result_data_release?: string | null; result_notes?: string | null;
+  result_snapshot?: { votes?: number; share?: number } | null;
   id: string; period_id: string; person_id: string; district_id: string | null; party: string;
   votes: number | null; vote_share: number | null; district_rank: number | null; list_position: number | null;
   ballot_type: 'candidate' | 'first_vote'; outcome: 'direct' | 'list' | 'not_elected' | 'unknown';

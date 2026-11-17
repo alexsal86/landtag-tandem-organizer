@@ -5684,6 +5684,11 @@ export type Database = {
       }
       election_history_candidacies: {
         Row: {
+          result_origin: string | null
+          result_preliminary: boolean | null
+          result_data_release: string | null
+          result_notes: string | null
+          result_snapshot: Json | null
           ballot_type: string
           district_id: string | null
           district_rank: number | null
@@ -5699,6 +5704,11 @@ export type Database = {
           votes: number | null
         }
         Insert: {
+          result_origin?: string | null
+          result_preliminary?: boolean | null
+          result_data_release?: string | null
+          result_notes?: string | null
+          result_snapshot?: Json | null
           ballot_type?: string
           district_id?: string | null
           district_rank?: number | null
@@ -5714,6 +5724,11 @@ export type Database = {
           votes?: number | null
         }
         Update: {
+          result_origin?: string | null
+          result_preliminary?: boolean | null
+          result_data_release?: string | null
+          result_notes?: string | null
+          result_snapshot?: Json | null
           ballot_type?: string
           district_id?: string | null
           district_rank?: number | null
@@ -16715,6 +16730,14 @@ export type Database = {
       configure_team_rituals: {
         Args: { p_enabled: boolean; p_tenant: string }
         Returns: undefined
+      }
+      assemble_election_history: {
+        Args: { selected_period: string }
+        Returns: undefined
+      }
+      get_election_history_assembly_status: {
+        Args: { selected_period: string }
+        Returns: Json
       }
       get_election_candidate_results: {
         Args: { selected_period: string; selected_district: string }
