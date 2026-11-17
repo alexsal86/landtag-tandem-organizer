@@ -6,7 +6,7 @@ import { historyTables, type HistoryEntity, type FormValues, parseHistoryForm } 
 import type { ElectionHistoryData, ElectionPeriod } from './types';
 import type { Json } from '@/integrations/supabase/types';
 
-const periodColumns = 'id,number,name,election_date,starts_on,election_year,ends_on,is_current,is_published,source_url,notes,boundary_geometry_year,boundary_geometry_confirmed,expected_ends_on,ends_on_is_expected';
+const periodColumns = 'id,number,name,election_date,starts_on,election_year,ends_on,is_current,is_published,source_url,notes,boundary_geometry_year,boundary_geometry_confirmed,expected_ends_on,ends_on_is_expected,seat_total,seat_distribution,seat_basis,seat_reference_date,seat_source_url,seat_notes';
 const personColumns = 'id,name,biography,source_url,history_complete';
 
 /** The small period index is the only query made before a selection. */
@@ -17,7 +17,7 @@ export function useElectionPeriods(): UseQueryResult<ElectionPeriod[], Error> {
     queryFn: async ({ signal }) => {
       const { data, error } = await supabase.from('election_history_periods').select(periodColumns).order('number', { ascending: false }).limit(100).abortSignal(signal);
       if (error) throw error;
-      return data || [];
+      return (data || []) as ElectionPeriod[];
     }, staleTime: 60_000, gcTime: 300_000, retry: false,
   });
 }

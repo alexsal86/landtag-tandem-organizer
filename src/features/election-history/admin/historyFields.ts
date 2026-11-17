@@ -1,3 +1,4 @@
+import { seatBasisLabels } from '../periodSeats';
 import { boundaryYearLabel } from '@/utils/electoralGeometryCatalog';
 import { ELECTORAL_TOPOLOGY_MANIFESTS } from '@/utils/electoralTopologyAsset';
 import type { ElectionHistoryData } from '../types';
@@ -7,7 +8,7 @@ export type GridEntity = Exclude<HistoryEntity, 'people'>;
 export type Field = {
   key: string;
   label: string;
-  type?: 'text' | 'number' | 'date' | 'url' | 'textarea' | 'checkbox' | 'select';
+  type?: 'text' | 'number' | 'date' | 'url' | 'textarea' | 'checkbox' | 'select' | 'seat_distribution';
   required?: boolean;
   min?: number;
   max?: number;
@@ -27,6 +28,12 @@ export const gridFields: Record<GridEntity, Field[]> = {
     { key: 'number', label: 'Nummer', type: 'number', min: 1, required: true },
     { key: 'name', label: 'Bezeichnung', required: true },
     { key: 'election_year', label: 'Wahljahr', type: 'number', min: 1900, max: 2200 },
+    { key: 'seat_total', label: 'Gesamtsitze', type: 'number', min: 1, max: 1000 },
+    { key: 'seat_distribution', label: 'Sitze nach Partei / Fraktion', type: 'seat_distribution' },
+    { key: 'seat_basis', label: 'Bezugsstand der Sitzzahlen', type: 'select' },
+    { key: 'seat_reference_date', label: 'Stichtag der Sitzverteilung (optional)', type: 'date' },
+    { key: 'seat_source_url', label: 'Quelle der Sitzzahlen', type: 'url' },
+    { key: 'seat_notes', label: 'Hinweise zur Sitzverteilung', type: 'textarea' },
     { key: 'election_date', label: 'Wahltag', type: 'date' },
     { key: 'starts_on', label: 'Beginn', type: 'date' },
     { key: 'ends_on', label: 'Ende', type: 'date' },
@@ -86,6 +93,7 @@ export function rowValues(row: ElectionHistoryData[HistoryEntity][number]): Form
 }
 
 export function optionsFor(key: string, data: ElectionHistoryData, values: FormValues): { value: string; label: string }[] {
+  if (key === 'seat_basis') return Object.entries(seatBasisLabels).map(([value, label]) => ({ value, label }));
   if (key === 'boundary_geometry_year') return Object.keys(ELECTORAL_TOPOLOGY_MANIFESTS).sort((a, b) => Number(a) - Number(b)).map(year => ({ value: year, label: `Grenzen ${boundaryYearLabel(Number(year))}` }));
   if (key === 'period_id') return data.periods.filter(period => !values.period_id || period.id === values.period_id).map(period => ({ value: period.id, label: period.name }));
   if (key === 'person_id') return data.people.map(person => ({ value: person.id, label: `${person.name}${person.biography ? ` · ${person.biography.slice(0, 60)}` : ''}` }));

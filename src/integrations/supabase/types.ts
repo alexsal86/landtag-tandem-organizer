@@ -5979,6 +5979,12 @@ export type Database = {
       }
       election_history_periods: {
         Row: {
+          seat_total: number | null
+          seat_distribution: Json
+          seat_basis: string
+          seat_reference_date: string | null
+          seat_source_url: string | null
+          seat_notes: string | null
           boundary_geometry_confirmed: boolean
           boundary_geometry_year: number | null
           election_date: string | null
@@ -5996,6 +6002,12 @@ export type Database = {
           starts_on: string | null
         }
         Insert: {
+          seat_total?: number | null
+          seat_distribution?: Json
+          seat_basis?: string
+          seat_reference_date?: string | null
+          seat_source_url?: string | null
+          seat_notes?: string | null
           boundary_geometry_confirmed?: boolean
           boundary_geometry_year?: number | null
           election_date?: string | null
@@ -6013,6 +6025,12 @@ export type Database = {
           starts_on?: string | null
         }
         Update: {
+          seat_total?: number | null
+          seat_distribution?: Json
+          seat_basis?: string
+          seat_reference_date?: string | null
+          seat_source_url?: string | null
+          seat_notes?: string | null
           boundary_geometry_confirmed?: boolean
           boundary_geometry_year?: number | null
           election_date?: string | null

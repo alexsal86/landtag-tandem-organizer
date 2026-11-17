@@ -1,3 +1,5 @@
+import { PeriodSeatSummary } from '../PeriodSeatSummary';
+import { SeatDistributionEditor } from './SeatDistributionEditor';
 import { CandidatePersonControl } from './CandidatePersonControl';
 import { PersonCareerDialog } from '../PersonCareer';
 import { candidacyOutcomeLabels, candidacyMandateStatus } from './candidateCareerModel';
@@ -34,6 +36,7 @@ const columns: Record<GridEntity, Column[]> = {
     { key: 'election_date', label: 'Wahltag', fieldKey: 'election_date' },
     { key: 'starts_on', label: 'Beginn', fieldKey: 'starts_on' },
     { key: 'ends_on', label: 'Ende', fieldKey: 'ends_on' },
+    { key: 'seats', label: 'Sitze / Parteien' },
     { key: 'counts', label: 'Datenbestand' },
     { key: 'status', label: 'Status' },
     { key: 'quality', label: 'Prüfung' },
@@ -227,6 +230,7 @@ export function HistoryDataGrid({ entity, data, selectedPeriodId, overview, onOp
     }
     if (entity === 'periods') {
       const period = row as ElectionPeriod;
+      if (key === 'seats') return <PeriodSeatSummary period={period} compact />;
       if (key === 'counts') {
         const count = overviewByPeriod.get(period.id);
         return count ? <span className="text-caption tabular-nums">{count.district_count} WK · {count.mandate_count} Mandate · {count.candidacy_count} Kand.</span> : 'Zähler laden …';
@@ -290,6 +294,7 @@ export function HistoryDataGrid({ entity, data, selectedPeriodId, overview, onOp
     const id = `grid-${entity}-${editing || 'new'}-${field.key}`;
     const common = { id, disabled: saving || creatingPerson, 'aria-label': field.label };
     if (entity === 'candidacies' && field.key === 'person_id') return <CandidatePersonControl key={id} id={id} value={String(values.person_id || '')} people={viewData.people} search={personSearch} onSearch={setPersonSearch} onSelect={personId => changeField('person_id', personId)} onCreated={person => { setCreatedPeople(current => [...current, person]); changeField('person_id', person.id); }} onBusyChange={setCreatingPerson} disabled={saving} searchError={personMatches.error} />;
+    if (field.type === 'seat_distribution') return <SeatDistributionEditor id={id} disabled={saving || creatingPerson} value={String(values[field.key] || '[]')} onChange={value => changeField(field.key, value)} />;
     if (field.type === 'select') return <select {...common} className="h-9 min-w-0 w-full max-w-full rounded-md border border-input bg-background px-2 text-sm" required={field.required} value={String(values[field.key] ?? '')} onChange={event => changeField(field.key, event.target.value)}><option value="">Bitte auswählen / keine Zuordnung</option>{optionsFor(field.key, viewData, values).map(option => <option key={option.value} value={option.value}>{option.label}</option>)}</select>;
     if (field.type === 'textarea') return <Textarea {...common} className="min-h-20 min-w-0 max-w-full" value={String(values[field.key] ?? '')} onChange={event => changeField(field.key, event.target.value)} />;
     if (entity === 'periods' && field.type === 'date') return <Input {...common} type="text" inputMode="numeric" lang="de" placeholder="TT.MM.JJJJ" pattern="[0-9]{2}\.[0-9]{2}\.[0-9]{4}" title="Datum im Format TT.MM.JJJJ" maxLength={10} required={field.required} className="h-9 min-w-0 w-full max-w-full tabular-nums" value={formatHistoryDateInput(String(values[field.key] || ''))} onChange={event => changeField(field.key, event.target.value)} />;
@@ -299,7 +304,7 @@ export function HistoryDataGrid({ entity, data, selectedPeriodId, overview, onOp
   const editorDetails = editing !== undefined ? <TableRow id={`history-editor-${entity}-${editing || 'new'}`} className="block scroll-mt-24 bg-muted/30 hover:bg-muted/30 xl:table-row"><TableCell colSpan={columns[entity].length + 1} className="block min-w-0 w-full p-3 xl:table-cell">
     <div className="min-w-0 space-y-3">
       {entity === 'mandates' && <div className="max-w-md"><Label htmlFor={`person-search-${entity}`}>Vorhandene Person suchen, auch frühere Kandidierende</Label><Input id={`person-search-${entity}`} value={personSearch} disabled={saving || creatingPerson} onChange={event => setPersonSearch(event.target.value)} placeholder="Mindestens 2 Anfangsbuchstaben · höchstens 20 Treffer" />{personMatches.error && <p role="alert" className="mt-1 text-caption text-destructive">Personensuche fehlgeschlagen.</p>}</div>}
-      <div className="grid min-w-0 grid-cols-1 gap-3 md:grid-cols-2 2xl:grid-cols-3">{editorFields.map(field => <div key={field.key} className={field.type === 'textarea' ? 'min-w-0 md:col-span-2 2xl:col-span-3' : 'min-w-0'}>
+      <div className="grid min-w-0 grid-cols-1 gap-3 md:grid-cols-2 2xl:grid-cols-3">{editorFields.map(field => <div key={field.key} className={(field.type === 'textarea' || field.type === 'seat_distribution') ? 'min-w-0 md:col-span-2 2xl:col-span-3' : 'min-w-0'}>
         <Label htmlFor={`grid-${entity}-${editing || 'new'}-${field.key}`} className={field.type === 'checkbox' ? 'flex items-center gap-2' : ''}>{field.type === 'checkbox' && fieldInput(field)}{field.label}{field.required ? ' *' : ''}</Label>
         {field.type !== 'checkbox' && fieldInput(field)}
         {entity === 'mandates' && (field.key === 'starts_on' || field.key === 'ends_on') && <p className="mt-1 text-caption text-muted-foreground">{values[field.key === 'starts_on' ? 'start_from_period' : 'end_from_period'] === true ? 'Aus der Legislaturperiode übernommen.' : field.key === 'starts_on' ? 'Nachrücker benötigen ihr eigenes Eintrittsdatum.' : 'Leer: Periodenende übernehmen, sofern kein vorzeitiger Austritt bekannt ist.'}</p>}

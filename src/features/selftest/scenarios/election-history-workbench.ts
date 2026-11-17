@@ -1,3 +1,4 @@
+import { parsePeriodSeats } from '@/features/election-history/periodSeats';
 import { candidacyMandateStatus, careerPeriods, type PersonCareer } from '@/features/election-history/admin/candidateCareerModel';
 import { supabase } from '@/integrations/supabase/client';
 import { uniqueStateListMatch, type StateListPerson } from '@/features/election-history/admin/stateListModel';
@@ -8,6 +9,15 @@ export const electionHistoryWorkbenchScenario: TestScenario = {
   features: ['election-history'], touches: [],
   limitations: ['Die Schreibberechtigungen, Listenplatz-Constraints und Trigger müssen zusätzlich mit Datenbank-Rollenszenarien geprüft werden.'],
   steps: [
+    { id: 'period-seat-snapshot', label: 'Sitzverteilung: unbekannte Gesamtsitze und Teilmengen bleiben unterscheidbar', kind: 'logic', run: async () => {
+      const subset = { seat_distribution: JSON.stringify([{ faction: 'CDU', seats: 50 }]), seat_basis: 'election_result' };
+      if (parsePeriodSeats(subset).seat_total !== null || parsePeriodSeats({ ...subset, seat_total: '121' }).seat_distribution[0].seats !== 50) throw new Error('Eine Teilmenge darf die Gesamtsitze nicht bestimmen.');
+      for (const invalid of [{ ...subset, seat_total: '49' }, { ...subset, seat_distribution: JSON.stringify([{ faction: 'CDU', seats: 50 }, { faction: ' cdu ', seats: 1 }]) }, { ...subset, seat_basis: 'as_of' }]) {
+        let rejected = false; try { parsePeriodSeats(invalid); } catch { rejected = true; }
+        if (!rejected) throw new Error('Ungültige Sitzverteilung wurde akzeptiert.');
+      }
+      return { ok: true, message: 'Teilmenge, doppelte Parteien, fehlender Stichtag und Gesamtsitze bleiben korrekt getrennt.' };
+    } },
     { id: 'candidate-before-member', label: 'Erfolglose Kandidatur bleibt mit späterem Mandat verbunden, ohne selbst als Mandat zu zählen', kind: 'logic', run: async () => {
       const candidate = { id: 'candidate', person_id: 'person', period_id: 'first', district_id: 'district', party: 'Partei', votes: 123, vote_share: 10, district_rank: 2, list_position: null, ballot_type: 'candidate' as const, outcome: 'not_elected' as const, source_url: null, notes: null, period_number: 1, period_name: 'Erste Periode', district_name: 'Wahlkreis', district_label: '1' };
       const laterMandate = { id: 'mandate', person_id: 'person', period_id: 'third', person_name: 'Person', original_mandate: null, party_label: null, left_early: false, district_id: 'district', candidacy_id: null, party: 'Partei', mandate_type: 'direct' as const, entry_type: 'election' as const, start_from_period: false, end_from_period: false, starts_on: '1980-01-01', ends_on: '1984-01-01', source_url: null, notes: null, period_number: 3, period_name: 'Dritte Periode', district_name: 'Wahlkreis', district_label: '1', end_is_expected: false };

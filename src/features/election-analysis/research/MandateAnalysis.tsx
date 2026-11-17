@@ -1,3 +1,4 @@
+import { PeriodSeatSummary } from '@/features/election-history/PeriodSeatSummary';
 import { AnalysisControls, AnalysisToolbarLayout } from "../AnalysisToolbar";
 import { useMemo, useState } from "react";
 import { useSearchParams } from "react-router-dom";
@@ -113,6 +114,7 @@ export default function MandateAnalysis() {
   return (
     <div className="space-y-4">
       <h2 className="text-xl font-semibold">Mandats- und Kandidatenanalyse</h2>
+      {period && <div className="rounded-lg border p-4"><PeriodSeatSummary period={period} /></div>}
       <DataState
         loading={periods.isLoading}
         error={periods.error}

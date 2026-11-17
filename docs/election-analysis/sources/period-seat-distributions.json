@@ -1,0 +1,499 @@
+{
+  "description": "Sitzverteilung nach der Wahl, ohne spätere Fraktionswechsel; historische Quelle: Tabelle 2, Seite 31.",
+  "periods": [
+    {
+      "number": 1,
+      "election_year": 1952,
+      "seat_total": 121,
+      "seat_distribution": [
+        {
+          "faction": "CDU",
+          "seats": 50
+        },
+        {
+          "faction": "SPD",
+          "seats": 38
+        },
+        {
+          "faction": "FDP/DVP",
+          "seats": 23
+        },
+        {
+          "faction": "BHE",
+          "seats": 6
+        },
+        {
+          "faction": "KPD",
+          "seats": 4
+        }
+      ],
+      "seat_basis": "election_result",
+      "seat_reference_date": null,
+      "seat_source_url": "https://www.statistik-bw.de/fileadmin/user_upload/Service/Veroeff/Statistisches_Monatsheft/Beitrag25_12_06.pdf",
+      "seat_notes": "Wahl zur Verfassunggebenden Landesversammlung. Nicht jede Partei bildete eine eigenständige Fraktion."
+    },
+    {
+      "number": 2,
+      "election_year": 1956,
+      "seat_total": 120,
+      "seat_distribution": [
+        {
+          "faction": "CDU",
+          "seats": 56
+        },
+        {
+          "faction": "SPD",
+          "seats": 36
+        },
+        {
+          "faction": "FDP/DVP",
+          "seats": 21
+        },
+        {
+          "faction": "GB/BHE",
+          "seats": 7
+        }
+      ],
+      "seat_basis": "election_result",
+      "seat_reference_date": null,
+      "seat_source_url": "https://www.statistik-bw.de/fileadmin/user_upload/Service/Veroeff/Statistisches_Monatsheft/Beitrag25_12_06.pdf",
+      "seat_notes": null
+    },
+    {
+      "number": 3,
+      "election_year": 1960,
+      "seat_total": 121,
+      "seat_distribution": [
+        {
+          "faction": "CDU",
+          "seats": 52
+        },
+        {
+          "faction": "SPD",
+          "seats": 44
+        },
+        {
+          "faction": "FDP/DVP",
+          "seats": 18
+        },
+        {
+          "faction": "GB/BHE",
+          "seats": 7
+        }
+      ],
+      "seat_basis": "election_result",
+      "seat_reference_date": "1961-03-12",
+      "seat_source_url": "https://www.statistik-bw.de/fileadmin/user_upload/Service/Veroeff/Statistisches_Monatsheft/Beitrag25_12_06.pdf",
+      "seat_notes": "Einschließlich der Wiederholungswahl am 12.03.1961 in zwei Wahlkreisen."
+    },
+    {
+      "number": 4,
+      "election_year": 1964,
+      "seat_total": 120,
+      "seat_distribution": [
+        {
+          "faction": "CDU",
+          "seats": 59
+        },
+        {
+          "faction": "SPD",
+          "seats": 47
+        },
+        {
+          "faction": "FDP/DVP",
+          "seats": 14
+        }
+      ],
+      "seat_basis": "election_result",
+      "seat_reference_date": null,
+      "seat_source_url": "https://www.statistik-bw.de/fileadmin/user_upload/Service/Veroeff/Statistisches_Monatsheft/Beitrag25_12_06.pdf",
+      "seat_notes": null
+    },
+    {
+      "number": 5,
+      "election_year": 1968,
+      "seat_total": 127,
+      "seat_distribution": [
+        {
+          "faction": "CDU",
+          "seats": 60
+        },
+        {
+          "faction": "SPD",
+          "seats": 37
+        },
+        {
+          "faction": "FDP/DVP",
+          "seats": 18
+        },
+        {
+          "faction": "NPD",
+          "seats": 12
+        }
+      ],
+      "seat_basis": "election_result",
+      "seat_reference_date": null,
+      "seat_source_url": "https://www.statistik-bw.de/fileadmin/user_upload/Service/Veroeff/Statistisches_Monatsheft/Beitrag25_12_06.pdf",
+      "seat_notes": null
+    },
+    {
+      "number": 6,
+      "election_year": 1972,
+      "seat_total": 120,
+      "seat_distribution": [
+        {
+          "faction": "CDU",
+          "seats": 65
+        },
+        {
+          "faction": "SPD",
+          "seats": 45
+        },
+        {
+          "faction": "FDP/DVP",
+          "seats": 10
+        }
+      ],
+      "seat_basis": "election_result",
+      "seat_reference_date": null,
+      "seat_source_url": "https://www.statistik-bw.de/fileadmin/user_upload/Service/Veroeff/Statistisches_Monatsheft/Beitrag25_12_06.pdf",
+      "seat_notes": null
+    },
+    {
+      "number": 7,
+      "election_year": 1976,
+      "seat_total": 121,
+      "seat_distribution": [
+        {
+          "faction": "CDU",
+          "seats": 71
+        },
+        {
+          "faction": "SPD",
+          "seats": 41
+        },
+        {
+          "faction": "FDP/DVP",
+          "seats": 9
+        }
+      ],
+      "seat_basis": "election_result",
+      "seat_reference_date": null,
+      "seat_source_url": "https://www.statistik-bw.de/fileadmin/user_upload/Service/Veroeff/Statistisches_Monatsheft/Beitrag25_12_06.pdf",
+      "seat_notes": null
+    },
+    {
+      "number": 8,
+      "election_year": 1980,
+      "seat_total": 124,
+      "seat_distribution": [
+        {
+          "faction": "CDU",
+          "seats": 68
+        },
+        {
+          "faction": "SPD",
+          "seats": 40
+        },
+        {
+          "faction": "FDP/DVP",
+          "seats": 10
+        },
+        {
+          "faction": "Grüne",
+          "seats": 6
+        }
+      ],
+      "seat_basis": "election_result",
+      "seat_reference_date": null,
+      "seat_source_url": "https://www.statistik-bw.de/fileadmin/user_upload/Service/Veroeff/Statistisches_Monatsheft/Beitrag25_12_06.pdf",
+      "seat_notes": null
+    },
+    {
+      "number": 9,
+      "election_year": 1984,
+      "seat_total": 126,
+      "seat_distribution": [
+        {
+          "faction": "CDU",
+          "seats": 68
+        },
+        {
+          "faction": "SPD",
+          "seats": 41
+        },
+        {
+          "faction": "FDP/DVP",
+          "seats": 8
+        },
+        {
+          "faction": "Grüne",
+          "seats": 9
+        }
+      ],
+      "seat_basis": "election_result",
+      "seat_reference_date": null,
+      "seat_source_url": "https://www.statistik-bw.de/fileadmin/user_upload/Service/Veroeff/Statistisches_Monatsheft/Beitrag25_12_06.pdf",
+      "seat_notes": null
+    },
+    {
+      "number": 10,
+      "election_year": 1988,
+      "seat_total": 125,
+      "seat_distribution": [
+        {
+          "faction": "CDU",
+          "seats": 66
+        },
+        {
+          "faction": "SPD",
+          "seats": 42
+        },
+        {
+          "faction": "FDP/DVP",
+          "seats": 7
+        },
+        {
+          "faction": "Grüne",
+          "seats": 10
+        }
+      ],
+      "seat_basis": "election_result",
+      "seat_reference_date": null,
+      "seat_source_url": "https://www.statistik-bw.de/fileadmin/user_upload/Service/Veroeff/Statistisches_Monatsheft/Beitrag25_12_06.pdf",
+      "seat_notes": null
+    },
+    {
+      "number": 11,
+      "election_year": 1992,
+      "seat_total": 146,
+      "seat_distribution": [
+        {
+          "faction": "CDU",
+          "seats": 64
+        },
+        {
+          "faction": "SPD",
+          "seats": 46
+        },
+        {
+          "faction": "FDP/DVP",
+          "seats": 8
+        },
+        {
+          "faction": "Grüne",
+          "seats": 13
+        },
+        {
+          "faction": "REP",
+          "seats": 15
+        }
+      ],
+      "seat_basis": "election_result",
+      "seat_reference_date": null,
+      "seat_source_url": "https://www.statistik-bw.de/fileadmin/user_upload/Service/Veroeff/Statistisches_Monatsheft/Beitrag25_12_06.pdf",
+      "seat_notes": null
+    },
+    {
+      "number": 12,
+      "election_year": 1996,
+      "seat_total": 155,
+      "seat_distribution": [
+        {
+          "faction": "CDU",
+          "seats": 69
+        },
+        {
+          "faction": "SPD",
+          "seats": 39
+        },
+        {
+          "faction": "FDP/DVP",
+          "seats": 14
+        },
+        {
+          "faction": "Grüne",
+          "seats": 19
+        },
+        {
+          "faction": "REP",
+          "seats": 14
+        }
+      ],
+      "seat_basis": "election_result",
+      "seat_reference_date": null,
+      "seat_source_url": "https://www.statistik-bw.de/fileadmin/user_upload/Service/Veroeff/Statistisches_Monatsheft/Beitrag25_12_06.pdf",
+      "seat_notes": null
+    },
+    {
+      "number": 13,
+      "election_year": 2001,
+      "seat_total": 128,
+      "seat_distribution": [
+        {
+          "faction": "CDU",
+          "seats": 63
+        },
+        {
+          "faction": "SPD",
+          "seats": 45
+        },
+        {
+          "faction": "FDP/DVP",
+          "seats": 10
+        },
+        {
+          "faction": "Grüne",
+          "seats": 10
+        }
+      ],
+      "seat_basis": "election_result",
+      "seat_reference_date": null,
+      "seat_source_url": "https://www.statistik-bw.de/fileadmin/user_upload/Service/Veroeff/Statistisches_Monatsheft/Beitrag25_12_06.pdf",
+      "seat_notes": null
+    },
+    {
+      "number": 14,
+      "election_year": 2006,
+      "seat_total": 139,
+      "seat_distribution": [
+        {
+          "faction": "CDU",
+          "seats": 69
+        },
+        {
+          "faction": "SPD",
+          "seats": 38
+        },
+        {
+          "faction": "FDP/DVP",
+          "seats": 15
+        },
+        {
+          "faction": "Grüne",
+          "seats": 17
+        }
+      ],
+      "seat_basis": "election_result",
+      "seat_reference_date": null,
+      "seat_source_url": "https://www.statistik-bw.de/fileadmin/user_upload/Service/Veroeff/Statistisches_Monatsheft/Beitrag25_12_06.pdf",
+      "seat_notes": null
+    },
+    {
+      "number": 15,
+      "election_year": 2011,
+      "seat_total": 138,
+      "seat_distribution": [
+        {
+          "faction": "CDU",
+          "seats": 60
+        },
+        {
+          "faction": "SPD",
+          "seats": 35
+        },
+        {
+          "faction": "FDP/DVP",
+          "seats": 7
+        },
+        {
+          "faction": "Grüne",
+          "seats": 36
+        }
+      ],
+      "seat_basis": "election_result",
+      "seat_reference_date": null,
+      "seat_source_url": "https://www.statistik-bw.de/fileadmin/user_upload/Service/Veroeff/Statistisches_Monatsheft/Beitrag25_12_06.pdf",
+      "seat_notes": null
+    },
+    {
+      "number": 16,
+      "election_year": 2016,
+      "seat_total": 143,
+      "seat_distribution": [
+        {
+          "faction": "CDU",
+          "seats": 42
+        },
+        {
+          "faction": "SPD",
+          "seats": 19
+        },
+        {
+          "faction": "FDP/DVP",
+          "seats": 12
+        },
+        {
+          "faction": "Grüne",
+          "seats": 47
+        },
+        {
+          "faction": "AfD",
+          "seats": 23
+        }
+      ],
+      "seat_basis": "election_result",
+      "seat_reference_date": null,
+      "seat_source_url": "https://www.statistik-bw.de/fileadmin/user_upload/Service/Veroeff/Statistisches_Monatsheft/Beitrag25_12_06.pdf",
+      "seat_notes": null
+    },
+    {
+      "number": 17,
+      "election_year": 2021,
+      "seat_total": 154,
+      "seat_distribution": [
+        {
+          "faction": "CDU",
+          "seats": 42
+        },
+        {
+          "faction": "SPD",
+          "seats": 19
+        },
+        {
+          "faction": "FDP/DVP",
+          "seats": 18
+        },
+        {
+          "faction": "Grüne",
+          "seats": 58
+        },
+        {
+          "faction": "AfD",
+          "seats": 17
+        }
+      ],
+      "seat_basis": "election_result",
+      "seat_reference_date": null,
+      "seat_source_url": "https://www.statistik-bw.de/fileadmin/user_upload/Service/Veroeff/Statistisches_Monatsheft/Beitrag25_12_06.pdf",
+      "seat_notes": null
+    },
+    {
+      "number": 18,
+      "election_year": 2026,
+      "seat_total": 157,
+      "seat_distribution": [
+        {
+          "faction": "CDU",
+          "seats": 56
+        },
+        {
+          "faction": "SPD",
+          "seats": 10
+        },
+        {
+          "faction": "Grüne",
+          "seats": 56
+        },
+        {
+          "faction": "AfD",
+          "seats": 35
+        }
+      ],
+      "seat_basis": "election_result",
+      "seat_reference_date": "2026-03-27",
+      "seat_source_url": "https://www.landtag-bw.de/de/aktuelles/themen/landtagswahl-2026",
+      "seat_notes": "Amtliches Endergebnis, festgestellt am 27.03.2026."
+    }
+  ]
+}

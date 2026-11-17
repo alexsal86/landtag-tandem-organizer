@@ -1,3 +1,4 @@
+import { parsePeriodSeats } from './periodSeats';
 import { electoralGeometryYear } from '@/utils/electoralTopology';
 import { normalizeGeoJsonGeometry } from '@/hooks/geoContracts';
 import { hasRenderableBoundary } from '@/features/election-districts/mapModel';
@@ -66,7 +67,7 @@ export function parseHistoryForm(entity: HistoryEntity, v: FormValues): ParsedHi
       const number = numberValue(v, 'number', 1);
       if (number === null) throw new Error('Bitte eine Legislatur-Nummer angeben.');
       if (v.is_current === true && v.is_published !== true) throw new Error('Die aktuelle Periode muss freigegeben sein.');
-      return { entity, data: { number, name: required(v, 'name'), election_year, boundary_geometry_year, boundary_geometry_confirmed, election_date, starts_on, ends_on, expected_ends_on: dateValue(v, 'expected_ends_on', false), ends_on_is_expected: v.ends_on_is_expected === true, is_current: v.is_current === true, is_published: v.is_published === true, source_url, notes } } as const;
+      return { entity, data: { ...parsePeriodSeats(v), number, name: required(v, 'name'), election_year, boundary_geometry_year, boundary_geometry_confirmed, election_date, starts_on, ends_on, expected_ends_on: dateValue(v, 'expected_ends_on', false), ends_on_is_expected: v.ends_on_is_expected === true, is_current: v.is_current === true, is_published: v.is_published === true, source_url, notes } } as const;
     }
     case 'people': return { entity, data: { name: required(v, 'name'), biography: optional(v, 'biography'), history_complete: v.history_complete === true, source_url } } as const;
     case 'districts': {
