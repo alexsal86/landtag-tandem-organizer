@@ -1,3 +1,4 @@
+import { candidateResultConflict, type LinkedCandidateResult } from '@/features/election-history/candidateResults';
 import { portraitCrop, portraitSource, isDeputyPortrait } from '@/features/election-history/portrait';
 import { canConfirmDeputySelection, connectedDeputyMandates, deputyHistoryAction } from '@/features/election-history/deputySelection';
 import { projectHistoricalDistricts } from '@/features/election-history/mapProjection';
@@ -18,6 +19,13 @@ export const electionMapScenario: TestScenario = {
   touches: [], features: ['election-districts'],
   limitations: ['Die visuelle Ebenenreihenfolge und mobile Bedienung werden separat im Browser geprüft.'],
   steps: [
+    { id: 'candidate-result-conflicts', label: 'Persönliche Ergebnisse und zugeordnete Wahlkreisergebnisse bleiben getrennt', kind: 'logic', run: async () => {
+      const row: LinkedCandidateResult = { candidacy_id: 'c', person_id: 'p', person_name: 'Person', party: 'SPD', votes: 100, vote_share: 20, ballot_type: 'candidate', link_status: 'linked', district_result: { ballot: 'single', votes: 100, share: 20, preliminary: true, data_release: null, notes: null } };
+      if (candidateResultConflict(row) || candidateResultConflict({ ...row, votes: null, vote_share: null })) throw new Error('Gleiche oder fehlende persönliche Werte sind keine Konflikte.');
+      if (!candidateResultConflict({ ...row, votes: 101 }) || !candidateResultConflict({ ...row, vote_share: 20.1 })) throw new Error('Abweichende Stimmen und Anteile müssen sichtbar bleiben.');
+      if (candidateResultConflict({ ...row, link_status: 'ambiguous', votes: 101 }) || candidateResultConflict({ ...row, district_result: null })) throw new Error('Ohne eindeutige Verknüpfung darf kein Vergleich behauptet werden.');
+      return { ok: true, message: 'Konflikte sind sichtbar; fehlende Werte bleiben unbekannt.' };
+    } },
     { id: 'deputy-portrait-crop', label: 'Porträtausschnitt füllt den 3:4-Rahmen; sichere Bildnachweise bleiben an ihrer Mandatsverbindung', kind: 'logic', run: async () => {
       for (const [width, height] of [[1200, 600], [400, 1600], [100, 100]]) {
         for (const zoom of [1, 4]) {

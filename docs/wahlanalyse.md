@@ -768,3 +768,32 @@ bleiben bis zur regional eindeutigen Zuordnung archiviert. Alle sieben Blätter,
 weitere Nutzungsmöglichkeiten und Einschränkungen sind in
 [der Quellenbewertung](election-analysis/sources/district-history-workbook.md)
 dokumentiert. Keine Tests ausgeführt; kein Live-Datenbankimport.
+
+### Kandidaturen mit Wahlkreisergebnissen verknüpfen
+
+Die historische Wahlkreisansicht zeigt für die ausgewählte Periode und den
+gewählten Wahlkreis die erfassten Kandidaturen samt zugehörigem Analyseergebnis.
+`get_election_candidate_results` liest ausschließlich diesen Wahlkreis und
+veröffentlichte Perioden/Jahre unter bestehendem RLS. Die Zuordnung nutzt vorhandene
+Kandidatur-IDs, dieselbe Periode, die bestätigte historische Wahlkreisverbindung und
+die Partei (einschließlich FDP/DVP → FDP). Mehrere Kandidaturen derselben Partei
+verhindern die Zuordnung. Vor 2026 gilt `candidate`/Einzelstimme, ab 2026
+`first_vote`/Erststimme; Zweitstimmen werden nie als persönliches Ergebnis gelesen.
+
+Persönlich gespeicherte Stimmen/Anteile und das zugeordnete Ergebnis bleiben
+getrennt sichtbar. Abweichungen oberhalb 0,00001 Prozentpunkten oder unterschiedliche
+absolute Stimmen werden gekennzeichnet. Vorläufigkeit, Datenstand und Quellenhinweise
+bleiben am Ergebnis sichtbar. Die Verknüpfung bestätigt keine Originalquelle oder
+vollständige Kandidatenabdeckung. Fehlende Daten bleiben unbekannt. Mandatsnamen,
+Fraktionen, Nachfolge oder spätere Parteizugehörigkeit erzeugen keine Kandidaturen.
+Die Abgeordneten-/Personenregister und die widersprüchlichen Excel-Werte werden
+nicht verändert. Neue Ergebnisimporte sind durch die Leseverknüpfung nach Ablauf
+des kurzen Abfragecaches verfügbar, ohne persönlichen Ergebnisstand zu überschreiben.
+
+Migration: `20261117110000_link_candidate_district_results.sql`. Ein Logikschritt
+im Selbsttest-Center wurde ergänzt, auf ausdrücklichen Wunsch aber nicht ausgeführt.
+Kein Live-Datenbankimport in dieser Sitzung.
+Die gleiche Zuordnung ist auch im Wahlkreis-Steckbrief der Wahlanalyse sichtbar;
+dort wird ausschließlich die zum ausgewählten Jahr gehörende bestätigte Verbindung
+verwendet. Erststimmen bleiben unabhängig von einer Zweitstimmenauswahl ausdrücklich
+als Erststimmen beschriftet.

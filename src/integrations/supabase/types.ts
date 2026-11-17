@@ -16716,6 +16716,10 @@ export type Database = {
         Args: { p_enabled: boolean; p_tenant: string }
         Returns: undefined
       }
+      get_election_candidate_results: {
+        Args: { selected_period: string; selected_district: string }
+        Returns: Json
+      }
       confirm_analysis_candidate_identity: {
         Args: { candidacy: string }
         Returns: undefined

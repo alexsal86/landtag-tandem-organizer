@@ -1,3 +1,4 @@
+import { CandidateDistrictResults } from './CandidateDistrictResults';
 import { formatMandateType } from './mandateLabel';
 import { DistrictBoundarySection } from './DistrictBoundarySection';
 import { PersonElectionSummary } from './PersonElectionSummary';
@@ -33,7 +34,7 @@ export function DistrictElectionHistory({ data, periodId, districtId }: { data: 
       </div>;
     })}
     {district && !mandates.length && <p className="text-sm text-muted-foreground">Noch keine Mandate für diese Periode erfasst.</p>}
-    {district && data.candidacies.some(c => c.district_id === district.id) && <details className="border-t pt-2"><summary className="cursor-pointer text-xs text-muted-foreground">Persönliche Wahlkreisergebnisse</summary><div className="mt-2 space-y-2">{data.candidacies.filter(c => c.district_id === district.id).map(c => <div key={c.id} className="text-sm">{data.people.find(p => p.id === c.person_id)?.name} · {c.party}<p className="text-xs text-muted-foreground">{formatPersonalResult(c)}</p></div>)}</div></details>}
+    {district && <CandidateDistrictResults key={district.id} periodId={periodId} districtId={district.id} />}
     <p className="text-xs text-muted-foreground">Andere historische Wahlkreise und Abgeordnete über die Legislaturauswahl anzeigen.</p>
   </div>;
 }

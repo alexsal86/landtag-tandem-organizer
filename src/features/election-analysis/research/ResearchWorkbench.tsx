@@ -1,3 +1,5 @@
+import { CandidateDistrictResults } from '@/features/election-history/CandidateDistrictResults';
+import { useElectionPeriods } from '@/features/election-history/useElectionHistory';
 import { formatMandateType } from '@/features/election-history/mandateLabel';
 import { ProfileBoundarySection } from "./ProfileBoundarySection";
 import { AnalysisControls } from "../AnalysisToolbar";
@@ -117,6 +119,10 @@ function DistrictProfile({
   set,
 }: Props & { district: number; set: SetParam }) {
   const versions = useDistrictVersions(year);
+  const periods = useElectionPeriods();
+  const candidatePeriod = periods.data?.find(period => period.election_year === year && period.is_published);
+  const candidateVersion = versions.data?.find(version => version.year === year && version.district_number === district && version.history_link_verified);
+
   const query = useDistrictSeries(district, years);
   const [historyOpen, setHistoryOpen] = useState(false);
   const history = useDistrictHistory(district, year, historyOpen);
@@ -223,6 +229,11 @@ function DistrictProfile({
       <h2 className="text-xl font-semibold">
         {district}: {name}
       </h2>
+      {candidatePeriod && candidateVersion?.historical_district_id && <CandidateDistrictResults
+        key={`${candidatePeriod.id}:${candidateVersion.historical_district_id}`}
+        periodId={candidatePeriod.id} districtId={candidateVersion.historical_district_id}
+      />}
+      {periods.error && <p role="alert" className="text-xs">Die Legislaturperiode für Kandidaturergebnisse konnte nicht geladen werden. <Button variant="ghost" onClick={() => void periods.refetch()}>Erneut laden</Button></p>}
       <ProfileBoundarySection
         key={`${year}:${district}`}
         year={year}
