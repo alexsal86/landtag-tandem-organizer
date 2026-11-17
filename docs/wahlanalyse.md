@@ -872,6 +872,15 @@ Falls der SQL-Editor noch „current transaction is aborted“ meldet, zuerst `R
 ausführen und danach die aktualisierte Datei vollständig starten. Keine Tests
 oder Live-Datenbankausführungen in dieser Sitzung.
 
+### SQL-Editor: Anführungszeichen im 1952er Datenstand
+
+Die Zusammenführungsmigration enthält zusätzlich die Korrektur des fehlenden
+schließenden Anführungszeichens beim 1952er `r.data_release`. Dieses verursachte
+die Folgemeldung „trailing junk after numeric literal“ am SHA-256 in `r.notes`.
+Bei diesem Fehler die aktualisierte `20261117120000_assemble_history_candidacy_results.sql`
+vollständig erneut ausführen, gegebenenfalls nach `ROLLBACK;` bei einer weiterhin
+abgebrochenen SQL-Editor-Transaktion. Keine Tests oder Live-Ausführung erfolgt.
+
 ### Bestätigte Ergebnisfehler aus dem Version-6-Abgleich
 
 `20261117130000_reviewed_district_corrections.sql` aktualisiert gezielt die

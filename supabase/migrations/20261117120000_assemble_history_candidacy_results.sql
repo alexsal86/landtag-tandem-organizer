@@ -428,7 +428,7 @@ BEGIN
      AND source.party=public.history_result_party(c.party);
    IF FOUND THEN
     r.year:=1952; r.ballot:='single'; r.share:=legacy.share; r.votes:=NULL; r.preliminary:=false;
-    r.data_release:='workbook-original-1952-58b24038341d;
+    r.data_release:='workbook-original-1952-58b24038341d';
     r.notes:='Arbeitsmappe SHA-256 58b24038341dce23fa93fdd0e34b6f7742228e846fb82fe562ba6c37f219a93b; Wahlkreise gesamt 1952–2026, Zeile '||legacy.source_row||'; '||legacy.source_url||'; explizite Originalmandats-ID, keine Geometriezuordnung. Originalquelle nicht unabhängig geprüft.';
    END IF;
   END IF;
