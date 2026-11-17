@@ -180,6 +180,7 @@
 }
 .deputy-family-name {
   display: block;
+  font-family: Georgia, 'Times New Roman', serif;
   font-size: 31px;
   font-weight: 400;
 }
