@@ -1,3 +1,4 @@
+import { factionResultCode, resolveFaction, type HistoryFaction } from '@/features/election-history/factions';
 import { parsePeriodSeats } from '@/features/election-history/periodSeats';
 import { candidacyMandateStatus, careerPeriods, type PersonCareer } from '@/features/election-history/admin/candidateCareerModel';
 import { supabase } from '@/integrations/supabase/client';
@@ -9,6 +10,18 @@ export const electionHistoryWorkbenchScenario: TestScenario = {
   features: ['election-history'], touches: [],
   limitations: ['Die Schreibberechtigungen, Listenplatz-Constraints und Trigger müssen zusätzlich mit Datenbank-Rollenszenarien geprüft werden.'],
   steps: [
+    { id: 'central-factions', label: 'Fraktionen: eindeutige Schreibweisen und historische Gruppen', kind: 'logic', run: async () => {
+      const factions: HistoryFaction[] = [
+        { id: 'fdp', name: 'FDP/DVP', full_name: null, aliases: ['FDP'], is_active: true },
+        { id: 'bhe', name: 'BHE', full_name: null, aliases: [], is_active: true },
+        { id: 'gb', name: 'GB/BHE', full_name: null, aliases: [], is_active: true },
+      ];
+      if (factionResultCode('Liberale', [{ ...factions[0], name: 'Liberale', result_code: 'FDP' }]) !== 'FDP') throw new Error('Eine Umbenennung darf amtliche Ergebnisverknüpfungen nicht ändern.');
+      if (resolveFaction('  fdp  ', factions)?.id !== 'fdp') throw new Error('Bekannte Schreibweisen müssen den gemeinsamen Eintrag wählen.');
+      if (resolveFaction('BHE', factions)?.id === resolveFaction('GB/BHE', factions)?.id) throw new Error('Verschiedene historische Gruppen dürfen nicht verschmelzen.');
+      if (resolveFaction('Unbekannt', factions) || resolveFaction('FDP', [...factions, { ...factions[0], id: 'conflict' }])) throw new Error('Unbekannte oder mehrdeutige Schreibweisen müssen offen bleiben.');
+      return { ok: true, message: 'Bekannte Varianten werden vereinheitlicht, historische und unbekannte Gruppen bleiben unterscheidbar.' };
+    } },
     { id: 'period-seat-snapshot', label: 'Sitzverteilung: unbekannte Gesamtsitze und Teilmengen bleiben unterscheidbar', kind: 'logic', run: async () => {
       const subset = { seat_distribution: JSON.stringify([{ faction: 'CDU', seats: 50 }]), seat_basis: 'election_result' };
       if (parsePeriodSeats(subset).seat_total !== null || parsePeriodSeats({ ...subset, seat_total: '121' }).seat_distribution[0].seats !== 50) throw new Error('Eine Teilmenge darf die Gesamtsitze nicht bestimmen.');

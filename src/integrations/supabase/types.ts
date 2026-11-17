@@ -5977,6 +5977,12 @@ export type Database = {
         }
         Relationships: []
       }
+      election_history_factions: {
+        Row: { id: string; result_code: string; name: string; full_name: string | null; aliases: string[]; is_active: boolean }
+        Insert: { id?: string; name: string; full_name?: string | null; aliases?: string[]; is_active?: boolean }
+        Update: { name?: string; full_name?: string | null; aliases?: string[]; is_active?: boolean }
+        Relationships: []
+      }
       election_history_periods: {
         Row: {
           seat_total: number | null

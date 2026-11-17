@@ -1,3 +1,4 @@
+import { FactionSelect } from './FactionSelect';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
 import { Label } from '@/components/ui/label';
@@ -10,7 +11,7 @@ export function SeatDistributionEditor({ id, value, disabled, onChange }: { id: 
   const sum = rows.reduce((n, row) => n + (/^\d+$/.test(String(row.seats)) ? Number(row.seats) : 0), 0);
   return <div className="min-w-0 space-y-3">
     {rows.map((row, index) => <div key={index} className="grid min-w-0 items-end gap-2 sm:grid-cols-[minmax(0,1fr)_7rem_auto]">
-      <div className="min-w-0"><Label htmlFor={index === 0 ? id : `${id}-${index}-faction`}>Partei / Fraktion</Label><Input id={index === 0 ? id : `${id}-${index}-faction`} value={row.faction} disabled={disabled} maxLength={100} onChange={event => update(index, { faction: event.target.value })} /></div>
+      <div className="min-w-0"><Label htmlFor={index === 0 ? id : `${id}-${index}-faction`}>Partei / Fraktion</Label><FactionSelect id={index === 0 ? id : `${id}-${index}-faction`} value={row.faction} disabled={disabled} required onChange={faction => update(index, { faction })} /></div>
       <div className="min-w-0"><Label htmlFor={`${id}-${index}-seats`}>Sitze</Label><Input id={`${id}-${index}-seats`} type="number" min={0} max={1000} step={1} value={row.seats} disabled={disabled} onChange={event => update(index, { seats: event.target.value })} /></div>
       <Button type="button" variant="outline" className="max-w-full" disabled={disabled} aria-label={`${row.faction || 'Eintrag'} entfernen`} onClick={() => onChange(JSON.stringify(rows.filter((_, i) => i !== index)))}>Entfernen</Button>
     </div>)}

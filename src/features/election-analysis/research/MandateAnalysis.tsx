@@ -1,3 +1,4 @@
+import { useHistoryFactions } from '@/features/election-history/useHistoryFactions';
 import { PeriodSeatSummary } from '@/features/election-history/PeriodSeatSummary';
 import { AnalysisControls, AnalysisToolbarLayout } from "../AnalysisToolbar";
 import { useMemo, useState } from "react";
@@ -34,6 +35,7 @@ const kinds = {
 export default function MandateAnalysis() {
   const [params, setParams] = useSearchParams();
   const periods = useElectionPeriods();
+  const factions = useHistoryFactions();
   const published = periods.data?.filter((p) => p.is_published) || [];
   const period =
     published.find((p) => p.id === params.get("analysisPeriod")) ||
@@ -94,9 +96,10 @@ export default function MandateAnalysis() {
             versions.data || [],
             references.data || [],
             verified.data || [],
+            factions.data || [],
           )
         : [],
-    [ready, current.data, versions.data, references.data, verified.data],
+    [ready, current.data, versions.data, references.data, verified.data, factions.data],
   );
   const set = (key: string, value: string) =>
     setParams((old) => {

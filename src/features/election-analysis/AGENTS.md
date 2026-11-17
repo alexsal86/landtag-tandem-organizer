@@ -17,3 +17,5 @@
 - Deputy portraits are static public/images/abgeordnete assets shared by Administration and the analysis reader. Only verified platform Super Admins may invoke save-deputy-portrait; the server independently checks authentication, is_superadmin and the connection. Portrait writes go to a fixed GitHub main path with one atomic commit, never to Supabase Storage. Editing portraits does not enable mandate mutations in the reader.
 
 - The mandate reader may display the selected published history period's sourced seat snapshot. It never overwrites election_analysis_* results or calculates total seats from the selected party subset.
+
+- History faction labels may be renamed centrally. Candidate comparisons and assembly resolve them through the catalog's immutable result_code; never match a renamed display label directly against official election_analysis_* party codes.

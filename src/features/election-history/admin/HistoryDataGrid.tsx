@@ -1,3 +1,4 @@
+import { FactionSelect } from './FactionSelect';
 import { PeriodSeatSummary } from '../PeriodSeatSummary';
 import { SeatDistributionEditor } from './SeatDistributionEditor';
 import { CandidatePersonControl } from './CandidatePersonControl';
@@ -294,6 +295,7 @@ export function HistoryDataGrid({ entity, data, selectedPeriodId, overview, onOp
     const id = `grid-${entity}-${editing || 'new'}-${field.key}`;
     const common = { id, disabled: saving || creatingPerson, 'aria-label': field.label };
     if (entity === 'candidacies' && field.key === 'person_id') return <CandidatePersonControl key={id} id={id} value={String(values.person_id || '')} people={viewData.people} search={personSearch} onSearch={setPersonSearch} onSelect={personId => changeField('person_id', personId)} onCreated={person => { setCreatedPeople(current => [...current, person]); changeField('person_id', person.id); }} onBusyChange={setCreatingPerson} disabled={saving} searchError={personMatches.error} />;
+    if (field.type === 'faction') return <FactionSelect id={id} value={String(values[field.key] || '')} disabled={saving || creatingPerson} required={field.required} onChange={value => changeField(field.key, value)} />;
     if (field.type === 'seat_distribution') return <SeatDistributionEditor id={id} disabled={saving || creatingPerson} value={String(values[field.key] || '[]')} onChange={value => changeField(field.key, value)} />;
     if (field.type === 'select') return <select {...common} className="h-9 min-w-0 w-full max-w-full rounded-md border border-input bg-background px-2 text-sm" required={field.required} value={String(values[field.key] ?? '')} onChange={event => changeField(field.key, event.target.value)}><option value="">Bitte auswählen / keine Zuordnung</option>{optionsFor(field.key, viewData, values).map(option => <option key={option.value} value={option.value}>{option.label}</option>)}</select>;
     if (field.type === 'textarea') return <Textarea {...common} className="min-h-20 min-w-0 max-w-full" value={String(values[field.key] ?? '')} onChange={event => changeField(field.key, event.target.value)} />;

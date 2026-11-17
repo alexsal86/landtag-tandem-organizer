@@ -8,7 +8,7 @@ export type GridEntity = Exclude<HistoryEntity, 'people'>;
 export type Field = {
   key: string;
   label: string;
-  type?: 'text' | 'number' | 'date' | 'url' | 'textarea' | 'checkbox' | 'select' | 'seat_distribution';
+  type?: 'text' | 'number' | 'date' | 'url' | 'textarea' | 'checkbox' | 'select' | 'seat_distribution' | 'faction';
   required?: boolean;
   min?: number;
   max?: number;
@@ -20,7 +20,7 @@ const sourceField: Field = { key: 'source_url', label: 'Quelle / Quellen-URL', t
 const periodField: Field = { key: 'period_id', label: 'Legislaturperiode', type: 'select', required: true };
 const personField: Field = { key: 'person_id', label: 'Zugeordnete Person', type: 'select' };
 const districtField: Field = { key: 'district_id', label: 'Wahlkreis', type: 'select', help: 'Bei reinen Listenkandidaturen ohne Wahlkreis leer lassen.' };
-const partyField: Field = { key: 'party', label: 'Partei zum damaligen Zeitpunkt', required: true };
+const partyField: Field = { key: 'party', label: 'Partei / Fraktion zum damaligen Zeitpunkt', type: 'faction', required: true };
 const notesField: Field = { key: 'notes', label: 'Anmerkungen', type: 'textarea' };
 
 export const gridFields: Record<GridEntity, Field[]> = {
@@ -63,7 +63,7 @@ export const gridFields: Record<GridEntity, Field[]> = {
     { key: 'mandate_type', label: 'Mandatsart', type: 'select', required: true },
     { key: 'entry_type', label: 'Eintritt', type: 'select', required: true },
     { key: 'original_mandate', label: 'Historische Quellenbezeichnung' },
-    { key: 'party_label', label: 'Historische Partei-/Fraktionsangabe' },
+    { key: 'party_label', label: 'Historische Partei-/Fraktionszuordnung', type: 'faction' },
     { key: 'starts_on', label: 'Tatsächlicher Mandatsbeginn', type: 'date' },
     { key: 'ends_on', label: 'Tatsächliches Mandatsende', type: 'date' },
     { key: 'left_early', label: 'Vorzeitig ausgeschieden', type: 'checkbox' },

@@ -1,3 +1,4 @@
+import { factionResultCode, type HistoryFaction } from '@/features/election-history/factions';
 import type {
   ElectionHistoryData,
   ElectionPeriod,
@@ -246,6 +247,7 @@ export function candidateComparison(
   versions: DistrictVersion[],
   reference: import("../types").DistrictResult[],
   verified: import("./types").VerifiedCandidate[],
+  factions: HistoryFaction[] = [],
 ) {
   const period = data.periods[0];
   return data.candidacies
@@ -263,7 +265,7 @@ export function candidateComparison(
               r.year === version.year &&
               r.ballot === "second" &&
               r.district_number === version.district_number &&
-              r.party === c.party,
+              r.party === factionResultCode(c.party, factions),
           )
         : undefined;
       const official = version
@@ -271,7 +273,7 @@ export function candidateComparison(
             (r) =>
               r.year === version.year &&
               r.district_number === version.district_number &&
-              r.party === c.party &&
+              r.party === factionResultCode(c.party, factions) &&
               r.verified &&
               r.person_id === c.person_id,
           )
