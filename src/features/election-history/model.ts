@@ -30,10 +30,16 @@ const url = (v: FormValues) => {
   if (value) { try { new URL(value); } catch { throw new Error('Die Quellenadresse ist ungültig.'); } }
   return value;
 };
+/** Display date-only values without depending on the browser's locale or timezone. */
+export function formatHistoryDateInput(value: string): string {
+  return value.replace(/^(\d{4})-(\d{2})-(\d{2})$/, '$3.$2.$1');
+}
+
 function dateValue(v: FormValues, key: string, mandatory?: true): string;
 function dateValue(v: FormValues, key: string, mandatory: false): string | null;
 function dateValue(v: FormValues, key: string, mandatory = true) {
-  const value = mandatory ? required(v, key) : optional(v, key);
+  const raw = mandatory ? required(v, key) : optional(v, key);
+  const value = raw === null ? null : raw.replace(/^(\d{2})\.(\d{2})\.(\d{4})$/, '$3-$2-$1');
   if (value && (!/^\d{4}-\d{2}-\d{2}$/.test(value) || !Number.isFinite(Date.parse(value)) || new Date(value).toISOString().slice(0, 10) !== value)) throw new Error('Bitte ein gültiges Datum eingeben.');
   return value;
 }

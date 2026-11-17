@@ -12,7 +12,7 @@ import { notify } from '@/lib/notify';
 import { useAuth } from '@/hooks/useAuth';
 import { useElectionEditorDrafts } from '../editorDrafts';
 import { deleteHistoryEntry, historyError, saveHistoryEntry, useElectionPersonSearch, type ElectionPeriodOverview } from '../useElectionHistory';
-import { formatMandateDateRange, type FormValues } from '../model';
+import { formatHistoryDateInput, formatMandateDateRange, type FormValues } from '../model';
 import { formatMandateType } from '../mandateLabel';
 import type { ElectionCandidacy, ElectionHistoryData, ElectionPeriod, HistoricalDistrict, HistoricalMandate } from '../types';
 import { HistoricalGeometryNotice } from '../HistoricalGeometryNotice';
@@ -209,6 +209,7 @@ export function HistoryDataGrid({ entity, data, selectedPeriodId, overview, onOp
         return count ? <span className="whitespace-nowrap text-caption tabular-nums">{count.district_count} WK · {count.mandate_count} Mandate · {count.candidacy_count} Kand.</span> : 'Zähler laden …';
       }
       if (key === 'status') return <span className="inline-flex items-center gap-1 whitespace-nowrap">{period.is_published ? <CircleCheck className="h-4 w-4 text-success" aria-hidden="true" /> : <FilePenLine className="h-4 w-4 text-muted-foreground" aria-hidden="true" />}{period.is_current ? 'Aktuell' : period.is_published ? 'Freigegeben' : 'Entwurf'}</span>;
+      if (['election_date', 'starts_on', 'ends_on', 'expected_ends_on'].includes(key)) return <span className="whitespace-nowrap tabular-nums">{formatHistoryDateInput(String(period[key as keyof ElectionPeriod] || '')) || '–'}</span>;
       return String(period[key as keyof ElectionPeriod] ?? '–');
     }
     if (entity === 'districts') {
@@ -248,6 +249,7 @@ export function HistoryDataGrid({ entity, data, selectedPeriodId, overview, onOp
     const common = { id, disabled: saving, 'aria-label': field.label };
     if (field.type === 'select') return <select {...common} className={`${inline ? 'h-8 min-w-24 text-caption' : 'h-9 w-full text-sm'} rounded-md border border-input bg-background px-2`} required={field.required} value={String(values[field.key] ?? '')} onChange={event => changeField(field.key, event.target.value)}><option value="">Bitte auswählen / keine Zuordnung</option>{optionsFor(field.key, viewData, values).map(option => <option key={option.value} value={option.value}>{option.label}</option>)}</select>;
     if (field.type === 'textarea') return <Textarea {...common} className="min-h-20" value={String(values[field.key] ?? '')} onChange={event => changeField(field.key, event.target.value)} />;
+    if (entity === 'periods' && field.type === 'date') return <Input {...common} type="text" inputMode="numeric" lang="de" placeholder="TT.MM.JJJJ" pattern="[0-9]{2}\.[0-9]{2}\.[0-9]{4}" title="Datum im Format TT.MM.JJJJ" maxLength={10} required={field.required} className={inline ? 'h-8 min-w-28 px-2 text-caption tabular-nums' : 'h-9'} value={formatHistoryDateInput(String(values[field.key] || ''))} onChange={event => changeField(field.key, event.target.value)} />;
     if (field.type === 'checkbox') return <input {...common} type="checkbox" className="h-4 w-4 accent-primary" checked={values[field.key] === true} onChange={event => changeField(field.key, event.target.checked)} />;
     return <Input {...common} type={field.type || 'text'} required={field.required} min={field.min} max={field.max} step={field.step || (field.type === 'number' ? '1' : undefined)} className={inline ? 'h-8 min-w-24 px-2 text-caption' : 'h-9'} value={String(values[field.key] ?? '')} onChange={event => changeField(field.key, event.target.value)} />;
   };
