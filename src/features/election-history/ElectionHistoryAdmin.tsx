@@ -40,7 +40,7 @@ function ElectionHistoryWorkspace() {
   if (periodQuery.isLoading || (query.isLoading && section !== 'deputies')) return <LoadingState label="Zentrale Wahldaten werden geladen" />;
   if (periodQuery.error || query.error || !data) return <ErrorState title="Wahldatenbank konnte nicht geladen werden" description={historyError(periodQuery.error || query.error)} onRetry={() => void Promise.all([periodQuery.refetch(), query.refetch()])} />;
 
-  return <div className="space-y-5">
+  return <div className="min-w-0 w-full max-w-full space-y-5">
     <header className="space-y-1"><h2 className="text-h2">Wahldaten & Mandatshistorie</h2><p className="max-w-4xl text-body text-muted-foreground">Zentrale Pflege- und Importwerkbank für alle Tenants. Auswertungen und Visualisierungen bleiben unter „Daten“; hier werden Stammdaten, Mandate, Kandidaturen und Quellen vollständig gepflegt.</p></header>
     <Tabs value={section} onValueChange={value => { setSection(value as WorkspaceSection); setImportOpen(false); }}>
       <TabsList className="h-auto flex flex-wrap justify-start gap-1">
@@ -53,8 +53,8 @@ function ElectionHistoryWorkspace() {
     </Tabs>
 
     {section !== 'periods' && section !== 'deputies' && <section className="flex flex-wrap items-end gap-3 rounded-md border bg-card p-3" aria-label="Legislaturauswahl">
-      <div className="min-w-64 flex-1"><Label htmlFor="history-period-filter">Legislaturperiode</Label><select id="history-period-filter" className="flex h-10 w-full rounded-md border border-input bg-background px-3 py-2 text-sm" value={selectedPeriod} onChange={event => { setPeriodFilter(event.target.value); setImportOpen(false); }}>{data.periods.map(item => <option key={item.id} value={item.id}>{item.is_published ? '✓' : '✎'} {item.name}</option>)}</select></div>
-      {periodOverview && <p className="pb-2 text-body tabular-nums text-muted-foreground">{periodOverview.district_count} Wahlkreise · {periodOverview.mandate_count} Mandate · {periodOverview.candidacy_count} Kandidaturen</p>}
+      <div className="min-w-0 w-full flex-1"><Label htmlFor="history-period-filter">Legislaturperiode</Label><select id="history-period-filter" className="flex h-10 min-w-0 w-full max-w-full rounded-md border border-input bg-background px-3 py-2 text-sm" value={selectedPeriod} onChange={event => { setPeriodFilter(event.target.value); setImportOpen(false); }}>{data.periods.map(item => <option key={item.id} value={item.id}>{item.is_published ? '✓' : '✎'} {item.name}</option>)}</select></div>
+      {periodOverview && <p className="pb-2 text-body tabular-nums text-muted-foreground [overflow-wrap:anywhere]">{periodOverview.district_count} Wahlkreise · {periodOverview.mandate_count} Mandate · {periodOverview.candidacy_count} Kandidaturen</p>}
       {section === 'candidacies' && <Button onClick={() => setImportOpen(true)}><FileUp className="mr-2 h-4 w-4" aria-hidden="true" />Excel / CSV importieren</Button>}
     </section>}
 
