@@ -924,3 +924,11 @@ Migration: `20261117140000_deputy_profile_election_result.sql`. Der Profilreader
 bleibt vollständig lesend und verändert keine Mandate. Ein Logikschritt im
 Selbsttest-Center wurde ergänzt, aber auf Wunsch nicht ausgeführt. Keine Tests
 oder Live-Datenbankausführung in dieser Sitzung.
+
+Das Abgeordnetenprofil gliedert die Auswahl nun unter „01 Mandatshistorie“.
+„02 Wahlkreisergebnisse“ fasst Ergebnisbalken links und die bestehenden Details der
+ausgewählten Legislaturperiode rechts zusammen. Parteikürzel stehen klein neben
+den Namen; Prozentwerte bleiben rechtsbündig und fett. Absolute Stimmen sind im
+aufklappbaren Quellenbereich weiterhin vorhanden. Bei wenig Platz stapeln sich die
+Spalten. Diese Layoutanpassung benötigt keine zusätzliche Datenbankmigration.
+Keine Tests ausgeführt.
