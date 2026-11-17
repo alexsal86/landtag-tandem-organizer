@@ -520,7 +520,7 @@ const SimpleLeafletMap: React.FC<LeafletKarlsruheMapProps> = ({
   }, [focusedDistrict, mapReady]);
 
   return (
-    <div className="bw-election-map relative w-full h-[400px] md:h-full md:min-h-[600px] bg-[#e6eadf] rounded-lg overflow-hidden border border-border z-0">
+    <div className="bw-election-map relative w-full h-[400px] md:h-full md:min-h-0 bg-[#e6eadf] rounded-lg overflow-hidden border border-border z-0">
       <div ref={mapEl} className="w-full h-full" />
       
       <div className="absolute top-3 left-3 z-[1000] flex flex-col gap-2">
