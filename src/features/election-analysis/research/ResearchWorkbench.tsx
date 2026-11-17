@@ -1,6 +1,7 @@
 import { CandidateDistrictResults } from '@/features/election-history/CandidateDistrictResults';
 import { useElectionPeriods } from '@/features/election-history/useElectionHistory';
 import { formatMandateType } from '@/features/election-history/mandateLabel';
+import { DistrictCandidateChronicle } from './DistrictCandidateChronicle';
 import { ProfileBoundarySection } from "./ProfileBoundarySection";
 import { AnalysisControls } from "../AnalysisToolbar";
 import { ReleaseCockpit } from "./ReleaseCockpit";
@@ -239,6 +240,7 @@ function DistrictProfile({
         key={`${candidatePeriod.id}:${candidateVersion.historical_district_id}`}
         periodId={candidatePeriod.id} districtId={candidateVersion.historical_district_id}
       />}
+      <DistrictCandidateChronicle district={district} />
       {periods.error && <p role="alert" className="text-xs">Die Legislaturperiode für Kandidaturergebnisse konnte nicht geladen werden. <Button variant="ghost" onClick={() => void periods.refetch()}>Erneut laden</Button></p>}
       <ProfileBoundarySection
         key={`${year}:${district}`}
