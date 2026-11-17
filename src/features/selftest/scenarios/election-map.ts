@@ -1,3 +1,4 @@
+import { deputyElectionResultBars, type DeputyElectionResultData } from '@/features/election-analysis/deputyElectionResult';
 import { candidacyResultOrigin, candidateResultConflict, type LinkedCandidateResult } from '@/features/election-history/candidateResults';
 import { portraitCrop, portraitSource, isDeputyPortrait } from '@/features/election-history/portrait';
 import { canConfirmDeputySelection, connectedDeputyMandates, deputyHistoryAction } from '@/features/election-history/deputySelection';
@@ -19,6 +20,21 @@ export const electionMapScenario: TestScenario = {
   touches: [], features: ['election-districts'],
   limitations: ['Die visuelle Ebenenreihenfolge und mobile Bedienung werden separat im Browser geprüft.'],
   steps: [
+    { id: 'deputy-profile-election-bars', label: 'Profil zeigt eigene Kandidatur, bekannte Gegenkandidaturen und nur belegte Reststimmen', kind: 'logic', run: async () => {
+      const source = { preliminary: false, data_release: 'same', notes: null };
+      const sample: DeputyElectionResultData = { mandate_id: 'm', period_number: 18, ballot: 'first', entry_type: 'election', mandate_type: 'list', district_name: 'Wahlkreis',
+        candidates: [{ ...source, id: 'c', name: 'Eigene Person', party: 'SPD', votes: 23, share: 23, is_own: true, source_url: null }],
+        results: [{ ...source, party: 'SPD', votes: 23, share: 23 }, { ...source, party: 'CDU', votes: 28, share: 28 }, { ...source, party: 'FDP', votes: 15, share: 15 }],
+        turnout: { valid_votes: 100, data_release: 'same', preliminary: false } };
+      const bars = deputyElectionResultBars(sample);
+      if (bars[0].label !== 'Eigene Person' || !bars[0].own || bars.find(row => row.key === 'residual')?.share !== 34 || bars.find(row => row.party === 'CDU')?.label !== 'CDU') throw new Error('Eigene Kandidatur und belegter Rest müssen korrekt erscheinen; Namen dürfen nicht erfunden werden.');
+      if (deputyElectionResultBars({ ...sample, turnout: null }).some(row => row.key === 'residual') || deputyElectionResultBars({ ...sample, turnout: { ...sample.turnout!, data_release: 'other' } }).some(row => row.key === 'residual')) throw new Error('Ohne passenden Nenner/Datenstand gibt es keinen berechneten Rest.');
+      const conflicting = deputyElectionResultBars({ ...sample, candidates: [{ ...sample.candidates[0], share: 24 }] });
+      if (!conflicting[0].conflict || conflicting[0].share !== 24 || conflicting.some(row => row.key === 'residual')) throw new Error('Persönliche abweichende Ergebnisse bleiben erhalten und sperren den Rest.');
+      const missing = deputyElectionResultBars({ ...sample, results: [], turnout: null, candidates: [{ ...sample.candidates[0], votes: null, share: null }] });
+      if (missing[0].share !== null || !missing[0].own) throw new Error('Fehlende persönliche Ergebnisse bleiben unbekannt.');
+      return { ok: true, message: 'Eigene Kandidatur, Partei-Fallback, unbekannte Werte und gemeinsamer Nenner werden getrennt behandelt.' };
+    } },
     { id: 'assembled-candidacy-result-provenance', label: 'Automatische Ergebnisübernahme bewahrt manuelle Zahlen und fehlende Werte', kind: 'logic', run: async () => {
       const automatic = { votes: 100, vote_share: 20.12345, result_origin: 'district_result', result_snapshot: { votes: 100, share: 20.12345 } };
       if (candidacyResultOrigin(automatic) !== 'automatic') throw new Error('Vollständig übernommene Werte müssen als automatisch erkennbar sein.');

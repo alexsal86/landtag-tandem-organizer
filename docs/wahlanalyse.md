@@ -892,3 +892,35 @@ Excel-Generator berücksichtigt zusätzlich die fünf konkret bestätigten
 ist noch nicht als Datei verfügbar. Umfang, Originalquellen und Grenzen sind im
 [gezielten Korrekturbericht](election-analysis/sources/reviewed-election-corrections.md)
 dokumentiert. Keine Tests ausgeführt; kein Live-Datenbankimport.
+
+### Wahlkreisergebnis im Abgeordnetenprofil
+
+Unter **Daten → Abgeordnete** zeigt die Detailansicht einen Abschnitt
+„02 Wahlkreisergebnis“, passend zur im Profil ausgewählten Legislaturperiode.
+Das eigene persönliche Ergebnis steht zuerst und erhält einen kontrastreichen
+Balken; weitere eindeutig erfasste Kandidierende werden mit Namen und Partei
+gezeigt, sonst ausschließlich als Parteiergebnis. Stimmenzahlen und Anteile,
+Einzel-/Erststimme, Direkt-/Listenmandat, Nachrücken, Vorläufigkeit und Quellen
+bleiben sichtbar. Die vorhandenen Profilfarben unterstützen Dark- und Light-Mode.
+
+Der neue lesende Invoker-RPC `get_analysis_deputy_election_result` lädt ausschließlich
+den gewählten veröffentlichten Mandatseintrag und dessen Wahlkreis. Persönliche
+Kandidaturen werden über IDs derselben Periode zugeordnet, niemals über Namen.
+Analyseergebnisse benötigen eine bestätigte Verbindung desselben Wahljahrs;
+Zweitstimmen und bekannte umgerechnete Waldshut-2006-Vergleichswerte sind ausgeschlossen.
+Vorhandene persönliche Zahlen haben Vorrang; Abweichungen zum Parteiergebnis werden
+kenntlich gemacht, ohne Zahlen verschiedener Quellen zu mischen. 1952 kann die
+zuvor hinterlegte persönliche Kandidatur auch ohne Analyse-Geometrieverbindung
+angezeigt werden. Fehlt die persönliche Zuordnung, wird dies ausdrücklich angezeigt.
+
+„Sonstige“ ist nur ein rechnerischer Rest: Alle dargestellten absoluten Stimmen
+müssen mit den gültigen Wahlkreisstimmen einen gemeinsamen Datenstand und dieselbe
+Vorläufigkeit haben, dürfen den Nenner nicht überschreiten und keine mehrdeutigen
+Parteikandidaturen oder bereits aggregierten Sonstige-Zeilen enthalten. Andernfalls
+wird kein Rest erfunden. Namen unbekannter Gegenkandidaturen bleiben unbekannt;
+die Anzeige behauptet keine vollständige Kandidatenliste oder Quellenverifikation.
+
+Migration: `20261117140000_deputy_profile_election_result.sql`. Der Profilreader
+bleibt vollständig lesend und verändert keine Mandate. Ein Logikschritt im
+Selbsttest-Center wurde ergänzt, aber auf Wunsch nicht ausgeführt. Keine Tests
+oder Live-Datenbankausführung in dieser Sitzung.

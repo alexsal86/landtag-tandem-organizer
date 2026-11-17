@@ -17192,6 +17192,7 @@ export type Database = {
         }
         Returns: Json
       }
+      get_analysis_deputy_election_result: { Args: { selected_mandate: string }; Returns: Json }
       get_analysis_deputy: { Args: { name_key: string }; Returns: Json }
       get_analysis_district_history: {
         Args: { district: number; selected_year: number }
