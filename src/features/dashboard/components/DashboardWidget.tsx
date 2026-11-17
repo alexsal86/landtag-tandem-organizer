@@ -2,6 +2,7 @@ import { BingoWidget } from '@/features/team-rituals/BingoWidget';
 import { TwoTruthsWidget } from '@/features/team-rituals/TwoTruthsWidget';
 import { WeeklyQuestionWidget } from '@/features/team-rituals/WeeklyQuestionWidget';
 import { useState, useEffect } from "react";
+import { useNavigate } from "react-router-dom";
 import { WidgetOverlayMenu } from '@/components/dashboard/WidgetOverlayMenu';
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
@@ -172,6 +173,7 @@ const getCategoryIcon = (category: PendingTask["category"]) => {
 };
 
 export function DashboardWidget({ widget, isDragging, isEditMode, onResize, onDelete }: WidgetProps) {
+  const navigate = useNavigate();
   const [todayAppointmentsCount, setTodayAppointmentsCount] = useState(0);
   const [openTasksCount, setOpenTasksCount] = useState(0);
   const [assignedTasks, setAssignedTasks] = useState<Task[]>([]);
@@ -507,13 +509,7 @@ export function DashboardWidget({ widget, isDragging, isEditMode, onResize, onDe
                           <Button
                             variant="ghost"
                             size="sm"
-                            onClick={() => {
-                              if (isTask) {
-                                window.location.href = `/tasks`;
-                              } else {
-                                window.location.href = `/tasks`;
-                              }
-                            }}
+                            onClick={() => navigate('/tasks')}
                             className="h-6 w-6 p-0"
                             title={isTask ? "Aufgabe bearbeiten" : "Übergeordnete Aufgabe bearbeiten"}
                           >
@@ -531,7 +527,7 @@ export function DashboardWidget({ widget, isDragging, isEditMode, onResize, onDe
                 <Button 
                   variant="outline" 
                   className="w-full text-sm"
-                  onClick={() => window.location.href = '/tasks'}
+                  onClick={() => navigate('/tasks')}
                 >
                   Alle Aufgaben anzeigen
                 </Button>
