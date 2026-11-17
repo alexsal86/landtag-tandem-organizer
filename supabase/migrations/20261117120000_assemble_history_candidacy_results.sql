@@ -1,5 +1,6 @@
 -- User-authorized consolidation of the existing member register and results.
 -- Separate from the result import: reuse confirmed connections, never name-match.
+-- Repeat-safe after a failed SQL-editor execution; existing source rows are preserved.
 BEGIN;
 ALTER TABLE public.election_history_candidacies ALTER COLUMN vote_share TYPE numeric(9,5),
  ADD COLUMN IF NOT EXISTS result_origin text,
@@ -20,15 +21,25 @@ ALTER TABLE public.election_history_connection_people ENABLE ROW LEVEL SECURITY;
 ALTER TABLE public.election_history_assembly_issues ENABLE ROW LEVEL SECURITY;
 REVOKE ALL ON public.election_history_connection_people,public.election_history_assembly_issues FROM anon,authenticated;
 GRANT SELECT,INSERT,UPDATE,DELETE ON public.election_history_connection_people,public.election_history_assembly_issues TO authenticated;
-CREATE POLICY superadmin_write ON public.election_history_connection_people FOR ALL TO authenticated
- USING(public.is_superadmin(auth.uid())) WITH CHECK(public.is_superadmin(auth.uid()));
-CREATE POLICY superadmin_write ON public.election_history_assembly_issues FOR ALL TO authenticated
- USING(public.is_superadmin(auth.uid())) WITH CHECK(public.is_superadmin(auth.uid()));
+DO $policy$
+BEGIN
+ IF NOT EXISTS(SELECT 1 FROM pg_policies WHERE schemaname='public' AND tablename='election_history_connection_people' AND policyname='superadmin_write') THEN
+  CREATE POLICY superadmin_write ON public.election_history_connection_people FOR ALL TO authenticated
+   USING(public.is_superadmin(auth.uid())) WITH CHECK(public.is_superadmin(auth.uid()));
+ END IF;
+END $policy$;
+DO $policy$
+BEGIN
+ IF NOT EXISTS(SELECT 1 FROM pg_policies WHERE schemaname='public' AND tablename='election_history_assembly_issues' AND policyname='superadmin_write') THEN
+  CREATE POLICY superadmin_write ON public.election_history_assembly_issues FOR ALL TO authenticated
+   USING(public.is_superadmin(auth.uid())) WITH CHECK(public.is_superadmin(auth.uid()));
+ END IF;
+END $policy$;
 
 
 -- 1952 source binding uses exact IDs from the original member import. These are
 -- NOT technical map IDs. No district is renamed, renumbered or geometry-linked.
-CREATE TABLE public.election_history_1952_result_sources (
+CREATE TABLE IF NOT EXISTS public.election_history_1952_result_sources (
  source_mandate_id uuid NOT NULL REFERENCES public.election_history_mandates(id),
  district_id uuid NOT NULL REFERENCES public.election_history_districts(id),
  party text NOT NULL, share numeric(9,5) NOT NULL CHECK(share BETWEEN 0 AND 100),
@@ -38,8 +49,13 @@ CREATE TABLE public.election_history_1952_result_sources (
 ALTER TABLE public.election_history_1952_result_sources ENABLE ROW LEVEL SECURITY;
 REVOKE ALL ON public.election_history_1952_result_sources FROM anon,authenticated;
 GRANT SELECT,INSERT,UPDATE,DELETE ON public.election_history_1952_result_sources TO authenticated;
-CREATE POLICY superadmin_write ON public.election_history_1952_result_sources FOR ALL TO authenticated
- USING(public.is_superadmin(auth.uid())) WITH CHECK(public.is_superadmin(auth.uid()));
+DO $policy$
+BEGIN
+ IF NOT EXISTS(SELECT 1 FROM pg_policies WHERE schemaname='public' AND tablename='election_history_1952_result_sources' AND policyname='superadmin_write') THEN
+  CREATE POLICY superadmin_write ON public.election_history_1952_result_sources FOR ALL TO authenticated
+   USING(public.is_superadmin(auth.uid())) WITH CHECK(public.is_superadmin(auth.uid()));
+ END IF;
+END $policy$;
 INSERT INTO public.election_history_1952_result_sources
  SELECT x.* FROM jsonb_to_recordset($original_1952$[
 {"source_mandate_id":"6734954a-c214-566d-ad87-62215dda3fb0","district_id":"d489adec-840e-503c-a59c-36712676e023","party":"CDU","share":52.27455,"source_row":6,"source_url":"https://www.statistischebibliothek.de/mir/servlets/MCRFileNodeServlet/BWHeft_derivate_00023462/008_2612_52001.pdf"},
@@ -268,7 +284,8 @@ INSERT INTO public.election_history_1952_result_sources
  AS x(source_mandate_id uuid,district_id uuid,party text,share numeric,source_row integer,source_url text)
  JOIN public.election_history_mandates m ON m.id=x.source_mandate_id AND m.district_id=x.district_id
  JOIN public.election_history_periods p ON p.id=m.period_id AND p.number=1 AND p.election_year=1952
- WHERE m.entry_type='election' AND m.mandate_type='direct';
+ WHERE m.entry_type='election' AND m.mandate_type='direct'
+ ON CONFLICT(district_id,party) DO NOTHING;
 
 CREATE OR REPLACE FUNCTION public.history_result_party(label text) RETURNS text
 LANGUAGE sql IMMUTABLE SET search_path=public AS $$
@@ -361,7 +378,7 @@ BEGIN
     IF c.district_id IS DISTINCT FROM m.district_id
        OR public.history_result_party(c.party)<>public.history_result_party(m.party)
        OR c.outcome<>m.mandate_type
-       OR c.ballot_type<>CASE WHEN m.election_year>=2026 THEN 'first_vote' ELSE 'candidate' END THEN
+       OR c.ballot_type<>(CASE WHEN m.election_year>=2026 THEN 'first_vote' ELSE 'candidate' END) THEN
       RAISE EXCEPTION 'Vorhandene Kandidatur widerspricht dem Wahlmandat';
     END IF;
    ELSE
@@ -507,6 +524,8 @@ DO $install$
 DECLARE t text; p record;
 BEGIN
  FOREACH t IN ARRAY ARRAY['election_history_mandates','election_history_candidacies','election_history_districts','election_history_periods','election_analysis_districts','election_analysis_versions','election_analysis_years','election_history_1952_result_sources'] LOOP
+  EXECUTE format('DROP TRIGGER IF EXISTS z_assemble_history_insert ON public.%I',t);
+  EXECUTE format('DROP TRIGGER IF EXISTS z_assemble_history_update ON public.%I',t);
   EXECUTE format('CREATE TRIGGER z_assemble_history_insert AFTER INSERT ON public.%I REFERENCING NEW TABLE AS assembly_new FOR EACH STATEMENT EXECUTE FUNCTION public.sync_assembled_election_history()',t);
   EXECUTE format('CREATE TRIGGER z_assemble_history_update AFTER UPDATE ON public.%I REFERENCING OLD TABLE AS assembly_old NEW TABLE AS assembly_new FOR EACH STATEMENT EXECUTE FUNCTION public.sync_assembled_election_history()',t);
   -- Do not recreate deliberately deleted candidacies or mandates automatically.

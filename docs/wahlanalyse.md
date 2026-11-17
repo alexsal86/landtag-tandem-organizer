@@ -858,3 +858,16 @@ Keine Tests ausgeführt. Ein passender Logikschritt zur Feldherkunft wurde im
 Selbsttest-Center ergänzt, aber nicht ausgeführt. Kein Live-Datenbankzugang steht
 in dieser Sitzung zum Einspielen zur Verfügung. Die tatsächlichen Ergänzungs- und
 Konfliktzahlen zeigt der Status nach Anwendung der Migration.
+
+### SQL-Editor: Syntaxfehler bei `ballot_type <> CASE`
+
+Die aktualisierte `20261117120000_assemble_history_candidacy_results.sql` behebt den
+Parserfehler „syntax error at end of input“ am `CASE`-Ausdruck der
+PL/pgSQL-`IF`-Bedingung: Der komplette Vergleichswert `CASE … END` ist jetzt
+geklammert. Die Datei kann vollständig erneut ausgeführt werden. Bereits vorhandene
+Tabellen und Policies werden weiterverwendet, Quelleneinträge nicht überschrieben
+und die beiden automatischen Zusammenführungstrigger pro Tabelle neu installiert.
+Die eigentliche Zusammenführung bleibt wiederholbar und schützt manuelle Zahlen.
+Falls der SQL-Editor noch „current transaction is aborted“ meldet, zuerst `ROLLBACK;`
+ausführen und danach die aktualisierte Datei vollständig starten. Keine Tests
+oder Live-Datenbankausführungen in dieser Sitzung.
