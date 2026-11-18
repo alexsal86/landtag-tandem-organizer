@@ -7,10 +7,12 @@ import type { Ballot, StateResult } from './types';
 
 type SeriesRow = { year: number } & Record<string, number | null>;
 
-export function PartyEndLabels({ result, visibleParties, maximum }: {
+export function PartyEndLabels({ result, visibleParties, maximum, minimum = 0, format = percent }: {
   result: SeriesRow | undefined;
   visibleParties: string[];
   maximum: number;
+  minimum?: number;
+  format?: (value: number) => string;
 }) {
   const plot = usePlotArea();
   if (!plot || !result) return null;
@@ -25,7 +27,7 @@ export function PartyEndLabels({ result, visibleParties, maximum }: {
 
   return <g pointerEvents="none">
     {labels.map(({ party, share }, index) => {
-      const pointY = plot.y + plot.height * (1 - share / maximum);
+      const pointY = plot.y + plot.height * (1 - (share - minimum) / (maximum - minimum));
       const lastAvailableY = plot.y + plot.height - (labels.length - 1 - index) * spacing;
       const labelY = Math.max(nextY, Math.min(pointY, lastAvailableY));
       nextY = labelY + spacing;
@@ -33,7 +35,7 @@ export function PartyEndLabels({ result, visibleParties, maximum }: {
       return <g key={party}>
         <line x1={x} y1={pointY} x2={x + 9} y2={labelY} stroke={color} />
         <text x={x + 13} y={labelY} dominantBaseline="central" fill={color} className="text-xs font-semibold">
-          {party} {percent(share)}
+          {party === "GRÜNE" ? "Grüne" : party} {format(share)}
         </text>
       </g>;
     })}

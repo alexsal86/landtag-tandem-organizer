@@ -8,7 +8,6 @@ import { lazy, Suspense, useCallback, useMemo, useState } from "react";
 import { useSearchParams } from "react-router-dom";
 import {
   CartesianGrid,
-  Legend,
   Line,
   LineChart,
   ResponsiveContainer,
@@ -25,8 +24,10 @@ import {
   StatusNote,
   chartColor,
   PartyLabel,
+  PartyVisibilityChips,
 } from "../shared";
-import { ballotLabels, number, parties, percent } from "../model";
+import { PartyEndLabels } from "../StateShareChart";
+import { ballotLabels, compareAnalysisValues, number, parties, percent } from "../model";
 import { useStateTotal } from "../useStateHistory";
 import type { Ballot } from "../types";
 import {
@@ -129,6 +130,7 @@ function DistrictProfile({
   const selectedBallot = ballotForComparison(year, ballot);
   const turnoutBallot = ballotForComparison(year, "second");
   const stateTotal = useStateTotal(year, turnoutBallot);
+  const [hiddenParties, setHiddenParties] = useState<string[]>([]);
   const [historyOpen, setHistoryOpen] = useState(false);
   const history = useDistrictHistory(district, year, historyOpen);
   const [params] = useSearchParams();
@@ -146,7 +148,7 @@ function DistrictProfile({
   const data = query.data;
   const results = data?.results || [];
   const orderedYears = years.slice().sort((a, b) => a - b);
-  const selection = orderedYears.map((y, index) => ({
+  const selection: ({ year: number } & Record<string, number | null>)[] = orderedYears.map((y, index) => ({
     year: y,
     ...Object.fromEntries(
       parties.map((p) => {
@@ -176,11 +178,23 @@ function DistrictProfile({
     ),
   }));
   const resultRows = selection.slice().reverse();
+  const sharesByParty = new Map(results.filter(result => result.year === year && result.ballot === selectedBallot)
+    .map(result => [result.party, result.share]));
+  const rankedParties = parties.slice().sort((a, b) =>
+    compareAnalysisValues(sharesByParty.get(a) ?? null, sharesByParty.get(b) ?? null, "desc"));
+  const visibleParties = rankedParties.filter(party => !hiddenParties.includes(party));
+  const chartValues = selection.flatMap(row => visibleParties.map(party => row[party] ?? 0));
+  const chartMinimum = Math.min(0, ...chartValues);
+  const chartMaximum = Math.max(0, ...chartValues);
+  const chartPadding = (chartMaximum - chartMinimum) * 0.08 || 1;
+  const chartDomain: [number, number] = [chartMinimum < 0 ? chartMinimum - chartPadding : 0, chartMaximum + chartPadding];
+  const formatMetric = metric === "share" ? percent : metric === "votes" ? number
+    : (value: number) => metric === "pp" ? `${signed(value, 1)} Pp.` : signed(value);
   const totals = uniqueTurnout(
     (data?.turnout || []).filter(
       (r) => r.ballot === ballotForComparison(r.year, ballot),
     ),
-  ).sort((a, b) => a.year - b.year);
+  ).sort((a, b) => b.year - a.year);
   const comparisons = parties.map((p) =>
     compareDistrict({
       before: results.find(
@@ -298,27 +312,18 @@ function DistrictProfile({
               empty={!results.length}
               retry={() => void query.refetch()}
             >
-              <div
+              {visibleParties.length ? <div
                 className="h-80"
                 role="img"
                 aria-label="Wahlkreis-Zeitreihe; Messwerte in der Tabelle"
               >
                 <ResponsiveContainer>
-                  <LineChart data={selection}>
+                  <LineChart data={selection} margin={{ top: 16, right: 120, bottom: 10 }}>
                     <CartesianGrid strokeDasharray="3 3" />
                     <XAxis dataKey="year" />
-                    <YAxis
-                      unit={
-                        metric === "share"
-                          ? " %"
-                          : metric === "pp"
-                            ? " %"
-                            : undefined
-                      }
-                    />
-                    <Tooltip />
-                    <Legend />
-                    {parties.map((p) => (
+                    <YAxis domain={chartDomain} allowDataOverflow tickFormatter={formatMetric} />
+                    <Tooltip formatter={value => typeof value === "number" ? formatMetric(value) : value} />
+                    {visibleParties.map((p) => (
                       <Line
                         key={p}
                         dataKey={p}
@@ -327,16 +332,21 @@ function DistrictProfile({
                         strokeWidth={2}
                       />
                     ))}
+                    <PartyEndLabels result={selection[selection.length - 1]} visibleParties={visibleParties}
+                      minimum={chartDomain[0]} maximum={chartDomain[1]} format={formatMetric} />
                   </LineChart>
                 </ResponsiveContainer>
-              </div>
+              </div> : <p className="py-12 text-center text-sm text-muted-foreground">Bitte mindestens eine Partei einblenden.</p>}
+              <PartyVisibilityChips parties={rankedParties} hidden={hiddenParties} onToggle={party =>
+                setHiddenParties(current => current.includes(party) ? current.filter(value => value !== party) : [...current, party])}
+              />
             </DataState>
           </CardContent>
         </Card>
         <ProfileBoundarySection
           year={year}
           number={district}
-          name={name ?? title}
+          name={name ?? ""}
           historicalDistrictId={historicalDistrictId}
         />
       </div>
@@ -346,40 +356,42 @@ function DistrictProfile({
         linkedDistrictId={historicalDistrictId}
       />
       {!query.isLoading && !query.error && results.length > 0 && <>
-        <h3 className="text-lg font-medium">Ergebnisse pro Wahljahr</h3>
-        <DataTable
-          headers={["Wahljahr", ...parties, "Stimmenart / Status"]}
-          sortableColumns={[0]}
-          sortValues={resultRows.map((row) => [row.year])}
-          rows={resultRows.map((row) => [
-            row.year,
-            ...parties.map((p) =>
-              metric === "votes" || metric === "deltaVotes"
-                ? number((row as Record<string, number | null>)[p])
-                : metric === "pp"
-                  ? signed((row as Record<string, number | null>)[p])
-                  : percent((row as Record<string, number | null>)[p]),
-            ),
-            `${ballotLabels[ballotForComparison(row.year, ballot)]}${results.some((r) => r.year === row.year && r.preliminary) ? " · vorläufig" : ""}`,
-          ])}
-        />
-        <h3 className="text-lg font-medium">Grunddaten und Wahlbeteiligung</h3>
-        <DataTable
-          headers={[
-            "Wahljahr",
-            "Wahlberechtigte",
-            "Wählende",
-            "Beteiligung",
-            "Gültige Stimmen",
-          ]}
-          rows={totals.map((t) => [
-            t.year,
-            number(t.eligible),
-            number(t.voters),
-            percent(t.turnout),
-            number(t.valid_votes),
-          ])}
-        />
+        <div className="space-y-4 [&_tbody]:bg-white [&_tbody]:text-slate-900">
+          <h3 className="text-lg font-medium">Ergebnisse pro Wahljahr</h3>
+          <DataTable
+            headers={["Wahljahr", ...parties, "Stimmenart / Status"]}
+            sortableColumns={[0]}
+            sortValues={resultRows.map((row) => [row.year])}
+            rows={resultRows.map((row) => [
+              row.year,
+              ...parties.map((p) =>
+                metric === "votes" || metric === "deltaVotes"
+                  ? number((row as Record<string, number | null>)[p])
+                  : metric === "pp"
+                    ? signed((row as Record<string, number | null>)[p])
+                    : percent((row as Record<string, number | null>)[p]),
+              ),
+              `${ballotLabels[ballotForComparison(row.year, ballot)]}${results.some((r) => r.year === row.year && r.preliminary) ? " · vorläufig" : ""}`,
+            ])}
+          />
+          <h3 className="text-lg font-medium">Grunddaten und Wahlbeteiligung</h3>
+          <DataTable
+            headers={[
+              "Wahljahr",
+              "Wahlberechtigte",
+              "Wählende",
+              "Beteiligung",
+              "Gültige Stimmen",
+            ]}
+            rows={totals.map((t) => [
+              t.year,
+              number(t.eligible),
+              number(t.voters),
+              percent(t.turnout),
+              number(t.valid_votes),
+            ])}
+          />
+        </div>
         <Selection
           id="profile-before"
           label={`Vergleich mit ${year}`}

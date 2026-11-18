@@ -36,7 +36,7 @@ export function ProfileBoundarySection(props: {
   return <section className="min-w-0 rounded-lg border bg-card text-card-foreground">
     <div className="space-y-1.5 p-6">
       <h3 className="text-lg font-semibold leading-none tracking-tight">Wahlkreiskarte</h3>
-      <p className="text-xs text-muted-foreground">Wahljahr {props.year} · {props.number}: {props.name}</p>
+      <p className="text-xs text-muted-foreground">Wahljahr {props.year} · Wahlkreis {props.number}{props.name && `: ${props.name}`}</p>
     </div>
     <div className="px-6 pb-6">
       {historical.isLoading && <p role="status">Lade Karte …</p>}
@@ -48,7 +48,7 @@ export function ProfileBoundarySection(props: {
         <DistrictBoundaryMap key={`${year}:${props.number}`} analysis={{
           year,
           number: props.number,
-          name: props.name,
+          name: props.name || `Wahlkreis ${props.number}`,
           bundledYear,
           boundaries: historical.data?.boundaries as HistoricalDistrict['boundaries'] ?? null,
           geometrySourceKey: historical.data?.geometry_source_key,

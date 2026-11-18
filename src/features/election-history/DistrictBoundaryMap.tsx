@@ -36,6 +36,7 @@ export default function DistrictBoundaryMap(props: DistrictBoundaryMapProps) {
   const mapRef = useRef<Leaflet.Map | null>(null);
   const selectedBounds = useRef<Leaflet.LatLngBounds | null>(null);
   const neighborLayer = useRef<Leaflet.GeoJSON | null>(null);
+  const showNeighborNames = 'analysis' in props;
   const electionYear = 'analysis' in props ? props.analysis.year : period?.election_year;
   const year = 'analysis' in props
     ? props.analysis.bundledYear
@@ -113,19 +114,25 @@ export default function DistrictBoundaryMap(props: DistrictBoundaryMapProps) {
       onEachFeature: (feature, polygon) => {
         const label = document.createElement('span');
         label.textContent = `${year === 1952 ? `${feature.properties.Region} ${feature.properties.Nummer_historisch}` : feature.properties.Nummer}: ${feature.properties['WK Name'] ?? feature.properties.Name ?? ''}`;
-        polygon.bindTooltip(label);
+        if (showNeighborNames) {
+          label.textContent = feature.properties['WK Name'] ?? feature.properties.Name ?? feature.properties.name ?? label.textContent;
+          label.className = 'text-sm font-bold';
+          polygon.bindTooltip(label, { direction: 'center', permanent: true, className: '!border-0 !bg-transparent !shadow-none' });
+        } else {
+          polygon.bindTooltip(label);
+        }
       },
     });
     neighborLayer.current = layer;
     return () => { layer.remove(); neighborLayer.current = null; };
-  }, [surroundings.data, year, number]);
+  }, [surroundings.data, year, number, showNeighborNames]);
   useEffect(() => {
     const map = mapRef.current;
     const layer = neighborLayer.current;
     if (!map || !layer) return;
     if (neighbors) layer.addTo(map);
     else layer.remove();
-  }, [neighbors, surroundings.data, year, number]);
+  }, [neighbors, surroundings.data, year, number, showNeighborNames]);
   if (!geometry && !shared) return <p className="text-xs text-muted-foreground">{electionYear === 1952
     ? 'Für diesen Wahlkreis fehlt die eindeutige regionale Kartenzuordnung von 1952.'
     : 'Kein Grenzumriss für diesen Wahlkreis hinterlegt.'}</p>;
