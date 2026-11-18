@@ -5945,6 +5945,38 @@ export type Database = {
           },
         ]
       }
+      election_history_candidate_workbook_audit: {
+        Row: {
+          candidacy_id: string | null
+          source_data: Json
+          source_id: string
+          status: string
+          workbook_sha256: string
+        }
+        Insert: {
+          candidacy_id?: string | null
+          source_data: Json
+          source_id: string
+          status: string
+          workbook_sha256: string
+        }
+        Update: {
+          candidacy_id?: string | null
+          source_data?: Json
+          source_id?: string
+          status?: string
+          workbook_sha256?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "election_history_candidate_workbook_audit_candidacy_id_fkey"
+            columns: ["candidacy_id"]
+            isOneToOne: false
+            referencedRelation: "election_history_candidacies"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
       election_history_connection_people: {
         Row: {
           connection_id: string
@@ -6143,13 +6175,6 @@ export type Database = {
         }
         Relationships: [
           {
-            foreignKeyName: "election_history_mandates_subsequent_faction_fkey"
-            columns: ["subsequent_faction"]
-            isOneToOne: false
-            referencedRelation: "election_history_factions"
-            referencedColumns: ["name"]
-          },
-          {
             foreignKeyName: "election_history_mandates_candidacy_id_person_id_period_id_fkey"
             columns: ["candidacy_id", "person_id", "period_id"]
             isOneToOne: false
@@ -6176,6 +6201,13 @@ export type Database = {
             isOneToOne: false
             referencedRelation: "election_history_people"
             referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "election_history_mandates_subsequent_faction_fkey"
+            columns: ["subsequent_faction"]
+            isOneToOne: false
+            referencedRelation: "election_history_factions"
+            referencedColumns: ["name"]
           },
           {
             foreignKeyName: "mandate_faction_catalog"
