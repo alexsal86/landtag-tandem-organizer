@@ -3,10 +3,10 @@ import { StateShareChart } from './StateShareChart';
 import { StateSeatDistribution } from './StateSeatDistribution';
 import { AnalysisInfo } from './AnalysisInfo';
 import { AnalysisControls, AnalysisToolbarLayout } from './AnalysisToolbar';
-import { Selection, DataState, DataTable, StatusNote, PartyLabel, chartColor } from './shared';
+import { Selection, DataState, DataTable, StatusNote, PartyLabel, PartyVisibilityChips, chartColor } from './shared';
 import { lazy, Suspense, useEffect, useState } from 'react';
 import { useSearchParams } from 'react-router-dom';
-import { Bar, BarChart, CartesianGrid, Cell, LabelList, Legend, Line, LineChart, ReferenceLine, ResponsiveContainer, Tooltip, XAxis, YAxis } from 'recharts';
+import { Bar, BarChart, CartesianGrid, Cell, LabelList, Line, LineChart, ReferenceLine, ResponsiveContainer, Tooltip, XAxis, YAxis } from 'recharts';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
@@ -191,13 +191,39 @@ function DemographicPanel({ year, ballot, party, gender }: PanelProps) {
   const ages = Array.from(new Set(rows.map(r => r.age_group))).sort((a, b) => a === 'Insgesamt' ? -1 : b === 'Insgesamt' ? 1 : a.localeCompare(b, 'de', { numeric: true }));
   const [age, setAge] = useState('Insgesamt');
   const selectedAge = ages.includes(age) ? age : ages[0] || '';
-  const selected = rows.filter(r => r.age_group === selectedAge);
-  const chart = ages.filter(a => a !== 'Insgesamt').map(a => Object.fromEntries([['age', a], ...parties.map(p => [p, rows.find(r => r.age_group === a && r.party === p)?.share ?? null])]));
+  const [hiddenParties, setHiddenParties] = useState<string[]>([]);
+  const availableParties = parties.filter(party => rows.some(row => row.party === party));
+  const visibleParties = availableParties.filter(party => !hiddenParties.includes(party));
+  const selected = rows.filter(row => row.age_group === selectedAge && !hiddenParties.includes(row.party))
+    .sort((a, b) => (b.share ?? -1) - (a.share ?? -1));
+  const chart = ages.filter(age => age !== 'Insgesamt').map(age => ({
+    ...Object.fromEntries(visibleParties.map(party => [party, rows.find(row => row.age_group === age && row.party === party)?.share ?? null])),
+    age,
+  }));
   return <div className="space-y-4 [&_tbody]:bg-white [&_tbody]:text-slate-900">
     <DataState loading={query.isLoading} error={query.error} empty={!rows.length} retry={() => void query.refetch()}>
-      <Card><CardHeader><CardTitle className="text-lg">Parteianteile nach Alter · {gender}</CardTitle></CardHeader><CardContent><div className="h-80" role="img" aria-label="Parteianteile nach Altersgruppe; auswählbare genaue Werte stehen darunter"><ResponsiveContainer><LineChart data={chart}><CartesianGrid strokeDasharray="3 3" /><XAxis dataKey="age" /><YAxis unit=" %" /><Tooltip formatter={value => percent(typeof value === 'number' ? value : null)} /><Legend />{parties.map(p => <Line key={p} dataKey={p} stroke={chartColor(p)} strokeWidth={2} connectNulls={false} />)}</LineChart></ResponsiveContainer></div></CardContent></Card>
+      <Card>
+        <CardHeader><CardTitle className="text-lg">Parteianteile nach Alter · {gender}</CardTitle></CardHeader>
+        <CardContent>
+          {visibleParties.length ? <div className="h-80" role="img" aria-label="Parteianteile nach Altersgruppe; genaue Werte stehen in der Tabelle">
+            <ResponsiveContainer><LineChart data={chart}>
+              <CartesianGrid strokeDasharray="3 3" />
+              <XAxis dataKey="age" />
+              <YAxis unit=" %" />
+              <Tooltip
+                labelFormatter={age => <span className="font-semibold underline decoration-2 underline-offset-4">Altersgruppe {age}</span>}
+                formatter={value => percent(typeof value === 'number' ? value : null)}
+                itemSorter={item => typeof item.value === 'number' ? -item.value : Infinity}
+              />
+              {visibleParties.map(party => <Line key={party} dataKey={party} stroke={chartColor(party)} strokeWidth={2} connectNulls={false} />)}
+            </LineChart></ResponsiveContainer>
+          </div> : <p className="py-12 text-center text-sm text-muted-foreground">Bitte mindestens eine Partei einblenden.</p>}
+          <PartyVisibilityChips parties={availableParties} hidden={hiddenParties} onToggle={party => setHiddenParties(current =>
+            current.includes(party) ? current.filter(value => value !== party) : [...current, party])} />
+        </CardContent>
+      </Card>
       <AnalysisControls placement="filters"><Selection id="analysis-age" label="Altersgruppe für die Tabelle" value={selectedAge} onChange={setAge}>{ages.map(a => <option key={a}>{a}</option>)}</Selection></AnalysisControls>
-      <DataTable key={selectedAge} headers={['Partei', 'Altersgruppe', 'Geschlecht', 'Anteil', 'Hinweis']} rows={selected.map(r => [<PartyLabel party={r.party} />, r.age_group, r.gender, percent(r.share), r.notes || '—'])} />
+      <DataTable key={selectedAge} headers={['Partei', 'Altersgruppe', 'Geschlecht', 'Anteil', 'Hinweis']} rows={selected.map(r => [<PartyLabel party={r.party} />, <span className="font-semibold underline decoration-2 underline-offset-4">{r.age_group}</span>, r.gender, percent(r.share), r.notes || '—'])} />
     </DataState>
     <StatusNote>Repräsentative Wahlstatistik: Parteianteile innerhalb der jeweiligen Alters- und Geschlechtsgruppe. Keine individuellen Personenprofile und keine absoluten Wählerzahlen. {year >= 2026 ? '2026: Zweitstimmen; jüngste Gruppe 16–24 Jahre.' : 'Bis 2021: Einzelstimme; jüngste Gruppe 18–24 Jahre.'} Die Altersgruppen verschiedener Jahre sind daher nicht durchgehend vergleichbar. „Insgesamt“ wird nicht aus den Gruppen gemittelt.</StatusNote>
   </div>;

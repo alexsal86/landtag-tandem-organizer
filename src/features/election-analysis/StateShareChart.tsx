@@ -2,7 +2,7 @@ import { useState } from 'react';
 import { CartesianGrid, Line, LineChart, ReferenceLine, ResponsiveContainer, Tooltip, usePlotArea, XAxis, YAxis } from 'recharts';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 import { ballotLabels, effectiveBallot, parties, percent } from './model';
-import { chartColor, DataState } from './shared';
+import { chartColor, DataState, PartyVisibilityChips } from './shared';
 import type { Ballot, StateResult } from './types';
 
 type SeriesRow = { year: number } & Record<string, number | null>;
@@ -103,9 +103,7 @@ export function StateShareChart({ year, ballot, rows, comparisonYears, series, l
           </div>)}
         </div>}
       </DataState>
-        <div className="mt-4 flex flex-wrap gap-2" role="group" aria-label="Parteien ein- oder ausblenden">
-          {rankedParties.map(({ party: p }) => <button key={p} type="button" aria-pressed={!hidden.includes(p)} onClick={() => onToggleParty(p)} className={`inline-flex items-center gap-2 rounded-full border px-3 py-1 text-xs focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring ${hidden.includes(p) ? 'text-muted-foreground line-through opacity-50' : ''}`}><span className="h-2.5 w-2.5 rounded-full" style={{ backgroundColor: chartColor(p) }} aria-hidden="true" />{p}</button>)}
-        </div>
+        <PartyVisibilityChips parties={rankedParties.map(row => row.party)} hidden={hidden} onToggle={onToggleParty} />
         <p className="mt-3 text-xs text-muted-foreground">Gestrichelte Linie: 5-%-Hürde. Parteien lassen sich über die Legende ein- und ausblenden. Fehlende Werte bleiben unbekannt.</p>
     </CardContent>
   </Card>;

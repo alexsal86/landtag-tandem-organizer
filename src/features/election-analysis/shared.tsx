@@ -9,6 +9,22 @@ const selectClass =
   "h-10 rounded-md border border-input bg-card text-card-foreground px-3 text-sm";
 export const chartColor = (party: string) =>
   party === "FDP" ? "#a68a00" : getPartyColor(party);
+export function PartyVisibilityChips({ parties, hidden, onToggle }: {
+  parties: string[];
+  hidden: string[];
+  onToggle: (party: string) => void;
+}) {
+  return <div className="mt-4 flex flex-wrap gap-2" role="group" aria-label="Parteien ein- oder ausblenden">
+    {parties.map(party => {
+      const visible = !hidden.includes(party);
+      return <button key={party} type="button" aria-pressed={visible} onClick={() => onToggle(party)}
+        className={`inline-flex items-center gap-2 rounded-full border px-3 py-1 text-xs focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring ${visible ? '' : 'text-muted-foreground line-through opacity-50'}`}>
+        <span className="h-2.5 w-2.5 rounded-full" style={{ backgroundColor: chartColor(party) }} aria-hidden="true" />
+        {party}
+      </button>;
+    })}
+  </div>;
+}
 export function Selection({
   id,
   label,
