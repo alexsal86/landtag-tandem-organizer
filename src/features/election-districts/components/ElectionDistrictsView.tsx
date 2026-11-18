@@ -76,6 +76,7 @@ export const ElectionDistrictsView = ({ sidebarHeader }: { sidebarHeader?: React
   const [showDistrictPolygons, setShowDistrictPolygons] = useState(true);
   const [showDistrictMarkers, setShowDistrictMarkers] = useState(true);
   const [searchQuery, setSearchQuery] = useState('');
+  const [searchOpen, setSearchOpen] = useState(false);
   const [activeResult, setActiveResult] = useState(0);
   const [selectedParties, setSelectedParties] = useState<Set<string>>(() => new Set(['CDU', 'GRÜNE', 'SPD', 'FDP', 'AFD']));
   useEffect(() => {
@@ -122,7 +123,12 @@ export const ElectionDistrictsView = ({ sidebarHeader }: { sidebarHeader?: React
     return showElectionDistricts;
   }), [districts, showAdministrativeBoundaries, showElectionDistricts]);
 
-  const searchResults = searchElectionDistricts(districts, searchQuery);
+  const searchResults = searchQuery.trim() ? searchElectionDistricts(electionDistricts, searchQuery) : electionDistricts;
+  const activeResultIndex = activeResult < searchResults.length ? activeResult : 0;
+  const openSearch = () => {
+    setSearchOpen(true);
+    setActiveResult(0);
+  };
   const missingBoundaries = displayedDistricts.filter(d => !hasRenderableBoundary(d.boundaries));
   const focusDistrict = (district: ElectionDistrict) => {
     setSelectedDistrict(district);
@@ -131,6 +137,7 @@ export const ElectionDistrictsView = ({ sidebarHeader }: { sidebarHeader?: React
     if (district.district_type === 'verwaltungsgrenze') setShowAdministrativeBoundaries(true);
     else setShowElectionDistricts(true);
     setSearchQuery('');
+    setSearchOpen(false);
     sidebarRef.current?.scrollTo({ top: 0, behavior: 'smooth' });
     setSelectedParties(previous => new Set([...previous, directMandateParty(district)]));
   };
@@ -166,29 +173,41 @@ export const ElectionDistrictsView = ({ sidebarHeader }: { sidebarHeader?: React
           <div className="min-w-0">
             <form className="relative flex min-w-0 items-center gap-2" onSubmit={event => {
               event.preventDefault();
-              if (searchResults[activeResult]) focusDistrict(searchResults[activeResult]);
+              if (searchOpen && searchResults[activeResultIndex]) focusDistrict(searchResults[activeResultIndex]);
+            }} onBlur={event => {
+              if (!event.currentTarget.contains(event.relatedTarget)) setSearchOpen(false);
             }} role="search" aria-label="Wahlkreissuche">
               <label htmlFor="district-search" className="shrink-0 cursor-text text-sm font-medium">Wahlkreis suchen</label>
               <div className="relative min-w-0">
                 <Input id="district-search" type="search" placeholder="Name oder Nummer …"
-                  className="h-8 w-40 border-0 bg-transparent px-1 shadow-none focus-visible:ring-1" value={searchQuery} onChange={event => { setSearchQuery(event.target.value); setActiveResult(0); }}
-                  role="combobox" aria-autocomplete="list" aria-expanded={!!searchQuery.trim()}
-                  aria-activedescendant={searchResults[activeResult] ? `district-result-${searchResults[activeResult].id}` : undefined}
-                  aria-controls="district-search-results" onKeyDown={event => {
-                    if (event.key === 'Escape') setSearchQuery('');
+                  className="h-8 w-40 border-0 bg-transparent px-1 shadow-none focus-visible:ring-1" value={searchQuery}
+                  onFocus={openSearch} onClick={() => { if (!searchOpen) openSearch(); }}
+                  onChange={event => { setSearchQuery(event.target.value); openSearch(); }}
+                  role="combobox" aria-autocomplete="list" aria-expanded={searchOpen}
+                  aria-activedescendant={searchOpen && searchResults[activeResultIndex] ? `district-result-${searchResults[activeResultIndex].id}` : undefined}
+                  aria-controls={searchOpen ? 'district-search-results' : undefined} onKeyDown={event => {
+                    if (event.key === 'Escape' && searchOpen) {
+                      event.preventDefault();
+                      setSearchOpen(false);
+                    }
                     if (event.key === 'ArrowDown' || event.key === 'ArrowUp') {
                       event.preventDefault();
-                      const next = (activeResult + (event.key === 'ArrowDown' ? 1 : -1) + searchResults.length) % Math.max(1, searchResults.length);
+                      if (!searchOpen) {
+                        openSearch();
+                        return;
+                      }
+                      const next = (activeResultIndex + (event.key === 'ArrowDown' ? 1 : -1) + searchResults.length) % Math.max(1, searchResults.length);
                       setActiveResult(next);
                       document.getElementById(`district-result-${searchResults[next]?.id}`)?.scrollIntoView({ block: 'nearest' });
                     }
                   }} />
               </div>
-              {searchQuery.trim() && (
+              {searchOpen && (
                 <div id="district-search-results" role="listbox" className="absolute top-full left-0 right-0 mt-1 z-[1100] rounded-md border bg-popover text-popover-foreground shadow-md max-h-64 overflow-y-auto">
                   <p className="p-2 text-xs text-muted-foreground" role="status">{searchResults.length} Treffer</p>
                   {searchResults.map((district, index) => (
-                    <button id={`district-result-${district.id}`} role="option" aria-selected={index === activeResult} style={index === activeResult ? { background: 'hsl(var(--accent))' } : undefined} key={district.id} type="button" className="block w-full px-3 py-2 text-left text-sm hover:bg-accent focus-visible:bg-accent"
+                    <button id={`district-result-${district.id}`} role="option" aria-selected={index === activeResultIndex} style={index === activeResultIndex ? { background: 'hsl(var(--accent))' } : undefined} key={district.id} type="button" className="block w-full px-3 py-2 text-left text-sm hover:bg-accent focus-visible:bg-accent"
+                      onMouseDown={event => event.preventDefault()}
                       onClick={() => focusDistrict(district)}>
                       WK {electionDistrictNumberLabel(district)}: {district.district_name}
                     </button>
