@@ -1,5 +1,6 @@
 import { AnalysisInfo } from './AnalysisInfo';
 import { TurnoutPanel } from './TurnoutPanel';
+import { PartyEndLabels } from './StateShareChart';
 import { useState } from 'react';
 import { useSearchParams } from 'react-router-dom';
 import { CartesianGrid, Line, LineChart, ReferenceLine, ResponsiveContainer, Tooltip, XAxis, YAxis } from 'recharts';
@@ -7,7 +8,7 @@ import { Button } from '@/components/ui/button';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 import { AnalysisControls } from './AnalysisToolbar';
 import { DataState, DataTable, Selection, StatusNote, chartColor } from './shared';
-import { ballotLabels, ballotsForYear, effectiveBallot, number, percent } from './model';
+import { ballotLabels, ballotsForYear, effectiveBallot, number, parties, percent } from './model';
 import { matrixAxes, matrixCell, stateTotalMetrics } from './stateHistoryModel';
 import { useFlowMatrix, useStateHistory } from './useStateHistory';
 const SourceLink = ({ url }: {
@@ -35,29 +36,21 @@ export function StateHistoryPanel({ year, years, initiallyShowTurnout = false }:
       else resultsByYear.set(result.year, [result]);
     }
     const chartYears = [...new Set([...totalsByYear.keys(), ...resultsByYear.keys()])].sort((a, b) => a - b);
-    const rows = chartYears.map(electionYear => ({
-      year: electionYear,
-      turnout: totalsByYear.get(electionYear)?.turnout ?? null,
-      invalidShare: totalsByYear.get(electionYear)?.invalidShare ?? null,
-      parties: Object.fromEntries((resultsByYear.get(electionYear) || []).map(result => [result.party, result.share])),
-    }));
-    const [hiddenMetrics, setHiddenMetrics] = useState<string[]>([]);
-    const charts = [
-      {
-        title: 'Parteien',
-        metrics: [...new Set(state.map(result => result.party))].map(party => ({
-          key: party, label: party, color: chartColor(party),
-          value: (row: typeof rows[number]) => row.parties[party] ?? null,
-        })),
-      },
-      {
-        title: 'Wahlbeteiligung und ungültige Stimmen',
-        metrics: [
-          { key: 'turnout', label: 'Wahlbeteiligung', color: '#4b8b39', value: (row: typeof rows[number]) => row.turnout },
-          { key: 'invalidShare', label: 'Ungültige Stimmen', color: '#b65c55', value: (row: typeof rows[number]) => row.invalidShare },
-        ],
-      },
-    ];
+    const rows: ({ year: number; turnout: number | null } & Record<string, number | null>)[] = chartYears.map(electionYear => {
+      const results = resultsByYear.get(electionYear) || [];
+      return {
+        ...Object.fromEntries(parties.map(party => [party, results.find(result => result.party === party)?.share ?? null])),
+        year: electionYear,
+        turnout: totalsByYear.get(electionYear)?.turnout ?? null,
+      };
+    });
+    const [hiddenParties, setHiddenParties] = useState<string[]>([]);
+    const availableParties = parties.filter(party => rows.some(row => row[party] != null));
+    const visibleParties = availableParties.filter(party => !hiddenParties.includes(party));
+    const maximum = Math.ceil((Math.max(10, ...rows.flatMap(row => availableParties.map(party => row[party] ?? 0))) + 5) / 5) * 5;
+    const turnoutMinimum = Math.floor(Math.min(40, ...rows.map(row => row.turnout ?? 40)) / 10) * 10;
+    const secondVoteMarker = chartYears.includes(2026) &&
+      <ReferenceLine x={2026} stroke="currentColor" strokeDasharray="5 4" label={{ value: 'Zweitstimme ab 2026', position: 'insideTopRight', fill: 'currentColor', fontSize: 12 }}/>;
     const ranks = ['1. Platz', '2. Platz', '3. Platz', '4. Platz', '5. Platz'];
     return <div className="space-y-4 [&_tbody]:bg-white [&_tbody]:text-slate-900">
     <AnalysisControls>
@@ -66,35 +59,47 @@ export function StateHistoryPanel({ year, years, initiallyShowTurnout = false }:
     <DataState loading={query.isLoading} error={query.error} empty={!rows.length} retry={() => void query.refetch()}>
       <h2 className="text-lg font-semibold">Vergangene Wahlen · {from}–{year}</h2>
       <div className="grid grid-cols-1 gap-4 lg:grid-cols-2">
-        {charts.map(({ title, metrics }) => {
-          const visible = metrics.filter(metric => !hiddenMetrics.includes(metric.key));
-          const maximum = Math.ceil((Math.max(10, ...rows.flatMap(row => visible.map(metric => metric.value(row) ?? 0))) + 5) / 5) * 5;
-          return <Card key={title} className="min-w-0">
-            <CardHeader><CardTitle className="text-lg">{title}</CardTitle></CardHeader>
-            <CardContent className="space-y-4">
-              {visible.length ? <div className="h-96" role="img" aria-label={`${title} in Prozent, ${from} bis ${year}`}>
-                <ResponsiveContainer><LineChart data={rows} margin={{ top: 24, left: 0, right: 26, bottom: 10 }}>
-                  <CartesianGrid vertical={false} strokeDasharray="3 3"/>
-                  <XAxis dataKey="year"/>
-                  <YAxis unit=" %" domain={[0, maximum]} tickFormatter={v => number(Number(v))}/>
-                  <Tooltip formatter={v => percent(typeof v === 'number' ? v : null)}/>
-                  {visible.map(metric => <Line key={metric.key} dataKey={metric.value} name={metric.label} stroke={metric.color} strokeWidth={2} connectNulls={false}/>)}
-                  {chartYears.includes(2026) && <ReferenceLine x={2026} stroke="currentColor" strokeDasharray="5 4" label={{ value: 'Zweitstimme ab 2026', position: 'insideTopRight', fill: 'currentColor', fontSize: 12 }}/>}
-                </LineChart></ResponsiveContainer>
-              </div> : <p className="py-12 text-center text-sm text-muted-foreground">Keine Datenreihe ausgewählt.</p>}
-              {metrics.length > 0 && <fieldset className="flex flex-wrap gap-x-4 gap-y-2">
-                <legend className="sr-only">{title} im Diagramm anzeigen</legend>
-                {metrics.map(metric => <label key={metric.key} className="flex items-center gap-2 text-sm">
-                  <input type="checkbox" checked={!hiddenMetrics.includes(metric.key)} onChange={event => {
-                    const checked = event.target.checked;
-                    setHiddenMetrics(current => checked ? current.filter(key => key !== metric.key) : [...current, metric.key]);
-                  }}/>
-                  <span style={{ color: metric.color }} aria-hidden="true">●</span>{metric.label}
-                </label>)}
-              </fieldset>}
-            </CardContent>
-          </Card>;
-        })}
+        <Card className="min-w-0">
+          <CardHeader><CardTitle className="text-lg">Parteien</CardTitle></CardHeader>
+          <CardContent className="space-y-4">
+            {visibleParties.length ? <div className="h-96" role="img" aria-label={`Parteianteile in Prozent, ${from} bis ${year}`}>
+              <ResponsiveContainer><LineChart data={rows} margin={{ top: 24, left: 0, right: 110, bottom: 10 }}>
+                <CartesianGrid vertical={false} strokeDasharray="3 3"/>
+                <XAxis dataKey="year"/>
+                <YAxis unit=" %" domain={[0, maximum]} tickFormatter={v => number(Number(v))}/>
+                <Tooltip formatter={v => percent(typeof v === 'number' ? v : null)}/>
+                {visibleParties.map(party => <Line key={party} dataKey={party} name={party} stroke={chartColor(party)} strokeWidth={2} connectNulls={false}/>)}
+                {secondVoteMarker}
+                <PartyEndLabels result={rows[rows.length - 1]} visibleParties={visibleParties} maximum={maximum}/>
+              </LineChart></ResponsiveContainer>
+            </div> : <p className="py-12 text-center text-sm text-muted-foreground">{availableParties.length ? 'Keine Partei ausgewählt.' : 'Keine Parteianteile verfügbar.'}</p>}
+            {availableParties.length > 0 && <fieldset className="flex flex-wrap gap-x-4 gap-y-2">
+              <legend className="sr-only">Parteien im Diagramm anzeigen</legend>
+              {availableParties.map(party => <label key={party} className="flex items-center gap-2 text-sm">
+                <input type="checkbox" checked={!hiddenParties.includes(party)} onChange={event => {
+                  const checked = event.target.checked;
+                  setHiddenParties(current => checked ? current.filter(value => value !== party) : [...current, party]);
+                }}/>
+                <span style={{ color: chartColor(party) }} aria-hidden="true">●</span>{party}
+              </label>)}
+            </fieldset>}
+          </CardContent>
+        </Card>
+        <Card className="min-w-0">
+          <CardHeader><CardTitle className="text-lg">Wahlbeteiligung</CardTitle></CardHeader>
+          <CardContent>
+            <div className="h-96" role="img" aria-label={`Wahlbeteiligung in Prozent, ${from} bis ${year}`}>
+              <ResponsiveContainer><LineChart data={rows} margin={{ top: 24, left: 0, right: 26, bottom: 10 }}>
+                <CartesianGrid vertical={false} strokeDasharray="3 3"/>
+                <XAxis dataKey="year"/>
+                <YAxis unit=" %" domain={[turnoutMinimum, 100]} tickFormatter={v => number(Number(v))}/>
+                <Tooltip formatter={v => percent(typeof v === 'number' ? v : null)}/>
+                <Line dataKey="turnout" name="Wahlbeteiligung" stroke="#4b8b39" strokeWidth={2} connectNulls={false}/>
+                {secondVoteMarker}
+              </LineChart></ResponsiveContainer>
+            </div>
+          </CardContent>
+        </Card>
       </div>
       <StatusNote>Bis 2021 zeigt die Übersicht die Einzelstimme und ab 2026 die Zweitstimme. 1952 war die Wahl zur Verfassunggebenden Landesversammlung. Die Übersicht zeigt die vorhandenen Parteiergebnisse. Lücken in den Linien stehen für fehlende Werte.</StatusNote>
       <h2 className="text-lg font-semibold">Parteiergebnisse nach Wahl</h2>
@@ -106,9 +111,7 @@ export function StateHistoryPanel({ year, years, initiallyShowTurnout = false }:
           const result = ranked[index];
           if (!result) return '–';
           return <div key={rank} className="space-y-1">
-            <div className="flex items-center gap-1">{result.party}
-              <AnalysisInfo label={`Hinweis und Quelle für ${result.party} bei der Wahl ${electionYear}`}><p>{result.notes || 'Bestehender Datensatz; Quellenprotokoll wird zentral im Super-Admin-Bereich gepflegt.'}</p></AnalysisInfo>
-            </div>
+            <div>{result.party}</div>
             <div>{number(result.votes)} · {index === 0 ? <strong>{percent(result.share)}</strong> : percent(result.share)}</div>
           </div>;
         })];

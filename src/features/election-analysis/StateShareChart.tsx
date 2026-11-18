@@ -7,7 +7,7 @@ import type { Ballot, StateResult } from './types';
 
 type SeriesRow = { year: number } & Record<string, number | null>;
 
-function EndLabels({ result, visibleParties, maximum }: {
+export function PartyEndLabels({ result, visibleParties, maximum }: {
   result: SeriesRow | undefined;
   visibleParties: string[];
   maximum: number;
@@ -90,7 +90,7 @@ export function StateShareChart({ year, ballot, rows, comparisonYears, series, l
             <Tooltip labelFormatter={value => `Landtagswahl ${value}`} formatter={value => percent(typeof value === 'number' ? value : null)} itemSorter={item => typeof item.value === 'number' ? -item.value : Infinity} />
             <ReferenceLine y={5} stroke="#b91c1c" strokeDasharray="4 4" />
             {visibleParties.map(p => <Line key={p} dataKey={p} name={p} stroke={chartColor(p)} strokeWidth={2.5} connectNulls={false} />)}
-            <EndLabels result={latestResult} visibleParties={visibleParties} maximum={maximum} />
+            <PartyEndLabels result={latestResult} visibleParties={visibleParties} maximum={maximum} />
           </LineChart></ResponsiveContainer>
         </div> : <div className="flex flex-col gap-4" aria-label="Parteianteile in Prozent">
           {bars.map(row => <div key={row.party} className="grid grid-cols-[3.5rem_minmax(0,1fr)_4.5rem] items-center gap-3 text-sm">
