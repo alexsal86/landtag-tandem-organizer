@@ -1,5 +1,5 @@
 import { formatMandateType } from '@/features/election-history/mandateLabel';
-import { DistrictCandidateChronicle } from './DistrictCandidateChronicle';
+import { DistrictCandidateChronicle, useDistrictCandidacies } from './DistrictCandidateChronicle';
 import { ProfileBoundarySection } from "./ProfileBoundarySection";
 import { AnalysisControls } from "../AnalysisToolbar";
 import ResearchLab from "./lab/ResearchLab";
@@ -27,6 +27,7 @@ import {
   PartyLabel,
 } from "../shared";
 import { ballotLabels, number, parties, percent } from "../model";
+import { useStateTotal } from "../useStateHistory";
 import type { Ballot } from "../types";
 import {
   useComparison,
@@ -40,6 +41,7 @@ import {
   compareDistrict,
   firstSecondDifference,
   subtract,
+  turnoutRate,
   uniqueTurnout,
 } from "./calculations";
 import type { ComparisonValue, Metric } from "./types";
@@ -123,6 +125,10 @@ function DistrictProfile({
     (version) => version.year === year && version.district_number === district,
   );
   const query = useDistrictSeries(district, years);
+  const candidacies = useDistrictCandidacies(district);
+  const selectedBallot = ballotForComparison(year, ballot);
+  const turnoutBallot = ballotForComparison(year, "second");
+  const stateTotal = useStateTotal(year, turnoutBallot);
   const [historyOpen, setHistoryOpen] = useState(false);
   const history = useDistrictHistory(district, year, historyOpen);
   const [params] = useSearchParams();
@@ -196,7 +202,47 @@ function DistrictProfile({
   const name =
     selectedVersion?.district_name ||
     data?.versions.find((v) => v.year === year)?.district_name ||
-    `Wahlkreis ${district}`;
+    results.find((result) => result.year === year)?.district_name;
+  const title = `Wahlkreis ${district}${name ? `: ${name}` : ""}`;
+  const historicalDistrictId = selectedVersion?.history_link_verified ? selectedVersion.historical_district_id : null;
+  const directWinner = historicalDistrictId ? candidacies.data?.find((candidate) =>
+    candidate.district?.id === historicalDistrictId &&
+    candidate.district?.period?.election_year === year &&
+    candidate.outcome === "direct",
+  ) : undefined;
+  const leadingParty = results.filter((result) =>
+    result.year === year && result.ballot === selectedBallot && result.share != null,
+  ).sort((a, b) => (b.share ?? -1) - (a.share ?? -1))[0];
+  const statePartyShare = leadingParty ? data?.state.find((result) =>
+    result.year === year && result.ballot === selectedBallot && result.party === leadingParty.party,
+  )?.share : null;
+  const turnout = data?.turnout.find((result) => result.year === year && result.ballot === turnoutBallot);
+  const districtTurnout = turnout?.turnout ?? turnoutRate(turnout?.eligible ?? null, turnout?.voters ?? null);
+  const stateTurnout = turnoutRate(stateTotal.data?.eligible ?? null, stateTotal.data?.voters ?? null);
+  const partyDelta = subtract(leadingParty?.share, statePartyShare);
+  const turnoutDelta = subtract(districtTurnout, stateTurnout);
+  const overview = [
+    {
+      label: `Direktmandat ${year}`,
+      value: directWinner?.person ? `${directWinner.person.name} (${directWinner.party})` : "—",
+      detail: directWinner?.vote_share != null ? `${percent(directWinner.vote_share)} · ${ballotLabels[ballotForComparison(year, "first")]}` : null,
+    },
+    {
+      label: leadingParty ? `${leadingParty.party === "GRÜNE" ? "Grüne" : leadingParty.party} ${year} (${ballotLabels[selectedBallot]})` : `Stärkste erfasste Partei ${year}`,
+      value: percent(leadingParty?.share),
+      detail: partyDelta != null ? `${signed(partyDelta, 1)} Prozentpunkte zum Land (${percent(statePartyShare)})` : null,
+    },
+    {
+      label: `Wahlbeteiligung ${year}`,
+      value: percent(districtTurnout),
+      detail: turnoutDelta != null ? `Land: ${percent(stateTurnout)} (${signed(turnoutDelta, 1)} Prozentpunkte)` : null,
+    },
+    {
+      label: `Wahlberechtigte ${year}`,
+      value: number(turnout?.eligible),
+      detail: turnout?.voters != null ? `Wählende: ${number(turnout.voters)}` : null,
+    },
+  ];
   return (
     <div className="space-y-4">
       <AnalysisControls>
@@ -226,9 +272,18 @@ function DistrictProfile({
           <option value="deltaVotes">Stimmendifferenz zur Vorwahl</option>
         </Selection>
       </AnalysisControls>
-      <h2 className="text-xl font-semibold">
-        {district}: {name}
-      </h2>
+      <h2 className="text-2xl font-semibold">{title}</h2>
+      <section aria-label="Wahlkreis im Überblick" className="grid gap-4 sm:grid-cols-2 xl:grid-cols-4">
+        {overview.map(({ label, value, detail }) => (
+          <Card key={label} className="min-w-0">
+            <CardContent className="space-y-1 p-5">
+              <h3 className="text-sm font-medium text-muted-foreground">{label}</h3>
+              <p className="break-words text-2xl font-semibold tabular-nums">{value}</p>
+              {detail && <p className="text-sm text-muted-foreground">{detail}</p>}
+            </CardContent>
+          </Card>
+        ))}
+      </section>
       <div className="grid gap-4 lg:grid-cols-2">
         <Card className="min-w-0">
           <CardHeader>
@@ -281,14 +336,14 @@ function DistrictProfile({
         <ProfileBoundarySection
           year={year}
           number={district}
-          name={name}
-          historicalDistrictId={selectedVersion?.history_link_verified ? selectedVersion.historical_district_id : null}
+          name={name ?? title}
+          historicalDistrictId={historicalDistrictId}
         />
       </div>
       <DistrictCandidateChronicle
         district={district}
         selectedYear={year}
-        linkedDistrictId={selectedVersion?.history_link_verified ? selectedVersion.historical_district_id : null}
+        linkedDistrictId={historicalDistrictId}
       />
       {!query.isLoading && !query.error && results.length > 0 && <>
         <h3 className="text-lg font-medium">Ergebnisse pro Wahljahr</h3>
@@ -408,10 +463,10 @@ function DistrictProfile({
     </div>
   );
 }
-function signed(value: number | null | undefined): string {
+function signed(value: number | null | undefined, maximumFractionDigits = 2): string {
   return value == null
     ? "—"
-    : `${value > 0 ? "+" : ""}${value.toLocaleString("de-DE", { maximumFractionDigits: 2 })}`;
+    : `${value > 0 ? "+" : ""}${value.toLocaleString("de-DE", { maximumFractionDigits })}`;
 }
 function valueFor(row: ComparisonValue, metric: Metric): number | null {
   return metric === "votes"

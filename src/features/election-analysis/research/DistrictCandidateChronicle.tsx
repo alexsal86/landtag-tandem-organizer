@@ -38,12 +38,9 @@ function ListMandate({ candidate }: { candidate: Row }) {
   return candidate.outcome === 'list' ? <>, {candidateOutcomeLabel(candidate)}</> : null;
 }
 
-/** Sieger- und Bewerberchronik je Wahl. Gleiche Nummer belegt keine gleiche Gebietsidentität über Jahre. */
-export function DistrictCandidateChronicle({
-  district, selectedYear, linkedDistrictId,
-}: { district: number; selectedYear: number; linkedDistrictId?: string | null }) {
+export function useDistrictCandidacies(district: number) {
   const { user } = useAuth();
-  const query = useQuery({
+  return useQuery({
     queryKey: ['election-analysis', user?.id, 'district-chronicle', district],
     enabled: !!user,
     staleTime: 5 * 60_000,
@@ -59,6 +56,13 @@ export function DistrictCandidateChronicle({
       return (data || []) as unknown as Row[];
     },
   });
+}
+
+/** Sieger- und Bewerberchronik je Wahl. Gleiche Nummer belegt keine gleiche Gebietsidentität über Jahre. */
+export function DistrictCandidateChronicle({
+  district, selectedYear, linkedDistrictId,
+}: { district: number; selectedYear: number; linkedDistrictId?: string | null }) {
+  const query = useDistrictCandidacies(district);
   const selectedPeriodId = linkedDistrictId ? query.data?.find(
     (row) => row.district?.id === linkedDistrictId && row.district.period?.election_year === selectedYear,
   )?.district?.period?.id : undefined;
