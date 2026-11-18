@@ -98,7 +98,7 @@ serve(async (req: Request) => {
   } catch (error) {
     console.error("social-planner-reminders error:", error);
     return new Response(
-      JSON.stringify({ error: error instanceof Error ? error.message : "internal" }),
+      JSON.stringify({ error: "internal" }),
       { status: 500, headers: { ...corsHeaders, "Content-Type": "application/json" } },
     );
   }

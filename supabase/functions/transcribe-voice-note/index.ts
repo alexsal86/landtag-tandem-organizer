@@ -30,7 +30,8 @@ Deno.serve(async (req) => {
 
     const apiKey = Deno.env.get("OPENAI_API_KEY");
     if (!apiKey) {
-      return new Response(JSON.stringify({ error: "config", message: "OPENAI_API_KEY missing" }), {
+      console.error("transcribe-voice-note: OPENAI_API_KEY missing");
+      return new Response(JSON.stringify({ error: "config" }), {
         status: 500,
         headers: { ...cors, "Content-Type": "application/json" },
       });
@@ -69,9 +70,8 @@ Deno.serve(async (req) => {
     });
 
     if (!resp.ok) {
-      const errText = await resp.text().catch(() => "");
-      console.error("Whisper error", resp.status, errText);
-      return new Response(JSON.stringify({ error: "ai_error", status: resp.status }), {
+      console.error("Whisper error", resp.status);
+      return new Response(JSON.stringify({ error: "ai_error" }), {
         status: 502,
         headers: { ...cors, "Content-Type": "application/json" },
       });
@@ -85,7 +85,7 @@ Deno.serve(async (req) => {
   } catch (err) {
     console.error("transcribe-voice-note error", err);
     return new Response(
-      JSON.stringify({ error: "internal_error", message: err instanceof Error ? err.message : "Unknown" }),
+      JSON.stringify({ error: "internal_error" }),
       { status: 500, headers: { ...cors, "Content-Type": "application/json" } },
     );
   }

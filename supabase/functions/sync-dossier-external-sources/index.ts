@@ -222,7 +222,8 @@ serve(withSafeHandler("sync-dossier-external-sources", async (req) => {
         .update({ last_checked_at: new Date().toISOString() })
         .eq("id", watcher.id);
     } catch (error) {
-      errors.push({ watcherId: watcher.id, message: error instanceof Error ? error.message : "Unbekannter Fehler" });
+      console.error("Dossier source sync failed for watcher", watcher.id, error);
+      errors.push({ watcherId: watcher.id, message: "Quelle konnte nicht synchronisiert werden" });
     }
   }
 
