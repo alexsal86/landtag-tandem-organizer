@@ -516,11 +516,12 @@ export function NotificationsPage(): JSX.Element {
                           onClick={() => {
                             if (!notification.is_read) markAsRead(notification.id);
                             const path = buildDeepLinkPath(notification);
-                            if (/^https?:\/\//i.test(path)) {
-                              window.location.href = path;
+                            const target = new URL(path, window.location.href);
+                            if (target.origin !== window.location.origin) {
+                              window.location.assign(target.href);
                               return;
                             }
-                            navigate(path);
+                            navigate(target.pathname + target.search + target.hash);
                           }}
                         >
                           <div className={cn(

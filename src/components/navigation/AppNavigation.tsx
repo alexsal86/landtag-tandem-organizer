@@ -829,10 +829,11 @@ export function AppNavigation({
                 onClick={() => {
                   if (!n.is_read) markAsRead(n.id);
                   const path = buildDeepLinkPath(n);
-                  if (/^https?:\/\//i.test(path)) {
-                    window.location.href = path;
+                  const target = new URL(path, window.location.href);
+                  if (target.origin !== window.location.origin) {
+                    window.location.assign(target.href);
                   } else {
-                    navigate(path);
+                    navigate(target.pathname + target.search + target.hash);
                   }
                   if (isMobile) onSectionChange(activeSection);
                 }}
