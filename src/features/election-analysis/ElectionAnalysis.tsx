@@ -49,7 +49,7 @@ export default function ElectionAnalysis() {
     </nav>
     {section === 'deputies' ? <Suspense fallback={<p role="status">Abgeordnetenübersicht lädt …</p>}><DeputyDirectory /></Suspense> : <>
     <DataState loading={years.isLoading} error={years.error} empty={!years.data?.length} retry={() => void years.refetch()}>
-      <AnalysisToolbarLayout filters={section === 'mandates' || (section === 'research' && researchTool === 'saved') ? null : <>
+      <AnalysisToolbarLayout expandFilters={section === 'districts'} filters={section === 'mandates' || (section === 'research' && researchTool === 'saved') ? null : <>
         {<Selection id="analysis-year" label="Wahl / Legislaturperiode" value={String(year)} onChange={value => change('analysisYear', value)}>{availableYears?.filter(y => !['split', 'seats'].includes(section) || y.year === 2026).map(y => <option key={y.year} value={y.year}>{y.year} · {y.period_number}. Legislaturperiode</option>)}</Selection>}
         {!['flows','split','history','seats'].includes(section) && !(section === 'research' && ['saved','flows'].includes(researchTool)) && <Selection id="analysis-ballot" label="Stimmenart" value={ballot} onChange={value => change('analysisBallot', value)}>{(section === 'demographics' && year >= 2026 ? ['second'] as Ballot[] : ballotsForYear(year)).map(b => <option key={b} value={b}>{ballotLabels[b]}</option>)}</Selection>}
         {(section === 'flows' || section === 'districts') && <Selection id="analysis-party" label={section === 'flows' ? 'Zielpartei' : 'Partei'} value={party} onChange={value => change('analysisParty', value)}>{parties.map(p => <option key={p}>{p}</option>)}</Selection>}
@@ -121,49 +121,80 @@ function StatePanel({ year, ballot, party, gender, years }: PanelProps & { years
 
 function DistrictPanel({ year, ballot, party, gender }: PanelProps) {
   const query = useAnalysisRows('districts', year, ballot, party, gender);
+  const state = useAnalysisRows('state', year, ballot, party, gender);
   const [search, setSearch] = useState('');
-  const rows = (query.data || []).filter(r => `${r.district_number} ${r.district_name}`.toLocaleLowerCase('de').includes(search.toLocaleLowerCase('de'))).sort((a, b) => (b.share ?? -1) - (a.share ?? -1));
+  const allRows = query.data || [];
+  const term = search.trim().toLocaleLowerCase('de');
+  const rows = allRows.filter(row => /^\d+$/.test(term)
+    ? row.district_number === Number(term)
+    : `${row.district_number} ${row.district_name}`.toLocaleLowerCase('de').includes(term))
+    .sort((a, b) => compareAnalysisValues(a.share, b.share, 'desc'));
+  const topRows = rows.filter(row => row.share != null).slice(0, 10);
+  const stateShare = state.data?.find(row => row.party === party)?.share ?? null;
+  const color = chartColor(party);
+  const axisMaximum = Math.min(100, Math.ceil(Math.max(10, (topRows[0]?.share ?? 0) + 3, stateShare ?? 0) / 10) * 10);
+
   return <div className="space-y-4">
-    <AnalysisControls><Input className="max-w-sm" aria-label="Wahlkreis filtern" placeholder="Wahlkreisname oder Nummer …" value={search} onChange={event => setSearch(event.target.value)} /></AnalysisControls>
-    <DataState loading={query.isLoading} error={query.error} empty={!rows.length || rows.every(r => r.share === null && r.votes === null)} retry={() => void query.refetch()}>
-      <div className="grid items-start gap-4 xl:grid-cols-2">
-        <div className="min-w-0">
+    <AnalysisControls placement="filters">
+      <label className="flex min-w-48 flex-1 flex-col gap-2 text-sm font-medium" htmlFor="analysis-district-search">
+        Wahlkreis suchen
+        <Input id="analysis-district-search" placeholder="Wahlkreisname oder Nummer …" value={search} onChange={event => setSearch(event.target.value)} />
+      </label>
+    </AnalysisControls>
+    <DataState loading={query.isLoading} error={query.error} empty={!rows.length || rows.every(row => row.share == null && row.votes == null)} retry={() => void query.refetch()}>
+      <div className="grid items-start gap-4 xl:grid-cols-[minmax(0,5fr)_minmax(0,6fr)]">
+        <div className="min-w-0 [&_table]:bg-card [&_thead]:text-muted-foreground">
           <DataTable
-            key={search}
-            headers={['Nr.', 'Wahlkreis', 'Stimmen', 'Anteil', 'Datenstatus / Hinweis']}
+            key={term}
+            caption={`${rows.length} von ${allRows.length} hinterlegten Wahlkreisen`}
+            pageSize={10}
+            initialSort={{ column: 3, direction: 'desc' }}
+            headers={['Nr.', 'Wahlkreis', 'Stimmen', 'Anteil', 'Abstand zum Land']}
             sortableColumns={[0, 1, 2, 3]}
-            sortValues={rows.map(r => [r.district_number, r.district_name, r.votes, r.share])}
-            rows={rows.map(r => [
-              number(r.district_number), r.district_name, number(r.votes), percent(r.share),
-              <AnalysisInfo label={`Datenstatus und Hinweise für ${r.district_name}`}>
-                <p>{r.notes || (r.preliminary ? 'Vorläufiges amtliches Endergebnis' : 'Endgültig')}</p>
-              </AnalysisInfo>,
-            ])}
+            sortValues={rows.map(row => [row.district_number, row.district_name, row.votes, row.share])}
+            rows={rows.map(row => {
+              const delta = row.share != null && stateShare != null ? row.share - stateShare : null;
+              const roundedDelta = delta == null ? null : Math.round(delta * 10) / 10;
+              return [
+                number(row.district_number),
+                <span className="inline-flex items-center gap-1">
+                  {row.district_name}
+                  {(row.notes || row.preliminary) && <AnalysisInfo label={`Datenstatus und Hinweise für ${row.district_name}`}>
+                    <p>{row.notes || 'Vorläufiges amtliches Endergebnis'}</p>
+                  </AnalysisInfo>}
+                </span>,
+                <span className="block text-right tabular-nums">{number(row.votes)}</span>,
+                <span className="-m-3 block whitespace-nowrap p-3 text-right tabular-nums" style={row.share == null ? undefined : {
+                  background: `linear-gradient(to right, color-mix(in srgb, ${color} 28%, transparent) ${row.share}%, transparent ${row.share}%)`,
+                }}>{percent(row.share)}</span>,
+                <span className={`block whitespace-nowrap text-right tabular-nums ${roundedDelta != null && roundedDelta > 0 ? 'text-green-700 dark:text-green-400' : ''}`}>
+                  {roundedDelta == null ? '—' : `${roundedDelta > 0 ? '+' : ''}${number(roundedDelta)}`}
+                </span>,
+              ];
+            })}
           />
         </div>
         <Card className="min-w-0">
-          <CardHeader><CardTitle className="text-lg">{party}: zehn stärkste Wahlkreise dieser Auswahl</CardTitle></CardHeader>
+          <CardHeader className="space-y-2">
+            <CardTitle className="text-lg">{party}: zehn stärkste Wahlkreise dieser Auswahl</CardTitle>
+            <p className="text-sm text-muted-foreground">Anteil in Prozent. {stateShare != null ? 'Die gestrichelte Linie zeigt das Landesergebnis.' : state.isLoading ? 'Landesergebnis wird geladen …' : 'Landesergebnis nicht verfügbar.'}</p>
+          </CardHeader>
           <CardContent>
-            <div className="h-[26rem]" role="img" aria-label="Zehn stärkste Wahlkreise nach Parteianteil. Genaue Werte stehen auch in der Tabelle.">
+            {topRows.length ? <div className="h-[26rem]" role="img" aria-label="Stimmenanteile der stärksten Wahlkreise in der Auswahl">
               <ResponsiveContainer>
-                <BarChart data={rows.filter(r => r.share !== null).slice(0, 10)} layout="vertical" margin={{ right: 60 }}>
-                  <XAxis type="number" unit=" %" />
-                  <YAxis type="category" dataKey="district_name" width={130} tick={{ fontSize: 11 }} />
+                <BarChart data={topRows} layout="vertical" margin={{ right: 54 }}>
+                  <CartesianGrid horizontal={false} />
+                  <XAxis type="number" domain={[0, axisMaximum]} tickFormatter={value => percent(Number(value))} axisLine={false} tickLine={false} />
+                  <YAxis type="category" dataKey="district_name" width={112} tick={{ fontSize: 12 }} axisLine={false} tickLine={false} />
                   <Tooltip formatter={value => percent(typeof value === 'number' ? value : null)} />
-                  <Bar dataKey="share" fill={chartColor(party)} name="Anteil">
-                    <LabelList
-                      dataKey="share"
-                      position="right"
-                      offset={6}
-                      fill="currentColor"
-                      fontSize={12}
-                      fontWeight={700}
-                      formatter={value => percent(typeof value === 'number' ? value : null)}
-                    />
+                  <Bar dataKey="share" fill={color} name="Anteil" radius={4}>
+                    <LabelList dataKey="share" position="right" offset={6} fill="currentColor" fontSize={12} fontWeight={700}
+                      formatter={value => percent(typeof value === 'number' ? value : null)} />
                   </Bar>
+                  {stateShare != null && <ReferenceLine x={stateShare} stroke="#b91c1c" strokeWidth={2} strokeDasharray="4 3" zIndex={500} />}
                 </BarChart>
               </ResponsiveContainer>
-            </div>
+            </div> : <p className="text-sm text-muted-foreground">Für diese Auswahl liegen keine Stimmenanteile vor.</p>}
           </CardContent>
         </Card>
       </div>

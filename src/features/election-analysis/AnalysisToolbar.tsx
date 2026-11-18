@@ -8,8 +8,10 @@ const ControlsTarget = createContext<HTMLDivElement | null | undefined>(undefine
 export function AnalysisToolbarLayout({
   filters,
   children,
+  expandFilters = false,
 }: {
   filters: ReactNode;
+  expandFilters?: boolean;
   children: ReactNode;
 }) {
   const [target, setTarget] = useState<HTMLDivElement | null>(null);
@@ -19,7 +21,7 @@ export function AnalysisToolbarLayout({
     <ControlsTarget.Provider value={target}>
       <FilterControlsTarget.Provider value={filterTarget}>
         <div className="flex flex-col gap-4 rounded-lg border bg-card p-4 sm:flex-row sm:flex-wrap sm:items-end sm:gap-5">
-          <div className="flex flex-wrap items-end gap-4">{filters}<div ref={setFilterTarget} className="contents" /></div>
+          <div className={`flex min-w-0 flex-wrap items-end gap-4 ${expandFilters ? "flex-1" : ""}`}>{filters}<div ref={setFilterTarget} className="contents" /></div>
           <div
             ref={setTarget}
             className="flex min-w-0 flex-wrap items-end gap-3 border-t pt-4 empty:hidden sm:flex-1 sm:border-l sm:border-t-0 sm:pl-5 sm:pt-0"

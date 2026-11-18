@@ -95,18 +95,24 @@ export function DataTable({
   sortValues,
   sortableColumns = [],
   headerColors,
+  caption,
+  pageSize = 25,
+  initialSort,
 }: {
   headers: string[];
   headerColors?: Record<string, string>;
+  caption?: string;
+  pageSize?: number;
+  initialSort?: { column: number; direction: "asc" | "desc" };
   rows: ReactNode[][];
   sortValues?: (string | number | null)[][];
   sortableColumns?: number[];
 }) {
-  const [limit, setLimit] = useState(25);
+  const [limit, setLimit] = useState(pageSize);
   const [sort, setSort] = useState<{
     column: number;
     direction: "asc" | "desc";
-  } | null>(null);
+  } | null>(initialSort ?? null);
   const sortedRows = rows.map((row, index) => ({ row, index }));
   if (sort && sortValues)
     sortedRows.sort(
@@ -125,12 +131,13 @@ export function DataTable({
           ? "desc"
           : "asc",
     }));
-    setLimit(25);
+    setLimit(pageSize);
   };
   return (
     <div>
       <div className="overflow-x-auto rounded-lg border">
         <table className="w-full text-sm">
+          {caption && <caption className="caption-top bg-card p-4 text-left text-sm text-muted-foreground">{caption}</caption>}
           <thead className="bg-muted/30">
             <tr>
               {headers.map((header, index) => {
@@ -200,9 +207,9 @@ export function DataTable({
         <Button
           className="mt-3"
           variant="outline"
-          onClick={() => setLimit((value) => value + 25)}
+          onClick={() => setLimit((value) => value + pageSize)}
         >
-          Weitere 25 anzeigen ({limit} von {rows.length})
+          Weitere {Math.min(pageSize, rows.length - limit)} anzeigen ({limit} von {rows.length})
         </Button>
       )}
     </div>
