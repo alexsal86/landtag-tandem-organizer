@@ -7,15 +7,23 @@ import MandateAnalysis from "./MandateAnalysis";
 import { lazy, Suspense, useCallback, useMemo, useState } from "react";
 import { useSearchParams } from "react-router-dom";
 import {
+  Bar,
+  BarChart,
   CartesianGrid,
+  Cell,
   Line,
   LineChart,
+  ReferenceLine,
   ResponsiveContainer,
   Tooltip,
   XAxis,
   YAxis,
 } from "recharts";
+import { getPartyColor } from "@/features/election-districts/partyColors";
+import { Portal } from "@radix-ui/react-tooltip";
+import { Info } from "lucide-react";
 import { Button } from "@/components/ui/button";
+import { Tooltip as InfoTooltip, TooltipContent, TooltipProvider, TooltipTrigger } from "@/components/ui/tooltip";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import {
   DataState,
@@ -480,6 +488,11 @@ function signed(value: number | null | undefined, maximumFractionDigits = 2): st
     ? "—"
     : `${value > 0 ? "+" : ""}${value.toLocaleString("de-DE", { maximumFractionDigits })}`;
 }
+function differenceCell(value: number | null) {
+  if (value === null || value === 0) return signed(value);
+  const color = value < 0 ? "text-red-700" : "text-blue-700";
+  return <span className={`font-medium ${color}`}>{signed(value)}</span>;
+}
 function valueFor(row: ComparisonValue, metric: Metric): number | null {
   return metric === "votes"
     ? row.voteDelta
@@ -520,9 +533,10 @@ function AtlasPanel({
   const chosen: string[] = (params.get("analysisParties") || party)
     .split(",")
     .filter((p) => parties.some((knownParty) => knownParty === p));
-  const selectedParties = chosen.length ? [...new Set(chosen)] : [party];
+  const splitParty = parties.find((p) => p === params.get("splitParty")) ?? chosen[0] ?? party;
+  const selectedParties = split ? [splitParty] : chosen.length ? [...new Set(chosen)] : [party];
   const [mapParty, setMapParty] = useState(selectedParties[0]);
-  const activeMapParty = selectedParties.includes(mapParty)
+  const activeMapParty = split ? splitParty : selectedParties.includes(mapParty)
     ? mapParty
     : selectedParties[0];
   const rawMetric = params.get("analysisMetric");
@@ -563,32 +577,34 @@ function AtlasPanel({
             );
           if (split) {
             const diff = firstSecondDifference(before, after);
+            const stateFirst = data.state.find((s) => s.ballot === "first" && s.party === p);
+            const stateSecond = data.state.find((s) => s.ballot === "second" && s.party === p);
+            const stateSwing = subtract(stateFirst?.share, stateSecond?.share);
+            const sameRelease =
+              !!before?.data_release &&
+              before.data_release === stateFirst?.data_release &&
+              before.data_release === stateSecond?.data_release;
+            const relativeSwing = sameRelease ? subtract(diff.pp, stateSwing) : null;
+            const warnings: string[] = [];
+            if (!diff.compatible) {
+              warnings.push("Erst-/Zweitstimmen fehlen oder haben unterschiedliche Datenstände.");
+            } else {
+              if (before?.preliminary) warnings.push("Vorläufige Ergebnisse.");
+              if (diff.pp !== null && relativeSwing === null)
+                warnings.push("Für die Landesdifferenz fehlen vergleichbare Landeswerte.");
+            }
             return {
               districtNumber: n,
-              districtName:
-                after?.district_name ||
-                before?.district_name ||
-                `Wahlkreis ${n}`,
+              districtName: after?.district_name || before?.district_name || `Wahlkreis ${n}`,
               party: p,
               before,
               after,
               swing: diff.pp,
               voteDelta: diff.votes,
-              stateSwing: subtract(
-                data.state.find((s) => s.ballot === "first" && s.party === p)
-                  ?.share,
-                data.state.find((s) => s.ballot === "second" && s.party === p)
-                  ?.share,
-              ),
-              relativeSwing: null,
+              stateSwing,
+              relativeSwing,
               comparable: diff.compatible,
-              warnings: diff.compatible
-                ? before?.preliminary
-                  ? ["Vorläufige Ergebnisse."]
-                  : []
-                : [
-                    "Erst-/Zweitstimmen fehlen oder haben unterschiedliche Datenstände.",
-                  ],
+              warnings,
             } satisfies ComparisonValue;
           }
           const comparison = compareDistrict({
@@ -659,14 +675,14 @@ function AtlasPanel({
       : [...selectedParties, p];
     if (next.length) set("analysisParties", next.join(","));
   };
-  const unit = metric === "votes" ? "Stimmen" : "%";
+  const unit = metric === "votes" ? "Stimmen" : "Prozentpunkte";
   return (
     <div className="space-y-4">
-      <h2 className="text-xl font-semibold">
-        {split
-          ? "Erst- minus Zweitstimmen 2026"
-          : `Veränderungsatlas ${beforeYear} → ${afterYear}`}
-      </h2>
+      {!split && (
+        <h2 className="text-xl font-semibold">
+          Veränderungsatlas {beforeYear} → {afterYear}
+        </h2>
+      )}
       <AnalysisControls>
         {!split && (
           <Selection
@@ -688,27 +704,52 @@ function AtlasPanel({
           value={metric}
           onChange={(v) => set("analysisMetric", v)}
         >
-          <option value="pp">Anteilsänderung (%)</option>
+          <option value="pp">{split ? "Anteilsdifferenz (Prozentpunkte)" : "Anteilsänderung (%)"}</option>
           <option value="votes">Absolute Stimmendifferenz</option>
           {!split && (
             <option value="relative">Abweichung vom Landestrend (%)</option>
           )}
         </Selection>
+        {split && (
+          <fieldset className="flex min-w-0 flex-wrap gap-2">
+            <legend className="mb-1 text-sm font-medium">Partei</legend>
+            {parties.map((p) => (
+              <Button
+                key={p}
+                type="button"
+                size="sm"
+                className="rounded-full"
+                variant={p === splitParty ? "default" : "outline"}
+                aria-pressed={p === splitParty}
+                onClick={() => set("splitParty", p)}
+              >
+                <span
+                  aria-hidden="true"
+                  className="size-2.5 rounded-full border border-black/15"
+                  style={{ backgroundColor: getPartyColor(p) }}
+                />
+                {p}
+              </Button>
+            ))}
+          </fieldset>
+        )}
       </AnalysisControls>
-      <fieldset className="flex flex-wrap gap-2">
-        <legend className="mb-2 text-sm font-medium">Parteien</legend>
-        {parties.map((p) => (
-          <Button
-            key={p}
-            size="sm"
-            variant={selectedParties.includes(p) ? "default" : "outline"}
-            aria-pressed={selectedParties.includes(p)}
-            onClick={() => toggleParty(p)}
-          >
-            {p}
-          </Button>
-        ))}
-      </fieldset>
+      {!split && (
+        <fieldset className="flex flex-wrap gap-2">
+          <legend className="mb-2 text-sm font-medium">Parteien</legend>
+          {parties.map((p) => (
+            <Button
+              key={p}
+              size="sm"
+              variant={selectedParties.includes(p) ? "default" : "outline"}
+              aria-pressed={selectedParties.includes(p)}
+              onClick={() => toggleParty(p)}
+            >
+              {p}
+            </Button>
+          ))}
+        </fieldset>
+      )}
       {split ? (
         <StatusNote>
           Erststimmenanteil minus Zweitstimmenanteil: beide Anteile haben ihren
@@ -759,11 +800,12 @@ function AtlasPanel({
       >
         {split && (
           <DataTable
+            whiteBackground
             headers={[
               "Landesvergleich",
               "Erstanteil",
               "Zweitanteil",
-              "Differenz %",
+              "Differenz (Prozentpunkte)",
               "Stimmendifferenz",
             ]}
             rows={selectedParties.map((p) => {
@@ -777,8 +819,8 @@ function AtlasPanel({
                 p,
                 percent(a?.share),
                 percent(b?.share),
-                signed(subtract(a?.share, b?.share)),
-                signed(subtract(a?.votes, b?.votes)),
+                differenceCell(subtract(a?.share, b?.share)),
+                differenceCell(subtract(a?.votes, b?.votes)),
               ];
             })}
           />
@@ -823,78 +865,136 @@ function AtlasPanel({
                 </Card>
               ))}
             </div>
-            <Selection
-              id="map-party"
-              label="Partei für die Karte"
-              value={activeMapParty}
-              onChange={setMapParty}
-            >
-              {selectedParties.map((p) => (
-                <option key={p}>{p}</option>
-              ))}
-            </Selection>
-            <AnalysisMap
-              versions={versions}
-              values={mapValues}
-              label={unit}
-              onOpenDistrict={open}
-            />
-            <DataTable
-              headers={[
-                "Nr.",
-                "Wahlkreis",
-                "Partei",
-                split ? "Erstanteil" : `${beforeYear} Anteil`,
-                split ? "Zweitanteil" : `${afterYear} Anteil`,
-                split ? "Erststimmen" : `${beforeYear} Stimmen`,
-                split ? "Zweitstimmen" : `${afterYear} Stimmen`,
-                `${split ? "Erst − Zweit" : "Veränderung"} (${unit})`,
-                split ? "Landesdifferenz %" : "Landes-Swing %",
-                ...(split ? ["Verifizierte Direktkandidatur"] : []),
-                "Hinweise",
-              ]}
-              sortableColumns={[0, 1, 2, 3, 4, 5, 6, 7, 8]}
-              sortValues={rows.map((r) => [
-                r.districtNumber,
-                r.districtName,
-                r.party,
-                r.before?.share ?? null,
-                r.after?.share ?? null,
-                r.before?.votes ?? null,
-                r.after?.votes ?? null,
-                valueFor(r, metric),
-                r.stateSwing,
-              ])}
-              rows={rows.map((r) => [
-                r.districtNumber,
-                <button
-                  className="text-left underline"
-                  onClick={() => open(r.districtNumber)}
-                >
-                  {r.districtName}
-                </button>,
-                r.party,
-                percent(r.before?.share),
-                percent(r.after?.share),
-                number(r.before?.votes),
-                number(r.after?.votes),
-                signed(valueFor(r, metric)),
-                signed(r.stateSwing),
-                ...(split
-                  ? [
-                      candidates.data?.find(
-                        (c) =>
-                          c.district_number === r.districtNumber &&
-                          c.party === r.party,
-                      )?.candidate_name || "Nicht verifiziert verfügbar",
-                    ]
-                  : []),
-                r.warnings.join(" ") || "Gleicher geprüfter Zuschnitt",
-              ])}
-            />
+            <div className="grid gap-4 lg:grid-cols-2">
+              <div className="min-w-0">
+                <AnalysisMap
+                  versions={versions}
+                  values={mapValues}
+                  label={unit}
+                  onOpenDistrict={open}
+                />
+              </div>
+              <SplitDistrictChart rows={rows} metric={metric} />
+            </div>
+            <div className="grid gap-4 lg:grid-cols-2">
+              <section aria-labelledby="split-districts" className="min-w-0">
+                <h3 id="split-districts" className="mb-2 font-semibold">Wahlkreisergebnisse</h3>
+                <p className="mb-3 text-sm text-muted-foreground">
+                  Die Landesdifferenz ist der Erst- minus Zweitstimmenabstand im Wahlkreis abzüglich desselben Abstands im Land.
+                </p>
+                {candidates.isLoading && <p role="status" className="mb-2 text-sm">Direktkandidaturen werden geladen …</p>}
+                {candidates.error && <p role="status" className="mb-2 text-sm">Direktkandidaturen konnten nicht geladen werden.</p>}
+                <TooltipProvider>
+                  <DataTable
+                    whiteBackground
+                    headers={[
+                      "Nr.",
+                      "Wahlkreis",
+                      "Partei",
+                      "Erstanteil",
+                      "Zweitanteil",
+                      "Erststimmen",
+                      "Zweitstimmen",
+                      `Erst − Zweit (${unit})`,
+                      "Landesdifferenz (Prozentpunkte)",
+                      "Direktkandidatur",
+                      "Hinweise",
+                    ]}
+                    sortableColumns={[0, 1, 2, 3, 4, 5, 6, 7, 8]}
+                    sortValues={rows.map((r) => [
+                      r.districtNumber,
+                      r.districtName,
+                      r.party,
+                      r.before?.share ?? null,
+                      r.after?.share ?? null,
+                      r.before?.votes ?? null,
+                      r.after?.votes ?? null,
+                      valueFor(r, metric),
+                      r.relativeSwing,
+                    ])}
+                    rows={rows.map((r) => [
+                      r.districtNumber,
+                      <button
+                        className="text-left underline"
+                        onClick={() => open(r.districtNumber)}
+                      >
+                        {r.districtName}
+                      </button>,
+                      r.party,
+                      percent(r.before?.share),
+                      percent(r.after?.share),
+                      number(r.before?.votes),
+                      number(r.after?.votes),
+                      differenceCell(valueFor(r, metric)),
+                      differenceCell(r.relativeSwing),
+                      <span className="whitespace-nowrap">
+                        {candidates.data?.find(
+                          (c) => c.district_number === r.districtNumber && c.party === r.party,
+                        )?.candidate_name || "—"}
+                      </span>,
+                      <InfoTooltip>
+                        <TooltipTrigger asChild>
+                          <button type="button" aria-label={`Hinweise zu ${r.districtName}`} className="rounded-sm focus-visible:outline focus-visible:outline-ring">
+                            <Info aria-hidden="true" className="size-4" />
+                          </button>
+                        </TooltipTrigger>
+                        <Portal>
+                          <TooltipContent className="max-w-xs">
+                            {r.warnings.join(" ") || "Gleicher geprüfter Zuschnitt."}
+                          </TooltipContent>
+                        </Portal>
+                      </InfoTooltip>,
+                    ])}
+                  />
+                </TooltipProvider>
+              </section>
+            </div>
           </>
         )}
       </DataState>
     </div>
+  );
+}
+
+function SplitDistrictChart({ rows, metric }: { rows: ComparisonValue[]; metric: Metric }) {
+  const unit = metric === "votes" ? "Stimmen" : "Prozentpunkte";
+  const data = rows
+    .map((row) => ({
+      district: row.districtNumber,
+      name: row.districtName,
+      difference: valueFor(row, metric),
+    }))
+    .sort((a, b) => a.district - b.district);
+  const maximum = Math.max(1, ...data.map(({ difference }) => Math.abs(difference ?? 0)));
+
+  return (
+    <Card className="min-w-0">
+      <CardHeader className="pb-3">
+        <CardTitle className="text-base">Differenz je Wahlkreis</CardTitle>
+        <p className="text-sm text-muted-foreground">Erst minus Zweit · {unit}</p>
+      </CardHeader>
+      <CardContent>
+        <div className="h-[280px] md:h-[420px]">
+          <ResponsiveContainer>
+            <BarChart data={data}>
+              <CartesianGrid vertical={false} strokeDasharray="3 3" />
+              <XAxis dataKey="district" tick={{ fontSize: 11 }} />
+              <YAxis domain={[-maximum, maximum]} tickFormatter={signed} width={68} />
+              <Tooltip
+                labelFormatter={(label, items) => items[0]?.payload?.name ?? `Wahlkreis ${label}`}
+                formatter={(value: number) => [`${signed(value)} ${unit}`, "Differenz"]}
+              />
+              <Bar dataKey="difference" isAnimationActive={false}>
+                {data.map(({ district, difference }) => (
+                  <Cell key={district} fill={(difference ?? 0) < 0 ? "#b91c1c" : "#2563a6"} />
+                ))}
+              </Bar>
+              <ReferenceLine y={0} stroke="#334155" strokeWidth={1.5} />
+            </BarChart>
+          </ResponsiveContainer>
+        </div>
+        <p className="text-center text-xs text-muted-foreground">Wahlkreisnummer</p>
+      </CardContent>
+    </Card>
   );
 }

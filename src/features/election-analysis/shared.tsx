@@ -98,6 +98,7 @@ export function DataTable({
   caption,
   pageSize = 25,
   initialSort,
+  whiteBackground = false,
 }: {
   headers: string[];
   headerColors?: Record<string, string>;
@@ -107,6 +108,7 @@ export function DataTable({
   rows: ReactNode[][];
   sortValues?: (string | number | null)[][];
   sortableColumns?: number[];
+  whiteBackground?: boolean;
 }) {
   const [limit, setLimit] = useState(pageSize);
   const [sort, setSort] = useState<{
@@ -190,7 +192,7 @@ export function DataTable({
               })}
             </tr>
           </thead>
-          <tbody>
+          <tbody className={whiteBackground ? "bg-white text-slate-950" : undefined}>
             {sortedRows.slice(0, limit).map(({ row, index }) => (
               <tr key={index} className="border-t">
                 {row.map((cell, cellIndex) => (

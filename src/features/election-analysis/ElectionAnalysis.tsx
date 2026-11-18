@@ -49,6 +49,7 @@ export default function ElectionAnalysis() {
     </nav>
     {section === 'deputies' ? <Suspense fallback={<p role="status">Abgeordnetenübersicht lädt …</p>}><DeputyDirectory /></Suspense> : <>
     <DataState loading={years.isLoading} error={years.error} empty={!years.data?.length} retry={() => void years.refetch()}>
+      {section === "split" && <h2 className="text-xl font-semibold">Erst- minus Zweitstimmen 2026</h2>}
       <AnalysisToolbarLayout expandFilters={section === 'districts'} filters={section === 'mandates' || (section === 'research' && researchTool === 'saved') ? null : <>
         {<Selection id="analysis-year" label="Wahl / Legislaturperiode" value={String(year)} onChange={value => change('analysisYear', value)}>{availableYears?.filter(y => !['split', 'seats'].includes(section) || y.year === 2026).map(y => <option key={y.year} value={y.year}>{y.year} · {y.period_number}. Legislaturperiode</option>)}</Selection>}
         {!['flows','split','history','seats'].includes(section) && !(section === 'research' && ['saved','flows'].includes(researchTool)) && <Selection id="analysis-ballot" label="Stimmenart" value={ballot} onChange={value => change('analysisBallot', value)}>{(section === 'demographics' && year >= 2026 ? ['second'] as Ballot[] : ballotsForYear(year)).map(b => <option key={b} value={b}>{ballotLabels[b]}</option>)}</Selection>}
