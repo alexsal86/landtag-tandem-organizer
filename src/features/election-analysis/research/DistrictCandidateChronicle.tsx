@@ -41,18 +41,18 @@ export function DistrictCandidateChronicle({ district }: { district: number }) {
     {query.isLoading && <p role="status" className="text-xs">Lade Chronik …</p>}
     {query.error && <p role="alert" className="text-xs">Chronik konnte nicht geladen werden.</p>}
     {query.data && years.length === 0 && <p className="text-xs text-muted-foreground">Keine Kandidaturen für diese Wahlkreisnummer erfasst.</p>}
-    <div className="overflow-x-auto"><table className="w-full text-xs">
-      <thead><tr className="text-left text-muted-foreground"><th className="py-1 pr-2">Wahl</th><th className="pr-2">Wahlkreis</th><th className="pr-2">Sieger</th><th className="pr-2">Anteil</th><th>Weitere Bewerber</th></tr></thead>
+    <div className="overflow-x-auto"><table className="w-full min-w-[40rem] text-xs [&_th]:px-2 [&_th]:py-2 [&_th]:align-top [&_td]:px-2 [&_td]:py-2 [&_td]:align-top">
+      <thead><tr className="text-left text-muted-foreground"><th className="whitespace-nowrap">Wahl</th><th className="whitespace-nowrap">Wahlkreis</th><th className="whitespace-nowrap">Sieger</th><th className="whitespace-nowrap">Anteil</th><th>Weitere Bewerber</th></tr></thead>
       <tbody>{years.map(y => {
         const rows = byYear.get(y)!.slice().sort((a, b) => (b.vote_share ?? -1) - (a.vote_share ?? -1));
         const winner = rows.find(r => r.district_rank === 1) || rows.find(r => r.outcome === 'direct') || rows[0];
         const others = rows.filter(r => r !== winner);
         return <tr key={y} className="border-t align-top">
-          <td className="py-1 pr-2 tabular-nums">{y}</td>
-          <td className="pr-2">{winner.district?.name}</td>
-          <td className="pr-2 font-medium">{winner.person?.name || '–'} · {winner.party}</td>
-          <td className="pr-2 tabular-nums">{pct(winner.vote_share)}</td>
-          <td>{others.map(o => `${o.person?.name || '–'} (${o.party}, ${pct(o.vote_share)}${o.outcome === 'list' ? ', über Liste' : ''})`).join('; ') || '–'}</td>
+          <td className="whitespace-nowrap tabular-nums">{y}</td>
+          <td className="whitespace-nowrap">{winner.district?.name}</td>
+          <td className="font-medium">{winner.person?.name || '–'} · {winner.party}</td>
+          <td className="whitespace-nowrap tabular-nums">{pct(winner.vote_share)}</td>
+          <td>{others.length ? <ul className="space-y-2">{others.map(candidate => <li key={candidate.id} className="grid grid-cols-[minmax(8rem,1fr)_auto] items-baseline gap-x-3"><span>{candidate.person?.name || '–'} <span className="text-muted-foreground">({candidate.party}{candidate.outcome === 'list' ? ', über Liste' : ''})</span></span><span className="whitespace-nowrap tabular-nums">{pct(candidate.vote_share)}</span></li>)}</ul> : '–'}</td>
         </tr>;
       })}</tbody>
     </table></div>

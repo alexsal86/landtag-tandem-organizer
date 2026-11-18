@@ -300,19 +300,13 @@
 }
 .deputy-profile-portrait,
 .deputy-editorial-portrait { height: 100%; }
-.deputy-editorial-portrait { position: relative; }
+.deputy-editorial-portrait { display: flex; flex-direction: column; }
 .deputy-profile-photo {
   position: relative;
-  height: 100%;
+  flex: 1;
+  min-height: 0;
   overflow: hidden;
   background: linear-gradient(145deg, hsl(var(--muted)), hsl(var(--card)));
-}
-.deputy-profile-photo::after {
-  content: '';
-  position: absolute;
-  inset: 0;
-  pointer-events: none;
-  background: linear-gradient(to top, hsl(var(--card) / .75) 0%, hsl(var(--foreground) / .12) 14%, transparent 30%);
 }
 .deputy-profile-photo img {
   display: block;
@@ -337,9 +331,9 @@
   letter-spacing: -.08em;
 }
 .deputy-profile-photo-notes {
-  position: absolute;
-  inset: auto 0 0;
-  z-index: 1;
+  position: relative;
+  flex-shrink: 0;
+  background: var(--deputy-surface);
   margin: 0;
   padding: 16px 16px max(16px, env(safe-area-inset-bottom, 0px));
   color: hsl(var(--card-foreground));
@@ -504,7 +498,7 @@
 }
 
 .deputy-election-result { container-type: inline-size; margin-top: 32px; padding-top: 28px; border-top: 1px solid hsl(var(--border)); }
-.deputy-section-heading { display: flex; align-items: baseline; gap: 16px; font-weight: 700; color: var(--deputy-ink); }
+.deputy-section-heading { line-height: 1.6; display: flex; align-items: baseline; gap: 16px; font-weight: 700; color: var(--deputy-ink); }
 .deputy-section-heading > span { opacity: .8; font-weight: 750; }
 .deputy-result-heading { margin-bottom: 22px; }
 .deputy-election-layout { display: grid; grid-template-columns: minmax(0, 1.2fr) minmax(0, 1fr); align-items: start; gap: 32px; }
@@ -533,10 +527,11 @@
 
 .deputy-tenure-dates { display: flex; flex-wrap: wrap; gap: 6px 18px; margin-top: 12px; color: var(--deputy-muted); font-size: 13px; }
 .deputy-seat-card { border: 0; box-shadow: none; }
-.deputy-seat-card > div { padding: 14px; }
+.deputy-seat-card > div { padding: 0; }
+.deputy-seat-card > div:first-child { padding-bottom: 22px; }
 .deputy-seat-card > div + div { padding-top: 0; }
 .deputy-seat-card ul { font-size: 11px; gap: 6px 10px; }
-.deputy-seat-heading { display: flex; align-items: baseline; gap: 12px; font-size: 11px; font-weight: 700; line-height: 1.6; letter-spacing: .12em; text-transform: uppercase; color: #0f172a; }
+.deputy-seat-heading { display: flex; align-items: baseline; gap: 16px; font-size: 11px; font-weight: 700; line-height: 1.6; letter-spacing: .12em; text-transform: uppercase; color: #0f172a; }
 .deputy-seat-heading > span { color: #64748b; font-weight: 750; }
-.deputy-seat-status { padding: 14px; border: 0; border-radius: 10px; background: #fff; color: #0f172a; }
+.deputy-seat-status { padding: 0; border: 0; border-radius: 10px; background: #fff; color: #0f172a; }
 .deputy-seat-status p { margin-top: 18px; font-size: 12px; }

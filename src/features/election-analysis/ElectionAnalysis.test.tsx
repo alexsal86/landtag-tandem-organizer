@@ -1,16 +1,17 @@
+import type { Demographic } from "./types";
 import { fireEvent, render, screen, waitFor, within } from '@testing-library/react';
 import { MemoryRouter, useLocation, useNavigate } from 'react-router-dom';
-import { describe, expect, it, vi } from 'vitest';
+import { beforeEach, describe, expect, it, vi } from 'vitest';
 import ElectionAnalysis from './ElectionAnalysis';
 
-const queries = vi.hoisted(() => ({ years: vi.fn() }));
+const queries = vi.hoisted(() => ({ years: vi.fn(), demographics: [] as Demographic[] }));
 const result = { data: [], isLoading: false, error: null, refetch: vi.fn() };
 vi.mock('./useElectionAnalysis', () => ({
   useAnalysisYears: (enabled: boolean) => {
     queries.years(enabled);
     return { ...result, data: [2026, 2021, 2006, 1988, 1952].map((year, index) => ({ year, period_number: 18 - index })) };
   },
-  useAnalysisRows: () => result,
+  useAnalysisRows: (section: string) => section === 'demographics' ? { ...result, data: queries.demographics } : result,
   useStateComparisonSeries: () => result,
 }));
 vi.mock('./StateShareChart', () => ({ StateShareChart: () => null }));
@@ -34,6 +35,7 @@ function open(query: string) {
 }
 
 describe('Navigation der Wahlanalyse', () => {
+  beforeEach(() => { queries.demographics = []; });
   it('zeigt vier Säulen und nur deren Unterauswahl, unterstützt Browsernavigation', async () => {
     open('dataTab=land&sub=state');
     expect(within(screen.getByRole('navigation', { name: 'Datenbereiche' })).getAllByRole('button')).toHaveLength(4);
@@ -78,6 +80,23 @@ describe('Navigation der Wahlanalyse', () => {
     open('dataTab=wahlkreise&sub=profile&analysisYear=1988');
     await screen.findByText('Modul profile 1988');
     expect(screen.getByLabelText('Wahl / Legislaturperiode')).toHaveValue('1988');
+  });
+
+  it('ordnet die Altersgruppe neben Geschlecht ein und behält die Tabellenfilterung', () => {
+    queries.demographics = [
+      { year: 2026, ballot: 'second', party: 'CDU', age_group: 'Insgesamt', gender: 'Insgesamt', share: 25, notes: 'Statistikhinweis' },
+      { year: 2026, ballot: 'second', party: 'CDU', age_group: '16–24', gender: 'Insgesamt', share: 33.3, notes: null },
+    ];
+    open('dataTab=land&sub=demographics&analysisYear=2026');
+    const gender = screen.getByLabelText('Geschlecht');
+    const age = screen.getByLabelText('Altersgruppe für die Tabelle');
+    expect(gender.parentElement?.parentElement).toContainElement(age);
+    fireEvent.change(age, { target: { value: '16–24' } });
+    const table = screen.getByRole('table');
+    expect(within(table).getByText('33,3 %')).toBeInTheDocument();
+    expect(within(table).queryByText('25 %')).not.toBeInTheDocument();
+    const note = screen.getByText(/Repräsentative Wahlstatistik:/);
+    expect(table.compareDocumentPosition(note) & Node.DOCUMENT_POSITION_FOLLOWING).toBeTruthy();
   });
 
   it('erhält alte Beteiligungslinks samt ausgewählter Wahl', async () => {

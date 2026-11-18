@@ -1,3 +1,4 @@
+import { districtSeriesYearBatches } from "@/features/election-analysis/research/seriesYears";
 import { analysisDestination, dataPillars, normalizeAnalysisParams, resolveAnalysisNavigation } from "@/features/election-analysis/navigation";
 import { boundaryDifferencePath } from "@/features/election-analysis/research/boundaryOverlay";
 import { parseCandidacyImport } from "@/features/election-history/admin/candidacyImport";
@@ -71,6 +72,12 @@ export const electionAnalysisScenario: TestScenario = {
     "Amtliche Downloads, Datenbank-RLS und Vollständigkeit historischer Kandidaturen sind separate Prüfungen.",
   ],
   steps: [
+    { id: "district-series-year-limit", label: "Wahlkreis-Steckbrief: alle Wahljahre innerhalb der RPC-Grenze laden", kind: "logic", run: async () => {
+      const years = [2026, 2021, 2016, 2011, 2006, 2001, 1996, 1992, 1988, 1984, 1980, 1976, 1972, 1968, 1964, 1960, 1956, 1952];
+      const batches = districtSeriesYearBatches([...years, 2026]);
+      return { ok: batches.length === 2 && batches.every(batch => batch.length <= 10)
+        && batches.flat().join(',') === years.join(','), message: "18 veröffentlichte Wahlen bleiben vollständig erhalten; kein RPC-Aufruf überschreitet zehn Jahre, doppelte Jahre werden nicht doppelt geladen." };
+    } },
     { id: "analysis-four-pillars-navigation", label: "Wahlanalyse: vier Säulen, alte Links und zentrale Datenprüfung im Super-Admin", kind: "logic", run: async () => {
       const views = dataPillars.flatMap(pillar => pillar.sections);
       const turnout = resolveAnalysisNavigation(normalizeAnalysisParams(new URLSearchParams("analysisSection=turnout&analysisYear=2021")));

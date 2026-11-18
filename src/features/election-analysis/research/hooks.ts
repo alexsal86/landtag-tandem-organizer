@@ -1,3 +1,4 @@
+import { districtSeriesYearBatches } from "./seriesYears";
 import { withConfirmedGeometry } from "./confirmedGeometry";
 import { useQuery, type UseQueryResult } from "@tanstack/react-query";
 import { supabase } from "@/integrations/supabase/client";
@@ -119,14 +120,19 @@ export function useDistrictSeries(
     queryKey: ["election-research", user?.id, "district", district, years],
     enabled: !!user && years.length > 0,
     queryFn: async ({ signal }) => {
-      const { data, error } = await supabase
-        .rpc("get_analysis_district_series", {
-          district,
-          selected_years: years,
-        })
-        .abortSignal(signal);
-      if (error) throw error;
-      const parsed = series(data);
+      const batches = await Promise.all(districtSeriesYearBatches(years).map(async selectedYears => {
+        const { data, error } = await supabase
+          .rpc("get_analysis_district_series", { district, selected_years: selectedYears })
+          .abortSignal(signal);
+        if (error) throw error;
+        return series(data);
+      }));
+      const parsed: DistrictSeries = {
+        results: batches.flatMap(batch => batch.results),
+        turnout: batches.flatMap(batch => batch.turnout),
+        state: batches.flatMap(batch => batch.state),
+        versions: batches.flatMap(batch => batch.versions),
+      };
       return { ...parsed, versions: await withConfirmedGeometry(parsed.versions, signal) };
     },
     staleTime: 60_000,

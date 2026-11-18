@@ -52,7 +52,7 @@ export function StateSeatDistribution({ rows, year, ballot, title, compact = fal
 
   return <Card className={`min-w-0 ${compact ? 'bg-white text-slate-900 deputy-seat-card' : 'bg-card text-card-foreground'}`}>
     <CardHeader className="pb-2">
-      <CardTitle id={titleId} className="text-lg">{title || `Sitzverteilung · ${year}`}</CardTitle>
+      <CardTitle id={titleId} className={compact ? "text-[11px] leading-[1.6]" : "text-lg"}>{title || `Sitzverteilung · ${year}`}</CardTitle>
     </CardHeader>
     <CardContent className="space-y-4">
       {total > 0 ? <>

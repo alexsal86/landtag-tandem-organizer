@@ -260,7 +260,7 @@ function DistrictProfile({
         <Card>
           <CardHeader>
             <CardTitle className="text-lg">
-              Parteientwicklung 2006–2026
+              Parteientwicklung {orderedYears[0]}–{orderedYears[orderedYears.length - 1]}
             </CardTitle>
           </CardHeader>
           <CardContent>

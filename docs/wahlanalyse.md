@@ -1012,3 +1012,26 @@ Parteilabels bleiben in der Legende erhalten; FDP/DVP wird für die Anordnung be
 eingeordnet. Keine zusätzliche Migration für diese Profilansicht erforderlich;
 die vorhandenen Periodensitzzahlen müssen wie für die übrigen Ansichten verfügbar
 sein. Keine Tests ausgeführt.
+
+### Bedienung und vollständige Wahlkreis-Zeitreihen
+
+Die sekundäre Bereichsnavigation verwendet wie die Hauptnavigation Grün für die
+aktive Auswahl. In „Vergangene Wahlen“ stehen Hinweise und Quellen beider Tabellen
+hinter Info-Icons; vollständige Inhalte erscheinen beim Hover oder Tastaturfokus.
+In „Alter & Geschlecht“ steht die Altersauswahl direkt neben dem Geschlechtsfilter;
+der Tabellenkörper ist weiß, die Methodik steht unter den Ergebnissen. Die
+Methodik der Wählerwanderung folgt ebenfalls unter den Auswertungen.
+
+Wahlkreis-Steckbriefe teilen ihre explizit gewählten Jahre mit
+`research/seriesYears.ts` in höchstens zehn Jahre je `get_analysis_district_series`-
+Aufruf. So bleiben alle 18 Wahlen verfügbar, ohne die bestehende RPC-Grenze zu
+überschreiten. Jeder Antwortblock wird unverändert validiert und zusammengeführt;
+ein fehlerhafter Block ergibt einen sichtbaren Fehler statt einer unvollständigen
+Zeitreihe. Stimmenarten, fehlende Werte, Datenstände und Geometrieprüfungen bleiben
+erhalten. Keine zusätzliche Datenbankmigration erforderlich.
+
+Die Bewerberchronik zeigt weitere Kandidierende einzeln untereinander, mit
+einheitlichen Tabellenabständen und rechts ausgerichteten Anteilen. Im
+Abgeordnetenprofil bleiben Fotos ohne überlagernden Verlauf; Bildnachweise und
+Bearbeitung stehen unter dem Foto. Die Überschriften 02/03 beginnen auf derselben
+Höhe, bei wenig Platz werden die Abschnitte weiterhin untereinander angezeigt.

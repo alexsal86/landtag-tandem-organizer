@@ -23,3 +23,5 @@
 - Deputy profile list positions come from the published state-list roster for the selected connection, independently of mandate admission. Show election year, party, list position and direct/substitute/list-only role; never treat list position or substitute candidacy as a mandate or direct election.
 
 - Data-quality and source-audit panels belong to election-history/admin and are reachable only through the Super-Admin Wahldaten tabs. Keep direct result source links under Daten, but no audit footer or embedded workbook reconciliation queries. Retire legacy analysisCheck parameters during URL normalization.
+
+- District profile series must batch only their explicitly selected years in groups of at most ten via research/seriesYears.ts, matching get_analysis_district_series. Validate and merge every batch without dropping years, summing ballots or hiding partial failures; geometry enrichment runs once on the merged versions.
