@@ -1032,6 +1032,7 @@ erhalten. Keine zusätzliche Datenbankmigration erforderlich.
 
 Die Bewerberchronik zeigt weitere Kandidierende einzeln untereinander, mit
 einheitlichen Tabellenabständen und rechts ausgerichteten Anteilen. Im
-Abgeordnetenprofil bleiben Fotos ohne überlagernden Verlauf; Bildnachweise und
-Bearbeitung stehen unter dem Foto. Die Überschriften 02/03 beginnen auf derselben
+Abgeordnetenprofil bleiben Fotos ohne überlagernden Verlauf; Fotoangabe, Bildnachweis und
+Bearbeitung liegen als Overlay auf dem durchgehend hohen Foto; ein aufhellender
+Verlauf wird nicht eingeblendet. Die Überschriften 02/03 beginnen auf derselben
 Höhe, bei wenig Platz werden die Abschnitte weiterhin untereinander angezeigt.

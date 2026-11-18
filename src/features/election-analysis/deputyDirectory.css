@@ -300,11 +300,10 @@
 }
 .deputy-profile-portrait,
 .deputy-editorial-portrait { height: 100%; }
-.deputy-editorial-portrait { display: flex; flex-direction: column; }
+.deputy-editorial-portrait { position: relative; }
 .deputy-profile-photo {
   position: relative;
-  flex: 1;
-  min-height: 0;
+  height: 100%;
   overflow: hidden;
   background: linear-gradient(145deg, hsl(var(--muted)), hsl(var(--card)));
 }
@@ -331,13 +330,13 @@
   letter-spacing: -.08em;
 }
 .deputy-profile-photo-notes {
-  position: relative;
-  flex-shrink: 0;
-  background: var(--deputy-surface);
+  position: absolute;
+  inset: auto 0 0;
+  z-index: 1;
   margin: 0;
   padding: 16px 16px max(16px, env(safe-area-inset-bottom, 0px));
-  color: hsl(var(--card-foreground));
-  text-shadow: 0 1px 3px hsl(var(--background));
+  color: white;
+  text-shadow: 0 1px 3px black;
 }
 .deputy-profile-credit { font-size: 11px; line-height: 1.4; }
 .deputy-profile-photo-details { font-size: 11px; line-height: 1.5; }
