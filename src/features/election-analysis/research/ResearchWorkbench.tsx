@@ -119,6 +119,9 @@ function DistrictProfile({
   set,
 }: Props & { district: number; set: SetParam }) {
   const versions = useDistrictVersions(year);
+  const selectedVersion = versions.data?.find(
+    (version) => version.year === year && version.district_number === district,
+  );
   const query = useDistrictSeries(district, years);
   const [historyOpen, setHistoryOpen] = useState(false);
   const history = useDistrictHistory(district, year, historyOpen);
@@ -191,7 +194,7 @@ function DistrictProfile({
     }),
   );
   const name =
-    versions.data?.find((v) => v.district_number === district)?.district_name ||
+    selectedVersion?.district_name ||
     data?.versions.find((v) => v.year === year)?.district_name ||
     `Wahlkreis ${district}`;
   return (
@@ -286,10 +289,14 @@ function DistrictProfile({
           year={year}
           number={district}
           name={name}
-          confirmedGeometryYear={versions.data?.find((v) => v.year === year && v.district_number === district)?.bundled_geometry_year}
+          confirmedGeometryYear={selectedVersion?.bundled_geometry_year}
         />
       </div>
-      <DistrictCandidateChronicle district={district} selectedYear={year} />
+      <DistrictCandidateChronicle
+        district={district}
+        selectedYear={year}
+        linkedDistrictId={selectedVersion?.history_link_verified ? selectedVersion.historical_district_id : null}
+      />
       {!query.isLoading && !query.error && results.length > 0 && <>
         <h3 className="text-lg font-medium">Ergebnisse pro Wahljahr</h3>
         <DataTable
