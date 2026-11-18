@@ -1,11 +1,12 @@
 import { StateHistoryPanel, FlowMatrixPanel } from './StateHistoryPanels';
 import { StateShareChart } from './StateShareChart';
 import { StateSeatDistribution } from './StateSeatDistribution';
+import { AnalysisInfo } from './AnalysisInfo';
 import { AnalysisControls, AnalysisToolbarLayout } from './AnalysisToolbar';
 import { Selection, DataState, DataTable, StatusNote, PartyLabel, chartColor } from './shared';
 import { lazy, Suspense, useEffect, useState } from 'react';
 import { useSearchParams } from 'react-router-dom';
-import { Bar, BarChart, CartesianGrid, Cell, Legend, Line, LineChart, ReferenceLine, ResponsiveContainer, Tooltip, XAxis, YAxis } from 'recharts';
+import { Bar, BarChart, CartesianGrid, Cell, LabelList, Legend, Line, LineChart, ReferenceLine, ResponsiveContainer, Tooltip, XAxis, YAxis } from 'recharts';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
@@ -124,11 +125,50 @@ function DistrictPanel({ year, ballot, party, gender }: PanelProps) {
   const rows = (query.data || []).filter(r => `${r.district_number} ${r.district_name}`.toLocaleLowerCase('de').includes(search.toLocaleLowerCase('de'))).sort((a, b) => (b.share ?? -1) - (a.share ?? -1));
   return <div className="space-y-4">
     <AnalysisControls><Input className="max-w-sm" aria-label="Wahlkreis filtern" placeholder="Wahlkreisname oder Nummer …" value={search} onChange={event => setSearch(event.target.value)} /></AnalysisControls>
-    <StatusNote>{query.data?.some(r => r.preliminary) ? 'Vorläufige Wahlkreiswerte aus dem Wahlnachtsbericht; Abweichungen von endgültigen Landeswerten sind möglich.' : 'Wahlkreiswerte laut Datensatz endgültig.'} Wahlkreiszuschnitte können sich zwischen Wahlen ändern. Ergebnisse beziehen sich auf die ausgewählte Stimmenart und werden keinen einzelnen Mandatsträgern zugeschrieben.</StatusNote>
     <DataState loading={query.isLoading} error={query.error} empty={!rows.length || rows.every(r => r.share === null && r.votes === null)} retry={() => void query.refetch()}>
-      <Card><CardHeader><CardTitle className="text-lg">{party}: zehn stärkste Wahlkreise dieser Auswahl</CardTitle></CardHeader><CardContent><div className="h-80" role="img" aria-label="Wahlkreise nach Parteianteil; Werte folgen in der Tabelle"><ResponsiveContainer><BarChart data={rows.filter(r => r.share !== null).slice(0, 10)} layout="vertical" margin={{ left: 30 }}><XAxis type="number" unit=" %" /><YAxis type="category" dataKey="district_name" width={130} tick={{ fontSize: 11 }} /><Tooltip formatter={value => percent(typeof value === 'number' ? value : null)} /><Bar dataKey="share" fill={chartColor(party)} name="Anteil" /></BarChart></ResponsiveContainer></div></CardContent></Card>
-      <DataTable key={search} headers={['Nr.', 'Wahlkreis', 'Stimmen', 'Anteil', 'Datenstatus / Hinweis']} sortableColumns={[0, 1, 2, 3]} sortValues={rows.map(r => [r.district_number, r.district_name, r.votes, r.share])} rows={rows.map(r => [number(r.district_number), r.district_name, number(r.votes), percent(r.share), r.notes || (r.preliminary ? 'Vorläufig' : 'Endgültig')])} />
+      <div className="grid items-start gap-4 xl:grid-cols-2">
+        <div className="min-w-0">
+          <DataTable
+            key={search}
+            headers={['Nr.', 'Wahlkreis', 'Stimmen', 'Anteil', 'Datenstatus / Hinweis']}
+            sortableColumns={[0, 1, 2, 3]}
+            sortValues={rows.map(r => [r.district_number, r.district_name, r.votes, r.share])}
+            rows={rows.map(r => [
+              number(r.district_number), r.district_name, number(r.votes), percent(r.share),
+              <AnalysisInfo label={`Datenstatus und Hinweise für ${r.district_name}`}>
+                <p>{r.notes || (r.preliminary ? 'Vorläufiges amtliches Endergebnis' : 'Endgültig')}</p>
+              </AnalysisInfo>,
+            ])}
+          />
+        </div>
+        <Card className="min-w-0">
+          <CardHeader><CardTitle className="text-lg">{party}: zehn stärkste Wahlkreise dieser Auswahl</CardTitle></CardHeader>
+          <CardContent>
+            <div className="h-[26rem]" role="img" aria-label="Zehn stärkste Wahlkreise nach Parteianteil. Genaue Werte stehen auch in der Tabelle.">
+              <ResponsiveContainer>
+                <BarChart data={rows.filter(r => r.share !== null).slice(0, 10)} layout="vertical" margin={{ right: 60 }}>
+                  <XAxis type="number" unit=" %" />
+                  <YAxis type="category" dataKey="district_name" width={130} tick={{ fontSize: 11 }} />
+                  <Tooltip formatter={value => percent(typeof value === 'number' ? value : null)} />
+                  <Bar dataKey="share" fill={chartColor(party)} name="Anteil" maxBarSize={20}>
+                    <LabelList
+                      dataKey="share"
+                      position="right"
+                      offset={6}
+                      fill="currentColor"
+                      fontSize={12}
+                      fontWeight={700}
+                      formatter={value => percent(typeof value === 'number' ? value : null)}
+                    />
+                  </Bar>
+                </BarChart>
+              </ResponsiveContainer>
+            </div>
+          </CardContent>
+        </Card>
+      </div>
     </DataState>
+    <StatusNote>{query.data?.some(r => r.preliminary) ? 'Vorläufige Wahlkreiswerte aus dem Wahlnachtsbericht; Abweichungen von endgültigen Landeswerten sind möglich.' : 'Wahlkreiswerte laut Datensatz endgültig.'} Wahlkreiszuschnitte können sich zwischen Wahlen ändern. Ergebnisse beziehen sich auf die ausgewählte Stimmenart und werden keinen einzelnen Mandatsträgern zugeschrieben.</StatusNote>
   </div>;
 }
 
