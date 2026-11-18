@@ -55,6 +55,9 @@ describe('speechCommandUtils formatting', () => {
     ['nach paragraph 3 abs. 2', 'Nach § 3 Abs. 2'],
     ['paragraf 4 absatz 1', '§ 4 Abs. 1'],
     ['mdl im ltt', 'MdL im LTT'],
+    ['nach paragraf 3 absatz zwei', 'Nach § 3 Abs. 2'],
+    ['anführungszeichen unten der antrag punkt anführungszeichen oben', '„Der antrag.“'],
+    ['er sagte anführungszeichen auf ja anführungszeichen zu', 'Er sagte „ja“'],
   ])('formats parliamentary dictation "%s"', (input, expected) => {
     expect(formatDictatedText(input)).toBe(expected);
   });
@@ -83,5 +86,24 @@ describe('findLastDictatedSentenceStart', () => {
     const remaining = block.slice(0, start) + block.slice(beforeCursor.length);
 
     expect(remaining).toBe(prefix + afterCursor);
+  });
+});
+
+describe('note dictation commands', () => {
+  it.each([
+    ['Letzten Satz markieren', 'select-last-sentence'],
+    ['Ans Ende springen', 'go-to-end'],
+    ['Checkliste starten', 'insert-checklist'],
+    ['Notiz speichern', 'save-note'],
+    ['Auswahl als Aufgabe übernehmen', 'draft-task-from-selection'],
+  ])('recognizes "%s" as %s', (spoken, type) => {
+    expect(parseSpeechInput(spoken)).toEqual({ command: { type }, contentText: '' });
+  });
+
+  it('leaves command phrases in continuous dictation as text', () => {
+    expect(parseSpeechInput('Wir müssen diese Notiz speichern')).toEqual({
+      command: null,
+      contentText: 'wir müssen diese notiz speichern',
+    });
   });
 });

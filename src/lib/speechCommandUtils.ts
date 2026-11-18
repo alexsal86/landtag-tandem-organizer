@@ -7,6 +7,11 @@ export type SpeechCommand =
   | { type: 'insert-newline' }
   | { type: 'delete-last-word' }
   | { type: 'delete-last-sentence' }
+  | { type: 'select-last-sentence' }
+  | { type: 'go-to-end' }
+  | { type: 'insert-checklist' }
+  | { type: 'save-note' }
+  | { type: 'draft-task-from-selection' }
   | { type: 'select-all' }
   | { type: 'insert-heading'; level: 1 | 2 | 3 }
   | { type: 'insert-quote' }
@@ -23,6 +28,11 @@ export const getSpeechCommandLabel = (command: SpeechCommand): string => {
     case 'insert-newline': return 'Neue Zeile';
     case 'delete-last-word': return 'Wort gelöscht';
     case 'delete-last-sentence': return 'Satz gelöscht';
+    case 'select-last-sentence': return 'Letzten Satz markieren';
+    case 'go-to-end': return 'Ans Ende springen';
+    case 'insert-checklist': return 'Checkliste starten';
+    case 'save-note': return 'Notiz speichern';
+    case 'draft-task-from-selection': return 'Auswahl als Aufgabe übernehmen';
     case 'select-all': return 'Alles markiert';
     case 'insert-heading': return `Überschrift ${command.level}`;
     case 'insert-quote': return 'Zitat';
@@ -43,8 +53,8 @@ const PUNCTUATION_REPLACEMENTS: Array<[RegExp, string]> = [
   [/\b(gedankenstrich)\b/gi, ' – '],
   [/\b(klammer auf)\b/gi, '('],
   [/\b(klammer zu)\b/gi, ')'],
-  [/\b(anführungszeichen auf|anführungszeichen)\b/gi, '„'],
-  [/\b(anführungszeichen zu)\b/gi, '"'],
+  [/\banführungszeichen (?:zu|oben)\b/gi, '“'],
+  [/\banführungszeichen(?: auf| unten)?\b/gi, '„'],
   [/\b(leerzeichen)\b/gi, ' '],
 ];
 
@@ -87,9 +97,13 @@ const COMMAND_MATCHERS: Array<{ command: SpeechCommand; patterns: RegExp[] }> = 
   { command: { type: 'undo' }, patterns: [/^rückgängig$/] },
   { command: { type: 'redo' }, patterns: [/^wiederholen$/, /^wiederherstellen$/] },
   { command: { type: 'insert-newline' }, patterns: [/^neue zeile$/, /^neuer absatz$/] },
-  // New commands
   { command: { type: 'delete-last-word' }, patterns: [/^letztes wort löschen$/, /^wort löschen$/] },
   { command: { type: 'delete-last-sentence' }, patterns: [/^letzten satz löschen$/, /^satz löschen$/] },
+  { command: { type: 'select-last-sentence' }, patterns: [/^letzten satz (?:markieren|auswählen)$/] },
+  { command: { type: 'go-to-end' }, patterns: [/^(?:ans|zum) ende springen$/] },
+  { command: { type: 'insert-checklist' }, patterns: [/^checkliste (?:starten|einfügen)$/] },
+  { command: { type: 'save-note' }, patterns: [/^notiz speichern$/] },
+  { command: { type: 'draft-task-from-selection' }, patterns: [/^auswahl als aufgabe übernehmen$/] },
   { command: { type: 'select-all' }, patterns: [/^alles markieren$/, /^alles auswählen$/] },
   { command: { type: 'insert-heading', level: 1 }, patterns: [/^überschrift eins$/, /^überschrift 1$/] },
   { command: { type: 'insert-heading', level: 2 }, patterns: [/^überschrift zwei$/, /^überschrift 2$/] },
@@ -152,8 +166,17 @@ export const detectSpeechCommand = (text: string): SpeechCommand | null => {
   return parseSpeechInput(text).command;
 };
 
+const SPOKEN_NUMBERS = [
+  'null', 'eins', 'zwei', 'drei', 'vier', 'fünf', 'sechs', 'sieben', 'acht', 'neun',
+  'zehn', 'elf', 'zwölf', 'dreizehn', 'vierzehn', 'fünfzehn', 'sechzehn',
+  'siebzehn', 'achtzehn', 'neunzehn', 'zwanzig',
+];
+
 export const formatDictatedText = (text: string): string => {
-  let formatted = text.trim();
+  let formatted = text.trim().replace(/\b(?:absatz|abs\.?)\s+(\p{L}+)(?![\p{L}\p{N}])/giu, (phrase, word: string) => {
+    const number = SPOKEN_NUMBERS.indexOf(word.toLowerCase());
+    return number < 0 ? phrase : 'Abs. ' + number;
+  });
   for (const [pattern, replacement] of PUNCTUATION_REPLACEMENTS) {
     formatted = formatted.replace(pattern, replacement);
   }
@@ -162,7 +185,7 @@ export const formatDictatedText = (text: string): string => {
   const withSentenceCase = formatted
     .replace(/([.!?])\s*(\p{L})/gu, (_, punct: string, letter: string) => `${punct} ${letter.toUpperCase()}`)
     .replace(/\n\s*(\p{L})/gu, (_, letter: string) => `\n${letter.toUpperCase()}`)
-    .replace(/^(\p{L})/u, (letter: string) => letter.toUpperCase());
+    .replace(/^„?(\p{L})/u, (start: string) => start.toUpperCase());
 
   return withSentenceCase
     .replace(/\b(?:drucksache|drs\.?)\s+(\d+)\s*(?:schrägstrich|strich|\/|-)\s*(\d+)\b/gi, 'Drs. $1/$2')
@@ -170,6 +193,8 @@ export const formatDictatedText = (text: string): string => {
     .replace(/\b(?:absatz|abs)\b\.?/gi, 'Abs.')
     .replace(/\bmdl\b/gi, 'MdL')
     .replace(/\bltt\b/gi, 'LTT')
+    .replace(/„[ \t]+/g, '„')
+    .replace(/[ \t]+“/g, '“')
     .replace(/\s+([,.;:!?])/g, '$1')
     .replace(/\n\s+/g, '\n')
     .replace(/\s{2,}/g, ' ')
@@ -208,7 +233,7 @@ export const findLastDictatedSentenceStart = (beforeCursor: string): number => {
 /** Structured command reference for the help dialog */
 export interface SpeechCommandGroup {
   label: string;
-  commands: Array<{ trigger: string; description: string }>;
+  commands: Array<{ trigger: string; description: string; requires?: SpeechCommand['type'] }>;
 }
 
 export const SPEECH_COMMAND_REFERENCE: SpeechCommandGroup[] = [
@@ -227,6 +252,7 @@ export const SPEECH_COMMAND_REFERENCE: SpeechCommandGroup[] = [
     commands: [
       { trigger: 'Aufzählung / Liste', description: 'Aufzählungsliste einfügen' },
       { trigger: 'Nummerierte Liste', description: 'Nummerierte Liste einfügen' },
+      { trigger: 'Checkliste starten', description: 'Liste mit abhakbaren Punkten beginnen', requires: 'insert-checklist' },
     ],
   },
   {
@@ -241,7 +267,9 @@ export const SPEECH_COMMAND_REFERENCE: SpeechCommandGroup[] = [
       { trigger: 'Bindestrich', description: '- einfügen' },
       { trigger: 'Gedankenstrich', description: '– einfügen' },
       { trigger: 'Klammer auf / Klammer zu', description: '( ) einfügen' },
-      { trigger: 'Anführungszeichen auf / Anführungszeichen zu', description: '„ " einfügen' },
+      { trigger: 'Anführungszeichen unten / Anführungszeichen auf', description: '„ einfügen' },
+      { trigger: 'Anführungszeichen oben / Anführungszeichen zu', description: '“ einfügen' },
+      { trigger: 'Absatz zwei', description: 'Abs. 2 im Diktattext einfügen' },
       { trigger: 'Leerzeichen', description: 'Explizites Leerzeichen' },
     ],
   },
@@ -249,6 +277,7 @@ export const SPEECH_COMMAND_REFERENCE: SpeechCommandGroup[] = [
     label: 'Korrektur',
     commands: [
       { trigger: 'Letztes Wort löschen', description: 'Letztes Wort entfernen' },
+      { trigger: 'Letzten Satz markieren', description: 'Satz bis zum Cursor zum Überdiktieren auswählen' },
       { trigger: 'Letzten Satz löschen', description: 'Satz bis zur Cursorposition entfernen' },
       { trigger: 'Ersetze X durch Y', description: 'Text im Absatz ersetzen' },
       { trigger: 'Rückgängig', description: 'Letzte Aktion rückgängig' },
@@ -259,6 +288,9 @@ export const SPEECH_COMMAND_REFERENCE: SpeechCommandGroup[] = [
     label: 'Navigation & Steuerung',
     commands: [
       { trigger: 'Neue Zeile / Neuer Absatz', description: 'Zeilenumbruch einfügen' },
+      { trigger: 'Ans Ende springen', description: 'Cursor ans Ende des Textes setzen' },
+      { trigger: 'Notiz speichern', description: 'Diktat abschließen und QuickNote speichern', requires: 'save-note' },
+      { trigger: 'Auswahl als Aufgabe übernehmen', description: 'Aufgabenentwurf mit dem markierten Text öffnen', requires: 'draft-task-from-selection' },
       { trigger: 'Alles markieren', description: 'Gesamten Text markieren' },
       { trigger: 'Stopp', description: 'Aufnahme beenden' },
     ],

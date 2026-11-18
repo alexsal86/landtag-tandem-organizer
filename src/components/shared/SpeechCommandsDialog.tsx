@@ -3,24 +3,26 @@ import { Dialog, DialogContent, DialogDescription, DialogHeader, DialogTitle, Di
 import { Input } from '@/components/ui/input';
 import { Button } from '@/components/ui/button';
 import { CircleHelp, Search } from 'lucide-react';
-import { SPEECH_COMMAND_REFERENCE } from '@/lib/speechCommandUtils';
+import { SPEECH_COMMAND_REFERENCE, type SpeechCommand } from '@/lib/speechCommandUtils';
 
-export function SpeechCommandsDialog() {
+export function SpeechCommandsDialog({ availableCommands }: {
+  availableCommands?: readonly SpeechCommand['type'][];
+}) {
   const [open, setOpen] = useState(false);
   const [search, setSearch] = useState('');
 
   const filteredGroups = useMemo(() => {
-    if (!search.trim()) return SPEECH_COMMAND_REFERENCE;
     const q = search.trim().toLowerCase();
     return SPEECH_COMMAND_REFERENCE
       .map((group) => ({
         ...group,
-        commands: group.commands.filter(
-          (cmd) => cmd.trigger.toLowerCase().includes(q) || cmd.description.toLowerCase().includes(q),
+        commands: group.commands.filter((cmd) =>
+          (!cmd.requires || availableCommands?.includes(cmd.requires))
+          && (cmd.trigger.toLowerCase().includes(q) || cmd.description.toLowerCase().includes(q)),
         ),
       }))
       .filter((group) => group.commands.length > 0);
-  }, [search]);
+  }, [search, availableCommands]);
 
   return (
     <Dialog open={open} onOpenChange={setOpen}>

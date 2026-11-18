@@ -8,6 +8,7 @@ import { Popover, PopoverContent, PopoverTrigger } from "@/components/ui/popover
 import { Tooltip, TooltipContent, TooltipProvider, TooltipTrigger } from "@/components/ui/tooltip";
 import { Pin, Loader2, Info } from "lucide-react";
 import { cn } from "@/lib/utils";
+import { QuickNoteRichTextEditor } from '@/features/quick-notes/components/QuickNoteRichTextEditor';
 import SimpleRichTextEditor from "@/components/ui/SimpleRichTextEditor";
 import { MentionSharePromptDialog } from "@/components/shared/MentionSharePromptDialog";
 import { useQuickCaptureActions } from "@/components/my-work/hooks/useQuickCaptureActions";
@@ -156,8 +157,8 @@ export function MyWorkQuickCapture({ onNoteSaved }: MyWorkQuickCaptureProps) {
               placeholder="Titel" minHeight="36px" showToolbar={false} seamless />
           </div>
           <div ref={contentEditorRef}>
-            <SimpleRichTextEditor key={editorResetKey} initialContent={toEditorHtml(content)}
-              disabled={saving || savingAsTask} onChange={setContent} autoFocus enableChecklists seamless
+            <QuickNoteRichTextEditor key={editorResetKey} initialContent={toEditorHtml(content)}
+              disabled={saving || savingAsTask} onChange={setContent} autoFocus seamless
               toolbarPosition="bottom" compactToolbar toolbarExtras={footer} onKeyDown={handleEditorKeyDown}
               placeholder="Gedanke, Notiz oder Anliegen…" minHeight="72px" />
           </div>

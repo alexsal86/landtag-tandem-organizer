@@ -5,7 +5,10 @@ import { formatDictatedText, getSpeechCommandLabel, parseSpeechInput, type Speec
 import { playTone } from '@/lib/speechAudioFeedback';
 
 export type SpeechDictationInsertText = (text: string) => void;
-export type SpeechDictationCommandDispatch = (command: SpeechCommand) => void;
+export type SpeechDictationCommandDispatch = (
+  command: SpeechCommand,
+  finishDictation: () => Promise<boolean>,
+) => void;
 
 export const SPEECH_INTERIM_UPDATE_TAG = 'speech-interim';
 
@@ -39,6 +42,7 @@ export const useSpeechDictation = ({ editor, insertText, dispatchCommand }: UseS
   dispatchCommandRef.current = dispatchCommand;
 
   const speechAdapter = useMemo(() => new WebSpeechToTextAdapter(), []);
+  const stopSpeechRecognition = useCallback(() => speechAdapter.stop(), [speechAdapter]);
 
   const showCommandFeedback = useCallback((command: SpeechCommand) => {
     const label = getSpeechCommandLabel(command);
@@ -128,7 +132,7 @@ export const useSpeechDictation = ({ editor, insertText, dispatchCommand }: UseS
 
     editor.update(() => {
       const shouldAddTrailingSpace =
-        !!formattedText && !formattedText.endsWith('\n') && !/[,.;:!?]$/.test(formattedText);
+        !!formattedText && !formattedText.endsWith('\n') && !/[,.;:!?„]$/.test(formattedText);
       const textToInsert = formattedText
         ? shouldAddTrailingSpace
           ? `${formattedText} `
@@ -138,6 +142,10 @@ export const useSpeechDictation = ({ editor, insertText, dispatchCommand }: UseS
       // takeInterimNode leaves the node in the tree so replace() works
       const interimNode = takeInterimNode();
       if (interimNode instanceof TextNode) {
+        const previous = interimNode.getPreviousSibling();
+        if (textToInsert.startsWith('“') && previous instanceof TextNode && previous.getTextContent().endsWith(' ')) {
+          previous.spliceText(previous.getTextContentSize() - 1, 1, '');
+        }
         if (textToInsert) {
           interimNode.replace($createTextNode(textToInsert));
           lastInsertedSegmentRef.current = formattedText;
@@ -156,7 +164,22 @@ export const useSpeechDictation = ({ editor, insertText, dispatchCommand }: UseS
           $setSelection(lastSelection.clone());
         }
       }
-      insertTextRef.current(textToInsert);
+      const selection = $getSelection();
+      if (textToInsert.startsWith('“') && $isRangeSelection(selection) && selection.isCollapsed()) {
+        const { anchor } = selection;
+        const node = anchor.getNode();
+        if (node instanceof TextNode && node.getTextContent()[anchor.offset - 1] === ' ') {
+          node.spliceText(anchor.offset - 1, 1, '', true);
+        }
+      }
+      let insertion = textToInsert;
+      if (shouldAddTrailingSpace && $isRangeSelection(selection) && !selection.isCollapsed()) {
+        const end = selection.isBackward() ? selection.anchor : selection.focus;
+        const node = end.getNode();
+        const following = node instanceof TextNode ? node.getTextContent().charAt(end.offset) : '';
+        if (following === ' ' || following === '\u00a0') insertion = formattedText;
+      }
+      insertTextRef.current(insertion);
       lastInsertedSegmentRef.current = formattedText;
     });
 
@@ -221,7 +244,7 @@ export const useSpeechDictation = ({ editor, insertText, dispatchCommand }: UseS
           return;
         }
 
-        dispatchCommandRef.current(command);
+        dispatchCommandRef.current(command, stopSpeechRecognition);
         return;
       }
 
@@ -240,7 +263,7 @@ export const useSpeechDictation = ({ editor, insertText, dispatchCommand }: UseS
       lastSelectionRef.current = null;
       if (commandFeedbackTimerRef.current) clearTimeout(commandFeedbackTimerRef.current);
     };
-  }, [clearInterimNode, commitContentText, editor, showCommandFeedback, speechAdapter, updateInterimNode]);
+  }, [clearInterimNode, commitContentText, editor, showCommandFeedback, speechAdapter, stopSpeechRecognition, updateInterimNode]);
 
   const startSpeechRecognition = useCallback(() => {
     if (!speechAdapter.supported || !editor.isEditable()) return;
@@ -250,8 +273,6 @@ export const useSpeechDictation = ({ editor, insertText, dispatchCommand }: UseS
     speechAdapter.start();
     editor.focus();
   }, [editor, speechAdapter]);
-
-  const stopSpeechRecognition = useCallback(() => speechAdapter.stop(), [speechAdapter]);
 
   const toggleSpeechRecognition = useCallback(() => {
     if (speechStateRef.current === 'listening') {

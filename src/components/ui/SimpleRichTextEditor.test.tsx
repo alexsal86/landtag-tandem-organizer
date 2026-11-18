@@ -178,10 +178,19 @@ describe('SimpleRichTextEditor dictation', () => {
     }
   });
 
+  it('hands the save command to the note workflow', () => {
+    const onDictatedSave = vi.fn();
+    render(<SimpleRichTextEditor onChange={vi.fn()} onDictatedSave={onDictatedSave} />);
+
+    dispatchSpeechCommand({ type: 'save-note' }, async () => true);
+
+    expect(onDictatedSave).toHaveBeenCalledOnce();
+  });
+
   it('selects the full editor contents on the select-all voice command', () => {
     render(<SimpleRichTextEditor onChange={vi.fn()} />);
 
-    dispatchSpeechCommand({ type: 'select-all' });
+    dispatchSpeechCommand({ type: 'select-all' }, async () => true);
 
     expect(selectSpy).toHaveBeenCalledWith(0, 2);
   });

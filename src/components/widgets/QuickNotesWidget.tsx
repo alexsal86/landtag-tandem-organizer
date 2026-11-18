@@ -16,6 +16,7 @@ import { useAuth } from '@/hooks/useAuth';
 import { useTenant } from '@/hooks/useTenant';
 import { TaskDetailSidebar } from '@/features/tasks/components/TaskDetailSidebar';
 import { QuickNotesList } from '@/components/shared/QuickNotesList';
+import { QuickNoteRichTextEditor } from '@/features/quick-notes/components/QuickNoteRichTextEditor';
 import SimpleRichTextEditor, { type SimpleRichTextEditorDictation } from '@/components/ui/SimpleRichTextEditor';
 import type { Task } from '@/components/task-detail/types';
 import { notify } from "@/lib/notify";
@@ -217,10 +218,10 @@ export const QuickNotesWidget: React.FC<QuickNotesWidgetProps> = ({
     }
   };
 
-  const createNote = async () => {
+  const createNote = async (fromDictation = false) => {
     const plainTitle = stripHtml(newTitle);
     if (!user || !currentTenant || noteSaveBusy.current) return;
-    if (!plainTitle && !hasNoteContent && !dictationActive) return;
+    if (!plainTitle && !hasNoteContent && !dictationActive && !fromDictation) return;
     noteSaveBusy.current = true;
     setSavingAfterDictation(true);
 
@@ -349,7 +350,7 @@ export const QuickNotesWidget: React.FC<QuickNotesWidgetProps> = ({
             <Button
               variant="ghost"
               size="sm"
-              onClick={createNote}
+              onClick={() => void createNote()}
               onMouseDown={(event) => {
                 if (dictationActive) event.preventDefault();
               }}
@@ -376,7 +377,7 @@ export const QuickNotesWidget: React.FC<QuickNotesWidgetProps> = ({
               showToolbar={false}
             />
           )}
-          <SimpleRichTextEditor
+          <QuickNoteRichTextEditor
             key={bodyEditorVersion}
             contentVersion={bodyEditorVersion}
             initialContent={toEditorHtml(newNote)}
@@ -388,6 +389,7 @@ export const QuickNotesWidget: React.FC<QuickNotesWidgetProps> = ({
             compactToolbar={true}
             toolbarPosition="bottom"
             dictationRef={dictationRef}
+            onDictatedSave={() => void createNote(true)}
             onDictationActiveChange={setDictationActive}
             onKeyDown={(e) => {
               if (e.key === 'Enter' && (e.ctrlKey || e.metaKey) && !e.nativeEvent.isComposing) {

@@ -10,6 +10,7 @@ import {
 } from "@/components/ui/alert-dialog";
 import { Calendar } from "@/components/ui/calendar";
 import { CheckSquare, Vote, Calendar as CalendarIcon, RotateCcw, Clock, FileText } from "lucide-react";
+import { QuickNoteRichTextEditor } from '@/features/quick-notes/components/QuickNoteRichTextEditor';
 import SimpleRichTextEditor from "@/components/ui/SimpleRichTextEditor";
 import { MeetingNoteSelector } from "@/components/widgets/MeetingNoteSelector";
 import { NoteShareDialog } from "@/components/shared/NoteShareDialog";
@@ -170,12 +171,11 @@ export function NoteDialogs(props: NoteDialogsProps) {
               minHeight="46px"
               showToolbar={false}
             />
-            <SimpleRichTextEditor
+            <QuickNoteRichTextEditor
               key={props.editDialogOpen ? props.editingNote?.id : 'closed'}
               initialContent={props.editContent}
               disabled={props.savingEdit}
               onChange={props.setEditContent}
-              enableChecklists
               onKeyDown={handleEditContentKeyDown}
               placeholder="Inhalt"
               minHeight="150px"

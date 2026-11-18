@@ -156,7 +156,14 @@ export const EnhancedLexicalToolbar: React.FC<EnhancedLexicalToolbarProps> = ({
             }
           });
           break;
+        case 'go-to-end':
+          editor.update(() => { $getRoot().selectEnd(); });
+          break;
+        case 'insert-checklist':
+          editor.dispatchCommand(INSERT_CHECK_LIST_COMMAND, undefined);
+          break;
         case 'delete-last-sentence':
+        case 'select-last-sentence':
           editor.update(() => {
             const selection = $getSelection();
             if ($isRangeSelection(selection)) {
@@ -200,6 +207,12 @@ export const EnhancedLexicalToolbar: React.FC<EnhancedLexicalToolbarProps> = ({
               }
             }
           });
+          break;
+        case 'save-note':
+          notify.info('Sprachgesteuertes Speichern ist im QuickNotes-Widget verfügbar.');
+          break;
+        case 'draft-task-from-selection':
+          notify.info('Eine Auswahl kannst du im Notizeditor als Aufgabe übernehmen.');
           break;
         case 'stop-listening':
           break;
@@ -559,7 +572,7 @@ export const EnhancedLexicalToolbar: React.FC<EnhancedLexicalToolbarProps> = ({
           <Mic className="h-4 w-4" />
         </Button>
 
-        <SpeechCommandsDialog />
+        <SpeechCommandsDialog availableCommands={['insert-checklist']} />
 
         {lastRecognizedCommand && (
           <span className="text-xs font-medium text-primary bg-primary/10 rounded px-1.5 py-0.5 animate-in fade-in-0 zoom-in-95">

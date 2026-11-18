@@ -1,3 +1,4 @@
+import { formatDictatedText, parseSpeechInput } from '@/lib/speechCommandUtils';
 import { supabase } from "@/integrations/supabase/client";
 import type { TestScenario } from "../types";
 import { SELFTEST_MARKER, SELFTEST_PREFIX } from "../runner";
@@ -15,6 +16,23 @@ export const quickNoteLifecycleScenario: TestScenario = {
   ],
   links: () => [{ label: "Notizen öffnen", href: "/mywork?tab=capture" }],
   steps: [
+    {
+      id: "dictation-commands", label: "Notizen: Diktatbefehle und Rechtszitate erkennen", kind: "logic",
+      run: async () => {
+        const commands = [
+          ["Letzten Satz markieren", "select-last-sentence"],
+          ["Ans Ende springen", "go-to-end"],
+          ["Notiz speichern", "save-note"],
+          ["Checkliste starten", "insert-checklist"],
+          ["Auswahl als Aufgabe übernehmen", "draft-task-from-selection"],
+        ];
+        const missed = commands.filter(([phrase, type]) => parseSpeechInput(phrase).command?.type !== type);
+        const citation = formatDictatedText("nach paragraf 3 absatz zwei");
+        const quote = formatDictatedText("anführungszeichen unten ja anführungszeichen oben");
+        const ok = missed.length === 0 && citation === "Nach § 3 Abs. 2" && quote === "„Ja“";
+        return { ok, message: ok ? "Diktatbefehle, Rechtszitat und Anführungszeichen erkannt." : "Diktatphrase falsch verarbeitet.", details: { missed, citation, quote } };
+      },
+    },
     {
       id: "create", label: "Notiz mit Priorität, Farbe und Schlagworten anlegen", critical: true,
       run: async (ctx) => {

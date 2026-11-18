@@ -40,6 +40,7 @@ import { MentionNode } from '@/components/nodes/MentionNode';
 import { MentionsPlugin } from '@/components/plugins/MentionsPlugin';
 import { SPEECH_INTERIM_UPDATE_TAG, useSpeechDictation } from '@/hooks/useSpeechDictation';
 import { $editDictationBlock } from '@/lib/lexicalDictation';
+import type { SpeechCommand } from '@/lib/speechCommandUtils';
 import { SpeechCommandsDialog } from '@/components/shared/SpeechCommandsDialog';
 import { SpeechSessionStats } from '@/components/shared/SpeechSessionStats';
 import { notify } from "@/lib/notify";
@@ -48,7 +49,7 @@ export interface SimpleRichTextEditorDictation {
   finishAndReadHtml(): Promise<string | null>;
 }
 
-interface SimpleRichTextEditorProps {
+export interface SimpleRichTextEditorProps {
   /**
    * Initial HTML loaded into the editor.
    * This value is only re-applied when the computed rehydrate key changes.
@@ -74,6 +75,8 @@ interface SimpleRichTextEditorProps {
   compactToolbar?: boolean;
   dictationRef?: React.Ref<SimpleRichTextEditorDictation>;
   onDictationActiveChange?: (active: boolean) => void;
+  onDictatedSave?: () => void;
+  onDictatedTaskDraft?: (text: string) => void;
   autoFocus?: boolean;
   enableChecklists?: boolean;
 }
@@ -99,12 +102,16 @@ const Toolbar = ({
   extras,
   dictationRef,
   onDictationActiveChange,
+  onDictatedSave,
+  onDictatedTaskDraft,
 }: {
   enableChecklists?: boolean;
   compact?: boolean;
   extras?: React.ReactNode;
   dictationRef?: React.Ref<SimpleRichTextEditorDictation>;
   onDictationActiveChange?: (active: boolean) => void;
+  onDictatedSave?: () => void;
+  onDictatedTaskDraft?: (text: string) => void;
 }) => {
   const [editor] = useLexicalComposerContext();
   const [isBold, setIsBold] = React.useState(false);
@@ -131,7 +138,7 @@ const Toolbar = ({
         }
       });
     }, [editor]),
-    dispatchCommand: useCallback((command) => {
+    dispatchCommand: useCallback((command, finishDictation) => {
       switch (command.type) {
         case 'toggle-format':
           editor.dispatchCommand(FORMAT_TEXT_COMMAND, command.format);
@@ -148,6 +155,36 @@ const Toolbar = ({
         case 'redo':
           editor.dispatchCommand(REDO_COMMAND, undefined);
           break;
+        case 'go-to-end':
+          editor.update(() => { $getRoot().selectEnd(); });
+          break;
+        case 'insert-checklist':
+          if (enableChecklists) {
+            editor.dispatchCommand(INSERT_CHECK_LIST_COMMAND, undefined);
+          } else {
+            notify.info('Checklisten sind in diesem Editor nicht verfügbar.');
+          }
+          break;
+        case 'save-note':
+          if (onDictatedSave) onDictatedSave();
+          else notify.info('Sprachgesteuertes Speichern ist im QuickNotes-Widget verfügbar.');
+          break;
+        case 'draft-task-from-selection': {
+          if (!onDictatedTaskDraft) {
+            notify.info('Eine Auswahl kannst du im Notizeditor als Aufgabe übernehmen.');
+            break;
+          }
+          const text = editor.read(() => {
+            const selection = $getSelection();
+            return $isRangeSelection(selection) ? selection.getTextContent().trim() : '';
+          });
+          if (!text) {
+            notify.info('Markiere zuerst den Text für die Aufgabe.');
+            break;
+          }
+          void finishDictation().then(() => onDictatedTaskDraft(text));
+          break;
+        }
         case 'select-all':
           editor.update(() => {
             const root = $getRoot();
@@ -157,6 +194,7 @@ const Toolbar = ({
         case 'insert-newline':
         case 'delete-last-word':
         case 'delete-last-sentence':
+        case 'select-last-sentence':
         case 'insert-heading':
         case 'insert-quote':
         case 'replace-text':
@@ -182,8 +220,13 @@ const Toolbar = ({
         case 'stop-listening':
           break;
       }
-    }, [editor]),
+    }, [editor, enableChecklists, onDictatedSave, onDictatedTaskDraft]),
   });
+
+  const availableCommands: SpeechCommand['type'][] = [];
+  if (enableChecklists) availableCommands.push('insert-checklist');
+  if (onDictatedSave) availableCommands.push('save-note');
+  if (onDictatedTaskDraft) availableCommands.push('draft-task-from-selection');
 
   const isStopping = speechState === 'stopping';
 
@@ -374,7 +417,7 @@ const Toolbar = ({
             <span className="absolute -top-0.5 -right-0.5 h-2.5 w-2.5 rounded-full bg-destructive border-2 border-background animate-pulse" />
           )}
         </Button>
-        <SpeechCommandsDialog />
+        <SpeechCommandsDialog availableCommands={availableCommands} />
       </div>
       {extras}
       {lastRecognizedCommand && (
@@ -461,6 +504,8 @@ const SimpleRichTextEditor: React.FC<SimpleRichTextEditorProps> = ({
   compactToolbar = false,
   dictationRef,
   onDictationActiveChange,
+  onDictatedSave,
+  onDictatedTaskDraft,
   autoFocus = false,
   enableChecklists = false,
 }) => {
@@ -516,6 +561,8 @@ const SimpleRichTextEditor: React.FC<SimpleRichTextEditorProps> = ({
       extras={toolbarExtras}
       dictationRef={dictationRef}
       onDictationActiveChange={onDictationActiveChange}
+      onDictatedSave={onDictatedSave}
+      onDictatedTaskDraft={onDictatedTaskDraft}
     />
   );
 

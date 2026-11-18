@@ -11,7 +11,7 @@ import { findLastDictatedSentenceStart, type SpeechCommand } from './speechComma
 
 export function $editDictationBlock(
   selection: RangeSelection,
-  command: Extract<SpeechCommand, { type: 'delete-last-word' | 'delete-last-sentence' | 'replace-text' }>,
+  command: Extract<SpeechCommand, { type: 'delete-last-word' | 'delete-last-sentence' | 'select-last-sentence' | 'replace-text' }>,
 ) {
   const anchor = selection.isBackward() ? selection.focus : selection.anchor;
   const block = $findMatchingParent(anchor.getNode(), $isBlockElementNode);
@@ -50,6 +50,7 @@ export function $editDictationBlock(
     end = cursor;
     const beforeCursor = text.slice(0, cursor).trimEnd();
     if (!beforeCursor) return;
+    if (command.type === 'select-last-sentence') end = beforeCursor.length;
     if (command.type === 'delete-last-word') {
       start = beforeCursor.search(/\S+$/);
     } else {
@@ -73,7 +74,7 @@ export function $editDictationBlock(
   setPoint(selection.focus, last, end);
   if (command.type === 'replace-text') {
     selection.insertText(command.replacement);
-  } else {
+  } else if (command.type !== 'select-last-sentence') {
     selection.removeText();
   }
 }

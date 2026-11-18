@@ -10,6 +10,7 @@ import { supabase } from "@/integrations/supabase/client";
 import { debugConsole } from '@/utils/debugConsole';
 import { useAuth } from "@/hooks/useAuth";
 import { useTenant } from "@/hooks/useTenant";
+import { QuickNoteRichTextEditor } from '@/features/quick-notes/components/QuickNoteRichTextEditor';
 import SimpleRichTextEditor from "@/components/ui/SimpleRichTextEditor";
 import { MentionSharePromptDialog } from "@/components/shared/MentionSharePromptDialog";
 import { extractMentionedUsers } from "@/utils/noteMentions";
@@ -159,11 +160,10 @@ export function GlobalQuickNoteDialog({ open, onOpenChange }: GlobalQuickNoteDia
             showToolbar={false}
             onKeyDown={handleTitleKeyDown}
           />
-          <SimpleRichTextEditor
+          <QuickNoteRichTextEditor
             key={open ? 'global-quick-note-content-open' : 'global-quick-note-content-closed'}
             initialContent={toEditorHtml(content)}
             onChange={setContent}
-            enableChecklists
             placeholder="Notiz eingeben..."
             minHeight="120px"
             onKeyDown={handleContentKeyDown}
