@@ -1,3 +1,6 @@
+import { candidacyPeriodLabel } from './deputyParticipation';
+import { useDeputyCandidacies } from './useDeputyCandidacies';
+import { DeputyCandidacyResult } from './DeputyCandidacyResult';
 import { DeputyStateListPlaces } from '@/features/election-history/DeputyStateListPlaces';
 import { DeputySeatDistribution } from './DeputySeatDistribution';
 import { deputyTenureCoverage } from './deputyTenure';
@@ -110,20 +113,27 @@ export default function DeputyDirectory() {
     }, retry: false, staleTime: 30_000,
   });
   const rows = detail.data || [];
+  const confirmedPersonIds = [...new Set(rows.flatMap(row => row.person_id ? [row.person_id] : []))];
+  const candidacies = useDeputyCandidacies(person?.name_key, confirmedPersonIds, profileOpen);
+  const candidateRows = candidacies.data || [];
   const birth = rows.find(row => row.birthday || row.birth_year);
   const served = [...new Set(rows.map(row => row.period_number))].sort((a, b) => a - b);
   const today = new Intl.DateTimeFormat('sv-SE', { timeZone: 'Europe/Berlin', year: 'numeric', month: '2-digit', day: '2-digit' }).format(new Date());
-  const tenurePeriods = published.filter(item => item.number >= served[0] && item.number <= served[served.length-1])
+  const participationPeriods = [...served, ...candidateRows.map(candidate => candidate.period_number)];
+  const tenurePeriods = published.filter(item => item.number >= Math.min(...participationPeriods) && item.number <= Math.max(...participationPeriods))
     .sort((a,b) => a.number-b.number).map(item => {
       const mandates = rows.filter(row => row.period_number === item.number);
+      const candidates = candidateRows.filter(candidate => candidate.period_id === item.id);
       const coverage = deputyTenureCoverage(item, mandates, today);
-      const label = !mandates.length ? 'Keine Mitgliedschaft' : coverage.unknown ? 'Mandatszeit nicht vollständig dokumentiert'
+      const label = !mandates.length ? candidacyPeriodLabel(candidates) : coverage.unknown ? 'Mandatszeit nicht vollständig dokumentiert'
         : `${Math.round(coverage.segments.reduce((sum,segment) => sum+segment.width,0))} % dokumentierte Mandatszeit`;
-      return { period:item, member:mandates.length>0, ...coverage, label };
+      return { period:item, member:mandates.length>0, candidate:candidates.length>0, ...coverage, label };
     });
   const selectedPeriod = activePeriod ?? served[served.length - 1];
   const selectedRows = rows.filter(row => row.period_number === selectedPeriod);
   const current = selectedRows[selectedRows.length - 1];
+  const selectedCandidates = candidateRows.filter(candidate => candidate.period_number === selectedPeriod);
+  const selectedCandidate = selectedCandidates[0];
   const reset = () => { setSearch(''); setFaction(''); setTerm(''); setShowFactions(false); setPeriod(''); setMandate(''); setOffset(0); };
   return <section className="deputy-directory space-y-6">
     <header className="space-y-3">
@@ -190,20 +200,24 @@ export default function DeputyDirectory() {
     </div>
     <nav aria-label="Abgeordnetenseiten" className="flex flex-wrap items-center justify-between gap-3 border-t pt-4"><p className="text-xs text-muted-foreground">Seite {offset / 25 + 1} · alphabetisch nach Namen</p><div className="flex gap-2"><Button variant="outline" disabled={directory.isFetching || offset === 0} onClick={() => setOffset(value => Math.max(0, value - 25))}>Zurück</Button><Button variant="outline" disabled={directory.isFetching || !directory.data || directory.data.length <= 25} onClick={() => setOffset(value => value + 25)}>Weitere 25</Button></div></nav>
     <Sheet open={profileOpen} onOpenChange={setProfileOpen}>
-      <SheetContent side="right" aria-describedby={undefined} className="deputy-drawer w-full p-0 sm:max-w-5xl" style={{ '--deputy-party': getPartyColor(current?.party || person?.latest?.party || person?.parties[0]) } as CSSProperties} overlayClassName="deputy-drawer-overlay" onCloseAutoFocus={event => { event.preventDefault(); lastTrigger.current?.focus(); }}>
+      <SheetContent side="right" aria-describedby={undefined} className="deputy-drawer w-full p-0 sm:max-w-5xl" style={{ '--deputy-party': getPartyColor(current?.party || selectedCandidate?.party || person?.latest?.party || person?.parties[0]) } as CSSProperties} overlayClassName="deputy-drawer-overlay" onCloseAutoFocus={event => { event.preventDefault(); lastTrigger.current?.focus(); }}>
         <SheetClose className="deputy-drawer-close" aria-label="Abgeordnetenprofil schließen"><X size={20} aria-hidden="true" /></SheetClose>
         <div className="deputy-profile">
-        <div className="deputy-profile-side" style={{ '--deputy-party': getPartyColor(current?.party || person?.parties[0]) } as CSSProperties}>{person && <DeputyPortrait key={person.name_key} connectionId={person.name_key} name={person.name} editable={access.isSuperAdmin} variant="editorial" />}</div>
+        <div className="deputy-profile-side" style={{ '--deputy-party': getPartyColor(current?.party || selectedCandidate?.party || person?.parties[0]) } as CSSProperties}>{person && <DeputyPortrait key={person.name_key} connectionId={person.name_key} name={person.name} editable={access.isSuperAdmin} variant="editorial" />}</div>
         <div className="deputy-profile-content" tabIndex={0} role="region" aria-label="Mandatshistorie und Profildetails">
-          <div className="deputy-profile-faction-heading"><strong>{current?.party_label || current?.party || person?.latest?.party || person?.parties.join(' · ')}</strong><span aria-hidden="true" /></div>
+          <div className="deputy-profile-faction-heading"><strong>{current?.party_label || current?.party || selectedCandidate?.party || person?.latest?.party || person?.parties.join(' · ')}</strong><span aria-hidden="true" /></div>
 
           <SheetTitle className="deputy-heading deputy-profile-name mt-3"><DeputyName name={person?.name || ''} /></SheetTitle>
           {detail.isLoading && <p role="status" className="mt-6">Lade Mandatshistorie …</p>}
           {detail.error && <div role="alert" className="mt-6">{historyError(detail.error)} <Button variant="outline" onClick={() => void detail.refetch()}>Erneut laden</Button></div>}
           {!detail.isLoading && !detail.error && rows.length === 0 && <p className="mt-6">Keine freigegebenen Mandate vorhanden.</p>}
           {rows.length > 0 && <>
-            <dl className="deputy-facts"><div><dt>{birth?.birthday ? 'Geburtstag' : 'Geburtsjahr'}</dt><dd>{birth?.birthday ? birth.birthday.split('-').reverse().join('.') : birth?.birth_year || 'Nicht erfasst'}</dd></div><div><dt>Wahlkreis</dt><dd>{current?.district_name || 'Nicht erfasst'}</dd></div><div><dt>Mandat</dt><dd>{current ? formatMandateType(current.mandate_type) : '–'}</dd></div><div><dt>Legislaturperioden</dt><dd>{served.length}</dd></div></dl>
-            <section className="mt-8"><h4 className="deputy-caption deputy-section-heading mb-4"><span aria-hidden="true">01</span> Mandatshistorie</h4><div className="deputy-periods">{tenurePeriods.map(({ period:item, member, segments, label }) => <button type="button" key={item.id} disabled={!member} aria-pressed={selectedPeriod === item.number} aria-label={`${item.number}. Legislaturperiode: ${label}`} title={label} className="deputy-period" onClick={() => setActivePeriod(item.number)}><span className="deputy-period-track" aria-hidden="true">{segments.map((segment,index) => <i key={index} style={{left:`${segment.start}%`,width:`${segment.width}%`}} />)}</span><b>{item.number}.</b><small>{item.starts_on?.slice(0, 4) || '–'}</small></button>)}</div><p className="mt-3 text-xs text-muted-foreground">Gefüllt: dokumentierte Mandatszeit · schraffiert: übrige oder unbekannte Zeit.</p></section>
+            <dl className="deputy-facts"><div><dt>{birth?.birthday ? 'Geburtstag' : 'Geburtsjahr'}</dt><dd>{birth?.birthday ? birth.birthday.split('-').reverse().join('.') : birth?.birth_year || 'Nicht erfasst'}</dd></div><div><dt>Wahlkreis</dt><dd>{current?.district_name || selectedCandidate?.district_name || 'Nicht erfasst'}</dd></div><div><dt>Mandat</dt><dd>{current ? formatMandateType(current.mandate_type) : selectedCandidates.length ? 'Kein Mandat erfasst' : '–'}</dd></div><div><dt>Legislaturperioden mit Mandat</dt><dd>{served.length}</dd></div></dl>
+            <section className="mt-8"><h4 className="deputy-caption deputy-section-heading mb-4"><span aria-hidden="true">01</span> Mandate & Wahlteilnahmen</h4><div className="deputy-periods">{tenurePeriods.map(({ period:item, member, candidate, segments, label }) => <button type="button" key={item.id} disabled={!member && !candidate} data-candidacy={!member && candidate} aria-pressed={selectedPeriod === item.number} aria-label={`${item.number}. Legislaturperiode: ${label}`} title={label} className="deputy-period" onClick={() => setActivePeriod(item.number)}><span className="deputy-period-track" aria-hidden="true">{segments.map((segment,index) => <i key={index} style={{left:`${segment.start}%`,width:`${segment.width}%`}} />)}</span><b>{item.number}.</b><small>{item.starts_on?.slice(0, 4) || '–'}</small>{!member && candidate && <small className="deputy-candidacy-label">Kandidatur</small>}</button>)}</div><p className="mt-3 text-xs text-muted-foreground">Gefüllt: dokumentierte Mandatszeit · umrandet und schraffiert: Kandidatur ohne erfasstes Mandat · sonst schraffiert: übrige oder unbekannte Zeit.</p></section>
+            {confirmedPersonIds.length !== 1 && <p className="mt-3 text-xs text-muted-foreground">Wahlteilnahmen können erst bei einer eindeutigen bestätigten Personenverknüpfung ergänzt werden.</p>}
+            {candidacies.isLoading && <p role="status" className="mt-3 text-xs text-muted-foreground">Wahlteilnahmen werden ergänzt …</p>}
+            {candidacies.error && <p role="alert" className="mt-3 text-sm">Wahlteilnahmen konnten nicht geladen werden. <Button variant="link" className="h-auto p-0" onClick={() => void candidacies.refetch()}>Erneut laden</Button></p>}
+            {!current && selectedCandidates.length > 0 && <DeputyCandidacyResult candidates={selectedCandidates} period={published.find(item => item.number === selectedPeriod)} />}
             {selectedRows.length>0 && <div className="deputy-tenure-dates" aria-live="polite">{selectedRows.map(row => {
               const profileUrl = districtProfileUrl(published.find(item => item.number === row.period_number)?.election_year ?? null, row.district_label);
               return <div key={row.id}><p>{formatMandateDateRange(row)}{row.end_is_expected ? ' (voraussichtliches Ende)' : ''}</p>{row.notes && <p className="whitespace-pre-wrap text-xs text-muted-foreground">{row.notes}</p>}{profileUrl && <Button variant="link" className="h-auto p-0 text-xs" asChild><Link to={profileUrl}>Wahlkreis-Steckbrief öffnen</Link></Button>}</div>;

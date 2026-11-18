@@ -1036,3 +1036,19 @@ Abgeordnetenprofil bleiben Fotos ohne überlagernden Verlauf; Fotoangabe, Bildna
 Bearbeitung liegen als Overlay auf dem durchgehend hohen Foto; ein aufhellender
 Verlauf wird nicht eingeblendet. Die Überschriften 02/03 beginnen auf derselben
 Höhe, bei wenig Platz werden die Abschnitte weiterhin untereinander angezeigt.
+
+### Kandidaturen ohne Mandat im Abgeordnetenprofil
+
+Die Zeitleiste „Mandate & Wahlteilnahmen“ umfasst die veröffentlichten Perioden
+von der ersten bis zur letzten erfassten Kandidatur oder Mitgliedschaft. Eine
+Kandidatur ohne erfasstes Mandat bleibt schraffiert, erhält einen Rahmen und den
+Zusatz „Kandidatur“ und ist anklickbar. Ihre Auswahl zeigt den dokumentierten
+Wahlausgang (beispielsweise „Nicht gewählt“), Partei, Wahlkreis, vorhandene Stimmen,
+Anteil und Quellen. Unbekannte Ausgänge bleiben offen. Die dargestellte Mandatszeit
+und die Zahl der Legislaturperioden mit Mandat werden dadurch nicht erhöht.
+
+Der neue lesende Zugriff lädt höchstens 200 Kandidaturen ausschließlich für die
+eindeutig bestätigte Personen-ID der ausgewählten Mandatshistorie und filtert
+bereits serverseitig auf veröffentlichte Perioden. Keine Namensverknüpfung, keine
+Nutzung des Super-Admin-Laufbahn-RPC, keine neue Migration oder Datenänderung.
+Ein Logikschritt im Selbsttest-Center ist ergänzt; auf Wunsch keine Tests ausgeführt.

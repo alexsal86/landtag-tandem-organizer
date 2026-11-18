@@ -564,3 +564,7 @@
 .deputy-seat-heading > span { color: #64748b; font-weight: 750; }
 .deputy-seat-status { padding: 0; border: 0; border-radius: 10px; background: #fff; color: #0f172a; }
 .deputy-seat-status p { margin-top: 18px; font-size: 12px; }
+
+.deputy-period[data-candidacy=true] .deputy-period-track { border: 1px solid currentColor; }
+.deputy-period[data-candidacy=true][aria-pressed=true] { outline: 1px solid currentColor; outline-offset: 4px; border-radius: 2px; }
+.deputy-period .deputy-candidacy-label { display: block; margin-top: 3px; font-size: 9px; color: var(--deputy-ink); }

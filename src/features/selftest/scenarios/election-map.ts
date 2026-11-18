@@ -1,3 +1,4 @@
+import { candidacyPeriodLabel } from '@/features/election-analysis/deputyParticipation';
 import { compareParliamentParties } from '@/features/election-analysis/seatDistributionModel';
 import { deputyTenureCoverage } from '@/features/election-analysis/deputyTenure';
 import { deputyElectionResultBars, type DeputyElectionResultData } from '@/features/election-analysis/deputyElectionResult';
@@ -22,6 +23,13 @@ export const electionMapScenario: TestScenario = {
   touches: [], features: ['election-districts'],
   limitations: ['Die visuelle Ebenenreihenfolge und mobile Bedienung werden separat im Browser geprüft.'],
   steps: [
+    { id: 'deputy-candidacy-without-tenure', label: 'Profilzeitleiste: erfolglose Wahlteilnahme bleibt von einer Mitgliedschaft getrennt', kind: 'logic', run: async () => {
+      const coverage = deputyTenureCoverage({ starts_on: '1992-01-01', ends_on: '1996-01-01' }, [], '2026-11-18');
+      return { ok: coverage.segments.length === 0 && candidacyPeriodLabel([{ outcome: 'not_elected' }]) === 'Kandidiert · nicht gewählt'
+        && candidacyPeriodLabel([{ outcome: 'unknown' }]) === 'Kandidiert · Wahlausgang offen'
+        && candidacyPeriodLabel([]) === 'Keine Mitgliedschaft',
+        message: 'Erfolglose Kandidaturen sind eigene Wahlteilnahmen; unbekannte Ausgänge werden nicht als Niederlage bezeichnet und erzeugen keine gefüllte Mandatszeit.' };
+    } },
     { id: 'deputy-parliament-party-order', label: 'Landes- und Profilgrafik ordnen Sitze in der vorgegebenen Parteienfolge', kind: 'logic', run: async () => {
       const parties = ['NPD','REP','AfD','CDU','FDP','GRÜNE','SPD'].sort(compareParliamentParties);
       if (parties.join(',') !== 'SPD,GRÜNE,FDP,CDU,AfD,REP,NPD') throw new Error('Historische Parteien müssen nach AfD stehen.');
