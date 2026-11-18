@@ -16,7 +16,7 @@ import { useAuth } from '@/hooks/useAuth';
 import { useTenant } from '@/hooks/useTenant';
 import { TaskDetailSidebar } from '@/features/tasks/components/TaskDetailSidebar';
 import { QuickNotesList } from '@/components/shared/QuickNotesList';
-import SimpleRichTextEditor from '@/components/ui/SimpleRichTextEditor';
+import SimpleRichTextEditor, { type SimpleRichTextEditorDictation } from '@/components/ui/SimpleRichTextEditor';
 import type { Task } from '@/components/task-detail/types';
 import { notify } from "@/lib/notify";
 
@@ -76,6 +76,9 @@ export const QuickNotesWidget: React.FC<QuickNotesWidgetProps> = ({
   const { title: newTitle, content: newNote, setTitle: setNewTitle, setContent: setNewNote, clearDraft } = useQuickNoteDraft("widget");
   const { queueNote } = useQuickNotesData();
   const noteSaveBusy = useRef(false);
+  const dictationRef = useRef<SimpleRichTextEditorDictation>(null);
+  const [dictationActive, setDictationActive] = useState(false);
+  const [savingAfterDictation, setSavingAfterDictation] = useState(false);
   const [creatingNote, setCreatingNote] = useState(false);
   const [selectedColor, setSelectedColor] = useState('#3b82f6');
   const [settingsOpen, setSettingsOpen] = useState(false);
@@ -108,9 +111,9 @@ export const QuickNotesWidget: React.FC<QuickNotesWidgetProps> = ({
       .replace(/\r?\n/g, '<br>')}</p>`;
   };
 
-  const hasNoteContent = Boolean(
-    new DOMParser().parseFromString(toEditorHtml(newNote), 'text/html').body.textContent?.trim(),
-  );
+  const hasText = (html: string) =>
+    Boolean(new DOMParser().parseFromString(html, 'text/html').body.textContent?.trim());
+  const hasNoteContent = hasText(toEditorHtml(newNote));
   const bodyEditorVersion = JSON.stringify([user?.id, currentTenant?.id, draftVersion]);
 
   const taskCategories = [
@@ -216,13 +219,18 @@ export const QuickNotesWidget: React.FC<QuickNotesWidgetProps> = ({
 
   const createNote = async () => {
     const plainTitle = stripHtml(newTitle);
-    const content = hasNoteContent ? newNote.trim() : '';
-
-    if (!user || !currentTenant || noteSaveBusy.current || (!plainTitle && !content)) return;
+    if (!user || !currentTenant || noteSaveBusy.current) return;
+    if (!plainTitle && !hasNoteContent && !dictationActive) return;
     noteSaveBusy.current = true;
-    setCreatingNote(true);
+    setSavingAfterDictation(true);
 
     try {
+      const dictation = dictationRef.current;
+      const html = dictation ? await dictation.finishAndReadHtml() : toEditorHtml(newNote);
+      if (html === null || dictation !== dictationRef.current) return;
+      const content = hasText(html) ? html.trim() : '';
+      if (!plainTitle && !content) return;
+      setCreatingNote(true);
       await queueNote({ title: newTitle.trim() || null, content, color: selectedColor });
       clearDraft();
       setDraftVersion(prev => prev + 1);
@@ -231,7 +239,11 @@ export const QuickNotesWidget: React.FC<QuickNotesWidgetProps> = ({
     } catch (error) {
       debugConsole.error('Error creating note:', error);
       notify.error('Fehler beim Erstellen der Notiz');
-    } finally { noteSaveBusy.current = false; setCreatingNote(false); }
+    } finally {
+      noteSaveBusy.current = false;
+      setSavingAfterDictation(false);
+      setCreatingNote(false);
+    }
   };
 
   const saveSettings = (newValue: boolean) => {
@@ -338,7 +350,10 @@ export const QuickNotesWidget: React.FC<QuickNotesWidgetProps> = ({
               variant="ghost"
               size="sm"
               onClick={createNote}
-              disabled={creatingNote || (!hasNoteContent && !stripHtml(newTitle))}
+              onMouseDown={(event) => {
+                if (dictationActive) event.preventDefault();
+              }}
+              disabled={savingAfterDictation || (!dictationActive && !hasNoteContent && !stripHtml(newTitle))}
               className="h-7 w-7 p-0"
             >
               <Plus className="h-3 w-3" />
@@ -354,7 +369,7 @@ export const QuickNotesWidget: React.FC<QuickNotesWidgetProps> = ({
             <SimpleRichTextEditor
               key={draftVersion}
               initialContent={toEditorHtml(newTitle)}
-              disabled={creatingNote}
+              disabled={savingAfterDictation}
               onChange={setNewTitle}
               placeholder="Titel (@ für Mentions)"
               minHeight="36px"
@@ -372,6 +387,8 @@ export const QuickNotesWidget: React.FC<QuickNotesWidgetProps> = ({
             showToolbar={true}
             compactToolbar={true}
             toolbarPosition="bottom"
+            dictationRef={dictationRef}
+            onDictationActiveChange={setDictationActive}
             onKeyDown={(e) => {
               if (e.key === 'Enter' && (e.ctrlKey || e.metaKey) && !e.nativeEvent.isComposing) {
                 e.preventDefault();

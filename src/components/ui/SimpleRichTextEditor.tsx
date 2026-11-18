@@ -3,7 +3,7 @@ import { MarkdownShortcutPlugin } from "@lexical/react/LexicalMarkdownShortcutPl
 import { CHECK_LIST } from "@lexical/markdown";
 import { normalizeChecklistHtml, exportChecklistHtml } from "@/features/quick-notes/checklists";
 import '@/styles/lexical-editor.css';
-import React, { useCallback, useEffect, useRef } from 'react';
+import React, { useCallback, useEffect, useImperativeHandle, useRef } from 'react';
 import { debugConsole } from '@/utils/debugConsole';
 import { LexicalComposer } from '@lexical/react/LexicalComposer';
 import { AutoFocusPlugin } from '@lexical/react/LexicalAutoFocusPlugin';
@@ -51,6 +51,10 @@ import { SpeechCommandsDialog } from '@/components/shared/SpeechCommandsDialog';
 import { SpeechSessionStats } from '@/components/shared/SpeechSessionStats';
 import { notify } from "@/lib/notify";
 
+export interface SimpleRichTextEditorDictation {
+  finishAndReadHtml(): Promise<string | null>;
+}
+
 interface SimpleRichTextEditorProps {
   /**
    * Initial HTML loaded into the editor.
@@ -75,6 +79,8 @@ interface SimpleRichTextEditorProps {
   seamless?: boolean;
   toolbarExtras?: React.ReactNode;
   compactToolbar?: boolean;
+  dictationRef?: React.Ref<SimpleRichTextEditorDictation>;
+  onDictationActiveChange?: (active: boolean) => void;
   autoFocus?: boolean;
   enableChecklists?: boolean;
 }
@@ -164,13 +170,26 @@ function $editDictationBlock(
 }
 
 // Toolbar Component
-const Toolbar = ({ enableChecklists = false, compact = false, extras }: { enableChecklists?: boolean; compact?: boolean; extras?: React.ReactNode }) => {
+const Toolbar = ({
+  enableChecklists = false,
+  compact = false,
+  extras,
+  dictationRef,
+  onDictationActiveChange,
+}: {
+  enableChecklists?: boolean;
+  compact?: boolean;
+  extras?: React.ReactNode;
+  dictationRef?: React.Ref<SimpleRichTextEditorDictation>;
+  onDictationActiveChange?: (active: boolean) => void;
+}) => {
   const [editor] = useLexicalComposerContext();
   const [isBold, setIsBold] = React.useState(false);
   const [isItalic, setIsItalic] = React.useState(false);
   const [isUnderline, setIsUnderline] = React.useState(false);
   const {
     speechError,
+    speechState,
     isListening,
     speechSupported,
     lastRecognizedCommand,
@@ -242,6 +261,22 @@ const Toolbar = ({ enableChecklists = false, compact = false, extras }: { enable
       }
     }, [editor]),
   });
+
+  const isStopping = speechState === 'stopping';
+
+  useEffect(() => {
+    onDictationActiveChange?.(isListening || isStopping);
+  }, [isListening, isStopping, onDictationActiveChange]);
+
+  useImperativeHandle(dictationRef, () => ({
+    async finishAndReadHtml() {
+      if (!await stopSpeechRecognition()) return null;
+      return editor.read(() => {
+        const html = $generateHtmlFromNodes(editor, null);
+        return enableChecklists ? exportChecklistHtml(html) : html;
+      });
+    },
+  }), [editor, enableChecklists, stopSpeechRecognition]);
 
   // Show toast on speech errors
   useEffect(() => {
@@ -392,6 +427,7 @@ const Toolbar = ({ enableChecklists = false, compact = false, extras }: { enable
         <Button
           type="button"
           variant={isListening ? 'default' : 'ghost'}
+          disabled={isStopping}
           size="sm"
           onClick={() => {
             if (!speechSupported) {
@@ -426,6 +462,11 @@ const Toolbar = ({ enableChecklists = false, compact = false, extras }: { enable
       {isListening && (
         <span className="text-xs text-destructive font-medium pl-1 animate-pulse">
           Aufnahme läuft…
+        </span>
+      )}
+      {isStopping && (
+        <span role="status" className="text-xs text-muted-foreground pl-1">
+          Diktat wird abgeschlossen …
         </span>
       )}
       <SpeechSessionStats sessionStartTime={sessionStartTime} wordCount={sessionWordCount} isListening={isListening} />
@@ -495,6 +536,8 @@ const SimpleRichTextEditor: React.FC<SimpleRichTextEditorProps> = ({
   seamless = false,
   toolbarExtras,
   compactToolbar = false,
+  dictationRef,
+  onDictationActiveChange,
   autoFocus = false,
   enableChecklists = false,
 }) => {
@@ -543,6 +586,16 @@ const SimpleRichTextEditor: React.FC<SimpleRichTextEditorProps> = ({
     });
   };
 
+  const toolbar = showToolbar && (
+    <Toolbar
+      enableChecklists={enableChecklists}
+      compact={compactToolbar}
+      extras={toolbarExtras}
+      dictationRef={dictationRef}
+      onDictationActiveChange={onDictationActiveChange}
+    />
+  );
+
   return (
     <div className={cn(
       "block w-full",
@@ -550,7 +603,7 @@ const SimpleRichTextEditor: React.FC<SimpleRichTextEditorProps> = ({
       disabled && "opacity-50 pointer-events-none"
     )}>
       <LexicalComposer initialConfig={initialConfig}>
-        {showToolbar && toolbarPosition === "top" && <Toolbar enableChecklists={enableChecklists} compact={compactToolbar} extras={toolbarExtras} />}
+        {toolbarPosition === "top" && toolbar}
         <div className="relative w-full">
           <RichTextPlugin
             contentEditable={
@@ -575,7 +628,7 @@ const SimpleRichTextEditor: React.FC<SimpleRichTextEditorProps> = ({
             ErrorBoundary={LexicalErrorBoundary}
           />
         </div>
-        {showToolbar && toolbarPosition === "bottom" && <Toolbar enableChecklists={enableChecklists} compact={compactToolbar} extras={toolbarExtras} />}
+        {toolbarPosition === "bottom" && toolbar}
         <EditablePlugin disabled={disabled} />
         <HistoryPlugin />
         <OnChangePlugin onChange={handleChange} />

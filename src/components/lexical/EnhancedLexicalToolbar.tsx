@@ -558,7 +558,7 @@ export const EnhancedLexicalToolbar: React.FC<EnhancedLexicalToolbarProps> = ({
                 ? "Push-to-talk aktiv – loslassen zum Beenden. Sprachkommando: ‘Stopp’"
                 : "Push-to-talk: Taste halten zum Sprechen (Strg+Shift+M)"
           }
-          disabled={!speechSupported}
+          disabled={!speechSupported || speechState === 'stopping'}
         >
           <Mic className="h-4 w-4" />
         </Button>
@@ -573,6 +573,10 @@ export const EnhancedLexicalToolbar: React.FC<EnhancedLexicalToolbarProps> = ({
 
         {speechState === 'listening' && (
           <span className="text-xs text-primary">Aufnahme läuft…</span>
+        )}
+
+        {speechState === 'stopping' && (
+          <span role="status" className="text-xs text-muted-foreground">Diktat wird abgeschlossen …</span>
         )}
 
         <SpeechSessionStats sessionStartTime={sessionStartTime} wordCount={sessionWordCount} isListening={isListening} />

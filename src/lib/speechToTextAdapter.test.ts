@@ -86,7 +86,7 @@ describe('WebSpeechToTextAdapter', () => {
     expect(emittedSegments.join(' ')).toBe('in Karlsruhe scheint die Sonne');
   });
 
-  it('does not duplicate committed final segments when a final result arrives after stop was requested', () => {
+  it('waits for the last final result and the browser end event when stopping', async () => {
     const instances: MockSpeechRecognitionInstance[] = [];
 
     class MockSpeechRecognition {
@@ -121,11 +121,21 @@ describe('WebSpeechToTextAdapter', () => {
     expect(recognition).toBeDefined();
 
     recognition.onresult?.(createSpeechRecognitionEvent(['in Karlsruhe']));
-    adapter.stop();
+    const stopping = adapter.stop();
+    const completed = vi.fn();
+    void stopping.then(completed);
+    expect(adapter.stop()).toBe(stopping);
+    expect(recognition.stop).toHaveBeenCalledTimes(1);
+
     recognition.onresult?.(createSpeechRecognitionEvent(['in Karlsruhe']));
     recognition.onresult?.(createSpeechRecognitionEvent(['in Karlsruhe scheint die Sonne']));
 
     expect(emittedSegments).toEqual(['in Karlsruhe', 'scheint die Sonne']);
     expect(emittedSegments.join(' ')).toBe('in Karlsruhe scheint die Sonne');
+    await Promise.resolve();
+    expect(completed).not.toHaveBeenCalled();
+
+    recognition.onend?.();
+    await expect(stopping).resolves.toBe(true);
   });
 });

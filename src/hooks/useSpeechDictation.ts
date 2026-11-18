@@ -1,5 +1,5 @@
 import { useCallback, useEffect, useMemo, useRef, useState } from 'react';
-import { $createTextNode, $getNodeByKey, $getSelection, $isRangeSelection, TextNode, type LexicalEditor } from 'lexical';
+import { $createTextNode, $getNodeByKey, $getSelection, $isRangeSelection, $setSelection, TextNode, type LexicalEditor, type RangeSelection } from 'lexical';
 import { WebSpeechToTextAdapter, type SpeechToTextError, type SpeechToTextState } from '@/lib/speechToTextAdapter';
 import { formatDictatedText, getSpeechCommandLabel, parseSpeechInput, type SpeechCommand } from '@/lib/speechCommandUtils';
 import { playTone } from '@/lib/speechAudioFeedback';
@@ -17,6 +17,8 @@ interface UseSpeechDictationOptions {
 
 export const useSpeechDictation = ({ editor, insertText, dispatchCommand }: UseSpeechDictationOptions) => {
   const [speechState, setSpeechState] = useState<SpeechToTextState>('idle');
+  const speechStateRef = useRef<SpeechToTextState>('idle');
+  const lastSelectionRef = useRef<RangeSelection | null>(null);
   const [speechError, setSpeechError] = useState<SpeechToTextError | null>(null);
   const [interimTranscript, setInterimTranscript] = useState('');
 
@@ -74,6 +76,9 @@ export const useSpeechDictation = ({ editor, insertText, dispatchCommand }: UseS
   }, []);
 
   const updateInterimNode = useCallback((text: string) => {
+    if (!text && !interimNodeKeyRef.current) return;
+    // Publish pending final text and commands before applying the interim-only tag.
+    editor.read(() => {});
     editor.update(() => {
       const interimNodeKey = interimNodeKeyRef.current;
       if (interimNodeKey) {
@@ -144,6 +149,13 @@ export const useSpeechDictation = ({ editor, insertText, dispatchCommand }: UseS
 
       if (!textToInsert) return;
 
+      if (!$isRangeSelection($getSelection())) {
+        const lastSelection = lastSelectionRef.current;
+        if (lastSelection && [lastSelection.anchor.key, lastSelection.focus.key]
+          .every(key => $getNodeByKey(key)?.isAttached())) {
+          $setSelection(lastSelection.clone());
+        }
+      }
       insertTextRef.current(textToInsert);
       lastInsertedSegmentRef.current = formattedText;
     });
@@ -153,24 +165,34 @@ export const useSpeechDictation = ({ editor, insertText, dispatchCommand }: UseS
 
   // Setup effect
   useEffect(() => {
-    speechAdapter.onStateChange = (state) => {
-      setSpeechState((prev) => {
-        if (state === 'listening') {
-          playTone('start');
-          setSessionStartTime(Date.now());
-          setSessionWordCount(0);
-          lastInsertedSegmentRef.current = '';
-        } else if (state === 'idle' && prev === 'listening') {
-          // Only play stop tone if we were actually listening
-          playTone('stop');
-          setSessionStartTime(null);
-          editor.update(() => {
-            clearInterimNode();
-          });
-          setInterimTranscript('');
-        }
-        return state;
+    const unregisterSelection = editor.registerUpdateListener(({ editorState }) => {
+      if (speechStateRef.current !== 'listening' && speechStateRef.current !== 'stopping') return;
+      editorState.read(() => {
+        const selection = $getSelection();
+        if ($isRangeSelection(selection)) lastSelectionRef.current = selection.clone();
       });
+    });
+
+    speechAdapter.onStateChange = (state) => {
+      const previousState = speechStateRef.current;
+      speechStateRef.current = state;
+      if (state === 'listening' && previousState !== 'listening') {
+        playTone('start');
+        setSessionStartTime(Date.now());
+        setSessionWordCount(0);
+        lastInsertedSegmentRef.current = '';
+        lastSelectionRef.current = editor.read(() => {
+          const selection = $getSelection();
+          return $isRangeSelection(selection) ? selection.clone() : null;
+        });
+      } else if (state === 'idle' && (previousState === 'listening' || previousState === 'stopping')) {
+        editor.update(clearInterimNode, { discrete: true });
+        lastSelectionRef.current = null;
+        setInterimTranscript('');
+        setSessionStartTime(null);
+        playTone('stop');
+      }
+      setSpeechState(state);
     };
     speechAdapter.onError = setSpeechError;
 
@@ -211,37 +233,34 @@ export const useSpeechDictation = ({ editor, insertText, dispatchCommand }: UseS
     }
 
     return () => {
+      unregisterSelection();
+      speechAdapter.onStateChange = undefined;
       speechAdapter.destroy();
+      speechStateRef.current = 'idle';
+      lastSelectionRef.current = null;
       if (commandFeedbackTimerRef.current) clearTimeout(commandFeedbackTimerRef.current);
     };
   }, [clearInterimNode, commitContentText, editor, showCommandFeedback, speechAdapter, updateInterimNode]);
 
   const startSpeechRecognition = useCallback(() => {
-    if (!speechAdapter.supported) return;
-    if (speechState === 'listening') return;
+    if (!speechAdapter.supported || !editor.isEditable()) return;
+    if (speechStateRef.current === 'listening' || speechStateRef.current === 'stopping') return;
 
     setSpeechError(null);
     speechAdapter.start();
     editor.focus();
-  }, [editor, speechAdapter, speechState]);
+  }, [editor, speechAdapter]);
 
-  const stopSpeechRecognition = useCallback(() => {
-    if (!speechAdapter.supported) return;
-    if (speechState !== 'listening') return;
-
-    speechAdapter.stop();
-  }, [speechAdapter, speechState]);
+  const stopSpeechRecognition = useCallback(() => speechAdapter.stop(), [speechAdapter]);
 
   const toggleSpeechRecognition = useCallback(() => {
-    if (!speechAdapter.supported) return;
-
-    if (speechState === 'listening') {
-      stopSpeechRecognition();
+    if (speechStateRef.current === 'listening') {
+      void stopSpeechRecognition();
       return;
     }
 
     startSpeechRecognition();
-  }, [speechAdapter, speechState, startSpeechRecognition, stopSpeechRecognition]);
+  }, [startSpeechRecognition, stopSpeechRecognition]);
 
   return {
     speechState,

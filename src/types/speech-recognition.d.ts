@@ -36,6 +36,7 @@ interface SpeechRecognition extends EventTarget {
   onend: ((this: SpeechRecognition, ev: Event) => any) | null;
   start(): void;
   stop(): void;
+  abort(): void;
 }
 
 declare var SpeechRecognition: {

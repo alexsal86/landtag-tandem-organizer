@@ -11,7 +11,7 @@ export interface SpeechToTextError {
 export interface SpeechToTextAdapter {
   readonly supported: boolean;
   start(): void;
-  stop(): void;
+  stop(): Promise<boolean>;
   destroy(): void;
   onFinalTranscript?: (text: string) => void;
   onInterimTranscript?: (text: string) => void;
@@ -63,7 +63,11 @@ const mapSpeechError = (code: string): SpeechToTextError => {
 export class WebSpeechToTextAdapter implements SpeechToTextAdapter {
   private recognition: SpeechRecognition | null = null;
   private shouldListen = false;
-  private isStopping = false;
+  private pendingStop: {
+    promise: Promise<boolean>;
+    resolve: (completed: boolean) => void;
+    timeout: ReturnType<typeof setTimeout>;
+  } | null = null;
   private finalizedTranscriptBuffer = '';
 
   onFinalTranscript?: (text: string) => void;
@@ -85,31 +89,63 @@ export class WebSpeechToTextAdapter implements SpeechToTextAdapter {
       console.debug('[SpeechAdapter] start() called');
     }
 
+    if (this.recognition) return;
+
     this.shouldListen = true;
     this.startRecognition();
   }
 
-  stop(): void {
+  stop(): Promise<boolean> {
+    if (this.pendingStop) return this.pendingStop.promise;
+    if (!this.recognition) return Promise.resolve(true);
+
     this.shouldListen = false;
-    this.isStopping = true;
-    this.onInterimTranscript?.('');
+    let resolve!: (completed: boolean) => void;
+    const promise = new Promise<boolean>((settle) => { resolve = settle; });
+    const timeout = setTimeout(() => this.failStop('stop-timeout'), 5000);
+    this.pendingStop = { promise, resolve, timeout };
     this.onStateChange?.('stopping');
-    this.recognition?.stop();
+    try {
+      this.recognition.stop();
+    } catch {
+      this.failStop('stop-failed');
+    }
+    return promise;
   }
 
   destroy(): void {
     this.shouldListen = false;
-    this.isStopping = false;
-    this.resetSessionDedupeState();
-    if (this.recognition) {
-      this.recognition.onresult = null;
-      this.recognition.onerror = null;
-      this.recognition.onend = null;
-      this.recognition.stop();
-      this.recognition = null;
+    const recognition = this.recognition;
+    if (recognition) {
+      recognition.onresult = null;
+      recognition.onerror = null;
+      recognition.onend = null;
+      try {
+        recognition.abort();
+      } catch {
+        // Some browsers already ended the recognition session.
+      }
     }
-    this.onInterimTranscript?.('');
+    this.finishRecognition(false);
+  }
+
+  private failStop(code: string): void {
+    this.onError?.({
+      code,
+      message: 'Das Diktat konnte nicht vollständig abgeschlossen werden.',
+      recoverable: true,
+    });
+    this.destroy();
+  }
+
+  private finishRecognition(completed: boolean): void {
+    this.recognition = null;
+    this.resetSessionDedupeState();
+    const pendingStop = this.pendingStop;
+    this.pendingStop = null;
+    if (pendingStop) clearTimeout(pendingStop.timeout);
     this.onStateChange?.('idle');
+    pendingStop?.resolve(completed);
   }
 
   private startRecognition(): void {
@@ -120,7 +156,6 @@ export class WebSpeechToTextAdapter implements SpeechToTextAdapter {
     }
 
     const recognition = new SpeechRecognitionCtor();
-    this.isStopping = false;
     this.resetSessionDedupeState();
     recognition.lang = 'de-DE';
     recognition.continuous = true;
@@ -140,13 +175,11 @@ export class WebSpeechToTextAdapter implements SpeechToTextAdapter {
         }
       }
 
-      this.onInterimTranscript?.(interimTranscript.trim());
-
       const textDelta = this.consumeFinalTranscriptDelta(finalTranscript);
       if (textDelta) {
         this.onFinalTranscript?.(textDelta);
-        this.onInterimTranscript?.('');
       }
+      this.onInterimTranscript?.(interimTranscript.trim());
     };
 
     recognition.onerror = (event: SpeechRecognitionErrorEvent) => {
@@ -156,6 +189,7 @@ export class WebSpeechToTextAdapter implements SpeechToTextAdapter {
       // "no-speech" kommt häufig vor, wenn kurz pausiert wurde. Keine Fehlermeldung nötig.
       if (event.error !== 'no-speech') {
         this.onError?.(mapSpeechError(event.error));
+        this.destroy();
       }
     };
 
@@ -167,15 +201,11 @@ export class WebSpeechToTextAdapter implements SpeechToTextAdapter {
 
       if (this.shouldListen) {
         // Browser beendet Session regelmäßig; bei aktiver Aufnahme automatisch neu starten.
-        // Buffer NICHT zurücksetzen – verhindert Re-Emission von Text bei Session-Neustart.
         this.startRecognition();
         return;
       }
 
-      this.isStopping = false;
-      this.resetSessionDedupeState();
-
-      this.onStateChange?.('idle');
+      this.finishRecognition(true);
     };
 
     try {
