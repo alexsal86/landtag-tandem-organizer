@@ -47,4 +47,15 @@ describe('speechCommandUtils formatting', () => {
   it('uppercases words after existing periods without spaces', () => {
     expect(formatDictatedText('hallo.welt')).toBe('Hallo. Welt');
   });
+
+  it.each([
+    ['drucksache 17 schrägstrich 1234', 'Drs. 17/1234'],
+    ['siehe drs. 17 / 42', 'Siehe Drs. 17/42'],
+    ['drucksache 17-42', 'Drs. 17/42'],
+    ['nach paragraph 3 abs. 2', 'Nach § 3 Abs. 2'],
+    ['paragraf 4 absatz 1', '§ 4 Abs. 1'],
+    ['mdl im ltt', 'MdL im LTT'],
+  ])('formats parliamentary dictation "%s"', (input, expected) => {
+    expect(formatDictatedText(input)).toBe(expected);
+  });
 });

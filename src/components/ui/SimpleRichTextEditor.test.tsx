@@ -1,14 +1,18 @@
-import { render } from '@testing-library/react';
+import { render, screen } from '@testing-library/react';
 import { beforeEach, describe, expect, it, vi } from 'vitest';
 import type React from 'react';
+import type { SpeechDictationCommandDispatch } from '@/hooks/useSpeechDictation';
 import SimpleRichTextEditor from './SimpleRichTextEditor';
 
 const updateSpy = vi.fn((callback: () => void) => callback());
 const clearSpy = vi.fn();
 const appendSpy = vi.fn();
-const mockRoot = { clear: clearSpy, append: appendSpy };
+const selectSpy = vi.fn();
+const mockRoot = { clear: clearSpy, append: appendSpy, select: selectSpy, getChildrenSize: () => 2 };
 
 let currentEditorHtml = '';
+let isListening = false;
+let dispatchSpeechCommand: SpeechDictationCommandDispatch;
 
 const mockEditor = {
   update: updateSpy,
@@ -19,6 +23,7 @@ const mockEditor = {
   registerUpdateListener: vi.fn(() => () => {}),
   dispatchCommand: vi.fn(),
   getRootElement: vi.fn(() => null),
+  setEditable: vi.fn(),
 };
 
 vi.mock('@lexical/react/LexicalComposerContext', () => ({
@@ -42,18 +47,22 @@ vi.mock('@lexical/react/LexicalOnChangePlugin', () => ({ OnChangePlugin: () => n
 vi.mock('@lexical/react/LexicalListPlugin', () => ({ ListPlugin: () => null }));
 vi.mock('@/components/plugins/MentionsPlugin', () => ({ MentionsPlugin: () => null }));
 vi.mock('@/hooks/useSpeechDictation', () => ({
-  useSpeechDictation: () => ({
-    speechError: null,
-    interimTranscript: '',
-    isListening: false,
-    speechSupported: false,
-    lastRecognizedCommand: null,
-    sessionStartTime: null,
-    sessionWordCount: 0,
-    toggleSpeechRecognition: vi.fn(),
-    startSpeechRecognition: vi.fn(),
-    stopSpeechRecognition: vi.fn(),
-  }),
+  SPEECH_INTERIM_UPDATE_TAG: 'speech-interim',
+  useSpeechDictation: ({ dispatchCommand }: { dispatchCommand: SpeechDictationCommandDispatch }) => {
+    dispatchSpeechCommand = dispatchCommand;
+    return {
+      speechError: null,
+      interimTranscript: 'Vorläufiges Transkript',
+      isListening,
+      speechSupported: true,
+      lastRecognizedCommand: null,
+      sessionStartTime: null,
+      sessionWordCount: 0,
+      toggleSpeechRecognition: vi.fn(),
+      startSpeechRecognition: vi.fn(),
+      stopSpeechRecognition: vi.fn(),
+    };
+  },
 }));
 vi.mock('@/components/shared/SpeechCommandsDialog', () => ({ SpeechCommandsDialog: () => null }));
 vi.mock('@/components/shared/SpeechSessionStats', () => ({ SpeechSessionStats: () => null }));
@@ -63,7 +72,8 @@ vi.mock('@lexical/html', () => ({
   $generateHtmlFromNodes: () => currentEditorHtml,
 }));
 
-vi.mock('lexical', () => ({
+vi.mock('lexical', async (importOriginal) => ({
+  ...await importOriginal<typeof import('lexical')>(),
   $getRoot: () => mockRoot,
   $getSelection: vi.fn(),
   $isRangeSelection: vi.fn(() => false),
@@ -72,7 +82,8 @@ vi.mock('lexical', () => ({
   UNDO_COMMAND: 'undo',
 }));
 
-vi.mock('@lexical/list', () => ({
+vi.mock('@lexical/list', async (importOriginal) => ({
+  ...await importOriginal<typeof import('@lexical/list')>(),
   ListNode: function ListNode() {},
   ListItemNode: function ListItemNode() {},
   INSERT_ORDERED_LIST_COMMAND: 'ordered',
@@ -143,5 +154,27 @@ describe('SimpleRichTextEditor rehydrate behavior', () => {
     expect(updateSpy).not.toHaveBeenCalled();
     expect(clearSpy).not.toHaveBeenCalled();
     expect(appendSpy).not.toHaveBeenCalled();
+  });
+});
+
+describe('SimpleRichTextEditor dictation', () => {
+  it('shows the recording status without repeating the interim transcript', () => {
+    isListening = true;
+    try {
+      render(<SimpleRichTextEditor onChange={vi.fn()} />);
+
+      expect(screen.getByText('Aufnahme läuft…')).toBeTruthy();
+      expect(screen.queryByText('Vorläufiges Transkript')).toBeNull();
+    } finally {
+      isListening = false;
+    }
+  });
+
+  it('selects the full editor contents on the select-all voice command', () => {
+    render(<SimpleRichTextEditor onChange={vi.fn()} />);
+
+    dispatchSpeechCommand({ type: 'select-all' });
+
+    expect(selectSpy).toHaveBeenCalledWith(0, 2);
   });
 });

@@ -7,6 +7,8 @@ import { playTone } from '@/lib/speechAudioFeedback';
 export type SpeechDictationInsertText = (text: string) => void;
 export type SpeechDictationCommandDispatch = (command: SpeechCommand) => void;
 
+export const SPEECH_INTERIM_UPDATE_TAG = 'speech-interim';
+
 interface UseSpeechDictationOptions {
   editor: LexicalEditor;
   insertText: SpeechDictationInsertText;
@@ -93,13 +95,13 @@ export const useSpeechDictation = ({ editor, insertText, dispatchCommand }: UseS
       if (!text) return;
 
       const selection = $getSelection();
-      if (!$isRangeSelection(selection)) return;
+      if (!$isRangeSelection(selection) || !selection.isCollapsed()) return;
 
       const node = $createTextNode(text);
       node.setStyle('opacity: 0.65; font-style: italic;');
       selection.insertNodes([node]);
       interimNodeKeyRef.current = node.getKey();
-    });
+    }, { tag: SPEECH_INTERIM_UPDATE_TAG, discrete: true });
   }, [editor]);
 
   const commitContentText = useCallback((contentText: string) => {

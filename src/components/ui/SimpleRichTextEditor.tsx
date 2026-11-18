@@ -15,9 +15,18 @@ import { ListPlugin } from '@lexical/react/LexicalListPlugin';
 import { $generateHtmlFromNodes, $generateNodesFromDOM } from '@lexical/html';
 import { LexicalErrorBoundary } from '@lexical/react/LexicalErrorBoundary';
 import { ListNode, ListItemNode } from '@lexical/list';
+import { HeadingNode, QuoteNode, $createHeadingNode, $createQuoteNode } from '@lexical/rich-text';
+import { $setBlocksType } from '@lexical/selection';
 import { useLexicalComposerContext } from '@lexical/react/LexicalComposerContext';
 import {
+  $findMatchingParent,
   $getRoot,
+  $isBlockElementNode,
+  $isElementNode,
+  $isTextNode,
+  $isRootOrShadowRoot,
+  type LexicalNode,
+  type RangeSelection,
   $getSelection,
   $isRangeSelection,
   FORMAT_TEXT_COMMAND,
@@ -36,7 +45,8 @@ import { Button } from '@/components/ui/button';
 import { cn } from '@/lib/utils';
 import { MentionNode } from '@/components/nodes/MentionNode';
 import { MentionsPlugin } from '@/components/plugins/MentionsPlugin';
-import { useSpeechDictation } from '@/hooks/useSpeechDictation';
+import { SPEECH_INTERIM_UPDATE_TAG, useSpeechDictation } from '@/hooks/useSpeechDictation';
+import type { SpeechCommand } from '@/lib/speechCommandUtils';
 import { SpeechCommandsDialog } from '@/components/shared/SpeechCommandsDialog';
 import { SpeechSessionStats } from '@/components/shared/SpeechSessionStats';
 import { notify } from "@/lib/notify";
@@ -83,6 +93,76 @@ const EditablePlugin = ({ disabled }: { disabled: boolean }) => {
   return null;
 };
 
+function $editDictationBlock(
+  selection: RangeSelection,
+  command: Extract<SpeechCommand, { type: 'delete-last-word' | 'delete-last-sentence' | 'replace-text' }>,
+) {
+  const anchor = selection.isBackward() ? selection.focus : selection.anchor;
+  const block = $findMatchingParent(anchor.getNode(), $isBlockElementNode);
+  if (!block || !$isElementNode(block) || $isRootOrShadowRoot(block)) return;
+
+  let text = '';
+  let cursor = 0;
+  const leaves: { node: LexicalNode; start: number; end: number }[] = [];
+  const collectText = (node: LexicalNode) => {
+    if ($isElementNode(node)) {
+      const children = node.getChildren();
+      for (const [index, child] of children.entries()) {
+        if (node.getKey() === anchor.key && index === anchor.offset) cursor = text.length;
+        collectText(child);
+      }
+      if (node.getKey() === anchor.key && anchor.offset === children.length) cursor = text.length;
+      return;
+    }
+
+    const start = text.length;
+    if (node.getKey() === anchor.key) cursor = start + anchor.offset;
+    text += node.getTextContent();
+    if (text.length > start) leaves.push({ node, start, end: text.length });
+  };
+  collectText(block);
+
+  let start: number;
+  let end: number;
+  if (command.type === 'replace-text') {
+    const escapedSearch = command.search.replace(/[.*+?^${}()|[\]\\]/g, '\\$&');
+    const match = new RegExp(escapedSearch, 'iu').exec(text);
+    if (!match?.[0]) return;
+    start = match.index;
+    end = start + match[0].length;
+  } else {
+    end = cursor;
+    const beforeCursor = text.slice(0, cursor).trimEnd();
+    if (!beforeCursor) return;
+    if (command.type === 'delete-last-word') {
+      start = beforeCursor.search(/\S+$/);
+    } else {
+      const sentences = beforeCursor.split(/(?<=[.!?])\s+|\n+/);
+      start = beforeCursor.length - sentences[sentences.length - 1].length;
+    }
+  }
+
+  const first = leaves.find(leaf => leaf.start <= start && start < leaf.end);
+  const last = leaves.find(leaf => leaf.start < end && end <= leaf.end);
+  if (!first || !last) return;
+
+  const setPoint = (point: RangeSelection['anchor'], leaf: typeof first, offset: number) => {
+    const { node } = leaf;
+    if ($isTextNode(node)) {
+      point.set(node.getKey(), offset - leaf.start, 'text');
+    } else {
+      point.set(node.getParentOrThrow().getKey(), node.getIndexWithinParent() + Number(offset > leaf.start), 'element');
+    }
+  };
+  setPoint(selection.anchor, first, start);
+  setPoint(selection.focus, last, end);
+  if (command.type === 'replace-text') {
+    selection.insertText(command.replacement);
+  } else {
+    selection.removeText();
+  }
+}
+
 // Toolbar Component
 const Toolbar = ({ enableChecklists = false, compact = false, extras }: { enableChecklists?: boolean; compact?: boolean; extras?: React.ReactNode }) => {
   const [editor] = useLexicalComposerContext();
@@ -91,7 +171,6 @@ const Toolbar = ({ enableChecklists = false, compact = false, extras }: { enable
   const [isUnderline, setIsUnderline] = React.useState(false);
   const {
     speechError,
-    interimTranscript,
     isListening,
     speechSupported,
     lastRecognizedCommand,
@@ -127,14 +206,36 @@ const Toolbar = ({ enableChecklists = false, compact = false, extras }: { enable
         case 'redo':
           editor.dispatchCommand(REDO_COMMAND, undefined);
           break;
+        case 'select-all':
+          editor.update(() => {
+            const root = $getRoot();
+            root.select(0, root.getChildrenSize());
+          });
+          break;
         case 'insert-newline':
         case 'delete-last-word':
         case 'delete-last-sentence':
-        case 'select-all':
         case 'insert-heading':
         case 'insert-quote':
         case 'replace-text':
-          // SimpleRichTextEditor does not support these advanced commands
+          editor.update(() => {
+            const selection = $getSelection();
+            if (!$isRangeSelection(selection)) return;
+
+            switch (command.type) {
+              case 'insert-newline':
+                selection.insertLineBreak();
+                break;
+              case 'insert-heading':
+                $setBlocksType(selection, () => $createHeadingNode(`h${command.level}`));
+                break;
+              case 'insert-quote':
+                $setBlocksType(selection, $createQuoteNode);
+                break;
+              default:
+                $editDictationBlock(selection, command);
+            }
+          });
           break;
         case 'stop-listening':
           break;
@@ -333,11 +434,6 @@ const Toolbar = ({ enableChecklists = false, compact = false, extras }: { enable
           {speechError.message}
         </span>
       )}
-      {isListening && interimTranscript && (
-        <span className="text-xs text-muted-foreground pl-1 italic" title="Live-Erkennung">
-          {interimTranscript}
-        </span>
-      )}
     </div>
   );
 };
@@ -430,14 +526,16 @@ const SimpleRichTextEditor: React.FC<SimpleRichTextEditorProps> = ({
       ListNode,
       ListItemNode,
       MentionNode,
+      HeadingNode,
+      QuoteNode,
     ],
     onError: (error: Error) => {
       debugConsole.error('Lexical Error:', error);
     },
   };
 
-  const handleChange = (editorState: EditorState, editor: LexicalEditor) => {
-    if (disabled) return;
+  const handleChange = (editorState: EditorState, editor: LexicalEditor, tags: Set<string>) => {
+    if (disabled || tags.has(SPEECH_INTERIM_UPDATE_TAG)) return;
     
     editorState.read(() => {
       const htmlString = $generateHtmlFromNodes(editor, null);

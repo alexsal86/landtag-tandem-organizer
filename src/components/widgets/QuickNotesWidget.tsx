@@ -5,7 +5,6 @@ import React, { useState, useEffect, useRef } from 'react';
 import { Plus, Save, Search, Settings, ListTodo, Square, ChevronDown, CheckSquare } from 'lucide-react';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 import { Button } from '@/components/ui/button';
-import { Textarea } from '@/components/ui/textarea';
 import { Badge } from '@/components/ui/badge';
 import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogDescription } from '@/components/ui/dialog';
 import { Switch } from '@/components/ui/switch';
@@ -82,7 +81,7 @@ export const QuickNotesWidget: React.FC<QuickNotesWidgetProps> = ({
   const [settingsOpen, setSettingsOpen] = useState(false);
   const [showDeleteConfirmation, setShowDeleteConfirmation] = useState(true);
   const [refreshTrigger, setRefreshTrigger] = useState(0);
-  const [titleEditorKey, setTitleEditorKey] = useState(0);
+  const [draftVersion, setDraftVersion] = useState(0);
   
   // Tasks state
   const [tasks, setTasks] = useState<WidgetTask[]>([]);
@@ -105,8 +104,14 @@ export const QuickNotesWidget: React.FC<QuickNotesWidgetProps> = ({
     return `<p>${value
       .replace(/&/g, '&amp;')
       .replace(/</g, '&lt;')
-      .replace(/>/g, '&gt;')}</p>`;
+      .replace(/>/g, '&gt;')
+      .replace(/\r?\n/g, '<br>')}</p>`;
   };
+
+  const hasNoteContent = Boolean(
+    new DOMParser().parseFromString(toEditorHtml(newNote), 'text/html').body.textContent?.trim(),
+  );
+  const bodyEditorVersion = JSON.stringify([user?.id, currentTenant?.id, draftVersion]);
 
   const taskCategories = [
     { name: 'personal', label: 'Persönlich' },
@@ -211,16 +216,16 @@ export const QuickNotesWidget: React.FC<QuickNotesWidgetProps> = ({
 
   const createNote = async () => {
     const plainTitle = stripHtml(newTitle);
-    const plainContent = newNote.trim();
+    const content = hasNoteContent ? newNote.trim() : '';
 
-    if (!user || !currentTenant || noteSaveBusy.current || (!plainTitle && !plainContent)) return;
+    if (!user || !currentTenant || noteSaveBusy.current || (!plainTitle && !content)) return;
     noteSaveBusy.current = true;
     setCreatingNote(true);
 
     try {
-      await queueNote({ title: newTitle.trim() || null, content: plainContent, color: selectedColor });
+      await queueNote({ title: newTitle.trim() || null, content, color: selectedColor });
       clearDraft();
-      setTitleEditorKey(prev => prev + 1);
+      setDraftVersion(prev => prev + 1);
       setRefreshTrigger(prev => prev + 1);
       notify.success('Notiz erstellt');
     } catch (error) {
@@ -333,7 +338,7 @@ export const QuickNotesWidget: React.FC<QuickNotesWidgetProps> = ({
               variant="ghost"
               size="sm"
               onClick={createNote}
-              disabled={!newNote.trim() && !stripHtml(newTitle)}
+              disabled={creatingNote || (!hasNoteContent && !stripHtml(newTitle))}
               className="h-7 w-7 p-0"
             >
               <Plus className="h-3 w-3" />
@@ -347,7 +352,7 @@ export const QuickNotesWidget: React.FC<QuickNotesWidgetProps> = ({
         <div className="space-y-2 p-3 border rounded-lg bg-muted/30">
           {!compact && (
             <SimpleRichTextEditor
-              key={titleEditorKey}
+              key={draftVersion}
               initialContent={toEditorHtml(newTitle)}
               disabled={creatingNote}
               onChange={setNewTitle}
@@ -356,12 +361,17 @@ export const QuickNotesWidget: React.FC<QuickNotesWidgetProps> = ({
               showToolbar={false}
             />
           )}
-          <Textarea
+          <SimpleRichTextEditor
+            key={bodyEditorVersion}
+            contentVersion={bodyEditorVersion}
+            initialContent={toEditorHtml(newNote)}
             placeholder="Neue Notiz..."
             disabled={creatingNote}
-            value={newNote}
-            onChange={(e) => setNewNote(e.target.value)}
-            className="min-h-[100px] text-xs resize-none"
+            onChange={setNewNote}
+            minHeight="100px"
+            showToolbar={true}
+            compactToolbar={true}
+            toolbarPosition="bottom"
             onKeyDown={(e) => {
               if (e.key === 'Enter' && (e.ctrlKey || e.metaKey) && !e.nativeEvent.isComposing) {
                 e.preventDefault();

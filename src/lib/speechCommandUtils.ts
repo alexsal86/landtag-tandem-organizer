@@ -165,6 +165,11 @@ export const formatDictatedText = (text: string): string => {
     .replace(/^(\p{L})/u, (letter: string) => letter.toUpperCase());
 
   return withSentenceCase
+    .replace(/\b(?:drucksache|drs\.?)\s+(\d+)\s*(?:schrägstrich|strich|\/|-)\s*(\d+)\b/gi, 'Drs. $1/$2')
+    .replace(/\b(?:paragraf|paragraph)\b/gi, '§')
+    .replace(/\b(?:absatz|abs)\b\.?/gi, 'Abs.')
+    .replace(/\bmdl\b/gi, 'MdL')
+    .replace(/\bltt\b/gi, 'LTT')
     .replace(/\s+([,.;:!?])/g, '$1')
     .replace(/\n\s+/g, '\n')
     .replace(/\s{2,}/g, ' ')
