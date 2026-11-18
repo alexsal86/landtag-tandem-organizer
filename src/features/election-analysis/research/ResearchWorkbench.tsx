@@ -1,5 +1,3 @@
-import { CandidateDistrictResults } from '@/features/election-history/CandidateDistrictResults';
-import { useElectionPeriods } from '@/features/election-history/useElectionHistory';
 import { formatMandateType } from '@/features/election-history/mandateLabel';
 import { DistrictCandidateChronicle } from './DistrictCandidateChronicle';
 import { ProfileBoundarySection } from "./ProfileBoundarySection";
@@ -121,10 +119,6 @@ function DistrictProfile({
   set,
 }: Props & { district: number; set: SetParam }) {
   const versions = useDistrictVersions(year);
-  const periods = useElectionPeriods();
-  const candidatePeriod = periods.data?.find(period => period.election_year === year && period.is_published);
-  const candidateVersion = versions.data?.find(version => version.year === year && version.district_number === district && version.history_link_verified);
-
   const query = useDistrictSeries(district, years);
   const [historyOpen, setHistoryOpen] = useState(false);
   const history = useDistrictHistory(district, year, historyOpen);
@@ -172,6 +166,7 @@ function DistrictProfile({
       }),
     ),
   }));
+  const resultRows = selection.slice().reverse();
   const totals = uniqueTurnout(
     (data?.turnout || []).filter(
       (r) => r.ballot === ballotForComparison(r.year, ballot),
@@ -231,19 +226,6 @@ function DistrictProfile({
       <h2 className="text-xl font-semibold">
         {district}: {name}
       </h2>
-      {candidatePeriod && candidateVersion?.historical_district_id && <CandidateDistrictResults
-        key={`${candidatePeriod.id}:${candidateVersion.historical_district_id}`}
-        periodId={candidatePeriod.id} districtId={candidateVersion.historical_district_id}
-      />}
-      <DistrictCandidateChronicle district={district} />
-      {periods.error && <p role="alert" className="text-xs">Die Legislaturperiode für Kandidaturergebnisse konnte nicht geladen werden. <Button variant="ghost" onClick={() => void periods.refetch()}>Erneut laden</Button></p>}
-      <ProfileBoundarySection
-        key={`${year}:${district}`}
-        year={year}
-        number={district}
-        name={name}
-        confirmedGeometryYear={versions.data?.find((v) => v.year === year && v.district_number === district)?.bundled_geometry_year}
-      />
       <StatusNote>
         Die Zeitreihe zeigt vorhandene Messwerte, keine automatisch
         vergleichbaren historischen Gebiete. Grenzänderungen und Datenstände
@@ -251,56 +233,70 @@ function DistrictProfile({
         {ballotLabels[ballotForComparison(2026, ballot)]}. AfD vor 2013 und
         andere fehlende Werte bleiben unbekannt.
       </StatusNote>
-      <DataState
-        loading={query.isLoading}
-        error={query.error}
-        empty={!results.length}
-        retry={() => void query.refetch()}
-      >
-        <Card>
+      <div className="grid gap-4 lg:grid-cols-2">
+        <Card className="min-w-0">
           <CardHeader>
             <CardTitle className="text-lg">
               Parteientwicklung {orderedYears[0]}–{orderedYears[orderedYears.length - 1]}
             </CardTitle>
           </CardHeader>
           <CardContent>
-            <div
-              className="h-80"
-              role="img"
-              aria-label="Wahlkreis-Zeitreihe; Messwerte in der Tabelle"
+            <DataState
+              loading={query.isLoading}
+              error={query.error}
+              empty={!results.length}
+              retry={() => void query.refetch()}
             >
-              <ResponsiveContainer>
-                <LineChart data={selection}>
-                  <CartesianGrid strokeDasharray="3 3" />
-                  <XAxis dataKey="year" />
-                  <YAxis
-                    unit={
-                      metric === "share"
-                        ? " %"
-                        : metric === "pp"
+              <div
+                className="h-80"
+                role="img"
+                aria-label="Wahlkreis-Zeitreihe; Messwerte in der Tabelle"
+              >
+                <ResponsiveContainer>
+                  <LineChart data={selection}>
+                    <CartesianGrid strokeDasharray="3 3" />
+                    <XAxis dataKey="year" />
+                    <YAxis
+                      unit={
+                        metric === "share"
                           ? " %"
-                          : undefined
-                    }
-                  />
-                  <Tooltip />
-                  <Legend />
-                  {parties.map((p) => (
-                    <Line
-                      key={p}
-                      dataKey={p}
-                      stroke={chartColor(p)}
-                      connectNulls={false}
-                      strokeWidth={2}
+                          : metric === "pp"
+                            ? " %"
+                            : undefined
+                      }
                     />
-                  ))}
-                </LineChart>
-              </ResponsiveContainer>
-            </div>
+                    <Tooltip />
+                    <Legend />
+                    {parties.map((p) => (
+                      <Line
+                        key={p}
+                        dataKey={p}
+                        stroke={chartColor(p)}
+                        connectNulls={false}
+                        strokeWidth={2}
+                      />
+                    ))}
+                  </LineChart>
+                </ResponsiveContainer>
+              </div>
+            </DataState>
           </CardContent>
         </Card>
+        <ProfileBoundarySection
+          year={year}
+          number={district}
+          name={name}
+          confirmedGeometryYear={versions.data?.find((v) => v.year === year && v.district_number === district)?.bundled_geometry_year}
+        />
+      </div>
+      <DistrictCandidateChronicle district={district} selectedYear={year} />
+      {!query.isLoading && !query.error && results.length > 0 && <>
+        <h3 className="text-lg font-medium">Ergebnisse pro Wahljahr</h3>
         <DataTable
           headers={["Wahljahr", ...parties, "Stimmenart / Status"]}
-          rows={selection.map((row) => [
+          sortableColumns={[0]}
+          sortValues={resultRows.map((row) => [row.year])}
+          rows={resultRows.map((row) => [
             row.year,
             ...parties.map((p) =>
               metric === "votes" || metric === "deltaVotes"
@@ -401,7 +397,7 @@ function DistrictProfile({
             )
           )}
         </details>
-      </DataState>
+      </>}
     </div>
   );
 }
