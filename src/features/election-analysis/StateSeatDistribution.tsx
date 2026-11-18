@@ -77,7 +77,7 @@ export function StateSeatDistribution({ rows, year, ballot, title, compact = fal
           </li>)}
         </ul>
         {sourceNote && <p className="text-xs leading-relaxed text-slate-600">{sourceNote}</p>}
-        <p className="text-xs leading-relaxed text-slate-500">Ein Punkt entspricht einem hinterlegten Sitz. Schematische Anordnung der erfassten Parteien, keine einzelnen Sitzplätze.</p>
+        {!compact && <p className="text-xs leading-relaxed text-slate-500">Ein Punkt entspricht einem hinterlegten Sitz. Schematische Anordnung der erfassten Parteien, keine einzelnen Sitzplätze.</p>}
       </> : <p className="text-sm text-slate-500">
         {year >= 2026 && ballot === 'first'
           ? 'Die Sitzverteilung steht bei den Zweitstimmen. Bitte oben die Stimmenart wechseln.'

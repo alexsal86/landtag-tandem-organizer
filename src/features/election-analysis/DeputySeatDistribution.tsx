@@ -17,7 +17,7 @@ export function DeputySeatDistribution({ period, party }: { period?: ElectionPer
   return <div className="space-y-2">
     <StateSeatDistribution rows={rows} year={period.election_year || 0} ballot={period.election_year && period.election_year>=2026 ? 'second' : 'single'} compact title={title} highlightParty={highlight}
       sourceNote={`${period.number}. Wahlperiode · ${basis}${period.seat_reference_date ? ` (${period.seat_reference_date.split('-').reverse().join('.')})` : ''}. ${totalNote}`} />
-    {highlight && <p className="text-xs text-muted-foreground">Markierte Partei: {highlight}. Keine persönliche Sitzposition.</p>}
+    {highlight && <p className="text-xs text-muted-foreground">Markierte Partei: {highlight}.</p>}
     {(period.seat_source_url || period.seat_notes) && <details className="text-xs text-muted-foreground"><summary className="cursor-pointer">Quelle der Sitzverteilung</summary>
       {period.seat_source_url && <a className="mt-2 block underline" href={period.seat_source_url} target="_blank" rel="noreferrer">Quelle öffnen</a>}
       {period.seat_notes && <p className="mt-2">{period.seat_notes}</p>}

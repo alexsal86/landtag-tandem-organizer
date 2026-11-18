@@ -1,3 +1,6 @@
+import { Portal as HoverCardPortal } from '@radix-ui/react-hover-card';
+import { Info } from 'lucide-react';
+import { HoverCard, HoverCardContent, HoverCardTrigger } from '@/components/ui/hover-card';
 import { TurnoutPanel } from './TurnoutPanel';
 import { useState } from 'react';
 import { useSearchParams } from 'react-router-dom';
@@ -26,7 +29,7 @@ export function StateHistoryPanel({ year, years, initiallyShowTurnout = false }:
     const query = useStateHistory(from, year);
     const totals = (query.data?.totals || []).map(stateTotalMetrics);
     const rows = totals.map(t => ({ ...t, ...Object.fromEntries(parties.map(p => [p, query.data?.state.find(s => s.year === t.year && s.party === p)?.share ?? null])) }));
-    const [selectedMetrics, setSelectedMetrics] = useState<string[]>(['turnout']);
+    const [selectedMetrics, setSelectedMetrics] = useState<string[]>(['turnout', ...parties]);
     const metrics = [
       { key: 'turnout', label: 'Wahlbeteiligung', color: '#4b8b39' },
       { key: 'invalidShare', label: 'Ungültige Stimmen', color: '#b65c55' },
@@ -35,7 +38,7 @@ export function StateHistoryPanel({ year, years, initiallyShowTurnout = false }:
     const showParties = parties.some(p => selectedMetrics.includes(p));
     const maximum = Math.ceil((Math.max(10, ...rows.flatMap(row => selectedMetrics.map(key => { const value = row[key as keyof typeof row]; return typeof value === 'number' ? value : 0; }))) + 5) / 5) * 5;
     const percentageDomain: [number, number] = [0, maximum];
-    return <div className="space-y-4">
+    return <div className="space-y-4 [&_tbody]:bg-white [&_tbody]:text-slate-900">
     <AnalysisControls>
       <Selection id="history-from" label="Zeitreihe ab Wahl" value={String(from)} onChange={v => setParams(old => { const next = new URLSearchParams(old); next.set('historyFrom', v); return next; })}>{ordered.filter(y => y <= year).map(y => <option key={y} value={y}>{y}</option>)}</Selection>
     </AnalysisControls>
@@ -51,7 +54,7 @@ export function StateHistoryPanel({ year, years, initiallyShowTurnout = false }:
       </CardContent></Card>
     <StatusNote>Vergangene Wahlen {from}–{year}. Die oben ausgewählte Wahl ist das Ende der Zeitreihe. Bis 2021 wird die Einzelstimme, ab 2026 die Zweitstimme verwendet; 2026 beginnt ein neues Wahlsystem. 1952 war die Wahl zur Verfassunggebenden Landesversammlung. Weitere historische Parteien werden nicht ergänzt. Fehlende Parteieinträge bleiben unbekannt und werden nicht als 0 dargestellt. Quellenlinks stammen aus der Arbeitsmappe; eine unabhängige Originalprüfung wird nur bei ausdrücklicher Kennzeichnung behauptet.</StatusNote>
       <h2 className="text-lg font-semibold">Wahlberechtigte und weitere Bezugsgrößen</h2>
-      <div className="overflow-x-auto"><DataTable headers={['Wahl', 'Wahltag', 'Wahlberechtigte', 'Wählende', 'Nichtwählende', 'Beteiligung', 'Gültige Stimmen', 'Ungültige Stimmen', 'Ungültige %', 'Quelle / Prüfstatus']} rows={totals.map(t => [t.year, t.election_date.split('-').reverse().join('.'), number(t.eligible), number(t.voters), number(t.nonvoters), percent(t.turnout), number(t.valid_votes), number(t.invalid_votes), percent(t.invalidShare), <span><SourceLink url={t.source_url}/> · {t.source_verified ? 'Original geprüft' : 'Originalprüfung offen'} · {t.source_sheet}, Z. {t.source_row}</span>])}/></div>
+      <div className="overflow-x-auto"><DataTable headers={['Wahl', 'Wahltag', 'Wahlberechtigte', 'Wählende', 'Nichtwählende', 'Beteiligung', 'Gültige Stimmen', 'Ungültige Stimmen', 'Ungültige %', 'Info']} rows={totals.map(t => [t.year, t.election_date.split('-').reverse().join('.'), number(t.eligible), number(t.voters), number(t.nonvoters), percent(t.turnout), number(t.valid_votes), number(t.invalid_votes), percent(t.invalidShare), <HoverCard openDelay={150}><HoverCardTrigger asChild><button type="button" aria-label={`Quelle und Prüfstatus für die Wahl ${t.year}`} className="inline-flex rounded-full p-1 text-muted-foreground hover:text-foreground focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring"><Info className="h-4 w-4" aria-hidden="true" /></button></HoverCardTrigger><HoverCardPortal><HoverCardContent className="space-y-2 text-sm font-sans" align="end"><p><SourceLink url={t.source_url}/></p><p>{t.source_verified ? 'Original geprüft' : 'Originalprüfung offen'}</p><p>{t.source_sheet}, Zeile {t.source_row}</p></HoverCardContent></HoverCardPortal></HoverCard>])}/></div>
       {showParties && <DataTable headers={['Wahl', 'Stimmenart', 'Partei', 'Stimmen', 'Anteil', 'Hinweis / Quelle']} rows={(query.data?.state || []).map(s => [s.year, ballotLabels[s.year >= 2026 ? 'second' : 'single'], s.party, number(s.votes), percent(s.share), s.notes || 'Bestehender Datensatz; Quellenprotokoll wird zentral im Super-Admin-Bereich gepflegt.'])}/>}
     </DataState>
     <section aria-labelledby="history-turnout-heading" className="space-y-4">

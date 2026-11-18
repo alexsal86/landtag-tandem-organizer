@@ -20,7 +20,7 @@ export function TurnoutPanel({ year, ballot, party, gender }: PanelProps) {
   const eligible = complete ? all.reduce((sum, r) => sum + (r.eligible || 0), 0) : null;
   const voters = complete ? all.reduce((sum, r) => sum + (r.voters || 0), 0) : null;
   const rows = all.filter(r => `${r.district_number} ${r.district_name}`.toLocaleLowerCase('de').includes(search.toLocaleLowerCase('de'))).sort((a, b) => (b.turnout ?? -1) - (a.turnout ?? -1));
-  return <div className="space-y-4">
+  return <div className="space-y-4 [&_tbody]:bg-white [&_tbody]:text-slate-900">
     <DataState loading={totalQuery.isLoading} error={totalQuery.error} empty={false} retry={() => void totalQuery.refetch()}>
       {total && <Card><CardHeader><CardTitle className="text-lg">Landesbezugsgrößen · {year} · {ballotLabels[ballot]}</CardTitle></CardHeader><CardContent><DataTable headers={['Wahlberechtigte', 'Wählende', 'Nichtwählende', 'Beteiligung', 'Gültige Stimmen', 'Ungültige Stimmen', 'Ungültige %']} rows={[[number(total.eligible), number(total.voters), number(total.nonvoters), percent(total.turnout), number(total.valid_votes), number(total.invalid_votes), percent(total.invalidShare)]]} /><p className="mt-3 text-sm"><a href={total.source_url} className="underline" target="_blank" rel="noreferrer">Quellenlink aus Arbeitsmappe</a> · {total.source_verified ? 'Original geprüft' : 'Originalprüfung offen'} · {total.source_sheet}, Zeile {total.source_row}</p></CardContent></Card>}
     </DataState>
