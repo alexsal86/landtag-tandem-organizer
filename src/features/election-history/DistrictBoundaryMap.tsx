@@ -4,7 +4,7 @@ import type * as Leaflet from 'leaflet';
 import L from '@/lib/leafletRuntime';
 import 'leaflet/dist/leaflet.css';
 import '@/styles/leaflet-overrides.css';
-import { electoralGeometryYear, loadElectoralDistrict } from '@/utils/electoralTopology';
+import { loadElectoralDistrict } from '@/utils/electoralTopology';
 import { ELECTORAL_DISTRICT_MANIFESTS } from '@/utils/electoralDistrictAsset';
 import { historical1952Source, reconstructedGeometryAttribution } from '@/utils/electoralGeometryCatalog';
 import { confirmedPeriodGeometryYear } from './periodGeometry';
@@ -13,15 +13,22 @@ import type { ElectionPeriod, HistoricalDistrict } from './types';
 
 type DistrictBoundaryMapProps =
   | { period: ElectionPeriod | undefined; district: HistoricalDistrict }
-  | { analysis: { year: number; number: number; name: string; confirmedGeometryYear?: number } };
+  | { analysis: {
+    year: number;
+    number: number;
+    name: string;
+    bundledYear: number | null;
+    boundaries: HistoricalDistrict['boundaries'];
+    geometrySourceKey?: string | null;
+  } };
 
 export default function DistrictBoundaryMap(props: DistrictBoundaryMapProps) {
   const period = 'period' in props ? props.period : undefined;
   const district = 'district' in props ? props.district : {
     name: props.analysis.name,
     district_number: props.analysis.number,
-    geometry_source_key: null,
-    boundaries: null,
+    geometry_source_key: props.analysis.geometrySourceKey,
+    boundaries: props.analysis.boundaries,
   };
 
   const [neighbors, setNeighbors] = useState(false);
@@ -29,13 +36,13 @@ export default function DistrictBoundaryMap(props: DistrictBoundaryMapProps) {
   const mapRef = useRef<Leaflet.Map | null>(null);
   const selectedBounds = useRef<Leaflet.LatLngBounds | null>(null);
   const neighborLayer = useRef<Leaflet.GeoJSON | null>(null);
+  const electionYear = 'analysis' in props ? props.analysis.year : period?.election_year;
   const year = 'analysis' in props
-    ? (props.analysis.confirmedGeometryYear !== undefined
-      && props.analysis.confirmedGeometryYear === electoralGeometryYear(props.analysis.year)
-      ? props.analysis.confirmedGeometryYear : null)
+    ? props.analysis.bundledYear
     : confirmedPeriodGeometryYear(period);
-  const source1952 = period?.election_year === 1952 ? historical1952Source(district.geometry_source_key) : undefined;
-  const number = period?.election_year === 1952 ? source1952?.technicalNumber ?? null : district.district_number;
+  const number = electionYear === 1952
+    ? historical1952Source(district.geometry_source_key)?.technicalNumber ?? null
+    : district.district_number;
   // Individually supplied geometry always takes precedence; it has no inferred neighbors.
   const shared = !district.boundaries && year !== null && number !== null;
   const query = useQuery({
@@ -119,7 +126,9 @@ export default function DistrictBoundaryMap(props: DistrictBoundaryMapProps) {
     if (neighbors) layer.addTo(map);
     else layer.remove();
   }, [neighbors, surroundings.data, year, number]);
-  if (!geometry && !shared) return <p className="text-xs text-muted-foreground">Kein bestätigter Grenzumriss für diesen Wahlkreis hinterlegt.</p>;
+  if (!geometry && !shared) return <p className="text-xs text-muted-foreground">{electionYear === 1952
+    ? 'Für diesen Wahlkreis fehlt die eindeutige regionale Kartenzuordnung von 1952.'
+    : 'Kein Grenzumriss für diesen Wahlkreis hinterlegt.'}</p>;
   return <div className="space-y-2">
     {shared && <label className="flex items-center gap-2 text-sm"><input type="checkbox" checked={neighbors} onChange={event => setNeighbors(event.target.checked)} />Umliegende Wahlkreise anzeigen</label>}
     {neighbors && surroundings.isFetching && <p role="status" className="text-xs">Lade umliegende Wahlkreise …</p>}

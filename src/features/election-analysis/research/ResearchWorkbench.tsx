@@ -229,13 +229,6 @@ function DistrictProfile({
       <h2 className="text-xl font-semibold">
         {district}: {name}
       </h2>
-      <StatusNote>
-        Die Zeitreihe zeigt vorhandene Messwerte, keine automatisch
-        vergleichbaren historischen Gebiete. Grenzänderungen und Datenstände
-        stehen im Vergleich unten. Bis 2021 Einzelstimme; ab 2026{" "}
-        {ballotLabels[ballotForComparison(2026, ballot)]}. AfD vor 2013 und
-        andere fehlende Werte bleiben unbekannt.
-      </StatusNote>
       <div className="grid gap-4 lg:grid-cols-2">
         <Card className="min-w-0">
           <CardHeader>
@@ -289,7 +282,7 @@ function DistrictProfile({
           year={year}
           number={district}
           name={name}
-          confirmedGeometryYear={selectedVersion?.bundled_geometry_year}
+          historicalDistrictId={selectedVersion?.history_link_verified ? selectedVersion.historical_district_id : null}
         />
       </div>
       <DistrictCandidateChronicle
@@ -405,6 +398,13 @@ function DistrictProfile({
           )}
         </details>
       </>}
+      <StatusNote>
+        Die Zeitreihe zeigt vorhandene Messwerte, keine automatisch
+        vergleichbaren historischen Gebiete. Grenzänderungen und Datenstände
+        stehen im Wahljahrvergleich. Bis 2021 Einzelstimme; ab 2026{" "}
+        {ballotLabels[ballotForComparison(2026, ballot)]}. AfD vor 2013 und
+        andere fehlende Werte bleiben unbekannt.
+      </StatusNote>
     </div>
   );
 }

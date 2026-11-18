@@ -27,10 +27,10 @@ function VoteCount({ votes, children }: { votes: number | null; children: ReactN
   </Tooltip>;
 }
 
-function CandidateName({ candidate }: { candidate: Row }) {
+function CandidateName({ candidate, bold = false }: { candidate: Row; bold?: boolean }) {
   const name = candidate.person?.name || '–';
   return <VoteCount votes={candidate.votes}>
-    {candidate.outcome === 'list' ? <strong>{name}</strong> : name}
+    {bold || candidate.outcome === 'list' ? <strong>{name}</strong> : name}
   </VoteCount>;
 }
 
@@ -101,7 +101,11 @@ export function DistrictCandidateChronicle({
     </p>}
     <TooltipProvider>
       <div className="overflow-x-auto"><table className="w-full min-w-[40rem] text-xs [&_th]:px-2 [&_th]:py-2 [&_th]:align-top [&_td]:px-2 [&_td]:py-2 [&_td]:align-top">
-        <thead><tr className="text-left text-muted-foreground"><th className="whitespace-nowrap">Wahl</th><th className="whitespace-nowrap">Wahlkreis</th><th className="whitespace-nowrap">Sieger</th><th className="whitespace-nowrap">Anteil</th><th>Weitere Bewerber</th></tr></thead>
+        <thead><tr className="text-left text-muted-foreground"><th className="whitespace-nowrap">Wahl</th><th className="whitespace-nowrap">Wahlkreis</th><th className="whitespace-nowrap">Sieger</th><th className="whitespace-nowrap">Anteil</th><th>
+          <span className="grid grid-cols-[minmax(8rem,1fr)_auto] gap-x-3">
+            <span>Weitere Bewerber</span><span className="text-right">Anteil</span>
+          </span>
+        </th></tr></thead>
         <tbody>{years.map(y => {
           const rows = byYear.get(y)!.slice().sort((a, b) => (b.vote_share ?? -1) - (a.vote_share ?? -1));
           const winner = rows.find(r => r.outcome === 'direct') ?? rows.find(r => r.district_rank === 1 && r.outcome === 'unknown');
@@ -110,8 +114,8 @@ export function DistrictCandidateChronicle({
           return <tr key={y} className={selected ? 'border-t align-top bg-primary/10' : 'border-t align-top'}>
             <td className="whitespace-nowrap tabular-nums" aria-current={selected ? 'true' : undefined}>{y}</td>
             <td className="whitespace-nowrap">{rows[0].district?.name}</td>
-            <td className="font-medium">
-              {winner ? <><CandidateName candidate={winner} /> · {winner.party}</> : '–'}
+            <td>
+              {winner ? <><CandidateName candidate={winner} bold /> · {winner.party}</> : '–'}
             </td>
             <td className="whitespace-nowrap tabular-nums">
               {winner ? <VoteCount votes={winner.votes}>{pct(winner.vote_share)}</VoteCount> : '–'}
@@ -121,7 +125,9 @@ export function DistrictCandidateChronicle({
                 <span>
                   <CandidateName candidate={candidate} /> <span className="text-muted-foreground">({candidate.party}<ListMandate candidate={candidate} />)</span>
                 </span>
-                <span className="whitespace-nowrap tabular-nums">{pct(candidate.vote_share)}</span>
+                <span className="whitespace-nowrap text-right tabular-nums">
+                  <VoteCount votes={candidate.votes}>{pct(candidate.vote_share)}</VoteCount>
+                </span>
               </li>)}
             </ul> : '–'}</td>
           </tr>;
