@@ -2,7 +2,6 @@ import { withAnalysisBallot, withAuditStatus } from './rowTypes';
 import { useQuery } from '@tanstack/react-query';
 import { useAuth } from '@/hooks/useAuth';
 import { supabase } from '@/integrations/supabase/client';
-import { parties } from './model';
 import type { Ballot } from './types';
 /** The selected, bounded range is loaded only in the state-history section. */
 export function useStateHistory(from: number, to: number) {
@@ -11,7 +10,7 @@ export function useStateHistory(from: number, to: number) {
         queryFn: async ({ signal }) => {
             const replies = await Promise.all([
                 supabase.from('election_analysis_state_totals').select('*').gte('year', from).lte('year', to).order('year').limit(40).abortSignal(signal),
-                supabase.from('election_analysis_state').select('*').gte('year', from).lte('year', to).in('ballot', ['single', 'second']).in('party', parties).order('year').order('party').limit(200).abortSignal(signal),
+                supabase.from('election_analysis_state').select('*').gte('year', from).lte('year', to).in('ballot', ['single', 'second']).order('year').order('party').abortSignal(signal),
             ]);
             const [totals, state] = replies;
             if (totals.error)
