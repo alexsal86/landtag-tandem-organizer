@@ -205,7 +205,7 @@ function DemographicPanel({ year, ballot, party, gender }: PanelProps) {
     shares: Object.fromEntries(visibleParties.map(party => [party, rows.find(row => row.age_group === age && row.party === party)?.share ?? null])),
     age,
   }));
-  const overallHeaders = ['Wahlergebnis', ...ageGroups, ...(showAverage ? [`Durchschnittswert (${gender})`] : [])];
+  const overallHeaders = ['Wahlergebnis', ...ageGroups, ...(showAverage ? [`Ø (${gender})`] : [])];
   const overallRows = visibleParties.map(party => ({
     party,
     values: [
