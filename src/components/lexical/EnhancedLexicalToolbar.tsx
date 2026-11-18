@@ -67,6 +67,7 @@ import {
   DialogTrigger,
 } from '@/components/ui/dialog';
 import { useSpeechDictation } from '@/hooks/useSpeechDictation';
+import { $editDictationBlock } from '@/lib/lexicalDictation';
 
 import { SpeechCommandsDialog } from '@/components/shared/SpeechCommandsDialog';
 import { SpeechSessionStats } from '@/components/shared/SpeechSessionStats';
@@ -159,12 +160,7 @@ export const EnhancedLexicalToolbar: React.FC<EnhancedLexicalToolbarProps> = ({
           editor.update(() => {
             const selection = $getSelection();
             if ($isRangeSelection(selection)) {
-              const node = selection.anchor.getNode();
-              if ($isTextNode(node)) {
-                const text = node.getTextContent();
-                const lastEnd = Math.max(text.lastIndexOf('. '), text.lastIndexOf('! '), text.lastIndexOf('? '));
-                node.setTextContent(lastEnd >= 0 ? text.slice(0, lastEnd + 2) : '');
-              }
+              $editDictationBlock(selection, command);
             }
           });
           break;

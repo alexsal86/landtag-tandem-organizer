@@ -19,14 +19,7 @@ import { HeadingNode, QuoteNode, $createHeadingNode, $createQuoteNode } from '@l
 import { $setBlocksType } from '@lexical/selection';
 import { useLexicalComposerContext } from '@lexical/react/LexicalComposerContext';
 import {
-  $findMatchingParent,
   $getRoot,
-  $isBlockElementNode,
-  $isElementNode,
-  $isTextNode,
-  $isRootOrShadowRoot,
-  type LexicalNode,
-  type RangeSelection,
   $getSelection,
   $isRangeSelection,
   FORMAT_TEXT_COMMAND,
@@ -46,7 +39,7 @@ import { cn } from '@/lib/utils';
 import { MentionNode } from '@/components/nodes/MentionNode';
 import { MentionsPlugin } from '@/components/plugins/MentionsPlugin';
 import { SPEECH_INTERIM_UPDATE_TAG, useSpeechDictation } from '@/hooks/useSpeechDictation';
-import type { SpeechCommand } from '@/lib/speechCommandUtils';
+import { $editDictationBlock } from '@/lib/lexicalDictation';
 import { SpeechCommandsDialog } from '@/components/shared/SpeechCommandsDialog';
 import { SpeechSessionStats } from '@/components/shared/SpeechSessionStats';
 import { notify } from "@/lib/notify";
@@ -98,76 +91,6 @@ const EditablePlugin = ({ disabled }: { disabled: boolean }) => {
   React.useLayoutEffect(() => { editor.setEditable(!disabled); }, [editor, disabled]);
   return null;
 };
-
-function $editDictationBlock(
-  selection: RangeSelection,
-  command: Extract<SpeechCommand, { type: 'delete-last-word' | 'delete-last-sentence' | 'replace-text' }>,
-) {
-  const anchor = selection.isBackward() ? selection.focus : selection.anchor;
-  const block = $findMatchingParent(anchor.getNode(), $isBlockElementNode);
-  if (!block || !$isElementNode(block) || $isRootOrShadowRoot(block)) return;
-
-  let text = '';
-  let cursor = 0;
-  const leaves: { node: LexicalNode; start: number; end: number }[] = [];
-  const collectText = (node: LexicalNode) => {
-    if ($isElementNode(node)) {
-      const children = node.getChildren();
-      for (const [index, child] of children.entries()) {
-        if (node.getKey() === anchor.key && index === anchor.offset) cursor = text.length;
-        collectText(child);
-      }
-      if (node.getKey() === anchor.key && anchor.offset === children.length) cursor = text.length;
-      return;
-    }
-
-    const start = text.length;
-    if (node.getKey() === anchor.key) cursor = start + anchor.offset;
-    text += node.getTextContent();
-    if (text.length > start) leaves.push({ node, start, end: text.length });
-  };
-  collectText(block);
-
-  let start: number;
-  let end: number;
-  if (command.type === 'replace-text') {
-    const escapedSearch = command.search.replace(/[.*+?^${}()|[\]\\]/g, '\\$&');
-    const match = new RegExp(escapedSearch, 'iu').exec(text);
-    if (!match?.[0]) return;
-    start = match.index;
-    end = start + match[0].length;
-  } else {
-    end = cursor;
-    const beforeCursor = text.slice(0, cursor).trimEnd();
-    if (!beforeCursor) return;
-    if (command.type === 'delete-last-word') {
-      start = beforeCursor.search(/\S+$/);
-    } else {
-      const sentences = beforeCursor.split(/(?<=[.!?])\s+|\n+/);
-      start = beforeCursor.length - sentences[sentences.length - 1].length;
-    }
-  }
-
-  const first = leaves.find(leaf => leaf.start <= start && start < leaf.end);
-  const last = leaves.find(leaf => leaf.start < end && end <= leaf.end);
-  if (!first || !last) return;
-
-  const setPoint = (point: RangeSelection['anchor'], leaf: typeof first, offset: number) => {
-    const { node } = leaf;
-    if ($isTextNode(node)) {
-      point.set(node.getKey(), offset - leaf.start, 'text');
-    } else {
-      point.set(node.getParentOrThrow().getKey(), node.getIndexWithinParent() + Number(offset > leaf.start), 'element');
-    }
-  };
-  setPoint(selection.anchor, first, start);
-  setPoint(selection.focus, last, end);
-  if (command.type === 'replace-text') {
-    selection.insertText(command.replacement);
-  } else {
-    selection.removeText();
-  }
-}
 
 // Toolbar Component
 const Toolbar = ({
@@ -423,7 +346,7 @@ const Toolbar = ({
       </Button>
       {enableChecklists && <Button type="button" variant="ghost" size="sm" className="h-8 w-8 p-0" title="Checkliste" aria-label="Checkliste einfügen" onClick={() => editor.dispatchCommand(INSERT_CHECK_LIST_COMMAND, undefined)}><CheckSquare className="h-4 w-4" /></Button>}
       <div className="w-px h-5 bg-border mx-1" />
-      <div role="group" aria-label="Diktat und Sprachbefehle" className={cn("inline-flex shrink-0 items-center gap-1", compact && "[&>button]:h-7 [&>button]:w-7")}>
+      <div role="group" aria-label="Diktat und Sprachbefehle" className={cn("inline-flex shrink-0 items-center gap-1", compact && "[&>button]:h-7 [&>button:first-child]:w-7")}>
         <Button
           type="button"
           variant={isListening ? 'default' : 'ghost'}
@@ -451,7 +374,7 @@ const Toolbar = ({
             <span className="absolute -top-0.5 -right-0.5 h-2.5 w-2.5 rounded-full bg-destructive border-2 border-background animate-pulse" />
           )}
         </Button>
-        {!compact && <SpeechCommandsDialog />}
+        <SpeechCommandsDialog />
       </div>
       {extras}
       {lastRecognizedCommand && (

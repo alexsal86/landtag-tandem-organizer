@@ -64,7 +64,9 @@ vi.mock('@/hooks/useSpeechDictation', () => ({
     };
   },
 }));
-vi.mock('@/components/shared/SpeechCommandsDialog', () => ({ SpeechCommandsDialog: () => null }));
+vi.mock('@/components/shared/SpeechCommandsDialog', () => ({
+  SpeechCommandsDialog: () => <button type="button">Sprachbefehle</button>,
+}));
 vi.mock('@/components/shared/SpeechSessionStats', () => ({ SpeechSessionStats: () => null }));
 
 vi.mock('@lexical/html', () => ({
@@ -158,6 +160,12 @@ describe('SimpleRichTextEditor rehydrate behavior', () => {
 });
 
 describe('SimpleRichTextEditor dictation', () => {
+  it('includes the speech command reference in the compact toolbar', () => {
+    render(<SimpleRichTextEditor compactToolbar onChange={vi.fn()} />);
+
+    expect(screen.getByRole('button', { name: 'Sprachbefehle' })).toBeTruthy();
+  });
+
   it('shows the recording status without repeating the interim transcript', () => {
     isListening = true;
     try {

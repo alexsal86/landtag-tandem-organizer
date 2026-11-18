@@ -177,6 +177,34 @@ export const formatDictatedText = (text: string): string => {
     .trim();
 };
 
+const CITATION_ABBREVIATION = /(?:^|[^\p{L}\p{N}])(?:abs|art|bd|buchst|drs|hrsg|lit|nr|rn|satznr|s|vgl|ziff)$/iu;
+
+/** Offset of the last sentence or unfinished sentence before the cursor. */
+export const findLastDictatedSentenceStart = (beforeCursor: string): number => {
+  const text = beforeCursor.trimEnd();
+  let start = 0;
+
+  // A soft line break also separates sentences for this editing command.
+  for (const boundary of text.matchAll(/([.!?]+)([»«“”„"’')\]]*)[^\S\r\n]+|[\r\n]+[^\S\r\n]*/g)) {
+    const [separator, punctuation, closingMarks] = boundary;
+    const offset = boundary.index ?? 0;
+    const nextStart = offset + separator.length;
+
+    if (punctuation === '.' && !closingMarks) {
+      const prefix = text.slice(start, offset);
+      if (CITATION_ABBREVIATION.test(prefix)) continue;
+
+      const suffix = text.slice(nextStart);
+      if (/\bz$/i.test(prefix) && /^b\./i.test(suffix)) continue;
+      if (/\bz\.\s+b$/i.test(prefix)) continue;
+    }
+
+    start = nextStart;
+  }
+
+  return start;
+};
+
 /** Structured command reference for the help dialog */
 export interface SpeechCommandGroup {
   label: string;
@@ -212,8 +240,8 @@ export const SPEECH_COMMAND_REFERENCE: SpeechCommandGroup[] = [
       { trigger: 'Semikolon', description: '; einfügen' },
       { trigger: 'Bindestrich', description: '- einfügen' },
       { trigger: 'Gedankenstrich', description: '– einfügen' },
-      { trigger: 'Klammer auf / zu', description: '( ) einfügen' },
-      { trigger: 'Anführungszeichen / zu', description: '„ " einfügen' },
+      { trigger: 'Klammer auf / Klammer zu', description: '( ) einfügen' },
+      { trigger: 'Anführungszeichen auf / Anführungszeichen zu', description: '„ " einfügen' },
       { trigger: 'Leerzeichen', description: 'Explizites Leerzeichen' },
     ],
   },
@@ -221,7 +249,7 @@ export const SPEECH_COMMAND_REFERENCE: SpeechCommandGroup[] = [
     label: 'Korrektur',
     commands: [
       { trigger: 'Letztes Wort löschen', description: 'Letztes Wort entfernen' },
-      { trigger: 'Letzten Satz löschen', description: 'Letzten Satz entfernen' },
+      { trigger: 'Letzten Satz löschen', description: 'Satz bis zur Cursorposition entfernen' },
       { trigger: 'Ersetze X durch Y', description: 'Text im Absatz ersetzen' },
       { trigger: 'Rückgängig', description: 'Letzte Aktion rückgängig' },
       { trigger: 'Wiederholen', description: 'Rückgängig wiederherstellen' },

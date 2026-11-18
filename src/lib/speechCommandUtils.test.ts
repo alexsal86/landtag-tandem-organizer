@@ -1,4 +1,4 @@
-import { detectSpeechCommand, formatDictatedText, parseSpeechInput } from './speechCommandUtils';
+import { detectSpeechCommand, findLastDictatedSentenceStart, formatDictatedText, parseSpeechInput } from './speechCommandUtils';
 
 describe('speechCommandUtils stop-listening parser', () => {
   it('detects strict stop command as full phrase', () => {
@@ -57,5 +57,31 @@ describe('speechCommandUtils formatting', () => {
     ['mdl im ltt', 'MdL im LTT'],
   ])('formats parliamentary dictation "%s"', (input, expected) => {
     expect(formatDictatedText(input)).toBe(expected);
+  });
+});
+
+describe('findLastDictatedSentenceStart', () => {
+  it.each([
+    ['', 'Der Antrag bezieht sich auf § 3 Abs. 2.'],
+    ['Das gilt weiterhin. ', 'Siehe Drs. 17/1234 und Art. 4 Abs. 2 Satz 1 Nr. 3.'],
+    ['Die Regel gilt nach § 3 Abs. 2. ', 'Die nächste Sitzung beginnt morgen.'],
+    ['„Ist der Antrag angenommen?“ ', 'Die Abstimmung folgt.'],
+    ['1. ', 'Der Ausschuss empfiehlt die Annahme.'],
+    ['Erste Zeile\n  ', 'Siehe Drs. 17/1234'],
+    ['Das gilt weiterhin. ', 'Das betrifft z. B. § 3 Abs.'],
+  ])('preserves the prefix "%s" before the sentence "%s"', (prefix, sentence) => {
+    expect(findLastDictatedSentenceStart(prefix + sentence)).toBe(prefix.length);
+  });
+
+  it('finds an unfinished sentence at a cursor in the middle of the block', () => {
+    const prefix = 'Der Antrag liegt vor. ';
+    const beforeCursor = prefix + 'Es gilt § 3 Abs. 2';
+    const afterCursor = ' des Gesetzes. Weitere Hinweise folgen.';
+    const start = findLastDictatedSentenceStart(beforeCursor);
+
+    const block = beforeCursor + afterCursor;
+    const remaining = block.slice(0, start) + block.slice(beforeCursor.length);
+
+    expect(remaining).toBe(prefix + afterCursor);
   });
 });

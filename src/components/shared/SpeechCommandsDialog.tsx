@@ -1,5 +1,5 @@
 import { useState, useMemo } from 'react';
-import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogTrigger } from '@/components/ui/dialog';
+import { Dialog, DialogContent, DialogDescription, DialogHeader, DialogTitle, DialogTrigger } from '@/components/ui/dialog';
 import { Input } from '@/components/ui/input';
 import { Button } from '@/components/ui/button';
 import { CircleHelp, Search } from 'lucide-react';
@@ -11,7 +11,7 @@ export function SpeechCommandsDialog() {
 
   const filteredGroups = useMemo(() => {
     if (!search.trim()) return SPEECH_COMMAND_REFERENCE;
-    const q = search.toLowerCase();
+    const q = search.trim().toLowerCase();
     return SPEECH_COMMAND_REFERENCE
       .map((group) => ({
         ...group,
@@ -29,22 +29,28 @@ export function SpeechCommandsDialog() {
           type="button"
           variant="ghost"
           size="sm"
-          className="h-8 w-8 p-0 text-muted-foreground"
-          aria-label="Sprachbefehle anzeigen"
+          className="h-8 gap-1.5 px-2 text-xs text-muted-foreground"
           onMouseDown={(e) => e.preventDefault()}
         >
-          <CircleHelp className="h-4 w-4" />
+          <CircleHelp className="h-4 w-4" aria-hidden="true" />
+          Sprachbefehle
         </Button>
       </DialogTrigger>
       <DialogContent className="max-w-md max-h-[70vh] overflow-hidden flex flex-col">
         <DialogHeader>
           <DialogTitle>Sprachbefehle</DialogTitle>
+          <DialogDescription>
+            Klicke auf das Mikrofon oder halte <kbd>Strg+Shift+M</kbd> gedrückt.
+            Sprich Bearbeitungsbefehle wie „Letzten Satz löschen“ einzeln.
+            Satzzeichen kannst du mitdiktieren, etwa „Der Antrag ist angenommen Punkt“.
+          </DialogDescription>
         </DialogHeader>
         <div className="relative">
-          <Search className="absolute left-2.5 top-2.5 h-4 w-4 text-muted-foreground" />
+          <Search aria-hidden="true" className="absolute left-2.5 top-2.5 h-4 w-4 text-muted-foreground" />
           <Input
             value={search}
             onChange={(e) => setSearch(e.target.value)}
+            aria-label="Sprachbefehle durchsuchen"
             placeholder="Befehl suchen…"
             className="pl-8 h-9"
             autoFocus
@@ -65,19 +71,13 @@ export function SpeechCommandsDialog() {
                     key={cmd.trigger}
                     className="flex items-baseline justify-between gap-3 rounded-md px-2 py-1.5 hover:bg-muted/50 text-sm"
                   >
-                    <span className="font-medium text-foreground">„{cmd.trigger}"</span>
+                    <span className="font-medium text-foreground">„{cmd.trigger}“</span>
                     <span className="text-muted-foreground text-xs text-right">{cmd.description}</span>
                   </div>
                 ))}
               </div>
             </div>
           ))}
-          <div className="border-t pt-3 pb-1">
-            <p className="text-xs text-muted-foreground">
-              <span className="font-medium">Tipp:</span> Halte <kbd className="px-1 py-0.5 rounded border bg-muted text-[10px]">Strg+Shift+M</kbd> für Push-to-Talk
-              oder klicke das Mikrofon zum Umschalten.
-            </p>
-          </div>
         </div>
       </DialogContent>
     </Dialog>
