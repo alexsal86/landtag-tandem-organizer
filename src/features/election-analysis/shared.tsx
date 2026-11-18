@@ -78,8 +78,10 @@ export function DataTable({
   rows,
   sortValues,
   sortableColumns = [],
+  headerColors,
 }: {
   headers: string[];
+  headerColors?: Record<string, string>;
   rows: ReactNode[][];
   sortValues?: (string | number | null)[][];
   sortableColumns?: number[];
@@ -124,6 +126,13 @@ export function DataTable({
                     ? ArrowUp
                     : ArrowDown
                   : ArrowUpDown;
+                const color = headerColors?.[header];
+                const label = color ? (
+                  <span className="inline-flex items-center gap-1.5">
+                    <span aria-hidden="true" className="h-2 w-2 rounded-full" style={{ backgroundColor: color }} />
+                    {header}
+                  </span>
+                ) : header;
                 return (
                   <th
                     key={header}
@@ -146,15 +155,13 @@ export function DataTable({
                         onClick={() => changeSort(index)}
                         aria-label={`${header}: ${active && sort.direction === "asc" ? "absteigend" : "aufsteigend"} sortieren`}
                       >
-                        {header}
+                        {label}
                         <Icon
                           aria-hidden="true"
                           className={`h-3.5 w-3.5 ${active ? "text-foreground" : "text-muted-foreground"}`}
                         />
                       </button>
-                    ) : (
-                      header
-                    )}
+                    ) : label}
                   </th>
                 );
               })}

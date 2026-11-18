@@ -4,6 +4,8 @@ import { PartyEndLabels } from './StateShareChart';
 import { useState } from 'react';
 import { useSearchParams } from 'react-router-dom';
 import { CartesianGrid, Line, LineChart, ReferenceLine, ResponsiveContainer, Tooltip, XAxis, YAxis } from 'recharts';
+import { Portal } from '@radix-ui/react-tooltip';
+import { Tooltip as VotesTooltip, TooltipContent, TooltipProvider, TooltipTrigger } from '@/components/ui/tooltip';
 import { Button } from '@/components/ui/button';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 import { AnalysisControls } from './AnalysisToolbar';
@@ -11,6 +13,9 @@ import { DataState, DataTable, Selection, StatusNote, chartColor } from './share
 import { ballotLabels, ballotsForYear, effectiveBallot, number, parties, percent } from './model';
 import { matrixAxes, matrixCell, stateTotalMetrics } from './stateHistoryModel';
 import { useFlowMatrix, useStateHistory } from './useStateHistory';
+const partyHeaders = parties.map(party => party === 'GRÜNE' ? 'Grüne' : party);
+const partyHeaderColors = Object.fromEntries(parties.map((party, index) => [partyHeaders[index], chartColor(party)]));
+
 const SourceLink = ({ url }: {
     url: string;
 }) => <a href={url} target="_blank" rel="noreferrer" className="underline">Quellenlink aus Arbeitsmappe</a>;
@@ -51,7 +56,6 @@ export function StateHistoryPanel({ year, years, initiallyShowTurnout = false }:
     const turnoutMinimum = Math.floor(Math.min(40, ...rows.map(row => row.turnout ?? 40)) / 10) * 10;
     const secondVoteMarker = chartYears.includes(2026) &&
       <ReferenceLine x={2026} stroke="currentColor" strokeDasharray="5 4" label={{ value: 'Zweitstimme ab 2026', position: 'insideTopRight', fill: 'currentColor', fontSize: 12 }}/>;
-    const ranks = ['1. Platz', '2. Platz', '3. Platz', '4. Platz', '5. Platz'];
     return <div className="space-y-4 [&_tbody]:bg-white [&_tbody]:text-slate-900">
     <AnalysisControls>
       <Selection id="history-from" label="Zeitreihe ab Wahl" value={String(from)} onChange={v => setParams(old => { const next = new URLSearchParams(old); next.set('historyFrom', v); return next; })}>{ordered.filter(y => y <= year).map(y => <option key={y} value={y}>{y}</option>)}</Selection>
@@ -103,19 +107,27 @@ export function StateHistoryPanel({ year, years, initiallyShowTurnout = false }:
       </div>
       <StatusNote>Bis 2021 zeigt die Übersicht die Einzelstimme und ab 2026 die Zweitstimme. 1952 war die Wahl zur Verfassunggebenden Landesversammlung. Die Übersicht zeigt die vorhandenen Parteiergebnisse. Lücken in den Linien stehen für fehlende Werte.</StatusNote>
       <h2 className="text-lg font-semibold">Parteiergebnisse nach Wahl</h2>
-      <div className="overflow-x-auto"><DataTable headers={['Wahl', 'Stimmenart', ...ranks]} rows={[...chartYears].reverse().map(electionYear => {
-        const ballot = electionYear >= 2026 ? 'second' : 'single';
-        const ranked = (resultsByYear.get(electionYear) || []).slice().sort((a, b) =>
-          (b.share ?? -1) - (a.share ?? -1) || (b.votes ?? -1) - (a.votes ?? -1));
-        return [electionYear, ballotLabels[ballot], ...ranks.map((rank, index) => {
-          const result = ranked[index];
-          if (!result) return '–';
-          return <div key={rank} className="space-y-1">
-            <div>{result.party}</div>
-            <div>{number(result.votes)} · {index === 0 ? <strong>{percent(result.share)}</strong> : percent(result.share)}</div>
-          </div>;
-        })];
-      })}/></div>
+      <TooltipProvider>
+        <DataTable headers={['Wahl', 'Stimmenart', ...partyHeaders]} headerColors={partyHeaderColors} rows={[...chartYears].reverse().map(electionYear => {
+          const ballot = electionYear >= 2026 ? 'second' : 'single';
+          const results = resultsByYear.get(electionYear) || [];
+          const winner = results.slice().sort((a, b) =>
+            (b.share ?? -1) - (a.share ?? -1) || (b.votes ?? -1) - (a.votes ?? -1))[0];
+          return [electionYear, ballotLabels[ballot], ...parties.map(party => {
+            const result = results.find(entry => entry.party === party);
+            if (!result) return '–';
+
+            const share = percent(result.share);
+            const value = result === winner && result.share != null ? <strong>{share}</strong> : share;
+            if (result.votes == null) return value;
+
+            return <VotesTooltip key={party}>
+              <TooltipTrigger asChild><span tabIndex={0} className="cursor-help whitespace-nowrap rounded-sm focus-visible:outline focus-visible:outline-2">{value}</span></TooltipTrigger>
+              <Portal><TooltipContent>{number(result.votes)} Stimmen</TooltipContent></Portal>
+            </VotesTooltip>;
+          })];
+        })}/>
+      </TooltipProvider>
       <h2 className="text-lg font-semibold">Wahlberechtigte und weitere Bezugsgrößen</h2>
       <div className="overflow-x-auto"><DataTable headers={['Wahl', 'Wahltag', 'Wahlberechtigte', 'Wählende', 'Nichtwählende', 'Beteiligung', 'Gültige Stimmen', 'Ungültige Stimmen', 'Ungültige %', 'Info']} rows={totals.map(t => [t.year, t.election_date.split('-').reverse().join('.'), number(t.eligible), number(t.voters), number(t.nonvoters), percent(t.turnout), number(t.valid_votes), number(t.invalid_votes), percent(t.invalidShare), <AnalysisInfo label={`Quelle und Prüfstatus für die Wahl ${t.year}`}><p><SourceLink url={t.source_url}/></p><p>{t.source_verified ? 'Original geprüft' : 'Originalprüfung offen'}</p><p>{t.source_sheet}, Zeile {t.source_row}</p></AnalysisInfo>])}/></div>
     </DataState>
