@@ -188,25 +188,34 @@ function FlowPanel({ year, ballot, party, gender }: PanelProps) {
 function DemographicPanel({ year, ballot, party, gender }: PanelProps) {
   const query = useAnalysisRows('demographics', year, ballot, party, gender);
   const rows = query.data || [];
-  const ages = Array.from(new Set(rows.map(r => r.age_group))).sort((a, b) => a === 'Insgesamt' ? -1 : b === 'Insgesamt' ? 1 : a.localeCompare(b, 'de', { numeric: true }));
+  const ageGroups = [...new Set(rows.map(row => row.age_group))].filter(age => age !== 'Insgesamt')
+    .sort((a, b) => a.localeCompare(b, 'de', { numeric: true }));
+  const ages = ['Insgesamt', ...ageGroups];
   const [age, setAge] = useState('Insgesamt');
-  const selectedAge = ages.includes(age) ? age : ages[0] || '';
-  const showOverall = selectedAge === 'Insgesamt' && gender === 'Insgesamt';
+  const selectedAge = ages.includes(age) ? age : 'Insgesamt';
+  const showOverall = selectedAge === 'Insgesamt';
+  const showAverage = gender !== 'Insgesamt';
   const state = useAnalysisRows('state', year, ballot, party, gender, showOverall);
-  const ageGroups = ages.filter(age => age !== 'Insgesamt');
   const [hiddenParties, setHiddenParties] = useState<string[]>([]);
   const availableParties = parties.filter(party => rows.some(row => row.party === party));
   const visibleParties = availableParties.filter(party => !hiddenParties.includes(party));
   const selected = rows.filter(row => row.age_group === selectedAge && !hiddenParties.includes(row.party))
     .sort((a, b) => (b.share ?? -1) - (a.share ?? -1));
-  const overallRows = visibleParties.map(party => ({
-    party,
-    share: state.data?.find(row => row.party === party)?.share,
-  })).sort((a, b) => compareAnalysisValues(a.share ?? null, b.share ?? null, 'desc'));
   const chart = ageGroups.map(age => ({
-    ...Object.fromEntries(visibleParties.map(party => [party, rows.find(row => row.age_group === age && row.party === party)?.share ?? null])),
+    shares: Object.fromEntries(visibleParties.map(party => [party, rows.find(row => row.age_group === age && row.party === party)?.share ?? null])),
     age,
   }));
+  const overallHeaders = ['Wahlergebnis', ...ageGroups, ...(showAverage ? [`Durchschnittswert (${gender})`] : [])];
+  const overallRows = visibleParties.map(party => ({
+    party,
+    values: [
+      state.data?.find(row => row.party === party)?.share ?? null,
+      ...chart.map(row => row.shares[party]),
+      ...(showAverage ? [rows.find(row => row.age_group === 'Insgesamt' && row.party === party)?.share ?? null] : []),
+    ],
+  })).sort((a, b) => compareAnalysisValues(a.values[0], b.values[0], 'desc'));
+  const columnMaxima = overallHeaders.map((_, index) =>
+    Math.max(-Infinity, ...overallRows.map(row => row.values[index] ?? -Infinity)));
   return <div className="space-y-4 [&_tbody]:bg-white [&_tbody]:text-slate-900">
     <DataState loading={query.isLoading} error={query.error} empty={!rows.length} retry={() => void query.refetch()}>
       <Card>
@@ -222,7 +231,7 @@ function DemographicPanel({ year, ballot, party, gender }: PanelProps) {
                 formatter={value => percent(typeof value === 'number' ? value : null)}
                 itemSorter={item => typeof item.value === 'number' ? -item.value : Infinity}
               />
-              {visibleParties.map(party => <Line key={party} dataKey={party} stroke={chartColor(party)} strokeWidth={2} connectNulls={false} />)}
+              {visibleParties.map(party => <Line key={party} dataKey={`shares.${party}`} name={party} stroke={chartColor(party)} strokeWidth={2} connectNulls={false} />)}
             </LineChart></ResponsiveContainer>
           </div> : <p className="py-12 text-center text-sm text-muted-foreground">Bitte mindestens eine Partei einblenden.</p>}
           <PartyVisibilityChips parties={availableParties} hidden={hiddenParties} onToggle={party => setHiddenParties(current =>
@@ -236,11 +245,12 @@ function DemographicPanel({ year, ballot, party, gender }: PanelProps) {
           <p role="alert">Das Wahlergebnis konnte nicht geladen werden.</p>
           <Button variant="outline" size="sm" onClick={() => void state.refetch()}>Erneut versuchen</Button>
         </div>}
-        <DataTable key="demographics-overall" headers={['Partei', 'Anteil (Wahlergebnis)', ...ageGroups]} rows={overallRows.map(row => [
+        <DataTable key="demographics-overall" headers={['Partei', ...overallHeaders]} rows={overallRows.map(row => [
           <PartyLabel party={row.party} />,
-          percent(row.share),
-          ...ageGroups.map(age => percent(rows.find(result => result.age_group === age && result.party === row.party)?.share)),
+          ...row.values.map((value, index) => value != null && value === columnMaxima[index]
+            ? <strong>{percent(value)}</strong> : percent(value)),
         ])} />
+        {showAverage && <p className="text-sm text-muted-foreground">Der Durchschnittswert ist der in der Wahlstatistik ausgewiesene Anteil über alle Altersgruppen für {gender}.</p>}
       </> : <DataTable key={selectedAge} headers={['Partei', 'Altersgruppe', 'Geschlecht', 'Anteil', 'Hinweis']} rows={selected.map(r => [<PartyLabel party={r.party} />, <span className="font-semibold underline decoration-2 underline-offset-4">{r.age_group}</span>, r.gender, percent(r.share), r.notes || '—'])} />}
     </DataState>
     <StatusNote>Repräsentative Wahlstatistik: Parteianteile innerhalb der jeweiligen Alters- und Geschlechtsgruppe. Keine individuellen Personenprofile und keine absoluten Wählerzahlen. {year >= 2026 ? '2026: Zweitstimmen; jüngste Gruppe 16–24 Jahre.' : 'Bis 2021: Einzelstimme; jüngste Gruppe 18–24 Jahre.'} Die Altersgruppen verschiedener Jahre sind daher nicht durchgehend vergleichbar. „Insgesamt“ wird nicht aus den Gruppen gemittelt.</StatusNote>
