@@ -147,6 +147,12 @@
   color: hsl(var(--card-foreground));
   padding: 2px 6px;
 }
+.deputy-card .deputy-faction-badge {
+  border: 0;
+  background: none;
+  color: inherit;
+  padding: 0;
+}
 .deputy-party i {
   flex-shrink: 0;
   width: 9px;
