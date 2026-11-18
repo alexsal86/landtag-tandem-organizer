@@ -21,3 +21,5 @@
 - History faction labels may be renamed centrally. Candidate comparisons and assembly resolve them through the catalog's immutable result_code; never match a renamed display label directly against official election_analysis_* party codes.
 
 - Deputy profile list positions come from the published state-list roster for the selected connection, independently of mandate admission. Show election year, party, list position and direct/substitute/list-only role; never treat list position or substitute candidacy as a mandate or direct election.
+
+- Data-quality and source-audit panels belong to election-history/admin and are reachable only through the Super-Admin Wahldaten tabs. Keep direct result source links under Daten, but no audit footer or embedded workbook reconciliation queries. Retire legacy analysisCheck parameters during URL normalization.

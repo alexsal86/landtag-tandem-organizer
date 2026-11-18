@@ -8,12 +8,10 @@ import { AnalysisControls } from './AnalysisToolbar';
 import { DataState, DataTable, Selection, StatusNote, chartColor } from './shared';
 import { ballotLabels, ballotsForYear, effectiveBallot, number, parties, percent } from './model';
 import { matrixAxes, matrixCell, stateTotalMetrics } from './stateHistoryModel';
-import { useFlowMatrix, useStateHistory, useWorkbookAudit } from './useStateHistory';
-import type { WorkbookAudit } from './stateHistoryModel';
+import { useFlowMatrix, useStateHistory } from './useStateHistory';
 const SourceLink = ({ url }: {
     url: string;
 }) => <a href={url} target="_blank" rel="noreferrer" className="underline">Quellenlink aus Arbeitsmappe</a>;
-const statusLabels = { added: 'Ergänzt', matched: 'Übereinstimmung', conflict: 'Abweichung – bisheriger Wert erhalten' };
 export function StateHistoryPanel({ year, years, initiallyShowTurnout = false }: {
     year: number;
     years: number[];
@@ -54,7 +52,7 @@ export function StateHistoryPanel({ year, years, initiallyShowTurnout = false }:
     <StatusNote>Vergangene Wahlen {from}–{year}. Die oben ausgewählte Wahl ist das Ende der Zeitreihe. Bis 2021 wird die Einzelstimme, ab 2026 die Zweitstimme verwendet; 2026 beginnt ein neues Wahlsystem. 1952 war die Wahl zur Verfassunggebenden Landesversammlung. Weitere historische Parteien werden nicht ergänzt. Fehlende Parteieinträge bleiben unbekannt und werden nicht als 0 dargestellt. Quellenlinks stammen aus der Arbeitsmappe; eine unabhängige Originalprüfung wird nur bei ausdrücklicher Kennzeichnung behauptet.</StatusNote>
       <h2 className="text-lg font-semibold">Wahlberechtigte und weitere Bezugsgrößen</h2>
       <div className="overflow-x-auto"><DataTable headers={['Wahl', 'Wahltag', 'Wahlberechtigte', 'Wählende', 'Nichtwählende', 'Beteiligung', 'Gültige Stimmen', 'Ungültige Stimmen', 'Ungültige %', 'Quelle / Prüfstatus']} rows={totals.map(t => [t.year, t.election_date.split('-').reverse().join('.'), number(t.eligible), number(t.voters), number(t.nonvoters), percent(t.turnout), number(t.valid_votes), number(t.invalid_votes), percent(t.invalidShare), <span><SourceLink url={t.source_url}/> · {t.source_verified ? 'Original geprüft' : 'Originalprüfung offen'} · {t.source_sheet}, Z. {t.source_row}</span>])}/></div>
-      {showParties && <DataTable headers={['Wahl', 'Stimmenart', 'Partei', 'Stimmen', 'Anteil', 'Hinweis / Quelle']} rows={(query.data?.state || []).map(s => [s.year, ballotLabels[s.year >= 2026 ? 'second' : 'single'], s.party, number(s.votes), percent(s.share), s.notes || 'Bestehender Datensatz; Quellenabgleich unter „Quellenabgleich“.'])}/>}
+      {showParties && <DataTable headers={['Wahl', 'Stimmenart', 'Partei', 'Stimmen', 'Anteil', 'Hinweis / Quelle']} rows={(query.data?.state || []).map(s => [s.year, ballotLabels[s.year >= 2026 ? 'second' : 'single'], s.party, number(s.votes), percent(s.share), s.notes || 'Bestehender Datensatz; Quellenprotokoll wird zentral im Super-Admin-Bereich gepflegt.'])}/>}
     </DataState>
     <section aria-labelledby="history-turnout-heading" className="space-y-4">
       <div className="flex flex-wrap items-center justify-between gap-3">
@@ -84,43 +82,4 @@ export function FlowMatrixPanel({ year }: {
       {cells[0] && <p className="text-sm"><SourceLink url={cells[0].source_url}/> · Wahlreport 2006, S. 33 · {cells.every(c => c.source_verified) ? 'Original unabhängig geprüft.' : 'Aus Arbeitsmappe übernommen; Originalprüfung offen.'} Der Zustrom von den Grünen zur CDU beträgt in der Arbeitsmappe 11.000 Personen.</p>}
     </DataState>
   </div>;
-}
-function AuditValues({ row }: {
-    row: WorkbookAudit;
-}) {
-    return <details><summary className="cursor-pointer underline">Werte und Herkunft anzeigen</summary><p className="my-2">{row.notes}</p><p>Verglichen am: {new Date(row.compared_at).toLocaleString('de-DE')}</p><p>Arbeitsmappe SHA-256: <code className="break-all">{row.workbook_sha256}</code></p><p>Vorschlag aus Arbeitsmappe:</p><pre className="max-w-lg overflow-auto whitespace-pre-wrap text-xs">{JSON.stringify(row.incoming, null, 2)}</pre><p>Bisheriger Wert zum Importzeitpunkt:</p><pre className="max-w-lg overflow-auto whitespace-pre-wrap text-xs">{JSON.stringify(row.existing, null, 2)}</pre></details>;
-}
-export function WorkbookAuditPanel({ year }: {
-    year: number;
-}) {
-    const query = useWorkbookAudit(year);
-    const [conflictsOnly, setConflictsOnly] = useState(false);
-    const rows = (query.data || []).filter(r => !conflictsOnly || r.status === 'conflict');
-    return <div className="space-y-4">
-    <AnalysisControls><Button variant={conflictsOnly ? 'default' : 'outline'} aria-pressed={conflictsOnly} onClick={() => setConflictsOnly(v => !v)}>Nur Abweichungen</Button></AnalysisControls>
-    <StatusNote>Dieser Bericht dokumentiert den Vergleich beim Einspielen der Arbeitsmappe. Übereinstimmung bedeutet Zahlenübereinstimmung mit dem damaligen Plattformbestand, keine unabhängige Prüfung der verlinkten Originalquelle. Bestehende Werte werden bei Abweichungen erhalten. Die Prüfsumme gehört zur hochgeladenen Excel-Datei. Weitere historische Parteiergebnisse und die Restgruppe wurden nicht importiert.</StatusNote>
-    <DataState loading={query.isLoading} error={query.error} empty={!rows.length} retry={() => void query.refetch()}>
-      <DataTable headers={['Bereich', 'Datensatz', 'Abgleichstatus', 'Quelle', 'Fundstelle', 'Details']} rows={rows.map(r => [r.section, r.record_key, <span className={r.status === 'conflict' ? 'font-semibold text-warning' : ''}>{statusLabels[r.status]}</span>, <SourceLink url={r.source_url}/>, `${r.source_sheet}, Zeile ${r.source_row}`, <AuditValues row={r}/>])}/>
-    </DataState>
-  </div>;
-}
-/** Small source notice in the existing result / flow panels. */
-export function WorkbookSourceNotice({ year, section }: {
-    year: number;
-    section: 'state' | 'flows';
-}) {
-    const query = useWorkbookAudit(year, section);
-    if (query.isLoading)
-        return <p role="status" className="text-sm">Quellenabgleich lädt …</p>;
-    if (query.error)
-        return <p role="alert" className="text-sm">Quellenabgleich konnte nicht geladen werden. <Button variant="link" onClick={() => void query.refetch()}>Erneut laden</Button></p>;
-    if (!query.data?.length)
-        return null;
-    const conflicts = query.data.filter(r => r.status === 'conflict');
-    const sources: string[] = [];
-    for (const row of query.data) {
-      const url = row.source_url;
-      if (typeof url === 'string' && !sources.includes(url)) sources.push(url);
-    }
-    return <details className="rounded-lg border p-3 text-sm"><summary className="cursor-pointer font-medium">Quellenabgleich · {conflicts.length} offene Abweichungen</summary><p className="my-2">Arbeitsmappe mit dem Bestand zum Importzeitpunkt verglichen. Originalquellen noch nicht unabhängig geprüft. Einzelwerte und Herkunft stehen unter „Quellenabgleich“.</p>{sources.map(url => <p key={url}><SourceLink url={url}/></p>)}{conflicts.map(r => <div key={r.id} className="mt-3"><p className="font-semibold">{r.record_key}: bisheriger Wert erhalten.</p><AuditValues row={r}/></div>)}</details>;
 }

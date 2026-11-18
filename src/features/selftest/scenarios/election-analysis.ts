@@ -71,16 +71,16 @@ export const electionAnalysisScenario: TestScenario = {
     "Amtliche Downloads, Datenbank-RLS und Vollständigkeit historischer Kandidaturen sind separate Prüfungen.",
   ],
   steps: [
-    { id: "analysis-four-pillars-navigation", label: "Wahlanalyse: vier Säulen, alte Links und dezentrale Datenprüfung", kind: "logic", run: async () => {
+    { id: "analysis-four-pillars-navigation", label: "Wahlanalyse: vier Säulen, alte Links und zentrale Datenprüfung im Super-Admin", kind: "logic", run: async () => {
       const views = dataPillars.flatMap(pillar => pillar.sections);
       const turnout = resolveAnalysisNavigation(normalizeAnalysisParams(new URLSearchParams("analysisSection=turnout&analysisYear=2021")));
       const check = resolveAnalysisNavigation(normalizeAnalysisParams(new URLSearchParams("analysisSection=sources&analysisYear=1952")));
       const profile = analysisDestination(new URLSearchParams("analysisYear=2021&analysisDistrict=37"), "profile");
       return { ok: dataPillars.length === 4 && views.length === new Set(views).size
-        && turnout.section === "history" && turnout.showTurnout && check.check === "sources"
+        && turnout.section === "history" && turnout.showTurnout && check.check === null
         && profile.get("dataTab") === "wahlkreise" && profile.get("analysisDistrict") === "37"
         && resolveAnalysisNavigation(new URLSearchParams("dataTool=rechner")).section === "seats",
-        message: "Alle Ansichten bleiben erreichbar; alte Beteiligungs- und Rechnerlinks werden zugeordnet, Quellenprüfungen stehen in der Fußzeile." };
+        message: "Alle Ansichten bleiben erreichbar; alte Beteiligungs- und Rechnerlinks werden zugeordnet, Quellenprüfungen werden nicht mehr unter Daten geöffnet." };
     } },
     { id: "candidacy-admin-import", label: "Kandidatenimport: deutsche Zahlen, reine Liste und Wahlkreiszwang", kind: "logic", run: async () => {
       const districts = [{ id: "d-36", period_id: "p-1", district_number: 36, number_label: null, name: "Nürtingen", boundaries: null, boundary_note: null, source_url: null }];

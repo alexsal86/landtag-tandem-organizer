@@ -41,9 +41,10 @@ describe('Vier Säulen der Wahlanalyse', () => {
     }
   });
 
-  it.each(['quality', 'sources'])('öffnet %s in der Fußzeile und erhält Jahr und Filter', check => {
+  it.each(['quality', 'sources'])('entfernt die frühere Datenprüfung %s und erhält Jahr und Filter', check => {
     const next = normalizeAnalysisParams(new URLSearchParams(`analysisSection=${check}&analysisYear=1952&analysisParty=SPD`));
-    expect(route(next.toString())).toMatchObject({ section: 'state', check });
+    expect(route(next.toString())).toMatchObject({ section: 'state', check: null });
+    expect(next.has('analysisCheck')).toBe(false);
     expect(next.get('analysisYear')).toBe('1952');
     expect(next.get('analysisParty')).toBe('SPD');
     const closed = analysisDestination(next, 'profile');

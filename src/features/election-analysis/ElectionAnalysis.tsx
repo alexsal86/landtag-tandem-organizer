@@ -1,4 +1,4 @@
-import { StateHistoryPanel, FlowMatrixPanel, WorkbookAuditPanel, WorkbookSourceNotice } from './StateHistoryPanels';
+import { StateHistoryPanel, FlowMatrixPanel } from './StateHistoryPanels';
 import { StateShareChart } from './StateShareChart';
 import { StateSeatDistribution } from './StateSeatDistribution';
 import { AnalysisControls, AnalysisToolbarLayout } from './AnalysisToolbar';
@@ -18,7 +18,7 @@ const DeputyDirectory = lazy(() => import('./DeputyDirectory'));
 const ResearchWorkbench = lazy(() => import('./research/ResearchWorkbench'));
 export default function ElectionAnalysis() {
   const [params, setParams] = useSearchParams();
-  const { section, pillar, check, researchTool, showTurnout, flowMatrix } = resolveAnalysisNavigation(params);
+  const { section, pillar, researchTool, showTurnout, flowMatrix } = resolveAnalysisNavigation(params);
   useEffect(() => {
     const canonical = normalizeAnalysisParams(params);
     if (canonical.toString() !== params.toString()) setParams(canonical, { replace: true });
@@ -28,12 +28,10 @@ export default function ElectionAnalysis() {
     if (view !== section) next.delete('savedScenario');
     return next;
   });
-  const years = useAnalysisYears(section !== 'deputies' || check !== null);
+  const years = useAnalysisYears(section !== 'deputies');
   const availableYears = years.data?.filter(y => ['state', 'history', 'profile', 'districts'].includes(section) || y.year >= 2006);
   const requestedYear = Number(params.get('analysisYear') || (flowMatrix ? 2006 : 0));
   const year = ['split', 'seats'].includes(section) && years.data?.some(y => y.year === 2026) ? 2026 : availableYears?.some(y => y.year === requestedYear) ? requestedYear : availableYears?.[0]?.year || 0;
-  const requestedCheckYear = Number(params.get('analysisCheckYear') || params.get('analysisYear'));
-  const checkYear = years.data?.some(item => item.year === requestedCheckYear) ? requestedCheckYear : year;
   const requestedBallot = params.get('analysisBallot');
   const ballot = section === 'history' ? effectiveBallot(year, 'second') : section === 'demographics' && year >= 2026 ? 'second' : effectiveBallot(year, requestedBallot === 'first' || requestedBallot === 'single' ? requestedBallot : 'second');
   const party = parties.find(p => p === params.get('analysisParty')) || 'GRÜNE';
@@ -70,18 +68,7 @@ export default function ElectionAnalysis() {
       </AnalysisToolbarLayout>
     </DataState>
     </>}
-    <footer className="space-y-3 border-t pt-4 text-sm text-muted-foreground">
-      <p>Datenprüfung & Quellenprotokoll</p>
-      <div className="flex flex-wrap gap-2">
-        {(['quality', 'sources'] as const).map(view => <Button key={view} size="sm" variant="ghost" aria-expanded={check === view} aria-controls="analysis-check-panel" onClick={() => setParams(previous => { const next = new URLSearchParams(previous); if (check === view) next.delete('analysisCheck'); else next.set('analysisCheck', view); return next; })}>{sectionLabels[view]}</Button>)}
-      </div>
-      {check && <section id="analysis-check-panel" aria-label={sectionLabels[check]} className="space-y-4 text-foreground">
-        <DataState loading={years.isLoading} error={years.error} empty={!years.data?.length} retry={() => void years.refetch()}>
-        <Selection id="analysis-check-year" label="Wahl für Datenprüfung" value={String(checkYear)} onChange={value => change('analysisCheckYear', value)}>{years.data?.map(item => <option key={item.year} value={item.year}>{item.year}</option>)}</Selection>
-        {checkYear > 0 && (check === 'sources' ? <WorkbookAuditPanel year={checkYear} /> : <Suspense fallback={<p role="status">Datenprüfung lädt …</p>}><ResearchWorkbench section="quality" {...selection} year={checkYear} years={years.data?.map(item => item.year) || []} /></Suspense>)}
-        </DataState>
-      </section>}
-    </footer>
+
   </div>;
 }
 type PanelProps = { year: number; ballot: Ballot; party: string; gender: string };
@@ -126,7 +113,6 @@ function StatePanel({ year, ballot, party, gender, years }: PanelProps & { years
       </div>
       {rows.map(r => r.notes && <p key={r.party} className="text-xs text-muted-foreground">{r.party}: {r.notes}</p>)}
     </DataState>
-    {ballot !== 'first' && <WorkbookSourceNotice year={year} section="state" />}
     <StatusNote>Ausgewählte Parteien, kein vollständiges Landesergebnis. Historische Ergänzungen stammen aus der Arbeitsmappe; die Originalprüfung ist offen. Leere Felder werden nicht als null Stimmen oder null Sitze interpretiert. {year === 2026 && 'Die Sitzverteilung steht bei den Zweitstimmen.'}{previousYear > 0 && previousBallot !== ballot && ' Der Vergleich umfasst unterschiedliche Wahlsysteme: Einzelstimme und Erst-/Zweitstimme.'}</StatusNote>
   </div>;
 }
@@ -150,7 +136,6 @@ function FlowPanel({ year, ballot, party, gender }: PanelProps) {
   const query = useAnalysisRows('flows', year, ballot, party, gender);
   const rows = (query.data || []).slice().sort((a, b) => (b.balance ?? -Infinity) - (a.balance ?? -Infinity));
   return <div className="space-y-4">
-    <WorkbookSourceNotice year={year} section="flows" />
     <StatusNote>Modellierte Wählerwanderung auf Landesebene, keine gezählten individuellen Wechsel und keine Wahlkreisdaten. Positive Salden bedeuten Nettozugewinne für {party}. Nicht ausgewiesene Zu- und Abströme bleiben leer. Die Beziehungen verschiedener Zielparteien dürfen nicht zu einer Gesamtwanderung addiert werden.</StatusNote>
     <DataState loading={query.isLoading} error={query.error} empty={!rows.length} retry={() => void query.refetch()}>
       <div className="flex flex-wrap items-center justify-between gap-3"><h2 className="text-lg font-semibold">{party}: {rows[0]?.previous_year} → {year}</h2></div>

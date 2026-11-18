@@ -57,16 +57,14 @@ describe('Navigation der Wahlanalyse', () => {
     expect(screen.getByLabelText('Auswahl-URL')).not.toHaveTextContent('researchTool=seats');
   });
 
-  it('lässt Datenprüfung in der Fußzeile unabhängig von der Hauptauswahl öffnen und schließen', async () => {
-    open('dataTab=wahlkreise&sub=profile&analysisYear=2021');
+  it('zeigt Datenprüfung und Quellenabgleich auch mit alten Parametern nicht mehr unter Daten', async () => {
+    open('dataTab=wahlkreise&sub=profile&analysisYear=2021&analysisCheck=sources');
     await screen.findByText('Modul profile 2021');
-    fireEvent.click(screen.getByRole('button', { name: 'Quellenabgleich' }));
-    await screen.findByText('Quellenprotokoll 2021');
-    fireEvent.change(screen.getByLabelText('Wahl für Datenprüfung'), { target: { value: '1952' } });
-    await screen.findByText('Quellenprotokoll 1952');
-    expect(screen.getByText('Modul profile 2021')).toBeInTheDocument();
-    fireEvent.click(screen.getByRole('button', { name: 'Quellenabgleich' }));
-    await waitFor(() => expect(screen.queryByText('Quellenprotokoll 1952')).not.toBeInTheDocument());
+    expect(screen.queryByRole('button', { name: 'Quellenabgleich' })).not.toBeInTheDocument();
+    expect(screen.queryByRole('button', { name: 'Datenqualität' })).not.toBeInTheDocument();
+    expect(screen.queryByText('Quellenprotokoll 2021')).not.toBeInTheDocument();
+    expect(screen.queryByLabelText('Wahl für Datenprüfung')).not.toBeInTheDocument();
+    expect(screen.getByLabelText('Auswahl-URL')).not.toHaveTextContent('analysisCheck=');
   });
 
   it('öffnet das Personenarchiv ohne die Wahljahre abzufragen', async () => {

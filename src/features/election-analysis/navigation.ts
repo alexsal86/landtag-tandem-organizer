@@ -34,12 +34,11 @@ export function resolveAnalysisNavigation(params: URLSearchParams) {
   let researchTool = params.get('researchTool') || 'typology';
   let showTurnout = params.get('historyDetails') === 'turnout';
   let flowMatrix = false;
-  const requestedCheck = params.get('analysisCheck');
-  let check: AnalysisCheck | null = isCheck(requestedCheck) ? requestedCheck : null;
+  const check: AnalysisCheck | null = null;
   if (raw === 'turnout') { view = 'history'; showTurnout = true; }
   else if (raw === 'flow-matrix') { view = 'flows'; flowMatrix = true; }
   else if (isView(raw)) view = raw;
-  if (view && isCheck(view)) { check = view; view = undefined; }
+  if (view && isCheck(view)) view = undefined;
   if (view === 'turnout-trend') { view = 'research'; researchTool = 'turnout'; }
   if (view === 'research' && researchTool === 'seats') view = 'seats';
   // Old calculator bookmarks now reach the statutory model.
@@ -65,7 +64,7 @@ export function analysisDestination(previous: URLSearchParams, section: PrimaryV
 export function normalizeAnalysisParams(params: URLSearchParams): URLSearchParams {
   const route = resolveAnalysisNavigation(params);
   const next = analysisDestination(params, route.section);
-  if (route.check) next.set('analysisCheck', route.check);
+  next.delete('analysisCheckYear');
   if (route.showTurnout) next.set('historyDetails', 'turnout');
   if (route.section === 'research') next.set('researchTool', route.researchTool);
   if (route.flowMatrix && !params.has('analysisYear')) next.set('analysisYear', '2006');
