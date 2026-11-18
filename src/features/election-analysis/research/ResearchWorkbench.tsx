@@ -319,7 +319,7 @@ function DistrictProfile({
               >
                 <ResponsiveContainer>
                   <LineChart data={selection} margin={{ top: 16, right: 120, bottom: 10 }}>
-                    <CartesianGrid strokeDasharray="3 3" />
+                    <CartesianGrid vertical={false} strokeDasharray="3 3" />
                     <XAxis dataKey="year" />
                     <YAxis domain={chartDomain} allowDataOverflow tickFormatter={formatMetric} />
                     <Tooltip formatter={value => typeof value === "number" ? formatMetric(value) : value} />

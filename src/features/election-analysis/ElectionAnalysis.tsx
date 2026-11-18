@@ -223,7 +223,7 @@ function DemographicPanel({ year, ballot, party, gender }: PanelProps) {
         <CardContent>
           {visibleParties.length ? <div className="h-80" role="img" aria-label="Parteianteile nach Altersgruppe; genaue Werte stehen in der Tabelle">
             <ResponsiveContainer><LineChart data={chart}>
-              <CartesianGrid strokeDasharray="3 3" />
+              <CartesianGrid vertical={false} strokeDasharray="3 3" />
               <XAxis dataKey="age" />
               <YAxis unit=" %" />
               <Tooltip
