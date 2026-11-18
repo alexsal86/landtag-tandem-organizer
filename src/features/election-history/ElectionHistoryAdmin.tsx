@@ -18,9 +18,7 @@ import { HistoryDataGrid } from './admin/HistoryDataGrid';
 import { CandidacyImportDialog } from './admin/CandidacyImportDialog';
 import { HistoryIssueOverview, type HistoryIssue } from './admin/HistoryIssueOverview';
 import { StateLists } from './admin/StateLists';
-import type { GridEntity } from './admin/historyFields';
-
-type WorkspaceSection = GridEntity | 'deputies' | 'issues' | 'state_lists' | 'factions' | 'quality' | 'sources';
+import { historyWorkspaceTab, historyWorkspaceTabs, isHistoryWorkspaceSection, type HistoryWorkspaceSection } from './admin/workspaceNavigation';
 
 export default function ElectionHistoryAdmin() {
   const { user, loading } = useAuth();
@@ -33,11 +31,11 @@ export default function ElectionHistoryAdmin() {
 function ElectionHistoryWorkspace() {
   const periodQuery = useElectionPeriods();
   const overviewQuery = useElectionPeriodOverview();
-  const [section, setSection] = useState<WorkspaceSection>('periods');
+  const [section, setSection] = useState<HistoryWorkspaceSection>('periods');
   const [periodFilter, setPeriodFilter] = useState('');
   const [targetDistrictId, setTargetDistrictId] = useState('');
   const [registerView, setRegisterView] = useState<'mandates' | 'people'>('mandates');
-  const availablePeriods = periodQuery.data?.filter(period => section !== 'state_lists' || period.number >= 18);
+  const availablePeriods = periodQuery.data;
   const selectedPeriod = availablePeriods?.find(period => period.id === periodFilter)?.id || availablePeriods?.find(period => period.is_current)?.id || availablePeriods?.[0]?.id || '';
   const needsHistory = ['districts', 'mandates', 'candidacies'].includes(section);
   const query = useElectionHistory(needsHistory ? selectedPeriod : undefined);
@@ -57,20 +55,16 @@ function ElectionHistoryWorkspace() {
   };
   return <div className="min-w-0 w-full max-w-full space-y-5">
     <header className="space-y-1"><h2 className="text-h2">Wahldaten & Mandatshistorie</h2><p className="max-w-4xl text-body text-muted-foreground">Zentrale Pflege- und Importwerkbank für alle Tenants. Auswertungen und Visualisierungen bleiben unter „Daten“; hier werden Stammdaten, Mandate, Kandidaturen und Quellen vollständig gepflegt.</p></header>
-    <Tabs value={section} onValueChange={value => { setSection(value as WorkspaceSection); setImportOpen(false); setTargetRecordId(''); setTargetListId(''); setTargetDistrictId(''); setDeputyTarget(null); }}>
+    <Tabs value={historyWorkspaceTab(section)} onValueChange={value => { if (!isHistoryWorkspaceSection(value)) return; setSection(value); setImportOpen(false); setTargetRecordId(''); setTargetListId(''); setTargetDistrictId(''); setDeputyTarget(null); }}>
       <TabsList className="h-auto flex flex-wrap justify-start gap-1">
-        <TabsTrigger value="periods">1 · Legislaturperioden</TabsTrigger>
-        <TabsTrigger value="districts">2 · Wahlkreise</TabsTrigger>
-        <TabsTrigger value="mandates">3 · Abgeordnete der Periode</TabsTrigger>
-        <TabsTrigger value="candidacies">4 · Kandidaturen & Ergebnisse</TabsTrigger>
-        <TabsTrigger value="deputies">5 · Gesamtregister</TabsTrigger>
-        <TabsTrigger value="state_lists">6 · Landeslisten</TabsTrigger>
-        <TabsTrigger value="factions">7 · Fraktionen & Parteien</TabsTrigger>
-        <TabsTrigger value="issues">8 · Problemfälle</TabsTrigger>
-        <TabsTrigger value="quality">9 · Datenqualität</TabsTrigger>
-        <TabsTrigger value="sources">10 · Quellenabgleich</TabsTrigger>
+        {historyWorkspaceTabs.map(tab => <TabsTrigger key={tab.id} value={tab.id}>{tab.label}</TabsTrigger>)}
       </TabsList>
     </Tabs>
+
+    {(section === 'candidacies' || section === 'state_lists') && <nav aria-label="Kandidaturen und Landeslisten auswählen" className="flex flex-wrap gap-2">
+      <Button variant={section === 'candidacies' ? 'default' : 'outline'} aria-pressed={section === 'candidacies'} onClick={() => { setSection('candidacies'); setImportOpen(false); setTargetRecordId(''); setTargetListId(''); setTargetDistrictId(''); }}>Kandidaturen & Ergebnisse</Button>
+      <Button variant={section === 'state_lists' ? 'default' : 'outline'} aria-pressed={section === 'state_lists'} onClick={() => { setSection('state_lists'); setImportOpen(false); setTargetRecordId(''); setTargetListId(''); setTargetDistrictId(''); }}>Landeslisten</Button>
+    </nav>}
 
     {section !== 'periods' && section !== 'deputies' && section !== 'issues' && section !== 'factions' && section !== 'quality' && section !== 'sources' && <section className="flex flex-wrap items-end gap-3 rounded-md border bg-card p-3" aria-label="Legislaturauswahl">
       <div className="min-w-0 w-full flex-1"><Label htmlFor="history-period-filter">Legislaturperiode</Label><select id="history-period-filter" className="flex h-10 min-w-0 w-full max-w-full rounded-md border border-input bg-background px-3 py-2 text-sm" value={selectedPeriod} onChange={event => { setPeriodFilter(event.target.value); setImportOpen(false); setTargetRecordId(''); setTargetListId(''); setTargetDistrictId(''); }}>{availablePeriods?.map(item => <option key={item.id} value={item.id}>{item.is_published ? '✓' : '✎'} {item.name}</option>)}</select></div>
@@ -91,7 +85,7 @@ function ElectionHistoryWorkspace() {
     {section === 'mandates' && !query.isLoading && !query.error && <HistoryDataGrid key={`mandates-${selectedPeriod}-${targetRecordId}`} initialEditId={targetRecordId} entity="mandates" data={data} selectedPeriodId={selectedPeriod} overview={overviewQuery.data || []} />}
     {section === 'candidacies' && !query.isLoading && !query.error && period && <div className="space-y-3">
       <CandidacyAssemblyStatus key={`assembly-${selectedPeriod}`} periodId={selectedPeriod} />
-      <HistoryDataGrid key={`candidacies-${selectedPeriod}-${targetRecordId}-${targetDistrictId}`} initialEditId={targetRecordId} initialDistrictId={targetDistrictId} entity="candidacies" data={data} selectedPeriodId={selectedPeriod} overview={overviewQuery.data || []} />
+      <HistoryDataGrid key={`candidacies-${selectedPeriod}-${targetRecordId}-${targetDistrictId}`} initialEditId={targetRecordId} initialDistrictId={targetDistrictId} onOpenStateList={(listId, entryId) => { setTargetListId(listId); setTargetRecordId(entryId); setTargetDistrictId(''); setImportOpen(false); setSection('state_lists'); }} entity="candidacies" data={data} selectedPeriodId={selectedPeriod} overview={overviewQuery.data || []} />
       <CandidateCoverageReview key={selectedPeriod} periodId={selectedPeriod} disabled={false} />
       <CandidacyImportDialog open={importOpen} onOpenChange={setImportOpen} data={data} periodId={selectedPeriod} onImported={async () => { await Promise.all([query.refetch(), overviewQuery.refetch()]); }} />
     </div>}

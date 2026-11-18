@@ -1,3 +1,5 @@
+import { candidacyListPlacement } from '@/features/election-history/admin/candidacyListPlaces';
+import { historyWorkspaceTab, historyWorkspaceTabs } from '@/features/election-history/admin/workspaceNavigation';
 import { stateListDistrictLabel } from '@/features/election-history/stateListPlaces';
 import { factionResultCode, resolveFaction, type HistoryFaction } from '@/features/election-history/factions';
 import { parsePeriodSeats } from '@/features/election-history/periodSeats';
@@ -11,6 +13,17 @@ export const electionHistoryWorkbenchScenario: TestScenario = {
   features: ['election-history'], touches: [],
   limitations: ['Die Schreibberechtigungen, Listenplatz-Constraints und Trigger müssen zusätzlich mit Datenbank-Rollenszenarien geprüft werden.'],
   steps: [
+    { id: 'candidate-state-list-place', label: 'Kandidaturergebnisse: bestätigte Listenplätze mit Konfliktschutz und gemeinsamer Navigation', kind: 'logic', run: async () => {
+      const candidate = { person_id: 'person', period_id: 'p18', party: 'GRÜNE', list_position: null };
+      const place = { id: 'entry', list_id: 'list', person_id: 'person', period_id: 'p18', party: 'GRÜNE', position: 7, source_url: null };
+      const inferred = candidacyListPlacement(candidate, [place]);
+      const conflict = candidacyListPlacement({ ...candidate, list_position: 3 }, [place]);
+      const wrong = candidacyListPlacement(candidate, [{ ...place, person_id: 'namesake' }]);
+      return { ok: inferred.position === 7 && candidate.list_position === null && conflict.position === 3 && conflict.conflict
+        && wrong.position === null && historyWorkspaceTab('state_lists') === 'candidacies'
+        && historyWorkspaceTabs[historyWorkspaceTabs.length - 1].id === 'deputies',
+        message: 'Nur bestätigte Personen derselben Wahl und Partei erhalten den ergänzten Listenplatz; manuelle Werte bleiben erhalten. Listenpflege bleibt erreichbar, das Gesamtregister steht zuletzt.' };
+    } },
     { id: 'state-list-candidacy-role', label: 'Listenplätze: Ersatzbewerbung und reine Liste bleiben von Direktbewerbung getrennt', kind: 'logic', run: async () => {
       const district = { district_number: 5, district_name: 'Böblingen' };
       if (!stateListDistrictLabel({ ...district, candidacy_role: 'substitute' }).startsWith('Ersatzbewerbung')) throw new Error('Eine Ersatzbewerbung darf nicht als Direktbewerbung erscheinen.');

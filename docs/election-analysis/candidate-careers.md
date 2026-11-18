@@ -60,3 +60,28 @@ Die Personenanlage wird durch den bestehenden Audit-Trigger protokolliert.
 Suchseiten sind auf 26 (25 plus Folgeindikator) und jede ausgewählte Karriere
 auf höchstens 200 Kandidaturen und 200 Mandatsabschnitte begrenzt. Die Oberfläche
 meldet überschrittene Grenzen, statt still eine unvollständige Laufbahn zu zeigen.
+
+## Gemeinsamer Bereich für Kandidaturen, Ergebnisse und Landeslisten
+
+Die Super-Admin-Werkbank bündelt Kandidaturen, Ergebnisse und Landeslisten unter
+einem Haupttab mit zwei Unteransichten. Die gemeinsame Legislaturauswahl bleibt
+beim Wechsel erhalten. Ältere Perioden zeigen den Hinweis auf Landeslisten ab
+Periode 18, ohne stillschweigend auf die aktuelle Periode zu wechseln. Verweise
+aus Problemfällen und Ergebniszeilen öffnen weiterhin die konkrete Liste und
+den gewünschten Eintrag. „Problemfälle“ steht unmittelbar vor dem abschließenden
+„Gesamtregister“; die übrigen Pflege- und Prüfansichten bleiben erhalten.
+
+Die Ergebnistabelle trennt „Wahlkreisplatz“ und „Listenplatz“. Ab Periode 18 liest
+`useCandidacyStateListPlaces` ergänzende Plätze ausschließlich für die angezeigten
+Kandidierenden und die ausgewählte Periode. Die Zuordnung verwendet die bestätigte
+`election_history_connection_people`-Identität und den Listeneintrag derselben
+Partei; Namen werden nicht abgeglichen. Personen ohne bestätigte Verbindung erhalten
+keinen erfundenen Listenplatz. Die vollständigen importierten Landeslisten sind
+weiterhin in der Unteransicht „Landeslisten“ verfügbar.
+
+Die Ergänzung ist rein lesend. Ein bereits in der Kandidatur erfasster Listenplatz
+hat Vorrang; Abweichungen zum verknüpften Listeneintrag werden angezeigt. Mehrere
+passende Einträge bleiben als mehrdeutig gekennzeichnet. Listenplatz und
+Bewerbungsart ändern weder das Wahlergebnis noch den tatsächlichen Mandatseintritt.
+Abfragen verwenden Pakete mit höchstens 100 bestätigten Personen-IDs, zeigen Fehler
+explizit und überschreiben keine Kandidaturen. Keine zusätzliche Migration nötig.

@@ -1,3 +1,5 @@
+import { candidacyListPlacement } from './candidacyListPlaces';
+import { useCandidacyStateListPlaces } from './useCandidacyStateListPlaces';
 import { FactionSelect } from './FactionSelect';
 import { PeriodSeatSummary } from '../PeriodSeatSummary';
 import { SeatDistributionEditor } from './SeatDistributionEditor';
@@ -68,7 +70,8 @@ const columns: Record<GridEntity, Column[]> = {
     { key: 'district_id', label: 'Wahlkreis', fieldKey: 'district_id' },
     { key: 'votes', label: 'Stimmen', fieldKey: 'votes' },
     { key: 'vote_share', label: '%', fieldKey: 'vote_share' },
-    { key: 'district_rank', label: 'Platz', fieldKey: 'district_rank' },
+    { key: 'district_rank', label: 'Wahlkreisplatz', fieldKey: 'district_rank' },
+    { key: 'list_position', label: 'Listenplatz', fieldKey: 'list_position' },
     { key: 'outcome', label: 'Ausgang', fieldKey: 'outcome' },
     { key: 'result_origin', label: 'Ergebnisquelle' },
     { key: 'quality', label: 'Prüfung' },
@@ -86,11 +89,12 @@ interface Props {
   overview: ElectionPeriodOverview[];
   initialEditId?: string;
   initialDistrictId?: string;
+  onOpenStateList?: (listId: string, entryId: string) => void;
   onOpenCandidacies?: (districtId: string) => void;
   onOpenPeriod?: (periodId: string) => void;
 }
 
-export function HistoryDataGrid({ entity, data, selectedPeriodId, overview, onOpenPeriod, initialEditId = '', initialDistrictId = '', onOpenCandidacies }: Props) {
+export function HistoryDataGrid({ entity, data, selectedPeriodId, overview, onOpenPeriod, initialEditId = '', initialDistrictId = '', onOpenCandidacies, onOpenStateList }: Props) {
   const { user } = useAuth();
   const cache = useQueryClient();
   const drafts = useElectionEditorDrafts(user?.id || '');
@@ -131,6 +135,7 @@ export function HistoryDataGrid({ entity, data, selectedPeriodId, overview, onOp
   if (activeRow && !visibleRows.some(row => row.id === activeRow.id)) visibleRows.unshift(activeRow);
   const editorFields = gridFields[entity];
   const currentPeriod = data.periods.find(period => period.id === selectedPeriodId);
+  const listPlaces = useCandidacyStateListPlaces(selectedPeriodId, entity === 'candidacies' ? visibleRows.map(row => (row as ElectionCandidacy).person_id) : [], entity === 'candidacies' && (currentPeriod?.number || 0) >= 18);
   const overviewByPeriod = new Map(overview.map(row => [row.period_id, row]));
 
   const refresh = async () => {
@@ -281,6 +286,15 @@ export function HistoryDataGrid({ entity, data, selectedPeriodId, overview, onOp
     const candidacy = row as ElectionCandidacy;
     if (key === 'person_id') return <button type="button" className="text-left font-medium underline-offset-4 hover:underline" onClick={() => setCareerPerson(candidacy.person_id)}>{personName(candidacy.person_id)}</button>;
     if (key === 'district_id') return districtName(candidacy.district_id);
+    if (key === 'list_position') {
+      const placement = candidacyListPlacement(candidacy, listPlaces.data || []);
+      const roster = placement.roster;
+      return <div className="flex flex-col items-start gap-1"><span className="tabular-nums">{placement.position ?? (listPlaces.isFetching ? 'Lädt …' : '–')}</span>
+        {roster && (onOpenStateList ? <Button size="sm" variant="link" className="h-auto p-0 text-caption" onClick={() => onOpenStateList(roster.list_id, roster.id)}>Landesliste öffnen</Button> : <p className="text-caption text-muted-foreground">Aus Landesliste</p>)}
+        {placement.conflict && <p className="text-caption text-warning">Abweichend: Landesliste Platz {placement.roster?.position}; erfasster Platz bleibt erhalten.</p>}
+        {placement.ambiguous && <p className="text-caption text-warning">Listenzuordnung mehrdeutig</p>}
+      </div>;
+    }
     if (key === 'votes') return candidacy.votes?.toLocaleString('de-DE') ?? '–';
     if (key === 'result_origin') {
       const origin = candidacyResultOrigin(candidacy);
@@ -324,6 +338,7 @@ export function HistoryDataGrid({ entity, data, selectedPeriodId, overview, onOp
       {entity === 'candidacies' && <div className="min-w-0 flex-1"><Label htmlFor="candidate-district-filter">Wahlkreis</Label><select id="candidate-district-filter" className="h-10 min-w-0 w-full rounded-md border bg-background px-2 text-sm" disabled={saving || creatingPerson} value={districtFilter} onChange={event => { setDistrictFilter(event.target.value); setPageSize(100); }}><option value="">Alle Wahlkreise / Landeslisten</option>{data.districts.map(district => <option key={district.id} value={district.id}>{district.district_number ?? district.number_label ?? '–'}: {district.name}</option>)}</select></div>}
       <Button onClick={startNew} disabled={saving || creatingPerson || (entity !== 'periods' && !selectedPeriodId)}><Plus className="mr-2 h-4 w-4" aria-hidden="true" />Neu anlegen</Button>
     </div>
+    {entity === 'candidacies' && listPlaces.error && <p role="alert" className="text-sm text-destructive">Listenplätze konnten nicht geladen werden: {historyError(listPlaces.error)} <Button variant="link" className="h-auto p-0" onClick={() => void listPlaces.refetch()}>Erneut laden</Button></p>}
     {drafts.storageFailed && <p role="alert" className="text-sm text-destructive">Der Browser kann Eingaben nicht zwischenspeichern. Bitte zeitnah speichern.</p>}
     {drafts.drafts.filter(draft => draft.entity === entity && (entity === 'periods' || draft.periodId === selectedPeriodId)).length > 0 && <div className="flex flex-wrap items-center gap-2 rounded-md border bg-muted/20 p-2 text-caption"><span>Browserentwürfe:</span>{drafts.drafts.filter(draft => draft.entity === entity && (entity === 'periods' || draft.periodId === selectedPeriodId)).map(draft => <Button key={`${draft.id}:${draft.periodId}`} size="sm" variant="outline" className="h-auto max-w-full whitespace-normal break-words" disabled={saving || creatingPerson} onClick={() => { setValues(draft.values); setEditing(draft.id); setError(''); }}>{String(draft.values.name || draft.values.person_name || 'Datensatz')} wiederherstellen</Button>)}</div>}
     {error && editing === undefined && <p role="alert" className="text-sm text-destructive">{error}</p>}
