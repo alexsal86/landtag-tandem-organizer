@@ -6095,6 +6095,7 @@ export type Database = {
           source_url: string | null
           start_from_period: boolean
           starts_on: string | null
+          subsequent_faction: string | null
         }
         Insert: {
           candidacy_id?: string | null
@@ -6116,6 +6117,7 @@ export type Database = {
           source_url?: string | null
           start_from_period?: boolean
           starts_on?: string | null
+          subsequent_faction?: string | null
         }
         Update: {
           candidacy_id?: string | null
@@ -6137,8 +6139,16 @@ export type Database = {
           source_url?: string | null
           start_from_period?: boolean
           starts_on?: string | null
+          subsequent_faction?: string | null
         }
         Relationships: [
+          {
+            foreignKeyName: "election_history_mandates_subsequent_faction_fkey"
+            columns: ["subsequent_faction"]
+            isOneToOne: false
+            referencedRelation: "election_history_factions"
+            referencedColumns: ["name"]
+          },
           {
             foreignKeyName: "election_history_mandates_candidacy_id_person_id_period_id_fkey"
             columns: ["candidacy_id", "person_id", "period_id"]

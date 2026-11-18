@@ -161,21 +161,32 @@ export default function DeputyDirectory() {
     {directory.error && <div role="alert">{historyError(directory.error)} <Button variant="outline" onClick={() => void directory.refetch()}>Erneut laden</Button></div>}
     {directory.data?.length === 0 && <div className="rounded-xl border border-dashed p-10 text-center"><p>Keine passenden Abgeordneten gefunden.</p><Button className="mt-3" variant="outline" onClick={reset}>Filter zurücksetzen</Button></div>}
     <div className={view === 'cards' ? 'deputy-grid' : 'deputy-list'} aria-busy={directory.isFetching}>
-      {directory.data?.slice(0, 25).map(entry => <button type="button" key={entry.name_key} className={view === 'cards' ? 'deputy-card' : 'deputy-row'} style={{ '--deputy-party': getPartyColor(entry.latest?.party || entry.parties[0]) } as CSSProperties} onPointerMove={event => {
-        if (view !== 'cards' || event.pointerType === 'touch') return;
-        const bounds = event.currentTarget.getBoundingClientRect();
-        event.currentTarget.style.setProperty('--deputy-mx', `${(event.clientX - bounds.left) / bounds.width * 100}%`);
-        event.currentTarget.style.setProperty('--deputy-my', `${(event.clientY - bounds.top) / bounds.height * 100}%`);
-      }} onClick={event => { lastTrigger.current = event.currentTarget; setPerson(entry); setProfileOpen(true); setActivePeriod(period ? published.find(item => item.id === period)?.number ?? null : null); }} aria-label={`${entry.name}, ${entry.parties.join(', ')}. Mandatshistorie öffnen`}>
-        <Portrait person={entry} />
-        <span className="deputy-party"><i />{entry.latest?.party || entry.parties.join(', ')}</span>
-        <span className="deputy-card-tenure"><Tenure count={entry.periods} /></span>
-        <span className="deputy-card-info">
-          <DeputyName name={entry.name} />
-          <span className="deputy-card-district"><MandateIcon type={entry.latest?.mandate_type} />{entry.latest?.district || 'Wahlkreis nicht erfasst'}</span>
-        </span>
-        <span className="deputy-sheen" aria-hidden="true" />
-      </button>)}
+      {directory.data?.slice(0, 25).map(entry => {
+        const primaryFaction = entry.latest?.party || entry.parties[0];
+        const additionalFactions = entry.parties.filter(label => label !== primaryFaction);
+        return <button type="button" key={entry.name_key} className={view === 'cards' ? 'deputy-card' : 'deputy-row'} style={{ '--deputy-party': getPartyColor(primaryFaction) } as CSSProperties} onPointerMove={event => {
+          if (view !== 'cards' || event.pointerType === 'touch') return;
+          const bounds = event.currentTarget.getBoundingClientRect();
+          event.currentTarget.style.setProperty('--deputy-mx', `${(event.clientX - bounds.left) / bounds.width * 100}%`);
+          event.currentTarget.style.setProperty('--deputy-my', `${(event.clientY - bounds.top) / bounds.height * 100}%`);
+        }} onClick={event => { lastTrigger.current = event.currentTarget; setPerson(entry); setProfileOpen(true); setActivePeriod(period ? published.find(item => item.id === period)?.number ?? null : null); }} aria-label={`${entry.name}, ${entry.parties.join(', ')}. Mandatshistorie öffnen`}>
+          <Portrait person={entry} />
+          <span className="deputy-party">
+            <span className="deputy-primary-faction"><i aria-hidden="true" />{primaryFaction}</span>
+            {additionalFactions.length > 0 && <span className="deputy-additional-factions">
+              {additionalFactions.map(label => <span key={label} className="deputy-faction-badge">
+                <i aria-hidden="true" style={{ backgroundColor: getPartyColor(label) }} />{label}
+              </span>)}
+            </span>}
+          </span>
+          <span className="deputy-card-tenure"><Tenure count={entry.periods} /></span>
+          <span className="deputy-card-info">
+            <DeputyName name={entry.name} />
+            <span className="deputy-card-district"><MandateIcon type={entry.latest?.mandate_type} />{entry.latest?.district || 'Wahlkreis nicht erfasst'}</span>
+          </span>
+          <span className="deputy-sheen" aria-hidden="true" />
+        </button>;
+      })}
     </div>
     <nav aria-label="Abgeordnetenseiten" className="flex flex-wrap items-center justify-between gap-3 border-t pt-4"><p className="text-xs text-muted-foreground">Seite {offset / 25 + 1} · alphabetisch nach Namen</p><div className="flex gap-2"><Button variant="outline" disabled={directory.isFetching || offset === 0} onClick={() => setOffset(value => Math.max(0, value - 25))}>Zurück</Button><Button variant="outline" disabled={directory.isFetching || !directory.data || directory.data.length <= 25} onClick={() => setOffset(value => value + 25)}>Weitere 25</Button></div></nav>
     <Sheet open={profileOpen} onOpenChange={setProfileOpen}>
