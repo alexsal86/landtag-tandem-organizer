@@ -34,6 +34,9 @@ export function DeputyElectionResult({ mandateId, secondaryPanel }: { mandateId:
         {row.conflict && <p className="text-xs text-muted-foreground">Abweichung zum zugeordneten Parteiergebnis; angezeigt ist das persönlich gespeicherte Ergebnis.</p>}
       </li>)}</ul> : <p className="text-sm text-muted-foreground">Für diese Periode ist kein zugeordnetes Wahlkreisergebnis erfasst.</p>}
       {data && <p className="deputy-result-context">{data.ballot==='first' ? 'Erststimmen' : 'Einzelstimmen'}</p>}
+      {!!data?.direct_succession_notes?.length && <ul className="space-y-1 text-xs text-muted-foreground" aria-label="Nachfolge im Direktmandat">
+        {[...new Set(data.direct_succession_notes)].map(note => <li key={note}>{note}</li>)}
+      </ul>}
       {bars.length>0 && !own && <p className="text-xs text-muted-foreground">Eine persönliche Kandidatur ist für diese Person hier nicht eindeutig zugeordnet. Vorhandene Wahlkreisergebnisse bleiben sichtbar.</p>}
       {bars.some(row => row.preliminary===null) && <p className="text-xs text-muted-foreground">Der Ergebnisstatus ist teilweise nicht erfasst.</p>}
       {bars.some(row => row.preliminary) && <p className="text-xs text-muted-foreground">Enthält vorläufige Ergebnisse.</p>}

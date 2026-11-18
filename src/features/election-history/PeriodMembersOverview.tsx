@@ -17,7 +17,7 @@ export function PeriodMembersOverview({ data, onSelectDistrict }: { data: Electi
     <Input className="mt-3" aria-label="Abgeordnete dieser Legislatur filtern" placeholder="Name, Partei, Wahlkreis …" value={search} onChange={event => { setSearch(event.target.value); setLimit(25); }} />
     <div className="mt-2 space-y-2">{rows.slice(0, limit).map(m => {
       const district = data.districts.find(d => d.id === m.district_id);
-      return <div key={m.id} className="border-t pt-2 text-sm"><span className="font-medium">{name(m.person_id, m.person_name)}</span><span className="ml-2 text-xs text-muted-foreground">{m.party}</span>{district ? <button type="button" className="block text-left text-xs underline" onClick={() => onSelectDistrict(district.id)}>{historicalDistrictLabel(district)}</button> : <p className="text-xs text-muted-foreground">Landesliste ohne Wahlkreis</p>}</div>;
+      return <div key={m.id} className="border-t pt-2 text-sm"><span className="font-medium">{name(m.person_id, m.person_name)}</span><span className="ml-2 text-xs text-muted-foreground">{m.party}</span>{m.notes && <p className="whitespace-pre-wrap text-xs text-muted-foreground">{m.notes}</p>}{district ? <button type="button" className="block text-left text-xs underline" onClick={() => onSelectDistrict(district.id)}>{historicalDistrictLabel(district)}</button> : <p className="text-xs text-muted-foreground">Landesliste ohne Wahlkreis</p>}</div>;
     })}</div>
     {rows.length > limit && <Button className="mt-3" size="sm" variant="outline" onClick={() => setLimit(value => value + 25)}>Weitere 25 anzeigen</Button>}
     {!rows.length && <p className="mt-2 text-xs text-muted-foreground">Keine passenden Einträge.</p>}

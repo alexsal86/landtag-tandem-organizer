@@ -9,6 +9,7 @@ export interface DeputyElectionResultData {
   mandate_id: string; period_number: number; ballot: 'single' | 'first';
   entry_type: string; mandate_type: string; district_name: string | null;
   candidates: DeputyResultCandidate[]; results: DeputyResultNumber[];
+  direct_succession_notes?: string[];
   turnout: { valid_votes: number | null; data_release: string | null; preliminary: boolean } | null;
 }
 export interface DeputyResultBar {

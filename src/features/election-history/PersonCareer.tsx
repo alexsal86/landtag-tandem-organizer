@@ -44,6 +44,7 @@ export function PersonCareerPanel({ personId, candidaciesOnly = false }: { perso
         {!candidaciesOnly && <div className="mt-2 space-y-3">{career.mandates.filter(m => m.period_id === period.id).map(mandate => <div key={mandate.id} className="space-y-1 border-l-2 pl-3 text-sm">
           <p className="font-medium">Tatsächliches Mandat · {mandate.party_label || mandate.party}</p><p>{formatMandateDateRange(mandate)}{mandate.end_is_expected ? ' (voraussichtliches Ende)' : ''}</p>
           <p>{formatMandateType(mandate.mandate_type)} · {mandate.entry_type === 'succession' ? 'nachgerückt' : 'bei der Wahl gewählt'}{mandate.left_early ? ' · vorzeitig ausgeschieden' : ''}</p>
+          {mandate.notes && <p className="whitespace-pre-wrap text-xs text-muted-foreground">{mandate.notes}</p>}
           <p>{mandate.district_name ? `Wahlkreis ${mandate.district_label ? `${mandate.district_label}: ` : ''}${mandate.district_name}` : 'Ohne Wahlkreiszuordnung'}</p>
         </div>)}</div>}
       </li>)}</ol>
