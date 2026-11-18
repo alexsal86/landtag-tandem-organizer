@@ -4,7 +4,8 @@ import { HistoricalGeometryNotice } from "@/features/election-history/Historical
 import { ELECTORAL_TOPOLOGY_VERSION } from "@/utils/electoralTopologyAsset";
 import { useEffect, useRef } from "react";
 import { useQuery } from "@tanstack/react-query";
-import * as L from "leaflet";
+import type * as Leaflet from "leaflet";
+import L from "@/lib/leafletRuntime";
 import { Plus, Minus, MoveDiagonal } from "lucide-react";
 import "leaflet/dist/leaflet.css";
 import "@/styles/leaflet-overrides.css";
@@ -99,14 +100,14 @@ export function AnalysisMap({
     }
   }
   const element = useRef<HTMLDivElement | null>(null);
-  const map = useRef<L.Map | null>(null);
-  const bounds = useRef<L.LatLngBounds | null>(null);
+  const map = useRef<Leaflet.Map | null>(null);
+  const bounds = useRef<Leaflet.LatLngBounds | null>(null);
   const onSelect = useRef(onOpenDistrict);
   useEffect(() => {
     onSelect.current = onOpenDistrict;
   }, [onOpenDistrict]);
-  const paths = useRef(new Map<number, L.Path>());
-  const overlays = useRef(new Map<number, L.GeoJSON[]>());
+  const paths = useRef(new Map<number, Leaflet.Path>());
+  const overlays = useRef(new Map<number, Leaflet.GeoJSON[]>());
   const maximum =
     scaleMax ??
     Math.max(
@@ -137,7 +138,7 @@ export function AnalysisMap({
     changePane.style.zIndex = "450";
     changePane.style.pointerEvents = "none";
     const patternId = `analysis-unknown-${L.Util.stamp(instance)}`;
-    const applyUnknownPattern = (path: L.Path) => {
+    const applyUnknownPattern = (path: Leaflet.Path) => {
       const node = path.getElement();
       if (!node) return;
       if (
@@ -196,7 +197,7 @@ export function AnalysisMap({
         const p = feature.properties || {};
         const number = Number(p.Nummer ?? p.WKR_NR ?? p.WKRNR ?? p.NR);
         if (bundledYear === 1952) {
-          path.on('add', () => applyUnknownPattern(path as L.Path));
+          path.on('add', () => applyUnknownPattern(path as Leaflet.Path));
           const source = historical1952SourceByTechnical(number);
           if (source) {
             const tooltip = document.createElement('span');
@@ -213,13 +214,13 @@ export function AnalysisMap({
             : null;
         const tooltip = document.createElement("span");
         tooltip.textContent = `${number}: ${version.district_name} · ${preview ? "Zuordnung nach Wahlkreisnummer ungeprüft · " : ""}${changedShapes.has(number) ? "Grenzen verändert · gemeinsame Fläche ohne berechenbaren Swing · schraffiert: hinzugekommen oder weggefallen" : value === null ? "nicht vergleichbar / unbekannt" : `${value > 0 ? "+" : ""}${value.toLocaleString("de-DE", { maximumFractionDigits: 2 })} ${label}`}`;
-        paths.current.set(number, path as L.Path);
+        paths.current.set(number, path as Leaflet.Path);
         path.bindTooltip(tooltip, { sticky: true });
         path.on("click", () => onSelect.current(number));
         path.on("add", () => {
-          const node = (path as L.Path).getElement();
+          const node = (path as Leaflet.Path).getElement();
           if (!node) return;
-          if (value === null && !changedShapes.has(number)) applyUnknownPattern(path as L.Path);
+          if (value === null && !changedShapes.has(number)) applyUnknownPattern(path as Leaflet.Path);
           node.setAttribute("tabindex", "0");
           node.setAttribute("role", "button");
           node.setAttribute(
@@ -248,7 +249,7 @@ export function AnalysisMap({
           // @ts-expect-error Leaflet supports smoothFactor at runtime, but @types/leaflet omits it from PathOptions.
           style: { smoothFactor: 0, stroke: false, fillColor: `url(#${patternId})`, fillOpacity: 0.85, fillRule: "evenodd" },
         }).addTo(instance);
-        overlay.eachLayer(path => applyUnknownPattern(path as L.Path));
+        overlay.eachLayer(path => applyUnknownPattern(path as Leaflet.Path));
         const old = comparisonGeometry.data!.features.find(f => Number(f.properties.Nummer) === number)!;
         const outline = L.geoJSON(old as GeoJSON.Feature, {
           interactive: false,

@@ -1,6 +1,7 @@
 import { useEffect, useRef, useState } from 'react';
 import { useQuery } from '@tanstack/react-query';
-import * as L from 'leaflet';
+import type * as Leaflet from 'leaflet';
+import L from '@/lib/leafletRuntime';
 import 'leaflet/dist/leaflet.css';
 import '@/styles/leaflet-overrides.css';
 import { electoralGeometryYear, loadElectoralDistrict } from '@/utils/electoralTopology';
@@ -25,9 +26,9 @@ export default function DistrictBoundaryMap(props: DistrictBoundaryMapProps) {
 
   const [neighbors, setNeighbors] = useState(false);
   const container = useRef<HTMLDivElement>(null);
-  const mapRef = useRef<L.Map | null>(null);
-  const selectedBounds = useRef<L.LatLngBounds | null>(null);
-  const neighborLayer = useRef<L.GeoJSON | null>(null);
+  const mapRef = useRef<Leaflet.Map | null>(null);
+  const selectedBounds = useRef<Leaflet.LatLngBounds | null>(null);
+  const neighborLayer = useRef<Leaflet.GeoJSON | null>(null);
   const year = 'analysis' in props
     ? (props.analysis.confirmedGeometryYear !== undefined
       && props.analysis.confirmedGeometryYear === electoralGeometryYear(props.analysis.year)
