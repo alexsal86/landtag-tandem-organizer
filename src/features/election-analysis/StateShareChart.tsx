@@ -1,11 +1,44 @@
 import { useState } from 'react';
-import { CartesianGrid, Line, LineChart, ReferenceLine, ResponsiveContainer, Tooltip, XAxis, YAxis } from 'recharts';
+import { CartesianGrid, Line, LineChart, ReferenceLine, ResponsiveContainer, Tooltip, usePlotArea, XAxis, YAxis } from 'recharts';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 import { ballotLabels, effectiveBallot, parties, percent } from './model';
 import { chartColor, DataState } from './shared';
 import type { Ballot, StateResult } from './types';
 
 type SeriesRow = { year: number } & Record<string, number | null>;
+
+function EndLabels({ result, visibleParties, maximum }: {
+  result: SeriesRow | undefined;
+  visibleParties: string[];
+  maximum: number;
+}) {
+  const plot = usePlotArea();
+  if (!plot || !result) return null;
+
+  const labels = visibleParties.flatMap(party => {
+    const share = result[party];
+    return share == null ? [] : [{ party, share }];
+  }).sort((a, b) => b.share - a.share);
+  const x = plot.x + plot.width;
+  const spacing = 16;
+  let nextY = plot.y;
+
+  return <g pointerEvents="none">
+    {labels.map(({ party, share }, index) => {
+      const pointY = plot.y + plot.height * (1 - share / maximum);
+      const lastAvailableY = plot.y + plot.height - (labels.length - 1 - index) * spacing;
+      const labelY = Math.max(nextY, Math.min(pointY, lastAvailableY));
+      nextY = labelY + spacing;
+      const color = chartColor(party);
+      return <g key={party}>
+        <line x1={x} y1={pointY} x2={x + 9} y2={labelY} stroke={color} />
+        <text x={x + 13} y={labelY} dominantBaseline="central" fill={color} className="text-xs font-semibold">
+          {party} {percent(share)}
+        </text>
+      </g>;
+    })}
+  </g>;
+}
 
 export function StateShareChart({ year, ballot, rows, comparisonYears, series, loading, error, retry, hidden, onToggleParty }: {
   year: number;
@@ -30,13 +63,14 @@ export function StateShareChart({ year, ballot, rows, comparisonYears, series, l
     .sort((a, b) => (b.share ?? -1) - (a.share ?? -1));
   const maximum = Math.ceil((Math.max(10, ...(multiple ? series.flatMap(row => parties.map(p => row[p] ?? 0)) : rows.map(row => row.share ?? 0))) + 5) / 5) * 5;
   const yearDomain: [number, number] = [Math.min(...comparisonYears), Math.max(...comparisonYears)];
+  const latestResult = series.find(row => row.year === yearDomain[1]);
   const percentageDomain: [number, number] = [0, maximum];
   return <Card className="min-w-0 rounded-2xl">
     <CardHeader className="gap-3 pb-3">
       <div className="grid grid-cols-[minmax(0,1fr)_auto] items-start gap-x-2 gap-y-2">
         <CardTitle className="min-w-0 self-center text-base sm:text-lg">Parteianteile</CardTitle>
-        {multiple && <div className="inline-flex h-fit w-fit flex-none self-start justify-self-end rounded-lg bg-muted p-1" role="group" aria-label="Darstellung">
-          {[['bar', 'Balken'], ['line', 'Verlauf']].map(([value, label]) => <button key={value} type="button" aria-pressed={mode === value} onClick={() => setMode(value)} className={`whitespace-nowrap rounded-md px-2 py-1 text-sm font-medium sm:px-3 transition-colors focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring ${mode === value ? 'bg-background text-foreground shadow-sm' : 'text-muted-foreground'}`}>{label}</button>)}
+        {multiple && <div className="inline-flex justify-self-end" role="group" aria-label="Darstellung">
+          {[['bar', 'Balken'], ['line', 'Verlauf']].map(([value, label]) => <button key={value} type="button" aria-pressed={mode === value} onClick={() => setMode(value)} className={`whitespace-nowrap rounded-md px-2 py-1 text-sm font-medium sm:px-3 transition-colors focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring ${mode === value ? 'bg-muted text-foreground' : 'text-muted-foreground'}`}>{label}</button>)}
         </div>}
         <p className="col-span-2 h-8 line-clamp-2 text-xs text-muted-foreground">Landtagswahl Baden-Württemberg · {showLine && comparisonYears.some(value => effectiveBallot(value, ballot) !== ballot) ? `Einzelstimme / ${ballotLabels[ballot]}` : ballotLabels[effectiveBallot(selectedYear, ballot)]}</p>
       </div>
@@ -49,13 +83,14 @@ export function StateShareChart({ year, ballot, rows, comparisonYears, series, l
       <div className="h-80">
       <DataState loading={multiple && loading} error={multiple ? error : null} empty={multiple && !series.length} retry={retry}>
         {!visibleParties.length ? <p className="py-12 text-center text-sm text-muted-foreground">Bitte mindestens eine Partei einblenden.</p> : showLine ? <div className="h-80" role="img" aria-label="Parteianteile über alle Wahlen im gewählten Zeitraum; genaue Werte per Tooltip">
-          <ResponsiveContainer><LineChart data={series} margin={{ top: 20, right: 20, left: 0, bottom: 10 }}>
+          <ResponsiveContainer><LineChart data={series} margin={{ top: 20, right: 110, left: 0, bottom: 10 }}>
             <CartesianGrid strokeDasharray="3 3" vertical={false} />
             <XAxis dataKey="year" type="number" domain={yearDomain} ticks={comparisonYears} allowDecimals={false} />
             <YAxis unit=" %" domain={percentageDomain} />
-            <Tooltip labelFormatter={value => `Landtagswahl ${value}`} formatter={value => percent(typeof value === 'number' ? value : null)} />
+            <Tooltip labelFormatter={value => `Landtagswahl ${value}`} formatter={value => percent(typeof value === 'number' ? value : null)} itemSorter={item => typeof item.value === 'number' ? -item.value : Infinity} />
             <ReferenceLine y={5} stroke="#b91c1c" strokeDasharray="4 4" />
             {visibleParties.map(p => <Line key={p} dataKey={p} name={p} stroke={chartColor(p)} strokeWidth={2.5} connectNulls={false} />)}
+            <EndLabels result={latestResult} visibleParties={visibleParties} maximum={maximum} />
           </LineChart></ResponsiveContainer>
         </div> : <div className="flex h-80 flex-col justify-center gap-4 py-3" aria-label="Parteianteile in Prozent">
           {bars.map(row => <div key={row.party} className="grid grid-cols-[3.5rem_minmax(0,1fr)_4.5rem] items-center gap-3 text-sm">
