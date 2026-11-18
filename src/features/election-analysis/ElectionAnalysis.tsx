@@ -150,7 +150,7 @@ function DistrictPanel({ year, ballot, party, gender }: PanelProps) {
                   <XAxis type="number" unit=" %" />
                   <YAxis type="category" dataKey="district_name" width={130} tick={{ fontSize: 11 }} />
                   <Tooltip formatter={value => percent(typeof value === 'number' ? value : null)} />
-                  <Bar dataKey="share" fill={chartColor(party)} name="Anteil" maxBarSize={20}>
+                  <Bar dataKey="share" fill={chartColor(party)} name="Anteil">
                     <LabelList
                       dataKey="share"
                       position="right"
