@@ -191,12 +191,19 @@ function DemographicPanel({ year, ballot, party, gender }: PanelProps) {
   const ages = Array.from(new Set(rows.map(r => r.age_group))).sort((a, b) => a === 'Insgesamt' ? -1 : b === 'Insgesamt' ? 1 : a.localeCompare(b, 'de', { numeric: true }));
   const [age, setAge] = useState('Insgesamt');
   const selectedAge = ages.includes(age) ? age : ages[0] || '';
+  const showOverall = selectedAge === 'Insgesamt' && gender === 'Insgesamt';
+  const state = useAnalysisRows('state', year, ballot, party, gender, showOverall);
+  const ageGroups = ages.filter(age => age !== 'Insgesamt');
   const [hiddenParties, setHiddenParties] = useState<string[]>([]);
   const availableParties = parties.filter(party => rows.some(row => row.party === party));
   const visibleParties = availableParties.filter(party => !hiddenParties.includes(party));
   const selected = rows.filter(row => row.age_group === selectedAge && !hiddenParties.includes(row.party))
     .sort((a, b) => (b.share ?? -1) - (a.share ?? -1));
-  const chart = ages.filter(age => age !== 'Insgesamt').map(age => ({
+  const overallRows = visibleParties.map(party => ({
+    party,
+    share: state.data?.find(row => row.party === party)?.share,
+  })).sort((a, b) => compareAnalysisValues(a.share ?? null, b.share ?? null, 'desc'));
+  const chart = ageGroups.map(age => ({
     ...Object.fromEntries(visibleParties.map(party => [party, rows.find(row => row.age_group === age && row.party === party)?.share ?? null])),
     age,
   }));
@@ -223,7 +230,18 @@ function DemographicPanel({ year, ballot, party, gender }: PanelProps) {
         </CardContent>
       </Card>
       <AnalysisControls placement="filters"><Selection id="analysis-age" label="Altersgruppe für die Tabelle" value={selectedAge} onChange={setAge}>{ages.map(a => <option key={a}>{a}</option>)}</Selection></AnalysisControls>
-      <DataTable key={selectedAge} headers={['Partei', 'Altersgruppe', 'Geschlecht', 'Anteil', 'Hinweis']} rows={selected.map(r => [<PartyLabel party={r.party} />, <span className="font-semibold underline decoration-2 underline-offset-4">{r.age_group}</span>, r.gender, percent(r.share), r.notes || '—'])} />
+      {showOverall ? <>
+        {state.isLoading && <p role="status" className="text-sm">Wahlergebnis wird geladen …</p>}
+        {state.error && <div className="flex items-center gap-2 text-sm">
+          <p role="alert">Das Wahlergebnis konnte nicht geladen werden.</p>
+          <Button variant="outline" size="sm" onClick={() => void state.refetch()}>Erneut versuchen</Button>
+        </div>}
+        <DataTable key="demographics-overall" headers={['Partei', 'Anteil (Wahlergebnis)', ...ageGroups]} rows={overallRows.map(row => [
+          <PartyLabel party={row.party} />,
+          percent(row.share),
+          ...ageGroups.map(age => percent(rows.find(result => result.age_group === age && result.party === row.party)?.share)),
+        ])} />
+      </> : <DataTable key={selectedAge} headers={['Partei', 'Altersgruppe', 'Geschlecht', 'Anteil', 'Hinweis']} rows={selected.map(r => [<PartyLabel party={r.party} />, <span className="font-semibold underline decoration-2 underline-offset-4">{r.age_group}</span>, r.gender, percent(r.share), r.notes || '—'])} />}
     </DataState>
     <StatusNote>Repräsentative Wahlstatistik: Parteianteile innerhalb der jeweiligen Alters- und Geschlechtsgruppe. Keine individuellen Personenprofile und keine absoluten Wählerzahlen. {year >= 2026 ? '2026: Zweitstimmen; jüngste Gruppe 16–24 Jahre.' : 'Bis 2021: Einzelstimme; jüngste Gruppe 18–24 Jahre.'} Die Altersgruppen verschiedener Jahre sind daher nicht durchgehend vergleichbar. „Insgesamt“ wird nicht aus den Gruppen gemittelt.</StatusNote>
   </div>;
