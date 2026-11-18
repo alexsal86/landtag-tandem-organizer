@@ -40,7 +40,15 @@ function DeputyName({ name }: { name: string }) {
 }
 function Tenure({ count }: { count: number }) {
   return <span className="deputy-tenure" role="img" aria-label={`${count} Legislaturperioden`} title={`${count} Legislaturperioden in der freigegebenen Mandatshistorie`}>
-    {Array.from({ length: count }, (_, index) => <i key={index} aria-hidden="true" />)}
+    {Array.from({ length: Math.ceil(count / 5) }, (_, group) => {
+      const tally = Math.min(5, count - group * 5);
+      const strokes = Math.min(4, tally);
+      const width = tally === 5 ? 20 : strokes * 4 + 2;
+      return <svg key={group} className="deputy-tally-group" width={width} height={20} viewBox={`0 0 ${width} 20`} aria-hidden="true" focusable="false" fill="none" stroke="currentColor" strokeWidth={1.75} strokeLinecap="round">
+        {Array.from({ length: strokes }, (_, index) => <line key={index} x1={3 + index * 4} y1={3} x2={3 + index * 4} y2={17} />)}
+        {tally === 5 && <line x1={1} y1={18} x2={18} y2={2} />}
+      </svg>;
+    })}
   </span>;
 }
 function Portrait({ person }: { person: Deputy }) {
@@ -166,7 +174,7 @@ export default function DeputyDirectory() {
       </div></div>
     </div>
     {periods.error && <p role="alert">Legislaturperioden: {historyError(periods.error)} <Button variant="outline" onClick={() => void periods.refetch()}>Erneut laden</Button></p>}
-    <div className="flex flex-wrap gap-x-6 gap-y-2 text-xs text-muted-foreground"><span className="flex items-center gap-2"><Tenure count={1} /> Ein Strich = eine Legislaturperiode</span><span className="flex items-center gap-2"><DirectMandateIcon /> Direktmandat</span><span className="flex items-center gap-2"><List size={14} /> Listenmandat</span></div>
+    <div className="flex flex-wrap gap-x-6 gap-y-2 text-xs text-muted-foreground"><span className="flex items-center gap-2"><Tenure count={1} /> Ein Strich = eine Legislaturperiode · gebündelt zu fünf</span><span className="flex items-center gap-2"><DirectMandateIcon /> Direktmandat</span><span className="flex items-center gap-2"><List size={14} /> Listenmandat</span></div>
     {directory.isLoading && <p role="status">Lade Abgeordnete …</p>}
     {directory.error && <div role="alert">{historyError(directory.error)} <Button variant="outline" onClick={() => void directory.refetch()}>Erneut laden</Button></div>}
     {directory.data?.length === 0 && <div className="rounded-xl border border-dashed p-10 text-center"><p>Keine passenden Abgeordneten gefunden.</p><Button className="mt-3" variant="outline" onClick={reset}>Filter zurücksetzen</Button></div>}

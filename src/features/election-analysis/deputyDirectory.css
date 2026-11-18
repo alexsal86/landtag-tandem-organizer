@@ -119,7 +119,7 @@
   position: absolute;
   top: 17px;
   left: 16px;
-  right: 82px;
+  right: 110px;
   display: flex;
   flex-direction: column;
   align-items: flex-start;
@@ -165,7 +165,7 @@
   position: absolute;
   right: 15px;
   top: 17px;
-  max-width: 65px;
+  max-width: 90px;
 }
 .deputy-tenure {
   display: inline-flex;
@@ -174,12 +174,9 @@
   align-items: center;
   vertical-align: middle;
 }
-.deputy-tenure i {
+.deputy-tally-group {
   display: block;
-  width: 2px;
-  height: 16px;
-  border-radius: 1px;
-  background: currentColor;
+  flex-shrink: 0;
 }
 .deputy-card-info {
   position: absolute;
@@ -224,7 +221,7 @@
 .deputy-list { display: grid; }
 .deputy-row {
   display: grid;
-  grid-template-columns: 44px minmax(0, 1.5fr) minmax(0, 1fr) minmax(0, 1fr) 65px;
+  grid-template-columns: 44px minmax(0, 1.5fr) minmax(0, 1fr) minmax(0, 1fr) 90px;
   align-items: center;
   gap: 16px;
   position: relative;
@@ -499,7 +496,7 @@
   .deputy-profile-content { padding: 24px 20px max(24px, env(safe-area-inset-bottom, 0px)); }
   .deputy-profile-faction-heading strong { font-size: 12px; }
   .deputy-profile-photo-details-content { max-height: 18dvh; }
-  .deputy-row { grid-template-columns: 40px minmax(0, 1fr) 60px; gap: 10px; }
+  .deputy-row { grid-template-columns: 40px minmax(0, 1fr) 90px; gap: 10px; }
   .deputy-row .deputy-party,
   .deputy-row .deputy-card-district { display: none; }
   .deputy-row .deputy-party:has(.deputy-additional-factions) {
