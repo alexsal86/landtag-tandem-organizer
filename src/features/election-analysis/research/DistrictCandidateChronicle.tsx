@@ -62,6 +62,7 @@ export function useDistrictCandidacies(district: number) {
 export function DistrictCandidateChronicle({
   district, selectedYear, linkedDistrictId,
 }: { district: number; selectedYear: number; linkedDistrictId?: string | null }) {
+  const { user } = useAuth();
   const query = useDistrictCandidacies(district);
   const selectedPeriodId = linkedDistrictId ? query.data?.find(
     (row) => row.district?.id === linkedDistrictId && row.district.period?.election_year === selectedYear,
