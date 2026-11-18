@@ -2,7 +2,7 @@ import { useQuery } from '@tanstack/react-query';
 import { supabase } from '@/integrations/supabase/client';
 import { useAuth } from '@/hooks/useAuth';
 import { Button } from '@/components/ui/button';
-import { candidateResultConflict, type LinkedCandidateResult } from './candidateResults';
+import { candidateMandateLabel, candidateOutcomeLabel, candidateResultConflict, type LinkedCandidateResult } from './candidateResults';
 
 const number = (value: number | null) => value === null ? 'nicht vorhanden' : value.toLocaleString('de-DE', { maximumFractionDigits: 5 });
 
@@ -25,6 +25,12 @@ export function CandidateDistrictResults({ periodId, districtId }: { periodId: s
     {query.data?.length === 0 && <p className="text-xs text-muted-foreground">Keine Kandidaturen erfasst. Mandate allein belegen keine Kandidatur.</p>}
     {query.data?.slice(0, 200).map(row => <div key={row.candidacy_id} className="space-y-1 text-xs">
       <p className="font-medium">{row.person_name || 'Person ohne Namen'} · {row.party}</p>
+      <p>{[candidateOutcomeLabel(row), candidateMandateLabel(row)].filter(Boolean).join(' · ')}</p>
+      {(row.source_url || row.result_notes) && <details>
+        <summary className="cursor-pointer text-muted-foreground">Quelle der Kandidatur</summary>
+        {row.source_url && /^https?:\/\//i.test(row.source_url) && <a href={row.source_url} target="_blank" rel="noreferrer" className="underline">Quellenbeleg öffnen</a>}
+        {row.result_notes && <p className="break-words">{row.result_notes}</p>}
+      </details>}
       <p>Persönlich erfasst: {number(row.votes)} Stimmen · {number(row.vote_share)} %</p>
       {row.link_status === 'linked' && row.district_result && <>
         <p>Zugeordnetes {row.district_result.ballot === 'first' ? 'Erststimmen' : 'Einzelstimmen'}ergebnis: {number(row.district_result.votes)} Stimmen · {number(row.district_result.share)} % · {row.district_result.preliminary ? 'vorläufig' : 'als endgültig geführt'}</p>

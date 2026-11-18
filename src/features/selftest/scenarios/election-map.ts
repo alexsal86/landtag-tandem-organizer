@@ -1,7 +1,7 @@
 import { compareParliamentParties } from '@/features/election-analysis/seatDistributionModel';
 import { deputyTenureCoverage } from '@/features/election-analysis/deputyTenure';
 import { deputyElectionResultBars, type DeputyElectionResultData } from '@/features/election-analysis/deputyElectionResult';
-import { candidacyResultOrigin, candidateResultConflict, type LinkedCandidateResult } from '@/features/election-history/candidateResults';
+import { candidacyResultOrigin, candidateMandateLabel, candidateOutcomeLabel, candidateResultConflict, type LinkedCandidateResult } from '@/features/election-history/candidateResults';
 import { portraitCrop, portraitSource, isDeputyPortrait } from '@/features/election-history/portrait';
 import { canConfirmDeputySelection, connectedDeputyMandates, deputyHistoryAction } from '@/features/election-history/deputySelection';
 import { projectHistoricalDistricts } from '@/features/election-history/mapProjection';
@@ -66,9 +66,14 @@ export const electionMapScenario: TestScenario = {
       return { ok: true, message: 'Feldherkunft und fünf Nachkommastellen bleiben erhalten; manuelle Zahlen werden nicht zu automatischen Werten.' };
     } },
     { id: 'candidate-result-conflicts', label: 'Persönliche Ergebnisse und zugeordnete Wahlkreisergebnisse bleiben getrennt', kind: 'logic', run: async () => {
-      const row: LinkedCandidateResult = { candidacy_id: 'c', person_id: 'p', person_name: 'Person', party: 'SPD', votes: 100, vote_share: 20, ballot_type: 'candidate', link_status: 'linked', district_result: { ballot: 'single', votes: 100, share: 20, preliminary: true, data_release: null, notes: null } };
+      const row: LinkedCandidateResult = { candidacy_id: 'c', person_id: 'p', person_name: 'Person', party: 'SPD', votes: 100, vote_share: 20, ballot_type: 'candidate', outcome: 'not_elected', mandate_entry_type: null, next_mandate_period: null, result_notes: null, source_url: null, link_status: 'linked', district_result: { ballot: 'single', votes: 100, share: 20, preliminary: true, data_release: null, notes: null } };
       if (candidateResultConflict(row) || candidateResultConflict({ ...row, votes: null, vote_share: null })) throw new Error('Gleiche oder fehlende persönliche Werte sind keine Konflikte.');
       if (!candidateResultConflict({ ...row, votes: 101 }) || !candidateResultConflict({ ...row, vote_share: 20.1 })) throw new Error('Abweichende Stimmen und Anteile müssen sichtbar bleiben.');
+      if (candidateOutcomeLabel(row) !== 'Bei dieser Wahlbewerbung ohne Mandat'
+        || candidateMandateLabel({ ...row, mandate_entry_type: 'succession' }) !== 'In dieser Wahlperiode nachgerückt'
+        || candidateMandateLabel({ ...row, next_mandate_period: 5 }) !== 'Mandat ab der 5. Wahlperiode erfasst') {
+        throw new Error('Die Wahlbewerbung, Nachrücken und spätere Mandate müssen getrennt erkennbar bleiben.');
+      }
       if (candidateResultConflict({ ...row, link_status: 'ambiguous', votes: 101 }) || candidateResultConflict({ ...row, district_result: null })) throw new Error('Ohne eindeutige Verknüpfung darf kein Vergleich behauptet werden.');
       return { ok: true, message: 'Konflikte sind sichtbar; fehlende Werte bleiben unbekannt.' };
     } },
