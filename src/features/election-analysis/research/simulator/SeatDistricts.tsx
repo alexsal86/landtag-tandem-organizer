@@ -141,6 +141,7 @@ export function SeatDistricts({
         </div>
       )}
       <DataTable
+        whiteBackground
         headers={[
           "Wahlkreis",
           "Direkt gewählt 2026",
@@ -172,6 +173,7 @@ export function SeatDistricts({
             type="button"
             size="sm"
             variant="outline"
+            className="border-stone-300 bg-white text-slate-950 hover:bg-stone-100 hover:text-slate-950"
             disabled={transfer === null || !!assumptions[district.number]}
             aria-pressed={activeDistrict === district.number}
             onClick={() => setActiveDistrict(district.number)}

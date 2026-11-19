@@ -31,7 +31,7 @@ export function DistrictModelPanel({
   const rows =
     scenario?.districts
       .map((district) => {
-        const { winner, tied } = districtLeader(
+        const { winner } = districtLeader(
           district,
           scenario.districtLots?.[district.number],
         );
@@ -50,7 +50,6 @@ export function DistrictModelPanel({
         return {
           district,
           winner,
-          tied,
           previous,
           margin,
           flipped: !!winner && !!previous && winner.id !== previous.id,
@@ -156,33 +155,28 @@ export function DistrictModelPanel({
                 </li>
               ))}
           </ul>
-          <details open={changes.length > 0 || unresolved > 0 || !seats}>
-            <summary className="cursor-pointer text-sm font-medium">
-              Wahlkreise im Vergleich
-            </summary>
-            <DataTable
-              headers={[
-                "Wahlkreis",
-                "Ausgangsergebnis · direkt gewählt 2026",
-                "Szenario",
-              ]}
-              rows={rows
-                .slice()
-                .sort(
-                  (a, b) =>
-                    Number(b.flipped || !b.winner) -
-                      Number(a.flipped || !a.winner) ||
-                    a.district.number - b.district.number,
-                )
-                .map(({ district, winner, tied }) => [
-                  districtLabel(district),
-                  officialDistrictWinnerLabel(district.number),
-                  winner
-                    ? districtCandidateLabel(winner)
-                    : `Losentscheid offen: ${tied.map((candidate) => candidate.name).join(", ")}`,
+          {changes.length > 0 && (
+            <details open>
+              <summary className="cursor-pointer text-sm font-medium">
+                Wahlkreise im Vergleich
+              </summary>
+              <DataTable
+                pageSize={70}
+                headers={[
+                  "Wahlkreis",
+                  "Ausgangsergebnis · direkt gewählt 2026",
+                  "Szenario",
+                ]}
+                rows={changes.map((row) => [
+                  districtLabel(row.district),
+                  officialDistrictWinnerLabel(row.district.number),
+                  row.winner
+                    ? districtCandidateLabel(row.winner)
+                    : winnerLabel(row),
                 ])}
-            />
-          </details>
+              />
+            </details>
+          )}
         </>
       )}
     </section>
