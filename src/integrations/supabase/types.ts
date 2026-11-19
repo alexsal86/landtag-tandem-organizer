@@ -4711,6 +4711,54 @@ export type Database = {
         }
         Relationships: []
       }
+      election_analysis_bw_polls: {
+        Row: {
+          commissioner: string
+          field_end: string
+          field_start: string
+          id: string
+          institute: string
+          is_published: boolean
+          method: string
+          others: number
+          published_on: string
+          question_type: string
+          respondents: number
+          shares: Json
+          source_url: string
+        }
+        Insert: {
+          commissioner?: string
+          field_end: string
+          field_start: string
+          id?: string
+          institute: string
+          is_published?: boolean
+          method: string
+          others: number
+          published_on: string
+          question_type: string
+          respondents: number
+          shares: Json
+          source_url: string
+        }
+        Update: {
+          commissioner?: string
+          field_end?: string
+          field_start?: string
+          id?: string
+          institute?: string
+          is_published?: boolean
+          method?: string
+          others?: number
+          published_on?: string
+          question_type?: string
+          respondents?: number
+          shares?: Json
+          source_url?: string
+        }
+        Relationships: []
+      }
       election_analysis_candidate_coverage: {
         Row: {
           expected_district_candidacies: number | null
@@ -5306,54 +5354,6 @@ export type Database = {
           source_url?: string
           status?: string
           summary?: Json
-        }
-        Relationships: []
-      }
-      election_analysis_bw_polls: {
-        Row: {
-          id: string
-          institute: string
-          commissioner: string
-          published_on: string
-          field_start: string
-          field_end: string
-          respondents: number
-          method: string
-          question_type: string
-          source_url: string
-          shares: Json
-          others: number
-          is_published: boolean
-        }
-        Insert: {
-          id?: string
-          institute: string
-          commissioner?: string
-          published_on: string
-          field_start: string
-          field_end: string
-          respondents: number
-          method: string
-          question_type: string
-          source_url: string
-          shares: Json
-          others: number
-          is_published?: boolean
-        }
-        Update: {
-          id?: string
-          institute?: string
-          commissioner?: string
-          published_on?: string
-          field_start?: string
-          field_end?: string
-          respondents?: number
-          method?: string
-          question_type?: string
-          source_url?: string
-          shares?: Json
-          others?: number
-          is_published?: boolean
         }
         Relationships: []
       }
@@ -19040,6 +19040,10 @@ export type Database = {
       }
       user_has_tenant_access: {
         Args: { _tenant_id: string; _user_id: string }
+        Returns: boolean
+      }
+      valid_bw_poll_shares: {
+        Args: { other: number; shares: Json }
         Returns: boolean
       }
     }
