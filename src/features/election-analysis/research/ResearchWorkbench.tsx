@@ -10,9 +10,9 @@ import {
   Bar,
   BarChart,
   CartesianGrid,
-  Cell,
   Line,
   LineChart,
+  Rectangle,
   ReferenceLine,
   ResponsiveContainer,
   Tooltip,
@@ -56,6 +56,7 @@ import {
 import type { ComparisonValue, Metric } from "./types";
 import TurnoutComparison from "./TurnoutComparison";
 import { AnalysisMap } from "./AnalysisMap";
+import { signedColor } from "./mapModel";
 import { SwingAtlas } from "./SwingAtlas";
 
 import { analysisDestination } from "../navigation";
@@ -965,34 +966,59 @@ function SplitDistrictChart({ rows, metric }: { rows: ComparisonValue[]; metric:
         ? []
         : [{ district: row.districtNumber, name: row.districtName, difference }];
     })
-    .sort((a, b) => b.difference - a.difference || a.district - b.district)
-    .slice(0, 10);
+    .sort((a, b) => b.difference - a.difference || a.district - b.district);
   const maximum = Math.max(1, ...data.map(({ difference }) => Math.abs(difference)));
 
   return (
     <Card className="min-w-0">
       <CardHeader className="pb-3">
         <CardTitle className="text-base">Differenz je Wahlkreis</CardTitle>
-        <p className="text-sm text-muted-foreground">Höchste Erst- minus Zweitstimmendifferenzen · {unit}</p>
+        <p className="text-sm text-muted-foreground">Erst- minus Zweitstimmendifferenz · {unit}</p>
       </CardHeader>
       <CardContent>
         {data.length === 0 ? (
           <p className="text-sm text-muted-foreground">Keine vergleichbaren Wahlkreisdifferenzen verfügbar.</p>
         ) : (
-          <div className="h-[360px] md:h-[420px]">
-            <ResponsiveContainer>
-              <BarChart data={data} layout="vertical" margin={{ right: 20 }}>
-                <XAxis type="number" domain={[-maximum, maximum]} tickFormatter={(value: number) => signed(value)} tick={{ fontSize: 11 }} />
-                <YAxis type="category" dataKey="name" width={142} interval={0} tick={{ fontSize: 11 }} />
-                <Tooltip formatter={(value: number) => [`${signed(value)} ${unit}`, "Differenz"]} />
-                <Bar dataKey="difference" isAnimationActive={false}>
-                  {data.map(({ district, difference }) => (
-                    <Cell key={district} fill={difference < 0 ? "#b91c1c" : "#2563a6"} />
-                  ))}
-                </Bar>
-                <ReferenceLine x={0} stroke="#334155" strokeWidth={1.5} />
-              </BarChart>
-            </ResponsiveContainer>
+          <div
+            className="max-h-[360px] overflow-auto rounded bg-white md:max-h-[420px]"
+            role="region"
+            aria-label="Balkendiagramm der Wahlkreisdifferenzen"
+            tabIndex={0}
+          >
+            <div className="min-w-[380px]" style={{ height: data.length * 30 + 35 }}>
+              <ResponsiveContainer>
+                <BarChart data={data} layout="vertical">
+                  <XAxis type="number" domain={[-maximum, maximum]} padding={{ left: 64, right: 64 }} tickFormatter={(value: number) => signed(value)} tick={{ fontSize: 11 }} />
+                  <YAxis type="category" dataKey="name" width={142} interval={0} tick={{ fontSize: 11 }} />
+                  <Tooltip formatter={(value: number) => [`${signed(value)} ${unit}`, "Differenz"]} />
+                  <Bar
+                    dataKey="difference"
+                    isAnimationActive={false}
+                    shape={({ x, y, width, height, value }) => {
+                      if (typeof value !== "number") return null;
+                      const negative = value < 0;
+                      return (
+                        <g>
+                          <Rectangle x={x} y={y} width={width} height={height} fill={signedColor(value, maximum)} />
+                          <text
+                            x={x + width + (negative ? -6 : 6)}
+                            y={y + height / 2}
+                            dominantBaseline="central"
+                            textAnchor={negative ? "end" : "start"}
+                            fill="#000"
+                            fontSize={12}
+                            fontWeight={700}
+                          >
+                            {signed(value)}
+                          </text>
+                        </g>
+                      );
+                    }}
+                  />
+                  <ReferenceLine x={0} stroke="#334155" strokeWidth={1.5} />
+                </BarChart>
+              </ResponsiveContainer>
+            </div>
           </div>
         )}
       </CardContent>
