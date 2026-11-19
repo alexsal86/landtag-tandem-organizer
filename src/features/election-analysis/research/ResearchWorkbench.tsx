@@ -516,7 +516,7 @@ function AtlasPanel({
   const [params] = useSearchParams();
   const requested = Number(params.get("analysisBefore"));
   const beforeYear = split
-    ? 2026
+    ? year
     : years.includes(requested) && requested !== year
       ? requested
       : years.find((y) => y < year) ||
@@ -525,7 +525,7 @@ function AtlasPanel({
           .sort((a, b) => a - b)
           .find((y) => y !== year) ||
         year;
-  const afterYear = split ? 2026 : year;
+  const afterYear = year;
   const beforeBallot = split
     ? "first"
     : ballotForComparison(beforeYear, ballot);
@@ -553,7 +553,7 @@ function AtlasPanel({
     afterBallot,
     selectedParties,
   );
-  const candidates = useVerifiedCandidates(2026, split ? selectedParties : []);
+  const candidates = useVerifiedCandidates(year, split ? selectedParties : []);
   const data = query.data;
   const rows = useMemo(() => {
     if (!data) return [];
@@ -683,7 +683,7 @@ function AtlasPanel({
           Veränderungsatlas {beforeYear} → {afterYear}
         </h2>
       )}
-      <AnalysisControls>
+      <AnalysisControls placement={split ? "filters" : "panel"}>
         {!split && (
           <Selection
             id="atlas-before"
@@ -710,7 +710,9 @@ function AtlasPanel({
             <option value="relative">Abweichung vom Landestrend (%)</option>
           )}
         </Selection>
-        {split && (
+      </AnalysisControls>
+      {split && (
+        <AnalysisControls>
           <fieldset className="flex min-w-0 flex-wrap gap-2">
             <legend className="mb-1 text-sm font-medium">Partei</legend>
             {parties.map((p) => (
@@ -732,8 +734,8 @@ function AtlasPanel({
               </Button>
             ))}
           </fieldset>
-        )}
-      </AnalysisControls>
+        </AnalysisControls>
+      )}
       {!split && (
         <fieldset className="flex flex-wrap gap-2">
           <legend className="mb-2 text-sm font-medium">Parteien</legend>
@@ -750,15 +752,7 @@ function AtlasPanel({
           ))}
         </fieldset>
       )}
-      {split ? (
-        <StatusNote>
-          Erststimmenanteil minus Zweitstimmenanteil: beide Anteile haben ihren
-          eigenen Nenner gültiger Stimmen. Die Kennzahl beschreibt eine
-          Differenz; sie zählt keine individuellen Stimmensplittings und weist
-          keinen kausalen Kandidateneffekt nach. Namen erscheinen nur aus
-          verifizierten amtlichen Kandidaturdaten.
-        </StatusNote>
-      ) : (
+      {!split && (
         <>
           <StatusNote>
             Swing = neuer minus alter Anteil. Relativer Swing = Wahlkreis-Swing
@@ -870,85 +864,91 @@ function AtlasPanel({
                 <AnalysisMap
                   versions={versions}
                   values={mapValues}
+                  hideOfficialGeometryLink
                   label={unit}
                   onOpenDistrict={open}
                 />
               </div>
               <SplitDistrictChart rows={rows} metric={metric} />
             </div>
-            <div className="grid gap-4 lg:grid-cols-2">
-              <section aria-labelledby="split-districts" className="min-w-0">
-                <h3 id="split-districts" className="mb-2 font-semibold">Wahlkreisergebnisse</h3>
-                <p className="mb-3 text-sm text-muted-foreground">
-                  Die Landesdifferenz ist der Erst- minus Zweitstimmenabstand im Wahlkreis abzüglich desselben Abstands im Land.
-                </p>
-                {candidates.isLoading && <p role="status" className="mb-2 text-sm">Direktkandidaturen werden geladen …</p>}
-                {candidates.error && <p role="status" className="mb-2 text-sm">Direktkandidaturen konnten nicht geladen werden.</p>}
-                <TooltipProvider>
-                  <DataTable
-                    whiteBackground
-                    headers={[
-                      "Nr.",
-                      "Wahlkreis",
-                      "Partei",
-                      "Erstanteil",
-                      "Zweitanteil",
-                      "Erststimmen",
-                      "Zweitstimmen",
-                      `Erst − Zweit (${unit})`,
-                      "Landesdifferenz (Prozentpunkte)",
-                      "Direktkandidatur",
-                      "Hinweise",
-                    ]}
-                    sortableColumns={[0, 1, 2, 3, 4, 5, 6, 7, 8]}
-                    sortValues={rows.map((r) => [
-                      r.districtNumber,
-                      r.districtName,
-                      r.party,
-                      r.before?.share ?? null,
-                      r.after?.share ?? null,
-                      r.before?.votes ?? null,
-                      r.after?.votes ?? null,
-                      valueFor(r, metric),
-                      r.relativeSwing,
-                    ])}
-                    rows={rows.map((r) => [
-                      r.districtNumber,
-                      <button
-                        className="text-left underline"
-                        onClick={() => open(r.districtNumber)}
-                      >
-                        {r.districtName}
-                      </button>,
-                      r.party,
-                      percent(r.before?.share),
-                      percent(r.after?.share),
-                      number(r.before?.votes),
-                      number(r.after?.votes),
-                      differenceCell(valueFor(r, metric)),
-                      differenceCell(r.relativeSwing),
-                      <span className="whitespace-nowrap">
-                        {candidates.data?.find(
-                          (c) => c.district_number === r.districtNumber && c.party === r.party,
-                        )?.candidate_name || "—"}
-                      </span>,
-                      <InfoTooltip>
-                        <TooltipTrigger asChild>
-                          <button type="button" aria-label={`Hinweise zu ${r.districtName}`} className="rounded-sm focus-visible:outline focus-visible:outline-ring">
-                            <Info aria-hidden="true" className="size-4" />
-                          </button>
-                        </TooltipTrigger>
-                        <Portal>
-                          <TooltipContent className="max-w-xs">
-                            {r.warnings.join(" ") || "Gleicher geprüfter Zuschnitt."}
-                          </TooltipContent>
-                        </Portal>
-                      </InfoTooltip>,
-                    ])}
-                  />
-                </TooltipProvider>
-              </section>
-            </div>
+            <StatusNote>
+              Erststimmenanteil minus Zweitstimmenanteil: beide Anteile haben ihren
+              eigenen Nenner gültiger Stimmen. Die Kennzahl beschreibt eine
+              Differenz; sie zählt keine individuellen Stimmensplittings und weist
+              keinen kausalen Kandidateneffekt nach. Namen erscheinen nur aus
+              verifizierten amtlichen Kandidaturdaten.
+            </StatusNote>
+            <section aria-labelledby="split-districts" className="min-w-0">
+              <h3 id="split-districts" className="mb-2 font-semibold">Wahlkreisergebnisse</h3>
+              <p className="mb-3 text-sm text-muted-foreground">
+                Die Landesdifferenz ist der Erst- minus Zweitstimmenabstand im Wahlkreis abzüglich desselben Abstands im Land.
+              </p>
+              {candidates.isLoading && <p role="status" className="mb-2 text-sm">Direktkandidaturen werden geladen …</p>}
+              {candidates.error && <p role="status" className="mb-2 text-sm">Direktkandidaturen konnten nicht geladen werden.</p>}
+              <TooltipProvider>
+                <DataTable
+                  whiteBackground
+                  headers={[
+                    "Nr.",
+                    "Wahlkreis",
+                    "Partei",
+                    "Erstanteil",
+                    "Zweitanteil",
+                    "Erststimmen",
+                    "Zweitstimmen",
+                    `Erst − Zweit (${unit})`,
+                    "Landesdifferenz (Prozentpunkte)",
+                    "Direktkandidatur",
+                    "Hinweise",
+                  ]}
+                  sortableColumns={[0, 1, 2, 3, 4, 5, 6, 7, 8]}
+                  sortValues={rows.map((r) => [
+                    r.districtNumber,
+                    r.districtName,
+                    r.party,
+                    r.before?.share ?? null,
+                    r.after?.share ?? null,
+                    r.before?.votes ?? null,
+                    r.after?.votes ?? null,
+                    valueFor(r, metric),
+                    r.relativeSwing,
+                  ])}
+                  rows={rows.map((r) => [
+                    r.districtNumber,
+                    <button
+                      className="text-left underline"
+                      onClick={() => open(r.districtNumber)}
+                    >
+                      {r.districtName}
+                    </button>,
+                    r.party,
+                    percent(r.before?.share),
+                    percent(r.after?.share),
+                    number(r.before?.votes),
+                    number(r.after?.votes),
+                    differenceCell(valueFor(r, metric)),
+                    differenceCell(r.relativeSwing),
+                    <span className="whitespace-nowrap">
+                      {candidates.data?.find(
+                        (c) => c.district_number === r.districtNumber && c.party === r.party,
+                      )?.candidate_name || "—"}
+                    </span>,
+                    <InfoTooltip>
+                      <TooltipTrigger asChild>
+                        <button type="button" aria-label={`Hinweise zu ${r.districtName}`} className="rounded-sm focus-visible:outline focus-visible:outline-ring">
+                          <Info aria-hidden="true" className="size-4" />
+                        </button>
+                      </TooltipTrigger>
+                      <Portal>
+                        <TooltipContent className="max-w-xs">
+                          {r.warnings.join(" ") || "Gleicher geprüfter Zuschnitt."}
+                        </TooltipContent>
+                      </Portal>
+                    </InfoTooltip>,
+                  ])}
+                />
+              </TooltipProvider>
+            </section>
           </>
         )}
       </DataState>
@@ -959,41 +959,42 @@ function AtlasPanel({
 function SplitDistrictChart({ rows, metric }: { rows: ComparisonValue[]; metric: Metric }) {
   const unit = metric === "votes" ? "Stimmen" : "Prozentpunkte";
   const data = rows
-    .map((row) => ({
-      district: row.districtNumber,
-      name: row.districtName,
-      difference: valueFor(row, metric),
-    }))
-    .sort((a, b) => a.district - b.district);
-  const maximum = Math.max(1, ...data.map(({ difference }) => Math.abs(difference ?? 0)));
+    .flatMap((row) => {
+      const difference = valueFor(row, metric);
+      return difference === null
+        ? []
+        : [{ district: row.districtNumber, name: row.districtName, difference }];
+    })
+    .sort((a, b) => b.difference - a.difference || a.district - b.district)
+    .slice(0, 10);
+  const maximum = Math.max(1, ...data.map(({ difference }) => Math.abs(difference)));
 
   return (
     <Card className="min-w-0">
       <CardHeader className="pb-3">
         <CardTitle className="text-base">Differenz je Wahlkreis</CardTitle>
-        <p className="text-sm text-muted-foreground">Erst minus Zweit · {unit}</p>
+        <p className="text-sm text-muted-foreground">Höchste Erst- minus Zweitstimmendifferenzen · {unit}</p>
       </CardHeader>
       <CardContent>
-        <div className="h-[280px] md:h-[420px]">
-          <ResponsiveContainer>
-            <BarChart data={data}>
-              <CartesianGrid vertical={false} strokeDasharray="3 3" />
-              <XAxis dataKey="district" tick={{ fontSize: 11 }} />
-              <YAxis domain={[-maximum, maximum]} tickFormatter={signed} width={68} />
-              <Tooltip
-                labelFormatter={(label, items) => items[0]?.payload?.name ?? `Wahlkreis ${label}`}
-                formatter={(value: number) => [`${signed(value)} ${unit}`, "Differenz"]}
-              />
-              <Bar dataKey="difference" isAnimationActive={false}>
-                {data.map(({ district, difference }) => (
-                  <Cell key={district} fill={(difference ?? 0) < 0 ? "#b91c1c" : "#2563a6"} />
-                ))}
-              </Bar>
-              <ReferenceLine y={0} stroke="#334155" strokeWidth={1.5} />
-            </BarChart>
-          </ResponsiveContainer>
-        </div>
-        <p className="text-center text-xs text-muted-foreground">Wahlkreisnummer</p>
+        {data.length === 0 ? (
+          <p className="text-sm text-muted-foreground">Keine vergleichbaren Wahlkreisdifferenzen verfügbar.</p>
+        ) : (
+          <div className="h-[360px] md:h-[420px]">
+            <ResponsiveContainer>
+              <BarChart data={data} layout="vertical" margin={{ right: 20 }}>
+                <XAxis type="number" domain={[-maximum, maximum]} tickFormatter={(value: number) => signed(value)} tick={{ fontSize: 11 }} />
+                <YAxis type="category" dataKey="name" width={142} interval={0} tick={{ fontSize: 11 }} />
+                <Tooltip formatter={(value: number) => [`${signed(value)} ${unit}`, "Differenz"]} />
+                <Bar dataKey="difference" isAnimationActive={false}>
+                  {data.map(({ district, difference }) => (
+                    <Cell key={district} fill={difference < 0 ? "#b91c1c" : "#2563a6"} />
+                  ))}
+                </Bar>
+                <ReferenceLine x={0} stroke="#334155" strokeWidth={1.5} />
+              </BarChart>
+            </ResponsiveContainer>
+          </div>
+        )}
       </CardContent>
     </Card>
   );

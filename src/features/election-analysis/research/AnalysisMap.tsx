@@ -27,6 +27,7 @@ export function AnalysisMap({
   referenceLabel = "Landes-Swing",
   allowGeometryPreview = false,
   geometryYear,
+  hideOfficialGeometryLink = false,
   comparisonVersions,
   comparisonYear,
 }: {
@@ -41,6 +42,7 @@ export function AnalysisMap({
   referenceLabel?: string;
   allowGeometryPreview?: boolean;
   geometryYear?: number;
+  hideOfficialGeometryLink?: boolean;
   comparisonVersions?: DistrictVersion[];
   comparisonYear?: number;
 }) {
@@ -436,7 +438,7 @@ export function AnalysisMap({
         <p className="text-xs text-muted-foreground">
           Kartengrundlage: Wahlkreisgrenzen {bundledYear ?? 2021} · Prüfung für diese Auswahl ausstehend
         </p>
-      ) : <a
+      ) : !hideOfficialGeometryLink && <a
         className="text-xs underline"
         href={confirmedBundledYear ? "https://www.statistik-bw.de/Wahlen/Landtag/" : geography.data?.source_url}
         target="_blank"
