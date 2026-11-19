@@ -8,7 +8,7 @@ import {
   XAxis,
   YAxis,
 } from "recharts";
-import { useMemo, useState, useRef } from "react";
+import { useMemo, useState } from "react";
 import { useSearchParams } from "react-router-dom";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
@@ -36,7 +36,7 @@ import {
   electionMandates,
   transferDistrict,
 } from "./electionFile";
-import { BW_RULES_VERSION, type ElectionFile, type SeatInput } from "./types";
+import { BW_RULES_VERSION, type SeatInput } from "./types";
 import {
   directTransferThreshold,
   officialStateParties,
@@ -105,9 +105,6 @@ function Seat2026() {
       return next;
     });
   const resetScenario = () => {
-    fileRequest.current++;
-    setFile(null);
-    setFileError("");
     setTab("seats");
     setDistrictsRequested(false);
     setParams((old) => {
@@ -136,9 +133,6 @@ function Seat2026() {
       return next;
     });
   };
-  const fileRequest = useRef(0);
-  const [file, setFile] = useState<ElectionFile | null>(null),
-    [fileError, setFileError] = useState("");
   const hasManualDirect = state.data?.some(
     (row) =>
       labNumber(params, `seatDirect_${row.party}`, row.direct_seats ?? 0) !==
@@ -149,7 +143,6 @@ function Seat2026() {
       districtsRequested ||
       Object.keys(flips).length > 0) &&
       !params.get("savedScenario") &&
-      !file &&
       (!hasManualDirect || districtModel !== "manual"),
   );
   const districtHistory = districtData.data?.history;
@@ -179,14 +172,6 @@ function Seat2026() {
   const basis = useMemo(
     () =>
       attempt(() => {
-        if (file)
-          return {
-            parties: file.parties,
-            valid: file.validSecond,
-            release: file.data_release,
-            source: file.source_url,
-            file,
-          };
         if (params.get("savedScenario")) {
           if (!saved.data)
             throw new Error("Schnappschuss lädt oder ist nicht zugänglich.");
@@ -238,7 +223,7 @@ function Seat2026() {
           file: null,
         };
       }),
-    [file, officialFile, saved.data, state.data, params.get("savedScenario")],
+    [officialFile, saved.data, state.data, params.get("savedScenario")],
   );
   const parties = basis.value?.parties || [];
   const visibleParties = parties
@@ -260,14 +245,16 @@ function Seat2026() {
       labNumber(params, `seatSecond_${p.id}`, 0),
     ]),
   );
-  const otherShare = basis.value
+  const otherBaseline = basis.value
     ? (parties
         .filter((party) => balancing.includes(party.id))
         .reduce((sum, party) => sum + party.votes, 0) /
         basis.value.valid) *
-        100 -
-      Object.values(second).reduce((sum, delta) => sum + delta, 0)
+      100
     : 0;
+  const otherShare =
+    otherBaseline -
+    Object.values(second).reduce((sum, delta) => sum + delta, 0);
   const projection = useMemo(() => {
     const base = basis.value?.file;
     if (!base) return null;
@@ -502,131 +489,15 @@ function Seat2026() {
           )}
         </div>
       </div>
-      <StatusNote>
-        Hypothetische Modellrechnung, keine Wahlprognose. Rechtsstand: § 2 LWG,
-        Zweistimmenwahl 2026. Alle Parteien einzeln, mindestens 5 % der
-        ursprünglichen gültigen Zweitstimmen, 120 Grundsitze, Überhang/Ausgleich
-        und Mehrheitsklausel. Sonderdirektmandate benötigen zusätzlich
-        bereinigte Zweitstimmen.
-      </StatusNote>
       {(state.isLoading || saved.isLoading) && (
         <p role="status">Landesdaten / Schnappschuss laden …</p>
       )}
       {(state.error || saved.error) && (
         <p role="alert">
-          Daten nicht verfügbar. Migrationen und Szenariozugriff prüfen oder
-          vollständige Quelldatei einlesen.
+          Daten nicht verfügbar. Bitte den Zugriff auf die Wahldaten oder das
+          Szenario prüfen.
         </p>
       )}
-      <details className="rounded border p-3">
-        <summary className="cursor-pointer font-medium">
-          Vollständige Erststimmen, Kandidaturen und Landeslisten einlesen
-        </summary>
-        <p className="my-2 text-sm">
-          JSON bis 2 MB, Format bw-lwg-2026-v1; alle 70 Wahlkreise mit
-          sämtlichen Kandidaturen, gültige Erststimmen, alle Landesparteien und
-          eindeutige Personen-IDs. Gleiche Namen begründen keine Identität. Ohne
-          vollständige Listen bleiben Listenpersonen unbekannt.
-        </p>
-        <Input
-          type="file"
-          accept=".json,application/json"
-          onChange={async (e) => {
-            const request = ++fileRequest.current;
-            const source = e.target.files?.[0];
-            if (!source) return;
-            try {
-              if (source.size > 2_000_000)
-                throw new Error("Datei größer als 2 MB.");
-              const content = await source.text();
-              if (request !== fileRequest.current) return;
-              const raw: unknown = JSON.parse(content);
-              setFile(parseElectionFile(raw));
-              setParams((old) => {
-                const next = new URLSearchParams(old);
-                next.delete("seatCorrections");
-                next.delete("seatSpecialFirst");
-                for (const key of new Set(next.keys()))
-                  if (
-                    key.startsWith("seatFlip_") ||
-                    key.startsWith("seatDistrictLot_")
-                  )
-                    next.delete(key);
-                return next;
-              });
-              setFileError("");
-            } catch (err) {
-              if (request !== fileRequest.current) return;
-              setFileError(
-                err instanceof Error ? err.message : "Quelldatei ungültig.",
-              );
-            }
-          }}
-        />
-        <Button
-          className="mt-2"
-          variant="outline"
-          onClick={() => {
-            const template = {
-              version: BW_RULES_VERSION,
-              year: 2026,
-              source_url: basis.value?.source || STATE_SOURCE,
-              data_release: basis.value?.release || "einzutragen",
-              validSecond: basis.value?.valid || 5375109,
-              parties,
-              districtFormat: {
-                number: "1–70",
-                validFirst: "Summe aller Kandidatenstimmen",
-                candidates: [
-                  {
-                    id: "explizite Personen-ID",
-                    name: "amtlicher Name",
-                    partyId: "Partei-ID oder null",
-                    votes: "ganze Stimmenzahl",
-                  },
-                ],
-              },
-              districts: [],
-              lists: {},
-              listsComplete: false,
-            };
-            const url = URL.createObjectURL(
-              new Blob([JSON.stringify(template, null, 2)], {
-                type: "application/json",
-              }),
-            );
-            const a = document.createElement("a");
-            a.href = url;
-            a.download = "BW-2026-Datenvorlage.json";
-            a.click();
-            setTimeout(() => URL.revokeObjectURL(url), 1000);
-          }}
-        >
-          Datenvorlage herunterladen
-        </Button>
-        {fileError && <p role="alert">{fileError}</p>}
-        {file && (
-          <Button
-            variant="outline"
-            onClick={() => {
-              setFile(null);
-              setParams((old) => {
-                const next = new URLSearchParams(old);
-                for (const key of new Set(next.keys()))
-                  if (
-                    key.startsWith("seatFlip_") ||
-                    key.startsWith("seatDistrictLot_") ||
-                    ["seatCorrections", "seatSpecialFirst"].includes(key)
-                  )
-                    next.delete(key);
-                return next;
-              });
-            }}
-          >
-            Lokale Datei schließen
-          </Button>
-        )}
-      </details>
       {params.get("savedScenario") && (
         <Button
           variant="outline"
@@ -653,23 +524,6 @@ function Seat2026() {
       ) : (
         basis.value && (
           <>
-            <p className="text-sm">
-              Grundlage: {basis.value.release} ·{" "}
-              <a
-                className="underline"
-                href={basis.value.source}
-                target="_blank"
-                rel="noreferrer"
-              >
-                Quelle
-              </a>{" "}
-              · {parties.length} einzeln erfasste Parteien.{" "}
-              {basis.value.release === DISTRICT_RELEASE
-                ? "Kandidaturen aus dem Bestand · amtliche Erststimmen."
-                : basis.value.file
-                  ? "Erststimmen werden aus vollständigen Wahlkreisdaten simuliert."
-                  : "Direktmandate werden als Annahmen eingegeben."}
-            </p>
             {reference && (
               <p
                 className={
@@ -704,11 +558,20 @@ function Seat2026() {
                   <div className="space-y-2">
                     {visibleParties.map((p) => {
                       const key = `seatSecond_${p.id}`;
-                      const range = Math.max(5, Math.abs(second[p.id] ?? 0));
+                      const min = (-p.votes / basis.value!.valid) * 100;
+                      const remaining =
+                        otherBaseline -
+                        Object.entries(second)
+                          .filter(([id]) => id !== p.id)
+                          .reduce((sum, [, delta]) => sum + delta, 0);
+                      const max = Math.max(min, remaining);
+                      const clamp = (value: number) =>
+                        Math.max(min, Math.min(max, value));
+                      const delta = second[p.id] ?? 0;
                       return (
                         <div
                           key={p.id}
-                          className="grid grid-cols-[5rem_minmax(0,1fr)_4.5rem] items-center gap-2 text-sm text-muted-foreground"
+                          className="grid grid-cols-[4.25rem_minmax(0,1fr)_3.25rem] items-center gap-2 text-sm text-muted-foreground"
                         >
                           <span title={p.name} className="truncate">
                             <span
@@ -720,21 +583,50 @@ function Seat2026() {
                           </span>
                           <input
                             type="range"
-                            min={-range}
-                            max={range}
-                            step="0.1"
+                            min={min}
+                            max={max}
+                            step="any"
                             aria-label={`${p.name} Zweitstimmenregler`}
-                            value={second[p.id] ?? 0}
-                            onChange={(e) => set(key, e.target.value)}
-                            className="min-w-0 accent-cyan-800 dark:accent-cyan-400"
+                            value={clamp(delta)}
+                            onChange={(e) => {
+                              const value = e.currentTarget.valueAsNumber;
+                              const rounded =
+                                value === min || value === max
+                                  ? value
+                                  : Math.round(value * 10) / 10;
+                              set(key, String(clamp(rounded)));
+                            }}
+                            className="w-full min-w-0 accent-cyan-800 dark:accent-cyan-400"
                           />
-                          <Input
+                          <input
                             type="number"
-                            step="0.1"
+                            min={min}
+                            max={max}
+                            step="any"
                             aria-label={`${p.name} Zweitstimmenänderung in Prozentpunkten`}
-                            value={params.get(key) ?? "0"}
-                            onChange={(e) => set(key, e.target.value)}
-                            className="h-8 px-1.5 text-right tabular-nums"
+                            key={delta}
+                            defaultValue={Number(delta.toFixed(2))}
+                            onBlur={(e) => {
+                              const input = e.currentTarget;
+                              const value = input.valueAsNumber;
+                              if (
+                                Number.isFinite(value) &&
+                                value !== Number(delta.toFixed(2))
+                              ) {
+                                const bounded = clamp(value);
+                                input.value = String(
+                                  Number(bounded.toFixed(2)),
+                                );
+                                if (bounded !== delta)
+                                  set(key, String(bounded));
+                              } else {
+                                input.value = String(Number(delta.toFixed(2)));
+                              }
+                            }}
+                            onKeyDown={(e) => {
+                              if (e.key === "Enter") e.currentTarget.blur();
+                            }}
+                            className="w-full min-w-0 bg-transparent text-right tabular-nums [appearance:textfield] focus-visible:outline-ring [&::-webkit-inner-spin-button]:appearance-none [&::-webkit-outer-spin-button]:appearance-none"
                           />
                         </div>
                       );
@@ -988,14 +880,10 @@ function Seat2026() {
                     ) : districtData.isFetching ? (
                       "Wahlkreise und Kandidaturen aus dem Bestand werden geladen …"
                     ) : (
-                      <>
-                        {official?.error ||
-                          (districtData.error instanceof Error
-                            ? districtData.error.message
-                            : "Vollständige amtliche Wahlkreisdaten sind derzeit nicht verfügbar.")}{" "}
-                        Eine vollständige Quelldatei kann oben eingelesen
-                        werden.
-                      </>
+                      official?.error ||
+                      (districtData.error instanceof Error
+                        ? districtData.error.message
+                        : "Vollständige amtliche Wahlkreisdaten sind derzeit nicht verfügbar.")
                     )}
                   </div>
                 )}
@@ -1258,6 +1146,13 @@ function Seat2026() {
           </>
         )
       )}
+      <StatusNote>
+        Hypothetische Modellrechnung, keine Wahlprognose. Rechtsstand: § 2 LWG,
+        Zweistimmenwahl 2026. Alle Parteien einzeln, mindestens 5 % der
+        ursprünglichen gültigen Zweitstimmen, 120 Grundsitze, Überhang/Ausgleich
+        und Mehrheitsklausel. Sonderdirektmandate benötigen zusätzlich
+        bereinigte Zweitstimmen.
+      </StatusNote>
     </div>
   );
 }

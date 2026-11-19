@@ -589,13 +589,9 @@ Stimmenzahlen eindeutig nach Wahlkreis und Wahlvorschlag zu und prüft die
 vollständigen Summen und die amtliche Sitzreferenz. Kippannahmen können für mehrere
 Wahlkreise zusammen übernommen, entfernt und im Szenario gespeichert werden.
 
-Als alternative Grundlage lässt sich eine lokale JSON-Datei (maximal 2 MB)
-mit Modellversion, Quelle, Datenstand,
-allen Parteien, gültigen Zweitstimmen, exakt 70 Wahlkreisen und sämtlichen
-Kandidaturen/Erststimmen sowie optional vollständigen Landeslisten. Eine Datenvorlage
-ist im Simulator herunterladbar. Partei-/Personen-IDs sind explizit; gleiche Namen
-begründen keine Identität. Unvollständige Erststimmensummen und doppelte Kandidaturen
-werden zurückgewiesen. Eine Landesliste nutzt dieselben Personen-IDs wie die
+Gespeicherte Szenarien können weiterhin vollständige Wahlkreisdaten und
+Landeslisten als eigene Grundlage enthalten. Unvollständige Erststimmensummen
+und doppelte Kandidaturen werden in solchen Snapshots zurückgewiesen. Eine Landesliste nutzt dieselben Personen-IDs wie die
 Wahlkreiskandidaturen; Direktgewinner werden bei der Listenbesetzung übersprungen.
 `listsComplete=false` lässt Listenpersonen ausdrücklich unbekannt. Bei vollständigen,
 aber erschöpften Listen werden die unbesetzten Ansprüche angezeigt.
