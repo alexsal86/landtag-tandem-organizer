@@ -619,6 +619,22 @@ Abweichung bleibt die Szenarioausgabe gesperrt. Dies ersetzt keine ausgeführten
 Unit-/Integrations-/Wahlrechtstests und ist keine amtliche Freigabe. Kein Ergebnis
 wird als belastbare Wahlprognose bezeichnet und keine historische Mandatszeile geändert.
 
+### Landestrends Baden-Württemberg
+
+Super-Admins können unter **Administration → Wahldaten → Landestrends** Umfragen
+erfassen, bearbeiten und für die Auswahl im Simulator veröffentlichen. Erfasst
+werden Institut, Auftraggeber, Quelle, Veröffentlichung, Feldzeit, Befragte,
+Methode, Umfragetyp und Zweitstimmenanteile. Für eine Sitzprojektion müssen die
+sechs Hauptparteien und die übrigen Werte insgesamt exakt 100 Prozent ergeben.
+Weitere separat ausgewiesene Parteien können einzeln erfasst werden.
+
+Die ausgewählte Umfrage bildet den Nullpunkt der Regler. Swing ist die
+Voreinstellung. Das Wahlkreismodell überträgt die Differenz zwischen dem amtlichen
+Zweitstimmenergebnis von 2026 und den simulierten Zweitstimmen auf das Erststimmenprofil
+von 2026. Der verbleibende Sammelwert wird im Verhältnis der amtlichen Stimmen auf
+die übrigen Landeslisten verteilt. Gespeicherte Szenarien enthalten die verwendete
+Umfrage als Schnappschuss.
+
 ### Schwellenanalyse
 
 Parteisitze: Raster −2 bis +2 PP um das aktuelle Szenario, Auflösung 0,1 PP und

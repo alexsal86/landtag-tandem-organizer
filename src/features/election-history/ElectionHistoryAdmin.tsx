@@ -1,3 +1,4 @@
+import { BwPollsAdmin } from './admin/BwPollsAdmin';
 import { ElectionDataChecks } from './admin/ElectionDataChecks';
 import { FactionsAdmin } from './admin/FactionsAdmin';
 import { PersonCareerDirectory } from './PersonCareer';
@@ -66,7 +67,7 @@ function ElectionHistoryWorkspace() {
       <Button variant={section === 'state_lists' ? 'default' : 'outline'} aria-pressed={section === 'state_lists'} onClick={() => { setSection('state_lists'); setImportOpen(false); setTargetRecordId(''); setTargetListId(''); setTargetDistrictId(''); }}>Landeslisten</Button>
     </nav>}
 
-    {section !== 'periods' && section !== 'deputies' && section !== 'issues' && section !== 'factions' && section !== 'quality' && section !== 'sources' && <section className="flex flex-wrap items-end gap-3 rounded-md border bg-card p-3" aria-label="Legislaturauswahl">
+    {section !== 'periods' && section !== 'deputies' && section !== 'issues' && section !== 'factions' && section !== 'quality' && section !== 'sources' && section !== 'polls' && <section className="flex flex-wrap items-end gap-3 rounded-md border bg-card p-3" aria-label="Legislaturauswahl">
       <div className="min-w-0 w-full flex-1"><Label htmlFor="history-period-filter">Legislaturperiode</Label><select id="history-period-filter" className="flex h-10 min-w-0 w-full max-w-full rounded-md border border-input bg-background px-3 py-2 text-sm" value={selectedPeriod} onChange={event => { setPeriodFilter(event.target.value); setImportOpen(false); setTargetRecordId(''); setTargetListId(''); setTargetDistrictId(''); }}>{availablePeriods?.map(item => <option key={item.id} value={item.id}>{item.is_published ? '✓' : '✎'} {item.name}</option>)}</select></div>
       {periodOverview && <p className="pb-2 text-body tabular-nums text-muted-foreground [overflow-wrap:anywhere]">{periodOverview.district_count} Wahlkreise · {periodOverview.mandate_count} Mandate · {periodOverview.candidacy_count} Kandidaturen</p>}
       {section === 'candidacies' && <Button onClick={() => setImportOpen(true)}><FileUp className="mr-2 h-4 w-4" aria-hidden="true" />Excel / CSV importieren</Button>}
@@ -90,6 +91,7 @@ function ElectionHistoryWorkspace() {
       <CandidacyImportDialog open={importOpen} onOpenChange={setImportOpen} data={data} periodId={selectedPeriod} onImported={async () => { await Promise.all([query.refetch(), overviewQuery.refetch()]); }} />
     </div>}
     {(section === 'quality' || section === 'sources') && <ElectionDataChecks section={section} />}
+    {section === 'polls' && <BwPollsAdmin />}
     {section === 'factions' && <FactionsAdmin />}
     {section === 'deputies' && <div className="min-w-0 space-y-4"><div className="flex flex-wrap gap-2" role="group" aria-label="Personenregister auswählen"><Button variant={registerView === 'mandates' ? 'default' : 'outline'} aria-pressed={registerView === 'mandates'} onClick={() => setRegisterView('mandates')}>Abgeordnetenregister</Button><Button variant={registerView === 'people' ? 'default' : 'outline'} aria-pressed={registerView === 'people'} onClick={() => setRegisterView('people')}>Alle Personen & Kandidaturen</Button></div>{registerView === 'mandates' ? <ElectionDeputyDirectory key={deputyTarget?.id || 'directory'} initialConnection={deputyTarget || undefined} /> : <PersonCareerDirectory />}</div>}
     {section === 'state_lists' && (period ? <StateLists key={`${period.id}-${targetListId}-${targetRecordId}`} periodId={period.id} periodNumber={period.number} initialListId={targetListId} initialEntryId={targetRecordId} onOpenDeputy={(id, name) => { setDeputyTarget({ id, name }); setRegisterView('mandates'); setSection('deputies'); }} /> : <p>Landeslisten können ab der 18. Legislaturperiode erfasst werden. Bitte zunächst die entsprechende Legislaturperiode anlegen.</p>)}

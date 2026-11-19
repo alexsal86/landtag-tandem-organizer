@@ -5309,6 +5309,54 @@ export type Database = {
         }
         Relationships: []
       }
+      election_analysis_bw_polls: {
+        Row: {
+          id: string
+          institute: string
+          commissioner: string
+          published_on: string
+          field_start: string
+          field_end: string
+          respondents: number
+          method: string
+          question_type: string
+          source_url: string
+          shares: Json
+          others: number
+          is_published: boolean
+        }
+        Insert: {
+          id?: string
+          institute: string
+          commissioner?: string
+          published_on: string
+          field_start: string
+          field_end: string
+          respondents: number
+          method: string
+          question_type: string
+          source_url: string
+          shares: Json
+          others: number
+          is_published?: boolean
+        }
+        Update: {
+          id?: string
+          institute?: string
+          commissioner?: string
+          published_on?: string
+          field_start?: string
+          field_end?: string
+          respondents?: number
+          method?: string
+          question_type?: string
+          source_url?: string
+          shares?: Json
+          others?: number
+          is_published?: boolean
+        }
+        Relationships: []
+      }
       election_analysis_state: {
         Row: {
           ballot: string

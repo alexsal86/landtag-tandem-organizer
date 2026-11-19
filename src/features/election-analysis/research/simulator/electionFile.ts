@@ -6,6 +6,7 @@ import {
   type SeatCandidate,
   type SeatDistrict,
   type SeatInput,
+  type SeatParty,
   type SeatPerson,
 } from "./types";
 import { allocateBw2026 } from "./seats";
@@ -213,6 +214,7 @@ export function shiftElection(
   second: Record<string, number>,
   balancingParty: string | readonly string[],
   model: DistrictModel = "manual",
+  secondVoteBasis?: SeatParty[],
 ) {
   if (
     Object.entries(first).some(
@@ -224,12 +226,20 @@ export function shiftElection(
   )
     throw new Error("Ungültige Erststimmenannahme.");
 
-  const { parties, changes: secondDeltas } = secondVoteScenario(
-    file.parties,
+  const { parties, changes } = secondVoteScenario(
+    secondVoteBasis ?? file.parties,
     file.validSecond,
     second,
     balancingParty,
   );
+  const secondDeltas = secondVoteBasis
+    ? Object.fromEntries(
+        parties.map((party, index) => [
+          party.id,
+          ((party.votes - file.parties[index].votes) / file.validSecond) * 100,
+        ]),
+      )
+    : changes;
   const changedSecond = Object.values(secondDeltas).some((v) => v !== 0);
   let adjusted = 0;
   const districts =

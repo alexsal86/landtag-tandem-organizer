@@ -1,6 +1,6 @@
 import type { GridEntity } from './historyFields';
 
-export type HistoryWorkspaceSection = GridEntity | 'deputies' | 'issues' | 'state_lists' | 'factions' | 'quality' | 'sources';
+export type HistoryWorkspaceSection = GridEntity | 'deputies' | 'issues' | 'state_lists' | 'factions' | 'quality' | 'sources' | 'polls';
 export const historyWorkspaceTabs: ReadonlyArray<{ id: Exclude<HistoryWorkspaceSection, 'state_lists'>; label: string }> = [
   { id: 'periods', label: '1 · Legislaturperioden' },
   { id: 'districts', label: '2 · Wahlkreise' },
@@ -11,6 +11,7 @@ export const historyWorkspaceTabs: ReadonlyArray<{ id: Exclude<HistoryWorkspaceS
   { id: 'sources', label: '7 · Quellenabgleich' },
   { id: 'issues', label: '8 · Problemfälle' },
   { id: 'deputies', label: '9 · Gesamtregister' },
+  { id: 'polls', label: '10 · Landestrends' },
 ];
 export function historyWorkspaceTab(section: HistoryWorkspaceSection) {
   return section === 'state_lists' ? 'candidacies' : section;

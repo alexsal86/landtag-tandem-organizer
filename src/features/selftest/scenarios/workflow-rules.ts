@@ -1,3 +1,4 @@
+import { pollPartyBasis, POLL_FEATURED_PARTIES } from "@/features/election-analysis/research/simulator/polls";
 import { getAdministrationAccess } from "@/components/administration/access";
 import { automationTabFromParams, normalizeAutomationParams, rssTabFromParams } from "@/components/administration/automationNavigation";
 import { canTransitionStatus } from "@/components/letters/types";
@@ -25,6 +26,22 @@ export const workflowRulesScenario: TestScenario = {
   checks: ["Erlaubte und verbotene Brief-Statuswechsel", "Entscheiderrollen", "Ministeriumsfrist und Wiedervorlage"],
   limitations: ["Berechtigungen der Datenbank werden separat in den Zugriffstests geprüft."],
   steps: [
+    {
+      id: "seat-poll-basis", label: "Mandatssimulator: Umfragewerte als Ausgangsbasis", kind: "logic",
+      run: async () => {
+        const ids = [...POLL_FEATURED_PARTIES, "BSW", "ÖDP", "Volt"];
+        const parties = ids.map((id, index) => ({
+          id, name: id, votes: [300, 260, 140, 90, 60, 50, 60, 30, 10][index], hasList: true, direct: 0,
+        }));
+        const projected = pollPartyBasis(parties, 1000, {
+          id: "synthetic", institute: "Testinstitut", commissioner: "", published_on: "2026-10-15",
+          field_start: "2026-10-08", field_end: "2026-10-13", respondents: 1000, method: "Online",
+          question_type: "Sonntagsfrage", source_url: "https://example.org", is_published: false,
+          shares: { "GRÜNE": 30, CDU: 23, AfD: 23, SPD: 7, "Die Linke": 6, FDP: 4, BSW: 3 }, others: 4,
+        });
+        return { ok: projected.map((party) => party.votes).join() === "300,230,230,70,60,40,30,30,10", message: "Einzeln ausgewiesene Werte und Reststimmen ergeben zusammen 100 Prozent." };
+      },
+    },
     {
       id: "seat-district-model", label: "Mandatssimulator: Zweitstimmen auf Wahlkreise übertragen", kind: "logic",
       run: async () => {

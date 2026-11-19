@@ -38,8 +38,15 @@ import {
   STATE_RELEASE,
   STATE_SOURCE,
 } from "./model";
+import { useBwPolls } from "./useBwPolls";
+import {
+  pollDate,
+  pollPartyBasis,
+  POLL_FEATURED_PARTIES,
+  readBwPoll,
+} from "./polls";
 const MAX_SECOND_VOTE_DELTA = 10;
-const secondVotePartyOrder = ["GRÜNE", "CDU", "AfD", "SPD", "Die Linke", "FDP"];
+const secondVotePartyOrder = POLL_FEATURED_PARTIES;
 const highlightedPartyIndex = (id: string) =>
   secondVotePartyOrder.findIndex(
     (party) => party.toLowerCase() === id.toLowerCase(),
@@ -63,6 +70,16 @@ function Seat2026() {
   const [tab, setTab] = useState("seats");
   const [districtsRequested, setDistrictsRequested] = useState(false);
   const savedInput = saved.data?.input_snapshot;
+  const polls = useBwPolls();
+  const savedPoll = isRecord(savedInput)
+    ? readBwPoll(savedInput.poll)
+    : undefined;
+  const pollId = params.get("seatPoll") ?? savedPoll?.id ?? "";
+  const poll =
+    savedPoll?.id === pollId
+      ? savedPoll
+      : polls.data?.find((entry) => entry.id === pollId);
+
   const savedModel =
     isRecord(savedInput) &&
     isRecord(savedInput.districtModel) &&
@@ -70,7 +87,9 @@ function Seat2026() {
       ? savedInput.districtModel.stage
       : undefined;
   const districtModel = readDistrictModel(
-    params.get("seatDistrictModel") ?? savedModel,
+    params.get("seatDistrictModel") ??
+      savedModel ??
+      (pollId ? "swing" : "manual"),
   );
   const flips = Object.fromEntries(
     [...params]
@@ -97,7 +116,7 @@ function Seat2026() {
       }
       return next;
     });
-  const resetScenario = () => {
+  const switchBaseline = (nextPoll = "", keepSaved = false) => {
     setTab("seats");
     setDistrictsRequested(false);
     setParams((old) => {
@@ -105,7 +124,8 @@ function Seat2026() {
       for (const key of new Set(next.keys())) {
         if (
           [
-            "savedScenario",
+            ...(keepSaved ? [] : ["savedScenario"]),
+            "seatPoll",
             "seatDistrictModel",
             "seatBalancing",
             "seatLotOrder",
@@ -123,6 +143,7 @@ function Seat2026() {
         )
           next.delete(key);
       }
+      if (nextPoll && !keepSaved) next.set("seatPoll", nextPoll);
       return next;
     });
   };
@@ -216,7 +237,18 @@ function Seat2026() {
       }),
     [officialFile, saved.data, state.data, params.get("savedScenario")],
   );
-  const parties = basis.value?.parties || [];
+  const forecastBasis = useMemo(() => {
+    if (!poll || !basis.value) return null;
+    const { parties, valid } = basis.value;
+    return attempt(() => pollPartyBasis(parties, valid, poll));
+  }, [basis.value, poll]);
+  const parties = forecastBasis?.value ?? basis.value?.parties ?? [];
+  const forecastError =
+    pollId && !poll
+      ? polls.isFetching || saved.isLoading
+        ? "Umfrage wird geladen …"
+        : "Diese Umfrage ist nicht verfügbar."
+      : forecastBasis?.error;
   const manualDirectOverrides =
     districtModel === "manual" &&
     parties.some(
@@ -229,10 +261,10 @@ function Seat2026() {
     .sort((a, b) => highlightedPartyIndex(a.id) - highlightedPartyIndex(b.id));
   const balancing = useMemo(
     () =>
-      basis.value?.parties
+      parties
         .filter((party) => party.hasList && highlightedPartyIndex(party.id) < 0)
         .map((party) => party.id) ?? [],
-    [basis.value],
+    [basis.value, forecastBasis?.value],
   );
   const first = Object.fromEntries(
     parties.map((p) => [p.id, labNumber(params, `seatFirst_${p.id}`, 0)]),
@@ -255,7 +287,7 @@ function Seat2026() {
     Object.values(second).reduce((sum, delta) => sum + delta, 0);
   const projection = useMemo(() => {
     const base = basis.value?.file;
-    if (!base || manualDirectOverrides) return null;
+    if (!base || manualDirectOverrides || forecastError) return null;
     return attempt(() => {
       const shifted = shiftElection(
           base,
@@ -263,6 +295,7 @@ function Seat2026() {
           second,
           balancing,
           districtModel,
+          forecastBasis?.value ?? undefined,
         ),
         lots = { ...shifted.file.districtLots };
       for (const [key, value] of params)
@@ -290,6 +323,8 @@ function Seat2026() {
     basis.value,
     districtModel,
     manualDirectOverrides,
+    forecastError,
+    forecastBasis?.value,
     JSON.stringify(first),
     JSON.stringify(second),
     balancing,
@@ -298,6 +333,7 @@ function Seat2026() {
   const computed = useMemo(
     () =>
       attempt(() => {
+        if (forecastError) throw new Error(forecastError);
         if (!basis.value) throw new Error(basis.error || "Grundlage fehlt.");
         const b = basis.value;
         const correctionText = params.get("seatCorrections");
@@ -356,7 +392,7 @@ function Seat2026() {
             "Für die übernommenen Kippannahmen werden vollständige Wahlkreisdaten benötigt.",
           );
         const changed = secondVoteScenario(
-          b.parties,
+          forecastBasis?.value ?? b.parties,
           b.valid,
           second,
           balancing,
@@ -392,6 +428,8 @@ function Seat2026() {
       manualDirectOverrides,
       official?.error,
       districtData.isFetching,
+      forecastError,
+      forecastBasis?.value,
       JSON.stringify(first),
       JSON.stringify(second),
       balancing,
@@ -417,6 +455,7 @@ function Seat2026() {
   const referenceBlocked =
     reference?.value?.matches === false || !!reference?.error;
   const officialResult =
+    !pollId &&
     reference?.value?.matches === true &&
     Object.keys(flips).length === 0 &&
     (districtModel !== "manual" ||
@@ -472,6 +511,7 @@ function Seat2026() {
     valid: basis.value?.valid,
     source: basis.value?.source,
     file: basis.value?.file || undefined,
+    poll: poll ?? undefined,
     districtModel: { stage: districtModel, version: DISTRICT_MODEL_VERSION },
   });
   return (
@@ -481,8 +521,14 @@ function Seat2026() {
           BW-Sitz- und Mandatssimulator 2026
         </h3>
         <div className="flex flex-wrap items-center gap-2">
-          <Button type="button" variant="outline" onClick={resetScenario}>
-            Auf amtliches Ergebnis zurücksetzen
+          <Button
+            type="button"
+            variant="outline"
+            onClick={() => switchBaseline(pollId, !!savedPoll)}
+          >
+            {pollId
+              ? "Auf Umfragewerte zurücksetzen"
+              : "Auf amtliches Ergebnis zurücksetzen"}
           </Button>
           {basis.value && computed.value && !referenceBlocked && (
             <SaveScenarioAction
@@ -495,6 +541,42 @@ function Seat2026() {
             />
           )}
         </div>
+      </div>
+      <div className="max-w-lg">
+        <Selection
+          id="seat-poll-basis"
+          label="Ausgangsbasis"
+          value={pollId}
+          onChange={(id) => switchBaseline(id)}
+        >
+          <option value="">Amtliches Wahlergebnis · 8. März 2026</option>
+          <optgroup label="Landestrends Baden-Württemberg">
+            {savedPoll && (
+              <option value={savedPoll.id}>
+                {savedPoll.institute} · {pollDate(savedPoll.published_on)}{" "}
+                (gespeichert)
+              </option>
+            )}
+            {polls.data
+              ?.filter((entry) => entry.id !== savedPoll?.id)
+              .map((entry) => (
+                <option key={entry.id} value={entry.id}>
+                  {entry.institute} · {pollDate(entry.published_on)} ·{" "}
+                  {entry.question_type}
+                </option>
+              ))}
+          </optgroup>
+        </Selection>
+        {!pollId && polls.error && (
+          <p className="mt-1 text-xs text-muted-foreground">
+            Landestrends sind derzeit nicht verfügbar.
+          </p>
+        )}
+        {!pollId && polls.isSuccess && !polls.data.length && (
+          <p className="mt-1 text-xs text-muted-foreground">
+            Es sind noch keine Landestrends veröffentlicht.
+          </p>
+        )}
       </div>
       {(state.isLoading || saved.isLoading) && (
         <p role="status">Landesdaten / Schnappschuss laden …</p>
@@ -542,7 +624,9 @@ function Seat2026() {
                 {reference.value?.matches
                   ? officialResult
                     ? "Amtlicher Referenzabgleich bestätigt · 157 Sitze gemäß Endfeststellung."
-                    : "Hypothetisches Szenario auf Basis des amtlichen Ergebnisses."
+                    : poll
+                      ? `Umfrageszenario · ${poll.institute}, ${pollDate(poll.published_on)}`
+                      : "Hypothetisches Szenario auf Basis des amtlichen Ergebnisses."
                   : reference.error ||
                     "Der Referenzabgleich weicht ab. Die Sitzberechnung ist gesperrt."}
               </p>
@@ -552,6 +636,69 @@ function Seat2026() {
                 className="min-w-0 space-y-4 rounded-lg border border-stone-200 bg-white p-4 text-slate-950 [color-scheme:light] [--background:0_0%_100%] [--border:25_10%_85%] [--foreground:215_25%_15%] [--input:25_10%_85%] [--muted-foreground:0_0%_45%]"
                 aria-label="Szenario-Eingaben"
               >
+                <div className="space-y-1 text-sm">
+                  <p className="font-medium">
+                    {poll
+                      ? `${poll.institute} · ${pollDate(poll.published_on)}`
+                      : "Amtliches Wahlergebnis 2026"}
+                  </p>
+                  {poll && (
+                    <>
+                      <p className="text-xs text-muted-foreground">
+                        {poll.question_type} · {poll.method} ·{" "}
+                        {format(poll.respondents, 0)} Befragte
+                      </p>
+                      <p className="text-xs text-muted-foreground">
+                        Feldzeit {pollDate(poll.field_start)}–
+                        {pollDate(poll.field_end)}
+                        {poll.commissioner && ` · ${poll.commissioner}`}
+                      </p>
+                      {poll.source_url.startsWith("https://") && (
+                        <a
+                          href={poll.source_url}
+                          target="_blank"
+                          rel="noreferrer"
+                          className="text-xs underline"
+                        >
+                          Umfragequelle
+                        </a>
+                      )}
+                      <p className="text-xs text-muted-foreground">
+                        Für die Sitzrechnung wird der nicht einzeln ausgewiesene
+                        Rest proportional zum Wahlergebnis 2026 aufgeteilt.
+                      </p>
+                    </>
+                  )}
+                  <ul
+                    className="flex flex-wrap gap-x-3 gap-y-1 text-xs tabular-nums text-muted-foreground"
+                    aria-label="Zweitstimmen der Ausgangsbasis"
+                  >
+                    {poll && isRecord(poll.shares)
+                      ? Object.entries(poll.shares).map(([id, share]) => (
+                          <li key={id}>
+                            {id}{" "}
+                            {format(
+                              typeof share === "number" ? share : null,
+                              2,
+                            )}{" "}
+                            %
+                          </li>
+                        ))
+                      : visibleParties.map((party) => (
+                          <li key={party.id}>
+                            {party.name}{" "}
+                            {format(
+                              (party.votes / basis.value!.valid) * 100,
+                              2,
+                            )}{" "}
+                            %
+                          </li>
+                        ))}
+                    <li>
+                      Sonstige {format(poll?.others ?? otherBaseline, 2)} %
+                    </li>
+                  </ul>
+                </div>
                 <section aria-labelledby="seat-second-label">
                   <h4
                     id="seat-second-label"
@@ -1095,11 +1242,13 @@ function Seat2026() {
         )
       )}
       <StatusNote>
-        Hypothetische Modellrechnung, keine Wahlprognose. Rechtsstand: § 2 LWG,
-        Zweistimmenwahl 2026. Alle Parteien einzeln, mindestens 5 % der
-        ursprünglichen gültigen Zweitstimmen, 120 Grundsitze, Überhang/Ausgleich
-        und Mehrheitsklausel. Sonderdirektmandate benötigen zusätzlich
-        bereinigte Zweitstimmen.
+        {poll
+          ? "Umfragebasierte Sitzprojektion. Die Wahlkreismodelle verwenden das Erststimmenprofil der Landtagswahl 2026."
+          : "Hypothetische Modellrechnung auf Basis des amtlichen Wahlergebnisses."}{" "}
+        Rechtsstand: § 2 LWG, Zweistimmenwahl 2026. Alle Parteien einzeln,
+        mindestens 5 % der ursprünglichen gültigen Zweitstimmen, 120 Grundsitze,
+        Überhang/Ausgleich und Mehrheitsklausel. Sonderdirektmandate benötigen
+        zusätzlich bereinigte Zweitstimmen.
       </StatusNote>
     </div>
   );
