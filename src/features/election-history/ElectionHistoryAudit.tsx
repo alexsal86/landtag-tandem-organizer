@@ -8,7 +8,7 @@ export function ElectionHistoryAudit() {
   const query = useQuery({
     queryKey: ['election-history', 'audit'], enabled: open, staleTime: 0,
     queryFn: async () => {
-      const { data, error } = await supabase.from('election_history_audit').select('*').order('occurred_at', { ascending: false }).limit(100);
+      const { data, error } = await supabase.from('election_history_audit').select('id, occurred_at, action, table_name, record_id, actor_id, old_data, new_data').order('occurred_at', { ascending: false }).limit(100);
       if (error) throw error;
       return data;
     },

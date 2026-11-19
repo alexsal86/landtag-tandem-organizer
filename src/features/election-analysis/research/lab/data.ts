@@ -1,6 +1,11 @@
-import type { Ballot } from "../../types";
-import type { QualityData } from "../hooks";
+import type { Ballot, DistrictResult, Turnout } from "../../types";
+import type { DistrictVersion } from "../types";
 import { parties } from "../../model";
+export interface LabDistrictData {
+  results: Pick<DistrictResult, "year" | "ballot" | "district_number" | "party" | "votes" | "preliminary" | "data_release" | "notes">[];
+  turnout: Pick<Turnout, "year" | "ballot" | "district_number" | "district_name" | "eligible" | "voters" | "valid_votes" | "preliminary" | "data_release" | "notes">[];
+  versions: Pick<DistrictVersion, "year" | "district_number" | "identity_key">[];
+}
 export interface ResearchDistrict {
   notes?: string | null;
   number: number;
@@ -21,7 +26,7 @@ export interface ResearchDataset {
 }
 /** All shares are recomputed from the same ballot denominator; missing counts are never zero-filled. */
 export function researchDataset(
-  data: QualityData | undefined,
+  data: LabDistrictData | undefined,
   year: number,
   ballot: Ballot,
   selectedParties?: string[],

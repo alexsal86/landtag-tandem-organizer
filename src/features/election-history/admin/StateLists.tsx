@@ -23,7 +23,7 @@ export function StateLists({ periodId, periodNumber, initialListId = '', initial
   const [entry, setEntry] = useState(emptyEntry); const [term, setTerm] = useState('');
   const [saving, setSaving] = useState(false); const [error, setError] = useState('');
   const lists = useQuery({ queryKey: ['election-history', user?.id, 'state-lists', periodId], enabled: !!user && !!periodId && periodNumber >= 18,
-    queryFn: async ({ signal }) => { const { data, error } = await supabase.from('election_history_state_lists').select('*').eq('period_id', periodId).order('party').limit(100).abortSignal(signal); if (error) throw error; return data as StateList[]; }, retry: false,
+    queryFn: async ({ signal }) => { const { data, error } = await supabase.from('election_history_state_lists').select('id, period_id, party, source_url, notes').eq('period_id', periodId).order('party').limit(100).abortSignal(signal); if (error) throw error; return data as StateList[]; }, retry: false,
   });
   const listId = selected || lists.data?.[0]?.id || '';
   const list = lists.data?.find(item => item.id === listId);
@@ -33,11 +33,11 @@ export function StateLists({ periodId, periodNumber, initialListId = '', initial
     }
   }, [list, initialListId, initialEntryId]);
   const entries = useQuery({ queryKey: ['election-history', user?.id, 'state-list-entries', listId, offset], enabled: !!user && !!listId,
-    queryFn: async ({ signal }) => { const { data, error, count } = await supabase.from('election_history_state_list_entries').select('*', { count: 'exact' }).eq('list_id', listId).order('position').range(offset, offset + 99).abortSignal(signal); if (error) throw error; return { rows: data as StateListEntry[], total: count || 0 }; }, retry: false,
+    queryFn: async ({ signal }) => { const { data, error, count } = await supabase.from('election_history_state_list_entries').select('id, list_id, position, person_name, connection_id, link_mode, notes, birth_year, district_number, district_name, candidacy_role, residence, source_name', { count: 'exact' }).eq('list_id', listId).order('position').range(offset, offset + 99).abortSignal(signal); if (error) throw error; return { rows: data as StateListEntry[], total: count || 0 }; }, retry: false,
   });
   // An issue may point at an entry beyond the first roster page.
   const focused = useQuery({ queryKey: ['election-history', user?.id, 'state-list-entry', initialEntryId, listId], enabled: !!user && !!listId && !!initialEntryId && initialEntryId !== initialListId,
-    queryFn: async ({ signal }) => { const { data, error } = await supabase.from('election_history_state_list_entries').select('*').eq('id', initialEntryId).eq('list_id', listId).abortSignal(signal).maybeSingle(); if (error) throw error; return data as StateListEntry | null; }, retry: false,
+    queryFn: async ({ signal }) => { const { data, error } = await supabase.from('election_history_state_list_entries').select('id, list_id, position, person_name, connection_id, link_mode, notes, birth_year, district_number, district_name, candidacy_role, residence, source_name').eq('id', initialEntryId).eq('list_id', listId).abortSignal(signal).maybeSingle(); if (error) throw error; return data as StateListEntry | null; }, retry: false,
   });
   useEffect(() => { if (focused.data && openedFocus.current !== focused.data.id) { const row = focused.data; openedFocus.current = row.id; setEditing(row.id); setEntry({ position: String(row.position), person_name: row.person_name, connection_id: row.connection_id || '', notes: row.notes || '' }); } }, [focused.data]);
   useEffect(() => { const timer = window.setTimeout(() => setTerm(entry.person_name.trim()), 250); return () => window.clearTimeout(timer); }, [entry.person_name]);

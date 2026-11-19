@@ -174,10 +174,17 @@ export function uniqueTurnout(rows: Turnout[]): Turnout[] {
   }
   return [...unique.values()];
 }
+export type ElectionValidationResult = Pick<DistrictResult,
+  "year" | "ballot" | "district_number" | "party" | "votes" | "share" | "preliminary" | "data_release">;
+export type ElectionValidationTurnout = Pick<Turnout,
+  "year" | "ballot" | "district_number" | "eligible" | "voters" | "valid_votes" | "turnout" | "preliminary" | "data_release">;
+export type ElectionValidationState = Pick<StateResult,
+  "year" | "ballot" | "party" | "votes" | "share" | "valid_votes" | "data_release">;
+
 export function validateElectionData(
-  results: DistrictResult[],
-  turnout: Turnout[],
-  state: StateResult[] = [],
+  results: ElectionValidationResult[],
+  turnout: ElectionValidationTurnout[],
+  state: ElectionValidationState[] = [],
 ): ValidationIssue[] {
   const issues: ValidationIssue[] = [];
   for (const [label, rows] of [
@@ -290,7 +297,7 @@ export function validateElectionData(
           "Parteiergebnis und Nenner haben unterschiedliche Datenstände.",
       });
   }
-  const groups = new Map<string, Turnout[]>();
+  const groups = new Map<string, ElectionValidationTurnout[]>();
   for (const r of turnout) {
     const base = {
       year: r.year,

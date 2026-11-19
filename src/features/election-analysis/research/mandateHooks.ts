@@ -10,7 +10,7 @@ export function useCandidateCoverage(periodId: string) {
     queryFn: async ({ signal }) => {
       const { data, error } = await supabase
         .from("election_analysis_candidate_coverage")
-        .select("*")
+        .select("period_id, is_complete, expected_district_candidacies, source_url, reviewed_at, notes")
         .eq("period_id", periodId)
         .abortSignal(signal)
         .maybeSingle();
@@ -35,7 +35,7 @@ export function useCandidatePartyReference(year: number, enabled: boolean) {
     queryFn: async ({ signal }) => {
       const { data, error } = await supabase
         .from("election_analysis_districts")
-        .select("*")
+        .select("year, ballot, district_number, district_name, party, votes, share, preliminary, notes, data_release")
         .eq("year", year)
         .eq("ballot", "second")
         .order("district_number")

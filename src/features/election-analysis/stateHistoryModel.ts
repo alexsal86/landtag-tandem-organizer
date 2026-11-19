@@ -59,16 +59,16 @@ export type StateHistoryTables = {
     election_analysis_workbook_audit: Relation<WorkbookAudit>;
 };
 /** One electorate per year; no second addition of first-vote denominators. */
-export function stateTotalMetrics(row: StateTotal) {
+export function stateTotalMetrics<T extends Pick<StateTotal, 'eligible' | 'voters' | 'invalid_votes'>>(row: T) {
     return { ...row, nonvoters: row.eligible - row.voters,
         turnout: row.voters / row.eligible * 100,
         invalidShare: row.voters > 0 ? row.invalid_votes / row.voters * 100 : null };
 }
 /** Matrix axes are asymmetric: newcomers are origins, deaths are destinations.
  * Do not mirror cells or turn a missing flow into zero. */
-export function matrixAxes(cells: FlowCell[]) {
+export function matrixAxes(cells: Pick<FlowCell, 'origin' | 'destination' | 'persons'>[]) {
     return { origins: [...new Set(cells.map(c => c.origin))], destinations: [...new Set(cells.map(c => c.destination))] };
 }
-export function matrixCell(cells: FlowCell[], origin: string, destination: string): number | null {
+export function matrixCell(cells: Pick<FlowCell, 'origin' | 'destination' | 'persons'>[], origin: string, destination: string): number | null {
     return cells.find(c => c.origin === origin && c.destination === destination)?.persons ?? null;
 }

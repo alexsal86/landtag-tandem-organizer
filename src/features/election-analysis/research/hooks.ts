@@ -1,3 +1,5 @@
+import { withAnalysisBallot } from "../rowTypes";
+import type { ElectionValidationResult, ElectionValidationTurnout, ElectionValidationState } from "./calculations";
 import { districtSeriesYearBatches } from "./seriesYears";
 import { withConfirmedGeometry } from "./confirmedGeometry";
 import { useQuery, type UseQueryResult } from "@tanstack/react-query";
@@ -150,7 +152,7 @@ export function useDistrictVersions(
     queryFn: async ({ signal }) => {
       const { data, error } = await supabase
         .from("election_analysis_versions")
-        .select("*")
+        .select("year, district_number, district_name, geography_id, identity_key, historical_district_id, history_link_verified, notes")
         .eq("year", year)
         .order("district_number")
         .limit(100)
@@ -238,7 +240,7 @@ export function useGeography(
       if (!id) return null;
       const { data, error } = await supabase
         .from("election_analysis_geographies")
-        .select("*")
+        .select("id, year, source_url, sha256, asset_path, verified, notes")
         .eq("id", id)
         .eq("verified", true)
         .abortSignal(signal)
@@ -268,7 +270,7 @@ export function useVerifiedCandidates(
     queryFn: async ({ signal }) => {
       const { data, error } = await supabase
         .from("election_analysis_candidates")
-        .select("*")
+        .select("year, district_number, party, candidate_name, votes, share, source_url, verified, person_id, data_release")
         .eq("year", year)
         .eq("verified", true)
         .in("party", parties)
@@ -284,10 +286,10 @@ export function useVerifiedCandidates(
   });
 }
 export interface QualityData {
-  results: DistrictResult[];
-  turnout: Turnout[];
-  state: StateResult[];
-  versions: DistrictVersion[];
+  results: ElectionValidationResult[];
+  turnout: ElectionValidationTurnout[];
+  state: ElectionValidationState[];
+  versions: Pick<DistrictVersion, "geography_id" | "identity_key" | "history_link_verified">[];
 }
 export function useQualityData(
   year: number,
@@ -300,34 +302,34 @@ export function useQualityData(
       const replies = await Promise.all([
         supabase
           .from("election_analysis_districts")
-          .select("*")
+          .select("year, ballot, district_number, party, votes, share, preliminary, data_release")
           .eq("year", year)
           .limit(1000)
           .abortSignal(signal),
         supabase
           .from("election_analysis_turnout")
-          .select("*")
+          .select("year, ballot, district_number, eligible, voters, valid_votes, turnout, preliminary, data_release")
           .eq("year", year)
           .limit(200)
           .abortSignal(signal),
         supabase
           .from("election_analysis_state")
-          .select("*")
+          .select("year, ballot, party, votes, share, valid_votes, data_release")
           .eq("year", year)
           .limit(100)
           .abortSignal(signal),
         supabase
           .from("election_analysis_versions")
-          .select("*")
+          .select("geography_id, identity_key, history_link_verified")
           .eq("year", year)
           .limit(100)
           .abortSignal(signal),
       ]);
       for (const reply of replies) if (reply.error) throw reply.error;
       return {
-        results: replies[0].data || [],
-        turnout: replies[1].data || [],
-        state: replies[2].data || [],
+        results: (replies[0].data || []).map(withAnalysisBallot),
+        turnout: (replies[1].data || []).map(withAnalysisBallot),
+        state: (replies[2].data || []).map(withAnalysisBallot),
         versions: replies[3].data || [],
       };
     },

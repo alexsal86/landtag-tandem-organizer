@@ -37,7 +37,7 @@ export function ReleaseCockpit({ year }: { year: number }) {
     queryFn: async ({ signal }) => {
       const y = await supabase
         .from("election_analysis_years")
-        .select("*")
+        .select("period_id, is_published")
         .eq("year", year)
         .abortSignal(signal)
         .maybeSingle();
@@ -47,7 +47,7 @@ export function ReleaseCockpit({ year }: { year: number }) {
         releases.length
           ? supabase
               .from("election_analysis_source_reviews")
-              .select("*")
+              .select("id, status, kind, source_url, sha256")
               .in("id", releases)
               .limit(10)
               .abortSignal(signal)
@@ -55,7 +55,7 @@ export function ReleaseCockpit({ year }: { year: number }) {
         geoIds.length
           ? supabase
               .from("election_analysis_geographies")
-              .select("*")
+              .select("id, verified")
               .in("id", geoIds)
               .limit(5)
               .abortSignal(signal)
@@ -63,7 +63,7 @@ export function ReleaseCockpit({ year }: { year: number }) {
         id
           ? supabase
               .from("election_history_periods")
-              .select("*")
+              .select("name, election_date, starts_on, ends_on, ends_on_is_expected")
               .eq("id", id)
               .abortSignal(signal)
               .maybeSingle()
@@ -71,7 +71,7 @@ export function ReleaseCockpit({ year }: { year: number }) {
         id
           ? supabase
               .from("election_analysis_candidate_coverage")
-              .select("*")
+              .select("is_complete, expected_district_candidacies")
               .eq("period_id", id)
               .abortSignal(signal)
               .maybeSingle()
@@ -90,7 +90,7 @@ export function ReleaseCockpit({ year }: { year: number }) {
               .eq("period_id", id)
               .abortSignal(signal)
           : Promise.resolve({ data: null, error: null, count: 0 }),
-        supabase.from("election_analysis_period_proposals").select("*")
+        supabase.from("election_analysis_period_proposals").select("election_date, starts_on, ends_on, expected_ends_on")
           .eq("election_year", year).eq("verified", true)
           .abortSignal(signal).maybeSingle(),
       ]);

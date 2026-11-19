@@ -45,7 +45,7 @@ export function useSavedScenario(id: string | null) {
     queryFn: async ({ signal }) => {
       const { data, error } = await supabase
         .from("election_analysis_scenarios")
-        .select("*")
+        .select("id, tenant_id, owner_id, name, description, visibility, year, ballot, model_version, data_release, params, input_snapshot, result_snapshot, revision, created_at, updated_at")
         .eq("id", id!)
         .eq("tenant_id", currentTenant!.id)
         .abortSignal(signal)
@@ -66,7 +66,7 @@ export function useFullState(year: number) {
     queryFn: async ({ signal }) => {
       const { data, error } = await supabase
         .from("election_analysis_state")
-        .select("*")
+        .select("year, ballot, party, votes, share, seats, valid_votes, notes, direct_seats, list_seats, data_release")
         .eq("year", year)
         .eq("ballot", "second")
         .order("party")

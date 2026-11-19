@@ -2,14 +2,14 @@ import { useQuery, type UseQueryResult } from "@tanstack/react-query";
 import { useAuth } from "@/hooks/useAuth";
 import { supabase } from "@/integrations/supabase/client";
 import type { Ballot } from "../../types";
-import type { QualityData } from "../hooks";
-import type { DistrictVersion } from "../types";
+import { withAnalysisBallot } from "../../rowTypes";
+import type { LabDistrictData } from "./data";
 /** The active lab needs one ballot, no state table and, for OLS, only one party. */
 export function useLabDistrictData(
   year: number,
   ballot: Ballot,
   party?: string,
-): UseQueryResult<QualityData, Error> {
+): UseQueryResult<LabDistrictData, Error> {
   const { user } = useAuth();
   return useQuery({
     queryKey: [
@@ -24,7 +24,7 @@ export function useLabDistrictData(
     queryFn: async ({ signal }) => {
       let results = supabase
         .from("election_analysis_districts")
-        .select("*")
+        .select("year, ballot, district_number, party, votes, preliminary, data_release, notes")
         .eq("year", year)
         .eq("ballot", ballot);
       if (party) results = results.eq("party", party);
@@ -35,17 +35,17 @@ export function useLabDistrictData(
           .abortSignal(signal),
         supabase
           .from("election_analysis_turnout")
-          .select("*")
+          .select("year, ballot, district_number, district_name, eligible, voters, valid_votes, preliminary, data_release, notes")
           .eq("year", year)
           .eq("ballot", ballot)
           .order("district_number")
           .limit(70)
           .abortSignal(signal),
         party
-          ? Promise.resolve({ data: [] as DistrictVersion[], error: null })
+          ? Promise.resolve({ data: [], error: null })
           : supabase
               .from("election_analysis_versions")
-              .select("*")
+              .select("year, district_number, identity_key")
               .eq("year", year)
               .order("district_number")
               .limit(70)
@@ -53,10 +53,9 @@ export function useLabDistrictData(
       ]);
       for (const reply of replies) if (reply.error) throw reply.error;
       return {
-        results: replies[0].data || [],
-        turnout: replies[1].data || [],
+        results: (replies[0].data || []).map(withAnalysisBallot),
+        turnout: (replies[1].data || []).map(withAnalysisBallot),
         versions: replies[2].data || [],
-        state: [],
       };
     },
     staleTime: 60_000,

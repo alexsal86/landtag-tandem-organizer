@@ -17,7 +17,7 @@ export function PeriodSourceReview({
     queryFn: async ({ signal }) => {
       const { data, error } = await supabase
         .from("election_analysis_period_proposals")
-        .select("*")
+        .select("election_date, starts_on, ends_on, expected_ends_on, election_source_url, term_source_url, notes")
         .eq("period_number", period.number)
         .eq("verified", true)
         .abortSignal(signal)

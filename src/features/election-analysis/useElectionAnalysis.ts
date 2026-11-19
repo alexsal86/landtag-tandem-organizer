@@ -5,11 +5,11 @@ import { useAuth } from '@/hooks/useAuth';
 import type { AnalysisRows, AnalysisSection, AnalysisYear, Ballot } from './types';
 
 const tables = { state: 'election_analysis_state', districts: 'election_analysis_districts', turnout: 'election_analysis_turnout', flows: 'election_analysis_flows', demographics: 'election_analysis_demographics' } as const;
-export function useAnalysisYears(enabled = true): UseQueryResult<AnalysisYear[], Error> {
+export function useAnalysisYears(enabled = true): UseQueryResult<Pick<AnalysisYear, 'year' | 'period_number' | 'is_published'>[], Error> {
   const { user } = useAuth();
   return useQuery({ queryKey: ['election-analysis', user?.id, 'years'], enabled: !!user && enabled,
     queryFn: async ({ signal }) => {
-      const { data, error } = await supabase.from('election_analysis_years').select('*').eq('is_published', true).order('year', { ascending: false }).limit(50).abortSignal(signal);
+      const { data, error } = await supabase.from('election_analysis_years').select('year, period_number, is_published').eq('is_published', true).order('year', { ascending: false }).limit(50).abortSignal(signal);
       if (error) throw error;
       return data || [];
     }, staleTime: 300_000, gcTime: 300_000, retry: false });
@@ -23,11 +23,11 @@ export function useAnalysisRows<K extends AnalysisSection>(section: K, year: num
       const table = tables[section];
       const result = await (() => {
         switch (table) {
-          case 'election_analysis_state': return supabase.from('election_analysis_state').select('*').eq('year', year).eq('ballot', ballot).in('party',focusParties).order('party').limit(100).abortSignal(signal);
-          case 'election_analysis_districts': return supabase.from('election_analysis_districts').select('*').eq('year', year).eq('ballot', ballot).eq('party', party).order('district_number').limit(200).abortSignal(signal);
-          case 'election_analysis_turnout': return supabase.from('election_analysis_turnout').select('*').eq('year', year).eq('ballot', ballot).order('district_number').limit(200).abortSignal(signal);
-          case 'election_analysis_flows': return supabase.from('election_analysis_flows').select('*').eq('year', year).eq('target_party', party).order('partner').limit(100).abortSignal(signal);
-          case 'election_analysis_demographics': return supabase.from('election_analysis_demographics').select('*').eq('year', year).eq('ballot', ballot).eq('gender', gender).order('age_group').order('party').limit(200).abortSignal(signal);
+          case 'election_analysis_state': return supabase.from('election_analysis_state').select('year, ballot, party, votes, share, seats, valid_votes, notes, direct_seats, list_seats').eq('year', year).eq('ballot', ballot).in('party',focusParties).order('party').limit(100).abortSignal(signal);
+          case 'election_analysis_districts': return supabase.from('election_analysis_districts').select('year, ballot, district_number, district_name, party, votes, share, preliminary, notes').eq('year', year).eq('ballot', ballot).eq('party', party).order('district_number').limit(200).abortSignal(signal);
+          case 'election_analysis_turnout': return supabase.from('election_analysis_turnout').select('year, ballot, district_number, district_name, eligible, voters, valid_votes, turnout, preliminary, notes').eq('year', year).eq('ballot', ballot).order('district_number').limit(200).abortSignal(signal);
+          case 'election_analysis_flows': return supabase.from('election_analysis_flows').select('year, previous_year, target_party, partner, inflow, outflow, balance, notes').eq('year', year).eq('target_party', party).order('partner').limit(100).abortSignal(signal);
+          case 'election_analysis_demographics': return supabase.from('election_analysis_demographics').select('year, ballot, party, gender, age_group, share, notes').eq('year', year).eq('ballot', ballot).eq('gender', gender).order('age_group').order('party').limit(200).abortSignal(signal);
         }
       })();
       if (result.error) throw result.error;
@@ -42,7 +42,7 @@ export function useStateComparisonSeries(years: number[], ballot: Ballot, enable
     queryKey: ['election-state-comparison-series', user?.id, years, ballot],
     enabled: !!user && enabled && years.length > 0,
     queryFn: async ({ signal }) => Promise.all(years.map(async year => {
-      const { data, error } = await supabase.from('election_analysis_state').select('*')
+      const { data, error } = await supabase.from('election_analysis_state').select('party, share')
         .eq('year', year).eq('ballot', effectiveBallot(year, ballot)).in('party', focusParties)
         .order('party').limit(100).abortSignal(signal);
       if (error) throw error;

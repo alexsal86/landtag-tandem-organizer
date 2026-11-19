@@ -9,8 +9,8 @@ export function useStateHistory(from: number, to: number) {
     return useQuery({ queryKey: ['election-state-history', user?.id, from, to], enabled: !!user && from > 0 && to >= from,
         queryFn: async ({ signal }) => {
             const replies = await Promise.all([
-                supabase.from('election_analysis_state_totals').select('*').gte('year', from).lte('year', to).order('year').limit(40).abortSignal(signal),
-                supabase.from('election_analysis_state').select('*').gte('year', from).lte('year', to).in('ballot', ['single', 'second']).order('year').order('party').abortSignal(signal),
+                supabase.from('election_analysis_state_totals').select('year, ballot, election_date, eligible, voters, valid_votes, invalid_votes, source_url, source_sheet, source_row, source_verified').gte('year', from).lte('year', to).order('year').limit(40).abortSignal(signal),
+                supabase.from('election_analysis_state').select('year, ballot, party, share, votes').gte('year', from).lte('year', to).in('ballot', ['single', 'second']).order('year').order('party').abortSignal(signal),
             ]);
             const [totals, state] = replies;
             if (totals.error)
@@ -26,7 +26,7 @@ export function useFlowMatrix(year: number) {
     const { user } = useAuth();
     return useQuery({ queryKey: ['election-flow-matrix', user?.id, year], enabled: !!user && year > 0,
         queryFn: async ({ signal }) => {
-            const { data, error } = await supabase.from('election_analysis_flow_matrix').select('*').eq('year', year).order('source_row').order('origin').limit(200).abortSignal(signal);
+            const { data, error } = await supabase.from('election_analysis_flow_matrix').select('previous_year, origin, destination, persons, source_url, source_verified').eq('year', year).order('source_row').order('origin').limit(200).abortSignal(signal);
             if (error)
                 throw error;
             return data || [];
@@ -36,7 +36,7 @@ export function useWorkbookAudit(year: number, section?: 'state' | 'flows' | 'ma
     const { user } = useAuth();
     return useQuery({ queryKey: ['election-workbook-audit', user?.id, year, section], enabled: !!user && year > 0,
         queryFn: async ({ signal }) => {
-            let query = supabase.from('election_analysis_workbook_audit').select('*').eq('year', year);
+            let query = supabase.from('election_analysis_workbook_audit').select('id, section, record_key, status, source_url, source_sheet, source_row').eq('year', year);
             if (section)
                 query = query.eq('section', section);
             const { data, error } = await query.order('status').order('section').order('record_key').limit(300).abortSignal(signal);
@@ -45,11 +45,26 @@ export function useWorkbookAudit(year: number, section?: 'state' | 'flows' | 'ma
             return (data || []).map(withAuditStatus);
         }, staleTime: 300000, gcTime: 120000, retry: false });
 }
+export function useWorkbookAuditDetail(id: string, enabled: boolean) {
+    const { user } = useAuth();
+    return useQuery({
+        queryKey: ['election-workbook-audit-detail', user?.id, id],
+        enabled: !!user && enabled,
+        queryFn: async ({ signal }) => {
+            const { data, error } = await supabase.from('election_analysis_workbook_audit')
+                .select('notes, compared_at, workbook_sha256, incoming, existing')
+                .eq('id', id).abortSignal(signal).single();
+            if (error) throw error;
+            return data;
+        },
+        staleTime: 300000, gcTime: 120000, retry: false,
+    });
+}
 export function useStateTotal(year: number, ballot: Ballot) {
     const { user } = useAuth();
     return useQuery({ queryKey: ['election-state-total', user?.id, year, ballot], enabled: !!user && year > 0,
         queryFn: async ({ signal }) => {
-            const { data, error } = await supabase.from('election_analysis_state_totals').select('*').eq('year', year).eq('ballot', ballot).abortSignal(signal).maybeSingle();
+            const { data, error } = await supabase.from('election_analysis_state_totals').select('year, ballot, election_date, eligible, voters, valid_votes, invalid_votes, source_url, source_sheet, source_row, source_verified').eq('year', year).eq('ballot', ballot).abortSignal(signal).maybeSingle();
             if (error)
                 throw error;
             return data ? withAnalysisBallot(data) : null;
