@@ -12,6 +12,7 @@ interface BaseRechartsProps {
   strokeDasharray?: string;
   vertical?: boolean;
   horizontal?: boolean;
+  [key: string]: unknown;
 }
 
 interface ResponsiveContainerProps extends BaseRechartsProps {
@@ -121,7 +122,8 @@ declare module 'recharts' {
       item: TooltipPayloadItem,
       index: number,
       payload: unknown
-    ) => RechartsFormatterResult;
+    ) => RechartsFormatterResult | unknown;
+    [key: string]: unknown;
   }
 
   export interface LegendProps extends import('react').Attributes {
@@ -129,6 +131,7 @@ declare module 'recharts' {
     className?: string;
     verticalAlign?: 'top' | 'middle' | 'bottom';
     payload?: LegendPayloadItem[];
+    [key: string]: unknown;
   }
 
   export const Legend: ComponentType<LegendProps>;

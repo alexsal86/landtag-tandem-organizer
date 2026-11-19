@@ -33,14 +33,14 @@ export function StateHistoryPanel({ year, years, initiallyShowTurnout = false }:
     const query = useStateHistory(from, year);
     const totals = (query.data?.totals || []).map(stateTotalMetrics).sort((a, b) => b.year - a.year);
     const state = query.data?.state || [];
-    const totalsByYear = new Map(totals.map(total => [total.year, total]));
+    const totalsByYear = new Map<number, (typeof totals)[number]>(totals.map(total => [Number(total.year), total]));
     const resultsByYear = new Map<number, typeof state>();
     for (const result of state) {
       const results = resultsByYear.get(result.year);
       if (results) results.push(result);
       else resultsByYear.set(result.year, [result]);
     }
-    const chartYears = [...new Set([...totalsByYear.keys(), ...resultsByYear.keys()])].sort((a, b) => a - b);
+    const chartYears = [...new Set<number>([...totalsByYear.keys(), ...resultsByYear.keys()])].sort((a, b) => a - b);
     const rows: ({ year: number; turnout: number | null } & Record<string, number | null>)[] = chartYears.map(electionYear => {
       const results = resultsByYear.get(electionYear) || [];
       return {

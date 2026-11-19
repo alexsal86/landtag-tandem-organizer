@@ -261,7 +261,7 @@ function DemographicPanel({ year, ballot, party, gender }: PanelProps) {
               <XAxis dataKey="age" />
               <YAxis unit=" %" />
               <Tooltip
-                labelFormatter={age => <span className="font-semibold underline decoration-2 underline-offset-4">Altersgruppe {age}</span>}
+                labelFormatter={age => <span className="font-semibold underline decoration-2 underline-offset-4">Altersgruppe {String(age)}</span>}
                 formatter={value => percent(typeof value === 'number' ? value : null)}
                 itemSorter={item => typeof item.value === 'number' ? -item.value : Infinity}
               />
