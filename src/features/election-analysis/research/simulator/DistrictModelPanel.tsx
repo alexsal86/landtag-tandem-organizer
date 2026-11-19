@@ -2,6 +2,11 @@ import { useState } from "react";
 import { getPartyColor } from "@/features/election-districts/partyColors";
 import { format } from "../lab/shared";
 import { DataTable } from "../../shared";
+import {
+  districtCandidateLabel,
+  districtLabel,
+  officialDistrictWinnerLabel,
+} from "./districtLabels";
 import { districtLeader } from "./electionFile";
 import type { ElectionFile, SeatResult } from "./types";
 
@@ -80,7 +85,7 @@ export function DistrictModelPanel({
           >
             {rows.map((row) => {
               const { district, winner, margin, flipped } = row;
-              const label = `Wahlkreis ${district.number}${district.name ? ` · ${district.name}` : ""}: ${winnerLabel(row)}${margin == null ? "" : ` · Abstand ${format(margin, 2)} Prozentpunkte`}${flipped ? " · gekippt" : ""}`;
+              const label = `Wahlkreis ${districtLabel(district)}: ${winnerLabel(row)}${margin == null ? "" : ` · Abstand ${format(margin, 2)} Prozentpunkte`}${flipped ? " · gekippt" : ""}`;
               const color = getPartyColor(winner?.partyId ?? undefined);
               const pale =
                 !winner || (margin != null && margin <= CLOSE_MARGIN);
@@ -114,17 +119,23 @@ export function DistrictModelPanel({
             gekippt ({changes.length}).
           </p>
           {selected && (
-            <p role="status" className="text-sm">
-              <strong>
-                Wahlkreis {selected.district.number}
-                {selected.district.name ? ` · ${selected.district.name}` : ""}
-              </strong>
-              {" · "}
-              {winnerLabel(selected)}
-              {selected.margin != null &&
-                ` · Abstand ${format(selected.margin, 2)} Prozentpunkte`}
-              {selected.flipped && ` · 2026: ${selected.previous?.name}`}
-            </p>
+            <div role="status" className="space-y-1 text-sm">
+              <p>
+                <strong>Wahlkreis {districtLabel(selected.district)}</strong>
+              </p>
+              <p>
+                Direkt gewählt 2026 ·{" "}
+                {officialDistrictWinnerLabel(selected.district.number)}
+              </p>
+              <p>
+                Szenario ·{" "}
+                {selected.winner
+                  ? districtCandidateLabel(selected.winner)
+                  : winnerLabel(selected)}
+                {selected.margin != null &&
+                  ` · Vorsprung ${format(selected.margin, 2)} Prozentpunkte`}
+              </p>
+            </div>
           )}
           <p className="text-sm font-medium">
             {changes.length} Wahlkreise mit anderer siegreicher Kandidatur
@@ -145,21 +156,33 @@ export function DistrictModelPanel({
                 </li>
               ))}
           </ul>
-          {(changes.length > 0 || unresolved > 0 || !seats) && (
+          <details open={changes.length > 0 || unresolved > 0 || !seats}>
+            <summary className="cursor-pointer text-sm font-medium">
+              Wahlkreise im Vergleich
+            </summary>
             <DataTable
-              headers={["Wahlkreis", "Ausgangsergebnis", "Szenario"]}
+              headers={[
+                "Wahlkreis",
+                "Ausgangsergebnis · direkt gewählt 2026",
+                "Szenario",
+              ]}
               rows={rows
-                .filter((row) => row.flipped || !row.winner || !seats)
-                .map(({ district, previous, winner, tied }) => [
-                  district.name
-                    ? `${district.number} · ${district.name}`
-                    : district.number,
-                  previous?.name ?? "—",
-                  winner?.name ??
-                    `Losentscheid offen: ${tied.map((candidate) => candidate.name).join(", ")}`,
+                .slice()
+                .sort(
+                  (a, b) =>
+                    Number(b.flipped || !b.winner) -
+                      Number(a.flipped || !a.winner) ||
+                    a.district.number - b.district.number,
+                )
+                .map(({ district, winner, tied }) => [
+                  districtLabel(district),
+                  officialDistrictWinnerLabel(district.number),
+                  winner
+                    ? districtCandidateLabel(winner)
+                    : `Losentscheid offen: ${tied.map((candidate) => candidate.name).join(", ")}`,
                 ])}
             />
-          )}
+          </details>
         </>
       )}
     </section>

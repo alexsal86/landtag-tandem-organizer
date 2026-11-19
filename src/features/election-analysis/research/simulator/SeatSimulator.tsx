@@ -19,6 +19,7 @@ import {
   officialDistrictFile,
   useOfficialDistricts,
 } from "./useOfficialDistricts";
+import { districtLabel } from "./districtLabels";
 import { SeatDistricts } from "./SeatDistricts";
 import { DistrictModelPanel } from "./DistrictModelPanel";
 import { DISTRICT_MODEL_VERSION, readDistrictModel } from "./districtModel";
@@ -158,7 +159,7 @@ function Seat2026() {
       Object.keys(flips).length > 0) &&
       !params.get("savedScenario") &&
       (!hasManualDirect || districtModel !== "manual"),
-    districtModel === "manual",
+    districtModel === "manual" || tab === "districts",
   );
   const districtHistory = districtData.history;
   const districtFactions = districtData.factions;
@@ -1221,7 +1222,7 @@ function Seat2026() {
                               rows={computed.value.actual.districts.flatMap(
                                 (d) =>
                                   d.candidates.map((c) => [
-                                    d.number,
+                                    districtLabel(d),
                                     c.name,
                                     directTransferThreshold(
                                       d.candidates,

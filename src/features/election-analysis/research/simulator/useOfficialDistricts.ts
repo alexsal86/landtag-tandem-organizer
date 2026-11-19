@@ -11,6 +11,7 @@ import {
 import { useHistoryFactions } from "@/features/election-history/useHistoryFactions";
 import type { ElectionHistoryData } from "@/features/election-history/types";
 import { electionMandates, parseElectionFile } from "./electionFile";
+import { officialDistrictWinner } from "./districtLabels";
 import { referenceComparison } from "./model";
 import { BW_RULES_VERSION, type SeatParty } from "./types";
 
@@ -80,6 +81,7 @@ export function officialDistrictFile(
   );
   let hasAllNames = !!history && !!factions;
   const districts = voteReference.districts.map((reference) => {
+    const incumbent = officialDistrictWinner(reference.number);
     const district = history?.districts.find(
       (entry) => entry.district_number === reference.number,
     );
@@ -121,14 +123,17 @@ export function officialDistrictFile(
         if (!name) hasAllNames = false;
         return {
           id: `wk-${reference.number}-${party?.id ?? "einzelbewerbung"}`,
-          name: name ?? party?.name ?? "Einzelbewerbung",
+          name:
+            party && incumbent?.party === party.id
+              ? incumbent.name
+              : (name ?? party?.name ?? "Einzelbewerbung"),
           partyId: party?.id ?? null,
           votes,
         };
       });
     return {
       number: reference.number,
-      name: district?.name,
+      name: incumbent?.district ?? district?.name,
       validFirst: reference.validFirst,
       candidates,
     };

@@ -3,6 +3,12 @@ import { Button } from "@/components/ui/button";
 import { DataTable } from "../../shared";
 import { attempt, format } from "../lab/shared";
 import { electionMandates, transferDistrict } from "./electionFile";
+import {
+  districtCandidateLabel,
+  districtLabel,
+  officialDistrictWinner,
+  officialDistrictWinnerLabel,
+} from "./districtLabels";
 import { directTransferThreshold } from "./model";
 import { seatDifference } from "./SeatOverview";
 import type { ElectionFile, SeatResult } from "./types";
@@ -75,9 +81,12 @@ export function SeatDistricts({
         Knappste Wahlkreise
       </summary>
       <p className="my-2 text-sm text-muted-foreground">
-        Die Vorschau überträgt so viele Erststimmen vom Wahlkreissieger an die
-        stärkste Gegenkandidatur, bis diese allein vorn liegt. Alle anderen
-        Stimmen bleiben gleich.
+        <strong>Abstand</strong> ist die Differenz der Erststimmen zwischen dem
+        Sieger und der stärksten Gegenkandidatur im Szenario.{" "}
+        <strong>Nötige Übertragung</strong> ist die kleinste Zahl an
+        Erststimmen, die direkt vom Sieger zur Gegenkandidatur wechseln müssen,
+        damit sie allein vorn liegt. Jede übertragene Stimme verkleinert den
+        Abstand um zwei Stimmen. Ein Gleichstand reicht nicht.
       </p>
       {active && preview && (
         <div
@@ -85,8 +94,8 @@ export function SeatDistricts({
           className="mb-3 rounded border bg-muted/30 p-3 text-sm"
         >
           <strong>
-            Wahlkreis {active.district.number} · {active.challenger.name}{" "}
-            gewinnt
+            Wahlkreis {districtLabel(active.district)} ·{" "}
+            {districtCandidateLabel(active.challenger)} gewinnt
           </strong>
           {preview.value ? (
             <>
@@ -134,27 +143,28 @@ export function SeatDistricts({
       <DataTable
         headers={[
           "Wahlkreis",
-          "Gewinner",
+          "Direkt gewählt 2026",
+          "Sieger im Szenario",
           "Stärkste Gegenkandidatur",
-          "Abstand",
-          "Nötige Übertragung",
+          "Abstand (Stimmen)",
+          "Nötige Übertragung (Stimmen)",
           "Sitzwirkung",
         ]}
-        initialSort={{ column: 3, direction: "asc" }}
-        sortableColumns={[0, 1, 2, 3, 4]}
+        initialSort={{ column: 4, direction: "asc" }}
+        sortableColumns={[0, 1, 2, 3, 4, 5]}
         sortValues={rows.map((row) => [
           row.district.number,
+          officialDistrictWinner(row.district.number)?.name ?? null,
           row.winner.name,
           row.challenger.name,
           row.gap,
           row.transfer,
         ])}
         rows={rows.map(({ district, winner, challenger, gap, transfer }) => [
-          district.name
-            ? `${district.number} · ${district.name}`
-            : district.number,
-          `${winner.name} · ${winner.partyId ?? "Einzelbewerbung"}`,
-          `${challenger.name} · ${challenger.partyId ?? "Einzelbewerbung"}`,
+          districtLabel(district),
+          officialDistrictWinnerLabel(district.number),
+          districtCandidateLabel(winner),
+          districtCandidateLabel(challenger),
           format(gap, 0),
           transfer === null ? "Nicht möglich" : format(transfer, 0),
           <Button
