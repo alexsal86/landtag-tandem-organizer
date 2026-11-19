@@ -1,4 +1,6 @@
 import { supabase } from "@/integrations/supabase/client";
+import { notify } from "@/lib/notify";
+import { getErrorMessage } from "@/utils/errorHandler";
 import { debugConsole } from "@/utils/debugConsole";
 import { format } from "date-fns";
 import type { RecurrenceData, NewMeetingParticipant, AgendaItem, Meeting, MeetingTemplate, Profile } from "@/components/meetings/types";
@@ -197,8 +199,7 @@ export function useMeetingCreate(deps: UseMeetingCreateDeps) {
       toast({ title: "Meeting erstellt", description: "Das Meeting wurde mit vordefinierter Agenda erstellt." });
     } catch (error: unknown) {
       debugConsole.error('Error creating meeting:', error);
-      const msg = error instanceof Error ? error.message : String(error);
-      toast({ title: "Fehler beim Erstellen", description: `Supabase Fehler: ${msg}`, variant: "destructive" });
+      notify.error("Fehler beim Erstellen", { description: getErrorMessage(error) });
     }
   };
 
