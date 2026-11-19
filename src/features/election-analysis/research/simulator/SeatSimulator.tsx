@@ -908,7 +908,7 @@ function Seat2026() {
                         <span>
                           WK {number} ·{" "}
                           {district?.candidates.find((c) => c.id === candidate)
-                            ?.name || candidate}
+                            ?.name || String(candidate)}
                         </span>
                         <Button
                           type="button"
