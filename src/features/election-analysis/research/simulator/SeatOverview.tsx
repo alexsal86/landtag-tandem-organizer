@@ -112,7 +112,7 @@ export function SeatOverview({
           ))}
         </dl>
         <div className="min-w-0 flex-1 basis-52">
-          <div aria-hidden="true" className="relative aspect-[2/1] w-full">
+          <div aria-hidden="true" className="relative mx-auto aspect-[2/1] w-[88%]">
             {points.map(({ angle, radius }, index) => (
               <span
                 key={index}
@@ -127,7 +127,7 @@ export function SeatOverview({
             ))}
           </div>
           <ul
-            aria-label="Sitze und Sitzanteile"
+            aria-label="Sitze je Partei"
             className="flex flex-wrap justify-center gap-x-4 gap-y-1 text-sm"
           >
             {groups.map((group) => (
@@ -138,9 +138,6 @@ export function SeatOverview({
                   style={{ backgroundColor: group.color }}
                 />
                 {group.name} <strong>{group.count}</strong>
-                <span className="text-muted-foreground">
-                  ({format((group.count / seats.total) * 100, 1)} %)
-                </span>
               </li>
             ))}
           </ul>
