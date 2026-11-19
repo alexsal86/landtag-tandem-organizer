@@ -25,7 +25,7 @@ interface LeafletKarlsruheMapProps {
 }
 
 // Heidelberg (34) consists of one municipality and has no internal boundaries.
-const districtsWithoutMunicipalityLines = new Set([1, 2, 3, 4, 27, 28, 34, 35, 36, 46, 47]);
+const districtsWithoutMunicipalityLines = new Set([34, 35, 36, 46, 47]);
 const municipalityAttribution = 'Gemeindegrenzen 2026 · © Statistisches Landesamt Baden-Württemberg, Fellbach 2025. Wahlkreiskarte für die Landtagswahl 2026 in Baden-Württemberg. Kartengrundlage: LGL (www.lgl-bw.de), Stadt Freiburg, Stadt Karlsruhe, Stadt Mannheim, Landeshauptstadt Stuttgart.';
 
 // Helper function to get party color for election districts and admin boundaries
@@ -520,6 +520,11 @@ const SimpleLeafletMap: React.FC<LeafletKarlsruheMapProps> = ({
     if (!mapReady || !map || !showMunicipalityBoundaries || !showDistrictPolygons ||
         number == null || number < 1 || number > 70 || districtsWithoutMunicipalityLines.has(number)) return;
 
+    const attribution = number <= 4
+      ? 'Stadtbezirksgrenzen: Landeshauptstadt Stuttgart – Stadtmessungsamt (CC BY 4.0)'
+      : number === 27 || number === 28
+        ? 'Stadtteilgrenzen: Stadt Karlsruhe (CC0 1.0)'
+        : municipalityAttribution;
     const controller = new AbortController();
     const boundaries = L.geoJSON(undefined, {
       pane: 'municipalityBoundaries',
@@ -529,13 +534,13 @@ const SimpleLeafletMap: React.FC<LeafletKarlsruheMapProps> = ({
     void (async () => {
       try {
         const response = await fetch(`/data/municipalities-2026/${number}-boundaries.json`, { signal: controller.signal });
-        if (!response.ok) throw new Error('Gemeindegrenzen nicht verfügbar');
+        if (!response.ok) throw new Error('Innengrenzen nicht verfügbar');
         const geometry: GeoJSON.MultiLineString = await response.json();
         if (controller.signal.aborted) return;
         boundaries.addData(geometry).addTo(map);
-        map.attributionControl.addAttribution(municipalityAttribution);
+        map.attributionControl.addAttribution(attribution);
       } catch (error) {
-        if (!controller.signal.aborted) debugConsole.warn('Gemeindegrenzen konnten nicht geladen werden', error);
+        if (!controller.signal.aborted) debugConsole.warn('Innengrenzen konnten nicht geladen werden', error);
       }
     })();
 
@@ -543,7 +548,7 @@ const SimpleLeafletMap: React.FC<LeafletKarlsruheMapProps> = ({
       controller.abort();
       if (map.hasLayer(boundaries)) {
         boundaries.remove();
-        map.attributionControl.removeAttribution(municipalityAttribution);
+        map.attributionControl.removeAttribution(attribution);
       }
     };
   }, [mapReady, municipalityDistrictNumber, showMunicipalityBoundaries, showDistrictPolygons]);

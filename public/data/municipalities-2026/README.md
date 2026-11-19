@@ -11,8 +11,17 @@ angezeigten Linien. Dafür wurden die von mindestens zwei Gemeindegeometrien
 gemeinsam referenzierten TopoJSON-Arcs in WGS84 dekodiert und mit der
 hinterlegten Wahlkreisform aus dem gemeinsamen Grenzstand 2021/2026
 geschnitten. Heidelberg (34) hat nur eine Gemeinde und daher keine
-Innengrenzen. Stuttgart (1–4), Karlsruhe (27–28), Mannheim (35–36) und
-Freiburg (46–47) sind vom Import ausgenommen.
+Innengrenzen. Für Mannheim (35–36) und Freiburg (46–47) sind keine
+Innengrenzen hinterlegt.
+
+Für Stuttgart (1–4) und Karlsruhe (27–28) stammen die Linien aus
+[`stadtbezirke.topojson`](../stuttgart/stadtbezirke.topojson) beziehungsweise
+[`stadtteile.topojson`](../karlsruhe/stadtteile.topojson). Pro Wahlkreis
+wurden nur Grenzlinien berücksichtigt, die zwei ihm ganz oder teilweise
+zugeordnete Bezirke beziehungsweise Stadtteile gemeinsam haben. Die Linien
+wurden ebenfalls an der hinterlegten Wahlkreisform zugeschnitten.
+Geometriequellen sind Landeshauptstadt Stuttgart – Stadtmessungsamt
+(CC BY 4.0) und Stadt Karlsruhe (CC0 1.0).
 
 © Statistisches Landesamt Baden-Württemberg, Fellbach 2025. Wahlkreiskarte
 für die Landtagswahl 2026 in Baden-Württemberg. Kartengrundlage: LGL
