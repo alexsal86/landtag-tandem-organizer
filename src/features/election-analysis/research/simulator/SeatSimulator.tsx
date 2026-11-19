@@ -549,7 +549,7 @@ function Seat2026() {
             )}
             <div className="grid items-start gap-4 lg:grid-cols-[minmax(15rem,20rem)_minmax(0,1fr)]">
               <aside
-                className="min-w-0 space-y-4 px-1 py-3"
+                className="min-w-0 space-y-4 rounded-lg border border-stone-200 bg-white p-4 text-slate-950 [color-scheme:light] [--background:0_0%_100%] [--border:25_10%_85%] [--foreground:215_25%_15%] [--input:25_10%_85%] [--muted-foreground:0_0%_45%]"
                 aria-label="Szenario-Eingaben"
               >
                 <section aria-labelledby="seat-second-label">
@@ -606,7 +606,7 @@ function Seat2026() {
                               const next = clamp(e.currentTarget.valueAsNumber);
                               if (next !== delta) set(key, String(next));
                             }}
-                            className="w-full min-w-0 accent-cyan-800 dark:accent-cyan-400"
+                            className="w-full min-w-0 accent-cyan-800"
                           />
                           <input
                             type="number"
