@@ -1,15 +1,8 @@
 import { useState } from "react";
-import { getPartyColor } from "@/features/election-districts/partyColors";
+import { ParliamentHemicycle } from "../../ParliamentHemicycle";
 import { DataTable } from "../../shared";
 import { format } from "../lab/shared";
 import type { SeatParty, SeatResult } from "./types";
-
-const seatingOrder = ["SPD", "GRÜNE", "FDP", "CDU", "AfD"];
-
-function seatingPosition(partyId: string) {
-  const index = seatingOrder.indexOf(partyId);
-  return index === -1 ? seatingOrder.length : index;
-}
 
 export function seatDifference(value: number) {
   return value > 0 ? `+${format(value, 0)}` : format(value, 0);
@@ -35,51 +28,21 @@ export function SeatOverview({
     .filter((party) => selected.includes(party.id))
     .reduce((sum, party) => sum + party.total, 0);
   const groups = [
-    ...parties
-      .slice()
-      .sort((a, b) => seatingPosition(a.id) - seatingPosition(b.id))
-      .map((party) => ({
-        name: party.name,
-        color: getPartyColor(party.id),
-        count: party.total,
-      })),
+    ...parties.map((party) => ({
+      id: party.id,
+      name: party.name,
+      count: party.total,
+    })),
     ...(seats.specialDirect
       ? [
           {
+            id: "independent-seats",
             name: "Einzelbewerbungen",
-            color: "#9ca3af",
             count: seats.specialDirect,
           },
         ]
       : []),
   ];
-  const rings = Math.min(6, Math.ceil(Math.sqrt(seats.total / 6)));
-  const radii = Array.from(
-    { length: rings },
-    (_, ring) => 45 - (rings - 1 - ring) * (29 / Math.max(1, rings - 1)),
-  );
-  const circumferences = radii.reduce((sum, radius) => sum + radius, 0);
-  let remaining = seats.total;
-  const points = radii
-    .flatMap((radius, ring) => {
-      const count =
-        ring === rings - 1
-          ? remaining
-          : Math.min(
-              remaining,
-              Math.round((seats.total * radius) / circumferences),
-            );
-      remaining -= count;
-      return Array.from({ length: count }, (_, index) => {
-        const angle =
-          count === 1 ? Math.PI / 2 : (Math.PI * index) / (count - 1);
-        return { angle, radius };
-      });
-    })
-    .sort((a, b) => b.angle - a.angle || a.radius - b.radius);
-  const dots = groups.flatMap((group) =>
-    Array<string>(group.count).fill(group.color),
-  );
 
   return view === "seats" ? (
     <section className="min-w-0 rounded-lg border bg-card p-4">
@@ -111,36 +74,8 @@ export function SeatOverview({
             </div>
           ))}
         </dl>
-        <div className="min-w-0 flex-1 basis-52">
-          <div aria-hidden="true" className="relative mx-auto aspect-[2/1] w-[88%]">
-            {points.map(({ angle, radius }, index) => (
-              <span
-                key={index}
-                className="absolute aspect-square -translate-x-1/2 -translate-y-1/2 rounded-full ring-1 ring-background"
-                style={{
-                  left: `${50 + radius * Math.cos(angle)}%`,
-                  top: `${94 - 2 * radius * Math.sin(angle)}%`,
-                  width: `${Math.min(3.1, 78 / Math.sqrt(seats.total) / 2)}%`,
-                  backgroundColor: dots[index],
-                }}
-              />
-            ))}
-          </div>
-          <ul
-            aria-label="Sitze je Partei"
-            className="flex flex-wrap justify-center gap-x-4 gap-y-1 text-sm"
-          >
-            {groups.map((group) => (
-              <li key={group.name} className="flex items-center gap-1.5">
-                <span
-                  aria-hidden="true"
-                  className="size-2.5 rounded-full"
-                  style={{ backgroundColor: group.color }}
-                />
-                {group.name} <strong>{group.count}</strong>
-              </li>
-            ))}
-          </ul>
+        <div className="min-w-0 flex-1 basis-52 space-y-4">
+          <ParliamentHemicycle groups={groups} />
         </div>
       </div>
       {reference && !official && (
