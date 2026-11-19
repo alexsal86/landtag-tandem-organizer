@@ -22,6 +22,17 @@ Ausführungsumgebung liefern weiterhin HTTP 403. Der vorbereitete Prozess erzeug
 `review.json` erst nach vollständigem Download und Zahlenabgleich. Vorläufigkeits-
 kennzeichen und gespeicherte Werte wurden deshalb nicht pauschal geändert.
 
+Für den Sitzsimulator wurden am 19.11.2026 die veröffentlichten Endergebnistabellen
+aller 70 Wahlkreise ausgewertet. Die Referenzdatei
+`src/features/election-analysis/research/simulator/officialDistricts2026.json`
+enthält nur Stimmenzahlen, Wahlkreisnummern und die jeweiligen Quellenadressen.
+Die 571 Wahlvorschläge ergeben je Wahlkreis die veröffentlichten gültigen
+Erststimmen und landesweit 5.359.187 Erststimmen. Alle 70 rechnerischen
+Wahlkreissieger entsprechen den amtlich ausgewiesenen Siegern. Personen,
+Kandidaturen und Wahlkreisnamen stammen im Simulator aus dem bestehenden
+veröffentlichten Wahlhistorienbestand. Die Referenzdatei verändert keine
+Kandidaturen, amtlichen Wahlkreisdatenbankzeilen oder Mandate.
+
 ## Geometrien 2021 / 2026
 
 Amtlicher Index:

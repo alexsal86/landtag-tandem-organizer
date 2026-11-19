@@ -4,9 +4,11 @@ import {
   BW_RULES_VERSION,
   type ElectionFile,
   type SeatCandidate,
+  type SeatDistrict,
   type SeatPerson,
 } from "./types";
 import { allocateBw2026 } from "./seats";
+import { directTransferThreshold } from "./model";
 const n = (v: unknown): v is number =>
   typeof v === "number" && Number.isSafeInteger(v) && v >= 0;
 const text = (v: unknown): v is string =>
@@ -114,7 +116,12 @@ export function parseElectionFile(value: unknown): ElectionFile {
       throw new Error(
         "Alle Erststimmenkandidaturen müssen die gültigen Erststimmen ergeben.",
       );
-    return { number: d.number, validFirst: d.validFirst, candidates };
+    return {
+      number: d.number,
+      name: text(d.name) ? d.name : undefined,
+      validFirst: d.validFirst,
+      candidates,
+    };
   });
   if (new Set(districts.map((d) => d.number)).size !== 70)
     throw new Error("Wahlkreisnummern sind nicht eindeutig.");
@@ -274,6 +281,36 @@ export function shiftElection(
     },
     adjusted,
     secondDeltas,
+  };
+}
+export function transferDistrict(
+  district: SeatDistrict,
+  target: string,
+  lotWinner?: string,
+): SeatDistrict {
+  const transfer = directTransferThreshold(district.candidates, target);
+  if (transfer === null)
+    throw new Error(
+      `Wahlkreis ${district.number}: Stimmenübertragung nicht möglich.`,
+    );
+  if (!transfer) return district;
+  const donor = district.candidates
+    .filter((candidate) => candidate.id !== target)
+    .reduce((leader, candidate) =>
+      candidate.votes > leader.votes ||
+      (candidate.votes === leader.votes && candidate.id === lotWinner)
+        ? candidate
+        : leader,
+    );
+  return {
+    ...district,
+    candidates: district.candidates.map((candidate) => ({
+      ...candidate,
+      votes:
+        candidate.votes +
+        (candidate.id === target ? transfer : 0) -
+        (candidate.id === donor.id ? transfer : 0),
+    })),
   };
 }
 export function electionMandates(file: ElectionFile) {

@@ -582,11 +582,15 @@ Originaldownloads sind in [sources-and-gaps.md](elections/sources-and-gaps.md) d
   Nicht unterstützte degenerierte Sonderfälle werden zurückgewiesen.
 
 Standardmodus: Landes-Zweitstimmen aus der vollständigen vorhandenen Tabelle und
-getrennt eingegebene Direktmandatsannahmen. Erststimmen werden nicht aus Zweitstimmen
-abgeleitet. Ohne vollständige Kandidaturen kann kein automatischer Wahlkreissieger
-oder tatsächlicher Personeneinzug behauptet werden.
+getrennt eingegebene Direktmandatsannahmen. Der Reiter **Wahlkreise** lädt die
+veröffentlichte Periode 2026 mit den bestehenden Wahlkreisen, Personen und
+Erststimmenkandidaturen. Der Simulator ordnet diesen Kandidaturen die amtlichen
+Stimmenzahlen eindeutig nach Wahlkreis und Wahlvorschlag zu und prüft die
+vollständigen Summen und die amtliche Sitzreferenz. Kippannahmen können für mehrere
+Wahlkreise zusammen übernommen, entfernt und im Szenario gespeichert werden.
 
-Vollmodus: lokale JSON-Datei (maximal 2 MB) mit Modellversion, Quelle, Datenstand,
+Als alternative Grundlage lässt sich eine lokale JSON-Datei (maximal 2 MB)
+mit Modellversion, Quelle, Datenstand,
 allen Parteien, gültigen Zweitstimmen, exakt 70 Wahlkreisen und sämtlichen
 Kandidaturen/Erststimmen sowie optional vollständigen Landeslisten. Eine Datenvorlage
 ist im Simulator herunterladbar. Partei-/Personen-IDs sind explizit; gleiche Namen

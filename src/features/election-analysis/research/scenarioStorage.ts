@@ -33,6 +33,7 @@ export function scenarioParams(
           "seatSecond_",
           "seatDirect_",
           "seatDistrictLot_",
+          "seatFlip_",
         ].some((prefix) => key.startsWith(prefix)),
     ),
   );

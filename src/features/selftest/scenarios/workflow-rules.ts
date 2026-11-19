@@ -12,6 +12,7 @@ import { evaluateAutomationTree } from "@/features/automation/conditions";
 import { validateRuleEditor } from "@/components/administration/automationRule/ruleValidation";
 import { editorFormSnapshot, editorPlanYear, editorStepErrors, evaluateEditorSample, parseEditorSample } from "@/components/administration/automationRule/editorModel";
 import { DEFAULT_ACTION, DEFAULT_FORM } from "@/components/administration/automationRule/constants";
+import { transferDistrict } from "@/features/election-analysis/research/simulator/electionFile";
 import type { TestScenario } from "../types";
 import { calendarOccurrence, nextCalendarOccurrence, scheduleRunKey } from "@/features/automation/calendarSchedule";
 
@@ -22,6 +23,25 @@ export const workflowRulesScenario: TestScenario = {
   checks: ["Erlaubte und verbotene Brief-Statuswechsel", "Entscheiderrollen", "Ministeriumsfrist und Wiedervorlage"],
   limitations: ["Berechtigungen der Datenbank werden separat in den Zugriffstests geprüft."],
   steps: [
+    {
+      id: "seat-district-transfer", label: "Mandatssimulator: knappen Wahlkreis durch Erststimmenübertragung kippen", kind: "logic",
+      run: async () => {
+        const district = {
+          number: 1, validFirst: 29,
+          candidates: [
+            { id: "a", name: "A", partyId: "A", votes: 12 },
+            { id: "b", name: "B", partyId: "B", votes: 8 },
+            { id: "c", name: "C", partyId: "C", votes: 9 },
+          ],
+        };
+        const result = transferDistrict(district, "b");
+        const repeated = transferDistrict(result, "b");
+        const ok = result.candidates.map((c) => c.votes).join() === "9,11,9"
+          && result.candidates.reduce((sum, c) => sum + c.votes, 0) === district.validFirst
+          && district.candidates[0].votes === 12 && repeated === result;
+        return { ok, message: "Die Übertragung erzeugt einen eindeutigen Sieger und erhält die gültigen Erststimmen." };
+      },
+    },
     {
       id: "routine-relative-deadlines-deputies", label: "Routinen: relative Fristen und Abwesenheitsvertretung konfigurieren", kind: "logic",
       run: async () => {

@@ -16,6 +16,7 @@ export interface SeatCandidate extends SeatPerson {
 }
 export interface SeatDistrict {
   number: number;
+  name?: string;
   validFirst: number;
   candidates: SeatCandidate[];
 }

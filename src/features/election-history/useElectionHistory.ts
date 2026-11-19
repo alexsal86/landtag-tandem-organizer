@@ -10,10 +10,10 @@ const periodColumns = 'id,number,name,election_date,starts_on,election_year,ends
 const personColumns = 'id,name,biography,source_url,history_complete';
 
 /** The small period index is the only query made before a selection. */
-export function useElectionPeriods(): UseQueryResult<ElectionPeriod[], Error> {
+export function useElectionPeriods(enabled = true): UseQueryResult<ElectionPeriod[], Error> {
   const { user } = useAuth();
   return useQuery({
-    queryKey: ['election-history', user?.id, 'periods'], enabled: !!user,
+    queryKey: ['election-history', user?.id, 'periods'], enabled: !!user && enabled,
     queryFn: async ({ signal }) => {
       const { data, error } = await supabase.from('election_history_periods').select(periodColumns).order('number', { ascending: false }).limit(100).abortSignal(signal);
       if (error) throw error;
