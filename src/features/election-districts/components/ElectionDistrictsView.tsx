@@ -16,6 +16,7 @@ import { Button } from "@/components/ui/button";
 import { Users, BarChart3, ChevronDown } from "lucide-react";
 import { useElectionDistricts } from "@/hooks/useElectionDistricts";
 import { DistrictNotes } from "./DistrictNotes";
+import { LocalElectionResults } from "./LocalElectionResults";
 import { getPartyColor, getPartyTextColor } from "../partyColors";
 import SimpleLeafletMap from "@/features/election-districts/components/SimpleLeafletMap";
 import LeafletMapFallback from "@/features/election-districts/components/LeafletMapFallback";
@@ -265,6 +266,9 @@ export const ElectionDistrictsView = ({ sidebarHeader }: { sidebarHeader?: React
         {/* Sidebar */}
         <div ref={sidebarRef} id="district-sidebar" className="w-full md:w-96 md:shrink-0 min-h-0 border-t md:border-t-0 md:border-l bg-muted/30 overflow-y-auto overscroll-contain md:h-full p-4 space-y-4">
           {sidebarHeader}
+          {historyPeriod?.election_year === 2026 && selectedDistrict?.district_type === 'wahlkreis' &&
+            selectedDistrict.district_number >= 1 && selectedDistrict.district_number <= 70 &&
+            <LocalElectionResults key={selectedDistrict.id} districtNumber={selectedDistrict.district_number} />}
           {/* District Information */}
           {(!historyPeriod || selectedDistrict?.district_type === 'verwaltungsgrenze') && <Card>
             <CardContent className="pt-5">

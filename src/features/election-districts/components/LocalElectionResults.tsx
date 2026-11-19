@@ -1,0 +1,101 @@
+import { useState } from 'react';
+import { useQuery } from '@tanstack/react-query';
+import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
+
+const parties = ['GRÜNE', 'CDU', 'SPD', 'FDP', 'AfD'] as const;
+const counts = new Intl.NumberFormat('de-DE');
+const shares = new Intl.NumberFormat('de-DE', {
+  style: 'percent',
+  minimumFractionDigits: 1,
+  maximumFractionDigits: 1,
+});
+
+type BallotCounts = [valid: number, greens: number, cdu: number, spd: number, fdp: number, afd: number];
+
+interface LocalArea {
+  key: string;
+  name: string;
+  level?: 'Stadtbezirk' | 'Stadtteil';
+  first: BallotCounts | null;
+  second: BallotCounts | null;
+  noLocalPostal?: boolean;
+  noGeometry?: boolean;
+  partial?: boolean;
+}
+
+export function LocalElectionResults({ districtNumber }: { districtNumber: number }) {
+  const [areaKey, setAreaKey] = useState('');
+  const [ballot, setBallot] = useState<'first' | 'second'>('second');
+  const query = useQuery({
+    queryKey: ['local-election-results-2026', districtNumber],
+    queryFn: async ({ signal }): Promise<LocalArea[]> => {
+      const response = await fetch(`/data/local-results-2026/${districtNumber}.json`, { signal });
+      if (!response.ok) throw new Error('Gebietsergebnisse konnten nicht geladen werden.');
+      const areas: LocalArea[] = await response.json();
+      return areas.sort((a, b) => a.name.localeCompare(b.name, 'de'));
+    },
+    staleTime: Infinity,
+    retry: false,
+  });
+  const areas = query.data ?? [];
+  const area = areas.find(item => item.key === areaKey) ?? areas[0];
+  const result = area?.[ballot];
+
+  return (
+    <Card>
+      <CardHeader className="pb-3">
+        <CardTitle className="text-base">Gebietsergebnisse 2026</CardTitle>
+      </CardHeader>
+      <CardContent className="space-y-3 text-sm">
+        {query.isPending && <p role="status">Gebietsergebnisse werden geladen …</p>}
+        {query.isError && <p role="alert">Gebietsergebnisse konnten nicht geladen werden.</p>}
+        {area && (
+          <>
+            <label className="block">
+              {area.level ?? 'Gemeinde / Gemeindeanteil'}
+              <select className="mt-1 block w-full rounded-md border bg-background p-2"
+                value={area.key} onChange={event => setAreaKey(event.target.value)}>
+                {areas.map(item => <option key={item.key} value={item.key}>{item.name}</option>)}
+              </select>
+            </label>
+            {area.partial && <p className="text-muted-foreground">Teil des Stadtbezirks im ausgewählten Wahlkreis</p>}
+            {area.noGeometry && <p className="text-muted-foreground">Für dieses Gebiet ist keine Kartenfläche hinterlegt.</p>}
+            {area.noLocalPostal && <p className="text-muted-foreground">Kein eigener Briefwahlbezirk mit ausgewiesenen Stimmen. Gemeinsame Briefwahl kann außerhalb dieses Gemeindeergebnisses erfasst sein.</p>}
+            {result ? (
+              <>
+                <label className="block">
+                  Stimmenart
+                  <select className="mt-1 block w-full rounded-md border bg-background p-2"
+                    value={ballot} onChange={event => setBallot(event.target.value === 'first' ? 'first' : 'second')}>
+                    <option value="first">Erststimmen</option>
+                    <option value="second">Zweitstimmen</option>
+                  </select>
+                </label>
+                <table className="w-full tabular-nums">
+                  <thead>
+                    <tr className="text-muted-foreground">
+                      <th scope="col" className="text-left">Partei</th>
+                      <th scope="col" className="text-right">Stimmen</th>
+                      <th scope="col" className="text-right">Anteil</th>
+                    </tr>
+                  </thead>
+                  <tbody>
+                    {parties.map((party, index) => {
+                      const votes = result[index + 1];
+                      return <tr key={party} className="border-t">
+                        <th scope="row" className="py-1 text-left font-normal">{party}</th>
+                        <td className="text-right">{counts.format(votes)}</td>
+                        <td className="text-right">{result[0] > 0 ? shares.format(votes / result[0]) : '–'}</td>
+                      </tr>;
+                    })}
+                  </tbody>
+                </table>
+                <p className="text-xs text-muted-foreground">{counts.format(result[0])} gültige Stimmen insgesamt. Die Anteile beziehen sich auf alle gültigen Stimmen.</p>
+              </>
+            ) : <p className="text-muted-foreground">Für dieses Gebiet enthält die CSV kein eigenes Ergebnis.</p>}
+          </>
+        )}
+      </CardContent>
+    </Card>
+  );
+}
