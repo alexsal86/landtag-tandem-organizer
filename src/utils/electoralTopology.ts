@@ -144,7 +144,7 @@ async function fetchGeometryJson(path: string): Promise<unknown> {
   const stream = new Blob([buffer]).stream().pipeThrough(new DecompressionStream('gzip'));
   return new Response(stream).json();
 }
-function loadGeometryJson(path: string): Promise<unknown> {
+export function loadGeometryJson(path: string): Promise<unknown> {
   let request = requests.get(path);
   if (!request) {
     request = fetchGeometryJson(path).catch(async error => {

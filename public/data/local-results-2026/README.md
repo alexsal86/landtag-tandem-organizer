@@ -31,3 +31,14 @@ Die Summen der Stadtgebiete wurden je Wahlkreis und Stimmenart mit den
 Wahlkreiszeilen der Landes-CSV abgeglichen. Die Stuttgarter Stadtbezirke Ost
 und Mühlhausen haben je einen Datensatz pro zugehörigem Wahlkreis.
 Gebiete ohne hinterlegte Kartenfläche sind in der Seitenleiste auswählbar.
+
+`winners` enthält je Stimmenart den eindeutigen Spitzenreiter, sofern er
+zu den fünf angezeigten Parteien gehört. Der Rang wurde vor dem Filtern
+der Landes-CSV bestimmt. Bei Gleichstand oder einer anderen stärksten
+Partei bleibt die Kartenfläche grau.
+
+`areas-v1` enthält die komprimierten TopoJSON-Flächen je Wahlkreis. Die
+Flächen aus den Gemeinde-, Stuttgarter und Karlsruher TopoJSON wurden an
+der hinterlegten Wahlkreisgeometrie 2021/2026 zugeschnitten und über
+denselben Gebietsschlüssel den Ergebnissen zugeordnet. Jede Fläche enthält
+einen Beschriftungspunkt im größten zusammenhängenden Teil.

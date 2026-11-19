@@ -37,3 +37,39 @@
 @media (prefers-reduced-motion: reduce) {
   .bw-district-path, .bw-map-control, .bw-election-map .custom-district-marker { transition: none; }
 }
+
+.bw-local-area,
+.bw-local-area-selected {
+  cursor: pointer;
+}
+
+.bw-local-area:hover {
+  stroke: #0f172a;
+  stroke-width: 2px;
+}
+
+.bw-local-area-selected {
+  filter: drop-shadow(0 0 1px #0f172a) drop-shadow(0 0 1px #0f172a);
+}
+
+.leaflet-tooltip.bw-local-area-label {
+  max-width: 210px;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  pointer-events: none;
+  padding: 2px 6px;
+  border-radius: 5px;
+  border: 1px solid #cbd5e1;
+  background: #fff;
+  color: #172033;
+  font-size: 11px;
+  font-weight: 600;
+}
+
+.leaflet-tooltip.bw-local-area-label-selected {
+  background: #172033;
+  color: #fff;
+  border-color: #fff;
+  font-size: 12px;
+  font-weight: 700;
+}

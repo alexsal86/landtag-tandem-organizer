@@ -1,8 +1,8 @@
-import { useState } from 'react';
 import { useQuery } from '@tanstack/react-query';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
+import { getPartyColor } from '../partyColors';
 
-const parties = ['GRÜNE', 'CDU', 'SPD', 'FDP', 'AfD'] as const;
+const localResultParties = ['GRÜNE', 'CDU', 'SPD', 'FDP', 'AfD'] as const;
 const counts = new Intl.NumberFormat('de-DE');
 const shares = new Intl.NumberFormat('de-DE', {
   style: 'percent',
@@ -12,7 +12,9 @@ const shares = new Intl.NumberFormat('de-DE', {
 
 type BallotCounts = [valid: number, greens: number, cdu: number, spd: number, fdp: number, afd: number];
 
-interface LocalArea {
+export type LocalBallot = 'first' | 'second';
+
+export interface LocalArea {
   key: string;
   name: string;
   level?: 'Stadtbezirk' | 'Stadtteil';
@@ -21,12 +23,12 @@ interface LocalArea {
   noLocalPostal?: boolean;
   noGeometry?: boolean;
   partial?: boolean;
+  winners?: Partial<Record<LocalBallot, typeof localResultParties[number]>>;
 }
 
-export function LocalElectionResults({ districtNumber }: { districtNumber: number }) {
-  const [areaKey, setAreaKey] = useState('');
-  const [ballot, setBallot] = useState<'first' | 'second'>('second');
-  const query = useQuery({
+export function useLocalElectionResults(districtNumber: number | undefined) {
+  return useQuery({
+    enabled: districtNumber !== undefined,
     queryKey: ['local-election-results-2026', districtNumber],
     queryFn: async ({ signal }): Promise<LocalArea[]> => {
       const response = await fetch(`/data/local-results-2026/${districtNumber}.json`, { signal });
@@ -37,8 +39,18 @@ export function LocalElectionResults({ districtNumber }: { districtNumber: numbe
     staleTime: Infinity,
     retry: false,
   });
+}
+
+export function LocalElectionResults({
+  query, area, ballot, onAreaChange, onBallotChange,
+}: {
+  query: ReturnType<typeof useLocalElectionResults>;
+  area?: LocalArea;
+  ballot: LocalBallot;
+  onAreaChange: (key: string) => void;
+  onBallotChange: (ballot: LocalBallot) => void;
+}) {
   const areas = query.data ?? [];
-  const area = areas.find(item => item.key === areaKey) ?? areas[0];
   const result = area?.[ballot];
 
   return (
@@ -54,23 +66,24 @@ export function LocalElectionResults({ districtNumber }: { districtNumber: numbe
             <label className="block">
               {area.level ?? 'Gemeinde / Gemeindeanteil'}
               <select className="mt-1 block w-full rounded-md border bg-background p-2"
-                value={area.key} onChange={event => setAreaKey(event.target.value)}>
+                value={area.key} onChange={event => onAreaChange(event.target.value)}>
                 {areas.map(item => <option key={item.key} value={item.key}>{item.name}</option>)}
               </select>
             </label>
+            <label className="block">
+              Stimmenart
+              <select className="mt-1 block w-full rounded-md border bg-background p-2"
+                value={ballot} onChange={event => onBallotChange(event.target.value === 'first' ? 'first' : 'second')}>
+                <option value="first">Erststimmen</option>
+                <option value="second">Zweitstimmen</option>
+              </select>
+            </label>
+            <p className="text-xs text-muted-foreground">Die Kartenfarbe zeigt die stärkste Partei. Grau steht für Gleichstand, eine stärkste Partei außerhalb der Auswahl oder fehlende Ergebnisse.</p>
             {area.partial && <p className="text-muted-foreground">Teil des Stadtbezirks im ausgewählten Wahlkreis</p>}
             {area.noGeometry && <p className="text-muted-foreground">Für dieses Gebiet ist keine Kartenfläche hinterlegt.</p>}
             {area.noLocalPostal && <p className="text-muted-foreground">Kein eigener Briefwahlbezirk mit ausgewiesenen Stimmen. Gemeinsame Briefwahl kann außerhalb dieses Gemeindeergebnisses erfasst sein.</p>}
             {result ? (
               <>
-                <label className="block">
-                  Stimmenart
-                  <select className="mt-1 block w-full rounded-md border bg-background p-2"
-                    value={ballot} onChange={event => setBallot(event.target.value === 'first' ? 'first' : 'second')}>
-                    <option value="first">Erststimmen</option>
-                    <option value="second">Zweitstimmen</option>
-                  </select>
-                </label>
                 <table className="w-full tabular-nums">
                   <thead>
                     <tr className="text-muted-foreground">
@@ -80,10 +93,15 @@ export function LocalElectionResults({ districtNumber }: { districtNumber: numbe
                     </tr>
                   </thead>
                   <tbody>
-                    {parties.map((party, index) => {
+                    {localResultParties.map((party, index) => {
                       const votes = result[index + 1];
                       return <tr key={party} className="border-t">
-                        <th scope="row" className="py-1 text-left font-normal">{party}</th>
+                        <th scope="row" className="py-1 text-left font-normal">
+                          <span className="inline-flex items-center gap-2">
+                            <span aria-hidden className="size-2.5 rounded-full border border-black/20" style={{ backgroundColor: getPartyColor(party) }} />
+                            {party}
+                          </span>
+                        </th>
                         <td className="text-right">{counts.format(votes)}</td>
                         <td className="text-right">{result[0] > 0 ? shares.format(votes / result[0]) : '–'}</td>
                       </tr>;

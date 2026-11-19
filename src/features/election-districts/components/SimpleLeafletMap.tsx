@@ -8,6 +8,8 @@ import { usePartyAssociations } from '@/hooks/usePartyAssociations';
 import { directMandateParty, partyColors, hasRenderableBoundary, electionDistrictNumberLabel } from '../mapModel';
 import { Plus, Minus, MoveDiagonal } from 'lucide-react';
 import sunflowerIcon from '@/assets/sunflower.svg';
+import type { LocalArea, LocalBallot } from './LocalElectionResults';
+import { useLocalResultMap } from './localResultMap';
 
 interface LeafletKarlsruheMapProps {
   districts: ElectionDistrict[];
@@ -18,6 +20,10 @@ interface LeafletKarlsruheMapProps {
   showPartyAssociations?: boolean;
   showDistrictPolygons?: boolean;
   showMunicipalityBoundaries?: boolean;
+  localAreas?: LocalArea[];
+  localAreaKey?: string;
+  localBallot?: LocalBallot;
+  onLocalAreaClick?: (key: string) => void;
   showDistrictMarkers?: boolean;
   focusedDistrict?: ElectionDistrict;
   showBaseMap?: boolean;
@@ -63,6 +69,10 @@ const SimpleLeafletMap: React.FC<LeafletKarlsruheMapProps> = ({
   showPartyAssociations = false,
   showDistrictPolygons = true,
   showMunicipalityBoundaries = false,
+  localAreas,
+  localAreaKey,
+  localBallot = 'second',
+  onLocalAreaClick,
   showDistrictMarkers = true,
   focusedDistrict,
   showBaseMap = false,
@@ -513,18 +523,31 @@ const SimpleLeafletMap: React.FC<LeafletKarlsruheMapProps> = ({
   const municipalityDistrictNumber = selectedDistrict?.district_type === 'wahlkreis' &&
     districts.some(district => district.id === selectedDistrict.id)
     ? selectedDistrict.district_number : undefined;
+  const hasLocalShapes = useLocalResultMap({
+    map: mapReady ? mapRef.current : null,
+    number: showMunicipalityBoundaries && showDistrictPolygons && localAreas?.some(area => !area.noGeometry)
+      ? municipalityDistrictNumber : undefined,
+    areas: localAreas,
+    selectedKey: localAreaKey,
+    ballot: localBallot,
+    onSelect: onLocalAreaClick,
+  });
 
   useEffect(() => {
     const map = mapRef.current;
     const number = municipalityDistrictNumber;
     if (!mapReady || !map || !showMunicipalityBoundaries || !showDistrictPolygons ||
-        number == null || number < 1 || number > 70 || districtsWithoutMunicipalityLines.has(number)) return;
+        number == null || number < 1 || number > 70 || (!hasLocalShapes && districtsWithoutMunicipalityLines.has(number))) return;
 
     const attribution = number <= 4
       ? 'Stadtbezirksgrenzen: Landeshauptstadt Stuttgart – Stadtmessungsamt (CC BY 4.0)'
       : number === 27 || number === 28
         ? 'Stadtteilgrenzen: Stadt Karlsruhe (CC0 1.0)'
         : municipalityAttribution;
+    if (hasLocalShapes) {
+      map.attributionControl.addAttribution(attribution);
+      return () => { map.attributionControl.removeAttribution(attribution); };
+    }
     const controller = new AbortController();
     const boundaries = L.geoJSON(undefined, {
       pane: 'municipalityBoundaries',
@@ -551,7 +574,7 @@ const SimpleLeafletMap: React.FC<LeafletKarlsruheMapProps> = ({
         map.attributionControl.removeAttribution(attribution);
       }
     };
-  }, [mapReady, municipalityDistrictNumber, showMunicipalityBoundaries, showDistrictPolygons]);
+  }, [mapReady, municipalityDistrictNumber, showMunicipalityBoundaries, showDistrictPolygons, hasLocalShapes]);
 
   // Search navigation also works when a layer is hidden or a boundary is missing.
   useEffect(() => {
