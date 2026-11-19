@@ -1,17 +1,12 @@
-import { DataTable, Selection } from "../../shared";
+import { DataTable } from "../../shared";
 import { districtLeader } from "./electionFile";
-import { type DistrictModel, readDistrictModel } from "./districtModel";
 import type { ElectionFile, SeatResult } from "./types";
 
 export function DistrictModelPanel({
-  model,
-  onChange,
   baseline,
   scenario,
   seats,
 }: {
-  model: DistrictModel;
-  onChange: (model: DistrictModel) => void;
   baseline?: ElectionFile | null;
   scenario?: ElectionFile;
   seats?: SeatResult;
@@ -44,26 +39,10 @@ export function DistrictModelPanel({
     if (winner)
       direct.set(winner.partyId, (direct.get(winner.partyId) ?? 0) + 1);
 
+  if (!scenario) return null;
+
   return (
     <section className="mt-3 space-y-3 rounded-lg border bg-card p-4">
-      <Selection
-        id="seat-district-model"
-        label="Wahlkreismodell"
-        value={model}
-        onChange={(value) => onChange(readDistrictModel(value))}
-      >
-        <option value="manual">Manuelle Annahmen</option>
-        <option value="swing">Swing in Prozentpunkten</option>
-        <option value="logratio">Log-Ratio</option>
-      </Selection>
-      <p className="text-sm text-muted-foreground">
-        {model === "manual"
-          ? "Erststimmen und Direktmandate folgen den Eingaben des Szenarios."
-          : model === "swing"
-            ? "Die Änderung der Zweitstimmen in Prozentpunkten wird auf das amtliche Erststimmenprofil übertragen."
-            : "Die Erststimmen werden mit der relativen Zweitstimmenänderung gewichtet und je Wahlkreis auf die verfügbare Stimmenzahl normiert."}{" "}
-        Hypothetische Modellrechnung.
-      </p>
       {scenario && (
         <>
           <p className="text-sm font-medium">

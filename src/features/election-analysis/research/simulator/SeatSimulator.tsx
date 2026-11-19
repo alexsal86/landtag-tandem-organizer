@@ -217,6 +217,13 @@ function Seat2026() {
     [officialFile, saved.data, state.data, params.get("savedScenario")],
   );
   const parties = basis.value?.parties || [];
+  const manualDirectOverrides =
+    districtModel === "manual" &&
+    parties.some(
+      (party) =>
+        labNumber(params, `seatDirect_${party.id}`, party.direct) !==
+        party.direct,
+    );
   const visibleParties = parties
     .filter((party) => party.hasList && highlightedPartyIndex(party.id) >= 0)
     .sort((a, b) => highlightedPartyIndex(a.id) - highlightedPartyIndex(b.id));
@@ -248,7 +255,7 @@ function Seat2026() {
     Object.values(second).reduce((sum, delta) => sum + delta, 0);
   const projection = useMemo(() => {
     const base = basis.value?.file;
-    if (!base) return null;
+    if (!base || manualDirectOverrides) return null;
     return attempt(() => {
       const shifted = shiftElection(
           base,
@@ -282,6 +289,7 @@ function Seat2026() {
   }, [
     basis.value,
     districtModel,
+    manualDirectOverrides,
     JSON.stringify(first),
     JSON.stringify(second),
     balancing,
@@ -313,7 +321,7 @@ function Seat2026() {
           .split(",")
           .map((s) => s.trim())
           .filter(Boolean);
-        if (b.file) {
+        if (b.file && !manualDirectOverrides) {
           if (!projection?.value)
             throw new Error(
               projection?.error ||
@@ -340,7 +348,7 @@ function Seat2026() {
           throw new Error(
             "Für das Wahlkreismodell werden vollständige Wahlkreisdaten benötigt.",
           );
-        if (Object.keys(flips).length)
+        if (!manualDirectOverrides && Object.keys(flips).length)
           throw new Error(
             "Für die übernommenen Kippannahmen werden vollständige Wahlkreisdaten benötigt.",
           );
@@ -378,6 +386,7 @@ function Seat2026() {
       basis,
       projection,
       districtModel,
+      manualDirectOverrides,
       JSON.stringify(first),
       JSON.stringify(second),
       balancing,
@@ -663,6 +672,25 @@ function Seat2026() {
                   >
                     Direktmandate (70)
                   </h4>
+                  <div className="mt-2 space-y-2">
+                    <Selection
+                      id="seat-district-model"
+                      label="Wahlkreismodell"
+                      value={districtModel}
+                      onChange={(value) => set("seatDistrictModel", value)}
+                    >
+                      <option value="manual">Manuell</option>
+                      <option value="swing">Swing in Prozentpunkten</option>
+                      <option value="logratio">Log-Ratio</option>
+                    </Selection>
+                    <p className="text-xs text-muted-foreground">
+                      {districtModel === "manual"
+                        ? "Direktmandate je Partei eingeben. Zusammen müssen es 70 sein."
+                        : districtModel === "swing"
+                          ? "Überträgt die Zweitstimmenänderung in Prozentpunkten auf das Erststimmenprofil jedes Wahlkreises."
+                          : "Gewichtet die Erststimmen je Wahlkreis mit der relativen Zweitstimmenänderung."}
+                    </p>
+                  </div>
                   {basis.value.file && (
                     <p className="text-xs text-muted-foreground">
                       {computed.value?.seats.rows
@@ -672,39 +700,54 @@ function Seat2026() {
                     </p>
                   )}
                   {districtModel === "manual" && (
-                    <details className="mt-2">
-                      <summary className="cursor-pointer text-sm">
-                        {basis.value.file
-                          ? "Erststimmen verschieben"
-                          : "Direktmandate bearbeiten"}
-                      </summary>
-                      <div className="mt-2 grid max-h-64 grid-cols-2 gap-2 overflow-y-auto">
-                        {parties.map((p) => {
-                          const fullMode = !!basis.value?.file;
-                          const key = fullMode
-                            ? `seatFirst_${p.id}`
-                            : `seatDirect_${p.id}`;
-                          return (
-                            <label key={p.id} className="text-xs">
-                              {p.name}
-                              <Input
-                                type="number"
-                                step={fullMode ? "0.1" : "1"}
-                                aria-label={`${p.name} ${fullMode ? "Erststimmenänderung in Prozentpunkten" : "Direktmandate"}`}
-                                min={fullMode ? undefined : 0}
-                                max={fullMode ? undefined : 70}
-                                value={
-                                  params.get(key) ??
-                                  String(fullMode ? 0 : p.direct)
-                                }
-                                onChange={(e) => set(key, e.target.value)}
-                                className="mt-1 h-8"
-                              />
-                            </label>
-                          );
-                        })}
-                      </div>
-                    </details>
+                    <>
+                      {(basis.value.file
+                        ? ["direct", "first"]
+                        : ["direct"]
+                      ).map((kind) => {
+                        const firstVotes = kind === "first";
+                        return (
+                          <details key={kind} className="mt-2">
+                            <summary className="cursor-pointer text-sm">
+                              {firstVotes
+                                ? "Erststimmen verschieben"
+                                : "Direktmandate bearbeiten"}
+                            </summary>
+                            {firstVotes && manualDirectOverrides && (
+                              <p className="mt-2 text-xs text-muted-foreground">
+                                Die manuell vergebenen Direktmandate haben
+                                Vorrang.
+                              </p>
+                            )}
+                            <div className="mt-2 grid max-h-64 grid-cols-2 gap-2 overflow-y-auto">
+                              {parties.map((p) => {
+                                const key = firstVotes
+                                  ? `seatFirst_${p.id}`
+                                  : `seatDirect_${p.id}`;
+                                return (
+                                  <label key={p.id} className="text-xs">
+                                    {p.name}
+                                    <Input
+                                      type="number"
+                                      step={firstVotes ? "0.1" : "1"}
+                                      aria-label={`${p.name} ${firstVotes ? "Erststimmenänderung in Prozentpunkten" : "Direktmandate"}`}
+                                      min={firstVotes ? undefined : 0}
+                                      max={firstVotes ? undefined : 70}
+                                      value={
+                                        params.get(key) ??
+                                        String(firstVotes ? 0 : p.direct)
+                                      }
+                                      onChange={(e) => set(key, e.target.value)}
+                                      className="mt-1 h-8"
+                                    />
+                                  </label>
+                                );
+                              })}
+                            </div>
+                          </details>
+                        );
+                      })}
+                    </>
                   )}
                   {Object.entries(flips).map(([number, candidate]) => {
                     const district = basis.value?.file?.districts.find(
@@ -784,7 +827,7 @@ function Seat2026() {
                       placeholder='{"Partei-ID": 0}'
                     />
                   </label>
-                  {!basis.value.file && (
+                  {(!basis.value.file || manualDirectOverrides) && (
                     <label className="my-2 block text-sm">
                       Sitzwirksame Erststimmen aller Sonderdirektgewinner
                       <Input
@@ -834,8 +877,6 @@ function Seat2026() {
                 </TabsList>
                 {tab === "districts" && (
                   <DistrictModelPanel
-                    model={districtModel}
-                    onChange={(value) => set("seatDistrictModel", value)}
                     baseline={basis.value.file}
                     scenario={
                       referenceBlocked ? undefined : projection?.value?.actual
@@ -843,52 +884,53 @@ function Seat2026() {
                     seats={computed.value?.seats}
                   />
                 )}
-                {tab === "districts" && !basis.value.file && (
-                  <div
-                    className="mt-3 rounded-lg border bg-card p-4 text-sm"
-                    role="status"
-                  >
-                    {hasManualDirect && districtModel === "manual" ? (
-                      <>
-                        Für die amtliche Wahlkreisgrundlage müssen die manuellen
-                        Direktmandatsannahmen zurückgesetzt werden.
-                        {!params.get("savedScenario") && (
-                          <Button
-                            type="button"
-                            variant="outline"
-                            className="mt-2"
-                            onClick={() =>
-                              setParams((old) => {
-                                const next = new URLSearchParams(old);
-                                for (const key of new Set(next.keys()))
-                                  if (
-                                    key.startsWith("seatDirect_") ||
-                                    [
-                                      "seatCorrections",
-                                      "seatSpecialFirst",
-                                    ].includes(key)
-                                  )
-                                    next.delete(key);
-                                return next;
-                              })
-                            }
-                          >
-                            Amtliche Direktmandate verwenden
-                          </Button>
-                        )}
-                      </>
-                    ) : params.get("savedScenario") ? (
-                      "Dieses Szenario wurde mit Landesdaten gespeichert. Über „Gespeicherte Grundlage lösen“ kannst du aktuelle Wahlkreisdaten laden."
-                    ) : districtData.isFetching ? (
-                      "Wahlkreise und Kandidaturen aus dem Bestand werden geladen …"
-                    ) : (
-                      official?.error ||
-                      (districtData.error instanceof Error
-                        ? districtData.error.message
-                        : "Vollständige amtliche Wahlkreisdaten sind derzeit nicht verfügbar.")
-                    )}
-                  </div>
-                )}
+                {(tab === "districts" || districtModel !== "manual") &&
+                  !basis.value.file && (
+                    <div
+                      className="mt-3 rounded-lg border bg-card p-4 text-sm"
+                      role="status"
+                    >
+                      {hasManualDirect && districtModel === "manual" ? (
+                        <>
+                          Für die amtliche Wahlkreisgrundlage müssen die
+                          manuellen Direktmandatsannahmen zurückgesetzt werden.
+                          {!params.get("savedScenario") && (
+                            <Button
+                              type="button"
+                              variant="outline"
+                              className="mt-2"
+                              onClick={() =>
+                                setParams((old) => {
+                                  const next = new URLSearchParams(old);
+                                  for (const key of new Set(next.keys()))
+                                    if (
+                                      key.startsWith("seatDirect_") ||
+                                      [
+                                        "seatCorrections",
+                                        "seatSpecialFirst",
+                                      ].includes(key)
+                                    )
+                                      next.delete(key);
+                                  return next;
+                                })
+                              }
+                            >
+                              Amtliche Direktmandate verwenden
+                            </Button>
+                          )}
+                        </>
+                      ) : params.get("savedScenario") ? (
+                        "Dieses Szenario wurde mit Landesdaten gespeichert. Über „Gespeicherte Grundlage lösen“ kannst du aktuelle Wahlkreisdaten laden."
+                      ) : districtData.isFetching ? (
+                        "Wahlkreise und Kandidaturen aus dem Bestand werden geladen …"
+                      ) : (
+                        official?.error ||
+                        (districtData.error instanceof Error
+                          ? districtData.error.message
+                          : "Vollständige amtliche Wahlkreisdaten sind derzeit nicht verfügbar.")
+                      )}
+                    </div>
+                  )}
                 {computed.error ? (
                   <p role="status" className="mt-3 rounded border p-3">
                     {computed.error}
