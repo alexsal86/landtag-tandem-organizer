@@ -37,6 +37,7 @@ import {
   STATE_RELEASE,
   STATE_SOURCE,
 } from "./model";
+const MAX_SECOND_VOTE_DELTA = 20;
 const secondVotePartyOrder = ["GRÜNE", "CDU", "AfD", "SPD", "Die Linke", "FDP"];
 const highlightedPartyIndex = (id: string) =>
   secondVotePartyOrder.findIndex(
@@ -558,26 +559,22 @@ function Seat2026() {
                   <div className="space-y-2">
                     {visibleParties.map((p) => {
                       const key = `seatSecond_${p.id}`;
-                      const min = (-p.votes / basis.value!.valid) * 100;
+                      const min = Math.max(
+                        -MAX_SECOND_VOTE_DELTA,
+                        (-p.votes / basis.value!.valid) * 100,
+                      );
                       const remaining =
                         otherBaseline -
                         Object.entries(second)
                           .filter(([id]) => id !== p.id)
                           .reduce((sum, [, delta]) => sum + delta, 0);
-                      const max = Math.max(min, remaining);
+                      const max = Math.max(
+                        min,
+                        Math.min(MAX_SECOND_VOTE_DELTA, remaining),
+                      );
                       const clamp = (value: number) =>
                         Math.max(min, Math.min(max, value));
                       const delta = second[p.id] ?? 0;
-                      const boundedDelta = clamp(delta);
-                      // Each half maps to its own available vote budget, with
-                      // zero percentage points at the center of every slider.
-                      const gain = Math.max(0, max);
-                      const position =
-                        boundedDelta < 0
-                          ? (100 * boundedDelta) / -min
-                          : gain > 0
-                            ? (100 * boundedDelta) / gain
-                            : 0;
                       return (
                         <div
                           key={p.id}
@@ -593,18 +590,14 @@ function Seat2026() {
                           </span>
                           <input
                             type="range"
-                            min={-100}
-                            max={100}
+                            min={-MAX_SECOND_VOTE_DELTA}
+                            max={MAX_SECOND_VOTE_DELTA}
                             step="any"
                             aria-label={`${p.name} Zweitstimmenregler`}
                             aria-valuetext={`${format(delta, 2)} Prozentpunkte`}
-                            value={position}
+                            value={delta}
                             onChange={(e) => {
-                              const fraction =
-                                e.currentTarget.valueAsNumber / 100;
-                              const next = clamp(
-                                fraction * (fraction < 0 ? -min : gain),
-                              );
+                              const next = clamp(e.currentTarget.valueAsNumber);
                               if (next !== delta) set(key, String(next));
                             }}
                             className="w-full min-w-0 accent-cyan-800 dark:accent-cyan-400"
