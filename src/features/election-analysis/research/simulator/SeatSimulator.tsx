@@ -1,13 +1,3 @@
-import {
-  Bar,
-  BarChart,
-  CartesianGrid,
-  Legend,
-  ResponsiveContainer,
-  Tooltip,
-  XAxis,
-  YAxis,
-} from "recharts";
 import { useMemo, useState } from "react";
 import { useSearchParams } from "react-router-dom";
 import { Button } from "@/components/ui/button";
@@ -22,6 +12,7 @@ import { SaveScenarioAction } from "../SaveScenarioAction";
 import { attempt, format, labNumber, useLabParams } from "../lab/shared";
 import { allocateBw2026 } from "./seats";
 import { SeatOverview, SeatThreshold } from "./SeatOverview";
+import { SeatDistributionTable } from "./SeatDistributionTable";
 import {
   DISTRICT_RELEASE,
   officialDistrictFile,
@@ -903,6 +894,11 @@ function Seat2026() {
                           official={officialResult}
                           unfilled={computed.value.unfilled}
                         />
+                        <SeatDistributionTable
+                          seats={computed.value.seats}
+                          validVotes={computed.value.input.validSecond}
+                          featuredIds={visibleParties.map((party) => party.id)}
+                        />
                         <p className="text-xs text-muted-foreground">
                           {districtModel === "manual" &&
                             `${computed.value.adjusted} Wahlkreise mit korrigierten Erststimmenanteilen. `}
@@ -910,107 +906,6 @@ function Seat2026() {
                             ? "Listenbesetzung unbekannt, solange vollständige Landeslisten fehlen."
                             : `${computed.value.unfilled} unbesetzte Sitze bei erschöpften Listen / nicht verteilbaren Ansprüchen.`}
                         </p>
-                        <div className="rounded border bg-card p-3">
-                          <h4 className="mb-3 font-medium">
-                            Rechnerische Mandatsansprüche vor Listenerschöpfung
-                          </h4>
-                          <div
-                            style={{
-                              height: Math.max(
-                                260,
-                                (computed.value.seats.rows.filter(
-                                  (r) => r.total > 0,
-                                ).length +
-                                  (computed.value.seats.specialDirect
-                                    ? 1
-                                    : 0)) *
-                                  28,
-                              ),
-                            }}
-                            role="img"
-                            aria-label="Gestapelte Direkt- und Listenmandate; genaue Werte stehen in der Tabelle"
-                          >
-                            <ResponsiveContainer>
-                              <BarChart
-                                layout="vertical"
-                                data={[
-                                  ...computed.value.seats.rows
-                                    .filter((r) => r.total > 0)
-                                    .map((r) => ({
-                                      name: r.name,
-                                      Direkt: r.direct,
-                                      Liste: r.list,
-                                    })),
-                                  ...(computed.value.seats.specialDirect
-                                    ? [
-                                        {
-                                          name: "Einzelbewerbungen",
-                                          Direkt:
-                                            computed.value.seats.specialDirect,
-                                          Liste: 0,
-                                        },
-                                      ]
-                                    : []),
-                                ]}
-                                margin={{
-                                  left: 5,
-                                  right: 15,
-                                  top: 5,
-                                  bottom: 5,
-                                }}
-                              >
-                                <CartesianGrid
-                                  strokeDasharray="3 3"
-                                  horizontal={false}
-                                />
-                                <XAxis type="number" allowDecimals={false} />
-                                <YAxis
-                                  type="category"
-                                  dataKey="name"
-                                  width={150}
-                                  tick={{ fontSize: 11 }}
-                                />
-                                <Tooltip />
-                                <Legend />
-                                <Bar
-                                  dataKey="Direkt"
-                                  stackId="seats"
-                                  fill="#526b42"
-                                />
-                                <Bar
-                                  dataKey="Liste"
-                                  stackId="seats"
-                                  fill="#a4b28d"
-                                />
-                              </BarChart>
-                            </ResponsiveContainer>
-                          </div>
-                        </div>
-                        <DataTable
-                          headers={[
-                            "Partei",
-                            "Sperrklausel / Liste",
-                            "Grundanspruch",
-                            "Direkt",
-                            "Liste",
-                            "Überhang",
-                            "Ausgleich",
-                            "Mehrheitszusatz",
-                            "Gesamt",
-                          ]}
-                          rows={computed.value.seats.rows.map((r) => [
-                            r.name,
-                            r.eligible ? "Teilnahme" : "Keine Listenzuteilung",
-                            r.base,
-                            r.direct,
-                            r.list,
-                            r.overhang,
-                            r.balance,
-                            r.majorityBonus,
-                            r.total,
-                          ])}
-                        />
-
                         {computed.value.people.length > 0 && (
                           <>
                             <h4 className="font-medium">
