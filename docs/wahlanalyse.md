@@ -582,12 +582,12 @@ Originaldownloads sind in [sources-and-gaps.md](elections/sources-and-gaps.md) d
   Nicht unterstützte degenerierte Sonderfälle werden zurückgewiesen.
 
 Standardmodus: Landes-Zweitstimmen aus der vollständigen vorhandenen Tabelle und
-getrennt eingegebene Direktmandatsannahmen. Der Reiter **Wahlkreise** lädt die
-veröffentlichte Periode 2026 mit den bestehenden Wahlkreisen, Personen und
-Erststimmenkandidaturen. Der Simulator ordnet diesen Kandidaturen die amtlichen
-Stimmenzahlen eindeutig nach Wahlkreis und Wahlvorschlag zu und prüft die
-vollständigen Summen und die amtliche Sitzreferenz. Kippannahmen können für mehrere
-Wahlkreise zusammen übernommen, entfernt und im Szenario gespeichert werden.
+getrennt eingegebene Direktmandatsannahmen. Swing und Log-Ratio verwenden die
+amtlichen Erststimmenergebnisse je Wahlkreis und Wahlvorschlag. Der Simulator
+prüft deren Summen und die amtliche Sitzreferenz. In der manuellen
+Wahlkreisansicht können die Ergebnisse mit Namen aus der veröffentlichten
+Wahlhistorie ergänzt werden. Kippannahmen können für mehrere Wahlkreise zusammen
+übernommen, entfernt und im Szenario gespeichert werden.
 
 Gespeicherte Szenarien können weiterhin vollständige Wahlkreisdaten und
 Landeslisten als eigene Grundlage enthalten. Unvollständige Erststimmensummen

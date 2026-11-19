@@ -15,6 +15,7 @@ import { SeatOverview, SeatThreshold } from "./SeatOverview";
 import { SeatDistributionTable } from "./SeatDistributionTable";
 import {
   DISTRICT_RELEASE,
+  DISTRICT_PARTY_RELEASE,
   officialDistrictFile,
   useOfficialDistricts,
 } from "./useOfficialDistricts";
@@ -136,21 +137,19 @@ function Seat2026() {
       Object.keys(flips).length > 0) &&
       !params.get("savedScenario") &&
       (!hasManualDirect || districtModel !== "manual"),
+    districtModel === "manual",
   );
-  const districtHistory = districtData.data?.history;
-  const districtFactions = districtData.data?.factions;
-  const districtVotes = districtData.data?.voteReference;
+  const districtHistory = districtData.history;
+  const districtFactions = districtData.factions;
+  const districtVotes = districtData.data;
   const official = useMemo(() => {
-    if (!districtHistory || !districtFactions || !districtVotes || !state.data)
-      return null;
+    if (!districtVotes || !state.data) return null;
     return attempt(() =>
       officialDistrictFile(
-        {
-          history: districtHistory,
-          factions: districtFactions,
-          voteReference: districtVotes,
-        },
+        districtVotes,
         officialStateParties(state.data!),
+        districtHistory,
+        districtFactions,
       ),
     );
   }, [districtHistory, districtFactions, districtVotes, state.data]);
@@ -347,7 +346,10 @@ function Seat2026() {
         }
         if (districtModel !== "manual")
           throw new Error(
-            "Für das Wahlkreismodell werden vollständige Wahlkreisdaten benötigt.",
+            official?.error ||
+              (districtData.isFetching
+                ? "Amtliche Erststimmenergebnisse werden geladen …"
+                : "Die amtlichen Erststimmenergebnisse sind derzeit nicht verfügbar."),
           );
         if (!manualDirectOverrides && Object.keys(flips).length)
           throw new Error(
@@ -388,6 +390,8 @@ function Seat2026() {
       projection,
       districtModel,
       manualDirectOverrides,
+      official?.error,
+      districtData.isFetching,
       JSON.stringify(first),
       JSON.stringify(second),
       balancing,
@@ -397,7 +401,9 @@ function Seat2026() {
   const reference = useMemo(
     () =>
       basis.value &&
-      [STATE_RELEASE, DISTRICT_RELEASE].includes(basis.value.release)
+      [STATE_RELEASE, DISTRICT_RELEASE, DISTRICT_PARTY_RELEASE].includes(
+        basis.value.release,
+      )
         ? attempt(() =>
             referenceComparison(
               basis.value!.file
@@ -915,7 +921,7 @@ function Seat2026() {
                       ) : params.get("savedScenario") ? (
                         "Dieses Szenario wurde mit Landesdaten gespeichert. Über „Gespeicherte Grundlage lösen“ kannst du aktuelle Wahlkreisdaten laden."
                       ) : districtData.isFetching ? (
-                        "Wahlkreise und Kandidaturen aus dem Bestand werden geladen …"
+                        "Amtliche Erststimmenergebnisse werden geladen …"
                       ) : (
                         official?.error ||
                         (districtData.error instanceof Error
@@ -952,30 +958,31 @@ function Seat2026() {
                             ? "Listenbesetzung unbekannt, solange vollständige Landeslisten fehlen."
                             : `${computed.value.unfilled} unbesetzte Sitze bei erschöpften Listen / nicht verteilbaren Ansprüchen.`}
                         </p>
-                        {computed.value.people.length > 0 && (
-                          <>
-                            <h4 className="font-medium">
-                              Einzug über Wahlkreis / Landesliste
-                            </h4>
+                        {computed.value.people.length > 0 &&
+                          basis.value.release !== DISTRICT_PARTY_RELEASE && (
+                            <>
+                              <h4 className="font-medium">
+                                Einzug über Wahlkreis / Landesliste
+                              </h4>
 
-                            <DataTable
-                              headers={[
-                                "Name",
-                                "Partei-ID",
-                                "Einzug",
-                                "Wahlkreis",
-                                "Listenplatz",
-                              ]}
-                              rows={computed.value.people.map((p) => [
-                                p.name,
-                                p.partyId || "Einzelbewerbung",
-                                p.route,
-                                p.district || "—",
-                                p.listRank ?? "—",
-                              ])}
-                            />
-                          </>
-                        )}
+                              <DataTable
+                                headers={[
+                                  "Name",
+                                  "Partei-ID",
+                                  "Einzug",
+                                  "Wahlkreis",
+                                  "Listenplatz",
+                                ]}
+                                rows={computed.value.people.map((p) => [
+                                  p.name,
+                                  p.partyId || "Einzelbewerbung",
+                                  p.route,
+                                  p.district || "—",
+                                  p.listRank ?? "—",
+                                ])}
+                              />
+                            </>
+                          )}
                       </TabsContent>
                       <TabsContent value="coalitions">
                         <SeatOverview
