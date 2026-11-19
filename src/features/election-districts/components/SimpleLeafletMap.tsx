@@ -21,6 +21,7 @@ interface LeafletKarlsruheMapProps {
   showDistrictPolygons?: boolean;
   showMunicipalityBoundaries?: boolean;
   localAreas?: LocalArea[];
+  localResultsError?: boolean;
   localAreaKey?: string;
   localBallot?: LocalBallot;
   onLocalAreaClick?: (key: string) => void;
@@ -30,8 +31,7 @@ interface LeafletKarlsruheMapProps {
   selectedParties?: Set<string>;
 }
 
-// Heidelberg (34) consists of one municipality and has no internal boundaries.
-const districtsWithoutMunicipalityLines = new Set([34, 35, 36, 46, 47]);
+const districtsWithoutLocalAreas = new Set([35, 36, 46, 47]);
 const municipalityAttribution = 'Gemeindegrenzen 2026 · © Statistisches Landesamt Baden-Württemberg, Fellbach 2025. Wahlkreiskarte für die Landtagswahl 2026 in Baden-Württemberg. Kartengrundlage: LGL (www.lgl-bw.de), Stadt Freiburg, Stadt Karlsruhe, Stadt Mannheim, Landeshauptstadt Stuttgart.';
 
 // Helper function to get party color for election districts and admin boundaries
@@ -70,6 +70,7 @@ const SimpleLeafletMap: React.FC<LeafletKarlsruheMapProps> = ({
   showDistrictPolygons = true,
   showMunicipalityBoundaries = false,
   localAreas,
+  localResultsError = false,
   localAreaKey,
   localBallot = 'second',
   onLocalAreaClick,
@@ -523,10 +524,12 @@ const SimpleLeafletMap: React.FC<LeafletKarlsruheMapProps> = ({
   const municipalityDistrictNumber = selectedDistrict?.district_type === 'wahlkreis' &&
     districts.some(district => district.id === selectedDistrict.id)
     ? selectedDistrict.district_number : undefined;
-  const hasLocalShapes = useLocalResultMap({
+  const localShapeNumber = showMunicipalityBoundaries && showDistrictPolygons &&
+    municipalityDistrictNumber != null && municipalityDistrictNumber >= 1 && municipalityDistrictNumber <= 70 &&
+    !districtsWithoutLocalAreas.has(municipalityDistrictNumber) ? municipalityDistrictNumber : undefined;
+  const { hasLocalShapes, localShapeError } = useLocalResultMap({
     map: mapReady ? mapRef.current : null,
-    number: showMunicipalityBoundaries && showDistrictPolygons && localAreas?.some(area => !area.noGeometry)
-      ? municipalityDistrictNumber : undefined,
+    number: localShapeNumber,
     areas: localAreas,
     selectedKey: localAreaKey,
     ballot: localBallot,
@@ -537,7 +540,7 @@ const SimpleLeafletMap: React.FC<LeafletKarlsruheMapProps> = ({
     const map = mapRef.current;
     const number = municipalityDistrictNumber;
     if (!mapReady || !map || !showMunicipalityBoundaries || !showDistrictPolygons ||
-        number == null || number < 1 || number > 70 || (!hasLocalShapes && districtsWithoutMunicipalityLines.has(number))) return;
+        number == null || number < 1 || number > 70 || districtsWithoutLocalAreas.has(number)) return;
 
     const attribution = number <= 4
       ? 'Stadtbezirksgrenzen: Landeshauptstadt Stuttgart – Stadtmessungsamt (CC BY 4.0)'
@@ -548,6 +551,8 @@ const SimpleLeafletMap: React.FC<LeafletKarlsruheMapProps> = ({
       map.attributionControl.addAttribution(attribution);
       return () => { map.attributionControl.removeAttribution(attribution); };
     }
+    // The line overlay is a fallback when the area or result file fails to load.
+    if (number === 34 || (!localShapeError && !localResultsError)) return;
     const controller = new AbortController();
     const boundaries = L.geoJSON(undefined, {
       pane: 'municipalityBoundaries',
@@ -574,7 +579,7 @@ const SimpleLeafletMap: React.FC<LeafletKarlsruheMapProps> = ({
         map.attributionControl.removeAttribution(attribution);
       }
     };
-  }, [mapReady, municipalityDistrictNumber, showMunicipalityBoundaries, showDistrictPolygons, hasLocalShapes]);
+  }, [mapReady, municipalityDistrictNumber, showMunicipalityBoundaries, showDistrictPolygons, hasLocalShapes, localShapeError, localResultsError]);
 
   // Search navigation also works when a layer is hidden or a boundary is missing.
   useEffect(() => {

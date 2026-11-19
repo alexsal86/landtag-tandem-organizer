@@ -37,8 +37,22 @@ zu den fünf angezeigten Parteien gehört. Der Rang wurde vor dem Filtern
 der Landes-CSV bestimmt. Bei Gleichstand oder einer anderen stärksten
 Partei bleibt die Kartenfläche grau.
 
-`areas-v1` enthält die komprimierten TopoJSON-Flächen je Wahlkreis. Die
+`areas-v2` enthält die verlustfrei komprimierten TopoJSON-Flächen je Wahlkreis. Die
 Flächen aus den Gemeinde-, Stuttgarter und Karlsruher TopoJSON wurden an
 der hinterlegten Wahlkreisgeometrie 2021/2026 zugeschnitten und über
 denselben Gebietsschlüssel den Ergebnissen zugeordnet. Jede Fläche enthält
 einen Beschriftungspunkt im größten zusammenhängenden Teil.
+
+Die Binärdateien enthalten den TopoJSON-Kopf einschließlich aller
+Eigenschaften sowie die Koordinaten in getrennten Zahlenspalten. Werte,
+die bereits exakt auf dem Raster der ursprünglichen Gemeindedatei liegen,
+werden als Rasterdifferenzen gespeichert. Alle anderen Werte bleiben
+Float64. Beim Packen wird der vollständige rekonstruierte Datensatz mit
+dem ungerundeten Eingang verglichen. Das Format ändert weder Koordinaten
+noch Punktzahl, Topologie, Gebietsschlüssel oder Beschriftungspunkte.
+
+Zum Umwandeln der absoluten TopoJSON-Dateien (`<Wahlkreis>.topojson.gz`)
+steht `scripts/geometry/pack-local-result-areas.mjs` zur Verfügung.
+Der Kartenclient lädt je Auswahl nur die zugehörige Ergebnis- und
+Flächendatei. Die separate Grenzlinien-Datei dient als Rückfall bei
+einem Ladefehler.

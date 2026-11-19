@@ -109,7 +109,7 @@ const CACHE_NAME = 'public-election-shapes-v2';
 const CACHE_LIFETIME = 157_680_000_000;
 let retiredLegacyCache = false;
 
-async function fetchGeometryJson(path: string): Promise<unknown> {
+export async function fetchGeometryAsset(path: string): Promise<Response> {
   // Gzip is explicit, so it also works without server content negotiation.
   const url = `${path}.gz`;
   let cache: Cache | undefined;
@@ -140,14 +140,14 @@ async function fetchGeometryJson(path: string): Promise<unknown> {
   if (!response.ok || !response.body) throw new Error('Wahlkreisgeometrie nicht verfügbar');
   const buffer = await response.arrayBuffer();
   const bytes = new Uint8Array(buffer);
-  if (bytes[0] !== 0x1f || bytes[1] !== 0x8b) return JSON.parse(new TextDecoder().decode(buffer));
+  if (bytes[0] !== 0x1f || bytes[1] !== 0x8b) return new Response(buffer);
   const stream = new Blob([buffer]).stream().pipeThrough(new DecompressionStream('gzip'));
-  return new Response(stream).json();
+  return new Response(stream);
 }
-export function loadGeometryJson(path: string): Promise<unknown> {
+function loadGeometryJson(path: string): Promise<unknown> {
   let request = requests.get(path);
   if (!request) {
-    request = fetchGeometryJson(path).catch(async error => {
+    request = fetchGeometryAsset(path).then(response => response.json()).catch(async error => {
       requests.delete(path);
       try { await (await caches.open(CACHE_NAME)).delete(`${path}.gz`); } catch { /* Optional cache. */ }
       throw error;

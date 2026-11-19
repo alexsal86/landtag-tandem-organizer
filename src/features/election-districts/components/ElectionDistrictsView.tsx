@@ -264,6 +264,7 @@ export const ElectionDistrictsView = ({ sidebarHeader }: { sidebarHeader?: React
                 showPartyAssociations={showPartyAssociations}
                 showDistrictPolygons={showDistrictPolygons}
                 localAreas={localResults.data}
+                localResultsError={localResults.isError}
                 localAreaKey={localArea?.key}
                 localBallot={localBallot}
                 onLocalAreaClick={selectLocalArea}

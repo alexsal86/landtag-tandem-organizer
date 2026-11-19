@@ -1,7 +1,8 @@
 import { useEffect } from 'react';
 import { useQuery } from '@tanstack/react-query';
 import * as L from 'leaflet';
-import { decodeElectoralTopology, loadGeometryJson } from '@/utils/electoralTopology';
+import { decodeElectoralTopology, fetchGeometryAsset } from '@/utils/electoralTopology';
+import { decodeLosslessAreaTopology } from '@/utils/losslessAreaTopology';
 import { getPartyColor } from '../partyColors';
 import type { LocalArea, LocalBallot } from './LocalElectionResults';
 
@@ -20,11 +21,12 @@ export function useLocalResultMap({
   ballot: LocalBallot;
   onSelect?: (key: string) => void;
 }) {
-  const { data: shapes } = useQuery({
-    queryKey: ['local-election-shapes-2026', number],
-    enabled: number != null && Boolean(areas?.length),
+  const { data: shapes, isError } = useQuery({
+    queryKey: ['local-election-shapes-2026-v2', number],
+    enabled: number != null,
     queryFn: async () => {
-      const data = await loadGeometryJson(`/data/local-results-2026/areas-v1/${number}.topojson`);
+      const response = await fetchGeometryAsset(`/data/local-results-2026/areas-v2/${number}.bin`);
+      const data = decodeLosslessAreaTopology(await response.arrayBuffer());
       return decodeElectoralTopology(data, 'areas') as GeoJSON.FeatureCollection<GeoJSON.MultiPolygon, AreaProperties>;
     },
     staleTime: Infinity,
@@ -107,5 +109,5 @@ export function useLocalResultMap({
     };
   }, [map, number, shapes, areas, selectedKey, ballot, onSelect]);
 
-  return number != null && Boolean(shapes);
+  return { hasLocalShapes: number != null && Boolean(shapes) && Boolean(areas), localShapeError: isError };
 }
