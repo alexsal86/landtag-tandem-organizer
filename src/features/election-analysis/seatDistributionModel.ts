@@ -1,8 +1,9 @@
-export const parliamentOrder = ['SPD', 'GRÜNE', 'FDP', 'CDU', 'AfD', 'REP', 'NPD'];
+export const parliamentOrder = ['DIE LINKE', 'SPD', 'GRÜNE', 'FDP', 'CDU', 'AfD', 'REP', 'NPD'];
 
 /** Normalize for spatial order only; preserve the source label in the legend. */
 export function parliamentPartyKey(party: string): string {
   const name = party.trim().toUpperCase();
+  if (name === 'LINKE') return 'DIE LINKE';
   return name==='FDP/DVP' ? 'FDP' : ['GRÜNE','BÜNDNIS 90/DIE GRÜNEN'].includes(name) ? 'GRÜNE' : name;
 }
 export function compareParliamentParties(a: string, b: string): number {
