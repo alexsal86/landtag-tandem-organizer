@@ -4,6 +4,13 @@ import { DataTable } from "../../shared";
 import { format } from "../lab/shared";
 import type { SeatParty, SeatResult } from "./types";
 
+const seatingOrder = ["SPD", "GRÜNE", "FDP", "CDU", "AfD"];
+
+function seatingPosition(partyId: string) {
+  const index = seatingOrder.indexOf(partyId);
+  return index === -1 ? seatingOrder.length : index;
+}
+
 export function seatDifference(value: number) {
   return value > 0 ? `+${format(value, 0)}` : format(value, 0);
 }
@@ -28,11 +35,14 @@ export function SeatOverview({
     .filter((party) => selected.includes(party.id))
     .reduce((sum, party) => sum + party.total, 0);
   const groups = [
-    ...parties.map((party) => ({
-      name: party.name,
-      color: getPartyColor(party.id),
-      count: party.total,
-    })),
+    ...parties
+      .slice()
+      .sort((a, b) => seatingPosition(a.id) - seatingPosition(b.id))
+      .map((party) => ({
+        name: party.name,
+        color: getPartyColor(party.id),
+        count: party.total,
+      })),
     ...(seats.specialDirect
       ? [
           {
@@ -77,56 +87,65 @@ export function SeatOverview({
         {official ? "Amtliches Ergebnis" : "Szenario"}
       </h4>
       <p className="mt-1 text-sm">
-        <strong>{seats.total} Sitze</strong> · Mehrheit ab {threshold}
+        Absolute Mehrheit ab {threshold} Sitzen
         {reference &&
           !official &&
           ` · ${seatDifference(seats.total - reference.total)} Sitze zur Referenz`}
       </p>
-      <dl className="mt-4 grid grid-cols-2 gap-3 sm:grid-cols-4">
-        {[
-          ["Sitze insgesamt", seats.total],
-          ["Überhangmandate", seats.overhang],
-          ["Ausgleichsmandate", seats.balance],
-          ["Mehrheitszusatz", seats.majorityBonus],
-        ].map(([label, count]) => (
-          <div
-            key={label}
-            className="flex flex-col-reverse border-l-2 border-cyan-800 pl-3 dark:border-cyan-400"
-          >
-            <dt className="text-xs text-muted-foreground">{label}</dt>
-            <dd className="font-serif text-3xl tabular-nums">{count}</dd>
+      <div className="mt-4 flex flex-wrap items-start gap-x-6 gap-y-4">
+        <dl className="grid w-36 shrink-0 gap-3">
+          {[
+            ["Sitze insgesamt", seats.total],
+            ["Überhangmandate", seats.overhang],
+            ["Ausgleichsmandate", seats.balance],
+            ["Mehrheitszusatz", seats.majorityBonus],
+          ].map(([label, count]) => (
+            <div
+              key={label}
+              className="flex flex-col-reverse border-l-2 border-cyan-800 pl-3 dark:border-cyan-400"
+            >
+              <dt className="text-xs text-muted-foreground">{label}</dt>
+              <dd className="font-serif text-3xl leading-none tabular-nums">
+                {count}
+              </dd>
+            </div>
+          ))}
+        </dl>
+        <div className="min-w-0 flex-1 basis-52">
+          <div aria-hidden="true" className="relative aspect-[2/1] w-full">
+            {points.map(({ angle, radius }, index) => (
+              <span
+                key={index}
+                className="absolute aspect-square -translate-x-1/2 -translate-y-1/2 rounded-full ring-1 ring-background"
+                style={{
+                  left: `${50 + radius * Math.cos(angle)}%`,
+                  top: `${94 - 2 * radius * Math.sin(angle)}%`,
+                  width: `${Math.min(3.1, 78 / Math.sqrt(seats.total) / 2)}%`,
+                  backgroundColor: dots[index],
+                }}
+              />
+            ))}
           </div>
-        ))}
-      </dl>
-      <div
-        aria-hidden="true"
-        className="relative mx-auto mt-3 aspect-[2/1] w-full max-w-sm"
-      >
-        {points.map(({ angle, radius }, index) => (
-          <span
-            key={index}
-            className="absolute aspect-square -translate-x-1/2 -translate-y-1/2 rounded-full ring-1 ring-background"
-            style={{
-              left: `${50 + radius * Math.cos(angle)}%`,
-              top: `${94 - 2 * radius * Math.sin(angle)}%`,
-              width: `${Math.min(3.1, 78 / Math.sqrt(seats.total) / 2)}%`,
-              backgroundColor: dots[index],
-            }}
-          />
-        ))}
+          <ul
+            aria-label="Sitze und Sitzanteile"
+            className="flex flex-wrap justify-center gap-x-4 gap-y-1 text-sm"
+          >
+            {groups.map((group) => (
+              <li key={group.name} className="flex items-center gap-1.5">
+                <span
+                  aria-hidden="true"
+                  className="size-2.5 rounded-full"
+                  style={{ backgroundColor: group.color }}
+                />
+                {group.name} <strong>{group.count}</strong>
+                <span className="text-muted-foreground">
+                  ({format((group.count / seats.total) * 100, 1)} %)
+                </span>
+              </li>
+            ))}
+          </ul>
+        </div>
       </div>
-      <ul className="mt-2 flex flex-wrap gap-x-4 gap-y-1 text-sm">
-        {groups.map((group) => (
-          <li key={group.name} className="flex items-center gap-1.5">
-            <span
-              aria-hidden="true"
-              className="size-2.5 rounded-full"
-              style={{ backgroundColor: group.color }}
-            />
-            {group.name} <strong>{group.count}</strong>
-          </li>
-        ))}
-      </ul>
       {reference && !official && (
         <p className="mt-2 text-sm">
           Gegenüber dem amtlichen Ergebnis{" "}
