@@ -19,6 +19,8 @@ import { useFullState, useSavedScenario } from "../workspaceHooks";
 import { SaveScenarioAction } from "../SaveScenarioAction";
 import { attempt, format, labNumber, useLabParams } from "../lab/shared";
 import { allocateBw2026 } from "./seats";
+import { SeatOverview, SeatThreshold } from "./SeatOverview";
+import { SeatDistricts } from "./SeatDistricts";
 import {
   parseElectionFile,
   shiftElection,
@@ -64,6 +66,21 @@ function Seat2026() {
       }
       return next;
     });
+  const resetScenario = () => {
+    fileRequest.current++;
+    setFile(null);
+    setFileError("");
+    setParams((old) => {
+      const next = new URLSearchParams(old);
+      for (const key of new Set(next.keys())) {
+        if (
+          ["savedScenario", "seatBalancing", "seatLotOrder", "seatCorrections", "seatSpecialFirst", "seatThresholdParty"].includes(key) ||
+          ["seatFirst_", "seatSecond_", "seatDirect_", "seatDistrictLot_"].some((prefix) => key.startsWith(prefix))
+        ) next.delete(key);
+      }
+      return next;
+    });
+  };
   const fileRequest = useRef(0);
   const [file, setFile] = useState<ElectionFile | null>(null),
     [fileError, setFileError] = useState("");
@@ -272,6 +289,13 @@ function Seat2026() {
   );
   const referenceBlocked =
     reference?.value?.matches === false || !!reference?.error;
+  const officialResult = reference?.value?.matches === true &&
+    Object.values(first).every((delta) => delta === 0) &&
+    Object.values(second).every((delta) => delta === 0) &&
+    parties.every((party) => labNumber(params, `seatDirect_${party.id}`, party.direct) === party.direct) &&
+    ![...params].some(([key, value]) =>
+      value.trim() && (["seatLotOrder", "seatCorrections", "seatSpecialFirst"].includes(key) || key.startsWith("seatDistrictLot_")),
+    );
   const target = parties.some((p) => p.id === params.get("seatThresholdParty"))
     ? params.get("seatThresholdParty")!
     : parties.find((p) => p.hasList && p.id !== balancing)?.id || "";
@@ -310,9 +334,12 @@ function Seat2026() {
   });
   return (
     <div className="space-y-4">
-      <h3 className="text-lg font-semibold">
-        BW-Sitz- und Mandatssimulator 2026
-      </h3>
+      <div className="flex flex-wrap items-center justify-between gap-2">
+        <h3 className="text-lg font-semibold">BW-Sitz- und Mandatssimulator 2026</h3>
+        <Button type="button" variant="outline" onClick={resetScenario}>
+          Auf amtliches Ergebnis zurücksetzen
+        </Button>
+      </div>
       <StatusNote>
         Hypothetische Modellrechnung, keine Wahlprognose. Rechtsstand: § 2 LWG,
         Zweistimmenwahl 2026. Alle Parteien einzeln, mindestens 5 % der
@@ -604,12 +631,12 @@ function Seat2026() {
               computed.value &&
               !referenceBlocked && (
                 <>
-                  <p className="text-lg font-medium">
-                    {computed.value.seats.total} rechnerische Sitze ·{" "}
-                    {computed.value.seats.overhang} Überhang ·{" "}
-                    {computed.value.seats.balance} Ausgleich ·{" "}
-                    {computed.value.seats.majorityBonus} Mehrheitszusatz
-                  </p>
+                  <SeatOverview
+                    seats={computed.value.seats}
+                    reference={reference?.value?.result}
+                    official={officialResult}
+                    unfilled={computed.value.unfilled}
+                  />
                   <p className="text-xs text-muted-foreground">
                     {computed.value.adjusted} Wahlkreise mit korrigierten
                     Erststimmenanteilen.{" "}
@@ -737,6 +764,15 @@ function Seat2026() {
                       />
                     </>
                   )}
+                  {computed.value.actual && (
+                    <SeatDistricts
+                      key={params.toString()}
+                      file={computed.value.actual}
+                      winners={computed.value.winners}
+                      seats={computed.value.seats}
+                    />
+                  )}
+                  <SeatThreshold seats={computed.value.seats} valid={computed.value.input.validSecond} />
                   <details className="rounded border p-3">
                     <summary className="cursor-pointer font-medium">
                       Schwellenanalyse der Parteisitze
