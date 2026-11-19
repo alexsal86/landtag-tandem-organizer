@@ -38,7 +38,7 @@ import {
   STATE_RELEASE,
   STATE_SOURCE,
 } from "./model";
-const MAX_SECOND_VOTE_DELTA = 20;
+const MAX_SECOND_VOTE_DELTA = 10;
 const secondVotePartyOrder = ["GRÜNE", "CDU", "AfD", "SPD", "Die Linke", "FDP"];
 const highlightedPartyIndex = (id: string) =>
   secondVotePartyOrder.findIndex(
