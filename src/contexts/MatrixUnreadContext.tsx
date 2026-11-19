@@ -17,7 +17,7 @@ const MatrixUnreadContext = createContext<MatrixUnreadContextType>({
   setLiveUnreadCount: () => {},
 });
 
-const POLL_INTERVAL_MS = 30_000;
+const POLL_INTERVAL_MS = 120_000;
 const STORAGE_KEY = 'matrix_unread_count';
 
 export function MatrixUnreadProvider({ children }: { children: ReactNode }) {

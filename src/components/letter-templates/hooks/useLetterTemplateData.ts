@@ -17,7 +17,7 @@ import {
 } from '@/types/letterLayout';
 import { parseFooterLinesForEditor, toFooterLineData } from '@/components/letters/footerBlockUtils';
 import {
-  LetterTemplate, SenderInformation, InformationBlock, GalleryImage,
+  LetterTemplate, type LetterTemplateSummary, fetchLetterTemplate, SenderInformation, InformationBlock, GalleryImage,
   normalizeImageItem, normalizeLayoutBlockContentImages, createDefaultAttachmentElements,
   MarginKey, TabRect,
 } from '../types';
@@ -27,7 +27,7 @@ export function useLetterTemplateData() {
   const { currentTenant } = useTenant();
   const { user } = useAuth();
 
-  const [templates, setTemplates] = useState<LetterTemplate[]>([]);
+  const [templates, setTemplates] = useState<LetterTemplateSummary[]>([]);
   const [senderInfos, setSenderInfos] = useState<SenderInformation[]>([]);
   const [infoBlocks, setInfoBlocks] = useState<InformationBlock[]>([]);
   const [loading, setLoading] = useState(false);
@@ -37,6 +37,8 @@ export function useLetterTemplateData() {
   const [selectedBlockItem, setSelectedBlockItem] = useState<Record<string, string | null>>({});
   const [showBlockRuler, setShowBlockRuler] = useState<Record<string, boolean>>({});
   const [showPreview, setShowPreview] = useState<string | null>(null);
+  const editRequest = useRef<AbortController | null>(null);
+  useEffect(() => () => editRequest.current?.abort(), [currentTenant?.id]);
   const [selectedGalleryImage, setSelectedGalleryImage] = useState<Record<string, GalleryImage | null>>({});
   const [showSettings, setShowSettings] = useState(false);
   const [galleryImages, setGalleryImages] = useState<GalleryImage[]>([]);
@@ -67,10 +69,10 @@ export function useLetterTemplateData() {
     setLoading(true);
     try {
       const { data, error } = await supabase
-        .from('letter_templates').select('id, name, letterhead_html, letterhead_css, response_time_days, is_default, is_active, tenant_id, created_by, default_sender_id, default_info_blocks, header_layout_type, header_text_elements, footer_blocks, layout_settings, created_at, updated_at').eq('tenant_id', currentTenant.id)
+        .from('letter_templates').select('id, name, is_default, response_time_days').eq('tenant_id', currentTenant.id)
         .eq('is_active', true).order('is_default', { ascending: false }).order('name');
       if (error) throw error;
-      setTemplates((data || []) as unknown as LetterTemplate[]);
+      setTemplates(data || []);
     } catch (error) {
       handleAppError(error, { context: 'fetchTemplates', toast: { fn: toast, title: 'Fehler', description: 'Templates konnten nicht geladen werden.' } });
     } finally {
@@ -183,7 +185,7 @@ export function useLetterTemplateData() {
     }
   };
 
-  const handleDeleteTemplate = async (template: LetterTemplate) => {
+  const handleDeleteTemplate = async (template: LetterTemplateSummary) => {
     if (!confirm(`Möchten Sie das Template "${template.name}" wirklich löschen?`)) return;
     try {
       const { error } = await supabase.from('letter_templates').update({ is_active: false }).eq('id', template.id);
@@ -206,7 +208,19 @@ export function useLetterTemplateData() {
     });
   };
 
-  const startEditing = (template: LetterTemplate) => {
+  const startEditing = async (summary: LetterTemplateSummary) => {
+    if (!currentTenant) return;
+    editRequest.current?.abort();
+    const request = new AbortController();
+    editRequest.current = request;
+    let template: LetterTemplate;
+    try {
+      template = await fetchLetterTemplate(currentTenant.id, summary.id, request.signal);
+    } catch (error) {
+      if (!request.signal.aborted) handleAppError(error, { context: 'startEditing', toast: { fn: toast, title: 'Fehler', description: 'Template konnte nicht geladen werden.' } });
+      return;
+    }
+    if (request.signal.aborted) return;
     setEditingTemplate(template);
     setActiveTab('canvas-designer');
     let headerElements: LetterCanvasElement[] = [];

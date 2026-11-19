@@ -181,7 +181,7 @@ export function TaskStafetteWorkspace({ userId, tasks, profiles, onReload, onCom
           <h2 className="text-xl font-bold tracking-tight">Aufgaben</h2>
           <Button onClick={onCreate} className="h-10 rounded-lg bg-success px-3 font-semibold text-white hover:bg-success/90"><Plus className="mr-1 h-4 w-4" />Neue Aufgabe</Button>
         </div>
-        <div className="max-h-80   lg:flex-1">
+        <div className="h-80 min-h-0 lg:h-auto lg:flex-1">
           <TaskTriageList zones={zones} selectedId={selected?.id ?? null} onSelect={setSelectedId} decisionLabel={decisionLabel} nameOf={nameOf} selection={selection} onToggleSelect={toggleSelect} onClearSelection={() => setSelection(new Set())} onBatch={batch} />
         </div>
       </div>

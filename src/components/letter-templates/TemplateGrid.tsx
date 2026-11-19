@@ -1,24 +1,34 @@
 import React from 'react';
+import { useQuery } from '@tanstack/react-query';
+import { useTenant } from '@/hooks/useTenant';
 import { Edit3, Trash2, Eye } from 'lucide-react';
 import { Button } from '@/components/ui/button';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 import { Badge } from '@/components/ui/badge';
 import { Dialog, DialogContent, DialogHeader, DialogTitle } from '@/components/ui/dialog';
-import { LetterTemplate, DEFAULT_ATTACHMENT_PREVIEW_LINES } from './types';
+import { type LetterTemplate, type LetterTemplateSummary, fetchLetterTemplate, DEFAULT_ATTACHMENT_PREVIEW_LINES } from './types';
 import { sanitizeRichHtml } from '@/utils/htmlSanitizer';
 import { type LetterCanvasElement, isLetterCanvasElementArray } from '@/types/letterLayout';
 
 interface TemplateGridProps {
-  templates: LetterTemplate[];
+  templates: LetterTemplateSummary[];
   showPreview: string | null;
   setShowPreview: (id: string | null) => void;
-  startEditing: (template: LetterTemplate) => void;
-  handleDeleteTemplate: (template: LetterTemplate) => void;
+  startEditing: (template: LetterTemplateSummary) => void;
+  handleDeleteTemplate: (template: LetterTemplateSummary) => void;
 }
 
 export const TemplateGrid: React.FC<TemplateGridProps> = ({
   templates, showPreview, setShowPreview, startEditing, handleDeleteTemplate,
 }) => {
+  const { currentTenant } = useTenant();
+  const previewTemplate = templates.find((template) => template.id === showPreview);
+  const preview = useQuery({
+    queryKey: ['letter-template-preview', currentTenant?.id, previewTemplate?.id],
+    queryFn: ({ signal }) => fetchLetterTemplate(currentTenant!.id, previewTemplate!.id, signal),
+    enabled: Boolean(currentTenant && previewTemplate),
+    staleTime: 0,
+  });
   const previewAttachments = DEFAULT_ATTACHMENT_PREVIEW_LINES.map((line) => line.replace(/^-\s*/, ''));
   const previewContent = `<div style="margin-top: 20px; padding: 20px; border: 1px dashed #ccc; font-size: 11pt; line-height: 1.4;"><p><em>Hier würde der Briefinhalt stehen...</em></p><div style="height: 13.5mm;"></div><div style="font-weight: 700;">Anlagen</div>${previewAttachments.map((name) => `<div style=\"font-weight: 700; margin-top: 1mm;\">- ${name}</div>`).join('')}</div>`;
 
@@ -52,21 +62,23 @@ export const TemplateGrid: React.FC<TemplateGridProps> = ({
     } else {
       previewHtml = `<div style="padding: 20px; text-align: center; color: #666;"><p>Kein Header definiert</p></div>${previewContent}`;
     }
-    return (
-      <Dialog open={showPreview === template.id} onOpenChange={(open) => !open && setShowPreview(null)}>
-        <DialogContent className="max-w-4xl max-h-[80vh] overflow-y-auto">
-          <DialogHeader><DialogTitle>Vorschau: {template.name}</DialogTitle></DialogHeader>
-          <div className="border rounded-lg p-4 bg-white text-black" dangerouslySetInnerHTML={{ __html: sanitizeRichHtml(previewHtml) }} />
-        </DialogContent>
-      </Dialog>
-    );
+    return <div className="border rounded-lg p-4 bg-white text-black" dangerouslySetInnerHTML={{ __html: sanitizeRichHtml(previewHtml) }} />;
   };
 
   return (
     <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4">
+      {previewTemplate && (
+        <Dialog open onOpenChange={(open) => !open && setShowPreview(null)}>
+          <DialogContent className="max-w-4xl max-h-[80vh] overflow-y-auto">
+            <DialogHeader><DialogTitle>Vorschau: {previewTemplate.name}</DialogTitle></DialogHeader>
+            {preview.isError ? (
+              <p role="alert">Die Vorschau konnte nicht geladen werden.</p>
+            ) : preview.data ? renderPreview(preview.data) : <p role="status">Vorschau wird geladen…</p>}
+          </DialogContent>
+        </Dialog>
+      )}
       {templates.map((template) => (
         <Card key={template.id} className="relative">
-          {renderPreview(template)}
           <CardHeader className="pb-3">
             <div className="flex flex-col gap-2 sm:flex-row sm:items-center sm:justify-between">
               <CardTitle className="text-sm break-words">{template.name}</CardTitle>

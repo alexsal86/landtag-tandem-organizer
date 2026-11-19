@@ -30,7 +30,7 @@ export const useCaseFileTypes = () => {
       setLoading(true);
       const { data, error } = await supabase
         .from('case_file_types')
-        .select('*')
+        .select('id, name, label, icon, color, order_index, is_active, tenant_id, created_at, updated_at')
         .eq('tenant_id', currentTenant.id)
         .order('order_index');
 

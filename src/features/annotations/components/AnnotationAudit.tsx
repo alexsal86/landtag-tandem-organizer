@@ -14,7 +14,7 @@ export function AnnotationAudit({
 }) {
   const events = useInfiniteQuery({
     queryKey: ["annotation-events", documentId, threadId ?? "all"],
-    refetchInterval: 30_000,
+    refetchInterval: 120_000,
     initialPageParam: 0,
     getNextPageParam: (lastPage: AnnotationEvent[], pages) =>
       lastPage.length === 100 ? pages.length : undefined,

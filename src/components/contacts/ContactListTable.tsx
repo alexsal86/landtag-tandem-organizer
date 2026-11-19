@@ -1,4 +1,5 @@
-import React, { useState } from "react";
+import { useVirtualRows } from "@/components/shared/VirtualList";
+import React, { useLayoutEffect, useRef, useState } from "react";
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from "@/components/ui/table";
 import { Avatar, AvatarFallback, AvatarImage } from "@/components/ui/avatar";
 import { Tooltip, TooltipContent, TooltipProvider, TooltipTrigger } from "@/components/ui/tooltip";
@@ -68,6 +69,29 @@ export function ContactListTable({
     try { return localStorage.getItem("contacts-org-column") === "true"; } catch { return false; }
   });
 
+  const scrollRef = useRef<HTMLDivElement>(null);
+  const bodyRef = useRef<HTMLTableSectionElement>(null);
+  const [scrollMargin, setScrollMargin] = useState(0);
+  const virtual = contacts.length > 40;
+  const rows = useVirtualRows(contacts, () => virtual ? scrollRef.current : null, 44, (contact) => contact.id, 6, scrollMargin);
+  const visibleRows = virtual ? rows.getVirtualItems() : contacts.map((_, index) => ({ index }));
+  const windowRows = rows.getVirtualItems();
+  const topSpace = windowRows.length ? windowRows[0].start - scrollMargin : 0;
+  const bottomSpace = windowRows.length ? rows.getTotalSize() - (windowRows[windowRows.length - 1].end - scrollMargin) : 0;
+  const colSpan = 5 + Number(isSelectionMode) + Number(orgColumn) + Number(splitNameMode);
+
+  useLayoutEffect(() => {
+    const body = bodyRef.current;
+    const scroll = scrollRef.current;
+    const header = body?.previousElementSibling;
+    if (!body || !scroll || !header || !virtual) return;
+    const measure = () => setScrollMargin(body.getBoundingClientRect().top - scroll.getBoundingClientRect().top + scroll.scrollTop);
+    measure();
+    const observer = new ResizeObserver(measure);
+    observer.observe(header);
+    return () => observer.disconnect();
+  }, [virtual]);
+
   const toggleSplitName = () => {
     const next = !splitNameMode;
     setSplitNameMode(next);
@@ -85,7 +109,7 @@ export function ContactListTable({
   };
 
   return (
-    <div className="overflow-visible [&>div]:overflow-visible">
+    <div ref={scrollRef} className={virtual ? "max-h-[65vh] overflow-auto [&>div]:overflow-visible" : "overflow-visible [&>div]:overflow-visible"}>
       <Table>
         <TableHeader>
           <TableRow>
@@ -158,8 +182,10 @@ export function ContactListTable({
             </TableHead>
           </TableRow>
         </TableHeader>
-        <TableBody>
-          {contacts.map((contact) => {
+        <TableBody ref={bodyRef}>
+          {virtual && topSpace > 0 && <tr aria-hidden="true"><td colSpan={colSpan} style={{ height: topSpace, padding: 0 }} /></tr>}
+          {visibleRows.map(({ index }) => {
+            const contact = contacts[index];
             const { firstName, lastName } = splitName(contact.name);
             const salutationPrefix = showSalutation && contact.contact_type !== "organization"
               ? (getGenderLabel(contact.gender ?? undefined) ? getGenderLabel(contact.gender ?? undefined) + " " : "")
@@ -167,7 +193,7 @@ export function ContactListTable({
             const orgInline = !orgColumn && contact.contact_type !== "organization" && contact.organization;
 
             return (
-              <TableRow key={contact.id} className="cursor-pointer hover:bg-muted/50 h-11" onClick={() => onContactClick(contact.id)}>
+              <TableRow key={contact.id} data-index={index} ref={virtual ? rows.measureElement : undefined} className="cursor-pointer hover:bg-muted/50 h-11" onClick={() => onContactClick(contact.id)}>
                 {isSelectionMode && (
                   <TableCell className="px-2 py-1" onClick={(e) => e.stopPropagation()}>
                     <Checkbox
@@ -310,6 +336,7 @@ export function ContactListTable({
               </TableRow>
             );
           })}
+          {virtual && bottomSpace > 0 && <tr aria-hidden="true"><td colSpan={colSpan} style={{ height: bottomSpace, padding: 0 }} /></tr>}
         </TableBody>
       </Table>
     </div>

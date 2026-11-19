@@ -210,7 +210,9 @@ export default defineConfig(({ mode }) => ({
           if (/node_modules\/@lexical\/yjs/.test(id)) return 'vendor-lexical-collab';
           if (/node_modules\/(lexical|@lexical)\//.test(id)) return 'vendor-lexical';
           if (/node_modules\/(matrix-js-sdk|yjs|y-websocket|y-indexeddb)/.test(id)) return 'vendor-matrix';
-          if (/node_modules\/(pdfjs-dist|jspdf|docx)/.test(id)) return 'vendor-pdf';
+          if (/node_modules\/pdfjs-dist\//.test(id)) return 'vendor-pdf-viewer';
+          if (/node_modules\/jspdf\//.test(id)) return 'vendor-pdf-export';
+          if (/node_modules\/docx\//.test(id)) return 'vendor-docx';
           if (/node_modules\/recharts/.test(id)) return 'vendor-charts';
           if (/node_modules\/(leaflet|react-leaflet|proj4)/.test(id)) return 'vendor-maps';
           if (/node_modules\/(date-fns|rrule)/.test(id)) return 'vendor-date';

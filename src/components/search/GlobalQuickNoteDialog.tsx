@@ -24,7 +24,7 @@ interface GlobalQuickNoteDialogProps {
 export function GlobalQuickNoteDialog({ open, onOpenChange }: GlobalQuickNoteDialogProps) {
   const { user } = useAuth();
   const { currentTenant } = useTenant();
-  const { queueNote, repository } = useQuickNotesData();
+  const { queueNote, repository } = useQuickNotesData(undefined, open);
   const { title, content, setTitle, setContent, clearDraft, draftStatus } = useQuickNoteDraft("global");
   const [saving, setSaving] = useState(false);
   const [mentionPromptOpen, setMentionPromptOpen] = useState(false);

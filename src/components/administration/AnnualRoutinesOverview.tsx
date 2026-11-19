@@ -57,7 +57,7 @@ export function AnnualRoutinesOverview({ rules, onEdit, onRun, onNew, canEdit, r
     queryKey: ['routine-packages', currentTenant?.id, ruleIds],
     enabled: Boolean(currentTenant?.id) && canEdit && ruleIds.length > 0,
     staleTime: 15_000,
-    refetchInterval: 30_000,
+    refetchInterval: 120_000,
     queryFn: async () => {
       const result = await supabase.rpc('get_routine_packages', { _rule_ids: ruleIds });
       if (result.error) throw result.error;

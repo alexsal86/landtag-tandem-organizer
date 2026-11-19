@@ -53,10 +53,7 @@ export const GlobalOverlays = () => {
     <>
       <GlobalSearchCommand />
       <GlobalKnowledgeQuestionHost />
-      <GlobalQuickNoteDialog
-        open={quickNoteOpen}
-        onOpenChange={setQuickNoteOpen}
-      />
+      {quickNoteOpen && <GlobalQuickNoteDialog open onOpenChange={setQuickNoteOpen} />}
       <GlobalDaySlipPanel />
       <AppointmentRequestHost />
     </>

@@ -1,5 +1,23 @@
-import { useRef, useMemo, type ReactNode, type CSSProperties } from "react";
+import { useRef, useMemo, useLayoutEffect, type ReactNode, type CSSProperties } from "react";
 import { useVirtualizer } from "@tanstack/react-virtual";
+
+export function useVirtualRows<T>(
+  items: T[],
+  getScrollElement: () => HTMLElement | null,
+  estimateSize: number,
+  getItemKey?: (item: T, index: number) => string | number,
+  overscan = 6,
+  scrollMargin = 0,
+) {
+  return useVirtualizer({
+    count: items.length,
+    getScrollElement,
+    estimateSize: () => estimateSize,
+    overscan,
+    scrollMargin,
+    getItemKey: getItemKey ? (index) => getItemKey(items[index]!, index) : undefined,
+  });
+}
 
 interface VirtualListProps<T> {
   items: T[];
@@ -15,6 +33,7 @@ interface VirtualListProps<T> {
   style?: CSSProperties;
   /** Höhe des Scroll-Containers. Default 100%. */
   height?: string | number;
+  scrollToIndex?: number;
 }
 
 /**
@@ -32,30 +51,28 @@ interface VirtualListProps<T> {
 export function VirtualList<T>({
   items,
   estimateSize,
-  overscan = 8,
+  overscan = 6,
   renderItem,
   getItemKey,
   className,
   style,
   height = "100%",
+  scrollToIndex,
 }: VirtualListProps<T>) {
   const parentRef = useRef<HTMLDivElement>(null);
 
-  const rowVirtualizer = useVirtualizer({
-    count: items.length,
-    getScrollElement: () => parentRef.current,
-    estimateSize: () => estimateSize,
-    overscan,
-    getItemKey: getItemKey
-      ? (index) => getItemKey(items[index]!, index)
-      : undefined,
-  });
+  const rowVirtualizer = useVirtualRows(items, () => parentRef.current, estimateSize, getItemKey, overscan);
+  useLayoutEffect(() => {
+    if (scrollToIndex !== undefined && scrollToIndex >= 0) {
+      rowVirtualizer.scrollToIndex(scrollToIndex, { align: "auto" });
+    }
+  }, [rowVirtualizer, scrollToIndex]);
 
   const virtualItems = rowVirtualizer.getVirtualItems();
   const totalSize = rowVirtualizer.getTotalSize();
 
   const containerStyle = useMemo<CSSProperties>(
-    () => ({ height, overflow: "auto", contain: "strict", ...style }),
+    () => ({ height, overflow: "auto", ...style }),
     [height, style],
   );
 
@@ -75,10 +92,9 @@ export function VirtualList<T>({
             ref={rowVirtualizer.measureElement}
             style={{
               position: "absolute",
-              top: 0,
+              top: vi.start,
               left: 0,
               width: "100%",
-              transform: `translateY(${vi.start}px)`,
             }}
           >
             {renderItem(items[vi.index]!, vi.index)}

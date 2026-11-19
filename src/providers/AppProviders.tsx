@@ -1,5 +1,4 @@
 import { UserStatusProvider } from '@/hooks/useUserStatus';
-import { QuickNotesRuntime } from "@/features/quick-notes/useQuickNotesData";
 import type { PropsWithChildren } from "react";
 import { ThemeProvider } from "next-themes";
 import { QueryClientProvider } from "@tanstack/react-query";
@@ -17,7 +16,6 @@ export const AppProviders = ({ children }: PropsWithChildren): React.JSX.Element
       <AuthProvider>
         <TenantProvider>
           <UserStatusProvider>
-            <QuickNotesRuntime />
             <AppSettingsProvider>
               <NotificationProvider>
                 <TooltipProvider>

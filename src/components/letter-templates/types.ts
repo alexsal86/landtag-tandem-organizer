@@ -13,6 +13,18 @@ import {
 
 export type { LetterTemplate, SenderInformation, InformationBlock };
 
+export type LetterTemplateSummary = Pick<LetterTemplate, 'id' | 'name' | 'is_default' | 'response_time_days'>;
+
+export async function fetchLetterTemplate(tenantId: string, templateId: string, signal?: AbortSignal) {
+  const query = supabase.from('letter_templates')
+    .select('id, name, letterhead_html, letterhead_css, response_time_days, is_default, is_active, tenant_id, created_by, default_sender_id, default_info_blocks, header_layout_type, header_text_elements, footer_blocks, layout_settings, created_at, updated_at')
+    .eq('tenant_id', tenantId)
+    .eq('id', templateId);
+  const { data, error } = await (signal ? query.abortSignal(signal) : query).single();
+  if (error) throw error;
+  return data as unknown as LetterTemplate;
+}
+
 export type { MarginKey, TabRect } from '@/types/letterLayout';
 
 export interface GalleryImage {

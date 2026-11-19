@@ -1,13 +1,13 @@
-import { Fragment, useEffect, useState, type KeyboardEvent as ReactKeyboardEvent, type ReactNode } from "react";
+import { useEffect, useLayoutEffect, useRef, useState, type KeyboardEvent as ReactKeyboardEvent, type ReactNode } from "react";
 import { ChevronDown } from "lucide-react";
-import { Draggable, Droppable } from "@hello-pangea/dnd";
+import { Draggable, Droppable, type DraggableProvided, type DraggableStateSnapshot } from "@hello-pangea/dnd";
 import { Archive, CalendarDays, Circle, FolderOpen, Globe, Link2, Trash2, Vote, ArchiveRestore, Phone } from "lucide-react";
 import { de } from "date-fns/locale";
 import { Avatar, AvatarFallback, AvatarImage } from "@/components/ui/avatar";
 import { Button } from "@/components/ui/button";
 import { ContextMenu, ContextMenuContent, ContextMenuItem, ContextMenuSeparator, ContextMenuSub, ContextMenuSubContent, ContextMenuSubTrigger, ContextMenuTrigger } from "@/components/ui/context-menu";
 import { Input } from "@/components/ui/input";
-import { ScrollArea } from "@/components/ui/scroll-area";
+import { useVirtualRows } from "@/components/shared/VirtualList";
 import { cn } from "@/lib/utils";
 import type { CaseFile, CaseItem, TeamUser } from "@/components/my-work/hooks/useCaseWorkspaceData";
 import { formatDateSafe } from "./utils/dateFormatting";
@@ -95,6 +95,172 @@ export function CaseItemList(props: CaseItemListProps) {
     try { localStorage.setItem(RESUB_KEY, open ? "0" : "1"); } catch { /* ignore */ }
     return !open;
   });
+  const visibleItems = showResubSection && !resubExpanded ? activeItems : orderedItems;
+  const entries: { key: string; item?: CaseItem; dragIndex?: number }[] = visibleItems.map((item, dragIndex) => ({ key: item.id, item, dragIndex }));
+  if (showResubSection && resubCount > 0) entries.splice(activeCount, 0, { key: "resub-header" });
+
+  const viewport = useRef<HTMLDivElement | null>(null);
+  const rows = useVirtualRows(entries, () => viewport.current, 62, (entry) => entry.key);
+  const focusedId = props.sortedCaseItems[props.focusedItemIndex]?.id;
+  const highlightedId = visibleItems.find((item) => props.isHighlighted(item.id))?.id;
+  const scrollIndex = entries.findIndex((entry) => entry.key === (highlightedId ?? focusedId));
+  useLayoutEffect(() => {
+    if (scrollIndex >= 0) rows.scrollToIndex(scrollIndex, { align: "auto" });
+  }, [rows, scrollIndex, focusedId, highlightedId]);
+
+  const renderCard = (item: CaseItem, dragProvided: DraggableProvided, dragSnapshot: DraggableStateSnapshot) => {
+    const isActive = props.detailItemId === item.id;
+    const ball = ballMeta(item.ball_owner);
+    const nextDays = daysUntilNextAction(item);
+    return (
+      <div
+        ref={(el) => {
+          dragProvided.innerRef(el);
+          if (props.isHighlighted(item.id) && el && !dragSnapshot.isClone) props.highlightRef(item.id)(el);
+        }}
+        {...dragProvided.draggableProps}
+        className={cn(
+          "outline-none focus:outline-none",
+          dragSnapshot.isDragging && "opacity-80 shadow-lg rounded-md bg-background z-50",
+          props.isHighlighted(item.id) && "notification-highlight",
+        )}
+      >
+        <ContextMenu>
+          <ContextMenuTrigger asChild>
+            <button
+              type="button"
+              className={cn(
+                "group w-full rounded-xl border bg-transparent px-3 py-2 text-left transition-colors hover:bg-muted/30",
+                isActive && "border-primary/60 bg-primary/5 shadow-sm",
+                !isActive && "border-transparent",
+                props.focusedItemIndex >= 0 && focusedId === item.id && "ring-1 ring-primary/40",
+              )}
+              onClick={() => props.handleSelectCaseItem(item)}
+            >
+              <div {...dragProvided.dragHandleProps}>
+                {/* Row 1: Marker + title */}
+                <div className="flex items-center gap-2">
+                  <p className="min-w-0 flex-1 text-sm font-bold leading-snug line-clamp-1">
+                    {props.getItemSubject(item)}
+                  </p>
+                  {(item.next_action_due_at || item.due_at) && (
+                    <span className={cn("ml-auto shrink-0 text-right text-xs tabular-nums", (nextDays ?? 99) < 0 ? "text-destructive" : (nextDays ?? 99) <= 3 ? "text-warning" : "text-muted-foreground")}>
+                      {formatDateSafe(item.next_action_due_at || item.due_at, "dd.MM.", "", { locale: de })}
+                    </span>
+                  )}
+                </div>
+
+                {/* Row 2b: Ball + next action */}
+                <div className="mt-0.5 flex items-center gap-1.5 text-xs">
+                  <span className={cn("h-2 w-2 shrink-0 rounded-full", ball.dotClass)} />
+                  <span className="shrink-0 text-muted-foreground">{ball.short}</span>
+                  {item.next_action_label ? (
+                    <span className="min-w-0 truncate text-foreground">· {item.next_action_label}</span>
+                  ) : (
+                    <span className="min-w-0 truncate italic text-muted-foreground">· kein nächster Schritt</span>
+                  )}
+
+                </div>
+
+
+              </div>
+            </button>
+          </ContextMenuTrigger>
+          <ContextMenuContent className="w-56">
+            <ContextMenuSub>
+              <ContextMenuSubTrigger>Status ändern</ContextMenuSubTrigger>
+              <ContextMenuSubContent className="w-48">
+                {props.statusOptions.map((opt) => (
+                  <ContextMenuItem
+                    key={opt.value}
+                    className={cn(item.status === opt.value && "bg-accent")}
+                    onClick={() => props.runAsync(() => props.handleQuickStatusChange(item, opt.value))}
+                  >
+                    <span className={cn("mr-2 h-2 w-2 rounded-full inline-block", opt.dotColor)} />
+                    {opt.label}
+                    {item.status === opt.value && <span className="ml-auto text-xs text-muted-foreground">✓</span>}
+                  </ContextMenuItem>
+                ))}
+              </ContextMenuSubContent>
+            </ContextMenuSub>
+            <ContextMenuSub>
+              <ContextMenuSubTrigger>Wer ist am Zug?</ContextMenuSubTrigger>
+              <ContextMenuSubContent className="w-52">
+                {BALL_OWNERS.map((b) => (
+                  <ContextMenuItem key={b.value} className={cn(ball.value === b.value && "bg-accent")} onClick={() => props.runAsync(() => props.handleBallChange(item, { ball_owner: b.value }))}>
+                    <span className={cn("mr-2 inline-block h-2 w-2 rounded-full", b.dotClass)} />
+                    {b.label}
+                  </ContextMenuItem>
+                ))}
+              </ContextMenuSubContent>
+            </ContextMenuSub>
+            <ContextMenuSub>
+              <ContextMenuSubTrigger>Priorität ändern</ContextMenuSubTrigger>
+              <ContextMenuSubContent className="w-48">
+                {props.priorityOptions.map((opt) => (
+                  <ContextMenuItem
+                    key={opt.value}
+                    className={cn(item.priority === opt.value && "bg-accent")}
+                    onClick={() => props.runAsync(() => props.handleQuickPriorityChange(item, opt.value))}
+                  >
+                    <Circle className={cn("mr-2 h-3 w-3 fill-current", opt.color)} />
+                    {opt.label}
+                    {item.priority === opt.value && <span className="ml-auto text-xs text-muted-foreground">✓</span>}
+                  </ContextMenuItem>
+                ))}
+              </ContextMenuSubContent>
+            </ContextMenuSub>
+            <ContextMenuItem onClick={() => props.runAsync(() => props.handleQuickVisibilityChange(item, !item.visible_to_all))}>
+              <Globe className="mr-2 h-3 w-3" />
+              {item.visible_to_all ? "Nicht öffentlich machen" : "Öffentlich machen"}
+            </ContextMenuItem>
+            <ContextMenuSeparator />
+            <ContextMenuSub>
+              <ContextMenuSubTrigger>Akte zuordnen</ContextMenuSubTrigger>
+              <ContextMenuSubContent className="w-56 max-h-64 overflow-y-auto">
+                {item.case_file_id && (
+                  <>
+                    <ContextMenuItem onClick={() => props.runAsync(() => props.handleUnlinkFromFile(item))} className="text-destructive">
+                      Verknüpfung lösen
+                    </ContextMenuItem>
+                    <ContextMenuSeparator />
+                  </>
+                )}
+                {props.allCaseFiles.slice(0, 20).map((cf) => (
+                  <ContextMenuItem
+                    key={cf.id}
+                    className={cn(item.case_file_id === cf.id && "bg-accent")}
+                    onClick={() => props.runAsync(() => props.handleQuickLinkToFile(item, cf.id))}
+                  >
+                    <FolderOpen className="mr-2 h-3 w-3 shrink-0" />
+                    <span className="truncate">{cf.title}</span>
+                    {cf.reference_number && <span className="ml-auto text-xs text-muted-foreground pl-2">{cf.reference_number}</span>}
+                  </ContextMenuItem>
+                ))}
+              </ContextMenuSubContent>
+            </ContextMenuSub>
+            <ContextMenuSeparator />
+            <ContextMenuItem onClick={() => props.openDecisionCreator(item.id)}>
+              <Vote className="mr-2 h-3 w-3" />Entscheidung stellen
+            </ContextMenuItem>
+            <ContextMenuSeparator />
+            <ContextMenuItem onClick={() => props.openMeetingSelector(item.id)}>
+              <CalendarDays className="mr-2 h-3 w-3" />Zum Jour Fixe hinzufügen
+            </ContextMenuItem>
+            <ContextMenuSeparator />
+            <ContextMenuItem onClick={() => props.runAsync(() => props.handleArchiveCaseItem(item))}>
+              {item.status === "archiviert" ? <ArchiveRestore className="mr-2 h-3 w-3" /> : <Archive className="mr-2 h-3 w-3" />}
+              {item.status === "archiviert" ? "Wiederherstellen" : "Archivieren"}
+            </ContextMenuItem>
+            <ContextMenuItem className="text-destructive focus:text-destructive" onClick={() => props.onDeleteCaseItem(item.id)}>
+              <Trash2 className="mr-2 h-3 w-3" />Vorgang löschen
+            </ContextMenuItem>
+          </ContextMenuContent>
+        </ContextMenu>
+      </div>
+    );
+  };
+
   return (
     <div className="flex h-full min-h-0 flex-col border-r bg-card">
       {/* Header */}
@@ -135,212 +301,61 @@ export function CaseItemList(props: CaseItemListProps) {
         </div>
       </div>
 
-      {/* Card list */}
-      <ScrollArea className="flex-1 min-h-0">
-        <Droppable droppableId="case-items-list" isDropDisabled>
-          {(provided) => (
-            <div
-              ref={provided.innerRef}
-              {...provided.droppableProps}
-              className="space-y-1 p-3"
-              tabIndex={0}
-              onKeyDown={props.onListKeyDown}
-            >
-              {props.sortedCaseItems.length === 0 ? (
-                <div className="rounded-md border border-dashed p-4 text-sm text-muted-foreground space-y-3 m-2">
-                  <p>Keine Vorgänge gefunden.</p>
-                  <Button size="sm" onClick={props.onCreateCaseItem}>Vorgang erstellen</Button>
-                </div>
-              ) : (
-                orderedItems.map((item, index) => {
-                  const resub = index >= activeCount;
-                  const header = showResubSection && index === activeCount ? (
-                    <button
-                      key="resub-header"
-                      type="button"
-                      onClick={toggleResub}
-                      aria-expanded={resubExpanded}
-                      className="flex w-full items-center justify-between px-1 pb-1 pt-4 text-left"
-                    >
-                      <span className="section-label inline-flex items-center gap-1">
-                        <ChevronDown className={cn("h-3.5 w-3.5 transition-transform duration-fast", !resubExpanded && "-rotate-90")} />
-                        Wiedervorlage · {resubCount}
-                      </span>
-                      <span className="text-xs font-semibold text-muted-foreground">kommt zurück</span>
-                    </button>
-                  ) : null;
-                  if (showResubSection && resub && !resubExpanded) return header;
-                  const isActive = props.detailItemId === item.id;
-                  const ball = ballMeta(item.ball_owner);
-                  const nextDays = daysUntilNextAction(item);
-                  return (
-                    <Fragment key={item.id}>
-                    {header}
-                    <Draggable draggableId={item.id} index={index}>
-                      {(dragProvided, dragSnapshot) => (
-                        <div
-                          ref={(el) => {
-                            dragProvided.innerRef(el);
-                            if (props.isHighlighted(item.id) && el) props.highlightRef(item.id)(el);
-                          }}
-                          {...dragProvided.draggableProps}
-                          className={cn(
-                            "outline-none focus:outline-none",
-                            dragSnapshot.isDragging && "opacity-80 shadow-lg rounded-md bg-background z-50",
-                            props.isHighlighted(item.id) && "notification-highlight",
-                          )}
-                        >
-                          <ContextMenu>
-                            <ContextMenuTrigger asChild>
-                              <button
-                                type="button"
-                                className={cn(
-                                  "group w-full rounded-xl border bg-transparent px-3 py-2 text-left transition-colors hover:bg-muted/30",
-                                  isActive && "border-primary/60 bg-primary/5 shadow-sm",
-                                  !isActive && "border-transparent",
-                                  props.focusedItemIndex >= 0 && props.focusedItemIndex === index && "ring-1 ring-primary/40",
-                                )}
-                                onClick={() => props.handleSelectCaseItem(item)}
-                              >
-                                <div {...dragProvided.dragHandleProps}>
-                                  {/* Row 1: Marker + title */}
-                                  <div className="flex items-center gap-2">
-                                    <p className="min-w-0 flex-1 text-sm font-bold leading-snug line-clamp-1">
-                                      {props.getItemSubject(item)}
-                                    </p>
-                                    {(item.next_action_due_at || item.due_at) && (
-                                      <span className={cn("ml-auto shrink-0 text-right text-xs tabular-nums", (nextDays ?? 99) < 0 ? "text-destructive" : (nextDays ?? 99) <= 3 ? "text-warning" : "text-muted-foreground")}>
-                                        {formatDateSafe(item.next_action_due_at || item.due_at, "dd.MM.", "", { locale: de })}
-                                      </span>
-                                    )}
-                                  </div>
-
-                                  {/* Row 2b: Ball + next action */}
-                                  <div className="mt-0.5 flex items-center gap-1.5 text-xs">
-                                    <span className={cn("h-2 w-2 shrink-0 rounded-full", ball.dotClass)} />
-                                    <span className="shrink-0 text-muted-foreground">{ball.short}</span>
-                                    {item.next_action_label ? (
-                                      <span className="min-w-0 truncate text-foreground">· {item.next_action_label}</span>
-                                    ) : (
-                                      <span className="min-w-0 truncate italic text-muted-foreground">· kein nächster Schritt</span>
-                                    )}
-
-                                  </div>
-
-
-                                </div>
-                              </button>
-                            </ContextMenuTrigger>
-                            <ContextMenuContent className="w-56">
-                              <ContextMenuSub>
-                                <ContextMenuSubTrigger>Status ändern</ContextMenuSubTrigger>
-                                <ContextMenuSubContent className="w-48">
-                                  {props.statusOptions.map((opt) => (
-                                    <ContextMenuItem
-                                      key={opt.value}
-                                      className={cn(item.status === opt.value && "bg-accent")}
-                                      onClick={() => props.runAsync(() => props.handleQuickStatusChange(item, opt.value))}
-                                    >
-                                      <span className={cn("mr-2 h-2 w-2 rounded-full inline-block", opt.dotColor)} />
-                                      {opt.label}
-                                      {item.status === opt.value && <span className="ml-auto text-xs text-muted-foreground">✓</span>}
-                                    </ContextMenuItem>
-                                  ))}
-                                </ContextMenuSubContent>
-                              </ContextMenuSub>
-                              <ContextMenuSub>
-                                <ContextMenuSubTrigger>Wer ist am Zug?</ContextMenuSubTrigger>
-                                <ContextMenuSubContent className="w-52">
-                                  {BALL_OWNERS.map((b) => (
-                                    <ContextMenuItem key={b.value} className={cn(ball.value === b.value && "bg-accent")} onClick={() => props.runAsync(() => props.handleBallChange(item, { ball_owner: b.value }))}>
-                                      <span className={cn("mr-2 inline-block h-2 w-2 rounded-full", b.dotClass)} />
-                                      {b.label}
-                                    </ContextMenuItem>
-                                  ))}
-                                </ContextMenuSubContent>
-                              </ContextMenuSub>
-                              <ContextMenuSub>
-                                <ContextMenuSubTrigger>Priorität ändern</ContextMenuSubTrigger>
-                                <ContextMenuSubContent className="w-48">
-                                  {props.priorityOptions.map((opt) => (
-                                    <ContextMenuItem
-                                      key={opt.value}
-                                      className={cn(item.priority === opt.value && "bg-accent")}
-                                      onClick={() => props.runAsync(() => props.handleQuickPriorityChange(item, opt.value))}
-                                    >
-                                      <Circle className={cn("mr-2 h-3 w-3 fill-current", opt.color)} />
-                                      {opt.label}
-                                      {item.priority === opt.value && <span className="ml-auto text-xs text-muted-foreground">✓</span>}
-                                    </ContextMenuItem>
-                                  ))}
-                                </ContextMenuSubContent>
-                              </ContextMenuSub>
-                              <ContextMenuItem onClick={() => props.runAsync(() => props.handleQuickVisibilityChange(item, !item.visible_to_all))}>
-                                <Globe className="mr-2 h-3 w-3" />
-                                {item.visible_to_all ? "Nicht öffentlich machen" : "Öffentlich machen"}
-                              </ContextMenuItem>
-                              <ContextMenuSeparator />
-                              <ContextMenuSub>
-                                <ContextMenuSubTrigger>Akte zuordnen</ContextMenuSubTrigger>
-                                <ContextMenuSubContent className="w-56 max-h-64 overflow-y-auto">
-                                  {item.case_file_id && (
-                                    <>
-                                      <ContextMenuItem onClick={() => props.runAsync(() => props.handleUnlinkFromFile(item))} className="text-destructive">
-                                        Verknüpfung lösen
-                                      </ContextMenuItem>
-                                      <ContextMenuSeparator />
-                                    </>
-                                  )}
-                                  {props.allCaseFiles.slice(0, 20).map((cf) => (
-                                    <ContextMenuItem
-                                      key={cf.id}
-                                      className={cn(item.case_file_id === cf.id && "bg-accent")}
-                                      onClick={() => props.runAsync(() => props.handleQuickLinkToFile(item, cf.id))}
-                                    >
-                                      <FolderOpen className="mr-2 h-3 w-3 shrink-0" />
-                                      <span className="truncate">{cf.title}</span>
-                                      {cf.reference_number && <span className="ml-auto text-xs text-muted-foreground pl-2">{cf.reference_number}</span>}
-                                    </ContextMenuItem>
-                                  ))}
-                                </ContextMenuSubContent>
-                              </ContextMenuSub>
-                              <ContextMenuSeparator />
-                              <ContextMenuItem onClick={() => props.openDecisionCreator(item.id)}>
-                                <Vote className="mr-2 h-3 w-3" />Entscheidung stellen
-                              </ContextMenuItem>
-                              <ContextMenuSeparator />
-                              <ContextMenuItem onClick={() => props.openMeetingSelector(item.id)}>
-                                <CalendarDays className="mr-2 h-3 w-3" />Zum Jour Fixe hinzufügen
-                              </ContextMenuItem>
-                              <ContextMenuSeparator />
-                              <ContextMenuItem onClick={() => props.runAsync(() => props.handleArchiveCaseItem(item))}>
-                                {item.status === "archiviert" ? <ArchiveRestore className="mr-2 h-3 w-3" /> : <Archive className="mr-2 h-3 w-3" />}
-                                {item.status === "archiviert" ? "Wiederherstellen" : "Archivieren"}
-                              </ContextMenuItem>
-                              <ContextMenuItem className="text-destructive focus:text-destructive" onClick={() => props.onDeleteCaseItem(item.id)}>
-                                <Trash2 className="mr-2 h-3 w-3" />Vorgang löschen
-                              </ContextMenuItem>
-                            </ContextMenuContent>
-                          </ContextMenu>
-                        </div>
-                      )}
-                    </Draggable>
-                    </Fragment>
-                  );
-                })
-              )}
-              {props.hasMoreItems && (
-                <div className="pt-2 px-2">
-                  <Button type="button" variant="outline" size="sm" className="w-full" disabled={props.loadingMoreItems} onClick={() => props.runAsync(props.loadMoreItems)}>
-                    {props.loadingMoreItems ? "Lade…" : "Mehr laden"}
-                  </Button>
-                </div>
-              )}
-              {provided.placeholder}
+      <Droppable
+        droppableId="case-items-list"
+        isDropDisabled
+        mode="virtual"
+        renderClone={(provided, snapshot, rubric) => {
+          const item = orderedItems[rubric.source.index];
+          return item ? renderCard(item, provided, snapshot) : null;
+        }}
+      >
+        {(provided) => (
+          <div
+            ref={(element) => { viewport.current = element; provided.innerRef(element); }}
+            {...provided.droppableProps}
+            className="min-h-0 flex-1 overflow-y-auto p-3"
+            tabIndex={0}
+            onKeyDown={props.onListKeyDown}
+          >
+            {props.sortedCaseItems.length === 0 && (
+              <div className="m-2 space-y-3 rounded-md border border-dashed p-4 text-sm text-muted-foreground">
+                <p>Keine Vorgänge gefunden.</p>
+                <Button size="sm" onClick={props.onCreateCaseItem}>Vorgang erstellen</Button>
+              </div>
+            )}
+            <div className="relative" style={{ height: rows.getTotalSize() }}>
+              {rows.getVirtualItems().map((row) => {
+                const { item, dragIndex } = entries[row.index];
+                return (
+                  <div key={row.key} data-index={row.index} ref={rows.measureElement} className="absolute inset-x-0 pb-1" style={{ top: row.start }}>
+                    {item && dragIndex !== undefined ? (
+                      <Draggable draggableId={item.id} index={dragIndex}>
+                        {(dragProvided, snapshot) => renderCard(item, dragProvided, snapshot)}
+                      </Draggable>
+                    ) : (
+                      <button type="button" onClick={toggleResub} aria-expanded={resubExpanded} className="flex w-full items-center justify-between px-1 pb-1 pt-4 text-left">
+                        <span className="section-label inline-flex items-center gap-1">
+                          <ChevronDown className={cn("h-3.5 w-3.5 transition-transform duration-fast", !resubExpanded && "-rotate-90")} />
+                          Wiedervorlage · {resubCount}
+                        </span>
+                        <span className="text-xs font-semibold text-muted-foreground">kommt zurück</span>
+                      </button>
+                    )}
+                  </div>
+                );
+              })}
             </div>
-          )}
-        </Droppable>
-      </ScrollArea>
+            {props.hasMoreItems && (
+              <div className="px-2 pt-2">
+                <Button type="button" variant="outline" size="sm" className="w-full" disabled={props.loadingMoreItems} onClick={() => props.runAsync(props.loadMoreItems)}>
+                  {props.loadingMoreItems ? "Lade…" : "Mehr laden"}
+                </Button>
+              </div>
+            )}
+          </div>
+        )}
+      </Droppable>
       <footer className="mt-auto flex shrink-0 flex-wrap items-center justify-between gap-2 border-t px-4 py-3">
         <Button type="button" variant="ghost" size="sm" className="text-muted-foreground" onClick={props.onOpenArchive}>
           Archiv

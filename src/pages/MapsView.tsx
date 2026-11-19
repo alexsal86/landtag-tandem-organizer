@@ -1,9 +1,15 @@
-import { useState, useEffect } from 'react';
+import { Suspense, useState, useEffect } from 'react';
 import { useSearchParams } from 'react-router-dom';
 import { Tabs, TabsList, TabsTrigger } from '@/components/ui/tabs';
-import { ElectionDistrictsView } from '@/features/election-districts/components/ElectionDistrictsView';
-import { KarlsruheDistrictsView } from '@/components/karlsruhe/KarlsruheDistrictsView';
+import { lazyWithRetry } from '@/lib/lazyWithRetry';
 import { MapPin, Building2 } from 'lucide-react';
+
+const ElectionDistrictsView = lazyWithRetry(() =>
+  import('@/features/election-districts/components/ElectionDistrictsView').then((module) => ({ default: module.ElectionDistrictsView })),
+);
+const KarlsruheDistrictsView = lazyWithRetry(() =>
+  import('@/components/karlsruhe/KarlsruheDistrictsView').then((module) => ({ default: module.KarlsruheDistrictsView })),
+);
 
 export const MapsView = () => {
   const [searchParams, setSearchParams] = useSearchParams();
@@ -35,8 +41,10 @@ export const MapsView = () => {
 
   return (
     <div className="h-full min-h-0">
-      {activeTab === 'wahlkreise' && <ElectionDistrictsView sidebarHeader={mapSwitcher} />}
-      {activeTab === 'stadtteile' && <KarlsruheDistrictsView sidebarHeader={mapSwitcher} />}
+      <Suspense fallback={<div className="p-3">{mapSwitcher}<p role="status" className="mt-3 text-sm text-muted-foreground">Karte wird geladen…</p></div>}>
+        {activeTab === 'wahlkreise' && <ElectionDistrictsView sidebarHeader={mapSwitcher} />}
+        {activeTab === 'stadtteile' && <KarlsruheDistrictsView sidebarHeader={mapSwitcher} />}
+      </Suspense>
     </div>
   );
 };

@@ -2,8 +2,7 @@ import React from 'react';
 import { debugConsole } from '@/utils/debugConsole';
 import { Download } from 'lucide-react';
 import { Button } from '@/components/ui/button';
-import { usePDFData } from '@/components/letter-pdf/usePDFData';
-import { generatePDF } from '@/components/letter-pdf/pdfGenerator';
+import { fetchPDFData } from '@/components/letter-pdf/fetchPDFData';
 import type { LetterPDFExportProps, InformationBlockContract, AttachmentContract } from '@/components/letter-pdf/types';
 import { notify } from "@/lib/notify";
 
@@ -16,11 +15,16 @@ const LetterPDFExport: React.FC<LetterPDFExportProps> = ({
   size = 'default',
   onPDFGenerated
 }) => {
-  const { template, senderInfo, informationBlock, attachments, contact } = usePDFData(letter);
+  const [exporting, setExporting] = React.useState(false);
 
   const exportToPDF = async () => {
+    setExporting(true);
     try {
-      const result = await generatePDF({
+      const [{ generatePDF }, { template, senderInfo, informationBlock, attachments, contact }] = await Promise.all([
+        import("@/components/letter-pdf/pdfGenerator"),
+        fetchPDFData(letter),
+      ]);
+      await generatePDF({
         letter,
         template,
         senderInfo,
@@ -46,7 +50,9 @@ const LetterPDFExport: React.FC<LetterPDFExportProps> = ({
       debugConsole.error('Error exporting PDF:', error);
       notify.error("Export-Fehler", {
         description: "Der Brief konnte nicht als PDF exportiert werden."
-});
+      });
+    } finally {
+      setExporting(false);
     }
   };
 
@@ -55,11 +61,11 @@ const LetterPDFExport: React.FC<LetterPDFExportProps> = ({
       variant="ghost"
       size={size}
       onClick={exportToPDF}
-      disabled={disabled}
+      disabled={disabled || exporting}
       className={variant === 'icon-only' ? "" : "flex items-center gap-2"}
     >
       <Download className="h-4 w-4" />
-      {variant === 'default' && (disabled ? 'Export...' : 'PDF')}
+      {variant === 'default' && (disabled || exporting ? 'Export...' : 'PDF')}
     </Button>
   );
 };

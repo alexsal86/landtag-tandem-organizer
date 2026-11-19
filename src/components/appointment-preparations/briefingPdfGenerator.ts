@@ -1,5 +1,5 @@
 import { compactToFull, mergeLegacy, type PrepData } from "@/features/appointments/briefing/briefingModel";
-import jsPDF from "jspdf";
+import type jsPDF from "jspdf";
 import { supabase } from "@/integrations/supabase/client";
 import { briefingFactLines } from "./briefingFacts";
 import "svg2pdf.js";
@@ -844,6 +844,7 @@ export async function generateBriefingPdf({
   appointmentStartTime,
   appointmentEndTime,
 }: BriefingPdfOptions): Promise<void> {
+  const { default: jsPDF } = await import("jspdf");
   const doc = new jsPDF({ unit: "mm", format: "a4" });
   const headerFont = await registerBriefingFonts(doc);
   // Compact-only briefings: fill dossier fields from the one-pager so both depths print.

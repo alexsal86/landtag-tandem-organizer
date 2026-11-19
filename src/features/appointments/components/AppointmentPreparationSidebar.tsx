@@ -16,7 +16,6 @@ import { FileText, Download, Save, Archive, Plus } from 'lucide-react';
 import { debugConsole } from '@/utils/debugConsole';
 import { format } from 'date-fns';
 import { de } from 'date-fns/locale';
-import jsPDF from 'jspdf';
 import type { CheckedState } from '@radix-ui/react-checkbox';
 import type {
   AppointmentPreparation,
@@ -332,6 +331,7 @@ export default function AppointmentPreparationSidebar({
 
     try {
       // Simple text-based PDF export
+      const { default: jsPDF } = await import("jspdf");
       const pdf = new jsPDF('p', 'mm', 'a4');
       const template = templates.find(t => t.id === preparation.template_id);
       

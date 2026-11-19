@@ -4,14 +4,14 @@ import { useAuth } from "@/hooks/useAuth";
 import { useTenant } from "@/hooks/useTenant";
 import { getNotesRepository, type NotePatch } from "./repository";
 
-export function useQuickNotesData(refreshTrigger?: number) {
+export function useQuickNotesData(refreshTrigger?: number, active = true) {
   const { user } = useAuth();
   const { currentTenant } = useTenant();
   const client = useQueryClient();
   const repository = useMemo(() => getNotesRepository(client, {
     userId: user?.id ?? "", tenantId: currentTenant?.id ?? "",
   }), [client, user?.id, currentTenant?.id]);
-  const enabled = Boolean(user?.id && currentTenant?.id);
+  const enabled = Boolean(active && user?.id && currentTenant?.id);
   const sync = useSyncExternalStore(repository.subscribe, repository.getSnapshot);
   const query = useQuery({
     queryKey: repository.key, enabled,
@@ -38,10 +38,4 @@ export function useQuickNotesData(refreshTrigger?: number) {
     patchNote: patchMutation.mutateAsync,
     queueNote: queueMutation.mutateAsync,
   };
-}
-
-/** Keeps durable writes moving even when the notes screen is closed. */
-export function QuickNotesRuntime() {
-  useQuickNotesData();
-  return null;
 }

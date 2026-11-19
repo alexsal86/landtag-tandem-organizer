@@ -1,4 +1,3 @@
-import * as pdfjsLib from '@/lib/pdfjs';
 import type { ProtocolAgendaItem, ProtocolAnalysisSpeech, ProtocolSessionEvent } from '@/types/protocol';
 import { debugConsole } from '@/utils/debugConsole';
 import { isPdfTextItem } from '@/utils/protocolGuards';
@@ -36,6 +35,7 @@ export async function parsePDFFile(file: unknown): Promise<ParsedProtocol> {
 
   try {
     const arrayBuffer = await file.arrayBuffer();
+    const pdfjsLib = await import("@/lib/pdfjs");
     const pdf = await pdfjsLib.getDocument({ data: arrayBuffer }).promise;
 
     let fullText = '';

@@ -1,3 +1,4 @@
+import { VirtualList } from "@/components/shared/VirtualList";
 import { useState } from "react";
 import { BellRing, ChevronDown } from "lucide-react";
 import { Button } from "@/components/ui/button";
@@ -69,23 +70,25 @@ export function TaskTriageList({ zones, selectedId, onSelect, decisionLabel, nam
     return [step, due].filter(Boolean).join(" · ");
   };
 
-  const section = (zone: TaskZone, title: string) => (
-    <div className="space-y-1">
-      <div className="px-2 text-xs font-semibold uppercase tracking-wide text-muted-foreground">{title} ({zones[zone].length})</div>
-      {zones[zone].length === 0 ? (
-        <div className="px-3 text-caption text-muted-foreground">Nichts offen</div>
-      ) : (
-        zones[zone].map((t) => (
-          <Row key={t.id} task={t} active={t.id === selectedId} onSelect={() => onSelect(t.id)} sub={subFor(t, zone)} checked={selection.has(t.id)} onCheck={() => onToggleSelect(t.id)} highlight={zone === "nudged"} />
-        ))
-      )}
-    </div>
-  );
+  const sections: { zone: TaskZone; title: string }[] = [
+    { zone: "nudged", title: "Angestupst" },
+    { zone: "mine", title: "Mein Zug" },
+    { zone: "waiting", title: "Wartet auf andere" },
+    { zone: "resubmission", title: "Wiedervorlage" },
+  ];
+  const entries = sections.flatMap(({ zone, title }) => {
+    if (zone === "nudged" && zones.nudged.length === 0) return [];
+    const tasks = zone === "resubmission" && !resubOpen ? [] : zones[zone];
+    return [
+      { key: zone, zone, title, task: null },
+      ...tasks.map((task) => ({ key: task.id, zone, title, task })),
+    ];
+  });
 
   return (
-    <div className="flex flex-col gap-5 p-3">
+    <div className="flex h-full min-h-0 flex-col gap-2 p-3">
       {selection.size > 0 && (
-        <div className="sticky top-0 z-sticky rounded-lg border bg-popover p-3 shadow-md space-y-2">
+        <div className="shrink-0 rounded-lg border bg-popover p-3 shadow-md space-y-2">
           <div className="flex items-center justify-between text-caption">
             <span className="font-medium">{selection.size} ausgewählt</span>
             <button type="button" className="text-muted-foreground hover:text-foreground" onClick={onClearSelection}>Aufheben</button>
@@ -97,31 +100,34 @@ export function TaskTriageList({ zones, selectedId, onSelect, decisionLabel, nam
           </div>
         </div>
       )}
-      {zones.nudged.length > 0 && (
-        <div className="space-y-1">
-          <div className="section-label px-3 flex items-center gap-2 text-primary"><BellRing className="h-3.5 w-3.5" />Angestupst ({zones.nudged.length})</div>
-          {zones.nudged.map((t) => (
-            <Row key={t.id} task={t} active={t.id === selectedId} onSelect={() => onSelect(t.id)} sub={subFor(t, "nudged")} checked={selection.has(t.id)} onCheck={() => onToggleSelect(t.id)} highlight />
-          ))}
-        </div>
-      )}
-      {section("mine", "Mein Zug")}
-      {section("waiting", "Wartet auf andere")}
-      <div className="space-y-1 border-t pt-3">
-        <button
-          type="button"
-          onClick={() => setResubOpen((o) => !o)}
-          className="section-label px-3 flex items-center gap-2 w-full text-left"
-          aria-expanded={resubOpen}
-        >
-          <ChevronDown className={cn("h-3.5 w-3.5 transition-transform", !resubOpen && "-rotate-90")} />
-          Wiedervorlage ({zones.resubmission.length})
-        </button>
-        {resubOpen &&
-          zones.resubmission.map((t) => (
-            <Row key={t.id} task={t} active={t.id === selectedId} onSelect={() => onSelect(t.id)} sub={subFor(t, "resubmission")} checked={selection.has(t.id)} onCheck={() => onToggleSelect(t.id)} />
-          ))}
-      </div>
+      <VirtualList
+        className="min-h-0 flex-1"
+        items={entries}
+        estimateSize={64}
+        getItemKey={(entry) => entry.key}
+        renderItem={({ zone, title, task }) => {
+          if (task) {
+            return <Row task={task} active={task.id === selectedId} onSelect={() => onSelect(task.id)} sub={subFor(task, zone)} checked={selection.has(task.id)} onCheck={() => onToggleSelect(task.id)} highlight={zone === "nudged"} />;
+          }
+          if (zone === "resubmission") {
+            return (
+              <button type="button" onClick={() => setResubOpen((open) => !open)} className="section-label flex w-full items-center gap-2 border-t px-3 py-3 text-left" aria-expanded={resubOpen}>
+                <ChevronDown className={cn("h-3.5 w-3.5 transition-transform", !resubOpen && "-rotate-90")} />
+                {title} ({zones[zone].length})
+              </button>
+            );
+          }
+          return (
+            <div className="space-y-1 px-2 pb-1 pt-3">
+              <div className={cn("section-label flex items-center gap-2", zone === "nudged" && "text-primary")}>
+                {zone === "nudged" && <BellRing className="h-3.5 w-3.5" />}
+                {title} ({zones[zone].length})
+              </div>
+              {zones[zone].length === 0 && <div className="text-caption text-muted-foreground">Nichts offen</div>}
+            </div>
+          );
+        }}
+      />
     </div>
   );
 }

@@ -1,7 +1,6 @@
 import React from 'react';
 import { Button } from "@/components/ui/button";
 import { Download } from "lucide-react";
-import { generateLetterDOCX } from "@/utils/letterDOCXGenerator";
 import { debugConsole } from '@/utils/debugConsole';
 import type { LetterRecord } from '@/components/letter-pdf/types';
 import { notify } from "@/lib/notify";
@@ -25,6 +24,7 @@ export default function LetterDOCXExport({
     setIsExporting(true);
     
     try {
+      const { generateLetterDOCX } = await import("@/utils/letterDOCXGenerator");
       const result = await generateLetterDOCX(letter);
       
       if (!result) {
