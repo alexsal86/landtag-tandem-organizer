@@ -559,6 +559,16 @@ function Seat2026() {
                       const clamp = (value: number) =>
                         Math.max(min, Math.min(max, value));
                       const delta = second[p.id] ?? 0;
+                      const boundedDelta = clamp(delta);
+                      // Each half maps to its own available vote budget, with
+                      // zero percentage points at the center of every slider.
+                      const gain = Math.max(0, max);
+                      const position =
+                        boundedDelta < 0
+                          ? (100 * boundedDelta) / -min
+                          : gain > 0
+                            ? (100 * boundedDelta) / gain
+                            : 0;
                       return (
                         <div
                           key={p.id}
@@ -574,18 +584,19 @@ function Seat2026() {
                           </span>
                           <input
                             type="range"
-                            min={min}
-                            max={max}
+                            min={-100}
+                            max={100}
                             step="any"
                             aria-label={`${p.name} Zweitstimmenregler`}
-                            value={clamp(delta)}
+                            aria-valuetext={`${format(delta, 2)} Prozentpunkte`}
+                            value={position}
                             onChange={(e) => {
-                              const value = e.currentTarget.valueAsNumber;
-                              const rounded =
-                                value === min || value === max
-                                  ? value
-                                  : Math.round(value * 10) / 10;
-                              set(key, String(clamp(rounded)));
+                              const fraction =
+                                e.currentTarget.valueAsNumber / 100;
+                              const next = clamp(
+                                fraction * (fraction < 0 ? -min : gain),
+                              );
+                              if (next !== delta) set(key, String(next));
                             }}
                             className="w-full min-w-0 accent-cyan-800 dark:accent-cyan-400"
                           />
