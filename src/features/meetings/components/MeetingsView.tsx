@@ -8,6 +8,7 @@ import {
   ResizableHandle,
 } from "@/components/ui/resizable";
 import { MeetingArchiveView } from "@/features/meetings/components/MeetingArchiveView";
+import { PreviousMeetingReview } from "./PreviousMeetingReview";
 import { MeetingProtocolView } from "@/features/meetings/components/MeetingProtocolView";
 import { FocusModeView } from "@/components/meetings/FocusModeView";
 import { ActiveMeetingPanel } from "@/components/meetings/ActiveMeetingPanel";
@@ -24,6 +25,7 @@ export function MeetingsView() {
   const sidebarPanel = useRef<ImperativePanelHandle>(null);
   const expandedSidebarSize = useRef(28);
   const hasSelectedMeeting = !!data.selectedMeeting;
+  const [reviewMeetingId, setReviewMeetingId] = useState<string | null>(null);
   const [sidebarExpanded, setSidebarExpanded] = useState(false);
   const compactSidebar = hasSelectedMeeting && !sidebarExpanded;
   useEffect(() => {
@@ -112,6 +114,10 @@ export function MeetingsView() {
     return <MeetingArchiveView onBack={() => data.setShowArchive(false)} />;
   }
 
+  if (reviewMeetingId) {
+    return <MeetingProtocolView meetingId={reviewMeetingId} onBack={() => setReviewMeetingId(null)} returnLabel="Zurück zur Tagesordnung" />;
+  }
+
   // Show protocol after archiving
   if (data.archivedMeetingId) {
     return (
@@ -147,6 +153,9 @@ export function MeetingsView() {
       />
     );
   }
+
+  const agendaMeeting = data.activeMeeting ?? data.selectedMeeting;
+  const agendaTenant = agendaMeeting?.tenant_id ?? data.currentTenant?.id;
 
   return (
     <div className="min-h-screen bg-gradient-subtle p-4">
@@ -205,6 +214,9 @@ export function MeetingsView() {
 
         <ResizablePanel defaultSize={72}>
           <div className="pl-4">
+            {agendaMeeting?.id && agendaTenant && (
+              <PreviousMeetingReview meeting={agendaMeeting} tenantId={agendaTenant} onOpen={setReviewMeetingId} />
+            )}
             {/* Active Meeting View */}
             {data.activeMeeting && (
               <ActiveMeetingPanel

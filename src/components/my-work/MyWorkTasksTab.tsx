@@ -25,6 +25,7 @@ import { ListTodo } from "lucide-react";
 import { useMyWorkTaskActions } from "./useMyWorkTaskActions";
 import { notify } from "@/lib/notify";
 import { Button } from "@/components/ui/button";
+import { LinkedTaskDetail } from "./LinkedTaskDetail";
 import { TaskStafetteWorkspace } from "./tasks/workspace/TaskStafetteWorkspace";
 
 export function MyWorkTasksTab() {
@@ -228,8 +229,24 @@ export function MyWorkTasksTab() {
       void actions.handleQuickClearSnooze(taskId),
   };
 
+  const linkedTaskId = searchParams.get("task");
   const dialogsAndExtras = (
     <>
+      {linkedTaskId && currentTenant && (
+        <LinkedTaskDetail
+          key={linkedTaskId}
+          taskId={linkedTaskId}
+          tenantId={currentTenant.id}
+          taskCategories={availableTaskCategories}
+          taskStatuses={availableTaskStatuses}
+          onUpdate={loadTasks}
+          onClose={() => setSearchParams((params) => {
+            const next = new URLSearchParams(params);
+            next.delete("task");
+            return next;
+          }, { replace: true })}
+        />
+      )}
       <MyWorkTaskDialogs
         profiles={profiles}
         tasks={allTasks}

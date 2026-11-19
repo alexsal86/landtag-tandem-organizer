@@ -17,6 +17,7 @@ export interface ProtocolMeeting {
   title: string;
   description?: string | null;
   meeting_date: string;
+  tenant_id?: string | null;
   meeting_time?: string | null;
   location?: string | null;
   status: string;
@@ -69,4 +70,16 @@ export interface CreatedTask {
   title: string;
   assigned_to?: string | null;
   parent_task_id?: string | null;
+  status?: string | null;
+  due_date?: string | null;
+  completed_at?: string | null;
+  archived?: boolean | null;
 }
+
+export const attendanceLabels = {
+  present: "Anwesend",
+  excused: "Entschuldigt",
+  guest: "Gäste",
+} as const;
+
+export type AttendanceStatus = keyof typeof attendanceLabels;

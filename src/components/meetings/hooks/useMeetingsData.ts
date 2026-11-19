@@ -128,7 +128,7 @@ export function useMeetingsData() {
     } else {
       supabase
         .from('meetings')
-        .select("id, title, meeting_date, meeting_time, status, description, is_public, user_id, template_id, location, created_at, recurrence_rule")
+        .select("id, title, meeting_date, meeting_time, status, description, is_public, user_id, template_id, location, created_at, recurrence_rule, parent_meeting_id, tenant_id")
         .eq('id', urlMeetingId)
         .maybeSingle()
         .then(({ data }) => {
@@ -283,7 +283,7 @@ export function useMeetingsData() {
 
   const loadMeetings = async () => {
     try {
-      const meetingSelectFields = "id, title, meeting_date, meeting_time, status, description, is_public, user_id, template_id, location, created_at, recurrence_rule";
+      const meetingSelectFields = "id, title, meeting_date, meeting_time, status, description, is_public, user_id, template_id, location, created_at, recurrence_rule, parent_meeting_id, tenant_id";
       const { data: ownMeetings, error: ownError } = await supabase
         .from('meetings').select(meetingSelectFields).eq('user_id', user?.id ?? '').neq('status', 'archived').order('meeting_date', { ascending: false });
       if (ownError) throw ownError;

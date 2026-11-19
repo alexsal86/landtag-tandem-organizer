@@ -1,3 +1,4 @@
+import { protocolTaskProgress, protocolTaskStatus } from "@/features/meetings/protocolTasks";
 import { SYSTEM_AGENDA_OPTIONS } from "@/components/meetings/systemAgendaRegistry";
 import { supabase } from "@/integrations/supabase/client";
 import type { TestScenario } from "../types";
@@ -16,6 +17,8 @@ export const meetingLifecycleScenario: TestScenario = {
     "Erstellt ein Meeting mit Termin, Teilnehmer, regulären und allen System-Agenda-Punkten (Geburtstage, Termine, Quick-Notes, Aufgaben, Vorgänge, Entscheidungen), Sub-Item, Dokument, Aufgabe, Carry-Over und Folge-Meeting. Liest jedes geschriebene Feld zurück und vergleicht — inkl. Renderer-Sanity (utils.tsx-Mapping).",
   touches: [
     "meetings",
+    "meeting_protocol_details",
+    "meeting_protocol_addenda",
     "meeting_agenda_items",
     "meeting_agenda_documents",
     "meeting_participants",
@@ -402,6 +405,62 @@ export const meetingLifecycleScenario: TestScenario = {
         const { error } = await supabase.from("meetings").update({ status: "archived" }).in("id", ids);
         if (error) return { ok: false, message: error.message };
         return { ok: true, message: `${ids.length} Meeting(s) archiviert.` };
+      },
+    },
+    {
+      id: "protocol-record",
+      label: "Anwesenheit, Protokollführung und Nachtrag dokumentieren",
+      kind: "workflow",
+      run: async (ctx) => {
+        const meetingId = ctx.data.meetingId as string;
+        const details = await supabase.rpc("update_meeting_protocol", {
+          _meeting_id: meetingId,
+          _action: "details",
+          _data: { recorder: SELFTEST_MARKER, attendance: { [ctx.userId]: "present" }, guests: "Gast" },
+        });
+        if (details.error) return { ok: false, message: details.error.message };
+
+        const addendum = await supabase.rpc("update_meeting_protocol", {
+          _meeting_id: meetingId, _action: "addendum", _data: { body: SELFTEST_MARKER },
+        });
+        if (addendum.error) return { ok: false, message: addendum.error.message };
+
+        const isLead = await supabase.rpc("has_active_tenant_role", {
+          _tenant_id: ctx.tenantId, _user_id: ctx.userId, _roles: ["abgeordneter", "bueroleitung"],
+        });
+        if (isLead.error) return { ok: false, message: isLead.error.message };
+        const approval = await supabase.rpc("update_meeting_protocol", { _meeting_id: meetingId, _action: "approve" });
+        if (isLead.data ? approval.error : approval.error?.code !== "42501") {
+          return { ok: false, message: "Die Freigabe entspricht nicht der Sitzungsrolle." };
+        }
+
+        const [record, entry] = await Promise.all([
+          supabase.from("meeting_protocol_details").select("*").eq("meeting_id", meetingId).single(),
+          supabase.from("meeting_protocol_addenda").select("*").eq("meeting_id", meetingId).single(),
+        ]);
+        if (record.error || entry.error) return { ok: false, message: describeError(record.error ?? entry.error) };
+        const ok = record.data.recorder_name === SELFTEST_MARKER &&
+          JSON.stringify(record.data.attendance) === JSON.stringify({ [ctx.userId]: "present" }) &&
+          record.data.guests === "Gast" && entry.data.author_id === ctx.userId && entry.data.body === SELFTEST_MARKER &&
+          Boolean(entry.data.created_at) &&
+          (isLead.data ? record.data.approved_by === ctx.userId && Boolean(record.data.approved_at) : !record.data.approved_at);
+        return { ok, message: ok ? "Protokollangaben und Freigaberecht verifiziert." : "Protokollangaben sind unvollständig." };
+      },
+    },
+    {
+      id: "protocol-task-status",
+      label: "Aufgabenstatus und Rückblickquote berechnen",
+      kind: "logic",
+      run: async () => {
+        const tasks = [
+          { id: "1", title: "Erledigt", status: "completed", due_date: "2026-11-17" },
+          { id: "2", title: "In Bearbeitung", status: "in-progress", due_date: "2026-11-19" },
+          { id: "3", title: "In Verzug", status: "todo", due_date: "2026-11-17" },
+        ];
+        const states = tasks.map((task) => protocolTaskStatus(task, new Date("2026-11-19T10:00:00Z")));
+        const { completed, total } = protocolTaskProgress(tasks);
+        const ok = states.join(",") === "completed,in-progress,overdue" && completed === 1 && total === 3;
+        return { ok, message: ok ? "Status und Erledigungsquote stimmen." : "Status oder Erledigungsquote weicht ab." };
       },
     },
   ],

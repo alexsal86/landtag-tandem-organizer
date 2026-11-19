@@ -187,6 +187,8 @@ export interface Meeting {
   location?: string | null;
   status: string;
   template_id?: string | null;
+  parent_meeting_id?: string | null;
+  recurrence_rule?: unknown;
   is_public?: boolean | null;
   created_at?: string;
   updated_at?: string;

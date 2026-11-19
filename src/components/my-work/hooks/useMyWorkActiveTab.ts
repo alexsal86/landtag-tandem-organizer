@@ -16,6 +16,8 @@ const preserveKnownParams = (searchParams: URLSearchParams, tab: TabValue) => {
 
   const knownGlobalParams = ["action", "highlight", "scope", "period", "withAttachments", "withTasks", "caseItemId", "caseFileId"];
 
+  if (tab === "tasks") knownGlobalParams.push("task");
+
   knownGlobalParams.forEach((param) => {
     const value = searchParams.get(param);
 

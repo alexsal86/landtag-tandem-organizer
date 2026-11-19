@@ -1137,6 +1137,10 @@ export type Database = {
       }
       archived_tasks: {
         Row: {
+          meeting_id: string | null
+          source_type: string | null
+          source_id: string | null
+          parent_task_id: string | null
           archived_at: string
           assigned_to: string | null
           auto_delete_after_days: number | null
@@ -1153,6 +1157,10 @@ export type Database = {
           user_id: string
         }
         Insert: {
+          meeting_id?: string | null
+          source_type?: string | null
+          source_id?: string | null
+          parent_task_id?: string | null
           archived_at?: string
           assigned_to?: string | null
           auto_delete_after_days?: number | null
@@ -1169,6 +1177,10 @@ export type Database = {
           user_id: string
         }
         Update: {
+          meeting_id?: string | null
+          source_type?: string | null
+          source_id?: string | null
+          parent_task_id?: string | null
           archived_at?: string
           assigned_to?: string | null
           auto_delete_after_days?: number | null
@@ -11056,6 +11068,82 @@ export type Database = {
           },
         ]
       }
+      meeting_protocol_addenda: {
+        Row: {
+          author_id: string
+          author_name: string
+          body: string
+          created_at: string
+          id: string
+          meeting_id: string
+        }
+        Insert: {
+          author_id: string
+          author_name: string
+          body: string
+          created_at?: string
+          id?: string
+          meeting_id: string
+        }
+        Update: {
+          author_id?: string
+          author_name?: string
+          body?: string
+          created_at?: string
+          id?: string
+          meeting_id?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "meeting_protocol_addenda_meeting_id_fkey"
+            columns: ["meeting_id"]
+            isOneToOne: false
+            referencedRelation: "meetings"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
+      meeting_protocol_details: {
+        Row: {
+          approved_at: string | null
+          approved_by: string | null
+          approver_name: string | null
+          approver_role: string | null
+          attendance: Json
+          guests: string
+          meeting_id: string
+          recorder_name: string
+        }
+        Insert: {
+          approved_at?: string | null
+          approved_by?: string | null
+          approver_name?: string | null
+          approver_role?: string | null
+          attendance: Json
+          guests?: string
+          meeting_id: string
+          recorder_name: string
+        }
+        Update: {
+          approved_at?: string | null
+          approved_by?: string | null
+          approver_name?: string | null
+          approver_role?: string | null
+          attendance?: Json
+          guests?: string
+          meeting_id?: string
+          recorder_name?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "meeting_protocol_details_meeting_id_fkey"
+            columns: ["meeting_id"]
+            isOneToOne: true
+            referencedRelation: "meetings"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
       meetings: {
         Row: {
           created_at: string
@@ -14895,6 +14983,7 @@ export type Database = {
           call_log_id: string | null
           category: string
           checklist: Json
+          completed_at: string | null
           created_at: string
           description: string | null
           due_date: string | null
@@ -14931,6 +15020,7 @@ export type Database = {
           call_log_id?: string | null
           category?: string
           checklist?: Json
+          completed_at?: string | null
           created_at?: string
           description?: string | null
           due_date?: string | null
@@ -14967,6 +15057,7 @@ export type Database = {
           call_log_id?: string | null
           category?: string
           checklist?: Json
+          completed_at?: string | null
           created_at?: string
           description?: string | null
           due_date?: string | null
@@ -16848,6 +16939,37 @@ export type Database = {
       }
     }
     Views: {
+      archived_meeting_protocol_tasks: {
+        Row: {
+          id: string | null
+          meeting_id: string | null
+          tenant_id: string | null
+          title: string | null
+          assigned_to: string | null
+          parent_task_id: string | null
+          description: string | null
+          due_date: string | null
+          completed_at: string | null
+          archived_at: string | null
+          archive_id: string | null
+        }
+        Relationships: []
+      }
+      meeting_protocol_tasks: {
+        Row: {
+          id: string | null
+          meeting_id: string | null
+          tenant_id: string | null
+          title: string | null
+          assigned_to: string | null
+          parent_task_id: string | null
+          status: string | null
+          due_date: string | null
+          completed_at: string | null
+          archived: boolean | null
+        }
+        Relationships: []
+      }
       knowledge_question_cards: {
         Row: {
           answer_content: Json | null
@@ -17018,6 +17140,10 @@ export type Database = {
       }
     }
     Functions: {
+      get_meeting_protocol_participants: {
+        Args: { _meeting_id: string }
+        Returns: { user_id: string; role: string }[]
+      }
       _briefing_task_event: {
         Args: { _task: string; _text: string }
         Returns: undefined
@@ -19013,6 +19139,10 @@ export type Database = {
       team_two_truths_snapshot: { Args: { p_tenant: string }; Returns: Json }
       topic_name_from_label: { Args: { p_label: string }; Returns: string }
       undo_contact_bulk_action: { Args: { _audit_id: string }; Returns: number }
+      update_meeting_protocol: {
+        Args: { _action: string; _data?: Json; _meeting_id: string }
+        Returns: undefined
+      }
       update_contact_usage: {
         Args: { p_contact_id: string; p_tenant_id?: string; p_user_id?: string }
         Returns: undefined

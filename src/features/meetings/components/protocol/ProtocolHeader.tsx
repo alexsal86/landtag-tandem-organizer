@@ -1,3 +1,4 @@
+import type { ReactNode } from "react";
 import { format } from "date-fns";
 import { de } from "date-fns/locale";
 import type { ProtocolMeeting, ProtocolParticipant } from "./types";
@@ -5,10 +6,12 @@ export function ProtocolHeader({
   meeting,
   participants,
   roleLabelMap,
+  children,
 }: {
   meeting: ProtocolMeeting;
   participants: ProtocolParticipant[];
   roleLabelMap: Record<string, string>;
+  children?: ReactNode;
 }) {
   return (
     <header>
@@ -28,7 +31,7 @@ export function ProtocolHeader({
         </span>
         {meeting.location && <span>{meeting.location}</span>}
       </div>
-      {participants.length > 0 && (
+      {children ?? (participants.length > 0 && (
         <div aria-label="Teilnehmer" className="mt-4 flex flex-wrap gap-2">
           {participants.map((p) => (
             <span
@@ -48,7 +51,7 @@ export function ProtocolHeader({
             </span>
           ))}
         </div>
-      )}
+      ))}
     </header>
   );
 }

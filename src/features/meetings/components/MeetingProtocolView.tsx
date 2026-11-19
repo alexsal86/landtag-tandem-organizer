@@ -1,3 +1,7 @@
+import { ProtocolAddenda, ProtocolRecordHeader, saveProtocolRecord, useProtocolRecord } from "./protocol/ProtocolRecord";
+import { useProtocolTasks } from "../protocolTasks";
+import { useAuth } from "@/hooks/useAuth";
+import type { Json } from "@/integrations/supabase/types";
 import { ProtocolHeader } from "./protocol/ProtocolHeader";
 import { ProtocolSummary } from "./protocol/ProtocolSummary";
 import { ProtocolToc } from "./protocol/ProtocolToc";
@@ -20,8 +24,6 @@ import {
   Briefcase,
   CheckSquare,
 } from "lucide-react";
-import { format } from "date-fns";
-import { de } from "date-fns/locale";
 import { supabase } from "@/integrations/supabase/client";
 import { debugConsole } from "@/utils/debugConsole";
 import { notify } from "@/lib/notify";
@@ -35,7 +37,6 @@ import type {
   ProtocolCaseItem,
   ProtocolDecision,
   ProtocolParticipant,
-  CreatedTask,
 } from "./protocol/types";
 
 interface MeetingProtocolViewProps {
@@ -43,12 +44,14 @@ interface MeetingProtocolViewProps {
   onBack: () => void;
   /** When true, shows "Zurück zur Übersicht" instead of "Zurück zum Archiv" */
   isPostArchive?: boolean;
+  returnLabel?: string;
 }
 
 export function MeetingProtocolView({
   meetingId,
   onBack,
   isPostArchive,
+  returnLabel,
 }: MeetingProtocolViewProps) {
   const [meeting, setMeeting] = useState<ProtocolMeeting | null>(null);
   const [agendaItems, setAgendaItems] = useState<ProtocolAgendaItem[]>([]);
@@ -60,7 +63,23 @@ export function MeetingProtocolView({
   const [quickNotes, setQuickNotes] = useState<ProtocolQuickNote[]>([]);
   const [caseItems, setCaseItems] = useState<ProtocolCaseItem[]>([]);
   const [decisions, setDecisions] = useState<ProtocolDecision[]>([]);
-  const [createdTasks, setCreatedTasks] = useState<CreatedTask[]>([]);
+  const { user } = useAuth();
+  const tenantId = meeting?.id === meetingId ? meeting.tenant_id : undefined;
+  const taskQuery = useProtocolTasks(meetingId, tenantId);
+  const record = useProtocolRecord(meetingId, tenantId);
+  const createdTasks = taskQuery.data ?? [];
+  const [savingRecord, setSavingRecord] = useState(false);
+
+  const submitRecord = async (action: Parameters<typeof saveProtocolRecord>[1], data?: Json) => {
+    setSavingRecord(true);
+    try {
+      const saved = await saveProtocolRecord(meetingId, action, data);
+      if (saved) await record.refetch();
+      return saved;
+    } finally {
+      setSavingRecord(false);
+    }
+  };
   const [loading, setLoading] = useState(true);
   const [onlyResults, setOnlyResults] = useState(false);
   const [activeSection, setActiveSection] = useState("protocol-agenda");
@@ -121,10 +140,7 @@ export function MeetingProtocolView({
         .eq("tenant_id", meetingData.tenant_id);
 
       // Load participants
-      const { data: participantsData } = await supabase
-        .from("meeting_participants")
-        .select("user_id, role")
-        .eq("meeting_id", meetingId);
+      const { data: participantsData } = await supabase.rpc("get_meeting_protocol_participants", { _meeting_id: meetingId });
 
       const participantList: ProtocolParticipant[] = [];
       // Add creator
@@ -193,15 +209,6 @@ export function MeetingProtocolView({
               resultById[decision.id]?.result || decision.meeting_result,
           });
       }
-      const { data: tasksData, error: tasksError } = await supabase
-        .from("tasks")
-        .select("id, title, assigned_to, parent_task_id")
-        .eq("tenant_id", meetingData.tenant_id)
-        .eq("meeting_id", meetingId)
-        .like("source_type", "jour_fixe_%")
-        .limit(200);
-      if (tasksError) throw tasksError;
-
       // Load starred appointments
       const starredList: StarredAppointment[] = [];
       const { data: starredData } = await supabase
@@ -239,7 +246,6 @@ export function MeetingProtocolView({
       setParticipants(participantList);
       setQuickNotes((notesData || []) as ProtocolQuickNote[]);
       setDecisions(decisionList);
-      setCreatedTasks((tasksData || []) as CreatedTask[]);
       setStarredAppointments(starredList);
     } catch (error) {
       debugConsole.error("Error loading meeting protocol:", error);
@@ -324,11 +330,14 @@ export function MeetingProtocolView({
     );
   }
 
-  const backLabel = isPostArchive
-    ? "Zurück zur Übersicht"
-    : "Zurück zum Archiv";
+  const backLabel = returnLabel ?? (isPostArchive ? "Zurück zur Übersicht" : "Zurück zum Archiv");
   const notesWithResults = quickNotes.filter((n) => n.meeting_result?.trim());
-  const parentTasks = createdTasks.filter((t) => !t.parent_task_id);
+  const taskIds = new Set(createdTasks.map((task) => task.id));
+  const parentTasks = createdTasks.filter((task) => !task.parent_task_id || !taskIds.has(task.parent_task_id));
+  const canEditRecord = Boolean(
+    record.data && user && meeting.status === "archived" &&
+    (record.data.canApprove || participants.some((person) => person.user_id === user.id)),
+  );
 
   const sections = [
     ...(mainItems.length
@@ -345,6 +354,9 @@ export function MeetingProtocolView({
       : []),
     ...(parentTasks.length
       ? [{ id: "protocol-tasks", label: "Aufgaben" }]
+      : []),
+    ...(record.data?.addenda.length || canEditRecord
+      ? [{ id: "protocol-addenda", label: "Nachträge" }]
       : []),
   ];
   return (
@@ -389,11 +401,20 @@ export function MeetingProtocolView({
           data-protocol-document
           className="min-w-0 rounded-xl border bg-card p-5 sm:p-9 print:border-0 print:rounded-none print:shadow-none print:bg-white print:text-black print:p-0"
         >
-          <ProtocolHeader
-            meeting={meeting}
-            participants={participants}
-            roleLabelMap={roleLabelMap}
-          />
+          <ProtocolHeader meeting={meeting} participants={participants} roleLabelMap={roleLabelMap}>
+            {record.data && (
+              <ProtocolRecordHeader
+                key={meetingId}
+                details={record.data.details}
+                participants={participants}
+                canEdit={canEditRecord}
+                canApprove={record.data.canApprove}
+                busy={savingRecord}
+                submit={submitRecord}
+              />
+            )}
+            {record.isError && <p className="mt-3 text-sm text-destructive">Protokollangaben konnten nicht geladen werden.</p>}
+          </ProtocolHeader>
           <ProtocolSummary
             points={mainItems.length}
             decisions={decisions.length}
@@ -438,12 +459,16 @@ export function MeetingProtocolView({
             createdTasks={createdTasks}
             getAssignedUserNames={getAssignedUserNames}
           />
-          <footer className="mt-9 border-t pt-4 text-sm text-muted-foreground">
-            <p>
-              Protokoll erstellt am{" "}
-              {format(new Date(), "PPP 'um' HH:mm 'Uhr'", { locale: de })}
-            </p>
-          </footer>
+          {taskQuery.isError && <p className="mt-3 text-sm text-destructive">Aufgabenstatus konnte nicht geladen werden.</p>}
+          {record.data && (
+            <ProtocolAddenda
+              key={meetingId}
+              addenda={record.data.addenda}
+              canEdit={canEditRecord}
+              busy={savingRecord}
+              submit={submitRecord}
+            />
+          )}
         </article>
       </div>
     </div>
