@@ -8,7 +8,7 @@ import {
   type SeatPerson,
 } from "./types";
 import { allocateBw2026 } from "./seats";
-import { directTransferThreshold } from "./model";
+import { directTransferThreshold, secondVoteScenario } from "./model";
 const n = (v: unknown): v is number =>
   typeof v === "number" && Number.isSafeInteger(v) && v >= 0;
 const text = (v: unknown): v is string =>
@@ -218,38 +218,25 @@ export function shiftElection(
   file: ElectionFile,
   first: Record<string, number>,
   second: Record<string, number>,
-  balancingParty: string,
+  balancingParty: string | readonly string[],
 ) {
-  const keys = file.parties.filter((p) => p.hasList).map((p) => p.id);
   if (
-    !keys.includes(balancingParty) ||
-    [...Object.entries(first), ...Object.entries(second)].some(
+    Object.entries(first).some(
       ([k, v]) =>
         !file.parties.some((p) => p.id === k) ||
         !Number.isFinite(v) ||
         Math.abs(v) > 100,
     )
   )
-    throw new Error("Ungültige Stimmenszenarien.");
-  const secondDeltas = {
-    ...second,
-    [balancingParty]: -keys
-      .filter((k) => k !== balancingParty)
-      .reduce((s, k) => s + (second[k] || 0), 0),
-  };
-  const target = keys.map(
-    (k) =>
-      (file.parties.find((p) => p.id === k)!.votes / file.validSecond) * 100 +
-      (secondDeltas[k] || 0),
+    throw new Error("Ungültige Erststimmenannahme.");
+
+  const { parties, changes: secondDeltas } = secondVoteScenario(
+    file.parties,
+    file.validSecond,
+    second,
+    balancingParty,
   );
-  if (target.some((v) => v < 0 || v > 100))
-    throw new Error(
-      "Zweitstimmenziel außerhalb 0–100 %. Ausgleichspartei oder Annahmen ändern.",
-    );
-  const changedSecond = Object.values(secondDeltas).some((v) => v !== 0),
-    secondCounts = changedSecond
-      ? counts(target, file.validSecond)
-      : keys.map((k) => file.parties.find((p) => p.id === k)!.votes);
+  const changedSecond = Object.values(secondDeltas).some((v) => v !== 0);
   let adjusted = 0;
   const districts = file.districts.map((d) => {
     if (!d.candidates.some((c) => c.partyId && first[c.partyId])) return d;
@@ -269,10 +256,7 @@ export function shiftElection(
   return {
     file: {
       ...file,
-      parties: file.parties.map((p) => ({
-        ...p,
-        votes: p.hasList ? secondCounts[keys.indexOf(p.id)] : 0,
-      })),
+      parties,
       districts,
       excludedSecondVotes:
         changedSecond || Object.values(first).some((v) => v !== 0)

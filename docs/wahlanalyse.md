@@ -601,7 +601,7 @@ Wahlkreiskandidaturen; Direktgewinner werden bei der Listenbesetzung übersprung
 aber erschöpften Listen werden die unbesetzten Ansprüche angezeigt.
 
 Erst- und Zweitstimmenänderungen sind getrennte Eingaben. Zweitstimmenänderungen
-werden gegen eine ausdrücklich gewählte Ausgleichspartei gebucht. Erststimmenanteile
+werden gegen die Sonstigen gebucht und proportional auf deren einzelne Landeslisten verteilt. Erststimmenanteile
 werden nur bei vorhandener Nominierung geändert und ggf. projiziert; die Zahl
 korrigierter Wahlkreise ist sichtbar. Anteile werden summenerhaltend in ganze Stimmen
 umgerechnet; diese numerische Rundung ist kein amtlicher Losentscheid. Bei Änderungen
@@ -616,7 +616,7 @@ wird als belastbare Wahlprognose bezeichnet und keine historische Mandatszeile g
 ### Schwellenanalyse
 
 Parteisitze: Raster −2 bis +2 PP um das aktuelle Szenario, Auflösung 0,1 PP und
-Gegenbuchung bei der gewählten Ausgleichspartei. Direktmandate bleiben konstant.
+Gegenbuchung bei den Sonstigen. Direktmandate bleiben konstant.
 Fehlende Sonderfallinformationen ergeben unbekannte Rasterpunkte. Das Raster
 behauptet keine exakten kontinuierlichen Übergangsschwellen und ist exportierbar.
 

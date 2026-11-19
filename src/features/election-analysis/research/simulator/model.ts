@@ -80,33 +80,53 @@ export function secondVoteScenario(
   parties: SeatParty[],
   valid: number,
   deltas: Record<string, number>,
-  balancing: string,
+  balancing: string | readonly string[],
 ) {
+  const balancingIds = typeof balancing === "string" ? [balancing] : balancing;
+  const lists = parties.filter((p) => p.hasList);
+  const recipients = lists.filter((p) => balancingIds.includes(p.id));
   if (
-    !parties.some((p) => p.id === balancing && p.hasList) ||
+    recipients.length !== balancingIds.length ||
     Object.entries(deltas).some(
       ([id, n]) =>
-        !parties.some((p) => p.id === id && p.hasList) ||
+        !lists.some((p) => p.id === id) ||
         !Number.isFinite(n) ||
         Math.abs(n) > 100,
     )
   )
     throw new Error("Ungültige Zweitstimmenannahme.");
+
+  const offset = -lists
+    .filter((p) => !balancingIds.includes(p.id))
+    .reduce((sum, p) => sum + (deltas[p.id] || 0), 0);
+  const recipientVotes = recipients.reduce((sum, p) => sum + p.votes, 0);
+  if (
+    (!recipients.length && offset) ||
+    (recipientVotes / valid) * 100 + offset < -1e-9
+  )
+    throw new Error(
+      "Die Gegenbuchung übersteigt den verfügbaren Zweitstimmenanteil.",
+    );
+
   const changes = {
     ...deltas,
-    [balancing]: -parties
-      .filter((p) => p.hasList && p.id !== balancing)
-      .reduce((s, p) => s + (deltas[p.id] || 0), 0),
+    ...Object.fromEntries(
+      recipients.map((p) => [
+        p.id,
+        offset *
+          (recipientVotes ? p.votes / recipientVotes : 1 / recipients.length),
+      ]),
+    ),
   };
   const desired = parties.map(
     (p) => (p.votes / valid) * 100 + (p.hasList ? changes[p.id] || 0 : 0),
   );
-  if (desired.some((n) => n < 0 || n > 100))
+  if (desired.some((n) => n < -1e-9 || n > 100 + 1e-9))
     throw new Error(
-      "Zielanteile außerhalb 0–100 %. Ausgleichspartei oder Annahmen ändern.",
+      "Zielanteile außerhalb 0–100 %. Zweitstimmenannahmen ändern.",
     );
   if (!Object.values(changes).some((v) => v !== 0)) return { parties, changes };
-  const raw = desired.map((n) => (n / 100) * valid),
+  const raw = desired.map((n) => (Math.max(0, n) / 100) * valid),
     votes = raw.map(Math.floor),
     left = valid - votes.reduce((a, b) => a + b, 0),
     order = raw

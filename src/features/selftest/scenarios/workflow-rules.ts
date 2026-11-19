@@ -12,6 +12,7 @@ import { evaluateAutomationTree } from "@/features/automation/conditions";
 import { validateRuleEditor } from "@/components/administration/automationRule/ruleValidation";
 import { editorFormSnapshot, editorPlanYear, editorStepErrors, evaluateEditorSample, parseEditorSample } from "@/components/administration/automationRule/editorModel";
 import { DEFAULT_ACTION, DEFAULT_FORM } from "@/components/administration/automationRule/constants";
+import { secondVoteScenario } from "@/features/election-analysis/research/simulator/model";
 import { transferDistrict } from "@/features/election-analysis/research/simulator/electionFile";
 import type { TestScenario } from "../types";
 import { calendarOccurrence, nextCalendarOccurrence, scheduleRunKey } from "@/features/automation/calendarSchedule";
@@ -23,6 +24,16 @@ export const workflowRulesScenario: TestScenario = {
   checks: ["Erlaubte und verbotene Brief-Statuswechsel", "Entscheiderrollen", "Ministeriumsfrist und Wiedervorlage"],
   limitations: ["Berechtigungen der Datenbank werden separat in den Zugriffstests geprüft."],
   steps: [
+    {
+      id: "seat-other-vote-offset", label: "Mandatssimulator: Gegenbuchung bei den Sonstigen", kind: "logic",
+      run: async () => {
+        const parties = [["A", 600], ["B", 300], ["C", 100]].map(([id, votes]) => ({
+          id: String(id), name: String(id), votes: Number(votes), direct: 0, hasList: true,
+        }));
+        const result = secondVoteScenario(parties, 1000, { A: 4 }, ["B", "C"]);
+        return { ok: result.parties.map((party) => party.votes).join() === "640,270,90", message: "Die Gegenbuchung wahrt die Gesamtstimmenzahl und verteilt sich proportional." };
+      },
+    },
     {
       id: "seat-district-transfer", label: "Mandatssimulator: knappen Wahlkreis durch Erststimmenübertragung kippen", kind: "logic",
       run: async () => {

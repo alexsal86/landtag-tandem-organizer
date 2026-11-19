@@ -44,6 +44,12 @@ import {
   STATE_RELEASE,
   STATE_SOURCE,
 } from "./model";
+const secondVotePartyOrder = ["GRÜNE", "CDU", "AfD", "SPD", "Die Linke", "FDP"];
+const highlightedPartyIndex = (id: string) =>
+  secondVotePartyOrder.findIndex(
+    (party) => party.toLowerCase() === id.toLowerCase(),
+  );
+
 export default function SeatSimulator({ year }: { year: number }) {
   return year === 2026 ? (
     <Seat2026 />
@@ -217,22 +223,33 @@ function Seat2026() {
     [file, officialFile, saved.data, state.data, params.get("savedScenario")],
   );
   const parties = basis.value?.parties || [];
-  const balancing = parties.some(
-    (p) => p.id === params.get("seatBalancing") && p.hasList,
-  )
-    ? params.get("seatBalancing")!
-    : parties
-        .filter((p) => p.hasList)
-        .slice()
-        .sort((a, b) => b.votes - a.votes)[0]?.id || "";
+  const visibleParties = parties
+    .filter((party) => party.hasList && highlightedPartyIndex(party.id) >= 0)
+    .sort((a, b) => highlightedPartyIndex(a.id) - highlightedPartyIndex(b.id));
+  const balancing = useMemo(
+    () =>
+      basis.value?.parties
+        .filter((party) => party.hasList && highlightedPartyIndex(party.id) < 0)
+        .map((party) => party.id) ?? [],
+    [basis.value],
+  );
   const first = Object.fromEntries(
     parties.map((p) => [p.id, labNumber(params, `seatFirst_${p.id}`, 0)]),
   );
   const second = Object.fromEntries(
-    parties
-      .filter((p) => p.hasList && p.id !== balancing)
-      .map((p) => [p.id, labNumber(params, `seatSecond_${p.id}`, 0)]),
+    visibleParties.map((p) => [
+      p.id,
+      labNumber(params, `seatSecond_${p.id}`, 0),
+    ]),
   );
+  const otherShare = basis.value
+    ? (parties
+        .filter((party) => balancing.includes(party.id))
+        .reduce((sum, party) => sum + party.votes, 0) /
+        basis.value.valid) *
+        100 -
+      Object.values(second).reduce((sum, delta) => sum + delta, 0)
+    : 0;
   const computed = useMemo(
     () =>
       attempt(() => {
@@ -401,17 +418,12 @@ function Seat2026() {
         ) ||
           key.startsWith("seatDistrictLot_")),
     );
-  const target = parties.some((p) => p.id === params.get("seatThresholdParty"))
-    ? params.get("seatThresholdParty")!
-    : parties.find((p) => p.hasList && p.id !== balancing)?.id || "";
+  const target =
+    visibleParties.find((p) => p.id === params.get("seatThresholdParty"))?.id ??
+    visibleParties[0]?.id ??
+    "";
   const sensitivity = useMemo(() => {
-    if (
-      tab !== "threshold" ||
-      !computed.value ||
-      !basis.value ||
-      !target ||
-      target === balancing
-    )
+    if (tab !== "threshold" || !computed.value || !basis.value || !target)
       return [];
     const input = computed.value.input;
     return Array.from({ length: 41 }, (_, i) => {
@@ -652,7 +664,7 @@ function Seat2026() {
             )}
             <div className="grid items-start gap-4 lg:grid-cols-[minmax(15rem,20rem)_minmax(0,1fr)]">
               <aside
-                className="min-w-0 space-y-4 rounded-lg border bg-card p-4"
+                className="min-w-0 space-y-4 px-1 py-3"
                 aria-label="Szenario-Eingaben"
               >
                 <section aria-labelledby="seat-second-label">
@@ -665,75 +677,62 @@ function Seat2026() {
                   <p className="mb-3 text-xs text-muted-foreground">
                     Änderung in Prozentpunkten
                   </p>
-                  <div className="max-h-72 space-y-2 overflow-y-auto pr-1">
-                    {parties
-                      .filter((p) => p.hasList)
-                      .slice()
-                      .sort((a, b) => b.votes - a.votes)
-                      .map((p) => {
-                        const key = `seatSecond_${p.id}`;
-                        const range = Math.max(5, Math.abs(second[p.id] ?? 0));
-                        return (
-                          <div
-                            key={p.id}
-                            className="grid grid-cols-[4.5rem_minmax(0,1fr)_4.5rem] items-center gap-2 text-xs"
-                          >
+                  <div className="space-y-2">
+                    {visibleParties.map((p) => {
+                      const key = `seatSecond_${p.id}`;
+                      const range = Math.max(5, Math.abs(second[p.id] ?? 0));
+                      return (
+                        <div
+                          key={p.id}
+                          className="grid grid-cols-[5rem_minmax(0,1fr)_4.5rem] items-center gap-2 text-sm text-muted-foreground"
+                        >
+                          <span title={p.name} className="truncate">
                             <span
-                              title={p.name}
-                              className="truncate font-medium"
-                            >
-                              <span
-                                aria-hidden="true"
-                                className="mr-1 inline-block size-2 rounded-full"
-                                style={{ backgroundColor: getPartyColor(p.id) }}
-                              />
-                              {p.name}
-                            </span>
-                            {p.id === balancing ? (
-                              <span className="col-span-2 text-right text-muted-foreground">
-                                Gegenbuchung
-                              </span>
-                            ) : (
-                              <>
-                                <input
-                                  type="range"
-                                  min={-range}
-                                  max={range}
-                                  step="0.1"
-                                  aria-label={`${p.name} Zweitstimmenregler`}
-                                  value={second[p.id] ?? 0}
-                                  onChange={(e) => set(key, e.target.value)}
-                                  className="min-w-0 accent-cyan-800 dark:accent-cyan-400"
-                                />
-                                <Input
-                                  type="number"
-                                  step="0.1"
-                                  aria-label={`${p.name} Zweitstimmenänderung in Prozentpunkten`}
-                                  value={params.get(key) ?? "0"}
-                                  onChange={(e) => set(key, e.target.value)}
-                                  className="h-8 px-1.5 text-right tabular-nums"
-                                />
-                              </>
-                            )}
-                          </div>
-                        );
-                      })}
-                  </div>
-                  <div className="mt-3">
-                    <Selection
-                      id="seat-balancing"
-                      label="Gegenbuchung für 100 % Zweitstimmen"
-                      value={balancing}
-                      onChange={(value) => set("seatBalancing", value)}
-                    >
-                      {parties
-                        .filter((p) => p.hasList)
-                        .map((p) => (
-                          <option key={p.id} value={p.id}>
+                              aria-hidden="true"
+                              className="mr-1 inline-block size-2 rounded-full"
+                              style={{ backgroundColor: getPartyColor(p.id) }}
+                            />
                             {p.name}
-                          </option>
-                        ))}
-                    </Selection>
+                          </span>
+                          <input
+                            type="range"
+                            min={-range}
+                            max={range}
+                            step="0.1"
+                            aria-label={`${p.name} Zweitstimmenregler`}
+                            value={second[p.id] ?? 0}
+                            onChange={(e) => set(key, e.target.value)}
+                            className="min-w-0 accent-cyan-800 dark:accent-cyan-400"
+                          />
+                          <Input
+                            type="number"
+                            step="0.1"
+                            aria-label={`${p.name} Zweitstimmenänderung in Prozentpunkten`}
+                            value={params.get(key) ?? "0"}
+                            onChange={(e) => set(key, e.target.value)}
+                            className="h-8 px-1.5 text-right tabular-nums"
+                          />
+                        </div>
+                      );
+                    })}
+                  </div>
+                  <div className="mt-5 space-y-1 text-muted-foreground">
+                    <p id="seat-balancing-label" className="text-xs">
+                      Gegenbuchung für 100 % Zweitstimmen
+                    </p>
+                    <div className="flex items-center justify-between gap-2 text-sm">
+                      <span>Sonstige</span>
+                      <output
+                        aria-labelledby="seat-balancing-label"
+                        className="tabular-nums"
+                      >
+                        {format(
+                          Math.abs(otherShare) < 1e-9 ? 0 : otherShare,
+                          2,
+                        )}{" "}
+                        %
+                      </output>
+                    </div>
                   </div>
                 </section>
                 <section
@@ -1137,17 +1136,15 @@ function Seat2026() {
                             value={target}
                             onChange={(v) => set("seatThresholdParty", v)}
                           >
-                            {parties
-                              .filter((p) => p.hasList && p.id !== balancing)
-                              .map((p) => (
-                                <option key={p.id} value={p.id}>
-                                  {p.name}
-                                </option>
-                              ))}
+                            {visibleParties.map((p) => (
+                              <option key={p.id} value={p.id}>
+                                {p.name}
+                              </option>
+                            ))}
                           </Selection>
                           <p className="my-2 text-xs text-muted-foreground">
                             Raster −2 bis +2 % um das aktuelle Szenario,
-                            Auflösung 0,1 %; Gegenbuchung bei {balancing}.
+                            Auflösung 0,1 %; Gegenbuchung bei Sonstigen.
                             Direktmandate bleiben gleich. Gezeigt werden
                             berechnete Rasterpunkte, keine behaupteten exakten
                             Übergangsschwellen. Sonderfall-Bereinigungen werden
