@@ -4,6 +4,7 @@ import { HistoricalGeometryNotice } from '@/features/election-history/Historical
 import { usePeriodGeometry } from '@/features/election-history/usePeriodGeometry';
 import { PeriodMembersOverview } from '@/features/election-history/PeriodMembersOverview';
 import { useElectionHistory, useElectionPeriods, historyError } from '@/features/election-history/useElectionHistory';
+import { confirmedPeriodGeometryYear } from '@/features/election-history/periodGeometry';
 import { projectHistoricalDistricts } from '@/features/election-history/mapProjection';
 import { DistrictElectionHistory } from '@/features/election-history/DistrictElectionHistory';
 import React, { useEffect, useMemo, useRef, useState } from "react";
@@ -248,6 +249,7 @@ export const ElectionDistrictsView = ({ sidebarHeader }: { sidebarHeader?: React
                 districts={displayedDistricts}
                 onDistrictClick={handleDistrictClick}
                 selectedDistrict={selectedDistrict ?? undefined}
+                showMunicipalityBoundaries={historyPeriod?.election_year === 2026 && confirmedPeriodGeometryYear(historyPeriod) === 2021}
                 showPartyAssociations={showPartyAssociations}
                 showDistrictPolygons={showDistrictPolygons}
                 showDistrictMarkers={showDistrictMarkers}

@@ -17,11 +17,16 @@ interface LeafletKarlsruheMapProps {
   selectedDistrict?: ElectionDistrict;
   showPartyAssociations?: boolean;
   showDistrictPolygons?: boolean;
+  showMunicipalityBoundaries?: boolean;
   showDistrictMarkers?: boolean;
   focusedDistrict?: ElectionDistrict;
   showBaseMap?: boolean;
   selectedParties?: Set<string>;
 }
+
+// Heidelberg (34) consists of one municipality and has no internal boundaries.
+const districtsWithoutMunicipalityLines = new Set([1, 2, 3, 4, 27, 28, 34, 35, 36, 46, 47]);
+const municipalityAttribution = 'Gemeindegrenzen 2026 · © Statistisches Landesamt Baden-Württemberg, Fellbach 2025. Wahlkreiskarte für die Landtagswahl 2026 in Baden-Württemberg. Kartengrundlage: LGL (www.lgl-bw.de), Stadt Freiburg, Stadt Karlsruhe, Stadt Mannheim, Landeshauptstadt Stuttgart.';
 
 // Helper function to get party color for election districts and admin boundaries
 const getPartyColorHex = (district?: ElectionDistrict, isPartyAssociationBoundary = false): string => {
@@ -57,6 +62,7 @@ const SimpleLeafletMap: React.FC<LeafletKarlsruheMapProps> = ({
   selectedDistrict,
   showPartyAssociations = false,
   showDistrictPolygons = true,
+  showMunicipalityBoundaries = false,
   showDistrictMarkers = true,
   focusedDistrict,
   showBaseMap = false,
@@ -120,6 +126,7 @@ const SimpleLeafletMap: React.FC<LeafletKarlsruheMapProps> = ({
     });
 
     // Create separate layer groups for polygons and markers
+    map.createPane('municipalityBoundaries').style.zIndex = '410';
     districtLayerRef.current = L.layerGroup().addTo(map);
     markerLayerRef.current = L.layerGroup().addTo(map);
     hasFittedBoundsRef.current = false;
@@ -502,6 +509,44 @@ const SimpleLeafletMap: React.FC<LeafletKarlsruheMapProps> = ({
       layer.setOpacity(active ? 1 : 0.2);
     });
   }, [selectedParties, showDistrictPolygons, districts, selectedDistrict, showPartyAssociations, associations, mapReady, zoomLevel, showDistrictMarkers]);
+
+  const municipalityDistrictNumber = selectedDistrict?.district_type === 'wahlkreis' &&
+    districts.some(district => district.id === selectedDistrict.id)
+    ? selectedDistrict.district_number : undefined;
+
+  useEffect(() => {
+    const map = mapRef.current;
+    const number = municipalityDistrictNumber;
+    if (!mapReady || !map || !showMunicipalityBoundaries || !showDistrictPolygons ||
+        number == null || number < 1 || number > 70 || districtsWithoutMunicipalityLines.has(number)) return;
+
+    const controller = new AbortController();
+    const boundaries = L.geoJSON(undefined, {
+      pane: 'municipalityBoundaries',
+      interactive: false,
+      style: { color: '#26354a', opacity: 0.8, weight: 1.5, dashArray: '4 3' },
+    });
+    void (async () => {
+      try {
+        const response = await fetch(`/data/municipalities-2026/${number}-boundaries.json`, { signal: controller.signal });
+        if (!response.ok) throw new Error('Gemeindegrenzen nicht verfügbar');
+        const geometry: GeoJSON.MultiLineString = await response.json();
+        if (controller.signal.aborted) return;
+        boundaries.addData(geometry).addTo(map);
+        map.attributionControl.addAttribution(municipalityAttribution);
+      } catch (error) {
+        if (!controller.signal.aborted) debugConsole.warn('Gemeindegrenzen konnten nicht geladen werden', error);
+      }
+    })();
+
+    return () => {
+      controller.abort();
+      if (map.hasLayer(boundaries)) {
+        boundaries.remove();
+        map.attributionControl.removeAttribution(municipalityAttribution);
+      }
+    };
+  }, [mapReady, municipalityDistrictNumber, showMunicipalityBoundaries, showDistrictPolygons]);
 
   // Search navigation also works when a layer is hidden or a boundary is missing.
   useEffect(() => {
