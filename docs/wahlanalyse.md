@@ -601,7 +601,17 @@ Wahlkreiskandidaturen; Direktgewinner werden bei der Listenbesetzung übersprung
 aber erschöpften Listen werden die unbesetzten Ansprüche angezeigt.
 
 Erst- und Zweitstimmenänderungen sind getrennte Eingaben. Zweitstimmenänderungen
-werden gegen die Sonstigen gebucht und proportional auf deren einzelne Landeslisten verteilt. Erststimmenanteile
+werden gegen die Sonstigen gebucht und proportional auf deren einzelne Landeslisten verteilt. Im Reiter **Wahlkreise und Modell** bleiben ältere Szenarien bei den manuellen
+Annahmen. Swing überträgt Zweitstimmenänderungen in Prozentpunkten. Log-Ratio
+gewichtet das Erststimmenprofil mit dem Verhältnis der neuen zu den amtlichen
+Zweitstimmen, mit einer halben Stimme zur Stabilisierung bei Nullwerten. Beide
+Modelle rechnen nur mit vorhandenen Kandidaturen und erhalten die Stimmen der
+Einzelbewerbungen sowie die gültigen Erststimmen jedes Wahlkreises. Bei
+unveränderten Zweitstimmen bleiben die amtlichen Erststimmen exakt erhalten.
+Modellwahl und Version werden im Szenarioschnappschuss gespeichert. Die
+Wahlkreissicht zeigt Direktmandate und Kippfälle auch bei offener Sitzverteilung.
+
+Manuelle Erststimmenanteile
 werden nur bei vorhandener Nominierung geändert und ggf. projiziert; die Zahl
 korrigierter Wahlkreise ist sichtbar. Anteile werden summenerhaltend in ganze Stimmen
 umgerechnet; diese numerische Rundung ist kein amtlicher Losentscheid. Bei Änderungen

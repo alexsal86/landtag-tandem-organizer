@@ -1,4 +1,5 @@
 import { describe, expect, it } from "vitest";
+import districtReference from "./officialDistricts2026.json";
 import { allocateBw2026, LotRequired, sainteLague } from "./seats";
 import {
   directTransferThreshold,
@@ -255,4 +256,86 @@ describe("Erst-/Zweitstimmen und Personen", () => {
       ),
     ).toBe(0);
   });
+});
+
+describe("Wahlkreismodell", () => {
+  it.each(["manual", "swing", "logratio"] as const)(
+    "bewahrt jede amtliche Wahlkreisentscheidung und 157 Sitze im Referenzfall (%s)",
+    (model) => {
+      const data: ElectionFile = {
+        ...file(),
+        validSecond: 5375109,
+        parties: [
+          ...official,
+          ...["BÜNDNIS DEUTSCHLAND", "PIRATEN"].map((id) => ({
+            ...party(id, 0, 0),
+            hasList: false,
+          })),
+        ],
+        lists: {},
+        listsComplete: false,
+        districts: districtReference.districts.map((district) => ({
+          number: district.number,
+          validFirst: district.validFirst,
+          candidates: Object.entries(district.firstVotesByParty)
+            .filter(
+              (entry): entry is [string, number] =>
+                typeof entry[1] === "number",
+            )
+            .map(([id, votes]) => ({
+              id: `${district.number}-${id}`,
+              name: id,
+              partyId: id === "Einzelbewerber" ? null : id,
+              votes,
+            })),
+        })),
+      };
+      const projected = shiftElection(data, {}, {}, ["WerteUnion"], model);
+      expect(projected.file.districts).toEqual(data.districts);
+      const result = electionMandates(projected.file);
+      expect(result.winners.map((winner) => winner.id)).toEqual(
+        data.districts.map(
+          (district) =>
+            [...district.candidates].sort((a, b) => b.votes - a.votes)[0].id,
+        ),
+      );
+      expect(result.seats.total).toBe(157);
+    },
+  );
+
+  it.each(["swing", "logratio"] as const)(
+    "erhält ohne erfundene Kandidaturen die Erststimmensummen (%s)",
+    (model) => {
+      const data = file();
+      data.parties.push(party("C", 0, 0));
+      data.districts[0].candidates[0].votes -= 10;
+      data.districts[0].candidates.push({
+        id: "ind",
+        name: "Einzelbewerbung",
+        partyId: null,
+        votes: 10,
+      });
+      const projected = shiftElection(
+        data,
+        {},
+        { A: 4, C: 1 },
+        "B",
+        model,
+      ).file;
+      expect(
+        projected.districts[0].candidates.map((candidate) => candidate.id),
+      ).toEqual(data.districts[0].candidates.map((candidate) => candidate.id));
+      expect(projected.districts[0].candidates.at(-1)?.votes).toBe(10);
+      expect(projected.districts[0].candidates[0].votes).toBeGreaterThan(50);
+      expect(
+        projected.districts.every(
+          (district) =>
+            district.candidates.reduce(
+              (sum, candidate) => sum + candidate.votes,
+              0,
+            ) === district.validFirst,
+        ),
+      ).toBe(true);
+    },
+  );
 });

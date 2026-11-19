@@ -28,6 +28,8 @@ import {
   useOfficialDistricts,
 } from "./useOfficialDistricts";
 import { SeatDistricts } from "./SeatDistricts";
+import { DistrictModelPanel } from "./DistrictModelPanel";
+import { DISTRICT_MODEL_VERSION, readDistrictModel } from "./districtModel";
 import {
   parseElectionFile,
   shiftElection,
@@ -67,6 +69,16 @@ function Seat2026() {
     state = useFullState(params.get("savedScenario") ? 0 : 2026);
   const [tab, setTab] = useState("seats");
   const [districtsRequested, setDistrictsRequested] = useState(false);
+  const savedInput = saved.data?.input_snapshot;
+  const savedModel =
+    isRecord(savedInput) &&
+    isRecord(savedInput.districtModel) &&
+    savedInput.districtModel.version === DISTRICT_MODEL_VERSION
+      ? savedInput.districtModel.stage
+      : undefined;
+  const districtModel = readDistrictModel(
+    params.get("seatDistrictModel") ?? savedModel,
+  );
   const flips = Object.fromEntries(
     [...params]
       .filter(([key]) => /^seatFlip_([1-9]|[1-6][0-9]|70)$/.test(key))
@@ -78,7 +90,7 @@ function Seat2026() {
       if (key.startsWith("seatFlip_") && !value) next.delete(key);
       else next.set(key, value);
       if (
-        key === "seatBalancing" ||
+        ["seatBalancing", "seatDistrictModel"].includes(key) ||
         [
           "seatFirst_",
           "seatSecond_",
@@ -104,6 +116,7 @@ function Seat2026() {
         if (
           [
             "savedScenario",
+            "seatDistrictModel",
             "seatBalancing",
             "seatLotOrder",
             "seatCorrections",
@@ -132,10 +145,12 @@ function Seat2026() {
       (row.direct_seats ?? 0),
   );
   const districtData = useOfficialDistricts(
-    (districtsRequested || Object.keys(flips).length > 0) &&
+    (districtModel !== "manual" ||
+      districtsRequested ||
+      Object.keys(flips).length > 0) &&
       !params.get("savedScenario") &&
       !file &&
-      !hasManualDirect,
+      (!hasManualDirect || districtModel !== "manual"),
   );
   const districtHistory = districtData.data?.history;
   const districtFactions = districtData.data?.factions;
@@ -155,7 +170,10 @@ function Seat2026() {
     );
   }, [districtHistory, districtFactions, districtVotes, state.data]);
   const officialFile =
-    !hasManualDirect && (districtsRequested || Object.keys(flips).length > 0)
+    (!hasManualDirect || districtModel !== "manual") &&
+    (districtModel !== "manual" ||
+      districtsRequested ||
+      Object.keys(flips).length > 0)
       ? official?.value
       : undefined;
   const basis = useMemo(
@@ -250,6 +268,47 @@ function Seat2026() {
         100 -
       Object.values(second).reduce((sum, delta) => sum + delta, 0)
     : 0;
+  const projection = useMemo(() => {
+    const base = basis.value?.file;
+    if (!base) return null;
+    return attempt(() => {
+      const shifted = shiftElection(
+          base,
+          districtModel === "manual" ? first : {},
+          second,
+          balancing,
+          districtModel,
+        ),
+        lots = { ...shifted.file.districtLots };
+      for (const [key, value] of params)
+        if (key.startsWith("seatDistrictLot_"))
+          lots[key.slice("seatDistrictLot_".length)] = value;
+      const actual = {
+        ...shifted.file,
+        districts: shifted.file.districts.map((district) =>
+          flips[district.number]
+            ? transferDistrict(
+                district,
+                flips[district.number],
+                lots[district.number],
+              )
+            : district,
+        ),
+        districtLots: lots,
+        excludedSecondVotes: Object.keys(flips).length
+          ? undefined
+          : shifted.file.excludedSecondVotes,
+      };
+      return { actual, adjusted: shifted.adjusted };
+    });
+  }, [
+    basis.value,
+    districtModel,
+    JSON.stringify(first),
+    JSON.stringify(second),
+    balancing,
+    params.toString(),
+  ]);
   const computed = useMemo(
     () =>
       attempt(() => {
@@ -277,31 +336,16 @@ function Seat2026() {
           .map((s) => s.trim())
           .filter(Boolean);
         if (b.file) {
-          const shifted = shiftElection(b.file, first, second, balancing),
-            lots = { ...shifted.file.districtLots };
-          for (const [key, value] of params)
-            if (key.startsWith("seatDistrictLot_"))
-              lots[key.slice("seatDistrictLot_".length)] = value;
+          if (!projection?.value)
+            throw new Error(
+              projection?.error ||
+                "Wahlkreismodell konnte nicht berechnet werden.",
+            );
+          const { actual: projected, adjusted } = projection.value;
           const actual = {
-            ...shifted.file,
-            districts: shifted.file.districts.map((district) =>
-              flips[district.number]
-                ? transferDistrict(
-                    district,
-                    flips[district.number],
-                    lots[district.number],
-                  )
-                : district,
-            ),
-            districtLots: lots,
-            baseSeatLots: lotOrder.length
-              ? lotOrder
-              : shifted.file.baseSeatLots,
-            excludedSecondVotes:
-              correction ||
-              (Object.keys(flips).length
-                ? undefined
-                : shifted.file.excludedSecondVotes),
+            ...projected,
+            baseSeatLots: lotOrder.length ? lotOrder : projected.baseSeatLots,
+            excludedSecondVotes: correction || projected.excludedSecondVotes,
           };
           const result = electionMandates(actual);
           return {
@@ -309,30 +353,15 @@ function Seat2026() {
             people: result.people,
             winners: result.winners,
             unfilled: result.unfilled,
-            adjusted: shifted.adjusted,
-            input: {
-              parties: result.parties,
-              validSecond: actual.validSecond,
-              specialDirect: result.winners.filter((w) => w.partyId === null)
-                .length,
-              specialFirstVotes: result.winners
-                .filter(
-                  (w) =>
-                    w.partyId === null ||
-                    !result.parties.some(
-                      (p) =>
-                        p.id === w.partyId &&
-                        p.hasList &&
-                        p.votes * 20 >= actual.validSecond,
-                    ),
-                )
-                .reduce((s, w) => s + w.votes, 0),
-              excludedSecondVotes: actual.excludedSecondVotes,
-              baseSeatLots: actual.baseSeatLots,
-            } satisfies SeatInput,
+            adjusted,
+            input: result.input,
             actual,
           };
         }
+        if (districtModel !== "manual")
+          throw new Error(
+            "Für das Wahlkreismodell werden vollständige Wahlkreisdaten benötigt.",
+          );
         if (Object.keys(flips).length)
           throw new Error(
             "Für die übernommenen Kippannahmen werden vollständige Wahlkreisdaten benötigt.",
@@ -369,20 +398,13 @@ function Seat2026() {
       }),
     [
       basis,
+      projection,
+      districtModel,
       JSON.stringify(first),
       JSON.stringify(second),
       balancing,
       params.toString(),
     ],
-  );
-  const firstPreview = useMemo(
-    () =>
-      basis.value?.file
-        ? attempt(() =>
-            shiftElection(basis.value!.file!, first, second, balancing),
-          )
-        : null,
-    [basis.value, JSON.stringify(first), JSON.stringify(second), balancing],
   );
   const reference = useMemo(
     () =>
@@ -403,7 +425,8 @@ function Seat2026() {
   const officialResult =
     reference?.value?.matches === true &&
     Object.keys(flips).length === 0 &&
-    Object.values(first).every((delta) => delta === 0) &&
+    (districtModel !== "manual" ||
+      Object.values(first).every((delta) => delta === 0)) &&
     Object.values(second).every((delta) => delta === 0) &&
     parties.every(
       (party) =>
@@ -455,6 +478,7 @@ function Seat2026() {
     valid: basis.value?.valid,
     source: basis.value?.source,
     file: basis.value?.file || undefined,
+    districtModel: { stage: districtModel, version: DISTRICT_MODEL_VERSION },
   });
   return (
     <div className="space-y-4">
@@ -753,39 +777,41 @@ function Seat2026() {
                         .join(" · ")}
                     </p>
                   )}
-                  <details className="mt-2">
-                    <summary className="cursor-pointer text-sm">
-                      {basis.value.file
-                        ? "Erststimmen verschieben"
-                        : "Direktmandate bearbeiten"}
-                    </summary>
-                    <div className="mt-2 grid max-h-64 grid-cols-2 gap-2 overflow-y-auto">
-                      {parties.map((p) => {
-                        const fullMode = !!basis.value?.file;
-                        const key = fullMode
-                          ? `seatFirst_${p.id}`
-                          : `seatDirect_${p.id}`;
-                        return (
-                          <label key={p.id} className="text-xs">
-                            {p.name}
-                            <Input
-                              type="number"
-                              step={fullMode ? "0.1" : "1"}
-                              aria-label={`${p.name} ${fullMode ? "Erststimmenänderung in Prozentpunkten" : "Direktmandate"}`}
-                              min={fullMode ? undefined : 0}
-                              max={fullMode ? undefined : 70}
-                              value={
-                                params.get(key) ??
-                                String(fullMode ? 0 : p.direct)
-                              }
-                              onChange={(e) => set(key, e.target.value)}
-                              className="mt-1 h-8"
-                            />
-                          </label>
-                        );
-                      })}
-                    </div>
-                  </details>
+                  {districtModel === "manual" && (
+                    <details className="mt-2">
+                      <summary className="cursor-pointer text-sm">
+                        {basis.value.file
+                          ? "Erststimmen verschieben"
+                          : "Direktmandate bearbeiten"}
+                      </summary>
+                      <div className="mt-2 grid max-h-64 grid-cols-2 gap-2 overflow-y-auto">
+                        {parties.map((p) => {
+                          const fullMode = !!basis.value?.file;
+                          const key = fullMode
+                            ? `seatFirst_${p.id}`
+                            : `seatDirect_${p.id}`;
+                          return (
+                            <label key={p.id} className="text-xs">
+                              {p.name}
+                              <Input
+                                type="number"
+                                step={fullMode ? "0.1" : "1"}
+                                aria-label={`${p.name} ${fullMode ? "Erststimmenänderung in Prozentpunkten" : "Direktmandate"}`}
+                                min={fullMode ? undefined : 0}
+                                max={fullMode ? undefined : 70}
+                                value={
+                                  params.get(key) ??
+                                  String(fullMode ? 0 : p.direct)
+                                }
+                                onChange={(e) => set(key, e.target.value)}
+                                className="mt-1 h-8"
+                              />
+                            </label>
+                          );
+                        })}
+                      </div>
+                    </details>
+                  )}
                   {Object.entries(flips).map(([number, candidate]) => {
                     const district = basis.value?.file?.districts.find(
                       (d) => d.number === Number(number),
@@ -816,7 +842,7 @@ function Seat2026() {
                   <summary className="cursor-pointer text-sm">
                     Sonderfälle und Losannahmen
                   </summary>
-                  {firstPreview?.value?.file.districts
+                  {projection?.value?.actual.districts
                     .filter(
                       (d) =>
                         d.candidates.filter(
@@ -901,7 +927,7 @@ function Seat2026() {
                     ["seats", "Sitzverteilung"],
                     ["coalitions", "Koalitionen"],
                     ["threshold", "5-%-Hürde"],
-                    ["districts", "Wahlkreise"],
+                    ["districts", "Wahlkreise und Modell"],
                   ].map(([value, label]) => (
                     <TabsTrigger
                       key={value}
@@ -912,12 +938,23 @@ function Seat2026() {
                     </TabsTrigger>
                   ))}
                 </TabsList>
+                {tab === "districts" && (
+                  <DistrictModelPanel
+                    model={districtModel}
+                    onChange={(value) => set("seatDistrictModel", value)}
+                    baseline={basis.value.file}
+                    scenario={
+                      referenceBlocked ? undefined : projection?.value?.actual
+                    }
+                    seats={computed.value?.seats}
+                  />
+                )}
                 {tab === "districts" && !basis.value.file && (
                   <div
                     className="mt-3 rounded-lg border bg-card p-4 text-sm"
                     role="status"
                   >
-                    {hasManualDirect ? (
+                    {hasManualDirect && districtModel === "manual" ? (
                       <>
                         Für die amtliche Wahlkreisgrundlage müssen die manuellen
                         Direktmandatsannahmen zurückgesetzt werden.
@@ -979,8 +1016,8 @@ function Seat2026() {
                           unfilled={computed.value.unfilled}
                         />
                         <p className="text-xs text-muted-foreground">
-                          {computed.value.adjusted} Wahlkreise mit korrigierten
-                          Erststimmenanteilen.{" "}
+                          {districtModel === "manual" &&
+                            `${computed.value.adjusted} Wahlkreise mit korrigierten Erststimmenanteilen. `}
                           {computed.value.unfilled == null
                             ? "Listenbesetzung unbekannt, solange vollständige Landeslisten fehlen."
                             : `${computed.value.unfilled} unbesetzte Sitze bei erschöpften Listen / nicht verteilbaren Ansprüchen.`}

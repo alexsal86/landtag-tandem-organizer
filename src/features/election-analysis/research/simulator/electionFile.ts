@@ -5,10 +5,16 @@ import {
   type ElectionFile,
   type SeatCandidate,
   type SeatDistrict,
+  type SeatInput,
   type SeatPerson,
 } from "./types";
 import { allocateBw2026 } from "./seats";
 import { directTransferThreshold, secondVoteScenario } from "./model";
+import {
+  projectDistrictVotes,
+  roundDistrictVotes,
+  type DistrictModel,
+} from "./districtModel";
 const n = (v: unknown): v is number =>
   typeof v === "number" && Number.isSafeInteger(v) && v >= 0;
 const text = (v: unknown): v is string =>
@@ -201,24 +207,12 @@ export function parseElectionFile(value: unknown): ElectionFile {
     baseSeatLots: baseLots,
   };
 }
-/** Numerical share-to-count rounding, not an electoral lot decision. Sum of valid ballots remains fixed. */
-function counts(weights: number[], total: number) {
-  const raw = weights.map((w) => (w / 100) * total),
-    out = raw.map(Math.floor);
-  let remainder = total - out.reduce((a, b) => a + b, 0);
-  const order = raw
-    .map((v, i) => ({ i, r: v - Math.floor(v) }))
-    .sort((a, b) => b.r - a.r || a.i - b.i);
-  if (remainder < 0 || remainder > weights.length)
-    throw new Error("Anteile lassen sich nicht stabil in Stimmen umrechnen.");
-  for (let i = 0; i < remainder; i++) out[order[i].i]++;
-  return out;
-}
 export function shiftElection(
   file: ElectionFile,
   first: Record<string, number>,
   second: Record<string, number>,
   balancingParty: string | readonly string[],
+  model: DistrictModel = "manual",
 ) {
   if (
     Object.entries(first).some(
@@ -238,28 +232,34 @@ export function shiftElection(
   );
   const changedSecond = Object.values(secondDeltas).some((v) => v !== 0);
   let adjusted = 0;
-  const districts = file.districts.map((d) => {
-    if (!d.candidates.some((c) => c.partyId && first[c.partyId])) return d;
-    const desired = d.candidates.map(
-        (c) =>
-          (c.votes / d.validFirst) * 100 +
-          (c.partyId ? first[c.partyId] || 0 : 0),
-      ),
-      projected = projectShares(desired);
-    if (projected.some((v, i) => Math.abs(v - desired[i]) > 1e-8)) adjusted++;
-    const votes = counts(projected, d.validFirst);
-    return {
-      ...d,
-      candidates: d.candidates.map((c, i) => ({ ...c, votes: votes[i] })),
-    };
-  });
+  const districts =
+    model !== "manual"
+      ? projectDistrictVotes(file, parties, secondDeltas, model)
+      : file.districts.map((d) => {
+          if (!d.candidates.some((c) => c.partyId && first[c.partyId]))
+            return d;
+          const desired = d.candidates.map(
+              (c) =>
+                (c.votes / d.validFirst) * 100 +
+                (c.partyId ? first[c.partyId] || 0 : 0),
+            ),
+            projected = projectShares(desired);
+          if (projected.some((v, i) => Math.abs(v - desired[i]) > 1e-8))
+            adjusted++;
+          const votes = roundDistrictVotes(projected, d.validFirst);
+          return {
+            ...d,
+            candidates: d.candidates.map((c, i) => ({ ...c, votes: votes[i] })),
+          };
+        });
   return {
     file: {
       ...file,
       parties,
       districts,
       excludedSecondVotes:
-        changedSecond || Object.values(first).some((v) => v !== 0)
+        changedSecond ||
+        (model === "manual" && Object.values(first).some((v) => v !== 0))
           ? undefined
           : file.excludedSecondVotes,
     },
@@ -297,19 +297,33 @@ export function transferDistrict(
     })),
   };
 }
-export function electionMandates(file: ElectionFile) {
-  const winners = file.districts.map((d) => {
-    const maximum = Math.max(...d.candidates.map((c) => c.votes)),
-      tied = d.candidates.filter((c) => c.votes === maximum);
-    const winner =
+export function districtLeader(district: SeatDistrict, lot?: string) {
+  const maximum = Math.max(
+    ...district.candidates.map((candidate) => candidate.votes),
+  );
+  const tied = district.candidates.filter(
+    (candidate) => candidate.votes === maximum,
+  );
+  return {
+    tied,
+    winner:
       tied.length === 1
         ? tied[0]
-        : tied.find((c) => c.id === file.districtLots?.[String(d.number)]);
+        : tied.find((candidate) => candidate.id === lot),
+  };
+}
+
+export function electionMandates(file: ElectionFile) {
+  const winners = file.districts.map((district) => {
+    const { winner, tied } = districtLeader(
+      district,
+      file.districtLots?.[district.number],
+    );
     if (!winner)
       throw new Error(
-        `Wahlkreis ${d.number}: hypothetische oder amtliche Losentscheidung fehlt (${tied.map((c) => c.name).join(", ")}).`,
+        `Wahlkreis ${district.number}: hypothetische oder amtliche Losentscheidung fehlt (${tied.map((c) => c.name).join(", ")}).`,
       );
-    return { ...winner, district: d.number };
+    return { ...winner, district: district.number };
   });
   const parties = file.parties.map((p) => ({
     ...p,
@@ -325,14 +339,15 @@ export function electionMandates(file: ElectionFile) {
           BigInt(p.votes) * 20n >= BigInt(file.validSecond),
       ),
   );
-  const seats = allocateBw2026({
+  const input: SeatInput = {
     parties,
     validSecond: file.validSecond,
     specialDirect: winners.filter((w) => w.partyId === null).length,
     specialFirstVotes: specials.reduce((s, w) => s + w.votes, 0),
     excludedSecondVotes: file.excludedSecondVotes,
     baseSeatLots: file.baseSeatLots,
-  });
+  };
+  const seats = allocateBw2026(input);
   const directIds = new Set(winners.map((w) => w.id));
   let vacancies = 0;
   const people = winners.map((w) => ({
@@ -364,6 +379,7 @@ export function electionMandates(file: ElectionFile) {
   }
   return {
     seats,
+    input,
     people,
     unfilled: file.listsComplete ? vacancies + seats.unallocated : null,
     winners,

@@ -13,6 +13,7 @@ import { validateRuleEditor } from "@/components/administration/automationRule/r
 import { editorFormSnapshot, editorPlanYear, editorStepErrors, evaluateEditorSample, parseEditorSample } from "@/components/administration/automationRule/editorModel";
 import { DEFAULT_ACTION, DEFAULT_FORM } from "@/components/administration/automationRule/constants";
 import { secondVoteScenario } from "@/features/election-analysis/research/simulator/model";
+import { projectDistrictVotes } from "@/features/election-analysis/research/simulator/districtModel";
 import { transferDistrict } from "@/features/election-analysis/research/simulator/electionFile";
 import type { TestScenario } from "../types";
 import { calendarOccurrence, nextCalendarOccurrence, scheduleRunKey } from "@/features/automation/calendarSchedule";
@@ -24,6 +25,24 @@ export const workflowRulesScenario: TestScenario = {
   checks: ["Erlaubte und verbotene Brief-Statuswechsel", "Entscheiderrollen", "Ministeriumsfrist und Wiedervorlage"],
   limitations: ["Berechtigungen der Datenbank werden separat in den Zugriffstests geprüft."],
   steps: [
+    {
+      id: "seat-district-model", label: "Mandatssimulator: Zweitstimmen auf Wahlkreise übertragen", kind: "logic",
+      run: async () => {
+        const data = {
+          version: "bw-lwg-2026-v1" as const, year: 2026 as const, source_url: "https://example.org",
+          data_release: "synthetic", validSecond: 100, lists: {}, listsComplete: false,
+          parties: [{ id: "a", name: "A", votes: 60, hasList: true, direct: 1 }, { id: "b", name: "B", votes: 40, hasList: true, direct: 0 }],
+          districts: [{ number: 1, validFirst: 100, candidates: [
+            { id: "a", name: "A", partyId: "a", votes: 50 },
+            { id: "b", name: "B", partyId: "b", votes: 40 },
+            { id: "ind", name: "Einzelbewerbung", partyId: null, votes: 10 },
+          ] }],
+        };
+        const unchanged = projectDistrictVotes(data, data.parties, {}, "logratio");
+        const shifted = projectDistrictVotes(data, data.parties, { a: 5, b: -5 }, "swing")[0].candidates;
+        return { ok: unchanged === data.districts && shifted[2].votes === 10 && shifted[0].votes > 50 && shifted.reduce((sum, c) => sum + c.votes, 0) === 100, message: "Referenz, Einzelbewerbung und Wahlkreissumme bleiben erhalten." };
+      },
+    },
     {
       id: "seat-other-vote-offset", label: "Mandatssimulator: Gegenbuchung bei den Sonstigen", kind: "logic",
       run: async () => {
