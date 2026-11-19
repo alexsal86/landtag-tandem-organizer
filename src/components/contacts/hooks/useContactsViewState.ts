@@ -8,7 +8,6 @@ import { useAuth } from "@/hooks/useAuth";
 import { useTenant } from "@/hooks/useTenant";
 import { useInfiniteContacts, Contact } from "@/hooks/useInfiniteContacts";
 import { useCounts } from "@/hooks/useCounts";
-import { useAllPersonContacts } from "@/hooks/useAllPersonContacts";
 import { useContactDocumentCounts } from "@/hooks/useContactDocumentCounts";
 import { getInitials } from "../utils/contactFormatters";
 import { useContactsDistributionLists } from "./useContactsDistributionLists";
@@ -75,7 +74,6 @@ export interface UseContactsViewStateResult {
   stakeholdersCount: number;
   archiveCount: number;
   distributionListsCount: number;
-  personContacts: ReturnType<typeof useAllPersonContacts>["personContacts"];
   documentCounts: ReturnType<typeof useContactDocumentCounts>["counts"];
   categories: Array<{ value: string; label: string; count: number }>;
   fetchDistributionLists: ReturnType<typeof useContactsDistributionLists>["fetchDistributionLists"];
@@ -104,7 +102,6 @@ export function useContactsViewState(): UseContactsViewStateResult {
   const documentsExpansion = useContactsDocumentsExpansion();
 
   const { contactsCount, stakeholdersCount, archiveCount, distributionListsCount } = useCounts();
-  const { personContacts } = useAllPersonContacts();
 
   const {
     contacts,
@@ -243,7 +240,6 @@ export function useContactsViewState(): UseContactsViewStateResult {
     stakeholdersCount,
     archiveCount,
     distributionListsCount,
-    personContacts,
     documentCounts,
     categories,
     fetchDistributionLists: distributionListsState.fetchDistributionLists,

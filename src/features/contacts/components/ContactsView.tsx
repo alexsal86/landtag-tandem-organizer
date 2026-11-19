@@ -62,6 +62,17 @@ export function ContactsView() {
 
   const currentViewMode = s.activeTab === "contacts" ? s.viewMode : s.activeTab === "stakeholders" ? s.stakeholderViewMode : s.distributionViewMode;
 
+  const contactPagination = (
+    <>
+      {s.loadingMore && <div className="py-8"><ContactSkeleton count={6} viewMode={s.viewMode} /></div>}
+      <InfiniteScrollTrigger onLoadMore={s.loadMore} loading={s.loadingMore} hasMore={s.hasMore} />
+      {!s.loadingMore && s.hasMore && s.contacts.length > 0 && (
+        <div className="text-center py-6"><Button variant="outline" onClick={s.loadMore} disabled={s.loadingMore} className="gap-2">Weitere Kontakte laden ({s.totalCount - s.contacts.length} verbleibend)</Button></div>
+      )}
+      {!s.loadError && !s.hasMore && s.contacts.length > 0 && <div className="text-center py-6 text-muted-foreground"><p>Alle Kontakte wurden geladen.</p></div>}
+    </>
+  );
+
   const sidePanel = (
       <ContactsSidePanel
         activeTab={s.activeTab}
@@ -164,25 +175,22 @@ export function ContactsView() {
               {s.loading && s.contacts.length === 0 ? <ContactSkeleton count={12} viewMode={s.viewMode} /> : (
                 <>
                   {s.viewMode === "grid" ? (
-                    <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
-                      {s.contacts.map(contact => (
-                        <ContactGridCard key={contact.id} contact={contact} isSelectionMode={s.isSelectionMode} isSelected={s.selectedContactIds.has(contact.id)}
-                          onSelect={() => s.toggleContactSelection(contact.id)} onClick={() => s.setSelectedContactId(contact.id)}
-                          onToggleFavorite={s.toggleFavorite} onDelete={s.handleDeleteContact} />
-                      ))}
-                    </div>
+                    <>
+                      <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
+                        {s.contacts.map(contact => (
+                          <ContactGridCard key={contact.id} contact={contact} isSelectionMode={s.isSelectionMode} isSelected={s.selectedContactIds.has(contact.id)}
+                            onSelect={() => s.toggleContactSelection(contact.id)} onClick={() => s.setSelectedContactId(contact.id)}
+                            onToggleFavorite={s.toggleFavorite} onDelete={s.handleDeleteContact} />
+                        ))}
+                      </div>
+                      {contactPagination}
+                    </>
                   ) : (
                     <ContactListTable contacts={s.contacts} sortColumn={s.sortColumn} sortDirection={s.sortDirection} onSort={s.handleSort}
                       onContactClick={(id) => s.setSelectedContactId(id)} onToggleFavorite={s.toggleFavorite}
                       isSelectionMode={s.isSelectionMode} selectedContactIds={s.selectedContactIds}
-                      onToggleSelection={s.toggleContactSelection} />
+                      onToggleSelection={s.toggleContactSelection} footer={contactPagination} />
                   )}
-                  {s.loadingMore && <div className="py-8"><ContactSkeleton count={6} viewMode={s.viewMode} /></div>}
-                  <InfiniteScrollTrigger onLoadMore={s.loadMore} loading={s.loadingMore} hasMore={s.hasMore} />
-                  {!s.loadingMore && s.hasMore && s.contacts.length > 0 && (
-                    <div className="text-center py-6"><Button variant="outline" onClick={s.loadMore} disabled={s.loadingMore} className="gap-2">Weitere Kontakte laden ({s.totalCount - s.contacts.length} verbleibend)</Button></div>
-                  )}
-                  {!s.loadError && !s.hasMore && s.contacts.length > 0 && <div className="text-center py-6 text-muted-foreground"><p>Alle Kontakte wurden geladen.</p></div>}
                   {!s.loadError && !s.loading && s.contacts.length === 0 && (
                     <Card className="bg-card shadow-card border-border"><CardContent className="text-center py-12">
                       <User className="h-12 w-12 text-muted-foreground mx-auto mb-4" />
@@ -197,7 +205,7 @@ export function ContactsView() {
           ) : s.activeTab === "stakeholders" ? (
             <div className="space-y-6">
               {s.loading && s.contacts.length === 0 ? <ContactSkeleton count={6} viewMode="grid" /> : (
-                <StakeholderView stakeholders={s.contacts} contacts={s.personContacts} viewMode={s.stakeholderViewMode}
+                <StakeholderView stakeholders={s.contacts} viewMode={s.stakeholderViewMode}
                   onToggleFavorite={s.toggleFavorite} onContactClick={(id) => s.setSelectedContactId(id)} onRefresh={s.refreshContacts}
                   hasMore={s.hasMore} loadMore={s.loadMore} loadingMore={s.loadingMore}
                   sortColumn={s.stakeholderSortColumn} sortDirection={s.stakeholderSortDirection} onSort={s.handleStakeholderSort}

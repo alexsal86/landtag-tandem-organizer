@@ -2,6 +2,7 @@ import React, { useState, useMemo } from "react";
 import { Building, Plus } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { Contact } from "@/hooks/useInfiniteContacts";
+import { useAllPersonContacts } from "@/hooks/useAllPersonContacts";
 import { Link } from "react-router-dom";
 import { StakeholderToDistributionDialog } from "@/features/contacts/components/StakeholderToDistributionDialog";
 import { useContactDocumentCounts } from "@/hooks/useContactDocumentCounts";
@@ -11,7 +12,6 @@ import { StakeholderListView } from "@/components/stakeholders/StakeholderListVi
 
 interface StakeholderViewProps {
   stakeholders: Contact[];
-  contacts: Contact[];
   viewMode: "grid" | "list";
   onToggleFavorite: (contactId: string, isFavorite: boolean) => void;
   onContactClick: (contactId: string) => void;
@@ -26,9 +26,10 @@ interface StakeholderViewProps {
 }
 
 export function StakeholderView({
-  stakeholders, contacts, viewMode, onToggleFavorite, onContactClick,
+  stakeholders, viewMode, onToggleFavorite, onContactClick,
   onRefresh, sortColumn, sortDirection = "asc", onSort,
 }: StakeholderViewProps) {
+  const { personContacts } = useAllPersonContacts();
   const [expandedStakeholders, setExpandedStakeholders] = useState<Set<string>>(new Set());
   const [expandedFundings, setExpandedFundings] = useState<Set<string>>(new Set());
   const [expandedDocuments, setExpandedDocuments] = useState<Set<string>>(new Set());
@@ -46,7 +47,7 @@ export function StakeholderView({
   const getStakeholderContacts = (stakeholderId: string) => {
     const stakeholder = stakeholders.find(s => s.id === stakeholderId);
     if (!stakeholder) return [];
-    return contacts.filter(c => c.organization_id === stakeholderId || (c.organization && c.organization.trim() === stakeholder.name.trim()));
+    return personContacts.filter(c => c.organization_id === stakeholderId || (c.organization && c.organization.trim() === stakeholder.name.trim()));
   };
 
   const getInitials = (name: string) => name.split(" ").map(n => n[0]).join("").toUpperCase();

@@ -25,6 +25,7 @@ interface ContactListTableProps {
   isSelectionMode: boolean;
   selectedContactIds: Set<string>;
   onToggleSelection: (id: string) => void;
+  footer?: React.ReactNode;
 }
 
 function SortableTableHead({ children, sortKey, sortColumn, sortDirection, onSort, className = "" }: {
@@ -57,7 +58,7 @@ function splitName(name: string): { firstName: string; lastName: string } {
 
 export function ContactListTable({
   contacts, sortColumn, sortDirection, onSort, onContactClick, onToggleFavorite,
-  isSelectionMode, selectedContactIds, onToggleSelection,
+  isSelectionMode, selectedContactIds, onToggleSelection, footer,
 }: ContactListTableProps) {
   const [splitNameMode, setSplitNameMode] = useState(() => {
     try { return localStorage.getItem("contacts-split-name") === "true"; } catch { return false; }
@@ -74,10 +75,11 @@ export function ContactListTable({
   const [scrollMargin, setScrollMargin] = useState(0);
   const virtual = contacts.length > 40;
   const rows = useVirtualRows(contacts, () => virtual ? scrollRef.current : null, 44, (contact) => contact.id, 6, scrollMargin);
-  const visibleRows = virtual ? rows.getVirtualItems() : contacts.map((_, index) => ({ index }));
   const windowRows = rows.getVirtualItems();
+  const visibleRows = virtual ? windowRows : contacts.map((_, index) => ({ index }));
   const topSpace = windowRows.length ? windowRows[0].start - scrollMargin : 0;
-  const bottomSpace = windowRows.length ? rows.getTotalSize() - (windowRows[windowRows.length - 1].end - scrollMargin) : 0;
+  const lastRow = windowRows.at(-1);
+  const bottomSpace = rows.getTotalSize() - (lastRow ? lastRow.end - scrollMargin : 0);
   const colSpan = 5 + Number(isSelectionMode) + Number(orgColumn) + Number(splitNameMode);
 
   useLayoutEffect(() => {
@@ -339,6 +341,7 @@ export function ContactListTable({
           {virtual && bottomSpace > 0 && <tr aria-hidden="true"><td colSpan={colSpan} style={{ height: bottomSpace, padding: 0 }} /></tr>}
         </TableBody>
       </Table>
+      {footer}
     </div>
   );
 }
