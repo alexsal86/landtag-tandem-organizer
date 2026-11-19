@@ -1,4 +1,5 @@
 import { useState } from "react";
+import { getPartyColor } from "@/features/election-districts/partyColors";
 import { ParliamentHemicycle } from "../../ParliamentHemicycle";
 import { DataTable } from "../../shared";
 import { format } from "../lab/shared";
@@ -21,12 +22,18 @@ export function SeatOverview({
   official: boolean;
   unfilled: number | null;
 }) {
-  const [selected, setSelected] = useState<string[]>([]);
+  const [selected, setSelected] = useState<string[] | null>(null);
   const parties = seats.rows.filter((row) => row.total > 0);
   const threshold = Math.floor(seats.total / 2) + 1;
-  const selectedSeats = parties
-    .filter((party) => selected.includes(party.id))
-    .reduce((sum, party) => sum + party.total, 0);
+  const coalitionParties = [...parties].sort(
+    (a, b) => b.votes - a.votes || b.total - a.total,
+  );
+  const selectedIds =
+    selected ?? coalitionParties.slice(0, 1).map((party) => party.id);
+  const coalition = coalitionParties.filter((party) =>
+    selectedIds.includes(party.id),
+  );
+  const selectedSeats = coalition.reduce((sum, party) => sum + party.total, 0);
   const groups = [
     ...parties.map((party) => ({
       id: party.id,
@@ -141,30 +148,79 @@ export function SeatOverview({
           Eigene Kombination prüfen
         </legend>
         <div className="mt-1 flex flex-wrap gap-x-4 gap-y-1">
-          {parties.map((party) => (
+          {coalitionParties.map((party) => (
             <label key={party.id} className="flex items-center gap-1.5 text-sm">
               <input
                 type="checkbox"
-                checked={selected.includes(party.id)}
+                checked={selectedIds.includes(party.id)}
                 onChange={(event) => {
                   const checked = event.target.checked;
-                  setSelected((old) =>
-                    checked
-                      ? [...old, party.id]
-                      : old.filter((id) => id !== party.id),
-                  );
+                  setSelected((old) => {
+                    const ids = old ?? selectedIds;
+                    return checked
+                      ? [...ids, party.id]
+                      : ids.filter((id) => id !== party.id);
+                  });
                 }}
               />
-              {party.name}
+              <span
+                aria-hidden="true"
+                className="size-2 rounded-full"
+                style={{ backgroundColor: getPartyColor(party.id) }}
+              />
+              {party.name}{" "}
+              <span className="tabular-nums text-muted-foreground">
+                {party.total}
+              </span>
             </label>
           ))}
         </div>
-        {selectedSeats > 0 && (
+        {seats.total > 0 && (
+          <div
+            className="mt-4"
+            role="img"
+            aria-label={`${selectedSeats} von ${seats.total} Sitzen. Absolute Mehrheit ab ${threshold} Sitzen.`}
+          >
+            <div className="relative pt-6" aria-hidden="true">
+              <div className="flex h-6 overflow-hidden rounded bg-muted">
+                {coalition.map((party) => (
+                  <div
+                    key={party.id}
+                    title={`${party.name}: ${party.total} Sitze`}
+                    style={{
+                      width: `${(party.total / seats.total) * 100}%`,
+                      backgroundColor: getPartyColor(party.id),
+                    }}
+                  />
+                ))}
+              </div>
+              <div
+                className="pointer-events-none absolute inset-y-0"
+                style={{ left: `${(threshold / seats.total) * 100}%` }}
+              >
+                <span className="absolute top-0 -translate-x-1/2 whitespace-nowrap rounded bg-card px-1 text-xs font-semibold text-red-700 dark:text-red-400">
+                  Mehrheit ab {threshold}
+                </span>
+                <span className="absolute top-5 -bottom-1 -translate-x-1/2 border-l-2 border-red-600 dark:border-red-400" />
+              </div>
+            </div>
+            <div
+              aria-hidden="true"
+              className="mt-1 flex justify-between text-xs tabular-nums text-muted-foreground"
+            >
+              <span>0</span>
+              <span>{seats.total} Sitze</span>
+            </div>
+          </div>
+        )}
+        {seats.total > 0 && (
           <p role="status" className="mt-2 text-sm font-medium">
             {selectedSeats} von {seats.total} Sitzen ·{" "}
             {selectedSeats < threshold
               ? `${threshold - selectedSeats} fehlen zur Mehrheit`
-              : `Mehrheit erreicht (${selectedSeats - threshold} Sitze über der Schwelle)`}
+              : selectedSeats === threshold
+                ? "Mehrheit erreicht · genau an der Schwelle"
+                : `Mehrheit erreicht · ${selectedSeats - threshold} Sitze über der Schwelle`}
           </p>
         )}
       </fieldset>
