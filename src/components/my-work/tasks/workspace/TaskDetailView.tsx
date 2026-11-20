@@ -385,17 +385,19 @@ export function TaskDetailView({ task, profiles, decisionLabel, onSave, onComple
           )}
 
           <section className="ml-10 space-y-3 border-y pb-3 pt-6">
-            <label htmlFor="task-next-action" className="block text-base font-medium text-muted-foreground">Nächster Schritt</label>
-            <div className="mt-1 flex flex-wrap items-center gap-2">
-              <Input id="task-next-action" value={label} onChange={(event) => setLabel(event.target.value)}
-                placeholder="Was passiert als Nächstes?" className="h-auto min-w-0 flex-1 basis-48 border-0 px-0 py-0 font-medium leading-tight shadow-none focus-visible:ring-0 focus-visible:ring-offset-0 md:text-xl read-only:cursor-text"
-                readOnly={hasStep} disabled={saving}
-                onKeyDown={(event) => {
-                  if (event.key === "Enter" && !event.nativeEvent.isComposing && !hasStep && label.trim()) {
-                    event.preventDefault();
-                    void setStep();
-                  }
-                }} />
+            <div className="flex flex-wrap items-end gap-2">
+              <div className="min-w-0 flex-1 basis-48">
+                <label htmlFor="task-next-action" className="block text-sm font-medium text-muted-foreground">Nächster Schritt</label>
+                <Input id="task-next-action" value={label} onChange={(event) => setLabel(event.target.value)}
+                  placeholder="Was passiert als Nächstes?" className="h-auto min-w-0 border-0 px-0 py-0 font-medium leading-tight shadow-none focus-visible:ring-0 focus-visible:ring-offset-0 md:text-xl read-only:cursor-text"
+                  readOnly={hasStep} disabled={saving}
+                  onKeyDown={(event) => {
+                    if (event.key === "Enter" && !event.nativeEvent.isComposing && !hasStep && label.trim()) {
+                      event.preventDefault();
+                      void setStep();
+                    }
+                  }} />
+              </div>
               <DropdownMenu>
                 <DropdownMenuTrigger asChild>
                   <Button variant="outline" size="sm" disabled={saving} className="rounded-full bg-transparent data-[state=open]:bg-muted">
