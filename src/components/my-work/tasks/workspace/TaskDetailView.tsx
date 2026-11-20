@@ -315,7 +315,7 @@ export function TaskDetailView({ task, profiles, decisionLabel, onSave, onComple
               <DropdownMenuTrigger asChild>
                 <Button variant="outline" size="sm" disabled={saving} className="rounded-full bg-transparent data-[state=open]:bg-muted">
                   <CalendarDays />
-                  Schritt bis
+                  <span className="text-muted-foreground">Schritt bis</span>
                   {overdueDays > 0 ? (
                     <span className="text-destructive">seit {overdueDays} {overdueDays === 1 ? "Tag" : "Tagen"} überfällig</span>
                   ) : <span>{due ? formatDate(due) : "Kein Termin"}</span>}
@@ -328,7 +328,7 @@ export function TaskDetailView({ task, profiles, decisionLabel, onSave, onComple
                     {text}<span className="text-xs text-muted-foreground">{formatDate(date)}</span>
                   </DropdownMenuItem>;
                 })}
-                <DropdownMenuItem onSelect={() => { setCustomValue(due); setCustomField("step"); }}>Datum wählen …</DropdownMenuItem>
+                <DropdownMenuItem onSelect={() => { setCustomValue(due.slice(0, 10)); setCustomField("step"); }}>Datum wählen …</DropdownMenuItem>
                 {due && <DropdownMenuItem onSelect={() => void saveDue("")}>Termin entfernen</DropdownMenuItem>}
               </DropdownMenuContent>
             </DropdownMenu>
