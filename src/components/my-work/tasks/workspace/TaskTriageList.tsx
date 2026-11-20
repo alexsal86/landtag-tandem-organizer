@@ -65,7 +65,7 @@ export function TaskTriageList({ resubmissionsOpen, onResubmissionsOpenChange, z
     .sort((a, b) => (a.due?.getTime() ?? Infinity) - (b.due?.getTime() ?? Infinity));
   const entries = sections.flatMap(({ key, title }) => {
     const items = tasks.filter((item) => item.group === key);
-    if (!items.length) return [];
+    if (!items.length && key !== "resubmission") return [];
     return [
       { key, title, count: items.length, item: null as (typeof tasks)[number] | null },
       ...(key === "resubmission" && !resubmissionsOpen ? [] : items.map((item) => ({ key: item.task.id, title, count: items.length, item }))),
