@@ -51,6 +51,7 @@ describe("automation hub navigation", () => {
     const params = new URLSearchParams("adminSection=automation&adminSubSection=rules&automationTab=history");
     expect(automationTabFromParams(normalizeAutomationParams(params))).toBe("history");
     expect(normalizeAutomationParams(normalizeAutomationParams(params)).toString()).toBe(params.toString());
+    expect(automationTabFromParams(new URLSearchParams("automationTab=packages"))).toBe("packages");
     expect(automationTabFromParams(new URLSearchParams("automationTab=invalid"))).toBe("rules");
     expect(rssTabFromParams(new URLSearchParams("rssTab=invalid"))).toBe("sources");
   });

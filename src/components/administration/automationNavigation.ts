@@ -1,4 +1,4 @@
-export type AutomationTab = "rules" | "history" | "dispatcher" | "annual";
+export type AutomationTab = "rules" | "packages" | "history" | "dispatcher" | "annual";
 export type RssTab = "sources" | "settings";
 
 /** Keep bookmarked destinations when the five automation pages become three. */
@@ -13,7 +13,7 @@ export function automationTabFromParams(params: URLSearchParams): AutomationTab 
   if (params.get("adminSubSection") === "annual") return "annual";
   if (params.get("adminSubSection") === "engine") return "dispatcher";
   const tab = params.get("automationTab");
-  return tab === "history" || tab === "dispatcher" || tab === "annual" ? tab : "rules";
+  return tab === "history" || tab === "dispatcher" || tab === "annual" || tab === "packages" ? tab : "rules";
 }
 
 export function rssTabFromParams(params: URLSearchParams): RssTab {

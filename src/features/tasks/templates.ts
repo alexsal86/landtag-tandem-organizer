@@ -27,12 +27,54 @@ export function nextRecurrenceDate(baseIso: string, rule: RecurrenceRule): strin
 export interface TemplateSubtask { title: string; offsetDays: number }
 export interface TaskTemplate {
   key: string;
+  id?: string;
   title: string;
   description: string;
   firstStep: string;
   /** Days from start until the main task is due. */
   dueInDays: number;
   subtasks: TemplateSubtask[];
+  isActive?: boolean;
+}
+
+export interface TaskTemplateRecord {
+  id: string;
+  title: string;
+  description: string;
+  first_step: string;
+  due_in_days: number;
+  subtasks: unknown;
+  is_active: boolean;
+}
+
+export function taskTemplateFromRecord(record: TaskTemplateRecord): TaskTemplate {
+  const rows = Array.isArray(record.subtasks) ? record.subtasks : [];
+  return {
+    key: record.id,
+    id: record.id,
+    title: record.title,
+    description: record.description,
+    firstStep: record.first_step,
+    dueInDays: record.due_in_days,
+    isActive: record.is_active,
+    subtasks: rows.flatMap((value) => {
+      if (!value || typeof value !== "object") return [];
+      const row = value as Record<string, unknown>;
+      return typeof row.title === "string" && Number.isInteger(row.offsetDays)
+        ? [{ title: row.title, offsetDays: Number(row.offsetDays) }]
+        : [];
+    }),
+  };
+}
+
+export function validateTaskTemplate(template: Pick<TaskTemplate, "title" | "firstStep" | "dueInDays" | "subtasks">): string | null {
+  if (template.title.trim().length < 2 || template.firstStep.trim().length < 2) return "Titel und erster Schritt sind erforderlich.";
+  if (!Number.isInteger(template.dueInDays) || template.dueInDays < 0 || template.dueInDays > 365) return "Die Gesamtfrist muss zwischen 0 und 365 Tagen liegen.";
+  if (template.subtasks.length > 30) return "Höchstens 30 Unteraufgaben sind erlaubt.";
+  if (template.subtasks.some((step) => step.title.trim().length < 2 || !Number.isInteger(step.offsetDays) || step.offsetDays < 0 || step.offsetDays > 365)) {
+    return "Jede Unteraufgabe benötigt Titel und eine Frist zwischen 0 und 365 Tagen.";
+  }
+  return null;
 }
 
 export const TASK_TEMPLATES: TaskTemplate[] = [

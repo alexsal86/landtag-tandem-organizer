@@ -1,5 +1,12 @@
 # Roadmap Aufgaben
 
+# Aufgabenpakete im Automatisierungs-Hub (21.11.2026)
+- [x] Bürospezifische Paketverwaltung mit Rollenrechten, Standardpaketen und atomarer Ausführung in der Datenbank angelegt.
+- [x] Reiter „Aufgabenpakete“, Editor und Anwendung im Aufgaben-Vorlagendialog verbunden.
+- [x] Fristen-/Unteraufgabenregeln und Navigation: 27 gezielte Tests bestanden; keine neuen Buildfehler aus dieser Änderung.
+- [ ] Gesamtbuild weiterhin durch bereits bekannte Fehler in Kontakten, Jour fixe und Wahlforschung blockiert.
+- [ ] Angemeldeten Gesamtablauf prüfen — externe Supabase-Testsitzung nicht verfügbar.
+
 # Super-Admin: Wahldaten- und Mandatswerkbank (16.11.2026)
 - [ ] Periodenstammdaten als kompakte Tabelle mit Vollständigkeitszählern und Inline-Bearbeitung.
 - [ ] Wahlkreise, Mandate und Kandidaturen der ausgewählten Legislaturperiode als tabellarische Pflegegrids mit Datenqualitätshinweisen.

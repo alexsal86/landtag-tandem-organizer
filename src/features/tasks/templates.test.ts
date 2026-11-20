@@ -1,5 +1,5 @@
 import { describe, expect, it } from "vitest";
-import { TASK_TEMPLATES, buildTemplateRows, nextRecurrenceDate, subtaskProgress } from "./templates";
+import { TASK_TEMPLATES, buildTemplateRows, nextRecurrenceDate, subtaskProgress, taskTemplateFromRecord, validateTaskTemplate } from "./templates";
 
 describe("recurrence", () => {
   it("weekly adds 7 days", () => expect(nextRecurrenceDate("2026-11-07", "weekly")).toBe("2026-11-14"));
@@ -22,6 +22,16 @@ describe("templates", () => {
   it("kleine Anfrage includes the 21-day answer check", () => {
     const t = TASK_TEMPLATES.find((x) => x.key === "kleine-anfrage")!;
     expect(t.subtasks.some((s) => s.title.includes("21 Tage"))).toBe(true);
+  });
+  it("maps managed packages and enforces the 365-day limit", () => {
+    const t = taskTemplateFromRecord({ id: "db-1", title: "Haushalt", description: "", first_step: "Entwurf", due_in_days: 365, is_active: true, subtasks: [{ title: "Stellungnahme", offsetDays: 30 }] });
+    expect(t.id).toBe("db-1");
+    expect(validateTaskTemplate(t)).toBeNull();
+    expect(validateTaskTemplate({ ...t, dueInDays: 366 })).toContain("365");
+  });
+  it("rejects empty subtask titles and more than 30 steps", () => {
+    expect(validateTaskTemplate({ ...TASK_TEMPLATES[0], subtasks: [{ title: "", offsetDays: 1 }] })).toContain("Titel");
+    expect(validateTaskTemplate({ ...TASK_TEMPLATES[0], subtasks: Array.from({ length: 31 }, () => ({ title: "Schritt", offsetDays: 1 })) })).toContain("30");
   });
 });
 

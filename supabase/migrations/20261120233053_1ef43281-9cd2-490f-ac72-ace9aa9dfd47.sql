@@ -1,0 +1,4 @@
+DROP POLICY "Büroleitung verwaltet Aufgabenpakete" ON public.task_templates;
+CREATE POLICY "Büroleitung erstellt Aufgabenpakete" ON public.task_templates FOR INSERT TO authenticated WITH CHECK (public.is_tenant_admin(auth.uid(),tenant_id));
+CREATE POLICY "Büroleitung ändert Aufgabenpakete" ON public.task_templates FOR UPDATE TO authenticated USING (public.is_tenant_admin(auth.uid(),tenant_id)) WITH CHECK (public.is_tenant_admin(auth.uid(),tenant_id));
+CREATE POLICY "Büroleitung löscht Aufgabenpakete" ON public.task_templates FOR DELETE TO authenticated USING (public.is_tenant_admin(auth.uid(),tenant_id));

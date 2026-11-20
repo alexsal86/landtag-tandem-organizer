@@ -1,5 +1,5 @@
 import { canNudge, checklistEvents, isNudgeActive, shiftDay, isReminderDue, groupByZone, isOnResubmission, stafetteEvents, taskZone, type StafetteTask } from "@/features/tasks/stafette";
-import { TASK_TEMPLATES, buildTemplateRows, nextRecurrenceDate, subtaskProgress } from "@/features/tasks/templates";
+import { TASK_TEMPLATES, buildTemplateRows, nextRecurrenceDate, subtaskProgress, validateTaskTemplate } from "@/features/tasks/templates";
 import type { TestScenario } from "../types";
 
 const NOW = new Date(2026, 10, 7, 12);
@@ -84,6 +84,16 @@ export const taskStafetteLifecycleScenario: TestScenario = {
       run: async () => {
         const ok = nextRecurrenceDate("2026-11-07", "weekly") === "2026-11-14" && nextRecurrenceDate("2026-11-07", "quarterly") === "2027-02-07";
         return { ok, message: ok ? "Wiederholungsregeln korrekt." : "Wiederholung weicht ab." };
+      },
+    },
+    {
+      id: "template-validation", label: "Aufgabenpakete: Fristen und Unteraufgaben verbindlich", kind: "logic",
+      run: async () => {
+        const template = TASK_TEMPLATES[0];
+        const ok = validateTaskTemplate(template) === null
+          && validateTaskTemplate({ ...template, dueInDays: 366 }) !== null
+          && validateTaskTemplate({ ...template, subtasks: [{ title: "", offsetDays: 1 }] }) !== null;
+        return { ok, message: ok ? "Paketregeln korrekt." : "Paketvalidierung weicht ab." };
       },
     },
     {

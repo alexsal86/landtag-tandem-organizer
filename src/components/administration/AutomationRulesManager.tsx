@@ -76,6 +76,7 @@ import { useAutomationAdminMutations, useAutomationMembershipRole, useAutomation
 import type { AutomationRuleRecordView as RuleRow, AutomationRunRecordView as RunRow } from "./automationShared";
 import { notify } from "@/lib/notify";
 import { AnnualRoutinesOverview } from "./AnnualRoutinesOverview";
+import { TaskPackageManager } from "./TaskPackageManager";
 import { annualRoutineAction, validateAnnualRoutine } from "@/features/automation/annualRoutines";
 import { isCalendarSchedule, nextCalendarOccurrence, validateCalendarSchedule } from "@/features/automation/calendarSchedule";
 
@@ -87,7 +88,7 @@ export function AutomationRulesManager() {
   const tab = automationTabFromParams(new URLSearchParams(location.search));
   const changeTab = (value: string) => {
     const params = new URLSearchParams(location.search);
-    params.set("automationTab", value === "history" || value === "dispatcher" || value === "annual" ? value : "rules");
+    params.set("automationTab", value === "history" || value === "dispatcher" || value === "annual" || value === "packages" ? value : "rules");
     navigate({ pathname: location.pathname, search: params.toString() });
   };
 
@@ -106,6 +107,7 @@ export function AutomationRulesManager() {
         <TabsList aria-label="Regeln und Workflows" className={styles.tabs}>
           <TabsTrigger value="rules" className={styles.tab}>Regeln</TabsTrigger>
           <TabsTrigger value="annual" className={styles.tab}>Jahresroutinen</TabsTrigger>
+          <TabsTrigger value="packages" className={styles.tab}>Aufgabenpakete</TabsTrigger>
           <TabsTrigger value="history" className={styles.tab}>Ausführungshistorie</TabsTrigger>
           <TabsTrigger value="dispatcher" className={styles.tab}>Dispatcher</TabsTrigger>
         </TabsList>
@@ -115,6 +117,7 @@ export function AutomationRulesManager() {
       <TabsContent value="rules"><AutomationRulesContent view="rules" onShowHistory={showHistory} /></TabsContent>
       <TabsContent value="history"><AutomationRulesContent view="history" onShowHistory={showHistory} /></TabsContent>
       <TabsContent value="annual"><AutomationRulesContent view="annual" onShowHistory={showHistory} /></TabsContent>
+      <TabsContent value="packages"><TaskPackageManager /></TabsContent>
       <TabsContent value="dispatcher">
         <Suspense fallback={<LoadingState variant="list" rows={3} />}><WorkflowEngineManager /></Suspense>
       </TabsContent>

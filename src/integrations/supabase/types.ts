@@ -14971,6 +14971,56 @@ export type Database = {
         }
         Relationships: []
       }
+      task_templates: {
+        Row: {
+          created_at: string
+          created_by: string | null
+          description: string
+          due_in_days: number
+          first_step: string
+          id: string
+          is_active: boolean
+          subtasks: Json
+          tenant_id: string
+          title: string
+          updated_at: string
+        }
+        Insert: {
+          created_at?: string
+          created_by?: string | null
+          description?: string
+          due_in_days?: number
+          first_step: string
+          id?: string
+          is_active?: boolean
+          subtasks?: Json
+          tenant_id: string
+          title: string
+          updated_at?: string
+        }
+        Update: {
+          created_at?: string
+          created_by?: string | null
+          description?: string
+          due_in_days?: number
+          first_step?: string
+          id?: string
+          is_active?: boolean
+          subtasks?: Json
+          tenant_id?: string
+          title?: string
+          updated_at?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "task_templates_tenant_id_fkey"
+            columns: ["tenant_id"]
+            isOneToOne: false
+            referencedRelation: "tenants"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
       task_topics: {
         Row: {
           created_at: string
@@ -17227,6 +17277,10 @@ export type Database = {
         Args: { p_guess: number; p_quiz: string; p_tenant: string }
         Returns: Json
       }
+      apply_task_template: {
+        Args: { _start_date?: string; _template_id: string }
+        Returns: string
+      }
       apply_verified_election_period: {
         Args: { period_number_to_apply: number }
         Returns: Json
@@ -17666,6 +17720,7 @@ export type Database = {
         }
         Returns: undefined
       }
+      delete_task_template: { Args: { _id: string }; Returns: undefined }
       delete_team_fun_facts: { Args: { p_tenant: string }; Returns: undefined }
       delete_weekly_answer: {
         Args: { p_tenant: string; p_week: string }
@@ -19029,6 +19084,19 @@ export type Database = {
           p_name: string
           p_region_kind?: string
           p_tenant: string
+        }
+        Returns: string
+      }
+      save_task_template: {
+        Args: {
+          _description: string
+          _due_in_days: number
+          _first_step: string
+          _id: string
+          _is_active: boolean
+          _subtasks: Json
+          _tenant_id: string
+          _title: string
         }
         Returns: string
       }
