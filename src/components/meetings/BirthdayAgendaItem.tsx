@@ -184,7 +184,7 @@ export function BirthdayAgendaItem({
     if (loading || !onDescriptionChange) return;
     const names = contacts.map(contact => contact.name);
     const list = new Intl.ListFormat("de", { type: "conjunction" }).format(names);
-    onDescriptionChange(names.length ? `${list} ${names.length === 1 ? "hat" : "haben"} Geburtstag` : "");
+    onDescriptionChange(names.length ? `${list} ${names.length === 1 ? "hat" : "haben"} Geburtstag` : "Kein Geburtstag im Zeitraum");
   }, [contacts, loading, onDescriptionChange]);
 
   const toggleAction = (

@@ -19,6 +19,7 @@ import { AgendaSystemRow } from "./agenda-editor/AgendaSystemRow";
 import { AddAgendaMenu } from "./agenda-editor/AddAgendaMenu";
 import { agendaItemKey, resolveAgendaDrop } from "./agenda-editor/agendaDrop";
 import { agendaTiming } from "./agenda-editor/agendaTiming";
+import { systemAgendaOption } from "./systemAgendaRegistry";
 import type { SystemAgendaType } from "@/components/meetings/types";
 import { debugConsole } from "@/utils/debugConsole";
 import { useState, useEffect, useRef, useCallback } from "react";
@@ -188,50 +189,48 @@ export function AgendaEditorPanel({
         `${count}× ${profiles.find(profile => profile.user_id === id)?.display_name || "Unbekannte Person"}`),
     ].join(" · ");
   };
-  const notesDescription = countByPerson(
-    meetingNotes.length === 1 ? "1 Notiz" : `${meetingNotes.length} Notizen`,
-    meetingNotes.map(note => note.user_id),
-  );
-  const prefilledNotes = useRef(new Set<string>());
   const taskCount = meetingLinkedTasks.length;
   const caseCount = meetingLinkedCaseItems.length;
   const decisionCount = meetingRelevantDecisions.filter(decision => decision.status === "active").length;
   const descriptions: Partial<Record<SystemAgendaType, string>> = {
-    tasks: countByPerson(taskCount === 1 ? "1 Aufgabe" : `${taskCount} Aufgaben`,
+    quick_notes: countByPerson(
+      meetingNotes.length === 0 ? "Keine Notiz vorhanden" : meetingNotes.length === 1 ? "1 Notiz" : `${meetingNotes.length} Notizen`,
+      meetingNotes.map(note => note.user_id),
+    ),
+    tasks: countByPerson(taskCount === 0 ? "Keine Aufgabe vorhanden" : taskCount === 1 ? "1 Aufgabe" : `${taskCount} Aufgaben`,
       meetingLinkedTasks.map(task => task.assigned_to)),
-    case_items: countByPerson(caseCount === 1 ? "1 Vorgang" : `${caseCount} Vorgänge`,
+    case_items: countByPerson(caseCount === 0 ? "Kein Vorgang vorhanden" : caseCount === 1 ? "1 Vorgang" : `${caseCount} Vorgänge`,
       meetingLinkedCaseItems.map(item => item.owner_user_id)),
-    decisions: decisionCount === 1 ? "1 Entscheidung steht aus" : `${decisionCount} Entscheidungen stehen aus`,
+    decisions: decisionCount === 0
+      ? "Keine Entscheidung steht aus"
+      : decisionCount === 1 ? "1 Entscheidung steht aus" : `${decisionCount} Entscheidungen stehen aus`,
   };
   const descriptionFor = (item: AgendaItem, index: number) => {
-    if (item.system_type === "quick_notes") {
-      return item.description?.trim() || (prefilledNotes.current.has(item.id ?? "") ? undefined : notesDescription);
-    }
-    if (item.description != null || !item.system_type) return item.description ?? undefined;
+    const type = item.system_type as SystemAgendaType | undefined;
+    if (!type) return item.description ?? undefined;
+
+    const description = stripHtml(item.description ?? "");
+    // Earlier versions stored the generated note summary in the description.
+    const legacyNoteSummary = type === "quick_notes" &&
+      /^\d+ Notiz(?:en)?(?:(?: · |\. )\d+× .+)+$/.test(description);
+    if (description && !legacyNoteSummary) return item.description ?? undefined;
+
     const key = getItemKey(item, index);
-    if (item.system_type === "upcoming_appointments") {
-      const count = live?.upcomingAppointments.length ?? systemCounts[key];
-      return count == null ? undefined : count === 1 ? "1 Termin" : `${count} Termine`;
+    const count = systemCounts[key];
+    if (type === "upcoming_appointments") {
+      const appointments = live?.upcomingAppointments.length ?? count;
+      if (appointments === 0) return "Kein Termin vorhanden";
+      if (appointments != null) return appointments === 1 ? "1 Termin" : `${appointments} Termine`;
     }
-    return descriptions[item.system_type as SystemAgendaType] ?? remoteDescriptions[`${selectedMeeting.id}:${key}`];
+
+    return descriptions[type] ?? remoteDescriptions[`${selectedMeeting.id}:${key}`]
+      ?? (count === 0 ? systemAgendaOption(type)?.emptyDescription : undefined);
   };
   const change = (index: number, field: keyof AgendaItem, value: unknown) => {
     if (!hasEditPermission) return;
     setDirty(true);
     onUpdateAgendaItem(index, field, value);
   };
-  useEffect(() => {
-    if (!hasEditPermission || !meetingNotes.length) return;
-    agendaItems.forEach((item, index) => {
-      if (item.system_type !== "quick_notes" || !item.id || prefilledNotes.current.has(item.id)) return;
-      const legacySummary = notesDescription.replaceAll(" · ", ". ");
-      const existing = item.description?.trim();
-      if (existing && existing !== legacySummary) return;
-      prefilledNotes.current.add(item.id);
-      onUpdateAgendaItem(index, "description", notesDescription);
-    });
-  }, [agendaItems, hasEditPermission, meetingNotes.length, notesDescription, onUpdateAgendaItem]);
-
   useEffect(() => {
     setSaved(false);
     setSelectedKey(null);

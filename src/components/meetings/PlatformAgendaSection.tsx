@@ -79,12 +79,12 @@ export function PlatformAgendaSection({
     if (!onDescriptionChange || !query.data) return;
     if (type === "redaktion") {
       const pending = query.data.filter(entry => entry.approval === "social").length;
-      onDescriptionChange(pending === 1 ? "1 Freigabe steht aus" : `${pending} Freigaben stehen aus`);
+      onDescriptionChange(pending === 0 ? "Keine Freigabe steht aus" : pending === 1 ? "1 Freigabe steht aus" : `${pending} Freigaben stehen aus`);
     } else if (type === "leave_requests") {
       const absences = new Set(query.data.map(entry => entry.deputyName
         ? `${entry.title} ist abwesend und wird vertreten durch ${entry.deputyName}`
         : `${entry.title} ist abwesend · keine Vertretung eingetragen`));
-      onDescriptionChange([...absences].join(" · "));
+      onDescriptionChange(absences.size ? [...absences].join(" · ") : "Keine Abwesenheit im Zeitraum");
     }
   }, [type, query.data, onDescriptionChange]);
   const navigate = useNavigate();
