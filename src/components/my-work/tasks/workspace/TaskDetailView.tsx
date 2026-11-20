@@ -100,7 +100,7 @@ export function TaskDetailView({ task, profiles, decisionLabel, onSave, onComple
 
   return (
     <div className="grid min-h-0 min-w-0 flex-1 auto-rows-max grid-cols-1  min-[1440px]:grid-cols-[minmax(0,1fr)_300px] min-[1440px]:auto-rows-auto ">
-      <main aria-label="Aufgabendetails" className="min-h-0 min-w-0 space-y-5 bg-[#f4f6f4] p-6 [&>section]:rounded-xl [&>section]:bg-card [&>section]:p-4 [&>section]:space-y-3 dark:bg-muted/30 ">
+      <main aria-label="Aufgabendetails" className="min-h-0 min-w-0 space-y-5 bg-white p-6 dark:bg-card [&>section]:p-4 [&>section]:space-y-3 [&_input]:border-0 [&_input]:bg-transparent [&_textarea]:border-0 [&_textarea]:bg-transparent [&_[role=combobox]]:border-0 [&_[role=combobox]]:bg-transparent">
         <div className="space-y-2">
           <div className="flex items-start justify-between gap-3">
             <h2 className="break-words text-2xl font-bold leading-tight tracking-tight">{task.title}</h2>
@@ -115,7 +115,7 @@ export function TaskDetailView({ task, profiles, decisionLabel, onSave, onComple
         </div>
 
         {nudgeForMe && (
-          <section className="rounded-lg border-2 border-primary bg-primary/10 p-4 space-y-3" role="alert">
+          <section className="space-y-3" role="alert">
             <div className="flex items-center gap-2 text-body font-medium">
               <BellRing className="h-4 w-4 text-primary" />
               {nameOf(task.nudged_by) ?? "Jemand"} hat dich angestupst
@@ -134,7 +134,7 @@ export function TaskDetailView({ task, profiles, decisionLabel, onSave, onComple
         )}
 
         {pendingVote && (
-          <section className="rounded-lg border-2 border-primary p-4 space-y-3">
+          <section className="space-y-3">
             <div className="section-label flex items-center gap-2"><Gavel className="h-3.5 w-3.5" />Deine Stimme ist gefragt</div>
             <div className="text-body font-medium">{pendingVote.title}</div>
             <Input value={voteComment} onChange={(e) => setVoteComment(e.target.value)} placeholder="Kommentar (bei Rückfrage nötig)" className="h-8" />
@@ -149,7 +149,7 @@ export function TaskDetailView({ task, profiles, decisionLabel, onSave, onComple
           </section>
         )}
 
-        <section className="rounded-2xl border bg-card p-5 shadow-sm space-y-4">
+        <section className="space-y-4">
           <div className="section-label">Wer ist am Zug?</div>
           <div className="flex flex-wrap gap-2">
             {OWNERS.map((o) => (
@@ -210,7 +210,7 @@ export function TaskDetailView({ task, profiles, decisionLabel, onSave, onComple
 
         <TaskSubtasks taskId={task.id} tenantId={task.tenant_id} userId={meId} nameOf={nameOf} profiles={profiles} />
 
-        <section className="rounded-xl border bg-card p-4 space-y-3">
+        <section className="space-y-3">
           <div className="section-label flex items-center gap-2"><ListChecks className="h-3.5 w-3.5" />Checkliste{progress.total ? ` (${progress.done}/${progress.total})` : ""}</div>
           <ul className="space-y-1">
             {checklist.map((item) => (
@@ -241,7 +241,7 @@ export function TaskDetailView({ task, profiles, decisionLabel, onSave, onComple
           <ul className="space-y-2">
             {timeline.length === 0 && <li className="text-caption text-muted-foreground">Noch keine Einträge</li>}
             {timeline.map((e) => (
-              <li key={e.id} className={cn("rounded-xl border bg-card p-3 text-sm leading-relaxed", e.type === "system" ? "text-muted-foreground" : "text-foreground")}>
+              <li key={e.id} className={cn("p-3 text-sm leading-relaxed", e.type === "system" ? "text-muted-foreground" : "text-foreground")}>
                 <span className="tabular-nums">{new Date(e.at).toLocaleString("de-DE", { dateStyle: "short", timeStyle: "short" })}</span>
                 {e.actorName ? ` · ${e.actorName}` : ""}: {e.text}
               </li>

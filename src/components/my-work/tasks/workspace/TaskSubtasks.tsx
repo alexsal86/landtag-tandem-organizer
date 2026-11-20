@@ -54,7 +54,7 @@ export function TaskSubtasks({ taskId, tenantId, userId, profiles }: Props) {
   };
 
   return (
-    <section className="rounded-lg border p-md space-y-sm">
+    <section className="p-md space-y-sm">
       <div className="section-label flex items-center gap-xs">
         <CornerDownRight className="h-3.5 w-3.5" />Unteraufgaben{progress.total ? ` (${progress.done}/${progress.total})` : ""}
       </div>
