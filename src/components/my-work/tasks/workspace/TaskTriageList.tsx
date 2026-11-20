@@ -74,7 +74,7 @@ export function TaskTriageList({ resubmissionsOpen, onResubmissionsOpenChange, z
 
   return (
     <div className="flex h-full min-h-0 flex-col gap-2 p-3">
-      <div className="flex shrink-0 items-center gap-2 px-2 py-3">
+      <div className="flex shrink-0 items-center gap-2 px-2 pt-3">
         <Tooltip>
           <TooltipTrigger asChild>
             <Button size="icon" variant="ghost" onClick={onCreate} aria-label="Neue Aufgabe erstellen"><Plus /></Button>
@@ -103,14 +103,14 @@ export function TaskTriageList({ resubmissionsOpen, onResubmissionsOpenChange, z
         items={entries}
         estimateSize={64}
         getItemKey={(entry) => entry.key}
-        renderItem={({ key, title, count, item }) => {
+        renderItem={({ key, title, count, item }, index) => {
           if (!item && key === "resubmission") return (
-            <button type="button" onClick={() => onResubmissionsOpenChange(!resubmissionsOpen)} aria-expanded={resubmissionsOpen} className="flex w-full items-center gap-2 px-3 pb-2 pt-6 text-left text-sm font-semibold text-muted-foreground">
+            <button type="button" onClick={() => onResubmissionsOpenChange(!resubmissionsOpen)} aria-expanded={resubmissionsOpen} className={cn("flex w-full items-center gap-2 px-3 pb-2 text-left text-sm font-semibold text-muted-foreground", index === 0 ? "pt-1" : "pt-6")}>
               <ChevronDown className={cn("h-4 w-4", !resubmissionsOpen && "-rotate-90")} />
               Wiedervorlagen <span>{count}</span>
             </button>
           );
-          if (!item) return <div className={cn("px-3 pb-2 pt-6 text-sm font-semibold", key === "overdue" ? "text-destructive" : "text-muted-foreground")}>{title} <span className="ml-2">{count}</span></div>;
+          if (!item) return <div className={cn("px-3 pb-2 text-sm font-semibold", index === 0 ? "pt-1" : "pt-6", key === "overdue" ? "text-destructive" : "text-muted-foreground")}>{title} <span className="ml-2">{count}</span></div>;
           const { task, zone, due, group } = item;
           const days = due ? differenceInCalendarDays(today, due) : 0;
           const resubmission = !!snoozes[task.id] || zone === "resubmission";

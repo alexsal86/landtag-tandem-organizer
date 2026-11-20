@@ -193,7 +193,7 @@ export function TaskStafetteWorkspace({ userId, tasks, profiles, onReload, onCom
 
   return (
     <>
-      <div className="flex shrink-0 flex-wrap items-center gap-x-2 gap-y-2 border-y px-4 py-2">
+      <div className="flex shrink-0 flex-wrap items-center gap-x-2 gap-y-2 border-b px-4 py-2">
         <h2 className="text-base font-semibold">Aufgaben</h2>
         <div role="group" aria-label="Aufgaben filtern" className="flex flex-wrap items-center gap-1">
           {taskFilters.map((option) => (
