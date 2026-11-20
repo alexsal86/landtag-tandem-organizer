@@ -11,6 +11,7 @@ export interface AgendaItem {
   result_html?: string | null;
   carry_over_to_next?: boolean | null;
   order_index: number;
+  duration_minutes?: number | null;
   parent_id?: string | null;
   parentLocalKey?: string;
   localKey?: string;

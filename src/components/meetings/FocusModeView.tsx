@@ -24,7 +24,7 @@ import {
   AlertDialogTitle,
 } from '@/components/ui/alert-dialog';
 import { 
-  X, Keyboard, ChevronDown, ChevronUp, CheckCircle, 
+  Check, X, Keyboard, ChevronDown, ChevronUp, CheckCircle,
   ArrowUp, ArrowDown, CornerDownRight, StickyNote,
   Maximize2, Users, Archive, CalendarDays, ListTodo, Star, MessageSquarePlus, Scale
 } from 'lucide-react';
@@ -970,6 +970,12 @@ export function FocusModeView({
     );
   };
 
+  const focusedRoot = (() => {
+    const anchor = currentNavigable?.parentItem ?? currentItem;
+    const parentKey = anchor?.parentLocalKey || anchor?.parent_id;
+    return parentKey ? agendaItems.find((item) => item.id === parentKey || item.localKey === parentKey) : anchor;
+  })();
+
   return (
     <div className="fixed inset-0 z-50 bg-background flex flex-col">
       {/* Header */}
@@ -1004,12 +1010,46 @@ export function FocusModeView({
         </div>
       </div>
 
-      {/* Main content */}
-      <main ref={mainContainerRef} className="flex-1 overflow-auto py-8">
-        <div className="max-w-4xl mx-auto px-4 space-y-4">
-          {allNavigableItems.map((navigable, index) => renderNavigableItem(navigable, index))}
-        </div>
-      </main>
+      <div className="flex min-h-0 flex-1 flex-col md:flex-row">
+        <nav aria-label="Tagesordnung im Fokusmodus" className="max-h-48 shrink-0 overflow-y-auto border-b bg-[#f4f6f1] p-2 dark:bg-muted/30 md:max-h-none md:w-72 md:border-b-0 md:border-r lg:w-80">
+          <ol className="space-y-1">
+            {mainItems.map((item, index) => {
+              const active = Boolean(focusedRoot && (focusedRoot.localKey || focusedRoot.id) === (item.localKey || item.id));
+              const targetIndex = allNavigableItems.findIndex((entry) => !entry.isSubItem && entry.item === item);
+              return (
+                <li key={item.localKey || item.id || index}>
+                  <button
+                    type="button"
+                    aria-current={active ? "step" : undefined}
+                    disabled={targetIndex < 0}
+                    onClick={() => setFlatFocusIndex(targetIndex)}
+                    className={cn(
+                      "flex w-full items-center gap-3 rounded-2xl px-3 py-3 text-left text-sm text-muted-foreground transition-colors hover:bg-muted/60 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring",
+                      active && "bg-[#e9f4df] font-semibold text-foreground hover:bg-[#e9f4df] dark:bg-success/15",
+                    )}
+                  >
+                    <span className={cn(
+                      "grid size-7 shrink-0 place-items-center rounded-full bg-[#e3e8df] font-semibold text-foreground dark:bg-muted",
+                      item.is_completed && "bg-success text-white dark:bg-success",
+                    )}>
+                      {item.is_completed ? <Check className="size-4" aria-label="Erledigt" /> : index + 1}
+                    </span>
+                    <span className="min-w-0 flex-1 break-words">{item.title}</span>
+                    {item.duration_minutes != null && (
+                      <span className="shrink-0 tabular-nums">{item.duration_minutes}′</span>
+                    )}
+                  </button>
+                </li>
+              );
+            })}
+          </ol>
+        </nav>
+        <main ref={mainContainerRef} className="min-w-0 flex-1 overflow-auto py-8">
+          <div className="mx-auto max-w-4xl space-y-4 px-4">
+            {allNavigableItems.map((navigable, index) => renderNavigableItem(navigable, index))}
+          </div>
+        </main>
+      </div>
 
       {/* Navigation hint footer */}
       <footer className="border-t bg-card py-3">
