@@ -247,6 +247,7 @@ export function AgendaEditorPanel({
   );
   const expandableMain = agendaItems.filter(
     (item) =>
+      !item.system_type &&
       !item.parent_id &&
       !item.parentLocalKey &&
       agendaItems.some(
@@ -255,9 +256,7 @@ export function AgendaEditorPanel({
           (item.localKey && child.parentLocalKey === item.localKey),
       ),
   );
-  const systemItems = agendaItems.filter((item) =>
-    item.system_type && !["upcoming_appointments", "decisions", "redaktion"].includes(item.system_type),
-  );
+  const systemItems = agendaItems.filter((item) => item.system_type);
   const allCollapsed =
     expandableMain.length + systemItems.length > 0 &&
     expandableMain.every(
@@ -293,7 +292,8 @@ export function AgendaEditorPanel({
       (candidate) =>
         candidate.id === parentKey || candidate.localKey === parentKey,
     );
-    return !!collapsedMainItems[parent?.localKey || parent?.id || parentKey];
+    const key = parent?.localKey || parent?.id || parentKey;
+    return parent?.system_type ? systemExpanded[key] === false : !!collapsedMainItems[key];
   };
 
   const itemIsHidden = (item: AgendaItem, index: number) =>
@@ -688,6 +688,7 @@ export function AgendaEditorPanel({
                                     }))
                                   }
                                   editorRow
+                                  manualSubpointCount={getSubItemCount(item)}
                                   editorSelected={getItemKey(item, index) === (live ? currentLiveKey : selectedKey)}
                                   editorHasSelectedChild={hasSelectedChild(item)}
                                   editorLiveCurrent={isLiveCurrent(item)}

@@ -40,6 +40,7 @@ interface SystemAgendaItemProps {
   expandedOverride?: boolean;
   onExpandedChange?: (expanded: boolean) => void;
   editorRow?: boolean;
+  manualSubpointCount?: number;
   editorDetails?: ReactNode;
   editorLeading?: ReactNode;
   editorLive?: boolean;
@@ -106,6 +107,7 @@ export function SystemAgendaItem({
   expandedOverride,
   onExpandedChange,
   editorRow = false,
+  manualSubpointCount = 0,
   editorDetails,
   editorLeading,
   editorLive = false,
@@ -723,6 +725,10 @@ export function SystemAgendaItem({
     return null;
   };
   if (!editorRow) return renderBody();
+  const subpointCount = (count ?? 0) + manualSubpointCount;
+  const subpointLabel = count === null && subpointCount === 0
+    ? null
+    : `${subpointCount} ${subpointCount === 1 ? "Unterpunkt" : "Unterpunkte"}`;
   const Icon = systemAgendaOption(systemType)?.Icon;
   const description = stripHtml(editorDescription ?? "");
   return (
@@ -782,7 +788,7 @@ export function SystemAgendaItem({
             {description && <p className="col-span-2 truncate text-xs leading-4 text-muted-foreground">{description}</p>}
           </div>
         </div>
-        {!showDirectSubpoints && !editorLive && (
+        {!editorLive && (
           <Button
             size="sm"
             variant="ghost"
@@ -799,9 +805,10 @@ export function SystemAgendaItem({
             ) : (
               <ChevronRight className="h-4 w-4" />
             )}
-            {typeof count === "number" && `${count} ${count === 1 ? "Eintrag" : "Einträge"}`}
+            {subpointLabel}
           </Button>
         )}
+        {editorLive && subpointLabel && <span className="text-xs text-muted-foreground">{subpointLabel}</span>}
         {onDelete && (
           <Button
             size="icon"
@@ -818,7 +825,7 @@ export function SystemAgendaItem({
       {editorLive ? (
         <div hidden={!expanded}>{editorLiveContent ?? renderBody()}</div>
       ) : (
-        <div hidden={!showDirectSubpoints && (!expanded || count === 0)} className={showFullWidthSubpoints ? undefined : "px-3 pb-2"}>
+        <div hidden={!expanded || count === 0} className={showFullWidthSubpoints ? undefined : "px-3 pb-2"}>
           {renderBody()}
         </div>
       )}
