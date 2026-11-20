@@ -1,3 +1,4 @@
+import { liveAgendaPosition } from "@/components/meetings/agenda-editor/liveAgenda";
 import { resolveAgendaDrop } from "@/components/meetings/agenda-editor/agendaDrop";
 import { protocolTaskProgress, protocolTaskStatus } from "@/features/meetings/protocolTasks";
 import { SYSTEM_AGENDA_OPTIONS } from "@/components/meetings/systemAgendaRegistry";
@@ -491,6 +492,23 @@ export const meetingLifecycleScenario: TestScenario = {
           agenda.data.some((item) => item.parent_id && item.icon_config === null) &&
           agenda.data.some((item) => item.system_type === "quick_notes" && item.icon_config === null));
         return { ok, message: ok ? "Nur der freie Hauptpunkt übernimmt das Symbol." : "Die Symbolübernahme stimmt nicht." };
+      },
+    },
+    {
+      id: "live-agenda-position",
+      label: "Position der laufenden Tagesordnung bestimmen",
+      kind: "logic",
+      run: async () => {
+        const items = [
+          { id: "a", title: "Begrüßung", is_completed: true },
+          { id: "b", title: "Rückblick", is_completed: false },
+          { id: "c", title: "Planung", is_completed: false },
+        ].map((item, order_index) => ({ ...item, order_index, is_recurring: false }));
+        const ok = liveAgendaPosition(items) === 1 &&
+          liveAgendaPosition(items, "c") === 2 &&
+          liveAgendaPosition(items, "a") === 0 &&
+          liveAgendaPosition([]) === -1;
+        return { ok, message: ok ? "Start und Navigation liefern die erwarteten Hauptpunkte." : "Die Live-Position stimmt nicht." };
       },
     },
     {

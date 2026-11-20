@@ -41,7 +41,6 @@ export function useMeetingsData() {
   const [meetings, setMeetings] = useState<Meeting[]>([]);
   const [selectedMeeting, setSelectedMeeting] = useState<Meeting | null>(null);
   const [agendaItems, setAgendaItems] = useState<AgendaItem[]>([]);
-  const [activeMeetingItems, setActiveMeetingItems] = useState<AgendaItem[]>([]);
   const [profiles, setProfiles] = useState<Profile[]>([]);
   const [tasks, setTasks] = useState<LinkedTask[]>([]);
   const [taskDocuments, setTaskDocuments] = useState<Record<string, AgendaDocument[]>>({});
@@ -69,7 +68,6 @@ export function useMeetingsData() {
   const [activeMeeting, setActiveMeeting] = useState<Meeting | null>(null);
   const [activeMeetingId, setActiveMeetingId] = useState<string | null>(null);
   const [showArchive, setShowArchive] = useState(false);
-  const [isFocusMode, setIsFocusMode] = useState(false);
   const [archivedMeetingId, setArchivedMeetingId] = useState<string | null>(null);
   const [meetingParticipants, setMeetingParticipants] = useState<MeetingParticipant[]>([]);
   const [currentUserIsParticipant, setCurrentUserIsParticipant] = useState(false);
@@ -172,7 +170,7 @@ export function useMeetingsData() {
   const prevSelectedMeetingIdRef = useRef<string | null>(null);
   useEffect(() => {
     const meetingId = selectedMeeting?.id ?? null;
-    if (!meetingId || activeMeeting || meetingId === prevSelectedMeetingIdRef.current) return;
+    if (!meetingId || meetingId === prevSelectedMeetingIdRef.current) return;
     prevSelectedMeetingIdRef.current = meetingId;
     loadLinkedQuickNotes(meetingId);
     loadMeetingLinkedTasks(meetingId);
@@ -183,7 +181,6 @@ export function useMeetingsData() {
   }, [
     selectedMeeting?.id,
     selectedMeeting?.meeting_date,
-    activeMeeting,
     loadLinkedQuickNotes,
     loadMeetingLinkedTasks,
     loadMeetingLinkedCaseItems,
@@ -228,22 +225,6 @@ export function useMeetingsData() {
     };
     if (tasks.length > 0) syncTaskChanges();
   }, [tasks]);
-
-  // Sync activeMeetingItems
-  useEffect(() => {
-    if (activeMeeting) {
-      setActiveMeetingItems([...agendaItems]);
-    } else {
-      setActiveMeetingItems([]);
-    }
-  }, [agendaItems, activeMeeting]);
-
-  // Force re-render on agenda changes during active meeting
-  useEffect(() => {
-    if (activeMeeting && agendaItems.length >= 0) {
-      setActiveMeeting(prev => prev ? {...prev, lastUpdate: Date.now()} : prev);
-    }
-  }, [agendaItems, activeMeeting?.id]);
 
   // Check participation
   useEffect(() => {
@@ -479,29 +460,14 @@ export function useMeetingsData() {
 
   // ========== Meeting CRUD ==========
 
-  const startMeeting = async (meeting: Meeting) => {
-    if (activeMeetingId && activeMeetingId !== meeting.id) {
-      setActiveMeeting(null);
-      setActiveMeetingId(null);
-      sidebar.setLinkedQuickNotes([]);
-    }
+  const startMeeting = (meeting: Meeting) => {
     setActiveMeeting(meeting);
     setActiveMeetingId(meeting.id || null);
-    if (meeting.id) {
-      await loadAgendaItems(meeting.id);
-      await sidebar.loadLinkedQuickNotes(meeting.id);
-      await sidebar.loadMeetingLinkedTasks(meeting.id);
-      await sidebar.loadMeetingLinkedCaseItems(meeting.id);
-      await sidebar.loadMeetingRelevantDecisions();
-      await sidebar.loadMeetingUpcomingAppointments(meeting.id, meeting.meeting_date);
-      await sidebar.loadStarredAppointments(meeting.id);
-    }
   };
 
   const stopMeeting = () => {
     setActiveMeeting(null);
     setActiveMeetingId(null);
-    sidebar.setLinkedQuickNotes([]);
   };
 
   const updateMeeting = async (meetingId: string, updates: Partial<Meeting>, meetingTimeOverride?: string) => {
@@ -603,7 +569,6 @@ export function useMeetingsData() {
     meetings, setMeetings,
     selectedMeeting, setSelectedMeeting,
     agendaItems, setAgendaItems,
-    activeMeetingItems, setActiveMeetingItems,
     profiles,
     tasks,
     taskDocuments,
@@ -626,11 +591,8 @@ export function useMeetingsData() {
     activeMeeting, setActiveMeeting,
     activeMeetingId, setActiveMeetingId,
     showArchive, setShowArchive,
-    isFocusMode, setIsFocusMode,
     archivedMeetingId, setArchivedMeetingId,
     starredAppointmentIds: sidebar.starredAppointmentIds,
-    expandedApptNotes: sidebar.expandedApptNotes,
-    setExpandedApptNotes: sidebar.setExpandedApptNotes,
     showCarryoverBuffer, setShowCarryoverBuffer,
     carryoverBufferItems,
     hasEditPermission,

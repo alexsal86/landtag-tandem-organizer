@@ -10,7 +10,7 @@ type ArchiveDeps = Pick<MeetingsDataReturn,
   'user' | 'currentTenant' | 'toast' | 'profiles' | 'linkedQuickNotes' | 'meetingLinkedCaseItems' |
   'loadMeetings' | 'loadCarryoverBufferItems' | 'loadAgendaItems' |
   'setActiveMeeting' | 'setActiveMeetingId' | 'setAgendaItems' | 'setLinkedQuickNotes' |
-  'setSelectedMeeting' | 'setIsFocusMode' | 'setArchivedMeetingId' | 'agendaItems' | 'updateTimeouts'
+  'setSelectedMeeting' | 'setArchivedMeetingId' | 'agendaItems' | 'updateTimeouts'
 >;
 
 export const mapBirthdayAssignedToValue = (
@@ -32,7 +32,7 @@ export function useMeetingArchive(deps: ArchiveDeps) {
     user, currentTenant, toast, profiles, linkedQuickNotes, meetingLinkedCaseItems,
     loadMeetings, loadCarryoverBufferItems, loadAgendaItems,
     setActiveMeeting, setActiveMeetingId, setAgendaItems, setLinkedQuickNotes,
-    setSelectedMeeting, setIsFocusMode, setArchivedMeetingId, agendaItems, updateTimeouts,
+    setSelectedMeeting, setArchivedMeetingId, agendaItems, updateTimeouts,
   } = deps;
 
   const ensureReviewParentItem = async (meetingId: string) => {
@@ -230,7 +230,6 @@ export function useMeetingArchive(deps: ArchiveDeps) {
       setAgendaItems([]);
       setLinkedQuickNotes([]);
       setSelectedMeeting(null);
-      setIsFocusMode(false);
 
       await loadMeetings();
       

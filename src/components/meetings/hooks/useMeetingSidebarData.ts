@@ -43,7 +43,6 @@ export function useMeetingSidebarData(deps: UseMeetingSidebarDataDeps) {
   const [meetingLinkedCaseItems, setMeetingLinkedCaseItems] = useState<LinkedCaseItem[]>([]);
   const [meetingUpcomingAppointments, setMeetingUpcomingAppointments] = useState<MeetingUpcomingAppointment[]>([]);
   const [starredAppointmentIds, setStarredAppointmentIds] = useState<Set<string>>(new Set());
-  const [expandedApptNotes, setExpandedApptNotes] = useState<Set<string>>(new Set());
   const [loadingCounter, setLoadingCounter] = useState(0);
   const updateTimeouts = useRef<Record<string, NodeJS.Timeout>>({});
 
@@ -344,8 +343,6 @@ export function useMeetingSidebarData(deps: UseMeetingSidebarDataDeps) {
     meetingLinkedCaseItems,
     meetingUpcomingAppointments,
     starredAppointmentIds,
-    expandedApptNotes,
-    setExpandedApptNotes,
     isMeetingLinkedDataLoading: loadingCounter > 0,
     // Functions (all stable via useCallback)
     loadLinkedQuickNotes,

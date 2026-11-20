@@ -1,3 +1,9 @@
+import { Textarea } from "@/components/ui/textarea";
+import { LiveAgendaNavigation } from "./agenda-editor/LiveAgendaNavigation";
+import { LiveAgendaResult } from "./agenda-editor/LiveAgendaResult";
+import { liveAgendaPosition } from "./agenda-editor/liveAgenda";
+import { LiveAgendaSystemContent, liveAgendaSystemTypes, type LiveAgendaSystemData } from "./LiveAgendaSystemContent";
+import type { AgendaResult } from "./AgendaResultEditor";
 import { PencilSparkles } from "@/components/icons/PencilSparkles";
 import { AgendaReadyBanner } from "./agenda-editor/AgendaReadyBanner";
 import { AgendaCompletionCheckbox, AgendaRowDetails } from "./agenda-editor/AgendaRowDetails";
@@ -10,7 +16,7 @@ import { agendaItemKey, resolveAgendaDrop } from "./agenda-editor/agendaDrop";
 import { agendaTiming } from "./agenda-editor/agendaTiming";
 import type { SystemAgendaType } from "@/components/meetings/types";
 import { debugConsole } from "@/utils/debugConsole";
-import { useState, useEffect } from "react";
+import { useState, useEffect, useRef } from "react";
 import { Button } from "@/components/ui/button";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Badge } from "@/components/ui/badge";
@@ -57,6 +63,13 @@ interface AgendaEditorPanelProps {
   onSetShowTaskSelector: (v: { itemIndex: number } | null) => void;
   onAddAgendaItem: () => void;
   onStartMeeting?: () => void;
+  live?: LiveAgendaSystemData & {
+    currentKey: string | null;
+    onPositionChange: (key: string) => void;
+    onStop: () => void;
+    onArchive: () => Promise<void>;
+    onUpdateResult: (itemId: string, field: "result_text" | "agenda_result" | "carry_over_to_next", value: unknown) => void;
+  };
   onOpenCarryover?: () => void;
   onAddSystemAgendaItem: (
     systemType: SystemAgendaType,
@@ -105,6 +118,7 @@ export function AgendaEditorPanel({
   onSetShowTaskSelector,
   onAddAgendaItem,
   onStartMeeting,
+  live,
   onOpenCarryover,
   onAddSystemAgendaItem,
   onUpdateAgendaItem,
@@ -126,6 +140,7 @@ export function AgendaEditorPanel({
   const [dirty, setDirty] = useState(false);
   const [saved, setSaved] = useState(false);
   const [saving, setSaving] = useState(false);
+  const [archiving, setArchiving] = useState(false);
   const saveAgenda = async () => {
     setSaving(true);
     try {
@@ -163,6 +178,39 @@ export function AgendaEditorPanel({
     setSystemCounts({});
   }, [selectedMeeting.id]);
   const timing = agendaTiming(agendaItems, selectedMeeting.meeting_time);
+  const agendaList = useRef<HTMLDivElement>(null);
+  const livePosition = live ? liveAgendaPosition(timing.main, live.currentKey) : -1;
+  const liveItem = timing.main[livePosition];
+  const currentLiveKey = liveItem ? liveItem.localKey || liveItem.id : undefined;
+  const isLiveCurrent = (item: AgendaItem) => Boolean(currentLiveKey && (item.localKey || item.id) === currentLiveKey);
+  const isLiveGroup = (item: AgendaItem) => isLiveCurrent(item) || Boolean(
+    (liveItem?.id && item.parent_id === liveItem.id) ||
+    (liveItem?.localKey && item.parentLocalKey === liveItem.localKey),
+  );
+  const selectLiveItem = (item?: AgendaItem) => {
+    if (!item) return;
+    const key = item.localKey || item.id;
+    if (!key || !live) return;
+    live.onPositionChange(key);
+    setSelectedKey(key);
+  };
+  const setLivePositionKey = live?.onPositionChange;
+  useEffect(() => {
+    if (!currentLiveKey) return;
+    setLivePositionKey?.(currentLiveKey);
+    setSelectedKey(currentLiveKey);
+    const frame = requestAnimationFrame(() => {
+      agendaList.current?.querySelector("[data-live-agenda-current]")?.scrollIntoView({ block: "nearest" });
+    });
+    return () => cancelAnimationFrame(frame);
+  }, [currentLiveKey, setLivePositionKey]);
+
+  const saveLiveResult = (item: AgendaItem, index: number, result: AgendaResult) => {
+    setDirty(true);
+    if (item.id && live) live.onUpdateResult(item.id, "agenda_result", result);
+    else onSetAgendaItems((items) => items.map((entry, itemIndex) => itemIndex === index ? { ...entry, ...result } : entry));
+  };
+
   const [collapsedMainItems, setCollapsedMainItems] = useState<
     Record<string, boolean>
   >({});
@@ -213,6 +261,7 @@ export function AgendaEditorPanel({
   const isHiddenByCollapsedParent = (item: AgendaItem) => {
     const parentKey = item.parent_id || item.parentLocalKey;
     if (!parentKey) return false;
+    if (live) return !isLiveGroup(item);
     const parent = agendaItems.find(
       (candidate) =>
         candidate.id === parentKey || candidate.localKey === parentKey,
@@ -222,7 +271,7 @@ export function AgendaEditorPanel({
 
   const itemIsHidden = (item: AgendaItem, index: number) =>
     isHiddenByCollapsedParent(item) ||
-    Boolean(item.system_type && hideEmpty && systemCounts[getItemKey(item, index)] === 0);
+    Boolean(!live && item.system_type && hideEmpty && systemCounts[getItemKey(item, index)] === 0);
   const hiddenItems = new Set(agendaItems.filter(itemIsHidden));
   const dropPreview = dragUpdate && resolveAgendaDrop(agendaItems, dragUpdate, hiddenItems);
 
@@ -343,6 +392,13 @@ export function AgendaEditorPanel({
   const mainNumberByKey = new Map<string, number>();
   const subNumberByKey = new Map<string, number>();
 
+  const liveEntryCounts: Record<string, number> = live && hasEditPermission ? {
+    upcoming_appointments: live.upcomingAppointments.length,
+    quick_notes: linkedQuickNotes.length,
+    tasks: meetingLinkedTasks.length,
+    case_items: meetingLinkedCaseItems.length,
+  } : {};
+
   mainItems.forEach((mainItem, mainIndex) => {
     const number = mainIndex + 1;
     if (mainItem.id) mainNumberByKey.set(mainItem.id, number);
@@ -362,7 +418,7 @@ export function AgendaEditorPanel({
       ? meetingRelevantDecisions.length
       : mainItem.system_type === "redaktion"
         ? systemCounts[getItemKey(mainItem, agendaItems.indexOf(mainItem))] ?? 0
-        : 0;
+        : liveEntryCounts[mainItem.system_type ?? ""] ?? 0;
     subItems.forEach((subItem, subIndex) => {
       const subNumber = generatedCount + subIndex + 1;
       if (subItem.id) subNumberByKey.set(subItem.id, subNumber);
@@ -465,21 +521,41 @@ export function AgendaEditorPanel({
       <AgendaReadyBanner
         timing={timing}
         startDisabled={saving}
+        live={Boolean(live)}
         onStart={onStartMeeting && (async () => {
           if (!dirty || await saveAgenda()) onStartMeeting();
         })}
       />
 
       <div className={cn("grid items-start gap-4", selectedItem && "2xl:grid-cols-[minmax(0,1fr)_19rem]")}>
-        <div className="min-w-0 rounded-2xl border bg-card shadow-sm [--agenda-subpoint-bg:color(srgb_0.956863_0.964706_0.952941_/_0.7)] [--agenda-row-divider:rgb(227,232,223)]">
-          <AgendaSummaryBar
-            allCollapsed={allCollapsed}
-            onToggleAll={toggleAll}
-            timing={timing}
-            hideEmpty={hideEmpty}
-            onHideEmptyChange={setHideEmpty}
-            onOpenCarryover={onOpenCarryover}
-          />
+        <div ref={agendaList} className="min-w-0 rounded-2xl border bg-card shadow-sm [--agenda-subpoint-bg:color(srgb_0.956863_0.964706_0.952941_/_0.7)] [--agenda-row-divider:rgb(227,232,223)]">
+          {live ? (
+            <LiveAgendaNavigation
+              position={livePosition}
+              count={timing.main.length}
+              title={liveItem?.title}
+              onMove={(offset) => selectLiveItem(timing.main[livePosition + offset])}
+              onStop={live.onStop}
+              onArchive={async () => {
+                setArchiving(true);
+                try {
+                  if (!dirty || await saveAgenda()) await live.onArchive();
+                } finally {
+                  setArchiving(false);
+                }
+              }}
+              busy={saving || archiving}
+            />
+          ) : (
+            <AgendaSummaryBar
+              allCollapsed={allCollapsed}
+              onToggleAll={toggleAll}
+              timing={timing}
+              hideEmpty={hideEmpty}
+              onHideEmptyChange={setHideEmpty}
+              onOpenCarryover={onOpenCarryover}
+            />
+          )}
 
           <div role="status" className="pointer-events-none sticky top-2 z-20 flex h-0 justify-end px-3">
             {dragging && (
@@ -535,11 +611,22 @@ export function AgendaEditorPanel({
                               onFocus={() =>
                                 setSelectedKey(getItemKey(item, index))
                               }
-                              onClick={() =>
-                                setSelectedKey(getItemKey(item, index))
-                              }
+                              aria-current={isLiveCurrent(item) ? "step" : undefined}
+                              data-live-agenda-current={isLiveCurrent(item) || undefined}
+                              tabIndex={live && !item.parent_id && !item.parentLocalKey ? 0 : undefined}
+                              onKeyDown={(event) => {
+                                if (live && event.target === event.currentTarget && (event.key === "Enter" || event.key === " ")) {
+                                  event.preventDefault();
+                                  selectLiveItem(item);
+                                }
+                              }}
+                              onClick={(event) => {
+                                setSelectedKey(getItemKey(item, index));
+                                if (live && !item.parent_id && !item.parentLocalKey &&
+                                  !(event.target instanceof Element && event.target.closest("button, a"))) selectLiveItem(item);
+                              }}
                               className={cn(
-                                "transition-shadow",
+                                "scroll-mt-24 transition-shadow",
                                 snapshot.isDragging && "shadow-lg",
                                 dropPreview?.marker === item &&
                                   (dragUpdate?.combine ? "ring-2 ring-inset ring-primary" : "shadow-[inset_0_2px_0] shadow-primary"),
@@ -550,6 +637,7 @@ export function AgendaEditorPanel({
                                 dragHandleProps={provided.dragHandleProps}
                                 canEdit={hasEditPermission}
                                 dragging={snapshot.isDragging}
+                                liveCurrent={isLiveCurrent(item)}
                                 hasSelectedChild={hasSelectedChild(item)}
                                 nested={Boolean(item.parentLocalKey || item.parent_id)}
                                 selected={
@@ -558,8 +646,7 @@ export function AgendaEditorPanel({
                               >
                                 <SystemAgendaItem
                                   expandedOverride={
-                                    systemExpanded[getItemKey(item, index)] ??
-                                    true
+                                    live ? isLiveGroup(item) : (systemExpanded[getItemKey(item, index)] ?? true)
                                   }
                                   onExpandedChange={(expanded) =>
                                     setSystemExpanded((prev) => ({
@@ -568,6 +655,24 @@ export function AgendaEditorPanel({
                                     }))
                                   }
                                   editorRow
+                                  editorLive={Boolean(live)}
+                                  editorLiveContent={
+                                    live && isLiveGroup(item) && hasEditPermission && item.id &&
+                                    liveAgendaSystemTypes.includes(item.system_type) ? (
+                                      <LiveAgendaSystemContent
+                                        {...live}
+                                        key={getItemKey(item, index)}
+                                        item={item}
+                                        agendaNumber={getAgendaNumber(item)}
+                                        profiles={profiles}
+                                        linkedQuickNotes={linkedQuickNotes}
+                                        linkedTasks={meetingLinkedTasks}
+                                        linkedCaseItems={meetingLinkedCaseItems}
+                                        relevantDecisions={meetingRelevantDecisions}
+                                        onUpdateResult={live.onUpdateResult}
+                                      />
+                                    ) : undefined
+                                  }
                                   editorCompleted={item.is_completed}
                                   editorDescription={item.description ?? undefined}
                                   editorLeading={
@@ -640,6 +745,16 @@ export function AgendaEditorPanel({
                             <AgendaRow
                               item={item}
                               hasSelectedChild={hasSelectedChild(item)}
+                              liveCurrent={isLiveCurrent(item)}
+                              onLiveSelect={live && !item.parent_id && !item.parentLocalKey ? () => selectLiveItem(item) : undefined}
+                              liveContent={live && isLiveGroup(item) && hasEditPermission ? (
+                                <LiveAgendaResult
+                                  meeting={selectedMeeting}
+                                  item={item}
+                                  onChange={(result) => saveLiveResult(item, index, result)}
+                                  onTransfer={(value) => item.id && live.onUpdateResult(item.id, "carry_over_to_next", value)}
+                                />
+                              ) : undefined}
                               dropTarget={dropPreview?.marker === item ? (dragUpdate?.combine ? "inside" : "before") : undefined}
                               index={index}
                               provided={provided}
@@ -651,7 +766,7 @@ export function AgendaEditorPanel({
                               getAgendaNumber={getAgendaNumber}
                               change={change}
                               handleTitleKeyDown={handleTitleKeyDown}
-                              subItemCount={getSubItemCount(item)}
+                              subItemCount={live ? 0 : getSubItemCount(item)}
                               documentCount={item.id ? (agendaDocuments[item.id]?.length ?? 0) : 0}
                               isMainItemCollapsed={isMainItemCollapsed}
                               setCollapsedMainItems={setCollapsedMainItems}
@@ -804,10 +919,13 @@ export function AgendaEditorPanel({
                       content={note.content}
                       className="text-sm"
                     />
-                    {note.meeting_result && (
-                      <p className="text-xs text-muted-foreground mt-1">
-                        Ergebnis: {note.meeting_result}
-                      </p>
+                    {live && hasEditPermission ? (
+                      <label className="block space-y-1 text-xs">
+                        <span>Ergebnis</span>
+                        <Textarea value={note.meeting_result || ""} onChange={(event) => live.onUpdateNoteResult(note.id, event.target.value)} />
+                      </label>
+                    ) : note.meeting_result && (
+                      <p className="mt-1 text-xs text-muted-foreground">Ergebnis: {note.meeting_result}</p>
                     )}
                   </div>
                 ))}

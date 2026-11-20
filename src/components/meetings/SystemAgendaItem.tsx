@@ -42,6 +42,8 @@ interface SystemAgendaItemProps {
   editorRow?: boolean;
   editorDetails?: ReactNode;
   editorLeading?: ReactNode;
+  editorLive?: boolean;
+  editorLiveContent?: ReactNode;
   editorCompleted?: boolean;
   editorDescription?: string;
   onCountChange?: (count: number | null) => void;
@@ -102,6 +104,8 @@ export function SystemAgendaItem({
   editorRow = false,
   editorDetails,
   editorLeading,
+  editorLive = false,
+  editorLiveContent,
   editorCompleted,
   editorDescription,
   onCountChange,
@@ -750,7 +754,7 @@ export function SystemAgendaItem({
             {description && <p className="col-span-2 truncate text-xs leading-4 text-muted-foreground">{description}</p>}
           </div>
         </div>
-        {!showDirectSubpoints && (
+        {!showDirectSubpoints && !editorLive && (
           <Button
             size="sm"
             variant="ghost"
@@ -783,7 +787,7 @@ export function SystemAgendaItem({
         )}
         {editorDetails}
       </div>
-      <div hidden={!showDirectSubpoints && (!expanded || count === 0)} className={showDirectSubpoints ? undefined : "px-3 pb-2"}>
+      <div hidden={!showDirectSubpoints && !editorLive && (!expanded || count === 0)} className={showDirectSubpoints ? undefined : "px-3 pb-2"}>
         {renderBody()}
       </div>
     </section>

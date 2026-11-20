@@ -1,4 +1,4 @@
-import type { Dispatch, SetStateAction, KeyboardEvent } from "react";
+import type { ReactNode, Dispatch, SetStateAction, KeyboardEvent } from "react";
 import type {
   DraggableProvided,
   DraggableStateSnapshot,
@@ -38,6 +38,9 @@ interface Props {
   index: number;
   dropTarget?: "inside" | "before";
   hasSelectedChild: boolean;
+  liveCurrent?: boolean;
+  onLiveSelect?: () => void;
+  liveContent?: ReactNode;
   provided: DraggableProvided;
   snapshot: DraggableStateSnapshot;
   hasEditPermission: boolean;
@@ -75,6 +78,9 @@ export function AgendaRow({
   index,
   dropTarget,
   hasSelectedChild,
+  liveCurrent,
+  onLiveSelect,
+  liveContent,
   provided,
   snapshot,
   hasEditPermission,
@@ -112,13 +118,25 @@ export function AgendaRow({
           tabIndex={0}
           aria-label={`Details: ${item.title || "Neuer Punkt"}`}
           onFocus={() => setSelectedKey(getItemKey(item, index))}
-          onClick={() => setSelectedKey(getItemKey(item, index))}
+          aria-current={liveCurrent ? "step" : undefined}
+          data-live-agenda-current={liveCurrent || undefined}
+          onKeyDown={(event) => {
+            if (onLiveSelect && event.target === event.currentTarget && (event.key === "Enter" || event.key === " ")) {
+              event.preventDefault();
+              onLiveSelect();
+            }
+          }}
+          onClick={(event) => {
+            setSelectedKey(getItemKey(item, index));
+            if (!(event.target instanceof Element && event.target.closest("button, a"))) onLiveSelect?.();
+          }}
           className={cn(
-            "group border-b border-b-[color:var(--agenda-row-divider)] dark:border-b-border border-l-[3px] border-l-transparent transition-colors hover:bg-muted/40 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-inset focus-visible:ring-ring",
+            "group scroll-mt-24 border-b border-b-[color:var(--agenda-row-divider)] dark:border-b-border border-l-[3px] border-l-transparent transition-colors hover:bg-muted/40 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-inset focus-visible:ring-ring",
             isSubItem && "bg-[var(--agenda-subpoint-bg)] hover:bg-[var(--agenda-subpoint-bg)] dark:bg-slate-800 dark:hover:bg-slate-700",
             getItemKey(item, index) === selectedKey &&
               (isSubItem ? "border-l-primary" : "border-l-primary bg-primary/10 hover:bg-primary/10"),
             hasSelectedChild && "border-l-success",
+            liveCurrent && "border-l-success bg-success/15 hover:bg-success/15",
             dropTarget === "inside" && "bg-primary/10 ring-2 ring-inset ring-primary",
             dropTarget === "before" && "shadow-[inset_0_2px_0] shadow-primary",
             snapshot.isDragging && "bg-card shadow-lg",
@@ -277,6 +295,7 @@ export function AgendaRow({
               onComplete={hasEditPermission ? (completed) => change(index, "is_completed", completed) : undefined}
             />
           </div>
+          {liveContent}
         </div>
       </ContextMenuTrigger>
       {hasEditPermission && (

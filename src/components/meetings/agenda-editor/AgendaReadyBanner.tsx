@@ -2,10 +2,11 @@ import { Button } from "@/components/ui/button";
 import { Play } from "lucide-react";
 import type { agendaTiming } from "./agendaTiming";
 
-export function AgendaReadyBanner({ timing, onStart, startDisabled }: {
+export function AgendaReadyBanner({ timing, onStart, startDisabled, live }: {
   timing: ReturnType<typeof agendaTiming>;
   onStart?: () => void;
   startDisabled: boolean;
+  live?: boolean;
 }) {
   const count = timing.main.length;
   const completed = timing.main.filter((item) => item.is_completed).length;
@@ -14,7 +15,7 @@ export function AgendaReadyBanner({ timing, onStart, startDisabled }: {
     <section className="space-y-4 rounded-2xl bg-gradient-to-r from-green-900 via-green-800 to-green-700 px-4 py-4 text-white shadow-sm sm:px-6 sm:py-5">
       <div className="flex flex-wrap items-center justify-between gap-4">
         <div>
-          <h3 className="text-lg font-semibold">Meeting bereit</h3>
+          <h3 className="text-lg font-semibold">{live ? "Besprechung läuft" : "Meeting bereit"}</h3>
           <p className="text-sm text-white/85">
             {count} {count === 1 ? "Punkt" : "Punkte"}
             {timing.total > 0 && ` · geplant ${timing.total} Min.`}

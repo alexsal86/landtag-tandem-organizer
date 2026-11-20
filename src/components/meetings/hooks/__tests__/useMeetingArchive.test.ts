@@ -187,7 +187,6 @@ describe("useMeetingArchive", () => {
     setAgendaItems: vi.fn(),
     setLinkedQuickNotes: vi.fn(),
     setSelectedMeeting: vi.fn(),
-    setIsFocusMode: vi.fn(),
     setArchivedMeetingId: vi.fn(),
     agendaItems: [],
     updateTimeouts: { current: {} },
@@ -235,7 +234,6 @@ describe("useMeetingArchive", () => {
     expect(deps.setAgendaItems).toHaveBeenCalledWith([]);
     expect(deps.setLinkedQuickNotes).toHaveBeenCalledWith([]);
     expect(deps.setSelectedMeeting).toHaveBeenCalledWith(null);
-    expect(deps.setIsFocusMode).toHaveBeenCalledWith(false);
     expect(deps.loadMeetings).toHaveBeenCalled();
     expect(deps.toast).toHaveBeenCalledWith(
       expect.objectContaining({ title: "Besprechung archiviert" }),

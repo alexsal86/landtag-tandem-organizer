@@ -10,8 +10,6 @@ import {
 import { MeetingArchiveView } from "@/features/meetings/components/MeetingArchiveView";
 import { PreviousMeetingReview } from "./PreviousMeetingReview";
 import { MeetingProtocolView } from "@/features/meetings/components/MeetingProtocolView";
-import { FocusModeView } from "@/components/meetings/FocusModeView";
-import { ActiveMeetingPanel } from "@/components/meetings/ActiveMeetingPanel";
 import { MeetingSidebar } from "@/components/meetings/MeetingSidebar";
 import { AgendaEditorPanel } from "@/components/meetings/AgendaEditorPanel";
 import { useMeetingsData } from "@/components/meetings/hooks/useMeetingsData";
@@ -26,6 +24,7 @@ export function MeetingsView() {
   const expandedSidebarSize = useRef(28);
   const hasSelectedMeeting = !!data.selectedMeeting;
   const [reviewMeetingId, setReviewMeetingId] = useState<string | null>(null);
+  const [liveAgendaKey, setLiveAgendaKey] = useState<string | null>(null);
   const [sidebarExpanded, setSidebarExpanded] = useState(false);
   const compactSidebar = hasSelectedMeeting && !sidebarExpanded;
   useEffect(() => {
@@ -66,7 +65,6 @@ export function MeetingsView() {
     setAgendaItems: data.setAgendaItems,
     setLinkedQuickNotes: data.setLinkedQuickNotes,
     setSelectedMeeting: data.setSelectedMeeting,
-    setIsFocusMode: data.setIsFocusMode,
     setArchivedMeetingId: data.setArchivedMeetingId,
     agendaItems: data.agendaItems,
     updateTimeouts: data.updateTimeouts,
@@ -131,30 +129,8 @@ export function MeetingsView() {
     );
   }
 
-  // Show focus mode
-  if (data.isFocusMode && data.activeMeeting) {
-    return (
-      <FocusModeView
-        meeting={data.activeMeeting}
-        agendaItems={data.agendaItems}
-        profiles={data.profiles}
-        linkedQuickNotes={data.linkedQuickNotes}
-        linkedTasks={data.meetingLinkedTasks}
-        linkedCaseItems={data.meetingLinkedCaseItems}
-        upcomingAppointments={data.meetingUpcomingAppointments}
-        starredAppointmentIds={data.starredAppointmentIds}
-        onToggleStar={data.toggleStarAppointment}
-        onClose={() => data.setIsFocusMode(false)}
-        onUpdateItem={agendaOps.updateAgendaItem}
-        onUpdateResult={agendaOps.updateAgendaItemResult}
-        onUpdateNoteResult={data.updateQuickNoteResult}
-        onArchive={() => archiveMeeting(data.activeMeeting!)}
-        relevantDecisions={data.meetingRelevantDecisions}
-      />
-    );
-  }
-
-  const agendaMeeting = data.activeMeeting ?? data.selectedMeeting;
+  const agendaMeeting = data.selectedMeeting;
+  const selectedMeetingIsLive = Boolean(agendaMeeting?.id && agendaMeeting.id === data.activeMeetingId);
   const agendaTenant = agendaMeeting?.tenant_id ?? data.currentTenant?.id;
 
   return (
@@ -216,41 +192,27 @@ export function MeetingsView() {
             {agendaMeeting?.id && agendaTenant && (
               <PreviousMeetingReview meeting={agendaMeeting} tenantId={agendaTenant} onOpen={setReviewMeetingId} />
             )}
-            {/* Active Meeting View */}
-            {data.activeMeeting && (
-              <ActiveMeetingPanel
-                meeting={data.activeMeeting}
-                meetingItems={data.activeMeetingItems}
-                allAgendaItems={data.agendaItems}
-                profiles={data.profiles}
-                linkedQuickNotes={data.linkedQuickNotes}
-                linkedTasks={data.meetingLinkedTasks}
-                linkedCaseItems={data.meetingLinkedCaseItems}
-                relevantDecisions={data.meetingRelevantDecisions}
-                upcomingAppointments={data.meetingUpcomingAppointments}
-                starredAppointmentIds={data.starredAppointmentIds}
-                expandedApptNotes={data.expandedApptNotes}
-                onExpandApptNote={(id) =>
-                  data.setExpandedApptNotes((prev) => new Set(prev).add(id))
-                }
-                onSetFocusMode={() => data.setIsFocusMode(true)}
-                onStopMeeting={data.stopMeeting}
-                onArchiveMeeting={() => archiveMeeting(data.activeMeeting!)}
-                onUpdateAgendaItem={agendaOps.updateAgendaItem}
-                onUpdateResult={agendaOps.updateAgendaItemResult}
-                onUpdateNoteResult={data.updateQuickNoteResult}
-                onToggleStar={data.toggleStarAppointment}
-                onToggleVisibility={agendaOps.toggleOptionalItemVisibility}
-                isLoading={data.isMeetingLinkedDataLoading}
-              />
-            )}
-
-            {/* Agenda Editor */}
             <div className="space-y-4">
-              {data.selectedMeeting && !data.activeMeeting ? (
+              {agendaMeeting ? (
                 <AgendaEditorPanel
-                  selectedMeeting={data.selectedMeeting}
-                  onStartMeeting={() => void data.startMeeting(data.selectedMeeting!)}
+                  key={agendaMeeting.id}
+                  selectedMeeting={agendaMeeting}
+                  onStartMeeting={!data.activeMeetingId ? () => {
+                    setLiveAgendaKey(null);
+                    data.startMeeting(agendaMeeting);
+                  } : undefined}
+                  live={selectedMeetingIsLive ? {
+                    currentKey: liveAgendaKey,
+                    onPositionChange: setLiveAgendaKey,
+                    onStop: data.stopMeeting,
+                    onArchive: () => archiveMeeting(agendaMeeting),
+                    onUpdateResult: agendaOps.updateAgendaItemResult,
+                    onUpdateNoteResult: data.updateQuickNoteResult,
+                    upcomingAppointments: data.meetingUpcomingAppointments,
+                    starredAppointmentIds: data.starredAppointmentIds,
+                    onToggleStar: data.toggleStarAppointment,
+                    isLoading: data.isMeetingLinkedDataLoading,
+                  } : undefined}
                   onOpenCarryover={async () => {
                     await data.loadCarryoverBufferItems();
                     data.setShowCarryoverBuffer(true);
@@ -280,7 +242,7 @@ export function MeetingsView() {
                   meetingLinkedCaseItems={data.meetingLinkedCaseItems}
                   meetingRelevantDecisions={data.meetingRelevantDecisions}
                 />
-              ) : !data.activeMeeting ? (
+              ) : (
                 <Card>
                   <CardContent className="p-8 text-center">
                     <Users className="h-12 w-12 text-muted-foreground mx-auto mb-4" />
@@ -293,7 +255,7 @@ export function MeetingsView() {
                     </p>
                   </CardContent>
                 </Card>
-              ) : null}
+              )}
             </div>
           </div>
         </ResizablePanel>

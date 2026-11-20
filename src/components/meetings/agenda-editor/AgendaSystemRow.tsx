@@ -9,6 +9,7 @@ export function AgendaSystemRow({
   dragging,
   selected,
   hasSelectedChild,
+  liveCurrent,
   nested,
 }: {
   children: ReactNode;
@@ -17,6 +18,7 @@ export function AgendaSystemRow({
   dragging: boolean;
   selected: boolean;
   hasSelectedChild: boolean;
+  liveCurrent?: boolean;
   nested: boolean;
 }) {
   return (
@@ -27,6 +29,7 @@ export function AgendaSystemRow({
         nested && "bg-[var(--agenda-subpoint-bg)] hover:bg-[var(--agenda-subpoint-bg)] dark:bg-slate-800 dark:hover:bg-slate-700",
         selected && (nested ? "border-l-primary" : "border-l-primary bg-primary/10 hover:bg-primary/10"),
         hasSelectedChild && "border-l-success",
+        liveCurrent && "border-l-success bg-success/15 hover:bg-success/15",
       )}
     >
       {canEdit && dragHandleProps && (
