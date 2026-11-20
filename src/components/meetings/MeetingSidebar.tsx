@@ -242,7 +242,7 @@ export function MeetingSidebar({
               className={cn(
                 "relative cursor-pointer rounded-xl border-transparent bg-transparent shadow-none transition-colors hover:bg-muted/40 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring",
                 selectedMeeting?.id === meeting.id &&
-                  "border-primary/45 bg-primary/10 hover:bg-primary/10 before:absolute before:left-0 before:top-3 before:bottom-3 before:w-1 before:rounded-full before:bg-primary",
+                  "border-success/50 bg-success/10 hover:bg-success/10",
                 isHighlighted(meeting.id!) && "notification-highlight",
               )}
               tabIndex={0}
@@ -266,97 +266,68 @@ export function MeetingSidebar({
               }}
             >
               <CardContent className="p-2.5">
-                <div
-                  className={cn(
-                    "flex items-start gap-2",
-                    compact && "flex-col gap-1.5",
-                  )}
-                >
-                  <time
-                    dateTime={format(
-                      new Date(meeting.meeting_date),
-                      "yyyy-MM-dd",
-                    )}
-                    aria-label={format(
-                      new Date(meeting.meeting_date),
-                      "EEEE, d. MMMM yyyy",
-                      { locale: de },
-                    )}
-                    className={cn(
-                      "flex shrink-0 items-center justify-center rounded-xl border bg-card text-muted-foreground",
-                      compact
-                        ? "flex-row gap-1.5 px-2 py-1"
-                        : "h-[4.5rem] w-12 flex-col",
-                    )}
-                  >
-                    <span className="text-xs leading-5">
-                      {format(new Date(meeting.meeting_date), "EEEEEE", {
-                        locale: de,
-                      })}
-                    </span>
-                    <span className="text-xl font-bold leading-6 text-foreground">
-                      {format(new Date(meeting.meeting_date), "dd")}
-                    </span>
-                    <span className="text-xs leading-5">
-                      {format(new Date(meeting.meeting_date), "MMM", {
-                        locale: de,
-                      }).replace(/\.$/, "")}
-                    </span>
-                  </time>
-                  <div className="min-w-0 w-full flex-1 space-y-0.5">
-                    <div className="flex items-start gap-1">
-                      <h4
-                        className={cn(
-                          "min-w-0 flex-1 break-words font-semibold",
-                          compact ? "text-sm leading-5" : "text-base leading-6",
-                        )}
+                <div className="min-w-0">
+                  <div className="min-w-0 space-y-0.5">
+                    <div className="flex min-h-6 items-center justify-between gap-1">
+                      <time
+                        dateTime={format(new Date(meeting.meeting_date), "yyyy-MM-dd")}
+                        aria-label={format(new Date(meeting.meeting_date), "EEEE, d. MMMM yyyy", { locale: de })}
+                        className="min-w-0 text-xs leading-4 text-muted-foreground"
                       >
-                        {meeting.title}
-                      </h4>
-                      {meeting.is_public && (
-                        <Globe
-                          aria-label="Öffentliches Meeting"
-                          className="mt-1 h-3.5 w-3.5 shrink-0 text-muted-foreground"
-                        />
+                        {format(new Date(meeting.meeting_date), "d. MMMM", { locale: de })}{" · "}
+                        {format(new Date(meeting.meeting_date), "EEEEEE", { locale: de }).toLocaleUpperCase("de-DE")}
+                      </time>
+                      {selectedMeeting?.id === meeting.id && (
+                        <div className="flex shrink-0 items-center gap-1">
+                          {meeting.is_public && (
+                            <Globe
+                              aria-label="Öffentliches Meeting"
+                              className="h-3.5 w-3.5 shrink-0 text-muted-foreground"
+                            />
+                          )}
+                          <DropdownMenu>
+                            <DropdownMenuTrigger asChild>
+                              <Button
+                                size="icon"
+                                variant="ghost"
+                                aria-label={`Aktionen für ${meeting.title}`}
+                                className="-mr-1 h-6 w-6 shrink-0 text-muted-foreground"
+                                onClick={(e) => e.stopPropagation()}
+                              >
+                                <MoreVertical className="h-4 w-4" />
+                              </Button>
+                            </DropdownMenuTrigger>
+                            <DropdownMenuContent
+                              align="end"
+                              sideOffset={8}
+                              className="w-60 max-w-[calc(100vw-2rem)] rounded-2xl border-border/70 bg-popover p-2 shadow-xl [&_[role=menuitem]]:rounded-lg [&_[role=menuitem]]:px-3 [&_[role=menuitem]]:py-3"
+                              onClick={(e) => e.stopPropagation()}
+                            >
+                              <DropdownMenuItem
+                                onSelect={() => onSetEditingMeeting(meeting)}
+                              >
+                                <Edit className="mr-2 h-4 w-4" /> Bearbeiten
+                              </DropdownMenuItem>
+                              <QuickAccessMenuItem
+                                id={`meeting-${meeting.id}`}
+                                label={meeting.title}
+                                icon="Calendar"
+                                route={`/meetings?highlight=${meeting.id}`}
+                              />
+                              <DropdownMenuItem
+                                className="text-destructive focus:text-destructive"
+                                onSelect={() => setMeetingToDelete(meeting)}
+                              >
+                                <X className="mr-2 h-4 w-4" /> Löschen
+                              </DropdownMenuItem>
+                            </DropdownMenuContent>
+                          </DropdownMenu>
+                        </div>
                       )}
-                      <DropdownMenu>
-                        <DropdownMenuTrigger asChild>
-                          <Button
-                            size="icon"
-                            variant="ghost"
-                            aria-label={`Aktionen für ${meeting.title}`}
-                            className="-mr-1 h-6 w-6 shrink-0 text-muted-foreground"
-                            onClick={(e) => e.stopPropagation()}
-                          >
-                            <MoreVertical className="h-4 w-4" />
-                          </Button>
-                        </DropdownMenuTrigger>
-                        <DropdownMenuContent
-                          align="end"
-                          sideOffset={8}
-                          className="w-60 max-w-[calc(100vw-2rem)] rounded-2xl border-border/70 bg-popover p-2 shadow-xl [&_[role=menuitem]]:rounded-lg [&_[role=menuitem]]:px-3 [&_[role=menuitem]]:py-3"
-                          onClick={(e) => e.stopPropagation()}
-                        >
-                          <DropdownMenuItem
-                            onSelect={() => onSetEditingMeeting(meeting)}
-                          >
-                            <Edit className="mr-2 h-4 w-4" /> Bearbeiten
-                          </DropdownMenuItem>
-                          <QuickAccessMenuItem
-                            id={`meeting-${meeting.id}`}
-                            label={meeting.title}
-                            icon="Calendar"
-                            route={`/meetings?highlight=${meeting.id}`}
-                          />
-                          <DropdownMenuItem
-                            className="text-destructive focus:text-destructive"
-                            onSelect={() => setMeetingToDelete(meeting)}
-                          >
-                            <X className="mr-2 h-4 w-4" /> Löschen
-                          </DropdownMenuItem>
-                        </DropdownMenuContent>
-                      </DropdownMenu>
                     </div>
+                    <h4 className={cn("min-w-0 break-words font-semibold", compact ? "text-sm leading-5" : "text-base leading-6")}>
+                      {meeting.title}
+                    </h4>
                     {(meeting.meeting_time || meeting.location) && (
                       <div
                         className={cn(
@@ -368,6 +339,9 @@ export function MeetingSidebar({
                           <span className="whitespace-nowrap tabular-nums">
                             {meeting.meeting_time.substring(0, 5)} Uhr
                           </span>
+                        )}
+                        {meeting.meeting_time && meeting.location && (
+                          <span aria-hidden="true" className="shrink-0">·</span>
                         )}
                         {meeting.location && (
                           <span
