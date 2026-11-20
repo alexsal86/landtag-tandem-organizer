@@ -176,59 +176,161 @@ export function TaskDetailView({ task, profiles, decisionLabel, onSave, onComple
   return (
     <div className="flex min-h-0 min-w-0 flex-1 flex-col">
       <main aria-label="Aufgabendetails" className="min-h-0 min-w-0 space-y-3 bg-white p-6 dark:bg-card [&>section]:space-y-3 [&_input]:border-0 [&_input]:bg-transparent [&_textarea]:border-0 [&_textarea]:bg-transparent [&_[role=combobox]]:border-0 [&_[role=combobox]]:bg-transparent">
-        <header className="relative space-y-1 pl-10">
-          <Tooltip>
-            <TooltipTrigger asChild>
-              <Button type="button" variant="ghost" size="icon" disabled={saving}
-                aria-label="Aufgabe abschließen" onClick={() => void run(onComplete)}
-                className="group absolute left-0 top-1 size-7 rounded-full border-2 border-muted-foreground/50 hover:border-success hover:bg-success/10 hover:text-success">
-                <Check className="opacity-0 group-hover:opacity-100 group-focus-visible:opacity-100" />
+        <Collapsible>
+          <header className="relative space-y-1 pl-10">
+            <Tooltip>
+              <TooltipTrigger asChild>
+                <Button type="button" variant="ghost" size="icon" disabled={saving}
+                  aria-label="Aufgabe abschließen" onClick={() => void run(onComplete)}
+                  className="group absolute left-0 top-1 size-7 rounded-full border-2 border-muted-foreground/50 hover:border-success hover:bg-success/10 hover:text-success">
+                  <Check className="opacity-0 group-hover:opacity-100 group-focus-visible:opacity-100" />
+                </Button>
+              </TooltipTrigger>
+              <TooltipContent>Aufgabe abschließen</TooltipContent>
+            </Tooltip>
+            <div className="flex flex-wrap items-start justify-between gap-2">
+              <h2 className="min-w-0 flex-1 break-words text-[28px] font-semibold leading-tight tracking-tight">{task.title}</h2>
+              <div role="group" aria-label="Aufgabenaktionen" className="flex shrink-0 items-center gap-1 text-muted-foreground">
+                <Tooltip>
+                  <TooltipTrigger asChild>
+                    <CollapsibleTrigger asChild>
+                      <Button size="icon" variant="ghost" aria-label="Mich erinnern"><Bell /></Button>
+                    </CollapsibleTrigger>
+                  </TooltipTrigger>
+                  <TooltipContent>Mich erinnern</TooltipContent>
+                </Tooltip>
+                {[
+                  { label: "Auf Tageszettel", Icon: Zap, action: daySlip },
+                  { label: "Auf Jour Fixe", Icon: Users, action: onJourFixe },
+                  { label: "Entscheidung anfordern", Icon: Gavel, action: onDecision },
+                ].map(({ label, Icon, action }) => (
+                  <Tooltip key={label}>
+                    <TooltipTrigger asChild>
+                      <Button size="icon" variant="ghost" aria-label={label} onClick={action}><Icon /></Button>
+                    </TooltipTrigger>
+                    <TooltipContent>{label}</TooltipContent>
+                  </Tooltip>
+                ))}
+              </div>
+            </div>
+            <Textarea aria-label="Beschreibung" value={description} onChange={(event) => setDescription(event.target.value)}
+              placeholder="Beschreibung hinzufügen …" rows={1}
+              className="min-h-0 resize-y px-0 py-0 focus-visible:ring-0 focus-visible:ring-offset-0 leading-relaxed text-muted-foreground [field-sizing:content]" />
+            {description !== (task.description ?? "") && (
+              <Button size="sm" variant="outline" disabled={saving}
+                onClick={() => void run(() => onSave({ description: description.trim() || null }))}>
+                Beschreibung speichern
               </Button>
-            </TooltipTrigger>
-            <TooltipContent>Aufgabe abschließen</TooltipContent>
-          </Tooltip>
-          <h2 className="break-words text-3xl font-bold leading-tight tracking-tight">{task.title}</h2>
-          <Textarea aria-label="Beschreibung" value={description} onChange={(event) => setDescription(event.target.value)}
-            placeholder="Beschreibung hinzufügen …" rows={1}
-            className="min-h-0 resize-y px-0 py-0 focus-visible:ring-0 focus-visible:ring-offset-0 leading-relaxed text-muted-foreground [field-sizing:content]" />
-          {description !== (task.description ?? "") && (
-            <Button size="sm" variant="outline" disabled={saving}
-              onClick={() => void run(() => onSave({ description: description.trim() || null }))}>
-              Beschreibung speichern
-            </Button>
-          )}
-          {(decisionLabel || task.pending_for_jour_fixe) && <div className="flex flex-wrap gap-2">
-            {decisionLabel && <Badge variant="secondary"><Gavel className="h-3 w-3 mr-1" />{decisionLabel}</Badge>}
-            {task.pending_for_jour_fixe && <Badge variant="secondary"><Users className="h-3 w-3 mr-1" />Jour Fixe</Badge>}
-          </div>}
-          <WorkflowLinks taskId={task.id} />
-          <DropdownMenu>
-            <DropdownMenuTrigger asChild>
-              <Button variant="outline" size="sm" disabled={saving} className="rounded-full bg-transparent data-[state=open]:bg-muted">
-                <Flag />
-                <span className="text-muted-foreground">Endfrist</span>
-                <span>{task.due_date ? formatDate(task.due_date) : "Setzen"}</span>
-              </Button>
-            </DropdownMenuTrigger>
-            <DropdownMenuContent align="start" className="min-w-52 rounded-xl p-1">
-              {([["Freitag", 5], ["Montag", 1]] as const).map(([label, weekday]) => {
-                const today = new Date();
-                const date = shiftDay(null, (weekday - today.getDay() + 6) % 7 + 1, today);
-                return (
-                  <DropdownMenuItem key={weekday} onSelect={() => void run(() => onSave({ due_date: date }))} className="justify-between gap-4 py-2">
-                    {label}<span className="text-xs text-muted-foreground">{formatDate(date)}</span>
+            )}
+            {(decisionLabel || task.pending_for_jour_fixe) && <div className="flex flex-wrap gap-2">
+              {decisionLabel && <Badge variant="secondary"><Gavel className="h-3 w-3 mr-1" />{decisionLabel}</Badge>}
+              {task.pending_for_jour_fixe && <Badge variant="secondary"><Users className="h-3 w-3 mr-1" />Jour Fixe</Badge>}
+            </div>}
+            <WorkflowLinks taskId={task.id} />
+            <div className="flex flex-wrap items-center gap-2">
+              <DropdownMenu>
+                <DropdownMenuTrigger asChild>
+                  <Button variant="outline" size="sm" disabled={saving} className="rounded-full bg-transparent data-[state=open]:bg-muted">
+                    <Flag />
+                    <span className="text-muted-foreground">Endfrist</span>
+                    <span>{task.due_date ? formatDate(task.due_date) : "Setzen"}</span>
+                  </Button>
+                </DropdownMenuTrigger>
+                <DropdownMenuContent align="start" className="min-w-52 rounded-xl p-1">
+                  {([["Freitag", 5], ["Montag", 1]] as const).map(([label, weekday]) => {
+                    const today = new Date();
+                    const date = shiftDay(null, (weekday - today.getDay() + 6) % 7 + 1, today);
+                    return (
+                      <DropdownMenuItem key={weekday} onSelect={() => void run(() => onSave({ due_date: date }))} className="justify-between gap-4 py-2">
+                        {label}<span className="text-xs text-muted-foreground">{formatDate(date)}</span>
+                      </DropdownMenuItem>
+                    );
+                  })}
+                  <DropdownMenuItem onSelect={() => { setCustomValue(task.due_date?.slice(0, 10) ?? ""); setCustomField("deadline"); }}>
+                    Datum wählen …
                   </DropdownMenuItem>
-                );
-              })}
-              <DropdownMenuItem onSelect={() => { setCustomValue(task.due_date?.slice(0, 10) ?? ""); setCustomField("deadline"); }}>
-                Datum wählen …
-              </DropdownMenuItem>
-              <DropdownMenuItem onSelect={() => { if (task.due_date) void run(() => onSave({ due_date: null })); }}>
-                Ohne Endfrist
-              </DropdownMenuItem>
-            </DropdownMenuContent>
-          </DropdownMenu>
-        </header>
+                  <DropdownMenuItem onSelect={() => { if (task.due_date) void run(() => onSave({ due_date: null })); }}>
+                    Ohne Endfrist
+                  </DropdownMenuItem>
+                </DropdownMenuContent>
+              </DropdownMenu>
+              <Dialog open={ownerPickerOpen} onOpenChange={changeOwnerPicker}>
+                <DialogTrigger asChild>
+                  <Button variant="outline" size="sm" aria-keyshortcuts="A" disabled={saving} className="max-w-full rounded-full bg-transparent">
+                    <span className={cn("size-2 shrink-0 rounded-full", ownerColors[owner])} />
+                    <span className="text-muted-foreground">Am Zug</span>
+                    <span className="truncate">
+                      {(owner === "office" && nameOf(assignee)) || (owner === "external" && externalLabel) || TASK_BALL_LABELS[owner]}
+                    </span>
+                    <kbd className="rounded border px-1 text-xs text-muted-foreground">A</kbd>
+                  </Button>
+                </DialogTrigger>
+                <DialogContent className="overflow-hidden p-0 sm:max-w-lg">
+                  <DialogTitle className="sr-only">Wem übergeben?</DialogTitle>
+                  <Command>
+                    <CommandInput aria-label="Name oder Rolle suchen" placeholder="Wem übergeben? Name oder Rolle tippen …" className="pr-10" />
+                    <CommandList className="max-h-[55vh] px-2 pb-2">
+                      <CommandEmpty>Keine passende Person oder Rolle gefunden.</CommandEmpty>
+                      {recentOptions.length > 0 && <CommandGroup heading="Zuletzt">{recentOptions.map((option) => renderOwnerOption(option, true))}</CommandGroup>}
+                      <CommandGroup heading="Büro">
+                        {ownerOptions.filter((option) => option.role === "office").map((option) => renderOwnerOption(option))}
+                      </CommandGroup>
+                      <CommandGroup heading="Abgeordnete/r">
+                        {ownerOptions.filter((option) => option.role === "deputy").map((option) => renderOwnerOption(option))}
+                      </CommandGroup>
+                      <CommandGroup heading="Extern">
+                        {ownerOptions.filter((option) => option.role === "external").map((option) => renderOwnerOption(option))}
+                      </CommandGroup>
+                      <form className="px-1 pb-2 pt-1" onSubmit={(event) => {
+                        event.preventDefault();
+                        const label = externalDraft.trim();
+                        if (label) chooseOwner({ id: `custom:${label}`, label, role: "external" });
+                      }}>
+                        <Input aria-label="Externe Stelle eingeben" placeholder="Externe Stelle eingeben …"
+                          value={externalDraft} onChange={(event) => setExternalDraft(event.target.value)}
+                          onKeyDown={(event) => { if (event.key === "Enter") event.stopPropagation(); }}
+                          maxLength={200} className="border-0 bg-[#f2f2ef] dark:bg-muted" />
+                      </form>
+                    </CommandList>
+                  </Command>
+                </DialogContent>
+              </Dialog>
+            </div>
+          </header>
+            <CollapsibleContent className="ml-10 mt-3 space-y-3 pb-2">
+              {task.reminder_at ? (
+                <div className={cn("rounded-md px-3 py-2 text-caption flex items-center justify-between gap-3", isReminderDue(task) ? "bg-accent text-accent-foreground" : "bg-muted")}>
+                  <span>
+                    {isReminderDue(task) ? "Fällig seit " : "Am "}
+                    {new Date(task.reminder_at).toLocaleString("de-DE", { dateStyle: "short", timeStyle: "short" })}
+                    {task.reminder_note ? ` – ${task.reminder_note}` : ""}
+                  </span>
+                  <Button size="sm" variant="ghost" disabled={saving} onClick={() => run(() => onSave({ reminder_at: null, reminder_note: null }))}>
+                    <BellOff className="h-4 w-4 mr-1" />Erledigt
+                  </Button>
+                </div>
+              ) : (
+                <>
+                  <Input value={remNote} onChange={(e) => setRemNote(e.target.value)} placeholder="Woran erinnern? (optional, z. B. „Beim Ministerium nachfassen“)" className="h-8" />
+                  <div className="flex flex-wrap gap-2">
+                    {([["tomorrow", "Morgen"], ["3days", "In 3 Tagen"], ["nextweek", "Nächste Woche"]] as const).map(([k, l]) => (
+                      <Button key={k} size="sm" variant="outline" disabled={saving}
+                        onClick={() => run(async () => { await onSave({ reminder_at: reminderPreset(k).toISOString(), reminder_note: remNote.trim() || null }); setRemNote(""); })}>
+                        {l}
+                      </Button>
+                    ))}
+                  </div>
+                  <div className="flex items-center gap-2">
+                    <Input type="datetime-local" value={remAt} onChange={(e) => setRemAt(e.target.value)} className="h-8 min-w-0 flex-1" aria-label="Eigene Uhrzeit" />
+                    <Button size="sm" variant="outline" disabled={saving || !remAt}
+                      onClick={() => run(async () => { await onSave({ reminder_at: new Date(remAt).toISOString(), reminder_note: remNote.trim() || null }); setRemNote(""); setRemAt(""); })}>
+                      Setzen
+                    </Button>
+                  </div>
+                </>
+              )}
+            </CollapsibleContent>
+        </Collapsible>
 
         {nudgeForMe && (
           <section className="space-y-3" role="alert">
@@ -268,47 +370,6 @@ export function TaskDetailView({ task, profiles, decisionLabel, onSave, onComple
         <section className="ml-10 space-y-3 border-y py-3">
           <label htmlFor="task-next-action" className="block text-sm text-muted-foreground">Nächster Schritt</label>
           <div className="flex flex-wrap items-center gap-2">
-            <Dialog open={ownerPickerOpen} onOpenChange={changeOwnerPicker}>
-              <DialogTrigger asChild>
-                <Button variant="outline" size="sm" aria-keyshortcuts="A" disabled={saving} className="max-w-full rounded-full bg-transparent">
-                  <span className={cn("size-2 shrink-0 rounded-full", ownerColors[owner])} />
-                  <span className="text-muted-foreground">Am Zug</span>
-                  <span className="truncate">
-                    {(owner === "office" && nameOf(assignee)) || (owner === "external" && externalLabel) || TASK_BALL_LABELS[owner]}
-                  </span>
-                  <kbd className="rounded border px-1 text-xs text-muted-foreground">A</kbd>
-                </Button>
-              </DialogTrigger>
-              <DialogContent className="overflow-hidden p-0 sm:max-w-lg">
-                <DialogTitle className="sr-only">Wem übergeben?</DialogTitle>
-                <Command>
-                  <CommandInput aria-label="Name oder Rolle suchen" placeholder="Wem übergeben? Name oder Rolle tippen …" className="pr-10" />
-                  <CommandList className="max-h-[55vh] px-2 pb-2">
-                    <CommandEmpty>Keine passende Person oder Rolle gefunden.</CommandEmpty>
-                    {recentOptions.length > 0 && <CommandGroup heading="Zuletzt">{recentOptions.map((option) => renderOwnerOption(option, true))}</CommandGroup>}
-                    <CommandGroup heading="Büro">
-                      {ownerOptions.filter((option) => option.role === "office").map((option) => renderOwnerOption(option))}
-                    </CommandGroup>
-                    <CommandGroup heading="Abgeordnete/r">
-                      {ownerOptions.filter((option) => option.role === "deputy").map((option) => renderOwnerOption(option))}
-                    </CommandGroup>
-                    <CommandGroup heading="Extern">
-                      {ownerOptions.filter((option) => option.role === "external").map((option) => renderOwnerOption(option))}
-                    </CommandGroup>
-                    <form className="px-1 pb-2 pt-1" onSubmit={(event) => {
-                      event.preventDefault();
-                      const label = externalDraft.trim();
-                      if (label) chooseOwner({ id: `custom:${label}`, label, role: "external" });
-                    }}>
-                      <Input aria-label="Externe Stelle eingeben" placeholder="Externe Stelle eingeben …"
-                        value={externalDraft} onChange={(event) => setExternalDraft(event.target.value)}
-                        onKeyDown={(event) => { if (event.key === "Enter") event.stopPropagation(); }}
-                        maxLength={200} className="border-0 bg-[#f2f2ef] dark:bg-muted" />
-                    </form>
-                  </CommandList>
-                </Command>
-              </DialogContent>
-            </Dialog>
             <DropdownMenu>
               <DropdownMenuTrigger asChild>
                 <Button variant="outline" size="sm" disabled={saving} className="rounded-full bg-transparent data-[state=open]:bg-muted">
@@ -366,50 +427,6 @@ export function TaskDetailView({ task, profiles, decisionLabel, onSave, onComple
             <div className="text-caption text-muted-foreground pt-2 border-t">Heute bereits angestupst – noch nicht gesehen.</div>
           )}
         </section>
-
-        <Collapsible className="ml-10 space-y-2 border-b pb-3">
-          <div role="group" aria-label="Aufgabenaktionen" className="flex flex-wrap items-center gap-1">
-            <Button size="sm" variant="ghost" onClick={daySlip}><Zap className="h-4 w-4 mr-1" />Auf Tageszettel</Button>
-            <Button size="sm" variant="ghost" onClick={onJourFixe}><Users className="h-4 w-4 mr-1" />Auf Jour Fixe</Button>
-            <Button size="sm" variant="ghost" onClick={onDecision}><Gavel className="h-4 w-4 mr-1" />Entscheidung anfordern</Button>
-            <CollapsibleTrigger asChild>
-              <Button size="sm" variant="ghost"><Bell />Mich erinnern</Button>
-            </CollapsibleTrigger>
-          </div>
-          <CollapsibleContent className="space-y-3 px-3 pb-2">
-            {task.reminder_at ? (
-              <div className={cn("rounded-md px-3 py-2 text-caption flex items-center justify-between gap-3", isReminderDue(task) ? "bg-accent text-accent-foreground" : "bg-muted")}>
-                <span>
-                  {isReminderDue(task) ? "Fällig seit " : "Am "}
-                  {new Date(task.reminder_at).toLocaleString("de-DE", { dateStyle: "short", timeStyle: "short" })}
-                  {task.reminder_note ? ` – ${task.reminder_note}` : ""}
-                </span>
-                <Button size="sm" variant="ghost" disabled={saving} onClick={() => run(() => onSave({ reminder_at: null, reminder_note: null }))}>
-                  <BellOff className="h-4 w-4 mr-1" />Erledigt
-                </Button>
-              </div>
-            ) : (
-              <>
-                <Input value={remNote} onChange={(e) => setRemNote(e.target.value)} placeholder="Woran erinnern? (optional, z. B. „Beim Ministerium nachfassen“)" className="h-8" />
-                <div className="flex flex-wrap gap-2">
-                  {([["tomorrow", "Morgen"], ["3days", "In 3 Tagen"], ["nextweek", "Nächste Woche"]] as const).map(([k, l]) => (
-                    <Button key={k} size="sm" variant="outline" disabled={saving}
-                      onClick={() => run(async () => { await onSave({ reminder_at: reminderPreset(k).toISOString(), reminder_note: remNote.trim() || null }); setRemNote(""); })}>
-                      {l}
-                    </Button>
-                  ))}
-                </div>
-                <div className="flex items-center gap-2">
-                  <Input type="datetime-local" value={remAt} onChange={(e) => setRemAt(e.target.value)} className="h-8 min-w-0 flex-1" aria-label="Eigene Uhrzeit" />
-                  <Button size="sm" variant="outline" disabled={saving || !remAt}
-                    onClick={() => run(async () => { await onSave({ reminder_at: new Date(remAt).toISOString(), reminder_note: remNote.trim() || null }); setRemNote(""); setRemAt(""); })}>
-                    Setzen
-                  </Button>
-                </div>
-              </>
-            )}
-          </CollapsibleContent>
-        </Collapsible>
 
         <section className="space-y-3 ml-10">
           <h3 className="flex items-center gap-2 text-base font-semibold">
