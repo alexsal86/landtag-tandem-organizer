@@ -7,25 +7,28 @@ export function AgendaSystemRow({
   dragHandleProps,
   canEdit,
   selected,
+  nested,
 }: {
   children: ReactNode;
   dragHandleProps: DraggableProvidedDragHandleProps | null;
   canEdit: boolean;
   selected: boolean;
+  nested: boolean;
 }) {
   return (
     <div
       data-selected={selected}
       className={cn(
-        "group flex min-w-0 border border-transparent hover:bg-muted/30 focus-within:bg-muted/40",
-        selected && "rounded-lg border-primary/45 bg-primary/10",
+        "group flex min-w-0 border-b border-l-[3px] border-l-transparent pl-3 transition-colors hover:bg-muted/40 sm:pl-5",
+        nested && "bg-muted/25 pl-7 sm:pl-10",
+        selected && "border-l-primary bg-primary/10 hover:bg-primary/10",
       )}
     >
       {canEdit && (
         <div
           {...dragHandleProps}
           aria-label="Baustein verschieben"
-          className="self-start mt-3 ml-2 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring cursor-grab opacity-0 group-hover:opacity-100 group-focus-within:opacity-100 focus:opacity-100"
+          className="mt-5 mr-1 self-start cursor-grab text-muted-foreground/70 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring active:cursor-grabbing"
         >
           <GripVertical className="h-4 w-4 text-muted-foreground" />
         </div>

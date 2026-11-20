@@ -1,4 +1,6 @@
 import { PencilSparkles } from "@/components/icons/PencilSparkles";
+import { AgendaReadyBanner } from "./agenda-editor/AgendaReadyBanner";
+import { AgendaRowDetails } from "./agenda-editor/AgendaRowDetails";
 import { AgendaRow } from "./agenda-editor/AgendaRow";
 import { AgendaInspector } from "./agenda-editor/AgendaInspector";
 import { AgendaSummaryBar } from "./agenda-editor/AgendaSummaryBar";
@@ -52,6 +54,8 @@ interface AgendaEditorPanelProps {
   showTaskSelector: { itemIndex: number } | null;
   onSetShowTaskSelector: (v: { itemIndex: number } | null) => void;
   onAddAgendaItem: () => void;
+  onStartMeeting?: () => void;
+  onOpenCarryover?: () => void;
   onAddSystemAgendaItem: (
     systemType: SystemAgendaType,
     parentItem?: AgendaItem,
@@ -98,6 +102,8 @@ export function AgendaEditorPanel({
   showTaskSelector,
   onSetShowTaskSelector,
   onAddAgendaItem,
+  onStartMeeting,
+  onOpenCarryover,
   onAddSystemAgendaItem,
   onUpdateAgendaItem,
   onSaveAgendaItems,
@@ -117,6 +123,18 @@ export function AgendaEditorPanel({
   const [hideEmpty, setHideEmpty] = useState(false);
   const [dirty, setDirty] = useState(false);
   const [saved, setSaved] = useState(false);
+  const [saving, setSaving] = useState(false);
+  const saveAgenda = async () => {
+    setSaving(true);
+    try {
+      if ((await onSaveAgendaItems()) === false) return false;
+      setDirty(false);
+      setSaved(true);
+      return true;
+    } finally {
+      setSaving(false);
+    }
+  };
   const [systemCounts, setSystemCounts] = useState<
     Record<string, number | null>
   >({});
@@ -183,13 +201,6 @@ export function AgendaEditorPanel({
     return !!collapsedMainItems[key];
   };
 
-  const hasContentIndicator = (item: AgendaItem) => {
-    const hasNotes = !!item.notes?.trim();
-    const hasDescription = !!item.description?.trim();
-    const hasDocuments = !!(item.id && agendaDocuments[item.id]?.length);
-    return hasNotes || hasDescription || hasDocuments;
-  };
-
   const isHiddenByCollapsedParent = (item: AgendaItem) => {
     const parentKey = item.parent_id || item.parentLocalKey;
     if (!parentKey) return false;
@@ -200,14 +211,14 @@ export function AgendaEditorPanel({
     return !!collapsedMainItems[parent?.localKey || parent?.id || parentKey];
   };
 
-  const hasSubItems = (item: AgendaItem) => {
+  const getSubItemCount = (item: AgendaItem) => {
     const key = item.localKey || item.id;
-    if (!key || item.parent_id || item.parentLocalKey) return false;
-    return agendaItems.some(
+    if (!key || item.parent_id || item.parentLocalKey) return 0;
+    return agendaItems.filter(
       (candidate) =>
         (item.id && candidate.parent_id === item.id) ||
         (item.localKey && candidate.parentLocalKey === item.localKey),
-    );
+    ).length;
   };
 
   const showDocumentActionError = (
@@ -255,8 +266,8 @@ export function AgendaEditorPanel({
               : (item.duration_minutes ?? null),
           assigned_to: item.assigned_to,
           carry_over_to_next: item.carry_over_to_next,
-          is_completed: false,
-          is_recurring: false,
+          is_completed: Boolean(item.is_completed),
+          is_recurring: Boolean(item.is_recurring),
         },
       ])
       .select()
@@ -423,29 +434,30 @@ export function AgendaEditorPanel({
                 onAddSystemAgendaItem(type);
               }}
             />
-            <Button
-              onClick={async () => {
-                const result = await onSaveAgendaItems();
-                if (result !== false) {
-                  setDirty(false);
-                  setSaved(true);
-                }
-              }}
-            >
+            <Button disabled={saving} onClick={() => void saveAgenda()}>
               {saved && !dirty ? "Gespeichert" : "Speichern"}
             </Button>
           </div>
         )}
       </div>
 
-      <div className="grid grid-cols-1 xl:grid-cols-[minmax(0,1fr)_340px] gap-6 items-start mt-4">
-        <div className="min-w-0 rounded-xl border bg-card p-2">
+      <AgendaReadyBanner
+        timing={timing}
+        startDisabled={saving}
+        onStart={onStartMeeting && (async () => {
+          if (!dirty || await saveAgenda()) onStartMeeting();
+        })}
+      />
+
+      <div className={cn("grid items-start gap-4", selectedItem && "2xl:grid-cols-[minmax(0,1fr)_19rem]")}>
+        <div className="min-w-0 rounded-2xl border bg-card shadow-sm">
           <AgendaSummaryBar
             allCollapsed={allCollapsed}
             onToggleAll={toggleAll}
             timing={timing}
             hideEmpty={hideEmpty}
             onHideEmptyChange={setHideEmpty}
+            onOpenCarryover={onOpenCarryover}
           />
 
           <DragDropContext
@@ -490,8 +502,6 @@ export function AgendaEditorPanel({
                               className={cn(
                                 "transition-shadow",
                                 snapshot.isDragging && "shadow-lg",
-                                (item.parentLocalKey || item.parent_id) &&
-                                  "ml-5 pl-0",
                                 (isHiddenByCollapsedParent(item) ||
                                   (hideEmpty &&
                                     systemCounts[getItemKey(item, index)] ===
@@ -502,6 +512,7 @@ export function AgendaEditorPanel({
                               <AgendaSystemRow
                                 dragHandleProps={provided.dragHandleProps}
                                 canEdit={hasEditPermission}
+                                nested={Boolean(item.parentLocalKey || item.parent_id)}
                                 selected={
                                   getItemKey(item, index) === selectedKey
                                 }
@@ -518,6 +529,14 @@ export function AgendaEditorPanel({
                                     }))
                                   }
                                   editorRow
+                                  editorCompleted={item.is_completed}
+                                  editorDetails={
+                                    <AgendaRowDetails
+                                      item={item}
+                                      profiles={profiles}
+                                      onComplete={hasEditPermission ? (completed) => change(index, "is_completed", completed) : undefined}
+                                    />
+                                  }
                                   onCountChange={(count) =>
                                     setSystemCounts((prev) =>
                                       prev[getItemKey(item, index)] === count
@@ -582,15 +601,14 @@ export function AgendaEditorPanel({
                               getAgendaNumber={getAgendaNumber}
                               change={change}
                               handleTitleKeyDown={handleTitleKeyDown}
-                              hasContentIndicator={hasContentIndicator}
-                              hasSubItems={hasSubItems}
+                              subItemCount={getSubItemCount(item)}
+                              documentCount={item.id ? (agendaDocuments[item.id]?.length ?? 0) : 0}
                               isMainItemCollapsed={isMainItemCollapsed}
                               setCollapsedMainItems={setCollapsedMainItems}
                               isHiddenByCollapsedParent={
                                 isHiddenByCollapsedParent
                               }
                               profiles={profiles}
-                              timing={timing}
                               onToggleVisibility={onToggleVisibility}
                               setDirty={setDirty}
                               onAddSubItem={onAddSubItem}
@@ -635,21 +653,23 @@ export function AgendaEditorPanel({
           )}
 
           {hasEditPermission && (
-            <Button
-              variant="outline"
-              className="mt-4 w-full border-dashed bg-card py-5 shadow-none"
-              onClick={() => {
-                setDirty(true);
-                onAddAgendaItem();
-              }}
-            >
-              <Plus className="mr-2 h-4 w-4" />
-              Neuer Punkt
-            </Button>
+            <div className="space-y-2 p-4">
+              <Button
+                variant="outline"
+                className="w-full border-dashed bg-card py-5 shadow-none"
+                onClick={() => {
+                  setDirty(true);
+                  onAddAgendaItem();
+                }}
+              >
+                <Plus className="mr-2 h-4 w-4" />
+                Neuer Punkt
+              </Button>
+              <p className="text-xs text-muted-foreground">
+                Enter = neuer Punkt · Tab = Unterpunkt · Ziehen am Griff = sortieren
+              </p>
+            </div>
           )}
-          <p className="text-xs text-muted-foreground mt-4">
-            Enter = neuer Punkt · Tab = Unterpunkt · Ziehen am Griff = sortieren
-          </p>
         </div>
         {selectedItem ? (
           <AgendaInspector
@@ -682,11 +702,7 @@ export function AgendaEditorPanel({
             }}
             onToggleVisibility={onToggleVisibility}
           />
-        ) : (
-          <aside className="rounded-lg border border-dashed p-6 text-sm text-muted-foreground xl:sticky xl:top-4">
-            Wähle einen Punkt aus, um seine Details zu bearbeiten.
-          </aside>
-        )}
+        ) : null}
       </div>
       {/* Pending Jour Fixe Notes Preview */}
       <PendingJourFixeNotes className="mt-4" />

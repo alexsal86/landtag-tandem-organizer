@@ -1,79 +1,42 @@
 import { Button } from "@/components/ui/button";
 import { Checkbox } from "@/components/ui/checkbox";
 import type { agendaTiming } from "./agendaTiming";
+
 export function AgendaSummaryBar({
   allCollapsed,
   onToggleAll,
   timing,
   hideEmpty,
   onHideEmptyChange,
+  onOpenCarryover,
 }: {
   allCollapsed?: boolean;
   onToggleAll?: () => void;
   timing: ReturnType<typeof agendaTiming>;
   hideEmpty: boolean;
   onHideEmptyChange: (value: boolean) => void;
+  onOpenCarryover?: () => void;
 }) {
   return (
-    <div className="-mx-2 mb-2 overflow-hidden border-b border-border pb-3">
-      <div className="flex flex-wrap items-center gap-x-5 gap-y-2 px-4 py-3 text-sm">
-        <span>
-          <b>{timing.main.length}</b> Punkte
-        </span>
+    <div className="flex flex-wrap items-center justify-between gap-3 border-b px-4 py-3 sm:px-5">
+      <div className="flex flex-wrap items-center gap-2 text-sm">
+        <strong>{timing.main.length} {timing.main.length === 1 ? "Punkt" : "Punkte"}</strong>
         {timing.total > 0 && (
-          <>
-            <span>
-              <b>{timing.total} min</b> geplant
-            </span>
-            {timing.end && (
-              <span>
-                Ende ca. <b>{timing.end}</b>
-              </span>
-            )}
-          </>
+          <span className="rounded-full border px-2.5 py-1 tabular-nums text-muted-foreground">Σ {timing.total} Min.</span>
         )}
-        <label className="flex items-center gap-2 text-xs text-muted-foreground ml-auto">
-          <Checkbox
-            checked={hideEmpty}
-            onCheckedChange={(value) => onHideEmptyChange(value === true)}
-          />
+      </div>
+      <div className="flex flex-wrap items-center gap-2">
+        <label className="flex min-h-9 items-center gap-2 rounded-full border px-3 text-xs text-muted-foreground">
+          <Checkbox checked={hideEmpty} onCheckedChange={(value) => onHideEmptyChange(value === true)} />
           Leere Bausteine ausblenden
         </label>
+        {onOpenCarryover && <Button variant="outline" size="sm" onClick={onOpenCarryover}>Überträge</Button>}
         {onToggleAll && (
-          <Button
-            variant="ghost"
-            size="sm"
-            className="h-7 text-xs font-normal text-muted-foreground hover:text-muted-foreground"
-            onClick={onToggleAll}
-          >
+          <Button variant="outline" size="sm" onClick={onToggleAll}>
             {allCollapsed ? "Alles ausklappen" : "Alles einklappen"}
           </Button>
         )}
       </div>
-      {timing.total > 0 && (
-        <div
-          className="mx-3 flex h-1 gap-0.5"
-          aria-label="Zeitanteile der Hauptpunkte"
-        >
-          {timing.main.map((item, index) => (
-            <span
-              key={item.localKey || item.id || index}
-              className={
-                [
-                  "bg-agenda-appointments",
-                  "bg-agenda-notes",
-                  "bg-agenda-tasks",
-                  "bg-agenda-decisions",
-                ][index % 4]
-              }
-              style={{
-                width: `${(Math.max(0, item.duration_minutes ?? 0) / timing.total) * 100}%`,
-              }}
-              title={`${item.title}: ${item.duration_minutes ?? 0} min`}
-            />
-          ))}
-        </div>
-      )}
     </div>
   );
 }

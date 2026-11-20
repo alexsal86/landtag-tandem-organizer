@@ -4,7 +4,6 @@ import type {
   DraggableStateSnapshot,
 } from "@hello-pangea/dnd";
 import { Button } from "@/components/ui/button";
-import { Badge } from "@/components/ui/badge";
 import { Input } from "@/components/ui/input";
 import { Checkbox } from "@/components/ui/checkbox";
 import {
@@ -31,7 +30,8 @@ import {
 } from "lucide-react";
 import { cn } from "@/lib/utils";
 import type { AgendaItem, LinkedTask, Profile } from "../types";
-import type { agendaTiming } from "./agendaTiming";
+import { AgendaRowDetails } from "./AgendaRowDetails";
+import { stripHtml } from "@/utils/textDiff";
 interface Props {
   item: AgendaItem;
   index: number;
@@ -48,13 +48,12 @@ interface Props {
     item: AgendaItem,
     index: number,
   ) => void;
-  hasContentIndicator: (item: AgendaItem) => boolean;
-  hasSubItems: (item: AgendaItem) => boolean;
+  subItemCount: number;
+  documentCount: number;
   isMainItemCollapsed: (item: AgendaItem) => boolean;
   isHiddenByCollapsedParent: (item: AgendaItem) => boolean;
   setCollapsedMainItems: Dispatch<SetStateAction<Record<string, boolean>>>;
   profiles: Profile[];
-  timing: ReturnType<typeof agendaTiming>;
   onToggleVisibility: (id: string, visible: boolean) => void;
   setDirty: (dirty: boolean) => void;
   onAddSubItem: (item: AgendaItem, title: string) => void;
@@ -80,12 +79,11 @@ export function AgendaRow({
   getAgendaNumber,
   change,
   handleTitleKeyDown,
-  hasContentIndicator,
-  hasSubItems,
+  subItemCount,
+  documentCount,
   isMainItemCollapsed,
   setCollapsedMainItems,
   isHiddenByCollapsedParent,
-  timing,
   profiles,
   onToggleVisibility,
   setDirty,
@@ -96,6 +94,9 @@ export function AgendaRow({
   tasks,
   onAddTaskToAgenda,
 }: Props) {
+  const isSubItem = Boolean(item.parentLocalKey || item.parent_id);
+  const preview = [item.description, item.result_text, item.notes]
+    .map((text) => stripHtml(text ?? "")).find(Boolean);
   return (
     <ContextMenu>
       <ContextMenuTrigger asChild>
@@ -108,229 +109,162 @@ export function AgendaRow({
           onFocus={() => setSelectedKey(getItemKey(item, index))}
           onClick={() => setSelectedKey(getItemKey(item, index))}
           className={cn(
-            "group transition-colors focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring border border-transparent hover:bg-muted/30 focus-within:bg-muted/40",
-            getItemKey(item, index) === selectedKey &&
-              "rounded-lg border-primary/45 bg-primary/10 hover:bg-primary/10 focus-within:bg-primary/10",
-            snapshot.combineTargetFor && "rounded-lg ring-2 ring-primary bg-primary/10",
-            snapshot.isDragging && "shadow-lg bg-card rounded-lg border",
-            (item.parentLocalKey || item.parent_id) && "ml-5 pl-0",
-            item.is_optional && "border-dashed",
+            "group border-b border-l-[3px] border-l-transparent transition-colors hover:bg-muted/40 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-inset focus-visible:ring-ring",
+            isSubItem && "bg-muted/25",
+            getItemKey(item, index) === selectedKey && "border-l-primary bg-primary/10 hover:bg-primary/10",
+            snapshot.combineTargetFor && "bg-primary/10 ring-2 ring-inset ring-primary",
+            snapshot.isDragging && "bg-card shadow-lg",
             item.is_optional && item.is_visible === false && "opacity-50",
             isHiddenByCollapsedParent(item) && "hidden",
           )}
         >
-          <div className="py-1 px-3">
-            <div className="space-y-3">
-              <div className="flex flex-wrap sm:flex-nowrap items-center gap-1 group">
-                {hasEditPermission && (
-                  <div
-                    {...provided.dragHandleProps}
-                    aria-label="Punkt verschieben"
-                    className="focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring cursor-grab active:cursor-grabbing opacity-0 group-data-[selected=true]:opacity-100 group-hover:opacity-100 group-focus-within:opacity-100 focus:opacity-100 transition-opacity"
-                  >
-                    <GripVertical className="h-4 w-4 text-muted-foreground" />
-                  </div>
-                )}
-                <span className="text-muted-foreground font-medium min-w-[1.25rem] -ml-1 text-right">
-                  {getAgendaNumber(item)}
-                </span>
+          <div className={cn("flex flex-wrap items-center gap-x-3 gap-y-2 px-3 py-3 sm:px-5", isSubItem && "pl-7 sm:pl-10")}>
+            {hasEditPermission && (
+              <div
+                {...provided.dragHandleProps}
+                aria-label="Punkt verschieben"
+                className="cursor-grab text-muted-foreground/70 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring active:cursor-grabbing"
+              >
+                <GripVertical className="size-4" />
+              </div>
+            )}
+            <div className="min-w-0 flex-1 basis-48">
+              <div className="flex min-w-0 items-center gap-1">
+                <span className="shrink-0 text-sm font-medium tabular-nums text-muted-foreground">{getAgendaNumber(item)}</span>
                 <Input
                   value={item.title}
                   onChange={(e) => change(index, "title", e.target.value)}
                   onKeyDown={(e) => handleTitleKeyDown(e, item, index)}
-                  placeholder={
-                    item.parentLocalKey || item.parent_id
-                      ? "Unterpunkt-Titel"
-                      : "Agenda-Punkt Titel"
-                  }
+                  placeholder={isSubItem ? "Unterpunkt-Titel" : "Agenda-Punkt Titel"}
                   aria-label="Titel des Agenda-Punkts"
-                  className="min-w-0 flex-1 basis-[calc(100%-4rem)] sm:basis-auto px-1 border-transparent bg-transparent shadow-none hover:border-border focus:bg-card focus-visible:ring-2 font-medium"
+                  className={cn(
+                    "h-8 min-w-0 px-1 border-transparent bg-transparent shadow-none hover:border-border focus:bg-card",
+                    isSubItem ? "font-medium" : "font-semibold",
+                    item.is_completed && "text-muted-foreground line-through",
+                  )}
                   readOnly={!hasEditPermission}
                 />
-                {/* Carryover badge */}
-                {item.source_meeting_id && (
-                  <Badge
-                    variant="outline"
-                    className="text-[10px] bg-palette-amber/10 text-palette-amber border-palette-amber/30 max-w-48 truncate"
-                  >
-                    ↩{" "}
-                    {item.original_meeting_title
-                      ? `von ${item.original_meeting_title}`
-                      : "Übertragen"}
-                  </Badge>
-                )}
-                {/* Optional visibility toggle */}
-                {item.is_optional && item.id && hasEditPermission && (
+              </div>
+              {preview && <p className="truncate pl-0.5 text-sm text-muted-foreground">{preview}</p>}
+              {documentCount > 0 && (
+                <span className="pl-0.5 text-xs text-muted-foreground">
+                  {documentCount} {documentCount === 1 ? "Anhang" : "Anhänge"}
+                </span>
+              )}
+            </div>
+            {item.is_recurring && <span className="rounded-full border px-2 py-0.5 text-xs text-muted-foreground">Wiederkehrend</span>}
+            {item.is_optional && item.id && hasEditPermission && (
+              <Button aria-label="Sichtbarkeit umschalten" size="icon" variant="ghost" className="size-7 shrink-0"
+                onClick={() => onToggleVisibility(item.id!, item.is_visible !== false)}>
+                {item.is_visible !== false ? <Eye className="size-4" /> : <EyeOff className="size-4" />}
+              </Button>
+            )}
+            {hasEditPermission && (
+              <span className="flex shrink-0 max-w-0 -ml-1 overflow-hidden opacity-0 transition-[max-width,margin,opacity] duration-200 ease-out group-hover:max-w-14 group-hover:ml-0 group-hover:opacity-100 group-focus-within:max-w-14 group-focus-within:ml-0 group-focus-within:opacity-100 group-data-[selected=true]:max-w-14 group-data-[selected=true]:ml-0 group-data-[selected=true]:opacity-100 motion-reduce:transition-none">
+                {!item.parent_id && !item.parentLocalKey && (
                   <Button
-                    aria-label="Sichtbarkeit umschalten"
                     size="icon"
                     variant="ghost"
-                    className="shrink-0 h-7 w-7"
-                    onClick={() =>
-                      onToggleVisibility(item.id!, item.is_visible !== false)
-                    }
+                    aria-label="Unterpunkt hinzufügen"
+                    className="h-7 w-7"
+                    onClick={() => {
+                      setDirty(true);
+                      onAddSubItem(item, "");
+                    }}
                   >
-                    {item.is_visible !== false ? (
-                      <Eye className="h-4 w-4" />
-                    ) : (
-                      <EyeOff className="h-4 w-4 text-muted-foreground" />
-                    )}
+                    <Plus className="h-4 w-4" />
                   </Button>
                 )}
-                {item.carry_over_to_next && (
-                  <Badge
-                    variant="outline"
-                    title="Auf nächstes Meeting übertragen"
-                    className="whitespace-nowrap"
-                  >
-                    ↩ Übertragen
-                  </Badge>
-                )}
-                {
-                  <div className="flex -space-x-1 w-20 shrink-0 justify-end">
-                    {(item.assigned_to ?? []).map((id) => {
-                      const profile = profiles.find((p) => p.user_id === id);
-                      return (
-                        <span
-                          key={id}
-                          title={profile?.display_name || "Unbekannt"}
-                          className="flex h-6 w-6 items-center justify-center rounded-full border-2 border-card bg-muted text-[11px] font-semibold"
-                        >
-                          {(profile?.display_name || "?")
-                            .slice(0, 1)
-                            .toUpperCase()}
-                        </span>
-                      );
-                    })}
-                  </div>
-                }
-                <span className="grid w-28 shrink-0 grid-cols-2 gap-2 text-xs text-muted-foreground tabular-nums whitespace-nowrap text-right">
-                  <span>
-                    {!item.parent_id && !item.parentLocalKey && timing.total > 0
-                      ? timing.starts.get(item)
-                      : ""}
-                  </span>
-                  <span>
-                    {!item.parent_id && !item.parentLocalKey && timing.total > 0
-                      ? `${item.duration_minutes ?? 0} min`
-                      : ""}
-                  </span>
-                </span>
-                {hasEditPermission && (
-                  <span className="flex shrink-0 max-w-0 -ml-1 overflow-hidden opacity-0 transition-[max-width,margin,opacity] duration-200 ease-out group-hover:max-w-14 group-hover:ml-0 group-hover:opacity-100 group-focus-within:max-w-14 group-focus-within:ml-0 group-focus-within:opacity-100 group-data-[selected=true]:max-w-14 group-data-[selected=true]:ml-0 group-data-[selected=true]:opacity-100 motion-reduce:transition-none">
-                    {!item.parent_id && !item.parentLocalKey && (
-                      <Button
-                        size="icon"
-                        variant="ghost"
-                        aria-label="Unterpunkt hinzufügen"
-                        className="h-7 w-7"
-                        onClick={() => {
-                          setDirty(true);
-                          onAddSubItem(item, "");
-                        }}
-                      >
-                        <Plus className="h-4 w-4" />
-                      </Button>
-                    )}
+                <Button
+                  size="icon"
+                  variant="ghost"
+                  aria-label="Punkt löschen"
+                  className="h-7 w-7"
+                  onClick={() => {
+                    setDirty(true);
+                    onDeleteAgendaItem(item, index);
+                  }}
+                >
+                  <Trash className="h-4 w-4" />
+                </Button>
+              </span>
+            )}
+            {subItemCount > 0 && (
+              <Button
+                size="sm"
+                variant="ghost"
+                aria-label="Unterpunkte ein- oder ausklappen"
+                aria-expanded={!isMainItemCollapsed(item)}
+                className="h-7 shrink-0 gap-1 px-2 text-xs font-medium text-primary"
+                onClick={() => {
+                  const key = item.localKey || item.id;
+                  if (!key) return;
+                  setCollapsedMainItems((prev) => ({ ...prev, [key]: !prev[key] }));
+                }}
+              >
+                {isMainItemCollapsed(item) ? <ChevronRight className="size-4" /> : <ChevronDown className="size-4" />}
+                {subItemCount} {subItemCount === 1 ? "Unterpunkt" : "Unterpunkte"}
+              </Button>
+            )}
+            {!(item.parentLocalKey || item.parent_id) &&
+              hasEditPermission && (
+                <Popover
+                  open={showTaskSelector?.itemIndex === index}
+                  onOpenChange={(open) =>
+                    onSetShowTaskSelector(
+                      open ? { itemIndex: index } : null,
+                    )
+                  }
+                >
+                  <PopoverTrigger asChild>
                     <Button
                       size="icon"
                       variant="ghost"
-                      aria-label="Punkt löschen"
-                      className="h-7 w-7"
-                      onClick={() => {
-                        setDirty(true);
-                        onDeleteAgendaItem(item, index);
-                      }}
+                      aria-label="Aufgabe als Unterpunkt"
+                      className="h-7 shrink-0 w-0 max-w-0 -ml-1 overflow-hidden p-0 opacity-0 transition-[width,max-width,margin,opacity] duration-200 ease-out group-hover:w-7 group-hover:max-w-7 group-hover:ml-0 group-hover:opacity-100 group-focus-within:w-7 group-focus-within:max-w-7 group-focus-within:ml-0 group-focus-within:opacity-100 group-data-[selected=true]:w-7 group-data-[selected=true]:max-w-7 group-data-[selected=true]:ml-0 group-data-[selected=true]:opacity-100 motion-reduce:transition-none"
                     >
-                      <Trash className="h-4 w-4" />
+                      <ListTodo className="h-4 w-4" />
                     </Button>
-                  </span>
-                )}
-                {hasContentIndicator(item) && (
-                  <span
-                    className="h-2 w-2 rounded-full bg-palette-blue/80 shrink-0"
-                    title="Enthält Beschreibung, Notizen oder Dokumente"
-                  />
-                )}
-                {hasSubItems(item) && (
-                  <Button
-                    size="icon"
-                    variant="ghost"
-                    aria-label="Unterpunkte ein- oder ausklappen"
-                    aria-expanded={!isMainItemCollapsed(item)}
-                    className="h-7 shrink-0 w-0 max-w-0 -ml-1 overflow-hidden p-0 opacity-0 transition-[width,max-width,margin,opacity] duration-200 ease-out group-hover:w-7 group-hover:max-w-7 group-hover:ml-0 group-hover:opacity-100 group-focus-within:w-7 group-focus-within:max-w-7 group-focus-within:ml-0 group-focus-within:opacity-100 group-data-[selected=true]:w-7 group-data-[selected=true]:max-w-7 group-data-[selected=true]:ml-0 group-data-[selected=true]:opacity-100 motion-reduce:transition-none"
-                    onClick={() => {
-                      const key = item.localKey || item.id;
-                      if (!key) return;
-                      setCollapsedMainItems((prev) => ({
-                        ...prev,
-                        [key]: !prev[key],
-                      }));
-                    }}
-                  >
-                    {isMainItemCollapsed(item) ? (
-                      <ChevronRight className="h-4 w-4" />
-                    ) : (
-                      <ChevronDown className="h-4 w-4" />
-                    )}
-                  </Button>
-                )}
-                {!(item.parentLocalKey || item.parent_id) &&
-                  hasEditPermission && (
-                    <Popover
-                      open={showTaskSelector?.itemIndex === index}
-                      onOpenChange={(open) =>
-                        onSetShowTaskSelector(
-                          open ? { itemIndex: index } : null,
-                        )
-                      }
-                    >
-                      <PopoverTrigger asChild>
-                        <Button
-                          size="icon"
-                          variant="ghost"
-                          aria-label="Aufgabe als Unterpunkt"
-                          className="h-7 shrink-0 w-0 max-w-0 -ml-1 overflow-hidden p-0 opacity-0 transition-[width,max-width,margin,opacity] duration-200 ease-out group-hover:w-7 group-hover:max-w-7 group-hover:ml-0 group-hover:opacity-100 group-focus-within:w-7 group-focus-within:max-w-7 group-focus-within:ml-0 group-focus-within:opacity-100 group-data-[selected=true]:w-7 group-data-[selected=true]:max-w-7 group-data-[selected=true]:ml-0 group-data-[selected=true]:opacity-100 motion-reduce:transition-none"
-                        >
-                          <ListTodo className="h-4 w-4" />
-                        </Button>
-                      </PopoverTrigger>
-                      <PopoverContent className="w-[min(92vw,32rem)]">
-                        <div className="space-y-2">
-                          <div className="text-sm font-medium mb-3">
-                            Aufgabe als Unterpunkt hinzufügen
-                          </div>
-                          {tasks.length > 0 ? (
-                            <div className="space-y-2 max-h-60 overflow-y-auto">
-                              {tasks.map((task) => (
-                                <Button
-                                  key={task.id}
-                                  variant="outline"
-                                  className="w-full justify-start text-left h-auto p-3 whitespace-normal"
-                                  onClick={() => {
-                                    setDirty(true);
-                                    onAddTaskToAgenda(task, item, index);
-                                  }}
-                                >
-                                  <div>
-                                    <div className="font-medium whitespace-normal break-words">
-                                      {task.title}
-                                    </div>
-                                  </div>
-                                </Button>
-                              ))}
-                            </div>
-                          ) : (
-                            <div className="text-sm text-muted-foreground text-center py-4">
-                              Keine offenen Aufgaben verfügbar
-                            </div>
-                          )}
+                  </PopoverTrigger>
+                  <PopoverContent className="w-[min(92vw,32rem)]">
+                    <div className="space-y-2">
+                      <div className="text-sm font-medium mb-3">
+                        Aufgabe als Unterpunkt hinzufügen
+                      </div>
+                      {tasks.length > 0 ? (
+                        <div className="space-y-2 max-h-60 overflow-y-auto">
+                          {tasks.map((task) => (
+                            <Button
+                              key={task.id}
+                              variant="outline"
+                              className="w-full justify-start text-left h-auto p-3 whitespace-normal"
+                              onClick={() => {
+                                setDirty(true);
+                                onAddTaskToAgenda(task, item, index);
+                              }}
+                            >
+                              <div>
+                                <div className="font-medium whitespace-normal break-words">
+                                  {task.title}
+                                </div>
+                              </div>
+                            </Button>
+                          ))}
                         </div>
-                      </PopoverContent>
-                    </Popover>
-                  )}
-              </div>
-            </div>
+                      ) : (
+                        <div className="text-sm text-muted-foreground text-center py-4">
+                          Keine offenen Aufgaben verfügbar
+                        </div>
+                      )}
+                    </div>
+                  </PopoverContent>
+                </Popover>
+              )}
+            <AgendaRowDetails
+              item={item}
+              profiles={profiles}
+              onComplete={hasEditPermission ? (completed) => change(index, "is_completed", completed) : undefined}
+            />
           </div>
         </div>
       </ContextMenuTrigger>

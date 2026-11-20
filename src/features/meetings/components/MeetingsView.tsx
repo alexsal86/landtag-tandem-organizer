@@ -251,6 +251,11 @@ export function MeetingsView() {
               {data.selectedMeeting && !data.activeMeeting ? (
                 <AgendaEditorPanel
                   selectedMeeting={data.selectedMeeting}
+                  onStartMeeting={() => void data.startMeeting(data.selectedMeeting!)}
+                  onOpenCarryover={async () => {
+                    await data.loadCarryoverBufferItems();
+                    data.setShowCarryoverBuffer(true);
+                  }}
                   agendaItems={data.agendaItems}
                   profiles={data.profiles}
                   tasks={data.tasks}

@@ -38,6 +38,8 @@ interface SystemAgendaItemProps {
   expandedOverride?: boolean;
   onExpandedChange?: (expanded: boolean) => void;
   editorRow?: boolean;
+  editorDetails?: ReactNode;
+  editorCompleted?: boolean;
   onCountChange?: (count: number | null) => void;
   systemType: SystemAgendaType;
   meetingDate?: string | Date;
@@ -94,6 +96,8 @@ export function SystemAgendaItem({
   expandedOverride,
   onExpandedChange,
   editorRow = false,
+  editorDetails,
+  editorCompleted,
   onCountChange,
   meetingDate,
   meetingId,
@@ -664,32 +668,12 @@ export function SystemAgendaItem({
     return null;
   };
   if (!editorRow) return renderBody();
-  const Icon = systemAgendaOption(systemType)?.Icon;
   return (
     <section className="min-w-0">
-      <div className="flex flex-wrap sm:flex-nowrap items-center gap-1 py-1.5 px-2">
+      <div className="flex flex-wrap items-center gap-x-3 gap-y-2 px-2 py-3 pr-3 sm:pr-5">
         {agendaNumber && (
-          <span className="mr-2 text-muted-foreground text-sm tabular-nums">
+          <span className="shrink-0 text-sm font-medium tabular-nums text-muted-foreground">
             {agendaNumber}
-          </span>
-        )}
-        {Icon && (
-          <span
-            className={cn(
-              "flex h-6 w-6 shrink-0 items-center justify-center rounded-md border text-white",
-              systemType === "quick_notes"
-                ? "bg-palette-amber border-palette-amber"
-                : systemType === "upcoming_appointments" ||
-                    systemType === "appointment_requests"
-                  ? "bg-palette-blue border-palette-blue"
-                  : systemType === "birthdays"
-                    ? "bg-palette-pink border-palette-pink"
-                    : systemType === "decisions"
-                      ? "bg-palette-violet border-palette-violet"
-                      : "bg-palette-green border-palette-green",
-            )}
-          >
-            <Icon className="h-3.5 w-3.5" />
           </span>
         )}
         <Input
@@ -697,14 +681,17 @@ export function SystemAgendaItem({
           value={title ?? getTitle()}
           readOnly={!canEditTitle}
           onChange={(e) => onTitleChange?.(e.target.value)}
-          className="min-w-0 flex-1 basis-[calc(100%-5rem)] sm:basis-auto h-8 px-1 border-transparent bg-transparent shadow-none hover:border-border focus:bg-card focus-visible:ring-2 font-medium"
+          className={cn(
+            "h-8 min-w-0 flex-1 basis-36 px-1 border-transparent bg-transparent shadow-none hover:border-border focus:bg-card font-semibold",
+            editorCompleted && "text-muted-foreground line-through",
+          )}
         />
         <Button
-          size="icon"
+          size="sm"
           variant="ghost"
           aria-label="Baustein-Vorschau ein- oder ausklappen"
           aria-expanded={expanded}
-          className="h-7 shrink-0 w-0 max-w-0 -ml-1 overflow-hidden p-0 opacity-0 transition-[width,max-width,margin,opacity] duration-200 ease-out group-hover:w-7 group-hover:max-w-7 group-hover:ml-0 group-hover:opacity-100 group-focus-within:w-7 group-focus-within:max-w-7 group-focus-within:ml-0 group-focus-within:opacity-100 group-data-[selected=true]:w-7 group-data-[selected=true]:max-w-7 group-data-[selected=true]:ml-0 group-data-[selected=true]:opacity-100 motion-reduce:transition-none"
+          className="h-7 shrink-0 gap-1 px-2 text-xs font-medium text-primary"
           onClick={() => {
             if (onExpandedChange) onExpandedChange(!expanded);
             else setExpanded((value) => !value);
@@ -715,6 +702,7 @@ export function SystemAgendaItem({
           ) : (
             <ChevronRight className="h-4 w-4" />
           )}
+          {typeof count === "number" && `${count} ${count === 1 ? "Eintrag" : "Einträge"}`}
         </Button>
         {onDelete && (
           <Button
@@ -727,6 +715,7 @@ export function SystemAgendaItem({
             <Trash className="h-4 w-4" />
           </Button>
         )}
+        {editorDetails}
       </div>
       <div hidden={!expanded || count === 0} className="px-3 pb-2">
         {renderBody()}
