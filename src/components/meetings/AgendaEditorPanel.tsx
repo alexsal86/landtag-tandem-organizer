@@ -223,6 +223,9 @@ export function AgendaEditorPanel({
       if (appointments != null) return appointments === 1 ? "1 Termin" : `${appointments} Termine`;
     }
 
+    if (type === "appointment_requests" && count != null && count > 0) {
+      return count === 1 ? "1 offener Eintrag" : `${count} offene Einträge`;
+    }
     return descriptions[type] ?? remoteDescriptions[`${selectedMeeting.id}:${key}`]
       ?? (count === 0 ? systemAgendaOption(type)?.emptyDescription : undefined);
   };

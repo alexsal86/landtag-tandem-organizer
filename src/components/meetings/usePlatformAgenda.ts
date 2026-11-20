@@ -10,6 +10,8 @@ export interface PlatformAgendaEntry {
   approval?: 'social';
   decisionId?: string;
   deputyName?: string;
+  needsApproval?: boolean;
+  needsReview?: boolean;
 }
 
 /** Bounded, cached source queries shared by editor, meeting, focus mode and My Work. */
@@ -70,7 +72,7 @@ export async function loadPlatformAgenda(type: PlatformAgendaType, tenantId: str
     if (decisions.error) throw decisions.error;
     return (data ?? []).map(row => ({ id: row.id, title: row.subject || row.title, detail: row.recipient_name || 'Empfänger offen',
       status: row.status === 'approved' ? 'Freigegeben · Versand offen' : row.status === 'review' ? 'Kollegenprüfung' : 'Zur Freigabe',
-      path: `/letters/${row.id}`, content: row.content_html,
+      path: `/letters/${row.id}`, content: row.content_html, needsApproval: row.status === 'pending_approval',
       decisionId: decisions.data?.find(decision => decision.description?.split('\n').some(line => line.trim() === `letter_approval_letter_id:${row.id}`))?.id }));
   }
   if (type === 'critical_radar') {
@@ -111,7 +113,7 @@ export async function loadPlatformAgenda(type: PlatformAgendaType, tenantId: str
       const open = (promises.data ?? []).filter(task => task.source_id === row.id);
       const review = pastAppointmentReview(fb, open.length);
       return { id: row.id, title: row.title, date: row.start_time, detail: [row.location, ...open.map(task => task.title), fb?.notes?.trim().slice(0, 140)].filter(Boolean).join(' · ') || undefined,
-        status: review.status, ownerId: row.user_id, path: `/calendar?date=${row.start_time.slice(0, 10)}&event=${row.id}`, content: fb?.notes };
+        status: review.status, needsReview: review.open, ownerId: row.user_id, path: `/calendar?date=${row.start_time.slice(0, 10)}&event=${row.id}`, content: fb?.notes };
     });
   }
   return [];

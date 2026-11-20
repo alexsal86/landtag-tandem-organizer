@@ -77,16 +77,42 @@ export function PlatformAgendaSection({
   }, [type, query.isLoading, query.error, query.data, onCountChange]);
   useEffect(() => {
     if (!onDescriptionChange || !query.data) return;
+    const entries = query.data;
     if (type === "redaktion") {
-      const pending = query.data.filter(entry => entry.approval === "social").length;
+      const pending = entries.filter(entry => entry.approval === "social").length;
       onDescriptionChange(pending === 0 ? "Keine Freigabe steht aus" : pending === 1 ? "1 Freigabe steht aus" : `${pending} Freigaben stehen aus`);
     } else if (type === "leave_requests") {
-      const absences = new Set(query.data.map(entry => entry.deputyName
+      const absences = new Set(entries.map(entry => entry.deputyName
         ? `${entry.title} ist abwesend und wird vertreten durch ${entry.deputyName}`
         : `${entry.title} ist abwesend · keine Vertretung eingetragen`));
       onDescriptionChange(absences.size ? [...absences].join(" · ") : "Keine Abwesenheit im Zeitraum");
+    } else if (type === "event_plannings") {
+      const count = entries.length;
+      const label = count === 1 ? "1 Veranstaltung" : `${count} Veranstaltungen`;
+      const withNames = [label, ...entries.map(entry => entry.title)].join(" · ");
+      onDescriptionChange(count === 0 ? "Keine Veranstaltungsplanung vorhanden" : count <= 2 && withNames.length <= 100 ? withNames : label);
+    } else if (type === "letters_for_signature") {
+      const count = entries.filter(entry => entry.needsApproval).length;
+      onDescriptionChange(count === 0 ? "Kein Brief zur Freigabe" : count === 1
+        ? "1 Brief muss freigegeben werden" : `${count} Briefe müssen freigegeben werden`);
+    } else if (type === "critical_radar") {
+      const deadlines = entries.filter(entry => entry.date);
+      const count = deadlines.length;
+      const byPerson = new Map<string, number>();
+      for (const { ownerId } of deadlines) {
+        const name = profiles.find(profile => profile.user_id === ownerId)?.display_name;
+        if (name) byPerson.set(name, (byPerson.get(name) ?? 0) + 1);
+      }
+      onDescriptionChange(count === 0 ? "Keine Frist im Radar" : [
+        count === 1 ? "1 Frist" : `${count} Fristen`,
+        ...Array.from(byPerson, ([name, total]) => `${total}× ${name}`),
+      ].join(" · "));
+    } else if (type === "past_appointments") {
+      const count = entries.filter(entry => entry.needsReview).length;
+      onDescriptionChange(count === 0 ? "Kein Termin mit offener Rückschau" : count === 1
+        ? "1 Termin mit offener Rückschau" : `${count} Termine mit offener Rückschau`);
     }
-  }, [type, query.data, onDescriptionChange]);
+  }, [type, query.data, profiles, onDescriptionChange]);
   const navigate = useNavigate();
   const qc = useQueryClient();
   const { currentTenant } = useTenant();
