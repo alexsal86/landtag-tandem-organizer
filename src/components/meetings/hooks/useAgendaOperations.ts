@@ -230,7 +230,7 @@ export function useAgendaOperations(deps: AgendaOpsDeps) {
     const toDbPayload = (item: AgendaItem, orderIndex: number, parentId: string | null = null) => ({
       meeting_id: selectedMeeting.id!,
       title: item.title || '',
-      description: item.description || null,
+      description: item.description ?? null,
       assigned_to: Array.isArray(item.assigned_to) && item.assigned_to.length > 0 ? item.assigned_to.filter(Boolean) : null,
       notes: item.notes || null,
       is_completed: Boolean(item.is_completed),

@@ -173,6 +173,19 @@ export function AgendaEditorPanel({
     ((item.localKey || item.id) === generatedParent || item === selectedItem));
   const notesParent = agendaItems.find(item => item.system_type === "quick_notes" &&
     ((item.localKey || item.id) === generatedParent || item === selectedItem));
+  const systemInspectorItem = appointmentParent ?? notesParent;
+  const inspectorItem = systemInspectorItem ?? selectedItem;
+  const inspectorIndex = inspectorItem ? agendaItems.indexOf(inspectorItem) : -1;
+  const notesByPerson = new Map<string, number>();
+  for (const note of linkedQuickNotes) {
+    notesByPerson.set(note.user_id, (notesByPerson.get(note.user_id) ?? 0) + 1);
+  }
+  const notesDescription = [
+    `${linkedQuickNotes.length} ${linkedQuickNotes.length === 1 ? "Notiz" : "Notizen"}`,
+    ...Array.from(notesByPerson, ([id, count]) =>
+      `${count}× ${profiles.find(profile => profile.user_id === id)?.display_name || "Unbekannte Person"}`,
+    ),
+  ].join(". ");
   const change = (index: number, field: keyof AgendaItem, value: unknown) => {
     if (!hasEditPermission) return;
     setDirty(true);
@@ -726,7 +739,7 @@ export function AgendaEditorPanel({
                                     ) : undefined
                                   }
                                   editorCompleted={item.is_completed}
-                                  editorDescription={item.description ?? undefined}
+                                  editorDescription={item.description ?? (item.system_type === "quick_notes" ? notesDescription : undefined)}
                                   editorLeading={
                                     (item.parent_id || item.parentLocalKey) && (
                                       <AgendaCompletionCheckbox
@@ -891,6 +904,8 @@ export function AgendaEditorPanel({
             </div>
           )}
         </div>
+        {inspectorItem && (
+          <div className="min-w-0 space-y-4">
         {appointmentParent ? (
           <AppointmentInspector meeting={selectedMeeting} parent={appointmentParent}
             number={getAgendaNumber(appointmentParent)} selectedKey={selectedKey} onSelect={selectStep}
@@ -905,23 +920,25 @@ export function AgendaEditorPanel({
               if (notesParent.id && onUpdateSystemResult) onUpdateSystemResult(notesParent.id, "result_text", value);
               else change(agendaItems.indexOf(notesParent), "result_text", value);
             } : undefined} />
-        ) : selectedItem ? (
+        ) : null}
+        {inspectorItem && (
           <AgendaInspector
             startTime={timing.starts.get(
-              selectedItem.parent_id || selectedItem.parentLocalKey
+              inspectorItem.parent_id || inspectorItem.parentLocalKey
                 ? agendaItems.find(
                     (parent) =>
                       parent.id ===
-                        (selectedItem.parent_id ||
-                          selectedItem.parentLocalKey) ||
+                        (inspectorItem.parent_id ||
+                          inspectorItem.parentLocalKey) ||
                       parent.localKey ===
-                        (selectedItem.parentLocalKey || selectedItem.parent_id),
+                        (inspectorItem.parentLocalKey || inspectorItem.parent_id),
                   )!
-                : selectedItem,
+                : inspectorItem,
             )}
-            key={getItemKey(selectedItem, selectedIndex)}
-            item={selectedItem}
-            index={selectedIndex}
+            key={getItemKey(inspectorItem, inspectorIndex)}
+            item={inspectorItem.system_type === "quick_notes" && inspectorItem.description == null
+              ? { ...inspectorItem, description: notesDescription } : inspectorItem}
+            index={inspectorIndex}
             profiles={profiles}
             hasEditPermission={hasEditPermission}
             agendaDocuments={agendaDocuments}
@@ -936,7 +953,9 @@ export function AgendaEditorPanel({
             }}
             onToggleVisibility={onToggleVisibility}
           />
-        ) : null}
+        )}
+          </div>
+        )}
       </div>
       {!agendaItems.some(
         (item) => item.system_type === "appointment_requests",
