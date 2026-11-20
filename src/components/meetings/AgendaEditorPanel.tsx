@@ -180,7 +180,9 @@ export function AgendaEditorPanel({
           (item.localKey && child.parentLocalKey === item.localKey),
       ),
   );
-  const systemItems = agendaItems.filter((item) => item.system_type && item.system_type !== "upcoming_appointments");
+  const systemItems = agendaItems.filter((item) =>
+    item.system_type && !["upcoming_appointments", "decisions", "redaktion"].includes(item.system_type),
+  );
   const allCollapsed =
     expandableMain.length + systemItems.length > 0 &&
     expandableMain.every(
@@ -356,8 +358,13 @@ export function AgendaEditorPanel({
       })
       .sort((a, b) => a.order_index - b.order_index);
 
+    const generatedCount = mainItem.system_type === "decisions"
+      ? meetingRelevantDecisions.length
+      : mainItem.system_type === "redaktion"
+        ? systemCounts[getItemKey(mainItem, agendaItems.indexOf(mainItem))] ?? 0
+        : 0;
     subItems.forEach((subItem, subIndex) => {
-      const subNumber = subIndex + 1;
+      const subNumber = generatedCount + subIndex + 1;
       if (subItem.id) subNumberByKey.set(subItem.id, subNumber);
       if (subItem.localKey) subNumberByKey.set(subItem.localKey, subNumber);
     });

@@ -1,3 +1,4 @@
+import { agendaSubpointListClass, agendaSubpointNumber, agendaSubpointRowClass } from "./agenda-editor/systemSubpoints";
 import { useState, useEffect } from "react";
 import { useNavigate } from "react-router-dom";
 import { useQueryClient } from "@tanstack/react-query";
@@ -43,6 +44,7 @@ import type { Profile } from "./types";
 
 interface Props {
   defaultExpanded?: boolean;
+  agendaSubpoints?: { parentNumber?: string };
   onCountChange?: (count: number | null) => void;
   type: PlatformAgendaType;
   meetingDate: string | Date;
@@ -61,6 +63,7 @@ export function PlatformAgendaSection({
   readOnly = false,
   onCountChange,
   defaultExpanded = false,
+  agendaSubpoints,
 }: Props) {
   const query = usePlatformAgenda(type, meetingDate);
   useEffect(() => {
@@ -167,34 +170,39 @@ export function PlatformAgendaSection({
   const entries = query.data ?? [];
   return (
     <section className="min-w-0" aria-label={option?.label}>
-      <div className="flex items-center justify-between gap-2 py-space-xs">
-        <span className="text-caption text-muted-foreground">
-          {entries.length}{" "}
-          {type === "critical_radar" ? "Klärungspunkte" : "Einträge"}
-        </span>
-        {entries.length === 200 && (
-          <Badge variant="outline">Erste 200 Einträge</Badge>
-        )}
-      </div>
+      {(!agendaSubpoints || entries.length === 200) && (
+        <div className="flex items-center justify-between gap-2 py-space-xs">
+          <span className="text-caption text-muted-foreground">
+            {entries.length}{" "}
+            {type === "critical_radar" ? "Klärungspunkte" : "Einträge"}
+          </span>
+          {entries.length === 200 && (
+            <Badge variant="outline">Erste 200 Einträge</Badge>
+          )}
+        </div>
+      )}
       {!entries.length ? (
         <EmptyState size="sm" title="Keine offenen Punkte in diesem Zeitraum" />
       ) : (
-        <ul className="divide-y divide-border">
-          {entries.map((entry) => {
+        <ul className={agendaSubpoints ? agendaSubpointListClass : "divide-y divide-border"}>
+          {entries.map((entry, index) => {
             const result = results[entry.id];
             const isExpanded = defaultExpanded ? !collapsedEntries[entry.id] : expanded === entry.id;
             return (
-              <li key={entry.id} className="py-space-xs min-w-0">
+              <li key={entry.id} className={agendaSubpoints ? cn(agendaSubpointRowClass, "relative") : "py-space-xs min-w-0"}>
                 <div className="flex items-start gap-space-xs">
                   {onUpdateResult && !readOnly && (
                     <Checkbox
                       aria-label={`${entry.title} besprochen`}
-                      className="mt-1 shrink-0"
+                      className={agendaSubpoints ? "absolute left-4 top-3" : "mt-1 shrink-0"}
                       checked={!!result?.completed}
                       onCheckedChange={(value) =>
                         patchResult(entry.id, { completed: value === true })
                       }
                     />
+                  )}
+                  {agendaSubpoints && (
+                    <span className="shrink-0 tabular-nums text-muted-foreground">{agendaSubpointNumber(agendaSubpoints.parentNumber, index)}</span>
                   )}
                   <div className="flex-1 min-w-0">
                     <Button
@@ -208,7 +216,7 @@ export function PlatformAgendaSection({
                     >
                       <span
                         className={cn(
-                          "text-body font-medium break-words",
+                          agendaSubpoints ? "text-xs font-normal break-words" : "text-body font-medium break-words",
                           result?.completed && "text-muted-foreground",
                         )}
                       >

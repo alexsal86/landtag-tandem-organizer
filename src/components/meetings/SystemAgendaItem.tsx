@@ -1,3 +1,4 @@
+import { agendaSubpointListClass, agendaSubpointNumber, agendaSubpointRowClass } from "./agenda-editor/systemSubpoints";
 import { stripHtml } from "@/utils/textDiff";
 import { PencilSparkles } from "@/components/icons/PencilSparkles";
 import { useState, useEffect, type ReactNode } from "react";
@@ -132,6 +133,9 @@ export function SystemAgendaItem({
   const [localExpanded, setExpanded] = useState(!defaultCollapsed);
   const expanded = expandedOverride ?? localExpanded;
   const showAppointmentsAsSubpoints = editorRow && systemType === "upcoming_appointments";
+  const showEditorialSubpoints = editorRow && systemType === "redaktion";
+  const showDecisionSubpoints = editorRow && systemType === "decisions";
+  const showDirectSubpoints = showAppointmentsAsSubpoints || showEditorialSubpoints || showDecisionSubpoints;
   const count =
     systemType === "quick_notes"
       ? linkedQuickNotes.length
@@ -323,10 +327,11 @@ export function SystemAgendaItem({
           )}
         >
           {renderHeader()}
-          <div className="px-3 pb-2">
+          <div className={showEditorialSubpoints ? undefined : "px-3 pb-2"}>
             <PlatformAgendaSection
               type={systemType}
               defaultExpanded={editorRow}
+              agendaSubpoints={showEditorialSubpoints ? { parentNumber: agendaNumber } : undefined}
               meetingDate={meetingDate || new Date()}
               resultText={resultText}
               onUpdateResult={onUpdateResult}
@@ -504,6 +509,25 @@ export function SystemAgendaItem({
             )}
           </div>
         </div>
+      );
+    }
+
+    if (showDecisionSubpoints) {
+      return linkedDecisions.length ? (
+        <ul aria-label="Entscheidungen" className={agendaSubpointListClass}>
+          {linkedDecisions.map((decision, index) => {
+            const owner = profiles?.find((profile) => profile.user_id === decision.created_by)?.display_name;
+            return (
+              <li key={decision.id} className={cn(agendaSubpointRowClass, "flex items-baseline gap-2")}>
+                <span className="shrink-0 tabular-nums text-muted-foreground">{agendaSubpointNumber(agendaNumber, index)}</span>
+                <span className="min-w-0 flex-1 break-words">{decision.title || "Ohne Titel"}</span>
+                {owner && <span className="text-muted-foreground">{owner}</span>}
+              </li>
+            );
+          })}
+        </ul>
+      ) : (
+        <p className="py-2 pl-11 text-xs text-muted-foreground">Keine relevanten Entscheidungen</p>
       );
     }
 
@@ -726,7 +750,7 @@ export function SystemAgendaItem({
             {description && <p className="col-span-2 truncate text-xs leading-4 text-muted-foreground">{description}</p>}
           </div>
         </div>
-        {!showAppointmentsAsSubpoints && (
+        {!showDirectSubpoints && (
           <Button
             size="sm"
             variant="ghost"
@@ -759,7 +783,7 @@ export function SystemAgendaItem({
         )}
         {editorDetails}
       </div>
-      <div hidden={!showAppointmentsAsSubpoints && (!expanded || count === 0)} className={showAppointmentsAsSubpoints ? undefined : "px-3 pb-2"}>
+      <div hidden={!showDirectSubpoints && (!expanded || count === 0)} className={showDirectSubpoints ? undefined : "px-3 pb-2"}>
         {renderBody()}
       </div>
     </section>
