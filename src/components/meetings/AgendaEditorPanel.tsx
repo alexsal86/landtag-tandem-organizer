@@ -6,6 +6,7 @@ import { AgendaInspector } from "./agenda-editor/AgendaInspector";
 import { AgendaSummaryBar } from "./agenda-editor/AgendaSummaryBar";
 import { AgendaSystemRow } from "./agenda-editor/AgendaSystemRow";
 import { AddAgendaMenu } from "./agenda-editor/AddAgendaMenu";
+import { agendaItemKey, resolveAgendaDrop } from "./agenda-editor/agendaDrop";
 import { agendaTiming } from "./agenda-editor/agendaTiming";
 import type { SystemAgendaType } from "@/components/meetings/types";
 import { debugConsole } from "@/utils/debugConsole";
@@ -20,6 +21,7 @@ import {
   Droppable,
   Draggable,
   DropResult,
+  type DragUpdate,
 } from "@hello-pangea/dnd";
 import { SystemAgendaItem } from "@/components/meetings/SystemAgendaItem";
 import { UpcomingAppointmentsSection } from "@/components/meetings/UpcomingAppointmentsSection";
@@ -74,7 +76,7 @@ interface AgendaEditorPanelProps {
   onAddSubItem: (parent: AgendaItem, title: string) => void;
   onDeleteAgendaItem: (item: AgendaItem, index: number) => void;
   onToggleVisibility: (itemId: string, currentVisibility: boolean) => void;
-  onDragEnd: (result: DropResult) => void;
+  onDragEnd: (result: DropResult, hiddenItems?: ReadonlySet<AgendaItem>) => void;
   onUploadAgendaDocument: (
     agendaItemId: string,
     file: File,
@@ -138,8 +140,9 @@ export function AgendaEditorPanel({
   const [systemCounts, setSystemCounts] = useState<
     Record<string, number | null>
   >({});
-  const getItemKey = (item: AgendaItem, index: number) =>
-    item.localKey || item.id || `agenda-${index}`;
+  const getItemKey = agendaItemKey;
+  const [dragging, setDragging] = useState(false);
+  const [dragUpdate, setDragUpdate] = useState<DragUpdate | null>(null);
   const selectedIndex = agendaItems.findIndex(
     (item, index) => getItemKey(item, index) === selectedKey,
   );
@@ -210,6 +213,12 @@ export function AgendaEditorPanel({
     );
     return !!collapsedMainItems[parent?.localKey || parent?.id || parentKey];
   };
+
+  const itemIsHidden = (item: AgendaItem, index: number) =>
+    isHiddenByCollapsedParent(item) ||
+    Boolean(item.system_type && hideEmpty && systemCounts[getItemKey(item, index)] === 0);
+  const hiddenItems = new Set(agendaItems.filter(itemIsHidden));
+  const dropPreview = dragUpdate && resolveAgendaDrop(agendaItems, dragUpdate, hiddenItems);
 
   const getSubItemCount = (item: AgendaItem) => {
     const key = item.localKey || item.id;
@@ -460,14 +469,32 @@ export function AgendaEditorPanel({
             onOpenCarryover={onOpenCarryover}
           />
 
+          <div role="status" className="pointer-events-none sticky top-2 z-20 flex h-0 justify-end px-3">
+            {dragging && (
+              <p className="h-fit max-w-[90%] rounded-md border border-primary/30 bg-card px-3 py-2 text-sm shadow-sm">
+                {dropPreview?.parent
+                  ? `Als Unterpunkt zu „${dropPreview.parent.title}“ ablegen`
+                  : dropPreview
+                    ? "Als Hauptpunkt ablegen"
+                    : "Zwischen Gruppen als Hauptpunkt ablegen. Auf einen Punkt ziehen, um ihn unterzuordnen."}
+              </p>
+            )}
+          </div>
           <DragDropContext
+            onDragStart={() => setDragging(true)}
+            onDragUpdate={setDragUpdate}
             onDragEnd={(result) => {
-              if (result.destination || result.combine) setDirty(true);
-              if (result.combine) {
-                const target = agendaItems.find(item => getItemKey(item, 0) === result.combine?.draggableId);
-                if (target) setCollapsedMainItems(prev => ({...prev, [target.localKey || target.id!]: false}));
+              setDragging(false);
+              setDragUpdate(null);
+              if (result.reason === "CANCEL") return;
+              const drop = resolveAgendaDrop(agendaItems, result, hiddenItems);
+              if (!drop) return;
+              setDirty(true);
+              if (drop.parent) {
+                const key = drop.parent.localKey || drop.parent.id;
+                if (key) setCollapsedMainItems((prev) => ({ ...prev, [key]: false }));
               }
-              onDragEnd(result);
+              onDragEnd(result, hiddenItems);
             }}
           >
             <Droppable droppableId="agenda-items" isCombineEnabled>
@@ -502,16 +529,15 @@ export function AgendaEditorPanel({
                               className={cn(
                                 "transition-shadow",
                                 snapshot.isDragging && "shadow-lg",
-                                (isHiddenByCollapsedParent(item) ||
-                                  (hideEmpty &&
-                                    systemCounts[getItemKey(item, index)] ===
-                                      0)) &&
-                                  "hidden",
+                                dropPreview?.marker === item &&
+                                  (dragUpdate?.combine ? "ring-2 ring-inset ring-primary" : "shadow-[inset_0_2px_0] shadow-primary"),
+                                hiddenItems.has(item) && "hidden",
                               )}
                             >
                               <AgendaSystemRow
                                 dragHandleProps={provided.dragHandleProps}
                                 canEdit={hasEditPermission}
+                                dragging={snapshot.isDragging}
                                 nested={Boolean(item.parentLocalKey || item.parent_id)}
                                 selected={
                                   getItemKey(item, index) === selectedKey
@@ -592,6 +618,7 @@ export function AgendaEditorPanel({
                             /* Regular agenda item */
                             <AgendaRow
                               item={item}
+                              dropTarget={dropPreview?.marker === item ? (dragUpdate?.combine ? "inside" : "before") : undefined}
                               index={index}
                               provided={provided}
                               snapshot={snapshot}
@@ -625,6 +652,9 @@ export function AgendaEditorPanel({
                     </Draggable>
                   ))}
                   {provided.placeholder}
+                  {dropPreview && !dropPreview.marker && (
+                    <span aria-hidden="true" className="pointer-events-none block h-0 ring-1 ring-primary" />
+                  )}
                 </div>
               )}
             </Droppable>

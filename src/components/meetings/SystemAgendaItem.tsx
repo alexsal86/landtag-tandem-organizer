@@ -699,7 +699,7 @@ export function SystemAgendaItem({
             )}
           </span>
           {agendaNumber && (
-            <span className={cn("flex h-8 shrink-0 items-center text-sm tabular-nums", isEmbedded ? "font-medium text-muted-foreground" : "font-semibold text-foreground")}>
+            <span className={cn("flex h-8 shrink-0 items-center text-sm tabular-nums", isEmbedded ? "mr-1 font-normal text-muted-foreground" : "font-semibold text-foreground")}>
               {agendaNumber}
             </span>
           )}
@@ -710,7 +710,8 @@ export function SystemAgendaItem({
               readOnly={!canEditTitle}
               onChange={(e) => onTitleChange?.(e.target.value)}
               className={cn(
-                "h-8 min-w-0 px-px text-sm border-transparent bg-transparent shadow-none hover:border-border focus:bg-card font-semibold",
+                "h-8 min-w-0 px-px text-sm border-transparent bg-transparent shadow-none hover:border-border focus:bg-card",
+                isEmbedded ? "font-normal" : "font-semibold",
                 editorCompleted && "text-muted-foreground line-through",
               )}
             />

@@ -1,17 +1,19 @@
 import type { ReactNode } from "react";
 import type { DraggableProvidedDragHandleProps } from "@hello-pangea/dnd";
-import { GripVertical } from "lucide-react";
+import { AgendaDragHandle } from "./AgendaDragHandle";
 import { cn } from "@/lib/utils";
 export function AgendaSystemRow({
   children,
   dragHandleProps,
   canEdit,
+  dragging,
   selected,
   nested,
 }: {
   children: ReactNode;
   dragHandleProps: DraggableProvidedDragHandleProps | null;
   canEdit: boolean;
+  dragging: boolean;
   selected: boolean;
   nested: boolean;
 }) {
@@ -24,14 +26,8 @@ export function AgendaSystemRow({
         selected && (nested ? "border-l-primary" : "border-l-primary bg-primary/10 hover:bg-primary/10"),
       )}
     >
-      {canEdit && (
-        <div
-          {...dragHandleProps}
-          aria-label="Baustein verschieben"
-          className="mt-3 mr-2 flex h-8 shrink-0 cursor-grab items-center self-start text-muted-foreground/40 hover:text-muted-foreground focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring active:cursor-grabbing"
-        >
-          <GripVertical className="size-4" />
-        </div>
+      {canEdit && dragHandleProps && (
+        <AgendaDragHandle dragHandleProps={dragHandleProps} dragging={dragging} className="mt-3 self-start" />
       )}
       <div className="min-w-0 flex-1">{children}</div>
     </div>

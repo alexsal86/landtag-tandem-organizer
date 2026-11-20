@@ -1,3 +1,4 @@
+import { resolveAgendaDrop } from "@/components/meetings/agenda-editor/agendaDrop";
 import { protocolTaskProgress, protocolTaskStatus } from "@/features/meetings/protocolTasks";
 import { SYSTEM_AGENDA_OPTIONS } from "@/components/meetings/systemAgendaRegistry";
 import { supabase } from "@/integrations/supabase/client";
@@ -445,6 +446,25 @@ export const meetingLifecycleScenario: TestScenario = {
           Boolean(entry.data.created_at) &&
           (isLead.data ? record.data.approved_by === ctx.userId && Boolean(record.data.approved_at) : !record.data.approved_at);
         return { ok, message: ok ? "Protokollangaben und Freigaberecht verifiziert." : "Protokollangaben sind unvollständig." };
+      },
+    },
+    {
+      id: "agenda-drop-level",
+      label: "Agenda-Punkte per Ziehen hoch- und herunterstufen",
+      kind: "logic",
+      run: async () => {
+        const items = [
+          { id: "a", title: "Vorbereitung" },
+          { id: "b", title: "Unterpunkt", parent_id: "a" },
+          { id: "c", title: "Rückblick" },
+        ].map((item, order_index) => ({ ...item, order_index, is_completed: false, is_recurring: false }));
+        const source = { droppableId: "agenda-items", index: 1 };
+        const drag = { draggableId: "b", type: "DEFAULT", mode: "FLUID" as const, source };
+        const promoted = resolveAgendaDrop(items, { ...drag, destination: { ...source, index: 2 }, combine: null });
+        const reparented = resolveAgendaDrop(items, { ...drag, destination: null, combine: { droppableId: source.droppableId, draggableId: "c" } });
+        const ok = promoted?.items[2]?.parent_id === null &&
+          reparented?.items[2]?.parent_id === "c";
+        return { ok, message: ok ? "Beide Ablagearten setzen die erwartete Hierarchie." : "Die Hierarchie nach dem Ablegen stimmt nicht." };
       },
     },
     {

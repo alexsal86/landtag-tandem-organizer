@@ -19,7 +19,6 @@ import {
   ContextMenuTrigger,
 } from "@/components/ui/context-menu";
 import {
-  GripVertical,
   Plus,
   Trash,
   Eye,
@@ -31,11 +30,13 @@ import {
 } from "lucide-react";
 import { cn } from "@/lib/utils";
 import type { AgendaItem, LinkedTask, Profile } from "../types";
+import { AgendaDragHandle } from "./AgendaDragHandle";
 import { AgendaRowDetails } from "./AgendaRowDetails";
 import { stripHtml } from "@/utils/textDiff";
 interface Props {
   item: AgendaItem;
   index: number;
+  dropTarget?: "inside" | "before";
   provided: DraggableProvided;
   snapshot: DraggableStateSnapshot;
   hasEditPermission: boolean;
@@ -71,6 +72,7 @@ interface Props {
 export function AgendaRow({
   item,
   index,
+  dropTarget,
   provided,
   snapshot,
   hasEditPermission,
@@ -114,7 +116,8 @@ export function AgendaRow({
             isSubItem && "bg-[var(--agenda-subpoint-bg)] hover:bg-[var(--agenda-subpoint-bg)] dark:bg-slate-800 dark:hover:bg-slate-700",
             getItemKey(item, index) === selectedKey &&
               (isSubItem ? "border-l-primary" : "border-l-primary bg-primary/10 hover:bg-primary/10"),
-            snapshot.combineTargetFor && "bg-primary/10 ring-2 ring-inset ring-primary",
+            dropTarget === "inside" && "bg-primary/10 ring-2 ring-inset ring-primary",
+            dropTarget === "before" && "shadow-[inset_0_2px_0] shadow-primary",
             snapshot.isDragging && "bg-card shadow-lg",
             item.is_optional && item.is_visible === false && "opacity-50",
             isHiddenByCollapsedParent(item) && "hidden",
@@ -122,14 +125,8 @@ export function AgendaRow({
         >
           <div className="flex flex-wrap items-center gap-x-3 gap-y-2 py-3 pl-1 pr-3 sm:pr-5">
             <div className="flex min-w-0 flex-1 basis-48 items-start">
-              {hasEditPermission && (
-                <div
-                  {...provided.dragHandleProps}
-                  aria-label="Punkt verschieben"
-                  className="mr-2 flex h-8 shrink-0 cursor-grab items-center text-muted-foreground/40 hover:text-muted-foreground focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring active:cursor-grabbing"
-                >
-                  <GripVertical className="size-4" />
-                </div>
+              {hasEditPermission && provided.dragHandleProps && (
+                <AgendaDragHandle dragHandleProps={provided.dragHandleProps} dragging={snapshot.isDragging} />
               )}
               <span aria-hidden="true" className="mr-2 grid size-8 shrink-0 place-items-center">
                 {!isSubItem && (
@@ -138,7 +135,7 @@ export function AgendaRow({
                   </span>
                 )}
               </span>
-              <span className={cn("flex h-8 shrink-0 items-center text-sm tabular-nums", isSubItem ? "font-medium text-muted-foreground" : "font-semibold text-foreground")}>
+              <span className={cn("flex h-8 shrink-0 items-center text-sm tabular-nums", isSubItem ? "mr-1 font-normal text-muted-foreground" : "font-semibold text-foreground")}>
                 {getAgendaNumber(item)}
               </span>
               <div className="min-w-0 flex-1">
@@ -150,7 +147,7 @@ export function AgendaRow({
                   aria-label="Titel des Agenda-Punkts"
                   className={cn(
                     "h-8 min-w-0 px-px text-sm border-transparent bg-transparent shadow-none hover:border-border focus:bg-card",
-                    isSubItem ? "font-medium" : "font-semibold",
+                    isSubItem ? "font-normal" : "font-semibold",
                     item.is_completed && "text-muted-foreground line-through",
                   )}
                   readOnly={!hasEditPermission}
