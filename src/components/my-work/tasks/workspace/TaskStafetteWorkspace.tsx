@@ -193,7 +193,7 @@ export function TaskStafetteWorkspace({ userId, tasks, profiles, onReload, onCom
 
   return (
     <>
-      <div className="flex shrink-0 flex-wrap items-center gap-x-2 gap-y-2 border-y bg-[#f8f8f6] px-4 py-2 dark:bg-muted/60">
+      <div className="flex shrink-0 flex-wrap items-center gap-x-2 gap-y-2 border-y px-4 py-2">
         <h2 className="text-base font-semibold">Aufgaben</h2>
         <div role="group" aria-label="Aufgaben filtern" className="flex flex-wrap items-center gap-1">
           {taskFilters.map((option) => (
@@ -219,7 +219,7 @@ export function TaskStafetteWorkspace({ userId, tasks, profiles, onReload, onCom
         {modeControls}
       </div>
       <div className="grid min-h-0 flex-1 auto-rows-max grid-cols-1 lg:auto-rows-auto lg:grid-cols-[minmax(260px,1fr)_minmax(0,3fr)]">
-        <div className="flex min-h-0 min-w-0 flex-col bg-[#fafaf8] dark:bg-card">
+        <div className="flex min-h-0 min-w-0 flex-col">
             <div className="h-80 min-h-0 lg:h-auto lg:flex-1">
               <TaskTriageList resubmissionsOpen={resubmissionsOpen} onResubmissionsOpenChange={setResubmissionsOpen} snoozes={snoozes} onCreate={onCreate} onComplete={onComplete} zones={zones} visibleZones={filter.zones} selectedId={selected?.id ?? null} onSelect={setSelectedId} decisionLabel={decisionLabel} nameOf={nameOf} selection={selection} onToggleSelect={toggleSelect} onClearSelection={() => setSelection(new Set())} onBatch={batch} />
             </div>
