@@ -1,3 +1,4 @@
+import { Avatar, AvatarFallback, AvatarImage } from "@/components/ui/avatar";
 import { Command, CommandEmpty, CommandGroup, CommandInput, CommandItem, CommandList } from "@/components/ui/command";
 import { usePersistentState } from "@/hooks/usePersistentState";
 import { WorkflowLinks } from "@/components/workflow/WorkflowLinks";
@@ -32,7 +33,7 @@ export interface PendingVote {
 
 interface Props {
   task: MyWorkTask;
-  profiles: Array<{ user_id: string; display_name: string | null }>;
+  profiles: Array<{ user_id: string; display_name: string | null; avatar_url?: string | null }>;
   decisionLabel: string | null;
   onSave: (patch: TaskPatch) => Promise<void>;
   onComplete: () => Promise<void>;
@@ -64,7 +65,8 @@ export function TaskDetailView({ task, profiles, decisionLabel, onSave, onComple
   const [recentOwners, setRecentOwners] = usePersistentState<string[]>(
     `task-recent-owners-${task.tenant_id}-${meId}`, [],
   );
-  const [customField, setCustomField] = useState<"external" | "date" | null>(null);
+  const [customField, setCustomField] = useState<"date" | null>(null);
+  const [externalDraft, setExternalDraft] = useState("");
   const [customValue, setCustomValue] = useState("");
   const [note, setNote] = useState("");
   const [doneDialog, setDoneDialog] = useState(false);
@@ -127,14 +129,23 @@ export function TaskDetailView({ task, profiles, decisionLabel, onSave, onComple
     rememberOwner(option.id);
     setOwnerPickerOpen(false);
   };
-  const renderOwnerOption = (option: (typeof ownerOptions)[number]) => (
-    <CommandItem key={option.id} value={option.id} keywords={[option.label, TASK_BALL_LABELS[option.role]]}
-      onSelect={() => chooseOwner(option)} className="gap-3 rounded-lg px-3 py-3">
-      <span className={cn("size-2 shrink-0 rounded-full", ownerColors[option.role])} />
-      <span className="min-w-0 flex-1 break-words">{option.label}</span>
-      <span className="text-xs text-muted-foreground">{TASK_BALL_LABELS[option.role]}</span>
-    </CommandItem>
-  );
+  const renderOwnerOption = (option: (typeof ownerOptions)[number], recent = false) => {
+    const profile = option.role === "office" ? profiles.find(({ user_id }) => option.id === `office:${user_id}`) : undefined;
+    const initials = option.role === "deputy" ? "MdL" : option.label.split(/\s+/).slice(0, 2).map((word) => word[0]).join("").toUpperCase();
+    return (
+      <CommandItem key={option.id} value={recent ? `recent:${option.id}` : option.id}
+        keywords={[option.label, TASK_BALL_LABELS[option.role]]}
+        onSelect={() => chooseOwner(option)}
+        className="gap-3 rounded-xl px-3 py-3 data-[selected=true]:bg-[#f2f2ef] data-[selected=true]:text-foreground dark:data-[selected=true]:bg-muted">
+        <Avatar className="size-8" aria-hidden="true">
+          {profile?.avatar_url && <AvatarImage src={profile.avatar_url} alt="" className="object-cover" />}
+          <AvatarFallback className="bg-[#f0f0ed] text-xs font-semibold dark:bg-muted">{initials}</AvatarFallback>
+        </Avatar>
+        <span className="min-w-0 flex-1 break-words">{option.label}</span>
+        <span className="text-xs text-muted-foreground">{TASK_BALL_LABELS[option.role]}</span>
+      </CommandItem>
+    );
+  };
 
   const daySlip = () =>
     sendToDaySlip({ text: formatCaseDaySlipText(task.title, task.next_action), source: { type: "task", id: task.id, nextActionLabel: task.next_action ?? undefined } });
@@ -159,7 +170,10 @@ export function TaskDetailView({ task, profiles, decisionLabel, onSave, onComple
           </Tooltip>
           <h2 className="break-words text-3xl font-bold leading-tight tracking-tight">{task.title}</h2>
           <div className="flex flex-wrap items-center gap-2">
-            <Dialog open={ownerPickerOpen} onOpenChange={setOwnerPickerOpen}>
+            <Dialog open={ownerPickerOpen} onOpenChange={(open) => {
+              setOwnerPickerOpen(open);
+              if (open) setExternalDraft(owner === "external" ? externalLabel : "");
+            }}>
               <DialogTrigger asChild>
                 <Button variant="outline" size="sm" className="max-w-full rounded-full bg-transparent">
                   <span className={cn("size-2 shrink-0 rounded-full", ownerColors[owner])} />
@@ -175,18 +189,27 @@ export function TaskDetailView({ task, profiles, decisionLabel, onSave, onComple
                   <CommandInput aria-label="Name oder Rolle suchen" placeholder="Wem übergeben? Name oder Rolle tippen …" className="pr-10" />
                   <CommandList className="max-h-[55vh] px-2 pb-2">
                     <CommandEmpty>Keine passende Person oder Rolle gefunden.</CommandEmpty>
-                    {recentOptions.length > 0 && <CommandGroup heading="Zuletzt">{recentOptions.map(renderOwnerOption)}</CommandGroup>}
-                    <CommandGroup heading="Alle">
-                      {ownerOptions.filter((option) => !recentOwners.includes(option.id)).map(renderOwnerOption)}
+                    {recentOptions.length > 0 && <CommandGroup heading="Zuletzt">{recentOptions.map((option) => renderOwnerOption(option, true))}</CommandGroup>}
+                    <CommandGroup heading="Büro">
+                      {ownerOptions.filter((option) => option.role === "office").map((option) => renderOwnerOption(option))}
                     </CommandGroup>
+                    <CommandGroup heading="Abgeordnete/r">
+                      {ownerOptions.filter((option) => option.role === "deputy").map((option) => renderOwnerOption(option))}
+                    </CommandGroup>
+                    <CommandGroup heading="Extern">
+                      {ownerOptions.filter((option) => option.role === "external").map((option) => renderOwnerOption(option))}
+                    </CommandGroup>
+                    <form className="px-1 pb-2 pt-1" onSubmit={(event) => {
+                      event.preventDefault();
+                      const label = externalDraft.trim();
+                      if (label) chooseOwner({ id: `custom:${label}`, label, role: "external" });
+                    }}>
+                      <Input aria-label="Externe Stelle eingeben" placeholder="Externe Stelle eingeben …"
+                        value={externalDraft} onChange={(event) => setExternalDraft(event.target.value)}
+                        onKeyDown={(event) => { if (event.key === "Enter") event.stopPropagation(); }}
+                        maxLength={200} className="border-0 bg-[#f2f2ef] dark:bg-muted" />
+                    </form>
                   </CommandList>
-                  <div className="border-t p-2">
-                    <Button variant="ghost" className="w-full justify-start" onClick={() => {
-                      setOwnerPickerOpen(false);
-                      setCustomValue(externalLabel);
-                      setCustomField("external");
-                    }}>Externe Stelle eingeben …</Button>
-                  </div>
                 </Command>
               </DialogContent>
             </Dialog>
@@ -390,21 +413,14 @@ export function TaskDetailView({ task, profiles, decisionLabel, onSave, onComple
 
       <Dialog open={customField !== null} onOpenChange={(open) => { if (!open) setCustomField(null); }}>
         <DialogContent>
-          <DialogHeader><DialogTitle>{customField === "date" ? "Datum wählen" : "Externe Stelle eintragen"}</DialogTitle></DialogHeader>
+          <DialogHeader><DialogTitle>Datum wählen</DialogTitle></DialogHeader>
           <form onSubmit={(event) => {
             event.preventDefault();
-            if (customField === "date") setDue(customValue);
-            else {
-              const text = customValue.trim();
-              if (!text) return;
-              setOwner("external");
-              setExternalLabel(text);
-              rememberOwner(`custom:${text}`);
-            }
+            setDue(customValue);
             setCustomField(null);
           }} className="space-y-4">
-            <Input aria-label={customField === "date" ? "Datum" : "Externe Stelle"} type={customField === "date" ? "date" : "text"}
-              value={customValue} onChange={(event) => setCustomValue(event.target.value)} required maxLength={200} />
+            <Input aria-label="Datum" type="date"
+              value={customValue} onChange={(event) => setCustomValue(event.target.value)} required />
             <DialogFooter><Button type="submit">Übernehmen</Button></DialogFooter>
           </form>
         </DialogContent>
