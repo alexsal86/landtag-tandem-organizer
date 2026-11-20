@@ -530,6 +530,7 @@ export function AgendaEditorPanel({
                                   }
                                   editorRow
                                   editorCompleted={item.is_completed}
+                                  editorDescription={item.description ?? undefined}
                                   editorDetails={
                                     <AgendaRowDetails
                                       item={item}

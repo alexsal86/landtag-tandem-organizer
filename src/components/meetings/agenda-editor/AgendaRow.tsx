@@ -27,6 +27,7 @@ import {
   ChevronDown,
   ChevronRight,
   ListTodo,
+  List,
 } from "lucide-react";
 import { cn } from "@/lib/utils";
 import type { AgendaItem, LinkedTask, Profile } from "../types";
@@ -110,8 +111,9 @@ export function AgendaRow({
           onClick={() => setSelectedKey(getItemKey(item, index))}
           className={cn(
             "group border-b border-l-[3px] border-l-transparent transition-colors hover:bg-muted/40 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-inset focus-visible:ring-ring",
-            isSubItem && "bg-muted/25",
-            getItemKey(item, index) === selectedKey && "border-l-primary bg-primary/10 hover:bg-primary/10",
+            isSubItem && "bg-neutral-200 hover:bg-neutral-300 dark:bg-slate-800 dark:hover:bg-slate-700",
+            getItemKey(item, index) === selectedKey &&
+              (isSubItem ? "border-l-primary" : "border-l-primary bg-primary/10 hover:bg-primary/10"),
             snapshot.combineTargetFor && "bg-primary/10 ring-2 ring-inset ring-primary",
             snapshot.isDragging && "bg-card shadow-lg",
             item.is_optional && item.is_visible === false && "opacity-50",
@@ -128,9 +130,16 @@ export function AgendaRow({
                 <GripVertical className="size-4" />
               </div>
             )}
-            <div className="min-w-0 flex-1 basis-48">
-              <div className="flex min-w-0 items-center gap-1">
-                <span className="shrink-0 text-sm font-medium tabular-nums text-muted-foreground">{getAgendaNumber(item)}</span>
+            <div className="flex min-w-0 flex-1 basis-48 items-start gap-2">
+              {!isSubItem && (
+                <span aria-hidden="true" className="grid size-8 shrink-0 place-items-center rounded-lg bg-slate-600 text-white">
+                  {item.task_id ? <ListTodo className="size-4" /> : <List className="size-4" />}
+                </span>
+              )}
+              <span className="shrink-0 pt-1.5 text-sm font-medium tabular-nums text-muted-foreground">
+                {getAgendaNumber(item)}
+              </span>
+              <div className="min-w-0 flex-1">
                 <Input
                   value={item.title}
                   onChange={(e) => change(index, "title", e.target.value)}
@@ -144,13 +153,13 @@ export function AgendaRow({
                   )}
                   readOnly={!hasEditPermission}
                 />
+                {preview && <p className="truncate px-[5px] text-sm text-muted-foreground">{preview}</p>}
+                {documentCount > 0 && (
+                  <span className="block px-[5px] text-xs text-muted-foreground">
+                    {documentCount} {documentCount === 1 ? "Anhang" : "Anhänge"}
+                  </span>
+                )}
               </div>
-              {preview && <p className="truncate pl-0.5 text-sm text-muted-foreground">{preview}</p>}
-              {documentCount > 0 && (
-                <span className="pl-0.5 text-xs text-muted-foreground">
-                  {documentCount} {documentCount === 1 ? "Anhang" : "Anhänge"}
-                </span>
-              )}
             </div>
             {item.is_recurring && <span className="rounded-full border px-2 py-0.5 text-xs text-muted-foreground">Wiederkehrend</span>}
             {item.is_optional && item.id && hasEditPermission && (
