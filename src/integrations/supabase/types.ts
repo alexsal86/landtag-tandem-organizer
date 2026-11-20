@@ -1137,10 +1137,6 @@ export type Database = {
       }
       archived_tasks: {
         Row: {
-          meeting_id: string | null
-          source_type: string | null
-          source_id: string | null
-          parent_task_id: string | null
           archived_at: string
           assigned_to: string | null
           auto_delete_after_days: number | null
@@ -1150,17 +1146,17 @@ export type Database = {
           description: string | null
           due_date: string | null
           id: string
+          meeting_id: string | null
+          parent_task_id: string | null
           priority: string
           progress: number | null
+          source_id: string | null
+          source_type: string | null
           task_id: string
           title: string
           user_id: string
         }
         Insert: {
-          meeting_id?: string | null
-          source_type?: string | null
-          source_id?: string | null
-          parent_task_id?: string | null
           archived_at?: string
           assigned_to?: string | null
           auto_delete_after_days?: number | null
@@ -1170,17 +1166,17 @@ export type Database = {
           description?: string | null
           due_date?: string | null
           id?: string
+          meeting_id?: string | null
+          parent_task_id?: string | null
           priority: string
           progress?: number | null
+          source_id?: string | null
+          source_type?: string | null
           task_id: string
           title: string
           user_id: string
         }
         Update: {
-          meeting_id?: string | null
-          source_type?: string | null
-          source_id?: string | null
-          parent_task_id?: string | null
           archived_at?: string
           assigned_to?: string | null
           auto_delete_after_days?: number | null
@@ -1190,13 +1186,25 @@ export type Database = {
           description?: string | null
           due_date?: string | null
           id?: string
+          meeting_id?: string | null
+          parent_task_id?: string | null
           priority?: string
           progress?: number | null
+          source_id?: string | null
+          source_type?: string | null
           task_id?: string
           title?: string
           user_id?: string
         }
-        Relationships: []
+        Relationships: [
+          {
+            foreignKeyName: "archived_tasks_meeting_id_fkey"
+            columns: ["meeting_id"]
+            isOneToOne: false
+            referencedRelation: "meetings"
+            referencedColumns: ["id"]
+          },
+        ]
       }
       audit_log_entries: {
         Row: {
@@ -1681,8 +1689,8 @@ export type Database = {
       }
       carryover_items: {
         Row: {
-          carryover_count: number
           assigned_to: string[] | null
+          carryover_count: number
           created_at: string
           description: string | null
           id: string
@@ -1699,8 +1707,8 @@ export type Database = {
           user_id: string
         }
         Insert: {
-          carryover_count?: number
           assigned_to?: string[] | null
+          carryover_count?: number
           created_at?: string
           description?: string | null
           id?: string
@@ -1717,8 +1725,8 @@ export type Database = {
           user_id: string
         }
         Update: {
-          carryover_count?: number
           assigned_to?: string[] | null
+          carryover_count?: number
           created_at?: string
           description?: string | null
           id?: string
@@ -2685,9 +2693,9 @@ export type Database = {
           intake_payload: Json | null
           is_legal_relevant: boolean
           is_political_relevant: boolean
+          jour_fixe_reserved_meeting_id: string | null
           last_modified_at: string
           last_modified_by: string | null
-          jour_fixe_reserved_meeting_id: string | null
           meeting_id: string | null
           next_action_assignee_id: string | null
           next_action_due_at: string | null
@@ -2726,9 +2734,9 @@ export type Database = {
           intake_payload?: Json | null
           is_legal_relevant?: boolean
           is_political_relevant?: boolean
+          jour_fixe_reserved_meeting_id?: string | null
           last_modified_at?: string
           last_modified_by?: string | null
-          jour_fixe_reserved_meeting_id?: string | null
           meeting_id?: string | null
           next_action_assignee_id?: string | null
           next_action_due_at?: string | null
@@ -2767,9 +2775,9 @@ export type Database = {
           intake_payload?: Json | null
           is_legal_relevant?: boolean
           is_political_relevant?: boolean
+          jour_fixe_reserved_meeting_id?: string | null
           last_modified_at?: string
           last_modified_by?: string | null
-          jour_fixe_reserved_meeting_id?: string | null
           meeting_id?: string | null
           next_action_assignee_id?: string | null
           next_action_due_at?: string | null
@@ -10886,10 +10894,10 @@ export type Database = {
       }
       meeting_agenda_items: {
         Row: {
-          carryover_count: number
           assigned_to: string[] | null
           carried_over_from: string | null
           carry_over_to_next: boolean | null
+          carryover_count: number
           carryover_notes: string | null
           created_at: string
           description: string | null
@@ -10916,10 +10924,10 @@ export type Database = {
           updated_at: string
         }
         Insert: {
-          carryover_count?: number
           assigned_to?: string[] | null
           carried_over_from?: string | null
           carry_over_to_next?: boolean | null
+          carryover_count?: number
           carryover_notes?: string | null
           created_at?: string
           description?: string | null
@@ -10946,10 +10954,10 @@ export type Database = {
           updated_at?: string
         }
         Update: {
-          carryover_count?: number
           assigned_to?: string[] | null
           carried_over_from?: string | null
           carry_over_to_next?: boolean | null
+          carryover_count?: number
           carryover_notes?: string | null
           created_at?: string
           description?: string | null
@@ -11027,65 +11035,6 @@ export type Database = {
           },
         ]
       }
-      meeting_templates: {
-        Row: {
-          auto_create_count: number | null
-          created_at: string
-          default_participants: string[] | null
-          default_recurrence: Json | null
-          default_visibility: string | null
-          description: string | null
-          id: string
-          is_default: boolean | null
-          name: string
-          template_items: Json
-          tenant_id: string | null
-          updated_at: string
-          user_id: string
-          version: number | null
-        }
-        Insert: {
-          auto_create_count?: number | null
-          created_at?: string
-          default_participants?: string[] | null
-          default_recurrence?: Json | null
-          default_visibility?: string | null
-          description?: string | null
-          id?: string
-          is_default?: boolean | null
-          name: string
-          template_items?: Json
-          tenant_id?: string | null
-          updated_at?: string
-          user_id: string
-          version?: number | null
-        }
-        Update: {
-          auto_create_count?: number | null
-          created_at?: string
-          default_participants?: string[] | null
-          default_recurrence?: Json | null
-          default_visibility?: string | null
-          description?: string | null
-          id?: string
-          is_default?: boolean | null
-          name?: string
-          template_items?: Json
-          tenant_id?: string | null
-          updated_at?: string
-          user_id?: string
-          version?: number | null
-        }
-        Relationships: [
-          {
-            foreignKeyName: "meeting_templates_tenant_id_fkey"
-            columns: ["tenant_id"]
-            isOneToOne: false
-            referencedRelation: "tenants"
-            referencedColumns: ["id"]
-          },
-        ]
-      }
       meeting_protocol_addenda: {
         Row: {
           author_id: string
@@ -11158,6 +11107,65 @@ export type Database = {
             columns: ["meeting_id"]
             isOneToOne: true
             referencedRelation: "meetings"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
+      meeting_templates: {
+        Row: {
+          auto_create_count: number | null
+          created_at: string
+          default_participants: string[] | null
+          default_recurrence: Json | null
+          default_visibility: string | null
+          description: string | null
+          id: string
+          is_default: boolean | null
+          name: string
+          template_items: Json
+          tenant_id: string | null
+          updated_at: string
+          user_id: string
+          version: number | null
+        }
+        Insert: {
+          auto_create_count?: number | null
+          created_at?: string
+          default_participants?: string[] | null
+          default_recurrence?: Json | null
+          default_visibility?: string | null
+          description?: string | null
+          id?: string
+          is_default?: boolean | null
+          name: string
+          template_items?: Json
+          tenant_id?: string | null
+          updated_at?: string
+          user_id: string
+          version?: number | null
+        }
+        Update: {
+          auto_create_count?: number | null
+          created_at?: string
+          default_participants?: string[] | null
+          default_recurrence?: Json | null
+          default_visibility?: string | null
+          description?: string | null
+          id?: string
+          is_default?: boolean | null
+          name?: string
+          template_items?: Json
+          tenant_id?: string | null
+          updated_at?: string
+          user_id?: string
+          version?: number | null
+        }
+        Relationships: [
+          {
+            foreignKeyName: "meeting_templates_tenant_id_fkey"
+            columns: ["tenant_id"]
+            isOneToOne: false
+            referencedRelation: "tenants"
             referencedColumns: ["id"]
           },
         ]
@@ -12739,8 +12747,8 @@ export type Database = {
           id: string
           is_archived: boolean | null
           is_pinned: boolean | null
-          meeting_archived_info: Json | null
           jour_fixe_reserved_meeting_id: string | null
+          meeting_archived_info: Json | null
           meeting_id: string | null
           meeting_result: string | null
           pending_for_jour_fixe: boolean | null
@@ -12772,8 +12780,8 @@ export type Database = {
           id?: string
           is_archived?: boolean | null
           is_pinned?: boolean | null
-          meeting_archived_info?: Json | null
           jour_fixe_reserved_meeting_id?: string | null
+          meeting_archived_info?: Json | null
           meeting_id?: string | null
           meeting_result?: string | null
           pending_for_jour_fixe?: boolean | null
@@ -12805,8 +12813,8 @@ export type Database = {
           id?: string
           is_archived?: boolean | null
           is_pinned?: boolean | null
-          meeting_archived_info?: Json | null
           jour_fixe_reserved_meeting_id?: string | null
+          meeting_archived_info?: Json | null
           meeting_id?: string | null
           meeting_result?: string | null
           pending_for_jour_fixe?: boolean | null
@@ -16971,34 +16979,34 @@ export type Database = {
     Views: {
       archived_meeting_protocol_tasks: {
         Row: {
-          id: string | null
-          meeting_id: string | null
-          tenant_id: string | null
-          title: string | null
+          archive_id: string | null
+          archived_at: string | null
           assigned_to: string | null
-          parent_task_id: string | null
+          completed_at: string | null
           description: string | null
           due_date: string | null
-          completed_at: string | null
-          archived_at: string | null
-          archive_id: string | null
-        }
-        Relationships: []
-      }
-      meeting_protocol_tasks: {
-        Row: {
           id: string | null
           meeting_id: string | null
+          parent_task_id: string | null
           tenant_id: string | null
           title: string | null
-          assigned_to: string | null
-          parent_task_id: string | null
-          status: string | null
-          due_date: string | null
-          completed_at: string | null
-          archived: boolean | null
         }
-        Relationships: []
+        Relationships: [
+          {
+            foreignKeyName: "archived_tasks_meeting_id_fkey"
+            columns: ["meeting_id"]
+            isOneToOne: false
+            referencedRelation: "meetings"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "meetings_tenant_id_fkey"
+            columns: ["tenant_id"]
+            isOneToOne: false
+            referencedRelation: "tenants"
+            referencedColumns: ["id"]
+          },
+        ]
       }
       knowledge_question_cards: {
         Row: {
@@ -17157,6 +17165,21 @@ export type Database = {
           },
         ]
       }
+      meeting_protocol_tasks: {
+        Row: {
+          archived: boolean | null
+          assigned_to: string | null
+          completed_at: string | null
+          due_date: string | null
+          id: string | null
+          meeting_id: string | null
+          parent_task_id: string | null
+          status: string | null
+          tenant_id: string | null
+          title: string | null
+        }
+        Relationships: []
+      }
       v_rls_coverage: {
         Row: {
           has_tenant_id: boolean | null
@@ -17170,10 +17193,6 @@ export type Database = {
       }
     }
     Functions: {
-      get_meeting_protocol_participants: {
-        Args: { _meeting_id: string }
-        Returns: { user_id: string; role: string }[]
-      }
       _briefing_task_event: {
         Args: { _task: string; _text: string }
         Returns: undefined
@@ -17318,11 +17337,11 @@ export type Database = {
         Args: { p_decision_id: string }
         Returns: undefined
       }
+      claim_calendar_sync: { Args: { _setting_id: string }; Returns: string }
       claim_jour_fixe_reservations: {
         Args: { _meeting_id: string }
         Returns: number
       }
-      claim_calendar_sync: { Args: { _setting_id: string }; Returns: string }
       cleanup_bulk_action_audit: { Args: never; Returns: number }
       cleanup_edge_function_cache: { Args: never; Returns: number }
       cleanup_workflow_runs: { Args: never; Returns: number }
@@ -17585,17 +17604,30 @@ export type Database = {
         Args: { p_action_item_id: string }
         Returns: string
       }
-      create_notification: {
-        Args: {
-          data_param?: Json
-          message_param: string
-          priority_param?: string
-          title_param: string
-          type_name: string
-          user_id_param: string
-        }
-        Returns: string
-      }
+      create_notification:
+        | {
+            Args: {
+              data_param?: Json
+              message_param: string
+              priority_param?: string
+              title_param: string
+              type_name: string
+              user_id_param: string
+            }
+            Returns: string
+          }
+        | {
+            Args: {
+              data_param: Json
+              message_param: string
+              priority_param: string
+              tenant_id_param: string
+              title_param: string
+              type_name: string
+              user_id_param: string
+            }
+            Returns: string
+          }
       create_poll_notification: {
         Args: {
           _notification_type: string
@@ -17957,6 +17989,13 @@ export type Database = {
       get_globally_shared_user_ids: {
         Args: { _user_id: string }
         Returns: string[]
+      }
+      get_meeting_protocol_participants: {
+        Args: { _meeting_id: string }
+        Returns: {
+          role: string
+          user_id: string
+        }[]
       }
       get_my_work_counts: {
         Args: { p_include_team?: boolean; p_user_id: string }
@@ -19173,12 +19212,12 @@ export type Database = {
       team_two_truths_snapshot: { Args: { p_tenant: string }; Returns: Json }
       topic_name_from_label: { Args: { p_label: string }; Returns: string }
       undo_contact_bulk_action: { Args: { _audit_id: string }; Returns: number }
-      update_meeting_protocol: {
-        Args: { _action: string; _data?: Json; _meeting_id: string }
-        Returns: undefined
-      }
       update_contact_usage: {
         Args: { p_contact_id: string; p_tenant_id?: string; p_user_id?: string }
+        Returns: undefined
+      }
+      update_meeting_protocol: {
+        Args: { _action: string; _data?: Json; _meeting_id: string }
         Returns: undefined
       }
       update_waiting_routine_steps: {
