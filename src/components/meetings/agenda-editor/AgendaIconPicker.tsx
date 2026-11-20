@@ -8,8 +8,9 @@ import { agendaIconColors, agendaIcons, resolveAgendaIcon, type AgendaIconConfig
 export function AgendaIcon({ value, linkedTask }: { value?: unknown; linkedTask?: boolean }) {
   const config = resolveAgendaIcon(value, linkedTask);
   const Icon = agendaIcons[config.name as keyof typeof agendaIcons].icon;
+  const color = agendaIconColors.find(({ value }) => value === config.color);
   return (
-    <span aria-hidden="true" className="grid size-8 shrink-0 place-items-center rounded-lg text-white" style={{ backgroundColor: config.color }}>
+    <span aria-hidden="true" className={cn("grid size-8 shrink-0 place-items-center rounded-lg", color?.darkIcon ? "text-slate-950" : "text-white")} style={{ backgroundColor: config.color }}>
       <Icon className="size-4" />
     </span>
   );
@@ -48,10 +49,10 @@ export function AgendaIconPicker({ value, linkedTask, onChange }: {
         </fieldset>
         <fieldset className="space-y-2">
           <legend className="text-sm font-medium">Hintergrundfarbe</legend>
-          <div className="flex flex-wrap gap-1.5">
-            {agendaIconColors.map(({ value, label }) => (
+          <div className="grid grid-cols-6 justify-items-center gap-1.5">
+            {agendaIconColors.map(({ value, label, darkIcon }) => (
               <button key={value} type="button" aria-label={label} title={label} aria-pressed={value === draft.color}
-                className={cn("grid size-7 place-items-center rounded-full text-white focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring", value === draft.color && "ring-2 ring-ring ring-offset-2 ring-offset-background")}
+                className={cn("grid size-7 place-items-center rounded-full focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring", darkIcon ? "text-slate-950" : "text-white", value === draft.color && "ring-2 ring-ring ring-offset-2 ring-offset-background")}
                 style={{ backgroundColor: value }} onClick={() => setDraft({ ...draft, color: value })}>
                 {value === draft.color && <Check className="size-4" aria-hidden="true" />}
               </button>

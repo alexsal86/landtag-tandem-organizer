@@ -698,24 +698,22 @@ export function SystemAgendaItem({
             </span>
             )}
           </span>
-          {agendaNumber && (
+          <div className="grid min-w-0 flex-1 grid-cols-[auto_minmax(0,1fr)] items-center">
             <span className={cn("flex h-8 shrink-0 items-center text-sm tabular-nums", isEmbedded ? "mr-1 font-normal text-muted-foreground" : "font-semibold text-foreground")}>
               {agendaNumber}
             </span>
-          )}
-          <div className="min-w-0 flex-1">
             <Input
               aria-label="Titel des Bausteins"
               value={title ?? getTitle()}
               readOnly={!canEditTitle}
               onChange={(e) => onTitleChange?.(e.target.value)}
               className={cn(
-                "h-8 min-w-0 px-px text-sm border-transparent bg-transparent shadow-none hover:border-border focus:bg-card",
-                isEmbedded ? "font-normal" : "font-semibold",
+                "h-8 min-w-0 px-px border-transparent bg-transparent shadow-none hover:border-border focus:bg-card",
+                isEmbedded ? "text-xs font-normal md:text-xs" : "text-sm font-semibold",
                 editorCompleted && "text-muted-foreground line-through",
               )}
             />
-            {description && <p className="truncate px-0.5 text-sm text-muted-foreground">{description}</p>}
+            {description && <p className="col-span-2 truncate text-xs text-muted-foreground">{description}</p>}
           </div>
         </div>
         <Button

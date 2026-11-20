@@ -29,16 +29,31 @@ export const agendaIcons = {
   bell: { icon: Bell, label: "Erinnerungen" },
 };
 
-export const agendaIconColors = [
+export const agendaIconColors: { value: string; label: string; darkIcon?: boolean }[] = [
   { value: "#475569", label: "Schiefergrau" },
-  { value: "#1D4ED8", label: "Blau" },
-  { value: "#0F766E", label: "Türkis" },
-  { value: "#166534", label: "Grün" },
+  { value: "#94A3B8", label: "Blaugrau", darkIcon: true },
+  { value: "#D6D3D1", label: "Steingrau", darkIcon: true },
   { value: "#92400E", label: "Ocker" },
+  { value: "#FACC15", label: "Sonnengelb", darkIcon: true },
+  { value: "#FEF08A", label: "Hellgelb", darkIcon: true },
   { value: "#C2410C", label: "Orange" },
+  { value: "#F97316", label: "Mandarine", darkIcon: true },
+  { value: "#FDBA74", label: "Apricot", darkIcon: true },
   { value: "#B91C1C", label: "Rot" },
-  { value: "#A21CAF", label: "Magenta" },
+  { value: "#BE185D", label: "Himbeerrot" },
+  { value: "#FDA4AF", label: "Rosa", darkIcon: true },
+  { value: "#166534", label: "Grün" },
+  { value: "#3F6212", label: "Olivgrün" },
+  { value: "#A3E635", label: "Limettengrün", darkIcon: true },
+  { value: "#0F766E", label: "Türkis" },
+  { value: "#0E7490", label: "Petrol" },
+  { value: "#99F6E4", label: "Mint", darkIcon: true },
+  { value: "#1D4ED8", label: "Blau" },
+  { value: "#3730A3", label: "Indigo" },
+  { value: "#7DD3FC", label: "Himmelblau", darkIcon: true },
   { value: "#6D28D9", label: "Violett" },
+  { value: "#A21CAF", label: "Magenta" },
+  { value: "#C4B5FD", label: "Lavendel", darkIcon: true },
 ];
 
 export function resolveAgendaIcon(config: unknown, linkedTask = false): AgendaIconConfig {
