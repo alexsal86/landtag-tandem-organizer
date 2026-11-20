@@ -28,12 +28,12 @@ interface Props {
 const taskFilters = [
   { id: "mine", label: "Mein Zug", zones: ["nudged", "mine", "resubmission"] },
   { id: "waiting", label: "Wartet", zones: ["waiting"] },
-  { id: "resubmission", label: "Wiedervorlagen", zones: ["resubmission"] },
   { id: "all", label: "Alle", zones: ["nudged", "mine", "waiting", "resubmission"] },
 ] as const;
 
 export function TaskStafetteWorkspace({ userId, tasks, profiles, onReload, onComplete, onDecision, onJourFixe, onCreate, modeControls, snoozes }: Props) {
   const [filter, setFilter] = useState<(typeof taskFilters)[number]>(taskFilters[0]);
+  const [resubmissionsOpen, setResubmissionsOpen] = useState(false);
   const [selectedId, setSelectedId] = useState<string | null>(null);
   const [local, setLocal] = useState<Record<string, Partial<MyWorkTask>>>({});
   const shortcuts = useRef<{ stepDone: () => void; daySlip: () => void } | null>(null);
@@ -43,14 +43,14 @@ export function TaskStafetteWorkspace({ userId, tasks, profiles, onReload, onCom
     const grouped = groupByZone(merged, userId);
     for (const zone of ["nudged", "mine", "waiting", "resubmission"] as const) {
       for (const task of [...grouped[zone]]) {
-        if (!snoozes[task.id] || zone === "resubmission") continue;
+        if (!snoozes[task.id] || new Date(snoozes[task.id]).getTime() <= new Date().setHours(23, 59, 59, 999) || zone === "resubmission") continue;
         grouped[zone] = grouped[zone].filter((entry) => entry.id !== task.id);
         grouped.resubmission.push(task);
       }
     }
     return grouped;
   }, [merged, userId, snoozes]);
-  const ordered = useMemo(() => filter.zones.flatMap((zone) => zones[zone]), [filter, zones]);
+  const ordered = useMemo(() => filter.zones.flatMap((zone) => zone === "resubmission" && !resubmissionsOpen ? [] : zones[zone]), [filter, zones, resubmissionsOpen]);
   const selected = ordered.find((t) => t.id === selectedId) ?? ordered[0] ?? null;
 
   const remindedOnce = useRef(false);
@@ -211,7 +211,7 @@ export function TaskStafetteWorkspace({ userId, tasks, profiles, onReload, onCom
             >
               {option.label}
               <span className="font-normal text-muted-foreground">
-                {option.zones.reduce((count, zone) => count + zones[zone].length, 0)}
+                {option.zones.reduce((count, zone) => count + (zone === "resubmission" ? 0 : zones[zone].length), 0)}
               </span>
             </Button>
           ))}
@@ -221,7 +221,7 @@ export function TaskStafetteWorkspace({ userId, tasks, profiles, onReload, onCom
       <div className="grid min-h-0 flex-1 auto-rows-max grid-cols-1 lg:auto-rows-auto lg:grid-cols-[minmax(260px,1fr)_minmax(0,3fr)]">
         <div className="flex min-h-0 min-w-0 flex-col bg-[#fafaf8] dark:bg-card">
             <div className="h-80 min-h-0 lg:h-auto lg:flex-1">
-              <TaskTriageList snoozes={snoozes} onCreate={onCreate} onComplete={onComplete} zones={zones} visibleZones={filter.zones} selectedId={selected?.id ?? null} onSelect={setSelectedId} decisionLabel={decisionLabel} nameOf={nameOf} selection={selection} onToggleSelect={toggleSelect} onClearSelection={() => setSelection(new Set())} onBatch={batch} />
+              <TaskTriageList resubmissionsOpen={resubmissionsOpen} onResubmissionsOpenChange={setResubmissionsOpen} snoozes={snoozes} onCreate={onCreate} onComplete={onComplete} zones={zones} visibleZones={filter.zones} selectedId={selected?.id ?? null} onSelect={setSelectedId} decisionLabel={decisionLabel} nameOf={nameOf} selection={selection} onToggleSelect={toggleSelect} onClearSelection={() => setSelection(new Set())} onBatch={batch} />
             </div>
           </div>
           <div className="min-h-0 min-w-0 flex flex-col">

@@ -1,6 +1,6 @@
 import { VirtualList } from "@/components/shared/VirtualList";
 import { useState } from "react";
-import { Plus } from "lucide-react";
+import { ChevronDown, Plus } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { Tooltip, TooltipContent, TooltipTrigger } from "@/components/ui/tooltip";
 import { Input } from "@/components/ui/input";
@@ -10,6 +10,8 @@ import type { MyWorkTask } from "@/hooks/useMyWorkTasksData";
 import { isReminderDue, TASK_BALL_LABELS, type TaskBallOwner, type TaskZone } from "@/features/tasks/stafette";
 
 interface Props {
+  resubmissionsOpen: boolean;
+  onResubmissionsOpenChange: (open: boolean) => void;
   zones: Record<TaskZone, MyWorkTask[]>;
   visibleZones: readonly TaskZone[];
   snoozes: Record<string, string>;
@@ -25,7 +27,7 @@ interface Props {
   onBatch: (kind: "deputy" | "week" | "nudge") => Promise<void>;
 }
 
-export function TaskTriageList({ zones, visibleZones, snoozes, onCreate, onComplete, selectedId, onSelect, decisionLabel, nameOf, selection, onToggleSelect, onClearSelection, onBatch }: Props) {
+export function TaskTriageList({ resubmissionsOpen, onResubmissionsOpenChange, zones, visibleZones, snoozes, onCreate, onComplete, selectedId, onSelect, decisionLabel, nameOf, selection, onToggleSelect, onClearSelection, onBatch }: Props) {
   const [busy, setBusy] = useState(false);
   const runBatch = async (k: "deputy" | "week" | "nudge") => { setBusy(true); try { await onBatch(k); } finally { setBusy(false); } };
   const [query, setQuery] = useState("");
@@ -52,11 +54,12 @@ export function TaskTriageList({ zones, visibleZones, snoozes, onCreate, onCompl
     { key: "overdue", title: "Überfällig" },
     { key: "week", title: "Diese Woche" },
     { key: "later", title: "Später" },
+    { key: "resubmission", title: "Wiedervorlagen" },
   ];
   const tasks = visibleZones.flatMap((zone) => zones[zone].map((task) => {
     const date = snoozes[task.id] || task.next_action_due || task.due_date;
     const due = date ? new Date(date.slice(0, 10) + "T00:00:00") : null;
-    const group = due && due < today ? "overdue" : due && due <= weekEnd ? "week" : "later";
+    const group = zone === "resubmission" ? "resubmission" : due && due < today ? "overdue" : due && due <= weekEnd ? "week" : "later";
     return { task, zone, due, group };
   })).filter(({ task }) => task.title.toLocaleLowerCase().includes(query.toLocaleLowerCase()))
     .sort((a, b) => (a.due?.getTime() ?? Infinity) - (b.due?.getTime() ?? Infinity));
@@ -65,7 +68,7 @@ export function TaskTriageList({ zones, visibleZones, snoozes, onCreate, onCompl
     if (!items.length) return [];
     return [
       { key, title, count: items.length, item: null as (typeof tasks)[number] | null },
-      ...items.map((item) => ({ key: item.task.id, title, count: items.length, item })),
+      ...(key === "resubmission" && !resubmissionsOpen ? [] : items.map((item) => ({ key: item.task.id, title, count: items.length, item }))),
     ];
   });
 
@@ -101,6 +104,12 @@ export function TaskTriageList({ zones, visibleZones, snoozes, onCreate, onCompl
         estimateSize={64}
         getItemKey={(entry) => entry.key}
         renderItem={({ key, title, count, item }) => {
+          if (!item && key === "resubmission") return (
+            <button type="button" onClick={() => onResubmissionsOpenChange(!resubmissionsOpen)} aria-expanded={resubmissionsOpen} className="flex w-full items-center gap-2 px-3 pb-2 pt-6 text-left text-sm font-semibold text-muted-foreground">
+              <ChevronDown className={cn("h-4 w-4", !resubmissionsOpen && "-rotate-90")} />
+              Wiedervorlagen <span>{count}</span>
+            </button>
+          );
           if (!item) return <div className={cn("px-3 pb-2 pt-6 text-sm font-semibold", key === "overdue" ? "text-destructive" : "text-muted-foreground")}>{title} <span className="ml-2">{count}</span></div>;
           const { task, zone, due, group } = item;
           const days = due ? differenceInCalendarDays(today, due) : 0;
