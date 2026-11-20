@@ -1,7 +1,6 @@
 import { ResponsibleSuggestion } from "@/features/responsibilities/ResponsibleSuggestion";
 import { mergeStepChangeEvents } from "@/features/cases/items/timeline";
 import { useCaseWorkflow } from "@/components/my-work/hooks/useCaseWorkflow";
-import type { ComponentProps } from "react";
 import { type KeyboardEvent, useCallback, useEffect, useMemo, useRef, useState } from "react";
 import { de } from "date-fns/locale";
 import { Sheet, SheetClose, SheetContent, SheetHeader, SheetTitle } from "@/components/ui/sheet";
@@ -1113,7 +1112,6 @@ export function MyWorkCasesWorkspace() {
                       variant="bar"
                       item={detailItem}
                       tenantId={tenantId}
-                      subject={editableCaseItem.subject}
                       teamUsers={teamUsers}
                       onChange={(patch) => runAsync(() => handleBallChange(detailItem, patch))}
                       onCompleteStep={async (label) => {
@@ -1148,19 +1146,6 @@ export function MyWorkCasesWorkspace() {
                         }
                         return ok;
                       }}
-                      onCreateLetter={async () => {
-                        if (!tenantId || !user?.id) return;
-                        try {
-                          const letterId = await createLetterFromCase({ caseItemId: detailItem.id, subject: editableCaseItem.subject, tenantId, userId: user.id });
-                          notify.success("Briefentwurf angelegt");
-                          await logSystemEvent(detailItem, "Brief angelegt");
-                          navigate(`/letters/${letterId}`);
-                        } catch {
-                          notify.error("Brief konnte nicht angelegt werden.");
-                        }
-                      }}
-                      onOpenMeetingSelector={() => { setMeetingSelectorItemId(detailItem.id); setIsMeetingSelectorOpen(true); }}
-                      onRequestDecision={handleRequestDecision}
                     /></>
                   
   ) : null;
@@ -1269,7 +1254,29 @@ export function MyWorkCasesWorkspace() {
                   onComplete={() => runAsync(() => handleArchiveCaseItem(detailItem))}
                   onDelete={() => setDeleteConfirmItemId(detailItem.id)}
                   ballPanel={ballPanelNode}
-                  quickActions={ballPanelNode ? <CaseItemQuickActions {...(ballPanelNode.props as ComponentProps<typeof CaseItemQuickActions>)} workflow={workflow} /> : null}
+                  quickActions={
+                    <CaseItemQuickActions
+                      item={detailItem}
+                      subject={editableCaseItem.subject}
+                      onCreateLetter={async () => {
+                        if (!tenantId || !user?.id) return;
+                        try {
+                          const letterId = await createLetterFromCase({ caseItemId: detailItem.id, subject: editableCaseItem.subject, tenantId, userId: user.id });
+                          notify.success("Briefentwurf angelegt");
+                          await logSystemEvent(detailItem, "Brief angelegt");
+                          navigate(`/letters/${letterId}`);
+                        } catch {
+                          notify.error("Brief konnte nicht angelegt werden.");
+                        }
+                      }}
+                      onOpenMeetingSelector={() => {
+                        setMeetingSelectorItemId(detailItem.id);
+                        setIsMeetingSelectorOpen(true);
+                      }}
+                      onRequestDecision={handleRequestDecision}
+                      workflow={workflow}
+                    />
+                  }
                   summary={getItemDescription(detailItem)}
                   detailPanel={
                     <CaseItemDetailPanel

@@ -75,7 +75,7 @@ export function CaseFileDetail({ caseFileId, onBack }: CaseFileDetailProps) {
 
   useEffect(() => {
     if (caseFile?.title) {
-      trackPageVisit(`casefile-${caseFileId}`, caseFile.title, 'Briefcase', `/cases?tab=files&id=${caseFileId}`);
+      trackPageVisit(`casefile-${caseFileId}`, caseFile.title, 'Briefcase', `/casefiles?caseFileId=${caseFileId}`);
     }
   }, [caseFileId, caseFile?.title]);
 

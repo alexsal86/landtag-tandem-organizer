@@ -35,6 +35,31 @@ function TaskWorkspaceRedirect() {
   return <Navigate to={{ pathname: "/tasks", search: `?${params}`, hash }} replace />;
 }
 
+function CasesRedirect() {
+  const { search, hash } = useLocation();
+  const params = new URLSearchParams(search);
+  const legacyFileId = params.get("tab") === "files" ? params.get("id") : null;
+
+  if (legacyFileId) {
+    params.delete("tab");
+    params.delete("id");
+    params.set("caseFileId", legacyFileId);
+    return <Navigate to={{ pathname: "/casefiles", search: `?${params}`, hash }} replace />;
+  }
+
+  params.set("tab", "cases");
+  return <Navigate to={{ pathname: "/mywork", search: `?${params}`, hash }} replace />;
+}
+
+function LegacyCaseItemRedirect() {
+  const { caseItemId } = useParams<"caseItemId">();
+  const { search, hash } = useLocation();
+
+  if (!caseItemId) return <CasesRedirect />;
+
+  return <Navigate to={{ pathname: `/vorgaenge/${encodeURIComponent(caseItemId)}`, search, hash }} replace />;
+}
+
 export const AppRoutes = () => (
   <>
     {/* Öffentliche Routen – kein Login erforderlich */}
@@ -61,6 +86,9 @@ export const AppRoutes = () => (
       <Route path="/maps" element={<Navigate to="/karten" replace />} />
       <Route path="/profile/edit" element={<Navigate to="/profile-edit" replace />} />
       <Route path="/letters/:letterId" element={<LetterDetail />} />
+      <Route path="/vorgaenge" element={<CasesRedirect />} />
+      <Route path="/cases" element={<CasesRedirect />} />
+      <Route path="/cases/:caseItemId" element={<LegacyCaseItemRedirect />} />
       <Route path="/vorgaenge/:caseItemId" element={<CaseItemDetail />} />
       {/* ADD ALL CUSTOM ROUTES ABOVE THE CATCH-ALL "*" ROUTE */}
       <Route path="/:section/:subId" element={<Index />} />

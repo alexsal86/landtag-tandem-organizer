@@ -22,20 +22,23 @@ export type BallPatch = Partial<Pick<CaseItem, "ball_owner" | "next_action_label
 type Props = {
   item: CaseItem;
   tenantId?: string;
-  subject: string;
   teamUsers: TeamUser[];
   onChange: (patch: BallPatch) => void;
   onCompleteStep: (label: string) => Promise<boolean>;
-  onOpenMeetingSelector: () => void;
-  onCreateLetter: () => Promise<void>;
-  onRequestDecision?: () => void;
   /** "dock" = vertical layout for the right-hand third zone. */
   variant?: "bar" | "dock";
 };
 
 const NONE = "__none__";
 
-type QuickProps = Pick<Props, "item" | "subject" | "onOpenMeetingSelector" | "onCreateLetter" | "onRequestDecision"> & { workflow: ReturnType<typeof useCaseWorkflow> };
+type QuickProps = {
+  item: CaseItem;
+  subject: string;
+  onOpenMeetingSelector: () => void;
+  onCreateLetter: () => Promise<void>;
+  onRequestDecision?: () => void;
+  workflow: ReturnType<typeof useCaseWorkflow>;
+};
 
 export function CaseItemQuickActions({ item, subject, onOpenMeetingSelector, onCreateLetter, onRequestDecision, workflow }: QuickProps) {
   const [creatingLetter, setCreatingLetter] = useState(false);

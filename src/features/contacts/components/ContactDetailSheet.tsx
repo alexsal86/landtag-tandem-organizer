@@ -551,7 +551,7 @@ export function ContactDetailSheet({ contactId, isOpen, onClose, onContactUpdate
                         {cases.map((c) => (
                           <li key={c.id}>
                             <button
-                              onClick={() => navigate(`/cases/${c.id}`)}
+                              onClick={() => navigate(`/vorgaenge/${c.id}`)}
                               className="w-full flex items-center gap-2 px-2.5 py-2 rounded-md border border-border hover:bg-muted text-left transition-colors"
                             >
                               <span className="flex-1 truncate text-body">{c.subject ?? "Ohne Titel"}</span>
@@ -635,7 +635,7 @@ export function ContactDetailSheet({ contactId, isOpen, onClose, onContactUpdate
                       {cases.map((c) => (
                         <li key={c.id}>
                           <button
-                            onClick={() => navigate(`/cases/${c.id}`)}
+                            onClick={() => navigate(`/vorgaenge/${c.id}`)}
                             className="w-full flex items-center gap-2 px-3 py-2.5 rounded-md border border-border hover:bg-muted text-left transition-colors"
                           >
                             <span className="flex-1 truncate text-body">{c.subject ?? "Ohne Titel"}</span>
