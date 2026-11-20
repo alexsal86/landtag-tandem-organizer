@@ -180,7 +180,7 @@ export function AgendaEditorPanel({
           (item.localKey && child.parentLocalKey === item.localKey),
       ),
   );
-  const systemItems = agendaItems.filter((item) => item.system_type);
+  const systemItems = agendaItems.filter((item) => item.system_type && item.system_type !== "upcoming_appointments");
   const allCollapsed =
     expandableMain.length + systemItems.length > 0 &&
     expandableMain.every(

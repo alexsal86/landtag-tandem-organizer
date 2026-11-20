@@ -131,6 +131,7 @@ export function SystemAgendaItem({
   const [remoteCount, setRemoteCount] = useState<number | null>(null);
   const [localExpanded, setExpanded] = useState(!defaultCollapsed);
   const expanded = expandedOverride ?? localExpanded;
+  const showAppointmentsAsSubpoints = editorRow && systemType === "upcoming_appointments";
   const count =
     systemType === "quick_notes"
       ? linkedQuickNotes.length
@@ -348,7 +349,7 @@ export function SystemAgendaItem({
           )}
         >
           {renderHeader()}
-          <div className="px-3 pb-2">
+          <div className={showAppointmentsAsSubpoints ? undefined : "px-3 pb-2"}>
             <UpcomingAppointmentsSection
               meetingDate={meetingDate || new Date()}
               meetingId={meetingId}
@@ -357,6 +358,7 @@ export function SystemAgendaItem({
               className="border-0 shadow-none bg-transparent p-0"
               defaultCollapsed={editorRow ? false : defaultCollapsed}
               showCountBadge={false}
+              agendaRows={showAppointmentsAsSubpoints}
               onAppointmentsCountChange={setUpcomingAppointmentsCount}
             />
           </div>
@@ -705,38 +707,45 @@ export function SystemAgendaItem({
             <span className={cn("h-5 shrink-0 tabular-nums", isEmbedded ? "mr-1 text-xs leading-5 font-normal text-muted-foreground" : "text-sm leading-5 font-semibold text-foreground", editorCompleted && "text-muted-foreground line-through")}>
               {agendaNumber}
             </span>
-            <Input
-              aria-label="Titel des Bausteins"
-              value={title ?? getTitle()}
-              readOnly={!canEditTitle}
-              onChange={(e) => onTitleChange?.(e.target.value)}
-              className={cn(
-                "h-5 min-w-0 px-px py-0 leading-5 border-transparent bg-transparent shadow-none hover:border-border focus:bg-card",
-                isEmbedded ? "text-xs font-normal md:text-xs" : "text-sm font-semibold",
-                editorCompleted && "text-muted-foreground line-through",
-              )}
-            />
+            <div className="flex min-w-0 flex-wrap items-baseline gap-x-1">
+              <Input
+                aria-label="Titel des Bausteins"
+                value={title ?? getTitle()}
+                readOnly={!canEditTitle}
+                aria-description={showAppointmentsAsSubpoints ? "Nächste zwei Wochen" : undefined}
+                onChange={(e) => onTitleChange?.(e.target.value)}
+                className={cn(
+                  "h-5 min-w-0 px-px py-0 leading-5 border-transparent bg-transparent shadow-none hover:border-border focus:bg-card",
+                  isEmbedded ? "text-xs font-normal md:text-xs" : "text-sm font-semibold",
+                  showAppointmentsAsSubpoints && "w-auto max-w-full [field-sizing:content]",
+                  editorCompleted && "text-muted-foreground line-through",
+                )}
+              />
+              {showAppointmentsAsSubpoints && <span className="text-xs text-muted-foreground">(nächste zwei Wochen)</span>}
+            </div>
             {description && <p className="col-span-2 truncate text-xs leading-4 text-muted-foreground">{description}</p>}
           </div>
         </div>
-        <Button
-          size="sm"
-          variant="ghost"
-          aria-label="Baustein-Vorschau ein- oder ausklappen"
-          aria-expanded={expanded}
-          className="h-7 shrink-0 gap-1 px-2 text-xs font-medium text-primary"
-          onClick={() => {
-            if (onExpandedChange) onExpandedChange(!expanded);
-            else setExpanded((value) => !value);
-          }}
-        >
-          {expanded ? (
-            <ChevronDown className="h-4 w-4" />
-          ) : (
-            <ChevronRight className="h-4 w-4" />
-          )}
-          {typeof count === "number" && `${count} ${count === 1 ? "Eintrag" : "Einträge"}`}
-        </Button>
+        {!showAppointmentsAsSubpoints && (
+          <Button
+            size="sm"
+            variant="ghost"
+            aria-label="Baustein-Vorschau ein- oder ausklappen"
+            aria-expanded={expanded}
+            className="h-7 shrink-0 gap-1 px-2 text-xs font-medium text-primary"
+            onClick={() => {
+              if (onExpandedChange) onExpandedChange(!expanded);
+              else setExpanded((value) => !value);
+            }}
+          >
+            {expanded ? (
+              <ChevronDown className="h-4 w-4" />
+            ) : (
+              <ChevronRight className="h-4 w-4" />
+            )}
+            {typeof count === "number" && `${count} ${count === 1 ? "Eintrag" : "Einträge"}`}
+          </Button>
+        )}
         {onDelete && (
           <Button
             size="icon"
@@ -750,7 +759,7 @@ export function SystemAgendaItem({
         )}
         {editorDetails}
       </div>
-      <div hidden={!expanded || count === 0} className="px-3 pb-2">
+      <div hidden={!showAppointmentsAsSubpoints && (!expanded || count === 0)} className={showAppointmentsAsSubpoints ? undefined : "px-3 pb-2"}>
         {renderBody()}
       </div>
     </section>
