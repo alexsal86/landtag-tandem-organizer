@@ -1,3 +1,4 @@
+import { stripHtml } from "@/utils/textDiff";
 import { AppointmentInspector } from "./agenda-editor/AppointmentInspector";
 import type { GeneratedAgendaEntry } from "./agenda-editor/SystemSubpointScope";
 import { AgendaDragHandle } from "./agenda-editor/AgendaDragHandle";
@@ -296,12 +297,6 @@ export function AgendaEditorPanel({
     return parent?.system_type ? systemExpanded[key] === false : !!collapsedMainItems[key];
   };
 
-  const itemIsHidden = (item: AgendaItem, index: number) =>
-    isHiddenByCollapsedParent(item) ||
-    Boolean(!live && item.system_type && hideEmpty && systemCounts[getItemKey(item, index)] === 0);
-  const hiddenItems = new Set(agendaItems.filter(itemIsHidden));
-  const dropPreview = dragUpdate && resolveAgendaDrop(agendaItems, dragUpdate, hiddenItems);
-
   const getSubItemCount = (item: AgendaItem) => {
     const key = item.localKey || item.id;
     if (!key || item.parent_id || item.parentLocalKey) return 0;
@@ -311,6 +306,20 @@ export function AgendaEditorPanel({
         (item.localKey && candidate.parentLocalKey === item.localKey),
     ).length;
   };
+
+  const itemIsHidden = (item: AgendaItem, index: number) => {
+    if (isHiddenByCollapsedParent(item)) return true;
+    if (live || !hideEmpty || item.parent_id || item.parentLocalKey) return false;
+    if (getSubItemCount(item) > 0) return false;
+    if (item.system_type) return systemCounts[getItemKey(item, index)] === 0;
+
+    const hasText = [item.description, item.notes, item.result_text, item.result_html]
+      .some((value) => value && stripHtml(value).replace(/&nbsp;/gi, " ").trim());
+    const hasAttachment = item.file_path || (item.id && agendaDocuments[item.id]?.length);
+    return !hasText && !hasAttachment && !item.task_id;
+  };
+  const hiddenItems = new Set(agendaItems.filter(itemIsHidden));
+  const dropPreview = dragUpdate && resolveAgendaDrop(agendaItems, dragUpdate, hiddenItems);
 
   const showDocumentActionError = (
     action: "download" | "upload" | "delete",
@@ -812,9 +821,7 @@ export function AgendaEditorPanel({
                               documentCount={item.id ? (agendaDocuments[item.id]?.length ?? 0) : 0}
                               isMainItemCollapsed={isMainItemCollapsed}
                               setCollapsedMainItems={setCollapsedMainItems}
-                              isHiddenByCollapsedParent={
-                                isHiddenByCollapsedParent
-                              }
+                              isHiddenByCollapsedParent={(row) => hiddenItems.has(row)}
                               profiles={profiles}
                               onToggleVisibility={onToggleVisibility}
                               setDirty={setDirty}
