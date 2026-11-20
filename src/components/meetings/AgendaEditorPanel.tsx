@@ -1,8 +1,9 @@
+import type { GeneratedAgendaEntry } from "./agenda-editor/SystemSubpointScope";
 import { AgendaDragHandle } from "./agenda-editor/AgendaDragHandle";
 import { Textarea } from "@/components/ui/textarea";
 import { LiveAgendaNavigation } from "./agenda-editor/LiveAgendaNavigation";
 import { LiveAgendaResult } from "./agenda-editor/LiveAgendaResult";
-import { liveAgendaPosition } from "./agenda-editor/liveAgenda";
+import { flattenLiveAgenda, liveAgendaPosition } from "./agenda-editor/liveAgenda";
 import { LiveAgendaSystemContent, liveAgendaSystemTypes, type LiveAgendaSystemData } from "./LiveAgendaSystemContent";
 import type { AgendaResult } from "./AgendaResultEditor";
 import { PencilSparkles } from "@/components/icons/PencilSparkles";
@@ -17,7 +18,7 @@ import { agendaItemKey, resolveAgendaDrop } from "./agenda-editor/agendaDrop";
 import { agendaTiming } from "./agenda-editor/agendaTiming";
 import type { SystemAgendaType } from "@/components/meetings/types";
 import { debugConsole } from "@/utils/debugConsole";
-import { useState, useEffect, useRef } from "react";
+import { useState, useEffect, useRef, useCallback } from "react";
 import { Button } from "@/components/ui/button";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Badge } from "@/components/ui/badge";
@@ -166,10 +167,6 @@ export function AgendaEditorPanel({
     (item, index) => getItemKey(item, index) === selectedKey,
   );
   const selectedItem = agendaItems[selectedIndex];
-  const hasSelectedChild = (item: AgendaItem) => Boolean(
-    (item.id && selectedItem?.parent_id === item.id) ||
-    (item.localKey && selectedItem?.parentLocalKey === item.localKey),
-  );
   const change = (index: number, field: keyof AgendaItem, value: unknown) => {
     if (!hasEditPermission) return;
     setDirty(true);
@@ -183,31 +180,55 @@ export function AgendaEditorPanel({
   }, [selectedMeeting.id]);
   const timing = agendaTiming(agendaItems, selectedMeeting.meeting_time);
   const agendaList = useRef<HTMLDivElement>(null);
-  const livePosition = live ? liveAgendaPosition(timing.main, live.currentKey) : -1;
-  const liveItem = timing.main[livePosition];
-  const currentLiveKey = liveItem ? liveItem.localKey || liveItem.id : undefined;
+  const [generatedEntries, setGeneratedEntries] = useState<Record<string, GeneratedAgendaEntry[]>>({});
+  const onSystemEntries = useCallback((parentKey: string, entries: GeneratedAgendaEntry[]) => {
+    setGeneratedEntries((current) => {
+      const previous = current[parentKey] ?? [];
+      if (previous.length === entries.length && previous.every((entry, index) =>
+        entry.id === entries[index].id && entry.title === entries[index].title && entry.number === entries[index].number,
+      )) return current;
+      return { ...current, [parentKey]: entries };
+    });
+  }, []);
+  const steps = flattenLiveAgenda(timing.main, agendaItems, generatedEntries);
+  const initialMain = timing.main[liveAgendaPosition(timing.main)];
+  const initialKey = initialMain?.localKey || initialMain?.id;
+  const liveStep = live ? (steps.find((step) => step.key === live.currentKey) ??
+    steps.find((step) => step.key === initialKey)) : undefined;
+  const livePosition = liveStep ? steps.indexOf(liveStep) : -1;
+  const currentLiveKey = liveStep?.key;
   const isLiveCurrent = (item: AgendaItem) => Boolean(currentLiveKey && (item.localKey || item.id) === currentLiveKey);
-  const isLiveGroup = (item: AgendaItem) => isLiveCurrent(item) || Boolean(
-    (liveItem?.id && item.parent_id === liveItem.id) ||
-    (liveItem?.localKey && item.parentLocalKey === liveItem.localKey),
-  );
-  const selectLiveItem = (item?: AgendaItem) => {
-    if (!item) return;
+  const liveRoot = steps.find((step) => step.key === liveStep?.rootKey)?.item;
+  const isLiveGroup = (item: AgendaItem) => {
+    if (!liveStep) return false;
+    const root = liveRoot;
+    return (item.localKey || item.id) === liveStep.rootKey || Boolean(
+      (root?.id && item.parent_id === root.id) ||
+      (root?.localKey && item.parentLocalKey === root.localKey),
+    );
+  };
+  const selectedStep = live ? liveStep : steps.find((step) => step.key === selectedKey);
+  const hasSelectedChild = (item: AgendaItem) => {
     const key = item.localKey || item.id;
-    if (!key || !live) return;
-    live.onPositionChange(key);
+    return Boolean(key && selectedStep?.key !== key &&
+      (selectedStep?.parentKey === key || selectedStep?.rootKey === key));
+  };
+  const selectStep = (key?: string) => {
+    if (!key) return;
+    live?.onPositionChange(key);
     setSelectedKey(key);
   };
   const setLivePositionKey = live?.onPositionChange;
+  const storedLiveKey = live?.currentKey;
   useEffect(() => {
     if (!currentLiveKey) return;
-    setLivePositionKey?.(currentLiveKey);
+    if (!storedLiveKey) setLivePositionKey?.(currentLiveKey);
     setSelectedKey(currentLiveKey);
     const frame = requestAnimationFrame(() => {
       agendaList.current?.querySelector("[data-live-agenda-current]")?.scrollIntoView({ block: "nearest" });
     });
     return () => cancelAnimationFrame(frame);
-  }, [currentLiveKey, setLivePositionKey]);
+  }, [currentLiveKey, storedLiveKey, setLivePositionKey]);
 
   const saveLiveResult = (item: AgendaItem, index: number, result: AgendaResult) => {
     setDirty(true);
@@ -538,9 +559,10 @@ export function AgendaEditorPanel({
           {live ? (
             <LiveAgendaNavigation
               position={livePosition}
-              count={timing.main.length}
-              title={liveItem?.title}
-              onMove={(offset) => selectLiveItem(timing.main[livePosition + offset])}
+              count={steps.length}
+              title={liveStep?.title}
+              agendaNumber={liveStep?.number ?? (liveStep?.item ? getAgendaNumber(liveStep.item) : undefined)}
+              onMove={(offset) => selectStep(steps[livePosition + offset]?.key)}
               onOpenFocus={async () => {
                 if (!dirty || await saveAgenda()) live.onOpenFocus();
               }}
@@ -617,22 +639,22 @@ export function AgendaEditorPanel({
                             <div
                               ref={provided.innerRef}
                               {...provided.draggableProps}
-                              onFocus={() =>
-                                setSelectedKey(getItemKey(item, index))
-                              }
+                              onFocus={(event) => {
+                                if (!live && !(event.target instanceof Element && event.target.closest("[data-system-subpoint]"))) {
+                                  setSelectedKey(getItemKey(item, index));
+                                }
+                              }}
                               aria-current={isLiveCurrent(item) ? "step" : undefined}
-                              data-live-agenda-current={isLiveCurrent(item) || undefined}
-                              tabIndex={live && !item.parent_id && !item.parentLocalKey ? 0 : undefined}
+                              tabIndex={live ? 0 : undefined}
                               onKeyDown={(event) => {
                                 if (live && event.target === event.currentTarget && (event.key === "Enter" || event.key === " ")) {
                                   event.preventDefault();
-                                  selectLiveItem(item);
+                                  selectStep(getItemKey(item, index));
                                 }
                               }}
                               onClick={(event) => {
-                                setSelectedKey(getItemKey(item, index));
-                                if (live && !item.parent_id && !item.parentLocalKey &&
-                                  !(event.target instanceof Element && event.target.closest("button, a"))) selectLiveItem(item);
+                                if (event.target instanceof Element && event.target.closest("[data-system-subpoint]")) return;
+                                if (!live || !(event.target instanceof Element && event.target.closest("button, a"))) selectStep(getItemKey(item, index));
                               }}
                               className={cn(
                                 "scroll-mt-24 transition-shadow",
@@ -643,11 +665,14 @@ export function AgendaEditorPanel({
                               )}
                             >
                               <AgendaSystemRow
-                                liveCurrent={isLiveCurrent(item)}
-                                hasSelectedChild={hasSelectedChild(item)}
-                                selected={
-                                  getItemKey(item, index) === selectedKey
-                                }
+                                scope={{
+                                  parentKey: getItemKey(item, index),
+                                  selectedKey: live ? currentLiveKey ?? null : selectedKey,
+                                  liveKey: currentLiveKey,
+                                  onSelect: selectStep,
+                                  onEntries: onSystemEntries,
+                                }}
+                                selected={(live ? currentLiveKey : selectedKey) === getItemKey(item, index)}
                               >
                                 <SystemAgendaItem
                                   expandedOverride={
@@ -660,14 +685,15 @@ export function AgendaEditorPanel({
                                     }))
                                   }
                                   editorRow
-                                  editorSelected={getItemKey(item, index) === selectedKey}
+                                  editorSelected={getItemKey(item, index) === (live ? currentLiveKey : selectedKey)}
+                                  editorHasSelectedChild={hasSelectedChild(item)}
                                   editorLiveCurrent={isLiveCurrent(item)}
                                   editorDragHandle={hasEditPermission && provided.dragHandleProps ? (
                                     <AgendaDragHandle dragHandleProps={provided.dragHandleProps} dragging={snapshot.isDragging} className="h-5" />
                                   ) : undefined}
                                   editorLive={Boolean(live)}
                                   editorLiveContent={
-                                    live && isLiveGroup(item) && hasEditPermission && item.id &&
+                                    live && hasEditPermission && item.id &&
                                     liveAgendaSystemTypes.includes(item.system_type) ? (
                                       <LiveAgendaSystemContent
                                         {...live}
@@ -758,8 +784,8 @@ export function AgendaEditorPanel({
                               item={item}
                               hasSelectedChild={hasSelectedChild(item)}
                               liveCurrent={isLiveCurrent(item)}
-                              onLiveSelect={live && !item.parent_id && !item.parentLocalKey ? () => selectLiveItem(item) : undefined}
-                              liveContent={live && isLiveGroup(item) && hasEditPermission ? (
+                              onLiveSelect={live ? () => selectStep(getItemKey(item, index)) : undefined}
+                              liveContent={live && isLiveCurrent(item) && hasEditPermission ? (
                                 <LiveAgendaResult
                                   meeting={selectedMeeting}
                                   item={item}
@@ -772,7 +798,7 @@ export function AgendaEditorPanel({
                               provided={provided}
                               snapshot={snapshot}
                               hasEditPermission={hasEditPermission}
-                              selectedKey={selectedKey}
+                              selectedKey={live ? currentLiveKey ?? null : selectedKey}
                               setSelectedKey={setSelectedKey}
                               getItemKey={getItemKey}
                               getAgendaNumber={getAgendaNumber}

@@ -44,6 +44,7 @@ interface SystemAgendaItemProps {
   editorLeading?: ReactNode;
   editorLive?: boolean;
   editorLiveCurrent?: boolean;
+  editorHasSelectedChild?: boolean;
   editorSelected?: boolean;
   editorDragHandle?: ReactNode;
   editorLiveContent?: ReactNode;
@@ -109,6 +110,7 @@ export function SystemAgendaItem({
   editorLeading,
   editorLive = false,
   editorLiveCurrent,
+  editorHasSelectedChild,
   editorSelected,
   editorDragHandle,
   editorLiveContent,
@@ -725,11 +727,13 @@ export function SystemAgendaItem({
   const description = stripHtml(editorDescription ?? "");
   return (
     <section className="min-w-0">
-      <div className={cn(
-        "flex flex-wrap items-center gap-x-3 gap-y-2 py-2.5 pl-4 pr-3 sm:pr-5",
+      <div data-live-agenda-current={editorLiveCurrent || undefined} className={cn(
+        "flex scroll-mt-24 flex-wrap items-center gap-x-3 gap-y-2 border-l-[3px] border-l-transparent py-2.5 pl-4 pr-3 sm:pr-5",
         isEmbedded ? "bg-[var(--agenda-subpoint-bg)] dark:bg-slate-800" : "hover:bg-muted/40",
+        editorSelected && "border-l-primary",
+        (editorHasSelectedChild || editorLiveCurrent) && "border-l-success",
         editorSelected && !isEmbedded && "bg-primary/10 hover:bg-primary/10",
-        editorLiveCurrent && "bg-success/15 hover:bg-success/15",
+        editorLiveCurrent && !isEmbedded && "bg-success/15 hover:bg-success/15",
       )}>
         <div className="flex min-w-0 flex-1 basis-48 items-start">
           {editorDragHandle}
@@ -812,7 +816,7 @@ export function SystemAgendaItem({
         {editorDetails}
       </div>
       {editorLive ? (
-        expanded && (editorLiveContent ?? renderBody())
+        <div hidden={!expanded}>{editorLiveContent ?? renderBody()}</div>
       ) : (
         <div hidden={!showDirectSubpoints && (!expanded || count === 0)} className={showFullWidthSubpoints ? undefined : "px-3 pb-2"}>
           {renderBody()}

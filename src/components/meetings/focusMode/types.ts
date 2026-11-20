@@ -55,7 +55,7 @@ export interface FocusModeViewProps {
   starredAppointmentIds?: Set<string>;
   onToggleStar?: (appt: MeetingUpcomingAppointment) => void;
   initialAgendaKey?: string | null;
-  onClose: (mainAgendaKey?: string) => void;
+  onClose: (agendaKey?: string) => void;
   onUpdateItem: (index: number, field: keyof AgendaItem, value: unknown) => void;
   onUpdateResult: (itemId: string, field: 'result_text' | 'agenda_result' | 'carry_over_to_next', value: unknown) => void;
   onUpdateNoteResult?: (noteId: string, result: string) => void;

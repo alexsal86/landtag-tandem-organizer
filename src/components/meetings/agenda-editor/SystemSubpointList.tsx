@@ -1,4 +1,6 @@
-import { useRef, useState, type ReactNode } from "react";
+import { generatedAgendaKey } from "./liveAgenda";
+import { SystemSubpointScope, type GeneratedAgendaEntry } from "./SystemSubpointScope";
+import { useContext, useEffect, useRef, useState, type ReactNode } from "react";
 import { ArrowDown, ArrowUp, GripVertical } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { Popover, PopoverContent, PopoverTrigger } from "@/components/ui/popover";
@@ -23,6 +25,19 @@ export function SystemSubpointList<T extends { id: string }>({
 }) {
   const results = parseMeetingResults(resultText);
   const ordered = orderSystemSubpoints(entries, results);
+  const scope = useContext(SystemSubpointScope);
+  const parentKey = scope?.parentKey;
+  const onEntries = scope?.onEntries;
+  const entrySignature = JSON.stringify(ordered.map((entry, index) => ({
+    id: entry.id, title: titleOf(entry), number: agendaSubpointNumber(agendaNumber, index),
+  })));
+  useEffect(() => {
+    if (parentKey && onEntries) onEntries(parentKey, JSON.parse(entrySignature) as GeneratedAgendaEntry[]);
+  }, [parentKey, onEntries, entrySignature]);
+  useEffect(() => () => {
+    if (parentKey && onEntries) onEntries(parentKey, []);
+  }, [parentKey, onEntries]);
+
   const sourceId = useRef<string | null>(null);
   const [targetIndex, setTargetIndex] = useState<number | null>(null);
   const resetDrag = () => {
@@ -45,13 +60,34 @@ export function SystemSubpointList<T extends { id: string }>({
     <ul aria-label={label} className={agendaSubpointListClass}>
       {ordered.map((entry, index) => {
         const title = titleOf(entry);
+        const key = scope && generatedAgendaKey(scope.parentKey, entry.id);
+        const isLiveCurrent = Boolean(key && key === scope?.liveKey);
+        const isSelected = Boolean(key && key === scope?.selectedKey);
         const result = results[entry.id];
         const patch = (value: Partial<MeetingEntryResult>) =>
           onUpdateResult?.(JSON.stringify({ ...results, [entry.id]: { result: "", ...result, ...value } }));
         return (
           <li
             key={entry.id}
-            className={cn(agendaSubpointRowClass, "group/subpoint relative", targetIndex === index && "ring-1 ring-inset ring-primary")}
+            className={cn(agendaSubpointRowClass, "group/subpoint relative scroll-mt-24",
+              isSelected && "before:absolute before:inset-y-0 before:left-0 before:w-[3px] before:bg-primary",
+              isLiveCurrent && "before:absolute before:inset-y-0 before:left-0 before:w-[3px] before:bg-success",
+              targetIndex === index && "ring-1 ring-inset ring-primary")}
+            data-system-subpoint
+            data-live-agenda-current={isLiveCurrent || undefined}
+            aria-current={isLiveCurrent ? "step" : undefined}
+            tabIndex={scope ? 0 : undefined}
+            onClick={(event) => {
+              event.stopPropagation();
+              if (key && !(event.target instanceof Element && event.target.closest("button, a, input, textarea, select"))) scope?.onSelect(key);
+            }}
+            onKeyDown={(event) => {
+              if (key && event.target === event.currentTarget && (event.key === "Enter" || event.key === " ")) {
+                event.preventDefault();
+                event.stopPropagation();
+                scope?.onSelect(key);
+              }
+            }}
             onDragOver={(event) => {
               if (!sourceId.current) return;
               event.preventDefault();
@@ -118,7 +154,7 @@ export function SystemSubpointList<T extends { id: string }>({
               {metadata?.(entry)}
               {actions?.(entry)}
             </div>
-            {details?.(entry, result, patch)}
+            {(!scope?.liveKey || isLiveCurrent) && details?.(entry, result, patch)}
           </li>
         );
       })}

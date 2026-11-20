@@ -1,6 +1,6 @@
 import { agendaSubpointNumber, orderSystemSubpoints } from "@/components/meetings/agenda-editor/systemSubpoints";
 import { parseMeetingResults } from "@/components/meetings/platformAgendaRules";
-import { liveAgendaPosition } from "@/components/meetings/agenda-editor/liveAgenda";
+import { flattenLiveAgenda, generatedAgendaKey, liveAgendaPosition } from "@/components/meetings/agenda-editor/liveAgenda";
 import { resolveAgendaDrop } from "@/components/meetings/agenda-editor/agendaDrop";
 import { protocolTaskProgress, protocolTaskStatus } from "@/features/meetings/protocolTasks";
 import { SYSTEM_AGENDA_OPTIONS } from "@/components/meetings/systemAgendaRegistry";
@@ -523,10 +523,15 @@ export const meetingLifecycleScenario: TestScenario = {
           { id: "b", title: "Rückblick", is_completed: false },
           { id: "c", title: "Planung", is_completed: false },
         ].map((item, order_index) => ({ ...item, order_index, is_recurring: false }));
+        const child = { ...items[1], id: "child", parent_id: "b" };
+        const steps = flattenLiveAgenda(items, [...items, child], { child: [{ id: "linked", title: "Termin" }] });
+        const linkedKey = generatedAgendaKey("child", "linked");
         const ok = liveAgendaPosition(items) === 1 &&
           liveAgendaPosition(items, "c") === 2 &&
           liveAgendaPosition(items, "a") === 0 &&
-          liveAgendaPosition([]) === -1;
+          liveAgendaPosition([]) === -1 &&
+          steps.map(({ key }) => key).join() === `a,b,child,${linkedKey},c` &&
+          steps[3].rootKey === "b" && steps[3].parentKey === "child";
         return { ok, message: ok ? "Start und Navigation liefern die erwarteten Hauptpunkte." : "Die Live-Position stimmt nicht." };
       },
     },

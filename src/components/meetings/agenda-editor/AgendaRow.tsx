@@ -117,7 +117,7 @@ export function AgendaRow({
           data-selected={getItemKey(item, index) === selectedKey}
           tabIndex={0}
           aria-label={`Details: ${item.title || "Neuer Punkt"}`}
-          onFocus={() => setSelectedKey(getItemKey(item, index))}
+          onFocus={() => { if (!onLiveSelect) setSelectedKey(getItemKey(item, index)); }}
           aria-current={liveCurrent ? "step" : undefined}
           data-live-agenda-current={liveCurrent || undefined}
           onKeyDown={(event) => {
@@ -127,8 +127,8 @@ export function AgendaRow({
             }
           }}
           onClick={(event) => {
-            setSelectedKey(getItemKey(item, index));
-            if (!(event.target instanceof Element && event.target.closest("button, a"))) onLiveSelect?.();
+            if (!onLiveSelect) setSelectedKey(getItemKey(item, index));
+            else if (!(event.target instanceof Element && event.target.closest("button, a"))) onLiveSelect();
           }}
           className={cn(
             "group scroll-mt-24 border-b border-b-[color:var(--agenda-row-divider)] dark:border-b-border border-l-[3px] border-l-transparent transition-colors hover:bg-muted/40 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-inset focus-visible:ring-ring",
@@ -136,7 +136,7 @@ export function AgendaRow({
             getItemKey(item, index) === selectedKey &&
               (isSubItem ? "border-l-primary" : "border-l-primary bg-primary/10 hover:bg-primary/10"),
             hasSelectedChild && "border-l-success",
-            liveCurrent && "border-l-success bg-success/15 hover:bg-success/15",
+            liveCurrent && (isSubItem ? "border-l-success" : "border-l-success bg-success/15 hover:bg-success/15"),
             dropTarget === "inside" && "bg-primary/10 ring-2 ring-inset ring-primary",
             dropTarget === "before" && "shadow-[inset_0_2px_0] shadow-primary",
             snapshot.isDragging && "bg-card shadow-lg",

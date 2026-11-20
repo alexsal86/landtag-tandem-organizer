@@ -1,27 +1,21 @@
 import type { ReactNode } from "react";
-import { cn } from "@/lib/utils";
+import { SystemSubpointScope } from "./SystemSubpointScope";
+import type { ContextType } from "react";
 export function AgendaSystemRow({
   children,
   selected,
-  hasSelectedChild,
-  liveCurrent,
+  scope,
 }: {
   children: ReactNode;
   selected: boolean;
-  hasSelectedChild: boolean;
-  liveCurrent?: boolean;
+  scope: ContextType<typeof SystemSubpointScope>;
 }) {
   return (
     <div
       data-selected={selected}
-      className={cn(
-        "group min-w-0 border-b border-b-[color:var(--agenda-row-divider)] dark:border-b-border border-l-[3px] border-l-transparent",
-        selected && "border-l-primary",
-        hasSelectedChild && "border-l-success",
-        liveCurrent && "border-l-success",
-      )}
+      className="group min-w-0 border-b border-[color:var(--agenda-row-divider)] dark:border-border"
     >
-      {children}
+      <SystemSubpointScope.Provider value={scope}>{children}</SystemSubpointScope.Provider>
     </div>
   );
 }

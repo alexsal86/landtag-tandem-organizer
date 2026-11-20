@@ -1,3 +1,4 @@
+import { generatedAgendaKey } from "./agenda-editor/liveAgenda";
 import { orderSystemSubpoints } from './agenda-editor/systemSubpoints';
 import { parseMeetingResults } from './platformAgendaRules';
 import { AgendaResultEditor } from './AgendaResultEditor';
@@ -42,6 +43,14 @@ import type {
 } from './focusMode/types';
 import { formatMeetingTime } from './focusMode/types';
 import type { MeetingUpcomingAppointment } from './types';
+
+function focusAgendaKey(entry?: NavigableItem) {
+  if (!entry) return undefined;
+  const parentKey = entry.parentItem?.localKey || entry.parentItem?.id;
+  return entry.isSystemSubItem && parentKey && entry.sourceId
+    ? generatedAgendaKey(parentKey, entry.sourceId)
+    : entry.item.localKey || entry.item.id;
+}
 
 export function FocusModeView({
   meeting,
@@ -276,9 +285,12 @@ export function FocusModeView({
     return result;
   }, [agendaItems, getPersistentSystemSubItemCompletion, linkedQuickNotes, upcomingAppointments, linkedTasks, linkedCaseItems, relevantDecisions]);
 
-  const [flatFocusIndex, setFlatFocusIndex] = useState(() => Math.max(0, allNavigableItems.findIndex(
-    ({ item, isSubItem }) => !isSubItem && (item.localKey || item.id) === initialAgendaKey,
-  )));
+  const [flatFocusIndex, setFlatFocusIndex] = useState(() => {
+    const exact = allNavigableItems.findIndex((entry) => focusAgendaKey(entry) === initialAgendaKey);
+    if (exact >= 0) return exact;
+    const parentKey = initialAgendaKey?.startsWith("system:") ? initialAgendaKey.split(":")[1] : undefined;
+    return Math.max(0, allNavigableItems.findIndex((entry) => focusAgendaKey(entry) === parentKey));
+  });
 
   useEffect(() => {
     setOptimisticSystemSubItemCompletion(prev => {
@@ -299,11 +311,8 @@ export function FocusModeView({
   const currentGlobalIndex = currentNavigable?.globalIndex ?? -1;
 
   const onClose = useCallback(() => {
-    const anchor = currentNavigable?.parentItem ?? currentItem;
-    const parentKey = anchor?.parentLocalKey || anchor?.parent_id;
-    const root = parentKey ? agendaItems.find((item) => item.localKey === parentKey || item.id === parentKey) : anchor;
-    onExit(root?.localKey || root?.id);
-  }, [agendaItems, currentNavigable, currentItem, onExit]);
+    onExit(focusAgendaKey(currentNavigable));
+  }, [currentNavigable, onExit]);
 
   // Calculate progress based on main items only
   const mainItems = agendaItems.filter(item => !item.parent_id && !item.parentLocalKey);

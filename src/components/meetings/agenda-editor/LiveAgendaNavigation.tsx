@@ -5,10 +5,11 @@ import {
   AlertDialogDescription, AlertDialogFooter, AlertDialogHeader, AlertDialogTitle, AlertDialogTrigger,
 } from "@/components/ui/alert-dialog";
 
-export function LiveAgendaNavigation({ position, count, title, onMove, onOpenFocus, onStop, onArchive, busy }: {
+export function LiveAgendaNavigation({ position, count, title, agendaNumber, onMove, onOpenFocus, onStop, onArchive, busy }: {
   position: number;
   count: number;
   title?: string;
+  agendaNumber?: string;
   onMove: (offset: number) => void;
   onOpenFocus: () => void;
   onStop: () => void;
@@ -19,7 +20,7 @@ export function LiveAgendaNavigation({ position, count, title, onMove, onOpenFoc
     <div className="sticky top-0 z-10 flex flex-wrap items-center justify-between gap-2 rounded-t-2xl border-b bg-card px-4 py-2">
       <div className="min-w-0 text-sm" role="status">
         {position >= 0 ? (
-          <><span className="font-semibold text-success">Punkt {position + 1} von {count}</span>{title && ` · ${title}`}</>
+          <><span className="font-semibold text-success">Punkt {position + 1} von {count}</span>{title && ` · ${agendaNumber ? `${agendaNumber} ` : ""}${title}`}</>
         ) : "Keine Tagesordnungspunkte"}
       </div>
       <div className="flex flex-wrap gap-1">
