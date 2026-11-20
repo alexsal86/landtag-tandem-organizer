@@ -702,7 +702,7 @@ export function SystemAgendaItem({
             )}
           </div>
           <div className="grid min-w-0 flex-1 grid-cols-[auto_minmax(0,1fr)] items-center">
-            <span className={cn("h-5 shrink-0 text-sm leading-5 tabular-nums", isEmbedded ? "mr-1 font-normal text-muted-foreground" : "font-semibold text-foreground", editorCompleted && "text-muted-foreground line-through")}>
+            <span className={cn("h-5 shrink-0 tabular-nums", isEmbedded ? "mr-1 text-xs leading-5 font-normal text-muted-foreground" : "text-sm leading-5 font-semibold text-foreground", editorCompleted && "text-muted-foreground line-through")}>
               {agendaNumber}
             </span>
             <Input
