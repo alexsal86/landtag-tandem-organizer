@@ -5,7 +5,7 @@ import { Command, CommandEmpty, CommandGroup, CommandInput, CommandItem, Command
 import { usePersistentState } from "@/hooks/usePersistentState";
 import { WorkflowLinks } from "@/components/workflow/WorkflowLinks";
 import { useEffect, useState } from "react";
-import { Bell, BellOff, BellRing, CalendarDays, Check, Flag, ListChecks, Plus, X, Gavel, Send, Users, Zap } from "lucide-react";
+import { Bell, BellOff, BellRing, CalendarDays, Check, ChevronDown, Flag, ListChecks, Plus, X, Gavel, Send, Users, Zap } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Textarea } from "@/components/ui/textarea";
@@ -185,7 +185,7 @@ export function TaskDetailView({ task, profiles, decisionLabel, onSave, onComple
   return (
     <div className="flex min-h-0 min-w-0 flex-1 flex-col">
       <main aria-label="Aufgabendetails" className="min-h-0 min-w-0 flex-1 bg-white p-6 dark:bg-card [&_input]:border-0 [&_input]:bg-transparent [&_textarea]:border-0 [&_textarea]:bg-transparent [&_[role=combobox]]:border-0 [&_[role=combobox]]:bg-transparent">
-        <div className="w-full max-w-[570px] space-y-3 [&>section]:space-y-3">
+        <div className="w-full max-w-[750px] space-y-3 [&>section]:space-y-3">
           <Collapsible>
             <header className="relative space-y-1 pl-10">
               <Tooltip>
@@ -204,7 +204,7 @@ export function TaskDetailView({ task, profiles, decisionLabel, onSave, onComple
                   <Tooltip>
                     <TooltipTrigger asChild>
                       <CollapsibleTrigger asChild>
-                        <Button size="icon" variant="ghost" aria-label="Mich erinnern"><Bell /></Button>
+                        <Button size="icon" variant="ghost" className="rounded-xl hover:bg-[#f0f0ed] hover:text-foreground dark:hover:bg-muted" aria-label="Mich erinnern"><Bell /></Button>
                       </CollapsibleTrigger>
                     </TooltipTrigger>
                     <TooltipContent>Mich erinnern</TooltipContent>
@@ -216,7 +216,7 @@ export function TaskDetailView({ task, profiles, decisionLabel, onSave, onComple
                   ].map(({ label, Icon, action }) => (
                     <Tooltip key={label}>
                       <TooltipTrigger asChild>
-                        <Button size="icon" variant="ghost" aria-label={label} onClick={action}><Icon /></Button>
+                        <Button size="icon" variant="ghost" className="rounded-xl hover:bg-[#f0f0ed] hover:text-foreground dark:hover:bg-muted" aria-label={label} onClick={action}><Icon /></Button>
                       </TooltipTrigger>
                       <TooltipContent>{label}</TooltipContent>
                     </Tooltip>
@@ -387,6 +387,15 @@ export function TaskDetailView({ task, profiles, decisionLabel, onSave, onComple
           <section className="ml-10 space-y-3 border-y py-3">
             <label htmlFor="task-next-action" className="block text-sm text-muted-foreground">Nächster Schritt</label>
             <div className="flex flex-wrap items-center gap-2">
+              <Input id="task-next-action" value={label} onChange={(event) => setLabel(event.target.value)}
+                placeholder="Was passiert als Nächstes?" className="h-auto min-w-0 flex-1 basis-48 px-0 py-2 font-medium leading-tight md:text-xl read-only:cursor-text"
+                readOnly={hasStep} disabled={saving}
+                onKeyDown={(event) => {
+                  if (event.key === "Enter" && !event.nativeEvent.isComposing && !hasStep && label.trim()) {
+                    event.preventDefault();
+                    void setStep();
+                  }
+                }} />
               <DropdownMenu>
                 <DropdownMenuTrigger asChild>
                   <Button variant="outline" size="sm" disabled={saving} className="rounded-full bg-transparent data-[state=open]:bg-muted">
@@ -415,22 +424,28 @@ export function TaskDetailView({ task, profiles, decisionLabel, onSave, onComple
               </div>
             )}
 
-            <Input id="task-next-action" value={label} onChange={(e) => setLabel(e.target.value)}
-              placeholder="Was passiert als Nächstes?" className="px-0 font-medium md:text-lg" disabled={hasStep} />
+            {!hasStep && <p className="text-sm text-muted-foreground">Enter übernimmt den Schritt.</p>}
             <div className="flex flex-wrap gap-2">
-              {hasStep ? <Button disabled={saving} onClick={() => setDoneDialog(true)} className="rounded-xl bg-success text-white hover:bg-success/90">
+              {hasStep ? <Button disabled={saving} onClick={() => setDoneDialog(true)} className="h-11 rounded-xl bg-success px-4 text-white hover:bg-success/90">
                 <Check />Schritt erledigt <kbd className="rounded border border-white/60 px-1 text-xs">E</kbd>
               </Button> : (
-                <Button disabled={saving || !label.trim()} onClick={setStep} className="rounded-xl bg-success text-white hover:bg-success/90">
+                <Button disabled={saving || !label.trim()} onClick={setStep} className="h-11 rounded-xl bg-success px-4 text-white hover:bg-success/90">
                   Schritt festlegen
                 </Button>
               )}
-              {owner !== "deputy" && (
-                <Button disabled={saving} className="rounded-xl bg-green-900 text-white hover:bg-green-800"
-                  onClick={() => run(() => onSave({ ball_owner: "deputy", ball_assignee_id: null, next_action: "Freigabe prüfen", next_action_due: null }))}>
-                  <Send />Zur Freigabe vorlegen
+              <div className="inline-flex items-stretch">
+                {owner !== "deputy" && (
+                  <Button variant="outline" disabled={saving} className="h-11 rounded-l-xl rounded-r-none bg-transparent"
+                    onClick={() => run(() => onSave({ ball_owner: "deputy", ball_assignee_id: null, next_action: "Freigabe prüfen", next_action_due: null }))}>
+                    <Send />Übergeben an Abgeordnete/r
+                  </Button>
+                )}
+                <Button variant="outline" disabled={saving} aria-label="Andere Zuständigkeit auswählen"
+                  className={cn("h-11 rounded-xl bg-transparent", owner !== "deputy" && "rounded-l-none border-l-0")}
+                  onClick={() => changeOwnerPicker(true)}>
+                  {owner === "deputy" && "Übergeben"}<ChevronDown />
                 </Button>
-              )}
+              </div>
             </div>
             {mayNudge && (
               <div className="flex flex-wrap gap-2 pt-2 border-t">
