@@ -7,7 +7,7 @@ import { Command, CommandEmpty, CommandGroup, CommandInput, CommandItem, Command
 import { usePersistentState } from "@/hooks/usePersistentState";
 import { WorkflowLinks } from "@/components/workflow/WorkflowLinks";
 import { useEffect, useState } from "react";
-import { Bell, BellOff, BellRing, CalendarDays, Check, ChevronDown, Flag, ListChecks, Plus, X, Gavel, Send, Users, Zap } from "lucide-react";
+import { Bell, BellOff, BellRing, CalendarDays, Check, ChevronDown, Flag, Plus, X, Gavel, Send, Users, Zap } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Textarea } from "@/components/ui/textarea";
@@ -402,11 +402,11 @@ export function TaskDetailView({ task, profiles, decisionLabel, onSave, onComple
           )}
 
           <section className="ml-10 space-y-3 border-y pb-3 pt-6">
-            <div className="flex flex-wrap items-end gap-2">
-              <div className="min-w-0 flex-1 basis-48">
-                <label htmlFor="task-next-action" className="block text-sm font-medium text-muted-foreground">Nächster Schritt</label>
+            <div>
+              <label htmlFor="task-next-action" className="block text-xs font-semibold text-muted-foreground">Nächster Schritt</label>
+              <div className="mt-[10px] flex flex-wrap items-center gap-2">
                 <Textarea id="task-next-action" rows={1} aria-describedby={hasStep ? undefined : "task-next-action-hint"} value={label} onChange={(event) => setLabel(event.target.value)}
-                  placeholder="Was passiert als Nächstes?" className="mt-[6px] min-h-0 min-w-0 resize-none border-0 px-0 py-0 font-medium leading-tight shadow-none focus-visible:ring-0 focus-visible:ring-offset-0 md:text-xl read-only:cursor-text [field-sizing:content] [overflow-wrap:anywhere]"
+                  placeholder="Was passiert als Nächstes?" className="min-h-0 min-w-0 flex-1 basis-48 resize-none border-0 px-0 py-0 font-medium leading-tight shadow-none focus-visible:ring-0 focus-visible:ring-offset-0 md:text-xl read-only:cursor-text [field-sizing:content] [overflow-wrap:anywhere]"
                   readOnly={hasStep} disabled={saving}
                   onKeyDown={(event) => {
                     if (event.key === "Enter" && !event.nativeEvent.isComposing && !hasStep && label.trim()) {
@@ -414,29 +414,29 @@ export function TaskDetailView({ task, profiles, decisionLabel, onSave, onComple
                       void setStep();
                     }
                   }} />
-                {!hasStep && <p id="task-next-action-hint" className="mt-1 text-xs text-muted-foreground">Enter übernimmt den Schritt.</p>}
+                <DropdownMenu>
+                  <DropdownMenuTrigger asChild>
+                    <Button variant="outline" size="sm" disabled={saving} className="rounded-full bg-transparent data-[state=open]:bg-muted">
+                      <CalendarDays />
+                      <span className="text-muted-foreground">Schritt bis</span>
+                      {overdueDays > 0 ? (
+                        <span className="text-destructive">seit {overdueDays} {overdueDays === 1 ? "Tag" : "Tagen"} überfällig</span>
+                      ) : <span className="font-medium">{due ? formatDate(due) : "Kein Termin"}</span>}
+                    </Button>
+                  </DropdownMenuTrigger>
+                  <DropdownMenuContent align="start" className="min-w-52 rounded-xl p-1">
+                    {datePresets.map(([text, days]) => {
+                      const date = shiftDay(null, days);
+                      return <DropdownMenuItem key={days} onSelect={() => void saveDue(date)} className="justify-between gap-4 py-2 font-medium">
+                        {text}<span className="text-xs text-muted-foreground">{formatDate(date)}</span>
+                      </DropdownMenuItem>;
+                    })}
+                    <DropdownMenuItem onSelect={() => { setCustomValue(due.slice(0, 10)); setCustomField("step"); }}>Datum wählen …</DropdownMenuItem>
+                    {due && <DropdownMenuItem onSelect={() => void saveDue("")}>Termin entfernen</DropdownMenuItem>}
+                  </DropdownMenuContent>
+                </DropdownMenu>
               </div>
-              <DropdownMenu>
-                <DropdownMenuTrigger asChild>
-                  <Button variant="outline" size="sm" disabled={saving} className="rounded-full bg-transparent data-[state=open]:bg-muted">
-                    <CalendarDays />
-                    <span className="text-muted-foreground">Schritt bis</span>
-                    {overdueDays > 0 ? (
-                      <span className="text-destructive">seit {overdueDays} {overdueDays === 1 ? "Tag" : "Tagen"} überfällig</span>
-                    ) : <span className="font-medium">{due ? formatDate(due) : "Kein Termin"}</span>}
-                  </Button>
-                </DropdownMenuTrigger>
-                <DropdownMenuContent align="start" className="min-w-52 rounded-xl p-1">
-                  {datePresets.map(([text, days]) => {
-                    const date = shiftDay(null, days);
-                    return <DropdownMenuItem key={days} onSelect={() => void saveDue(date)} className="justify-between gap-4 py-2 font-medium">
-                      {text}<span className="text-xs text-muted-foreground">{formatDate(date)}</span>
-                    </DropdownMenuItem>;
-                  })}
-                  <DropdownMenuItem onSelect={() => { setCustomValue(due.slice(0, 10)); setCustomField("step"); }}>Datum wählen …</DropdownMenuItem>
-                  {due && <DropdownMenuItem onSelect={() => void saveDue("")}>Termin entfernen</DropdownMenuItem>}
-                </DropdownMenuContent>
-              </DropdownMenu>
+              {!hasStep && <p id="task-next-action-hint" className="mt-2 text-xs text-muted-foreground">Enter übernimmt den Schritt.</p>}
             </div>
             {resub && (
               <div className="rounded-md bg-muted px-3 py-2 text-caption">
@@ -481,7 +481,6 @@ export function TaskDetailView({ task, profiles, decisionLabel, onSave, onComple
 
           <section className="space-y-3 ml-10">
             <h3 className="flex items-center gap-2 text-base font-semibold">
-              <ListChecks aria-hidden="true" className="size-4" />
               Checkliste
               {progress.total > 0 && (
                 <span className="font-normal text-muted-foreground">{progress.done} von {progress.total}</span>
@@ -490,7 +489,7 @@ export function TaskDetailView({ task, profiles, decisionLabel, onSave, onComple
             <ul className="space-y-3">
               {checklist.map((item) => (
                 <li key={item.id} className="group flex items-center gap-3">
-                  <Checkbox checked={item.done} disabled={saving} aria-label={item.text} className="size-5 rounded-sm border-muted-foreground"
+                  <Checkbox checked={item.done} disabled={saving} aria-label={item.text} className="size-5 shrink-0 rounded-sm border-muted-foreground disabled:opacity-100 [&_svg]:size-3.5"
                     onCheckedChange={() => saveList(checklist.map((i) => (i.id === item.id ? { ...i, done: !i.done } : i)))} />
                   <span className={cn("flex-1 text-body", item.done && "line-through text-muted-foreground")}>{item.text}</span>
                   <button type="button" aria-label="Punkt entfernen" className="text-muted-foreground sm:opacity-0 sm:group-hover:opacity-100 focus-visible:opacity-100"

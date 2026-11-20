@@ -1,6 +1,6 @@
 import { useState } from "react";
 import { useQuery, useQueryClient } from "@tanstack/react-query";
-import { CornerDownRight, Plus, X } from "lucide-react";
+import { Plus, X } from "lucide-react";
 import { supabase } from "@/integrations/supabase/client";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
@@ -74,14 +74,14 @@ export function TaskSubtasks({ taskId, tenantId, userId, category, profiles }: P
   return (
     <section className="space-y-sm">
       <h3 className="flex items-center gap-2 text-base font-semibold">
-        <CornerDownRight aria-hidden="true" className="size-4" />Unteraufgaben
+        Unteraufgaben
         {progress.total > 0 && <span className="font-normal text-muted-foreground">{progress.done} von {progress.total}</span>}
       </h3>
       {progress.total > 0 && <Progress value={progress.percent} className="h-1.5" />}
       <ul className="space-y-2xs">
         {subtasks.map((s) => (
-          <li key={s.id} className="group flex items-center gap-xs">
-            <Checkbox checked={s.status === "completed"} aria-label={s.title}
+          <li key={s.id} className="group flex items-center gap-3">
+            <Checkbox checked={s.status === "completed"} aria-label={s.title} className="size-5 shrink-0 rounded-sm border-muted-foreground [&_svg]:size-3.5"
               onCheckedChange={(v) => update(s.id, { status: v ? "completed" : "todo" })} />
             <span className={cn("flex-1 text-body truncate", s.status === "completed" && "line-through text-muted-foreground")}>{s.title}</span>
             <Input type="date" value={s.due_date?.slice(0, 10) ?? ""} onChange={(e) => update(s.id, { due_date: e.target.value || null })} className="h-7 w-36 text-caption" aria-label="Frist" />
