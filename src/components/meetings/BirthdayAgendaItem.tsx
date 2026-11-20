@@ -29,6 +29,21 @@ interface BirthdayContact {
   nextBirthday: Date;
 }
 
+function birthdayMilestone(age: number) {
+  if (age > 0 && age % 10 === 0) return "Runder Geburtstag";
+  if (age === 18 || age === 25 || age === 75) return "Besonderer Geburtstag";
+  return undefined;
+}
+
+function BirthdayMilestoneBadge({ age }: { age: number }) {
+  const milestone = birthdayMilestone(age);
+  if (!milestone) return null;
+
+  return <Badge variant="outline" className="border-palette-pink/30 bg-palette-pink/10 text-palette-pink">
+    {milestone} · {age} Jahre
+  </Badge>;
+}
+
 interface BirthdayAction {
   action?: "card" | "mail" | "call" | "gift";
   note?: string;
@@ -185,7 +200,9 @@ export function BirthdayAgendaItem({
 
   useEffect(() => {
     if (loading || !onDescriptionChange) return;
-    const names = contacts.map(contact => contact.name);
+    const names = contacts.map(contact => birthdayMilestone(contact.age)
+      ? `${contact.name} (${contact.age} Jahre)`
+      : contact.name);
     const list = new Intl.ListFormat("de", { type: "conjunction" }).format(names);
     onDescriptionChange(names.length ? `${list} ${names.length === 1 ? "hat" : "haben"} Geburtstag` : "Kein Geburtstag im Zeitraum");
   }, [contacts, loading, onDescriptionChange]);
@@ -226,7 +243,10 @@ export function BirthdayAgendaItem({
       <div key={contact.id} className="p-3 bg-muted/50 rounded-md">
         <div className="flex items-center justify-between mb-2">
           <div>
-            <h4 className="font-semibold text-sm">{contact.name}</h4>
+            <div className="flex flex-wrap items-center gap-2">
+              <h4 className="font-semibold text-sm">{contact.name}</h4>
+              <BirthdayMilestoneBadge age={contact.age} />
+            </div>
             <p className="text-xs text-muted-foreground">
               {format(contact.nextBirthday, "dd. MMMM", {
                 locale: de,
@@ -302,7 +322,12 @@ export function BirthdayAgendaItem({
         }));
       }}
       checkable
-      metadata={(contact) => <time className="text-muted-foreground">{format(contact.nextBirthday, "dd. MMMM", { locale: de })}</time>}
+      metadata={(contact) => (
+        <span className="flex flex-wrap items-center gap-2">
+          <time className="text-muted-foreground">{format(contact.nextBirthday, "dd. MMMM", { locale: de })}</time>
+          <BirthdayMilestoneBadge age={contact.age} />
+        </span>
+      )}
       details={renderContact}
     />;
   }
