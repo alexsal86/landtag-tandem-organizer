@@ -22,6 +22,7 @@ import {
 
 export interface TaskPatch extends StafetteTask {
   note?: string;
+  description?: string | null;
   ball_external_label?: string | null;
   checklist?: ChecklistItem[];
 }
@@ -40,7 +41,7 @@ interface Props {
   onDecision: () => void;
   onJourFixe: () => void;
   nameOf: (id: string | null | undefined) => string | undefined;
-  registerShortcuts: (h: { stepDone: () => void; daySlip: () => void }) => void;
+  registerShortcuts: (h: { stepDone: () => void; daySlip: () => void; openOwner: () => void }) => void;
   meId?: string;
   onNudge: (note: string) => Promise<void>;
   onAckNudge: (reply: string) => Promise<void>;
@@ -56,6 +57,7 @@ const datePresets = [["Heute", 0], ["Morgen", 1], ["In 3 Tagen", 3], ["Nächste 
 const formatDate = (date: string) => new Date(date.slice(0, 10) + "T00:00:00").toLocaleDateString("de-DE", { day: "2-digit", month: "2-digit" });
 
 export function TaskDetailView({ task, profiles, decisionLabel, onSave, onComplete, onDecision, onJourFixe, nameOf, registerShortcuts, meId, onNudge, onAckNudge, pendingVote, onVote, onReload }: Props) {
+  const [description, setDescription] = useState(task.description ?? "");
   const [label, setLabel] = useState(task.next_action ?? "");
   const [due, setDue] = useState(task.next_action_due ?? "");
   const [owner, setOwner] = useState<TaskBallOwner>((task.ball_owner ?? "office") as TaskBallOwner);
@@ -98,6 +100,10 @@ export function TaskDetailView({ task, profiles, decisionLabel, onSave, onComple
     setNote("");
   }, [task.id, task.next_action, task.next_action_due, task.ball_owner, task.ball_assignee_id, task.ball_external_label]);
 
+  useEffect(() => {
+    setDescription(task.description ?? "");
+  }, [task.id, task.description]);
+
   const hasStep = stepState(task) === "set";
   const timeline = parseTaskTimeline(task.timeline).slice().reverse();
   const resub = isOnResubmission(task);
@@ -109,6 +115,10 @@ export function TaskDetailView({ task, profiles, decisionLabel, onSave, onComple
 
   const setStep = () =>
     run(() => onSave({ next_action: label.trim() || null, next_action_due: due || null, ball_owner: owner, ball_assignee_id: owner === "office" && assignee !== "none" ? assignee : null, ball_external_label: owner === "external" ? externalLabel || null : null }));
+  const changeOwnerPicker = (open: boolean) => {
+    setOwnerPickerOpen(open);
+    if (open) setExternalDraft(owner === "external" ? externalLabel : "");
+  };
   const ownerOptions = [
     ...profiles.map((profile) => ({ id: `office:${profile.user_id}`, label: profile.display_name ?? "Unbenannt", role: "office" as const })),
     { id: "office:none", label: "Ohne feste Person", role: "office" as const },
@@ -151,13 +161,13 @@ export function TaskDetailView({ task, profiles, decisionLabel, onSave, onComple
     sendToDaySlip({ text: formatCaseDaySlipText(task.title, task.next_action), source: { type: "task", id: task.id, nextActionLabel: task.next_action ?? undefined } });
 
   useEffect(() => {
-    registerShortcuts({ stepDone: () => (hasStep ? setDoneDialog(true) : undefined), daySlip });
+    registerShortcuts({ stepDone: () => (hasStep ? setDoneDialog(true) : undefined), daySlip, openOwner: () => changeOwnerPicker(true) });
   });
 
   return (
     <div className="grid min-h-0 min-w-0 flex-1 auto-rows-max grid-cols-1  min-[1440px]:grid-cols-[minmax(0,1fr)_300px] min-[1440px]:auto-rows-auto ">
       <main aria-label="Aufgabendetails" className="min-h-0 min-w-0 space-y-5 bg-white p-6 dark:bg-card [&>section]:space-y-3 [&_input]:border-0 [&_input]:bg-transparent [&_textarea]:border-0 [&_textarea]:bg-transparent [&_[role=combobox]]:border-0 [&_[role=combobox]]:bg-transparent">
-        <header className="relative space-y-4 border-b pb-7 pl-10">
+        <header className="relative space-y-4 pl-10">
           <Tooltip>
             <TooltipTrigger asChild>
               <Button type="button" variant="ghost" size="icon" disabled={saving}
@@ -169,18 +179,31 @@ export function TaskDetailView({ task, profiles, decisionLabel, onSave, onComple
             <TooltipContent>Aufgabe abschließen</TooltipContent>
           </Tooltip>
           <h2 className="break-words text-3xl font-bold leading-tight tracking-tight">{task.title}</h2>
-          <div className="flex flex-wrap items-center gap-2">
-            <Dialog open={ownerPickerOpen} onOpenChange={(open) => {
-              setOwnerPickerOpen(open);
-              if (open) setExternalDraft(owner === "external" ? externalLabel : "");
-            }}>
+          <Textarea aria-label="Beschreibung" value={description} onChange={(event) => setDescription(event.target.value)}
+            placeholder="Beschreibung hinzufügen …" rows={1}
+            className="min-h-0 resize-y px-0 leading-relaxed text-muted-foreground [field-sizing:content]" />
+          {description !== (task.description ?? "") && (
+            <Button size="sm" variant="outline" disabled={saving}
+              onClick={() => void run(() => onSave({ description: description.trim() || null }))}>
+              Beschreibung speichern
+            </Button>
+          )}
+          <div className="flex flex-wrap gap-2">
+            {decisionLabel && <Badge variant="secondary"><Gavel className="h-3 w-3 mr-1" />{decisionLabel}</Badge>}
+            {task.pending_for_jour_fixe && <Badge variant="secondary"><Users className="h-3 w-3 mr-1" />Jour Fixe</Badge>}
+          </div>
+          <WorkflowLinks taskId={task.id} />
+        </header>
+          <div className="ml-10 flex flex-wrap items-center gap-2 border-t pt-4">
+            <Dialog open={ownerPickerOpen} onOpenChange={changeOwnerPicker}>
               <DialogTrigger asChild>
-                <Button variant="outline" size="sm" className="max-w-full rounded-full bg-transparent">
+                <Button variant="outline" size="sm" aria-keyshortcuts="A" className="max-w-full rounded-full bg-transparent">
                   <span className={cn("size-2 shrink-0 rounded-full", ownerColors[owner])} />
                   <span className="text-muted-foreground">Am Zug</span>
                   <span className="truncate">
                     {(owner === "office" && nameOf(assignee)) || (owner === "external" && externalLabel) || TASK_BALL_LABELS[owner]}
                   </span>
+                  <kbd className="rounded border px-1 text-xs text-muted-foreground">A</kbd>
                 </Button>
               </DialogTrigger>
               <DialogContent className="overflow-hidden p-0 sm:max-w-lg">
@@ -230,17 +253,7 @@ export function TaskDetailView({ task, profiles, decisionLabel, onSave, onComple
                 {due && <DropdownMenuItem onSelect={() => setDue("")}>Termin entfernen</DropdownMenuItem>}
               </DropdownMenuContent>
             </DropdownMenu>
-            <span className="inline-flex h-9 items-center gap-2 rounded-full border px-3 text-sm">
-              <span className="text-muted-foreground">Priorität</span>{priorityLabels[task.priority] ?? task.priority}
-            </span>
           </div>
-          <div className="flex flex-wrap gap-2">
-            {decisionLabel && <Badge variant="secondary"><Gavel className="h-3 w-3 mr-1" />{decisionLabel}</Badge>}
-            {task.pending_for_jour_fixe && <Badge variant="secondary"><Users className="h-3 w-3 mr-1" />Jour Fixe</Badge>}
-          </div>
-          <WorkflowLinks taskId={task.id} />
-          {task.description && <p className="text-sm leading-relaxed text-muted-foreground whitespace-pre-wrap">{task.description}</p>}
-        </header>
 
         {nudgeForMe && (
           <section className="space-y-3" role="alert">
@@ -277,7 +290,7 @@ export function TaskDetailView({ task, profiles, decisionLabel, onSave, onComple
           </section>
         )}
 
-        <section className="space-y-4 border-b pb-5 sm:ml-10">
+        <section className="space-y-4 border-b pb-5 ml-10">
           {resub && (
             <div className="rounded-md bg-muted px-3 py-2 text-caption">
               Auf Wiedervorlage bis {new Date(task.next_action_due + "T00:00:00").toLocaleDateString("de-DE")}. Erledige den Schritt, um einen neuen festzulegen.
@@ -288,9 +301,13 @@ export function TaskDetailView({ task, profiles, decisionLabel, onSave, onComple
           <Input id="task-next-action" value={label} onChange={(e) => setLabel(e.target.value)}
             placeholder="Was passiert als Nächstes?" className="px-0 font-medium md:text-lg" disabled={hasStep} />
           <div className="flex flex-wrap gap-2">
-            <Button disabled={saving || !hasStep} onClick={() => setDoneDialog(true)} className="rounded-xl bg-success text-white hover:bg-success/90">
+            {hasStep ? <Button disabled={saving} onClick={() => setDoneDialog(true)} className="rounded-xl bg-success text-white hover:bg-success/90">
               <Check />Schritt erledigt <kbd className="rounded border border-white/60 px-1 text-xs">E</kbd>
-            </Button>
+            </Button> : (
+              <Button disabled={saving || !label.trim()} onClick={setStep} className="rounded-xl bg-success text-white hover:bg-success/90">
+                Schritt festlegen
+              </Button>
+            )}
             {owner !== "deputy" && (
               <Button disabled={saving} className="rounded-xl bg-green-900 text-white hover:bg-green-800"
                 onClick={() => run(() => onSave({ ball_owner: "deputy", ball_assignee_id: null, next_action: "Freigabe prüfen", next_action_due: null }))}>
@@ -312,7 +329,7 @@ export function TaskDetailView({ task, profiles, decisionLabel, onSave, onComple
           )}
         </section>
 
-        <section className="space-y-3 sm:ml-10">
+        <section className="space-y-3 ml-10">
           <div className="flex items-center gap-2 text-sm font-semibold"><ListChecks className="h-3.5 w-3.5" />Checkliste{progress.total ? ` (${progress.done}/${progress.total})` : ""}</div>
           <ul className="space-y-1">
             {checklist.map((item) => (
@@ -332,9 +349,9 @@ export function TaskDetailView({ task, profiles, decisionLabel, onSave, onComple
           </div>
         </section>
 
-        <TaskSubtasks taskId={task.id} tenantId={task.tenant_id} userId={meId} nameOf={nameOf} profiles={profiles} />
+        <div className="ml-10"><TaskSubtasks taskId={task.id} tenantId={task.tenant_id} userId={meId} nameOf={nameOf} profiles={profiles} /></div>
 
-        <section className="space-y-3">
+        <section className="ml-10 space-y-3">
           <div className="section-label">Verlauf</div>
           <Textarea value={note} onChange={(e) => setNote(e.target.value)} placeholder="Notiz zum aktuellen Stand…" rows={2} />
           <div className="flex justify-end">
@@ -345,7 +362,7 @@ export function TaskDetailView({ task, profiles, decisionLabel, onSave, onComple
           <ul className="space-y-2">
             {timeline.length === 0 && <li className="text-caption text-muted-foreground">Noch keine Einträge</li>}
             {timeline.map((e) => (
-              <li key={e.id} className={cn("p-3 text-sm leading-relaxed", e.type === "system" ? "text-muted-foreground" : "text-foreground")}>
+              <li key={e.id} className={cn("py-3 text-sm leading-relaxed", e.type === "system" ? "text-muted-foreground" : "text-foreground")}>
                 <span className="tabular-nums">{new Date(e.at).toLocaleString("de-DE", { dateStyle: "short", timeStyle: "short" })}</span>
                 {e.actorName ? ` · ${e.actorName}` : ""}: {e.text}
               </li>

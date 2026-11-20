@@ -36,7 +36,7 @@ export function TaskStafetteWorkspace({ userId, tasks, profiles, onReload, onCom
   const [resubmissionsOpen, setResubmissionsOpen] = useState(false);
   const [selectedId, setSelectedId] = useState<string | null>(null);
   const [local, setLocal] = useState<Record<string, Partial<MyWorkTask>>>({});
-  const shortcuts = useRef<{ stepDone: () => void; daySlip: () => void } | null>(null);
+  const shortcuts = useRef<{ stepDone: () => void; daySlip: () => void; openOwner: () => void } | null>(null);
 
   const merged = useMemo(() => tasks.map((t) => ({ ...t, ...local[t.id] })), [tasks, local]);
   const zones = useMemo(() => {
@@ -133,6 +133,7 @@ export function TaskStafetteWorkspace({ userId, tasks, profiles, onReload, onCom
   const save = async (task: MyWorkTask, patch: TaskPatch) => {
     const { note } = patch;
     const fields: Partial<MyWorkTask> = {};
+    if ("description" in patch) fields.description = patch.description;
     if ("ball_owner" in patch) fields.ball_owner = patch.ball_owner;
     const externalLabel = patch.ball_owner && patch.ball_owner !== "external" ? null : patch.ball_external_label;
     if (externalLabel !== undefined && externalLabel !== (task.ball_external_label ?? null)) {
@@ -183,10 +184,11 @@ export function TaskStafetteWorkspace({ userId, tasks, profiles, onReload, onCom
     const onKey = (e: KeyboardEvent) => {
       const el = e.target as HTMLElement | null;
       if (el && (el.isContentEditable || ["INPUT", "TEXTAREA", "SELECT"].includes(el.tagName))) return;
-      if (e.metaKey || e.ctrlKey || e.altKey) return;
+      if (e.defaultPrevented || e.metaKey || e.ctrlKey || e.altKey || el?.closest('[role="dialog"], [role="menu"]')) return;
       const idx = selected ? ordered.findIndex((t) => t.id === selected.id) : -1;
       if (e.key === "j" || e.key === "ArrowDown") { const n = ordered[Math.min(idx + 1, ordered.length - 1)]; if (n) setSelectedId(n.id); e.preventDefault(); }
       else if (e.key === "k" || e.key === "ArrowUp") { const n = ordered[Math.max(idx - 1, 0)]; if (n) setSelectedId(n.id); e.preventDefault(); }
+      else if (selected && e.key.toLowerCase() === "a") { shortcuts.current?.openOwner(); e.preventDefault(); }
       else if (selected && e.key === "e") shortcuts.current?.stepDone();
       else if (selected && e.key === "t") shortcuts.current?.daySlip();
       else if (e.key === "c") { onCreate(); e.preventDefault(); }
