@@ -675,30 +675,31 @@ export function SystemAgendaItem({
   const description = stripHtml(editorDescription ?? "");
   return (
     <section className="min-w-0">
-      <div className="flex flex-wrap items-center gap-x-3 gap-y-2 px-2 py-3 pr-3 sm:pr-5">
-        <div className="flex min-w-0 flex-1 basis-48 items-start gap-2">
-          {Icon && (
-            <span
-              aria-hidden="true"
-              className={cn(
-                "flex size-8 shrink-0 items-center justify-center rounded-lg border text-white",
-                systemType === "quick_notes"
-                  ? "bg-palette-amber border-palette-amber"
-                  : systemType === "upcoming_appointments" ||
-                      systemType === "appointment_requests"
-                    ? "bg-palette-blue border-palette-blue"
-                    : systemType === "birthdays"
-                      ? "bg-palette-pink border-palette-pink"
-                      : systemType === "decisions"
-                        ? "bg-palette-violet border-palette-violet"
-                        : "bg-palette-green border-palette-green",
-              )}
+      <div className="flex flex-wrap items-center gap-x-3 gap-y-2 py-3 pr-3 sm:pr-5">
+        <div className="flex min-w-0 flex-1 basis-48 items-start">
+          <span aria-hidden="true" className="mr-2 grid size-8 shrink-0 place-items-center">
+            {Icon && !isEmbedded && (
+              <span
+                className={cn(
+                  "flex size-8 shrink-0 items-center justify-center rounded-lg border text-white",
+                  systemType === "quick_notes"
+                    ? "bg-palette-amber border-palette-amber"
+                    : systemType === "upcoming_appointments" ||
+                        systemType === "appointment_requests"
+                      ? "bg-palette-blue border-palette-blue"
+                      : systemType === "birthdays"
+                        ? "bg-palette-pink border-palette-pink"
+                        : systemType === "decisions"
+                          ? "bg-palette-violet border-palette-violet"
+                          : "bg-palette-green border-palette-green",
+                )}
             >
               <Icon className="size-4" />
             </span>
-          )}
+            )}
+          </span>
           {agendaNumber && (
-            <span className="shrink-0 pt-1.5 text-sm font-medium tabular-nums text-muted-foreground">
+            <span className={cn("flex h-8 shrink-0 items-center text-sm tabular-nums", isEmbedded ? "font-medium text-muted-foreground" : "font-semibold text-foreground")}>
               {agendaNumber}
             </span>
           )}
@@ -709,11 +710,11 @@ export function SystemAgendaItem({
               readOnly={!canEditTitle}
               onChange={(e) => onTitleChange?.(e.target.value)}
               className={cn(
-                "h-8 min-w-0 px-1 border-transparent bg-transparent shadow-none hover:border-border focus:bg-card font-semibold",
+                "h-8 min-w-0 px-px text-sm border-transparent bg-transparent shadow-none hover:border-border focus:bg-card font-semibold",
                 editorCompleted && "text-muted-foreground line-through",
               )}
             />
-            {description && <p className="truncate px-[5px] text-sm text-muted-foreground">{description}</p>}
+            {description && <p className="truncate px-0.5 text-sm text-muted-foreground">{description}</p>}
           </div>
         </div>
         <Button

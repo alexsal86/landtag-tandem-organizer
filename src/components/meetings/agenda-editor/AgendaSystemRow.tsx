@@ -19,8 +19,8 @@ export function AgendaSystemRow({
     <div
       data-selected={selected}
       className={cn(
-        "group flex min-w-0 border-b border-b-[color:var(--agenda-row-divider)] dark:border-b-border border-l-[3px] border-l-transparent pl-3 transition-colors hover:bg-muted/40 sm:pl-5",
-        nested && "bg-[var(--agenda-subpoint-bg)] pl-7 hover:bg-[var(--agenda-subpoint-bg)] sm:pl-10 dark:bg-slate-800 dark:hover:bg-slate-700",
+        "group flex min-w-0 border-b border-b-[color:var(--agenda-row-divider)] dark:border-b-border border-l-[3px] border-l-transparent pl-1 transition-colors hover:bg-muted/40",
+        nested && "bg-[var(--agenda-subpoint-bg)] hover:bg-[var(--agenda-subpoint-bg)] dark:bg-slate-800 dark:hover:bg-slate-700",
         selected && (nested ? "border-l-primary" : "border-l-primary bg-primary/10 hover:bg-primary/10"),
       )}
     >
@@ -28,9 +28,9 @@ export function AgendaSystemRow({
         <div
           {...dragHandleProps}
           aria-label="Baustein verschieben"
-          className="mt-5 mr-1 self-start cursor-grab text-muted-foreground/70 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring active:cursor-grabbing"
+          className="mt-3 mr-2 flex h-8 shrink-0 cursor-grab items-center self-start text-muted-foreground/40 hover:text-muted-foreground focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring active:cursor-grabbing"
         >
-          <GripVertical className="h-4 w-4 text-muted-foreground" />
+          <GripVertical className="size-4" />
         </div>
       )}
       <div className="min-w-0 flex-1">{children}</div>

@@ -120,23 +120,25 @@ export function AgendaRow({
             isHiddenByCollapsedParent(item) && "hidden",
           )}
         >
-          <div className={cn("flex flex-wrap items-center gap-x-3 gap-y-2 px-3 py-3 sm:px-5", isSubItem && "pl-7 sm:pl-10")}>
-            {hasEditPermission && (
-              <div
-                {...provided.dragHandleProps}
-                aria-label="Punkt verschieben"
-                className="cursor-grab text-muted-foreground/70 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring active:cursor-grabbing"
-              >
-                <GripVertical className="size-4" />
-              </div>
-            )}
-            <div className="flex min-w-0 flex-1 basis-48 items-start gap-2">
-              {!isSubItem && (
-                <span aria-hidden="true" className="grid size-8 shrink-0 place-items-center rounded-lg bg-slate-600 text-white">
-                  {item.task_id ? <ListTodo className="size-4" /> : <List className="size-4" />}
-                </span>
+          <div className="flex flex-wrap items-center gap-x-3 gap-y-2 py-3 pl-1 pr-3 sm:pr-5">
+            <div className="flex min-w-0 flex-1 basis-48 items-start">
+              {hasEditPermission && (
+                <div
+                  {...provided.dragHandleProps}
+                  aria-label="Punkt verschieben"
+                  className="mr-2 flex h-8 shrink-0 cursor-grab items-center text-muted-foreground/40 hover:text-muted-foreground focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring active:cursor-grabbing"
+                >
+                  <GripVertical className="size-4" />
+                </div>
               )}
-              <span className="shrink-0 pt-1.5 text-sm font-medium tabular-nums text-muted-foreground">
+              <span aria-hidden="true" className="mr-2 grid size-8 shrink-0 place-items-center">
+                {!isSubItem && (
+                  <span className="grid size-full place-items-center rounded-lg bg-slate-600 text-white">
+                    {item.task_id ? <ListTodo className="size-4" /> : <List className="size-4" />}
+                  </span>
+                )}
+              </span>
+              <span className={cn("flex h-8 shrink-0 items-center text-sm tabular-nums", isSubItem ? "font-medium text-muted-foreground" : "font-semibold text-foreground")}>
                 {getAgendaNumber(item)}
               </span>
               <div className="min-w-0 flex-1">
@@ -147,15 +149,15 @@ export function AgendaRow({
                   placeholder={isSubItem ? "Unterpunkt-Titel" : "Agenda-Punkt Titel"}
                   aria-label="Titel des Agenda-Punkts"
                   className={cn(
-                    "h-8 min-w-0 px-1 border-transparent bg-transparent shadow-none hover:border-border focus:bg-card",
+                    "h-8 min-w-0 px-px text-sm border-transparent bg-transparent shadow-none hover:border-border focus:bg-card",
                     isSubItem ? "font-medium" : "font-semibold",
                     item.is_completed && "text-muted-foreground line-through",
                   )}
                   readOnly={!hasEditPermission}
                 />
-                {preview && <p className="truncate px-[5px] text-sm text-muted-foreground">{preview}</p>}
+                {preview && <p className="truncate px-0.5 text-sm text-muted-foreground">{preview}</p>}
                 {documentCount > 0 && (
-                  <span className="block px-[5px] text-xs text-muted-foreground">
+                  <span className="block px-0.5 text-xs text-muted-foreground">
                     {documentCount} {documentCount === 1 ? "Anhang" : "Anhänge"}
                   </span>
                 )}
