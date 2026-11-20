@@ -240,9 +240,10 @@ export function MeetingSidebar({
               key={meeting.id}
               ref={highlightRef(meeting.id!)}
               className={cn(
-                "relative cursor-pointer rounded-xl border-transparent bg-transparent shadow-none transition-colors hover:bg-muted/40 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring",
-                selectedMeeting?.id === meeting.id &&
-                  "border-success/50 bg-success/10 hover:bg-success/10",
+                "relative cursor-pointer rounded-xl shadow-none transition-colors focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring",
+                selectedMeeting?.id === meeting.id
+                  ? "border-success/50 bg-success/10 hover:bg-success/10"
+                  : "border-border bg-card hover:border-muted-foreground/40",
                 isHighlighted(meeting.id!) && "notification-highlight",
               )}
               tabIndex={0}
