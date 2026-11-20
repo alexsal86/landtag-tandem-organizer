@@ -1,5 +1,7 @@
 import { differenceInCalendarDays } from "date-fns";
-import { Collapsible, CollapsibleContent, CollapsibleTrigger } from "@/components/ui/collapsible";
+import { Popover, PopoverContent, PopoverTrigger } from "@/components/ui/popover";
+import { useQuery } from "@tanstack/react-query";
+import { supabase } from "@/integrations/supabase/client";
 import { Avatar, AvatarFallback, AvatarImage } from "@/components/ui/avatar";
 import { Command, CommandEmpty, CommandGroup, CommandInput, CommandItem, CommandList } from "@/components/ui/command";
 import { usePersistentState } from "@/hooks/usePersistentState";
@@ -64,6 +66,18 @@ const datePresets = [["Heute", 0], ["Morgen", 1], ["In 3 Tagen", 3], ["Nächste 
 const formatDate = (date: string) => new Date(date.slice(0, 10) + "T00:00:00").toLocaleDateString("de-DE", { day: "2-digit", month: "2-digit" });
 
 export function TaskDetailView({ task, profiles, decisionLabel, onSave, onComplete, onDecision, onJourFixe, nameOf, registerShortcuts, meId, onNudge, onAckNudge, pendingVote, onVote }: Props) {
+  const { data: meetingTitle } = useQuery({
+    queryKey: ["task-jour-fixe-title", task.tenant_id, task.meeting_id],
+    enabled: Boolean(task.meeting_id),
+    queryFn: async () => {
+      const { data, error } = await supabase.from("meetings").select("title").eq("id", task.meeting_id!).maybeSingle();
+      if (error) throw error;
+      return data?.title;
+    },
+  });
+  const jourFixeHint = task.meeting_id
+    ? (meetingTitle ? `Auf Jour Fixe „${meetingTitle}“` : "Auf Jour Fixe eingeplant")
+    : task.pending_for_jour_fixe ? "Für den nächsten Jour Fixe vorgemerkt" : "Auf Jour Fixe";
   const [description, setDescription] = useState(task.description ?? "");
   const [label, setLabel] = useState(task.next_action ?? "");
   const [due, setDue] = useState(task.next_action_due ?? "");
@@ -186,168 +200,171 @@ export function TaskDetailView({ task, profiles, decisionLabel, onSave, onComple
     <div className="flex min-h-0 min-w-0 flex-1 flex-col">
       <main aria-label="Aufgabendetails" className="min-h-0 min-w-0 flex-1 bg-white p-6 dark:bg-card [&_input]:border-0 [&_input]:bg-transparent [&_textarea]:border-0 [&_textarea]:bg-transparent [&_[role=combobox]]:border-0 [&_[role=combobox]]:bg-transparent">
         <div className="w-full max-w-[750px] space-y-3 [&>section]:space-y-3">
-          <Collapsible>
-            <header className="relative space-y-1 pl-10">
-              <Tooltip>
-                <TooltipTrigger asChild>
-                  <Button type="button" variant="ghost" size="icon" disabled={saving}
-                    aria-label="Aufgabe abschließen" onClick={() => void run(onComplete)}
-                    className="group absolute left-0 top-1 size-7 rounded-full border-2 border-muted-foreground/50 hover:border-success hover:bg-success/10 hover:text-success">
-                    <Check className="opacity-0 group-hover:opacity-100 group-focus-visible:opacity-100" />
-                  </Button>
-                </TooltipTrigger>
-                <TooltipContent>Aufgabe abschließen</TooltipContent>
-              </Tooltip>
-              <div className="flex flex-wrap items-start justify-between gap-2">
-                <h2 className="min-w-0 flex-1 break-words text-[28px] font-semibold leading-tight tracking-tight">{task.title}</h2>
-                <div role="group" aria-label="Aufgabenaktionen" className="flex shrink-0 items-center gap-1 text-muted-foreground">
+          <header className="relative space-y-1 pl-10">
+            <Tooltip>
+              <TooltipTrigger asChild>
+                <Button type="button" variant="ghost" size="icon" disabled={saving}
+                  aria-label="Aufgabe abschließen" onClick={() => void run(onComplete)}
+                  className="group absolute left-0 top-1 size-7 rounded-full border-2 border-muted-foreground/50 hover:border-success hover:bg-success/10 hover:text-success">
+                  <Check className="opacity-0 group-hover:opacity-100 group-focus-visible:opacity-100" />
+                </Button>
+              </TooltipTrigger>
+              <TooltipContent>Aufgabe abschließen</TooltipContent>
+            </Tooltip>
+            <div className="flex flex-wrap items-start justify-between gap-2">
+              <h2 className="min-w-0 flex-1 break-words text-[28px] font-semibold leading-tight tracking-tight">{task.title}</h2>
+              <div role="group" aria-label="Aufgabenaktionen" className="flex shrink-0 items-center gap-1 text-muted-foreground">
+                <Popover>
                   <Tooltip>
                     <TooltipTrigger asChild>
-                      <CollapsibleTrigger asChild>
-                        <Button size="icon" variant="ghost" className="rounded-xl hover:bg-[#f0f0ed] hover:text-foreground dark:hover:bg-muted" aria-label="Mich erinnern"><Bell /></Button>
-                      </CollapsibleTrigger>
-                    </TooltipTrigger>
-                    <TooltipContent>Mich erinnern</TooltipContent>
-                  </Tooltip>
-                  {[
-                    { label: "Auf Tageszettel", Icon: Zap, action: daySlip },
-                    { label: "Auf Jour Fixe", Icon: Users, action: onJourFixe },
-                    { label: "Entscheidung anfordern", Icon: Gavel, action: onDecision },
-                  ].map(({ label, Icon, action }) => (
-                    <Tooltip key={label}>
-                      <TooltipTrigger asChild>
-                        <Button size="icon" variant="ghost" className="rounded-xl hover:bg-[#f0f0ed] hover:text-foreground dark:hover:bg-muted" aria-label={label} onClick={action}><Icon /></Button>
-                      </TooltipTrigger>
-                      <TooltipContent>{label}</TooltipContent>
-                    </Tooltip>
-                  ))}
-                </div>
-              </div>
-              <Textarea aria-label="Beschreibung" value={description} onChange={(event) => setDescription(event.target.value)}
-                placeholder="Beschreibung hinzufügen …" rows={1}
-                className="min-h-0 resize-y px-0 py-0 focus-visible:ring-0 focus-visible:ring-offset-0 leading-relaxed text-muted-foreground [field-sizing:content]" />
-              {description !== (task.description ?? "") && (
-                <Button size="sm" variant="outline" disabled={saving}
-                  onClick={() => void run(() => onSave({ description: description.trim() || null }))}>
-                  Beschreibung speichern
-                </Button>
-              )}
-              {(decisionLabel || task.pending_for_jour_fixe) && <div className="flex flex-wrap gap-2">
-                {decisionLabel && <Badge variant="secondary"><Gavel className="h-3 w-3 mr-1" />{decisionLabel}</Badge>}
-                {task.pending_for_jour_fixe && <Badge variant="secondary"><Users className="h-3 w-3 mr-1" />Jour Fixe</Badge>}
-              </div>}
-              <WorkflowLinks taskId={task.id} />
-              <div className="flex flex-wrap items-center gap-2 pt-3">
-                <Dialog open={ownerPickerOpen} onOpenChange={changeOwnerPicker}>
-                  <DialogTrigger asChild>
-                    <Button variant="outline" size="sm" aria-keyshortcuts="A" disabled={saving} className="max-w-full rounded-full bg-transparent">
-                      <span className={cn("size-2 shrink-0 rounded-full", ownerColors[owner])} />
-                      <span className="text-muted-foreground">Am Zug</span>
-                      <span className="truncate">
-                        {(owner === "office" && nameOf(assignee)) || (owner === "external" && externalLabel) || TASK_BALL_LABELS[owner]}
-                      </span>
-                      <kbd className="rounded border px-1 text-xs text-muted-foreground">A</kbd>
-                    </Button>
-                  </DialogTrigger>
-                  <DialogContent className="overflow-hidden p-0 sm:max-w-lg">
-                    <DialogTitle className="sr-only">Wem übergeben?</DialogTitle>
-                    <Command>
-                      <CommandInput aria-label="Name oder Rolle suchen" placeholder="Wem übergeben? Name oder Rolle tippen …" className="pr-10" />
-                      <CommandList className="max-h-[55vh] px-2 pb-2">
-                        <CommandEmpty>Keine passende Person oder Rolle gefunden.</CommandEmpty>
-                        {recentOptions.length > 0 && <CommandGroup heading="Zuletzt">{recentOptions.map((option) => renderOwnerOption(option, true))}</CommandGroup>}
-                        <CommandGroup heading="Büro">
-                          {ownerOptions.filter((option) => option.role === "office").map((option) => renderOwnerOption(option))}
-                        </CommandGroup>
-                        <CommandGroup heading="Abgeordnete/r">
-                          {ownerOptions.filter((option) => option.role === "deputy").map((option) => renderOwnerOption(option))}
-                        </CommandGroup>
-                        <CommandGroup heading="Extern">
-                          {ownerOptions.filter((option) => option.role === "external").map((option) => renderOwnerOption(option))}
-                        </CommandGroup>
-                        <form className="px-1 pb-2 pt-1" onSubmit={(event) => {
-                          event.preventDefault();
-                          const label = externalDraft.trim();
-                          if (label) chooseOwner({ id: `custom:${label}`, label, role: "external" });
-                        }}>
-                          <Input aria-label="Externe Stelle eingeben" placeholder="Externe Stelle eingeben …"
-                            value={externalDraft} onChange={(event) => setExternalDraft(event.target.value)}
-                            onKeyDown={(event) => { if (event.key === "Enter") event.stopPropagation(); }}
-                            maxLength={200} className="border-0 bg-[#f2f2ef] dark:bg-muted" />
-                        </form>
-                      </CommandList>
-                    </Command>
-                  </DialogContent>
-                </Dialog>
-                <DropdownMenu>
-                  <DropdownMenuTrigger asChild>
-                    <Button variant="outline" size="sm" disabled={saving} className="rounded-full bg-transparent data-[state=open]:bg-muted">
-                      <Flag />
-                      <span className="text-muted-foreground">Endfrist</span>
-                      <span>{task.due_date ? formatDate(task.due_date) : "Setzen"}</span>
-                    </Button>
-                  </DropdownMenuTrigger>
-                  <DropdownMenuContent align="start" className="min-w-52 rounded-xl p-1">
-                    {([["Freitag", 5], ["Montag", 1]] as const).map(([label, weekday]) => {
-                      const today = new Date();
-                      const date = shiftDay(null, (weekday - today.getDay() + 6) % 7 + 1, today);
-                      return (
-                        <DropdownMenuItem key={weekday} onSelect={() => void run(() => onSave({ due_date: date }))} className="justify-between gap-4 py-2">
-                          {label}<span className="text-xs text-muted-foreground">{formatDate(date)}</span>
-                        </DropdownMenuItem>
-                      );
-                    })}
-                    <DropdownMenuItem onSelect={() => { setCustomValue(task.due_date?.slice(0, 10) ?? ""); setCustomField("deadline"); }}>
-                      Datum wählen …
-                    </DropdownMenuItem>
-                    <DropdownMenuItem onSelect={() => { if (task.due_date) void run(() => onSave({ due_date: null })); }}>
-                      Ohne Endfrist
-                    </DropdownMenuItem>
-                  </DropdownMenuContent>
-                </DropdownMenu>
-                <Button variant="outline" size="sm" disabled={saving} className="rounded-full bg-transparent"
-                  aria-label={`Priorität ${priority.label}. Auf ${nextPriority.label} ändern`}
-                  onClick={() => void run(() => onSave({ priority: nextPriority.value }))}>
-                  <span className={cn("size-2 rounded-full", priority.color)} />
-                  <span className="text-muted-foreground">Priorität</span>
-                  {priority.label}
-                </Button>
-              </div>
-            </header>
-              <CollapsibleContent className="ml-10 mt-3 space-y-3 pb-2">
-                {task.reminder_at ? (
-                  <div className={cn("rounded-md px-3 py-2 text-caption flex items-center justify-between gap-3", isReminderDue(task) ? "bg-accent text-accent-foreground" : "bg-muted")}>
-                    <span>
-                      {isReminderDue(task) ? "Fällig seit " : "Am "}
-                      {new Date(task.reminder_at).toLocaleString("de-DE", { dateStyle: "short", timeStyle: "short" })}
-                      {task.reminder_note ? ` – ${task.reminder_note}` : ""}
-                    </span>
-                    <Button size="sm" variant="ghost" disabled={saving} onClick={() => run(() => onSave({ reminder_at: null, reminder_note: null }))}>
-                      <BellOff className="h-4 w-4 mr-1" />Erledigt
-                    </Button>
-                  </div>
-                ) : (
-                  <>
-                    <Input value={remNote} onChange={(e) => setRemNote(e.target.value)} placeholder="Woran erinnern? (optional, z. B. „Beim Ministerium nachfassen“)" className="h-8" />
-                    <div className="flex flex-wrap gap-2">
-                      {([["tomorrow", "Morgen"], ["3days", "In 3 Tagen"], ["nextweek", "Nächste Woche"]] as const).map(([k, l]) => (
-                        <Button key={k} size="sm" variant="outline" disabled={saving}
-                          onClick={() => run(async () => { await onSave({ reminder_at: reminderPreset(k).toISOString(), reminder_note: remNote.trim() || null }); setRemNote(""); })}>
-                          {l}
+                      <PopoverTrigger asChild>
+                        <Button size="icon" variant="ghost" className="rounded-xl hover:bg-[#f0f0ed] hover:text-foreground dark:hover:bg-muted" aria-label="Mich erinnern">
+                          <Bell strokeWidth={task.reminder_at ? 2.75 : 2} />
                         </Button>
-                      ))}
-                    </div>
-                    <div className="flex items-center gap-2">
-                      <Input type="datetime-local" value={remAt} onChange={(e) => setRemAt(e.target.value)} className="h-8 min-w-0 flex-1" aria-label="Eigene Uhrzeit" />
-                      <Button size="sm" variant="outline" disabled={saving || !remAt}
-                        onClick={() => run(async () => { await onSave({ reminder_at: new Date(remAt).toISOString(), reminder_note: remNote.trim() || null }); setRemNote(""); setRemAt(""); })}>
-                        Setzen
-                      </Button>
-                    </div>
-                  </>
-                )}
-              </CollapsibleContent>
-          </Collapsible>
+                      </PopoverTrigger>
+                    </TooltipTrigger>
+                    <TooltipContent>{task.reminder_at ? "Erinnerung gesetzt" : "Mich erinnern"}</TooltipContent>
+                  </Tooltip>
+                  <PopoverContent align="end" className="w-80 max-w-[calc(100vw-2rem)] space-y-3" aria-label="Mich erinnern">
+                    <h3 className="text-sm font-semibold">Mich erinnern</h3>
+                    {task.reminder_at ? (
+                      <div className={cn("rounded-md px-3 py-2 text-caption flex items-center justify-between gap-3", isReminderDue(task) ? "bg-accent text-accent-foreground" : "bg-muted")}>
+                        <span>
+                          {isReminderDue(task) ? "Fällig seit " : "Am "}
+                          {new Date(task.reminder_at).toLocaleString("de-DE", { dateStyle: "short", timeStyle: "short" })}
+                          {task.reminder_note ? ` – ${task.reminder_note}` : ""}
+                        </span>
+                        <Button size="sm" variant="ghost" disabled={saving} onClick={() => run(() => onSave({ reminder_at: null, reminder_note: null }))}>
+                          <BellOff className="h-4 w-4 mr-1" />Erledigt
+                        </Button>
+                      </div>
+                    ) : (
+                      <>
+                        <Input value={remNote} onChange={(e) => setRemNote(e.target.value)} placeholder="Woran erinnern? (optional, z. B. „Beim Ministerium nachfassen“)" className="h-8" />
+                        <div className="flex flex-wrap gap-2">
+                          {([["tomorrow", "Morgen"], ["3days", "In 3 Tagen"], ["nextweek", "Nächste Woche"]] as const).map(([k, l]) => (
+                            <Button key={k} size="sm" variant="outline" disabled={saving}
+                              onClick={() => run(async () => { await onSave({ reminder_at: reminderPreset(k).toISOString(), reminder_note: remNote.trim() || null }); setRemNote(""); })}>
+                              {l}
+                            </Button>
+                          ))}
+                        </div>
+                        <div className="flex items-center gap-2">
+                          <Input type="datetime-local" value={remAt} onChange={(e) => setRemAt(e.target.value)} className="h-8 min-w-0 flex-1" aria-label="Eigene Uhrzeit" />
+                          <Button size="sm" variant="outline" disabled={saving || !remAt}
+                            onClick={() => run(async () => { await onSave({ reminder_at: new Date(remAt).toISOString(), reminder_note: remNote.trim() || null }); setRemNote(""); setRemAt(""); })}>
+                            Setzen
+                          </Button>
+                        </div>
+                      </>
+                    )}
+                  </PopoverContent>
+                </Popover>
+                {[
+                  { label: "Auf Tageszettel", Icon: Zap, action: daySlip },
+                  { label: jourFixeHint, Icon: Users, action: onJourFixe, active: Boolean(task.meeting_id || task.pending_for_jour_fixe) },
+                  { label: decisionLabel ?? "Entscheidung anfordern", Icon: Gavel, action: onDecision, active: Boolean(decisionLabel) },
+                ].map(({ label, Icon, action, active }) => (
+                  <Tooltip key={label}>
+                    <TooltipTrigger asChild>
+                      <Button size="icon" variant="ghost" className="rounded-xl hover:bg-[#f0f0ed] hover:text-foreground dark:hover:bg-muted" aria-label={label} onClick={action}><Icon strokeWidth={active ? 2.75 : 2} className={active ? "text-foreground" : undefined} /></Button>
+                    </TooltipTrigger>
+                    <TooltipContent>{label}</TooltipContent>
+                  </Tooltip>
+                ))}
+              </div>
+            </div>
+            <Textarea aria-label="Beschreibung" value={description} onChange={(event) => setDescription(event.target.value)}
+              placeholder="Beschreibung hinzufügen …" rows={1}
+              className="min-h-0 resize-y px-0 py-0 focus-visible:ring-0 focus-visible:ring-offset-0 leading-relaxed text-muted-foreground [field-sizing:content]" />
+            {description !== (task.description ?? "") && (
+              <Button size="sm" variant="outline" disabled={saving}
+                onClick={() => void run(() => onSave({ description: description.trim() || null }))}>
+                Beschreibung speichern
+              </Button>
+            )}
+            {(decisionLabel || task.pending_for_jour_fixe) && <div className="flex flex-wrap gap-2">
+              {decisionLabel && <Badge variant="secondary"><Gavel className="h-3 w-3 mr-1" />{decisionLabel}</Badge>}
+              {task.pending_for_jour_fixe && <Badge variant="secondary"><Users className="h-3 w-3 mr-1" />Jour Fixe</Badge>}
+            </div>}
+            <WorkflowLinks taskId={task.id} />
+            <div className="flex flex-wrap items-center gap-2 pt-3">
+              <Dialog open={ownerPickerOpen} onOpenChange={changeOwnerPicker}>
+                <DialogTrigger asChild>
+                  <Button variant="outline" size="sm" aria-keyshortcuts="A" disabled={saving} className="max-w-full rounded-full bg-transparent">
+                    <span className={cn("size-2 shrink-0 rounded-full", ownerColors[owner])} />
+                    <span className="text-muted-foreground">Am Zug</span>
+                    <span className="truncate">
+                      {(owner === "office" && nameOf(assignee)) || (owner === "external" && externalLabel) || TASK_BALL_LABELS[owner]}
+                    </span>
+                    <kbd className="rounded border px-1 text-xs text-muted-foreground">A</kbd>
+                  </Button>
+                </DialogTrigger>
+                <DialogContent className="overflow-hidden p-0 sm:max-w-lg">
+                  <DialogTitle className="sr-only">Wem übergeben?</DialogTitle>
+                  <Command>
+                    <CommandInput aria-label="Name oder Rolle suchen" placeholder="Wem übergeben? Name oder Rolle tippen …" className="pr-10" />
+                    <CommandList className="max-h-[55vh] px-2 pb-2">
+                      <CommandEmpty>Keine passende Person oder Rolle gefunden.</CommandEmpty>
+                      {recentOptions.length > 0 && <CommandGroup heading="Zuletzt">{recentOptions.map((option) => renderOwnerOption(option, true))}</CommandGroup>}
+                      <CommandGroup heading="Büro">
+                        {ownerOptions.filter((option) => option.role === "office").map((option) => renderOwnerOption(option))}
+                      </CommandGroup>
+                      <CommandGroup heading="Abgeordnete/r">
+                        {ownerOptions.filter((option) => option.role === "deputy").map((option) => renderOwnerOption(option))}
+                      </CommandGroup>
+                      <CommandGroup heading="Extern">
+                        {ownerOptions.filter((option) => option.role === "external").map((option) => renderOwnerOption(option))}
+                      </CommandGroup>
+                      <form className="px-1 pb-2 pt-1" onSubmit={(event) => {
+                        event.preventDefault();
+                        const label = externalDraft.trim();
+                        if (label) chooseOwner({ id: `custom:${label}`, label, role: "external" });
+                      }}>
+                        <Input aria-label="Externe Stelle eingeben" placeholder="Externe Stelle eingeben …"
+                          value={externalDraft} onChange={(event) => setExternalDraft(event.target.value)}
+                          onKeyDown={(event) => { if (event.key === "Enter") event.stopPropagation(); }}
+                          maxLength={200} className="border-0 bg-[#f2f2ef] dark:bg-muted" />
+                      </form>
+                    </CommandList>
+                  </Command>
+                </DialogContent>
+              </Dialog>
+              <DropdownMenu>
+                <DropdownMenuTrigger asChild>
+                  <Button variant="outline" size="sm" disabled={saving} className="rounded-full bg-transparent data-[state=open]:bg-muted">
+                    <Flag />
+                    <span className="text-muted-foreground">Endfrist</span>
+                    <span>{task.due_date ? formatDate(task.due_date) : "Setzen"}</span>
+                  </Button>
+                </DropdownMenuTrigger>
+                <DropdownMenuContent align="start" className="min-w-52 rounded-xl p-1">
+                  {([["Freitag", 5], ["Montag", 1]] as const).map(([label, weekday]) => {
+                    const today = new Date();
+                    const date = shiftDay(null, (weekday - today.getDay() + 6) % 7 + 1, today);
+                    return (
+                      <DropdownMenuItem key={weekday} onSelect={() => void run(() => onSave({ due_date: date }))} className="justify-between gap-4 py-2">
+                        {label}<span className="text-xs text-muted-foreground">{formatDate(date)}</span>
+                      </DropdownMenuItem>
+                    );
+                  })}
+                  <DropdownMenuItem onSelect={() => { setCustomValue(task.due_date?.slice(0, 10) ?? ""); setCustomField("deadline"); }}>
+                    Datum wählen …
+                  </DropdownMenuItem>
+                  <DropdownMenuItem onSelect={() => { if (task.due_date) void run(() => onSave({ due_date: null })); }}>
+                    Ohne Endfrist
+                  </DropdownMenuItem>
+                </DropdownMenuContent>
+              </DropdownMenu>
+              <Button variant="outline" size="sm" disabled={saving} className="rounded-full bg-transparent"
+                aria-label={`Priorität ${priority.label}. Auf ${nextPriority.label} ändern`}
+                onClick={() => void run(() => onSave({ priority: nextPriority.value }))}>
+                <span className={cn("size-2 rounded-full", priority.color)} />
+                <span className="text-muted-foreground">Priorität</span>
+                {priority.label}
+              </Button>
+            </div>
+          </header>
 
           {nudgeForMe && (
             <section className="space-y-3" role="alert">
@@ -488,9 +505,9 @@ export function TaskDetailView({ task, profiles, decisionLabel, onSave, onComple
             </div>
           </section>
 
-          <div className="ml-10"><TaskSubtasks taskId={task.id} tenantId={task.tenant_id} userId={meId} nameOf={nameOf} profiles={profiles} /></div>
+          <div className="ml-10 pt-5"><TaskSubtasks taskId={task.id} tenantId={task.tenant_id} category={task.category} userId={meId} profiles={profiles} /></div>
 
-          <section className="ml-10 space-y-3">
+          <section className="ml-10 space-y-3 pt-5">
             <h3 className="text-base font-semibold">Verlauf</h3>
             <form onSubmit={(event) => {
               event.preventDefault();
@@ -504,9 +521,9 @@ export function TaskDetailView({ task, profiles, decisionLabel, onSave, onComple
                 placeholder="Notiz hinzufügen … (Enter speichert)" disabled={saving}
                 className="h-11 border-0 bg-transparent focus-visible:ring-0 focus-visible:ring-offset-0" />
             </form>
-            <ol className="pt-2">
+            <ol className="pt-5">
               {[...timeline, { id: "task-created", at: task.created_at, actorName: nameOf(task.user_id) ?? "Unbekannt", text: "Aufgabe erstellt" }].map((entry) => (
-                <li key={entry.id} className="relative pb-4 pl-7 text-sm last:pb-0 before:absolute before:left-[5px] before:top-2 before:h-full before:w-px before:bg-border before:content-[''] last:before:hidden">
+                <li key={entry.id} className="relative pb-6 pl-7 text-sm last:pb-0 before:absolute before:left-[5px] before:top-[22px] before:bottom-[-2px] before:w-px before:bg-border before:content-[''] last:before:hidden">
                   <span aria-hidden="true" className="absolute left-0 top-1.5 size-3 rounded-full bg-muted-foreground/45" />
                   <div className="text-xs text-muted-foreground">
                     <time dateTime={entry.at} className="tabular-nums">

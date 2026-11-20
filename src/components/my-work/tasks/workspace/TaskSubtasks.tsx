@@ -2,6 +2,7 @@ import { useState } from "react";
 import { useQuery, useQueryClient } from "@tanstack/react-query";
 import { CornerDownRight, Plus, X } from "lucide-react";
 import { supabase } from "@/integrations/supabase/client";
+import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Checkbox } from "@/components/ui/checkbox";
 import { Progress } from "@/components/ui/progress";
@@ -14,13 +15,14 @@ interface Props {
   taskId: string;
   tenantId?: string;
   userId?: string;
-  nameOf: (id: string | null | undefined) => string | undefined;
+  category?: string | null;
   profiles: Array<{ user_id: string; display_name: string | null }>;
 }
 
-export function TaskSubtasks({ taskId, tenantId, userId, profiles }: Props) {
+export function TaskSubtasks({ taskId, tenantId, userId, category, profiles }: Props) {
   const qc = useQueryClient();
   const key = ["task-subtasks", taskId];
+  const [adding, setAdding] = useState(false);
   const [title, setTitle] = useState("");
   const { data: subtasks = [] } = useQuery({
     queryKey: key,
@@ -35,11 +37,27 @@ export function TaskSubtasks({ taskId, tenantId, userId, profiles }: Props) {
 
   const add = async () => {
     const t = title.trim();
-    if (!t || !userId || !tenantId) return;
-    setTitle("");
-    const { error } = await supabase.from("tasks").insert({ id: crypto.randomUUID(), title: t, status: "todo", priority: "medium", category: "personal", user_id: userId, tenant_id: tenantId, assigned_to: userId, parent_task_id: taskId });
-    if (error) notify.error("Unteraufgabe konnte nicht angelegt werden");
-    void refresh();
+    if (!t || adding) return;
+    if (!userId || !tenantId) {
+      notify.error("Unteraufgabe konnte nicht angelegt werden", { description: "Aufgabe oder Benutzer konnte keinem Mandanten zugeordnet werden." });
+      return;
+    }
+
+    setAdding(true);
+    try {
+      const { error } = await supabase.from("tasks").insert({
+        title: t, status: "todo", priority: "medium", category: category || "personal",
+        user_id: userId, tenant_id: tenantId, assigned_to: userId, parent_task_id: taskId,
+      });
+      if (error) {
+        notify.error("Unteraufgabe konnte nicht angelegt werden", { description: error.message });
+        return;
+      }
+      setTitle("");
+      await refresh();
+    } finally {
+      setAdding(false);
+    }
   };
   const update = async (id: string, patch: { status?: string; assigned_to?: string | null; due_date?: string | null }) => {
     qc.setQueryData(key, subtasks.map((s) => (s.id === id ? { ...s, ...patch } : s)));
@@ -80,11 +98,13 @@ export function TaskSubtasks({ taskId, tenantId, userId, profiles }: Props) {
           </li>
         ))}
       </ul>
-      <div className="flex items-center gap-xs">
-        <Plus className="h-4 w-4 text-muted-foreground" />
-        <Input value={title} onChange={(e) => setTitle(e.target.value)} onKeyDown={(e) => { if (e.key === "Enter") { e.preventDefault(); void add(); } }}
-          placeholder="Unteraufgabe hinzufügen, Enter für die nächste" className="h-8" />
-      </div>
+      <form className="flex items-center gap-xs" onSubmit={(event) => { event.preventDefault(); void add(); }}>
+        <Button type="submit" size="icon" variant="ghost" aria-label="Unteraufgabe hinzufügen" disabled={adding || !title.trim()}>
+          <Plus />
+        </Button>
+        <Input aria-label="Titel der Unteraufgabe" value={title} onChange={(event) => setTitle(event.target.value)} disabled={adding}
+          placeholder="Unteraufgabe hinzufügen … (Enter speichert)" className="h-8" />
+      </form>
     </section>
   );
 }
