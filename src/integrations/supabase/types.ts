@@ -2684,6 +2684,7 @@ export type Database = {
           is_political_relevant: boolean
           last_modified_at: string
           last_modified_by: string | null
+          jour_fixe_reserved_meeting_id: string | null
           meeting_id: string | null
           next_action_assignee_id: string | null
           next_action_due_at: string | null
@@ -2724,6 +2725,7 @@ export type Database = {
           is_political_relevant?: boolean
           last_modified_at?: string
           last_modified_by?: string | null
+          jour_fixe_reserved_meeting_id?: string | null
           meeting_id?: string | null
           next_action_assignee_id?: string | null
           next_action_due_at?: string | null
@@ -2764,6 +2766,7 @@ export type Database = {
           is_political_relevant?: boolean
           last_modified_at?: string
           last_modified_by?: string | null
+          jour_fixe_reserved_meeting_id?: string | null
           meeting_id?: string | null
           next_action_assignee_id?: string | null
           next_action_due_at?: string | null
@@ -12731,6 +12734,7 @@ export type Database = {
           is_archived: boolean | null
           is_pinned: boolean | null
           meeting_archived_info: Json | null
+          jour_fixe_reserved_meeting_id: string | null
           meeting_id: string | null
           meeting_result: string | null
           pending_for_jour_fixe: boolean | null
@@ -12763,6 +12767,7 @@ export type Database = {
           is_archived?: boolean | null
           is_pinned?: boolean | null
           meeting_archived_info?: Json | null
+          jour_fixe_reserved_meeting_id?: string | null
           meeting_id?: string | null
           meeting_result?: string | null
           pending_for_jour_fixe?: boolean | null
@@ -12795,6 +12800,7 @@ export type Database = {
           is_archived?: boolean | null
           is_pinned?: boolean | null
           meeting_archived_info?: Json | null
+          jour_fixe_reserved_meeting_id?: string | null
           meeting_id?: string | null
           meeting_result?: string | null
           pending_for_jour_fixe?: boolean | null
@@ -14763,6 +14769,7 @@ export type Database = {
           created_by: string
           description: string | null
           id: string
+          jour_fixe_reserved_meeting_id: string | null
           meeting_id: string | null
           meeting_result: string | null
           pending_for_jour_fixe: boolean
@@ -14785,6 +14792,7 @@ export type Database = {
           created_by: string
           description?: string | null
           id?: string
+          jour_fixe_reserved_meeting_id?: string | null
           meeting_id?: string | null
           meeting_result?: string | null
           pending_for_jour_fixe?: boolean
@@ -14807,6 +14815,7 @@ export type Database = {
           created_by?: string
           description?: string | null
           id?: string
+          jour_fixe_reserved_meeting_id?: string | null
           meeting_id?: string | null
           meeting_result?: string | null
           pending_for_jour_fixe?: boolean
@@ -14997,6 +15006,7 @@ export type Database = {
           description: string | null
           due_date: string | null
           id: string
+          jour_fixe_reserved_meeting_id: string | null
           meeting_id: string | null
           next_action: string | null
           next_action_due: string | null
@@ -15034,6 +15044,7 @@ export type Database = {
           description?: string | null
           due_date?: string | null
           id?: string
+          jour_fixe_reserved_meeting_id?: string | null
           meeting_id?: string | null
           next_action?: string | null
           next_action_due?: string | null
@@ -15071,6 +15082,7 @@ export type Database = {
           description?: string | null
           due_date?: string | null
           id?: string
+          jour_fixe_reserved_meeting_id?: string | null
           meeting_id?: string | null
           next_action?: string | null
           next_action_due?: string | null
@@ -17296,6 +17308,10 @@ export type Database = {
       check_and_archive_decision: {
         Args: { p_decision_id: string }
         Returns: undefined
+      }
+      claim_jour_fixe_reservations: {
+        Args: { _meeting_id: string }
+        Returns: number
       }
       claim_calendar_sync: { Args: { _setting_id: string }; Returns: string }
       cleanup_bulk_action_audit: { Args: never; Returns: number }

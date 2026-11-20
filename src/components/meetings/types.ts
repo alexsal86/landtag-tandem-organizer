@@ -65,6 +65,7 @@ export interface AgendaItem {
 
 /** A quick note linked to a meeting (from quick_notes table) */
 export interface LinkedQuickNote {
+  jour_fixe_reserved_meeting_id?: string | null;
   id: string;
   content: string;
   title?: string | null;
@@ -95,6 +96,7 @@ export interface LinkedQuickNote {
 
 /** A task linked to a meeting (select subset from tasks table) */
 export interface LinkedTask {
+  jour_fixe_reserved_meeting_id?: string | null;
   id: string;
   title: string;
   description?: string | null;
@@ -106,6 +108,7 @@ export interface LinkedTask {
 
 /** A case item linked to a meeting (select subset from case_items table) */
 export interface LinkedCaseItem {
+  jour_fixe_reserved_meeting_id?: string | null;
   id: string;
   subject: string | null;
   status: string;
@@ -117,6 +120,7 @@ export interface LinkedCaseItem {
 
 /** A task decision relevant to a meeting */
 export interface RelevantDecision {
+  jour_fixe_reserved_meeting_id?: string | null;
   id: string;
   title: string;
   description?: string | null;

@@ -4,12 +4,13 @@ import { useContext, useEffect, useRef, useState, type ReactNode } from "react";
 import { ArrowDown, ArrowUp, GripVertical } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { Popover, PopoverContent, PopoverTrigger } from "@/components/ui/popover";
+import { Badge } from "@/components/ui/badge";
 import { Checkbox } from "@/components/ui/checkbox";
 import { cn } from "@/lib/utils";
 import { parseMeetingResults, type MeetingEntryResult } from "../platformAgendaRules";
-import { agendaSubpointListClass, agendaSubpointNumber, agendaSubpointRowClass, orderSystemSubpoints } from "./systemSubpoints";
+import { agendaSubpointListClass, agendaSubpointNumber, agendaSubpointRowClass, orderSystemSubpoints, wasReservedForMeeting } from "./systemSubpoints";
 
-export function SystemSubpointList<T extends { id: string }>({
+export function SystemSubpointList<T extends { id: string; jour_fixe_reserved_meeting_id?: string | null }>({
   entries, titleOf, agendaNumber, resultText, onUpdateResult, details, actions, metadata, checkable = false, label,
 }: {
   entries: readonly T[];
@@ -151,6 +152,9 @@ export function SystemSubpointList<T extends { id: string }>({
             <div className={cn("flex min-h-5 items-baseline gap-2", result?.completed && "text-muted-foreground line-through")}>
               <span className="shrink-0 tabular-nums text-muted-foreground">{agendaSubpointNumber(agendaNumber, index)}</span>
               <span className="min-w-0 flex-1 break-words">{title}</span>
+              {wasReservedForMeeting(scope?.meetingId, entry.jour_fixe_reserved_meeting_id) && (
+                <Badge variant="outline" className="shrink-0 text-[10px]" title="Übernommen aus Vormerkung">Vorgemerkt</Badge>
+              )}
               {metadata?.(entry)}
               {actions?.(entry)}
             </div>

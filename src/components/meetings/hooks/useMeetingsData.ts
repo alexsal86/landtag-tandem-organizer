@@ -41,6 +41,9 @@ export function useMeetingsData() {
   const [meetings, setMeetings] = useState<Meeting[]>([]);
   const [selectedMeeting, setSelectedMeeting] = useState<Meeting | null>(null);
   const [agendaItems, setAgendaItems] = useState<AgendaItem[]>([]);
+  const agendaRequest = useRef(0);
+  const selectedMeetingId = useRef<string | undefined>(undefined);
+  selectedMeetingId.current = selectedMeeting?.id;
   const [profiles, setProfiles] = useState<Profile[]>([]);
   const [tasks, setTasks] = useState<LinkedTask[]>([]);
   const [taskDocuments, setTaskDocuments] = useState<Record<string, AgendaDocument[]>>({});
@@ -175,7 +178,7 @@ export function useMeetingsData() {
     loadLinkedQuickNotes(meetingId);
     loadMeetingLinkedTasks(meetingId);
     loadMeetingLinkedCaseItems(meetingId);
-    loadMeetingRelevantDecisions();
+    loadMeetingRelevantDecisions(meetingId);
     if (selectedMeeting?.meeting_date) loadMeetingUpcomingAppointments(meetingId, selectedMeeting.meeting_date);
     loadStarredAppointments(meetingId);
   }, [
@@ -369,11 +372,32 @@ export function useMeetingsData() {
     }
   };
 
-  const loadAgendaItems = async (meetingId: string) => {
+  const claimReservations = async (meetingId: string) => {
+    const { data, error } = await supabase.rpc('claim_jour_fixe_reservations', { _meeting_id: meetingId });
+    if (error) {
+      debugConsole.error('Error importing Jour-fixe reservations:', error);
+      return 0;
+    }
+    return data ?? 0;
+  };
+
+  const loadAgendaItems = async (meetingId: string, claimedCount?: number) => {
+    const request = ++agendaRequest.current;
     try {
+      const claimed = claimedCount ?? await claimReservations(meetingId);
+      if (request !== agendaRequest.current) return;
+      if (claimed > 0) {
+        void Promise.all([
+          loadLinkedQuickNotes(meetingId),
+          loadMeetingLinkedTasks(meetingId),
+          loadMeetingLinkedCaseItems(meetingId),
+          loadMeetingRelevantDecisions(meetingId),
+        ]);
+      }
       const { data, error } = await supabase
         .from('meeting_agenda_items').select('id, meeting_id, title, description, notes, duration_minutes, icon_config, order_index, parent_id, task_id, result_html, result_text, assigned_to, is_completed, system_type, is_optional, is_visible, carry_over_to_next, source_meeting_id, carried_over_from, original_meeting_date, original_meeting_title, carryover_notes, file_path, is_recurring, created_at, updated_at').eq('meeting_id', meetingId).order('order_index');
       if (error) throw error;
+      if (request !== agendaRequest.current) return;
 
       const mainItems = (data || []).filter((item: Record<string, any>) => !item.parent_id).sort((a: Record<string, any>, b: Record<string, any>) => a.order_index - b.order_index);
       const sortedItems: AgendaItem[] = [];
@@ -460,9 +484,14 @@ export function useMeetingsData() {
 
   // ========== Meeting CRUD ==========
 
-  const startMeeting = (meeting: Meeting) => {
+  const startMeeting = async (meeting: Meeting) => {
+    if (!meeting.id) return;
+    const claimed = await claimReservations(meeting.id);
+    if (selectedMeetingId.current !== meeting.id) return;
+    if (claimed > 0) await loadAgendaItems(meeting.id, claimed);
+    if (selectedMeetingId.current !== meeting.id) return;
     setActiveMeeting(meeting);
-    setActiveMeetingId(meeting.id || null);
+    setActiveMeetingId(meeting.id);
   };
 
   const stopMeeting = () => {

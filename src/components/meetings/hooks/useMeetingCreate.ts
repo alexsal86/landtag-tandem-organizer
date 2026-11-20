@@ -94,20 +94,6 @@ export function useMeetingCreate(deps: UseMeetingCreateDeps) {
       setSelectedMeeting(newMeetingWithDate);
       setAgendaItems([]);
 
-      // Auto-assign pending notes
-      try {
-        const { data: pendingNotes, error: pendingError } = await supabase
-          .from('quick_notes').select('id').eq('user_id', user.id).eq('tenant_id', currentTenant?.id ?? '').eq('pending_for_jour_fixe', true).is('deleted_at', null);
-        if (!pendingError && pendingNotes && pendingNotes.length > 0) {
-          const noteIds = pendingNotes.map((n: Record<string, any>) => n.id);
-          const { error: updateError } = await supabase
-            .from('quick_notes').update({ meeting_id: data.id, pending_for_jour_fixe: false }).in('id', noteIds);
-          if (!updateError) {
-            toast({ title: "Notizen verknüpft", description: `${pendingNotes.length} vorgemerkte Notiz(en) wurden automatisch hinzugefügt.` });
-          }
-        }
-      } catch (e) { debugConsole.error('Error processing pending notes:', e); }
-
       // Auto-create future recurring meetings
       if (newMeetingRecurrence.enabled && newMeeting.template_id) {
         try {

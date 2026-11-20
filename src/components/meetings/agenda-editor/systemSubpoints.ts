@@ -17,3 +17,7 @@ export function orderSystemSubpoints<T extends { id: string }>(
     (results[b.id]?.order_index ?? Number.MAX_SAFE_INTEGER),
   );
 }
+
+export function wasReservedForMeeting(meetingId?: string, reservedMeetingId?: string | null) {
+  return Boolean(meetingId && reservedMeetingId === meetingId);
+}

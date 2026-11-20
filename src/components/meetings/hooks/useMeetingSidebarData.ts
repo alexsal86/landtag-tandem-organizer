@@ -67,7 +67,7 @@ export function useMeetingSidebarData(deps: UseMeetingSidebarDataDeps) {
   };
 
   const loadLinkedQuickNotes = useCallback(async (meetingId: string) => {
-    const key = `notes-${meetingId}`;
+    const key = "notes";
     const version = (requestVersions.current[key] || 0) + 1;
     requestVersions.current[key] = version;
 
@@ -75,8 +75,9 @@ export function useMeetingSidebarData(deps: UseMeetingSidebarDataDeps) {
       try {
         const { data, error } = await supabase
           .from("quick_notes")
-          .select("id, title, content, user_id, meeting_id, created_at, updated_at, is_pinned, color, color_full_card, category, tags, priority_level, follow_up_date, is_archived, decision_id, task_id, case_item_id, meeting_result, pending_for_jour_fixe")
+          .select("id, title, content, user_id, meeting_id, created_at, updated_at, is_pinned, color, color_full_card, category, tags, priority_level, follow_up_date, is_archived, decision_id, task_id, case_item_id, meeting_result, pending_for_jour_fixe, jour_fixe_reserved_meeting_id")
           .eq("meeting_id", meetingId)
+          .is("deleted_at", null)
           .order("created_at", { ascending: false });
         if (error) {
           debugConsole.error("Error loading linked quick notes:", error);
@@ -91,7 +92,7 @@ export function useMeetingSidebarData(deps: UseMeetingSidebarDataDeps) {
   }, []);
 
   const loadMeetingLinkedTasks = useCallback(async (meetingId: string) => {
-    const key = `tasks-${meetingId}`;
+    const key = "tasks";
     const version = (requestVersions.current[key] || 0) + 1;
     requestVersions.current[key] = version;
 
@@ -99,7 +100,7 @@ export function useMeetingSidebarData(deps: UseMeetingSidebarDataDeps) {
       try {
         const { data, error } = await supabase
           .from("tasks")
-          .select("id, title, description, due_date, priority, status, user_id")
+          .select("id, title, description, due_date, priority, status, user_id, jour_fixe_reserved_meeting_id")
           .eq("meeting_id", meetingId)
           .order("created_at", { ascending: false });
         if (error) throw error;
@@ -115,7 +116,7 @@ export function useMeetingSidebarData(deps: UseMeetingSidebarDataDeps) {
   const loadMeetingLinkedCaseItems = useCallback(async (meetingId: string) => {
     const tid = tenantIdRef.current;
     if (!tid) return;
-    const key = `cases-${meetingId}`;
+    const key = "cases";
     const version = (requestVersions.current[key] || 0) + 1;
     requestVersions.current[key] = version;
 
@@ -123,10 +124,9 @@ export function useMeetingSidebarData(deps: UseMeetingSidebarDataDeps) {
       try {
         const { data, error } = await supabase
           .from("case_items")
-          .select("id, subject, status, priority, due_at, owner_user_id, pending_for_jour_fixe")
+          .select("id, subject, status, priority, due_at, owner_user_id, pending_for_jour_fixe, jour_fixe_reserved_meeting_id")
           .eq("tenant_id", tid)
-          .neq("status", "erledigt")
-          .or(`meeting_id.eq.${meetingId},pending_for_jour_fixe.eq.true`);
+          .eq("meeting_id", meetingId);
         if (error) throw error;
         if (requestVersions.current[key] !== version) return;
         setMeetingLinkedCaseItems(data || []);
@@ -136,7 +136,7 @@ export function useMeetingSidebarData(deps: UseMeetingSidebarDataDeps) {
     });
   }, []);
 
-  const loadMeetingRelevantDecisions = useCallback(async () => {
+  const loadMeetingRelevantDecisions = useCallback(async (meetingId?: string) => {
     const tid = tenantIdRef.current;
     const uid = userIdRef.current;
     if (!tid || !uid) return;
@@ -149,14 +149,12 @@ export function useMeetingSidebarData(deps: UseMeetingSidebarDataDeps) {
         const nowDate = new Date();
         const now = nowDate.toISOString();
         const in7Days = addDays(nowDate, 7).toISOString();
+        const active = `and(status.eq.active,or(priority.gte.1,response_deadline.lt.${now},and(response_deadline.gte.${now},response_deadline.lte.${in7Days})))`;
         const { data, error } = await supabase
           .from("task_decisions")
-          .select("id, title, description, response_deadline, priority, created_by, status")
+          .select("id, title, description, response_deadline, priority, created_by, status, meeting_id, jour_fixe_reserved_meeting_id")
           .eq("tenant_id", tid)
-          .eq("status", "active")
-          .or(
-            `priority.gte.1,response_deadline.lt.${now},and(response_deadline.gte.${now},response_deadline.lte.${in7Days})`
-          )
+          .or(meetingId ? `meeting_id.eq.${meetingId},${active}` : active)
           .order("priority", { ascending: false, nullsFirst: false })
           .order("response_deadline", { ascending: true, nullsFirst: false });
         if (error) throw error;
@@ -178,6 +176,7 @@ export function useMeetingSidebarData(deps: UseMeetingSidebarDataDeps) {
 
         const relevant = (data || []).filter(
           (decision: Record<string, any>) =>
+            (meetingId && decision.meeting_id === meetingId) ||
             decision.created_by === uid ||
             participantRows.some((p) => p.decision_id === decision.id && p.user_id === uid)
         );

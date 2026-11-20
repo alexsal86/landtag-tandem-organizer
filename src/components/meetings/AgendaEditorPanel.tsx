@@ -33,8 +33,6 @@ import {
 } from "@hello-pangea/dnd";
 import { SystemAgendaItem } from "@/components/meetings/SystemAgendaItem";
 import { UpcomingAppointmentsSection } from "@/components/meetings/UpcomingAppointmentsSection";
-import { PendingJourFixeNotes } from "@/components/meetings/PendingJourFixeNotes";
-import { PendingJourFixeCaseItems } from "@/components/meetings/PendingJourFixeCaseItems";
 import { JourFixeRequestsCard } from "@/features/appointment-requests/JourFixeRequestsCard";
 import { format } from "date-fns";
 import { de } from "date-fns/locale";
@@ -667,6 +665,7 @@ export function AgendaEditorPanel({
                               <AgendaSystemRow
                                 scope={{
                                   parentKey: getItemKey(item, index),
+                                  meetingId: selectedMeeting.id,
                                   selectedKey: live ? currentLiveKey ?? null : selectedKey,
                                   liveKey: currentLiveKey,
                                   onSelect: selectStep,
@@ -910,9 +909,6 @@ export function AgendaEditorPanel({
           />
         ) : null}
       </div>
-      {/* Pending Jour Fixe Notes Preview */}
-      <PendingJourFixeNotes className="mt-4" />
-      <PendingJourFixeCaseItems className="mt-4" />
       {!agendaItems.some(
         (item) => item.system_type === "appointment_requests",
       ) && <JourFixeRequestsCard className="mt-4" />}

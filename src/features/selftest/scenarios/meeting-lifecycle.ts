@@ -1,4 +1,4 @@
-import { agendaSubpointNumber, orderSystemSubpoints } from "@/components/meetings/agenda-editor/systemSubpoints";
+import { agendaSubpointNumber, orderSystemSubpoints, wasReservedForMeeting } from "@/components/meetings/agenda-editor/systemSubpoints";
 import { parseMeetingResults } from "@/components/meetings/platformAgendaRules";
 import { flattenLiveAgenda, generatedAgendaKey, liveAgendaPosition } from "@/components/meetings/agenda-editor/liveAgenda";
 import { resolveAgendaDrop } from "@/components/meetings/agenda-editor/agendaDrop";
@@ -494,6 +494,20 @@ export const meetingLifecycleScenario: TestScenario = {
           agenda.data.some((item) => item.parent_id && item.icon_config === null) &&
           agenda.data.some((item) => item.system_type === "quick_notes" && item.icon_config === null));
         return { ok, message: ok ? "Nur der freie Hauptpunkt übernimmt das Symbol." : "Die Symbolübernahme stimmt nicht." };
+      },
+    },
+    {
+      id: "jour-fixe-reservations",
+      label: "Vormerkungen ausschließlich im übernommenen Jour fixe kennzeichnen",
+      kind: "workflow",
+      run: async (ctx) => {
+        const archivedId = ctx.data.meetingId as string;
+        const { data, error } = await supabase.rpc("claim_jour_fixe_reservations", { _meeting_id: archivedId });
+        if (error) return { ok: false, message: error.message };
+        const ok = data === 0 && wasReservedForMeeting(archivedId, archivedId) &&
+          !wasReservedForMeeting(archivedId, ctx.data.followupMeetingId as string) &&
+          !wasReservedForMeeting(archivedId, null);
+        return { ok, message: ok ? "Archiv bleibt unverändert, Kennzeichnung ist sitzungsbezogen." : "Vormerkungslogik weicht ab." };
       },
     },
     {
