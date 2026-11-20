@@ -677,9 +677,9 @@ export function SystemAgendaItem({
   const description = stripHtml(editorDescription ?? "");
   return (
     <section className="min-w-0">
-      <div className="flex flex-wrap items-center gap-x-3 gap-y-2 pt-1 pb-3 pr-3 sm:pr-5">
+      <div className="flex flex-wrap items-center gap-x-3 gap-y-2 py-2 pr-3 sm:pr-5">
         <div className="flex min-w-0 flex-1 basis-48 items-start">
-          <div className={cn("mr-2 grid w-9 shrink-0 place-items-center", isEmbedded ? "h-8" : "relative top-1.5 h-9")}>
+          <div className={cn("mr-2 grid w-9 shrink-0 place-items-center", isEmbedded ? "h-5" : "h-9")}>
             {isEmbedded && editorLeading}
             {Icon && !isEmbedded && (
               <span
@@ -702,7 +702,7 @@ export function SystemAgendaItem({
             )}
           </div>
           <div className="grid min-w-0 flex-1 grid-cols-[auto_minmax(0,1fr)] items-center">
-            <span className={cn("h-8 shrink-0 text-sm leading-8 tabular-nums", isEmbedded ? "mr-1 font-normal text-muted-foreground" : "font-semibold text-foreground", editorCompleted && "text-muted-foreground line-through")}>
+            <span className={cn("h-5 shrink-0 text-sm leading-5 tabular-nums", isEmbedded ? "mr-1 font-normal text-muted-foreground" : "font-semibold text-foreground", editorCompleted && "text-muted-foreground line-through")}>
               {agendaNumber}
             </span>
             <Input
@@ -711,12 +711,12 @@ export function SystemAgendaItem({
               readOnly={!canEditTitle}
               onChange={(e) => onTitleChange?.(e.target.value)}
               className={cn(
-                "h-8 min-w-0 px-px border-transparent bg-transparent shadow-none hover:border-border focus:bg-card",
+                "h-5 min-w-0 px-px py-0 leading-5 border-transparent bg-transparent shadow-none hover:border-border focus:bg-card",
                 isEmbedded ? "text-xs font-normal md:text-xs" : "text-sm font-semibold",
                 editorCompleted && "text-muted-foreground line-through",
               )}
             />
-            {description && <p className="col-span-2 truncate text-xs text-muted-foreground">{description}</p>}
+            {description && <p className="col-span-2 truncate text-xs leading-4 text-muted-foreground">{description}</p>}
           </div>
         </div>
         <Button

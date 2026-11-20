@@ -126,12 +126,12 @@ export function AgendaRow({
             isHiddenByCollapsedParent(item) && "hidden",
           )}
         >
-          <div className="flex flex-wrap items-center gap-x-3 gap-y-2 pt-1 pb-3 pl-4 pr-3 sm:pr-5">
+          <div className="flex flex-wrap items-center gap-x-3 gap-y-2 py-2 pl-4 pr-3 sm:pr-5">
             <div className="flex min-w-0 flex-1 basis-48 items-start">
               {hasEditPermission && provided.dragHandleProps && (
-                <AgendaDragHandle dragHandleProps={provided.dragHandleProps} dragging={snapshot.isDragging} />
+                <AgendaDragHandle dragHandleProps={provided.dragHandleProps} dragging={snapshot.isDragging} className="h-5" />
               )}
-              <div className={cn("mr-2 grid w-9 shrink-0 place-items-center", isSubItem ? "h-8" : "relative top-1.5 h-9")}>
+              <div className={cn("mr-2 grid w-9 shrink-0 place-items-center", isSubItem ? "h-5" : "h-9")}>
                 {isSubItem ? (
                   <AgendaCompletionCheckbox item={item} onComplete={hasEditPermission ? (completed) => change(index, "is_completed", completed) : undefined} />
                 ) : (
@@ -139,7 +139,7 @@ export function AgendaRow({
                 )}
               </div>
               <div className="grid min-w-0 flex-1 grid-cols-[auto_minmax(0,1fr)] items-center">
-                <span className={cn("h-8 shrink-0 text-sm leading-8 tabular-nums", isSubItem ? "mr-1 font-normal text-muted-foreground" : "font-semibold text-foreground", item.is_completed && "text-muted-foreground line-through")}>
+                <span className={cn("h-5 shrink-0 text-sm leading-5 tabular-nums", isSubItem ? "mr-1 font-normal text-muted-foreground" : "font-semibold text-foreground", item.is_completed && "text-muted-foreground line-through")}>
                   {getAgendaNumber(item)}
                 </span>
                 <Input
@@ -149,13 +149,13 @@ export function AgendaRow({
                   placeholder={isSubItem ? "Unterpunkt-Titel" : "Agenda-Punkt Titel"}
                   aria-label="Titel des Agenda-Punkts"
                   className={cn(
-                    "h-8 min-w-0 px-px border-transparent bg-transparent shadow-none hover:border-border focus:bg-card",
+                    "h-5 min-w-0 px-px py-0 leading-5 border-transparent bg-transparent shadow-none hover:border-border focus:bg-card",
                     isSubItem ? "text-xs font-normal md:text-xs" : "text-sm font-semibold",
                     item.is_completed && "text-muted-foreground line-through",
                   )}
                   readOnly={!hasEditPermission}
                 />
-                {preview && <p className="col-span-2 truncate text-xs text-muted-foreground">{preview}</p>}
+                {preview && <p className="col-span-2 truncate text-xs leading-4 text-muted-foreground">{preview}</p>}
                 {documentCount > 0 && (
                   <span className="col-span-2 text-xs text-muted-foreground">
                     {documentCount} {documentCount === 1 ? "Anhang" : "Anhänge"}
