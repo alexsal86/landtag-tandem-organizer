@@ -29,6 +29,7 @@ const DossiersMainView = lazyWithRetry(() => import("@/features/dossiers/compone
 const FactsLibraryView = lazyWithRetry(() => import("@/features/facts/components/FactsLibraryView").then(m => ({ default: m.FactsLibraryView })));
 const MatrixChatView = lazyWithRetry(() => import("@/components/chat/MatrixChatView").then(m => ({ default: m.MatrixChatView })));
 const MatrixClientProvider = lazyWithRetry(() => import("@/contexts/MatrixClientContext").then(m => ({ default: m.MatrixClientProvider })));
+const TasksWorkspace = lazyWithRetry(() => import("@/components/my-work/MyWorkTasksTab").then(m => ({ default: m.MyWorkTasksTab })));
 const MyWorkView = lazyWithRetry(() => import("@/features/dashboard/components/MyWorkView").then(m => ({ default: m.MyWorkView })));
 const DataView = lazyWithRetry(() => import("@/components/admin/DataView").then(m => ({ default: m.DataView })));
 const EditProfile = lazyWithRetry(() => import("@/pages/EditProfile"));
@@ -203,6 +204,8 @@ const Index = (): React.JSX.Element => {
           return withSectionBoundary('Kontakt erstellen', <CreateContact />);
         }
         return withSectionBoundary('Kontakte', <ContactsView />);
+      case "tasks":
+        return withSectionBoundary('Aufgaben', <div className="min-h-[calc(100vh-8rem)] p-6"><TasksWorkspace /></div>);
       case "decisions":
         return withSectionBoundary('Entscheidungen', <DecisionOverview />);
       case "time":

@@ -10,10 +10,7 @@ const prefetchMap: Record<string, ImportFn> = {
   mywork: () => import("@/features/dashboard/components/MyWorkView"),
   calendar: () => import("@/features/calendar/components/CalendarView"),
   contacts: () => import("@/features/contacts/components/ContactsView"),
-  tasks: () => Promise.all([
-    import("@/features/dashboard/components/MyWorkView"),
-    import("@/components/my-work/MyWorkTasksTab"),
-  ]),
+  tasks: () => import("@/components/my-work/MyWorkTasksTab"),
   decisions: () => import("@/components/task-decisions/DecisionOverview"),
   meetings: () => import("@/features/meetings"),
   documents: () => import("@/features/documents/components/DocumentsView"),

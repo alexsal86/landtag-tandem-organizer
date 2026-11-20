@@ -232,7 +232,7 @@ export function MyWorkTasksTab() {
       void actions.handleQuickClearSnooze(taskId),
   };
 
-  const linkedTaskId = searchParams.get("task");
+  const linkedTaskId = searchParams.get("task") || searchParams.get("id");
   const dialogsAndExtras = (
     <>
       {linkedTaskId && currentTenant && (
@@ -246,6 +246,7 @@ export function MyWorkTasksTab() {
           onClose={() => setSearchParams((params) => {
             const next = new URLSearchParams(params);
             next.delete("task");
+            next.delete("id");
             return next;
           }, { replace: true })}
         />

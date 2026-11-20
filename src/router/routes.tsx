@@ -29,11 +29,10 @@ function TaskWorkspaceRedirect() {
   const params = new URLSearchParams(search);
   const linkedTask = params.get("task") || params.get("id") || taskId;
 
-  params.set("tab", "tasks");
   if (linkedTask) params.set("task", linkedTask);
   params.delete("id");
 
-  return <Navigate to={{ pathname: "/mywork", search: `?${params}`, hash }} replace />;
+  return <Navigate to={{ pathname: "/tasks", search: `?${params}`, hash }} replace />;
 }
 
 export const AppRoutes = () => (
@@ -56,7 +55,8 @@ export const AppRoutes = () => (
       <Route path="/contacts/:id/edit" element={<EditContact />} />
       <Route path="/tasks/new" element={<CreateTask />} />
       <Route path="/tasks/archive" element={<TaskArchiveView />} />
-      <Route path="/tasks/:taskId?" element={<TaskWorkspaceRedirect />} />
+      <Route path="/tasks" element={<Index />} />
+      <Route path="/tasks/:taskId" element={<TaskWorkspaceRedirect />} />
       <Route path="/contacts/import" element={<ImportContacts />} />
       <Route path="/maps" element={<Navigate to="/karten" replace />} />
       <Route path="/profile/edit" element={<Navigate to="/profile-edit" replace />} />
