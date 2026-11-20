@@ -491,27 +491,33 @@ export function TaskDetailView({ task, profiles, decisionLabel, onSave, onComple
           <div className="ml-10"><TaskSubtasks taskId={task.id} tenantId={task.tenant_id} userId={meId} nameOf={nameOf} profiles={profiles} /></div>
 
           <section className="ml-10 space-y-3">
-            <div className="section-label">Verlauf</div>
-            <Textarea value={note} onChange={(e) => setNote(e.target.value)} placeholder="Notiz zum aktuellen Stand…" rows={2} />
-            <div className="flex justify-end">
-              <Button size="sm" variant="outline" disabled={!note.trim() || saving} onClick={() => run(async () => { await onSave({ note: note.trim() }); setNote(""); })}>
-                Notiz speichern
-              </Button>
-            </div>
-            <ul className="space-y-2">
-              {timeline.map((e) => (
-                <li key={e.id} className={cn("py-3 text-sm leading-relaxed", e.type === "system" ? "text-muted-foreground" : "text-foreground")}>
-                  <span className="tabular-nums">{new Date(e.at).toLocaleString("de-DE", { dateStyle: "short", timeStyle: "short" })}</span>
-                  {e.actorName ? ` · ${e.actorName}` : ""}: {e.text}
+            <h3 className="text-base font-semibold">Verlauf</h3>
+            <form onSubmit={(event) => {
+              event.preventDefault();
+              if (!note.trim() || saving) return;
+              void run(async () => {
+                await onSave({ note: note.trim() });
+                setNote("");
+              });
+            }} className="rounded-xl border focus-within:ring-2 focus-within:ring-ring">
+              <Input aria-label="Notiz hinzufügen. Enter speichert." value={note} onChange={(event) => setNote(event.target.value)}
+                placeholder="Notiz hinzufügen … (Enter speichert)" disabled={saving}
+                className="h-11 border-0 bg-transparent focus-visible:ring-0 focus-visible:ring-offset-0" />
+            </form>
+            <ol className="pt-2">
+              {[...timeline, { id: "task-created", at: task.created_at, actorName: nameOf(task.user_id) ?? "Unbekannt", text: "Aufgabe erstellt" }].map((entry) => (
+                <li key={entry.id} className="relative pb-4 pl-7 text-sm last:pb-0 before:absolute before:left-[5px] before:top-2 before:h-full before:w-px before:bg-border before:content-[''] last:before:hidden">
+                  <span aria-hidden="true" className="absolute left-0 top-1.5 size-3 rounded-full bg-muted-foreground/45" />
+                  <div className="text-xs text-muted-foreground">
+                    <time dateTime={entry.at} className="tabular-nums">
+                      {new Date(entry.at).toLocaleString("de-DE", { day: "2-digit", month: "2-digit", hour: "2-digit", minute: "2-digit" })}
+                    </time>
+                    {entry.actorName && ` · ${entry.actorName}`}
+                  </div>
+                  <p className="mt-1 whitespace-pre-wrap break-words">{entry.text}</p>
                 </li>
               ))}
-              <li className="py-3 text-sm text-muted-foreground">
-                <time dateTime={task.created_at} className="tabular-nums">
-                  {new Date(task.created_at).toLocaleString("de-DE", { dateStyle: "short", timeStyle: "short" })}
-                </time>
-                {" · Erstellt von "}{nameOf(task.user_id) ?? "Unbekannt"}
-              </li>
-            </ul>
+            </ol>
           </section>
 
         </div>
