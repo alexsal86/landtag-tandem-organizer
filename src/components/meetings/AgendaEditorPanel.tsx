@@ -1,3 +1,4 @@
+import { AppointmentInspector } from "./agenda-editor/AppointmentInspector";
 import type { GeneratedAgendaEntry } from "./agenda-editor/SystemSubpointScope";
 import { AgendaDragHandle } from "./agenda-editor/AgendaDragHandle";
 import { Textarea } from "@/components/ui/textarea";
@@ -164,7 +165,10 @@ export function AgendaEditorPanel({
   const selectedIndex = agendaItems.findIndex(
     (item, index) => getItemKey(item, index) === selectedKey,
   );
+  const generatedParent = selectedKey?.startsWith("system:") ? selectedKey.split(":")[1] : undefined;
   const selectedItem = agendaItems[selectedIndex];
+  const appointmentParent = agendaItems.find(item => item.system_type === "upcoming_appointments" &&
+    ((item.localKey || item.id) === generatedParent || item === selectedItem));
   const change = (index: number, field: keyof AgendaItem, value: unknown) => {
     if (!hasEditPermission) return;
     setDirty(true);
@@ -552,7 +556,7 @@ export function AgendaEditorPanel({
         })}
       />
 
-      <div className={cn("grid items-start gap-4", selectedItem && "2xl:grid-cols-[minmax(0,1fr)_19rem]")}>
+      <div className={cn("grid items-start gap-4", (selectedItem || appointmentParent) && "2xl:grid-cols-[minmax(0,1fr)_19rem]")}>
         <div ref={agendaList} className="min-w-0 rounded-2xl border bg-card shadow-sm [--agenda-subpoint-bg:color(srgb_0.956863_0.964706_0.952941_/_0.7)] [--agenda-row-divider:rgb(227,232,223)]">
           {live ? (
             <LiveAgendaNavigation
@@ -876,7 +880,14 @@ export function AgendaEditorPanel({
             </div>
           )}
         </div>
-        {selectedItem ? (
+        {appointmentParent ? (
+          <AppointmentInspector meeting={selectedMeeting} parent={appointmentParent}
+            number={getAgendaNumber(appointmentParent)} selectedKey={selectedKey} onSelect={selectStep}
+            onChange={hasEditPermission ? (value) => {
+              if (appointmentParent.id && onUpdateSystemResult) onUpdateSystemResult(appointmentParent.id, "result_text", value);
+              else change(agendaItems.indexOf(appointmentParent), "result_text", value);
+            } : undefined} />
+        ) : selectedItem ? (
           <AgendaInspector
             startTime={timing.starts.get(
               selectedItem.parent_id || selectedItem.parentLocalKey
