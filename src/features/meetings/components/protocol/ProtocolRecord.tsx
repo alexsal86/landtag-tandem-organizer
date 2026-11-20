@@ -72,10 +72,11 @@ function AttendanceFields({ details, participants, save, cancel, busy }: {
   );
 }
 
-function attendanceOf(details: Details | null, userId: string) {
+function attendanceOf(details: Details | null, userId: string): string | undefined {
   const attendance = details?.attendance;
   if (!attendance || typeof attendance !== "object" || Array.isArray(attendance)) return undefined;
-  return attendance[userId];
+  const value = attendance[userId];
+  return typeof value === "string" ? value : undefined;
 }
 
 export function useProtocolRecord(meetingId: string, tenantId?: string | null) {

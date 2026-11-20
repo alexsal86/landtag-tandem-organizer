@@ -55,7 +55,7 @@ export function SystemSubpointList<T extends { id: string; jour_fixe_reserved_me
     moved.splice(target, 0, entry);
     onUpdateResult(JSON.stringify({
       ...results,
-      ...Object.fromEntries(moved.map(({ id }, order_index) => [id, { result: "", ...results[id], order_index }])),
+      ...Object.fromEntries(moved.map(({ id }, order_index) => [id, { ...results[id], result: results[id]?.result ?? "", order_index }])),
     }));
   };
 
@@ -68,7 +68,7 @@ export function SystemSubpointList<T extends { id: string; jour_fixe_reserved_me
         const isSelected = Boolean(key && key === scope?.selectedKey);
         const result = results[entry.id];
         const patch = (value: Partial<MeetingEntryResult>) =>
-          onUpdateResult?.(JSON.stringify({ ...results, [entry.id]: { result: "", ...result, ...value } }));
+          onUpdateResult?.(JSON.stringify({ ...results, [entry.id]: { ...result, result: result?.result ?? "", ...value } }));
         return (
           <li
             key={entry.id}

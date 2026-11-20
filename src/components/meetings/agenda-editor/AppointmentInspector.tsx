@@ -31,7 +31,7 @@ export function AppointmentInspector({ meeting, parent, number, selectedKey, onS
   const parentKey = parent.localKey || parent.id!;
   const index = entries.findIndex(entry=>generatedAgendaKey(parentKey,entry.id)===selectedKey);
   const current = entries[index];
-  const patch = (id:string,value:object) => onChange?.(JSON.stringify({...results,[id]:{result:"",...results[id],...value}}));
+  const patch = (id:string,value:object) => onChange?.(JSON.stringify({...results,[id]:{...results[id],result:results[id]?.result ?? "",...value}}));
   const time = (entry:typeof entries[number]) => {
     const date = new Date(entry.start_time);
     return date.toLocaleString("de-DE",{weekday:"short",day:"2-digit",month:"2-digit",hour:"2-digit",minute:"2-digit"})+

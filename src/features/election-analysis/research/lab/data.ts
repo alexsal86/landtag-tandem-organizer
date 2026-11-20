@@ -4,7 +4,7 @@ import { parties } from "../../model";
 export interface LabDistrictData {
   results: Pick<DistrictResult, "year" | "ballot" | "district_number" | "party" | "votes" | "preliminary" | "data_release" | "notes">[];
   turnout: Pick<Turnout, "year" | "ballot" | "district_number" | "district_name" | "eligible" | "voters" | "valid_votes" | "preliminary" | "data_release" | "notes">[];
-  versions: Pick<DistrictVersion, "year" | "district_number" | "identity_key">[];
+  versions: DistrictVersion[];
 }
 export interface ResearchDistrict {
   notes?: string | null;

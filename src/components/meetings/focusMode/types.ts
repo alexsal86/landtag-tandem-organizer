@@ -10,6 +10,9 @@ export interface AgendaItem {
   result_text?: string | null;
   result_html?: string | null;
   carry_over_to_next?: boolean | null;
+  carryover_count?: number;
+  source_meeting_id?: string | null;
+  original_meeting_title?: string | null;
   order_index: number;
   duration_minutes?: number | null;
   parent_id?: string | null;

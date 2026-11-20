@@ -45,7 +45,7 @@ export function useLabDistrictData(
           ? Promise.resolve({ data: [], error: null })
           : supabase
               .from("election_analysis_versions")
-              .select("year, district_number, identity_key")
+              .select("year, district_number, district_name, geography_id, identity_key, historical_district_id, history_link_verified, notes")
               .eq("year", year)
               .order("district_number")
               .limit(70)

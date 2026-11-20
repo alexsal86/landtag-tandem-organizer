@@ -58,7 +58,7 @@ export function NotesInspector({ parent, notes, number, selectedKey, onSelect, o
       {entries.filter(note => !filter.trim() || (note.title || note.content).toLocaleLowerCase().includes(filter.trim().toLocaleLowerCase())).map(note => (
         <div key={note.id} className="flex items-center gap-2 border-b border-dashed py-3">
           <Checkbox aria-label={`Erledigt: ${note.title || "Notiz"}`} disabled={!onChange} checked={!!results[note.id]?.completed}
-            onCheckedChange={value => onChange?.(JSON.stringify({ ...results, [note.id]: { result: "", ...results[note.id], completed: value === true } }))} />
+            onCheckedChange={value => onChange?.(JSON.stringify({ ...results, [note.id]: { ...results[note.id], result: results[note.id]?.result ?? "", completed: value === true } }))} />
           <button className="min-w-0 flex-1 text-left text-sm" onClick={() => onSelect(generatedAgendaKey(parentKey, note.id))}>
             {note.title || "Notiz"}<span className="block text-xs text-muted-foreground">{date(note)}</span>
           </button>

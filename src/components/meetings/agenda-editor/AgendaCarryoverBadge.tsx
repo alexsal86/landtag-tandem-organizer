@@ -1,9 +1,7 @@
 import { Badge } from "@/components/ui/badge";
 import { cn } from "@/lib/utils";
-import type { AgendaItem } from "../types";
-
 export function AgendaCarryoverBadge({ item }: {
-  item: Pick<AgendaItem, "carryover_count" | "source_meeting_id" | "original_meeting_title">;
+  item: { carryover_count?: number | null; source_meeting_id?: string | null; original_meeting_title?: string | null };
 }) {
   const count = item.carryover_count || (item.source_meeting_id ? 1 : 0);
   if (!count) return null;
