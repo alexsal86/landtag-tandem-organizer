@@ -185,7 +185,7 @@ export function AgendaEditorPanel({
     ...Array.from(notesByPerson, ([id, count]) =>
       `${count}× ${profiles.find(profile => profile.user_id === id)?.display_name || "Unbekannte Person"}`,
     ),
-  ].join(". ");
+  ].join(" · ");
   const change = (index: number, field: keyof AgendaItem, value: unknown) => {
     if (!hasEditPermission) return;
     setDirty(true);
@@ -195,7 +195,10 @@ export function AgendaEditorPanel({
   useEffect(() => {
     if (!hasEditPermission || !meetingNotes.length) return;
     agendaItems.forEach((item, index) => {
-      if (item.system_type !== "quick_notes" || !item.id || item.description?.trim() || prefilledNotes.current.has(item.id)) return;
+      if (item.system_type !== "quick_notes" || !item.id || prefilledNotes.current.has(item.id)) return;
+      const legacySummary = notesDescription.replaceAll(" · ", ". ");
+      const existing = item.description?.trim();
+      if (existing && existing !== legacySummary) return;
       prefilledNotes.current.add(item.id);
       onUpdateAgendaItem(index, "description", notesDescription);
     });

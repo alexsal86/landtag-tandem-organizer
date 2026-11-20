@@ -1,3 +1,4 @@
+import { notePlainText } from "../notePlainText";
 import { meetingAppointmentTitle } from "../appointmentDisplay";
 import { useState, useRef, useCallback } from "react";
 import { supabase } from "@/integrations/supabase/client";
@@ -85,7 +86,7 @@ export function useMeetingSidebarData(deps: UseMeetingSidebarDataDeps) {
           return;
         }
         if (requestVersions.current[key] !== version) return;
-        setLinkedQuickNotes(data || []);
+        setLinkedQuickNotes((data || []).map(note => ({ ...note, title: note.title ? notePlainText(note.title) : note.title, content: notePlainText(note.content) })));
       } catch (error) {
         debugConsole.error("Error loading linked quick notes:", error);
       }
