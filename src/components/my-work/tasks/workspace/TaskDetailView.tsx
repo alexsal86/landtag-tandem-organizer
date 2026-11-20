@@ -147,10 +147,22 @@ export function TaskDetailView({ task, profiles, decisionLabel, onSave, onComple
     setOwnerPickerOpen(open);
     if (open) setExternalDraft(owner === "external" ? externalLabel : "");
   };
+  const { data: deputyIds } = useQuery({
+    queryKey: ["task-deputy-ids", task.tenant_id, meId],
+    enabled: Boolean(task.tenant_id && meId),
+    queryFn: async () => {
+      const { data, error } = await supabase.rpc("list_task_deputy_ids", { p_tenant_id: task.tenant_id! });
+      if (error) throw error;
+      return data;
+    },
+  });
+  const deputyProfiles = profiles.filter((profile) => deputyIds?.includes(profile.user_id));
   const ownerOptions = [
-    ...profiles.map((profile) => ({ id: `office:${profile.user_id}`, label: profile.display_name ?? "Unbenannt", role: "office" as const })),
+    ...profiles.filter((profile) => !deputyIds?.includes(profile.user_id)).map((profile) => ({ id: `office:${profile.user_id}`, label: profile.display_name ?? "Unbenannt", role: "office" as const })),
     { id: "office:none", label: "Ohne feste Person", role: "office" as const },
-    { id: "deputy", label: TASK_BALL_LABELS.deputy, role: "deputy" as const },
+    ...(deputyProfiles.length ? deputyProfiles.map((profile) => ({
+      id: `deputy:${profile.user_id}`, label: profile.display_name ?? TASK_BALL_LABELS.deputy, role: "deputy" as const,
+    })) : [{ id: "deputy", label: TASK_BALL_LABELS.deputy, role: "deputy" as const }]),
     ...["Fraktion", "Ministerium", "Extern"].map((label) => ({ id: `external:${label}`, label, role: "external" as const })),
   ];
   const rememberOwner = (id: string) =>
@@ -161,7 +173,7 @@ export function TaskDetailView({ task, profiles, decisionLabel, onSave, onComple
     return id.startsWith("custom:") ? [{ id, label: id.slice(7), role: "external" as const }] : [];
   });
   const chooseOwner = (option: (typeof ownerOptions)[number]) => {
-    const person = option.role === "office" ? option.id.slice(7) : "none";
+    const person = option.id.startsWith("deputy:") || option.role === "office" ? option.id.slice(7) : "none";
     const external = option.role === "external" && option.id !== "external:Extern" ? option.label : null;
     void run(() => onSave({
       ball_owner: option.role,
@@ -172,8 +184,8 @@ export function TaskDetailView({ task, profiles, decisionLabel, onSave, onComple
     setOwnerPickerOpen(false);
   };
   const renderOwnerOption = (option: (typeof ownerOptions)[number], recent = false) => {
-    const profile = option.role === "office" ? profiles.find(({ user_id }) => option.id === `office:${user_id}`) : undefined;
-    const initials = option.role === "deputy" ? "MdL" : option.label.split(/\s+/).slice(0, 2).map((word) => word[0]).join("").toUpperCase();
+    const profile = option.role !== "external" ? profiles.find(({ user_id }) => option.id === `${option.role}:${user_id}`) : undefined;
+    const initials = option.label.split(/\s+/).slice(0, 2).map((word) => word[0]).join("").toUpperCase();
     return (
       <CommandItem key={option.id} value={recent ? `recent:${option.id}` : option.id}
         keywords={[option.label, TASK_BALL_LABELS[option.role]]}
@@ -295,7 +307,7 @@ export function TaskDetailView({ task, profiles, decisionLabel, onSave, onComple
                     <span className={cn("size-2 shrink-0 rounded-full", ownerColors[owner])} />
                     <span className="text-muted-foreground">Am Zug</span>
                     <span className="truncate">
-                      {(owner === "office" && nameOf(assignee)) || (owner === "external" && externalLabel) || TASK_BALL_LABELS[owner]}
+                      {(owner !== "external" && (nameOf(assignee) || (owner === "deputy" && deputyProfiles.length === 1 && deputyProfiles[0].display_name))) || (owner === "external" && externalLabel) || TASK_BALL_LABELS[owner]}
                     </span>
                     <kbd className="rounded border px-1 text-xs text-muted-foreground">A</kbd>
                   </Button>
@@ -479,7 +491,7 @@ export function TaskDetailView({ task, profiles, decisionLabel, onSave, onComple
             )}
           </section>
 
-          <section className="space-y-3 ml-10">
+          <section className="ml-10 space-y-3 pt-3">
             <h3 className="flex items-center gap-2 text-base font-semibold">
               Checkliste
               {progress.total > 0 && (

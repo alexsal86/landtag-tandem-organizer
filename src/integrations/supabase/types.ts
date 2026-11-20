@@ -18704,6 +18704,10 @@ export type Database = {
               isSetofReturn: true
             }
           }
+      list_task_deputy_ids: {
+        Args: { p_tenant_id: string }
+        Returns: string[]
+      }
       list_analysis_deputies: {
         Args: {
           faction_text?: string
