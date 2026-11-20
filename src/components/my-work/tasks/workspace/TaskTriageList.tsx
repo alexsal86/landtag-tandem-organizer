@@ -1,6 +1,6 @@
 import { VirtualList } from "@/components/shared/VirtualList";
 import { useState } from "react";
-import { ChevronDown, Plus } from "lucide-react";
+import { Check, ChevronDown, Plus } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { Tooltip, TooltipContent, TooltipTrigger } from "@/components/ui/tooltip";
 import { Input } from "@/components/ui/input";
@@ -74,7 +74,7 @@ export function TaskTriageList({ resubmissionsOpen, onResubmissionsOpenChange, z
 
   return (
     <div className="flex h-full min-h-0 flex-col gap-2 p-3">
-      <div className="flex shrink-0 items-center gap-2 px-2 pt-3">
+      <div className="flex shrink-0 items-center gap-2 px-2 pt-1">
         <Tooltip>
           <TooltipTrigger asChild>
             <Button size="icon" variant="ghost" onClick={onCreate} aria-label="Neue Aufgabe erstellen"><Plus /></Button>
@@ -116,7 +116,15 @@ export function TaskTriageList({ resubmissionsOpen, onResubmissionsOpenChange, z
           const resubmission = !!snoozes[task.id] || zone === "resubmission";
           return (
             <div className={cn("flex items-start gap-3 rounded-xl px-3 py-3", task.id === selectedId ? "bg-muted" : "hover:bg-muted/60")}>
-              <button type="button" onClick={() => void onComplete(task.id)} aria-label={`„${task.title}“ abschließen`} className="mt-1 h-5 w-5 shrink-0 rounded-full border-2 border-muted-foreground/50 hover:border-foreground" />
+              <Tooltip>
+                <TooltipTrigger asChild>
+                  <button type="button" onClick={() => void onComplete(task.id)} aria-label={`„${task.title}“ abschließen`}
+                    className="group mt-1 flex size-5 shrink-0 items-center justify-center rounded-full border-2 border-muted-foreground/50 hover:border-success hover:bg-success/10 hover:text-success focus-visible:border-success focus-visible:bg-success/10 focus-visible:text-success">
+                    <Check aria-hidden="true" className="size-3 opacity-0 group-hover:opacity-100 group-focus-visible:opacity-100" />
+                  </button>
+                </TooltipTrigger>
+                <TooltipContent>Aufgabe abschließen</TooltipContent>
+              </Tooltip>
               <button type="button" onClick={(event) => event.shiftKey || event.metaKey || event.ctrlKey ? onToggleSelect(task.id) : onSelect(task.id)} aria-current={task.id === selectedId ? "true" : undefined} aria-pressed={selection.has(task.id)} className="min-w-0 flex-1 text-left">
                 <div className="flex items-start justify-between gap-3">
                   <span className="text-sm font-medium leading-5">{task.title}</span>
