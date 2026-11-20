@@ -15,7 +15,6 @@ const DocumentsView = lazyWithRetry(() => import("@/features/documents/component
 const TopicOverview = lazyWithRetry(() => import("@/features/topics/TopicOverview").then(m => ({ default: m.TopicOverview })));
 const KnowledgeBaseView = lazyWithRetry(() => import("@/features/knowledge/components/KnowledgeBaseView"));
 const KnowledgeWorkspace = lazyWithRetry(() => import("@/features/knowledge").then(m => ({ default: m.KnowledgeWorkspace })));
-const TasksWorkspace = lazyWithRetry(() => import("@/components/my-work/MyWorkTasksTab").then(m => ({ default: m.MyWorkTasksTab })));
 const SettingsView = lazyWithRetry(() => import("@/components/admin/SettingsView").then(m => ({ default: m.SettingsView })));
 const MeetingsView = lazyWithRetry(() => import("@/features/meetings").then(m => ({ default: m.MeetingsView })));
 const EventPlanningView = lazyWithRetry(() => import("@/features/event-planning/components/EventPlanningView").then(m => ({ default: m.EventPlanningView })));
@@ -204,8 +203,6 @@ const Index = (): React.JSX.Element => {
           return withSectionBoundary('Kontakt erstellen', <CreateContact />);
         }
         return withSectionBoundary('Kontakte', <ContactsView />);
-      case "tasks":
-        return withSectionBoundary('Aufgaben', <div className="flex h-full min-h-0 flex-col"><TasksWorkspace /></div>);
       case "decisions":
         return withSectionBoundary('Entscheidungen', <DecisionOverview />);
       case "time":

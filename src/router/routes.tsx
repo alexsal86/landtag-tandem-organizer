@@ -1,4 +1,4 @@
-import { Navigate, Route } from "react-router-dom";
+import { Navigate, Route, useLocation, useParams } from "react-router-dom";
 import { lazyWithRetry } from "@/lib/lazyWithRetry";
 import { ProtectedRoute } from "./ProtectedRoute";
 
@@ -23,6 +23,19 @@ const TaskArchiveView = lazyWithRetry(() =>
 const Auth = lazyWithRetry(() => import("@/pages/Auth"));
 const NotFound = lazyWithRetry(() => import("@/pages/NotFound"));
 
+function TaskWorkspaceRedirect() {
+  const { search, hash } = useLocation();
+  const { taskId } = useParams();
+  const params = new URLSearchParams(search);
+  const linkedTask = params.get("task") || params.get("id") || taskId;
+
+  params.set("tab", "tasks");
+  if (linkedTask) params.set("task", linkedTask);
+  params.delete("id");
+
+  return <Navigate to={{ pathname: "/mywork", search: `?${params}`, hash }} replace />;
+}
+
 export const AppRoutes = () => (
   <>
     {/* Öffentliche Routen – kein Login erforderlich */}
@@ -43,6 +56,7 @@ export const AppRoutes = () => (
       <Route path="/contacts/:id/edit" element={<EditContact />} />
       <Route path="/tasks/new" element={<CreateTask />} />
       <Route path="/tasks/archive" element={<TaskArchiveView />} />
+      <Route path="/tasks/:taskId?" element={<TaskWorkspaceRedirect />} />
       <Route path="/contacts/import" element={<ImportContacts />} />
       <Route path="/maps" element={<Navigate to="/karten" replace />} />
       <Route path="/profile/edit" element={<Navigate to="/profile-edit" replace />} />

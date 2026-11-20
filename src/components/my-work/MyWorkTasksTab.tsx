@@ -1,5 +1,5 @@
 import { useEffect, useMemo, useState } from "react";
-import { useNavigate, useSearchParams } from "react-router-dom";
+import { useSearchParams } from "react-router-dom";
 import { useAuth } from "@/hooks/useAuth";
 import { useNotificationHighlight } from "@/hooks/useNotificationHighlight";
 import { usePersistentState } from "@/hooks/usePersistentState";
@@ -31,7 +31,6 @@ import { TaskStafetteWorkspace } from "./tasks/workspace/TaskStafetteWorkspace";
 export function MyWorkTasksTab() {
   const { user } = useAuth();
   const { currentTenant } = useTenant();
-  const navigate = useNavigate();
   const [searchParams, setSearchParams] = useSearchParams();
   const { viewType, setViewType } = useViewPreference({
     key: "mywork-tasks",
@@ -211,7 +210,11 @@ export function MyWorkTasksTab() {
     taskSnoozes,
     taskCommentCounts,
     resolveAssigneeName: helpers.resolveAssigneeName,
-    onNavigate: (taskId: string) => navigate(`/tasks?id=${taskId}`),
+    onNavigate: (taskId: string) => setSearchParams((params) => {
+      const next = new URLSearchParams(params);
+      next.set("task", taskId);
+      return next;
+    }),
     onComplete: actions.handleToggleComplete,
     onSubtaskComplete: actions.handleToggleSubtaskComplete,
     onUpdateTitle: actions.handleUpdateTitle,
