@@ -1,5 +1,4 @@
 import { useState } from "react";
-import { LayoutTemplate } from "lucide-react";
 import { supabase } from "@/integrations/supabase/client";
 import { Button } from "@/components/ui/button";
 import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogDescription } from "@/components/ui/dialog";
@@ -27,8 +26,8 @@ export function TaskTemplateButton({ userId, tenantId, onCreated }: Props) {
 
   return (
     <>
-      <Button size="sm" variant="outline" onClick={() => setOpen(true)} disabled={!tenantId}>
-        <LayoutTemplate className="h-4 w-4 mr-1" />Aus Vorlage
+      <Button size="sm" variant="ghost" className="text-muted-foreground" onClick={() => setOpen(true)} disabled={!tenantId}>
+        Vorlagen
       </Button>
       <Dialog open={open} onOpenChange={setOpen}>
         <DialogContent>

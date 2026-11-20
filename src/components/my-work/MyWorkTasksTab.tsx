@@ -1,5 +1,5 @@
 import { useEffect, useMemo, useState } from "react";
-import { useSearchParams } from "react-router-dom";
+import { Link, useSearchParams } from "react-router-dom";
 import { useAuth } from "@/hooks/useAuth";
 import { useNotificationHighlight } from "@/hooks/useNotificationHighlight";
 import { usePersistentState } from "@/hooks/usePersistentState";
@@ -280,15 +280,32 @@ export function MyWorkTasksTab() {
     </>
   );
 
+  const createActions = (
+    <div className="flex flex-wrap items-center justify-end gap-2">
+      <Button asChild size="sm">
+        <Link to="/tasks/new">Aufgabe</Link>
+      </Button>
+      <Button size="sm" variant="outline" onClick={() => setTodoCreateOpen(true)}>
+        Aufgabe schnell
+      </Button>
+    </div>
+  );
+
   const modeToggle = (
-    <div className="flex justify-end gap-xs px-4 pt-2">
+    <div className="ml-auto flex flex-wrap items-center gap-1">
       {workspaceMode === "stafette" && <TaskTemplateButton userId={user?.id} tenantId={currentTenant?.id} onCreated={() => void loadTasks()} />}
-      <Button size="sm" variant={workspaceMode === "stafette" ? "default" : "outline"} onClick={() => setWorkspaceMode("stafette")}>
-        Stafette
-      </Button>
-      <Button size="sm" variant={workspaceMode === "classic" ? "default" : "outline"} onClick={() => setWorkspaceMode("classic")}>
-        Klassisch
-      </Button>
+      {([["stafette", "Stafette"], ["classic", "Klassisch"]] as const).map(([mode, label]) => (
+        <Button
+          key={mode}
+          size="sm"
+          variant="ghost"
+          aria-pressed={workspaceMode === mode}
+          className={workspaceMode === mode ? "font-semibold" : "text-muted-foreground"}
+          onClick={() => setWorkspaceMode(mode)}
+        >
+          {label}
+        </Button>
+      ))}
     </div>
   );
 
@@ -297,9 +314,9 @@ export function MyWorkTasksTab() {
       new Map([...assignedTasks, ...createdTasks].map((t) => [t.id, t])).values(),
     );
     return (
-      <div className="min-h-[calc(100vh-20rem)] flex flex-col">
-        {modeToggle}
-        <div className="flex-1 min-h-0 flex flex-col pt-2">
+      <div className="min-h-[calc(100vh-20rem)] flex flex-col gap-2">
+        {createActions}
+        <div className="flex-1 min-h-0 flex flex-col">
           <TaskStafetteWorkspace
             userId={user?.id}
             tasks={uniqueTopLevel}
@@ -309,6 +326,7 @@ export function MyWorkTasksTab() {
             onDecision={actions.handleDecision}
             onJourFixe={actions.handleAddToMeeting}
             onCreate={() => setTodoCreateOpen(true)}
+            modeControls={modeToggle}
           />
         </div>
         {dialogsAndExtras}
@@ -318,7 +336,11 @@ export function MyWorkTasksTab() {
 
   return (
     <div className="h-[calc(100vh-20rem)] flex flex-col">
-      {modeToggle}
+      {createActions}
+      <div className="mt-2 flex shrink-0 flex-wrap items-center gap-2 border-t bg-[#f8f8f6] px-4 py-2 dark:bg-muted/60">
+        <h2 className="text-base font-semibold">Aufgaben</h2>
+        {modeToggle}
+      </div>
       <MyWorkTasksToolbar
         totalTasks={totalTasks}
         statusFilter={statusFilter}
@@ -380,8 +402,6 @@ export function MyWorkTasksTab() {
             icon={ListTodo}
             title="Noch keine Aufgaben"
             description="Erstelle eine Aufgabe, um Themen zu sortieren, zuzuweisen und nachzuverfolgen."
-            actionLabel="Aufgabe erstellen"
-            onAction={() => setTodoCreateOpen(true)}
           />
         </div>
       ) : (

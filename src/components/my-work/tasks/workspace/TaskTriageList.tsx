@@ -9,6 +9,7 @@ import { isReminderDue, TASK_BALL_LABELS, type TaskBallOwner, type TaskZone } fr
 
 interface Props {
   zones: Record<TaskZone, MyWorkTask[]>;
+  visibleZones: readonly TaskZone[];
   selectedId: string | null;
   onSelect: (id: string) => void;
   decisionLabel: (taskId: string) => string | null;
@@ -48,7 +49,7 @@ function Row({ task, active, onSelect, sub, checked, onCheck, highlight }: { tas
   );
 }
 
-export function TaskTriageList({ zones, selectedId, onSelect, decisionLabel, nameOf, selection, onToggleSelect, onClearSelection, onBatch }: Props) {
+export function TaskTriageList({ zones, visibleZones, selectedId, onSelect, decisionLabel, nameOf, selection, onToggleSelect, onClearSelection, onBatch }: Props) {
   const [busy, setBusy] = useState(false);
   const runBatch = async (k: "deputy" | "week" | "nudge") => { setBusy(true); try { await onBatch(k); } finally { setBusy(false); } };
   const [resubOpen, setResubOpen] = useState(false);
@@ -77,7 +78,7 @@ export function TaskTriageList({ zones, selectedId, onSelect, decisionLabel, nam
     { zone: "resubmission", title: "Wiedervorlage" },
   ];
   const entries = sections.flatMap(({ zone, title }) => {
-    if (zone === "nudged" && zones.nudged.length === 0) return [];
+    if (!visibleZones.includes(zone) || (zone === "nudged" && zones.nudged.length === 0)) return [];
     const tasks = zone === "resubmission" && !resubOpen ? [] : zones[zone];
     return [
       { key: zone, zone, title, task: null },

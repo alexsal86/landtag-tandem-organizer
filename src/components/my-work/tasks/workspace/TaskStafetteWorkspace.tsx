@@ -1,12 +1,13 @@
-import { useCallback, useEffect, useMemo, useRef, useState } from "react";
+import { useCallback, useEffect, useMemo, useRef, useState, type ReactNode } from "react";
 import { useQuery } from "@tanstack/react-query";
 import { supabase } from "@/integrations/supabase/client";
 import type { Json } from "@/integrations/supabase/types";
 import type { MyWorkTask } from "@/hooks/useMyWorkTasksData";
 import { notify } from "@/lib/notify";
 import { EmptyState } from "@/components/ui-patterns";
-import { ListTodo, Plus } from "lucide-react";
+import { ListTodo } from "lucide-react";
 import { Button } from "@/components/ui/button";
+import { cn } from "@/lib/utils";
 import { checklistEvents, parseChecklist, shiftDay, groupByZone, isReminderDue, type ChecklistItem, parseTaskTimeline, stafetteEvents, type StafetteEvent } from "@/features/tasks/stafette";
 import { TaskTriageList } from "./TaskTriageList";
 import { TaskDetailView, type TaskPatch } from "./TaskDetailView";
@@ -20,17 +21,25 @@ interface Props {
   onDecision: (taskId: string) => void;
   onJourFixe: (taskId: string) => void;
   onCreate: () => void;
+  modeControls: ReactNode;
 }
 
-export function TaskStafetteWorkspace({ userId, tasks, profiles, onReload, onComplete, onDecision, onJourFixe, onCreate }: Props) {
+const taskFilters = [
+  { id: "mine", label: "Mein Zug", zones: ["nudged", "mine"] },
+  { id: "waiting", label: "Wartet", zones: ["waiting", "resubmission"] },
+  { id: "all", label: "Alle", zones: ["nudged", "mine", "waiting", "resubmission"] },
+] as const;
+
+export function TaskStafetteWorkspace({ userId, tasks, profiles, onReload, onComplete, onDecision, onJourFixe, onCreate, modeControls }: Props) {
+  const [filter, setFilter] = useState<(typeof taskFilters)[number]>(taskFilters[0]);
   const [selectedId, setSelectedId] = useState<string | null>(null);
   const [local, setLocal] = useState<Record<string, Partial<MyWorkTask>>>({});
   const shortcuts = useRef<{ stepDone: () => void; daySlip: () => void } | null>(null);
 
   const merged = useMemo(() => tasks.map((t) => ({ ...t, ...local[t.id] })), [tasks, local]);
   const zones = useMemo(() => groupByZone(merged, userId), [merged, userId]);
-  const ordered = useMemo(() => [...zones.nudged, ...zones.mine, ...zones.waiting, ...zones.resubmission], [zones]);
-  const selected = merged.find((t) => t.id === selectedId) ?? ordered[0] ?? null;
+  const ordered = useMemo(() => filter.zones.flatMap((zone) => zones[zone]), [filter, zones]);
+  const selected = ordered.find((t) => t.id === selectedId) ?? ordered[0] ?? null;
 
   const remindedOnce = useRef(false);
   useEffect(() => {
@@ -162,55 +171,80 @@ export function TaskStafetteWorkspace({ userId, tasks, profiles, onReload, onCom
       const idx = selected ? ordered.findIndex((t) => t.id === selected.id) : -1;
       if (e.key === "j" || e.key === "ArrowDown") { const n = ordered[Math.min(idx + 1, ordered.length - 1)]; if (n) setSelectedId(n.id); e.preventDefault(); }
       else if (e.key === "k" || e.key === "ArrowUp") { const n = ordered[Math.max(idx - 1, 0)]; if (n) setSelectedId(n.id); e.preventDefault(); }
-      else if (e.key === "e") shortcuts.current?.stepDone();
-      else if (e.key === "t") shortcuts.current?.daySlip();
+      else if (selected && e.key === "e") shortcuts.current?.stepDone();
+      else if (selected && e.key === "t") shortcuts.current?.daySlip();
       else if (e.key === "c") { onCreate(); e.preventDefault(); }
     };
     window.addEventListener("keydown", onKey);
     return () => window.removeEventListener("keydown", onKey);
   }, [ordered, selected, onCreate]);
 
-  if (ordered.length === 0) {
-    return <div className="flex flex-1 flex-col items-center justify-center gap-4 rounded-2xl border bg-card p-6 shadow-sm"><EmptyState icon={ListTodo} title="Alles erledigt" description="Keine offenen Aufgaben. Lege eine neue Aufgabe an." /><Button onClick={onCreate}><Plus className="mr-2 h-4 w-4" />Neue Aufgabe</Button></div>;
-  }
-
   return (
-    <div className="flex-1 min-h-0 grid auto-rows-max grid-cols-1  rounded-2xl border bg-card shadow-sm lg:grid-cols-[320px_minmax(0,1fr)] lg:auto-rows-auto ">
-      <div className="flex min-h-0 min-w-0 flex-col border-b lg:border-b-0 lg:border-r">
-        <div className="flex shrink-0 flex-wrap items-center justify-between gap-3 border-b p-4">
-          <h2 className="text-xl font-bold tracking-tight">Aufgaben</h2>
-          <Button onClick={onCreate} className="h-10 rounded-lg bg-success px-3 font-semibold text-white hover:bg-success/90"><Plus className="mr-1 h-4 w-4" />Neue Aufgabe</Button>
+    <>
+      <div className="mb-2 flex shrink-0 flex-wrap items-center gap-x-4 gap-y-2 border-t bg-[#f8f8f6] px-4 py-2 dark:bg-muted/60">
+        <h2 className="text-base font-semibold">Aufgaben</h2>
+        <div role="group" aria-label="Aufgaben filtern" className="flex flex-wrap items-center gap-1">
+          {taskFilters.map((option) => (
+            <Button
+              key={option.id}
+              size="sm"
+              variant="ghost"
+              aria-pressed={filter.id === option.id}
+              className={cn("h-10 gap-1 rounded-xl", filter.id === option.id ? "bg-[#f0f0ed] font-semibold dark:bg-muted" : "text-muted-foreground")}
+              onClick={() => {
+                if (filter.id === option.id) return;
+                setFilter(option);
+                setSelection(new Set());
+              }}
+            >
+              {option.label}
+              <span className="font-normal text-muted-foreground">
+                {option.zones.reduce((count, zone) => count + zones[zone].length, 0)}
+              </span>
+            </Button>
+          ))}
         </div>
-        <div className="h-80 min-h-0 lg:h-auto lg:flex-1">
-          <TaskTriageList zones={zones} selectedId={selected?.id ?? null} onSelect={setSelectedId} decisionLabel={decisionLabel} nameOf={nameOf} selection={selection} onToggleSelect={toggleSelect} onClearSelection={() => setSelection(new Set())} onBatch={batch} />
+        {modeControls}
+      </div>
+      {ordered.length === 0 ? (
+        <div className="flex flex-1 items-center justify-center rounded-2xl border bg-card p-6 shadow-sm">
+          <EmptyState icon={ListTodo} title="Keine Aufgaben in dieser Ansicht" />
         </div>
-      </div>
-      <div className="min-h-0 min-w-0 flex flex-col">
-        {selected && (
-          <TaskDetailView
-            key={selected.id}
-            task={selected}
-            profiles={profiles}
-            decisionLabel={decisionLabel(selected.id)}
-            nameOf={nameOf}
-            meId={userId}
-            pendingVote={pendingVoteFor(selected.id)}
-            onVote={(key, comment) => { const pv = pendingVoteFor(selected.id); return pv ? vote(pv.participantId, pv.decisionId, key, comment) : Promise.resolve(); }}
-            onNudge={(n) => nudge(selected, n)}
-            onAckNudge={(r) => ackNudge(selected, r)}
-            onSave={(p) => save(selected, p)}
-            onComplete={async () => {
-              const evts = stafetteEvents(selected, { ...selected, status: "completed" }, { actorName: nameOf(userId) });
-              await supabase.from("tasks").update({ timeline: [...parseTaskTimeline(selected.timeline), ...evts] as unknown as Json }).eq("id", selected.id);
-              await onComplete(selected.id);
-            }}
-            onDecision={() => onDecision(selected.id)}
-            onJourFixe={() => onJourFixe(selected.id)}
-            registerShortcuts={(h) => { shortcuts.current = h; }}
-            onReload={() => void onReload()}
-          />
-        )}
-      </div>
-    </div>
+      ) : (
+        <div className="grid min-h-0 flex-1 auto-rows-max grid-cols-1 rounded-2xl border bg-card shadow-sm lg:auto-rows-auto lg:grid-cols-[320px_minmax(0,1fr)]">
+          <div className="flex min-h-0 min-w-0 flex-col border-b lg:border-b-0 lg:border-r">
+            <div className="h-80 min-h-0 lg:h-auto lg:flex-1">
+              <TaskTriageList zones={zones} visibleZones={filter.zones} selectedId={selected?.id ?? null} onSelect={setSelectedId} decisionLabel={decisionLabel} nameOf={nameOf} selection={selection} onToggleSelect={toggleSelect} onClearSelection={() => setSelection(new Set())} onBatch={batch} />
+            </div>
+          </div>
+          <div className="min-h-0 min-w-0 flex flex-col">
+            {selected && (
+              <TaskDetailView
+                key={selected.id}
+                task={selected}
+                profiles={profiles}
+                decisionLabel={decisionLabel(selected.id)}
+                nameOf={nameOf}
+                meId={userId}
+                pendingVote={pendingVoteFor(selected.id)}
+                onVote={(key, comment) => { const pv = pendingVoteFor(selected.id); return pv ? vote(pv.participantId, pv.decisionId, key, comment) : Promise.resolve(); }}
+                onNudge={(n) => nudge(selected, n)}
+                onAckNudge={(r) => ackNudge(selected, r)}
+                onSave={(p) => save(selected, p)}
+                onComplete={async () => {
+                  const evts = stafetteEvents(selected, { ...selected, status: "completed" }, { actorName: nameOf(userId) });
+                  await supabase.from("tasks").update({ timeline: [...parseTaskTimeline(selected.timeline), ...evts] as unknown as Json }).eq("id", selected.id);
+                  await onComplete(selected.id);
+                }}
+                onDecision={() => onDecision(selected.id)}
+                onJourFixe={() => onJourFixe(selected.id)}
+                registerShortcuts={(h) => { shortcuts.current = h; }}
+                onReload={() => void onReload()}
+              />
+            )}
+          </div>
+        </div>
+      )}
+    </>
   );
 }

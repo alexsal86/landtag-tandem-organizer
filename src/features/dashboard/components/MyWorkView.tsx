@@ -194,10 +194,12 @@ export function MyWorkView() {
                 <StickyNote className="h-4 w-4 mr-2" />
                 Quick Note
               </DropdownMenuItem>
-              <DropdownMenuItem onClick={() => setSearchParams(new URLSearchParams([["tab", "tasks"], ["action", "create-task"]]))}>
-                <CheckSquare className="h-4 w-4 mr-2" />
-                Aufgabe
-              </DropdownMenuItem>
+              {activeTab !== "tasks" && (
+                <DropdownMenuItem onClick={() => setSearchParams(new URLSearchParams([["tab", "tasks"], ["action", "create-task"]]))}>
+                  <CheckSquare className="h-4 w-4 mr-2" />
+                  Aufgabe
+                </DropdownMenuItem>
+              )}
               <DropdownMenuItem onClick={() => setSearchParams(new URLSearchParams([["tab", "decisions"], ["action", "create-decision"]]))}>
                 <Vote className="h-4 w-4 mr-2" />
                 Entscheidung
