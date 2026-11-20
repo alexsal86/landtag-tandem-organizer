@@ -1,3 +1,4 @@
+import { meetingAppointmentTitle } from "./appointmentDisplay";
 import { SystemSubpointList } from "./agenda-editor/SystemSubpointList";
 import React, { useState, useEffect } from 'react';
 import { Calendar, Clock, MapPin, ChevronDown, ChevronRight, Star, Users } from 'lucide-react';
@@ -105,7 +106,7 @@ export const UpcomingAppointmentsSection: React.FC<UpcomingAppointmentsSectionPr
       // Load internal appointments
       const { data: internalData, error: internalError } = await supabase
         .from('appointments')
-        .select('id, title, start_time, end_time, location, category, status')
+        .select('id, title, start_time, end_time, location, category, status, description')
         .eq('tenant_id', currentTenant.id)
         .gte('start_time', startDate.toISOString())
         .lte('start_time', endDate.toISOString())
@@ -138,8 +139,9 @@ export const UpcomingAppointmentsSection: React.FC<UpcomingAppointmentsSectionPr
       }
 
       // Merge and format appointments
-      const internalAppointments: Appointment[] = (internalData || []).map((apt: Record<string, any>) => ({
+      const internalAppointments: Appointment[] = (internalData || []).map((apt) => ({
         ...apt,
+        title: meetingAppointmentTitle(apt),
         isExternal: false
       }));
 

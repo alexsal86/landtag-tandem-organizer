@@ -1,3 +1,4 @@
+import { meetingAppointmentTitle, employeeMeetingMetadata } from "../appointmentDisplay";
 import { useQuery } from "@tanstack/react-query";
 import { Link } from "react-router-dom";
 import { Button } from "@/components/ui/button";
@@ -18,11 +19,11 @@ export function AppointmentInspector({ meeting, parent, number, selectedKey, onS
     queryFn: async () => {
       const start = new Date(meeting.meeting_date); start.setHours(0,0,0,0);
       const end = new Date(start); end.setDate(end.getDate()+14); end.setHours(23,59,59,999);
-      const internal = await supabase.from("appointments").select("id,title,start_time,end_time,location,description").eq("tenant_id", meeting.tenant_id!).gte("start_time",start.toISOString()).lte("start_time",end.toISOString());
+      const internal = await supabase.from("appointments").select("id,title,start_time,end_time,location,description,category").eq("tenant_id", meeting.tenant_id!).gte("start_time",start.toISOString()).lte("start_time",end.toISOString());
       const external = await supabase.from("external_events").select("id,title,start_time,end_time,location,external_calendars!inner(name,tenant_id)").eq("external_calendars.tenant_id",meeting.tenant_id!).gte("start_time",start.toISOString()).lte("start_time",end.toISOString());
       if(internal.error) throw internal.error;
       if(external.error) throw external.error;
-      return [...(internal.data ?? []).map(row=>({...row, source:"",description:row.description})), ...(external.data ?? []).map(row=>({...row, source:"extern",description:null}))].sort((a,b)=>a.start_time.localeCompare(b.start_time));
+      return [...(internal.data ?? []).map(row=>({...row, source:"", title:meetingAppointmentTitle(row),description:employeeMeetingMetadata(row.description) ? null : row.description})), ...(external.data ?? []).map(row=>({...row, source:"extern",description:null}))].sort((a,b)=>a.start_time.localeCompare(b.start_time));
     },
   });
   const results = parseMeetingResults(parent.result_text);

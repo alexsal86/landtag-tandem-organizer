@@ -726,7 +726,7 @@ export function SystemAgendaItem({
   };
   if (!editorRow) return renderBody();
   const subpointCount = (count ?? 0) + manualSubpointCount;
-  const subpointLabel = count === null && subpointCount === 0
+  const subpointLabel = subpointCount === 0
     ? null
     : `${subpointCount} ${subpointCount === 1 ? "Unterpunkt" : "Unterpunkte"}`;
   const Icon = systemAgendaOption(systemType)?.Icon;
@@ -784,7 +784,7 @@ export function SystemAgendaItem({
                 )}
               />
               {showAppointmentsAsSubpoints && <span className="text-xs text-muted-foreground">(nächste zwei Wochen)</span>}
-        {!editorLive && (
+        {!editorLive && (subpointLabel || count === null) && (
           <Button
             size="sm"
             variant="ghost"

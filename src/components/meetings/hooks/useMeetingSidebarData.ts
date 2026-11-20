@@ -1,3 +1,4 @@
+import { meetingAppointmentTitle } from "../appointmentDisplay";
 import { useState, useRef, useCallback } from "react";
 import { supabase } from "@/integrations/supabase/client";
 import { debugConsole } from "@/utils/debugConsole";
@@ -203,7 +204,7 @@ export function useMeetingSidebarData(deps: UseMeetingSidebarDataDeps) {
 
         const { data: internalData } = await supabase
           .from("appointments")
-          .select("id, title, start_time, end_time, location, category, status")
+          .select("id, title, start_time, end_time, location, category, status, description")
           .eq("tenant_id", tid)
           .gte("start_time", start.toISOString())
           .lte("start_time", end.toISOString())
@@ -221,7 +222,7 @@ export function useMeetingSidebarData(deps: UseMeetingSidebarDataDeps) {
         if (requestVersions.current[key] !== version) return;
 
         const all: MeetingUpcomingAppointment[] = [
-          ...(internalData || []).map((a: Record<string, any>) => ({ ...a, isExternal: false as const })),
+          ...(internalData || []).map((a) => ({ ...a, title: meetingAppointmentTitle(a), isExternal: false as const })),
           ...((externalData || []) as ExternalEventAppointmentRow[]).map(
             (e) => {
               const calendar = extractExternalCalendar(e.external_calendars);
