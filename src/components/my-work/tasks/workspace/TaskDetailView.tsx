@@ -92,13 +92,15 @@ export function TaskDetailView({ task, profiles, decisionLabel, onSave, onComple
   };
 
   useEffect(() => {
-    setLabel(task.next_action ?? "");
     setDue(task.next_action_due ?? "");
     setOwner((task.ball_owner ?? "office") as TaskBallOwner);
     setAssignee(task.ball_assignee_id ?? "none");
     setExternalLabel(task.ball_external_label ?? "");
-    setNote("");
-  }, [task.id, task.next_action, task.next_action_due, task.ball_owner, task.ball_assignee_id, task.ball_external_label]);
+  }, [task.id, task.next_action_due, task.ball_owner, task.ball_assignee_id, task.ball_external_label]);
+
+  useEffect(() => {
+    setLabel(task.next_action ?? "");
+  }, [task.id, task.next_action]);
 
   useEffect(() => {
     setDescription(task.description ?? "");
@@ -113,8 +115,9 @@ export function TaskDetailView({ task, profiles, decisionLabel, onSave, onComple
     try { await fn(); } finally { setSaving(false); }
   };
 
-  const setStep = () =>
-    run(() => onSave({ next_action: label.trim() || null, next_action_due: due || null, ball_owner: owner, ball_assignee_id: owner === "office" && assignee !== "none" ? assignee : null, ball_external_label: owner === "external" ? externalLabel || null : null }));
+  const setStep = () => run(() => onSave({ next_action: label.trim() || null }));
+  const saveDue = (date: string) => run(() => onSave({ next_action_due: date || null }));
+
   const changeOwnerPicker = (open: boolean) => {
     setOwnerPickerOpen(open);
     if (open) setExternalDraft(owner === "external" ? externalLabel : "");
@@ -133,9 +136,13 @@ export function TaskDetailView({ task, profiles, decisionLabel, onSave, onComple
     return id.startsWith("custom:") ? [{ id, label: id.slice(7), role: "external" as const }] : [];
   });
   const chooseOwner = (option: (typeof ownerOptions)[number]) => {
-    setOwner(option.role);
-    if (option.role === "office") setAssignee(option.id.slice(7));
-    if (option.role === "external") setExternalLabel(option.id === "external:Extern" ? "" : option.label);
+    const person = option.role === "office" ? option.id.slice(7) : "none";
+    const external = option.role === "external" && option.id !== "external:Extern" ? option.label : null;
+    void run(() => onSave({
+      ball_owner: option.role,
+      ball_assignee_id: person === "none" ? null : person,
+      ball_external_label: external,
+    }));
     rememberOwner(option.id);
     setOwnerPickerOpen(false);
   };
@@ -166,8 +173,8 @@ export function TaskDetailView({ task, profiles, decisionLabel, onSave, onComple
 
   return (
     <div className="grid min-h-0 min-w-0 flex-1 auto-rows-max grid-cols-1  min-[1440px]:grid-cols-[minmax(0,1fr)_300px] min-[1440px]:auto-rows-auto ">
-      <main aria-label="Aufgabendetails" className="min-h-0 min-w-0 space-y-5 bg-white p-6 dark:bg-card [&>section]:space-y-3 [&_input]:border-0 [&_input]:bg-transparent [&_textarea]:border-0 [&_textarea]:bg-transparent [&_[role=combobox]]:border-0 [&_[role=combobox]]:bg-transparent">
-        <header className="relative space-y-4 pl-10">
+      <main aria-label="Aufgabendetails" className="min-h-0 min-w-0 space-y-3 bg-white p-6 dark:bg-card [&>section]:space-y-3 [&_input]:border-0 [&_input]:bg-transparent [&_textarea]:border-0 [&_textarea]:bg-transparent [&_[role=combobox]]:border-0 [&_[role=combobox]]:bg-transparent">
+        <header className="relative space-y-1 pl-10">
           <Tooltip>
             <TooltipTrigger asChild>
               <Button type="button" variant="ghost" size="icon" disabled={saving}
@@ -181,23 +188,61 @@ export function TaskDetailView({ task, profiles, decisionLabel, onSave, onComple
           <h2 className="break-words text-3xl font-bold leading-tight tracking-tight">{task.title}</h2>
           <Textarea aria-label="Beschreibung" value={description} onChange={(event) => setDescription(event.target.value)}
             placeholder="Beschreibung hinzufügen …" rows={1}
-            className="min-h-0 resize-y px-0 leading-relaxed text-muted-foreground [field-sizing:content]" />
+            className="min-h-0 resize-y px-0 py-0 focus-visible:ring-0 focus-visible:ring-offset-0 leading-relaxed text-muted-foreground [field-sizing:content]" />
           {description !== (task.description ?? "") && (
             <Button size="sm" variant="outline" disabled={saving}
               onClick={() => void run(() => onSave({ description: description.trim() || null }))}>
               Beschreibung speichern
             </Button>
           )}
-          <div className="flex flex-wrap gap-2">
+          {(decisionLabel || task.pending_for_jour_fixe) && <div className="flex flex-wrap gap-2">
             {decisionLabel && <Badge variant="secondary"><Gavel className="h-3 w-3 mr-1" />{decisionLabel}</Badge>}
             {task.pending_for_jour_fixe && <Badge variant="secondary"><Users className="h-3 w-3 mr-1" />Jour Fixe</Badge>}
-          </div>
+          </div>}
           <WorkflowLinks taskId={task.id} />
         </header>
-          <div className="ml-10 flex flex-wrap items-center gap-2 border-t pt-4">
+
+        {nudgeForMe && (
+          <section className="space-y-3" role="alert">
+            <div className="flex items-center gap-2 text-body font-medium">
+              <BellRing className="h-4 w-4 text-primary" />
+              {nameOf(task.nudged_by) ?? "Jemand"} hat dich angestupst
+              {task.nudge_count && task.nudge_count > 1 ? <Badge variant="secondary">{task.nudge_count}×</Badge> : null}
+            </div>
+            <div className="text-caption text-muted-foreground">
+              {task.nudged_at ? new Date(task.nudged_at).toLocaleString("de-DE", { dateStyle: "short", timeStyle: "short" }) : ""}
+              {task.nudge_note ? ` – „${task.nudge_note}“` : ""}
+            </div>
+            <Input value={reply} onChange={(e) => setReply(e.target.value)} placeholder="Kurze Antwort (optional)" className="h-8" />
+            <div className="flex gap-2">
+              <Button size="sm" disabled={saving} onClick={() => run(async () => { await onAckNudge(""); })}>Gesehen</Button>
+              <Button size="sm" variant="outline" disabled={saving || !reply.trim()} onClick={() => run(async () => { await onAckNudge(reply.trim()); setReply(""); })}>Antworten</Button>
+            </div>
+          </section>
+        )}
+
+        {pendingVote && (
+          <section className="space-y-3">
+            <div className="section-label flex items-center gap-2"><Gavel className="h-3.5 w-3.5" />Deine Stimme ist gefragt</div>
+            <div className="text-body font-medium">{pendingVote.title}</div>
+            <Input value={voteComment} onChange={(e) => setVoteComment(e.target.value)} placeholder="Kommentar (bei Rückfrage nötig)" className="h-8" />
+            <div className="flex flex-wrap gap-2">
+              {pendingVote.options.map((o) => (
+                <Button key={o.key} size="sm" variant={o.key === "yes" ? "default" : "outline"} disabled={saving || (o.requiresComment && !voteComment.trim())}
+                  onClick={() => run(async () => { await onVote(o.key, voteComment.trim()); setVoteComment(""); })}>
+                  {o.label}
+                </Button>
+              ))}
+            </div>
+          </section>
+        )}
+
+        <section className="ml-10 space-y-3 border-y py-3">
+          <label htmlFor="task-next-action" className="block text-sm text-muted-foreground">Nächster Schritt</label>
+          <div className="flex flex-wrap items-center gap-2">
             <Dialog open={ownerPickerOpen} onOpenChange={changeOwnerPicker}>
               <DialogTrigger asChild>
-                <Button variant="outline" size="sm" aria-keyshortcuts="A" className="max-w-full rounded-full bg-transparent">
+                <Button variant="outline" size="sm" aria-keyshortcuts="A" disabled={saving} className="max-w-full rounded-full bg-transparent">
                   <span className={cn("size-2 shrink-0 rounded-full", ownerColors[owner])} />
                   <span className="text-muted-foreground">Am Zug</span>
                   <span className="truncate">
@@ -238,66 +283,28 @@ export function TaskDetailView({ task, profiles, decisionLabel, onSave, onComple
             </Dialog>
             <DropdownMenu>
               <DropdownMenuTrigger asChild>
-                <Button variant="outline" size="sm" className="rounded-full bg-transparent data-[state=open]:bg-muted">
+                <Button variant="outline" size="sm" disabled={saving} className="rounded-full bg-transparent data-[state=open]:bg-muted">
                   <CalendarDays />{due ? formatDate(due) : "Kein Termin"}
                 </Button>
               </DropdownMenuTrigger>
               <DropdownMenuContent align="start" className="min-w-52 rounded-xl p-1">
                 {datePresets.map(([text, days]) => {
                   const date = shiftDay(null, days);
-                  return <DropdownMenuItem key={days} onSelect={() => setDue(date)} className="justify-between gap-4 py-2">
+                  return <DropdownMenuItem key={days} onSelect={() => void saveDue(date)} className="justify-between gap-4 py-2">
                     {text}<span className="text-xs text-muted-foreground">{formatDate(date)}</span>
                   </DropdownMenuItem>;
                 })}
                 <DropdownMenuItem onSelect={() => { setCustomValue(due); setCustomField("date"); }}>Datum wählen …</DropdownMenuItem>
-                {due && <DropdownMenuItem onSelect={() => setDue("")}>Termin entfernen</DropdownMenuItem>}
+                {due && <DropdownMenuItem onSelect={() => void saveDue("")}>Termin entfernen</DropdownMenuItem>}
               </DropdownMenuContent>
             </DropdownMenu>
           </div>
-
-        {nudgeForMe && (
-          <section className="space-y-3" role="alert">
-            <div className="flex items-center gap-2 text-body font-medium">
-              <BellRing className="h-4 w-4 text-primary" />
-              {nameOf(task.nudged_by) ?? "Jemand"} hat dich angestupst
-              {task.nudge_count && task.nudge_count > 1 ? <Badge variant="secondary">{task.nudge_count}×</Badge> : null}
-            </div>
-            <div className="text-caption text-muted-foreground">
-              {task.nudged_at ? new Date(task.nudged_at).toLocaleString("de-DE", { dateStyle: "short", timeStyle: "short" }) : ""}
-              {task.nudge_note ? ` – „${task.nudge_note}“` : ""}
-            </div>
-            <Input value={reply} onChange={(e) => setReply(e.target.value)} placeholder="Kurze Antwort (optional)" className="h-8" />
-            <div className="flex gap-2">
-              <Button size="sm" disabled={saving} onClick={() => run(async () => { await onAckNudge(""); })}>Gesehen</Button>
-              <Button size="sm" variant="outline" disabled={saving || !reply.trim()} onClick={() => run(async () => { await onAckNudge(reply.trim()); setReply(""); })}>Antworten</Button>
-            </div>
-          </section>
-        )}
-
-        {pendingVote && (
-          <section className="space-y-3">
-            <div className="section-label flex items-center gap-2"><Gavel className="h-3.5 w-3.5" />Deine Stimme ist gefragt</div>
-            <div className="text-body font-medium">{pendingVote.title}</div>
-            <Input value={voteComment} onChange={(e) => setVoteComment(e.target.value)} placeholder="Kommentar (bei Rückfrage nötig)" className="h-8" />
-            <div className="flex flex-wrap gap-2">
-              {pendingVote.options.map((o) => (
-                <Button key={o.key} size="sm" variant={o.key === "yes" ? "default" : "outline"} disabled={saving || (o.requiresComment && !voteComment.trim())}
-                  onClick={() => run(async () => { await onVote(o.key, voteComment.trim()); setVoteComment(""); })}>
-                  {o.label}
-                </Button>
-              ))}
-            </div>
-          </section>
-        )}
-
-        <section className="space-y-4 border-b pb-5 ml-10">
           {resub && (
             <div className="rounded-md bg-muted px-3 py-2 text-caption">
               Auf Wiedervorlage bis {new Date(task.next_action_due + "T00:00:00").toLocaleDateString("de-DE")}. Erledige den Schritt, um einen neuen festzulegen.
             </div>
           )}
 
-          <label htmlFor="task-next-action" className="text-sm text-muted-foreground">Nächster Schritt</label>
           <Input id="task-next-action" value={label} onChange={(e) => setLabel(e.target.value)}
             placeholder="Was passiert als Nächstes?" className="px-0 font-medium md:text-lg" disabled={hasStep} />
           <div className="flex flex-wrap gap-2">
@@ -314,7 +321,6 @@ export function TaskDetailView({ task, profiles, decisionLabel, onSave, onComple
                 <Send />Zur Freigabe vorlegen
               </Button>
             )}
-            <Button variant="outline" disabled={saving} onClick={setStep} className="rounded-xl bg-transparent">Speichern</Button>
           </div>
           {mayNudge && (
             <div className="flex flex-wrap gap-2 pt-2 border-t">
@@ -360,13 +366,18 @@ export function TaskDetailView({ task, profiles, decisionLabel, onSave, onComple
             </Button>
           </div>
           <ul className="space-y-2">
-            {timeline.length === 0 && <li className="text-caption text-muted-foreground">Noch keine Einträge</li>}
             {timeline.map((e) => (
               <li key={e.id} className={cn("py-3 text-sm leading-relaxed", e.type === "system" ? "text-muted-foreground" : "text-foreground")}>
                 <span className="tabular-nums">{new Date(e.at).toLocaleString("de-DE", { dateStyle: "short", timeStyle: "short" })}</span>
                 {e.actorName ? ` · ${e.actorName}` : ""}: {e.text}
               </li>
             ))}
+            <li className="py-3 text-sm text-muted-foreground">
+              <time dateTime={task.created_at} className="tabular-nums">
+                {new Date(task.created_at).toLocaleString("de-DE", { dateStyle: "short", timeStyle: "short" })}
+              </time>
+              {" · Erstellt von "}{nameOf(task.user_id) ?? "Unbekannt"}
+            </li>
           </ul>
         </section>
 
@@ -375,10 +386,8 @@ export function TaskDetailView({ task, profiles, decisionLabel, onSave, onComple
         <section className="space-y-3">
           <h3 className="text-xs font-semibold uppercase tracking-wider text-muted-foreground">Eigenschaften</h3>
           <dl className="text-sm [&>div]:flex [&>div]:justify-between [&>div]:gap-3 [&>div]:border-b [&>div]:border-border/50 [&>div]:py-3 [&_dt]:text-muted-foreground [&_dd]:text-right [&_dd]:break-words">
-            <div><dt>Status</dt><dd>{task.status === "todo" ? "Offen" : task.status === "in_progress" ? "In Bearbeitung" : task.status === "completed" ? "Erledigt" : task.status}</dd></div>
             <div><dt>Priorität</dt><dd>{priorityLabels[task.priority] ?? task.priority}</dd></div>
             <div><dt>Fälligkeit</dt><dd>{task.due_date ? new Date(task.due_date).toLocaleDateString("de-DE") : "Keine Frist"}</dd></div>
-            <div><dt>Erstellt von</dt><dd>{nameOf(task.user_id) ?? "Unbekannt"}</dd></div>
           </dl>
           <TaskRecurrence taskId={task.id} value={task.recurrence_rule} onChanged={onReload} />
         </section>
@@ -433,7 +442,7 @@ export function TaskDetailView({ task, profiles, decisionLabel, onSave, onComple
           <DialogHeader><DialogTitle>Datum wählen</DialogTitle></DialogHeader>
           <form onSubmit={(event) => {
             event.preventDefault();
-            setDue(customValue);
+            void saveDue(customValue);
             setCustomField(null);
           }} className="space-y-4">
             <Input aria-label="Datum" type="date"
