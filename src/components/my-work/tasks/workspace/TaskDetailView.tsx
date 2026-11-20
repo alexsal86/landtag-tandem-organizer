@@ -1,3 +1,5 @@
+import { differenceInCalendarDays } from "date-fns";
+import { Collapsible, CollapsibleContent, CollapsibleTrigger } from "@/components/ui/collapsible";
 import { Avatar, AvatarFallback, AvatarImage } from "@/components/ui/avatar";
 import { Command, CommandEmpty, CommandGroup, CommandInput, CommandItem, CommandList } from "@/components/ui/command";
 import { usePersistentState } from "@/hooks/usePersistentState";
@@ -106,6 +108,7 @@ export function TaskDetailView({ task, profiles, decisionLabel, onSave, onComple
     setDescription(task.description ?? "");
   }, [task.id, task.description]);
 
+  const overdueDays = due ? differenceInCalendarDays(new Date(), new Date(due.slice(0, 10) + "T00:00:00")) : 0;
   const hasStep = stepState(task) === "set";
   const timeline = parseTaskTimeline(task.timeline).slice().reverse();
   const resub = isOnResubmission(task);
@@ -284,7 +287,11 @@ export function TaskDetailView({ task, profiles, decisionLabel, onSave, onComple
             <DropdownMenu>
               <DropdownMenuTrigger asChild>
                 <Button variant="outline" size="sm" disabled={saving} className="rounded-full bg-transparent data-[state=open]:bg-muted">
-                  <CalendarDays />{due ? formatDate(due) : "Kein Termin"}
+                  <CalendarDays />
+                  Schritt bis
+                  {overdueDays > 0 ? (
+                    <span className="text-destructive">seit {overdueDays} {overdueDays === 1 ? "Tag" : "Tagen"} überfällig</span>
+                  ) : due && <span>{formatDate(due)}</span>}
                 </Button>
               </DropdownMenuTrigger>
               <DropdownMenuContent align="start" className="min-w-52 rounded-xl p-1">
@@ -334,6 +341,50 @@ export function TaskDetailView({ task, profiles, decisionLabel, onSave, onComple
             <div className="text-caption text-muted-foreground pt-2 border-t">Heute bereits angestupst – noch nicht gesehen.</div>
           )}
         </section>
+
+        <Collapsible className="ml-10 space-y-2 border-b pb-3">
+          <div role="group" aria-label="Aufgabenaktionen" className="flex flex-wrap items-center gap-1">
+            <Button size="sm" variant="ghost" onClick={daySlip}><Zap className="h-4 w-4 mr-1" />Auf Tageszettel</Button>
+            <Button size="sm" variant="ghost" onClick={onJourFixe}><Users className="h-4 w-4 mr-1" />Auf Jour Fixe</Button>
+            <Button size="sm" variant="ghost" onClick={onDecision}><Gavel className="h-4 w-4 mr-1" />Entscheidung anfordern</Button>
+            <CollapsibleTrigger asChild>
+              <Button size="sm" variant="ghost"><Bell />Mich erinnern</Button>
+            </CollapsibleTrigger>
+          </div>
+          <CollapsibleContent className="space-y-3 px-3 pb-2">
+            {task.reminder_at ? (
+              <div className={cn("rounded-md px-3 py-2 text-caption flex items-center justify-between gap-3", isReminderDue(task) ? "bg-accent text-accent-foreground" : "bg-muted")}>
+                <span>
+                  {isReminderDue(task) ? "Fällig seit " : "Am "}
+                  {new Date(task.reminder_at).toLocaleString("de-DE", { dateStyle: "short", timeStyle: "short" })}
+                  {task.reminder_note ? ` – ${task.reminder_note}` : ""}
+                </span>
+                <Button size="sm" variant="ghost" disabled={saving} onClick={() => run(() => onSave({ reminder_at: null, reminder_note: null }))}>
+                  <BellOff className="h-4 w-4 mr-1" />Erledigt
+                </Button>
+              </div>
+            ) : (
+              <>
+                <Input value={remNote} onChange={(e) => setRemNote(e.target.value)} placeholder="Woran erinnern? (optional, z. B. „Beim Ministerium nachfassen“)" className="h-8" />
+                <div className="flex flex-wrap gap-2">
+                  {([["tomorrow", "Morgen"], ["3days", "In 3 Tagen"], ["nextweek", "Nächste Woche"]] as const).map(([k, l]) => (
+                    <Button key={k} size="sm" variant="outline" disabled={saving}
+                      onClick={() => run(async () => { await onSave({ reminder_at: reminderPreset(k).toISOString(), reminder_note: remNote.trim() || null }); setRemNote(""); })}>
+                      {l}
+                    </Button>
+                  ))}
+                </div>
+                <div className="flex items-center gap-2">
+                  <Input type="datetime-local" value={remAt} onChange={(e) => setRemAt(e.target.value)} className="h-8 min-w-0 flex-1" aria-label="Eigene Uhrzeit" />
+                  <Button size="sm" variant="outline" disabled={saving || !remAt}
+                    onClick={() => run(async () => { await onSave({ reminder_at: new Date(remAt).toISOString(), reminder_note: remNote.trim() || null }); setRemNote(""); setRemAt(""); })}>
+                    Setzen
+                  </Button>
+                </div>
+              </>
+            )}
+          </CollapsibleContent>
+        </Collapsible>
 
         <section className="space-y-3 ml-10">
           <h3 className="flex items-center gap-2 text-base font-semibold">
@@ -388,7 +439,7 @@ export function TaskDetailView({ task, profiles, decisionLabel, onSave, onComple
         </section>
 
       </main>
-      <aside aria-label="Eigenschaften und Aktionen" className="min-h-0 min-w-0 space-y-6 border-t bg-card p-5  min-[1440px]:border-l min-[1440px]:border-t-0">
+      <aside aria-label="Eigenschaften und Abschluss" className="min-h-0 min-w-0 space-y-6 border-t bg-card p-5  min-[1440px]:border-l min-[1440px]:border-t-0">
         <section className="space-y-3">
           <h3 className="text-xs font-semibold uppercase tracking-wider text-muted-foreground">Eigenschaften</h3>
           <dl className="text-sm [&>div]:flex [&>div]:justify-between [&>div]:gap-3 [&>div]:border-b [&>div]:border-border/50 [&>div]:py-3 [&_dt]:text-muted-foreground [&_dd]:text-right [&_dd]:break-words">
@@ -397,47 +448,6 @@ export function TaskDetailView({ task, profiles, decisionLabel, onSave, onComple
           </dl>
           <TaskRecurrence taskId={task.id} value={task.recurrence_rule} onChanged={onReload} />
         </section>
-        <section className="rounded-xl border bg-background p-4 space-y-3">
-          <div className="section-label flex items-center gap-2"><Bell className="h-3.5 w-3.5" />Mich erinnern</div>
-          {task.reminder_at ? (
-            <div className={cn("rounded-md px-3 py-2 text-caption flex items-center justify-between gap-3", isReminderDue(task) ? "bg-accent text-accent-foreground" : "bg-muted")}>
-              <span>
-                {isReminderDue(task) ? "Fällig seit " : "Am "}
-                {new Date(task.reminder_at).toLocaleString("de-DE", { dateStyle: "short", timeStyle: "short" })}
-                {task.reminder_note ? ` – ${task.reminder_note}` : ""}
-              </span>
-              <Button size="sm" variant="ghost" disabled={saving} onClick={() => run(() => onSave({ reminder_at: null, reminder_note: null }))}>
-                <BellOff className="h-4 w-4 mr-1" />Erledigt
-              </Button>
-            </div>
-          ) : (
-            <>
-              <Input value={remNote} onChange={(e) => setRemNote(e.target.value)} placeholder="Woran erinnern? (optional, z. B. „Beim Ministerium nachfassen“)" className="h-8" />
-              <div className="flex flex-wrap gap-2">
-                {([["tomorrow", "Morgen"], ["3days", "In 3 Tagen"], ["nextweek", "Nächste Woche"]] as const).map(([k, l]) => (
-                  <Button key={k} size="sm" variant="outline" disabled={saving}
-                    onClick={() => run(async () => { await onSave({ reminder_at: reminderPreset(k).toISOString(), reminder_note: remNote.trim() || null }); setRemNote(""); })}>
-                    {l}
-                  </Button>
-                ))}
-              </div>
-              <div className="flex items-center gap-2">
-                <Input type="datetime-local" value={remAt} onChange={(e) => setRemAt(e.target.value)} className="h-8 min-w-0 flex-1" aria-label="Eigene Uhrzeit" />
-                <Button size="sm" variant="outline" disabled={saving || !remAt}
-                  onClick={() => run(async () => { await onSave({ reminder_at: new Date(remAt).toISOString(), reminder_note: remNote.trim() || null }); setRemNote(""); setRemAt(""); })}>
-                  Setzen
-                </Button>
-              </div>
-            </>
-          )}
-        </section>
-
-        <section className="flex flex-col items-stretch gap-1 border-b pb-5 [&>button]:justify-start">
-          <Button size="sm" variant="ghost" onClick={daySlip}><Zap className="h-4 w-4 mr-1" />Auf Tageszettel</Button>
-          <Button size="sm" variant="ghost" onClick={onJourFixe}><Users className="h-4 w-4 mr-1" />Auf Jour Fixe</Button>
-          <Button size="sm" variant="ghost" onClick={onDecision}><Gavel className="h-4 w-4 mr-1" />Entscheidung anfordern</Button>
-        </section>
-
         <Button variant="outline" disabled={saving} onClick={() => hasStep ? setDoneDialog(true) : run(onComplete)} className="h-11 w-full rounded-xl border-2 border-success font-semibold text-success hover:bg-success/5 hover:text-success">
           <Check className="mr-2 h-4 w-4" />Aufgabe abschließen
         </Button>
