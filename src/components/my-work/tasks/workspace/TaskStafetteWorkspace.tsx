@@ -134,6 +134,10 @@ export function TaskStafetteWorkspace({ userId, tasks, profiles, onReload, onCom
     const { note } = patch;
     const fields: Partial<MyWorkTask> = {};
     if ("ball_owner" in patch) fields.ball_owner = patch.ball_owner;
+    const externalLabel = patch.ball_owner && patch.ball_owner !== "external" ? null : patch.ball_external_label;
+    if (externalLabel !== undefined && externalLabel !== (task.ball_external_label ?? null)) {
+      fields.ball_external_label = externalLabel;
+    }
     if ("ball_assignee_id" in patch) fields.ball_assignee_id = patch.ball_assignee_id;
     if ("next_action" in patch) fields.next_action = patch.next_action;
     if ("next_action_due" in patch) fields.next_action_due = patch.next_action_due;

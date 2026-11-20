@@ -15003,6 +15003,7 @@ export type Database = {
         Row: {
           assigned_to: string | null
           ball_assignee_id: string | null
+          ball_external_label: string | null
           ball_owner: string
           call_log_id: string | null
           category: string
@@ -15041,6 +15042,7 @@ export type Database = {
         Insert: {
           assigned_to?: string | null
           ball_assignee_id?: string | null
+          ball_external_label?: string | null
           ball_owner?: string
           call_log_id?: string | null
           category?: string
@@ -15079,6 +15081,7 @@ export type Database = {
         Update: {
           assigned_to?: string | null
           ball_assignee_id?: string | null
+          ball_external_label?: string | null
           ball_owner?: string
           call_log_id?: string | null
           category?: string

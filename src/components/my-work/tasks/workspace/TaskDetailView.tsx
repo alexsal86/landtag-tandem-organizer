@@ -4,12 +4,11 @@ import { Bell, BellOff, BellRing, CalendarDays, Check, ListChecks, Plus, X, Gave
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Textarea } from "@/components/ui/textarea";
-import { DropdownMenu, DropdownMenuContent, DropdownMenuItem, DropdownMenuTrigger } from "@/components/ui/dropdown-menu";
+import { DropdownMenu, DropdownMenuContent, DropdownMenuItem, DropdownMenuSub, DropdownMenuSubContent, DropdownMenuSubTrigger, DropdownMenuTrigger } from "@/components/ui/dropdown-menu";
 import { Tooltip, TooltipContent, TooltipTrigger } from "@/components/ui/tooltip";
 import { Badge } from "@/components/ui/badge";
 import { Checkbox } from "@/components/ui/checkbox";
 import { Dialog, DialogContent, DialogFooter, DialogHeader, DialogTitle } from "@/components/ui/dialog";
-import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
 import { cn } from "@/lib/utils";
 import type { MyWorkTask } from "@/hooks/useMyWorkTasksData";
 import { TaskSubtasks, TaskRecurrence } from "./TaskSubtasks";
@@ -20,6 +19,7 @@ import {
 
 export interface TaskPatch extends StafetteTask {
   note?: string;
+  ball_external_label?: string | null;
   checklist?: ChecklistItem[];
 }
 
@@ -46,7 +46,6 @@ interface Props {
   onReload: () => void;
 }
 
-const OWNERS: TaskBallOwner[] = ["office", "deputy", "external"];
 
 const ownerColors = { office: "bg-success", deputy: "bg-pink-600", external: "bg-muted-foreground" };
 const priorityLabels: Record<string, string> = { low: "Niedrig", medium: "Mittel", high: "Hoch", urgent: "Dringend" };
@@ -58,6 +57,9 @@ export function TaskDetailView({ task, profiles, decisionLabel, onSave, onComple
   const [due, setDue] = useState(task.next_action_due ?? "");
   const [owner, setOwner] = useState<TaskBallOwner>((task.ball_owner ?? "office") as TaskBallOwner);
   const [assignee, setAssignee] = useState<string>(task.ball_assignee_id ?? "none");
+  const [externalLabel, setExternalLabel] = useState(task.ball_external_label ?? "");
+  const [customField, setCustomField] = useState<"external" | "date" | null>(null);
+  const [customValue, setCustomValue] = useState("");
   const [note, setNote] = useState("");
   const [doneDialog, setDoneDialog] = useState(false);
   const [saving, setSaving] = useState(false);
@@ -84,8 +86,9 @@ export function TaskDetailView({ task, profiles, decisionLabel, onSave, onComple
     setDue(task.next_action_due ?? "");
     setOwner((task.ball_owner ?? "office") as TaskBallOwner);
     setAssignee(task.ball_assignee_id ?? "none");
+    setExternalLabel(task.ball_external_label ?? "");
     setNote("");
-  }, [task.id, task.next_action, task.next_action_due, task.ball_owner, task.ball_assignee_id]);
+  }, [task.id, task.next_action, task.next_action_due, task.ball_owner, task.ball_assignee_id, task.ball_external_label]);
 
   const hasStep = stepState(task) === "set";
   const timeline = parseTaskTimeline(task.timeline).slice().reverse();
@@ -97,7 +100,7 @@ export function TaskDetailView({ task, profiles, decisionLabel, onSave, onComple
   };
 
   const setStep = () =>
-    run(() => onSave({ next_action: label.trim() || null, next_action_due: due || null, ball_owner: owner, ball_assignee_id: assignee === "none" ? null : assignee }));
+    run(() => onSave({ next_action: label.trim() || null, next_action_due: due || null, ball_owner: owner, ball_assignee_id: owner === "office" && assignee !== "none" ? assignee : null, ball_external_label: owner === "external" ? externalLabel || null : null }));
   const daySlip = () =>
     sendToDaySlip({ text: formatCaseDaySlipText(task.title, task.next_action), source: { type: "task", id: task.id, nextActionLabel: task.next_action ?? undefined } });
 
@@ -126,18 +129,36 @@ export function TaskDetailView({ task, profiles, decisionLabel, onSave, onComple
                 <Button variant="outline" size="sm" className="rounded-full bg-transparent data-[state=open]:bg-muted">
                   <span className={cn("size-2 rounded-full", ownerColors[owner])} />
                   <span className="text-muted-foreground">Am Zug</span> {TASK_BALL_LABELS[owner]}
+                  {owner === "office" && nameOf(assignee) && <span>· {nameOf(assignee)}</span>}
+                  {owner === "external" && externalLabel && <span className="max-w-40 truncate">· {externalLabel}</span>}
                 </Button>
               </DropdownMenuTrigger>
               <DropdownMenuContent align="start" className="min-w-56 rounded-xl p-1">
-                {OWNERS.map((option) => (
-                  <DropdownMenuItem key={option} onSelect={() => setOwner(option)} className="gap-3 py-2">
-                    <span className={cn("size-2 shrink-0 rounded-full", ownerColors[option])} />
-                    {TASK_BALL_LABELS[option]}
-                    <span className="ml-auto text-xs text-muted-foreground">
-                      {option === "office" ? nameOf(assignee) ?? "Zuständigkeit im Büro" : option === "deputy" ? "Freigabe, Entscheidung" : "Behörde, Partner, Presse"}
-                    </span>
-                  </DropdownMenuItem>
-                ))}
+                <DropdownMenuSub>
+                  <DropdownMenuSubTrigger className="gap-3 py-2"><span className="size-2 rounded-full bg-success" />Büro</DropdownMenuSubTrigger>
+                  <DropdownMenuSubContent className="max-h-72 min-w-48 overflow-y-auto">
+                    <DropdownMenuItem onSelect={() => { setOwner("office"); setAssignee("none"); }}>Ohne feste Person</DropdownMenuItem>
+                    {profiles.map((profile) => (
+                      <DropdownMenuItem key={profile.user_id} onSelect={() => { setOwner("office"); setAssignee(profile.user_id); }}>
+                        {profile.display_name ?? "Unbenannt"}
+                      </DropdownMenuItem>
+                    ))}
+                  </DropdownMenuSubContent>
+                </DropdownMenuSub>
+                <DropdownMenuItem onSelect={() => setOwner("deputy")} className="gap-3 py-2">
+                  <span className="size-2 rounded-full bg-pink-600" />Abgeordnete/r
+                </DropdownMenuItem>
+                <DropdownMenuSub>
+                  <DropdownMenuSubTrigger className="gap-3 py-2"><span className="size-2 rounded-full bg-muted-foreground" />Extern</DropdownMenuSubTrigger>
+                  <DropdownMenuSubContent>
+                    {["Fraktion", "Ministerium", "Extern"].map((option) => (
+                      <DropdownMenuItem key={option} onSelect={() => { setOwner("external"); setExternalLabel(option === "Extern" ? "" : option); }}>
+                        {option}
+                      </DropdownMenuItem>
+                    ))}
+                    <DropdownMenuItem onSelect={() => { setCustomValue(externalLabel); setCustomField("external"); }}>Freitext eingeben …</DropdownMenuItem>
+                  </DropdownMenuSubContent>
+                </DropdownMenuSub>
               </DropdownMenuContent>
             </DropdownMenu>
             <DropdownMenu>
@@ -153,6 +174,7 @@ export function TaskDetailView({ task, profiles, decisionLabel, onSave, onComple
                     {text}<span className="text-xs text-muted-foreground">{formatDate(date)}</span>
                   </DropdownMenuItem>;
                 })}
+                <DropdownMenuItem onSelect={() => { setCustomValue(due); setCustomField("date"); }}>Datum wählen …</DropdownMenuItem>
                 {due && <DropdownMenuItem onSelect={() => setDue("")}>Termin entfernen</DropdownMenuItem>}
               </DropdownMenuContent>
             </DropdownMenu>
@@ -225,20 +247,6 @@ export function TaskDetailView({ task, profiles, decisionLabel, onSave, onComple
             )}
             <Button variant="outline" disabled={saving} onClick={setStep} className="rounded-xl bg-transparent">Speichern</Button>
           </div>
-          <details className="text-sm text-muted-foreground">
-            <summary className="cursor-pointer">Person und Datum festlegen</summary>
-            <div className="mt-2 flex flex-wrap items-center gap-2">
-              <Select value={assignee} onValueChange={setAssignee}>
-                <SelectTrigger aria-label="Verantwortlich" className="h-9"><SelectValue placeholder="Verantwortlich" /></SelectTrigger>
-                <SelectContent>
-                  <SelectItem value="none">Keine Person festgelegt</SelectItem>
-                  {profiles.map((p) => <SelectItem key={p.user_id} value={p.user_id}>{p.display_name ?? "Unbenannt"}</SelectItem>)}
-                </SelectContent>
-              </Select>
-
-              <Input aria-label="Frist des nächsten Schritts" type="date" value={due} onChange={(e) => setDue(e.target.value)} className="h-8 w-44" />
-            </div>
-          </details>
           {mayNudge && (
             <div className="flex flex-wrap gap-2 pt-2 border-t">
               <Input value={nudgeNote} onChange={(e) => setNudgeNote(e.target.value)} placeholder="Nachricht zum Anstupsen (optional)" className="h-8" />
@@ -350,6 +358,22 @@ export function TaskDetailView({ task, profiles, decisionLabel, onSave, onComple
           <Check className="mr-2 h-4 w-4" />Aufgabe abschließen
         </Button>
       </aside>
+
+      <Dialog open={customField !== null} onOpenChange={(open) => { if (!open) setCustomField(null); }}>
+        <DialogContent>
+          <DialogHeader><DialogTitle>{customField === "date" ? "Datum wählen" : "Externe Stelle eintragen"}</DialogTitle></DialogHeader>
+          <form onSubmit={(event) => {
+            event.preventDefault();
+            if (customField === "date") setDue(customValue);
+            else { setOwner("external"); setExternalLabel(customValue.trim()); }
+            setCustomField(null);
+          }} className="space-y-4">
+            <Input aria-label={customField === "date" ? "Datum" : "Externe Stelle"} type={customField === "date" ? "date" : "text"}
+              value={customValue} onChange={(event) => setCustomValue(event.target.value)} required maxLength={200} />
+            <DialogFooter><Button type="submit">Übernehmen</Button></DialogFooter>
+          </form>
+        </DialogContent>
+      </Dialog>
 
       <Dialog open={doneDialog} onOpenChange={setDoneDialog}>
         <DialogContent>

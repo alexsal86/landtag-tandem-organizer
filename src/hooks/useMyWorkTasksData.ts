@@ -21,6 +21,7 @@ export interface MyWorkTask {
   tenant_id?: string;
   task_assignees?: Array<{ user_id: string }> | null;
   ball_owner?: string | null;
+  ball_external_label?: string | null;
   ball_assignee_id?: string | null;
   next_action?: string | null;
   next_action_due?: string | null;
@@ -36,8 +37,8 @@ export interface MyWorkTask {
   recurrence_rule?: string | null;
 }
 
-const TASK_LIST_SELECT = "id, title, description, priority, status, due_date, assigned_to, user_id, created_at, category, meeting_id, pending_for_jour_fixe, parent_task_id, tenant_id, ball_owner, ball_assignee_id, next_action, next_action_due, timeline, reminder_at, reminder_note, nudged_at, nudged_by, nudge_note, nudge_count, nudge_seen_at, checklist, task_assignees!left(user_id)";
-const TASK_ASSIGNED_SELECT = "id, title, description, priority, status, due_date, assigned_to, user_id, created_at, category, meeting_id, pending_for_jour_fixe, parent_task_id, tenant_id, ball_owner, ball_assignee_id, next_action, next_action_due, timeline, reminder_at, reminder_note, nudged_at, nudged_by, nudge_note, nudge_count, nudge_seen_at, checklist, task_assignees!inner(user_id)";
+const TASK_LIST_SELECT = "id, title, description, priority, status, due_date, assigned_to, user_id, created_at, category, meeting_id, pending_for_jour_fixe, parent_task_id, tenant_id, ball_owner, ball_external_label, ball_assignee_id, next_action, next_action_due, timeline, reminder_at, reminder_note, nudged_at, nudged_by, nudge_note, nudge_count, nudge_seen_at, checklist, task_assignees!left(user_id)";
+const TASK_ASSIGNED_SELECT = "id, title, description, priority, status, due_date, assigned_to, user_id, created_at, category, meeting_id, pending_for_jour_fixe, parent_task_id, tenant_id, ball_owner, ball_external_label, ball_assignee_id, next_action, next_action_due, timeline, reminder_at, reminder_note, nudged_at, nudged_by, nudge_note, nudge_count, nudge_seen_at, checklist, task_assignees!inner(user_id)";
 
 interface TasksQueryResult {
   assignedTasks: MyWorkTask[];
@@ -65,27 +66,34 @@ const getVisibleTaskIds = (data?: TasksQueryResult): Set<string> => {
   return ids;
 };
 
-const fetchTasks = async (userId: string, tenantId?: string): Promise<TasksQueryResult> => {
+const fetchTasks = async (userId: string, tenantId?: string, includeExternalLabel = true): Promise<TasksQueryResult> => {
   const withTenantFilter = <T extends { eq: (column: string, value: string) => T }>(query: T) =>
     (tenantId ? query.eq("tenant_id", tenantId) : query);
 
+  const select = (fields: string) => includeExternalLabel ? fields : fields.replace("ball_external_label, ", "");
   const [assignedResult, legacyAssignedResult, createdResult] = await Promise.all([
-    withTenantFilter(supabase.from("tasks").select(TASK_ASSIGNED_SELECT))
+    withTenantFilter(supabase.from("tasks").select(select(TASK_ASSIGNED_SELECT)))
       .eq("task_assignees.user_id", userId)
       .neq("status", "completed")
       .is("parent_task_id", null)
       .order("due_date", { ascending: true, nullsFirst: false }),
-    withTenantFilter(supabase.from("tasks").select(TASK_LIST_SELECT))
+    withTenantFilter(supabase.from("tasks").select(select(TASK_LIST_SELECT)))
       .or(`assigned_to.eq.${userId},assigned_to.ilike.%${userId}%`)
       .neq("status", "completed")
       .is("parent_task_id", null)
       .order("due_date", { ascending: true, nullsFirst: false }),
-    withTenantFilter(supabase.from("tasks").select(TASK_LIST_SELECT))
+    withTenantFilter(supabase.from("tasks").select(select(TASK_LIST_SELECT)))
       .eq("user_id", userId)
       .neq("status", "completed")
       .is("parent_task_id", null)
       .order("due_date", { ascending: true, nullsFirst: false }),
   ]);
+
+  if (includeExternalLabel && [assignedResult, legacyAssignedResult, createdResult].some(({ error }) =>
+    error?.code === "42703" && error.message.includes("ball_external_label")
+  )) {
+    return fetchTasks(userId, tenantId, false);
+  }
 
   if (assignedResult.error) throw assignedResult.error;
   if (legacyAssignedResult.error) throw legacyAssignedResult.error;
@@ -133,7 +141,7 @@ const fetchTasks = async (userId: string, tenantId?: string): Promise<TasksQuery
 
     let subtaskQuery = supabase
       .from("tasks")
-      .select(TASK_LIST_SELECT)
+      .select(select(TASK_LIST_SELECT))
       .in("parent_task_id", batchParentIds)
       .neq("status", "completed")
       .order("due_date", { ascending: true, nullsFirst: false });
