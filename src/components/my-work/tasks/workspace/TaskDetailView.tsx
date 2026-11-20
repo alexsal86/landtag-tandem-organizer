@@ -1,14 +1,16 @@
+import { Command, CommandEmpty, CommandGroup, CommandInput, CommandItem, CommandList } from "@/components/ui/command";
+import { usePersistentState } from "@/hooks/usePersistentState";
 import { WorkflowLinks } from "@/components/workflow/WorkflowLinks";
 import { useEffect, useState } from "react";
 import { Bell, BellOff, BellRing, CalendarDays, Check, ListChecks, Plus, X, Gavel, Send, Users, Zap } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Textarea } from "@/components/ui/textarea";
-import { DropdownMenu, DropdownMenuContent, DropdownMenuItem, DropdownMenuSub, DropdownMenuSubContent, DropdownMenuSubTrigger, DropdownMenuTrigger } from "@/components/ui/dropdown-menu";
+import { DropdownMenu, DropdownMenuContent, DropdownMenuItem, DropdownMenuTrigger } from "@/components/ui/dropdown-menu";
 import { Tooltip, TooltipContent, TooltipTrigger } from "@/components/ui/tooltip";
 import { Badge } from "@/components/ui/badge";
 import { Checkbox } from "@/components/ui/checkbox";
-import { Dialog, DialogContent, DialogFooter, DialogHeader, DialogTitle } from "@/components/ui/dialog";
+import { Dialog, DialogContent, DialogFooter, DialogHeader, DialogTitle, DialogTrigger } from "@/components/ui/dialog";
 import { cn } from "@/lib/utils";
 import type { MyWorkTask } from "@/hooks/useMyWorkTasksData";
 import { TaskSubtasks, TaskRecurrence } from "./TaskSubtasks";
@@ -58,6 +60,10 @@ export function TaskDetailView({ task, profiles, decisionLabel, onSave, onComple
   const [owner, setOwner] = useState<TaskBallOwner>((task.ball_owner ?? "office") as TaskBallOwner);
   const [assignee, setAssignee] = useState<string>(task.ball_assignee_id ?? "none");
   const [externalLabel, setExternalLabel] = useState(task.ball_external_label ?? "");
+  const [ownerPickerOpen, setOwnerPickerOpen] = useState(false);
+  const [recentOwners, setRecentOwners] = usePersistentState<string[]>(
+    `task-recent-owners-${task.tenant_id}-${meId}`, [],
+  );
   const [customField, setCustomField] = useState<"external" | "date" | null>(null);
   const [customValue, setCustomValue] = useState("");
   const [note, setNote] = useState("");
@@ -101,6 +107,35 @@ export function TaskDetailView({ task, profiles, decisionLabel, onSave, onComple
 
   const setStep = () =>
     run(() => onSave({ next_action: label.trim() || null, next_action_due: due || null, ball_owner: owner, ball_assignee_id: owner === "office" && assignee !== "none" ? assignee : null, ball_external_label: owner === "external" ? externalLabel || null : null }));
+  const ownerOptions = [
+    ...profiles.map((profile) => ({ id: `office:${profile.user_id}`, label: profile.display_name ?? "Unbenannt", role: "office" as const })),
+    { id: "office:none", label: "Ohne feste Person", role: "office" as const },
+    { id: "deputy", label: TASK_BALL_LABELS.deputy, role: "deputy" as const },
+    ...["Fraktion", "Ministerium", "Extern"].map((label) => ({ id: `external:${label}`, label, role: "external" as const })),
+  ];
+  const rememberOwner = (id: string) =>
+    setRecentOwners([id, ...recentOwners.filter((recent) => recent !== id)].slice(0, 3));
+  const recentOptions = recentOwners.flatMap((id) => {
+    const option = ownerOptions.find((option) => option.id === id);
+    if (option) return [option];
+    return id.startsWith("custom:") ? [{ id, label: id.slice(7), role: "external" as const }] : [];
+  });
+  const chooseOwner = (option: (typeof ownerOptions)[number]) => {
+    setOwner(option.role);
+    if (option.role === "office") setAssignee(option.id.slice(7));
+    if (option.role === "external") setExternalLabel(option.id === "external:Extern" ? "" : option.label);
+    rememberOwner(option.id);
+    setOwnerPickerOpen(false);
+  };
+  const renderOwnerOption = (option: (typeof ownerOptions)[number]) => (
+    <CommandItem key={option.id} value={option.id} keywords={[option.label, TASK_BALL_LABELS[option.role]]}
+      onSelect={() => chooseOwner(option)} className="gap-3 rounded-lg px-3 py-3">
+      <span className={cn("size-2 shrink-0 rounded-full", ownerColors[option.role])} />
+      <span className="min-w-0 flex-1 break-words">{option.label}</span>
+      <span className="text-xs text-muted-foreground">{TASK_BALL_LABELS[option.role]}</span>
+    </CommandItem>
+  );
+
   const daySlip = () =>
     sendToDaySlip({ text: formatCaseDaySlipText(task.title, task.next_action), source: { type: "task", id: task.id, nextActionLabel: task.next_action ?? undefined } });
 
@@ -124,43 +159,37 @@ export function TaskDetailView({ task, profiles, decisionLabel, onSave, onComple
           </Tooltip>
           <h2 className="break-words text-3xl font-bold leading-tight tracking-tight">{task.title}</h2>
           <div className="flex flex-wrap items-center gap-2">
-            <DropdownMenu>
-              <DropdownMenuTrigger asChild>
-                <Button variant="outline" size="sm" className="rounded-full bg-transparent data-[state=open]:bg-muted">
-                  <span className={cn("size-2 rounded-full", ownerColors[owner])} />
-                  <span className="text-muted-foreground">Am Zug</span> {TASK_BALL_LABELS[owner]}
-                  {owner === "office" && nameOf(assignee) && <span>· {nameOf(assignee)}</span>}
-                  {owner === "external" && externalLabel && <span className="max-w-40 truncate">· {externalLabel}</span>}
+            <Dialog open={ownerPickerOpen} onOpenChange={setOwnerPickerOpen}>
+              <DialogTrigger asChild>
+                <Button variant="outline" size="sm" className="max-w-full rounded-full bg-transparent">
+                  <span className={cn("size-2 shrink-0 rounded-full", ownerColors[owner])} />
+                  <span className="text-muted-foreground">Am Zug</span>
+                  <span className="truncate">
+                    {(owner === "office" && nameOf(assignee)) || (owner === "external" && externalLabel) || TASK_BALL_LABELS[owner]}
+                  </span>
                 </Button>
-              </DropdownMenuTrigger>
-              <DropdownMenuContent align="start" className="min-w-56 rounded-xl p-1">
-                <DropdownMenuSub>
-                  <DropdownMenuSubTrigger className="gap-3 py-2"><span className="size-2 rounded-full bg-success" />Büro</DropdownMenuSubTrigger>
-                  <DropdownMenuSubContent className="max-h-72 min-w-48 overflow-y-auto">
-                    <DropdownMenuItem onSelect={() => { setOwner("office"); setAssignee("none"); }}>Ohne feste Person</DropdownMenuItem>
-                    {profiles.map((profile) => (
-                      <DropdownMenuItem key={profile.user_id} onSelect={() => { setOwner("office"); setAssignee(profile.user_id); }}>
-                        {profile.display_name ?? "Unbenannt"}
-                      </DropdownMenuItem>
-                    ))}
-                  </DropdownMenuSubContent>
-                </DropdownMenuSub>
-                <DropdownMenuItem onSelect={() => setOwner("deputy")} className="gap-3 py-2">
-                  <span className="size-2 rounded-full bg-pink-600" />Abgeordnete/r
-                </DropdownMenuItem>
-                <DropdownMenuSub>
-                  <DropdownMenuSubTrigger className="gap-3 py-2"><span className="size-2 rounded-full bg-muted-foreground" />Extern</DropdownMenuSubTrigger>
-                  <DropdownMenuSubContent>
-                    {["Fraktion", "Ministerium", "Extern"].map((option) => (
-                      <DropdownMenuItem key={option} onSelect={() => { setOwner("external"); setExternalLabel(option === "Extern" ? "" : option); }}>
-                        {option}
-                      </DropdownMenuItem>
-                    ))}
-                    <DropdownMenuItem onSelect={() => { setCustomValue(externalLabel); setCustomField("external"); }}>Freitext eingeben …</DropdownMenuItem>
-                  </DropdownMenuSubContent>
-                </DropdownMenuSub>
-              </DropdownMenuContent>
-            </DropdownMenu>
+              </DialogTrigger>
+              <DialogContent className="overflow-hidden p-0 sm:max-w-lg">
+                <DialogTitle className="sr-only">Wem übergeben?</DialogTitle>
+                <Command>
+                  <CommandInput aria-label="Name oder Rolle suchen" placeholder="Wem übergeben? Name oder Rolle tippen …" className="pr-10" />
+                  <CommandList className="max-h-[55vh] px-2 pb-2">
+                    <CommandEmpty>Keine passende Person oder Rolle gefunden.</CommandEmpty>
+                    {recentOptions.length > 0 && <CommandGroup heading="Zuletzt">{recentOptions.map(renderOwnerOption)}</CommandGroup>}
+                    <CommandGroup heading="Alle">
+                      {ownerOptions.filter((option) => !recentOwners.includes(option.id)).map(renderOwnerOption)}
+                    </CommandGroup>
+                  </CommandList>
+                  <div className="border-t p-2">
+                    <Button variant="ghost" className="w-full justify-start" onClick={() => {
+                      setOwnerPickerOpen(false);
+                      setCustomValue(externalLabel);
+                      setCustomField("external");
+                    }}>Externe Stelle eingeben …</Button>
+                  </div>
+                </Command>
+              </DialogContent>
+            </Dialog>
             <DropdownMenu>
               <DropdownMenuTrigger asChild>
                 <Button variant="outline" size="sm" className="rounded-full bg-transparent data-[state=open]:bg-muted">
@@ -365,7 +394,13 @@ export function TaskDetailView({ task, profiles, decisionLabel, onSave, onComple
           <form onSubmit={(event) => {
             event.preventDefault();
             if (customField === "date") setDue(customValue);
-            else { setOwner("external"); setExternalLabel(customValue.trim()); }
+            else {
+              const text = customValue.trim();
+              if (!text) return;
+              setOwner("external");
+              setExternalLabel(text);
+              rememberOwner(`custom:${text}`);
+            }
             setCustomField(null);
           }} className="space-y-4">
             <Input aria-label={customField === "date" ? "Datum" : "Externe Stelle"} type={customField === "date" ? "date" : "text"}
