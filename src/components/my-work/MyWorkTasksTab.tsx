@@ -328,6 +328,7 @@ export function MyWorkTasksTab() {
             onJourFixe={actions.handleAddToMeeting}
             onCreate={() => setTodoCreateOpen(true)}
             modeControls={modeToggle}
+            snoozes={taskSnoozes}
           />
         </div>
         {dialogsAndExtras}

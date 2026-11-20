@@ -22,22 +22,33 @@ interface Props {
   onJourFixe: (taskId: string) => void;
   onCreate: () => void;
   modeControls: ReactNode;
+  snoozes: Record<string, string>;
 }
 
 const taskFilters = [
-  { id: "mine", label: "Mein Zug", zones: ["nudged", "mine"] },
-  { id: "waiting", label: "Wartet", zones: ["waiting", "resubmission"] },
+  { id: "mine", label: "Mein Zug", zones: ["nudged", "mine", "resubmission"] },
+  { id: "waiting", label: "Wartet", zones: ["waiting"] },
   { id: "all", label: "Alle", zones: ["nudged", "mine", "waiting", "resubmission"] },
 ] as const;
 
-export function TaskStafetteWorkspace({ userId, tasks, profiles, onReload, onComplete, onDecision, onJourFixe, onCreate, modeControls }: Props) {
+export function TaskStafetteWorkspace({ userId, tasks, profiles, onReload, onComplete, onDecision, onJourFixe, onCreate, modeControls, snoozes }: Props) {
   const [filter, setFilter] = useState<(typeof taskFilters)[number]>(taskFilters[0]);
   const [selectedId, setSelectedId] = useState<string | null>(null);
   const [local, setLocal] = useState<Record<string, Partial<MyWorkTask>>>({});
   const shortcuts = useRef<{ stepDone: () => void; daySlip: () => void } | null>(null);
 
   const merged = useMemo(() => tasks.map((t) => ({ ...t, ...local[t.id] })), [tasks, local]);
-  const zones = useMemo(() => groupByZone(merged, userId), [merged, userId]);
+  const zones = useMemo(() => {
+    const grouped = groupByZone(merged, userId);
+    for (const zone of ["nudged", "mine", "waiting", "resubmission"] as const) {
+      for (const task of [...grouped[zone]]) {
+        if (!snoozes[task.id] || zone === "waiting" || zone === "resubmission") continue;
+        grouped[zone] = grouped[zone].filter((entry) => entry.id !== task.id);
+        grouped.resubmission.push(task);
+      }
+    }
+    return grouped;
+  }, [merged, userId, snoozes]);
   const ordered = useMemo(() => filter.zones.flatMap((zone) => zones[zone]), [filter, zones]);
   const selected = ordered.find((t) => t.id === selectedId) ?? ordered[0] ?? null;
 
@@ -181,7 +192,10 @@ export function TaskStafetteWorkspace({ userId, tasks, profiles, onReload, onCom
 
   return (
     <>
-      <div className="mb-2 flex shrink-0 flex-wrap items-center gap-x-4 gap-y-2 border-t bg-[#f8f8f6] px-4 py-2 dark:bg-muted/60">
+      <div className="flex justify-end py-2">{modeControls}</div>
+        <div className="grid min-h-0 flex-1 auto-rows-max grid-cols-1 rounded-2xl border bg-card shadow-sm lg:auto-rows-auto lg:grid-cols-[minmax(380px,0.85fr)_minmax(0,1.5fr)]">
+          <div className="flex min-h-0 min-w-0 flex-col border-b bg-[#fafaf8] dark:bg-card lg:border-b-0 lg:border-r">
+      <div className="flex shrink-0 flex-wrap items-center gap-x-2 gap-y-2 border-t bg-[#f8f8f6] px-4 py-2 dark:bg-muted/60">
         <h2 className="text-base font-semibold">Aufgaben</h2>
         <div role="group" aria-label="Aufgaben filtern" className="flex flex-wrap items-center gap-1">
           {taskFilters.map((option) => (
@@ -204,20 +218,14 @@ export function TaskStafetteWorkspace({ userId, tasks, profiles, onReload, onCom
             </Button>
           ))}
         </div>
-        {modeControls}
       </div>
-      {ordered.length === 0 ? (
-        <div className="flex flex-1 items-center justify-center rounded-2xl border bg-card p-6 shadow-sm">
-          <EmptyState icon={ListTodo} title="Keine Aufgaben in dieser Ansicht" />
-        </div>
-      ) : (
-        <div className="grid min-h-0 flex-1 auto-rows-max grid-cols-1 rounded-2xl border bg-card shadow-sm lg:auto-rows-auto lg:grid-cols-[320px_minmax(0,1fr)]">
-          <div className="flex min-h-0 min-w-0 flex-col border-b lg:border-b-0 lg:border-r">
+
             <div className="h-80 min-h-0 lg:h-auto lg:flex-1">
-              <TaskTriageList zones={zones} visibleZones={filter.zones} selectedId={selected?.id ?? null} onSelect={setSelectedId} decisionLabel={decisionLabel} nameOf={nameOf} selection={selection} onToggleSelect={toggleSelect} onClearSelection={() => setSelection(new Set())} onBatch={batch} />
+              <TaskTriageList snoozes={snoozes} onCreate={onCreate} onComplete={onComplete} zones={zones} visibleZones={filter.zones} selectedId={selected?.id ?? null} onSelect={setSelectedId} decisionLabel={decisionLabel} nameOf={nameOf} selection={selection} onToggleSelect={toggleSelect} onClearSelection={() => setSelection(new Set())} onBatch={batch} />
             </div>
           </div>
           <div className="min-h-0 min-w-0 flex flex-col">
+            {!selected && <EmptyState icon={ListTodo} title="Keine Aufgaben in dieser Ansicht" />}
             {selected && (
               <TaskDetailView
                 key={selected.id}
@@ -244,7 +252,6 @@ export function TaskStafetteWorkspace({ userId, tasks, profiles, onReload, onCom
             )}
           </div>
         </div>
-      )}
     </>
   );
 }
