@@ -1,6 +1,21 @@
 import { Checkbox } from "@/components/ui/checkbox";
 import type { AgendaItem, Profile } from "../types";
 
+export function AgendaCompletionCheckbox({ item, onComplete }: {
+  item: AgendaItem;
+  onComplete?: (completed: boolean) => void;
+}) {
+  return (
+    <Checkbox
+      checked={item.is_completed}
+      disabled={!onComplete}
+      onCheckedChange={(checked) => onComplete?.(checked === true)}
+      aria-label={`Erledigt: ${item.title || "Tagesordnungspunkt"}`}
+      className="size-5 rounded-md"
+    />
+  );
+}
+
 export function AgendaRowDetails({ item, profiles, onComplete }: {
   item: AgendaItem;
   profiles: Profile[];
@@ -31,13 +46,9 @@ export function AgendaRowDetails({ item, profiles, onComplete }: {
           {item.duration_minutes} Min.
         </span>
       )}
-      <Checkbox
-        checked={item.is_completed}
-        disabled={!onComplete}
-        onCheckedChange={(checked) => onComplete?.(checked === true)}
-        aria-label={`Erledigt: ${item.title || "Tagesordnungspunkt"}`}
-        className="size-5 rounded-md"
-      />
+      {!item.parent_id && !item.parentLocalKey && (
+        <AgendaCompletionCheckbox item={item} onComplete={onComplete} />
+      )}
     </div>
   );
 }

@@ -40,6 +40,7 @@ interface SystemAgendaItemProps {
   onExpandedChange?: (expanded: boolean) => void;
   editorRow?: boolean;
   editorDetails?: ReactNode;
+  editorLeading?: ReactNode;
   editorCompleted?: boolean;
   editorDescription?: string;
   onCountChange?: (count: number | null) => void;
@@ -99,6 +100,7 @@ export function SystemAgendaItem({
   onExpandedChange,
   editorRow = false,
   editorDetails,
+  editorLeading,
   editorCompleted,
   editorDescription,
   onCountChange,
@@ -677,7 +679,8 @@ export function SystemAgendaItem({
     <section className="min-w-0">
       <div className={cn("flex flex-wrap items-center gap-x-3 gap-y-2 pr-3 sm:pr-5", isEmbedded ? "py-3" : "py-6")}>
         <div className="flex min-w-0 flex-1 basis-48 items-start">
-          <span aria-hidden="true" className="relative top-1.5 mr-2 grid size-8 shrink-0 place-items-center">
+          <div className={cn("mr-2 grid size-8 shrink-0 place-items-center", !isEmbedded && "relative top-1.5")}>
+            {isEmbedded && editorLeading}
             {Icon && !isEmbedded && (
               <span
                 className={cn(
@@ -697,7 +700,7 @@ export function SystemAgendaItem({
               <Icon className="size-4" />
             </span>
             )}
-          </span>
+          </div>
           <div className="grid min-w-0 flex-1 grid-cols-[auto_minmax(0,1fr)] items-center">
             <span className={cn("flex h-8 shrink-0 items-center text-sm tabular-nums", isEmbedded ? "mr-1 font-normal text-muted-foreground" : "font-semibold text-foreground")}>
               {agendaNumber}

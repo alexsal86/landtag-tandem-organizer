@@ -1,6 +1,6 @@
 import { PencilSparkles } from "@/components/icons/PencilSparkles";
 import { AgendaReadyBanner } from "./agenda-editor/AgendaReadyBanner";
-import { AgendaRowDetails } from "./agenda-editor/AgendaRowDetails";
+import { AgendaCompletionCheckbox, AgendaRowDetails } from "./agenda-editor/AgendaRowDetails";
 import { AgendaRow } from "./agenda-editor/AgendaRow";
 import { AgendaInspector } from "./agenda-editor/AgendaInspector";
 import { AgendaSummaryBar } from "./agenda-editor/AgendaSummaryBar";
@@ -563,6 +563,14 @@ export function AgendaEditorPanel({
                                   editorRow
                                   editorCompleted={item.is_completed}
                                   editorDescription={item.description ?? undefined}
+                                  editorLeading={
+                                    (item.parent_id || item.parentLocalKey) && (
+                                      <AgendaCompletionCheckbox
+                                        item={item}
+                                        onComplete={hasEditPermission ? (completed) => change(index, "is_completed", completed) : undefined}
+                                      />
+                                    )
+                                  }
                                   editorDetails={
                                     <AgendaRowDetails
                                       item={item}

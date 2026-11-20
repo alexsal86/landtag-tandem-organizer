@@ -31,7 +31,7 @@ import { cn } from "@/lib/utils";
 import type { AgendaItem, LinkedTask, Profile } from "../types";
 import { AgendaIcon } from "./AgendaIconPicker";
 import { AgendaDragHandle } from "./AgendaDragHandle";
-import { AgendaRowDetails } from "./AgendaRowDetails";
+import { AgendaCompletionCheckbox, AgendaRowDetails } from "./AgendaRowDetails";
 import { stripHtml } from "@/utils/textDiff";
 interface Props {
   item: AgendaItem;
@@ -131,11 +131,13 @@ export function AgendaRow({
               {hasEditPermission && provided.dragHandleProps && (
                 <AgendaDragHandle dragHandleProps={provided.dragHandleProps} dragging={snapshot.isDragging} />
               )}
-              <span aria-hidden="true" className="relative top-1.5 mr-2 grid size-8 shrink-0 place-items-center">
-                {!isSubItem && (
+              <div className={cn("mr-2 grid size-8 shrink-0 place-items-center", !isSubItem && "relative top-1.5")}>
+                {isSubItem ? (
+                  <AgendaCompletionCheckbox item={item} onComplete={hasEditPermission ? (completed) => change(index, "is_completed", completed) : undefined} />
+                ) : (
                   <AgendaIcon value={item.icon_config} linkedTask={Boolean(item.task_id)} />
                 )}
-              </span>
+              </div>
               <div className="grid min-w-0 flex-1 grid-cols-[auto_minmax(0,1fr)] items-center">
                 <span className={cn("flex h-8 shrink-0 items-center text-sm tabular-nums", isSubItem ? "mr-1 font-normal text-muted-foreground" : "font-semibold text-foreground")}>
                   {getAgendaNumber(item)}
