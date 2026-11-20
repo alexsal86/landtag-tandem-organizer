@@ -30,7 +30,7 @@ export function AgendaSystemRow({
       )}
     >
       {canEdit && dragHandleProps && (
-        <AgendaDragHandle dragHandleProps={dragHandleProps} dragging={dragging} className="mt-2 self-start" />
+        <AgendaDragHandle dragHandleProps={dragHandleProps} dragging={dragging} className="mt-1 self-start" />
       )}
       <div className="min-w-0 flex-1">{children}</div>
     </div>
