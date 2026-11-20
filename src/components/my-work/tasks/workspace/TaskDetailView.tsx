@@ -1,9 +1,11 @@
 import { WorkflowLinks } from "@/components/workflow/WorkflowLinks";
 import { useEffect, useState } from "react";
-import { Bell, BellOff, BellRing, CalendarClock, Check, ListChecks, Plus, X, Gavel, Send, Users, Zap } from "lucide-react";
+import { Bell, BellOff, BellRing, CalendarDays, Check, ListChecks, Plus, X, Gavel, Send, Users, Zap } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Textarea } from "@/components/ui/textarea";
+import { DropdownMenu, DropdownMenuContent, DropdownMenuItem, DropdownMenuTrigger } from "@/components/ui/dropdown-menu";
+import { Tooltip, TooltipContent, TooltipTrigger } from "@/components/ui/tooltip";
 import { Badge } from "@/components/ui/badge";
 import { Checkbox } from "@/components/ui/checkbox";
 import { Dialog, DialogContent, DialogFooter, DialogHeader, DialogTitle } from "@/components/ui/dialog";
@@ -13,7 +15,7 @@ import type { MyWorkTask } from "@/hooks/useMyWorkTasksData";
 import { TaskSubtasks, TaskRecurrence } from "./TaskSubtasks";
 import { sendToDaySlip, formatCaseDaySlipText } from "@/lib/daySlipBridge";
 import {
-  TASK_BALL_LABELS, canNudge, checklistProgress, isNudgeActive, isOnResubmission, isReminderDue, parseChecklist, reminderPreset, type ChecklistItem, parseTaskTimeline, stepState, type StafetteTask, type TaskBallOwner,
+  TASK_BALL_LABELS, canNudge, checklistProgress, isNudgeActive, isOnResubmission, isReminderDue, parseChecklist, reminderPreset, type ChecklistItem, parseTaskTimeline, shiftDay, stepState, type StafetteTask, type TaskBallOwner,
 } from "@/features/tasks/stafette";
 
 export interface TaskPatch extends StafetteTask {
@@ -45,6 +47,11 @@ interface Props {
 }
 
 const OWNERS: TaskBallOwner[] = ["office", "deputy", "external"];
+
+const ownerColors = { office: "bg-success", deputy: "bg-pink-600", external: "bg-muted-foreground" };
+const priorityLabels: Record<string, string> = { low: "Niedrig", medium: "Mittel", high: "Hoch", urgent: "Dringend" };
+const datePresets = [["Heute", 0], ["Morgen", 1], ["In 3 Tagen", 3], ["Nächste Woche", 7]] as const;
+const formatDate = (date: string) => new Date(date.slice(0, 10) + "T00:00:00").toLocaleDateString("de-DE", { day: "2-digit", month: "2-digit" });
 
 export function TaskDetailView({ task, profiles, decisionLabel, onSave, onComplete, onDecision, onJourFixe, nameOf, registerShortcuts, meId, onNudge, onAckNudge, pendingVote, onVote, onReload }: Props) {
   const [label, setLabel] = useState(task.next_action ?? "");
@@ -100,11 +107,58 @@ export function TaskDetailView({ task, profiles, decisionLabel, onSave, onComple
 
   return (
     <div className="grid min-h-0 min-w-0 flex-1 auto-rows-max grid-cols-1  min-[1440px]:grid-cols-[minmax(0,1fr)_300px] min-[1440px]:auto-rows-auto ">
-      <main aria-label="Aufgabendetails" className="min-h-0 min-w-0 space-y-5 bg-white p-6 dark:bg-card [&>section]:p-4 [&>section]:space-y-3 [&_input]:border-0 [&_input]:bg-transparent [&_textarea]:border-0 [&_textarea]:bg-transparent [&_[role=combobox]]:border-0 [&_[role=combobox]]:bg-transparent">
-        <div className="space-y-2">
-          <div className="flex items-start justify-between gap-3">
-            <h2 className="break-words text-2xl font-bold leading-tight tracking-tight">{task.title}</h2>
-            {task.priority === "high" || task.priority === "urgent" ? <Badge variant="destructive">Dringend</Badge> : null}
+      <main aria-label="Aufgabendetails" className="min-h-0 min-w-0 space-y-5 bg-white p-6 dark:bg-card [&>section]:space-y-3 [&_input]:border-0 [&_input]:bg-transparent [&_textarea]:border-0 [&_textarea]:bg-transparent [&_[role=combobox]]:border-0 [&_[role=combobox]]:bg-transparent">
+        <header className="relative space-y-4 border-b pb-7 pl-10">
+          <Tooltip>
+            <TooltipTrigger asChild>
+              <Button type="button" variant="ghost" size="icon" disabled={saving}
+                aria-label="Aufgabe abschließen" onClick={() => void run(onComplete)}
+                className="group absolute left-0 top-1 size-7 rounded-full border-2 border-muted-foreground/50 hover:border-success hover:bg-success/10 hover:text-success">
+                <Check className="opacity-0 group-hover:opacity-100 group-focus-visible:opacity-100" />
+              </Button>
+            </TooltipTrigger>
+            <TooltipContent>Aufgabe abschließen</TooltipContent>
+          </Tooltip>
+          <h2 className="break-words text-3xl font-bold leading-tight tracking-tight">{task.title}</h2>
+          <div className="flex flex-wrap items-center gap-2">
+            <DropdownMenu>
+              <DropdownMenuTrigger asChild>
+                <Button variant="outline" size="sm" className="rounded-full bg-transparent data-[state=open]:bg-muted">
+                  <span className={cn("size-2 rounded-full", ownerColors[owner])} />
+                  <span className="text-muted-foreground">Am Zug</span> {TASK_BALL_LABELS[owner]}
+                </Button>
+              </DropdownMenuTrigger>
+              <DropdownMenuContent align="start" className="min-w-56 rounded-xl p-1">
+                {OWNERS.map((option) => (
+                  <DropdownMenuItem key={option} onSelect={() => setOwner(option)} className="gap-3 py-2">
+                    <span className={cn("size-2 shrink-0 rounded-full", ownerColors[option])} />
+                    {TASK_BALL_LABELS[option]}
+                    <span className="ml-auto text-xs text-muted-foreground">
+                      {option === "office" ? nameOf(assignee) ?? "Zuständigkeit im Büro" : option === "deputy" ? "Freigabe, Entscheidung" : "Behörde, Partner, Presse"}
+                    </span>
+                  </DropdownMenuItem>
+                ))}
+              </DropdownMenuContent>
+            </DropdownMenu>
+            <DropdownMenu>
+              <DropdownMenuTrigger asChild>
+                <Button variant="outline" size="sm" className="rounded-full bg-transparent data-[state=open]:bg-muted">
+                  <CalendarDays />{due ? formatDate(due) : "Kein Termin"}
+                </Button>
+              </DropdownMenuTrigger>
+              <DropdownMenuContent align="start" className="min-w-52 rounded-xl p-1">
+                {datePresets.map(([text, days]) => {
+                  const date = shiftDay(null, days);
+                  return <DropdownMenuItem key={days} onSelect={() => setDue(date)} className="justify-between gap-4 py-2">
+                    {text}<span className="text-xs text-muted-foreground">{formatDate(date)}</span>
+                  </DropdownMenuItem>;
+                })}
+                {due && <DropdownMenuItem onSelect={() => setDue("")}>Termin entfernen</DropdownMenuItem>}
+              </DropdownMenuContent>
+            </DropdownMenu>
+            <span className="inline-flex h-9 items-center gap-2 rounded-full border px-3 text-sm">
+              <span className="text-muted-foreground">Priorität</span>{priorityLabels[task.priority] ?? task.priority}
+            </span>
           </div>
           <div className="flex flex-wrap gap-2">
             {decisionLabel && <Badge variant="secondary"><Gavel className="h-3 w-3 mr-1" />{decisionLabel}</Badge>}
@@ -112,7 +166,7 @@ export function TaskDetailView({ task, profiles, decisionLabel, onSave, onComple
           </div>
           <WorkflowLinks taskId={task.id} />
           {task.description && <p className="text-sm leading-relaxed text-muted-foreground whitespace-pre-wrap">{task.description}</p>}
-        </div>
+        </header>
 
         {nudgeForMe && (
           <section className="space-y-3" role="alert">
@@ -149,51 +203,42 @@ export function TaskDetailView({ task, profiles, decisionLabel, onSave, onComple
           </section>
         )}
 
-        <section className="space-y-4">
-          <div className="section-label">Wer ist am Zug?</div>
-          <div className="flex flex-wrap gap-2">
-            {OWNERS.map((o) => (
-              <Button key={o} size="sm" variant="outline" aria-pressed={owner === o} className={cn("rounded-full border px-4 py-2", owner === o ? "border-success bg-success/10 text-success hover:bg-success/15" : "bg-background text-muted-foreground")} onClick={() => setOwner(o)}>
-                <span className={cn("mr-2 h-2 w-2 rounded-full", o === "office" ? "bg-success" : o === "deputy" ? "bg-primary" : "bg-muted-foreground")} />{TASK_BALL_LABELS[o]}
-              </Button>
-            ))}
-          </div>
-          <Select value={assignee} onValueChange={setAssignee}>
-            <SelectTrigger aria-label="Verantwortlich" className="h-9"><SelectValue placeholder="Verantwortlich" /></SelectTrigger>
-            <SelectContent>
-              <SelectItem value="none">Keine Person festgelegt</SelectItem>
-              {profiles.map((p) => <SelectItem key={p.user_id} value={p.user_id}>{p.display_name ?? "Unbenannt"}</SelectItem>)}
-            </SelectContent>
-          </Select>
-
+        <section className="space-y-4 border-b pb-5 sm:ml-10">
           {resub && (
             <div className="rounded-md bg-muted px-3 py-2 text-caption">
               Auf Wiedervorlage bis {new Date(task.next_action_due + "T00:00:00").toLocaleDateString("de-DE")}. Erledige den Schritt, um einen neuen festzulegen.
             </div>
           )}
 
-          <div className="section-label pt-2">Nächster Schritt</div>
-          <Input value={label} onChange={(e) => setLabel(e.target.value)} placeholder="Was ist konkret als Nächstes zu tun?" disabled={hasStep} />
-          <div className="flex items-center gap-2">
-            <CalendarClock className="h-4 w-4 text-muted-foreground" />
-            <Input aria-label="Frist des nächsten Schritts" type="date" value={due} onChange={(e) => setDue(e.target.value)} className="h-8 w-44" />
-          </div>
-          <div className="flex flex-wrap gap-2 pt-2">
-            {hasStep ? (
-              <Button size="sm" disabled={saving} onClick={() => setDoneDialog(true)}><Check className="h-4 w-4 mr-1" />Schritt erledigt</Button>
-            ) : (
-              <Button size="sm" disabled={saving || !label.trim()} onClick={setStep}>Schritt festlegen</Button>
-            )}
-            {hasStep && (
-              <Button size="sm" variant="outline" disabled={saving} onClick={setStep}>Änderungen speichern</Button>
-            )}
-            {owner === "office" && (
-              <Button size="sm" variant="secondary" disabled={saving}
+          <label htmlFor="task-next-action" className="text-sm text-muted-foreground">Nächster Schritt</label>
+          <Input id="task-next-action" value={label} onChange={(e) => setLabel(e.target.value)}
+            placeholder="Was passiert als Nächstes?" className="px-0 font-medium md:text-lg" disabled={hasStep} />
+          <div className="flex flex-wrap gap-2">
+            <Button disabled={saving || !hasStep} onClick={() => setDoneDialog(true)} className="rounded-xl bg-success text-white hover:bg-success/90">
+              <Check />Schritt erledigt <kbd className="rounded border border-white/60 px-1 text-xs">E</kbd>
+            </Button>
+            {owner !== "deputy" && (
+              <Button disabled={saving} className="rounded-xl bg-green-900 text-white hover:bg-green-800"
                 onClick={() => run(() => onSave({ ball_owner: "deputy", ball_assignee_id: null, next_action: "Freigabe prüfen", next_action_due: null }))}>
-                <Send className="h-4 w-4 mr-1" />Zur Freigabe vorlegen
+                <Send />Zur Freigabe vorlegen
               </Button>
             )}
+            <Button variant="outline" disabled={saving} onClick={setStep} className="rounded-xl bg-transparent">Speichern</Button>
           </div>
+          <details className="text-sm text-muted-foreground">
+            <summary className="cursor-pointer">Person und Datum festlegen</summary>
+            <div className="mt-2 flex flex-wrap items-center gap-2">
+              <Select value={assignee} onValueChange={setAssignee}>
+                <SelectTrigger aria-label="Verantwortlich" className="h-9"><SelectValue placeholder="Verantwortlich" /></SelectTrigger>
+                <SelectContent>
+                  <SelectItem value="none">Keine Person festgelegt</SelectItem>
+                  {profiles.map((p) => <SelectItem key={p.user_id} value={p.user_id}>{p.display_name ?? "Unbenannt"}</SelectItem>)}
+                </SelectContent>
+              </Select>
+
+              <Input aria-label="Frist des nächsten Schritts" type="date" value={due} onChange={(e) => setDue(e.target.value)} className="h-8 w-44" />
+            </div>
+          </details>
           {mayNudge && (
             <div className="flex flex-wrap gap-2 pt-2 border-t">
               <Input value={nudgeNote} onChange={(e) => setNudgeNote(e.target.value)} placeholder="Nachricht zum Anstupsen (optional)" className="h-8" />
@@ -207,11 +252,8 @@ export function TaskDetailView({ task, profiles, decisionLabel, onSave, onComple
           )}
         </section>
 
-
-        <TaskSubtasks taskId={task.id} tenantId={task.tenant_id} userId={meId} nameOf={nameOf} profiles={profiles} />
-
-        <section className="space-y-3">
-          <div className="section-label flex items-center gap-2"><ListChecks className="h-3.5 w-3.5" />Checkliste{progress.total ? ` (${progress.done}/${progress.total})` : ""}</div>
+        <section className="space-y-3 sm:ml-10">
+          <div className="flex items-center gap-2 text-sm font-semibold"><ListChecks className="h-3.5 w-3.5" />Checkliste{progress.total ? ` (${progress.done}/${progress.total})` : ""}</div>
           <ul className="space-y-1">
             {checklist.map((item) => (
               <li key={item.id} className="group flex items-center gap-2">
@@ -226,9 +268,11 @@ export function TaskDetailView({ task, profiles, decisionLabel, onSave, onComple
           <div className="flex items-center gap-2">
             <Plus className="h-4 w-4 text-muted-foreground" />
             <Input value={newItem} onChange={(e) => setNewItem(e.target.value)} onKeyDown={(e) => { if (e.key === "Enter") { e.preventDefault(); addItem(); } }}
-              placeholder="Punkt hinzufügen, Enter für den nächsten" className="h-8" />
+              placeholder="Punkt hinzufügen" className="h-8" />
           </div>
         </section>
+
+        <TaskSubtasks taskId={task.id} tenantId={task.tenant_id} userId={meId} nameOf={nameOf} profiles={profiles} />
 
         <section className="space-y-3">
           <div className="section-label">Verlauf</div>
@@ -255,7 +299,7 @@ export function TaskDetailView({ task, profiles, decisionLabel, onSave, onComple
           <h3 className="text-xs font-semibold uppercase tracking-wider text-muted-foreground">Eigenschaften</h3>
           <dl className="text-sm [&>div]:flex [&>div]:justify-between [&>div]:gap-3 [&>div]:border-b [&>div]:border-border/50 [&>div]:py-3 [&_dt]:text-muted-foreground [&_dd]:text-right [&_dd]:break-words">
             <div><dt>Status</dt><dd>{task.status === "todo" ? "Offen" : task.status === "in_progress" ? "In Bearbeitung" : task.status === "completed" ? "Erledigt" : task.status}</dd></div>
-            <div><dt>Priorität</dt><dd>{{ low: "Niedrig", medium: "Mittel", high: "Hoch", urgent: "Dringend" }[task.priority] ?? task.priority}</dd></div>
+            <div><dt>Priorität</dt><dd>{priorityLabels[task.priority] ?? task.priority}</dd></div>
             <div><dt>Fälligkeit</dt><dd>{task.due_date ? new Date(task.due_date).toLocaleDateString("de-DE") : "Keine Frist"}</dd></div>
             <div><dt>Erstellt von</dt><dd>{nameOf(task.user_id) ?? "Unbekannt"}</dd></div>
           </dl>
