@@ -144,8 +144,10 @@ export function ProtocolAgendaEntry({
                     </li>
                   ))}
               </ul>
+            ) : item.result_html ? (
+              <RichTextDisplay content={item.result_html} />
             ) : (
-              {item.result_html ? <RichTextDisplay content={item.result_html} /> : <p className="text-sm whitespace-pre-wrap">{item.result_text}</p>}
+              <p className="text-sm whitespace-pre-wrap">{item.result_text}</p>
             )}
           </div>
         )}
