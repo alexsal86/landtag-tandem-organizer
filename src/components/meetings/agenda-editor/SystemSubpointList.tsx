@@ -5,10 +5,12 @@ import { ArrowDown, ArrowUp, GripVertical } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { Popover, PopoverContent, PopoverTrigger } from "@/components/ui/popover";
 import { Badge } from "@/components/ui/badge";
-import { Checkbox } from "@/components/ui/checkbox";
+import { createPortal } from "react-dom";
+import { AgendaCompletionCheckbox } from "./AgendaRowDetails";
+import { agendaDragHandleClass } from "./AgendaDragHandle";
 import { cn } from "@/lib/utils";
 import { parseMeetingResults, type MeetingEntryResult } from "../platformAgendaRules";
-import { agendaSubpointListClass, agendaSubpointNumber, agendaSubpointRowClass, orderSystemSubpoints, wasReservedForMeeting } from "./systemSubpoints";
+import { agendaSubpointBackground, agendaSubpointListClass, agendaSubpointNumber, agendaSubpointRowClass, orderSystemSubpoints, wasReservedForMeeting } from "./systemSubpoints";
 
 export function SystemSubpointList<T extends { id: string; jour_fixe_reserved_meeting_id?: string | null }>({
   entries, titleOf, agendaNumber, resultText, onUpdateResult, details, actions, metadata, checkable = false, label,
@@ -70,9 +72,9 @@ export function SystemSubpointList<T extends { id: string; jour_fixe_reserved_me
         return (
           <li
             key={entry.id}
-            className={cn(agendaSubpointRowClass, "group/subpoint relative scroll-mt-24",
-              isSelected && "before:absolute before:inset-y-0 before:left-0 before:w-[3px] before:bg-primary",
-              isLiveCurrent && "before:absolute before:inset-y-0 before:left-0 before:w-[3px] before:bg-success",
+            className={cn(agendaSubpointRowClass, agendaSubpointBackground, "group/subpoint flex items-start scroll-mt-24",
+              isSelected && "border-l-primary",
+              isLiveCurrent && "border-l-success",
               targetIndex === index && "ring-1 ring-inset ring-primary")}
             data-system-subpoint
             data-live-agenda-current={isLiveCurrent || undefined}
@@ -110,12 +112,13 @@ export function SystemSubpointList<T extends { id: string; jour_fixe_reserved_me
                   <button
                     type="button"
                     draggable
-                    className="absolute left-1 top-2.5 grid size-5 cursor-grab place-items-center text-muted-foreground opacity-0 group-hover/subpoint:opacity-100 focus-visible:opacity-100 [@media(hover:none)]:opacity-100"
+                    className={cn(agendaDragHandleClass, "h-5 group-hover/subpoint:mr-2 group-hover/subpoint:max-w-4 group-hover/subpoint:opacity-100", sourceId.current === entry.id && "mr-2 max-w-4 opacity-100")}
                     aria-label={`${title} verschieben`}
                     title="Ziehen oder Pfeiltaste nach oben / unten"
                     onDragStart={(event) => {
                       event.stopPropagation();
                       sourceId.current = entry.id;
+                      setTargetIndex(index);
                       event.dataTransfer.effectAllowed = "move";
                       event.dataTransfer.setData("text/plain", entry.id);
                     }}
@@ -127,7 +130,7 @@ export function SystemSubpointList<T extends { id: string; jour_fixe_reserved_me
                       move(entry.id, index + (event.key === "ArrowUp" ? -1 : 1));
                     }}
                   >
-                    <GripVertical className="size-4" aria-hidden />
+                    <GripVertical className="size-4 shrink-0" aria-hidden />
                   </button>
                 </PopoverTrigger>
                 <PopoverContent align="start" className="flex w-auto flex-col gap-1 p-1">
@@ -140,16 +143,13 @@ export function SystemSubpointList<T extends { id: string; jour_fixe_reserved_me
                 </PopoverContent>
               </Popover>
             )}
-            {checkable && (
-              <Checkbox
-                checked={Boolean(result?.completed)}
-                disabled={!onUpdateResult}
-                aria-label={`Erledigt: ${title}`}
-                onCheckedChange={(value) => patch({ completed: value === true })}
-                className="absolute left-6 top-2.5 size-5 rounded-md"
-              />
-            )}
-            <div className={cn("flex min-h-5 items-baseline gap-2", result?.completed && "text-muted-foreground line-through")}>
+            <div className="mr-2 grid h-5 w-9 shrink-0 place-items-center">
+              {checkable && <AgendaCompletionCheckbox
+                item={{ title, is_completed: Boolean(result?.completed) }}
+                onComplete={onUpdateResult ? (completed) => patch({ completed }) : undefined}
+              />}
+            </div>
+            <div className={cn("flex min-h-5 min-w-0 flex-1 flex-wrap items-baseline gap-x-1 gap-y-1 leading-5", result?.completed && "text-muted-foreground line-through")}>
               <span className="shrink-0 tabular-nums text-muted-foreground">{agendaSubpointNumber(agendaNumber, index)}</span>
               <span className="min-w-0 flex-1 break-words">{title}</span>
               {wasReservedForMeeting(scope?.meetingId, entry.jour_fixe_reserved_meeting_id) && (
@@ -158,7 +158,13 @@ export function SystemSubpointList<T extends { id: string; jour_fixe_reserved_me
               {metadata?.(entry)}
               {actions?.(entry)}
             </div>
-            {(!scope?.liveKey || isLiveCurrent) && details?.(entry, result, patch)}
+            {isSelected && scope?.detailContainer && details && createPortal(
+              <section className="rounded-xl border bg-card p-4" onFocus={(event) => event.stopPropagation()} onClick={(event) => event.stopPropagation()}>
+                <h3 className="mb-2 text-sm font-semibold">{agendaSubpointNumber(agendaNumber, index)} {title}</h3>
+                {details(entry, result, patch)}
+              </section>,
+              scope.detailContainer,
+            )}
           </li>
         );
       })}

@@ -1,8 +1,11 @@
 export const agendaSubpointListClass =
   "border-t border-[color:var(--agenda-row-divider)] dark:border-border";
 
+export const agendaSubpointBackground =
+  "bg-[var(--agenda-subpoint-bg)] hover:bg-[var(--agenda-subpoint-bg)] dark:bg-slate-800 dark:hover:bg-slate-700";
+
 export const agendaSubpointRowClass =
-  "min-w-0 border-b border-[color:var(--agenda-row-divider)] bg-[var(--agenda-subpoint-bg)] py-2.5 pl-[3.75rem] pr-3 text-xs last:border-b-0 dark:border-border dark:bg-slate-800 sm:pr-5";
+  "min-w-0 border-b border-[color:var(--agenda-row-divider)] border-l-[3px] border-l-transparent py-2.5 pl-4 pr-3 text-xs last:border-b-0 dark:border-b-border sm:pr-5";
 
 export function agendaSubpointNumber(parentNumber: string | undefined, index: number) {
   return parentNumber ? `${parentNumber.replace(/\.$/, "")}.${index + 1}` : undefined;

@@ -6,14 +6,15 @@ import { useBriefingMutations, useUndecidedBriefings } from "./useBriefing";
 import { BriefingRequestPopover } from "./BriefingRequestPopover";
 
 /** Accepted appointments in the next 14 days without a briefing decision. */
-export function JourFixeBriefingList({ readOnly = false }: { readOnly?: boolean }) {
+export function JourFixeBriefingList({ readOnly = false, appointmentId }: { readOnly?: boolean; appointmentId?: string }) {
   const { data = [], isLoading } = useUndecidedBriefings();
   const { setBriefing } = useBriefingMutations();
+  const visible = appointmentId ? data.filter(appointment => appointment.id === appointmentId) : data;
   if (isLoading) return <p className="text-caption text-muted-foreground">Lädt…</p>;
-  if (!data.length) return <p className="text-caption text-muted-foreground">Für alle Termine der nächsten 14 Tage ist der Briefing-Bedarf geklärt.</p>;
+  if (!visible.length) return <p className="text-caption text-muted-foreground">Für alle Termine der nächsten 14 Tage ist der Briefing-Bedarf geklärt.</p>;
   return (
     <ul className="divide-y">
-      {data.map((a) => (
+      {visible.map((a) => (
         <li key={a.id} className="flex flex-wrap items-center justify-between gap-2 py-2">
           <div className="min-w-0">
             <p className="truncate text-body font-medium">{a.title}</p>

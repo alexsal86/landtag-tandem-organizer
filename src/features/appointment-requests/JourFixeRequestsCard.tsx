@@ -1,3 +1,5 @@
+import { SystemSubpointList } from "@/components/meetings/agenda-editor/SystemSubpointList";
+import { sortByEarliest } from "./logic";
 import { useState, useEffect } from "react";
 import { CalendarClock, ChevronDown, Plus } from "lucide-react";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
@@ -12,11 +14,32 @@ import { JourFixeBriefingList } from "@/features/appointments/briefing/JourFixeB
 import { useUndecidedBriefings } from "@/features/appointments/briefing/useBriefing";
 
 /** Jour fixe block "Termine": decide requests and clarify briefing needs for the next 14 days. */
-export function JourFixeRequestsCard({ className, embedded = false, readOnly = false, onCountChange }: { className?: string; embedded?: boolean; readOnly?: boolean; onCountChange?: (count: number | null) => void }) {
+export function JourFixeRequestsCard({ className, embedded = false, readOnly = false, onCountChange, agendaRows }: { className?: string; embedded?: boolean; readOnly?: boolean; onCountChange?: (count: number | null) => void; agendaRows?: { agendaNumber?: string; resultText?: string | null; onUpdateResult?: (value: string) => void } }) {
   const [open, setOpen] = useState(true);
   const { data = [], isLoading: requestsLoading, error: requestsError } = useOpenAppointmentRequests();
   const { data: briefings = [], isLoading: briefingsLoading, error: briefingsError } = useUndecidedBriefings();
   useEffect(() => { onCountChange?.(requestsLoading || briefingsLoading || requestsError || briefingsError ? null : data.length + briefings.length); }, [requestsLoading, briefingsLoading, requestsError, briefingsError, data.length, briefings.length, onCountChange]);
+
+  if (agendaRows) {
+    if (requestsError || briefingsError) return <p role="status" className="px-4 py-2 text-xs text-muted-foreground">Terminanfragen oder Briefing-Bedarf konnten nicht geladen werden.</p>;
+    if (requestsLoading || briefingsLoading) return <p role="status" className="px-4 py-2 text-xs text-muted-foreground">Terminanfragen werden geladen …</p>;
+    const entries = [
+      ...sortByEarliest(data).map(request => ({ id: `request-${request.id}`, sourceId: request.id, title: request.title, kind: "request" as const })),
+      ...briefings.map(appointment => ({ id: `briefing-${appointment.id}`, sourceId: appointment.id, title: appointment.title, kind: "briefing" as const })),
+    ];
+    return <SystemSubpointList
+      {...agendaRows}
+      onUpdateResult={readOnly ? undefined : agendaRows.onUpdateResult}
+      entries={entries}
+      titleOf={(entry) => entry.title}
+      label="Terminanfragen & Briefing-Bedarf"
+      checkable
+      metadata={(entry) => <span className="text-muted-foreground">{entry.kind === "request" ? "Terminanfrage" : "Briefing-Bedarf"}</span>}
+      details={(entry) => entry.kind === "request"
+        ? <AppointmentRequestList mode="all" readOnly={readOnly} requestId={entry.sourceId} />
+        : <JourFixeBriefingList readOnly={readOnly} appointmentId={entry.sourceId} />}
+    />;
+  }
 
   if (embedded) return <div className="min-w-0 space-y-3">
     <div className="flex items-center justify-between gap-2">

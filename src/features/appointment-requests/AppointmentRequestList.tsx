@@ -17,9 +17,10 @@ interface Props {
   mode: "all" | "urgent";
   /** Hide the whole block when there is nothing to show. */
   hideWhenEmpty?: boolean;
+  requestId?: string;
 }
 
-export function AppointmentRequestList({ mode, hideWhenEmpty, readOnly = false }: Props) {
+export function AppointmentRequestList({ mode, hideWhenEmpty, readOnly = false, requestId }: Props) {
   const { data = [], isLoading } = useOpenAppointmentRequests();
   const { data: nextJf = null } = useNextJourFixeDate();
   const { role } = useResolvedUserRole();
@@ -28,8 +29,10 @@ export function AppointmentRequestList({ mode, hideWhenEmpty, readOnly = false }
 
   const list = sortByEarliest(mode === "urgent" ? data.filter((r) => isUrgent(r, nextJf)) : data);
 
+  const visible = requestId ? list.filter(request => request.id === requestId) : list;
+
   if (isLoading) return hideWhenEmpty ? null : <LoadingState variant="inline" />;
-  if (list.length === 0) {
+  if (visible.length === 0) {
     if (hideWhenEmpty) return null;
     return (
       <EmptyState
@@ -56,7 +59,7 @@ export function AppointmentRequestList({ mode, hideWhenEmpty, readOnly = false }
 
   return (
     <ul className="divide-y divide-border">
-      {list.map((r) => (
+      {visible.map((r) => (
         <li key={r.id} className="flex items-center gap-3 py-2">
           <button type="button" className="min-w-0 flex-1 text-left" onClick={() => openAppointmentRequestDetail(r.id)}>
             <div className="flex items-center gap-2">

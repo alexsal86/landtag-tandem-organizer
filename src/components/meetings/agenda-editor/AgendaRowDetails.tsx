@@ -2,7 +2,7 @@ import { Checkbox } from "@/components/ui/checkbox";
 import type { AgendaItem, Profile } from "../types";
 
 export function AgendaCompletionCheckbox({ item, onComplete }: {
-  item: AgendaItem;
+  item: Pick<AgendaItem, "title" | "is_completed">;
   onComplete?: (completed: boolean) => void;
 }) {
   return (

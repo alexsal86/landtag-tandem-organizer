@@ -7,6 +7,7 @@ export const SystemSubpointScope = createContext<{
   meetingId?: string;
   selectedKey: string | null;
   liveKey?: string;
+  detailContainer?: HTMLElement | null;
   onSelect: (key: string) => void;
   onEntries: (parentKey: string, entries: GeneratedAgendaEntry[]) => void;
 } | null>(null);

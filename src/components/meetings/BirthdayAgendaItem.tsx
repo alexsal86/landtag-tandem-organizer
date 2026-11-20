@@ -1,3 +1,4 @@
+import { SystemSubpointList } from "./agenda-editor/SystemSubpointList";
 import { useState, useEffect } from "react";
 import { debugConsole } from "@/utils/debugConsole";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
@@ -29,7 +30,7 @@ interface BirthdayContact {
 }
 
 interface BirthdayAction {
-  action: "card" | "mail" | "call" | "gift";
+  action?: "card" | "mail" | "call" | "gift";
   note?: string;
   assigned_to?: string[];
 }
@@ -43,6 +44,7 @@ interface ProfileInfo {
 interface BirthdayAgendaItemProps {
   readOnly?: boolean;
   contentOnly?: boolean;
+  agendaRows?: { agendaNumber?: string };
   onDescriptionChange?: (description: string) => void;
   onCountChange?: (count: number | null) => void;
   meetingDate?: string | Date;
@@ -85,6 +87,7 @@ const ACTION_OPTIONS = [
 export function BirthdayAgendaItem({
   readOnly = false,
   contentOnly = false,
+  agendaRows,
   onCountChange,
   onDescriptionChange,
   meetingDate,
@@ -189,13 +192,14 @@ export function BirthdayAgendaItem({
 
   const toggleAction = (
     contactId: string,
-    actionKey: BirthdayAction["action"],
+    actionKey: NonNullable<BirthdayAction["action"]>,
   ) => {
     const newActions = { ...actions };
     if (newActions[contactId]?.action === actionKey) {
-      delete newActions[contactId];
+      newActions[contactId] = { ...newActions[contactId], action: undefined };
     } else {
       newActions[contactId] = {
+        ...newActions[contactId],
         action: actionKey,
         assigned_to: newActions[contactId]?.assigned_to,
       };
@@ -214,6 +218,94 @@ export function BirthdayAgendaItem({
     setActions(newActions);
     onUpdateResult?.(JSON.stringify(newActions));
   };
+
+  const renderContact = (contact: BirthdayContact) => {
+    const contactAction = actions[contact.id];
+    const selectedAction = contactAction?.action;
+    return (
+      <div key={contact.id} className="p-3 bg-muted/50 rounded-md">
+        <div className="flex items-center justify-between mb-2">
+          <div>
+            <h4 className="font-semibold text-sm">{contact.name}</h4>
+            <p className="text-xs text-muted-foreground">
+              {format(contact.nextBirthday, "dd. MMMM", {
+                locale: de,
+              })}{" "}
+              — wird {contact.age} Jahre
+            </p>
+          </div>
+          <Heart className="h-4 w-4 text-palette-pink" />
+        </div>
+        <div className="flex gap-1 flex-wrap">
+          {ACTION_OPTIONS.map((opt) => {
+            const Icon = opt.icon;
+            const isSelected = selectedAction === opt.key;
+            return (
+              <Button
+                disabled={readOnly}
+                key={opt.key}
+                size="sm"
+                variant={isSelected ? "default" : "outline"}
+                className={cn(
+                  "h-7 text-xs gap-1",
+                  isSelected &&
+                    "bg-palette-pink hover:bg-palette-pink text-white",
+                )}
+                onClick={() => toggleAction(contact.id, opt.key)}
+              >
+                <Icon className="h-3 w-3" />
+                {opt.label}
+              </Button>
+            );
+          })}
+        </div>
+        {/* Assignment selector - only shown when an action is selected */}
+        {selectedAction && profiles.length > 0 && (
+          <div className="mt-2 flex items-center gap-2">
+            <Users className="h-3.5 w-3.5 text-muted-foreground shrink-0" />
+            <span className="text-xs text-muted-foreground shrink-0">
+              Zuständig:
+            </span>
+            <fieldset disabled={readOnly}>
+              <MultiUserAssignSelect
+                assignedTo={contactAction?.assigned_to || null}
+                profiles={profiles}
+                onChange={(userIds) =>
+                  updateAssignment(contact.id, userIds)
+                }
+                size="sm"
+              />
+            </fieldset>
+            {!contactAction?.assigned_to?.length && (
+              <span className="text-xs text-muted-foreground italic">
+                Alle Mitarbeiter
+              </span>
+            )}
+          </div>
+        )}
+      </div>
+    );
+  };
+
+  if (agendaRows && !loading) {
+    return <SystemSubpointList
+      {...agendaRows}
+      entries={contacts}
+      titleOf={(contact) => contact.name}
+      label="Geburtstage"
+      resultText={resultText}
+      onUpdateResult={readOnly || !onUpdateResult ? undefined : (value) => {
+        const updates = JSON.parse(value) as Record<string, object>;
+        onUpdateResult(JSON.stringify({
+          ...actions,
+          ...Object.fromEntries(Object.entries(updates).map(([id, result]) => [id, { ...actions[id], ...result }])),
+        }));
+      }}
+      checkable
+      metadata={(contact) => <time className="text-muted-foreground">{format(contact.nextBirthday, "dd. MMMM", { locale: de })}</time>}
+      details={renderContact}
+    />;
+  }
 
   return (
     <Card
@@ -264,73 +356,7 @@ export function BirthdayAgendaItem({
           </p>
         ) : (
           <div className="space-y-2">
-            {contacts.map((contact) => {
-              const contactAction = actions[contact.id];
-              const selectedAction = contactAction?.action;
-              return (
-                <div key={contact.id} className="p-3 bg-muted/50 rounded-md">
-                  <div className="flex items-center justify-between mb-2">
-                    <div>
-                      <h4 className="font-semibold text-sm">{contact.name}</h4>
-                      <p className="text-xs text-muted-foreground">
-                        {format(contact.nextBirthday, "dd. MMMM", {
-                          locale: de,
-                        })}{" "}
-                        — wird {contact.age} Jahre
-                      </p>
-                    </div>
-                    <Heart className="h-4 w-4 text-palette-pink" />
-                  </div>
-                  <div className="flex gap-1 flex-wrap">
-                    {ACTION_OPTIONS.map((opt) => {
-                      const Icon = opt.icon;
-                      const isSelected = selectedAction === opt.key;
-                      return (
-                        <Button
-                          disabled={readOnly}
-                          key={opt.key}
-                          size="sm"
-                          variant={isSelected ? "default" : "outline"}
-                          className={cn(
-                            "h-7 text-xs gap-1",
-                            isSelected &&
-                              "bg-palette-pink hover:bg-palette-pink text-white",
-                          )}
-                          onClick={() => toggleAction(contact.id, opt.key)}
-                        >
-                          <Icon className="h-3 w-3" />
-                          {opt.label}
-                        </Button>
-                      );
-                    })}
-                  </div>
-                  {/* Assignment selector - only shown when an action is selected */}
-                  {selectedAction && profiles.length > 0 && (
-                    <div className="mt-2 flex items-center gap-2">
-                      <Users className="h-3.5 w-3.5 text-muted-foreground shrink-0" />
-                      <span className="text-xs text-muted-foreground shrink-0">
-                        Zuständig:
-                      </span>
-                      <fieldset disabled={readOnly}>
-                        <MultiUserAssignSelect
-                          assignedTo={contactAction?.assigned_to || null}
-                          profiles={profiles}
-                          onChange={(userIds) =>
-                            updateAssignment(contact.id, userIds)
-                          }
-                          size="sm"
-                        />
-                      </fieldset>
-                      {!contactAction?.assigned_to?.length && (
-                        <span className="text-xs text-muted-foreground italic">
-                          Alle Mitarbeiter
-                        </span>
-                      )}
-                    </div>
-                  )}
-                </div>
-              );
-            })}
+            {contacts.map(renderContact)}
           </div>
         )}
       </CardContent>

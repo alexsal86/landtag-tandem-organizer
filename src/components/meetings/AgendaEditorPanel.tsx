@@ -36,6 +36,7 @@ import {
 } from "@hello-pangea/dnd";
 import { SystemAgendaItem } from "@/components/meetings/SystemAgendaItem";
 import { UpcomingAppointmentsSection } from "@/components/meetings/UpcomingAppointmentsSection";
+import { openAppointmentRequestCreate } from "@/features/appointment-requests/events";
 import { JourFixeRequestsCard } from "@/features/appointment-requests/JourFixeRequestsCard";
 import { format } from "date-fns";
 import { de } from "date-fns/locale";
@@ -141,6 +142,7 @@ export function AgendaEditorPanel({
   meetingLinkedCaseItems,
   meetingRelevantDecisions,
 }: AgendaEditorPanelProps) {
+  const [detailContainer, setDetailContainer] = useState<HTMLDivElement | null>(null);
   const [selectedKey, setSelectedKey] = useState<string | null>(null);
   const [hideEmpty, setHideEmpty] = useState(false);
   const [dirty, setDirty] = useState(false);
@@ -168,13 +170,16 @@ export function AgendaEditorPanel({
   const selectedIndex = agendaItems.findIndex(
     (item, index) => getItemKey(item, index) === selectedKey,
   );
-  const generatedParent = selectedKey?.startsWith("system:") ? selectedKey.split(":")[1] : undefined;
+  const inspectorKey = live?.currentKey ?? selectedKey;
+  const generatedParent = inspectorKey?.startsWith("system:") ? inspectorKey.split(":")[1] : undefined;
   const selectedItem = agendaItems[selectedIndex];
   const appointmentParent = agendaItems.find(item => item.system_type === "upcoming_appointments" &&
     ((item.localKey || item.id) === generatedParent || item === selectedItem));
   const notesParent = agendaItems.find(item => item.system_type === "quick_notes" &&
     ((item.localKey || item.id) === generatedParent || item === selectedItem));
-  const systemInspectorItem = appointmentParent ?? notesParent;
+  const systemInspectorItem = appointmentParent ?? notesParent ?? agendaItems.find(item =>
+    generatedParent && (item.localKey || item.id) === generatedParent,
+  );
   const inspectorItem = systemInspectorItem ?? selectedItem;
   const inspectorIndex = inspectorItem ? agendaItems.indexOf(inspectorItem) : -1;
   const meetingNotes = linkedQuickNotes.filter(note => note.meeting_id === selectedMeeting.id);
@@ -509,13 +514,9 @@ export function AgendaEditorPanel({
       })
       .sort((a, b) => a.order_index - b.order_index);
 
-    const generatedCount = mainItem.system_type === "decisions"
-      ? meetingRelevantDecisions.length
-      : mainItem.system_type === "redaktion"
-        ? systemCounts[getItemKey(mainItem, agendaItems.indexOf(mainItem))] ?? 0
-        : mainItem.system_type === "upcoming_appointments" && !live
-          ? systemCounts[getItemKey(mainItem, agendaItems.indexOf(mainItem))] ?? 0
-          : generatedEntryCounts[mainItem.system_type ?? ""] ?? 0;
+    const generatedCount = generatedEntries[getItemKey(mainItem, agendaItems.indexOf(mainItem))]?.length
+      ?? systemCounts[getItemKey(mainItem, agendaItems.indexOf(mainItem))]
+      ?? generatedEntryCounts[mainItem.system_type ?? ""] ?? 0;
     subItems.forEach((subItem, subIndex) => {
       const subNumber = generatedCount + subIndex + 1;
       if (subItem.id) subNumberByKey.set(subItem.id, subNumber);
@@ -740,10 +741,10 @@ export function AgendaEditorPanel({
                                   meetingId: selectedMeeting.id,
                                   selectedKey: live ? currentLiveKey ?? null : selectedKey,
                                   liveKey: currentLiveKey,
+                                  detailContainer,
                                   onSelect: selectStep,
                                   onEntries: onSystemEntries,
                                 }}
-                                selected={(live ? currentLiveKey : selectedKey) === getItemKey(item, index)}
                               >
                                 <SystemAgendaItem
                                   expandedOverride={
@@ -768,8 +769,8 @@ export function AgendaEditorPanel({
                                     live && hasEditPermission && item.id &&
                                     liveAgendaSystemTypes.includes(item.system_type) ? (
                                       <LiveAgendaSystemContent
-                                        {...live}
                                         key={getItemKey(item, index)}
+                                        {...live}
                                         item={item}
                                         agendaNumber={getAgendaNumber(item)}
                                         profiles={profiles}
@@ -861,7 +862,7 @@ export function AgendaEditorPanel({
                               hasSelectedChild={hasSelectedChild(item)}
                               liveCurrent={isLiveCurrent(item)}
                               onLiveSelect={live ? () => selectStep(getItemKey(item, index)) : undefined}
-                              liveContent={live && isLiveCurrent(item) && hasEditPermission ? (
+                              liveContent={live && isLiveCurrent(item) && hasEditPermission && !item.parent_id && !item.parentLocalKey ? (
                                 <LiveAgendaResult
                                   meeting={selectedMeeting}
                                   item={item}
@@ -953,16 +954,31 @@ export function AgendaEditorPanel({
         </div>
         {inspectorItem && (
           <div className="min-w-0 space-y-4">
+        <div ref={setDetailContainer} className="empty:hidden" />
+        {inspectorItem.system_type === "appointment_requests" && !generatedParent && hasEditPermission && (
+          <Button variant="outline" size="sm" onClick={() => openAppointmentRequestCreate()}>
+            <Plus className="mr-1 size-4" /> Terminanfrage vormerken
+          </Button>
+        )}
+        {live && hasEditPermission && selectedItem && !selectedItem.system_type &&
+          (selectedItem.parent_id || selectedItem.parentLocalKey) && (
+            <LiveAgendaResult
+              meeting={selectedMeeting}
+              item={selectedItem}
+              onChange={(result) => saveLiveResult(selectedItem, selectedIndex, result)}
+              onTransfer={(value) => selectedItem.id && live.onUpdateResult(selectedItem.id, "carry_over_to_next", value)}
+            />
+          )}
         {appointmentParent ? (
           <AppointmentInspector meeting={selectedMeeting} parent={appointmentParent}
-            number={getAgendaNumber(appointmentParent)} selectedKey={selectedKey} onSelect={selectStep}
+            number={getAgendaNumber(appointmentParent)} selectedKey={inspectorKey} onSelect={selectStep}
             onChange={hasEditPermission ? (value) => {
               if (appointmentParent.id && onUpdateSystemResult) onUpdateSystemResult(appointmentParent.id, "result_text", value);
               else change(agendaItems.indexOf(appointmentParent), "result_text", value);
             } : undefined} />
         ) : notesParent ? (
           <NotesInspector parent={notesParent} notes={linkedQuickNotes} number={getAgendaNumber(notesParent)}
-            selectedKey={selectedKey} onSelect={selectStep}
+            selectedKey={inspectorKey} onSelect={selectStep}
             onChange={hasEditPermission ? (value) => {
               if (notesParent.id && onUpdateSystemResult) onUpdateSystemResult(notesParent.id, "result_text", value);
               else change(agendaItems.indexOf(notesParent), "result_text", value);

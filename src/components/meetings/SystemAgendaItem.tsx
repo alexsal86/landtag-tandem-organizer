@@ -1,3 +1,4 @@
+import { agendaSubpointBackground } from "./agenda-editor/systemSubpoints";
 import { SystemSubpointList } from "./agenda-editor/SystemSubpointList";
 import { stripHtml } from "@/utils/textDiff";
 import { PencilSparkles } from "@/components/icons/PencilSparkles";
@@ -149,10 +150,8 @@ export function SystemAgendaItem({
   const [localExpanded, setExpanded] = useState(!defaultCollapsed);
   const expanded = expandedOverride ?? localExpanded;
   const showAppointmentsAsSubpoints = editorRow && systemType === "upcoming_appointments";
-  const showEditorialSubpoints = editorRow && systemType === "redaktion";
+  const showPlatformSubpoints = editorRow && isPlatformAgendaType(systemType);
   const showDecisionSubpoints = editorRow && systemType === "decisions";
-  const showDirectSubpoints = showAppointmentsAsSubpoints || showEditorialSubpoints || showDecisionSubpoints;
-  const showFullWidthSubpoints = showDirectSubpoints || (editorRow && ["quick_notes", "tasks", "case_items"].includes(systemType));
   const count =
     systemType === "quick_notes"
       ? linkedQuickNotes.length
@@ -335,15 +334,15 @@ export function SystemAgendaItem({
   };
 
   const renderBody = () => {
-    if (editorRow && systemType === "quick_notes" && linkedQuickNotes.length) {
+    if (editorRow && systemType === "quick_notes") {
       return <SystemSubpointList entries={linkedQuickNotes} label="Notizen" agendaNumber={agendaNumber}
         resultText={resultText} onUpdateResult={onUpdateResult} titleOf={(note) => note.title || "Notiz"} checkable />;
     }
-    if (editorRow && systemType === "tasks" && linkedTasks.length) {
+    if (editorRow && systemType === "tasks") {
       return <SystemSubpointList entries={linkedTasks} label="Aufgaben" agendaNumber={agendaNumber}
         resultText={resultText} onUpdateResult={onUpdateResult} titleOf={(task) => task.title} checkable />;
     }
-    if (editorRow && systemType === "case_items" && linkedCaseItems.length) {
+    if (editorRow && systemType === "case_items") {
       return <SystemSubpointList entries={linkedCaseItems} label="Vorgänge" agendaNumber={agendaNumber}
         resultText={resultText} onUpdateResult={onUpdateResult} titleOf={(item) => item.subject || "Ohne Betreff"} checkable />;
     }
@@ -357,11 +356,11 @@ export function SystemAgendaItem({
           )}
         >
           {renderHeader()}
-          <div className={showEditorialSubpoints ? undefined : "px-3 pb-2"}>
+          <div className={showPlatformSubpoints ? undefined : "px-3 pb-2"}>
             <PlatformAgendaSection
               type={systemType}
               defaultExpanded={editorRow}
-              agendaSubpoints={showEditorialSubpoints ? { parentNumber: agendaNumber } : undefined}
+              agendaSubpoints={showPlatformSubpoints ? { parentNumber: agendaNumber } : undefined}
               meetingDate={meetingDate || new Date()}
               resultText={resultText}
               onUpdateResult={onUpdateResult}
@@ -708,6 +707,7 @@ export function SystemAgendaItem({
       return (
         <BirthdayAgendaItem
           readOnly={editorRow && !canEditTitle}
+          agendaRows={editorRow ? { agendaNumber } : undefined}
           contentOnly={editorRow}
           onCountChange={setRemoteCount}
           onDescriptionChange={onDescriptionChange}
@@ -734,9 +734,9 @@ export function SystemAgendaItem({
   const description = stripHtml(editorDescription ?? "");
   return (
     <section className="min-w-0">
-      <div data-live-agenda-current={editorLiveCurrent || undefined} className={cn(
-        "flex scroll-mt-24 flex-wrap items-center gap-x-3 gap-y-2 border-l-[3px] border-l-transparent py-2.5 pl-4 pr-3 sm:pr-5",
-        isEmbedded ? "bg-[var(--agenda-subpoint-bg)] dark:bg-slate-800" : "hover:bg-muted/40",
+      <div data-selected={editorSelected} data-live-agenda-current={editorLiveCurrent || undefined} className={cn(
+        "group flex scroll-mt-24 flex-wrap items-center gap-x-3 gap-y-2 border-l-[3px] border-l-transparent py-2.5 pl-4 pr-3 sm:pr-5",
+        isEmbedded ? agendaSubpointBackground : "hover:bg-muted/40",
         editorSelected && "border-l-primary",
         (editorHasSelectedChild || editorLiveCurrent) && "border-l-success",
         editorSelected && !isEmbedded && "bg-primary/10 hover:bg-primary/10",
@@ -823,7 +823,7 @@ export function SystemAgendaItem({
       {editorLive ? (
         <div hidden={!expanded}>{editorLiveContent ?? renderBody()}</div>
       ) : (
-        <div hidden={!expanded || count === 0} className={showFullWidthSubpoints ? undefined : "px-3 pb-2"}>
+        <div hidden={!expanded || count === 0}>
           {renderBody()}
         </div>
       )}

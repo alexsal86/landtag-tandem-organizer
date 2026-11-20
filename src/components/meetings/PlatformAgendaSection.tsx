@@ -198,6 +198,7 @@ export function PlatformAgendaSection({
         embedded
         readOnly={readOnly}
         onCountChange={onCountChange}
+        agendaRows={agendaSubpoints ? { agendaNumber: agendaSubpoints.parentNumber, resultText, onUpdateResult } : undefined}
       />
     );
   if (query.isLoading) return <LoadingState variant="inline" />;
@@ -370,15 +371,6 @@ export function PlatformAgendaSection({
           )}
           actions={(entry) => (
             <>
-              <Button variant="ghost" size="icon" className="size-6 shrink-0" aria-label={`Details zu ${entry.title}`}
-                aria-expanded={defaultExpanded ? !collapsedEntries[entry.id] : expanded === entry.id}
-                onClick={() => {
-                  if (defaultExpanded) setCollapsedEntries((previous) => ({ ...previous, [entry.id]: !previous[entry.id] }));
-                  else setExpanded((previous) => previous === entry.id ? null : entry.id);
-                  setChangeNote("");
-                }}>
-                <ChevronDown className="size-4" />
-              </Button>
               <Button size="icon" variant="ghost" className="size-6 shrink-0" aria-label={`${entry.title} öffnen`} onClick={() => navigate(entry.path)}>
                 <ArrowUpRight className="size-4" />
               </Button>
@@ -387,7 +379,7 @@ export function PlatformAgendaSection({
           details={(entry) => (
             <>
               {entry.detail && <p className="text-xs text-muted-foreground">{entry.detail}</p>}
-              {renderEntryDetails(entry, defaultExpanded ? !collapsedEntries[entry.id] : expanded === entry.id)}
+              {renderEntryDetails(entry, true)}
             </>
           )}
         />
