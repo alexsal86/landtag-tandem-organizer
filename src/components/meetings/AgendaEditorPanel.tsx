@@ -160,6 +160,7 @@ export function AgendaEditorPanel({
   const [systemCounts, setSystemCounts] = useState<
     Record<string, number | null>
   >({});
+  const [remoteDescriptions, setRemoteDescriptions] = useState<Record<string, string>>({});
   const getItemKey = agendaItemKey;
   const [dragging, setDragging] = useState(false);
   const [dragUpdate, setDragUpdate] = useState<DragUpdate | null>(null);
@@ -176,22 +177,49 @@ export function AgendaEditorPanel({
   const inspectorItem = systemInspectorItem ?? selectedItem;
   const inspectorIndex = inspectorItem ? agendaItems.indexOf(inspectorItem) : -1;
   const meetingNotes = linkedQuickNotes.filter(note => note.meeting_id === selectedMeeting.id);
-  const notesByPerson = new Map<string, number>();
-  for (const note of meetingNotes) {
-    notesByPerson.set(note.user_id, (notesByPerson.get(note.user_id) ?? 0) + 1);
-  }
-  const notesDescription = [
-    `${meetingNotes.length} ${meetingNotes.length === 1 ? "Notiz" : "Notizen"}`,
-    ...Array.from(notesByPerson, ([id, count]) =>
-      `${count}× ${profiles.find(profile => profile.user_id === id)?.display_name || "Unbekannte Person"}`,
-    ),
-  ].join(" · ");
+  const countByPerson = (label: string, people: (string | null | undefined)[]) => {
+    const counts = new Map<string, number>();
+    for (const person of people) {
+      if (person) counts.set(person, (counts.get(person) ?? 0) + 1);
+    }
+    return [
+      label,
+      ...Array.from(counts, ([id, count]) =>
+        `${count}× ${profiles.find(profile => profile.user_id === id)?.display_name || "Unbekannte Person"}`),
+    ].join(" · ");
+  };
+  const notesDescription = countByPerson(
+    meetingNotes.length === 1 ? "1 Notiz" : `${meetingNotes.length} Notizen`,
+    meetingNotes.map(note => note.user_id),
+  );
+  const prefilledNotes = useRef(new Set<string>());
+  const taskCount = meetingLinkedTasks.length;
+  const caseCount = meetingLinkedCaseItems.length;
+  const decisionCount = meetingRelevantDecisions.filter(decision => decision.status === "active").length;
+  const descriptions: Partial<Record<SystemAgendaType, string>> = {
+    tasks: countByPerson(taskCount === 1 ? "1 Aufgabe" : `${taskCount} Aufgaben`,
+      meetingLinkedTasks.map(task => task.assigned_to)),
+    case_items: countByPerson(caseCount === 1 ? "1 Vorgang" : `${caseCount} Vorgänge`,
+      meetingLinkedCaseItems.map(item => item.owner_user_id)),
+    decisions: decisionCount === 1 ? "1 Entscheidung steht aus" : `${decisionCount} Entscheidungen stehen aus`,
+  };
+  const descriptionFor = (item: AgendaItem, index: number) => {
+    if (item.system_type === "quick_notes") {
+      return item.description?.trim() || (prefilledNotes.current.has(item.id ?? "") ? undefined : notesDescription);
+    }
+    if (item.description != null || !item.system_type) return item.description ?? undefined;
+    const key = getItemKey(item, index);
+    if (item.system_type === "upcoming_appointments") {
+      const count = live?.upcomingAppointments.length ?? systemCounts[key];
+      return count == null ? undefined : count === 1 ? "1 Termin" : `${count} Termine`;
+    }
+    return descriptions[item.system_type as SystemAgendaType] ?? remoteDescriptions[`${selectedMeeting.id}:${key}`];
+  };
   const change = (index: number, field: keyof AgendaItem, value: unknown) => {
     if (!hasEditPermission) return;
     setDirty(true);
     onUpdateAgendaItem(index, field, value);
   };
-  const prefilledNotes = useRef(new Set<string>());
   useEffect(() => {
     if (!hasEditPermission || !meetingNotes.length) return;
     agendaItems.forEach((item, index) => {
@@ -752,7 +780,7 @@ export function AgendaEditorPanel({
                                     ) : undefined
                                   }
                                   editorCompleted={item.is_completed}
-                                  editorDescription={item.description?.trim() || (item.system_type === "quick_notes" && !prefilledNotes.current.has(item.id ?? "") ? notesDescription : undefined)}
+                                  editorDescription={descriptionFor(item, index)}
                                   editorLeading={
                                     (item.parent_id || item.parentLocalKey) && (
                                       <AgendaCompletionCheckbox
@@ -768,6 +796,10 @@ export function AgendaEditorPanel({
                                       onComplete={hasEditPermission ? (completed) => change(index, "is_completed", completed) : undefined}
                                     />
                                   }
+                                  onDescriptionChange={(description) => {
+                                    const key = `${selectedMeeting.id}:${getItemKey(item, index)}`;
+                                    setRemoteDescriptions(prev => prev[key] === description ? prev : { ...prev, [key]: description });
+                                  }}
                                   onCountChange={(count) =>
                                     setSystemCounts((prev) =>
                                       prev[getItemKey(item, index)] === count
@@ -949,8 +981,7 @@ export function AgendaEditorPanel({
                 : inspectorItem,
             )}
             key={getItemKey(inspectorItem, inspectorIndex)}
-            item={inspectorItem.system_type === "quick_notes" && !inspectorItem.description?.trim() && !prefilledNotes.current.has(inspectorItem.id ?? "")
-              ? { ...inspectorItem, description: notesDescription } : inspectorItem}
+            item={{ ...inspectorItem, description: descriptionFor(inspectorItem, inspectorIndex) }}
             index={inspectorIndex}
             profiles={profiles}
             hasEditPermission={hasEditPermission}

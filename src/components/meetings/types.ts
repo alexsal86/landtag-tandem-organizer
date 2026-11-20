@@ -96,6 +96,7 @@ export interface LinkedQuickNote {
 
 /** A task linked to a meeting (select subset from tasks table) */
 export interface LinkedTask {
+  assigned_to?: string | null;
   jour_fixe_reserved_meeting_id?: string | null;
   id: string;
   title: string;

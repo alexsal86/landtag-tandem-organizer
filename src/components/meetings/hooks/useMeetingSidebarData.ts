@@ -102,7 +102,7 @@ export function useMeetingSidebarData(deps: UseMeetingSidebarDataDeps) {
       try {
         const { data, error } = await supabase
           .from("tasks")
-          .select("id, title, description, due_date, priority, status, user_id, jour_fixe_reserved_meeting_id")
+          .select("id, title, description, due_date, priority, status, user_id, assigned_to, jour_fixe_reserved_meeting_id")
           .eq("meeting_id", meetingId)
           .order("created_at", { ascending: false });
         if (error) throw error;

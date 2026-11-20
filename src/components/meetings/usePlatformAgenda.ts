@@ -9,6 +9,7 @@ export interface PlatformAgendaEntry {
   ownerId?: string | null; path: string; content?: string | null;
   approval?: 'social';
   decisionId?: string;
+  deputyName?: string;
 }
 
 /** Bounded, cached source queries shared by editor, meeting, focus mode and My Work. */
@@ -43,6 +44,7 @@ export async function loadPlatformAgenda(type: PlatformAgendaType, tenantId: str
     return (data ?? []).map(row => ({ id: row.id, title: name(row.user_id), date: row.start_date,
       detail: `Bis ${new Date(row.end_date).toLocaleDateString('de-DE')} · ${row.deputy_user_id ? `Vertretung: ${name(row.deputy_user_id)}` : 'Vertretung fehlt'}`,
       status: row.status === 'approved' ? 'Genehmigt' : row.status === 'cancel_requested' ? 'Stornierung beantragt' : 'Beantragt',
+      deputyName: row.deputy_user_id ? name(row.deputy_user_id) : undefined,
       ownerId: row.user_id, path: '/mywork?tab=time' }));
   }
   if (type === 'event_plannings') {

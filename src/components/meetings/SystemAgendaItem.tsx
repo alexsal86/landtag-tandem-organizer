@@ -51,6 +51,7 @@ interface SystemAgendaItemProps {
   editorLiveContent?: ReactNode;
   editorCompleted?: boolean;
   editorDescription?: string;
+  onDescriptionChange?: (description: string) => void;
   onCountChange?: (count: number | null) => void;
   systemType: SystemAgendaType;
   meetingDate?: string | Date;
@@ -119,6 +120,7 @@ export function SystemAgendaItem({
   editorCompleted,
   editorDescription,
   onCountChange,
+  onDescriptionChange,
   meetingDate,
   meetingId,
   allowStarring = false,
@@ -366,6 +368,7 @@ export function SystemAgendaItem({
               profiles={profiles}
               readOnly={editorRow && !canEditTitle}
               onCountChange={setRemoteCount}
+              onDescriptionChange={onDescriptionChange}
             />
           </div>
         </div>
@@ -707,6 +710,7 @@ export function SystemAgendaItem({
           readOnly={editorRow && !canEditTitle}
           contentOnly={editorRow}
           onCountChange={setRemoteCount}
+          onDescriptionChange={onDescriptionChange}
           meetingDate={meetingDate}
           meetingId={meetingId}
           resultText={resultText}
@@ -799,7 +803,7 @@ export function SystemAgendaItem({
         )}
 
             </div>
-            {description && <p className="col-span-2 truncate text-xs leading-4 text-muted-foreground">{description}</p>}
+            {description && <p className="col-span-2 break-words text-xs leading-4 text-muted-foreground">{description}</p>}
           </div>
         </div>
         {editorLive && subpointLabel && <span className="text-xs text-muted-foreground">{subpointLabel}</span>}

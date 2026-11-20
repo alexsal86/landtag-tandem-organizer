@@ -46,6 +46,7 @@ import type { Profile } from "./types";
 interface Props {
   defaultExpanded?: boolean;
   agendaSubpoints?: { parentNumber?: string };
+  onDescriptionChange?: (description: string) => void;
   onCountChange?: (count: number | null) => void;
   type: PlatformAgendaType;
   meetingDate: string | Date;
@@ -63,6 +64,7 @@ export function PlatformAgendaSection({
   profiles = [],
   readOnly = false,
   onCountChange,
+  onDescriptionChange,
   defaultExpanded = false,
   agendaSubpoints,
 }: Props) {
@@ -73,6 +75,18 @@ export function PlatformAgendaSection({
         query.isLoading || query.error ? null : (query.data?.length ?? 0),
       );
   }, [type, query.isLoading, query.error, query.data, onCountChange]);
+  useEffect(() => {
+    if (!onDescriptionChange || !query.data) return;
+    if (type === "redaktion") {
+      const pending = query.data.filter(entry => entry.approval === "social").length;
+      onDescriptionChange(pending === 1 ? "1 Freigabe steht aus" : `${pending} Freigaben stehen aus`);
+    } else if (type === "leave_requests") {
+      const absences = new Set(query.data.map(entry => entry.deputyName
+        ? `${entry.title} ist abwesend und wird vertreten durch ${entry.deputyName}`
+        : `${entry.title} ist abwesend · keine Vertretung eingetragen`));
+      onDescriptionChange([...absences].join(" · "));
+    }
+  }, [type, query.data, onDescriptionChange]);
   const navigate = useNavigate();
   const qc = useQueryClient();
   const { currentTenant } = useTenant();

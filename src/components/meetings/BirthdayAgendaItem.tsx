@@ -43,6 +43,7 @@ interface ProfileInfo {
 interface BirthdayAgendaItemProps {
   readOnly?: boolean;
   contentOnly?: boolean;
+  onDescriptionChange?: (description: string) => void;
   onCountChange?: (count: number | null) => void;
   meetingDate?: string | Date;
   meetingId?: string;
@@ -85,6 +86,7 @@ export function BirthdayAgendaItem({
   readOnly = false,
   contentOnly = false,
   onCountChange,
+  onDescriptionChange,
   meetingDate,
   meetingId: _meetingId,
   resultText,
@@ -177,6 +179,13 @@ export function BirthdayAgendaItem({
   useEffect(() => {
     onCountChange?.(loading ? null : contacts.length);
   }, [loading, contacts.length, onCountChange]);
+
+  useEffect(() => {
+    if (loading || !onDescriptionChange) return;
+    const names = contacts.map(contact => contact.name);
+    const list = new Intl.ListFormat("de", { type: "conjunction" }).format(names);
+    onDescriptionChange(names.length ? `${list} ${names.length === 1 ? "hat" : "haben"} Geburtstag` : "");
+  }, [contacts, loading, onDescriptionChange]);
 
   const toggleAction = (
     contactId: string,
