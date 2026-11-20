@@ -450,7 +450,7 @@ export function AgendaEditorPanel({
       />
 
       <div className={cn("grid items-start gap-4", selectedItem && "2xl:grid-cols-[minmax(0,1fr)_19rem]")}>
-        <div className="min-w-0 rounded-2xl border bg-card shadow-sm">
+        <div className="min-w-0 rounded-2xl border bg-card shadow-sm [--agenda-subpoint-bg:color(srgb_0.956863_0.964706_0.952941_/_0.7)] [--agenda-row-divider:rgb(227,232,223)]">
           <AgendaSummaryBar
             allCollapsed={allCollapsed}
             onToggleAll={toggleAll}

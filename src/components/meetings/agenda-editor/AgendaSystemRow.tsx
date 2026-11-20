@@ -19,8 +19,8 @@ export function AgendaSystemRow({
     <div
       data-selected={selected}
       className={cn(
-        "group flex min-w-0 border-b border-l-[3px] border-l-transparent pl-3 transition-colors hover:bg-muted/40 sm:pl-5",
-        nested && "bg-neutral-200 pl-7 hover:bg-neutral-300 sm:pl-10 dark:bg-slate-800 dark:hover:bg-slate-700",
+        "group flex min-w-0 border-b border-b-[color:var(--agenda-row-divider)] dark:border-b-border border-l-[3px] border-l-transparent pl-3 transition-colors hover:bg-muted/40 sm:pl-5",
+        nested && "bg-[var(--agenda-subpoint-bg)] pl-7 hover:bg-[var(--agenda-subpoint-bg)] sm:pl-10 dark:bg-slate-800 dark:hover:bg-slate-700",
         selected && (nested ? "border-l-primary" : "border-l-primary bg-primary/10 hover:bg-primary/10"),
       )}
     >
