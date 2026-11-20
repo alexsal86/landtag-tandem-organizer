@@ -16,7 +16,7 @@ import { Checkbox } from "@/components/ui/checkbox";
 import { Dialog, DialogContent, DialogFooter, DialogHeader, DialogTitle, DialogTrigger } from "@/components/ui/dialog";
 import { cn } from "@/lib/utils";
 import type { MyWorkTask } from "@/hooks/useMyWorkTasksData";
-import { TaskSubtasks, TaskRecurrence } from "./TaskSubtasks";
+import { TaskSubtasks } from "./TaskSubtasks";
 import { sendToDaySlip, formatCaseDaySlipText } from "@/lib/daySlipBridge";
 import {
   TASK_BALL_LABELS, canNudge, checklistProgress, isNudgeActive, isOnResubmission, isReminderDue, parseChecklist, reminderPreset, type ChecklistItem, parseTaskTimeline, shiftDay, stepState, type StafetteTask, type TaskBallOwner,
@@ -50,16 +50,14 @@ interface Props {
   onAckNudge: (reply: string) => Promise<void>;
   pendingVote: PendingVote | null;
   onVote: (key: string, comment: string) => Promise<void>;
-  onReload: () => void;
 }
 
 
 const ownerColors = { office: "bg-success", deputy: "bg-pink-600", external: "bg-muted-foreground" };
-const priorityLabels: Record<string, string> = { low: "Niedrig", medium: "Mittel", high: "Hoch", urgent: "Dringend" };
 const datePresets = [["Heute", 0], ["Morgen", 1], ["In 3 Tagen", 3], ["Nächste Woche", 7]] as const;
 const formatDate = (date: string) => new Date(date.slice(0, 10) + "T00:00:00").toLocaleDateString("de-DE", { day: "2-digit", month: "2-digit" });
 
-export function TaskDetailView({ task, profiles, decisionLabel, onSave, onComplete, onDecision, onJourFixe, nameOf, registerShortcuts, meId, onNudge, onAckNudge, pendingVote, onVote, onReload }: Props) {
+export function TaskDetailView({ task, profiles, decisionLabel, onSave, onComplete, onDecision, onJourFixe, nameOf, registerShortcuts, meId, onNudge, onAckNudge, pendingVote, onVote }: Props) {
   const [description, setDescription] = useState(task.description ?? "");
   const [label, setLabel] = useState(task.next_action ?? "");
   const [due, setDue] = useState(task.next_action_due ?? "");
@@ -176,7 +174,7 @@ export function TaskDetailView({ task, profiles, decisionLabel, onSave, onComple
   });
 
   return (
-    <div className="grid min-h-0 min-w-0 flex-1 auto-rows-max grid-cols-1  min-[1440px]:grid-cols-[minmax(0,1fr)_300px] min-[1440px]:auto-rows-auto ">
+    <div className="flex min-h-0 min-w-0 flex-1 flex-col">
       <main aria-label="Aufgabendetails" className="min-h-0 min-w-0 space-y-3 bg-white p-6 dark:bg-card [&>section]:space-y-3 [&_input]:border-0 [&_input]:bg-transparent [&_textarea]:border-0 [&_textarea]:bg-transparent [&_[role=combobox]]:border-0 [&_[role=combobox]]:bg-transparent">
         <header className="relative space-y-1 pl-10">
           <Tooltip>
@@ -466,18 +464,6 @@ export function TaskDetailView({ task, profiles, decisionLabel, onSave, onComple
         </section>
 
       </main>
-      <aside aria-label="Eigenschaften und Abschluss" className="min-h-0 min-w-0 space-y-6 border-t bg-card p-5  min-[1440px]:border-l min-[1440px]:border-t-0">
-        <section className="space-y-3">
-          <h3 className="text-xs font-semibold uppercase tracking-wider text-muted-foreground">Eigenschaften</h3>
-          <dl className="text-sm [&>div]:flex [&>div]:justify-between [&>div]:gap-3 [&>div]:border-b [&>div]:border-border/50 [&>div]:py-3 [&_dt]:text-muted-foreground [&_dd]:text-right [&_dd]:break-words">
-            <div><dt>Priorität</dt><dd>{priorityLabels[task.priority] ?? task.priority}</dd></div>
-          </dl>
-          <TaskRecurrence taskId={task.id} value={task.recurrence_rule} onChanged={onReload} />
-        </section>
-        <Button variant="outline" disabled={saving} onClick={() => hasStep ? setDoneDialog(true) : run(onComplete)} className="h-11 w-full rounded-xl border-2 border-success font-semibold text-success hover:bg-success/5 hover:text-success">
-          <Check className="mr-2 h-4 w-4" />Aufgabe abschließen
-        </Button>
-      </aside>
 
       <Dialog open={customField !== null} onOpenChange={(open) => { if (!open) setCustomField(null); }}>
         <DialogContent>

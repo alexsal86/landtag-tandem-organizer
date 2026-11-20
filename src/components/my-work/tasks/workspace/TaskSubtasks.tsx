@@ -1,6 +1,6 @@
 import { useState } from "react";
 import { useQuery, useQueryClient } from "@tanstack/react-query";
-import { CornerDownRight, Plus, Repeat, X } from "lucide-react";
+import { CornerDownRight, Plus, X } from "lucide-react";
 import { supabase } from "@/integrations/supabase/client";
 import { Input } from "@/components/ui/input";
 import { Checkbox } from "@/components/ui/checkbox";
@@ -8,7 +8,7 @@ import { Progress } from "@/components/ui/progress";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
 import { notify } from "@/lib/notify";
 import { cn } from "@/lib/utils";
-import { RECURRENCE_LABELS, isRecurrenceRule, subtaskProgress, type RecurrenceRule } from "@/features/tasks/templates";
+import { subtaskProgress } from "@/features/tasks/templates";
 
 interface Props {
   taskId: string;
@@ -85,28 +85,5 @@ export function TaskSubtasks({ taskId, tenantId, userId, profiles }: Props) {
           placeholder="Unteraufgabe hinzufügen, Enter für die nächste" className="h-8" />
       </div>
     </section>
-  );
-}
-
-export function TaskRecurrence({ taskId, value, onChanged }: { taskId: string; value: string | null | undefined; onChanged: () => void }) {
-  const current = isRecurrenceRule(value) ? value : "none";
-  const change = async (v: string) => {
-    const { error } = await supabase.from("tasks").update({ recurrence_rule: v === "none" ? null : v }).eq("id", taskId);
-    if (error) { notify.error("Speichern fehlgeschlagen"); return; }
-    notify.success(v === "none" ? "Wiederholung entfernt" : `Wiederholt sich ${RECURRENCE_LABELS[v as RecurrenceRule].toLowerCase()}`);
-    onChanged();
-  };
-  return (
-    <div className="flex items-center gap-xs">
-      <Repeat className="h-4 w-4 text-muted-foreground" />
-      <Select value={current} onValueChange={change}>
-        <SelectTrigger className="h-8 w-48" aria-label="Wiederholung"><SelectValue /></SelectTrigger>
-        <SelectContent>
-          <SelectItem value="none">Keine Wiederholung</SelectItem>
-          {(Object.keys(RECURRENCE_LABELS) as RecurrenceRule[]).map((k) => <SelectItem key={k} value={k}>{RECURRENCE_LABELS[k]}</SelectItem>)}
-        </SelectContent>
-      </Select>
-      {current !== "none" && <span className="text-caption text-muted-foreground">Nach dem Abschließen kommt die nächste automatisch.</span>}
-    </div>
   );
 }
