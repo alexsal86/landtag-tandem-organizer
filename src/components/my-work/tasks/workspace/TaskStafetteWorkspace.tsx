@@ -133,6 +133,7 @@ export function TaskStafetteWorkspace({ userId, tasks, profiles, onReload, onCom
   const save = async (task: MyWorkTask, patch: TaskPatch) => {
     const { note } = patch;
     const fields: Partial<MyWorkTask> = {};
+    if ("due_date" in patch) fields.due_date = patch.due_date;
     if ("description" in patch) fields.description = patch.description;
     if ("ball_owner" in patch) fields.ball_owner = patch.ball_owner;
     const externalLabel = patch.ball_owner && patch.ball_owner !== "external" ? null : patch.ball_external_label;

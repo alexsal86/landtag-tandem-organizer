@@ -5,7 +5,7 @@ import { Command, CommandEmpty, CommandGroup, CommandInput, CommandItem, Command
 import { usePersistentState } from "@/hooks/usePersistentState";
 import { WorkflowLinks } from "@/components/workflow/WorkflowLinks";
 import { useEffect, useState } from "react";
-import { Bell, BellOff, BellRing, CalendarDays, Check, ListChecks, Plus, X, Gavel, Send, Users, Zap } from "lucide-react";
+import { Bell, BellOff, BellRing, CalendarDays, Check, Flag, ListChecks, Plus, X, Gavel, Send, Users, Zap } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Textarea } from "@/components/ui/textarea";
@@ -25,6 +25,7 @@ import {
 export interface TaskPatch extends StafetteTask {
   note?: string;
   description?: string | null;
+  due_date?: string | null;
   ball_external_label?: string | null;
   checklist?: ChecklistItem[];
 }
@@ -69,7 +70,7 @@ export function TaskDetailView({ task, profiles, decisionLabel, onSave, onComple
   const [recentOwners, setRecentOwners] = usePersistentState<string[]>(
     `task-recent-owners-${task.tenant_id}-${meId}`, [],
   );
-  const [customField, setCustomField] = useState<"date" | null>(null);
+  const [customField, setCustomField] = useState<"step" | "deadline" | null>(null);
   const [externalDraft, setExternalDraft] = useState("");
   const [customValue, setCustomValue] = useState("");
   const [note, setNote] = useState("");
@@ -203,6 +204,32 @@ export function TaskDetailView({ task, profiles, decisionLabel, onSave, onComple
             {task.pending_for_jour_fixe && <Badge variant="secondary"><Users className="h-3 w-3 mr-1" />Jour Fixe</Badge>}
           </div>}
           <WorkflowLinks taskId={task.id} />
+          <DropdownMenu>
+            <DropdownMenuTrigger asChild>
+              <Button variant="outline" size="sm" disabled={saving} className="rounded-full bg-transparent data-[state=open]:bg-muted">
+                <Flag />
+                <span className="text-muted-foreground">Endfrist</span>
+                <span>{task.due_date ? formatDate(task.due_date) : "Setzen"}</span>
+              </Button>
+            </DropdownMenuTrigger>
+            <DropdownMenuContent align="start" className="min-w-52 rounded-xl p-1">
+              {([["Freitag", 5], ["Montag", 1]] as const).map(([label, weekday]) => {
+                const today = new Date();
+                const date = shiftDay(null, (weekday - today.getDay() + 6) % 7 + 1, today);
+                return (
+                  <DropdownMenuItem key={weekday} onSelect={() => void run(() => onSave({ due_date: date }))} className="justify-between gap-4 py-2">
+                    {label}<span className="text-xs text-muted-foreground">{formatDate(date)}</span>
+                  </DropdownMenuItem>
+                );
+              })}
+              <DropdownMenuItem onSelect={() => { setCustomValue(task.due_date?.slice(0, 10) ?? ""); setCustomField("deadline"); }}>
+                Datum wählen …
+              </DropdownMenuItem>
+              <DropdownMenuItem onSelect={() => { if (task.due_date) void run(() => onSave({ due_date: null })); }}>
+                Ohne Endfrist
+              </DropdownMenuItem>
+            </DropdownMenuContent>
+          </DropdownMenu>
         </header>
 
         {nudgeForMe && (
@@ -291,7 +318,7 @@ export function TaskDetailView({ task, profiles, decisionLabel, onSave, onComple
                   Schritt bis
                   {overdueDays > 0 ? (
                     <span className="text-destructive">seit {overdueDays} {overdueDays === 1 ? "Tag" : "Tagen"} überfällig</span>
-                  ) : due && <span>{formatDate(due)}</span>}
+                  ) : <span>{due ? formatDate(due) : "Kein Termin"}</span>}
                 </Button>
               </DropdownMenuTrigger>
               <DropdownMenuContent align="start" className="min-w-52 rounded-xl p-1">
@@ -301,7 +328,7 @@ export function TaskDetailView({ task, profiles, decisionLabel, onSave, onComple
                     {text}<span className="text-xs text-muted-foreground">{formatDate(date)}</span>
                   </DropdownMenuItem>;
                 })}
-                <DropdownMenuItem onSelect={() => { setCustomValue(due); setCustomField("date"); }}>Datum wählen …</DropdownMenuItem>
+                <DropdownMenuItem onSelect={() => { setCustomValue(due); setCustomField("step"); }}>Datum wählen …</DropdownMenuItem>
                 {due && <DropdownMenuItem onSelect={() => void saveDue("")}>Termin entfernen</DropdownMenuItem>}
               </DropdownMenuContent>
             </DropdownMenu>
@@ -444,7 +471,6 @@ export function TaskDetailView({ task, profiles, decisionLabel, onSave, onComple
           <h3 className="text-xs font-semibold uppercase tracking-wider text-muted-foreground">Eigenschaften</h3>
           <dl className="text-sm [&>div]:flex [&>div]:justify-between [&>div]:gap-3 [&>div]:border-b [&>div]:border-border/50 [&>div]:py-3 [&_dt]:text-muted-foreground [&_dd]:text-right [&_dd]:break-words">
             <div><dt>Priorität</dt><dd>{priorityLabels[task.priority] ?? task.priority}</dd></div>
-            <div><dt>Fälligkeit</dt><dd>{task.due_date ? new Date(task.due_date).toLocaleDateString("de-DE") : "Keine Frist"}</dd></div>
           </dl>
           <TaskRecurrence taskId={task.id} value={task.recurrence_rule} onChanged={onReload} />
         </section>
@@ -455,10 +481,11 @@ export function TaskDetailView({ task, profiles, decisionLabel, onSave, onComple
 
       <Dialog open={customField !== null} onOpenChange={(open) => { if (!open) setCustomField(null); }}>
         <DialogContent>
-          <DialogHeader><DialogTitle>Datum wählen</DialogTitle></DialogHeader>
+          <DialogHeader><DialogTitle>{customField === "deadline" ? "Endfrist wählen" : "Datum für den Schritt wählen"}</DialogTitle></DialogHeader>
           <form onSubmit={(event) => {
             event.preventDefault();
-            void saveDue(customValue);
+            if (customField === "deadline") void run(() => onSave({ due_date: customValue }));
+            else void saveDue(customValue);
             setCustomField(null);
           }} className="space-y-4">
             <Input aria-label="Datum" type="date"
