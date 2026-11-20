@@ -28,7 +28,6 @@ import {
   RotateCcw,
   Archive,
   Globe,
-  Play,
   MoreVertical,
   PanelLeftClose,
   PanelLeftOpen,
@@ -89,7 +88,6 @@ interface MeetingSidebarProps {
   onCreateMeeting: () => void;
   onUpdateMeeting: (meetingId: string, updates: Partial<Meeting>) => void;
   onDeleteMeeting: (meetingId: string) => void;
-  onStartMeeting: (meeting: Meeting) => void;
   onStopMeeting: () => void;
   onShowArchive: () => void;
   onLoadCarryoverBufferItems: () => Promise<void>;
@@ -125,7 +123,6 @@ export function MeetingSidebar({
   onCreateMeeting,
   onUpdateMeeting,
   onDeleteMeeting,
-  onStartMeeting,
   onStopMeeting,
   onShowArchive,
   onLoadCarryoverBufferItems,
@@ -237,7 +234,7 @@ export function MeetingSidebar({
         >
           Nächste Besprechungen
         </h3>
-        <div className="space-y-3">
+        <div className="space-y-1.5">
           {upcomingMeetings.map((meeting) => (
             <Card
               key={meeting.id}
@@ -268,11 +265,11 @@ export function MeetingSidebar({
                 }
               }}
             >
-              <CardContent className={compact ? "p-2.5" : "p-3"}>
+              <CardContent className="p-2.5">
                 <div
                   className={cn(
-                    "flex items-start gap-3",
-                    compact && "flex-col gap-2",
+                    "flex items-start gap-2",
+                    compact && "flex-col gap-1.5",
                   )}
                 >
                   <time
@@ -306,7 +303,7 @@ export function MeetingSidebar({
                       }).replace(/\.$/, "")}
                     </span>
                   </time>
-                  <div className="min-w-0 w-full flex-1 pt-0.5">
+                  <div className="min-w-0 w-full flex-1 space-y-0.5">
                     <div className="flex items-start gap-1">
                       <h4
                         className={cn(
@@ -328,7 +325,7 @@ export function MeetingSidebar({
                             size="icon"
                             variant="ghost"
                             aria-label={`Aktionen für ${meeting.title}`}
-                            className="-mr-1 -mt-0.5 h-7 w-7 shrink-0 text-muted-foreground"
+                            className="-mr-1 h-6 w-6 shrink-0 text-muted-foreground"
                             onClick={(e) => e.stopPropagation()}
                           >
                             <MoreVertical className="h-4 w-4" />
@@ -360,93 +357,79 @@ export function MeetingSidebar({
                         </DropdownMenuContent>
                       </DropdownMenu>
                     </div>
-                    <div
-                      className={cn(
-                        "mt-2 flex flex-wrap items-center gap-x-3 gap-y-1.5 text-muted-foreground",
-                        compact ? "text-xs" : "text-sm",
-                      )}
-                    >
-                      {meeting.meeting_time && (
-                        <span className="whitespace-nowrap tabular-nums">
-                          {meeting.meeting_time.substring(0, 5)} Uhr
-                        </span>
-                      )}
-                      {meeting.location && (
-                        <span
-                          className="max-w-full truncate"
-                          title={meeting.location}
-                        >
-                          {meeting.location}
-                        </span>
-                      )}
-                      <MeetingParticipantAvatars
-                        meetingId={meeting.id}
-                        size="default"
-                        compact
-                      />
-                    </div>
-                    <div className="mt-3 flex flex-wrap items-center gap-2">
-                      {activeMeetingId === meeting.id ? (
-                        <Button
-                          size="sm"
-                          onClick={(e) => {
-                            e.stopPropagation();
-                            onStopMeeting();
-                          }}
-                          className="h-8 rounded-lg px-3 text-sm font-semibold shadow-none"
-                        >
+                    {(meeting.meeting_time || meeting.location) && (
+                      <div
+                        className={cn(
+                          "flex min-w-0 items-center gap-2 leading-4 text-muted-foreground",
+                          compact ? "text-xs" : "text-sm",
+                        )}
+                      >
+                        {meeting.meeting_time && (
+                          <span className="whitespace-nowrap tabular-nums">
+                            {meeting.meeting_time.substring(0, 5)} Uhr
+                          </span>
+                        )}
+                        {meeting.location && (
                           <span
-                            aria-hidden="true"
-                            className="mr-1.5 h-2 w-2 rounded-full bg-current"
-                          />{" "}
-                          Läuft – beenden
-                        </Button>
-                      ) : (
-                        <Button
-                          size="sm"
-                          variant="outline"
-                          onClick={(e) => {
-                            e.stopPropagation();
-                            onStartMeeting(meeting);
-                          }}
-                          className="h-8 rounded-lg bg-card px-3 text-sm shadow-none"
-                          disabled={activeMeetingId !== null}
-                        >
-                          <Play className="mr-1 h-3.5 w-3.5 fill-current" />{" "}
-                          Starten
-                        </Button>
-                      )}
-                      {editingMeeting?.id === meeting.id && (
-                        <>
+                            className="min-w-0 truncate"
+                            title={meeting.location}
+                          >
+                            {meeting.location}
+                          </span>
+                        )}
+                      </div>
+                    )}
+                    <MeetingParticipantAvatars meetingId={meeting.id} size="sm" compact />
+                    {(activeMeetingId === meeting.id || editingMeeting?.id === meeting.id) && (
+                      <div className="flex flex-wrap items-center gap-2 pt-1">
+                        {activeMeetingId === meeting.id && (
                           <Button
-                            size="icon"
-                            variant="ghost"
-                            aria-label="Meeting-Änderungen speichern"
-                            className="h-8 w-8"
+                            size="sm"
                             onClick={(e) => {
                               e.stopPropagation();
-                              if (editingMeeting)
-                                onUpdateMeeting(meeting.id!, editingMeeting);
-                              onSetEditingMeeting(null);
+                              onStopMeeting();
                             }}
+                            className="h-8 rounded-lg px-3 text-sm font-semibold shadow-none"
                           >
-                            <Check className="h-4 w-4" />
+                            <span
+                              aria-hidden="true"
+                              className="mr-1.5 h-2 w-2 rounded-full bg-current"
+                            />{" "}
+                            Läuft – beenden
                           </Button>
-                          <Button
-                            size="icon"
-                            variant="ghost"
-                            aria-label="Meeting-Bearbeitung abbrechen"
-                            className="h-8 w-8"
-                            onClick={(e) => {
-                              e.stopPropagation();
-                              onSetEditingMeeting(null);
-                            }}
-                          >
-                            <X className="h-4 w-4" />
-                          </Button>
-                        </>
-                      )}
-                    </div>
+                        )}
+                        {editingMeeting?.id === meeting.id && (
+                          <>
+                            <Button
+                              size="icon"
+                              variant="ghost"
+                              aria-label="Meeting-Änderungen speichern"
+                              className="h-8 w-8"
+                              onClick={(e) => {
+                                e.stopPropagation();
+                                if (editingMeeting)
+                                  onUpdateMeeting(meeting.id!, editingMeeting);
+                                onSetEditingMeeting(null);
+                              }}
+                            >
+                              <Check className="h-4 w-4" />
+                            </Button>
+                            <Button
+                              size="icon"
+                              variant="ghost"
+                              aria-label="Meeting-Bearbeitung abbrechen"
+                              className="h-8 w-8"
+                              onClick={(e) => {
+                                e.stopPropagation();
+                                onSetEditingMeeting(null);
+                              }}
+                            >
+                              <X className="h-4 w-4" />
+                            </Button>
+                          </>
+                        )}
+                      </div>
+                    )}
                   </div>
                 </div>
 

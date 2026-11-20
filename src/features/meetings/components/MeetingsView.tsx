@@ -202,7 +202,6 @@ export function MeetingsView() {
             onCreateMeeting={createMeeting}
             onUpdateMeeting={data.updateMeeting}
             onDeleteMeeting={data.deleteMeeting}
-            onStartMeeting={data.startMeeting}
             onStopMeeting={data.stopMeeting}
             onShowArchive={() => data.setShowArchive(true)}
             onLoadCarryoverBufferItems={data.loadCarryoverBufferItems}
