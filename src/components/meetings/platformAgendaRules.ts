@@ -21,7 +21,7 @@ export function pastAppointmentReview(feedback: { feedback_status: string; notes
   return { status: feedback.has_tasks ? 'Nachbereitet · Folgeaufgaben' : 'Nachbereitet', open: false };
 }
 
-export interface MeetingEntryResult { result: string; completed?: boolean; follow_up?: boolean; assigned_to?: string[]; due_at?: string }
+export interface MeetingEntryResult { result: string; order_index?: number; completed?: boolean; follow_up?: boolean; assigned_to?: string[]; due_at?: string }
 export function parseMeetingResults(text?: string | null): Record<string, MeetingEntryResult> {
   if (!text) return {};
   try {
@@ -34,6 +34,7 @@ export function parseMeetingResults(text?: string | null): Record<string, Meetin
       return [[id, {
         result: typeof row.result === 'string' ? row.result : '',
         completed: row.completed === true,
+        order_index: Number.isSafeInteger(row.order_index) && typeof row.order_index === 'number' && row.order_index >= 0 ? row.order_index : undefined,
         follow_up: row.follow_up === true,
         assigned_to: Array.isArray(row.assigned_to) ? row.assigned_to.filter((v): v is string => typeof v === 'string') : undefined,
         due_at: typeof row.due_at === 'string' ? row.due_at : undefined,

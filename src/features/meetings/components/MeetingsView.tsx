@@ -229,6 +229,7 @@ export function MeetingsView() {
                   onAddAgendaItem={agendaOps.addAgendaItem}
                   onAddSystemAgendaItem={agendaOps.addSystemAgendaItem}
                   onUpdateAgendaItem={agendaOps.updateAgendaItem}
+                  onUpdateSystemResult={agendaOps.updateAgendaItemResult}
                   onSaveAgendaItems={agendaOps.saveAgendaItems}
                   onAddTaskToAgenda={agendaOps.addTaskToAgenda}
                   onAddSubItem={agendaOps.addSubItem}

@@ -1,3 +1,4 @@
+import { AgendaDragHandle } from "./agenda-editor/AgendaDragHandle";
 import { Textarea } from "@/components/ui/textarea";
 import { LiveAgendaNavigation } from "./agenda-editor/LiveAgendaNavigation";
 import { LiveAgendaResult } from "./agenda-editor/LiveAgendaResult";
@@ -63,6 +64,7 @@ interface AgendaEditorPanelProps {
   onSetShowTaskSelector: (v: { itemIndex: number } | null) => void;
   onAddAgendaItem: () => void;
   onStartMeeting?: () => void;
+  onUpdateSystemResult?: (id: string, field: "result_text", value: string) => void;
   live?: LiveAgendaSystemData & {
     currentKey: string | null;
     onPositionChange: (key: string) => void;
@@ -118,6 +120,7 @@ export function AgendaEditorPanel({
   onSetShowTaskSelector,
   onAddAgendaItem,
   onStartMeeting,
+  onUpdateSystemResult,
   live,
   onOpenCarryover,
   onAddSystemAgendaItem,
@@ -392,12 +395,12 @@ export function AgendaEditorPanel({
   const mainNumberByKey = new Map<string, number>();
   const subNumberByKey = new Map<string, number>();
 
-  const liveEntryCounts: Record<string, number> = live && hasEditPermission ? {
-    upcoming_appointments: live.upcomingAppointments.length,
+  const generatedEntryCounts: Record<string, number> = {
+    upcoming_appointments: live?.upcomingAppointments.length ?? 0,
     quick_notes: linkedQuickNotes.length,
     tasks: meetingLinkedTasks.length,
     case_items: meetingLinkedCaseItems.length,
-  } : {};
+  };
 
   mainItems.forEach((mainItem, mainIndex) => {
     const number = mainIndex + 1;
@@ -418,7 +421,9 @@ export function AgendaEditorPanel({
       ? meetingRelevantDecisions.length
       : mainItem.system_type === "redaktion"
         ? systemCounts[getItemKey(mainItem, agendaItems.indexOf(mainItem))] ?? 0
-        : liveEntryCounts[mainItem.system_type ?? ""] ?? 0;
+        : mainItem.system_type === "upcoming_appointments" && !live
+          ? systemCounts[getItemKey(mainItem, agendaItems.indexOf(mainItem))] ?? 0
+          : generatedEntryCounts[mainItem.system_type ?? ""] ?? 0;
     subItems.forEach((subItem, subIndex) => {
       const subNumber = generatedCount + subIndex + 1;
       if (subItem.id) subNumberByKey.set(subItem.id, subNumber);
@@ -634,12 +639,8 @@ export function AgendaEditorPanel({
                               )}
                             >
                               <AgendaSystemRow
-                                dragHandleProps={provided.dragHandleProps}
-                                canEdit={hasEditPermission}
-                                dragging={snapshot.isDragging}
                                 liveCurrent={isLiveCurrent(item)}
                                 hasSelectedChild={hasSelectedChild(item)}
-                                nested={Boolean(item.parentLocalKey || item.parent_id)}
                                 selected={
                                   getItemKey(item, index) === selectedKey
                                 }
@@ -655,6 +656,11 @@ export function AgendaEditorPanel({
                                     }))
                                   }
                                   editorRow
+                                  editorSelected={getItemKey(item, index) === selectedKey}
+                                  editorLiveCurrent={isLiveCurrent(item)}
+                                  editorDragHandle={hasEditPermission && provided.dragHandleProps ? (
+                                    <AgendaDragHandle dragHandleProps={provided.dragHandleProps} dragging={snapshot.isDragging} className="h-5" />
+                                  ) : undefined}
                                   editorLive={Boolean(live)}
                                   editorLiveContent={
                                     live && isLiveGroup(item) && hasEditPermission && item.id &&
@@ -714,8 +720,10 @@ export function AgendaEditorPanel({
                                   resultText={item.result_text}
                                   onUpdateResult={
                                     hasEditPermission
-                                      ? (value) =>
-                                          change(index, "result_text", value)
+                                      ? (value) => {
+                                          if (item.id && onUpdateSystemResult) onUpdateSystemResult(item.id, "result_text", value);
+                                          else change(index, "result_text", value);
+                                        }
                                       : undefined
                                   }
                                   onDelete={

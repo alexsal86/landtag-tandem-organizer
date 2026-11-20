@@ -1,3 +1,4 @@
+import { SystemSubpointList } from "./agenda-editor/SystemSubpointList";
 import React, { useState, useEffect } from 'react';
 import { Calendar, Clock, MapPin, ChevronDown, ChevronRight, Star, Users } from 'lucide-react';
 import { Badge } from '@/components/ui/badge';
@@ -59,7 +60,7 @@ interface UpcomingAppointmentsSectionProps {
   allowStarring?: boolean;
   profiles?: ProfileInfo[];
   showCountBadge?: boolean;
-  agendaRows?: boolean;
+  agendaRows?: { agendaNumber?: string; resultText?: string | null; onUpdateResult?: (value: string) => void };
   onAppointmentsCountChange?: (count: number) => void;
 }
 
@@ -71,7 +72,7 @@ export const UpcomingAppointmentsSection: React.FC<UpcomingAppointmentsSectionPr
   allowStarring = false,
   profiles = [],
   showCountBadge = true,
-  agendaRows = false,
+  agendaRows,
   onAppointmentsCountChange,
 }) => {
   const { currentTenant } = useTenant();
@@ -414,16 +415,18 @@ export const UpcomingAppointmentsSection: React.FC<UpcomingAppointmentsSectionPr
     return loading ? (
       <p role="status" className="py-2 pl-11 text-xs text-muted-foreground">Termine werden geladen …</p>
     ) : appointments.length ? (
-      <ul aria-label="Kommende Termine" className="border-t border-[color:var(--agenda-row-divider)] dark:border-border">
-        {appointments.map((appointment) => (
-          <li key={appointment.id} className="flex min-w-0 flex-wrap items-baseline justify-between gap-x-3 gap-y-1 border-b border-[color:var(--agenda-row-divider)] bg-[var(--agenda-subpoint-bg)] py-2.5 pl-11 pr-3 text-xs last:border-b-0 dark:border-border dark:bg-slate-800 sm:pr-5">
-            <span className="min-w-0 break-words">{appointment.title}</span>
-            <time dateTime={appointment.start_time} className="shrink-0 tabular-nums text-muted-foreground">
-              {format(new Date(appointment.start_time), "EEE, dd.MM. · HH:mm", { locale: de })} Uhr
-            </time>
-          </li>
-        ))}
-      </ul>
+      <SystemSubpointList
+        {...agendaRows}
+        entries={appointments}
+        label="Kommende Termine"
+        titleOf={(appointment) => appointment.title}
+        checkable
+        metadata={(appointment) => (
+          <time dateTime={appointment.start_time} className="shrink-0 tabular-nums text-muted-foreground">
+            {format(new Date(appointment.start_time), "EEE, dd.MM. · HH:mm", { locale: de })} Uhr
+          </time>
+        )}
+      />
     ) : (
       <p className="py-2 pl-11 text-xs text-muted-foreground">Keine Termine in den nächsten zwei Wochen</p>
     );

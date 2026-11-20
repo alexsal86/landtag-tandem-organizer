@@ -1,3 +1,5 @@
+import { agendaSubpointNumber, orderSystemSubpoints } from "@/components/meetings/agenda-editor/systemSubpoints";
+import { parseMeetingResults } from "@/components/meetings/platformAgendaRules";
 import { liveAgendaPosition } from "@/components/meetings/agenda-editor/liveAgenda";
 import { resolveAgendaDrop } from "@/components/meetings/agenda-editor/agendaDrop";
 import { protocolTaskProgress, protocolTaskStatus } from "@/features/meetings/protocolTasks";
@@ -492,6 +494,23 @@ export const meetingLifecycleScenario: TestScenario = {
           agenda.data.some((item) => item.parent_id && item.icon_config === null) &&
           agenda.data.some((item) => item.system_type === "quick_notes" && item.icon_config === null));
         return { ok, message: ok ? "Nur der freie Hauptpunkt übernimmt das Symbol." : "Die Symbolübernahme stimmt nicht." };
+      },
+    },
+    {
+      id: "system-agenda-subpoints",
+      label: "System-Unterpunkte nummerieren und Reihenfolge erhalten",
+      kind: "logic",
+      run: async () => {
+        const entries = [{ id: "a" }, { id: "b" }, { id: "new" }];
+        const results = parseMeetingResults(JSON.stringify({
+          a: { result: "Beschluss", completed: true, order_index: 1 },
+          b: { result: "", order_index: 0 },
+          outside: { result: "", order_index: 0 },
+        }));
+        const ok = orderSystemSubpoints(entries, results).map(({ id }) => id).join() === "b,a,new" &&
+          results.a.result === "Beschluss" && results.a.completed === true &&
+          agendaSubpointNumber("1.", 0) === "1.1" && agendaSubpointNumber("1.1", 0) === "1.1.1";
+        return { ok, message: ok ? "Nummern und Reihenfolge stimmen." : "Nummern oder Reihenfolge weichen ab." };
       },
     },
     {

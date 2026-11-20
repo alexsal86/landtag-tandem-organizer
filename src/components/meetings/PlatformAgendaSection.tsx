@@ -1,9 +1,10 @@
-import { agendaSubpointListClass, agendaSubpointNumber, agendaSubpointRowClass } from "./agenda-editor/systemSubpoints";
+import { SystemSubpointList } from "./agenda-editor/SystemSubpointList";
 import { useState, useEffect } from "react";
 import { useNavigate } from "react-router-dom";
 import { useQueryClient } from "@tanstack/react-query";
 import {
   ArrowUpRight,
+  ChevronDown,
   Check,
   MessageSquare,
   CornerDownRight,
@@ -168,6 +169,134 @@ export function PlatformAgendaSection({
       />
     );
   const entries = query.data ?? [];
+  const renderEntryDetails = (entry: (typeof entries)[number], isExpanded: boolean) => {
+    const result = results[entry.id];
+    return (isExpanded || !!result?.follow_up) && (
+      <div className="mt-space-xs ml-space-lg space-y-space-xs">
+        {entry.content && (
+          <RichTextDisplay
+            content={entry.content}
+            className="text-body break-words max-h-80 overflow-auto"
+          />
+        )}
+        {!readOnly && entry.decisionId && (
+          <Button
+            size="sm"
+            variant="outline"
+            onClick={() => setDecisionId(entry.decisionId || null)}
+          >
+            <Check className="h-4 w-4 mr-1" /> Freigabe /
+            Überarbeitung entscheiden
+          </Button>
+        )}
+        {!readOnly && entry.approval === "social" && (
+          <div className="flex flex-wrap items-center gap-space-xs">
+            {mayApprove && (
+              <Button
+                size="sm"
+                disabled={pending === entry.id}
+                onClick={() => void approve(entry.id)}
+              >
+                <Check className="h-4 w-4 mr-space-2xs" /> Freigeben
+              </Button>
+            )}
+            <Input
+              aria-label="Korrekturhinweis"
+              placeholder="Korrekturhinweis"
+              value={changeNote}
+              onChange={(e) => setChangeNote(e.target.value)}
+              className="min-w-0 flex-1"
+            />
+            <Button
+              size="icon"
+              variant="outline"
+              aria-label="Korrekturhinweis speichern"
+              disabled={!changeNote.trim() || pending === entry.id}
+              onClick={() => void requestChanges(entry.id)}
+            >
+              <MessageSquare className="h-4 w-4" />
+            </Button>
+          </div>
+        )}
+        {onUpdateResult && !readOnly && (
+          <>
+            <Textarea
+              aria-label={`Ergebnis: ${entry.title}`}
+              placeholder="Ergebnis / nächster Auftrag"
+              value={result?.result || ""}
+              onChange={(e) =>
+                patchResult(entry.id, { result: e.target.value })
+              }
+            />
+            <div className="flex flex-wrap items-center gap-space-xs">
+              <label className="flex items-center gap-space-2xs text-caption">
+                <Checkbox
+                  checked={!!result?.follow_up}
+                  disabled={!result?.result.trim()}
+                  onCheckedChange={(value) =>
+                    patchResult(entry.id, {
+                      follow_up: value === true,
+                      assigned_to: result?.assigned_to?.length
+                        ? result.assigned_to
+                        : entry.ownerId
+                          ? [entry.ownerId]
+                          : user?.id
+                            ? [user.id]
+                            : [],
+                    })
+                  }
+                />
+                <CornerDownRight className="h-3 w-3" /> Folgeaufgabe
+              </label>
+              {result?.follow_up && (
+                <>
+                  <Select
+                    value={result.assigned_to?.[0] || user?.id}
+                    onValueChange={(id) =>
+                      patchResult(entry.id, { assigned_to: [id] })
+                    }
+                  >
+                    <SelectTrigger
+                      className="w-44"
+                      aria-label="Zuständige Person"
+                    >
+                      <SelectValue placeholder="Zuständig" />
+                    </SelectTrigger>
+                    <SelectContent>
+                      {profiles.map((profile) => (
+                        <SelectItem
+                          key={profile.user_id}
+                          value={profile.user_id}
+                        >
+                          {profile.display_name || "Unbekannt"}
+                        </SelectItem>
+                      ))}
+                    </SelectContent>
+                  </Select>
+                  <Input
+                    aria-label="Frist der Folgeaufgabe"
+                    type="date"
+                    className="w-40"
+                    value={result.due_at?.slice(0, 10) || ""}
+                    onChange={(e) =>
+                      patchResult(entry.id, {
+                        due_at: e.target.value || undefined,
+                      })
+                    }
+                  />
+                </>
+              )}
+            </div>
+          </>
+        )}
+        {readOnly && result?.result && (
+          <p className="text-caption text-muted-foreground">
+            {result.result}
+          </p>
+        )}
+      </div>
+    );
+  };
   return (
     <section className="min-w-0" aria-label={option?.label}>
       {(!agendaSubpoints || entries.length === 200) && (
@@ -183,26 +312,62 @@ export function PlatformAgendaSection({
       )}
       {!entries.length ? (
         <EmptyState size="sm" title="Keine offenen Punkte in diesem Zeitraum" />
+      ) : agendaSubpoints ? (
+        <SystemSubpointList
+          entries={entries}
+          label={option?.label}
+          titleOf={(entry) => entry.title}
+          agendaNumber={agendaSubpoints.parentNumber}
+          resultText={resultText}
+          onUpdateResult={readOnly ? undefined : onUpdateResult}
+          checkable
+          metadata={(entry) => (
+            <span className="flex flex-wrap items-center gap-1.5 text-muted-foreground">
+              {entry.date && new Date(entry.date).toLocaleDateString("de-DE", { day: "2-digit", month: "2-digit" })}
+              {entry.ownerId && profiles.find((profile) => profile.user_id === entry.ownerId)?.display_name}
+              {entry.status && <Badge variant="outline">{entry.status}</Badge>}
+            </span>
+          )}
+          actions={(entry) => (
+            <>
+              <Button variant="ghost" size="icon" className="size-6 shrink-0" aria-label={`Details zu ${entry.title}`}
+                aria-expanded={defaultExpanded ? !collapsedEntries[entry.id] : expanded === entry.id}
+                onClick={() => {
+                  if (defaultExpanded) setCollapsedEntries((previous) => ({ ...previous, [entry.id]: !previous[entry.id] }));
+                  else setExpanded((previous) => previous === entry.id ? null : entry.id);
+                  setChangeNote("");
+                }}>
+                <ChevronDown className="size-4" />
+              </Button>
+              <Button size="icon" variant="ghost" className="size-6 shrink-0" aria-label={`${entry.title} öffnen`} onClick={() => navigate(entry.path)}>
+                <ArrowUpRight className="size-4" />
+              </Button>
+            </>
+          )}
+          details={(entry) => (
+            <>
+              {entry.detail && <p className="text-xs text-muted-foreground">{entry.detail}</p>}
+              {renderEntryDetails(entry, defaultExpanded ? !collapsedEntries[entry.id] : expanded === entry.id)}
+            </>
+          )}
+        />
       ) : (
-        <ul className={agendaSubpoints ? agendaSubpointListClass : "divide-y divide-border"}>
-          {entries.map((entry, index) => {
+        <ul className="divide-y divide-border">
+          {entries.map((entry) => {
             const result = results[entry.id];
             const isExpanded = defaultExpanded ? !collapsedEntries[entry.id] : expanded === entry.id;
             return (
-              <li key={entry.id} className={agendaSubpoints ? cn(agendaSubpointRowClass, "relative") : "py-space-xs min-w-0"}>
+              <li key={entry.id} className="py-space-xs min-w-0">
                 <div className="flex items-start gap-space-xs">
                   {onUpdateResult && !readOnly && (
                     <Checkbox
                       aria-label={`${entry.title} besprochen`}
-                      className={agendaSubpoints ? "absolute left-4 top-3" : "mt-1 shrink-0"}
+                      className="mt-1 shrink-0"
                       checked={!!result?.completed}
                       onCheckedChange={(value) =>
                         patchResult(entry.id, { completed: value === true })
                       }
                     />
-                  )}
-                  {agendaSubpoints && (
-                    <span className="shrink-0 tabular-nums text-muted-foreground">{agendaSubpointNumber(agendaSubpoints.parentNumber, index)}</span>
                   )}
                   <div className="flex-1 min-w-0">
                     <Button
@@ -216,7 +381,7 @@ export function PlatformAgendaSection({
                     >
                       <span
                         className={cn(
-                          agendaSubpoints ? "text-xs font-normal break-words" : "text-body font-medium break-words",
+                          "text-body font-medium break-words",
                           result?.completed && "text-muted-foreground",
                         )}
                       >
@@ -267,131 +432,7 @@ export function PlatformAgendaSection({
                     <ArrowUpRight className="h-4 w-4" />
                   </Button>
                 </div>
-                {(isExpanded || !!result?.follow_up) && (
-                  <div className="mt-space-xs ml-space-lg space-y-space-xs">
-                    {entry.content && (
-                      <RichTextDisplay
-                        content={entry.content}
-                        className="text-body break-words max-h-80 overflow-auto"
-                      />
-                    )}
-                    {!readOnly && entry.decisionId && (
-                      <Button
-                        size="sm"
-                        variant="outline"
-                        onClick={() => setDecisionId(entry.decisionId || null)}
-                      >
-                        <Check className="h-4 w-4 mr-1" /> Freigabe /
-                        Überarbeitung entscheiden
-                      </Button>
-                    )}
-                    {!readOnly && entry.approval === "social" && (
-                      <div className="flex flex-wrap items-center gap-space-xs">
-                        {mayApprove && (
-                          <Button
-                            size="sm"
-                            disabled={pending === entry.id}
-                            onClick={() => void approve(entry.id)}
-                          >
-                            <Check className="h-4 w-4 mr-space-2xs" /> Freigeben
-                          </Button>
-                        )}
-                        <Input
-                          aria-label="Korrekturhinweis"
-                          placeholder="Korrekturhinweis"
-                          value={changeNote}
-                          onChange={(e) => setChangeNote(e.target.value)}
-                          className="min-w-0 flex-1"
-                        />
-                        <Button
-                          size="icon"
-                          variant="outline"
-                          aria-label="Korrekturhinweis speichern"
-                          disabled={!changeNote.trim() || pending === entry.id}
-                          onClick={() => void requestChanges(entry.id)}
-                        >
-                          <MessageSquare className="h-4 w-4" />
-                        </Button>
-                      </div>
-                    )}
-                    {onUpdateResult && !readOnly && (
-                      <>
-                        <Textarea
-                          aria-label={`Ergebnis: ${entry.title}`}
-                          placeholder="Ergebnis / nächster Auftrag"
-                          value={result?.result || ""}
-                          onChange={(e) =>
-                            patchResult(entry.id, { result: e.target.value })
-                          }
-                        />
-                        <div className="flex flex-wrap items-center gap-space-xs">
-                          <label className="flex items-center gap-space-2xs text-caption">
-                            <Checkbox
-                              checked={!!result?.follow_up}
-                              disabled={!result?.result.trim()}
-                              onCheckedChange={(value) =>
-                                patchResult(entry.id, {
-                                  follow_up: value === true,
-                                  assigned_to: result?.assigned_to?.length
-                                    ? result.assigned_to
-                                    : entry.ownerId
-                                      ? [entry.ownerId]
-                                      : user?.id
-                                        ? [user.id]
-                                        : [],
-                                })
-                              }
-                            />
-                            <CornerDownRight className="h-3 w-3" /> Folgeaufgabe
-                          </label>
-                          {result?.follow_up && (
-                            <>
-                              <Select
-                                value={result.assigned_to?.[0] || user?.id}
-                                onValueChange={(id) =>
-                                  patchResult(entry.id, { assigned_to: [id] })
-                                }
-                              >
-                                <SelectTrigger
-                                  className="w-44"
-                                  aria-label="Zuständige Person"
-                                >
-                                  <SelectValue placeholder="Zuständig" />
-                                </SelectTrigger>
-                                <SelectContent>
-                                  {profiles.map((profile) => (
-                                    <SelectItem
-                                      key={profile.user_id}
-                                      value={profile.user_id}
-                                    >
-                                      {profile.display_name || "Unbekannt"}
-                                    </SelectItem>
-                                  ))}
-                                </SelectContent>
-                              </Select>
-                              <Input
-                                aria-label="Frist der Folgeaufgabe"
-                                type="date"
-                                className="w-40"
-                                value={result.due_at?.slice(0, 10) || ""}
-                                onChange={(e) =>
-                                  patchResult(entry.id, {
-                                    due_at: e.target.value || undefined,
-                                  })
-                                }
-                              />
-                            </>
-                          )}
-                        </div>
-                      </>
-                    )}
-                    {readOnly && result?.result && (
-                      <p className="text-caption text-muted-foreground">
-                        {result.result}
-                      </p>
-                    )}
-                  </div>
-                )}
+                {renderEntryDetails(entry, isExpanded)}
               </li>
             );
           })}

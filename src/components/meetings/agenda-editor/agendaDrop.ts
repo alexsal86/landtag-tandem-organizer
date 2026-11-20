@@ -14,6 +14,7 @@ export function resolveAgendaDrop(items: AgendaItem[], drag: DragUpdate, hiddenI
     Boolean((candidate.id && item.parent_id === candidate.id) ||
       (candidate.localKey && item.parentLocalKey === candidate.localKey)),
   );
+  const previousParent = parentOf(dragged);
   const children = items.filter((item) => parentOf(item) === dragged);
   const rest = items.filter((item) => item !== dragged);
   let index: number;
@@ -49,6 +50,8 @@ export function resolveAgendaDrop(items: AgendaItem[], drag: DragUpdate, hiddenI
     }
     if (children.includes(rest[index]) || (parent && !parent.id && !parent.localKey)) return null;
   }
+
+  if (previousParent?.system_type && parent !== previousParent) return null;
 
   const remaining = rest.filter((item) => !children.includes(item));
   const marker = rest[index];

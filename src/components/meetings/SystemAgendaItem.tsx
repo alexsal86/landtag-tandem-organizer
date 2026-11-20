@@ -1,4 +1,4 @@
-import { agendaSubpointListClass, agendaSubpointNumber, agendaSubpointRowClass } from "./agenda-editor/systemSubpoints";
+import { SystemSubpointList } from "./agenda-editor/SystemSubpointList";
 import { stripHtml } from "@/utils/textDiff";
 import { PencilSparkles } from "@/components/icons/PencilSparkles";
 import { useState, useEffect, type ReactNode } from "react";
@@ -43,6 +43,9 @@ interface SystemAgendaItemProps {
   editorDetails?: ReactNode;
   editorLeading?: ReactNode;
   editorLive?: boolean;
+  editorLiveCurrent?: boolean;
+  editorSelected?: boolean;
+  editorDragHandle?: ReactNode;
   editorLiveContent?: ReactNode;
   editorCompleted?: boolean;
   editorDescription?: string;
@@ -105,6 +108,9 @@ export function SystemAgendaItem({
   editorDetails,
   editorLeading,
   editorLive = false,
+  editorLiveCurrent,
+  editorSelected,
+  editorDragHandle,
   editorLiveContent,
   editorCompleted,
   editorDescription,
@@ -140,6 +146,7 @@ export function SystemAgendaItem({
   const showEditorialSubpoints = editorRow && systemType === "redaktion";
   const showDecisionSubpoints = editorRow && systemType === "decisions";
   const showDirectSubpoints = showAppointmentsAsSubpoints || showEditorialSubpoints || showDecisionSubpoints;
+  const showFullWidthSubpoints = showDirectSubpoints || (editorRow && ["quick_notes", "tasks", "case_items"].includes(systemType));
   const count =
     systemType === "quick_notes"
       ? linkedQuickNotes.length
@@ -322,6 +329,19 @@ export function SystemAgendaItem({
   };
 
   const renderBody = () => {
+    if (editorRow && systemType === "quick_notes" && linkedQuickNotes.length) {
+      return <SystemSubpointList entries={linkedQuickNotes} label="Notizen" agendaNumber={agendaNumber}
+        resultText={resultText} onUpdateResult={onUpdateResult} titleOf={(note) => note.title || "Notiz"} checkable />;
+    }
+    if (editorRow && systemType === "tasks" && linkedTasks.length) {
+      return <SystemSubpointList entries={linkedTasks} label="Aufgaben" agendaNumber={agendaNumber}
+        resultText={resultText} onUpdateResult={onUpdateResult} titleOf={(task) => task.title} checkable />;
+    }
+    if (editorRow && systemType === "case_items" && linkedCaseItems.length) {
+      return <SystemSubpointList entries={linkedCaseItems} label="Vorgänge" agendaNumber={agendaNumber}
+        resultText={resultText} onUpdateResult={onUpdateResult} titleOf={(item) => item.subject || "Ohne Betreff"} checkable />;
+    }
+
     if (isPlatformAgendaType(systemType))
       return (
         <div
@@ -367,7 +387,7 @@ export function SystemAgendaItem({
               className="border-0 shadow-none bg-transparent p-0"
               defaultCollapsed={editorRow ? false : defaultCollapsed}
               showCountBadge={false}
-              agendaRows={showAppointmentsAsSubpoints}
+              agendaRows={showAppointmentsAsSubpoints ? { agendaNumber, resultText, onUpdateResult } : undefined}
               onAppointmentsCountChange={setUpcomingAppointmentsCount}
             />
           </div>
@@ -518,18 +538,16 @@ export function SystemAgendaItem({
 
     if (showDecisionSubpoints) {
       return linkedDecisions.length ? (
-        <ul aria-label="Entscheidungen" className={agendaSubpointListClass}>
-          {linkedDecisions.map((decision, index) => {
-            const owner = profiles?.find((profile) => profile.user_id === decision.created_by)?.display_name;
-            return (
-              <li key={decision.id} className={cn(agendaSubpointRowClass, "flex items-baseline gap-2")}>
-                <span className="shrink-0 tabular-nums text-muted-foreground">{agendaSubpointNumber(agendaNumber, index)}</span>
-                <span className="min-w-0 flex-1 break-words">{decision.title || "Ohne Titel"}</span>
-                {owner && <span className="text-muted-foreground">{owner}</span>}
-              </li>
-            );
-          })}
-        </ul>
+        <SystemSubpointList
+          label="Entscheidungen"
+          entries={linkedDecisions}
+          agendaNumber={agendaNumber}
+          resultText={resultText}
+          onUpdateResult={onUpdateResult}
+          titleOf={(decision) => decision.title || "Ohne Titel"}
+          checkable
+          metadata={(decision) => <span className="text-muted-foreground">{profiles?.find((profile) => profile.user_id === decision.created_by)?.display_name}</span>}
+        />
       ) : (
         <p className="py-2 pl-11 text-xs text-muted-foreground">Keine relevanten Entscheidungen</p>
       );
@@ -707,8 +725,14 @@ export function SystemAgendaItem({
   const description = stripHtml(editorDescription ?? "");
   return (
     <section className="min-w-0">
-      <div className="flex flex-wrap items-center gap-x-3 gap-y-2 py-2.5 pr-3 sm:pr-5">
+      <div className={cn(
+        "flex flex-wrap items-center gap-x-3 gap-y-2 py-2.5 pl-4 pr-3 sm:pr-5",
+        isEmbedded ? "bg-[var(--agenda-subpoint-bg)] dark:bg-slate-800" : "hover:bg-muted/40",
+        editorSelected && !isEmbedded && "bg-primary/10 hover:bg-primary/10",
+        editorLiveCurrent && "bg-success/15 hover:bg-success/15",
+      )}>
         <div className="flex min-w-0 flex-1 basis-48 items-start">
+          {editorDragHandle}
           <div className={cn("mr-2 grid w-9 shrink-0 place-items-center", isEmbedded ? "h-5" : "h-9")}>
             {isEmbedded && editorLeading}
             {Icon && !isEmbedded && (
@@ -787,9 +811,13 @@ export function SystemAgendaItem({
         )}
         {editorDetails}
       </div>
-      <div hidden={!showDirectSubpoints && !editorLive && (!expanded || count === 0)} className={showDirectSubpoints ? undefined : "px-3 pb-2"}>
-        {renderBody()}
-      </div>
+      {editorLive ? (
+        expanded && (editorLiveContent ?? renderBody())
+      ) : (
+        <div hidden={!showDirectSubpoints && (!expanded || count === 0)} className={showFullWidthSubpoints ? undefined : "px-3 pb-2"}>
+          {renderBody()}
+        </div>
+      )}
     </section>
   );
 }
