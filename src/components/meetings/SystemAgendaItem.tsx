@@ -444,10 +444,7 @@ export function SystemAgendaItem({
                           {note.title}
                         </h4>
                       )}
-                      <RichTextDisplay
-                        content={note.content}
-                        className="text-sm"
-                      />
+                      <p className="whitespace-pre-wrap break-words text-sm">{stripHtml(note.content)}</p>
                       <ProfileBadge userId={note.user_id} profiles={profiles} />
                       {note.meeting_result && (
                         <p className="text-xs text-muted-foreground mt-1">

@@ -1,10 +1,10 @@
+import { stripHtml } from "@/utils/textDiff";
 import { useState } from "react";
 import { Link } from "react-router-dom";
 import { Button } from "@/components/ui/button";
 import { Checkbox } from "@/components/ui/checkbox";
 import { Input } from "@/components/ui/input";
 import { GlobalQuickNoteDialog } from "@/components/search/GlobalQuickNoteDialog";
-import { RichTextDisplay } from "@/components/ui/RichTextDisplay";
 import { supabase } from "@/integrations/supabase/client";
 import { notify } from "@/lib/notify";
 import { parseMeetingResults } from "../platformAgendaRules";
@@ -49,7 +49,7 @@ export function NotesInspector({ parent, notes, number, selectedKey, onSelect, o
       <p className="text-xs text-muted-foreground">Unterpunkt von {number} {parent.title}</p>
       <h3 className="font-semibold">{agendaSubpointNumber(number, selected)} {current.title || "Notiz"}</h3>
       <p className="text-xs text-muted-foreground">{date(current)}</p>
-      <RichTextDisplay content={current.content} className="text-sm" />
+      <p className="whitespace-pre-wrap break-words text-sm">{stripHtml(current.content)}</p>
       {taskButton(current)}
       <Button variant="ghost" size="sm" onClick={() => onSelect(parentKey)}>Alle Unterpunkte</Button>
     </> : <>

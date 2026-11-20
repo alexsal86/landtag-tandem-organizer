@@ -1,3 +1,4 @@
+import { stripHtml } from "@/utils/textDiff";
 import { useState } from "react";
 import { MessageSquarePlus, Star } from "lucide-react";
 import { format } from "date-fns";
@@ -94,7 +95,7 @@ export function LiveAgendaSystemContent({
           metadata={(entry) => <span className="text-muted-foreground">{owner(entry.user_id)}</span>}
           details={(entry) => (
             <>
-              <RichTextDisplay content={entry.content} className="text-xs text-muted-foreground" />
+              <p className="whitespace-pre-wrap break-words text-xs text-muted-foreground">{stripHtml(entry.content)}</p>
               {editor("Ergebnis zur Notiz", entry.meeting_result || "", (value) => onUpdateNoteResult(entry.id, value))}
             </>
           )}

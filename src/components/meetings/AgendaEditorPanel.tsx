@@ -26,7 +26,6 @@ import { Button } from "@/components/ui/button";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Badge } from "@/components/ui/badge";
 import { Plus, Clock } from "lucide-react";
-import { RichTextDisplay } from "@/components/ui/RichTextDisplay";
 import {
   DragDropContext,
   Droppable,
@@ -176,12 +175,13 @@ export function AgendaEditorPanel({
   const systemInspectorItem = appointmentParent ?? notesParent;
   const inspectorItem = systemInspectorItem ?? selectedItem;
   const inspectorIndex = inspectorItem ? agendaItems.indexOf(inspectorItem) : -1;
+  const meetingNotes = linkedQuickNotes.filter(note => note.meeting_id === selectedMeeting.id);
   const notesByPerson = new Map<string, number>();
-  for (const note of linkedQuickNotes) {
+  for (const note of meetingNotes) {
     notesByPerson.set(note.user_id, (notesByPerson.get(note.user_id) ?? 0) + 1);
   }
   const notesDescription = [
-    `${linkedQuickNotes.length} ${linkedQuickNotes.length === 1 ? "Notiz" : "Notizen"}`,
+    `${meetingNotes.length} ${meetingNotes.length === 1 ? "Notiz" : "Notizen"}`,
     ...Array.from(notesByPerson, ([id, count]) =>
       `${count}× ${profiles.find(profile => profile.user_id === id)?.display_name || "Unbekannte Person"}`,
     ),
@@ -191,6 +191,16 @@ export function AgendaEditorPanel({
     setDirty(true);
     onUpdateAgendaItem(index, field, value);
   };
+  const prefilledNotes = useRef(new Set<string>());
+  useEffect(() => {
+    if (!hasEditPermission || !meetingNotes.length) return;
+    agendaItems.forEach((item, index) => {
+      if (item.system_type !== "quick_notes" || !item.id || item.description?.trim() || prefilledNotes.current.has(item.id)) return;
+      prefilledNotes.current.add(item.id);
+      onUpdateAgendaItem(index, "description", notesDescription);
+    });
+  }, [agendaItems, hasEditPermission, meetingNotes.length, notesDescription, onUpdateAgendaItem]);
+
   useEffect(() => {
     setSaved(false);
     setSelectedKey(null);
@@ -739,7 +749,7 @@ export function AgendaEditorPanel({
                                     ) : undefined
                                   }
                                   editorCompleted={item.is_completed}
-                                  editorDescription={item.description ?? (item.system_type === "quick_notes" ? notesDescription : undefined)}
+                                  editorDescription={item.description?.trim() || (item.system_type === "quick_notes" && !prefilledNotes.current.has(item.id ?? "") ? notesDescription : undefined)}
                                   editorLeading={
                                     (item.parent_id || item.parentLocalKey) && (
                                       <AgendaCompletionCheckbox
@@ -936,7 +946,7 @@ export function AgendaEditorPanel({
                 : inspectorItem,
             )}
             key={getItemKey(inspectorItem, inspectorIndex)}
-            item={inspectorItem.system_type === "quick_notes" && inspectorItem.description == null
+            item={inspectorItem.system_type === "quick_notes" && !inspectorItem.description?.trim() && !prefilledNotes.current.has(inspectorItem.id ?? "")
               ? { ...inspectorItem, description: notesDescription } : inspectorItem}
             index={inspectorIndex}
             profiles={profiles}
@@ -997,10 +1007,7 @@ export function AgendaEditorPanel({
                         {note.title}
                       </h4>
                     )}
-                    <RichTextDisplay
-                      content={note.content}
-                      className="text-sm"
-                    />
+                    <p className="whitespace-pre-wrap break-words text-sm">{stripHtml(note.content)}</p>
                     {live && hasEditPermission ? (
                       <label className="block space-y-1 text-xs">
                         <span>Ergebnis</span>
