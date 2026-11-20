@@ -23,8 +23,6 @@ import {
   Trash,
   Eye,
   EyeOff,
-  ChevronDown,
-  ChevronRight,
   ListTodo,
 } from "lucide-react";
 import { cn } from "@/lib/utils";
@@ -160,6 +158,7 @@ export function AgendaRow({
                 <span className={cn("h-5 shrink-0 tabular-nums", isSubItem ? "mr-1 text-xs leading-5 font-normal text-muted-foreground" : "text-sm leading-5 font-semibold text-foreground", item.is_completed && "text-muted-foreground line-through")}>
                   {getAgendaNumber(item)}
                 </span>
+                <div className="flex min-w-0 flex-wrap items-center">
                 <Input
                   value={item.title}
                   onChange={(e) => change(index, "title", e.target.value)}
@@ -167,12 +166,30 @@ export function AgendaRow({
                   placeholder={isSubItem ? "Unterpunkt-Titel" : "Agenda-Punkt Titel"}
                   aria-label="Titel des Agenda-Punkts"
                   className={cn(
-                    "h-5 min-w-0 px-px py-0 leading-5 border-transparent bg-transparent shadow-none hover:border-border focus:bg-card",
+                    "h-5 w-auto min-w-0 max-w-full [field-sizing:content] px-px py-0 leading-5 border-transparent bg-transparent shadow-none hover:border-border focus:bg-card",
                     isSubItem ? "text-xs font-normal md:text-xs" : "text-sm font-semibold",
                     item.is_completed && "text-muted-foreground line-through",
                   )}
                   readOnly={!hasEditPermission}
                 />
+            {subItemCount > 0 && (
+              <Button
+                size="sm"
+                variant="ghost"
+                aria-label="Unterpunkte ein- oder ausklappen"
+                aria-expanded={!isMainItemCollapsed(item)}
+                className="ml-2 h-5 shrink-0 gap-1 px-1 text-xs font-semibold text-[#398a12] dark:text-success"
+                onClick={() => {
+                  const key = item.localKey || item.id;
+                  if (!key) return;
+                  setCollapsedMainItems((prev) => ({ ...prev, [key]: !prev[key] }));
+                }}
+              >
+                <span aria-hidden="true" className="text-[11px]">{isMainItemCollapsed(item) ? "▶" : "▼"}</span>
+                {subItemCount} {subItemCount === 1 ? "Unterpunkt" : "Unterpunkte"}
+              </Button>
+            )}
+                </div>
                 {preview && <p className="col-span-2 truncate text-xs leading-4 text-muted-foreground">{preview}</p>}
                 {documentCount > 0 && (
                   <span className="col-span-2 text-xs text-muted-foreground">
@@ -217,23 +234,6 @@ export function AgendaRow({
                   <Trash className="h-4 w-4" />
                 </Button>
               </span>
-            )}
-            {subItemCount > 0 && (
-              <Button
-                size="sm"
-                variant="ghost"
-                aria-label="Unterpunkte ein- oder ausklappen"
-                aria-expanded={!isMainItemCollapsed(item)}
-                className="h-7 shrink-0 gap-1 px-2 text-xs font-medium text-primary"
-                onClick={() => {
-                  const key = item.localKey || item.id;
-                  if (!key) return;
-                  setCollapsedMainItems((prev) => ({ ...prev, [key]: !prev[key] }));
-                }}
-              >
-                {isMainItemCollapsed(item) ? <ChevronRight className="size-4" /> : <ChevronDown className="size-4" />}
-                {subItemCount} {subItemCount === 1 ? "Unterpunkt" : "Unterpunkte"}
-              </Button>
             )}
             {!(item.parentLocalKey || item.parent_id) &&
               hasEditPermission && (

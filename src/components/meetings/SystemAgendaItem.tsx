@@ -779,35 +779,32 @@ export function SystemAgendaItem({
                 className={cn(
                   "h-5 min-w-0 px-px py-0 leading-5 border-transparent bg-transparent shadow-none hover:border-border focus:bg-card",
                   isEmbedded ? "text-xs font-normal md:text-xs" : "text-sm font-semibold",
-                  showAppointmentsAsSubpoints && "w-auto max-w-full [field-sizing:content]",
+                  "w-auto max-w-full [field-sizing:content]",
                   editorCompleted && "text-muted-foreground line-through",
                 )}
               />
               {showAppointmentsAsSubpoints && <span className="text-xs text-muted-foreground">(nächste zwei Wochen)</span>}
-            </div>
-            {description && <p className="col-span-2 truncate text-xs leading-4 text-muted-foreground">{description}</p>}
-          </div>
-        </div>
         {!editorLive && (
           <Button
             size="sm"
             variant="ghost"
             aria-label="Baustein-Vorschau ein- oder ausklappen"
             aria-expanded={expanded}
-            className="h-7 shrink-0 gap-1 px-2 text-xs font-medium text-primary"
+            className="ml-2 h-5 shrink-0 gap-1 px-1 text-xs font-semibold text-[#398a12] dark:text-success"
             onClick={() => {
               if (onExpandedChange) onExpandedChange(!expanded);
               else setExpanded((value) => !value);
             }}
           >
-            {expanded ? (
-              <ChevronDown className="h-4 w-4" />
-            ) : (
-              <ChevronRight className="h-4 w-4" />
-            )}
+            <span aria-hidden="true" className="text-[11px]">{expanded ? "▼" : "▶"}</span>
             {subpointLabel}
           </Button>
         )}
+
+            </div>
+            {description && <p className="col-span-2 truncate text-xs leading-4 text-muted-foreground">{description}</p>}
+          </div>
+        </div>
         {editorLive && subpointLabel && <span className="text-xs text-muted-foreground">{subpointLabel}</span>}
         {onDelete && (
           <Button
