@@ -131,15 +131,15 @@ export function AgendaRow({
               {hasEditPermission && provided.dragHandleProps && (
                 <AgendaDragHandle dragHandleProps={provided.dragHandleProps} dragging={snapshot.isDragging} />
               )}
-              <div className={cn("mr-2 grid size-8 shrink-0 place-items-center", !isSubItem && "relative top-1.5")}>
+              <div className={cn("mr-2 grid w-9 shrink-0 place-items-center", isSubItem ? "h-8" : "relative top-1.5 h-9")}>
                 {isSubItem ? (
                   <AgendaCompletionCheckbox item={item} onComplete={hasEditPermission ? (completed) => change(index, "is_completed", completed) : undefined} />
                 ) : (
-                  <AgendaIcon value={item.icon_config} linkedTask={Boolean(item.task_id)} />
+                  <AgendaIcon value={item.icon_config} linkedTask={Boolean(item.task_id)} className="size-9" />
                 )}
               </div>
               <div className="grid min-w-0 flex-1 grid-cols-[auto_minmax(0,1fr)] items-center">
-                <span className={cn("flex h-8 shrink-0 items-center text-sm tabular-nums", isSubItem ? "mr-1 font-normal text-muted-foreground" : "font-semibold text-foreground")}>
+                <span className={cn("h-8 shrink-0 text-sm leading-8 tabular-nums", isSubItem ? "mr-1 font-normal text-muted-foreground" : "font-semibold text-foreground", item.is_completed && "text-muted-foreground line-through")}>
                   {getAgendaNumber(item)}
                 </span>
                 <Input

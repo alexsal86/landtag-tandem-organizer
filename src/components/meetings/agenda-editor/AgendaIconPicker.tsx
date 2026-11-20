@@ -5,12 +5,12 @@ import { Popover, PopoverContent, PopoverTrigger } from "@/components/ui/popover
 import { cn } from "@/lib/utils";
 import { agendaIconColors, agendaIcons, resolveAgendaIcon, type AgendaIconConfig } from "./agendaIcons";
 
-export function AgendaIcon({ value, linkedTask }: { value?: unknown; linkedTask?: boolean }) {
+export function AgendaIcon({ value, linkedTask, className }: { value?: unknown; linkedTask?: boolean; className?: string }) {
   const config = resolveAgendaIcon(value, linkedTask);
   const Icon = agendaIcons[config.name as keyof typeof agendaIcons].icon;
   const color = agendaIconColors.find(({ value }) => value === config.color);
   return (
-    <span aria-hidden="true" className={cn("grid size-8 shrink-0 place-items-center rounded-lg", color?.darkIcon ? "text-slate-950" : "text-white")} style={{ backgroundColor: config.color }}>
+    <span aria-hidden="true" className={cn("grid size-8 shrink-0 place-items-center rounded-lg", color?.darkIcon ? "text-slate-950" : "text-white", className)} style={{ backgroundColor: config.color }}>
       <Icon className="size-4" />
     </span>
   );

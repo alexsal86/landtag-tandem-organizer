@@ -679,12 +679,12 @@ export function SystemAgendaItem({
     <section className="min-w-0">
       <div className={cn("flex flex-wrap items-center gap-x-3 gap-y-2 pr-3 sm:pr-5", isEmbedded ? "py-3" : "py-6")}>
         <div className="flex min-w-0 flex-1 basis-48 items-start">
-          <div className={cn("mr-2 grid size-8 shrink-0 place-items-center", !isEmbedded && "relative top-1.5")}>
+          <div className={cn("mr-2 grid w-9 shrink-0 place-items-center", isEmbedded ? "h-8" : "relative top-1.5 h-9")}>
             {isEmbedded && editorLeading}
             {Icon && !isEmbedded && (
               <span
                 className={cn(
-                  "flex size-8 shrink-0 items-center justify-center rounded-lg border text-white",
+                  "flex size-9 shrink-0 items-center justify-center rounded-lg border text-white",
                   systemType === "quick_notes"
                     ? "bg-palette-amber border-palette-amber"
                     : systemType === "upcoming_appointments" ||
@@ -702,7 +702,7 @@ export function SystemAgendaItem({
             )}
           </div>
           <div className="grid min-w-0 flex-1 grid-cols-[auto_minmax(0,1fr)] items-center">
-            <span className={cn("flex h-8 shrink-0 items-center text-sm tabular-nums", isEmbedded ? "mr-1 font-normal text-muted-foreground" : "font-semibold text-foreground")}>
+            <span className={cn("h-8 shrink-0 text-sm leading-8 tabular-nums", isEmbedded ? "mr-1 font-normal text-muted-foreground" : "font-semibold text-foreground", editorCompleted && "text-muted-foreground line-through")}>
               {agendaNumber}
             </span>
             <Input
