@@ -397,6 +397,7 @@ export function TaskDetailView({ task, profiles, decisionLabel, onSave, onComple
                       void setStep();
                     }
                   }} />
+                {!hasStep && <p className="text-xs text-muted-foreground">Enter übernimmt den Schritt.</p>}
               </div>
               <DropdownMenu>
                 <DropdownMenuTrigger asChild>
@@ -426,7 +427,6 @@ export function TaskDetailView({ task, profiles, decisionLabel, onSave, onComple
               </div>
             )}
 
-            {!hasStep && <p className="text-sm text-muted-foreground">Enter übernimmt den Schritt.</p>}
             <div className="flex flex-wrap gap-2">
               {hasStep ? <Button disabled={saving} onClick={() => setDoneDialog(true)} className="h-11 rounded-xl bg-success px-4 text-white hover:bg-success/90">
                 <Check />Schritt erledigt <kbd className="rounded border border-white/60 px-1 text-xs">E</kbd>
