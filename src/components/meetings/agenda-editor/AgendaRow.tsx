@@ -126,7 +126,7 @@ export function AgendaRow({
             isHiddenByCollapsedParent(item) && "hidden",
           )}
         >
-          <div className={cn("flex flex-wrap items-center gap-x-3 gap-y-2 pl-4 pr-3 sm:pr-5", isSubItem ? "py-3" : "py-6")}>
+          <div className="flex flex-wrap items-center gap-x-3 gap-y-2 py-2 pl-4 pr-3 sm:pr-5">
             <div className="flex min-w-0 flex-1 basis-48 items-start">
               {hasEditPermission && provided.dragHandleProps && (
                 <AgendaDragHandle dragHandleProps={provided.dragHandleProps} dragging={snapshot.isDragging} />
