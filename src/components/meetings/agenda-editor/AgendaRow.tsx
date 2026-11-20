@@ -131,7 +131,7 @@ export function AgendaRow({
               {hasEditPermission && provided.dragHandleProps && (
                 <AgendaDragHandle dragHandleProps={provided.dragHandleProps} dragging={snapshot.isDragging} />
               )}
-              <span aria-hidden="true" className="mr-2 grid size-8 shrink-0 place-items-center">
+              <span aria-hidden="true" className="relative top-1.5 mr-2 grid size-8 shrink-0 place-items-center">
                 {!isSubItem && (
                   <AgendaIcon value={item.icon_config} linkedTask={Boolean(item.task_id)} />
                 )}
