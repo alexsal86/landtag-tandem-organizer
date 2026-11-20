@@ -336,22 +336,28 @@ export function TaskDetailView({ task, profiles, decisionLabel, onSave, onComple
         </section>
 
         <section className="space-y-3 ml-10">
-          <div className="flex items-center gap-2 text-sm font-semibold"><ListChecks className="h-3.5 w-3.5" />Checkliste{progress.total ? ` (${progress.done}/${progress.total})` : ""}</div>
-          <ul className="space-y-1">
+          <h3 className="flex items-center gap-2 text-base font-semibold">
+            <ListChecks aria-hidden="true" className="size-4" />
+            Checkliste
+            {progress.total > 0 && (
+              <span className="font-normal text-muted-foreground">{progress.done} von {progress.total}</span>
+            )}
+          </h3>
+          <ul className="space-y-3">
             {checklist.map((item) => (
-              <li key={item.id} className="group flex items-center gap-2">
-                <Checkbox checked={item.done} disabled={saving} aria-label={item.text}
+              <li key={item.id} className="group flex items-center gap-3">
+                <Checkbox checked={item.done} disabled={saving} aria-label={item.text} className="size-5 rounded-sm border-muted-foreground"
                   onCheckedChange={() => saveList(checklist.map((i) => (i.id === item.id ? { ...i, done: !i.done } : i)))} />
                 <span className={cn("flex-1 text-body", item.done && "line-through text-muted-foreground")}>{item.text}</span>
-                <button type="button" aria-label="Punkt entfernen" className="opacity-0 group-hover:opacity-100 text-muted-foreground"
+                <button type="button" aria-label="Punkt entfernen" className="text-muted-foreground sm:opacity-0 sm:group-hover:opacity-100 focus-visible:opacity-100"
                   onClick={() => saveList(checklist.filter((i) => i.id !== item.id))}><X className="h-3.5 w-3.5" /></button>
               </li>
             ))}
           </ul>
-          <div className="flex items-center gap-2">
-            <Plus className="h-4 w-4 text-muted-foreground" />
+          <div className="flex items-center gap-3">
+            <Plus aria-hidden="true" className="size-5 shrink-0 text-muted-foreground" />
             <Input value={newItem} onChange={(e) => setNewItem(e.target.value)} onKeyDown={(e) => { if (e.key === "Enter") { e.preventDefault(); addItem(); } }}
-              placeholder="Punkt hinzufügen" className="h-8" />
+              aria-label="Punkt hinzufügen" placeholder="Punkt hinzufügen" className="h-8 border-0 bg-transparent px-0 shadow-none" />
           </div>
         </section>
 
