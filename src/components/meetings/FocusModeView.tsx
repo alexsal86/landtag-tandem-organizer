@@ -1,3 +1,5 @@
+import { orderSystemSubpoints } from './agenda-editor/systemSubpoints';
+import { parseMeetingResults } from './platformAgendaRules';
 import { AgendaResultEditor } from './AgendaResultEditor';
 import { useState, useEffect, useRef, useMemo, useCallback } from 'react';
 import { PlatformAgendaSection } from './PlatformAgendaSection';
@@ -52,13 +54,13 @@ export function FocusModeView({
   upcomingAppointments = [],
   starredAppointmentIds = new Set(),
   onToggleStar,
-  onClose,
+  initialAgendaKey,
+  onClose: onExit,
   onUpdateItem,
   onUpdateResult,
   onUpdateNoteResult,
   onArchive
 }: FocusModeViewProps) {
-  const [flatFocusIndex, setFlatFocusIndex] = useState(0);
   const [showLegend, setShowLegend] = useState(false);
   const [optimisticSystemSubItemCompletion, setOptimisticSystemSubItemCompletion] = useState<Record<string, boolean>>({});
   const [showArchiveConfirm, setShowArchiveConfirm] = useState(false);
@@ -113,8 +115,9 @@ export function FocusModeView({
     systemItem: AgendaItem,
     parentForChildren: AgendaItem
   ) => {
+    const results = parseMeetingResults(systemItem.result_text);
     if (systemItem.system_type === 'quick_notes' && linkedQuickNotes.length > 0) {
-      linkedQuickNotes.forEach((note, i) => {
+      orderSystemSubpoints(linkedQuickNotes, results).forEach((note, i) => {
         const persistedCompleted = getPersistentSystemSubItemCompletion('quick_note', note, parentForChildren);
         result.push({
           item: {
@@ -135,7 +138,7 @@ export function FocusModeView({
       });
     }
     if (systemItem.system_type === 'upcoming_appointments' && upcomingAppointments.length > 0) {
-      upcomingAppointments.forEach((appt, i) => {
+      orderSystemSubpoints(upcomingAppointments, results).forEach((appt, i) => {
         const persistedCompleted = getPersistentSystemSubItemCompletion('appointment', appt, parentForChildren);
         result.push({
           item: {
@@ -156,7 +159,7 @@ export function FocusModeView({
       });
     }
     if (systemItem.system_type === 'tasks' && linkedTasks.length > 0) {
-      linkedTasks.forEach((task, i) => {
+      orderSystemSubpoints(linkedTasks, results).forEach((task, i) => {
         const persistedCompleted = getPersistentSystemSubItemCompletion('task', task, parentForChildren);
         result.push({
           item: {
@@ -177,7 +180,7 @@ export function FocusModeView({
       });
     }
     if (systemItem.system_type === 'case_items' && linkedCaseItems.length > 0) {
-      linkedCaseItems.forEach((ci: { id: string; subject?: string | null }, i: number) => {
+      orderSystemSubpoints(linkedCaseItems, results).forEach((ci: { id: string; subject?: string | null }, i: number) => {
         const persistedCompleted = getPersistentSystemSubItemCompletion('task', ci, parentForChildren);
         result.push({
           item: {
@@ -198,7 +201,7 @@ export function FocusModeView({
       });
     }
     if (systemItem.system_type === 'decisions' && relevantDecisions.length > 0) {
-      relevantDecisions.forEach((decision, i) => {
+      orderSystemSubpoints(relevantDecisions, results).forEach((decision, i) => {
         const persistedCompleted = getPersistentSystemSubItemCompletion('decision', decision, parentForChildren);
         result.push({
           item: {
@@ -273,6 +276,10 @@ export function FocusModeView({
     return result;
   }, [agendaItems, getPersistentSystemSubItemCompletion, linkedQuickNotes, upcomingAppointments, linkedTasks, linkedCaseItems, relevantDecisions]);
 
+  const [flatFocusIndex, setFlatFocusIndex] = useState(() => Math.max(0, allNavigableItems.findIndex(
+    ({ item, isSubItem }) => !isSubItem && (item.localKey || item.id) === initialAgendaKey,
+  )));
+
   useEffect(() => {
     setOptimisticSystemSubItemCompletion(prev => {
       const next: Record<string, boolean> = {};
@@ -290,6 +297,13 @@ export function FocusModeView({
   const currentNavigable = allNavigableItems[flatFocusIndex];
   const currentItem = currentNavigable?.item;
   const currentGlobalIndex = currentNavigable?.globalIndex ?? -1;
+
+  const onClose = useCallback(() => {
+    const anchor = currentNavigable?.parentItem ?? currentItem;
+    const parentKey = anchor?.parentLocalKey || anchor?.parent_id;
+    const root = parentKey ? agendaItems.find((item) => item.localKey === parentKey || item.id === parentKey) : anchor;
+    onExit(root?.localKey || root?.id);
+  }, [agendaItems, currentNavigable, currentItem, onExit]);
 
   // Calculate progress based on main items only
   const mainItems = agendaItems.filter(item => !item.parent_id && !item.parentLocalKey);
@@ -320,6 +334,7 @@ export function FocusModeView({
         const previousEntry = results[sourceId];
         const nextResult = typeof previousEntry === 'string' ? previousEntry : previousEntry?.result || '';
         results[sourceId] = {
+          ...(typeof previousEntry === 'object' ? previousEntry : {}),
           result: nextResult,
           completed: isCompleted,
         };
@@ -647,6 +662,7 @@ export function FocusModeView({
             : Boolean(previousEntry?.completed ?? previousEntry?.result?.trim());
 
           results[sourceId] = {
+            ...(typeof previousEntry === 'object' ? previousEntry : {}),
             result: value,
             completed,
           };

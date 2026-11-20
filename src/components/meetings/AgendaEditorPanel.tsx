@@ -68,6 +68,7 @@ interface AgendaEditorPanelProps {
   live?: LiveAgendaSystemData & {
     currentKey: string | null;
     onPositionChange: (key: string) => void;
+    onOpenFocus: () => void;
     onStop: () => void;
     onArchive: () => Promise<void>;
     onUpdateResult: (itemId: string, field: "result_text" | "agenda_result" | "carry_over_to_next", value: unknown) => void;
@@ -540,6 +541,9 @@ export function AgendaEditorPanel({
               count={timing.main.length}
               title={liveItem?.title}
               onMove={(offset) => selectLiveItem(timing.main[livePosition + offset])}
+              onOpenFocus={async () => {
+                if (!dirty || await saveAgenda()) live.onOpenFocus();
+              }}
               onStop={live.onStop}
               onArchive={async () => {
                 setArchiving(true);

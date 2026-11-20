@@ -13,6 +13,7 @@ export interface AgendaItem {
   order_index: number;
   parent_id?: string | null;
   parentLocalKey?: string;
+  localKey?: string;
   system_type?: string | null;
 }
 
@@ -53,7 +54,8 @@ export interface FocusModeViewProps {
   upcomingAppointments?: MeetingUpcomingAppointment[];
   starredAppointmentIds?: Set<string>;
   onToggleStar?: (appt: MeetingUpcomingAppointment) => void;
-  onClose: () => void;
+  initialAgendaKey?: string | null;
+  onClose: (mainAgendaKey?: string) => void;
   onUpdateItem: (index: number, field: keyof AgendaItem, value: unknown) => void;
   onUpdateResult: (itemId: string, field: 'result_text' | 'agenda_result' | 'carry_over_to_next', value: unknown) => void;
   onUpdateNoteResult?: (noteId: string, result: string) => void;

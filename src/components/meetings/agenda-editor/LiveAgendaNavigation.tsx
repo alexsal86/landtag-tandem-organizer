@@ -1,15 +1,16 @@
-import { ChevronLeft, ChevronRight } from "lucide-react";
+import { ChevronLeft, ChevronRight, Maximize2 } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import {
   AlertDialog, AlertDialogAction, AlertDialogCancel, AlertDialogContent,
   AlertDialogDescription, AlertDialogFooter, AlertDialogHeader, AlertDialogTitle, AlertDialogTrigger,
 } from "@/components/ui/alert-dialog";
 
-export function LiveAgendaNavigation({ position, count, title, onMove, onStop, onArchive, busy }: {
+export function LiveAgendaNavigation({ position, count, title, onMove, onOpenFocus, onStop, onArchive, busy }: {
   position: number;
   count: number;
   title?: string;
   onMove: (offset: number) => void;
+  onOpenFocus: () => void;
   onStop: () => void;
   onArchive: () => void;
   busy: boolean;
@@ -27,6 +28,9 @@ export function LiveAgendaNavigation({ position, count, title, onMove, onStop, o
         </Button>
         <Button size="sm" variant="outline" disabled={busy || position < 0 || position >= count - 1} onClick={() => onMove(1)}>
           Weiter <ChevronRight className="size-4" />
+        </Button>
+        <Button size="sm" variant="outline" disabled={busy || position < 0} onClick={onOpenFocus}>
+          <Maximize2 className="size-4" /> Fokusmodus
         </Button>
         <Button size="sm" variant="ghost" disabled={busy} onClick={onStop}>Unterbrechen</Button>
         <AlertDialog>

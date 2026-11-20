@@ -1,3 +1,4 @@
+import { FocusModeView } from "@/components/meetings/FocusModeView";
 import { useEffect, useRef, useState } from "react";
 import type { ImperativePanelHandle } from "react-resizable-panels";
 import { Card, CardContent } from "@/components/ui/card";
@@ -24,6 +25,7 @@ export function MeetingsView() {
   const expandedSidebarSize = useRef(28);
   const hasSelectedMeeting = !!data.selectedMeeting;
   const [reviewMeetingId, setReviewMeetingId] = useState<string | null>(null);
+  const [focusMeetingId, setFocusMeetingId] = useState<string | null>(null);
   const [liveAgendaKey, setLiveAgendaKey] = useState<string | null>(null);
   const [sidebarExpanded, setSidebarExpanded] = useState(false);
   const compactSidebar = hasSelectedMeeting && !sidebarExpanded;
@@ -133,6 +135,32 @@ export function MeetingsView() {
   const selectedMeetingIsLive = Boolean(agendaMeeting?.id && agendaMeeting.id === data.activeMeetingId);
   const agendaTenant = agendaMeeting?.tenant_id ?? data.currentTenant?.id;
 
+  if (agendaMeeting && selectedMeetingIsLive && focusMeetingId === agendaMeeting.id) {
+    return (
+      <FocusModeView
+        meeting={agendaMeeting}
+        agendaItems={data.agendaItems}
+        initialAgendaKey={liveAgendaKey}
+        profiles={data.profiles}
+        linkedQuickNotes={data.linkedQuickNotes}
+        linkedTasks={data.meetingLinkedTasks}
+        linkedCaseItems={data.meetingLinkedCaseItems}
+        relevantDecisions={data.meetingRelevantDecisions}
+        upcomingAppointments={data.meetingUpcomingAppointments}
+        starredAppointmentIds={data.starredAppointmentIds}
+        onToggleStar={data.toggleStarAppointment}
+        onUpdateItem={agendaOps.updateAgendaItem}
+        onUpdateResult={agendaOps.updateAgendaItemResult}
+        onUpdateNoteResult={data.updateQuickNoteResult}
+        onArchive={() => archiveMeeting(agendaMeeting)}
+        onClose={(key) => {
+          if (key) setLiveAgendaKey(key);
+          setFocusMeetingId(null);
+        }}
+      />
+    );
+  }
+
   return (
     <div className="min-h-screen bg-gradient-subtle p-4">
       <ResizablePanelGroup
@@ -199,11 +227,13 @@ export function MeetingsView() {
                   selectedMeeting={agendaMeeting}
                   onStartMeeting={!data.activeMeetingId ? () => {
                     setLiveAgendaKey(null);
+                    setFocusMeetingId(null);
                     data.startMeeting(agendaMeeting);
                   } : undefined}
                   live={selectedMeetingIsLive ? {
                     currentKey: liveAgendaKey,
                     onPositionChange: setLiveAgendaKey,
+                    onOpenFocus: () => setFocusMeetingId(agendaMeeting.id ?? null),
                     onStop: data.stopMeeting,
                     onArchive: () => archiveMeeting(agendaMeeting),
                     onUpdateResult: agendaOps.updateAgendaItemResult,
