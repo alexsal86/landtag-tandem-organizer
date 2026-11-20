@@ -1,3 +1,5 @@
+import { useQuery } from '@tanstack/react-query';
+import { AgendaResultEditor } from './AgendaResultEditor';
 import React from 'react';
 import { PlatformAgendaSection } from './PlatformAgendaSection';
 import { isPlatformAgendaType } from './systemAgendaRegistry';
@@ -40,7 +42,7 @@ interface ActiveMeetingPanelProps {
   onStopMeeting: () => void;
   onArchiveMeeting: () => void;
   onUpdateAgendaItem: (index: number, field: keyof AgendaItem, value: unknown) => void;
-  onUpdateResult: (itemId: string, field: 'result_text' | 'carry_over_to_next', value: unknown) => void;
+  onUpdateResult: (itemId: string, field: 'result_text' | 'agenda_result' | 'carry_over_to_next', value: unknown) => void;
   onUpdateNoteResult: (noteId: string, result: string) => void;
   onToggleStar: (appt: MeetingUpcomingAppointment) => void;
   onToggleVisibility: (itemId: string, currentVisibility: boolean) => void;
@@ -70,6 +72,48 @@ export function ActiveMeetingPanel({
   onToggleVisibility,
   isLoading = false,
 }: ActiveMeetingPanelProps) {
+
+  const { tenant_id: tenantId, template_id: templateId, meeting_date: meetingDate } = meeting;
+  const meetingDay = new Date(meetingDate).toISOString().slice(0, 10);
+  const transfer = useQuery({
+    queryKey: ['jour-fixe-transfer-target', tenantId, templateId, meetingDay],
+    enabled: Boolean(tenantId && templateId),
+    queryFn: async () => {
+      const { data, error } = await supabase.from('meetings')
+        .select('title, meeting_date, meeting_time')
+        .eq('tenant_id', tenantId!)
+        .eq('template_id', templateId!)
+        .eq('status', 'planned')
+        .gt('meeting_date', meetingDay)
+        .order('meeting_date')
+        .order('id')
+        .limit(1)
+        .maybeSingle();
+      if (error) throw error;
+      return data;
+    },
+  });
+  const nextMeeting = transfer.data;
+  const transferTarget = nextMeeting
+    ? `${nextMeeting.title} · ${format(new Date(`${nextMeeting.meeting_date}T00:00:00`), 'dd.MM.yyyy')}${nextMeeting.meeting_time ? ` um ${nextMeeting.meeting_time.slice(0, 5)} Uhr` : ''}`
+    : transfer.isError ? 'Übertragungsziel konnte nicht geladen werden'
+      : transfer.isPending ? 'Übertragungsziel wird geladen …'
+        : 'Zwischenspeicher · noch kein Folgetermin geplant';
+
+  const renderTransfer = (item: AgendaItem) => {
+    if (!tenantId || !templateId || !item.id) return null;
+    const checkboxId = `carryover-${item.id}`;
+    return (
+      <div className="flex items-start gap-2 text-sm">
+        <Checkbox id={checkboxId} checked={!!item.carry_over_to_next} onCheckedChange={checked => onUpdateResult(item.id!, 'carry_over_to_next', checked === true)} />
+        <label htmlFor={checkboxId} className="flex flex-wrap items-center gap-x-2 gap-y-1 cursor-pointer">
+          <span>Auf nächste Besprechung übertragen</span>
+          {item.carry_over_to_next && <Badge variant="secondary">Vorgemerkt</Badge>}
+          <span className="text-muted-foreground">→ {transferTarget}</span>
+        </label>
+      </div>
+    );
+  };
 
   const getProfile = (userId: string) => profiles.find(p => p.user_id === userId);
 
@@ -360,7 +404,7 @@ export function ActiveMeetingPanel({
           )}
         </div>
         {subItem.description && <RichTextDisplay content={subItem.description} className="text-sm text-muted-foreground ml-8" />}
-        {subItem.carried_over_from && (
+        {(subItem.carried_over_from || subItem.source_meeting_id) && (
           <p className="text-xs text-muted-foreground ml-8 italic">Übertragen von: {subItem.original_meeting_title} ({subItem.original_meeting_date})</p>
         )}
         {subItem.file_path && (
@@ -374,12 +418,9 @@ export function ActiveMeetingPanel({
         <div className="space-y-2 mt-2">
           <div>
             <label className="text-xs font-medium mb-1 block text-muted-foreground">Ergebnis</label>
-            <Textarea value={subItem.result_text || ''} onChange={(e) => onUpdateResult(subItem.id!, 'result_text', e.target.value)} placeholder="Ergebnis für diesen Unterpunkt..." className="min-h-[60px] text-xs" />
+            <AgendaResultEditor item={subItem} onChange={result => onUpdateResult(subItem.id!, 'agenda_result', result)} placeholder="Ergebnis für diesen Unterpunkt..." minHeight="60px" />
           </div>
-          <div className="flex items-center space-x-2">
-            <Checkbox id={`carryover-sub-${subItem.id}`} checked={subItem.carry_over_to_next || false} onCheckedChange={(checked) => onUpdateResult(subItem.id!, 'carry_over_to_next', checked)} />
-            <label htmlFor={`carryover-sub-${subItem.id}`} className="text-xs font-medium leading-none peer-disabled:cursor-not-allowed peer-disabled:opacity-70">Auf nächste Besprechung übertragen</label>
-          </div>
+          {renderTransfer(subItem)}
         </div>
       </div>
     );
@@ -423,9 +464,9 @@ export function ActiveMeetingPanel({
           </CardDescription>
         </CardHeader>
         <CardContent>
-          <div className="space-y-4">
+          <div>
             {processedItems.map(({ item, subItems: sortedSubItems, hiddenOptionalSubItems }, index) => (
-              <div key={item.id} className="border rounded-lg p-4">
+              <div key={item.id} className="py-4 first:pt-0 [&:not(:first-child)]:border-t">
                 <div className="flex items-center gap-4 mb-3">
                   <div className="flex items-center justify-center w-8 h-8 bg-primary text-primary-foreground rounded-full text-sm font-medium">
                     {index + 1}
@@ -460,7 +501,7 @@ export function ActiveMeetingPanel({
                 )}
 
                 {/* Carried over info */}
-                {item.carried_over_from && (
+                {(item.carried_over_from || item.source_meeting_id) && (
                   <p className="text-xs text-muted-foreground ml-12 mb-2 italic">
                     Übertragen von: {item.original_meeting_title} ({item.original_meeting_date})
                   </p>
@@ -516,12 +557,9 @@ export function ActiveMeetingPanel({
                   <div className="ml-12 space-y-3">
                     <div>
                       <label className="text-sm font-medium mb-2 block">Ergebnis der Besprechung</label>
-                      <Textarea value={item.result_text || ''} onChange={(e) => onUpdateResult(item.id!, 'result_text', e.target.value)} placeholder="Ergebnis, Beschlüsse oder wichtige Punkte..." className="min-h-[80px]" />
+                      <AgendaResultEditor item={item} onChange={result => onUpdateResult(item.id!, 'agenda_result', result)} placeholder="Ergebnis, Beschlüsse oder wichtige Punkte..." />
                     </div>
-                    <div className="flex items-center space-x-2">
-                      <Checkbox id={`carryover-${item.id}`} checked={item.carry_over_to_next || false} onCheckedChange={(checked) => onUpdateResult(item.id!, 'carry_over_to_next', checked)} />
-                      <label htmlFor={`carryover-${item.id}`} className="text-sm font-medium leading-none peer-disabled:cursor-not-allowed peer-disabled:opacity-70">Auf nächste Besprechung übertragen</label>
-                    </div>
+                    {renderTransfer(item)}
                   </div>
                 )}
               </div>

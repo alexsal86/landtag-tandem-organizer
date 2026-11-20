@@ -1690,6 +1690,7 @@ export type Database = {
           original_meeting_date: string | null
           original_meeting_id: string | null
           original_meeting_title: string | null
+          result_html: string | null
           result_text: string | null
           sub_items: Json | null
           template_id: string | null
@@ -1706,6 +1707,7 @@ export type Database = {
           original_meeting_date?: string | null
           original_meeting_id?: string | null
           original_meeting_title?: string | null
+          result_html?: string | null
           result_text?: string | null
           sub_items?: Json | null
           template_id?: string | null
@@ -1722,6 +1724,7 @@ export type Database = {
           original_meeting_date?: string | null
           original_meeting_id?: string | null
           original_meeting_title?: string | null
+          result_html?: string | null
           result_text?: string | null
           sub_items?: Json | null
           template_id?: string | null
@@ -10896,6 +10899,7 @@ export type Database = {
           original_meeting_date: string | null
           original_meeting_title: string | null
           parent_id: string | null
+          result_html: string | null
           result_text: string | null
           source_meeting_id: string | null
           system_type: string | null
@@ -10923,6 +10927,7 @@ export type Database = {
           original_meeting_date?: string | null
           original_meeting_title?: string | null
           parent_id?: string | null
+          result_html?: string | null
           result_text?: string | null
           source_meeting_id?: string | null
           system_type?: string | null
@@ -10950,6 +10955,7 @@ export type Database = {
           original_meeting_date?: string | null
           original_meeting_title?: string | null
           parent_id?: string | null
+          result_html?: string | null
           result_text?: string | null
           source_meeting_id?: string | null
           system_type?: string | null

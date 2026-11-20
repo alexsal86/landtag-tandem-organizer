@@ -4,6 +4,7 @@ export interface ProtocolAgendaItem {
   description?: string | null;
   notes?: string | null;
   result_text?: string | null;
+  result_html?: string | null;
   assigned_to?: string[] | null;
   order_index: number;
   parent_id?: string | null;

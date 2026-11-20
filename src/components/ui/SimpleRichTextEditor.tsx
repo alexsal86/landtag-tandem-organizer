@@ -60,7 +60,7 @@ export interface SimpleRichTextEditorProps {
    * Rehydration happens when this value changes. If omitted, a hash of `initialContent` is used.
    */
   contentVersion?: string | number;
-  onChange: (html: string) => void;
+  onChange: (html: string, plainText: string) => void;
   placeholder?: string;
   disabled?: boolean;
   minHeight?: string;
@@ -550,7 +550,7 @@ const SimpleRichTextEditor: React.FC<SimpleRichTextEditorProps> = ({
     
     editorState.read(() => {
       const htmlString = $generateHtmlFromNodes(editor, null);
-      onChange(enableChecklists ? exportChecklistHtml(htmlString) : htmlString);
+      onChange(enableChecklists ? exportChecklistHtml(htmlString) : htmlString, $getRoot().getTextContent());
     });
   };
 

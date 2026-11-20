@@ -8,6 +8,7 @@ export interface AgendaItem {
   notes?: string | null;
   is_completed: boolean;
   result_text?: string | null;
+  result_html?: string | null;
   carry_over_to_next?: boolean | null;
   order_index: number;
   parent_id?: string | null;
@@ -54,7 +55,7 @@ export interface FocusModeViewProps {
   onToggleStar?: (appt: MeetingUpcomingAppointment) => void;
   onClose: () => void;
   onUpdateItem: (index: number, field: keyof AgendaItem, value: unknown) => void;
-  onUpdateResult: (itemId: string, field: 'result_text' | 'carry_over_to_next', value: unknown) => void;
+  onUpdateResult: (itemId: string, field: 'result_text' | 'agenda_result' | 'carry_over_to_next', value: unknown) => void;
   onUpdateNoteResult?: (noteId: string, result: string) => void;
   onArchive: () => void;
 }

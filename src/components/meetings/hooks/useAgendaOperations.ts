@@ -1,4 +1,5 @@
 import { resolveAgendaDrop } from "../agenda-editor/agendaDrop";
+import type { AgendaResult } from "../AgendaResultEditor";
 import type { TablesUpdate } from "@/integrations/supabase/types";
 import { useQueryClient } from "@tanstack/react-query";
 import { useTenant } from "@/hooks/useTenant";
@@ -28,6 +29,7 @@ export function useAgendaOperations(deps: AgendaOpsDeps) {
 
   const updateAgendaItemResult = async (itemId: string, field: 'carry_over_to_next' | 'result_text' | string, value: unknown) => {
     const previousItem = agendaItems.find((item) => item.id === itemId);
+    const richResult = field === 'agenda_result' ? value as AgendaResult : null;
     const persist = async () => {
       // Compare with saved results: the local state may already include a later, debounced edit.
       let savedResults = previousItem?.result_text ?? null;
@@ -37,7 +39,9 @@ export function useAgendaOperations(deps: AgendaOpsDeps) {
         savedResults = data.result_text;
       }
       let patch: TablesUpdate<'meeting_agenda_items'>;
-      if ((field === 'result_text' || field === 'notes' || field === 'description') && (typeof value === 'string' || value === null)) {
+      if (richResult) {
+        patch = richResult;
+      } else if ((field === 'result_text' || field === 'notes' || field === 'description') && (typeof value === 'string' || value === null)) {
         patch = { [field]: value };
       } else if (field === 'carry_over_to_next' && typeof value === 'boolean') {
         patch = { carry_over_to_next: value };
@@ -59,9 +63,9 @@ export function useAgendaOperations(deps: AgendaOpsDeps) {
       }
       void queryClient.invalidateQueries({ queryKey: ['case-workflow', currentTenant?.id] });
     };
-    setAgendaItems(prev => prev.map(item => item.id === itemId ? { ...item, [field]: value } : item));
-    if (['result_text', 'notes', 'description'].includes(field)) {
-      const timeoutKey = `${itemId}-${field}`;
+    setAgendaItems(prev => prev.map(item => item.id === itemId ? { ...item, ...(richResult ?? { [field]: value }) } : item));
+    if (['agenda_result', 'result_text', 'notes', 'description', 'carry_over_to_next'].includes(field)) {
+      const timeoutKey = `${itemId}-${richResult ? 'result_text' : field}`;
       if (updateTimeouts.current[timeoutKey]) clearTimeout(updateTimeouts.current[timeoutKey]);
       updateTimeouts.current[timeoutKey] = setTimeout(async () => {
         try {
@@ -71,13 +75,6 @@ export function useAgendaOperations(deps: AgendaOpsDeps) {
           toast({ title: "Fehler", description: "Die Änderung konnte nicht gespeichert werden.", variant: "destructive" });
         }
       }, 500);
-    } else {
-      try {
-        await persist();
-      } catch (error) {
-        debugConsole.error('Error updating agenda item:', error);
-        toast({ title: "Fehler", description: "Die Änderung konnte nicht gespeichert werden.", variant: "destructive" });
-      }
     }
   };
 
@@ -244,6 +241,7 @@ export function useAgendaOperations(deps: AgendaOpsDeps) {
       duration_minutes: parentId ? null : (item.duration_minutes ?? null),
       carry_over_to_next: item.carry_over_to_next ?? false,
       result_text: item.result_text ?? null,
+      result_html: item.result_html ?? null,
       system_type: item.system_type || null,
       is_optional: Boolean(item.is_optional),
       is_visible: item.is_visible !== false,

@@ -1,3 +1,4 @@
+import { RichTextDisplay } from '@/components/ui/RichTextDisplay';
 import type { ReactNode } from "react";
 import { Badge } from "@/components/ui/badge";
 import { parseMeetingResults } from "@/components/meetings/platformAgendaRules";
@@ -144,7 +145,7 @@ export function ProtocolAgendaEntry({
                   ))}
               </ul>
             ) : (
-              <p className="text-sm whitespace-pre-wrap">{item.result_text}</p>
+              {item.result_html ? <RichTextDisplay content={item.result_html} /> : <p className="text-sm whitespace-pre-wrap">{item.result_text}</p>}
             )}
           </div>
         )}

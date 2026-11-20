@@ -127,7 +127,7 @@ export function MeetingProtocolView({
       const { data: agendaData, error: agendaError } = await supabase
         .from("meeting_agenda_items")
         .select(
-          "id, title, description, notes, result_text, assigned_to, order_index, parent_id, system_type, is_completed, task_id",
+          "id, title, description, notes, result_text, result_html, assigned_to, order_index, parent_id, system_type, is_completed, task_id",
         )
         .eq("meeting_id", meetingId)
         .order("order_index");

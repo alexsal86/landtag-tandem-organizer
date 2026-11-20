@@ -76,7 +76,7 @@ export function useMeetingArchive(deps: ArchiveDeps) {
         if (existingSet.has(dedupeKey)) continue;
         const { error } = await supabase.from('meeting_agenda_items').insert([{
           meeting_id: targetMeetingId, parent_id: reviewParentId, title: item.title,
-          description: item.description, notes: item.notes, result_text: item.result_text,
+          description: item.description, notes: item.notes, result_text: item.result_text, result_html: item.result_html,
           assigned_to: item.assigned_to, order_index: nextOrderIndex++,
           source_meeting_id: sourceMeeting.id,
           original_meeting_date: typeof sourceMeeting.meeting_date === 'string' ? sourceMeeting.meeting_date : sourceMeeting.meeting_date?.toISOString().split('T')[0],
@@ -97,7 +97,7 @@ export function useMeetingArchive(deps: ArchiveDeps) {
       try {
         const { error } = await supabase.from('carryover_items').insert([{
           user_id: user.id, template_id: sourceMeeting.template_id, title: item.title,
-          description: item.description, notes: item.notes, result_text: item.result_text,
+          description: item.description, notes: item.notes, result_text: item.result_text, result_html: item.result_html,
           assigned_to: item.assigned_to, order_index: item.order_index,
           original_meeting_id: sourceMeeting.id,
           original_meeting_date: typeof sourceMeeting.meeting_date === 'string' ? sourceMeeting.meeting_date : sourceMeeting.meeting_date?.toISOString().split('T')[0],
@@ -165,7 +165,7 @@ export function useMeetingArchive(deps: ArchiveDeps) {
         if (existingSet.has(dedupeKey)) continue;
         await supabase.from('meeting_agenda_items').insert([{
           meeting_id: meetingId, parent_id: reviewParentId, title: item.title,
-          description: item.description, notes: item.notes, result_text: item.result_text,
+          description: item.description, notes: item.notes, result_text: item.result_text, result_html: item.result_html,
           assigned_to: item.assigned_to, order_index: nextOrderIndex++,
           source_meeting_id: item.original_meeting_id,
           original_meeting_date: item.original_meeting_date, original_meeting_title: item.original_meeting_title,
@@ -188,11 +188,11 @@ export function useMeetingArchive(deps: ArchiveDeps) {
       // Flush current edits before the transaction; cancelled debounces cannot overwrite them later.
       for (const item of agendaItems) {
         if (!item.id) continue;
-        for (const key of ['result_text', 'notes', 'description']) {
+        for (const key of ['result_text', 'notes', 'description', 'carry_over_to_next']) {
           const timeout = updateTimeouts.current[`${item.id}-${key}`];
           if (timeout) clearTimeout(timeout);
         }
-        const { error } = await supabase.from('meeting_agenda_items').update({ result_text: item.result_text, notes: item.notes })
+        const { error } = await supabase.from('meeting_agenda_items').update({ result_text: item.result_text, result_html: item.result_html, notes: item.notes, carry_over_to_next: item.carry_over_to_next })
           .eq('id', item.id).eq('meeting_id', meeting.id);
         if (error) throw error;
       }

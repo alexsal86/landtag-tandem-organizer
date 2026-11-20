@@ -43,6 +43,7 @@ export interface AgendaItem {
   parent_id?: string | null;
   file_path?: string | null;
   result_text?: string | null;
+  result_html?: string | null;
   carry_over_to_next?: boolean | null;
   sub_items?: AgendaItem[] | null;
   source_meeting_id?: string | null;

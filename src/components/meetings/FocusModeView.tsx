@@ -1,3 +1,4 @@
+import { AgendaResultEditor } from './AgendaResultEditor';
 import { useState, useEffect, useRef, useMemo, useCallback } from 'react';
 import { PlatformAgendaSection } from './PlatformAgendaSection';
 import { isPlatformAgendaType } from './systemAgendaRegistry';
@@ -520,7 +521,8 @@ export function FocusModeView({
         case 'r':
           e.preventDefault();
           // Focus the result textarea
-          const textarea = document.querySelector(`#result-input-${currentItem?.id}`) as HTMLTextAreaElement;
+          const resultInput = document.querySelector<HTMLElement>(`#result-input-${currentItem?.id}`);
+          const textarea = resultInput?.querySelector<HTMLElement>('[contenteditable="true"]') ?? resultInput;
           if (textarea) {
             textarea.focus();
             textarea.scrollIntoView({ behavior: 'smooth', block: 'center' });
@@ -912,17 +914,15 @@ export function FocusModeView({
             {isFocused && !item.system_type && (
               <div className="mt-4 pt-4 border-t">
                 <label className="text-sm font-medium block mb-2">Ergebnis / Notizen</label>
-                <Textarea
-                  id={`result-input-${item.id}`}
-                  value={item.result_text || ''}
-                  onChange={(e) => {
-                    if (item.id) {
-                      onUpdateResult(item.id, 'result_text', e.target.value);
-                    }
-                  }}
-                  placeholder="Was wurde besprochen? Was sind die nächsten Schritte?"
-                  className="min-h-[100px]"
-                />
+                <div id={`result-input-${item.id}`}>
+                  <AgendaResultEditor
+                    key={item.id}
+                    item={item}
+                    onChange={result => { if (item.id) onUpdateResult(item.id, 'agenda_result', result); }}
+                    placeholder="Was wurde besprochen? Was sind die nächsten Schritte?"
+                    minHeight="100px"
+                  />
+                </div>
                 <div className="flex items-center gap-2 mt-3">
                   <Checkbox
                     id={`carryover-${item.id}`}
