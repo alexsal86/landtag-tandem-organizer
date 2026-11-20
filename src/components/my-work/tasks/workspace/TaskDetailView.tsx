@@ -384,11 +384,11 @@ export function TaskDetailView({ task, profiles, decisionLabel, onSave, onComple
             </section>
           )}
 
-          <section className="ml-10 space-y-3 border-y py-3">
-            <label htmlFor="task-next-action" className="block text-sm text-muted-foreground">Nächster Schritt</label>
-            <div className="flex flex-wrap items-center gap-2">
+          <section className="ml-10 space-y-3 border-y pb-3 pt-6">
+            <label htmlFor="task-next-action" className="block text-base font-medium text-muted-foreground">Nächster Schritt</label>
+            <div className="mt-1 flex flex-wrap items-center gap-2">
               <Input id="task-next-action" value={label} onChange={(event) => setLabel(event.target.value)}
-                placeholder="Was passiert als Nächstes?" className="h-auto min-w-0 flex-1 basis-48 px-0 py-2 font-medium leading-tight md:text-xl read-only:cursor-text"
+                placeholder="Was passiert als Nächstes?" className="h-auto min-w-0 flex-1 basis-48 border-0 px-0 py-0 font-medium leading-tight shadow-none focus-visible:ring-0 focus-visible:ring-offset-0 md:text-xl read-only:cursor-text"
                 readOnly={hasStep} disabled={saving}
                 onKeyDown={(event) => {
                   if (event.key === "Enter" && !event.nativeEvent.isComposing && !hasStep && label.trim()) {
@@ -403,13 +403,13 @@ export function TaskDetailView({ task, profiles, decisionLabel, onSave, onComple
                     <span className="text-muted-foreground">Schritt bis</span>
                     {overdueDays > 0 ? (
                       <span className="text-destructive">seit {overdueDays} {overdueDays === 1 ? "Tag" : "Tagen"} überfällig</span>
-                    ) : <span>{due ? formatDate(due) : "Kein Termin"}</span>}
+                    ) : <span className="font-medium">{due ? formatDate(due) : "Kein Termin"}</span>}
                   </Button>
                 </DropdownMenuTrigger>
                 <DropdownMenuContent align="start" className="min-w-52 rounded-xl p-1">
                   {datePresets.map(([text, days]) => {
                     const date = shiftDay(null, days);
-                    return <DropdownMenuItem key={days} onSelect={() => void saveDue(date)} className="justify-between gap-4 py-2">
+                    return <DropdownMenuItem key={days} onSelect={() => void saveDue(date)} className="justify-between gap-4 py-2 font-medium">
                       {text}<span className="text-xs text-muted-foreground">{formatDate(date)}</span>
                     </DropdownMenuItem>;
                   })}
