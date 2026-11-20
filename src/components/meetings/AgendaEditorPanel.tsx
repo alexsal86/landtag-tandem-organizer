@@ -1,3 +1,4 @@
+import { NotesInspector } from "./agenda-editor/NotesInspector";
 import { stripHtml } from "@/utils/textDiff";
 import { AppointmentInspector } from "./agenda-editor/AppointmentInspector";
 import type { GeneratedAgendaEntry } from "./agenda-editor/SystemSubpointScope";
@@ -169,6 +170,8 @@ export function AgendaEditorPanel({
   const generatedParent = selectedKey?.startsWith("system:") ? selectedKey.split(":")[1] : undefined;
   const selectedItem = agendaItems[selectedIndex];
   const appointmentParent = agendaItems.find(item => item.system_type === "upcoming_appointments" &&
+    ((item.localKey || item.id) === generatedParent || item === selectedItem));
+  const notesParent = agendaItems.find(item => item.system_type === "quick_notes" &&
     ((item.localKey || item.id) === generatedParent || item === selectedItem));
   const change = (index: number, field: keyof AgendaItem, value: unknown) => {
     if (!hasEditPermission) return;
@@ -565,7 +568,7 @@ export function AgendaEditorPanel({
         })}
       />
 
-      <div className={cn("grid items-start gap-4", (selectedItem || appointmentParent) && "2xl:grid-cols-[minmax(0,1fr)_19rem]")}>
+      <div className={cn("grid items-start gap-4", (selectedItem || appointmentParent || notesParent) && "2xl:grid-cols-[minmax(0,1fr)_19rem]")}>
         <div ref={agendaList} className="min-w-0 rounded-2xl border bg-card shadow-sm [--agenda-subpoint-bg:color(srgb_0.956863_0.964706_0.952941_/_0.7)] [--agenda-row-divider:rgb(227,232,223)]">
           {live ? (
             <LiveAgendaNavigation
@@ -894,6 +897,13 @@ export function AgendaEditorPanel({
             onChange={hasEditPermission ? (value) => {
               if (appointmentParent.id && onUpdateSystemResult) onUpdateSystemResult(appointmentParent.id, "result_text", value);
               else change(agendaItems.indexOf(appointmentParent), "result_text", value);
+            } : undefined} />
+        ) : notesParent ? (
+          <NotesInspector parent={notesParent} notes={linkedQuickNotes} number={getAgendaNumber(notesParent)}
+            selectedKey={selectedKey} onSelect={selectStep}
+            onChange={hasEditPermission ? (value) => {
+              if (notesParent.id && onUpdateSystemResult) onUpdateSystemResult(notesParent.id, "result_text", value);
+              else change(agendaItems.indexOf(notesParent), "result_text", value);
             } : undefined} />
         ) : selectedItem ? (
           <AgendaInspector
