@@ -388,8 +388,8 @@ export function TaskDetailView({ task, profiles, decisionLabel, onSave, onComple
             <div className="flex flex-wrap items-end gap-2">
               <div className="min-w-0 flex-1 basis-48">
                 <label htmlFor="task-next-action" className="block text-sm font-medium text-muted-foreground">Nächster Schritt</label>
-                <Input id="task-next-action" value={label} onChange={(event) => setLabel(event.target.value)}
-                  placeholder="Was passiert als Nächstes?" className="h-auto min-w-0 border-0 px-0 py-0 font-medium leading-tight shadow-none focus-visible:ring-0 focus-visible:ring-offset-0 md:text-xl read-only:cursor-text"
+                <Textarea id="task-next-action" rows={1} aria-describedby={hasStep ? undefined : "task-next-action-hint"} value={label} onChange={(event) => setLabel(event.target.value)}
+                  placeholder="Was passiert als Nächstes?" className="mt-[6px] min-h-0 min-w-0 resize-none border-0 px-0 py-0 font-medium leading-tight shadow-none focus-visible:ring-0 focus-visible:ring-offset-0 md:text-xl read-only:cursor-text [field-sizing:content] [overflow-wrap:anywhere]"
                   readOnly={hasStep} disabled={saving}
                   onKeyDown={(event) => {
                     if (event.key === "Enter" && !event.nativeEvent.isComposing && !hasStep && label.trim()) {
@@ -397,7 +397,7 @@ export function TaskDetailView({ task, profiles, decisionLabel, onSave, onComple
                       void setStep();
                     }
                   }} />
-                {!hasStep && <p className="text-xs text-muted-foreground">Enter übernimmt den Schritt.</p>}
+                {!hasStep && <p id="task-next-action-hint" className="mt-1 text-xs text-muted-foreground">Enter übernimmt den Schritt.</p>}
               </div>
               <DropdownMenu>
                 <DropdownMenuTrigger asChild>
