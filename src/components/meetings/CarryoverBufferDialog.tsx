@@ -1,4 +1,5 @@
-import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card';
+import { AgendaCarryoverBadge } from "./agenda-editor/AgendaCarryoverBadge";
+import { Card, CardContent } from '@/components/ui/card';
 import { Dialog, DialogContent, DialogDescription, DialogHeader, DialogTitle } from '@/components/ui/dialog';
 import type { AgendaItem } from './types';
 
@@ -24,7 +25,10 @@ export function CarryoverBufferDialog({ open, onOpenChange, items }: CarryoverBu
           ) : items.map((item) => (
             <Card key={item.id}>
               <CardContent className="p-3 space-y-1">
-                <p className="font-medium text-sm">{item.title}</p>
+                <div className="flex flex-wrap items-center gap-2">
+                  <p className="font-medium text-sm">{item.title}</p>
+                  <AgendaCarryoverBadge item={{ ...item, carryover_count: item.carryover_count ?? 1 }} />
+                </div>
                 <p className="text-xs text-muted-foreground">Ursprung: {item.original_meeting_title || 'Unbekannt'} ({item.original_meeting_date || '-'})</p>
                 {item.description && <p className="text-xs text-muted-foreground line-clamp-2">{item.description}</p>}
               </CardContent>

@@ -395,7 +395,7 @@ export function useMeetingsData() {
         ]);
       }
       const { data, error } = await supabase
-        .from('meeting_agenda_items').select('id, meeting_id, title, description, notes, duration_minutes, icon_config, order_index, parent_id, task_id, result_html, result_text, assigned_to, is_completed, system_type, is_optional, is_visible, carry_over_to_next, source_meeting_id, carried_over_from, original_meeting_date, original_meeting_title, carryover_notes, file_path, is_recurring, created_at, updated_at').eq('meeting_id', meetingId).order('order_index');
+        .from('meeting_agenda_items').select('id, meeting_id, title, description, notes, duration_minutes, icon_config, order_index, parent_id, task_id, result_html, result_text, assigned_to, is_completed, system_type, is_optional, is_visible, carry_over_to_next, source_meeting_id, carried_over_from, carryover_count, original_meeting_date, original_meeting_title, carryover_notes, file_path, is_recurring, created_at, updated_at').eq('meeting_id', meetingId).order('order_index');
       if (error) throw error;
       if (request !== agendaRequest.current) return;
 

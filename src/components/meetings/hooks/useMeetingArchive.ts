@@ -78,7 +78,8 @@ export function useMeetingArchive(deps: ArchiveDeps) {
           meeting_id: targetMeetingId, parent_id: reviewParentId, title: item.title,
           description: item.description, notes: item.notes, result_text: item.result_text, result_html: item.result_html,
           assigned_to: item.assigned_to, order_index: nextOrderIndex++,
-          source_meeting_id: sourceMeeting.id,
+          source_meeting_id: sourceMeeting.id, carried_over_from: item.id,
+          carryover_count: (item.carryover_count ?? (item.source_meeting_id ? 1 : 0)) + 1,
           original_meeting_date: typeof sourceMeeting.meeting_date === 'string' ? sourceMeeting.meeting_date : sourceMeeting.meeting_date?.toISOString().split('T')[0],
           original_meeting_title: sourceMeeting.title,
           carryover_notes: `Übertragen von: ${sourceMeeting.title} (${sourceMeeting.meeting_date})`
@@ -100,6 +101,7 @@ export function useMeetingArchive(deps: ArchiveDeps) {
           description: item.description, notes: item.notes, result_text: item.result_text, result_html: item.result_html,
           assigned_to: item.assigned_to, order_index: item.order_index,
           original_meeting_id: sourceMeeting.id,
+          carryover_count: (item.carryover_count ?? (item.source_meeting_id ? 1 : 0)) + 1,
           original_meeting_date: typeof sourceMeeting.meeting_date === 'string' ? sourceMeeting.meeting_date : sourceMeeting.meeting_date?.toISOString().split('T')[0],
           original_meeting_title: sourceMeeting.title
         }]);
@@ -167,7 +169,8 @@ export function useMeetingArchive(deps: ArchiveDeps) {
           meeting_id: meetingId, parent_id: reviewParentId, title: item.title,
           description: item.description, notes: item.notes, result_text: item.result_text, result_html: item.result_html,
           assigned_to: item.assigned_to, order_index: nextOrderIndex++,
-          source_meeting_id: item.original_meeting_id,
+          source_meeting_id: item.original_meeting_id, carried_over_from: item.id,
+          carryover_count: item.carryover_count,
           original_meeting_date: item.original_meeting_date, original_meeting_title: item.original_meeting_title,
           carryover_notes: `Übertragen von: ${item.original_meeting_title} (${item.original_meeting_date})`
         }]);

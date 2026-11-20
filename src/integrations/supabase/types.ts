@@ -1681,6 +1681,7 @@ export type Database = {
       }
       carryover_items: {
         Row: {
+          carryover_count: number
           assigned_to: string[] | null
           created_at: string
           description: string | null
@@ -1698,6 +1699,7 @@ export type Database = {
           user_id: string
         }
         Insert: {
+          carryover_count?: number
           assigned_to?: string[] | null
           created_at?: string
           description?: string | null
@@ -1715,6 +1717,7 @@ export type Database = {
           user_id: string
         }
         Update: {
+          carryover_count?: number
           assigned_to?: string[] | null
           created_at?: string
           description?: string | null
@@ -10883,6 +10886,7 @@ export type Database = {
       }
       meeting_agenda_items: {
         Row: {
+          carryover_count: number
           assigned_to: string[] | null
           carried_over_from: string | null
           carry_over_to_next: boolean | null
@@ -10912,6 +10916,7 @@ export type Database = {
           updated_at: string
         }
         Insert: {
+          carryover_count?: number
           assigned_to?: string[] | null
           carried_over_from?: string | null
           carry_over_to_next?: boolean | null
@@ -10941,6 +10946,7 @@ export type Database = {
           updated_at?: string
         }
         Update: {
+          carryover_count?: number
           assigned_to?: string[] | null
           carried_over_from?: string | null
           carry_over_to_next?: boolean | null

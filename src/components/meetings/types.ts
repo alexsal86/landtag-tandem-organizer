@@ -51,6 +51,7 @@ export interface AgendaItem {
   carry_over_to_next?: boolean | null;
   sub_items?: AgendaItem[] | null;
   source_meeting_id?: string | null;
+  carryover_count?: number;
   carried_over_from?: string | null;
   original_meeting_date?: string | null;
   original_meeting_title?: string | null;

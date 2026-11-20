@@ -1,3 +1,4 @@
+import { AgendaCarryoverBadge } from "./agenda-editor/AgendaCarryoverBadge";
 import { generatedAgendaKey } from "./agenda-editor/liveAgenda";
 import { orderSystemSubpoints } from './agenda-editor/systemSubpoints';
 import { parseMeetingResults } from './platformAgendaRules';
@@ -861,9 +862,10 @@ export function FocusModeView({
                   Besprochen
                 </Badge>
               )}
+              <AgendaCarryoverBadge item={item} />
               {item.carry_over_to_next && (
                 <Badge variant="outline" className="border-palette-amber text-palette-amber">
-                  Übertragen
+                  Für nächstes Meeting
                 </Badge>
               )}
             </div>

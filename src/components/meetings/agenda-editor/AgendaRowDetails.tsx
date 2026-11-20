@@ -1,3 +1,4 @@
+import { AgendaCarryoverBadge } from "./AgendaCarryoverBadge";
 import { Checkbox } from "@/components/ui/checkbox";
 import type { AgendaItem, Profile } from "../types";
 
@@ -23,11 +24,7 @@ export function AgendaRowDetails({ item, profiles, onComplete }: {
 }) {
   return (
     <div className="flex shrink-0 flex-wrap items-center justify-end gap-2">
-      {item.source_meeting_id && (
-        <span title={item.original_meeting_title ?? undefined} className="rounded-full bg-palette-blue/10 px-2 py-0.5 text-xs font-medium text-palette-blue">
-          Übertragen
-        </span>
-      )}
+      <AgendaCarryoverBadge item={item} />
       {item.carry_over_to_next && (
         <span className="rounded-full bg-palette-amber/10 px-2 py-0.5 text-xs font-medium text-palette-amber">
           Für nächstes Meeting
