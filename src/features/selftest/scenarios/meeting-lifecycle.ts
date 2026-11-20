@@ -18,6 +18,7 @@ export const meetingLifecycleScenario: TestScenario = {
     "Erstellt ein Meeting mit Termin, Teilnehmer, regulären und allen System-Agenda-Punkten (Geburtstage, Termine, Quick-Notes, Aufgaben, Vorgänge, Entscheidungen), Sub-Item, Dokument, Aufgabe, Carry-Over und Folge-Meeting. Liest jedes geschriebene Feld zurück und vergleicht — inkl. Renderer-Sanity (utils.tsx-Mapping).",
   touches: [
     "meetings",
+    "meeting_templates",
     "meeting_protocol_details",
     "meeting_protocol_addenda",
     "meeting_agenda_items",
@@ -446,6 +447,50 @@ export const meetingLifecycleScenario: TestScenario = {
           Boolean(entry.data.created_at) &&
           (isLead.data ? record.data.approved_by === ctx.userId && Boolean(record.data.approved_at) : !record.data.approved_at);
         return { ok, message: ok ? "Protokollangaben und Freigaberecht verifiziert." : "Protokollangaben sind unvollständig." };
+      },
+    },
+    {
+      id: "agenda-template-icon",
+      label: "Symbole aus der Meeting-Vorlage übernehmen",
+      kind: "workflow",
+      run: async (ctx) => {
+        const icon = { name: "hand", color: "#166534" };
+        const template = await supabase.from("meeting_templates").insert({
+          name: title(ctx.runId, "Symbolvorlage"),
+          description: SELFTEST_MARKER,
+          user_id: ctx.userId,
+          tenant_id: ctx.tenantId,
+          template_items: [
+            { title: "Begrüßung", order_index: 0, icon_config: icon, children: [{ title: "Unterpunkt", icon_config: icon }] },
+            { title: "Meine Notizen", order_index: 1, type: "system", system_type: "quick_notes", icon_config: icon },
+          ],
+        }).select("id").single();
+        if (template.error) return { ok: false, message: template.error.message };
+        ctx.trackRecord({ table: "meeting_templates", id: template.data.id });
+
+        const meeting = await supabase.from("meetings").insert({
+          title: title(ctx.runId, "Meeting mit Symbolen"),
+          description: SELFTEST_MARKER,
+          user_id: ctx.userId,
+          tenant_id: ctx.tenantId,
+          meeting_date: new Date().toISOString().slice(0, 10),
+          template_id: template.data.id,
+          status: "planned",
+          is_public: false,
+        }).select("id").single();
+        if (meeting.error) return { ok: false, message: meeting.error.message };
+        ctx.trackRecord({ table: "meetings", id: meeting.data.id });
+
+        const agenda = await supabase.from("meeting_agenda_items")
+          .select("title, parent_id, system_type, icon_config").eq("meeting_id", meeting.data.id);
+        if (agenda.error) return { ok: false, message: agenda.error.message };
+        const main = agenda.data.find((item) => item.title === "Begrüßung");
+        const config = main?.icon_config;
+        const ok = Boolean(config && typeof config === "object" && !Array.isArray(config) &&
+          config.name === icon.name && config.color === icon.color &&
+          agenda.data.some((item) => item.parent_id && item.icon_config === null) &&
+          agenda.data.some((item) => item.system_type === "quick_notes" && item.icon_config === null));
+        return { ok, message: ok ? "Nur der freie Hauptpunkt übernimmt das Symbol." : "Die Symbolübernahme stimmt nicht." };
       },
     },
     {

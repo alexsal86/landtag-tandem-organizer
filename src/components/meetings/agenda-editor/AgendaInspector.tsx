@@ -4,6 +4,7 @@ import { Checkbox } from "@/components/ui/checkbox";
 import { FileText, Download, X, Eye, EyeOff, Trash } from "lucide-react";
 import { supabase } from "@/integrations/supabase/client";
 
+import { AgendaIcon, AgendaIconPicker } from "./AgendaIconPicker";
 import type { AgendaItem, AgendaDocument, Profile } from "../types";
 interface Props {
   startTime?: string;
@@ -59,6 +60,15 @@ export function AgendaInspector({
               : "Hauptpunkt"}
         </p>
       </div>
+      {!item.system_type && !item.parent_id && !item.parentLocalKey && (
+        hasEditPermission ? (
+          <AgendaIconPicker
+            value={item.icon_config}
+            linkedTask={Boolean(item.task_id)}
+            onChange={(config) => onUpdateAgendaItem(index, "icon_config", config)}
+          />
+        ) : <AgendaIcon value={item.icon_config} linkedTask={Boolean(item.task_id)} />
+      )}
       <div className="grid grid-cols-2 gap-3">
         {!item.parent_id && !item.parentLocalKey && (
           <div>

@@ -1,3 +1,4 @@
+import { AgendaIconPicker } from "@/components/meetings/agenda-editor/AgendaIconPicker";
 import type { Json, Database } from "@/integrations/supabase/types";
 import { useTenant } from "@/hooks/useTenant";
 import { SYSTEM_AGENDA_OPTIONS, systemAgendaOption } from "@/components/meetings/systemAgendaRegistry";
@@ -266,6 +267,15 @@ export function MeetingTemplateManager() {
     saveTemplateItems(newItems);
   };
 
+  const updateTemplateIcon = async (index: number, config: MeetingTemplateItem["icon_config"]) => {
+    const previous = templateItems;
+    const updated = previous.map((item, itemIndex) => itemIndex === index ? { ...item, icon_config: config } : item);
+    setTemplateItems(updated);
+    if (!await saveTemplateItems(updated)) {
+      setTemplateItems((current) => current === updated ? previous : current);
+    }
+  };
+
   const deleteTemplateItem = (index: number) => {
     const newItems = templateItems.filter((_, i) => i !== index);
     setTemplateItems(newItems);
@@ -473,6 +483,9 @@ export function MeetingTemplateManager() {
                                           </div>
                                         )}
                                       </>
+                                    )}
+                                    {item.type !== 'separator' && item.type !== 'system' && !item.system_type && (
+                                      <AgendaIconPicker value={item.icon_config} onChange={(config) => void updateTemplateIcon(index, config)} />
                                     )}
                                     {item.type !== 'separator' && item.type !== 'system' && (
                                       <Popover open={childPopoverOpen === index} onOpenChange={(open) => setChildPopoverOpen(open ? index : null)}>

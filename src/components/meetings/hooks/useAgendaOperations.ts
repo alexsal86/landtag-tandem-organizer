@@ -239,6 +239,7 @@ export function useAgendaOperations(deps: AgendaOpsDeps) {
       order_index: orderIndex,
       parent_id: parentId,
       duration_minutes: parentId ? null : (item.duration_minutes ?? null),
+      icon_config: item.icon_config ?? null,
       carry_over_to_next: item.carry_over_to_next ?? false,
       result_text: item.result_text ?? null,
       result_html: item.result_html ?? null,

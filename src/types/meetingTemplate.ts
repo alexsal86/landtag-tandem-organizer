@@ -1,3 +1,4 @@
+import type { AgendaIconConfig } from "@/components/meetings/agenda-editor/agendaIcons";
 export interface MeetingTemplateChildItem {
   title: string;
   order_index: number;
@@ -8,6 +9,7 @@ export interface MeetingTemplateChildItem {
 }
 
 export interface MeetingTemplateItem {
+  icon_config?: AgendaIconConfig | null;
   duration_minutes?: number | null;
   title: string;
   order_index: number;

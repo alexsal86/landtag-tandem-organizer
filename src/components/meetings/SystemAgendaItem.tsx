@@ -675,7 +675,7 @@ export function SystemAgendaItem({
   const description = stripHtml(editorDescription ?? "");
   return (
     <section className="min-w-0">
-      <div className="flex flex-wrap items-center gap-x-3 gap-y-2 py-3 pr-3 sm:pr-5">
+      <div className={cn("flex flex-wrap items-center gap-x-3 gap-y-2 pr-3 sm:pr-5", isEmbedded ? "py-3" : "py-6")}>
         <div className="flex min-w-0 flex-1 basis-48 items-start">
           <span aria-hidden="true" className="mr-2 grid size-8 shrink-0 place-items-center">
             {Icon && !isEmbedded && (

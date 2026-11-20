@@ -26,10 +26,10 @@ import {
   ChevronDown,
   ChevronRight,
   ListTodo,
-  List,
 } from "lucide-react";
 import { cn } from "@/lib/utils";
 import type { AgendaItem, LinkedTask, Profile } from "../types";
+import { AgendaIcon } from "./AgendaIconPicker";
 import { AgendaDragHandle } from "./AgendaDragHandle";
 import { AgendaRowDetails } from "./AgendaRowDetails";
 import { stripHtml } from "@/utils/textDiff";
@@ -37,6 +37,7 @@ interface Props {
   item: AgendaItem;
   index: number;
   dropTarget?: "inside" | "before";
+  hasSelectedChild: boolean;
   provided: DraggableProvided;
   snapshot: DraggableStateSnapshot;
   hasEditPermission: boolean;
@@ -73,6 +74,7 @@ export function AgendaRow({
   item,
   index,
   dropTarget,
+  hasSelectedChild,
   provided,
   snapshot,
   hasEditPermission,
@@ -116,6 +118,7 @@ export function AgendaRow({
             isSubItem && "bg-[var(--agenda-subpoint-bg)] hover:bg-[var(--agenda-subpoint-bg)] dark:bg-slate-800 dark:hover:bg-slate-700",
             getItemKey(item, index) === selectedKey &&
               (isSubItem ? "border-l-primary" : "border-l-primary bg-primary/10 hover:bg-primary/10"),
+            hasSelectedChild && "border-l-success",
             dropTarget === "inside" && "bg-primary/10 ring-2 ring-inset ring-primary",
             dropTarget === "before" && "shadow-[inset_0_2px_0] shadow-primary",
             snapshot.isDragging && "bg-card shadow-lg",
@@ -123,16 +126,14 @@ export function AgendaRow({
             isHiddenByCollapsedParent(item) && "hidden",
           )}
         >
-          <div className="flex flex-wrap items-center gap-x-3 gap-y-2 py-3 pl-1 pr-3 sm:pr-5">
+          <div className={cn("flex flex-wrap items-center gap-x-3 gap-y-2 pl-1 pr-3 sm:pr-5", isSubItem ? "py-3" : "py-6")}>
             <div className="flex min-w-0 flex-1 basis-48 items-start">
               {hasEditPermission && provided.dragHandleProps && (
                 <AgendaDragHandle dragHandleProps={provided.dragHandleProps} dragging={snapshot.isDragging} />
               )}
               <span aria-hidden="true" className="mr-2 grid size-8 shrink-0 place-items-center">
                 {!isSubItem && (
-                  <span className="grid size-full place-items-center rounded-lg bg-slate-600 text-white">
-                    {item.task_id ? <ListTodo className="size-4" /> : <List className="size-4" />}
-                  </span>
+                  <AgendaIcon value={item.icon_config} linkedTask={Boolean(item.task_id)} />
                 )}
               </span>
               <span className={cn("flex h-8 shrink-0 items-center text-sm tabular-nums", isSubItem ? "mr-1 font-normal text-muted-foreground" : "font-semibold text-foreground")}>

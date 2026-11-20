@@ -147,6 +147,10 @@ export function AgendaEditorPanel({
     (item, index) => getItemKey(item, index) === selectedKey,
   );
   const selectedItem = agendaItems[selectedIndex];
+  const hasSelectedChild = (item: AgendaItem) => Boolean(
+    (item.id && selectedItem?.parent_id === item.id) ||
+    (item.localKey && selectedItem?.parentLocalKey === item.localKey),
+  );
   const change = (index: number, field: keyof AgendaItem, value: unknown) => {
     if (!hasEditPermission) return;
     setDirty(true);
@@ -269,6 +273,7 @@ export function AgendaEditorPanel({
           notes: item.notes || "",
           parent_id: item.parent_id || null,
           order_index: item.order_index,
+          icon_config: item.icon_config ?? null,
           duration_minutes:
             item.parent_id || item.parentLocalKey
               ? null
@@ -538,6 +543,7 @@ export function AgendaEditorPanel({
                                 dragHandleProps={provided.dragHandleProps}
                                 canEdit={hasEditPermission}
                                 dragging={snapshot.isDragging}
+                                hasSelectedChild={hasSelectedChild(item)}
                                 nested={Boolean(item.parentLocalKey || item.parent_id)}
                                 selected={
                                   getItemKey(item, index) === selectedKey
@@ -618,6 +624,7 @@ export function AgendaEditorPanel({
                             /* Regular agenda item */
                             <AgendaRow
                               item={item}
+                              hasSelectedChild={hasSelectedChild(item)}
                               dropTarget={dropPreview?.marker === item ? (dragUpdate?.combine ? "inside" : "before") : undefined}
                               index={index}
                               provided={provided}

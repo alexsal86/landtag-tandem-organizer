@@ -1,3 +1,6 @@
+import type { AgendaIconConfig } from "@/components/meetings/agenda-editor/agendaIcons";
+import type { Json } from "@/integrations/supabase/types";
+
 export type ParticipantRole = 'organizer' | 'participant' | 'optional';
 
 export type SystemAgendaType = 'upcoming_appointments' | 'quick_notes' | 'tasks' | 'birthdays' | 'decisions' | 'case_items' | 'appointment_requests' | 'redaktion' | 'leave_requests' | 'event_plannings' | 'letters_for_signature' | 'critical_radar' | 'past_appointments';
@@ -29,6 +32,7 @@ export interface NewMeetingParticipant {
 }
 
 export interface AgendaItem {
+  icon_config?: Json;
   duration_minutes?: number | null;
   id?: string;
   meeting_id?: string;
@@ -167,6 +171,7 @@ export interface AgendaDocument {
 
 /** A template item inside a meeting template */
 export interface MeetingTemplateItem {
+  icon_config?: AgendaIconConfig | null;
   duration_minutes?: number | null;
   title: string;
   description?: string;

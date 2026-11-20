@@ -10888,6 +10888,7 @@ export type Database = {
           description: string | null
           duration_minutes: number | null
           file_path: string | null
+          icon_config: Json | null
           id: string
           is_completed: boolean
           is_optional: boolean | null
@@ -10916,6 +10917,7 @@ export type Database = {
           description?: string | null
           duration_minutes?: number | null
           file_path?: string | null
+          icon_config?: Json | null
           id?: string
           is_completed?: boolean
           is_optional?: boolean | null
@@ -10944,6 +10946,7 @@ export type Database = {
           description?: string | null
           duration_minutes?: number | null
           file_path?: string | null
+          icon_config?: Json | null
           id?: string
           is_completed?: boolean
           is_optional?: boolean | null
