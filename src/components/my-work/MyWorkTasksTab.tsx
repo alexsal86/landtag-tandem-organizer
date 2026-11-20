@@ -1,5 +1,5 @@
 import { useEffect, useMemo, useState } from "react";
-import { Link, useSearchParams } from "react-router-dom";
+import { useSearchParams } from "react-router-dom";
 import { useAuth } from "@/hooks/useAuth";
 import { useNotificationHighlight } from "@/hooks/useNotificationHighlight";
 import { usePersistentState } from "@/hooks/usePersistentState";
@@ -281,17 +281,6 @@ export function MyWorkTasksTab() {
     </>
   );
 
-  const createActions = (
-    <div className="flex flex-wrap items-center justify-end gap-2">
-      <Button asChild size="sm">
-        <Link to="/tasks/new">Aufgabe</Link>
-      </Button>
-      <Button size="sm" variant="outline" onClick={() => setTodoCreateOpen(true)}>
-        Aufgabe schnell
-      </Button>
-    </div>
-  );
-
   const modeToggle = (
     <div className="ml-auto flex flex-wrap items-center gap-1">
       {workspaceMode === "stafette" && <TaskTemplateButton userId={user?.id} tenantId={currentTenant?.id} onCreated={() => void loadTasks()} />}
@@ -316,7 +305,6 @@ export function MyWorkTasksTab() {
     );
     return (
       <div className="min-h-[calc(100vh-20rem)] flex flex-col gap-2">
-        {createActions}
         <div className="flex-1 min-h-0 flex flex-col">
           <TaskStafetteWorkspace
             userId={user?.id}
@@ -338,7 +326,6 @@ export function MyWorkTasksTab() {
 
   return (
     <div className="h-[calc(100vh-20rem)] flex flex-col">
-      {createActions}
       <div className="mt-2 flex shrink-0 flex-wrap items-center gap-2 border-t bg-[#f8f8f6] px-4 py-2 dark:bg-muted/60">
         <h2 className="text-base font-semibold">Aufgaben</h2>
         {modeToggle}

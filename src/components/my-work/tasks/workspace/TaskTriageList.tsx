@@ -2,6 +2,7 @@ import { VirtualList } from "@/components/shared/VirtualList";
 import { useState } from "react";
 import { Plus } from "lucide-react";
 import { Button } from "@/components/ui/button";
+import { Tooltip, TooltipContent, TooltipTrigger } from "@/components/ui/tooltip";
 import { Input } from "@/components/ui/input";
 import { differenceInCalendarDays, endOfWeek, startOfDay } from "date-fns";
 import { cn } from "@/lib/utils";
@@ -71,9 +72,14 @@ export function TaskTriageList({ zones, visibleZones, snoozes, onCreate, onCompl
   return (
     <div className="flex h-full min-h-0 flex-col gap-2 p-3">
       <div className="flex shrink-0 items-center gap-2 px-2 py-3">
-        <Button size="icon" variant="ghost" onClick={onCreate} aria-label="Neue Aufgabe"><Plus /></Button>
+        <Tooltip>
+          <TooltipTrigger asChild>
+            <Button size="icon" variant="ghost" onClick={onCreate} aria-label="Neue Aufgabe erstellen"><Plus /></Button>
+          </TooltipTrigger>
+          <TooltipContent>Neue Aufgabe erstellen</TooltipContent>
+        </Tooltip>
         <div className="relative min-w-0 flex-1">
-          <Input value={query} onChange={(event) => setQuery(event.target.value)} placeholder="Neue Aufgabe oder suchen …" aria-label="Aufgaben suchen" className="border-0 bg-transparent shadow-none" onKeyDown={(event) => { if (event.key === "Enter" && !tasks.length) onCreate(); }} />
+          <Input value={query} onChange={(event) => setQuery(event.target.value)} placeholder="Neue Aufgabe erstellen oder suchen …" aria-label="Aufgaben suchen" className="border-0 bg-transparent shadow-none" onKeyDown={(event) => { if (event.key === "Enter" && !tasks.length) onCreate(); }} />
         </div>
       </div>
       {selection.size > 0 && (
@@ -100,7 +106,7 @@ export function TaskTriageList({ zones, visibleZones, snoozes, onCreate, onCompl
           const days = due ? differenceInCalendarDays(today, due) : 0;
           const resubmission = !!snoozes[task.id] || zone === "resubmission";
           return (
-            <div className={cn("flex items-start gap-3 rounded-xl border-l-2 border-transparent px-3 py-3", task.id === selectedId ? "border-l-foreground bg-muted" : "hover:bg-muted/60")}>
+            <div className={cn("flex items-start gap-3 rounded-xl px-3 py-3", task.id === selectedId ? "bg-muted" : "hover:bg-muted/60")}>
               <button type="button" onClick={() => void onComplete(task.id)} aria-label={`„${task.title}“ abschließen`} className="mt-1 h-5 w-5 shrink-0 rounded-full border-2 border-muted-foreground/50 hover:border-foreground" />
               <button type="button" onClick={(event) => event.shiftKey || event.metaKey || event.ctrlKey ? onToggleSelect(task.id) : onSelect(task.id)} aria-current={task.id === selectedId ? "true" : undefined} aria-pressed={selection.has(task.id)} className="min-w-0 flex-1 text-left">
                 <div className="flex items-start justify-between gap-3">

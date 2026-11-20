@@ -28,6 +28,7 @@ interface Props {
 const taskFilters = [
   { id: "mine", label: "Mein Zug", zones: ["nudged", "mine", "resubmission"] },
   { id: "waiting", label: "Wartet", zones: ["waiting"] },
+  { id: "resubmission", label: "Wiedervorlagen", zones: ["resubmission"] },
   { id: "all", label: "Alle", zones: ["nudged", "mine", "waiting", "resubmission"] },
 ] as const;
 
@@ -42,7 +43,7 @@ export function TaskStafetteWorkspace({ userId, tasks, profiles, onReload, onCom
     const grouped = groupByZone(merged, userId);
     for (const zone of ["nudged", "mine", "waiting", "resubmission"] as const) {
       for (const task of [...grouped[zone]]) {
-        if (!snoozes[task.id] || zone === "waiting" || zone === "resubmission") continue;
+        if (!snoozes[task.id] || zone === "resubmission") continue;
         grouped[zone] = grouped[zone].filter((entry) => entry.id !== task.id);
         grouped.resubmission.push(task);
       }
@@ -192,10 +193,7 @@ export function TaskStafetteWorkspace({ userId, tasks, profiles, onReload, onCom
 
   return (
     <>
-      <div className="flex justify-end py-2">{modeControls}</div>
-        <div className="grid min-h-0 flex-1 auto-rows-max grid-cols-1 rounded-2xl border bg-card shadow-sm lg:auto-rows-auto lg:grid-cols-[minmax(380px,0.85fr)_minmax(0,1.5fr)]">
-          <div className="flex min-h-0 min-w-0 flex-col border-b bg-[#fafaf8] dark:bg-card lg:border-b-0 lg:border-r">
-      <div className="flex shrink-0 flex-wrap items-center gap-x-2 gap-y-2 border-t bg-[#f8f8f6] px-4 py-2 dark:bg-muted/60">
+      <div className="flex shrink-0 flex-wrap items-center gap-x-2 gap-y-2 border-y bg-[#f8f8f6] px-4 py-2 dark:bg-muted/60">
         <h2 className="text-base font-semibold">Aufgaben</h2>
         <div role="group" aria-label="Aufgaben filtern" className="flex flex-wrap items-center gap-1">
           {taskFilters.map((option) => (
@@ -218,8 +216,10 @@ export function TaskStafetteWorkspace({ userId, tasks, profiles, onReload, onCom
             </Button>
           ))}
         </div>
+        {modeControls}
       </div>
-
+      <div className="grid min-h-0 flex-1 auto-rows-max grid-cols-1 lg:auto-rows-auto lg:grid-cols-[minmax(260px,1fr)_minmax(0,3fr)]">
+        <div className="flex min-h-0 min-w-0 flex-col bg-[#fafaf8] dark:bg-card">
             <div className="h-80 min-h-0 lg:h-auto lg:flex-1">
               <TaskTriageList snoozes={snoozes} onCreate={onCreate} onComplete={onComplete} zones={zones} visibleZones={filter.zones} selectedId={selected?.id ?? null} onSelect={setSelectedId} decisionLabel={decisionLabel} nameOf={nameOf} selection={selection} onToggleSelect={toggleSelect} onClearSelection={() => setSelection(new Set())} onBatch={batch} />
             </div>
