@@ -1,3 +1,4 @@
+import { getNoteColorText } from "@/components/my-work/quickNoteColors";
 import { cn } from '@/lib/utils';
 import { colorLabel, type NoteColorDef } from './useNoteColorPalette';
 
@@ -14,7 +15,7 @@ export function NoteColorChoices({ palette, selected, onSelect }: {
       title={colorLabel(color)}
       className={cn('inline-flex min-h-7 max-w-full items-center rounded-full border px-3 py-1 text-xs font-semibold leading-snug transition-shadow focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring',
         selected?.toLowerCase() === color.value.toLowerCase() ? 'border-foreground ring-1 ring-foreground/30' : 'border-transparent')}
-      style={{ backgroundColor: color.value, color: `color-mix(in srgb, ${color.value} 25%, black)` }}
+      style={{ backgroundColor: color.value, color: getNoteColorText(color.value) }}
       onClick={event => { event.stopPropagation(); onSelect(color.value); }}
     >{color.meaning?.trim() || color.name}</button>)}
   </div>;

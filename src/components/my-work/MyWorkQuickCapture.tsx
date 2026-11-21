@@ -1,3 +1,4 @@
+import { getNoteColorText } from "@/components/my-work/quickNoteColors";
 import { NoteColorChoices } from "@/components/my-work/NoteColorChoices";
 import { PencilSparkles } from "@/components/icons/PencilSparkles";
 import { useQuickNoteDraft } from "@/hooks/useQuickNoteDraft";
@@ -116,7 +117,7 @@ export function MyWorkQuickCapture({ onNoteSaved }: MyWorkQuickCaptureProps) {
         <span className="inline-flex">
           <PopoverTrigger asChild>
             <Button variant="ghost" size="sm" className="h-7 max-w-40 truncate rounded-full px-3 text-xs font-semibold" aria-label="Notizfarbe wählen"
-              style={{ backgroundColor: activeColor, color: `color-mix(in srgb, ${activeColor} 25%, black)` }}>
+              style={{ backgroundColor: activeColor, color: getNoteColorText(activeColor) }}>
               {palette.find(color => color.value.toLowerCase() === activeColor.toLowerCase())?.meaning?.trim()
                 || palette.find(color => color.value.toLowerCase() === activeColor.toLowerCase())?.name || "Farbe"}
             </Button>

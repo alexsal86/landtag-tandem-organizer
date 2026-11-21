@@ -4,13 +4,13 @@ import { QuickNotesSyncStatus, QuickNotesSyncIndicator } from "@/features/quick-
 import { useTenant } from "@/hooks/useTenant";
 import { useCallback, useState } from "react";
 import { Button } from "@/components/ui/button";
-import { Archive, Search, X, CheckSquare, Trash2, Settings2, Pin, ClockAlert, SlidersHorizontal, MoreHorizontal, Share2 } from "lucide-react";
+import { Archive, Search, X, CheckSquare, Trash2, Settings2, Pin, ClockAlert, Clock, Circle, Link2, SlidersHorizontal, MoreHorizontal, Share2 } from "lucide-react";
 import { Popover, PopoverContent, PopoverTrigger } from "@/components/ui/popover";
 import { DropdownMenu, DropdownMenuContent, DropdownMenuItem, DropdownMenuTrigger } from "@/components/ui/dropdown-menu";
 import { Tooltip, TooltipContent, TooltipProvider, TooltipTrigger } from "@/components/ui/tooltip";
 import { useNoteColorPalette } from "@/components/my-work/useNoteColorPalette";
 import { NoteColorPaletteDialog } from "@/components/my-work/NoteColorPaletteDialog";
-import { QuickNotesList } from "@/components/shared/QuickNotesList";
+import { QuickNotesList, type QuickNoteCounts } from "@/components/shared/QuickNotesList";
 import { GlobalNoteShareDialog } from "@/components/shared/GlobalNoteShareDialog";
 import { NotesArchiveDialog } from "@/components/shared/NotesArchiveDialog";
 import { Input } from "@/components/ui/input";
@@ -18,6 +18,9 @@ import { cn } from "@/lib/utils";
 import { useAuth } from "@/hooks/useAuth";
 import { notify } from "@/lib/notify";
 import { QUICK_NOTE_FILTERS, type QuickNoteFilter } from "@/components/shared/quickNoteBoard";
+
+const primaryFilters: QuickNoteFilter[] = ["all", "pinned", "stale"];
+const filterIcons = { pinned: Pin, stale: ClockAlert, due: Clock, shared: Share2, open: Circle, linked: Link2 };
 
 interface MyWorkNotesListProps {
   refreshTrigger?: number;
@@ -31,7 +34,7 @@ export function MyWorkNotesList({ refreshTrigger }: MyWorkNotesListProps) {
   const [archiveOpen, setArchiveOpen] = useState(false);
   const [localRefreshTrigger, setLocalRefreshTrigger] = useState(0);
   const [searchQuery, setSearchQuery] = useState("");
-  const [counts, setCounts] = useState({ filteredCount: 0, totalCount: 0, staleCount: 0 });
+  const [counts, setCounts] = useState<QuickNoteCounts>({ filteredCount: 0, totalCount: 0, byFilter: {} });
   const [filter, setFilter] = useState<QuickNoteFilter>("all");
   const [colorFilter, setColorFilter] = useState<string | null>(null);
   const [selectMode, setSelectMode] = useState(false);
@@ -74,72 +77,68 @@ export function MyWorkNotesList({ refreshTrigger }: MyWorkNotesListProps) {
 
   const filterActive = filter !== "all" || colorFilter !== null || searchQuery.length > 0;
 
+  const renderFilterChip = (option: (typeof QUICK_NOTE_FILTERS)[number]) => {
+    const { value, label, hint } = option;
+    const active = filter === value;
+    const Icon = value === "all" ? null : filterIcons[value];
+    const count = counts.byFilter[value] ?? 0;
+
+    return (
+      <button
+        key={value}
+        type="button"
+        role="radio"
+        aria-checked={active}
+        title={hint}
+        onClick={() => setFilter(value)}
+        className={cn(
+          "inline-flex h-7 items-center gap-1.5 rounded-pill border px-3 text-[13px] font-normal transition-colors duration-fast focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-offset-1",
+          active ? "border-primary bg-primary text-primary-foreground" : "border-border bg-background text-muted-foreground hover:bg-muted hover:text-foreground",
+        )}
+      >
+        {Icon && <Icon className="h-3.5 w-3.5" aria-hidden="true" />}
+        {label}
+        {value === "stale" && <span className="tabular-nums">{count}</span>}
+        {!primaryFilters.includes(value) && <span className="tabular-nums">({count})</span>}
+      </button>
+    );
+  };
+
   return (
     <>
       <section className="w-full space-y-4" aria-label="Meine Notizen">
         <TooltipProvider>
         <div className="flex flex-wrap items-center gap-2" role="toolbar" aria-label="Notizen filtern">
           <div className="flex flex-wrap items-center gap-1.5" role="radiogroup" aria-label="Filter">
-            {QUICK_NOTE_FILTERS.filter(f => ["all", "pinned", "stale"].includes(f.value)).map((f) => {
-              const active = filter === f.value;
-              return (
-                <button
-                  key={f.value}
-                  type="button"
-                  role="radio"
-                  aria-checked={active}
-                  title={f.hint}
-                  onClick={() => setFilter(f.value)}
-                  className={cn(
-                    "inline-flex h-7 items-center gap-1.5 rounded-pill border px-3 text-[13px] font-normal transition-colors duration-fast focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-offset-1",
-                    active ? "border-primary bg-primary text-primary-foreground" : "border-border bg-background text-muted-foreground hover:bg-muted hover:text-foreground",
-                  )}
-                >
-                  {f.value === "pinned" && <Pin className="h-3.5 w-3.5" aria-hidden="true" />}
-                  {f.value === "stale" && <ClockAlert className="h-3.5 w-3.5" aria-hidden="true" />}
-                  {f.label}
-                  {f.value === "stale" && <span className="tabular-nums">{counts.staleCount}</span>}
-                </button>
-              );
-            })}
+            {QUICK_NOTE_FILTERS.filter(f => primaryFilters.includes(f.value)).map(renderFilterChip)}
             <Popover>
               <PopoverTrigger asChild>
                 <Button variant="outline" size="sm" className="h-7 rounded-pill border-border bg-background px-3 text-[13px] font-normal text-muted-foreground hover:bg-muted hover:text-muted-foreground">
                   <SlidersHorizontal className="h-3.5 w-3.5" aria-hidden="true" />
-                  <span className="ml-1.5">Weitere Filter{colorFilter || !["all", "pinned", "stale"].includes(filter) ? " aktiv" : ""}</span>
+                  <span className="ml-1.5">Weitere Filter{colorFilter || !primaryFilters.includes(filter) ? " aktiv" : ""}</span>
                 </Button>
               </PopoverTrigger>
-              <PopoverContent align="start" className="w-64 space-y-2">
-                <div className="flex flex-wrap gap-2" role="radiogroup" aria-label="Weitere Filter">
-                  {QUICK_NOTE_FILTERS.filter(f => !["all", "pinned", "stale"].includes(f.value)).map(f => (
-                    <Button
-                      key={f.value}
-                      role="radio"
-                      aria-checked={filter === f.value}
-                      variant={filter === f.value ? "secondary" : "outline"}
-                      size="sm"
-                      title={f.hint}
-                      onClick={() => setFilter(f.value)}
-                    >
-                      {f.label}
-                    </Button>
-                  ))}
+              <PopoverContent align="start" className="w-72 max-w-[var(--radix-popover-content-available-width)]">
+                <div className="flex flex-wrap gap-1.5" role="radiogroup" aria-label="Weitere Filter">
+                  {QUICK_NOTE_FILTERS.filter(f => !primaryFilters.includes(f.value)).map(renderFilterChip)}
                 </div>
-                <div className="section-label">Farbe</div>
-                <div className="flex flex-wrap items-center gap-2">
+                <div className="mt-4 space-y-2 border-t border-border pt-4">
+                  <div className="flex items-center gap-1.5">
+                    <span className="section-label">Farben</span>
+                    <Tooltip>
+                      <TooltipTrigger asChild>
+                        <button type="button" onClick={() => setPaletteOpen(true)} className="flex h-6 w-6 items-center justify-center rounded-full text-muted-foreground hover:text-foreground focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring" aria-label="Farben und Bedeutungen anpassen">
+                          <Settings2 className="h-3.5 w-3.5" aria-hidden="true" />
+                        </button>
+                      </TooltipTrigger>
+                      <TooltipContent>Farben & Bedeutungen anpassen</TooltipContent>
+                    </Tooltip>
+                  </div>
                   <NoteColorChoices palette={palette} selected={colorFilter} onSelect={value => setColorFilter(previous => previous === value ? null : value)} />
-                  <Tooltip>
-                    <TooltipTrigger asChild>
-                      <button type="button" onClick={() => setPaletteOpen(true)} className="flex h-6 w-6 items-center justify-center rounded-full text-muted-foreground hover:text-foreground focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring" aria-label="Farben anpassen">
-                        <Settings2 className="h-3.5 w-3.5" />
-                      </button>
-                    </TooltipTrigger>
-                    <TooltipContent>Farben & Bedeutungen anpassen</TooltipContent>
-                  </Tooltip>
+                  {colorFilter && (
+                    <Button variant="ghost" size="sm" className="h-7 px-2 text-xs" onClick={() => setColorFilter(null)}>Farbfilter zurücksetzen</Button>
+                  )}
                 </div>
-                {colorFilter && (
-                  <Button variant="ghost" size="sm" className="h-7 px-2 text-xs" onClick={() => setColorFilter(null)}>Farbfilter zurücksetzen</Button>
-                )}
               </PopoverContent>
             </Popover>
           </div>

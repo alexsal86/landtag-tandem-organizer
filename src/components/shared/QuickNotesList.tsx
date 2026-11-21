@@ -18,9 +18,15 @@ import { NoteDialogs } from "@/components/shared/NoteDialogs";
 import { useTopicBacklog } from "@/features/redaktion/hooks/useTopicBacklog";
 import { notify } from "@/lib/notify";
 import { sendToDaySlip } from "@/lib/daySlipBridge";
-import { matchesNoteFilter, type QuickNoteFilter } from "@/components/shared/quickNoteBoard";
+import { QUICK_NOTE_FILTERS, matchesNoteFilter, type QuickNoteFilter } from "@/components/shared/quickNoteBoard";
 import type { QuickNote } from "@/features/quick-notes/types";
 export type { QuickNote } from "@/features/quick-notes/types";
+
+export interface QuickNoteCounts {
+  filteredCount: number;
+  totalCount: number;
+  byFilter: Partial<Record<QuickNoteFilter, number>>;
+}
 
 interface QuickNotesListProps {
   refreshTrigger?: number;
@@ -30,7 +36,7 @@ interface QuickNotesListProps {
   searchPlacement?: "top" | "hidden";
   searchQuery?: string;
   onSearchQueryChange?: (value: string) => void;
-  onCountsChange?: (counts: { filteredCount: number; totalCount: number; staleCount: number }) => void;
+  onCountsChange?: (counts: QuickNoteCounts) => void;
   /** "list" = classic priority groups with drag & drop, "grid" = Keep-style board */
   layout?: "list" | "grid";
   filter?: QuickNoteFilter;
@@ -71,7 +77,16 @@ export function QuickNotesList({
 
   const matches = (note: QuickNote) => matchesNoteFilter(note, filter, colorFilter);
   const visibleNotes = hook.filteredNotes.filter(matches);
-  const staleCount = hook.filteredNotes.filter((n) => matchesNoteFilter(n, "stale", colorFilter)).length;
+  const filterCounts = useMemo(() => {
+    const counts: QuickNoteCounts["byFilter"] = {};
+    if (onCountsChange) {
+      const now = new Date();
+      for (const { value } of QUICK_NOTE_FILTERS) {
+        counts[value] = hook.filteredNotes.filter(note => matchesNoteFilter(note, value, colorFilter, now)).length;
+      }
+    }
+    return counts;
+  }, [hook.filteredNotes, colorFilter, onCountsChange]);
   const [isDragging, setIsDragging] = useState(false);
   const [draggedNoteId, setDraggedNoteId] = useState<string | null>(null);
   const [hoveredPriority, setHoveredPriority] = useState<number | null>(null);
@@ -87,9 +102,9 @@ export function QuickNotesList({
     onCountsChange?.({
       filteredCount: visibleNotes.length,
       totalCount: hook.notes.length,
-      staleCount,
+      byFilter: filterCounts,
     });
-  }, [visibleNotes.length, hook.notes.length, staleCount, onCountsChange]);
+  }, [visibleNotes.length, hook.notes.length, filterCounts, onCountsChange]);
 
   useEffect(() => {
     onVisibleIdsChange?.(visibleIdsKey ? visibleIdsKey.split(",") : []);
