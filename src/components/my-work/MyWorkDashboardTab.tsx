@@ -1,3 +1,4 @@
+import { PendingBriefingNotice } from "@/features/appointments/briefing/PendingBriefingNotice";
 import {TeamRitualDashboardCard} from "@/features/team-rituals/TeamRitualDashboardCard";
 import type { ReactNode } from 'react';
 import { Link } from 'react-router-dom';
@@ -167,6 +168,7 @@ export function MyWorkDashboardTab() {
   return (
     <div className="space-y-space-md animate-fade-in">
       <DashboardHeader />
+      {isEmployeeView && <PendingBriefingNotice />}
       {isDeputyView && <TodayBriefingPanel />}
       {isEmployeeView && <BriefingComposerCard />}
       <div className="grid grid-cols-1 lg:grid-cols-[minmax(0,40fr)_minmax(0,35fr)_minmax(0,25fr)] gap-space-md items-start">

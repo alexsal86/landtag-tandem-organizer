@@ -1,6 +1,6 @@
 import { canCompleteBriefing, canGoLive, followUpTaskFromLive, mergeLegacy, saveCompact } from "@/features/appointments/briefing/briefingModel";
 import { supabase } from "@/integrations/supabase/client";
-import { showsInDailyBriefing, canAdvanceBriefing, needsBriefingDecision, suggestBriefingDue } from "@/features/appointments/briefing";
+import { needsBriefingReminder, showsInDailyBriefing, canAdvanceBriefing, needsBriefingDecision, suggestBriefingDue } from "@/features/appointments/briefing";
 import type { TestScenario } from "../types";
 import { SELFTEST_PREFIX } from "../runner";
 import { describeError } from "../verify";
@@ -23,6 +23,23 @@ export const appointmentBriefingLifecycleScenario: TestScenario = {
   writes: [{ table: "appointments", columns: ["title", "tenant_id", "user_id", "start_time", "end_time"] }],
   links: () => [{ label: "Kalender", href: "/calendar" }],
   steps: [
+    {
+      id: "reminder", label: "Briefing-Hinweis: Zuständigkeit, Vorlauf und Montag", kind: "logic",
+      run: async () => {
+        const appointment = { start_time: "2026-11-23T17:00:00+01:00", briefing_status: "assigned", briefing_assignee_id: "employee", briefing_due_at: null };
+        const friday = new Date("2026-11-20T08:00:00+01:00");
+        const checks = [
+          needsBriefingReminder(appointment, "employee", friday),
+          !needsBriefingReminder(appointment, "employee", new Date("2026-11-20T07:59:00+01:00")),
+          !needsBriefingReminder(appointment, "other", friday),
+          needsBriefingReminder({ ...appointment, briefing_assignee_id: null }, "other", friday),
+          !needsBriefingReminder({ ...appointment, briefing_status: "approved" }, "employee", friday),
+          needsBriefingReminder({ ...appointment, start_time: "2026-11-25T18:00:00+01:00", briefing_due_at: "2026-11-24T12:00:00+01:00" }, "employee", new Date("2026-11-23T12:00:00+01:00")),
+          !needsBriefingReminder({ ...appointment, start_time: "2026-11-25T18:00:00+01:00" }, "employee", new Date("2026-11-24T17:59:00+01:00")),
+        ];
+        return { ok: checks.every(Boolean), message: `${checks.filter(Boolean).length}/${checks.length} Hinweisregeln bestanden.` };
+      },
+    },
     {
       id: "rules", label: "Regeln: nur Entscheider geben frei; Frist am Vortag 12:00", kind: "logic",
       run: async () => {

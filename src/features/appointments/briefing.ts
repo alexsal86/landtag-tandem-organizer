@@ -56,3 +56,34 @@ export function showsInDailyBriefing(a: { briefing_status?: string | null; start
   const d = new Date(a.start_time);
   return d.getFullYear() === now.getFullYear() && d.getMonth() === now.getMonth() && d.getDate() === now.getDate();
 }
+
+export interface PendingBriefing {
+  start_time: string;
+  briefing_status: string | null;
+  briefing_assignee_id: string | null;
+  briefing_due_at: string | null;
+}
+
+/** Reminder visibility uses Berlin calendar dates, independent of the browser timezone. */
+export function needsBriefingReminder(appointment: PendingBriefing, userId: string, now = new Date()): boolean {
+  if (!["undecided", "assigned"].includes(asBriefingStatus(appointment.briefing_status))) return false;
+  if (appointment.briefing_assignee_id && appointment.briefing_assignee_id !== userId) return false;
+  const start = Date.parse(appointment.start_time);
+  if (!Number.isFinite(start) || start <= now.getTime()) return false;
+  const preparation = Date.parse(appointment.briefing_due_at ?? appointment.start_time);
+  const threshold = (Number.isFinite(preparation) ? preparation : start) - 86400_000;
+  if (now.getTime() >= threshold) return true;
+
+  const berlin = (date: Date) => {
+    const parts = new Intl.DateTimeFormat("en-CA", {
+      timeZone: "Europe/Berlin", year: "numeric", month: "2-digit",
+      day: "2-digit", hour: "2-digit", minute: "2-digit", hourCycle: "h23",
+    }).formatToParts(date);
+    const value = (key: string) => Number(parts.find(part => part.type === key)?.value);
+    return Date.UTC(value("year"), value("month") - 1, value("day"), value("hour"), value("minute"));
+  };
+  const localStart = new Date(berlin(new Date(start)));
+  if (localStart.getUTCDay() !== 1) return false;
+  const fridayMorning = Date.UTC(localStart.getUTCFullYear(), localStart.getUTCMonth(), localStart.getUTCDate() - 3, 8);
+  return berlin(now) >= fridayMorning;
+}
