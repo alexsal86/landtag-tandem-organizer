@@ -3,7 +3,7 @@ import { useQuickNotesData } from "@/features/quick-notes/useQuickNotesData";
 import { QuickNotesSyncStatus, QuickNotesSyncIndicator } from "@/features/quick-notes/QuickNotesSyncStatus";
 import { useTenant } from "@/hooks/useTenant";
 import { useCallback, useState } from "react";
-import { Button } from "@/components/ui/button";
+import { Button, buttonVariants } from "@/components/ui/button";
 import { Archive, Search, X, CheckSquare, Trash2, Settings2, Pin, ClockAlert, Clock, Circle, Link2, SlidersHorizontal, MoreHorizontal, Share2 } from "lucide-react";
 import { Popover, PopoverContent, PopoverTrigger } from "@/components/ui/popover";
 import { DropdownMenu, DropdownMenuContent, DropdownMenuItem, DropdownMenuTrigger } from "@/components/ui/dropdown-menu";
@@ -162,11 +162,9 @@ export function MyWorkNotesList({ refreshTrigger }: MyWorkNotesListProps) {
               )}
             </div>
             <DropdownMenu>
-              <DropdownMenuTrigger asChild>
-                    <Button variant="ghost" size="icon" className="h-7 w-7" aria-label="Weitere Aktionen" title="Weitere Aktionen">
+              <DropdownMenuTrigger className={cn(buttonVariants({ variant: "ghost", size: "icon" }), "h-7 w-7")} aria-label="Weitere Aktionen" title="Weitere Aktionen">
                       <MoreHorizontal className="h-4 w-4" />
-                    </Button>
-                  </DropdownMenuTrigger>
+                    </DropdownMenuTrigger>
               <DropdownMenuContent align="end" className="w-48">
                 <DropdownMenuItem onClick={() => (selectMode ? exitSelectMode() : setSelectMode(true))}>
                   <CheckSquare className="h-4 w-4 mr-2" />{selectMode ? "Auswahl beenden" : "Auswählen"}
