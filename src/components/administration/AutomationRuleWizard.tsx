@@ -51,6 +51,7 @@ import { AlertDialog, AlertDialogAction, AlertDialogCancel, AlertDialogContent, 
 import { RoutinePreview } from "./automationRule/RoutinePreview";
 import { AnnualRoutineFields } from "./automationRule/AnnualRoutineFields";
 import { CalendarScheduleFields } from "./automationRule/CalendarScheduleFields";
+import { TaskPackageFields } from "./automationRule/TaskPackageFields";
 import { isCalendarSchedule } from "@/features/automation/calendarSchedule";
 
 // Re-exports for backwards compatibility with external consumers
@@ -189,6 +190,7 @@ function ActionCard({
 
       {!ACTION_TYPES.some(option => option.value === action.type) && <p className="text-sm text-muted-foreground">Diese Systemaktion hat zusätzliche Parameter. Sie bleiben beim Speichern unverändert erhalten, solange du den Aktionstyp beibehältst.</p>}
       {action.type === "run_annual_routine" && <AnnualRoutineFields prefix={`actions.${index}`} action={action} form={form} onChange={patch => onChange(index, patch)} />}
+      {action.type === "create_task_package" && <TaskPackageFields action={action} index={index} onChange={patch => onChange(index, patch)} />}
 
       {isNotification && (
         <div className="space-y-3">
@@ -771,7 +773,9 @@ export function AutomationRuleWizard({
             {form.triggerType === "manual" && (
               <div className="rounded-md border border-dashed p-3 text-sm text-muted-foreground">
                 <Zap className="inline h-4 w-4 mr-1" />
-                Manuelle Regeln werden per Button in der Regel-Liste ausgelöst.
+                {form.actions.some(action => action.type === "create_task_package")
+                  ? "Dieses Paket startest du hier oder unter „Meine Arbeit → Vorlagen“. Derselbe Ablauf kann später auch zeit- oder datengesteuert ausgelöst werden."
+                  : "Manuelle Regeln werden per Button in der Regel-Liste ausgelöst."}
               </div>
             )}
 

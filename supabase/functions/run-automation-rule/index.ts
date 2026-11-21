@@ -5,13 +5,14 @@ import { Resend } from "npm:resend@2.0.0";
 import { evaluateAutomationTree, type AutomationConditionGroup as ConditionGroup } from "../_shared/automationConditions.ts";
 import { withSafeHandler } from "../_shared/security.ts";
 import { requireTenantAccess } from "../_shared/tenant-access.ts";
+import { isMemberTaskPackage } from "./taskPackage.ts";
 const CORS_HEADERS = {
   "Access-Control-Allow-Origin": "*",
   "Access-Control-Allow-Headers": "authorization, x-client-info, apikey, content-type",
 };
 
 type Action = {
-  type: "create_notification" | "update_record_status" | "create_task" | "send_push_notification" | "send_email_template" | "create_approval_request" | "invoke_edge_function" | "run_annual_routine";
+  type: "create_notification" | "update_record_status" | "create_task" | "create_task_package" | "send_push_notification" | "send_email_template" | "create_approval_request" | "invoke_edge_function" | "run_annual_routine";
   payload?: Record<string, unknown>;
 };
 
@@ -169,7 +170,7 @@ serve(withSafeHandler("run-automation-rule", async (req) => {
 
     let ruleQuery = supabaseAdmin
       .from("automation_rules")
-      .select("id, tenant_id, name, module, conditions, actions, enabled, created_by")
+      .select("id, tenant_id, name, module, trigger_type, conditions, actions, enabled, created_by")
       .eq("id", ruleId);
     if (tenantAccess && "tenantId" in tenantAccess) ruleQuery = ruleQuery.eq("tenant_id", tenantAccess.tenantId);
     const { data: rule, error: ruleError } = await ruleQuery.maybeSingle();
@@ -181,7 +182,11 @@ serve(withSafeHandler("run-automation-rule", async (req) => {
       });
     }
 
-    if (!isInternalCall) {
+    // A single manual package action is safe for every active office member.
+    // Mixed or privileged rules still require tenant administrators.
+    const memberTaskPackage = isMemberTaskPackage(rule, isInternalCall);
+
+    if (!isInternalCall && !memberTaskPackage) {
       if (!user) return new Response(JSON.stringify({ error: "Unauthorized" }), { status: 401, headers: CORS_HEADERS });
       const { data: adminAllowed, error: adminError } = await supabaseAdmin.rpc("is_tenant_admin", {
         _user_id: user.id,
@@ -196,7 +201,7 @@ serve(withSafeHandler("run-automation-rule", async (req) => {
       }
     }
 
-    if (!isInternalCall) {
+    if (!isInternalCall && !memberTaskPackage) {
       if (!user) return new Response(JSON.stringify({ error: "Unauthorized" }), { status: 401, headers: CORS_HEADERS });
       const { data: allowed, error } = await supabaseAdmin.rpc("is_tenant_action_allowed", {
         _user_id: user.id, _tenant_id: rule.tenant_id, _action: "workflow.execute_manual",
@@ -388,6 +393,7 @@ serve(withSafeHandler("run-automation-rule", async (req) => {
 
     let stepOrder = 2;
     for (const action of actions) {
+      let actionResult: Record<string, unknown> = {};
       if (dryRun) {
         await supabaseAdmin.from("automation_rule_run_steps").insert({
           run_id: run.id,
@@ -574,6 +580,19 @@ serve(withSafeHandler("run-automation-rule", async (req) => {
         const { data: routineResult, error: routineError } = await supabaseAdmin.rpc("execute_annual_automation_routine", { _rule_id: rule.id, _annual_task_id: annualTaskId, _year: year });
         if (routineError) throw routineError;
         timeline.push({ type: "annual_routine", annual_task_id: annualTaskId, result: routineResult, at: new Date().toISOString() });
+      }
+
+      if (action.type === "create_task_package") {
+        const actorId = user?.id ?? (typeof sourcePayload.owner_id === "string" ? sourcePayload.owner_id : rule.created_by);
+        const startDate = typeof sourcePayload.start_date === "string" ? sourcePayload.start_date : new Date().toISOString().slice(0, 10);
+        const { data: parentTaskId, error: packageError } = await supabaseAdmin.rpc("execute_task_package", {
+          _rule_id: rule.id,
+          _actor_user_id: actorId,
+          _start_date: startDate,
+        });
+        if (packageError) throw packageError;
+        actionResult = { parent_task_id: parentTaskId };
+        timeline.push({ type: "task_package", parent_task_id: parentTaskId, start_date: startDate, at: new Date().toISOString() });
       }
 
       if (action.type === "create_task") {
@@ -817,6 +836,7 @@ serve(withSafeHandler("run-automation-rule", async (req) => {
           entity_id: entityId,
           action_type: action.type,
           dry_run: dryRun,
+          ...actionResult,
         },
       });
       stepOrder += 1;

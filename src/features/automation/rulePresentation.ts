@@ -14,7 +14,8 @@ export function matchesRule(rule: AutomationRuleRecordView, query: string, filte
 }
 export const ruleTriggerLabel = (type: string) => ({ schedule: 'Zeitgesteuert', manual: 'Manuell', record_changed: 'Bei Datenänderung', webhook: 'Webhook' })[type] ?? type;
 export function ruleActionLabel(actions: ReadonlyArray<{ type: string; payload?: Record<string, string> }>) {
-  if (actions.length === 1 && actions[0].type === 'run_annual_routine') return actions[0].payload?.system_function ? 'Systemaktion' : 'Aufgabenpaket';
+  if (actions.length === 1 && actions[0].type === 'create_task_package') return 'Aufgabenpaket';
+  if (actions.length === 1 && actions[0].type === 'run_annual_routine') return actions[0].payload?.system_function ? 'Systemaktion' : 'Jahresroutine';
   if (actions.length > 1) return `${actions.length} Aktionen`;
   return ACTION_TYPES.find(item => item.value === actions[0]?.type)?.label ?? 'Keine Aktion';
 }

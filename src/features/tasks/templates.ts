@@ -37,34 +37,80 @@ export interface TaskTemplate {
   isActive?: boolean;
 }
 
-export interface TaskTemplateRecord {
+export interface AutomationRuleTemplateRecord {
   id: string;
-  title: string;
-  description: string;
-  first_step: string;
-  due_in_days: number;
-  subtasks: unknown;
-  is_active: boolean;
+  name: string;
+  description: string | null;
+  module: string;
+  trigger_type: string;
+  enabled: boolean;
+  actions: unknown;
 }
 
-export function taskTemplateFromRecord(record: TaskTemplateRecord): TaskTemplate {
-  const rows = Array.isArray(record.subtasks) ? record.subtasks : [];
-  return {
+function normalizeTemplateSubtasks(value: unknown): TemplateSubtask[] {
+  const rows = Array.isArray(value) ? value : [];
+  return rows.flatMap((entry) => {
+    if (!entry || typeof entry !== "object") return [];
+    const row = entry as Record<string, unknown>;
+    return typeof row.title === "string" && Number.isInteger(row.offsetDays)
+      ? [{ title: row.title, offsetDays: Number(row.offsetDays) }]
+      : [];
+  });
+}
+
+/** A manually available template is a regular automation rule with one safe package action. */
+export function taskTemplateFromAutomationRule(record: AutomationRuleTemplateRecord): TaskTemplate | null {
+  if (record.module !== "tasks" || record.trigger_type !== "manual" || !record.enabled || !Array.isArray(record.actions) || record.actions.length !== 1) return null;
+  const action = record.actions[0] as Record<string, unknown>;
+  if (action.type !== "create_task_package" || !action.payload || typeof action.payload !== "object") return null;
+  const payload = action.payload as Record<string, unknown>;
+  let rawSubtasks: unknown = [];
+  try {
+    rawSubtasks = typeof payload.subtasks === "string" ? JSON.parse(payload.subtasks || "[]") : payload.subtasks;
+  } catch {
+    return null;
+  }
+  const template: TaskTemplate = {
     key: record.id,
     id: record.id,
-    title: record.title,
-    description: record.description,
-    firstStep: record.first_step,
-    dueInDays: record.due_in_days,
-    isActive: record.is_active,
-    subtasks: rows.flatMap((value) => {
-      if (!value || typeof value !== "object") return [];
-      const row = value as Record<string, unknown>;
-      return typeof row.title === "string" && Number.isInteger(row.offsetDays)
-        ? [{ title: row.title, offsetDays: Number(row.offsetDays) }]
-        : [];
-    }),
+    title: typeof payload.title === "string" ? payload.title : record.name,
+    description: typeof payload.description === "string" ? payload.description : record.description ?? "",
+    firstStep: typeof payload.first_step === "string" ? payload.first_step : "",
+    dueInDays: Number(payload.due_in_days),
+    isActive: record.enabled,
+    subtasks: normalizeTemplateSubtasks(rawSubtasks),
   };
+  return validateTaskTemplate(template) ? null : template;
+}
+
+export function taskPackageStepsToText(subtasks: TemplateSubtask[]): string {
+  return subtasks.map((step) => `${step.offsetDays} | ${step.title}`).join("\n");
+}
+
+export function taskPackageStepsFromText(text: string): TemplateSubtask[] {
+  if (!text.trim()) return [];
+  const steps: TemplateSubtask[] = [];
+  for (const line of text.split("\n").filter((entry) => entry.trim())) {
+    const separator = line.indexOf("|");
+    if (separator < 0) return [];
+    const offsetDays = Number(line.slice(0, separator).trim());
+    const title = line.slice(separator + 1).trim();
+    if (!Number.isInteger(offsetDays) || !title) return [];
+    steps.push({ title, offsetDays });
+  }
+  return steps;
+}
+
+export function validateTaskPackageStepsText(text: string): string | null {
+  const lines = text.split("\n").filter((entry) => entry.trim());
+  if (lines.length > 30) return "Höchstens 30 Unteraufgaben sind erlaubt.";
+  const valid = lines.every((line) => {
+    const separator = line.indexOf("|");
+    if (separator < 0) return false;
+    const days = line.slice(0, separator).trim();
+    return /^\d{1,3}$/.test(days) && Number(days) <= 365 && line.slice(separator + 1).trim().length >= 2;
+  });
+  return valid ? null : "Jede Zeile benötigt das Format „Tage | Unteraufgabe“ mit 0 bis 365 Tagen.";
 }
 
 export function validateTaskTemplate(template: Pick<TaskTemplate, "title" | "firstStep" | "dueInDays" | "subtasks">): string | null {

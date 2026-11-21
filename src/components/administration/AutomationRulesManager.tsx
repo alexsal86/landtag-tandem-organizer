@@ -76,9 +76,21 @@ import { useAutomationAdminMutations, useAutomationMembershipRole, useAutomation
 import type { AutomationRuleRecordView as RuleRow, AutomationRunRecordView as RunRow } from "./automationShared";
 import { notify } from "@/lib/notify";
 import { AnnualRoutinesOverview } from "./AnnualRoutinesOverview";
-import { TaskPackageManager } from "./TaskPackageManager";
 import { annualRoutineAction, validateAnnualRoutine } from "@/features/automation/annualRoutines";
 import { isCalendarSchedule, nextCalendarOccurrence, validateCalendarSchedule } from "@/features/automation/calendarSchedule";
+import { taskPackageStepsFromText, taskPackageStepsToText, type TemplateSubtask } from "@/features/tasks/templates";
+
+function parseStoredPackageSteps(value: unknown): TemplateSubtask[] {
+  try {
+    const parsed = typeof value === "string" ? JSON.parse(value || "[]") : value;
+    if (!Array.isArray(parsed)) return [];
+    return parsed.flatMap(entry => {
+      if (!entry || typeof entry !== "object") return [];
+      const row = entry as Record<string, unknown>;
+      return typeof row.title === "string" && Number.isInteger(row.offsetDays) ? [{ title: row.title, offsetDays: Number(row.offsetDays) }] : [];
+    });
+  } catch { return []; }
+}
 
 const WorkflowEngineManager = lazy(() => import("./WorkflowEngineManager").then(module => ({ default: module.WorkflowEngineManager })));
 
@@ -88,7 +100,7 @@ export function AutomationRulesManager() {
   const tab = automationTabFromParams(new URLSearchParams(location.search));
   const changeTab = (value: string) => {
     const params = new URLSearchParams(location.search);
-    params.set("automationTab", value === "history" || value === "dispatcher" || value === "annual" || value === "packages" ? value : "rules");
+    params.set("automationTab", value === "history" || value === "dispatcher" || value === "annual" ? value : "rules");
     navigate({ pathname: location.pathname, search: params.toString() });
   };
 
@@ -107,7 +119,6 @@ export function AutomationRulesManager() {
         <TabsList aria-label="Regeln und Workflows" className={styles.tabs}>
           <TabsTrigger value="rules" className={styles.tab}>Regeln</TabsTrigger>
           <TabsTrigger value="annual" className={styles.tab}>Jahresroutinen</TabsTrigger>
-          <TabsTrigger value="packages" className={styles.tab}>Aufgabenpakete</TabsTrigger>
           <TabsTrigger value="history" className={styles.tab}>Ausführungshistorie</TabsTrigger>
           <TabsTrigger value="dispatcher" className={styles.tab}>Dispatcher</TabsTrigger>
         </TabsList>
@@ -117,7 +128,6 @@ export function AutomationRulesManager() {
       <TabsContent value="rules"><AutomationRulesContent view="rules" onShowHistory={showHistory} /></TabsContent>
       <TabsContent value="history"><AutomationRulesContent view="history" onShowHistory={showHistory} /></TabsContent>
       <TabsContent value="annual"><AutomationRulesContent view="annual" onShowHistory={showHistory} /></TabsContent>
-      <TabsContent value="packages"><TaskPackageManager /></TabsContent>
       <TabsContent value="dispatcher">
         <Suspense fallback={<LoadingState variant="list" rows={3} />}><WorkflowEngineManager /></Suspense>
       </TabsContent>
@@ -360,6 +370,9 @@ function AutomationRulesContent({ view, onShowHistory }: { view: "rules" | "hist
       taskCategory: (a.payload?.category as string) || "personal",
       taskDueDate: (a.payload?.due_date as string) || "",
       taskAssignees: (a.payload?.assigned_to as string) || "",
+      packageFirstStep: (a.payload?.first_step as string) || "",
+      packageDueInDays: (a.payload?.due_in_days as string) || "7",
+      packageSubtasks: a.type === "create_task_package" ? taskPackageStepsToText(parseStoredPackageSteps(a.payload?.subtasks)) : "",
       table: (a.payload?.table as string) || "tasks",
       recordId: (a.payload?.record_id as string) || "",
       status: (a.payload?.status as string) || "",
@@ -458,6 +471,13 @@ function AutomationRulesContent({ view, onShowHistory }: { view: "rules" | "hist
           category: a.taskCategory,
           due_date: a.taskDueDate,
           assigned_to: a.taskAssignees,
+          ...(a.type === "create_task_package" ? {
+            title: form.name.trim(),
+            description: form.description.trim(),
+            first_step: a.packageFirstStep,
+            due_in_days: a.packageDueInDays,
+            subtasks: JSON.stringify(taskPackageStepsFromText(a.packageSubtasks)),
+          } : {}),
           table: a.table,
           record_id: a.recordId,
           status: a.status,

@@ -1,10 +1,10 @@
 # Roadmap Aufgaben
 
 # Aufgabenpakete im Automatisierungs-Hub (21.11.2026)
-- [x] Bürospezifische Paketverwaltung mit Rollenrechten, Standardpaketen und atomarer Ausführung in der Datenbank angelegt.
-- [x] Reiter „Aufgabenpakete“, Editor und Anwendung im Aufgaben-Vorlagendialog verbunden.
-- [x] Fristen-/Unteraufgabenregeln und Navigation: 27 gezielte Tests bestanden; keine neuen Buildfehler aus dieser Änderung.
-- [x] Gesamtbuild nach Bereinigung der älteren Typfehler in Kontakten, Jour fixe und Wahlforschung fehlerfrei.
+- [x] Neun bestehende Pakete einschließlich Fristen und Unteraufgaben als manuelle Regeln migriert; separate Pakettabelle und Spezialfunktionen entfernt.
+- [x] Paketaktion im gemeinsamen Regel-Editor, Aufgaben-Vorlagendialog und Ausführer verbunden.
+- [x] Alte Paket-Links auf die Regelübersicht normalisiert und getrennten Paket-Reiter entfernt.
+- [x] Umwandlung, Validierung, Rechte und Navigation: 70 Frontend-/Selbsttests, 3 Edge-Rechte-Tests und Vorschau-Build bestanden.
 - [ ] Angemeldeten Gesamtablauf prüfen — externe Supabase-Testsitzung nicht verfügbar.
 
 # Super-Admin: Wahldaten- und Mandatswerkbank (16.11.2026)

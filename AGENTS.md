@@ -18,7 +18,7 @@
 - The letter editor's default "page" mode renders the Lexical editor inside LetterEditorCanvas (inlineEditor prop) on one continuous A4 sheet with page-break markers; the split view stays as fallback because a contenteditable cannot be split across separate page DOM nodes.
 - Short briefing, 7-phase dossier and live briefing share one preparation_data record via pure converters in src/features/appointments/briefing/briefingModel.ts; live/debrief follow-up tasks go only through create_briefing_follow_up_task so they carry stafette fields and timeline.
 - Annual routines are actions in automation_rules, synchronized transactionally to annual_tasks; execute_annual_automation_routine locks the yearly completion before system effects or the shared Stafette processor, so manual and scheduled runs cannot duplicate work and existing completion history survives.
-- Automation administration uses one rules/routines/history workspace and RSS monitoring with URL-controlled tabs; legacy annual/engine/RSS links normalize centrally so bookmarks survive while annual actions share the rule executor.
+- Automation administration unifies rules, annual routines, task packages, RSS and history with normalized legacy links; create_task_package actions share run-automation-rule for manual and triggered execution.
 - Calendar leave requests are scoped through tenant profile user IDs and names are joined client-side, because the leave table has neither tenant_id nor a profiles foreign key.
 - CommonJS-only packages (e.g. react-big-calendar add-ons) are imported as namespaces and unwrapped via src/lib/cjsInterop.ts, and pre-bundled in optimizeDeps, because Vite can deliver a wrapped default export that crashes at runtime.
 

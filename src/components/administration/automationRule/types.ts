@@ -28,6 +28,9 @@ export type ActionItem = OfficeRoutineFields & {
   taskCategory: string;
   taskDueDate: string;
   taskAssignees: string;
+  packageFirstStep: string;
+  packageDueInDays: string;
+  packageSubtasks: string;
   table: string;
   recordId: string;
   status: string;

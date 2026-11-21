@@ -1,5 +1,6 @@
 import { OFFICE_ROUTINE_TEMPLATES } from '@/features/automation/officeRoutineTemplates';
 import type { ActionItem, ConditionItem, ConditionGroup, WizardForm } from "./types";
+import { TASK_TEMPLATES, taskPackageStepsToText } from "@/features/tasks/templates";
 
 export const MODULE_OPTIONS = [
   { value: "tasks", label: "Aufgaben" },
@@ -21,6 +22,7 @@ export const CONDITION_OPERATORS = [
 export const ACTION_TYPES = [
   { value: "create_notification", label: "Benachrichtigung erzeugen" },
   { value: "create_task", label: "Aufgabe erzeugen" },
+  { value: "create_task_package", label: "Aufgabenpaket ausführen" },
   { value: "run_annual_routine", label: "Jahresroutine ausführen" },
   { value: "create_approval_request", label: "Freigabe/Approval anfordern" },
   { value: "update_record_status", label: "Status aktualisieren" },
@@ -84,7 +86,7 @@ export { AUTOMATION_FIELD_SPECS as FIELD_SPEC_BY_MODULE } from "@/features/autom
 // Used by templates before full DEFAULT_ACTION is defined
 const DEFAULT_ACTION_INIT = {
   targetUserId: "", title: "", message: "", taskPriority: "medium", taskCategory: "personal",
-  taskDueDate: "", taskAssignees: "", table: "tasks", recordId: "", status: "",
+  taskDueDate: "", taskAssignees: "", packageFirstStep: "", packageDueInDays: "7", packageSubtasks: "", table: "tasks", recordId: "", status: "",
   emailTemplateId: "", emailRecipient: "", emailRecipientName: "",
   approvalPolicy: "single", approvalDueInHours: "24", approvalMinimumApprovers: "1",
 };
@@ -108,6 +110,17 @@ const TEMPLATE_CATEGORY_OVERRIDES: Record<string, typeof ROUTINE_CATEGORIES[numb
 };
 
 export const RULE_TEMPLATES = [
+  ...TASK_TEMPLATES.map(template => ({
+    id: `task-package-${template.key}`,
+    name: template.title,
+    description: template.description,
+    module: "tasks",
+    triggerType: "manual",
+    triggerField: "status",
+    triggerValue: "",
+    conditions: [],
+    actions: [{ ...DEFAULT_ACTION_INIT, type: "create_task_package", packageFirstStep: template.firstStep, packageDueInDays: String(template.dueInDays), packageSubtasks: taskPackageStepsToText(template.subtasks) }],
+  })),
   ...OFFICE_ROUTINE_TEMPLATES.map(t => ({ id:t.id,name:t.name,description:t.description,module:"tasks",triggerType:"schedule",triggerField:"scheduled_date",triggerValue:"",schedule:{schedule_kind:"annual",month:t.month,day:t.day,hour:"9",month_end:"false",timezone:"Europe/Berlin",minutes_interval:"60"},conditions:[],actions:[{...DEFAULT_ACTION_INIT,type:"run_annual_routine",title:t.name,message:t.description,officeTemplateId:t.id,routineCategory:"admin",routineDeadlineMonth:t.deadlineMonth,routineDeadlineDay:t.deadlineDay,routineSteps:t.steps,routineRequiresConfirmation:t.confirmAnnually,routineConfirmedYear:""}] })),
   { id:"annual-privacy",name:"Datenschutz-Verzeichnis prüfen",description:"Datenschutz-Verzeichnis und Zugriffsrechte prüfen.",module:"tasks",triggerType:"schedule",triggerField:"scheduled_date",triggerValue:"",schedule:{schedule_kind:"annual",month:"3",day:"1",hour:"9",month_end:"false",timezone:"Europe/Berlin",minutes_interval:"60"},conditions:[],actions:[{...DEFAULT_ACTION_INIT,type:"run_annual_routine",title:"Datenschutz-Verzeichnis prüfen"}] },
   ...[
@@ -273,6 +286,9 @@ export const DEFAULT_ACTION: ActionItem = {
   taskCategory: "personal",
   taskDueDate: "",
   taskAssignees: "",
+  packageFirstStep: "",
+  packageDueInDays: "7",
+  packageSubtasks: "",
   table: "tasks",
   recordId: "",
   status: "",

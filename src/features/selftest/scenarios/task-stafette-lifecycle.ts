@@ -1,5 +1,5 @@
 import { canNudge, checklistEvents, isNudgeActive, shiftDay, isReminderDue, groupByZone, isOnResubmission, stafetteEvents, taskZone, type StafetteTask } from "@/features/tasks/stafette";
-import { TASK_TEMPLATES, buildTemplateRows, nextRecurrenceDate, subtaskProgress, validateTaskTemplate } from "@/features/tasks/templates";
+import { TASK_TEMPLATES, buildTemplateRows, nextRecurrenceDate, subtaskProgress, taskTemplateFromAutomationRule, validateTaskTemplate } from "@/features/tasks/templates";
 import type { TestScenario } from "../types";
 
 const NOW = new Date(2026, 10, 7, 12);
@@ -94,6 +94,22 @@ export const taskStafetteLifecycleScenario: TestScenario = {
           && validateTaskTemplate({ ...template, dueInDays: 366 }) !== null
           && validateTaskTemplate({ ...template, subtasks: [{ title: "", offsetDays: 1 }] }) !== null;
         return { ok, message: ok ? "Paketregeln korrekt." : "Paketvalidierung weicht ab." };
+      },
+    },
+    {
+      id: "template-automation-rule", label: "Aufgabenpaket ist eine manuelle Automatisierungsregel", kind: "logic",
+      run: async () => {
+        const template = TASK_TEMPLATES[0];
+        const converted = taskTemplateFromAutomationRule({
+          id: "rule-1", name: template.title, description: template.description, module: "tasks", trigger_type: "manual", enabled: true,
+          actions: [{ type: "create_task_package", payload: { title: template.title, description: template.description, first_step: template.firstStep, due_in_days: String(template.dueInDays), subtasks: JSON.stringify(template.subtasks) } }],
+        });
+        const scheduled = taskTemplateFromAutomationRule({
+          id: "rule-2", name: template.title, description: template.description, module: "tasks", trigger_type: "schedule", enabled: true,
+          actions: [{ type: "create_task_package", payload: { first_step: template.firstStep, due_in_days: String(template.dueInDays), subtasks: "[]" } }],
+        });
+        const ok = converted?.subtasks.length === template.subtasks.length && scheduled === null;
+        return { ok, message: ok ? "Manuelle Paketregel korrekt erkannt; andere Auslöser bleiben der Administration vorbehalten." : "Regel-Paket-Zuordnung weicht ab." };
       },
     },
     {

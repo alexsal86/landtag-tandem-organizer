@@ -4,6 +4,7 @@ import { isCalendarSchedule, validateCalendarSchedule } from '@/features/automat
 import { SYSTEM_ROUTINES, validateAnnualRoutine } from '@/features/automation/annualRoutines';
 import { routineStepKinds } from '@/features/automation/officeRoutineTemplates';
 import { draftStepSettings, validateRoutineWorkflow } from '@/features/automation/routineWorkflow';
+import { validateTaskPackageStepsText } from '@/features/tasks/templates';
 
 export interface RuleIssue { step: 0 | 1 | 2 | 3; field: string; level: 'error' | 'warning'; message: string }
 export function parseEditorSample(value: string): { data: Record<string,unknown> | null; error: string | null } {
@@ -66,6 +67,15 @@ export function validateRuleEditor(form: WizardForm): RuleIssue[] {
     if (['create_notification','send_push_notification','create_approval_request'].includes(action.type)) required(2,`${prefix}.targetUserId`,action.targetUserId,'Bitte eine empfangende oder freigebende Person auswählen.');
     if (['create_task','run_annual_routine'].includes(action.type)) required(2,`${prefix}.title`,action.title,'Bitte einen Titel eingeben.');
     if (action.type === 'create_task' && action.taskDueDate.trim() && !isAutomationDate(action.taskDueDate)) add(2,`${prefix}.taskDueDate`,'Bitte ein Datum als JJJJ-MM-TT oder einen ISO-Zeitstempel mit Zeitzone eingeben.');
+    if (action.type === 'create_task_package') {
+      required(2,`${prefix}.packageFirstStep`,action.packageFirstStep,'Bitte den ersten Stafetten-Schritt eingeben.');
+      const days = Number(action.packageDueInDays);
+      if (!Number.isInteger(days) || days < 0 || days > 365) add(2,`${prefix}.packageDueInDays`,'Bitte eine Gesamtfrist zwischen 0 und 365 Tagen eingeben.');
+      const stepsError = validateTaskPackageStepsText(action.packageSubtasks);
+      if (stepsError) add(2,`${prefix}.packageSubtasks`,stepsError);
+      if (form.module !== 'tasks') add(0,'module','Aufgabenpakete gehören zum Fachbereich Aufgaben.');
+      if (form.actions.length > 1) add(2,`${prefix}.type`,'Ein Aufgabenpaket ist eine eigenständige Regelaktion. Bitte weitere Aktionen in einer separaten Regel abbilden.');
+    }
     if (action.type === 'update_record_status') {
       required(2,`${prefix}.table`,action.table,'Bitte die Zieltabelle auswählen.');
       required(2,`${prefix}.recordId`,action.recordId,'Bitte die Datensatz-ID eingeben.');
