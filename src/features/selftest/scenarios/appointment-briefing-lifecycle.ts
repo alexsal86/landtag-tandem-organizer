@@ -1,4 +1,4 @@
-import { isOlderOfficeFeedback, needsOfficeFeedback, officeReminderTime } from "@/features/appointments/briefing/officeFeedback";
+import { isOlderOfficeFeedback, needsOfficeFeedback, officeReminderTime, readOfficeSnooze } from "@/features/appointments/briefing/officeFeedback";
 import { appointmentSummary, pendingSummary } from "@/utils/dashboard/daySummary";
 import { canCompleteBriefing, canGoLive, followUpTaskFromLive, mergeLegacy, saveCompact } from "@/features/appointments/briefing/briefingModel";
 import { supabase } from "@/integrations/supabase/client";
@@ -30,6 +30,10 @@ export const appointmentBriefingLifecycleScenario: TestScenario = {
       run: async () => {
         const now = new Date("2026-11-21T12:00:00+01:00");
         const checks = [
+          readOfficeSnooze("2026-11-21T17:00:00.000Z")?.count === 1,
+          readOfficeSnooze({ until: "2026-11-21T17:00:00.000Z", count: 2 })?.count === 2,
+          readOfficeSnooze({ until: "", count: 2 })?.until === "",
+          readOfficeSnooze(undefined) === null,
           needsOfficeFeedback(null),
           needsOfficeFeedback({ feedback_status: "pending", notes: null }),
           !needsOfficeFeedback({ feedback_status: "skipped", notes: null }),

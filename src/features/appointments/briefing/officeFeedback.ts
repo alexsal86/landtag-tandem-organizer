@@ -36,3 +36,15 @@ export function isOlderOfficeFeedback(start: string, now = new Date()): boolean 
   };
   return day(new Date(start)) < day(now);
 }
+
+export interface OfficeSnooze {
+  until: string;
+  count: number;
+}
+
+/** Keep reminders saved before the counter was introduced readable. */
+export function readOfficeSnooze(value: string | OfficeSnooze | undefined): OfficeSnooze | null {
+  if (typeof value === "string") return { until: value, count: 1 };
+  if (!value || typeof value.until !== "string") return null;
+  return { until: value.until, count: Number.isFinite(value.count) ? Math.max(0, Math.floor(value.count)) : 0 };
+}

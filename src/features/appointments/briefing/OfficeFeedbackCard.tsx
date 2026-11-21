@@ -1,6 +1,6 @@
 import { useEffect, useMemo, useRef, useState } from "react";
 import { useQueryClient } from "@tanstack/react-query";
-import { Mic, Square } from "lucide-react";
+import { Clock, Mic, Square } from "lucide-react";
 import { useAppointmentFeedback, type AppointmentWithFeedback } from "@/hooks/useAppointmentFeedback";
 import { useUserPreference } from "@/hooks/useUserPreference";
 import { useAuth } from "@/hooks/useAuth";
@@ -8,7 +8,7 @@ import { useTenant } from "@/hooks/useTenant";
 import { supabase } from "@/integrations/supabase/client";
 import { WebSpeechToTextAdapter, type SpeechToTextState } from "@/lib/speechToTextAdapter";
 import { notify } from "@/lib/notify";
-import { isOlderOfficeFeedback, needsOfficeFeedback, officeReminderTime, type ReminderChoice } from "./officeFeedback";
+import { isOlderOfficeFeedback, needsOfficeFeedback, officeReminderTime, readOfficeSnooze, type OfficeSnooze, type ReminderChoice } from "./officeFeedback";
 
 const green = "bg-[#55ad21] text-white hover:bg-[#4c9c1e]";
 const eventKey = (event: AppointmentWithFeedback) => event.event_type + ":" + event.id;
@@ -28,7 +28,7 @@ function OfficeFeedbackForm() {
   const { currentTenant } = useTenant();
   const feedback = useAppointmentFeedback();
   const qc = useQueryClient();
-  const [snoozes, setSnoozes] = useUserPreference<Record<string, string>>(
+  const [snoozes, setSnoozes] = useUserPreference<Record<string, string | OfficeSnooze>>(
     `office-feedback-snoozes:${currentTenant?.id}:${user?.id}`, {},
   );
   const [now, setNow] = useState(() => new Date());
@@ -70,11 +70,13 @@ function OfficeFeedbackForm() {
 
   const pending = feedback.appointments.filter(event => needsOfficeFeedback(event.feedback)
     && !(feedback.settings?.auto_skip_internal && event.category === "intern"));
-  const visible = pending.filter(event => Date.parse(snoozes[eventKey(event)] ?? "") <= now.getTime()
-    || !Number.isFinite(Date.parse(snoozes[eventKey(event)] ?? "")));
-  const current = visible.find(event => eventKey(event) === selected) ?? visible[0];
+  const isDeferred = (event: AppointmentWithFeedback) =>
+    Date.parse(readOfficeSnooze(snoozes[eventKey(event)])?.until ?? "") > now.getTime();
+  const visible = pending.filter(event => !isDeferred(event));
+  const current = pending.find(event => eventKey(event) === selected) ?? visible[0];
   const key = current ? eventKey(current) : "";
   const text = drafts[key] ?? "";
+  const deferred = pending.filter(event => isDeferred(event) && eventKey(event) !== key);
   const others = visible.filter(event => eventKey(event) !== key);
   const older = others.filter(event => isOlderOfficeFeedback(event.start_time, now));
   const shown = expanded ? others : others.slice(0, 2);
@@ -136,14 +138,28 @@ function OfficeFeedbackForm() {
 
   const choose = async (event: AppointmentWithFeedback) => {
     if (recording && !(await speech.stop())) return;
-    setSelected(eventKey(event));
+    const target = eventKey(event);
+    setSnoozes(previous => {
+      const saved = readOfficeSnooze(previous[target]);
+      return saved ? { ...previous, [target]: { ...saved, until: "" } } : previous;
+    });
+    setSelected(target);
     setMode("write");
+  };
+
+  const changeReminder = async (event: AppointmentWithFeedback) => {
+    if (recording && !(await speech.stop())) return;
+    setSelected(eventKey(event));
+    setMode("remind");
   };
 
   const remind = async (choice: ReminderChoice) => {
     if (!current || busy) return;
     if (recording && !(await speech.stop())) return;
-    setSnoozes(previous => ({ ...previous, [key]: officeReminderTime(choice) }));
+    setSnoozes(previous => ({
+      ...previous,
+      [key]: { until: officeReminderTime(choice), count: (readOfficeSnooze(previous[key])?.count ?? 0) + 1 },
+    }));
     setSelected(null);
     setMode("write");
   };
@@ -163,10 +179,10 @@ function OfficeFeedbackForm() {
       </header>
       {feedback.isError ? <p role="alert" className="text-sm text-destructive">Terminrückmeldungen konnten nicht geladen werden.</p>
         : feedback.isLoading ? <p role="status" className="text-sm text-muted-foreground">Termine werden geladen…</p>
-        : !current ? (
+        : !current ? pending.length ? null : (
           <div role="status" className="py-6 text-center">
-            <p className="text-lg text-[#55ad21]">{pending.length ? "Erinnerung vorgemerkt" : "Abgeschlossen ✓"}</p>
-            <p className="mt-1 text-sm text-muted-foreground">{pending.length ? "Wir erinnern dich zur gewählten Zeit." : completed === "sent" ? "Deine Rückmeldung liegt dem Büro vor." : completed === "empty" ? "Nichts zu berichten." : "Keine offenen Terminrückmeldungen."}</p>
+            <p className="text-lg text-[#55ad21]">Abgeschlossen ✓</p>
+            <p className="mt-1 text-sm text-muted-foreground">{completed === "sent" ? "Deine Rückmeldung liegt dem Büro vor." : completed === "empty" ? "Nichts zu berichten." : "Keine offenen Terminrückmeldungen."}</p>
           </div>
         ) : mode === "remind" ? (
           <>
@@ -175,7 +191,7 @@ function OfficeFeedbackForm() {
               {([["hour", "In 1 Stunde"], ["evening", isOlderOfficeFeedback(now.toISOString(), new Date(officeReminderTime("evening", now))) ? "Morgen Abend" : "Heute Abend"], ["morning", "Morgen früh"]] as const).map(([choice, label]) =>
                 <button key={choice} type="button" className="rounded-2xl bg-muted px-4 py-3 text-sm hover:bg-muted/70" onClick={() => void remind(choice)}>{label}</button>)}
             </div>
-            <button type="button" className="mt-4 rounded-full bg-muted px-4 py-2 text-sm" onClick={() => setMode("write")}>Zurück</button>
+            <button type="button" className="mt-4 rounded-full bg-muted px-4 py-2 text-sm" onClick={() => { if (current && isDeferred(current)) setSelected(null); setMode("write"); }}>Zurück</button>
           </>
         ) : (
           <>
@@ -220,9 +236,45 @@ function OfficeFeedbackForm() {
                 {older.length > 0 && <button type="button" disabled={busy || recording} className="ml-auto text-right hover:text-foreground" onClick={() => void finish(older)}>Alle älteren ohne Bericht abschließen</button>}
               </div>
             </div>}
-            {others.length > 0 && <p className="mt-4 text-xs text-muted-foreground">Nach 2 Tagen wird daraus eine Aufgabe für das Büro.</p>}
+
           </>
         )}
+      {!feedback.isLoading && !feedback.isError && deferred.length > 0 && (
+        <div className={current ? "mt-4 border-t" : ""}>
+          {deferred.map(event => {
+            const reminder = readOfficeSnooze(snoozes[eventKey(event)])!;
+            const until = new Date(reminder.until);
+            const minutes = Math.max(1, Math.ceil((until.getTime() - now.getTime()) / 60_000));
+            const relative = new Intl.RelativeTimeFormat("de-DE").format(
+              minutes < 60 ? minutes : Math.ceil(minutes / 60), minutes < 60 ? "minute" : "hour",
+            );
+            return (
+              <div key={eventKey(event)} className="flex flex-wrap items-center gap-3 py-3 text-sm">
+                <span className="flex h-9 w-9 shrink-0 items-center justify-center rounded-full bg-[#fff4df] text-[#e89200]" aria-hidden="true"><Clock className="h-4 w-4" /></span>
+                <div className="min-w-0 flex-1">
+                  <p className="font-medium">{event.title}</p>
+                  <p className="mt-0.5 text-xs leading-5 text-muted-foreground">
+                    {new Intl.DateTimeFormat("de-DE", {
+                      timeZone: "Europe/Berlin", day: "2-digit", month: "2-digit", hour: "2-digit", minute: "2-digit",
+                    }).format(new Date(event.start_time))} · Erinnerung {new Intl.DateTimeFormat("de-DE", {
+                      timeZone: "Europe/Berlin", day: "2-digit", month: "2-digit", hour: "2-digit", minute: "2-digit",
+                    }).format(until)} Uhr · {relative}
+                  </p>
+                </div>
+                <span className="rounded-full bg-[#fff4df] px-2 py-1 text-xs text-[#b96d00]">{reminder.count > 1 ? `${reminder.count}× verschoben` : "Verschoben"}</span>
+                <button type="button" disabled={busy || recording} className="text-muted-foreground hover:text-foreground" onClick={() => void choose(event)}>Jetzt öffnen</button>
+                <div className="flex w-full flex-wrap gap-x-5 gap-y-1 pl-12 text-xs text-muted-foreground">
+                  <button type="button" disabled={busy || recording} className="hover:text-foreground" onClick={() => void changeReminder(event)}>Zeit ändern</button>
+                  <button type="button" disabled={busy || recording} className="hover:text-foreground" onClick={() => void finish([event])}>Nichts zu berichten</button>
+                </div>
+              </div>
+            );
+          })}
+        </div>
+      )}
+      {!feedback.isLoading && !feedback.isError && pending.length > 0 && (
+        <p className="mt-3 text-xs text-muted-foreground">Nach 2 Tagen wird daraus eine Aufgabe für das Büro.</p>
+      )}
     </section>
   );
 }
