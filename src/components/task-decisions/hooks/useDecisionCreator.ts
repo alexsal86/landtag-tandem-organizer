@@ -150,10 +150,25 @@ export const useDecisionCreator = ({
       const { data: userData } = await supabase.auth.getUser();
       if (!userData.user) return;
 
+      const { data: memberships, error: membershipError } = await supabase
+        .from("user_tenant_memberships")
+        .select("user_id")
+        .eq("tenant_id", tenantId)
+        .eq("is_active", true);
+      if (membershipError) throw membershipError;
+
+      const memberIds = [...new Set((memberships ?? []).map(({ user_id }) => user_id))];
+      if (memberIds.length === 0) {
+        setProfiles([]);
+        setSelectedUsers([]);
+        setProfilesLoaded(true);
+        return;
+      }
+
       const { data, error } = await supabase
         .from("profiles")
         .select("user_id, display_name")
-        .eq("tenant_id", tenantId)
+        .in("user_id", memberIds)
         .order("display_name");
 
       if (error) throw error;
@@ -193,11 +208,11 @@ export const useDecisionCreator = ({
         }
       }
 
-      const { data: roleData } = await supabase.from("user_roles").select("user_id").eq("role", "abgeordneter");
-      if (roleData && roleData.length > 0) {
-        const abgeordneteInTenant = roleData.filter((role: Record<string, any>) => tenantUserIds.has(role.user_id)).map((role: Record<string, any>) => role.user_id);
-        setSelectedUsers(abgeordneteInTenant);
-      }
+      const { data: deputyIds, error: deputyError } = await supabase.rpc("list_task_deputy_ids", {
+        p_tenant_id: tenantId,
+      });
+      if (deputyError) throw deputyError;
+      setSelectedUsers((deputyIds ?? []).filter((id) => tenantUserIds.has(id) && id !== userData.user.id));
 
       setProfilesLoaded(true);
     } catch (error) {

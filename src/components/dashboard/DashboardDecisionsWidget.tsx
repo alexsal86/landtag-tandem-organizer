@@ -106,6 +106,12 @@ function DecisionRow({ decision, onRefresh, onOpen, onPromptOpen, onPromptClose,
         </span>
       </div>
 
+      {decision.isCreator && !decision.isParticipant && (
+        <p className="text-xs text-muted-foreground mb-2">
+          {decision.pendingCount > 0 ? 'Warten auf Rückmeldung' : 'Rückmeldungen liegen vor'}
+        </p>
+      )}
+
       {summary.total > 0 && (
         <div className="flex items-center gap-1 mb-2" aria-hidden>
           {Array.from({ length: summary.yesCount }).map((_, i) => <span key={`y${i}`} className="h-1.5 flex-1 rounded-sm bg-palette-green" />)}
@@ -164,7 +170,7 @@ function DecisionRow({ decision, onRefresh, onOpen, onPromptOpen, onPromptClose,
 export function DashboardDecisionsWidget() {
   const { user } = useAuth();
   const navigate = useNavigate();
-  const { decisions, loading, loadDecisions } = useMyWorkDecisionsData(user?.id);
+  const { decisions, loading, error, loadDecisions } = useMyWorkDecisionsData(user?.id);
   const [pendingIds, setPendingIds] = useState<Set<string>>(new Set());
 
   const handlePromptOpen = (id: string) =>
@@ -174,7 +180,7 @@ export function DashboardDecisionsWidget() {
 
   const items = useMemo(() => {
     return [...decisions]
-      .filter((d) => d.status !== 'resolved' && (!d.hasResponded || pendingIds.has(d.id)))
+      .filter((d) => d.status !== 'resolved' && ((d.isParticipant && !d.hasResponded) || d.isCreator || pendingIds.has(d.id)))
       .sort((a, b) => {
         if (!a.response_deadline && !b.response_deadline) return 0;
         if (!a.response_deadline) return 1;
@@ -189,6 +195,15 @@ export function DashboardDecisionsWidget() {
   };
 
   if (loading) return <div className="animate-pulse h-32 bg-muted rounded-lg" />;
+
+  if (error) {
+    return (
+      <div className="space-y-2">
+        <p className="text-sm text-destructive">Entscheidungen konnten nicht geladen werden.</p>
+        <Button size="sm" variant="outline" onClick={() => void loadDecisions()}>Erneut laden</Button>
+      </div>
+    );
+  }
 
   if (items.length === 0) {
     return <p className="text-sm text-muted-foreground">Keine ausstehenden Entscheidungen.</p>;

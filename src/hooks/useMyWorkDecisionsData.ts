@@ -169,6 +169,13 @@ export function useMyWorkDecisionsData(userId?: string) {
         if (allDecisionsMap.has(item.id)) {
           const existing = allDecisionsMap.get(item.id)!;
           if (item.is_creator) existing.isCreator = true;
+          if (item.is_participant) {
+            existing.isParticipant = true;
+            existing.participant_id = decision.participant_id;
+            existing.hasResponded = decision.hasResponded;
+            existing.responseType = decision.responseType;
+          }
+          if (item.is_public) existing.isPublic = true;
           if (pendingCount > 0) existing.pendingCount = pendingCount;
         } else {
           allDecisionsMap.set(item.id, decision);
@@ -213,8 +220,15 @@ export function useMyWorkDecisionsData(userId?: string) {
   }, [userId]);
 
   useEffect(() => {
-    if (!userId) return;
+    if (!userId) {
+      latestLoadRequestRef.current += 1;
+      setDecisions([]);
+      setError(null);
+      setLoading(false);
+      return;
+    }
 
+    setError(null);
     const cached = decisionsCache.get(userId);
     const isFresh = !!cached && Date.now() - cached.timestamp < DECISIONS_CACHE_TTL_MS;
 
