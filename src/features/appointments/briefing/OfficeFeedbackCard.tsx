@@ -38,6 +38,7 @@ function OfficeFeedbackForm() {
   draftsRef.current = drafts;
   const [mode, setMode] = useState<"write" | "review" | "remind">("write");
   const [expanded, setExpanded] = useState(false);
+  const [hintKey, setHintKey] = useState<string | null>(null);
   const [busy, setBusy] = useState(false);
   const [completed, setCompleted] = useState<"sent" | "empty" | null>(null);
   const [speechState, setSpeechState] = useState<SpeechToTextState>("idle");
@@ -237,21 +238,28 @@ function OfficeFeedbackForm() {
               </div>
             ) : (
               <>
-                <div className="flex items-end gap-2 rounded-2xl border border-border/80 bg-muted/60 p-2">
+                <div className="flex items-end gap-2 rounded-[22px] border border-[#55ad21] bg-muted/60 p-1.5 ring-4 ring-[#eaf5df] focus-within:ring-[6px]">
                   <textarea aria-label="Rückmeldung zum Termin" placeholder="Wie war’s? Kurz schreiben …" rows={1}
-                    className="min-h-10 min-w-0 flex-1 resize-y bg-transparent px-2 py-2 text-sm outline-none focus-visible:ring-2 focus-visible:ring-ring"
-                    value={text} disabled={busy} onChange={event => {
+                    className="min-h-8 min-w-0 flex-1 resize-y bg-transparent px-2 py-1.5 text-sm leading-5 outline-none"
+                    value={text} disabled={busy} onFocus={() => setHintKey(key)} onChange={event => {
                       setSelected(key);
                       setDrafts(previous => ({ ...previous, [key]: event.target.value }));
                     }} />
                   <button type="button" aria-label={recording ? "Diktat beenden" : "Rückmeldung diktieren"} aria-pressed={recording}
                     disabled={busy || !speech.supported || speechState === "stopping"} title={speech.supported ? "Diktieren" : "Spracherkennung wird von diesem Browser nicht unterstützt"}
-                    className="flex h-10 w-10 shrink-0 items-center justify-center rounded-full bg-[#eaf5df] text-[#55ad21] disabled:opacity-40"
+                    className="flex h-8 w-8 shrink-0 items-center justify-center rounded-full bg-[#eaf5df] text-[#55ad21] disabled:opacity-40"
                     onClick={() => { if (recording) void speech.stop(); else { setSelected(key); speechTarget.current = key; speech.start(); } }}>
                     {recording ? <Square className="h-4 w-4" /> : <Mic className="h-5 w-5" />}
                   </button>
-                  <button type="button" disabled={busy || (!text.trim() && !recording)} className={`h-10 shrink-0 rounded-xl px-4 text-sm font-medium disabled:opacity-40 ${green}`} onClick={() => void review()}>Weiter</button>
+                  <button type="button" disabled={busy || (!text.trim() && !recording)} className={`h-8 shrink-0 rounded-2xl px-4 text-sm font-medium disabled:opacity-40 ${green}`} onClick={() => void review()}>Weiter</button>
                 </div>
+                {(hintKey === key || recording) && (
+                  <div className="mt-3 flex flex-wrap gap-1.5" aria-label="Hinweise zur Rückmeldung">
+                    {["Wer war da?", "Was wurde zugesagt?", "Was soll das Büro tun?"].map(hint => (
+                      <span key={hint} className="rounded-full bg-muted px-2.5 py-1 text-xs leading-4 text-muted-foreground">{hint}</span>
+                    ))}
+                  </div>
+                )}
                 {recording && <p role="status" className="mt-2 text-xs text-muted-foreground">{interim || "Ich höre zu …"}</p>}
                 <div className="mt-2 flex flex-wrap gap-x-5 gap-y-1 text-sm text-muted-foreground">
                   <button type="button" disabled={busy} className="py-1 hover:text-foreground" onClick={() => { setSelected(key); setMode("remind"); }}>Später erinnern</button>
