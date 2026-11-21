@@ -512,7 +512,7 @@ export function TaskDetailView({ task, profiles, decisionLabel, onSave, onComple
                 <li key={item.id} className="group grid min-h-5 grid-cols-[20px_minmax(0,1fr)_14px] items-center gap-3">
                   <Checkbox checked={item.done} aria-label={item.text} className="relative size-5 min-w-5 rounded-sm border-muted-foreground transition-none [&>span]:pointer-events-none [&>span]:absolute [&>span]:inset-0 [&_svg]:size-3.5"
                     onCheckedChange={() => saveList(checklist.map((i) => (i.id === item.id ? { ...i, done: !i.done } : i)))} />
-                  <span className={cn("min-w-0 break-words text-body", item.done && "line-through text-muted-foreground")}>{item.text}</span>
+                  <span data-done={item.done} className="min-w-0 break-words text-body data-[done=true]:text-muted-foreground data-[done=true]:line-through">{item.text}</span>
                   <button type="button" aria-label="Punkt entfernen" className="text-muted-foreground sm:opacity-0 sm:group-hover:opacity-100 focus-visible:opacity-100"
                     onClick={() => saveList(checklist.filter((i) => i.id !== item.id))}><X className="h-3.5 w-3.5" /></button>
                 </li>

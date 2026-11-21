@@ -8,7 +8,6 @@ import { Checkbox } from "@/components/ui/checkbox";
 import { Progress } from "@/components/ui/progress";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
 import { notify } from "@/lib/notify";
-import { cn } from "@/lib/utils";
 import { subtaskProgress } from "@/features/tasks/templates";
 
 interface Props {
@@ -83,7 +82,7 @@ export function TaskSubtasks({ taskId, tenantId, userId, category, profiles }: P
           <li key={s.id} className="group flex items-center gap-3">
             <Checkbox checked={s.status === "completed"} aria-label={s.title} className="size-5 shrink-0 rounded-sm border-muted-foreground [&_svg]:size-3.5"
               onCheckedChange={(v) => update(s.id, { status: v ? "completed" : "todo" })} />
-            <span className={cn("flex-1 text-body truncate", s.status === "completed" && "line-through text-muted-foreground")}>{s.title}</span>
+            <span data-done={s.status === "completed"} className="flex-1 truncate text-body data-[done=true]:text-muted-foreground data-[done=true]:line-through">{s.title}</span>
             <Input type="date" value={s.due_date?.slice(0, 10) ?? ""} onChange={(e) => update(s.id, { due_date: e.target.value || null })} className="h-7 w-36 text-caption" aria-label="Frist" />
             <Select value={s.assigned_to && !s.assigned_to.includes(",") ? s.assigned_to : "none"} onValueChange={(v) => update(s.id, { assigned_to: v === "none" ? null : v })}>
               <SelectTrigger className="h-7 w-32 text-caption" aria-label="Zuständig"><SelectValue placeholder="Person" /></SelectTrigger>
