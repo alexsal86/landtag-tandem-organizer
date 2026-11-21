@@ -23,6 +23,10 @@ export interface MyWorkTask {
   ball_owner?: string | null;
   ball_external_label?: string | null;
   ball_assignee_id?: string | null;
+  ball_handed_at?: string | null;
+  ball_handed_by?: string | null;
+  ball_accepted_at?: string | null;
+  stafette_resume_on?: string | null;
   next_action?: string | null;
   next_action_due?: string | null;
   timeline?: unknown;
@@ -37,8 +41,8 @@ export interface MyWorkTask {
   recurrence_rule?: string | null;
 }
 
-const TASK_LIST_SELECT = "id, title, description, priority, status, due_date, assigned_to, user_id, created_at, category, meeting_id, pending_for_jour_fixe, parent_task_id, tenant_id, ball_owner, ball_external_label, ball_assignee_id, next_action, next_action_due, timeline, reminder_at, reminder_note, nudged_at, nudged_by, nudge_note, nudge_count, nudge_seen_at, checklist, task_assignees!left(user_id)";
-const TASK_ASSIGNED_SELECT = "id, title, description, priority, status, due_date, assigned_to, user_id, created_at, category, meeting_id, pending_for_jour_fixe, parent_task_id, tenant_id, ball_owner, ball_external_label, ball_assignee_id, next_action, next_action_due, timeline, reminder_at, reminder_note, nudged_at, nudged_by, nudge_note, nudge_count, nudge_seen_at, checklist, task_assignees!inner(user_id)";
+const TASK_LIST_SELECT = "id, title, description, priority, status, due_date, assigned_to, user_id, created_at, category, meeting_id, pending_for_jour_fixe, parent_task_id, tenant_id, ball_owner, ball_external_label, ball_assignee_id, ball_handed_at, ball_handed_by, ball_accepted_at, stafette_resume_on, next_action, next_action_due, timeline, reminder_at, reminder_note, nudged_at, nudged_by, nudge_note, nudge_count, nudge_seen_at, checklist, task_assignees!left(user_id)";
+const TASK_ASSIGNED_SELECT = "id, title, description, priority, status, due_date, assigned_to, user_id, created_at, category, meeting_id, pending_for_jour_fixe, parent_task_id, tenant_id, ball_owner, ball_external_label, ball_assignee_id, ball_handed_at, ball_handed_by, ball_accepted_at, stafette_resume_on, next_action, next_action_due, timeline, reminder_at, reminder_note, nudged_at, nudged_by, nudge_note, nudge_count, nudge_seen_at, checklist, task_assignees!inner(user_id)";
 
 interface TasksQueryResult {
   assignedTasks: MyWorkTask[];
@@ -71,7 +75,7 @@ const fetchTasks = async (userId: string, tenantId?: string, includeExternalLabe
     (tenantId ? query.eq("tenant_id", tenantId) : query);
 
   const select = (fields: string) => includeExternalLabel ? fields : fields.replace("ball_external_label, ", "");
-  const [assignedResult, legacyAssignedResult, createdResult] = await Promise.all([
+  const [assignedResult, legacyAssignedResult, createdResult, stafetteResult] = await Promise.all([
     withTenantFilter(supabase.from("tasks").select(select(TASK_ASSIGNED_SELECT)))
       .eq("task_assignees.user_id", userId)
       .neq("status", "completed")
@@ -87,9 +91,14 @@ const fetchTasks = async (userId: string, tenantId?: string, includeExternalLabe
       .neq("status", "completed")
       .is("parent_task_id", null)
       .order("due_date", { ascending: true, nullsFirst: false }),
+    withTenantFilter(supabase.from("tasks").select(select(TASK_LIST_SELECT)))
+      .or(`ball_assignee_id.eq.${userId},ball_handed_by.eq.${userId}`)
+      .neq("status", "completed")
+      .is("parent_task_id", null)
+      .order("due_date", { ascending: true, nullsFirst: false }),
   ]);
 
-  if (includeExternalLabel && [assignedResult, legacyAssignedResult, createdResult].some(({ error }) =>
+  if (includeExternalLabel && [assignedResult, legacyAssignedResult, createdResult, stafetteResult].some(({ error }) =>
     error?.code === "42703" && error.message.includes("ball_external_label")
   )) {
     return fetchTasks(userId, tenantId, false);
@@ -98,8 +107,9 @@ const fetchTasks = async (userId: string, tenantId?: string, includeExternalLabe
   if (assignedResult.error) throw assignedResult.error;
   if (legacyAssignedResult.error) throw legacyAssignedResult.error;
   if (createdResult.error) throw createdResult.error;
+  if (stafetteResult.error) throw stafetteResult.error;
 
-  const allAssigned = [...(assignedResult.data || []), ...(legacyAssignedResult.data || [])]
+  const allAssigned = [...(assignedResult.data || []), ...(legacyAssignedResult.data || []), ...(stafetteResult.data || [])]
     .filter((task, index, arr) => arr.findIndex((candidate) => candidate.id === task.id) === index);
   const allCreated = createdResult.data || [];
 
@@ -320,7 +330,12 @@ export function useMyWorkTasksData(userId?: string, tenantId?: string) {
       const maybeMineByAuthor = (nextRow?.user_id ?? oldRow?.user_id) === userId;
       const maybeMineByLegacyAssignee = String(nextRow?.assigned_to ?? oldRow?.assigned_to ?? "").includes(userId);
 
-      if (!isKnownTask && !maybeMineByAuthor && !maybeMineByLegacyAssignee) return;
+      const stafetteChanged = nextRow?.ball_assignee_id === userId || nextRow?.ball_handed_by === userId
+        || oldRow?.ball_assignee_id === userId || oldRow?.ball_handed_by === userId;
+      if (!isKnownTask && !maybeMineByAuthor && !maybeMineByLegacyAssignee && !stafetteChanged) return;
+      if (stafetteChanged || (isKnownTask && payload.eventType === "UPDATE" && !maybeMineByAuthor && !maybeMineByLegacyAssignee)) {
+        scheduleRefresh();
+      }
 
       if (!isKnownTask || payload.eventType === "INSERT" || payload.eventType === "DELETE") {
         scheduleRefresh();

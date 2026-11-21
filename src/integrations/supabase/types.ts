@@ -15012,6 +15012,10 @@ export type Database = {
           assigned_to: string | null
           ball_assignee_id: string | null
           ball_external_label: string | null
+          ball_handed_at: string | null
+          ball_handed_by: string | null
+          ball_accepted_at: string | null
+          stafette_resume_on: string | null
           ball_owner: string
           call_log_id: string | null
           category: string
@@ -15051,6 +15055,10 @@ export type Database = {
           assigned_to?: string | null
           ball_assignee_id?: string | null
           ball_external_label?: string | null
+          ball_handed_at?: string | null
+          ball_handed_by?: string | null
+          ball_accepted_at?: string | null
+          stafette_resume_on?: string | null
           ball_owner?: string
           call_log_id?: string | null
           category?: string
@@ -15090,6 +15098,10 @@ export type Database = {
           assigned_to?: string | null
           ball_assignee_id?: string | null
           ball_external_label?: string | null
+          ball_handed_at?: string | null
+          ball_handed_by?: string | null
+          ball_accepted_at?: string | null
+          stafette_resume_on?: string | null
           ball_owner?: string
           call_log_id?: string | null
           category?: string

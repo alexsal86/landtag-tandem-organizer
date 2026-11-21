@@ -6,7 +6,7 @@ import { Avatar, AvatarFallback, AvatarImage } from "@/components/ui/avatar";
 import { Command, CommandEmpty, CommandGroup, CommandInput, CommandItem, CommandList } from "@/components/ui/command";
 import { usePersistentState } from "@/hooks/usePersistentState";
 import { WorkflowLinks } from "@/components/workflow/WorkflowLinks";
-import { useEffect, useRef, useState } from "react";
+import { useEffect, useRef, useState, type FormEvent } from "react";
 import { Bell, BellOff, BellRing, CalendarDays, Check, ChevronDown, Flag, Plus, X, Gavel, Send, Users, Zap } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
@@ -29,6 +29,8 @@ export interface TaskPatch extends StafetteTask {
   description?: string | null;
   due_date?: string | null;
   priority?: "medium" | "high" | "low";
+  stafette_resume_on?: string | null;
+  ball_accepted_at?: string | null;
   ball_external_label?: string | null;
   checklist?: ChecklistItem[];
 }
@@ -88,8 +90,11 @@ export function TaskDetailView({ task, profiles, decisionLabel, onSave, onComple
   const [recentOwners, setRecentOwners] = usePersistentState<string[]>(
     `task-recent-owners-${task.tenant_id}-${meId}`, [],
   );
-  const [customField, setCustomField] = useState<"step" | "deadline" | null>(null);
+  const [customField, setCustomField] = useState<"step" | "deadline" | "resubmission" | null>(null);
   const [externalDraft, setExternalDraft] = useState("");
+  const [externalTarget, setExternalTarget] = useState<string | null>(null);
+  const [followUp, setFollowUp] = useState("");
+  const [followUpOwner, setFollowUpOwner] = useState("");
   const [customValue, setCustomValue] = useState("");
   const [note, setNote] = useState("");
   const [doneDialog, setDoneDialog] = useState(false);
@@ -153,6 +158,7 @@ export function TaskDetailView({ task, profiles, decisionLabel, onSave, onComple
   const saveDue = (date: string) => run(() => onSave({ next_action_due: date || null }));
 
   const changeOwnerPicker = (open: boolean) => {
+    if (!open) setExternalTarget(null);
     setOwnerPickerOpen(open);
     if (open) setExternalDraft(owner === "external" ? externalLabel : "");
   };
@@ -165,13 +171,14 @@ export function TaskDetailView({ task, profiles, decisionLabel, onSave, onComple
       return data;
     },
   });
-  const deputyProfiles = profiles.filter((profile) => deputyIds?.includes(profile.user_id));
+  const deputyId = deputyIds?.[0];
+  const deputyProfile = profiles.find((profile) => profile.user_id === deputyId);
   const ownerOptions = [
     ...profiles.filter((profile) => !deputyIds?.includes(profile.user_id)).map((profile) => ({ id: `office:${profile.user_id}`, label: profile.display_name ?? "Unbenannt", role: "office" as const })),
     { id: "office:none", label: "Ohne feste Person", role: "office" as const },
-    ...(deputyProfiles.length ? deputyProfiles.map((profile) => ({
-      id: `deputy:${profile.user_id}`, label: profile.display_name ?? TASK_BALL_LABELS.deputy, role: "deputy" as const,
-    })) : [{ id: "deputy", label: TASK_BALL_LABELS.deputy, role: "deputy" as const }]),
+    ...(deputyId ? [{
+      id: `deputy:${deputyId}`, label: deputyProfile?.display_name ?? TASK_BALL_LABELS.deputy, role: "deputy" as const,
+    }] : []),
     ...["Fraktion", "Ministerium", "Extern"].map((label) => ({ id: `external:${label}`, label, role: "external" as const })),
   ];
   const rememberOwner = (id: string) =>
@@ -183,14 +190,31 @@ export function TaskDetailView({ task, profiles, decisionLabel, onSave, onComple
   });
   const chooseOwner = (option: (typeof ownerOptions)[number]) => {
     const person = option.id.startsWith("deputy:") || option.role === "office" ? option.id.slice(7) : "none";
-    const external = option.role === "external" && option.id !== "external:Extern" ? option.label : null;
+    if (option.role === "external") {
+      setExternalTarget(option.label);
+      setFollowUp("");
+      setFollowUpOwner(owner === "external" ? task.ball_assignee_id ?? meId ?? "" : meId ?? "");
+      return;
+    }
     void run(() => onSave({
       ball_owner: option.role,
       ball_assignee_id: person === "none" ? null : person,
-      ball_external_label: external,
+      ...(option.role === "deputy" ? { next_action: "Freigabe prüfen", next_action_due: null } : {}),
     }));
     rememberOwner(option.id);
     setOwnerPickerOpen(false);
+  };
+  const saveExternal = (event: FormEvent<HTMLFormElement>) => {
+    event.preventDefault();
+    if (!externalTarget || !followUp || !followUpOwner) return;
+    void run(() => onSave({
+      ball_owner: "external",
+      ball_external_label: externalTarget,
+      ball_assignee_id: followUpOwner,
+      reminder_at: new Date(followUp + "T09:00:00").toISOString(),
+      reminder_note: `Bei ${externalTarget} nachfassen`,
+    }));
+    changeOwnerPicker(false);
   };
   const renderOwnerOption = (option: (typeof ownerOptions)[number], recent = false) => {
     const profile = option.role !== "external" ? profiles.find(({ user_id }) => option.id === `${option.role}:${user_id}`) : undefined;
@@ -323,7 +347,24 @@ export function TaskDetailView({ task, profiles, decisionLabel, onSave, onComple
                 </DialogTrigger>
                 <DialogContent className="overflow-hidden p-0 sm:max-w-lg">
                   <DialogTitle className="sr-only">Wem übergeben?</DialogTitle>
-                  <Command>
+                  {externalTarget ? (
+                    <form onSubmit={saveExternal} className="space-y-3 p-5">
+                      <p className="font-medium">Wartet auf {externalTarget}</p>
+                      <label className="block text-sm">Wer fasst nach?
+                        <select className="mt-1 block w-full rounded border bg-background p-2" value={followUpOwner} required onChange={(event) => setFollowUpOwner(event.target.value)}>
+                          <option value="">Person auswählen</option>
+                          {profiles.map((profile) => <option key={profile.user_id} value={profile.user_id}>{profile.display_name ?? "Unbenannt"}</option>)}
+                        </select>
+                      </label>
+                      <label className="block text-sm">Nachfassen am
+                        <Input type="date" value={followUp} required onChange={(event) => setFollowUp(event.target.value)} />
+                      </label>
+                      <div className="flex justify-end gap-2">
+                        <Button type="button" variant="outline" onClick={() => setExternalTarget(null)}>Zurück</Button>
+                        <Button type="submit" disabled={saving}>Übergabe speichern</Button>
+                      </div>
+                    </form>
+                  ) : <Command>
                     <CommandInput aria-label="Name oder Rolle suchen" placeholder="Wem übergeben? Name oder Rolle tippen …" className="pr-10" />
                     <CommandList className="max-h-[55vh] px-2 pb-2">
                       <CommandEmpty>Keine passende Person oder Rolle gefunden.</CommandEmpty>
@@ -348,7 +389,7 @@ export function TaskDetailView({ task, profiles, decisionLabel, onSave, onComple
                           maxLength={200} className="border-0 bg-[#f2f2ef] dark:bg-muted" />
                       </form>
                     </CommandList>
-                  </Command>
+                  </Command>}
                 </DialogContent>
               </Dialog>
               <DropdownMenu>
@@ -459,9 +500,29 @@ export function TaskDetailView({ task, profiles, decisionLabel, onSave, onComple
               </div>
               {!hasStep && <p id="task-next-action-hint" className="mt-2 text-xs text-muted-foreground">Enter übernimmt den Schritt.</p>}
             </div>
-            {resub && (
+            <div className="flex flex-wrap items-center gap-2 text-sm">
+              {owner !== "external" && (
+                <Button variant="ghost" size="sm" onClick={() => {
+                  setCustomValue(task.stafette_resume_on ?? "");
+                  setCustomField("resubmission");
+                }}>Wieder vorlegen …</Button>
+              )}
+              {task.stafette_resume_on && (
+                <Button variant="ghost" size="sm" onClick={() => void run(() => onSave({ stafette_resume_on: null }))}>Wiedervorlage entfernen</Button>
+              )}
+              {owner === "external" && (
+                <span>Nachfassen: {nameOf(task.ball_assignee_id) ?? "Person offen"} · {task.reminder_at ? new Date(task.reminder_at).toLocaleDateString("de-DE") : "Termin offen"}</span>
+              )}
+              {task.ball_handed_at && owner !== "external" && (
+                <span>{task.ball_accepted_at ? "Übernommen" : "Übergeben"} am {new Date(task.ball_accepted_at ?? task.ball_handed_at).toLocaleDateString("de-DE")}</span>
+              )}
+              {task.ball_handed_at && !task.ball_accepted_at && owner !== "external" && !!meId && task.ball_assignee_id === meId && (
+                <Button size="sm" variant="outline" disabled={saving} onClick={() => void run(() => onSave({ ball_accepted_at: new Date().toISOString() }))}>Übernehmen</Button>
+              )}
+            </div>
+            {resub && task.stafette_resume_on && (
               <div className="rounded-md bg-muted px-3 py-2 text-caption">
-                Auf Wiedervorlage bis {new Date(task.next_action_due + "T00:00:00").toLocaleDateString("de-DE")}. Erledige den Schritt, um einen neuen festzulegen.
+                Auf Wiedervorlage bis {formatDate(task.stafette_resume_on)}.
               </div>
             )}
 
@@ -475,8 +536,8 @@ export function TaskDetailView({ task, profiles, decisionLabel, onSave, onComple
               )}
               <div className="inline-flex items-stretch">
                 {owner !== "deputy" && (
-                  <Button variant="outline" disabled={saving} className="h-11 rounded-l-xl rounded-r-none bg-transparent"
-                    onClick={() => run(() => onSave({ ball_owner: "deputy", ball_assignee_id: null, next_action: "Freigabe prüfen", next_action_due: null }))}>
+                  <Button variant="outline" disabled={saving || !deputyId} className="h-11 rounded-l-xl rounded-r-none bg-transparent"
+                    onClick={() => run(() => onSave({ ball_owner: "deputy", ball_assignee_id: deputyId, next_action: "Freigabe prüfen", next_action_due: null }))}>
                     <Send />Übergeben an Abgeordnete/r
                   </Button>
                 )}
@@ -562,11 +623,12 @@ export function TaskDetailView({ task, profiles, decisionLabel, onSave, onComple
 
       <Dialog open={customField !== null} onOpenChange={(open) => { if (!open) setCustomField(null); }}>
         <DialogContent>
-          <DialogHeader><DialogTitle>{customField === "deadline" ? "Endfrist wählen" : "Datum für den Schritt wählen"}</DialogTitle></DialogHeader>
+          <DialogHeader><DialogTitle>{customField === "resubmission" ? "Wiedervorlage wählen" : customField === "deadline" ? "Endfrist wählen" : "Datum für den Schritt wählen"}</DialogTitle></DialogHeader>
           <form onSubmit={(event) => {
             event.preventDefault();
+            if (customField === "resubmission") void run(() => onSave({ stafette_resume_on: customValue || null }));
             if (customField === "deadline") void run(() => onSave({ due_date: customValue }));
-            else void saveDue(customValue);
+            if (customField === "step") void saveDue(customValue);
             setCustomField(null);
           }} className="space-y-4">
             <Input aria-label="Datum" type="date"
@@ -581,7 +643,7 @@ export function TaskDetailView({ task, profiles, decisionLabel, onSave, onComple
           <DialogHeader><DialogTitle>Schritt „{task.next_action}“ erledigt</DialogTitle></DialogHeader>
           <p className="text-body text-muted-foreground">Ist die Aufgabe damit fertig, oder gibt es einen Folgeschritt?</p>
           <DialogFooter className="gap-2">
-            <Button variant="outline" onClick={() => run(async () => { setDoneDialog(false); await onSave({ next_action: null, next_action_due: null, ball_owner: "office" }); setLabel(""); setDue(""); })}>
+            <Button variant="outline" onClick={() => run(async () => { setDoneDialog(false); await onSave({ next_action: null, next_action_due: null }); setLabel(""); setDue(""); })}>
               Folgeschritt festlegen
             </Button>
             <Button onClick={() => run(async () => { setDoneDialog(false); await onSave({ next_action: null, next_action_due: null }); await onComplete(); })}>

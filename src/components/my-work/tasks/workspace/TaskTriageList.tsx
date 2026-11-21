@@ -37,13 +37,14 @@ export function TaskTriageList({ resubmissionsOpen, onResubmissionsOpenChange, z
       const n = t.nudge_count && t.nudge_count > 1 ? `${t.nudge_count}× angestupst` : "Angestupst";
       return [`${n} von ${nameOf(t.nudged_by) ?? "Kolleg:in"}`, t.nudge_note].filter(Boolean).join(" · ");
     }
-    if (isReminderDue(t)) return ["🔔 Erinnerung", t.reminder_note || t.next_action || null].filter(Boolean).join(" · ");
+    if (zone === "mine" && isReminderDue(t)) return ["🔔 Erinnerung", t.reminder_note || t.next_action || null].filter(Boolean).join(" · ");
     const step = t.next_action?.trim() ? t.next_action : "Kein nächster Schritt";
     if (zone === "waiting") {
       const owner = (t.ball_owner ?? "office") as TaskBallOwner;
-      const who = owner === "office" ? nameOf(t.ball_assignee_id) ?? "Büro" : TASK_BALL_LABELS[owner];
+      const who = owner === "external" ? t.ball_external_label || "extern"
+        : nameOf(t.ball_assignee_id) ?? TASK_BALL_LABELS[owner];
       const dec = decisionLabel(t.id);
-      return [`Ball: ${who}`, dec].filter(Boolean).join(" · ");
+      return [`Wartet auf ${who}`, dec].filter(Boolean).join(" · ");
     }
     return step;
   };
@@ -57,7 +58,7 @@ export function TaskTriageList({ resubmissionsOpen, onResubmissionsOpenChange, z
     { key: "resubmission", title: "Wiedervorlagen" },
   ];
   const tasks = visibleZones.flatMap((zone) => zones[zone].map((task) => {
-    const date = snoozes[task.id] || task.next_action_due || task.due_date;
+    const date = snoozes[task.id] || (zone === "resubmission" ? task.stafette_resume_on : null) || task.next_action_due || task.due_date;
     const due = date ? new Date(date.slice(0, 10) + "T00:00:00") : null;
     const group = zone === "resubmission" ? "resubmission" : due && due < today ? "overdue" : due && due <= weekEnd ? "week" : "later";
     return { task, zone, due, group };

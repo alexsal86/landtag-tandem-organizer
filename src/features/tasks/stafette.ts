@@ -11,6 +11,8 @@ export const TASK_BALL_LABELS: Record<TaskBallOwner, string> = {
 export interface StafetteTask {
   ball_owner?: string | null;
   ball_assignee_id?: string | null;
+  stafette_resume_on?: string | null;
+  user_id?: string;
   next_action?: string | null;
   next_action_due?: string | null;
   status?: string | null;
@@ -32,7 +34,7 @@ export function isNudgeActive(task: StafetteTask): boolean {
 export function canNudge(task: StafetteTask, meId: string | undefined, now: Date = new Date()): boolean {
   const owner = (task.ball_owner ?? "office") as TaskBallOwner;
   if (owner === "external") return false;
-  if (owner === "office" && (!task.ball_assignee_id || task.ball_assignee_id === meId)) return false;
+  if (task.ball_assignee_id === meId || (owner === "office" && !task.ball_assignee_id)) return false;
   if (task.nudged_by === meId && task.nudged_at && now.getTime() - new Date(task.nudged_at).getTime() < 24 * 3600_000) return false;
   return true;
 }
@@ -55,18 +57,15 @@ export function stepState(task: StafetteTask): "unset" | "set" {
   return task.next_action && task.next_action.trim() ? "set" : "unset";
 }
 
-/** A task is on resubmission when a step exists and its due day is after today. */
+/** Explicit resubmission controls visibility independently of the deadline. */
 export function isOnResubmission(task: StafetteTask, now: Date = new Date()): boolean {
-  if (stepState(task) === "unset" || !task.next_action_due) return false;
-  return parseDay(task.next_action_due) > dayStart(now);
+  return !!task.stafette_resume_on && parseDay(task.stafette_resume_on) > dayStart(now);
 }
 
-/**
- * Zone for the current user:
- * - waiting: ball is with deputy/external, or with another office person
- * - resubmission: my step is due in the future
- * - mine: everything else
- */
+export function isTaskReminderFor(task: StafetteTask, meId: string | undefined, now: Date = new Date()): boolean {
+  return !!meId && (task.ball_assignee_id ?? task.user_id) === meId && isReminderDue(task, now);
+}
+
 /** A reminder is due once its time has passed; it pulls the task back into "Mein Zug". */
 export function isReminderDue(task: StafetteTask, now: Date = new Date()): boolean {
   if (!task.reminder_at) return false;
@@ -84,11 +83,11 @@ export function reminderPreset(kind: "tomorrow" | "3days" | "nextweek", now: Dat
 }
 
 export function taskZone(task: StafetteTask, meId: string | undefined, now: Date = new Date()): TaskZone {
-  if (isNudgeActive(task) && task.nudged_by !== meId) return "nudged";
-  if (isReminderDue(task, now)) return "mine";
-  const owner = (task.ball_owner ?? "office") as TaskBallOwner;
-  if (owner !== "office") return "waiting";
-  if (task.ball_assignee_id && meId && task.ball_assignee_id !== meId) return "waiting";
+  const owner = task.ball_owner ?? "office";
+  const assignedToMe = !!meId && task.ball_assignee_id === meId;
+  if (owner !== "external" && assignedToMe && isNudgeActive(task) && task.nudged_by !== meId) return "nudged";
+  if (isTaskReminderFor(task, meId, now)) return "mine";
+  if (owner === "external" || (!assignedToMe && (owner === "deputy" || task.ball_assignee_id))) return "waiting";
   if (isOnResubmission(task, now)) return "resubmission";
   return "mine";
 }

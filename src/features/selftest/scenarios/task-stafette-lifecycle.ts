@@ -35,18 +35,21 @@ export const taskStafetteLifecycleScenario: TestScenario = {
     {
       id: "reminder", label: "Fällige Erinnerung holt wartende Aufgabe in Mein Zug", kind: "logic",
       run: async () => {
-        const t: StafetteTask = { ball_owner: "deputy", reminder_at: new Date(2026, 10, 7, 9).toISOString() };
-        const later: StafetteTask = { ball_owner: "deputy", reminder_at: new Date(2026, 10, 9, 9).toISOString() };
-        const ok = isReminderDue(t, NOW) && taskZone(t, ME, NOW) === "mine" && taskZone(later, ME, NOW) === "waiting";
+        const t: StafetteTask = { ball_owner: "external", ball_assignee_id: ME, reminder_at: new Date(2026, 10, 7, 9).toISOString() };
+        const later: StafetteTask = { ball_owner: "external", ball_assignee_id: ME, reminder_at: new Date(2026, 10, 9, 9).toISOString() };
+        const ok = isReminderDue(t, NOW) && taskZone(t, ME, NOW) === "mine" && taskZone(t, "andere-person", NOW) === "waiting" && taskZone(later, ME, NOW) === "waiting";
         const ev = stafetteEvents({ reminder_at: t.reminder_at }, { reminder_at: null }, { now: NOW }).map((e) => e.text);
         return { ok: ok && ev.includes("Erinnerung erledigt"), message: ok ? "Erinnerung korrekt." : "Erinnerung falsch eingeordnet.", details: ev };
       },
     },
     {
-      id: "set-step", label: "Schritt mit Frist in der Zukunft → Wiedervorlage", kind: "logic",
+      id: "set-step", label: "Frist bleibt sichtbar; eine ausdrückliche Wiedervorlage verschiebt die Anzeige", kind: "logic",
       run: async () => {
         const t: StafetteTask = { ball_owner: "office", next_action: "Entwurf schreiben", next_action_due: "2026-11-14" };
-        const ok = taskZone(t, ME, NOW) === "resubmission" && isOnResubmission(t, NOW) && taskZone(t, ME, new Date(2026, 10, 14, 9)) === "mine";
+        const deferred = { ...t, stafette_resume_on: "2026-11-14" };
+        const ok = taskZone(t, ME, NOW) === "mine" && !isOnResubmission(t, NOW)
+          && taskZone(deferred, ME, NOW) === "resubmission" && isOnResubmission(deferred, NOW)
+          && taskZone(deferred, ME, new Date(2026, 10, 14, 9)) === "mine";
         return { ok, message: ok ? "Wiedervorlage und Rückkehr am Stichtag korrekt." : "Zone weicht ab." };
       },
     },
@@ -54,9 +57,9 @@ export const taskStafetteLifecycleScenario: TestScenario = {
       id: "handover", label: "Zur Freigabe vorlegen → Wartet auf andere + Verlauf", kind: "logic",
       run: async () => {
         const before: StafetteTask = { ball_owner: "office", next_action: "Entwurf schreiben" };
-        const after: StafetteTask = { ball_owner: "deputy", next_action: "Freigabe prüfen" };
+        const after: StafetteTask = { ball_owner: "deputy", ball_assignee_id: "abgeordneter", next_action: "Freigabe prüfen" };
         const ev = stafetteEvents(before, after, { now: NOW }).map((e) => e.text);
-        const ok = taskZone(after, ME, NOW) === "waiting" && ev.includes("Am Zug: Büro → Abgeordnete/r") && ev.some((t) => t.startsWith("Schritt erledigt"));
+        const ok = taskZone(after, ME, NOW) === "waiting" && taskZone(after, "abgeordneter", NOW) === "mine" && ev.includes("Am Zug: Büro → Abgeordnete/r") && ev.some((t) => t.startsWith("Schritt erledigt"));
         return { ok, message: ok ? "Übergabe protokolliert." : "Übergabe fehlt im Verlauf.", details: ev };
       },
     },

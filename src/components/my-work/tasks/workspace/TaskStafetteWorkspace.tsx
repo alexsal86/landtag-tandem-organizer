@@ -8,7 +8,7 @@ import { EmptyState } from "@/components/ui-patterns";
 import { ListTodo } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { cn } from "@/lib/utils";
-import { checklistEvents, parseChecklist, shiftDay, groupByZone, isReminderDue, type ChecklistItem, parseTaskTimeline, stafetteEvents, type StafetteEvent } from "@/features/tasks/stafette";
+import { checklistEvents, parseChecklist, shiftDay, groupByZone, isTaskReminderFor, type ChecklistItem, parseTaskTimeline, stafetteEvents, type StafetteEvent } from "@/features/tasks/stafette";
 import { TaskTriageList } from "./TaskTriageList";
 import { TaskDetailView, type TaskPatch } from "./TaskDetailView";
 
@@ -32,6 +32,11 @@ const taskFilters = [
 ] as const;
 
 export function TaskStafetteWorkspace({ userId, tasks, profiles, onReload, onComplete, onDecision, onJourFixe, onCreate, modeControls, snoozes }: Props) {
+  const [clock, setClock] = useState(() => new Date());
+  useEffect(() => {
+    const timer = window.setInterval(() => setClock(new Date()), 30_000);
+    return () => window.clearInterval(timer);
+  }, []);
   const [filter, setFilter] = useState<(typeof taskFilters)[number]>(taskFilters[0]);
   const [resubmissionsOpen, setResubmissionsOpen] = useState(false);
   const [selectedId, setSelectedId] = useState<string | null>(null);
@@ -40,7 +45,7 @@ export function TaskStafetteWorkspace({ userId, tasks, profiles, onReload, onCom
 
   const merged = useMemo(() => tasks.map((t) => ({ ...t, ...local[t.id] })), [tasks, local]);
   const zones = useMemo(() => {
-    const grouped = groupByZone(merged, userId);
+    const grouped = groupByZone(merged, userId, clock);
     for (const zone of ["nudged", "mine", "waiting", "resubmission"] as const) {
       for (const task of [...grouped[zone]]) {
         if (!snoozes[task.id] || new Date(snoozes[task.id]).getTime() <= new Date().setHours(23, 59, 59, 999) || zone === "resubmission") continue;
@@ -49,7 +54,7 @@ export function TaskStafetteWorkspace({ userId, tasks, profiles, onReload, onCom
       }
     }
     return grouped;
-  }, [merged, userId, snoozes]);
+  }, [merged, userId, snoozes, clock]);
   const ordered = useMemo(() => filter.zones.flatMap((zone) => zone === "resubmission" && !resubmissionsOpen ? [] : zones[zone]), [filter, zones, resubmissionsOpen]);
   const selected = ordered.find((t) => t.id === selectedId) ?? ordered[0] ?? null;
 
@@ -57,10 +62,10 @@ export function TaskStafetteWorkspace({ userId, tasks, profiles, onReload, onCom
   useEffect(() => {
     if (remindedOnce.current || tasks.length === 0) return;
     remindedOnce.current = true;
-    const due = tasks.filter((t) => t.status !== "completed" && isReminderDue(t));
+    const due = tasks.filter((t) => t.status !== "completed" && isTaskReminderFor(t, userId));
     if (due.length === 1) notify.info(`Erinnerung: ${due[0].title}`);
     else if (due.length > 1) notify.info(`${due.length} Erinnerungen fällig – sie stehen oben unter „Mein Zug“.`);
-  }, [tasks]);
+  }, [tasks, userId]);
 
   const taskIds = useMemo(() => tasks.map((t) => t.id).sort(), [tasks]);
   const { data: decisions } = useQuery({
@@ -108,12 +113,30 @@ export function TaskStafetteWorkspace({ userId, tasks, profiles, onReload, onCom
   const toggleSelect = (id: string) => setSelection((s) => { const n = new Set(s); if (n.has(id)) n.delete(id); else n.add(id); return n; });
   const batch = async (kind: "deputy" | "week" | "nudge") => {
     const list = merged.filter((t) => selection.has(t.id));
-    for (const t of list) {
-      if (kind === "deputy") await save(t, { ball_owner: "deputy", ball_assignee_id: null, next_action: "Freigabe prüfen", next_action_due: null });
-      else if (kind === "week") await save(t, { next_action_due: shiftDay(t.next_action_due, 7) });
-      else await supabase.rpc("nudge_task", { _task_id: t.id, _note: null });
+    const tenantId = list[0]?.tenant_id;
+    let deputyId: string | undefined;
+    if (kind === "deputy") {
+      if (!tenantId) return;
+      const { data, error } = await supabase.rpc("list_task_deputy_ids", { p_tenant_id: tenantId });
+      deputyId = data?.[0];
+      if (error || !deputyId) {
+        notify.error("Für dieses Büro wurde kein Abgeordnetenprofil gefunden.");
+        return;
+      }
     }
-    notify.success(`${list.length} Aufgaben aktualisiert`);
+    let updated = 0;
+    for (const task of list) {
+      if (kind === "deputy" && task.tenant_id === tenantId) {
+        if (await save(task, { ball_owner: "deputy", ball_assignee_id: deputyId, next_action: "Freigabe prüfen", next_action_due: null })) updated++;
+      } else if (kind === "week") {
+        if (await save(task, { next_action_due: shiftDay(task.next_action_due, 7) })) updated++;
+      } else if (kind === "nudge") {
+        const { error } = await supabase.rpc("nudge_task", { _task_id: task.id, _note: null });
+        if (!error) updated++;
+      }
+    }
+    if (updated === list.length) notify.success(`${updated} Aufgaben aktualisiert`);
+    else notify.error(`${updated} von ${list.length} Aufgaben aktualisiert`);
     setSelection(new Set());
     void onReload();
   };
@@ -133,6 +156,8 @@ export function TaskStafetteWorkspace({ userId, tasks, profiles, onReload, onCom
   const save = async (task: MyWorkTask, patch: TaskPatch) => {
     const { note } = patch;
     const fields: Partial<MyWorkTask> = {};
+    if ("stafette_resume_on" in patch) fields.stafette_resume_on = patch.stafette_resume_on;
+    if ("ball_accepted_at" in patch) fields.ball_accepted_at = patch.ball_accepted_at;
     if ("priority" in patch) fields.priority = patch.priority;
     if ("due_date" in patch) fields.due_date = patch.due_date;
     if ("description" in patch) fields.description = patch.description;
@@ -157,16 +182,29 @@ export function TaskStafetteWorkspace({ userId, tasks, profiles, onReload, onCom
     if (note) events.push({ id: `${Date.now()}-n`, type: "note", at: new Date().toISOString(), actorName: nameOf(userId), text: note });
     const timeline = [...parseTaskTimeline(task.timeline), ...events];
     const { checklist, ...rest } = fields;
-    const update = { ...rest, ...(checklist !== undefined ? { checklist: checklist as Json } : {}), timeline: timeline as unknown as Json };
+    const handover = "ball_owner" in fields || "ball_assignee_id" in fields || "ball_accepted_at" in fields;
+    const update = {
+      ...rest,
+      ...(checklist !== undefined ? { checklist: checklist as Json } : {}),
+      ...(!handover && events.length ? { timeline: timeline as unknown as Json } : {}),
+    };
     setLocal((l) => ({ ...l, [task.id]: { ...l[task.id], ...fields, timeline } }));
-    const { error } = await supabase.from("tasks").update(update).eq("id", task.id);
+    const request = supabase.from("tasks").update(update).eq("id", task.id);
+    if ("ball_accepted_at" in fields && task.ball_handed_at) request.eq("ball_handed_at", task.ball_handed_at);
+    const { data, error } = await request.select("ball_assignee_id,ball_handed_at,ball_handed_by,ball_accepted_at,stafette_resume_on,reminder_at,reminder_note,nudge_seen_at,timeline").single();
     if (error) {
       notify.error("Speichern fehlgeschlagen");
       setLocal((l) => { const n = { ...l }; delete n[task.id]; return n; });
-      return;
+      return false;
     }
+    setLocal((l) => ({ ...l, [task.id]: { ...l[task.id], ...data } }));
     if (fields.ball_owner === "deputy" && task.ball_owner !== "deputy") notify.success("Zur Freigabe vorgelegt");
-    void onReload();
+    try {
+      await onReload();
+    } finally {
+      setLocal((l) => { const n = { ...l }; delete n[task.id]; return n; });
+    }
+    return true;
   };
 
   const nudge = async (task: MyWorkTask, note: string) => {
@@ -246,7 +284,7 @@ export function TaskStafetteWorkspace({ userId, tasks, profiles, onReload, onCom
                 onVote={(key, comment) => { const pv = pendingVoteFor(selected.id); return pv ? vote(pv.participantId, pv.decisionId, key, comment) : Promise.resolve(); }}
                 onNudge={(n) => nudge(selected, n)}
                 onAckNudge={(r) => ackNudge(selected, r)}
-                onSave={(p) => save(selected, p)}
+                onSave={async (p) => { await save(selected, p); }}
                 onComplete={async () => {
                   const evts = stafetteEvents(selected, { ...selected, status: "completed" }, { actorName: nameOf(userId) });
                   await supabase.from("tasks").update({ timeline: [...parseTaskTimeline(selected.timeline), ...evts] as unknown as Json }).eq("id", selected.id);

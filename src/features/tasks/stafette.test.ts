@@ -9,17 +9,18 @@ describe("stafette rules", () => {
     expect(stepState({ next_action: "Anrufen" })).toBe("set");
   });
 
-  it("future step due goes to resubmission, today does not", () => {
-    expect(isOnResubmission({ next_action: "x", next_action_due: "2026-11-08" }, now)).toBe(true);
+  it("only an explicit future resubmission defers the task", () => {
+    expect(isOnResubmission({ next_action: "x", next_action_due: "2026-11-08" }, now)).toBe(false);
     expect(isOnResubmission({ next_action: "x", next_action_due: "2026-11-07" }, now)).toBe(false);
-    expect(isOnResubmission({ next_action_due: "2026-11-20" }, now)).toBe(false);
+    expect(isOnResubmission({ stafette_resume_on: "2026-11-20" }, now)).toBe(true);
   });
 
   it("ball with deputy puts task into waiting", () => {
     expect(taskZone({ ball_owner: "deputy" }, "me", now)).toBe("waiting");
     expect(taskZone({ ball_owner: "office", ball_assignee_id: "other" }, "me", now)).toBe("waiting");
     expect(taskZone({ ball_owner: "office", ball_assignee_id: "me" }, "me", now)).toBe("mine");
-    expect(taskZone({ next_action: "x", next_action_due: "2026-12-01" }, "me", now)).toBe("resubmission");
+    expect(taskZone({ stafette_resume_on: "2026-12-01" }, "me", now)).toBe("resubmission")
+    expect(taskZone({ ball_owner: "deputy", ball_assignee_id: "me" }, "me", now)).toBe("mine");
   });
 
   it("completed tasks are not grouped", () => {
@@ -37,10 +38,10 @@ import { isReminderDue as _due, reminderPreset as _preset } from "./stafette";
 describe("Erinnerungen", () => {
   const now = new Date(2026, 10, 7, 10, 0);
   it("fällige Erinnerung holt wartende Aufgabe in Mein Zug", () => {
-    expect(taskZone({ ball_owner: "deputy", reminder_at: new Date(2026, 10, 7, 9).toISOString() }, "me", now)).toBe("mine");
+    expect(taskZone({ ball_owner: "deputy", user_id: "me", reminder_at: new Date(2026, 10, 7, 9).toISOString() }, "me", now)).toBe("mine");
   });
   it("künftige Erinnerung lässt Aufgabe wartend", () => {
-    expect(taskZone({ ball_owner: "deputy", reminder_at: new Date(2026, 10, 8, 9).toISOString() }, "me", now)).toBe("waiting");
+    expect(taskZone({ ball_owner: "deputy", user_id: "me", reminder_at: new Date(2026, 10, 8, 9).toISOString() }, "me", now)).toBe("waiting");
     expect(_due({ reminder_at: null }, now)).toBe(false);
   });
   it("Nächste Woche = kommender Montag 9 Uhr", () => {
