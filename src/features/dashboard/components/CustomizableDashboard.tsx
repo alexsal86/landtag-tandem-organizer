@@ -19,6 +19,9 @@ import { useAuth } from '@/hooks/useAuth';
 import { useTenant } from '@/hooks/useTenant';
 import { DashboardWidget } from '@/features/dashboard/components/DashboardWidget';
 import { DashboardGreetingSection } from '@/components/dashboard/DashboardGreetingSection';
+import { DashboardDecisionsWidget } from '@/components/dashboard/DashboardDecisionsWidget';
+import { ErrorBoundary } from '@/components/shared/ErrorBoundary';
+import { ErrorState } from '@/components/ui-patterns';
 import { useDashboardData } from '@/hooks/useDashboardData';
 import { DashboardCoverImage } from '@/components/dashboard/DashboardCoverImage';
 import { QuickActionsWidget } from '@/components/widgets/QuickActionsWidget';
@@ -43,6 +46,7 @@ import {
   Users,
   Rss,
   ClipboardCheck,
+  Vote,
   Network
 } from 'lucide-react';
 
@@ -287,6 +291,20 @@ export const CustomizableDashboard: React.FC = () => {
             <NewsWidget />
           </div>
         </div>
+
+        <Card className="mb-6 shadow-sm">
+          <CardHeader>
+            <CardTitle className="flex items-center gap-2 text-base font-medium">
+              <Vote className="h-5 w-5 text-muted-foreground" aria-hidden="true" />
+              Entscheidungen
+            </CardTitle>
+          </CardHeader>
+          <CardContent>
+            <ErrorBoundary fallback={<ErrorState description="Entscheidungen konnten nicht geladen werden." />}>
+              <DashboardDecisionsWidget />
+            </ErrorBoundary>
+          </CardContent>
+        </Card>
 
         <div className="mb-6"><TeamRitualDashboardCard /></div>
         {/* Quick Actions */}

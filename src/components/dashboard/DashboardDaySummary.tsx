@@ -42,7 +42,7 @@ export function DashboardDaySummary() {
     return <p className="text-base text-muted-foreground" role="status">Dein Tagesüberblick wird geladen…</p>;
   }
   const pendingDecisions = decisions.decisions.filter(decision =>
-    decision.status !== "resolved" && !decision.hasResponded).length;
+    decision.status !== "resolved" && ((decision.isParticipant && !decision.hasResponded) || decision.isCreator)).length;
   const emphasize = (text: string) => text.split(/(„[^“]+“|(?:ein|Eine|\d+) (?:Termine?|Entscheidung(?:en)?|Rückmeldungen?|Briefings?))/g)
     .map((part, index) => index % 2 ? <strong key={index} className="font-medium text-foreground">{part}</strong> : part);
   return (
