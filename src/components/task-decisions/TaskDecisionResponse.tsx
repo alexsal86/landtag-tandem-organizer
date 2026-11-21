@@ -800,12 +800,14 @@ export const TaskDecisionResponse = ({
             <Tooltip>
               <Collapsible open={showCommentField} onOpenChange={setShowCommentField}>
                 <TooltipTrigger asChild>
+                  <span className="inline-flex">
                   <CollapsibleTrigger asChild>
                     <Button variant="outline" size="sm" className="text-xs text-muted-foreground">
                       Begründung
                       <ChevronDown className={`h-3 w-3 ml-0.5 transition-transform ${showCommentField ? 'rotate-180' : ''}`} />
                     </Button>
                   </CollapsibleTrigger>
+                  </span>
                 </TooltipTrigger>
               </Collapsible>
               <TooltipContent>

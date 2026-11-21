@@ -6,6 +6,7 @@
  * The fix: SlotClone uses useComposedRefs (memoized) instead of raw composeRefs.
  */
 import * as React from "react";
+import { useComposedRefs } from "./radix-compose-refs-patch";
 import { Fragment, jsx } from "react/jsx-runtime";
 
 type InteropRecord = Record<string, unknown>;
@@ -22,24 +23,6 @@ type RadixTaggedComponent = {
 const toRecord = (value: unknown): InteropRecord | null => {
   return value && typeof value === "object" ? (value as InteropRecord) : null;
 };
-
-// Inline compose-refs to avoid circular alias issues
-function setRef<T>(ref: React.Ref<T> | undefined, value: T): void {
-  if (typeof ref === "function") {
-    ref(value);
-  } else if (ref !== null && ref !== undefined) {
-    (ref as React.MutableRefObject<T>).current = value;
-  }
-}
-
-function useComposedRefs<T>(...refs: (React.Ref<T> | undefined)[]): React.RefCallback<T> {
-  const refsRef = React.useRef(refs);
-  refsRef.current = refs;
-  // eslint-disable-next-line react-hooks/exhaustive-deps
-  return React.useCallback((node: T) => {
-    refsRef.current.forEach((ref) => setRef(ref, node));
-  }, []);
-}
 
 // ---- Slot implementation ----
 
@@ -126,14 +109,13 @@ function getElementRef(element: React.ReactElement<SlotLikeProps>): React.Ref<un
 const SlotClone = React.forwardRef<unknown, SlotLikeProps>((props, forwardedRef) => {
   const { children, ...slotProps } = props;
 
+  const childrenRef = React.isValidElement<SlotLikeProps>(children) ? getElementRef(children) : undefined;
+  const composedRef = useComposedRefs(forwardedRef, childrenRef);
   if (React.isValidElement<SlotLikeProps>(children)) {
-    const childrenRef = getElementRef(children);
-    // FIX: Use memoized useComposedRefs instead of raw composeRefs
-    const composedRef = useComposedRefs(forwardedRef, childrenRef);
     const mergedProps = mergeProps(slotProps, children.props);
 
     if (children.type !== React.Fragment) {
-      mergedProps.ref = forwardedRef ? composedRef : childrenRef;
+      mergedProps.ref = composedRef;
     }
 
     return React.cloneElement(children, mergedProps);

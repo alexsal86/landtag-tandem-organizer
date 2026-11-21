@@ -159,6 +159,8 @@ export default defineConfig(({ mode }) => ({
   ].filter(Boolean),
   resolve: {
     dedupe: [
+      '@radix-ui/react-compose-refs',
+      '@radix-ui/react-slot',
       'lexical',
       '@lexical/clipboard',
       '@lexical/code',

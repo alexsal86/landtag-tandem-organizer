@@ -1,4 +1,4 @@
-import { useCallback, useEffect, useRef, useState } from "react";
+import { useCallback, useEffect, useId, useRef, useState } from "react";
 import { supabase } from "@/integrations/supabase/client";
 import { handleAppError } from "@/utils/errorHandler";
 import { debugConsole } from '@/utils/debugConsole';
@@ -39,6 +39,7 @@ interface LoadDecisionsOptions {
 }
 
 export function useMyWorkDecisionsData(userId?: string) {
+  const subscriptionId = useId();
   const [decisions, setDecisions] = useState<MyWorkDecision[]>([]);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
@@ -203,6 +204,7 @@ export function useMyWorkDecisionsData(userId?: string) {
       });
 
       if (isCurrentRequest()) {
+        setError(null);
         setDecisions(allDecisionsList);
         decisionsCache.set(userId, { timestamp: Date.now(), decisions: allDecisionsList });
       }
@@ -235,12 +237,11 @@ export function useMyWorkDecisionsData(userId?: string) {
     if (cached) {
       setDecisions(cached.decisions);
       setLoading(!isFresh);
-      if (isFresh) return;
     } else {
       setLoading(true);
     }
 
-    void loadDecisions();
+    void loadDecisions({ silent: isFresh });
   }, [userId, loadDecisions]);
 
   useEffect(() => {
@@ -256,7 +257,7 @@ export function useMyWorkDecisionsData(userId?: string) {
     };
 
     const channel = supabase
-      .channel(`my-work-decisions-${userId}`)
+      .channel(`my-work-decisions-${userId}-${subscriptionId}`)
       .on("postgres_changes", { event: "*", schema: "public", table: "task_decisions", filter: `created_by=eq.${userId}` }, scheduleRefresh)
       // Listen without filter – filtered subscriptions on task_decision_participants
       // can silently drop events when RLS prevents the anon/authenticated role from
@@ -265,11 +266,16 @@ export function useMyWorkDecisionsData(userId?: string) {
       .on("postgres_changes", { event: "*", schema: "public", table: "task_decision_responses" }, scheduleRefresh)
       .subscribe();
 
+    const refresh = () => { void loadDecisions({ silent: true }); };
+    const interval = window.setInterval(refresh, DECISIONS_CACHE_TTL_MS);
+    window.addEventListener("focus", refresh);
     return () => {
       if (timeout) clearTimeout(timeout);
+      window.clearInterval(interval);
+      window.removeEventListener("focus", refresh);
       supabase.removeChannel(channel);
     };
-  }, [userId, loadDecisions]);
+  }, [userId, loadDecisions, subscriptionId]);
 
   return {
     data: decisions,

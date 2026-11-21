@@ -1,39 +1,59 @@
-/**
- * Patched version of @radix-ui/react-compose-refs to fix React 19 infinite loop.
- * See: https://github.com/radix-ui/primitives/issues/3799
- * 
- * The issue: SlotClone calls composeRefs() directly (not memoized) on every render.
- * In React 19, ref callbacks can return cleanup functions. When composeRefs creates
- * a new function each render, React sees a new callback ref → unmounts old → mounts new
- * → infinite loop.
- * 
- * Fix: Make setRef not return the cleanup function to prevent React 19 from treating
- * the composed ref as having cleanup, breaking the recursive cycle.
- */
 import * as React from "react";
 
-function setRef<T>(ref: React.Ref<T> | undefined, value: T): void {
+type OptionalRef<T> = React.Ref<T> | undefined;
+type Cleanup = () => void;
+
+function setRef<T>(ref: OptionalRef<T>, value: T | null): void | Cleanup {
   if (typeof ref === "function") {
-    // Don't return the result — in React 19, returning a function from a ref callback
-    // is treated as a cleanup function, which causes infinite re-mount loops
-    // when combined with non-memoized composeRefs in SlotClone.
-    ref(value);
-  } else if (ref !== null && ref !== undefined) {
-    (ref as React.MutableRefObject<T>).current = value;
+    return ref(value);
+  }
+  if (ref != null) {
+    (ref as React.MutableRefObject<T | null>).current = value;
   }
 }
 
-export function composeRefs<T>(...refs: (React.Ref<T> | undefined)[]): React.RefCallback<T> {
-  return (node: T) => {
-    refs.forEach((ref) => setRef(ref, node));
-  };
+interface RefCache {
+  children: WeakMap<object, RefCache>;
+  callback?: React.RefCallback<unknown>;
 }
 
-export function useComposedRefs<T>(...refs: (React.Ref<T> | undefined)[]): React.RefCallback<T> {
+const composedRefsCache: RefCache = { children: new WeakMap() };
+
+/**
+ * Radix also calls composeRefs directly during render. Reuse the callback for
+ * the same refs so React does not detach/attach them on each state update.
+ * Weak keys let callbacks and component refs be collected after unmount.
+ */
+export function composeRefs<T>(...refs: OptionalRef<T>[]): React.RefCallback<T> {
+  const activeRefs = refs.filter((ref): ref is React.RefCallback<T> | React.RefObject<T> => ref != null);
+  let cache = composedRefsCache;
+  for (const ref of activeRefs) {
+    let child = cache.children.get(ref);
+    if (!child) {
+      child = { children: new WeakMap() };
+      cache.children.set(ref, child);
+    }
+    cache = child;
+  }
+  if (!cache.callback) {
+    cache.callback = ((node: T | null) => {
+      const cleanups = activeRefs.map(ref => setRef(ref, node));
+      if (cleanups.some(cleanup => typeof cleanup === "function")) {
+        return () => {
+          activeRefs.forEach((ref, index) => {
+            const cleanup = cleanups[index];
+            if (typeof cleanup === "function") cleanup();
+            else setRef(ref, null);
+          });
+        };
+      }
+    }) as React.RefCallback<unknown>;
+  }
+  return cache.callback as React.RefCallback<T>;
+}
+
+export function useComposedRefs<T>(...refs: OptionalRef<T>[]): React.RefCallback<T> {
   const refsRef = React.useRef(refs);
   refsRef.current = refs;
-  // eslint-disable-next-line react-hooks/exhaustive-deps
-  return React.useCallback((node: T) => {
-    refsRef.current.forEach((ref) => setRef(ref, node));
-  }, []);
+  return React.useCallback((node: T | null) => composeRefs(...refsRef.current)(node), []);
 }
