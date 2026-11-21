@@ -14,7 +14,7 @@ import { ArrowRight, CalendarClock, CalendarDays, ClipboardList, Newspaper, Vote
 import { AppointmentRequestList } from '@/features/appointment-requests/AppointmentRequestList';
 import { useNextJourFixeDate, useOpenAppointmentRequests } from '@/features/appointment-requests/useAppointmentRequests';
 import { isUrgent } from '@/features/appointment-requests/logic';
-import { useResolvedUserRole } from '@/hooks/useResolvedUserRole';
+import { useWorkspaceView } from '@/contexts/WorkspaceViewContext';
 import { BriefingComposerCard, TodayBriefingPanel } from '@/features/briefings';
 import { DashboardDecisionsWidget } from '@/components/dashboard/DashboardDecisionsWidget';
 import { DashboardJourFixeWidget } from '@/components/dashboard/DashboardJourFixeWidget';
@@ -112,12 +112,12 @@ function DeadlinesWidget() {
   );
 }
 
-function AppointmentsWidget() {
+function AppointmentsWidget({ title }: { title: string }) {
   const dashboardData = useDashboardAppointmentsData();
 
   return (
     <DashboardWidgetContainer
-      icon={CalendarDays} title="Nächste Termine"
+      icon={CalendarDays} title={title}
       headerAction={<CollapsingCalendarLink />}
       isLoading={dashboardData.isLoading || dashboardData.tenantLoading}
       hasError={dashboardData.isError}
@@ -160,22 +160,24 @@ function NewsWidgetCard() {
 }
 
 export function MyWorkDashboardTab() {
-  const { isAbgeordneter, isEmployee } = useResolvedUserRole();
+  const { isDeputyView, isEmployeeView, loading } = useWorkspaceView();
+
+  if (loading) return <LoadingState variant="card" rows={3} />;
 
   return (
     <div className="space-y-space-md animate-fade-in">
       <DashboardHeader />
-      {isAbgeordneter && <TodayBriefingPanel />}
-      {isEmployee && !isAbgeordneter && <BriefingComposerCard />}
+      {isDeputyView && <TodayBriefingPanel />}
+      {isEmployeeView && <BriefingComposerCard />}
       <div className="grid grid-cols-1 lg:grid-cols-[minmax(0,40fr)_minmax(0,35fr)_minmax(0,25fr)] gap-space-md items-start">
         <div className="flex flex-col gap-space-md min-w-0">
           <UrgentRequestsWidget />
-          <AppointmentsWidget />
+          <AppointmentsWidget title={isDeputyView ? "Dein Tag" : "Nächste Termine"} />
         </div>
         <div className="flex flex-col gap-space-md min-w-0">
-          <DeadlinesWidget />
+          {!isDeputyView && <DeadlinesWidget />}
           <DashboardWidgetContainer
-            icon={Vote} title="Entscheidungen"
+            icon={Vote} title={isDeputyView ? "Braucht deine Entscheidung" : "Entscheidungen"}
             errorMessage="Entscheidungen konnten nicht geladen werden."
           >
             <ErrorBoundary fallback={<ErrorState description="Entscheidungen konnten nicht geladen werden." />}>
@@ -184,14 +186,16 @@ export function MyWorkDashboardTab() {
           </DashboardWidgetContainer>
         </div>
         <div className="flex flex-col gap-space-md min-w-0">
-          <DashboardWidgetContainer
-            icon={Users} title="Jour fixe"
-            errorMessage="Jour fixe konnte nicht geladen werden."
-          >
-            <ErrorBoundary fallback={<ErrorState description="Jour fixe konnte nicht geladen werden." />}>
-              <DashboardJourFixeWidget />
-            </ErrorBoundary>
-          </DashboardWidgetContainer>
+          {!isDeputyView && (
+            <DashboardWidgetContainer
+              icon={Users} title="Jour fixe"
+              errorMessage="Jour fixe konnte nicht geladen werden."
+            >
+              <ErrorBoundary fallback={<ErrorState description="Jour fixe konnte nicht geladen werden." />}>
+                <DashboardJourFixeWidget />
+              </ErrorBoundary>
+            </DashboardWidgetContainer>
+          )}
           <TeamRitualDashboardCard />
           <NewsWidgetCard />
         </div>

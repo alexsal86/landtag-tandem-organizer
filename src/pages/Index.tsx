@@ -5,10 +5,12 @@ import { useAuth } from "@/hooks/useAuth";
 import { useTenant } from "@/hooks/useTenant";
 import { AppNavigation, getNavigationGroups } from "@/components/navigation/AppNavigation";
 import { prefetchRoute } from "@/lib/routePrefetch";
+import { useWorkspaceView } from "@/contexts/WorkspaceViewContext";
 import { useNavWidth } from "@/hooks/useNavWidth";
 
 // Lazy load all major view components for better initial load performance
 const CustomizableDashboard = lazyWithRetry(() => import("@/features/dashboard/components/CustomizableDashboard").then(m => ({ default: m.CustomizableDashboard })));
+const MyWorkDashboardTab = lazyWithRetry(() => import("@/components/my-work/MyWorkDashboardTab").then(m => ({ default: m.MyWorkDashboardTab })));
 const CalendarView = lazyWithRetry(() => import("@/features/calendar/components/CalendarView").then(m => ({ default: m.CalendarView })));
 const ContactsView = lazyWithRetry(() => import("@/features/contacts/components/ContactsView").then(m => ({ default: m.ContactsView })));
 const DocumentsView = lazyWithRetry(() => import("@/features/documents/components/DocumentsView").then(m => ({ default: m.DocumentsView as React.ComponentType })));
@@ -55,6 +57,7 @@ const CreateContact = lazyWithRetry(() => import("./CreateContact"));
 const NotFound = lazyWithRetry(() => import("./NotFound"));
 
 const Index = (): React.JSX.Element => {
+  const { isDeputyView, loading: isViewLoading } = useWorkspaceView();
   const { width: navWidth, isResizing, startResize } = useNavWidth();
   const { user, loading: authLoading } = useAuth();
   const { loading: tenantLoading } = useTenant();
@@ -194,7 +197,13 @@ const Index = (): React.JSX.Element => {
   const renderActiveSection = (): React.JSX.Element => {
     switch (activeSection) {
       case 'dashboard':
-        return withSectionBoundary('Dashboard', <CustomizableDashboard />);
+        if (isViewLoading) {
+          return <div className="p-6 text-muted-foreground">Dashboard wird geladen…</div>;
+        }
+        return withSectionBoundary(
+          'Dashboard',
+          isDeputyView ? <div className="p-6"><MyWorkDashboardTab /></div> : <CustomizableDashboard />,
+        );
       case "mywork":
         return withSectionBoundary('Meine Arbeit', <MyWorkView />);
       case "calendar":

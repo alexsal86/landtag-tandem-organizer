@@ -35,6 +35,8 @@ import {
 } from "lucide-react";
 import { useMatrixUnread } from "@/contexts/MatrixUnreadContext";
 import { useNavigationNotifications } from "@/hooks/useNavigationNotifications";
+import { useWorkspaceView } from "@/contexts/WorkspaceViewContext";
+import { Switch } from "@/components/ui/switch";
 import { useResolvedUserRole } from "@/hooks/useResolvedUserRole";
 import { useAppSettings } from "@/hooks/useAppSettings";
 import { useFavicon } from "@/hooks/useFavicon";
@@ -117,6 +119,7 @@ export function AppNavigation({
   const { navigationCounts, markNavigationAsVisited } = useNavigationNotifications();
   const { totalUnreadCount: matrixUnreadCount } = useMatrixUnread();
   const { role: userRole, hasAdminAccess, loading: isRoleLoading } = useResolvedUserRole();
+  const { isDeputyView, loading: isViewLoading, setView } = useWorkspaceView();
   const appSettings = useAppSettings();
   useFavicon(appSettings.app_logo_url);
   const { pages: quickAccessPages, addPage, removePage, isInQuickAccess } = useQuickAccessPages();
@@ -1103,6 +1106,18 @@ export function AppNavigation({
             )}
           </div>
         </div>
+
+        {setView && (
+          <label className="mx-3 flex shrink-0 flex-wrap items-center gap-2 rounded-md border border-border px-2 py-2 text-xs">
+            <Switch
+              aria-label="Abgeordnetenansicht"
+              checked={isDeputyView}
+              disabled={isViewLoading}
+              onCheckedChange={(checked) => setView(checked ? "abgeordneter" : "mitarbeiter")}
+            />
+            <span>{isDeputyView ? "Abgeordneter" : "Mitarbeiter"}</span>
+          </label>
+        )}
 
         {/* Quick Action Buttons (Panel Switchers) */}
         <div className="flex flex-wrap items-center gap-1 px-3 py-3">

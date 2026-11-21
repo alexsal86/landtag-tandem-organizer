@@ -9,6 +9,7 @@ import { NotificationProvider } from "@/contexts/NotificationContext";
 import { AppSettingsProvider } from "@/hooks/useAppSettings";
 import { TooltipProvider } from "@/components/ui/tooltip";
 import { AppHeadManager } from "@/components/navigation/AppHeadManager";
+import { WorkspaceViewProvider } from "@/contexts/WorkspaceViewContext";
 
 export const AppProviders = ({ children }: PropsWithChildren): React.JSX.Element => (
   <ThemeProvider attribute="class" defaultTheme="system" enableSystem>
@@ -20,7 +21,7 @@ export const AppProviders = ({ children }: PropsWithChildren): React.JSX.Element
               <NotificationProvider>
                 <TooltipProvider>
                   <AppHeadManager />
-                  {children}
+                  <WorkspaceViewProvider>{children}</WorkspaceViewProvider>
                 </TooltipProvider>
               </NotificationProvider>
             </AppSettingsProvider>
