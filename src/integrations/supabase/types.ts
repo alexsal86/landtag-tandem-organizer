@@ -18704,10 +18704,6 @@ export type Database = {
               isSetofReturn: true
             }
           }
-      list_task_deputy_ids: {
-        Args: { p_tenant_id: string }
-        Returns: string[]
-      }
       list_analysis_deputies: {
         Args: {
           faction_text?: string
@@ -18730,6 +18726,7 @@ export type Database = {
         Args: { p_note_id?: string; p_tenant_id: string }
         Returns: Json
       }
+      list_task_deputy_ids: { Args: { p_tenant_id: string }; Returns: string[] }
       log_collaboration_event: {
         Args: {
           details?: Json
