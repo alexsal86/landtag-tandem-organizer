@@ -4,7 +4,7 @@ import { Badge } from "@/components/ui/badge";
 import { Button, buttonVariants } from "@/components/ui/button";
 import { Checkbox } from "@/components/ui/checkbox";
 import {
-  Tooltip, TooltipContent, TooltipProvider, TooltipTrigger,
+  Tooltip, TooltipContent, TooltipTrigger,
 } from "@/components/ui/tooltip";
 import {
   DropdownMenu, DropdownMenuContent, DropdownMenuItem, DropdownMenuTrigger,
@@ -108,15 +108,25 @@ export function NoteCard({
   const canEdit = note.user_id === userId || note.can_edit === true;
   const contentRef = useRef<HTMLDivElement>(null);
   const [truncated, setTruncated] = useState(false);
-  useLayoutEffect(() => {
+  useEffect(() => {
     const el = contentRef.current;
     if (!el) return;
-    const measure = () => { if (!isExpanded) setTruncated(el.scrollHeight > el.clientHeight + 1); };
+    let frame = 0;
+    const measure = () => {
+      window.cancelAnimationFrame(frame);
+      frame = window.requestAnimationFrame(() => {
+        if (!isExpanded) setTruncated(el.scrollHeight > el.clientHeight + 1);
+      });
+    };
     measure();
     const ro = typeof ResizeObserver !== "undefined" ? new ResizeObserver(measure) : null;
     ro?.observe(el);
     window.addEventListener("resize", measure);
-    return () => { ro?.disconnect(); window.removeEventListener("resize", measure); };
+    return () => {
+      window.cancelAnimationFrame(frame);
+      ro?.disconnect();
+      window.removeEventListener("resize", measure);
+    };
   }, [isExpanded, note.content]);
 
   const cardRef = useRef<HTMLDivElement>(null);
@@ -184,11 +194,11 @@ export function NoteCard({
         <div className="flex flex-col items-end gap-1.5 flex-shrink-0">
           <div className="flex items-center gap-0.5">
             {note.is_pinned && (
-              <TooltipProvider><Tooltip><TooltipTrigger asChild>
+              <Tooltip><TooltipTrigger asChild>
                 <span className="inline-flex h-6 w-6 items-center justify-center text-muted-foreground" role="img" aria-label="Angeheftet">
                   <Pin className="h-3.5 w-3.5" />
                 </span>
-              </TooltipTrigger><TooltipContent>Angeheftet</TooltipContent></Tooltip></TooltipProvider>
+              </TooltipTrigger><TooltipContent>Angeheftet</TooltipContent></Tooltip>
             )}
             <DropdownMenu onOpenChange={setActionsOpen}>
               <DropdownMenuTrigger className={cn(buttonVariants({ variant: "ghost", size: "icon" }), "h-6 w-6")} onClick={(e) => e.stopPropagation()}>
@@ -393,7 +403,7 @@ export function NoteCard({
         ) : undefined}
       />
 
-      <TooltipProvider>
+
         <div className="mt-2 flex items-center justify-between gap-2 text-xs text-muted-foreground">
           <div className="flex min-w-0 flex-1 flex-wrap items-center gap-2">
             <Tooltip><TooltipTrigger asChild>
@@ -452,23 +462,17 @@ export function NoteCard({
               )}
               <div className="flex items-center gap-1 text-muted-foreground">
                 {note.user_id === userId && (
-                  <TooltipProvider><div className="flex items-center gap-1">
-                    <Tooltip><TooltipTrigger asChild>
-                      <Button variant="ghost" size="icon" className="h-6 w-6 text-muted-foreground hover:text-foreground hover:bg-muted/80 rounded-full" onClick={(e) => { e.stopPropagation(); onOpenEdit(note); }}>
-                        <Pencil className="h-3 w-3" />
-                      </Button>
-                    </TooltipTrigger><TooltipContent side="top">Bearbeiten</TooltipContent></Tooltip>
-                    <Tooltip><TooltipTrigger asChild>
-                      <Button variant="ghost" size="icon" className="h-6 w-6 text-muted-foreground hover:text-foreground hover:bg-muted/80 rounded-full" onClick={(e) => { e.stopPropagation(); onOpenDatePicker(note); }}>
-                        <Clock className="h-3 w-3" />
-                      </Button>
-                    </TooltipTrigger><TooltipContent side="top">Wiedervorlage</TooltipContent></Tooltip>
-                    <Tooltip><TooltipTrigger asChild>
-                      <Button variant="ghost" size="icon" className="h-6 w-6 text-muted-foreground hover:text-foreground hover:bg-muted/80 rounded-full" onClick={(e) => { e.stopPropagation(); onArchive(note.id); }}>
-                        <Archive className="h-3 w-3" />
-                      </Button>
-                    </TooltipTrigger><TooltipContent side="top">Archivieren</TooltipContent></Tooltip>
-                  </div></TooltipProvider>
+                  <div className="flex items-center gap-1">
+                    <Button type="button" aria-label="Bearbeiten" title="Bearbeiten" variant="ghost" size="icon" className="h-6 w-6 text-muted-foreground hover:text-foreground hover:bg-muted/80 rounded-full" onClick={(e) => { e.stopPropagation(); onOpenEdit(note); }}>
+                      <Pencil className="h-3 w-3" />
+                    </Button>
+                    <Button type="button" aria-label="Wiedervorlage" title="Wiedervorlage" variant="ghost" size="icon" className="h-6 w-6 text-muted-foreground hover:text-foreground hover:bg-muted/80 rounded-full" onClick={(e) => { e.stopPropagation(); onOpenDatePicker(note); }}>
+                      <Clock className="h-3 w-3" />
+                    </Button>
+                    <Button type="button" aria-label="Archivieren" title="Archivieren" variant="ghost" size="icon" className="h-6 w-6 text-muted-foreground hover:text-foreground hover:bg-muted/80 rounded-full" onClick={(e) => { e.stopPropagation(); onArchive(note.id); }}>
+                      <Archive className="h-3 w-3" />
+                    </Button>
+                  </div>
                 )}
               </div>
             </div>
@@ -484,7 +488,7 @@ export function NoteCard({
               )}
           </div>
         </div>
-      </TooltipProvider>
+
     </div>
   );
 }

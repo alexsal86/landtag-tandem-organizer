@@ -7,7 +7,7 @@ import { Button, buttonVariants } from "@/components/ui/button";
 import { Archive, Search, X, CheckSquare, Trash2, Settings2, Pin, ClockAlert, Clock, Circle, Link2, SlidersHorizontal, MoreHorizontal, Share2 } from "lucide-react";
 import { Popover, PopoverContent, PopoverTrigger } from "@/components/ui/popover";
 import { DropdownMenu, DropdownMenuContent, DropdownMenuItem, DropdownMenuTrigger } from "@/components/ui/dropdown-menu";
-import { Tooltip, TooltipContent, TooltipProvider, TooltipTrigger } from "@/components/ui/tooltip";
+import { Tooltip, TooltipContent, TooltipTrigger } from "@/components/ui/tooltip";
 import { useNoteColorPalette } from "@/components/my-work/useNoteColorPalette";
 import { NoteColorPaletteDialog } from "@/components/my-work/NoteColorPaletteDialog";
 import { QuickNotesList, type QuickNoteCounts } from "@/components/shared/QuickNotesList";
@@ -107,7 +107,7 @@ export function MyWorkNotesList({ refreshTrigger }: MyWorkNotesListProps) {
   return (
     <>
       <section className="w-full space-y-4" aria-label="Meine Notizen">
-        <TooltipProvider>
+
         <div className="flex flex-wrap items-center gap-2" role="toolbar" aria-label="Notizen filtern">
           <div className="flex flex-wrap items-center gap-1.5" role="radiogroup" aria-label="Filter">
             {QUICK_NOTE_FILTERS.filter(f => primaryFilters.includes(f.value)).map(renderFilterChip)}
@@ -180,7 +180,7 @@ export function MyWorkNotesList({ refreshTrigger }: MyWorkNotesListProps) {
             <QuickNotesSyncIndicator />
           </div>
         </div>
-        </TooltipProvider>
+
 
         {selectMode && (
           <div className="sticky top-0 z-sticky flex flex-wrap items-center gap-2 rounded-lg border bg-card px-3 py-2 shadow-sm">

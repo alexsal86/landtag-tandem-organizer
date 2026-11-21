@@ -239,12 +239,14 @@ export function MyWorkView() {
       )}
 
       {activeTab === "capture" && (
-        <Suspense fallback={tabFallback}>
-          <div className="w-full flex flex-col gap-6">
-            <MyWorkQuickCapture onNoteSaved={handleNoteSaved} />
-            <MyWorkNotesList refreshTrigger={refreshTrigger} />
-          </div>
-        </Suspense>
+        <ErrorBoundary fallback={tabError("Quick Notes")}>
+          <Suspense fallback={tabFallback}>
+            <div className="w-full flex flex-col gap-6">
+              <MyWorkQuickCapture onNoteSaved={handleNoteSaved} />
+              <MyWorkNotesList refreshTrigger={refreshTrigger} />
+            </div>
+          </Suspense>
+        </ErrorBoundary>
       )}
 
       {activeTab === "tasks" && <ErrorBoundary fallback={tabError("Aufgaben")}><Suspense fallback={tabFallback}><MyWorkTasksTab /></Suspense></ErrorBoundary>}

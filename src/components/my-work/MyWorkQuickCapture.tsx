@@ -6,7 +6,7 @@ import { useRef, useState } from "react";
 import { Card, CardContent } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
 import { Popover, PopoverContent, PopoverTrigger } from "@/components/ui/popover";
-import { Tooltip, TooltipContent, TooltipProvider, TooltipTrigger } from "@/components/ui/tooltip";
+import { Tooltip, TooltipContent, TooltipTrigger } from "@/components/ui/tooltip";
 import { Pin, Loader2, Info } from "lucide-react";
 import { cn } from "@/lib/utils";
 import { QuickNoteRichTextEditor } from '@/features/quick-notes/components/QuickNoteRichTextEditor';
@@ -106,12 +106,12 @@ export function MyWorkQuickCapture({ onNoteSaved }: MyWorkQuickCaptureProps) {
   const footer = (
 
     <>
-      <TooltipProvider><Tooltip>
+      <Tooltip>
         <TooltipTrigger asChild>
           <Button variant="ghost" size="icon" className="h-7 w-7" aria-label="Hinweise zur Notizerfassung"><Info className="h-4 w-4" /></Button>
         </TooltipTrigger>
         <TooltipContent>Strg/Cmd + Enter speichert. @ erwähnt Personen. [ ] erstellt eine Checkbox. Abbrechen behält deinen lokalen Entwurf.</TooltipContent>
-      </Tooltip></TooltipProvider>
+      </Tooltip>
       <span className="mx-1 h-4 w-px bg-border" aria-hidden="true" />
       <Popover>
         <span className="inline-flex">
