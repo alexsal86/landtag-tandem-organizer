@@ -6,7 +6,7 @@ import { Avatar, AvatarFallback, AvatarImage } from "@/components/ui/avatar";
 import { Command, CommandEmpty, CommandGroup, CommandInput, CommandItem, CommandList } from "@/components/ui/command";
 import { usePersistentState } from "@/hooks/usePersistentState";
 import { WorkflowLinks } from "@/components/workflow/WorkflowLinks";
-import { useEffect, useState } from "react";
+import { useEffect, useRef, useState } from "react";
 import { Bell, BellOff, BellRing, CalendarDays, Check, ChevronDown, Flag, Plus, X, Gavel, Send, Users, Zap } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
@@ -104,10 +104,19 @@ export function TaskDetailView({ task, profiles, decisionLabel, onSave, onComple
   const progress = checklistProgress(checklist);
   const nudgeForMe = isNudgeActive(task) && task.nudged_by !== meId;
   const mayNudge = canNudge(task, meId);
-  const saveList = (items: ChecklistItem[]) => run(() => onSave({ checklist: items }));
+  const checklistWritePending = useRef(false);
+  const saveList = async (items: ChecklistItem[]) => {
+    if (checklistWritePending.current) return;
+    checklistWritePending.current = true;
+    try {
+      await onSave({ checklist: items });
+    } finally {
+      checklistWritePending.current = false;
+    }
+  };
   const addItem = () => {
     const text = newItem.trim();
-    if (!text) return;
+    if (!text || checklistWritePending.current) return;
     setNewItem("");
     void saveList([...checklist, { id: crypto.randomUUID(), text, done: false }]);
   };
@@ -501,7 +510,7 @@ export function TaskDetailView({ task, profiles, decisionLabel, onSave, onComple
             <ul className="space-y-3">
               {checklist.map((item) => (
                 <li key={item.id} className="group flex items-center gap-3">
-                  <Checkbox checked={item.done} disabled={saving} aria-label={item.text} className="size-5 shrink-0 rounded-sm border-muted-foreground disabled:opacity-100 [&_svg]:size-3.5"
+                  <Checkbox checked={item.done} aria-label={item.text} className="size-5 shrink-0 rounded-sm border-muted-foreground [&_svg]:size-3.5"
                     onCheckedChange={() => saveList(checklist.map((i) => (i.id === item.id ? { ...i, done: !i.done } : i)))} />
                   <span className={cn("flex-1 text-body", item.done && "line-through text-muted-foreground")}>{item.text}</span>
                   <button type="button" aria-label="Punkt entfernen" className="text-muted-foreground sm:opacity-0 sm:group-hover:opacity-100 focus-visible:opacity-100"

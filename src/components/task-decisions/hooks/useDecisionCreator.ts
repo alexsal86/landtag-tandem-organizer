@@ -76,6 +76,7 @@ export const useDecisionCreator = ({
   onCreatedWithId,
 }: UseDecisionCreatorParams) => {
   const { currentTenant } = useTenant();
+  const tenantId = currentTenant?.id;
   const creationId = useRef(crypto.randomUUID());
   const [internalOpen, setInternalOpen] = useState(false);
   const isControlled = externalOpen !== undefined;
@@ -145,43 +146,19 @@ export const useDecisionCreator = ({
 
   const loadProfiles = useCallback(async () => {
     try {
+      if (!tenantId) return;
       const { data: userData } = await supabase.auth.getUser();
       if (!userData.user) return;
 
-      const { data: tenantData } = await supabase
-        .from("user_tenant_memberships")
-        .select("tenant_id")
-        .eq("user_id", userData.user.id)
-        .eq("is_active", true)
-        .single();
+      const { data, error } = await supabase
+        .from("profiles")
+        .select("user_id, display_name")
+        .eq("tenant_id", tenantId)
+        .order("display_name");
 
-      if (!tenantData?.tenant_id) {
-        setProfiles([]);
-        setProfilesLoaded(true);
-        return;
-      }
-
-      const { data: tenantMembers } = await supabase
-        .from("user_tenant_memberships")
-        .select("user_id")
-        .eq("tenant_id", tenantData.id)
-        .eq("is_active", true);
-
-      const tenantUserIdsArray = tenantMembers?.map((member: Record<string, any>) => member.user_id) || [];
-      const tenantUserIds = new Set(tenantUserIdsArray);
-
-      if (tenantUserIdsArray.length > 0) {
-        const { data, error } = await supabase
-          .from("profiles")
-          .select("user_id, display_name")
-          .in("user_id", tenantUserIdsArray)
-          .order("display_name");
-
-        if (error) throw error;
-        setProfiles(data || []);
-      } else {
-        setProfiles([]);
-      }
+      if (error) throw error;
+      setProfiles(data ?? []);
+      const tenantUserIds = new Set((data ?? []).map(({ user_id }) => user_id));
 
       let defaultIds: string[] = [];
       let defaultSettings: { participants?: string[]; visibleToAll?: boolean; sendByEmail?: boolean; sendViaMatrix?: boolean } | null = null;
@@ -226,9 +203,10 @@ export const useDecisionCreator = ({
     } catch (error) {
       setUploadStatus(null);
       debugConsole.error("Error loading profiles:", error);
+      notify.error("Benutzer konnten nicht geladen werden");
       setProfilesLoaded(true);
     }
-  }, []);
+  }, [tenantId]);
 
   useEffect(() => {
     if (isOpen && !profilesLoaded) {
@@ -284,14 +262,8 @@ export const useDecisionCreator = ({
 
       const tenantData = currentTenant;
       if (!tenantData) throw new Error("Kein Büro ausgewählt");
-      const { data: tenantMembers } = await supabase
-        .from("user_tenant_memberships")
-        .select("user_id")
-        .eq("tenant_id", tenantData.id)
-        .eq("is_active", true);
-
-      const tenantUserIds = new Set(tenantMembers?.map((member: Record<string, any>) => member.user_id) || []);
-      const validSelectedUsers = selectedUsers.filter((userId) => tenantUserIds.has(userId));
+      const profileIds = new Set(profiles.map(({ user_id }) => user_id));
+      const validSelectedUsers = selectedUsers.filter((userId) => profileIds.has(userId));
 
       if (!visibleToAll && validSelectedUsers.length === 0) {
         notify.error("Fehler", {
@@ -495,6 +467,7 @@ export const useDecisionCreator = ({
     onCreatedWithId,
     onDecisionCreated,
     priority,
+    profiles,
     resetForm,
     responseDeadline,
     selectedFileMetadata,
