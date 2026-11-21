@@ -219,7 +219,7 @@ export function TaskDetailView({ task, profiles, decisionLabel, onSave, onComple
 
   return (
     <div className="flex min-h-0 min-w-0 flex-1 flex-col">
-      <main aria-label="Aufgabendetails" className="min-h-0 min-w-0 flex-1 bg-white p-6 dark:bg-card [&_input]:border-0 [&_input]:bg-transparent [&_textarea]:border-0 [&_textarea]:bg-transparent [&_[role=combobox]]:border-0 [&_[role=combobox]]:bg-transparent">
+      <main data-task-detail aria-label="Aufgabendetails" className="min-h-0 min-w-0 flex-1 bg-white p-6 dark:bg-card [&_input]:border-0 [&_input]:bg-transparent [&_textarea]:border-0 [&_textarea]:bg-transparent [&_[role=combobox]]:border-0 [&_[role=combobox]]:bg-transparent">
         <div className="w-full max-w-[750px] space-y-3 [&>section]:space-y-3">
           <header className="relative space-y-1 pl-10">
             <Tooltip>
@@ -509,10 +509,10 @@ export function TaskDetailView({ task, profiles, decisionLabel, onSave, onComple
             </h3>
             <ul className="space-y-3">
               {checklist.map((item) => (
-                <li key={item.id} className="group flex items-center gap-3">
-                  <Checkbox checked={item.done} aria-label={item.text} className="size-5 shrink-0 rounded-sm border-muted-foreground [&_svg]:size-3.5"
+                <li key={item.id} className="group grid min-h-5 grid-cols-[20px_minmax(0,1fr)_14px] items-center gap-3">
+                  <Checkbox checked={item.done} aria-label={item.text} className="relative size-5 min-w-5 rounded-sm border-muted-foreground transition-none [&>span]:pointer-events-none [&>span]:absolute [&>span]:inset-0 [&_svg]:size-3.5"
                     onCheckedChange={() => saveList(checklist.map((i) => (i.id === item.id ? { ...i, done: !i.done } : i)))} />
-                  <span className={cn("flex-1 text-body", item.done && "line-through text-muted-foreground")}>{item.text}</span>
+                  <span className={cn("min-w-0 break-words text-body", item.done && "line-through text-muted-foreground")}>{item.text}</span>
                   <button type="button" aria-label="Punkt entfernen" className="text-muted-foreground sm:opacity-0 sm:group-hover:opacity-100 focus-visible:opacity-100"
                     onClick={() => saveList(checklist.filter((i) => i.id !== item.id))}><X className="h-3.5 w-3.5" /></button>
                 </li>
@@ -541,7 +541,7 @@ export function TaskDetailView({ task, profiles, decisionLabel, onSave, onComple
                 placeholder="Notiz hinzufügen … (Enter speichert)" disabled={saving}
                 className="h-11 border-0 bg-transparent focus-visible:ring-0 focus-visible:ring-offset-0" />
             </form>
-            <ol className="pt-5">
+            <ol className="pt-5 [overflow-anchor:none]">
               {[...timeline, { id: "task-created", at: task.created_at, actorName: nameOf(task.user_id) ?? "Unbekannt", text: "Aufgabe erstellt" }].map((entry) => (
                 <li key={entry.id} className="relative pb-6 pl-7 text-sm last:pb-0 before:absolute before:left-[5px] before:top-[22px] before:bottom-[-2px] before:w-px before:bg-border before:content-[''] last:before:hidden">
                   <span aria-hidden="true" className="absolute left-0 top-1.5 size-3 rounded-full bg-muted-foreground/45" />

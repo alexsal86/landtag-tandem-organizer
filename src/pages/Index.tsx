@@ -315,7 +315,7 @@ const Index = (): React.JSX.Element => {
               />
             ) : null}
           </div>
-          <main id="main-content" className={cn("flex-1 min-h-0 bg-gradient-to-b from-background to-muted/20", isCalendar ? "overflow-hidden" : "overflow-y-auto") } tabIndex={-1}>
+          <main id="main-content" className={cn("flex-1 min-h-0 bg-gradient-to-b from-background to-muted/20", isCalendar ? "overflow-hidden" : "overflow-y-auto has-[[data-task-detail]]:[scrollbar-gutter:stable]") } tabIndex={-1}>
             <ErrorBoundary>
               <Suspense fallback={
                 <div className="flex items-center justify-center h-64">
