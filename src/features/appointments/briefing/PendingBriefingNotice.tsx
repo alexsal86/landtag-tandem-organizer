@@ -40,16 +40,16 @@ export function PendingBriefingNotice() {
     <>
       {isError && <p role="status" className="text-sm text-destructive">Briefing-Hinweise konnten nicht geladen werden.</p>}
       {data.map(appointment => (
-        <div key={appointment.id} role="status" className="flex flex-wrap items-center gap-3 rounded-2xl bg-destructive/10 px-5 py-4">
-          <AlertTriangle className="h-5 w-5 shrink-0 text-destructive" aria-hidden="true" />
-          <p className="min-w-0 flex-1 text-sm">
-            <strong className="text-destructive">Briefing fehlt:</strong>{" "}
+        <div key={appointment.id} role="status" className="flex flex-wrap items-center gap-2 rounded-xl bg-[#fdeeee] px-3 py-2">
+          <AlertTriangle className="h-4 w-4 shrink-0 text-[#ff4b55]" aria-hidden="true" />
+          <p className="min-w-0 flex-1 text-sm leading-5 text-[#283342]">
+            <strong className="font-semibold text-[#ff4b55]">Briefing fehlt:</strong>{" "}
             {appointment.title} {time(appointment.start_time)}
             {appointment.briefing_due_at && <span> – vorgesehen bis {new Intl.DateTimeFormat("de-DE", {
               timeZone: "Europe/Berlin", day: "2-digit", month: "2-digit", hour: "2-digit", minute: "2-digit",
             }).format(new Date(appointment.briefing_due_at))} Uhr</span>}
           </p>
-          <Button className="rounded-full bg-green-600 text-white hover:bg-green-700" onClick={() => setEditing(appointment)}>
+          <Button size="sm" className="h-8 shrink-0 rounded-full bg-[#55ad21] px-3 text-sm font-medium leading-5 text-white shadow-none transition-colors hover:scale-100 hover:bg-[#4c9c1e] active:scale-100" onClick={() => setEditing(appointment)}>
             Jetzt schreiben
           </Button>
         </div>
