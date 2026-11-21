@@ -87,3 +87,17 @@ export function needsBriefingReminder(appointment: PendingBriefing, userId: stri
   const fridayMorning = Date.UTC(localStart.getUTCFullYear(), localStart.getUTCMonth(), localStart.getUTCDate() - 3, 8);
   return berlin(now) >= fridayMorning;
 }
+
+/** Dashboard labels follow the requested workflow, independently of saved drafts. */
+export function dashboardBriefingState(status: string | undefined, hasPreparation: boolean) {
+  if (!status) return null; // External calendar events have no briefing assignment.
+  if (status === "undecided") return { label: "Briefing-Entscheidung steht aus", kind: "pending", canOpen: false };
+  if (status === "none") return { label: "Kein Briefing angefordert", kind: "neutral", canOpen: false };
+  if (status === "assigned") return { label: hasPreparation ? "Briefing in Bearbeitung" : "Briefing fehlt", kind: hasPreparation ? "pending" : "missing", canOpen: false };
+  if (status === "in_review") return { label: "Briefing zur Freigabe", kind: "pending", canOpen: false };
+  if (status === "approved" || status === "completed") return {
+    label: hasPreparation ? "Briefing fertig" : "Briefing nicht verfügbar",
+    kind: hasPreparation ? "ready" : "missing", canOpen: hasPreparation,
+  };
+  return { label: "Briefing-Status unbekannt", kind: "neutral", canOpen: false };
+}

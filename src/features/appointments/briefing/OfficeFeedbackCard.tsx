@@ -1,6 +1,6 @@
 import { useEffect, useMemo, useRef, useState } from "react";
 import { useQueryClient } from "@tanstack/react-query";
-import { AlarmClock, Clock, Mic, Square } from "lucide-react";
+import { AlarmClock, Mic, Square } from "lucide-react";
 import { useAppointmentFeedback, type AppointmentWithFeedback } from "@/hooks/useAppointmentFeedback";
 import { useUserPreference } from "@/hooks/useUserPreference";
 import { useAuth } from "@/hooks/useAuth";
@@ -172,12 +172,6 @@ function OfficeFeedbackForm() {
     setMode("write");
   };
 
-  const changeReminder = async (event: AppointmentWithFeedback) => {
-    if (recording && !(await speech.stop())) return;
-    setSelected(eventKey(event));
-    setMode("remind");
-  };
-
   const remind = async (choice: ReminderChoice) => {
     if (!current || busy) return;
     if (recording && !(await speech.stop())) return;
@@ -289,23 +283,15 @@ function OfficeFeedbackForm() {
             );
             return (
               <div key={eventKey(event)} className="flex flex-wrap items-center gap-3 py-3 text-sm">
-                <span className="flex h-9 w-9 shrink-0 items-center justify-center rounded-full bg-[#fff4df] text-[#e89200]" aria-hidden="true"><Clock className="h-4 w-4" /></span>
                 <div className="min-w-0 flex-1">
                   <p className="font-medium">{event.title}</p>
                   <p className="mt-0.5 text-xs leading-5 text-muted-foreground">
-                    {new Intl.DateTimeFormat("de-DE", {
-                      timeZone: "Europe/Berlin", day: "2-digit", month: "2-digit", hour: "2-digit", minute: "2-digit",
-                    }).format(new Date(event.start_time))} · Erinnerung {new Intl.DateTimeFormat("de-DE", {
-                      timeZone: "Europe/Berlin", day: "2-digit", month: "2-digit", hour: "2-digit", minute: "2-digit",
-                    }).format(until)} Uhr · {relative}
+                    Erinnerung {relative}
                   </p>
                 </div>
                 <span className="rounded-full bg-[#fff4df] px-2 py-1 text-xs text-[#b96d00]">{reminder.count > 1 ? `${reminder.count}× verschoben` : "Verschoben"}</span>
                 <button type="button" disabled={busy || recording} className="text-muted-foreground hover:text-foreground" onClick={() => void choose(event)}>Jetzt öffnen</button>
-                <div className="flex w-full flex-wrap gap-x-5 gap-y-1 pl-12 text-xs text-muted-foreground">
-                  <button type="button" disabled={busy || recording} className="hover:text-foreground" onClick={() => void changeReminder(event)}>Zeit ändern</button>
-                  <button type="button" disabled={busy || recording} className="hover:text-foreground" onClick={() => void finish([event])}>Nichts zu berichten</button>
-                </div>
+                <button type="button" disabled={busy || recording} className="text-muted-foreground hover:text-foreground" onClick={() => void finish([event])}>Nichts zu berichten</button>
               </div>
             );
           })}

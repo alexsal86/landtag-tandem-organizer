@@ -1,3 +1,8 @@
+import { useQuery } from "@tanstack/react-query";
+import { useResolvedUserRole } from "@/hooks/useResolvedUserRole";
+import { dashboardBriefingState } from "@/features/appointments/briefing";
+import { AppointmentBriefingStatusCard } from "@/features/appointments/briefing/AppointmentBriefingStatusCard";
+import { Dialog, DialogContent, DialogHeader, DialogTitle } from "@/components/ui/dialog";
 import { useCallback, useEffect, useMemo, useState } from "react";
 import { addDays, format, isSameDay } from "date-fns";
 import { de } from "date-fns/locale";
@@ -120,6 +125,8 @@ const getRequesterFromDescription = (description: string | null | undefined): st
 export const DashboardAppointments = ({ data }: Props) => {
   const navigate = useNavigate();
   const { currentTenant } = useTenant();
+  const { isAdmin: canDecideBriefing } = useResolvedUserRole();
+  const [briefingDecision, setBriefingDecision] = useState<{ id: string; title: string; start_time: string } | null>(null);
   const { appointments, isShowingTomorrow, tomorrowAppointments, specialDays, isLoading } = data;
 
   const [preparations, setPreparations] = useState<Map<string, AppointmentPreparation>>(new Map());
@@ -131,6 +138,22 @@ export const DashboardAppointments = ({ data }: Props) => {
     () => [...appointments, ...tomorrowAppointments],
     [appointments, tomorrowAppointments],
   );
+
+  const appointmentIds = useMemo(() => allAppointments.map(appointment => appointment.id), [allAppointments]);
+  const briefingAssignments = useQuery({
+    queryKey: ["appointment-briefing", "dashboard-status", currentTenant?.id, appointmentIds],
+    enabled: !!currentTenant?.id && appointmentIds.length > 0,
+    refetchInterval: 60_000,
+    queryFn: async () => {
+      const { data, error } = await supabase.from("appointments").select("id,briefing_status")
+        .eq("tenant_id", currentTenant!.id).in("id", appointmentIds);
+      if (error) throw error;
+      return new Map((data ?? []).map(appointment => [appointment.id, appointment.briefing_status]));
+    },
+  });
+
+  const briefingStatusKey = [...(briefingAssignments.data?.entries() ?? [])]
+    .map(([id, status]) => id + ":" + status).sort().join("|");
 
   // Fetch linked contacts as participants (only internal appointments have entries)
   useEffect(() => {
@@ -179,7 +202,8 @@ export const DashboardAppointments = ({ data }: Props) => {
           .from("appointment_preparations")
           .select("*")
           .in("appointment_id", aptIds)
-          .eq("is_archived", false);
+          .eq("is_archived", false)
+          .eq("tenant_id", currentTenant.id);
         if (error) throw error;
         if (cancelled) return;
         if (preps && preps.length > 0) {
@@ -213,7 +237,7 @@ export const DashboardAppointments = ({ data }: Props) => {
     return () => {
       cancelled = true;
     };
-  }, [currentTenant?.id, allAppointments]);
+  }, [currentTenant?.id, allAppointments, briefingStatusKey]);
 
   const specialDayHint = useMemo(() => getSpecialDayHint(new Date(), specialDays), [specialDays]);
   const [isSpecialDayHintVisible, setIsSpecialDayHintVisible] = useState(true);
@@ -276,26 +300,22 @@ export const DashboardAppointments = ({ data }: Props) => {
       /* Location is a place rather than a meeting URL. */
     }
     const participantList = participants.get(apt.id) ?? [];
-    const isCompleted = hasPrep && prep?.status === "completed";
-    const badgeLabel = preparationsError
-      ? "Briefing-Status nicht verfügbar"
-      : !preparationsLoaded
-        ? "Briefing wird geprüft"
-        : !hasPrep
-          ? "Briefing fehlt"
-          : isCompleted
-            ? "Briefing fertig"
-            : "Briefing in Bearbeitung";
-    const badgeClass =
-      preparationsError || !preparationsLoaded
-        ? "bg-muted text-muted-foreground"
-        : !hasPrep
-          ? "bg-destructive/10 text-destructive"
-          : isCompleted
-            ? "bg-palette-green/15 text-palette-green"
-            : "bg-palette-amber/15 text-palette-amber";
-    const BadgeIcon =
-      preparationsError || !hasPrep ? CircleAlert : !preparationsLoaded ? Clock : isCompleted ? Check : PencilLine;
+    const briefingStatus = briefingAssignments.data?.get(apt.id);
+    const briefingState = dashboardBriefingState(briefingStatus, hasPrep);
+    const statusError = preparationsError || briefingAssignments.isError;
+    const statusLoading = !preparationsLoaded || briefingAssignments.isPending;
+    const badgeLabel = statusError ? "Briefing-Status nicht verfügbar"
+      : statusLoading ? "Briefing wird geprüft" : briefingState?.label;
+    const badgeClass = statusError || statusLoading ? "bg-muted text-muted-foreground"
+      : briefingState?.kind === "missing" ? "bg-destructive/10 text-destructive"
+      : briefingState?.kind === "ready" ? "bg-palette-green/15 text-palette-green"
+      : briefingState?.kind === "pending" ? "bg-palette-amber/15 text-palette-amber"
+      : "bg-muted text-muted-foreground";
+    const BadgeIcon = statusError || briefingState?.kind === "missing" ? CircleAlert
+      : briefingState?.kind === "ready" ? Check : briefingState?.kind === "pending" ? Clock : PencilLine;
+    const canOpenBriefing = !statusError && !statusLoading && briefingState?.canOpen;
+    const canChooseBriefing = canDecideBriefing && !statusError && !statusLoading
+      && (briefingStatus === "undecided" || briefingStatus === "none");
     return (
       <div key={apt.id} className="border-b border-border/60 last:border-b-0">
         <div
@@ -345,12 +365,18 @@ export const DashboardAppointments = ({ data }: Props) => {
                 )}
               </div>
             )}
-            <div className="mt-2">
-              <span className={cn("inline-flex items-center gap-1.5 rounded-md px-2 py-0.5 text-xs", badgeClass)}>
-                <BadgeIcon className="h-3 w-3" aria-hidden="true" />
-                {badgeLabel}
-              </span>
-            </div>
+            {badgeLabel && <div className="relative z-10 mt-2">
+              {canChooseBriefing ? (
+                <button type="button" className={cn("pointer-events-auto inline-flex items-center gap-1.5 rounded-md px-2 py-0.5 text-xs hover:underline focus-visible:outline focus-visible:outline-2", badgeClass)}
+                  onClick={() => setBriefingDecision(apt)} aria-label={`${badgeLabel}: ${apt.title} – Briefing anfordern oder ablehnen`}>
+                  <BadgeIcon className="h-3 w-3" aria-hidden="true" />{badgeLabel}
+                </button>
+              ) : (
+                <span className={cn("inline-flex items-center gap-1.5 rounded-md px-2 py-0.5 text-xs", badgeClass)}>
+                  <BadgeIcon className="h-3 w-3" aria-hidden="true" />{badgeLabel}
+                </span>
+              )}
+            </div>}
           </div>
           <div className="relative z-10 col-start-2 @min-[32rem]:col-start-3 @min-[32rem]:row-start-1 @min-[32rem]:self-start flex flex-wrap items-center gap-2">
             {meetingUrl && (
@@ -364,7 +390,7 @@ export const DashboardAppointments = ({ data }: Props) => {
                 Meeting beitreten
               </a>
             )}
-            {hasPrep && (
+            {canOpenBriefing && (
               <>
                 <Button
                   type="button"
@@ -407,7 +433,7 @@ export const DashboardAppointments = ({ data }: Props) => {
             )}
           </div>
         </div>
-        {isBriefingExpanded && prep && (
+        {isBriefingExpanded && canOpenBriefing && prep && (
           <div id={`dashboard-briefing-${apt.id}`} className="mt-1 ml-4">
             <AppointmentBriefingView
               preparation={prep}
@@ -474,6 +500,14 @@ export const DashboardAppointments = ({ data }: Props) => {
           </Button>
         </div>
       )}
+
+      <Dialog open={!!briefingDecision} onOpenChange={open => { if (!open) setBriefingDecision(null); }}>
+        <DialogContent>
+          <DialogHeader><DialogTitle>{briefingDecision?.title} – Briefing</DialogTitle></DialogHeader>
+          {briefingDecision && <AppointmentBriefingStatusCard appointmentId={briefingDecision.id}
+            title={briefingDecision.title} startTime={briefingDecision.start_time} isDecider={canDecideBriefing} />}
+        </DialogContent>
+      </Dialog>
 
       {/* Terminanfrage und Feedback-Reminder sind jetzt in der Navigation (Kalender-Panel) */}
     </div>

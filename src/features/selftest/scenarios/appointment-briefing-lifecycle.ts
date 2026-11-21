@@ -2,7 +2,7 @@ import { isOfficeReminderDue, isOlderOfficeFeedback, needsOfficeFeedback, office
 import { appointmentSummary, pendingSummary } from "@/utils/dashboard/daySummary";
 import { canCompleteBriefing, canGoLive, followUpTaskFromLive, mergeLegacy, saveCompact } from "@/features/appointments/briefing/briefingModel";
 import { supabase } from "@/integrations/supabase/client";
-import { needsBriefingReminder, showsInDailyBriefing, canAdvanceBriefing, needsBriefingDecision, suggestBriefingDue } from "@/features/appointments/briefing";
+import { dashboardBriefingState, needsBriefingReminder, showsInDailyBriefing, canAdvanceBriefing, needsBriefingDecision, suggestBriefingDue } from "@/features/appointments/briefing";
 import type { TestScenario } from "../types";
 import { SELFTEST_PREFIX } from "../runner";
 import { describeError } from "../verify";
@@ -25,6 +25,22 @@ export const appointmentBriefingLifecycleScenario: TestScenario = {
   writes: [{ table: "appointments", columns: ["title", "tenant_id", "user_id", "start_time", "end_time"] }],
   links: () => [{ label: "Kalender", href: "/calendar" }],
   steps: [
+    {
+      id: "dashboard-briefing-status", label: "Dashboard-Briefing: Auftrag, Entscheidung und Freigabe", kind: "logic",
+      run: async () => {
+        const checks = [
+          dashboardBriefingState(undefined, false) === null,
+          dashboardBriefingState("undecided", false)?.label === "Briefing-Entscheidung steht aus",
+          dashboardBriefingState("none", false)?.label === "Kein Briefing angefordert",
+          dashboardBriefingState("assigned", false)?.label === "Briefing fehlt",
+          !dashboardBriefingState("assigned", true)?.canOpen,
+          !dashboardBriefingState("in_review", true)?.canOpen,
+          dashboardBriefingState("approved", true)?.canOpen,
+          !dashboardBriefingState("approved", false)?.canOpen,
+        ];
+        return { ok: checks.every(Boolean), message: `${checks.filter(Boolean).length}/${checks.length} Statusfälle bestanden.` };
+      },
+    },
     {
       id: "office-feedback", label: "Bürorückmeldung: Abschluss, Erinnerung und ältere Termine", kind: "logic",
       run: async () => {
