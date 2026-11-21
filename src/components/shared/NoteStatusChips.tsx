@@ -46,7 +46,7 @@ function DecisionDetails({ id, canEdit, onOpen, onRemove }: { id: string; canEdi
       {data.names.length > 0 && <p className="text-muted-foreground">Entscheider: {data.names.join(", ")}</p>}
       <div className="flex flex-wrap gap-2 pt-1">
         <Button size="sm" variant="outline" className="h-7 text-xs" onClick={(e) => { stop(e); onOpen(); }}>Entscheidung öffnen</Button>
-        {canEdit && <Button size="sm" variant="ghost" className="h-7 text-xs text-destructive" onClick={(e) => { stop(e); onRemove(); }}>Zurücknehmen</Button>}
+        {canEdit && <Button size="sm" variant="outline" className="h-7 text-xs text-destructive" onClick={(e) => { stop(e); onRemove(); }}>Zurücknehmen</Button>}
       </div>
     </div>
   );
