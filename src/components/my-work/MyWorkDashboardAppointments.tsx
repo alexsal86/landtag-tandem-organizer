@@ -140,7 +140,7 @@ export const DashboardAppointments = ({ data }: Props) => {
   );
 
   const appointmentIds = useMemo(() => allAppointments.map(appointment => appointment.id), [allAppointments]);
-  const briefingAssignments = useQuery({
+  const briefingAssignments = useQuery<Map<string, string>>({
     queryKey: ["appointment-briefing", "dashboard-status", currentTenant?.id, appointmentIds],
     enabled: !!currentTenant?.id && appointmentIds.length > 0,
     refetchInterval: 60_000,
@@ -148,7 +148,7 @@ export const DashboardAppointments = ({ data }: Props) => {
       const { data, error } = await supabase.from("appointments").select("id,briefing_status")
         .eq("tenant_id", currentTenant!.id).in("id", appointmentIds);
       if (error) throw error;
-      return new Map((data ?? []).map(appointment => [appointment.id, appointment.briefing_status]));
+      return new Map<string, string>((data ?? []).map(appointment => [appointment.id, appointment.briefing_status]));
     },
   });
 
