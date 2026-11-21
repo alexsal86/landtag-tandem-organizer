@@ -24,7 +24,7 @@ export function appointmentSummary(events: SummaryAppointment[], now = new Date(
     const event = remaining[0];
     const running = Date.parse(event.start_time) <= now.getTime();
     text = event.is_all_day ? "Heute ein ganztägiger Termin."
-      : running ? `Gerade läuft „${event.title}“.` : `Heute noch ein Termin um ${clock(event.start_time)}.`;
+      : running ? `Gerade läuft der Termin „${event.title}“.` : `Heute noch ein Termin um ${clock(event.start_time)}.`;
     if (event.briefing_status === "approved") text += " Das Briefing liegt bereit.";
     return text;
   }

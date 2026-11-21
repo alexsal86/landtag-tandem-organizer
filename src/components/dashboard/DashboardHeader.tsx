@@ -84,7 +84,7 @@ export const DashboardHeader = () => {
             })()}
             <div className="flex flex-col gap-0.5">
               <p className="text-sm leading-none text-muted-foreground">{item.city}</p>
-              <p className="text-3xl font-semibold leading-tight">{Math.round(item.temp)}°C</p>
+              <p className="text-xl font-semibold leading-tight">{Math.round(item.temp)}°C</p>
             </div>
           </div>
         ))}

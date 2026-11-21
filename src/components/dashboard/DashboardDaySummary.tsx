@@ -43,7 +43,7 @@ export function DashboardDaySummary() {
   }
   const pendingDecisions = decisions.decisions.filter(decision =>
     decision.status !== "resolved" && !decision.hasResponded).length;
-  const emphasize = (text: string) => text.split(/((?:ein|Eine|\d+) (?:Termine?|Entscheidung(?:en)?|Rückmeldungen?|Briefings?))/g)
+  const emphasize = (text: string) => text.split(/(„[^“]+“|(?:ein|Eine|\d+) (?:Termine?|Entscheidung(?:en)?|Rückmeldungen?|Briefings?))/g)
     .map((part, index) => index % 2 ? <strong key={index} className="font-medium text-foreground">{part}</strong> : part);
   return (
     <p className="max-w-5xl text-base leading-relaxed text-muted-foreground sm:text-lg" aria-live="polite">
