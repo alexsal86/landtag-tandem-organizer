@@ -90,7 +90,7 @@ export const useAppointmentFeedback = () => {
   const queryClient = useQueryClient();
 
   // Lädt Termine mit Feedback (letzte 7 Tage)
-  const { data: appointments, isLoading: appointmentsLoading, refetch: refetchAppointments } = useQuery({
+  const { data: appointments, isLoading: appointmentsLoading, isError: appointmentsError, refetch: refetchAppointments } = useQuery({
     queryKey: ['appointment-feedback-appointments', user?.id, currentTenant?.id],
     staleTime: STALE_TIME.LIST_WITH_REALTIME,
     gcTime: STALE_TIME.LIST_WITH_REALTIME * 2,
@@ -147,7 +147,7 @@ export const useAppointmentFeedback = () => {
   });
 
   // Lädt externe Events mit Feedback (letzte 7 Tage)
-  const { data: externalEvents, isLoading: externalEventsLoading, refetch: refetchExternalEvents } = useQuery({
+  const { data: externalEvents, isLoading: externalEventsLoading, isError: externalEventsError, refetch: refetchExternalEvents } = useQuery({
     queryKey: ['appointment-feedback-external', user?.id, currentTenant?.id],
     staleTime: STALE_TIME.LIST_WITH_REALTIME,
     gcTime: STALE_TIME.LIST_WITH_REALTIME * 2,
@@ -477,5 +477,6 @@ export const useAppointmentFeedback = () => {
     updateSettings: updateSettingsMutation.mutateAsync,
     refetch,
     pendingFeedbackCount,
+    isError: appointmentsError || externalEventsError,
   };
 };

@@ -1,3 +1,4 @@
+import { appointmentSummary, pendingSummary } from "@/utils/dashboard/daySummary";
 import { canCompleteBriefing, canGoLive, followUpTaskFromLive, mergeLegacy, saveCompact } from "@/features/appointments/briefing/briefingModel";
 import { supabase } from "@/integrations/supabase/client";
 import { needsBriefingReminder, showsInDailyBriefing, canAdvanceBriefing, needsBriefingDecision, suggestBriefingDue } from "@/features/appointments/briefing";
@@ -23,6 +24,25 @@ export const appointmentBriefingLifecycleScenario: TestScenario = {
   writes: [{ table: "appointments", columns: ["title", "tenant_id", "user_id", "start_time", "end_time"] }],
   links: () => [{ label: "Kalender", href: "/calendar" }],
   steps: [
+    {
+      id: "day-summary", label: "Tagesüberblick: leere Tage, laufende Termine, Briefings und offene Rückmeldungen", kind: "logic",
+      run: async () => {
+        const now = new Date("2026-11-21T12:00:00+01:00");
+        const event = { id: "summary", title: "Bürgerdialog", start_time: "2026-11-21T18:00:00+01:00", end_time: "2026-11-21T19:00:00+01:00", is_all_day: false };
+        const checks = [
+          appointmentSummary([], now).includes("Heute stehen keine Termine an"),
+          appointmentSummary([event], now).includes("ein Termin um 18:00"),
+          !appointmentSummary([event], now).includes("Briefing"),
+          appointmentSummary([{ ...event, briefing_status: "approved" }], now).includes("Das Briefing liegt bereit"),
+          appointmentSummary([event], new Date("2026-11-21T18:30:00+01:00")).includes("Gerade läuft"),
+          appointmentSummary([event], new Date("2026-11-21T20:00:00+01:00")).includes("alle Termine erledigt"),
+          appointmentSummary([{ ...event, is_all_day: true }], now).includes("ganztägiger Termin"),
+          pendingSummary(0, 0).includes("sind erledigt"),
+          pendingSummary(1, 2).includes("Eine Entscheidung wartet. 2 Rückmeldungen"),
+        ];
+        return { ok: checks.every(Boolean), message: `${checks.filter(Boolean).length}/${checks.length} Textfälle bestanden.` };
+      },
+    },
     {
       id: "reminder", label: "Briefing-Hinweis: Zuständigkeit, Vorlauf und Montag", kind: "logic",
       run: async () => {

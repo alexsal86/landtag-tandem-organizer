@@ -1,3 +1,4 @@
+import { DashboardDaySummary } from "./DashboardDaySummary";
 import { useState, useEffect, type ComponentType } from 'react';
 import { format } from 'date-fns';
 import { de } from 'date-fns/locale';
@@ -65,6 +66,7 @@ export const DashboardHeader = () => {
   };
 
   return (
+    <div className="space-y-3">
     <div className="grid grid-cols-1 gap-6 lg:grid-cols-[2fr_1fr]">
       <div className="space-y-1">
         <p className="text-lg font-medium text-foreground/80 capitalize">{dayDate}</p>
@@ -87,6 +89,8 @@ export const DashboardHeader = () => {
           </div>
         ))}
       </div>
+    </div>
+      <DashboardDaySummary />
     </div>
   );
 };
