@@ -1,3 +1,4 @@
+import { OfficeFeedbackCard } from "@/features/appointments/briefing/OfficeFeedbackCard";
 import { PendingBriefingNotice } from "@/features/appointments/briefing/PendingBriefingNotice";
 import {TeamRitualDashboardCard} from "@/features/team-rituals/TeamRitualDashboardCard";
 import type { ReactNode } from 'react';
@@ -175,6 +176,7 @@ export function MyWorkDashboardTab() {
         <div className="flex flex-col gap-space-md min-w-0">
           <UrgentRequestsWidget />
           <AppointmentsWidget title={isDeputyView ? "Dein Tag" : "Nächste Termine"} />
+          {isDeputyView && <OfficeFeedbackCard />}
         </div>
         <div className="flex flex-col gap-space-md min-w-0">
           {!isDeputyView && <DeadlinesWidget />}

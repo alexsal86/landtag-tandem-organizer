@@ -127,6 +127,7 @@ export const useAppointmentFeedback = () => {
         `)
         .eq('user_id', user.id)
         .eq('tenant_id', currentTenant.id)
+        .eq('feedback.user_id', user.id)
         .gte('start_time', `${sevenDaysAgoStr}T00:00:00`)
         .lte('end_time', now)
         .order('start_time', { ascending: false });
@@ -181,17 +182,18 @@ export const useAppointmentFeedback = () => {
 
       if (eventsError) {
         debugConsole.error('Error fetching external events:', eventsError);
-        return [];
+        throw eventsError;
       }
 
       if (!externalEventsRaw || externalEventsRaw.length === 0) return [];
 
       // 2. Lade existierende Feedback-Einträge für diese Events
       const eventIds = externalEventsRaw.map((e: Record<string, any>) => e.id);
-      const { data: feedbackData } = await supabase
+      const { data: feedbackData, error: feedbackError } = await supabase
         .from('appointment_feedback')
         .select('id, external_event_id, appointment_id, feedback_status, notes, has_documents, has_tasks, completed_at, user_id, tenant_id, event_type, priority_score, reminder_dismissed')
         .in('external_event_id', eventIds);
+      if (feedbackError) throw feedbackError;
 
       // 3. Finde Events ohne Feedback
       const feedbackMap = new Map<string, AppointmentFeedbackRow>(

@@ -1,0 +1,228 @@
+import { useEffect, useMemo, useRef, useState } from "react";
+import { useQueryClient } from "@tanstack/react-query";
+import { Mic, Square } from "lucide-react";
+import { useAppointmentFeedback, type AppointmentWithFeedback } from "@/hooks/useAppointmentFeedback";
+import { useUserPreference } from "@/hooks/useUserPreference";
+import { useAuth } from "@/hooks/useAuth";
+import { useTenant } from "@/hooks/useTenant";
+import { supabase } from "@/integrations/supabase/client";
+import { WebSpeechToTextAdapter, type SpeechToTextState } from "@/lib/speechToTextAdapter";
+import { notify } from "@/lib/notify";
+import { isOlderOfficeFeedback, needsOfficeFeedback, officeReminderTime, type ReminderChoice } from "./officeFeedback";
+
+const green = "bg-[#55ad21] text-white hover:bg-[#4c9c1e]";
+const eventKey = (event: AppointmentWithFeedback) => event.event_type + ":" + event.id;
+const clock = (value: string) => new Intl.DateTimeFormat("de-DE", {
+  timeZone: "Europe/Berlin", hour: "2-digit", minute: "2-digit",
+}).format(new Date(value));
+
+export function OfficeFeedbackCard() {
+  const { user } = useAuth();
+  const { currentTenant } = useTenant();
+  // Changing scope remounts the form and stops an active dictation.
+  return <OfficeFeedbackForm key={`${currentTenant?.id}:${user?.id}`} />;
+}
+
+function OfficeFeedbackForm() {
+  const { user } = useAuth();
+  const { currentTenant } = useTenant();
+  const feedback = useAppointmentFeedback();
+  const qc = useQueryClient();
+  const [snoozes, setSnoozes] = useUserPreference<Record<string, string>>(
+    `office-feedback-snoozes:${currentTenant?.id}:${user?.id}`, {},
+  );
+  const [now, setNow] = useState(() => new Date());
+  const [selected, setSelected] = useState<string | null>(null);
+  const [drafts, setDrafts] = useState<Record<string, string>>({});
+  const draftsRef = useRef(drafts);
+  draftsRef.current = drafts;
+  const [mode, setMode] = useState<"write" | "review" | "remind">("write");
+  const [expanded, setExpanded] = useState(false);
+  const [busy, setBusy] = useState(false);
+  const [completed, setCompleted] = useState<"sent" | "empty" | null>(null);
+  const [speechState, setSpeechState] = useState<SpeechToTextState>("idle");
+  const [interim, setInterim] = useState("");
+  const speech = useMemo(() => new WebSpeechToTextAdapter(), []);
+  const speechTarget = useRef<string | null>(null);
+
+  useEffect(() => {
+    const interval = window.setInterval(() => {
+      setNow(new Date());
+      void feedback.refetch();
+    }, 60_000);
+    return () => window.clearInterval(interval);
+  }, [feedback.refetch]);
+  useEffect(() => {
+    speech.onStateChange = setSpeechState;
+    speech.onInterimTranscript = setInterim;
+    speech.onFinalTranscript = text => {
+      const key = speechTarget.current;
+      if (key) {
+        const next = { ...draftsRef.current, [key]: [draftsRef.current[key], text].filter(Boolean).join(" ") };
+        draftsRef.current = next;
+        setDrafts(next);
+      }
+      setInterim("");
+    };
+    speech.onError = error => notify.error(error.message);
+    return () => speech.destroy();
+  }, [speech]);
+
+  const pending = feedback.appointments.filter(event => needsOfficeFeedback(event.feedback)
+    && !(feedback.settings?.auto_skip_internal && event.category === "intern"));
+  const visible = pending.filter(event => Date.parse(snoozes[eventKey(event)] ?? "") <= now.getTime()
+    || !Number.isFinite(Date.parse(snoozes[eventKey(event)] ?? "")));
+  const current = visible.find(event => eventKey(event) === selected) ?? visible[0];
+  const key = current ? eventKey(current) : "";
+  const text = drafts[key] ?? "";
+  const others = visible.filter(event => eventKey(event) !== key);
+  const older = others.filter(event => isOlderOfficeFeedback(event.start_time, now));
+  const shown = expanded ? others : others.slice(0, 2);
+  const recording = speechState === "listening" || speechState === "stopping";
+
+  const refresh = async () => {
+    await Promise.all([
+      qc.invalidateQueries({ queryKey: ["appointment-feedback-appointments"] }),
+      qc.invalidateQueries({ queryKey: ["appointment-feedback-external"] }),
+      qc.invalidateQueries({ queryKey: ["pending-debriefs"] }),
+    ]);
+  };
+
+  const persist = async (event: AppointmentWithFeedback, status: "completed" | "skipped", notes?: string) => {
+    if (!user || !currentTenant) throw new Error("Bitte anmelden und ein Büro wählen.");
+    const values = { feedback_status: status, completed_at: new Date().toISOString(), ...(notes ? { notes } : {}) };
+    if (event.feedback) {
+      const result = await supabase.from("appointment_feedback").update(values)
+        .eq("id", event.feedback.id).eq("user_id", user.id).eq("tenant_id", currentTenant.id)
+        .eq("feedback_status", "pending").or("notes.is.null,notes.eq.").select("id").single();
+      if (result.error) throw result.error;
+    } else {
+      const result = await supabase.from("appointment_feedback").insert({
+        ...values, user_id: user.id, tenant_id: currentTenant.id, event_type: event.event_type,
+        appointment_id: event.event_type === "appointment" ? event.id : null,
+        external_event_id: event.event_type === "external_event" ? event.id : null,
+      }).select("id").single();
+      if (result.error) throw result.error;
+    }
+  };
+
+  const finish = async (events: AppointmentWithFeedback[], report?: string) => {
+    if (busy || !events.length) return;
+    setBusy(true);
+    try {
+      if (recording && !(await speech.stop())) return;
+      const results = await Promise.allSettled(events.map(event => persist(event, report ? "completed" : "skipped", report)));
+      await refresh();
+      const failed = results.filter(result => result.status === "rejected");
+      if (failed.length) {
+        notify.error(`${failed.length} Rückmeldung(en) konnten nicht abgeschlossen werden. Bitte erneut versuchen.`);
+        return;
+      }
+      setCompleted(report ? "sent" : "empty");
+      setMode("write");
+      setSelected(null);
+      setInterim("");
+      setDrafts(previous => {
+        const next = { ...previous };
+        events.forEach(event => { delete next[eventKey(event)]; });
+        return next;
+      });
+    } catch {
+      notify.error("Rückmeldung konnte nicht gespeichert werden. Dein Text bleibt erhalten.");
+    } finally {
+      setBusy(false);
+    }
+  };
+
+  const choose = async (event: AppointmentWithFeedback) => {
+    if (recording && !(await speech.stop())) return;
+    setSelected(eventKey(event));
+    setMode("write");
+  };
+
+  const remind = async (choice: ReminderChoice) => {
+    if (!current || busy) return;
+    if (recording && !(await speech.stop())) return;
+    setSnoozes(previous => ({ ...previous, [key]: officeReminderTime(choice) }));
+    setSelected(null);
+    setMode("write");
+  };
+
+  const review = async () => {
+    if (recording && !(await speech.stop())) return;
+    if (draftsRef.current[key]?.trim()) setMode("review");
+  };
+
+  return (
+    <section aria-label="Rückmeldung ans Büro" className="rounded-3xl border border-border/70 bg-card p-4 shadow-sm sm:p-5">
+      <header className="mb-4 flex items-center justify-between gap-2">
+        <h2 className="flex items-center gap-2 text-lg font-medium tracking-tight"><Mic className="h-5 w-5 text-muted-foreground" aria-hidden="true" />Rückmeldung ans Büro</h2>
+        <span className="shrink-0 text-sm text-muted-foreground">
+          {feedback.isLoading ? "Wird geladen…" : pending.length ? `${pending.length} ${pending.length === 1 ? "Termin" : "Termine"}` : "Alles erledigt"}
+        </span>
+      </header>
+      {feedback.isError ? <p role="alert" className="text-sm text-destructive">Terminrückmeldungen konnten nicht geladen werden.</p>
+        : feedback.isLoading ? <p role="status" className="text-sm text-muted-foreground">Termine werden geladen…</p>
+        : !current ? (
+          <div role="status" className="py-6 text-center">
+            <p className="text-lg text-[#55ad21]">{pending.length ? "Erinnerung vorgemerkt" : "Abgeschlossen ✓"}</p>
+            <p className="mt-1 text-sm text-muted-foreground">{pending.length ? "Wir erinnern dich zur gewählten Zeit." : completed === "sent" ? "Deine Rückmeldung liegt dem Büro vor." : completed === "empty" ? "Nichts zu berichten." : "Keine offenen Terminrückmeldungen."}</p>
+          </div>
+        ) : mode === "remind" ? (
+          <>
+            <p className="mb-4 font-medium">Wann soll ich dich erinnern?</p>
+            <div className="flex flex-wrap gap-2">
+              {([["hour", "In 1 Stunde"], ["evening", isOlderOfficeFeedback(now.toISOString(), new Date(officeReminderTime("evening", now))) ? "Morgen Abend" : "Heute Abend"], ["morning", "Morgen früh"]] as const).map(([choice, label]) =>
+                <button key={choice} type="button" className="rounded-2xl bg-muted px-4 py-3 text-sm hover:bg-muted/70" onClick={() => void remind(choice)}>{label}</button>)}
+            </div>
+            <button type="button" className="mt-4 rounded-full bg-muted px-4 py-2 text-sm" onClick={() => setMode("write")}>Zurück</button>
+          </>
+        ) : (
+          <>
+            <p className="mb-3 text-base font-medium">{current.title}<span className="font-normal text-muted-foreground"> · {clock(current.start_time)}</span></p>
+            {mode === "review" ? (
+              <div className="space-y-3">
+                <p className="whitespace-pre-wrap rounded-2xl bg-muted/60 p-3 text-sm">{text}</p>
+                <div className="flex flex-wrap gap-2">
+                  <button type="button" disabled={busy} className={`rounded-xl px-4 py-2 text-sm ${green}`} onClick={() => void finish([current], text.trim())}>{busy ? "Wird gesendet…" : "Ans Büro senden"}</button>
+                  <button type="button" disabled={busy} className="px-3 py-2 text-sm text-muted-foreground" onClick={() => setMode("write")}>Zurück</button>
+                </div>
+              </div>
+            ) : (
+              <>
+                <div className="flex items-end gap-2 rounded-2xl border border-border/80 bg-muted/60 p-2">
+                  <textarea aria-label="Rückmeldung zum Termin" placeholder="Wie war’s? Kurz schreiben …" rows={1}
+                    className="min-h-10 min-w-0 flex-1 resize-y bg-transparent px-2 py-2 text-sm outline-none focus-visible:ring-2 focus-visible:ring-ring"
+                    value={text} disabled={busy} onChange={event => setDrafts(previous => ({ ...previous, [key]: event.target.value }))} />
+                  <button type="button" aria-label={recording ? "Diktat beenden" : "Rückmeldung diktieren"} aria-pressed={recording}
+                    disabled={busy || !speech.supported || speechState === "stopping"} title={speech.supported ? "Diktieren" : "Spracherkennung wird von diesem Browser nicht unterstützt"}
+                    className="flex h-10 w-10 shrink-0 items-center justify-center rounded-full bg-[#eaf5df] text-[#55ad21] disabled:opacity-40"
+                    onClick={() => { if (recording) void speech.stop(); else { speechTarget.current = key; speech.start(); } }}>
+                    {recording ? <Square className="h-4 w-4" /> : <Mic className="h-5 w-5" />}
+                  </button>
+                  <button type="button" disabled={busy || (!text.trim() && !recording)} className={`h-10 shrink-0 rounded-xl px-4 text-sm font-medium disabled:opacity-40 ${green}`} onClick={() => void review()}>Weiter</button>
+                </div>
+                {recording && <p role="status" className="mt-2 text-xs text-muted-foreground">{interim || "Ich höre zu …"}</p>}
+                <div className="mt-2 flex flex-wrap gap-x-5 gap-y-1 text-sm text-muted-foreground">
+                  <button type="button" disabled={busy} className="py-1 hover:text-foreground" onClick={() => setMode("remind")}>Später erinnern</button>
+                  <button type="button" disabled={busy} className="py-1 hover:text-foreground" onClick={() => void finish([current])}>Nichts zu berichten</button>
+                </div>
+              </>
+            )}
+            {shown.length > 0 && <div className="mt-4 border-t">
+              {shown.map(event => <div key={eventKey(event)} className="flex flex-wrap items-center gap-x-3 gap-y-1 border-b py-3 text-sm">
+                <span className="min-w-0 flex-1">{new Intl.DateTimeFormat("de-DE", { timeZone: "Europe/Berlin", weekday: "short", day: "numeric", month: "numeric" }).format(new Date(event.start_time))} · {event.title}</span>
+                <button type="button" disabled={busy} className="text-muted-foreground hover:text-foreground" onClick={() => void choose(event)}>Schreiben</button>
+                <button type="button" disabled={busy || recording} className="text-muted-foreground hover:text-foreground" onClick={() => void finish([event])}>Nichts zu berichten</button>
+              </div>)}
+              <div className="flex flex-wrap justify-between gap-2 pt-3 text-sm text-muted-foreground">
+                {!expanded && others.length > 2 && <button type="button" onClick={() => setExpanded(true)}>+{others.length - 2} weitere</button>}
+                {older.length > 0 && <button type="button" disabled={busy || recording} className="ml-auto text-right hover:text-foreground" onClick={() => void finish(older)}>Alle älteren ohne Bericht abschließen</button>}
+              </div>
+            </div>}
+            {others.length > 0 && <p className="mt-4 text-xs text-muted-foreground">Nach 2 Tagen wird daraus eine Aufgabe für das Büro.</p>}
+          </>
+        )}
+    </section>
+  );
+}

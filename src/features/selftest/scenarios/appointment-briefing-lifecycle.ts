@@ -1,3 +1,4 @@
+import { isOlderOfficeFeedback, needsOfficeFeedback, officeReminderTime } from "@/features/appointments/briefing/officeFeedback";
 import { appointmentSummary, pendingSummary } from "@/utils/dashboard/daySummary";
 import { canCompleteBriefing, canGoLive, followUpTaskFromLive, mergeLegacy, saveCompact } from "@/features/appointments/briefing/briefingModel";
 import { supabase } from "@/integrations/supabase/client";
@@ -24,6 +25,26 @@ export const appointmentBriefingLifecycleScenario: TestScenario = {
   writes: [{ table: "appointments", columns: ["title", "tenant_id", "user_id", "start_time", "end_time"] }],
   links: () => [{ label: "Kalender", href: "/calendar" }],
   steps: [
+    {
+      id: "office-feedback", label: "Bürorückmeldung: Abschluss, Erinnerung und ältere Termine", kind: "logic",
+      run: async () => {
+        const now = new Date("2026-11-21T12:00:00+01:00");
+        const checks = [
+          needsOfficeFeedback(null),
+          needsOfficeFeedback({ feedback_status: "pending", notes: null }),
+          !needsOfficeFeedback({ feedback_status: "skipped", notes: null }),
+          !needsOfficeFeedback({ feedback_status: "completed", notes: "Bericht" }),
+          !needsOfficeFeedback({ feedback_status: "pending", notes: "Stichpunkte" }),
+          officeReminderTime("hour", now) === "2026-11-21T12:00:00.000Z",
+          officeReminderTime("evening", now) === "2026-11-21T17:00:00.000Z",
+          officeReminderTime("morning", now) === "2026-11-22T07:00:00.000Z",
+          officeReminderTime("morning", new Date("2026-03-28T18:00:00+01:00")) === "2026-03-29T06:00:00.000Z",
+          isOlderOfficeFeedback("2026-11-20T18:00:00+01:00", now),
+          !isOlderOfficeFeedback("2026-11-21T08:00:00+01:00", now),
+        ];
+        return { ok: checks.every(Boolean), message: `${checks.filter(Boolean).length}/${checks.length} Rückmelderegeln bestanden.` };
+      },
+    },
     {
       id: "day-summary", label: "Tagesüberblick: leere Tage, laufende Termine, Briefings und offene Rückmeldungen", kind: "logic",
       run: async () => {

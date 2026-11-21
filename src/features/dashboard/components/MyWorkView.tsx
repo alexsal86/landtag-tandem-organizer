@@ -1,3 +1,4 @@
+import { useWorkspaceView } from "@/contexts/WorkspaceViewContext";
 import { useEffect, useState, Suspense } from "react";
 import { lazyWithRetry } from "@/lib/lazyWithRetry";
 import { useNavigate } from "react-router-dom";
@@ -40,6 +41,7 @@ const MyWorkFeedbackFeedTab = lazyWithRetry(() => import("@/components/my-work/M
 const MyWorkDashboardTab = lazyWithRetry(() => import("@/components/my-work/MyWorkDashboardTab").then(m => ({ default: m.MyWorkDashboardTab })));
 
 export function MyWorkView() {
+  const { isDeputyView } = useWorkspaceView();
   const { app_logo_url } = useAppSettings();
   const navigate = useNavigate();
   const [refreshTrigger, setRefreshTrigger] = useState(0);
@@ -232,7 +234,7 @@ export function MyWorkView() {
       {activeTab === "dashboard" && (
         <ErrorBoundary fallback={tabError("Dashboard")}>
           <Suspense fallback={tabFallback}>
-            <PendingDebriefBanner />
+            {!isDeputyView && <PendingDebriefBanner />}
             <MyWorkDashboardTab />
           </Suspense>
         </ErrorBoundary>
