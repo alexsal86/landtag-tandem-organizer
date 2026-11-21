@@ -1,6 +1,6 @@
 import { useEffect, useMemo, useRef, useState } from "react";
 import { useQueryClient } from "@tanstack/react-query";
-import { Clock, Mic, Square } from "lucide-react";
+import { AlarmClock, Clock, Mic, Square } from "lucide-react";
 import { useAppointmentFeedback, type AppointmentWithFeedback } from "@/hooks/useAppointmentFeedback";
 import { useUserPreference } from "@/hooks/useUserPreference";
 import { useAuth } from "@/hooks/useAuth";
@@ -8,7 +8,7 @@ import { useTenant } from "@/hooks/useTenant";
 import { supabase } from "@/integrations/supabase/client";
 import { WebSpeechToTextAdapter, type SpeechToTextState } from "@/lib/speechToTextAdapter";
 import { notify } from "@/lib/notify";
-import { isOlderOfficeFeedback, needsOfficeFeedback, officeReminderTime, readOfficeSnooze, type OfficeSnooze, type ReminderChoice } from "./officeFeedback";
+import { isOfficeReminderDue, isOlderOfficeFeedback, needsOfficeFeedback, officeReminderTime, readOfficeSnooze, type OfficeSnooze, type ReminderChoice } from "./officeFeedback";
 
 const green = "bg-[#55ad21] text-white hover:bg-[#4c9c1e]";
 const eventKey = (event: AppointmentWithFeedback) => event.event_type + ":" + event.id;
@@ -73,7 +73,10 @@ function OfficeFeedbackForm() {
   const isDeferred = (event: AppointmentWithFeedback) =>
     Date.parse(readOfficeSnooze(snoozes[eventKey(event)])?.until ?? "") > now.getTime();
   const visible = pending.filter(event => !isDeferred(event));
-  const current = pending.find(event => eventKey(event) === selected) ?? visible[0];
+  const due = pending.filter(event => isOfficeReminderDue(snoozes[eventKey(event)], now))
+    .sort((a, b) => Date.parse(readOfficeSnooze(snoozes[eventKey(a)])!.until)
+      - Date.parse(readOfficeSnooze(snoozes[eventKey(b)])!.until));
+  const current = pending.find(event => eventKey(event) === selected) ?? due[0] ?? visible[0];
   const key = current ? eventKey(current) : "";
   const text = drafts[key] ?? "";
   const deferred = pending.filter(event => isDeferred(event) && eventKey(event) !== key);
@@ -81,6 +84,28 @@ function OfficeFeedbackForm() {
   const older = others.filter(event => isOlderOfficeFeedback(event.start_time, now));
   const shown = expanded ? others : others.slice(0, 2);
   const recording = speechState === "listening" || speechState === "stopping";
+  const nextDueKey = due[0] ? eventKey(due[0]) : null;
+  const nextDueUntil = nextDueKey ? readOfficeSnooze(snoozes[nextDueKey])?.until : undefined;
+  const openedReminder = useRef<string | null>(null);
+  const reminderToken = nextDueKey && nextDueUntil ? nextDueKey + ":" + nextDueUntil : null;
+
+  useEffect(() => {
+    if (!reminderToken || reminderToken === openedReminder.current || recording || busy || mode !== "write") return;
+    if (draftsRef.current[key]?.trim()) return;
+    openedReminder.current = reminderToken;
+    setSelected(nextDueKey);
+    setMode("write");
+  }, [reminderToken, nextDueKey, recording, busy, mode, key, text]);
+
+  // Wake at the reminder time even if the periodic data refresh is later.
+  useEffect(() => {
+    const future = Object.values(snoozes).map(value => Date.parse(readOfficeSnooze(value)?.until ?? ""))
+      .filter(timestamp => timestamp > now.getTime());
+    if (!future.length) return;
+    const timer = window.setTimeout(() => setNow(new Date()),
+      Math.min(Math.max(0, Math.min(...future) - Date.now()), 2147483647));
+    return () => window.clearTimeout(timer);
+  }, [snoozes, now]);
 
   const refresh = async () => {
     await Promise.all([
@@ -174,9 +199,15 @@ function OfficeFeedbackForm() {
       <header className="mb-4 flex items-center justify-between gap-2">
         <h2 className="flex items-center gap-2 text-lg font-medium tracking-tight"><Mic className="h-5 w-5 text-muted-foreground" aria-hidden="true" />Rückmeldung ans Büro</h2>
         <span className="shrink-0 text-sm text-muted-foreground">
-          {feedback.isLoading ? "Wird geladen…" : pending.length ? `${pending.length} ${pending.length === 1 ? "Termin" : "Termine"}` : "Alles erledigt"}
+          {feedback.isLoading ? "Wird geladen…" : pending.length ? `${pending.length} ${pending.length === 1 ? "Termin" : "Termine"}${pending.filter(isDeferred).length ? ` · ${pending.filter(isDeferred).length} verschoben` : ""}` : "Alles erledigt"}
         </span>
       </header>
+      {!feedback.isLoading && !feedback.isError && current && isOfficeReminderDue(snoozes[key], now) && (
+        <div role="status" className="mb-4 flex items-start gap-2 rounded-2xl bg-[#eaf5df] px-3 py-2 text-sm leading-5 text-[#55ad21]">
+          <AlarmClock className="mt-0.5 h-4 w-4 shrink-0" aria-hidden="true" />
+          <span>Du wolltest dich an den Termin „{current.title}“ erinnern lassen – jetzt ist es soweit.</span>
+        </div>
+      )}
       {feedback.isError ? <p role="alert" className="text-sm text-destructive">Terminrückmeldungen konnten nicht geladen werden.</p>
         : feedback.isLoading ? <p role="status" className="text-sm text-muted-foreground">Termine werden geladen…</p>
         : !current ? pending.length ? null : (
@@ -209,18 +240,21 @@ function OfficeFeedbackForm() {
                 <div className="flex items-end gap-2 rounded-2xl border border-border/80 bg-muted/60 p-2">
                   <textarea aria-label="Rückmeldung zum Termin" placeholder="Wie war’s? Kurz schreiben …" rows={1}
                     className="min-h-10 min-w-0 flex-1 resize-y bg-transparent px-2 py-2 text-sm outline-none focus-visible:ring-2 focus-visible:ring-ring"
-                    value={text} disabled={busy} onChange={event => setDrafts(previous => ({ ...previous, [key]: event.target.value }))} />
+                    value={text} disabled={busy} onChange={event => {
+                      setSelected(key);
+                      setDrafts(previous => ({ ...previous, [key]: event.target.value }));
+                    }} />
                   <button type="button" aria-label={recording ? "Diktat beenden" : "Rückmeldung diktieren"} aria-pressed={recording}
                     disabled={busy || !speech.supported || speechState === "stopping"} title={speech.supported ? "Diktieren" : "Spracherkennung wird von diesem Browser nicht unterstützt"}
                     className="flex h-10 w-10 shrink-0 items-center justify-center rounded-full bg-[#eaf5df] text-[#55ad21] disabled:opacity-40"
-                    onClick={() => { if (recording) void speech.stop(); else { speechTarget.current = key; speech.start(); } }}>
+                    onClick={() => { if (recording) void speech.stop(); else { setSelected(key); speechTarget.current = key; speech.start(); } }}>
                     {recording ? <Square className="h-4 w-4" /> : <Mic className="h-5 w-5" />}
                   </button>
                   <button type="button" disabled={busy || (!text.trim() && !recording)} className={`h-10 shrink-0 rounded-xl px-4 text-sm font-medium disabled:opacity-40 ${green}`} onClick={() => void review()}>Weiter</button>
                 </div>
                 {recording && <p role="status" className="mt-2 text-xs text-muted-foreground">{interim || "Ich höre zu …"}</p>}
                 <div className="mt-2 flex flex-wrap gap-x-5 gap-y-1 text-sm text-muted-foreground">
-                  <button type="button" disabled={busy} className="py-1 hover:text-foreground" onClick={() => setMode("remind")}>Später erinnern</button>
+                  <button type="button" disabled={busy} className="py-1 hover:text-foreground" onClick={() => { setSelected(key); setMode("remind"); }}>Später erinnern</button>
                   <button type="button" disabled={busy} className="py-1 hover:text-foreground" onClick={() => void finish([current])}>Nichts zu berichten</button>
                 </div>
               </>

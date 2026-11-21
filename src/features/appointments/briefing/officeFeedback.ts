@@ -48,3 +48,9 @@ export function readOfficeSnooze(value: string | OfficeSnooze | undefined): Offi
   if (!value || typeof value.until !== "string") return null;
   return { until: value.until, count: Number.isFinite(value.count) ? Math.max(0, Math.floor(value.count)) : 0 };
 }
+
+export function isOfficeReminderDue(value: string | OfficeSnooze | undefined, now = new Date()): boolean {
+  const reminder = readOfficeSnooze(value);
+  const timestamp = Date.parse(reminder?.until ?? "");
+  return Number.isFinite(timestamp) && timestamp <= now.getTime();
+}
