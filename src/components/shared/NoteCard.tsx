@@ -415,13 +415,11 @@ export function NoteCard({
             <div onClickCapture={() => setActionsOpen(true)} className={cn("flex items-center gap-1 flex-shrink-0 opacity-100 [@media(hover:hover)]:group-hover:opacity-100 focus-within:opacity-100 transition-opacity duration-200", !actionsOpen && "[@media(hover:hover)]:opacity-0")}>
               {note.user_id === userId && (
                 <DropdownMenu onOpenChange={setActionsOpen}>
-                  <TooltipProvider><Tooltip><TooltipTrigger asChild>
                   <DropdownMenuTrigger asChild>
-                    <Button variant="ghost" size="icon" className="h-6 w-6 rounded-full text-muted-foreground hover:text-foreground hover:bg-muted/80" onClick={(e) => e.stopPropagation()} aria-label="Umwandeln">
+                    <Button variant="ghost" size="icon" className="h-6 w-6 rounded-full text-muted-foreground hover:text-foreground hover:bg-muted/80" onClick={(e) => e.stopPropagation()} aria-label="Umwandeln" title="Umwandeln">
                       <Wand2 className="h-3 w-3" />
                     </Button>
                   </DropdownMenuTrigger>
-                  </TooltipTrigger><TooltipContent side="top">Umwandeln</TooltipContent></Tooltip></TooltipProvider>
                   <DropdownMenuContent align="end" className="w-60" onClick={(e) => e.stopPropagation()}>
                     <DropdownMenuItem onClick={() => (note.task_id ? onRemoveTask(note) : onCreateTask(note))} className={cn(note.task_id && "text-palette-blue")}>
                       <CheckSquare className="h-3 w-3 mr-2" />{note.task_id ? "Aufgabe entfernen" : "Aufgabe"}

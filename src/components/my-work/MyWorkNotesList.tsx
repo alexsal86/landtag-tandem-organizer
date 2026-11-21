@@ -162,16 +162,11 @@ export function MyWorkNotesList({ refreshTrigger }: MyWorkNotesListProps) {
               )}
             </div>
             <DropdownMenu>
-              <Tooltip>
-                <TooltipTrigger asChild>
-                  <DropdownMenuTrigger asChild>
-                    <Button variant="ghost" size="icon" className="h-7 w-7" aria-label="Weitere Aktionen">
+              <DropdownMenuTrigger asChild>
+                    <Button variant="ghost" size="icon" className="h-7 w-7" aria-label="Weitere Aktionen" title="Weitere Aktionen">
                       <MoreHorizontal className="h-4 w-4" />
                     </Button>
                   </DropdownMenuTrigger>
-                </TooltipTrigger>
-                <TooltipContent>Weitere Aktionen</TooltipContent>
-              </Tooltip>
               <DropdownMenuContent align="end" className="w-48">
                 <DropdownMenuItem onClick={() => (selectMode ? exitSelectMode() : setSelectMode(true))}>
                   <CheckSquare className="h-4 w-4 mr-2" />{selectMode ? "Auswahl beenden" : "Auswählen"}
