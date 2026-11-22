@@ -327,14 +327,14 @@ export const DashboardAppointments = ({ data }: Props) => {
     const canChooseBriefing = canDecideBriefing && !statusError && !statusLoading
       && (briefingStatus === "undecided" || briefingStatus === "none");
     return (
-      <div key={apt.id} className={cn("relative border-b border-border/60 group-last/day-entry:border-b-0", ended && "opacity-55")}>
+      <div key={apt.id} className={cn("relative", ended && "opacity-55")}>
         <span aria-hidden="true" className={cn(
           "absolute -left-5 top-[18px] z-10 h-3 w-3 rounded-full border-2",
           ended ? "border-muted-foreground bg-muted-foreground"
             : active || isNext ? "border-[#55ad21] bg-[#55ad21]"
             : "border-border bg-card",
         )}>
-          {isNext && <span className="absolute -inset-1 rounded-full border border-[#55ad21] animate-ring motion-reduce:hidden" />}
+          {isNext && <span className="absolute -inset-0.5 rounded-full bg-[#55ad21] blur-[1px] animate-ring motion-reduce:hidden" />}
         </span>
         <div
           className={`relative grid grid-cols-[3.25rem_minmax(0,1fr)] @min-[32rem]:grid-cols-[3.25rem_minmax(0,1fr)_auto] gap-x-3 gap-y-2 rounded-lg px-3 py-3 transition-colors hover:bg-muted/40 focus-within:bg-muted/40 ${active ? "bg-primary/10 ring-1 ring-primary/30" : ""}`}

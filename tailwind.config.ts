@@ -186,7 +186,7 @@ export default {
         rise: { from: { opacity: "0", transform: "translateY(12px)" }, to: { opacity: "1", transform: "none" } },
         "fade-up": { from: { opacity: "0", transform: "translateY(-5px)" }, to: { opacity: "1", transform: "none" } },
         drop: { from: { opacity: "0", transform: "translateY(-14px)" }, to: { opacity: "1", transform: "none" } },
-        ring: { from: { opacity: ".5", transform: "scale(.8)" }, to: { opacity: "0", transform: "scale(2.2)" } },
+        ring: { from: { opacity: ".35", transform: "scale(1)" }, to: { opacity: "0", transform: "scale(2.8)" } },
 				'accordion-down': {
 					from: {
 						height: '0'

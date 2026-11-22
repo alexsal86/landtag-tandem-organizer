@@ -40,7 +40,7 @@ function CollapsingCalendarLink() {
       <CalendarDays className="h-4 w-4 shrink-0" aria-hidden="true" />
       <span
         className={cn(
-          'overflow-hidden whitespace-nowrap transition-all duration-slow ease-emphasized',
+          'dashboard-link-label overflow-hidden whitespace-nowrap',
           collapsed ? 'max-w-0 opacity-0 group-hover/cal:max-w-32 group-hover/cal:opacity-100 group-focus-visible/cal:max-w-32 group-focus-visible/cal:opacity-100' : 'max-w-32 opacity-100',
         )}
       >
@@ -91,7 +91,7 @@ function DashboardWidgetContainer({
     <Card className={cn('dashboard-motion-card animate-rise shadow-sm border-border/60', className)} style={{ animationDelay: `${animationDelay}ms` }}>
       <CardHeader className="flex min-h-[52px] flex-row flex-wrap items-center justify-between gap-2 space-y-0 py-space-sm px-space-md">
         <CardTitle className="inline-flex items-center gap-2 text-base font-medium leading-6">
-          {Icon && <Icon className={cn("h-5 w-5 shrink-0 text-muted-foreground", iconClassName)} aria-hidden="true" />}
+          {Icon && <Icon className={cn("h-4 w-4 shrink-0 text-muted-foreground", iconClassName)} aria-hidden="true" />}
           {title}
         </CardTitle>
         {headerAction}

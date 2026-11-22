@@ -191,7 +191,7 @@ function OfficeFeedbackForm() {
   return (
     <section aria-label="Rückmeldung ans Büro" style={{ animationDelay: "60ms" }} className="dashboard-motion-card animate-rise rounded-3xl border border-border/70 bg-card shadow-sm">
       <header className="flex min-h-[52px] flex-row flex-wrap items-center justify-between gap-2 space-y-0 py-space-sm px-space-md">
-        <h2 className="inline-flex items-center gap-2 text-base font-medium leading-6 tracking-tight"><Mic className="h-5 w-5 shrink-0 text-muted-foreground" aria-hidden="true" />Rückmeldung ans Büro</h2>
+        <h2 className="inline-flex items-center gap-2 text-base font-medium leading-6 tracking-tight"><Mic className="h-4 w-4 shrink-0 text-muted-foreground" aria-hidden="true" />Rückmeldung ans Büro</h2>
         <span className="shrink-0 text-sm text-muted-foreground">
           {feedback.isLoading ? "Wird geladen…" : pending.length ? `${pending.length} ${pending.length === 1 ? "Termin" : "Termine"}${pending.filter(isDeferred).length ? ` · ${pending.filter(isDeferred).length} verschoben` : ""}` : "Alles erledigt"}
         </span>

@@ -762,8 +762,8 @@ All colors MUST be HSL.
   to { opacity: 1; transform: none; }
 }
 @keyframes ring {
-  from { opacity: .5; transform: scale(.8); }
-  to { opacity: 0; transform: scale(2.2); }
+  from { opacity: .35; transform: scale(1); }
+  to { opacity: 0; transform: scale(2.8); }
 }
 .dashboard-motion :where(*) {
   transition-property: transform, opacity;
@@ -788,5 +788,18 @@ All colors MUST be HSL.
 .dashboard-motion .dashboard-decision-exit {
   transition-property: transform, opacity;
   transition-duration: .24s;
+  transition-timing-function: cubic-bezier(.2,.7,.2,1);
+}
+
+
+/* The navigation labels need a width transition to close without jumping. */
+.dashboard-link-label {
+  transition-property: max-width, opacity;
+  transition-duration: .35s;
+  transition-timing-function: cubic-bezier(.2,.7,.2,1);
+}
+.dashboard-motion .dashboard-link-label {
+  transition-property: max-width, opacity;
+  transition-duration: .35s;
   transition-timing-function: cubic-bezier(.2,.7,.2,1);
 }

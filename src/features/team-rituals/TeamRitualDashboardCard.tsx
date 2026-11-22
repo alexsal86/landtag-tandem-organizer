@@ -30,13 +30,13 @@ export function TeamRitualDashboardCard() {
     <Card className="dashboard-motion-card animate-rise" style={{ animationDelay: "120ms" }}>
       <CardHeader className="flex min-h-[52px] flex-row flex-wrap items-center justify-between gap-2 space-y-0 py-space-sm px-space-md">
         <CardTitle className="inline-flex items-center gap-2 text-base font-medium leading-6">
-          <Users className="h-5 w-5 shrink-0 text-muted-foreground" aria-hidden="true" />
+          <Users className="h-4 w-4 shrink-0 text-muted-foreground" aria-hidden="true" />
           Team-Rituale
         </CardTitle>
         <Link to="/employee?tab=rituals" aria-label="Team-Rituale öffnen"
           className="group/ritual ml-auto inline-flex h-7 items-center gap-1 rounded-md px-2 text-sm text-foreground transition-colors duration-base ease-standard hover:bg-muted focus-visible:outline-foreground">
           <Users className="h-4 w-4 shrink-0" aria-hidden="true" />
-          <span className={`overflow-hidden whitespace-nowrap transition-all duration-slow ease-emphasized motion-reduce:transition-none ${showLinkLabel ? "max-w-48 opacity-100" : "max-w-0 opacity-0 group-hover/ritual:max-w-48 group-hover/ritual:opacity-100 group-focus-visible/ritual:max-w-48 group-focus-visible/ritual:opacity-100"}`}>
+          <span className={`dashboard-link-label overflow-hidden whitespace-nowrap motion-reduce:transition-none ${showLinkLabel ? "max-w-48 opacity-100" : "max-w-0 opacity-0 group-hover/ritual:max-w-48 group-hover/ritual:opacity-100 group-focus-visible/ritual:max-w-48 group-focus-visible/ritual:opacity-100"}`}>
             Team-Rituale öffnen
           </span>
           <ArrowRight className="h-3.5 w-3.5 shrink-0" aria-hidden="true" />
