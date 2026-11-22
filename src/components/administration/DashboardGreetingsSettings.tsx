@@ -33,7 +33,7 @@ export function DashboardGreetingsSettings() {
         <p className="text-sm text-muted-foreground">
           Begrüßungen für „Meine Arbeit“. Mit {"{name}"} fügst du den Namen ein.
           Alle gewählten Bedingungen müssen zutreffen. Passen mehrere Begrüßungen, wechseln sie tageweise.
-          Ist keine passend, erscheint die Standardbegrüßung zur Tageszeit.
+          Ohne passenden Eintrag bleibt der Kopfbereich ohne Begrüßung.
         </p>
       </CardHeader>
       <CardContent>

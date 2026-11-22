@@ -49,7 +49,7 @@ export const DashboardHeader = () => {
   }, []);
 
   const dayDate = format(now, "EEEE, d. MMMM", { locale: de });
-  const greeting = formatDashboardGreeting(selectDashboardGreeting(greetings, now), userName || 'Nutzer');
+  const greeting = selectDashboardGreeting(greetings, now);
   const weatherItems = [
     weatherKarlsruhe ? { city: 'Karlsruhe', ...weatherKarlsruhe } : null,
     weatherStuttgart ? { city: 'Stuttgart', ...weatherStuttgart } : null,
@@ -79,9 +79,11 @@ export const DashboardHeader = () => {
       <div className="min-w-0 space-y-3">
         <div className="space-y-1">
           <p className="text-sm font-normal capitalize text-muted-foreground">{dayDate}</p>
-          <h1 className="text-3xl font-semibold tracking-tight">
-            {greeting}
-          </h1>
+          {greeting && (
+            <h1 className="text-3xl font-semibold tracking-tight">
+              {formatDashboardGreeting(greeting, userName || 'Nutzer')}
+            </h1>
+          )}
         </div>
         <DashboardDaySummary />
       </div>

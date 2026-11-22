@@ -10,6 +10,12 @@ export interface DashboardGreeting {
   month?: number;
 }
 
+const defaultGreetings: DashboardGreeting[] = (Object.keys(TIME_SLOTS) as TimeSlot[]).map(timeSlot => ({
+  id: `default-${timeSlot}`,
+  timeSlot,
+  text: getGreeting(timeSlot) + ', {name}!',
+}));
+
 const isInRange = (value: unknown, from: number, to: number) =>
   typeof value === 'number' && Number.isInteger(value) && value >= from && value <= to;
 
@@ -24,7 +30,7 @@ function isGreeting(value: unknown): value is DashboardGreeting {
 }
 
 export function parseDashboardGreetings(raw?: string | null): DashboardGreeting[] {
-  if (!raw) return [];
+  if (raw == null) return defaultGreetings;
   try {
     const parsed: unknown = JSON.parse(raw);
     return Array.isArray(parsed) ? parsed.filter(isGreeting) : [];
@@ -33,7 +39,7 @@ export function parseDashboardGreetings(raw?: string | null): DashboardGreeting[
   }
 }
 
-export function selectDashboardGreeting(rules: DashboardGreeting[], date: Date): string {
+export function selectDashboardGreeting(rules: DashboardGreeting[], date: Date): string | undefined {
   const timeSlot = getCurrentTimeSlot(date);
   const month = date.getMonth();
   const matches = rules.filter(rule =>
@@ -41,7 +47,7 @@ export function selectDashboardGreeting(rules: DashboardGreeting[], date: Date):
     && (rule.dayOfWeek === undefined || rule.dayOfWeek === date.getDay())
     && (rule.month === undefined || rule.month === month + 1),
   );
-  if (!matches.length) return getGreeting(timeSlot) + ', {name}!';
+  if (!matches.length) return undefined;
   const day = Date.UTC(date.getFullYear(), month, date.getDate()) / 86_400_000;
   const index = ((day % matches.length) + matches.length) % matches.length;
   return matches[index].text;

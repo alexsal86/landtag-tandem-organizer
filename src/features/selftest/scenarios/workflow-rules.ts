@@ -35,6 +35,8 @@ export const workflowRulesScenario: TestScenario = {
           { id: "b", text: "Schön, dass du da bist, {name}!", timeSlot: "morning", month: 11 },
           { id: "c", text: "Montag", dayOfWeek: 1, month: 12 },
         ]));
+        const defaults = parseDashboardGreetings(null);
+        const evening = selectDashboardGreeting(defaults, new Date(2026, 10, 5, 18));
         const first = selectDashboardGreeting(rules, new Date(2026, 10, 5, 9));
         const second = selectDashboardGreeting(rules, new Date(2026, 10, 6, 9));
         return {
@@ -42,9 +44,11 @@ export const workflowRulesScenario: TestScenario = {
             && rules.slice(0, 2).some(rule => rule.text === second)
             && first !== second
             && selectDashboardGreeting(rules, new Date(2026, 11, 7, 9)) === "Montag"
-            && selectDashboardGreeting(rules, new Date(2026, 11, 8, 9)) === "Guten Morgen, {name}!"
-            && formatDashboardGreeting(selectDashboardGreeting(rules, new Date(2026, 10, 5, 18)), "Alex") === "Guten Abend, Alex!",
-          message: "Passende Regeln wechseln tageweise. Ohne Treffer greift die Standardbegrüßung.",
+            && selectDashboardGreeting(rules, new Date(2026, 11, 8, 9)) === undefined
+            && defaults.length === 5
+            && evening !== undefined && formatDashboardGreeting(evening, "Alex") === "Guten Abend, Alex!"
+            && selectDashboardGreeting(parseDashboardGreetings("[]"), new Date(2026, 10, 5, 18)) === undefined,
+          message: "Die fünf Vorlagen gelten bis zur ersten Speicherung. Gelöschte Begrüßungen erscheinen nicht wieder.",
         };
       },
     },
