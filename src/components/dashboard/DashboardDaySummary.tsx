@@ -1,3 +1,4 @@
+import { needsOwnDecision } from "@/components/my-work/decisions/types";
 import { useEffect, useState } from "react";
 import { useQuery } from "@tanstack/react-query";
 import { useAuth } from "@/hooks/useAuth";
@@ -41,8 +42,7 @@ export function DashboardDaySummary() {
   if (schedule.isPending || decisions.loading || feedback.isLoading) {
     return <p className="text-base text-muted-foreground" role="status">Dein Tagesüberblick wird geladen…</p>;
   }
-  const pendingDecisions = decisions.decisions.filter(decision =>
-    decision.status !== "resolved" && ((decision.isParticipant && !decision.hasResponded) || decision.isCreator)).length;
+  const pendingDecisions = decisions.decisions.filter(decision => needsOwnDecision(decision)).length;
   const emphasize = (text: string) => text.split(/(„[^“]+“|(?:[Ee]ine?|\d+) (?:Termine?|Entscheidung(?:en)?|Rückmeldungen?|Briefings?))/g)
     .map((part, index) => index % 2 ? <strong key={index} className="font-medium text-foreground">{part}</strong> : part);
   return (

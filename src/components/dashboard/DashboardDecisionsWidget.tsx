@@ -5,7 +5,7 @@ import { differenceInCalendarDays, format } from 'date-fns';
 import { de } from 'date-fns/locale';
 import { useAuth } from '@/hooks/useAuth';
 import { useMyWorkDecisionsData } from '@/hooks/useMyWorkDecisionsData';
-import { getResponseSummary, resetOwnDecisionResponse, MyWorkDecision } from '@/components/my-work/decisions/types';
+import { needsOwnDecision, resetOwnDecisionResponse, MyWorkDecision } from '@/components/my-work/decisions/types';
 import { TaskDecisionResponse } from '@/components/task-decisions/TaskDecisionResponse';
 import { Button } from '@/components/ui/button';
 import { supabase } from '@/integrations/supabase/client';
@@ -43,7 +43,6 @@ interface DecisionRowProps {
 }
 
 function DecisionRow({ decision, onRefresh, onOpen, onPromptOpen, onPromptClose, onUndoConfirmed, forcePrompt }: DecisionRowProps) {
-  const summary = getResponseSummary(decision.participants);
   const recommendation = decision.response_options?.find(option => option.recommended);
   const recommendationColors = recommendation ? getColorClasses(recommendation.color) : null;
   const { label, isOverdue } = formatDeadline(decision.response_deadline);
@@ -135,21 +134,6 @@ function DecisionRow({ decision, onRefresh, onOpen, onPromptOpen, onPromptClose,
         </div>
       )}
 
-      {decision.isCreator && !decision.isParticipant && (
-        <p className="text-xs text-muted-foreground mb-2">
-          {decision.pendingCount > 0 ? 'Warten auf Rückmeldung' : 'Rückmeldungen liegen vor'}
-        </p>
-      )}
-
-      {summary.total > 0 && decision.isCreator && (
-        <div className="flex items-center gap-1 mb-2" aria-hidden>
-          {Array.from({ length: summary.yesCount }).map((_, i) => <span key={`y${i}`} className="h-1.5 flex-1 rounded-sm bg-palette-green" />)}
-          {Array.from({ length: summary.noCount }).map((_, i) => <span key={`n${i}`} className="h-1.5 flex-1 rounded-sm bg-destructive" />)}
-          {Array.from({ length: summary.questionCount }).map((_, i) => <span key={`q${i}`} className="h-1.5 flex-1 rounded-sm bg-palette-amber" />)}
-          {Array.from({ length: summary.pending }).map((_, i) => <span key={`p${i}`} className="h-1.5 flex-1 rounded-sm bg-muted" />)}
-        </div>
-      )}
-
       {decision.isParticipant && decision.participant_id && !decision.hasResponded && !prompt && (
         <div onClick={(e) => e.stopPropagation()}>
           <TaskDecisionResponse
@@ -216,7 +200,7 @@ export function DashboardDecisionsWidget() {
 
   const items = useMemo(() => {
     return [...decisions]
-      .filter((d) => d.status !== 'resolved' && ((d.isParticipant && !d.hasResponded) || d.isCreator || pendingIds.has(d.id)))
+      .filter((d) => needsOwnDecision(d, pendingIds.has(d.id)))
       .sort((a, b) => {
         if (!a.response_deadline && !b.response_deadline) return 0;
         if (!a.response_deadline) return 1;

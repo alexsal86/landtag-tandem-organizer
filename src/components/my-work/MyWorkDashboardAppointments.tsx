@@ -1,11 +1,10 @@
-import { useWorkspaceView } from "@/contexts/WorkspaceViewContext";
 import { hasAppointmentEnded, nextAppointmentId, timelineNowIndex } from "@/utils/dashboard/daySummary";
 import { useQuery } from "@tanstack/react-query";
 import { useResolvedUserRole } from "@/hooks/useResolvedUserRole";
 import { dashboardBriefingState } from "@/features/appointments/briefing";
 import { AppointmentBriefingStatusCard } from "@/features/appointments/briefing/AppointmentBriefingStatusCard";
 import { Dialog, DialogContent, DialogHeader, DialogTitle } from "@/components/ui/dialog";
-import { Fragment, useCallback, useEffect, useMemo, useState } from "react";
+import { useCallback, useEffect, useMemo, useState } from "react";
 import { addDays, format, isSameDay } from "date-fns";
 import { de } from "date-fns/locale";
 import { useNavigate } from "react-router-dom";
@@ -126,7 +125,6 @@ const getRequesterFromDescription = (description: string | null | undefined): st
 
 export const DashboardAppointments = ({ data }: Props) => {
   const navigate = useNavigate();
-  const { isDeputyView } = useWorkspaceView();
   const [now, setNow] = useState(() => new Date());
   useEffect(() => {
     const timer = window.setInterval(() => setNow(new Date()), 60_000);
@@ -289,8 +287,8 @@ export const DashboardAppointments = ({ data }: Props) => {
   const renderAppointment = (apt: DashboardData["appointments"][number], isTodayGroup: boolean) => {
     const aptDate = format(new Date(apt.start_time), "yyyy-MM-dd");
     const active = isTodayGroup && isCurrentlyActive(apt);
-    const ended = isDeputyView && hasAppointmentEnded(apt, now);
-    const isNext = isDeputyView && apt.id === nextId;
+    const ended = hasAppointmentEnded(apt, now);
+    const isNext = apt.id === nextId;
     const hasPrep = preparations.has(apt.id);
     const prep = preparations.get(apt.id);
     const isBriefingExpanded = expandedBriefingId === apt.id;
@@ -328,13 +326,13 @@ export const DashboardAppointments = ({ data }: Props) => {
     const canChooseBriefing = canDecideBriefing && !statusError && !statusLoading
       && (briefingStatus === "undecided" || briefingStatus === "none");
     return (
-      <div key={apt.id} className={cn("relative border-b border-border/60 last:border-b-0", ended && "opacity-55")}>
-        {isDeputyView && <span aria-hidden="true" className={cn(
+      <div key={apt.id} className={cn("relative border-b border-border/60 group-last/day-entry:border-b-0", ended && "opacity-55")}>
+        <span aria-hidden="true" className={cn(
           "absolute -left-5 top-[18px] z-10 h-3 w-3 rounded-full border-2",
           ended ? "border-muted-foreground bg-muted-foreground"
             : active || isNext ? "border-[#55ad21] bg-[#55ad21]"
             : "border-border bg-card",
-        )} />}
+        )} />
         <div
           className={`relative grid grid-cols-[3.25rem_minmax(0,1fr)] @min-[32rem]:grid-cols-[3.25rem_minmax(0,1fr)_auto] gap-x-3 gap-y-2 rounded-lg px-3 py-3 transition-colors hover:bg-muted/40 focus-within:bg-muted/40 ${active ? "bg-primary/10 ring-1 ring-primary/30" : ""}`}
         >
@@ -491,18 +489,24 @@ export const DashboardAppointments = ({ data }: Props) => {
   );
 
   const renderDayAppointments = (items: DashboardData["appointments"], today: boolean) => {
-    if (!isDeputyView) return items.map(appointment => renderAppointment(appointment, today));
-    const markerIndex = timelineNowIndex(items, now);
+    const entries: Array<{ key: string; appointment: DashboardData["appointments"][number] | null }> =
+      items.map(appointment => ({ key: appointment.id, appointment }));
+    if (today) entries.splice(timelineNowIndex(items, now), 0, { key: "current-time", appointment: null });
     return (
-      <div className="relative pl-5">
-        <span className="pointer-events-none absolute bottom-0 left-[5px] top-0 w-0.5 bg-border" aria-hidden="true" />
-        {items.map((appointment, index) => (
-          <Fragment key={appointment.id}>
-            {today && index === markerIndex && renderNowMarker()}
-            {renderAppointment(appointment, today)}
-          </Fragment>
+      <div className="pl-5">
+        {entries.map(entry => (
+          <div key={entry.key} className="group/day-entry relative">
+            <span aria-hidden="true" className={cn(
+              "pointer-events-none absolute -left-[15px] top-0 w-0.5 bg-border group-first/day-entry:hidden",
+              entry.appointment ? "h-[14px]" : "h-1.5",
+            )} />
+            <span aria-hidden="true" className={cn(
+              "pointer-events-none absolute -left-[15px] bottom-0 w-0.5 bg-border group-last/day-entry:hidden",
+              entry.appointment ? "top-[34px]" : "top-[26px]",
+            )} />
+            {entry.appointment ? renderAppointment(entry.appointment, today) : renderNowMarker()}
+          </div>
         ))}
-        {today && markerIndex === items.length && renderNowMarker()}
       </div>
     );
   };
@@ -517,7 +521,7 @@ export const DashboardAppointments = ({ data }: Props) => {
         {(isShowingTomorrow || appointments.length === 0) && (
           <p className="mb-3 text-sm text-muted-foreground">Heute stehen keine weiteren Termine an.</p>
         )}
-        {isDeputyView && (isShowingTomorrow || appointments.length === 0) && (
+        {(isShowingTomorrow || appointments.length === 0) && (
           <div className="relative mb-2 pl-5">{renderNowMarker()}</div>
         )}
         {appointments.length === 0 ? (

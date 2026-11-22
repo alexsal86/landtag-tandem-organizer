@@ -1,3 +1,4 @@
+import { needsOwnDecision } from "@/components/my-work/decisions/types";
 import { supabase } from "@/integrations/supabase/client";
 import type { TestScenario } from "../types";
 import { SELFTEST_MARKER, SELFTEST_PREFIX } from "../runner";
@@ -18,6 +19,22 @@ export const decisionLifecycleScenario: TestScenario = {
     { table: "task_decision_responses", columns: ["decision_id", "participant_id", "response_type", "comment"] },
   ],
   steps: [
+    {
+      id: "dashboard-voting", label: "Dashboard: nur eigene ausstehende Abstimmungen, keine eigenen Anfragen", kind: "logic",
+      run: async () => {
+        const participant = { status: "open", isCreator: false, isParticipant: true, hasResponded: false };
+        const checks = [
+          needsOwnDecision(participant),
+          !needsOwnDecision({ ...participant, isCreator: true }),
+          !needsOwnDecision({ ...participant, isCreator: true }, true),
+          !needsOwnDecision({ ...participant, isParticipant: false }),
+          !needsOwnDecision({ ...participant, hasResponded: true }),
+          needsOwnDecision({ ...participant, hasResponded: true }, true),
+          !needsOwnDecision({ ...participant, status: "archived" }, true),
+        ];
+        return { ok: checks.every(Boolean), message: `${checks.filter(Boolean).length}/${checks.length} Dashboardfilter bestanden.` };
+      },
+    },
     {
       id: "create",
       label: "Entscheidung anlegen (active)",

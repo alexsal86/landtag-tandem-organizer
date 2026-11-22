@@ -186,3 +186,13 @@ export function resetOwnDecisionResponse(decision: MyWorkDecision): MyWorkDecisi
     pendingCount: participants ? getResponseSummary(participants).pending : decision.pendingCount,
   };
 }
+
+/** Dashboard voting is only for participants who are not the decision's creator. */
+export function needsOwnDecision(
+  decision: Pick<MyWorkDecision, "status" | "isCreator" | "isParticipant" | "hasResponded">,
+  keepResponded = false,
+): boolean {
+  return !decision.isCreator && decision.isParticipant
+    && ["active", "open"].includes(decision.status)
+    && (!decision.hasResponded || keepResponded);
+}
