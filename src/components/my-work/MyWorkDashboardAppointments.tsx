@@ -312,6 +312,7 @@ export const DashboardAppointments = ({ data }: Props) => {
     } catch {
       /* Location is a place rather than a meeting URL. */
     }
+    const showLocation = !ended && apt.location && !meetingUrl;
     const participantList = participants.get(apt.id) ?? [];
     const briefingStatus = briefingAssignments.data?.get(apt.id);
     const briefingState = dashboardBriefingState(briefingStatus, hasPrep);
@@ -373,9 +374,9 @@ export const DashboardAppointments = ({ data }: Props) => {
                 ended && "line-through",
               )}>{apt.title}</p>
             </div>
-            {((apt.location && !meetingUrl) || participantList.length > 0) && (
+            {(showLocation || participantList.length > 0) && (
               <div className="mt-0.5 flex flex-wrap items-center gap-x-4 gap-y-1 text-xs text-muted-foreground">
-                {apt.location && !meetingUrl && (
+                {showLocation && (
                   <span className="flex items-start gap-1.5">
                     <MapPin className="mt-0.5 h-3 w-3 shrink-0" aria-hidden="true" />
                     <span className="break-words">{apt.location}</span>
@@ -508,7 +509,9 @@ export const DashboardAppointments = ({ data }: Props) => {
   const renderDayAppointments = (items: DashboardData["appointments"], today: boolean) => {
     const entries: Array<{ key: string; appointment: DashboardData["appointments"][number] | null }> =
       items.map(appointment => ({ key: appointment.id, appointment }));
-    if (today) entries.splice(timelineNowIndex(items, now), 0, { key: "current-time", appointment: null });
+    if (today && items.some(appointment => !hasAppointmentEnded(appointment, now))) {
+      entries.splice(timelineNowIndex(items, now), 0, { key: "current-time", appointment: null });
+    }
     return (
       <div className="pl-5">
         {entries.map((entry, index) => (
@@ -537,9 +540,6 @@ export const DashboardAppointments = ({ data }: Props) => {
       <div>
         {(isShowingTomorrow || appointments.length === 0) && (
           <p className="mb-3 text-sm text-muted-foreground">Heute stehen keine weiteren Termine an.</p>
-        )}
-        {(isShowingTomorrow || appointments.length === 0) && (
-          <div className="relative mb-2 pl-5">{renderNowMarker()}</div>
         )}
         {appointments.length === 0 ? (
           isShowingTomorrow && <p className="text-sm text-muted-foreground">Auch morgen stehen keine Termine an.</p>

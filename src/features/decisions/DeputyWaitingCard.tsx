@@ -1,5 +1,5 @@
 import { useEffect, useRef, useState } from "react";
-import { BellRing, UserRound } from "lucide-react";
+import { Bell, BellRing, UserRound } from "lucide-react";
 import { useQueryClient } from "@tanstack/react-query";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
@@ -104,8 +104,11 @@ function NudgeRow({ decision, canSend }: { decision: DeputyDashboardDecision; ca
     <div className="py-3 first:pt-0 last:pb-0">
       <div className="flex flex-wrap items-center justify-between gap-2">
         <p className="min-w-0 flex-1 break-words text-sm font-medium">{decision.title}</p>
-        {locked && lastNudge ? <span className="shrink-0 text-xs text-muted-foreground"
-          title="Erneutes Anstupsen ist nach 24 Stunden möglich.">Angestupst {decisionNudgeTime(lastNudge)}</span>
+        {locked && lastNudge ? <span className="inline-flex shrink-0 items-center gap-1.5 text-xs text-muted-foreground"
+          title="Erneutes Anstupsen ist nach 24 Stunden möglich.">
+          <Bell className="h-3 w-3 shrink-0" aria-hidden="true" />
+          Angestupst {decisionNudgeTime(lastNudge)}
+        </span>
           : <Button type="button" variant="outline" size="sm" className="h-8 shrink-0 text-xs"
             disabled={!canSend || editing || sending}
             onClick={() => { setRemaining(10); setPaused(false); setEditing(true); }}>

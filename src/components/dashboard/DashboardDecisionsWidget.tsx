@@ -3,7 +3,7 @@ import { decisionNudgePriority, decisionNudgeTime } from "@/features/decisions/d
 import { useDeputyDashboardDecisions, type DeputyDashboardDecision } from "@/features/decisions/useDeputyDashboardDecisions";
 import { useMemo, useState, useEffect, useRef } from 'react';
 import { useNavigate } from 'react-router-dom';
-import { MessageSquare, Undo2 } from 'lucide-react';
+import { Bell, MessageSquare, Undo2 } from 'lucide-react';
 import { differenceInCalendarDays, format } from 'date-fns';
 import { de } from 'date-fns/locale';
 import { useAuth } from '@/hooks/useAuth';
@@ -140,7 +140,10 @@ function DecisionRow({ decision, nudge, onDismissConfirmed, onOpen, onPromptOpen
       style={{ transform: exiting ? "translateX(24px)" : undefined }}
     >
       {nudge?.nudged_at && <div className="animate-fade-up mb-3 rounded-xl bg-[#eee9f9] px-3 py-2 text-sm" role="status">
-        <p className="font-medium text-[#8b5cf6]">Angestupst {nudge.nudged_by_name ? `von ${nudge.nudged_by_name} ` : ""}um {decisionNudgeTime(nudge.nudged_at)}</p>
+        <p className="flex items-center gap-1.5 text-xs font-medium text-[#8b5cf6]">
+          <Bell className="h-3 w-3 shrink-0" aria-hidden="true" />
+          <span>Angestupst {nudge.nudged_by_name ? `von ${nudge.nudged_by_name} ` : ""}um {decisionNudgeTime(nudge.nudged_at)}</span>
+        </p>
         {nudge.nudge_note && <p className="mt-1 whitespace-pre-wrap text-[#18202b]">{nudge.nudge_note}</p>}
       </div>}
       <div className="mb-3">
