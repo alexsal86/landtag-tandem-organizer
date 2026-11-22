@@ -332,7 +332,8 @@ export const DashboardAppointments = ({ data }: Props) => {
     return (
       <div key={apt.id} className={cn("relative", ended && "opacity-55")}>
         <span aria-hidden="true" className={cn(
-          "absolute -left-5 top-[18px] z-10 h-3 w-3 rounded-full border-2",
+          "absolute -left-5 z-10 h-3 w-3 rounded-full border-2",
+          ended ? "top-3" : "top-[18px]",
           ended ? "border-muted-foreground bg-muted-foreground"
             : active || isNext ? "border-[#55ad21] bg-[#55ad21]"
             : "border-border bg-card",
@@ -340,7 +341,7 @@ export const DashboardAppointments = ({ data }: Props) => {
           {isNext && <span className="absolute -inset-0.5 rounded-full bg-[#55ad21] blur-[1px] animate-ring motion-reduce:hidden" />}
         </span>
         <div
-          className={`relative grid grid-cols-[3.25rem_minmax(0,1fr)] @min-[32rem]:grid-cols-[3.25rem_minmax(0,1fr)_auto] gap-x-3 gap-y-2 rounded-lg px-3 py-3 transition-colors hover:bg-muted/40 focus-within:bg-muted/40 ${active ? "bg-primary/10 ring-1 ring-primary/30" : ""}`}
+          className={`relative grid grid-cols-[3.25rem_minmax(0,1fr)] @min-[32rem]:grid-cols-[3.25rem_minmax(0,1fr)_auto] gap-x-3 rounded-lg px-3 ${ended ? "gap-y-1 py-1.5" : "gap-y-2 py-3"} transition-colors hover:bg-muted/40 focus-within:bg-muted/40 ${active ? "bg-primary/10 ring-1 ring-primary/30" : ""}`}
         >
           <button
             type="button"
@@ -357,7 +358,7 @@ export const DashboardAppointments = ({ data }: Props) => {
             >
               {apt.is_all_day ? "Ganztägig" : format(start, "HH:mm")}
             </p>
-            {!apt.is_all_day && end && end > start && (
+            {!ended && !apt.is_all_day && end && end > start && (
               <p className="text-xs text-muted-foreground/80">
                 {isSameDay(start, end) ? "" : format(end, "d. MMM. ", { locale: de })}
                 {format(end, "HH:mm")}
@@ -514,11 +515,11 @@ export const DashboardAppointments = ({ data }: Props) => {
           <div key={entry.key} className="group/day-entry relative animate-rise" style={{ animationDelay: `${Math.min(index, 3) * 40}ms` }}>
             <span aria-hidden="true" className={cn(
               "pointer-events-none absolute -left-[15px] top-0 w-0.5 bg-border group-first/day-entry:hidden",
-              entry.appointment ? "h-[14px]" : "h-1.5",
+              entry.appointment ? (hasAppointmentEnded(entry.appointment, now) ? "h-2" : "h-[14px]") : "h-1.5",
             )} />
             <span aria-hidden="true" className={cn(
               "pointer-events-none absolute -left-[15px] bottom-0 w-0.5 bg-border group-last/day-entry:hidden",
-              entry.appointment ? "top-[34px]" : "top-[26px]",
+              entry.appointment ? (hasAppointmentEnded(entry.appointment, now) ? "top-[28px]" : "top-[34px]") : "top-[26px]",
             )} />
             {entry.appointment ? renderAppointment(entry.appointment, today) : renderNowMarker()}
           </div>
