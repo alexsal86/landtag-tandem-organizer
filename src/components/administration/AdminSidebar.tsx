@@ -180,7 +180,7 @@ export const adminMenuItems: AdminMenuItem[] = [
       { id: "login", label: "Login-Anpassung", icon: Settings },
       { id: "mywork-overview", label: "Meine Arbeit Übersicht", icon: PanelTop },
       { id: "dashboard-hints", label: "Dashboard-Hinweise", icon: PanelTop },
-      { id: "motivational-messages", label: "Motivationssprüche", icon: PanelTop },
+      { id: "motivational-messages", label: "Dashboard-Begrüßungen", icon: PanelTop },
     ],
   },
   { id: "finance", label: "Kosten & Budget", icon: CreditCard, children: [

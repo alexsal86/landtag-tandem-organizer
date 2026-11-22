@@ -54,7 +54,7 @@ const MapLayerAdmin = lazy(() => import("@/components/administration/MapLayerAdm
 const MyWorkSystemOverview = lazy(() => import("@/components/administration/MyWorkSystemOverview").then(module => ({ default: module.MyWorkSystemOverview })));
 const OnboardingSlidesManager = lazy(() => import("@/components/administration/OnboardingSlidesManager").then(module => ({ default: module.OnboardingSlidesManager })));
 const DashboardHintSettings = lazy(() => import("@/components/administration/DashboardHintSettings").then(module => ({ default: module.DashboardHintSettings })));
-const MotivationalMessagesOverview = lazy(() => import("@/components/administration/MotivationalMessagesOverview").then(module => ({ default: module.MotivationalMessagesOverview })));
+const DashboardGreetingsSettings = lazy(() => import("@/components/administration/DashboardGreetingsSettings").then(module => ({ default: module.DashboardGreetingsSettings })));
 const StakeholderNetworkTagSettings = lazy(() => import("@/components/administration/StakeholderNetworkTagSettings").then(module => ({ default: module.StakeholderNetworkTagSettings })));
 const DataLintDashboard = lazy(() => import("@/components/administration/DataLintDashboard").then(module => ({ default: module.DataLintDashboard })));
 const DuplicateScanDashboard = lazy(() => import("@/components/administration/DuplicateScanDashboard").then(module => ({ default: module.DuplicateScanDashboard })));
@@ -395,7 +395,7 @@ export default function Administration(): React.JSX.Element | null {
         case "login": return <LoginCustomization />;
         case "mywork-overview": return <MyWorkSystemOverview />;
         case "dashboard-hints": return <DashboardHintSettings />;
-        case "motivational-messages": return <MotivationalMessagesOverview />;
+        case "motivational-messages": return <DashboardGreetingsSettings />;
         default: return null;
       }
     }

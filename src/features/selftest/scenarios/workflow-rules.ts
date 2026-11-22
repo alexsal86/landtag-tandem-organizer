@@ -1,3 +1,4 @@
+import { formatDashboardGreeting, parseDashboardGreetings, selectDashboardGreeting } from "@/utils/dashboard/greetings";
 import { pollPartyBasis, POLL_FEATURED_PARTIES } from "@/features/election-analysis/research/simulator/polls";
 import { getAdministrationAccess } from "@/components/administration/access";
 import { automationTabFromParams, normalizeAutomationParams, rssTabFromParams } from "@/components/administration/automationNavigation";
@@ -26,6 +27,27 @@ export const workflowRulesScenario: TestScenario = {
   checks: ["Erlaubte und verbotene Brief-Statuswechsel", "Entscheiderrollen", "Ministeriumsfrist und Wiedervorlage"],
   limitations: ["Berechtigungen der Datenbank werden separat in den Zugriffstests geprüft."],
   steps: [
+    {
+      id: "dashboard-greetings", label: "My Work: Begrüßungen nach Tageszeit, Wochentag und Monat", kind: "logic",
+      run: async () => {
+        const rules = parseDashboardGreetings(JSON.stringify([
+          { id: "a", text: "Willkommen, {name}!", timeSlot: "morning", month: 11 },
+          { id: "b", text: "Schön, dass du da bist, {name}!", timeSlot: "morning", month: 11 },
+          { id: "c", text: "Montag", dayOfWeek: 1, month: 12 },
+        ]));
+        const first = selectDashboardGreeting(rules, new Date(2026, 10, 5, 9));
+        const second = selectDashboardGreeting(rules, new Date(2026, 10, 6, 9));
+        return {
+          ok: rules.slice(0, 2).some(rule => rule.text === first)
+            && rules.slice(0, 2).some(rule => rule.text === second)
+            && first !== second
+            && selectDashboardGreeting(rules, new Date(2026, 11, 7, 9)) === "Montag"
+            && selectDashboardGreeting(rules, new Date(2026, 11, 8, 9)) === "Guten Morgen, {name}!"
+            && formatDashboardGreeting(selectDashboardGreeting(rules, new Date(2026, 10, 5, 18)), "Alex") === "Guten Abend, Alex!",
+          message: "Passende Regeln wechseln tageweise. Ohne Treffer greift die Standardbegrüßung.",
+        };
+      },
+    },
     {
       id: "seat-poll-basis", label: "Mandatssimulator: Umfragewerte als Ausgangsbasis", kind: "logic",
       run: async () => {

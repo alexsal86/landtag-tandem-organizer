@@ -6,7 +6,7 @@
 type ImportFn = () => Promise<unknown>;
 
 const prefetchMap: Record<string, ImportFn> = {
-  dashboard: () => import("@/features/dashboard/components/CustomizableDashboard"),
+  dashboard: () => import("@/features/dashboard/components/MyWorkView"),
   mywork: () => import("@/features/dashboard/components/MyWorkView"),
   calendar: () => import("@/features/calendar/components/CalendarView"),
   contacts: () => import("@/features/contacts/components/ContactsView"),

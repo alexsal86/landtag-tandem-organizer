@@ -73,6 +73,7 @@ export const AppRoutes = () => (
     {/* Geschützte Routen – Weiterleitung zu /auth wenn nicht eingeloggt */}
     <Route element={<ProtectedRoute />}>
       <Route path="/" element={<Navigate to="/mywork" replace />} />
+      <Route path="/dashboard/*" element={<Navigate to="/mywork?tab=dashboard" replace />} />
       <Route path="/contacts/new" element={<Navigate to="/contacts?action=new" replace />} />
       <Route path="/contacts/netzwerk" element={<Index />} />
       <Route path="/contacts/stakeholder" element={<Index />} />

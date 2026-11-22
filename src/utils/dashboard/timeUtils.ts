@@ -8,8 +8,8 @@ export const TIME_SLOTS = {
   night: { start: 22, end: 6 }
 } as const;
 
-export const getCurrentTimeSlot = (): TimeSlot => {
-  const hour = new Date().getHours();
+export const getCurrentTimeSlot = (date = new Date()): TimeSlot => {
+  const hour = date.getHours();
   
   if (hour >= TIME_SLOTS.morning.start && hour < TIME_SLOTS.morning.end) {
     return 'morning';

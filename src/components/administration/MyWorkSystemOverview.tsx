@@ -24,7 +24,7 @@ const tabs = ["dashboard", "capture", "tasks", "decisions", "jourFixe", "casefil
 type MyWorkTabId = typeof tabs[number] | "overview";
 
 const tabSourceMap: Record<typeof tabs[number], string> = {
-  dashboard: "src/components/MyWorkView.tsx + src/components/dashboard/DashboardGreetingSection.tsx",
+  dashboard: "src/components/my-work/MyWorkDashboardTab.tsx + src/components/dashboard/DashboardHeader.tsx",
   capture: "src/components/my-work/MyWorkQuickCapture.tsx + src/components/my-work/MyWorkNotesList.tsx",
   tasks: "src/components/my-work/MyWorkTasksTab.tsx",
   decisions: "src/components/my-work/MyWorkDecisionsTab.tsx",

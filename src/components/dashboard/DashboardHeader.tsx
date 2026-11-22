@@ -5,11 +5,21 @@ import { de } from 'date-fns/locale';
 import { Sun, Moon, CloudSun, CloudMoon, Cloud, CloudFog, Wind, CloudRain, CloudSnow, CloudLightning } from 'lucide-react';
 import { useAuth } from '@/hooks/useAuth';
 import { supabase } from '@/integrations/supabase/client';
-import { getCurrentTimeSlot, getGreeting } from '@/utils/dashboard/timeUtils';
+import { useTenant } from '@/hooks/useTenant';
+import { useDashboardGreetings } from '@/hooks/useDashboardGreetings';
+import { formatDashboardGreeting, selectDashboardGreeting } from '@/utils/dashboard/greetings';
 import { getWeather } from '@/utils/dashboard/weatherApi';
 
 export const DashboardHeader = () => {
   const { user } = useAuth();
+  const { currentTenant } = useTenant();
+  const { data: greetings = [] } = useDashboardGreetings(currentTenant?.id);
+  const [now, setNow] = useState(() => new Date());
+
+  useEffect(() => {
+    const timer = window.setInterval(() => setNow(new Date()), 30_000);
+    return () => window.clearInterval(timer);
+  }, []);
   const [userName, setUserName] = useState('');
   const [weatherKarlsruhe, setWeatherKarlsruhe] = useState<{ temp: number; icon: string } | null>(null);
   const [weatherStuttgart, setWeatherStuttgart] = useState<{ temp: number; icon: string } | null>(null);
@@ -38,9 +48,8 @@ export const DashboardHeader = () => {
     load();
   }, []);
 
-  const now = new Date();
   const dayDate = format(now, "EEEE, d. MMMM", { locale: de });
-  const greeting = getGreeting(getCurrentTimeSlot());
+  const greeting = formatDashboardGreeting(selectDashboardGreeting(greetings, now), userName || 'Nutzer');
   const weatherItems = [
     weatherKarlsruhe ? { city: 'Karlsruhe', ...weatherKarlsruhe } : null,
     weatherStuttgart ? { city: 'Stuttgart', ...weatherStuttgart } : null,
@@ -71,7 +80,7 @@ export const DashboardHeader = () => {
         <div className="space-y-1">
           <p className="text-sm font-normal capitalize text-muted-foreground">{dayDate}</p>
           <h1 className="text-3xl font-semibold tracking-tight">
-            {greeting}, {userName}!
+            {greeting}
           </h1>
         </div>
         <DashboardDaySummary />
