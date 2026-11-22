@@ -1,4 +1,4 @@
-import { useMemo, useState, useEffect } from 'react';
+import { useMemo, useState, useEffect, useRef } from 'react';
 import { useNavigate } from 'react-router-dom';
 import { MessageSquare, Undo2 } from 'lucide-react';
 import { differenceInCalendarDays, format } from 'date-fns';
@@ -34,7 +34,7 @@ const PROMPT_COLOR_CLASS: Record<string, string> = {
 
 interface DecisionRowProps {
   decision: MyWorkDecision;
-  onRefresh: () => void;
+  onDismissConfirmed: (id: string) => void;
   onOpen: (id: string) => void;
   onPromptOpen: (id: string) => void;
   onPromptClose: (id: string) => void;
@@ -42,11 +42,16 @@ interface DecisionRowProps {
   forcePrompt?: { color: string } | null;
 }
 
-function DecisionRow({ decision, onRefresh, onOpen, onPromptOpen, onPromptClose, onUndoConfirmed, forcePrompt }: DecisionRowProps) {
+function DecisionRow({ decision, onDismissConfirmed, onOpen, onPromptOpen, onPromptClose, onUndoConfirmed, forcePrompt }: DecisionRowProps) {
   const recommendation = decision.response_options?.find(option => option.recommended);
   const recommendationColors = recommendation ? getColorClasses(recommendation.color) : null;
   const { label, isOverdue } = formatDeadline(decision.response_deadline);
   const [undoing, setUndoing] = useState(false);
+  const [exiting, setExiting] = useState(false);
+  const exitTimer = useRef<ReturnType<typeof setTimeout> | null>(null);
+  useEffect(() => () => {
+    if (exitTimer.current) clearTimeout(exitTimer.current);
+  }, []);
   const [prompt, setPrompt] = useState<{ color: string } | null>(forcePrompt ?? null);
 
   useEffect(() => {
@@ -102,23 +107,33 @@ function DecisionRow({ decision, onRefresh, onOpen, onPromptOpen, onPromptClose,
   };
 
   const handleDismiss = () => {
-    setPrompt(null);
-    onPromptClose(decision.id);
-    onRefresh();
+    if (exiting || undoing) return;
+    const finish = () => {
+      setPrompt(null);
+      onDismissConfirmed(decision.id);
+    };
+    if (window.matchMedia("(prefers-reduced-motion: reduce)").matches) {
+      finish();
+      return;
+    }
+    setExiting(true);
+    exitTimer.current = setTimeout(finish, 250);
   };
 
   return (
     <div
       role="button"
-      tabIndex={0}
-      onClick={() => onOpen(decision.id)}
+      tabIndex={exiting ? -1 : 0}
+      aria-disabled={exiting}
+      onClick={() => { if (!exiting) onOpen(decision.id); }}
       onKeyDown={(e) => {
         if (e.target === e.currentTarget && (e.key === 'Enter' || e.key === ' ')) {
           e.preventDefault();
           onOpen(decision.id);
         }
       }}
-      className="py-4 first:pt-0 last:pb-0"
+      className={cn("dashboard-decision-exit py-4 first:pt-0 last:pb-0", exiting && "pointer-events-none opacity-0")}
+      style={{ transform: exiting ? "translateX(24px)" : undefined }}
     >
       <div className="mb-3">
         <p className="break-words text-base font-medium leading-6">{decision.title}</p>
@@ -153,7 +168,7 @@ function DecisionRow({ decision, onRefresh, onOpen, onPromptOpen, onPromptClose,
         <div
           onClick={(e) => e.stopPropagation()}
           className={cn(
-            'animate-in fade-in slide-in-from-top-1 mt-1 rounded-md border p-2 text-xs',
+            'animate-fade-up mt-1 rounded-md border p-2 text-xs',
             PROMPT_COLOR_CLASS[prompt.color] || PROMPT_COLOR_CLASS.default,
           )}
         >
@@ -164,13 +179,13 @@ function DecisionRow({ decision, onRefresh, onOpen, onPromptOpen, onPromptClose,
             Du kannst die Antwort zurücknehmen oder begründen:
           </div>
           <div className="flex flex-wrap items-center gap-1.5">
-            <Button type="button" size="sm" variant="outline" className="h-7 px-2 text-xs" disabled={undoing} onClick={handleAddJustification}>
+            <Button type="button" size="sm" variant="outline" className="h-7 px-2 text-xs" disabled={undoing || exiting} onClick={handleAddJustification}>
               <MessageSquare className="h-3 w-3 mr-1" />Begründung hinzufügen
             </Button>
-            <Button type="button" size="sm" variant="ghost" className="h-7 px-2 text-xs" disabled={undoing} onClick={handleUndo}>
+            <Button type="button" size="sm" variant="ghost" className="h-7 px-2 text-xs" disabled={undoing || exiting} onClick={handleUndo}>
               <Undo2 className="h-3 w-3 mr-1" />{undoing ? "Wird zurückgenommen…" : "Rückgängig"}
             </Button>
-            <Button type="button" size="sm" variant="ghost" className="h-7 px-2 text-xs ml-auto" disabled={undoing} onClick={handleDismiss}>
+            <Button type="button" size="sm" variant="ghost" className="h-7 px-2 text-xs ml-auto" disabled={undoing || exiting} onClick={handleDismiss}>
               Fertig
             </Button>
           </div>
@@ -194,6 +209,13 @@ export function DashboardDecisionsWidget() {
   const handleUndoConfirmed = (id: string) => {
     setDecisions(previous => previous.map(decision =>
       decision.id === id ? resetOwnDecisionResponse(decision) : decision));
+    handlePromptClose(id);
+    void loadDecisions({ silent: true });
+  };
+
+  const handleDismissConfirmed = (id: string) => {
+    setDecisions(previous => previous.map(decision =>
+      decision.id === id ? { ...decision, hasResponded: true } : decision));
     handlePromptClose(id);
     void loadDecisions({ silent: true });
   };
@@ -235,7 +257,7 @@ export function DashboardDecisionsWidget() {
         <DecisionRow
           key={d.id}
           decision={d}
-          onRefresh={() => loadDecisions({ silent: true })}
+          onDismissConfirmed={handleDismissConfirmed}
           onOpen={goToDecision}
           onPromptOpen={handlePromptOpen}
           onPromptClose={handlePromptClose}

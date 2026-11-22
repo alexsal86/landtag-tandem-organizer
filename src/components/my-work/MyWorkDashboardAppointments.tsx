@@ -139,6 +139,7 @@ export const DashboardAppointments = ({ data }: Props) => {
   const [preparationsError, setPreparationsError] = useState(false);
   const [preparationsLoaded, setPreparationsLoaded] = useState(false);
   const [expandedBriefingId, setExpandedBriefingId] = useState<string | null>(null);
+  const [openedBriefings, setOpenedBriefings] = useState<Set<string>>(() => new Set());
   const [participants, setParticipants] = useState<Map<string, ParticipantItem[]>>(new Map());
   const allAppointments = useMemo(
     () => [...appointments, ...tomorrowAppointments],
@@ -332,7 +333,9 @@ export const DashboardAppointments = ({ data }: Props) => {
           ended ? "border-muted-foreground bg-muted-foreground"
             : active || isNext ? "border-[#55ad21] bg-[#55ad21]"
             : "border-border bg-card",
-        )} />
+        )}>
+          {isNext && <span className="absolute -inset-1 rounded-full border border-[#55ad21] animate-ring motion-reduce:hidden" />}
+        </span>
         <div
           className={`relative grid grid-cols-[3.25rem_minmax(0,1fr)] @min-[32rem]:grid-cols-[3.25rem_minmax(0,1fr)_auto] gap-x-3 gap-y-2 rounded-lg px-3 py-3 transition-colors hover:bg-muted/40 focus-within:bg-muted/40 ${active ? "bg-primary/10 ring-1 ring-primary/30" : ""}`}
         >
@@ -426,7 +429,10 @@ export const DashboardAppointments = ({ data }: Props) => {
                     className="h-8 rounded-lg border border-border bg-transparent px-3 text-sm font-normal hover:bg-transparent hover:border-foreground/30"
                     aria-expanded={isBriefingExpanded}
                     aria-controls={`dashboard-briefing-${apt.id}`}
-                    onClick={() => setExpandedBriefingId((prev) => (prev === apt.id ? null : apt.id))}
+                    onClick={() => {
+                      setOpenedBriefings(previous => new Set(previous).add(apt.id));
+                      setExpandedBriefingId(previous => previous === apt.id ? null : apt.id);
+                    }}
                   >
                     {isBriefingExpanded ? "Briefing schließen" : "Briefing öffnen"}
                   </Button>
@@ -461,17 +467,24 @@ export const DashboardAppointments = ({ data }: Props) => {
             </div>}
           </div>
         </div>
-        {isBriefingExpanded && canOpenBriefing && prep && (
-          <div id={`dashboard-briefing-${apt.id}`} className="mt-1 ml-4">
-            <AppointmentBriefingView
-              preparation={prep}
-              appointmentInfo={{
-                title: apt.title,
-                start_time: apt.start_time,
-                end_time: apt.end_time || apt.start_time,
-                location: apt.location || undefined,
-              }}
-            />
+        {canOpenBriefing && prep && (
+          <div className="dashboard-expand grid grid-rows-[0fr] data-[open=true]:grid-rows-[1fr]" data-open={isBriefingExpanded}
+            aria-hidden={!isBriefingExpanded} inert={!isBriefingExpanded}>
+            <div className="min-h-0 overflow-hidden">
+              {openedBriefings.has(apt.id) && (
+                <div id={`dashboard-briefing-${apt.id}`} className="animate-fade-up mt-1 ml-4">
+                  <AppointmentBriefingView
+                    preparation={prep}
+                    appointmentInfo={{
+                      title: apt.title,
+                      start_time: apt.start_time,
+                      end_time: apt.end_time || apt.start_time,
+                      location: apt.location || undefined,
+                    }}
+                  />
+                </div>
+              )}
+            </div>
           </div>
         )}
       </div>
@@ -494,8 +507,8 @@ export const DashboardAppointments = ({ data }: Props) => {
     if (today) entries.splice(timelineNowIndex(items, now), 0, { key: "current-time", appointment: null });
     return (
       <div className="pl-5">
-        {entries.map(entry => (
-          <div key={entry.key} className="group/day-entry relative">
+        {entries.map((entry, index) => (
+          <div key={entry.key} className="group/day-entry relative animate-rise" style={{ animationDelay: `${Math.min(index, 3) * 40}ms` }}>
             <span aria-hidden="true" className={cn(
               "pointer-events-none absolute -left-[15px] top-0 w-0.5 bg-border group-first/day-entry:hidden",
               entry.appointment ? "h-[14px]" : "h-1.5",

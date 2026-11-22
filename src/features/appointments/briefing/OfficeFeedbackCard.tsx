@@ -189,7 +189,7 @@ function OfficeFeedbackForm() {
   };
 
   return (
-    <section aria-label="Rückmeldung ans Büro" className="rounded-3xl border border-border/70 bg-card shadow-sm">
+    <section aria-label="Rückmeldung ans Büro" style={{ animationDelay: "60ms" }} className="dashboard-motion-card animate-rise rounded-3xl border border-border/70 bg-card shadow-sm">
       <header className="flex min-h-[52px] flex-row flex-wrap items-center justify-between gap-2 space-y-0 py-space-sm px-space-md">
         <h2 className="inline-flex items-center gap-2 text-base font-medium leading-6 tracking-tight"><Mic className="h-5 w-5 shrink-0 text-muted-foreground" aria-hidden="true" />Rückmeldung ans Büro</h2>
         <span className="shrink-0 text-sm text-muted-foreground">
@@ -198,7 +198,7 @@ function OfficeFeedbackForm() {
       </header>
       <div className="px-space-md pb-space-md">
       {!feedback.isLoading && !feedback.isError && current && isOfficeReminderDue(snoozes[key], now) && (
-        <div role="status" className="mb-4 flex items-start gap-2 rounded-2xl bg-[#eaf5df] px-3 py-2 text-sm leading-5 text-[#55ad21]">
+        <div key={key} role="status" className="animate-fade-up mb-4 flex items-start gap-2 rounded-2xl bg-[#eaf5df] px-3 py-2 text-sm leading-5 text-[#55ad21]">
           <AlarmClock className="mt-0.5 h-4 w-4 shrink-0" aria-hidden="true" />
           <span>Du wolltest dich an den Termin „{current.title}“ erinnern lassen – jetzt ist es soweit.</span>
         </div>
@@ -223,7 +223,7 @@ function OfficeFeedbackForm() {
           <>
             <p className="mb-3 text-base font-medium">{current.title}<span className="font-normal text-muted-foreground"> · {clock(current.start_time)}</span></p>
             {mode === "review" ? (
-              <div className="space-y-3">
+              <div className="animate-fade-up space-y-3">
                 <p className="whitespace-pre-wrap rounded-2xl bg-muted/60 p-3 text-sm">{text}</p>
                 <div className="flex flex-wrap gap-2">
                   <button type="button" disabled={busy} className={`rounded-xl px-4 py-2 text-sm ${green}`} onClick={() => void finish([current], text.trim())}>{busy ? "Wird gesendet…" : "Ans Büro senden"}</button>
@@ -247,7 +247,7 @@ function OfficeFeedbackForm() {
                   </button>
                   <button type="button" disabled={busy || (!text.trim() && !recording)} className={`h-8 shrink-0 rounded-2xl px-4 text-sm font-medium disabled:opacity-40 ${green}`} onClick={() => void review()}>Weiter</button>
                 </div>
-                  <div className="mt-3 hidden flex-wrap gap-1.5 peer-focus-within/feedback-input:flex" aria-label="Hinweise zur Rückmeldung">
+                  <div className="animate-fade-up mt-3 hidden flex-wrap gap-1.5 peer-focus-within/feedback-input:flex" aria-label="Hinweise zur Rückmeldung">
                     {["Wer war da?", "Was wurde zugesagt?", "Was soll das Büro tun?"].map(hint => (
                       <span key={hint} className="rounded-full bg-muted px-2.5 py-1 text-xs leading-4 text-muted-foreground">{hint}</span>
                     ))}

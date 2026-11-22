@@ -131,7 +131,7 @@ export function TodayBriefingPanel() {
   const unreadCount = briefings.filter((b) => !b.is_read).length;
 
   return (
-    <Card>
+    <Card className="dashboard-motion-card animate-rise">
       <CardHeader className="flex min-h-[52px] flex-row flex-wrap items-center justify-between gap-2 space-y-0 py-space-sm px-space-md">
         <CardTitle className="inline-flex items-center gap-2 text-base font-medium leading-6">
           <Sparkles className="h-5 w-5 shrink-0 text-muted-foreground" aria-hidden="true" />

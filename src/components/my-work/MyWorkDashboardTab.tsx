@@ -56,6 +56,7 @@ interface DashboardWidgetContainerProps {
   icon?: LucideIcon;
   iconClassName?: string;
   className?: string;
+  animationDelay?: number;
   headerAction?: ReactNode;
   compactTitle?: boolean;
   isLoading?: boolean;
@@ -70,6 +71,7 @@ function DashboardWidgetContainer({
   icon: Icon,
   iconClassName,
   className,
+  animationDelay = 0,
   headerAction,
   isLoading = false,
   hasError = false,
@@ -86,7 +88,7 @@ function DashboardWidgetContainer({
   }
 
   return (
-    <Card className={cn('shadow-sm border-border/60 animate-fade-in', className)}>
+    <Card className={cn('dashboard-motion-card animate-rise shadow-sm border-border/60', className)} style={{ animationDelay: `${animationDelay}ms` }}>
       <CardHeader className="flex min-h-[52px] flex-row flex-wrap items-center justify-between gap-2 space-y-0 py-space-sm px-space-md">
         <CardTitle className="inline-flex items-center gap-2 text-base font-medium leading-6">
           {Icon && <Icon className={cn("h-5 w-5 shrink-0 text-muted-foreground", iconClassName)} aria-hidden="true" />}
@@ -104,7 +106,7 @@ function DeadlinesWidget() {
 
   return (
     <DashboardWidgetContainer
-      icon={ClipboardList} title="Fristen"
+      icon={ClipboardList} title="Fristen" animationDelay={60}
       isLoading={isLoading}
       hasError={isError}
       errorMessage="Fristen konnten nicht geladen werden."
@@ -150,7 +152,7 @@ function UrgentRequestsWidget() {
 function NewsWidgetCard() {
   return (
     <DashboardWidgetContainer
-      icon={Newspaper} title="News"
+      icon={Newspaper} title="News" animationDelay={180}
       className="min-w-0"
       errorMessage="News konnten nicht geladen werden."
     >
@@ -167,8 +169,8 @@ export function MyWorkDashboardTab() {
   if (loading) return <LoadingState variant="card" rows={3} />;
 
   return (
-    <div className="space-y-space-md animate-fade-in">
-      <DashboardHeader />
+    <div key={isDeputyView ? "deputy" : "employee"} className="dashboard-motion space-y-space-md">
+      <div className="animate-rise"><DashboardHeader /></div>
       {isEmployeeView && <PendingBriefingNotice />}
       {isDeputyView && <TodayBriefingPanel />}
       {isEmployeeView && <BriefingComposerCard />}
@@ -181,7 +183,7 @@ export function MyWorkDashboardTab() {
         <div className="flex flex-col gap-space-md min-w-0">
           {!isDeputyView && <DeadlinesWidget />}
           <DashboardWidgetContainer
-            icon={Vote} title={isDeputyView ? "Braucht deine Entscheidung" : "Entscheidungen"}
+            icon={Vote} title={isDeputyView ? "Braucht deine Entscheidung" : "Entscheidungen"} animationDelay={60}
             errorMessage="Entscheidungen konnten nicht geladen werden."
           >
             <ErrorBoundary fallback={<ErrorState description="Entscheidungen konnten nicht geladen werden." />}>
@@ -192,7 +194,7 @@ export function MyWorkDashboardTab() {
         <div className="flex flex-col gap-space-md min-w-0">
           {!isDeputyView && (
             <DashboardWidgetContainer
-              icon={Users} title="Jour fixe"
+              icon={Users} title="Jour fixe" animationDelay={120}
               errorMessage="Jour fixe konnte nicht geladen werden."
             >
               <ErrorBoundary fallback={<ErrorState description="Jour fixe konnte nicht geladen werden." />}>

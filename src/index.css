@@ -680,10 +680,13 @@ All colors MUST be HSL.
   *,
   *::before,
   *::after {
-    animation-duration: 0.001ms !important;
-    animation-iteration-count: 1 !important;
-    transition-duration: 0.001ms !important;
+    animation: none !important;
+    transition: none !important;
     scroll-behavior: auto !important;
+  }
+  .dashboard-motion :where(button, a):active,
+  .dashboard-motion .dashboard-motion-card:hover {
+    transform: none !important;
   }
 }
 
@@ -743,3 +746,47 @@ All colors MUST be HSL.
   color: hsl(var(--primary)); font-size: 0.8rem; border-radius: 0.25rem;
 }
 .day-slip-item[data-source-id]:hover::after { background: hsl(var(--muted)); }
+
+
+/* Dashboard motion only changes composited properties. */
+@keyframes rise {
+  from { opacity: 0; transform: translateY(12px); }
+  to { opacity: 1; transform: none; }
+}
+@keyframes fade-up {
+  from { opacity: 0; transform: translateY(-5px); }
+  to { opacity: 1; transform: none; }
+}
+@keyframes drop {
+  from { opacity: 0; transform: translateY(-14px); }
+  to { opacity: 1; transform: none; }
+}
+@keyframes ring {
+  from { opacity: .5; transform: scale(.8); }
+  to { opacity: 0; transform: scale(2.2); }
+}
+.dashboard-motion :where(*) {
+  transition-property: transform, opacity;
+  transition-duration: .3s;
+  transition-timing-function: cubic-bezier(.2,.7,.2,1);
+}
+.dashboard-motion :where(button, a) {
+  scale: 1;
+}
+.dashboard-motion :where(button:not(:disabled), a):active {
+  transform: scale(.95);
+}
+.dashboard-motion .dashboard-motion-card:hover {
+  transform: translateY(-1px);
+  box-shadow: var(--shadow-md);
+}
+.dashboard-motion .dashboard-expand {
+  transition-property: grid-template-rows;
+  transition-duration: .3s;
+  transition-timing-function: cubic-bezier(.2,.7,.2,1);
+}
+.dashboard-motion .dashboard-decision-exit {
+  transition-property: transform, opacity;
+  transition-duration: .24s;
+  transition-timing-function: cubic-bezier(.2,.7,.2,1);
+}
