@@ -16,11 +16,13 @@
 - [ ] Angemeldeten Super-Admin-Gesamtablauf mit echter Supabase-Sitzung prüfen — externe Supabase-Testsitzung nicht verfügbar.
 
 # Log-Aufkommen reduzieren (22.11.2026)
-- [ ] Entscheidungsdaten über einen gemeinsamen TanStack-Query-Cache ohne doppelte Minuten-Timer laden.
-- [ ] Einen gemeinsamen Realtime-Kanal für Dashboard- und Entscheidungsänderungen mit gezielter Cache-Aktualisierung einrichten.
-- [ ] Übrige Dashboard- und Team-Ritual-Abfragen auf fünf Minuten drosseln, lokale Uhrzeit-Anzeigen unverändert minütlich aktualisieren.
-- [ ] E-Mail-Hintergrundlauf auf alle zwei Stunden umstellen und UUID-Fehler in den Feedback-Erinnerungen korrigieren.
-- [ ] Gezielte Tests, Build und Live-Datenbankeinstellungen prüfen; angemeldeten Klickablauf nur mit verfügbarer Testsitzung prüfen.
+- [x] Entscheidungsdaten über einen gemeinsamen TanStack-Query-Cache ohne doppelte Minuten-Timer laden.
+- [x] Einen gemeinsamen Realtime-Kanal für Dashboard- und Entscheidungsänderungen mit gezielter Cache-Aktualisierung einrichten; zwölf Tabellen live in der Realtime-Publikation.
+- [x] Übrige Dashboard- und Team-Ritual-Abfragen auf fünf Minuten drosseln, lokale Uhrzeit-Anzeigen unverändert minütlich aktualisieren.
+- [x] UUID-Fehler beim Erzeugen und Schließen der Feedback-Erinnerungen live korrigiert.
+- [ ] E-Mail-Hintergrundlauf auf alle zwei Stunden umstellen — blockiert durch `Job 6 does not exist or you don't own it`; sowohl eingeschränkter SQL- als auch Migrationszugang dürfen den fremden Job nicht ändern.
+- [x] Vollständige Typprüfung, Vorschau-Build, Lint und 13 gezielte Tests bestanden.
+- [ ] Angemeldeten Realtime-Klickablauf und tatsächliche Vorher/Nachher-Lograte prüfen — externe Supabase-Testsitzung nicht verfügbar.
 
 # Log-Aufkommen reduzieren (15.11.2026)
 - [x] Zentrale Statusverwaltung, gemeinsamer Profil-Cache und höchstens ein Aktivitäts-Write pro fünf Minuten; drei Regressionstests bestanden.

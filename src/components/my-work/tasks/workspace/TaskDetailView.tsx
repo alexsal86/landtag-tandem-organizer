@@ -340,7 +340,7 @@ export function TaskDetailView({ task, profiles, decisionLabel, onSave, onComple
                     <span className={cn("size-2 shrink-0 rounded-full", ownerColors[owner])} />
                     <span className="text-muted-foreground">Am Zug</span>
                     <span className="truncate">
-                      {(owner !== "external" && (nameOf(assignee) || (owner === "deputy" && deputyProfiles.length === 1 && deputyProfiles[0].display_name))) || (owner === "external" && externalLabel) || TASK_BALL_LABELS[owner]}
+                      {(owner !== "external" && (nameOf(assignee) || (owner === "deputy" && deputyProfile?.display_name))) || (owner === "external" && externalLabel) || TASK_BALL_LABELS[owner]}
                     </span>
                     <kbd className="rounded border px-1 text-xs text-muted-foreground">A</kbd>
                   </Button>
