@@ -24,7 +24,6 @@ import { useMyWorkActiveTab } from "@/components/my-work/hooks/useMyWorkActiveTa
 import { useMyWorkShellData } from "@/components/my-work/hooks/useMyWorkShellData";
 import { trackPageVisit } from "@/hooks/useRecentlyVisited";
 import { MY_WORK_TABS } from "@/components/my-work/myWorkTabs";
-import { PendingDebriefBanner } from "@/features/appointments/briefing/PendingDebriefBanner";
 import { OnboardingChecklistCard } from "@/components/onboarding/OnboardingChecklistCard";
 
 const MyWorkQuickCapture = lazyWithRetry(() => import("@/components/my-work/MyWorkQuickCapture").then(m => ({ default: m.MyWorkQuickCapture })));
@@ -234,7 +233,6 @@ export function MyWorkView() {
       {activeTab === "dashboard" && (
         <ErrorBoundary fallback={tabError("Dashboard")}>
           <Suspense fallback={tabFallback}>
-            {!isDeputyView && <PendingDebriefBanner />}
             <MyWorkDashboardTab />
           </Suspense>
         </ErrorBoundary>
