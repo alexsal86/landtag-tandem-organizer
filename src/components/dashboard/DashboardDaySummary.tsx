@@ -43,13 +43,13 @@ export function DashboardDaySummary() {
   }
   const pendingDecisions = decisions.decisions.filter(decision =>
     decision.status !== "resolved" && ((decision.isParticipant && !decision.hasResponded) || decision.isCreator)).length;
-  const emphasize = (text: string) => text.split(/(„[^“]+“|(?:ein|Eine|\d+) (?:Termine?|Entscheidung(?:en)?|Rückmeldungen?|Briefings?))/g)
+  const emphasize = (text: string) => text.split(/(„[^“]+“|(?:[Ee]ine?|\d+) (?:Termine?|Entscheidung(?:en)?|Rückmeldungen?|Briefings?))/g)
     .map((part, index) => index % 2 ? <strong key={index} className="font-medium text-foreground">{part}</strong> : part);
   return (
-    <p className="max-w-5xl text-base leading-relaxed text-muted-foreground sm:text-lg" aria-live="polite">
-      {schedule.isError ? "Termine konnten nicht geladen werden." : emphasize(appointmentSummary(schedule.data ?? [], now))}{" "}
-      {decisions.error || feedback.isError ? "Offene Entscheidungen und Rückmeldungen konnten nicht vollständig geladen werden."
-        : emphasize(pendingSummary(pendingDecisions, feedback.pendingFeedbackCount))}
-    </p>
+    <div className="max-w-5xl text-base leading-relaxed text-muted-foreground sm:text-lg" aria-live="polite">
+      <p>{schedule.isError ? "Termine konnten nicht geladen werden." : emphasize(appointmentSummary(schedule.data ?? [], now))}</p>
+      <p>{decisions.error || feedback.isError ? "Offene Entscheidungen und Rückmeldungen konnten nicht vollständig geladen werden."
+        : emphasize(pendingSummary(pendingDecisions, feedback.pendingFeedbackCount))}</p>
+    </div>
   );
 }

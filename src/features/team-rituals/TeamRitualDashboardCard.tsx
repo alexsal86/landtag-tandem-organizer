@@ -17,7 +17,7 @@ export function TeamRitualDashboardCard() {
   const { isAdmin } = useResolvedUserRole();
   const [showLinkLabel, setShowLinkLabel] = useState(true);
   useEffect(() => {
-    const timeout = window.setTimeout(() => setShowLinkLabel(false), 4000);
+    const timeout = window.setTimeout(() => setShowLinkLabel(false), 3000);
     return () => window.clearTimeout(timeout);
   }, []);
   const state = ritualDashboardState(
@@ -28,11 +28,19 @@ export function TeamRitualDashboardCard() {
   );
   return (
     <Card>
-      <CardHeader className="pb-2">
+      <CardHeader className="flex flex-row flex-wrap items-center justify-between gap-2 space-y-0 pb-2">
         <CardTitle className="flex items-center gap-2 text-base">
           <Users className="h-5 w-5" />
           Team-Rituale
         </CardTitle>
+        <Link to="/employee?tab=rituals" aria-label="Team-Rituale öffnen"
+          className="group/ritual ml-auto inline-flex h-7 items-center gap-1 rounded-md px-2 text-sm text-foreground transition-colors duration-base ease-standard hover:bg-muted focus-visible:outline-foreground">
+          <Users className="h-4 w-4 shrink-0" aria-hidden="true" />
+          <span className={`overflow-hidden whitespace-nowrap transition-all duration-slow ease-emphasized motion-reduce:transition-none ${showLinkLabel ? "max-w-48 opacity-100" : "max-w-0 opacity-0 group-hover/ritual:max-w-48 group-hover/ritual:opacity-100 group-focus-visible/ritual:max-w-48 group-focus-visible/ritual:opacity-100"}`}>
+            Team-Rituale öffnen
+          </span>
+          <ArrowRight className="h-3.5 w-3.5 shrink-0" aria-hidden="true" />
+        </Link>
       </CardHeader>
       <CardContent className="space-y-3">
         {state === "loading" ? (
@@ -68,10 +76,7 @@ export function TeamRitualDashboardCard() {
             {data && <WeeklyAnswers answers={data.answers} userId={userId} />}
           </>
         )}
-        <Link to="/employee?tab=rituals" aria-label="Team-Rituale öffnen" title="Team-Rituale öffnen" className="inline-flex items-center rounded p-1 text-sm text-muted-foreground hover:text-foreground focus-visible:outline focus-visible:outline-2">
-          <span aria-hidden="true" className={`overflow-hidden whitespace-nowrap transition-[max-width,opacity,margin] duration-700 ease-in-out motion-reduce:transition-none ${showLinkLabel ? 'mr-2 max-w-48 opacity-100' : 'mr-0 max-w-0 opacity-0'}`}>Team-Rituale öffnen</span>
-          <ArrowRight className="h-4 w-4 shrink-0" />
-        </Link>
+
       </CardContent>
     </Card>
   );

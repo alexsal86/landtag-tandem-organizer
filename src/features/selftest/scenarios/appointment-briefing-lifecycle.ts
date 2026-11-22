@@ -107,7 +107,10 @@ export const appointmentBriefingLifecycleScenario: TestScenario = {
           appointmentSummary([event], new Date("2026-11-21T20:00:00+01:00")).includes("alle Termine erledigt"),
           appointmentSummary([{ ...event, is_all_day: true }], now).includes("ganztägiger Termin"),
           pendingSummary(0, 0).includes("sind erledigt"),
-          pendingSummary(1, 2).includes("Eine Entscheidung wartet. 2 Rückmeldungen"),
+          pendingSummary(1, 2) === "Eine Entscheidung und 2 Rückmeldungen warten.",
+          pendingSummary(0, 1) === "Eine Rückmeldung wartet.",
+          pendingSummary(1, 0) === "Eine Entscheidung wartet.",
+          pendingSummary(9, 2) === "9 Entscheidungen und 2 Rückmeldungen warten.",
         ];
         return { ok: checks.every(Boolean), message: `${checks.filter(Boolean).length}/${checks.length} Textfälle bestanden.` };
       },

@@ -48,12 +48,13 @@ export function appointmentSummary(events: SummaryAppointment[], now = new Date(
 }
 
 export function pendingSummary(decisions: number, feedback: number): string {
-  if (!decisions && !feedback) return "Alle Entscheidungen und Terminrückmeldungen sind erledigt.";
+  if (!decisions && !feedback) return "Alle Entscheidungen und Rückmeldungen sind erledigt.";
   const parts: string[] = [];
-  if (decisions) parts.push(decisions === 1 ? "Eine Entscheidung wartet" : `${decisions} Entscheidungen warten`);
-  if (feedback) parts.push(feedback === 1 ? "eine Rückmeldung zu einem vergangenen Termin steht aus" : `${feedback} Rückmeldungen zu vergangenen Terminen stehen aus`);
-  const text = parts.join(". ");
-  return text.charAt(0).toUpperCase() + text.slice(1) + ".";
+  if (decisions) parts.push(decisions === 1 ? "Eine Entscheidung" : `${decisions} Entscheidungen`);
+  if (feedback) parts.push(feedback === 1 ? "eine Rückmeldung" : `${feedback} Rückmeldungen`);
+  const text = parts.join(" und ");
+  const verb = decisions + feedback === 1 ? "wartet" : "warten";
+  return text.charAt(0).toUpperCase() + text.slice(1) + " " + verb + ".";
 }
 
 type TimedAppointment = Pick<SummaryAppointment, "id" | "start_time" | "is_all_day"> & { end_time?: string };
