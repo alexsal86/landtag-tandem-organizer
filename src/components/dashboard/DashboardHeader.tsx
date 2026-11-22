@@ -66,16 +66,18 @@ export const DashboardHeader = () => {
   };
 
   return (
-    <div className="space-y-3">
-    <div className="grid grid-cols-1 gap-6 lg:grid-cols-[2fr_1fr]">
-      <div className="space-y-1">
-        <p className="text-lg font-medium text-foreground/80 capitalize">{dayDate}</p>
-        <h1 className="text-3xl font-semibold tracking-tight">
-          {greeting}, {userName}!
-        </h1>
+    <div className="grid grid-cols-1 items-end gap-x-6 gap-y-4 lg:grid-cols-[minmax(0,1fr)_auto]">
+      <div className="min-w-0 space-y-3">
+        <div className="space-y-1">
+          <p className="text-sm font-normal capitalize text-muted-foreground">{dayDate}</p>
+          <h1 className="text-3xl font-semibold tracking-tight">
+            {greeting}, {userName}!
+          </h1>
+        </div>
+        <DashboardDaySummary />
       </div>
-
-      <div className="flex items-end justify-end gap-6">
+      {weatherItems.length > 0 && (
+        <div className="flex flex-wrap items-end justify-end gap-6 self-end">
         {weatherItems.map((item) => (
           <div key={item.city} className="flex min-w-[9rem] items-center gap-2.5">
             {(() => {
@@ -88,9 +90,8 @@ export const DashboardHeader = () => {
             </div>
           </div>
         ))}
-      </div>
-    </div>
-      <DashboardDaySummary />
+        </div>
+      )}
     </div>
   );
 };
