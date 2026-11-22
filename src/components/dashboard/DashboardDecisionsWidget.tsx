@@ -3,7 +3,7 @@ import { decisionNudgePriority, decisionNudgeTime } from "@/features/decisions/d
 import { useDeputyDashboardDecisions, type DeputyDashboardDecision } from "@/features/decisions/useDeputyDashboardDecisions";
 import { useMemo, useState, useEffect, useRef } from 'react';
 import { useNavigate } from 'react-router-dom';
-import { Bell, MessageSquare, Undo2 } from 'lucide-react';
+import { Bell, ChevronRight, MessageSquare, Undo2 } from 'lucide-react';
 import { differenceInCalendarDays, format } from 'date-fns';
 import { de } from 'date-fns/locale';
 import { useAuth } from '@/hooks/useAuth';
@@ -37,6 +37,7 @@ const PROMPT_COLOR_CLASS: Record<string, string> = {
 
 interface DecisionRowProps {
   decision: MyWorkDecision;
+  isFirst: boolean;
   nudge?: DeputyDashboardDecision;
   onDismissConfirmed: (id: string) => void;
   onOpen: (id: string) => void;
@@ -46,7 +47,9 @@ interface DecisionRowProps {
   forcePrompt?: { color: string } | null;
 }
 
-function DecisionRow({ decision, nudge, onDismissConfirmed, onOpen, onPromptOpen, onPromptClose, onUndoConfirmed, forcePrompt }: DecisionRowProps) {
+function DecisionRow({ decision, isFirst, nudge, onDismissConfirmed, onOpen, onPromptOpen, onPromptClose, onUndoConfirmed, forcePrompt }: DecisionRowProps) {
+  const [expandedOverride, setExpandedOverride] = useState<boolean | null>(null);
+  const expanded = expandedOverride ?? isFirst;
   const recommendation = decision.response_options?.find(option => option.recommended);
   const recommendationColors = recommendation ? getColorClasses(recommendation.color) : null;
   const { label, isOverdue } = formatDeadline(decision.response_deadline);
@@ -126,82 +129,89 @@ function DecisionRow({ decision, nudge, onDismissConfirmed, onOpen, onPromptOpen
 
   return (
     <div
-      role="button"
-      tabIndex={exiting ? -1 : 0}
-      aria-disabled={exiting}
-      onClick={() => { if (!exiting) onOpen(decision.id); }}
-      onKeyDown={(e) => {
-        if (e.target === e.currentTarget && (e.key === 'Enter' || e.key === ' ')) {
-          e.preventDefault();
-          onOpen(decision.id);
-        }
-      }}
       className={cn("dashboard-decision-exit py-4 first:pt-0 last:pb-0", exiting && "pointer-events-none opacity-0")}
       style={{ transform: exiting ? "translateX(24px)" : undefined }}
     >
-      {nudge?.nudged_at && <div className="animate-fade-up mb-3 rounded-xl bg-[#eee9f9] px-3 py-2 text-sm" role="status">
-        <p className="flex items-center gap-1.5 text-xs font-medium text-[#8b5cf6]">
-          <Bell className="h-3 w-3 shrink-0" aria-hidden="true" />
-          <span>Angestupst {nudge.nudged_by_name ? `von ${nudge.nudged_by_name} ` : ""}um {decisionNudgeTime(nudge.nudged_at)}</span>
-        </p>
-        {nudge.nudge_note && <p className="mt-1 whitespace-pre-wrap text-[#18202b]">{nudge.nudge_note}</p>}
-      </div>}
-      <div className="mb-3">
-        <p className="break-words text-base font-medium leading-6">{decision.title}</p>
-        <p className={cn("mt-1 text-sm", isOverdue ? "text-destructive" : "text-muted-foreground")}>
-          {label}
-        </p>
+      <button
+        type="button"
+        className="mb-3 flex w-full items-start justify-between gap-3 text-left"
+        aria-expanded={expanded}
+        aria-controls={`decision-details-${decision.id}`}
+        disabled={exiting}
+        onClick={() => setExpandedOverride(!expanded)}
+      >
+        <span className="min-w-0">
+          <span className="block break-words text-base font-medium leading-6">{decision.title}</span>
+          <span className={cn("mt-1 block text-sm", isOverdue ? "text-destructive" : "text-muted-foreground")}>{label}</span>
+        </span>
+        <ChevronRight className={cn("mt-1 h-4 w-4 shrink-0 transition-transform duration-200 motion-reduce:transition-none", expanded && "rotate-90")} aria-hidden="true" />
+      </button>
+      <div
+        id={`decision-details-${decision.id}`}
+        className={cn("grid transition-[grid-template-rows,opacity] duration-200 ease-in-out motion-reduce:transition-none", expanded ? "grid-rows-[1fr] opacity-100" : "grid-rows-[0fr] opacity-0")}
+        inert={!expanded}
+      >
+        <div className="min-h-0 overflow-hidden">
+          <div onClick={() => { if (!exiting) onOpen(decision.id); }}>
+            {nudge?.nudged_at && <div className="animate-fade-up mb-3 rounded-xl bg-[#eee9f9] px-3 py-2 text-xs" role="status">
+              <p className="flex items-center gap-1.5 text-xs font-medium text-[#8b5cf6]">
+                <Bell className="h-3 w-3 shrink-0" aria-hidden="true" />
+                <span>Angestupst {nudge.nudged_by_name ? `von ${nudge.nudged_by_name} ` : ""}um {decisionNudgeTime(nudge.nudged_at)}</span>
+              </p>
+              {nudge.nudge_note && <p className="mt-1 whitespace-pre-wrap text-[#18202b]">{nudge.nudge_note}</p>}
+            </div>}
+            {recommendation && recommendationColors && (
+              <div className={cn("mb-3 rounded-2xl px-3 py-2.5 text-xs leading-5 text-foreground", recommendationColors.bgClass)}>
+                <span className={cn("font-medium", recommendationColors.textClass)}>Büro empfiehlt: {recommendation.label}.</span>
+                {recommendation.recommendation_reason?.trim() && <> {recommendation.recommendation_reason.trim()}</>}
+              </div>
+            )}
+
+            {decision.isParticipant && decision.participant_id && !decision.hasResponded && !prompt && (
+              <div onClick={(e) => e.stopPropagation()}>
+                <TaskDecisionResponse
+                  decisionId={decision.id}
+                  participantId={decision.participant_id}
+                  onResponseSubmitted={handleSubmitted}
+                  hasResponded={false}
+                  creatorId={decision.created_by}
+                  layout="decision-panel"
+                  disabled={false}
+                  showCreatorResponse={false}
+                />
+              </div>
+            )}
+
+            {prompt && (
+              <div
+                onClick={(e) => e.stopPropagation()}
+                className={cn(
+                  'animate-fade-up mt-1 rounded-md border p-2 text-xs',
+                  PROMPT_COLOR_CLASS[prompt.color] || PROMPT_COLOR_CLASS.default,
+                )}
+              >
+                <div className="flex items-center gap-1.5 font-semibold text-foreground mb-1">
+                  <MessageSquare className="h-3.5 w-3.5" /> Entscheidung erfasst.
+                </div>
+                <div className="text-muted-foreground mb-2">
+                  Du kannst die Antwort zurücknehmen oder begründen:
+                </div>
+                <div className="flex flex-wrap items-center gap-1.5">
+                  <Button type="button" size="sm" variant="outline" className="h-7 px-2 text-xs" disabled={undoing || exiting} onClick={handleAddJustification}>
+                    <MessageSquare className="h-3 w-3 mr-1" />Begründung hinzufügen
+                  </Button>
+                  <Button type="button" size="sm" variant="ghost" className="h-7 px-2 text-xs" disabled={undoing || exiting} onClick={handleUndo}>
+                    <Undo2 className="h-3 w-3 mr-1" />{undoing ? "Wird zurückgenommen…" : "Rückgängig"}
+                  </Button>
+                  <Button type="button" size="sm" variant="ghost" className="h-7 px-2 text-xs ml-auto" disabled={undoing || exiting} onClick={handleDismiss}>
+                    Fertig
+                  </Button>
+                </div>
+              </div>
+            )}
+          </div>
+        </div>
       </div>
-
-      {recommendation && recommendationColors && (
-        <div className={cn("mb-3 rounded-2xl px-3 py-2.5 text-sm leading-6 text-foreground", recommendationColors.bgClass)}>
-          <span className={cn("font-medium", recommendationColors.textClass)}>Büro empfiehlt: {recommendation.label}.</span>
-          {recommendation.recommendation_reason?.trim() && <> {recommendation.recommendation_reason.trim()}</>}
-        </div>
-      )}
-
-      {decision.isParticipant && decision.participant_id && !decision.hasResponded && !prompt && (
-        <div onClick={(e) => e.stopPropagation()}>
-          <TaskDecisionResponse
-            decisionId={decision.id}
-            participantId={decision.participant_id}
-            onResponseSubmitted={handleSubmitted}
-            hasResponded={false}
-            creatorId={decision.created_by}
-            layout="decision-panel"
-            disabled={false}
-            showCreatorResponse={false}
-          />
-        </div>
-      )}
-
-      {prompt && (
-        <div
-          onClick={(e) => e.stopPropagation()}
-          className={cn(
-            'animate-fade-up mt-1 rounded-md border p-2 text-xs',
-            PROMPT_COLOR_CLASS[prompt.color] || PROMPT_COLOR_CLASS.default,
-          )}
-        >
-          <div className="flex items-center gap-1.5 font-semibold text-foreground mb-1">
-            <MessageSquare className="h-3.5 w-3.5" /> Entscheidung erfasst.
-          </div>
-          <div className="text-muted-foreground mb-2">
-            Du kannst die Antwort zurücknehmen oder begründen:
-          </div>
-          <div className="flex flex-wrap items-center gap-1.5">
-            <Button type="button" size="sm" variant="outline" className="h-7 px-2 text-xs" disabled={undoing || exiting} onClick={handleAddJustification}>
-              <MessageSquare className="h-3 w-3 mr-1" />Begründung hinzufügen
-            </Button>
-            <Button type="button" size="sm" variant="ghost" className="h-7 px-2 text-xs" disabled={undoing || exiting} onClick={handleUndo}>
-              <Undo2 className="h-3 w-3 mr-1" />{undoing ? "Wird zurückgenommen…" : "Rückgängig"}
-            </Button>
-            <Button type="button" size="sm" variant="ghost" className="h-7 px-2 text-xs ml-auto" disabled={undoing || exiting} onClick={handleDismiss}>
-              Fertig
-            </Button>
-          </div>
-        </div>
-      )}
     </div>
   );
 }
@@ -273,10 +283,11 @@ export function DashboardDecisionsWidget() {
   return (
     <div className="divide-y divide-border">
       {isDeputyView && nudges.isError && <p role="status" className="pb-3 text-xs text-muted-foreground">Anstups-Hinweise konnten nicht geladen werden.</p>}
-      {items.map((d) => (
+      {items.map((d, index) => (
         <DecisionRow
           key={d.id}
           decision={d}
+          isFirst={index === 0}
           nudge={nudges.data?.find(nudge => nudge.decision_id === d.id)}
           onDismissConfirmed={handleDismissConfirmed}
           onOpen={goToDecision}
