@@ -328,7 +328,7 @@ export const DashboardAppointments = ({ data }: Props) => {
     const canChooseBriefing = canDecideBriefing && !statusError && !statusLoading
       && (briefingStatus === "undecided" || briefingStatus === "none");
     return (
-      <div key={apt.id} className="border-b border-border/60 last:border-b-0">
+      <div key={apt.id} className={cn("border-b border-border/60 last:border-b-0", ended && "opacity-55")}>
         <div
           className={`relative grid grid-cols-[3.25rem_minmax(0,1fr)] @min-[32rem]:grid-cols-[3.25rem_minmax(0,1fr)_auto] gap-x-3 gap-y-2 rounded-lg px-3 py-3 transition-colors hover:bg-muted/40 focus-within:bg-muted/40 ${active ? "bg-primary/10 ring-1 ring-primary/30" : ""}`}
         >
@@ -340,11 +340,10 @@ export const DashboardAppointments = ({ data }: Props) => {
           />
           <div className="pointer-events-none relative tabular-nums">
             <p
-              className={
-                apt.is_all_day
-                  ? "text-sm font-semibold"
-                  : "text-base font-semibold leading-6 text-foreground"
-              }
+              className={cn(
+                apt.is_all_day ? "text-sm font-semibold" : "text-base font-semibold leading-6 text-foreground",
+                ended && "text-muted-foreground",
+              )}
             >
               {apt.is_all_day ? "Ganztägig" : format(start, "HH:mm")}
             </p>
@@ -357,10 +356,14 @@ export const DashboardAppointments = ({ data }: Props) => {
           </div>
           <div className="pointer-events-none relative min-w-0">
             <div className="flex flex-wrap items-center gap-x-2 gap-y-1">
-              <p className={cn("break-words text-base font-medium leading-6 text-foreground", ended && "text-muted-foreground line-through")}>{apt.title}</p>
-              {ended && <span className="inline-flex items-center gap-1 rounded-md bg-muted px-2 py-0.5 text-xs text-muted-foreground"><Check className="h-3 w-3" aria-hidden="true" />Erledigt</span>}
-              {isNext && <span className="rounded-md bg-primary/10 px-2 py-0.5 text-xs text-primary">Als Nächstes</span>}
-              {badgeLabel && <span className="relative z-10 inline-flex">
+              <p className={cn(
+                "break-words text-foreground",
+                isNext ? "text-lg font-semibold leading-7" : "text-base font-medium leading-6",
+                ended && "line-through",
+              )}>{apt.title}</p>
+              {ended && <span className="rounded-full bg-[#eaf5df] px-2 py-0.5 text-xs text-[#55ad21]">Erledigt</span>}
+              {isNext && <span className="rounded-full bg-[#eaf5df] px-2 py-0.5 text-xs text-[#55ad21]">Als Nächstes</span>}
+              {!ended && badgeLabel && <span className="relative z-10 inline-flex">
                 {canChooseBriefing ? (
                   <button type="button" className={cn("pointer-events-auto inline-flex items-center gap-1.5 rounded-md px-2 py-0.5 text-xs hover:underline focus-visible:outline focus-visible:outline-2", badgeClass)}
                     onClick={() => setBriefingDecision(apt)} aria-label={`${badgeLabel}: ${apt.title} – Briefing anfordern oder ablehnen`}>
