@@ -297,7 +297,7 @@ function OfficeFeedbackForm() {
           })}
         </div>
       )}
-      {!feedback.isLoading && !feedback.isError && pending.length > 0 && (
+      {!feedback.isLoading && !feedback.isError && pending.some(event => (readOfficeSnooze(snoozes[eventKey(event)])?.count ?? 0) >= 2) && (
         <p className="mt-3 text-xs text-muted-foreground">Nach 2 Tagen wird daraus eine Aufgabe für das Büro.</p>
       )}
     </section>
