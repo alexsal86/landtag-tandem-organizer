@@ -266,7 +266,7 @@ function OfficeFeedbackForm() {
               </div>)}
               <div className="flex flex-wrap justify-between gap-2 pt-3 text-sm text-muted-foreground">
                 {!expanded && others.length > 2 && <button type="button" onClick={() => setExpanded(true)}>+{others.length - 2} weitere</button>}
-                {older.length > 0 && <button type="button" disabled={busy || recording} className="ml-auto text-right hover:text-foreground" onClick={() => void finish(older)}>Alle älteren ohne Bericht abschließen</button>}
+                {others.length > 2 && older.length > 0 && <button type="button" disabled={busy || recording} className="ml-auto text-right hover:text-foreground" onClick={() => void finish(older)}>{older.length === 1 ? "1 älteren Termin" : `${older.length} ältere`} ohne Bericht abschließen</button>}
               </div>
             </div>}
 
