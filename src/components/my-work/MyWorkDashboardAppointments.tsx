@@ -1,11 +1,11 @@
 import { useWorkspaceView } from "@/contexts/WorkspaceViewContext";
-import { hasAppointmentEnded, nextAppointmentId } from "@/utils/dashboard/daySummary";
+import { hasAppointmentEnded, nextAppointmentId, timelineNowIndex } from "@/utils/dashboard/daySummary";
 import { useQuery } from "@tanstack/react-query";
 import { useResolvedUserRole } from "@/hooks/useResolvedUserRole";
 import { dashboardBriefingState } from "@/features/appointments/briefing";
 import { AppointmentBriefingStatusCard } from "@/features/appointments/briefing/AppointmentBriefingStatusCard";
 import { Dialog, DialogContent, DialogHeader, DialogTitle } from "@/components/ui/dialog";
-import { useCallback, useEffect, useMemo, useState } from "react";
+import { Fragment, useCallback, useEffect, useMemo, useState } from "react";
 import { addDays, format, isSameDay } from "date-fns";
 import { de } from "date-fns/locale";
 import { useNavigate } from "react-router-dom";
@@ -328,7 +328,13 @@ export const DashboardAppointments = ({ data }: Props) => {
     const canChooseBriefing = canDecideBriefing && !statusError && !statusLoading
       && (briefingStatus === "undecided" || briefingStatus === "none");
     return (
-      <div key={apt.id} className={cn("border-b border-border/60 last:border-b-0", ended && "opacity-55")}>
+      <div key={apt.id} className={cn("relative border-b border-border/60 last:border-b-0", ended && "opacity-55")}>
+        {isDeputyView && <span aria-hidden="true" className={cn(
+          "absolute -left-5 top-[18px] z-10 h-3 w-3 rounded-full border-2",
+          ended ? "border-muted-foreground bg-muted-foreground"
+            : active || isNext ? "border-[#55ad21] bg-[#55ad21]"
+            : "border-border bg-card",
+        )} />}
         <div
           className={`relative grid grid-cols-[3.25rem_minmax(0,1fr)] @min-[32rem]:grid-cols-[3.25rem_minmax(0,1fr)_auto] gap-x-3 gap-y-2 rounded-lg px-3 py-3 transition-colors hover:bg-muted/40 focus-within:bg-muted/40 ${active ? "bg-primary/10 ring-1 ring-primary/30" : ""}`}
         >
@@ -474,6 +480,33 @@ export const DashboardAppointments = ({ data }: Props) => {
     );
   };
 
+  const renderNowMarker = () => (
+    <div className="relative flex items-center gap-2 py-2 pl-3 text-xs font-medium text-[#ec4899]" role="status">
+      <span className="absolute -left-5 top-2.5 z-10 h-3 w-3 rounded-full border-2 border-[#ec4899] bg-card" aria-hidden="true" />
+      <time dateTime={now.toISOString()} className="shrink-0">
+        {new Intl.DateTimeFormat("de-DE", { timeZone: "Europe/Berlin", hour: "2-digit", minute: "2-digit" }).format(now)} · Jetzt
+      </time>
+      <span className="h-px flex-1 bg-[#ec4899]" aria-hidden="true" />
+    </div>
+  );
+
+  const renderDayAppointments = (items: DashboardData["appointments"], today: boolean) => {
+    if (!isDeputyView) return items.map(appointment => renderAppointment(appointment, today));
+    const markerIndex = timelineNowIndex(items, now);
+    return (
+      <div className="relative pl-5">
+        <span className="pointer-events-none absolute bottom-0 left-[5px] top-0 w-0.5 bg-border" aria-hidden="true" />
+        {items.map((appointment, index) => (
+          <Fragment key={appointment.id}>
+            {today && index === markerIndex && renderNowMarker()}
+            {renderAppointment(appointment, today)}
+          </Fragment>
+        ))}
+        {today && markerIndex === items.length && renderNowMarker()}
+      </div>
+    );
+  };
+
   if (isLoading) return <div className="animate-pulse h-32 bg-muted rounded-lg" />;
 
   const HintIcon = specialDayHint?.icon ? getLucideIcon(specialDayHint.icon) : null;
@@ -484,18 +517,21 @@ export const DashboardAppointments = ({ data }: Props) => {
         {(isShowingTomorrow || appointments.length === 0) && (
           <p className="mb-3 text-sm text-muted-foreground">Heute stehen keine weiteren Termine an.</p>
         )}
+        {isDeputyView && (isShowingTomorrow || appointments.length === 0) && (
+          <div className="relative mb-2 pl-5">{renderNowMarker()}</div>
+        )}
         {appointments.length === 0 ? (
           isShowingTomorrow && <p className="text-sm text-muted-foreground">Auch morgen stehen keine Termine an.</p>
         ) : (
           <div className="space-y-1.5">
             <DayDivider label={isShowingTomorrow ? "Morgen" : "Heute"} date={isShowingTomorrow ? addDays(new Date(), 1) : new Date()} first />
-            {appointments.map((apt) => renderAppointment(apt, !isShowingTomorrow))}
+            {renderDayAppointments(appointments, !isShowingTomorrow)}
           </div>
         )}
         {tomorrowAppointments.length > 0 && (
           <div className="mt-5 space-y-1.5">
             <DayDivider label="Morgen" date={addDays(new Date(), 1)} />
-            {tomorrowAppointments.map((apt) => renderAppointment(apt, false))}
+            {renderDayAppointments(tomorrowAppointments, false)}
           </div>
         )}
       </div>

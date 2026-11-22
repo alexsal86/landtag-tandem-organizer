@@ -1,5 +1,5 @@
 import { isOfficeReminderDue, isOlderOfficeFeedback, needsOfficeFeedback, officeReminderLabel, officeReminderTime, readOfficeSnooze, showsOfficeTaskHint } from "@/features/appointments/briefing/officeFeedback";
-import { appointmentSummary, hasAppointmentEnded, nextAppointmentId, pendingSummary } from "@/utils/dashboard/daySummary";
+import { appointmentSummary, hasAppointmentEnded, nextAppointmentId, pendingSummary, timelineNowIndex } from "@/utils/dashboard/daySummary";
 import { canCompleteBriefing, canGoLive, followUpTaskFromLive, mergeLegacy, saveCompact } from "@/features/appointments/briefing/briefingModel";
 import { supabase } from "@/integrations/supabase/client";
 import { dashboardBriefingState, needsBriefingReminder, showsInDailyBriefing, canAdvanceBriefing, needsBriefingDecision, suggestBriefingDue } from "@/features/appointments/briefing";
@@ -38,6 +38,10 @@ export const appointmentBriefingLifecycleScenario: TestScenario = {
           !hasAppointmentEnded(upcoming, now),
           nextAppointmentId([upcoming, active, past], now) === "next",
           nextAppointmentId([past, active], now) === undefined,
+          timelineNowIndex([past, active, upcoming], now) === 2,
+          timelineNowIndex([past, upcoming], now) === 1,
+          timelineNowIndex([past], now) === 1,
+          timelineNowIndex([], now) === 0,
           !hasAppointmentEnded({ ...past, end_time: undefined, is_all_day: true }, now),
         ];
         return { ok: checks.every(Boolean), message: `${checks.filter(Boolean).length}/${checks.length} Tagesstatus bestanden.` };

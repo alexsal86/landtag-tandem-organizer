@@ -69,3 +69,9 @@ export function nextAppointmentId(appointments: TimedAppointment[], now = new Da
   return appointments.filter(appointment => !appointment.is_all_day && Date.parse(appointment.start_time) > now.getTime())
     .sort((a, b) => Date.parse(a.start_time) - Date.parse(b.start_time))[0]?.id;
 }
+
+/** Place now after started appointments and before the next timed start. */
+export function timelineNowIndex(appointments: TimedAppointment[], now = new Date()): number {
+  const index = appointments.findIndex(appointment => !appointment.is_all_day && Date.parse(appointment.start_time) > now.getTime());
+  return index < 0 ? appointments.length : index;
+}
