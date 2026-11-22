@@ -1,3 +1,4 @@
+import { DeputyWaitingCard } from "@/features/decisions/DeputyWaitingCard";
 import { OfficeFeedbackCard } from "@/features/appointments/briefing/OfficeFeedbackCard";
 import { PendingBriefingNotice } from "@/features/appointments/briefing/PendingBriefingNotice";
 import {TeamRitualDashboardCard} from "@/features/team-rituals/TeamRitualDashboardCard";
@@ -190,6 +191,7 @@ export function MyWorkDashboardTab() {
               <DashboardDecisionsWidget />
             </ErrorBoundary>
           </DashboardWidgetContainer>
+          {isEmployeeView && <ErrorBoundary fallback={<ErrorState description="Entscheidungen beim Abgeordneten konnten nicht geladen werden." />}><DeputyWaitingCard /></ErrorBoundary>}
         </div>
         <div className="flex flex-col gap-space-md min-w-0">
           {!isDeputyView && (

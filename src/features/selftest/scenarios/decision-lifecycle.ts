@@ -1,3 +1,4 @@
+import { canNudgeDecision, DECISION_NUDGE_WINDOW_MS, decisionNudgePriority, decisionNudgeSecondsRemaining } from "@/features/decisions/dashboardNudges";
 import { needsOwnDecision } from "@/components/my-work/decisions/types";
 import { supabase } from "@/integrations/supabase/client";
 import type { TestScenario } from "../types";
@@ -19,6 +20,27 @@ export const decisionLifecycleScenario: TestScenario = {
     { table: "task_decision_responses", columns: ["decision_id", "participant_id", "response_type", "comment"] },
   ],
   steps: [
+    {
+      id: "dashboard-nudges", label: "Anstupsen: zehn Sekunden und 24-Stunden-Sperre", kind: "logic",
+      run: async () => {
+        const now = new Date("2026-11-22T12:00:00+01:00");
+        const deadline = now.getTime() + DECISION_NUDGE_WINDOW_MS;
+        const checks = [
+          canNudgeDecision(null, now),
+          !canNudgeDecision(now.toISOString(), now),
+          !canNudgeDecision(new Date(now.getTime() - 24 * 3600_000 + 1).toISOString(), now),
+          canNudgeDecision(new Date(now.getTime() - 24 * 3600_000).toISOString(), now),
+          !canNudgeDecision("invalid", now),
+          decisionNudgePriority(now.toISOString(), now) > 0,
+          decisionNudgePriority(new Date(now.getTime() - 24 * 3600_000).toISOString(), now) === 0,
+          decisionNudgePriority(undefined, now) === 0,
+          decisionNudgeSecondsRemaining(deadline, now.getTime()) === 10,
+          decisionNudgeSecondsRemaining(deadline, deadline - 1) === 1,
+          decisionNudgeSecondsRemaining(deadline, deadline) === 0,
+        ];
+        return { ok: checks.every(Boolean), message: `${checks.filter(Boolean).length}/${checks.length} Anstupsregeln bestanden.` };
+      },
+    },
     {
       id: "dashboard-voting", label: "Dashboard: nur eigene ausstehende Abstimmungen, keine eigenen Anfragen", kind: "logic",
       run: async () => {

@@ -17205,6 +17205,20 @@ export type Database = {
       }
     }
     Functions: {
+      get_deputy_dashboard_decisions: {
+        Args: { _tenant_id: string; _decision_ids?: string[] }
+        Returns: {
+          decision_id: string
+          title: string
+          nudged_at: string | null
+          nudge_note: string | null
+          nudged_by_name: string | null
+        }[]
+      }
+      nudge_dashboard_decision: {
+        Args: { _decision_id: string; _note?: string }
+        Returns: string
+      }
       _briefing_task_event: {
         Args: { _task: string; _text: string }
         Returns: undefined

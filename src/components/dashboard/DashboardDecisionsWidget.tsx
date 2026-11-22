@@ -1,3 +1,6 @@
+import { useWorkspaceView } from "@/contexts/WorkspaceViewContext";
+import { decisionNudgePriority, decisionNudgeTime } from "@/features/decisions/dashboardNudges";
+import { useDeputyDashboardDecisions, type DeputyDashboardDecision } from "@/features/decisions/useDeputyDashboardDecisions";
 import { useMemo, useState, useEffect, useRef } from 'react';
 import { useNavigate } from 'react-router-dom';
 import { MessageSquare, Undo2 } from 'lucide-react';
@@ -34,6 +37,7 @@ const PROMPT_COLOR_CLASS: Record<string, string> = {
 
 interface DecisionRowProps {
   decision: MyWorkDecision;
+  nudge?: DeputyDashboardDecision;
   onDismissConfirmed: (id: string) => void;
   onOpen: (id: string) => void;
   onPromptOpen: (id: string) => void;
@@ -42,7 +46,7 @@ interface DecisionRowProps {
   forcePrompt?: { color: string } | null;
 }
 
-function DecisionRow({ decision, onDismissConfirmed, onOpen, onPromptOpen, onPromptClose, onUndoConfirmed, forcePrompt }: DecisionRowProps) {
+function DecisionRow({ decision, nudge, onDismissConfirmed, onOpen, onPromptOpen, onPromptClose, onUndoConfirmed, forcePrompt }: DecisionRowProps) {
   const recommendation = decision.response_options?.find(option => option.recommended);
   const recommendationColors = recommendation ? getColorClasses(recommendation.color) : null;
   const { label, isOverdue } = formatDeadline(decision.response_deadline);
@@ -135,6 +139,10 @@ function DecisionRow({ decision, onDismissConfirmed, onOpen, onPromptOpen, onPro
       className={cn("dashboard-decision-exit py-4 first:pt-0 last:pb-0", exiting && "pointer-events-none opacity-0")}
       style={{ transform: exiting ? "translateX(24px)" : undefined }}
     >
+      {nudge?.nudged_at && <div className="animate-fade-up mb-3 rounded-xl bg-palette-amber/15 px-3 py-2 text-sm" role="status">
+        <p className="font-medium text-palette-amber">Angestupst {nudge.nudged_by_name ? `von ${nudge.nudged_by_name} ` : ""}um {decisionNudgeTime(nudge.nudged_at)}</p>
+        {nudge.nudge_note && <p className="mt-1 whitespace-pre-wrap text-foreground">{nudge.nudge_note}</p>}
+      </div>}
       <div className="mb-3">
         <p className="break-words text-base font-medium leading-6">{decision.title}</p>
         <p className={cn("mt-1 text-sm", isOverdue ? "text-destructive" : "text-muted-foreground")}>
@@ -197,6 +205,7 @@ function DecisionRow({ decision, onDismissConfirmed, onOpen, onPromptOpen, onPro
 
 export function DashboardDecisionsWidget() {
   const { user } = useAuth();
+  const { isDeputyView } = useWorkspaceView();
   const navigate = useNavigate();
   const { decisions, setDecisions, loading, error, loadDecisions } = useMyWorkDecisionsData(user?.id);
   const [pendingIds, setPendingIds] = useState<Set<string>>(new Set());
@@ -220,17 +229,24 @@ export function DashboardDecisionsWidget() {
     void loadDecisions({ silent: true });
   };
 
+  const eligibleDecisions = useMemo(() => decisions.filter(decision =>
+    needsOwnDecision(decision, pendingIds.has(decision.id))), [decisions, pendingIds]);
+  const nudgeDecisionIds = useMemo(() => isDeputyView ? eligibleDecisions.map(decision => decision.id) : [], [isDeputyView, eligibleDecisions]);
+  const nudges = useDeputyDashboardDecisions(nudgeDecisionIds);
   const items = useMemo(() => {
-    return [...decisions]
-      .filter((d) => needsOwnDecision(d, pendingIds.has(d.id)))
+    const byDecision = new Map<string, string | null>((nudges.data ?? []).map(nudge => [nudge.decision_id, nudge.nudged_at]));
+    const now = new Date();
+    return [...eligibleDecisions]
       .sort((a, b) => {
+        const nudgeDifference = decisionNudgePriority(byDecision.get(b.id), now) - decisionNudgePriority(byDecision.get(a.id), now);
+        if (nudgeDifference) return nudgeDifference;
         if (!a.response_deadline && !b.response_deadline) return 0;
         if (!a.response_deadline) return 1;
         if (!b.response_deadline) return -1;
         return new Date(a.response_deadline).getTime() - new Date(b.response_deadline).getTime();
       })
       .slice(0, 3);
-  }, [decisions, pendingIds]);
+  }, [eligibleDecisions, nudges.data]);
 
   const goToDecision = (id: string) => {
     navigate(`/mywork?tab=decisions&highlight=${id}`);
@@ -253,10 +269,12 @@ export function DashboardDecisionsWidget() {
 
   return (
     <div className="divide-y divide-border">
+      {isDeputyView && nudges.isError && <p role="status" className="pb-3 text-xs text-muted-foreground">Anstups-Hinweise konnten nicht geladen werden.</p>}
       {items.map((d) => (
         <DecisionRow
           key={d.id}
           decision={d}
+          nudge={nudges.data?.find(nudge => nudge.decision_id === d.id)}
           onDismissConfirmed={handleDismissConfirmed}
           onOpen={goToDecision}
           onPromptOpen={handlePromptOpen}
