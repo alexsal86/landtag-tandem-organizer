@@ -115,7 +115,8 @@ function DeadlinesWidget() {
 }
 
 function AppointmentsWidget({ title }: { title: string }) {
-  const dashboardData = useDashboardAppointmentsData();
+  const { isDeputyView } = useWorkspaceView();
+  const dashboardData = useDashboardAppointmentsData(isDeputyView);
 
   return (
     <DashboardWidgetContainer

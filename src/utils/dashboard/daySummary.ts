@@ -55,3 +55,16 @@ export function pendingSummary(decisions: number, feedback: number): string {
   const text = parts.join(". ");
   return text.charAt(0).toUpperCase() + text.slice(1) + ".";
 }
+
+type TimedAppointment = Pick<SummaryAppointment, "id" | "start_time" | "is_all_day"> & { end_time?: string };
+
+export function hasAppointmentEnded(appointment: TimedAppointment, now = new Date()): boolean {
+  if (appointment.end_time) return Date.parse(appointment.end_time) <= now.getTime();
+  if (appointment.is_all_day) return berlinDay(new Date(appointment.start_time)) < berlinDay(now);
+  return Date.parse(appointment.start_time) + 3600_000 <= now.getTime();
+}
+
+export function nextAppointmentId(appointments: TimedAppointment[], now = new Date()): string | undefined {
+  return appointments.filter(appointment => !appointment.is_all_day && Date.parse(appointment.start_time) > now.getTime())
+    .sort((a, b) => Date.parse(a.start_time) - Date.parse(b.start_time))[0]?.id;
+}

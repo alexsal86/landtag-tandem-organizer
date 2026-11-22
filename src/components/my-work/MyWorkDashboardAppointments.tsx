@@ -1,3 +1,5 @@
+import { useWorkspaceView } from "@/contexts/WorkspaceViewContext";
+import { hasAppointmentEnded, nextAppointmentId } from "@/utils/dashboard/daySummary";
 import { useQuery } from "@tanstack/react-query";
 import { useResolvedUserRole } from "@/hooks/useResolvedUserRole";
 import { dashboardBriefingState } from "@/features/appointments/briefing";
@@ -124,6 +126,12 @@ const getRequesterFromDescription = (description: string | null | undefined): st
 
 export const DashboardAppointments = ({ data }: Props) => {
   const navigate = useNavigate();
+  const { isDeputyView } = useWorkspaceView();
+  const [now, setNow] = useState(() => new Date());
+  useEffect(() => {
+    const timer = window.setInterval(() => setNow(new Date()), 60_000);
+    return () => window.clearInterval(timer);
+  }, []);
   const { currentTenant } = useTenant();
   const { isAdmin: canDecideBriefing } = useResolvedUserRole();
   const [briefingDecision, setBriefingDecision] = useState<{ id: string; title: string; start_time: string } | null>(null);
@@ -139,6 +147,7 @@ export const DashboardAppointments = ({ data }: Props) => {
     [appointments, tomorrowAppointments],
   );
 
+  const nextId = nextAppointmentId(allAppointments, now);
   const appointmentIds = useMemo(() => allAppointments.map(appointment => appointment.id), [allAppointments]);
   const briefingAssignments = useQuery<Map<string, string>>({
     queryKey: ["appointment-briefing", "dashboard-status", currentTenant?.id, appointmentIds],
@@ -280,6 +289,8 @@ export const DashboardAppointments = ({ data }: Props) => {
   const renderAppointment = (apt: DashboardData["appointments"][number], isTodayGroup: boolean) => {
     const aptDate = format(new Date(apt.start_time), "yyyy-MM-dd");
     const active = isTodayGroup && isCurrentlyActive(apt);
+    const ended = isDeputyView && hasAppointmentEnded(apt, now);
+    const isNext = isDeputyView && apt.id === nextId;
     const hasPrep = preparations.has(apt.id);
     const prep = preparations.get(apt.id);
     const isBriefingExpanded = expandedBriefingId === apt.id;
@@ -345,7 +356,23 @@ export const DashboardAppointments = ({ data }: Props) => {
             )}
           </div>
           <div className="pointer-events-none relative min-w-0">
-            <p className="break-words text-base font-medium leading-6 text-foreground">{apt.title}</p>
+            <div className="flex flex-wrap items-center gap-x-2 gap-y-1">
+              <p className={cn("break-words text-base font-medium leading-6 text-foreground", ended && "text-muted-foreground line-through")}>{apt.title}</p>
+              {ended && <span className="inline-flex items-center gap-1 rounded-md bg-muted px-2 py-0.5 text-xs text-muted-foreground"><Check className="h-3 w-3" aria-hidden="true" />Erledigt</span>}
+              {isNext && <span className="rounded-md bg-primary/10 px-2 py-0.5 text-xs text-primary">Als Nächstes</span>}
+              {badgeLabel && <span className="relative z-10 inline-flex">
+                {canChooseBriefing ? (
+                  <button type="button" className={cn("pointer-events-auto inline-flex items-center gap-1.5 rounded-md px-2 py-0.5 text-xs hover:underline focus-visible:outline focus-visible:outline-2", badgeClass)}
+                    onClick={() => setBriefingDecision(apt)} aria-label={`${badgeLabel}: ${apt.title} – Briefing anfordern oder ablehnen`}>
+                    <BadgeIcon className="h-3 w-3" aria-hidden="true" />{badgeLabel}
+                  </button>
+                ) : (
+                  <span className={cn("inline-flex items-center gap-1.5 rounded-md px-2 py-0.5 text-xs", badgeClass)}>
+                    <BadgeIcon className="h-3 w-3" aria-hidden="true" />{badgeLabel}
+                  </span>
+                )}
+              </span>}
+            </div>
             {((apt.location && !meetingUrl) || participantList.length > 0) && (
               <div className="mt-0.5 flex flex-wrap items-center gap-x-4 gap-y-1 text-xs text-muted-foreground">
                 {apt.location && !meetingUrl && (
@@ -365,18 +392,6 @@ export const DashboardAppointments = ({ data }: Props) => {
                 )}
               </div>
             )}
-            {badgeLabel && <div className="relative z-10 mt-2">
-              {canChooseBriefing ? (
-                <button type="button" className={cn("pointer-events-auto inline-flex items-center gap-1.5 rounded-md px-2 py-0.5 text-xs hover:underline focus-visible:outline focus-visible:outline-2", badgeClass)}
-                  onClick={() => setBriefingDecision(apt)} aria-label={`${badgeLabel}: ${apt.title} – Briefing anfordern oder ablehnen`}>
-                  <BadgeIcon className="h-3 w-3" aria-hidden="true" />{badgeLabel}
-                </button>
-              ) : (
-                <span className={cn("inline-flex items-center gap-1.5 rounded-md px-2 py-0.5 text-xs", badgeClass)}>
-                  <BadgeIcon className="h-3 w-3" aria-hidden="true" />{badgeLabel}
-                </span>
-              )}
-            </div>}
           </div>
           <div className="relative z-10 col-start-2 @min-[32rem]:col-start-3 @min-[32rem]:row-start-1 @min-[32rem]:self-start flex flex-wrap items-center gap-2">
             {meetingUrl && (

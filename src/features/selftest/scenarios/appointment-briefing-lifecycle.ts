@@ -1,5 +1,5 @@
 import { isOfficeReminderDue, isOlderOfficeFeedback, needsOfficeFeedback, officeReminderTime, readOfficeSnooze, showsOfficeTaskHint } from "@/features/appointments/briefing/officeFeedback";
-import { appointmentSummary, pendingSummary } from "@/utils/dashboard/daySummary";
+import { appointmentSummary, hasAppointmentEnded, nextAppointmentId, pendingSummary } from "@/utils/dashboard/daySummary";
 import { canCompleteBriefing, canGoLive, followUpTaskFromLive, mergeLegacy, saveCompact } from "@/features/appointments/briefing/briefingModel";
 import { supabase } from "@/integrations/supabase/client";
 import { dashboardBriefingState, needsBriefingReminder, showsInDailyBriefing, canAdvanceBriefing, needsBriefingDecision, suggestBriefingDue } from "@/features/appointments/briefing";
@@ -25,6 +25,24 @@ export const appointmentBriefingLifecycleScenario: TestScenario = {
   writes: [{ table: "appointments", columns: ["title", "tenant_id", "user_id", "start_time", "end_time"] }],
   links: () => [{ label: "Kalender", href: "/calendar" }],
   steps: [
+    {
+      id: "day-appointment-progress", label: "Dein Tag: vergangen, laufend und als nächstes", kind: "logic",
+      run: async () => {
+        const now = new Date("2026-11-22T12:00:00+01:00");
+        const past = { id: "past", start_time: "2026-11-22T09:00:00+01:00", end_time: "2026-11-22T10:00:00+01:00", is_all_day: false };
+        const active = { ...past, id: "active", end_time: "2026-11-22T13:00:00+01:00" };
+        const upcoming = { ...past, id: "next", start_time: "2026-11-22T14:00:00+01:00", end_time: "2026-11-22T15:00:00+01:00" };
+        const checks = [
+          hasAppointmentEnded(past, now),
+          !hasAppointmentEnded(active, now),
+          !hasAppointmentEnded(upcoming, now),
+          nextAppointmentId([upcoming, active, past], now) === "next",
+          nextAppointmentId([past, active], now) === undefined,
+          !hasAppointmentEnded({ ...past, end_time: undefined, is_all_day: true }, now),
+        ];
+        return { ok: checks.every(Boolean), message: `${checks.filter(Boolean).length}/${checks.length} Tagesstatus bestanden.` };
+      },
+    },
     {
       id: "dashboard-briefing-status", label: "Dashboard-Briefing: Auftrag, Entscheidung und Freigabe", kind: "logic",
       run: async () => {

@@ -1,3 +1,4 @@
+import { berlinDay, hasAppointmentEnded } from "@/utils/dashboard/daySummary";
 import { useMemo } from 'react';
 import { useQuery } from '@tanstack/react-query';
 import { supabase } from '@/integrations/supabase/client';
@@ -80,7 +81,7 @@ export const fetchSpecialDays = async (tenantId: string | undefined): Promise<Sp
   }
 };
 
-export const fetchDashboardRpc = async (userId: string, userEmail: string | undefined, tenantId: string): Promise<DashboardRpcData> => {
+export const fetchDashboardRpc = async (userId: string, userEmail: string | undefined, tenantId: string, includePastToday = false): Promise<DashboardRpcData> => {
   try {
     const { data, error } = await supabase.rpc('get_dashboard_data', {
       p_user_id: userId,
@@ -103,8 +104,7 @@ export const fetchDashboardRpc = async (userId: string, userEmail: string | unde
     const now = new Date();
     const today = new Date();
     today.setHours(0, 0, 0, 0);
-    const tomorrowDate = new Date(today);
-    tomorrowDate.setDate(tomorrowDate.getDate() + 1);
+    const tomorrowDay = new Date(Date.parse(berlinDay(now) + "T12:00:00Z") + 86400_000).toISOString().slice(0, 10);
 
     let externalAppointments: AppointmentData[] = [];
     try {
@@ -154,23 +154,22 @@ export const fetchDashboardRpc = async (userId: string, userEmail: string | unde
 
     const all = [...normalizedAppointments, ...externalAppointments];
 
-    const todayUpcoming = all.filter(event => {
-      const localDate = new Date(new Date(event.start_time).toLocaleString('en-US', { timeZone: 'Europe/Berlin' }));
-      if (localDate.toDateString() !== today.toDateString()) return false;
-      if (event.is_all_day) return true;
-      const endTime = event.end_time ? new Date(event.end_time) : new Date(new Date(event.start_time).getTime() + 3600000);
-      return endTime > now;
-    });
+    const todayAll = all.filter(event => berlinDay(new Date(event.start_time)) === berlinDay(now))
+      .sort((a, b) => Date.parse(a.start_time) - Date.parse(b.start_time));
+    const todayUpcoming = todayAll.filter(event => !hasAppointmentEnded(event, now));
 
     let appointments: AppointmentData[];
     let isShowingTomorrow: boolean;
     let tomorrowAppointments: AppointmentData[] = [];
     const tomorrowAll = all.filter(e => {
-      const localDate = new Date(new Date(e.start_time).toLocaleString('en-US', { timeZone: 'Europe/Berlin' }));
-      return localDate.toDateString() === tomorrowDate.toDateString();
+      return berlinDay(new Date(e.start_time)) === tomorrowDay;
     }).sort((a, b) => new Date(a.start_time).getTime() - new Date(b.start_time).getTime());
 
-    if (todayUpcoming.length === 0) {
+    if (includePastToday && todayAll.length > 0) {
+      appointments = todayAll;
+      isShowingTomorrow = false;
+      if (todayUpcoming.length <= 1) tomorrowAppointments = tomorrowAll;
+    } else if (todayUpcoming.length === 0) {
       appointments = tomorrowAll;
       isShowingTomorrow = true;
     } else {
@@ -202,7 +201,7 @@ export const fetchDashboardRpc = async (userId: string, userEmail: string | unde
   }
 };
 
-export const useDashboardAppointmentsData = (): DashboardData & { isError: boolean } => {
+export const useDashboardAppointmentsData = (includePastToday = false): DashboardData & { isError: boolean } => {
   const { user } = useAuth();
   const { currentTenant, loading: tenantLoading } = useTenant();
   const { appointments: feedbackAppointments } = useAppointmentFeedback();
@@ -219,10 +218,11 @@ export const useDashboardAppointmentsData = (): DashboardData & { isError: boole
   });
 
   const { data: rpcData, isLoading, isError } = useQuery({
-    queryKey: ['dashboard-rpc-data', userId, tenantId],
-    queryFn: () => fetchDashboardRpc(userId!, user!.email ?? undefined, tenantId!),
+    queryKey: ['dashboard-rpc-data', userId, tenantId, includePastToday],
+    queryFn: () => fetchDashboardRpc(userId!, user!.email ?? undefined, tenantId!, includePastToday),
     enabled: !!userId && !!tenantId,
     staleTime: 2 * 60_000,
+    refetchInterval: includePastToday ? 60_000 : false,
     gcTime: 5 * 60_000,
     refetchOnWindowFocus: false,
   });
