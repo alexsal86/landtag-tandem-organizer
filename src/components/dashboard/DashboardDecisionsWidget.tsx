@@ -139,9 +139,9 @@ function DecisionRow({ decision, nudge, onDismissConfirmed, onOpen, onPromptOpen
       className={cn("dashboard-decision-exit py-4 first:pt-0 last:pb-0", exiting && "pointer-events-none opacity-0")}
       style={{ transform: exiting ? "translateX(24px)" : undefined }}
     >
-      {nudge?.nudged_at && <div className="animate-fade-up mb-3 rounded-xl bg-palette-amber/15 px-3 py-2 text-sm" role="status">
-        <p className="font-medium text-palette-amber">Angestupst {nudge.nudged_by_name ? `von ${nudge.nudged_by_name} ` : ""}um {decisionNudgeTime(nudge.nudged_at)}</p>
-        {nudge.nudge_note && <p className="mt-1 whitespace-pre-wrap text-foreground">{nudge.nudge_note}</p>}
+      {nudge?.nudged_at && <div className="animate-fade-up mb-3 rounded-xl bg-[#eee9f9] px-3 py-2 text-sm" role="status">
+        <p className="font-medium text-[#8b5cf6]">Angestupst {nudge.nudged_by_name ? `von ${nudge.nudged_by_name} ` : ""}um {decisionNudgeTime(nudge.nudged_at)}</p>
+        {nudge.nudge_note && <p className="mt-1 whitespace-pre-wrap text-[#18202b]">{nudge.nudge_note}</p>}
       </div>}
       <div className="mb-3">
         <p className="break-words text-base font-medium leading-6">{decision.title}</p>
