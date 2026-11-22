@@ -173,3 +173,16 @@ export const getBorderColor = (
 
   return 'border-l-gray-400';
 };
+
+/** Apply only after the server confirmed that the participant's root vote is absent. */
+export function resetOwnDecisionResponse(decision: MyWorkDecision): MyWorkDecision {
+  const participants = decision.participants?.map(participant =>
+    participant.id === decision.participant_id ? { ...participant, responses: [] } : participant);
+  return {
+    ...decision,
+    hasResponded: false,
+    responseType: null,
+    participants,
+    pendingCount: participants ? getResponseSummary(participants).pending : decision.pendingCount,
+  };
+}

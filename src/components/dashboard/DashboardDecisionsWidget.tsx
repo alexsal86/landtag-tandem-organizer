@@ -5,7 +5,7 @@ import { differenceInCalendarDays, format } from 'date-fns';
 import { de } from 'date-fns/locale';
 import { useAuth } from '@/hooks/useAuth';
 import { useMyWorkDecisionsData } from '@/hooks/useMyWorkDecisionsData';
-import { getResponseSummary, MyWorkDecision } from '@/components/my-work/decisions/types';
+import { getResponseSummary, resetOwnDecisionResponse, MyWorkDecision } from '@/components/my-work/decisions/types';
 import { TaskDecisionResponse } from '@/components/task-decisions/TaskDecisionResponse';
 import { Button } from '@/components/ui/button';
 import { supabase } from '@/integrations/supabase/client';
@@ -38,14 +38,16 @@ interface DecisionRowProps {
   onOpen: (id: string) => void;
   onPromptOpen: (id: string) => void;
   onPromptClose: (id: string) => void;
+  onUndoConfirmed: (id: string) => void;
   forcePrompt?: { color: string } | null;
 }
 
-function DecisionRow({ decision, onRefresh, onOpen, onPromptOpen, onPromptClose, forcePrompt }: DecisionRowProps) {
+function DecisionRow({ decision, onRefresh, onOpen, onPromptOpen, onPromptClose, onUndoConfirmed, forcePrompt }: DecisionRowProps) {
   const summary = getResponseSummary(decision.participants);
   const recommendation = decision.response_options?.find(option => option.recommended);
   const recommendationColors = recommendation ? getColorClasses(recommendation.color) : null;
   const { label, isOverdue } = formatDeadline(decision.response_deadline);
+  const [undoing, setUndoing] = useState(false);
   const [prompt, setPrompt] = useState<{ color: string } | null>(forcePrompt ?? null);
 
   useEffect(() => {
@@ -61,22 +63,37 @@ function DecisionRow({ decision, onRefresh, onOpen, onPromptOpen, onPromptClose,
   };
 
   const handleUndo = async () => {
-    if (!decision.participant_id) return;
-    const { error } = await supabase
-      .from('task_decision_responses')
-      .delete()
-      .eq('decision_id', decision.id)
-      .eq('participant_id', decision.participant_id)
-      .is('parent_response_id', null);
-    if (error) {
-      notify.error('Rückgängig fehlgeschlagen', { description: error.message
-});
-      return;
+    if (!decision.participant_id || undoing) return;
+    setUndoing(true);
+    try {
+      const { error } = await supabase
+        .from('task_decision_responses')
+        .delete()
+        .eq('decision_id', decision.id)
+        .eq('participant_id', decision.participant_id)
+        .is('parent_response_id', null)
+        .select('id');
+      if (error) throw error;
+
+      const { data: remaining, error: verifyError } = await supabase
+        .from('task_decision_responses')
+        .select('id')
+        .eq('decision_id', decision.id)
+        .eq('participant_id', decision.participant_id)
+        .is('parent_response_id', null);
+      if (verifyError) throw verifyError;
+      if (remaining?.length) throw new Error('Die Antwort ist weiterhin gespeichert. Die Rücknahme wurde nicht bestätigt.');
+
+      onUndoConfirmed(decision.id);
+      setPrompt(null);
+      notify.success('Antwort zurückgenommen');
+    } catch (error) {
+      notify.error('Rückgängig fehlgeschlagen', {
+        description: error instanceof Error ? error.message : 'Die Antwort konnte nicht zurückgenommen werden. Bitte erneut versuchen.',
+      });
+    } finally {
+      setUndoing(false);
     }
-    notify.success('Antwort zurückgenommen');
-    setPrompt(null);
-    onPromptClose(decision.id);
-    onRefresh();
   };
 
   const handleAddJustification = () => {
@@ -163,13 +180,13 @@ function DecisionRow({ decision, onRefresh, onOpen, onPromptOpen, onPromptClose,
             Du kannst die Antwort zurücknehmen oder begründen:
           </div>
           <div className="flex flex-wrap items-center gap-1.5">
-            <Button type="button" size="sm" variant="outline" className="h-7 px-2 text-xs" onClick={handleAddJustification}>
+            <Button type="button" size="sm" variant="outline" className="h-7 px-2 text-xs" disabled={undoing} onClick={handleAddJustification}>
               <MessageSquare className="h-3 w-3 mr-1" />Begründung hinzufügen
             </Button>
-            <Button type="button" size="sm" variant="ghost" className="h-7 px-2 text-xs" onClick={handleUndo}>
-              <Undo2 className="h-3 w-3 mr-1" />Rückgängig
+            <Button type="button" size="sm" variant="ghost" className="h-7 px-2 text-xs" disabled={undoing} onClick={handleUndo}>
+              <Undo2 className="h-3 w-3 mr-1" />{undoing ? "Wird zurückgenommen…" : "Rückgängig"}
             </Button>
-            <Button type="button" size="sm" variant="ghost" className="h-7 px-2 text-xs ml-auto" onClick={handleDismiss}>
+            <Button type="button" size="sm" variant="ghost" className="h-7 px-2 text-xs ml-auto" disabled={undoing} onClick={handleDismiss}>
               Fertig
             </Button>
           </div>
@@ -182,13 +199,20 @@ function DecisionRow({ decision, onRefresh, onOpen, onPromptOpen, onPromptClose,
 export function DashboardDecisionsWidget() {
   const { user } = useAuth();
   const navigate = useNavigate();
-  const { decisions, loading, error, loadDecisions } = useMyWorkDecisionsData(user?.id);
+  const { decisions, setDecisions, loading, error, loadDecisions } = useMyWorkDecisionsData(user?.id);
   const [pendingIds, setPendingIds] = useState<Set<string>>(new Set());
 
   const handlePromptOpen = (id: string) =>
     setPendingIds((prev) => { const n = new Set(prev); n.add(id); return n; });
   const handlePromptClose = (id: string) =>
     setPendingIds((prev) => { const n = new Set(prev); n.delete(id); return n; });
+
+  const handleUndoConfirmed = (id: string) => {
+    setDecisions(previous => previous.map(decision =>
+      decision.id === id ? resetOwnDecisionResponse(decision) : decision));
+    handlePromptClose(id);
+    void loadDecisions({ silent: true });
+  };
 
   const items = useMemo(() => {
     return [...decisions]
@@ -231,6 +255,7 @@ export function DashboardDecisionsWidget() {
           onOpen={goToDecision}
           onPromptOpen={handlePromptOpen}
           onPromptClose={handlePromptClose}
+          onUndoConfirmed={handleUndoConfirmed}
           forcePrompt={pendingIds.has(d.id) && d.hasResponded ? { color: 'green' } : null}
         />
       ))}

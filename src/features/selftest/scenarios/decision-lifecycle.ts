@@ -10,11 +10,12 @@ export const decisionLifecycleScenario: TestScenario = {
   title: "Entscheidungs-Lifecycle (active → open → archived)",
   description:
     "Erstellt eine Entscheidung, fügt sich selbst als Teilnehmer hinzu, prüft die Default-Antwortoptionen, archiviert die Entscheidung und liest jedes geschriebene Feld zurück.",
-  touches: ["task_decisions", "task_decision_participants"],
+  touches: ["task_decisions", "task_decision_participants", "task_decision_responses"],
   features: ["decisions"],
   writes: [
     { table: "task_decisions", columns: ["title", "description", "status", "created_by", "tenant_id", "visible_to_all", "priority", "response_deadline", "archived_at", "archived_by"] },
     { table: "task_decision_participants", columns: ["decision_id", "user_id"] },
+    { table: "task_decision_responses", columns: ["decision_id", "participant_id", "response_type", "comment"] },
   ],
   steps: [
     {
@@ -59,7 +60,30 @@ export const decisionLifecycleScenario: TestScenario = {
           .single();
         if (error || !data) return { ok: false, message: error?.message ?? "Insert leer" };
         ctx.trackRecord({ table: "task_decision_participants", id: data.id });
+        ctx.data.participantId = data.id;
         return { ok: true, message: `Teilnehmer angelegt (Token vergeben: ${data.token ? "ja" : "nein"}).` };
+      },
+    },
+    {
+      id: "withdraw-responses",
+      label: "Ja, Nein und Rückfrage speichern und nachweisbar zurücknehmen",
+      kind: "workflow",
+      run: async (ctx) => {
+        for (const responseType of ["yes", "no", "question"]) {
+          const { data: response, error: insertError } = await supabase.from("task_decision_responses")
+            .insert({ decision_id: ctx.data.decisionId as string, participant_id: ctx.data.participantId as string,
+              response_type: responseType, comment: responseType === "question" ? "Selbsttest-Rückfrage" : null })
+            .select("id").single();
+          if (insertError || !response) return { ok: false, message: describeError(insertError) };
+          ctx.trackRecord({ table: "task_decision_responses", id: response.id });
+          const { data: deleted, error: deleteError } = await supabase.from("task_decision_responses")
+            .delete().eq("id", response.id).select("id");
+          if (deleteError || deleted?.length !== 1) return { ok: false, message: deleteError?.message ?? "Eigene Antwort wurde nicht gelöscht." };
+          const { data: remaining, error: readError } = await supabase.from("task_decision_responses")
+            .select("id").eq("participant_id", ctx.data.participantId as string).is("parent_response_id", null);
+          if (readError || remaining?.length) return { ok: false, message: readError?.message ?? "Antwort bleibt nach Rücknahme bestehen." };
+        }
+        return { ok: true, message: "Ja, Nein und Rückfrage jeweils erfolgreich zurückgenommen." };
       },
     },
     {
