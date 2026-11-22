@@ -141,7 +141,7 @@ function DecisionRow({ decision, expanded, onToggle, nudge, onDismissConfirmed, 
       >
         <span className="min-w-0">
           <span className="block break-words text-base font-medium leading-6">{decision.title}</span>
-          {label && <span className={cn("mt-1 block text-sm", isOverdue ? "text-destructive" : "text-muted-foreground")}>{label}</span>}
+          {label && <span className={cn("mt-1 block text-xs", isOverdue ? "text-destructive" : "text-muted-foreground")}>{label}</span>}
         </span>
         <ChevronRight className={cn("mt-1 h-4 w-4 shrink-0 transition-transform duration-500 motion-reduce:transition-none", expanded && "rotate-90")} aria-hidden="true" />
       </button>
