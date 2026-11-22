@@ -3319,6 +3319,45 @@ export type Database = {
         }
         Relationships: []
       }
+      dashboard_decision_nudges: {
+        Row: {
+          decision_id: string
+          note: string | null
+          nudged_at: string
+          nudged_by: string | null
+          tenant_id: string
+        }
+        Insert: {
+          decision_id: string
+          note?: string | null
+          nudged_at?: string
+          nudged_by?: string | null
+          tenant_id: string
+        }
+        Update: {
+          decision_id?: string
+          note?: string | null
+          nudged_at?: string
+          nudged_by?: string | null
+          tenant_id?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "dashboard_decision_nudges_decision_id_fkey"
+            columns: ["decision_id"]
+            isOneToOne: true
+            referencedRelation: "task_decisions"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "dashboard_decision_nudges_tenant_id_fkey"
+            columns: ["tenant_id"]
+            isOneToOne: false
+            referencedRelation: "tenants"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
       dashboard_layouts: {
         Row: {
           created_at: string
@@ -15010,12 +15049,11 @@ export type Database = {
       tasks: {
         Row: {
           assigned_to: string | null
+          ball_accepted_at: string | null
           ball_assignee_id: string | null
           ball_external_label: string | null
           ball_handed_at: string | null
           ball_handed_by: string | null
-          ball_accepted_at: string | null
-          stafette_resume_on: string | null
           ball_owner: string
           call_log_id: string | null
           category: string
@@ -15044,6 +15082,7 @@ export type Database = {
           reminder_notified_at: string | null
           source_id: string | null
           source_type: string | null
+          stafette_resume_on: string | null
           status: string
           tenant_id: string
           timeline: Json
@@ -15053,12 +15092,11 @@ export type Database = {
         }
         Insert: {
           assigned_to?: string | null
+          ball_accepted_at?: string | null
           ball_assignee_id?: string | null
           ball_external_label?: string | null
           ball_handed_at?: string | null
           ball_handed_by?: string | null
-          ball_accepted_at?: string | null
-          stafette_resume_on?: string | null
           ball_owner?: string
           call_log_id?: string | null
           category?: string
@@ -15087,6 +15125,7 @@ export type Database = {
           reminder_notified_at?: string | null
           source_id?: string | null
           source_type?: string | null
+          stafette_resume_on?: string | null
           status?: string
           tenant_id: string
           timeline?: Json
@@ -15096,12 +15135,11 @@ export type Database = {
         }
         Update: {
           assigned_to?: string | null
+          ball_accepted_at?: string | null
           ball_assignee_id?: string | null
           ball_external_label?: string | null
           ball_handed_at?: string | null
           ball_handed_by?: string | null
-          ball_accepted_at?: string | null
-          stafette_resume_on?: string | null
           ball_owner?: string
           call_log_id?: string | null
           category?: string
@@ -15130,6 +15168,7 @@ export type Database = {
           reminder_notified_at?: string | null
           source_id?: string | null
           source_type?: string | null
+          stafette_resume_on?: string | null
           status?: string
           tenant_id?: string
           timeline?: Json
@@ -17205,20 +17244,6 @@ export type Database = {
       }
     }
     Functions: {
-      get_deputy_dashboard_decisions: {
-        Args: { _tenant_id: string; _decision_ids?: string[] }
-        Returns: {
-          decision_id: string
-          title: string
-          nudged_at: string | null
-          nudge_note: string | null
-          nudged_by_name: string | null
-        }[]
-      }
-      nudge_dashboard_decision: {
-        Args: { _decision_id: string; _note?: string }
-        Returns: string
-      }
       _briefing_task_event: {
         Args: { _task: string; _text: string }
         Returns: undefined
@@ -17700,6 +17725,7 @@ export type Database = {
       dispatch_due_knowledge_reviews: { Args: never; Returns: number }
       dispatch_due_task_reminders: { Args: never; Returns: number }
       dispatch_employee_preparation_reminders: { Args: never; Returns: number }
+      dispatch_office_feedback_reminders: { Args: never; Returns: undefined }
       dispatch_scheduled_emails_if_due: { Args: never; Returns: undefined }
       dispatch_workflow_trigger: {
         Args: {
@@ -17961,6 +17987,16 @@ export type Database = {
         Returns: Json
       }
       get_database_size: { Args: never; Returns: number }
+      get_deputy_dashboard_decisions: {
+        Args: { _decision_ids?: string[]; _tenant_id: string }
+        Returns: {
+          decision_id: string
+          nudge_note: string
+          nudged_at: string
+          nudged_by_name: string
+          title: string
+        }[]
+      }
       get_deputy_state_list_places: {
         Args: { connection: string; selected_period?: string }
         Returns: Json
@@ -18765,6 +18801,10 @@ export type Database = {
       }
       next_recurrence_date: {
         Args: { _base: string; _rule: string }
+        Returns: string
+      }
+      nudge_dashboard_decision: {
+        Args: { _decision_id: string; _note?: string }
         Returns: string
       }
       nudge_task: {
