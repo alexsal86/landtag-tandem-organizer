@@ -1,6 +1,6 @@
 import { useMemo, useState, useEffect } from 'react';
 import { useNavigate } from 'react-router-dom';
-import { Vote, MessageSquare, Undo2 } from 'lucide-react';
+import { MessageSquare, Undo2 } from 'lucide-react';
 import { differenceInCalendarDays, format } from 'date-fns';
 import { de } from 'date-fns/locale';
 import { useAuth } from '@/hooks/useAuth';
@@ -10,16 +10,17 @@ import { TaskDecisionResponse } from '@/components/task-decisions/TaskDecisionRe
 import { Button } from '@/components/ui/button';
 import { supabase } from '@/integrations/supabase/client';
 import { cn } from '@/lib/utils';
+import { getColorClasses } from "@/lib/decisionTemplates";
 import { notify } from "@/lib/notify";
 
 function formatDeadline(deadline: string | null): { label: string; isOverdue: boolean } {
   if (!deadline) return { label: 'Ohne Frist', isOverdue: false };
   const d = new Date(deadline);
   const diff = differenceInCalendarDays(d, new Date());
-  if (diff < 0) return { label: `überfällig · ${format(d, 'dd.MM.', { locale: de })}`, isOverdue: true };
-  if (diff === 0) return { label: 'fällig heute', isOverdue: false };
-  if (diff === 1) return { label: 'fällig morgen', isOverdue: false };
-  return { label: `fällig in ${diff} Tagen`, isOverdue: false };
+  if (diff < 0) return { label: `Antwort überfällig seit ${format(d, 'dd.MM.', { locale: de })}`, isOverdue: true };
+  if (diff === 0) return { label: 'Antwort bis heute', isOverdue: false };
+  if (diff === 1) return { label: 'Antwort bis morgen', isOverdue: false };
+  return { label: `Antwort bis ${format(d, diff < 7 ? 'EEEE' : 'EEEE, d. MMMM', { locale: de })}`, isOverdue: false };
 }
 
 const PROMPT_COLOR_CLASS: Record<string, string> = {
@@ -42,6 +43,8 @@ interface DecisionRowProps {
 
 function DecisionRow({ decision, onRefresh, onOpen, onPromptOpen, onPromptClose, forcePrompt }: DecisionRowProps) {
   const summary = getResponseSummary(decision.participants);
+  const recommendation = decision.response_options?.find(option => option.recommended);
+  const recommendationColors = recommendation ? getColorClasses(recommendation.color) : null;
   const { label, isOverdue } = formatDeadline(decision.response_deadline);
   const [prompt, setPrompt] = useState<{ color: string } | null>(forcePrompt ?? null);
 
@@ -93,18 +96,27 @@ function DecisionRow({ decision, onRefresh, onOpen, onPromptOpen, onPromptClose,
       role="button"
       tabIndex={0}
       onClick={() => onOpen(decision.id)}
-      onKeyDown={(e) => { if (e.key === 'Enter') onOpen(decision.id); }}
-      className="rounded-md border border-border bg-card p-3 hover:bg-muted/40 transition-colors cursor-pointer"
+      onKeyDown={(e) => {
+        if (e.target === e.currentTarget && (e.key === 'Enter' || e.key === ' ')) {
+          e.preventDefault();
+          onOpen(decision.id);
+        }
+      }}
+      className="py-4 first:pt-0 last:pb-0"
     >
-      <div className="flex items-start justify-between gap-2 mb-2">
-        <div className="flex items-center gap-2 min-w-0 flex-1">
-          <Vote className="h-3.5 w-3.5 shrink-0 text-palette-purple" />
-          <span className="text-sm font-medium truncate">{decision.title}</span>
-        </div>
-        <span className={`text-xs shrink-0 tabular-nums ${isOverdue ? 'text-destructive' : 'text-muted-foreground'}`}>
+      <div className="mb-3">
+        <p className="break-words text-base font-medium leading-6">{decision.title}</p>
+        <p className={cn("mt-1 text-sm", isOverdue ? "text-destructive" : "text-muted-foreground")}>
           {label}
-        </span>
+        </p>
       </div>
+
+      {recommendation && recommendationColors && (
+        <div className={cn("mb-3 rounded-2xl px-3 py-2.5 text-sm leading-6 text-foreground", recommendationColors.bgClass)}>
+          <span className={cn("font-medium", recommendationColors.textClass)}>Büro empfiehlt: {recommendation.label}.</span>
+          {recommendation.recommendation_reason?.trim() && <> {recommendation.recommendation_reason.trim()}</>}
+        </div>
+      )}
 
       {decision.isCreator && !decision.isParticipant && (
         <p className="text-xs text-muted-foreground mb-2">
@@ -112,7 +124,7 @@ function DecisionRow({ decision, onRefresh, onOpen, onPromptOpen, onPromptClose,
         </p>
       )}
 
-      {summary.total > 0 && (
+      {summary.total > 0 && decision.isCreator && (
         <div className="flex items-center gap-1 mb-2" aria-hidden>
           {Array.from({ length: summary.yesCount }).map((_, i) => <span key={`y${i}`} className="h-1.5 flex-1 rounded-sm bg-palette-green" />)}
           {Array.from({ length: summary.noCount }).map((_, i) => <span key={`n${i}`} className="h-1.5 flex-1 rounded-sm bg-destructive" />)}
@@ -210,7 +222,7 @@ export function DashboardDecisionsWidget() {
   }
 
   return (
-    <div className="space-y-3">
+    <div className="divide-y divide-border">
       {items.map((d) => (
         <DecisionRow
           key={d.id}
