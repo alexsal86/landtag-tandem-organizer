@@ -5,6 +5,8 @@ import { supabase } from '@/integrations/supabase/client';
 import type { Database } from '@/integrations/supabase/types';
 import { useAuth } from '@/hooks/useAuth';
 import { useTenant } from '@/hooks/useTenant';
+import { useDashboardRealtime } from '@/hooks/useDashboardRealtime';
+import { STALE_TIME } from '@/lib/query-cache';
 import { useAppointmentFeedback } from '@/hooks/useAppointmentFeedback';
 import {
   DEFAULT_SPECIAL_DAYS,
@@ -217,13 +219,16 @@ export const useDashboardAppointmentsData = (includePastToday = false): Dashboar
     refetchOnWindowFocus: false,
   });
 
+  useDashboardRealtime(userId, tenantId);
+
   const { data: rpcData, isLoading, isError } = useQuery({
     queryKey: ['dashboard-rpc-data', userId, tenantId, includePastToday],
     queryFn: () => fetchDashboardRpc(userId!, user!.email ?? undefined, tenantId!, includePastToday),
     enabled: !!userId && !!tenantId,
-    staleTime: 2 * 60_000,
-    refetchInterval: includePastToday ? 60_000 : false,
-    gcTime: 5 * 60_000,
+    staleTime: STALE_TIME.LIST_WITH_REALTIME,
+    refetchInterval: includePastToday ? STALE_TIME.LIST_WITH_REALTIME : false,
+    refetchIntervalInBackground: false,
+    gcTime: 15 * 60_000,
     refetchOnWindowFocus: false,
   });
 

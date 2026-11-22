@@ -23,6 +23,7 @@ import { Tooltip, TooltipContent, TooltipProvider, TooltipTrigger } from "@/comp
 import { useTenant } from "@/hooks/useTenant";
 import { supabase } from "@/integrations/supabase/client";
 import { cn } from "@/lib/utils";
+import { STALE_TIME } from "@/lib/query-cache";
 import {
   APPOINTMENT_REQUEST_APPOINTMENT_MARKER,
   APPOINTMENT_REQUEST_LOCATION_MARKER,
@@ -151,7 +152,9 @@ export const DashboardAppointments = ({ data }: Props) => {
   const briefingAssignments = useQuery<Map<string, string>>({
     queryKey: ["appointment-briefing", "dashboard-status", currentTenant?.id, appointmentIds],
     enabled: !!currentTenant?.id && appointmentIds.length > 0,
-    refetchInterval: 60_000,
+    staleTime: STALE_TIME.LIST_WITH_REALTIME,
+    refetchInterval: STALE_TIME.LIST_WITH_REALTIME,
+    refetchIntervalInBackground: false,
     queryFn: async () => {
       const { data, error } = await supabase.from("appointments").select("id,briefing_status")
         .eq("tenant_id", currentTenant!.id).in("id", appointmentIds);

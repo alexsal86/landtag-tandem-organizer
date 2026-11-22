@@ -4,6 +4,8 @@ import { groupDeadlineItems } from '@/utils/deadlineFormatting';
 import { supabase } from '@/integrations/supabase/client';
 import { useAuth } from '@/hooks/useAuth';
 import { useTenant } from '@/hooks/useTenant';
+import { useDashboardRealtime } from '@/hooks/useDashboardRealtime';
+import { STALE_TIME } from '@/lib/query-cache';
 import type {
   ChecklistRelation,
   DeadlineItem,
@@ -161,11 +163,15 @@ export const useDashboardDeadlines = () => {
   const userId = user?.id;
   const tenantId = currentTenant?.id;
 
+  useDashboardRealtime(userId, tenantId);
+
   const query = useQuery({
     queryKey: ['dashboard-deadlines', userId, tenantId],
     queryFn: () => fetchDeadlineItems(userId!, tenantId),
     enabled: !!userId,
-    staleTime: 60_000,
+    staleTime: STALE_TIME.LIST_WITH_REALTIME,
+    refetchInterval: STALE_TIME.LIST_WITH_REALTIME,
+    refetchIntervalInBackground: false,
     refetchOnWindowFocus: false,
   });
 

@@ -5,6 +5,8 @@ import { useAuth } from "@/hooks/useAuth";
 import { useTenant } from "@/hooks/useTenant";
 import { useAppointmentFeedback } from "@/hooks/useAppointmentFeedback";
 import { useMyWorkDecisionsData } from "@/hooks/useMyWorkDecisionsData";
+import { useDashboardRealtime } from "@/hooks/useDashboardRealtime";
+import { STALE_TIME } from "@/lib/query-cache";
 import { supabase } from "@/integrations/supabase/client";
 import { appointmentSummary, pendingSummary } from "@/utils/dashboard/daySummary";
 
@@ -18,10 +20,13 @@ export function DashboardDaySummary() {
   }, []);
   const feedback = useAppointmentFeedback();
   const decisions = useMyWorkDecisionsData(user?.id);
+  useDashboardRealtime(user?.id, currentTenant?.id);
   const schedule = useQuery({
     queryKey: ["dashboard-day-summary", currentTenant?.id],
     enabled: !!currentTenant?.id,
-    refetchInterval: 60_000,
+    staleTime: STALE_TIME.LIST_WITH_REALTIME,
+    refetchInterval: STALE_TIME.LIST_WITH_REALTIME,
+    refetchIntervalInBackground: false,
     queryFn: async () => {
       const since = new Date(Date.now() - 2 * 86400_000).toISOString();
       const [internal, external] = await Promise.all([

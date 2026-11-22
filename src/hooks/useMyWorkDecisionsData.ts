@@ -1,20 +1,18 @@
-import { useCallback, useEffect, useId, useRef, useState } from "react";
+import { useCallback, useEffect, useRef, type SetStateAction } from "react";
+import { useQuery } from "@tanstack/react-query";
 import { supabase } from "@/integrations/supabase/client";
 import { handleAppError } from "@/utils/errorHandler";
-import { debugConsole } from '@/utils/debugConsole';
+import { debugConsole } from "@/utils/debugConsole";
 import { notify } from "@/lib/notify";
 import { MyWorkDecision, getResponseSummary } from "@/components/my-work/decisions/types";
 import type { ResponseOption } from "@/lib/decisionTemplates";
+import { queryClient } from "@/providers/queryClient";
+import { STALE_TIME } from "@/lib/query-cache";
+import { useAuth } from "@/hooks/useAuth";
+import { useTenant } from "@/hooks/useTenant";
+import { useDashboardRealtime } from "@/hooks/useDashboardRealtime";
 
 const isEmailFile = (name: string) => /\.(eml|msg)$/i.test(name);
-const DECISIONS_CACHE_TTL_MS = 60_000;
-
-interface DecisionsCacheEntry {
-  timestamp: number;
-  decisions: MyWorkDecision[];
-}
-
-const decisionsCache = new Map<string, DecisionsCacheEntry>();
 
 interface DecisionAttachment {
   id: string;
@@ -24,13 +22,13 @@ interface DecisionAttachment {
 
 const computeAttachmentInfo = (attachments: DecisionAttachment[]) => {
   const all = attachments || [];
-  const emails = all.filter((a) => isEmailFile(a.file_name));
-  const files = all.filter((a) => !isEmailFile(a.file_name));
+  const emails = all.filter((attachment) => isEmailFile(attachment.file_name));
+  const files = all.filter((attachment) => !isEmailFile(attachment.file_name));
   return {
     attachmentCount: all.length,
     emailAttachmentCount: emails.length,
-    emailAttachments: emails.map((a) => ({ id: a.id, file_name: a.file_name, file_path: a.file_path })),
-    fileAttachments: files.map((a) => ({ id: a.id, file_name: a.file_name, file_path: a.file_path })),
+    emailAttachments: emails.map((attachment) => ({ id: attachment.id, file_name: attachment.file_name, file_path: attachment.file_path })),
+    fileAttachments: files.map((attachment) => ({ id: attachment.id, file_name: attachment.file_name, file_path: attachment.file_path })),
   };
 };
 
@@ -38,251 +36,172 @@ interface LoadDecisionsOptions {
   silent?: boolean;
 }
 
+type RpcDecision = {
+  id: string; title: string; description: string | null; response_deadline: string | null;
+  status: string; created_at: string; created_by: string; visible_to_all: boolean;
+  response_options: unknown; priority: number | null;
+  participant_id: string | null; is_participant: boolean; is_creator: boolean; is_public: boolean;
+  task_decision_attachments: DecisionAttachment[];
+  task_decision_participants: Array<{
+    id: string; user_id: string;
+    task_decision_responses: Array<{
+      id: string; response_type: string; comment: string | null; creator_response: string | null;
+      parent_response_id: string | null; created_at: string; updated_at: string;
+    }>;
+  }>;
+  topic_ids: string[];
+};
+type RpcProfile = { user_id: string; display_name: string | null; badge_color: string | null; avatar_url: string | null };
+type RpcResult = { decisions: RpcDecision[]; profiles: RpcProfile[] };
+
+async function fetchMyWorkDecisions(userId: string): Promise<MyWorkDecision[]> {
+  const { data: rpcData, error: rpcError } = await supabase.rpc("get_my_work_decisions", { p_user_id: userId });
+  if (rpcError) throw rpcError;
+
+  debugConsole.log("[useMyWorkDecisionsData] RPC ok", {
+    userId,
+    rawCount: Array.isArray((rpcData as RpcResult | null)?.decisions)
+      ? (rpcData as RpcResult).decisions.length
+      : 0,
+  });
+
+  const { decisions: rawDecisions, profiles: rawProfiles } = (rpcData as RpcResult | null) ?? { decisions: [], profiles: [] };
+  const profileMap = new Map<string, RpcProfile>((rawProfiles ?? []).map((profile) => [profile.user_id, profile]));
+  const allDecisionsMap = new Map<string, MyWorkDecision>();
+
+  for (const item of rawDecisions ?? []) {
+    const attachmentInfo = computeAttachmentInfo(item.task_decision_attachments ?? []);
+    const participants = item.task_decision_participants ?? [];
+    const pendingCount = participants.filter((participant) => !participant.task_decision_responses || participant.task_decision_responses.length === 0).length;
+    const userParticipant = participants.find((participant) => participant.user_id === userId);
+
+    const decision: MyWorkDecision = {
+      id: item.id,
+      title: item.title,
+      description: item.description,
+      response_deadline: item.response_deadline,
+      status: item.status,
+      created_at: item.created_at,
+      created_by: item.created_by,
+      participant_id: item.participant_id ?? userParticipant?.id ?? null,
+      hasResponded: item.is_participant
+        ? (userParticipant ? userParticipant.task_decision_responses.length > 0 : false)
+        : true,
+      isCreator: item.is_creator,
+      isParticipant: item.is_participant,
+      isPublic: item.is_public,
+      pendingCount,
+      responseType: userParticipant?.task_decision_responses[0]?.response_type ?? null,
+      visible_to_all: item.visible_to_all,
+      priority: item.priority ?? 0,
+      ...attachmentInfo,
+      response_options: Array.isArray(item.response_options) ? item.response_options as ResponseOption[] : undefined,
+      topicIds: item.topic_ids ?? [],
+      participants: participants.map((participant) => ({
+        id: participant.id,
+        user_id: participant.user_id,
+        profile: {
+          display_name: profileMap.get(participant.user_id)?.display_name ?? null,
+          badge_color: profileMap.get(participant.user_id)?.badge_color ?? null,
+          avatar_url: profileMap.get(participant.user_id)?.avatar_url ?? null,
+        },
+        responses: (participant.task_decision_responses ?? [])
+          .sort((a, b) => {
+            const aIsChild = !!a.parent_response_id;
+            const bIsChild = !!b.parent_response_id;
+            if (aIsChild !== bIsChild) return aIsChild ? 1 : -1;
+            return new Date(b.created_at).getTime() - new Date(a.created_at).getTime();
+          })
+          .map((response) => ({ ...response, response_type: response.response_type as string })),
+      })),
+    };
+
+    const creatorProfile = profileMap.get(item.created_by);
+    decision.creator = {
+      user_id: item.created_by,
+      display_name: creatorProfile?.display_name ?? null,
+      badge_color: creatorProfile?.badge_color ?? null,
+      avatar_url: creatorProfile?.avatar_url ?? null,
+    };
+
+    const existing = allDecisionsMap.get(item.id);
+    if (existing) {
+      if (item.is_creator) existing.isCreator = true;
+      if (item.is_participant) {
+        existing.isParticipant = true;
+        existing.participant_id = decision.participant_id;
+        existing.hasResponded = decision.hasResponded;
+        existing.responseType = decision.responseType;
+      }
+      if (item.is_public) existing.isPublic = true;
+      if (pendingCount > 0) existing.pendingCount = pendingCount;
+    } else {
+      allDecisionsMap.set(item.id, decision);
+    }
+  }
+
+  return Array.from(allDecisionsMap.values()).sort((a, b) => {
+    const priorityDifference = (b.priority ?? 0) - (a.priority ?? 0);
+    if (priorityDifference !== 0) return priorityDifference;
+
+    const aUnanswered = a.isParticipant && !a.hasResponded;
+    const bUnanswered = b.isParticipant && !b.hasResponded;
+    if (aUnanswered && !bUnanswered) return -1;
+    if (!aUnanswered && bUnanswered) return 1;
+
+    const summaryA = getResponseSummary(a.participants);
+    const summaryB = getResponseSummary(b.participants);
+    if (summaryA.questionCount > 0 && summaryB.questionCount === 0) return -1;
+    if (summaryA.questionCount === 0 && summaryB.questionCount > 0) return 1;
+    return new Date(b.created_at).getTime() - new Date(a.created_at).getTime();
+  });
+}
+
 export function useMyWorkDecisionsData(userId?: string) {
-  const subscriptionId = useId();
-  const [decisions, setDecisions] = useState<MyWorkDecision[]>([]);
-  const [loading, setLoading] = useState(true);
-  const [error, setError] = useState<string | null>(null);
-  const latestLoadRequestRef = useRef(0);
-  const mountedRef = useRef(true);
+  const { user } = useAuth();
+  const { currentTenant } = useTenant();
+  const queryKey = ["my-work-decisions", userId] as const;
+  const reportedErrorRef = useRef<unknown>(null);
+  const query = useQuery({
+    queryKey,
+    queryFn: () => fetchMyWorkDecisions(userId!),
+    enabled: !!userId,
+    staleTime: STALE_TIME.LIST_WITH_REALTIME,
+    gcTime: 15 * 60_000,
+    refetchOnWindowFocus: false,
+    refetchInterval: false,
+  });
+
+  useDashboardRealtime(user?.id, currentTenant?.id);
 
   useEffect(() => {
-    mountedRef.current = true;
-    return () => {
-      mountedRef.current = false;
-      latestLoadRequestRef.current += 1;
-    };
-  }, []);
+    if (!query.error || reportedErrorRef.current === query.error) return;
+    reportedErrorRef.current = query.error;
+    const message = query.error instanceof Error ? query.error.message : String(query.error);
+    notify.error("Entscheidungen konnten nicht geladen werden", { description: message });
+    handleAppError(query.error, { context: "useMyWorkDecisionsData.loadDecisions" });
+  }, [query.error]);
 
-  const loadDecisions = useCallback(async (options?: LoadDecisionsOptions) => {
-    if (!userId) return;
-
-    const silent = options?.silent ?? false;
-
-    const requestId = latestLoadRequestRef.current + 1;
-    latestLoadRequestRef.current = requestId;
-
-    const isCurrentRequest = () => mountedRef.current && latestLoadRequestRef.current === requestId;
-
-    if (!silent) {
-      setLoading(true);
-      setError(null);
-    }
-
-    try {
-      // Einzel-RPC ersetzt 5-6 separate DB-Roundtrips (3x Basis + 2x Enrichment + Profiles)
-      const { data: rpcData, error: rpcError } = await supabase
-        .rpc('get_my_work_decisions', { p_user_id: userId });
-
-      if (!isCurrentRequest()) return;
-      if (rpcError) {
-        debugConsole.error('[useMyWorkDecisionsData] RPC error', { userId, rpcError });
-        notify.error('Entscheidungen konnten nicht geladen werden', { description: rpcError.message });
-        throw rpcError;
-      }
-      debugConsole.log('[useMyWorkDecisionsData] RPC ok', {
-        userId,
-        rawCount: Array.isArray((rpcData as { decisions?: unknown[] } | null)?.decisions)
-          ? (rpcData as { decisions: unknown[] }).decisions.length
-          : 0,
-      });
-
-      type RpcDecision = {
-        id: string; title: string; description: string | null; response_deadline: string | null;
-        status: string; created_at: string; created_by: string; visible_to_all: boolean;
-        response_options: unknown; priority: number | null;
-        participant_id: string | null; is_participant: boolean; is_creator: boolean; is_public: boolean;
-        task_decision_attachments: DecisionAttachment[];
-        task_decision_participants: Array<{
-          id: string; user_id: string;
-          task_decision_responses: Array<{
-            id: string; response_type: string; comment: string | null; creator_response: string | null;
-            parent_response_id: string | null; created_at: string; updated_at: string;
-          }>;
-        }>;
-        topic_ids: string[];
-      };
-      type RpcProfile = { user_id: string; display_name: string | null; badge_color: string | null; avatar_url: string | null };
-      type RpcResult = { decisions: RpcDecision[]; profiles: RpcProfile[] };
-
-      const { decisions: rawDecisions, profiles: rawProfiles } = (rpcData as RpcResult) ?? { decisions: [], profiles: [] };
-      const profileMap = new Map<string, RpcProfile>((rawProfiles ?? []).map((p) => [p.user_id, p]));
-
-      // Deduplizierung: Bei UNION können Beschlüsse mehrfach erscheinen (z.B. Ersteller + Teilnehmer)
-      const allDecisionsMap = new Map<string, MyWorkDecision>();
-
-      for (const item of rawDecisions ?? []) {
-        const attInfo = computeAttachmentInfo(item.task_decision_attachments ?? []);
-        const participants = item.task_decision_participants ?? [];
-        const pendingCount = participants.filter((p) => !p.task_decision_responses || p.task_decision_responses.length === 0).length;
-        const userParticipant = participants.find((p) => p.user_id === userId);
-
-        const decision: MyWorkDecision = {
-          id: item.id,
-          title: item.title,
-          description: item.description,
-          response_deadline: item.response_deadline,
-          status: item.status,
-          created_at: item.created_at,
-          created_by: item.created_by,
-          participant_id: item.participant_id ?? userParticipant?.id ?? null,
-          hasResponded: item.is_participant
-            ? (userParticipant ? userParticipant.task_decision_responses.length > 0 : false)
-            : true,
-          isCreator: item.is_creator,
-          isParticipant: item.is_participant,
-          isPublic: item.is_public,
-          pendingCount,
-          responseType: userParticipant?.task_decision_responses[0]?.response_type ?? null,
-          visible_to_all: item.visible_to_all,
-          priority: item.priority ?? 0,
-          ...attInfo,
-          response_options: Array.isArray(item.response_options) ? item.response_options as unknown as ResponseOption[] : undefined,
-          topicIds: item.topic_ids ?? [],
-          participants: participants.map((p) => ({
-            id: p.id,
-            user_id: p.user_id,
-            profile: {
-              display_name: profileMap.get(p.user_id)?.display_name ?? null,
-              badge_color: profileMap.get(p.user_id)?.badge_color ?? null,
-              avatar_url: profileMap.get(p.user_id)?.avatar_url ?? null,
-            },
-            responses: (p.task_decision_responses ?? [])
-              .sort((a, b) => {
-                const aIsChild = !!a.parent_response_id;
-                const bIsChild = !!b.parent_response_id;
-                if (aIsChild !== bIsChild) return aIsChild ? 1 : -1;
-                return new Date(b.created_at).getTime() - new Date(a.created_at).getTime();
-              })
-              .map((r) => ({ ...r, response_type: r.response_type as string })),
-          })),
-        };
-
-        const cp = profileMap.get(item.created_by);
-        decision.creator = {
-          user_id: item.created_by,
-          display_name: cp?.display_name ?? null,
-          badge_color: cp?.badge_color ?? null,
-          avatar_url: cp?.avatar_url ?? null,
-        };
-
-        // Bei Duplikaten: is_creator und pendingCount zusammenführen
-        if (allDecisionsMap.has(item.id)) {
-          const existing = allDecisionsMap.get(item.id)!;
-          if (item.is_creator) existing.isCreator = true;
-          if (item.is_participant) {
-            existing.isParticipant = true;
-            existing.participant_id = decision.participant_id;
-            existing.hasResponded = decision.hasResponded;
-            existing.responseType = decision.responseType;
-          }
-          if (item.is_public) existing.isPublic = true;
-          if (pendingCount > 0) existing.pendingCount = pendingCount;
-        } else {
-          allDecisionsMap.set(item.id, decision);
-        }
-      }
-
-      const allDecisionsList = Array.from(allDecisionsMap.values());
-
-      allDecisionsList.sort((a, b) => {
-        const priorityA = a.priority ?? 0;
-        const priorityB = b.priority ?? 0;
-        if (priorityA !== priorityB) return priorityB - priorityA;
-
-        const aUnanswered = a.isParticipant && !a.hasResponded;
-        const bUnanswered = b.isParticipant && !b.hasResponded;
-        if (aUnanswered && !bUnanswered) return -1;
-        if (!aUnanswered && bUnanswered) return 1;
-
-        const summA = getResponseSummary(a.participants);
-        const summB = getResponseSummary(b.participants);
-        if (summA.questionCount > 0 && summB.questionCount === 0) return -1;
-        if (summA.questionCount === 0 && summB.questionCount > 0) return 1;
-
-        return new Date(b.created_at).getTime() - new Date(a.created_at).getTime();
-      });
-
-      if (isCurrentRequest()) {
-        setError(null);
-        setDecisions(allDecisionsList);
-        decisionsCache.set(userId, { timestamp: Date.now(), decisions: allDecisionsList });
-      }
-    } catch (error) {
-      if (isCurrentRequest()) {
-        const msg = error instanceof Error ? error.message : String(error);
-        setError(msg);
-        handleAppError(error, { context: 'useMyWorkDecisionsData.loadDecisions' });
-      }
-    } finally {
-      if (isCurrentRequest()) {
-        setLoading(false);
-      }
-    }
+  const setDecisions = useCallback((update: SetStateAction<MyWorkDecision[]>) => {
+    queryClient.setQueryData<MyWorkDecision[]>(["my-work-decisions", userId], (current = []) =>
+      typeof update === "function" ? update(current) : update,
+    );
   }, [userId]);
 
-  useEffect(() => {
-    if (!userId) {
-      latestLoadRequestRef.current += 1;
-      setDecisions([]);
-      setError(null);
-      setLoading(false);
-      return;
-    }
-
-    setError(null);
-    const cached = decisionsCache.get(userId);
-    const isFresh = !!cached && Date.now() - cached.timestamp < DECISIONS_CACHE_TTL_MS;
-
-    if (cached) {
-      setDecisions(cached.decisions);
-      setLoading(!isFresh);
-    } else {
-      setLoading(true);
-    }
-
-    void loadDecisions({ silent: isFresh });
-  }, [userId, loadDecisions]);
-
-  useEffect(() => {
+  const loadDecisions = useCallback(async (_options?: LoadDecisionsOptions) => {
     if (!userId) return;
+    await queryClient.refetchQueries({ queryKey: ["my-work-decisions", userId], exact: true });
+  }, [userId]);
 
-    let timeout: ReturnType<typeof setTimeout> | null = null;
-    const scheduleRefresh = () => {
-      if (timeout) clearTimeout(timeout);
-      timeout = setTimeout(() => {
-        timeout = null;
-        void loadDecisions({ silent: true });
-      }, 250);
-    };
-
-    const channel = supabase
-      .channel(`my-work-decisions-${userId}-${subscriptionId}`)
-      .on("postgres_changes", { event: "*", schema: "public", table: "task_decisions", filter: `created_by=eq.${userId}` }, scheduleRefresh)
-      // Listen without filter – filtered subscriptions on task_decision_participants
-      // can silently drop events when RLS prevents the anon/authenticated role from
-      // seeing the newly-inserted row at the moment the event fires.
-      .on("postgres_changes", { event: "*", schema: "public", table: "task_decision_participants" }, scheduleRefresh)
-      .on("postgres_changes", { event: "*", schema: "public", table: "task_decision_responses" }, scheduleRefresh)
-      .subscribe();
-
-    const refresh = () => { void loadDecisions({ silent: true }); };
-    const interval = window.setInterval(refresh, DECISIONS_CACHE_TTL_MS);
-    window.addEventListener("focus", refresh);
-    return () => {
-      if (timeout) clearTimeout(timeout);
-      window.clearInterval(interval);
-      window.removeEventListener("focus", refresh);
-      supabase.removeChannel(channel);
-    };
-  }, [userId, loadDecisions, subscriptionId]);
+  const decisions = query.data ?? [];
+  const error = query.error instanceof Error ? query.error.message : query.error ? String(query.error) : null;
 
   return {
     data: decisions,
     decisions,
     setDecisions,
-    isLoading: loading,
-    loading,
+    isLoading: query.isLoading,
+    loading: query.isLoading,
     error,
     refetch: loadDecisions,
     loadDecisions,

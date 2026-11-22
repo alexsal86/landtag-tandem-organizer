@@ -15,6 +15,13 @@
 - [ ] Import- und Qualitätsregeln durch Vitest und einen Logik-Schritt im Selbsttest-Center absichern.
 - [ ] Angemeldeten Super-Admin-Gesamtablauf mit echter Supabase-Sitzung prüfen — externe Supabase-Testsitzung nicht verfügbar.
 
+# Log-Aufkommen reduzieren (22.11.2026)
+- [ ] Entscheidungsdaten über einen gemeinsamen TanStack-Query-Cache ohne doppelte Minuten-Timer laden.
+- [ ] Einen gemeinsamen Realtime-Kanal für Dashboard- und Entscheidungsänderungen mit gezielter Cache-Aktualisierung einrichten.
+- [ ] Übrige Dashboard- und Team-Ritual-Abfragen auf fünf Minuten drosseln, lokale Uhrzeit-Anzeigen unverändert minütlich aktualisieren.
+- [ ] E-Mail-Hintergrundlauf auf alle zwei Stunden umstellen und UUID-Fehler in den Feedback-Erinnerungen korrigieren.
+- [ ] Gezielte Tests, Build und Live-Datenbankeinstellungen prüfen; angemeldeten Klickablauf nur mit verfügbarer Testsitzung prüfen.
+
 # Log-Aufkommen reduzieren (15.11.2026)
 - [x] Zentrale Statusverwaltung, gemeinsamer Profil-Cache und höchstens ein Aktivitäts-Write pro fünf Minuten; drei Regressionstests bestanden.
 - [x] Fälligkeitsfunktion für geplante E-Mails migriert und im Leerlauf ohne Versand ausgeführt.

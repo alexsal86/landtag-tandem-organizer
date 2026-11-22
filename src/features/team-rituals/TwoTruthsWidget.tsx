@@ -35,7 +35,9 @@ export function TwoTruthsWidget() {
   const quiz = useQuery({
     queryKey: ['team-quiz', tenantId, userId, berlinDay(new Date()).slice(0, 7)],
     enabled: allowed && !!tenantId && !!userId,
-    refetchInterval: allowed ? 60_000 : false,
+    staleTime: 5 * 60_000,
+    refetchInterval: allowed ? 5 * 60_000 : false,
+    refetchIntervalInBackground: false,
     queryFn: async () => {
       const result = await supabase.rpc('team_two_truths_snapshot', { p_tenant: tenantId! });
       if (result.error) throw result.error;
@@ -45,7 +47,9 @@ export function TwoTruthsWidget() {
   const archive = useQuery({
     queryKey: ['team-quiz', tenantId, userId, 'archive', berlinDay(new Date()).slice(0, 7)],
     enabled: allowed && !!tenantId && !!userId,
-    refetchInterval: allowed ? 60_000 : false,
+    staleTime: 5 * 60_000,
+    refetchInterval: allowed ? 5 * 60_000 : false,
+    refetchIntervalInBackground: false,
     queryFn: async () => {
       const result = await supabase.rpc('team_two_truths_archive', { p_tenant: tenantId! });
       if (result.error) throw result.error;

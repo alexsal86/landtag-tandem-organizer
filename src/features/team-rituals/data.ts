@@ -59,7 +59,9 @@ export function useTeamRituals() {
   const query = useQuery({
     queryKey: ['team-rituals', tenantId, user?.id, berlinWeek(new Date()), berlinDay(new Date())],
     enabled: !!tenantId && !!user,
-    refetchInterval: 60_000,
+    staleTime: 5 * 60_000,
+    refetchInterval: 5 * 60_000,
+    refetchIntervalInBackground: false,
     queryFn: async () => {
       const first = await supabase.rpc('team_ritual_snapshot', { p_tenant: tenantId! });
       if (first.error) throw first.error;
