@@ -77,9 +77,9 @@ export const DashboardHeader = () => {
         <DashboardDaySummary />
       </div>
       {weatherItems.length > 0 && (
-        <div className="flex flex-wrap items-end justify-end gap-6 self-end">
+        <div className="flex flex-wrap items-end justify-end gap-3 self-end">
         {weatherItems.map((item) => (
-          <div key={item.city} className="flex min-w-[9rem] items-center gap-2.5">
+          <div key={item.city} className="flex items-center gap-2.5">
             {(() => {
               const Icon = getWeatherLucideIcon(item.icon);
               return <Icon className="h-11 w-11 text-muted-foreground" />;

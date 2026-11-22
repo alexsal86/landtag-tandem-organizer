@@ -132,16 +132,16 @@ export function TodayBriefingPanel() {
 
   return (
     <Card>
-      <CardHeader className="pb-3">
-        <CardTitle className="flex items-center gap-2 text-base font-semibold">
-          <Sparkles className="h-4 w-4 text-primary" />
+      <CardHeader className="flex min-h-[52px] flex-row flex-wrap items-center justify-between gap-2 space-y-0 py-space-sm px-space-md">
+        <CardTitle className="inline-flex items-center gap-2 text-base font-medium leading-6">
+          <Sparkles className="h-5 w-5 shrink-0 text-muted-foreground" aria-hidden="true" />
           Briefing für heute
           {unreadCount > 0 && (
             <Badge variant="default" className="ml-1">{unreadCount} neu</Badge>
           )}
         </CardTitle>
       </CardHeader>
-      <CardContent className="space-y-3">
+      <CardContent className="space-y-3 px-space-md pb-space-md pt-0">
         {apptBriefings.length > 0 && (
           <div className="space-y-2">
             <p className="section-label">Termin-Briefings heute</p>

@@ -87,7 +87,7 @@ function DashboardWidgetContainer({
 
   return (
     <Card className={cn('shadow-sm border-border/60 animate-fade-in', className)}>
-      <CardHeader className="flex flex-row flex-wrap items-center justify-between gap-2 space-y-0 py-space-sm px-space-md">
+      <CardHeader className="flex min-h-[52px] flex-row flex-wrap items-center justify-between gap-2 space-y-0 py-space-sm px-space-md">
         <CardTitle className="inline-flex items-center gap-2 text-base font-medium leading-6">
           {Icon && <Icon className={cn("h-5 w-5 shrink-0 text-muted-foreground", iconClassName)} aria-hidden="true" />}
           {title}
@@ -139,7 +139,7 @@ function UrgentRequestsWidget() {
   if (!data.some((r) => isUrgent(r, nextJf))) return null;
   return (
     <DashboardWidgetContainer
-      icon={CalendarClock} iconClassName="text-destructive" title="Eilige Terminanfragen"
+      icon={CalendarClock} title="Eilige Terminanfragen"
       errorMessage="Anfragen konnten nicht geladen werden."
     >
       <p className="mb-1 text-xs text-muted-foreground">Vor dem nächsten Jour fixe zu entscheiden.</p>

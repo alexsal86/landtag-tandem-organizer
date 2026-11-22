@@ -92,13 +92,11 @@ export function BriefingComposerCard() {
   if (!expanded) {
     return (
       <Card>
-        <CardContent className="flex items-center justify-between gap-4 py-4">
-          <div className="flex items-center gap-3">
-            <div className="rounded-md bg-primary/10 p-2 text-primary">
-              <Sparkles className="h-4 w-4" />
-            </div>
+        <CardContent className="flex flex-wrap items-center justify-between gap-4 px-space-md py-space-sm">
+          <div className="flex items-center gap-2">
+            <Sparkles className="h-5 w-5 shrink-0 self-start text-muted-foreground" aria-hidden="true" />
             <div>
-              <p className="text-sm font-medium">Tagesbriefing schreiben</p>
+              <p className="text-base font-medium leading-6">Tagesbriefing schreiben</p>
               <p className="text-xs text-muted-foreground">
                 Kurzer Überblick fürs Abgeordnetenbüro – mindestens einen Tag im Voraus.
               </p>
@@ -114,13 +112,13 @@ export function BriefingComposerCard() {
 
   return (
     <Card>
-      <CardHeader className="pb-3">
-        <CardTitle className="flex items-center gap-2 text-base font-semibold">
-          <Sparkles className="h-4 w-4 text-primary" />
+      <CardHeader className="flex min-h-[52px] flex-row flex-wrap items-center justify-between gap-2 space-y-0 py-space-sm px-space-md">
+        <CardTitle className="inline-flex items-center gap-2 text-base font-medium leading-6">
+          <Sparkles className="h-5 w-5 shrink-0 text-muted-foreground" aria-hidden="true" />
           Tagesbriefing
         </CardTitle>
       </CardHeader>
-      <CardContent className="space-y-4">
+      <CardContent className="space-y-4 px-space-md pb-space-md pt-0">
         <div className="grid grid-cols-1 gap-4 md:grid-cols-[200px_1fr]">
           <div className="space-y-1.5">
             <Label className="text-xs">Gültig für</Label>

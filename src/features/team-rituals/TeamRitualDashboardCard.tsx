@@ -28,9 +28,9 @@ export function TeamRitualDashboardCard() {
   );
   return (
     <Card>
-      <CardHeader className="flex flex-row flex-wrap items-center justify-between gap-2 space-y-0 pb-2">
-        <CardTitle className="flex items-center gap-2 text-base">
-          <Users className="h-5 w-5" />
+      <CardHeader className="flex min-h-[52px] flex-row flex-wrap items-center justify-between gap-2 space-y-0 py-space-sm px-space-md">
+        <CardTitle className="inline-flex items-center gap-2 text-base font-medium leading-6">
+          <Users className="h-5 w-5 shrink-0 text-muted-foreground" aria-hidden="true" />
           Team-Rituale
         </CardTitle>
         <Link to="/employee?tab=rituals" aria-label="Team-Rituale öffnen"
@@ -42,7 +42,7 @@ export function TeamRitualDashboardCard() {
           <ArrowRight className="h-3.5 w-3.5 shrink-0" aria-hidden="true" />
         </Link>
       </CardHeader>
-      <CardContent className="space-y-3">
+      <CardContent className="space-y-3 px-space-md pb-space-md pt-0">
         {state === "loading" ? (
           <p className="text-sm">Team-Rituale werden geladen …</p>
         ) : state === "unavailable" ? (
