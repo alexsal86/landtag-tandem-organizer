@@ -1,4 +1,4 @@
-import { isOfficeReminderDue, isOlderOfficeFeedback, needsOfficeFeedback, officeReminderTime, readOfficeSnooze, showsOfficeTaskHint } from "@/features/appointments/briefing/officeFeedback";
+import { isOfficeReminderDue, isOlderOfficeFeedback, needsOfficeFeedback, officeReminderLabel, officeReminderTime, readOfficeSnooze, showsOfficeTaskHint } from "@/features/appointments/briefing/officeFeedback";
 import { appointmentSummary, hasAppointmentEnded, nextAppointmentId, pendingSummary } from "@/utils/dashboard/daySummary";
 import { canCompleteBriefing, canGoLive, followUpTaskFromLive, mergeLegacy, saveCompact } from "@/features/appointments/briefing/briefingModel";
 import { supabase } from "@/integrations/supabase/client";
@@ -78,6 +78,8 @@ export const appointmentBriefingLifecycleScenario: TestScenario = {
           !isOfficeReminderDue("2026-11-21T12:00:00.000Z", now),
           !isOfficeReminderDue({ until: "", count: 2 }, now),
           !isOfficeReminderDue(undefined, now),
+          officeReminderLabel("2026-11-21T17:00:00.000Z", now) === "Erinnerung um 18 Uhr (in 6 Stunden)",
+          officeReminderLabel("2026-11-22T07:00:00.000Z", now) === "Erinnerung morgen um 8 Uhr (in 20 Stunden)",
           needsOfficeFeedback(null),
           needsOfficeFeedback({ feedback_status: "pending", notes: null }),
           !needsOfficeFeedback({ feedback_status: "skipped", notes: null }),

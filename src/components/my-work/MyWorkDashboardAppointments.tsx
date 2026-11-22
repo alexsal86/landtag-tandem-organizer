@@ -361,20 +361,6 @@ export const DashboardAppointments = ({ data }: Props) => {
                 isNext ? "text-lg font-semibold leading-7" : "text-base font-medium leading-6",
                 ended && "line-through",
               )}>{apt.title}</p>
-              {ended && <span className="rounded-full bg-[#eaf5df] px-2 py-0.5 text-xs text-[#55ad21]">Erledigt</span>}
-              {isNext && <span className="rounded-full bg-[#eaf5df] px-2 py-0.5 text-xs text-[#55ad21]">Als Nächstes</span>}
-              {!ended && badgeLabel && <span className="relative z-10 inline-flex">
-                {canChooseBriefing ? (
-                  <button type="button" className={cn("pointer-events-auto inline-flex items-center gap-1.5 rounded-md px-2 py-0.5 text-xs hover:underline focus-visible:outline focus-visible:outline-2", badgeClass)}
-                    onClick={() => setBriefingDecision(apt)} aria-label={`${badgeLabel}: ${apt.title} – Briefing anfordern oder ablehnen`}>
-                    <BadgeIcon className="h-3 w-3" aria-hidden="true" />{badgeLabel}
-                  </button>
-                ) : (
-                  <span className={cn("inline-flex items-center gap-1.5 rounded-md px-2 py-0.5 text-xs", badgeClass)}>
-                    <BadgeIcon className="h-3 w-3" aria-hidden="true" />{badgeLabel}
-                  </span>
-                )}
-              </span>}
             </div>
             {((apt.location && !meetingUrl) || participantList.length > 0) && (
               <div className="mt-0.5 flex flex-wrap items-center gap-x-4 gap-y-1 text-xs text-muted-foreground">
@@ -396,59 +382,79 @@ export const DashboardAppointments = ({ data }: Props) => {
               </div>
             )}
           </div>
-          <div className="relative z-10 col-start-2 @min-[32rem]:col-start-3 @min-[32rem]:row-start-1 @min-[32rem]:self-start flex flex-wrap items-center gap-2">
-            {meetingUrl && (
-              <a
-                href={meetingUrl}
-                target="_blank"
-                rel="noopener noreferrer"
-                className="inline-flex items-center gap-1 rounded px-2 py-2 text-xs text-primary hover:underline focus-visible:outline-primary"
-              >
-                <Video className="h-3 w-3" aria-hidden="true" />
-                Meeting beitreten
-              </a>
-            )}
-            {canOpenBriefing && (
-              <>
-                <Button
-                  type="button"
-                  variant="ghost"
-                  size="sm"
-                  className="h-8 rounded-lg border border-border bg-transparent px-3 text-sm font-normal hover:bg-transparent hover:border-foreground/30"
-                  aria-expanded={isBriefingExpanded}
-                  aria-controls={`dashboard-briefing-${apt.id}`}
-                  onClick={() => setExpandedBriefingId((prev) => (prev === apt.id ? null : apt.id))}
+          <div className="relative z-10 col-start-2 flex w-full flex-col items-end gap-2 @min-[32rem]:col-start-3 @min-[32rem]:row-start-1 @min-[32rem]:w-auto @min-[32rem]:max-w-[19rem] @min-[32rem]:self-start">
+            <div className="flex w-full items-center justify-end gap-2">
+              {!ended && badgeLabel && <span className="relative z-10 inline-flex">
+                {canChooseBriefing ? (
+                  <button type="button" className={cn("pointer-events-auto inline-flex items-center gap-1.5 rounded-md px-2 py-0.5 text-xs hover:underline focus-visible:outline focus-visible:outline-2", badgeClass)}
+                    onClick={() => setBriefingDecision(apt)} aria-label={`${badgeLabel}: ${apt.title} – Briefing anfordern oder ablehnen`}>
+                    <BadgeIcon className="h-3 w-3" aria-hidden="true" />{badgeLabel}
+                  </button>
+                ) : (
+                  <span className={cn("inline-flex items-center gap-1.5 rounded-md px-2 py-0.5 text-xs", badgeClass)}>
+                    <BadgeIcon className="h-3 w-3" aria-hidden="true" />{badgeLabel}
+                  </span>
+                )}
+              </span>}
+              {(ended || isNext) && <span className="inline-flex shrink-0">
+                {ended && <span className="rounded-full bg-[#eaf5df] px-2 py-0.5 text-xs text-[#55ad21]">Erledigt</span>}
+                {isNext && <span className="rounded-full bg-[#eaf5df] px-2 py-0.5 text-xs text-[#55ad21]">Als Nächstes</span>}
+              </span>}
+            </div>
+            {(meetingUrl || canOpenBriefing) && <div className="flex flex-wrap items-center justify-end gap-2">
+              {meetingUrl && (
+                <a
+                  href={meetingUrl}
+                  target="_blank"
+                  rel="noopener noreferrer"
+                  className="inline-flex items-center gap-1 rounded px-2 py-2 text-xs text-primary hover:underline focus-visible:outline-primary"
                 >
-                  {isBriefingExpanded ? "Briefing schließen" : "Briefing öffnen"}
-                </Button>
-                <TooltipProvider delayDuration={200}>
-                  <Tooltip>
-                    <TooltipTrigger asChild>
-                      <Button
-                        type="button"
-                        variant="ghost"
-                        size="icon"
-                        className="h-8 w-8 rounded-lg border border-border bg-transparent hover:bg-transparent hover:border-foreground/30"
-                        aria-label="Briefing als PDF herunterladen"
-                        onClick={() => {
-                          if (prep)
-                            generateBriefingPdf({
-                              preparation: prep,
-                              appointmentTitle: apt.title,
-                              appointmentStartTime: apt.start_time,
-                              appointmentEndTime: apt.end_time || apt.start_time,
-                              appointmentLocation: apt.location || undefined,
-                            }).catch(console.error);
-                        }}
-                      >
-                        <Download className="h-3 w-3" aria-hidden="true" />
-                      </Button>
-                    </TooltipTrigger>
-                    <TooltipContent>Briefing als PDF herunterladen</TooltipContent>
-                  </Tooltip>
-                </TooltipProvider>
-              </>
-            )}
+                  <Video className="h-3 w-3" aria-hidden="true" />
+                  Meeting beitreten
+                </a>
+              )}
+              {canOpenBriefing && (
+                <>
+                  <Button
+                    type="button"
+                    variant="ghost"
+                    size="sm"
+                    className="h-8 rounded-lg border border-border bg-transparent px-3 text-sm font-normal hover:bg-transparent hover:border-foreground/30"
+                    aria-expanded={isBriefingExpanded}
+                    aria-controls={`dashboard-briefing-${apt.id}`}
+                    onClick={() => setExpandedBriefingId((prev) => (prev === apt.id ? null : apt.id))}
+                  >
+                    {isBriefingExpanded ? "Briefing schließen" : "Briefing öffnen"}
+                  </Button>
+                  <TooltipProvider delayDuration={200}>
+                    <Tooltip>
+                      <TooltipTrigger asChild>
+                        <Button
+                          type="button"
+                          variant="ghost"
+                          size="icon"
+                          className="h-8 w-8 rounded-lg border border-border bg-transparent hover:bg-transparent hover:border-foreground/30"
+                          aria-label="Briefing als PDF herunterladen"
+                          onClick={() => {
+                            if (prep)
+                              generateBriefingPdf({
+                                preparation: prep,
+                                appointmentTitle: apt.title,
+                                appointmentStartTime: apt.start_time,
+                                appointmentEndTime: apt.end_time || apt.start_time,
+                                appointmentLocation: apt.location || undefined,
+                              }).catch(console.error);
+                          }}
+                        >
+                          <Download className="h-3 w-3" aria-hidden="true" />
+                        </Button>
+                      </TooltipTrigger>
+                      <TooltipContent>Briefing als PDF herunterladen</TooltipContent>
+                    </Tooltip>
+                  </TooltipProvider>
+                </>
+              )}
+            </div>}
           </div>
         </div>
         {isBriefingExpanded && canOpenBriefing && prep && (

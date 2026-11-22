@@ -59,3 +59,21 @@ export function showsOfficeTaskHint(value: string | OfficeSnooze | undefined, no
   const reminder = readOfficeSnooze(value);
   return (reminder?.count ?? 0) >= 2 && Date.parse(reminder?.until ?? "") > now.getTime();
 }
+
+export function officeReminderLabel(until: string, now = new Date()): string {
+  const date = new Date(until);
+  const current = berlinParts(now);
+  const target = berlinParts(date);
+  const today = Date.UTC(current.year, current.month - 1, current.day);
+  const targetDay = Date.UTC(target.year, target.month - 1, target.day);
+  const dayLabel = targetDay === today ? "" : targetDay === today + 86400_000 ? "morgen "
+    : "am " + new Intl.DateTimeFormat("de-DE", { timeZone: "Europe/Berlin", day: "numeric", month: "numeric" }).format(date) + " ";
+  const time = new Intl.DateTimeFormat("de-DE", {
+    timeZone: "Europe/Berlin", hour: "numeric", minute: "2-digit", hourCycle: "h23",
+  }).format(date).replace(/:00$/, "");
+  const minutes = Math.max(1, Math.ceil((date.getTime() - now.getTime()) / 60_000));
+  const relative = new Intl.RelativeTimeFormat("de-DE").format(
+    minutes < 60 ? minutes : Math.ceil(minutes / 60), minutes < 60 ? "minute" : "hour",
+  );
+  return `Erinnerung ${dayLabel}um ${time} Uhr (${relative})`;
+}

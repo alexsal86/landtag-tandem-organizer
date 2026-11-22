@@ -8,7 +8,7 @@ import { useTenant } from "@/hooks/useTenant";
 import { supabase } from "@/integrations/supabase/client";
 import { WebSpeechToTextAdapter, type SpeechToTextState } from "@/lib/speechToTextAdapter";
 import { notify } from "@/lib/notify";
-import { isOfficeReminderDue, isOlderOfficeFeedback, needsOfficeFeedback, officeReminderTime, readOfficeSnooze, showsOfficeTaskHint, type OfficeSnooze, type ReminderChoice } from "./officeFeedback";
+import { isOfficeReminderDue, isOlderOfficeFeedback, needsOfficeFeedback, officeReminderLabel, officeReminderTime, readOfficeSnooze, showsOfficeTaskHint, type OfficeSnooze, type ReminderChoice } from "./officeFeedback";
 
 const green = "bg-[#55ad21] text-white hover:bg-[#4c9c1e]";
 const eventKey = (event: AppointmentWithFeedback) => event.event_type + ":" + event.id;
@@ -276,17 +276,12 @@ function OfficeFeedbackForm() {
         <div className={current ? "mt-4 border-t" : ""}>
           {deferred.map(event => {
             const reminder = readOfficeSnooze(snoozes[eventKey(event)])!;
-            const until = new Date(reminder.until);
-            const minutes = Math.max(1, Math.ceil((until.getTime() - now.getTime()) / 60_000));
-            const relative = new Intl.RelativeTimeFormat("de-DE").format(
-              minutes < 60 ? minutes : Math.ceil(minutes / 60), minutes < 60 ? "minute" : "hour",
-            );
             return (
               <div key={eventKey(event)} className="flex flex-wrap items-center gap-3 py-3 text-sm">
                 <div className="min-w-0 flex-1">
                   <p className="font-medium">{event.title}</p>
                   <p className="mt-0.5 text-xs leading-5 text-muted-foreground">
-                    Erinnerung {relative}
+                    {officeReminderLabel(reminder.until, now)}
                   </p>
                 </div>
                 <span className="rounded-full bg-[#fff4df] px-2 py-1 text-xs text-[#b96d00]">{reminder.count > 1 ? `${reminder.count}× verschoben` : "Verschoben"}</span>
