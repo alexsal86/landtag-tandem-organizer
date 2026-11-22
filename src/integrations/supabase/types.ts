@@ -14817,6 +14817,7 @@ export type Database = {
         Row: {
           archived_at: string | null
           archived_by: string | null
+          case_file_id: string | null
           case_item_id: string | null
           created_at: string
           created_by: string
@@ -14840,6 +14841,7 @@ export type Database = {
         Insert: {
           archived_at?: string | null
           archived_by?: string | null
+          case_file_id?: string | null
           case_item_id?: string | null
           created_at?: string
           created_by: string
@@ -14863,6 +14865,7 @@ export type Database = {
         Update: {
           archived_at?: string | null
           archived_by?: string | null
+          case_file_id?: string | null
           case_item_id?: string | null
           created_at?: string
           created_by?: string
@@ -14884,6 +14887,13 @@ export type Database = {
           visible_to_all?: boolean
         }
         Relationships: [
+          {
+            foreignKeyName: "task_decisions_case_file_id_fkey"
+            columns: ["case_file_id"]
+            isOneToOne: false
+            referencedRelation: "case_files"
+            referencedColumns: ["id"]
+          },
           {
             foreignKeyName: "task_decisions_case_item_id_fkey"
             columns: ["case_item_id"]
@@ -17686,6 +17696,15 @@ export type Database = {
           _poll_id: string
         }
         Returns: string
+      }
+      create_work_decision: {
+        Args: {
+          p_data: Json
+          p_id: string
+          p_note_id?: string
+          p_participants: string[]
+        }
+        Returns: Json
       }
       decide_appointment_request: {
         Args: {
