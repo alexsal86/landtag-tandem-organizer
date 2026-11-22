@@ -54,3 +54,8 @@ export function isOfficeReminderDue(value: string | OfficeSnooze | undefined, no
   const timestamp = Date.parse(reminder?.until ?? "");
   return Number.isFinite(timestamp) && timestamp <= now.getTime();
 }
+
+export function showsOfficeTaskHint(value: string | OfficeSnooze | undefined, now = new Date()): boolean {
+  const reminder = readOfficeSnooze(value);
+  return (reminder?.count ?? 0) >= 2 && Date.parse(reminder?.until ?? "") > now.getTime();
+}

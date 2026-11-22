@@ -8,7 +8,7 @@ import { useTenant } from "@/hooks/useTenant";
 import { supabase } from "@/integrations/supabase/client";
 import { WebSpeechToTextAdapter, type SpeechToTextState } from "@/lib/speechToTextAdapter";
 import { notify } from "@/lib/notify";
-import { isOfficeReminderDue, isOlderOfficeFeedback, needsOfficeFeedback, officeReminderTime, readOfficeSnooze, type OfficeSnooze, type ReminderChoice } from "./officeFeedback";
+import { isOfficeReminderDue, isOlderOfficeFeedback, needsOfficeFeedback, officeReminderTime, readOfficeSnooze, showsOfficeTaskHint, type OfficeSnooze, type ReminderChoice } from "./officeFeedback";
 
 const green = "bg-[#55ad21] text-white hover:bg-[#4c9c1e]";
 const eventKey = (event: AppointmentWithFeedback) => event.event_type + ":" + event.id;
@@ -297,7 +297,7 @@ function OfficeFeedbackForm() {
           })}
         </div>
       )}
-      {!feedback.isLoading && !feedback.isError && pending.some(event => (readOfficeSnooze(snoozes[eventKey(event)])?.count ?? 0) >= 2) && (
+      {!feedback.isLoading && !feedback.isError && deferred.some(event => showsOfficeTaskHint(snoozes[eventKey(event)], now)) && (
         <p className="mt-3 text-xs text-muted-foreground">Nach 2 Tagen wird daraus eine Aufgabe für das Büro.</p>
       )}
     </section>
