@@ -17,7 +17,7 @@ import { getColorClasses } from "@/lib/decisionTemplates";
 import { notify } from "@/lib/notify";
 
 function formatDeadline(deadline: string | null): { label: string; isOverdue: boolean } {
-  if (!deadline) return { label: 'Ohne Frist', isOverdue: false };
+  if (!deadline) return { label: '', isOverdue: false };
   const d = new Date(deadline);
   const diff = differenceInCalendarDays(d, new Date());
   if (diff < 0) return { label: `Antwort überfällig seit ${format(d, 'dd.MM.', { locale: de })}`, isOverdue: true };
@@ -37,7 +37,8 @@ const PROMPT_COLOR_CLASS: Record<string, string> = {
 
 interface DecisionRowProps {
   decision: MyWorkDecision;
-  isFirst: boolean;
+  expanded: boolean;
+  onToggle: () => void;
   nudge?: DeputyDashboardDecision;
   onDismissConfirmed: (id: string) => void;
   onOpen: (id: string) => void;
@@ -47,9 +48,7 @@ interface DecisionRowProps {
   forcePrompt?: { color: string } | null;
 }
 
-function DecisionRow({ decision, isFirst, nudge, onDismissConfirmed, onOpen, onPromptOpen, onPromptClose, onUndoConfirmed, forcePrompt }: DecisionRowProps) {
-  const [expandedOverride, setExpandedOverride] = useState<boolean | null>(null);
-  const expanded = expandedOverride ?? isFirst;
+function DecisionRow({ decision, expanded, onToggle, nudge, onDismissConfirmed, onOpen, onPromptOpen, onPromptClose, onUndoConfirmed, forcePrompt }: DecisionRowProps) {
   const recommendation = decision.response_options?.find(option => option.recommended);
   const recommendationColors = recommendation ? getColorClasses(recommendation.color) : null;
   const { label, isOverdue } = formatDeadline(decision.response_deadline);
@@ -138,17 +137,17 @@ function DecisionRow({ decision, isFirst, nudge, onDismissConfirmed, onOpen, onP
         aria-expanded={expanded}
         aria-controls={`decision-details-${decision.id}`}
         disabled={exiting}
-        onClick={() => setExpandedOverride(!expanded)}
+        onClick={onToggle}
       >
         <span className="min-w-0">
           <span className="block break-words text-base font-medium leading-6">{decision.title}</span>
-          <span className={cn("mt-1 block text-sm", isOverdue ? "text-destructive" : "text-muted-foreground")}>{label}</span>
+          {label && <span className={cn("mt-1 block text-sm", isOverdue ? "text-destructive" : "text-muted-foreground")}>{label}</span>}
         </span>
-        <ChevronRight className={cn("mt-1 h-4 w-4 shrink-0 transition-transform duration-200 motion-reduce:transition-none", expanded && "rotate-90")} aria-hidden="true" />
+        <ChevronRight className={cn("mt-1 h-4 w-4 shrink-0 transition-transform duration-500 motion-reduce:transition-none", expanded && "rotate-90")} aria-hidden="true" />
       </button>
       <div
         id={`decision-details-${decision.id}`}
-        className={cn("grid transition-[grid-template-rows,opacity] duration-200 ease-in-out motion-reduce:transition-none", expanded ? "grid-rows-[1fr] opacity-100" : "grid-rows-[0fr] opacity-0")}
+        className={cn("grid transition-[grid-template-rows,opacity] duration-500 ease-[cubic-bezier(0.4,0,0.2,1)] motion-reduce:transition-none", expanded ? "grid-rows-[1fr] opacity-100" : "grid-rows-[0fr] opacity-0")}
         inert={!expanded}
       >
         <div className="min-h-0 overflow-hidden">
@@ -221,6 +220,7 @@ export function DashboardDecisionsWidget() {
   const { isDeputyView } = useWorkspaceView();
   const navigate = useNavigate();
   const { decisions, setDecisions, loading, error, loadDecisions } = useMyWorkDecisionsData(user?.id);
+  const [expandedId, setExpandedId] = useState<string | null | undefined>(undefined);
   const [pendingIds, setPendingIds] = useState<Set<string>>(new Set());
 
   const handlePromptOpen = (id: string) =>
@@ -261,6 +261,9 @@ export function DashboardDecisionsWidget() {
       .slice(0, 3);
   }, [eligibleDecisions, nudges.data]);
 
+  const currentExpandedId = expandedId === null ? null
+    : items.some(item => item.id === expandedId) ? expandedId : items[0]?.id;
+
   const goToDecision = (id: string) => {
     navigate(`/mywork?tab=decisions&highlight=${id}`);
   };
@@ -283,11 +286,12 @@ export function DashboardDecisionsWidget() {
   return (
     <div className="divide-y divide-border">
       {isDeputyView && nudges.isError && <p role="status" className="pb-3 text-xs text-muted-foreground">Anstups-Hinweise konnten nicht geladen werden.</p>}
-      {items.map((d, index) => (
+      {items.map((d) => (
         <DecisionRow
           key={d.id}
           decision={d}
-          isFirst={index === 0}
+          expanded={currentExpandedId === d.id}
+          onToggle={() => setExpandedId(currentExpandedId === d.id ? null : d.id)}
           nudge={nudges.data?.find(nudge => nudge.decision_id === d.id)}
           onDismissConfirmed={handleDismissConfirmed}
           onOpen={goToDecision}
