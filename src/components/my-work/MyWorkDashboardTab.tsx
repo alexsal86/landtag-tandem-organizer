@@ -13,7 +13,8 @@ import { useDashboardDeadlines } from '@/hooks/useDashboardDeadlines';
 import { NewsWidget } from '@/components/widgets/NewsWidget';
 import { ErrorBoundary } from '@/components/shared/ErrorBoundary';
 import type { LucideIcon } from 'lucide-react';
-import { ArrowRight, CalendarClock, CalendarDays, ClipboardList, Newspaper, Vote, Users } from 'lucide-react';
+import { ArrowRight, CalendarClock, CalendarDays, Check, ClipboardList, Newspaper, Vote, Users } from 'lucide-react';
+import { hasAppointmentEnded } from '@/utils/dashboard/daySummary';
 import { AppointmentRequestList } from '@/features/appointment-requests/AppointmentRequestList';
 import { useNextJourFixeDate, useOpenAppointmentRequests } from '@/features/appointment-requests/useAppointmentRequests';
 import { isUrgent } from '@/features/appointment-requests/logic';
@@ -117,8 +118,22 @@ function DeadlinesWidget() {
   );
 }
 
-function AppointmentsWidget({ title }: { title: string }) {
+function AppointmentsWidget({ isDeputyView }: { isDeputyView: boolean }) {
   const dashboardData = useDashboardAppointmentsData(true);
+  const [now, setNow] = useState(() => new Date());
+  useEffect(() => {
+    const timer = window.setInterval(() => setNow(new Date()), 60_000);
+    return () => window.clearInterval(timer);
+  }, []);
+  const allDone = !dashboardData.isLoading && !dashboardData.tenantLoading && !dashboardData.isError
+    && dashboardData.hasTenant
+    && (dashboardData.isShowingTomorrow || dashboardData.appointments.every(appointment => hasAppointmentEnded(appointment, now)));
+  const title = allDone ? (
+    <span className="inline-flex flex-wrap items-center gap-1.5">
+      {isDeputyView ? 'Dein Tag · alles erledigt' : 'Resümee heute · alles erledigt'}
+      <Check className="h-4 w-4 shrink-0" aria-hidden="true" />
+    </span>
+  ) : isDeputyView ? 'Dein Tag' : 'Nächste Termine';
 
   return (
     <DashboardWidgetContainer
@@ -178,7 +193,7 @@ export function MyWorkDashboardTab() {
       <div className="grid grid-cols-1 lg:grid-cols-[minmax(0,40fr)_minmax(0,35fr)_minmax(0,25fr)] gap-space-md items-start">
         <div className="flex flex-col gap-space-md min-w-0">
           <UrgentRequestsWidget />
-          <AppointmentsWidget title={isDeputyView ? "Dein Tag" : "Nächste Termine"} />
+          <AppointmentsWidget isDeputyView={isDeputyView} />
           {isDeputyView && <OfficeFeedbackCard />}
         </div>
         <div className="flex flex-col gap-space-md min-w-0">
