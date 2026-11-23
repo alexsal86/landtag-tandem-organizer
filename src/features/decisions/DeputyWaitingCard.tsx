@@ -16,12 +16,12 @@ export function DeputyWaitingCard() {
   const { isEmployee } = useResolvedUserRole();
   return (
     <Card className="dashboard-motion-card animate-rise rounded-dashboard-card shadow-dashboard-card hover:shadow-dashboard-card-hover" style={{ animationDelay: "120ms" }}>
-      <CardHeader className="flex min-h-[52px] flex-row flex-wrap items-center justify-between gap-2 space-y-0 px-space-md py-space-sm">
+      <CardHeader className="flex min-h-[52px] flex-row flex-wrap items-center justify-between gap-2 space-y-0 px-5 pt-5 pb-3">
         <h3 className="inline-flex items-center gap-2 text-card-title">
           <UserRound className="h-4 w-4 shrink-0 text-muted-foreground" aria-hidden="true" />Beim Abgeordneten
         </h3>
       </CardHeader>
-      <CardContent className="px-space-md pb-space-md pt-0">
+      <CardContent className="px-5 pb-5 pt-0">
         {query.isPending ? <p role="status" className="text-sm text-muted-foreground">Entscheidungen werden geladen…</p>
           : query.isError ? <div className="space-y-2">
             <p role="alert" className="text-sm text-destructive">Die Entscheidungen beim Abgeordneten konnten nicht geladen werden.</p>

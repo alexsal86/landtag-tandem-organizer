@@ -91,14 +91,14 @@ function DashboardWidgetContainer({
 
   return (
     <Card className={cn('dashboard-motion-card animate-rise rounded-dashboard-card shadow-dashboard-card hover:shadow-dashboard-card-hover border-border/60', className)} style={{ animationDelay: `${animationDelay}ms` }}>
-      <CardHeader className="flex min-h-[52px] flex-row flex-wrap items-center justify-between gap-2 space-y-0 py-space-sm px-space-md">
+      <CardHeader className="flex min-h-[52px] flex-row flex-wrap items-center justify-between gap-2 space-y-0 pt-5 pb-3 px-5">
         <h3 className="inline-flex items-center gap-2 text-card-title">
           {Icon && <Icon className={cn("h-4 w-4 shrink-0 text-muted-foreground", iconClassName)} aria-hidden="true" />}
           {title}
         </h3>
         {headerAction}
       </CardHeader>
-      <CardContent className="px-space-md pb-space-md pt-0">{content}</CardContent>
+      <CardContent className="px-5 pb-5 pt-0">{content}</CardContent>
     </Card>
   );
 }
@@ -183,20 +183,20 @@ export function MyWorkDashboardTab() {
   if (loading) return <LoadingState variant="card" rows={3} />;
 
   return (
-    <div key={isDeputyView ? "deputy" : "employee"} className="dashboard-motion mx-auto w-full max-w-6xl space-y-6">
+    <div key={isDeputyView ? "deputy" : "employee"} className="dashboard-motion mx-auto w-full max-w-6xl space-y-4">
       <div className="animate-rise"><DashboardHeader showTeamRituals={isLargeScreen} /></div>
       {isDeputyView && <AppointmentChangeBanner />}
       {isEmployeeView && <AppointmentChangeSender />}
       {isEmployeeView && <PendingBriefingNotice />}
       {isDeputyView && <TodayBriefingPanel />}
-      <div className="grid grid-cols-1 gap-6 items-start lg:grid-cols-2">
-        <div className="flex min-w-0 flex-col gap-6">
+      <div className="grid grid-cols-1 gap-4 items-start lg:grid-cols-2">
+        <div className="flex min-w-0 flex-col gap-4">
           <UrgentRequestsWidget />
           <AppointmentsWidget isDeputyView={isDeputyView} />
           {!isLargeScreen && <div className="w-full max-w-xs"><TeamRitualDashboardCard /></div>}
           {isDeputyView && <OfficeFeedbackCard />}
         </div>
-        <div className="flex min-w-0 flex-col gap-6">
+        <div className="flex min-w-0 flex-col gap-4">
           {isEmployeeView && <BriefingComposerCard />}
           {!isDeputyView && <DeadlinesWidget />}
           <DashboardWidgetContainer

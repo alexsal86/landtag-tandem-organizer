@@ -32,7 +32,7 @@ function BriefingItem({ briefing }: { briefing: DailyBriefingWithAuthor }) {
   return (
     <div
       className={cn(
-        "rounded-lg border p-4 transition-opacity",
+        "rounded-lg border p-5 transition-opacity",
         briefing.is_read && "opacity-60 bg-muted/30",
       )}
     >
@@ -130,7 +130,7 @@ export function TodayBriefingPanel() {
 
   return (
     <Card className="dashboard-motion-card animate-rise">
-      <CardHeader className="flex min-h-[52px] flex-row flex-wrap items-center justify-between gap-2 space-y-0 py-space-sm px-space-md">
+      <CardHeader className="flex min-h-[52px] flex-row flex-wrap items-center justify-between gap-2 space-y-0 pt-5 pb-3 px-5">
         <CardTitle className="inline-flex items-center gap-2 text-base font-medium leading-6">
           <Sparkles className="h-4 w-4 shrink-0 text-muted-foreground" aria-hidden="true" />
           Briefing für heute
@@ -139,7 +139,7 @@ export function TodayBriefingPanel() {
           )}
         </CardTitle>
       </CardHeader>
-      <CardContent className="space-y-3 px-space-md pb-space-md pt-0">
+      <CardContent className="space-y-3 px-5 pb-5 pt-0">
         {apptBriefings.length > 0 && (
           <div className="space-y-2">
             <p className="section-label">Termin-Briefings heute</p>

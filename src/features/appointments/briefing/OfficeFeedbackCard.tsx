@@ -190,13 +190,13 @@ function OfficeFeedbackForm() {
 
   return (
     <section aria-label="Rückmeldung ans Büro" style={{ animationDelay: "60ms" }} className="dashboard-motion-card animate-rise rounded-dashboard-card shadow-dashboard-card hover:shadow-dashboard-card-hover border border-border/70 bg-card">
-      <header className="flex min-h-[52px] flex-row flex-wrap items-center justify-between gap-2 space-y-0 py-space-sm px-space-md">
+      <header className="flex min-h-[52px] flex-row flex-wrap items-center justify-between gap-2 space-y-0 pt-5 pb-3 px-5">
         <h2 className="inline-flex items-center gap-2 text-card-title"><Mic className="h-4 w-4 shrink-0 text-muted-foreground" aria-hidden="true" />Rückmeldung ans Büro</h2>
         <span className="shrink-0 text-meta font-normal text-muted-foreground">
           {feedback.isLoading ? "Wird geladen…" : pending.length ? `${pending.length} ${pending.length === 1 ? "Termin" : "Termine"}${pending.filter(isDeferred).length ? ` · ${pending.filter(isDeferred).length} verschoben` : ""}` : "Alles erledigt"}
         </span>
       </header>
-      <div className="px-space-md pb-space-md">
+      <div className="px-5 pb-5">
       {!feedback.isLoading && !feedback.isError && current && isOfficeReminderDue(snoozes[key], now) && (
         <div key={key} role="status" className="animate-fade-up mb-4 flex items-start gap-2 rounded-2xl bg-[#eaf5df] px-3 py-2 text-meta font-medium text-[#55ad21]">
           <AlarmClock className="mt-0.5 h-4 w-4 shrink-0" aria-hidden="true" />

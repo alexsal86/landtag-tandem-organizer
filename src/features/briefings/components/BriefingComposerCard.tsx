@@ -38,12 +38,12 @@ export function BriefingComposerCard() {
   const isCustomDate = date !== choices.tomorrow && date !== choices.dayAfter;
 
   return <Card className="dashboard-motion-card animate-rise">
-    <CardHeader className="flex min-h-[52px] flex-row items-center gap-2 space-y-0 py-space-sm px-space-md">
+    <CardHeader className="flex min-h-[52px] flex-row items-center gap-2 space-y-0 pt-5 pb-3 px-5">
       <CardTitle className="inline-flex items-center gap-2 text-base font-medium leading-6">
         <Sparkles className="h-4 w-4 shrink-0 text-muted-foreground" aria-hidden="true" />Tagesbriefing
       </CardTitle>
     </CardHeader>
-    <CardContent className="space-y-4 px-space-md pb-space-md pt-0">
+    <CardContent className="space-y-4 px-5 pb-5 pt-0">
       <div className="space-y-2">
         <Label className="text-xs">Gültig für</Label>
         <div className="flex flex-wrap gap-2" role="group" aria-label="Datum des Tagesbriefings">
