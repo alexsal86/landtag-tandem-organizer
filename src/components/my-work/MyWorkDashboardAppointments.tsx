@@ -538,15 +538,14 @@ export const DashboardAppointments = ({ data }: Props) => {
   const HintIcon = specialDayHint?.icon ? getLucideIcon(specialDayHint.icon) : null;
 
   const renderDayAppointments = (items: DashboardData["appointments"], today: boolean) => <>
-    <DashboardBirthdays allDayAppointments={items.filter(item => item.is_all_day)} includeBirthdays={today} />
     {items.some(item => !item.is_all_day) && renderTimedAppointments(items.filter(item => !item.is_all_day), today)}
   </>;
 
   return (
     <div className="@container space-y-4">
       <div>
+        <DashboardBirthdays allDayAppointments={isShowingTomorrow ? [] : appointments.filter(item => item.is_all_day)} />
         {(isShowingTomorrow || appointments.length === 0) ? <div className="space-y-2">
-          <DashboardBirthdays />
           <p className="text-sm text-muted-foreground">{appointments.length === 0 && tomorrowAppointments.length === 0
             ? "Heute und morgen stehen keine weiteren Termine an." : "Heute stehen keine weiteren Termine an."}</p>
           {data.nextAppointment && <p className="border-t border-border pt-3 text-sm font-semibold">{nextAppointmentLabel(data.nextAppointment)}</p>}
@@ -554,6 +553,7 @@ export const DashboardAppointments = ({ data }: Props) => {
           <DayDivider label="Heute" date={new Date()} first />
           {renderDayAppointments(appointments, true)}
           {tomorrowAppointments.length > 0 && <div className="mt-5 space-y-1.5">
+            <DashboardBirthdays allDayAppointments={tomorrowAppointments.filter(item => item.is_all_day)} includeBirthdays={false} />
             <DayDivider label="Morgen" date={addDays(new Date(), 1)} />
             {renderDayAppointments(tomorrowAppointments, false)}
           </div>}
