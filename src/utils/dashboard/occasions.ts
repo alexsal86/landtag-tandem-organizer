@@ -13,7 +13,7 @@ export function nextAppointmentLabel(event: AppointmentData): string {
   const time = event.is_all_day ? 'ganztägig' : new Intl.DateTimeFormat('de-DE', {
     timeZone: 'Europe/Berlin', hour: 'numeric', minute: '2-digit',
   }).format(date);
-  return `Nächster Termin: ${day} ${time} ${event.title}${event.location ? ` · ${event.location}` : ''}.`;
+  return `Nächster Termin: ${day}, ${time} · ${event.title}${event.location ? ` · ${event.location}` : ''}.`;
 }
 
 export function occursOnDay(event: AppointmentData, day: string): boolean {

@@ -550,10 +550,9 @@ export const DashboardAppointments = ({ data }: Props) => {
       <div>
         <DashboardBirthdays />
         {(isShowingTomorrow || appointments.length === 0) ? <div className="space-y-2">
-          <p className="text-sm font-medium">Heute keine Termine</p>
           <p className="text-sm text-muted-foreground">{appointments.length === 0 && tomorrowAppointments.length === 0
             ? "Heute und morgen stehen keine weiteren Termine an." : "Heute stehen keine weiteren Termine an."}</p>
-          {data.nextAppointment && <p className="text-sm">{nextAppointmentLabel(data.nextAppointment)}</p>}
+          {data.nextAppointment && <p className="border-t border-border pt-3 text-sm font-semibold">{nextAppointmentLabel(data.nextAppointment)}</p>}
         </div> : <>
           <DayDivider label="Heute" date={new Date()} first />
           {renderDayAppointments(appointments, true)}

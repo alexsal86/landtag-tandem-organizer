@@ -125,10 +125,12 @@ function AppointmentsWidget({ isDeputyView }: { isDeputyView: boolean }) {
     const timer = window.setInterval(() => setNow(new Date()), 60_000);
     return () => window.clearInterval(timer);
   }, []);
-  const allDone = !dashboardData.isLoading && !dashboardData.tenantLoading && !dashboardData.isError
+  const noAppointmentsToday = dashboardData.isShowingTomorrow || dashboardData.appointments.length === 0;
+  const allDone = !noAppointmentsToday && !dashboardData.isLoading && !dashboardData.tenantLoading && !dashboardData.isError
     && dashboardData.hasTenant
     && (dashboardData.isShowingTomorrow || dashboardData.appointments.every(appointment => hasAppointmentEnded(appointment, now)));
-  const title = allDone ? (
+  const title = noAppointmentsToday && !dashboardData.isLoading && !dashboardData.tenantLoading && !dashboardData.isError
+    ? 'Dein Tag · keine Termine' : allDone ? (
     <span className="inline-flex flex-wrap items-center gap-1.5">
       {isDeputyView ? 'Dein Tag · alles erledigt' : 'Resümee heute · alles erledigt'}
       <Check className="h-4 w-4 shrink-0" aria-hidden="true" />
