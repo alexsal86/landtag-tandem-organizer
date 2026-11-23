@@ -1,3 +1,4 @@
+import { briefingDateOptions } from "@/features/briefings/utils";
 import { supabase } from "@/integrations/supabase/client";
 import type { TestScenario } from "../types";
 import { SELFTEST_MARKER, SELFTEST_PREFIX } from "../runner";
@@ -28,6 +29,18 @@ export const dailyBriefingLifecycleScenario: TestScenario = {
     { label: "Dashboard öffnen (Briefing-Widget)", href: "/" },
   ],
   steps: [
+    {
+      id: "date-chips", label: "Morgen und übermorgen sind Berliner Kalendertage", kind: "logic",
+      run: async () => {
+        const friday = briefingDateOptions(new Date('2026-11-20T12:00:00Z'));
+        const midnight = briefingDateOptions(new Date('2026-12-31T23:30:00Z'));
+        const dst = briefingDateOptions(new Date('2026-03-28T12:00:00Z'));
+        const ok = friday.tomorrow === '2026-11-21' && friday.dayAfter === '2026-11-22'
+          && midnight.tomorrow === '2027-01-02' && midnight.dayAfter === '2027-01-03'
+          && dst.tomorrow === '2026-03-29' && dst.dayAfter === '2026-03-30';
+        return { ok, message: 'Datum-Chips berücksichtigen Wochenenden, Jahreswechsel und Sommerzeit.' };
+      },
+    },
     {
       id: "reject-today",
       label: "Vortag-Regel: Briefing für heute wird abgelehnt",

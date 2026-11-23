@@ -1,3 +1,4 @@
+import { RichTextDisplay } from "@/components/ui/RichTextDisplay";
 import { useState } from "react";
 import { format, formatDistanceToNow } from "date-fns";
 import { de } from "date-fns/locale";
@@ -19,9 +20,6 @@ function BriefingItem({ briefing }: { briefing: DailyBriefingWithAuthor }) {
   const [expanded, setExpanded] = useState(false);
   const markRead = useMarkBriefingRead();
   const tooLong = briefing.content.length > COLLAPSE_AT;
-  const visibleContent = expanded || !tooLong
-    ? briefing.content
-    : briefing.content.slice(0, COLLAPSE_AT) + "…";
 
   const initials = (briefing.author_display_name ?? "?")
     .split(" ")
@@ -74,9 +72,9 @@ function BriefingItem({ briefing }: { briefing: DailyBriefingWithAuthor }) {
           </Button>
         )}
       </div>
-      <p className="mt-3 whitespace-pre-wrap text-sm leading-relaxed text-foreground/90">
-        {visibleContent}
-      </p>
+      <div className={cn("mt-3", !expanded && tooLong && "line-clamp-5")}>
+        <RichTextDisplay content={briefing.content} className="text-sm leading-relaxed text-foreground/90" />
+      </div>
       {tooLong && (
         <Button
           variant="link"

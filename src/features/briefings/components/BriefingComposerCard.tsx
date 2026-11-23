@@ -1,203 +1,145 @@
-import { useEffect, useMemo, useState } from "react";
-import { format } from "date-fns";
+import { useEffect, useMemo, useRef, useState } from "react";
+import { format, parseISO } from "date-fns";
 import { de } from "date-fns/locale";
-import { CalendarIcon, Loader2, Save, Sparkles, Trash2 } from "lucide-react";
+import { CalendarIcon, Loader2, Sparkles, Trash2 } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
-import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
-import { Textarea } from "@/components/ui/textarea";
-import {
-  Popover,
-  PopoverContent,
-  PopoverTrigger,
-} from "@/components/ui/popover";
+import { Popover, PopoverContent, PopoverTrigger } from "@/components/ui/popover";
 import { Calendar } from "@/components/ui/calendar";
-import { cn } from "@/lib/utils";
-import { nextWorkingDay, toDateString } from "../utils";
-import {
-  useDeleteBriefing,
-  useMyBriefingForDate,
-  useSaveBriefing,
-} from "../hooks/useMyDraftBriefing";
+import SimpleRichTextEditor, { type SimpleRichTextEditorDictation } from "@/components/ui/SimpleRichTextEditor";
+import { sanitizeRichHtml } from "@/utils/htmlSanitizer";
+import { useTenant } from "@/hooks/useTenant";
+import { useAuth } from "@/hooks/useAuth";
+import { briefingDateOptions, toDateString } from "../utils";
+import { useDeleteBriefing, useMyBriefingForDate, useSaveBriefing } from "../hooks/useMyDraftBriefing";
+import type { DailyBriefing } from "../types";
 import { notify } from "@/lib/notify";
 
-export function BriefingComposerCard() {
-  const [expanded, setExpanded] = useState(false);
-  const [date, setDate] = useState<Date>(() => nextWorkingDay());
-  const [title, setTitle] = useState("");
-  const [content, setContent] = useState("");
+function editorHtml(value: string): string {
+  if (/<[a-z][\s\S]*>/i.test(value)) return sanitizeRichHtml(value);
+  return value.split(/\r?\n/).map(line => `<p>${line.replace(/&/g, '&amp;').replace(/</g, '&lt;').replace(/>/g, '&gt;')}</p>`).join('');
+}
 
-  const briefingDateString = useMemo(() => toDateString(date), [date]);
-  const { data: existing, isLoading } = useMyBriefingForDate(briefingDateString);
+export function BriefingComposerCard() {
+  const { user } = useAuth();
+  const { currentTenant } = useTenant();
+  const [now, setNow] = useState(() => new Date());
+  useEffect(() => {
+    const timer = window.setInterval(() => setNow(new Date()), 60_000);
+    return () => window.clearInterval(timer);
+  }, []);
+  const choices = briefingDateOptions(now);
+  const [date, setDate] = useState(() => choices.tomorrow);
+  const [calendarOpen, setCalendarOpen] = useState(false);
+  const [editingBusy, setEditingBusy] = useState(false);
+  const { data: existing, isLoading, isError, refetch } = useMyBriefingForDate(date);
+  const selectedDate = parseISO(date);
+  const isCustomDate = date !== choices.tomorrow && date !== choices.dayAfter;
+
+  return <Card className="dashboard-motion-card animate-rise">
+    <CardHeader className="flex min-h-[52px] flex-row items-center gap-2 space-y-0 py-space-sm px-space-md">
+      <CardTitle className="inline-flex items-center gap-2 text-base font-medium leading-6">
+        <Sparkles className="h-4 w-4 shrink-0 text-muted-foreground" aria-hidden="true" />Tagesbriefing
+      </CardTitle>
+    </CardHeader>
+    <CardContent className="space-y-4 px-space-md pb-space-md pt-0">
+      <div className="space-y-2">
+        <Label className="text-xs">Gültig für</Label>
+        <div className="flex flex-wrap gap-2" role="group" aria-label="Datum des Tagesbriefings">
+          <Button size="sm" className="rounded-full" variant={date === choices.tomorrow ? "default" : "outline"}
+            aria-pressed={date === choices.tomorrow} disabled={editingBusy} onClick={() => setDate(choices.tomorrow)}>
+            Morgen · {format(parseISO(choices.tomorrow), 'd. MMM', { locale: de })}
+          </Button>
+          <Button size="sm" className="rounded-full" variant={date === choices.dayAfter ? "default" : "outline"}
+            aria-pressed={date === choices.dayAfter} disabled={editingBusy} onClick={() => setDate(choices.dayAfter)}>
+            Übermorgen · {format(parseISO(choices.dayAfter), 'd. MMM', { locale: de })}
+          </Button>
+          <Popover open={calendarOpen} onOpenChange={setCalendarOpen}>
+            <PopoverTrigger asChild>
+              <Button size="sm" className="rounded-full" variant={isCustomDate ? "default" : "outline"} disabled={editingBusy}>
+                <CalendarIcon className="mr-1.5 h-4 w-4" />
+                {isCustomDate ? format(selectedDate, 'd. MMM yyyy', { locale: de }) : 'Datum wählen'}
+              </Button>
+            </PopoverTrigger>
+            <PopoverContent className="w-auto p-0" align="start">
+              <Calendar mode="single" selected={selectedDate} onSelect={value => {
+                if (value) { setDate(toDateString(value)); setCalendarOpen(false); }
+              }} disabled={value => toDateString(value) < choices.tomorrow} initialFocus locale={de} weekStartsOn={1} />
+            </PopoverContent>
+          </Popover>
+        </div>
+      </div>
+      {isLoading ? <p className="text-sm text-muted-foreground" role="status">Briefing wird geladen…</p>
+        : isError ? <div className="space-y-2"><p className="text-sm text-destructive">Briefing konnte nicht geladen werden.</p>
+          <Button size="sm" variant="outline" onClick={() => void refetch()}>Erneut laden</Button></div>
+        : <BriefingForm key={`${currentTenant?.id}:${user?.id}:${date}`} date={date} existing={existing ?? null}
+          earliestDate={choices.tomorrow} onBusyChange={setEditingBusy} />}
+    </CardContent>
+  </Card>;
+}
+
+function BriefingForm({ date, existing, earliestDate, onBusyChange }: {
+  date: string; existing: DailyBriefing | null; earliestDate: string; onBusyChange: (busy: boolean) => void;
+}) {
+  const initialContent = useMemo(() => editorHtml(existing?.content ?? ''), []);
+  const [content, setContent] = useState(initialContent);
+  const latestContent = useRef(initialContent);
+  const dictationRef = useRef<SimpleRichTextEditorDictation>(null);
+  const [dictating, setDictating] = useState(false);
+  const [submitting, setSubmitting] = useState(false);
   const saveMutation = useSaveBriefing();
   const deleteMutation = useDeleteBriefing();
-
+  const busy = submitting || deleteMutation.isPending;
   useEffect(() => {
-    if (existing) {
-      setTitle(existing.title ?? "");
-      setContent(existing.content);
-    } else {
-      setTitle("");
-      setContent("");
-    }
-  }, [existing?.id, briefingDateString]);
-
-  const minDate = useMemo(() => {
-    const d = new Date();
-    d.setHours(0, 0, 0, 0);
-    d.setDate(d.getDate() + 1);
-    return d;
-  }, []);
+    onBusyChange(busy || dictating);
+    return () => onBusyChange(false);
+  }, [busy, dictating, onBusyChange]);
 
   const handleSave = async () => {
-    if (!content.trim()) {
-      notify.error("Inhalt fehlt", { description: "Bitte schreibe einen kurzen Briefing-Text."
-});
-      return;
-    }
+    if (busy) return;
+    if (date < earliestDate) { notify.error('Bitte wähle ein Datum ab morgen.'); return; }
+    setSubmitting(true);
     try {
-      await saveMutation.mutateAsync({
-        id: existing?.id,
-        briefing_date: briefingDateString,
-        title: title.trim() || null,
-        content: content.trim(),
+      const finalized = dictating ? await dictationRef.current?.finishAndReadHtml() : latestContent.current;
+      if (finalized == null) return;
+      const html = sanitizeRichHtml(finalized);
+      const text = new DOMParser().parseFromString(html, 'text/html').body.textContent ?? '';
+      if (!text.trim()) { notify.error('Inhalt fehlt', { description: 'Bitte schreibe oder diktiere einen kurzen Briefing-Text.' }); return; }
+      await saveMutation.mutateAsync({ id: existing?.id, briefing_date: date, title: existing?.title ?? null, content: html });
+      latestContent.current = html;
+      setContent(html);
+      notify.success(existing ? 'Briefing aktualisiert' : 'Briefing gespeichert', {
+        description: `Wird am ${format(parseISO(date), 'EEEE, d. MMMM', { locale: de })} im Dashboard angezeigt.`,
       });
-      notify.success(existing ? "Briefing aktualisiert" : "Briefing gespeichert", {
-        description: `Wird am ${format(date, "EEEE, d. MMMM", { locale: de })} im Dashboard angezeigt.`
-});
-      setExpanded(false);
-    } catch (err) {
-      const message = err instanceof Error ? err.message : "Unbekannter Fehler";
-      notify.error("Speichern fehlgeschlagen", { description: message
-});
-    }
+    } catch (error) {
+      notify.error('Speichern fehlgeschlagen', { description: error instanceof Error ? error.message : 'Bitte erneut versuchen.' });
+    } finally { setSubmitting(false); }
   };
-
   const handleDelete = async () => {
-    if (!existing) return;
-    if (!confirm("Briefing wirklich löschen?")) return;
+    if (!existing || busy || !confirm('Briefing wirklich löschen?')) return;
     try {
       await deleteMutation.mutateAsync(existing.id);
-      notify.success("Briefing gelöscht");
-      setTitle("");
-      setContent("");
-    } catch (err) {
-      const message = err instanceof Error ? err.message : "Unbekannter Fehler";
-      notify.error("Löschen fehlgeschlagen", { description: message
-});
+      latestContent.current = '';
+      setContent('');
+      notify.success('Briefing gelöscht');
+    } catch (error) {
+      notify.error('Löschen fehlgeschlagen', { description: error instanceof Error ? error.message : 'Bitte erneut versuchen.' });
     }
   };
-
-  if (!expanded) {
-    return (
-      <Card className="dashboard-motion-card animate-rise">
-        <CardContent className="flex flex-wrap items-center justify-between gap-4 px-space-md py-space-sm">
-          <div className="flex items-center gap-2">
-            <Sparkles className="h-4 w-4 shrink-0 self-start mt-1 text-muted-foreground" aria-hidden="true" />
-            <div>
-              <p className="text-base font-medium leading-6">Tagesbriefing schreiben</p>
-              <p className="text-xs text-muted-foreground">
-                Kurzer Überblick fürs Abgeordnetenbüro – mindestens einen Tag im Voraus.
-              </p>
-            </div>
-          </div>
-          <Button variant="outline" size="sm" onClick={() => setExpanded(true)}>
-            Briefing verfassen
-          </Button>
-        </CardContent>
-      </Card>
-    );
-  }
-
-  return (
-    <Card className="dashboard-motion-card animate-rise">
-      <CardHeader className="flex min-h-[52px] flex-row flex-wrap items-center justify-between gap-2 space-y-0 py-space-sm px-space-md">
-        <CardTitle className="inline-flex items-center gap-2 text-base font-medium leading-6">
-          <Sparkles className="h-4 w-4 shrink-0 text-muted-foreground" aria-hidden="true" />
-          Tagesbriefing
-        </CardTitle>
-      </CardHeader>
-      <CardContent className="space-y-4 px-space-md pb-space-md pt-0">
-        <div className="grid grid-cols-1 gap-4 md:grid-cols-[200px_1fr]">
-          <div className="space-y-1.5">
-            <Label className="text-xs">Gültig für</Label>
-            <Popover>
-              <PopoverTrigger asChild>
-                <Button
-                  variant="outline"
-                  className={cn("w-full justify-start text-left font-normal")}
-                >
-                  <CalendarIcon className="mr-2 h-4 w-4" />
-                  {format(date, "EEE, d. MMM", { locale: de })}
-                </Button>
-              </PopoverTrigger>
-              <PopoverContent className="w-auto p-0" align="start">
-                <Calendar
-                  mode="single"
-                  selected={date}
-                  onSelect={(d) => d && setDate(d)}
-                  disabled={(d) => d < minDate}
-                  initialFocus
-                  className={cn("p-3 pointer-events-auto")}
-                  locale={de}
-                  weekStartsOn={1}
-                />
-              </PopoverContent>
-            </Popover>
-            <p className="text-[11px] text-muted-foreground">
-              Frühestens für morgen.
-            </p>
-          </div>
-          <div className="space-y-1.5">
-            <Label className="text-xs" htmlFor="briefing-title">Titel (optional)</Label>
-            <Input
-              id="briefing-title"
-              value={title}
-              onChange={(e) => setTitle(e.target.value)}
-              placeholder='z. B. "Schwerpunkt Bildungspolitik"'
-              maxLength={140}
-            />
-          </div>
-        </div>
-        <div className="space-y-1.5">
-          <Label className="text-xs" htmlFor="briefing-content">Briefing</Label>
-          <Textarea
-            id="briefing-content"
-            value={content}
-            onChange={(e) => setContent(e.target.value)}
-            placeholder="Was sollte der/die Abgeordnete heute morgen sofort wissen? Termine, sensible Themen, neue Hintergründe…"
-            rows={6}
-          />
-        </div>
-        <div className="flex flex-wrap items-center justify-between gap-2">
-          <div className="flex gap-2">
-            <Button onClick={handleSave} disabled={saveMutation.isPending || isLoading}>
-              {saveMutation.isPending ? (
-                <Loader2 className="mr-2 h-4 w-4 animate-spin" />
-              ) : (
-                <Save className="mr-2 h-4 w-4" />
-              )}
-              {existing ? "Aktualisieren" : "Speichern"}
-            </Button>
-            <Button variant="ghost" onClick={() => setExpanded(false)}>
-              Abbrechen
-            </Button>
-          </div>
-          {existing && (
-            <Button
-              variant="ghost"
-              size="sm"
-              className="text-destructive hover:text-destructive"
-              onClick={handleDelete}
-              disabled={deleteMutation.isPending}
-            >
-              <Trash2 className="mr-2 h-4 w-4" />
-              Löschen
-            </Button>
-          )}
-        </div>
-      </CardContent>
-    </Card>
-  );
+  return <div className="space-y-3">
+    <SimpleRichTextEditor key={existing?.id ?? 'new'} initialContent={content} contentVersion={existing?.id ?? 'new'}
+      onChange={html => { latestContent.current = html; setContent(html); }}
+      placeholder="Was sollte der oder die Abgeordnete wissen? Termine, sensible Themen, neue Hintergründe…"
+      minHeight="140px" maxHeight="320px" scrollable compactToolbar disabled={busy}
+      dictationRef={dictationRef} onDictationActiveChange={setDictating} onDictatedSave={() => void handleSave()} />
+    <div className="flex flex-wrap items-center justify-between gap-2">
+      <Button onClick={() => void handleSave()} disabled={busy || date < earliestDate}>
+        {submitting && <Loader2 className="mr-2 h-4 w-4 animate-spin" />}
+        {existing ? 'Aktualisieren' : 'Speichern'}
+      </Button>
+      {existing && <Button variant="ghost" size="sm" className="text-destructive hover:text-destructive"
+        disabled={busy || dictating} onClick={() => void handleDelete()}><Trash2 className="mr-2 h-4 w-4" />Löschen</Button>}
+    </div>
+  </div>;
 }
