@@ -17254,10 +17254,6 @@ export type Database = {
       }
     }
     Functions: {
-      request_birthday_congratulations: {
-        Args: { _contact_id: string; _tenant_id: string }
-        Returns: string
-      }
       _briefing_task_event: {
         Args: { _task: string; _text: string }
         Returns: undefined
@@ -19011,6 +19007,10 @@ export type Database = {
       replace_user_role: {
         Args: { _role: string; _tenant_id: string; _user_id: string }
         Returns: undefined
+      }
+      request_birthday_congratulations: {
+        Args: { _contact_id: string; _tenant_id: string }
+        Returns: string
       }
       request_protocol_acknowledgement: {
         Args: { p_meeting_id: string }
