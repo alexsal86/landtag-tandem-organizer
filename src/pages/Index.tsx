@@ -7,6 +7,8 @@ import { AppNavigation, getNavigationGroups } from "@/components/navigation/AppN
 import { prefetchRoute } from "@/lib/routePrefetch";
 import { useNavWidth } from "@/hooks/useNavWidth";
 
+const NewsPage = lazyWithRetry(() => import("@/pages/NewsPage"));
+
 // Lazy load all major view components for better initial load performance
 const CalendarView = lazyWithRetry(() => import("@/features/calendar/components/CalendarView").then(m => ({ default: m.CalendarView })));
 const ContactsView = lazyWithRetry(() => import("@/features/contacts/components/ContactsView").then(m => ({ default: m.ContactsView })));
@@ -192,6 +194,8 @@ const Index = (): React.JSX.Element => {
 
   const renderActiveSection = (): React.JSX.Element => {
     switch (activeSection) {
+      case "news":
+        return withSectionBoundary('News', <NewsPage />);
       case "mywork":
         return withSectionBoundary('Meine Arbeit', <MyWorkView />);
       case "calendar":

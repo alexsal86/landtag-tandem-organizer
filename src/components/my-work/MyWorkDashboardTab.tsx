@@ -10,10 +10,9 @@ import { DashboardTasksSection } from '@/components/dashboard/DashboardTasksSect
 import { DashboardAppointments } from '@/components/my-work/MyWorkDashboardAppointments';
 import { useDashboardAppointmentsData } from '@/hooks/useDashboardAppointmentsData';
 import { useDashboardDeadlines } from '@/hooks/useDashboardDeadlines';
-import { NewsWidget } from '@/components/widgets/NewsWidget';
 import { ErrorBoundary } from '@/components/shared/ErrorBoundary';
 import type { LucideIcon } from 'lucide-react';
-import { ArrowRight, CalendarClock, CalendarDays, Check, ClipboardList, Newspaper, Vote, Users } from 'lucide-react';
+import { ArrowRight, CalendarClock, CalendarDays, Check, ClipboardList, Vote, Users } from 'lucide-react';
 import { hasAppointmentEnded } from '@/utils/dashboard/daySummary';
 import { AppointmentRequestList } from '@/features/appointment-requests/AppointmentRequestList';
 import { useNextJourFixeDate, useOpenAppointmentRequests } from '@/features/appointment-requests/useAppointmentRequests';
@@ -167,20 +166,6 @@ function UrgentRequestsWidget() {
   );
 }
 
-function NewsWidgetCard() {
-  return (
-    <DashboardWidgetContainer
-      icon={Newspaper} title="News" animationDelay={180}
-      className="min-w-0"
-      errorMessage="News konnten nicht geladen werden."
-    >
-      <ErrorBoundary fallback={<ErrorState description="News konnten nicht geladen werden." />}>
-        <NewsWidget compact />
-      </ErrorBoundary>
-    </DashboardWidgetContainer>
-  );
-}
-
 export function MyWorkDashboardTab() {
   const { isDeputyView, isEmployeeView, loading } = useWorkspaceView();
 
@@ -222,7 +207,6 @@ export function MyWorkDashboardTab() {
             </DashboardWidgetContainer>
           )}
           <TeamRitualDashboardCard />
-          <NewsWidgetCard />
         </div>
       </div>
     </div>
