@@ -189,16 +189,16 @@ function OfficeFeedbackForm() {
   };
 
   return (
-    <section aria-label="Rückmeldung ans Büro" style={{ animationDelay: "60ms" }} className="dashboard-motion-card animate-rise rounded-3xl border border-border/70 bg-card shadow-sm">
+    <section aria-label="Rückmeldung ans Büro" style={{ animationDelay: "60ms" }} className="dashboard-motion-card animate-rise rounded-dashboard-card shadow-dashboard-card hover:shadow-dashboard-card-hover border border-border/70 bg-card">
       <header className="flex min-h-[52px] flex-row flex-wrap items-center justify-between gap-2 space-y-0 py-space-sm px-space-md">
-        <h2 className="inline-flex items-center gap-2 text-base font-medium leading-6 tracking-tight"><Mic className="h-4 w-4 shrink-0 text-muted-foreground" aria-hidden="true" />Rückmeldung ans Büro</h2>
-        <span className="shrink-0 text-sm text-muted-foreground">
+        <h2 className="inline-flex items-center gap-2 text-card-title"><Mic className="h-4 w-4 shrink-0 text-muted-foreground" aria-hidden="true" />Rückmeldung ans Büro</h2>
+        <span className="shrink-0 text-meta font-normal text-muted-foreground">
           {feedback.isLoading ? "Wird geladen…" : pending.length ? `${pending.length} ${pending.length === 1 ? "Termin" : "Termine"}${pending.filter(isDeferred).length ? ` · ${pending.filter(isDeferred).length} verschoben` : ""}` : "Alles erledigt"}
         </span>
       </header>
       <div className="px-space-md pb-space-md">
       {!feedback.isLoading && !feedback.isError && current && isOfficeReminderDue(snoozes[key], now) && (
-        <div key={key} role="status" className="animate-fade-up mb-4 flex items-start gap-2 rounded-2xl bg-[#eaf5df] px-3 py-2 text-sm leading-5 text-[#55ad21]">
+        <div key={key} role="status" className="animate-fade-up mb-4 flex items-start gap-2 rounded-2xl bg-[#eaf5df] px-3 py-2 text-meta font-medium text-[#55ad21]">
           <AlarmClock className="mt-0.5 h-4 w-4 shrink-0" aria-hidden="true" />
           <span>Du wolltest dich an den Termin „{current.title}“ erinnern lassen – jetzt ist es soweit.</span>
         </div>
@@ -215,13 +215,13 @@ function OfficeFeedbackForm() {
             <p className="mb-4 font-medium">Wann soll ich dich erinnern?</p>
             <div className="flex flex-wrap gap-2">
               {([["hour", "In 1 Stunde"], ["evening", isOlderOfficeFeedback(now.toISOString(), new Date(officeReminderTime("evening", now))) ? "Morgen Abend" : "Heute Abend"], ["morning", "Morgen früh"]] as const).map(([choice, label]) =>
-                <button key={choice} type="button" className="rounded-2xl bg-muted px-4 py-3 text-sm hover:bg-muted/70" onClick={() => void remind(choice)}>{label}</button>)}
+                <button key={choice} type="button" className="rounded-2xl bg-muted px-4 py-3 text-body hover:bg-muted/70" onClick={() => void remind(choice)}>{label}</button>)}
             </div>
             <button type="button" className="mt-4 rounded-full bg-muted px-4 py-2 text-sm" onClick={() => { if (current && isDeferred(current)) setSelected(null); setMode("write"); }}>Zurück</button>
           </>
         ) : (
           <>
-            <p className="mb-3 text-base font-medium">{current.title}<span className="font-normal text-muted-foreground"> · {clock(current.start_time)}</span></p>
+            <p className="mb-3 text-body-lg font-medium">{current.title}<span className="font-normal text-muted-foreground"> · {clock(current.start_time)}</span></p>
             {mode === "review" ? (
               <div className="animate-fade-up space-y-3">
                 <p className="whitespace-pre-wrap rounded-2xl bg-muted/60 p-3 text-sm">{text}</p>
@@ -234,7 +234,7 @@ function OfficeFeedbackForm() {
               <>
                 <div className="peer/feedback-input flex items-end gap-2 rounded-[22px] border border-border/80 bg-muted/60 p-1.5 focus-within:border-[#55ad21] focus-within:ring-4 focus-within:ring-[#eaf5df]">
                   <textarea aria-label="Rückmeldung zum Termin" placeholder="Wie war’s? Kurz schreiben …" rows={1}
-                    className="min-h-8 min-w-0 flex-1 resize-y bg-transparent px-2 py-1.5 text-sm leading-5 outline-none"
+                    className="min-h-8 min-w-0 flex-1 resize-y bg-transparent px-2 py-1.5 text-body-lg outline-none"
                     value={text} disabled={busy} onChange={event => {
                       setSelected(key);
                       setDrafts(previous => ({ ...previous, [key]: event.target.value }));
@@ -245,7 +245,7 @@ function OfficeFeedbackForm() {
                     onClick={() => { if (recording) void speech.stop(); else { setSelected(key); speechTarget.current = key; speech.start(); } }}>
                     {recording ? <Square className="h-4 w-4" /> : <Mic className="h-5 w-5" />}
                   </button>
-                  <button type="button" disabled={busy || (!text.trim() && !recording)} className={`h-8 shrink-0 rounded-2xl px-4 text-sm font-medium disabled:opacity-40 ${green}`} onClick={() => void review()}>Weiter</button>
+                  <button type="button" disabled={busy || (!text.trim() && !recording)} className={`h-8 shrink-0 rounded-2xl px-4 text-body font-medium disabled:opacity-40 ${green}`} onClick={() => void review()}>Weiter</button>
                 </div>
                   <div className="animate-fade-up mt-3 hidden flex-wrap gap-1.5 peer-focus-within/feedback-input:flex" aria-label="Hinweise zur Rückmeldung">
                     {["Wer war da?", "Was wurde zugesagt?", "Was soll das Büro tun?"].map(hint => (
@@ -253,19 +253,19 @@ function OfficeFeedbackForm() {
                     ))}
                   </div>
                 {recording && <p role="status" className="mt-2 text-xs text-muted-foreground">{interim || "Ich höre zu …"}</p>}
-                <div className="mt-2 flex flex-wrap gap-x-5 gap-y-1 text-sm text-muted-foreground">
+                <div className="mt-2 flex flex-wrap gap-x-5 gap-y-1 text-meta font-medium text-muted-foreground">
                   <button type="button" disabled={busy} className="py-1 hover:text-foreground" onClick={() => { setSelected(key); setMode("remind"); }}>Später erinnern</button>
                   <button type="button" disabled={busy} className="py-1 hover:text-foreground" onClick={() => void finish([current])}>Nichts zu berichten</button>
                 </div>
               </>
             )}
             {shown.length > 0 && <div className="mt-4 border-t">
-              {shown.map(event => <div key={eventKey(event)} className="flex flex-wrap items-center gap-x-3 gap-y-1 border-b py-3 text-sm">
-                <span className="min-w-0 flex-1">{new Intl.DateTimeFormat("de-DE", { timeZone: "Europe/Berlin", weekday: "short", day: "numeric", month: "numeric" }).format(new Date(event.start_time))} · {event.title}</span>
-                <button type="button" disabled={busy} className="text-muted-foreground hover:text-foreground" onClick={() => void choose(event)}>Schreiben</button>
-                <button type="button" disabled={busy || recording} className="text-muted-foreground hover:text-foreground" onClick={() => void finish([event])}>Nichts zu berichten</button>
+              {shown.map(event => <div key={eventKey(event)} className="flex flex-wrap items-center gap-x-3 gap-y-1 border-b py-3 text-body">
+                <span className="min-w-0 flex-1 font-medium">{new Intl.DateTimeFormat("de-DE", { timeZone: "Europe/Berlin", weekday: "short", day: "numeric", month: "numeric" }).format(new Date(event.start_time))} · {event.title}</span>
+                <button type="button" disabled={busy} className="text-meta font-medium text-muted-foreground hover:text-foreground" onClick={() => void choose(event)}>Schreiben</button>
+                <button type="button" disabled={busy || recording} className="text-meta font-medium text-muted-foreground hover:text-foreground" onClick={() => void finish([event])}>Nichts zu berichten</button>
               </div>)}
-              <div className="flex flex-wrap justify-between gap-2 pt-3 text-sm text-muted-foreground">
+              <div className="flex flex-wrap justify-between gap-2 pt-3 text-meta font-medium text-muted-foreground">
                 {!expanded && others.length > 2 && <button type="button" onClick={() => setExpanded(true)}>+{others.length - 2} weitere</button>}
                 {others.length > 2 && older.length > 0 && <button type="button" disabled={busy || recording} className="ml-auto text-right hover:text-foreground" onClick={() => void finish(older)}>{older.length === 1 ? "1 älteren Termin" : `${older.length} ältere`} ohne Bericht abschließen</button>}
               </div>
@@ -278,23 +278,23 @@ function OfficeFeedbackForm() {
           {deferred.map(event => {
             const reminder = readOfficeSnooze(snoozes[eventKey(event)])!;
             return (
-              <div key={eventKey(event)} className="flex flex-wrap items-center gap-3 py-3 text-sm">
+              <div key={eventKey(event)} className="flex flex-wrap items-center gap-3 py-3 text-body">
                 <div className="min-w-0 flex-1">
                   <p className="font-medium">{event.title}</p>
-                  <p className="mt-0.5 text-xs leading-5 text-muted-foreground">
+                  <p className="mt-0.5 text-caption text-muted-foreground">
                     {officeReminderLabel(reminder.until, now)}
                   </p>
                 </div>
-                <span className="rounded-full bg-[#fff4df] px-2 py-1 text-xs text-[#b96d00]">{reminder.count > 1 ? `${reminder.count}× verschoben` : "Verschoben"}</span>
-                <button type="button" disabled={busy || recording} className="text-muted-foreground hover:text-foreground" onClick={() => void choose(event)}>Jetzt öffnen</button>
-                <button type="button" disabled={busy || recording} className="text-muted-foreground hover:text-foreground" onClick={() => void finish([event])}>Nichts zu berichten</button>
+                <span className="rounded-full bg-[#fff4df] px-2 py-1 text-caption text-[#b96d00]">{reminder.count > 1 ? `${reminder.count}× verschoben` : "Verschoben"}</span>
+                <button type="button" disabled={busy || recording} className="text-meta font-medium text-muted-foreground hover:text-foreground" onClick={() => void choose(event)}>Jetzt öffnen</button>
+                <button type="button" disabled={busy || recording} className="text-meta font-medium text-muted-foreground hover:text-foreground" onClick={() => void finish([event])}>Nichts zu berichten</button>
               </div>
             );
           })}
         </div>
       )}
       {!feedback.isLoading && !feedback.isError && deferred.some(event => showsOfficeTaskHint(snoozes[eventKey(event)], now)) && (
-        <p className="mt-3 text-xs text-muted-foreground">Nach 2 Tagen wird daraus eine Aufgabe für das Büro.</p>
+        <p className="mt-3 text-caption text-muted-foreground">Nach 2 Tagen wird daraus eine Aufgabe für das Büro.</p>
       )}
       </div>
     </section>

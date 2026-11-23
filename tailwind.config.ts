@@ -25,14 +25,16 @@ export default {
 				'mono': ['"JetBrains Mono"', 'ui-monospace', 'SFMono-Regular', 'monospace']
 			},
 			fontSize: {
-				'label':   ['0.6875rem', { lineHeight: '1rem',    letterSpacing: '0.08em',  fontWeight: '600' }],
-				'caption': ['0.75rem',   { lineHeight: '1.1rem',  letterSpacing: '0' }],
-				'body':    ['0.875rem',  { lineHeight: '1.35rem', letterSpacing: '-0.005em' }],
-				'body-lg': ['0.9375rem', { lineHeight: '1.45rem', letterSpacing: '-0.005em' }],
-				'title':   ['1.125rem',  { lineHeight: '1.55rem', letterSpacing: '-0.015em', fontWeight: '500' }],
-				'h2':      ['1.5rem',    { lineHeight: '1.85rem', letterSpacing: '-0.02em',  fontWeight: '500' }],
-				'h1':      ['1.875rem',  { lineHeight: '2.25rem', letterSpacing: '-0.025em', fontWeight: '500' }],
-				'display': ['2.25rem',   { lineHeight: '2.6rem',  letterSpacing: '-0.03em',  fontWeight: '500' }]
+				'label': ['.6875rem', { lineHeight: 'var(--leading-normal)', letterSpacing: 'var(--tracking-wider)', fontWeight: '600' }],
+				'caption': ['.75rem', { lineHeight: 'var(--leading-normal)', letterSpacing: 'var(--tracking-normal)' }],
+				'meta': ['.8125rem', { lineHeight: 'var(--leading-normal)', letterSpacing: 'var(--tracking-normal)' }],
+				'body': ['.875rem', { lineHeight: 'var(--leading-normal)', letterSpacing: 'var(--tracking-normal)' }],
+				'body-lg': ['.9375rem', { lineHeight: 'var(--leading-normal)', letterSpacing: 'var(--tracking-normal)' }],
+				'card-title': ['1rem', { lineHeight: 'var(--leading-normal)', letterSpacing: 'var(--tracking-normal)', fontWeight: '500' }],
+				'title': ['1.125rem', { lineHeight: 'var(--leading-snug)', letterSpacing: 'var(--tracking-tight)', fontWeight: '500' }],
+				'h2': ['1.5rem', { lineHeight: 'var(--leading-tight)', letterSpacing: 'var(--tracking-tight)', fontWeight: '500' }],
+				'h1': ['1.875rem', { lineHeight: 'var(--leading-tight)', letterSpacing: 'var(--tracking-tight)', fontWeight: '500' }],
+				'display': ['2.25rem', { lineHeight: 'var(--leading-display)', letterSpacing: 'var(--tracking-tight)', fontWeight: '500' }],
 			},
 			colors: {
 				border: 'hsl(var(--border))',

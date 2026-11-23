@@ -355,14 +355,14 @@ export const DashboardAppointments = ({ data }: Props) => {
           <div className="pointer-events-none relative tabular-nums">
             <p
               className={cn(
-                apt.is_all_day ? "text-sm font-semibold" : "text-base font-semibold leading-6 text-foreground",
+                apt.is_all_day ? "text-body font-medium" : active ? "text-body-lg font-semibold text-foreground" : "text-body-lg font-normal text-foreground",
                 ended && "text-muted-foreground",
               )}
             >
               {apt.is_all_day ? "Ganztägig" : format(start, "HH:mm")}
             </p>
             {!ended && !apt.is_all_day && end && end > start && (
-              <p className="text-xs text-muted-foreground/80">
+              <p className="text-caption text-muted-foreground/80">
                 {isSameDay(start, end) ? "" : format(end, "d. MMM. ", { locale: de })}
                 {format(end, "HH:mm")}
               </p>
@@ -372,12 +372,12 @@ export const DashboardAppointments = ({ data }: Props) => {
             <div className="flex flex-wrap items-center gap-x-2 gap-y-1">
               <p className={cn(
                 "break-words text-foreground",
-                isNext ? "text-lg font-semibold leading-7" : "text-base font-medium leading-6",
+                active ? "text-card-title font-semibold" : "text-body-lg font-medium",
                 ended && "line-through",
               )}>{apt.title}</p>
             </div>
             {(showLocation || participantList.length > 0) && (
-              <div className="mt-0.5 flex flex-wrap items-center gap-x-4 gap-y-1 text-xs text-muted-foreground">
+              <div className="mt-0.5 flex flex-wrap items-center gap-x-4 gap-y-1 text-caption text-muted-foreground">
                 {showLocation && (
                   <span className="flex items-start gap-1.5">
                     <MapPin className="mt-0.5 h-3 w-3 shrink-0" aria-hidden="true" />
@@ -400,19 +400,19 @@ export const DashboardAppointments = ({ data }: Props) => {
             <div className="flex w-full items-center justify-end gap-2">
               {!ended && badgeLabel && <span className="relative z-10 inline-flex">
                 {canChooseBriefing ? (
-                  <button type="button" className={cn("pointer-events-auto inline-flex items-center gap-1.5 rounded-md px-2 py-0.5 text-xs hover:underline focus-visible:outline focus-visible:outline-2", badgeClass)}
+                  <button type="button" className={cn("pointer-events-auto inline-flex items-center gap-1.5 rounded-md px-2 py-0.5 text-caption hover:underline focus-visible:outline focus-visible:outline-2", badgeClass)}
                     onClick={() => setBriefingDecision(apt)} aria-label={`${badgeLabel}: ${apt.title} – Briefing anfordern oder ablehnen`}>
                     <BadgeIcon className="h-3 w-3" aria-hidden="true" />{badgeLabel}
                   </button>
                 ) : (
-                  <span className={cn("inline-flex items-center gap-1.5 rounded-md px-2 py-0.5 text-xs", badgeClass)}>
+                  <span className={cn("inline-flex items-center gap-1.5 rounded-md px-2 py-0.5 text-caption", badgeClass)}>
                     <BadgeIcon className="h-3 w-3" aria-hidden="true" />{badgeLabel}
                   </span>
                 )}
               </span>}
               {(ended || isNext) && <span className="inline-flex shrink-0">
-                {ended && <span className="rounded-full bg-[#eaf5df] px-2 py-0.5 text-xs text-[#55ad21]">Erledigt</span>}
-                {isNext && <span className="rounded-full bg-[#eaf5df] px-2 py-0.5 text-xs text-[#55ad21]">Als Nächstes</span>}
+                {ended && <span className="rounded-full bg-[#eaf5df] px-2 py-0.5 text-caption text-[#55ad21]">Erledigt</span>}
+                {isNext && <span className="rounded-full bg-[#eaf5df] px-2 py-0.5 text-caption text-[#55ad21]">Als Nächstes</span>}
               </span>}
             </div>
             {(meetingUrl || canOpenBriefing) && <div className="flex flex-wrap items-center justify-end gap-2">
@@ -421,7 +421,7 @@ export const DashboardAppointments = ({ data }: Props) => {
                   href={meetingUrl}
                   target="_blank"
                   rel="noopener noreferrer"
-                  className="inline-flex items-center gap-1 rounded px-2 py-2 text-xs text-primary hover:underline focus-visible:outline-primary"
+                  className="inline-flex items-center gap-1 rounded px-2 py-2 text-caption text-primary hover:underline focus-visible:outline-primary"
                 >
                   <Video className="h-3 w-3" aria-hidden="true" />
                   Meeting beitreten
@@ -499,7 +499,7 @@ export const DashboardAppointments = ({ data }: Props) => {
   };
 
   const renderNowMarker = () => (
-    <div className="relative flex items-center gap-2 py-2 pl-3 text-xs font-medium text-[#ec4899]" role="status">
+    <div className="relative flex items-center gap-2 py-2 pl-3 text-label font-semibold uppercase text-[#ec4899]" role="status">
       <span className="absolute -left-5 top-2.5 z-10 h-3 w-3 rounded-full border-2 border-[#ec4899] bg-card" aria-hidden="true" />
       <time dateTime={now.toISOString()} className="shrink-0">
         {new Intl.DateTimeFormat("de-DE", { timeZone: "Europe/Berlin", hour: "2-digit", minute: "2-digit" }).format(now)} · Jetzt

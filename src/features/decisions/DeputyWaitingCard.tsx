@@ -1,7 +1,7 @@
 import { useEffect, useRef, useState } from "react";
 import { Bell, BellRing, UserRound } from "lucide-react";
 import { useQueryClient } from "@tanstack/react-query";
-import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
+import { Card, CardContent, CardHeader } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
 import { Textarea } from "@/components/ui/textarea";
 import { useResolvedUserRole } from "@/hooks/useResolvedUserRole";
@@ -15,11 +15,11 @@ export function DeputyWaitingCard() {
   const query = useDeputyDashboardDecisions();
   const { isEmployee } = useResolvedUserRole();
   return (
-    <Card className="dashboard-motion-card animate-rise" style={{ animationDelay: "120ms" }}>
+    <Card className="dashboard-motion-card animate-rise rounded-dashboard-card shadow-dashboard-card hover:shadow-dashboard-card-hover" style={{ animationDelay: "120ms" }}>
       <CardHeader className="flex min-h-[52px] flex-row flex-wrap items-center justify-between gap-2 space-y-0 px-space-md py-space-sm">
-        <CardTitle className="inline-flex items-center gap-2 text-base font-medium leading-6">
+        <h3 className="inline-flex items-center gap-2 text-card-title">
           <UserRound className="h-4 w-4 shrink-0 text-muted-foreground" aria-hidden="true" />Beim Abgeordneten
-        </CardTitle>
+        </h3>
       </CardHeader>
       <CardContent className="px-space-md pb-space-md pt-0">
         {query.isPending ? <p role="status" className="text-sm text-muted-foreground">Entscheidungen werden geladen…</p>
@@ -103,13 +103,13 @@ function NudgeRow({ decision, canSend }: { decision: DeputyDashboardDecision; ca
   return (
     <div className="py-3 first:pt-0 last:pb-0">
       <div className="flex flex-wrap items-center justify-between gap-2">
-        <p className="min-w-0 flex-1 break-words text-sm font-medium">{decision.title}</p>
-        {locked && lastNudge ? <span className="inline-flex shrink-0 items-center gap-1.5 text-xs text-muted-foreground"
+        <p className="min-w-0 flex-1 break-words text-body font-medium">{decision.title}</p>
+        {locked && lastNudge ? <span className="inline-flex shrink-0 items-center gap-1.5 text-caption text-muted-foreground"
           title="Erneutes Anstupsen ist nach 24 Stunden möglich.">
           <Bell className="h-3 w-3 shrink-0" aria-hidden="true" />
           Angestupst {decisionNudgeTime(lastNudge)}
         </span>
-          : <Button type="button" variant="outline" size="sm" className="h-8 shrink-0 text-xs"
+          : <Button type="button" variant="outline" size="sm" className="h-8 shrink-0 text-meta font-medium"
             disabled={!canSend || editing || sending}
             onClick={() => { setRemaining(10); setPaused(false); setEditing(true); }}>
             <BellRing className="mr-1 h-3.5 w-3.5" />{editing ? "Vorgemerkt" : "Anstupsen"}
@@ -123,12 +123,12 @@ function NudgeRow({ decision, canSend }: { decision: DeputyDashboardDecision; ca
           <div className="flex flex-wrap gap-1.5">
             {["Muss bis Montag raus", "Bitte kurz ansehen", "Eilt"].map(preset => (
               <button key={preset} type="button" disabled={sending}
-                className="rounded-full bg-muted px-2.5 py-1 text-xs text-muted-foreground hover:text-foreground"
+                className="rounded-full bg-muted px-2.5 py-1 text-caption text-muted-foreground hover:text-foreground"
                 onClick={() => { setPaused(true); setNote(preset); input.current?.focus(); }}>{preset}</button>
             ))}
           </div>
           <div className="flex flex-wrap items-center justify-between gap-2">
-            <span role="status" className="text-xs text-muted-foreground">
+            <span role="status" className="text-caption text-muted-foreground">
               {sending ? "Wird gesendet…" : paused ? "Automatik pausiert" : `Wird in ${remaining} Sekunden gesendet`}
             </span>
             <Button type="button" size="sm" disabled={sending} onClick={() => void send()}>

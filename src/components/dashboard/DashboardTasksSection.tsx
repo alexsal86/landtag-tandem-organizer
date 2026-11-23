@@ -92,8 +92,8 @@ export const DashboardTasksSection = ({ items, grouped }: DashboardTasksSectionP
         </span>
 
         <button type="button" className="flex-1 min-w-0 text-left rounded focus-visible:outline-primary" onClick={() => navigate(item.type === 'eventPlanning' && item.planningId ? `${cfg.tabBase}/${item.planningId}` : `${cfg.tabBase}&highlight=${item.id}`)} title={`${cfg.label} öffnen`}>
-          <div className="text-sm font-medium text-foreground truncate leading-tight">{item.title}</div>
-          <div className="flex items-center gap-1 text-xs text-gray-500 dark:text-gray-400 tabular-nums leading-tight mt-1">
+          <div className="text-body font-medium text-foreground truncate">{item.title}</div>
+          <div className="flex items-center gap-1 text-caption text-gray-500 dark:text-gray-400 tabular-nums mt-1">
             <cfg.Icon className="h-3.5 w-3.5 shrink-0" aria-hidden="true" /> {contextLabel} · {dateLabel}
           </div>
         </button>
@@ -142,7 +142,7 @@ export const DashboardTasksSection = ({ items, grouped }: DashboardTasksSectionP
   return (
     <div>
       <div className="mb-4 flex flex-wrap gap-2" role="group" aria-label="Fristen nach Dringlichkeit filtern">
-        {(Object.keys(GROUP_CONFIG) as GroupKey[]).map(key => <button key={key} type="button" aria-pressed={filter === key} onClick={() => setFilter(current => current === key ? null : key)} className={`inline-flex min-h-7 max-w-full items-center gap-1.5 rounded-full border px-2.5 py-1 text-[13px] leading-5 focus-visible:outline-primary ${filter === key ? 'border-primary bg-primary/10' : 'border-border hover:bg-muted/50'}`}>
+        {(Object.keys(GROUP_CONFIG) as GroupKey[]).map(key => <button key={key} type="button" aria-pressed={filter === key} onClick={() => setFilter(current => current === key ? null : key)} className={`inline-flex min-h-7 max-w-full items-center gap-1.5 rounded-full border px-2.5 py-1 text-meta focus-visible:outline-primary ${filter === key ? 'border-primary bg-primary/10' : 'border-border hover:bg-muted/50'}`}>
           <span className={`h-2 w-2 rounded-full ${GROUP_CONFIG[key].color}`} aria-hidden="true" />
           {GROUP_CONFIG[key].label} <span className="tabular-nums font-medium">{grouped[key].length}</span>
         </button>)}

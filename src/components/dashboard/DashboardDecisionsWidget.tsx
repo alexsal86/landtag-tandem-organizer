@@ -130,11 +130,11 @@ function DecisionRow({ decision, expanded, onToggle, nudge, onDismissConfirmed, 
       style={{ transform: exiting ? "translateX(24px)" : undefined }}
     >
       {expanded && nudge?.nudged_at && <div className="animate-fade-up mb-3 rounded-xl bg-[#eee9f9] px-3 py-2 text-xs" role="status">
-        <p className="flex items-center gap-1.5 text-xs font-medium text-[#8b5cf6]">
+        <p className="flex items-center gap-1.5 text-meta font-medium text-[#8b5cf6]">
           <Bell className="h-3 w-3 shrink-0" aria-hidden="true" />
           <span>Angestupst {nudge.nudged_by_name ? `von ${nudge.nudged_by_name} ` : ""}um {decisionNudgeTime(nudge.nudged_at)}</span>
         </p>
-        {nudge.nudge_note && <p className="mt-1 whitespace-pre-wrap text-[#18202b]">{nudge.nudge_note}</p>}
+        {nudge.nudge_note && <p className="mt-1 whitespace-pre-wrap text-meta font-normal text-[#18202b]">{nudge.nudge_note}</p>}
       </div>}
       <button
         type="button"
@@ -145,9 +145,9 @@ function DecisionRow({ decision, expanded, onToggle, nudge, onDismissConfirmed, 
         onClick={onToggle}
       >
         <span className="min-w-0">
-          <span className="block break-words text-base font-medium leading-6">{decision.title}</span>
-          {label && <span className={cn("mt-1 block text-xs", isOverdue ? "text-destructive" : "text-muted-foreground")}>{label}</span>}
-          {recommendation && <span className="mt-2 inline-flex max-w-full rounded-full bg-[#eaf5df] px-2.5 py-1 text-xs font-medium leading-4 text-foreground">
+          <span className="block break-words text-body-lg font-medium">{decision.title}</span>
+          {label && <span className={cn("mt-1 block text-meta", isOverdue ? "text-destructive" : "text-muted-foreground")}>{label}</span>}
+          {recommendation && <span className="mt-2 inline-flex max-w-full rounded-full bg-[#eaf5df] px-2.5 py-1 text-caption font-medium text-foreground">
             Büro: {recommendation.label}
           </span>}
         </span>
@@ -161,11 +161,11 @@ function DecisionRow({ decision, expanded, onToggle, nudge, onDismissConfirmed, 
         <div className="min-h-0 overflow-hidden">
           <div onClick={() => { if (!exiting) onOpen(decision.id); }}>
             {recommendation?.recommendation_reason?.trim() && (
-              <p className="mb-3 text-xs leading-5 text-foreground">{recommendation.recommendation_reason.trim()}</p>
+              <p className="mb-3 text-meta text-foreground">{recommendation.recommendation_reason.trim()}</p>
             )}
 
             {decision.isParticipant && decision.participant_id && !decision.hasResponded && !prompt && (
-              <div onClick={(e) => e.stopPropagation()}>
+              <div className="[&_button]:text-body [&_button]:font-medium" onClick={(e) => e.stopPropagation()}>
                 <TaskDecisionResponse
                   decisionId={decision.id}
                   participantId={decision.participant_id}

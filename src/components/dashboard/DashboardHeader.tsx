@@ -79,9 +79,9 @@ export const DashboardHeader = ({ showTeamRituals = true }: { showTeamRituals?: 
     <div className="grid grid-cols-1 items-start gap-6 lg:grid-cols-[minmax(0,1fr)_minmax(0,20rem)]">
       <div className="min-w-0 space-y-3">
         <div className="space-y-1">
-          <p className="text-sm font-normal capitalize text-muted-foreground">{dayDate}</p>
+          <p className="text-body-lg font-normal capitalize text-muted-foreground">{dayDate}</p>
           {greeting && (
-            <h1 className="text-3xl font-semibold tracking-tight">
+            <h1 className="text-display">
               {formatDashboardGreeting(greeting, userName || 'Nutzer')}
             </h1>
           )}
@@ -92,14 +92,14 @@ export const DashboardHeader = ({ showTeamRituals = true }: { showTeamRituals?: 
       {weatherItems.length > 0 && (
         <div className="flex items-center justify-end gap-3 overflow-x-auto whitespace-nowrap">
         {weatherItems.map((item) => (
-          <div key={item.city} className="flex shrink-0 items-center gap-1.5 text-sm">
+          <div key={item.city} className="flex shrink-0 items-center gap-1.5 text-body">
             {(() => {
               const Icon = getWeatherLucideIcon(item.icon);
               return <Icon className={`h-7 w-7 shrink-0 ${Icon === Sun ? "text-[rgb(188,152,84)]" : "text-muted-foreground"}`} />;
             })()}
             <div className="flex items-center gap-1.5">
-              <p className="text-sm leading-7 text-muted-foreground">{item.city}</p>
-              <p className="text-sm font-medium leading-7">{Math.round(item.temp)}°C</p>
+              <p className="text-body text-muted-foreground">{item.city}</p>
+              <p className="text-body font-medium">{Math.round(item.temp)}°C</p>
             </div>
           </div>
         ))}

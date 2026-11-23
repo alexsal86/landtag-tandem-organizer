@@ -95,14 +95,14 @@ export function DashboardBirthdays({ allDayAppointments = [], includeBirthdays =
   const birthdayError = includeBirthdays && isError;
   if (!birthdays.length && !allDayAppointments.length && !birthdayError) return null;
   return <section className="mb-3 space-y-2" aria-label="Ganztägig & Anlässe">
-    <h3 className="text-xs font-semibold tracking-wide text-[rgb(102,114,127)]">GANZTÄGIG &amp; ANLÄSSE</h3>
-    {birthdayError && <p className="text-xs text-muted-foreground">Geburtstage konnten nicht geladen werden.</p>}
+    <h3 className="text-label text-[rgb(102,114,127)]">GANZTÄGIG &amp; ANLÄSSE</h3>
+    {birthdayError && <p className="text-caption text-muted-foreground">Geburtstage konnten nicht geladen werden.</p>}
     {allDayAppointments.map(appointment => <div key={appointment.id} className="flex items-start gap-2 rounded-lg bg-[rgb(240,243,246)] px-3 py-2">
       <div className="min-w-0 flex-1">
-        <p className="text-sm font-medium">{appointment.title}</p>
-        {appointment.location && <p className="text-xs text-muted-foreground">{appointment.location}</p>}
+        <p className="text-body font-medium">{appointment.title}</p>
+        {appointment.location && <p className="text-caption text-muted-foreground">{appointment.location}</p>}
       </div>
-      <Badge variant="secondary" className="ml-auto shrink-0 bg-gray-100 text-xs text-gray-700 hover:bg-gray-100">Ganztägig</Badge>
+      <Badge variant="secondary" className="ml-auto shrink-0 bg-gray-100 text-caption text-gray-700 hover:bg-gray-100">Ganztägig</Badge>
     </div>)}
     {birthdays.map(contact => {
       const action = planning.data?.get(contact.id);
@@ -110,9 +110,9 @@ export function DashboardBirthdays({ allDayAppointments = [], includeBirthdays =
       return <div key={contact.id} className="flex flex-wrap items-start gap-2 rounded-lg bg-[rgb(253,243,224)] px-3 py-2">
         <Cake className="mt-0.5 h-4 w-4 shrink-0 text-muted-foreground" />
         <div className="min-w-0 flex-1">
-          <p className="text-sm font-medium">{contact.name} hat Geburtstag</p>
-          <p className="text-xs text-muted-foreground">wird {contact.age} Jahre alt</p>
-          {(planning.isError || planning.isPending || (action?.action && labels[action.action])) && <p className="text-xs text-muted-foreground">{planning.isError ? 'Jour-fixe-Planung konnte nicht geladen werden' : planning.isPending ? 'Jour-fixe-Planung wird geladen…' : action?.action && labels[action.action]
+          <p className="text-body font-medium">{contact.name} hat Geburtstag</p>
+          <p className="text-caption text-muted-foreground">wird {contact.age} Jahre alt</p>
+          {(planning.isError || planning.isPending || (action?.action && labels[action.action])) && <p className="text-caption text-muted-foreground">{planning.isError ? 'Jour-fixe-Planung konnte nicht geladen werden' : planning.isPending ? 'Jour-fixe-Planung wird geladen…' : action?.action && labels[action.action]
             ? `${labels[action.action]} vorgesehen${action.assigned_to?.length ? ' · zugewiesen' : ' · noch niemandem zugewiesen'}` : null}</p>}
         </div>
         <div className="ml-auto flex shrink-0 flex-col items-end gap-2">
@@ -120,7 +120,7 @@ export function DashboardBirthdays({ allDayAppointments = [], includeBirthdays =
             {requested ? 'Glückwünsche veranlasst' : 'Glückwünsche veranlassen'}
           </Button>
         </div>
-        {requests.isError && <p className="w-full text-xs text-muted-foreground">Auftragsstatus konnte nicht geladen werden.</p>}
+        {requests.isError && <p className="w-full text-caption text-muted-foreground">Auftragsstatus konnte nicht geladen werden.</p>}
       </div>;
     })}
   </section>;

@@ -5,7 +5,7 @@ import { OfficeFeedbackCard } from "@/features/appointments/briefing/OfficeFeedb
 import { PendingBriefingNotice } from "@/features/appointments/briefing/PendingBriefingNotice";
 import type { ReactNode } from 'react';
 import { Link } from 'react-router-dom';
-import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
+import { Card, CardContent, CardHeader } from '@/components/ui/card';
 import { DashboardHeader } from '@/components/dashboard/DashboardHeader';
 import { DashboardTasksSection } from '@/components/dashboard/DashboardTasksSection';
 import { DashboardAppointments } from '@/components/my-work/MyWorkDashboardAppointments';
@@ -90,12 +90,12 @@ function DashboardWidgetContainer({
   }
 
   return (
-    <Card className={cn('dashboard-motion-card animate-rise shadow-sm border-border/60', className)} style={{ animationDelay: `${animationDelay}ms` }}>
+    <Card className={cn('dashboard-motion-card animate-rise rounded-dashboard-card shadow-dashboard-card hover:shadow-dashboard-card-hover border-border/60', className)} style={{ animationDelay: `${animationDelay}ms` }}>
       <CardHeader className="flex min-h-[52px] flex-row flex-wrap items-center justify-between gap-2 space-y-0 py-space-sm px-space-md">
-        <CardTitle className="inline-flex items-center gap-2 text-base font-medium leading-6">
+        <h3 className="inline-flex items-center gap-2 text-card-title">
           {Icon && <Icon className={cn("h-4 w-4 shrink-0 text-muted-foreground", iconClassName)} aria-hidden="true" />}
           {title}
-        </CardTitle>
+        </h3>
         {headerAction}
       </CardHeader>
       <CardContent className="px-space-md pb-space-md pt-0">{content}</CardContent>
@@ -161,7 +161,7 @@ function UrgentRequestsWidget() {
       icon={CalendarClock} title="Eilige Terminanfragen"
       errorMessage="Anfragen konnten nicht geladen werden."
     >
-      <p className="mb-1 text-xs text-muted-foreground">Vor dem nächsten Jour fixe zu entscheiden.</p>
+      <p className="mb-1 text-meta text-muted-foreground">Vor dem nächsten Jour fixe zu entscheiden.</p>
       <AppointmentRequestList mode="urgent" hideWhenEmpty />
     </DashboardWidgetContainer>
   );

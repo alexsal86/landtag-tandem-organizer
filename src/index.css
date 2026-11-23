@@ -12,6 +12,29 @@
 All colors MUST be HSL.
 */
 
+@theme {
+  --tracking-tighter: -0.04em;
+  --tracking-tight: -0.03em;
+  --tracking-normal: -0.005em;
+  --tracking-wide: 0.04em;
+  --tracking-wider: 0.06em;
+  --tracking-widest: 0.08em;
+  --leading-none: 1;
+  --leading-display: 1.1;
+  --leading-tight: 1.2;
+  --leading-snug: 1.3;
+  --leading-normal: 1.4;
+  --leading-relaxed: 1.6;
+  --leading-loose: 2;
+  --text-xs--line-height: var(--leading-normal);
+  --text-sm--line-height: var(--leading-normal);
+  --text-base--line-height: var(--leading-normal);
+  --text-lg--line-height: var(--leading-snug);
+  --radius-dashboard-card: 1.125rem;
+  --shadow-dashboard-card: 0 1px 2px rgba(20, 30, 40, 0.05), 0 4px 14px rgba(20, 30, 40, 0.04);
+  --shadow-dashboard-card-hover: 0 2px 4px rgba(20, 30, 40, 0.06), 0 10px 26px rgba(20, 30, 40, 0.07);
+}
+
 @layer base {
   :root {
     --background: 210 20% 98%;
@@ -302,6 +325,8 @@ All colors MUST be HSL.
   body {
     @apply bg-background text-foreground;
     font-family: "Inter Tight", system-ui, -apple-system, sans-serif;
+    line-height: var(--leading-normal);
+    letter-spacing: var(--tracking-normal);
     font-feature-settings: "cv11", "ss01", "ss03";
     text-rendering: optimizeLegibility;
     -webkit-font-smoothing: antialiased;
@@ -317,9 +342,9 @@ All colors MUST be HSL.
   /* Section-Label im Notion/Linear-Stil — für Listen-Header und Breadcrumbs */
   .section-label {
     font-size: 0.6875rem;
-    line-height: 1rem;
+    line-height: var(--leading-normal);
     font-weight: 600;
-    letter-spacing: 0.08em;
+    letter-spacing: var(--tracking-wider);
     text-transform: uppercase;
     color: hsl(var(--muted-foreground));
   }
@@ -778,7 +803,6 @@ All colors MUST be HSL.
 }
 .dashboard-motion .dashboard-motion-card:hover {
   transform: translateY(-1px);
-  box-shadow: var(--shadow-md);
 }
 .dashboard-motion .dashboard-expand {
   transition-property: grid-template-rows;
@@ -803,3 +827,14 @@ All colors MUST be HSL.
   transition-duration: .35s;
   transition-timing-function: cubic-bezier(.2,.7,.2,1);
 }
+
+/* Dashboard card motion is scoped to the main cards. */
+.dashboard-motion .dashboard-motion-card {
+  border-radius: var(--radius-dashboard-card);
+  box-shadow: var(--shadow-dashboard-card);
+  transition-property: transform, box-shadow;
+  transition-duration: 200ms;
+}
+.dashboard-motion .dashboard-motion-card:hover { box-shadow: var(--shadow-dashboard-card-hover); }
+.dark .dashboard-motion .dashboard-motion-card { box-shadow: none; }
+.dark .dashboard-motion .dashboard-motion-card:hover { box-shadow: var(--shadow-dashboard-card-hover); }
