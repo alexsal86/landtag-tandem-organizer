@@ -110,20 +110,8 @@ export function MyWorkView() {
   );
 
   return (
-    <div className={activeTab === "dashboard" ? "mx-auto min-h-[calc(100vh-8rem)] w-full max-w-6xl px-4 py-6 md:px-6 lg:px-8" : "min-h-[calc(100vh-8rem)] p-6"}>
-      <OnboardingChecklistCard className="mb-4" />
-      {countLoadError && (
-        <Alert className="mb-4" variant="destructive">
-          <AlertDescription className="flex items-center justify-between gap-3">
-            <span>{countLoadError}</span>
-            <Button size="sm" variant="outline" onClick={() => loadCounts(shouldIncludeTeamCountRef.current)}>
-              Erneut laden
-            </Button>
-          </AlertDescription>
-        </Alert>
-      )}
-
-      <div className="mb-6 flex items-center justify-between gap-3 border-b">
+    <div className="min-h-[calc(100vh-8rem)] w-full">
+      <div className="flex w-full items-center justify-between gap-3 border-b border-border bg-white px-4 md:px-6 lg:px-8">
         <div className="flex min-w-0 flex-1 overflow-x-auto">
           {visibleTabs.map((tab) => {
             const Icon = tab.icon;
@@ -230,6 +218,19 @@ export function MyWorkView() {
         </div>
       </div>
 
+      <div className={activeTab === "dashboard" ? "mx-auto w-full max-w-6xl px-4 py-6 md:px-6 lg:px-8" : "p-6"}>
+      <OnboardingChecklistCard className="mb-4" />
+      {countLoadError && (
+        <Alert className="mb-4" variant="destructive">
+          <AlertDescription className="flex items-center justify-between gap-3">
+            <span>{countLoadError}</span>
+            <Button size="sm" variant="outline" onClick={() => loadCounts(shouldIncludeTeamCountRef.current)}>
+              Erneut laden
+            </Button>
+          </AlertDescription>
+        </Alert>
+      )}
+
       {activeTab === "dashboard" && (
         <ErrorBoundary fallback={tabError("Dashboard")}>
           <Suspense fallback={tabFallback}>
@@ -268,6 +269,7 @@ export function MyWorkView() {
           )}
         </Suspense>
       )}
+      </div>
     </div>
   );
 }
