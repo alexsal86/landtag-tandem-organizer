@@ -598,7 +598,7 @@ export const DashboardAppointments = ({ data }: Props) => {
   );
 };
 
-/** Day separator: label chip between hairlines so today and tomorrow read as separate blocks. */
+/** Day heading keeps the date visible without a trailing divider. */
 function DayDivider({ label, date, first = false }: { label: string; date: Date; first?: boolean }) {
   return (
     <div className="mb-1 flex items-center gap-2" role="heading" aria-level={3}>
@@ -608,7 +608,6 @@ function DayDivider({ label, date, first = false }: { label: string; date: Date;
         {label}
         <span className="font-normal normal-case tracking-normal opacity-70">{format(date, "EEEE, d. MMMM", { locale: de })}</span>
       </span>
-      <span className="h-px flex-1 bg-border" aria-hidden="true" />
     </div>
   );
 }

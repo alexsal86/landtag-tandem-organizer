@@ -90,16 +90,16 @@ export const DashboardHeader = ({ showTeamRituals = true }: { showTeamRituals?: 
       </div>
       <div className="w-full min-w-0 max-w-xs space-y-4 lg:justify-self-end">
       {weatherItems.length > 0 && (
-        <div className="flex flex-wrap items-end justify-end gap-3 self-end">
+        <div className="flex items-center justify-end gap-3 overflow-x-auto whitespace-nowrap">
         {weatherItems.map((item) => (
-          <div key={item.city} className="flex items-center gap-2.5">
+          <div key={item.city} className="flex shrink-0 items-center gap-1.5 text-sm">
             {(() => {
               const Icon = getWeatherLucideIcon(item.icon);
-              return <Icon className={`h-11 w-11 ${Icon === Sun ? "text-[rgb(188,152,84)]" : "text-muted-foreground"}`} />;
+              return <Icon className={`h-7 w-7 shrink-0 ${Icon === Sun ? "text-[rgb(188,152,84)]" : "text-muted-foreground"}`} />;
             })()}
-            <div className="flex flex-col gap-0.5">
-              <p className="text-sm leading-none text-muted-foreground">{item.city}</p>
-              <p className="text-xl font-semibold leading-tight">{Math.round(item.temp)}°C</p>
+            <div className="flex items-center gap-1.5">
+              <p className="text-sm leading-7 text-muted-foreground">{item.city}</p>
+              <p className="text-sm font-medium leading-7">{Math.round(item.temp)}°C</p>
             </div>
           </div>
         ))}
