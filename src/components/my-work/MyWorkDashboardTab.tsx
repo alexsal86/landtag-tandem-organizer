@@ -186,7 +186,6 @@ export function MyWorkDashboardTab() {
       <div className="animate-rise"><DashboardHeader showTeamRituals={isLargeScreen} /></div>
       {isEmployeeView && <PendingBriefingNotice />}
       {isDeputyView && <TodayBriefingPanel />}
-      {isEmployeeView && <BriefingComposerCard />}
       <div className="grid grid-cols-1 gap-6 items-start lg:grid-cols-2">
         <div className="flex min-w-0 flex-col gap-6">
           <UrgentRequestsWidget />
@@ -195,6 +194,7 @@ export function MyWorkDashboardTab() {
           {isDeputyView && <OfficeFeedbackCard />}
         </div>
         <div className="flex min-w-0 flex-col gap-6">
+          {isEmployeeView && <BriefingComposerCard />}
           {!isDeputyView && <DeadlinesWidget />}
           <DashboardWidgetContainer
             icon={Vote} title={isDeputyView ? "Braucht deine Entscheidung" : "Entscheidungen"} animationDelay={60}
