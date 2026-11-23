@@ -538,18 +538,15 @@ export const DashboardAppointments = ({ data }: Props) => {
   const HintIcon = specialDayHint?.icon ? getLucideIcon(specialDayHint.icon) : null;
 
   const renderDayAppointments = (items: DashboardData["appointments"], today: boolean) => <>
-    {items.filter(item => item.is_all_day).map(item => <div key={item.id} className="mb-2 rounded-lg bg-muted/40 px-3 py-2">
-      <p className="text-sm font-medium">{item.title}</p>
-      <p className="text-xs text-muted-foreground">Ganztägig{item.location ? ` · ${item.location}` : ""}</p>
-    </div>)}
+    <DashboardBirthdays allDayAppointments={items.filter(item => item.is_all_day)} includeBirthdays={today} />
     {items.some(item => !item.is_all_day) && renderTimedAppointments(items.filter(item => !item.is_all_day), today)}
   </>;
 
   return (
     <div className="@container space-y-4">
       <div>
-        <DashboardBirthdays />
         {(isShowingTomorrow || appointments.length === 0) ? <div className="space-y-2">
+          <DashboardBirthdays />
           <p className="text-sm text-muted-foreground">{appointments.length === 0 && tomorrowAppointments.length === 0
             ? "Heute und morgen stehen keine weiteren Termine an." : "Heute stehen keine weiteren Termine an."}</p>
           {data.nextAppointment && <p className="border-t border-border pt-3 text-sm font-semibold">{nextAppointmentLabel(data.nextAppointment)}</p>}
