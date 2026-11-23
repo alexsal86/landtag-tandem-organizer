@@ -105,7 +105,7 @@ export const appointmentBriefingLifecycleScenario: TestScenario = {
         const now = new Date("2026-11-21T12:00:00+01:00");
         const event = { id: "summary", title: "Bürgerdialog", start_time: "2026-11-21T18:00:00+01:00", end_time: "2026-11-21T19:00:00+01:00", is_all_day: false };
         const checks = [
-          appointmentSummary([], now).includes("Heute stehen keine Termine an"),
+          appointmentSummary([], now).includes("Heute und morgen stehen keine weiteren Termine an"),
           appointmentSummary([event], now).includes("ein Termin um 18:00"),
           !appointmentSummary([event], now).includes("Briefing"),
           appointmentSummary([{ ...event, briefing_status: "approved" }], now).includes("Das Briefing liegt bereit"),

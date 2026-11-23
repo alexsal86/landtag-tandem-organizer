@@ -17254,6 +17254,10 @@ export type Database = {
       }
     }
     Functions: {
+      request_birthday_congratulations: {
+        Args: { _contact_id: string; _tenant_id: string }
+        Returns: string
+      }
       _briefing_task_event: {
         Args: { _task: string; _text: string }
         Returns: undefined

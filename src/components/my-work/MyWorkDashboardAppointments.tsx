@@ -1,3 +1,5 @@
+import { DashboardBirthdays } from "./DashboardBirthdays";
+import { nextAppointmentLabel } from "@/utils/dashboard/occasions";
 import { hasAppointmentEnded, nextAppointmentId, timelineNowIndex } from "@/utils/dashboard/daySummary";
 import { useQuery } from "@tanstack/react-query";
 import { useResolvedUserRole } from "@/hooks/useResolvedUserRole";
@@ -506,7 +508,7 @@ export const DashboardAppointments = ({ data }: Props) => {
     </div>
   );
 
-  const renderDayAppointments = (items: DashboardData["appointments"], today: boolean) => {
+  const renderTimedAppointments = (items: DashboardData["appointments"], today: boolean) => {
     const entries: Array<{ key: string; appointment: DashboardData["appointments"][number] | null }> =
       items.map(appointment => ({ key: appointment.id, appointment }));
     if (today && items.some(appointment => !hasAppointmentEnded(appointment, now))) {
@@ -535,26 +537,31 @@ export const DashboardAppointments = ({ data }: Props) => {
 
   const HintIcon = specialDayHint?.icon ? getLucideIcon(specialDayHint.icon) : null;
 
+  const renderDayAppointments = (items: DashboardData["appointments"], today: boolean) => <>
+    {items.filter(item => item.is_all_day).map(item => <div key={item.id} className="mb-2 rounded-lg bg-muted/40 px-3 py-2">
+      <p className="text-sm font-medium">{item.title}</p>
+      <p className="text-xs text-muted-foreground">Ganztägig{item.location ? ` · ${item.location}` : ""}</p>
+    </div>)}
+    {items.some(item => !item.is_all_day) && renderTimedAppointments(items.filter(item => !item.is_all_day), today)}
+  </>;
+
   return (
     <div className="@container space-y-4">
       <div>
-        {(isShowingTomorrow || appointments.length === 0) && (
-          <p className="mb-3 text-sm text-muted-foreground">Heute stehen keine weiteren Termine an.</p>
-        )}
-        {appointments.length === 0 ? (
-          isShowingTomorrow && <p className="text-sm text-muted-foreground">Auch morgen stehen keine Termine an.</p>
-        ) : (
-          <div className="space-y-1.5">
-            <DayDivider label={isShowingTomorrow ? "Morgen" : "Heute"} date={isShowingTomorrow ? addDays(new Date(), 1) : new Date()} first />
-            {renderDayAppointments(appointments, !isShowingTomorrow)}
-          </div>
-        )}
-        {tomorrowAppointments.length > 0 && (
-          <div className="mt-5 space-y-1.5">
+        <DashboardBirthdays />
+        {(isShowingTomorrow || appointments.length === 0) ? <div className="space-y-2">
+          <p className="text-sm font-medium">Heute keine Termine</p>
+          <p className="text-sm text-muted-foreground">{appointments.length === 0 && tomorrowAppointments.length === 0
+            ? "Heute und morgen stehen keine weiteren Termine an." : "Heute stehen keine weiteren Termine an."}</p>
+          {data.nextAppointment && <p className="text-sm">{nextAppointmentLabel(data.nextAppointment)}</p>}
+        </div> : <>
+          <DayDivider label="Heute" date={new Date()} first />
+          {renderDayAppointments(appointments, true)}
+          {tomorrowAppointments.length > 0 && <div className="mt-5 space-y-1.5">
             <DayDivider label="Morgen" date={addDays(new Date(), 1)} />
             {renderDayAppointments(tomorrowAppointments, false)}
-          </div>
-        )}
+          </div>}
+        </>}
       </div>
 
       {specialDayHint && isSpecialDayHintVisible && <Separator className="my-2" />}

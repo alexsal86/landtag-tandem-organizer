@@ -1,3 +1,4 @@
+import { occursOnDay } from "@/utils/dashboard/occasions";
 import { berlinDay, hasAppointmentEnded } from "@/utils/dashboard/daySummary";
 import { useMemo } from 'react';
 import { useQuery } from '@tanstack/react-query';
@@ -45,6 +46,7 @@ export interface DashboardData {
   userName: string;
   userRole: string;
   appointments: AppointmentData[];
+  nextAppointment?: AppointmentData;
   isShowingTomorrow: boolean;
   /** Filled when only one appointment remains today, so the next day can be previewed. */
   tomorrowAppointments: AppointmentData[];
@@ -63,6 +65,7 @@ interface DashboardRpcData {
   userName: string;
   userRole: string;
   appointments: AppointmentData[];
+  nextAppointment?: AppointmentData;
   isShowingTomorrow: boolean;
   /** Filled when only one appointment remains today, so the next day can be previewed. */
   tomorrowAppointments: AppointmentData[];
@@ -113,7 +116,7 @@ export const fetchDashboardRpc = async (userId: string, userEmail: string | unde
       const externalResult = await supabase.from('external_events')
         .select('id, title, start_time, end_time, all_day, location, external_calendars!inner(tenant_id)')
         .eq('external_calendars.tenant_id', tenantId)
-        .gte('start_time', new Date(today.getTime() - 86400000).toISOString())
+        .gte('end_time', new Date(today.getTime() - 86400000).toISOString())
         .lt('start_time', new Date(today.getTime() + 3 * 86400000).toISOString())
         .order('start_time', { ascending: true });
 
@@ -154,9 +157,31 @@ export const fetchDashboardRpc = async (userId: string, userEmail: string | unde
       location: appointment.location?.trim() || locationByAppointmentId.get(appointment.id),
     }));
 
-    const all = [...normalizedAppointments, ...externalAppointments];
+    // Fetch the next actual appointment independently of the short dashboard RPC window.
+    const [nextInternal, nextExternal, ongoingAllDay] = await Promise.all([
+      supabase.from('appointments').select('id,title,start_time,end_time,is_all_day,location')
+        .eq('tenant_id', tenantId).gte('start_time', now.toISOString())
+        .not('status', 'in', '(cancelled,canceled)').order('start_time').limit(1),
+      supabase.from('external_events').select('id,title,start_time,end_time,all_day,location,external_calendars!inner(tenant_id)')
+        .eq('external_calendars.tenant_id', tenantId).gte('start_time', now.toISOString()).order('start_time').limit(1),
+      supabase.from('appointments').select('id,title,start_time,end_time,is_all_day,location')
+        .eq('tenant_id', tenantId).eq('is_all_day', true).lte('start_time', now.toISOString())
+        .gt('end_time', now.toISOString()).not('status', 'in', '(cancelled,canceled)'),
+    ]);
+    if (ongoingAllDay.error) throw ongoingAllDay.error;
+    if (nextInternal.error) throw nextInternal.error;
+    if (nextExternal.error) throw nextExternal.error;
+    const future: AppointmentData[] = [
+      ...(nextInternal.data ?? []).map(e => ({ ...e, is_all_day: e.is_all_day ?? false, end_time: e.end_time ?? undefined, location: e.location ?? undefined })),
+      ...(nextExternal.data ?? []).map(e => ({ ...e, is_all_day: e.all_day ?? false, end_time: e.end_time ?? undefined, location: e.location ?? undefined })),
+    ];
+    const all = [...new Map([...normalizedAppointments, ...externalAppointments,
+      ...(ongoingAllDay.data ?? []).map(e => ({ ...e, is_all_day: true, end_time: e.end_time ?? undefined, location: e.location ?? undefined }))
+    ].map(e => [e.id, e])).values()];
+    const nextAppointment = [...all, ...future].filter(e => Date.parse(e.start_time) > now.getTime())
+      .sort((a,b) => Date.parse(a.start_time)-Date.parse(b.start_time))[0];
 
-    const todayAll = all.filter(event => berlinDay(new Date(event.start_time)) === berlinDay(now))
+    const todayAll = all.filter(event => occursOnDay(event, berlinDay(now)))
       .sort((a, b) => Date.parse(a.start_time) - Date.parse(b.start_time));
     const todayUpcoming = todayAll.filter(event => !hasAppointmentEnded(event, now));
 
@@ -164,7 +189,7 @@ export const fetchDashboardRpc = async (userId: string, userEmail: string | unde
     let isShowingTomorrow: boolean;
     let tomorrowAppointments: AppointmentData[] = [];
     const tomorrowAll = all.filter(e => {
-      return berlinDay(new Date(e.start_time)) === tomorrowDay;
+      return occursOnDay(e, tomorrowDay);
     }).sort((a, b) => new Date(a.start_time).getTime() - new Date(b.start_time).getTime());
 
     if (includePastToday && todayAll.length > 0) {
@@ -180,7 +205,7 @@ export const fetchDashboardRpc = async (userId: string, userEmail: string | unde
       if (appointments.length === 1) tomorrowAppointments = tomorrowAll;
     }
 
-    return { userName, userRole, appointments, isShowingTomorrow, tomorrowAppointments, openTasksCount, completedTasksToday, openTaskTitles };
+    return { userName, userRole, appointments, nextAppointment, isShowingTomorrow, tomorrowAppointments, openTasksCount, completedTasksToday, openTaskTitles };
   } catch {
     try {
       const [profileRes, roleRes] = await Promise.all([
@@ -240,6 +265,7 @@ export const useDashboardAppointmentsData = (includePastToday = false): Dashboar
     userName: rpcData?.userName ?? '',
     userRole: rpcData?.userRole ?? '',
     appointments: rpcData?.appointments ?? [],
+    nextAppointment: rpcData?.nextAppointment,
     isShowingTomorrow: rpcData?.isShowingTomorrow ?? false,
     tomorrowAppointments: rpcData?.tomorrowAppointments ?? [],
     openTasksCount: rpcData?.openTasksCount ?? 0,

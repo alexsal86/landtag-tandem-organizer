@@ -34,7 +34,11 @@ export function appointmentSummary(events: SummaryAppointment[], now = new Date(
     if (ready) text += ready === 1 ? " Ein Briefing liegt bereit." : ` ${ready} Briefings liegen bereit.`;
     return text;
   }
-  text = dayEvents.length ? "Für heute sind alle Termine erledigt." : "Ruhiger Tag. Heute stehen keine Termine an.";
+  const tomorrowDay = new Date(Date.parse(today + "T12:00:00Z") + 86400_000).toISOString().slice(0, 10);
+  const hasTomorrow = events.some(event => berlinDay(new Date(event.start_time)) <= tomorrowDay
+    && berlinDay(new Date(Date.parse(event.end_time) - 1)) >= tomorrowDay);
+  text = dayEvents.length ? "Für heute sind alle Termine erledigt." : hasTomorrow
+    ? "Heute stehen keine weiteren Termine an." : "Heute und morgen stehen keine weiteren Termine an.";
   const next = events.filter(event => berlinDay(new Date(event.start_time)) > today)
     .sort((a, b) => Date.parse(a.start_time) - Date.parse(b.start_time))[0];
   if (!next) return text + " Es ist kein weiterer Termin eingetragen.";
