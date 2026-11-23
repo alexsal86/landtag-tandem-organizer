@@ -95,7 +95,7 @@ export const DashboardHeader = ({ showTeamRituals = true }: { showTeamRituals?: 
           <div key={item.city} className="flex items-center gap-2.5">
             {(() => {
               const Icon = getWeatherLucideIcon(item.icon);
-              return <Icon className="h-11 w-11 text-muted-foreground" />;
+              return <Icon className={`h-11 w-11 ${Icon === Sun ? "text-[rgb(188,152,84)]" : "text-muted-foreground"}`} />;
             })()}
             <div className="flex flex-col gap-0.5">
               <p className="text-sm leading-none text-muted-foreground">{item.city}</p>
