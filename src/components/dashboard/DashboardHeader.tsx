@@ -1,3 +1,4 @@
+import { TeamRitualDashboardCard } from "@/features/team-rituals/TeamRitualDashboardCard";
 import { DashboardDaySummary } from "./DashboardDaySummary";
 import { useState, useEffect, type ComponentType } from 'react';
 import { format } from 'date-fns';
@@ -75,7 +76,7 @@ export const DashboardHeader = () => {
   };
 
   return (
-    <div className="grid grid-cols-1 items-end gap-x-6 gap-y-4 lg:grid-cols-[minmax(0,1fr)_auto]">
+    <div className="grid grid-cols-1 items-start gap-6 lg:grid-cols-2">
       <div className="min-w-0 space-y-3">
         <div className="space-y-1">
           <p className="text-sm font-normal capitalize text-muted-foreground">{dayDate}</p>
@@ -87,6 +88,7 @@ export const DashboardHeader = () => {
         </div>
         <DashboardDaySummary />
       </div>
+      <div className="min-w-0 space-y-4">
       {weatherItems.length > 0 && (
         <div className="flex flex-wrap items-end justify-end gap-3 self-end">
         {weatherItems.map((item) => (
@@ -103,6 +105,8 @@ export const DashboardHeader = () => {
         ))}
         </div>
       )}
+        <TeamRitualDashboardCard />
+      </div>
     </div>
   );
 };

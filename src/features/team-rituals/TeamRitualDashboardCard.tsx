@@ -7,7 +7,6 @@ import { WeeklyAnswers } from "./WeeklyAnswers";
 import { isValidWeeklyAnswer, ritualDashboardState } from "./logic";
 import { Link } from "react-router-dom";
 import { Users, ArrowRight } from "lucide-react";
-import { Card, CardHeader, CardTitle, CardContent } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
 import { useResolvedUserRole } from "@/hooks/useResolvedUserRole";
 import { useTeamRituals } from "./data";
@@ -27,12 +26,12 @@ export function TeamRitualDashboardCard() {
     !!data?.own?.opted_in,
   );
   return (
-    <Card className="dashboard-motion-card animate-rise" style={{ animationDelay: "120ms" }}>
-      <CardHeader className="flex min-h-[52px] flex-row flex-wrap items-center justify-between gap-2 space-y-0 py-space-sm px-space-md">
-        <CardTitle className="inline-flex items-center gap-2 text-base font-medium leading-6">
+    <section className="animate-rise space-y-3" aria-label="Team-Rituale" style={{ animationDelay: "120ms" }}>
+      <div className="flex flex-wrap items-center justify-between gap-2">
+        <h2 className="inline-flex items-center gap-2 text-base font-medium leading-6">
           <Users className="h-4 w-4 shrink-0 text-muted-foreground" aria-hidden="true" />
           Team-Rituale
-        </CardTitle>
+        </h2>
         <Link to="/employee?tab=rituals" aria-label="Team-Rituale öffnen"
           className="group/ritual ml-auto inline-flex h-7 items-center gap-1 rounded-md px-2 text-sm text-foreground transition-colors duration-base ease-standard hover:bg-muted focus-visible:outline-foreground">
           <Users className="h-4 w-4 shrink-0" aria-hidden="true" />
@@ -41,8 +40,8 @@ export function TeamRitualDashboardCard() {
           </span>
           <ArrowRight className="h-3.5 w-3.5 shrink-0" aria-hidden="true" />
         </Link>
-      </CardHeader>
-      <CardContent className="space-y-3 px-space-md pb-space-md pt-0">
+      </div>
+      <div className="space-y-3">
         {state === "loading" ? (
           <p className="text-sm">Team-Rituale werden geladen …</p>
         ) : state === "unavailable" ? (
@@ -77,8 +76,8 @@ export function TeamRitualDashboardCard() {
           </>
         )}
 
-      </CardContent>
-    </Card>
+      </div>
+    </section>
   );
 }
 

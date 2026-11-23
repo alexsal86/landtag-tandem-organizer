@@ -1,7 +1,6 @@
 import { DeputyWaitingCard } from "@/features/decisions/DeputyWaitingCard";
 import { OfficeFeedbackCard } from "@/features/appointments/briefing/OfficeFeedbackCard";
 import { PendingBriefingNotice } from "@/features/appointments/briefing/PendingBriefingNotice";
-import {TeamRitualDashboardCard} from "@/features/team-rituals/TeamRitualDashboardCard";
 import type { ReactNode } from 'react';
 import { Link } from 'react-router-dom';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
@@ -172,18 +171,18 @@ export function MyWorkDashboardTab() {
   if (loading) return <LoadingState variant="card" rows={3} />;
 
   return (
-    <div key={isDeputyView ? "deputy" : "employee"} className="dashboard-motion space-y-space-md">
+    <div key={isDeputyView ? "deputy" : "employee"} className="dashboard-motion mx-auto w-full max-w-6xl space-y-6">
       <div className="animate-rise"><DashboardHeader /></div>
       {isEmployeeView && <PendingBriefingNotice />}
       {isDeputyView && <TodayBriefingPanel />}
       {isEmployeeView && <BriefingComposerCard />}
-      <div className="grid grid-cols-1 lg:grid-cols-[minmax(0,40fr)_minmax(0,35fr)_minmax(0,25fr)] gap-space-md items-start">
-        <div className="flex flex-col gap-space-md min-w-0">
+      <div className="grid grid-cols-1 gap-6 items-start lg:grid-cols-2">
+        <div className="flex min-w-0 flex-col gap-6">
           <UrgentRequestsWidget />
           <AppointmentsWidget isDeputyView={isDeputyView} />
           {isDeputyView && <OfficeFeedbackCard />}
         </div>
-        <div className="flex flex-col gap-space-md min-w-0">
+        <div className="flex min-w-0 flex-col gap-6">
           {!isDeputyView && <DeadlinesWidget />}
           <DashboardWidgetContainer
             icon={Vote} title={isDeputyView ? "Braucht deine Entscheidung" : "Entscheidungen"} animationDelay={60}
@@ -194,8 +193,6 @@ export function MyWorkDashboardTab() {
             </ErrorBoundary>
           </DashboardWidgetContainer>
           {isEmployeeView && <ErrorBoundary fallback={<ErrorState description="Entscheidungen beim Abgeordneten konnten nicht geladen werden." />}><DeputyWaitingCard /></ErrorBoundary>}
-        </div>
-        <div className="flex flex-col gap-space-md min-w-0">
           {!isDeputyView && (
             <DashboardWidgetContainer
               icon={Users} title="Jour fixe" animationDelay={120}
@@ -206,7 +203,6 @@ export function MyWorkDashboardTab() {
               </ErrorBoundary>
             </DashboardWidgetContainer>
           )}
-          <TeamRitualDashboardCard />
         </div>
       </div>
     </div>
