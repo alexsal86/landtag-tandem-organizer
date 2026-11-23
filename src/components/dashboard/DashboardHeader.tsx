@@ -82,7 +82,7 @@ export const DashboardHeader = ({ showTeamRituals = true }: { showTeamRituals?: 
           <p className="text-body-lg font-normal capitalize text-muted-foreground">{dayDate}</p>
           {greeting && (
             <h1 className="text-display">
-              {formatDashboardGreeting(greeting, userName || 'Nutzer')}
+              {formatDashboardGreeting(greeting, userName.trim().split(/\s+/)[0] || 'Nutzer')}
             </h1>
           )}
         </div>
