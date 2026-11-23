@@ -1,4 +1,4 @@
-import { birthdayAge, nextAppointmentLabel, occursOnDay } from "@/utils/dashboard/occasions";
+import { isDashboardBirthday, birthdayAge, nextAppointmentLabel, occursOnDay } from "@/utils/dashboard/occasions";
 import { supabase } from "@/integrations/supabase/client";
 import type { TestScenario } from "../types";
 import { SELFTEST_MARKER, SELFTEST_PREFIX } from "../runner";
@@ -47,6 +47,7 @@ export const appointmentLifecycleScenario: TestScenario = {
       id: "dashboard-occasions", label: "Geburtstage und ganztägige Termine getrennt darstellen", kind: "logic",
       run: async () => {
         if (birthdayAge('1980-11-23', '2026-11-23') !== 46 || birthdayAge('1980-11-24', '2026-11-23') !== undefined) throw new Error('Geburtstagsberechnung falsch');
+        if (!isDashboardBirthday({ category: 'birthday' }) || isDashboardBirthday({ category: null }) || isDashboardBirthday({ category: 'meeting' })) throw new Error('Geburtstage müssen vom normalen Tagesablauf getrennt bleiben');
         const event = { id: 'all-day', title: 'Klausur', is_all_day: true, start_time: '2026-11-22T23:00:00Z', end_time: '2026-11-24T23:00:00Z', location: 'Stuttgart' };
         if (!occursOnDay(event, '2026-11-24') || occursOnDay(event, '2026-11-25')) throw new Error('Ganztägige Dauer falsch');
         if (!nextAppointmentLabel(event).includes('ganztägig · Klausur · Stuttgart.')) throw new Error('Terminausblick falsch');

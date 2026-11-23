@@ -20,3 +20,8 @@ export function occursOnDay(event: AppointmentData, day: string): boolean {
   const start = berlinDay(new Date(event.start_time));
   return event.is_all_day ? start <= day && berlinDay(new Date(event.end_time ? Date.parse(event.end_time) - 1 : Date.parse(event.start_time))) >= day : start === day;
 }
+
+/** Birthday calendar records are occasions, not appointments in the daily timeline. */
+export function isDashboardBirthday(event: { category?: string | null }): boolean {
+  return event.category === 'birthday';
+}

@@ -22,16 +22,30 @@ export function DashboardBirthdays() {
   const { data, isError } = useQuery({
     queryKey: key, enabled: !!tenant && !!user, staleTime: 60_000, refetchInterval: 60_000,
     queryFn: async () => {
+      const contacts = await supabase.from('contacts').select('id,name,birthday')
+        .eq('tenant_id', tenant!).not('birthday', 'is', null);
+      if (contacts.error) throw contacts.error;
+      return (contacts.data ?? []).flatMap(contact => {
+        const age = birthdayAge(contact.birthday!, day);
+        return age === undefined ? [] : [{ ...contact, age }];
+      });
+    },
+  });
+  // Supplementary office information must never hide an otherwise readable birthday.
+  const planning = useQuery({
+    queryKey: ['dashboard-birthday-planning', tenant, user?.id, day],
+    enabled: !!tenant && !!user, staleTime: 60_000, refetchInterval: 60_000,
+    queryFn: async () => {
       const since = new Date(Date.parse(day + 'T12:00:00Z') - 14 * 86400_000).toISOString().slice(0, 10);
-      const [contacts, agenda, tasks] = await Promise.all([
-        supabase.from('contacts').select('id,name,birthday').eq('tenant_id', tenant!).not('birthday', 'is', null),
-        supabase.from('meeting_agenda_items').select('result_text,meetings!inner(tenant_id,meeting_date)')
-          .eq('meetings.tenant_id', tenant!).eq('system_type', 'birthdays')
-          .gte('meetings.meeting_date', since).lte('meetings.meeting_date', day).order('updated_at', { ascending: false }),
-        supabase.from('tasks').select('source_id').eq('tenant_id', tenant!).eq('source_type', 'birthday_congratulations')
-          .like('source_id', `%:${day.slice(0, 4)}`),
-      ]);
-      if (contacts.error || agenda.error || tasks.error) throw contacts.error ?? agenda.error ?? tasks.error;
+      const meetings = await supabase.from('meetings').select('id').eq('tenant_id', tenant!)
+        .gte('meeting_date', since).lte('meeting_date', day);
+      if (meetings.error) throw meetings.error;
+      const ids = (meetings.data ?? []).map(meeting => meeting.id);
+      // Resolve IDs explicitly. This does not depend on a PostgREST relationship.
+      const agenda = ids.length ? await supabase.from('meeting_agenda_items').select('result_text')
+        .in('meeting_id', ids).eq('system_type', 'birthdays').order('updated_at', { ascending: false })
+        : { data: [], error: null };
+      if (agenda.error) throw agenda.error;
       const actions = new Map<string, { action?: string; assigned_to?: string[] }>();
       // The most recent meeting's explicit entry wins, including a removed selection.
       for (const item of agenda.data ?? []) {
@@ -44,11 +58,17 @@ export function DashboardBirthdays() {
           }
         } catch { /* Older plain-text meeting results have no birthday assignments. */ }
       }
-      return (contacts.data ?? []).flatMap(contact => {
-        const age = birthdayAge(contact.birthday!, day);
-        if (age === undefined) return [];
-        return [{ ...contact, age, action: actions.get(contact.id), requested: tasks.data?.some(t => t.source_id === `${contact.id}:${day.slice(0, 4)}`) }];
-      });
+      return actions;
+    },
+  });
+  const requestsKey = ['dashboard-birthday-requests', tenant, user?.id, day];
+  const requests = useQuery({
+    queryKey: requestsKey, enabled: !!tenant && !!user, staleTime: 60_000, refetchInterval: 60_000,
+    queryFn: async () => {
+      const tasks = await supabase.from('tasks').select('source_id').eq('tenant_id', tenant!)
+        .eq('source_type', 'birthday_congratulations').like('source_id', `%:${day.slice(0, 4)}`);
+      if (tasks.error) throw tasks.error;
+      return new Set((tasks.data ?? []).map(task => task.source_id));
     },
   });
   const request = async (id: string) => {
@@ -57,23 +77,28 @@ export function DashboardBirthdays() {
     try {
       const { error } = await supabase.rpc('request_birthday_congratulations', { _contact_id: id, _tenant_id: tenant! });
       if (error) throw error;
-      await client.invalidateQueries({ queryKey: key });
+      client.setQueryData<Set<string>>(requestsKey, previous => new Set([...(previous ?? []), `${id}:${day.slice(0, 4)}`]));
+      void client.invalidateQueries({ queryKey: requestsKey });
       toast({ title: 'Glückwünsche beim Büro beauftragt' });
     } catch {
       toast({ title: 'Glückwünsche konnten nicht beauftragt werden', description: 'Bitte erneut versuchen. Die Aufgabe wurde nicht bestätigt.', variant: 'destructive' });
     } finally { setBusy(null); }
   };
   if (isError) return <p className="mb-3 text-xs text-muted-foreground">Geburtstage konnten nicht geladen werden.</p>;
-  return <div className="space-y-2 mb-3">{data?.map(contact => <div key={contact.id} className="flex flex-wrap items-center gap-2 rounded-lg bg-muted/40 px-3 py-2">
+  return <div className="space-y-2 mb-3">{data?.map(contact => {
+    const action = planning.data?.get(contact.id);
+    const requested = requests.data?.has(`${contact.id}:${day.slice(0, 4)}`);
+    return <div key={contact.id} className="flex flex-wrap items-center gap-2 rounded-lg bg-muted/40 px-3 py-2">
     <Cake className="h-4 w-4 shrink-0 text-muted-foreground" />
     <div className="min-w-0 flex-1">
       <p className="text-sm font-medium">{contact.name} hat Geburtstag</p>
       <p className="text-xs text-muted-foreground">wird {contact.age} Jahre alt</p>
-      <p className="text-xs text-muted-foreground">{contact.action?.action && labels[contact.action.action]
-        ? `${labels[contact.action.action]} vorgesehen${contact.action.assigned_to?.length ? ' · zugewiesen' : ' · noch niemandem zugewiesen'}` : 'Keine Glückwünsche zugewiesen'}</p>
+      <p className="text-xs text-muted-foreground">{planning.isError ? 'Jour-fixe-Planung konnte nicht geladen werden' : planning.isPending ? 'Jour-fixe-Planung wird geladen…' : action?.action && labels[action.action]
+        ? `${labels[action.action]} vorgesehen${action.assigned_to?.length ? ' · zugewiesen' : ' · noch niemandem zugewiesen'}` : 'Keine Glückwünsche zugewiesen'}</p>
     </div>
-    <Button size="sm" variant="outline" disabled={!!busy || contact.requested} onClick={() => void request(contact.id)}>
-      {contact.requested ? 'Glückwünsche veranlasst' : 'Glückwünsche veranlassen'}
+    <Button size="sm" variant="outline" disabled={!!busy || requested} onClick={() => void request(contact.id)}>
+      {requested ? 'Glückwünsche veranlasst' : 'Glückwünsche veranlassen'}
     </Button>
-  </div>)}</div>;
+    {requests.isError && <p className="w-full text-xs text-muted-foreground">Auftragsstatus konnte nicht geladen werden.</p>}
+  </div>})}</div>;
 }

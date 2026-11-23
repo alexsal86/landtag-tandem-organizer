@@ -1,4 +1,4 @@
-import { occursOnDay } from "@/utils/dashboard/occasions";
+import { isDashboardBirthday, occursOnDay } from "@/utils/dashboard/occasions";
 import { berlinDay, hasAppointmentEnded } from "@/utils/dashboard/daySummary";
 import { useMemo } from 'react';
 import { useQuery } from '@tanstack/react-query';
@@ -34,7 +34,7 @@ type DashboardRpcResult = {
 };
 
 type ExternalEventRow = Pick<Database['public']['Tables']['external_events']['Row'], 'id' | 'title' | 'start_time' | 'end_time' | 'all_day' | 'location'>;
-type AppointmentLocationRow = Pick<Database['public']['Tables']['appointments']['Row'], 'id' | 'location'>;
+type AppointmentLocationRow = Pick<Database['public']['Tables']['appointments']['Row'], 'id' | 'location' | 'category'>;
 
 const isDashboardRpcResult = (value: unknown): value is DashboardRpcResult => {
   if (!value || typeof value !== 'object') return false;
@@ -133,18 +133,22 @@ export const fetchDashboardRpc = async (userId: string, userEmail: string | unde
     }
 
     const rpcAppointments = rpcResult.appointments ?? [];
-    const appointmentIdsWithoutLocation = rpcAppointments
-      .filter((appointment) => !appointment.location?.trim())
+    const appointmentIds = rpcAppointments
       .map((appointment) => appointment.id);
 
     let locationByAppointmentId = new Map<string, string>();
-    if (appointmentIdsWithoutLocation.length > 0) {
-      const { data: appointmentLocations } = await supabase
+    const birthdayIds = new Set<string>();
+    if (appointmentIds.length > 0) {
+      const { data: appointmentLocations, error: metadataError } = await supabase
         .from('appointments')
-        .select('id, location')
-        .in('id', appointmentIdsWithoutLocation)
+        .select('id, location, category')
+        .in('id', appointmentIds)
         .eq('tenant_id', tenantId);
 
+      if (metadataError) throw metadataError;
+      for (const row of appointmentLocations ?? []) {
+        if (isDashboardBirthday(row)) birthdayIds.add(row.id);
+      }
       locationByAppointmentId = new Map(
         ((appointmentLocations as AppointmentLocationRow[] | null) ?? [])
           .filter((appointment) => appointment.location?.trim())
@@ -152,7 +156,7 @@ export const fetchDashboardRpc = async (userId: string, userEmail: string | unde
       );
     }
 
-    const normalizedAppointments = rpcAppointments.map((appointment) => ({
+    const normalizedAppointments = rpcAppointments.filter(appointment => !birthdayIds.has(appointment.id)).map((appointment) => ({
       ...appointment,
       location: appointment.location?.trim() || locationByAppointmentId.get(appointment.id),
     }));
@@ -160,12 +164,12 @@ export const fetchDashboardRpc = async (userId: string, userEmail: string | unde
     // Fetch the next actual appointment independently of the short dashboard RPC window.
     const [nextInternal, nextExternal, ongoingAllDay] = await Promise.all([
       supabase.from('appointments').select('id,title,start_time,end_time,is_all_day,location')
-        .eq('tenant_id', tenantId).gte('start_time', now.toISOString())
+        .eq('tenant_id', tenantId).or('category.is.null,category.neq.birthday').gte('start_time', now.toISOString())
         .not('status', 'in', '(cancelled,canceled)').order('start_time').limit(1),
       supabase.from('external_events').select('id,title,start_time,end_time,all_day,location,external_calendars!inner(tenant_id)')
         .eq('external_calendars.tenant_id', tenantId).gte('start_time', now.toISOString()).order('start_time').limit(1),
       supabase.from('appointments').select('id,title,start_time,end_time,is_all_day,location')
-        .eq('tenant_id', tenantId).eq('is_all_day', true).lte('start_time', now.toISOString())
+        .eq('tenant_id', tenantId).or('category.is.null,category.neq.birthday').eq('is_all_day', true).lte('start_time', now.toISOString())
         .gt('end_time', now.toISOString()).not('status', 'in', '(cancelled,canceled)'),
     ]);
     if (ongoingAllDay.error) throw ongoingAllDay.error;

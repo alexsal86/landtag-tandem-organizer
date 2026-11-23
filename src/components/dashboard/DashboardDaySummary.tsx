@@ -31,7 +31,7 @@ export function DashboardDaySummary() {
       const since = new Date(Date.now() - 2 * 86400_000).toISOString();
       const [internal, external] = await Promise.all([
         supabase.from("appointments").select("id,title,start_time,end_time,is_all_day,briefing_status,status")
-          .eq("tenant_id", currentTenant!.id).gte("end_time", since).order("start_time"),
+          .eq("tenant_id", currentTenant!.id).or("category.is.null,category.neq.birthday").gte("end_time", since).order("start_time"),
         supabase.from("external_events").select("id,title,start_time,end_time,all_day,external_calendars!inner(tenant_id)")
           .eq("external_calendars.tenant_id", currentTenant!.id).gte("end_time", since).order("start_time"),
       ]);
