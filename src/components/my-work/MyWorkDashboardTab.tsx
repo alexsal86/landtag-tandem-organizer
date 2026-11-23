@@ -1,3 +1,4 @@
+import { TeamRitualDashboardCard } from "@/features/team-rituals/TeamRitualDashboardCard";
 import { DeputyWaitingCard } from "@/features/decisions/DeputyWaitingCard";
 import { OfficeFeedbackCard } from "@/features/appointments/briefing/OfficeFeedbackCard";
 import { PendingBriefingNotice } from "@/features/appointments/briefing/PendingBriefingNotice";
@@ -167,12 +168,22 @@ function UrgentRequestsWidget() {
 
 export function MyWorkDashboardTab() {
   const { isDeputyView, isEmployeeView, loading } = useWorkspaceView();
+  const [isLargeScreen, setIsLargeScreen] = useState(() =>
+    typeof window !== "undefined" && window.matchMedia("(min-width: 1024px)").matches,
+  );
+  useEffect(() => {
+    const media = window.matchMedia("(min-width: 1024px)");
+    const update = () => setIsLargeScreen(media.matches);
+    update();
+    media.addEventListener("change", update);
+    return () => media.removeEventListener("change", update);
+  }, []);
 
   if (loading) return <LoadingState variant="card" rows={3} />;
 
   return (
     <div key={isDeputyView ? "deputy" : "employee"} className="dashboard-motion mx-auto w-full max-w-6xl space-y-6">
-      <div className="animate-rise"><DashboardHeader /></div>
+      <div className="animate-rise"><DashboardHeader showTeamRituals={isLargeScreen} /></div>
       {isEmployeeView && <PendingBriefingNotice />}
       {isDeputyView && <TodayBriefingPanel />}
       {isEmployeeView && <BriefingComposerCard />}
@@ -180,6 +191,7 @@ export function MyWorkDashboardTab() {
         <div className="flex min-w-0 flex-col gap-6">
           <UrgentRequestsWidget />
           <AppointmentsWidget isDeputyView={isDeputyView} />
+          {!isLargeScreen && <TeamRitualDashboardCard />}
           {isDeputyView && <OfficeFeedbackCard />}
         </div>
         <div className="flex min-w-0 flex-col gap-6">

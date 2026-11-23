@@ -11,7 +11,7 @@ import { useDashboardGreetings } from '@/hooks/useDashboardGreetings';
 import { formatDashboardGreeting, selectDashboardGreeting } from '@/utils/dashboard/greetings';
 import { getWeather } from '@/utils/dashboard/weatherApi';
 
-export const DashboardHeader = () => {
+export const DashboardHeader = ({ showTeamRituals = true }: { showTeamRituals?: boolean }) => {
   const { user } = useAuth();
   const { currentTenant } = useTenant();
   const { data: greetings = [] } = useDashboardGreetings(currentTenant?.id);
@@ -105,7 +105,7 @@ export const DashboardHeader = () => {
         ))}
         </div>
       )}
-        <TeamRitualDashboardCard />
+        {showTeamRituals && <TeamRitualDashboardCard />}
       </div>
     </div>
   );
