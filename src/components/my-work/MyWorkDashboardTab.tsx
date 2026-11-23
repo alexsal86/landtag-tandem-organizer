@@ -191,7 +191,7 @@ export function MyWorkDashboardTab() {
         <div className="flex min-w-0 flex-col gap-6">
           <UrgentRequestsWidget />
           <AppointmentsWidget isDeputyView={isDeputyView} />
-          {!isLargeScreen && <TeamRitualDashboardCard />}
+          {!isLargeScreen && <div className="w-full max-w-xs"><TeamRitualDashboardCard /></div>}
           {isDeputyView && <OfficeFeedbackCard />}
         </div>
         <div className="flex min-w-0 flex-col gap-6">

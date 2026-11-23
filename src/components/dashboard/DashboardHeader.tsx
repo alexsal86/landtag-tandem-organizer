@@ -76,7 +76,7 @@ export const DashboardHeader = ({ showTeamRituals = true }: { showTeamRituals?: 
   };
 
   return (
-    <div className="grid grid-cols-1 items-start gap-6 lg:grid-cols-2">
+    <div className="grid grid-cols-1 items-start gap-6 lg:grid-cols-[minmax(0,1fr)_minmax(0,20rem)]">
       <div className="min-w-0 space-y-3">
         <div className="space-y-1">
           <p className="text-sm font-normal capitalize text-muted-foreground">{dayDate}</p>
@@ -88,7 +88,7 @@ export const DashboardHeader = ({ showTeamRituals = true }: { showTeamRituals?: 
         </div>
         <DashboardDaySummary />
       </div>
-      <div className="min-w-0 space-y-4">
+      <div className="w-full min-w-0 max-w-xs space-y-4 lg:justify-self-end">
       {weatherItems.length > 0 && (
         <div className="flex flex-wrap items-end justify-end gap-3 self-end">
         {weatherItems.map((item) => (
