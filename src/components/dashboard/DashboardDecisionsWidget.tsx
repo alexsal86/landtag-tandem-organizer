@@ -13,7 +13,6 @@ import { TaskDecisionResponse } from '@/components/task-decisions/TaskDecisionRe
 import { Button } from '@/components/ui/button';
 import { supabase } from '@/integrations/supabase/client';
 import { cn } from '@/lib/utils';
-import { getColorClasses } from "@/lib/decisionTemplates";
 import { notify } from "@/lib/notify";
 
 function formatDeadline(deadline: string | null): { label: string; isOverdue: boolean } {
@@ -50,7 +49,6 @@ interface DecisionRowProps {
 
 function DecisionRow({ decision, expanded, onToggle, nudge, onDismissConfirmed, onOpen, onPromptOpen, onPromptClose, onUndoConfirmed, forcePrompt }: DecisionRowProps) {
   const recommendation = decision.response_options?.find(option => option.recommended);
-  const recommendationColors = recommendation ? getColorClasses(recommendation.color) : null;
   const { label, isOverdue } = formatDeadline(decision.response_deadline);
   const [undoing, setUndoing] = useState(false);
   const [exiting, setExiting] = useState(false);
@@ -149,6 +147,9 @@ function DecisionRow({ decision, expanded, onToggle, nudge, onDismissConfirmed, 
         <span className="min-w-0">
           <span className="block break-words text-base font-medium leading-6">{decision.title}</span>
           {label && <span className={cn("mt-1 block text-xs", isOverdue ? "text-destructive" : "text-muted-foreground")}>{label}</span>}
+          {recommendation && <span className="mt-2 inline-flex max-w-full rounded-full bg-[#eaf5df] px-2.5 py-1 text-xs font-medium leading-4 text-foreground">
+            Büro: {recommendation.label}
+          </span>}
         </span>
         <ChevronRight className={cn("mt-1 h-4 w-4 shrink-0 transition-transform duration-500 motion-reduce:transition-none", expanded && "rotate-90")} aria-hidden="true" />
       </button>
@@ -159,11 +160,8 @@ function DecisionRow({ decision, expanded, onToggle, nudge, onDismissConfirmed, 
       >
         <div className="min-h-0 overflow-hidden">
           <div onClick={() => { if (!exiting) onOpen(decision.id); }}>
-            {recommendation && recommendationColors && (
-              <div className={cn("mb-3 rounded-2xl px-3 py-2.5 text-xs leading-5 text-foreground", recommendationColors.bgClass)}>
-                <span className={cn("font-medium", recommendationColors.textClass)}>Büro empfiehlt: {recommendation.label}.</span>
-                {recommendation.recommendation_reason?.trim() && <> {recommendation.recommendation_reason.trim()}</>}
-              </div>
+            {recommendation?.recommendation_reason?.trim() && (
+              <p className="mb-3 text-xs leading-5 text-foreground">{recommendation.recommendation_reason.trim()}</p>
             )}
 
             {decision.isParticipant && decision.participant_id && !decision.hasResponded && !prompt && (
