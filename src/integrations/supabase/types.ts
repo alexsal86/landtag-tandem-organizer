@@ -11024,6 +11024,13 @@ export type Database = {
         }
         Relationships: [
           {
+            foreignKeyName: "meeting_agenda_items_meeting_id_fkey"
+            columns: ["meeting_id"]
+            isOneToOne: false
+            referencedRelation: "meetings"
+            referencedColumns: ["id"]
+          },
+          {
             foreignKeyName: "meeting_agenda_items_parent_fk"
             columns: ["parent_id"]
             isOneToOne: false
