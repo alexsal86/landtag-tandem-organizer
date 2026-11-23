@@ -286,6 +286,45 @@ export type Database = {
           },
         ]
       }
+      appointment_change_alerts: {
+        Row: {
+          acknowledged_at: string | null
+          acknowledged_by: string | null
+          appointment_id: string | null
+          created_at: string
+          created_by: string
+          created_by_name: string | null
+          id: string
+          message: string
+          tenant_id: string
+          title: string
+        }
+        Insert: {
+          acknowledged_at?: string | null
+          acknowledged_by?: string | null
+          appointment_id?: string | null
+          created_at?: string
+          created_by?: string
+          created_by_name?: string | null
+          id?: string
+          message: string
+          tenant_id: string
+          title: string
+        }
+        Update: {
+          acknowledged_at?: string | null
+          acknowledged_by?: string | null
+          appointment_id?: string | null
+          created_at?: string
+          created_by?: string
+          created_by_name?: string | null
+          id?: string
+          message?: string
+          tenant_id?: string
+          title?: string
+        }
+        Relationships: []
+      }
       appointment_contacts: {
         Row: {
           appointment_id: string
