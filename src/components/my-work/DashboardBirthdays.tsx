@@ -66,9 +66,9 @@ export function DashboardBirthdays() {
     queryKey: requestsKey, enabled: !!tenant && !!user, staleTime: 60_000, refetchInterval: 60_000,
     queryFn: async () => {
       const tasks = await supabase.from('tasks').select('source_id').eq('tenant_id', tenant!)
-        .eq('source_type', 'birthday_congratulations').like('source_id', `%:${day.slice(0, 4)}`);
+        .eq('source_type', 'birthday_congratulations').gte('due_date', `${day.slice(0, 4)}-01-01`);
       if (tasks.error) throw tasks.error;
-      return new Set((tasks.data ?? []).map(task => task.source_id));
+      return new Set((tasks.data ?? []).map(task => `${task.source_id}:${day.slice(0, 4)}`));
     },
   });
   const request = async (id: string) => {
