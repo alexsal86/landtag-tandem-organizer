@@ -26,7 +26,7 @@ function BriefingItem({ briefing, moreAction, onRead }: {
 
   return <section aria-label="Tagesbriefing" className="rounded-3xl bg-[#f0eafa] p-5">
     <div className="flex items-start gap-4">
-      <Avatar className="h-12 w-12 shrink-0">
+      <Avatar className="h-8 w-8 shrink-0">
         {briefing.author_avatar_url && <AvatarImage src={briefing.author_avatar_url} alt="" />}
         <AvatarFallback className="bg-white text-sm font-semibold text-[#8b5cf6]">{initials}</AvatarFallback>
       </Avatar>
