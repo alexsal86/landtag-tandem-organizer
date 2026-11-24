@@ -26,6 +26,7 @@ import { QuickAccessMenuItem } from "@/components/shared/QuickAccessMenuItem";
 import { Tooltip, TooltipContent, TooltipProvider, TooltipTrigger } from "@/components/ui/tooltip";
 import { TopicDisplay } from "@/components/topics/TopicSelector";
 import { cn } from "@/lib/utils";
+import { berlinClock, berlinDate } from "@/utils/berlinDate";
 import { DecisionCardActivity } from "./DecisionCardActivity";
 import { TaskDecisionResponse } from "./TaskDecisionResponse";
 import { TruncatedDescription } from "./TruncatedDescription";
@@ -258,11 +259,8 @@ export function DecisionCompactCard({
               variant={new Date(decision.response_deadline) < new Date() ? "destructive" : "secondary"}
               className="gap-1"
             >
-              Frist: {new Date(decision.response_deadline).toLocaleDateString("de-DE")}{" "}
-              {new Date(decision.response_deadline).toLocaleTimeString("de-DE", {
-                hour: "2-digit",
-                minute: "2-digit",
-              })}
+              Frist: {berlinDate(decision.response_deadline)}{" "}
+              {berlinClock(decision.response_deadline)}
             </Badge>
           )}
 

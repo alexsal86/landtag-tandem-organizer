@@ -1,7 +1,6 @@
 import { Scale } from "lucide-react";
 import { Badge } from "@/components/ui/badge";
-import { format } from "date-fns";
-import { de } from "date-fns/locale";
+import { berlinDate } from "@/utils/berlinDate";
 import type { ProtocolDecision } from "./types";
 export function ProtocolDecisions({
   decisions,
@@ -30,10 +29,7 @@ export function ProtocolDecisions({
                     <p className="font-medium">{d.title}</p>
                     {d.response_deadline && (
                       <p className="text-xs text-muted-foreground">
-                        Frist:{" "}
-                        {format(new Date(d.response_deadline), "dd.MM.yyyy", {
-                          locale: de,
-                        })}
+                        Frist: {berlinDate(d.response_deadline)}
                       </p>
                     )}
                   </div>

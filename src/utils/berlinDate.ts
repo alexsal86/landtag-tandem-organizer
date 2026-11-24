@@ -21,6 +21,9 @@ const clockFormatter = new Intl.DateTimeFormat("de-DE", {
 const shortDateFormatter = new Intl.DateTimeFormat("de-DE", {
   timeZone: BERLIN_TIME_ZONE, day: "2-digit", month: "2-digit",
 });
+const dateFormatter = new Intl.DateTimeFormat("de-DE", {
+  timeZone: BERLIN_TIME_ZONE, day: "2-digit", month: "2-digit", year: "numeric",
+});
 const shortWeekdayDateFormatter = new Intl.DateTimeFormat("de-DE", {
   timeZone: BERLIN_TIME_ZONE, weekday: "short", day: "2-digit", month: "2-digit",
 });
@@ -61,6 +64,9 @@ export const berlinClock = (value: string | Date): string => clockFormatter.form
 
 /** Datum in Berliner Zeit, z. B. „25.11.“ (de-DE setzt den Punkt selbst). */
 export const berlinDateShort = (value: string | Date): string => shortDateFormatter.format(toDate(value));
+
+/** Datum in Berliner Zeit, z. B. „25.11.2026“. */
+export const berlinDate = (value: string | Date): string => dateFormatter.format(toDate(value));
 
 /** Wochentag und Datum, z. B. „Mi., 25.11.“. */
 export const berlinWeekdayShortDate = (value: string | Date): string => shortWeekdayDateFormatter.format(toDate(value));

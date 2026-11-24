@@ -8,6 +8,7 @@ import { RichTextDisplay } from "@/components/ui/RichTextDisplay";
 import { Textarea } from "@/components/ui/textarea";
 import { cn } from "@/lib/utils";
 import { SystemSubpointList } from "./agenda-editor/SystemSubpointList";
+import { berlinDate } from "@/utils/berlinDate";
 import type { AgendaItem, LinkedCaseItem, LinkedQuickNote, LinkedTask, MeetingUpcomingAppointment, Profile, RelevantDecision } from "./types";
 
 export const liveAgendaSystemTypes = ["upcoming_appointments", "quick_notes", "tasks", "decisions", "case_items"];
@@ -80,7 +81,7 @@ export function LiveAgendaSystemContent({
     case "decisions":
       return relevantDecisions.length ? (
         <SystemSubpointList {...editableList} label="Entscheidungen" entries={relevantDecisions} titleOf={(entry) => entry.title || "Ohne Titel"}
-          metadata={(entry) => entry.response_deadline && <span className="text-muted-foreground">Frist {format(new Date(entry.response_deadline), "dd.MM.yyyy")}</span>}
+          metadata={(entry) => entry.response_deadline && <span className="text-muted-foreground">Frist {berlinDate(entry.response_deadline)}</span>}
           details={(entry, result, patch) => (
             <>
               {entry.description && <RichTextDisplay content={entry.description} className="text-xs text-muted-foreground" />}

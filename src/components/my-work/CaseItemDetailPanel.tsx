@@ -18,6 +18,7 @@ import { TaskDecisionDetails } from "@/components/task-decisions/TaskDecisionDet
 import { DecisionFileUpload } from "@/components/task-decisions/DecisionFileUpload";
 import type { CaseItemInteractionDocument, EditableCaseItem, TimelineInteractionType, TimelineDocumentAttachment } from "@/components/my-work/hooks/useCaseItemEdit";
 import { stripHtml } from "@/utils/textDiff";
+import { berlinDate } from "@/utils/berlinDate";
 
 type TimelineEntry = {
   id: string;
@@ -212,7 +213,7 @@ export function CaseItemDetailPanel({
     if (!value) return "–";
     const parsed = new Date(value);
     if (Number.isNaN(parsed.getTime())) return "–";
-    return format(parsed, "dd.MM.yyyy", { locale: de });
+    return berlinDate(parsed);
   };
 
   const formatTimelineDateOnly = (timestamp: string) => {

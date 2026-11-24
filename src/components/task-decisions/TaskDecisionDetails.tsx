@@ -22,6 +22,7 @@ import { cn } from "@/lib/utils";
 import { formatDistanceToNow } from "date-fns";
 import { de } from "date-fns/locale";
 import { ResponseOption, getColorClasses, getDefaultOptions } from "@/lib/decisionTemplates";
+import { berlinClock, berlinDate } from "@/utils/berlinDate";
 import type { ParticipantProfile } from "@/types/taskDecisions";
 
 import {
@@ -780,13 +781,7 @@ export const TaskDecisionDetails = ({ decisionId, isOpen, onClose, onArchived, h
           </p>
           {decision.response_deadline && (
             <p className="text-xs text-muted-foreground">
-              Antwortfrist: {new Date(decision.response_deadline).toLocaleString('de-DE', {
-                day: '2-digit',
-                month: '2-digit',
-                year: 'numeric',
-                hour: '2-digit',
-                minute: '2-digit'
-              })}
+              Antwortfrist: {berlinDate(decision.response_deadline)}, {berlinClock(decision.response_deadline)}
             </p>
           )}
         </DialogHeader>
