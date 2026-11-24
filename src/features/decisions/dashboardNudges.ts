@@ -11,6 +11,22 @@ export const decisionNudgeTime = (value: string) => new Intl.DateTimeFormat("de-
   timeZone: "Europe/Berlin", hour: "2-digit", minute: "2-digit",
 }).format(new Date(value));
 
+export function decisionNudgeDateTime(value: string, now = new Date()): string {
+  const date = new Date(value);
+  const day = (input: Date) => new Intl.DateTimeFormat("de-DE", {
+    timeZone: "Europe/Berlin", year: "numeric", month: "2-digit", day: "2-digit",
+  }).formatToParts(input).reduce((parts, part) => {
+    if (part.type === "year" || part.type === "month" || part.type === "day") parts[part.type] = part.value;
+    return parts;
+  }, {} as Record<"year" | "month" | "day", string>);
+  const today = day(now);
+  const sent = day(date);
+  const calendarDays = Math.round((Date.UTC(+today.year, +today.month - 1, +today.day) - Date.UTC(+sent.year, +sent.month - 1, +sent.day)) / 86_400_000);
+  const prefix = calendarDays === 0 ? "heute" : calendarDays === 1 ? "gestern" : calendarDays === 2 ? "vorgestern"
+    : new Intl.DateTimeFormat("de-DE", { timeZone: "Europe/Berlin", day: "2-digit", month: "2-digit", year: "numeric" }).format(date);
+  return `${prefix} um ${decisionNudgeTime(value)}`;
+}
+
 export function decisionNudgeSecondsRemaining(deadline: number, now = Date.now()): number {
   return Math.max(0, Math.ceil((deadline - now) / 1000));
 }

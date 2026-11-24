@@ -87,12 +87,14 @@ function OfficeFeedbackForm() {
   const nextDueKey = due[0] ? eventKey(due[0]) : null;
   const nextDueUntil = nextDueKey ? readOfficeSnooze(snoozes[nextDueKey])?.until : undefined;
   const openedReminder = useRef<string | null>(null);
+  const [acknowledgedReminder, setAcknowledgedReminder] = useState<string | null>(null);
   const reminderToken = nextDueKey && nextDueUntil ? nextDueKey + ":" + nextDueUntil : null;
 
   useEffect(() => {
     if (!reminderToken || reminderToken === openedReminder.current || recording || busy || mode !== "write") return;
     if (draftsRef.current[key]?.trim()) return;
     openedReminder.current = reminderToken;
+    setAcknowledgedReminder(reminderToken);
     setSelected(nextDueKey);
     setMode("write");
   }, [reminderToken, nextDueKey, recording, busy, mode, key, text]);
@@ -197,7 +199,7 @@ function OfficeFeedbackForm() {
         </span>
       </header>
       <div className="px-5 pb-5">
-      {!feedback.isLoading && !feedback.isError && current && isOfficeReminderDue(snoozes[key], now) && (
+      {!feedback.isLoading && !feedback.isError && current && reminderToken !== acknowledgedReminder && isOfficeReminderDue(snoozes[key], now) && (
         <div key={key} role="status" className="animate-fade-up mb-4 flex items-start gap-2 rounded-2xl bg-[#eaf5df] px-3 py-2 text-meta font-medium text-[#55ad21]">
           <AlarmClock className="mt-0.5 h-4 w-4 shrink-0" aria-hidden="true" />
           <span>Du wolltest dich an den Termin „{current.title}“ erinnern lassen – jetzt ist es soweit.</span>

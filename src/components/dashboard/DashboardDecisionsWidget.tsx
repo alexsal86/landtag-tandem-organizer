@@ -1,5 +1,5 @@
 import { useWorkspaceView } from "@/contexts/WorkspaceViewContext";
-import { decisionNudgePriority, decisionNudgeTime } from "@/features/decisions/dashboardNudges";
+import { decisionNudgeDateTime, decisionNudgePriority } from "@/features/decisions/dashboardNudges";
 import { useDeputyDashboardDecisions, type DeputyDashboardDecision } from "@/features/decisions/useDeputyDashboardDecisions";
 import { useMemo, useState, useEffect, useRef } from 'react';
 import { useNavigate } from 'react-router-dom';
@@ -132,7 +132,7 @@ function DecisionRow({ decision, expanded, onToggle, nudge, onDismissConfirmed, 
       {expanded && nudge?.nudged_at && <div className="animate-fade-up mb-3 rounded-xl bg-[#eee9f9] px-3 py-2 text-xs" role="status">
         <p className="flex items-center gap-1.5 text-meta font-medium text-[#8b5cf6]">
           <Bell className="h-3 w-3 shrink-0" aria-hidden="true" />
-          <span>Angestupst {nudge.nudged_by_name ? `von ${nudge.nudged_by_name} ` : ""}um {decisionNudgeTime(nudge.nudged_at)}</span>
+          <span>Angestoßen {nudge.nudged_by_name ? `von ${nudge.nudged_by_name} ` : ""}{decisionNudgeDateTime(nudge.nudged_at)}</span>
         </p>
         {nudge.nudge_note && <p className="mt-1 whitespace-pre-wrap text-meta font-normal text-[#18202b]">{nudge.nudge_note}</p>}
       </div>}
@@ -144,13 +144,13 @@ function DecisionRow({ decision, expanded, onToggle, nudge, onDismissConfirmed, 
         disabled={exiting}
         onClick={onToggle}
       >
-        <span className="min-w-0">
+        <span className="min-w-0 flex-1">
           <span className="block break-words text-body-lg font-medium">{decision.title}</span>
           {label && <span className={cn("mt-1 block text-meta", isOverdue ? "text-destructive" : "text-muted-foreground")}>{label}</span>}
-          {recommendation && <span className="mt-2 inline-flex max-w-full rounded-full bg-[#eaf5df] px-2.5 py-1 text-caption font-medium text-foreground">
-            Büro: {recommendation.label}
-          </span>}
         </span>
+        {recommendation && <span className="ml-auto max-w-[45%] shrink-0 rounded-full bg-[#eaf5df] px-2.5 py-1 text-caption font-medium text-foreground">
+          Büro: {recommendation.label}
+        </span>}
         <ChevronRight className={cn("mt-1 h-4 w-4 shrink-0 transition-transform duration-500 motion-reduce:transition-none", expanded && "rotate-90")} aria-hidden="true" />
       </button>
       <div
@@ -161,7 +161,7 @@ function DecisionRow({ decision, expanded, onToggle, nudge, onDismissConfirmed, 
         <div className="min-h-0 overflow-hidden">
           <div onClick={() => { if (!exiting) onOpen(decision.id); }}>
             {recommendation?.recommendation_reason?.trim() && (
-              <p className="mb-3 text-meta text-foreground">{recommendation.recommendation_reason.trim()}</p>
+              <p className="mb-3 rounded-xl bg-[#eaf5df] px-3 py-2 text-meta text-foreground"><span className="font-semibold">Büro empfiehlt {recommendation.label}.</span> {recommendation.recommendation_reason.trim()}</p>
             )}
 
             {decision.isParticipant && decision.participant_id && !decision.hasResponded && !prompt && (
