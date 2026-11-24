@@ -158,9 +158,9 @@ function DecisionRow({ decision, expanded, onToggle, nudge, onDismissConfirmed, 
       >
         <span className="min-w-0 flex-1">
           <span className="block break-words text-body-lg font-medium">{decision.title}</span>
-          {label && <span className={cn("mt-1 block text-meta", isOverdue ? "text-destructive" : "text-muted-foreground")}>{label}</span>}
+          {label && <span className={`mt-1 block text-meta ${isOverdue ? "text-destructive" : "text-muted-foreground"}`}>{label}</span>}
         </span>
-        {recommendation && <span className={cn("ml-auto max-w-[45%] shrink-0 rounded-full px-2.5 py-1 text-caption font-medium", recommendationColor.background, recommendation.color === 'green' ? 'text-foreground' : recommendationColor.text)}>
+        {recommendation && <span className={`ml-auto max-w-[45%] shrink-0 rounded-full px-2.5 py-1 text-caption font-medium ${recommendationColor.background} ${recommendation.color === 'green' ? 'text-foreground' : recommendationColor.text}`}>
           Büro: {recommendation.label}
         </span>}
         <ChevronRight className={cn("mt-1 h-4 w-4 shrink-0 transition-transform duration-500 motion-reduce:transition-none", expanded && "rotate-90")} aria-hidden="true" />
@@ -173,7 +173,7 @@ function DecisionRow({ decision, expanded, onToggle, nudge, onDismissConfirmed, 
         <div className="min-h-0 overflow-hidden">
           <div onClick={() => { if (!exiting) onOpen(decision.id); }}>
             {recommendation?.recommendation_reason?.trim() && (
-              <p className={cn("mb-3 rounded-xl px-3 py-2 text-meta text-foreground", recommendationColor.background)}><span className={cn("font-bold", recommendationColor.text)}>Büro empfiehlt: {recommendation.label}.</span> {recommendation.recommendation_reason.trim()}</p>
+              <p className={`mb-3 rounded-xl px-3 py-2 text-meta text-foreground ${recommendationColor.background}`}><span className={cn("font-bold", recommendationColor.text)}>Büro empfiehlt: {recommendation.label}.</span> {recommendation.recommendation_reason.trim()}</p>
             )}
 
             {decision.isParticipant && decision.participant_id && !decision.hasResponded && !prompt && (
