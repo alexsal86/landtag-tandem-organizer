@@ -8,9 +8,38 @@ ALTER TABLE public.appointments
 
 -- Vorhandene Termine erhalten eine dauerhaft stabile UID; bisherige Zufalls-UIDs
 -- bleiben unverändert, damit bereits versendete Einladungen zuordenbar bleiben.
+--
+-- Der Tenant-Guard prüft bei jedem UPDATE alle Fremdschlüssel des Termins erneut;
+-- ältere Termine können dabei auf Zeilen ohne oder mit anderem Mandanten zeigen.
+-- calendar_uid ist kein Mandantenbezug, deshalb wird der Guard ausschließlich für
+-- dieses Backfill ausgesetzt (transaktionsgebunden und danach wieder aktiv).
+DO $$
+BEGIN
+  IF EXISTS (
+    SELECT 1 FROM pg_trigger
+    WHERE tgname = 'a00_guard_tenant_references'
+      AND tgrelid = 'public.appointments'::regclass
+      AND tgenabled = 'O'
+  ) THEN
+    ALTER TABLE public.appointments DISABLE TRIGGER a00_guard_tenant_references;
+  END IF;
+END $$;
+
 UPDATE public.appointments
 SET calendar_uid = id::text || '@landtagsos.app'
 WHERE calendar_uid IS NULL OR btrim(calendar_uid) = '';
+
+DO $$
+BEGIN
+  IF EXISTS (
+    SELECT 1 FROM pg_trigger
+    WHERE tgname = 'a00_guard_tenant_references'
+      AND tgrelid = 'public.appointments'::regclass
+      AND tgenabled = 'D'
+  ) THEN
+    ALTER TABLE public.appointments ENABLE TRIGGER a00_guard_tenant_references;
+  END IF;
+END $$;
 
 CREATE OR REPLACE FUNCTION public.stamp_appointment_calendar_invite()
 RETURNS TRIGGER

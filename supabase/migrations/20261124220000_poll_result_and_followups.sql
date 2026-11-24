@@ -108,7 +108,8 @@ REVOKE ALL ON FUNCTION public.link_poll_participant_user() FROM PUBLIC, anon, au
 UPDATE public.poll_participants p
 SET user_id = matched.user_id
 FROM (
-  SELECT pp.id, min(u.id) AS user_id
+  -- Pro Teilnehmer genau ein Konto; min(uuid) gibt es in Postgres nicht.
+  SELECT DISTINCT ON (pp.id) pp.id, u.id AS user_id
   FROM public.poll_participants pp
   JOIN public.appointment_polls ap ON ap.id = pp.poll_id
   JOIN public.user_tenant_memberships m
@@ -116,7 +117,7 @@ FROM (
   JOIN auth.users u
     ON u.id = m.user_id AND lower(u.email) = lower(pp.email)
   WHERE pp.user_id IS NULL
-  GROUP BY pp.id
+  ORDER BY pp.id, u.created_at, u.id
 ) matched
 WHERE p.id = matched.id;
 

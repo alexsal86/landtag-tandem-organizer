@@ -110,6 +110,9 @@ REVOKE ALL ON FUNCTION public.confirm_poll_winner(uuid, uuid) FROM PUBLIC, anon;
 GRANT EXECUTE ON FUNCTION public.confirm_poll_winner(uuid, uuid) TO authenticated;
 
 -- 2) Abstimmungsliste: Ergebnis-Termin mitliefern, damit das Archiv ihn verlinken kann.
+-- Die Rückgabespalte ändert sich, deshalb muss die Funktion zuerst entfallen.
+DROP FUNCTION IF EXISTS public.get_user_polls_with_aggregation();
+
 CREATE OR REPLACE FUNCTION public.get_user_polls_with_aggregation()
 RETURNS TABLE (
   id uuid,
