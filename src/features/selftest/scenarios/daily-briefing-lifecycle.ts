@@ -1,4 +1,4 @@
-import { canReadDailyBriefing, dailyBriefingTargetLabel, isReadBriefingCollapsed, dailyBriefingReadLabel, briefingDateOptions } from "@/features/briefings/utils";
+import { dailyBriefingReadDayLabel, canReadDailyBriefing, dailyBriefingTargetLabel, isReadBriefingCollapsed, dailyBriefingReadLabel, briefingDateOptions } from "@/features/briefings/utils";
 import { supabase } from "@/integrations/supabase/client";
 import type { TestScenario } from "../types";
 import { SELFTEST_MARKER, SELFTEST_PREFIX } from "../runner";
@@ -29,6 +29,16 @@ export const dailyBriefingLifecycleScenario: TestScenario = {
     { label: "Dashboard öffnen (Briefing-Widget)", href: "/" },
   ],
   steps: [
+    {
+      id: 'relative-read-day', label: 'Lesebestätigung unterscheidet heute und gestern in Berlin', kind: 'logic',
+      run: async () => ({
+        ok: dailyBriefingReadDayLabel('2026-11-24T11:51:00Z', new Date('2026-11-24T12:00:00Z')) === 'Heute gelesen 12:51'
+          && dailyBriefingReadDayLabel('2026-11-24T11:51:00Z', new Date('2026-11-25T09:00:00Z')) === 'Gestern gelesen 12:51'
+          && dailyBriefingReadDayLabel('2026-11-23T23:30:00Z', new Date('2026-11-24T09:00:00Z')) === 'Heute gelesen 00:30'
+          && dailyBriefingReadDayLabel('2026-11-22T11:51:00Z', new Date('2026-11-25T09:00:00Z')) === 'Am 22.11.2026 gelesen 12:51',
+        message: 'Der Lesetag richtet sich nach Europe/Berlin und wechselt am nächsten Tag von heute zu gestern.',
+      }),
+    },
     {
       id: 'read-ahead', label: 'Vorliegende Tagesbriefings vorab lesen', kind: 'logic',
       run: async () => ({
