@@ -1,4 +1,4 @@
-import { briefingDateOptions } from "@/features/briefings/utils";
+import { dailyBriefingReadLabel, briefingDateOptions } from "@/features/briefings/utils";
 import { supabase } from "@/integrations/supabase/client";
 import type { TestScenario } from "../types";
 import { SELFTEST_MARKER, SELFTEST_PREFIX } from "../runner";
@@ -29,6 +29,15 @@ export const dailyBriefingLifecycleScenario: TestScenario = {
     { label: "Dashboard öffnen (Briefing-Widget)", href: "/" },
   ],
   steps: [
+    {
+      id: 'read-receipt-time', label: 'Lesezeitpunkt als Berliner Uhrzeit anzeigen', kind: 'logic',
+      run: async () => ({
+        ok: dailyBriefingReadLabel('2026-11-24T11:51:00Z') === 'Gelesen 12:51'
+          && dailyBriefingReadLabel('2026-07-24T10:51:00Z') === 'Gelesen 12:51'
+          && dailyBriefingReadLabel(null) === 'Gelesen',
+        message: 'Der Chip nutzt den gespeicherten Zeitpunkt und berücksichtigt Sommer- und Winterzeit.',
+      }),
+    },
     {
       id: "date-chips", label: "Morgen und übermorgen sind Berliner Kalendertage", kind: "logic",
       run: async () => {

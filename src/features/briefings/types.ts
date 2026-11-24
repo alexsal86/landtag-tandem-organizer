@@ -13,4 +13,5 @@ export interface DailyBriefingWithAuthor extends DailyBriefing {
   author_display_name: string | null;
   author_avatar_url: string | null;
   is_read: boolean;
+  read_at: string | null;
 }

@@ -30,3 +30,11 @@ export function briefingDateOptions(now = new Date()): { tomorrow: string; dayAf
     dayAfter: new Date(noon + 2 * 86400_000).toISOString().slice(0, 10),
   };
 }
+
+/** Read receipts always use the persisted timestamp in the office timezone. */
+export function dailyBriefingReadLabel(readAt: string | null | undefined): string {
+  if (!readAt || !Number.isFinite(Date.parse(readAt))) return 'Gelesen';
+  return `Gelesen ${new Intl.DateTimeFormat('de-DE', {
+    timeZone: 'Europe/Berlin', hour: '2-digit', minute: '2-digit',
+  }).format(new Date(readAt))}`;
+}

@@ -1,3 +1,4 @@
+import { AuthoredBriefingReadStatus } from "./AuthoredBriefingReadStatus";
 import { useEffect, useMemo, useRef, useState } from "react";
 import { format, parseISO } from "date-fns";
 import { de } from "date-fns/locale";
@@ -75,6 +76,7 @@ export function BriefingComposerCard() {
           <Button size="sm" variant="outline" onClick={() => void refetch()}>Erneut laden</Button></div>
         : <BriefingForm key={`${currentTenant?.id}:${user?.id}:${date}`} date={date} existing={existing ?? null}
           earliestDate={choices.tomorrow} onBusyChange={setEditingBusy} />}
+      <AuthoredBriefingReadStatus />
     </CardContent>
   </Card>;
 }

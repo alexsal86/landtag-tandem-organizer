@@ -16,9 +16,10 @@ export function useTodayBriefings() {
   const today = todayString();
 
   return useQuery({
-    queryKey: todayBriefingsQueryKey(tenantId, userId),
+    queryKey: [...todayBriefingsQueryKey(tenantId, userId), today],
     enabled: Boolean(tenantId && userId),
-    staleTime: 60_000,
+    staleTime: 30_000,
+    refetchInterval: 30_000,
     queryFn: async (): Promise<DailyBriefingWithAuthor[]> => {
       if (!tenantId || !userId) return [];
 
@@ -46,18 +47,19 @@ export function useTodayBriefings() {
           .in("user_id", authorIds),
         supabase
           .from("daily_briefing_reads")
-          .select("briefing_id")
+          .select("briefing_id, read_at")
           .in("briefing_id", briefingIds)
           .eq("user_id", userId),
       ]);
+
+      if (profilesRes.error) throw profilesRes.error;
+      if (readsRes.error) throw readsRes.error;
 
       type ProfileLite = { user_id: string; display_name: string | null; avatar_url: string | null };
       const profileMap = new Map<string, ProfileLite>(
         ((profilesRes.data ?? []) as ProfileLite[]).map((p) => [p.user_id, p]),
       );
-      const readSet = new Set(
-        ((readsRes.data ?? []) as Array<{ briefing_id: string }>).map((r) => r.briefing_id),
-      );
+      const reads = new Map((readsRes.data ?? []).map(row => [row.briefing_id, row.read_at]));
 
       return eligible.map((b: Record<string, any>) => {
         const profile = profileMap.get(b.author_id);
@@ -65,7 +67,8 @@ export function useTodayBriefings() {
           ...b,
           author_display_name: profile?.display_name ?? null,
           author_avatar_url: profile?.avatar_url ?? null,
-          is_read: readSet.has(b.id),
+          is_read: reads.has(b.id),
+          read_at: reads.get(b.id) ?? null,
         };
       });
     },

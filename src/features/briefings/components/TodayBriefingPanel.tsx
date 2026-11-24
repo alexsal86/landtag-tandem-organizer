@@ -1,8 +1,9 @@
+import { dailyBriefingReadLabel } from "../utils";
 import { RichTextDisplay } from "@/components/ui/RichTextDisplay";
 import { useState, type ReactNode } from "react";
 import { format } from "date-fns";
 import { de } from "date-fns/locale";
-import { Check, ChevronDown, ChevronUp, FileText } from "lucide-react";
+import { ChevronDown, ChevronUp, FileText } from "lucide-react";
 import { useTodayApprovedBriefings, type BriefingAppointment } from "@/features/appointments/briefing/useBriefing";
 import { CompactBriefingEditor } from "@/features/appointments/briefing/CompactBriefingEditor";
 import { Avatar, AvatarFallback, AvatarImage } from "@/components/ui/avatar";
@@ -24,7 +25,7 @@ function BriefingItem({ briefing, moreAction, onRead }: {
   const initials = (briefing.author_display_name ?? "?").trim().split(/\s+/)
     .map(part => part[0]).filter(Boolean).slice(0, 2).join("").toUpperCase();
 
-  return <section aria-label="Tagesbriefing" className="rounded-3xl bg-[#f0eafa] p-5">
+  return <section aria-label="Tagesbriefing" className={cn("rounded-3xl p-5", briefing.is_read ? "bg-[rgb(240,243,246)]" : "bg-[#f0eafa]")}>
     <div className="flex items-start gap-4">
       <Avatar className="h-8 w-8 shrink-0">
         {briefing.author_avatar_url && <AvatarImage src={briefing.author_avatar_url} alt="" />}
@@ -34,7 +35,8 @@ function BriefingItem({ briefing, moreAction, onRead }: {
         <div className="flex flex-wrap items-baseline gap-x-2 gap-y-1">
           <p className="text-sm font-semibold text-foreground">{briefing.author_display_name ?? "Teammitglied"}</p>
           <span className="text-xs text-muted-foreground">Tagesbriefing</span>
-          {!briefing.is_read && <span className="ml-1 text-xs font-medium text-[#8b5cf6]">Neu</span>}
+          {!briefing.is_read ? <span className="ml-1 text-xs font-medium text-[#8b5cf6]">Neu</span>
+            : <span className="inline-flex rounded-full bg-[#eaf5df] px-3 py-1 text-xs font-medium text-[#397d16]">{dailyBriefingReadLabel(briefing.read_at)}</span>}
         </div>
         {briefing.title && <p className="text-sm font-medium text-foreground">{briefing.title}</p>}
         <div className={cn(!expanded && tooLong && "line-clamp-5")}>
@@ -49,7 +51,7 @@ function BriefingItem({ briefing, moreAction, onRead }: {
           {!briefing.is_read ? <Button variant="link" size="sm" className="h-auto p-0 text-sm text-[#8b5cf6]"
             disabled={markRead.isPending} onClick={() => { onRead?.(); markRead.mutate(briefing.id); }}>
             {markRead.isPending ? "Wird markiert…" : "Als gelesen markieren"}
-          </Button> : <span className="inline-flex items-center gap-1 text-xs text-muted-foreground"><Check className="h-3 w-3" />Gelesen</span>}
+          </Button> : null}
           {moreAction}
         </div>
       </div>
