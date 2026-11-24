@@ -4,7 +4,7 @@ _Auto-generiert mit `npm run update:selftest-coverage`._
 
 Quelle: `src/integrations/supabase/types.ts`. Die Angaben beschreiben deklarierte Prüfumfänge, keine erfolgreichen Testläufe und keine Code-Coverage.
 
-Von 341 Tabellen haben 57 ein registriertes Szenario. 85 sind als Ausbau offen, 151 ausgenommen und 48 noch nicht eingeordnet. Ausnahmen zählen nicht als bestanden.
+Von 342 Tabellen haben 58 ein registriertes Szenario. 85 sind als Ausbau offen, 151 ausgenommen und 48 noch nicht eingeordnet. Ausnahmen zählen nicht als bestanden.
 
 ## Szenarien
 
@@ -37,7 +37,7 @@ Von 341 Tabellen haben 57 ein registriertes Szenario. 85 sind als Ausbau offen, 
 | `quick-note-lifecycle` | Notizen-Lifecycle (Anlegen → Priorität → Anheften → Aufgabe → Archiv) | quick_notes, tasks, task_decisions, task_decision_participants |
 | `responsibilities` | Zuständigkeiten & Matrix | tasks |
 | `task-lifecycle` | Aufgaben-Lifecycle (Zuweisung → Frist → Entscheidung → Jour fixe → erledigt) | tasks, task_decisions |
-| `task-stafette-lifecycle` | Aufgaben-Stafette (Am Zug, Wiedervorlage, Freigabe) | Keine (reine Regeln) |
+| `task-stafette-lifecycle` | Aufgaben-Stafette (Am Zug, Wiedervorlage, Freigabe) | tasks, task_batch_actions |
 | `team-rituals` | Freiwillige Team-Rituale | Keine (reine Regeln) |
 | `workflow-rules` | Geschäftsregeln (Freigabe, Rollen, Fristen) | Keine (reine Regeln) |
 
@@ -327,6 +327,7 @@ Von 341 Tabellen haben 57 ein registriertes Szenario. 85 sind als Ausbau offen, 
 | `tags` | Ausgenommen (nicht geprüft) | — |
 | `task_archive_settings` | Ausgenommen (nicht geprüft) | — |
 | `task_assignees` | Szenario vorhanden | document-annotation |
+| `task_batch_actions` | Szenario vorhanden | task-stafette-lifecycle |
 | `task_categories` | Ausgenommen (nicht geprüft) | — |
 | `task_comments` | Ausgenommen (nicht geprüft) | — |
 | `task_decision_attachments` | Ausgenommen (nicht geprüft) | — |
@@ -341,7 +342,7 @@ Von 341 Tabellen haben 57 ein registriertes Szenario. 85 sind als Ausbau offen, 
 | `task_snoozes` | Ausgenommen (nicht geprüft) | — |
 | `task_statuses` | Ausgenommen (nicht geprüft) | — |
 | `task_topics` | Ausgenommen (nicht geprüft) | — |
-| `tasks` | Szenario vorhanden | annual-task-stafette, appointment-briefing-lifecycle, case-item-lifecycle, document-annotation, jour-fixe-platform-integration, letter-lifecycle, meeting-lifecycle, onboarding-hr, quick-note-lifecycle, responsibilities, task-lifecycle |
+| `tasks` | Szenario vorhanden | annual-task-stafette, appointment-briefing-lifecycle, case-item-lifecycle, document-annotation, jour-fixe-platform-integration, letter-lifecycle, meeting-lifecycle, onboarding-hr, quick-note-lifecycle, responsibilities, task-lifecycle, task-stafette-lifecycle |
 | `team_announcement_dismissals` | Ausgenommen (nicht geprüft) | — |
 | `team_announcements` | Ausstehend | — |
 | `team_bingo_settings` | Einordnung fehlt | — |
@@ -438,3 +439,4 @@ Diese Manifeste sind keine Messung ausgeführter Assertions.
 - quick-note-lifecycle: `tasks`: title, description, user_id, tenant_id, status, priority
 - task-lifecycle: `tasks`: title, description, status, priority, user_id, tenant_id, assigned_to, due_date, progress, pending_for_jour_fixe
 - task-lifecycle: `task_decisions`: title, description, status, created_by, tenant_id, task_id
+- task-stafette-lifecycle: `tasks`: title, description, status, priority, tenant_id, user_id, ball_owner, ball_assignee_id, next_action, next_action_due, timeline

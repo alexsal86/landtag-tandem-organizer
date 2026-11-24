@@ -2,8 +2,8 @@
   "schemaVersion": 1,
   "source": "src/integrations/supabase/types.ts",
   "counts": {
-    "total": 341,
-    "scenario": 57,
+    "total": 342,
+    "scenario": 58,
     "deferred": 85,
     "excluded": 151,
     "missing": 48
@@ -998,11 +998,31 @@
     {
       "id": "task-stafette-lifecycle",
       "title": "Aufgaben-Stafette (Am Zug, Wiedervorlage, Freigabe)",
-      "touches": [],
+      "touches": [
+        "tasks",
+        "task_batch_actions"
+      ],
       "features": [
         "tasks"
       ],
-      "writes": [],
+      "writes": [
+        {
+          "table": "tasks",
+          "columns": [
+            "title",
+            "description",
+            "status",
+            "priority",
+            "tenant_id",
+            "user_id",
+            "ball_owner",
+            "ball_assignee_id",
+            "next_action",
+            "next_action_due",
+            "timeline"
+          ]
+        }
+      ],
       "registered": true
     },
     {
@@ -2556,6 +2576,13 @@
       ]
     },
     {
+      "table": "task_batch_actions",
+      "status": "scenario",
+      "scenarios": [
+        "task-stafette-lifecycle"
+      ]
+    },
+    {
       "table": "task_categories",
       "status": "excluded",
       "scenarios": []
@@ -2652,7 +2679,8 @@
         "onboarding-hr",
         "quick-note-lifecycle",
         "responsibilities",
-        "task-lifecycle"
+        "task-lifecycle",
+        "task-stafette-lifecycle"
       ]
     },
     {
