@@ -129,7 +129,7 @@ export const DashboardAppointments = ({ data }: Props) => {
   }, []);
   const { currentTenant } = useTenant();
   const { data: changeAlerts = [] } = useChangeAlerts();
-  const { isEmployeeView, isDeputyView } = useWorkspaceView();
+  const { isEmployeeView } = useWorkspaceView();
   const { isAdmin: canDecideBriefing } = useResolvedUserRole();
   const [briefingDecision, setBriefingDecision] = useState<{ id: string; title: string; start_time: string } | null>(null);
   const { appointments, isShowingTomorrow, tomorrowAppointments, specialDays, isLoading } = data;
@@ -145,14 +145,15 @@ export const DashboardAppointments = ({ data }: Props) => {
     [appointments, tomorrowAppointments],
   );
 
-  // Status, Countdown und Fortschritt folgen der gemeldeten Zeit des Büros.
+  // Status, Countdown und Fortschritt folgen der gemeldeten Zeit des Büros –
+  // in der Abgeordneten- wie in der Mitarbeiteransicht.
   const effectiveAppointments = useMemo(() => {
-    if (!isDeputyView || !changeAlerts.length) return allAppointments;
+    if (!changeAlerts.length) return allAppointments;
     return allAppointments.map((appointment) => {
       const summary = summarizeReportedChanges(changeAlerts, appointment.id);
       return summary.newStartTime ? applyReportedStart(appointment, summary.newStartTime) : appointment;
     });
-  }, [allAppointments, changeAlerts, isDeputyView]);
+  }, [allAppointments, changeAlerts]);
   const effectiveAppointmentById = useMemo(
     () => new Map(effectiveAppointments.map((appointment) => [appointment.id, appointment])),
     [effectiveAppointments],
@@ -313,7 +314,7 @@ export const DashboardAppointments = ({ data }: Props) => {
     const isBriefingExpanded = expandedBriefingId === apt.id;
     const start = new Date(apt.start_time);
     const end = apt.end_time ? new Date(apt.end_time) : null;
-    const changes = isDeputyView ? pickAppointmentChanges(changeAlerts, apt.id) : null;
+    const changes = pickAppointmentChanges(changeAlerts, apt.id);
     const changedStartDate = changes?.time?.new_start_time ? new Date(changes.time.new_start_time) : null;
     const changedStart = changedStartDate && !Number.isNaN(changedStartDate.getTime()) ? changedStartDate : null;
     const changedEndIso = changedStart ? shiftEndWithStart(apt.start_time, apt.end_time, changedStart.toISOString()) : null;

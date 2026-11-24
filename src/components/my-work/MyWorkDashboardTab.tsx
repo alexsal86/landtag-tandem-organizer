@@ -131,7 +131,7 @@ function AppointmentsWidget({ isDeputyView }: { isDeputyView: boolean }) {
   const allDone = !noAppointmentsToday && !dashboardData.isLoading && !dashboardData.tenantLoading && !dashboardData.isError
     && dashboardData.hasTenant
     && (dashboardData.isShowingTomorrow || dashboardData.appointments.every((appointment) => {
-      const reportedStart = isDeputyView ? summarizeReportedChanges(changeAlerts, appointment.id).newStartTime : null;
+      const reportedStart = summarizeReportedChanges(changeAlerts, appointment.id).newStartTime;
       return hasAppointmentEnded(applyReportedStart(appointment, reportedStart), now);
     }));
   const title = noAppointmentsToday && !dashboardData.isLoading && !dashboardData.tenantLoading && !dashboardData.isError
