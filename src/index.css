@@ -30,6 +30,15 @@ All colors MUST be HSL.
   --text-sm--line-height: var(--leading-normal);
   --text-base--line-height: var(--leading-normal);
   --text-lg--line-height: var(--leading-snug);
+  --text-caption: .75rem;
+  --text-caption--line-height: var(--leading-normal);
+  --text-caption--letter-spacing: var(--tracking-normal);
+  --text-meta: .8125rem;
+  --text-meta--line-height: var(--leading-normal);
+  --text-meta--letter-spacing: var(--tracking-normal);
+  --text-body-lg: .9375rem;
+  --text-body-lg--line-height: var(--leading-normal);
+  --text-body-lg--letter-spacing: var(--tracking-normal);
   --radius-dashboard-card: 1.125rem;
   --shadow-dashboard-card: 0 1px 2px rgba(20, 30, 40, 0.05), 0 4px 14px rgba(20, 30, 40, 0.04);
   --shadow-dashboard-card-hover: 0 2px 4px rgba(20, 30, 40, 0.06), 0 10px 26px rgba(20, 30, 40, 0.07);
