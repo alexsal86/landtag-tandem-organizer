@@ -24,6 +24,7 @@ import { useNewItemIndicators } from "@/hooks/useNewItemIndicators";
 import { NewItemIndicator } from "@/components/notifications/NewItemIndicator";
 
 import { useTasksData } from "@/components/tasks/hooks/useTasksData";
+import { useNewsArticleLinks } from "@/components/tasks/hooks/useNewsArticleLinks";
 import { useTaskOperations } from "@/components/tasks/hooks/useTaskOperations";
 import { TaskDialogs } from "@/components/tasks/TaskDialogs";
 import type { Task } from "@/components/tasks/types";
@@ -36,6 +37,7 @@ export function TasksView() {
   const { isItemNew } = useNewItemIndicators('tasks');
 
   const data = useTasksData();
+  const newsArticleLinks = useNewsArticleLinks(data.tasks);
   const ops = useTaskOperations({
     tasks: data.tasks, setTasks: data.setTasks,
     user: data.user, currentTenant: data.currentTenant,
@@ -220,6 +222,20 @@ export function TasksView() {
                             <h3 className="font-medium text-foreground text-lg">{cleanTaskTitle || task.title}</h3>
                             {cleanTaskDescription && <RichTextDisplay content={cleanTaskDescription} className="mt-1 leading-relaxed" />}
                             {taskSourceLetterId && <div className="mt-2"><LetterSourceLink letterId={taskSourceLetterId} /></div>}
+                            {task.source_type === 'news' && task.source_id && newsArticleLinks[task.source_id] && (
+                              <div className="mt-2">
+                                <a
+                                  href={newsArticleLinks[task.source_id].link}
+                                  target="_blank"
+                                  rel="noopener noreferrer"
+                                  onClick={(event) => event.stopPropagation()}
+                                  title={`${newsArticleLinks[task.source_id].title} (${newsArticleLinks[task.source_id].source})`}
+                                  className="block max-w-full truncate text-xs text-primary hover:underline"
+                                >
+                                  Zum News-Artikel: {newsArticleLinks[task.source_id].title}
+                                </a>
+                              </div>
+                            )}
                             {task.source_type === 'appointment_preparation' && task.source_id && <div className="mt-2"><Link to={`/appointment-preparation/${task.source_id}`} onClick={event => event.stopPropagation()} className="text-xs text-primary hover:underline">Zur Terminvorbereitung →</Link></div>}
                             {task.source_type === 'knowledge_review' && task.source_id && <div className="mt-2"><Link to={`/wissen?frage=${task.source_id}`} onClick={event => event.stopPropagation()} className="text-xs text-primary hover:underline">Wissensantwort prüfen und freigeben →</Link></div>}
                             {task.source_type === 'case_step' && task.source_id && <div className="mt-2"><Link to={`/mywork?tab=cases&caseItemId=${task.source_id}`} onClick={(event) => event.stopPropagation()} className="text-xs text-primary hover:underline">Zum verknüpften Vorgang →</Link></div>}
