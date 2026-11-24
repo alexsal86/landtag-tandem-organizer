@@ -24,6 +24,7 @@ import { ACTION_MODULE } from "@/features/permissions/catalog";
 import { buildPermissionDiff, diffSimulation, parsePermissionExplanation } from "@/features/permissions/explain";
 import { parseConfigImpact, parseConfigRename, summarizeConfigImpact, summarizeConfigRename } from "@/features/admin/configImpact";
 import { calculateWeeklyTarget, isBadenWuerttembergHoliday } from "@/features/timetracking/weeklyTarget";
+import { checkArbzgDay, elapsedWorkedMinutes, requiredBreakMinutes } from "@/features/timetracking/arbzg";
 
 export const workflowRulesScenario: TestScenario = {
   id: "workflow-rules", title: "Geschäftsregeln (Freigabe, Rollen, Fristen)",
@@ -91,6 +92,32 @@ export const workflowRulesScenario: TestScenario = {
           message: ok
             ? "Wochen-Soll: Teilzeit, Abwesenheit, Feiertag und Bundesland korrekt."
             : "Wochen-Soll weicht ab.",
+        };
+      },
+    },
+    {
+      id: "arbzg-breaks", label: "Zeiterfassung: Pausenpflicht und Tagesgrenze nach ArbZG", kind: "logic",
+      run: async () => {
+        const midday = new Date(2026, 10, 24, 14, 30);
+        const ok = requiredBreakMinutes(0) === 0
+          && requiredBreakMinutes(6 * 60) === 0
+          && requiredBreakMinutes(6 * 60 + 1) === 30
+          && requiredBreakMinutes(9 * 60) === 30
+          && requiredBreakMinutes(9 * 60 + 1) === 45
+          && checkArbzgDay({ workedMinutes: 7 * 60, pauseMinutes: 30 }).compliant
+          && !checkArbzgDay({ workedMinutes: 7 * 60, pauseMinutes: 15 }).compliant
+          && checkArbzgDay({ workedMinutes: 7 * 60, pauseMinutes: 15 }).missingPauseMinutes === 15
+          && checkArbzgDay({ workedMinutes: 9 * 60 + 30, pauseMinutes: 30 }).missingPauseMinutes === 15
+          && checkArbzgDay({ workedMinutes: 10 * 60 + 1, pauseMinutes: 45 }).exceedsMaxDailyWork
+          && elapsedWorkedMinutes("08:00", null, 0, midday) === 390
+          && elapsedWorkedMinutes("08:00", null, 60, midday) === 330
+          && elapsedWorkedMinutes("08:00", "13:00", 30, midday) === 270
+          && elapsedWorkedMinutes("", null, 0, midday) === 0;
+        return {
+          ok,
+          message: ok
+            ? "Pausenpflicht 30/45 Min, Tagesgrenze und laufende Stempeluhr korrekt."
+            : "ArbZG-Regel weicht ab.",
         };
       },
     },

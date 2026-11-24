@@ -17,6 +17,8 @@ import { de } from "date-fns/locale";
 import { Clock, Plus, ExternalLink, TrendingUp, Calendar, Play, Pause, Square, X } from "lucide-react";
 import { useNavigate } from "react-router-dom";
 import { useTimeEntryReminder } from "@/hooks/useTimeEntryReminder";
+import { ARBZG_MAX_DAILY_WORK_MINUTES, checkArbzgDay, elapsedWorkedMinutes } from "@/features/timetracking/arbzg";
+import { cn } from "@/lib/utils";
 import { useVacationReminders } from "@/hooks/useVacationReminders";
 import { useResolvedUserRole } from "@/hooks/useResolvedUserRole";
 import { notify } from "@/lib/notify";
@@ -76,6 +78,8 @@ export function MyWorkTimeTrackingTab() {
   const [clockedInDate, setClockedInDate] = useState<string | null>(null);
   const [pauseStart, setPauseStart] = useState<string | null>(null);
   const [totalPauseMinutes, setTotalPauseMinutes] = useState(0);
+  // Tickt nur während laufender Stempeluhr, damit die Pausenpflicht sichtbar bleibt.
+  const [clockNow, setClockNow] = useState(() => new Date());
 
   const clearClockData = useCallback(() => {
     setClockedIn(null);
@@ -105,6 +109,13 @@ export function MyWorkTimeTrackingTab() {
     }
   // eslint-disable-next-line react-hooks/exhaustive-deps
   }, []); // Only on mount
+
+  useEffect(() => {
+    if (!clockedIn) return;
+    setClockNow(new Date());
+    const interval = setInterval(() => setClockNow(new Date()), 30_000);
+    return () => clearInterval(interval);
+  }, [clockedIn]);
 
   const handleClockIn = () => {
     const now = format(new Date(), "HH:mm");
@@ -147,6 +158,11 @@ export function MyWorkTimeTrackingTab() {
   const handleClockOut = () => {
     const now = format(new Date(), "HH:mm");
     setEndTime(now);
+    const workedMinutes = clockedIn ? elapsedWorkedMinutes(clockedIn, pauseStart, totalPauseMinutes) : 0;
+    const arbzg = checkArbzgDay({ workedMinutes, pauseMinutes: totalPauseMinutes });
+    if (arbzg.missingPauseMinutes > 0) {
+      notify.warning(`Pausenpflicht: ${arbzg.requiredPauseMinutes} Min Pause vorgeschrieben, erfasst sind ${totalPauseMinutes} Min`);
+    }
     notify.success(`Feierabend um ${now} - Bitte Eintrag speichern`);
   };
 
@@ -227,6 +243,21 @@ export function MyWorkTimeTrackingTab() {
     return employeeSettings.hours_per_week / (employeeSettings.days_per_week || 5);
   }, [employeeSettings]);
 
+  const liveWorkedMinutes = clockedIn
+    ? elapsedWorkedMinutes(clockedIn, pauseStart, totalPauseMinutes, clockNow)
+    : 0;
+  const liveArbzg = checkArbzgDay({ workedMinutes: liveWorkedMinutes, pauseMinutes: totalPauseMinutes });
+
+  const formArbzg = useMemo(() => {
+    if (!startTime || !endTime) return null;
+    const start = new Date(`${entryDate}T${startTime}`);
+    const end = new Date(`${entryDate}T${endTime}`);
+    if (Number.isNaN(start.getTime()) || Number.isNaN(end.getTime()) || end <= start) return null;
+    const gross = Math.round((end.getTime() - start.getTime()) / 60000);
+    const pause = parseInt(pauseMinutes) || 0;
+    return checkArbzgDay({ workedMinutes: gross - pause, pauseMinutes: pause });
+  }, [endTime, entryDate, pauseMinutes, startTime]);
+
   const validateDailyLimit = async (workDate: string, grossMin: number) => {
     if (!user) return;
     const { data } = await supabase
@@ -240,7 +271,7 @@ export function MyWorkTimeTrackingTab() {
       return s + (new Date(e.ended_at).getTime() - new Date(e.started_at).getTime()) / 60000;
     }, 0) || 0;
 
-    if (total + grossMin > 600) {
+    if (total + grossMin > ARBZG_MAX_DAILY_WORK_MINUTES) {
       const formatTime = (min: number) => `${Math.floor(min / 60)}:${(min % 60).toString().padStart(2, '0')}`;
       throw new Error(`Maximal 10 Stunden pro Tag. Bereits ${formatTime(total)} erfasst.`);
     }
@@ -263,6 +294,15 @@ export function MyWorkTimeTrackingTab() {
 
     const gross = Math.round((end.getTime() - start.getTime()) / 60000);
     const pause = parseInt(pauseMinutes) || 0;
+
+    const arbzg = checkArbzgDay({ workedMinutes: gross - pause, pauseMinutes: pause });
+    if (!arbzg.compliant) {
+      const workedHours = ((gross - pause) / 60).toLocaleString("de-DE", { maximumFractionDigits: 1 });
+      notify.error(`ArbZG-Pausenpflicht: mindestens ${arbzg.requiredPauseMinutes} Min Pause bei ${workedHours} h Arbeitszeit`, {
+        description: `Erfasst sind ${pause} Min. Bitte die Pause ergänzen, bevor der Eintrag gespeichert wird.`,
+      });
+      return;
+    }
 
     setIsSubmitting(true);
     try {
@@ -468,6 +508,23 @@ export function MyWorkTimeTrackingTab() {
                     <div className="text-xl font-bold">{totalPauseMinutes} Min</div>
                   </div>
                 </div>
+                <div className="space-y-1 rounded-lg border bg-muted/30 p-3 text-sm">
+                  <div className="flex items-center justify-between">
+                    <span className="text-muted-foreground">Arbeitszeit bisher</span>
+                    <span className="font-semibold">{fmt(liveWorkedMinutes)} h</span>
+                  </div>
+                  <div className="flex items-center justify-between">
+                    <span className="text-muted-foreground">Pausenpflicht (ArbZG)</span>
+                    <span className={cn("font-semibold", liveArbzg.missingPauseMinutes > 0 ? "text-destructive" : "text-muted-foreground")}>
+                      {liveArbzg.requiredPauseMinutes > 0 ? `${liveArbzg.requiredPauseMinutes} Min` : "keine"}
+                    </span>
+                  </div>
+                  {liveArbzg.missingPauseMinutes > 0 && (
+                    <p className="text-xs text-destructive">
+                      Noch {liveArbzg.missingPauseMinutes} Min Pause offen – bitte Pause starten.
+                    </p>
+                  )}
+                </div>
                 <div className="grid grid-cols-2 gap-3">
                   <Button onClick={handlePauseStart} variant="outline" size="lg">
                     <Pause className="h-5 w-5 mr-2" />
@@ -515,6 +572,22 @@ export function MyWorkTimeTrackingTab() {
                     min="0"
                     max="120"
                   />
+                  {formArbzg && formArbzg.requiredPauseMinutes > 0 && (
+                    formArbzg.missingPauseMinutes > 0 ? (
+                      <p className="text-xs text-destructive">
+                        ArbZG: {formArbzg.requiredPauseMinutes} Min vorgeschrieben –{" "}
+                        <button
+                          type="button"
+                          className="font-medium underline"
+                          onClick={() => setPauseMinutes(String(formArbzg.requiredPauseMinutes))}
+                        >
+                          übernehmen
+                        </button>
+                      </p>
+                    ) : (
+                      <p className="text-xs text-muted-foreground">ArbZG erfüllt ({formArbzg.requiredPauseMinutes} Min vorgeschrieben).</p>
+                    )
+                  )}
                 </div>
               </div>
 
