@@ -213,7 +213,7 @@ const shouldRefreshMeetingParticipants = ({
 export function useMyWorkJourFixeMeetings(userId?: string) {
   const queryClient = useQueryClient();
 
-  const { data: meetingsData, isLoading: meetingsLoading, isError: meetingsError } = useQuery({
+  const { data: meetingsData, isLoading: meetingsLoading, error: meetingsError } = useQuery({
     queryKey: ['my-work-jour-fixe-meetings', userId],
     queryFn: () => fetchMeetings(userId!),
     enabled: !!userId,
@@ -232,7 +232,7 @@ export function useMyWorkJourFixeMeetings(userId?: string) {
 
   const allMeetingIdSet = useMemo(() => new Set(allMeetingIds), [allMeetingIds]);
 
-  const { data: meetingParticipants = {}, isError: participantsError } = useQuery({
+  const { data: meetingParticipants = {}, error: participantsError } = useQuery({
     queryKey: ['my-work-jour-fixe-participants', allMeetingIds],
     queryFn: () => fetchParticipants(allMeetingIds),
     enabled: allMeetingIds.length > 0,
@@ -312,8 +312,8 @@ export function useMyWorkJourFixeMeetings(userId?: string) {
     data: { upcomingMeetings, pastMeetings, meetingParticipants },
     isLoading: meetingsLoading,
     loading: meetingsLoading,
-    error: null,
-    isError: meetingsError || participantsError,
+    error: meetingsError?.message ?? participantsError?.message ?? null,
+    isError: Boolean(meetingsError || participantsError),
     refetch: () => {
       void queryClient.refetchQueries({ queryKey: ['my-work-jour-fixe-meetings', userId], exact: true });
       void queryClient.refetchQueries({ queryKey: ['my-work-jour-fixe-participants'] });
