@@ -1,8 +1,7 @@
 import { useEffect, useState } from "react";
 import { useQuery } from '@tanstack/react-query';
 import { supabase } from '@/integrations/supabase/client';
-import { useTenantProfiles } from '@/hooks/useTenantProfiles';
-import { Avatar, AvatarFallback, AvatarImage } from '@/components/ui/avatar';
+import { Avatar, AvatarFallback } from '@/components/ui/avatar';
 import { Popover, PopoverContent, PopoverTrigger } from '@/components/ui/popover';
 import { visibleWeeklyAnswers } from './logic';
 import type { Snapshot } from './data';
@@ -10,7 +9,6 @@ import type { Snapshot } from './data';
 export function WeeklyParticipation({ tenantId, weekId, userId, answers, suspended = false }: {
   tenantId: string; weekId: string; userId?: string; answers: Snapshot['answers']; suspended?: boolean;
 }) {
-  const { data: profiles } = useTenantProfiles();
   const [open, setOpen] = useState(false);
   useEffect(() => { if (suspended) setOpen(false); }, [suspended]);
   const { data: members = [], isPending, isError } = useQuery({
@@ -27,10 +25,8 @@ export function WeeklyParticipation({ tenantId, weekId, userId, answers, suspend
   const answerByUser = new Map(visibleAnswers.map(answer => [answer.user_id, answer.answer]));
   const responded = members.filter(member => member.answered).length;
   const avatar = (member: typeof members[number], label = false) => {
-    const profile = profiles.find(profile => profile.user_id === member.user_id);
     const initials = member.display_name.trim().split(/\s+/).map(part => part[0]).join('').slice(0, 2).toUpperCase();
     return <Avatar className={`h-6 w-6 shrink-0 ${label ? '' : 'ring-2 ring-background'}`} title={member.display_name}>
-      <AvatarImage src={profile?.avatar_url ?? undefined} alt={label ? '' : member.display_name} />
       <AvatarFallback className={`text-[10px] font-semibold ${member.answered ? 'bg-[#eaf5df] text-[#397d16]' : 'bg-muted text-muted-foreground'}`}>{initials}</AvatarFallback>
     </Avatar>;
   };
