@@ -48,6 +48,54 @@ export function checkArbzgDay({
   };
 }
 
+export interface ArbzgEntryLike {
+  started_at?: string | null;
+  ended_at?: string | null;
+  pause_minutes?: number | null;
+}
+
+export interface ArbzgDaySummary extends ArbzgDayCheck {
+  /** Bruttoanwesenheit des Tages in Minuten. */
+  grossMinutes: number;
+  /** Tatsächlich als Pause erfasste Minuten des Tages. */
+  recordedPauseMinutes: number;
+  /** Tatsächlich geleistete Arbeit des Tages (brutto minus erfasste Pausen). */
+  workedMinutes: number;
+}
+
+/** Bruttoanwesenheit eines Eintrags in Minuten (Start → Ende). */
+export function entryGrossMinutes(entry: ArbzgEntryLike): number {
+  if (!entry.started_at || !entry.ended_at) return 0;
+  const start = new Date(entry.started_at).getTime();
+  const end = new Date(entry.ended_at).getTime();
+  if (!Number.isFinite(start) || !Number.isFinite(end)) return 0;
+  return Math.max(0, Math.round((end - start) / 60000));
+}
+
+/**
+ * Tagesbilanz eines Arbeitstags. Die Pausenpflicht gilt für den gesamten Tag,
+ * nicht für den einzelnen Eintrag: geteilter Dienst und mehrere Einträge werden
+ * gemeinsam bewertet. Fehlende Ruhepausen werden nur ausgewiesen; die tatsächlich
+ * geleistete Arbeit bleibt unverändert und wird nie um eine rechnerische Pause gekürzt.
+ */
+export function summarizeArbzgDay(entries: ArbzgEntryLike[]): ArbzgDaySummary {
+  let grossMinutes = 0;
+  let recordedPauseMinutes = 0;
+  let workedMinutes = 0;
+
+  for (const entry of entries) {
+    const gross = entryGrossMinutes(entry);
+    if (gross === 0) continue;
+    const pause = Number.isFinite(entry.pause_minutes) ? Math.max(0, Math.min(entry.pause_minutes as number, gross)) : 0;
+    grossMinutes += gross;
+    recordedPauseMinutes += pause;
+    workedMinutes += gross - pause;
+  }
+
+  const day = checkArbzgDay({ workedMinutes, pauseMinutes: recordedPauseMinutes });
+  return { ...day, grossMinutes, recordedPauseMinutes, workedMinutes };
+}
+
 /**
  * Smallest statutory break for a gross span (start → end, breaks included).
  * The requirement refers to the working time that remains after the break, so

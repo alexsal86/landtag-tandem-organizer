@@ -307,7 +307,6 @@ export function AdminTimeTrackingView() {
             ended_at: editingEntry?.ended_at || editingCombinedEntry.ended_at,
             minutes: editingEntry?.minutes || editingCombinedEntry.minutes,
             pause_minutes: editingEntry?.pause_minutes || editingCombinedEntry.pause_minutes || 0,
-            arbzg_pause_minutes: editingEntry?.arbzg_pause_minutes ?? editingCombinedEntry.arbzg_pause_minutes ?? 0,
             notes: editingEntry?.notes || editingCombinedEntry.notes,
             user_name: selectedEmployee?.display_name || "Mitarbeiter",
             edited_by: editingEntry?.edited_by,

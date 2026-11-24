@@ -24,7 +24,7 @@ import { ACTION_MODULE } from "@/features/permissions/catalog";
 import { buildPermissionDiff, diffSimulation, parsePermissionExplanation } from "@/features/permissions/explain";
 import { parseConfigImpact, parseConfigRename, summarizeConfigImpact, summarizeConfigRename } from "@/features/admin/configImpact";
 import { calculateWeeklyTarget, isBadenWuerttembergHoliday, isDefaultWorkdays } from "@/features/timetracking/weeklyTarget";
-import { checkArbzgDay, elapsedWorkedMinutes, requiredBreakMinutes, requiredPauseForSpan } from "@/features/timetracking/arbzg";
+import { checkArbzgDay, elapsedWorkedMinutes, requiredBreakMinutes, requiredPauseForSpan, summarizeArbzgDay } from "@/features/timetracking/arbzg";
 
 export const workflowRulesScenario: TestScenario = {
   id: "workflow-rules", title: "Geschäftsregeln (Freigabe, Rollen, Fristen)",
@@ -127,6 +127,23 @@ export const workflowRulesScenario: TestScenario = {
       id: "arbzg-breaks", label: "Zeiterfassung: Pausenpflicht und Tagesgrenze nach ArbZG", kind: "logic",
       run: async () => {
         const midday = new Date(2026, 10, 24, 14, 30);
+        // 08:00–16:00 ohne Pause: 8 h Arbeit bleiben 8 h, die fehlende Pause wird nur ausgewiesen.
+        const unbrokenDay = summarizeArbzgDay([
+          { started_at: "2026-11-24T08:00:00", ended_at: "2026-11-24T16:00:00", pause_minutes: 0 },
+        ]);
+        // Geteilter Dienst: Die Pflicht gilt für den gesamten Tag, nicht je Eintrag.
+        const splitDay = summarizeArbzgDay([
+          { started_at: "2026-11-24T08:00:00", ended_at: "2026-11-24T12:00:00", pause_minutes: 0 },
+          { started_at: "2026-11-24T13:00:00", ended_at: "2026-11-24T17:00:00", pause_minutes: 0 },
+        ]);
+        const splitWithBreak = summarizeArbzgDay([
+          { started_at: "2026-11-24T08:00:00", ended_at: "2026-11-24T12:00:00", pause_minutes: 0 },
+          { started_at: "2026-11-24T13:00:00", ended_at: "2026-11-24T17:00:00", pause_minutes: 30 },
+        ]);
+        // 10-Stunden-Grenze zählt Arbeitszeit, nicht Bruttoanwesenheit.
+        const longDay = summarizeArbzgDay([
+          { started_at: "2026-11-24T07:00:00", ended_at: "2026-11-24T18:00:00", pause_minutes: 60 },
+        ]);
         const ok = requiredBreakMinutes(0) === 0
           && requiredBreakMinutes(6 * 60) === 0
           && requiredBreakMinutes(6 * 60 + 1) === 30
@@ -144,11 +161,16 @@ export const workflowRulesScenario: TestScenario = {
           && elapsedWorkedMinutes("08:00", null, 0, midday) === 390
           && elapsedWorkedMinutes("08:00", null, 60, midday) === 330
           && elapsedWorkedMinutes("08:00", "13:00", 30, midday) === 270
-          && elapsedWorkedMinutes("", null, 0, midday) === 0;
+          && elapsedWorkedMinutes("", null, 0, midday) === 0
+          && unbrokenDay.workedMinutes === 8 * 60 && unbrokenDay.grossMinutes === 8 * 60
+          && unbrokenDay.missingPauseMinutes === 30 && !unbrokenDay.compliant
+          && splitDay.workedMinutes === 8 * 60 && splitDay.missingPauseMinutes === 30
+          && splitWithBreak.missingPauseMinutes === 0 && splitWithBreak.workedMinutes === 7 * 60 + 30
+          && longDay.grossMinutes === 11 * 60 && longDay.workedMinutes === 10 * 60 && !longDay.exceedsMaxDailyWork;
         return {
           ok,
           message: ok
-            ? "Pausenpflicht 30/45 Min, Tagesgrenze und laufende Stempeluhr korrekt."
+            ? "Pausenpflicht 30/45 Min am Tag, 10-Stunden-Grenze ohne Pausen und laufende Stempeluhr korrekt."
             : "ArbZG-Regel weicht ab.",
         };
       },

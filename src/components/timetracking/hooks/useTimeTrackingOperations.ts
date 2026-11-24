@@ -5,6 +5,7 @@ import type { Database } from "@/integrations/supabase/types";
 import { format, parseISO, eachDayOfInterval } from "date-fns";
 import type { TimeEntryRow, LeaveRow } from "../types";
 import { MAX_PAUSE_MINUTES } from "../types";
+import { ARBZG_MAX_DAILY_WORK_MINUTES, summarizeArbzgDay, type ArbzgDaySummary } from "@/features/timetracking/arbzg";
 import type { ChecklistItem } from "../VacationChecklistForm";
 import { notify } from "@/lib/notify";
 
@@ -27,7 +28,8 @@ export function useTimeTrackingOperations({
   const [entryDate, setEntryDate] = useState(format(new Date(), "yyyy-MM-dd"));
   const [startTime, setStartTime] = useState("");
   const [endTime, setEndTime] = useState("");
-  const [pauseMinutes, setPauseMinutes] = useState("30");
+  // Nur tatsächlich genommene Pausen; die Pflichtpause wird nicht vorbelegt.
+  const [pauseMinutes, setPauseMinutes] = useState("0");
   const [notes, setNotes] = useState("");
 
   // Edit dialog
@@ -64,18 +66,35 @@ export function useTimeTrackingOperations({
     open: boolean; title: string; description: string; onConfirm: () => void;
   }>({ open: false, title: "", description: "", onConfirm: () => {} });
 
-  const validateDailyLimit = async (workDate: string, grossMin: number, excludeId?: string) => {
-    if (!userId) return;
-    const { data } = await supabase.from("time_entries").select("id, started_at, ended_at").eq("user_id", userId).eq("work_date", workDate);
-    const total = data?.reduce((s: number, e: { id: string; started_at?: string | null; ended_at?: string | null }) => e.id === excludeId || !e.started_at || !e.ended_at ? s : s + (new Date(e.ended_at).getTime() - new Date(e.started_at).getTime()) / 60000, 0) || 0;
-    if (total + grossMin > 600) {
+  const validateDay = async (
+    workDate: string,
+    start: Date,
+    end: Date,
+    pause: number,
+    excludeId?: string,
+  ): Promise<ArbzgDaySummary> => {
+    const { data, error } = await supabase
+      .from("time_entries")
+      .select("id, started_at, ended_at, pause_minutes")
+      .eq("user_id", userId)
+      .eq("work_date", workDate);
+    if (error) throw error;
+
+    // Tagesbilanz: 10-Stunden-Grenze ohne Pausen, Pausenpflicht für den ganzen Tag.
+    const day = summarizeArbzgDay([
+      ...(data || []).filter(entry => entry.id !== excludeId),
+      { started_at: start.toISOString(), ended_at: end.toISOString(), pause_minutes: pause },
+    ]);
+
+    if (day.workedMinutes > ARBZG_MAX_DAILY_WORK_MINUTES) {
       const formatTime = (min: number) => `${Math.floor(min / 60)}:${(min % 60).toString().padStart(2, "0")}`;
-      if (total > 0) throw new Error(`Bereits ${formatTime(total)} Stunden erfasst. Mit diesem Eintrag (${formatTime(grossMin)}) wären es ${formatTime(total + grossMin)} Stunden. Maximal 10 Stunden pro Tag erlaubt.`);
-      else throw new Error(`Der Eintrag dauert ${formatTime(grossMin)} Stunden. Maximal 10 Stunden pro Tag erlaubt.`);
+      throw new Error(`Maximal 10:00 Stunden Arbeitszeit pro Tag (ohne Pausen) erlaubt. Mit diesem Eintrag: ${formatTime(day.workedMinutes)}.`);
     }
+
+    return day;
   };
 
-  const resetEntryForm = () => { setStartTime(""); setEndTime(""); setPauseMinutes("30"); setNotes(""); };
+  const resetEntryForm = () => { setStartTime(""); setEndTime(""); setPauseMinutes("0"); setNotes(""); };
 
   const onSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
@@ -87,9 +106,14 @@ export function useTimeTrackingOperations({
     if (pause > gross) { notify.error("Die Pause darf nicht länger als die Arbeitszeit sein"); return; }
     if (pause > MAX_PAUSE_MINUTES) { notify.error(`Die Pause darf maximal ${MAX_PAUSE_MINUTES} Minuten betragen`); return; }
     try {
-      await validateDailyLimit(entryDate, gross);
-      await supabase.from("time_entries").insert([{ user_id: userId, work_date: entryDate, started_at: start.toISOString(), ended_at: end.toISOString(), minutes: gross - pause, pause_minutes: pause, notes: notes || null }]);
-      notify.success("Gespeichert"); resetEntryForm(); loadData();
+      const day = await validateDay(entryDate, start, end, pause);
+      await supabase.from("time_entries").insert([{ user_id: userId, work_date: entryDate, started_at: start.toISOString(), ended_at: end.toISOString(), minutes: gross - pause, pause_minutes: pause, arbzg_pause_minutes: 0, notes: notes || null }]);
+      if (day.missingPauseMinutes > 0) {
+        notify.warning(`Gespeichert – Pausenpflicht: ${day.requiredPauseMinutes} Min am Tag, ${day.missingPauseMinutes} Min fehlen. Klärungsbedarf für die Büroleitung vermerkt.`);
+      } else {
+        notify.success("Gespeichert");
+      }
+      resetEntryForm(); loadData();
     } catch (error: unknown) { notify.error(error instanceof Error ? error.message : "Fehler beim Speichern"); }
   };
 
@@ -98,7 +122,7 @@ export function useTimeTrackingOperations({
     setEntryDate(entry.work_date);
     setStartTime(entry.started_at ? format(parseISO(entry.started_at), "HH:mm") : "");
     setEndTime(entry.ended_at ? format(parseISO(entry.ended_at), "HH:mm") : "");
-    setPauseMinutes((entry.pause_minutes || 30).toString());
+    setPauseMinutes((entry.pause_minutes ?? 0).toString());
     setNotes(entry.notes || "");
     setIsEditDialogOpen(true);
   };
@@ -112,11 +136,16 @@ export function useTimeTrackingOperations({
     if (pause > gross) { notify.error("Die Pause darf nicht länger als die Arbeitszeit sein"); return; }
     if (pause > MAX_PAUSE_MINUTES) { notify.error(`Die Pause darf maximal ${MAX_PAUSE_MINUTES} Minuten betragen`); return; }
     try {
-      await validateDailyLimit(entryDate, gross, editingEntry.id);
-      const { data, error } = await supabase.from("time_entries").update({ work_date: entryDate, started_at: start.toISOString(), ended_at: end.toISOString(), minutes: gross - pause, pause_minutes: pause, notes: notes || null }).eq("id", editingEntry.id).eq("user_id", userId).select();
+      const day = await validateDay(entryDate, start, end, pause, editingEntry.id);
+      const { data, error } = await supabase.from("time_entries").update({ work_date: entryDate, started_at: start.toISOString(), ended_at: end.toISOString(), minutes: gross - pause, pause_minutes: pause, arbzg_pause_minutes: 0, notes: notes || null }).eq("id", editingEntry.id).eq("user_id", userId).select();
       if (error) throw error;
       if (!data || data.length === 0) { notify.error("Keine Berechtigung zum Bearbeiten dieses Eintrags"); return; }
-      notify.success("Eintrag aktualisiert"); setIsEditDialogOpen(false); setEditingEntry(null); resetEntryForm(); loadData();
+      if (day.missingPauseMinutes > 0) {
+        notify.warning(`Eintrag aktualisiert – ${day.missingPauseMinutes} Min Ruhepause fehlen (ArbZG). Klärungsbedarf vermerkt.`);
+      } else {
+        notify.success("Eintrag aktualisiert");
+      }
+      setIsEditDialogOpen(false); setEditingEntry(null); resetEntryForm(); loadData();
     } catch (error: unknown) { debugConsole.error("Update error:", error); notify.error(error instanceof Error ? error.message : "Fehler beim Aktualisieren"); }
   };
 

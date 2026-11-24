@@ -2,7 +2,7 @@ import { useState } from "react";
 import type { User } from "@supabase/supabase-js";
 import { supabase } from "@/integrations/supabase/client";
 import type { EntryType } from "@/features/timetracking/components/AdminTimeEntryEditor";
-import { validateDailyLimit } from "../utils/validationHelpers";
+import { validateDay } from "../utils/validationHelpers";
 import { fmt, getTypeLabel } from "../utils/timeFormatting";
 import { notify } from "@/lib/notify";
 
@@ -58,7 +58,13 @@ export function useAdminEntryCreation({
           return;
         }
 
-        await validateDailyLimit(selectedUserId, data.date, grossMinutes);
+        const day = await validateDay({
+          userId: selectedUserId,
+          workDate: data.date,
+          startedAt: start,
+          endedAt: end,
+          pauseMinutes: data.pauseMinutes,
+        });
 
         const netMinutes = grossMinutes - data.pauseMinutes;
 
@@ -70,6 +76,7 @@ export function useAdminEntryCreation({
             ended_at: end.toISOString(),
             minutes: netMinutes,
             pause_minutes: data.pauseMinutes,
+            arbzg_pause_minutes: 0,
             notes: data.reason || null,
             edited_by: user.id,
             edited_at: new Date().toISOString(),
@@ -78,7 +85,11 @@ export function useAdminEntryCreation({
         ]);
 
         if (error) throw error;
-        notify.success("Zeiteintrag erstellt");
+        if (day.missingPauseMinutes > 0) {
+          notify.warning(`Zeiteintrag erstellt – ${day.missingPauseMinutes} Min Ruhepause fehlen (ArbZG). Klärungsbedarf vermerkt.`);
+        } else {
+          notify.success("Zeiteintrag erstellt");
+        }
       } else {
         if (data.type === "overtime_reduction") {
           const dailyMinutes = Math.round(dailyHours * 60);
