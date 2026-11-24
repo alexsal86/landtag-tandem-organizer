@@ -17912,6 +17912,40 @@ export type Database = {
         Returns: string
       }
       expire_carry_over_vacation: { Args: never; Returns: undefined }
+      explain_action_permission: {
+        Args: {
+          _action_key: string
+          _simulate_role?: string | null
+          _tenant_id: string
+          _user_id: string
+        }
+        Returns: Json
+      }
+      explain_feature_flag: {
+        Args: { _feature_key: string; _tenant_id: string; _user_id: string }
+        Returns: Json
+      }
+      explain_field_permission: {
+        Args: {
+          _column_name: string
+          _simulate_role?: string | null
+          _table_name: string
+          _tenant_id: string
+          _user_id: string
+        }
+        Returns: Json
+      }
+      explain_permissions: {
+        Args: {
+          _actions?: string[]
+          _features?: string[]
+          _fields?: Json
+          _simulate_role?: string | null
+          _tenant_id: string
+          _user_id: string
+        }
+        Returns: Json
+      }
       export_admin_audit_logs: {
         Args: {
           _as_of?: string

@@ -20,6 +20,8 @@ import { projectDistrictVotes } from "@/features/election-analysis/research/simu
 import { transferDistrict } from "@/features/election-analysis/research/simulator/electionFile";
 import type { TestScenario } from "../types";
 import { calendarOccurrence, nextCalendarOccurrence, scheduleRunKey } from "@/features/automation/calendarSchedule";
+import { ACTION_MODULE } from "@/features/permissions/catalog";
+import { buildPermissionDiff, diffSimulation, parsePermissionExplanation } from "@/features/permissions/explain";
 
 export const workflowRulesScenario: TestScenario = {
   id: "workflow-rules", title: "Geschäftsregeln (Freigabe, Rollen, Fristen)",
@@ -260,6 +262,48 @@ export const workflowRulesScenario: TestScenario = {
           return access.isAdmin !== c.admin || access.isSuperAdmin !== c.superadmin;
         });
         return { ok: failures.length === 0, message: `${cases.length - failures.length}/${cases.length} Admin-Rollenregeln bestanden.`, details: failures };
+      },
+    },
+    {
+      id: "permission-explorer", label: "Rechte-Explorer: Rolle, Modul und Feldrecht erklären und Widersprüche finden", kind: "logic",
+      run: async () => {
+        const question = {
+          actions: ["letter.send"],
+          features: ["module.letters"],
+          fields: [{ table: "contacts", column: "email" }],
+        };
+        const base = {
+          member: true, role: "mitarbeiter", simulated_role: null, is_superadmin: false,
+          actions: [{ key: "letter.send", allowed: true, reason: "Rolle Mitarbeiter ist für diese Aktion freigegeben.", source: "rule", role: "mitarbeiter", allowed_roles: ["mitarbeiter"] }],
+          features: [{ key: "module.letters", enabled: false, reason: "Modul ist ausgeschaltet.", source: "tenant", role: "mitarbeiter" }],
+          fields: [{ table: "contacts", column: "email", can_read: true, can_write: true, read_mode: "mask", reason: "Feld ist lesbar und schreibbar.", source: "field_rule" }],
+        };
+        const parsed = parsePermissionExplanation(base, question);
+        const conflicts = buildPermissionDiff(parsed, ACTION_MODULE);
+        const writeWithoutRead = buildPermissionDiff(
+          parsePermissionExplanation({ ...base, fields: [{ ...base.fields[0], can_read: false, can_write: true }] }, question),
+          ACTION_MODULE,
+        );
+        const simulated = parsePermissionExplanation({
+          ...base,
+          actions: [{ ...base.actions[0], allowed: false, role: "praktikant" }],
+          features: [{ ...base.features[0], enabled: true }],
+        }, question);
+        const changes = diffSimulation(parsed, simulated);
+        const missing = parsePermissionExplanation({ member: true }, question);
+        const consistent = buildPermissionDiff(
+          parsePermissionExplanation({ ...base, features: [{ ...base.features[0], enabled: true }] }, question),
+          ACTION_MODULE,
+        );
+        const checks = {
+          reasonPreserved: parsed.actions[0].reason.includes("freigegeben") && parsed.features[0].source === "tenant" && parsed.actions[0].allowedRoles?.[0] === "mitarbeiter",
+          roleVersusFlag: conflicts.some(conflict => conflict.id === "action-open-module-off:letter.send" && conflict.severity === "warning"),
+          writeWithoutReadCritical: writeWithoutRead.some(conflict => conflict.severity === "critical"),
+          simulationDiff: changes.length === 2 && changes.some(change => change.area === "Modul" && change.actual === "aus" && change.simulated === "aktiv"),
+          missingAnswerDenied: !missing.actions[0].allowed && !missing.features[0].enabled && !missing.fields[0].canRead,
+          consistentSilent: consistent.length === 0,
+        };
+        return { ok: Object.values(checks).every(Boolean), message: "Begründungen, Ebenenvergleich und Simulation verwenden dieselben Regeln; fehlende Auskünfte gelten nie als Freigabe.", details: checks };
       },
     },
     {

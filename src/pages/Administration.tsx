@@ -41,6 +41,7 @@ const NewsEmailTemplateManager = lazy(() => import("@/components/administration/
 const EventEmailTemplateManager = lazy(() => import("@/components/administration/EventEmailTemplateManager").then(module => ({ default: module.EventEmailTemplateManager })));
 const AuditLogViewer = lazy(() => import("@/components/administration/AuditLogViewer").then(module => ({ default: module.AuditLogViewer })));
 const PermissionsManager = lazy(() => import("@/components/administration/PermissionsManager").then(module => ({ default: module.PermissionsManager })));
+const PermissionExplorer = lazy(() => import("@/features/permissions/PermissionExplorer").then(module => ({ default: module.PermissionExplorer })));
 const TopicSettings = lazy(() => import("@/components/administration/TopicSettings").then(module => ({ default: module.TopicSettings })));
 const ConfigurableTypeSettings = lazy(() => import("@/components/administration/ConfigurableTypeSettings").then(module => ({ default: module.ConfigurableTypeSettings })));
 const AnnualTasksView = lazy(() => import("@/features/timetracking/components/AnnualTasksView").then(module => ({ default: module.AnnualTasksView })));
@@ -209,6 +210,7 @@ export default function Administration(): React.JSX.Element | null {
         case "tenants": return <SuperadminTenantManagement />;
         case "auditlogs": return <AuditLogViewer />;
         case "permissions": return <PermissionsManager />;
+        case "permissions-explorer": return <PermissionExplorer />;
         case "security-cockpit":
           if (!isSuperAdmin) return null;
           return <SecurityCockpit />;
