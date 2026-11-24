@@ -23,6 +23,7 @@ import { calendarOccurrence, nextCalendarOccurrence, scheduleRunKey } from "@/fe
 import { ACTION_MODULE } from "@/features/permissions/catalog";
 import { buildPermissionDiff, diffSimulation, parsePermissionExplanation } from "@/features/permissions/explain";
 import { parseConfigImpact, summarizeConfigImpact } from "@/features/admin/configImpact";
+import { calculateWeeklyTarget, isBadenWuerttembergHoliday } from "@/features/timetracking/weeklyTarget";
 
 export const workflowRulesScenario: TestScenario = {
   id: "workflow-rules", title: "Geschäftsregeln (Freigabe, Rollen, Fristen)",
@@ -53,6 +54,43 @@ export const workflowRulesScenario: TestScenario = {
             && evening !== undefined && formatDashboardGreeting(evening, "Alex") === "Guten Abend, Alex!"
             && selectDashboardGreeting(parseDashboardGreetings("[]"), new Date(2026, 10, 5, 18)) === undefined,
           message: "Die fünf Vorlagen gelten bis zur ersten Speicherung. Gelöschte Begrüßungen erscheinen nicht wieder.",
+        };
+      },
+    },
+    {
+      id: "team-weekly-target", label: "Team: Wochen-Soll aus Arbeitstagen, Abwesenheiten und BW-Feiertagen", kind: "logic",
+      run: async () => {
+        const fullWeek = calculateWeeklyTarget({ hoursPerWeek: 40, daysPerWeek: 5, weekStart: "2026-11-16", today: "2026-11-20" });
+        const partTime = calculateWeeklyTarget({ hoursPerWeek: 32, daysPerWeek: 4, weekStart: "2026-11-16", today: "2026-11-20" });
+        const midWeek = calculateWeeklyTarget({ hoursPerWeek: 40, daysPerWeek: 5, weekStart: "2026-11-16", today: "2026-11-18" });
+        const withVacation = calculateWeeklyTarget({
+          hoursPerWeek: 40, daysPerWeek: 5, weekStart: "2026-11-16", today: "2026-11-20",
+          absences: [{ start_date: "2026-11-16", end_date: "2026-11-17" }],
+        });
+        const withHoliday = calculateWeeklyTarget({
+          hoursPerWeek: 40, daysPerWeek: 5, weekStart: "2026-01-05", today: "2026-01-09",
+          holidays: [{ holiday_date: "2026-01-06", state: "BW", is_nationwide: false }],
+        });
+        const foreignHoliday = calculateWeeklyTarget({
+          hoursPerWeek: 40, daysPerWeek: 5, weekStart: "2026-01-05", today: "2026-01-09",
+          holidays: [{ holiday_date: "2026-01-06", state: "BY", is_nationwide: false }],
+        });
+
+        const ok = fullWeek.targetMinutes === 2400
+          && partTime.targetMinutes === 1920
+          && midWeek.targetMinutes === 1440
+          && withVacation.targetMinutes === 1440 && withVacation.absenceDays === 2
+          && withHoliday.targetMinutes === 1920 && withHoliday.holidayDays === 1
+          && foreignHoliday.targetMinutes === 2400
+          && isBadenWuerttembergHoliday({ holiday_date: "2026-01-01", state: null, is_nationwide: true })
+          && isBadenWuerttembergHoliday({ holiday_date: "2026-01-06", state: "BW", is_nationwide: false })
+          && !isBadenWuerttembergHoliday({ holiday_date: "2026-01-06", state: "BY", is_nationwide: false });
+
+        return {
+          ok,
+          message: ok
+            ? "Wochen-Soll: Teilzeit, Abwesenheit, Feiertag und Bundesland korrekt."
+            : "Wochen-Soll weicht ab.",
         };
       },
     },

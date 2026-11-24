@@ -6,11 +6,12 @@ import { format } from "date-fns";
 import { mentionColors } from "@/utils/mentionColors";
 import { getHashedColor } from "@/utils/userColors";
 import { cn } from "@/lib/utils";
-import type { TeamMemberViewModel } from "@/components/my-work/hooks/useMyWorkTeamData";
+import type { TeamDataIssues, TeamMemberViewModel } from "@/components/my-work/hooks/useMyWorkTeamData";
 
 interface TeamMemberRowProps {
   member: TeamMemberViewModel;
   onOpenEmployeeArea: () => void;
+  dataIssues?: TeamDataIssues;
 }
 
 const progressColors = {
@@ -22,24 +23,28 @@ const progressColors = {
   overtime: "bg-palette-blue",
 };
 
-export function TeamMemberRow({ member, onOpenEmployeeArea }: TeamMemberRowProps) {
+export function TeamMemberRow({ member, onOpenEmployeeArea, dataIssues }: TeamMemberRowProps) {
   const color = mentionColors(member.badgeColor || getHashedColor(member.userId));
   const hours = (minutes: number) => (minutes / 60).toLocaleString("de-DE", { maximumFractionDigits: 1 });
   const percentage = member.weeklyTargetMinutes > 0
     ? Math.min(100, (member.weeklyWorkedMinutes / member.weeklyTargetMinutes) * 100) : 0;
+  const displayName = dataIssues?.profiles ? "Profil nicht geladen" : member.displayName;
+  const timeEntriesAvailable = !dataIssues?.timeEntries;
 
   return (
     <div className="grid grid-cols-1 items-center gap-4 px-5 py-5 transition-colors hover:bg-muted/30 md:grid-cols-[1.15fr_0.9fr_1fr_auto]">
       <div className="flex min-w-0 items-center gap-3">
         <Avatar className="h-11 w-11 shrink-0">
-          <AvatarImage src={member.avatarUrl || undefined} alt={member.displayName} />
+          <AvatarImage src={member.avatarUrl || undefined} alt={displayName} />
           <AvatarFallback style={{ backgroundColor: color.background, color: color.text }} className="font-semibold">
             {member.initials}
           </AvatarFallback>
         </Avatar>
         <div className="min-w-0">
-          <p className="break-words font-semibold">{member.displayName}</p>
-          <p className="text-sm text-muted-foreground">{member.hoursPerWeek.toLocaleString("de-DE")} h/Woche</p>
+          <p className={cn("break-words font-semibold", dataIssues?.profiles && "text-muted-foreground italic")}>{displayName}</p>
+          <p className="text-sm text-muted-foreground">
+            {member.hoursPerWeek.toLocaleString("de-DE")} h/Woche · {member.daysPerWeek} {member.daysPerWeek === 1 ? "Tag" : "Tage"}
+          </p>
         </div>
       </div>
       <div className="space-y-1 text-sm">
@@ -58,17 +63,30 @@ export function TeamMemberRow({ member, onOpenEmployeeArea }: TeamMemberRowProps
       </div>
       <div className="min-w-0 space-y-2">
         <p className="text-xs text-muted-foreground md:hidden">Zeiterfassung (diese Woche)</p>
-        <p className="text-sm"><strong>{hours(member.weeklyWorkedMinutes)}</strong> von {hours(member.weeklyTargetMinutes)} h</p>
-        <div role="progressbar" aria-label={`Zeiterfassung ${member.displayName}`} aria-valuemin={0} aria-valuemax={100} aria-valuenow={Math.round(percentage)} aria-valuetext={`${hours(member.weeklyWorkedMinutes)} von ${hours(member.weeklyTargetMinutes)} Stunden`} className="h-2 overflow-hidden rounded-full bg-muted">
-          <div className={cn("h-full rounded-full", progressColors[member.workStatus.indicatorVariant])} style={{ width: `${percentage}%` }} />
-        </div>
-        {member.workStatus.needsAttention && (
-          <span className="inline-block rounded-full bg-palette-amber/10 px-2 py-0.5 text-xs font-medium text-palette-amber">
-            {member.workStatus.daysWithoutEntry !== null ? `Kein Eintrag seit ${member.workStatus.daysWithoutEntry} Werktagen` : "Noch kein Zeiteintrag"}
-          </span>
+        {!timeEntriesAvailable ? (
+          <p className="text-sm text-muted-foreground">Zeiterfassung nicht verfügbar</p>
+        ) : member.weeklyTargetMinutes === 0 ? (
+          <p className="text-sm text-muted-foreground">Kein Soll diese Woche (Feiertag oder Abwesenheit)</p>
+        ) : (
+          <>
+            <p className="text-sm"><strong>{hours(member.weeklyWorkedMinutes)}</strong> von {hours(member.weeklyTargetMinutes)} h</p>
+            <div role="progressbar" aria-label={`Zeiterfassung ${displayName}`} aria-valuemin={0} aria-valuemax={100} aria-valuenow={Math.round(percentage)} aria-valuetext={`${hours(member.weeklyWorkedMinutes)} von ${hours(member.weeklyTargetMinutes)} Stunden`} className="h-2 overflow-hidden rounded-full bg-muted">
+              <div className={cn("h-full rounded-full", progressColors[member.workStatus.indicatorVariant])} style={{ width: `${percentage}%` }} />
+            </div>
+            {member.workStatus.needsAttention && (
+              <span className="inline-block rounded-full bg-palette-amber/10 px-2 py-0.5 text-xs font-medium text-palette-amber">
+                {member.workStatus.daysWithoutEntry !== null ? `Kein Eintrag seit ${member.workStatus.daysWithoutEntry} Werktagen` : "Noch kein Zeiteintrag"}
+              </span>
+            )}
+          </>
+        )}
+        {timeEntriesAvailable && member.weeklyAbsenceDays > 0 && (
+          <p className="text-xs text-muted-foreground">
+            {member.weeklyAbsenceDays} {member.weeklyAbsenceDays === 1 ? "Abwesenheitstag" : "Abwesenheitstage"} diese Woche im Soll abgezogen
+          </p>
         )}
       </div>
-      <Button variant="outline" size="sm" className="w-24 gap-2" onClick={onOpenEmployeeArea} aria-label={`Mitarbeiterbereich für ${member.displayName} öffnen`}>
+      <Button variant="outline" size="sm" className="w-24 gap-2" onClick={onOpenEmployeeArea} aria-label={`Mitarbeiterbereich für ${displayName} öffnen`}>
         <ExternalLink className="h-4 w-4" /> Öffnen
       </Button>
     </div>
