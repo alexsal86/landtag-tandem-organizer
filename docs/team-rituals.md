@@ -67,35 +67,25 @@ Offen bleiben echte Rollen-/Tenant-Prüfungen, eigene Antwort und Quiz-Auflösun
 ### Phase 2
 
 - `roadmap.md`
-- `src/components/dashboard/WidgetPalette.tsx`
-- `src/components/dashboard/WidgetQuickAccess.tsx`
-- `src/features/dashboard/components/DashboardWidget.tsx`
 - `src/features/selftest/scenarios/team-rituals.ts`
 - `src/features/team-rituals/FunFactsEditor.tsx`
 - `src/features/team-rituals/TeamRitualWorkspace.tsx`
 - `src/features/team-rituals/TwoTruthsWidget.tsx`
 - `src/features/team-rituals/data.ts`
 - `src/features/team-rituals/twoTruths.ts`
-- `src/hooks/useDashboardLayout.tsx`
 - `src/hooks/useOnboardingChecklist.ts`
 - `src/integrations/supabase/types.ts`
-- `src/types/dashboardWidgets.ts`
 - `supabase/migrations/20261113161000_team_two_truths.sql`
 
 ### Phase 3
 
 - `roadmap.md`
-- `src/components/dashboard/WidgetPalette.tsx`
-- `src/components/dashboard/WidgetQuickAccess.tsx`
-- `src/features/dashboard/components/DashboardWidget.tsx`
 - `src/features/selftest/scenarios/team-rituals.ts`
 - `src/features/team-rituals/BingoWidget.tsx`
 - `src/features/team-rituals/TeamRitualWorkspace.tsx`
 - `src/features/team-rituals/bingo.test.ts`
 - `src/features/team-rituals/bingo.ts`
-- `src/hooks/useDashboardLayout.tsx`
 - `src/integrations/supabase/types.ts`
-- `src/types/dashboardWidgets.ts`
 - `supabase/migrations/20261113162000_team_bingo.sql`
 
 ### Phase 4
