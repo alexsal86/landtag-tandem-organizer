@@ -9,18 +9,18 @@ describe('dashboard deadline calendar groups', () => {
   it('separates today from tomorrow through Sunday, excluding next Monday', () => {
     expect(getDeadlineStatus('2026-11-04')).toBe('today');
     expect(getDeadlineStatus('2026-11-05')).toBe('soon');
-    expect(getDeadlineStatus('2026-11-08T23:59:00')).toBe('soon');
+    expect(getDeadlineStatus('2026-11-08T23:59:00+01:00')).toBe('soon');
     expect(getDeadlineStatus('2026-11-09')).toBe('later');
   });
   it('does not treat a passed time today as a previous-day deadline', () => {
-    expect(getDeadlineStatus('2026-11-04T08:00:00')).toBe('today');
-    expect(formatDeadlineDateLabel('2026-11-04T08:00:00')).toBe('Heute 08:00');
+    expect(getDeadlineStatus('2026-11-04T08:00:00+01:00')).toBe('today');
+    expect(formatDeadlineDateLabel('2026-11-04T08:00:00+01:00')).toBe('Heute 08:00');
   });
   it('omits default midnight times while retaining set times', () => {
-    expect(formatDeadlineDateLabel('2026-11-04T00:00:00')).toBe('Heute');
-    expect(formatDeadlineDateLabel('2026-11-05T00:00:00')).toBe('Morgen');
+    expect(formatDeadlineDateLabel('2026-11-04T00:00:00+01:00')).toBe('Heute');
+    expect(formatDeadlineDateLabel('2026-11-05T00:00:00+01:00')).toBe('Morgen');
     expect(formatDeadlineDateLabel('2026-11-04')).toBe('Heute');
-    expect(formatDeadlineDateLabel('2026-11-05T14:30:00')).toBe('Morgen 14:30');
+    expect(formatDeadlineDateLabel('2026-11-05T14:30:00+01:00')).toBe('Morgen 14:30');
   });
   it('shows overdue age with correct singular/plural', () => {
     expect(formatDeadlineDateLabel('2026-11-03')).toBe('seit 1 Tag überfällig');

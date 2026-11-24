@@ -8,9 +8,11 @@ import { Label } from "@/components/ui/label";
 import { notify } from "@/lib/notify";
 import { taskTemplateFromAutomationRule, type TaskTemplate } from "@/features/tasks/templates";
 import { EmptyState, LoadingState } from "@/components/ui-patterns";
+import { berlinDayKey } from "@/utils/berlinDate";
 
 interface Props { userId?: string; tenantId?: string; onCreated: () => void }
-const today = () => new Date().toISOString().slice(0, 10);
+// Vorbelegung als Berliner Kalendertag, damit die Frist zwischen 00:00 und 02:00 nicht rutscht.
+const today = () => berlinDayKey(new Date());
 
 export function TaskTemplateButton({ userId, tenantId, onCreated }: Props) {
   const [open, setOpen] = useState(false);

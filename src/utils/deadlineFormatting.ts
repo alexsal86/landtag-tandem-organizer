@@ -1,6 +1,12 @@
-import { format, isToday, isTomorrow, isPast, endOfWeek, differenceInCalendarDays } from 'date-fns';
-import { de } from 'date-fns/locale';
 import type { DeadlineItem, GroupedDeadlineItems, DeadlineKind } from '@/types/dashboardDeadlines';
+import {
+  berlinClock,
+  berlinDayKey,
+  berlinDaysSince,
+  berlinWeekEnd,
+  berlinWeekdayShortDate,
+  shiftBerlinDay,
+} from '@/utils/berlinDate';
 
 const TYPE_CONTEXT_LABEL: Record<DeadlineKind, string> = {
   task: 'Aufgabe',
@@ -13,28 +19,34 @@ const TYPE_CONTEXT_LABEL: Record<DeadlineKind, string> = {
 
 export type DeadlineStatus = 'overdue' | 'today' | 'soon' | 'later';
 
-export function getDeadlineStatus(dueDate: string): DeadlineStatus {
-  const d = new Date(dueDate);
-  if (isToday(d)) return 'today';
-  if (isPast(d)) return 'overdue';
-  if (d <= endOfWeek(new Date(), { weekStartsOn: 1 })) return 'soon';
-  return 'later';
+/**
+ * Fristen werden über Berliner Kalendertage bewertet. `new Date('2026-11-25')`
+ * ist UTC-Mitternacht (in Berlin 01:00) und darf den Tag deshalb nicht
+ * verschieben; „bald“ reicht bis Sonntag der laufenden Woche.
+ */
+export function getDeadlineStatus(dueDate: string, now: Date = new Date()): DeadlineStatus {
+  const due = berlinDayKey(dueDate);
+  const today = berlinDayKey(now);
+  if (due < today) return 'overdue';
+  if (due === today) return 'today';
+  return due <= berlinWeekEnd(today) ? 'soon' : 'later';
 }
 
-export function formatDeadlineDateLabel(dueDate: string): string {
-  const d = new Date(dueDate);
-  // Date-only deadlines are also stored as timestamps at local midnight.
-  const hasTime = /\d{2}:\d{2}/.test(dueDate) &&
-    (d.getHours() !== 0 || d.getMinutes() !== 0 || d.getSeconds() !== 0);
-  const time = hasTime ? format(d, 'HH:mm', { locale: de }) : null;
+export function formatDeadlineDateLabel(dueDate: string, now: Date = new Date()): string {
+  // Reine Datumsangaben haben keine Uhrzeit; echte Zeitstempel um 00:00 Berlin
+  // zeigen bewusst nur den Tag.
+  const hasTime = /\d{2}:\d{2}/.test(dueDate) && berlinClock(dueDate) !== '00:00';
+  const time = hasTime ? berlinClock(dueDate) : null;
+  const due = berlinDayKey(dueDate);
+  const today = berlinDayKey(now);
 
-  if (isToday(d)) return time ? `Heute ${time}` : 'Heute';
-  if (isTomorrow(d)) return time ? `Morgen ${time}` : 'Morgen';
-  if (isPast(d)) {
-    const days = differenceInCalendarDays(new Date(), d);
+  if (due === today) return time ? `Heute ${time}` : 'Heute';
+  if (due === shiftBerlinDay(today, 1)) return time ? `Morgen ${time}` : 'Morgen';
+  if (due < today) {
+    const days = berlinDaysSince(dueDate, now);
     return `seit ${days} ${days === 1 ? 'Tag' : 'Tagen'} überfällig`;
   }
-  return format(d, 'EEE, dd.MM.', { locale: de });
+  return berlinWeekdayShortDate(dueDate);
 }
 
 export function getDeadlineContextLabel(type: DeadlineKind): string {

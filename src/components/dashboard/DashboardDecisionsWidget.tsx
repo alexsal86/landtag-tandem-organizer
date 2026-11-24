@@ -4,9 +4,8 @@ import { useDeputyDashboardDecisions, type DeputyDashboardDecision } from "@/fea
 import { useMemo, useState, useEffect, useRef } from 'react';
 import { useNavigate } from 'react-router-dom';
 import { Bell, ChevronRight, MessageSquare, Undo2 } from 'lucide-react';
-import { differenceInCalendarDays, format } from 'date-fns';
-import { de } from 'date-fns/locale';
 import { useAuth } from '@/hooks/useAuth';
+import { berlinDateShort, berlinDaysSince, berlinWeekday, berlinWeekdayDate } from '@/utils/berlinDate';
 import { useMyWorkDecisionsData } from '@/hooks/useMyWorkDecisionsData';
 import { needsOwnDecision, resetOwnDecisionResponse, MyWorkDecision } from '@/components/my-work/decisions/types';
 import { TaskDecisionResponse } from '@/components/task-decisions/TaskDecisionResponse';
@@ -17,14 +16,17 @@ import { notify } from "@/lib/notify";
 import { ErrorState } from '@/components/ui-patterns';
 import { WidgetListFooter } from '@/components/ui-patterns';
 
-function formatDeadline(deadline: string | null): { label: string; isOverdue: boolean } {
+/**
+ * Antwortfristen werden über Berliner Kalendertage bewertet: `new Date('2026-11-25')`
+ * ist UTC-Mitternacht und würde die Frist sonst auf den Vortag schieben.
+ */
+function formatDeadline(deadline: string | null, now: Date = new Date()): { label: string; isOverdue: boolean } {
   if (!deadline) return { label: '', isOverdue: false };
-  const d = new Date(deadline);
-  const diff = differenceInCalendarDays(d, new Date());
-  if (diff < 0) return { label: `Antwort überfällig seit ${format(d, 'dd.MM.', { locale: de })}`, isOverdue: true };
-  if (diff === 0) return { label: 'Antwort bis heute', isOverdue: false };
-  if (diff === 1) return { label: 'Antwort bis morgen', isOverdue: false };
-  return { label: `Antwort bis ${format(d, diff < 7 ? 'EEEE' : 'EEEE, d. MMMM', { locale: de })}`, isOverdue: false };
+  const daysSince = berlinDaysSince(deadline, now);
+  if (daysSince > 0) return { label: `Antwort überfällig seit ${berlinDateShort(deadline)}`, isOverdue: true };
+  if (daysSince === 0) return { label: 'Antwort bis heute', isOverdue: false };
+  if (daysSince === -1) return { label: 'Antwort bis morgen', isOverdue: false };
+  return { label: `Antwort bis ${daysSince > -7 ? berlinWeekday(deadline) : berlinWeekdayDate(deadline)}`, isOverdue: false };
 }
 
 const PROMPT_COLOR_CLASS: Record<string, string> = {

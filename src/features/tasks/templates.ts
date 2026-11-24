@@ -1,5 +1,7 @@
 // Pure rules for recurring tasks, mandate templates and subtask progress.
 
+import { berlinDayKey, shiftBerlinDay } from "@/utils/berlinDate";
+
 export type RecurrenceRule = "weekly" | "biweekly" | "monthly" | "quarterly" | "yearly";
 
 export const RECURRENCE_LABELS: Record<RecurrenceRule, string> = {
@@ -167,11 +169,9 @@ export const TASK_TEMPLATES: TaskTemplate[] = [
   },
 ];
 
-const addDays = (start: Date, days: number) => {
-  const d = new Date(start);
-  d.setDate(d.getDate() + days);
-  return d.toISOString().slice(0, 10);
-};
+// Fristen entstehen aus Berliner Kalendertagen; `toISOString().slice(0, 10)` würde
+// zwischen 00:00 und 02:00 Berliner Zeit den Vortag schreiben.
+const addDays = (start: Date, days: number) => shiftBerlinDay(berlinDayKey(start), days);
 
 /** Builds the rows a template creates; ids are generated client-side to avoid INSERT…RETURNING. */
 export function buildTemplateRows(template: TaskTemplate, ctx: { userId: string; tenantId: string; start?: Date; makeId?: () => string }) {
