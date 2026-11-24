@@ -144,6 +144,7 @@ export const buildDeepLinkPath = (notification: Notification): string => {
 
     case 'social_post_reminder':
     case 'social_post_change_requested':
+    case 'social_post_approved':
     case 'social_post_approval_reopened':
       return buildHighlightPath('/mywork?tab=redaktion', getNotificationDataId(data, 'content_item_id'));
 

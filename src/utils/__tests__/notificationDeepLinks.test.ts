@@ -99,3 +99,14 @@ describe('buildDeepLinkPath', () => {
 it.each(['knowledge_qa_assigned','knowledge_qa_answered','knowledge_qa_due','knowledge_qa_review_requested'])('opens the question from %s', name => {
   expect(buildDeepLinkPath(makeNotification({ notification_types: { name, label: name }, data: { question_id: 'question-id' } }))).toBe('/wissen?frage=question-id');
 });
+
+it.each(['social_post_reminder', 'social_post_change_requested', 'social_post_approved', 'social_post_approval_reopened'])(
+  'hebt den Beitrag aus der Benachrichtigung %s hervor',
+  name => {
+    expect(
+      buildDeepLinkPath(
+        makeNotification({ notification_types: { name, label: name }, data: { content_item_id: 'item-7' } }),
+      ),
+    ).toBe('/mywork?tab=redaktion&highlight=item-7');
+  },
+);
