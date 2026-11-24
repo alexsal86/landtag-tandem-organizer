@@ -56,6 +56,10 @@ export interface AgendaItem {
   original_meeting_date?: string | null;
   original_meeting_title?: string | null;
   carryover_notes?: string | null;
+  /** Erfasste Ist-Zeit in Minuten. */
+  actual_minutes?: number | null;
+  /** Start des laufenden Timers, solange der Punkt besprochen wird. */
+  timer_started_at?: string | null;
   system_type?: string | null;
   is_optional?: boolean | null;
   is_visible?: boolean | null;
@@ -204,6 +208,8 @@ export interface Meeting {
   is_public?: boolean | null;
   created_at?: string;
   updated_at?: string;
+  /** Beginn der Besprechung (Ist-Zeit). */
+  started_at?: string | null;
   lastUpdate?: number;
 }
 

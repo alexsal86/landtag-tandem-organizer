@@ -10,6 +10,8 @@ import { JourFixeMeetingCard } from "@/components/my-work/jour-fixe/JourFixeMeet
 import { JourFixeMeetingList } from "@/components/my-work/jour-fixe/JourFixeMeetingList";
 import { useJourFixeAgenda } from "@/components/my-work/hooks/useJourFixeAgenda";
 import { StandaloneMeetingCreator } from "@/components/meetings/StandaloneMeetingCreator";
+import { MeetingResponseBar, type MeetingResponseStatus } from "@/components/my-work/jour-fixe/MeetingResponseBar";
+import { OpenDecisionsCockpit } from "@/features/meetings/components/OpenDecisionsCockpit";
 
 export function MyWorkJourFixeTab() {
   const { user } = useAuth();
@@ -43,9 +45,24 @@ export function MyWorkJourFixeTab() {
 
   const totalMeetings = upcomingMeetings.length + pastMeetings.length;
 
+  /** Rückmeldung nur für eingeladene Personen, nicht für die organisierende Person. */
+  const renderResponse = (meetingId: string, ownerId?: string | null) => {
+    if (!user?.id || ownerId === user.id) return undefined;
+    const mine = (meetingParticipants[meetingId] ?? []).find((participant) => participant.user_id === user.id);
+    if (!mine) return undefined;
+    return (
+      <MeetingResponseBar
+        meetingId={meetingId}
+        status={(mine.status as MeetingResponseStatus | null) ?? null}
+        onChanged={() => refetch?.()}
+      />
+    );
+  };
+
   return (
     <section className="space-y-4 p-4">
       <h3 className="text-sm font-semibold text-foreground">Meeting-Übersicht</h3>
+      <OpenDecisionsCockpit />
       {totalMeetings === 0 ? (
         <MyWorkEmptyState
           icon={Calendar}
@@ -72,6 +89,7 @@ export function MyWorkJourFixeTab() {
                 isExpanded={expandedMeetingId === meeting.id}
                 onToggleExpand={() => toggleMeeting(meeting.id, meeting.meeting_date)}
                 onNavigate={() => navigate(`/meetings?id=${meeting.id}`)}
+                footer={renderResponse(meeting.id, meeting.user_id)}
                 agendaContent={
                   <JourFixeMeetingAgenda
                     agenda={getAgendaData(meeting.id)}

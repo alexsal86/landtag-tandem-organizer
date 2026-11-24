@@ -1,11 +1,13 @@
 import { Button } from "@/components/ui/button";
 import { Checkbox } from "@/components/ui/checkbox";
 import type { agendaTiming } from "./agendaTiming";
+import { formatDeviation } from "./agendaElapsed";
 
 export function AgendaSummaryBar({
   allCollapsed,
   onToggleAll,
   timing,
+  actualTotal = 0,
   hideEmpty,
   onHideEmptyChange,
   onOpenCarryover,
@@ -13,6 +15,8 @@ export function AgendaSummaryBar({
   allCollapsed?: boolean;
   onToggleAll?: () => void;
   timing: ReturnType<typeof agendaTiming>;
+  /** Summe der erfassten Ist-Minuten aller Hauptpunkte. */
+  actualTotal?: number;
   hideEmpty: boolean;
   onHideEmptyChange: (value: boolean) => void;
   onOpenCarryover?: () => void;
@@ -23,6 +27,11 @@ export function AgendaSummaryBar({
         <strong>{timing.main.length} {timing.main.length === 1 ? "Punkt" : "Punkte"}</strong>
         {timing.total > 0 && (
           <span className="rounded-full border px-2.5 py-1 tabular-nums text-muted-foreground">Σ {timing.total} Min.</span>
+        )}
+        {actualTotal > 0 && (
+          <span className="rounded-full border px-2.5 py-1 tabular-nums text-muted-foreground">
+            Ist {actualTotal} Min.{formatDeviation(actualTotal, timing.total) ? ` (${formatDeviation(actualTotal, timing.total)})` : ""}
+          </span>
         )}
       </div>
       <div className="flex flex-wrap items-center gap-2">

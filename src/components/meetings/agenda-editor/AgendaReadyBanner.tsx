@@ -2,11 +2,14 @@ import { Button } from "@/components/ui/button";
 import { Play } from "lucide-react";
 import type { agendaTiming } from "./agendaTiming";
 
-export function AgendaReadyBanner({ timing, onStart, startDisabled, live }: {
+export function AgendaReadyBanner({ timing, onStart, startDisabled, live, timerLabel, timerCaption }: {
   timing: ReturnType<typeof agendaTiming>;
   onStart?: () => void;
   startDisabled: boolean;
   live?: boolean;
+  /** Ist-Zeit des laufenden Punktes; ohne Live-Betrieb bleibt es bei 00:00. */
+  timerLabel?: string | null;
+  timerCaption?: string;
 }) {
   const count = timing.main.length;
   const completed = timing.main.filter((item) => item.is_completed).length;
@@ -24,7 +27,15 @@ export function AgendaReadyBanner({ timing, onStart, startDisabled, live }: {
         </div>
         {onStart && (
           <div className="flex flex-wrap items-center gap-4">
-            <span className="font-mono text-3xl font-semibold tabular-nums" aria-label="Verstrichene Zeit: 0 Minuten">00:00</span>
+            <div className="text-right">
+              <span
+                className="font-mono text-3xl font-semibold tabular-nums"
+                aria-label={`${timerCaption ?? "Verstrichene Zeit"}: ${timerLabel ?? "00:00"}`}
+              >
+                {timerLabel ?? "00:00"}
+              </span>
+              {timerCaption && <p className="text-[11px] text-white/70">{timerCaption}</p>}
+            </div>
             <Button className="bg-white text-green-950 hover:bg-green-50" disabled={startDisabled} onClick={onStart}>
               <Play className="mr-2 size-4 fill-current" /> Live starten
             </Button>

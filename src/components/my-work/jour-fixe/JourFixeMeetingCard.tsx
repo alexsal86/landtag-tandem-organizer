@@ -17,6 +17,8 @@ interface JourFixeMeetingCardProps {
   onToggleExpand: () => void | Promise<void>;
   onNavigate: () => void;
   agendaContent?: ReactNode;
+  /** Rückmeldung / Zusatzaktion unter dem Kopfbereich. */
+  footer?: ReactNode;
 }
 
 const getMeetingStatusColor = (meeting: Meeting) => {
@@ -34,8 +36,20 @@ export function JourFixeMeetingCard({
   onToggleExpand,
   onNavigate,
   agendaContent,
+  footer,
 }: JourFixeMeetingCardProps) {
   const meetingDate = new Date(meeting.meeting_date);
+  const statusCounts = participants.reduce<Record<string, number>>((counts, participant) => {
+    const key = participant.status ?? "pending";
+    counts[key] = (counts[key] ?? 0) + 1;
+    return counts;
+  }, {});
+  const statusSummary = [
+    statusCounts.confirmed ? `${statusCounts.confirmed} zugesagt` : null,
+    statusCounts.vacation ? `${statusCounts.vacation} Urlaub` : null,
+    statusCounts.declined ? `${statusCounts.declined} abgesagt` : null,
+    statusCounts.pending ? `${statusCounts.pending} offen` : null,
+  ].filter(Boolean).join(" · ");
 
   return (
     <div className="rounded-lg border bg-card overflow-hidden">
@@ -72,6 +86,11 @@ export function JourFixeMeetingCard({
                   {meeting.meeting_time.substring(0, 5)} Uhr
                 </div>
               )}
+              {participants.length > 0 && statusSummary && (
+                <div className="flex items-center gap-1 text-xs text-muted-foreground" title="Rückmeldungen der Teilnehmenden">
+                  {statusSummary}
+                </div>
+              )}
               {participants.length > 0 && (
                 <div className="flex items-center gap-1">
                   <Users className="h-3 w-3 text-muted-foreground" />
@@ -104,6 +123,7 @@ export function JourFixeMeetingCard({
           </Button>
         </div>
       </div>
+      {footer && <div className="border-t px-3 py-2">{footer}</div>}
       {isExpanded && agendaContent}
     </div>
   );

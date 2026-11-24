@@ -260,6 +260,21 @@ export function MeetingsView() {
                     await data.loadCarryoverBufferItems();
                     data.setShowCarryoverBuffer(true);
                   }}
+                  onDecisionSaved={() => {
+                    if (agendaMeeting.id) void data.loadMeetingRelevantDecisions(agendaMeeting.id);
+                  }}
+                  onDecisionLinked={({ blockId, blockCreated, note }) => {
+                    const meetingId = agendaMeeting.id;
+                    if (!meetingId) return;
+                    if (blockCreated || !blockId) {
+                      // Neuer Block: die Agenda kennt ihn noch nicht, deshalb einmal neu laden.
+                      void data.loadAgendaItems(meetingId);
+                      return;
+                    }
+                    // Ergebnisblock lokal nachziehen, damit ein späteres Speichern der
+                    // Agenda den gerade gesetzten Beschluss nicht überschreibt.
+                    void agendaOps.updateAgendaItemResult(blockId, "result_text", note);
+                  }}
                   agendaItems={data.agendaItems}
                   profiles={data.profiles}
                   tasks={data.tasks}

@@ -1,5 +1,8 @@
 import { combineAgendaItems } from "@/components/meetings/agenda-editor/combineAgendaItems";
 import { agendaTiming } from "@/components/meetings/agenda-editor/agendaTiming";
+import { actualTotalMinutes, elapsedSeconds, formatDeviation, formatElapsed, toMinutes } from "@/components/meetings/agenda-editor/agendaElapsed";
+import { zombieLevel, zombieSummary } from "@/features/meetings/zombiePoints";
+import { addDecisionToNote, decisionSummary, parseDecisionNote } from "@/features/meetings/meetingDecision";
 import type { TablesInsert } from "@/integrations/supabase/types";
 import { supabase } from '@/integrations/supabase/client';
 import { persistMeetingArchive } from '@/components/meetings/archiveMeeting';
@@ -64,6 +67,46 @@ export const jourFixePlatformIntegrationScenario: TestScenario = {
         catch (error) { return { ok: false, message: describeError(error) }; }
       },
     })),
+    { id: 'zombie-points', label: 'Agenda: Zombie-Punkte ab der dritten Verschiebung', kind: 'logic', run: async () => {
+      const base = { title: 'Punkt', is_completed: false, is_recurring: false, order_index: 0 };
+      const summary = zombieSummary([
+        { ...base, title: 'Frisch' },
+        { ...base, title: 'Zweimal', carryover_count: 2, source_meeting_id: null },
+        { ...base, title: 'Zombie', carryover_count: 3 },
+        { ...base, title: 'Alt', source_meeting_id: 'legacy' },
+        { ...base, title: 'Eskaliert', carryover_count: 5 },
+        { ...base, title: 'Unterpunkt', carryover_count: 7, parent_id: 'parent' },
+      ]);
+      const ok = summary.count === 3 && summary.escalated === 1
+        && summary.points[0]?.item.title === 'Eskaliert'
+        && zombieLevel({ ...base, title: 'Zweimal', carryover_count: 2 }) === 'watch'
+        && zombieLevel({ ...base, title: 'Neu' }) === 'none'
+        && !summary.points.some(point => point.item.title === 'Unterpunkt');
+      return { ok, message: ok ? 'Schwellen und Unterpunktfilter korrekt.' : 'Zombie-Erkennung weicht ab.' };
+    } },
+    { id: 'actual-times', label: 'Agenda: Ist-Zeiten, Rundung und Abweichung', kind: 'logic', run: async () => {
+      const start = '2026-11-24T10:00:00.000Z';
+      const at = Date.parse(start) + 8 * 60 * 1000;
+      const ok = elapsedSeconds(start, at) === 480 && formatElapsed(480) === '08:00' && formatElapsed(3725) === '1:02:05'
+        && toMinutes(480) === 8
+        && actualTotalMinutes([{ duration_minutes: 10, actual_minutes: 12 }, { parent_id: 'a', actual_minutes: 99 }]) === 12
+        && formatDeviation(12, 10) === '+2 Min.' && formatDeviation(8, 10) === '−2 Min.' && formatDeviation(10, 10) === null
+        && elapsedSeconds(null) === 0;
+      return { ok, message: ok ? 'Ist-Zeiten und Abweichungen korrekt.' : 'Ist-Zeitberechnung weicht ab.' };
+    } },
+    { id: 'meeting-decision-note', label: 'Beschluss: Entscheidungsblock verliert keine bestehende Notiz', kind: 'logic', run: async () => {
+      const first = addDecisionToNote(null, 'd1', 'Beschluss A');
+      const second = addDecisionToNote(first, 'd2', 'Beschluss B');
+      const legacy = addDecisionToNote('Freitext aus alter Sitzung', 'd3', ' Beschluss C ');
+      const parsed = parseDecisionNote(second);
+      const legacyParsed = parseDecisionNote(legacy);
+      const ok = (parsed.d1 as { result?: string }).result === 'Beschluss A'
+        && (parsed.d2 as { result?: string }).result === 'Beschluss B'
+        && legacyParsed.legacy_note === 'Freitext aus alter Sitzung'
+        && (legacyParsed.d3 as { result?: string }).result === 'Beschluss C'
+        && decisionSummary('Titel', '<p>Text</p>') === 'Titel – Text';
+      return { ok, message: ok ? 'Beschlüsse werden verlustfrei verknüpft.' : 'Verknüpfung der Beschlüsse weicht ab.' };
+    } },
     { id: 'create', label: 'Sitzung, Hauptpunkt, alle Systemtypen und zwei gleichnamige Entscheidungen', run: async ctx => {
       const id = crypto.randomUUID(); ctx.data.jourFixeId = id;
       const meeting = await supabase.from('meetings').insert({ id, user_id: ctx.userId, tenant_id: ctx.tenantId, title: `${SELFTEST_PREFIX} Jour Fixe ${ctx.runId}`, description: SELFTEST_MARKER, meeting_date: new Date().toISOString().slice(0,10), status: 'planned' });

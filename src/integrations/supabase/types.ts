@@ -11061,6 +11061,7 @@ export type Database = {
       }
       meeting_agenda_items: {
         Row: {
+          actual_minutes: number
           assigned_to: string[] | null
           carried_over_from: string | null
           carry_over_to_next: boolean | null
@@ -11087,10 +11088,12 @@ export type Database = {
           source_meeting_id: string | null
           system_type: string | null
           task_id: string | null
+          timer_started_at: string | null
           title: string
           updated_at: string
         }
         Insert: {
+          actual_minutes?: number
           assigned_to?: string[] | null
           carried_over_from?: string | null
           carry_over_to_next?: boolean | null
@@ -11117,10 +11120,12 @@ export type Database = {
           source_meeting_id?: string | null
           system_type?: string | null
           task_id?: string | null
+          timer_started_at?: string | null
           title: string
           updated_at?: string
         }
         Update: {
+          actual_minutes?: number
           assigned_to?: string[] | null
           carried_over_from?: string | null
           carry_over_to_next?: boolean | null
@@ -11147,6 +11152,7 @@ export type Database = {
           source_meeting_id?: string | null
           system_type?: string | null
           task_id?: string | null
+          timer_started_at?: string | null
           title?: string
           updated_at?: string
         }
@@ -11374,6 +11380,7 @@ export type Database = {
           meeting_time?: string | null
           parent_meeting_id?: string | null
           recurrence_rule?: Json | null
+          started_at?: string | null
           status?: string
           template_id?: string | null
           tenant_id?: string | null
@@ -11392,6 +11399,7 @@ export type Database = {
           meeting_time?: string | null
           parent_meeting_id?: string | null
           recurrence_rule?: Json | null
+          started_at?: string | null
           status?: string
           template_id?: string | null
           tenant_id?: string | null
@@ -18518,6 +18526,22 @@ export type Database = {
         Returns: Json
       }
       get_my_work_decisions: { Args: { p_user_id: string }; Returns: Json }
+      sync_jour_fixe_agenda_timer: {
+        Args: { _meeting_id: string; _item_id?: string | null }
+        Returns: Json
+      }
+      respond_to_meeting_invitation: {
+        Args: { _meeting_id: string; _status: string }
+        Returns: {
+          contact_id: string | null
+          created_at: string | null
+          id: string
+          meeting_id: string
+          role: string | null
+          status: string | null
+          user_id: string
+        }
+      }
       get_my_work_new_counts: {
         Args: { p_contexts?: string[]; p_user_id: string }
         Returns: Json

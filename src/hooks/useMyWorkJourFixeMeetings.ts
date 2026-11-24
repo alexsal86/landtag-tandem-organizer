@@ -2,11 +2,14 @@ import { useEffect, useMemo } from "react";
 import { useQuery, useQueryClient } from "@tanstack/react-query";
 import type { RealtimePostgresChangesPayload } from "@supabase/supabase-js";
 import { supabase } from "@/integrations/supabase/client";
+import { berlinDateTimeToInstant, berlinDayKey, shiftBerlinDay } from "@/utils/berlinDate";
 
 export interface MeetingParticipant {
   user_id: string;
   display_name: string | null;
   avatar_url: string | null;
+  /** Rückmeldung: pending | confirmed | declined | vacation */
+  status?: string | null;
 }
 
 export interface Meeting {
@@ -43,19 +46,24 @@ const extractMeeting = (row: MeetingParticipantMeetingRow): Meeting | null => {
   return Array.isArray(row.meetings) ? row.meetings[0] ?? null : row.meetings;
 };
 
+/**
+ * Beginn eines Meetings als Zeitpunkt. `meeting_date` und `meeting_time` sind
+ * Berliner Wandzeit – die Umrechnung läuft über die gemeinsame Berliner Logik,
+ * damit die Browser-Zeitzone (und die Sommerzeit) keine Rolle spielt.
+ */
 const getMeetingTimestamp = (meeting: Pick<Meeting, "meeting_date" | "meeting_time">) => {
   const time = meeting.meeting_time?.slice(0, 5);
-  const meetingDateTime = time ? `${meeting.meeting_date}T${time}:00` : `${meeting.meeting_date}T23:59:59`;
-  const parsed = new Date(meetingDateTime);
+  const day = meeting.meeting_date.slice(0, 10);
+  const parsed = berlinDateTimeToInstant(`${day}T${time || "23:59"}`);
   return Number.isNaN(parsed.getTime()) ? Number.POSITIVE_INFINITY : parsed.getTime();
 };
 
 const fetchMeetings = async (userId: string) => {
   const now = new Date();
-  const startOfToday = new Date(now);
-  startOfToday.setHours(0, 0, 0, 0);
-  const thirtyDaysAgo = new Date();
-  thirtyDaysAgo.setDate(thirtyDaysAgo.getDate() - 30);
+  // `meeting_date` ist eine Kalenderspalte: verglichen wird der Berliner Tag,
+  // nicht ein UTC-Zeitstempel (der zwischen 00:00 und 02:00 auf den Vortag fällt).
+  const today = berlinDayKey(now);
+  const thirtyDaysAgo = shiftBerlinDay(today, -30);
 
   const [ownUpcomingResult, ownPastResult, participantResult, publicResult] = await Promise.all([
     supabase
@@ -63,7 +71,7 @@ const fetchMeetings = async (userId: string) => {
       .select(MEETING_SELECT)
       .eq("user_id", userId)
       .neq("status", "archived")
-      .gte("meeting_date", startOfToday.toISOString())
+      .gte("meeting_date", today)
       .order("meeting_date", { ascending: true })
       .limit(20),
     supabase
@@ -71,20 +79,23 @@ const fetchMeetings = async (userId: string) => {
       .select(MEETING_SELECT)
       .eq("user_id", userId)
       .neq("status", "archived")
-      .lt("meeting_date", startOfToday.toISOString())
-      .gte("meeting_date", thirtyDaysAgo.toISOString())
+      .lt("meeting_date", today)
+      .gte("meeting_date", thirtyDaysAgo)
       .order("meeting_date", { ascending: false })
       .limit(10),
     supabase
       .from("meeting_participants")
       .select(`meeting_id, meetings(${MEETING_SELECT})`)
-      .eq("user_id", userId),
+      .eq("user_id", userId)
+      .limit(200),
     supabase
       .from("meetings")
       .select(MEETING_SELECT)
       .eq("is_public", true)
       .neq("status", "archived")
-      .gte("meeting_date", thirtyDaysAgo.toISOString()),
+      .gte("meeting_date", thirtyDaysAgo)
+      .order("meeting_date", { ascending: true })
+      .limit(50),
   ]);
 
   if (ownUpcomingResult.error) throw ownUpcomingResult.error;
@@ -136,13 +147,15 @@ const fetchParticipants = async (meetingIds: string[]) => {
 
   const { data: participants, error: participantsError } = await supabase
     .from('meeting_participants')
-    .select('meeting_id, user_id')
-    .in('meeting_id', meetingIds);
+    .select('meeting_id, user_id, status')
+    .in('meeting_id', meetingIds)
+    .limit(500);
 
   if (participantsError) throw participantsError;
   if (!participants || participants.length === 0) return {};
 
-  const userIds = [...new Set(participants.map((p: Record<string, any>) => p.user_id))];
+  const participantRows = participants as Array<{ user_id: string; meeting_id: string; status: string | null }>;
+  const userIds = [...new Set(participantRows.map((participant) => participant.user_id))];
   const { data: profiles, error: profilesError } = await supabase
     .from('profiles')
     .select('user_id, display_name, avatar_url')
@@ -151,10 +164,10 @@ const fetchParticipants = async (meetingIds: string[]) => {
   if (profilesError) throw profilesError;
 
   const profilesByUserId = new Map<string, MeetingProfileRow>(
-    (profiles ?? []).map((profile: Record<string, any>) => [profile.user_id, profile])
+    ((profiles ?? []) as MeetingProfileRow[]).map((profile) => [profile.user_id, profile])
   );
 
-  return (participants as Array<{ user_id: string; meeting_id: string }>).reduce<Record<string, MeetingParticipant[]>>((participantsByMeeting, participant) => {
+  return participantRows.reduce<Record<string, MeetingParticipant[]>>((participantsByMeeting, participant) => {
     const profile = profilesByUserId.get(participant.user_id);
     const meetingParticipants = participantsByMeeting[participant.meeting_id] ?? [];
 
@@ -162,6 +175,7 @@ const fetchParticipants = async (meetingIds: string[]) => {
       user_id: participant.user_id,
       display_name: profile?.display_name ?? null,
       avatar_url: profile?.avatar_url ?? null,
+      status: participant.status,
     });
 
     participantsByMeeting[participant.meeting_id] = meetingParticipants;
@@ -169,46 +183,10 @@ const fetchParticipants = async (meetingIds: string[]) => {
   }, {});
 };
 
-const shouldRefreshMeetings = ({
-  payload,
-  userId,
-  visibleMeetingIds,
-}: {
-  payload: RealtimePostgresChangesPayload<Meeting>;
-  userId: string;
-  visibleMeetingIds: Set<string>;
-}) => {
-  const newMeeting = payload.new;
-  const oldMeeting = payload.old;
-  const touchedMeetingId = newMeeting.id ?? oldMeeting.id;
-
-  const ownedByUser = newMeeting.user_id === userId || oldMeeting.user_id === userId;
-  const currentlyVisible = touchedMeetingId ? visibleMeetingIds.has(touchedMeetingId) : false;
-  const publicVisibilityChanged = newMeeting.is_public !== oldMeeting.is_public;
-  const touchesPublicMeeting = newMeeting.is_public === true || oldMeeting.is_public === true;
-
-  return ownedByUser || currentlyVisible || publicVisibilityChanged || touchesPublicMeeting;
-};
-
-const shouldRefreshMeetingParticipants = ({
-  payload,
-  userId,
-  visibleMeetingIds,
-}: {
-  payload: RealtimePostgresChangesPayload<MeetingParticipantRow>;
-  userId: string;
-  visibleMeetingIds: Set<string>;
-}) => {
-  const newParticipant = payload.new;
-  const oldParticipant = payload.old;
-  const touchedMeetingId = newParticipant.meeting_id ?? oldParticipant.meeting_id;
-
-  return (
-    newParticipant.user_id === userId ||
-    oldParticipant.user_id === userId ||
-    (touchedMeetingId ? visibleMeetingIds.has(touchedMeetingId) : false)
-  );
-};
+// Sichtbarkeit wird für INSERT und UPDATE serverseitig gefiltert (siehe Abos
+// weiter unten). Eine zusätzliche Prüfung im Browser wäre doppelt und ist
+// entfallen; nur DELETE braucht sie, weil Realtime Delete-Events nicht filtern
+// kann (siehe Kommentar an den Delete-Abos).
 
 export function useMyWorkJourFixeMeetings(userId?: string) {
   const queryClient = useQueryClient();
@@ -268,42 +246,69 @@ export function useMyWorkJourFixeMeetings(userId?: string) {
     };
 
     const handleMeetingChange = (payload: RealtimePostgresChangesPayload<Meeting>) => {
-      if (!shouldRefreshMeetings({ payload, userId, visibleMeetingIds: allMeetingIdSet })) return;
-
-      const touchedMeetingId = payload.new.id ?? payload.old.id;
+      const touchedMeetingId = payload.new.id;
       scheduleInvalidation({
         meetings: true,
-        participants: touchedMeetingId ? allMeetingIdSet.has(touchedMeetingId) : false,
+        participants: Boolean(touchedMeetingId && allMeetingIdSet.has(touchedMeetingId)),
       });
+    };
+
+    const handleMeetingDelete = (payload: RealtimePostgresChangesPayload<Meeting>) => {
+      // Delete-Events liefern nur den Primärschlüssel und werden von Realtime
+      // nicht gefiltert – hier ist die Prüfung Teil der Zustandspflege, nicht
+      // eine doppelte Sichtbarkeitsfilterung.
+      if (!payload.old.id || !allMeetingIdSet.has(payload.old.id)) return;
+      scheduleInvalidation({ meetings: true, participants: true });
     };
 
     const handleMeetingParticipantChange = (payload: RealtimePostgresChangesPayload<MeetingParticipantRow>) => {
-      if (!shouldRefreshMeetingParticipants({ payload, userId, visibleMeetingIds: allMeetingIdSet })) return;
-
-      const touchedMeetingId = payload.new.meeting_id ?? payload.old.meeting_id;
       scheduleInvalidation({
-        meetings: payload.new.user_id === userId || payload.old.user_id === userId,
-        participants: touchedMeetingId ? allMeetingIdSet.has(touchedMeetingId) : true,
+        // Nur eine neue Einladung bringt ein zusätzliches Meeting in die Liste;
+        // eine geänderte Rückmeldung betrifft nur die Teilnehmeranzeige.
+        meetings: payload.eventType === "INSERT" && payload.new.user_id === userId,
+        participants: true,
       });
     };
 
-    const channel = supabase
+    const handleMeetingParticipantDelete = () => {
+      // Siehe handleMeetingDelete: kein Serverfilter möglich, deshalb werden die
+      // Teilnehmenden der sichtbaren Meetings gebündelt neu geladen.
+      scheduleInvalidation({ participants: true });
+    };
+
+    // INSERT und UPDATE werden serverseitig gefiltert: eigene Meetings,
+    // öffentliche Meetings und die geladenen Meeting-IDs (Realtime erlaubt
+    // höchstens 100 Werte pro in-Filter). DELETE lässt sich laut Supabase
+    // grundsätzlich nicht filtern (nur der Primärschlüssel liegt vor), dafür
+    // gibt es unten je Tabelle ein ungefiltertes Abo mit schlanker Prüfung.
+    const visibleIds = allMeetingIds.slice(0, 100);
+    let channel = supabase
       .channel(`my-work-jour-fixe-${userId}`)
-      // Kein Filter auf meetings: Der Tab zeigt eigene, zugewiesene und öffentliche Meetings.
-      // Ein DB-Filter auf user_id würde öffentliche Meetings anderer Besitzer übersehen,
-      // und ein Filter auf is_public würde Übergänge privat <-> öffentlich nicht zuverlässig abdecken.
-      .on("postgres_changes", { event: "*", schema: "public", table: "meetings" }, handleMeetingChange)
-      // Filter auf meeting_participants nur nach user_id wäre zu eng, weil der Tab auch Avatar-/Teilnehmeränderungen
-      // für bereits sichtbare Meetings anderer Nutzer zeigen soll. Deshalb abonnieren wir alle Änderungen und
-      // prüfen lokal, ob entweder die eigene Teilnahme oder eines der aktuell sichtbaren Meetings betroffen ist.
-      .on("postgres_changes", { event: "*", schema: "public", table: "meeting_participants" }, handleMeetingParticipantChange)
-      .subscribe();
+      .on("postgres_changes", { event: "INSERT", schema: "public", table: "meetings", filter: `user_id=eq.${userId}` }, handleMeetingChange)
+      .on("postgres_changes", { event: "UPDATE", schema: "public", table: "meetings", filter: `user_id=eq.${userId}` }, handleMeetingChange)
+      .on("postgres_changes", { event: "INSERT", schema: "public", table: "meetings", filter: "is_public=eq.true" }, handleMeetingChange)
+      .on("postgres_changes", { event: "UPDATE", schema: "public", table: "meetings", filter: "is_public=eq.true" }, handleMeetingChange)
+      .on("postgres_changes", { event: "DELETE", schema: "public", table: "meetings" }, handleMeetingDelete)
+      .on("postgres_changes", { event: "INSERT", schema: "public", table: "meeting_participants", filter: `user_id=eq.${userId}` }, handleMeetingParticipantChange)
+      .on("postgres_changes", { event: "UPDATE", schema: "public", table: "meeting_participants", filter: `user_id=eq.${userId}` }, handleMeetingParticipantChange)
+      .on("postgres_changes", { event: "DELETE", schema: "public", table: "meeting_participants" }, handleMeetingParticipantDelete);
+
+    if (visibleIds.length > 0) {
+      const idFilter = `in.(${visibleIds.join(",")})`;
+      channel = channel
+        .on("postgres_changes", { event: "INSERT", schema: "public", table: "meetings", filter: `id=${idFilter}` }, handleMeetingChange)
+        .on("postgres_changes", { event: "UPDATE", schema: "public", table: "meetings", filter: `id=${idFilter}` }, handleMeetingChange)
+        .on("postgres_changes", { event: "INSERT", schema: "public", table: "meeting_participants", filter: `meeting_id=${idFilter}` }, handleMeetingParticipantChange)
+        .on("postgres_changes", { event: "UPDATE", schema: "public", table: "meeting_participants", filter: `meeting_id=${idFilter}` }, handleMeetingParticipantChange);
+    }
+
+    channel.subscribe();
 
     return () => {
       if (timeout) clearTimeout(timeout);
       supabase.removeChannel(channel);
     };
-  }, [allMeetingIdSet, allMeetingIds.length, queryClient, userId]);
+  }, [allMeetingIdSet, allMeetingIds, queryClient, userId]);
 
   return {
     upcomingMeetings,

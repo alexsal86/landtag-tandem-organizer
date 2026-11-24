@@ -1,5 +1,6 @@
+import { useState } from "react";
 import { useQuery } from "@tanstack/react-query";
-import { Download } from "lucide-react";
+import { Download, Scale } from "lucide-react";
 import { format } from "date-fns";
 import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
@@ -7,14 +8,18 @@ import { Checkbox } from "@/components/ui/checkbox";
 import { supabase } from "@/integrations/supabase/client";
 import { notify } from "@/lib/notify";
 import { AgendaResultEditor, type AgendaResult } from "../AgendaResultEditor";
+import { MeetingDecisionDialog, type DecisionLinkResult } from "@/features/meetings/components/MeetingDecisionDialog";
 import type { AgendaItem, Meeting } from "../types";
 
-export function LiveAgendaResult({ meeting, item, onChange, onTransfer }: {
+export function LiveAgendaResult({ meeting, item, onChange, onTransfer, onDecisionSaved, onDecisionLinked }: {
   meeting: Meeting;
   item: AgendaItem;
   onChange: (result: AgendaResult) => void;
   onTransfer: (value: boolean) => void;
+  onDecisionSaved?: () => void;
+  onDecisionLinked?: (result: DecisionLinkResult) => void;
 }) {
+  const [decisionOpen, setDecisionOpen] = useState(false);
   const { tenant_id: tenantId, template_id: templateId, meeting_date: meetingDate } = meeting;
   const meetingDay = new Date(meetingDate).toISOString().slice(0, 10);
   const transfer = useQuery({
@@ -77,6 +82,19 @@ export function LiveAgendaResult({ meeting, item, onChange, onTransfer }: {
     <div className="space-y-2 px-4 pb-3 pl-[3.75rem]">
       <p className="text-xs font-medium">Ergebnis</p>
       <AgendaResultEditor item={item} onChange={onChange} placeholder="Ergebnis oder Beschluss festhalten …" />
+      <div className="flex flex-wrap gap-2">
+        <Button size="sm" variant="outline" onClick={() => setDecisionOpen(true)}>
+          <Scale className="mr-2 size-4" /> Beschluss erfassen
+        </Button>
+      </div>
+      <MeetingDecisionDialog
+        open={decisionOpen}
+        onOpenChange={setDecisionOpen}
+        meeting={meeting}
+        item={item}
+        onSaved={onDecisionSaved}
+        onLinked={onDecisionLinked}
+      />
       {renderTransfer()}
       {item.file_path && (
         <Button size="sm" variant="outline" onClick={() => void downloadFile(item.file_path!)}>

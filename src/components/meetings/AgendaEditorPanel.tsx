@@ -15,6 +15,10 @@ import { AgendaCompletionCheckbox, AgendaRowDetails } from "./agenda-editor/Agen
 import { AgendaRow } from "./agenda-editor/AgendaRow";
 import { AgendaInspector } from "./agenda-editor/AgendaInspector";
 import { AgendaSummaryBar } from "./agenda-editor/AgendaSummaryBar";
+import { ZombiePointsNotice } from "./agenda-editor/ZombiePointsNotice";
+import type { DecisionLinkResult } from "@/features/meetings/components/MeetingDecisionDialog";
+import { actualTotalMinutes } from "./agenda-editor/agendaElapsed";
+import { useAgendaTimer } from "./hooks/useAgendaTimer";
 import { AgendaSystemRow } from "./agenda-editor/AgendaSystemRow";
 import { AddAgendaMenu } from "./agenda-editor/AddAgendaMenu";
 import { agendaItemKey, resolveAgendaDrop } from "./agenda-editor/agendaDrop";
@@ -109,6 +113,10 @@ interface AgendaEditorPanelProps {
   meetingLinkedTasks: LinkedTask[];
   meetingLinkedCaseItems: LinkedCaseItem[];
   meetingRelevantDecisions: RelevantDecision[];
+  /** Nach dem Anlegen eines Beschlusses: Entscheidungsliste neu laden. */
+  onDecisionSaved?: () => void;
+  /** Nach dem Verknüpfen: Ergebnisblock der Agenda nachziehen. */
+  onDecisionLinked?: (result: DecisionLinkResult) => void;
 }
 
 export function AgendaEditorPanel({
@@ -141,6 +149,8 @@ export function AgendaEditorPanel({
   meetingLinkedTasks,
   meetingLinkedCaseItems,
   meetingRelevantDecisions,
+  onDecisionSaved,
+  onDecisionLinked,
 }: AgendaEditorPanelProps) {
   const [detailContainer, setDetailContainer] = useState<HTMLDivElement | null>(null);
   const [selectedKey, setSelectedKey] = useState<string | null>(null);
@@ -559,6 +569,14 @@ export function AgendaEditorPanel({
     }
   };
 
+  const agendaTimer = useAgendaTimer({
+    meetingId: selectedMeeting.id,
+    items: agendaItems,
+    currentKey: live ? currentLiveKey ?? null : null,
+    active: Boolean(live),
+  });
+  const actualMinutes = actualTotalMinutes(agendaItems);
+
   const getAgendaNumber = (agendaItem: AgendaItem) => {
     const key = agendaItem.id || agendaItem.localKey;
     if (!key) return undefined;
@@ -620,10 +638,14 @@ export function AgendaEditorPanel({
         timing={timing}
         startDisabled={saving}
         live={Boolean(live)}
+        timerLabel={live ? agendaTimer.elapsedLabel : null}
+        timerCaption={live ? "Dieser Punkt" : undefined}
         onStart={onStartMeeting && (async () => {
           if (!dirty || await saveAgenda()) onStartMeeting();
         })}
       />
+
+      <ZombiePointsNotice items={agendaItems} />
 
       <div className={cn("grid items-start gap-4", (selectedItem || appointmentParent || notesParent) && "2xl:grid-cols-[minmax(0,1fr)_19rem]")}>
         <div ref={agendaList} className="min-w-0 rounded-2xl border bg-card shadow-sm [--agenda-subpoint-bg:color(srgb_0.956863_0.964706_0.952941_/_0.7)] [--agenda-row-divider:rgb(227,232,223)]">
@@ -653,6 +675,7 @@ export function AgendaEditorPanel({
               allCollapsed={allCollapsed}
               onToggleAll={toggleAll}
               timing={timing}
+              actualTotal={actualMinutes}
               hideEmpty={hideEmpty}
               onHideEmptyChange={setHideEmpty}
               onOpenCarryover={onOpenCarryover}
@@ -868,6 +891,8 @@ export function AgendaEditorPanel({
                                   item={item}
                                   onChange={(result) => saveLiveResult(item, index, result)}
                                   onTransfer={(value) => item.id && live.onUpdateResult(item.id, "carry_over_to_next", value)}
+                                  onDecisionSaved={onDecisionSaved}
+                                  onDecisionLinked={onDecisionLinked}
                                 />
                               ) : undefined}
                               dropTarget={dropPreview?.marker === item ? (dragUpdate?.combine ? "inside" : "before") : undefined}
@@ -967,6 +992,8 @@ export function AgendaEditorPanel({
               item={selectedItem}
               onChange={(result) => saveLiveResult(selectedItem, selectedIndex, result)}
               onTransfer={(value) => selectedItem.id && live.onUpdateResult(selectedItem.id, "carry_over_to_next", value)}
+              onDecisionSaved={onDecisionSaved}
+              onDecisionLinked={onDecisionLinked}
             />
           )}
         {appointmentParent ? (
