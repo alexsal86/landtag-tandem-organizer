@@ -52,6 +52,11 @@ export const buildDeepLinkPath = (notification: Notification): string => {
       return buildHighlightPath('/decisions', getNotificationDataId(data, 'decision_id'));
 
     case 'appointment_reminder': {
+      // Der Kalender öffnet mit ?highlight=<id> genau diesen Termin samt
+      // Detail-Sidebar; ohne ID bleibt es beim Sprung auf den Tag.
+      const appointmentId = getNotificationDataId(data, 'appointment_id', 'appointmentId');
+      if (appointmentId) return buildHighlightPath('/calendar', appointmentId);
+
       const startTime = data.start_time;
       if (startTime) {
         const dateStr = new Date(startTime).toISOString().split('T')[0];

@@ -53,7 +53,17 @@ describe('buildDeepLinkPath', () => {
     expect(path).toBe('/decisions?highlight=dec-1');
   });
 
-  it('navigiert Termin-Reminder zu Datum', () => {
+  it('öffnet Termin-Reminder direkt im Kalender', () => {
+    const path = buildDeepLinkPath(
+      makeNotification({
+        notification_types: { name: 'appointment_reminder', label: 'Termin' },
+        data: { appointment_id: 'appt-1', start_time: '2026-05-10T09:00:00Z' },
+      }),
+    );
+    expect(path).toBe('/calendar?highlight=appt-1');
+  });
+
+  it('navigiert Termin-Reminder ohne Termin-ID zu Datum', () => {
     const path = buildDeepLinkPath(
       makeNotification({
         notification_types: { name: 'appointment_reminder', label: 'Termin' },
