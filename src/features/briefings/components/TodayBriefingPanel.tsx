@@ -1,9 +1,12 @@
-import { dailyBriefingReadLabel } from "../utils";
+import { useAuth } from "@/hooks/useAuth";
+import { useTenant } from "@/hooks/useTenant";
+import { useUserPreference } from "@/hooks/useUserPreference";
+import { dailyBriefingReadLabel, isReadBriefingCollapsed } from "../utils";
 import { RichTextDisplay } from "@/components/ui/RichTextDisplay";
 import { useState, type ReactNode } from "react";
 import { format } from "date-fns";
 import { de } from "date-fns/locale";
-import { ChevronDown, ChevronUp, FileText } from "lucide-react";
+import { ChevronDown, ChevronUp, FileText, X } from "lucide-react";
 import { useTodayApprovedBriefings, type BriefingAppointment } from "@/features/appointments/briefing/useBriefing";
 import { CompactBriefingEditor } from "@/features/appointments/briefing/CompactBriefingEditor";
 import { Avatar, AvatarFallback, AvatarImage } from "@/components/ui/avatar";
@@ -20,19 +23,39 @@ function BriefingItem({ briefing, moreAction, onRead }: {
   briefing: DailyBriefingWithAuthor; moreAction?: ReactNode; onRead?: () => void;
 }) {
   const [expanded, setExpanded] = useState(false);
+  const { user } = useAuth();
+  const { currentTenant } = useTenant();
+  const [collapsed, setCollapsed] = useUserPreference<boolean>(
+    `daily-briefing-collapsed:${currentTenant?.id}:${user?.id}:${briefing.id}`, false,
+  );
   const markRead = useMarkBriefingRead();
   const tooLong = briefing.content.length > COLLAPSE_AT;
   const initials = (briefing.author_display_name ?? "?").trim().split(/\s+/)
     .map(part => part[0]).filter(Boolean).slice(0, 2).join("").toUpperCase();
 
-  return <section aria-label="Tagesbriefing" className={cn("rounded-3xl p-5", briefing.is_read ? "bg-[rgb(240,243,246)]" : "bg-[#f0eafa]")}>
+  if (isReadBriefingCollapsed(briefing.is_read, collapsed)) return <section aria-label="Eingeklapptes Tagesbriefing"
+    className="flex flex-wrap items-center justify-end gap-3 rounded-xl bg-[rgb(240,243,246)] px-5 py-2">
+    <button type="button" onClick={() => setCollapsed(false)} aria-expanded={false}
+      className="inline-flex min-w-0 max-w-full items-center justify-end gap-2 rounded text-xs focus-visible:outline focus-visible:outline-2 focus-visible:outline-primary">
+      <span className="truncate text-muted-foreground">Tagesbriefing · {briefing.author_display_name ?? "Teammitglied"}</span>
+      <span className="shrink-0 rounded-full bg-[#eaf5df] px-3 py-1 font-medium text-[#397d16]">{dailyBriefingReadLabel(briefing.read_at)}</span>
+      <ChevronDown className="h-3 w-3 shrink-0" aria-hidden="true" />
+    </button>
+    {moreAction}
+  </section>;
+
+  return <section aria-label="Tagesbriefing" className={cn("relative rounded-3xl p-5", briefing.is_read ? "bg-[rgb(240,243,246)]" : "bg-[#f0eafa]")}>
+    {briefing.is_read && <button type="button" aria-label="Tagesbriefing einklappen" onClick={() => setCollapsed(true)}
+      className="absolute right-3 top-3 inline-flex h-6 w-6 items-center justify-center rounded text-black hover:bg-black/5 focus-visible:outline focus-visible:outline-2 focus-visible:outline-primary">
+      <X className="h-3.5 w-3.5" aria-hidden="true" />
+    </button>}
     <div className="flex items-start gap-4">
       <Avatar className="h-8 w-8 shrink-0">
         {briefing.author_avatar_url && <AvatarImage src={briefing.author_avatar_url} alt="" />}
         <AvatarFallback className="bg-white text-sm font-semibold text-[#8b5cf6]">{initials}</AvatarFallback>
       </Avatar>
       <div className="min-w-0 flex-1 space-y-3">
-        <div className="flex flex-wrap items-baseline gap-x-2 gap-y-1">
+        <div className="flex flex-wrap items-baseline gap-x-2 gap-y-1 pr-6">
           <p className="text-sm font-semibold text-foreground">{briefing.author_display_name ?? "Teammitglied"}</p>
           <span className="text-xs text-muted-foreground">Tagesbriefing</span>
           {!briefing.is_read ? <span className="ml-1 text-xs font-medium text-[#8b5cf6]">Neu</span>

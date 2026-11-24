@@ -69,7 +69,7 @@ export function AppointmentChangeBanner() {
 }
 
 /** Büro: Eil-Änderung senden + Lesebestätigungen sehen. */
-export function AppointmentChangeSender() {
+export function AppointmentChangeSender({ showTrigger = true }: { showTrigger?: boolean }) {
   const { currentTenant } = useTenant();
   const { user } = useAuth();
   const qc = useQueryClient();
@@ -99,7 +99,7 @@ export function AppointmentChangeSender() {
   };
   return (
     <div className="space-y-1">
-      <Button size="sm" variant="outline" onClick={() => { setAppointmentId(null); setOpen(true); }}><Zap className="mr-1 h-4 w-4" />Eil-Terminänderung melden</Button>
+      {showTrigger && <Button size="sm" variant="outline" onClick={() => { setAppointmentId(null); setOpen(true); }}><Zap className="mr-1 h-4 w-4" />Eil-Terminänderung melden</Button>}
       {data.slice(0, 3).map((a) => (
         <p key={a.id} className="text-caption text-muted-foreground">
           {a.title} – {a.acknowledged_at ? `Gelesen ${fmt(a.acknowledged_at)}` : "noch nicht gelesen"}

@@ -186,7 +186,7 @@ export function MyWorkDashboardTab() {
     <div key={isDeputyView ? "deputy" : "employee"} className="dashboard-motion mx-auto w-full max-w-6xl space-y-4">
       <div className="animate-rise"><DashboardHeader showTeamRituals={isLargeScreen} /></div>
       {isDeputyView && <AppointmentChangeBanner />}
-      {isEmployeeView && <AppointmentChangeSender />}
+      {isEmployeeView && <AppointmentChangeSender showTrigger={false} />}
       {isEmployeeView && <PendingBriefingNotice />}
       {isDeputyView && <TodayBriefingPanel />}
       <div className="grid grid-cols-1 gap-4 items-start lg:grid-cols-2">

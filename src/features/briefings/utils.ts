@@ -38,3 +38,8 @@ export function dailyBriefingReadLabel(readAt: string | null | undefined): strin
     timeZone: 'Europe/Berlin', hour: '2-digit', minute: '2-digit',
   }).format(new Date(readAt))}`;
 }
+
+/** An unread briefing must never be hidden by an older collapse preference. */
+export function isReadBriefingCollapsed(isRead: boolean, collapsed: boolean): boolean {
+  return isRead && collapsed;
+}

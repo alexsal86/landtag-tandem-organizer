@@ -17300,6 +17300,10 @@ export type Database = {
       }
     }
     Functions: {
+      get_authored_daily_briefing_read_status: {
+        Args: { p_tenant: string }
+        Returns: { id: string; briefing_date: string; read_at: string | null }[]
+      }
       team_weekly_question_participation: {
         Args: { p_tenant: string }
         Returns: { user_id: string; display_name: string; answered: boolean }[]

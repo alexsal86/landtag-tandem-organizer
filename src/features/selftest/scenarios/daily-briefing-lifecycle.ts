@@ -1,4 +1,4 @@
-import { dailyBriefingReadLabel, briefingDateOptions } from "@/features/briefings/utils";
+import { isReadBriefingCollapsed, dailyBriefingReadLabel, briefingDateOptions } from "@/features/briefings/utils";
 import { supabase } from "@/integrations/supabase/client";
 import type { TestScenario } from "../types";
 import { SELFTEST_MARKER, SELFTEST_PREFIX } from "../runner";
@@ -29,6 +29,14 @@ export const dailyBriefingLifecycleScenario: TestScenario = {
     { label: "Dashboard öffnen (Briefing-Widget)", href: "/" },
   ],
   steps: [
+    {
+      id: 'collapse-read-briefing', label: 'Nur gelesene Tagesbriefings einklappen', kind: 'logic',
+      run: async () => ({
+        ok: isReadBriefingCollapsed(true, true) && !isReadBriefingCollapsed(false, true)
+          && !isReadBriefingCollapsed(true, false),
+        message: 'Gelesene Briefings lassen sich einklappen und wieder öffnen; ungelesene bleiben sichtbar.',
+      }),
+    },
     {
       id: 'read-receipt-time', label: 'Lesezeitpunkt als Berliner Uhrzeit anzeigen', kind: 'logic',
       run: async () => ({
