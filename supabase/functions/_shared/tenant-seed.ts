@@ -55,6 +55,7 @@ export const STANDARD_NOTIFICATION_TYPES = [
   { name: "social_post_change_requested", label: "Social Post – Änderung gewünscht", category: "editorial" },
   { name: "social_post_reminder", label: "Social Post – Veröffentlichung steht an", category: "editorial" },
   { name: "social_post_approved", label: "Social Post – Freigegeben", category: "editorial" },
+  { name: "social_post_approval_reopened", label: "Social Post – Freigabe erneut nötig", category: "editorial" },
 ];
 
 export const STANDARD_LETTER_OCCASIONS = [
