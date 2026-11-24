@@ -23,8 +23,6 @@
     "src/hooks/useLetterArchiving.tsx",
     "src/hooks/useDecisionAttachmentUpload.ts",
     "src/hooks/useAllPersonContacts.tsx",
-    "src/hooks/useDashboardGrid.tsx",
-    "src/hooks/useDashboardLayout.tsx",
     "src/hooks/useMapFlags.tsx",
     "src/hooks/useMapFlagStakeholders.tsx",
     "src/hooks/useMapFlagTopics.tsx",
