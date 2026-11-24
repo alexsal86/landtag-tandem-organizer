@@ -300,13 +300,33 @@ export function useTopicBacklog() {
   const deleteTopic = useCallback(async (id: string) => {
     if (!currentTenant?.id) return;
 
+    // Beiträge bleiben beim Themalöschen erhalten; das Thema lässt sich erst entfernen,
+    // wenn keine Beiträge mehr daran hängen (DB-seitig zusätzlich per ON DELETE RESTRICT).
+    const { count, error: countError } = await supabase
+      .from("social_content_items")
+      .select("id", { count: "exact", head: true })
+      .eq("topic_backlog_id", id);
+
+    if (countError) throw new Error(getErrorMessage(countError));
+    if ((count ?? 0) > 0) {
+      throw new Error(
+        `Zu diesem Thema ${count === 1 ? "ist noch 1 Beitrag" : `sind noch ${count} Beiträge`} verknüpft. `
+          + "Bitte diese Beiträge zuerst im Redaktionsplan löschen – sie werden nicht mit dem Thema entfernt.",
+      );
+    }
+
     const { error } = await supabase
       .from("topic_backlog")
       .delete()
       .eq("id", id)
       .eq("tenant_id", currentTenant.id);
 
-    if (error) throw new Error(getErrorMessage(error));
+    if (error) {
+      if ((error as { code?: string }).code === "23503") {
+        throw new Error("Das Thema ist noch mit Beiträgen verknüpft und kann nicht gelöscht werden. Bitte zuerst die Beiträge im Redaktionsplan löschen.");
+      }
+      throw new Error(getErrorMessage(error));
+    }
     await loadTopics();
   }, [currentTenant?.id, loadTopics]);
 

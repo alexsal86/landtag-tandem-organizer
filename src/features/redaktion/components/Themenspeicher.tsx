@@ -572,12 +572,24 @@ export function Themenspeicher({ onContentCreated, compact = false }: Props) {
           <AlertDialogHeader>
             <AlertDialogTitle>Thema löschen?</AlertDialogTitle>
             <AlertDialogDescription>
-              &quot;{deleteTopicCandidate?.topic}&quot; wird aus dem Themenspeicher entfernt. Bereits verknüpfte Beiträge können danach ihr Bezugsthema verlieren.
+              {(deleteTopicCandidate?.linked_content_count ?? 0) > 0 ? (
+                <>
+                  &quot;{deleteTopicCandidate?.topic}&quot; ist mit {deleteTopicCandidate?.linked_content_count}{" "}
+                  {deleteTopicCandidate?.linked_content_count === 1 ? "Beitrag" : "Beiträgen"} verknüpft. Diese Beiträge bleiben erhalten und
+                  werden nicht mitgelöscht; das Thema lässt sich erst entfernen, wenn die Beiträge im Redaktionsplan gelöscht sind.
+                </>
+              ) : (
+                <>&quot;{deleteTopicCandidate?.topic}&quot; wird endgültig aus dem Themenspeicher entfernt. Es sind keine Beiträge damit verknüpft.</>
+              )}
             </AlertDialogDescription>
           </AlertDialogHeader>
           <AlertDialogFooter>
             <AlertDialogCancel>Abbrechen</AlertDialogCancel>
-            <AlertDialogAction onClick={() => void handleDeleteTopic()} className="bg-destructive text-destructive-foreground hover:bg-destructive/90">
+            <AlertDialogAction
+              onClick={() => void handleDeleteTopic()}
+              disabled={isSubmitting || (deleteTopicCandidate?.linked_content_count ?? 0) > 0}
+              className="bg-destructive text-destructive-foreground hover:bg-destructive/90"
+            >
               Löschen
             </AlertDialogAction>
           </AlertDialogFooter>
