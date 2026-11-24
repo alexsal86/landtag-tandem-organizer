@@ -60,6 +60,15 @@ function LegacyCaseItemRedirect() {
   return <Navigate to={{ pathname: `/vorgaenge/${encodeURIComponent(caseItemId)}`, search, hash }} replace />;
 }
 
+/** Redaktion lives inside "Meine Arbeit"; agenda, reminders and approval notifications link to /redaktion. */
+function RedaktionRedirect() {
+  const { search, hash } = useLocation();
+  const params = new URLSearchParams(search);
+  params.set("tab", "redaktion");
+
+  return <Navigate to={{ pathname: "/mywork", search: `?${params.toString()}`, hash }} replace />;
+}
+
 export const AppRoutes = () => (
   <>
     {/* Öffentliche Routen – kein Login erforderlich */}
@@ -91,6 +100,7 @@ export const AppRoutes = () => (
       <Route path="/cases" element={<CasesRedirect />} />
       <Route path="/cases/:caseItemId" element={<LegacyCaseItemRedirect />} />
       <Route path="/vorgaenge/:caseItemId" element={<CaseItemDetail />} />
+      <Route path="/redaktion" element={<RedaktionRedirect />} />
       {/* ADD ALL CUSTOM ROUTES ABOVE THE CATCH-ALL "*" ROUTE */}
       <Route path="/:section/:subId" element={<Index />} />
       <Route path="/:section" element={<Index />} />

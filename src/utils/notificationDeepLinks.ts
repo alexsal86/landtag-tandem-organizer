@@ -137,6 +137,10 @@ export const buildDeepLinkPath = (notification: Notification): string => {
     case 'news_shared_internal':
       return data.article_link ?? data.link ?? '/';
 
+    case 'social_post_reminder':
+    case 'social_post_change_requested':
+      return buildHighlightPath('/mywork?tab=redaktion', getNotificationDataId(data, 'content_item_id'));
+
     case 'team_announcement_created':
       return '/mywork?tab=team';
     case 'automation_run_failed':

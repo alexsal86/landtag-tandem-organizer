@@ -47,6 +47,7 @@ export interface NotificationData extends UnknownRecord {
   link?: string | null;
   run_id?: string | null;
   rule_id?: string | null;
+  content_item_id?: string | null;
   source?: string | null;
   navigation_context?: string | null;
 }
