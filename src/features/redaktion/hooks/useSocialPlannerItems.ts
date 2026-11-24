@@ -615,6 +615,30 @@ export function useSocialPlannerItems() {
     };
   }, [currentTenant?.id, loadItems]);
 
+  /** Beitrag einem anderen Thema zuordnen (Thema selbst bleibt unverändert). */
+  const reassignTopic = useCallback(async (id: string, topicBacklogId: string) => {
+    if (!currentTenant?.id) throw new Error("Kein aktives Team.");
+
+    const { data: target, error: targetError } = await supabase
+      .from("topic_backlog")
+      .select("id")
+      .eq("id", topicBacklogId)
+      .eq("tenant_id", currentTenant.id)
+      .maybeSingle();
+
+    if (targetError) throw new Error(getErrorMessage(targetError));
+    if (!target) throw new Error("Zielthema wurde nicht gefunden.");
+
+    const { error } = await supabase
+      .from("social_content_items")
+      .update({ topic_backlog_id: topicBacklogId })
+      .eq("id", id)
+      .eq("tenant_id", currentTenant.id);
+
+    if (error) throw new Error(getErrorMessage(error));
+    await loadItems();
+  }, [currentTenant?.id, loadItems]);
+
   return useMemo(
     () => ({
       items,
@@ -625,7 +649,8 @@ export function useSocialPlannerItems() {
       updateItem,
       updateItemChannels,
       deleteItem,
+      reassignTopic,
     }),
-    [items, channels, loading, loadItems, createItem, updateItem, updateItemChannels, deleteItem],
+    [items, channels, loading, loadItems, createItem, updateItem, updateItemChannels, deleteItem, reassignTopic],
   );
 }

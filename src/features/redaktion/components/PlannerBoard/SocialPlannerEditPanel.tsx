@@ -55,11 +55,14 @@ export interface SocialPlannerEditPanelProps {
   tagSuggestions: string[];
   onOpenChange: (open: boolean) => void;
   onSave: (itemId: string, payload: SocialPlannerDraftPayload) => Promise<void>;
+  /** Auswahl für das Umhängen eines Beitrags auf ein anderes Thema. */
+  topics: Array<{ id: string; topic: string }>;
+  onReassignTopic: (itemId: string, topicId: string) => Promise<void>;
   /** Nach einem Änderungswunsch neu laden, damit Status und Freigabe im Board stimmen. */
   onApprovalChanged?: () => Promise<void> | void;
 }
 
-export default function SocialPlannerEditPanel({ item, open, scrollRequest = 0, users, channels, campaigns, tagSuggestions, onOpenChange, onSave, onApprovalChanged }: SocialPlannerEditPanelProps) {
+export default function SocialPlannerEditPanel({ item, open, scrollRequest = 0, users, channels, campaigns, tagSuggestions, topics, onOpenChange, onSave, onReassignTopic, onApprovalChanged }: SocialPlannerEditPanelProps) {
   const { user } = useAuth();
   const { hasAdminAccess } = useResolvedUserRole();
   const panelRef = useRef<HTMLElement>(null);
@@ -106,6 +109,8 @@ export default function SocialPlannerEditPanel({ item, open, scrollRequest = 0, 
   const [activeVariantChannelId, setActiveVariantChannelId] = useState<string>("");
   const [variantsByChannel, setVariantsByChannel] = useState<Record<string, SocialContentVariant>>({});
   const [isSaving, setIsSaving] = useState(false);
+  const [reassignTopicId, setReassignTopicId] = useState<string>("none");
+  const [isReassigning, setIsReassigning] = useState(false);
   const [markPublishedOpen, setMarkPublishedOpen] = useState(false);
   const [assetLibraryOpen, setAssetLibraryOpen] = useState(false);
   const [activeTab, setActiveTab] = useState<"content" | "approval" | "briefing">("content");
@@ -115,6 +120,7 @@ export default function SocialPlannerEditPanel({ item, open, scrollRequest = 0, 
     if (!item) return;
 
     setSelectedTemplate("none");
+    setReassignTopicId("none");
     setTopic(item.topic);
     setTagsValue(item.tags || []);
     setSelectedChannels(item.channel_ids);
@@ -291,6 +297,20 @@ export default function SocialPlannerEditPanel({ item, open, scrollRequest = 0, 
     }
   }, [item, topic, tagsValue, selectedChannels, formatValue, contentGoal, formatVariant, assetRequirements, approvalRequired, publishLink, performanceNotes, hookValue, coreMessage, draftText, ctaValue, notesValue, responsibleUserId, scheduledDate, approvalState, workflowStatus, hashtags, hashtagsInComment, altText, imageUrl, variantsByChannel, campaignId, contentPillar, channels, onSave, onOpenChange]);
 
+  const handleReassignTopic = useCallback(async () => {
+    if (!item || reassignTopicId === "none") return;
+    try {
+      setIsReassigning(true);
+      await onReassignTopic(item.id, reassignTopicId);
+      setReassignTopicId("none");
+      notify.success("Beitrag umgehängt", { description: "Der Beitrag gehört jetzt zum gewählten Thema." });
+    } catch (error) {
+      notify.error("Beitrag konnte nicht umgehängt werden", { description: getErrorMessage(error) });
+    } finally {
+      setIsReassigning(false);
+    }
+  }, [item, onReassignTopic, reassignTopicId]);
+
   if (!open || !item) return null;
 
   const approvalLocked = isApprovalLocked(hasAdminAccess, approvalState);
@@ -348,6 +368,32 @@ export default function SocialPlannerEditPanel({ item, open, scrollRequest = 0, 
               </Select>
             </div>
 
+            </div>
+            <div className="space-y-2 rounded-md border border-dashed p-3">
+              <Label htmlFor="edit-reassign-topic">Beitrag einem anderen Thema zuordnen</Label>
+              <div className="flex flex-wrap items-center gap-2">
+                <Select value={reassignTopicId} onValueChange={setReassignTopicId} disabled={isReassigning}>
+                  <SelectTrigger id="edit-reassign-topic" className="min-w-0 flex-1"><SelectValue placeholder="Zielthema wählen" /></SelectTrigger>
+                  <SelectContent>
+                    {topics.filter((entry) => entry.id !== item.topic_backlog_id).map((entry) => (
+                      <SelectItem key={entry.id} value={entry.id}>{entry.topic}</SelectItem>
+                    ))}
+                  </SelectContent>
+                </Select>
+                <Button
+                  type="button"
+                  variant="outline"
+                  size="sm"
+                  disabled={reassignTopicId === "none" || isReassigning}
+                  onClick={() => void handleReassignTopic()}
+                >
+                  Umhängen
+                </Button>
+              </div>
+              <p className="text-xs text-muted-foreground">
+                Der Beitrag behält Inhalt, Kanäle, Freigabe und Termin und wechselt nur das Thema (samt dessen Tags und Kampagnenbezug).
+                Das bisherige Thema bleibt bestehen – auch für andere Beiträge.
+              </p>
             </div>
             <div>
               <ComposerSection

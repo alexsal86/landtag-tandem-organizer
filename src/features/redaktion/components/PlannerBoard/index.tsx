@@ -51,7 +51,7 @@ export function PlannerBoard({ specialDays = [], topicSidebar }: PlannerBoardPro
   const { users } = useTenantUsers();
   const { topics, createTopic } = useTopicBacklog();
   const { campaigns } = useSocialCampaigns();
-  const { items, channels, loading, loadItems, updateItem, createItem, deleteItem } = useSocialPlannerItems();
+  const { items, channels, loading, loadItems, updateItem, createItem, deleteItem, reassignTopic } = useSocialPlannerItems();
   const { notes, createNote, updateNote, deleteNote } = usePlannerNotes();
   debugConsole.log("[PlannerBoard] render", { hasUsers: !!users, topicsCount: topics?.length, itemsCount: items?.length, channelsCount: channels?.length, loading });
 
@@ -437,6 +437,8 @@ export function PlannerBoard({ specialDays = [], topicSidebar }: PlannerBoardPro
             channels={channels}
             campaigns={campaigns}
             tagSuggestions={allTagSuggestions}
+            topics={topics}
+            onReassignTopic={reassignTopic}
             onOpenChange={(open) => {
               if (!open) setEditingItemId(null);
             }}
