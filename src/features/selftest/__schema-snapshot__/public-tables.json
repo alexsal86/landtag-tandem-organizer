@@ -224,6 +224,8 @@
   "message_recipients",
   "messages",
   "mobile_push_tokens",
+  "news_article_states",
+  "news_articles",
   "news_email_templates",
   "notification_navigation_mapping",
   "notification_types",

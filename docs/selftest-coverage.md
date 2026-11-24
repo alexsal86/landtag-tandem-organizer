@@ -4,7 +4,7 @@ _Auto-generiert mit `npm run update:selftest-coverage`._
 
 Quelle: `src/integrations/supabase/types.ts`. Die Angaben beschreiben deklarierte Prüfumfänge, keine erfolgreichen Testläufe und keine Code-Coverage.
 
-Von 342 Tabellen haben 58 ein registriertes Szenario. 85 sind als Ausbau offen, 151 ausgenommen und 48 noch nicht eingeordnet. Ausnahmen zählen nicht als bestanden.
+Von 344 Tabellen haben 58 ein registriertes Szenario. 85 sind als Ausbau offen, 153 ausgenommen und 48 noch nicht eingeordnet. Ausnahmen zählen nicht als bestanden.
 
 ## Szenarien
 
@@ -270,6 +270,8 @@ Von 342 Tabellen haben 58 ein registriertes Szenario. 85 sind als Ausbau offen, 
 | `message_recipients` | Ausgenommen (nicht geprüft) | — |
 | `messages` | Ausstehend | — |
 | `mobile_push_tokens` | Ausgenommen (nicht geprüft) | — |
+| `news_article_states` | Ausgenommen (nicht geprüft) | — |
+| `news_articles` | Ausgenommen (nicht geprüft) | — |
 | `news_email_templates` | Ausgenommen (nicht geprüft) | — |
 | `notification_navigation_mapping` | Ausgenommen (nicht geprüft) | — |
 | `notification_types` | Szenario vorhanden | onboarding-hr |

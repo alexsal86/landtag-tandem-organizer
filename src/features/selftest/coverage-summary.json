@@ -2,10 +2,10 @@
   "schemaVersion": 1,
   "source": "src/integrations/supabase/types.ts",
   "counts": {
-    "total": 342,
+    "total": 344,
     "scenario": 58,
     "deferred": 85,
-    "excluded": 151,
+    "excluded": 153,
     "missing": 48
   },
   "scenarios": [
@@ -2269,6 +2269,16 @@
     },
     {
       "table": "mobile_push_tokens",
+      "status": "excluded",
+      "scenarios": []
+    },
+    {
+      "table": "news_article_states",
+      "status": "excluded",
+      "scenarios": []
+    },
+    {
+      "table": "news_articles",
       "status": "excluded",
       "scenarios": []
     },
