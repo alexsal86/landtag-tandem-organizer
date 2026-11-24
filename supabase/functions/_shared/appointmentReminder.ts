@@ -63,3 +63,19 @@ export function isAppointmentReminderDue(
 export function appointmentReminderKey(appointmentId: string, reminderMinutes: number): string {
   return `${appointmentId}:${Math.trunc(reminderMinutes)}`;
 }
+
+/**
+ * Wird eine bereits verbuchte Erinnerung durch diese Verschiebung wieder
+ * scharf? Genau dann muss der Versand des Termins aufgeräumt werden
+ * (Spiegel der Trigger-Bedingung reset_appointment_reminders_on_move).
+ * Unbekannte Zeitpunkte gelten nicht als Verschiebung.
+ */
+export function appointmentReminderResetsOnMove(
+  previousStart: string,
+  nextStart: string,
+): boolean {
+  const before = Date.parse(previousStart);
+  const after = Date.parse(nextStart);
+  if (!Number.isFinite(before) || !Number.isFinite(after)) return false;
+  return before !== after;
+}

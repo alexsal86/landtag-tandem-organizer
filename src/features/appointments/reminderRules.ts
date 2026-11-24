@@ -9,6 +9,7 @@ export {
   APPOINTMENT_REMINDER_MIN_MINUTES,
   appointmentReminderDueAt,
   appointmentReminderKey,
+  appointmentReminderResetsOnMove,
   isAppointmentReminderDue,
   normalizeAppointmentReminderMinutes,
 } from "../../../supabase/functions/_shared/appointmentReminder";

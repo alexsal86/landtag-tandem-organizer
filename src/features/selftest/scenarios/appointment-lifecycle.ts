@@ -13,6 +13,7 @@ import {
   APPOINTMENT_REMINDER_MAX_MINUTES,
   appointmentReminderDueAt,
   appointmentReminderKey,
+  appointmentReminderResetsOnMove,
   isAppointmentReminderDue,
   normalizeAppointmentReminderMinutes,
 } from "@/features/appointments/reminderRules";
@@ -299,6 +300,36 @@ export const appointmentLifecycleScenario: TestScenario = {
         return {
           ok: true,
           message: "Erinnert wird genau einmal je Vorlauf, frühestens Vorlauf vor dem Beginn und nie nach Terminbeginn; 0/unbekannt bedeutet keine Erinnerung.",
+        };
+      },
+    },
+    {
+      id: "appointment-reminder-reset-on-move",
+      label: "Terminverschiebung macht die Erinnerung wieder scharf",
+      kind: "logic",
+      run: async () => {
+        const start = "2026-11-25T14:00:00.000Z";
+
+        if (!appointmentReminderResetsOnMove(start, "2026-11-25T15:00:00.000Z")) {
+          throw new Error("Eine Verschiebung muss die Erinnerung erneut scharf machen");
+        }
+        if (!appointmentReminderResetsOnMove(start, "2026-11-25T14:15:00.000Z")) {
+          throw new Error("Auch eine Minutenverschiebung zählt als Verschiebung");
+        }
+        if (!appointmentReminderResetsOnMove(start, "2026-11-26T14:00:00.000Z")) {
+          throw new Error("Auch eine Verschiebung auf einen anderen Tag zählt");
+        }
+        if (appointmentReminderResetsOnMove(start, start)) {
+          throw new Error("Ohne echte Änderung darf der Versand nicht aufgeräumt werden");
+        }
+        if (appointmentReminderResetsOnMove(start, "unbekannt")) {
+          throw new Error("Unbekannte Zeitpunkte gelten nicht als Verschiebung");
+        }
+
+        return {
+          ok: true,
+          message: "Sobald sich start_time ändert, wird der verbuchte Erinnerungsversand des Termins aufgeräumt und der nächste Lauf erinnert erneut; unveränderte Zeiten und bloße Metadaten lassen ihn unangetastet.",
+          details: { rule: "reset_appointment_reminders_on_move", resetTrigger: "UPDATE OF start_time" },
         };
       },
     },
