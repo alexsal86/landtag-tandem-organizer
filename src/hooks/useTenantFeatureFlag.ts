@@ -1,3 +1,4 @@
+import { useCallback } from "react";
 import { useQuery } from "@tanstack/react-query";
 import { supabase } from "@/integrations/supabase/client";
 import { useAuth } from "@/hooks/useAuth";
@@ -41,6 +42,23 @@ export function useTenantFeatureFlag(key: string): { enabled: boolean; isLoading
   if (isLoading || !data) return { enabled: false, isLoading };
   const entry = data.get(key);
   return { enabled: entry ? entry.enabled : true, isLoading: false };
+}
+
+/**
+ * Prüft beliebige Modulschalter aus derselben Abfrage (für Listen wie Reiter).
+ * Während des Ladens und ohne Eintrag gilt ein Modul als aktiv, damit Deep-Links
+ * nicht vorübergehend auf den ersten Reiter zurückfallen.
+ */
+export function useTenantModuleGate(): (key: string) => boolean {
+  const { data, isLoading } = useTenantFeatureFlagsMap();
+  return useCallback(
+    (key: string) => {
+      if (isLoading || !data) return true;
+      const entry = data.get(key);
+      return entry ? entry.enabled : true;
+    },
+    [data, isLoading],
+  );
 }
 
 export function useTenantFeatureFlagWithConfig<T = Record<string, unknown>>(key: string) {

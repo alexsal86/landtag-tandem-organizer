@@ -10,6 +10,7 @@ import {
   type TabValue,
 } from "@/components/my-work/myWorkTabs";
 import type { UserRole } from "@/components/my-work/tabVisibility";
+import { useTenantModuleGate } from "@/hooks/useTenantFeatureFlag";
 
 const preserveKnownParams = (searchParams: URLSearchParams, tab: TabValue) => {
   const nextParams = new URLSearchParams();
@@ -41,7 +42,12 @@ export const useMyWorkActiveTab = ({
   const { pathname } = useLocation();
   const isMyWorkRoute = pathname === "/mywork";
 
-  const visibleTabs = useMemo<MyWorkTabConfig[]>(() => getVisibleMyWorkTabs({ role, feedbackFeedCoreRolesOnly }), [role, feedbackFeedCoreRolesOnly]);
+  // Reiter mit Modulschalter (z. B. Redaktion) hängen am selben Gate wie Karte und Zähler.
+  const isModuleEnabled = useTenantModuleGate();
+  const visibleTabs = useMemo<MyWorkTabConfig[]>(
+    () => getVisibleMyWorkTabs({ role, feedbackFeedCoreRolesOnly, isModuleEnabled }),
+    [role, feedbackFeedCoreRolesOnly, isModuleEnabled],
+  );
   const fallbackTab = visibleTabs[0]?.value ?? "dashboard";
 
   const rawTab = searchParams.get("tab");
