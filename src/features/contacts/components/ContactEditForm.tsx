@@ -18,6 +18,7 @@ import { ImageCropper } from "@/components/ui/ImageCropper";
 import { TagInput } from "@/components/ui/tag-input";
 import type { ContactDuplicateCandidate, EditableContact } from "@/types/contact";
 import { notify } from "@/lib/notify";
+import { useQueryClient } from "@tanstack/react-query";
 
 interface ContactEditFormProps {
   contact: EditableContact;
@@ -45,6 +46,7 @@ export function ContactEditForm({ contact, onSuccess, onCancel }: ContactEditFor
   const [cropperOpen, setCropperOpen] = useState(false);
   const { user } = useAuth();
   const { currentTenant } = useTenant();
+  const queryClient = useQueryClient();
 
   useEffect(() => {
     if (contact.contact_type === "person") {
@@ -301,6 +303,9 @@ export function ContactEditForm({ contact, onSuccess, onCancel }: ContactEditFor
       }
 
       debugConsole.log('Contact updated successfully:', data);
+
+      // Ein geänderter Geburtstag muss sofort im Dashboard stehen; dessen Abfrage cacht lange.
+      void queryClient.invalidateQueries({ queryKey: ['dashboard-birthdays'] });
 
       notify.success("Kontakt aktualisiert", {
         description: `${formData.name} wurde erfolgreich aktualisiert.`

@@ -21,6 +21,7 @@ import type { Json, TablesUpdate } from '@/integrations/supabase/types';
 import type { MergeContact } from '@/types/contact';
 import { MANUAL_MERGE_FIELDS, resolveDuplicateContact } from '@/components/contact-import/duplicateResolution';
 import { notify } from "@/lib/notify";
+import { useQueryClient } from '@tanstack/react-query';
 
 interface MergeContactsDialogProps {
   contact1: MergeContact;
@@ -74,6 +75,7 @@ export function MergeContactsDialog({
   onClose,
   onMergeComplete,
 }: MergeContactsDialogProps) {
+  const queryClient = useQueryClient();
   const [selectedValues, setSelectedValues] = useState<Record<string, string>>({});
   const [primaryContact, setPrimaryContact] = useState<string>(contact1.id);
   const [merging, setMerging] = useState(false);
@@ -138,6 +140,9 @@ export function MergeContactsDialog({
       });
 
       if (mergeError) throw mergeError;
+
+      // Der Merge kann den Geburtstag des überlebenden Kontakts ändern.
+      void queryClient.invalidateQueries({ queryKey: ['dashboard-birthdays'] });
 
       notify.success('Kontakte zusammengeführt', {
         description: 'Die Kontakte wurden erfolgreich zusammengeführt.'

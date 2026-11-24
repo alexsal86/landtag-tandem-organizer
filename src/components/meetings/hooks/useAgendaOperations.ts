@@ -62,6 +62,11 @@ export function useAgendaOperations(deps: AgendaOpsDeps) {
         }
       }
       void queryClient.invalidateQueries({ queryKey: ['case-workflow', currentTenant?.id] });
+      // Die Geburtstags-Jour-fixe-Zuordnung liegt in result_text dieses Systempunkts; ohne
+      // Invalidierung bliebe die Dashboard-Karte bis zum Ablauf ihrer langen staleTime veraltet.
+      if (field === 'result_text' && previousItem?.system_type === 'birthdays') {
+        void queryClient.invalidateQueries({ queryKey: ['dashboard-birthday-planning'] });
+      }
     };
     setAgendaItems(prev => prev.map(item => item.id === itemId ? { ...item, ...(richResult ?? { [field]: value }) } : item));
     if (['agenda_result', 'result_text', 'notes', 'description', 'carry_over_to_next'].includes(field)) {
