@@ -38,6 +38,7 @@ import {
   formatChangeClock,
   formatChangeDay,
   nextStartFromChange,
+  type AppointmentChangeAlertLike,
   type AppointmentChangeKind,
 } from "./changeModel";
 
@@ -67,7 +68,7 @@ export interface AppointmentChangeTarget {
 export function useAlerts() {
   const { currentTenant } = useTenant();
   const tenantId = currentTenant?.id;
-  return useQuery({
+  return useQuery<AppointmentChangeAlertLike[]>({
     queryKey: [KEY, tenantId],
     enabled: !!tenantId,
     refetchInterval: 60_000,
