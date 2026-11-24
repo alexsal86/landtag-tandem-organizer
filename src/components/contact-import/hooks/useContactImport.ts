@@ -1,4 +1,4 @@
-import { useState, useCallback, useEffect } from "react";
+import { useState, useCallback, useEffect, useRef } from "react";
 import { supabase } from "@/integrations/supabase/client";
 import { debugConsole } from '@/utils/debugConsole';
 import { useAuth } from "@/hooks/useAuth";
@@ -34,6 +34,25 @@ export function useContactImport() {
   const [currentDuplicate, setCurrentDuplicate] = useState<PendingDuplicate | null>(null);
   const [duplicateStrategy, setDuplicateStrategy] = useState<"ask" | "skip" | "overwrite" | "merge" | "import">("ask");
   const [importQueue, setImportQueue] = useState<number[]>([]);
+
+  // Authoritative counters: finishImport runs inside the async import loop, so
+  // its closure would otherwise read the state values from before the run.
+  const countsRef = useRef({ imported: 0, skipped: 0, merged: 0, overwritten: 0 });
+  const errorListRef = useRef<string[]>([]);
+
+  const countResult = (kind: keyof typeof countsRef.current) => {
+    countsRef.current[kind] += 1;
+    const value = countsRef.current[kind];
+    if (kind === "imported") setImportedCount(value);
+    else if (kind === "skipped") setSkippedCount(value);
+    else if (kind === "merged") setMergedCount(value);
+    else setOverwrittenCount(value);
+  };
+
+  const recordError = (message: string) => {
+    errorListRef.current = [...errorListRef.current, message];
+    setErrors(errorListRef.current);
+  };
 
   const { user } = useAuth();
   const { currentTenant } = useTenant();
@@ -218,7 +237,7 @@ export function useContactImport() {
         }
       } catch (error) {
         const message = error instanceof Error ? error.message : "Unbekannter Fehler bei Verteilerzuordnung";
-        setErrors((prev) => [...prev, `Zeile ${rowIndex + 1}: Verteiler "${listName}" konnte nicht zugeordnet werden (${message})`]);
+        recordError(`Zeile ${rowIndex + 1}: Verteiler "${listName}" konnte nicht zugeordnet werden (${message})`);
       }
     }
   };
@@ -294,7 +313,7 @@ export function useContactImport() {
       .maybeSingle();
 
     if (error || !existing) {
-      setErrors((prev) => [...prev, `Zeile ${rowIndex + 1}: Bestehender Kontakt konnte nicht geladen werden (${error?.message ?? "nicht gefunden"})`]);
+      recordError(`Zeile ${rowIndex + 1}: Bestehender Kontakt konnte nicht geladen werden (${error?.message ?? "nicht gefunden"})`);
       return;
     }
 
@@ -309,7 +328,7 @@ export function useContactImport() {
         .eq("tenant_id", currentTenant.id);
 
       if (updateError) {
-        setErrors((prev) => [...prev, `Zeile ${rowIndex + 1}: ${updateError.message}`]);
+        recordError(`Zeile ${rowIndex + 1}: ${updateError.message}`);
         return;
       }
     }
@@ -326,8 +345,7 @@ export function useContactImport() {
       organization_id: updated.organization_id ?? c.organization_id,
     } : c)));
 
-    if (mode === "merge") setMergedCount((prev) => prev + 1);
-    else setOverwrittenCount((prev) => prev + 1);
+    countResult(mode === "merge" ? "merged" : "overwritten");
 
     const action = mode === "merge" ? "zusammengeführt" : "überschrieben";
     setDuplicateWarnings((prev) => [...prev, `Zeile ${rowIndex + 1}: ${existing.name} ${action}${changedFields.length > 0 ? ` (${changedFields.join(", ")})` : " (keine Änderungen)"}`]);
@@ -366,14 +384,14 @@ export function useContactImport() {
       } as TablesInsert<"contacts">;
       const { data: insertedContact, error } = await supabase.from("contacts").insert([contactData]).select("id").single();
       if (error || !insertedContact) {
-        setErrors((prev) => [...prev, `Zeile ${rowIndex + 1}: ${error?.message || "Kontakt konnte nicht gespeichert werden"}`]);
+        recordError(`Zeile ${rowIndex + 1}: ${error?.message || "Kontakt konnte nicht gespeichert werden"}`);
       } else {
         await assignContactToDistributionLists(insertedContact.id, distributionListNames, rowIndex);
-        setImportedCount((prev) => prev + 1);
+        countResult("imported");
         setExistingContacts((prev) => [...prev, { id: insertedContact.id, name: contactData.name || '', email: contactData.email, phone: contactData.phone, organization: contactData.organization }]);
       }
     } catch {
-      setErrors((prev) => [...prev, `Zeile ${rowIndex + 1}: Unbekannter Fehler`]);
+      recordError(`Zeile ${rowIndex + 1}: Unbekannter Fehler`);
     }
   };
 
@@ -390,14 +408,14 @@ export function useContactImport() {
     validMappings.forEach((m) => { const v = row[m.sourceField]; if (v && v.trim()) contactData[m.targetField] = v.trim(); });
     const nameParts = contactData as { first_name?: string; last_name?: string };
     if ((nameParts.first_name || nameParts.last_name) && !contactData.name) contactData.name = `${nameParts.first_name || ""} ${nameParts.last_name || ""}`.trim();
-    if (!contactData.name?.trim()) { setErrors((prev) => [...prev, `Zeile ${rowIndex + 1}: Kein Name angegeben`]); continueImport(); return; }
-    if (contactData.email && !isValidEmail(contactData.email)) { setErrors((prev) => [...prev, `Zeile ${rowIndex + 1}: Ungültige E-Mail-Adresse (${contactData.email})`]); continueImport(); return; }
+    if (!contactData.name?.trim()) { recordError(`Zeile ${rowIndex + 1}: Kein Name angegeben`); continueImport(); return; }
+    if (contactData.email && !isValidEmail(contactData.email)) { recordError(`Zeile ${rowIndex + 1}: Ungültige E-Mail-Adresse (${contactData.email})`); continueImport(); return; }
     const currentContactData = { id: "", name: contactData.name, email: contactData.email, phone: contactData.phone, organization: contactData.organization };
     const duplicates = findPotentialDuplicates(currentContactData, existingContacts);
     if (duplicates.length > 0) {
       const duplicateId = duplicates[0].contact.id;
       if (duplicateStrategy === "ask") { setCurrentDuplicate({ newContact: currentContactData, duplicates, rowIndex }); return; }
-      if (duplicateStrategy === "skip") { setSkippedCount((prev) => prev + 1); setDuplicateWarnings((prev) => [...prev, `Zeile ${rowIndex + 1}: ${contactData.name} übersprungen (Duplikat)`]); continueImport(); return; }
+      if (duplicateStrategy === "skip") { countResult("skipped"); setDuplicateWarnings((prev) => [...prev, `Zeile ${rowIndex + 1}: ${contactData.name} übersprungen (Duplikat)`]); continueImport(); return; }
       if (duplicateStrategy === "merge" || duplicateStrategy === "overwrite") {
         await importContact(rowIndex, { mode: duplicateStrategy, contactId: duplicateId });
         setProgress(((rowIndex + 1) / data.length) * 100);
@@ -413,6 +431,8 @@ export function useContactImport() {
   const startImport = async (): Promise<void> => {
     if (!user || !currentTenant) { notify.error("Fehler", { description: "Sie müssen angemeldet sein"
 }); return; }
+    countsRef.current = { imported: 0, skipped: 0, merged: 0, overwritten: 0 };
+    errorListRef.current = [];
     setStep("importing"); setProgress(0); setImportedCount(0); setSkippedCount(0); setMergedCount(0); setOverwrittenCount(0); setErrors([]); setDuplicateWarnings([]);
     const queue = data.map((_, i) => i);
     setImportQueue(queue);
@@ -420,12 +440,14 @@ export function useContactImport() {
   };
 
   const finishImport = (): void => {
-    notify.success("Import abgeschlossen", { description: `${importedCount} importiert${mergedCount > 0 ? `, ${mergedCount} zusammengeführt` : ""}${overwrittenCount > 0 ? `, ${overwrittenCount} überschrieben` : ""}${skippedCount > 0 ? `, ${skippedCount} übersprungen` : ""}${errors.length > 0 ? `, ${errors.length} Fehler` : ""}`
+    const { imported, merged, overwritten, skipped } = countsRef.current;
+    const errorCount = errorListRef.current.length;
+    notify.success("Import abgeschlossen", { description: `${imported} importiert${merged > 0 ? `, ${merged} zusammengeführt` : ""}${overwritten > 0 ? `, ${overwritten} überschrieben` : ""}${skipped > 0 ? `, ${skipped} übersprungen` : ""}${errorCount > 0 ? `, ${errorCount} Fehler` : ""}`
 });
     setStep("complete");
   };
 
-  const handleDuplicateSkip = () => { if (currentDuplicate) { setSkippedCount((p) => p + 1); setDuplicateWarnings((p) => [...p, `Zeile ${currentDuplicate.rowIndex + 1}: ${currentDuplicate.newContact.name} übersprungen`]); continueImport(); } };
+  const handleDuplicateSkip = () => { if (currentDuplicate) { countResult("skipped"); setDuplicateWarnings((p) => [...p, `Zeile ${currentDuplicate.rowIndex + 1}: ${currentDuplicate.newContact.name} übersprungen`]); continueImport(); } };
   const handleDuplicateImportAnyway = async () => { if (currentDuplicate) { await importContact(currentDuplicate.rowIndex); continueImport(); } };
   const handleDuplicateOverwrite = async (contactId: string) => {
     if (!currentDuplicate) return;
@@ -460,7 +482,7 @@ export function useContactImport() {
     void handleDuplicateImportAnyway();
   };
 
-  const reset = () => { setFile(null); setData([]); setFieldMappings([]); setStep("upload"); setProgress(0); setImportedCount(0); setSkippedCount(0); setMergedCount(0); setOverwrittenCount(0); setErrors([]); setDuplicateWarnings([]); setCurrentDuplicate(null); setDuplicateStrategy("ask"); setImportQueue([]); };
+  const reset = () => { countsRef.current = { imported: 0, skipped: 0, merged: 0, overwritten: 0 }; errorListRef.current = []; setFile(null); setData([]); setFieldMappings([]); setStep("upload"); setProgress(0); setImportedCount(0); setSkippedCount(0); setMergedCount(0); setOverwrittenCount(0); setErrors([]); setDuplicateWarnings([]); setCurrentDuplicate(null); setDuplicateStrategy("ask"); setImportQueue([]); };
 
   const downloadTemplate = () => {
     const template = { Nachname: "Mustermann", Vorname: "Max", Titel: "Dr.", Firma: "Beispiel GmbH", Abteilung: "Vertrieb", Position: "Geschäftsführer", "Geschäftlich: Straße": "Musterstraße", "Geschäftlich: Hausnummer": "123", "Geschäftlich: Postleitzahl": "12345", "Geschäftlich: Ort": "Musterstadt", "Geschäftlich: Land": "Deutschland", "Telefon geschäftlich": "+49 123 456789", "E-Mail 1": "max.mustermann@beispiel.de", Verteiler: "Presse; Umwelt" };
