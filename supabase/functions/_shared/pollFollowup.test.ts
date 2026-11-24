@@ -1,5 +1,12 @@
 import { describe, expect, it } from "vitest";
-import { decidePollFollowup, selectFollowupRecipients } from "./pollFollowup";
+import {
+  POLL_FOLLOWUP_MAX_SEND_ATTEMPTS,
+  decidePollFollowup,
+  isPollFollowupSendExhausted,
+  nextPollFollowupSendAttemptAt,
+  pollFollowupSendKey,
+  selectFollowupRecipients,
+} from "./pollFollowup";
 
 const poll = {
   status: "active",
@@ -38,6 +45,31 @@ describe("Nachfassen bei Teilnehmenden ohne Antwort", () => {
     expect(decidePollFollowup({ ...poll, deadline: "2026-11-21T08:00:00.000Z" }, new Date("2026-11-25T09:00:00.000Z")).due).toBe(false);
     expect(decidePollFollowup({ ...poll, status: "completed" }, new Date("2026-11-25T09:00:00.000Z")).due).toBe(false);
     expect(decidePollFollowup({ ...poll, participantCount: 0, respondingCount: 0 }, new Date("2026-11-25T09:00:00.000Z")).due).toBe(false);
+  });
+
+  it("vergibt eindeutige Versandschlüssel je Abstimmung, Teilnehmer und Versuch", () => {
+    const key = pollFollowupSendKey("poll-1", "participant-1", 2);
+    expect(key).toBe("poll-1:participant-1:answer_followup:2");
+    expect(pollFollowupSendKey("poll-1", "participant-1", 2)).toBe(key);
+    expect(pollFollowupSendKey("poll-1", "participant-2", 2)).not.toBe(key);
+    expect(pollFollowupSendKey("poll-1", "participant-1", 1)).not.toBe(key);
+    expect(pollFollowupSendKey("poll-2", "participant-1", 2)).not.toBe(key);
+  });
+
+  it("wiederholt fehlgeschlagene Zustellungen mit wachsendem Abstand", () => {
+    const base = new Date("2026-11-24T09:00:00.000Z");
+    const minutes = (failed: number) =>
+      (nextPollFollowupSendAttemptAt(failed, base).getTime() - base.getTime()) / 60_000;
+
+    expect([minutes(1), minutes(2), minutes(3)]).toEqual([15, 30, 60]);
+    expect(minutes(9)).toBe(120);
+  });
+
+  it("erklärt einen Auftrag erst nach allen Versuchen als gescheitert", () => {
+    expect(POLL_FOLLOWUP_MAX_SEND_ATTEMPTS).toBeGreaterThan(1);
+    expect(isPollFollowupSendExhausted(POLL_FOLLOWUP_MAX_SEND_ATTEMPTS - 1)).toBe(false);
+    expect(isPollFollowupSendExhausted(POLL_FOLLOWUP_MAX_SEND_ATTEMPTS)).toBe(true);
+    expect(isPollFollowupSendExhausted(0)).toBe(false);
   });
 
   it("wählt nur offene Teilnehmende mit gültiger Adresse", () => {

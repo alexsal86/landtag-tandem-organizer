@@ -44,7 +44,7 @@ export const pollLifecycleScenario: TestScenario = {
   id: "poll-lifecycle",
   title: "Terminabstimmung (Gewinner-Slot übernehmen + Nachfassen)",
   description:
-    "Legt eine Abstimmung mit Slots und Teilnehmern an und übernimmt den Gewinner-Slot über confirm_poll_winner. Prüft, dass nur die erstellende Person übernehmen darf, fremde Slots abgelehnt werden und ein zweiter Aufruf denselben Termin liefert.",
+    "Legt eine Abstimmung mit Slots und Teilnehmern an und übernimmt den Gewinner-Slot über confirm_poll_winner. Prüft, dass nur die erstellende Person mit aktiver Büromitgliedschaft übernehmen darf, fremde Slots abgelehnt werden und ein zweiter Aufruf denselben Termin samt tatsächlich gespeichertem Slot liefert.",
   touches: ["appointment_polls", "poll_time_slots", "poll_participants", "appointments", "appointment_guests"],
   features: ["appointments"],
   writes: [
@@ -62,7 +62,7 @@ export const pollLifecycleScenario: TestScenario = {
   ],
   checks: [
     "confirm_poll_winner legt genau einen Termin an und verknüpft ihn mit der Abstimmung",
-    "Zweiter Aufruf (gleicher und anderer Slot) liefert denselben Termin",
+    "Zweiter Aufruf (gleicher und anderer Slot) liefert denselben Termin und den tatsächlich gespeicherten Slot",
     "Externe Teilnehmer werden als Gäste am Termin angelegt, interne nicht",
     "Fremde Slots und unbekannte Abstimmungen werden abgelehnt",
     "Fremde Abstimmungen im Mandanten können nicht übernommen werden",
@@ -70,6 +70,7 @@ export const pollLifecycleScenario: TestScenario = {
   ],
   limitations: [
     "Die Erstellerprüfung läuft gegen eine vorhandene fremde Abstimmung im Mandanten; in einem Büro ohne fremde Abstimmung meldet der Schritt diese Teilprüfung als nicht ausführbar.",
+    "Eine ausgeschiedene Büromitgliedschaft lässt sich im Selbsttest nicht gefahrlos simulieren; die Prüfung auf aktive Mitgliedschaft und der Versand der Erinnerungswarteschlange sind in der Migration und in den Logikschritten abgesichert.",
   ],
   steps: [
     {
@@ -125,20 +126,28 @@ export const pollLifecycleScenario: TestScenario = {
 
         const first = await supabase.rpc("confirm_poll_winner", { _poll_id: pollId, _slot_id: firstSlotId });
         if (first.error || !first.data) return { ok: false, message: `Übernahme: ${describeError(first.error)}` };
-        const appointmentId = first.data as string;
+        const firstResult = first.data[0];
+        const appointmentId = firstResult?.appointment_id;
+        if (!appointmentId) return { ok: false, message: "Übernahme: Die RPC lieferte keinen Termin." };
+        if (firstResult.slot_id !== firstSlotId) {
+          return { ok: false, message: "Übernahme: Die RPC muss den tatsächlich gespeicherten Slot zurückgeben." };
+        }
         ctx.trackRecord({ table: "appointments", id: appointmentId });
         ctx.data.appointmentId = appointmentId;
 
         const again = await supabase.rpc("confirm_poll_winner", { _poll_id: pollId, _slot_id: firstSlotId });
         if (again.error) return { ok: false, message: `Zweiter Aufruf: ${describeError(again.error)}` };
-        if (again.data !== appointmentId) {
-          return { ok: false, message: "Zweiter Aufruf muss denselben Termin zurückgeben.", details: { first: appointmentId, second: again.data } };
+        if (again.data?.[0]?.appointment_id !== appointmentId || again.data?.[0]?.slot_id !== firstSlotId) {
+          return { ok: false, message: "Zweiter Aufruf muss denselben Termin und Slot zurückgeben.", details: { first: appointmentId, second: again.data?.[0] } };
         }
 
         const otherSlot = await supabase.rpc("confirm_poll_winner", { _poll_id: pollId, _slot_id: secondSlotId });
         if (otherSlot.error) return { ok: false, message: `Anderer Slot: ${describeError(otherSlot.error)}` };
-        if (otherSlot.data !== appointmentId) {
-          return { ok: false, message: "Nach der Übernahme bleibt der Gewinner-Slot fixiert.", details: { first: appointmentId, second: otherSlot.data } };
+        if (otherSlot.data?.[0]?.appointment_id !== appointmentId) {
+          return { ok: false, message: "Nach der Übernahme bleibt der Gewinner-Slot fixiert.", details: { first: appointmentId, second: otherSlot.data?.[0] } };
+        }
+        if (otherSlot.data?.[0]?.slot_id !== firstSlotId) {
+          return { ok: false, message: "Ein anderer Slot darf die gespeicherte Auswahl nicht ersetzen.", details: { expected: firstSlotId, stored: otherSlot.data?.[0]?.slot_id } };
         }
 
         const { data: appointmentRows, error: appointmentError } = await supabase
@@ -269,7 +278,8 @@ export const pollLifecycleScenario: TestScenario = {
         const foreignAttempt = await supabase.rpc("confirm_poll_winner", { _poll_id: foreignPollId, _slot_id: foreignPollSlotId });
         if (!foreignAttempt.error) {
           // Falls die Sperre fehlt: keine fremden Daten zurücklassen.
-          if (foreignAttempt.data) await supabase.from("appointments").delete().eq("id", foreignAttempt.data as string);
+          const leakedAppointmentId = foreignAttempt.data?.[0]?.appointment_id;
+          if (leakedAppointmentId) await supabase.from("appointments").delete().eq("id", leakedAppointmentId);
           return { ok: false, message: "Eine fremde Abstimmung darf nicht übernommen werden." };
         }
         if (!/erstellende Person/i.test(foreignAttempt.error.message)) {

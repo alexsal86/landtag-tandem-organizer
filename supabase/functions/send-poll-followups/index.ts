@@ -2,14 +2,33 @@
 //
 // Wird ausschließlich vom Scheduler (pg_cron, Service-Role) aufgerufen. Die
 // Entscheidung, ob und wie oft erinnert wird, kommt aus _shared/pollFollowup.ts
-// und gilt damit identisch für Selbsttest und Produktion. Der Zustand
-// (followup_count/last_followup_at) wird atomar über record_poll_followup
-// verbucht, damit parallele Läufe keine doppelten Erinnerungen versenden.
+// und gilt damit identisch für Selbsttest und Produktion. Der Versand läuft
+// über eine Warteschlange (poll_notifications):
+//
+//  1. get_due_poll_followups liefert ausschließlich tatsächlich fällige
+//     Abstimmungen in Fälligkeitsreihenfolge – nicht einfach die ältesten.
+//  2. claim_poll_followup übernimmt den Versuch unter Zeilensperre und legt je
+//     Teilnehmer genau einen Versandauftrag mit eindeutigem Schlüssel an.
+//  3. Offene Aufträge ALLER Versuche dieser Abstimmung werden abgearbeitet.
+//     Fehlgeschlagene Aufträge bleiben mit Wiederholungsabstand liegen.
+//  4. finalize_poll_followup verbucht den Versuch nur, wenn kein Auftrag mehr
+//     offen ist. Eine fehlgeschlagene E-Mail verbraucht damit keinen Versuch.
 
 import { serve } from "https://deno.land/std@0.190.0/http/server.ts";
 import { Resend } from "https://esm.sh/resend@4.0.0";
 import { escapeHtml } from "../_shared/html.ts";
-import { decidePollFollowup, selectFollowupRecipients } from "../_shared/pollFollowup.ts";
+import {
+  POLL_FOLLOWUP_CLAIM_TIMEOUT_MINUTES,
+  POLL_FOLLOWUP_DEADLINE_MIN_GAP_HOURS,
+  POLL_FOLLOWUP_DEADLINE_WINDOW_HOURS,
+  POLL_FOLLOWUP_FIRST_DELAY_HOURS,
+  POLL_FOLLOWUP_MAX_ATTEMPTS,
+  POLL_FOLLOWUP_MAX_SEND_ATTEMPTS,
+  POLL_FOLLOWUP_REPEAT_HOURS,
+  decidePollFollowup,
+  nextPollFollowupSendAttemptAt,
+  selectFollowupRecipients,
+} from "../_shared/pollFollowup.ts";
 import {
   forbiddenResponse,
   jsonResponse,
@@ -23,6 +42,15 @@ const resend = new Resend(Deno.env.get("RESEND_API_KEY"));
 
 const NOTIFICATION_TYPE = "answer_followup";
 const MAX_POLLS_PER_RUN = 100;
+const MAX_QUEUE_ROWS_PER_POLL = 500;
+
+interface DuePollRow {
+  poll_id: string;
+  attempt: number;
+  due_at: string;
+  open_participants: number;
+  open_external: number;
+}
 
 interface PollRow {
   id: string;
@@ -44,9 +72,16 @@ interface ParticipantRow {
   token: string | null;
 }
 
-interface NotificationRow {
+interface QueueRow {
   id: string;
   participant_id: string;
+  attempt: number;
+  send_attempts: number | null;
+}
+
+interface FinalizeRow {
+  counted: boolean;
+  pending: number;
 }
 
 const handler = async (req: Request): Promise<Response> => {
@@ -56,6 +91,27 @@ const handler = async (req: Request): Promise<Response> => {
 
   const supabase = createServiceRoleClient();
   const now = new Date();
+
+  /**
+   * Verbucht den Versuch nur dann, wenn kein wiederholbarer Auftrag offen ist.
+   * Der Aufruf läuft auch dann, wenn nichts versendet wurde: er gibt die
+   * Versandmarkierung frei, damit der nächste Lauf es erneut versuchen kann.
+   */
+  const finalizeAttempt = async (pollId: string, attempt: number): Promise<FinalizeRow | null> => {
+    const { data, error } = await supabase.rpc("finalize_poll_followup", {
+      _poll_id: pollId,
+      _attempt: attempt,
+      _max_send_attempts: POLL_FOLLOWUP_MAX_SEND_ATTEMPTS,
+    });
+
+    if (error) {
+      console.error("Could not finalize poll follow-up", error);
+      return null;
+    }
+
+    const rows = (data ?? []) as FinalizeRow[];
+    return rows[0] ?? null;
+  };
 
   // Cron-Aufrufe haben keinen Origin. Fällt die Basis-URL auf das Supabase-Host
   // zurück, wären die Antwortlinks ungültig: dann keine externen Mails und keine
@@ -71,19 +127,37 @@ const handler = async (req: Request): Promise<Response> => {
   const supabaseHost = hostOf(Deno.env.get("SUPABASE_URL") ?? "");
   const linkBaseUrl = baseUrl && hostOf(baseUrl) !== supabaseHost ? baseUrl : "";
 
-  const { data: polls, error: pollsError } = await supabase
-    .from("appointment_polls")
-    .select("id, title, status, created_at, deadline, tenant_id, followup_count, last_followup_at")
-    .eq("status", "active")
-    .order("created_at", { ascending: true })
-    .limit(MAX_POLLS_PER_RUN);
+  const { data: dueData, error: dueError } = await supabase.rpc("get_due_poll_followups", {
+    _limit: MAX_POLLS_PER_RUN,
+    _first_delay_hours: POLL_FOLLOWUP_FIRST_DELAY_HOURS,
+    _repeat_hours: POLL_FOLLOWUP_REPEAT_HOURS,
+    _max_attempts: POLL_FOLLOWUP_MAX_ATTEMPTS,
+    _deadline_window_hours: POLL_FOLLOWUP_DEADLINE_WINDOW_HOURS,
+    _min_gap_hours: POLL_FOLLOWUP_DEADLINE_MIN_GAP_HOURS,
+    _claim_timeout_minutes: POLL_FOLLOWUP_CLAIM_TIMEOUT_MINUTES,
+  });
 
-  if (pollsError) throw pollsError;
-  if (!polls || polls.length === 0) {
-    return jsonResponse({ checked: 0, dispatched: 0, results: [] });
+  if (dueError) throw dueError;
+  const duePolls = (dueData ?? []) as DuePollRow[];
+  if (duePolls.length === 0) {
+    return jsonResponse({
+      checked: 0,
+      attemptsBooked: 0,
+      emailsSent: 0,
+      emailsFailed: 0,
+      pending: 0,
+      blocked: 0,
+      results: [],
+    });
   }
 
-  const pollIds = polls.map((poll: PollRow) => poll.id);
+  const pollIds = duePolls.map((poll) => poll.poll_id);
+
+  const { data: pollData, error: pollsError } = await supabase
+    .from("appointment_polls")
+    .select("id, title, status, created_at, deadline, tenant_id, followup_count, last_followup_at")
+    .in("id", pollIds);
+  if (pollsError) throw pollsError;
 
   const { data: participantData, error: participantsError } = await supabase
     .from("poll_participants")
@@ -103,12 +177,16 @@ const handler = async (req: Request): Promise<Response> => {
     .in("poll_id", pollIds);
   if (slotsError) throw slotsError;
 
+  const polls = (pollData ?? []) as PollRow[];
   const participants = (participantData ?? []) as ParticipantRow[];
   const results: Array<Record<string, unknown>> = [];
-  let dispatched = 0;
+  let attemptsBooked = 0;
+  let emailsSent = 0;
+  let emailsFailed = 0;
+  let pendingTotal = 0;
   let blocked = 0;
 
-  for (const poll of polls as PollRow[]) {
+  for (const poll of polls) {
     const pollParticipants = participants.filter((participant) => participant.poll_id === poll.id);
     const responded = new Set(
       (responseData ?? [])
@@ -155,45 +233,82 @@ const handler = async (req: Request): Promise<Response> => {
       continue;
     }
 
-    const openExternal = pollParticipants.filter(
-      (participant) =>
-        recipients.some((recipient) => recipient.id === participant.id) &&
-        (participant.is_external || !participant.user_id),
-    );
-    if (openExternal.length > 0 && !linkBaseUrl) {
-      blocked += 1;
-      results.push({ pollId: poll.id, due: true, blocked: "app_base_url_missing", openExternal: openExternal.length });
-      continue;
-    }
-
-    const { data: attempt, error: claimError } = await supabase.rpc("record_poll_followup", {
+    const { data: claim, error: claimError } = await supabase.rpc("claim_poll_followup", {
       _poll_id: poll.id,
       _expected_attempt: poll.followup_count ?? 0,
+      _claim_timeout_minutes: POLL_FOLLOWUP_CLAIM_TIMEOUT_MINUTES,
     });
 
     if (claimError) {
       results.push({ pollId: poll.id, due: true, error: claimError.message });
       continue;
     }
-    if (typeof attempt !== "number") {
-      results.push({ pollId: poll.id, due: false, reason: "Bereits von einem anderen Lauf verbucht" });
+    if (typeof claim !== "number") {
+      results.push({ pollId: poll.id, due: false, reason: "Bereits von einem anderen Lauf übernommen" });
       continue;
     }
 
-    const { data: pending, error: pendingError } = await supabase
+    // Offene Aufträge aller Versuche – ein früherer Fehlschlag wird erneut
+    // versucht, statt für immer liegen zu bleiben.
+    const { data: queueData, error: queueError } = await supabase
       .from("poll_notifications")
-      .select("id, participant_id")
+      .select("id, participant_id, attempt, send_attempts")
       .eq("poll_id", poll.id)
       .eq("notification_type", NOTIFICATION_TYPE)
-      .eq("attempt", attempt)
-      .eq("is_sent", false);
+      .eq("is_sent", false)
+      .lt("send_attempts", POLL_FOLLOWUP_MAX_SEND_ATTEMPTS)
+      .lte("next_attempt_at", now.toISOString())
+      .order("next_attempt_at", { ascending: true })
+      .limit(MAX_QUEUE_ROWS_PER_POLL);
 
-    if (pendingError) throw pendingError;
+    if (queueError) throw queueError;
 
-    const sentIds: string[] = [];
-    for (const notification of (pending ?? []) as NotificationRow[]) {
+    const queue = (queueData ?? []) as QueueRow[];
+    const queueParticipants = queue
+      .map((row) => pollParticipants.find((participant) => participant.id === row.participant_id))
+      .filter((participant): participant is ParticipantRow => Boolean(participant));
+
+    const openExternal = queueParticipants.filter(
+      (participant) => participant.is_external || !participant.user_id,
+    );
+    if (openExternal.length > 0 && !linkBaseUrl) {
+      // Kein Versand, kein verbuchter Versuch: der Auftrag bleibt offen.
+      await finalizeAttempt(poll.id, claim);
+      blocked += 1;
+      pendingTotal += queue.length;
+      results.push({
+        pollId: poll.id,
+        due: true,
+        attempt: claim,
+        blocked: "app_base_url_missing",
+        openExternal: openExternal.length,
+      });
+      continue;
+    }
+
+    let sent = 0;
+    let failed = 0;
+
+    for (const notification of queue) {
       const participant = pollParticipants.find((row) => row.id === notification.participant_id);
-      if (!participant?.token || !linkBaseUrl) continue;
+      if (!participant) continue;
+
+      const sendAttempts = (notification.send_attempts ?? 0) + 1;
+
+      if (!participant.token) {
+        // Ohne Antworttoken ist keine gültige Einladung möglich.
+        const { error: tokenError } = await supabase
+          .from("poll_notifications")
+          .update({
+            send_attempts: sendAttempts,
+            last_error: "Teilnehmer ohne Antwort-Token",
+            next_attempt_at: nextPollFollowupSendAttemptAt(sendAttempts, now).toISOString(),
+          })
+          .eq("id", notification.id);
+        if (tokenError) console.error("Could not record follow-up token error", tokenError);
+        failed += 1;
+        continue;
+      }
 
       const pollUrl = `${linkBaseUrl}/poll-guest/${poll.id}?token=${participant.token}`;
       const deadlineHint = poll.deadline
@@ -234,34 +349,58 @@ const handler = async (req: Request): Promise<Response> => {
       });
 
       if (!emailError) {
-        sentIds.push(notification.id);
+        const { error: markError } = await supabase
+          .from("poll_notifications")
+          .update({
+            is_sent: true,
+            sent_at: new Date().toISOString(),
+            send_attempts: sendAttempts,
+            last_error: null,
+          })
+          .eq("id", notification.id);
+        if (markError) console.error("Could not mark follow-up notification as sent", markError);
+        sent += 1;
       } else {
         console.error("Poll follow-up email failed", emailError);
+        const { error: retryError } = await supabase
+          .from("poll_notifications")
+          .update({
+            send_attempts: sendAttempts,
+            last_error: String(emailError.message ?? emailError).slice(0, 500),
+            next_attempt_at: nextPollFollowupSendAttemptAt(sendAttempts, now).toISOString(),
+          })
+          .eq("id", notification.id);
+        if (retryError) console.error("Could not record follow-up send failure", retryError);
+        failed += 1;
       }
     }
 
-    if (sentIds.length > 0) {
-      const { error: markError } = await supabase
-        .from("poll_notifications")
-        .update({ is_sent: true, sent_at: new Date().toISOString() })
-        .in("id", sentIds);
-      if (markError) console.error("Could not mark follow-up notifications as sent", markError);
-    }
+    const finalized = await finalizeAttempt(poll.id, claim);
+    if (finalized?.counted) attemptsBooked += 1;
+    pendingTotal += finalized?.pending ?? 0;
+    emailsSent += sent;
+    emailsFailed += failed;
 
-    dispatched += 1;
     results.push({
       pollId: poll.id,
       due: true,
-      attempt,
+      attempt: claim,
       openRecipients: recipients.length,
-      emailed: sentIds.length,
+      queued: queue.length,
+      emailed: sent,
+      failed,
+      pending: finalized?.pending ?? 0,
+      counted: finalized?.counted ?? false,
     });
   }
 
   return jsonResponse(
     {
-      checked: polls.length,
-      dispatched,
+      checked: duePolls.length,
+      attemptsBooked,
+      emailsSent,
+      emailsFailed,
+      pending: pendingTotal,
       blocked,
       ...(blocked > 0
         ? {

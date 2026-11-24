@@ -207,29 +207,46 @@ export const PollResultsDashboard = ({ pollId, onConfirmSlot }: PollResultsDashb
       const slot = slotResults.find(r => r.timeSlot.id === slotId)?.timeSlot;
       if (!slot) return;
 
-      // Datenbank-RPC: tenant-/owner-geprüft, idempotent über confirmed_appointment_id.
-      const { data: appointmentId, error } = await supabase.rpc('confirm_poll_winner', {
+      // Datenbank-RPC: Mandant, aktive Büromitgliedschaft und Ersteller geprüft,
+      // idempotent über confirmed_appointment_id. Sie liefert den tatsächlich
+      // gespeicherten Slot zurück – nicht zwingend den hier angefragten.
+      const { data, error } = await supabase.rpc('confirm_poll_winner', {
         _poll_id: pollId,
         _slot_id: slotId
       });
 
       if (error) throw error;
 
+      const result = (Array.isArray(data) ? data[0] : data) as {
+        appointment_id?: string | null;
+        slot_id?: string | null;
+      } | null | undefined;
+      const appointmentId = result?.appointment_id ?? null;
+      const storedSlotId = result?.slot_id ?? null;
+      const storedSlot = (storedSlotId
+        ? slotResults.find(entry => entry.timeSlot.id === storedSlotId)?.timeSlot
+        : undefined) ?? slot;
+      const alreadyConfirmed = Boolean(storedSlotId && storedSlotId !== slotId);
+
       setPoll(prev => prev ? {
         ...prev,
         status: 'completed',
-        confirmed_slot_id: slotId,
-        confirmed_appointment_id: (appointmentId as string | null) ?? null
+        confirmed_slot_id: storedSlotId,
+        confirmed_appointment_id: appointmentId
       } : null);
-      setConfirmedSlot(slot);
-      setConfirmedAppointmentId((appointmentId as string | null) ?? null);
+      setConfirmedSlot(storedSlot);
+      setConfirmedAppointmentId(appointmentId);
 
       notify.success("Termin bestätigt", {
-        description: "Der Gewinner-Slot wurde als Termin in den Kalender übernommen."
-});
+        description: alreadyConfirmed
+          ? "Für diese Abstimmung war bereits ein anderer Slot bestätigt. Angezeigt und im Kalender hinterlegt ist der gespeicherte Termin."
+          : "Der Gewinner-Slot wurde als Termin in den Kalender übernommen."
+      });
 
       // Externe Teilnehmer sind jetzt Gäste des Termins – Einladungen direkt senden.
-      if (typeof appointmentId === 'string' && appointmentId) {
+      // Bei einer erneuten Bestätigung wurde nichts neu angelegt, also auch nichts
+      // erneut verschicken.
+      if (appointmentId && !alreadyConfirmed) {
         const { data: invitation, error: invitationError } = await supabase.functions.invoke('send-appointment-invitation', {
           body: { appointmentId, reason: 'manual' }
         });

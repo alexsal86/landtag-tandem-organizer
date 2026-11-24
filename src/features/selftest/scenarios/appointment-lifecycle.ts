@@ -10,7 +10,15 @@ import {
   selectNewGuestEmails,
 } from "@/features/appointments/invitations/invitationRules";
 import { isDashboardBirthday, birthdayAge, nextAppointmentLabel, occursOnDay } from "@/utils/dashboard/occasions";
-import { decidePollFollowup, selectFollowupRecipients, suggestPollSlots } from "@/features/polls/pollRules";
+import {
+  POLL_FOLLOWUP_MAX_SEND_ATTEMPTS,
+  decidePollFollowup,
+  isPollFollowupSendExhausted,
+  nextPollFollowupSendAttemptAt,
+  pollFollowupSendKey,
+  selectFollowupRecipients,
+  suggestPollSlots,
+} from "@/features/polls/pollRules";
 import { supabase } from "@/integrations/supabase/client";
 import type { TestScenario } from "../types";
 import { SELFTEST_MARKER, SELFTEST_PREFIX } from "../runner";
@@ -202,6 +210,39 @@ export const appointmentLifecycleScenario: TestScenario = {
         if (recipients.length !== 1 || recipients[0].id !== "1") throw new Error("Nur offene Teilnehmende werden erinnert");
 
         return { ok: true, message: "Erinnerungen laufen 24 Stunden nach Erstellung, danach alle 48 Stunden, maximal zweimal und nie nach Fristablauf." };
+      },
+    },
+    {
+      id: "poll-followup-queue",
+      label: "Terminabstimmung: Versandwarteschlange mit Wiederholungen",
+      kind: "logic",
+      run: async () => {
+        const key = pollFollowupSendKey("poll-1", "teilnehmer-1", 2);
+        if (key !== "poll-1:teilnehmer-1:answer_followup:2") throw new Error("Versandschlüssel muss Abstimmung, Teilnehmer und Versuch abbilden");
+        if (pollFollowupSendKey("poll-1", "teilnehmer-1", 2) !== key) throw new Error("Versandschlüssel muss stabil bleiben");
+        if (pollFollowupSendKey("poll-1", "teilnehmer-2", 2) === key) throw new Error("Teilnehmer brauchen unterschiedliche Versandschlüssel");
+        if (pollFollowupSendKey("poll-1", "teilnehmer-1", 1) === key) throw new Error("Jeder Versuch braucht einen eigenen Versandschlüssel");
+
+        const base = new Date("2026-11-24T09:00:00.000Z");
+        const gaps = [1, 2, 3].map(
+          (failed) => (nextPollFollowupSendAttemptAt(failed, base).getTime() - base.getTime()) / 60_000,
+        );
+        if (gaps.join(",") !== "15,30,60") throw new Error(`Wiederholungen müssen wachsen (sind: ${gaps.join(",")})`);
+        if (nextPollFollowupSendAttemptAt(9, base).getTime() - base.getTime() !== 120 * 60_000) {
+          throw new Error("Der Wiederholungsabstand muss bei 120 Minuten gedeckelt sein");
+        }
+
+        if (isPollFollowupSendExhausted(POLL_FOLLOWUP_MAX_SEND_ATTEMPTS - 1)) {
+          throw new Error("Ein Auftrag darf vor dem letzten Versuch nicht als gescheitert gelten");
+        }
+        if (!isPollFollowupSendExhausted(POLL_FOLLOWUP_MAX_SEND_ATTEMPTS)) {
+          throw new Error("Nach allen Versuchen muss der Auftrag als gescheitert gelten");
+        }
+        if (POLL_FOLLOWUP_MAX_SEND_ATTEMPTS < 2) {
+          throw new Error("Ein einzelner Fehlversuch darf keinen Erinnerungsversuch verbrauchen");
+        }
+
+        return { ok: true, message: "Jeder Versuch hat eindeutige Versandschlüssel; Fehlversuche werden nach 15, 30 und 60 Minuten (max. 120) wiederholt, erst danach gilt der Auftrag als gescheitert." };
       },
     },
     {

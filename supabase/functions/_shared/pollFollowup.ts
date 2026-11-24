@@ -8,6 +8,12 @@
  * 24 Stunden ab, wird zusätzlich einmalig erinnert (mindestens 12 Stunden
  * Abstand zur letzten Erinnerung). Die Regel wird von der Edge Function
  * send-poll-followups und vom Selbsttest genutzt.
+ *
+ * Der Versand selbst läuft über eine Warteschlange: Jeder Erinnerungsversuch
+ * erzeugt je Teilnehmer genau einen Auftrag mit eindeutigem Versandschlüssel.
+ * Erst wenn kein Auftrag dieses Versuchs mehr offen ist, gilt der Versuch als
+ * verbucht. Fehlgeschlagene Aufträge werden mit wachsendem Abstand erneut
+ * versucht, damit ein einzelner Fehler keine Erinnerung verbraucht.
  */
 
 export const POLL_FOLLOWUP_FIRST_DELAY_HOURS = 24;
@@ -15,6 +21,15 @@ export const POLL_FOLLOWUP_REPEAT_HOURS = 48;
 export const POLL_FOLLOWUP_MAX_ATTEMPTS = 2;
 export const POLL_FOLLOWUP_DEADLINE_WINDOW_HOURS = 24;
 export const POLL_FOLLOWUP_DEADLINE_MIN_GAP_HOURS = 12;
+
+/** Maximale Zustellversuche je Versandauftrag (inklusive Erstversuch). */
+export const POLL_FOLLOWUP_MAX_SEND_ATTEMPTS = 3;
+/** Wartezeit nach dem ersten fehlgeschlagenen Versand. */
+export const POLL_FOLLOWUP_RETRY_BASE_MINUTES = 15;
+/** Obergrenze für den Wiederholungsabstand. */
+export const POLL_FOLLOWUP_RETRY_MAX_MINUTES = 120;
+/** Nach dieser Zeit gilt ein laufender Versand als abgebrochen und darf neu starten. */
+export const POLL_FOLLOWUP_CLAIM_TIMEOUT_MINUTES = 15;
 
 const HOUR_MS = 3_600_000;
 
@@ -117,6 +132,41 @@ export function decidePollFollowup(state: PollFollowupState, now: Date = new Dat
       ? `Erste Erinnerung nach ${POLL_FOLLOWUP_FIRST_DELAY_HOURS} Stunden`
       : `Erneute Erinnerung nach ${POLL_FOLLOWUP_REPEAT_HOURS} Stunden`,
   };
+}
+
+/**
+ * Eindeutiger Versandschlüssel je Abstimmung, Teilnehmer und Versuch.
+ * Muss mit public.poll_followup_send_key in der Datenbank übereinstimmen.
+ */
+export function pollFollowupSendKey(
+  pollId: string,
+  participantId: string,
+  attempt: number,
+  notificationType = "answer_followup",
+): string {
+  return `${pollId}:${participantId}:${notificationType}:${Math.max(0, Math.trunc(attempt))}`;
+}
+
+/**
+ * Nächster Zustellversuch nach einem Fehler: 15, 30, 60, 120 Minuten.
+ * `failedSendAttempts` ist die Anzahl der bereits fehlgeschlagenen Versuche
+ * (also nach dem Fehler inklusive dieses Fehlers).
+ */
+export function nextPollFollowupSendAttemptAt(
+  failedSendAttempts: number,
+  now: Date = new Date(),
+): Date {
+  const attempt = Math.max(1, Math.trunc(failedSendAttempts ?? 0));
+  const minutes = Math.min(
+    POLL_FOLLOWUP_RETRY_BASE_MINUTES * 2 ** (attempt - 1),
+    POLL_FOLLOWUP_RETRY_MAX_MINUTES,
+  );
+  return new Date(now.getTime() + minutes * 60_000);
+}
+
+/** Ist der Versandauftrag nach allen Wiederholungen endgültig gescheitert? */
+export function isPollFollowupSendExhausted(sendAttempts: number): boolean {
+  return Math.max(0, Math.trunc(sendAttempts ?? 0)) >= POLL_FOLLOWUP_MAX_SEND_ATTEMPTS;
 }
 
 /** Teilnehmende, die noch keine Antwort abgegeben haben (mit gültiger Adresse). */

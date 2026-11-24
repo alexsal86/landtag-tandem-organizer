@@ -654,6 +654,8 @@ export type Database = {
           current_version: number | null
           deadline: string | null
           description: string | null
+          followup_claimed_at: string | null
+          followup_claimed_attempt: number | null
           followup_count: number
           id: string
           last_followup_at: string | null
@@ -670,6 +672,8 @@ export type Database = {
           current_version?: number | null
           deadline?: string | null
           description?: string | null
+          followup_claimed_at?: string | null
+          followup_claimed_attempt?: number | null
           followup_count?: number
           id?: string
           last_followup_at?: string | null
@@ -686,6 +690,8 @@ export type Database = {
           current_version?: number | null
           deadline?: string | null
           description?: string | null
+          followup_claimed_at?: string | null
+          followup_claimed_attempt?: number | null
           followup_count?: number
           id?: string
           last_followup_at?: string | null
@@ -11980,31 +11986,43 @@ export type Database = {
         Row: {
           attempt: number
           created_at: string
+          dedupe_key: string | null
           id: string
           is_sent: boolean
+          last_error: string | null
+          next_attempt_at: string
           notification_type: string
           participant_id: string
           poll_id: string
+          send_attempts: number
           sent_at: string | null
         }
         Insert: {
           attempt?: number
           created_at?: string
+          dedupe_key?: string | null
           id?: string
           is_sent?: boolean
+          last_error?: string | null
+          next_attempt_at?: string
           notification_type: string
           participant_id: string
           poll_id: string
+          send_attempts?: number
           sent_at?: string | null
         }
         Update: {
           attempt?: number
           created_at?: string
+          dedupe_key?: string | null
           id?: string
           is_sent?: boolean
+          last_error?: string | null
+          next_attempt_at?: string
           notification_type?: string
           participant_id?: string
           poll_id?: string
+          send_attempts?: number
           sent_at?: string | null
         }
         Relationships: [
@@ -17720,9 +17738,43 @@ export type Database = {
         Args: { p_kind: string; p_region_kind?: string; p_topic: string }
         Returns: Json
       }
+      claim_poll_followup: {
+        Args: {
+          _claim_timeout_minutes?: number
+          _expected_attempt: number
+          _poll_id: string
+        }
+        Returns: number
+      }
       confirm_poll_winner: {
         Args: { _poll_id: string; _slot_id: string }
-        Returns: string
+        Returns: { appointment_id: string; slot_id: string }[]
+      }
+      finalize_poll_followup: {
+        Args: {
+          _attempt: number
+          _max_send_attempts?: number
+          _poll_id: string
+        }
+        Returns: { counted: boolean; pending: number }[]
+      }
+      get_due_poll_followups: {
+        Args: {
+          _claim_timeout_minutes?: number
+          _deadline_window_hours: number
+          _first_delay_hours: number
+          _limit: number
+          _max_attempts: number
+          _min_gap_hours: number
+          _repeat_hours: number
+        }
+        Returns: {
+          attempt: number
+          due_at: string
+          open_external: number
+          open_participants: number
+          poll_id: string
+        }[]
       }
       create_appointment_poll_with_details: {
         Args: {
@@ -17861,9 +17913,9 @@ export type Database = {
       dispatch_due_task_reminders: { Args: never; Returns: number }
       dispatch_employee_preparation_reminders: { Args: never; Returns: number }
       dispatch_office_feedback_reminders: { Args: never; Returns: undefined }
-      record_poll_followup: {
-        Args: { _expected_attempt: number; _poll_id: string }
-        Returns: number
+      poll_followup_send_key: {
+        Args: { _attempt: number; _participant_id: string; _poll_id: string }
+        Returns: string
       }
       dispatch_scheduled_emails_if_due: { Args: never; Returns: undefined }
       dispatch_workflow_trigger: {
