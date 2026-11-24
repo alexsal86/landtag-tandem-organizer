@@ -13,6 +13,10 @@ import type { AppointmentData } from '@/hooks/useDashboardAppointmentsData';
 import { Badge } from '@/components/ui/badge';
 import { birthdayAge } from '@/utils/dashboard/occasions';
 
+// Geburtstage und die zugehörige Jour-fixe-Planung ändern sich höchstens tagesweise, und der
+// Query-Key enthält bereits den Berliner Kalendertag. Minütliches Nachladen war reiner Egress.
+const BIRTHDAY_STALE_TIME = 6 * 60 * 60 * 1000;
+
 interface Props {
   allDayAppointments?: AppointmentData[];
   includeBirthdays?: boolean;
@@ -29,7 +33,7 @@ export function DashboardBirthdays({ allDayAppointments = [], includeBirthdays =
   const tenant = currentTenant?.id;
   const key = ['dashboard-birthdays', tenant, user?.id, day];
   const { data, isError } = useQuery({
-    queryKey: key, enabled: includeBirthdays && !!tenant && !!user, staleTime: 60_000, refetchInterval: 60_000,
+    queryKey: key, enabled: includeBirthdays && !!tenant && !!user, staleTime: BIRTHDAY_STALE_TIME,
     queryFn: async () => {
       const contacts = await supabase.from('contacts').select('id,name,birthday')
         .eq('tenant_id', tenant!).not('birthday', 'is', null);
@@ -43,7 +47,7 @@ export function DashboardBirthdays({ allDayAppointments = [], includeBirthdays =
   // Supplementary office information must never hide an otherwise readable birthday.
   const planning = useQuery({
     queryKey: ['dashboard-birthday-planning', tenant, user?.id, day],
-    enabled: includeBirthdays && !!tenant && !!user, staleTime: 60_000, refetchInterval: 60_000,
+    enabled: includeBirthdays && !!tenant && !!user, staleTime: BIRTHDAY_STALE_TIME,
     queryFn: async () => {
       const since = new Date(Date.parse(day + 'T12:00:00Z') - 14 * 86400_000).toISOString().slice(0, 10);
       const meetings = await supabase.from('meetings').select('id').eq('tenant_id', tenant!)
@@ -72,7 +76,7 @@ export function DashboardBirthdays({ allDayAppointments = [], includeBirthdays =
   });
   const requestsKey = ['dashboard-birthday-requests', tenant, user?.id, day];
   const requests = useQuery({
-    queryKey: requestsKey, enabled: includeBirthdays && !!tenant && !!user, staleTime: 60_000, refetchInterval: 60_000,
+    queryKey: requestsKey, enabled: includeBirthdays && !!tenant && !!user, staleTime: BIRTHDAY_STALE_TIME,
     queryFn: async () => {
       const tasks = await supabase.from('tasks').select('source_id').eq('tenant_id', tenant!)
         .eq('source_type', 'birthday_congratulations').gte('due_date', `${day.slice(0, 4)}-01-01`).lt('due_date', `${Number(day.slice(0, 4)) + 1}-01-01`);

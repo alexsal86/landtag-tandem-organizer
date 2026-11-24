@@ -39,7 +39,7 @@ export function useAnnotations(documentId: string | null) {
   const taskStatuses = useQuery({
     queryKey: ["document-annotation-task-status", documentId, taskIdsKey],
     enabled: !!documentId && !!taskIdsKey,
-    refetchInterval: 120_000,
+    // Kein Polling: der Realtime-Channel unten lauscht auf tasks-Updates der verknüpften Aufgaben.
     queryFn: async () => {
       const result = await supabase.from("tasks").select("id,status").in("id", taskIdsKey.split(','));
       if (result.error) throw result.error;

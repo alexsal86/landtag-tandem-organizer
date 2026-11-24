@@ -17,7 +17,8 @@ export function useDeputyDashboardDecisions(decisionIds?: string[]) {
   const query = useQuery<DeputyDashboardDecision[]>({
     queryKey: ["deputy-dashboard-decisions", tenantId, user?.id, decisionIds ?? null],
     enabled,
-    refetchInterval: 15_000,
+    // Kein Polling: der Realtime-Channel unten invalidiert bei jeder Änderung an Nudges,
+    // Antworten und Entscheidungen dieses Mandanten.
     queryFn: async () => {
       const { data, error } = await supabase.rpc("get_deputy_dashboard_decisions", {
         _tenant_id: tenantId!, _decision_ids: decisionIds,
