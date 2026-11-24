@@ -131,6 +131,9 @@ BEGIN
       || coalesce(' in ' || nullif(btrim(v_appointment.location), ''), '')
       || '.';
 
+    -- Kein fertiger Link in den Daten: den Kalenderpfad bauen die Empfänger
+    -- aus appointment_id (buildDeepLinkPath) bzw. die Mail aus derselben ID,
+    -- damit es nur eine Quelle für den Pfad gibt.
     v_notification := NULL;
     BEGIN
       v_notification := public.create_notification(
@@ -141,8 +144,7 @@ BEGIN
         jsonb_build_object(
           'appointment_id', v_appointment.id,
           'start_time', v_appointment.start_time,
-          'minutes_before', v_appointment.reminder_minutes,
-          'deep_link', '/calendar?highlight=' || v_appointment.id::text
+          'minutes_before', v_appointment.reminder_minutes
         ),
         'high',
         v_appointment.tenant_id
