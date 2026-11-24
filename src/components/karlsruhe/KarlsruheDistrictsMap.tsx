@@ -839,22 +839,18 @@ export const KarlsruheDistrictsMap = ({
     const markers: L.Marker[] = [];
 
     waypoints.forEach((wp, index) => {
+      const position = document.createElement('span');
+      position.textContent = String(index + 1);
+
       const marker = L.marker([wp.lat, wp.lng], {
         icon: L.divIcon({
-          html: `<div style="
-            background: #3b82f6;
-            border-radius: 50%;
-            width: 28px;
-            height: 28px;
-            display: flex;
-            align-items: center;
-            justify-content: center;
-            box-shadow: 0 2px 6px rgba(0,0,0,0.3);
-            border: 2px solid white;
-            color: white;
-            font-weight: bold;
-            font-size: 14px;
-          ">${index + 1}</div>`,
+          html: createMapIconBubble('#3b82f6', 28, position, {
+            boxShadow: '0 2px 6px rgba(0,0,0,0.3)',
+            color: '#ffffff',
+            fontWeight: 'bold',
+            fontSize: '14px',
+            cursor: 'default',
+          }),
           iconSize: [28, 28],
           className: 'waypoint-marker',
         }),
