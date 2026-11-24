@@ -271,8 +271,9 @@ export const useDashboardDeadlines = () => {
     queryFn: () => fetchDeadlineItems(userId!, tenantId),
     enabled: !!userId,
     staleTime: STALE_TIME.LIST_WITH_REALTIME,
-    refetchInterval: STALE_TIME.LIST_WITH_REALTIME,
-    refetchIntervalInBackground: false,
+    // Kein Polling: alle Quellen (tasks, quick_notes, case_items, task_decisions, event_plannings
+    // samt Timeline- und Checklisten-Zuweisungen) invalidieren diesen Key über useDashboardRealtime,
+    // und die Abfrage filtert nicht relativ zum aktuellen Datum.
     refetchOnWindowFocus: false,
   });
 

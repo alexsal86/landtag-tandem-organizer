@@ -33,13 +33,15 @@ function SignatureFolderContent({ tenantId, userId }: { tenantId: string; userId
   const listId = useId();
   const header = useRef<HTMLButtonElement>(null);
   const queryKey = ["signature-folder", tenantId, userId];
-  // Buchstaben, Presse und Social sind nicht in der Realtime-Publication, und neue Vorgänge
-  // kommen im Tempo der Büroarbeit. Statt alle 30 s zu pollen wird beim Zurückkehren in den Tab
-  // frisch geladen; eigene Entscheidungen invalidieren den Key ohnehin sofort.
+  // Buchstaben, Presse und Social sind nicht in der Realtime-Publication, hier greift also keine
+  // Subscription. Deshalb weiterhin ein Hintergrund-Intervall, aber im Rhythmus der Büroarbeit
+  // statt alle 30 s: es pausiert bei verdecktem Tab, und die Rückkehr in den Tab lädt zusätzlich
+  // frisch. Eigene Entscheidungen invalidieren den Key ohnehin sofort.
   const query = useQuery({
     queryKey,
     queryFn: () => loadSignatureFolder(tenantId, userId),
     staleTime: STALE_TIME.LIST_WITH_REALTIME,
+    refetchInterval: STALE_TIME.LIST_WITH_REALTIME,
     refetchOnWindowFocus: true,
   });
   const [visible, setVisible] = useState(true);

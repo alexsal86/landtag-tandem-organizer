@@ -241,6 +241,10 @@ export const useDashboardAppointmentsData = (includePastToday = false): Dashboar
     queryFn: () => fetchDashboardRpc(userId!, user!.email ?? undefined, tenantId!, includePastToday),
     enabled: !!userId && !!tenantId,
     staleTime: STALE_TIME.LIST_WITH_REALTIME,
+    // Bleibt bewusst: get_dashboard_data schneidet sein Zeitfenster mit now() (gestern bis
+    // übermorgen) und zählt completed_today ab. Realtime meldet nur Zeilenänderungen, nie den
+    // Tageswechsel; profiles und user_roles aus der RPC stehen zudem nicht in der
+    // Invalidation-Map von useDashboardRealtime.
     refetchInterval: includePastToday ? STALE_TIME.LIST_WITH_REALTIME : false,
     refetchIntervalInBackground: false,
     gcTime: 15 * 60_000,
