@@ -48,6 +48,33 @@ export function checkArbzgDay({
   };
 }
 
+/**
+ * Smallest statutory break for a gross span (start → end, breaks included).
+ * The requirement refers to the working time that remains after the break, so
+ * a 9,5 h span is covered by 30 minutes as long as the rest stays within 9 h.
+ */
+export function requiredPauseForSpan(grossMinutes: number): number {
+  const gross = Number.isFinite(grossMinutes) ? Math.max(0, Math.round(grossMinutes)) : 0;
+  const candidates = [0, ARBZG_BREAK_MINUTES_ABOVE_SIX_HOURS, ARBZG_BREAK_MINUTES_ABOVE_NINE_HOURS];
+  for (const candidate of candidates) {
+    if (requiredBreakMinutes(gross - candidate) <= candidate) return candidate;
+  }
+  return ARBZG_BREAK_MINUTES_ABOVE_NINE_HOURS;
+}
+
+const AUTO_PAUSE_NOTE_PREFIX = "ArbZG: ";
+const AUTO_PAUSE_NOTE_SUFFIX = " Min Pause automatisch ergänzt";
+
+/** Note line that marks the part of a break the app added on its own. */
+export function autoPauseNote(autoAddedMinutes: number): string {
+  return `${AUTO_PAUSE_NOTE_PREFIX}${autoAddedMinutes}${AUTO_PAUSE_NOTE_SUFFIX}`;
+}
+
+export function hasAutoPauseNote(notes: string | null | undefined): boolean {
+  if (!notes) return false;
+  return notes.includes(AUTO_PAUSE_NOTE_PREFIX) && notes.includes(AUTO_PAUSE_NOTE_SUFFIX);
+}
+
 function parseClockTime(value: string, reference: Date): Date | null {
   const match = /^(\d{1,2}):(\d{2})$/.exec(value.trim());
   if (!match) return null;

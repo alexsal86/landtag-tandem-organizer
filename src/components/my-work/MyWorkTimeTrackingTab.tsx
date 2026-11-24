@@ -17,7 +17,7 @@ import { de } from "date-fns/locale";
 import { Clock, Plus, ExternalLink, TrendingUp, Calendar, Play, Pause, Square, X } from "lucide-react";
 import { useNavigate } from "react-router-dom";
 import { useTimeEntryReminder } from "@/hooks/useTimeEntryReminder";
-import { ARBZG_MAX_DAILY_WORK_MINUTES, checkArbzgDay, elapsedWorkedMinutes } from "@/features/timetracking/arbzg";
+import { ARBZG_MAX_DAILY_WORK_MINUTES, autoPauseNote, checkArbzgDay, elapsedWorkedMinutes, hasAutoPauseNote, requiredPauseForSpan } from "@/features/timetracking/arbzg";
 import { cn } from "@/lib/utils";
 import { useVacationReminders } from "@/hooks/useVacationReminders";
 import { useResolvedUserRole } from "@/hooks/useResolvedUserRole";
@@ -69,6 +69,9 @@ export function MyWorkTimeTrackingTab() {
   const [pauseMinutes, setPauseMinutes] = useState("30");
   const [notes, setNotes] = useState("");
   const [isSubmitting, setIsSubmitting] = useState(false);
+  // Automatik setzt die Pflichtpause, solange niemand sie selbst eingibt oder stoppt.
+  const [pauseAutoFilled, setPauseAutoFilled] = useState(false);
+  const [pauseOverridden, setPauseOverridden] = useState(false);
 
   // Stempeluhr – single persisted state object
   const [clockData, setClockData] = useUserPreference<ClockData | null>("timetracking_clock", null);
@@ -126,6 +129,8 @@ export function MyWorkTimeTrackingTab() {
     setEntryDate(today);
     setTotalPauseMinutes(0);
     setPauseMinutes("0");
+    setPauseOverridden(false);
+    setPauseAutoFilled(false);
     setClockData({ clockIn: now, date: today, pauseStart: null, pauseTotal: 0, updatedAt: Date.now() });
     notify.success(`Arbeit begonnen um ${now}`);
   };
@@ -148,6 +153,8 @@ export function MyWorkTimeTrackingTab() {
     const newTotal = totalPauseMinutes + minutes;
     setTotalPauseMinutes(newTotal);
     setPauseMinutes(newTotal.toString());
+    setPauseOverridden(true);
+    setPauseAutoFilled(false);
     setPauseStart(null);
     
     setClockData(prev => prev ? { ...prev, pauseStart: null, pauseTotal: newTotal, updatedAt: Date.now() } : prev);
@@ -248,15 +255,26 @@ export function MyWorkTimeTrackingTab() {
     : 0;
   const liveArbzg = checkArbzgDay({ workedMinutes: liveWorkedMinutes, pauseMinutes: totalPauseMinutes });
 
-  const formArbzg = useMemo(() => {
+  const formSpanMinutes = useMemo(() => {
     if (!startTime || !endTime) return null;
     const start = new Date(`${entryDate}T${startTime}`);
     const end = new Date(`${entryDate}T${endTime}`);
     if (Number.isNaN(start.getTime()) || Number.isNaN(end.getTime()) || end <= start) return null;
-    const gross = Math.round((end.getTime() - start.getTime()) / 60000);
-    const pause = parseInt(pauseMinutes) || 0;
-    return checkArbzgDay({ workedMinutes: gross - pause, pauseMinutes: pause });
-  }, [endTime, entryDate, pauseMinutes, startTime]);
+    return Math.round((end.getTime() - start.getTime()) / 60000);
+  }, [endTime, entryDate, startTime]);
+
+  const suggestedPauseMinutes = formSpanMinutes === null ? 0 : requiredPauseForSpan(formSpanMinutes);
+  const enteredPauseMinutes = parseInt(pauseMinutes) || 0;
+  const formArbzg = formSpanMinutes === null
+    ? null
+    : checkArbzgDay({ workedMinutes: formSpanMinutes - enteredPauseMinutes, pauseMinutes: enteredPauseMinutes });
+
+  // Pausenautomatik: die vorgeschriebene Pause wird gesetzt, nicht erzwungen.
+  useEffect(() => {
+    if (pauseOverridden) return;
+    setPauseMinutes(String(suggestedPauseMinutes));
+    setPauseAutoFilled(suggestedPauseMinutes > 0);
+  }, [pauseOverridden, suggestedPauseMinutes]);
 
   const validateDailyLimit = async (workDate: string, grossMin: number) => {
     if (!user) return;
@@ -293,16 +311,14 @@ export function MyWorkTimeTrackingTab() {
     }
 
     const gross = Math.round((end.getTime() - start.getTime()) / 60000);
-    const pause = parseInt(pauseMinutes) || 0;
-
-    const arbzg = checkArbzgDay({ workedMinutes: gross - pause, pauseMinutes: pause });
-    if (!arbzg.compliant) {
-      const workedHours = ((gross - pause) / 60).toLocaleString("de-DE", { maximumFractionDigits: 1 });
-      notify.error(`ArbZG-Pausenpflicht: mindestens ${arbzg.requiredPauseMinutes} Min Pause bei ${workedHours} h Arbeitszeit`, {
-        description: `Erfasst sind ${pause} Min. Bitte die Pause ergänzen, bevor der Eintrag gespeichert wird.`,
-      });
-      return;
-    }
+    const recordedPause = parseInt(pauseMinutes) || 0;
+    // Die Pflichtpause wird gesetzt statt die Eingabe zu blockieren; der ergänzte
+    // Anteil wird am Eintrag vermerkt, damit er nicht als echte Pause gelesen wird.
+    const effectivePause = Math.max(recordedPause, requiredPauseForSpan(gross));
+    const autoAddedPause = effectivePause - recordedPause;
+    const entryNotes = autoAddedPause > 0
+      ? [notes.trim(), autoPauseNote(autoAddedPause)].filter(Boolean).join("\n")
+      : notes.trim() || null;
 
     setIsSubmitting(true);
     try {
@@ -313,19 +329,25 @@ export function MyWorkTimeTrackingTab() {
         work_date: entryDate,
         started_at: start.toISOString(),
         ended_at: end.toISOString(),
-        minutes: gross - pause,
-        pause_minutes: pause,
-        notes: notes || null,
+        minutes: gross - effectivePause,
+        pause_minutes: effectivePause,
+        notes: entryNotes,
       }]);
 
       if (error) throw error;
 
-      notify.success("Zeiteintrag gespeichert");
+      notify.success(
+        autoAddedPause > 0
+          ? `Zeiteintrag gespeichert – ${autoAddedPause} Min Pause automatisch ergänzt (ArbZG)`
+          : "Zeiteintrag gespeichert",
+      );
       // Stempeluhr-Daten nach erfolgreichem Speichern löschen
       clearClockData();
       setStartTime("");
       setEndTime(format(new Date(), "HH:mm"));
-      setPauseMinutes("30");
+      setPauseMinutes("0");
+      setPauseOverridden(false);
+      setPauseAutoFilled(false);
       setNotes("");
       checkRoleAndLoad();
     } catch (error: unknown) {
@@ -381,6 +403,15 @@ export function MyWorkTimeTrackingTab() {
       </div>
     );
   }
+
+  const pauseState = (entry: TimeEntryRow) => {
+    const span = entry.started_at && entry.ended_at
+      ? Math.round((new Date(entry.ended_at).getTime() - new Date(entry.started_at).getTime()) / 60000)
+      : null;
+    const required = span === null ? 0 : requiredPauseForSpan(span);
+    const pause = entry.pause_minutes ?? 0;
+    return { auto: hasAutoPauseNote(entry.notes), belowMinimum: required > 0 && pause < required };
+  };
 
   const difference = weeklyWorked - weeklyTarget;
   const dayOfWeek = today.getDay() === 0 ? 7 : today.getDay();
@@ -564,28 +595,49 @@ export function MyWorkTimeTrackingTab() {
                   />
                 </div>
                 <div className="space-y-2">
-                  <Label>Pause (Min)</Label>
+                  <div className="flex items-center justify-between gap-2">
+                    <Label htmlFor="time-pause">Pause (Min)</Label>
+                    {pauseAutoFilled && (
+                      <Badge variant="outline" className="text-[10px] font-normal">automatisch ergänzt</Badge>
+                    )}
+                  </div>
                   <Input
+                    id="time-pause"
                     type="number"
                     value={pauseMinutes}
-                    onChange={(e) => setPauseMinutes(e.target.value)}
+                    onChange={(e) => {
+                      setPauseMinutes(e.target.value);
+                      setPauseOverridden(true);
+                      setPauseAutoFilled(false);
+                    }}
                     min="0"
                     max="120"
                   />
-                  {formArbzg && formArbzg.requiredPauseMinutes > 0 && (
-                    formArbzg.missingPauseMinutes > 0 ? (
-                      <p className="text-xs text-destructive">
-                        ArbZG: {formArbzg.requiredPauseMinutes} Min vorgeschrieben –{" "}
-                        <button
-                          type="button"
-                          className="font-medium underline"
-                          onClick={() => setPauseMinutes(String(formArbzg.requiredPauseMinutes))}
-                        >
-                          übernehmen
-                        </button>
+                  {formSpanMinutes !== null && (
+                    suggestedPauseMinutes > 0 ? (
+                      <p className={cn("text-xs", formArbzg && formArbzg.missingPauseMinutes > 0 ? "text-destructive" : "text-muted-foreground")}>
+                        {formArbzg && formArbzg.missingPauseMinutes > 0 ? (
+                          <>
+                            Pausenpflicht: {suggestedPauseMinutes} Min vorgeschrieben. Beim Speichern werden{" "}
+                            {formArbzg.missingPauseMinutes} Min automatisch ergänzt und vermerkt –{" "}
+                            <button
+                              type="button"
+                              className="font-medium underline"
+                              onClick={() => {
+                                setPauseMinutes(String(suggestedPauseMinutes));
+                                setPauseOverridden(false);
+                                setPauseAutoFilled(true);
+                              }}
+                            >
+                              jetzt übernehmen
+                            </button>
+                          </>
+                        ) : (
+                          <>ArbZG: {suggestedPauseMinutes} Min Pause {pauseAutoFilled ? "automatisch ergänzt" : "erforderlich"}.</>
+                        )}
                       </p>
                     ) : (
-                      <p className="text-xs text-muted-foreground">ArbZG erfüllt ({formArbzg.requiredPauseMinutes} Min vorgeschrieben).</p>
+                      <p className="text-xs text-muted-foreground">Bis 6 h Arbeitszeit ist keine Pause vorgeschrieben.</p>
                     )
                   )}
                 </div>
@@ -654,6 +706,7 @@ export function MyWorkTimeTrackingTab() {
                     <TableRow>
                       <TableHead>Datum</TableHead>
                       <TableHead>Zeit</TableHead>
+                      <TableHead className="text-right">Pause</TableHead>
                       <TableHead className="text-right">Stunden</TableHead>
                     </TableRow>
                   </TableHeader>
@@ -669,6 +722,15 @@ export function MyWorkTimeTrackingTab() {
                               {format(parseISO(entry.started_at), "HH:mm")} - {format(parseISO(entry.ended_at), "HH:mm")}
                             </>
                           ) : "-"}
+                        </TableCell>
+                        <TableCell className="text-right text-muted-foreground">
+                          {entry.pause_minutes ?? 0} Min
+                          {pauseState(entry).auto && (
+                            <span className="ml-1 text-[10px] uppercase tracking-wide">auto</span>
+                          )}
+                          {pauseState(entry).belowMinimum && (
+                            <span className="ml-1 text-[10px] uppercase tracking-wide text-destructive">unter Pausenpflicht</span>
+                          )}
                         </TableCell>
                         <TableCell className="text-right font-mono">
                           {fmt(entry.minutes || 0)}

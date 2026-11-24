@@ -24,7 +24,7 @@ import { ACTION_MODULE } from "@/features/permissions/catalog";
 import { buildPermissionDiff, diffSimulation, parsePermissionExplanation } from "@/features/permissions/explain";
 import { parseConfigImpact, parseConfigRename, summarizeConfigImpact, summarizeConfigRename } from "@/features/admin/configImpact";
 import { calculateWeeklyTarget, isBadenWuerttembergHoliday } from "@/features/timetracking/weeklyTarget";
-import { checkArbzgDay, elapsedWorkedMinutes, requiredBreakMinutes } from "@/features/timetracking/arbzg";
+import { autoPauseNote, checkArbzgDay, elapsedWorkedMinutes, hasAutoPauseNote, requiredBreakMinutes, requiredPauseForSpan } from "@/features/timetracking/arbzg";
 
 export const workflowRulesScenario: TestScenario = {
   id: "workflow-rules", title: "Geschäftsregeln (Freigabe, Rollen, Fristen)",
@@ -109,6 +109,12 @@ export const workflowRulesScenario: TestScenario = {
           && checkArbzgDay({ workedMinutes: 7 * 60, pauseMinutes: 15 }).missingPauseMinutes === 15
           && checkArbzgDay({ workedMinutes: 9 * 60 + 30, pauseMinutes: 30 }).missingPauseMinutes === 15
           && checkArbzgDay({ workedMinutes: 10 * 60 + 1, pauseMinutes: 45 }).exceedsMaxDailyWork
+          && requiredPauseForSpan(6 * 60) === 0
+          && requiredPauseForSpan(6 * 60 + 15) === 30
+          && requiredPauseForSpan(9 * 60 + 6) === 30
+          && requiredPauseForSpan(9 * 60 + 36) === 45
+          && hasAutoPauseNote(autoPauseNote(15))
+          && !hasAutoPauseNote("Projektarbeit")
           && elapsedWorkedMinutes("08:00", null, 0, midday) === 390
           && elapsedWorkedMinutes("08:00", null, 60, midday) === 330
           && elapsedWorkedMinutes("08:00", "13:00", 30, midday) === 270
