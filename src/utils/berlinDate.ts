@@ -59,6 +59,13 @@ export function berlinWeekEnd(day: string): string {
   return shiftBerlinDay(day, (7 - weekday) % 7);
 }
 
+/**
+ * Berliner Mitternacht des Kalendertags, in dem `value` liegt.
+ * Für timestamptz-Spalten, damit die Anzeige denselben Tag zeigt wie die Eingabe.
+ */
+export const berlinStartOfDay = (value: string | Date = new Date()): Date =>
+  berlinDateTimeToInstant(`${berlinDayKey(value)}T00:00`);
+
 /** Uhrzeit in Berliner Zeit, z. B. „08:00“. */
 export const berlinClock = (value: string | Date): string => clockFormatter.format(toDate(value));
 

@@ -3,6 +3,7 @@ import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 import { PieChart, Pie, Cell, ResponsiveContainer, Legend, Tooltip } from 'recharts';
 import { supabase } from '@/integrations/supabase/client';
 import { useTenant } from '@/hooks/useTenant';
+import { berlinDayKey } from '@/utils/berlinDate';
 
 interface TaskStats {
   completed: number;
@@ -24,8 +25,8 @@ export function TaskProgressChart() {
     const fetchStats = async () => {
       if (!currentTenant?.id) return;
 
-      const today = new Date();
-      today.setHours(0, 0, 0, 0);
+      // due_date ist ein Datum: Grenze ist der Berliner Kalendertag, nicht lokale Mitternacht.
+      const today = berlinDayKey(new Date());
 
       // Fetch completed tasks
       const { count: completedCount } = await supabase
@@ -54,7 +55,7 @@ export function TaskProgressChart() {
         .select('*', { count: 'exact', head: true })
         .eq('tenant_id', currentTenant.id)
         .neq('status', 'completed')
-        .lt('due_date', today.toISOString());
+        .lt('due_date', today);
 
       setStats({
         completed: completedCount || 0,
