@@ -37,6 +37,8 @@ interface Poll {
   response_count: number;
   time_slots_count: number;
   creator_name?: string;
+  confirmed_slot_id?: string | null;
+  confirmed_appointment_id?: string | null;
 }
 
 export const PollListView = () => {
@@ -76,7 +78,9 @@ export const PollListView = () => {
         participant_count: poll.participant_count ?? 0,
         response_count: poll.response_count ?? 0,
         time_slots_count: poll.time_slots_count ?? 0,
-        creator_name: poll.creator_name || 'Unbekannt'
+        creator_name: poll.creator_name || 'Unbekannt',
+        confirmed_slot_id: poll.confirmed_slot_id ?? null,
+        confirmed_appointment_id: poll.confirmed_appointment_id ?? null
       }));
 
       // Sort polls: active polls first, then completed/cancelled at the bottom
@@ -323,6 +327,7 @@ export const PollListView = () => {
             <TableHead className="text-center">Antworten</TableHead>
             <TableHead className="text-center">Zeitslots</TableHead>
             <TableHead className="text-center">Frist</TableHead>
+            <TableHead className="text-center">Termin</TableHead>
             <TableHead className="text-center">Erstellt</TableHead>
             <TableHead className="text-center">Aktionen</TableHead>
           </TableRow>
@@ -376,6 +381,17 @@ export const PollListView = () => {
                   </div>
                 ) : (
                   <span className="text-muted-foreground">-</span>
+                )}
+              </TableCell>
+              <TableCell className="text-center">
+                {poll.confirmed_appointment_id ? (
+                  <Button size="sm" variant="outline" asChild title="Termin im Kalender öffnen">
+                    <a href={`/calendar?highlight=${poll.confirmed_appointment_id}`}>
+                      <Calendar className="h-4 w-4" />
+                    </a>
+                  </Button>
+                ) : (
+                  <span className="text-sm text-muted-foreground">-</span>
                 )}
               </TableCell>
               <TableCell className="text-center">

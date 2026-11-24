@@ -3,9 +3,9 @@
   "source": "src/integrations/supabase/types.ts",
   "counts": {
     "total": 340,
-    "scenario": 55,
+    "scenario": 56,
     "deferred": 85,
-    "excluded": 152,
+    "excluded": 151,
     "missing": 48
   },
   "scenarios": [
@@ -819,7 +819,8 @@
         "appointment_polls",
         "poll_time_slots",
         "poll_participants",
-        "appointments"
+        "appointments",
+        "appointment_guests"
       ],
       "features": [
         "appointments"
@@ -855,6 +856,16 @@
             "name",
             "is_external",
             "token"
+          ]
+        },
+        {
+          "table": "appointment_guests",
+          "columns": [
+            "appointment_id",
+            "tenant_id",
+            "name",
+            "email",
+            "status"
           ]
         },
         {
@@ -1073,8 +1084,10 @@
     },
     {
       "table": "appointment_guests",
-      "status": "excluded",
-      "scenarios": []
+      "status": "scenario",
+      "scenarios": [
+        "poll-lifecycle"
+      ]
     },
     {
       "table": "appointment_locations",

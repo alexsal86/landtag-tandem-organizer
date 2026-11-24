@@ -2,15 +2,19 @@
  * Regeln für das automatische Nachfassen bei Teilnehmenden ohne Antwort.
  *
  * Eine Terminabstimmung erinnert nur solange sie aktiv ist, noch Antworten
- * fehlen und die Frist nicht abgelaufen ist. Die erste Erinnerung geht frühestens
- * 24 Stunden nach Erstellung raus, jede weitere 48 Stunden nach der letzten,
- * höchstens zweimal. Die Regel wird von der Edge Function
+ * fehlen, die Frist nicht abgelaufen ist und noch kein Zeitslot vorbei ist. Die
+ * erste Erinnerung geht frühestens 24 Stunden nach Erstellung raus, jede weitere
+ * 48 Stunden nach der letzten, höchstens zweimal. Läuft die Frist in weniger als
+ * 24 Stunden ab, wird zusätzlich einmalig erinnert (mindestens 12 Stunden
+ * Abstand zur letzten Erinnerung). Die Regel wird von der Edge Function
  * send-poll-followups und vom Selbsttest genutzt.
  */
 
 export const POLL_FOLLOWUP_FIRST_DELAY_HOURS = 24;
 export const POLL_FOLLOWUP_REPEAT_HOURS = 48;
 export const POLL_FOLLOWUP_MAX_ATTEMPTS = 2;
+export const POLL_FOLLOWUP_DEADLINE_WINDOW_HOURS = 24;
+export const POLL_FOLLOWUP_DEADLINE_MIN_GAP_HOURS = 12;
 
 const HOUR_MS = 3_600_000;
 
@@ -22,6 +26,8 @@ export interface PollFollowupState {
   lastFollowupAt?: string | null;
   participantCount: number;
   respondingCount: number;
+  /** Ende des letzten Zeitslots; danach ist keine Antwort mehr sinnvoll. */
+  lastSlotEnd?: string | null;
 }
 
 export interface PollFollowupDecision {
@@ -68,6 +74,11 @@ export function decidePollFollowup(state: PollFollowupState, now: Date = new Dat
     return { due: false, attempt: attempts, reason: "Antwortfrist ist abgelaufen" };
   }
 
+  const lastSlotEndMs = parseTimestamp(state.lastSlotEnd);
+  if (lastSlotEndMs !== null && lastSlotEndMs <= nowMs) {
+    return { due: false, attempt: attempts, reason: "Alle Zeitslots liegen in der Vergangenheit" };
+  }
+
   const createdAtMs = parseTimestamp(state.createdAt);
   if (createdAtMs === null) {
     return { due: false, attempt: attempts, reason: "Erstellungszeitpunkt unbekannt" };
@@ -78,6 +89,20 @@ export function decidePollFollowup(state: PollFollowupState, now: Date = new Dat
   const dueAtMs = referenceMs + delayHours * HOUR_MS;
 
   if (nowMs < dueAtMs) {
+    const lastFollowupMs = parseTimestamp(state.lastFollowupAt);
+    const deadlineIsClose =
+      deadlineMs !== null && deadlineMs - nowMs <= POLL_FOLLOWUP_DEADLINE_WINDOW_HOURS * HOUR_MS;
+    const gapIsLongEnough =
+      lastFollowupMs === null || nowMs - lastFollowupMs >= POLL_FOLLOWUP_DEADLINE_MIN_GAP_HOURS * HOUR_MS;
+
+    if (deadlineIsClose && gapIsLongEnough) {
+      return {
+        due: true,
+        attempt: attempts + 1,
+        reason: `Antwortfrist läuft in weniger als ${POLL_FOLLOWUP_DEADLINE_WINDOW_HOURS} Stunden ab`,
+      };
+    }
+
     return {
       due: false,
       attempt: attempts,

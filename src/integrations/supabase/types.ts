@@ -18280,6 +18280,8 @@ export type Database = {
       get_user_polls_with_aggregation: {
         Args: never
         Returns: {
+          confirmed_appointment_id: string | null
+          confirmed_slot_id: string | null
           created_at: string
           creator_name: string
           deadline: string

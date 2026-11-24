@@ -182,6 +182,18 @@ export const appointmentLifecycleScenario: TestScenario = {
         if (decidePollFollowup({ ...poll, followupCount: 2 }, new Date("2026-11-29T09:00:00.000Z")).due) throw new Error("Mehr als zwei Erinnerungen sind nicht erlaubt");
         if (decidePollFollowup({ ...poll, respondingCount: 3 }, new Date("2026-11-25T09:00:00.000Z")).due) throw new Error("Ohne offene Antworten darf nicht erinnert werden");
         if (decidePollFollowup({ ...poll, deadline: "2026-11-22T09:00:00.000Z" }, new Date("2026-11-25T09:00:00.000Z")).due) throw new Error("Nach Fristablauf darf nicht erinnert werden");
+        if (decidePollFollowup({ ...poll, lastSlotEnd: "2026-11-22T09:00:00.000Z" }, new Date("2026-11-25T09:00:00.000Z")).due) throw new Error("Nach dem letzten Zeitslot darf nicht mehr erinnert werden");
+
+        const deadlineSoon = decidePollFollowup(
+          { ...poll, createdAt: "2026-11-25T06:00:00.000Z", deadline: "2026-11-25T20:00:00.000Z" },
+          new Date("2026-11-25T09:00:00.000Z"),
+        );
+        if (!deadlineSoon.due) throw new Error("Bei Frist in unter 24 Stunden muss einmalig erinnert werden");
+        const deadlineSoonAfterReminder = decidePollFollowup(
+          { ...poll, createdAt: "2026-11-25T06:00:00.000Z", deadline: "2026-11-25T20:00:00.000Z", followupCount: 1, lastFollowupAt: "2026-11-25T08:00:00.000Z" },
+          new Date("2026-11-25T09:00:00.000Z"),
+        );
+        if (deadlineSoonAfterReminder.due) throw new Error("Kurz vor der Frist darf nicht doppelt erinnert werden");
 
         const recipients = selectFollowupRecipients([
           { id: "1", email: "offen@example.com", hasResponded: false },

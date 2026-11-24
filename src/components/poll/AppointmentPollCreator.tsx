@@ -43,7 +43,12 @@ export const AppointmentPollCreator = ({ onClose }: { onClose: () => void }) => 
   // Form state
   const [title, setTitle] = useState('');
   const [description, setDescription] = useState('');
-  const [deadline, setDeadline] = useState<Date | undefined>();
+  // Vorbelegte Frist, damit eine Abstimmung nicht dauerhaft offen bleibt.
+  const [deadline, setDeadline] = useState<Date | undefined>(() => {
+    const inTwoWeeks = new Date();
+    inTwoWeeks.setDate(inTwoWeeks.getDate() + 14);
+    return inTwoWeeks;
+  });
   const [timeSlots, setTimeSlots] = useState<TimeSlot[]>([]);
   const [participants, setParticipants] = useState<Participant[]>([]);
   

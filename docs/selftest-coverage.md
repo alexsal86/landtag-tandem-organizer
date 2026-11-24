@@ -4,7 +4,7 @@ _Auto-generiert mit `npm run update:selftest-coverage`._
 
 Quelle: `src/integrations/supabase/types.ts`. Die Angaben beschreiben deklarierte Prüfumfänge, keine erfolgreichen Testläufe und keine Code-Coverage.
 
-Von 340 Tabellen haben 55 ein registriertes Szenario. 85 sind als Ausbau offen, 152 ausgenommen und 48 noch nicht eingeordnet. Ausnahmen zählen nicht als bestanden.
+Von 340 Tabellen haben 56 ein registriertes Szenario. 85 sind als Ausbau offen, 151 ausgenommen und 48 noch nicht eingeordnet. Ausnahmen zählen nicht als bestanden.
 
 ## Szenarien
 
@@ -33,7 +33,7 @@ Von 340 Tabellen haben 55 ein registriertes Szenario. 85 sind als Ausbau offen, 
 | `letter-lifecycle` | Brief-Lifecycle (Entwurf → Prüfung → Freigabe → Archiv und Folgeaufgabe) | letters, letter_attachments, documents, tasks |
 | `meeting-lifecycle` | Meeting-Lifecycle (vollständig + Field-Verifikation) | meetings, meeting_templates, meeting_protocol_details, meeting_protocol_addenda, meeting_agenda_items, meeting_agenda_documents, meeting_participants, appointments, tasks |
 | `onboarding-hr` | HR-Onboarding und Offboarding | employee_lifecycle, employee_hr_templates, routine_package_runs, routine_package_steps, employee_hr_evidence, employee_hr_gdpr_declarations, employee_hr_reminder_log, notification_types, notifications, tasks, subtasks |
-| `poll-lifecycle` | Terminabstimmung (Gewinner-Slot übernehmen + Nachfassen) | appointment_polls, poll_time_slots, poll_participants, appointments |
+| `poll-lifecycle` | Terminabstimmung (Gewinner-Slot übernehmen + Nachfassen) | appointment_polls, poll_time_slots, poll_participants, appointments, appointment_guests |
 | `quick-note-lifecycle` | Notizen-Lifecycle (Anlegen → Priorität → Anheften → Aufgabe → Archiv) | quick_notes, tasks, task_decisions, task_decision_participants |
 | `responsibilities` | Zuständigkeiten & Matrix | tasks |
 | `task-lifecycle` | Aufgaben-Lifecycle (Zuweisung → Frist → Entscheidung → Jour fixe → erledigt) | tasks, task_decisions |
@@ -56,7 +56,7 @@ Von 340 Tabellen haben 55 ein registriertes Szenario. 85 sind als Ausbau offen, 
 | `appointment_documents` | Ausgenommen (nicht geprüft) | — |
 | `appointment_feedback` | Szenario vorhanden | appointment-lifecycle |
 | `appointment_feedback_settings` | Ausgenommen (nicht geprüft) | — |
-| `appointment_guests` | Ausgenommen (nicht geprüft) | — |
+| `appointment_guests` | Szenario vorhanden | poll-lifecycle |
 | `appointment_locations` | Ausgenommen (nicht geprüft) | — |
 | `appointment_polls` | Szenario vorhanden | poll-lifecycle |
 | `appointment_preparation_documents` | Ausgenommen (nicht geprüft) | — |
@@ -430,6 +430,7 @@ Diese Manifeste sind keine Messung ausgeführter Assertions.
 - poll-lifecycle: `appointment_polls`: title, description, deadline, status, user_id, tenant_id, confirmed_slot_id, confirmed_appointment_id
 - poll-lifecycle: `poll_time_slots`: poll_id, start_time, end_time, order_index
 - poll-lifecycle: `poll_participants`: poll_id, email, name, is_external, token
+- poll-lifecycle: `appointment_guests`: appointment_id, tenant_id, name, email, status
 - poll-lifecycle: `appointments`: title, description, start_time, end_time, category, status, priority, user_id, tenant_id, poll_id
 - quick-note-lifecycle: `quick_notes`: title, content, user_id, tenant_id, priority_level, color, category, tags, is_pinned, task_id, is_archived, archived_at
 - quick-note-lifecycle: `tasks`: title, description, user_id, tenant_id, status, priority

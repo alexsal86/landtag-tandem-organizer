@@ -115,7 +115,6 @@ export const IGNORED_TABLES: string[] = [
   // Verknüpfungstabellen (ohne eigenes Szenario nicht als geprüft zählen)
   "appointment_contacts",
   "appointment_documents",
-  "appointment_guests",
   "appointment_topics",
   "appointment_preparation_documents",
   "appointment_preparation_templates",

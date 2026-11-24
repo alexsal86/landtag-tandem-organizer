@@ -4,6 +4,16 @@ import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/com
 import { Button } from '@/components/ui/button';
 import { Badge } from '@/components/ui/badge';
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from '@/components/ui/table';
+import {
+  AlertDialog,
+  AlertDialogAction,
+  AlertDialogCancel,
+  AlertDialogContent,
+  AlertDialogDescription,
+  AlertDialogFooter,
+  AlertDialogHeader,
+  AlertDialogTitle,
+} from '@/components/ui/alert-dialog';
 import { CalendarIcon, Clock, Users, Check, AlertCircle, X, Trophy, Mail, CheckCircle2 } from 'lucide-react';
 import { format } from 'date-fns';
 import { de } from 'date-fns/locale';
@@ -69,6 +79,8 @@ export const PollResultsDashboard = ({ pollId, onConfirmSlot }: PollResultsDashb
   const [creatorName, setCreatorName] = useState<string>('');
   const [confirmedSlot, setConfirmedSlot] = useState<TimeSlot | null>(null);
   const [confirmedAppointmentId, setConfirmedAppointmentId] = useState<string | null>(null);
+  const [pendingSlotId, setPendingSlotId] = useState<string | null>(null);
+  const [confirming, setConfirming] = useState(false);
 
   useEffect(() => {
     const loadPollResults = async () => {
@@ -216,6 +228,24 @@ export const PollResultsDashboard = ({ pollId, onConfirmSlot }: PollResultsDashb
         description: "Der Gewinner-Slot wurde als Termin in den Kalender übernommen."
 });
 
+      // Externe Teilnehmer sind jetzt Gäste des Termins – Einladungen direkt senden.
+      if (typeof appointmentId === 'string' && appointmentId) {
+        const { data: invitation, error: invitationError } = await supabase.functions.invoke('send-appointment-invitation', {
+          body: { appointmentId, reason: 'manual' }
+        });
+        const sentCount = Number((invitation as { sent?: number } | null)?.sent ?? 0);
+
+        if (invitationError) {
+          notify.error("Einladungen nicht versendet", {
+            description: "Der Termin wurde angelegt, die Einladungen an die übernommenen Gäste konnten aber nicht versendet werden."
+          });
+        } else if (sentCount > 0) {
+          notify.success("Einladungen versendet", {
+            description: `${sentCount} Einladung(en) gingen an die übernommenen Gäste.`
+          });
+        }
+      }
+
       if (onConfirmSlot) {
         onConfirmSlot(slotId);
       }
@@ -282,6 +312,11 @@ export const PollResultsDashboard = ({ pollId, onConfirmSlot }: PollResultsDashb
   const responseRate = participants.length > 0 
     ? Math.round((slotResults[0]?.responses.length || 0) / participants.length * 100)
     : 0;
+
+  const pendingResult = pendingSlotId
+    ? slotResults.find(result => result.timeSlot.id === pendingSlotId)
+    : undefined;
+  const pendingIsTop = Boolean(pendingResult && slotResults[0]?.timeSlot.id === pendingResult.timeSlot.id);
 
   return (
     <div className="space-y-6">
@@ -384,7 +419,7 @@ export const PollResultsDashboard = ({ pollId, onConfirmSlot }: PollResultsDashb
                       </div>
                       {poll.status === 'active' && (
                         <Button
-                          onClick={() => handleConfirmSlot(result.timeSlot.id)}
+                          onClick={() => setPendingSlotId(result.timeSlot.id)}
                           variant={index === 0 ? "default" : "outline"}
                         >
                           Termin bestätigen
@@ -481,6 +516,58 @@ export const PollResultsDashboard = ({ pollId, onConfirmSlot }: PollResultsDashb
           </Table>
         </CardContent>
       </Card>
+
+      <AlertDialog open={Boolean(pendingSlotId)} onOpenChange={(open) => !open && setPendingSlotId(null)}>
+        <AlertDialogContent>
+          <AlertDialogHeader>
+            <AlertDialogTitle>Termin verbindlich übernehmen?</AlertDialogTitle>
+            <AlertDialogDescription>
+              {pendingResult && (
+                <>
+                  {format(new Date(pendingResult.timeSlot.start_time), 'dd. MMMM yyyy', { locale: de })} von{' '}
+                  {format(new Date(pendingResult.timeSlot.start_time), 'HH:mm')} bis{' '}
+                  {format(new Date(pendingResult.timeSlot.end_time), 'HH:mm')} Uhr. {pendingResult.responses.length} von{' '}
+                  {pendingResult.total} Teilnehmern haben geantwortet.
+                </>
+              )}
+            </AlertDialogDescription>
+          </AlertDialogHeader>
+
+          {(pendingResult?.responses.length ?? 0) === 0 ? (
+            <p className="text-sm text-destructive">
+              Achtung: Für diesen Slot liegt noch keine Rückmeldung vor.
+            </p>
+          ) : !pendingIsTop ? (
+            <p className="text-sm text-destructive">
+              Achtung: Dieser Slot ist nicht die bestbewertete Option. Die Abstimmung wird mit dieser Auswahl abgeschlossen.
+            </p>
+          ) : (
+            <p className="text-sm text-muted-foreground">
+              Der Slot ist die bestbewertete Option. Die Abstimmung wird abgeschlossen und der Termin im Kalender angelegt.
+            </p>
+          )}
+
+          <p className="text-sm text-muted-foreground">
+            Externe Teilnehmer werden als Gäste übernommen und direkt eingeladen.
+          </p>
+
+          <AlertDialogFooter>
+            <AlertDialogCancel>Abbrechen</AlertDialogCancel>
+            <AlertDialogAction
+              disabled={confirming}
+              onClick={async () => {
+                if (!pendingSlotId) return;
+                setConfirming(true);
+                await handleConfirmSlot(pendingSlotId);
+                setConfirming(false);
+                setPendingSlotId(null);
+              }}
+            >
+              {confirming ? 'Übernehme…' : 'Termin anlegen'}
+            </AlertDialogAction>
+          </AlertDialogFooter>
+        </AlertDialogContent>
+      </AlertDialog>
     </div>
   );
 };

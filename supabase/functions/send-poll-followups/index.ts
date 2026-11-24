@@ -97,6 +97,12 @@ const handler = async (req: Request): Promise<Response> => {
     .in("poll_id", pollIds);
   if (responsesError) throw responsesError;
 
+  const { data: slotData, error: slotsError } = await supabase
+    .from("poll_time_slots")
+    .select("poll_id, end_time")
+    .in("poll_id", pollIds);
+  if (slotsError) throw slotsError;
+
   const participants = (participantData ?? []) as ParticipantRow[];
   const results: Array<Record<string, unknown>> = [];
   let dispatched = 0;
@@ -110,6 +116,14 @@ const handler = async (req: Request): Promise<Response> => {
         .map((row: { participant_id: string }) => row.participant_id),
     );
 
+    // Sind alle Zeitslots vorbei, ist keine Antwort mehr sinnvoll.
+    const lastSlotEnd = (slotData ?? [])
+      .filter((slot: { poll_id: string }) => slot.poll_id === poll.id)
+      .reduce<string | null>((latest, slot: { end_time: string }) => {
+        if (!latest) return slot.end_time;
+        return Date.parse(slot.end_time) > Date.parse(latest) ? slot.end_time : latest;
+      }, null);
+
     const decision = decidePollFollowup(
       {
         status: poll.status,
@@ -119,6 +133,7 @@ const handler = async (req: Request): Promise<Response> => {
         lastFollowupAt: poll.last_followup_at,
         participantCount: pollParticipants.length,
         respondingCount: pollParticipants.filter((participant) => responded.has(participant.id)).length,
+        lastSlotEnd,
       },
       now,
     );

@@ -45,7 +45,7 @@ export const pollLifecycleScenario: TestScenario = {
   title: "Terminabstimmung (Gewinner-Slot übernehmen + Nachfassen)",
   description:
     "Legt eine Abstimmung mit Slots und Teilnehmern an und übernimmt den Gewinner-Slot über confirm_poll_winner. Prüft, dass nur die erstellende Person übernehmen darf, fremde Slots abgelehnt werden und ein zweiter Aufruf denselben Termin liefert.",
-  touches: ["appointment_polls", "poll_time_slots", "poll_participants", "appointments"],
+  touches: ["appointment_polls", "poll_time_slots", "poll_participants", "appointments", "appointment_guests"],
   features: ["appointments"],
   writes: [
     {
@@ -54,6 +54,7 @@ export const pollLifecycleScenario: TestScenario = {
     },
     { table: "poll_time_slots", columns: ["poll_id", "start_time", "end_time", "order_index"] },
     { table: "poll_participants", columns: ["poll_id", "email", "name", "is_external", "token"] },
+    { table: "appointment_guests", columns: ["appointment_id", "tenant_id", "name", "email", "status"] },
     {
       table: "appointments",
       columns: ["title", "description", "start_time", "end_time", "category", "status", "priority", "user_id", "tenant_id", "poll_id"],
@@ -62,6 +63,7 @@ export const pollLifecycleScenario: TestScenario = {
   checks: [
     "confirm_poll_winner legt genau einen Termin an und verknüpft ihn mit der Abstimmung",
     "Zweiter Aufruf (gleicher und anderer Slot) liefert denselben Termin",
+    "Externe Teilnehmer werden als Gäste am Termin angelegt, interne nicht",
     "Fremde Slots und unbekannte Abstimmungen werden abgelehnt",
     "Fremde Abstimmungen im Mandanten können nicht übernommen werden",
     "get_poll_availability verweigert fremde Mandanten",
@@ -168,6 +170,19 @@ export const pollLifecycleScenario: TestScenario = {
         if (poll.confirmed_slot_id !== firstSlotId) return { ok: false, message: "Abstimmung muss den Gewinner-Slot speichern." };
         if (poll.confirmed_appointment_id !== appointmentId) return { ok: false, message: "Abstimmung muss den erzeugten Termin speichern." };
         if (appointment.tenant_id !== poll.tenant_id) return { ok: false, message: "Termin und Abstimmung müssen im selben Mandanten liegen." };
+
+        const { data: guestRows, error: guestError } = await supabase
+          .from("appointment_guests")
+          .select("id, email, status")
+          .eq("appointment_id", appointmentId);
+        if (guestError) return { ok: false, message: `Gäste: ${describeError(guestError)}` };
+        (guestRows ?? []).forEach((guest) => ctx.trackRecord({ table: "appointment_guests", id: guest.id }));
+        const externalGuest = guestRows?.find((guest) => guest.email.includes(`selbsttest-gast-${ctx.runId}`));
+        if (!externalGuest) return { ok: false, message: "Externe Teilnehmer müssen als Gäste am Termin hängen." };
+        if (externalGuest.status !== "pending") return { ok: false, message: `Gast muss auf 'pending' stehen (ist: ${externalGuest.status}).` };
+        if (guestRows?.some((guest) => guest.email.includes(`selbsttest-intern-${ctx.runId}`))) {
+          return { ok: false, message: "Interne Teilnehmer dürfen nicht als externe Gäste angelegt werden." };
+        }
 
         return {
           ok: true,
