@@ -107,14 +107,15 @@ function DashboardWidgetContainer({
 }
 
 function DeadlinesWidget() {
-  const { items, grouped, isLoading, isError } = useDashboardDeadlines();
+  const { items, grouped, isLoading, isError, refetch } = useDashboardDeadlines();
 
   return (
     <DashboardWidgetContainer
       icon={ClipboardList} title="Fristen" animationDelay={60}
       isLoading={isLoading}
       hasError={isError}
-      errorMessage="Fristen konnten nicht geladen werden."
+      onRetry={refetch}
+      errorMessage="Fristen konnten nicht geladen werden. Das heißt nicht, dass nichts ansteht."
     >
       <DashboardTasksSection items={items} grouped={grouped} />
     </DashboardWidgetContainer>

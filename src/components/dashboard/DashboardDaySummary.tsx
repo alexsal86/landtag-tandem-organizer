@@ -1,4 +1,6 @@
 import { needsOwnDecision } from "@/components/my-work/decisions/types";
+import { RefreshCw } from "lucide-react";
+import { Button } from "@/components/ui/button";
 import { useEffect, useMemo, useState } from "react";
 import { useQuery } from "@tanstack/react-query";
 import { useAuth } from "@/hooks/useAuth";
@@ -58,6 +60,12 @@ export function DashboardDaySummary() {
     return <p className="text-title font-normal text-muted-foreground" role="status">Dein Tagesüberblick wird geladen…</p>;
   }
   const pendingDecisions = decisions.decisions.filter(decision => needsOwnDecision(decision)).length;
+  const hasError = schedule.isError || Boolean(decisions.error) || feedback.isError;
+  const retryAll = () => {
+    void schedule.refetch();
+    void decisions.refetch();
+    feedback.refetch();
+  };
   const emphasize = (text: string) => text.split(/(„[^“]+“|(?:[Ee]ine?|\d+) (?:Termine?|Entscheidung(?:en)?|Rückmeldungen?|Briefings?))/g)
     .map((part, index) => index % 2 ? <strong key={index} className="font-medium text-foreground">{part}</strong> : part);
   return (
@@ -65,6 +73,12 @@ export function DashboardDaySummary() {
       <p>{schedule.isError ? "Termine konnten nicht geladen werden." : emphasize(appointmentSummary(scheduleEvents, now))}</p>
       <p>{decisions.error || feedback.isError ? "Offene Entscheidungen und Rückmeldungen konnten nicht vollständig geladen werden."
         : emphasize(pendingSummary(pendingDecisions, feedback.pendingFeedbackCount))}</p>
+      {hasError && (
+        <Button size="sm" variant="outline" onClick={retryAll} className="mt-space-2xs">
+          <RefreshCw className="h-4 w-4 mr-space-2xs" aria-hidden="true" />
+          Erneut versuchen
+        </Button>
+      )}
     </div>
   );
 }
