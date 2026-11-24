@@ -1,5 +1,8 @@
-import { canNudge, checklistEvents, isNudgeActive, shiftDay, isReminderDue, groupByZone, isOnResubmission, stafetteEvents, taskZone, type StafetteTask } from "@/features/tasks/stafette";
+import { canNudge, checklistEvents, isNudgeActive, shiftDay, isReminderDue, groupByZone, isOnResubmission, parseTaskBatchPreview, parseTaskCommand, slaLevel, stafetteEvents, taskZone, weekReview, type StafetteTask } from "@/features/tasks/stafette";
 import { TASK_TEMPLATES, buildTemplateRows, nextRecurrenceDate, subtaskProgress, taskTemplateFromAutomationRule, validateTaskTemplate } from "@/features/tasks/templates";
+import { supabase } from "@/integrations/supabase/client";
+import { SELFTEST_MARKER, SELFTEST_PREFIX } from "../runner";
+import { describeError } from "../verify";
 import type { TestScenario } from "../types";
 
 const NOW = new Date(2026, 10, 7, 12);
@@ -10,9 +13,20 @@ export const taskStafetteLifecycleScenario: TestScenario = {
   title: "Aufgaben-Stafette (Am Zug, Wiedervorlage, Freigabe)",
   description: "Spielt den Weg einer Aufgabe durch: Schritt festlegen, Wiedervorlage, Freigabe vorlegen, Rückgabe und Abschluss.",
   features: ["tasks"],
-  touches: [],
-  checks: ["Zonen Mein Zug / Wartet / Wiedervorlage", "Verlaufseinträge bei Übergaben und Erledigungen"],
-  limitations: ["Prüft die Regeln ohne Datenbank; Speichern wird im Aufgaben-Lebenszyklus geprüft."],
+  touches: ["tasks", "task_batch_actions"],
+  checks: [
+    "Zonen Mein Zug / Wartet / Wiedervorlage",
+    "Verlaufseinträge bei Übergaben und Erledigungen",
+    "Sammelaktionen: Vorschau ohne erfundene Frist, ohne überschriebene Schritte, mit Rücknahme",
+    "Wochenreview, Eskalationsgründe, Einzeiler-Befehle und SLA-Stufen als reine Regeln",
+  ],
+  limitations: [
+    "Regeln laufen ohne Datenbank; die Sammelaktionen werden zusätzlich über die RPCs geprüft.",
+    "Weitere Speicherungen deckt der Aufgaben-Lebenszyklus ab.",
+  ],
+  writes: [
+    { table: "tasks", columns: ["title", "description", "status", "priority", "tenant_id", "user_id", "ball_owner", "ball_assignee_id", "next_action", "next_action_due", "timeline"] },
+  ],
   steps: [
     {
       id: "nudge", label: "Anstupsen: Empfänger sieht Aufgabe oben, 24h-Limit", kind: "logic",
@@ -122,6 +136,107 @@ export const taskStafetteLifecycleScenario: TestScenario = {
         const prog = subtaskProgress([{ status: "completed" }, { status: "todo" }]);
         const ok = children.length > 0 && children.every((c) => c.parent_task_id === parent.id) && prog.percent === 50;
         return { ok, message: ok ? "Vorlage & Fortschritt korrekt." : "Vorlage weicht ab." };
+      },
+    },
+    {
+      id: "week-review", label: "Wochenreview findet fehlende Schritte, namenlose Bälle, Stille und Duplikate", kind: "logic",
+      run: async () => {
+        const review = weekReview([
+          { id: "1", title: "Antrag zur Schulpolitik prüfen", next_action: null, created_at: new Date(2026, 9, 1).toISOString() },
+          { id: "2", title: "Antrag zur Schulpolitik prüfen", next_action: "Entwurf", created_at: new Date(2026, 9, 1).toISOString() },
+          { id: "3", title: "Erledigt", status: "completed" },
+        ], NOW);
+        const ok = review.noNextStep.length === 1
+          && review.noBallPerson.length === 2
+          && review.stalled.length === 2
+          && review.duplicates.length === 1
+          && review.escalate.length === 2;
+        return { ok, message: ok ? "Review ordnet die Altlasten korrekt ein." : "Review-Zuordnung weicht ab.", details: review };
+      },
+    },
+    {
+      id: "task-command", label: "Einzeiler-Befehle und SLA-Stufen", kind: "logic",
+      run: async () => {
+        const due = parseTaskCommand("frist +1w");
+        const ok = due?.kind === "due"
+          && due.days === 7
+          && parseTaskCommand("an Max")?.kind === "assign"
+          && parseTaskCommand("wartet auf Ministerium")?.kind === "wait"
+          && parseTaskCommand("erledigt")?.kind === "complete"
+          && parseTaskCommand("kein Befehl") === null
+          && slaLevel(7) === "critical" && slaLevel(3) === "warn" && slaLevel(0) === "ok";
+        return { ok, message: ok ? "Befehle und SLA-Schwellen korrekt." : "Befehlsparser weicht ab." };
+      },
+    },
+    {
+      id: "batch-create", label: "Sammelaktion: Aufgabe ohne Frist wird übersprungen", kind: "db",
+      run: async (ctx) => {
+        const { data: created, error: createError } = await supabase.from("tasks").insert({
+          title: `${SELFTEST_PREFIX} Sammelaktion (${ctx.runId})`,
+          description: SELFTEST_MARKER,
+          status: "todo",
+          priority: "medium",
+          user_id: ctx.userId,
+          tenant_id: ctx.tenantId,
+          ball_owner: "office",
+          ball_assignee_id: ctx.userId,
+          next_action: "Entwurf schreiben",
+          next_action_due: null,
+        }).select("id").single();
+        if (createError || !created) return { ok: false, message: describeError(createError) };
+        ctx.trackRecord({ table: "tasks", id: created.id });
+        ctx.data.batchTaskId = created.id;
+        const { data, error } = await supabase.rpc("batch_task_stafette_preview", {
+          _tenant_id: ctx.tenantId, _task_ids: [created.id], _action: "week",
+        });
+        if (error) return { ok: false, message: describeError(error) };
+        const preview = parseTaskBatchPreview(data);
+        const item = preview?.items[0];
+        const ok = !!preview && preview.affected === 0 && preview.skipped === 1 && item?.reason === "keine Frist gesetzt";
+        return { ok, message: ok ? "Aufgabe ohne Frist wird übersprungen statt mit einer erfundenen Frist versehen." : "Vorschau weicht ab.", details: preview };
+      },
+    },
+    {
+      id: "batch-keeps-step", label: "Sammelaktion: Freigabe behält den vorhandenen nächsten Schritt", kind: "db",
+      run: async (ctx) => {
+        const { data, error } = await supabase.rpc("batch_task_stafette_preview", {
+          _tenant_id: ctx.tenantId, _task_ids: [ctx.data.batchTaskId as string], _action: "deputy",
+        });
+        if (error) return { ok: false, message: describeError(error) };
+        const preview = parseTaskBatchPreview(data);
+        const item = preview?.items[0];
+        const ok = !!item && (!item.eligible ? item.reason === "kein Abgeordnetenprofil im Büro" : item.after === "Entwurf schreiben");
+        return { ok, message: ok ? "Ein vorhandener nächster Schritt bleibt erhalten." : "Der nächste Schritt würde überschrieben.", details: preview };
+      },
+    },
+    {
+      id: "batch-undo", label: "Sammelaktion: Frist +1 Woche samt Rücknahme", kind: "db",
+      run: async (ctx) => {
+        const id = ctx.data.batchTaskId as string;
+        const base = new Date();
+        base.setDate(base.getDate() + 3);
+        const dueDay = `${base.getFullYear()}-${String(base.getMonth() + 1).padStart(2, "0")}-${String(base.getDate()).padStart(2, "0")}`;
+        const { error: setError } = await supabase.from("tasks").update({ next_action_due: dueDay }).eq("id", id);
+        if (setError) return { ok: false, message: describeError(setError) };
+        const { data, error } = await supabase.rpc("batch_task_stafette_action", {
+          _tenant_id: ctx.tenantId, _task_ids: [id], _action: "week",
+        });
+        if (error) return { ok: false, message: describeError(error) };
+        const result = data as { batch_id?: string | null; affected?: number; skipped?: number } | null;
+        if (!result?.batch_id || result.affected !== 1) return { ok: false, message: "Sammelaktion hat nichts geändert.", details: result };
+        const shifted = new Date(base);
+        shifted.setDate(shifted.getDate() + 7);
+        const expected = `${shifted.getFullYear()}-${String(shifted.getMonth() + 1).padStart(2, "0")}-${String(shifted.getDate()).padStart(2, "0")}`;
+        const { data: shiftedRow } = await supabase.from("tasks").select("next_action_due,next_action").eq("id", id).single();
+        const { data: restoredCount, error: undoError } = await supabase.rpc("undo_task_batch_action", { _batch_id: result.batch_id });
+        if (undoError) return { ok: false, message: describeError(undoError) };
+        const { data: restoredRow } = await supabase.from("tasks").select("next_action_due,next_action").eq("id", id).single();
+        const ok = shiftedRow?.next_action_due === expected
+          && shiftedRow?.next_action === "Entwurf schreiben"
+          && restoredRow?.next_action_due === dueDay
+          && restoredRow?.next_action === "Entwurf schreiben"
+          && restoredCount === 1;
+        return { ok, message: ok ? "Frist verschoben und vollständig zurückgenommen." : "Frist oder Rücknahme weicht ab.", details: { dueDay, expected, shiftedRow, restoredRow, restoredCount } };
       },
     },
   ],

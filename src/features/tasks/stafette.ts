@@ -11,6 +11,10 @@ export const TASK_BALL_LABELS: Record<TaskBallOwner, string> = {
 export interface StafetteTask {
   ball_owner?: string | null;
   ball_assignee_id?: string | null;
+  ball_external_label?: string | null;
+  ball_handed_at?: string | null;
+  created_at?: string | null;
+  completed_at?: string | null;
   stafette_resume_on?: string | null;
   user_id?: string;
   next_action?: string | null;
@@ -167,6 +171,233 @@ export function checklistProgress(items: ChecklistItem[]): { done: number; total
 export function checklistEvents(before: ChecklistItem[], after: ChecklistItem[]): string[] {
   const was = new Map(before.map((i) => [i.id, i.done]));
   return after.filter((i) => i.done && !was.get(i.id)).map((i) => `Checkpunkt erledigt: „${i.text}“`);
+}
+
+export type TaskBatchAction = "deputy" | "week" | "nudge";
+
+export const TASK_BATCH_LABELS: Record<TaskBatchAction, string> = {
+  deputy: "Zur Freigabe vorlegen",
+  week: "Frist +1 Woche",
+  nudge: "Anstupsen",
+};
+
+/** Upper bound that matches the check inside batch_task_stafette_action. */
+export const TASK_BATCH_LIMIT = 200;
+
+export interface TaskBatchItem {
+  task_id: string;
+  title: string | null;
+  eligible: boolean;
+  reason: string | null;
+  before: string | null;
+  after: string | null;
+}
+
+export interface TaskBatchPreview {
+  action: TaskBatchAction;
+  total: number;
+  affected: number;
+  skipped: number;
+  items: TaskBatchItem[];
+}
+
+const asText = (value: unknown) => (typeof value === "string" && value.trim() ? value : null);
+
+/** Counts always come from the rows themselves, so a summary can never promise more than it shows. */
+export function taskBatchPreview(action: TaskBatchAction, items: TaskBatchItem[]): TaskBatchPreview {
+  return {
+    action,
+    total: items.length,
+    affected: items.filter((item) => item.eligible).length,
+    skipped: items.filter((item) => !item.eligible).length,
+    items,
+  };
+}
+
+/** Reads the JSON of batch_task_stafette_preview; returns null for unexpected shapes. */
+export function parseTaskBatchPreview(raw: unknown): TaskBatchPreview | null {
+  if (!raw || typeof raw !== "object") return null;
+  const data = raw as Record<string, unknown>;
+  if (data.action !== "deputy" && data.action !== "week" && data.action !== "nudge") return null;
+  const items = Array.isArray(data.items)
+    ? data.items.flatMap((entry): TaskBatchItem[] => {
+        if (!entry || typeof entry !== "object") return [];
+        const item = entry as Record<string, unknown>;
+        if (typeof item.task_id !== "string") return [];
+        return [{
+          task_id: item.task_id,
+          title: asText(item.title),
+          eligible: item.eligible === true,
+          reason: asText(item.reason),
+          before: asText(item.before),
+          after: asText(item.after),
+        }];
+      })
+    : [];
+  return taskBatchPreview(data.action, items);
+}
+
+/** „5 Aufgaben, 2 werden übersprungen“ – the honest summary before anything is written. */
+export function batchPreviewSummary(preview: TaskBatchPreview): string {
+  const tasks = `${preview.total} ${preview.total === 1 ? "Aufgabe" : "Aufgaben"}`;
+  if (preview.skipped === 0) return `${tasks} ${preview.total === 1 ? "wird" : "werden"} bearbeitet`;
+  return `${tasks}, ${preview.skipped} ${preview.skipped === 1 ? "wird" : "werden"} übersprungen`;
+}
+
+/** Skip reasons grouped, so the dialog explains instead of just counting. */
+export function groupBatchSkips(items: TaskBatchItem[]): Array<{ reason: string; count: number }> {
+  const counts = new Map<string, number>();
+  for (const item of items) {
+    if (item.eligible) continue;
+    const reason = item.reason ?? "nicht möglich";
+    counts.set(reason, (counts.get(reason) ?? 0) + 1);
+  }
+  return [...counts.entries()]
+    .map(([reason, count]) => ({ reason, count }))
+    .sort((a, b) => b.count - a.count || a.reason.localeCompare(b.reason));
+}
+
+/** One line per change, showing what actually happens to the task. */
+export function describeBatchItem(item: TaskBatchItem, action: TaskBatchAction): string {
+  if (action === "week") return item.before && item.after ? `Frist ${item.before} → ${item.after}` : "Frist verschieben";
+  if (action === "deputy") return item.before ? `Schritt bleibt: „${item.before}“` : `Nächster Schritt: „${item.after ?? "Freigabe prüfen"}“`;
+  return "Wird bei der zuständigen Person oben einsortiert";
+}
+
+export interface BallLabel {
+  owner: TaskBallOwner;
+  label: string;
+  /** True when the ball sits in the office but no person is named. */
+  needsPerson: boolean;
+}
+
+/** "Büro (keine Person)" instead of pretending a personal ball for everyone. */
+export function ballAssigneeLabel(task: StafetteTask, nameOf?: (id: string) => string | undefined): BallLabel {
+  const owner = (task.ball_owner ?? "office") as TaskBallOwner;
+  if (owner === "external") {
+    return { owner, label: task.ball_external_label?.trim() || TASK_BALL_LABELS.external, needsPerson: false };
+  }
+  const hasPerson = !!task.ball_assignee_id;
+  const name = hasPerson ? nameOf?.(task.ball_assignee_id!)?.trim() : undefined;
+  if (owner === "deputy") return { owner, label: name || TASK_BALL_LABELS.deputy, needsPerson: false };
+  return { owner, label: name ?? (hasPerson ? TASK_BALL_LABELS.office : "Büro (keine Person)"), needsPerson: !hasPerson };
+}
+
+const DAY_MS = 86_400_000;
+export const TASK_STALLED_DAYS = 14;
+
+/** Days since the ball moved (fall back to creation) – the honest waiting time. */
+export function daysWaiting(task: StafetteTask, now: Date = new Date()): number {
+  const stamp = task.ball_handed_at ?? task.created_at;
+  if (!stamp) return 0;
+  const time = new Date(stamp).getTime();
+  if (Number.isNaN(time)) return 0;
+  return Math.max(0, Math.floor((now.getTime() - time) / DAY_MS));
+}
+
+/** A task without movement for two weeks is silent, not "in Arbeit". */
+export function isStalledTask(task: StafetteTask, now: Date = new Date(), days: number = TASK_STALLED_DAYS): boolean {
+  if (task.status === "completed") return false;
+  const stamp = task.ball_handed_at ?? task.created_at;
+  if (!stamp) return false;
+  const time = new Date(stamp).getTime();
+  if (Number.isNaN(time)) return false;
+  return now.getTime() - time > days * DAY_MS;
+}
+
+/** Escalation reason: two unanswered nudges, or a stalled task. */
+export function escalationFor(task: StafetteTask, now: Date = new Date()): string | null {
+  if (task.status === "completed") return null;
+  const nudges = task.nudge_count ?? 0;
+  if (nudges >= 2 && isNudgeActive(task)) return `${nudges}× angestupst, keine Reaktion`;
+  if (isStalledTask(task, now)) return `seit ${daysWaiting(task, now)} Tagen ohne Bewegung`;
+  return null;
+}
+
+export interface WeekReview<T extends StafetteTask & { id: string; title: string }> {
+  noNextStep: T[];
+  noBallPerson: T[];
+  stalled: T[];
+  duplicates: Array<{ title: string; tasks: T[] }>;
+  escalate: Array<{ task: T; reason: string }>;
+}
+
+/** The weekly cleanup list: missing next steps, unnamed balls, silence, duplicates. */
+export function weekReview<T extends StafetteTask & { id: string; title: string }>(tasks: T[], now: Date = new Date()): WeekReview<T> {
+  const open = tasks.filter((task) => task.status !== "completed");
+  const noNextStep = open.filter((task) => stepState(task) === "unset");
+  const noBallPerson = open.filter((task) => ballAssigneeLabel(task).needsPerson);
+  const stalled = open.filter((task) => isStalledTask(task, now));
+  const groups = new Map<string, T[]>();
+  for (const task of open) {
+    const key = task.title.trim().toLocaleLowerCase("de").replace(/\s+/g, " ");
+    if (key.length < 8) continue;
+    groups.set(key, [...(groups.get(key) ?? []), task]);
+  }
+  const duplicates = [...groups.values()]
+    .filter((group) => group.length > 1)
+    .map((group) => ({ title: group[0].title.trim(), tasks: group }))
+    .sort((a, b) => a.title.localeCompare(b.title, "de"));
+  const escalate = open.flatMap((task) => {
+    const reason = escalationFor(task, now);
+    return reason ? [{ task, reason }] : [];
+  });
+  return { noNextStep, noBallPerson, stalled, duplicates, escalate };
+}
+
+export type SlaLevel = "ok" | "warn" | "critical";
+
+/** Approval waiting time: three days is noticeable, seven is the bottleneck. */
+export function slaLevel(days: number): SlaLevel {
+  if (days >= 7) return "critical";
+  if (days >= 3) return "warn";
+  return "ok";
+}
+
+export type TaskCommand =
+  | { kind: "due"; days: number }
+  | { kind: "assign"; query: string }
+  | { kind: "wait"; text: string }
+  | { kind: "priority"; priority: "high" | "medium" | "low" }
+  | { kind: "complete" };
+
+/** One-line task commands ("frist +1w", "an Max", "wartet auf Ministerium"). */
+export function parseTaskCommand(input: string): TaskCommand | null {
+  const text = input.trim();
+  if (!text) return null;
+  const relative = /^frist\s*\+?\s*(\d+)\s*(t|tag|tage|w|woche|wochen)?$/i.exec(text);
+  if (relative) {
+    const amount = Number(relative[1]);
+    if (!Number.isFinite(amount) || amount < 0 || amount > 365) return null;
+    const unit = (relative[2] ?? "t").toLowerCase();
+    return { kind: "due", days: unit.startsWith("w") ? amount * 7 : amount };
+  }
+  if (/^frist\s+(heute|morgen)$/i.test(text)) return { kind: "due", days: /morgen/i.test(text) ? 1 : 0 };
+  const assign = /^an\s+(.{2,})$/i.exec(text);
+  if (assign) return { kind: "assign", query: assign[1].trim() };
+  const wait = /^wartet auf\s+(.{2,})$/i.exec(text);
+  if (wait) return { kind: "wait", text: wait[1].trim() };
+  const priority = /^(?:prio|priorität)\s+(hoch|mittel|niedrig)$/i.exec(text);
+  if (priority) {
+    const value = priority[1].toLowerCase();
+    return { kind: "priority", priority: value === "hoch" ? "high" : value === "mittel" ? "medium" : "low" };
+  }
+  if (/^(erledigt|fertig|abhaken)$/i.test(text)) return { kind: "complete" };
+  return null;
+}
+
+export function describeTaskCommand(command: TaskCommand, nameOf?: (query: string) => string | undefined): string {
+  if (command.kind === "due") {
+    if (command.days === 0) return "Frist auf heute setzen";
+    if (command.days === 1) return "Frist auf morgen setzen";
+    return `Frist in ${command.days} Tagen setzen`;
+  }
+  if (command.kind === "assign") return `Ball an ${nameOf?.(command.query) ?? command.query} übergeben`;
+  if (command.kind === "wait") return `Wartet auf ${command.text}`;
+  if (command.kind === "priority") {
+    return `Priorität ${command.priority === "high" ? "hoch" : command.priority === "medium" ? "mittel" : "niedrig"}`;
+  }
+  return "Aufgabe abschließen";
 }
 
 /** Shift a YYYY-MM-DD date (or today, if empty) by n days. */

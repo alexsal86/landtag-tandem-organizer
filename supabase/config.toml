@@ -189,3 +189,6 @@ verify_jwt = true
 
 [functions.save-deputy-portrait]
 verify_jwt = true
+
+[functions.propose-task-from-intake]
+verify_jwt = true

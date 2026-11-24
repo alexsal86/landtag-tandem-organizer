@@ -74,3 +74,4 @@ Diese Matrix klassifiziert alle Supabase Edge Functions nach Sicherheitsmodell.
 | test-rss-feed | true | authenticated | Aktive Büro-Adminrolle; explizite tenant-Prüfung, öffentliche DNS-Adressen, Weiterleitungs-, Zeit- und Größenlimits. |
 
 | workflow-dispatcher | true | authenticated | Service-Role für Ausführung; angemeldete Büro-Admins mit Aktionsrecht dürfen explizite Dry-Runs ausführen. |
+| propose-task-from-intake | true | authenticated | JWT und requireAuth; erzeugt nur einen Aufgaben-Vorschlag aus Text, kein Datenbankzugriff; Längenlimit und AI-Ratenbegrenzung über die zentrale Client-Konfiguration. |

@@ -4,7 +4,7 @@ _Auto-generiert mit `npm run update:selftest-coverage`._
 
 Quelle: `src/integrations/supabase/types.ts`. Die Angaben beschreiben deklarierte Prüfumfänge, keine erfolgreichen Testläufe und keine Code-Coverage.
 
-Von 283 Tabellen haben 37 ein registriertes Szenario. 91 sind als Ausbau offen, 155 ausgenommen und 0 noch nicht eingeordnet. Ausnahmen zählen nicht als bestanden.
+Von 341 Tabellen haben 53 ein registriertes Szenario. 87 sind als Ausbau offen, 153 ausgenommen und 48 noch nicht eingeordnet. Ausnahmen zählen nicht als bestanden.
 
 ## Szenarien
 
@@ -13,24 +13,31 @@ Von 283 Tabellen haben 37 ein registriertes Szenario. 91 sind als Ausbau offen, 
 | `access-boundaries` | Zugriffsschutz (Bürogrenzen und Entscheiderrolle) | appointment_requests |
 | `admin-controls` | Adminregeln: Feldschutz, Aktionen, Export, Rücknahme und Feeds | Keine (reine Regeln) |
 | `annual-task-stafette` | Jahresaufgabe → Büroaufgabe → Jahresabschluss | annual_tasks, annual_task_completions, tasks |
-| `appointment-briefing-lifecycle` | Briefing-Lifecycle (vergeben → Aufgabe → vorlegen → freigeben) | appointments, tasks |
+| `appointment-briefing-lifecycle` | Briefing-Lifecycle (vergeben → Aufgabe → vorlegen → freigeben) | appointments, tasks, appointment_change_alerts |
 | `appointment-lifecycle` | Termin-Lifecycle (Kalender + Briefing + Feedback) | appointments, appointment_preparations, appointment_feedback |
 | `appointment-request-lifecycle` | Terminanfragen-Lifecycle (Eingang → Sperre → Entscheidung → Termin) | appointment_requests, appointments |
 | `case-item-lifecycle` | Vorgangs-Lifecycle (Am Zug → Schritt → Wiedervorlage → Entscheidung → Tageszettel → Abschluss) | case_items, case_item_interactions, case_item_handover_log, task_decisions, task_decision_participants, task_decision_responses, appointment_requests, day_slips, tasks |
 | `contact-lifecycle` | Kontakt-Lifecycle (Anlegen → Kategorie/Tags → Aktivität → Suche) | contacts, contact_activities |
 | `daily-briefing-lifecycle` | Tages-Briefings (Vortag-Regel) | daily_briefings |
 | `day-slip-lifecycle` | Tageszettel-Lifecycle (Links → Neuladen → Übernahme auf Folgetag) | day_slips |
-| `decision-lifecycle` | Entscheidungs-Lifecycle (active → open → archived) | task_decisions, task_decision_participants |
-| `document-annotation` | Dokument-Annotation | documents, document_annotations, document_annotation_tasks, tasks, task_assignees |
+| `decision-lifecycle` | Entscheidungs-Lifecycle (active → open → archived) | task_decisions, task_decision_participants, task_decision_responses |
+| `document-annotation` | Dokument-Annotation | documents, document_annotations, document_annotation_events, document_annotation_tasks, tasks, task_assignees |
 | `document-list` | Dokumente: Suche, Kategorien, Sortierung und Auswahl | Keine (reine Regeln) |
+| `election-analysis` | Wahlanalyse: Datenqualität und Vergleichbarkeit | Keine (reine Regeln) |
+| `election-deputy-reader` | Wahlanalyse: Abgeordnetenübersicht | Keine (reine Regeln) |
+| `election-history-workbench` | Wahldaten: Problemfälle und Landeslisten | Keine (reine Regeln) |
+| `election-map` | Wahlkreiskarte: Suche und Grenzdaten | Keine (reine Regeln) |
 | `event-planning-lifecycle` | Event-Planung (komplett: Termine, Speaker, Checkliste, Timeline) | event_plannings, event_planning_dates, event_planning_speakers, event_planning_contacts, event_planning_checklist_items, event_planning_timeline_assignments |
 | `jour-fixe-platform-integration` | Jour Fixe: Plattformquellen & Stafetten-Abschluss | meetings, meeting_agenda_items, tasks, task_decisions |
 | `knowledge-lifecycle` | Wissen: Fragen, Antworten und manuelle Prüfung | knowledge_questions, knowledge_question_events, knowledge_qa_notification_deliveries |
 | `letter-lifecycle` | Brief-Lifecycle (Entwurf → Prüfung → Freigabe → Archiv und Folgeaufgabe) | letters, letter_attachments, documents, tasks |
-| `meeting-lifecycle` | Meeting-Lifecycle (vollständig + Field-Verifikation) | meetings, meeting_agenda_items, meeting_agenda_documents, meeting_participants, appointments, tasks |
+| `meeting-lifecycle` | Meeting-Lifecycle (vollständig + Field-Verifikation) | meetings, meeting_templates, meeting_protocol_details, meeting_protocol_addenda, meeting_agenda_items, meeting_agenda_documents, meeting_participants, appointments, tasks |
+| `onboarding-hr` | HR-Onboarding und Offboarding | employee_lifecycle, employee_hr_templates, routine_package_runs, routine_package_steps, employee_hr_evidence, employee_hr_gdpr_declarations, employee_hr_reminder_log, notification_types, notifications, tasks, subtasks |
 | `quick-note-lifecycle` | Notizen-Lifecycle (Anlegen → Priorität → Anheften → Aufgabe → Archiv) | quick_notes, tasks, task_decisions, task_decision_participants |
+| `responsibilities` | Zuständigkeiten & Matrix | tasks |
 | `task-lifecycle` | Aufgaben-Lifecycle (Zuweisung → Frist → Entscheidung → Jour fixe → erledigt) | tasks, task_decisions |
-| `task-stafette-lifecycle` | Aufgaben-Stafette (Am Zug, Wiedervorlage, Freigabe) | Keine (reine Regeln) |
+| `task-stafette-lifecycle` | Aufgaben-Stafette (Am Zug, Wiedervorlage, Freigabe) | tasks, task_batch_actions |
+| `team-rituals` | Freiwillige Team-Rituale | Keine (reine Regeln) |
 | `workflow-rules` | Geschäftsregeln (Freigabe, Rollen, Fristen) | Keine (reine Regeln) |
 
 ## Tabellen
@@ -43,6 +50,7 @@ Von 283 Tabellen haben 37 ein registriertes Szenario. 91 sind als Ausbau offen, 
 | `annual_tasks` | Szenario vorhanden | annual-task-stafette |
 | `app_settings` | Ausgenommen (nicht geprüft) | — |
 | `appointment_categories` | Ausgenommen (nicht geprüft) | — |
+| `appointment_change_alerts` | Szenario vorhanden | appointment-briefing-lifecycle |
 | `appointment_contacts` | Ausgenommen (nicht geprüft) | — |
 | `appointment_documents` | Ausgenommen (nicht geprüft) | — |
 | `appointment_feedback` | Szenario vorhanden | appointment-lifecycle |
@@ -91,6 +99,7 @@ Von 283 Tabellen haben 37 ein registriertes Szenario. 91 sind als Ausbau offen, 
 | `case_items` | Szenario vorhanden | case-item-lifecycle |
 | `celebration_animations` | Ausgenommen (nicht geprüft) | — |
 | `celebration_settings` | Ausgenommen (nicht geprüft) | — |
+| `committees` | Einordnung fehlt | — |
 | `contact_activities` | Szenario vorhanden | contact-lifecycle |
 | `contact_briefing_memory` | Ausstehend | — |
 | `contact_topics` | Ausgenommen (nicht geprüft) | — |
@@ -98,6 +107,7 @@ Von 283 Tabellen haben 37 ein registriertes Szenario. 91 sind als Ausbau offen, 
 | `contacts` | Szenario vorhanden | contact-lifecycle |
 | `daily_briefing_reads` | Ausstehend | — |
 | `daily_briefings` | Szenario vorhanden | daily-briefing-lifecycle |
+| `dashboard_decision_nudges` | Einordnung fehlt | — |
 | `dashboard_layouts` | Ausgenommen (nicht geprüft) | — |
 | `data_lint_findings` | Ausgenommen (nicht geprüft) | — |
 | `day_slips` | Szenario vorhanden | case-item-lifecycle, day-slip-lifecycle |
@@ -109,6 +119,7 @@ Von 283 Tabellen haben 37 ein registriertes Szenario. 91 sind als Ausbau offen, 
 | `distribution_lists` | Ausstehend | — |
 | `district_notes` | Ausstehend | — |
 | `district_support_assignments` | Ausstehend | — |
+| `document_annotation_events` | Szenario vorhanden | document-annotation |
 | `document_annotation_tasks` | Szenario vorhanden | document-annotation |
 | `document_annotations` | Szenario vorhanden | document-annotation |
 | `document_categories` | Ausgenommen (nicht geprüft) | — |
@@ -126,17 +137,57 @@ Von 283 Tabellen haben 37 ein registriertes Szenario. 91 sind als Ausbau offen, 
 | `edge_function_cache` | Ausgenommen (nicht geprüft) | — |
 | `egress_anomalies` | Ausgenommen (nicht geprüft) | — |
 | `egress_metrics` | Ausgenommen (nicht geprüft) | — |
+| `election_analysis_bw_polls` | Einordnung fehlt | — |
+| `election_analysis_candidate_coverage` | Einordnung fehlt | — |
+| `election_analysis_candidates` | Einordnung fehlt | — |
+| `election_analysis_correction_audit` | Einordnung fehlt | — |
+| `election_analysis_demographics` | Einordnung fehlt | — |
+| `election_analysis_district_workbook_audit` | Einordnung fehlt | — |
+| `election_analysis_districts` | Einordnung fehlt | — |
+| `election_analysis_flow_matrix` | Einordnung fehlt | — |
+| `election_analysis_flows` | Einordnung fehlt | — |
+| `election_analysis_geographies` | Einordnung fehlt | — |
+| `election_analysis_local_results` | Einordnung fehlt | — |
+| `election_analysis_period_proposals` | Einordnung fehlt | — |
+| `election_analysis_scenarios` | Einordnung fehlt | — |
+| `election_analysis_source_reviews` | Einordnung fehlt | — |
+| `election_analysis_state` | Einordnung fehlt | — |
+| `election_analysis_state_totals` | Einordnung fehlt | — |
+| `election_analysis_turnout` | Einordnung fehlt | — |
+| `election_analysis_versions` | Einordnung fehlt | — |
+| `election_analysis_workbook_audit` | Einordnung fehlt | — |
+| `election_analysis_years` | Einordnung fehlt | — |
 | `election_district_municipalities` | Ausgenommen (nicht geprüft) | — |
 | `election_district_notes` | Ausgenommen (nicht geprüft) | — |
 | `election_districts` | Ausstehend | — |
+| `election_history_1952_result_sources` | Einordnung fehlt | — |
+| `election_history_assembly_issues` | Einordnung fehlt | — |
+| `election_history_audit` | Einordnung fehlt | — |
+| `election_history_candidacies` | Einordnung fehlt | — |
+| `election_history_candidate_workbook_audit` | Einordnung fehlt | — |
+| `election_history_connection_people` | Einordnung fehlt | — |
+| `election_history_districts` | Einordnung fehlt | — |
+| `election_history_factions` | Einordnung fehlt | — |
+| `election_history_mandate_birthdays` | Einordnung fehlt | — |
+| `election_history_mandates` | Einordnung fehlt | — |
+| `election_history_people` | Einordnung fehlt | — |
+| `election_history_periods` | Einordnung fehlt | — |
+| `election_history_state_list_entries` | Einordnung fehlt | — |
+| `election_history_state_lists` | Einordnung fehlt | — |
 | `election_representatives` | Ausstehend | — |
 | `email_logs` | Ausgenommen (nicht geprüft) | — |
 | `email_templates` | Ausgenommen (nicht geprüft) | — |
+| `employee_hr_evidence` | Szenario vorhanden | onboarding-hr |
+| `employee_hr_gdpr_declarations` | Szenario vorhanden | onboarding-hr |
+| `employee_hr_reminder_log` | Szenario vorhanden | onboarding-hr |
+| `employee_hr_templates` | Szenario vorhanden | onboarding-hr |
+| `employee_lifecycle` | Szenario vorhanden | onboarding-hr |
 | `employee_meeting_action_items` | Ausstehend | — |
 | `employee_meeting_audit` | Ausstehend | — |
 | `employee_meeting_private_notes` | Ausstehend | — |
 | `employee_meeting_requests` | Ausstehend | — |
 | `employee_meetings` | Ausstehend | — |
+| `employee_responsibilities` | Einordnung fehlt | — |
 | `employee_settings` | Ausgenommen (nicht geprüft) | — |
 | `employee_settings_history` | Ausgenommen (nicht geprüft) | — |
 | `employee_yearly_stats` | Ausgenommen (nicht geprüft) | — |
@@ -209,7 +260,9 @@ Von 283 Tabellen haben 37 ein registriertes Szenario. 91 sind als Ausbau offen, 
 | `meeting_agenda_documents` | Szenario vorhanden | meeting-lifecycle |
 | `meeting_agenda_items` | Szenario vorhanden | jour-fixe-platform-integration, meeting-lifecycle |
 | `meeting_participants` | Szenario vorhanden | meeting-lifecycle |
-| `meeting_templates` | Ausgenommen (nicht geprüft) | — |
+| `meeting_protocol_addenda` | Szenario vorhanden | meeting-lifecycle |
+| `meeting_protocol_details` | Szenario vorhanden | meeting-lifecycle |
+| `meeting_templates` | Szenario vorhanden | meeting-lifecycle |
 | `meetings` | Szenario vorhanden | jour-fixe-platform-integration, meeting-lifecycle |
 | `message_confirmations` | Ausgenommen (nicht geprüft) | — |
 | `message_recipients` | Ausgenommen (nicht geprüft) | — |
@@ -217,8 +270,8 @@ Von 283 Tabellen haben 37 ein registriertes Szenario. 91 sind als Ausbau offen, 
 | `mobile_push_tokens` | Ausgenommen (nicht geprüft) | — |
 | `news_email_templates` | Ausgenommen (nicht geprüft) | — |
 | `notification_navigation_mapping` | Ausgenommen (nicht geprüft) | — |
-| `notification_types` | Ausgenommen (nicht geprüft) | — |
-| `notifications` | Ausstehend | — |
+| `notification_types` | Szenario vorhanden | onboarding-hr |
+| `notifications` | Szenario vorhanden | onboarding-hr |
 | `parliament_protocols` | Ausstehend | — |
 | `party_associations` | Ausstehend | — |
 | `planning_item_comments` | Ausgenommen (nicht geprüft) | — |
@@ -244,8 +297,9 @@ Von 283 Tabellen haben 37 ein registriertes Szenario. 91 sind als Ausbau offen, 
 | `quick_note_versions` | Ausgenommen (nicht geprüft) | — |
 | `quick_note_write_receipts` | Ausgenommen (nicht geprüft) | — |
 | `quick_notes` | Szenario vorhanden | quick-note-lifecycle |
-| `routine_package_runs` | Ausstehend | — |
-| `routine_package_steps` | Ausstehend | — |
+| `regions` | Einordnung fehlt | — |
+| `routine_package_runs` | Szenario vorhanden | onboarding-hr |
+| `routine_package_steps` | Szenario vorhanden | onboarding-hr |
 | `rss_cache` | Ausgenommen (nicht geprüft) | — |
 | `rss_settings` | Ausgenommen (nicht geprüft) | — |
 | `rss_sources` | Ausgenommen (nicht geprüft) | — |
@@ -265,12 +319,13 @@ Von 283 Tabellen haben 37 ein registriertes Szenario. 91 sind als Ausbau offen, 
 | `social_hashtag_sets` | Ausstehend | — |
 | `social_planner_notes` | Ausstehend | — |
 | `starred_appointments` | Ausgenommen (nicht geprüft) | — |
-| `subtasks` | Ausstehend | — |
+| `subtasks` | Szenario vorhanden | onboarding-hr |
 | `superadmin_users` | Ausstehend | — |
 | `system_health` | Ausgenommen (nicht geprüft) | — |
 | `tags` | Ausgenommen (nicht geprüft) | — |
 | `task_archive_settings` | Ausgenommen (nicht geprüft) | — |
 | `task_assignees` | Szenario vorhanden | document-annotation |
+| `task_batch_actions` | Szenario vorhanden | task-stafette-lifecycle |
 | `task_categories` | Ausgenommen (nicht geprüft) | — |
 | `task_comments` | Ausgenommen (nicht geprüft) | — |
 | `task_decision_attachments` | Ausgenommen (nicht geprüft) | — |
@@ -278,18 +333,27 @@ Von 283 Tabellen haben 37 ein registriertes Szenario. 91 sind als Ausbau offen, 
 | `task_decision_comments` | Ausgenommen (nicht geprüft) | — |
 | `task_decision_participants` | Szenario vorhanden | case-item-lifecycle, decision-lifecycle, quick-note-lifecycle |
 | `task_decision_response_history` | Ausgenommen (nicht geprüft) | — |
-| `task_decision_responses` | Szenario vorhanden | case-item-lifecycle |
+| `task_decision_responses` | Szenario vorhanden | case-item-lifecycle, decision-lifecycle |
 | `task_decision_topics` | Ausgenommen (nicht geprüft) | — |
 | `task_decisions` | Szenario vorhanden | case-item-lifecycle, decision-lifecycle, jour-fixe-platform-integration, quick-note-lifecycle, task-lifecycle |
 | `task_documents` | Ausgenommen (nicht geprüft) | — |
 | `task_snoozes` | Ausgenommen (nicht geprüft) | — |
 | `task_statuses` | Ausgenommen (nicht geprüft) | — |
 | `task_topics` | Ausgenommen (nicht geprüft) | — |
-| `tasks` | Szenario vorhanden | annual-task-stafette, appointment-briefing-lifecycle, case-item-lifecycle, document-annotation, jour-fixe-platform-integration, letter-lifecycle, meeting-lifecycle, quick-note-lifecycle, task-lifecycle |
+| `tasks` | Szenario vorhanden | annual-task-stafette, appointment-briefing-lifecycle, case-item-lifecycle, document-annotation, jour-fixe-platform-integration, letter-lifecycle, meeting-lifecycle, onboarding-hr, quick-note-lifecycle, responsibilities, task-lifecycle, task-stafette-lifecycle |
 | `team_announcement_dismissals` | Ausgenommen (nicht geprüft) | — |
 | `team_announcements` | Ausstehend | — |
+| `team_bingo_settings` | Einordnung fehlt | — |
 | `team_dashboard_members` | Ausgenommen (nicht geprüft) | — |
 | `team_dashboards` | Ausstehend | — |
+| `team_fun_facts` | Einordnung fehlt | — |
+| `team_question_answers` | Einordnung fehlt | — |
+| `team_question_weeks` | Einordnung fehlt | — |
+| `team_questions` | Einordnung fehlt | — |
+| `team_ritual_profiles` | Einordnung fehlt | — |
+| `team_ritual_settings` | Einordnung fehlt | — |
+| `team_two_truths_answers` | Einordnung fehlt | — |
+| `team_two_truths_months` | Einordnung fehlt | — |
 | `tenant_collaborations` | Ausstehend | — |
 | `tenant_feature_flags` | Ausgenommen (nicht geprüft) | — |
 | `tenant_onboarding_checklist_items` | Ausstehend | — |
@@ -301,6 +365,7 @@ Von 283 Tabellen haben 37 ein registriertes Szenario. 91 sind als Ausbau offen, 
 | `todo_categories` | Ausgenommen (nicht geprüft) | — |
 | `todos` | Ausstehend | — |
 | `topic_backlog` | Ausstehend | — |
+| `topic_catalog_links` | Einordnung fehlt | — |
 | `topics` | Ausstehend | — |
 | `user_mywork_settings` | Ausgenommen (nicht geprüft) | — |
 | `user_navigation_visits` | Ausgenommen (nicht geprüft) | — |
@@ -326,6 +391,7 @@ Von 283 Tabellen haben 37 ein registriertes Szenario. 91 sind als Ausbau offen, 
 Diese Manifeste sind keine Messung ausgeführter Assertions.
 
 - appointment-briefing-lifecycle: `appointments`: title, tenant_id, user_id, start_time, end_time
+- appointment-briefing-lifecycle: `appointment_change_alerts`: tenant_id, appointment_id, title, message, kind, new_start_time, new_location
 - appointment-lifecycle: `appointments`: title, description, start_time, end_time, location, category, priority, status, is_all_day, user_id, tenant_id, reminder_minutes
 - appointment-lifecycle: `appointment_preparations`: appointment_id, tenant_id, created_by, title, status, preparation_data, checklist_items, notes
 - appointment-lifecycle: `appointment_feedback`: appointment_id, user_id, tenant_id, feedback_status, notes, event_type, completed_at
@@ -342,6 +408,7 @@ Diese Manifeste sind keine Messung ausgeführter Assertions.
 - day-slip-lifecycle: `day_slips`: user_id, tenant_id, day_key, data
 - decision-lifecycle: `task_decisions`: title, description, status, created_by, tenant_id, visible_to_all, priority, response_deadline, archived_at, archived_by
 - decision-lifecycle: `task_decision_participants`: decision_id, user_id
+- decision-lifecycle: `task_decision_responses`: decision_id, participant_id, response_type, comment
 - event-planning-lifecycle: `event_plannings`: title, description, location, background_info, is_private, is_digital, user_id, tenant_id
 - event-planning-lifecycle: `event_planning_dates`: event_planning_id, date_time, is_confirmed
 - event-planning-lifecycle: `event_planning_speakers`: event_planning_id, name, bio, topic, order_index
@@ -364,3 +431,4 @@ Diese Manifeste sind keine Messung ausgeführter Assertions.
 - quick-note-lifecycle: `tasks`: title, description, user_id, tenant_id, status, priority
 - task-lifecycle: `tasks`: title, description, status, priority, user_id, tenant_id, assigned_to, due_date, progress, pending_for_jour_fixe
 - task-lifecycle: `task_decisions`: title, description, status, created_by, tenant_id, task_id
+- task-stafette-lifecycle: `tasks`: title, description, status, priority, tenant_id, user_id, ball_owner, ball_assignee_id, next_action, next_action_due, timeline

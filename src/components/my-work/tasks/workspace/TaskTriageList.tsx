@@ -2,12 +2,13 @@ import { VirtualList } from "@/components/shared/VirtualList";
 import { useState } from "react";
 import { Check, ChevronDown, Plus } from "lucide-react";
 import { Button } from "@/components/ui/button";
+import { Checkbox } from "@/components/ui/checkbox";
 import { Tooltip, TooltipContent, TooltipTrigger } from "@/components/ui/tooltip";
 import { Input } from "@/components/ui/input";
 import { differenceInCalendarDays, endOfWeek, startOfDay } from "date-fns";
 import { cn } from "@/lib/utils";
 import type { MyWorkTask } from "@/hooks/useMyWorkTasksData";
-import { isReminderDue, TASK_BALL_LABELS, type TaskBallOwner, type TaskZone } from "@/features/tasks/stafette";
+import { ballAssigneeLabel, isReminderDue, type TaskBatchAction, type TaskZone } from "@/features/tasks/stafette";
 
 interface Props {
   resubmissionsOpen: boolean;
@@ -23,13 +24,14 @@ interface Props {
   nameOf: (id: string | null | undefined) => string | undefined;
   selection: Set<string>;
   onToggleSelect: (id: string) => void;
+  onSelectAll: (ids: string[]) => void;
   onClearSelection: () => void;
-  onBatch: (kind: "deputy" | "week" | "nudge") => Promise<void>;
+  onBatch: (kind: TaskBatchAction) => Promise<void>;
 }
 
-export function TaskTriageList({ resubmissionsOpen, onResubmissionsOpenChange, zones, visibleZones, snoozes, onCreate, onComplete, selectedId, onSelect, decisionLabel, nameOf, selection, onToggleSelect, onClearSelection, onBatch }: Props) {
+export function TaskTriageList({ resubmissionsOpen, onResubmissionsOpenChange, zones, visibleZones, snoozes, onCreate, onComplete, selectedId, onSelect, decisionLabel, nameOf, selection, onToggleSelect, onSelectAll, onClearSelection, onBatch }: Props) {
   const [busy, setBusy] = useState(false);
-  const runBatch = async (k: "deputy" | "week" | "nudge") => { setBusy(true); try { await onBatch(k); } finally { setBusy(false); } };
+  const runBatch = async (k: TaskBatchAction) => { setBusy(true); try { await onBatch(k); } finally { setBusy(false); } };
   const [query, setQuery] = useState("");
 
   const subFor = (t: MyWorkTask, zone: TaskZone) => {
@@ -40,11 +42,8 @@ export function TaskTriageList({ resubmissionsOpen, onResubmissionsOpenChange, z
     if (zone === "mine" && isReminderDue(t)) return ["🔔 Erinnerung", t.reminder_note || t.next_action || null].filter(Boolean).join(" · ");
     const step = t.next_action?.trim() ? t.next_action : "Kein nächster Schritt";
     if (zone === "waiting") {
-      const owner = (t.ball_owner ?? "office") as TaskBallOwner;
-      const who = owner === "external" ? t.ball_external_label || "extern"
-        : nameOf(t.ball_assignee_id) ?? TASK_BALL_LABELS[owner];
       const dec = decisionLabel(t.id);
-      return [`Wartet auf ${who}`, dec].filter(Boolean).join(" · ");
+      return [`Wartet auf ${ballAssigneeLabel(t, nameOf).label}`, dec].filter(Boolean).join(" · ");
     }
     return step;
   };
@@ -72,6 +71,9 @@ export function TaskTriageList({ resubmissionsOpen, onResubmissionsOpenChange, z
       ...(key === "resubmission" && !resubmissionsOpen ? [] : items.map((item) => ({ key: item.task.id, title, count: items.length, item }))),
     ];
   });
+  // Nur tatsächlich sichtbare Zeilen werden mit „Alle“ ausgewählt.
+  const visibleTaskIds = entries.flatMap((entry) => (entry.item ? [entry.item.task.id] : []));
+  const allVisibleSelected = visibleTaskIds.length > 0 && visibleTaskIds.every((id) => selection.has(id));
 
   return (
     <div className="flex h-full min-h-0 flex-col gap-2 p-3">
@@ -88,9 +90,14 @@ export function TaskTriageList({ resubmissionsOpen, onResubmissionsOpenChange, z
       </div>
       {selection.size > 0 && (
         <div className="shrink-0 rounded-lg border bg-popover p-3 shadow-md space-y-2">
-          <div className="flex items-center justify-between text-caption">
+          <div className="flex flex-wrap items-center justify-between gap-2 text-caption">
             <span className="font-medium">{selection.size} ausgewählt</span>
-            <button type="button" className="text-muted-foreground hover:text-foreground" onClick={onClearSelection}>Aufheben</button>
+            <div className="flex items-center gap-3">
+              <button type="button" className="text-muted-foreground hover:text-foreground disabled:opacity-50" disabled={allVisibleSelected || visibleTaskIds.length === 0} onClick={() => onSelectAll(visibleTaskIds)}>
+                Alle {visibleTaskIds.length} in dieser Ansicht
+              </button>
+              <button type="button" className="text-muted-foreground hover:text-foreground" onClick={onClearSelection}>Aufheben</button>
+            </div>
           </div>
           <div className="flex flex-wrap gap-2">
             <Button size="sm" variant="secondary" disabled={busy} onClick={() => runBatch("deputy")}>Zur Freigabe vorlegen</Button>
@@ -116,17 +123,30 @@ export function TaskTriageList({ resubmissionsOpen, onResubmissionsOpenChange, z
           const days = due ? differenceInCalendarDays(today, due) : 0;
           const resubmission = !!snoozes[task.id] || zone === "resubmission";
           return (
-            <div className={cn("flex items-start gap-3 rounded-xl px-3 py-3", task.id === selectedId ? "bg-muted" : "hover:bg-muted/60")}>
+            <div className={cn("flex items-start gap-2 rounded-xl px-2 py-3", task.id === selectedId ? "bg-muted" : "hover:bg-muted/60")}>
+              <Tooltip>
+                <TooltipTrigger asChild>
+                  <span className="mt-0.5 inline-flex">
+                    <Checkbox
+                      checked={selection.has(task.id)}
+                      onCheckedChange={() => onToggleSelect(task.id)}
+                      aria-label={`„${task.title}“ für eine Sammelaktion auswählen`}
+                      className="size-4 rounded-sm border-muted-foreground/60 data-[state=checked]:border-primary"
+                    />
+                  </span>
+                </TooltipTrigger>
+                <TooltipContent>Für Sammelaktion auswählen</TooltipContent>
+              </Tooltip>
               <Tooltip>
                 <TooltipTrigger asChild>
                   <button type="button" onClick={() => void onComplete(task.id)} aria-label={`„${task.title}“ abschließen`}
-                    className="group mt-1 flex size-5 shrink-0 items-center justify-center rounded-full border-2 border-muted-foreground/50 hover:border-success hover:bg-success/10 hover:text-success focus-visible:border-success focus-visible:bg-success/10 focus-visible:text-success">
+                    className="group mt-0.5 flex size-5 shrink-0 items-center justify-center rounded-full border-2 border-muted-foreground/50 hover:border-success hover:bg-success/10 hover:text-success focus-visible:border-success focus-visible:bg-success/10 focus-visible:text-success">
                     <Check aria-hidden="true" className="size-3 opacity-0 group-hover:opacity-100 group-focus-visible:opacity-100" />
                   </button>
                 </TooltipTrigger>
                 <TooltipContent>Aufgabe abschließen</TooltipContent>
               </Tooltip>
-              <button type="button" onClick={(event) => event.shiftKey || event.metaKey || event.ctrlKey ? onToggleSelect(task.id) : onSelect(task.id)} aria-current={task.id === selectedId ? "true" : undefined} aria-pressed={selection.has(task.id)} className="min-w-0 flex-1 text-left">
+              <button type="button" onClick={(event) => event.shiftKey || event.metaKey || event.ctrlKey ? onToggleSelect(task.id) : onSelect(task.id)} aria-current={task.id === selectedId ? "true" : undefined} className="min-w-0 flex-1 text-left">
                 <div className="flex items-start justify-between gap-3">
                   <span className="text-sm font-medium leading-5">{task.title}</span>
                   {due && <span className={cn("shrink-0 text-xs", group === "overdue" ? "text-destructive" : "text-muted-foreground")}>{days > 0 ? `${days} ${days === 1 ? "Tag" : "Tage"} überfällig` : due.toLocaleDateString("de-DE", { day: "2-digit", month: "2-digit" })}</span>}

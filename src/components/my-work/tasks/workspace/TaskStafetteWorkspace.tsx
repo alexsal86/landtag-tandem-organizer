@@ -5,11 +5,17 @@ import type { Json } from "@/integrations/supabase/types";
 import type { MyWorkTask } from "@/hooks/useMyWorkTasksData";
 import { notify } from "@/lib/notify";
 import { EmptyState } from "@/components/ui-patterns";
-import { ListTodo } from "lucide-react";
+import { Command as CommandIcon, Gauge, Inbox, ListChecks, ListTodo } from "lucide-react";
 import { Button } from "@/components/ui/button";
+import { Tooltip, TooltipContent, TooltipTrigger } from "@/components/ui/tooltip";
 import { cn } from "@/lib/utils";
-import { checklistEvents, parseChecklist, shiftDay, groupByZone, isTaskReminderFor, type ChecklistItem, parseTaskTimeline, stafetteEvents, type StafetteEvent } from "@/features/tasks/stafette";
+import { checklistEvents, parseChecklist, groupByZone, isTaskReminderFor, parseTaskTimeline, shiftDay, stafetteEvents, type StafetteEvent, parseTaskBatchPreview, taskBatchPreview, TASK_BATCH_LIMIT, type TaskBatchAction, type TaskBatchItem, type TaskBatchPreview, type TaskCommand } from "@/features/tasks/stafette";
 import { TaskTriageList } from "./TaskTriageList";
+import { TaskBatchDialog } from "./TaskBatchDialog";
+import { TaskCommandPalette } from "./TaskCommandPalette";
+import { TaskIntakeDialog } from "./TaskIntakeDialog";
+import { TaskReviewDialog } from "./TaskReviewDialog";
+import { TaskSlaDialog } from "./TaskSlaDialog";
 import { TaskDetailView, type TaskPatch } from "./TaskDetailView";
 
 interface Props {
@@ -110,35 +116,79 @@ export function TaskStafetteWorkspace({ userId, tasks, profiles, onReload, onCom
   };
 
   const [selection, setSelection] = useState<Set<string>>(new Set());
+  const [batchRequest, setBatchRequest] = useState<{ action: TaskBatchAction; ids: string[]; preview: TaskBatchPreview } | null>(null);
+  const [batchPending, setBatchPending] = useState(false);
+  const [intakeOpen, setIntakeOpen] = useState(false);
+  const [reviewOpen, setReviewOpen] = useState(false);
+  const [slaOpen, setSlaOpen] = useState(false);
+  const [paletteOpen, setPaletteOpen] = useState(false);
   const toggleSelect = (id: string) => setSelection((s) => { const n = new Set(s); if (n.has(id)) n.delete(id); else n.add(id); return n; });
-  const batch = async (kind: "deputy" | "week" | "nudge") => {
-    const list = merged.filter((t) => selection.has(t.id));
-    const tenantId = list[0]?.tenant_id;
-    let deputyId: string | undefined;
-    if (kind === "deputy") {
-      if (!tenantId) return;
-      const { data, error } = await supabase.rpc("list_task_deputy_ids", { p_tenant_id: tenantId });
-      deputyId = data?.[0];
-      if (error || !deputyId) {
-        notify.error("Für dieses Büro wurde kein Abgeordnetenprofil gefunden.");
-        return;
-      }
+
+  const tenantGroups = (ids: string[]) => {
+    const groups = new Map<string, string[]>();
+    for (const id of ids) {
+      const tenantId = merged.find((task) => task.id === id)?.tenant_id;
+      if (!tenantId) continue;
+      groups.set(tenantId, [...(groups.get(tenantId) ?? []), id]);
     }
-    let updated = 0;
-    for (const task of list) {
-      if (kind === "deputy" && task.tenant_id === tenantId) {
-        if (await save(task, { ball_owner: "deputy", ball_assignee_id: deputyId, next_action: "Freigabe prüfen", next_action_due: null })) updated++;
-      } else if (kind === "week") {
-        if (await save(task, { next_action_due: shiftDay(task.next_action_due, 7) })) updated++;
-      } else if (kind === "nudge") {
-        const { error } = await supabase.rpc("nudge_task", { _task_id: task.id, _note: null });
-        if (!error) updated++;
-      }
+    return [...groups.entries()];
+  };
+
+  // Die Vorschau kommt aus derselben Datenbankregel wie die Ausführung (task_batch_plan).
+  const requestBatch = async (action: TaskBatchAction) => {
+    const ids = [...selection];
+    if (ids.length === 0) return;
+    if (ids.length > TASK_BATCH_LIMIT) {
+      notify.error(`Höchstens ${TASK_BATCH_LIMIT} Aufgaben pro Sammelaktion`);
+      return;
     }
-    if (updated === list.length) notify.success(`${updated} Aufgaben aktualisiert`);
-    else notify.error(`${updated} von ${list.length} Aufgaben aktualisiert`);
-    setSelection(new Set());
+    const items: TaskBatchItem[] = [];
+    for (const [tenantId, taskIds] of tenantGroups(ids)) {
+      const { data, error } = await supabase.rpc("batch_task_stafette_preview", { _tenant_id: tenantId, _task_ids: taskIds, _action: action });
+      if (error) { notify.error("Vorschau fehlgeschlagen", { description: error.message }); return; }
+      const preview = parseTaskBatchPreview(data);
+      if (!preview) { notify.error("Vorschau konnte nicht gelesen werden"); return; }
+      items.push(...preview.items);
+    }
+    setBatchRequest({ action, ids, preview: taskBatchPreview(action, items) });
+  };
+
+  const undoBatch = async (batchIds: string[]) => {
+    let restored = 0;
+    for (const batchId of batchIds) {
+      const { data, error } = await supabase.rpc("undo_task_batch_action", { _batch_id: batchId });
+      if (error) { notify.error("Rücknahme nicht möglich", { description: error.message }); return; }
+      restored += typeof data === "number" ? data : 0;
+    }
+    notify.success(`${restored} ${restored === 1 ? "Aufgabe" : "Aufgaben"} zurückgesetzt`);
     void onReload();
+  };
+
+  const applyBatch = async () => {
+    if (!batchRequest) return;
+    setBatchPending(true);
+    const batches: string[] = [];
+    let affected = 0;
+    let skipped = 0;
+    try {
+      for (const [tenantId, taskIds] of tenantGroups(batchRequest.ids)) {
+        const { data, error } = await supabase.rpc("batch_task_stafette_action", { _tenant_id: tenantId, _task_ids: taskIds, _action: batchRequest.action });
+        if (error) { notify.error("Sammelaktion fehlgeschlagen", { description: error.message }); return; }
+        const result = data as { batch_id?: string | null; affected?: number; skipped?: number } | null;
+        if (result?.batch_id) batches.push(result.batch_id);
+        affected += result?.affected ?? 0;
+        skipped += result?.skipped ?? 0;
+      }
+      setSelection(new Set());
+      setBatchRequest(null);
+      notify.success(
+        `${affected} ${affected === 1 ? "Aufgabe" : "Aufgaben"} aktualisiert${skipped > 0 ? `, ${skipped} übersprungen` : ""}`,
+        batches.length ? { action: { label: "Rückgängig", onClick: () => { void undoBatch(batches); } } } : undefined,
+      );
+      void onReload();
+    } finally {
+      setBatchPending(false);
+    }
   };
 
   const decisionLabel = useCallback((taskId: string) => {
@@ -213,6 +263,29 @@ export function TaskStafetteWorkspace({ userId, tasks, profiles, onReload, onCom
     notify.success("Angestupst");
     void onReload();
   };
+  const escalateTask = async (taskId: string, note: string) => {
+    const { error } = await supabase.rpc("escalate_task", { _task_id: taskId, _note: note || null });
+    if (error) { notify.error("Eskalation fehlgeschlagen", { description: error.message }); return; }
+    notify.success("Büroleitung informiert");
+    void onReload();
+  };
+
+  const runTaskCommand = async (command: TaskCommand) => {
+    const task = selected;
+    if (!task) { notify.error("Bitte zuerst eine Aufgabe auswählen"); return; }
+    if (command.kind === "complete") { await onComplete(task.id); return; }
+    if (command.kind === "due") { await save(task, { next_action_due: shiftDay(task.next_action_due, command.days) }); return; }
+    if (command.kind === "priority") { await save(task, { priority: command.priority }); return; }
+    if (command.kind === "wait") {
+      await save(task, { ball_owner: "external", ball_external_label: command.text, ball_assignee_id: task.ball_assignee_id ?? userId ?? null });
+      return;
+    }
+    const needle = command.query.trim().toLocaleLowerCase("de");
+    const person = profiles.find((profile) => (profile.display_name ?? "").toLocaleLowerCase("de").includes(needle));
+    if (!person) { notify.error(`Niemand gefunden für „${command.query}“`); return; }
+    await save(task, { ball_owner: "office", ball_assignee_id: person.user_id });
+  };
+
   const ackNudge = async (task: MyWorkTask, reply: string) => {
     setLocal((l) => ({ ...l, [task.id]: { ...l[task.id], nudge_seen_at: new Date().toISOString() } }));
     const { error } = await supabase.rpc("ack_task_nudge", { _task_id: task.id, _reply: reply || null });
@@ -236,6 +309,17 @@ export function TaskStafetteWorkspace({ userId, tasks, profiles, onReload, onCom
     window.addEventListener("keydown", onKey);
     return () => window.removeEventListener("keydown", onKey);
   }, [ordered, selected, onCreate]);
+
+  useEffect(() => {
+    const onKey = (event: KeyboardEvent) => {
+      if (event.key.toLowerCase() === "j" && (event.metaKey || event.ctrlKey)) {
+        event.preventDefault();
+        setPaletteOpen((open) => !open);
+      }
+    };
+    window.addEventListener("keydown", onKey);
+    return () => window.removeEventListener("keydown", onKey);
+  }, []);
 
   return (
     <>
@@ -263,11 +347,26 @@ export function TaskStafetteWorkspace({ userId, tasks, profiles, onReload, onCom
           ))}
         </div>
         {modeControls}
+        <div role="group" aria-label="Aufgabenwerkzeuge" className="flex items-center gap-1">
+          {[
+            { label: "Posteingang → Aufgabe", Icon: Inbox, action: () => setIntakeOpen(true) },
+            { label: "Wochenreview", Icon: ListChecks, action: () => setReviewOpen(true) },
+            { label: "Freigabe-SLA", Icon: Gauge, action: () => setSlaOpen(true) },
+            { label: "Befehlspalette (Strg+J)", Icon: CommandIcon, action: () => setPaletteOpen(true) },
+          ].map(({ label, Icon, action }) => (
+            <Tooltip key={label}>
+              <TooltipTrigger asChild>
+                <Button size="icon" variant="ghost" className="rounded-xl" aria-label={label} onClick={action}><Icon /></Button>
+              </TooltipTrigger>
+              <TooltipContent>{label}</TooltipContent>
+            </Tooltip>
+          ))}
+        </div>
       </div>
       <div className="grid min-h-0 flex-1 auto-rows-max grid-cols-1 lg:auto-rows-auto lg:grid-cols-[minmax(260px,1fr)_minmax(0,3fr)]">
         <div className="flex min-h-0 min-w-0 flex-col">
             <div className="h-80 min-h-0 lg:h-auto lg:flex-1">
-              <TaskTriageList resubmissionsOpen={resubmissionsOpen} onResubmissionsOpenChange={setResubmissionsOpen} snoozes={snoozes} onCreate={onCreate} onComplete={onComplete} zones={zones} visibleZones={filter.zones} selectedId={selected?.id ?? null} onSelect={setSelectedId} decisionLabel={decisionLabel} nameOf={nameOf} selection={selection} onToggleSelect={toggleSelect} onClearSelection={() => setSelection(new Set())} onBatch={batch} />
+              <TaskTriageList resubmissionsOpen={resubmissionsOpen} onResubmissionsOpenChange={setResubmissionsOpen} snoozes={snoozes} onCreate={onCreate} onComplete={onComplete} zones={zones} visibleZones={filter.zones} selectedId={selected?.id ?? null} onSelect={setSelectedId} decisionLabel={decisionLabel} nameOf={nameOf} selection={selection} onToggleSelect={toggleSelect} onSelectAll={(ids) => setSelection(new Set(ids))} onClearSelection={() => setSelection(new Set())} onBatch={requestBatch} />
             </div>
           </div>
           <div className="min-h-0 min-w-0 flex flex-col">
@@ -297,6 +396,41 @@ export function TaskStafetteWorkspace({ userId, tasks, profiles, onReload, onCom
             )}
           </div>
         </div>
+      <TaskBatchDialog
+        preview={batchRequest?.preview ?? null}
+        pending={batchPending}
+        onCancel={() => { if (!batchPending) setBatchRequest(null); }}
+        onConfirm={() => { void applyBatch(); }}
+      />
+      <TaskIntakeDialog
+        open={intakeOpen}
+        onOpenChange={setIntakeOpen}
+        tenantId={selected?.tenant_id ?? tasks[0]?.tenant_id}
+        userId={userId}
+        profiles={profiles}
+        onCreated={onReload}
+      />
+      <TaskReviewDialog
+        open={reviewOpen}
+        onOpenChange={setReviewOpen}
+        tasks={merged}
+        onOpenTask={(taskId) => { setSelectedId(taskId); setReviewOpen(false); }}
+        onEscalate={escalateTask}
+      />
+      <TaskSlaDialog
+        open={slaOpen}
+        onOpenChange={setSlaOpen}
+        tenantId={selected?.tenant_id ?? tasks[0]?.tenant_id}
+        nameOf={nameOf}
+        onOpenTask={(taskId) => { setSelectedId(taskId); setSlaOpen(false); }}
+      />
+      <TaskCommandPalette
+        open={paletteOpen}
+        onOpenChange={setPaletteOpen}
+        taskTitle={selected?.title}
+        people={profiles}
+        onSubmit={(command) => { void runTaskCommand(command); }}
+      />
     </>
   );
 }

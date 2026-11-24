@@ -2,11 +2,11 @@
   "schemaVersion": 1,
   "source": "src/integrations/supabase/types.ts",
   "counts": {
-    "total": 283,
-    "scenario": 37,
-    "deferred": 91,
-    "excluded": 155,
-    "missing": 0
+    "total": 341,
+    "scenario": 53,
+    "deferred": 87,
+    "excluded": 153,
+    "missing": 48
   },
   "scenarios": [
     {
@@ -54,7 +54,8 @@
       "title": "Briefing-Lifecycle (vergeben → Aufgabe → vorlegen → freigeben)",
       "touches": [
         "appointments",
-        "tasks"
+        "tasks",
+        "appointment_change_alerts"
       ],
       "features": [
         "appointments",
@@ -69,6 +70,18 @@
             "user_id",
             "start_time",
             "end_time"
+          ]
+        },
+        {
+          "table": "appointment_change_alerts",
+          "columns": [
+            "tenant_id",
+            "appointment_id",
+            "title",
+            "message",
+            "kind",
+            "new_start_time",
+            "new_location"
           ]
         }
       ],
@@ -347,7 +360,8 @@
       "title": "Entscheidungs-Lifecycle (active → open → archived)",
       "touches": [
         "task_decisions",
-        "task_decision_participants"
+        "task_decision_participants",
+        "task_decision_responses"
       ],
       "features": [
         "decisions"
@@ -374,6 +388,15 @@
             "decision_id",
             "user_id"
           ]
+        },
+        {
+          "table": "task_decision_responses",
+          "columns": [
+            "decision_id",
+            "participant_id",
+            "response_type",
+            "comment"
+          ]
         }
       ],
       "registered": true
@@ -384,6 +407,7 @@
       "touches": [
         "documents",
         "document_annotations",
+        "document_annotation_events",
         "document_annotation_tasks",
         "tasks",
         "task_assignees"
@@ -402,6 +426,46 @@
       "touches": [],
       "features": [
         "documents"
+      ],
+      "writes": [],
+      "registered": true
+    },
+    {
+      "id": "election-analysis",
+      "title": "Wahlanalyse: Datenqualität und Vergleichbarkeit",
+      "touches": [],
+      "features": [
+        "election-analysis"
+      ],
+      "writes": [],
+      "registered": true
+    },
+    {
+      "id": "election-deputy-reader",
+      "title": "Wahlanalyse: Abgeordnetenübersicht",
+      "touches": [],
+      "features": [
+        "election-analysis"
+      ],
+      "writes": [],
+      "registered": true
+    },
+    {
+      "id": "election-history-workbench",
+      "title": "Wahldaten: Problemfälle und Landeslisten",
+      "touches": [],
+      "features": [
+        "election-history"
+      ],
+      "writes": [],
+      "registered": true
+    },
+    {
+      "id": "election-map",
+      "title": "Wahlkreiskarte: Suche und Grenzdaten",
+      "touches": [],
+      "features": [
+        "election-districts"
       ],
       "writes": [],
       "registered": true
@@ -623,6 +687,9 @@
       "title": "Meeting-Lifecycle (vollständig + Field-Verifikation)",
       "touches": [
         "meetings",
+        "meeting_templates",
+        "meeting_protocol_details",
+        "meeting_protocol_addenda",
         "meeting_agenda_items",
         "meeting_agenda_documents",
         "meeting_participants",
@@ -722,6 +789,30 @@
       "registered": true
     },
     {
+      "id": "onboarding-hr",
+      "title": "HR-Onboarding und Offboarding",
+      "touches": [
+        "employee_lifecycle",
+        "employee_hr_templates",
+        "routine_package_runs",
+        "routine_package_steps",
+        "employee_hr_evidence",
+        "employee_hr_gdpr_declarations",
+        "employee_hr_reminder_log",
+        "notification_types",
+        "notifications",
+        "tasks",
+        "subtasks"
+      ],
+      "features": [
+        "employees",
+        "automation",
+        "permissions"
+      ],
+      "writes": [],
+      "registered": true
+    },
+    {
       "id": "quick-note-lifecycle",
       "title": "Notizen-Lifecycle (Anlegen → Priorität → Anheften → Aufgabe → Archiv)",
       "touches": [
@@ -764,6 +855,19 @@
           ]
         }
       ],
+      "registered": true
+    },
+    {
+      "id": "responsibilities",
+      "title": "Zuständigkeiten & Matrix",
+      "touches": [
+        "tasks"
+      ],
+      "features": [
+        "employees",
+        "permissions"
+      ],
+      "writes": [],
       "registered": true
     },
     {
@@ -810,9 +914,39 @@
     {
       "id": "task-stafette-lifecycle",
       "title": "Aufgaben-Stafette (Am Zug, Wiedervorlage, Freigabe)",
-      "touches": [],
+      "touches": [
+        "tasks",
+        "task_batch_actions"
+      ],
       "features": [
         "tasks"
+      ],
+      "writes": [
+        {
+          "table": "tasks",
+          "columns": [
+            "title",
+            "description",
+            "status",
+            "priority",
+            "tenant_id",
+            "user_id",
+            "ball_owner",
+            "ball_assignee_id",
+            "next_action",
+            "next_action_due",
+            "timeline"
+          ]
+        }
+      ],
+      "registered": true
+    },
+    {
+      "id": "team-rituals",
+      "title": "Freiwillige Team-Rituale",
+      "touches": [],
+      "features": [
+        "dashboard"
       ],
       "writes": [],
       "registered": true
@@ -864,6 +998,13 @@
       "table": "appointment_categories",
       "status": "excluded",
       "scenarios": []
+    },
+    {
+      "table": "appointment_change_alerts",
+      "status": "scenario",
+      "scenarios": [
+        "appointment-briefing-lifecycle"
+      ]
     },
     {
       "table": "appointment_contacts",
@@ -1125,6 +1266,11 @@
       "scenarios": []
     },
     {
+      "table": "committees",
+      "status": "missing",
+      "scenarios": []
+    },
+    {
       "table": "contact_activities",
       "status": "scenario",
       "scenarios": [
@@ -1164,6 +1310,11 @@
       "scenarios": [
         "daily-briefing-lifecycle"
       ]
+    },
+    {
+      "table": "dashboard_decision_nudges",
+      "status": "missing",
+      "scenarios": []
     },
     {
       "table": "dashboard_layouts",
@@ -1222,6 +1373,13 @@
       "table": "district_support_assignments",
       "status": "deferred",
       "scenarios": []
+    },
+    {
+      "table": "document_annotation_events",
+      "status": "scenario",
+      "scenarios": [
+        "document-annotation"
+      ]
     },
     {
       "table": "document_annotation_tasks",
@@ -1316,6 +1474,106 @@
       "scenarios": []
     },
     {
+      "table": "election_analysis_bw_polls",
+      "status": "missing",
+      "scenarios": []
+    },
+    {
+      "table": "election_analysis_candidate_coverage",
+      "status": "missing",
+      "scenarios": []
+    },
+    {
+      "table": "election_analysis_candidates",
+      "status": "missing",
+      "scenarios": []
+    },
+    {
+      "table": "election_analysis_correction_audit",
+      "status": "missing",
+      "scenarios": []
+    },
+    {
+      "table": "election_analysis_demographics",
+      "status": "missing",
+      "scenarios": []
+    },
+    {
+      "table": "election_analysis_district_workbook_audit",
+      "status": "missing",
+      "scenarios": []
+    },
+    {
+      "table": "election_analysis_districts",
+      "status": "missing",
+      "scenarios": []
+    },
+    {
+      "table": "election_analysis_flow_matrix",
+      "status": "missing",
+      "scenarios": []
+    },
+    {
+      "table": "election_analysis_flows",
+      "status": "missing",
+      "scenarios": []
+    },
+    {
+      "table": "election_analysis_geographies",
+      "status": "missing",
+      "scenarios": []
+    },
+    {
+      "table": "election_analysis_local_results",
+      "status": "missing",
+      "scenarios": []
+    },
+    {
+      "table": "election_analysis_period_proposals",
+      "status": "missing",
+      "scenarios": []
+    },
+    {
+      "table": "election_analysis_scenarios",
+      "status": "missing",
+      "scenarios": []
+    },
+    {
+      "table": "election_analysis_source_reviews",
+      "status": "missing",
+      "scenarios": []
+    },
+    {
+      "table": "election_analysis_state",
+      "status": "missing",
+      "scenarios": []
+    },
+    {
+      "table": "election_analysis_state_totals",
+      "status": "missing",
+      "scenarios": []
+    },
+    {
+      "table": "election_analysis_turnout",
+      "status": "missing",
+      "scenarios": []
+    },
+    {
+      "table": "election_analysis_versions",
+      "status": "missing",
+      "scenarios": []
+    },
+    {
+      "table": "election_analysis_workbook_audit",
+      "status": "missing",
+      "scenarios": []
+    },
+    {
+      "table": "election_analysis_years",
+      "status": "missing",
+      "scenarios": []
+    },
+    {
       "table": "election_district_municipalities",
       "status": "excluded",
       "scenarios": []
@@ -1328,6 +1586,76 @@
     {
       "table": "election_districts",
       "status": "deferred",
+      "scenarios": []
+    },
+    {
+      "table": "election_history_1952_result_sources",
+      "status": "missing",
+      "scenarios": []
+    },
+    {
+      "table": "election_history_assembly_issues",
+      "status": "missing",
+      "scenarios": []
+    },
+    {
+      "table": "election_history_audit",
+      "status": "missing",
+      "scenarios": []
+    },
+    {
+      "table": "election_history_candidacies",
+      "status": "missing",
+      "scenarios": []
+    },
+    {
+      "table": "election_history_candidate_workbook_audit",
+      "status": "missing",
+      "scenarios": []
+    },
+    {
+      "table": "election_history_connection_people",
+      "status": "missing",
+      "scenarios": []
+    },
+    {
+      "table": "election_history_districts",
+      "status": "missing",
+      "scenarios": []
+    },
+    {
+      "table": "election_history_factions",
+      "status": "missing",
+      "scenarios": []
+    },
+    {
+      "table": "election_history_mandate_birthdays",
+      "status": "missing",
+      "scenarios": []
+    },
+    {
+      "table": "election_history_mandates",
+      "status": "missing",
+      "scenarios": []
+    },
+    {
+      "table": "election_history_people",
+      "status": "missing",
+      "scenarios": []
+    },
+    {
+      "table": "election_history_periods",
+      "status": "missing",
+      "scenarios": []
+    },
+    {
+      "table": "election_history_state_list_entries",
+      "status": "missing",
+      "scenarios": []
+    },
+    {
+      "table": "election_history_state_lists",
+      "status": "missing",
       "scenarios": []
     },
     {
@@ -1344,6 +1672,41 @@
       "table": "email_templates",
       "status": "excluded",
       "scenarios": []
+    },
+    {
+      "table": "employee_hr_evidence",
+      "status": "scenario",
+      "scenarios": [
+        "onboarding-hr"
+      ]
+    },
+    {
+      "table": "employee_hr_gdpr_declarations",
+      "status": "scenario",
+      "scenarios": [
+        "onboarding-hr"
+      ]
+    },
+    {
+      "table": "employee_hr_reminder_log",
+      "status": "scenario",
+      "scenarios": [
+        "onboarding-hr"
+      ]
+    },
+    {
+      "table": "employee_hr_templates",
+      "status": "scenario",
+      "scenarios": [
+        "onboarding-hr"
+      ]
+    },
+    {
+      "table": "employee_lifecycle",
+      "status": "scenario",
+      "scenarios": [
+        "onboarding-hr"
+      ]
     },
     {
       "table": "employee_meeting_action_items",
@@ -1368,6 +1731,11 @@
     {
       "table": "employee_meetings",
       "status": "deferred",
+      "scenarios": []
+    },
+    {
+      "table": "employee_responsibilities",
+      "status": "missing",
       "scenarios": []
     },
     {
@@ -1760,9 +2128,25 @@
       ]
     },
     {
+      "table": "meeting_protocol_addenda",
+      "status": "scenario",
+      "scenarios": [
+        "meeting-lifecycle"
+      ]
+    },
+    {
+      "table": "meeting_protocol_details",
+      "status": "scenario",
+      "scenarios": [
+        "meeting-lifecycle"
+      ]
+    },
+    {
       "table": "meeting_templates",
-      "status": "excluded",
-      "scenarios": []
+      "status": "scenario",
+      "scenarios": [
+        "meeting-lifecycle"
+      ]
     },
     {
       "table": "meetings",
@@ -1804,13 +2188,17 @@
     },
     {
       "table": "notification_types",
-      "status": "excluded",
-      "scenarios": []
+      "status": "scenario",
+      "scenarios": [
+        "onboarding-hr"
+      ]
     },
     {
       "table": "notifications",
-      "status": "deferred",
-      "scenarios": []
+      "status": "scenario",
+      "scenarios": [
+        "onboarding-hr"
+      ]
     },
     {
       "table": "parliament_protocols",
@@ -1940,14 +2328,23 @@
       ]
     },
     {
-      "table": "routine_package_runs",
-      "status": "deferred",
+      "table": "regions",
+      "status": "missing",
       "scenarios": []
     },
     {
+      "table": "routine_package_runs",
+      "status": "scenario",
+      "scenarios": [
+        "onboarding-hr"
+      ]
+    },
+    {
       "table": "routine_package_steps",
-      "status": "deferred",
-      "scenarios": []
+      "status": "scenario",
+      "scenarios": [
+        "onboarding-hr"
+      ]
     },
     {
       "table": "rss_cache",
@@ -2046,8 +2443,10 @@
     },
     {
       "table": "subtasks",
-      "status": "deferred",
-      "scenarios": []
+      "status": "scenario",
+      "scenarios": [
+        "onboarding-hr"
+      ]
     },
     {
       "table": "superadmin_users",
@@ -2074,6 +2473,13 @@
       "status": "scenario",
       "scenarios": [
         "document-annotation"
+      ]
+    },
+    {
+      "table": "task_batch_actions",
+      "status": "scenario",
+      "scenarios": [
+        "task-stafette-lifecycle"
       ]
     },
     {
@@ -2119,7 +2525,8 @@
       "table": "task_decision_responses",
       "status": "scenario",
       "scenarios": [
-        "case-item-lifecycle"
+        "case-item-lifecycle",
+        "decision-lifecycle"
       ]
     },
     {
@@ -2169,8 +2576,11 @@
         "jour-fixe-platform-integration",
         "letter-lifecycle",
         "meeting-lifecycle",
+        "onboarding-hr",
         "quick-note-lifecycle",
-        "task-lifecycle"
+        "responsibilities",
+        "task-lifecycle",
+        "task-stafette-lifecycle"
       ]
     },
     {
@@ -2184,6 +2594,11 @@
       "scenarios": []
     },
     {
+      "table": "team_bingo_settings",
+      "status": "missing",
+      "scenarios": []
+    },
+    {
       "table": "team_dashboard_members",
       "status": "excluded",
       "scenarios": []
@@ -2191,6 +2606,46 @@
     {
       "table": "team_dashboards",
       "status": "deferred",
+      "scenarios": []
+    },
+    {
+      "table": "team_fun_facts",
+      "status": "missing",
+      "scenarios": []
+    },
+    {
+      "table": "team_question_answers",
+      "status": "missing",
+      "scenarios": []
+    },
+    {
+      "table": "team_question_weeks",
+      "status": "missing",
+      "scenarios": []
+    },
+    {
+      "table": "team_questions",
+      "status": "missing",
+      "scenarios": []
+    },
+    {
+      "table": "team_ritual_profiles",
+      "status": "missing",
+      "scenarios": []
+    },
+    {
+      "table": "team_ritual_settings",
+      "status": "missing",
+      "scenarios": []
+    },
+    {
+      "table": "team_two_truths_answers",
+      "status": "missing",
+      "scenarios": []
+    },
+    {
+      "table": "team_two_truths_months",
+      "status": "missing",
       "scenarios": []
     },
     {
@@ -2246,6 +2701,11 @@
     {
       "table": "topic_backlog",
       "status": "deferred",
+      "scenarios": []
+    },
+    {
+      "table": "topic_catalog_links",
+      "status": "missing",
       "scenarios": []
     },
     {
@@ -2344,5 +2804,54 @@
       "scenarios": []
     }
   ],
-  "errors": []
+  "errors": [
+    "Neue Tabelle ohne Einordnung: committees",
+    "Neue Tabelle ohne Einordnung: dashboard_decision_nudges",
+    "Neue Tabelle ohne Einordnung: election_analysis_bw_polls",
+    "Neue Tabelle ohne Einordnung: election_analysis_candidate_coverage",
+    "Neue Tabelle ohne Einordnung: election_analysis_candidates",
+    "Neue Tabelle ohne Einordnung: election_analysis_correction_audit",
+    "Neue Tabelle ohne Einordnung: election_analysis_demographics",
+    "Neue Tabelle ohne Einordnung: election_analysis_district_workbook_audit",
+    "Neue Tabelle ohne Einordnung: election_analysis_districts",
+    "Neue Tabelle ohne Einordnung: election_analysis_flow_matrix",
+    "Neue Tabelle ohne Einordnung: election_analysis_flows",
+    "Neue Tabelle ohne Einordnung: election_analysis_geographies",
+    "Neue Tabelle ohne Einordnung: election_analysis_local_results",
+    "Neue Tabelle ohne Einordnung: election_analysis_period_proposals",
+    "Neue Tabelle ohne Einordnung: election_analysis_scenarios",
+    "Neue Tabelle ohne Einordnung: election_analysis_source_reviews",
+    "Neue Tabelle ohne Einordnung: election_analysis_state",
+    "Neue Tabelle ohne Einordnung: election_analysis_state_totals",
+    "Neue Tabelle ohne Einordnung: election_analysis_turnout",
+    "Neue Tabelle ohne Einordnung: election_analysis_versions",
+    "Neue Tabelle ohne Einordnung: election_analysis_workbook_audit",
+    "Neue Tabelle ohne Einordnung: election_analysis_years",
+    "Neue Tabelle ohne Einordnung: election_history_1952_result_sources",
+    "Neue Tabelle ohne Einordnung: election_history_assembly_issues",
+    "Neue Tabelle ohne Einordnung: election_history_audit",
+    "Neue Tabelle ohne Einordnung: election_history_candidacies",
+    "Neue Tabelle ohne Einordnung: election_history_candidate_workbook_audit",
+    "Neue Tabelle ohne Einordnung: election_history_connection_people",
+    "Neue Tabelle ohne Einordnung: election_history_districts",
+    "Neue Tabelle ohne Einordnung: election_history_factions",
+    "Neue Tabelle ohne Einordnung: election_history_mandate_birthdays",
+    "Neue Tabelle ohne Einordnung: election_history_mandates",
+    "Neue Tabelle ohne Einordnung: election_history_people",
+    "Neue Tabelle ohne Einordnung: election_history_periods",
+    "Neue Tabelle ohne Einordnung: election_history_state_list_entries",
+    "Neue Tabelle ohne Einordnung: election_history_state_lists",
+    "Neue Tabelle ohne Einordnung: employee_responsibilities",
+    "Neue Tabelle ohne Einordnung: regions",
+    "Neue Tabelle ohne Einordnung: team_bingo_settings",
+    "Neue Tabelle ohne Einordnung: team_fun_facts",
+    "Neue Tabelle ohne Einordnung: team_question_answers",
+    "Neue Tabelle ohne Einordnung: team_question_weeks",
+    "Neue Tabelle ohne Einordnung: team_questions",
+    "Neue Tabelle ohne Einordnung: team_ritual_profiles",
+    "Neue Tabelle ohne Einordnung: team_ritual_settings",
+    "Neue Tabelle ohne Einordnung: team_two_truths_answers",
+    "Neue Tabelle ohne Einordnung: team_two_truths_months",
+    "Neue Tabelle ohne Einordnung: topic_catalog_links"
+  ]
 }

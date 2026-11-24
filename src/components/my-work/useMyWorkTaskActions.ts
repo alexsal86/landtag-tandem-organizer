@@ -195,6 +195,24 @@ export function useMyWorkTaskActions({
     });
   };
 
+  const restoreArchivedTree = async (archivedId: string, tenantId: string | undefined) => {
+    if (!tenantId) {
+      notify.error("Rücknahme nicht möglich", { description: "Das Büro der Aufgabe ist unbekannt." });
+      return;
+    }
+    const { data, error } = await supabase.rpc("restore_archived_task", {
+      _archived_id: archivedId,
+      _tenant_id: tenantId,
+    });
+    if (error) {
+      notify.error("Rücknahme nicht möglich", { description: error.message });
+      return;
+    }
+    const restored = typeof data === "number" ? data : 0;
+    notify.success(`${restored} ${restored === 1 ? "Aufgabe" : "Aufgaben"} zurückgeholt`);
+    invalidateTasks();
+  };
+
   const handleToggleComplete = async (taskId: string) => {
     if (!userId) return;
 
@@ -210,7 +228,7 @@ export function useMyWorkTaskActions({
     removeTaskTreeFromCollections(taskTreeIds);
 
     try {
-      const { error } = await supabase.rpc("archive_completed_task", {
+      const { data: archivedId, error } = await supabase.rpc("archive_completed_task", {
         p_task_id: taskId,
         p_user_id: userId,
       });
@@ -219,7 +237,9 @@ export function useMyWorkTaskActions({
 
       invalidateTasks();
       onCelebrate();
-      notify.success("Aufgabe erledigt und archiviert");
+      notify.success("Aufgabe erledigt und archiviert", archivedId
+        ? { action: { label: "Rückgängig", onClick: () => { void restoreArchivedTree(archivedId, task.tenant_id); } } }
+        : undefined);
     } catch (error: unknown) {
       setAssignedTasks(previousAssignedTasks);
       setCreatedTasks(previousCreatedTasks);
@@ -232,6 +252,19 @@ export function useMyWorkTaskActions({
           "Die Aufgabe blieb unverändert. Es wurde nichts teilweise archiviert."
 });
     }
+  };
+
+  const undoSubtaskCompletion = async (subtaskId: string) => {
+    const { error } = await supabase
+      .from("tasks")
+      .update({ status: "todo", progress: 0 })
+      .eq("id", subtaskId);
+    if (error) {
+      notify.error("Rücknahme fehlgeschlagen", { description: error.message });
+      return;
+    }
+    notify.success("Unteraufgabe wieder offen");
+    invalidateTasks();
   };
 
   const handleToggleSubtaskComplete = async (subtaskId: string) => {
@@ -253,7 +286,9 @@ export function useMyWorkTaskActions({
 
       if (error) throw error;
       onCelebrate();
-      notify.success("Unteraufgabe erledigt");
+      notify.success("Unteraufgabe erledigt", {
+        action: { label: "Rückgängig", onClick: () => { void undoSubtaskCompletion(subtaskId); } },
+      });
     } catch (error) {
       setSubtasks(previousSubtasks);
       debugConsole.error("Error completing subtask:", error);

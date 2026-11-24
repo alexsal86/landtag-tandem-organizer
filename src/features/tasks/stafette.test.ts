@@ -50,7 +50,7 @@ describe("Erinnerungen", () => {
   });
 });
 
-import { canNudge, checklistEvents, isNudgeActive, shiftDay } from "./stafette";
+import { canNudge, checklistEvents, isNudgeActive, shiftDay, batchPreviewSummary, describeBatchItem, groupBatchSkips, parseTaskBatchPreview, taskBatchPreview, ballAssigneeLabel, daysWaiting, describeTaskCommand, escalationFor, isStalledTask, parseTaskCommand, slaLevel, weekReview } from "./stafette";
 describe("Anstupsen, Checkliste, Stapel", () => {
   const now = new Date(2026, 10, 7, 10, 0);
   it("Angestupste Aufgabe steht beim Empfänger ganz oben, beim Absender nicht", () => {
@@ -72,5 +72,100 @@ describe("Anstupsen, Checkliste, Stapel", () => {
   });
   it("Frist +1 Woche", () => {
     expect(shiftDay("2026-11-28", 7)).toBe("2026-12-05");
+  });
+});
+
+describe("Sammelaktionen", () => {
+  const items = [
+    { task_id: "a", title: "Entwurf", eligible: true, reason: null, before: "28.11.2026", after: "05.12.2026" },
+    { task_id: "b", title: "Ohne Frist", eligible: false, reason: "keine Frist gesetzt", before: null, after: null },
+    { task_id: "c", title: "Auch ohne Frist", eligible: false, reason: "keine Frist gesetzt", before: null, after: null },
+  ];
+
+  it("Vorschau zählt, was passiert und was übersprungen wird", () => {
+    const preview = taskBatchPreview("week", items);
+    expect([preview.total, preview.affected, preview.skipped]).toEqual([3, 1, 2]);
+    expect(batchPreviewSummary(preview)).toBe("3 Aufgaben, 2 werden übersprungen");
+  });
+
+  it("Einzahl bleibt lesbar", () => {
+    expect(batchPreviewSummary(taskBatchPreview("week", [items[0]]))).toBe("1 Aufgabe wird bearbeitet");
+    expect(batchPreviewSummary(taskBatchPreview("week", [items[1]]))).toBe("1 Aufgabe, 1 wird übersprungen");
+  });
+
+  it("Übersprungene Aufgaben werden nach Grund gruppiert", () => {
+    expect(groupBatchSkips(items)).toEqual([{ reason: "keine Frist gesetzt", count: 2 }]);
+  });
+
+  it("Freigabe-Vorschau zeigt erhaltene Schritte statt Überschreiben", () => {
+    const kept = describeBatchItem({ ...items[0], before: "Entwurf schreiben", after: "Entwurf schreiben" }, "deputy");
+    const fresh = describeBatchItem({ ...items[0], before: null, after: "Freigabe prüfen" }, "deputy");
+    expect(kept).toBe("Schritt bleibt: „Entwurf schreiben“");
+    expect(fresh).toBe("Nächster Schritt: „Freigabe prüfen“");
+    expect(describeBatchItem(items[0], "week")).toBe("Frist 28.11.2026 → 05.12.2026");
+  });
+
+  it("Fremde Vorschau-Antworten werden verworfen", () => {
+    expect(parseTaskBatchPreview(null)).toBeNull();
+    expect(parseTaskBatchPreview({ action: "delete", items: [] })).toBeNull();
+    const parsed = parseTaskBatchPreview({ action: "week", items });
+    expect(parsed?.items).toHaveLength(3);
+    expect(parsed?.skipped).toBe(2);
+  });
+});
+
+describe("Wochenreview, Eskalation und Befehle", () => {
+  const now = new Date(2026, 10, 7, 12);
+  const old = new Date(2026, 9, 1, 9).toISOString();
+  const fresh = new Date(2026, 10, 5, 9).toISOString();
+
+  it("Büro ohne Person wird benannt statt persönlich zugerechnet", () => {
+    expect(ballAssigneeLabel({ ball_owner: "office" })).toEqual({ owner: "office", label: "Büro (keine Person)", needsPerson: true });
+    expect(ballAssigneeLabel({ ball_owner: "office", ball_assignee_id: "a" }, () => "Anna").label).toBe("Anna");
+    expect(ballAssigneeLabel({ ball_owner: "external", ball_external_label: "Ministerium" }).label).toBe("Ministerium");
+    expect(ballAssigneeLabel({ ball_owner: "deputy" }, () => undefined).needsPerson).toBe(false);
+  });
+
+  it("Stille Aufgaben und Eskalationsgrund", () => {
+    expect(daysWaiting({ created_at: old }, now)).toBe(37);
+    expect(isStalledTask({ created_at: old }, now)).toBe(true);
+    expect(isStalledTask({ created_at: fresh }, now)).toBe(false);
+    expect(escalationFor({ nudge_count: 2, nudged_at: now.toISOString() }, now)).toBe("2× angestupst, keine Reaktion");
+    expect(escalationFor({ status: "completed", created_at: old }, now)).toBeNull();
+    expect(escalationFor({ created_at: fresh }, now)).toBeNull();
+  });
+
+  it("Wochenreview sammelt fehlende Schritte, namenlose Bälle, Duplikate, Stille", () => {
+    const tasks = [
+      { id: "1", title: "Antrag zur Schulpolitik prüfen", next_action: null, created_at: old },
+      { id: "2", title: "Antrag zur Schulpolitik prüfen", next_action: "Entwurf schreiben", created_at: old },
+      { id: "3", title: "Kurz", next_action: "Anrufen", created_at: fresh, ball_owner: "office", ball_assignee_id: "a" },
+      { id: "4", title: "Erledigte Sache", status: "completed", created_at: old },
+    ];
+    const review = weekReview(tasks, now);
+    expect(review.noNextStep.map((task) => task.id)).toEqual(["1"]);
+    expect(review.noBallPerson.map((task) => task.id)).toEqual(["1", "2"]);
+    expect(review.stalled.map((task) => task.id)).toEqual(["1", "2"]);
+    expect(review.duplicates).toHaveLength(1);
+    expect(review.duplicates[0].tasks.map((task) => task.id)).toEqual(["1", "2"]);
+    expect(review.escalate.map((entry) => entry.task.id)).toEqual(["1", "2"]);
+  });
+
+  it("SLA-Stufen: drei Tage fallen auf, sieben sind der Engpass", () => {
+    expect([slaLevel(0), slaLevel(2), slaLevel(3), slaLevel(6), slaLevel(7)]).toEqual(["ok", "ok", "warn", "warn", "critical"]);
+  });
+
+  it("Einzeiler-Befehle werden erkannt", () => {
+    expect(parseTaskCommand("frist +1w")).toEqual({ kind: "due", days: 7 });
+    expect(parseTaskCommand("frist 3 Tage")).toEqual({ kind: "due", days: 3 });
+    expect(parseTaskCommand("frist morgen")).toEqual({ kind: "due", days: 1 });
+    expect(parseTaskCommand("an Max Mustermann")).toEqual({ kind: "assign", query: "Max Mustermann" });
+    expect(parseTaskCommand("wartet auf Ministerium")).toEqual({ kind: "wait", text: "Ministerium" });
+    expect(parseTaskCommand("prio hoch")).toEqual({ kind: "priority", priority: "high" });
+    expect(parseTaskCommand("erledigt")).toEqual({ kind: "complete" });
+    expect(parseTaskCommand("bitte irgendwas")).toBeNull();
+    expect(parseTaskCommand("frist +500w")).toBeNull();
+    expect(describeTaskCommand({ kind: "due", days: 7 })).toBe("Frist in 7 Tagen setzen");
+    expect(describeTaskCommand({ kind: "assign", query: "Max" })).toBe("Ball an Max übergeben");
   });
 });

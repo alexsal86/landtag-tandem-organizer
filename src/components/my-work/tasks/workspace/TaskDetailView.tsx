@@ -19,9 +19,11 @@ import { Dialog, DialogContent, DialogFooter, DialogHeader, DialogTitle, DialogT
 import { cn } from "@/lib/utils";
 import type { MyWorkTask } from "@/hooks/useMyWorkTasksData";
 import { TaskSubtasks } from "./TaskSubtasks";
+import { useTaskTopics } from "@/hooks/useTaskTopics";
+import { ResponsibleSuggestion } from "@/features/responsibilities/ResponsibleSuggestion";
 import { sendToDaySlip, formatCaseDaySlipText } from "@/lib/daySlipBridge";
 import {
-  TASK_BALL_LABELS, canNudge, checklistProgress, isNudgeActive, isOnResubmission, isReminderDue, parseChecklist, reminderPreset, type ChecklistItem, parseTaskTimeline, shiftDay, stepState, type StafetteTask, type TaskBallOwner,
+  TASK_BALL_LABELS, ballAssigneeLabel, canNudge, checklistProgress, isNudgeActive, isOnResubmission, isReminderDue, parseChecklist, reminderPreset, type ChecklistItem, parseTaskTimeline, shiftDay, stepState, type StafetteTask, type TaskBallOwner,
 } from "@/features/tasks/stafette";
 
 export interface TaskPatch extends StafetteTask {
@@ -107,6 +109,7 @@ export function TaskDetailView({ task, profiles, decisionLabel, onSave, onComple
   const [voteComment, setVoteComment] = useState("");
   const checklist = parseChecklist(task.checklist);
   const progress = checklistProgress(checklist);
+  const { assignedTopics } = useTaskTopics(task.id);
   const nudgeForMe = isNudgeActive(task) && task.nudged_by !== meId;
   const mayNudge = canNudge(task, meId);
   const checklistWritePending = useRef(false);
@@ -340,7 +343,7 @@ export function TaskDetailView({ task, profiles, decisionLabel, onSave, onComple
                     <span className={cn("size-2 shrink-0 rounded-full", ownerColors[owner])} />
                     <span className="text-muted-foreground">Am Zug</span>
                     <span className="truncate">
-                      {(owner !== "external" && (nameOf(assignee) || (owner === "deputy" && deputyProfile?.display_name))) || (owner === "external" && externalLabel) || TASK_BALL_LABELS[owner]}
+                      {ballAssigneeLabel({ ball_owner: owner, ball_assignee_id: assignee === "none" ? null : assignee, ball_external_label: externalLabel || null }, nameOf).label}
                     </span>
                     <kbd className="rounded border px-1 text-xs text-muted-foreground">A</kbd>
                   </Button>
@@ -560,6 +563,21 @@ export function TaskDetailView({ task, profiles, decisionLabel, onSave, onComple
               <div className="text-caption text-muted-foreground pt-2 border-t">Heute bereits angestupst – noch nicht gesehen.</div>
             )}
           </section>
+
+          {owner === "office" && !task.ball_assignee_id && (
+            <section className="ml-10 space-y-2" aria-label="Zuständigkeit">
+              {assignedTopics.length > 0 ? (
+                <ResponsibleSuggestion
+                  context={{ topicIds: assignedTopics }}
+                  onAccept={(userId) => void run(() => onSave({ ball_owner: "office", ball_assignee_id: userId }))}
+                />
+              ) : (
+                <p className="text-xs text-muted-foreground">
+                  Zuständigkeit ist offen. Sobald ein Thema an der Aufgabe hängt, schlägt die Matrix eine Person vor.
+                </p>
+              )}
+            </section>
+          )}
 
           <section className="ml-10 space-y-3 pt-3">
             <h3 className="flex items-center gap-2 text-base font-semibold">
