@@ -260,7 +260,7 @@ serve(withSafeHandler("send-news-email", async (req: Request): Promise<Response>
       .maybeSingle();
     const template: EmailTemplate = { ...DEFAULT_TEMPLATE, ...(templateRow ?? {}) };
 
-    // The sender address belongs to the office, never to the default Resend sandbox.
+    // The sender address belongs to the office; the provider sandbox is never a silent fallback.
     const { data: senderInfo } = await supabase
       .from("sender_information")
       .select("name, landtag_email")
@@ -270,9 +270,16 @@ serve(withSafeHandler("send-news-email", async (req: Request): Promise<Response>
       .limit(1)
       .maybeSingle();
 
-    const fromEmail = Deno.env.get("NEWS_EMAIL_FROM")
-      || senderInfo?.landtag_email
-      || "onboarding@resend.dev";
+    const fromEmail = Deno.env.get("NEWS_EMAIL_FROM")?.trim() || senderInfo?.landtag_email?.trim();
+    if (!fromEmail) {
+      console.error("❌ News email sender not configured", { tenant_id: tenantId });
+      return new Response(
+        JSON.stringify({
+          error: "Kein Absender für News-E-Mails konfiguriert. Bitte in der Büroverwaltung einen Standard-Absender mit E-Mail-Adresse hinterlegen oder NEWS_EMAIL_FROM setzen.",
+        }),
+        { status: 422, headers: { "Content-Type": "application/json", ...corsHeaders } },
+      );
+    }
     const fromName = (Deno.env.get("NEWS_EMAIL_FROM_NAME") || senderInfo?.name || "News")
       .replace(/[<>"\r\n]/g, "")
       .trim() || "News";
