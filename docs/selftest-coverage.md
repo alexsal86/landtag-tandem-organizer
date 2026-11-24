@@ -4,7 +4,7 @@ _Auto-generiert mit `npm run update:selftest-coverage`._
 
 Quelle: `src/integrations/supabase/types.ts`. Die Angaben beschreiben deklarierte Prüfumfänge, keine erfolgreichen Testläufe und keine Code-Coverage.
 
-Von 340 Tabellen haben 56 ein registriertes Szenario. 85 sind als Ausbau offen, 151 ausgenommen und 48 noch nicht eingeordnet. Ausnahmen zählen nicht als bestanden.
+Von 341 Tabellen haben 57 ein registriertes Szenario. 85 sind als Ausbau offen, 151 ausgenommen und 48 noch nicht eingeordnet. Ausnahmen zählen nicht als bestanden.
 
 ## Szenarien
 
@@ -17,7 +17,7 @@ Von 340 Tabellen haben 56 ein registriertes Szenario. 85 sind als Ausbau offen, 
 | `appointment-lifecycle` | Termin-Lifecycle (Kalender + Briefing + Feedback) | appointments, appointment_preparations, appointment_feedback |
 | `appointment-request-lifecycle` | Terminanfragen-Lifecycle (Eingang → Sperre → Entscheidung → Termin) | appointment_requests, appointments |
 | `case-item-lifecycle` | Vorgangs-Lifecycle (Am Zug → Schritt → Wiedervorlage → Entscheidung → Tageszettel → Abschluss) | case_items, case_item_interactions, case_item_handover_log, task_decisions, task_decision_participants, task_decision_responses, appointment_requests, day_slips, tasks |
-| `contact-lifecycle` | Kontakt-Lifecycle (Anlegen → Kategorie/Tags → Aktivität → Suche) | contacts, contact_activities |
+| `contact-lifecycle` | Kontakt-Lifecycle (Anlegen → Kategorie/Tags → Aktivität → Suche) | contacts, contact_activities, contact_usage_stats |
 | `daily-briefing-lifecycle` | Tages-Briefings (Vortag-Regel) | daily_briefings |
 | `day-slip-lifecycle` | Tageszettel-Lifecycle (Links → Neuladen → Übernahme auf Folgetag) | day_slips |
 | `decision-lifecycle` | Entscheidungs-Lifecycle (active → open → archived) | task_decisions, task_decision_participants, task_decision_responses |
@@ -62,6 +62,7 @@ Von 340 Tabellen haben 56 ein registriertes Szenario. 85 sind als Ausbau offen, 
 | `appointment_preparation_documents` | Ausgenommen (nicht geprüft) | — |
 | `appointment_preparation_templates` | Ausgenommen (nicht geprüft) | — |
 | `appointment_preparations` | Szenario vorhanden | appointment-lifecycle |
+| `appointment_reminder_dispatches` | Ausgenommen (nicht geprüft) | — |
 | `appointment_requests` | Szenario vorhanden | access-boundaries, appointment-request-lifecycle, case-item-lifecycle |
 | `appointment_statuses` | Ausgenommen (nicht geprüft) | — |
 | `appointment_topics` | Ausgenommen (nicht geprüft) | — |
@@ -104,7 +105,7 @@ Von 340 Tabellen haben 56 ein registriertes Szenario. 85 sind als Ausbau offen, 
 | `contact_activities` | Szenario vorhanden | contact-lifecycle |
 | `contact_briefing_memory` | Ausstehend | — |
 | `contact_topics` | Ausgenommen (nicht geprüft) | — |
-| `contact_usage_stats` | Ausgenommen (nicht geprüft) | — |
+| `contact_usage_stats` | Szenario vorhanden | contact-lifecycle |
 | `contacts` | Szenario vorhanden | contact-lifecycle |
 | `daily_briefing_reads` | Ausstehend | — |
 | `daily_briefings` | Szenario vorhanden | daily-briefing-lifecycle |
@@ -404,6 +405,7 @@ Diese Manifeste sind keine Messung ausgeführter Assertions.
 - case-item-lifecycle: `day_slips`: user_id, tenant_id, day_key, data
 - contact-lifecycle: `contacts`: name, user_id, tenant_id, email, phone, organization, title, category, tags, notes
 - contact-lifecycle: `contact_activities`: contact_id, tenant_id, created_by, activity_type, title, description
+- contact-lifecycle: `contact_usage_stats`: contact_id, tenant_id, user_id, usage_count
 - daily-briefing-lifecycle: `daily_briefings`: tenant_id, author_id, briefing_date, title, content
 - day-slip-lifecycle: `day_slips`: user_id, tenant_id, day_key, data
 - decision-lifecycle: `task_decisions`: title, description, status, created_by, tenant_id, visible_to_all, priority, response_deadline, archived_at, archived_by

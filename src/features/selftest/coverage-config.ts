@@ -12,6 +12,8 @@ export const IGNORED_TABLES: string[] = [
   // Infrastruktur aus dem aktuellen Supabase-Schema (keine Testaussage).
   "bulk_action_audit", "data_lint_findings", "edge_function_cache",
   "egress_anomalies", "egress_metrics", "mobile_push_tokens",
+  // Versandprotokoll der Termin-Erinnerungen: nur Service-Role, kein Client-Pfad.
+  "appointment_reminder_dispatches",
   "quick_note_write_receipts", "security_audit_snapshots", "system_health",
   "tenant_feature_flags", "preparation_templates",
   // Settings / Konfiguration

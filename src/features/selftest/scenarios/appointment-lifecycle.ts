@@ -9,6 +9,13 @@ import {
   selectInvitationRecipients,
   selectNewGuestEmails,
 } from "@/features/appointments/invitations/invitationRules";
+import {
+  APPOINTMENT_REMINDER_MAX_MINUTES,
+  appointmentReminderDueAt,
+  appointmentReminderKey,
+  isAppointmentReminderDue,
+  normalizeAppointmentReminderMinutes,
+} from "@/features/appointments/reminderRules";
 import { isDashboardBirthday, birthdayAge, nextAppointmentLabel, occursOnDay } from "@/utils/dashboard/occasions";
 import {
   POLL_FOLLOWUP_MAX_SEND_ATTEMPTS,
@@ -243,6 +250,56 @@ export const appointmentLifecycleScenario: TestScenario = {
         }
 
         return { ok: true, message: "Jeder Versuch hat eindeutige Versandschlüssel; Fehlversuche werden nach 15, 30 und 60 Minuten (max. 120) wiederholt, erst danach gilt der Auftrag als gescheitert." };
+      },
+    },
+    {
+      id: "appointment-reminder-due",
+      label: "Termin-Erinnerung: Vorlauf, Fälligkeit und ein Versand je Termin",
+      kind: "logic",
+      run: async () => {
+        if (normalizeAppointmentReminderMinutes(0) !== null) throw new Error("0 Minuten bedeutet keine Erinnerung");
+        if (normalizeAppointmentReminderMinutes(null) !== null) throw new Error("Ohne Vorlauf keine Erinnerung");
+        if (normalizeAppointmentReminderMinutes(-5) !== null) throw new Error("Negative Vorläufe sind ungültig");
+        if (normalizeAppointmentReminderMinutes(APPOINTMENT_REMINDER_MAX_MINUTES + 1) !== null) {
+          throw new Error("Vorläufe über einer Woche sind ungültig");
+        }
+        if (normalizeAppointmentReminderMinutes(15.9) !== 15) throw new Error("Vorlauf wird auf ganze Minuten gekürzt");
+        if (normalizeAppointmentReminderMinutes(APPOINTMENT_REMINDER_MAX_MINUTES) !== APPOINTMENT_REMINDER_MAX_MINUTES) {
+          throw new Error("Der maximale Vorlauf muss gültig bleiben");
+        }
+
+        const start = "2026-11-25T14:00:00.000Z";
+        if (appointmentReminderDueAt(start, 15)?.toISOString() !== "2026-11-25T13:45:00.000Z") {
+          throw new Error("Die Erinnerung ist Vorlauf vor dem Beginn fällig");
+        }
+
+        const beforeDue = new Date("2026-11-25T13:44:59.000Z");
+        const dueNow = new Date("2026-11-25T13:45:00.000Z");
+        const afterStart = new Date("2026-11-25T14:00:00.000Z");
+        if (isAppointmentReminderDue({ id: "a", startTime: start, reminderMinutes: 15 }, beforeDue)) {
+          throw new Error("Vor dem Vorlauf darf nicht erinnert werden");
+        }
+        if (!isAppointmentReminderDue({ id: "a", startTime: start, reminderMinutes: 15 }, dueNow)) {
+          throw new Error("Zum Vorlauf muss erinnert werden");
+        }
+        if (isAppointmentReminderDue({ id: "a", startTime: start, reminderMinutes: null }, dueNow)) {
+          throw new Error("Ohne Vorlauf darf nicht erinnert werden");
+        }
+        if (isAppointmentReminderDue({ id: "a", startTime: start, reminderMinutes: 15 }, afterStart)) {
+          throw new Error("Nach Terminbeginn darf nicht erinnert werden");
+        }
+
+        if (appointmentReminderKey("a", 15) === appointmentReminderKey("b", 15)) {
+          throw new Error("Termine brauchen getrennte Versandschlüssel");
+        }
+        if (appointmentReminderKey("a", 15) === appointmentReminderKey("a", 30)) {
+          throw new Error("Verschiedene Vorläufe brauchen getrennte Versandschlüssel");
+        }
+
+        return {
+          ok: true,
+          message: "Erinnert wird genau einmal je Vorlauf, frühestens Vorlauf vor dem Beginn und nie nach Terminbeginn; 0/unbekannt bedeutet keine Erinnerung.",
+        };
       },
     },
     {

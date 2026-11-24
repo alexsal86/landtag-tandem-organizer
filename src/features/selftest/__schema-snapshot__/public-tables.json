@@ -16,6 +16,7 @@
   "appointment_preparation_documents",
   "appointment_preparation_templates",
   "appointment_preparations",
+  "appointment_reminder_dispatches",
   "appointment_requests",
   "appointment_statuses",
   "appointment_topics",

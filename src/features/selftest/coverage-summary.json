@@ -2,8 +2,8 @@
   "schemaVersion": 1,
   "source": "src/integrations/supabase/types.ts",
   "counts": {
-    "total": 340,
-    "scenario": 56,
+    "total": 341,
+    "scenario": 57,
     "deferred": 85,
     "excluded": 151,
     "missing": 48
@@ -275,7 +275,8 @@
       "title": "Kontakt-Lifecycle (Anlegen → Kategorie/Tags → Aktivität → Suche)",
       "touches": [
         "contacts",
-        "contact_activities"
+        "contact_activities",
+        "contact_usage_stats"
       ],
       "features": [
         "contacts"
@@ -305,6 +306,15 @@
             "activity_type",
             "title",
             "description"
+          ]
+        },
+        {
+          "table": "contact_usage_stats",
+          "columns": [
+            "contact_id",
+            "tenant_id",
+            "user_id",
+            "usage_count"
           ]
         }
       ],
@@ -1119,6 +1129,11 @@
       ]
     },
     {
+      "table": "appointment_reminder_dispatches",
+      "status": "excluded",
+      "scenarios": []
+    },
+    {
       "table": "appointment_requests",
       "status": "scenario",
       "scenarios": [
@@ -1348,8 +1363,10 @@
     },
     {
       "table": "contact_usage_stats",
-      "status": "excluded",
-      "scenarios": []
+      "status": "scenario",
+      "scenarios": [
+        "contact-lifecycle"
+      ]
     },
     {
       "table": "contacts",

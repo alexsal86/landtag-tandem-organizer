@@ -875,6 +875,54 @@ export type Database = {
           },
         ]
       }
+      appointment_reminder_dispatches: {
+        Row: {
+          appointment_id: string
+          created_at: string
+          emailed_at: string | null
+          id: string
+          minutes_before: number
+          notification_id: string | null
+          notified_at: string | null
+          user_id: string
+        }
+        Insert: {
+          appointment_id: string
+          created_at?: string
+          emailed_at?: string | null
+          id?: string
+          minutes_before: number
+          notification_id?: string | null
+          notified_at?: string | null
+          user_id: string
+        }
+        Update: {
+          appointment_id?: string
+          created_at?: string
+          emailed_at?: string | null
+          id?: string
+          minutes_before?: number
+          notification_id?: string | null
+          notified_at?: string | null
+          user_id?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "appointment_reminder_dispatches_appointment_id_fkey"
+            columns: ["appointment_id"]
+            isOneToOne: false
+            referencedRelation: "appointments"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "appointment_reminder_dispatches_notification_id_fkey"
+            columns: ["notification_id"]
+            isOneToOne: false
+            referencedRelation: "notifications"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
       appointment_requests: {
         Row: {
           appointment_id: string | null
@@ -17912,6 +17960,21 @@ export type Database = {
       delete_weekly_answer: {
         Args: { p_tenant: string; p_week: string }
         Returns: undefined
+      }
+      dispatch_due_appointment_reminders: {
+        Args: { _limit?: number }
+        Returns: {
+          appointment_id: string
+          end_time: string
+          location: string | null
+          minutes_before: number
+          notification_id: string | null
+          notified: boolean
+          start_time: string
+          tenant_id: string
+          title: string | null
+          user_id: string
+        }[]
       }
       dispatch_due_knowledge_reviews: { Args: never; Returns: number }
       dispatch_due_task_reminders: { Args: never; Returns: number }
