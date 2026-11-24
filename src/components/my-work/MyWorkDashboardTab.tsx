@@ -272,7 +272,7 @@ export function MyWorkDashboardTab() {
         </div>
         <div className="flex min-w-0 flex-col gap-4">
           {isEmployeeView && <BriefingComposerCard />}
-          <ApprovalsWidget />
+          {!isDeputyView && <ApprovalsWidget />}
           {!isDeputyView && <DeadlinesWidget />}
           <DashboardWidgetContainer
             icon={Vote} title={isDeputyView ? "Braucht deine Entscheidung" : "Entscheidungen"} animationDelay={60}
