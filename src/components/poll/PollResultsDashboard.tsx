@@ -8,7 +8,6 @@ import { CalendarIcon, Clock, Users, Check, AlertCircle, X, Trophy, Mail, CheckC
 import { format } from 'date-fns';
 import { de } from 'date-fns/locale';
 import { supabase } from '@/integrations/supabase/client';
-import { useTenant } from '@/hooks/useTenant';
 import { debugConsole } from '@/utils/debugConsole';
 import { notify } from "@/lib/notify";
 import { toast } from "@/hooks/use-toast";
@@ -27,6 +26,8 @@ interface Poll {
   deadline?: string | null;
   status: string;
   user_id: string;
+  confirmed_slot_id?: string | null;
+  confirmed_appointment_id?: string | null;
 }
 
 interface Participant {
@@ -61,20 +62,20 @@ interface PollResultsDashboardProps {
 }
 
 export const PollResultsDashboard = ({ pollId, onConfirmSlot }: PollResultsDashboardProps) => {
-  const { currentTenant } = useTenant();
   const [loading, setLoading] = useState(true);
   const [poll, setPoll] = useState<Poll | null>(null);
   const [participants, setParticipants] = useState<Participant[]>([]);
   const [slotResults, setSlotResults] = useState<SlotResults[]>([]);
   const [creatorName, setCreatorName] = useState<string>('');
   const [confirmedSlot, setConfirmedSlot] = useState<TimeSlot | null>(null);
+  const [confirmedAppointmentId, setConfirmedAppointmentId] = useState<string | null>(null);
 
   useEffect(() => {
     const loadPollResults = async () => {
       try {
         const { data: pollData, error: pollError } = await supabase
           .from('appointment_polls')
-          .select('id, title, description, deadline, status, user_id')
+          .select('id, title, description, deadline, status, user_id, confirmed_slot_id, confirmed_appointment_id')
           .eq('id', pollId)
           .single();
 
@@ -141,6 +142,15 @@ export const PollResultsDashboard = ({ pollId, onConfirmSlot }: PollResultsDashb
         results.sort((a, b) => b.score - a.score);
         setSlotResults(results);
 
+        // Ergebnis einer früheren Sitzung wieder anzeigen.
+        if (pollData.confirmed_slot_id) {
+          const confirmed = (slotsData || []).find((slot: Record<string, any>) => slot.id === pollData.confirmed_slot_id);
+          if (confirmed) setConfirmedSlot(confirmed as TimeSlot);
+        }
+        if (pollData.confirmed_appointment_id) {
+          setConfirmedAppointmentId(pollData.confirmed_appointment_id);
+        }
+
       } catch (error) {
         debugConsole.error('Error loading poll results:', error);
         notify.error("Fehler", {
@@ -182,50 +192,28 @@ export const PollResultsDashboard = ({ pollId, onConfirmSlot }: PollResultsDashb
 
   const handleConfirmSlot = async (slotId: string) => {
     try {
-      // Create appointment from poll
       const slot = slotResults.find(r => r.timeSlot.id === slotId)?.timeSlot;
       if (!slot) return;
 
-      if (!currentTenant?.id) {
-        notify.error("Hinweis", {
-          description: "Kein Tenant-Kontext verfügbar"
-});
-        return;
-      }
+      // Datenbank-RPC: tenant-/owner-geprüft, idempotent über confirmed_appointment_id.
+      const { data: appointmentId, error } = await supabase.rpc('confirm_poll_winner', {
+        _poll_id: pollId,
+        _slot_id: slotId
+      });
 
-      const { data: appointment, error: appointmentError } = await supabase
-        .from('appointments')
-        .insert([{
-          user_id: poll?.user_id ?? '',
-          poll_id: pollId,
-          start_time: slot.start_time,
-          end_time: slot.end_time,
-          title: poll?.title || 'Bestätigter Termin',
-          description: poll?.description,
-          category: 'meeting',
-          status: 'confirmed',
-          priority: 'high',
-          tenant_id: currentTenant.id
-        }])
-        .select()
-        .single();
+      if (error) throw error;
 
-      if (appointmentError) throw appointmentError;
-
-      // Update poll status to completed
-      const { error: pollUpdateError } = await supabase
-        .from('appointment_polls')
-        .update({ status: 'completed' })
-        .eq('id', pollId);
-
-      if (pollUpdateError) throw pollUpdateError;
-
-      // Update local state
-      setPoll(prev => prev ? { ...prev, status: 'completed' } : null);
+      setPoll(prev => prev ? {
+        ...prev,
+        status: 'completed',
+        confirmed_slot_id: slotId,
+        confirmed_appointment_id: (appointmentId as string | null) ?? null
+      } : null);
       setConfirmedSlot(slot);
+      setConfirmedAppointmentId((appointmentId as string | null) ?? null);
 
       notify.success("Termin bestätigt", {
-        description: "Der Termin wurde erfolgreich bestätigt und in den Kalender eingetragen."
+        description: "Der Gewinner-Slot wurde als Termin in den Kalender übernommen."
 });
 
       if (onConfirmSlot) {
@@ -306,6 +294,11 @@ export const PollResultsDashboard = ({ pollId, onConfirmSlot }: PollResultsDashb
             {format(new Date(confirmedSlot.start_time), 'dd. MMMM yyyy', { locale: de })} von{' '}
             {format(new Date(confirmedSlot.start_time), 'HH:mm')} bis{' '}
             {format(new Date(confirmedSlot.end_time), 'HH:mm')} Uhr wurde in den Kalender eingetragen.
+            {confirmedAppointmentId && (
+              <Button asChild size="sm" variant="outline" className="ml-2">
+                <a href={`/calendar?highlight=${confirmedAppointmentId}`}>Im Kalender öffnen</a>
+              </Button>
+            )}
           </AlertDescription>
         </Alert>
       )}

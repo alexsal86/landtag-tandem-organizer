@@ -1,85 +1,121 @@
+import { allDayEndDate, createIcsDateTimeParser, parseIcsContentLines, parseIcsProperty } from '../_shared/icsTime.ts';
+
 export interface ICSEvent {
   uid: string;
   summary: string;
   description?: string;
+  /** Rohwert aus dem Feed (Diagnose/raw_ics_data). */
   dtstart: string;
   dtend?: string;
+  /** Mit Z/TZID/VTIMEZONE aufgelöster UTC-Zeitstempel. */
+  startUtc: string;
+  endUtc: string;
   location?: string;
   allDay?: boolean;
   rrule?: string;
   lastModified?: string;
+  lastModifiedUtc?: string;
 }
 
-export function parseICSDate(dateStr: string): Date {
-  if (dateStr.includes('T')) {
-    const year = parseInt(dateStr.substring(0, 4), 10);
-    const month = parseInt(dateStr.substring(4, 6), 10) - 1;
-    const day = parseInt(dateStr.substring(6, 8), 10);
-    const hour = parseInt(dateStr.substring(9, 11), 10) || 0;
-    const minute = parseInt(dateStr.substring(11, 13), 10) || 0;
-    const second = parseInt(dateStr.substring(13, 15), 10) || 0;
-
-    return new Date(year, month, day, hour, minute, second);
-  }
-
-  const year = parseInt(dateStr.substring(0, 4), 10);
-  const month = parseInt(dateStr.substring(4, 6), 10) - 1;
-  const day = parseInt(dateStr.substring(6, 8), 10);
-
-  return new Date(year, month, day);
+interface RawEvent {
+  uid?: string;
+  summary?: string;
+  description?: string;
+  location?: string;
+  rrule?: string;
+  startValue?: string;
+  startParams?: Record<string, string>;
+  endValue?: string;
+  endParams?: Record<string, string>;
+  lastModified?: string;
 }
 
 export function parseICS(icsContent: string, startDate: Date, endDate: Date, maxEvents: number): ICSEvent[] {
+  const parser = createIcsDateTimeParser(icsContent);
   const events: ICSEvent[] = [];
-  const lines = icsContent.split(/\r?\n/);
-  let currentEvent: Partial<ICSEvent> | null = null;
+  let current: RawEvent | null = null;
 
-  for (let i = 0; i < lines.length; i++) {
-    let line = lines[i].trim();
+  const finishEvent = () => {
+    const source = current;
+    current = null;
+    if (!source?.uid || !source.summary || !source.startValue) return;
 
-    while (i + 1 < lines.length && (lines[i + 1].startsWith(' ') || lines[i + 1].startsWith('\t'))) {
-      i++;
-      line += lines[i].trim();
+    const start = parser.resolveDateTime(source.startValue, source.startParams);
+    if (!start) return;
+
+    const end = source.endValue ? parser.resolveDateTime(source.endValue, source.endParams) : null;
+    // DTEND ist bei ganztägigen Terminen exklusiv; fehlt es, gilt ein Tag.
+    // Ohne DTEND bei Uhrzeitterminen wird eine Stunde angenommen.
+    const endDate_ = start.dateOnly
+      ? allDayEndDate(start.date, end?.date ?? null)
+      : end?.date && end.date.getTime() > start.date.getTime()
+        ? end.date
+        : new Date(start.date.getTime() + 60 * 60 * 1000);
+
+    // Überlappung mit dem Sync-Fenster auf Basis der aufgelösten Zeitpunkte.
+    if (start.date > endDate || endDate_ < startDate) return;
+
+    events.push({
+      uid: source.uid,
+      summary: source.summary,
+      description: source.description,
+      dtstart: source.startValue,
+      dtend: source.endValue,
+      startUtc: start.date.toISOString(),
+      endUtc: endDate_.toISOString(),
+      location: source.location,
+      allDay: start.dateOnly || source.startParams?.VALUE?.toUpperCase() === 'DATE',
+      rrule: source.rrule,
+      lastModified: source.lastModified,
+      lastModifiedUtc: source.lastModified ? parser.resolveUtc(source.lastModified)?.toISOString() : undefined,
+    });
+  };
+
+  for (const line of parseIcsContentLines(icsContent)) {
+    const property = parseIcsProperty(line);
+    if (!property) continue;
+
+    const component = property.value.trim().toUpperCase();
+    if (property.name === 'BEGIN' && component === 'VEVENT') {
+      current = {};
+      continue;
     }
 
-    if (line === 'BEGIN:VEVENT') {
-      currentEvent = {};
-    } else if (line === 'END:VEVENT' && currentEvent) {
-      if (currentEvent.uid && currentEvent.summary && currentEvent.dtstart) {
-        const eventStart = parseICSDate(currentEvent.dtstart);
-        const eventEnd = currentEvent.dtend
-          ? parseICSDate(currentEvent.dtend)
-          : new Date(eventStart.getTime() + 24 * 60 * 60 * 1000);
+    if (property.name === 'END' && component === 'VEVENT') {
+      finishEvent();
+      if (events.length >= maxEvents) break;
+      continue;
+    }
 
-        if (eventStart <= endDate && eventEnd >= startDate) {
-          events.push(currentEvent as ICSEvent);
-        }
-      }
-      currentEvent = null;
+    if (!current) continue;
 
-      if (events.length >= maxEvents) {
+    switch (property.name) {
+      case 'UID':
+        current.uid = property.value.trim();
         break;
-      }
-    } else if (currentEvent) {
-      if (line.startsWith('UID:')) {
-        currentEvent.uid = line.substring(4);
-      } else if (line.startsWith('SUMMARY:')) {
-        currentEvent.summary = line.substring(8);
-      } else if (line.startsWith('DESCRIPTION:')) {
-        currentEvent.description = line.substring(12);
-      } else if (line.startsWith('DTSTART')) {
-        const value = line.split(':')[1];
-        currentEvent.dtstart = value;
-        currentEvent.allDay = !value.includes('T');
-      } else if (line.startsWith('DTEND')) {
-        currentEvent.dtend = line.split(':')[1];
-      } else if (line.startsWith('LOCATION:')) {
-        currentEvent.location = line.substring(9);
-      } else if (line.startsWith('RRULE:')) {
-        currentEvent.rrule = line.substring(6);
-      } else if (line.startsWith('LAST-MODIFIED:')) {
-        currentEvent.lastModified = line.substring(14);
-      }
+      case 'SUMMARY':
+        current.summary = property.value;
+        break;
+      case 'DESCRIPTION':
+        current.description = property.value;
+        break;
+      case 'LOCATION':
+        current.location = property.value;
+        break;
+      case 'RRULE':
+        current.rrule = property.value;
+        break;
+      case 'LAST-MODIFIED':
+        current.lastModified = property.value;
+        break;
+      case 'DTSTART':
+        current.startValue = property.value;
+        current.startParams = property.params;
+        break;
+      case 'DTEND':
+        current.endValue = property.value;
+        current.endParams = property.params;
+        break;
     }
   }
 

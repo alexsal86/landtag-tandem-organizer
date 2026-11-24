@@ -640,11 +640,15 @@ export type Database = {
       }
       appointment_polls: {
         Row: {
+          confirmed_appointment_id: string | null
+          confirmed_slot_id: string | null
           created_at: string
           current_version: number | null
           deadline: string | null
           description: string | null
+          followup_count: number
           id: string
+          last_followup_at: string | null
           status: string
           tenant_id: string | null
           title: string
@@ -652,11 +656,15 @@ export type Database = {
           user_id: string
         }
         Insert: {
+          confirmed_appointment_id?: string | null
+          confirmed_slot_id?: string | null
           created_at?: string
           current_version?: number | null
           deadline?: string | null
           description?: string | null
+          followup_count?: number
           id?: string
+          last_followup_at?: string | null
           status?: string
           tenant_id?: string | null
           title: string
@@ -664,11 +672,15 @@ export type Database = {
           user_id: string
         }
         Update: {
+          confirmed_appointment_id?: string | null
+          confirmed_slot_id?: string | null
           created_at?: string
           current_version?: number | null
           deadline?: string | null
           description?: string | null
+          followup_count?: number
           id?: string
+          last_followup_at?: string | null
           status?: string
           tenant_id?: string | null
           title?: string
@@ -1027,6 +1039,7 @@ export type Database = {
           briefing_instructions: string | null
           briefing_status: string
           briefing_task_id: string | null
+          calendar_sequence: number
           calendar_uid: string | null
           call_log_id: string | null
           category: string | null
@@ -1039,6 +1052,7 @@ export type Database = {
           has_external_guests: boolean | null
           id: string
           is_all_day: boolean
+          last_invitation_sequence: number
           last_invitation_sent_at: string | null
           location: string | null
           meeting_details: string | null
@@ -1076,6 +1090,8 @@ export type Database = {
           has_external_guests?: boolean | null
           id?: string
           is_all_day?: boolean
+          calendar_sequence?: number
+          last_invitation_sequence?: number
           last_invitation_sent_at?: string | null
           location?: string | null
           meeting_details?: string | null
@@ -1113,6 +1129,8 @@ export type Database = {
           has_external_guests?: boolean | null
           id?: string
           is_all_day?: boolean
+          calendar_sequence?: number
+          last_invitation_sequence?: number
           last_invitation_sent_at?: string | null
           location?: string | null
           meeting_details?: string | null
@@ -11952,6 +11970,7 @@ export type Database = {
       }
       poll_notifications: {
         Row: {
+          attempt: number
           created_at: string
           id: string
           is_sent: boolean
@@ -11961,6 +11980,7 @@ export type Database = {
           sent_at: string | null
         }
         Insert: {
+          attempt?: number
           created_at?: string
           id?: string
           is_sent?: boolean
@@ -11970,6 +11990,7 @@ export type Database = {
           sent_at?: string | null
         }
         Update: {
+          attempt?: number
           created_at?: string
           id?: string
           is_sent?: boolean
@@ -17688,6 +17709,10 @@ export type Database = {
         Args: { p_kind: string; p_region_kind?: string; p_topic: string }
         Returns: Json
       }
+      confirm_poll_winner: {
+        Args: { _poll_id: string; _slot_id: string }
+        Returns: string
+      }
       create_appointment_poll_with_details: {
         Args: {
           p_deadline?: string
@@ -17825,6 +17850,10 @@ export type Database = {
       dispatch_due_task_reminders: { Args: never; Returns: number }
       dispatch_employee_preparation_reminders: { Args: never; Returns: number }
       dispatch_office_feedback_reminders: { Args: never; Returns: undefined }
+      record_poll_followup: {
+        Args: { _expected_attempt: number; _poll_id: string }
+        Returns: number
+      }
       dispatch_scheduled_emails_if_due: { Args: never; Returns: undefined }
       dispatch_workflow_trigger: {
         Args: {
@@ -18232,6 +18261,20 @@ export type Database = {
           is_for_all_users: boolean
           status: string
           title: string
+        }[]
+      }
+      get_poll_availability: {
+        Args: {
+          _emails: string[]
+          _from?: string
+          _tenant_id: string
+          _to?: string
+        }
+        Returns: {
+          busy_end: string | null
+          busy_start: string | null
+          email: string
+          source: string
         }[]
       }
       get_user_polls_with_aggregation: {
@@ -19435,6 +19478,10 @@ export type Database = {
       update_waiting_routine_steps: {
         Args: { _run_id: string }
         Returns: number
+      }
+      upsert_appointment_guests: {
+        Args: { _appointment_id: string; _guests: Json }
+        Returns: Json
       }
       upsert_weekly_answer: {
         Args: { p_answer: string; p_tenant: string; p_week: string }

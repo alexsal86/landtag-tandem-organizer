@@ -10,6 +10,7 @@ import { documentAnnotationScenario } from "./scenarios/document-annotation";
 import { knowledgeLifecycleScenario } from './scenarios/knowledge-lifecycle';
 import { adminControlsScenario } from './scenarios/admin-controls';
 import { annualTaskStafetteScenario } from './scenarios/annual-task-stafette';
+import { pollLifecycleScenario } from './scenarios/poll-lifecycle';
 import type { TestScenario } from "./types";
 import { meetingLifecycleScenario } from "./scenarios/meeting-lifecycle";
 import { taskLifecycleScenario } from "./scenarios/task-lifecycle";
@@ -59,4 +60,5 @@ export const SELFTEST_SCENARIOS: TestScenario[] = [
   taskStafetteLifecycleScenario,
   quickNoteLifecycleScenario,
   contactLifecycleScenario,
+  pollLifecycleScenario,
 ];
