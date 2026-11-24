@@ -72,7 +72,7 @@ function BriefingItem({ briefing, moreAction, onRead, targetLabel, preview = fal
     className="ml-auto flex w-fit max-w-full origin-top-left flex-wrap items-center justify-end gap-3 rounded-xl bg-[rgb(240,243,246)] px-5 py-2">
     <button type="button" onClick={() => toggleCollapsed(false)} aria-expanded={false}
       className="inline-flex min-w-0 max-w-full items-center justify-end gap-2 rounded text-xs focus-visible:outline focus-visible:outline-2 focus-visible:outline-primary">
-      <span className="truncate text-muted-foreground">Tagesbriefing{targetLabel ? ` ${targetLabel}` : ""} · {briefing.author_display_name ?? "Teammitglied"}</span>
+      <span className="truncate text-muted-foreground">Tagesbriefing{targetLabel ? ` ${targetLabel}` : ""}</span>
       <span className="shrink-0 rounded-full bg-[#eaf5df] px-3 py-1 font-medium text-[#397d16]">{dailyBriefingReadLabel(briefing.read_at)}</span>
       <ChevronDown className="h-3 w-3 shrink-0" aria-hidden="true" />
     </button>
