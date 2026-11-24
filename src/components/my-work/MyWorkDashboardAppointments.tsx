@@ -2,7 +2,7 @@ import { DashboardBirthdays } from "./DashboardBirthdays";
 import { openAppointmentChange, useAlerts as useChangeAlerts } from "@/features/appointments/change-alerts/AppointmentChangeAlerts";
 import { useWorkspaceView } from "@/contexts/WorkspaceViewContext";
 import { nextAppointmentLabel } from "@/utils/dashboard/occasions";
-import { appointmentCountdown, dashboardTimelineState, hasAppointmentEnded, timelineNowIndex } from "@/utils/dashboard/daySummary";
+import { appointmentCountdown, appointmentProgress, dashboardTimelineState, hasAppointmentEnded, showTimelineNowMarker, timelineNowIndex } from "@/utils/dashboard/daySummary";
 import { useQuery } from "@tanstack/react-query";
 import { useResolvedUserRole } from "@/hooks/useResolvedUserRole";
 import { dashboardBriefingState } from "@/features/appointments/briefing";
@@ -123,7 +123,7 @@ export const DashboardAppointments = ({ data }: Props) => {
   const navigate = useNavigate();
   const [now, setNow] = useState(() => new Date());
   useEffect(() => {
-    const timer = window.setInterval(() => setNow(new Date()), 60_000);
+    const timer = window.setInterval(() => setNow(new Date()), 1_000);
     return () => window.clearInterval(timer);
   }, []);
   const { currentTenant } = useTenant();
@@ -292,6 +292,7 @@ export const DashboardAppointments = ({ data }: Props) => {
     const ended = hasAppointmentEnded(apt, now);
     const isNext = apt.id === nextId;
     const highlighted = active || (isNext && timeline.highlightNext);
+    const progress = active ? appointmentProgress(apt, now) : null;
     const hasPrep = preparations.has(apt.id);
     const prep = preparations.get(apt.id);
     const isBriefingExpanded = expandedBriefingId === apt.id;
@@ -384,6 +385,7 @@ export const DashboardAppointments = ({ data }: Props) => {
                   {(active || isNext) && <span className="font-semibold text-[#397d16]">{active ? 'Läuft gerade' : 'Als Nächstes'}</span>}
                   {(active || isNext) && showLocation && <span className="text-black" aria-hidden="true">·</span>}
                   {showLocation && <span className="inline-flex items-start gap-1.5">{!active && !isNext && <MapPin className="mt-0.5 h-3 w-3 shrink-0" aria-hidden="true" />}<span className="break-words">{apt.location}</span></span>}
+                  {progress && <><span className="text-black" aria-hidden="true">·</span><span>noch {progress.remainingMinutes} {progress.remainingMinutes === 1 ? 'Minute' : 'Minuten'}</span></>}
                 </span>}
                 {participantList.length > 0 && (
                   <span className="flex items-center gap-2">
@@ -475,6 +477,14 @@ export const DashboardAppointments = ({ data }: Props) => {
               )}
             </div>}
           </div>
+          {progress && <div className="pointer-events-none relative col-start-2 col-end-[-1] my-2 h-1.5 rounded-full bg-border"
+            role="progressbar" aria-label={`Fortschritt: ${apt.title}`} aria-valuemin={0} aria-valuemax={100}
+            aria-valuenow={Math.round(progress.fraction * 100)} aria-valuetext={`Noch ${progress.remainingMinutes} Minuten`}>
+            <span className="absolute inset-0 origin-left rounded-full bg-[#397d16]" style={{ transform: `scaleX(${progress.fraction})` }} />
+            <span className="absolute inset-0" style={{ transform: `translateX(${progress.fraction * 100}%)` }}>
+              <span className="absolute left-0 top-1/2 h-4 w-4 -translate-x-1/2 -translate-y-1/2 rounded-full bg-[#ec4899] ring-4 ring-white" />
+            </span>
+          </div>}
         </div>
         {canOpenBriefing && prep && (
           <div className="dashboard-expand grid grid-rows-[0fr] data-[open=true]:grid-rows-[1fr]" data-open={isBriefingExpanded}
@@ -513,7 +523,7 @@ export const DashboardAppointments = ({ data }: Props) => {
   const renderTimedAppointments = (items: DashboardData["appointments"], today: boolean) => {
     const entries: Array<{ key: string; appointment: DashboardData["appointments"][number] | null }> =
       items.map(appointment => ({ key: appointment.id, appointment }));
-    if (today && items.some(appointment => !hasAppointmentEnded(appointment, now))) {
+    if (today && showTimelineNowMarker(items, now)) {
       entries.splice(timelineNowIndex(items, now), 0, { key: "current-time", appointment: null });
     }
     return (

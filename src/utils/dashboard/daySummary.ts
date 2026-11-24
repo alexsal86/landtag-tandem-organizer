@@ -98,3 +98,21 @@ export function appointmentCountdown(startTime: string, now = new Date()): strin
   const rest = minutes % 60;
   return hours ? `in ${hours} Std.${rest ? ` ${rest} Min.` : ''}` : `in ${minutes} Min.`;
 }
+
+export function appointmentProgress(appointment: TimedAppointment, now = new Date()): {
+  fraction: number; remainingMinutes: number;
+} | null {
+  if (appointment.is_all_day) return null;
+  const start = Date.parse(appointment.start_time);
+  const end = appointment.end_time ? Date.parse(appointment.end_time) : start + 3600_000;
+  if (!Number.isFinite(start) || !Number.isFinite(end) || end <= start) return null;
+  return {
+    fraction: Math.max(0, Math.min(1, (now.getTime() - start) / (end - start))),
+    remainingMinutes: Math.max(0, Math.ceil((end - now.getTime()) / 60_000)),
+  };
+}
+
+export function showTimelineNowMarker(appointments: TimedAppointment[], now = new Date()): boolean {
+  return appointments.some(appointment => !appointment.is_all_day)
+    && dashboardTimelineState(appointments, now).runningIds.size === 0;
+}
