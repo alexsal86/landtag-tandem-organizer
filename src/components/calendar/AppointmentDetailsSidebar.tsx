@@ -351,6 +351,33 @@ export function AppointmentDetailsSidebar({
     }
   };
 
+  // Löschen ohne Absage: nur nach ausdrücklicher Rückfrage im Fehler-Toast.
+  const deleteAppointmentWithoutNotice = async (appointmentId: string) => {
+    setIsDeleting(true);
+    try {
+      const { error } = await supabase
+        .from('appointments')
+        .delete()
+        .eq('id', appointmentId);
+
+      if (error) throw error;
+
+      notify.success("Termin gelöscht", {
+        description: "Der Termin wurde ohne Absage an die Gäste gelöscht."
+      });
+
+      onUpdate();
+      onClose();
+    } catch (error) {
+      debugConsole.error('Error deleting appointment:', error);
+      notify.error("Fehler", {
+        description: "Der Termin konnte nicht gelöscht werden."
+      });
+    } finally {
+      setIsDeleting(false);
+    }
+  };
+
   const handleDelete = async () => {
     if (!appointment || isDeleting) return;
     
@@ -365,11 +392,23 @@ export function AppointmentDetailsSidebar({
       }
 
       // Absage an dieselbe Kalender-UID senden, solange die Gäste noch existieren.
+      // Schlägt der Versand fehl, bleibt der Termin bestehen – sonst würden die
+      // Gäste ohne Absage verschwinden. Ohne Absage löschen nur nach Rückfrage.
+      const appointmentId = appointment.id;
       const { error: cancelError } = await supabase.functions.invoke('send-appointment-invitation', {
-        body: { appointmentId: appointment.id, reason: 'cancel' }
+        body: { appointmentId, reason: 'cancel' }
       });
       if (cancelError) {
         debugConsole.error('Error sending cancellation:', cancelError);
+        notify.error("Absage nicht versendet – Termin bleibt bestehen", {
+          description: "Die Absage an die eingeladenen Gäste konnte nicht versendet werden. Der Termin wurde deshalb nicht gelöscht. Bitte erneut versuchen.",
+          duration: 12000,
+          action: {
+            label: "Trotzdem löschen",
+            onClick: () => { void deleteAppointmentWithoutNotice(appointmentId); }
+          }
+        });
+        return;
       }
 
       const { error } = await supabase
