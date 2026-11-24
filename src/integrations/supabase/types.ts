@@ -703,6 +703,20 @@ export type Database = {
         }
         Relationships: [
           {
+            foreignKeyName: "appointment_polls_confirmed_appointment_id_fkey"
+            columns: ["confirmed_appointment_id"]
+            isOneToOne: false
+            referencedRelation: "appointments"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "appointment_polls_confirmed_slot_id_fkey"
+            columns: ["confirmed_slot_id"]
+            isOneToOne: false
+            referencedRelation: "poll_time_slots"
+            referencedColumns: ["id"]
+          },
+          {
             foreignKeyName: "appointment_polls_tenant_id_fkey"
             columns: ["tenant_id"]
             isOneToOne: false
@@ -1114,8 +1128,8 @@ export type Database = {
           has_external_guests: boolean | null
           id: string
           is_all_day: boolean
-          last_invitation_sequence: number
           last_invitation_sent_at: string | null
+          last_invitation_sequence: number
           location: string | null
           meeting_details: string | null
           meeting_id: string | null
@@ -1140,6 +1154,7 @@ export type Database = {
           briefing_instructions?: string | null
           briefing_status?: string
           briefing_task_id?: string | null
+          calendar_sequence?: number
           calendar_uid?: string | null
           call_log_id?: string | null
           category?: string | null
@@ -1152,9 +1167,8 @@ export type Database = {
           has_external_guests?: boolean | null
           id?: string
           is_all_day?: boolean
-          calendar_sequence?: number
-          last_invitation_sequence?: number
           last_invitation_sent_at?: string | null
+          last_invitation_sequence?: number
           location?: string | null
           meeting_details?: string | null
           meeting_id?: string | null
@@ -1179,6 +1193,7 @@ export type Database = {
           briefing_instructions?: string | null
           briefing_status?: string
           briefing_task_id?: string | null
+          calendar_sequence?: number
           calendar_uid?: string | null
           call_log_id?: string | null
           category?: string | null
@@ -1191,9 +1206,8 @@ export type Database = {
           has_external_guests?: boolean | null
           id?: string
           is_all_day?: boolean
-          calendar_sequence?: number
-          last_invitation_sequence?: number
           last_invitation_sent_at?: string | null
+          last_invitation_sequence?: number
           location?: string | null
           meeting_details?: string | null
           meeting_id?: string | null
@@ -11061,7 +11075,6 @@ export type Database = {
       }
       meeting_agenda_items: {
         Row: {
-          actual_minutes: number
           assigned_to: string[] | null
           carried_over_from: string | null
           carry_over_to_next: boolean | null
@@ -11088,12 +11101,10 @@ export type Database = {
           source_meeting_id: string | null
           system_type: string | null
           task_id: string | null
-          timer_started_at: string | null
           title: string
           updated_at: string
         }
         Insert: {
-          actual_minutes?: number
           assigned_to?: string[] | null
           carried_over_from?: string | null
           carry_over_to_next?: boolean | null
@@ -11120,12 +11131,10 @@ export type Database = {
           source_meeting_id?: string | null
           system_type?: string | null
           task_id?: string | null
-          timer_started_at?: string | null
           title: string
           updated_at?: string
         }
         Update: {
-          actual_minutes?: number
           assigned_to?: string[] | null
           carried_over_from?: string | null
           carry_over_to_next?: boolean | null
@@ -11152,7 +11161,6 @@ export type Database = {
           source_meeting_id?: string | null
           system_type?: string | null
           task_id?: string | null
-          timer_started_at?: string | null
           title?: string
           updated_at?: string
         }
@@ -11380,7 +11388,6 @@ export type Database = {
           meeting_time?: string | null
           parent_meeting_id?: string | null
           recurrence_rule?: Json | null
-          started_at?: string | null
           status?: string
           template_id?: string | null
           tenant_id?: string | null
@@ -11399,7 +11406,6 @@ export type Database = {
           meeting_time?: string | null
           parent_meeting_id?: string | null
           recurrence_rule?: Json | null
-          started_at?: string | null
           status?: string
           template_id?: string | null
           tenant_id?: string | null
@@ -11609,6 +11615,13 @@ export type Database = {
           user_id?: string
         }
         Relationships: [
+          {
+            foreignKeyName: "news_article_states_article_fkey"
+            columns: ["tenant_id", "article_id"]
+            isOneToOne: false
+            referencedRelation: "news_articles"
+            referencedColumns: ["tenant_id", "article_id"]
+          },
           {
             foreignKeyName: "news_article_states_tenant_id_fkey"
             columns: ["tenant_id"]
@@ -13980,6 +13993,67 @@ export type Database = {
           },
         ]
       }
+      social_content_approval_events: {
+        Row: {
+          action: string
+          actor_id: string | null
+          actor_name: string | null
+          actor_user_id: string | null
+          content_item_id: string
+          created_at: string
+          from_state: string | null
+          id: string
+          tenant_id: string
+          to_state: string | null
+        }
+        Insert: {
+          action: string
+          actor_id?: string | null
+          actor_name?: string | null
+          actor_user_id?: string | null
+          content_item_id: string
+          created_at?: string
+          from_state?: string | null
+          id?: string
+          tenant_id: string
+          to_state?: string | null
+        }
+        Update: {
+          action?: string
+          actor_id?: string | null
+          actor_name?: string | null
+          actor_user_id?: string | null
+          content_item_id?: string
+          created_at?: string
+          from_state?: string | null
+          id?: string
+          tenant_id?: string
+          to_state?: string | null
+        }
+        Relationships: [
+          {
+            foreignKeyName: "social_content_approval_events_actor_id_fkey"
+            columns: ["actor_id"]
+            isOneToOne: false
+            referencedRelation: "profiles"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "social_content_approval_events_content_item_id_fkey"
+            columns: ["content_item_id"]
+            isOneToOne: false
+            referencedRelation: "social_content_items"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "social_content_approval_events_tenant_id_fkey"
+            columns: ["tenant_id"]
+            isOneToOne: false
+            referencedRelation: "tenants"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
       social_content_channels: {
         Row: {
           created_at: string
@@ -14668,53 +14742,6 @@ export type Database = {
             isOneToOne: false
             referencedRelation: "profiles"
             referencedColumns: ["user_id"]
-          },
-        ]
-      }
-      task_batch_actions: {
-        Row: {
-          action: string
-          actor_id: string
-          affected_count: number
-          created_at: string
-          id: string
-          skipped_count: number
-          tenant_id: string
-          undo_payload: Json
-          undone_at: string | null
-          undone_by: string | null
-        }
-        Insert: {
-          action: string
-          actor_id: string
-          affected_count: number
-          created_at?: string
-          id?: string
-          skipped_count?: number
-          tenant_id: string
-          undo_payload: Json
-          undone_at?: string | null
-          undone_by?: string | null
-        }
-        Update: {
-          action?: string
-          actor_id?: string
-          affected_count?: number
-          created_at?: string
-          id?: string
-          skipped_count?: number
-          tenant_id?: string
-          undo_payload?: Json
-          undone_at?: string | null
-          undone_by?: string | null
-        }
-        Relationships: [
-          {
-            foreignKeyName: "task_batch_actions_tenant_id_fkey"
-            columns: ["tenant_id"]
-            isOneToOne: false
-            referencedRelation: "tenants"
-            referencedColumns: ["id"]
           },
         ]
       }
@@ -17559,14 +17586,6 @@ export type Database = {
       }
     }
     Functions: {
-      get_authored_daily_briefing_read_status: {
-        Args: { p_tenant: string }
-        Returns: { id: string; briefing_date: string; read_at: string | null }[]
-      }
-      team_weekly_question_participation: {
-        Args: { p_tenant: string }
-        Returns: { user_id: string; display_name: string; answered: boolean }[]
-      }
       _briefing_task_event: {
         Args: { _task: string; _text: string }
         Returns: undefined
@@ -17645,20 +17664,6 @@ export type Database = {
       }
       auto_archive_completed_preparations: { Args: never; Returns: undefined }
       auto_update_poll_status: { Args: never; Returns: undefined }
-      batch_task_stafette_action: {
-        Args: { _action: string; _task_ids: string[]; _tenant_id: string }
-        Returns: Json
-      }
-      batch_task_stafette_preview: {
-        Args: { _action: string; _task_ids: string[]; _tenant_id: string }
-        Returns: Json
-      }
-      escalate_task: { Args: { _note?: string; _task_id: string }; Returns: undefined }
-      restore_archived_task: {
-        Args: { _archived_id: string; _tenant_id: string }
-        Returns: number
-      }
-      task_approval_sla: { Args: { _tenant_id: string }; Returns: Json }
       bulk_update_contact_fields: {
         Args: {
           _ids: string[]
@@ -17701,6 +17706,10 @@ export type Database = {
         Args: { _column: string; _table: string; _user_id: string }
         Returns: boolean
       }
+      can_view_daily_briefing_receipt: {
+        Args: { _briefing_id: string; _reader_id: string }
+        Returns: boolean
+      }
       can_view_employee_hr: {
         Args: { p_tenant: string; p_user: string }
         Returns: boolean
@@ -17730,30 +17739,17 @@ export type Database = {
         Args: { _meeting_id: string }
         Returns: number
       }
+      claim_poll_followup: {
+        Args: {
+          _claim_timeout_minutes?: number
+          _expected_attempt: number
+          _poll_id: string
+        }
+        Returns: number
+      }
       cleanup_bulk_action_audit: { Args: never; Returns: number }
       cleanup_edge_function_cache: { Args: never; Returns: number }
       cleanup_workflow_runs: { Args: never; Returns: number }
-      config_delete_impact: {
-        Args: { _id: string; _table: string }
-        Returns: Json
-      }
-      config_item_name: { Args: { _label: string }; Returns: string }
-      delete_config_item: {
-        Args: { _expected_refs: number; _id: string; _table: string }
-        Returns: Json
-      }
-      rename_config_item: {
-        Args: {
-          _color?: string | null
-          _icon?: string | null
-          _id: string
-          _label: string
-          _set_color?: boolean
-          _set_icon?: boolean
-          _table: string
-        }
-        Returns: Json
-      }
       complete_appointment_briefing: {
         Args: { _appointment_id: string }
         Returns: undefined
@@ -17766,6 +17762,33 @@ export type Database = {
           p_step: string
         }
         Returns: undefined
+      }
+      config_delete_impact: {
+        Args: { _id: string; _table: string }
+        Returns: Json
+      }
+      config_item_name: { Args: { _label: string }; Returns: string }
+      config_item_references: {
+        Args: { _id: string; _table: string }
+        Returns: Json
+      }
+      config_rename_action_field: {
+        Args: {
+          _actions: Json
+          _field: string
+          _new: string
+          _old: string[]
+          _tables: string[]
+        }
+        Returns: Json
+      }
+      config_rename_conditions: {
+        Args: { _fields: string[]; _new: string; _node: Json; _old: string[] }
+        Returns: Json
+      }
+      config_rename_keys: {
+        Args: { _fields: string[]; _new: string; _node: Json; _old: string[] }
+        Returns: Json
       }
       configure_team_rituals: {
         Args: { p_enabled: boolean; p_tenant: string }
@@ -17786,6 +17809,13 @@ export type Database = {
       confirm_employee_hr_gdpr: {
         Args: { p_step: string; p_version: string }
         Returns: undefined
+      }
+      confirm_poll_winner: {
+        Args: { _poll_id: string; _slot_id: string }
+        Returns: {
+          appointment_id: string
+          slot_id: string
+        }[]
       }
       connect_election_history_mandates: {
         Args: { mandate_ids: string[] }
@@ -17956,44 +17986,6 @@ export type Database = {
         Args: { p_kind: string; p_region_kind?: string; p_topic: string }
         Returns: Json
       }
-      claim_poll_followup: {
-        Args: {
-          _claim_timeout_minutes?: number
-          _expected_attempt: number
-          _poll_id: string
-        }
-        Returns: number
-      }
-      confirm_poll_winner: {
-        Args: { _poll_id: string; _slot_id: string }
-        Returns: { appointment_id: string; slot_id: string }[]
-      }
-      finalize_poll_followup: {
-        Args: {
-          _attempt: number
-          _max_send_attempts?: number
-          _poll_id: string
-        }
-        Returns: { counted: boolean; pending: number }[]
-      }
-      get_due_poll_followups: {
-        Args: {
-          _claim_timeout_minutes?: number
-          _deadline_window_hours: number
-          _first_delay_hours: number
-          _limit: number
-          _max_attempts: number
-          _min_gap_hours: number
-          _repeat_hours: number
-        }
-        Returns: {
-          attempt: number
-          due_at: string
-          open_external: number
-          open_participants: number
-          poll_id: string
-        }[]
-      }
       create_appointment_poll_with_details: {
         Args: {
           p_deadline?: string
@@ -18103,6 +18095,10 @@ export type Database = {
         }
         Returns: string
       }
+      delete_config_item: {
+        Args: { _expected_refs: number; _id: string; _table: string }
+        Returns: Json
+      }
       delete_employee_hr: { Args: { p_run: string }; Returns: undefined }
       delete_employee_lifecycle: {
         Args: { p_lifecycle: string }
@@ -18132,13 +18128,13 @@ export type Database = {
         Returns: {
           appointment_id: string
           end_time: string
-          location: string | null
+          location: string
           minutes_before: number
-          notification_id: string | null
+          notification_id: string
           notified: boolean
           start_time: string
           tenant_id: string
-          title: string | null
+          title: string
           user_id: string
         }[]
       }
@@ -18146,10 +18142,6 @@ export type Database = {
       dispatch_due_task_reminders: { Args: never; Returns: number }
       dispatch_employee_preparation_reminders: { Args: never; Returns: number }
       dispatch_office_feedback_reminders: { Args: never; Returns: undefined }
-      poll_followup_send_key: {
-        Args: { _attempt: number; _participant_id: string; _poll_id: string }
-        Returns: string
-      }
       dispatch_scheduled_emails_if_due: { Args: never; Returns: undefined }
       dispatch_workflow_trigger: {
         Args: {
@@ -18257,7 +18249,7 @@ export type Database = {
       explain_action_permission: {
         Args: {
           _action_key: string
-          _simulate_role?: string | null
+          _simulate_role?: string
           _tenant_id: string
           _user_id: string
         }
@@ -18270,7 +18262,7 @@ export type Database = {
       explain_field_permission: {
         Args: {
           _column_name: string
-          _simulate_role?: string | null
+          _simulate_role?: string
           _table_name: string
           _tenant_id: string
           _user_id: string
@@ -18282,7 +18274,7 @@ export type Database = {
           _actions?: string[]
           _features?: string[]
           _fields?: Json
-          _simulate_role?: string | null
+          _simulate_role?: string
           _tenant_id: string
           _user_id: string
         }
@@ -18306,6 +18298,17 @@ export type Database = {
       field_row_visible: {
         Args: { _table: string; _tenant: string }
         Returns: boolean
+      }
+      finalize_poll_followup: {
+        Args: {
+          _attempt: number
+          _max_send_attempts?: number
+          _poll_id: string
+        }
+        Returns: {
+          counted: boolean
+          pending: number
+        }[]
       }
       find_contact_duplicates_trgm: {
         Args: { _limit?: number; _tenant_id: string; _threshold?: number }
@@ -18391,6 +18394,14 @@ export type Database = {
         }
         Returns: Json
       }
+      get_authored_daily_briefing_read_status: {
+        Args: { p_tenant: string }
+        Returns: {
+          briefing_date: string
+          id: string
+          read_at: string
+        }[]
+      }
       get_authored_messages: {
         Args: { author_id_param: string }
         Returns: {
@@ -18459,6 +18470,24 @@ export type Database = {
         Args: { connection: string; selected_period?: string }
         Returns: Json
       }
+      get_due_poll_followups: {
+        Args: {
+          _claim_timeout_minutes?: number
+          _deadline_window_hours: number
+          _first_delay_hours: number
+          _limit: number
+          _max_attempts: number
+          _min_gap_hours: number
+          _repeat_hours: number
+        }
+        Returns: {
+          attempt: number
+          due_at: string
+          open_external: number
+          open_participants: number
+          poll_id: string
+        }[]
+      }
       get_election_candidate_results: {
         Args: { selected_district: string; selected_period: string }
         Returns: Json
@@ -18526,25 +18555,23 @@ export type Database = {
         Returns: Json
       }
       get_my_work_decisions: { Args: { p_user_id: string }; Returns: Json }
-      sync_jour_fixe_agenda_timer: {
-        Args: { _meeting_id: string; _item_id?: string | null }
-        Returns: Json
-      }
-      respond_to_meeting_invitation: {
-        Args: { _meeting_id: string; _status: string }
-        Returns: {
-          contact_id: string | null
-          created_at: string | null
-          id: string
-          meeting_id: string
-          role: string | null
-          status: string | null
-          user_id: string
-        }
-      }
       get_my_work_new_counts: {
         Args: { p_contexts?: string[]; p_user_id: string }
         Returns: Json
+      }
+      get_poll_availability: {
+        Args: {
+          _emails: string[]
+          _from?: string
+          _tenant_id: string
+          _to?: string
+        }
+        Returns: {
+          busy_end: string
+          busy_start: string
+          email: string
+          source: string
+        }[]
       }
       get_routine_packages: { Args: { _rule_ids: string[] }; Returns: Json }
       get_shared_note_ids: { Args: { _user_id: string }; Returns: string[] }
@@ -18575,25 +18602,11 @@ export type Database = {
           title: string
         }[]
       }
-      get_poll_availability: {
-        Args: {
-          _emails: string[]
-          _from?: string
-          _tenant_id: string
-          _to?: string
-        }
-        Returns: {
-          busy_end: string | null
-          busy_start: string | null
-          email: string
-          source: string
-        }[]
-      }
       get_user_polls_with_aggregation: {
         Args: never
         Returns: {
-          confirmed_appointment_id: string | null
-          confirmed_slot_id: string | null
+          confirmed_appointment_id: string
+          confirmed_slot_id: string
           created_at: string
           creator_name: string
           deadline: string
@@ -19253,6 +19266,10 @@ export type Database = {
         Args: { election_district: number; election_year: number }
         Returns: string
       }
+      merge_contacts: {
+        Args: { p_source: string; p_target: string; p_updates?: Json }
+        Returns: Json
+      }
       merge_election_history_deputies: {
         Args: { source_key: string; target_key: string }
         Returns: string
@@ -19265,10 +19282,6 @@ export type Database = {
           p_tenant: string
         }
         Returns: undefined
-      }
-      merge_contacts: {
-        Args: { p_source: string; p_target: string; p_updates?: Json }
-        Returns: Json
       }
       merge_topics: {
         Args: { p_source: string; p_target: string }
@@ -19330,6 +19343,38 @@ export type Database = {
       parse_task_assignee_ids: {
         Args: { p_assigned_to: string }
         Returns: string[]
+      }
+      permission_action_decision: {
+        Args: {
+          _action_key: string
+          _simulate_role?: string
+          _tenant_id: string
+          _user_id: string
+        }
+        Returns: Json
+      }
+      permission_feature_decision: {
+        Args: { _feature_key: string; _tenant_id: string; _user_id?: string }
+        Returns: Json
+      }
+      permission_field_decision: {
+        Args: {
+          _column_name: string
+          _simulate_role?: string
+          _table_name: string
+          _tenant_id: string
+          _user_id: string
+        }
+        Returns: Json
+      }
+      permission_role_label: { Args: { _role: string }; Returns: string }
+      poll_followup_send_key: {
+        Args: { _attempt: number; _participant_id: string; _poll_id: string }
+        Returns: string
+      }
+      queue_social_content_reapproval: {
+        Args: { _event_id?: string; _item_id: string }
+        Returns: undefined
       }
       quick_note_access: {
         Args: { p_edit?: boolean; p_note_id: string }
@@ -19471,6 +19516,18 @@ export type Database = {
         Returns: undefined
       }
       remind_employee_hr: { Args: { p_lifecycle: string }; Returns: number }
+      rename_config_item: {
+        Args: {
+          _color?: string
+          _icon?: string
+          _id: string
+          _label: string
+          _set_color?: boolean
+          _set_icon?: boolean
+          _table: string
+        }
+        Returns: Json
+      }
       reopen_meeting_protocol: {
         Args: { p_meeting_id: string; p_reason: string }
         Returns: undefined
@@ -19484,7 +19541,7 @@ export type Database = {
         Returns: undefined
       }
       request_birthday_congratulations: {
-        Args: { _contact_id: string; _tenant_id: string; _action?: string }
+        Args: { _contact_id: string; _tenant_id: string }
         Returns: string
       }
       request_protocol_acknowledgement: {
@@ -19783,9 +19840,16 @@ export type Database = {
       }
       team_two_truths_archive: { Args: { p_tenant: string }; Returns: Json }
       team_two_truths_snapshot: { Args: { p_tenant: string }; Returns: Json }
+      team_weekly_question_participation: {
+        Args: { p_tenant: string }
+        Returns: {
+          answered: boolean
+          display_name: string
+          user_id: string
+        }[]
+      }
       topic_name_from_label: { Args: { p_label: string }; Returns: string }
       undo_contact_bulk_action: { Args: { _audit_id: string }; Returns: number }
-      undo_task_batch_action: { Args: { _batch_id: string }; Returns: number }
       update_contact_usage: {
         Args: { p_contact_id: string; p_tenant_id?: string; p_user_id?: string }
         Returns: undefined
