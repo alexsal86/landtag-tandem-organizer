@@ -1,3 +1,4 @@
+import { weeklyQuestionDaysLeft, weeklyQuestionIsCompact } from "@/features/team-rituals/logic";
 import { partitionQuestions, ritualMonth } from '@/features/team-rituals/history';
 import {visibleWeeklyAnswers, ritualDashboardState} from "@/features/team-rituals/logic";
 import { OFFICE_ROUTINE_TEMPLATES, parseRoutineSteps, validateOfficeRoutine } from '@/features/automation/officeRoutineTemplates';
@@ -11,6 +12,16 @@ export const teamRitualsScenario: TestScenario = {
   features: ['dashboard'], touches: [],
   limitations: ['RLS, Rollen, parallele RPC-Aufrufe, Freigaben und GDPR-Löschung mit Anmeldung separat prüfen.'],
   steps: [
+    { id: 'dashboard-urgency', label: 'Wochenfrage: Restzeit und Eil-Änderungen', kind: 'logic', run: async () => ({
+      ok: weeklyQuestionDaysLeft(new Date('2026-11-27T12:00:00Z')) === 3
+        && weeklyQuestionDaysLeft(new Date('2026-11-29T12:00:00Z')) === 1
+        && weeklyQuestionDaysLeft(new Date('2026-11-29T23:30:00Z')) === 7
+        && weeklyQuestionIsCompact(['alert'], null)
+        && !weeklyQuestionIsCompact(['alert'], 'alert')
+        && !weeklyQuestionIsCompact([], 'alert')
+        && weeklyQuestionIsCompact(['new-alert'], 'alert'),
+      message: 'Berlin-Kalenderwoche; unbestätigte Änderungen reduzieren das Ritual, manuelles Öffnen und Bestätigung stellen es wieder her.',
+    }) },
     { id: 'ritual-history', label: 'Wiederverwendbare Wochenfragen und getrenntes Archiv', kind: 'logic', run: async () => {
       const groups = partitionQuestions([{ id: 'used', active: true, usage_count: 3 }, { id: 'paused', active: false, usage_count: 1 }]);
       return { ok: groups.active[0]?.id === 'used' && groups.archived[0]?.id === 'paused'

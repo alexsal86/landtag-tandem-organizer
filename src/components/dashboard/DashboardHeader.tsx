@@ -90,7 +90,7 @@ export const DashboardHeader = ({ showTeamRituals = true }: { showTeamRituals?: 
       </div>
       <div className="w-full min-w-0 max-w-xs space-y-4 lg:justify-self-end">
       {weatherItems.length > 0 && (
-        <div className="flex items-center justify-end gap-3 overflow-x-auto whitespace-nowrap">
+        <div className="flex items-center justify-start gap-3 overflow-x-auto whitespace-nowrap">
         {weatherItems.map((item) => (
           <div key={item.city} className="flex shrink-0 items-center gap-1.5 text-body">
             {(() => {

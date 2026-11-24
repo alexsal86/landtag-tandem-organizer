@@ -70,3 +70,13 @@ export function canManageTeamRituals(role: string | null): boolean {
 export function ritualDashboardState(loading:boolean,failed:boolean,enabled:boolean,optedIn:boolean) {
   return loading?'loading':failed?'unavailable':!enabled?'disabled':!optedIn?'join':'ready';
 }
+
+export function weeklyQuestionDaysLeft(now = new Date()): number {
+  return 7 - Math.round((Date.parse(`${berlinDay(now)}T12:00:00Z`) - Date.parse(`${berlinWeek(now)}T12:00:00Z`)) / 86400_000);
+}
+
+/** A manual opening belongs only to the current set of unacknowledged alerts. */
+export function weeklyQuestionIsCompact(alertIds: readonly string[], openedAlertKey: string | null): boolean {
+  const key = [...alertIds].sort().join(',');
+  return key.length > 0 && key !== openedAlertKey;
+}

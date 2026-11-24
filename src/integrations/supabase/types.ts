@@ -17300,6 +17300,10 @@ export type Database = {
       }
     }
     Functions: {
+      team_weekly_question_participation: {
+        Args: { p_tenant: string }
+        Returns: { user_id: string; display_name: string; answered: boolean }[]
+      }
       _briefing_task_event: {
         Args: { _task: string; _text: string }
         Returns: undefined
