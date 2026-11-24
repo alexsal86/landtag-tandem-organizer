@@ -7,6 +7,7 @@ import { canDecide } from "@/features/appointment-requests/logic";
 import { isOnResubmission, MINISTRY_RESPONSE_DAYS, withAutoDeadline, type TriageItem } from "@/features/cases/items/ball";
 import { computeCropRect, isCrowdedDay, parseTopicDrop, rescheduleToDay } from "@/features/redaktion/utils/plannerRules";
 import { validateVariant } from "@/features/redaktion/components/PlannerBoard/utils";
+import { approvalOptions, canDecideApproval, changeRequestDueDate } from "@/features/redaktion/approval";
 import { defaultStepSetting, previewRoutine, readStepSettings, resolveRoutineDates, validateStepGraph, validateRoutineWorkflow } from "@/features/automation/routineWorkflow";
 import { routineEntityLink, routineStepLabel } from "@/features/automation/routinePackages";
 import { routineStepKinds, validateOfficeRoutine } from "@/features/automation/officeRoutineTemplates";
@@ -315,6 +316,22 @@ export const workflowRulesScenario: TestScenario = {
         };
         const ok = Object.values(checks).every(Boolean);
         return { ok, message: ok ? "Planer-Regeln korrekt." : "Planer-Regel weicht ab.", details: checks };
+      },
+    },
+    {
+      id: "redaktion-freigabe", label: "Redaktion: Freigabe nur durch Leitung, Änderungswunsch mit Frist", kind: "logic",
+      run: async () => {
+        const checks = {
+          teamCannotDecide: !canDecideApproval(false),
+          leadershipCanDecide: canDecideApproval(true),
+          teamSubmitsAndReopens: approvalOptions(false, "draft").join(",") === "draft,pending_approval",
+          approvedStaysVisible: approvalOptions(false, "approved").includes("approved"),
+          leadershipDecides: approvalOptions(true, "draft").includes("approved") && approvalOptions(true, "draft").includes("rejected"),
+          dueAfterDays: changeRequestDueDate(3, new Date(2026, 10, 6, 15, 0)).getDate() === 9,
+          dueAtLeastOneDay: changeRequestDueDate(0, new Date(2026, 10, 6, 9, 0)).getDate() === 7,
+        };
+        const ok = Object.values(checks).every(Boolean);
+        return { ok, message: ok ? "Freigabe-Regeln korrekt." : "Freigabe-Regel weicht ab.", details: checks };
       },
     },
   ],

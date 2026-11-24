@@ -5,22 +5,24 @@ import { de } from "date-fns/locale";
 import { Button } from "@/components/ui/button";
 import { Textarea } from "@/components/ui/textarea";
 import { Badge } from "@/components/ui/badge";
+import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
 import { useApprovalComments } from "@/features/redaktion/hooks/useApprovalComments";
+import { CHANGE_REQUEST_DUE_OPTIONS, changeRequestDueDate } from "@/features/redaktion/approval";
 import { notify } from "@/lib/notify";
 
 interface ApprovalCommentsTabProps {
   contentItemId: string | null;
-  responsibleUserId: string | null;
   topicTitle: string;
   onChangeRequested?: () => void;
 }
 
-export function ApprovalCommentsTab({ contentItemId, responsibleUserId, topicTitle, onChangeRequested }: ApprovalCommentsTabProps) {
-  const { comments, loading, addComment } = useApprovalComments(contentItemId);
+export function ApprovalCommentsTab({ contentItemId, topicTitle, onChangeRequested }: ApprovalCommentsTabProps) {
+  const { comments, loading, addComment, requestChanges } = useApprovalComments(contentItemId);
   const [draft, setDraft] = useState("");
+  const [dueDays, setDueDays] = useState<number>(3);
   const [submitting, setSubmitting] = useState(false);
 
-  const handleSend = async (changeRequest: boolean) => {
+  const handleComment = async () => {
     if (!draft.trim()) {
       notify.error("Kommentar ist leer");
       return;
@@ -28,18 +30,33 @@ export function ApprovalCommentsTab({ contentItemId, responsibleUserId, topicTit
     if (!contentItemId) return;
     try {
       setSubmitting(true);
-      await addComment(draft, changeRequest, responsibleUserId, topicTitle);
+      await addComment(draft, false, null, topicTitle);
       setDraft("");
-      if (changeRequest) {
-        notify.success("Änderungswunsch gesendet", { description: "Verantwortliche Person wurde benachrichtigt." 
-});
-        onChangeRequested?.();
-      } else {
-        notify.success("Kommentar hinzugefügt");
-      }
+      notify.success("Kommentar hinzugefügt");
     } catch (err) {
-      notify.error("Konnte nicht gespeichert werden", { description: String(err instanceof Error ? err.message : err)
-});
+      notify.error("Konnte nicht gespeichert werden", { description: String(err instanceof Error ? err.message : err) });
+    } finally {
+      setSubmitting(false);
+    }
+  };
+
+  const handleChangeRequest = async () => {
+    if (!draft.trim()) {
+      notify.error("Bitte den Änderungswunsch begründen");
+      return;
+    }
+    if (!contentItemId) return;
+    try {
+      setSubmitting(true);
+      await requestChanges(draft, dueDays);
+      setDraft("");
+      const due = changeRequestDueDate(dueDays);
+      notify.success("Änderungswunsch gesendet", {
+        description: `Beitrag ist zurück in Arbeit – Aufgabe mit Frist ${format(due, "dd.MM.yyyy")} liegt bei der verantwortlichen Person.`,
+      });
+      onChangeRequested?.();
+    } catch (err) {
+      notify.error("Änderungswunsch nicht gespeichert", { description: String(err instanceof Error ? err.message : err) });
     } finally {
       setSubmitting(false);
     }
@@ -54,17 +71,27 @@ export function ApprovalCommentsTab({ contentItemId, responsibleUserId, topicTit
           placeholder="Kommentar zur Freigabe oder Änderungswunsch begründen…"
           rows={3}
         />
-        <div className="flex flex-wrap gap-2">
-          <Button size="sm" onClick={() => void handleSend(false)} disabled={submitting || !contentItemId}>
+        <div className="flex flex-wrap items-center gap-2">
+          <Button size="sm" onClick={() => void handleComment()} disabled={submitting || !contentItemId}>
             <Send className="h-3.5 w-3.5 mr-1" /> Kommentar senden
           </Button>
-          <Button size="sm" variant="destructive" onClick={() => void handleSend(true)} disabled={submitting || !contentItemId || !responsibleUserId}>
+          <Button size="sm" variant="destructive" onClick={() => void handleChangeRequest()} disabled={submitting || !contentItemId}>
             <AlertTriangle className="h-3.5 w-3.5 mr-1" /> Änderung gewünscht
           </Button>
-          {!responsibleUserId && (
-            <span className="text-xs text-muted-foreground self-center">Verantwortliche Person setzen, um Änderungswunsch zu senden.</span>
-          )}
+          <Select value={String(dueDays)} onValueChange={(value) => setDueDays(Number(value))}>
+            <SelectTrigger className="h-8 w-[150px]" aria-label="Frist für den Änderungswunsch">
+              <SelectValue />
+            </SelectTrigger>
+            <SelectContent>
+              {CHANGE_REQUEST_DUE_OPTIONS.map((days) => (
+                <SelectItem key={days} value={String(days)}>Frist {days} Tage</SelectItem>
+              ))}
+            </SelectContent>
+          </Select>
         </div>
+        <p className="text-xs text-muted-foreground">
+          „Änderung gewünscht" setzt den Beitrag auf „In Arbeit" und legt den Ball mit Aufgabe und Frist bei der verantwortlichen Person ab.
+        </p>
       </div>
 
       {loading && <p className="text-xs text-muted-foreground">Lade Kommentare…</p>}

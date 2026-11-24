@@ -2,7 +2,7 @@ import { format } from "date-fns";
 import { de } from "date-fns/locale";
 import styles from "./SocialPlannerEditPanel.module.css";
 import { useCallback, useEffect, useRef, useState } from "react";
-import { CalendarDays, CheckCircle2, CheckSquare, ClipboardList, MessageSquare, Pencil, X } from "lucide-react";
+import { CalendarDays, CheckCircle2, CheckSquare, ClipboardList, Lock, MessageSquare, Pencil, X } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { Checkbox } from "@/components/ui/checkbox";
 import { Input } from "@/components/ui/input";
@@ -35,6 +35,8 @@ import { validateVariant, applyTemplateToState } from "./utils";
 import { BriefingGroup } from "./BriefingGroup";
 import { ComposerSection } from "./ComposerSection";
 import { ImageCropDialog } from "./ImageCropDialog";
+import { approvalOptions, isApprovalLocked } from "@/features/redaktion/approval";
+import { useResolvedUserRole } from "@/hooks/useResolvedUserRole";
 import { effectiveCaption } from "@/features/redaktion/utils/plannerRules";
 import { HashtagSetPicker } from "./HashtagSetPicker";
 import { MarkPublishedDialog } from "./MarkPublishedDialog";
@@ -53,10 +55,13 @@ export interface SocialPlannerEditPanelProps {
   tagSuggestions: string[];
   onOpenChange: (open: boolean) => void;
   onSave: (itemId: string, payload: SocialPlannerDraftPayload) => Promise<void>;
+  /** Nach einem Änderungswunsch neu laden, damit Status und Freigabe im Board stimmen. */
+  onApprovalChanged?: () => Promise<void> | void;
 }
 
-export default function SocialPlannerEditPanel({ item, open, scrollRequest = 0, users, channels, campaigns, tagSuggestions, onOpenChange, onSave }: SocialPlannerEditPanelProps) {
+export default function SocialPlannerEditPanel({ item, open, scrollRequest = 0, users, channels, campaigns, tagSuggestions, onOpenChange, onSave, onApprovalChanged }: SocialPlannerEditPanelProps) {
   const { user } = useAuth();
+  const { hasAdminAccess } = useResolvedUserRole();
   const panelRef = useRef<HTMLElement>(null);
 
   useEffect(() => {
@@ -287,6 +292,8 @@ export default function SocialPlannerEditPanel({ item, open, scrollRequest = 0, 
   }, [item, topic, tagsValue, selectedChannels, formatValue, contentGoal, formatVariant, assetRequirements, approvalRequired, publishLink, performanceNotes, hookValue, coreMessage, draftText, ctaValue, notesValue, responsibleUserId, scheduledDate, approvalState, workflowStatus, hashtags, hashtagsInComment, altText, imageUrl, variantsByChannel, campaignId, contentPillar, channels, onSave, onOpenChange]);
 
   if (!open || !item) return null;
+
+  const approvalLocked = isApprovalLocked(hasAdminAccess, approvalState);
 
   return (
     <>
@@ -533,23 +540,38 @@ export default function SocialPlannerEditPanel({ item, open, scrollRequest = 0, 
 
             <div className="space-y-2">
               <Label>Freigabestatus</Label>
-              <Select value={approvalState} onValueChange={setApprovalState}>
+              <Select value={approvalState} onValueChange={setApprovalState} disabled={approvalLocked}>
                 <SelectTrigger><SelectValue placeholder="Freigabestatus wählen" /></SelectTrigger>
                 <SelectContent>
-                  {Object.entries(APPROVAL_LABELS).map(([value, label]) => (
-                    <SelectItem key={value} value={value}>{label}</SelectItem>
+                  {approvalOptions(hasAdminAccess, approvalState).map((value) => (
+                    <SelectItem key={value} value={value}>{APPROVAL_LABELS[value] ?? value}</SelectItem>
                   ))}
                 </SelectContent>
               </Select>
+              <p className="text-xs text-muted-foreground">
+                {approvalLocked
+                  ? "Freigabe ist bestätigt und gesperrt – nur Büroleitung oder Abgeordnete können sie zurücknehmen."
+                  : hasAdminAccess
+                    ? "Du entscheidest über die Freigabe; wer und wann wird automatisch protokolliert."
+                    : "Du reichst zur Freigabe ein oder nimmst zurück auf Entwurf. Entscheiden Büroleitung und Abgeordnete."}
+              </p>
+              {approvalState === "approved" && item.approved_at && (
+                <p className="flex items-center gap-1 text-xs text-muted-foreground">
+                  <Lock className="h-3 w-3" aria-hidden="true" />
+                  Freigegeben{item.approved_by_name ? ` von ${item.approved_by_name}` : ""} am {format(new Date(item.approved_at), "dd.MM.yyyy HH:mm", { locale: de })}
+                </p>
+              )}
             </div>
 
             <div className="space-y-2">
               <Label>Status im Board</Label>
-              <Select value={workflowStatus} onValueChange={(value) => setWorkflowStatus(value as PlannerWorkflowStatus)}>
+              <Select value={workflowStatus} onValueChange={(value) => setWorkflowStatus(value as PlannerWorkflowStatus)} disabled={approvalLocked}>
                 <SelectTrigger><SelectValue placeholder="Status wählen" /></SelectTrigger>
                 <SelectContent>
                   {STATUS_COLUMNS.map((status) => (
-                    <SelectItem key={status.id} value={status.id}>{status.title}</SelectItem>
+                    <SelectItem key={status.id} value={status.id} disabled={status.id === "approved" && !hasAdminAccess}>
+                      {status.title}
+                    </SelectItem>
                   ))}
                 </SelectContent>
               </Select>
@@ -585,8 +607,8 @@ export default function SocialPlannerEditPanel({ item, open, scrollRequest = 0, 
           </BriefingGroup>
             <ApprovalCommentsTab
               contentItemId={item?.id ?? null}
-              responsibleUserId={responsibleUserId === "none" ? null : responsibleUserId}
               topicTitle={topic}
+              onChangeRequested={() => void onApprovalChanged?.()}
             />
           </TabsContent>
         </Tabs>

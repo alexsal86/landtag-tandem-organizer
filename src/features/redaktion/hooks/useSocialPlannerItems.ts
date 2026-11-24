@@ -19,6 +19,8 @@ export interface SocialPlannerItem {
   content_pillar: string | null;
   workflow_status: PlannerWorkflowStatus;
   approval_state: string;
+  approved_at: string | null;
+  approved_by_name: string | null;
   channel_ids: string[];
   channel_names: string[];
   channel_slugs: string[];
@@ -137,6 +139,8 @@ export function useSocialPlannerItems() {
             topic_backlog_id,
             workflow_status,
             approval_state,
+            approved_at,
+            approved_by,
             format,
             content_goal,
             format_variant,
@@ -185,6 +189,20 @@ export function useSocialPlannerItems() {
       if (variantError) throw variantError;
 
       setChannels((channelRows || []) as PlannerChannel[]);
+
+      const approverIds = Array.from(new Set(
+        ((itemRows || []) as Array<{ approved_by?: string | null }>)
+          .map((row) => row.approved_by)
+          .filter((value): value is string => Boolean(value)),
+      ));
+      const { data: approverRows, error: approverError } = approverIds.length
+        ? await supabase.from("profiles").select("id, display_name").in("id", approverIds)
+        : { data: [], error: null };
+      if (approverError) throw approverError;
+      const approverNameById = new Map<string, string | null>(
+        ((approverRows || []) as Array<{ id: string; display_name: string | null }>)
+          .map((row) => [row.id, row.display_name]),
+      );
       const groupedVariants = new Map<string, Record<string, SocialContentVariant>>();
       ((variantRows || []) as Array<{
         id: string;
@@ -238,6 +256,8 @@ export function useSocialPlannerItems() {
             content_pillar: row.content_pillar || topicData?.content_pillar || null,
             workflow_status: deriveUiStatus(row.workflow_status, row.approval_state),
             approval_state: row.approval_state || "draft",
+            approved_at: row.approved_at ?? null,
+            approved_by_name: row.approved_by ? approverNameById.get(row.approved_by) ?? null : null,
             format: row.format,
             content_goal: row.content_goal,
             format_variant: row.format_variant,

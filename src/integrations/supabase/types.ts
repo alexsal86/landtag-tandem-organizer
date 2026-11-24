@@ -19079,6 +19079,10 @@ export type Database = {
         Args: { p_meeting_id: string }
         Returns: undefined
       }
+      request_social_post_changes: {
+        Args: { _comment: string; _due_days?: number; _item: string }
+        Returns: Json
+      }
       require_employee_meeting_access: {
         Args: { p_meeting_id: string; p_supervisor?: boolean }
         Returns: {
