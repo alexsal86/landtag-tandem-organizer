@@ -1,13 +1,21 @@
 import { useCallback, useEffect, useMemo } from "react";
 import { useQuery, useQueryClient } from "@tanstack/react-query";
-import { format, differenceInDays, isWeekend, startOfWeek } from "date-fns";
+import { differenceInDays, format, isWeekend, startOfWeek } from "date-fns";
 import { supabase } from "@/integrations/supabase/client";
 import { useAuth } from "@/hooks/useAuth";
 import { useTenant } from "@/hooks/useTenant";
 import { useResolvedUserRole, type ResolvedUserRole } from "@/hooks/useResolvedUserRole";
+import { getRoleFlags } from "@/components/my-work/tabVisibility";
+import {
+  calculateWeeklyTarget,
+  WEEK_TARGET_ABSENCE_TYPES,
+  type PublicHolidayRow,
+  type WeeklyAbsence,
+  type WeeklyTargetResult,
+} from "@/features/timetracking/weeklyTarget";
 import { debugConsole } from "@/utils/debugConsole";
 
-export type TeamViewerRole = NonNullable<ResolvedUserRole> | "";
+export type TeamViewerRole = ResolvedUserRole;
 
 interface TeamProfileRow {
   user_id: string;
@@ -19,6 +27,8 @@ interface TeamProfileRow {
 interface TeamSettingsRow {
   user_id: string;
   hours_per_week: number | null;
+  days_per_week: number | null;
+  workdays: boolean[] | null;
   last_meeting_date: string | null;
   meeting_interval_months: number | null;
 }
@@ -38,17 +48,36 @@ interface LatestTimeEntryRow {
   last_work_date: string | null;
 }
 
+interface TeamAbsenceRow extends WeeklyAbsence {
+  user_id: string;
+}
+
+export interface TeamDataIssues {
+  memberships: boolean;
+  profiles: boolean;
+  settings: boolean;
+  meetingRequests: boolean;
+  timeEntries: boolean;
+  latestEntries: boolean;
+  absences: boolean;
+  holidays: boolean;
+}
+
 interface RawTeamMember {
   userId: string;
   displayName: string;
   avatarUrl: string | null;
   badgeColor?: string | null;
   hoursPerWeek: number;
+  daysPerWeek: number;
+  /** Monday-first individual workday plan. */
+  workdays: boolean[];
   lastMeetingDate: string | null;
   nextMeetingDue: string | null;
   openMeetingRequests: number;
   weeklyWorkedMinutes: number;
   weeklyTargetMinutes: number;
+  weeklyAbsenceDays: number;
   lastTimeEntryDate: string | null;
   daysWithoutEntry: number | null;
 }
@@ -92,6 +121,8 @@ export interface UseMyWorkTeamDataModel {
   userRole: TeamViewerRole;
   teamMembers: TeamMemberViewModel[];
   overview: TeamOverviewMetrics;
+  /** True per data source that could not be loaded, so the UI can show it instead of zeros. */
+  issues: TeamDataIssues;
 }
 
 export interface UseMyWorkTeamDataResult extends UseMyWorkTeamDataModel {
@@ -103,7 +134,35 @@ export interface UseMyWorkTeamDataResult extends UseMyWorkTeamDataModel {
   reload: () => Promise<unknown>;
 }
 
-export const TEAM_TAB_ACCESS_RULES: TeamTabAccessRule[] = [
+export const EMPTY_TEAM_DATA_ISSUES: TeamDataIssues = {
+  memberships: false,
+  profiles: false,
+  settings: false,
+  meetingRequests: false,
+  timeEntries: false,
+  latestEntries: false,
+  absences: false,
+  holidays: false,
+};
+
+export const TEAM_DATA_ISSUE_LABELS: Record<keyof TeamDataIssues, string> = {
+  memberships: "Die Teammitglieder konnten nicht geladen werden.",
+  profiles: "Profile konnten nicht geladen werden – Namen und Bilder fehlen.",
+  settings: "Mitarbeitereinstellungen konnten nicht geladen werden – 40 h/Woche und 5 Tage werden angenommen.",
+  meetingRequests: "Offene Gesprächsanfragen konnten nicht geladen werden.",
+  timeEntries: "Zeiteinträge dieser Woche konnten nicht geladen werden.",
+  latestEntries: "Die letzten Zeiteinträge konnten nicht geladen werden.",
+  absences: "Urlaubs- und Krankheitstage konnten nicht geladen werden – das Soll kann zu hoch sein.",
+  holidays: "Feiertage konnten nicht geladen werden – das Soll kann zu hoch sein.",
+};
+
+export function describeTeamDataIssues(issues: TeamDataIssues): string[] {
+  return (Object.keys(TEAM_DATA_ISSUE_LABELS) as Array<keyof TeamDataIssues>)
+    .filter((key) => issues[key])
+    .map((key) => TEAM_DATA_ISSUE_LABELS[key]);
+}
+
+const TEAM_TAB_ACCESS_COPY: TeamTabAccessRule[] = [
   {
     role: "abgeordneter",
     label: "Abgeordnete",
@@ -116,7 +175,9 @@ export const TEAM_TAB_ACCESS_RULES: TeamTabAccessRule[] = [
   },
 ];
 
-const TEAM_TAB_VISIBLE_ROLES = new Set<TeamViewerRole>(TEAM_TAB_ACCESS_RULES.map(({ role }) => role));
+/** The visible roles are derived from the central role flags in tabVisibility. */
+export const TEAM_TAB_ACCESS_RULES = TEAM_TAB_ACCESS_COPY.filter(({ role }) => getRoleFlags(role).canViewTeam);
+
 const TEAM_MEMBER_ROLES = new Set<TeamViewerRole>(["mitarbeiter", "praktikant", "bueroleitung"]);
 const TIME_ENTRY_ATTENTION_THRESHOLD_DAYS = 3;
 const EMPTY_OVERVIEW: TeamOverviewMetrics = {
@@ -179,13 +240,16 @@ async function resolveViewerRole(userId: string, tenantId: string): Promise<Team
 
   if (error) {
     debugConsole.error("Error resolving team viewer role:", error);
-    return "";
+    throw new Error("Die eigene Rolle im Büro konnte nicht geladen werden.");
   }
 
-  return ((data as { role?: TeamViewerRole } | null)?.role ?? "") as TeamViewerRole;
+  return ((data as { role?: TeamViewerRole } | null)?.role ?? null) as TeamViewerRole;
 }
 
-async function resolveVisibleEmployeeIds(userId: string, tenantId: string): Promise<string[]> {
+async function resolveVisibleEmployeeIds(
+  userId: string,
+  tenantId: string,
+): Promise<{ employeeIds: string[]; membershipsFailed: boolean }> {
   const { data: memberships, error: membershipsError } = await supabase
     .from("user_tenant_memberships")
     .select("user_id, role")
@@ -201,7 +265,7 @@ async function resolveVisibleEmployeeIds(userId: string, tenantId: string): Prom
     .map((membership) => membership.user_id);
 
   if (membershipIds.length > 0) {
-    return Array.from(new Set(membershipIds));
+    return { employeeIds: Array.from(new Set(membershipIds)), membershipsFailed: false };
   }
 
   const { data: managedEmployees, error: managedEmployeesError } = await supabase
@@ -213,16 +277,24 @@ async function resolveVisibleEmployeeIds(userId: string, tenantId: string): Prom
     debugConsole.error("Error loading fallback managed employees:", managedEmployeesError);
   }
 
-  return Array.from(new Set(((managedEmployees as { user_id: string }[] | null) ?? []).map((row) => row.user_id)));
+  return {
+    employeeIds: Array.from(new Set(((managedEmployees as { user_id: string }[] | null) ?? []).map((row) => row.user_id))),
+    membershipsFailed: Boolean(membershipsError),
+  };
 }
 
-function buildTeamWorkStatus(workedMinutes: number, targetMinutes: number, lastTimeEntryDate: string | null, today: Date): TeamWorkStatusViewModel {
-  const indicator = getWorkIndicatorMeta(workedMinutes, targetMinutes);
+function buildTeamWorkStatus(
+  workedMinutes: number,
+  target: WeeklyTargetResult,
+  lastTimeEntryDate: string | null,
+  today: Date,
+): TeamWorkStatusViewModel {
+  const indicator = getWorkIndicatorMeta(workedMinutes, target.targetMinutes);
   const daysWithoutEntry = calculateBusinessDaysSince(lastTimeEntryDate, today);
 
   return {
     workedHoursLabel: (workedMinutes / 60).toLocaleString("de-DE", { maximumFractionDigits: 1 }),
-    targetHoursLabel: (targetMinutes / 60).toLocaleString("de-DE", { maximumFractionDigits: 1 }),
+    targetHoursLabel: (target.targetMinutes / 60).toLocaleString("de-DE", { maximumFractionDigits: 1 }),
     indicatorVariant: indicator.variant,
     indicatorLabel: indicator.label,
     lastTimeEntryDate,
@@ -231,14 +303,31 @@ function buildTeamWorkStatus(workedMinutes: number, targetMinutes: number, lastT
   };
 }
 
-function mapTeamMembers(
-  employeeIds: string[],
-  profiles: TeamProfileRow[],
-  settings: TeamSettingsRow[],
-  requests: TeamMeetingRequestRow[],
-  weekEntries: TeamTimeEntryRow[],
-  latestEntries: LatestTimeEntryRow[],
-): TeamMemberViewModel[] {
+interface MapTeamMembersInput {
+  employeeIds: string[];
+  profiles: TeamProfileRow[];
+  settings: TeamSettingsRow[];
+  requests: TeamMeetingRequestRow[];
+  weekEntries: TeamTimeEntryRow[];
+  latestEntries: LatestTimeEntryRow[];
+  absences: TeamAbsenceRow[];
+  holidays: PublicHolidayRow[];
+  weekStart: string;
+  today: string;
+}
+
+function mapTeamMembers({
+  employeeIds,
+  profiles,
+  settings,
+  requests,
+  weekEntries,
+  latestEntries,
+  absences,
+  holidays,
+  weekStart,
+  today,
+}: MapTeamMembersInput): TeamMemberViewModel[] {
   const profileMap = new Map(profiles.map((profile) => [profile.user_id, profile]));
   const settingsMap = new Map(settings.map((setting) => [setting.user_id, setting]));
 
@@ -264,9 +353,14 @@ function mapTeamMembers(
     return acc;
   }, {});
 
-  const today = new Date();
-  const dayOfWeek = today.getDay() === 0 ? 7 : today.getDay();
-  const workDaysPassed = Math.min(dayOfWeek, 5);
+  const absencesByUser = absences.reduce<Record<string, WeeklyAbsence[]>>((acc, absence) => {
+    const list = acc[absence.user_id] ?? [];
+    list.push({ start_date: absence.start_date, end_date: absence.end_date });
+    acc[absence.user_id] = list;
+    return acc;
+  }, {});
+
+  const now = new Date();
 
   const members = employeeIds.map<TeamMemberViewModel>((userId) => {
     const profile = profileMap.get(userId);
@@ -282,9 +376,17 @@ function mapTeamMembers(
     }
 
     const weeklyWorkedMinutes = weeklyMinutes[userId] ?? 0;
-    const weeklyTargetMinutes = ((hoursPerWeek * 60) / 5) * workDaysPassed;
+    const weeklyTarget = calculateWeeklyTarget({
+      hoursPerWeek,
+      daysPerWeek: employeeSettings?.days_per_week ?? null,
+      workdays: employeeSettings?.workdays ?? null,
+      weekStart,
+      today,
+      holidays,
+      absences: absencesByUser[userId] ?? [],
+    });
     const latestTimeEntryDate = lastGlobalEntry[userId] ?? null;
-    const workStatus = buildTeamWorkStatus(weeklyWorkedMinutes, weeklyTargetMinutes, latestTimeEntryDate, today);
+    const workStatus = buildTeamWorkStatus(weeklyWorkedMinutes, weeklyTarget, latestTimeEntryDate, now);
     const displayName = profile?.display_name?.trim() || "Unbekannt";
 
     return {
@@ -293,11 +395,14 @@ function mapTeamMembers(
       avatarUrl: profile?.avatar_url ?? null,
       badgeColor: profile?.badge_color ?? null,
       hoursPerWeek,
+      daysPerWeek: weeklyTarget.workDaysPerWeek,
+      workdays: weeklyTarget.workdays,
       lastMeetingDate,
       nextMeetingDue,
       openMeetingRequests: requestCounts[userId] ?? 0,
       weeklyWorkedMinutes,
-      weeklyTargetMinutes,
+      weeklyTargetMinutes: weeklyTarget.targetMinutes,
+      weeklyAbsenceDays: weeklyTarget.absenceDays,
       lastTimeEntryDate: lastTimeEntryThisWeek[userId] ?? null,
       daysWithoutEntry: workStatus.daysWithoutEntry,
       initials: getInitials(displayName),
@@ -334,48 +439,104 @@ function buildOverview(teamMembers: TeamMemberViewModel[]): TeamOverviewMetrics 
 
 async function fetchMyWorkTeamData(userId: string, tenantId: string): Promise<UseMyWorkTeamDataModel> {
   const userRole = await resolveViewerRole(userId, tenantId);
-  const canViewTeam = TEAM_TAB_VISIBLE_ROLES.has(userRole);
+  const canViewTeam = getRoleFlags(userRole).canViewTeam;
 
   if (!canViewTeam) {
-    return { canViewTeam, userRole, teamMembers: [], overview: EMPTY_OVERVIEW };
+    return {
+      canViewTeam,
+      userRole,
+      teamMembers: [],
+      overview: EMPTY_OVERVIEW,
+      issues: EMPTY_TEAM_DATA_ISSUES,
+    };
   }
 
-  const employeeIds = await resolveVisibleEmployeeIds(userId, tenantId);
+  const { employeeIds, membershipsFailed } = await resolveVisibleEmployeeIds(userId, tenantId);
   if (employeeIds.length === 0) {
-    return { canViewTeam, userRole, teamMembers: [], overview: EMPTY_OVERVIEW };
+    return {
+      canViewTeam,
+      userRole,
+      teamMembers: [],
+      overview: EMPTY_OVERVIEW,
+      issues: { ...EMPTY_TEAM_DATA_ISSUES, memberships: membershipsFailed },
+    };
   }
 
   const weekStart = format(startOfWeek(new Date(), { weekStartsOn: 1 }), "yyyy-MM-dd");
   const today = format(new Date(), "yyyy-MM-dd");
 
-  const [profilesResult, settingsResult, requestsResult, timeEntriesResult, latestEntriesResult] = await Promise.all([
-    supabase.from("profiles").select("user_id, display_name, avatar_url, badge_color").in("user_id", employeeIds),
-    supabase.from("employee_settings").select("user_id, hours_per_week, last_meeting_date, meeting_interval_months").in("user_id", employeeIds),
-    supabase.from("employee_meeting_requests").select("employee_id").eq("status", "pending").in("employee_id", employeeIds),
-    supabase.from("time_entries").select("user_id, minutes, work_date").in("user_id", employeeIds).gte("work_date", weekStart).lte("work_date", today),
-    (supabase.rpc as <T>(fn: string, args: Record<string, unknown>) => Promise<{ data: T | null; error: unknown }>)("get_latest_time_entry_dates", { p_user_ids: employeeIds }),
-  ]);
+  const [profilesResult, settingsResult, requestsResult, timeEntriesResult, latestEntriesResult, absencesResult, holidaysResult] =
+    await Promise.all([
+      supabase.from("profiles").select("user_id, display_name, avatar_url, badge_color").in("user_id", employeeIds),
+      supabase
+        .from("employee_settings")
+        .select("user_id, hours_per_week, days_per_week, workdays, last_meeting_date, meeting_interval_months")
+        .in("user_id", employeeIds),
+      supabase.from("employee_meeting_requests").select("employee_id").eq("status", "pending").in("employee_id", employeeIds),
+      supabase
+        .from("time_entries")
+        .select("user_id, minutes, work_date")
+        .in("user_id", employeeIds)
+        .gte("work_date", weekStart)
+        .lte("work_date", today),
+      (supabase.rpc as unknown as <T>(fn: string, args: Record<string, unknown>) => Promise<{ data: T | null; error: unknown }>)(
+        "get_latest_time_entry_dates",
+        { p_user_ids: employeeIds },
+      ),
+      supabase
+        .from("leave_requests")
+        .select("user_id, start_date, end_date")
+        .in("user_id", employeeIds)
+        .in("type", [...WEEK_TARGET_ABSENCE_TYPES])
+        .eq("status", "approved")
+        .lte("start_date", today)
+        .gte("end_date", weekStart),
+      supabase
+        .from("public_holidays")
+        .select("holiday_date, state, is_nationwide")
+        .eq("tenant_id", tenantId)
+        .gte("holiday_date", weekStart)
+        .lte("holiday_date", today),
+    ]);
 
   if (profilesResult.error) debugConsole.error("Error loading team profiles:", profilesResult.error);
   if (settingsResult.error) debugConsole.error("Error loading team settings:", settingsResult.error);
   if (requestsResult.error) debugConsole.error("Error loading team meeting requests:", requestsResult.error);
   if (timeEntriesResult.error) debugConsole.error("Error loading team time entries:", timeEntriesResult.error);
   if (latestEntriesResult.error) debugConsole.error("Error loading latest employee time entries:", latestEntriesResult.error);
+  if (absencesResult.error) debugConsole.error("Error loading team absences:", absencesResult.error);
+  if (holidaysResult.error) debugConsole.error("Error loading public holidays for team:", holidaysResult.error);
 
-  const teamMembers = mapTeamMembers(
+  const issues: TeamDataIssues = {
+    memberships: membershipsFailed,
+    profiles: Boolean(profilesResult.error),
+    settings: Boolean(settingsResult.error),
+    meetingRequests: Boolean(requestsResult.error),
+    timeEntries: Boolean(timeEntriesResult.error),
+    latestEntries: Boolean(latestEntriesResult.error),
+    absences: Boolean(absencesResult.error),
+    holidays: Boolean(holidaysResult.error),
+  };
+
+  const teamMembers = mapTeamMembers({
     employeeIds,
-    (profilesResult.data as TeamProfileRow[] | null) ?? [],
-    (settingsResult.data as TeamSettingsRow[] | null) ?? [],
-    (requestsResult.data as TeamMeetingRequestRow[] | null) ?? [],
-    (timeEntriesResult.data as TeamTimeEntryRow[] | null) ?? [],
-    (latestEntriesResult.data as LatestTimeEntryRow[] | null) ?? [],
-  );
+    profiles: (profilesResult.data as TeamProfileRow[] | null) ?? [],
+    settings: (settingsResult.data as TeamSettingsRow[] | null) ?? [],
+    requests: (requestsResult.data as TeamMeetingRequestRow[] | null) ?? [],
+    weekEntries: (timeEntriesResult.data as TeamTimeEntryRow[] | null) ?? [],
+    latestEntries: (latestEntriesResult.data as LatestTimeEntryRow[] | null) ?? [],
+    absences: (absencesResult.data as TeamAbsenceRow[] | null) ?? [],
+    holidays: (holidaysResult.data as PublicHolidayRow[] | null) ?? [],
+    weekStart,
+    today,
+  });
 
   return {
     canViewTeam,
     userRole,
     teamMembers,
     overview: buildOverview(teamMembers),
+    issues,
   };
 }
 
@@ -397,10 +558,11 @@ export function useMyWorkTeamData(): UseMyWorkTeamDataResult {
   });
 
   const effectiveData = data ?? {
-    canViewTeam: TEAM_TAB_VISIBLE_ROLES.has((role ?? "") as TeamViewerRole),
-    userRole: ((role ?? "") as TeamViewerRole),
+    canViewTeam: getRoleFlags(role).canViewTeam,
+    userRole: role,
     teamMembers: [],
     overview: EMPTY_OVERVIEW,
+    issues: EMPTY_TEAM_DATA_ISSUES,
   };
 
   useEffect(() => {
@@ -420,6 +582,7 @@ export function useMyWorkTeamData(): UseMyWorkTeamDataResult {
       .channel(channelName)
       .on("postgres_changes", { event: "*", schema: "public", table: "time_entries", filter: `tenant_id=eq.${currentTenant.id}` }, scheduleReload)
       .on("postgres_changes", { event: "*", schema: "public", table: "employee_meeting_requests", filter: `tenant_id=eq.${currentTenant.id}` }, scheduleReload)
+      .on("postgres_changes", { event: "*", schema: "public", table: "leave_requests" }, scheduleReload)
       .on("postgres_changes", { event: "*", schema: "public", table: "employee_settings" }, (payload) => {
         const changed = payload.new as { user_id?: string };
         const previous = payload.old as { user_id?: string };

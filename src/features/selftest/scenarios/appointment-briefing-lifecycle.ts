@@ -1,3 +1,4 @@
+import { visibleSentChanges } from "@/features/appointments/change-alerts/sentChangeVisibility";
 import { isOfficeReminderDue, isOlderOfficeFeedback, needsOfficeFeedback, officeReminderLabel, officeReminderTime, readOfficeSnooze, showsOfficeTaskHint } from "@/features/appointments/briefing/officeFeedback";
 import { appointmentProgress, showTimelineNowMarker, appointmentCountdown, dashboardTimelineState, appointmentSummary, hasAppointmentEnded, nextAppointmentId, pendingSummary, timelineNowIndex } from "@/utils/dashboard/daySummary";
 import { canCompleteBriefing, canGoLive, followUpTaskFromLive, mergeLegacy, saveCompact } from "@/features/appointments/briefing/briefingModel";
@@ -29,6 +30,24 @@ export const appointmentBriefingLifecycleScenario: TestScenario = {
   ],
   links: () => [{ label: "Kalender", href: "/calendar" }],
   steps: [
+    {
+      id: 'personal-sent-changes', label: 'Gemeldete Änderungen nur heute und persönlich ausblendbar', kind: 'logic',
+      run: async () => {
+        const now = new Date('2026-11-24T12:00:00Z');
+        const alerts = [
+          { id: 'yesterday', created_at: '2026-11-23T21:00:00Z' },
+          { id: 'today', created_at: '2026-11-23T23:30:00Z' },
+          { id: 'second', created_at: '2026-11-24T10:00:00Z' },
+        ];
+        return {
+          ok: visibleSentChanges(alerts, [], now).map(alert => alert.id).join(',') === 'today,second'
+            && visibleSentChanges(alerts, ['today'], now).map(alert => alert.id).join(',') === 'second'
+            && visibleSentChanges(alerts, [], now).length === 2
+            && alerts.length === 3,
+          message: 'Berliner Kalendertag und persönliche Ausblendung ohne Änderung an der gemeinsamen Meldung.',
+        };
+      },
+    },
     {
       id: "day-appointment-progress", label: "Dein Tag: vergangen, laufend und als nächstes", kind: "logic",
       run: async () => {

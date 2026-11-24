@@ -1,11 +1,12 @@
 import { useState } from 'react';
-import { differenceInCalendarDays } from 'date-fns';
 import { BriefcaseBusiness, CalendarDays, Check, ClipboardCheck, ListTodo, StickyNote, ChevronRight, GripVertical } from 'lucide-react';
 import { useNavigate } from 'react-router-dom';
 import type { DeadlineItem, GroupedDeadlineItems } from '@/types/dashboardDeadlines';
 import { useDeadlineActions } from '@/hooks/useDeadlineActions';
 import { DeadlineReviewDialog } from './DeadlineReviewDialog';
 import { DeadlineSnoozeButton } from './DeadlineSnoozeButton';
+import { WidgetListFooter } from '@/components/ui-patterns';
+import { berlinDaysSince } from '@/utils/berlinDate';
 import {
   formatDeadlineDateLabel,
   getDeadlineContextLabel,
@@ -41,8 +42,9 @@ export const DashboardTasksSection = ({ items, grouped }: DashboardTasksSectionP
   const [filter, setFilter] = useState<GroupKey | null>(null);
   const [reviewOpen, setReviewOpen] = useState(false);
   const actions = useDeadlineActions();
-  const oldItems = grouped.overdue.filter(item => differenceInCalendarDays(new Date(), new Date(item.dueDate)) > 30);
-  const recentOverdue = grouped.overdue.filter(item => differenceInCalendarDays(new Date(), new Date(item.dueDate)) <= 30);
+  // 30-Tage-Grenze nach Berliner Kalendertagen, nicht nach UTC-Tageswechsel.
+  const oldItems = grouped.overdue.filter(item => berlinDaysSince(item.dueDate) > 30);
+  const recentOverdue = grouped.overdue.filter(item => berlinDaysSince(item.dueDate) <= 30);
   const [showOldOverdue, setShowOldOverdue] = useState(false);
   const [showLater, setShowLater] = useState(false);
   const [visibleCounts, setVisibleCounts] = useState<Record<GroupKey, number>>({
@@ -191,6 +193,12 @@ export const DashboardTasksSection = ({ items, grouped }: DashboardTasksSectionP
           )}
         </div>
       )}
+
+      <WidgetListFooter
+        countLabel={items.length === 1 ? '1 offene Frist' : `${items.length} offene Fristen`}
+        linkLabel="Alle Fristen ansehen"
+        to="/mywork?tab=tasks"
+      />
     </div>
   );
 };

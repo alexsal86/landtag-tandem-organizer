@@ -2,6 +2,7 @@ import { supabase } from '@/integrations/supabase/client';
 import { collectAuditCsv } from '@/components/administration/utils/auditExport';
 import { feedUrl, publicAddress } from '../../../../supabase/functions/_shared/feed-fetch';
 import { MODULE_ROUTES } from '@/lib/tenant-modules';
+import { getVisibleMyWorkTabs } from '@/components/my-work/myWorkTabs';
 import type { TestScenario } from '../types';
 
 export const adminControlsScenario: TestScenario = {
@@ -25,6 +26,19 @@ export const adminControlsScenario: TestScenario = {
       return { ok: offset === 1500 && csv.split('Zeitstempel').length === 2 && csv.includes("'=FORMULA"), message: '1101 Einträge, ein Header, escaped CSV-Formeln.' };
     } },
     { id: 'module-routes', label: 'Direktlinks der Module sind dem jeweiligen Schalter zugeordnet', kind: 'logic', run: async () => ({ ok: MODULE_ROUTES.letters === 'module.letters' && MODULE_ROUTES.casefiles === 'module.casefiles' && MODULE_ROUTES.time === 'module.timetracking', message: 'Modulrouten besitzen eine zentrale Zuordnung.' }) },
+    { id: 'module-tabs', label: 'Redaktions-Reiter hängt am Modulschalter', kind: 'logic', run: async () => {
+      const tabs = (editorialEnabled: boolean) => getVisibleMyWorkTabs({
+        role: 'bueroleitung',
+        feedbackFeedCoreRolesOnly: true,
+        isModuleEnabled: key => editorialEnabled || key !== 'module.editorial',
+      }).map(tab => tab.value);
+      const withModule = tabs(true);
+      const withoutModule = tabs(false);
+      return {
+        ok: withModule.includes('redaktion') && !withoutModule.includes('redaktion') && withoutModule.includes('tasks'),
+        message: 'Reiter Redaktion erscheint nur mit module.editorial, die übrigen Reiter bleiben.',
+      };
+    } },
     { id: 'field-modes', label: 'Leseregeln liefern erlauben, Feld ausblenden oder Datensatz sperren', kind: 'workflow', run: async ctx => {
       const rules = await Promise.all([['contacts','email'],['letters','content']].map(([table,column]) => supabase.rpc('field_read_rule', { _tenant: ctx.tenantId, _table: table, _column: column })));
       return { ok: rules.every(rule => !rule.error && ['allow','mask','record'].includes(rule.data ?? '')), message: 'Datenbank liefert die rollenspezifischen Feldmodi.', details: rules.map(rule => ({ rule: rule.data, error: rule.error })) };

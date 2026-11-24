@@ -1,6 +1,7 @@
 import { useMemo } from "react";
 import { format, parseISO, eachDayOfInterval } from "date-fns";
 import { debugConsole } from '@/utils/debugConsole';
+import { summarizeArbzgDay } from "@/features/timetracking/arbzg";
 
 interface TimeEntryRow {
   id: string;
@@ -9,6 +10,8 @@ interface TimeEntryRow {
   ended_at: string | null;
   minutes: number | null;
   pause_minutes?: number | null;
+  arbzg_pause_minutes?: number | null;
+  arbzg_missing_pause_minutes?: number | null;
   notes: string | null;
   edited_by?: string | null;
   edited_at?: string | null;
@@ -43,6 +46,14 @@ export interface CombinedTimeEntry {
   ended_at: string | null;
   minutes: number | null;
   pause_minutes: number;
+  /** Teil der Pause, den die App nach ArbZG automatisch ergänzt hat (historisch). */
+  arbzg_pause_minutes: number;
+  /**
+   * Fehlende Ruhepause des Arbeitstags nach ArbZG (Klärungsbedarf für die
+   * Büroleitung). Wird aus allen Arbeitseinträgen des Tages berechnet und nie
+   * von der Arbeitszeit abgezogen.
+   */
+  arbzg_missing_pause_minutes: number;
   notes: string | null;
   entry_type: 'work' | 'sick' | 'vacation' | 'holiday' | 'medical' | 'overtime_reduction';
   is_editable: boolean;
@@ -150,6 +161,8 @@ export function useCombinedTimeEntries({
           ended_at: null,
           minutes: 0, // Feiertage reduzieren das Soll, keine Gutschrift nötig
           pause_minutes: 0,
+          arbzg_pause_minutes: 0,
+          arbzg_missing_pause_minutes: 0,
           notes: holiday.name,
           entry_type: 'holiday',
           is_editable: false,
@@ -189,6 +202,8 @@ export function useCombinedTimeEntries({
                 ended_at: null,
                 minutes: dailyMinutes,
                 pause_minutes: 0,
+                arbzg_pause_minutes: 0,
+          arbzg_missing_pause_minutes: 0,
                 notes: leave.reason || 'Krankheit',
                 entry_type: 'sick',
                 is_editable: false,
@@ -230,6 +245,8 @@ export function useCombinedTimeEntries({
                 ended_at: null,
                 minutes: dailyMinutes,
                 pause_minutes: 0,
+                arbzg_pause_minutes: 0,
+          arbzg_missing_pause_minutes: 0,
                 notes: leave.reason || 'Urlaub',
                 entry_type: 'vacation',
                 is_editable: false,
@@ -271,6 +288,8 @@ export function useCombinedTimeEntries({
                 ended_at: null,
                 minutes: dailyMinutes,
                 pause_minutes: 0,
+                arbzg_pause_minutes: 0,
+          arbzg_missing_pause_minutes: 0,
                 notes: leave.reason || 'Überstundenabbau',
                 entry_type: 'overtime_reduction',
                 is_editable: false,
@@ -302,6 +321,8 @@ export function useCombinedTimeEntries({
             ended_at: leave.end_time ? `${dateStr}T${leave.end_time}` : null,
             minutes: leave.minutes_counted || dailyMinutes,
             pause_minutes: 0,
+            arbzg_pause_minutes: 0,
+          arbzg_missing_pause_minutes: 0,
             notes: `${leave.medical_reason || 'Arzttermin'}${leave.reason ? ': ' + leave.reason : ''}`,
             entry_type: 'medical',
             is_editable: false,
@@ -315,6 +336,13 @@ export function useCombinedTimeEntries({
           debugConsole.error('Error processing medical leave:', e);
         }
       });
+
+    // Pausenpflicht des Tages (30 Min ab 6 h, 45 Min ab 9 h) aus allen Einträgen.
+    const missingByDate = new Map<string, number>();
+    entries.forEach(e => {
+      if (missingByDate.has(e.work_date)) return;
+      missingByDate.set(e.work_date, summarizeArbzgDay(entries.filter(item => item.work_date === e.work_date)).missingPauseMinutes);
+    });
 
     // PRIORITY 6: Work entries (ONLY if no holiday/sick/vacation/overtime on that day)
     entries.forEach(e => {
@@ -345,6 +373,8 @@ export function useCombinedTimeEntries({
         ended_at: e.ended_at,
         minutes: e.minutes,
         pause_minutes: e.pause_minutes || 0,
+        arbzg_pause_minutes: e.arbzg_pause_minutes || 0,
+        arbzg_missing_pause_minutes: missingByDate.get(dateStr) ?? 0,
         notes: e.notes,
         entry_type: 'work',
         is_editable: true,

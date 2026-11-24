@@ -112,30 +112,6 @@ export const useCaseFileTypes = () => {
     }
   };
 
-  const deleteCaseFileType = async (id: string) => {
-    try {
-      const { error } = await supabase
-        .from('case_file_types')
-        .delete()
-        .eq('id', id);
-
-      if (error) throw error;
-
-      notify.success("Erfolgreich", {
-        description: "Fallakten-Typ wurde gelöscht."
-});
-
-      await fetchCaseFileTypes();
-      return true;
-    } catch (error) {
-      debugConsole.error('Error deleting case file type:', error);
-      notify.error("Fehler", {
-        description: "Fallakten-Typ konnte nicht gelöscht werden."
-});
-      return false;
-    }
-  };
-
   const toggleActive = async (id: string, isActive: boolean) => {
     try {
       const { error } = await supabase
@@ -194,7 +170,6 @@ export const useCaseFileTypes = () => {
     fetchCaseFileTypes,
     createCaseFileType,
     updateCaseFileType,
-    deleteCaseFileType,
     toggleActive,
     updateOrder,
     getTypeConfig,

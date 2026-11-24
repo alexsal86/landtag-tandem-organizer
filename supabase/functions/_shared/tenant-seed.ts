@@ -38,6 +38,7 @@ export const STANDARD_NOTIFICATION_TYPES = [
   { name: "appointment_reminder", label: "Termin-Erinnerung", category: "appointments" },
   { name: "poll_invitation", label: "Terminabstimmung – Einladung", category: "appointments" },
   { name: "poll_response", label: "Terminabstimmung – Antwort", category: "appointments" },
+  { name: "poll_follow_up", label: "Terminabstimmung – Erinnerung", category: "appointments" },
   { name: "letter_review_requested", label: "Brief – Kollegenprüfung erbeten", category: "letters" },
   { name: "letter_approval_requested", label: "Brief – Freigabe erbeten", category: "letters" },
   { name: "letter_approved", label: "Brief – Freigegeben", category: "letters" },
@@ -54,6 +55,7 @@ export const STANDARD_NOTIFICATION_TYPES = [
   { name: "social_post_change_requested", label: "Social Post – Änderung gewünscht", category: "editorial" },
   { name: "social_post_reminder", label: "Social Post – Veröffentlichung steht an", category: "editorial" },
   { name: "social_post_approved", label: "Social Post – Freigegeben", category: "editorial" },
+  { name: "social_post_approval_reopened", label: "Social Post – Freigabe erneut nötig", category: "editorial" },
 ];
 
 export const STANDARD_LETTER_OCCASIONS = [

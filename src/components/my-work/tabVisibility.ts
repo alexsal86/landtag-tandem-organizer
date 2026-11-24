@@ -14,7 +14,7 @@ export interface TabPermissionFlags {
 const employeeRoles = new Set(["mitarbeiter", "praktikant", "bueroleitung"]);
 const feedbackFeedCoreRoles = new Set<UserRole>(["mitarbeiter", "bueroleitung", "abgeordneter"]);
 
-export const getRoleFlags = (role: UserRole) => ({
+export const getRoleFlags = (role: UserRole | null) => ({
   canViewTeam: role === "abgeordneter" || role === "bueroleitung",
   isEmployee: role ? employeeRoles.has(role) : false,
   isAbgeordneter: role === "abgeordneter",

@@ -17,8 +17,17 @@ import { de } from "date-fns/locale";
 import { Clock, Plus, ExternalLink, TrendingUp, Calendar, Play, Pause, Square, X } from "lucide-react";
 import { useNavigate } from "react-router-dom";
 import { useTimeEntryReminder } from "@/hooks/useTimeEntryReminder";
+import { ARBZG_MAX_DAILY_WORK_MINUTES, checkArbzgDay, elapsedWorkedMinutes, requiredPauseForSpan, summarizeArbzgDay } from "@/features/timetracking/arbzg";
+import { cn } from "@/lib/utils";
 import { useVacationReminders } from "@/hooks/useVacationReminders";
 import { useResolvedUserRole } from "@/hooks/useResolvedUserRole";
+import { useTenant } from "@/hooks/useTenant";
+import {
+  calculateWeeklyTarget,
+  WEEK_TARGET_ABSENCE_TYPES,
+  type PublicHolidayRow,
+  type WeeklyAbsence,
+} from "@/features/timetracking/weeklyTarget";
 import { notify } from "@/lib/notify";
 
 interface TimeEntryRow {
@@ -28,6 +37,7 @@ interface TimeEntryRow {
   ended_at: string | null;
   minutes: number | null;
   pause_minutes?: number | null;
+  arbzg_pause_minutes?: number | null;
   notes: string | null;
 }
 
@@ -36,6 +46,8 @@ interface EmployeeSettingsRow {
   hours_per_month: number;
   days_per_month: number;
   days_per_week: number;
+  /** Monday-first individual workday plan. */
+  workdays: boolean[] | null;
 }
 
 interface ClockData {
@@ -52,9 +64,12 @@ export function MyWorkTimeTrackingTab() {
   const { user } = useAuth();
   const navigate = useNavigate();
   const { isEmployee } = useResolvedUserRole();
+  const { currentTenant } = useTenant();
   const [loading, setLoading] = useState(true);
   const [entries, setEntries] = useState<TimeEntryRow[]>([]);
   const [employeeSettings, setEmployeeSettings] = useState<EmployeeSettingsRow | null>(null);
+  const [holidays, setHolidays] = useState<PublicHolidayRow[]>([]);
+  const [absences, setAbsences] = useState<WeeklyAbsence[]>([]);
 
   // Check for missing time entries and remind user
   useTimeEntryReminder(user?.id ?? null);
@@ -64,7 +79,8 @@ export function MyWorkTimeTrackingTab() {
   const [entryDate, setEntryDate] = useState(format(new Date(), "yyyy-MM-dd"));
   const [startTime, setStartTime] = useState("");
   const [endTime, setEndTime] = useState(() => format(new Date(), "HH:mm"));
-  const [pauseMinutes, setPauseMinutes] = useState("30");
+  // Pause enthält nur tatsächlich genommene Pausen; die Pflichtpause wird nicht vorbelegt.
+  const [pauseMinutes, setPauseMinutes] = useState("0");
   const [notes, setNotes] = useState("");
   const [isSubmitting, setIsSubmitting] = useState(false);
 
@@ -76,6 +92,8 @@ export function MyWorkTimeTrackingTab() {
   const [clockedInDate, setClockedInDate] = useState<string | null>(null);
   const [pauseStart, setPauseStart] = useState<string | null>(null);
   const [totalPauseMinutes, setTotalPauseMinutes] = useState(0);
+  // Tickt nur während laufender Stempeluhr, damit die Pausenpflicht sichtbar bleibt.
+  const [clockNow, setClockNow] = useState(() => new Date());
 
   const clearClockData = useCallback(() => {
     setClockedIn(null);
@@ -105,6 +123,13 @@ export function MyWorkTimeTrackingTab() {
     }
   // eslint-disable-next-line react-hooks/exhaustive-deps
   }, []); // Only on mount
+
+  useEffect(() => {
+    if (!clockedIn) return;
+    setClockNow(new Date());
+    const interval = setInterval(() => setClockNow(new Date()), 30_000);
+    return () => clearInterval(interval);
+  }, [clockedIn]);
 
   const handleClockIn = () => {
     const now = format(new Date(), "HH:mm");
@@ -147,6 +172,19 @@ export function MyWorkTimeTrackingTab() {
   const handleClockOut = () => {
     const now = format(new Date(), "HH:mm");
     setEndTime(now);
+    const workedMinutes = clockedIn ? elapsedWorkedMinutes(clockedIn, pauseStart, totalPauseMinutes) : 0;
+    // Pausenpflicht des Tages: bereits gespeicherte Einträge zählen mit.
+    const todayKey = clockedInDate ?? format(new Date(), "yyyy-MM-dd");
+    const savedToday = entries.filter(entry => entry.work_date === todayKey);
+    const savedWorked = savedToday.reduce((sum, entry) => sum + Math.max(0, entry.minutes ?? 0), 0);
+    const savedPause = savedToday.reduce((sum, entry) => sum + Math.max(0, entry.pause_minutes ?? 0), 0);
+    const arbzg = checkArbzgDay({
+      workedMinutes: savedWorked + workedMinutes,
+      pauseMinutes: savedPause + totalPauseMinutes,
+    });
+    if (arbzg.missingPauseMinutes > 0) {
+      notify.warning(`Pausenpflicht: ${arbzg.requiredPauseMinutes} Min Pause vorgeschrieben, erfasst sind ${totalPauseMinutes} Min`);
+    }
     notify.success(`Feierabend um ${now} - Bitte Eintrag speichern`);
   };
 
@@ -155,12 +193,16 @@ export function MyWorkTimeTrackingTab() {
   const weekEnd = endOfWeek(today, { weekStartsOn: 1 });
   const monthStart = startOfMonth(today);
   const monthEnd = endOfMonth(today);
+  const todayKey = format(today, "yyyy-MM-dd");
+  const weekStartKey = format(weekStart, "yyyy-MM-dd");
+  const weekEndKey = format(weekEnd, "yyyy-MM-dd");
 
   useEffect(() => {
     if (user) {
       checkRoleAndLoad();
     }
-  }, [isEmployee, user]);
+  // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [isEmployee, user, currentTenant?.id]);
 
   // Realtime subscription
   useEffect(() => {
@@ -192,19 +234,33 @@ export function MyWorkTimeTrackingTab() {
       }
 
       // Load settings and entries
-      const [settingsRes, weekEntriesRes, monthEntriesRes] = await Promise.all([
-        supabase.from("employee_settings").select("hours_per_week, hours_per_month, days_per_month, days_per_week").eq("user_id", user.id).single(),
-        supabase.from("time_entries").select("id, user_id, work_date, minutes, notes, started_at, ended_at, pause_minutes, edit_reason, edited_at, edited_by, created_at, updated_at").eq("user_id", user.id)
+      const [settingsRes, weekEntriesRes, monthEntriesRes, holidaysRes, absencesRes] = await Promise.all([
+        supabase.from("employee_settings").select("hours_per_week, hours_per_month, days_per_month, days_per_week, workdays").eq("user_id", user.id).single(),
+        supabase.from("time_entries").select("id, user_id, work_date, minutes, notes, started_at, ended_at, pause_minutes, arbzg_pause_minutes, edit_reason, edited_at, edited_by, created_at, updated_at").eq("user_id", user.id)
           .gte("work_date", format(weekStart, "yyyy-MM-dd"))
           .lte("work_date", format(weekEnd, "yyyy-MM-dd"))
           .order("work_date", { ascending: false }),
         supabase.from("time_entries").select("id, minutes").eq("user_id", user.id)
           .gte("work_date", format(monthStart, "yyyy-MM-dd"))
           .lte("work_date", format(monthEnd, "yyyy-MM-dd")),
+        currentTenant?.id
+          ? supabase.from("public_holidays").select("holiday_date, state, is_nationwide")
+              .eq("tenant_id", currentTenant.id)
+              .gte("holiday_date", weekStartKey)
+              .lte("holiday_date", weekEndKey)
+          : Promise.resolve({ data: [] as PublicHolidayRow[], error: null }),
+        supabase.from("leave_requests").select("start_date, end_date")
+          .eq("user_id", user.id)
+          .in("type", [...WEEK_TARGET_ABSENCE_TYPES])
+          .eq("status", "approved")
+          .lte("start_date", weekEndKey)
+          .gte("end_date", weekStartKey),
       ]);
 
       setEmployeeSettings(settingsRes.data);
       setEntries(weekEntriesRes.data || []);
+      setHolidays((holidaysRes.data as PublicHolidayRow[] | null) ?? []);
+      setAbsences((absencesRes.data as WeeklyAbsence[] | null) ?? []);
     } catch (error) {
       debugConsole.error("Error loading time tracking data:", error);
     } finally {
@@ -216,35 +272,77 @@ export function MyWorkTimeTrackingTab() {
     return entries.reduce((sum, e) => sum + (e.minutes || 0), 0);
   }, [entries]);
 
-  const weeklyTarget = useMemo(() => {
-    if (!employeeSettings) return 40 * 60;
-    return employeeSettings.hours_per_week * 60;
-  }, [employeeSettings]);
+  // Soll wie im Team-Tab: individueller Arbeitsplan statt voller Wochenstunden,
+  // Feiertage und genehmigte Abwesenheiten senken das Soll.
+  const fullWeekTarget = useMemo(() => calculateWeeklyTarget({
+    hoursPerWeek: employeeSettings?.hours_per_week ?? null,
+    daysPerWeek: employeeSettings?.days_per_week ?? null,
+    workdays: employeeSettings?.workdays ?? null,
+    weekStart: weekStartKey,
+    today: weekEndKey,
+    holidays,
+    absences,
+  }), [employeeSettings, weekStartKey, weekEndKey, holidays, absences]);
 
-  const dailyHours = useMemo(() => {
-    if (!employeeSettings) return 7.9;
-    // Tägliche Arbeitszeit = Wochenstunden / Arbeitstage pro Woche
-    return employeeSettings.hours_per_week / (employeeSettings.days_per_week || 5);
-  }, [employeeSettings]);
+  const targetToDate = useMemo(() => calculateWeeklyTarget({
+    hoursPerWeek: employeeSettings?.hours_per_week ?? null,
+    daysPerWeek: employeeSettings?.days_per_week ?? null,
+    workdays: employeeSettings?.workdays ?? null,
+    weekStart: weekStartKey,
+    today: todayKey,
+    holidays,
+    absences,
+  }), [employeeSettings, weekStartKey, todayKey, holidays, absences]);
 
-  const validateDailyLimit = async (workDate: string, grossMin: number) => {
-    if (!user) return;
-    const { data } = await supabase
+  const weeklyTarget = fullWeekTarget.targetMinutes;
+
+  // Die Pausenpflicht gilt für den gesamten Tag: fehlende Ruhepausen werden aus
+  // allen Einträgen des Tages berechnet und nie von der Arbeitszeit abgezogen.
+  const missingByDate = useMemo(() => {
+    const map = new Map<string, number>();
+    for (const date of new Set(entries.map(entry => entry.work_date))) {
+      map.set(date, summarizeArbzgDay(entries.filter(entry => entry.work_date === date)).missingPauseMinutes);
+    }
+    return map;
+  }, [entries]);
+
+  const liveWorkedMinutes = clockedIn
+    ? elapsedWorkedMinutes(clockedIn, pauseStart, totalPauseMinutes, clockNow)
+    : 0;
+  // Die Pausenpflicht gilt für den ganzen Arbeitstag, nicht nur für die laufende Schicht.
+  const liveDayKey = clockedInDate ?? format(clockNow, "yyyy-MM-dd");
+  const liveSaved = entries.filter(entry => entry.work_date === liveDayKey);
+  const liveArbzg = checkArbzgDay({
+    workedMinutes: liveSaved.reduce((sum, entry) => sum + Math.max(0, entry.minutes ?? 0), 0) + liveWorkedMinutes,
+    pauseMinutes: liveSaved.reduce((sum, entry) => sum + Math.max(0, entry.pause_minutes ?? 0), 0) + totalPauseMinutes,
+  });
+
+  const formSpanMinutes = useMemo(() => {
+    if (!startTime || !endTime) return null;
+    const start = new Date(`${entryDate}T${startTime}`);
+    const end = new Date(`${entryDate}T${endTime}`);
+    if (Number.isNaN(start.getTime()) || Number.isNaN(end.getTime()) || end <= start) return null;
+    return Math.round((end.getTime() - start.getTime()) / 60000);
+  }, [endTime, entryDate, startTime]);
+
+  const suggestedPauseMinutes = formSpanMinutes === null ? 0 : requiredPauseForSpan(formSpanMinutes);
+  const enteredPauseMinutes = parseInt(pauseMinutes) || 0;
+  const formArbzg = formSpanMinutes === null
+    ? null
+    : checkArbzgDay({ workedMinutes: Math.max(0, formSpanMinutes - enteredPauseMinutes), pauseMinutes: enteredPauseMinutes });
+
+  const loadDayEntries = async (workDate: string) => {
+    if (!user) return [];
+    const { data, error } = await supabase
       .from("time_entries")
-      .select("id, started_at, ended_at")
+      .select("started_at, ended_at, pause_minutes")
       .eq("user_id", user.id)
       .eq("work_date", workDate);
-
-    const total = data?.reduce((s: number, e: { started_at?: string | null; ended_at?: string | null }) => {
-      if (!e.started_at || !e.ended_at) return s;
-      return s + (new Date(e.ended_at).getTime() - new Date(e.started_at).getTime()) / 60000;
-    }, 0) || 0;
-
-    if (total + grossMin > 600) {
-      const formatTime = (min: number) => `${Math.floor(min / 60)}:${(min % 60).toString().padStart(2, '0')}`;
-      throw new Error(`Maximal 10 Stunden pro Tag. Bereits ${formatTime(total)} erfasst.`);
-    }
+    if (error) throw error;
+    return data ?? [];
   };
+
+  const formatDuration = (min: number) => `${Math.floor(min / 60)}:${(min % 60).toString().padStart(2, '0')}`;
 
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
@@ -262,30 +360,50 @@ export function MyWorkTimeTrackingTab() {
     }
 
     const gross = Math.round((end.getTime() - start.getTime()) / 60000);
-    const pause = parseInt(pauseMinutes) || 0;
+    // Nur tatsächlich genommene Pausen zählen und werden von der Arbeitszeit abgezogen.
+    const recordedPause = Math.min(Math.max(0, parseInt(pauseMinutes) || 0), gross);
 
     setIsSubmitting(true);
     try {
-      await validateDailyLimit(entryDate, gross);
+      // Die Pausenpflicht gilt für den gesamten Arbeitstag, nicht für den einzelnen Eintrag.
+      const day = summarizeArbzgDay([
+        ...(await loadDayEntries(entryDate)),
+        { started_at: start.toISOString(), ended_at: end.toISOString(), pause_minutes: recordedPause },
+      ]);
+
+      if (day.workedMinutes > ARBZG_MAX_DAILY_WORK_MINUTES) {
+        throw new Error(
+          `Maximal 10:00 Stunden Arbeitszeit pro Tag (ohne Pausen). Mit diesem Eintrag: ${formatDuration(day.workedMinutes)}.`,
+        );
+      }
 
       const { error } = await supabase.from("time_entries").insert([{
         user_id: user.id,
         work_date: entryDate,
         started_at: start.toISOString(),
         ended_at: end.toISOString(),
-        minutes: gross - pause,
-        pause_minutes: pause,
+        minutes: gross - recordedPause,
+        pause_minutes: recordedPause,
+        // Eine rechnerisch ergänzte Pause ersetzt keine tatsächlich genommene Pause.
+        arbzg_pause_minutes: 0,
         notes: notes || null,
       }]);
 
       if (error) throw error;
 
-      notify.success("Zeiteintrag gespeichert");
+      if (day.missingPauseMinutes > 0) {
+        notify.warning(
+          `Zeiteintrag gespeichert – Pausenpflicht: ${day.requiredPauseMinutes} Min am Tag, erfasst ${recordedPause} Min. ` +
+          `${day.missingPauseMinutes} Min fehlen; Klärungsbedarf für die Büroleitung ist vermerkt.`,
+        );
+      } else {
+        notify.success("Zeiteintrag gespeichert");
+      }
       // Stempeluhr-Daten nach erfolgreichem Speichern löschen
       clearClockData();
       setStartTime("");
       setEndTime(format(new Date(), "HH:mm"));
-      setPauseMinutes("30");
+      setPauseMinutes("0");
       setNotes("");
       checkRoleAndLoad();
     } catch (error: unknown) {
@@ -343,10 +461,8 @@ export function MyWorkTimeTrackingTab() {
   }
 
   const difference = weeklyWorked - weeklyTarget;
-  const dayOfWeek = today.getDay() === 0 ? 7 : today.getDay();
-  const workDaysPassed = Math.min(dayOfWeek, 5);
-  const proportionalTarget = (weeklyTarget / 5) * workDaysPassed;
-  const proportionalDifference = weeklyWorked - proportionalTarget;
+  // Anteiliges Soll bis heute – identisch mit dem Soll im Team-Tab.
+  const proportionalDifference = weeklyWorked - targetToDate.targetMinutes;
 
   return (
     <div className="space-y-6">
@@ -387,7 +503,7 @@ export function MyWorkTimeTrackingTab() {
               {proportionalDifference >= 0 ? "+" : ""}{fmt(proportionalDifference)}
             </div>
             <p className="text-xs text-muted-foreground">
-              Stand: {format(today, "EEEE", { locale: de })}
+              Soll bis {format(today, "EEEE", { locale: de })}: {fmt(targetToDate.targetMinutes)} h
             </p>
           </CardContent>
         </Card>
@@ -468,6 +584,23 @@ export function MyWorkTimeTrackingTab() {
                     <div className="text-xl font-bold">{totalPauseMinutes} Min</div>
                   </div>
                 </div>
+                <div className="space-y-1 rounded-lg border bg-muted/30 p-3 text-sm">
+                  <div className="flex items-center justify-between">
+                    <span className="text-muted-foreground">Arbeitszeit bisher</span>
+                    <span className="font-semibold">{fmt(liveWorkedMinutes)} h</span>
+                  </div>
+                  <div className="flex items-center justify-between">
+                    <span className="text-muted-foreground">Pausenpflicht (ArbZG)</span>
+                    <span className={cn("font-semibold", liveArbzg.missingPauseMinutes > 0 ? "text-destructive" : "text-muted-foreground")}>
+                      {liveArbzg.requiredPauseMinutes > 0 ? `${liveArbzg.requiredPauseMinutes} Min` : "keine"}
+                    </span>
+                  </div>
+                  {liveArbzg.missingPauseMinutes > 0 && (
+                    <p className="text-xs text-destructive">
+                      Noch {liveArbzg.missingPauseMinutes} Min Pause offen – bitte Pause starten.
+                    </p>
+                  )}
+                </div>
                 <div className="grid grid-cols-2 gap-3">
                   <Button onClick={handlePauseStart} variant="outline" size="lg">
                     <Pause className="h-5 w-5 mr-2" />
@@ -507,14 +640,32 @@ export function MyWorkTimeTrackingTab() {
                   />
                 </div>
                 <div className="space-y-2">
-                  <Label>Pause (Min)</Label>
+                  <Label htmlFor="time-pause">Pause (Min)</Label>
                   <Input
+                    id="time-pause"
                     type="number"
                     value={pauseMinutes}
                     onChange={(e) => setPauseMinutes(e.target.value)}
                     min="0"
                     max="120"
                   />
+                  {formSpanMinutes !== null && (
+                    suggestedPauseMinutes > 0 ? (
+                      <p className={cn("text-xs", formArbzg && formArbzg.missingPauseMinutes > 0 ? "text-destructive" : "text-muted-foreground")}>
+                        {formArbzg && formArbzg.missingPauseMinutes > 0 ? (
+                          <>
+                            Pausenpflicht (ArbZG): {suggestedPauseMinutes} Min. Es fehlen{" "}
+                            {formArbzg.missingPauseMinutes} Min – sie werden als Klärungsbedarf vermerkt und{" "}
+                            nicht von der Arbeitszeit abgezogen.
+                          </>
+                        ) : (
+                          <>ArbZG: {suggestedPauseMinutes} Min Pause vorgeschrieben und erfasst.</>
+                        )}
+                      </p>
+                    ) : (
+                      <p className="text-xs text-muted-foreground">Bis 6 h Arbeitszeit ist keine Pause vorgeschrieben.</p>
+                    )
+                  )}
                 </div>
               </div>
 
@@ -581,14 +732,26 @@ export function MyWorkTimeTrackingTab() {
                     <TableRow>
                       <TableHead>Datum</TableHead>
                       <TableHead>Zeit</TableHead>
+                      <TableHead className="text-right">Pause</TableHead>
                       <TableHead className="text-right">Stunden</TableHead>
                     </TableRow>
                   </TableHeader>
                   <TableBody>
-                    {entries.map((entry) => (
+                    {entries.map((entry, index) => {
+                      // Die Pausenpflicht gilt für den Tag: Kennzeichnung einmal am Tag, nicht je Eintrag.
+                      const firstForDay = entries.findIndex(item => item.work_date === entry.work_date) === index;
+                      const missingPause = missingByDate.get(entry.work_date) ?? 0;
+                      return (
                       <TableRow key={entry.id}>
                         <TableCell className="font-medium">
-                          {format(parseISO(entry.work_date), "EEE, dd.MM.", { locale: de })}
+                          <div className="flex flex-col items-start gap-1">
+                            <span>{format(parseISO(entry.work_date), "EEE, dd.MM.", { locale: de })}</span>
+                            {firstForDay && missingPause > 0 && (
+                              <Badge variant="outline" className="rounded-full border-0 bg-palette-amber/10 px-1.5 py-0 text-[10px] font-sans text-palette-amber" title="Klärungsbedarf am Tag (ArbZG) – die geleistete Arbeitszeit bleibt unverändert, die fehlende Pause wird nicht abgezogen.">
+                                Pausenpflicht offen: {missingPause} Min
+                              </Badge>
+                            )}
+                          </div>
                         </TableCell>
                         <TableCell className="text-muted-foreground">
                           {entry.started_at && entry.ended_at ? (
@@ -597,11 +760,15 @@ export function MyWorkTimeTrackingTab() {
                             </>
                           ) : "-"}
                         </TableCell>
+                        <TableCell className="text-right text-muted-foreground">
+                          {entry.pause_minutes ?? 0} Min
+                        </TableCell>
                         <TableCell className="text-right font-mono">
                           {fmt(entry.minutes || 0)}
                         </TableCell>
                       </TableRow>
-                    ))}
+                      );
+                    })}
                   </TableBody>
                 </Table>
               )}

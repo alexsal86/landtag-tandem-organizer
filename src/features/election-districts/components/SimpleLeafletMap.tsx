@@ -60,6 +60,26 @@ const getDistrictMarkerDimensions = (zoomLevel: number) => {
   return { size, fontSize, borderWidth };
 };
 
+/** Marker icons are assembled from elements so labels and asset URLs never become HTML. */
+const createMarkerBubble = (
+  content: HTMLElement,
+  size: number,
+  styles: Record<string, string>,
+): HTMLElement => {
+  const bubble = document.createElement('div');
+  Object.assign(bubble.style, {
+    display: 'flex',
+    alignItems: 'center',
+    justifyContent: 'center',
+    borderRadius: '50%',
+    width: `${size}px`,
+    height: `${size}px`,
+    ...styles,
+  });
+  bubble.appendChild(content);
+  return bubble;
+};
+
 const SimpleLeafletMap: React.FC<LeafletKarlsruheMapProps> = ({ 
   districts,
   districtCount,
@@ -324,7 +344,6 @@ const SimpleLeafletMap: React.FC<LeafletKarlsruheMapProps> = ({
       const borderWidth = dimensions.borderWidth;
       const markerNumber = document.createElement('span');
       markerNumber.textContent = electionDistrictNumberLabel(district);
-      const safeNumber = markerNumber.innerHTML;
       const point = map.project([lat, lng], zoomLevel);
       if (occupied.some(other => other.distanceTo(point) < size + 3)) return;
       occupied.push(point);
@@ -332,7 +351,14 @@ const SimpleLeafletMap: React.FC<LeafletKarlsruheMapProps> = ({
       const marker = L.marker([lat, lng], {
         alt: `WK:${district.id}`,
         icon: L.divIcon({
-          html: `<div style="background: white; border: ${borderWidth}px solid ${partyColor}; border-radius: 50%; width: ${size}px; height: ${size}px; display: flex; align-items: center; justify-content: center; font-weight: bold; font-size: ${fontSize}px; color: black; box-shadow: 0 2px 4px rgba(0,0,0,0.2);">${safeNumber}</div>`,
+          html: createMarkerBubble(markerNumber, size, {
+            background: '#ffffff',
+            border: `${borderWidth}px solid ${partyColor}`,
+            fontWeight: 'bold',
+            fontSize: `${fontSize}px`,
+            color: '#000000',
+            boxShadow: '0 2px 4px rgba(0,0,0,0.2)',
+          }),
           className: 'custom-district-marker',
           iconSize: [size, size],
           iconAnchor: [size / 2, size / 2]
@@ -425,24 +451,19 @@ const SimpleLeafletMap: React.FC<LeafletKarlsruheMapProps> = ({
             return;
           }
           
+          const sunflower = document.createElement('img');
+          sunflower.src = sunflowerIcon;
+          sunflower.alt = 'Sunflower';
+          sunflower.width = 20;
+          sunflower.height = 20;
+
           const marker = L.marker([lat, lng], {
             icon: L.divIcon({
-              html: `
-                <div style="
-                  width: 32px; 
-                  height: 32px; 
-                  background: rgba(34, 197, 94, 0.9); 
-                  border: 2px solid white; 
-                  border-radius: 50%; 
-                  display: flex; 
-                  align-items: center; 
-                  justify-content: center;
-                  box-shadow: 0 2px 6px rgba(0,0,0,0.3);
-                  font-size: 18px;
-                ">
-                  <img src="${sunflowerIcon}" alt="Sunflower" width="20" height="20" />
-                </div>
-              `,
+              html: createMarkerBubble(sunflower, 32, {
+                background: 'rgba(34, 197, 94, 0.9)',
+                border: '2px solid #ffffff',
+                boxShadow: '0 2px 6px rgba(0,0,0,0.3)',
+              }),
               className: 'party-association-marker',
               iconSize: [32, 32],
               iconAnchor: [16, 16]

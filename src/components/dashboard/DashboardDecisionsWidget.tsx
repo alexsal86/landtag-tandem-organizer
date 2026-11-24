@@ -4,9 +4,8 @@ import { useDeputyDashboardDecisions, type DeputyDashboardDecision } from "@/fea
 import { useMemo, useState, useEffect, useRef } from 'react';
 import { useNavigate } from 'react-router-dom';
 import { Bell, ChevronRight, MessageSquare, Undo2 } from 'lucide-react';
-import { differenceInCalendarDays, format } from 'date-fns';
-import { de } from 'date-fns/locale';
 import { useAuth } from '@/hooks/useAuth';
+import { berlinDateShort, berlinDaysSince, berlinWeekday, berlinWeekdayDate } from '@/utils/berlinDate';
 import { useMyWorkDecisionsData } from '@/hooks/useMyWorkDecisionsData';
 import { needsOwnDecision, resetOwnDecisionResponse, MyWorkDecision } from '@/components/my-work/decisions/types';
 import { TaskDecisionResponse } from '@/components/task-decisions/TaskDecisionResponse';
@@ -16,14 +15,17 @@ import { cn } from '@/lib/utils';
 import { notify } from "@/lib/notify";
 import { ErrorState } from '@/components/ui-patterns';
 
-function formatDeadline(deadline: string | null): { label: string; isOverdue: boolean } {
+/**
+ * Antwortfristen werden über Berliner Kalendertage bewertet: `new Date('2026-11-25')`
+ * ist UTC-Mitternacht und würde die Frist sonst auf den Vortag schieben.
+ */
+function formatDeadline(deadline: string | null, now: Date = new Date()): { label: string; isOverdue: boolean } {
   if (!deadline) return { label: '', isOverdue: false };
-  const d = new Date(deadline);
-  const diff = differenceInCalendarDays(d, new Date());
-  if (diff < 0) return { label: `Antwort überfällig seit ${format(d, 'dd.MM.', { locale: de })}`, isOverdue: true };
-  if (diff === 0) return { label: 'Antwort bis heute', isOverdue: false };
-  if (diff === 1) return { label: 'Antwort bis morgen', isOverdue: false };
-  return { label: `Antwort bis ${format(d, diff < 7 ? 'EEEE' : 'EEEE, d. MMMM', { locale: de })}`, isOverdue: false };
+  const daysSince = berlinDaysSince(deadline, now);
+  if (daysSince > 0) return { label: `Antwort überfällig seit ${berlinDateShort(deadline)}`, isOverdue: true };
+  if (daysSince === 0) return { label: 'Antwort bis heute', isOverdue: false };
+  if (daysSince === -1) return { label: 'Antwort bis morgen', isOverdue: false };
+  return { label: `Antwort bis ${daysSince > -7 ? berlinWeekday(deadline) : berlinWeekdayDate(deadline)}`, isOverdue: false };
 }
 
 const PROMPT_COLOR_CLASS: Record<string, string> = {
@@ -142,7 +144,7 @@ function DecisionRow({ decision, expanded, onToggle, nudge, onDismissConfirmed, 
 
   return (
     <div
-      className={cn("dashboard-decision-exit py-4 first:pt-0 last:pb-0", exiting && "pointer-events-none opacity-0")}
+      className={cn("dashboard-decision-exit", expanded ? "py-4 first:pt-0 last:pb-0" : "py-3", exiting && "pointer-events-none opacity-0")}
       style={{ transform: exiting ? "translateX(24px)" : undefined }}
     >
       {expanded && nudge?.nudged_at && <div className="animate-fade-up mb-3 rounded-xl bg-[#eee9f9] px-3 py-2 text-xs" role="status">
@@ -154,7 +156,7 @@ function DecisionRow({ decision, expanded, onToggle, nudge, onDismissConfirmed, 
       </div>}
       <button
         type="button"
-        className="mb-3 flex w-full items-start justify-between gap-3 text-left"
+        className={cn("flex w-full items-start justify-between gap-3 text-left", expanded && "mb-3")}
         aria-expanded={expanded}
         aria-controls={`decision-details-${decision.id}`}
         disabled={exiting}
@@ -234,6 +236,7 @@ export function DashboardDecisionsWidget() {
   const { isDeputyView } = useWorkspaceView();
   const navigate = useNavigate();
   const { decisions, setDecisions, loading, error, loadDecisions } = useMyWorkDecisionsData(user?.id);
+  const [showAll, setShowAll] = useState(false);
   const [expandedId, setExpandedId] = useState<string | null | undefined>(undefined);
   const [pendingIds, setPendingIds] = useState<Set<string>>(new Set());
 
@@ -272,11 +275,13 @@ export function DashboardDecisionsWidget() {
         if (!b.response_deadline) return -1;
         return new Date(a.response_deadline).getTime() - new Date(b.response_deadline).getTime();
       })
-      .slice(0, 3);
-  }, [eligibleDecisions, nudges.data]);
+      .slice(0, showAll ? undefined : 3);
+  }, [eligibleDecisions, nudges.data, showAll]);
 
   const currentExpandedId = expandedId === null ? null
     : items.some(item => item.id === expandedId) ? expandedId : items[0]?.id;
+
+  const hiddenCount = Math.max(0, eligibleDecisions.length - items.length);
 
   const goToDecision = (id: string) => {
     navigate(`/mywork?tab=decisions&highlight=${id}`);
@@ -298,23 +303,28 @@ export function DashboardDecisionsWidget() {
   }
 
   return (
-    <div className="divide-y divide-border">
-      {isDeputyView && nudges.isError && <p role="status" className="pb-3 text-xs text-muted-foreground">Anstups-Hinweise konnten nicht geladen werden.</p>}
-      {items.map((d) => (
-        <DecisionRow
-          key={d.id}
-          decision={d}
-          expanded={currentExpandedId === d.id}
-          onToggle={() => setExpandedId(currentExpandedId === d.id ? null : d.id)}
-          nudge={nudges.data?.find(nudge => nudge.decision_id === d.id)}
-          onDismissConfirmed={handleDismissConfirmed}
-          onOpen={goToDecision}
-          onPromptOpen={handlePromptOpen}
-          onPromptClose={handlePromptClose}
-          onUndoConfirmed={handleUndoConfirmed}
-          forcePrompt={pendingIds.has(d.id) && d.hasResponded ? { color: 'green' } : null}
-        />
-      ))}
+    <div>
+      <div className="divide-y divide-border">
+        {isDeputyView && nudges.isError && <p role="status" className="pb-3 text-xs text-muted-foreground">Anstups-Hinweise konnten nicht geladen werden.</p>}
+        {items.map((d) => (
+          <DecisionRow
+            key={d.id}
+            decision={d}
+            expanded={currentExpandedId === d.id}
+            onToggle={() => setExpandedId(currentExpandedId === d.id ? null : d.id)}
+            nudge={nudges.data?.find(nudge => nudge.decision_id === d.id)}
+            onDismissConfirmed={handleDismissConfirmed}
+            onOpen={goToDecision}
+            onPromptOpen={handlePromptOpen}
+            onPromptClose={handlePromptClose}
+            onUndoConfirmed={handleUndoConfirmed}
+            forcePrompt={pendingIds.has(d.id) && d.hasResponded ? { color: 'green' } : null}
+          />
+        ))}
+      </div>
+      {hiddenCount > 0 && <div className="flex flex-wrap justify-between gap-2 pt-3 text-meta font-medium text-muted-foreground">
+        <button type="button" className="hover:text-foreground" onClick={() => setShowAll(true)}>+{hiddenCount} weitere</button>
+      </div>}
     </div>
   );
 }

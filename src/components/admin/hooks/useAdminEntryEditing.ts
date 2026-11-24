@@ -2,7 +2,7 @@ import { useState } from "react";
 import type { User } from "@supabase/supabase-js";
 import { supabase } from "@/integrations/supabase/client";
 import type { AdminEditData } from "@/features/timetracking/components/AdminTimeEntryEditor";
-import { validateDailyLimit } from "../utils/validationHelpers";
+import { validateDay } from "../utils/validationHelpers";
 import { notify } from "@/lib/notify";
 
 interface UseAdminEntryEditingOptions {
@@ -39,7 +39,14 @@ export function useAdminEntryEditing({ user, selectedUserId, onSuccess }: UseAdm
         return;
       }
 
-      await validateDailyLimit(selectedUserId, data.work_date, grossMinutes, entryId);
+      const day = await validateDay({
+        userId: selectedUserId,
+        workDate: data.work_date,
+        startedAt: start,
+        endedAt: end,
+        pauseMinutes: data.pause_minutes,
+        excludeEntryId: entryId,
+      });
 
       const { error } = await supabase
         .from("time_entries")
@@ -48,6 +55,7 @@ export function useAdminEntryEditing({ user, selectedUserId, onSuccess }: UseAdm
           started_at: start.toISOString(),
           ended_at: end.toISOString(),
           pause_minutes: data.pause_minutes,
+          arbzg_pause_minutes: 0,
           notes: data.notes,
           edited_by: user.id,
           edited_at: new Date().toISOString(),
@@ -57,7 +65,11 @@ export function useAdminEntryEditing({ user, selectedUserId, onSuccess }: UseAdm
 
       if (error) throw error;
 
-      notify.success("Zeiteintrag aktualisiert");
+      if (day.missingPauseMinutes > 0) {
+        notify.warning(`Zeiteintrag aktualisiert – ${day.missingPauseMinutes} Min Ruhepause fehlen (ArbZG). Klärungsbedarf vermerkt.`);
+      } else {
+        notify.success("Zeiteintrag aktualisiert");
+      }
       onSuccess();
     } catch (error: unknown) {
       notify.error(error instanceof Error ? error.message : "Fehler beim Speichern");

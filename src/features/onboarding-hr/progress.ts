@@ -1,3 +1,5 @@
+import { shiftBerlinDay } from "@/utils/berlinDate";
+
 export type HrPhase = "before_start" | "first_week" | "probation_or_end";
 export type HrEvidence = "none" | "gdpr" | "handover";
 export interface HrStepMeta {
@@ -24,19 +26,21 @@ export const defaultHrMeta = (): HrStepMeta => ({
   offset_days: 0,
   evidence: "none",
 });
-/** ISO calendar days, matching the package runner; no business-day adjustment. */
+/**
+ * Kalendertage nach Berliner Rechnung, passend zum Package-Runner; ohne
+ * Werktagsverschiebung. Die Rechnung läuft über die gemeinsamen Helfer, damit
+ * Anker nicht über UTC-Mitternacht auf den Vortag rutschen.
+ */
 export function hrDueDay(anchor: string, offset: number): string {
-  const day = new Date(`${anchor}T12:00:00Z`);
   if (
     !/^\d{4}-\d{2}-\d{2}$/.test(anchor) ||
-    !Number.isFinite(day.getTime()) ||
-    day.toISOString().slice(0, 10) !== anchor ||
+    // Ein Rücksprung um 0 Tage deckt nicht existierende Tage (30. Februar) auf.
+    shiftBerlinDay(anchor, 0) !== anchor ||
     !Number.isInteger(offset) ||
     Math.abs(offset) > 365
   )
     throw new Error("Ungültige Frist.");
-  day.setUTCDate(day.getUTCDate() + offset);
-  return day.toISOString().slice(0, 10);
+  return shiftBerlinDay(anchor, offset);
 }
 export function hrProgress(items: readonly HrProgressItem[]) {
   const count = (mandatory: boolean) => {

@@ -151,7 +151,7 @@ export function useMeetingSidebarData(deps: UseMeetingSidebarDataDeps) {
         const nowDate = new Date();
         const now = nowDate.toISOString();
         const in7Days = addDays(nowDate, 7).toISOString();
-        const active = `and(status.eq.active,or(priority.gte.1,response_deadline.lt.${now},and(response_deadline.gte.${now},response_deadline.lte.${in7Days})))`;
+        const active = `and(or(status.eq.active,status.eq.open),or(priority.gte.1,response_deadline.lt.${now},and(response_deadline.gte.${now},response_deadline.lte.${in7Days})))`;
         const { data, error } = await supabase
           .from("task_decisions")
           .select("id, title, description, response_deadline, priority, created_by, status, meeting_id, jour_fixe_reserved_meeting_id")

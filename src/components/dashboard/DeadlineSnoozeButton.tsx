@@ -1,11 +1,15 @@
 import { useState } from 'react';
-import { addDays, startOfDay } from 'date-fns';
 import { AlarmClockPlus, ChevronDown } from 'lucide-react';
 import { Popover, PopoverContent, PopoverTrigger } from '@/components/ui/popover';
 import { Calendar } from '@/components/ui/calendar';
 import { cn } from '@/lib/utils';
 import { useSnoozeDeadline } from '@/hooks/useSnoozeDeadline';
 import type { DeadlineItem } from '@/types/dashboardDeadlines';
+import { berlinDayKey, berlinStartOfDay, shiftBerlinDay } from '@/utils/berlinDate';
+
+/** Der im Kalender gewählte Tag, unabhängig von der Browser-Zeitzone. */
+const pickerDayKey = (date: Date) =>
+  `${date.getFullYear()}-${String(date.getMonth() + 1).padStart(2, '0')}-${String(date.getDate()).padStart(2, '0')}`;
 
 interface DeadlineSnoozeButtonProps {
   item: DeadlineItem;
@@ -25,8 +29,8 @@ export const DeadlineSnoozeButton = ({ item }: DeadlineSnoozeButtonProps) => {
   const [showCalendar, setShowCalendar] = useState(false);
 
   const snoozeBy = (days: number) => {
-    const newDate = addDays(startOfDay(new Date()), days);
-    mutate({ item, newDate });
+    // Presets zählen Berliner Kalendertage ab heute, nicht ab lokaler Mitternacht.
+    mutate({ item, newDate: berlinStartOfDay(shiftBerlinDay(berlinDayKey(new Date()), days)) });
   };
 
   const handleQuickClick = (e: React.MouseEvent) => {
@@ -44,7 +48,7 @@ export const DeadlineSnoozeButton = ({ item }: DeadlineSnoozeButtonProps) => {
 
   const handleCustomDate = (date: Date | undefined) => {
     if (!date) return;
-    mutate({ item, newDate: startOfDay(date) });
+    mutate({ item, newDate: berlinStartOfDay(pickerDayKey(date)) });
     setPopoverOpen(false);
     setShowCalendar(false);
   };
@@ -97,7 +101,7 @@ export const DeadlineSnoozeButton = ({ item }: DeadlineSnoozeButtonProps) => {
               mode="single"
               selected={undefined}
               onSelect={handleCustomDate}
-              disabled={(date) => date < startOfDay(new Date())}
+              disabled={(date) => pickerDayKey(date) < berlinDayKey(new Date())}
               initialFocus
               className={cn('p-3 pointer-events-auto')}
             />

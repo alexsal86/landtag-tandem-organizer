@@ -1,23 +1,11 @@
 // deno-lint-ignore-file
 import { createClient } from "https://esm.sh/@supabase/supabase-js@2"
-import { getSyncExternalErrorResponse } from './sync-external-calendar.utils.ts'
+import { parseICS, type ICSEvent } from './sync-external-calendar.utils.ts'
 
 import { withSafeHandler, requireAuth, requireServiceRole, unauthorizedResponse } from "../_shared/security.ts";
 const corsHeaders = {
   'Access-Control-Allow-Origin': '*',
   'Access-Control-Allow-Headers': 'authorization, x-client-info, apikey, content-type',
-}
-
-interface ICSEvent {
-  uid: string;
-  summary: string;
-  description?: string;
-  dtstart: string;
-  dtend?: string;
-  location?: string;
-  allDay?: boolean;
-  rrule?: string;
-  lastModified?: string;
 }
 
 interface SyncStats {
@@ -27,103 +15,6 @@ interface SyncStats {
   skippedEvents: number;
   errorEvents: number;
   deletedEvents: number;
-}
-
-function parseICSDate(dateStr: string): Date {
-  // Handle both DATE-TIME and DATE formats
-  if (dateStr.includes('T')) {
-    // DATE-TIME format: YYYYMMDDTHHMMSS or YYYYMMDDTHHMMSSZ
-    const year = parseInt(dateStr.substring(0, 4));
-    const month = parseInt(dateStr.substring(4, 6)) - 1; // Month is 0-indexed
-    const day = parseInt(dateStr.substring(6, 8));
-    const hour = parseInt(dateStr.substring(9, 11)) || 0;
-    const minute = parseInt(dateStr.substring(11, 13)) || 0;
-    const second = parseInt(dateStr.substring(13, 15)) || 0;
-
-    return new Date(year, month, day, hour, minute, second);
-  } else {
-    // DATE format: YYYYMMDD (all-day event)
-    const year = parseInt(dateStr.substring(0, 4));
-    const month = parseInt(dateStr.substring(4, 6)) - 1;
-    const day = parseInt(dateStr.substring(6, 8));
-
-    return new Date(year, month, day);
-  }
-}
-
-function parseICS(icsContent: string, startDate: Date, endDate: Date, maxEvents: number): ICSEvent[] {
-  const events: ICSEvent[] = [];
-  const lines = icsContent.split(/\r?\n/);
-  let currentEvent: Partial<ICSEvent> | null = null;
-
-  for (let i = 0; i < lines.length; i++) {
-    let line = lines[i].trim();
-
-    // Handle line folding (lines starting with space or tab)
-    while (i + 1 < lines.length && (lines[i + 1].startsWith(' ') || lines[i + 1].startsWith('\t'))) {
-      i++;
-      line += lines[i].trim();
-    }
-
-    if (line === 'BEGIN:VEVENT') {
-      currentEvent = {};
-    } else if (line === 'END:VEVENT' && currentEvent) {
-      // Enhanced validation with better error handling
-      if (currentEvent.uid && currentEvent.summary && currentEvent.dtstart) {
-        try {
-          // Improved filtering: check if event overlaps with our date range
-          const eventStart = parseICSDate(currentEvent.dtstart);
-          const eventEnd = currentEvent.dtend ? parseICSDate(currentEvent.dtend) :
-            // For all-day events or events without end time, assume 1 day duration
-            new Date(eventStart.getTime() + 24 * 60 * 60 * 1000);
-
-          // Event overlaps if: event_start <= range_end AND event_end >= range_start
-          const overlapsWithRange = eventStart <= endDate && eventEnd >= startDate;
-
-          if (overlapsWithRange) {
-            events.push(currentEvent as ICSEvent);
-          }
-        } catch (parseError) {
-          console.warn(`⚠️ Failed to parse event ${currentEvent.uid}: ${parseError instanceof Error ? parseError.message : String(parseError)}`);
-        }
-      } else {
-        // Log incomplete events for debugging
-        const missingFields = [];
-        if (!currentEvent.uid) missingFields.push('uid');
-        if (!currentEvent.summary) missingFields.push('summary');
-        if (!currentEvent.dtstart) missingFields.push('dtstart');
-        console.warn(`⚠️ Skipping incomplete event - missing: ${missingFields.join(', ')}`);
-      }
-      currentEvent = null;
-
-      // Use configurable event limit
-      if (events.length >= maxEvents) {
-        break;
-      }
-    } else if (currentEvent) {
-      if (line.startsWith('UID:')) {
-        currentEvent.uid = line.substring(4);
-      } else if (line.startsWith('SUMMARY:')) {
-        currentEvent.summary = line.substring(8);
-      } else if (line.startsWith('DESCRIPTION:')) {
-        currentEvent.description = line.substring(12);
-      } else if (line.startsWith('DTSTART')) {
-        const value = line.split(':')[1];
-        currentEvent.dtstart = value;
-        currentEvent.allDay = !value.includes('T');
-      } else if (line.startsWith('DTEND')) {
-        currentEvent.dtend = line.split(':')[1];
-      } else if (line.startsWith('LOCATION:')) {
-        currentEvent.location = line.substring(9);
-      } else if (line.startsWith('RRULE:')) {
-        currentEvent.rrule = line.substring(6);
-      } else if (line.startsWith('LAST-MODIFIED:')) {
-        currentEvent.lastModified = line.substring(14);
-      }
-    }
-  }
-
-  return events;
 }
 
 async function incrementalSync(supabase: any, calendarId: string, newEvents: ICSEvent[]): Promise<SyncStats> {
@@ -136,10 +27,10 @@ async function incrementalSync(supabase: any, calendarId: string, newEvents: ICS
     deletedEvents: 0
   };
 
-  // Get existing events with their last_modified timestamps
+  // Vorhandene Events inkl. gespeicherter Zeiten laden (für Abgleich/Heilung)
   const { data: existingEvents, error: existingError } = await supabase
     .from('external_events')
-    .select('external_uid, last_modified')
+    .select('external_uid, last_modified, start_time, end_time, all_day')
     .eq('external_calendar_id', calendarId);
 
   if (existingError) {
@@ -148,10 +39,17 @@ async function incrementalSync(supabase: any, calendarId: string, newEvents: ICS
   }
 
   // Create a map of existing events for quick lookup
-  const existingEventsMap = new Map();
+  type ExistingExternalEvent = {
+    external_uid: string;
+    last_modified: string | null;
+    start_time: string | null;
+    end_time: string | null;
+    all_day: boolean | null;
+  };
+  const existingEventsMap = new Map<string, ExistingExternalEvent>();
   if (existingEvents) {
-    existingEvents.forEach((event: any) => {
-      existingEventsMap.set(event.external_uid, event.last_modified);
+    existingEvents.forEach((event: ExistingExternalEvent) => {
+      existingEventsMap.set(event.external_uid, event);
     });
   }
 
@@ -160,19 +58,9 @@ async function incrementalSync(supabase: any, calendarId: string, newEvents: ICS
   const eventsToProcess = [];
 
   for (const event of newEvents) {
-    const startTime = parseICSDate(event.dtstart);
-    let endTime = startTime;
-
-    if (event.dtend) {
-      endTime = parseICSDate(event.dtend);
-    } else if (event.allDay) {
-      // All-day events end at the start of the next day
-      endTime = new Date(startTime);
-      endTime.setDate(endTime.getDate() + 1);
-    } else {
-      // Default 1-hour duration for events without end time
-      endTime = new Date(startTime.getTime() + 60 * 60 * 1000);
-    }
+    // Beim Parsen bereits mit Z/TZID/VTIMEZONE aufgelöste UTC-Zeitstempel.
+    const startTime = new Date(event.startUtc);
+    const endTime = new Date(event.endUtc);
 
     const eventData = {
       external_calendar_id: calendarId,
@@ -185,20 +73,28 @@ async function incrementalSync(supabase: any, calendarId: string, newEvents: ICS
       all_day: event.allDay || false,
       recurrence_rule: event.rrule || null,
       raw_ics_data: event,
-      last_modified: event.lastModified ? parseICSDate(event.lastModified).toISOString() : new Date().toISOString(),
+      last_modified: event.lastModifiedUtc ?? new Date().toISOString(),
     };
 
-    // Check if we need to process this event
-    const existingLastModified = existingEventsMap.get(event.uid);
+    // Vorhandenen Datensatz prüfen. Zeit- oder Ganztagsabweichungen werden auch
+    // ohne neues LAST-MODIFIED korrigiert, damit früher falsch verschobene
+    // Importe beim nächsten Sync geradegerückt werden.
+    const existing = existingEventsMap.get(event.uid);
+    const timesDiffer = existing !== undefined && (
+      Date.parse(existing.start_time ?? '') !== startTime.getTime() ||
+      Date.parse(existing.end_time ?? '') !== endTime.getTime() ||
+      Boolean(existing.all_day) !== Boolean(event.allDay)
+    );
 
-    if (!existingLastModified) {
+    if (!existing) {
       // New event
       eventsToProcess.push({ ...eventData, action: 'new' });
-    } else if (event.lastModified) {
-      const newLastModified = parseICSDate(event.lastModified);
-      const existingDate = new Date(existingLastModified);
+    } else if (timesDiffer) {
+      eventsToProcess.push({ ...eventData, action: 'update' });
+    } else if (event.lastModifiedUtc) {
+      const existingDate = new Date(existing.last_modified ?? 0);
 
-      if (newLastModified > existingDate) {
+      if (new Date(event.lastModifiedUtc) > existingDate) {
         // Event was modified
         eventsToProcess.push({ ...eventData, action: 'update' });
       } else {

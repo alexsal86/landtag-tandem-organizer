@@ -48,6 +48,7 @@ export const PlannerPostCard = memo(function PlannerPostCard({ item, onClick }: 
 
   return (
     <div
+      data-social-planner-item-id={item.id}
       className="cursor-grab active:cursor-grabbing rounded-md border bg-card p-2 shadow-sm transition-shadow hover:shadow-md text-xs space-y-1.5"
       onClick={onClick}
       draggable

@@ -44,6 +44,7 @@ interface TaskDecisionResponseProps {
   layout?: "default" | "decision-panel";
   disabled?: boolean;
   showCreatorResponse?: boolean;
+  renderActions?: (submit: (responseType: string, comment?: string) => Promise<void>, busy: boolean) => React.ReactNode;
 }
 
 interface ResponseData {
@@ -99,6 +100,7 @@ export const TaskDecisionResponse = ({
   creatorId,
   disabled = false,
   showCreatorResponse = true,
+  renderActions,
 }: TaskDecisionResponseProps) => {
   const [isQuestionDialogOpen, setIsQuestionDialogOpen] = useState(false);
   const [questionComment, setQuestionComment] = useState("");
@@ -561,6 +563,7 @@ export const TaskDecisionResponse = ({
   }
 
   // (isSingleFreetext and isSingleAcknowledgement already declared above)
+  if (renderActions) return renderActions(handleResponse, isLoading || disabled);
 
 
   const renderDescriptionInfo = (description: string) => (

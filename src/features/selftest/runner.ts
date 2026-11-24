@@ -10,11 +10,11 @@ export const SELFTEST_MARKER = "__SELFTEST__";
 // Fremdschlüssel: Antworten vor Teilnehmern, Anfragen vor Terminen, Kinder vor Eltern.
 const CLEANUP_ORDER = [
   "task_decision_responses", "task_decision_participants", "task_decisions",
-  "document_annotations", "letter_attachments", "documents", "letters", "quick_notes", "contact_activities", "contacts", "tasks",
+  "document_annotations", "letter_attachments", "documents", "letters", "quick_notes", "contact_usage_stats", "contact_activities", "contacts", "tasks",
   "case_item_interactions", "case_items", "day_slips", "appointment_requests",
   "meeting_agenda_documents", "meeting_agenda_items", "meeting_participants",
   "appointment_feedback", "appointment_preparations", "appointment_contacts",
-  "appointments", "meetings", "event_planning_timeline_assignments",
+  "appointment_guests", "appointments", "appointment_polls", "meetings", "event_planning_timeline_assignments",
   "event_planning_checklist_items", "event_planning_contacts", "event_planning_speakers",
   "event_planning_dates", "event_plannings", "daily_briefings",
 ] as const;

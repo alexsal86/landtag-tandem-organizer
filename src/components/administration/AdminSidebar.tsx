@@ -48,6 +48,7 @@ import {
   ClipboardCheck,
   Globe2,
   Sparkles,
+  ShieldCheck,
 } from "lucide-react";
 
 export interface AdminMenuItem {
@@ -85,6 +86,7 @@ export const adminMenuItems: AdminMenuItem[] = [
 
       { id: "auditlogs", label: "Audit-Logs", icon: History },
       { id: "permissions", label: "Berechtigungen", icon: Shield },
+      { id: "permissions-explorer", label: "Rechte-Explorer", icon: ShieldCheck },
       { id: "security-cockpit", label: "Security-Cockpit", icon: ShieldAlert, superAdminOnly: true },
       { id: "gdpr", label: "DSGVO-Anfragen", icon: Shield },
       { id: "performance", label: "Performance", icon: Activity, superAdminOnly: true },

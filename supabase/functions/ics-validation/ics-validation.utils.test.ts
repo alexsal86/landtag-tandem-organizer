@@ -8,13 +8,27 @@ describe('ics-validation utils', () => {
 
     expect(Number.isNaN(allDay.getTime())).toBe(false);
     expect(Number.isNaN(timed.getTime())).toBe(false);
-    expect(timed.getHours()).toBe(14);
-    expect(timed.getMinutes()).toBe(15);
+    // Zeitzonenunabhängig: der Wert wird als UTC-Wandzeit abgebildet.
+    expect(timed.getUTCHours()).toBe(14);
+    expect(timed.getUTCMinutes()).toBe(15);
   });
 
   it('lässt ungültige Datumsformate als invalid Date durch, sodass Caller sie behandeln kann', () => {
     const invalid = parseICSDate('nicht-ein-datum');
     expect(Number.isNaN(invalid.getTime())).toBe(true);
+  });
+
+  it('filtert TZID-Termine anhand der aufgelösten Zeit statt der Wandzeit', () => {
+    const ics = `BEGIN:VCALENDAR\nBEGIN:VTIMEZONE\nTZID:Europe/Berlin\nBEGIN:DAYLIGHT\nTZOFFSETFROM:+0100\nTZOFFSETTO:+0200\nDTSTART:19700329T020000\nRRULE:FREQ=YEARLY;BYMONTH=3;BYDAY=-1SU\nEND:DAYLIGHT\nBEGIN:STANDARD\nTZOFFSETFROM:+0200\nTZOFFSETTO:+0100\nDTSTART:19701025T030000\nRRULE:FREQ=YEARLY;BYMONTH=10;BYDAY=-1SU\nEND:STANDARD\nEND:VTIMEZONE\nBEGIN:VEVENT\nUID:tzid-1\nSUMMARY:TZID-Termin\nDTSTART;TZID=Europe/Berlin:20251231T230000\nDTEND;TZID=Europe/Berlin:20260101T000000\nEND:VEVENT\nEND:VCALENDAR`;
+
+    // 23:00 Berliner Zeit am 31.12.2025 ist 22:00 UTC und liegt damit vor dem
+    // Fensterbeginn um 00:00 UTC – nur die aufgelöste Zeit zählt.
+    const outside = parseICSForValidation(ics, new Date('2026-01-01T00:00:00Z'), new Date('2026-02-01T00:00:00Z'));
+    expect(outside).toHaveLength(0);
+
+    const inside = parseICSForValidation(ics, new Date('2025-12-31T00:00:00Z'), new Date('2026-01-01T00:00:00Z'));
+    expect(inside).toHaveLength(1);
+    expect(inside[0].uid).toBe('tzid-1');
   });
 
   it('filtert nur Events im Bereich und erstellt Fallback-UID bei Duplikat-/UID-Lücken', () => {

@@ -45,6 +45,7 @@ export function BriefingComposerCard() {
       </CardTitle>
     </CardHeader>
     <CardContent className="space-y-4 px-5 pb-5 pt-0">
+      <AuthoredBriefingReadStatus />
       <div className="space-y-2">
         <Label className="text-xs">Gültig für</Label>
         <div className="flex flex-wrap gap-2" role="group" aria-label="Datum des Tagesbriefings">
@@ -76,7 +77,6 @@ export function BriefingComposerCard() {
           <Button size="sm" variant="outline" onClick={() => void refetch()}>Erneut laden</Button></div>
         : <BriefingForm key={`${currentTenant?.id}:${user?.id}:${date}`} date={date} existing={existing ?? null}
           earliestDate={choices.tomorrow} onBusyChange={setEditingBusy} />}
-      <AuthoredBriefingReadStatus />
     </CardContent>
   </Card>;
 }

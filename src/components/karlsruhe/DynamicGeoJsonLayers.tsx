@@ -55,12 +55,21 @@ export const DynamicGeoJsonLayer = ({ map, layer, visible }: DynamicGeoJsonLayer
         if (!layer.label_property || !feature.properties) return;
         const label = feature.properties[layer.label_property];
         if (label) {
-          featureLayer.bindPopup(`
-            <div style="font-family: sans-serif;">
-              <h3 style="margin: 0 0 4px 0; font-size: 14px; font-weight: 600;">${label}</h3>
-              <p style="margin: 0; font-size: 12px; color: #666;">${layer.name}</p>
-            </div>
-          `);
+          // Popup content is built from elements so tenant layer data is never parsed as HTML.
+          const popup = document.createElement('div');
+          popup.style.fontFamily = 'sans-serif';
+
+          const title = document.createElement('h3');
+          Object.assign(title.style, { margin: '0 0 4px 0', fontSize: '14px', fontWeight: '600' });
+          title.textContent = String(label);
+          popup.appendChild(title);
+
+          const source = document.createElement('p');
+          Object.assign(source.style, { margin: '0', fontSize: '12px', color: '#666' });
+          source.textContent = layer.name;
+          popup.appendChild(source);
+
+          featureLayer.bindPopup(popup);
         }
       },
     }).addTo(map);

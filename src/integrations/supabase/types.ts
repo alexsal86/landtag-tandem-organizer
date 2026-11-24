@@ -583,7 +583,15 @@ export type Database = {
           tenant_id?: string
           updated_at?: string
         }
-        Relationships: []
+        Relationships: [
+          {
+            foreignKeyName: "appointment_guests_appointment_id_fkey"
+            columns: ["appointment_id"]
+            isOneToOne: false
+            referencedRelation: "appointments"
+            referencedColumns: ["id"]
+          },
+        ]
       }
       appointment_locations: {
         Row: {
@@ -640,11 +648,17 @@ export type Database = {
       }
       appointment_polls: {
         Row: {
+          confirmed_appointment_id: string | null
+          confirmed_slot_id: string | null
           created_at: string
           current_version: number | null
           deadline: string | null
           description: string | null
+          followup_claimed_at: string | null
+          followup_claimed_attempt: number | null
+          followup_count: number
           id: string
+          last_followup_at: string | null
           status: string
           tenant_id: string | null
           title: string
@@ -652,11 +666,17 @@ export type Database = {
           user_id: string
         }
         Insert: {
+          confirmed_appointment_id?: string | null
+          confirmed_slot_id?: string | null
           created_at?: string
           current_version?: number | null
           deadline?: string | null
           description?: string | null
+          followup_claimed_at?: string | null
+          followup_claimed_attempt?: number | null
+          followup_count?: number
           id?: string
+          last_followup_at?: string | null
           status?: string
           tenant_id?: string | null
           title: string
@@ -664,11 +684,17 @@ export type Database = {
           user_id: string
         }
         Update: {
+          confirmed_appointment_id?: string | null
+          confirmed_slot_id?: string | null
           created_at?: string
           current_version?: number | null
           deadline?: string | null
           description?: string | null
+          followup_claimed_at?: string | null
+          followup_claimed_attempt?: number | null
+          followup_count?: number
           id?: string
+          last_followup_at?: string | null
           status?: string
           tenant_id?: string | null
           title?: string
@@ -845,6 +871,54 @@ export type Database = {
             columns: ["tenant_id"]
             isOneToOne: false
             referencedRelation: "tenants"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
+      appointment_reminder_dispatches: {
+        Row: {
+          appointment_id: string
+          created_at: string
+          emailed_at: string | null
+          id: string
+          minutes_before: number
+          notification_id: string | null
+          notified_at: string | null
+          user_id: string
+        }
+        Insert: {
+          appointment_id: string
+          created_at?: string
+          emailed_at?: string | null
+          id?: string
+          minutes_before: number
+          notification_id?: string | null
+          notified_at?: string | null
+          user_id: string
+        }
+        Update: {
+          appointment_id?: string
+          created_at?: string
+          emailed_at?: string | null
+          id?: string
+          minutes_before?: number
+          notification_id?: string | null
+          notified_at?: string | null
+          user_id?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "appointment_reminder_dispatches_appointment_id_fkey"
+            columns: ["appointment_id"]
+            isOneToOne: false
+            referencedRelation: "appointments"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "appointment_reminder_dispatches_notification_id_fkey"
+            columns: ["notification_id"]
+            isOneToOne: false
+            referencedRelation: "notifications"
             referencedColumns: ["id"]
           },
         ]
@@ -1027,6 +1101,7 @@ export type Database = {
           briefing_instructions: string | null
           briefing_status: string
           briefing_task_id: string | null
+          calendar_sequence: number
           calendar_uid: string | null
           call_log_id: string | null
           category: string | null
@@ -1039,6 +1114,7 @@ export type Database = {
           has_external_guests: boolean | null
           id: string
           is_all_day: boolean
+          last_invitation_sequence: number
           last_invitation_sent_at: string | null
           location: string | null
           meeting_details: string | null
@@ -1076,6 +1152,8 @@ export type Database = {
           has_external_guests?: boolean | null
           id?: string
           is_all_day?: boolean
+          calendar_sequence?: number
+          last_invitation_sequence?: number
           last_invitation_sent_at?: string | null
           location?: string | null
           meeting_details?: string | null
@@ -1113,6 +1191,8 @@ export type Database = {
           has_external_guests?: boolean | null
           id?: string
           is_all_day?: boolean
+          calendar_sequence?: number
+          last_invitation_sequence?: number
           last_invitation_sent_at?: string | null
           location?: string | null
           meeting_details?: string | null
@@ -11952,30 +12032,45 @@ export type Database = {
       }
       poll_notifications: {
         Row: {
+          attempt: number
           created_at: string
+          dedupe_key: string | null
           id: string
           is_sent: boolean
+          last_error: string | null
+          next_attempt_at: string
           notification_type: string
           participant_id: string
           poll_id: string
+          send_attempts: number
           sent_at: string | null
         }
         Insert: {
+          attempt?: number
           created_at?: string
+          dedupe_key?: string | null
           id?: string
           is_sent?: boolean
+          last_error?: string | null
+          next_attempt_at?: string
           notification_type: string
           participant_id: string
           poll_id: string
+          send_attempts?: number
           sent_at?: string | null
         }
         Update: {
+          attempt?: number
           created_at?: string
+          dedupe_key?: string | null
           id?: string
           is_sent?: boolean
+          last_error?: string | null
+          next_attempt_at?: string
           notification_type?: string
           participant_id?: string
           poll_id?: string
+          send_attempts?: number
           sent_at?: string | null
         }
         Relationships: [
@@ -15997,6 +16092,7 @@ export type Database = {
       }
       time_entries: {
         Row: {
+          arbzg_pause_minutes: number
           created_at: string
           edit_reason: string | null
           edited_at: string | null
@@ -16013,6 +16109,7 @@ export type Database = {
           work_date: string
         }
         Insert: {
+          arbzg_pause_minutes?: number
           created_at?: string
           edit_reason?: string | null
           edited_at?: string | null
@@ -16029,6 +16126,7 @@ export type Database = {
           work_date: string
         }
         Update: {
+          arbzg_pause_minutes?: number
           created_at?: string
           edit_reason?: string | null
           edited_at?: string | null
@@ -17530,6 +17628,27 @@ export type Database = {
       cleanup_bulk_action_audit: { Args: never; Returns: number }
       cleanup_edge_function_cache: { Args: never; Returns: number }
       cleanup_workflow_runs: { Args: never; Returns: number }
+      config_delete_impact: {
+        Args: { _id: string; _table: string }
+        Returns: Json
+      }
+      config_item_name: { Args: { _label: string }; Returns: string }
+      delete_config_item: {
+        Args: { _expected_refs: number; _id: string; _table: string }
+        Returns: Json
+      }
+      rename_config_item: {
+        Args: {
+          _color?: string | null
+          _icon?: string | null
+          _id: string
+          _label: string
+          _set_color?: boolean
+          _set_icon?: boolean
+          _table: string
+        }
+        Returns: Json
+      }
       complete_appointment_briefing: {
         Args: { _appointment_id: string }
         Returns: undefined
@@ -17732,6 +17851,44 @@ export type Database = {
         Args: { p_kind: string; p_region_kind?: string; p_topic: string }
         Returns: Json
       }
+      claim_poll_followup: {
+        Args: {
+          _claim_timeout_minutes?: number
+          _expected_attempt: number
+          _poll_id: string
+        }
+        Returns: number
+      }
+      confirm_poll_winner: {
+        Args: { _poll_id: string; _slot_id: string }
+        Returns: { appointment_id: string; slot_id: string }[]
+      }
+      finalize_poll_followup: {
+        Args: {
+          _attempt: number
+          _max_send_attempts?: number
+          _poll_id: string
+        }
+        Returns: { counted: boolean; pending: number }[]
+      }
+      get_due_poll_followups: {
+        Args: {
+          _claim_timeout_minutes?: number
+          _deadline_window_hours: number
+          _first_delay_hours: number
+          _limit: number
+          _max_attempts: number
+          _min_gap_hours: number
+          _repeat_hours: number
+        }
+        Returns: {
+          attempt: number
+          due_at: string
+          open_external: number
+          open_participants: number
+          poll_id: string
+        }[]
+      }
       create_appointment_poll_with_details: {
         Args: {
           p_deadline?: string
@@ -17865,10 +18022,29 @@ export type Database = {
         Args: { p_tenant: string; p_week: string }
         Returns: undefined
       }
+      dispatch_due_appointment_reminders: {
+        Args: { _limit?: number }
+        Returns: {
+          appointment_id: string
+          end_time: string
+          location: string | null
+          minutes_before: number
+          notification_id: string | null
+          notified: boolean
+          start_time: string
+          tenant_id: string
+          title: string | null
+          user_id: string
+        }[]
+      }
       dispatch_due_knowledge_reviews: { Args: never; Returns: number }
       dispatch_due_task_reminders: { Args: never; Returns: number }
       dispatch_employee_preparation_reminders: { Args: never; Returns: number }
       dispatch_office_feedback_reminders: { Args: never; Returns: undefined }
+      poll_followup_send_key: {
+        Args: { _attempt: number; _participant_id: string; _poll_id: string }
+        Returns: string
+      }
       dispatch_scheduled_emails_if_due: { Args: never; Returns: undefined }
       dispatch_workflow_trigger: {
         Args: {
@@ -17973,6 +18149,40 @@ export type Database = {
         Returns: string
       }
       expire_carry_over_vacation: { Args: never; Returns: undefined }
+      explain_action_permission: {
+        Args: {
+          _action_key: string
+          _simulate_role?: string | null
+          _tenant_id: string
+          _user_id: string
+        }
+        Returns: Json
+      }
+      explain_feature_flag: {
+        Args: { _feature_key: string; _tenant_id: string; _user_id: string }
+        Returns: Json
+      }
+      explain_field_permission: {
+        Args: {
+          _column_name: string
+          _simulate_role?: string | null
+          _table_name: string
+          _tenant_id: string
+          _user_id: string
+        }
+        Returns: Json
+      }
+      explain_permissions: {
+        Args: {
+          _actions?: string[]
+          _features?: string[]
+          _fields?: Json
+          _simulate_role?: string | null
+          _tenant_id: string
+          _user_id: string
+        }
+        Returns: Json
+      }
       export_admin_audit_logs: {
         Args: {
           _as_of?: string
@@ -18244,9 +18454,25 @@ export type Database = {
           title: string
         }[]
       }
+      get_poll_availability: {
+        Args: {
+          _emails: string[]
+          _from?: string
+          _tenant_id: string
+          _to?: string
+        }
+        Returns: {
+          busy_end: string | null
+          busy_start: string | null
+          email: string
+          source: string
+        }[]
+      }
       get_user_polls_with_aggregation: {
         Args: never
         Returns: {
+          confirmed_appointment_id: string | null
+          confirmed_slot_id: string | null
           created_at: string
           creator_name: string
           deadline: string
@@ -18919,6 +19145,10 @@ export type Database = {
         }
         Returns: undefined
       }
+      merge_contacts: {
+        Args: { p_source: string; p_target: string; p_updates?: Json }
+        Returns: Json
+      }
       merge_topics: {
         Args: { p_source: string; p_target: string }
         Returns: undefined
@@ -19139,6 +19369,10 @@ export type Database = {
       request_protocol_acknowledgement: {
         Args: { p_meeting_id: string }
         Returns: undefined
+      }
+      request_social_post_changes: {
+        Args: { _comment: string; _due_days?: number; _item: string }
+        Returns: Json
       }
       require_employee_meeting_access: {
         Args: { p_meeting_id: string; p_supervisor?: boolean }
@@ -19442,6 +19676,10 @@ export type Database = {
       update_waiting_routine_steps: {
         Args: { _run_id: string }
         Returns: number
+      }
+      upsert_appointment_guests: {
+        Args: { _appointment_id: string; _guests: Json }
+        Returns: Json
       }
       upsert_weekly_answer: {
         Args: { p_answer: string; p_tenant: string; p_week: string }

@@ -16,6 +16,7 @@ import { WorkItemStatusBadge } from '@/components/work-items/WorkItemStatusBadge
 import type { WorkItem, WorkItemKind } from '@/types/workItem';
 import { CheckSquare, GitBranch, Inbox } from 'lucide-react';
 import { cn } from '@/lib/utils';
+import { berlinDate } from '@/utils/berlinDate';
 
 const KIND_LABEL: Record<WorkItemKind, string> = {
   task: 'Aufgabe',
@@ -42,7 +43,8 @@ function formatDueDate(iso: string | null): string {
   if (!iso) return '';
   const date = new Date(iso);
   if (Number.isNaN(date.getTime())) return '';
-  return date.toLocaleDateString('de-DE', { day: '2-digit', month: '2-digit', year: 'numeric' });
+  // Entscheidungen liefern hier ihre Antwortfrist; der Tag muss Berliner Zeit folgen.
+  return berlinDate(date);
 }
 
 interface Props {

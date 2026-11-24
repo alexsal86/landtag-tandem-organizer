@@ -70,6 +70,204 @@ const toAssociationViewModel = (association: PartyAssociation): PartyAssociation
   };
 };
 
+/** Association markers and popups are built from elements, so contact data is never parsed as HTML. */
+const appendText = (
+  parent: HTMLElement,
+  tag: 'span' | 'strong' | 'h3' | 'p' | 'div',
+  text: string,
+  styles: Record<string, string>,
+): HTMLElement => {
+  const element = document.createElement(tag);
+  Object.assign(element.style, styles);
+  element.textContent = text;
+  parent.appendChild(element);
+  return element;
+};
+
+const EMAIL_PATTERN = /^[A-Za-z0-9._%+-]+@[A-Za-z0-9.-]+\.[A-Za-z]{2,}$/;
+
+/** Contact values only become links for the scheme they belong to; anything else stays text. */
+const safeContactHref = (
+  raw: string | null | undefined,
+  kind: 'phone' | 'email' | 'website',
+): string | null => {
+  const value = raw?.trim();
+  if (!value) return null;
+
+  if (kind === 'phone') {
+    const digits = value.replace(/[^\d+]/g, '');
+    return /^\+?\d{3,}$/.test(digits) ? `tel:${digits}` : null;
+  }
+
+  if (kind === 'email') {
+    return EMAIL_PATTERN.test(value) ? `mailto:${value}` : null;
+  }
+
+  const candidate = /^[a-z][a-z0-9+.-]*:/i.test(value) ? value : `https://${value}`;
+  try {
+    const url = new URL(candidate);
+    return url.protocol === 'http:' || url.protocol === 'https:' ? url.href : null;
+  } catch {
+    return null;
+  }
+};
+
+const appendContactRow = (
+  parent: HTMLElement,
+  icon: string,
+  label: string,
+  value: string,
+  href: string | null,
+  linkText: string,
+  wrap: boolean,
+): void => {
+  const row = document.createElement('div');
+  Object.assign(row.style, {
+    display: 'flex',
+    alignItems: 'center',
+    gap: '8px',
+    padding: '6px',
+    background: '#f9fafb',
+    borderRadius: '4px',
+  });
+  appendText(row, 'span', icon, { color: '#16a34a' });
+
+  const body = document.createElement('div');
+  appendText(body, 'strong', label, { color: '#374151', fontSize: '12px' });
+  body.appendChild(document.createElement('br'));
+  const valueStyles: Record<string, string> = {
+    color: '#16a34a',
+    textDecoration: 'none',
+    fontWeight: '500',
+    ...(wrap ? { wordBreak: 'break-all' } : {}),
+  };
+
+  if (href) {
+    const link = document.createElement('a');
+    Object.assign(link.style, valueStyles);
+    link.href = href;
+    link.textContent = linkText;
+    if (href.startsWith('http')) {
+      link.target = '_blank';
+      link.rel = 'noopener noreferrer';
+    }
+    body.appendChild(link);
+  } else {
+    appendText(body, 'span', value, valueStyles);
+  }
+
+  row.appendChild(body);
+  parent.appendChild(row);
+};
+
+const createAssociationPopup = (association: PartyAssociationViewModel): HTMLElement => {
+  const popup = document.createElement('div');
+  Object.assign(popup.style, { minWidth: '250px', maxWidth: '300px' });
+
+  const header = document.createElement('div');
+  Object.assign(header.style, {
+    borderBottom: '2px solid #16a34a',
+    paddingBottom: '8px',
+    marginBottom: '12px',
+  });
+  appendText(header, 'h3', `🌱 ${association.name}`, {
+    color: '#15803d',
+    fontSize: '18px',
+    margin: '0',
+    fontWeight: 'bold',
+  });
+  appendText(header, 'p', 'GRÜNE Kreisverband', {
+    color: '#16a34a',
+    fontWeight: 'bold',
+    margin: '4px 0 0 0',
+    fontSize: '14px',
+  });
+  popup.appendChild(header);
+
+  if (association.fullAddress) {
+    const address = document.createElement('div');
+    Object.assign(address.style, {
+      margin: '8px 0',
+      padding: '8px',
+      background: '#f0f9ff',
+      borderRadius: '6px',
+    });
+    const row = document.createElement('div');
+    Object.assign(row.style, { display: 'flex', alignItems: 'flex-start', gap: '8px' });
+    appendText(row, 'span', '📍', { color: '#16a34a', fontSize: '16px' });
+    const body = document.createElement('div');
+    appendText(body, 'strong', 'Adresse:', { color: '#374151' });
+    body.appendChild(document.createElement('br'));
+    appendText(body, 'span', association.fullAddress, { color: '#6b7280', lineHeight: '1.4' });
+    row.appendChild(body);
+    address.appendChild(row);
+    popup.appendChild(address);
+  }
+
+  const contacts = document.createElement('div');
+  Object.assign(contacts.style, {
+    display: 'grid',
+    gridTemplateColumns: '1fr',
+    gap: '8px',
+    marginTop: '12px',
+  });
+  if (association.phone) {
+    appendContactRow(
+      contacts,
+      '📞',
+      'Telefon:',
+      association.phone,
+      safeContactHref(association.phone, 'phone'),
+      association.phone,
+      false,
+    );
+  }
+  if (association.email) {
+    appendContactRow(
+      contacts,
+      '📧',
+      'E-Mail:',
+      association.email,
+      safeContactHref(association.email, 'email'),
+      association.email,
+      true,
+    );
+  }
+  if (association.website) {
+    appendContactRow(
+      contacts,
+      '🌐',
+      'Website:',
+      association.website,
+      safeContactHref(association.website, 'website'),
+      'Website besuchen',
+      true,
+    );
+  }
+  popup.appendChild(contacts);
+
+  if (association.coverageAreas.length > 0) {
+    const coverage = document.createElement('div');
+    Object.assign(coverage.style, {
+      marginTop: '12px',
+      padding: '8px',
+      background: '#f0fdf4',
+      borderRadius: '6px',
+      borderLeft: '3px solid #16a34a',
+    });
+    appendText(coverage, 'strong', '🗺️ Zuständigkeitsgebiet:', { color: '#15803d', fontSize: '12px' });
+    coverage.appendChild(document.createElement('br'));
+    appendText(coverage, 'span', association.coverageAreas.join(', '), {
+      color: '#374151',
+      fontSize: '12px',
+      lineHeight: '1.4',
+    });
+    popup.appendChild(coverage);
+  }
+
+  return popup;
+};
+
 const PartyAssociationMap: React.FC<PartyAssociationMapProps> = ({ 
   associations, 
   selectedAssociation,
@@ -133,76 +331,38 @@ const PartyAssociationMap: React.FC<PartyAssociationMapProps> = ({
       if (coords && typeof coords.lat === 'number' && typeof coords.lng === 'number') {
         const isSelected = selectedAssociation?.id === association.id;
         
+        const size = isSelected ? 32 : 28;
+        const badge = document.createElement('span');
+        badge.textContent = '🌱';
+
+        const markerIcon = document.createElement('div');
+        Object.assign(markerIcon.style, {
+          background: isSelected ? '#15803d' : '#16a34a',
+          border: '2px solid #15803d',
+          borderRadius: '50%',
+          width: `${size}px`,
+          height: `${size}px`,
+          display: 'flex',
+          alignItems: 'center',
+          justifyContent: 'center',
+          fontWeight: 'bold',
+          fontSize: '12px',
+          color: '#ffffff',
+          boxShadow: '0 2px 6px rgba(0,0,0,0.3)',
+          cursor: 'pointer',
+        });
+        markerIcon.appendChild(badge);
+
         const marker = L.marker([coords.lat, coords.lng], {
           icon: L.divIcon({
-            html: `<div style="background: ${isSelected ? '#15803d' : '#16a34a'}; border: 2px solid #15803d; border-radius: 50%; width: ${isSelected ? 32 : 28}px; height: ${isSelected ? 32 : 28}px; display: flex; align-items: center; justify-content: center; font-weight: bold; font-size: 12px; color: white; box-shadow: 0 2px 6px rgba(0,0,0,0.3); cursor: pointer;">🌱</div>`,
+            html: markerIcon,
             className: 'green-party-marker',
-            iconSize: [isSelected ? 32 : 28, isSelected ? 32 : 28],
-            iconAnchor: [isSelected ? 16 : 14, isSelected ? 16 : 14]
+            iconSize: [size, size],
+            iconAnchor: [size / 2, size / 2]
           })
         });
 
-        const popupContent = `
-          <div style="min-width: 250px; max-width: 300px;">
-            <div style="border-bottom: 2px solid #16a34a; padding-bottom: 8px; margin-bottom: 12px;">
-              <h3 style="color: #15803d; font-size: 18px; margin: 0; font-weight: bold;">🌱 ${association.name}</h3>
-              <p style="color: #16a34a; font-weight: bold; margin: 4px 0 0 0; font-size: 14px;">GRÜNE Kreisverband</p>
-            </div>
-            
-            ${association.fullAddress ? `
-              <div style="margin: 8px 0; padding: 8px; background: #f0f9ff; border-radius: 6px;">
-                <div style="display: flex; align-items: flex-start; gap: 8px;">
-                  <span style="color: #16a34a; font-size: 16px;">📍</span>
-                  <div>
-                    <strong style="color: #374151;">Adresse:</strong><br>
-                    <span style="color: #6b7280; line-height: 1.4;">${association.fullAddress}</span>
-                  </div>
-                </div>
-              </div>
-            ` : ''}
-            
-            <div style="display: grid; grid-template-columns: 1fr; gap: 8px; margin-top: 12px;">
-              ${association.phone ? `
-                <div style="display: flex; align-items: center; gap: 8px; padding: 6px; background: #f9fafb; border-radius: 4px;">
-                  <span style="color: #16a34a;">📞</span>
-                  <div>
-                    <strong style="color: #374151; font-size: 12px;">Telefon:</strong><br>
-                    <a href="tel:${association.phone}" style="color: #16a34a; text-decoration: none; font-weight: 500;">${association.phone}</a>
-                  </div>
-                </div>
-              ` : ''}
-              
-              ${association.email ? `
-                <div style="display: flex; align-items: center; gap: 8px; padding: 6px; background: #f9fafb; border-radius: 4px;">
-                  <span style="color: #16a34a;">📧</span>
-                  <div>
-                    <strong style="color: #374151; font-size: 12px;">E-Mail:</strong><br>
-                    <a href="mailto:${association.email}" style="color: #16a34a; text-decoration: none; font-weight: 500; word-break: break-all;">${association.email}</a>
-                  </div>
-                </div>
-              ` : ''}
-              
-              ${association.website ? `
-                <div style="display: flex; align-items: center; gap: 8px; padding: 6px; background: #f9fafb; border-radius: 4px;">
-                  <span style="color: #16a34a;">🌐</span>
-                  <div>
-                    <strong style="color: #374151; font-size: 12px;">Website:</strong><br>
-                    <a href="${association.website}" target="_blank" style="color: #16a34a; text-decoration: none; font-weight: 500; word-break: break-all;">Website besuchen</a>
-                  </div>
-                </div>
-              ` : ''}
-            </div>
-            
-            ${association.coverageAreas.length > 0 ? `
-              <div style="margin-top: 12px; padding: 8px; background: #f0fdf4; border-radius: 6px; border-left: 3px solid #16a34a;">
-                <strong style="color: #15803d; font-size: 12px;">🗺️ Zuständigkeitsgebiet:</strong><br>
-                <span style="color: #374151; font-size: 12px; line-height: 1.4;">${association.coverageAreas.join(', ')}</span>
-              </div>
-            ` : ''}
-          </div>
-        `;
-
-        marker.bindPopup(popupContent, {
+        marker.bindPopup(createAssociationPopup(association), {
           maxWidth: 320,
           className: 'green-party-popup'
         });

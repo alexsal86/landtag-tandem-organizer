@@ -12,6 +12,8 @@ export const IGNORED_TABLES: string[] = [
   // Infrastruktur aus dem aktuellen Supabase-Schema (keine Testaussage).
   "bulk_action_audit", "data_lint_findings", "edge_function_cache",
   "egress_anomalies", "egress_metrics", "mobile_push_tokens",
+  // Versandprotokoll der Termin-Erinnerungen: nur Service-Role, kein Client-Pfad.
+  "appointment_reminder_dispatches",
   "quick_note_write_receipts", "security_audit_snapshots", "system_health",
   "tenant_feature_flags", "preparation_templates",
   // Settings / Konfiguration
@@ -115,9 +117,7 @@ export const IGNORED_TABLES: string[] = [
   // Verknüpfungstabellen (ohne eigenes Szenario nicht als geprüft zählen)
   "appointment_contacts",
   "appointment_documents",
-  "appointment_guests",
   "appointment_topics",
-  "appointment_polls",
   "appointment_preparation_documents",
   "appointment_preparation_templates",
   "appointment_preparations",
@@ -227,9 +227,7 @@ export const DEFERRED_TABLES: string[] = [
   "parliament_protocols",
   "party_associations",
   "poll_notifications",
-  "poll_participants",
   "poll_responses",
-  "poll_time_slots",
   "pomodoro_sessions",
   "press_releases",
   "profiles",

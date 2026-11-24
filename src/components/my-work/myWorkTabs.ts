@@ -48,6 +48,8 @@ export interface MyWorkTabConfig {
   abgeordneterOnly?: boolean;
   feedbackFeedCoreRolesOnly?: boolean;
   isLogo?: boolean;
+  /** Modulschalter, ohne den der Reiter nicht erscheint (z. B. module.editorial). */
+  moduleKey?: string;
 }
 
 export const MY_WORK_TABS: MyWorkTabConfig[] = [
@@ -57,7 +59,7 @@ export const MY_WORK_TABS: MyWorkTabConfig[] = [
   { value: "tasks", label: "Aufgaben", icon: CheckSquare, countKey: "tasks" },
   { value: "decisions", label: "Entscheidungen", icon: Vote, countKey: "decisions" },
   { value: "jourFixe", label: "Jour fixe & Planungen", icon: Calendar, countKey: "jourFixe" },
-  { value: "redaktion", label: "Redaktion", icon: Lightbulb },
+  { value: "redaktion", label: "Redaktion", icon: Lightbulb, moduleKey: "module.editorial" },
   { value: "time", label: "Meine Zeit", icon: Clock, employeeOnly: true },
   // Team-Tab: nur Rollen mit Führungs-/Koordinationsverantwortung sehen aggregierte Mitarbeiterdaten.
   { value: "team", label: "Team", icon: Users, countKey: "team", badgeVariant: "destructive", teamLeadsOnly: true },
@@ -98,7 +100,13 @@ export const MY_WORK_ACTION_TAB_MAP: Record<string, TabValue> = {
 export const getVisibleMyWorkTabs = ({
   role,
   feedbackFeedCoreRolesOnly,
+  isModuleEnabled = () => true,
 }: {
   role: UserRole;
   feedbackFeedCoreRolesOnly: boolean;
-}) => MY_WORK_TABS.filter((tab) => canViewTab(tab.value === "feedbackfeed" ? { ...tab, feedbackFeedCoreRolesOnly } : tab, role));
+  isModuleEnabled?: (moduleKey: string) => boolean;
+}) =>
+  MY_WORK_TABS.filter((tab) => {
+    if (tab.moduleKey && !isModuleEnabled(tab.moduleKey)) return false;
+    return canViewTab(tab.value === "feedbackfeed" ? { ...tab, feedbackFeedCoreRolesOnly } : tab, role);
+  });

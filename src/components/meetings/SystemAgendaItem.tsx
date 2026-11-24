@@ -23,6 +23,7 @@ import { cn } from "@/lib/utils";
 import { RichTextDisplay } from "@/components/ui/RichTextDisplay";
 import { format } from "date-fns";
 import { de } from "date-fns/locale";
+import { berlinDate } from "@/utils/berlinDate";
 import type {
   LinkedQuickNote,
   LinkedTask,
@@ -614,14 +615,7 @@ export function SystemAgendaItem({
                       )}
                       <div className="flex flex-wrap gap-2 text-xs text-muted-foreground mt-1">
                         {decision.response_deadline && (
-                          <span>
-                            Frist:{" "}
-                            {format(
-                              new Date(decision.response_deadline),
-                              "dd.MM.yyyy",
-                              { locale: de },
-                            )}
-                          </span>
+                          <span>Frist: {berlinDate(decision.response_deadline)}</span>
                         )}
                         {decision.priority !== null &&
                           decision.priority !== undefined && (

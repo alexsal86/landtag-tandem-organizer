@@ -86,9 +86,38 @@ export function useApprovalComments(contentItemId: string | null) {
     [contentItemId, currentTenant?.id, load, profileId, user?.id],
   );
 
+  /**
+   * Änderungswunsch über die Datenbankfunktion: setzt den Beitrag zurück auf „In Arbeit“ und legt
+   * den Ball mit Frist und Aufgabe beim Verantwortlichen ab. Die Freigabe-Sperre im Trigger wird
+   * nur über diesen Weg geöffnet.
+   */
+  const requestChanges = useCallback(
+    async (comment: string, dueDays: number) => {
+      if (!contentItemId) return null;
+      const trimmed = comment.trim();
+      if (!trimmed) return null;
+
+      const { data, error } = await supabase.rpc("request_social_post_changes", {
+        _item: contentItemId,
+        _comment: trimmed,
+        _due_days: dueDays,
+      });
+      if (error) {
+        if (error.code === "42501") throw new Error("Keine Berechtigung für diesen Beitrag.");
+        throw new Error(getErrorMessage(error));
+      }
+      await load();
+      return data as { due_date?: string; task_id?: string | null } | null;
+    },
+    [contentItemId, load],
+  );
+
   useEffect(() => {
     void load();
   }, [load]);
 
-  return useMemo(() => ({ comments, loading, addComment, reload: load }), [comments, loading, addComment, load]);
+  return useMemo(
+    () => ({ comments, loading, addComment, requestChanges, reload: load }),
+    [comments, loading, addComment, requestChanges, load],
+  );
 }

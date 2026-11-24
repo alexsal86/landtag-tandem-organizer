@@ -8,6 +8,7 @@ import { supabase } from "@/integrations/supabase/client";
 import { Button } from "@/components/ui/button";
 import { Skeleton } from "@/components/ui/skeleton";
 import { cn } from "@/lib/utils";
+import { berlinDate } from "@/utils/berlinDate";
 
 type Panel = "decision" | "meeting" | null;
 
@@ -42,7 +43,7 @@ function DecisionDetails({ id, canEdit, onOpen, onRemove }: { id: string; canEdi
     <div className="space-y-1">
       <p className="font-medium">{data.title}</p>
       {data.status && <p className="text-muted-foreground">Status: {decisionStatusLabel[data.status] ?? data.status}</p>}
-      {data.response_deadline && <p className="text-muted-foreground">Frist: {format(new Date(data.response_deadline), "dd.MM.yyyy", { locale: de })}</p>}
+      {data.response_deadline && <p className="text-muted-foreground">Frist: {berlinDate(data.response_deadline)}</p>}
       {data.names.length > 0 && <p className="text-muted-foreground">Entscheider: {data.names.join(", ")}</p>}
       <div className="flex flex-wrap gap-2 pt-1">
         <Button size="sm" variant="outline" className="h-7 text-xs" onClick={(e) => { stop(e); onOpen(); }}>Entscheidung öffnen</Button>

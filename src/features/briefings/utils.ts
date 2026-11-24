@@ -1,3 +1,4 @@
+import { berlinDay } from "@/utils/dashboard/daySummary";
 import { addDays, format, isWeekend } from "date-fns";
 
 /** Liefert den nächsten Werktag (Mo-Fr) ab `from` (exklusive `from` selbst). */
@@ -42,4 +43,37 @@ export function dailyBriefingReadLabel(readAt: string | null | undefined): strin
 /** An unread briefing must never be hidden by an older collapse preference. */
 export function isReadBriefingCollapsed(isRead: boolean, collapsed: boolean): boolean {
   return isRead && collapsed;
+}
+
+/** Saved future briefings can be read early; the creation-ahead rule still applies. */
+export function canReadDailyBriefing(briefingDate: string, createdAt: string, today: string): boolean {
+  if (!Number.isFinite(Date.parse(createdAt))) return false;
+  const createdDay = new Intl.DateTimeFormat('en-CA', {
+    timeZone: 'Europe/Berlin', year: 'numeric', month: '2-digit', day: '2-digit',
+  }).format(new Date(createdAt));
+  return briefingDate >= today && createdDay < briefingDate;
+}
+
+export function dailyBriefingTargetLabel(date: string, now = new Date()): string {
+  const today = new Intl.DateTimeFormat('en-CA', {
+    timeZone: 'Europe/Berlin', year: 'numeric', month: '2-digit', day: '2-digit',
+  }).format(now);
+  if (date === today) return 'für heute';
+  if (date === briefingDateOptions(now).tomorrow) return 'für morgen';
+  return `für ${new Intl.DateTimeFormat('de-DE', {
+    timeZone: 'Europe/Berlin', weekday: 'long', day: 'numeric', month: 'long',
+  }).format(new Date(`${date}T12:00:00Z`))}`;
+}
+
+/** Employee receipts distinguish the actual reading day from the briefing's target day. */
+export function dailyBriefingReadDayLabel(readAt: string | null | undefined, now = new Date()): string {
+  if (!readAt || !Number.isFinite(Date.parse(readAt))) return 'Gelesen';
+  const date = new Date(readAt);
+  const today = berlinDay(now);
+  const yesterday = new Date(Date.parse(`${today}T12:00:00Z`) - 86400_000).toISOString().slice(0, 10);
+  const day = berlinDay(date);
+  const label = day === today ? 'Heute' : day === yesterday ? 'Gestern'
+    : `Am ${new Intl.DateTimeFormat('de-DE', { timeZone: 'Europe/Berlin', day: '2-digit', month: '2-digit', year: 'numeric' }).format(date)}`;
+  const time = new Intl.DateTimeFormat('de-DE', { timeZone: 'Europe/Berlin', hour: '2-digit', minute: '2-digit' }).format(date);
+  return `${label} gelesen ${time}`;
 }

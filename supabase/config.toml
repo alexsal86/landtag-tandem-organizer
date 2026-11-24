@@ -53,6 +53,12 @@ verify_jwt = true
 [functions.send-poll-notifications]
 verify_jwt = true
 
+[functions.send-poll-followups]
+verify_jwt = true
+
+[functions.send-appointment-reminders]
+verify_jwt = true
+
 [functions.send-push-notification]
 verify_jwt = false
 

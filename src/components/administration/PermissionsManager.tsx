@@ -7,43 +7,10 @@ import { Label } from "@/components/ui/label";
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import { notify } from "@/lib/notify";
 import type { Database } from "@/integrations/supabase/types";
+import { ACTION_KEYS, FEATURE_KEYS, FIELD_TARGETS, PERMISSION_ROLES } from "@/features/permissions/catalog";
 
 type AppRole = Database["public"]["Enums"]["app_role"];
-const ALL_ROLES: AppRole[] = ["abgeordneter", "bueroleitung", "mitarbeiter", "praktikant"];
-
-const FEATURE_KEYS: Array<{ key: string; label: string; description: string }> = [
-  { key: "module.events", label: "Veranstaltungen", description: "Eventplanung, RSVP, Checklisten" },
-  { key: "module.letters", label: "Briefe", description: "Letter-Designer und Versand" },
-  { key: "module.knowledge", label: "Wissen", description: "Dossiers, Wissensbereich" },
-  { key: "module.editorial", label: "Redaktion", description: "Themenbacklog, Social-Planner" },
-  { key: "module.timetracking", label: "Zeitwirtschaft", description: "Zeiterfassung, Urlaube, Tageszettel" },
-  { key: "module.casefiles", label: "Fallakten", description: "Fallakten und Vorgänge" },
-  { key: "module.maps", label: "Karten/Wahlkreise", description: "Wahlkreiskarte mit Layern" },
-];
-
-const ACTION_KEYS: Array<{ key: string; label: string }> = [
-  { key: "knowledge.write", label: "Wissensfragen stellen und Antworten bearbeiten" },
-  { key: "knowledge.manage", label: "Wissensfragen bearbeiten, archivieren und zusammenführen" },
-  { key: "knowledge.verify", label: "Wissensantworten prüfen" },
-  { key: "letter.send", label: "Brief versenden" },
-  { key: "letter.delete", label: "Brief löschen" },
-  { key: "decision.archive", label: "Entscheidung archivieren" },
-  { key: "case.close", label: "Fallakte schließen" },
-  { key: "workflow.execute_manual", label: "Workflow manuell auslösen" },
-  { key: "contact.delete", label: "Kontakt löschen" },
-  { key: "tenant.invite_user", label: "Mitarbeiter einladen" },
-];
-
-// Vorgeschlagene sensible Felder. Admin kann pro Rolle read/write togglen.
-const FIELD_TARGETS: Array<{ table: string; column: string; label: string }> = [
-  { table: "contacts", column: "phone", label: "Kontakt · Telefon" },
-  { table: "contacts", column: "email", label: "Kontakt · E-Mail" },
-  { table: "contacts", column: "notes", label: "Kontakt · Notizen" },
-  { table: "contacts", column: "mobile_phone", label: "Kontakt · Mobiltelefon" },
-  { table: "contacts", column: "business_phone", label: "Kontakt · Geschäftstelefon" },
-  { table: "letters", column: "content", label: "Brief · Inhalt" },
-  { table: "letters", column: "content_html", label: "Brief · formatierter Inhalt" },
-];
+const ALL_ROLES: AppRole[] = PERMISSION_ROLES.map((role) => role.value);
 
 interface FieldPerm { can_read: boolean; can_write: boolean; read_mode?: "mask" | "record" }
 

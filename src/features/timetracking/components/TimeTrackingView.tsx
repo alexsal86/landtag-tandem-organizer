@@ -208,9 +208,32 @@ export function TimeTrackingView() {
                 <TableBody>
                   {data.combinedEntries.map(entry => {
                     const gross = entry.started_at && entry.ended_at ? Math.round((new Date(entry.ended_at).getTime() - new Date(entry.started_at).getTime()) / 60000) : entry.minutes || 0;
+                    // Die fehlende Ruhepause gilt für den ganzen Tag: Kennzeichnung einmal am Tag, nicht je Eintrag.
+                    const firstWorkOfDay = data.combinedEntries.find(item => item.entry_type === "work" && item.work_date === entry.work_date);
+                    const markMissingPause = entry.entry_type === "work" && firstWorkOfDay?.id === entry.id && entry.arbzg_missing_pause_minutes > 0;
                     return (
                       <TableRow key={entry.id} className={entry.type_class}>
-                        <TableCell>{entry.type_icon && <span className="mr-1">{entry.type_icon}</span>}{format(parseISO(entry.work_date), "dd.MM.yyyy")}</TableCell>
+                        <TableCell>
+                          <div className="flex flex-col items-start gap-1">
+                            <span>{entry.type_icon && <span className="mr-1">{entry.type_icon}</span>}{format(parseISO(entry.work_date), "dd.MM.yyyy")}</span>
+                            {markMissingPause && (
+                              <TooltipProvider>
+                                <Tooltip>
+                                  <TooltipTrigger asChild>
+                                    <Badge variant="outline" tabIndex={0} className="border-palette-amber/40 bg-palette-amber/10 text-[10px] text-palette-amber">
+                                      Pausenpflicht offen: {entry.arbzg_missing_pause_minutes} Min
+                                    </Badge>
+                                  </TooltipTrigger>
+                                  <TooltipContent className="max-w-xs">
+                                    <p className="font-medium">Klärungsbedarf am Tag (ArbZG)</p>
+                                    <p>{entry.arbzg_missing_pause_minutes} Min der erforderlichen Ruhepause fehlen.</p>
+                                    <p className="text-xs text-muted-foreground">Die geleistete Arbeitszeit bleibt unverändert; die fehlende Pause wird nicht abgezogen.</p>
+                                  </TooltipContent>
+                                </Tooltip>
+                              </TooltipProvider>
+                            )}
+                          </div>
+                        </TableCell>
                         <TableCell>{entry.type_label ? <Badge variant="outline" className="text-xs">{entry.type_label}</Badge> : <span className="text-muted-foreground text-xs">Arbeit</span>}</TableCell>
                         <TableCell>{entry.started_at ? format(parseISO(entry.started_at), "HH:mm") : "-"}</TableCell>
                         <TableCell>{entry.ended_at ? format(parseISO(entry.ended_at), "HH:mm") : "-"}</TableCell>

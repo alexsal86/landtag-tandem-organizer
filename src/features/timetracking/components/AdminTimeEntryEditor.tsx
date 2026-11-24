@@ -71,7 +71,7 @@ export function AdminTimeEntryEditor({
     entry.ended_at ? format(parseISO(entry.ended_at), "HH:mm") : ""
   );
   const [pauseMinutes, setPauseMinutes] = useState(
-    (entry.pause_minutes || 30).toString()
+    (entry.pause_minutes ?? 0).toString()
   );
   const [notes, setNotes] = useState(entry.notes || "");
   const [editReason, setEditReason] = useState("");
@@ -82,7 +82,7 @@ export function AdminTimeEntryEditor({
     setWorkDate(entry.work_date);
     setStartTime(entry.started_at ? format(parseISO(entry.started_at), "HH:mm") : "");
     setEndTime(entry.ended_at ? format(parseISO(entry.ended_at), "HH:mm") : "");
-    setPauseMinutes((entry.pause_minutes || 30).toString());
+    setPauseMinutes((entry.pause_minutes ?? 0).toString());
     setNotes(entry.notes || "");
     setEditReason("");
     setSelectedType(currentEntryType);

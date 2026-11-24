@@ -1,3 +1,11 @@
+import {
+  allDayEndDate,
+  createIcsDateTimeParser,
+  parseIcsContentLines,
+  parseIcsDateValue,
+  parseIcsProperty,
+} from '../_shared/icsTime.ts';
+
 export interface ICSEvent {
   uid: string;
   summary: string;
@@ -11,108 +19,125 @@ export interface ICSEvent {
   rrule?: string;
 }
 
+/**
+ * Wandelt einen ICS-Zeitwert in ein Date um. Zeitzonenangaben (Z/TZID) kann nur
+ * der Feed-Parser auflösen; hier gilt der Wert als UTC, damit die Validierung
+ * unabhängig von der Zeitzone des Prozesses bleibt.
+ */
 export function parseICSDate(dateStr: string): Date {
-  if (/^\d{8}$/.test(dateStr)) {
-    return new Date(
-      parseInt(dateStr.substring(0, 4), 10),
-      parseInt(dateStr.substring(4, 6), 10) - 1,
-      parseInt(dateStr.substring(6, 8), 10),
-    );
-  }
+  const parsed = parseIcsDateValue(dateStr);
+  if (!parsed) return new Date(Number.NaN);
 
-  if (/^\d{8}T\d{6}/.test(dateStr)) {
-    return new Date(
-      parseInt(dateStr.substring(0, 4), 10),
-      parseInt(dateStr.substring(4, 6), 10) - 1,
-      parseInt(dateStr.substring(6, 8), 10),
-      parseInt(dateStr.substring(9, 11), 10),
-      parseInt(dateStr.substring(11, 13), 10),
-      parseInt(dateStr.substring(13, 15), 10),
-    );
-  }
-
-  return new Date(dateStr);
+  return new Date(Date.UTC(
+    parsed.parts.year,
+    parsed.parts.month - 1,
+    parsed.parts.day,
+    parsed.parts.hour,
+    parsed.parts.minute,
+    parsed.parts.second,
+  ));
 }
 
 export function parseICSForValidation(icsContent: string, startDate: Date, endDate: Date): ICSEvent[] {
+  const parser = createIcsDateTimeParser(icsContent);
   const events: ICSEvent[] = [];
-  const lines = icsContent.split('\n').map((line) => line.trim());
   let currentEvent: Partial<ICSEvent> | null = null;
+  let startValue = '';
+  let startParams: Record<string, string> = {};
+  let endValue = '';
+  let endParams: Record<string, string> = {};
 
-  const unfoldedLines: string[] = [];
-  for (let i = 0; i < lines.length; i++) {
-    let line = lines[i];
-    while (i + 1 < lines.length && (lines[i + 1].startsWith(' ') || lines[i + 1].startsWith('\t'))) {
-      line += lines[i + 1].substring(1);
-      i++;
-    }
-    unfoldedLines.push(line);
-  }
+  const flush = () => {
+    const event = currentEvent;
+    const startRaw = startValue;
+    const endRaw = endValue;
+    currentEvent = null;
+    startValue = '';
+    startParams = {};
+    endValue = '';
+    endParams = {};
+    if (!event || !startRaw || !event.summary) return;
 
-  for (const line of unfoldedLines) {
-    if (line === 'BEGIN:VEVENT') {
+    const start = parser.resolveDateTime(startRaw, startParams);
+    if (!start) return;
+
+    const end = endRaw ? parser.resolveDateTime(endRaw, endParams) : null;
+    const resolvedEnd = start.dateOnly
+      ? allDayEndDate(start.date, end?.date ?? null)
+      : end?.date && end.date.getTime() > start.date.getTime()
+        ? end.date
+        : new Date(start.date.getTime() + 60 * 60 * 1000);
+
+    if (start.date > endDate || resolvedEnd < startDate) return;
+
+    events.push({
+      uid: event.uid || `generated-${events.length}`,
+      summary: event.summary,
+      description: event.description || '',
+      dtstart: startRaw,
+      dtend: endRaw || startRaw,
+      last_modified: event.last_modified,
+      location: event.location || '',
+      organizer: event.organizer || '',
+      status: event.status || 'confirmed',
+      rrule: event.rrule,
+    });
+  };
+
+  for (const line of parseIcsContentLines(icsContent)) {
+    const property = parseIcsProperty(line);
+    if (!property) continue;
+
+    const component = property.value.trim().toUpperCase();
+    if (property.name === 'BEGIN' && component === 'VEVENT') {
       currentEvent = {};
-    } else if (line === 'END:VEVENT' && currentEvent) {
-      if (currentEvent.dtstart && currentEvent.summary) {
-        const eventStart = parseICSDate(currentEvent.dtstart);
-        const eventEnd = currentEvent.dtend
-          ? parseICSDate(currentEvent.dtend)
-          : new Date(eventStart.getTime() + 24 * 60 * 60 * 1000);
+      startValue = '';
+      startParams = {};
+      endValue = '';
+      endParams = {};
+      continue;
+    }
 
-        if (eventStart <= endDate && eventEnd >= startDate) {
-          events.push({
-            uid: currentEvent.uid || `generated-${events.length}`,
-            summary: currentEvent.summary,
-            description: currentEvent.description || '',
-            dtstart: currentEvent.dtstart,
-            dtend: currentEvent.dtend || currentEvent.dtstart,
-            last_modified: currentEvent.last_modified,
-            location: currentEvent.location || '',
-            organizer: currentEvent.organizer || '',
-            status: currentEvent.status || 'confirmed',
-            rrule: currentEvent.rrule,
-          });
-        }
-      }
-      currentEvent = null;
-    } else if (currentEvent) {
-      const [key, ...valueParts] = line.split(':');
-      const value = valueParts.join(':');
+    if (property.name === 'END' && component === 'VEVENT') {
+      flush();
+      continue;
+    }
 
-      switch (key) {
-        case 'UID':
-          currentEvent.uid = value;
-          break;
-        case 'SUMMARY':
-          currentEvent.summary = value;
-          break;
-        case 'DESCRIPTION':
-          currentEvent.description = value;
-          break;
-        case 'DTSTART':
-        case 'DTSTART;VALUE=DATE':
-          currentEvent.dtstart = value;
-          break;
-        case 'DTEND':
-        case 'DTEND;VALUE=DATE':
-          currentEvent.dtend = value;
-          break;
-        case 'LAST-MODIFIED':
-          currentEvent.last_modified = value;
-          break;
-        case 'LOCATION':
-          currentEvent.location = value;
-          break;
-        case 'ORGANIZER':
-          currentEvent.organizer = value;
-          break;
-        case 'STATUS':
-          currentEvent.status = value.toLowerCase();
-          break;
-        case 'RRULE':
-          currentEvent.rrule = value;
-          break;
-      }
+    if (!currentEvent) continue;
+
+    switch (property.name) {
+      case 'UID':
+        currentEvent.uid = property.value.trim();
+        break;
+      case 'SUMMARY':
+        currentEvent.summary = property.value;
+        break;
+      case 'DESCRIPTION':
+        currentEvent.description = property.value;
+        break;
+      case 'DTSTART':
+        startValue = property.value;
+        startParams = property.params;
+        break;
+      case 'DTEND':
+        endValue = property.value;
+        endParams = property.params;
+        break;
+      case 'LAST-MODIFIED':
+        currentEvent.last_modified = property.value;
+        break;
+      case 'LOCATION':
+        currentEvent.location = property.value;
+        break;
+      case 'ORGANIZER':
+        currentEvent.organizer = property.value;
+        break;
+      case 'STATUS':
+        currentEvent.status = property.value.toLowerCase();
+        break;
+      case 'RRULE':
+        currentEvent.rrule = property.value;
+        break;
     }
   }
 

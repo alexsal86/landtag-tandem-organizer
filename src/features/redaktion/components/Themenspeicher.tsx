@@ -46,7 +46,7 @@ export function Themenspeicher({ onContentCreated, compact = false }: Props) {
   const { user } = useAuth();
   const { currentTenant } = useTenant();
   const profileId = useCurrentProfileId();
-  const { createTopic: createBacklogTopic, topics, loading, channels, loadTopics, updateTopic, deleteTopic } = useTopicBacklog();
+  const { createTopic: createBacklogTopic, topics, loading, channels, loadTopics, updateTopic, deleteTopic, reassignTopicItems } = useTopicBacklog();
   const { campaigns } = useSocialCampaigns();
 
   const [showSettings, setShowSettings] = useState(false);
@@ -60,6 +60,7 @@ export function Themenspeicher({ onContentCreated, compact = false }: Props) {
   const [isCreateTopicDialogOpen, setIsCreateTopicDialogOpen] = useState(false);
   const [editingTopic, setEditingTopic] = useState<TopicBacklogEntry | null>(null);
   const [deleteTopicCandidate, setDeleteTopicCandidate] = useState<TopicBacklogEntry | null>(null);
+  const [reassignTargetId, setReassignTargetId] = useState<string>("none");
   const [newTopicTitle, setNewTopicTitle] = useState("");
   const [newTopicDescription, setNewTopicDescription] = useState("");
   const [newTopicTags, setNewTopicTags] = useState("");
@@ -262,6 +263,7 @@ export function Themenspeicher({ onContentCreated, compact = false }: Props) {
         resetDialogState();
       }
       setDeleteTopicCandidate(null);
+      setReassignTargetId("none");
       if (editingTopic?.id === deleteTopicCandidate.id) {
         setIsCreateTopicDialogOpen(false);
         resetTopicForm();
@@ -271,6 +273,35 @@ export function Themenspeicher({ onContentCreated, compact = false }: Props) {
       const msg = error instanceof Error ? error.message : String(error);
       notify.error("Fehler", { description: msg
 });
+    } finally {
+      setIsSubmitting(false);
+    }
+  };
+
+  const handleReassignAndDelete = async () => {
+    if (!deleteTopicCandidate || reassignTargetId === "none") return;
+
+    setIsSubmitting(true);
+    try {
+      const moved = await reassignTopicItems(deleteTopicCandidate.id, reassignTargetId);
+      await deleteTopic(deleteTopicCandidate.id);
+      notify.success("Thema gelöscht", {
+        description: `${moved} ${moved === 1 ? "Beitrag wurde" : "Beiträge wurden"} auf das Zielthema umgehängt.`,
+      });
+      if (selectedTopic?.id === deleteTopicCandidate.id) {
+        setSelectedTopic(null);
+        resetDialogState();
+      }
+      if (editingTopic?.id === deleteTopicCandidate.id) {
+        setIsCreateTopicDialogOpen(false);
+        resetTopicForm();
+      }
+      setDeleteTopicCandidate(null);
+      setReassignTargetId("none");
+      onContentCreated?.();
+    } catch (error: unknown) {
+      const msg = error instanceof Error ? error.message : String(error);
+      notify.error("Thema konnte nicht gelöscht werden", { description: msg });
     } finally {
       setIsSubmitting(false);
     }
@@ -567,19 +598,70 @@ export function Themenspeicher({ onContentCreated, compact = false }: Props) {
         </DialogContent>
       </Dialog>
 
-      <AlertDialog open={!!deleteTopicCandidate} onOpenChange={(open) => { if (!open) setDeleteTopicCandidate(null); }}>
+      <AlertDialog
+        open={!!deleteTopicCandidate}
+        onOpenChange={(open) => {
+          if (!open) {
+            setDeleteTopicCandidate(null);
+            setReassignTargetId("none");
+          }
+        }}
+      >
         <AlertDialogContent>
           <AlertDialogHeader>
             <AlertDialogTitle>Thema löschen?</AlertDialogTitle>
             <AlertDialogDescription>
-              &quot;{deleteTopicCandidate?.topic}&quot; wird aus dem Themenspeicher entfernt. Bereits verknüpfte Beiträge können danach ihr Bezugsthema verlieren.
+              {(deleteTopicCandidate?.linked_content_count ?? 0) > 0 ? (
+                <>
+                  &quot;{deleteTopicCandidate?.topic}&quot; ist mit {deleteTopicCandidate?.linked_content_count}{" "}
+                  {deleteTopicCandidate?.linked_content_count === 1 ? "Beitrag" : "Beiträgen"} verknüpft. Wähle ein Zielthema –
+                  die Beiträge werden umgehängt und bleiben mit Inhalt, Freigabe und Termin erhalten.
+                </>
+              ) : (
+                <>&quot;{deleteTopicCandidate?.topic}&quot; wird endgültig aus dem Themenspeicher entfernt. Es sind keine Beiträge damit verknüpft.</>
+              )}
             </AlertDialogDescription>
           </AlertDialogHeader>
+          {(deleteTopicCandidate?.linked_content_count ?? 0) > 0 && (
+            <div className="space-y-2">
+              <Label htmlFor="delete-topic-target">Beiträge verschieben nach</Label>
+              <Select value={reassignTargetId} onValueChange={setReassignTargetId}>
+                <SelectTrigger id="delete-topic-target"><SelectValue placeholder="Zielthema wählen" /></SelectTrigger>
+                <SelectContent>
+                  {topics.filter((topic) => topic.id !== deleteTopicCandidate?.id).map((topic) => (
+                    <SelectItem key={topic.id} value={topic.id}>{topic.topic}</SelectItem>
+                  ))}
+                </SelectContent>
+              </Select>
+              <p className="text-xs text-muted-foreground">
+                Die Beiträge wechseln nur das Thema. Danach wird &quot;{deleteTopicCandidate?.topic}&quot; gelöscht.
+              </p>
+              {topics.filter((topic) => topic.id !== deleteTopicCandidate?.id).length === 0 && (
+                <p className="text-xs text-destructive">
+                  Es gibt noch kein anderes Thema. Lege zuerst ein Zielthema an, dann lässt sich dieses Thema löschen.
+                </p>
+              )}
+            </div>
+          )}
           <AlertDialogFooter>
             <AlertDialogCancel>Abbrechen</AlertDialogCancel>
-            <AlertDialogAction onClick={() => void handleDeleteTopic()} className="bg-destructive text-destructive-foreground hover:bg-destructive/90">
-              Löschen
-            </AlertDialogAction>
+            {(deleteTopicCandidate?.linked_content_count ?? 0) > 0 ? (
+              <AlertDialogAction
+                onClick={() => void handleReassignAndDelete()}
+                disabled={isSubmitting || reassignTargetId === "none"}
+                className="bg-destructive text-destructive-foreground hover:bg-destructive/90"
+              >
+                Beiträge umhängen &amp; löschen
+              </AlertDialogAction>
+            ) : (
+              <AlertDialogAction
+                onClick={() => void handleDeleteTopic()}
+                disabled={isSubmitting}
+                className="bg-destructive text-destructive-foreground hover:bg-destructive/90"
+              >
+                Löschen
+              </AlertDialogAction>
+            )}
           </AlertDialogFooter>
         </AlertDialogContent>
       </AlertDialog>

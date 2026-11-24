@@ -170,19 +170,21 @@ export function PlatformAgendaSection({
     if (!currentTenant?.id || !profileId || !changeNote.trim()) return;
     setPending(id);
     try {
-      const { error } = await supabase
-        .from("social_approval_comments")
-        .insert({
-          tenant_id: currentTenant.id,
-          content_item_id: id,
-          author_id: profileId,
-          comment: changeNote.trim(),
-          is_change_request: true,
-        });
+      // Setzt den Beitrag zurück auf „In Arbeit“ und legt Ball, Frist und Aufgabe beim Verantwortlichen ab.
+      const { data, error } = await supabase.rpc("request_social_post_changes", {
+        _item: id,
+        _comment: changeNote.trim(),
+        _due_days: 3,
+      });
       if (error) throw error;
       patchResult(id, { result: changeNote.trim() });
       setChangeNote("");
-      notify.success("Korrekturhinweis gespeichert");
+      const dueDate = (data as { due_date?: string } | null)?.due_date;
+      notify.success("Änderungswunsch gesendet", {
+        description: dueDate
+          ? `Beitrag ist zurück in Arbeit – Aufgabe mit Frist ${new Date(`${dueDate}T09:00:00`).toLocaleDateString("de-DE")} beim Verantwortlichen.`
+          : "Beitrag ist zurück in Arbeit.",
+      });
     } catch (error) {
       notify.error("Speichern fehlgeschlagen", {
         description: error instanceof Error ? error.message : undefined,

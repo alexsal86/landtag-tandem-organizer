@@ -4,11 +4,20 @@ import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/com
 import { Button } from '@/components/ui/button';
 import { Badge } from '@/components/ui/badge';
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from '@/components/ui/table';
+import {
+  AlertDialog,
+  AlertDialogAction,
+  AlertDialogCancel,
+  AlertDialogContent,
+  AlertDialogDescription,
+  AlertDialogFooter,
+  AlertDialogHeader,
+  AlertDialogTitle,
+} from '@/components/ui/alert-dialog';
 import { CalendarIcon, Clock, Users, Check, AlertCircle, X, Trophy, Mail, CheckCircle2 } from 'lucide-react';
 import { format } from 'date-fns';
 import { de } from 'date-fns/locale';
 import { supabase } from '@/integrations/supabase/client';
-import { useTenant } from '@/hooks/useTenant';
 import { debugConsole } from '@/utils/debugConsole';
 import { notify } from "@/lib/notify";
 import { toast } from "@/hooks/use-toast";
@@ -27,6 +36,8 @@ interface Poll {
   deadline?: string | null;
   status: string;
   user_id: string;
+  confirmed_slot_id?: string | null;
+  confirmed_appointment_id?: string | null;
 }
 
 interface Participant {
@@ -61,20 +72,22 @@ interface PollResultsDashboardProps {
 }
 
 export const PollResultsDashboard = ({ pollId, onConfirmSlot }: PollResultsDashboardProps) => {
-  const { currentTenant } = useTenant();
   const [loading, setLoading] = useState(true);
   const [poll, setPoll] = useState<Poll | null>(null);
   const [participants, setParticipants] = useState<Participant[]>([]);
   const [slotResults, setSlotResults] = useState<SlotResults[]>([]);
   const [creatorName, setCreatorName] = useState<string>('');
   const [confirmedSlot, setConfirmedSlot] = useState<TimeSlot | null>(null);
+  const [confirmedAppointmentId, setConfirmedAppointmentId] = useState<string | null>(null);
+  const [pendingSlotId, setPendingSlotId] = useState<string | null>(null);
+  const [confirming, setConfirming] = useState(false);
 
   useEffect(() => {
     const loadPollResults = async () => {
       try {
         const { data: pollData, error: pollError } = await supabase
           .from('appointment_polls')
-          .select('id, title, description, deadline, status, user_id')
+          .select('id, title, description, deadline, status, user_id, confirmed_slot_id, confirmed_appointment_id')
           .eq('id', pollId)
           .single();
 
@@ -141,6 +154,15 @@ export const PollResultsDashboard = ({ pollId, onConfirmSlot }: PollResultsDashb
         results.sort((a, b) => b.score - a.score);
         setSlotResults(results);
 
+        // Ergebnis einer früheren Sitzung wieder anzeigen.
+        if (pollData.confirmed_slot_id) {
+          const confirmed = (slotsData || []).find((slot: Record<string, any>) => slot.id === pollData.confirmed_slot_id);
+          if (confirmed) setConfirmedSlot(confirmed as TimeSlot);
+        }
+        if (pollData.confirmed_appointment_id) {
+          setConfirmedAppointmentId(pollData.confirmed_appointment_id);
+        }
+
       } catch (error) {
         debugConsole.error('Error loading poll results:', error);
         notify.error("Fehler", {
@@ -182,51 +204,67 @@ export const PollResultsDashboard = ({ pollId, onConfirmSlot }: PollResultsDashb
 
   const handleConfirmSlot = async (slotId: string) => {
     try {
-      // Create appointment from poll
       const slot = slotResults.find(r => r.timeSlot.id === slotId)?.timeSlot;
       if (!slot) return;
 
-      if (!currentTenant?.id) {
-        notify.error("Hinweis", {
-          description: "Kein Tenant-Kontext verfügbar"
-});
-        return;
-      }
+      // Datenbank-RPC: Mandant, aktive Büromitgliedschaft und Ersteller geprüft,
+      // idempotent über confirmed_appointment_id. Sie liefert den tatsächlich
+      // gespeicherten Slot zurück – nicht zwingend den hier angefragten.
+      const { data, error } = await supabase.rpc('confirm_poll_winner', {
+        _poll_id: pollId,
+        _slot_id: slotId
+      });
 
-      const { data: appointment, error: appointmentError } = await supabase
-        .from('appointments')
-        .insert([{
-          user_id: poll?.user_id ?? '',
-          poll_id: pollId,
-          start_time: slot.start_time,
-          end_time: slot.end_time,
-          title: poll?.title || 'Bestätigter Termin',
-          description: poll?.description,
-          category: 'meeting',
-          status: 'confirmed',
-          priority: 'high',
-          tenant_id: currentTenant.id
-        }])
-        .select()
-        .single();
+      if (error) throw error;
 
-      if (appointmentError) throw appointmentError;
+      const result = (Array.isArray(data) ? data[0] : data) as {
+        appointment_id?: string | null;
+        slot_id?: string | null;
+      } | null | undefined;
+      const appointmentId = result?.appointment_id ?? null;
+      const storedSlotId = result?.slot_id ?? null;
+      const storedSlot = (storedSlotId
+        ? slotResults.find(entry => entry.timeSlot.id === storedSlotId)?.timeSlot
+        : undefined) ?? slot;
+      const alreadyConfirmed = Boolean(storedSlotId && storedSlotId !== slotId);
 
-      // Update poll status to completed
-      const { error: pollUpdateError } = await supabase
-        .from('appointment_polls')
-        .update({ status: 'completed' })
-        .eq('id', pollId);
-
-      if (pollUpdateError) throw pollUpdateError;
-
-      // Update local state
-      setPoll(prev => prev ? { ...prev, status: 'completed' } : null);
-      setConfirmedSlot(slot);
+      setPoll(prev => prev ? {
+        ...prev,
+        status: 'completed',
+        confirmed_slot_id: storedSlotId,
+        confirmed_appointment_id: appointmentId
+      } : null);
+      setConfirmedSlot(storedSlot);
+      setConfirmedAppointmentId(appointmentId);
 
       notify.success("Termin bestätigt", {
-        description: "Der Termin wurde erfolgreich bestätigt und in den Kalender eingetragen."
-});
+        description: alreadyConfirmed
+          ? "Für diese Abstimmung war bereits ein anderer Slot bestätigt. Angezeigt und im Kalender hinterlegt ist der gespeicherte Termin."
+          : "Der Gewinner-Slot wurde als Termin in den Kalender übernommen."
+      });
+
+      // Externe Teilnehmer sind jetzt Gäste des Termins – Einladungen direkt senden.
+      // Bei einer erneuten Bestätigung wurde nichts neu angelegt, also auch nichts
+      // erneut verschicken. Ohne externe Teilnehmer gibt es keine Gäste: die
+      // Function würde "Keine Gäste zum Einladen gefunden" als Fehler melden,
+      // obwohl der Termin korrekt angelegt wurde.
+      const hasExternalParticipants = participants.some((participant) => participant.is_external);
+      if (appointmentId && !alreadyConfirmed && hasExternalParticipants) {
+        const { data: invitation, error: invitationError } = await supabase.functions.invoke('send-appointment-invitation', {
+          body: { appointmentId, reason: 'manual' }
+        });
+        const sentCount = Number((invitation as { sent?: number } | null)?.sent ?? 0);
+
+        if (invitationError) {
+          notify.error("Einladungen nicht versendet", {
+            description: "Der Termin wurde angelegt, die Einladungen an die übernommenen Gäste konnten aber nicht versendet werden."
+          });
+        } else if (sentCount > 0) {
+          notify.success("Einladungen versendet", {
+            description: `${sentCount} Einladung(en) gingen an die übernommenen Gäste.`
+          });
+        }
+      }
 
       if (onConfirmSlot) {
         onConfirmSlot(slotId);
@@ -295,6 +333,11 @@ export const PollResultsDashboard = ({ pollId, onConfirmSlot }: PollResultsDashb
     ? Math.round((slotResults[0]?.responses.length || 0) / participants.length * 100)
     : 0;
 
+  const pendingResult = pendingSlotId
+    ? slotResults.find(result => result.timeSlot.id === pendingSlotId)
+    : undefined;
+  const pendingIsTop = Boolean(pendingResult && slotResults[0]?.timeSlot.id === pendingResult.timeSlot.id);
+
   return (
     <div className="space-y-6">
       {/* Confirmation Success Banner */}
@@ -306,6 +349,11 @@ export const PollResultsDashboard = ({ pollId, onConfirmSlot }: PollResultsDashb
             {format(new Date(confirmedSlot.start_time), 'dd. MMMM yyyy', { locale: de })} von{' '}
             {format(new Date(confirmedSlot.start_time), 'HH:mm')} bis{' '}
             {format(new Date(confirmedSlot.end_time), 'HH:mm')} Uhr wurde in den Kalender eingetragen.
+            {confirmedAppointmentId && (
+              <Button asChild size="sm" variant="outline" className="ml-2">
+                <a href={`/calendar?highlight=${confirmedAppointmentId}`}>Im Kalender öffnen</a>
+              </Button>
+            )}
           </AlertDescription>
         </Alert>
       )}
@@ -391,7 +439,7 @@ export const PollResultsDashboard = ({ pollId, onConfirmSlot }: PollResultsDashb
                       </div>
                       {poll.status === 'active' && (
                         <Button
-                          onClick={() => handleConfirmSlot(result.timeSlot.id)}
+                          onClick={() => setPendingSlotId(result.timeSlot.id)}
                           variant={index === 0 ? "default" : "outline"}
                         >
                           Termin bestätigen
@@ -488,6 +536,58 @@ export const PollResultsDashboard = ({ pollId, onConfirmSlot }: PollResultsDashb
           </Table>
         </CardContent>
       </Card>
+
+      <AlertDialog open={Boolean(pendingSlotId)} onOpenChange={(open) => !open && setPendingSlotId(null)}>
+        <AlertDialogContent>
+          <AlertDialogHeader>
+            <AlertDialogTitle>Termin verbindlich übernehmen?</AlertDialogTitle>
+            <AlertDialogDescription>
+              {pendingResult && (
+                <>
+                  {format(new Date(pendingResult.timeSlot.start_time), 'dd. MMMM yyyy', { locale: de })} von{' '}
+                  {format(new Date(pendingResult.timeSlot.start_time), 'HH:mm')} bis{' '}
+                  {format(new Date(pendingResult.timeSlot.end_time), 'HH:mm')} Uhr. {pendingResult.responses.length} von{' '}
+                  {pendingResult.total} Teilnehmern haben geantwortet.
+                </>
+              )}
+            </AlertDialogDescription>
+          </AlertDialogHeader>
+
+          {(pendingResult?.responses.length ?? 0) === 0 ? (
+            <p className="text-sm text-destructive">
+              Achtung: Für diesen Slot liegt noch keine Rückmeldung vor.
+            </p>
+          ) : !pendingIsTop ? (
+            <p className="text-sm text-destructive">
+              Achtung: Dieser Slot ist nicht die bestbewertete Option. Die Abstimmung wird mit dieser Auswahl abgeschlossen.
+            </p>
+          ) : (
+            <p className="text-sm text-muted-foreground">
+              Der Slot ist die bestbewertete Option. Die Abstimmung wird abgeschlossen und der Termin im Kalender angelegt.
+            </p>
+          )}
+
+          <p className="text-sm text-muted-foreground">
+            Externe Teilnehmer werden als Gäste übernommen und direkt eingeladen.
+          </p>
+
+          <AlertDialogFooter>
+            <AlertDialogCancel>Abbrechen</AlertDialogCancel>
+            <AlertDialogAction
+              disabled={confirming}
+              onClick={async () => {
+                if (!pendingSlotId) return;
+                setConfirming(true);
+                await handleConfirmSlot(pendingSlotId);
+                setConfirming(false);
+                setPendingSlotId(null);
+              }}
+            >
+              {confirming ? 'Übernehme…' : 'Termin anlegen'}
+            </AlertDialogAction>
+          </AlertDialogFooter>
+        </AlertDialogContent>
+      </AlertDialog>
     </div>
   );
 };

@@ -179,20 +179,23 @@ export function useEmployeeOperations({
     }
   };
 
-  const updateDaysPerWeek = async (userId: string, newDays: number): Promise<EmployeeMutationResult> => {
-    if (newDays < 1 || newDays > 5) { notify.error("Ungültige Eingabe", { description: "Tage müssen zwischen 1 und 5 liegen."
-}); return normalizeMutationResult("update_days_per_week", null, new Error("Ungültige Tagesanzahl")); }
+  /** Stores the individual workday plan (Mo–So) and keeps days_per_week in sync. */
+  const updateWorkdays = async (userId: string, workdays: boolean[]): Promise<EmployeeMutationResult> => {
+    const plan = Array.isArray(workdays) && workdays.length === 7 ? workdays.map(Boolean) : [];
+    const dayCount = plan.filter(Boolean).length;
+    if (dayCount < 1) {
+      notify.error("Ungültige Eingabe", { description: "Mindestens ein Arbeitstag muss gewählt sein." });
+      return normalizeMutationResult("update_workdays", null, new Error("Kein Arbeitstag gewählt"));
+    }
     try {
-      const { error } = await supabase.from("employee_settings").upsert({ user_id: userId, days_per_week: newDays, admin_id: user?.id }, { onConflict: 'user_id', ignoreDuplicates: false });
+      const { error } = await supabase.from("employee_settings").upsert({ user_id: userId, workdays: plan, days_per_week: dayCount, admin_id: user?.id }, { onConflict: 'user_id', ignoreDuplicates: false });
       if (error) throw error;
-      setEmployees(prev => prev.map(emp => emp.user_id === userId ? { ...emp, days_per_week: newDays } : emp));
-      notify.success("Gespeichert", { description: "Tage pro Woche wurden aktualisiert." 
-});
-      return normalizeMutationResult("update_days_per_week", { userId, field: "days_per_week", value: newDays }, null);
+      setEmployees(prev => prev.map(emp => emp.user_id === userId ? { ...emp, workdays: plan, days_per_week: dayCount } : emp));
+      notify.success("Gespeichert", { description: "Arbeitstage pro Woche wurden aktualisiert." });
+      return normalizeMutationResult("update_workdays", { userId, field: "days_per_week", value: dayCount }, null);
     } catch (e: unknown) {
-      debugConsole.error(e); notify.error("Fehler", { description: e instanceof Error ? e.message : "Tage konnten nicht aktualisiert werden."
-});
-      return normalizeMutationResult("update_days_per_week", null, e);
+      debugConsole.error(e); notify.error("Fehler", { description: e instanceof Error ? e.message : "Arbeitstage konnten nicht aktualisiert werden." });
+      return normalizeMutationResult("update_workdays", null, e);
     }
   };
 
@@ -247,6 +250,6 @@ export function useEmployeeOperations({
 
   return {
     handleLeaveAction, handleCancelApproval,
-    updateHours, updateDaysPerWeek, updateDaysPerMonth, updateVacationDays, updateStartDate,
+    updateHours, updateWorkdays, updateDaysPerMonth, updateVacationDays, updateStartDate,
   };
 }

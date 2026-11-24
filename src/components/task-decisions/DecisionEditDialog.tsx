@@ -11,6 +11,7 @@ import { supabase } from "@/integrations/supabase/client";
 import { TopicSelector } from "@/components/topics/TopicSelector";
 import { useDecisionTopics } from "@/hooks/useDecisionTopics";
 import { notify } from "@/lib/notify";
+import { berlinDateTimeToInstant, berlinDateTimeValue } from "@/utils/berlinDate";
 
 interface DecisionEditDialogProps {
   decisionId: string;
@@ -99,9 +100,11 @@ export const DecisionEditDialog = ({ decisionId, isOpen, onClose, onUpdated }: D
       setTitle(decision.title || "");
       setDescription(decision.description || "");
       setVisibleToAll(decision.visible_to_all || false);
+      // Berliner Wandzeit statt UTC: `toISOString()` schiebt Fristen um 00:00–02:00
+      // auf den Vortag und verschiebt sie beim Speichern zusätzlich um die Zeitzone.
       setResponseDeadline(
         decision.response_deadline
-          ? new Date(decision.response_deadline).toISOString().slice(0, 16)
+          ? berlinDateTimeValue(decision.response_deadline)
           : ""
       );
 
@@ -178,7 +181,7 @@ export const DecisionEditDialog = ({ decisionId, isOpen, onClose, onUpdated }: D
           title: title.trim(),
           description: description.trim() || null,
           visible_to_all: visibleToAll,
-          response_deadline: responseDeadline ? new Date(responseDeadline).toISOString() : null,
+          response_deadline: responseDeadline ? berlinDateTimeToInstant(responseDeadline).toISOString() : null,
         })
         .eq('id', decisionId);
 

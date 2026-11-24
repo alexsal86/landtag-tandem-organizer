@@ -52,6 +52,11 @@ export const buildDeepLinkPath = (notification: Notification): string => {
       return buildHighlightPath('/decisions', getNotificationDataId(data, 'decision_id'));
 
     case 'appointment_reminder': {
+      // Der Kalender öffnet mit ?highlight=<id> genau diesen Termin samt
+      // Detail-Sidebar; ohne ID bleibt es beim Sprung auf den Tag.
+      const appointmentId = getNotificationDataId(data, 'appointment_id', 'appointmentId');
+      if (appointmentId) return buildHighlightPath('/calendar', appointmentId);
+
       const startTime = data.start_time;
       if (startTime) {
         const dateStr = new Date(startTime).toISOString().split('T')[0];
@@ -136,6 +141,12 @@ export const buildDeepLinkPath = (notification: Notification): string => {
 
     case 'news_shared_internal':
       return data.article_link ?? data.link ?? '/';
+
+    case 'social_post_reminder':
+    case 'social_post_change_requested':
+    case 'social_post_approved':
+    case 'social_post_approval_reopened':
+      return buildHighlightPath('/mywork?tab=redaktion', getNotificationDataId(data, 'content_item_id'));
 
     case 'team_announcement_created':
       return '/mywork?tab=team';

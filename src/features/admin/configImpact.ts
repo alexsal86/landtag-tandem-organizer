@@ -1,0 +1,146 @@
+// Reine Regeln für die Folgenabschätzung vor dem Löschen von Konfiguration.
+// Die Zählung selbst kommt aus public.config_delete_impact; hier wird nur geparst
+// und in Klartext übersetzt, damit Dialog und Selbsttest dieselbe Bewertung nutzen.
+
+export interface ConfigImpactReference {
+  key: string;
+  /** Singular, z. B. "Dokument" */
+  label: string;
+  count: number;
+}
+
+export interface ConfigImpact {
+  known: boolean;
+  label: string | null;
+  total: number;
+  references: ConfigImpactReference[];
+}
+
+const DATIVE: Record<string, { one: string; many: string }> = {
+  documents: { one: "einem Dokument", many: "Dokumenten" },
+  case_files: { one: "einer Fallakte", many: "Fallakten" },
+  tasks: { one: "einer Aufgabe", many: "Aufgaben" },
+  todos: { one: "einem ToDo", many: "ToDos" },
+  appointments: { one: "einem Termin", many: "Terminen" },
+};
+
+/** Fehlende oder unlesbare Auskunft ist keine Freigabe: known=false sperrt das Löschen. */
+export function parseConfigImpact(raw: unknown): ConfigImpact {
+  if (!raw || typeof raw !== "object" || Array.isArray(raw)) return unknownImpact();
+  const record = raw as Record<string, unknown>;
+  const rawReferences = record.references;
+  const rawTotal = record.total;
+  if (!Array.isArray(rawReferences)) return unknownImpact();
+  if (typeof rawTotal !== "number" || !Number.isFinite(rawTotal) || rawTotal < 0) return unknownImpact();
+
+  const references: ConfigImpactReference[] = [];
+  for (const entry of rawReferences) {
+    if (!entry || typeof entry !== "object" || Array.isArray(entry)) return unknownImpact();
+    const reference = entry as Record<string, unknown>;
+    const count = reference.count;
+    if (typeof reference.key !== "string" || typeof reference.label !== "string") return unknownImpact();
+    if (typeof count !== "number" || !Number.isFinite(count) || count <= 0) return unknownImpact();
+    references.push({ key: reference.key, label: reference.label, count });
+  }
+
+  return {
+    known: true,
+    label: typeof record.label === "string" ? record.label : null,
+    total: rawTotal,
+    references,
+  };
+}
+
+export function unknownImpact(): ConfigImpact {
+  return { known: false, label: null, total: 0, references: [] };
+}
+
+function referencePhrase(reference: ConfigImpactReference): string {
+  const forms = DATIVE[reference.key];
+  if (!forms) return `${reference.count} ${reference.label}`;
+  return reference.count === 1 ? forms.one : `${reference.count} ${forms.many}`;
+}
+
+const ACCUSATIVE: Record<string, { one: string; many: string }> = {
+  documents: { one: "1 Dokument", many: "Dokumente" },
+  case_files: { one: "1 Fallakte", many: "Fallakten" },
+  tasks: { one: "1 Aufgabe", many: "Aufgaben" },
+  todos: { one: "1 ToDo", many: "ToDos" },
+  appointments: { one: "1 Termin", many: "Termine" },
+  automation_rules: { one: "1 Automatisierungsregel", many: "Automatisierungsregeln" },
+  workflow_definitions: { one: "1 Workflow", many: "Workflows" },
+};
+
+export interface ConfigRenameResult {
+  known: boolean;
+  label: string | null;
+  newName: string | null;
+  total: number;
+  updated: ConfigImpactReference[];
+}
+
+/** Ergebnis eines Umbenennens; unlesbare Antwort verhindert nur die Zusatzmeldung, nicht die Umbenennung. */
+export function parseConfigRename(raw: unknown): ConfigRenameResult {
+  if (!raw || typeof raw !== "object" || Array.isArray(raw)) return { ...unknownRename() };
+  const record = raw as Record<string, unknown>;
+  const rawUpdated = record.updated;
+  const rawTotal = record.total;
+  if (!Array.isArray(rawUpdated)) return unknownRename();
+  if (typeof rawTotal !== "number" || !Number.isFinite(rawTotal) || rawTotal < 0) return unknownRename();
+
+  const updated: ConfigImpactReference[] = [];
+  for (const entry of rawUpdated) {
+    if (!entry || typeof entry !== "object" || Array.isArray(entry)) return unknownRename();
+    const reference = entry as Record<string, unknown>;
+    const count = reference.count;
+    if (typeof reference.key !== "string" || typeof reference.label !== "string") return unknownRename();
+    if (typeof count !== "number" || !Number.isFinite(count) || count <= 0) return unknownRename();
+    updated.push({ key: reference.key, label: reference.label, count });
+  }
+
+  return {
+    known: true,
+    label: typeof record.label === "string" ? record.label : null,
+    newName: typeof record.new_name === "string" ? record.new_name : null,
+    total: rawTotal,
+    updated,
+  };
+}
+
+export function unknownRename(): ConfigRenameResult {
+  return { known: false, label: null, newName: null, total: 0, updated: [] };
+}
+
+/**
+ * Ergebnis eines abgelehnten Löschens. 55000 heißt: die Bestätigung passt nicht
+ * mehr zur aktuellen Zählung, also nicht löschen, sondern erneut prüfen lassen.
+ */
+export function configDeleteFailure(code: string | null | undefined, message: string): { stale: boolean; message: string } {
+  if (code === "55000") {
+    return {
+      stale: true,
+      message: "Die Verwendungen haben sich seit der Prüfung geändert. Bitte erneut prüfen.",
+    };
+  }
+  return { stale: false, message };
+}
+
+export function summarizeConfigRename(result: ConfigRenameResult): string {
+  if (result.updated.length === 0) return "Keine Verweise mussten angepasst werden.";
+  const parts = result.updated.map((reference) => {
+    const forms = ACCUSATIVE[reference.key];
+    if (!forms) return `${reference.count} ${reference.label}`;
+    return reference.count === 1 ? forms.one : `${reference.count} ${forms.many}`;
+  });
+  return `Verweise aktualisiert: ${parts.join(", ")}.`;
+}
+
+export function summarizeConfigImpact(impact: ConfigImpact): string {
+  if (!impact.known) return "Auswirkung konnte nicht geprüft werden.";
+  if (impact.total === 0 || impact.references.length === 0) return "Keine Verwendung gefunden.";
+  const phrases = impact.references.map(referencePhrase);
+  const list = phrases.length === 1
+    ? phrases[0]
+    : `${phrases.slice(0, -1).join(", ")} und ${phrases[phrases.length - 1]}`;
+  return `Wird in ${list} verwendet.`;
+}

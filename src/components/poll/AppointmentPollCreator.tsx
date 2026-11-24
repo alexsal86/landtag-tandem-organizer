@@ -9,11 +9,13 @@ import { Badge } from '@/components/ui/badge';
 import { Calendar } from '@/components/ui/calendar';
 import { Popover, PopoverContent, PopoverTrigger } from '@/components/ui/popover';
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
-import { CalendarIcon, Clock, Plus, X, Users, Mail } from 'lucide-react';
+import { CalendarIcon, Clock, Loader2, Plus, Sparkles, X, Users, Mail } from 'lucide-react';
 import { format } from 'date-fns';
 import { de } from 'date-fns/locale';
 import { supabase } from '@/integrations/supabase/client';
 import { useAuth } from '@/hooks/useAuth';
+import { useTenant } from '@/hooks/useTenant';
+import { suggestPollSlots, type PollBusyInterval, type PollSlotSuggestion } from '@/features/polls/pollRules';
 import { isValidEmail } from '@/lib/utils';
 import { ContactSelector, type ContactSelectorContact } from '@/features/contacts/components/ContactSelector';
 import { notify } from "@/lib/notify";
@@ -33,14 +35,28 @@ interface Participant {
   name: string;
 }
 
+/** Zeilen aus get_poll_availability (Frei/Gebucht je Teilnehmer). */
+interface PollAvailabilityRow {
+  email: string;
+  busy_start: string | null;
+  busy_end: string | null;
+  source: string;
+}
+
 export const AppointmentPollCreator = ({ onClose }: { onClose: () => void }) => {
   const { user } = useAuth();
+  const { currentTenant } = useTenant();
   const [loading, setLoading] = useState(false);
   
   // Form state
   const [title, setTitle] = useState('');
   const [description, setDescription] = useState('');
-  const [deadline, setDeadline] = useState<Date | undefined>();
+  // Vorbelegte Frist, damit eine Abstimmung nicht dauerhaft offen bleibt.
+  const [deadline, setDeadline] = useState<Date | undefined>(() => {
+    const inTwoWeeks = new Date();
+    inTwoWeeks.setDate(inTwoWeeks.getDate() + 14);
+    return inTwoWeeks;
+  });
   const [timeSlots, setTimeSlots] = useState<TimeSlot[]>([]);
   const [participants, setParticipants] = useState<Participant[]>([]);
   
@@ -49,6 +65,10 @@ export const AppointmentPollCreator = ({ onClose }: { onClose: () => void }) => 
   const [startTime, setStartTime] = useState('09:00');
   const [endTime, setEndTime] = useState('10:00');
   const [newParticipantEmail, setNewParticipantEmail] = useState('');
+  const [suggestionDuration, setSuggestionDuration] = useState(60);
+  const [suggestionBuffer, setSuggestionBuffer] = useState(15);
+  const [suggestions, setSuggestions] = useState<PollSlotSuggestion[]>([]);
+  const [suggestionsLoading, setSuggestionsLoading] = useState(false);
 
   const normalizeEmail = (email: string) => email.trim().toLowerCase();
 
@@ -89,6 +109,122 @@ export const AppointmentPollCreator = ({ onClose }: { onClose: () => void }) => 
 
   const removeTimeSlot = (id: string) => {
     setTimeSlots(timeSlots.filter(slot => slot.id !== id));
+  };
+
+  const slotToRange = (slot: TimeSlot) => ({
+    start: new Date(`${format(slot.date, 'yyyy-MM-dd')}T${slot.startTime}:00`).toISOString(),
+    end: new Date(`${format(slot.date, 'yyyy-MM-dd')}T${slot.endTime}:00`).toISOString()
+  });
+
+  const loadSuggestions = async () => {
+    if (!currentTenant?.id) {
+      notify.error("Kein Mandant", {
+        description: "Bitte wählen Sie zuerst einen Mandanten aus."
+      });
+      return;
+    }
+
+    if (participants.length === 0) {
+      notify.error("Teilnehmer fehlen", {
+        description: "Bitte fügen Sie zuerst die Teilnehmer hinzu. Erst dann lässt sich Frei/Gebucht auswerten."
+      });
+      return;
+    }
+
+    setSuggestionsLoading(true);
+
+    try {
+      const from = new Date();
+      const to = new Date(from.getTime() + 14 * 24 * 60 * 60 * 1000);
+
+      const { data, error } = await supabase.rpc('get_poll_availability', {
+        _tenant_id: currentTenant.id,
+        _emails: participants.map(participant => participant.email),
+        _from: from.toISOString(),
+        _to: to.toISOString()
+      });
+
+      if (error) throw error;
+
+      const rows: PollAvailabilityRow[] = data ?? [];
+      // Jeder Teilnehmer mit Konto liefert mindestens eine Zeile (ggf. ohne Belegung).
+      // Alle übrigen haben keine Frei/Gebucht-Daten und dürfen nicht als frei gelten.
+      const knownParticipants = Array.from(new Set(rows.map((row) => row.email.trim().toLowerCase())));
+      const busy: PollBusyInterval[] = rows
+        .filter((row) => Boolean(row.busy_start) && Boolean(row.busy_end))
+        .map((row) => ({
+          email: row.email,
+          start: row.busy_start as string,
+          end: row.busy_end as string,
+          source: row.source
+        }));
+
+      const nextSuggestions = suggestPollSlots({
+        participants: participants.map(participant => participant.email),
+        knownParticipants,
+        busy,
+        windowStart: from.toISOString(),
+        windowEnd: to.toISOString(),
+        durationMinutes: suggestionDuration,
+        bufferMinutes: suggestionBuffer,
+        existingSlots: timeSlots.map(slotToRange)
+      });
+
+      setSuggestions(nextSuggestions);
+
+      if (nextSuggestions.length === 0) {
+        notify.error("Keine Vorschläge", {
+          description: "Im gewählten Zeitraum passt kein Slot. Bitte Dauer oder Puffer anpassen."
+        });
+      }
+    } catch (error) {
+      debugConsole.error('Error loading slot suggestions:', error);
+      notify.error("Fehler", {
+        description: "Die Vorschläge aus Frei/Gebucht konnten nicht geladen werden."
+      });
+    } finally {
+      setSuggestionsLoading(false);
+    }
+  };
+
+  const participantLabel = (email: string) => {
+    const normalized = normalizeEmail(email);
+    return participants.find(participant => normalizeEmail(participant.email) === normalized)?.name || email;
+  };
+
+  const suggestionBadgeLabel = (suggestion: PollSlotSuggestion) => {
+    if (suggestion.fullyFree) return 'Alle frei';
+    const parts: string[] = [];
+    if (suggestion.busyEmails.length > 0) parts.push(`${suggestion.busyEmails.length} belegt`);
+    if (suggestion.unknownEmails.length > 0) parts.push(`${suggestion.unknownEmails.length} ohne Kalender`);
+    return parts.join(' · ') || 'Unbekannt';
+  };
+
+  const applySuggestion = (suggestion: PollSlotSuggestion) => {
+    const start = new Date(suggestion.start);
+    const end = new Date(suggestion.end);
+    const candidate: TimeSlot = {
+      id: `${suggestion.start}-${suggestion.end}`,
+      date: start,
+      startTime: format(start, 'HH:mm'),
+      endTime: format(end, 'HH:mm')
+    };
+
+    const isDuplicate = timeSlots.some(slot =>
+      format(slot.date, 'yyyy-MM-dd') === format(candidate.date, 'yyyy-MM-dd') &&
+      slot.startTime === candidate.startTime &&
+      slot.endTime === candidate.endTime
+    );
+
+    if (isDuplicate) {
+      notify.error("Bereits vorhanden", {
+        description: "Dieser Zeitslot ist schon in der Abstimmung."
+      });
+      return;
+    }
+
+    setTimeSlots(prev => [...prev, candidate]);
+    setSuggestions(prev => prev.filter(entry => entry.start !== suggestion.start));
   };
 
   const addParticipantFromContact = (contact: ContactSelectorContact) => {
@@ -361,6 +497,78 @@ export const AppointmentPollCreator = ({ onClose }: { onClose: () => void }) => 
                 <Plus className="h-4 w-4" />
               </Button>
             </div>
+          </div>
+
+          <div className="space-y-3 p-4 border border-dashed rounded-lg">
+            <div className="flex flex-wrap items-end gap-3">
+              <div>
+                <Label className="text-sm">Dauer</Label>
+                <Select value={String(suggestionDuration)} onValueChange={(value) => setSuggestionDuration(Number(value))}>
+                  <SelectTrigger className="w-28">
+                    <SelectValue />
+                  </SelectTrigger>
+                  <SelectContent>
+                    {[30, 45, 60, 90, 120].map((minutes) => (
+                      <SelectItem key={minutes} value={String(minutes)}>
+                        {minutes} Min.
+                      </SelectItem>
+                    ))}
+                  </SelectContent>
+                </Select>
+              </div>
+
+              <div>
+                <Label className="text-sm">Puffer</Label>
+                <Select value={String(suggestionBuffer)} onValueChange={(value) => setSuggestionBuffer(Number(value))}>
+                  <SelectTrigger className="w-28">
+                    <SelectValue />
+                  </SelectTrigger>
+                  <SelectContent>
+                    {[0, 5, 10, 15, 30].map((minutes) => (
+                      <SelectItem key={minutes} value={String(minutes)}>
+                        {minutes} Min.
+                      </SelectItem>
+                    ))}
+                  </SelectContent>
+                </Select>
+              </div>
+
+              <Button type="button" variant="outline" onClick={loadSuggestions} disabled={suggestionsLoading}>
+                {suggestionsLoading ? <Loader2 className="h-4 w-4 animate-spin" /> : <Sparkles className="h-4 w-4" />}
+                Vorschläge aus Frei/Gebucht
+              </Button>
+            </div>
+
+            <p className="text-xs text-muted-foreground">
+              Berücksichtigt Termine, externe Kalender und Abwesenheiten der Teilnehmer sowie den Puffer um belegte Zeiten
+              (werktags 9–17 Uhr, nächste 14 Tage). Teilnehmer ohne Frei/Gebucht-Daten werden als solche gekennzeichnet.
+            </p>
+
+            {suggestions.length > 0 && (
+              <div className="space-y-2">
+                {suggestions.map((suggestion) => (
+                  <div key={`${suggestion.start}-${suggestion.end}`} className="flex items-center justify-between gap-2 p-2 border rounded-lg bg-background">
+                    <div className="flex flex-wrap items-center gap-2 text-sm">
+                      <CalendarIcon className="h-4 w-4 text-muted-foreground" />
+                      <span>{format(new Date(suggestion.start), 'dd. MMMM yyyy', { locale: de })}</span>
+                      <Clock className="h-4 w-4 text-muted-foreground" />
+                      <span>{format(new Date(suggestion.start), 'HH:mm')} - {format(new Date(suggestion.end), 'HH:mm')}</span>
+                      <Badge variant={suggestion.fullyFree ? 'secondary' : 'outline'}>
+                        {suggestionBadgeLabel(suggestion)}
+                      </Badge>
+                      {suggestion.unknownEmails.length > 0 && (
+                        <div className="w-full text-xs text-muted-foreground">
+                          Ohne Frei/Gebucht-Daten: {suggestion.unknownEmails.map(participantLabel).join(', ')}
+                        </div>
+                      )}
+                    </div>
+                    <Button type="button" size="sm" variant="outline" onClick={() => applySuggestion(suggestion)}>
+                      <Plus className="h-4 w-4" />
+                    </Button>
+                  </div>
+                ))}
+              </div>
+            )}
           </div>
 
           {timeSlots.length > 0 && (

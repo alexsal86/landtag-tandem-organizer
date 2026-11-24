@@ -16,12 +16,12 @@ import { CalendarEvent } from "./types";
 import { supabase } from "@/integrations/supabase/client";
 import { formatEventDisplay } from "@/lib/timeUtils";
 import { GuestManager } from "@/features/appointments/components/GuestManager";
-import { useTenant } from "@/hooks/useTenant";
 import { TimePickerCombobox } from "@/components/ui/time-picker-combobox";
 import { RichTextDisplay } from "@/components/ui/RichTextDisplay";
 import { notify } from "@/lib/notify";
 import { AppointmentBriefingStatusCard } from "@/features/appointments/briefing/AppointmentBriefingStatusCard";
 import { canDecide } from "@/features/appointment-requests/logic";
+import { invitationGuestKey, selectNewGuestEmails } from "@/features/appointments/invitations/invitationRules";
 import { useResolvedUserRole } from "@/hooks/useResolvedUserRole";
 
 interface AppointmentDetailsSidebarProps {
@@ -37,7 +37,6 @@ export function AppointmentDetailsSidebar({
   onClose,
   onUpdate 
 }: AppointmentDetailsSidebarProps) {
-  const { currentTenant } = useTenant();
   const navigate = useNavigate();
   const { role: resolvedRole } = useResolvedUserRole();
   const reportedChange = appointment?.reportedChange;
@@ -60,6 +59,8 @@ export function AppointmentDetailsSidebar({
   }>>([]);
   const [isLoadingGuests, setIsLoadingGuests] = useState(false);
   const [isSendingInvitations, setIsSendingInvitations] = useState(false);
+  // E-Mail-Adressen der Gäste beim Öffnen der Bearbeitung, um neue Gäste zu erkennen.
+  const [guestEmailsAtEdit, setGuestEmailsAtEdit] = useState<string[]>([]);
   const [feedback, setFeedback] = useState<{
     id: string;
     feedback_status: 'pending' | 'completed' | 'skipped';
@@ -165,12 +166,7 @@ export function AppointmentDetailsSidebar({
 
       if (error) throw error;
 
-      // Update last invitation sent timestamp
-      await supabase
-        .from('appointments')
-        .update({ last_invitation_sent_at: new Date().toISOString() })
-        .eq('id', appointment.id);
-
+      // Zeitstempel und SEQUENCE setzt die Function selbst.
       notify.success("Einladungen versendet", {
         description: `${guests.length} Einladung(en) wurden erfolgreich versendet.`
       
@@ -214,6 +210,7 @@ export function AppointmentDetailsSidebar({
       startTime: appointment.time,
       endTime: endTime
     });
+    setGuestEmailsAtEdit(guests.map(guest => invitationGuestKey(guest.email)));
     setIsEditing(true);
   };
 
@@ -281,41 +278,41 @@ export function AppointmentDetailsSidebar({
         throw error;
       }
 
-      // Update guests if in edit mode (when GuestManager is active)
-      if (guests.length > 0) {
-        // Delete existing guests first
-        const { error: deleteError } = await supabase
-          .from('appointment_guests')
-          .delete()
-          .eq('appointment_id', appointment.id);
-
-        if (deleteError) {
-          debugConsole.error('Error deleting existing guests:', deleteError);
-        }
-
-        // Insert updated guests with tokens
-        const guestEntries = guests.map(guest => ({
-          appointment_id: appointment.id,
-          tenant_id: currentTenant!.id,
-          name: guest.name,
-          email: guest.email,
-          status: 'pending' as const,
-          invitation_token: crypto.randomUUID() + '-' + Date.now(),
-        }));
-
-        const { error: guestsError } = await supabase
-          .from('appointment_guests')
-          .insert(guestEntries);
+      // Gäste angleichen statt löschen und neu anlegen: bestehende Einträge
+      // behalten Token, Antwortlink und RSVP-Status (Upsert auf
+      // appointment_id + lower(email)), entfernte Gäste werden gelöscht.
+      if (guests.length > 0 || guestEmailsAtEdit.length > 0) {
+        const { error: guestsError } = await supabase.rpc('upsert_appointment_guests', {
+          _appointment_id: appointment.id,
+          _guests: guests.map(guest => ({ name: guest.name, email: guest.email })),
+        });
 
         if (guestsError) {
           debugConsole.error('Error saving guests:', guestsError);
         } else {
-          // Automatically send invitations to all guests
+          // Gespeicherte Gäste inkl. Token und Antwortstatus übernehmen.
+          const { data: savedGuests } = await supabase
+            .from('appointment_guests')
+            .select('id, name, email, status, responded_at, response_note')
+            .eq('appointment_id', appointment.id)
+            .order('name');
+
+          if (savedGuests) {
+            setGuests(savedGuests);
+          }
+
+          // Neue Gäste werden gezielt angeschrieben; die Function sendet ein
+          // Update ausschließlich bei echter Zeit-/Ortsänderung (SEQUENCE).
+          const newGuestIds = selectNewGuestEmails(guestEmailsAtEdit, savedGuests ?? guests)
+            .map(email => savedGuests?.find(guest => invitationGuestKey(guest.email) === email)?.id)
+            .filter((id): id is string => Boolean(id));
+
           try {
-            const { error: invitationError } = await supabase.functions.invoke('send-appointment-invitation', {
-              body: { 
+            const { data: invitationResult, error: invitationError } = await supabase.functions.invoke('send-appointment-invitation', {
+              body: {
                 appointmentId: appointment.id,
-                sendToAll: true 
+                reason: 'update',
+                guestIds: newGuestIds,
               }
             });
 
@@ -324,9 +321,9 @@ export function AppointmentDetailsSidebar({
               notify.error("Warnung", {
                 description: "Gäste wurden gespeichert, aber Einladungen konnten nicht versendet werden."
 });
-            } else {
+            } else if (!invitationResult?.skipped) {
               notify.success("Einladungen versendet", {
-                description: `Einladungen wurden an ${guests.length} Gäste versendet.`
+                description: invitationResult?.message || `Einladungen wurden an ${newGuestIds.length || guests.length} Gäste versendet.`
               
 });
             }
@@ -354,6 +351,33 @@ export function AppointmentDetailsSidebar({
     }
   };
 
+  // Löschen ohne Absage: nur nach ausdrücklicher Rückfrage im Fehler-Toast.
+  const deleteAppointmentWithoutNotice = async (appointmentId: string) => {
+    setIsDeleting(true);
+    try {
+      const { error } = await supabase
+        .from('appointments')
+        .delete()
+        .eq('id', appointmentId);
+
+      if (error) throw error;
+
+      notify.success("Termin gelöscht", {
+        description: "Der Termin wurde ohne Absage an die Gäste gelöscht."
+      });
+
+      onUpdate();
+      onClose();
+    } catch (error) {
+      debugConsole.error('Error deleting appointment:', error);
+      notify.error("Fehler", {
+        description: "Der Termin konnte nicht gelöscht werden."
+      });
+    } finally {
+      setIsDeleting(false);
+    }
+  };
+
   const handleDelete = async () => {
     if (!appointment || isDeleting) return;
     
@@ -364,6 +388,26 @@ export function AppointmentDetailsSidebar({
         notify.error("Warnung", {
           description: "Geplante Termine können nicht direkt gelöscht werden."
 });
+        return;
+      }
+
+      // Absage an dieselbe Kalender-UID senden, solange die Gäste noch existieren.
+      // Schlägt der Versand fehl, bleibt der Termin bestehen – sonst würden die
+      // Gäste ohne Absage verschwinden. Ohne Absage löschen nur nach Rückfrage.
+      const appointmentId = appointment.id;
+      const { error: cancelError } = await supabase.functions.invoke('send-appointment-invitation', {
+        body: { appointmentId, reason: 'cancel' }
+      });
+      if (cancelError) {
+        debugConsole.error('Error sending cancellation:', cancelError);
+        notify.error("Absage nicht versendet – Termin bleibt bestehen", {
+          description: "Die Absage an die eingeladenen Gäste konnte nicht versendet werden. Der Termin wurde deshalb nicht gelöscht. Bitte erneut versuchen.",
+          duration: 12000,
+          action: {
+            label: "Trotzdem löschen",
+            onClick: () => { void deleteAppointmentWithoutNotice(appointmentId); }
+          }
+        });
         return;
       }
 

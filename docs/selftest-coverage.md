@@ -4,7 +4,7 @@ _Auto-generiert mit `npm run update:selftest-coverage`._
 
 Quelle: `src/integrations/supabase/types.ts`. Die Angaben beschreiben deklarierte Prüfumfänge, keine erfolgreichen Testläufe und keine Code-Coverage.
 
-Von 341 Tabellen haben 53 ein registriertes Szenario. 87 sind als Ausbau offen, 153 ausgenommen und 48 noch nicht eingeordnet. Ausnahmen zählen nicht als bestanden.
+Von 341 Tabellen haben 57 ein registriertes Szenario. 85 sind als Ausbau offen, 151 ausgenommen und 48 noch nicht eingeordnet. Ausnahmen zählen nicht als bestanden.
 
 ## Szenarien
 
@@ -17,7 +17,7 @@ Von 341 Tabellen haben 53 ein registriertes Szenario. 87 sind als Ausbau offen, 
 | `appointment-lifecycle` | Termin-Lifecycle (Kalender + Briefing + Feedback) | appointments, appointment_preparations, appointment_feedback |
 | `appointment-request-lifecycle` | Terminanfragen-Lifecycle (Eingang → Sperre → Entscheidung → Termin) | appointment_requests, appointments |
 | `case-item-lifecycle` | Vorgangs-Lifecycle (Am Zug → Schritt → Wiedervorlage → Entscheidung → Tageszettel → Abschluss) | case_items, case_item_interactions, case_item_handover_log, task_decisions, task_decision_participants, task_decision_responses, appointment_requests, day_slips, tasks |
-| `contact-lifecycle` | Kontakt-Lifecycle (Anlegen → Kategorie/Tags → Aktivität → Suche) | contacts, contact_activities |
+| `contact-lifecycle` | Kontakt-Lifecycle (Anlegen → Kategorie/Tags → Aktivität → Suche) | contacts, contact_activities, contact_usage_stats |
 | `daily-briefing-lifecycle` | Tages-Briefings (Vortag-Regel) | daily_briefings |
 | `day-slip-lifecycle` | Tageszettel-Lifecycle (Links → Neuladen → Übernahme auf Folgetag) | day_slips |
 | `decision-lifecycle` | Entscheidungs-Lifecycle (active → open → archived) | task_decisions, task_decision_participants, task_decision_responses |
@@ -33,10 +33,11 @@ Von 341 Tabellen haben 53 ein registriertes Szenario. 87 sind als Ausbau offen, 
 | `letter-lifecycle` | Brief-Lifecycle (Entwurf → Prüfung → Freigabe → Archiv und Folgeaufgabe) | letters, letter_attachments, documents, tasks |
 | `meeting-lifecycle` | Meeting-Lifecycle (vollständig + Field-Verifikation) | meetings, meeting_templates, meeting_protocol_details, meeting_protocol_addenda, meeting_agenda_items, meeting_agenda_documents, meeting_participants, appointments, tasks |
 | `onboarding-hr` | HR-Onboarding und Offboarding | employee_lifecycle, employee_hr_templates, routine_package_runs, routine_package_steps, employee_hr_evidence, employee_hr_gdpr_declarations, employee_hr_reminder_log, notification_types, notifications, tasks, subtasks |
+| `poll-lifecycle` | Terminabstimmung (Gewinner-Slot übernehmen + Nachfassen) | appointment_polls, poll_time_slots, poll_participants, appointments, appointment_guests |
 | `quick-note-lifecycle` | Notizen-Lifecycle (Anlegen → Priorität → Anheften → Aufgabe → Archiv) | quick_notes, tasks, task_decisions, task_decision_participants |
 | `responsibilities` | Zuständigkeiten & Matrix | tasks |
 | `task-lifecycle` | Aufgaben-Lifecycle (Zuweisung → Frist → Entscheidung → Jour fixe → erledigt) | tasks, task_decisions |
-| `task-stafette-lifecycle` | Aufgaben-Stafette (Am Zug, Wiedervorlage, Freigabe) | tasks, task_batch_actions |
+| `task-stafette-lifecycle` | Aufgaben-Stafette (Am Zug, Wiedervorlage, Freigabe) | Keine (reine Regeln) |
 | `team-rituals` | Freiwillige Team-Rituale | Keine (reine Regeln) |
 | `workflow-rules` | Geschäftsregeln (Freigabe, Rollen, Fristen) | Keine (reine Regeln) |
 
@@ -55,16 +56,17 @@ Von 341 Tabellen haben 53 ein registriertes Szenario. 87 sind als Ausbau offen, 
 | `appointment_documents` | Ausgenommen (nicht geprüft) | — |
 | `appointment_feedback` | Szenario vorhanden | appointment-lifecycle |
 | `appointment_feedback_settings` | Ausgenommen (nicht geprüft) | — |
-| `appointment_guests` | Ausgenommen (nicht geprüft) | — |
+| `appointment_guests` | Szenario vorhanden | poll-lifecycle |
 | `appointment_locations` | Ausgenommen (nicht geprüft) | — |
-| `appointment_polls` | Ausgenommen (nicht geprüft) | — |
+| `appointment_polls` | Szenario vorhanden | poll-lifecycle |
 | `appointment_preparation_documents` | Ausgenommen (nicht geprüft) | — |
 | `appointment_preparation_templates` | Ausgenommen (nicht geprüft) | — |
 | `appointment_preparations` | Szenario vorhanden | appointment-lifecycle |
+| `appointment_reminder_dispatches` | Ausgenommen (nicht geprüft) | — |
 | `appointment_requests` | Szenario vorhanden | access-boundaries, appointment-request-lifecycle, case-item-lifecycle |
 | `appointment_statuses` | Ausgenommen (nicht geprüft) | — |
 | `appointment_topics` | Ausgenommen (nicht geprüft) | — |
-| `appointments` | Szenario vorhanden | appointment-briefing-lifecycle, appointment-lifecycle, appointment-request-lifecycle, meeting-lifecycle |
+| `appointments` | Szenario vorhanden | appointment-briefing-lifecycle, appointment-lifecycle, appointment-request-lifecycle, meeting-lifecycle, poll-lifecycle |
 | `archived_tasks` | Ausstehend | — |
 | `audit_log_entries` | Ausgenommen (nicht geprüft) | — |
 | `automation_rate_limits` | Ausgenommen (nicht geprüft) | — |
@@ -103,7 +105,7 @@ Von 341 Tabellen haben 53 ein registriertes Szenario. 87 sind als Ausbau offen, 
 | `contact_activities` | Szenario vorhanden | contact-lifecycle |
 | `contact_briefing_memory` | Ausstehend | — |
 | `contact_topics` | Ausgenommen (nicht geprüft) | — |
-| `contact_usage_stats` | Ausgenommen (nicht geprüft) | — |
+| `contact_usage_stats` | Szenario vorhanden | contact-lifecycle |
 | `contacts` | Szenario vorhanden | contact-lifecycle |
 | `daily_briefing_reads` | Ausstehend | — |
 | `daily_briefings` | Szenario vorhanden | daily-briefing-lifecycle |
@@ -279,9 +281,9 @@ Von 341 Tabellen haben 53 ein registriertes Szenario. 87 sind als Ausbau offen, 
 | `planning_item_subtasks` | Ausgenommen (nicht geprüft) | — |
 | `planning_templates` | Ausgenommen (nicht geprüft) | — |
 | `poll_notifications` | Ausstehend | — |
-| `poll_participants` | Ausstehend | — |
+| `poll_participants` | Szenario vorhanden | poll-lifecycle |
 | `poll_responses` | Ausstehend | — |
-| `poll_time_slots` | Ausstehend | — |
+| `poll_time_slots` | Szenario vorhanden | poll-lifecycle |
 | `poll_versions` | Ausgenommen (nicht geprüft) | — |
 | `pomodoro_sessions` | Ausstehend | — |
 | `preparation_templates` | Ausgenommen (nicht geprüft) | — |
@@ -325,7 +327,6 @@ Von 341 Tabellen haben 53 ein registriertes Szenario. 87 sind als Ausbau offen, 
 | `tags` | Ausgenommen (nicht geprüft) | — |
 | `task_archive_settings` | Ausgenommen (nicht geprüft) | — |
 | `task_assignees` | Szenario vorhanden | document-annotation |
-| `task_batch_actions` | Szenario vorhanden | task-stafette-lifecycle |
 | `task_categories` | Ausgenommen (nicht geprüft) | — |
 | `task_comments` | Ausgenommen (nicht geprüft) | — |
 | `task_decision_attachments` | Ausgenommen (nicht geprüft) | — |
@@ -340,7 +341,7 @@ Von 341 Tabellen haben 53 ein registriertes Szenario. 87 sind als Ausbau offen, 
 | `task_snoozes` | Ausgenommen (nicht geprüft) | — |
 | `task_statuses` | Ausgenommen (nicht geprüft) | — |
 | `task_topics` | Ausgenommen (nicht geprüft) | — |
-| `tasks` | Szenario vorhanden | annual-task-stafette, appointment-briefing-lifecycle, case-item-lifecycle, document-annotation, jour-fixe-platform-integration, letter-lifecycle, meeting-lifecycle, onboarding-hr, quick-note-lifecycle, responsibilities, task-lifecycle, task-stafette-lifecycle |
+| `tasks` | Szenario vorhanden | annual-task-stafette, appointment-briefing-lifecycle, case-item-lifecycle, document-annotation, jour-fixe-platform-integration, letter-lifecycle, meeting-lifecycle, onboarding-hr, quick-note-lifecycle, responsibilities, task-lifecycle |
 | `team_announcement_dismissals` | Ausgenommen (nicht geprüft) | — |
 | `team_announcements` | Ausstehend | — |
 | `team_bingo_settings` | Einordnung fehlt | — |
@@ -404,6 +405,7 @@ Diese Manifeste sind keine Messung ausgeführter Assertions.
 - case-item-lifecycle: `day_slips`: user_id, tenant_id, day_key, data
 - contact-lifecycle: `contacts`: name, user_id, tenant_id, email, phone, organization, title, category, tags, notes
 - contact-lifecycle: `contact_activities`: contact_id, tenant_id, created_by, activity_type, title, description
+- contact-lifecycle: `contact_usage_stats`: contact_id, tenant_id, user_id, usage_count
 - daily-briefing-lifecycle: `daily_briefings`: tenant_id, author_id, briefing_date, title, content
 - day-slip-lifecycle: `day_slips`: user_id, tenant_id, day_key, data
 - decision-lifecycle: `task_decisions`: title, description, status, created_by, tenant_id, visible_to_all, priority, response_deadline, archived_at, archived_by
@@ -427,8 +429,12 @@ Diese Manifeste sind keine Messung ausgeführter Assertions.
 - meeting-lifecycle: `meeting_participants`: meeting_id, user_id, role, status
 - meeting-lifecycle: `appointments`: title, description, start_time, end_time, category, status, user_id, tenant_id, meeting_id
 - meeting-lifecycle: `tasks`: title, description, status, priority, user_id, tenant_id
+- poll-lifecycle: `appointment_polls`: title, description, deadline, status, user_id, tenant_id, confirmed_slot_id, confirmed_appointment_id
+- poll-lifecycle: `poll_time_slots`: poll_id, start_time, end_time, order_index
+- poll-lifecycle: `poll_participants`: poll_id, email, name, is_external, token
+- poll-lifecycle: `appointment_guests`: appointment_id, tenant_id, name, email, status
+- poll-lifecycle: `appointments`: title, description, start_time, end_time, category, status, priority, user_id, tenant_id, poll_id
 - quick-note-lifecycle: `quick_notes`: title, content, user_id, tenant_id, priority_level, color, category, tags, is_pinned, task_id, is_archived, archived_at
 - quick-note-lifecycle: `tasks`: title, description, user_id, tenant_id, status, priority
 - task-lifecycle: `tasks`: title, description, status, priority, user_id, tenant_id, assigned_to, due_date, progress, pending_for_jour_fixe
 - task-lifecycle: `task_decisions`: title, description, status, created_by, tenant_id, task_id
-- task-stafette-lifecycle: `tasks`: title, description, status, priority, tenant_id, user_id, ball_owner, ball_assignee_id, next_action, next_action_due, timeline

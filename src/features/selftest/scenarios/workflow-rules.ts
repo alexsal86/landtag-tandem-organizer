@@ -7,6 +7,7 @@ import { canDecide } from "@/features/appointment-requests/logic";
 import { isOnResubmission, MINISTRY_RESPONSE_DAYS, withAutoDeadline, type TriageItem } from "@/features/cases/items/ball";
 import { computeCropRect, isCrowdedDay, parseTopicDrop, rescheduleToDay } from "@/features/redaktion/utils/plannerRules";
 import { validateVariant } from "@/features/redaktion/components/PlannerBoard/utils";
+import { approvalOptions, canDecideApproval, changeRequestDueDate } from "@/features/redaktion/approval";
 import { defaultStepSetting, previewRoutine, readStepSettings, resolveRoutineDates, validateStepGraph, validateRoutineWorkflow } from "@/features/automation/routineWorkflow";
 import { routineEntityLink, routineStepLabel } from "@/features/automation/routinePackages";
 import { routineStepKinds, validateOfficeRoutine } from "@/features/automation/officeRoutineTemplates";
@@ -19,6 +20,11 @@ import { projectDistrictVotes } from "@/features/election-analysis/research/simu
 import { transferDistrict } from "@/features/election-analysis/research/simulator/electionFile";
 import type { TestScenario } from "../types";
 import { calendarOccurrence, nextCalendarOccurrence, scheduleRunKey } from "@/features/automation/calendarSchedule";
+import { ACTION_MODULE } from "@/features/permissions/catalog";
+import { buildPermissionDiff, diffSimulation, parsePermissionExplanation } from "@/features/permissions/explain";
+import { configDeleteFailure, parseConfigImpact, parseConfigRename, summarizeConfigImpact, summarizeConfigRename } from "@/features/admin/configImpact";
+import { calculateWeeklyTarget, isBadenWuerttembergHoliday, isDefaultWorkdays } from "@/features/timetracking/weeklyTarget";
+import { checkArbzgDay, elapsedWorkedMinutes, requiredBreakMinutes, requiredPauseForSpan, summarizeArbzgDay } from "@/features/timetracking/arbzg";
 
 export const workflowRulesScenario: TestScenario = {
   id: "workflow-rules", title: "Geschäftsregeln (Freigabe, Rollen, Fristen)",
@@ -49,6 +55,123 @@ export const workflowRulesScenario: TestScenario = {
             && evening !== undefined && formatDashboardGreeting(evening, "Alex") === "Guten Abend, Alex!"
             && selectDashboardGreeting(parseDashboardGreetings("[]"), new Date(2026, 10, 5, 18)) === undefined,
           message: "Die fünf Vorlagen gelten bis zur ersten Speicherung. Gelöschte Begrüßungen erscheinen nicht wieder.",
+        };
+      },
+    },
+    {
+      id: "team-weekly-target", label: "Team: Wochen-Soll aus individuellem Arbeitsplan, Abwesenheiten und BW-Feiertagen", kind: "logic",
+      run: async () => {
+        const fullWeek = calculateWeeklyTarget({ hoursPerWeek: 40, daysPerWeek: 5, weekStart: "2026-11-16", today: "2026-11-20" });
+        const partTime = calculateWeeklyTarget({ hoursPerWeek: 32, daysPerWeek: 4, weekStart: "2026-11-16", today: "2026-11-20" });
+        const midWeek = calculateWeeklyTarget({ hoursPerWeek: 40, daysPerWeek: 5, weekStart: "2026-11-16", today: "2026-11-18" });
+        const withVacation = calculateWeeklyTarget({
+          hoursPerWeek: 40, daysPerWeek: 5, weekStart: "2026-11-16", today: "2026-11-20",
+          absences: [{ start_date: "2026-11-16", end_date: "2026-11-17" }],
+        });
+        const withHoliday = calculateWeeklyTarget({
+          hoursPerWeek: 40, daysPerWeek: 5, weekStart: "2026-01-05", today: "2026-01-09",
+          holidays: [{ holiday_date: "2026-01-06", state: "BW", is_nationwide: false }],
+        });
+        const foreignHoliday = calculateWeeklyTarget({
+          hoursPerWeek: 40, daysPerWeek: 5, weekStart: "2026-01-05", today: "2026-01-09",
+          holidays: [{ holiday_date: "2026-01-06", state: "BY", is_nationwide: false }],
+        });
+
+        // 24 h an Mo, Mi, Fr: Dienstag darf das Soll nicht erhöhen.
+        const monWedFri = [true, false, true, false, true, false, false];
+        const planAt = (today: string) => calculateWeeklyTarget({ hoursPerWeek: 24, workdays: monWedFri, weekStart: "2026-11-16", today });
+        const planMonday = planAt("2026-11-16");
+        const planTuesday = planAt("2026-11-17");
+        const planWednesday = planAt("2026-11-18");
+        const planThursday = planAt("2026-11-19");
+        const planFriday = planAt("2026-11-20");
+        const holidayOnFreeDay = calculateWeeklyTarget({
+          hoursPerWeek: 24, workdays: monWedFri, weekStart: "2026-11-16", today: "2026-11-20",
+          holidays: [{ holiday_date: "2026-11-17", state: "BW", is_nationwide: false }],
+        });
+        const sevenDayWeek = calculateWeeklyTarget({
+          hoursPerWeek: 35, workdays: [true, true, true, true, true, true, true], weekStart: "2026-11-16", today: "2026-11-22",
+        });
+        const sixDayFallback = calculateWeeklyTarget({ hoursPerWeek: 42, daysPerWeek: 6, weekStart: "2026-11-16", today: "2026-11-21" });
+
+        const ok = fullWeek.targetMinutes === 2400
+          && partTime.targetMinutes === 1920
+          && midWeek.targetMinutes === 1440
+          && withVacation.targetMinutes === 1440 && withVacation.absenceDays === 2
+          && withHoliday.targetMinutes === 1920 && withHoliday.holidayDays === 1
+          && foreignHoliday.targetMinutes === 2400
+          && planMonday.targetMinutes === 480
+          && planTuesday.targetMinutes === 480
+          && planWednesday.targetMinutes === 960
+          && planThursday.targetMinutes === 960
+          && planFriday.targetMinutes === 1440 && planFriday.workDaysPerWeek === 3
+          && holidayOnFreeDay.targetMinutes === 1440 && holidayOnFreeDay.holidayDays === 0
+          && sevenDayWeek.targetMinutes === 2100 && sevenDayWeek.workDaysPerWeek === 7
+          && sixDayFallback.targetMinutes === 2520
+          && isDefaultWorkdays([true, true, true, true, true, false, false])
+          && isDefaultWorkdays(null)
+          && !isDefaultWorkdays(monWedFri)
+          && isBadenWuerttembergHoliday({ holiday_date: "2026-01-01", state: null, is_nationwide: true })
+          && isBadenWuerttembergHoliday({ holiday_date: "2026-01-06", state: "BW", is_nationwide: false })
+          && !isBadenWuerttembergHoliday({ holiday_date: "2026-01-06", state: "BY", is_nationwide: false });
+
+        return {
+          ok,
+          message: ok
+            ? "Wochen-Soll: Arbeitsplan Mo/Mi/Fr, sieben Tage, Teilzeit, Abwesenheit, Feiertag und Bundesland korrekt."
+            : "Wochen-Soll weicht ab.",
+        };
+      },
+    },
+    {
+      id: "arbzg-breaks", label: "Zeiterfassung: Pausenpflicht und Tagesgrenze nach ArbZG", kind: "logic",
+      run: async () => {
+        const midday = new Date(2026, 10, 24, 14, 30);
+        // 08:00–16:00 ohne Pause: 8 h Arbeit bleiben 8 h, die fehlende Pause wird nur ausgewiesen.
+        const unbrokenDay = summarizeArbzgDay([
+          { started_at: "2026-11-24T08:00:00", ended_at: "2026-11-24T16:00:00", pause_minutes: 0 },
+        ]);
+        // Geteilter Dienst: Die Pflicht gilt für den gesamten Tag, nicht je Eintrag.
+        const splitDay = summarizeArbzgDay([
+          { started_at: "2026-11-24T08:00:00", ended_at: "2026-11-24T12:00:00", pause_minutes: 0 },
+          { started_at: "2026-11-24T13:00:00", ended_at: "2026-11-24T17:00:00", pause_minutes: 0 },
+        ]);
+        const splitWithBreak = summarizeArbzgDay([
+          { started_at: "2026-11-24T08:00:00", ended_at: "2026-11-24T12:00:00", pause_minutes: 0 },
+          { started_at: "2026-11-24T13:00:00", ended_at: "2026-11-24T17:00:00", pause_minutes: 30 },
+        ]);
+        // 10-Stunden-Grenze zählt Arbeitszeit, nicht Bruttoanwesenheit.
+        const longDay = summarizeArbzgDay([
+          { started_at: "2026-11-24T07:00:00", ended_at: "2026-11-24T18:00:00", pause_minutes: 60 },
+        ]);
+        const ok = requiredBreakMinutes(0) === 0
+          && requiredBreakMinutes(6 * 60) === 0
+          && requiredBreakMinutes(6 * 60 + 1) === 30
+          && requiredBreakMinutes(9 * 60) === 30
+          && requiredBreakMinutes(9 * 60 + 1) === 45
+          && checkArbzgDay({ workedMinutes: 7 * 60, pauseMinutes: 30 }).compliant
+          && !checkArbzgDay({ workedMinutes: 7 * 60, pauseMinutes: 15 }).compliant
+          && checkArbzgDay({ workedMinutes: 7 * 60, pauseMinutes: 15 }).missingPauseMinutes === 15
+          && checkArbzgDay({ workedMinutes: 9 * 60 + 30, pauseMinutes: 30 }).missingPauseMinutes === 15
+          && checkArbzgDay({ workedMinutes: 10 * 60 + 1, pauseMinutes: 45 }).exceedsMaxDailyWork
+          && requiredPauseForSpan(6 * 60) === 0
+          && requiredPauseForSpan(6 * 60 + 15) === 30
+          && requiredPauseForSpan(9 * 60 + 6) === 30
+          && requiredPauseForSpan(9 * 60 + 36) === 45
+          && elapsedWorkedMinutes("08:00", null, 0, midday) === 390
+          && elapsedWorkedMinutes("08:00", null, 60, midday) === 330
+          && elapsedWorkedMinutes("08:00", "13:00", 30, midday) === 270
+          && elapsedWorkedMinutes("", null, 0, midday) === 0
+          && unbrokenDay.workedMinutes === 8 * 60 && unbrokenDay.grossMinutes === 8 * 60
+          && unbrokenDay.missingPauseMinutes === 30 && !unbrokenDay.compliant
+          && splitDay.workedMinutes === 8 * 60 && splitDay.missingPauseMinutes === 30
+          && splitWithBreak.missingPauseMinutes === 0 && splitWithBreak.workedMinutes === 7 * 60 + 30
+          && longDay.grossMinutes === 11 * 60 && longDay.workedMinutes === 10 * 60 && !longDay.exceedsMaxDailyWork;
+        return {
+          ok,
+          message: ok
+            ? "Pausenpflicht 30/45 Min am Tag, 10-Stunden-Grenze ohne Pausen und laufende Stempeluhr korrekt."
+            : "ArbZG-Regel weicht ab.",
         };
       },
     },
@@ -262,6 +385,107 @@ export const workflowRulesScenario: TestScenario = {
       },
     },
     {
+      id: "permission-explorer", label: "Rechte-Explorer: Rolle, Modul und Feldrecht erklären und Widersprüche finden", kind: "logic",
+      run: async () => {
+        const question = {
+          actions: ["letter.send"],
+          features: ["module.letters"],
+          fields: [{ table: "contacts", column: "email" }],
+        };
+        const base = {
+          member: true, role: "mitarbeiter", simulated_role: null, is_superadmin: false,
+          actions: [{ key: "letter.send", allowed: true, reason: "Rolle Mitarbeiter ist für diese Aktion freigegeben.", source: "rule", role: "mitarbeiter", allowed_roles: ["mitarbeiter"] }],
+          features: [{ key: "module.letters", enabled: false, reason: "Modul ist ausgeschaltet.", source: "tenant", role: "mitarbeiter" }],
+          fields: [{ table: "contacts", column: "email", can_read: true, can_write: true, read_mode: "mask", reason: "Feld ist lesbar und schreibbar.", source: "field_rule" }],
+        };
+        const parsed = parsePermissionExplanation(base, question);
+        const conflicts = buildPermissionDiff(parsed, ACTION_MODULE);
+        const writeWithoutRead = buildPermissionDiff(
+          parsePermissionExplanation({ ...base, fields: [{ ...base.fields[0], can_read: false, can_write: true }] }, question),
+          ACTION_MODULE,
+        );
+        const simulated = parsePermissionExplanation({
+          ...base,
+          actions: [{ ...base.actions[0], allowed: false, role: "praktikant" }],
+          features: [{ ...base.features[0], enabled: true }],
+        }, question);
+        const changes = diffSimulation(parsed, simulated);
+        const missing = parsePermissionExplanation({ member: true }, question);
+        const consistent = buildPermissionDiff(
+          parsePermissionExplanation({ ...base, features: [{ ...base.features[0], enabled: true }] }, question),
+          ACTION_MODULE,
+        );
+        const checks = {
+          reasonPreserved: parsed.actions[0].reason.includes("freigegeben") && parsed.features[0].source === "tenant" && parsed.actions[0].allowedRoles?.[0] === "mitarbeiter",
+          roleVersusFlag: conflicts.some(conflict => conflict.id === "action-open-module-off:letter.send" && conflict.severity === "warning"),
+          writeWithoutReadCritical: writeWithoutRead.some(conflict => conflict.severity === "critical"),
+          simulationDiff: changes.length === 2 && changes.some(change => change.area === "Modul" && change.actual === "aus" && change.simulated === "aktiv"),
+          missingAnswerDenied: !missing.actions[0].allowed && !missing.features[0].enabled && !missing.fields[0].canRead,
+          consistentSilent: consistent.length === 0,
+        };
+        return { ok: Object.values(checks).every(Boolean), message: "Begründungen, Ebenenvergleich und Simulation verwenden dieselben Regeln; fehlende Auskünfte gelten nie als Freigabe.", details: checks };
+      },
+    },
+    {
+      id: "config-delete-impact", label: "Konfiguration: Verwendung vor dem Löschen ausweisen", kind: "logic",
+      run: async () => {
+        const used = parseConfigImpact({
+          table: "document_categories", label: "Rechnung", total: 17,
+          references: [
+            { key: "documents", label: "Dokument", count: 14 },
+            { key: "case_files", label: "Fallakte", count: 3 },
+          ],
+        });
+        const single = parseConfigImpact({ total: 1, references: [{ key: "appointments", label: "Termin", count: 1 }] });
+        const unused = parseConfigImpact({ total: 0, references: [] });
+        const unreadable = parseConfigImpact({ total: "viele", references: [] });
+        const checks = {
+          countsPreserved: used.known && used.total === 17 && used.references.length === 2,
+          pluralWording: summarizeConfigImpact(used) === "Wird in 14 Dokumenten und 3 Fallakten verwendet.",
+          singularWording: summarizeConfigImpact(single) === "Wird in einem Termin verwendet.",
+          unusedClear: summarizeConfigImpact(unused) === "Keine Verwendung gefunden.",
+          unknownBlocks: !unreadable.known && summarizeConfigImpact(unreadable) === "Auswirkung konnte nicht geprüft werden.",
+        };
+        return { ok: Object.values(checks).every(Boolean), message: "Der Löschdialog nennt Verwendungen in Klartext und sperrt das Löschen ohne belastbare Auskunft.", details: checks };
+      },
+    },
+    {
+      id: "config-rename-cascade", label: "Konfiguration: Umbenennen zieht Verweise mit und lehnt Mehrdeutigkeit ab", kind: "logic",
+      run: async () => {
+        const renamed = parseConfigRename({
+          total: 6,
+          updated: [
+            { key: "documents", label: "Dokument", count: 1 },
+            { key: "appointments", label: "Termin", count: 2 },
+            { key: "automation_rules", label: "Automatisierungsregel", count: 3 },
+          ],
+        });
+        const untouched = parseConfigRename({ total: 0, updated: [] });
+        const unreadable = parseConfigRename({ total: 1 });
+        const checks = {
+          summaryNamesUpdatedRows: summarizeConfigRename(renamed) === "Verweise aktualisiert: 1 Dokument, 2 Termine, 3 Automatisierungsregeln.",
+          summaryNamesWorkflows: summarizeConfigRename(parseConfigRename({ total: 1, updated: [{ key: "workflow_definitions", label: "Workflow", count: 1 }] })) === "Verweise aktualisiert: 1 Workflow.",
+          untouchedClear: summarizeConfigRename(untouched) === "Keine Verweise mussten angepasst werden.",
+          unreadableTolerated: !unreadable.known,
+        };
+        return { ok: Object.values(checks).every(Boolean), message: "Umbenennen meldet mitgezogene Verweise; die Datenbank lehnt mehrdeutige Altnamen und Kollisionen ab.", details: checks };
+      },
+    },
+    {
+      id: "config-delete-guard", label: "Konfiguration: Löschen verlangt eine frische, bestätigte Zählung", kind: "logic",
+      run: async () => {
+        const stale = configDeleteFailure("55000", "raw");
+        const denied = configDeleteFailure("42501", "Keine Berechtigung");
+        const offline = configDeleteFailure(undefined, "Netzwerkfehler");
+        const checks = {
+          staleAsksAgain: stale.stale && stale.message.includes("erneut prüfen"),
+          permissionStaysFailure: !denied.stale && denied.message === "Keine Berechtigung",
+          missingCodeIsFailure: !offline.stale && offline.message === "Netzwerkfehler",
+        };
+        return { ok: Object.values(checks).every(Boolean), message: "Löschen läuft über delete_config_item; eine abweichende Zählung wird abgelehnt und verlangt eine erneute Prüfung, ein direkter DELETE blockt der Trigger.", details: checks };
+      },
+    },
+    {
       id: "letter-rules", label: "Brief: Freigabe erforderlich; versendete Briefe bleiben abgeschlossen", kind: "logic",
       run: async () => {
         const cases: Array<[string, string, boolean]> = [
@@ -315,6 +539,22 @@ export const workflowRulesScenario: TestScenario = {
         };
         const ok = Object.values(checks).every(Boolean);
         return { ok, message: ok ? "Planer-Regeln korrekt." : "Planer-Regel weicht ab.", details: checks };
+      },
+    },
+    {
+      id: "redaktion-freigabe", label: "Redaktion: Freigabe nur durch Leitung, Änderungswunsch mit Frist", kind: "logic",
+      run: async () => {
+        const checks = {
+          teamCannotDecide: !canDecideApproval(false),
+          leadershipCanDecide: canDecideApproval(true),
+          teamSubmitsAndReopens: approvalOptions(false, "draft").join(",") === "draft,pending_approval",
+          approvedStaysVisible: approvalOptions(false, "approved").includes("approved"),
+          leadershipDecides: approvalOptions(true, "draft").includes("approved") && approvalOptions(true, "draft").includes("rejected"),
+          dueAfterDays: changeRequestDueDate(3, new Date(2026, 10, 6, 15, 0)).getDate() === 9,
+          dueAtLeastOneDay: changeRequestDueDate(0, new Date(2026, 10, 6, 9, 0)).getDate() === 7,
+        };
+        const ok = Object.values(checks).every(Boolean);
+        return { ok, message: ok ? "Freigabe-Regeln korrekt." : "Freigabe-Regel weicht ab.", details: checks };
       },
     },
   ],

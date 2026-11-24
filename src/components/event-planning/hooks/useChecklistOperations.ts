@@ -265,11 +265,14 @@ const { data: freshItems } = await supabase.from("event_planning_checklist_items
           toast({ title: "Systempunkt angelegt", description: "Social-Media-Punkt wurde erstellt und mit dem Social Planner verknüpft." });
         } catch (systemPointError: unknown) {
           logChecklistOperationEvent({ type: "system-point-create-failed", systemPoint: "social_media", error: systemPointError });
-          // Rollback all created resources using pre-generated IDs
+          // Rollback all created resources using pre-generated IDs.
+          // Beitrag vor dem Thema löschen: das Thema ist per ON DELETE RESTRICT geschützt.
           await Promise.allSettled([
             supabase.from("event_planning_checklist_items").delete().eq("id", itemId),
-            supabase.from("social_content_items").delete().eq("id", plannerItemId),
-            supabase.from("topic_backlog").delete().eq("id", topicId),
+            (async () => {
+              await supabase.from("social_content_items").delete().eq("id", plannerItemId);
+              await supabase.from("topic_backlog").delete().eq("id", topicId);
+            })(),
           ]);
           const errMsg = getErrorMessage(systemPointError);
           toast({ title: "Fehler", description: `Social-Media-Systempunkt konnte nicht angelegt werden: ${errMsg}`, variant: "destructive" });

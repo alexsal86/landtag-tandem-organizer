@@ -65,7 +65,8 @@ export const useDecisionOverviewData = () => {
           )
         `)
         .eq('user_id', currentUserId)
-        .in('task_decisions.status', ['active', 'open']);
+        .in('task_decisions.status', ['active', 'open'])
+        .is('task_decisions.archived_at', null);
 
       if (participantError) throw participantError;
 
@@ -98,7 +99,8 @@ export const useDecisionOverviewData = () => {
           ),
           task_decision_attachments (count)
         `)
-        .in('status', ['active', 'open']);
+        .in('status', ['active', 'open'])
+        .is('archived_at', null);
 
       if (allError) throw allError;
 

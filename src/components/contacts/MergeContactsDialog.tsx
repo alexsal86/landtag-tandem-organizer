@@ -15,9 +15,11 @@ import { Label } from '@/components/ui/label';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 import { Badge } from '@/components/ui/badge';
 import { Avatar, AvatarFallback, AvatarImage } from '@/components/ui/avatar';
-import { User, Mail, Phone, Building, MapPin, Calendar, FileText } from 'lucide-react';
+import { User, Mail, Phone, Building, MapPin, Calendar, FileText, type LucideIcon } from 'lucide-react';
 import { supabase } from '@/integrations/supabase/client';
+import type { Json, TablesUpdate } from '@/integrations/supabase/types';
 import type { MergeContact } from '@/types/contact';
+import { MANUAL_MERGE_FIELDS, resolveDuplicateContact } from '@/components/contact-import/duplicateResolution';
 import { notify } from "@/lib/notify";
 
 interface MergeContactsDialogProps {
@@ -28,18 +30,41 @@ interface MergeContactsDialogProps {
   onMergeComplete: () => void;
 }
 
-const fieldConfig = [
-  { key: 'name', label: 'Name', icon: User, required: true },
-  { key: 'email', label: 'E-Mail', icon: Mail },
-  { key: 'phone', label: 'Telefon', icon: Phone },
-  { key: 'organization', label: 'Organisation', icon: Building },
-  { key: 'role', label: 'Rolle', icon: User },
-  { key: 'location', label: 'Ort', icon: MapPin },
-  { key: 'address', label: 'Adresse', icon: MapPin },
-  { key: 'birthday', label: 'Geburtstag', icon: Calendar },
-  { key: 'website', label: 'Website', icon: FileText },
-  { key: 'notes', label: 'Notizen', icon: FileText },
-];
+const mergeFieldMeta: Record<
+  (typeof MANUAL_MERGE_FIELDS)[number],
+  { label: string; icon: LucideIcon }
+> = {
+  name: { label: 'Name', icon: User },
+  email: { label: 'E-Mail', icon: Mail },
+  phone: { label: 'Telefon', icon: Phone },
+  organization: { label: 'Organisation', icon: Building },
+  position: { label: 'Position', icon: User },
+  business_city: { label: 'Ort', icon: MapPin },
+  address: { label: 'Adresse', icon: MapPin },
+  birthday: { label: 'Geburtstag', icon: Calendar },
+  website: { label: 'Website', icon: FileText },
+  notes: { label: 'Notizen', icon: FileText },
+};
+
+const fieldConfig = MANUAL_MERGE_FIELDS.map((key) => ({
+  key,
+  ...mergeFieldMeta[key],
+  required: key === 'name',
+}));
+
+/**
+ * Columns the duplicate sheet has to load so this dialog can show and merge
+ * them; without them tags, notes, position, address and website stay empty and
+ * the import merge rules can never fill them.
+ */
+export const MERGE_CONTACT_SELECT_FIELDS = [
+  'id',
+  'contact_type',
+  'organization_id',
+  'avatar_url',
+  'tags',
+  ...fieldConfig.map(({ key }) => key),
+].join(',');
 
 
 export function MergeContactsDialog({
@@ -53,47 +78,6 @@ export function MergeContactsDialog({
   const [primaryContact, setPrimaryContact] = useState<string>(contact1.id);
   const [merging, setMerging] = useState(false);
 
-  const moveDistributionListMemberships = async (
-    secondaryContactId: string,
-    primaryContactId: string,
-  ) => {
-    const { data: secondaryMemberships, error: secondaryFetchError } = await supabase
-      .from('distribution_list_members')
-      .select('distribution_list_id')
-      .eq('contact_id', secondaryContactId);
-
-    if (secondaryFetchError) throw secondaryFetchError;
-
-    if (!secondaryMemberships || secondaryMemberships.length === 0) {
-      return;
-    }
-
-    const distributionListIds = secondaryMemberships
-      .map((membership: Record<string, any>) => membership.distribution_list_id)
-      .filter((id: unknown): id is string => Boolean(id));
-
-    if (distributionListIds.length === 0) return;
-
-    const { error: upsertError } = await supabase
-      .from('distribution_list_members')
-      .upsert(
-        distributionListIds.map((distribution_list_id: Record<string, any>) => ({
-          distribution_list_id,
-          contact_id: primaryContactId,
-        })),
-        { onConflict: 'distribution_list_id,contact_id', ignoreDuplicates: true },
-      );
-
-    if (upsertError) throw upsertError;
-
-    const { error: cleanupError } = await supabase
-      .from('distribution_list_members')
-      .delete()
-      .eq('contact_id', secondaryContactId);
-
-    if (cleanupError) throw cleanupError;
-  };
-
   const handleFieldSelection = (field: string, contactId: string) => {
     setSelectedValues(prev => ({
       ...prev,
@@ -101,33 +85,41 @@ export function MergeContactsDialog({
     }));
   };
 
-  const getMergedData = (): Partial<MergeContact> => {
-    const merged: Partial<MergeContact> = {};
-    
-    // For each field, use the selected value or default to primary contact
+  const getMergedData = (): TablesUpdate<'contacts'> => {
+    const primary = primaryContact === contact1.id ? contact1 : contact2;
+    const secondary = primaryContact === contact1.id ? contact2 : contact1;
+
+    // Same rules as the contact import: keep the primary values, fill gaps from
+    // the secondary contact, unite tags and append notes instead of losing data.
+    const incoming: Record<string, unknown> = { tags: secondary.tags ?? [] };
     fieldConfig.forEach(({ key }) => {
-      const selectedContactId = selectedValues[key] || primaryContact;
-      const selectedContact = selectedContactId === contact1.id ? contact1 : contact2;
-      
-      if (selectedContact[key]) {
-        merged[key] = selectedContact[key];
+      if (secondary[key]) incoming[key] = secondary[key];
+    });
+
+    const { payload } = resolveDuplicateContact(
+      primary as unknown as Record<string, unknown>,
+      incoming,
+      'merge',
+    );
+    const merged = payload as Record<string, unknown>;
+
+    // Explicit per-field choices win over the gap-filling defaults.
+    fieldConfig.forEach(({ key }) => {
+      if (selectedValues[key] === secondary.id && secondary[key]) {
+        merged[key] = secondary[key];
       }
     });
 
-    // Merge tags (combine unique tags from both)
-    const allTags = [
-      ...(contact1.tags || []),
-      ...(contact2.tags || []),
-    ];
-    merged.tags = [...new Set(allTags)];
+    // The organization id may only change together with the organization text.
+    if (!('organization' in merged)) {
+      delete merged.organization_id;
+    } else if (secondary.organization_id) {
+      merged.organization_id = secondary.organization_id;
+    } else {
+      merged.organization_id = null;
+    }
 
-    // Keep the primary contact's other fields
-    const primary = primaryContact === contact1.id ? contact1 : contact2;
-    merged.category = primary.category;
-    merged.priority = primary.priority;
-    merged.contact_type = primary.contact_type;
-    
-    return merged;
+    return payload;
   };
 
   const handleMerge = async () => {
@@ -135,78 +127,17 @@ export function MergeContactsDialog({
     
     try {
       const mergedData = getMergedData();
-      const secondaryContactId = primaryContact === contact1.id ? contact2.id : contact1.id;
+      const secondary = primaryContact === contact1.id ? contact2 : contact1;
 
-      // Update primary contact with merged data
-      const { error: updateError } = await supabase
-        .from('contacts')
-        .update(mergedData)
-        .eq('id', primaryContact);
+      // Die Datenbank führt Kontakt, Verknüpfungen, Protokoll und Löschung in
+      // einer Transaktion aus: entweder ist alles umgehängt oder nichts.
+      const { error: mergeError } = await supabase.rpc('merge_contacts', {
+        p_target: primaryContact,
+        p_source: secondary.id,
+        p_updates: mergedData as Json,
+      });
 
-      if (updateError) throw updateError;
-
-      // Update all references to secondary contact
-      // Update call_logs
-      const { error: callLogsUpdateError } = await supabase
-        .from('call_logs')
-        .update({ contact_id: primaryContact })
-        .eq('contact_id', secondaryContactId);
-
-      if (callLogsUpdateError) throw callLogsUpdateError;
-
-      // Update appointment_contacts
-      const { error: appointmentContactsUpdateError } = await supabase
-        .from('appointment_contacts')
-        .update({ contact_id: primaryContact })
-        .eq('contact_id', secondaryContactId);
-
-      if (appointmentContactsUpdateError) throw appointmentContactsUpdateError;
-
-      // Update contact_activities
-      const { error: contactActivitiesUpdateError } = await supabase
-        .from('contact_activities')
-        .update({ contact_id: primaryContact })
-        .eq('contact_id', secondaryContactId);
-
-      if (contactActivitiesUpdateError) throw contactActivitiesUpdateError;
-
-      // Update distribution_list_members (deduplicate to avoid unique constraint collisions)
-      await moveDistributionListMemberships(secondaryContactId, primaryContact);
-
-      // Log merge activity
-      const { data: userData } = await supabase.auth.getUser();
-      const { data: contactData } = await supabase
-        .from('contacts')
-        .select('tenant_id')
-        .eq('id', primaryContact)
-        .single();
-
-      if (userData.user && contactData) {
-        const { error: mergeActivityInsertError } = await supabase
-          .from('contact_activities')
-          .insert([{
-            contact_id: primaryContact,
-            tenant_id: contactData.tenant_id,
-            activity_type: 'edit',
-            title: 'Kontakte zusammengeführt',
-            description: `Kontakt "${contact1.name}" und "${contact2.name}" wurden zusammengeführt`,
-            created_by: userData.user.id,
-            metadata: {
-              merged_contact_id: secondaryContactId,
-              merged_contact_name: secondaryContactId === contact1.id ? contact1.name : contact2.name,
-            },
-          }]);
-
-        if (mergeActivityInsertError) throw mergeActivityInsertError;
-      }
-
-      // Delete secondary contact
-      const { error: deleteError } = await supabase
-        .from('contacts')
-        .delete()
-        .eq('id', secondaryContactId);
-
-      if (deleteError) throw deleteError;
+      if (mergeError) throw mergeError;
 
       notify.success('Kontakte zusammengeführt', {
         description: 'Die Kontakte wurden erfolgreich zusammengeführt.'
@@ -216,8 +147,11 @@ export function MergeContactsDialog({
       onClose();
     } catch (error) {
       debugConsole.error('Error merging contacts:', error);
+      // PostgREST-Fehler sind keine Error-Instanzen; die Servermeldung nennt die
+      // Ursache des abgebrochenen Merges (z. B. eine nicht verschiebbare Verknüpfung).
+      const details = error && typeof error === 'object' && 'message' in error ? ` ${String(error.message)}` : '';
       notify.error('Fehler', {
-        description: 'Kontakte konnten nicht zusammengeführt werden.'
+        description: `Kontakte konnten nicht zusammengeführt werden.${details}`
 });
     } finally {
       setMerging(false);
@@ -230,7 +164,9 @@ export function MergeContactsDialog({
         <DialogHeader>
           <DialogTitle>Kontakte zusammenführen</DialogTitle>
           <DialogDescription>
-            Wählen Sie für jedes Feld aus, welcher Wert übernommen werden soll.
+            Wählen Sie für jedes Feld aus, welcher Wert übernommen werden soll. Fehlende Angaben des
+            zweiten Kontakts werden ergänzt, Schlagworte vereinigt und Notizen zusammengeführt; alle
+            Verknüpfungen (z. B. Fallakten, Dokumente, Themen, Verteiler) wandern mit.
           </DialogDescription>
         </DialogHeader>
 

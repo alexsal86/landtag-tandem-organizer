@@ -29,6 +29,7 @@ import {
   Briefcase
 } from "lucide-react";
 import { supabase } from "@/integrations/supabase/client";
+import { buildOrIlikeFilter } from "./postgrestSearch";
 import { STALE_TIME } from "@/lib/query-cache";
 import { useTenant } from "@/hooks/useTenant";
 import { useAuth } from "@/hooks/useAuth";
@@ -187,11 +188,11 @@ export function GlobalSearchCommand() {
       if (!debouncedQuery || debouncedQuery.length < 2) return [];
       let query = supabase
         .from('contacts')
-        .select('id, name, organization, avatar_url, category, company, email, phone, mobile_phone, position')
+        .select('id, name, organization, avatar_url, category, email, phone, mobile_phone, position')
         .eq('tenant_id', currentTenant?.id ?? '');
       
       // Fuzzy search using pg_trgm similarity
-      query = query.or(`name.ilike.%${debouncedQuery}%,organization.ilike.%${debouncedQuery}%,company.ilike.%${debouncedQuery}%,email.ilike.%${debouncedQuery}%,phone.ilike.%${debouncedQuery}%,mobile_phone.ilike.%${debouncedQuery}%,position.ilike.%${debouncedQuery}%`);
+      query = query.or(buildOrIlikeFilter(["name", "organization", "email", "phone", "mobile_phone", "position"], debouncedQuery));
       
       if (filters.category) {
         query = query.eq('category', filters.category);
@@ -213,7 +214,7 @@ export function GlobalSearchCommand() {
         .from('appointments')
         .select('id, title, start_time, location, category, description, meeting_details')
         .eq('tenant_id', currentTenant?.id ?? '')
-        .or(`title.ilike.%${debouncedQuery}%,location.ilike.%${debouncedQuery}%,description.ilike.%${debouncedQuery}%,meeting_details.ilike.%${debouncedQuery}%`);
+        .or(buildOrIlikeFilter(["title", "location", "description", "meeting_details"], debouncedQuery));
       
       if (filters.dateFrom) {
         query = query.gte('start_time', filters.dateFrom);
@@ -244,7 +245,7 @@ export function GlobalSearchCommand() {
         .from('tasks')
         .select('id, title, due_date, status, priority, category')
         .eq('tenant_id', currentTenant?.id ?? '')
-        .or(`title.ilike.%${debouncedQuery}%,description.ilike.%${debouncedQuery}%,category.ilike.%${debouncedQuery}%,status.ilike.%${debouncedQuery}%`);
+        .or(buildOrIlikeFilter(["title", "description", "category", "status"], debouncedQuery));
       
       if (filters.status && filters.status !== 'completed') {
         query = query.eq('status', filters.status);
@@ -277,7 +278,7 @@ export function GlobalSearchCommand() {
         .from('documents')
         .select('id, title, description, category, status, file_name, document_type, file_type, tags')
         .eq('tenant_id', currentTenant?.id ?? '')
-        .or(`title.ilike.%${debouncedQuery}%,description.ilike.%${debouncedQuery}%,file_name.ilike.%${debouncedQuery}%,document_type.ilike.%${debouncedQuery}%,file_type.ilike.%${debouncedQuery}%`);
+        .or(buildOrIlikeFilter(["title", "description", "file_name", "document_type", "file_type"], debouncedQuery));
       
       if (filters.category) {
         query = query.eq('category', filters.category);
@@ -304,7 +305,7 @@ export function GlobalSearchCommand() {
         .from('letters')
         .select('id, title, recipient_name, letter_date, subject, subject_line, reference_number')
         .eq('tenant_id', currentTenant?.id ?? '')
-        .or(`title.ilike.%${debouncedQuery}%,recipient_name.ilike.%${debouncedQuery}%,subject.ilike.%${debouncedQuery}%,subject_line.ilike.%${debouncedQuery}%,reference_number.ilike.%${debouncedQuery}%`)
+        .or(buildOrIlikeFilter(["title", "recipient_name", "subject", "subject_line", "reference_number"], debouncedQuery))
         .order('letter_date', { ascending: false })
         .limit(10);
       return data || [];
@@ -322,7 +323,7 @@ export function GlobalSearchCommand() {
         .from('meetings')
         .select('id, title, meeting_date, description, location')
         .eq('tenant_id', currentTenant?.id ?? '')
-        .or(`title.ilike.%${debouncedQuery}%,description.ilike.%${debouncedQuery}%,location.ilike.%${debouncedQuery}%`)
+        .or(buildOrIlikeFilter(["title", "description", "location"], debouncedQuery))
         .order('meeting_date', { ascending: false })
         .limit(10);
       return data || [];
@@ -340,7 +341,7 @@ export function GlobalSearchCommand() {
         .from('case_files')
         .select('id, title, reference_number, status, case_type, tags, current_status_note, processing_status, priority')
         .eq('tenant_id', currentTenant?.id ?? '')
-        .or(`title.ilike.%${debouncedQuery}%,description.ilike.%${debouncedQuery}%,reference_number.ilike.%${debouncedQuery}%,current_status_note.ilike.%${debouncedQuery}%,case_type.ilike.%${debouncedQuery}%,processing_status.ilike.%${debouncedQuery}%,status.ilike.%${debouncedQuery}%,priority.ilike.%${debouncedQuery}%`)
+        .or(buildOrIlikeFilter(["title", "description", "reference_number", "current_status_note", "case_type", "processing_status", "status", "priority"], debouncedQuery))
         .order('updated_at', { ascending: false })
         .limit(10);
       return data || [];
@@ -359,7 +360,7 @@ export function GlobalSearchCommand() {
         .from('archived_tasks')
         .select('id, title, description, completed_at, category, priority')
         .eq('user_id', user?.id ?? '')
-        .or(`title.ilike.%${debouncedQuery}%,description.ilike.%${debouncedQuery}%,category.ilike.%${debouncedQuery}%,priority.ilike.%${debouncedQuery}%`)
+        .or(buildOrIlikeFilter(["title", "description", "category", "priority"], debouncedQuery))
         .order('archived_at', { ascending: false })
         .limit(10);
       return data || [];
@@ -377,7 +378,7 @@ export function GlobalSearchCommand() {
         .from('task_decisions')
         .select('id, title, description, status, priority, archived_at, updated_at')
         .eq('tenant_id', currentTenant!.id)
-        .or(`title.ilike.%${debouncedQuery}%,description.ilike.%${debouncedQuery}%,status.ilike.%${debouncedQuery}%`)
+        .or(buildOrIlikeFilter(["title", "description", "status"], debouncedQuery))
         .order('updated_at', { ascending: false })
         .limit(10);
       return data || [];
@@ -395,7 +396,7 @@ export function GlobalSearchCommand() {
         .from('event_plannings')
         .select('id, title, description, location, contact_person, is_archived, archived_at, updated_at')
         .eq('tenant_id', currentTenant!.id)
-        .or(`title.ilike.%${debouncedQuery}%,description.ilike.%${debouncedQuery}%,location.ilike.%${debouncedQuery}%,contact_person.ilike.%${debouncedQuery}%`)
+        .or(buildOrIlikeFilter(["title", "description", "location", "contact_person"], debouncedQuery))
         .order('updated_at', { ascending: false })
         .limit(10);
       return data || [];
@@ -403,8 +404,12 @@ export function GlobalSearchCommand() {
     enabled: !!debouncedQuery && !!currentTenant?.id && debouncedQuery.length >= 2,
   });
 
-  const activeDecisions = useMemo(() => decisions?.filter((decision) => !decision.archived_at) || [], [decisions]);
-  const archivedDecisions = useMemo(() => decisions?.filter((decision) => !!decision.archived_at) || [], [decisions]);
+  // Offen ist eine Entscheidung nur mit Status 'active'/'open' und ohne Archivstempel; der reine
+  // Stempel-Check würde archivierte Datensätze ohne archived_at als offen anzeigen.
+  const activeDecisions = useMemo(() => decisions?.filter((decision) =>
+    !decision.archived_at && decision.status !== "archived") || [], [decisions]);
+  const archivedDecisions = useMemo(() => decisions?.filter((decision) =>
+    !!decision.archived_at || decision.status === "archived") || [], [decisions]);
   const activePlannings = useMemo(() => plannings?.filter((planning) => !planning.archived_at && !planning.is_archived) || [], [plannings]);
   const archivedPlannings = useMemo(() => plannings?.filter((planning) => !!planning.archived_at || !!planning.is_archived) || [], [plannings]);
 

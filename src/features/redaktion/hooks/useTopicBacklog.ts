@@ -300,14 +300,61 @@ export function useTopicBacklog() {
   const deleteTopic = useCallback(async (id: string) => {
     if (!currentTenant?.id) return;
 
+    // Beiträge bleiben beim Themalöschen erhalten; das Thema lässt sich erst entfernen,
+    // wenn keine Beiträge mehr daran hängen (DB-seitig zusätzlich per ON DELETE RESTRICT).
+    const { count, error: countError } = await supabase
+      .from("social_content_items")
+      .select("id", { count: "exact", head: true })
+      .eq("topic_backlog_id", id);
+
+    if (countError) throw new Error(getErrorMessage(countError));
+    if ((count ?? 0) > 0) {
+      throw new Error(
+        `Zu diesem Thema ${count === 1 ? "ist noch 1 Beitrag" : `sind noch ${count} Beiträge`} verknüpft. `
+          + "Bitte diese Beiträge zuerst im Redaktionsplan einem anderen Thema zuordnen oder löschen – sie werden nicht mit dem Thema entfernt.",
+      );
+    }
+
     const { error } = await supabase
       .from("topic_backlog")
       .delete()
       .eq("id", id)
       .eq("tenant_id", currentTenant.id);
 
+    if (error) {
+      if ((error as { code?: string }).code === "23503") {
+        throw new Error("Das Thema ist noch mit Beiträgen verknüpft und kann nicht gelöscht werden. Bitte die Beiträge zuerst umhängen oder löschen.");
+      }
+      throw new Error(getErrorMessage(error));
+    }
+    await loadTopics();
+  }, [currentTenant?.id, loadTopics]);
+
+  /** Alle Beiträge eines Themas auf ein anderes Thema umhängen (z. B. vor dem Löschen). */
+  const reassignTopicItems = useCallback(async (fromTopicId: string, toTopicId: string) => {
+    if (!currentTenant?.id) return 0;
+    if (fromTopicId === toTopicId) throw new Error("Zielthema muss sich vom bisherigen Thema unterscheiden.");
+
+    const { data: target, error: targetError } = await supabase
+      .from("topic_backlog")
+      .select("id")
+      .eq("id", toTopicId)
+      .eq("tenant_id", currentTenant.id)
+      .maybeSingle();
+
+    if (targetError) throw new Error(getErrorMessage(targetError));
+    if (!target) throw new Error("Zielthema wurde nicht gefunden.");
+
+    const { data, error } = await supabase
+      .from("social_content_items")
+      .update({ topic_backlog_id: toTopicId })
+      .eq("topic_backlog_id", fromTopicId)
+      .eq("tenant_id", currentTenant.id)
+      .select("id");
+
     if (error) throw new Error(getErrorMessage(error));
     await loadTopics();
+    return data?.length ?? 0;
   }, [currentTenant?.id, loadTopics]);
 
   useEffect(() => {
@@ -355,5 +402,6 @@ export function useTopicBacklog() {
     createTopic,
     updateTopic,
     deleteTopic,
+    reassignTopicItems,
   };
 }

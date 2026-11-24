@@ -1,3 +1,4 @@
+import { SignatureFolder } from "./SignatureFolder";
 import { AppointmentChangeBanner, AppointmentChangeSentList, useAlerts as useChangeAlerts } from "@/features/appointments/change-alerts/AppointmentChangeAlerts";
 import { applyReportedStart, summarizeReportedChanges } from "@/features/appointments/change-alerts/changeModel";
 import { TeamRitualDashboardCard } from "@/features/team-rituals/TeamRitualDashboardCard";
@@ -15,6 +16,7 @@ import { useDashboardDeadlines } from '@/hooks/useDashboardDeadlines';
 import { ErrorBoundary } from '@/components/shared/ErrorBoundary';
 import type { LucideIcon } from 'lucide-react';
 import { ArrowRight, CalendarClock, CalendarDays, Check, ClipboardList, Vote, Users } from 'lucide-react';
+
 import { hasAppointmentEnded } from '@/utils/dashboard/daySummary';
 import { AppointmentRequestList } from '@/features/appointment-requests/AppointmentRequestList';
 import { useNextJourFixeDate, useOpenAppointmentRequests } from '@/features/appointment-requests/useAppointmentRequests';
@@ -23,7 +25,7 @@ import { useWorkspaceView } from '@/contexts/WorkspaceViewContext';
 import { BriefingComposerCard, TodayBriefingPanel } from '@/features/briefings';
 import { DashboardDecisionsWidget } from '@/components/dashboard/DashboardDecisionsWidget';
 import { DashboardJourFixeWidget } from '@/components/dashboard/DashboardJourFixeWidget';
-import { ErrorState, LoadingState } from '@/components/ui-patterns';
+import { ErrorState, LoadingState, WidgetLoadWarning } from '@/components/ui-patterns';
 import { cn } from '@/lib/utils';
 import { useEffect, useState } from 'react';
 
@@ -67,6 +69,8 @@ interface DashboardWidgetContainerProps {
   loadingVariant?: 'list' | 'card' | 'detail' | 'inline';
   errorMessage?: string;
   onRetry?: () => void;
+  /** Schmale Warnzeile für Teilausfälle; entfällt im Totalausfall (dann greift `hasError`). */
+  warning?: ReactNode;
   children: ReactNode;
 }
 
@@ -82,6 +86,7 @@ function DashboardWidgetContainer({
   loadingVariant = 'list',
   errorMessage = 'Daten konnten nicht geladen werden.',
   onRetry,
+  warning,
   children,
 }: DashboardWidgetContainerProps) {
   let content: ReactNode = children;
@@ -101,13 +106,16 @@ function DashboardWidgetContainer({
         </h3>
         {headerAction}
       </CardHeader>
-      <CardContent className="px-5 pb-5 pt-0">{content}</CardContent>
+      <CardContent className="px-5 pb-5 pt-0">
+        {!hasError && warning}
+        {content}
+      </CardContent>
     </Card>
   );
 }
 
 function DeadlinesWidget() {
-  const { items, grouped, isLoading, isError, refetch } = useDashboardDeadlines();
+  const { items, grouped, isLoading, isError, failedSources, refetch } = useDashboardDeadlines();
 
   return (
     <DashboardWidgetContainer
@@ -116,12 +124,19 @@ function DeadlinesWidget() {
       hasError={isError}
       onRetry={refetch}
       errorMessage="Fristen konnten nicht geladen werden. Das heißt nicht, dass nichts ansteht."
+      warning={failedSources.length > 0
+        ? <WidgetLoadWarning
+            message={`${failedSources.join(' und ')} konnten nicht geladen werden. Die übrigen Fristen sind vollständig.`}
+            onRetry={refetch}
+          />
+        : undefined}
     >
       <DashboardTasksSection items={items} grouped={grouped} />
     </DashboardWidgetContainer>
   );
 }
 
+/** Zähler der offenen Freigaben: hält die Redaktion auf dem Dashboard sichtbar. */
 function AppointmentsWidget({ isDeputyView }: { isDeputyView: boolean }) {
   const dashboardData = useDashboardAppointmentsData(true);
   const { data: changeAlerts = [] } = useChangeAlerts();
@@ -154,6 +169,12 @@ function AppointmentsWidget({ isDeputyView }: { isDeputyView: boolean }) {
       onRetry={() => { void dashboardData.refetch(); }}
       loadingVariant="card"
       errorMessage="Termine konnten nicht geladen werden. Das heißt nicht, dass nichts ansteht."
+      warning={dashboardData.failedSources.length > 0
+        ? <WidgetLoadWarning
+            message={`${dashboardData.failedSources.join(' und ')} konnten nicht geladen werden. Die übrigen Termine sind vollständig.`}
+            onRetry={() => { void dashboardData.refetch(); }}
+          />
+        : undefined}
     >
       <DashboardAppointments data={dashboardData} />
     </DashboardWidgetContainer>
@@ -221,6 +242,11 @@ export function MyWorkDashboardTab() {
               <DashboardDecisionsWidget />
             </ErrorBoundary>
           </DashboardWidgetContainer>
+          {isDeputyView && (
+            <ErrorBoundary fallback={<ErrorState description="Die Unterschriftenmappe konnte nicht geladen werden." />}>
+              <SignatureFolder />
+            </ErrorBoundary>
+          )}
           {isEmployeeView && <ErrorBoundary fallback={<ErrorState description="Entscheidungen beim Abgeordneten konnten nicht geladen werden." />}><DeputyWaitingCard /></ErrorBoundary>}
           {!isDeputyView && (
             <DashboardWidgetContainer

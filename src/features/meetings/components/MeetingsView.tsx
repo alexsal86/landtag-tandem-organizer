@@ -1,3 +1,4 @@
+import { useSearchParams } from "react-router-dom";
 import { FocusModeView } from "@/components/meetings/FocusModeView";
 import { useEffect, useRef, useState } from "react";
 import type { ImperativePanelHandle } from "react-resizable-panels";
@@ -21,6 +22,7 @@ import { toast } from "@/hooks/use-toast";
 
 export function MeetingsView() {
   const data = useMeetingsData();
+  const [searchParams, setSearchParams] = useSearchParams();
   const sidebarPanel = useRef<ImperativePanelHandle>(null);
   const expandedSidebarSize = useRef(28);
   const hasSelectedMeeting = !!data.selectedMeeting;
@@ -108,6 +110,17 @@ export function MeetingsView() {
     loadAgendaItems: data.loadAgendaItems,
     loadAndApplyCarryoverItems,
   });
+
+  const linkedProtocol = searchParams.get("protocol");
+  if (linkedProtocol) {
+    return <MeetingProtocolView meetingId={linkedProtocol} onBack={() => {
+      setSearchParams(previous => {
+        const next = new URLSearchParams(previous);
+        next.delete("protocol");
+        return next;
+      }, { replace: true });
+    }} />;
+  }
 
   // Show archive view
   if (data.showArchive) {

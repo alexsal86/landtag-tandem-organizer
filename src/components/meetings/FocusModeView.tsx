@@ -1,4 +1,5 @@
 import { AgendaCarryoverBadge } from "./agenda-editor/AgendaCarryoverBadge";
+import { berlinDate } from "@/utils/berlinDate";
 import { generatedAgendaKey } from "./agenda-editor/liveAgenda";
 import { orderSystemSubpoints } from './agenda-editor/systemSubpoints';
 import { parseMeetingResults } from './platformAgendaRules';
@@ -768,7 +769,7 @@ export function FocusModeView({
               })()}
               {sourceType === 'decision' && (
                 <div className="mt-1 flex items-center gap-2 text-xs text-muted-foreground">
-                  {(src.response_deadline as string) && <span>Frist: {format(new Date(src.response_deadline as string), "dd.MM.yyyy", { locale: de })}</span>}
+                  {(src.response_deadline as string) && <span>Frist: {berlinDate(src.response_deadline as string)}</span>}
                   {(src.status as string) && <Badge variant="outline" className="text-xs">{src.status as string}</Badge>}
                 </div>
               )}

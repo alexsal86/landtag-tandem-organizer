@@ -29,7 +29,7 @@ import {
   Clock,
 } from "lucide-react";
 import { de } from "date-fns/locale";
-import { format } from "date-fns";
+import { berlinDateShort } from "@/utils/berlinDate";
 import { MyWorkDecision } from "./types";
 import { TenantUser } from "@/hooks/useTenantUsers";
 
@@ -126,7 +126,7 @@ export function DecisionContextMenu({
               Antwortfrist ändern
               {decision.response_deadline && (
                 <span className="ml-auto text-xs text-muted-foreground">
-                  {format(new Date(decision.response_deadline), "dd.MM.", { locale: de })}
+                  {berlinDateShort(decision.response_deadline)}
                 </span>
               )}
             </ContextMenuItem>

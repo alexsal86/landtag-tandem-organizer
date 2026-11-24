@@ -1,9 +1,9 @@
 import { useAuth } from "@/hooks/useAuth";
 import { useTenant } from "@/hooks/useTenant";
 import { useUserPreference } from "@/hooks/useUserPreference";
-import { dailyBriefingReadLabel, isReadBriefingCollapsed } from "../utils";
+import { dailyBriefingTargetLabel, dailyBriefingReadLabel, isReadBriefingCollapsed } from "../utils";
 import { RichTextDisplay } from "@/components/ui/RichTextDisplay";
-import { useState, type ReactNode } from "react";
+import { useLayoutEffect, useRef, useState, type ReactNode } from "react";
 import { format } from "date-fns";
 import { de } from "date-fns/locale";
 import { ChevronDown, ChevronUp, FileText, X } from "lucide-react";
@@ -13,39 +13,74 @@ import { Avatar, AvatarFallback, AvatarImage } from "@/components/ui/avatar";
 import { Button } from "@/components/ui/button";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { cn } from "@/lib/utils";
-import { useTodayBriefings } from "../hooks/useTodayBriefings";
+import { useTodayBriefings, useUpcomingBriefings } from "../hooks/useTodayBriefings";
 import { useMarkBriefingRead } from "../hooks/useMarkBriefingRead";
 import type { DailyBriefingWithAuthor } from "../types";
 
 const COLLAPSE_AT = 320;
 
-function BriefingItem({ briefing, moreAction, onRead }: {
-  briefing: DailyBriefingWithAuthor; moreAction?: ReactNode; onRead?: () => void;
+function BriefingItem({ briefing, moreAction, onRead, targetLabel, preview = false }: {
+  briefing: DailyBriefingWithAuthor; moreAction?: ReactNode; onRead?: () => void; targetLabel?: string; preview?: boolean;
 }) {
   const [expanded, setExpanded] = useState(false);
+  const [previewOpened, setPreviewOpened] = useState(false);
   const { user } = useAuth();
   const { currentTenant } = useTenant();
   const [collapsed, setCollapsed] = useUserPreference<boolean>(
     `daily-briefing-collapsed:${currentTenant?.id}:${user?.id}:${briefing.id}`, false,
   );
+  const sectionRef = useRef<HTMLElement | null>(null);
+  const previousRect = useRef<DOMRect | null>(null);
+  const isCollapsed = isReadBriefingCollapsed(briefing.is_read, collapsed);
+  const isPreview = preview && !previewOpened && !briefing.is_read;
+  const viewMode = isPreview ? "preview" : isCollapsed ? "collapsed" : "expanded";
+  const toggleCollapsed = (value: boolean) => {
+    previousRect.current = sectionRef.current?.getBoundingClientRect() ?? null;
+    setCollapsed(value);
+  };
+  useLayoutEffect(() => {
+    const before = previousRect.current;
+    previousRect.current = null;
+    const element = sectionRef.current;
+    if (!before || !element || !element.animate || window.matchMedia('(prefers-reduced-motion: reduce)').matches) return;
+    const after = element.getBoundingClientRect();
+    if (!after.width || !after.height) return;
+    const animation = element.animate([
+      { transform: `translate(${before.left - after.left}px, ${before.top - after.top}px) scale(${before.width / after.width}, ${before.height / after.height})`, opacity: 0.65 },
+      { transform: 'none', opacity: 1 },
+    ], { duration: 320, easing: 'cubic-bezier(.2,.7,.2,1)', fill: 'backwards' });
+    return () => animation.cancel();
+  }, [viewMode]);
   const markRead = useMarkBriefingRead();
   const tooLong = briefing.content.length > COLLAPSE_AT;
   const initials = (briefing.author_display_name ?? "?").trim().split(/\s+/)
     .map(part => part[0]).filter(Boolean).slice(0, 2).join("").toUpperCase();
 
-  if (isReadBriefingCollapsed(briefing.is_read, collapsed)) return <section aria-label="Eingeklapptes Tagesbriefing"
-    className="flex flex-wrap items-center justify-end gap-3 rounded-xl bg-[rgb(240,243,246)] px-5 py-2">
-    <button type="button" onClick={() => setCollapsed(false)} aria-expanded={false}
+  if (isPreview) return <section ref={sectionRef} aria-label={`Tagesbriefing ${targetLabel ?? ""} vorab lesen`}
+    className="origin-top-left rounded-3xl bg-[#f0eafa] px-5 py-3">
+    <button type="button" aria-expanded={false} onClick={() => {
+      previousRect.current = sectionRef.current?.getBoundingClientRect() ?? null;
+      setPreviewOpened(true);
+    }}
+      className="flex w-full flex-wrap items-center justify-between gap-2 rounded text-left text-sm focus-visible:outline focus-visible:outline-2 focus-visible:outline-primary">
+      <span>Tagesbriefing {targetLabel} liegt bereit</span>
+      <span className="inline-flex items-center gap-2 text-xs text-[#8b5cf6]">Vorab lesen<ChevronDown className="h-4 w-4" aria-hidden="true" /></span>
+    </button>
+  </section>;
+
+  if (isCollapsed) return <section ref={sectionRef} aria-label="Eingeklapptes Tagesbriefing"
+    className="ml-auto flex w-fit max-w-full origin-top-left flex-wrap items-center justify-end gap-3 rounded-xl bg-[rgb(240,243,246)] px-5 py-2">
+    <button type="button" onClick={() => toggleCollapsed(false)} aria-expanded={false}
       className="inline-flex min-w-0 max-w-full items-center justify-end gap-2 rounded text-xs focus-visible:outline focus-visible:outline-2 focus-visible:outline-primary">
-      <span className="truncate text-muted-foreground">Tagesbriefing · {briefing.author_display_name ?? "Teammitglied"}</span>
+      <span className="truncate text-muted-foreground">Tagesbriefing{targetLabel ? ` ${targetLabel}` : ""}</span>
       <span className="shrink-0 rounded-full bg-[#eaf5df] px-3 py-1 font-medium text-[#397d16]">{dailyBriefingReadLabel(briefing.read_at)}</span>
       <ChevronDown className="h-3 w-3 shrink-0" aria-hidden="true" />
     </button>
     {moreAction}
   </section>;
 
-  return <section aria-label="Tagesbriefing" className={cn("relative rounded-3xl p-5", briefing.is_read ? "bg-[rgb(240,243,246)]" : "bg-[#f0eafa]")}>
-    {briefing.is_read && <button type="button" aria-label="Tagesbriefing einklappen" onClick={() => setCollapsed(true)}
+  return <section ref={sectionRef} aria-label="Tagesbriefing" className={cn("relative origin-top-left rounded-3xl p-5", briefing.is_read ? "bg-[rgb(240,243,246)]" : "bg-[#f0eafa]")}>
+    {briefing.is_read && <button type="button" aria-label="Tagesbriefing einklappen" onClick={() => toggleCollapsed(true)}
       className="absolute right-3 top-3 inline-flex h-6 w-6 items-center justify-center rounded text-black hover:bg-black/5 focus-visible:outline focus-visible:outline-2 focus-visible:outline-primary">
       <X className="h-3.5 w-3.5" aria-hidden="true" />
     </button>}
@@ -57,7 +92,7 @@ function BriefingItem({ briefing, moreAction, onRead }: {
       <div className="min-w-0 flex-1 space-y-3">
         <div className="flex flex-wrap items-baseline gap-x-2 gap-y-1 pr-6">
           <p className="text-sm font-semibold text-foreground">{briefing.author_display_name ?? "Teammitglied"}</p>
-          <span className="text-xs text-muted-foreground">Tagesbriefing</span>
+          <span className="text-xs text-muted-foreground">Tagesbriefing{targetLabel ? ` · ${targetLabel}` : ""}</span>
           {!briefing.is_read ? <span className="ml-1 text-xs font-medium text-[#8b5cf6]">Neu</span>
             : <span className="inline-flex rounded-full bg-[#eaf5df] px-3 py-1 text-xs font-medium text-[#397d16]">{dailyBriefingReadLabel(briefing.read_at)}</span>}
         </div>
@@ -101,11 +136,13 @@ function AppointmentBriefingItem({ a }: { a: BriefingAppointment }) {
 export function TodayBriefingPanel() {
   const { data: briefings = [], isLoading } = useTodayBriefings();
   const { data: apptBriefings = [] } = useTodayApprovedBriefings();
+  const upcoming = useUpcomingBriefings();
+  const futureBriefings = upcoming.data ?? [];
   const [showMore, setShowMore] = useState(false);
   const [primaryId, setPrimaryId] = useState<string | null>(null);
 
   if (isLoading) return null;
-  if (briefings.length === 0 && apptBriefings.length === 0) return null;
+  if (briefings.length === 0 && apptBriefings.length === 0 && futureBriefings.length === 0 && !upcoming.isError) return null;
 
   // Ungelesene zuerst, gelesene unten
   const sorted = [...briefings].sort((a, b) => {
@@ -128,6 +165,12 @@ export function TodayBriefingPanel() {
     {showMore && others.length > 0 && <div id="additional-daily-briefings" className="animate-fade-up space-y-4">
       {others.map(briefing => <BriefingItem key={briefing.id} briefing={briefing} />)}
     </div>}
+    {upcoming.isError && <div role="status" className="flex flex-wrap items-center gap-2 text-xs text-muted-foreground">
+      Zukünftige Tagesbriefings konnten nicht geladen werden.
+      <Button size="sm" variant="link" onClick={() => void upcoming.refetch()}>Erneut laden</Button>
+    </div>}
+    {futureBriefings.map(briefing => <BriefingItem key={briefing.id} briefing={briefing}
+      preview targetLabel={dailyBriefingTargetLabel(briefing.briefing_date)} />)}
     {apptBriefings.length > 0 && <Card className="dashboard-motion-card">
       <CardHeader className="px-5 pt-5 pb-3">
         <CardTitle className="text-base font-medium">Termin-Briefings heute</CardTitle>

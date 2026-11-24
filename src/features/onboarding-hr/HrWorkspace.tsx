@@ -9,6 +9,7 @@ import { Label } from "@/components/ui/label";
 import { Progress } from "@/components/ui/progress";
 import { DeputySelect } from "@/components/timetracking/DeputySelect";
 import { useHrData, type HrStep } from "./useHrData";
+import { berlinDayKey } from "@/utils/berlinDate";
 import {
   HR_PHASES,
   hrProgress,
@@ -17,10 +18,7 @@ import {
   canViewHr,
 } from "./progress";
 
-const hrToday = () =>
-  new Intl.DateTimeFormat("sv-SE", { timeZone: "Europe/Berlin" }).format(
-    new Date(),
-  );
+const hrToday = () => berlinDayKey(new Date());
 type DisplayStep = Pick<
   HrStep,
   | "id"

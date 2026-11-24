@@ -1,12 +1,20 @@
 import { serve } from "https://deno.land/std@0.168.0/http/server.ts";
 import { createClient } from 'https://esm.sh/@supabase/supabase-js@2.39.3';
-import { CalendarInviteRequest, generateICS, generateUID, validateInviteDates } from './generate-calendar-invite.utils.ts';
+import {
+  appointmentInviteUid,
+  buildAppointmentIcs,
+  normalizeSequence,
+  validateInviteDates,
+  type CalendarInviteRequest,
+} from '../_shared/appointmentInvite.ts';
 
 import { withSafeHandler, requireAuth, unauthorizedResponse } from "../_shared/security.ts";
 const corsHeaders = {
   'Access-Control-Allow-Origin': '*',
   'Access-Control-Allow-Headers': 'authorization, x-client-info, apikey, content-type',
 };
+
+const UUID_PATTERN = /^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/i;
 
 const handler = async (req: Request): Promise<Response> => {
   if (req.method === 'OPTIONS') {
@@ -28,6 +36,14 @@ const handler = async (req: Request): Promise<Response> => {
     );
 
     const requestData: CalendarInviteRequest = await req.json();
+
+    if (!requestData.appointmentId || !UUID_PATTERN.test(requestData.appointmentId)) {
+      return new Response(JSON.stringify({ error: 'Ungültige Termin-ID.' }), {
+        status: 400,
+        headers: { 'Content-Type': 'application/json', ...corsHeaders },
+      });
+    }
+
     const dateValidationError = validateInviteDates(requestData.startTime, requestData.endTime);
     if (dateValidationError) {
       return new Response(JSON.stringify({ error: dateValidationError }), {
@@ -39,30 +55,49 @@ const handler = async (req: Request): Promise<Response> => {
       });
     }
 
-    // Generate unique calendar UID and store it
-    const calendarUID = generateUID();
-
-    // Update appointment with calendar UID for future reference
-    const { error: updateError } = await supabaseClient
+    // Die UID gehört zum Termin und wird nie neu erzeugt: dieselbe UID trägt
+    // später auch Updates und Absagen (mit fortlaufender SEQUENCE).
+    const { data: appointment } = await supabaseClient
       .from('appointments')
-      .update({ calendar_uid: calendarUID })
-      .eq('id', requestData.appointmentId);
+      .select('calendar_uid, calendar_sequence')
+      .eq('id', requestData.appointmentId)
+      .maybeSingle();
 
-    if (updateError) {
-      console.error('Error updating appointment with calendar UID:', updateError);
+    const calendarUID = String(appointment?.calendar_uid ?? '').trim() || appointmentInviteUid(requestData.appointmentId);
+    const sequence = normalizeSequence(appointment?.calendar_sequence);
+
+    if (appointment && !String(appointment.calendar_uid ?? '').trim()) {
+      const { error: updateError } = await supabaseClient
+        .from('appointments')
+        .update({ calendar_uid: calendarUID })
+        .eq('id', requestData.appointmentId);
+
+      if (updateError) {
+        console.error('Error updating appointment with calendar UID:', updateError);
+      }
     }
 
-    // Generate ICS content
-    const icsContent = generateICS(requestData);
+    const icsContent = buildAppointmentIcs({
+      uid: calendarUID,
+      sequence,
+      method: 'REQUEST',
+      title: requestData.title,
+      description: requestData.description,
+      location: requestData.location,
+      startTime: requestData.startTime,
+      endTime: requestData.endTime,
+      organizer: requestData.organizer,
+      attendees: requestData.attendees,
+    });
 
-    return new Response(JSON.stringify({ icsContent, calendarUID }), {
+    return new Response(JSON.stringify({ icsContent, calendarUID, sequence }), {
       status: 200,
       headers: {
         'Content-Type': 'application/json',
         ...corsHeaders,
       },
     });
-  } catch (error: any) {
+  } catch (error: unknown) {
     console.error('Error in generate-calendar-invite function:', error);
     return new Response(
       JSON.stringify({ error: "Internal server error" }),

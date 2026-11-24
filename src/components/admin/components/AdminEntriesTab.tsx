@@ -33,12 +33,28 @@ export function AdminEntriesTab({
     actualByDate.set(entry.work_date, (actualByDate.get(entry.work_date) || 0) + actual);
   });
   const displayedDates = new Set<string>();
+  // Tage mit offener Pausenpflicht: eine Kennzeichnung je Tag, abgeleitet aus den gespeicherten Einträgen.
+  const openPauseDates = new Set(
+    combinedEntries
+      .filter(entry => entry.entry_type === "work" && entry.arbzg_missing_pause_minutes > 0)
+      .map(entry => entry.work_date),
+  );
 
   return (
     <Card className="overflow-hidden rounded-2xl shadow-none">
       <CardHeader className="p-5">
         <CardTitle className="text-lg">Zeiteinträge {format(currentMonth, "MMMM yyyy", { locale: de })}</CardTitle>
-        <CardDescription>Alle Einträge inkl. Abwesenheiten · Δ Soll pro Tag · Eintragsdetails über die Nettozeit</CardDescription>
+        <CardDescription>
+          Alle Einträge inkl. Abwesenheiten · Δ Soll pro Tag · Eintragsdetails über die Nettozeit
+          {openPauseDates.size > 0 && (
+            <>
+              {" · "}
+              <span className="font-medium text-palette-amber">
+                {openPauseDates.size} {openPauseDates.size === 1 ? "Tag" : "Tage"} mit offener Pausenpflicht (Klärungsbedarf)
+              </span>
+            </>
+          )}
+        </CardDescription>
       </CardHeader>
       <CardContent className="p-0">
         {combinedEntries.length === 0 ? (
@@ -75,8 +91,24 @@ export function AdminEntriesTab({
                 return (
                   <TableRow key={entry.id}>
                     <TableCell className={`whitespace-nowrap border-l-4 ${getLeaveAccentClass(entry.entry_type)}`}>
-                      <span className="font-semibold">{format(date, "EEE", { locale: de })}</span>{" "}
-                      <span className="text-muted-foreground tabular-nums">{format(date, "dd.MM.")}</span>
+                      <div className="flex flex-col items-start gap-1">
+                        <span><span className="font-semibold">{format(date, "EEE", { locale: de })}</span>{" "}
+                          <span className="text-muted-foreground tabular-nums">{format(date, "dd.MM.")}</span></span>
+                        {firstForDay && entry.entry_type === "work" && entry.arbzg_missing_pause_minutes > 0 && (
+                          <TooltipProvider><Tooltip>
+                            <TooltipTrigger asChild>
+                              <Badge variant="outline" tabIndex={0} className="rounded-full border-0 bg-palette-amber/10 px-1.5 py-0 text-[10px] font-sans text-palette-amber">
+                                Pause offen: {entry.arbzg_missing_pause_minutes} min
+                              </Badge>
+                            </TooltipTrigger>
+                            <TooltipContent className="max-w-xs">
+                              <p className="font-medium">Klärungsbedarf am Tag (ArbZG)</p>
+                              <p>{entry.arbzg_missing_pause_minutes} min der erforderlichen Ruhepause fehlen.</p>
+                              <p className="text-xs text-muted-foreground">Die geleistete Arbeitszeit bleibt unverändert; die fehlende Pause wird nicht abgezogen.</p>
+                            </TooltipContent>
+                          </Tooltip></TooltipProvider>
+                        )}
+                      </div>
                     </TableCell>
                     <TableCell>
                       <div className="flex flex-col items-start gap-1">
@@ -95,7 +127,9 @@ export function AdminEntriesTab({
                       {entry.started_at || entry.ended_at ? <>{entry.started_at ? format(parseISO(entry.started_at), "HH:mm") : "–"} – {entry.ended_at ? format(parseISO(entry.ended_at), "HH:mm") : "–"}</>
                         : <span className="font-sans text-xs text-muted-foreground">{entry.entry_type === "work" ? "Nicht erfasst" : "ganztägig"}</span>}
                     </TableCell>
-                    <TableCell className="whitespace-nowrap font-mono text-xs text-muted-foreground tabular-nums">{entry.entry_type === "work" ? `${entry.pause_minutes} min` : "–"}</TableCell>
+                    <TableCell className="whitespace-nowrap font-mono text-xs text-muted-foreground tabular-nums">
+                      {entry.entry_type === "work" ? `${entry.pause_minutes} min` : "–"}
+                    </TableCell>
                     <TableCell className="text-right font-mono tabular-nums">
                       <Popover>
                         <PopoverTrigger asChild><button type="button" aria-label={`Eintragsdetails vom ${format(date, "dd.MM.yyyy")}, ${fmt(entry.minutes || 0)} netto`} className="font-semibold underline decoration-dotted decoration-muted-foreground/50 underline-offset-4 hover:text-primary">{fmt(entry.minutes || 0)}</button></PopoverTrigger>
@@ -104,6 +138,9 @@ export function AdminEntriesTab({
                           <dl className="space-y-2">
                             <div className="flex justify-between"><dt>Brutto</dt><dd className="font-mono tabular-nums">{fmt(grossMinutes)}</dd></div>
                             <div className="flex justify-between"><dt>Pause</dt><dd className="font-mono tabular-nums">{entry.pause_minutes} min</dd></div>
+                            {firstForDay && entry.arbzg_missing_pause_minutes > 0 && (
+                              <div className="flex justify-between text-palette-amber"><dt>Fehlende Ruhepause am Tag (ArbZG)</dt><dd className="font-mono tabular-nums">{entry.arbzg_missing_pause_minutes} min</dd></div>
+                            )}
                             <div className="flex justify-between"><dt>Netto</dt><dd className="font-mono tabular-nums">{fmt(entry.minutes || 0)}</dd></div>
                             <div className="flex justify-between border-t pt-2"><dt>Laufendes Gesamt-Ist</dt><dd className="font-mono tabular-nums">{fmt(actualAfterEntryById.get(entry.id) || 0)}</dd></div>
                           </dl>

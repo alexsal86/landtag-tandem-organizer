@@ -283,7 +283,8 @@ export function useDaySlipStore(userId: string, tenantId: string) {
           supabase.from("tasks").select("id,title,status").eq("tenant_id", tenantId).or(`assigned_to.eq.${userId},assigned_to.ilike.%${userId}%,user_id.eq.${userId}`).neq("status", "completed").gte("due_date", start).lt("due_date", end),
           supabase.from("quick_notes").select("id,title,content").eq("user_id", userId).is("deleted_at", null).or("is_archived.is.null,is_archived.eq.false").gte("follow_up_date", todayKey).lt("follow_up_date", next),
           supabase.from("case_items").select("id,subject").eq("tenant_id", tenantId).neq("status", "erledigt").gte("due_at", start).lt("due_at", end),
-          supabase.from("task_decisions").select("id,title").eq("tenant_id", tenantId).neq("status", "resolved").is("archived_at", null).gte("response_deadline", start).lt("response_deadline", end),
+          // Offene Entscheidungen tragen 'active' oder 'open'; 'resolved' existiert im Schema nicht.
+          supabase.from("task_decisions").select("id,title").eq("tenant_id", tenantId).in("status", ["active", "open"]).is("archived_at", null).gte("response_deadline", start).lt("response_deadline", end),
         ]);
         if (cancelled) return;
         const error = responses.find(result => result.error)?.error;
