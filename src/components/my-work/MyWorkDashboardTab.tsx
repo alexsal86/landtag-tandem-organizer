@@ -3,6 +3,7 @@ import { AppointmentChangeBanner, AppointmentChangeSentList, useAlerts as useCha
 import { applyReportedStart, summarizeReportedChanges } from "@/features/appointments/change-alerts/changeModel";
 import { TeamRitualDashboardCard } from "@/features/team-rituals/TeamRitualDashboardCard";
 import { DeputyWaitingCard } from "@/features/decisions/DeputyWaitingCard";
+import { OfficeDebriefInboxCard } from "@/features/appointments/briefing/OfficeDebriefInboxCard";
 import { OfficeFeedbackCard } from "@/features/appointments/briefing/OfficeFeedbackCard";
 import { PendingBriefingNotice } from "@/features/appointments/briefing/PendingBriefingNotice";
 import type { ReactNode } from 'react';
@@ -230,6 +231,7 @@ export function MyWorkDashboardTab() {
           <AppointmentsWidget isDeputyView={isDeputyView} />
           {!isLargeScreen && <div className="w-full max-w-xs"><TeamRitualDashboardCard /></div>}
           {isDeputyView && <OfficeFeedbackCard />}
+          {isEmployeeView && <OfficeDebriefInboxCard />}
         </div>
         <div className="flex min-w-0 flex-col gap-4">
           {isEmployeeView && <BriefingComposerCard />}

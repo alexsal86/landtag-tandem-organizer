@@ -1,4 +1,5 @@
 import { visibleSentChanges } from "@/features/appointments/change-alerts/sentChangeVisibility";
+import { debriefDuration, debriefReceivedAt, debriefSourceLabel, sortDebriefReports } from "@/features/appointments/briefing/officeDebriefInbox";
 import { isOfficeReminderDue, isOlderOfficeFeedback, needsOfficeFeedback, officeReminderLabel, officeReminderTime, readOfficeSnooze, showsOfficeTaskHint } from "@/features/appointments/briefing/officeFeedback";
 import { appointmentProgress, showTimelineNowMarker, appointmentCountdown, dashboardTimelineState, appointmentSummary, hasAppointmentEnded, nextAppointmentId, pendingSummary, timelineNowIndex } from "@/utils/dashboard/daySummary";
 import { canCompleteBriefing, canGoLive, followUpTaskFromLive, mergeLegacy, saveCompact } from "@/features/appointments/briefing/briefingModel";
@@ -140,6 +141,20 @@ export const appointmentBriefingLifecycleScenario: TestScenario = {
           !dashboardBriefingState("approved", false)?.canOpen,
         ];
         return { ok: checks.every(Boolean), message: `${checks.filter(Boolean).length}/${checks.length} Statusfälle bestanden.` };
+      },
+    },
+    {
+      id: "office-debrief-inbox", label: "Nachbereitung: Zusagen priorisieren und Quelle anzeigen", kind: "logic",
+      run: async () => {
+        const oldest = { promise: null, due_on: null, received_at: "2026-11-20T16:00:00Z" };
+        const promised = { promise: "Rückruf", due_on: null, received_at: "2026-11-23T16:10:00Z" };
+        const planned = { promise: "Unterlagen", due_on: "2026-11-26", received_at: "2026-11-21T16:00:00Z" };
+        const sorted = sortDebriefReports([oldest, promised, planned]);
+        const now = new Date("2026-11-24T00:15:00+01:00");
+        const ok = sorted[0] === promised && sorted[1] === oldest && sorted[2] === planned
+          && debriefReceivedAt(promised.received_at, now) === "gestern 17:10"
+          && debriefDuration(41) === "0:41" && debriefSourceLabel("phone", "Alexander Salomon") === "Telefonat mit Alexander";
+        return { ok, message: ok ? "Sortierung, Berliner Eingangsuhrzeit, Diktatdauer und Quelle stimmen." : "Die Darstellung der Nachbereitung weicht ab." };
       },
     },
     {

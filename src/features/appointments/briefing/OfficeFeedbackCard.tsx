@@ -4,6 +4,9 @@ import { AlarmClock, Mic, Square } from "lucide-react";
 import { useAppointmentFeedback, type AppointmentWithFeedback } from "@/hooks/useAppointmentFeedback";
 import { useUserPreference } from "@/hooks/useUserPreference";
 import { useAuth } from "@/hooks/useAuth";
+import { useResolvedUserRole } from "@/hooks/useResolvedUserRole";
+import { DeputyDebriefReview } from "./DeputyDebriefReview";
+import { useOfficeDebriefInbox } from "./useOfficeDebriefInbox";
 import { useTenant } from "@/hooks/useTenant";
 import { supabase } from "@/integrations/supabase/client";
 import { WebSpeechToTextAdapter, type SpeechToTextState } from "@/lib/speechToTextAdapter";
@@ -27,6 +30,12 @@ function OfficeFeedbackForm() {
   const { user } = useAuth();
   const { currentTenant } = useTenant();
   const feedback = useAppointmentFeedback();
+  const { isAbgeordneter } = useResolvedUserRole();
+  const reviews = useOfficeDebriefInbox(true, isAbgeordneter);
+  const [promises, setPromises] = useState<Record<string, string>>({});
+  const spokenSeconds = useRef<Record<string, number>>({});
+  const recordingStarted = useRef<number | null>(null);
+  const dictated = useRef(false);
   const qc = useQueryClient();
   const [snoozes, setSnoozes] = useUserPreference<Record<string, string | OfficeSnooze>>(
     `office-feedback-snoozes:${currentTenant?.id}:${user?.id}`, {},
@@ -53,11 +62,21 @@ function OfficeFeedbackForm() {
     return () => window.clearInterval(interval);
   }, [feedback.refetch]);
   useEffect(() => {
-    speech.onStateChange = setSpeechState;
+    speech.onStateChange = state => {
+      setSpeechState(state);
+      const key = speechTarget.current;
+      if (state === "idle" && recordingStarted.current !== null) {
+        if (key && dictated.current) spokenSeconds.current[key] = (spokenSeconds.current[key] ?? 0)
+          + Math.max(1, Math.round((Date.now() - recordingStarted.current) / 1000));
+        recordingStarted.current = null;
+        dictated.current = false;
+      }
+    };
     speech.onInterimTranscript = setInterim;
     speech.onFinalTranscript = text => {
       const key = speechTarget.current;
       if (key) {
+        dictated.current = true;
         const next = { ...draftsRef.current, [key]: [draftsRef.current[key], text].filter(Boolean).join(" ") };
         draftsRef.current = next;
         setDrafts(next);
@@ -65,7 +84,10 @@ function OfficeFeedbackForm() {
       setInterim("");
     };
     speech.onError = error => notify.error(error.message);
-    return () => speech.destroy();
+    return () => {
+      speech.onStateChange = undefined;
+      speech.destroy();
+    };
   }, [speech]);
 
   const pending = feedback.appointments.filter(event => needsOfficeFeedback(event.feedback)
@@ -114,11 +136,21 @@ function OfficeFeedbackForm() {
       qc.invalidateQueries({ queryKey: ["appointment-feedback-appointments"] }),
       qc.invalidateQueries({ queryKey: ["appointment-feedback-external"] }),
       qc.invalidateQueries({ queryKey: ["pending-debriefs"] }),
+      qc.invalidateQueries({ queryKey: ["office-debriefs", currentTenant?.id] }),
     ]);
   };
 
   const persist = async (event: AppointmentWithFeedback, status: "completed" | "skipped", notes?: string) => {
     if (!user || !currentTenant) throw new Error("Bitte anmelden und ein Büro wählen.");
+    if (isAbgeordneter) {
+      const key = eventKey(event);
+      const result = await supabase.rpc("update_office_debrief", {
+        _tenant: currentTenant.id, _action: status === "completed" ? "submit" : "skip", _id: event.id, _external: event.event_type === "external_event",
+        _text: notes, _promise: notes ? promises[key]?.trim() || undefined : undefined, _seconds: notes ? spokenSeconds.current[key] : undefined,
+      });
+      if (result.error) throw result.error;
+      return;
+    }
     const values = { feedback_status: status, completed_at: new Date().toISOString(), ...(notes ? { notes } : {}) };
     if (event.feedback) {
       const result = await supabase.from("appointment_feedback").update(values)
@@ -148,6 +180,12 @@ function OfficeFeedbackForm() {
         return;
       }
       setCompleted(report ? "sent" : "empty");
+      setPromises(previous => {
+        const next = { ...previous };
+        events.forEach(event => { delete next[eventKey(event)]; });
+        return next;
+      });
+      events.forEach(event => { delete spokenSeconds.current[eventKey(event)]; });
       setMode("write");
       setSelected(null);
       setInterim("");
@@ -199,6 +237,7 @@ function OfficeFeedbackForm() {
         </span>
       </header>
       <div className="px-5 pb-5">
+      {isAbgeordneter && <DeputyDebriefReview reviews={reviews} tenantScope={`${currentTenant?.id}:${user?.id}`} />}
       {!feedback.isLoading && !feedback.isError && current && reminderToken !== acknowledgedReminder && isOfficeReminderDue(snoozes[key], now) && (
         <div key={key} role="status" className="animate-fade-up mb-4 flex items-start gap-2 rounded-2xl bg-[#eaf5df] px-3 py-2 text-meta font-medium text-[#55ad21]">
           <AlarmClock className="mt-0.5 h-4 w-4 shrink-0" aria-hidden="true" />
@@ -227,6 +266,9 @@ function OfficeFeedbackForm() {
             {mode === "review" ? (
               <div className="animate-fade-up space-y-3">
                 <p className="whitespace-pre-wrap rounded-2xl bg-muted/60 p-3 text-sm">{text}</p>
+                {isAbgeordneter && <input aria-label="Zusage" placeholder="Zusage, falls vereinbart" value={promises[key] ?? ""}
+                  onChange={event => setPromises(previous => ({ ...previous, [key]: event.target.value }))}
+                  maxLength={1000} className="w-full rounded-xl border bg-background p-2" />}
                 <div className="flex flex-wrap gap-2">
                   <button type="button" disabled={busy} className={`rounded-xl px-4 py-2 text-sm ${green}`} onClick={() => void finish([current], text.trim())}>{busy ? "Wird gesendet…" : "Ans Büro senden"}</button>
                   <button type="button" disabled={busy} className="px-3 py-2 text-sm text-muted-foreground" onClick={() => setMode("write")}>Zurück</button>
@@ -237,14 +279,14 @@ function OfficeFeedbackForm() {
                 <div className="peer/feedback-input flex items-end gap-2 rounded-[22px] border border-border/80 bg-muted/60 p-1.5 focus-within:border-[#55ad21] focus-within:ring-4 focus-within:ring-[#eaf5df]">
                   <textarea aria-label="Rückmeldung zum Termin" placeholder="Wie war’s? Kurz schreiben …" rows={1}
                     className="min-h-8 min-w-0 flex-1 resize-y bg-transparent px-2 py-1.5 text-body-lg outline-none"
-                    value={text} disabled={busy} onChange={event => {
+                    value={text} disabled={busy} maxLength={12000} onChange={event => {
                       setSelected(key);
                       setDrafts(previous => ({ ...previous, [key]: event.target.value }));
                     }} />
                   <button type="button" aria-label={recording ? "Diktat beenden" : "Rückmeldung diktieren"} aria-pressed={recording}
                     disabled={busy || !speech.supported || speechState === "stopping"} title={speech.supported ? "Diktieren" : "Spracherkennung wird von diesem Browser nicht unterstützt"}
                     className="flex h-8 w-8 shrink-0 items-center justify-center rounded-full bg-[#eaf5df] text-[#55ad21] disabled:opacity-40"
-                    onClick={() => { if (recording) void speech.stop(); else { setSelected(key); speechTarget.current = key; speech.start(); } }}>
+                    onClick={() => { if (recording) void speech.stop(); else { setSelected(key); speechTarget.current = key; recordingStarted.current = Date.now(); dictated.current = false; speech.start(); } }}>
                     {recording ? <Square className="h-4 w-4" /> : <Mic className="h-5 w-5" />}
                   </button>
                   <button type="button" disabled={busy || (!text.trim() && !recording)} className={`h-8 shrink-0 rounded-2xl px-4 text-body font-medium disabled:opacity-40 ${green}`} onClick={() => void review()}>Weiter</button>

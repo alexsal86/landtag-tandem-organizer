@@ -112,6 +112,7 @@ export const buildDeepLinkPath = (notification: Notification): string => {
       return buildHighlightPath('/mywork?tab=notes', getNotificationDataId(data, 'noteId'));
 
     case 'appointment_feedback': {
+      if (data.office_debrief_question === true) return '/mywork?tab=dashboard';
       const targetType = data.feedback_context?.target?.type ?? null;
       const targetId = data.feedback_context?.target?.id ?? null;
       const feedbackId = data.feedback_id ?? data.feedback_context?.source?.id ?? null;

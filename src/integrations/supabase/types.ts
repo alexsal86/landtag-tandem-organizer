@@ -19310,6 +19310,14 @@ export type Database = {
         Args: { _base: string; _rule: string }
         Returns: string
       }
+      list_office_debriefs: {
+        Args: { _tenant: string; _deputy_view?: boolean }
+        Returns: Json
+      }
+      update_office_debrief: {
+        Args: { _tenant: string; _action: string; _id: string; _text?: string; _source?: string; _promise?: string; _due?: string; _seconds?: number; _external?: boolean }
+        Returns: undefined
+      }
       nudge_dashboard_decision: {
         Args: { _decision_id: string; _note?: string }
         Returns: string
