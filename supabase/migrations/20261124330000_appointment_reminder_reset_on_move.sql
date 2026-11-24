@@ -1,3 +1,8 @@
+-- Neunummeriert (vorher 20261124270000): die Version war mit
+-- social_approval_comments doppelt belegt, und Supabase führt schema_migrations
+-- nur über die Version. Das Skript ist wiederholbar (CREATE OR REPLACE,
+-- DROP TRIGGER IF EXISTS), ein zweiter Lauf ändert also nichts.
+--
 -- Terminverschiebung macht die Erinnerung wieder scharf.
 --
 -- appointment_reminder_dispatches verhindert Doppelversände über

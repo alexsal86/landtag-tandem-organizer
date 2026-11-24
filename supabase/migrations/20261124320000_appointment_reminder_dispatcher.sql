@@ -1,3 +1,12 @@
+-- Neunummeriert (vorher 20261124260000): diese Version war durch parallel
+-- entstandene Migrationen mehrfach belegt (contact_merge_rpc,
+-- freeze_approved_social_content, time_entry_arbzg_pause_repair). Supabase führt
+-- schema_migrations nur über die Version – gleichnamige Dateien werden als
+-- bereits angewendet übersprungen oder brechen mit 23505 ab. Das Skript ist
+-- wiederholbar (IF NOT EXISTS, ON CONFLICT DO NOTHING, DROP TRIGGER IF EXISTS,
+-- cron.unschedule vor dem Neuanlegen), damit ein erneuter Lauf nichts doppelt
+-- anlegt.
+--
 -- Termin-Erinnerungen: reminder_minutes wird endlich ausgewertet.
 --
 -- Bisher wurde reminder_minutes nur gespeichert und im Dialog angeboten; kein

@@ -1,3 +1,7 @@
+-- Neunummeriert (20261124310000 -> 20261124340000), damit die Reihenfolge
+-- Dispatcher (…320000) -> Reset (…330000) -> Aufräumen (…340000) lesbar bleibt;
+-- der Block prüft seinen Ausgangszustand und ist ohnehin wiederholbar.
+--
 -- Entfernt den vorberechneten Kalenderlink (deep_link) aus den Daten der
 -- Terminerinnerung. Den Pfad bauen die Empfänger selbst aus appointment_id:
 -- buildDeepLinkPath im Client, die Erinnerungs-Mail aus derselben ID.
