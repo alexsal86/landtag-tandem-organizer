@@ -4,6 +4,15 @@ import type { LucideIcon } from "lucide-react";
 import type { UserRole } from "@/components/my-work/tabVisibility";
 import { canViewTab } from "@/components/my-work/tabVisibility";
 
+/**
+ * "Meine Arbeit" may only rewrite its own tab param while it is the active route.
+ * Otherwise a view that is still rendered during a route change would overwrite the
+ * tab of the target route (e.g. /employee?tab=rituals).
+ */
+export function shouldNormalizeMyWorkTab(pathname: string, rawTab: string | null, activeTab: string): boolean {
+  return pathname === "/mywork" && (!rawTab || rawTab !== activeTab);
+}
+
 export interface TabCounts {
   tasks: number;
   decisions: number;

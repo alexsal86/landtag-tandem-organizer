@@ -1,10 +1,11 @@
 import { useEffect, useMemo } from "react";
-import { useSearchParams } from "react-router-dom";
+import { useLocation, useSearchParams } from "react-router-dom";
 import {
   getVisibleMyWorkTabs,
   LEGACY_TAB_MAP,
   MY_WORK_ACTION_TAB_MAP,
   MY_WORK_ALLOWED_TABS,
+  shouldNormalizeMyWorkTab,
   type MyWorkTabConfig,
   type TabValue,
 } from "@/components/my-work/myWorkTabs";
@@ -37,6 +38,8 @@ export const useMyWorkActiveTab = ({
   feedbackFeedCoreRolesOnly: boolean;
 }) => {
   const [searchParams, setSearchParams] = useSearchParams();
+  const { pathname } = useLocation();
+  const isMyWorkRoute = pathname === "/mywork";
 
   const visibleTabs = useMemo<MyWorkTabConfig[]>(() => getVisibleMyWorkTabs({ role, feedbackFeedCoreRolesOnly }), [role, feedbackFeedCoreRolesOnly]);
   const fallbackTab = visibleTabs[0]?.value ?? "dashboard";
@@ -52,19 +55,17 @@ export const useMyWorkActiveTab = ({
     const action = searchParams.get("action");
     const targetTab = action ? MY_WORK_ACTION_TAB_MAP[action] : null;
 
-    if (!targetTab || activeTab === targetTab) return;
+    if (!isMyWorkRoute || !targetTab || activeTab === targetTab) return;
 
     const normalizedTargetTab = visibleTabs.some((tab) => tab.value === targetTab) ? targetTab : fallbackTab;
     setSearchParams(preserveKnownParams(searchParams, normalizedTargetTab), { replace: true });
-  }, [activeTab, fallbackTab, searchParams, setSearchParams, visibleTabs]);
+  }, [activeTab, fallbackTab, isMyWorkRoute, searchParams, setSearchParams, visibleTabs]);
 
   useEffect(() => {
-    const needsNormalization = !rawTab || rawTab !== activeTab;
-
-    if (!needsNormalization) return;
+    if (!shouldNormalizeMyWorkTab(pathname, rawTab, activeTab)) return;
 
     setSearchParams(preserveKnownParams(searchParams, activeTab), { replace: true });
-  }, [activeTab, rawTab, searchParams, setSearchParams]);
+  }, [activeTab, pathname, rawTab, searchParams, setSearchParams]);
 
   const setActiveTab = (tab: TabValue) => {
     setSearchParams(preserveKnownParams(searchParams, tab));

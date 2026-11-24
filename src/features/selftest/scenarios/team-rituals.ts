@@ -5,6 +5,8 @@ import { OFFICE_ROUTINE_TEMPLATES, parseRoutineSteps, validateOfficeRoutine } fr
 import { checkBingo, readBingoState, validBingoFields, bingoBoard } from '@/features/team-rituals/bingo';
 import { isValidFunFacts } from '@/features/team-rituals/twoTruths';
 import type { TestScenario } from '../types';
+import { resolveEmployeeTab } from '@/features/employees/tabs';
+import { shouldNormalizeMyWorkTab } from '@/components/my-work/myWorkTabs';
 import { berlinDay, berlinWeek, canManageTeamRituals, upcomingAnniversaries, isValidWeeklyAnswer, pickNextQuestion, upcomingTeamEvents, type TeamProfile } from '@/features/team-rituals/logic';
 export const teamRitualsScenario: TestScenario = {
   id: 'team-rituals', title: 'Freiwillige Team-Rituale',
@@ -37,6 +39,7 @@ export const teamRitualsScenario: TestScenario = {
         message: 'Nur ein gespeicherter eigener Beitrag öffnet die Übersicht; nach Löschen oder Wochenwechsel bleibt sie wieder verborgen.' };
     } },
     {id:'dashboard-discovery',label:'Team-Rituale bleiben im Dashboard auffindbar, ohne automatische Teilnahme',kind:'logic',run:async()=>({ok:ritualDashboardState(false,false,false,false)==='disabled'&&ritualDashboardState(false,false,true,false)==='join'&&ritualDashboardState(false,true,false,false)==='unavailable'&&ritualDashboardState(false,false,true,true)==='ready',message:'Bürofreigabe, persönliche Zustimmung und Datenfehler haben eigene sichtbare Einstiegszustände.'})},
+    {id:'ritual-deeplink',label:'Dashboard-Einstieg öffnet direkt den Team-Rituale-Tab',kind:'logic',run:async()=>({ok:resolveEmployeeTab('rituals')==='rituals'&&resolveEmployeeTab('overview')==='overview'&&resolveEmployeeTab(null)==='overview'&&resolveEmployeeTab('dashboard')==='overview'&&!shouldNormalizeMyWorkTab('/employee','rituals','dashboard')&&!shouldNormalizeMyWorkTab('/mywork','dashboard','dashboard')&&shouldNormalizeMyWorkTab('/mywork','rituals','dashboard'),message:'„Frage der Woche“ öffnet /employee?tab=rituals; „Meine Arbeit“ schreibt beim Seitenwechsel keine fremden Tab-Parameter um, unbekannte Werte fallen auf die Übersicht zurück.'})},
 
     { id: 'team-routine-templates', label: 'Editierbare freiwillige Team-Vorlagen', kind: 'logic', run: async () => {
       const ids = ['team-walk-talk', 'team-regional-snack', 'team-constituency-trip'];

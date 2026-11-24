@@ -17,15 +17,14 @@ import { EmployeeYearlyStatsView } from "@/features/employees/components/Employe
 import { AdminTimeTrackingView } from "@/components/admin/AdminTimeTrackingView";
 
 import { useEmployeesData } from "@/components/employees/hooks/useEmployeesData";
+import { resolveEmployeeTab } from "@/features/employees/tabs";
 import { useEmployeeOperations } from "@/components/employees/hooks/useEmployeeOperations";
 import { EmployeeSelfView } from "@/components/employees/EmployeeSelfView";
 import { PendingLeavesTable, EmployeeListTable } from "@/components/employees/EmployeeAdminTable";
 
 export function EmployeesView() {
   const [searchParams, setSearchParams] = useSearchParams();
-  const requestedTab = searchParams.get("tab");
-  const activeTab = requestedTab && ["overview", "meetings", "timetracking", "responsibilities", "hr", "rituals"].includes(requestedTab)
-    ? requestedTab : "overview";
+  const activeTab = resolveEmployeeTab(searchParams.get("tab"));
   const handleTabChange = (tab: string) => {
     setSearchParams(previous => {
       const next = new URLSearchParams(previous);

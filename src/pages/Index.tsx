@@ -78,7 +78,10 @@ const Index = (): React.JSX.Element => {
     return pathSection || 'dashboard';
   };
   
-  const [activeSection, setActiveSection] = useState<string>(() => getActiveSectionFromPath(location.pathname));
+  // Derived from the current path instead of a state copy so a route change takes
+  // effect in the same render. Otherwise the previous section keeps rendering for
+  // one frame and can rewrite the new route's search params (e.g. its tab).
+  const activeSection = getActiveSectionFromPath(location.pathname);
   const isCalendar = activeSection === "calendar";
   const isCreateContactRoute = activeSection === "contacts" && new URLSearchParams(location.search).get("action") === "new";
   
@@ -106,11 +109,6 @@ const Index = (): React.JSX.Element => {
     }
   }, [location.search]);
 
-  // Update active section when URL changes
-  useEffect(() => {
-    const newSection = getActiveSectionFromPath(location.pathname);
-    setActiveSection(newSection);
-  }, [location.pathname]);
 
   // Handle navigation to sections – wrapped in startTransition for non-blocking rendering
   const handleSectionChange = useCallback((section: string) => {
