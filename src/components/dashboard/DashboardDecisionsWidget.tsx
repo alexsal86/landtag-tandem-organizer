@@ -14,7 +14,6 @@ import { supabase } from '@/integrations/supabase/client';
 import { cn } from '@/lib/utils';
 import { notify } from "@/lib/notify";
 import { ErrorState } from '@/components/ui-patterns';
-import { WidgetListFooter } from '@/components/ui-patterns';
 
 /**
  * Antwortfristen werden über Berliner Kalendertage bewertet: `new Date('2026-11-25')`
@@ -145,7 +144,7 @@ function DecisionRow({ decision, expanded, onToggle, nudge, onDismissConfirmed, 
 
   return (
     <div
-      className={cn("dashboard-decision-exit py-4 first:pt-0 last:pb-0", exiting && "pointer-events-none opacity-0")}
+      className={cn("dashboard-decision-exit", expanded ? "py-4 first:pt-0 last:pb-0" : "py-3", exiting && "pointer-events-none opacity-0")}
       style={{ transform: exiting ? "translateX(24px)" : undefined }}
     >
       {expanded && nudge?.nudged_at && <div className="animate-fade-up mb-3 rounded-xl bg-[#eee9f9] px-3 py-2 text-xs" role="status">
@@ -157,7 +156,7 @@ function DecisionRow({ decision, expanded, onToggle, nudge, onDismissConfirmed, 
       </div>}
       <button
         type="button"
-        className="mb-3 flex w-full items-start justify-between gap-3 text-left"
+        className={cn("flex w-full items-start justify-between gap-3 text-left", expanded && "mb-3")}
         aria-expanded={expanded}
         aria-controls={`decision-details-${decision.id}`}
         disabled={exiting}
@@ -237,6 +236,7 @@ export function DashboardDecisionsWidget() {
   const { isDeputyView } = useWorkspaceView();
   const navigate = useNavigate();
   const { decisions, setDecisions, loading, error, loadDecisions } = useMyWorkDecisionsData(user?.id);
+  const [showAll, setShowAll] = useState(false);
   const [expandedId, setExpandedId] = useState<string | null | undefined>(undefined);
   const [pendingIds, setPendingIds] = useState<Set<string>>(new Set());
 
@@ -275,13 +275,13 @@ export function DashboardDecisionsWidget() {
         if (!b.response_deadline) return -1;
         return new Date(a.response_deadline).getTime() - new Date(b.response_deadline).getTime();
       })
-      .slice(0, 3);
-  }, [eligibleDecisions, nudges.data]);
+      .slice(0, showAll ? undefined : 3);
+  }, [eligibleDecisions, nudges.data, showAll]);
 
   const currentExpandedId = expandedId === null ? null
     : items.some(item => item.id === expandedId) ? expandedId : items[0]?.id;
 
-  const totalOpen = eligibleDecisions.length;
+  const hiddenCount = Math.max(0, eligibleDecisions.length - items.length);
 
   const goToDecision = (id: string) => {
     navigate(`/mywork?tab=decisions&highlight=${id}`);
@@ -322,13 +322,9 @@ export function DashboardDecisionsWidget() {
           />
         ))}
       </div>
-      <WidgetListFooter
-        countLabel={totalOpen > items.length
-          ? `${items.length} von ${totalOpen} offenen Entscheidungen`
-          : totalOpen === 1 ? '1 offene Entscheidung' : `${totalOpen} offene Entscheidungen`}
-        linkLabel="Alle Entscheidungen"
-        to="/mywork?tab=decisions"
-      />
+      {hiddenCount > 0 && <div className="flex flex-wrap justify-between gap-2 pt-3 text-meta font-medium text-muted-foreground">
+        <button type="button" className="hover:text-foreground" onClick={() => setShowAll(true)}>+{hiddenCount} weitere</button>
+      </div>}
     </div>
   );
 }

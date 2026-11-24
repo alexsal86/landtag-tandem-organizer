@@ -3,7 +3,7 @@ import { useTenant } from "@/hooks/useTenant";
 import { useUserPreference } from "@/hooks/useUserPreference";
 import { dailyBriefingReadLabel, isReadBriefingCollapsed } from "../utils";
 import { RichTextDisplay } from "@/components/ui/RichTextDisplay";
-import { useState, type ReactNode } from "react";
+import { useLayoutEffect, useRef, useState, type ReactNode } from "react";
 import { format } from "date-fns";
 import { de } from "date-fns/locale";
 import { ChevronDown, ChevronUp, FileText, X } from "lucide-react";
@@ -28,14 +28,34 @@ function BriefingItem({ briefing, moreAction, onRead }: {
   const [collapsed, setCollapsed] = useUserPreference<boolean>(
     `daily-briefing-collapsed:${currentTenant?.id}:${user?.id}:${briefing.id}`, false,
   );
+  const sectionRef = useRef<HTMLElement | null>(null);
+  const previousRect = useRef<DOMRect | null>(null);
+  const isCollapsed = isReadBriefingCollapsed(briefing.is_read, collapsed);
+  const toggleCollapsed = (value: boolean) => {
+    previousRect.current = sectionRef.current?.getBoundingClientRect() ?? null;
+    setCollapsed(value);
+  };
+  useLayoutEffect(() => {
+    const before = previousRect.current;
+    previousRect.current = null;
+    const element = sectionRef.current;
+    if (!before || !element || !element.animate || window.matchMedia('(prefers-reduced-motion: reduce)').matches) return;
+    const after = element.getBoundingClientRect();
+    if (!after.width || !after.height) return;
+    const animation = element.animate([
+      { transform: `translate(${before.left - after.left}px, ${before.top - after.top}px) scale(${before.width / after.width}, ${before.height / after.height})`, opacity: 0.65 },
+      { transform: 'none', opacity: 1 },
+    ], { duration: 320, easing: 'cubic-bezier(.2,.7,.2,1)', fill: 'backwards' });
+    return () => animation.cancel();
+  }, [isCollapsed]);
   const markRead = useMarkBriefingRead();
   const tooLong = briefing.content.length > COLLAPSE_AT;
   const initials = (briefing.author_display_name ?? "?").trim().split(/\s+/)
     .map(part => part[0]).filter(Boolean).slice(0, 2).join("").toUpperCase();
 
-  if (isReadBriefingCollapsed(briefing.is_read, collapsed)) return <section aria-label="Eingeklapptes Tagesbriefing"
-    className="flex flex-wrap items-center justify-end gap-3 rounded-xl bg-[rgb(240,243,246)] px-5 py-2">
-    <button type="button" onClick={() => setCollapsed(false)} aria-expanded={false}
+  if (isCollapsed) return <section ref={sectionRef} aria-label="Eingeklapptes Tagesbriefing"
+    className="ml-auto flex w-fit max-w-full origin-top-left flex-wrap items-center justify-end gap-3 rounded-xl bg-[rgb(240,243,246)] px-5 py-2">
+    <button type="button" onClick={() => toggleCollapsed(false)} aria-expanded={false}
       className="inline-flex min-w-0 max-w-full items-center justify-end gap-2 rounded text-xs focus-visible:outline focus-visible:outline-2 focus-visible:outline-primary">
       <span className="truncate text-muted-foreground">Tagesbriefing · {briefing.author_display_name ?? "Teammitglied"}</span>
       <span className="shrink-0 rounded-full bg-[#eaf5df] px-3 py-1 font-medium text-[#397d16]">{dailyBriefingReadLabel(briefing.read_at)}</span>
@@ -44,8 +64,8 @@ function BriefingItem({ briefing, moreAction, onRead }: {
     {moreAction}
   </section>;
 
-  return <section aria-label="Tagesbriefing" className={cn("relative rounded-3xl p-5", briefing.is_read ? "bg-[rgb(240,243,246)]" : "bg-[#f0eafa]")}>
-    {briefing.is_read && <button type="button" aria-label="Tagesbriefing einklappen" onClick={() => setCollapsed(true)}
+  return <section ref={sectionRef} aria-label="Tagesbriefing" className={cn("relative origin-top-left rounded-3xl p-5", briefing.is_read ? "bg-[rgb(240,243,246)]" : "bg-[#f0eafa]")}>
+    {briefing.is_read && <button type="button" aria-label="Tagesbriefing einklappen" onClick={() => toggleCollapsed(true)}
       className="absolute right-3 top-3 inline-flex h-6 w-6 items-center justify-center rounded text-black hover:bg-black/5 focus-visible:outline focus-visible:outline-2 focus-visible:outline-primary">
       <X className="h-3.5 w-3.5" aria-hidden="true" />
     </button>}
