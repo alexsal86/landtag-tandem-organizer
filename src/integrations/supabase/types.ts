@@ -295,7 +295,10 @@ export type Database = {
           created_by: string
           created_by_name: string | null
           id: string
+          kind: string
           message: string
+          new_location: string | null
+          new_start_time: string | null
           tenant_id: string
           title: string
         }
@@ -307,7 +310,10 @@ export type Database = {
           created_by?: string
           created_by_name?: string | null
           id?: string
-          message: string
+          kind?: string
+          message?: string
+          new_location?: string | null
+          new_start_time?: string | null
           tenant_id: string
           title: string
         }
@@ -319,7 +325,10 @@ export type Database = {
           created_by?: string
           created_by_name?: string | null
           id?: string
+          kind?: string
           message?: string
+          new_location?: string | null
+          new_start_time?: string | null
           tenant_id?: string
           title?: string
         }

@@ -3,6 +3,7 @@ import { useQuery, useQueryClient } from "@tanstack/react-query";
 import { debugConsole } from '@/utils/debugConsole';
 import { supabase } from "@/integrations/supabase/client";
 import { useTenant } from "@/hooks/useTenant";
+import { summarizeReportedChanges } from "@/features/appointments/change-alerts/changeModel";
 import { rrulestr } from "rrule";
 import type { CalendarEvent } from "../types";
 import type { ExternalCalendarSummary } from "@/components/meetings/types";
@@ -419,7 +420,7 @@ export function useCalendarData(currentDate: Date, view: string) {
     return ["calendar-data", start.toISOString(), end.toISOString(), currentTenant?.id];
   }, [currentDate, view, currentTenant?.id]);
 
-  const { data: appointments = [], isLoading: loading, isError, refetch } = useQuery({
+  const { data: baseAppointments = [], isLoading: loading, isError, refetch } = useQuery({
     queryKey,
     queryFn: () => fetchCalendarData(currentDate, view, currentTenant?.id),
     enabled: view !== "polls" && !!currentTenant,
@@ -428,6 +429,42 @@ export function useCalendarData(currentDate: Date, view: string) {
     gcTime: 10 * 60 * 1000,
     refetchOnWindowFocus: false,
   });
+
+  // Vom Büro gemeldete Änderungen gelten für alle Ansichten und die Detailansicht.
+  const { data: changeAlerts = [] } = useQuery({
+    queryKey: ["calendar-reported-changes", currentTenant?.id],
+    enabled: !!currentTenant?.id,
+    staleTime: 60_000,
+    refetchInterval: 60_000,
+    queryFn: async () => {
+      const { data, error } = await supabase
+        .from("appointment_change_alerts")
+        .select("appointment_id, kind, new_start_time, new_location, message, created_at")
+        .eq("tenant_id", currentTenant!.id)
+        .gte("created_at", new Date(Date.now() - 30 * 86400000).toISOString())
+        .order("created_at", { ascending: false })
+        .limit(200);
+      if (error) throw error;
+      return data ?? [];
+    },
+  });
+
+  const appointments = useMemo(() => {
+    if (!changeAlerts.length) return baseAppointments;
+    return baseAppointments.map((event) => {
+      if (event.id.startsWith("external-") || event.id.startsWith("blocked-") || event.id.startsWith("leave-")) return event;
+      const summary = summarizeReportedChanges(changeAlerts, event._originalId ?? event.id);
+      if (!summary.newStartTime && !summary.newLocation && !summary.notes.length) return event;
+      return {
+        ...event,
+        reportedChange: {
+          newStartTime: summary.newStartTime ?? undefined,
+          newLocation: summary.newLocation ?? undefined,
+          notes: summary.notes,
+        },
+      };
+    });
+  }, [baseAppointments, changeAlerts]);
 
   useEffect(() => {
     if (view === "polls" || !currentTenant?.id) return;
@@ -448,7 +485,10 @@ export function useCalendarData(currentDate: Date, view: string) {
     }
   }, [currentDate, currentTenant?.id, queryClient, view]);
 
-  const refreshAppointments = () => { refetch(); };
+  const refreshAppointments = () => {
+    refetch();
+    queryClient.invalidateQueries({ queryKey: ["calendar-reported-changes"] });
+  };
 
   return { appointments, loading, isError, refreshAppointments };
 }

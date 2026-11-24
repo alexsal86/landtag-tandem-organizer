@@ -1,4 +1,5 @@
-import { AppointmentChangeBanner, AppointmentChangeSender } from "@/features/appointments/change-alerts/AppointmentChangeAlerts";
+import { AppointmentChangeBanner, AppointmentChangeSentList, useAlerts as useChangeAlerts } from "@/features/appointments/change-alerts/AppointmentChangeAlerts";
+import { applyReportedStart, summarizeReportedChanges } from "@/features/appointments/change-alerts/changeModel";
 import { TeamRitualDashboardCard } from "@/features/team-rituals/TeamRitualDashboardCard";
 import { DeputyWaitingCard } from "@/features/decisions/DeputyWaitingCard";
 import { OfficeFeedbackCard } from "@/features/appointments/briefing/OfficeFeedbackCard";
@@ -120,6 +121,7 @@ function DeadlinesWidget() {
 
 function AppointmentsWidget({ isDeputyView }: { isDeputyView: boolean }) {
   const dashboardData = useDashboardAppointmentsData(true);
+  const { data: changeAlerts = [] } = useChangeAlerts();
   const [now, setNow] = useState(() => new Date());
   useEffect(() => {
     const timer = window.setInterval(() => setNow(new Date()), 60_000);
@@ -128,7 +130,10 @@ function AppointmentsWidget({ isDeputyView }: { isDeputyView: boolean }) {
   const noAppointmentsToday = dashboardData.isShowingTomorrow || dashboardData.appointments.length === 0;
   const allDone = !noAppointmentsToday && !dashboardData.isLoading && !dashboardData.tenantLoading && !dashboardData.isError
     && dashboardData.hasTenant
-    && (dashboardData.isShowingTomorrow || dashboardData.appointments.every(appointment => hasAppointmentEnded(appointment, now)));
+    && (dashboardData.isShowingTomorrow || dashboardData.appointments.every((appointment) => {
+      const reportedStart = isDeputyView ? summarizeReportedChanges(changeAlerts, appointment.id).newStartTime : null;
+      return hasAppointmentEnded(applyReportedStart(appointment, reportedStart), now);
+    }));
   const title = noAppointmentsToday && !dashboardData.isLoading && !dashboardData.tenantLoading && !dashboardData.isError
     ? 'Dein Tag · keine Termine' : allDone ? (
     <span className="inline-flex flex-wrap items-center gap-1.5">
@@ -186,7 +191,7 @@ export function MyWorkDashboardTab() {
     <div key={isDeputyView ? "deputy" : "employee"} className="dashboard-motion mx-auto w-full max-w-6xl space-y-4">
       <div className="animate-rise"><DashboardHeader showTeamRituals={isLargeScreen} /></div>
       {isDeputyView && <AppointmentChangeBanner />}
-      {isEmployeeView && <AppointmentChangeSender showTrigger={false} />}
+      {isEmployeeView && <AppointmentChangeSentList />}
       {isEmployeeView && <PendingBriefingNotice />}
       {isDeputyView && <TodayBriefingPanel />}
       <div className="grid grid-cols-1 gap-4 items-start lg:grid-cols-2">

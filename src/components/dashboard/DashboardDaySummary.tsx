@@ -1,5 +1,5 @@
 import { needsOwnDecision } from "@/components/my-work/decisions/types";
-import { useEffect, useState } from "react";
+import { useEffect, useMemo, useState } from "react";
 import { useQuery } from "@tanstack/react-query";
 import { useAuth } from "@/hooks/useAuth";
 import { useTenant } from "@/hooks/useTenant";
@@ -9,6 +9,8 @@ import { useDashboardRealtime } from "@/hooks/useDashboardRealtime";
 import { STALE_TIME } from "@/lib/query-cache";
 import { supabase } from "@/integrations/supabase/client";
 import { appointmentSummary, pendingSummary } from "@/utils/dashboard/daySummary";
+import { useAlerts as useAppointmentChangeAlerts } from "@/features/appointments/change-alerts/AppointmentChangeAlerts";
+import { applyReportedStart, summarizeReportedChanges } from "@/features/appointments/change-alerts/changeModel";
 
 export function DashboardDaySummary() {
   const { user } = useAuth();
@@ -20,6 +22,7 @@ export function DashboardDaySummary() {
   }, []);
   const feedback = useAppointmentFeedback();
   const decisions = useMyWorkDecisionsData(user?.id);
+  const { data: changeAlerts = [] } = useAppointmentChangeAlerts();
   useDashboardRealtime(user?.id, currentTenant?.id);
   const schedule = useQuery({
     queryKey: ["dashboard-day-summary", currentTenant?.id],
@@ -43,6 +46,13 @@ export function DashboardDaySummary() {
       ];
     },
   });
+  const scheduleEvents = useMemo(
+    () => (schedule.data ?? []).map(event => {
+      const reportedStart = summarizeReportedChanges(changeAlerts, event.id).newStartTime;
+      return reportedStart ? applyReportedStart(event, reportedStart) : event;
+    }),
+    [schedule.data, changeAlerts],
+  );
   if (!user || !currentTenant) return null;
   if (schedule.isPending || decisions.loading || feedback.isLoading) {
     return <p className="text-title font-normal text-muted-foreground" role="status">Dein Tagesüberblick wird geladen…</p>;
@@ -52,7 +62,7 @@ export function DashboardDaySummary() {
     .map((part, index) => index % 2 ? <strong key={index} className="font-medium text-foreground">{part}</strong> : part);
   return (
     <div className="max-w-5xl text-title font-normal text-muted-foreground" aria-live="polite">
-      <p>{schedule.isError ? "Termine konnten nicht geladen werden." : emphasize(appointmentSummary(schedule.data ?? [], now))}</p>
+      <p>{schedule.isError ? "Termine konnten nicht geladen werden." : emphasize(appointmentSummary(scheduleEvents, now))}</p>
       <p>{decisions.error || feedback.isError ? "Offene Entscheidungen und Rückmeldungen konnten nicht vollständig geladen werden."
         : emphasize(pendingSummary(pendingDecisions, feedback.pendingFeedbackCount))}</p>
     </div>

@@ -1,3 +1,12 @@
+export interface ReportedCalendarChange {
+  /** Vom Büro gemeldete neue Startzeit (ISO). */
+  newStartTime?: string;
+  /** Vom Büro gemeldeter neuer Ort. */
+  newLocation?: string;
+  /** Freie Hinweise zum Termin. */
+  notes: string[];
+}
+
 export interface CalendarEvent {
   id: string;
   title: string;
@@ -25,6 +34,8 @@ export interface CalendarEvent {
   _isExternal?: boolean;
   _isRecurring?: boolean;
   _originalId?: string;
+  /** Zuletzt gemeldete Zeit-/Ortsänderung des Büros. */
+  reportedChange?: ReportedCalendarChange;
   sourceScope?: "internal" | "external" | "system";
   sourceId?: string;
 }

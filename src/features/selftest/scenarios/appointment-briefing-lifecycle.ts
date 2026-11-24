@@ -2,6 +2,7 @@ import { isOfficeReminderDue, isOlderOfficeFeedback, needsOfficeFeedback, office
 import { appointmentProgress, showTimelineNowMarker, appointmentCountdown, dashboardTimelineState, appointmentSummary, hasAppointmentEnded, nextAppointmentId, pendingSummary, timelineNowIndex } from "@/utils/dashboard/daySummary";
 import { canCompleteBriefing, canGoLive, followUpTaskFromLive, mergeLegacy, saveCompact } from "@/features/appointments/briefing/briefingModel";
 import { supabase } from "@/integrations/supabase/client";
+import { addMinutesToStart, applyReportedStart, changeSummary, changeTitle, formatChangeClock, nextStartFromChange, pickAppointmentChanges, shiftEndWithStart, summarizeReportedChanges, withBerlinClockTime } from "@/features/appointments/change-alerts/changeModel";
 import { dashboardBriefingState, needsBriefingReminder, showsInDailyBriefing, canAdvanceBriefing, needsBriefingDecision, suggestBriefingDue } from "@/features/appointments/briefing";
 import type { TestScenario } from "../types";
 import { SELFTEST_PREFIX } from "../runner";
@@ -17,12 +18,15 @@ export const appointmentBriefingLifecycleScenario: TestScenario = {
   id: "appointment-briefing-lifecycle",
   title: "Briefing-Lifecycle (vergeben → Aufgabe → vorlegen → freigeben)",
   description: "Legt einen Termin an, vergibt ein Briefing (es entsteht eine Aufgabe), legt es vor, gibt es frei (Aufgabe erledigt) und prüft „Kein Briefing“.",
-  touches: ["appointments", "tasks"],
+  touches: ["appointments", "tasks", "appointment_change_alerts"],
   features: ["appointments", "tasks"],
   requiredRoles: ["abgeordneter", "bueroleitung"],
   checks: ["Regeln für Freigabe und Fristvorschlag", "Aufgabe entsteht beim Vergeben", "Ball wechselt bei Vorlage", "Freigabe erledigt Aufgabe", "Kein Briefing schließt Aufgabe"],
   limitations: ["Bedienung von Kalender- und Jour-Fixe-Oberfläche wird nicht geprüft."],
-  writes: [{ table: "appointments", columns: ["title", "tenant_id", "user_id", "start_time", "end_time"] }],
+  writes: [
+    { table: "appointments", columns: ["title", "tenant_id", "user_id", "start_time", "end_time"] },
+    { table: "appointment_change_alerts", columns: ["tenant_id", "appointment_id", "title", "message", "kind", "new_start_time", "new_location"] },
+  ],
   links: () => [{ label: "Kalender", href: "/calendar" }],
   steps: [
     {
@@ -61,6 +65,46 @@ export const appointmentBriefingLifecycleScenario: TestScenario = {
           !hasAppointmentEnded({ ...past, end_time: undefined, is_all_day: true }, now),
         ];
         return { ok: checks.every(Boolean), message: `${checks.filter(Boolean).length}/${checks.length} Tagesstatus bestanden.` };
+      },
+    },
+    {
+      id: "appointment-change-rules", label: "Terminänderung: Schnellwahl, eigene Zeit, Ort und Hinweis-Chip", kind: "logic",
+      run: async () => {
+        const start = "2026-11-22T18:00:00+01:00";
+        const alerts = [
+          { id: "t", appointment_id: "a", title: "Zeit geändert: Termin", message: "Zugang über Hof", kind: "time", new_start_time: "2026-11-22T18:30:00+01:00", new_location: null, created_at: "2026-11-20T10:00:00Z", acknowledged_at: null, created_by_name: "Büro" },
+          { id: "o", appointment_id: "a", title: "Ort geändert: Termin", message: "", kind: "location", new_start_time: null, new_location: "Raum 2", created_at: "2026-11-20T11:00:00Z", acknowledged_at: null, created_by_name: "Büro" },
+          { id: "n", appointment_id: "a", title: "Hinweis: Termin", message: "Unterlagen liegen bereit", kind: "note", new_start_time: null, new_location: null, created_at: "2026-11-20T12:00:00Z", acknowledged_at: null, created_by_name: "Büro" },
+        ];
+        const picked = pickAppointmentChanges(alerts, "a");
+        const checks = [
+          addMinutesToStart(start, 30) === "2026-11-22T17:30:00.000Z",
+          addMinutesToStart(start, 60) === "2026-11-22T18:00:00.000Z",
+          withBerlinClockTime(start, "19:15") === "2026-11-22T18:15:00.000Z",
+          withBerlinClockTime(start, "24:00") === null,
+          nextStartFromChange(start, 15, "") === "2026-11-22T17:15:00.000Z",
+          nextStartFromChange(start, 15, "20:00") === "2026-11-22T19:00:00.000Z",
+          formatChangeClock("2026-11-22T17:30:00.000Z") === "18:30",
+          changeTitle("time", "Bürgerdialog") === "Zeit geändert: Bürgerdialog",
+          changeTitle("location", "Bürgerdialog") === "Ort geändert: Bürgerdialog",
+          changeSummary(alerts[0]) === "Neue Zeit 18:30 · Zugang über Hof",
+          changeSummary(alerts[1]) === "Neuer Ort: Raum 2",
+          picked.time?.id === "t" && picked.location?.id === "o",
+          picked.notes.map(note => note.id).join(",") === "n,t",
+          pickAppointmentChanges(alerts, "b").notes.length === 0,
+          shiftEndWithStart(start, "2026-11-22T19:00:00+01:00", "2026-11-22T19:00:00+01:00") === "2026-11-22T19:00:00.000Z",
+          shiftEndWithStart("2026-11-22T23:30:00+01:00", "2026-11-23T00:30:00+01:00", "2026-11-22T23:30:00.000Z") === "2026-11-23T00:30:00.000Z",
+          shiftEndWithStart(start, null, "2026-11-22T19:00:00+01:00") === null,
+          shiftEndWithStart(start, "2026-11-22T19:00:00+01:00", null) === null,
+          summarizeReportedChanges(alerts, "a").newStartTime === "2026-11-22T18:30:00+01:00",
+          summarizeReportedChanges(alerts, "a").newLocation === "Raum 2",
+          summarizeReportedChanges(alerts, "a").notes.join("|") === "Unterlagen liegen bereit|Zugang über Hof",
+          summarizeReportedChanges(alerts, "b").notes.length === 0,
+          applyReportedStart({ start_time: start, end_time: "2026-11-22T19:00:00+01:00" }, "2026-11-22T19:00:00+01:00").end_time === "2026-11-22T19:00:00.000Z",
+          applyReportedStart<{ start_time: string; end_time?: string }>({ start_time: start }, "2026-11-22T19:00:00+01:00").end_time === undefined,
+          applyReportedStart({ start_time: start, end_time: "2026-11-22T19:00:00+01:00" }, null).start_time === start,
+        ];
+        return { ok: checks.every(Boolean), message: `${checks.filter(Boolean).length}/${checks.length} Änderungsregeln bestanden.` };
       },
     },
     {
@@ -197,6 +241,28 @@ export const appointmentBriefingLifecycleScenario: TestScenario = {
         ctx.data.appointmentId = id;
         const a = await read(id);
         return { ok: a.briefing_status === "undecided", message: `Status: ${a.briefing_status}` };
+      },
+    },
+    {
+      id: "change-alert", label: "Eil-Änderung mit neuer Zeit und Hinweis speichern", kind: "workflow",
+      run: async (ctx) => {
+        const appointmentId = ctx.data.appointmentId as string;
+        const alertId = crypto.randomUUID();
+        const newStart = addMinutesToStart(new Date(Date.now() + 5 * 86400_000).toISOString(), 30) as string;
+        const { error } = await supabase.from("appointment_change_alerts").insert({
+          id: alertId, tenant_id: ctx.tenantId, appointment_id: appointmentId,
+          title: changeTitle("time", `${SELFTEST_PREFIX} Briefing-Termin (${ctx.runId})`),
+          message: "Zugang über den Hof", kind: "time", new_start_time: newStart,
+          created_by: ctx.userId, created_by_name: "Selbsttest",
+        });
+        if (error) return { ok: false, message: describeError(error) };
+        ctx.trackRecord({ table: "appointment_change_alerts", id: alertId });
+        const { data, error: readError } = await supabase.from("appointment_change_alerts")
+          .select("kind, new_start_time, new_location, message").eq("id", alertId).single();
+        if (readError) return { ok: false, message: describeError(readError) };
+        const ok = data.kind === "time" && Date.parse(data.new_start_time ?? "") === Date.parse(newStart)
+          && data.message === "Zugang über den Hof" && data.new_location === null;
+        return { ok, message: ok ? "Zeitänderung samt Zusatzhinweis gespeichert." : "Änderung unerwartet gespeichert.", details: data };
       },
     },
     {
