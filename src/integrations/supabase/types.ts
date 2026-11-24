@@ -17469,6 +17469,10 @@ export type Database = {
       cleanup_bulk_action_audit: { Args: never; Returns: number }
       cleanup_edge_function_cache: { Args: never; Returns: number }
       cleanup_workflow_runs: { Args: never; Returns: number }
+      config_delete_impact: {
+        Args: { _id: string; _table: string }
+        Returns: Json
+      }
       complete_appointment_briefing: {
         Args: { _appointment_id: string }
         Returns: undefined

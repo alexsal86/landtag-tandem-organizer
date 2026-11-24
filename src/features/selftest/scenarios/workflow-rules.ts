@@ -22,6 +22,7 @@ import type { TestScenario } from "../types";
 import { calendarOccurrence, nextCalendarOccurrence, scheduleRunKey } from "@/features/automation/calendarSchedule";
 import { ACTION_MODULE } from "@/features/permissions/catalog";
 import { buildPermissionDiff, diffSimulation, parsePermissionExplanation } from "@/features/permissions/explain";
+import { parseConfigImpact, summarizeConfigImpact } from "@/features/admin/configImpact";
 
 export const workflowRulesScenario: TestScenario = {
   id: "workflow-rules", title: "Geschäftsregeln (Freigabe, Rollen, Fristen)",
@@ -304,6 +305,29 @@ export const workflowRulesScenario: TestScenario = {
           consistentSilent: consistent.length === 0,
         };
         return { ok: Object.values(checks).every(Boolean), message: "Begründungen, Ebenenvergleich und Simulation verwenden dieselben Regeln; fehlende Auskünfte gelten nie als Freigabe.", details: checks };
+      },
+    },
+    {
+      id: "config-delete-impact", label: "Konfiguration: Verwendung vor dem Löschen ausweisen", kind: "logic",
+      run: async () => {
+        const used = parseConfigImpact({
+          table: "document_categories", label: "Rechnung", total: 17,
+          references: [
+            { key: "documents", label: "Dokument", count: 14 },
+            { key: "case_files", label: "Fallakte", count: 3 },
+          ],
+        });
+        const single = parseConfigImpact({ total: 1, references: [{ key: "appointments", label: "Termin", count: 1 }] });
+        const unused = parseConfigImpact({ total: 0, references: [] });
+        const unreadable = parseConfigImpact({ total: "viele", references: [] });
+        const checks = {
+          countsPreserved: used.known && used.total === 17 && used.references.length === 2,
+          pluralWording: summarizeConfigImpact(used) === "Wird in 14 Dokumenten und 3 Fallakten verwendet.",
+          singularWording: summarizeConfigImpact(single) === "Wird in einem Termin verwendet.",
+          unusedClear: summarizeConfigImpact(unused) === "Keine Verwendung gefunden.",
+          unknownBlocks: !unreadable.known && summarizeConfigImpact(unreadable) === "Auswirkung konnte nicht geprüft werden.",
+        };
+        return { ok: Object.values(checks).every(Boolean), message: "Der Löschdialog nennt Verwendungen in Klartext und sperrt das Löschen ohne belastbare Auskunft.", details: checks };
       },
     },
     {

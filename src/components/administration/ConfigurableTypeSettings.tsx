@@ -9,13 +9,13 @@ import { Input } from "@/components/ui/input";
 import { useToast } from "@/components/ui/use-toast";
 import { useTenant } from "@/hooks/useTenant";
 import { Skeleton } from "@/components/ui/skeleton";
-import { Trash2, Edit, Plus, Save, X, GripVertical } from "lucide-react";
+import { Edit, Plus, Save, X, GripVertical } from "lucide-react";
 import { LucideIcon } from "lucide-react";
 import { getLucideIcon } from "@/utils/iconUtils";
-import { AlertDialog, AlertDialogAction, AlertDialogCancel, AlertDialogContent, AlertDialogDescription, AlertDialogFooter, AlertDialogHeader, AlertDialogTitle, AlertDialogTrigger } from "@/components/ui/alert-dialog";
 import { DragDropContext, Droppable, Draggable, type DropResult } from "@hello-pangea/dnd";
 import { TagIconPicker } from "@/components/contacts/TagIconPicker";
 import { notify } from "@/lib/notify";
+import { ConfigDeleteDialog } from "@/features/admin/ConfigDeleteDialog";
 
 type ConfigurableType = {
   id: string;
@@ -231,6 +231,23 @@ export function ConfigurableTypeSettings({
       debugConsole.error(`Error deleting ${entityName}:`, error);
       notify.error("Fehler", { description: `${entityName} konnte nicht gelöscht werden.`
 });
+    }
+  };
+
+  const deactivateItem = async (id: string) => {
+    const previousItems = [...items];
+    setItems(items.map(item => item.id === id ? { ...item, is_active: false } : item));
+
+    try {
+      const { error } = await supabase.from(tableName).update({ is_active: false }).eq('id', id);
+      if (error) {
+        setItems(previousItems);
+        throw error;
+      }
+      notify.success("Erfolg", { description: `${entityName} wurde deaktiviert.` });
+    } catch (error: unknown) {
+      debugConsole.error(`Error deactivating ${entityName}:`, error);
+      notify.error("Fehler", { description: `${entityName} konnte nicht deaktiviert werden.` });
     }
   };
 
@@ -489,31 +506,14 @@ export function ConfigurableTypeSettings({
                                     >
                                       <Edit className="h-4 w-4" />
                                     </Button>
-                                    <AlertDialog>
-                                      <AlertDialogTrigger asChild>
-                                        <Button
-                                          size="sm"
-                                          variant="outline"
-                                          className="h-8 w-8 p-0"
-                                        >
-                                          <Trash2 className="h-4 w-4" />
-                                        </Button>
-                                      </AlertDialogTrigger>
-                                      <AlertDialogContent>
-                                        <AlertDialogHeader>
-                                          <AlertDialogTitle>{entityName} löschen</AlertDialogTitle>
-                                          <AlertDialogDescription>
-                                            {deleteWarning || `Sind Sie sicher, dass Sie "${item.label}" löschen möchten? Diese Aktion kann nicht rückgängig gemacht werden.`}
-                                          </AlertDialogDescription>
-                                        </AlertDialogHeader>
-                                        <AlertDialogFooter>
-                                          <AlertDialogCancel>Abbrechen</AlertDialogCancel>
-                                          <AlertDialogAction onClick={() => handleDelete(item.id)}>
-                                            Löschen
-                                          </AlertDialogAction>
-                                        </AlertDialogFooter>
-                                      </AlertDialogContent>
-                                    </AlertDialog>
+                                    <ConfigDeleteDialog
+                                      tableName={tableName}
+                                      item={item}
+                                      entityName={entityName}
+                                      deleteWarning={deleteWarning}
+                                      onDelete={handleDelete}
+                                      onDeactivate={deactivateItem}
+                                    />
                                   </>
                                 )}
                               </div>
