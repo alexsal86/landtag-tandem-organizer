@@ -110,26 +110,27 @@ export const fetchDashboardRpc = async (userId: string, userEmail: string | unde
   today.setHours(0, 0, 0, 0);
   const tomorrowDay = new Date(Date.parse(berlinDay(now) + "T12:00:00Z") + 86400_000).toISOString().slice(0, 10);
 
-  let externalAppointments: AppointmentData[] = [];
-  try {
-    const externalResult = await supabase.from('external_events')
-      .select('id, title, start_time, end_time, all_day, location, external_calendars!inner(tenant_id)')
-      .eq('external_calendars.tenant_id', tenantId)
-      .gte('end_time', new Date(today.getTime() - 86400000).toISOString())
-      .lt('start_time', new Date(today.getTime() + 3 * 86400000).toISOString())
-      .order('start_time', { ascending: true });
+  // Ein Ladefehler der externen Kalender darf nicht als "keine externen Termine"
+  // durchgehen: er bricht die Dashboard-Abfrage ab, damit die Terminkachel den
+  // Fehlerzustand mit erneutem Laden zeigt. Ein Büro ohne verbundene Kalender ist
+  // dagegen kein Fehler, es kommen schlicht keine Zeilen zurück.
+  const externalResult = await supabase.from('external_events')
+    .select('id, title, start_time, end_time, all_day, location, external_calendars!inner(tenant_id)')
+    .eq('external_calendars.tenant_id', tenantId)
+    .gte('end_time', new Date(today.getTime() - 86400000).toISOString())
+    .lt('start_time', new Date(today.getTime() + 3 * 86400000).toISOString())
+    .order('start_time', { ascending: true });
 
-    externalAppointments = (externalResult.data as ExternalEventRow[] | null ?? []).map((event) => ({
-      id: event.id,
-      title: event.title,
-      start_time: event.start_time,
-      end_time: event.end_time,
-      is_all_day: event.all_day ?? false,
-      location: event.location ?? undefined,
-    }));
-  } catch {
-    // external events are optional
-  }
+  if (externalResult.error) throw externalResult.error;
+
+  const externalAppointments: AppointmentData[] = (externalResult.data as ExternalEventRow[] | null ?? []).map((event) => ({
+    id: event.id,
+    title: event.title,
+    start_time: event.start_time,
+    end_time: event.end_time,
+    is_all_day: event.all_day ?? false,
+    location: event.location ?? undefined,
+  }));
 
   const rpcAppointments = rpcResult.appointments ?? [];
   const appointmentIds = rpcAppointments
