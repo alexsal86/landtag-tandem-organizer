@@ -245,8 +245,11 @@ export const PollResultsDashboard = ({ pollId, onConfirmSlot }: PollResultsDashb
 
       // Externe Teilnehmer sind jetzt Gäste des Termins – Einladungen direkt senden.
       // Bei einer erneuten Bestätigung wurde nichts neu angelegt, also auch nichts
-      // erneut verschicken.
-      if (appointmentId && !alreadyConfirmed) {
+      // erneut verschicken. Ohne externe Teilnehmer gibt es keine Gäste: die
+      // Function würde "Keine Gäste zum Einladen gefunden" als Fehler melden,
+      // obwohl der Termin korrekt angelegt wurde.
+      const hasExternalParticipants = participants.some((participant) => participant.is_external);
+      if (appointmentId && !alreadyConfirmed && hasExternalParticipants) {
         const { data: invitation, error: invitationError } = await supabase.functions.invoke('send-appointment-invitation', {
           body: { appointmentId, reason: 'manual' }
         });
