@@ -1,4 +1,6 @@
 import { DashboardBirthdays } from "./DashboardBirthdays";
+import { openAppointmentChange, useAlerts as useChangeAlerts } from "@/features/appointments/change-alerts/AppointmentChangeAlerts";
+import { useWorkspaceView } from "@/contexts/WorkspaceViewContext";
 import { nextAppointmentLabel } from "@/utils/dashboard/occasions";
 import { hasAppointmentEnded, nextAppointmentId, timelineNowIndex } from "@/utils/dashboard/daySummary";
 import { useQuery } from "@tanstack/react-query";
@@ -134,6 +136,8 @@ export const DashboardAppointments = ({ data }: Props) => {
     return () => window.clearInterval(timer);
   }, []);
   const { currentTenant } = useTenant();
+  const { data: changeAlerts = [] } = useChangeAlerts();
+  const { isEmployeeView } = useWorkspaceView();
   const { isAdmin: canDecideBriefing } = useResolvedUserRole();
   const [briefingDecision, setBriefingDecision] = useState<{ id: string; title: string; start_time: string } | null>(null);
   const { appointments, isShowingTomorrow, tomorrowAppointments, specialDays, isLoading } = data;
@@ -333,7 +337,9 @@ export const DashboardAppointments = ({ data }: Props) => {
     const canChooseBriefing = canDecideBriefing && !statusError && !statusLoading
       && (briefingStatus === "undecided" || briefingStatus === "none");
     return (
-      <div key={apt.id} className={cn("relative", ended && "opacity-55")}>
+      <div key={apt.id} className={cn("relative", ended && "opacity-55")}
+        onContextMenu={isEmployeeView ? (e) => { e.preventDefault(); openAppointmentChange(apt.id, apt.title); } : undefined}
+        title={isEmployeeView ? "Rechtsklick: Eil-Änderung melden" : undefined}>
         <span aria-hidden="true" className={cn(
           "absolute -left-5 z-10 h-3 w-3 rounded-full border-2",
           ended ? "top-3" : "top-[18px]",
@@ -375,6 +381,9 @@ export const DashboardAppointments = ({ data }: Props) => {
                 active ? "text-card-title font-semibold" : "text-body-lg font-medium",
                 ended && "line-through",
               )}>{apt.title}</p>
+              {changeAlerts.some((a) => a.appointment_id === apt.id) && (
+                <span className="rounded-pill bg-destructive/10 px-2 text-caption font-medium text-destructive">Kurzfristig geändert</span>
+              )}
             </div>
             {(showLocation || participantList.length > 0) && (
               <div className="mt-0.5 flex flex-wrap items-center gap-x-4 gap-y-1 text-caption text-muted-foreground">

@@ -1,4 +1,4 @@
-import { useState } from "react";
+import { useEffect, useState } from "react";
 import { useQuery, useQueryClient } from "@tanstack/react-query";
 import { AlertTriangle, Zap } from "lucide-react";
 import { supabase } from "@/integrations/supabase/client";
@@ -13,7 +13,11 @@ import { notify } from "@/lib/notify";
 const KEY = "appointment-change-alerts";
 const fmt = (d: string) => new Date(d).toLocaleTimeString("de-DE", { hour: "2-digit", minute: "2-digit" });
 
-function useAlerts() {
+export const OPEN_CHANGE_EVENT = "open-appointment-change";
+export const openAppointmentChange = (id: string, title: string) =>
+  window.dispatchEvent(new CustomEvent(OPEN_CHANGE_EVENT, { detail: { id, title } }));
+
+export function useAlerts() {
   const { currentTenant } = useTenant();
   const tenantId = currentTenant?.id;
   return useQuery({
@@ -24,7 +28,7 @@ function useAlerts() {
       const since = new Date(Date.now() - 2 * 86400000).toISOString();
       const { data, error } = await supabase
         .from("appointment_change_alerts")
-        .select("id, title, message, created_by_name, created_at, acknowledged_at")
+        .select("id, appointment_id, title, message, created_by_name, created_at, acknowledged_at")
         .eq("tenant_id", tenantId ?? "")
         .gte("created_at", since)
         .order("created_at", { ascending: false })
@@ -73,20 +77,29 @@ export function AppointmentChangeSender() {
   const [open, setOpen] = useState(false);
   const [title, setTitle] = useState("");
   const [message, setMessage] = useState("");
+  const [appointmentId, setAppointmentId] = useState<string | null>(null);
+  useEffect(() => {
+    const h = (e: Event) => {
+      const d = (e as CustomEvent<{ id: string; title: string }>).detail;
+      setAppointmentId(d.id); setTitle(`Geändert: ${d.title}`); setMessage(""); setOpen(true);
+    };
+    window.addEventListener(OPEN_CHANGE_EVENT, h);
+    return () => window.removeEventListener(OPEN_CHANGE_EVENT, h);
+  }, []);
   const send = async () => {
     if (!currentTenant?.id || !user || !title.trim() || !message.trim()) return;
     const name = (user.user_metadata?.display_name as string | undefined) ?? user.email ?? null;
     const { error } = await supabase.from("appointment_change_alerts").insert({
-      tenant_id: currentTenant.id, title: title.trim(), message: message.trim(), created_by: user.id, created_by_name: name,
+      tenant_id: currentTenant.id, appointment_id: appointmentId, title: title.trim(), message: message.trim(), created_by: user.id, created_by_name: name,
     });
     if (error) return notify.error("Eil-Änderung konnte nicht gesendet werden");
     notify.success("Eil-Änderung an den Abgeordneten gesendet");
-    setOpen(false); setTitle(""); setMessage("");
+    setOpen(false); setTitle(""); setMessage(""); setAppointmentId(null);
     qc.invalidateQueries({ queryKey: [KEY] });
   };
   return (
     <div className="space-y-1">
-      <Button size="sm" variant="outline" onClick={() => setOpen(true)}><Zap className="mr-1 h-4 w-4" />Eil-Terminänderung melden</Button>
+      <Button size="sm" variant="outline" onClick={() => { setAppointmentId(null); setOpen(true); }}><Zap className="mr-1 h-4 w-4" />Eil-Terminänderung melden</Button>
       {data.slice(0, 3).map((a) => (
         <p key={a.id} className="text-caption text-muted-foreground">
           {a.title} – {a.acknowledged_at ? `Gelesen ${fmt(a.acknowledged_at)}` : "noch nicht gelesen"}
