@@ -29,19 +29,47 @@ export function useApprovalComments(contentItemId: string | null) {
     }
     try {
       setLoading(true);
+      // social_approval_comments hat keinen Fremdschlüssel nach profiles (author_id trägt eine
+      // profiles.id ohne FK). Ein eingebetteter Join scheitert deshalb in PostgREST; die Namen
+      // werden wie bei den Kalender-Abwesenheiten clientseitig über profiles.id aufgelöst.
       const { data, error } = await supabase
         .from("social_approval_comments")
-        .select("id, content_item_id, author_id, comment, is_change_request, created_at, profiles:author_id(display_name)")
+        .select("id, content_item_id, author_id, comment, is_change_request, created_at")
         .eq("content_item_id", contentItemId)
         .eq("tenant_id", currentTenant.id)
         .order("created_at", { ascending: true });
       if (error) throw error;
+
+      const rows = (data ?? []) as Array<{
+        id: string;
+        content_item_id: string;
+        author_id: string;
+        comment: string;
+        is_change_request: boolean;
+        created_at: string;
+      }>;
+      const authorIds = Array.from(new Set(rows.map((row) => row.author_id).filter(Boolean)));
+      let authors: Array<{ id: string; display_name: string | null }> = [];
+      if (authorIds.length > 0) {
+        const { data: authorRows, error: authorError } = await supabase
+          .from("profiles")
+          .select("id, display_name")
+          .eq("tenant_id", currentTenant.id)
+          .in("id", authorIds);
+        if (authorError) {
+          console.error("Error loading approval comment authors:", getErrorMessage(authorError), authorError);
+        } else {
+          authors = authorRows ?? [];
+        }
+      }
+      const namesById = new Map(authors.map((author) => [author.id, author.display_name ?? null]));
+
       setComments(
-        (data || []).map((row: Record<string, any>) => ({
+        rows.map((row) => ({
           id: row.id,
           content_item_id: row.content_item_id,
           author_id: row.author_id,
-          author_name: (row.profiles as { display_name?: string } | null)?.display_name ?? null,
+          author_name: namesById.get(row.author_id) ?? null,
           comment: row.comment,
           is_change_request: row.is_change_request,
           created_at: row.created_at,

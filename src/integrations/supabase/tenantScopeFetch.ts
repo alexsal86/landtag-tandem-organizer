@@ -145,7 +145,7 @@ export function createTenantScopeFetch(
       // Only deployed endpoints with tenant-header CORS support receive this header.
       const scopedEndpoints = new Set([
         "archive-letter", "geocode-contact-address", "batch-geocode-contacts",
-        "fetch-rss-feeds", "send-document-email", "send-decision-email",
+        "fetch-rss-feeds", "send-news-email", "send-document-email", "send-decision-email",
         "force-resync-calendar", "sync-external-calendar", "workflow-dispatcher",
         "test-rss-feed", "run-automation-rule", "matrix-decision-handler",
         "send-event-invitation", "send-appointment-invitation", "manage-tenant-user",

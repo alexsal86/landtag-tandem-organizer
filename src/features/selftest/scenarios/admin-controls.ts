@@ -39,6 +39,22 @@ export const adminControlsScenario: TestScenario = {
         message: 'Reiter Redaktion erscheint nur mit module.editorial, die übrigen Reiter bleiben.',
       };
     } },
+    { id: 'redaktion-meldungen', label: 'Redaktionsmeldungen sind je Mandant angelegt', kind: 'workflow', run: async ctx => {
+      const { data, error } = await supabase
+        .from('notification_types')
+        .select('name, is_active')
+        .eq('tenant_id', ctx.tenantId)
+        .in('name', ['social_post_approved', 'social_post_approval_reopened']);
+      const active = new Map((data ?? []).map(row => [row.name, row.is_active]));
+      const missing = ['social_post_approved', 'social_post_approval_reopened'].filter(name => active.get(name) !== true);
+      return {
+        ok: !error && missing.length === 0,
+        message: missing.length === 0
+          ? 'Freigabe und Rücksprung haben einen aktiven Typ; create_notification verwirft sie sonst stillschweigend.'
+          : `Ohne aktiven Typ bleiben diese Meldungen aus: ${missing.join(', ')}.`,
+        details: { error, missing },
+      };
+    } },
     { id: 'field-modes', label: 'Leseregeln liefern erlauben, Feld ausblenden oder Datensatz sperren', kind: 'workflow', run: async ctx => {
       const rules = await Promise.all([['contacts','email'],['letters','content']].map(([table,column]) => supabase.rpc('field_read_rule', { _tenant: ctx.tenantId, _table: table, _column: column })));
       return { ok: rules.every(rule => !rule.error && ['allow','mask','record'].includes(rule.data ?? '')), message: 'Datenbank liefert die rollenspezifischen Feldmodi.', details: rules.map(rule => ({ rule: rule.data, error: rule.error })) };

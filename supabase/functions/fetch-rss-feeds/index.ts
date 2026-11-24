@@ -1,11 +1,15 @@
 import { serve } from "https://deno.land/std@0.168.0/http/server.ts"
 import { createClient } from 'https://esm.sh/@supabase/supabase-js@2.57.4'
+import Parser from 'npm:rss-parser@3.13.0'
 import { requireTenantAccess } from "../_shared/tenant-access.ts";
 
 import { withSafeHandler } from "../_shared/security.ts";
+import { fetchPublicFeed } from "../_shared/feed-fetch.ts";
+import { articleIdentity, normalizeArticleLink } from "../_shared/newsArticle.ts";
+
 const corsHeaders = {
   'Access-Control-Allow-Origin': '*',
-  'Access-Control-Allow-Headers': 'authorization, x-client-info, apikey, content-type',
+  'Access-Control-Allow-Headers': 'authorization, x-client-info, apikey, content-type, x-tenant-id',
 }
 
 interface RSSSource {
@@ -17,63 +21,64 @@ interface RSSSource {
   order_index: number;
 }
 
-async function parseRSSFeed(url: string, source: string, category: string, articlesPerFeed: number = 10) {
-
-  try {
-    const response = await fetch(url, {
-      headers: {
-        'User-Agent': 'RSS News Widget/1.0',
-      },
-    });
-
-    if (!response.ok) {
-      throw new Error(`HTTP error! status: ${response.status}`);
-    }
-
-    const xmlText = await response.text();
-
-    // Simple XML parsing for RSS
-    const items = [];
-    const itemRegex = /<item[^>]*>(.*?)<\/item>/gs;
-    let match;
-
-    while ((match = itemRegex.exec(xmlText)) !== null) {
-      const itemContent = match[1];
-
-      // Extract fields with regex
-      const title = extractTag(itemContent, 'title');
-      const description = extractTag(itemContent, 'description');
-      const link = extractTag(itemContent, 'link');
-      const pubDate = extractTag(itemContent, 'pubDate');
-
-      if (title && link) {
-        items.push({
-          id: `${source}-${Date.now()}-${Math.random()}`,
-          title: cleanText(title),
-          description: cleanText(description || '') || '',
-          link: link.trim(),
-          pub_date: parsePubDate(pubDate || ''),
-          source,
-          category,
-          image_url: extractTag(itemContent, 'enclosure url') || null
-        });
-      }
-
-      // Limit items per feed (dynamic)
-      if (items.length >= articlesPerFeed) break;
-    }
-
-    return items;
-
-  } catch (error) {
-    console.error(`Error parsing RSS from ${url}:`, error);
-    return [];
-  }
+interface NewsArticle {
+  id: string;
+  guid: string | null;
+  title: string;
+  description: string;
+  link: string;
+  pub_date: string;
+  source: string;
+  category: string;
+  image_url: string | null;
 }
 
-function extractTag(content: string, tagName: string): string | null {
-  const regex = new RegExp(`<${tagName}[^>]*>([^<]+)<\/${tagName}>`, 'i');
-  const match = content.match(regex);
+async function resolveHost(host: string): Promise<string[]> {
+  const results = await Promise.allSettled([Deno.resolveDns(host, 'A'), Deno.resolveDns(host, 'AAAA')]);
+  return results.flatMap(result => (result.status === 'fulfilled' ? result.value : []));
+}
+
+/** Fetches one feed through the SSRF-guarded fetcher and maps it with rss-parser. */
+async function parseRSSFeed(source: RSSSource, articlesPerFeed: number): Promise<NewsArticle[]> {
+  const xml = await fetchPublicFeed(source.url, { resolve: resolveHost, fetch });
+  const feed = await new Parser().parseString(xml);
+  const articles: NewsArticle[] = [];
+
+  for (const item of feed.items) {
+    const link = cleanText(item.link ?? '').trim();
+    const title = cleanText(item.title ?? '');
+    const guid = cleanText(item.guid ?? item.id ?? '').trim() || null;
+
+    if (!title) continue;
+
+    // Link first, feed guid as fallback; entries without either cannot be referenced.
+    const id = await articleIdentity({ link, guid, sourceKey: source.id });
+    if (!id) continue;
+
+    articles.push({
+      id,
+      guid,
+      title,
+      description: cleanText(item.contentSnippet ?? item.content ?? item.summary ?? ''),
+      link,
+      pub_date: parsePubDate(item.isoDate ?? item.pubDate ?? ''),
+      source: source.name,
+      category: source.category,
+      image_url: extractImageUrl(item),
+    });
+
+    if (articles.length >= articlesPerFeed) break;
+  }
+
+  return articles;
+}
+
+function extractImageUrl(item: { enclosure?: { url?: string }; content?: string; contentSnippet?: string; [key: string]: unknown }): string | null {
+  if (item.enclosure?.url) return item.enclosure.url;
+  const media = item['media:content'] as { $?: { url?: string } } | undefined;
+  if (media?.$?.url) return media.$.url;
+  const html = item.content ?? item['content:encoded'] ?? '';
+  const match = typeof html === 'string' ? html.match(/<img[^>]+src=["']([^"']+)["']/i) : null;
   return match ? match[1] : null;
 }
 
@@ -82,11 +87,14 @@ function cleanText(text: string): string {
   return text
     .replace(/<!\[CDATA\[|\]\]>/g, '')
     .replace(/<[^>]+>/g, '')
+    .replace(/&#(\d+);/g, (_, code) => String.fromCodePoint(Number(code)))
+    .replace(/&nbsp;/g, ' ')
     .replace(/&amp;/g, '&')
     .replace(/&lt;/g, '<')
     .replace(/&gt;/g, '>')
     .replace(/&quot;/g, '"')
     .replace(/&#39;/g, "'")
+    .replace(/\s+/g, ' ')
     .trim();
 }
 
@@ -94,12 +102,75 @@ function parsePubDate(dateStr: string): string {
   if (!dateStr) return new Date().toISOString();
 
   try {
-    // Handle various date formats
     const date = new Date(dateStr);
     return isNaN(date.getTime()) ? new Date().toISOString() : date.toISOString();
   } catch {
     return new Date().toISOString();
   }
+}
+
+/** Persists the fetched articles so stable ids keep resolving after the feed moves on. */
+async function persistArticles(supabase: any, tenantId: string, articles: NewsArticle[]): Promise<void> {
+  if (articles.length === 0) return;
+
+  const now = new Date().toISOString();
+  const rows = articles.map((article) => ({
+    tenant_id: tenantId,
+    article_id: article.id,
+    guid: article.guid,
+    title: article.title.slice(0, 500),
+    description: article.description.slice(0, 2000),
+    link: article.link.slice(0, 2048),
+    source: article.source,
+    category: article.category,
+    image_url: article.image_url,
+    pub_date: article.pub_date,
+    last_seen_at: now,
+  }));
+
+  const { error } = await supabase
+    .from('news_articles')
+    .upsert(rows, { onConflict: 'tenant_id,article_id' });
+
+  if (error) {
+    console.error('⚠️ Failed to persist news articles:', error);
+  }
+}
+
+/** Adds the caller's own read/saved flags; they are never cached per tenant. */
+async function applyUserState(
+  supabase: any,
+  tenantId: string,
+  userId: string,
+  articles: NewsArticle[],
+): Promise<Array<NewsArticle & { is_read: boolean; is_saved: boolean; read_at: string | null; saved_at: string | null }>> {
+  const withDefaults = articles.map((article) => ({
+    ...article,
+    is_read: false,
+    is_saved: false,
+    read_at: null as string | null,
+    saved_at: null as string | null,
+  }));
+
+  if (articles.length === 0) return withDefaults;
+
+  const { data, error } = await supabase
+    .from('news_article_states')
+    .select('article_id, is_read, is_saved, read_at, saved_at')
+    .eq('tenant_id', tenantId)
+    .eq('user_id', userId)
+    .in('article_id', articles.map((article) => article.id));
+
+  if (error) {
+    console.error('⚠️ Failed to load news article states:', error);
+    return withDefaults;
+  }
+
+  const states = new Map((data ?? []).map((row: any) => [row.article_id, row]));
+  return withDefaults.map((article) => {
+    const state: any = states.get(article.id);
+    return state ? { ...article, is_read: state.is_read, is_saved: state.is_saved, read_at: state.read_at, saved_at: state.saved_at } : article;
+  });
 }
 
 serve(withSafeHandler("fetch-rss-feeds", async (req) => {
@@ -122,6 +193,7 @@ serve(withSafeHandler("fetch-rss-feeds", async (req) => {
     }
 
     const tenant_id = tenantAccess.tenantId;
+    const user_id = tenantAccess.user.id;
 
     // Initialize Supabase client first for cache check
     const supabaseUrl = Deno.env.get('SUPABASE_URL')!;
@@ -139,9 +211,11 @@ serve(withSafeHandler("fetch-rss-feeds", async (req) => {
       .maybeSingle();
 
     if (cachedData && !cacheError) {
+      const cachedArticles: NewsArticle[] = cachedData.content?.articles ?? [];
       return new Response(
         JSON.stringify({
           ...cachedData.content,
+          articles: await applyUserState(supabase, tenant_id, user_id, cachedArticles),
           cached: true,
           cache_expires_at: cachedData.expires_at
         }),
@@ -201,19 +275,38 @@ serve(withSafeHandler("fetch-rss-feeds", async (req) => {
 
     // Fetch from all sources in parallel
     const fetchPromises = filteredSources.map((source: RSSSource) =>
-      parseRSSFeed(source.url, source.name, source.category, articlesPerFeed)
+      parseRSSFeed(source, articlesPerFeed)
     );
 
     const results = await Promise.allSettled(fetchPromises);
 
-    // Combine and sort articles
-    const allArticles = results
-      .filter(result => result.status === 'fulfilled')
-      .flatMap(result => (result as PromiseFulfilledResult<any[]>).value)
-      .sort((a, b) => new Date(b.pub_date).getTime() - new Date(a.pub_date).getTime())
-      .slice(0, totalLimit);
+    results.forEach((result, index) => {
+      if (result.status === 'rejected') {
+        console.error(`Error parsing RSS from ${filteredSources[index]?.url}:`, result.reason);
+      }
+    });
 
-    // Prepare response data
+    // Combine and sort articles
+    const sortedArticles = results
+      .filter(result => result.status === 'fulfilled')
+      .flatMap(result => (result as PromiseFulfilledResult<NewsArticle[]>).value)
+      .sort((a, b) => new Date(b.pub_date).getTime() - new Date(a.pub_date).getTime());
+
+    // The same URL from several feeds is one article; the newest occurrence wins.
+    const seen = new Set<string>();
+    const uniqueArticles: NewsArticle[] = [];
+    for (const article of sortedArticles) {
+      const key = article.link ? `link:${normalizeArticleLink(article.link)}` : `id:${article.id}`;
+      if (seen.has(key)) continue;
+      seen.add(key);
+      uniqueArticles.push(article);
+    }
+
+    const allArticles = uniqueArticles.slice(0, totalLimit);
+
+    await persistArticles(supabase, tenant_id, allArticles);
+
+    // Prepare response data (user-independent part goes into the cache)
     const responseData = {
       articles: allArticles,
       total: allArticles.length,
@@ -240,7 +333,10 @@ serve(withSafeHandler("fetch-rss-feeds", async (req) => {
     }
 
     return new Response(
-      JSON.stringify(responseData),
+      JSON.stringify({
+        ...responseData,
+        articles: await applyUserState(supabase, tenant_id, user_id, allArticles),
+      }),
       {
         headers: {
           ...corsHeaders,

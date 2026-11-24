@@ -22,11 +22,22 @@ export function WorkflowLinks({ taskId, caseFileId }: { taskId?: string; caseFil
           if (link.error) throw link.error;
           annotationLink = link.data;
         }
-        return { annotationLink, source: data, decisions: [] as Array<{ id: string; title: string }> };
+        // News tasks reference the persisted article, not a random feed-side id.
+        let newsArticle: { article_id: string; title: string; link: string; source: string } | null = null;
+        if (data.source_type === "news" && data.source_id) {
+          const article = await supabase.from("news_articles")
+            .select("article_id,title,link,source")
+            .eq("tenant_id", currentTenant!.id)
+            .eq("article_id", data.source_id)
+            .maybeSingle();
+          if (article.error) throw article.error;
+          newsArticle = article.data;
+        }
+        return { annotationLink, newsArticle, source: data, decisions: [] as Array<{ id: string; title: string }> };
       }
       const { data, error } = await supabase.from("task_decisions").select("id,title").eq("tenant_id", currentTenant!.id).eq("case_file_id", caseFileId!);
       if (error) throw error;
-      return { annotationLink: null, source: null, decisions: data ?? [] };
+      return { annotationLink: null, newsArticle: null, source: null, decisions: data ?? [] };
     },
   });
   const source = query.data?.source;
@@ -38,6 +49,17 @@ export function WorkflowLinks({ taskId, caseFileId }: { taskId?: string; caseFil
     {source?.source_type === "case_step" && source.source_id && <Link className="text-primary underline" to={`/mywork?tab=cases&caseItemId=${source.source_id}`}>Zugehörigen Vorgang öffnen</Link>}
     {source?.source_type === "case_file" && source.source_id && <Link className="text-primary underline" to={`/casefiles?caseFileId=${source.source_id}`}>Zugehörige Akte öffnen</Link>}
     {source?.source_type === "quick_note" && source.source_id && <Link className="text-primary underline" to={`/mywork?tab=capture&highlight=${source.source_id}`}>Ursprüngliche Notiz öffnen</Link>}
+    {source?.source_type === "news" && query.data?.newsArticle && (
+      <a
+        className="block text-primary underline break-words"
+        href={query.data.newsArticle.link}
+        target="_blank"
+        rel="noopener noreferrer"
+        title={`${query.data.newsArticle.title} (${query.data.newsArticle.source})`}
+      >
+        Zugehörige News öffnen: {query.data.newsArticle.title}
+      </a>
+    )}
     {query.data?.decisions.map(d => <button key={d.id} className="block text-primary underline" onClick={() => setDecisionId(d.id)}>Entscheidung: {d.title}</button>)}
     <TaskDecisionDetails decisionId={decisionId} isOpen={!!decisionId} onClose={() => setDecisionId(null)} />
   </div>;

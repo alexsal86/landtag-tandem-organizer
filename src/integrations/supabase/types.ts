@@ -11566,6 +11566,103 @@ export type Database = {
         }
         Relationships: []
       }
+      news_article_states: {
+        Row: {
+          article_id: string
+          created_at: string
+          is_read: boolean
+          is_saved: boolean
+          read_at: string | null
+          saved_at: string | null
+          tenant_id: string
+          updated_at: string
+          user_id: string
+        }
+        Insert: {
+          article_id: string
+          created_at?: string
+          is_read?: boolean
+          is_saved?: boolean
+          read_at?: string | null
+          saved_at?: string | null
+          tenant_id: string
+          updated_at?: string
+          user_id: string
+        }
+        Update: {
+          article_id?: string
+          created_at?: string
+          is_read?: boolean
+          is_saved?: boolean
+          read_at?: string | null
+          saved_at?: string | null
+          tenant_id?: string
+          updated_at?: string
+          user_id?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "news_article_states_tenant_id_fkey"
+            columns: ["tenant_id"]
+            isOneToOne: false
+            referencedRelation: "tenants"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
+      news_articles: {
+        Row: {
+          article_id: string
+          category: string
+          description: string | null
+          first_seen_at: string
+          guid: string | null
+          image_url: string | null
+          last_seen_at: string
+          link: string
+          pub_date: string | null
+          source: string
+          tenant_id: string
+          title: string
+        }
+        Insert: {
+          article_id: string
+          category?: string
+          description?: string | null
+          first_seen_at?: string
+          guid?: string | null
+          image_url?: string | null
+          last_seen_at?: string
+          link: string
+          pub_date?: string | null
+          source: string
+          tenant_id: string
+          title: string
+        }
+        Update: {
+          article_id?: string
+          category?: string
+          description?: string | null
+          first_seen_at?: string
+          guid?: string | null
+          image_url?: string | null
+          last_seen_at?: string
+          link?: string
+          pub_date?: string | null
+          source?: string
+          tenant_id?: string
+          title?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "news_articles_tenant_id_fkey"
+            columns: ["tenant_id"]
+            isOneToOne: false
+            referencedRelation: "tenants"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
       news_email_templates: {
         Row: {
           closing: string

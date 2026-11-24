@@ -95,6 +95,18 @@ export const NewsShareDialog: React.FC<NewsShareDialogProps> = ({
     }
   };
 
+  /** Surfaces the server's actionable message (e.g. missing sender address). */
+  const readFunctionErrorMessage = async (error: unknown): Promise<string | null> => {
+    const context = (error as { context?: Response })?.context;
+    if (!context || typeof context.json !== 'function') return null;
+    try {
+      const body = await context.clone().json() as { error?: unknown };
+      return typeof body?.error === 'string' && body.error.trim() ? body.error : null;
+    } catch {
+      return null;
+    }
+  };
+
   const handleShare = async () => {
     if (!article) return;
     
@@ -132,18 +144,22 @@ export const NewsShareDialog: React.FC<NewsShareDialogProps> = ({
             recipients: emails,
             internalRecipientUserIds: selectedUserIds,
             senderName,
-            personalMessage: personalMessage || undefined
+            personalMessage: personalMessage || undefined,
+            tenant_id: currentTenant?.id
           }
         });
 
         if (emailError) {
           emailDeliveryFailed = true;
+          const serverMessage = await readFunctionErrorMessage(emailError);
 
           if (emails.length > 0) {
-            throw emailError;
+            notify.error(serverMessage || 'Fehler beim Versenden der News');
+            return;
           }
 
           debugConsole.warn('Email delivery for internal news sharing failed, continuing with in-app notifications only', emailError);
+          notify.warning(serverMessage || 'E-Mail-Versand fehlgeschlagen, interne Benachrichtigungen wurden trotzdem erstellt.');
         } else {
           deliveredEmailRecipients = emailData?.recipients ?? 0;
 
