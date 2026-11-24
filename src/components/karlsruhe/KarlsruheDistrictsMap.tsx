@@ -38,6 +38,110 @@ const getIconDisplay = (iconName: string, color: string = '#ffffff', size: numbe
 
 
 
+/** Contacts may store a website with or without a scheme. Only http(s)
+ * targets become links; anything else (javascript:, data:, mailto:) stays text. */
+const safeHttpUrl = (raw: string | null | undefined): string | null => {
+  const value = raw?.trim();
+  if (!value) return null;
+  const candidate = /^[a-z][a-z0-9+.-]*:/i.test(value) ? value : `https://${value}`;
+  try {
+    const url = new URL(candidate);
+    return url.protocol === 'http:' || url.protocol === 'https:' ? url.href : null;
+  } catch {
+    return null;
+  }
+};
+
+/** Popup content is assembled from DOM nodes so contact data is never parsed as HTML. */
+const appendPopupText = (
+  parent: HTMLElement,
+  tag: 'p' | 'span' | 'div' | 'h3',
+  text: string,
+  styles: Record<string, string>,
+): HTMLElement => {
+  const element = document.createElement(tag);
+  Object.assign(element.style, styles);
+  element.textContent = text;
+  parent.appendChild(element);
+  return element;
+};
+
+const appendPopupDivider = (parent: HTMLElement): void => {
+  const divider = document.createElement('div');
+  Object.assign(divider.style, { marginTop: '8px', paddingTop: '8px', borderTop: '1px solid #ddd' });
+  parent.appendChild(divider);
+};
+
+const createStakeholderPopup = (stakeholder: StakeholderContact, tagFilter: string): HTMLElement => {
+  const popup = document.createElement('div');
+  Object.assign(popup.style, { fontFamily: 'sans-serif', minWidth: '220px' });
+
+  const header = document.createElement('div');
+  Object.assign(header.style, { display: 'flex', alignItems: 'center', gap: '8px', marginBottom: '8px' });
+  appendPopupText(header, 'span', '🏢', { fontSize: '18px' });
+  appendPopupText(header, 'h3', stakeholder.name || 'Kontakt', { margin: '0', fontSize: '15px', fontWeight: '600' });
+  popup.appendChild(header);
+
+  if (stakeholder.organization) {
+    appendPopupText(popup, 'p', stakeholder.organization, { margin: '4px 0', color: '#666', fontSize: '13px' });
+  }
+
+  const address = [stakeholder.business_street, stakeholder.business_postal_code, stakeholder.business_city]
+    .filter(Boolean)
+    .join(', ');
+  if (address) {
+    appendPopupText(popup, 'p', `📮 ${address}`, { margin: '4px 0', color: '#666', fontSize: '12px' });
+  }
+  appendPopupText(popup, 'p', '📍 Geocodierte Adresse', { margin: '2px 0', fontSize: '11px', color: '#10b981' });
+
+  appendPopupDivider(popup);
+  if (stakeholder.email) {
+    appendPopupText(popup, 'p', `📧 ${stakeholder.email}`, { margin: '2px 0', fontSize: '12px' });
+  }
+  if (stakeholder.phone) {
+    appendPopupText(popup, 'p', `📞 ${stakeholder.phone}`, { margin: '2px 0', fontSize: '12px' });
+  }
+  if (stakeholder.website) {
+    const websiteUrl = safeHttpUrl(stakeholder.website);
+    const line = document.createElement('p');
+    Object.assign(line.style, { margin: '2px 0', fontSize: '12px' });
+    line.appendChild(document.createTextNode('🌐 '));
+    if (websiteUrl) {
+      const link = document.createElement('a');
+      link.href = websiteUrl;
+      link.target = '_blank';
+      link.rel = 'noopener noreferrer';
+      link.style.color = '#3b82f6';
+      link.textContent = stakeholder.website;
+      line.appendChild(link);
+    } else {
+      line.appendChild(document.createTextNode(stakeholder.website));
+    }
+    popup.appendChild(line);
+  }
+
+  appendPopupDivider(popup);
+  appendPopupText(popup, 'p', `Verknüpft über Tag: ${tagFilter}`, { margin: '0', fontSize: '11px', color: '#888' });
+  const details = document.createElement('a');
+  details.href = `/contacts/${encodeURIComponent(stakeholder.id)}`;
+  details.target = '_blank';
+  details.rel = 'noopener noreferrer';
+  details.textContent = 'Details anzeigen';
+  Object.assign(details.style, {
+    display: 'inline-block',
+    marginTop: '8px',
+    padding: '4px 12px',
+    background: '#3b82f6',
+    color: 'white',
+    textDecoration: 'none',
+    borderRadius: '4px',
+    fontSize: '12px',
+  });
+  popup.appendChild(details);
+
+  return popup;
+};
+
 interface StakeholderContact {
   id: string;
   name: string | null;
@@ -258,35 +362,7 @@ export const KarlsruheDistrictsMap = ({
           }),
         });
 
-        // Build address display
-        const addressParts = [
-          stakeholder.business_street,
-          stakeholder.business_postal_code,
-          stakeholder.business_city
-        ].filter(Boolean);
-        const addressDisplay = addressParts.length > 0 ? addressParts.join(', ') : null;
-
-        stakeholderMarker.bindPopup(`
-          <div style="font-family: sans-serif; min-width: 220px;">
-            <div style="display: flex; align-items: center; gap: 8px; margin-bottom: 8px;">
-              <span style="font-size: 18px;">🏢</span>
-              <h3 style="margin: 0; font-size: 15px; font-weight: 600;">${stakeholder.name}</h3>
-            </div>
-            ${stakeholder.organization ? `<p style="margin: 4px 0; color: #666; font-size: 13px;">${stakeholder.organization}</p>` : ''}
-            ${addressDisplay ? `<p style="margin: 4px 0; color: #666; font-size: 12px;">📮 ${addressDisplay}</p>` : ''}
-            <p style="margin: 2px 0; font-size: 11px; color: #10b981;">📍 Geocodierte Adresse</p>
-            
-            <div style="margin-top: 8px; padding-top: 8px; border-top: 1px solid #ddd;">
-              ${stakeholder.email ? `<p style="margin: 2px 0; font-size: 12px;">📧 ${stakeholder.email}</p>` : ''}
-              ${stakeholder.phone ? `<p style="margin: 2px 0; font-size: 12px;">📞 ${stakeholder.phone}</p>` : ''}
-              ${stakeholder.website ? `<p style="margin: 2px 0; font-size: 12px;">🌐 <a href="${stakeholder.website}" target="_blank" style="color: #3b82f6;">${stakeholder.website}</a></p>` : ''}
-            </div>
-            <div style="margin-top: 8px; padding-top: 8px; border-top: 1px solid #ddd;">
-              <p style="margin: 0; font-size: 11px; color: #888;">Verknüpft über Tag: ${flagType.tag_filter}</p>
-              <a href="/contacts/${stakeholder.id}" target="_blank" style="display: inline-block; margin-top: 8px; padding: 4px 12px; background: #3b82f6; color: white; text-decoration: none; border-radius: 4px; font-size: 12px;">Details anzeigen</a>
-            </div>
-          </div>
-        `);
+        stakeholderMarker.bindPopup(createStakeholderPopup(stakeholder, flagType.tag_filter ?? ''));
 
         stakeholderMarker.addTo(map);
         stakeholderMarkersRef.current.set(`${flagType.id}-${stakeholder.id}`, stakeholderMarker);
