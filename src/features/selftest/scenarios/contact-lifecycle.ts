@@ -3,6 +3,7 @@ import type { TestScenario } from "../types";
 import { SELFTEST_MARKER, SELFTEST_PREFIX } from "../runner";
 import { describeError, expectFields } from "../verify";
 import { resolveDuplicateContact } from "@/components/contact-import/duplicateResolution";
+import { CONTACT_LINK_TARGETS, duplicateLinkIds } from "@/components/contacts/mergeContactLinks";
 
 export const contactLifecycleScenario: TestScenario = {
   id: "contact-lifecycle",
@@ -76,6 +77,33 @@ export const contactLifecycleScenario: TestScenario = {
           message: failed.length === 0
             ? "Zusammenführen füllt nur Lücken und vereinigt Notizen/Tags; Überschreiben ersetzt Konflikte; Identität, Mandant und Auditfelder bleiben unangetastet."
             : `Fehlgeschlagen: ${failed.join(", ")}`,
+        };
+      },
+    },
+    {
+      id: "merge-contact-links",
+      label: "Manuelles Zusammenführen hängt alle Kontaktverknüpfungen um",
+      kind: "logic",
+      run: async () => {
+        const tables = CONTACT_LINK_TARGETS.map((target) => target.table);
+        const required = ["appointment_contacts", "appointments", "call_logs", "case_file_contacts", "case_items", "contact_activities", "contact_briefing_memory", "contact_topics", "contact_usage_stats", "distribution_list_members", "document_contacts", "facts", "funding_participants"];
+        const caseFiles = duplicateLinkIds(
+          { table: "case_file_contacts", dedupeColumn: "case_file_id" },
+          [{ id: "keep", case_file_id: "cf-1" }],
+          [{ id: "drop", case_file_id: "cf-1" }, { id: "move", case_file_id: "cf-2" }],
+        );
+        const callLogs = duplicateLinkIds({ table: "call_logs" }, [], [{ id: "call-1" }]);
+        const topics = duplicateLinkIds(
+          { table: "contact_topics", dedupeColumn: "topic_id" },
+          [{ id: "keep-topic", topic_id: "topic-1" }],
+          [{ id: "drop-topic", topic_id: "topic-1" }, { id: "move-topic", topic_id: null }],
+        );
+        return {
+          ok: required.every((table) => tables.includes(table)) &&
+            caseFiles.join(",") === "drop" &&
+            callLogs.length === 0 &&
+            topics.join(",") === "drop-topic",
+          message: "Alle contact_id-Verknüpfungen sind erfasst; nur kollidierende Unique-Paare werden verworfen, Tabellen ohne Paar-Constraint behalten jede Zeile.",
         };
       },
     },
