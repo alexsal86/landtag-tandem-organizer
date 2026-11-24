@@ -174,24 +174,32 @@ function OfficeFeedbackForm() {
       if (recording && !(await speech.stop())) return;
       const results = await Promise.allSettled(events.map(event => persist(event, report ? "completed" : "skipped", report)));
       await refresh();
+      const saved = events.filter((_, index) => results[index].status === "fulfilled");
       const failed = results.filter(result => result.status === "rejected");
       if (failed.length) {
-        notify.error(`${failed.length} Rückmeldung(en) konnten nicht abgeschlossen werden. Bitte erneut versuchen.`);
-        return;
+        const cause = failed[0].reason;
+        const details = cause?.code === "PGRST202" || cause?.code === "42883"
+          ? "Der Versanddienst ist derzeit nicht verfügbar."
+          : ["Für diesen Termin liegt schon eine Rückmeldung vor", "Termin nicht zugänglich", "Keine Berechtigung"].includes(cause?.message)
+            ? cause.message
+            : "Bitte versuche es erneut.";
+        notify.error(report ? "Rückmeldung konnte nicht gesendet werden. Dein Text bleibt erhalten."
+          : `${failed.length} Rückmeldung(en) konnten nicht abgeschlossen werden.`, { description: details });
       }
-      setCompleted(report ? "sent" : "empty");
+      if (!saved.length) return;
+      setCompleted(failed.length ? null : report ? "sent" : "empty");
       setPromises(previous => {
         const next = { ...previous };
-        events.forEach(event => { delete next[eventKey(event)]; });
+        saved.forEach(event => { delete next[eventKey(event)]; });
         return next;
       });
-      events.forEach(event => { delete spokenSeconds.current[eventKey(event)]; });
+      saved.forEach(event => { delete spokenSeconds.current[eventKey(event)]; });
       setMode("write");
       setSelected(null);
       setInterim("");
       setDrafts(previous => {
         const next = { ...previous };
-        events.forEach(event => { delete next[eventKey(event)]; });
+        saved.forEach(event => { delete next[eventKey(event)]; });
         return next;
       });
     } catch {

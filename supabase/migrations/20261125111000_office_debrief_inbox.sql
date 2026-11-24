@@ -70,6 +70,7 @@ CREATE FUNCTION public.update_office_debrief(
 ) RETURNS void LANGUAGE plpgsql SECURITY DEFINER SET search_path = '' AS $$
 DECLARE actor uuid := auth.uid(); owner_id uuid; event_end timestamptz; feedback public.appointment_feedback;
   event_title text;
+  task_source public.tasks.source_id%TYPE;
   internal_event boolean := false;
   body text := nullif(btrim(_text),''); commitment text := nullif(btrim(_promise),'');
   employee boolean := coalesce(public.has_active_tenant_role(auth.uid(), _tenant, ARRAY['mitarbeiter','bueroleitung','praktikant']), false);
@@ -146,10 +147,11 @@ BEGIN
       SELECT e.title INTO event_title FROM public.external_events e JOIN public.external_calendars c ON c.id = e.external_calendar_id
         WHERE e.id = feedback.external_event_id AND c.tenant_id = _tenant AND c.user_id = feedback.user_id;
       IF NOT FOUND THEN RAISE EXCEPTION 'Termin nicht zugänglich' USING ERRCODE = '42501'; END IF;
+      task_source := feedback.id;
       INSERT INTO public.tasks (user_id, tenant_id, title, description, assigned_to, status, priority, category,
         ball_owner, ball_assignee_id, next_action, source_type, source_id, timeline)
       VALUES (actor, _tenant, left(body,120), body, actor::text, 'todo', 'medium', 'personal',
-        'office', actor, left(body,120), 'appointment_feedback', feedback.id::text,
+        'office', actor, left(body,120), 'appointment_feedback', task_source,
         jsonb_build_array(jsonb_build_object('id', gen_random_uuid()::text, 'type','system','at',now(),
           'actorName','System','text','Folgeaufgabe aus Termin „' || event_title || '“ angelegt')));
       UPDATE public.appointment_feedback SET has_tasks = true WHERE id = _id;
