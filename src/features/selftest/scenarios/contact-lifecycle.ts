@@ -3,17 +3,17 @@ import type { TestScenario } from "../types";
 import { SELFTEST_MARKER, SELFTEST_PREFIX } from "../runner";
 import { describeError, expectFields } from "../verify";
 import { MANUAL_MERGE_FIELDS, resolveDuplicateContact } from "@/components/contact-import/duplicateResolution";
-import { CONTACT_LINK_TARGETS, duplicateLinkIds } from "@/components/contacts/mergeContactLinks";
 
 export const contactLifecycleScenario: TestScenario = {
   id: "contact-lifecycle",
   title: "Kontakt-Lifecycle (Anlegen → Kategorie/Tags → Aktivität → Suche)",
   description: "Legt einen vollständigen Kontakt an, ändert Kategorie und Schlagworte, protokolliert eine Aktivität und prüft, dass er über die Suche gefunden wird.",
-  touches: ["contacts", "contact_activities"],
+  touches: ["contacts", "contact_activities", "contact_usage_stats"],
   features: ["contacts"],
   writes: [
     { table: "contacts", columns: ["name", "user_id", "tenant_id", "email", "phone", "organization", "title", "category", "tags", "notes"] },
     { table: "contact_activities", columns: ["contact_id", "tenant_id", "created_by", "activity_type", "title", "description"] },
+    { table: "contact_usage_stats", columns: ["contact_id", "tenant_id", "user_id", "usage_count"] },
   ],
   links: (ctx) => ctx.data.contactId ? [{ label: "Kontakt öffnen", href: `/contacts/${ctx.data.contactId}` }] : [],
   steps: [
@@ -83,29 +83,96 @@ export const contactLifecycleScenario: TestScenario = {
       },
     },
     {
-      id: "merge-contact-links",
-      label: "Manuelles Zusammenführen hängt alle Kontaktverknüpfungen um",
-      kind: "logic",
-      run: async () => {
-        const tables = CONTACT_LINK_TARGETS.map((target) => target.table);
-        const required = ["appointment_contacts", "appointments", "call_logs", "case_file_contacts", "case_items", "contact_activities", "contact_briefing_memory", "contact_topics", "contact_usage_stats", "distribution_list_members", "document_contacts", "facts", "funding_participants"];
-        const caseFiles = duplicateLinkIds(
-          { table: "case_file_contacts", dedupeColumn: "case_file_id" },
-          [{ id: "keep", case_file_id: "cf-1" }],
-          [{ id: "drop", case_file_id: "cf-1" }, { id: "move", case_file_id: "cf-2" }],
-        );
-        const callLogs = duplicateLinkIds({ table: "call_logs" }, [], [{ id: "call-1" }]);
-        const topics = duplicateLinkIds(
-          { table: "contact_topics", dedupeColumn: "topic_id" },
-          [{ id: "keep-topic", topic_id: "topic-1" }],
-          [{ id: "drop-topic", topic_id: "topic-1" }, { id: "move-topic", topic_id: null }],
-        );
+      id: "merge-contact-guardrails",
+      label: "Zusammenführen verlangt gültige Kontakte und unveränderliche Identitätsfelder",
+      kind: "workflow",
+      run: async (ctx) => {
+        const target = ctx.data.contactId as string;
+        const [unknownSource, sameContact, protectedField] = await Promise.all([
+          supabase.rpc("merge_contacts", { p_target: target, p_source: crypto.randomUUID(), p_updates: {} }),
+          supabase.rpc("merge_contacts", { p_target: target, p_source: target, p_updates: {} }),
+          supabase.rpc("merge_contacts", { p_target: target, p_source: crypto.randomUUID(), p_updates: { tenant_id: ctx.tenantId } }),
+        ]);
+        const checks = {
+          unbekannterKontaktAbgelehnt: unknownSource.error?.code === "22023",
+          selbstZusammenfuehrenAbgelehnt: sameContact.error?.code === "22023",
+          identitaetsfeldAbgelehnt: protectedField.error?.code === "22023",
+        };
+        const failed = Object.entries(checks).filter(([, ok]) => !ok).map(([name]) => name);
         return {
-          ok: required.every((table) => tables.includes(table)) &&
-            caseFiles.join(",") === "drop" &&
-            callLogs.length === 0 &&
-            topics.join(",") === "drop-topic",
-          message: "Alle contact_id-Verknüpfungen sind erfasst; nur kollidierende Unique-Paare werden verworfen, Tabellen ohne Paar-Constraint behalten jede Zeile.",
+          ok: failed.length === 0,
+          message: failed.length === 0
+            ? "Fremde bzw. unbekannte Kontakte werden abgewiesen und Mandanten-/Identitätsfelder können nicht über die Zusammenführung geschrieben werden."
+            : `Fehlgeschlagen: ${failed.join(", ")}`,
+        };
+      },
+    },
+    {
+      id: "merge-contact-atomic",
+      label: "Zusammenführen ist atomar: Verknüpfungen wandern, Kollisionen behalten ihre Daten",
+      kind: "workflow",
+      run: async (ctx) => {
+        const targetId = ctx.data.contactId as string;
+        const { data: secondary, error: secondaryError } = await supabase
+          .from("contacts")
+          .insert({ name: `${SELFTEST_PREFIX} Erika Doppelt (${ctx.runId})`, user_id: ctx.userId, tenant_id: ctx.tenantId, email: "erika.doppelt@example.org", notes: SELFTEST_MARKER, tags: ["selbsttest"] })
+          .select("id")
+          .single();
+        if (secondaryError || !secondary) return { ok: false, message: describeError(secondaryError) };
+        ctx.trackRecord({ table: "contacts", id: secondary.id });
+
+        const movedActivity = await supabase
+          .from("contact_activities")
+          .insert([{ contact_id: secondary.id, tenant_id: ctx.tenantId, created_by: ctx.userId, activity_type: "note", title: `${SELFTEST_PREFIX} Zweitkontakt-Notiz`, description: SELFTEST_MARKER }])
+          .select("id")
+          .single();
+        if (movedActivity.error || !movedActivity.data) return { ok: false, message: describeError(movedActivity.error) };
+        ctx.trackRecord({ table: "contact_activities", id: movedActivity.data.id });
+
+        // Nutzungszähler beider Kontakte kollidieren im Unique-Paar (user, tenant).
+        const stats = await supabase
+          .from("contact_usage_stats")
+          .insert([
+            { contact_id: targetId, user_id: ctx.userId, tenant_id: ctx.tenantId, usage_count: 2 },
+            { contact_id: secondary.id, user_id: ctx.userId, tenant_id: ctx.tenantId, usage_count: 3 },
+          ])
+          .select("id");
+        if (stats.error) return { ok: false, message: describeError(stats.error) };
+        (stats.data ?? []).forEach((row) => ctx.trackRecord({ table: "contact_usage_stats", id: row.id }));
+
+        const { data: result, error: mergeError } = await supabase.rpc("merge_contacts", {
+          p_target: targetId,
+          p_source: secondary.id,
+          p_updates: { notes: `${SELFTEST_MARKER} zusammengeführt`, tags: ["selbsttest", "zusammengeführt"] },
+        });
+        if (mergeError) return { ok: false, message: describeError(mergeError) };
+
+        const [source, kept, activity, usage] = await Promise.all([
+          supabase.from("contacts").select("id").eq("id", secondary.id).maybeSingle(),
+          supabase.from("contacts").select("notes, tags").eq("id", targetId).maybeSingle(),
+          supabase.from("contact_activities").select("contact_id").eq("id", movedActivity.data.id).maybeSingle(),
+          supabase.from("contact_usage_stats").select("usage_count").eq("contact_id", targetId).eq("user_id", ctx.userId),
+        ]);
+        const failure = [source, kept, activity, usage].map((response) => response.error).find(Boolean);
+        if (failure) return { ok: false, message: describeError(failure) };
+
+        const merged = (result ?? {}) as Record<string, unknown>;
+        const moved = Number(merged.moved_links ?? 0);
+        const dropped = Number(merged.dropped_links ?? 0);
+        const checks = {
+          zweitkontaktGeloescht: !source.data,
+          notizenUebernommen: kept.data?.notes === `${SELFTEST_MARKER} zusammengeführt`,
+          tagsVereinigt: (kept.data?.tags ?? []).includes("zusammengeführt"),
+          aktivitaetUmgehaengt: activity.data?.contact_id === targetId,
+          nutzungZusammengefasst: usage.data?.length === 1 && usage.data[0].usage_count === 5,
+          verknuepfungenGemeldet: moved >= 1 && dropped >= 1,
+        };
+        const failed = Object.entries(checks).filter(([, ok]) => !ok).map(([name]) => name);
+        return {
+          ok: failed.length === 0,
+          message: failed.length === 0
+            ? `Alle Verknüpfungen wandern mit (${moved} verschoben, ${dropped} Kollisionen ohne Datenverlust aufgelöst), der Zweitkontakt ist gelöscht.`
+            : `Fehlgeschlagen: ${failed.join(", ")}`,
         };
       },
     },

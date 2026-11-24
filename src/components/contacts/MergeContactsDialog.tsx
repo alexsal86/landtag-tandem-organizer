@@ -17,10 +17,9 @@ import { Badge } from '@/components/ui/badge';
 import { Avatar, AvatarFallback, AvatarImage } from '@/components/ui/avatar';
 import { User, Mail, Phone, Building, MapPin, Calendar, FileText, type LucideIcon } from 'lucide-react';
 import { supabase } from '@/integrations/supabase/client';
-import type { TablesUpdate } from '@/integrations/supabase/types';
+import type { Json, TablesUpdate } from '@/integrations/supabase/types';
 import type { MergeContact } from '@/types/contact';
 import { MANUAL_MERGE_FIELDS, resolveDuplicateContact } from '@/components/contact-import/duplicateResolution';
-import { moveContactLinks } from './mergeContactLinks';
 import { notify } from "@/lib/notify";
 
 interface MergeContactsDialogProps {
@@ -129,61 +128,16 @@ export function MergeContactsDialog({
     try {
       const mergedData = getMergedData();
       const secondary = primaryContact === contact1.id ? contact2 : contact1;
-      const secondaryContactId = secondary.id;
 
-      const { data: contactData, error: tenantError } = await supabase
-        .from('contacts')
-        .select('tenant_id')
-        .eq('id', primaryContact)
-        .single();
+      // Die Datenbank führt Kontakt, Verknüpfungen, Protokoll und Löschung in
+      // einer Transaktion aus: entweder ist alles umgehängt oder nichts.
+      const { error: mergeError } = await supabase.rpc('merge_contacts', {
+        p_target: primaryContact,
+        p_source: secondary.id,
+        p_updates: mergedData as Json,
+      });
 
-      if (tenantError || !contactData) throw tenantError ?? new Error('Mandant des Kontakts nicht gefunden');
-
-      // Update primary contact with merged data
-      const { error: updateError } = await supabase
-        .from('contacts')
-        .update(mergedData)
-        .eq('id', primaryContact);
-
-      if (updateError) throw updateError;
-
-      // Move every reference before the secondary contact is deleted, otherwise
-      // its cascading deletes would remove case files, topics and documents.
-      const linkFailures = await moveContactLinks(primaryContact, secondaryContactId, contactData.tenant_id);
-      if (linkFailures.length > 0) {
-        const details = linkFailures.map((failure) => `${failure.table} (${failure.message})`).join('; ');
-        throw new Error(`Verknüpfungen konnten nicht umgehängt werden: ${details}`);
-      }
-
-      // Log merge activity
-      const { data: userData } = await supabase.auth.getUser();
-
-      if (userData.user) {
-        const { error: mergeActivityInsertError } = await supabase
-          .from('contact_activities')
-          .insert([{
-            contact_id: primaryContact,
-            tenant_id: contactData.tenant_id,
-            activity_type: 'edit',
-            title: 'Kontakte zusammengeführt',
-            description: `Kontakt "${contact1.name}" und "${contact2.name}" wurden zusammengeführt`,
-            created_by: userData.user.id,
-            metadata: {
-              merged_contact_id: secondaryContactId,
-              merged_contact_name: secondary.name,
-            },
-          }]);
-
-        if (mergeActivityInsertError) throw mergeActivityInsertError;
-      }
-
-      // Delete secondary contact
-      const { error: deleteError } = await supabase
-        .from('contacts')
-        .delete()
-        .eq('id', secondaryContactId);
-
-      if (deleteError) throw deleteError;
+      if (mergeError) throw mergeError;
 
       notify.success('Kontakte zusammengeführt', {
         description: 'Die Kontakte wurden erfolgreich zusammengeführt.'
@@ -193,7 +147,9 @@ export function MergeContactsDialog({
       onClose();
     } catch (error) {
       debugConsole.error('Error merging contacts:', error);
-      const details = error instanceof Error ? ` ${error.message}` : '';
+      // PostgREST-Fehler sind keine Error-Instanzen; die Servermeldung nennt die
+      // Ursache des abgebrochenen Merges (z. B. eine nicht verschiebbare Verknüpfung).
+      const details = error && typeof error === 'object' && 'message' in error ? ` ${String(error.message)}` : '';
       notify.error('Fehler', {
         description: `Kontakte konnten nicht zusammengeführt werden.${details}`
 });

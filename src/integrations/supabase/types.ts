@@ -19017,6 +19017,10 @@ export type Database = {
         }
         Returns: undefined
       }
+      merge_contacts: {
+        Args: { p_source: string; p_target: string; p_updates?: Json }
+        Returns: Json
+      }
       merge_topics: {
         Args: { p_source: string; p_target: string }
         Returns: undefined
