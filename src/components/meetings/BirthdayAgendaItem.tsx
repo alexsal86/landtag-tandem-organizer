@@ -1,3 +1,4 @@
+import { BIRTHDAY_ACTION_OPTIONS as ACTION_OPTIONS } from "@/utils/birthdayActions";
 import { SystemSubpointList } from "./agenda-editor/SystemSubpointList";
 import { useState, useEffect } from "react";
 import { debugConsole } from "@/utils/debugConsole";
@@ -6,10 +7,6 @@ import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
 import {
   Heart,
-  Mail,
-  Phone,
-  Gift,
-  CreditCard,
   Trash,
   Users,
 } from "lucide-react";
@@ -72,32 +69,6 @@ interface BirthdayAgendaItemProps {
   profiles?: ProfileInfo[];
 }
 
-const ACTION_OPTIONS = [
-  {
-    key: "card" as const,
-    label: "Karte",
-    icon: CreditCard,
-    color: "text-palette-purple",
-  },
-  {
-    key: "mail" as const,
-    label: "Mail",
-    icon: Mail,
-    color: "text-palette-blue",
-  },
-  {
-    key: "call" as const,
-    label: "Anruf",
-    icon: Phone,
-    color: "text-palette-green",
-  },
-  {
-    key: "gift" as const,
-    label: "Geschenk",
-    icon: Gift,
-    color: "text-palette-amber",
-  },
-];
 
 export function BirthdayAgendaItem({
   readOnly = false,

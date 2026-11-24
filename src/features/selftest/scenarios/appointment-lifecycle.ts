@@ -1,3 +1,4 @@
+import { BIRTHDAY_ACTION_OPTIONS, birthdayActionLabel } from "@/utils/birthdayActions";
 import { isDashboardBirthday, birthdayAge, nextAppointmentLabel, occursOnDay } from "@/utils/dashboard/occasions";
 import { supabase } from "@/integrations/supabase/client";
 import type { TestScenario } from "../types";
@@ -43,6 +44,14 @@ export const appointmentLifecycleScenario: TestScenario = {
     return links;
   },
   steps: [
+    {
+      id: "birthday-congratulations-options", label: "Dashboard und Jour fixe teilen die Glückwunsch-Optionen", kind: "logic",
+      run: async () => ({
+        ok: BIRTHDAY_ACTION_OPTIONS.map(option => option.key).join(',') === 'card,mail,call,gift'
+          && birthdayActionLabel('gift') === 'Geschenk' && birthdayActionLabel('invalid') === undefined,
+        message: 'Karte, Mail, Anruf und Geschenk sind einheitlich verfügbar.',
+      }),
+    },
     {
       id: "dashboard-occasions", label: "Geburtstage und ganztägige Termine getrennt darstellen", kind: "logic",
       run: async () => {

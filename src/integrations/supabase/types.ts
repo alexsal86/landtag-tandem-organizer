@@ -19055,7 +19055,7 @@ export type Database = {
         Returns: undefined
       }
       request_birthday_congratulations: {
-        Args: { _contact_id: string; _tenant_id: string }
+        Args: { _contact_id: string; _tenant_id: string; _action?: string }
         Returns: string
       }
       request_protocol_acknowledgement: {
