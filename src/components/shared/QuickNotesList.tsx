@@ -1,5 +1,5 @@
 import { writeNoteDragData } from "@/features/quick-notes/noteDrag";
-import { useEffect, useMemo, useState, type ReactNode, type DragEvent } from "react";
+import { useEffect, useMemo, useRef, useState, type ReactNode, type DragEvent } from "react";
 import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
 import { ScrollArea } from "@/components/ui/scroll-area";
@@ -68,6 +68,8 @@ export function QuickNotesList({
   const { isHighlighted, highlightRef } = useNotificationHighlight();
   const { createTopic } = useTopicBacklog();
   const [topicActionNoteId, setTopicActionNoteId] = useState<string | null>(null);
+  const lastCounts = useRef<QuickNoteCounts | null>(null);
+  const lastVisibleIds = useRef<string[] | null>(null);
 
   const effectiveSearchQuery = searchQuery ?? hook.searchQuery;
   const handleSearchQueryChange = useMemo(
@@ -99,15 +101,27 @@ export function QuickNotesList({
   const visibleIdsKey = visibleNotes.map((n) => n.id).join(",");
 
   useEffect(() => {
-    onCountsChange?.({
+    if (!onCountsChange) return;
+    const nextCounts = {
       filteredCount: visibleNotes.length,
       totalCount: hook.notes.length,
       byFilter: filterCounts,
-    });
+    };
+    const previous = lastCounts.current;
+    if (previous && previous.filteredCount === nextCounts.filteredCount &&
+        previous.totalCount === nextCounts.totalCount &&
+        QUICK_NOTE_FILTERS.every(({ value }) => previous.byFilter[value] === nextCounts.byFilter[value])) return;
+    lastCounts.current = nextCounts;
+    onCountsChange(nextCounts);
   }, [visibleNotes.length, hook.notes.length, filterCounts, onCountsChange]);
 
   useEffect(() => {
-    onVisibleIdsChange?.(visibleIdsKey ? visibleIdsKey.split(",") : []);
+    if (!onVisibleIdsChange) return;
+    const ids = visibleIdsKey ? visibleIdsKey.split(",") : [];
+    const previous = lastVisibleIds.current;
+    if (previous && previous.length === ids.length && previous.every((id, index) => id === ids[index])) return;
+    lastVisibleIds.current = ids;
+    onVisibleIdsChange(ids);
   }, [visibleIdsKey, onVisibleIdsChange]);
 
   if (hook.loading) {

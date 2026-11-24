@@ -112,11 +112,9 @@ export function MyWorkNotesList({ refreshTrigger }: MyWorkNotesListProps) {
           <div className="flex flex-wrap items-center gap-1.5" role="radiogroup" aria-label="Filter">
             {QUICK_NOTE_FILTERS.filter(f => primaryFilters.includes(f.value)).map(renderFilterChip)}
             <Popover>
-              <PopoverTrigger asChild>
-                <Button variant="outline" size="sm" className="h-7 rounded-pill border-border bg-background px-3 text-[13px] font-normal text-muted-foreground hover:bg-muted hover:text-muted-foreground">
-                  <SlidersHorizontal className="h-3.5 w-3.5" aria-hidden="true" />
-                  <span className="ml-1.5">Weitere Filter{colorFilter || !primaryFilters.includes(filter) ? " aktiv" : ""}</span>
-                </Button>
+              <PopoverTrigger className={cn(buttonVariants({ variant: "outline", size: "sm" }), "h-7 rounded-pill border-border bg-background px-3 text-[13px] font-normal text-muted-foreground hover:bg-muted hover:text-muted-foreground")}>
+                <SlidersHorizontal className="h-3.5 w-3.5" aria-hidden="true" />
+                <span className="ml-1.5">Weitere Filter{colorFilter || !primaryFilters.includes(filter) ? " aktiv" : ""}</span>
               </PopoverTrigger>
               <PopoverContent align="start" className="w-72 max-w-[var(--radix-popover-content-available-width)]">
                 <div className="flex flex-wrap gap-1.5" role="radiogroup" aria-label="Weitere Filter">
