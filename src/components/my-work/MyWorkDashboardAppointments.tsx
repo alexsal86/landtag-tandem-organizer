@@ -2,7 +2,7 @@ import { DashboardBirthdays } from "./DashboardBirthdays";
 import { openAppointmentChange, useAlerts as useChangeAlerts } from "@/features/appointments/change-alerts/AppointmentChangeAlerts";
 import { useWorkspaceView } from "@/contexts/WorkspaceViewContext";
 import { nextAppointmentLabel } from "@/utils/dashboard/occasions";
-import { hasAppointmentEnded, nextAppointmentId, timelineNowIndex } from "@/utils/dashboard/daySummary";
+import { appointmentCountdown, dashboardTimelineState, hasAppointmentEnded, timelineNowIndex } from "@/utils/dashboard/daySummary";
 import { useQuery } from "@tanstack/react-query";
 import { useResolvedUserRole } from "@/hooks/useResolvedUserRole";
 import { dashboardBriefingState } from "@/features/appointments/briefing";
@@ -98,15 +98,6 @@ const setSpecialDayDismissals = (dismissals: Record<string, StoredSpecialDayDism
 
 const buildSpecialDayDismissalKey = (name: string, targetDate: string) => `${name}::${targetDate}`;
 
-/** Check if an appointment is currently happening */
-const isCurrentlyActive = (apt: { start_time: string; end_time?: string; is_all_day: boolean }) => {
-  if (apt.is_all_day) return false;
-  const now = new Date();
-  const start = new Date(apt.start_time);
-  const end = apt.end_time ? new Date(apt.end_time) : new Date(start.getTime() + 3600000);
-  return start <= now && now < end;
-};
-
 const extractMarkerValue = (description: string | null | undefined, marker: string): string | null => {
   if (!description) return null;
   const line = description.split("\n").find((l) => l.startsWith(marker));
@@ -153,7 +144,8 @@ export const DashboardAppointments = ({ data }: Props) => {
     [appointments, tomorrowAppointments],
   );
 
-  const nextId = nextAppointmentId(allAppointments, now);
+  const timeline = dashboardTimelineState(allAppointments, now);
+  const nextId = timeline.nextId;
   const appointmentIds = useMemo(() => allAppointments.map(appointment => appointment.id), [allAppointments]);
   const briefingAssignments = useQuery<Map<string, string>>({
     queryKey: ["appointment-briefing", "dashboard-status", currentTenant?.id, appointmentIds],
@@ -296,9 +288,10 @@ export const DashboardAppointments = ({ data }: Props) => {
 
   const renderAppointment = (apt: DashboardData["appointments"][number], isTodayGroup: boolean) => {
     const aptDate = format(new Date(apt.start_time), "yyyy-MM-dd");
-    const active = isTodayGroup && isCurrentlyActive(apt);
+    const active = isTodayGroup && timeline.runningIds.has(apt.id);
     const ended = hasAppointmentEnded(apt, now);
     const isNext = apt.id === nextId;
+    const highlighted = active || (isNext && timeline.highlightNext);
     const hasPrep = preparations.has(apt.id);
     const prep = preparations.get(apt.id);
     const isBriefingExpanded = expandedBriefingId === apt.id;
@@ -344,13 +337,13 @@ export const DashboardAppointments = ({ data }: Props) => {
           "absolute -left-5 z-10 h-3 w-3 rounded-full border-2",
           ended ? "top-3" : "top-[18px]",
           ended ? "border-muted-foreground bg-muted-foreground"
-            : active || isNext ? "border-[#55ad21] bg-[#55ad21]"
+            : highlighted ? "border-[#397d16] bg-[#397d16]"
             : "border-border bg-card",
         )}>
-          {isNext && <span className="absolute -inset-0.5 rounded-full bg-[#55ad21] blur-[1px] animate-ring motion-reduce:hidden" />}
+          {highlighted && <span className="absolute -inset-0.5 rounded-full bg-[#55ad21] blur-[1px] animate-ring motion-reduce:hidden" />}
         </span>
         <div
-          className={`relative grid grid-cols-[3.25rem_minmax(0,1fr)] @min-[32rem]:grid-cols-[3.25rem_minmax(0,1fr)_auto] gap-x-3 rounded-lg px-3 ${ended ? "gap-y-1 py-1.5" : "gap-y-2 py-3"} transition-colors hover:bg-muted/40 focus-within:bg-muted/40 ${active ? "bg-primary/10 ring-1 ring-primary/30" : ""}`}
+          className={`relative grid grid-cols-[3.25rem_minmax(0,1fr)] @min-[32rem]:grid-cols-[3.25rem_minmax(0,1fr)_auto] gap-x-3 rounded-lg px-3 ${ended ? "gap-y-1 py-1.5" : "gap-y-2 py-3"} transition-colors hover:bg-muted/40 focus-within:bg-muted/40 ${highlighted ? "bg-[#eaf5df]" : ""}`}
         >
           <button
             type="button"
@@ -361,7 +354,7 @@ export const DashboardAppointments = ({ data }: Props) => {
           <div className="pointer-events-none relative tabular-nums">
             <p
               className={cn(
-                apt.is_all_day ? "text-body font-medium" : active ? "text-body-lg font-semibold text-foreground" : "text-body-lg font-normal text-foreground",
+                apt.is_all_day ? "text-body font-medium" : highlighted ? "text-body-lg font-semibold text-[#397d16]" : "text-body-lg font-normal text-foreground",
                 ended && "text-muted-foreground",
               )}
             >
@@ -378,21 +371,20 @@ export const DashboardAppointments = ({ data }: Props) => {
             <div className="flex flex-wrap items-center gap-x-2 gap-y-1">
               <p className={cn(
                 "break-words text-foreground",
-                active ? "text-card-title font-semibold" : "text-body-lg font-medium",
+                highlighted ? "text-card-title font-semibold" : "text-body-lg font-medium",
                 ended && "line-through",
               )}>{apt.title}</p>
               {changeAlerts.some((a) => a.appointment_id === apt.id) && (
                 <span className="rounded-pill bg-destructive/10 px-2 text-caption font-medium text-destructive">Kurzfristig geändert</span>
               )}
             </div>
-            {(showLocation || participantList.length > 0) && (
+            {(active || isNext || showLocation || participantList.length > 0) && (
               <div className="mt-0.5 flex flex-wrap items-center gap-x-4 gap-y-1 text-caption text-muted-foreground">
-                {showLocation && (
-                  <span className="flex items-start gap-1.5">
-                    <MapPin className="mt-0.5 h-3 w-3 shrink-0" aria-hidden="true" />
-                    <span className="break-words">{apt.location}</span>
-                  </span>
-                )}
+                {(active || isNext || showLocation) && <span className="flex flex-wrap items-baseline gap-1">
+                  {(active || isNext) && <span className="font-semibold text-[#397d16]">{active ? 'Läuft gerade' : 'Als Nächstes'}</span>}
+                  {(active || isNext) && showLocation && <span className="text-black" aria-hidden="true">·</span>}
+                  {showLocation && <span className="inline-flex items-start gap-1.5">{!active && !isNext && <MapPin className="mt-0.5 h-3 w-3 shrink-0" aria-hidden="true" />}<span className="break-words">{apt.location}</span></span>}
+                </span>}
                 {participantList.length > 0 && (
                   <span className="flex items-center gap-2">
                     <Users className="h-3 w-3 shrink-0" aria-hidden="true" />
@@ -406,7 +398,7 @@ export const DashboardAppointments = ({ data }: Props) => {
             )}
           </div>
           <div className="relative z-10 col-start-2 flex w-full flex-col items-end gap-2 @min-[32rem]:col-start-3 @min-[32rem]:row-start-1 @min-[32rem]:w-auto @min-[32rem]:max-w-[19rem] @min-[32rem]:self-start">
-            <div className="flex w-full items-center justify-end gap-2">
+            <div className="flex w-full flex-wrap items-center justify-end gap-2">
               {!ended && badgeLabel && <span className="relative z-10 inline-flex">
                 {canChooseBriefing ? (
                   <button type="button" className={cn("pointer-events-auto inline-flex items-center gap-1.5 rounded-md px-2 py-0.5 text-caption hover:underline focus-visible:outline focus-visible:outline-2", badgeClass)}
@@ -419,9 +411,10 @@ export const DashboardAppointments = ({ data }: Props) => {
                   </span>
                 )}
               </span>}
-              {(ended || isNext) && <span className="inline-flex shrink-0">
+              {(ended || active || isNext) && <span className="inline-flex shrink-0">
                 {ended && <span className="rounded-full bg-[#eaf5df] px-2 py-0.5 text-caption text-[#55ad21]">Erledigt</span>}
-                {isNext && <span className="rounded-full bg-[#eaf5df] px-2 py-0.5 text-caption text-[#55ad21]">Als Nächstes</span>}
+                {active && <span className="rounded-full bg-[#397d16] px-2 py-0.5 text-caption text-white">läuft</span>}
+                {isNext && <span className="rounded-full bg-[#397d16] px-2 py-0.5 text-caption text-white">{appointmentCountdown(apt.start_time, now)}</span>}
               </span>}
             </div>
             {(meetingUrl || canOpenBriefing) && <div className="flex flex-wrap items-center justify-end gap-2">

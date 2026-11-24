@@ -1,5 +1,5 @@
 import { isOfficeReminderDue, isOlderOfficeFeedback, needsOfficeFeedback, officeReminderLabel, officeReminderTime, readOfficeSnooze, showsOfficeTaskHint } from "@/features/appointments/briefing/officeFeedback";
-import { appointmentSummary, hasAppointmentEnded, nextAppointmentId, pendingSummary, timelineNowIndex } from "@/utils/dashboard/daySummary";
+import { appointmentCountdown, dashboardTimelineState, appointmentSummary, hasAppointmentEnded, nextAppointmentId, pendingSummary, timelineNowIndex } from "@/utils/dashboard/daySummary";
 import { canCompleteBriefing, canGoLive, followUpTaskFromLive, mergeLegacy, saveCompact } from "@/features/appointments/briefing/briefingModel";
 import { supabase } from "@/integrations/supabase/client";
 import { dashboardBriefingState, needsBriefingReminder, showsInDailyBriefing, canAdvanceBriefing, needsBriefingDecision, suggestBriefingDue } from "@/features/appointments/briefing";
@@ -33,6 +33,13 @@ export const appointmentBriefingLifecycleScenario: TestScenario = {
         const active = { ...past, id: "active", end_time: "2026-11-22T13:00:00+01:00" };
         const upcoming = { ...past, id: "next", start_time: "2026-11-22T14:00:00+01:00", end_time: "2026-11-22T15:00:00+01:00" };
         const checks = [
+          dashboardTimelineState([past, active, upcoming], now).runningIds.has('active'),
+          dashboardTimelineState([past, active, upcoming], now).nextId === 'next',
+          !dashboardTimelineState([past, active, upcoming], now).highlightNext,
+          dashboardTimelineState([past, upcoming], now).highlightNext,
+          appointmentCountdown(upcoming.start_time, now) === 'in 2 Std.',
+          appointmentCountdown('2026-11-22T12:30:00+01:00', now) === 'in 30 Min.',
+          appointmentCountdown('2026-11-22T13:30:00+01:00', now) === 'in 1 Std. 30 Min.',
           hasAppointmentEnded(past, now),
           !hasAppointmentEnded(active, now),
           !hasAppointmentEnded(upcoming, now),

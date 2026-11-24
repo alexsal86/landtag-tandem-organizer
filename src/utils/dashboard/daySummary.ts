@@ -79,3 +79,22 @@ export function timelineNowIndex(appointments: TimedAppointment[], now = new Dat
   const index = appointments.findIndex(appointment => !appointment.is_all_day && Date.parse(appointment.start_time) > now.getTime());
   return index < 0 ? appointments.length : index;
 }
+
+/** Running and next are independent, so both statuses stay visible during a meeting. */
+export function dashboardTimelineState(appointments: TimedAppointment[], now = new Date()) {
+  const runningIds = new Set(appointments.filter(appointment => !appointment.is_all_day
+    && Date.parse(appointment.start_time) <= now.getTime() && !hasAppointmentEnded(appointment, now))
+    .map(appointment => appointment.id));
+  return { runningIds, nextId: nextAppointmentId(appointments, now), highlightNext: runningIds.size === 0 };
+}
+
+export function appointmentCountdown(startTime: string, now = new Date()): string {
+  const minutes = Math.max(1, Math.ceil((Date.parse(startTime) - now.getTime()) / 60_000));
+  if (minutes >= 24 * 60) {
+    const days = Math.floor(minutes / (24 * 60));
+    return `in ${days} ${days === 1 ? 'Tag' : 'Tagen'}`;
+  }
+  const hours = Math.floor(minutes / 60);
+  const rest = minutes % 60;
+  return hours ? `in ${hours} Std.${rest ? ` ${rest} Min.` : ''}` : `in ${minutes} Min.`;
+}
