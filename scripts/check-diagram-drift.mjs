@@ -1,44 +1,43 @@
+#!/usr/bin/env node
 import fs from "node:fs";
+
+const docFile = "docs/my-work-architecture.md";
+const sourceFiles = [
+  "src/components/shared/QuickNotesList.tsx",
+  "src/features/quick-notes/useQuickNoteLinks.ts",
+  "src/features/quick-notes/useQuickNoteActions.ts",
+  "src/features/quick-notes/useQuickNoteDialogs.ts",
+];
+
+// Handler, die in der Architektur-Doku und im Produktivcode vorkommen müssen.
+const handlers = [
+  "createTaskFromNote",
+  "removeTaskFromNote",
+  "removeDecisionFromNote",
+  "handleSetFollowUp",
+  "setConfirmDeleteTaskNote",
+  "setNoteForDatePicker",
+  "loadNotes",
+];
 
 const read = (file) => fs.readFileSync(file, "utf-8");
 
-const constantsFile = "src/components/administration/system-overview/myWorkDiagramConstants.ts";
-const overviewFile = "src/components/administration/MyWorkSystemOverview.tsx";
-const notesFile = "src/components/shared/QuickNotesList.tsx";
+const doc = read(docFile);
+const source = sourceFiles.map(read).join("\n");
 
-const constantsSource = read(constantsFile);
-const overviewSource = read(overviewFile);
-const notesSource = read(notesFile);
+const missingInSource = handlers.filter((name) => !source.includes(name));
+const missingInDoc = handlers.filter((name) => !doc.includes(name));
 
-const handlerRegex = /([A-Za-z0-9_]+):\s*"([A-Za-z0-9_]+)"/g;
-const handlers = [...constantsSource.matchAll(handlerRegex)].map((m) => ({
-  key: m[1],
-  name: m[2],
-}));
-
-if (handlers.length === 0) {
-  console.error("No diagram handlers found in constants file.");
-  process.exit(1);
-}
-
-const missingInSource = handlers
-  .map((h) => h.name)
-  .filter((name) => !notesSource.includes(name));
-
-const missingInOverview = handlers
-  .map((h) => h.key)
-  .filter((key) => !overviewSource.includes(`CAPTURE_DIAGRAM_HANDLERS.${key}`) && !overviewSource.includes(`CAPTURE_DIAGRAM_LABELS.${key}`));
-
-if (missingInSource.length || missingInOverview.length) {
+if (missingInSource.length || missingInDoc.length) {
   if (missingInSource.length) {
-    console.error("Handler existiert nicht mehr im Produktivcode (QuickNotesList):");
+    console.error("Handler existiert nicht mehr im Produktivcode:");
     missingInSource.forEach((name) => console.error(` - ${name}`));
   }
-  if (missingInOverview.length) {
-    console.error("Konstante wird in Diagrammen nicht verwendet:");
-    missingInOverview.forEach((key) => console.error(` - ${key}`));
+  if (missingInDoc.length) {
+    console.error(`Handler fehlt in ${docFile}:`);
+    missingInDoc.forEach((name) => console.error(` - ${name}`));
   }
   process.exit(1);
 }
 
-console.log(`Diagram drift check passed (${handlers.length} handler refs).`);
+console.log(`Diagram drift check passed (${handlers.length} handler refs, ${docFile}).`);

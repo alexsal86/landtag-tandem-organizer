@@ -52,7 +52,6 @@ const PressOccasionManager = lazy(() => import("@/components/administration/Pres
 const SuperadminTenantManagement = lazy(() => import("@/components/administration/SuperadminTenantManagement").then(module => ({ default: module.SuperadminTenantManagement })));
 const GeoDataImport = lazy(() => import("@/components/administration/GeoDataImport").then(module => ({ default: module.GeoDataImport })));
 const MapLayerAdmin = lazy(() => import("@/components/administration/MapLayerAdmin").then(module => ({ default: module.MapLayerAdmin })));
-const MyWorkSystemOverview = lazy(() => import("@/components/administration/MyWorkSystemOverview").then(module => ({ default: module.MyWorkSystemOverview })));
 const OnboardingSlidesManager = lazy(() => import("@/components/administration/OnboardingSlidesManager").then(module => ({ default: module.OnboardingSlidesManager })));
 const DashboardHintSettings = lazy(() => import("@/components/administration/DashboardHintSettings").then(module => ({ default: module.DashboardHintSettings })));
 const DashboardGreetingsSettings = lazy(() => import("@/components/administration/DashboardGreetingsSettings").then(module => ({ default: module.DashboardGreetingsSettings })));
@@ -395,7 +394,6 @@ export default function Administration(): React.JSX.Element | null {
         case "geo-import": return <GeoDataImport />;
         case "map-layers": return <MapLayerAdmin />;
         case "login": return <LoginCustomization />;
-        case "mywork-overview": return <MyWorkSystemOverview />;
         case "dashboard-hints": return <DashboardHintSettings />;
         case "motivational-messages": return <DashboardGreetingsSettings />;
         default: return null;

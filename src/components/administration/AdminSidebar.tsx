@@ -180,7 +180,6 @@ export const adminMenuItems: AdminMenuItem[] = [
       { id: "geo-import", label: "Geo-Datenimport", icon: Globe },
       { id: "map-layers", label: "Karten-Layer", icon: MapPin },
       { id: "login", label: "Login-Anpassung", icon: Settings },
-      { id: "mywork-overview", label: "Meine Arbeit Übersicht", icon: PanelTop },
       { id: "dashboard-hints", label: "Dashboard-Hinweise", icon: PanelTop },
       { id: "motivational-messages", label: "Dashboard-Begrüßungen", icon: PanelTop },
     ],
