@@ -56,6 +56,25 @@ const WRITABLE_FIELDS = new Set([
   "is_favorite",
 ]);
 
+/**
+ * Fields the manual merge dialog (DuplicateContactsSheet -> MergeContactsDialog)
+ * compares field by field. The duplicate sheet loads exactly these columns
+ * (plus tags), so the merge rules below can fill them from the secondary
+ * contact just like an import would.
+ */
+export const MANUAL_MERGE_FIELDS = [
+  "name",
+  "email",
+  "phone",
+  "organization",
+  "position",
+  "business_city",
+  "address",
+  "birthday",
+  "website",
+  "notes",
+] as const;
+
 const NOTE_SEPARATOR = "\n\n";
 
 function asText(value: unknown): string {

@@ -2,7 +2,7 @@ import { supabase } from "@/integrations/supabase/client";
 import type { TestScenario } from "../types";
 import { SELFTEST_MARKER, SELFTEST_PREFIX } from "../runner";
 import { describeError, expectFields } from "../verify";
-import { resolveDuplicateContact } from "@/components/contact-import/duplicateResolution";
+import { MANUAL_MERGE_FIELDS, resolveDuplicateContact } from "@/components/contact-import/duplicateResolution";
 import { CONTACT_LINK_TARGETS, duplicateLinkIds } from "@/components/contacts/mergeContactLinks";
 
 export const contactLifecycleScenario: TestScenario = {
@@ -59,6 +59,7 @@ export const contactLifecycleScenario: TestScenario = {
         const overwritten = resolveDuplicateContact(existing, incoming, "overwrite");
         const unchanged = resolveDuplicateContact(existing, { name: "Erika Muster", email: "erika@example.org" }, "merge");
         const protectedAttempt = resolveDuplicateContact(existing, { ...incoming, id: "fremd", tenant_id: "fremd", user_id: "fremd", created_at: "2020-01-01" }, "overwrite");
+        const manualMergeFills = MANUAL_MERGE_FIELDS.filter((field) => (resolveDuplicateContact({}, { [field]: "Wert" }, "merge").payload as Record<string, unknown>)[field] !== "Wert");
         const checks = {
           mergeKeepsExistingEmail: merged.payload.email === undefined,
           mergeFillsGap: merged.payload.mobile_phone === "+49 170 1234567",
@@ -70,13 +71,14 @@ export const contactLifecycleScenario: TestScenario = {
           overwriteKeepsTags: (overwritten.payload.tags ?? []).join(",") === "verein,presse",
           identicalRowChangesNothing: Object.keys(unchanged.payload).length === 0,
           protectedColumnsUntouched: ["id", "tenant_id", "user_id", "created_at"].every((key) => !(key in protectedAttempt.payload)),
+          manualMergeFieldsWritable: manualMergeFills.length === 0,
         };
         const failed = Object.entries(checks).filter(([, ok]) => !ok).map(([name]) => name);
         return {
           ok: failed.length === 0,
           message: failed.length === 0
-            ? "Zusammenführen füllt nur Lücken und vereinigt Notizen/Tags; Überschreiben ersetzt Konflikte; Identität, Mandant und Auditfelder bleiben unangetastet."
-            : `Fehlgeschlagen: ${failed.join(", ")}`,
+            ? "Zusammenführen füllt nur Lücken und vereinigt Notizen/Tags; Überschreiben ersetzt Konflikte; Identität, Mandant und Auditfelder bleiben unangetastet; alle Felder des manuellen Merges sind durch dieselben Regeln abgedeckt."
+            : `Fehlgeschlagen: ${failed.join(", ")}${manualMergeFills.length > 0 ? ` (nicht abgedeckt: ${manualMergeFills.join(", ")})` : ""}`,
         };
       },
     },

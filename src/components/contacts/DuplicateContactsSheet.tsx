@@ -9,7 +9,7 @@ import { Separator } from '@/components/ui/separator';
 import { AlertCircle, Merge, X } from 'lucide-react';
 import { Alert, AlertDescription, AlertTitle } from '@/components/ui/alert';
 import { findDuplicatesProgressive } from '@/utils/duplicateDetection';
-import { MergeContactsDialog } from './MergeContactsDialog';
+import { MERGE_CONTACT_SELECT_FIELDS, MergeContactsDialog } from './MergeContactsDialog';
 import { supabase } from '@/integrations/supabase/client';
 import { useTenant } from '@/hooks/useTenant';
 import { getInitials } from './utils/contactFormatters';
@@ -61,7 +61,7 @@ export function DuplicateContactsSheet({
     try {
       const { data, error } = await supabase
         .from('contacts')
-        .select('id,name,email,phone,organization,organization_id,contact_type')
+        .select(MERGE_CONTACT_SELECT_FIELDS)
         .eq('tenant_id', currentTenant.id);
 
       if (error) throw error;

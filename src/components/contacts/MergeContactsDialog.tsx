@@ -15,11 +15,11 @@ import { Label } from '@/components/ui/label';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 import { Badge } from '@/components/ui/badge';
 import { Avatar, AvatarFallback, AvatarImage } from '@/components/ui/avatar';
-import { User, Mail, Phone, Building, MapPin, Calendar, FileText } from 'lucide-react';
+import { User, Mail, Phone, Building, MapPin, Calendar, FileText, type LucideIcon } from 'lucide-react';
 import { supabase } from '@/integrations/supabase/client';
 import type { TablesUpdate } from '@/integrations/supabase/types';
 import type { MergeContact } from '@/types/contact';
-import { resolveDuplicateContact } from '@/components/contact-import/duplicateResolution';
+import { MANUAL_MERGE_FIELDS, resolveDuplicateContact } from '@/components/contact-import/duplicateResolution';
 import { moveContactLinks } from './mergeContactLinks';
 import { notify } from "@/lib/notify";
 
@@ -31,18 +31,41 @@ interface MergeContactsDialogProps {
   onMergeComplete: () => void;
 }
 
-const fieldConfig = [
-  { key: 'name', label: 'Name', icon: User, required: true },
-  { key: 'email', label: 'E-Mail', icon: Mail },
-  { key: 'phone', label: 'Telefon', icon: Phone },
-  { key: 'organization', label: 'Organisation', icon: Building },
-  { key: 'position', label: 'Position', icon: User },
-  { key: 'business_city', label: 'Ort', icon: MapPin },
-  { key: 'address', label: 'Adresse', icon: MapPin },
-  { key: 'birthday', label: 'Geburtstag', icon: Calendar },
-  { key: 'website', label: 'Website', icon: FileText },
-  { key: 'notes', label: 'Notizen', icon: FileText },
-];
+const mergeFieldMeta: Record<
+  (typeof MANUAL_MERGE_FIELDS)[number],
+  { label: string; icon: LucideIcon }
+> = {
+  name: { label: 'Name', icon: User },
+  email: { label: 'E-Mail', icon: Mail },
+  phone: { label: 'Telefon', icon: Phone },
+  organization: { label: 'Organisation', icon: Building },
+  position: { label: 'Position', icon: User },
+  business_city: { label: 'Ort', icon: MapPin },
+  address: { label: 'Adresse', icon: MapPin },
+  birthday: { label: 'Geburtstag', icon: Calendar },
+  website: { label: 'Website', icon: FileText },
+  notes: { label: 'Notizen', icon: FileText },
+};
+
+const fieldConfig = MANUAL_MERGE_FIELDS.map((key) => ({
+  key,
+  ...mergeFieldMeta[key],
+  required: key === 'name',
+}));
+
+/**
+ * Columns the duplicate sheet has to load so this dialog can show and merge
+ * them; without them tags, notes, position, address and website stay empty and
+ * the import merge rules can never fill them.
+ */
+export const MERGE_CONTACT_SELECT_FIELDS = [
+  'id',
+  'contact_type',
+  'organization_id',
+  'avatar_url',
+  'tags',
+  ...fieldConfig.map(({ key }) => key),
+].join(',');
 
 
 export function MergeContactsDialog({
