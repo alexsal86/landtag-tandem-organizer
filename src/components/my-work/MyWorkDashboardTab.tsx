@@ -66,6 +66,7 @@ interface DashboardWidgetContainerProps {
   hasError?: boolean;
   loadingVariant?: 'list' | 'card' | 'detail' | 'inline';
   errorMessage?: string;
+  onRetry?: () => void;
   children: ReactNode;
 }
 
@@ -80,12 +81,13 @@ function DashboardWidgetContainer({
   hasError = false,
   loadingVariant = 'list',
   errorMessage = 'Daten konnten nicht geladen werden.',
+  onRetry,
   children,
 }: DashboardWidgetContainerProps) {
   let content: ReactNode = children;
 
   if (hasError) {
-    content = <ErrorState description={errorMessage} />;
+    content = <ErrorState description={errorMessage} onRetry={onRetry} />;
   } else if (isLoading) {
     content = <LoadingState variant={loadingVariant} rows={3} />;
   }
@@ -148,8 +150,9 @@ function AppointmentsWidget({ isDeputyView }: { isDeputyView: boolean }) {
       headerAction={<CollapsingCalendarLink />}
       isLoading={dashboardData.isLoading || dashboardData.tenantLoading}
       hasError={dashboardData.isError}
+      onRetry={() => { void dashboardData.refetch(); }}
       loadingVariant="card"
-      errorMessage="Termine konnten nicht geladen werden."
+      errorMessage="Termine konnten nicht geladen werden. Das heißt nicht, dass nichts ansteht."
     >
       <DashboardAppointments data={dashboardData} />
     </DashboardWidgetContainer>

@@ -211,7 +211,7 @@ export const fetchDashboardRpc = async (userId: string, userEmail: string | unde
   return { userName, userRole, appointments, nextAppointment, isShowingTomorrow, tomorrowAppointments, openTasksCount, completedTasksToday, openTaskTitles };
 };
 
-export const useDashboardAppointmentsData = (includePastToday = false): DashboardData & { isError: boolean } => {
+export const useDashboardAppointmentsData = (includePastToday = false): DashboardData & { isError: boolean; refetch: () => void } => {
   const { user } = useAuth();
   const { currentTenant, loading: tenantLoading } = useTenant();
   const { appointments: feedbackAppointments } = useAppointmentFeedback();
@@ -229,7 +229,7 @@ export const useDashboardAppointmentsData = (includePastToday = false): Dashboar
 
   useDashboardRealtime(userId, tenantId);
 
-  const { data: rpcData, isLoading, isError } = useQuery({
+  const { data: rpcData, isLoading, isError, refetch } = useQuery({
     queryKey: ['dashboard-rpc-data', userId, tenantId, includePastToday],
     queryFn: () => fetchDashboardRpc(userId!, user!.email ?? undefined, tenantId!, includePastToday),
     enabled: !!userId && !!tenantId,
@@ -261,5 +261,6 @@ export const useDashboardAppointmentsData = (includePastToday = false): Dashboar
     tenantLoading,
     hasTenant: !!tenantId,
     isError,
+    refetch,
   };
 };
