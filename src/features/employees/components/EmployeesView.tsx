@@ -127,7 +127,7 @@ export function EmployeesView() {
             sickDays={data.sickDays}
             setEmployees={data.setEmployees}
             updateHours={ops.updateHours}
-            updateDaysPerWeek={ops.updateDaysPerWeek}
+            updateWorkdays={ops.updateWorkdays}
             updateVacationDays={ops.updateVacationDays}
             onScheduleMeeting={(emp): void => { setSelectedEmployee(emp); setSchedulerOpen(true); }}
           />

@@ -67,6 +67,7 @@ export type EmployeeFilter = {
 export type EmployeeTableAction =
   | "update_hours"
   | "update_days_per_week"
+  | "update_workdays"
   | "update_days_per_month"
   | "update_vacation_days"
   | "update_start_date"

@@ -23,7 +23,7 @@ import { calendarOccurrence, nextCalendarOccurrence, scheduleRunKey } from "@/fe
 import { ACTION_MODULE } from "@/features/permissions/catalog";
 import { buildPermissionDiff, diffSimulation, parsePermissionExplanation } from "@/features/permissions/explain";
 import { parseConfigImpact, parseConfigRename, summarizeConfigImpact, summarizeConfigRename } from "@/features/admin/configImpact";
-import { calculateWeeklyTarget, isBadenWuerttembergHoliday } from "@/features/timetracking/weeklyTarget";
+import { calculateWeeklyTarget, isBadenWuerttembergHoliday, isDefaultWorkdays } from "@/features/timetracking/weeklyTarget";
 import { checkArbzgDay, elapsedWorkedMinutes, requiredBreakMinutes, requiredPauseForSpan } from "@/features/timetracking/arbzg";
 
 export const workflowRulesScenario: TestScenario = {
@@ -59,7 +59,7 @@ export const workflowRulesScenario: TestScenario = {
       },
     },
     {
-      id: "team-weekly-target", label: "Team: Wochen-Soll aus Arbeitstagen, Abwesenheiten und BW-Feiertagen", kind: "logic",
+      id: "team-weekly-target", label: "Team: Wochen-Soll aus individuellem Arbeitsplan, Abwesenheiten und BW-Feiertagen", kind: "logic",
       run: async () => {
         const fullWeek = calculateWeeklyTarget({ hoursPerWeek: 40, daysPerWeek: 5, weekStart: "2026-11-16", today: "2026-11-20" });
         const partTime = calculateWeeklyTarget({ hoursPerWeek: 32, daysPerWeek: 4, weekStart: "2026-11-16", today: "2026-11-20" });
@@ -77,12 +77,40 @@ export const workflowRulesScenario: TestScenario = {
           holidays: [{ holiday_date: "2026-01-06", state: "BY", is_nationwide: false }],
         });
 
+        // 24 h an Mo, Mi, Fr: Dienstag darf das Soll nicht erhöhen.
+        const monWedFri = [true, false, true, false, true, false, false];
+        const planAt = (today: string) => calculateWeeklyTarget({ hoursPerWeek: 24, workdays: monWedFri, weekStart: "2026-11-16", today });
+        const planMonday = planAt("2026-11-16");
+        const planTuesday = planAt("2026-11-17");
+        const planWednesday = planAt("2026-11-18");
+        const planThursday = planAt("2026-11-19");
+        const planFriday = planAt("2026-11-20");
+        const holidayOnFreeDay = calculateWeeklyTarget({
+          hoursPerWeek: 24, workdays: monWedFri, weekStart: "2026-11-16", today: "2026-11-20",
+          holidays: [{ holiday_date: "2026-11-17", state: "BW", is_nationwide: false }],
+        });
+        const sevenDayWeek = calculateWeeklyTarget({
+          hoursPerWeek: 35, workdays: [true, true, true, true, true, true, true], weekStart: "2026-11-16", today: "2026-11-22",
+        });
+        const sixDayFallback = calculateWeeklyTarget({ hoursPerWeek: 42, daysPerWeek: 6, weekStart: "2026-11-16", today: "2026-11-21" });
+
         const ok = fullWeek.targetMinutes === 2400
           && partTime.targetMinutes === 1920
           && midWeek.targetMinutes === 1440
           && withVacation.targetMinutes === 1440 && withVacation.absenceDays === 2
           && withHoliday.targetMinutes === 1920 && withHoliday.holidayDays === 1
           && foreignHoliday.targetMinutes === 2400
+          && planMonday.targetMinutes === 480
+          && planTuesday.targetMinutes === 480
+          && planWednesday.targetMinutes === 960
+          && planThursday.targetMinutes === 960
+          && planFriday.targetMinutes === 1440 && planFriday.workDaysPerWeek === 3
+          && holidayOnFreeDay.targetMinutes === 1440 && holidayOnFreeDay.holidayDays === 0
+          && sevenDayWeek.targetMinutes === 2100 && sevenDayWeek.workDaysPerWeek === 7
+          && sixDayFallback.targetMinutes === 2520
+          && isDefaultWorkdays([true, true, true, true, true, false, false])
+          && isDefaultWorkdays(null)
+          && !isDefaultWorkdays(monWedFri)
           && isBadenWuerttembergHoliday({ holiday_date: "2026-01-01", state: null, is_nationwide: true })
           && isBadenWuerttembergHoliday({ holiday_date: "2026-01-06", state: "BW", is_nationwide: false })
           && !isBadenWuerttembergHoliday({ holiday_date: "2026-01-06", state: "BY", is_nationwide: false });
@@ -90,7 +118,7 @@ export const workflowRulesScenario: TestScenario = {
         return {
           ok,
           message: ok
-            ? "Wochen-Soll: Teilzeit, Abwesenheit, Feiertag und Bundesland korrekt."
+            ? "Wochen-Soll: Arbeitsplan Mo/Mi/Fr, sieben Tage, Teilzeit, Abwesenheit, Feiertag und Bundesland korrekt."
             : "Wochen-Soll weicht ab.",
         };
       },

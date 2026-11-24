@@ -28,6 +28,7 @@ interface TeamSettingsRow {
   user_id: string;
   hours_per_week: number | null;
   days_per_week: number | null;
+  workdays: boolean[] | null;
   last_meeting_date: string | null;
   meeting_interval_months: number | null;
 }
@@ -69,6 +70,8 @@ interface RawTeamMember {
   badgeColor?: string | null;
   hoursPerWeek: number;
   daysPerWeek: number;
+  /** Monday-first individual workday plan. */
+  workdays: boolean[];
   lastMeetingDate: string | null;
   nextMeetingDue: string | null;
   openMeetingRequests: number;
@@ -363,7 +366,6 @@ function mapTeamMembers({
     const profile = profileMap.get(userId);
     const employeeSettings = settingsMap.get(userId);
     const hoursPerWeek = employeeSettings?.hours_per_week ?? 40;
-    const daysPerWeek = employeeSettings?.days_per_week ?? 5;
     const lastMeetingDate = employeeSettings?.last_meeting_date ?? null;
 
     let nextMeetingDue: string | null = null;
@@ -376,7 +378,8 @@ function mapTeamMembers({
     const weeklyWorkedMinutes = weeklyMinutes[userId] ?? 0;
     const weeklyTarget = calculateWeeklyTarget({
       hoursPerWeek,
-      daysPerWeek,
+      daysPerWeek: employeeSettings?.days_per_week ?? null,
+      workdays: employeeSettings?.workdays ?? null,
       weekStart,
       today,
       holidays,
@@ -392,7 +395,8 @@ function mapTeamMembers({
       avatarUrl: profile?.avatar_url ?? null,
       badgeColor: profile?.badge_color ?? null,
       hoursPerWeek,
-      daysPerWeek,
+      daysPerWeek: weeklyTarget.workDaysPerWeek,
+      workdays: weeklyTarget.workdays,
       lastMeetingDate,
       nextMeetingDue,
       openMeetingRequests: requestCounts[userId] ?? 0,
@@ -466,7 +470,7 @@ async function fetchMyWorkTeamData(userId: string, tenantId: string): Promise<Us
       supabase.from("profiles").select("user_id, display_name, avatar_url, badge_color").in("user_id", employeeIds),
       supabase
         .from("employee_settings")
-        .select("user_id, hours_per_week, days_per_week, last_meeting_date, meeting_interval_months")
+        .select("user_id, hours_per_week, days_per_week, workdays, last_meeting_date, meeting_interval_months")
         .in("user_id", employeeIds),
       supabase.from("employee_meeting_requests").select("employee_id").eq("status", "pending").in("employee_id", employeeIds),
       supabase
@@ -475,7 +479,7 @@ async function fetchMyWorkTeamData(userId: string, tenantId: string): Promise<Us
         .in("user_id", employeeIds)
         .gte("work_date", weekStart)
         .lte("work_date", today),
-      (supabase.rpc as <T>(fn: string, args: Record<string, unknown>) => Promise<{ data: T | null; error: unknown }>)(
+      (supabase.rpc as unknown as <T>(fn: string, args: Record<string, unknown>) => Promise<{ data: T | null; error: unknown }>)(
         "get_latest_time_entry_dates",
         { p_user_ids: employeeIds },
       ),

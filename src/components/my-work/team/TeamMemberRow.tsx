@@ -7,6 +7,7 @@ import { mentionColors } from "@/utils/mentionColors";
 import { getHashedColor } from "@/utils/userColors";
 import { cn } from "@/lib/utils";
 import type { TeamDataIssues, TeamMemberViewModel } from "@/components/my-work/hooks/useMyWorkTeamData";
+import { formatWorkdays, isDefaultWorkdays } from "@/features/timetracking/weeklyTarget";
 
 interface TeamMemberRowProps {
   member: TeamMemberViewModel;
@@ -30,6 +31,8 @@ export function TeamMemberRow({ member, onOpenEmployeeArea, dataIssues }: TeamMe
     ? Math.min(100, (member.weeklyWorkedMinutes / member.weeklyTargetMinutes) * 100) : 0;
   const displayName = dataIssues?.profiles ? "Profil nicht geladen" : member.displayName;
   const timeEntriesAvailable = !dataIssues?.timeEntries;
+  // Die Tagesnamen nur zeigen, wenn der Plan von Mo–Fr abweicht.
+  const workdaysLabel = isDefaultWorkdays(member.workdays) ? "" : formatWorkdays(member.workdays);
 
   return (
     <div className="grid grid-cols-1 items-center gap-4 px-5 py-5 transition-colors hover:bg-muted/30 md:grid-cols-[1.15fr_0.9fr_1fr_auto]">
@@ -44,6 +47,7 @@ export function TeamMemberRow({ member, onOpenEmployeeArea, dataIssues }: TeamMe
           <p className={cn("break-words font-semibold", dataIssues?.profiles && "text-muted-foreground italic")}>{displayName}</p>
           <p className="text-sm text-muted-foreground">
             {member.hoursPerWeek.toLocaleString("de-DE")} h/Woche · {member.daysPerWeek} {member.daysPerWeek === 1 ? "Tag" : "Tage"}
+            {workdaysLabel && ` (${workdaysLabel})`}
           </p>
         </div>
       </div>

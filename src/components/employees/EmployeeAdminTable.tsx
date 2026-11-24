@@ -22,6 +22,7 @@ import { differenceInDays, format } from "date-fns";
 import { de } from "date-fns/locale";
 import { AlertCircle, History, Check, X, Undo2, Search, MoreHorizontal } from "lucide-react";
 import { EmployeeRow, LeaveAgg, PendingLeaveRequest, calculateWorkingDays } from "./types";
+import { DEFAULT_WORKDAYS, WORKDAY_LABELS, countWorkdays } from "@/features/timetracking/weeklyTarget";
 
 // --- EmployeeHistoryPopover ---
 function EmployeeHistoryPopover({ userId }: { userId: string }) {
@@ -172,14 +173,14 @@ interface EmployeeListTableProps {
   sickDays: Record<string, number>;
   setEmployees: Dispatch<SetStateAction<EmployeeRow[]>>;
   updateHours: (userId: string, val: number) => Promise<unknown> | void;
-  updateDaysPerWeek: (userId: string, val: number) => Promise<unknown> | void;
+  updateWorkdays: (userId: string, workdays: boolean[]) => Promise<unknown> | void;
   updateVacationDays: (userId: string, val: number) => Promise<unknown> | void;
   onScheduleMeeting: (employee: { id: string; name: string }) => Promise<unknown> | void;
 }
 
 export function EmployeeListTable({
   loading, employees, leaves, sickDays, setEmployees, headerAction,
-  updateHours, updateDaysPerWeek, updateVacationDays, onScheduleMeeting,
+  updateHours, updateWorkdays, updateVacationDays, onScheduleMeeting,
 }: EmployeeListTableProps) {
   const navigate = useNavigate();
   const [query, setQuery] = useState("");
@@ -317,13 +318,37 @@ export function EmployeeListTable({
               <div className="space-y-2"><Label htmlFor="employee-hours">Stunden pro Woche</Label><Input id="employee-hours" type="number" min={1} max={39.5} step={0.5} value={editingEmployee.hours_per_week} onChange={event => {
                 const v = Number(event.target.value); if (v >= 1 && v <= 39.5) { setEmployees(prev => prev.map(e => e.user_id === editingId ? { ...e, hours_per_week: v } : e)); updateHours(editingEmployee.user_id, v); }
               }} /></div>
-              <div className="space-y-2"><Label htmlFor="employee-days">Tage pro Woche</Label><Input id="employee-days" type="number" min={1} max={5} value={editingEmployee.days_per_week} onChange={event => {
-                const v = Number(event.target.value); if (v >= 1 && v <= 5) { setEmployees(prev => prev.map(e => e.user_id === editingId ? { ...e, days_per_week: v } : e)); updateDaysPerWeek(editingEmployee.user_id, v); }
-              }} /></div>
+              <div className="space-y-2"><Label htmlFor="employee-days">Tage pro Woche</Label><Input id="employee-days" readOnly value={countWorkdays(editingEmployee.workdays ?? DEFAULT_WORKDAYS)} aria-describedby="employee-days-hint" className="bg-muted" /><p id="employee-days-hint" className="text-xs text-muted-foreground">Ergibt sich aus den Arbeitstagen unten.</p></div>
               <div className="space-y-2"><Label htmlFor="employee-vacation">Urlaubstage pro Jahr</Label><Input id="employee-vacation" type="number" min={0} max={50} value={editingEmployee.annual_vacation_days} onChange={event => {
                 const v = Number(event.target.value); if (v >= 0 && v <= 50) { setEmployees(prev => prev.map(e => e.user_id === editingId ? { ...e, annual_vacation_days: v } : e)); updateVacationDays(editingEmployee.user_id, v); }
               }} /></div>
 
+            </div>
+            <div className="space-y-2">
+              <Label>Arbeitstage</Label>
+              <div className="flex flex-wrap gap-1.5" role="group" aria-label="Arbeitstage pro Woche">
+                {WORKDAY_LABELS.map((label, index) => {
+                  const plan = editingEmployee.workdays ?? DEFAULT_WORKDAYS;
+                  const active = plan[index] ?? false;
+                  return (
+                    <Button
+                      key={label}
+                      type="button"
+                      size="sm"
+                      variant={active ? "default" : "outline"}
+                      aria-pressed={active}
+                      aria-label={`${label} als Arbeitstag`}
+                      onClick={() => {
+                        const next = plan.map((day, dayIndex) => (dayIndex === index ? !day : day));
+                        if (!next.some(Boolean)) return;
+                        setEmployees(prev => prev.map(e => e.user_id === editingId ? { ...e, workdays: next, days_per_week: countWorkdays(next) } : e));
+                        updateWorkdays(editingEmployee.user_id, next);
+                      }}
+                    >{label}</Button>
+                  );
+                })}
+              </div>
+              <p className="text-xs text-muted-foreground">Das Wochen-Soll im Team-Tab richtet sich nach diesen Tagen; einzelne Tage werden automatisch gespeichert.</p>
             </div>
             <EmployeeEmploymentEditor key={editingEmployee.user_id} userId={editingEmployee.user_id} startDate={editingEmployee.employment_start_date} onSaved={start => setEmployees(prev => prev.map(e => e.user_id === editingEmployee.user_id ? { ...e, employment_start_date: start } : e))} />
             </div>

@@ -21,6 +21,13 @@ import { ARBZG_MAX_DAILY_WORK_MINUTES, checkArbzgDay, elapsedWorkedMinutes, requ
 import { cn } from "@/lib/utils";
 import { useVacationReminders } from "@/hooks/useVacationReminders";
 import { useResolvedUserRole } from "@/hooks/useResolvedUserRole";
+import { useTenant } from "@/hooks/useTenant";
+import {
+  calculateWeeklyTarget,
+  WEEK_TARGET_ABSENCE_TYPES,
+  type PublicHolidayRow,
+  type WeeklyAbsence,
+} from "@/features/timetracking/weeklyTarget";
 import { notify } from "@/lib/notify";
 
 interface TimeEntryRow {
@@ -39,6 +46,8 @@ interface EmployeeSettingsRow {
   hours_per_month: number;
   days_per_month: number;
   days_per_week: number;
+  /** Monday-first individual workday plan. */
+  workdays: boolean[] | null;
 }
 
 interface ClockData {
@@ -55,9 +64,12 @@ export function MyWorkTimeTrackingTab() {
   const { user } = useAuth();
   const navigate = useNavigate();
   const { isEmployee } = useResolvedUserRole();
+  const { currentTenant } = useTenant();
   const [loading, setLoading] = useState(true);
   const [entries, setEntries] = useState<TimeEntryRow[]>([]);
   const [employeeSettings, setEmployeeSettings] = useState<EmployeeSettingsRow | null>(null);
+  const [holidays, setHolidays] = useState<PublicHolidayRow[]>([]);
+  const [absences, setAbsences] = useState<WeeklyAbsence[]>([]);
 
   // Check for missing time entries and remind user
   useTimeEntryReminder(user?.id ?? null);
@@ -179,12 +191,16 @@ export function MyWorkTimeTrackingTab() {
   const weekEnd = endOfWeek(today, { weekStartsOn: 1 });
   const monthStart = startOfMonth(today);
   const monthEnd = endOfMonth(today);
+  const todayKey = format(today, "yyyy-MM-dd");
+  const weekStartKey = format(weekStart, "yyyy-MM-dd");
+  const weekEndKey = format(weekEnd, "yyyy-MM-dd");
 
   useEffect(() => {
     if (user) {
       checkRoleAndLoad();
     }
-  }, [isEmployee, user]);
+  // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [isEmployee, user, currentTenant?.id]);
 
   // Realtime subscription
   useEffect(() => {
@@ -216,8 +232,8 @@ export function MyWorkTimeTrackingTab() {
       }
 
       // Load settings and entries
-      const [settingsRes, weekEntriesRes, monthEntriesRes] = await Promise.all([
-        supabase.from("employee_settings").select("hours_per_week, hours_per_month, days_per_month, days_per_week").eq("user_id", user.id).single(),
+      const [settingsRes, weekEntriesRes, monthEntriesRes, holidaysRes, absencesRes] = await Promise.all([
+        supabase.from("employee_settings").select("hours_per_week, hours_per_month, days_per_month, days_per_week, workdays").eq("user_id", user.id).single(),
         supabase.from("time_entries").select("id, user_id, work_date, minutes, notes, started_at, ended_at, pause_minutes, arbzg_pause_minutes, edit_reason, edited_at, edited_by, created_at, updated_at").eq("user_id", user.id)
           .gte("work_date", format(weekStart, "yyyy-MM-dd"))
           .lte("work_date", format(weekEnd, "yyyy-MM-dd"))
@@ -225,10 +241,24 @@ export function MyWorkTimeTrackingTab() {
         supabase.from("time_entries").select("id, minutes").eq("user_id", user.id)
           .gte("work_date", format(monthStart, "yyyy-MM-dd"))
           .lte("work_date", format(monthEnd, "yyyy-MM-dd")),
+        currentTenant?.id
+          ? supabase.from("public_holidays").select("holiday_date, state, is_nationwide")
+              .eq("tenant_id", currentTenant.id)
+              .gte("holiday_date", weekStartKey)
+              .lte("holiday_date", weekEndKey)
+          : Promise.resolve({ data: [] as PublicHolidayRow[], error: null }),
+        supabase.from("leave_requests").select("start_date, end_date")
+          .eq("user_id", user.id)
+          .in("type", [...WEEK_TARGET_ABSENCE_TYPES])
+          .eq("status", "approved")
+          .lte("start_date", weekEndKey)
+          .gte("end_date", weekStartKey),
       ]);
 
       setEmployeeSettings(settingsRes.data);
       setEntries(weekEntriesRes.data || []);
+      setHolidays((holidaysRes.data as PublicHolidayRow[] | null) ?? []);
+      setAbsences((absencesRes.data as WeeklyAbsence[] | null) ?? []);
     } catch (error) {
       debugConsole.error("Error loading time tracking data:", error);
     } finally {
@@ -240,16 +270,29 @@ export function MyWorkTimeTrackingTab() {
     return entries.reduce((sum, e) => sum + (e.minutes || 0), 0);
   }, [entries]);
 
-  const weeklyTarget = useMemo(() => {
-    if (!employeeSettings) return 40 * 60;
-    return employeeSettings.hours_per_week * 60;
-  }, [employeeSettings]);
+  // Soll wie im Team-Tab: individueller Arbeitsplan statt voller Wochenstunden,
+  // Feiertage und genehmigte Abwesenheiten senken das Soll.
+  const fullWeekTarget = useMemo(() => calculateWeeklyTarget({
+    hoursPerWeek: employeeSettings?.hours_per_week ?? null,
+    daysPerWeek: employeeSettings?.days_per_week ?? null,
+    workdays: employeeSettings?.workdays ?? null,
+    weekStart: weekStartKey,
+    today: weekEndKey,
+    holidays,
+    absences,
+  }), [employeeSettings, weekStartKey, weekEndKey, holidays, absences]);
 
-  const dailyHours = useMemo(() => {
-    if (!employeeSettings) return 7.9;
-    // Tägliche Arbeitszeit = Wochenstunden / Arbeitstage pro Woche
-    return employeeSettings.hours_per_week / (employeeSettings.days_per_week || 5);
-  }, [employeeSettings]);
+  const targetToDate = useMemo(() => calculateWeeklyTarget({
+    hoursPerWeek: employeeSettings?.hours_per_week ?? null,
+    daysPerWeek: employeeSettings?.days_per_week ?? null,
+    workdays: employeeSettings?.workdays ?? null,
+    weekStart: weekStartKey,
+    today: todayKey,
+    holidays,
+    absences,
+  }), [employeeSettings, weekStartKey, todayKey, holidays, absences]);
+
+  const weeklyTarget = fullWeekTarget.targetMinutes;
 
   const liveWorkedMinutes = clockedIn
     ? elapsedWorkedMinutes(clockedIn, pauseStart, totalPauseMinutes, clockNow)
@@ -414,10 +457,8 @@ export function MyWorkTimeTrackingTab() {
   };
 
   const difference = weeklyWorked - weeklyTarget;
-  const dayOfWeek = today.getDay() === 0 ? 7 : today.getDay();
-  const workDaysPassed = Math.min(dayOfWeek, 5);
-  const proportionalTarget = (weeklyTarget / 5) * workDaysPassed;
-  const proportionalDifference = weeklyWorked - proportionalTarget;
+  // Anteiliges Soll bis heute – identisch mit dem Soll im Team-Tab.
+  const proportionalDifference = weeklyWorked - targetToDate.targetMinutes;
 
   return (
     <div className="space-y-6">
@@ -458,7 +499,7 @@ export function MyWorkTimeTrackingTab() {
               {proportionalDifference >= 0 ? "+" : ""}{fmt(proportionalDifference)}
             </div>
             <p className="text-xs text-muted-foreground">
-              Stand: {format(today, "EEEE", { locale: de })}
+              Soll bis {format(today, "EEEE", { locale: de })}: {fmt(targetToDate.targetMinutes)} h
             </p>
           </CardContent>
         </Card>
