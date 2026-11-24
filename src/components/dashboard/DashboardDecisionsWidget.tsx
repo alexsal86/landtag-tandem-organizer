@@ -34,6 +34,17 @@ const PROMPT_COLOR_CLASS: Record<string, string> = {
   default: 'border-border bg-muted/40',
 };
 
+const RECOMMENDATION_COLOR_CLASS: Record<string, { background: string; text: string }> = {
+  green: { background: 'bg-palette-green/10', text: 'text-palette-green' },
+  red: { background: 'bg-palette-red/10', text: 'text-palette-red' },
+  orange: { background: 'bg-palette-orange/10', text: 'text-palette-orange' },
+  yellow: { background: 'bg-palette-yellow/10', text: 'text-palette-yellow' },
+  blue: { background: 'bg-palette-blue/10', text: 'text-palette-blue' },
+  purple: { background: 'bg-palette-purple/10', text: 'text-palette-purple' },
+  lime: { background: 'bg-palette-lime/10', text: 'text-palette-lime' },
+  gray: { background: 'bg-palette-gray/10', text: 'text-palette-gray' },
+};
+
 interface DecisionRowProps {
   decision: MyWorkDecision;
   expanded: boolean;
@@ -49,6 +60,7 @@ interface DecisionRowProps {
 
 function DecisionRow({ decision, expanded, onToggle, nudge, onDismissConfirmed, onOpen, onPromptOpen, onPromptClose, onUndoConfirmed, forcePrompt }: DecisionRowProps) {
   const recommendation = decision.response_options?.find(option => option.recommended);
+  const recommendationColor = RECOMMENDATION_COLOR_CLASS[recommendation?.color ?? ''] ?? RECOMMENDATION_COLOR_CLASS.green;
   const { label, isOverdue } = formatDeadline(decision.response_deadline);
   const [undoing, setUndoing] = useState(false);
   const [exiting, setExiting] = useState(false);
@@ -148,8 +160,8 @@ function DecisionRow({ decision, expanded, onToggle, nudge, onDismissConfirmed, 
           <span className="block break-words text-body-lg font-medium">{decision.title}</span>
           {label && <span className={cn("mt-1 block text-meta", isOverdue ? "text-destructive" : "text-muted-foreground")}>{label}</span>}
         </span>
-        {recommendation && <span className="ml-auto max-w-[45%] shrink-0 rounded-full bg-[#eaf5df] px-2.5 py-1 text-caption font-medium text-foreground">
-          Büro: {recommendation.label}
+        {recommendation && <span className={cn("ml-auto max-w-[45%] shrink-0 rounded-full px-2.5 py-1 text-caption font-medium", recommendationColor.background, recommendationColor.text)}>
+          Büro empfiehlt: {recommendation.label}
         </span>}
         <ChevronRight className={cn("mt-1 h-4 w-4 shrink-0 transition-transform duration-500 motion-reduce:transition-none", expanded && "rotate-90")} aria-hidden="true" />
       </button>
@@ -161,7 +173,7 @@ function DecisionRow({ decision, expanded, onToggle, nudge, onDismissConfirmed, 
         <div className="min-h-0 overflow-hidden">
           <div onClick={() => { if (!exiting) onOpen(decision.id); }}>
             {recommendation?.recommendation_reason?.trim() && (
-              <p className="mb-3 rounded-xl bg-[#eaf5df] px-3 py-2 text-meta text-foreground"><span className="font-semibold">Büro empfiehlt {recommendation.label}.</span> {recommendation.recommendation_reason.trim()}</p>
+              <p className={cn("mb-3 rounded-xl px-3 py-2 text-meta text-foreground", recommendationColor.background)}><span className={cn("font-bold", recommendationColor.text)}>Büro empfiehlt: {recommendation.label}.</span> {recommendation.recommendation_reason.trim()}</p>
             )}
 
             {decision.isParticipant && decision.participant_id && !decision.hasResponded && !prompt && (
