@@ -404,8 +404,12 @@ export function GlobalSearchCommand() {
     enabled: !!debouncedQuery && !!currentTenant?.id && debouncedQuery.length >= 2,
   });
 
-  const activeDecisions = useMemo(() => decisions?.filter((decision) => !decision.archived_at) || [], [decisions]);
-  const archivedDecisions = useMemo(() => decisions?.filter((decision) => !!decision.archived_at) || [], [decisions]);
+  // Offen ist eine Entscheidung nur mit Status 'active'/'open' und ohne Archivstempel; der reine
+  // Stempel-Check würde archivierte Datensätze ohne archived_at als offen anzeigen.
+  const activeDecisions = useMemo(() => decisions?.filter((decision) =>
+    !decision.archived_at && decision.status !== "archived") || [], [decisions]);
+  const archivedDecisions = useMemo(() => decisions?.filter((decision) =>
+    !!decision.archived_at || decision.status === "archived") || [], [decisions]);
   const activePlannings = useMemo(() => plannings?.filter((planning) => !planning.archived_at && !planning.is_archived) || [], [plannings]);
   const archivedPlannings = useMemo(() => plannings?.filter((planning) => !!planning.archived_at || !!planning.is_archived) || [], [plannings]);
 

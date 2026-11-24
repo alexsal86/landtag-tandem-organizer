@@ -55,7 +55,8 @@ export const TaskDecisionStatus = ({ taskId, createdBy }: TaskDecisionStatusProp
         .from('task_decisions')
         .select('id, title, description, status, created_at, created_by')
         .eq('task_id', taskId)
-        .eq('status', 'active')
+        .in('status', ['active', 'open'])
+        .is('archived_at', null)
         .order('created_at', { ascending: false });
 
       if (decisionsError) throw decisionsError;

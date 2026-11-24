@@ -68,7 +68,7 @@ export async function loadPlatformAgenda(type: PlatformAgendaType, tenantId: str
       .eq('tenant_id', tenantId).in('status', ['review', 'pending_approval', 'approved']).order('updated_at').limit(200);
     if (error) throw error;
     const decisions = await supabase.from('task_decisions').select('id, description').eq('tenant_id', tenantId)
-      .in('status', ['active', 'open']).like('description', '%letter_approval_letter_id:%').limit(200);
+      .in('status', ['active', 'open']).is('archived_at', null).like('description', '%letter_approval_letter_id:%').limit(200);
     if (decisions.error) throw decisions.error;
     return (data ?? []).map(row => ({ id: row.id, title: row.subject || row.title, detail: row.recipient_name || 'Empfänger offen',
       status: row.status === 'approved' ? 'Freigegeben · Versand offen' : row.status === 'review' ? 'Kollegenprüfung' : 'Zur Freigabe',
