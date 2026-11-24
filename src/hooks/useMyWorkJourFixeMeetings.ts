@@ -139,7 +139,8 @@ const fetchParticipants = async (meetingIds: string[]) => {
     .select('meeting_id, user_id')
     .in('meeting_id', meetingIds);
 
-  if (participantsError || !participants || participants.length === 0) return {};
+  if (participantsError) throw participantsError;
+  if (!participants || participants.length === 0) return {};
 
   const userIds = [...new Set(participants.map((p: Record<string, any>) => p.user_id))];
   const { data: profiles, error: profilesError } = await supabase
@@ -147,7 +148,7 @@ const fetchParticipants = async (meetingIds: string[]) => {
     .select('user_id, display_name, avatar_url')
     .in('user_id', userIds);
 
-  if (profilesError) return {};
+  if (profilesError) throw profilesError;
 
   const profilesByUserId = new Map<string, MeetingProfileRow>(
     (profiles ?? []).map((profile: Record<string, any>) => [profile.user_id, profile])
@@ -231,7 +232,7 @@ export function useMyWorkJourFixeMeetings(userId?: string) {
 
   const allMeetingIdSet = useMemo(() => new Set(allMeetingIds), [allMeetingIds]);
 
-  const { data: meetingParticipants = {} } = useQuery({
+  const { data: meetingParticipants = {}, isError: participantsError } = useQuery({
     queryKey: ['my-work-jour-fixe-participants', allMeetingIds],
     queryFn: () => fetchParticipants(allMeetingIds),
     enabled: allMeetingIds.length > 0,
@@ -312,7 +313,10 @@ export function useMyWorkJourFixeMeetings(userId?: string) {
     isLoading: meetingsLoading,
     loading: meetingsLoading,
     error: null,
-    isError: meetingsError,
-    refetch: () => { void queryClient.refetchQueries({ queryKey: ['my-work-jour-fixe-meetings', userId], exact: true }); },
+    isError: meetingsError || participantsError,
+    refetch: () => {
+      void queryClient.refetchQueries({ queryKey: ['my-work-jour-fixe-meetings', userId], exact: true });
+      void queryClient.refetchQueries({ queryKey: ['my-work-jour-fixe-participants'] });
+    },
   };
 }
