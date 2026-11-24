@@ -14,6 +14,7 @@ import { Button } from '@/components/ui/button';
 import { supabase } from '@/integrations/supabase/client';
 import { cn } from '@/lib/utils';
 import { notify } from "@/lib/notify";
+import { ErrorState } from '@/components/ui-patterns';
 
 function formatDeadline(deadline: string | null): { label: string; isOverdue: boolean } {
   if (!deadline) return { label: '', isOverdue: false };
@@ -282,10 +283,10 @@ export function DashboardDecisionsWidget() {
 
   if (error) {
     return (
-      <div className="space-y-2">
-        <p className="text-sm text-destructive">Entscheidungen konnten nicht geladen werden.</p>
-        <Button size="sm" variant="outline" onClick={() => void loadDecisions()}>Erneut laden</Button>
-      </div>
+      <ErrorState
+        description="Entscheidungen konnten nicht geladen werden. Das heißt nicht, dass nichts zu entscheiden ist."
+        onRetry={() => { void loadDecisions(); }}
+      />
     );
   }
 

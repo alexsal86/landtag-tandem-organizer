@@ -162,13 +162,18 @@ function AppointmentsWidget({ isDeputyView }: { isDeputyView: boolean }) {
 
 /** Only appears when a request cannot wait for the next Jour fixe. */
 function UrgentRequestsWidget() {
-  const { data = [] } = useOpenAppointmentRequests();
-  const { data: nextJf = null } = useNextJourFixeDate();
-  if (!data.some((r) => isUrgent(r, nextJf))) return null;
+  const requests = useOpenAppointmentRequests();
+  const nextJourFixe = useNextJourFixeDate();
+  const data = requests.data ?? [];
+  const nextJf = nextJourFixe.data ?? null;
+  const hasError = requests.isError || nextJourFixe.isError;
+  if (!hasError && !data.some((r) => isUrgent(r, nextJf))) return null;
   return (
     <DashboardWidgetContainer
       icon={CalendarClock} title="Eilige Terminanfragen"
-      errorMessage="Anfragen konnten nicht geladen werden."
+      hasError={hasError}
+      onRetry={() => { void requests.refetch(); void nextJourFixe.refetch(); }}
+      errorMessage="Anfragen konnten nicht geladen werden. Das heißt nicht, dass nichts eilig ist."
     >
       <p className="mb-1 text-meta text-muted-foreground">Vor dem nächsten Jour fixe zu entscheiden.</p>
       <AppointmentRequestList mode="urgent" hideWhenEmpty />

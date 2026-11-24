@@ -212,7 +212,7 @@ const shouldRefreshMeetingParticipants = ({
 export function useMyWorkJourFixeMeetings(userId?: string) {
   const queryClient = useQueryClient();
 
-  const { data: meetingsData, isLoading: meetingsLoading } = useQuery({
+  const { data: meetingsData, isLoading: meetingsLoading, isError: meetingsError } = useQuery({
     queryKey: ['my-work-jour-fixe-meetings', userId],
     queryFn: () => fetchMeetings(userId!),
     enabled: !!userId,
@@ -312,6 +312,7 @@ export function useMyWorkJourFixeMeetings(userId?: string) {
     isLoading: meetingsLoading,
     loading: meetingsLoading,
     error: null,
-    refetch: () => queryClient.invalidateQueries({ queryKey: ['my-work-jour-fixe-meetings', userId] }),
+    isError: meetingsError,
+    refetch: () => { void queryClient.refetchQueries({ queryKey: ['my-work-jour-fixe-meetings', userId], exact: true }); },
   };
 }
