@@ -91,7 +91,7 @@ export function needsBriefingReminder(appointment: PendingBriefing, userId: stri
 /** Dashboard labels follow the requested workflow, independently of saved drafts. */
 export function dashboardBriefingState(status: string | undefined, hasPreparation: boolean) {
   if (!status) return null; // External calendar events have no briefing assignment.
-  if (status === "undecided") return { label: "Briefing-Entscheidung steht aus", kind: "pending", canOpen: false };
+  if (status === "undecided") return { label: "Briefing nötig?", kind: "pending", canOpen: false };
   if (status === "none") return { label: "Kein Briefing angefordert", kind: "neutral", canOpen: false };
   if (status === "assigned") return { label: hasPreparation ? "Briefing in Bearbeitung" : "Briefing fehlt", kind: hasPreparation ? "pending" : "missing", canOpen: false };
   if (status === "in_review") return { label: "Briefing zur Freigabe", kind: "pending", canOpen: false };

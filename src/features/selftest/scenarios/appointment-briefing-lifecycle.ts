@@ -68,7 +68,7 @@ export const appointmentBriefingLifecycleScenario: TestScenario = {
       run: async () => {
         const checks = [
           dashboardBriefingState(undefined, false) === null,
-          dashboardBriefingState("undecided", false)?.label === "Briefing-Entscheidung steht aus",
+          dashboardBriefingState("undecided", false)?.label === "Briefing nötig?",
           dashboardBriefingState("none", false)?.label === "Kein Briefing angefordert",
           dashboardBriefingState("assigned", false)?.label === "Briefing fehlt",
           !dashboardBriefingState("assigned", true)?.canOpen,
