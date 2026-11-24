@@ -214,7 +214,12 @@ export function TimeTrackingView() {
                         <TableCell>{entry.type_label ? <Badge variant="outline" className="text-xs">{entry.type_label}</Badge> : <span className="text-muted-foreground text-xs">Arbeit</span>}</TableCell>
                         <TableCell>{entry.started_at ? format(parseISO(entry.started_at), "HH:mm") : "-"}</TableCell>
                         <TableCell>{entry.ended_at ? format(parseISO(entry.ended_at), "HH:mm") : "-"}</TableCell>
-                        <TableCell>{entry.pause_minutes || 0} Min</TableCell>
+                        <TableCell>
+                          {entry.pause_minutes || 0} Min
+                          {entry.arbzg_pause_minutes > 0 && (
+                            <span className="ml-1 text-[10px] uppercase tracking-wide text-muted-foreground">auto +{entry.arbzg_pause_minutes}</span>
+                          )}
+                        </TableCell>
                         <TableCell>{fmt(gross)}</TableCell>
                         <TableCell>{fmt(entry.minutes || 0)}</TableCell>
                         <TableCell className="max-w-[200px]">

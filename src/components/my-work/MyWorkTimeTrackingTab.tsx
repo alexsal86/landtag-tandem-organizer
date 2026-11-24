@@ -17,7 +17,7 @@ import { de } from "date-fns/locale";
 import { Clock, Plus, ExternalLink, TrendingUp, Calendar, Play, Pause, Square, X } from "lucide-react";
 import { useNavigate } from "react-router-dom";
 import { useTimeEntryReminder } from "@/hooks/useTimeEntryReminder";
-import { ARBZG_MAX_DAILY_WORK_MINUTES, autoPauseNote, checkArbzgDay, elapsedWorkedMinutes, hasAutoPauseNote, requiredPauseForSpan } from "@/features/timetracking/arbzg";
+import { ARBZG_MAX_DAILY_WORK_MINUTES, checkArbzgDay, elapsedWorkedMinutes, requiredPauseForSpan } from "@/features/timetracking/arbzg";
 import { cn } from "@/lib/utils";
 import { useVacationReminders } from "@/hooks/useVacationReminders";
 import { useResolvedUserRole } from "@/hooks/useResolvedUserRole";
@@ -30,6 +30,7 @@ interface TimeEntryRow {
   ended_at: string | null;
   minutes: number | null;
   pause_minutes?: number | null;
+  arbzg_pause_minutes?: number | null;
   notes: string | null;
 }
 
@@ -217,7 +218,7 @@ export function MyWorkTimeTrackingTab() {
       // Load settings and entries
       const [settingsRes, weekEntriesRes, monthEntriesRes] = await Promise.all([
         supabase.from("employee_settings").select("hours_per_week, hours_per_month, days_per_month, days_per_week").eq("user_id", user.id).single(),
-        supabase.from("time_entries").select("id, user_id, work_date, minutes, notes, started_at, ended_at, pause_minutes, edit_reason, edited_at, edited_by, created_at, updated_at").eq("user_id", user.id)
+        supabase.from("time_entries").select("id, user_id, work_date, minutes, notes, started_at, ended_at, pause_minutes, arbzg_pause_minutes, edit_reason, edited_at, edited_by, created_at, updated_at").eq("user_id", user.id)
           .gte("work_date", format(weekStart, "yyyy-MM-dd"))
           .lte("work_date", format(weekEnd, "yyyy-MM-dd"))
           .order("work_date", { ascending: false }),
@@ -313,12 +314,9 @@ export function MyWorkTimeTrackingTab() {
     const gross = Math.round((end.getTime() - start.getTime()) / 60000);
     const recordedPause = parseInt(pauseMinutes) || 0;
     // Die Pflichtpause wird gesetzt statt die Eingabe zu blockieren; der ergänzte
-    // Anteil wird am Eintrag vermerkt, damit er nicht als echte Pause gelesen wird.
+    // Anteil landet in einer eigenen Spalte, damit er nicht als echte Pause gilt.
     const effectivePause = Math.max(recordedPause, requiredPauseForSpan(gross));
     const autoAddedPause = effectivePause - recordedPause;
-    const entryNotes = autoAddedPause > 0
-      ? [notes.trim(), autoPauseNote(autoAddedPause)].filter(Boolean).join("\n")
-      : notes.trim() || null;
 
     setIsSubmitting(true);
     try {
@@ -331,7 +329,8 @@ export function MyWorkTimeTrackingTab() {
         ended_at: end.toISOString(),
         minutes: gross - effectivePause,
         pause_minutes: effectivePause,
-        notes: entryNotes,
+        arbzg_pause_minutes: autoAddedPause,
+        notes: notes || null,
       }]);
 
       if (error) throw error;
@@ -410,7 +409,8 @@ export function MyWorkTimeTrackingTab() {
       : null;
     const required = span === null ? 0 : requiredPauseForSpan(span);
     const pause = entry.pause_minutes ?? 0;
-    return { auto: hasAutoPauseNote(entry.notes), belowMinimum: required > 0 && pause < required };
+    const auto = entry.arbzg_pause_minutes ?? 0;
+    return { autoMinutes: auto, belowMinimum: required > 0 && pause < required };
   };
 
   const difference = weeklyWorked - weeklyTarget;
@@ -725,8 +725,8 @@ export function MyWorkTimeTrackingTab() {
                         </TableCell>
                         <TableCell className="text-right text-muted-foreground">
                           {entry.pause_minutes ?? 0} Min
-                          {pauseState(entry).auto && (
-                            <span className="ml-1 text-[10px] uppercase tracking-wide">auto</span>
+                          {pauseState(entry).autoMinutes > 0 && (
+                            <span className="ml-1 text-[10px] uppercase tracking-wide">auto&nbsp;+{pauseState(entry).autoMinutes}</span>
                           )}
                           {pauseState(entry).belowMinimum && (
                             <span className="ml-1 text-[10px] uppercase tracking-wide text-destructive">unter Pausenpflicht</span>

@@ -15971,6 +15971,7 @@ export type Database = {
       }
       time_entries: {
         Row: {
+          arbzg_pause_minutes: number
           created_at: string
           edit_reason: string | null
           edited_at: string | null
@@ -15987,6 +15988,7 @@ export type Database = {
           work_date: string
         }
         Insert: {
+          arbzg_pause_minutes?: number
           created_at?: string
           edit_reason?: string | null
           edited_at?: string | null
@@ -16003,6 +16005,7 @@ export type Database = {
           work_date: string
         }
         Update: {
+          arbzg_pause_minutes?: number
           created_at?: string
           edit_reason?: string | null
           edited_at?: string | null

@@ -48,6 +48,7 @@ export function useAdminEntryEditing({ user, selectedUserId, onSuccess }: UseAdm
           started_at: start.toISOString(),
           ended_at: end.toISOString(),
           pause_minutes: data.pause_minutes,
+          arbzg_pause_minutes: data.arbzg_pause_minutes,
           notes: data.notes,
           edited_by: user.id,
           edited_at: new Date().toISOString(),

@@ -15,6 +15,7 @@ export interface TimeEntry {
   ended_at: string | null;
   minutes: number | null;
   pause_minutes: number | null;
+  arbzg_pause_minutes: number | null;
   notes: string | null;
   edited_by: string | null;
   edited_at: string | null;

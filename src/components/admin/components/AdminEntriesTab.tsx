@@ -95,7 +95,16 @@ export function AdminEntriesTab({
                       {entry.started_at || entry.ended_at ? <>{entry.started_at ? format(parseISO(entry.started_at), "HH:mm") : "–"} – {entry.ended_at ? format(parseISO(entry.ended_at), "HH:mm") : "–"}</>
                         : <span className="font-sans text-xs text-muted-foreground">{entry.entry_type === "work" ? "Nicht erfasst" : "ganztägig"}</span>}
                     </TableCell>
-                    <TableCell className="whitespace-nowrap font-mono text-xs text-muted-foreground tabular-nums">{entry.entry_type === "work" ? `${entry.pause_minutes} min` : "–"}</TableCell>
+                    <TableCell className="whitespace-nowrap font-mono text-xs text-muted-foreground tabular-nums">
+                      {entry.entry_type === "work" ? (
+                        <>
+                          {entry.pause_minutes} min
+                          {entry.arbzg_pause_minutes > 0 && (
+                            <Badge variant="outline" className="ml-2 rounded-full border-0 bg-palette-blue/10 px-1.5 py-0 text-[10px] font-sans text-palette-blue">auto +{entry.arbzg_pause_minutes}</Badge>
+                          )}
+                        </>
+                      ) : "–"}
+                    </TableCell>
                     <TableCell className="text-right font-mono tabular-nums">
                       <Popover>
                         <PopoverTrigger asChild><button type="button" aria-label={`Eintragsdetails vom ${format(date, "dd.MM.yyyy")}, ${fmt(entry.minutes || 0)} netto`} className="font-semibold underline decoration-dotted decoration-muted-foreground/50 underline-offset-4 hover:text-primary">{fmt(entry.minutes || 0)}</button></PopoverTrigger>
@@ -104,6 +113,9 @@ export function AdminEntriesTab({
                           <dl className="space-y-2">
                             <div className="flex justify-between"><dt>Brutto</dt><dd className="font-mono tabular-nums">{fmt(grossMinutes)}</dd></div>
                             <div className="flex justify-between"><dt>Pause</dt><dd className="font-mono tabular-nums">{entry.pause_minutes} min</dd></div>
+                            {entry.arbzg_pause_minutes > 0 && (
+                              <div className="flex justify-between text-muted-foreground"><dt>davon automatisch (ArbZG)</dt><dd className="font-mono tabular-nums">{entry.arbzg_pause_minutes} min</dd></div>
+                            )}
                             <div className="flex justify-between"><dt>Netto</dt><dd className="font-mono tabular-nums">{fmt(entry.minutes || 0)}</dd></div>
                             <div className="flex justify-between border-t pt-2"><dt>Laufendes Gesamt-Ist</dt><dd className="font-mono tabular-nums">{fmt(actualAfterEntryById.get(entry.id) || 0)}</dd></div>
                           </dl>

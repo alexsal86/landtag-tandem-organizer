@@ -15,6 +15,8 @@ export interface AdminEditData {
   started_at: string;
   ended_at: string;
   pause_minutes: number;
+  /** Automatisch nach ArbZG ergänzter Pausenanteil, nie größer als die Pause. */
+  arbzg_pause_minutes: number;
   notes: string;
   edit_reason: string;
   new_type?: EntryType;
@@ -27,6 +29,7 @@ interface TimeEntryForEdit {
   ended_at: string | null;
   minutes: number | null;
   pause_minutes?: number;
+  arbzg_pause_minutes?: number;
   notes: string | null;
   user_name?: string;
   edited_by?: string | null;
@@ -105,6 +108,7 @@ export function AdminTimeEntryEditor({
       started_at: startTime,
       ended_at: endTime,
       pause_minutes: parseInt(pauseMinutes) || 0,
+      arbzg_pause_minutes: Math.min(entry.arbzg_pause_minutes ?? 0, parseInt(pauseMinutes) || 0),
       notes,
       edit_reason: editReason,
     });
@@ -251,6 +255,11 @@ export function AdminTimeEntryEditor({
                   value={pauseMinutes}
                   onChange={(e) => setPauseMinutes(e.target.value)}
                 />
+                {(entry.arbzg_pause_minutes ?? 0) > 0 && (
+                  <p className="text-xs text-muted-foreground">
+                    Davon {entry.arbzg_pause_minutes} Min automatisch nach ArbZG ergänzt (nicht gestempelt).
+                  </p>
+                )}
               </div>
 
               {preview && !("error" in preview) && (
