@@ -55,7 +55,8 @@ const fetchDeadlineItems = async (userId: string, tenantId?: string): Promise<De
     tenantId
       ? supabase.from('task_decisions').select('id, title, response_deadline, created_by, priority')
           .eq('tenant_id', tenantId)
-          .neq('status', 'resolved')
+          // Offene Entscheidungen tragen 'active' oder 'open'; 'resolved' existiert im Schema nicht.
+          .in('status', ['active', 'open'])
           .is('archived_at', null)
           .not('response_deadline', 'is', null)
       : Promise.resolve({ data: [] }),
