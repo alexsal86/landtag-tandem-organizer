@@ -31,25 +31,34 @@ const formatCaseStepTitle = (subject: string | null | undefined, step: string | 
 
 const fetchDeadlineItems = async (userId: string, tenantId?: string): Promise<DeadlineItem[]> => {
   const [tasksRes, notesRes, casesRes, decisionsRes, planningDeadlinesRes, caseActionsRes] = await Promise.all([
-    supabase.from('tasks').select('id, title, due_date, assigned_to, user_id, priority, source_type, source_id')
-      .or(`assigned_to.eq.${userId},assigned_to.ilike.%${userId}%,user_id.eq.${userId}`)
-      .not('status', 'in', '(completed,cancelled)')
-      .not('due_date', 'is', null),
-    supabase.from('quick_notes').select('id, title, content, follow_up_date')
-      .eq('user_id', userId)
-      .is('deleted_at', null)
-      .or('is_archived.is.null,is_archived.eq.false')
-      .not('follow_up_date', 'is', null),
+    tenantId
+      ? supabase.from('tasks').select('id, title, due_date, assigned_to, user_id, priority, source_type, source_id')
+          .eq('tenant_id', tenantId)
+          .or(`assigned_to.eq.${userId},assigned_to.ilike.%${userId}%,user_id.eq.${userId}`)
+          .not('status', 'in', '(completed,cancelled)')
+          .not('due_date', 'is', null)
+      : Promise.resolve({ data: [] }),
+    tenantId
+      ? supabase.from('quick_notes').select('id, title, content, follow_up_date')
+          .eq('tenant_id', tenantId)
+          .eq('user_id', userId)
+          .is('deleted_at', null)
+          .or('is_archived.is.null,is_archived.eq.false')
+          .not('follow_up_date', 'is', null)
+      : Promise.resolve({ data: [] }),
     tenantId
       ? supabase.from('case_items').select('id, subject, due_at, priority, owner_user_id, user_id')
           .eq('tenant_id', tenantId)
           .not('due_at', 'is', null)
           .neq('status', 'erledigt')
       : Promise.resolve({ data: [] }),
-    supabase.from('task_decisions').select('id, title, response_deadline, created_by, priority')
-      .neq('status', 'resolved')
-      .is('archived_at', null)
-      .not('response_deadline', 'is', null),
+    tenantId
+      ? supabase.from('task_decisions').select('id, title, response_deadline, created_by, priority')
+          .eq('tenant_id', tenantId)
+          .neq('status', 'resolved')
+          .is('archived_at', null)
+          .not('response_deadline', 'is', null)
+      : Promise.resolve({ data: [] }),
     supabase
       .from('event_planning_timeline_assignments')
       .select(`
