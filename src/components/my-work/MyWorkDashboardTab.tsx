@@ -16,6 +16,7 @@ import { ErrorBoundary } from '@/components/shared/ErrorBoundary';
 import type { LucideIcon } from 'lucide-react';
 import { ArrowRight, CalendarClock, CalendarDays, Check, ClipboardList, Lightbulb, Vote, Users } from 'lucide-react';
 import { useOpenApprovalCount } from '@/features/redaktion/hooks/useOpenApprovalCount';
+
 import { hasAppointmentEnded } from '@/utils/dashboard/daySummary';
 import { AppointmentRequestList } from '@/features/appointment-requests/AppointmentRequestList';
 import { useNextJourFixeDate, useOpenAppointmentRequests } from '@/features/appointment-requests/useAppointmentRequests';
@@ -137,7 +138,10 @@ function DeadlinesWidget() {
 
 /** Zähler der offenen Freigaben: hält die Redaktion auf dem Dashboard sichtbar. */
 function ApprovalsWidget() {
-  const { openApprovals, loading, isError, refresh } = useOpenApprovalCount();
+  const { isEnabled, openApprovals, loading, isError, refresh } = useOpenApprovalCount();
+
+  // Teams ohne module.editorial sehen weder Karte noch leeren Zähler.
+  if (!isEnabled) return null;
 
   return (
     <DashboardWidgetContainer

@@ -1,6 +1,7 @@
 import { useCallback, useEffect, useSyncExternalStore } from "react";
 import { supabase } from "@/integrations/supabase/client";
 import { useTenant } from "@/hooks/useTenant";
+import { useTenantFeatureFlag } from "@/hooks/useTenantFeatureFlag";
 
 /**
  * Offene Freigaben der Redaktion: Beiträge im Zustand "Angefragt" (pending_approval)
@@ -116,21 +117,26 @@ function release() {
 export function useOpenApprovalCount() {
   const { currentTenant } = useTenant();
   const tenantId = currentTenant?.id ?? null;
+  // Ohne Redaktions-Modul gibt es keine Freigaben: weder Karte noch Abfrage.
+  const { enabled: moduleEnabled, isLoading: moduleLoading } = useTenantFeatureFlag("module.editorial");
   const state = useSyncExternalStore(subscribe, getSnapshot, getSnapshot);
 
   useEffect(() => {
-    if (!tenantId) return;
+    if (!tenantId || !moduleEnabled) return;
     acquire(tenantId);
     return () => release();
-  }, [tenantId]);
+  }, [tenantId, moduleEnabled]);
 
   const refresh = useCallback(() => {
-    if (tenantId) void loadCount(tenantId);
-  }, [tenantId]);
+    if (tenantId && moduleEnabled) void loadCount(tenantId);
+  }, [tenantId, moduleEnabled]);
 
-  const isCurrentTenant = tenantId !== null && state.tenantId === tenantId;
+  const isEnabled = moduleEnabled && !moduleLoading;
+  const isCurrentTenant = isEnabled && tenantId !== null && state.tenantId === tenantId;
 
   return {
+    /** true, sobald das Redaktions-Modul aktiv ist – erst dann Zähler und Karte zeigen. */
+    isEnabled,
     openApprovals: isCurrentTenant ? state.openApprovals : 0,
     loading: isCurrentTenant ? state.loading : false,
     isError: isCurrentTenant ? state.isError : false,
