@@ -28,12 +28,30 @@ export function normalizeArticleLink(raw: string): string {
   }
 }
 
-/** Deterministic article id (`nws_` + 128 bit of the normalized link hash). */
-export async function newsArticleId(rawLink: string): Promise<string> {
-  const normalized = normalizeArticleLink(rawLink);
-  const digest = await crypto.subtle.digest("SHA-256", new TextEncoder().encode(normalized));
+async function hashIdentity(value: string): Promise<string> {
+  const digest = await crypto.subtle.digest("SHA-256", new TextEncoder().encode(value));
   const hex = Array.from(new Uint8Array(digest))
     .map((byte) => byte.toString(16).padStart(2, "0"))
     .join("");
   return `nws_${hex.slice(0, 32)}`;
+}
+
+/** Deterministic article id (`nws_` + 128 bit of the normalized link hash). */
+export async function newsArticleId(rawLink: string): Promise<string> {
+  return hashIdentity(`link:${normalizeArticleLink(rawLink)}`);
+}
+
+/**
+ * Identity for one feed entry: the canonical link wins because the same URL is
+ * the same article across feeds. Only link-less entries fall back to their
+ * feed guid, scoped by source so short numeric guids cannot collide.
+ */
+export async function articleIdentity(
+  entry: { link?: string | null; guid?: string | null; sourceKey?: string | null },
+): Promise<string | null> {
+  const link = (entry.link ?? "").trim();
+  if (link) return newsArticleId(link);
+  const guid = (entry.guid ?? "").trim();
+  if (!guid) return null;
+  return hashIdentity(`guid:${(entry.sourceKey ?? "").trim()}:${guid}`);
 }

@@ -11616,6 +11616,7 @@ export type Database = {
           category: string
           description: string | null
           first_seen_at: string
+          guid: string | null
           image_url: string | null
           last_seen_at: string
           link: string
@@ -11629,6 +11630,7 @@ export type Database = {
           category?: string
           description?: string | null
           first_seen_at?: string
+          guid?: string | null
           image_url?: string | null
           last_seen_at?: string
           link: string
@@ -11642,6 +11644,7 @@ export type Database = {
           category?: string
           description?: string | null
           first_seen_at?: string
+          guid?: string | null
           image_url?: string | null
           last_seen_at?: string
           link?: string

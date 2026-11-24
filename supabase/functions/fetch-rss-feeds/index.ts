@@ -5,7 +5,7 @@ import { requireTenantAccess } from "../_shared/tenant-access.ts";
 
 import { withSafeHandler } from "../_shared/security.ts";
 import { fetchPublicFeed } from "../_shared/feed-fetch.ts";
-import { newsArticleId } from "../_shared/newsArticle.ts";
+import { articleIdentity, normalizeArticleLink } from "../_shared/newsArticle.ts";
 
 const corsHeaders = {
   'Access-Control-Allow-Origin': '*',
@@ -23,6 +23,7 @@ interface RSSSource {
 
 interface NewsArticle {
   id: string;
+  guid: string | null;
   title: string;
   description: string;
   link: string;
@@ -46,11 +47,17 @@ async function parseRSSFeed(source: RSSSource, articlesPerFeed: number): Promise
   for (const item of feed.items) {
     const link = cleanText(item.link ?? '').trim();
     const title = cleanText(item.title ?? '');
+    const guid = cleanText(item.guid ?? item.id ?? '').trim() || null;
 
-    if (!link || !title) continue;
+    if (!title) continue;
+
+    // Link first, feed guid as fallback; entries without either cannot be referenced.
+    const id = await articleIdentity({ link, guid, sourceKey: source.id });
+    if (!id) continue;
 
     articles.push({
-      id: await newsArticleId(link),
+      id,
+      guid,
       title,
       description: cleanText(item.contentSnippet ?? item.content ?? item.summary ?? ''),
       link,
@@ -110,6 +117,7 @@ async function persistArticles(supabase: any, tenantId: string, articles: NewsAr
   const rows = articles.map((article) => ({
     tenant_id: tenantId,
     article_id: article.id,
+    guid: article.guid,
     title: article.title.slice(0, 500),
     description: article.description.slice(0, 2000),
     link: article.link.slice(0, 2048),
@@ -279,11 +287,22 @@ serve(withSafeHandler("fetch-rss-feeds", async (req) => {
     });
 
     // Combine and sort articles
-    const allArticles = results
+    const sortedArticles = results
       .filter(result => result.status === 'fulfilled')
       .flatMap(result => (result as PromiseFulfilledResult<NewsArticle[]>).value)
-      .sort((a, b) => new Date(b.pub_date).getTime() - new Date(a.pub_date).getTime())
-      .slice(0, totalLimit);
+      .sort((a, b) => new Date(b.pub_date).getTime() - new Date(a.pub_date).getTime());
+
+    // The same URL from several feeds is one article; the newest occurrence wins.
+    const seen = new Set<string>();
+    const uniqueArticles: NewsArticle[] = [];
+    for (const article of sortedArticles) {
+      const key = article.link ? `link:${normalizeArticleLink(article.link)}` : `id:${article.id}`;
+      if (seen.has(key)) continue;
+      seen.add(key);
+      uniqueArticles.push(article);
+    }
+
+    const allArticles = uniqueArticles.slice(0, totalLimit);
 
     await persistArticles(supabase, tenant_id, allArticles);
 
