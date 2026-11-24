@@ -14,7 +14,8 @@ import { useDashboardAppointmentsData } from '@/hooks/useDashboardAppointmentsDa
 import { useDashboardDeadlines } from '@/hooks/useDashboardDeadlines';
 import { ErrorBoundary } from '@/components/shared/ErrorBoundary';
 import type { LucideIcon } from 'lucide-react';
-import { ArrowRight, CalendarClock, CalendarDays, Check, ClipboardList, Vote, Users } from 'lucide-react';
+import { ArrowRight, CalendarClock, CalendarDays, Check, ClipboardList, Lightbulb, Vote, Users } from 'lucide-react';
+import { useOpenApprovalCount } from '@/features/redaktion/hooks/useOpenApprovalCount';
 import { hasAppointmentEnded } from '@/utils/dashboard/daySummary';
 import { AppointmentRequestList } from '@/features/appointment-requests/AppointmentRequestList';
 import { useNextJourFixeDate, useOpenAppointmentRequests } from '@/features/appointment-requests/useAppointmentRequests';
@@ -134,6 +135,42 @@ function DeadlinesWidget() {
   );
 }
 
+/** Zähler der offenen Freigaben: hält die Redaktion auf dem Dashboard sichtbar. */
+function ApprovalsWidget() {
+  const { openApprovals, loading, isError, refresh } = useOpenApprovalCount();
+
+  return (
+    <DashboardWidgetContainer
+      icon={Lightbulb}
+      title="Redaktion · offene Freigaben"
+      animationDelay={90}
+      isLoading={loading}
+      hasError={isError}
+      onRetry={refresh}
+      loadingVariant="inline"
+      errorMessage="Offene Freigaben konnten nicht geladen werden."
+    >
+      <div className="flex flex-wrap items-center justify-between gap-3">
+        <div className="min-w-0">
+          <p className="text-2xl font-semibold tabular-nums" aria-label={`${openApprovals} offene ${openApprovals === 1 ? 'Freigabe' : 'Freigaben'}`}>
+            {openApprovals}
+          </p>
+          <p className="text-meta text-muted-foreground">
+            {openApprovals === 1 ? 'Beitrag wartet auf Freigabe' : 'Beiträge warten auf Freigabe'}
+          </p>
+        </div>
+        <Link
+          to="/mywork?tab=redaktion"
+          className="inline-flex h-8 items-center gap-1 rounded-md px-2 text-sm text-foreground transition-colors hover:bg-muted focus-visible:outline-foreground"
+        >
+          Redaktion öffnen
+          <ArrowRight className="h-3.5 w-3.5 shrink-0" aria-hidden="true" />
+        </Link>
+      </div>
+    </DashboardWidgetContainer>
+  );
+}
+
 function AppointmentsWidget({ isDeputyView }: { isDeputyView: boolean }) {
   const dashboardData = useDashboardAppointmentsData(true);
   const { data: changeAlerts = [] } = useChangeAlerts();
@@ -230,6 +267,7 @@ export function MyWorkDashboardTab() {
         </div>
         <div className="flex min-w-0 flex-col gap-4">
           {isEmployeeView && <BriefingComposerCard />}
+          <ApprovalsWidget />
           {!isDeputyView && <DeadlinesWidget />}
           <DashboardWidgetContainer
             icon={Vote} title={isDeputyView ? "Braucht deine Entscheidung" : "Entscheidungen"} animationDelay={60}

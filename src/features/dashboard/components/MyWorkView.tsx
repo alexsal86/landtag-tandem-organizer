@@ -16,6 +16,7 @@ import { PageHelpButton } from "@/components/shared/PageHelpButton";
 import { MYWORK_HELP_CONTENT } from "@/config/helpContent";
 
 import { useMyWorkNewCounts } from "@/hooks/useMyWorkNewCounts";
+import { useOpenApprovalCount } from "@/features/redaktion/hooks/useOpenApprovalCount";
 import { useAppSettings } from "@/hooks/useAppSettings";
 import { MyWorkTabErrorState } from "@/components/my-work/MyWorkTabErrorState";
 import { ErrorBoundary } from "@/components/shared/ErrorBoundary";
@@ -61,6 +62,7 @@ export function MyWorkView() {
 
 
   const { newCounts, markTabAsVisited, refreshCounts } = useMyWorkNewCounts();
+  const { openApprovals } = useOpenApprovalCount();
 
   useEffect(() => {
     setIsTabLogoError(false);
@@ -159,6 +161,14 @@ export function MyWorkView() {
                   </span>
                 )}
                 {tab.label}
+                {tab.value === "redaktion" && openApprovals > 0 && (
+                  <span
+                    className="ml-1 rounded-full bg-primary/10 px-1.5 py-0.5 text-xs font-semibold tabular-nums text-primary"
+                    aria-label={`${openApprovals} offene ${openApprovals === 1 ? "Freigabe" : "Freigaben"}`}
+                  >
+                    {openApprovals}
+                  </span>
+                )}
               </button>
             );
           })}
