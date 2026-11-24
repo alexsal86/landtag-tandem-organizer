@@ -1,3 +1,4 @@
+import { SignatureFolder } from "./SignatureFolder";
 import { AppointmentChangeBanner, AppointmentChangeSentList, useAlerts as useChangeAlerts } from "@/features/appointments/change-alerts/AppointmentChangeAlerts";
 import { applyReportedStart, summarizeReportedChanges } from "@/features/appointments/change-alerts/changeModel";
 import { TeamRitualDashboardCard } from "@/features/team-rituals/TeamRitualDashboardCard";
@@ -281,6 +282,11 @@ export function MyWorkDashboardTab() {
               <DashboardDecisionsWidget />
             </ErrorBoundary>
           </DashboardWidgetContainer>
+          {isDeputyView && (
+            <ErrorBoundary fallback={<ErrorState description="Die Unterschriftenmappe konnte nicht geladen werden." />}>
+              <SignatureFolder />
+            </ErrorBoundary>
+          )}
           {isEmployeeView && <ErrorBoundary fallback={<ErrorState description="Entscheidungen beim Abgeordneten konnten nicht geladen werden." />}><DeputyWaitingCard /></ErrorBoundary>}
           {!isDeputyView && (
             <DashboardWidgetContainer
