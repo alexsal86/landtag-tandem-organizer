@@ -14,7 +14,8 @@ export function AnnotationAudit({
 }) {
   const events = useInfiniteQuery({
     queryKey: ["annotation-events", documentId, threadId ?? "all"],
-    refetchInterval: 120_000,
+    // Kein Polling: der Verlauf ist append-only, und useAnnotations im Workspace invalidiert
+    // diesen Key bei neuen document_annotation_events.
     initialPageParam: 0,
     getNextPageParam: (lastPage: AnnotationEvent[], pages) =>
       lastPage.length === 100 ? pages.length : undefined,

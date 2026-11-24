@@ -12,6 +12,7 @@ import { useTenant } from "@/hooks/useTenant";
 import { notify } from "@/lib/notify";
 import { WebSpeechToTextAdapter } from "@/lib/speechToTextAdapter";
 import { cn } from "@/lib/utils";
+import { STALE_TIME } from "@/lib/query-cache";
 import { decideFolderEntry, folderDate, folderTypes, loadSignatureFolder, type FolderEntry, type FolderType } from "./signatureFolderData";
 
 const pill = "min-h-10 rounded-full px-3 py-2 text-sm font-medium focus-visible:outline-2 focus-visible:outline-offset-2";
@@ -32,7 +33,15 @@ function SignatureFolderContent({ tenantId, userId }: { tenantId: string; userId
   const listId = useId();
   const header = useRef<HTMLButtonElement>(null);
   const queryKey = ["signature-folder", tenantId, userId];
-  const query = useQuery({ queryKey, queryFn: () => loadSignatureFolder(tenantId, userId), refetchInterval: 30_000 });
+  // Buchstaben, Presse und Social sind nicht in der Realtime-Publication, und neue Vorgänge
+  // kommen im Tempo der Büroarbeit. Statt alle 30 s zu pollen wird beim Zurückkehren in den Tab
+  // frisch geladen; eigene Entscheidungen invalidieren den Key ohnehin sofort.
+  const query = useQuery({
+    queryKey,
+    queryFn: () => loadSignatureFolder(tenantId, userId),
+    staleTime: STALE_TIME.LIST_WITH_REALTIME,
+    refetchOnWindowFocus: true,
+  });
   const [visible, setVisible] = useState(true);
   const [filter, setFilter] = useState<FolderType | "all">("all");
   const [expanded, setExpanded] = useState<string | null>(null);

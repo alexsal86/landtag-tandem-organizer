@@ -166,8 +166,8 @@ export const DashboardAppointments = ({ data }: Props) => {
     queryKey: ["appointment-briefing", "dashboard-status", currentTenant?.id, appointmentIds],
     enabled: !!currentTenant?.id && appointmentIds.length > 0,
     staleTime: STALE_TIME.LIST_WITH_REALTIME,
-    refetchInterval: STALE_TIME.LIST_WITH_REALTIME,
-    refetchIntervalInBackground: false,
+    // Kein Polling: useDashboardAppointmentsData im selben Tab hält die geteilte
+    // Realtime-Subscription offen, die "appointment-briefing" bei appointments-Änderungen invalidiert.
     queryFn: async () => {
       const { data, error } = await supabase.from("appointments").select("id,briefing_status")
         .eq("tenant_id", currentTenant!.id).in("id", appointmentIds);

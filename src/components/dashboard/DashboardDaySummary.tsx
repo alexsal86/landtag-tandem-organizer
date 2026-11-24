@@ -30,8 +30,8 @@ export function DashboardDaySummary() {
     queryKey: ["dashboard-day-summary", currentTenant?.id],
     enabled: !!currentTenant?.id,
     staleTime: STALE_TIME.LIST_WITH_REALTIME,
-    refetchInterval: STALE_TIME.LIST_WITH_REALTIME,
-    refetchIntervalInBackground: false,
+    // Kein Polling: useDashboardRealtime oben invalidiert diesen Key bei Änderungen an
+    // appointments und external_events.
     queryFn: async () => {
       const since = new Date(Date.now() - 2 * 86400_000).toISOString();
       const [internal, external] = await Promise.all([
