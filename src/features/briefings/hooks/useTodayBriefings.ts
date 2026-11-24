@@ -1,40 +1,50 @@
+import { berlinDay } from "@/utils/dashboard/daySummary";
 import { useQuery } from "@tanstack/react-query";
 import { supabase } from "@/integrations/supabase/client";
 import { useAuth } from "@/hooks/useAuth";
 import { useTenant } from "@/hooks/useTenant";
-import { todayString } from "../utils";
+import { canReadDailyBriefing } from "../utils";
 import type { DailyBriefingWithAuthor } from "../types";
 
 export const todayBriefingsQueryKey = (tenantId?: string, userId?: string) =>
   ["daily-briefings", "today", tenantId ?? null, userId ?? null] as const;
 
 export function useTodayBriefings() {
+  return useDatedBriefings(false);
+}
+
+export function useUpcomingBriefings() {
+  return useDatedBriefings(true);
+}
+
+function useDatedBriefings(upcoming: boolean) {
   const { user } = useAuth();
   const { currentTenant } = useTenant();
   const tenantId = currentTenant?.id;
   const userId = user?.id;
-  const today = todayString();
+  const today = berlinDay(new Date());
 
   return useQuery({
-    queryKey: [...todayBriefingsQueryKey(tenantId, userId), today],
+    queryKey: upcoming ? ["daily-briefings", "upcoming", tenantId, userId, today]
+      : [...todayBriefingsQueryKey(tenantId, userId), today],
     enabled: Boolean(tenantId && userId),
     staleTime: 30_000,
     refetchInterval: 30_000,
     queryFn: async (): Promise<DailyBriefingWithAuthor[]> => {
       if (!tenantId || !userId) return [];
 
-      const { data: briefings, error } = await supabase
-        .from("daily_briefings")
+      const query = supabase.from("daily_briefings")
         .select("id, tenant_id, author_id, briefing_date, title, content, created_at, updated_at")
-        .eq("tenant_id", tenantId)
-        .eq("briefing_date", today)
-        .order("created_at", { ascending: false });
+        .eq("tenant_id", tenantId);
+      const { data: briefings, error } = upcoming
+        ? await query.gt("briefing_date", today).order("briefing_date").order("created_at", { ascending: false }).limit(20)
+        : await query.eq("briefing_date", today).order("created_at", { ascending: false });
 
       if (error) throw error;
       if (!briefings || briefings.length === 0) return [];
 
-      // Vortag-Regel zusätzlich client-seitig anwenden (created_at < today)
-      const eligible = briefings.filter((b: Record<string, any>) => b.created_at.slice(0, 10) < today);
+      // Preserve the creation-ahead rule without blocking early reading.
+      const eligible = briefings.filter(b => canReadDailyBriefing(b.briefing_date, b.created_at, today));
       if (eligible.length === 0) return [];
 
       const authorIds = Array.from(new Set(eligible.map((b: Record<string, any>) => b.author_id)));
@@ -44,7 +54,7 @@ export function useTodayBriefings() {
         supabase
           .from("profiles")
           .select("user_id, display_name, avatar_url")
-          .in("user_id", authorIds),
+          .in("user_id", authorIds).eq("tenant_id", tenantId),
         supabase
           .from("daily_briefing_reads")
           .select("briefing_id, read_at")

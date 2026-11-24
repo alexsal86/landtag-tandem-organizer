@@ -1,7 +1,7 @@
 import { useAuth } from "@/hooks/useAuth";
 import { useTenant } from "@/hooks/useTenant";
 import { useUserPreference } from "@/hooks/useUserPreference";
-import { dailyBriefingReadLabel, isReadBriefingCollapsed } from "../utils";
+import { dailyBriefingTargetLabel, dailyBriefingReadLabel, isReadBriefingCollapsed } from "../utils";
 import { RichTextDisplay } from "@/components/ui/RichTextDisplay";
 import { useLayoutEffect, useRef, useState, type ReactNode } from "react";
 import { format } from "date-fns";
@@ -13,14 +13,14 @@ import { Avatar, AvatarFallback, AvatarImage } from "@/components/ui/avatar";
 import { Button } from "@/components/ui/button";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { cn } from "@/lib/utils";
-import { useTodayBriefings } from "../hooks/useTodayBriefings";
+import { useTodayBriefings, useUpcomingBriefings } from "../hooks/useTodayBriefings";
 import { useMarkBriefingRead } from "../hooks/useMarkBriefingRead";
 import type { DailyBriefingWithAuthor } from "../types";
 
 const COLLAPSE_AT = 320;
 
-function BriefingItem({ briefing, moreAction, onRead }: {
-  briefing: DailyBriefingWithAuthor; moreAction?: ReactNode; onRead?: () => void;
+function BriefingItem({ briefing, moreAction, onRead, targetLabel }: {
+  briefing: DailyBriefingWithAuthor; moreAction?: ReactNode; onRead?: () => void; targetLabel?: string;
 }) {
   const [expanded, setExpanded] = useState(false);
   const { user } = useAuth();
@@ -57,7 +57,7 @@ function BriefingItem({ briefing, moreAction, onRead }: {
     className="ml-auto flex w-fit max-w-full origin-top-left flex-wrap items-center justify-end gap-3 rounded-xl bg-[rgb(240,243,246)] px-5 py-2">
     <button type="button" onClick={() => toggleCollapsed(false)} aria-expanded={false}
       className="inline-flex min-w-0 max-w-full items-center justify-end gap-2 rounded text-xs focus-visible:outline focus-visible:outline-2 focus-visible:outline-primary">
-      <span className="truncate text-muted-foreground">Tagesbriefing · {briefing.author_display_name ?? "Teammitglied"}</span>
+      <span className="truncate text-muted-foreground">Tagesbriefing{targetLabel ? ` ${targetLabel}` : ""} · {briefing.author_display_name ?? "Teammitglied"}</span>
       <span className="shrink-0 rounded-full bg-[#eaf5df] px-3 py-1 font-medium text-[#397d16]">{dailyBriefingReadLabel(briefing.read_at)}</span>
       <ChevronDown className="h-3 w-3 shrink-0" aria-hidden="true" />
     </button>
@@ -77,7 +77,7 @@ function BriefingItem({ briefing, moreAction, onRead }: {
       <div className="min-w-0 flex-1 space-y-3">
         <div className="flex flex-wrap items-baseline gap-x-2 gap-y-1 pr-6">
           <p className="text-sm font-semibold text-foreground">{briefing.author_display_name ?? "Teammitglied"}</p>
-          <span className="text-xs text-muted-foreground">Tagesbriefing</span>
+          <span className="text-xs text-muted-foreground">Tagesbriefing{targetLabel ? ` · ${targetLabel}` : ""}</span>
           {!briefing.is_read ? <span className="ml-1 text-xs font-medium text-[#8b5cf6]">Neu</span>
             : <span className="inline-flex rounded-full bg-[#eaf5df] px-3 py-1 text-xs font-medium text-[#397d16]">{dailyBriefingReadLabel(briefing.read_at)}</span>}
         </div>
@@ -121,11 +121,14 @@ function AppointmentBriefingItem({ a }: { a: BriefingAppointment }) {
 export function TodayBriefingPanel() {
   const { data: briefings = [], isLoading } = useTodayBriefings();
   const { data: apptBriefings = [] } = useTodayApprovedBriefings();
+  const upcoming = useUpcomingBriefings();
+  const futureBriefings = upcoming.data ?? [];
+  const [showUpcoming, setShowUpcoming] = useState(false);
   const [showMore, setShowMore] = useState(false);
   const [primaryId, setPrimaryId] = useState<string | null>(null);
 
   if (isLoading) return null;
-  if (briefings.length === 0 && apptBriefings.length === 0) return null;
+  if (briefings.length === 0 && apptBriefings.length === 0 && futureBriefings.length === 0 && !upcoming.isError) return null;
 
   // Ungelesene zuerst, gelesene unten
   const sorted = [...briefings].sort((a, b) => {
@@ -148,6 +151,23 @@ export function TodayBriefingPanel() {
     {showMore && others.length > 0 && <div id="additional-daily-briefings" className="animate-fade-up space-y-4">
       {others.map(briefing => <BriefingItem key={briefing.id} briefing={briefing} />)}
     </div>}
+    {upcoming.isError && <div role="status" className="flex flex-wrap items-center gap-2 text-xs text-muted-foreground">
+      Zukünftige Tagesbriefings konnten nicht geladen werden.
+      <Button size="sm" variant="link" onClick={() => void upcoming.refetch()}>Erneut laden</Button>
+    </div>}
+    {futureBriefings.length > 0 && <section className="space-y-3" aria-label="Tagesbriefings vorab lesen">
+      <button type="button" onClick={() => setShowUpcoming(value => !value)} aria-expanded={showUpcoming}
+        aria-controls="upcoming-daily-briefings"
+        className="flex w-full flex-wrap items-center justify-between gap-2 rounded-xl border border-border bg-card/60 px-5 py-3 text-left text-sm focus-visible:outline focus-visible:outline-2 focus-visible:outline-primary">
+        <span>{futureBriefings.length === 1 ? `Tagesbriefing ${dailyBriefingTargetLabel(futureBriefings[0].briefing_date)} liegt bereit` : `${futureBriefings.length} Tagesbriefings vorab lesen`}</span>
+        <span className="inline-flex items-center gap-2 text-xs text-[#8b5cf6]">{showUpcoming ? 'Schließen' : 'Vorab lesen'}
+          <ChevronDown className={cn('h-4 w-4 transition-transform duration-300', showUpcoming && 'rotate-180')} aria-hidden="true" />
+        </span>
+      </button>
+      {showUpcoming && <div id="upcoming-daily-briefings" className="animate-fade-up space-y-4">
+        {futureBriefings.map(briefing => <BriefingItem key={briefing.id} briefing={briefing} targetLabel={dailyBriefingTargetLabel(briefing.briefing_date)} />)}
+      </div>}
+    </section>}
     {apptBriefings.length > 0 && <Card className="dashboard-motion-card">
       <CardHeader className="px-5 pt-5 pb-3">
         <CardTitle className="text-base font-medium">Termin-Briefings heute</CardTitle>

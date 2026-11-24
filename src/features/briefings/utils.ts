@@ -43,3 +43,23 @@ export function dailyBriefingReadLabel(readAt: string | null | undefined): strin
 export function isReadBriefingCollapsed(isRead: boolean, collapsed: boolean): boolean {
   return isRead && collapsed;
 }
+
+/** Saved future briefings can be read early; the creation-ahead rule still applies. */
+export function canReadDailyBriefing(briefingDate: string, createdAt: string, today: string): boolean {
+  if (!Number.isFinite(Date.parse(createdAt))) return false;
+  const createdDay = new Intl.DateTimeFormat('en-CA', {
+    timeZone: 'Europe/Berlin', year: 'numeric', month: '2-digit', day: '2-digit',
+  }).format(new Date(createdAt));
+  return briefingDate >= today && createdDay < briefingDate;
+}
+
+export function dailyBriefingTargetLabel(date: string, now = new Date()): string {
+  const today = new Intl.DateTimeFormat('en-CA', {
+    timeZone: 'Europe/Berlin', year: 'numeric', month: '2-digit', day: '2-digit',
+  }).format(now);
+  if (date === today) return 'für heute';
+  if (date === briefingDateOptions(now).tomorrow) return 'für morgen';
+  return `für ${new Intl.DateTimeFormat('de-DE', {
+    timeZone: 'Europe/Berlin', weekday: 'long', day: 'numeric', month: 'long',
+  }).format(new Date(`${date}T12:00:00Z`))}`;
+}

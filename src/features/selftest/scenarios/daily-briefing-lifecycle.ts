@@ -1,4 +1,4 @@
-import { isReadBriefingCollapsed, dailyBriefingReadLabel, briefingDateOptions } from "@/features/briefings/utils";
+import { canReadDailyBriefing, dailyBriefingTargetLabel, isReadBriefingCollapsed, dailyBriefingReadLabel, briefingDateOptions } from "@/features/briefings/utils";
 import { supabase } from "@/integrations/supabase/client";
 import type { TestScenario } from "../types";
 import { SELFTEST_MARKER, SELFTEST_PREFIX } from "../runner";
@@ -29,6 +29,17 @@ export const dailyBriefingLifecycleScenario: TestScenario = {
     { label: "Dashboard öffnen (Briefing-Widget)", href: "/" },
   ],
   steps: [
+    {
+      id: 'read-ahead', label: 'Vorliegende Tagesbriefings vorab lesen', kind: 'logic',
+      run: async () => ({
+        ok: canReadDailyBriefing('2026-11-25', '2026-11-24T12:00:00Z', '2026-11-24')
+          && canReadDailyBriefing('2026-11-24', '2026-11-23T12:00:00Z', '2026-11-24')
+          && !canReadDailyBriefing('2026-11-24', '2026-11-23T23:30:00Z', '2026-11-24')
+          && !canReadDailyBriefing('2026-11-23', '2026-11-22T12:00:00Z', '2026-11-24')
+          && dailyBriefingTargetLabel('2026-11-25', new Date('2026-11-24T12:00:00Z')) === 'für morgen',
+        message: 'Gespeicherte zukünftige Briefings sind lesbar, ohne sie als heutiges Briefing auszugeben; die Berliner Vortag-Regel beim Erstellen bleibt erhalten.',
+      }),
+    },
     {
       id: 'collapse-read-briefing', label: 'Nur gelesene Tagesbriefings einklappen', kind: 'logic',
       run: async () => ({
