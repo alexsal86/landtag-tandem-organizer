@@ -1,6 +1,6 @@
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Dialog, DialogContent, DialogHeader, DialogTitle } from "@/components/ui/dialog";
-import { Button } from "@/components/ui/button";
+import { Button, buttonVariants } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import { Badge } from "@/components/ui/badge";
@@ -18,6 +18,7 @@ import { Calendar } from "@/components/ui/calendar";
 import { format } from "date-fns";
 import { de } from "date-fns/locale";
 import { useEmailComposer, type RecipientEntry } from "./hooks/useEmailComposer";
+import { cn } from "@/lib/utils";
 
 // ── Recipient Field sub-component ────────────────────────────
 function RecipientField({
@@ -248,11 +249,9 @@ export function EmailComposer() {
               {hook.isScheduled && (
                 <div className="mt-4">
                   <Popover>
-                    <PopoverTrigger asChild>
-                      <Button type="button" variant="outline" className="gap-2 w-full">
-                        <CalendarIcon className="h-4 w-4" />
-                        {hook.scheduledFor ? format(hook.scheduledFor, "dd.MM.yyyy HH:mm", { locale: de }) : "Zeitpunkt wählen"}
-                      </Button>
+                    <PopoverTrigger className={cn(buttonVariants({ variant: "outline" }), "gap-2 w-full")}>
+                      <CalendarIcon className="h-4 w-4" />
+                      {hook.scheduledFor ? format(hook.scheduledFor, "dd.MM.yyyy HH:mm", { locale: de }) : "Zeitpunkt wählen"}
                     </PopoverTrigger>
                     <PopoverContent className="w-auto p-0" align="end">
                       <div className="p-4 space-y-4">

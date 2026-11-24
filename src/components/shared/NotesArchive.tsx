@@ -1,7 +1,7 @@
 import { useTenant } from "@/hooks/useTenant";
 import { useState, useEffect, useCallback } from "react";
 import { Badge } from "@/components/ui/badge";
-import { Button } from "@/components/ui/button";
+import { Button, buttonVariants } from "@/components/ui/button";
 import {
   Dialog,
   DialogContent,
@@ -412,15 +412,11 @@ export function NotesArchive({ refreshTrigger, onRestore }: NotesArchiveProps) {
                           <RotateCcw className="h-3.5 w-3.5" />
                         </Button>
                         <Popover>
-                          <PopoverTrigger asChild>
-                            <Button
-                              variant="ghost"
-                              size="icon"
-                              className="h-7 w-7"
-                              title="Löschdatum ändern"
-                            >
-                              <CalendarIcon className="h-3.5 w-3.5" />
-                            </Button>
+                          <PopoverTrigger
+                            className={cn(buttonVariants({ variant: "ghost", size: "icon" }), "h-7 w-7")}
+                            title="Löschdatum ändern"
+                          >
+                            <CalendarIcon className="h-3.5 w-3.5" />
                           </PopoverTrigger>
                           <PopoverContent className="w-auto p-0" align="end">
                             <Calendar

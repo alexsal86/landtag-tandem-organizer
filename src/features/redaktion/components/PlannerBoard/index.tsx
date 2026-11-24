@@ -3,7 +3,7 @@ import { Check, Filter, Plus } from "lucide-react";
 import { format } from "date-fns";
 import { useSearchParams } from "react-router-dom";
 import { Kalenderansicht } from "../Kalenderansicht";
-import { Button } from "@/components/ui/button";
+import { Button, buttonVariants } from "@/components/ui/button";
 import { Card, CardContent } from "@/components/ui/card";
 import { AlertDialog, AlertDialogAction, AlertDialogCancel, AlertDialogContent, AlertDialogDescription, AlertDialogFooter, AlertDialogHeader, AlertDialogTitle } from "@/components/ui/alert-dialog";
 import { Dialog, DialogContent, DialogDescription, DialogFooter, DialogHeader, DialogTitle } from "@/components/ui/dialog";
@@ -33,6 +33,7 @@ import type { PlannerFormatFilter, SocialPlannerDraftPayload } from "./types";
 import { inferFormatType } from "./utils";
 import { getErrorMessage } from "@/utils/errorHandler";
 import { notify } from "@/lib/notify";
+import { cn } from "@/lib/utils";
 
 const SocialPlannerEditPanel = lazyWithRetry(
   () => import("./SocialPlannerEditPanel"),
@@ -343,14 +344,12 @@ export function PlannerBoard({ specialDays = [], topicSidebar }: PlannerBoardPro
           headerActions={(
             <div className="flex flex-wrap items-center gap-2">
               <Popover>
-                <PopoverTrigger asChild>
-                  <Button variant="outline" className="relative h-9 rounded-lg px-3 text-sm">
-                    <Filter className="mr-1 h-4 w-4" />
-                    Filter
-                    {hasActiveFilters && (
-                      <span className="absolute -right-1 -top-1 h-2.5 w-2.5 rounded-full bg-primary" />
-                    )}
-                  </Button>
+                <PopoverTrigger className={cn(buttonVariants({ variant: "outline" }), "relative h-9 rounded-lg px-3 text-sm")}>
+                  <Filter className="mr-1 h-4 w-4" />
+                  Filter
+                  {hasActiveFilters && (
+                    <span className="absolute -right-1 -top-1 h-2.5 w-2.5 rounded-full bg-primary" />
+                  )}
                 </PopoverTrigger>
                 <PopoverContent className="w-80 space-y-3" align="end">
                   <div className="flex items-center justify-between">

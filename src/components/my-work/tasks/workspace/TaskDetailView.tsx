@@ -8,7 +8,7 @@ import { usePersistentState } from "@/hooks/usePersistentState";
 import { WorkflowLinks } from "@/components/workflow/WorkflowLinks";
 import { useEffect, useRef, useState, type FormEvent } from "react";
 import { Bell, BellOff, BellRing, CalendarDays, Check, ChevronDown, Flag, Plus, X, Gavel, Send, Users, Zap } from "lucide-react";
-import { Button } from "@/components/ui/button";
+import { Button, buttonVariants } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Textarea } from "@/components/ui/textarea";
 import { DropdownMenu, DropdownMenuContent, DropdownMenuItem, DropdownMenuTrigger } from "@/components/ui/dropdown-menu";
@@ -262,11 +262,11 @@ export function TaskDetailView({ task, profiles, decisionLabel, onSave, onComple
                 <Popover>
                   <Tooltip>
                     <TooltipTrigger asChild>
-                      <PopoverTrigger asChild>
-                        <Button size="icon" variant="ghost" className="rounded-xl hover:bg-[#f0f0ed] hover:text-foreground dark:hover:bg-muted" aria-label="Mich erinnern">
+                      <span className="inline-flex">
+                        <PopoverTrigger className={cn(buttonVariants({ size: "icon", variant: "ghost" }), "rounded-xl hover:bg-[#f0f0ed] hover:text-foreground dark:hover:bg-muted")} aria-label="Mich erinnern">
                           <Bell strokeWidth={task.reminder_at ? 2.75 : 2} />
-                        </Button>
-                      </PopoverTrigger>
+                        </PopoverTrigger>
+                      </span>
                     </TooltipTrigger>
                     <TooltipContent>{task.reminder_at ? "Erinnerung gesetzt" : "Mich erinnern"}</TooltipContent>
                   </Tooltip>

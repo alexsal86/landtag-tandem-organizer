@@ -2,7 +2,7 @@ import { useState } from 'react';
 import { Beaker, Clock, Copy, Download, Hand, History, ListTodo, Loader2, MoreHorizontal, Play, Plus, Search, Trash2, Upload, Webhook, Zap } from 'lucide-react';
 import { formatDistanceToNow } from 'date-fns';
 import { de } from 'date-fns/locale';
-import { Button } from '@/components/ui/button';
+import { Button, buttonVariants } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
 import { Switch } from '@/components/ui/switch';
 import { Tooltip, TooltipContent, TooltipProvider, TooltipTrigger } from '@/components/ui/tooltip';
@@ -12,6 +12,7 @@ import type { AutomationRuleRecordView as Rule } from './automationShared';
 import { annualRoutineAction } from '@/features/automation/annualRoutines';
 import { matchesRule, RULE_FILTERS, ruleActionLabel, ruleModuleLabel, ruleTriggerLabel, type RuleFilter } from '@/features/automation/rulePresentation';
 import styles from './AutomationRulesWorkspace.module.css';
+import { cn } from '@/lib/utils';
 
 type RuleStats = Record<string, { total: number; success: number; totalDurationMs: number; withDuration: number }>;
 interface Props {
@@ -78,7 +79,7 @@ export function AutomationRulesList(props: Props) {
                 <Button type="button" variant="ghost" size="icon" className={styles.iconButton} disabled={runDisabled} onClick={() => system ? setRunRule(rule) : props.onRun(rule)} aria-label={`Regel „${rule.name}“ jetzt ausführen`}>{props.runningRuleId === rule.id ? <Loader2 className="h-4 w-4 animate-spin" aria-hidden="true" /> : <Play className="h-4 w-4" aria-hidden="true" />}</Button>
               </span></TooltipTrigger><TooltipContent>{runLabel}</TooltipContent></Tooltip>
               <DropdownMenu>
-                <Tooltip><TooltipTrigger asChild><DropdownMenuTrigger asChild><Button type="button" variant="ghost" size="icon" className={styles.iconButton} aria-label={`Weitere Aktionen für „${rule.name}“`}><MoreHorizontal className="h-4 w-4" aria-hidden="true" /></Button></DropdownMenuTrigger></TooltipTrigger><TooltipContent>Weitere Aktionen</TooltipContent></Tooltip>
+                <Tooltip><TooltipTrigger asChild><span className="inline-flex"><DropdownMenuTrigger className={cn(buttonVariants({ variant: 'ghost', size: 'icon' }), styles.iconButton)} aria-label={`Weitere Aktionen für „${rule.name}“`}><MoreHorizontal className="h-4 w-4" aria-hidden="true" /></DropdownMenuTrigger></span></TooltipTrigger><TooltipContent>Weitere Aktionen</TooltipContent></Tooltip>
                 <DropdownMenuContent align="end" className="min-w-52 rounded-xl">
                   <DropdownMenuItem disabled={!props.canEdit || executing} onSelect={() => props.onDryRun(rule)}><Beaker className="mr-2 h-4 w-4" />Testlauf (Simulation)</DropdownMenuItem>
                   <DropdownMenuItem disabled={!props.canEdit} onSelect={() => props.onDuplicate(rule)}><Copy className="mr-2 h-4 w-4" />Duplizieren</DropdownMenuItem>

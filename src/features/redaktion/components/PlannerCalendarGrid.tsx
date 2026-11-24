@@ -14,7 +14,7 @@ import {
 } from "date-fns";
 import { de } from "date-fns/locale";
 import { AlertTriangle, FileText, Pencil } from "lucide-react";
-import { Button } from "@/components/ui/button";
+import { Button, buttonVariants } from "@/components/ui/button";
 import { Popover, PopoverContent, PopoverTrigger } from "@/components/ui/popover";
 import { Textarea } from "@/components/ui/textarea";
 import { PLANNER_ITEM_MIME, PlannerPostCard } from "./PlannerPostCard";
@@ -25,6 +25,7 @@ import type { SocialPlannerItem } from "@/features/redaktion/hooks/useSocialPlan
 import type { SpecialDay } from "@/utils/dashboard/specialDays";
 import { ScrollArea } from "@/components/ui/scroll-area";
 import { icons, Sparkles } from "lucide-react";
+import { cn } from "@/lib/utils";
 
 interface Props {
   view: "week" | "month";
@@ -186,17 +187,13 @@ function DayCell({
             <span className="text-[13px]">Post</span>
           </Button>
           <Popover open={noteOpen} onOpenChange={setNoteOpen}>
-            <PopoverTrigger asChild>
-              <Button
-                type="button"
-                variant="ghost"
-                size="sm"
-                className="h-8 flex-1 gap-1.5 rounded-md border border-dashed border-border/70 text-muted-foreground hover:text-foreground hover:bg-muted/50"
-                onClick={(e) => e.stopPropagation()}
-              >
-                <FileText className="h-3.5 w-3.5" />
-                <span className="text-[13px]">Notiz</span>
-              </Button>
+            <PopoverTrigger
+              type="button"
+              className={cn(buttonVariants({ variant: "ghost", size: "sm" }), "h-8 flex-1 gap-1.5 rounded-md border border-dashed border-border/70 text-muted-foreground hover:text-foreground hover:bg-muted/50")}
+              onClick={(e) => e.stopPropagation()}
+            >
+              <FileText className="h-3.5 w-3.5" />
+              <span className="text-[13px]">Notiz</span>
             </PopoverTrigger>
             <PopoverContent className="w-64 space-y-2" onClick={(e) => e.stopPropagation()}>
               <Textarea

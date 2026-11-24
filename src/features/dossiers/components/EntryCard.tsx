@@ -4,7 +4,7 @@ import { formatDistanceToNow } from "date-fns";
 import { de } from "date-fns/locale";
 import { useDossiers } from "../hooks/useDossiers";
 import { useAssignEntryToDossier, useDeleteEntry, useUpdateEntryTags } from "../hooks/useDossierEntries";
-import { Button } from "@/components/ui/button";
+import { Button, buttonVariants } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
 import { Popover, PopoverContent, PopoverTrigger } from "@/components/ui/popover";
@@ -13,6 +13,7 @@ import { useState, KeyboardEvent } from "react";
 import { useUpdateEntryFollowup } from "../hooks/useEntryFollowups";
 import { format, isPast, isToday } from "date-fns";
 import { Input as DateInput } from "@/components/ui/input";
+import { cn } from "@/lib/utils";
 
 interface EntryCardProps {
   entry: DossierEntry;
@@ -177,10 +178,8 @@ export function EntryCard({ entry, onPin, highlight, onTagClick }: EntryCardProp
         )}
 
         <Popover>
-          <PopoverTrigger asChild>
-            <Button variant="ghost" size="sm" className="h-7 text-xs gap-1">
-              <Tag className="h-3 w-3" /> Tag
-            </Button>
+          <PopoverTrigger className={cn(buttonVariants({ variant: "ghost", size: "sm" }), "h-7 text-xs gap-1")}>
+            <Tag className="h-3 w-3" /> Tag
           </PopoverTrigger>
           <PopoverContent className="w-64 p-2" side="bottom" align="start">
             <Input
@@ -198,10 +197,8 @@ export function EntryCard({ entry, onPin, highlight, onTagClick }: EntryCardProp
         </Popover>
 
         <Popover>
-          <PopoverTrigger asChild>
-            <Button variant="ghost" size="sm" className="h-7 text-xs gap-1">
-              <CalendarClock className="h-3 w-3" /> {entry.followup_at ? "Wiedervorlage" : "Followup"}
-            </Button>
+          <PopoverTrigger className={cn(buttonVariants({ variant: "ghost", size: "sm" }), "h-7 text-xs gap-1")}>
+            <CalendarClock className="h-3 w-3" /> {entry.followup_at ? "Wiedervorlage" : "Followup"}
           </PopoverTrigger>
           <PopoverContent className="w-64 p-2 space-y-2" side="bottom" align="start">
             <DateInput
