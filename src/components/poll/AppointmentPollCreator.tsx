@@ -35,6 +35,14 @@ interface Participant {
   name: string;
 }
 
+/** Zeilen aus get_poll_availability (Frei/Gebucht je Teilnehmer). */
+interface PollAvailabilityRow {
+  email: string;
+  busy_start: string | null;
+  busy_end: string | null;
+  source: string;
+}
+
 export const AppointmentPollCreator = ({ onClose }: { onClose: () => void }) => {
   const { user } = useAuth();
   const { currentTenant } = useTenant();
@@ -138,7 +146,7 @@ export const AppointmentPollCreator = ({ onClose }: { onClose: () => void }) => 
 
       if (error) throw error;
 
-      const rows = data ?? [];
+      const rows: PollAvailabilityRow[] = data ?? [];
       // Jeder Teilnehmer mit Konto liefert mindestens eine Zeile (ggf. ohne Belegung).
       // Alle übrigen haben keine Frei/Gebucht-Daten und dürfen nicht als frei gelten.
       const knownParticipants = Array.from(new Set(rows.map((row) => row.email.trim().toLowerCase())));
