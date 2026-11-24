@@ -1,5 +1,6 @@
 import { DashboardBirthdays } from "./DashboardBirthdays";
-import { openAppointmentChange, useAlerts as useChangeAlerts } from "@/features/appointments/change-alerts/AppointmentChangeAlerts";
+import { AppointmentChangeMenu, useAlerts as useChangeAlerts } from "@/features/appointments/change-alerts/AppointmentChangeAlerts";
+import { applyReportedStart, pickAppointmentChanges, shiftEndWithStart, summarizeReportedChanges } from "@/features/appointments/change-alerts/changeModel";
 import { useWorkspaceView } from "@/contexts/WorkspaceViewContext";
 import { nextAppointmentLabel } from "@/utils/dashboard/occasions";
 import { appointmentCountdown, appointmentProgress, dashboardTimelineState, hasAppointmentEnded, showTimelineNowMarker, timelineNowIndex } from "@/utils/dashboard/daySummary";
@@ -8,11 +9,11 @@ import { useResolvedUserRole } from "@/hooks/useResolvedUserRole";
 import { dashboardBriefingState } from "@/features/appointments/briefing";
 import { AppointmentBriefingStatusCard } from "@/features/appointments/briefing/AppointmentBriefingStatusCard";
 import { Dialog, DialogContent, DialogHeader, DialogTitle } from "@/components/ui/dialog";
-import { useCallback, useEffect, useMemo, useState } from "react";
+import { Fragment, useCallback, useEffect, useMemo, useState } from "react";
 import { addDays, format, isSameDay } from "date-fns";
 import { de } from "date-fns/locale";
 import { useNavigate } from "react-router-dom";
-import { X, Download, MapPin, Check, CircleAlert, Video, Users, Clock, PencilLine } from "lucide-react";
+import { X, Download, MapPin, Check, CircleAlert, Video, Users, Clock, PencilLine, MessageSquare } from "lucide-react";
 import { AvatarStack } from "@/components/ui/AvatarStack";
 import { getLucideIcon } from "@/utils/iconUtils";
 import { Separator } from "@/components/ui/separator";
@@ -128,7 +129,7 @@ export const DashboardAppointments = ({ data }: Props) => {
   }, []);
   const { currentTenant } = useTenant();
   const { data: changeAlerts = [] } = useChangeAlerts();
-  const { isEmployeeView } = useWorkspaceView();
+  const { isEmployeeView, isDeputyView } = useWorkspaceView();
   const { isAdmin: canDecideBriefing } = useResolvedUserRole();
   const [briefingDecision, setBriefingDecision] = useState<{ id: string; title: string; start_time: string } | null>(null);
   const { appointments, isShowingTomorrow, tomorrowAppointments, specialDays, isLoading } = data;
@@ -144,7 +145,20 @@ export const DashboardAppointments = ({ data }: Props) => {
     [appointments, tomorrowAppointments],
   );
 
-  const timeline = dashboardTimelineState(allAppointments, now);
+  // Status, Countdown und Fortschritt folgen der gemeldeten Zeit des Büros.
+  const effectiveAppointments = useMemo(() => {
+    if (!isDeputyView || !changeAlerts.length) return allAppointments;
+    return allAppointments.map((appointment) => {
+      const summary = summarizeReportedChanges(changeAlerts, appointment.id);
+      return summary.newStartTime ? applyReportedStart(appointment, summary.newStartTime) : appointment;
+    });
+  }, [allAppointments, changeAlerts, isDeputyView]);
+  const effectiveAppointmentById = useMemo(
+    () => new Map(effectiveAppointments.map((appointment) => [appointment.id, appointment])),
+    [effectiveAppointments],
+  );
+
+  const timeline = dashboardTimelineState(effectiveAppointments, now);
   const nextId = timeline.nextId;
   const appointmentIds = useMemo(() => allAppointments.map(appointment => appointment.id), [allAppointments]);
   const briefingAssignments = useQuery<Map<string, string>>({
@@ -288,16 +302,27 @@ export const DashboardAppointments = ({ data }: Props) => {
 
   const renderAppointment = (apt: DashboardData["appointments"][number], isTodayGroup: boolean) => {
     const aptDate = format(new Date(apt.start_time), "yyyy-MM-dd");
+    const effectiveApt = effectiveAppointmentById.get(apt.id) ?? apt;
     const active = isTodayGroup && timeline.runningIds.has(apt.id);
-    const ended = hasAppointmentEnded(apt, now);
+    const ended = hasAppointmentEnded(effectiveApt, now);
     const isNext = apt.id === nextId;
     const highlighted = active || (isNext && timeline.highlightNext);
-    const progress = active ? appointmentProgress(apt, now) : null;
+    const progress = active ? appointmentProgress(effectiveApt, now) : null;
     const hasPrep = preparations.has(apt.id);
     const prep = preparations.get(apt.id);
     const isBriefingExpanded = expandedBriefingId === apt.id;
     const start = new Date(apt.start_time);
     const end = apt.end_time ? new Date(apt.end_time) : null;
+    const changes = isDeputyView ? pickAppointmentChanges(changeAlerts, apt.id) : null;
+    const changedStartDate = changes?.time?.new_start_time ? new Date(changes.time.new_start_time) : null;
+    const changedStart = changedStartDate && !Number.isNaN(changedStartDate.getTime()) ? changedStartDate : null;
+    const changedEndIso = changedStart ? shiftEndWithStart(apt.start_time, apt.end_time, changedStart.toISOString()) : null;
+    const changedEndDate = changedEndIso ? new Date(changedEndIso) : null;
+    const changedEnd = changedEndDate && !Number.isNaN(changedEndDate.getTime()) ? changedEndDate : null;
+    const displayStart = changedStart ?? start;
+    const displayEnd = changedEnd ?? end;
+    const changedLocation = changes?.location?.new_location?.trim() || null;
+    const effectiveLocation = changedLocation ?? apt.location;
     let meetingUrl: string | null = null;
     try {
       const locationUrl = new URL(apt.location?.trim() ?? "");
@@ -312,7 +337,7 @@ export const DashboardAppointments = ({ data }: Props) => {
     } catch {
       /* Location is a place rather than a meeting URL. */
     }
-    const showLocation = !ended && apt.location && !meetingUrl;
+    const showLocation = !ended && !!effectiveLocation && !meetingUrl;
     const participantList = participants.get(apt.id) ?? [];
     const briefingStatus = briefingAssignments.data?.get(apt.id);
     const briefingState = dashboardBriefingState(briefingStatus, hasPrep);
@@ -330,10 +355,9 @@ export const DashboardAppointments = ({ data }: Props) => {
     const canOpenBriefing = !statusError && !statusLoading && briefingState?.canOpen;
     const canChooseBriefing = canDecideBriefing && !statusError && !statusLoading
       && (briefingStatus === "undecided" || briefingStatus === "none");
-    return (
-      <div key={apt.id} className={cn("relative", ended && "opacity-55")}
-        onContextMenu={isEmployeeView ? (e) => { e.preventDefault(); openAppointmentChange(apt.id, apt.title); } : undefined}
-        title={isEmployeeView ? "Rechtsklick: Eil-Änderung melden" : undefined}>
+    const row = (
+      <div className={cn("relative", ended && "opacity-55")}
+        title={isEmployeeView ? "Rechtsklick: Terminänderung melden" : undefined}>
         <span aria-hidden="true" className={cn(
           "absolute -left-5 z-10 h-3 w-3 rounded-full border-2",
           ended ? "top-3" : "top-[18px]",
@@ -359,12 +383,22 @@ export const DashboardAppointments = ({ data }: Props) => {
                 ended && "text-muted-foreground",
               )}
             >
-              {apt.is_all_day ? "Ganztägig" : format(start, "HH:mm")}
+              {apt.is_all_day ? "Ganztägig" : changedStart ? (
+                <span className="inline-flex flex-wrap items-baseline gap-1">
+                  <span className="text-muted-foreground line-through decoration-destructive/70 decoration-2">{format(start, "HH:mm")}</span>
+                  <span className="font-semibold text-destructive">{format(changedStart, "HH:mm")}</span>
+                </span>
+              ) : format(start, "HH:mm")}
             </p>
-            {!ended && !apt.is_all_day && end && end > start && (
-              <p className="text-caption text-muted-foreground/80">
-                {isSameDay(start, end) ? "" : format(end, "d. MMM. ", { locale: de })}
-                {format(end, "HH:mm")}
+            {changedStart && !isSameDay(changedStart, start) && (
+              <p className="text-caption text-destructive/90">
+                {format(changedStart, "d. MMM.", { locale: de })}
+              </p>
+            )}
+            {!ended && !apt.is_all_day && displayEnd && displayEnd > displayStart && (
+              <p className={cn("text-caption", changedEnd ? "text-destructive/90" : "text-muted-foreground/80")}>
+                {isSameDay(displayStart, displayEnd) ? "" : format(displayEnd, "d. MMM. ", { locale: de })}
+                {format(displayEnd, "HH:mm")}
               </p>
             )}
           </div>
@@ -379,12 +413,22 @@ export const DashboardAppointments = ({ data }: Props) => {
                 <span className="rounded-pill bg-destructive/10 px-2 text-caption font-medium text-destructive">Kurzfristig geändert</span>
               )}
             </div>
+            {!!changes?.notes.length && (
+              <div className="mt-1 flex flex-wrap gap-1.5">
+                {changes.notes.map((note) => (
+                  <span key={note.id} className="inline-flex max-w-full items-center gap-1 rounded-pill bg-palette-amber/15 px-2 py-0.5 text-caption text-palette-amber">
+                    <MessageSquare className="h-3 w-3 shrink-0" aria-hidden="true" />
+                    <span className="truncate">{note.message.trim()}</span>
+                  </span>
+                ))}
+              </div>
+            )}
             {(active || isNext || showLocation || participantList.length > 0) && (
               <div className="mt-0.5 flex flex-wrap items-center gap-x-4 gap-y-1 text-caption text-muted-foreground">
                 {(active || isNext || showLocation) && <span className="flex flex-wrap items-baseline gap-1">
                   {(active || isNext) && <span className="font-semibold text-[#397d16]">{active ? 'Läuft gerade' : 'Als Nächstes'}</span>}
                   {(active || isNext) && showLocation && <span className="text-black" aria-hidden="true">·</span>}
-                  {showLocation && <span className="inline-flex items-start gap-1.5">{!active && !isNext && <MapPin className="mt-0.5 h-3 w-3 shrink-0" aria-hidden="true" />}<span className="break-words">{apt.location}</span></span>}
+                  {showLocation && <span className="inline-flex items-start gap-1.5">{!active && !isNext && <MapPin className="mt-0.5 h-3 w-3 shrink-0" aria-hidden="true" />}<span className="break-words">{changedLocation ? <>{apt.location && <span className="text-muted-foreground line-through decoration-destructive/70">{apt.location}</span>}{apt.location ? " " : null}<span className="font-medium text-destructive">{changedLocation}</span></> : apt.location}</span></span>}
                   {progress && <><span className="text-black" aria-hidden="true">·</span><span>noch {progress.remainingMinutes} {progress.remainingMinutes === 1 ? 'Minute' : 'Minuten'}</span></>}
                 </span>}
                 {participantList.length > 0 && (
@@ -416,7 +460,7 @@ export const DashboardAppointments = ({ data }: Props) => {
               {(ended || active || isNext) && <span className="inline-flex shrink-0">
                 {ended && <span className="rounded-full bg-[#eaf5df] px-2 py-0.5 text-caption text-[#55ad21]">Erledigt</span>}
                 {active && <span className="rounded-full bg-[#397d16] px-2 py-0.5 text-caption text-white">läuft</span>}
-                {isNext && <span className="rounded-full bg-[#397d16] px-2 py-0.5 text-caption text-white">{appointmentCountdown(apt.start_time, now)}</span>}
+                {isNext && <span className="rounded-full bg-[#397d16] px-2 py-0.5 text-caption text-white">{appointmentCountdown(effectiveApt.start_time, now)}</span>}
               </span>}
             </div>
             {(meetingUrl || canOpenBriefing) && <div className="flex flex-wrap items-center justify-end gap-2">
@@ -508,6 +552,9 @@ export const DashboardAppointments = ({ data }: Props) => {
         )}
       </div>
     );
+    return isEmployeeView
+      ? <AppointmentChangeMenu key={apt.id} appointment={{ id: apt.id, title: apt.title, start_time: apt.start_time, end_time: apt.end_time, location: apt.location }}>{row}</AppointmentChangeMenu>
+      : <Fragment key={apt.id}>{row}</Fragment>;
   };
 
   const renderNowMarker = () => (
@@ -523,8 +570,9 @@ export const DashboardAppointments = ({ data }: Props) => {
   const renderTimedAppointments = (items: DashboardData["appointments"], today: boolean) => {
     const entries: Array<{ key: string; appointment: DashboardData["appointments"][number] | null }> =
       items.map(appointment => ({ key: appointment.id, appointment }));
-    if (today && showTimelineNowMarker(items, now)) {
-      entries.splice(timelineNowIndex(items, now), 0, { key: "current-time", appointment: null });
+    const effectiveItems = items.map(item => effectiveAppointmentById.get(item.id) ?? item);
+    if (today && showTimelineNowMarker(effectiveItems, now)) {
+      entries.splice(timelineNowIndex(effectiveItems, now), 0, { key: "current-time", appointment: null });
     }
     return (
       <div className="pl-5">
@@ -532,11 +580,11 @@ export const DashboardAppointments = ({ data }: Props) => {
           <div key={entry.key} className="group/day-entry relative animate-rise" style={{ animationDelay: `${Math.min(index, 3) * 40}ms` }}>
             <span aria-hidden="true" className={cn(
               "pointer-events-none absolute -left-[15px] top-0 w-0.5 bg-border group-first/day-entry:hidden",
-              entry.appointment ? (hasAppointmentEnded(entry.appointment, now) ? "h-2" : "h-[14px]") : "h-1.5",
+              entry.appointment ? (hasAppointmentEnded(effectiveAppointmentById.get(entry.appointment.id) ?? entry.appointment, now) ? "h-2" : "h-[14px]") : "h-1.5",
             )} />
             <span aria-hidden="true" className={cn(
               "pointer-events-none absolute -left-[15px] bottom-0 w-0.5 bg-border group-last/day-entry:hidden",
-              entry.appointment ? (hasAppointmentEnded(entry.appointment, now) ? "top-[28px]" : "top-[34px]") : "top-[26px]",
+              entry.appointment ? (hasAppointmentEnded(effectiveAppointmentById.get(entry.appointment.id) ?? entry.appointment, now) ? "top-[28px]" : "top-[34px]") : "top-[26px]",
             )} />
             {entry.appointment ? renderAppointment(entry.appointment, today) : renderNowMarker()}
           </div>

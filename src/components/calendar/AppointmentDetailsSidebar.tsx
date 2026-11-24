@@ -3,7 +3,9 @@ import { caseSourceHref } from "@/features/cases/items/appointmentLink";
 import { AppointmentContactCards } from "./AppointmentContactCards";
 import React, { useState, useEffect } from "react";
 import { debugConsole } from '@/utils/debugConsole';
-import { X, Edit, Trash2, MapPin, Clock, Users, Calendar as CalendarIcon, Save, Mail, UserPlus, Check, XIcon, ListTodo, CheckCircle2, FileText, CheckSquare, Megaphone } from "lucide-react";
+import { X, Edit, Trash2, MapPin, Clock, Users, Calendar as CalendarIcon, Save, Mail, UserPlus, Check, XIcon, ListTodo, CheckCircle2, FileText, CheckSquare, Megaphone, MessageSquare } from "lucide-react";
+import { format, isSameDay } from "date-fns";
+import { shiftEndWithStart } from "@/features/appointments/change-alerts/changeModel";
 import { useNavigate } from "react-router-dom";
 import { Button } from "@/components/ui/button";
 import { Badge } from "@/components/ui/badge";
@@ -38,6 +40,13 @@ export function AppointmentDetailsSidebar({
   const { currentTenant } = useTenant();
   const navigate = useNavigate();
   const { role: resolvedRole } = useResolvedUserRole();
+  const reportedChange = appointment?.reportedChange;
+  const reportedStart = reportedChange?.newStartTime ? new Date(reportedChange.newStartTime) : null;
+  const reportedEndIso = reportedStart && appointment
+    ? shiftEndWithStart(appointment.date.toISOString(), appointment.endTime?.toISOString(), reportedStart.toISOString())
+    : null;
+  const reportedEnd = reportedEndIso ? new Date(reportedEndIso) : null;
+  const reportedLocation = reportedChange?.newLocation?.trim() || null;
   const [isDeleting, setIsDeleting] = useState(false);
   const [isEditing, setIsEditing] = useState(false);
   const [appointmentCategories, setAppointmentCategories] = useState<Array<{ name: string; label: string; color: string | null }>>([]);
@@ -664,6 +673,23 @@ export function AppointmentDetailsSidebar({
                       ) : (
                         appointment.date?.toLocaleDateString('de-DE')
                       )
+                    ) : reportedStart ? (
+                      <div className="space-y-1">
+                        <div className="flex flex-wrap items-baseline gap-1.5">
+                          <span className="text-muted-foreground line-through decoration-destructive/70 decoration-2">{appointment.time}</span>
+                          <span className="font-medium text-destructive">{format(reportedStart, "HH:mm")}</span>
+                          {reportedEnd && (
+                            <>
+                              <span className="text-muted-foreground">–</span>
+                              <span className="text-muted-foreground line-through decoration-destructive/70 decoration-2">{format(appointment.endTime ?? appointment.date, "HH:mm")}</span>
+                              <span className="font-medium text-destructive">{format(reportedEnd, isSameDay(reportedStart, reportedEnd) ? "HH:mm" : "d.MM. HH:mm")}</span>
+                            </>
+                          )}
+                        </div>
+                        <p className="text-caption text-destructive/90">
+                          Vom Büro gemeldet{!isSameDay(reportedStart, appointment.date) ? ` · neuer Tag: ${format(reportedStart, "d. MMMM yyyy")}` : ""}
+                        </p>
+                      </div>
                     ) : (
                       formatEventDisplay(appointment)
                     )}
@@ -689,7 +715,12 @@ export function AppointmentDetailsSidebar({
                 />
               ) : (
                 <div className="text-sm text-muted-foreground">
-                  {appointment.location ? (
+                  {reportedLocation ? (
+                    <div className="flex flex-wrap items-baseline gap-1.5">
+                      <span className="line-through decoration-destructive/70 decoration-2">{appointment.location || "Kein Ort angegeben"}</span>
+                      <span className="font-medium text-destructive">{reportedLocation}</span>
+                    </div>
+                  ) : appointment.location ? (
                     appointment.location.startsWith?.("Digital") ? (
                       <div className="space-y-1">
                         <div className="font-medium text-palette-blue">🔗 Online-Meeting</div>
@@ -705,6 +736,17 @@ export function AppointmentDetailsSidebar({
               )}
             </div>
           </div>
+
+          {!isEditing && !!appointment.reportedChange?.notes.length && (
+            <div className="flex flex-wrap gap-1.5 pl-8">
+              {appointment.reportedChange.notes.map((note, index) => (
+                <span key={`${note}-${index}`} className="inline-flex items-center gap-1 rounded-pill bg-palette-amber/15 px-2 py-0.5 text-caption text-palette-amber">
+                  <MessageSquare className="h-3 w-3" aria-hidden="true" />
+                  {note}
+                </span>
+              ))}
+            </div>
+          )}
 
           {caseSourceHref(appointment.description) && (
             <Link to={caseSourceHref(appointment.description)!} className="inline-flex items-center gap-2 text-sm font-medium text-primary hover:underline">

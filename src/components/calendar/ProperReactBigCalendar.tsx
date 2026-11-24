@@ -9,6 +9,7 @@ import { de } from 'date-fns/locale';
 import 'react-big-calendar/lib/css/react-big-calendar.css';
 import 'react-big-calendar/lib/addons/dragAndDrop/styles.css';
 import { CalendarEventAdapter, type RBCEvent } from './CalendarEventAdapter';
+import { shiftEndWithStart } from '@/features/appointments/change-alerts/changeModel';
 import type { CalendarEvent } from './types';
 
 interface CalendarEventViewModel extends RBCEvent {
@@ -27,15 +28,68 @@ const toCalendarEventViewModel = (event: RBCEvent): CalendarEventViewModel | nul
 /* ── Compact month event component ── */
 const MonthEvent = ({ event }: { event: RBCEvent }) => {
   const rbcEvent = event;
+  const resource = toCalendarEventViewModel(event)?.resource;
+  const reportedStart = resource?.reportedChange?.newStartTime ? new Date(resource.reportedChange.newStartTime) : null;
   const timeStr = rbcEvent.allDay ? '' : format(rbcEvent.start, 'HH:mm', { locale: de });
 
   return (
     <div className="flex items-center gap-1 truncate text-[0.65rem] leading-tight">
       {timeStr && (
-        <span className="font-semibold opacity-90">{timeStr}</span>
+        <span className="font-semibold opacity-90">
+          {reportedStart ? (
+            <>
+              <span className="line-through opacity-70">{timeStr}</span>{' '}
+              <span>{format(reportedStart, 'HH:mm', { locale: de })}</span>
+            </>
+          ) : timeStr}
+        </span>
       )}
       {toCalendarEventViewModel(event)?.resource.hasCollision && <span className="rounded bg-destructive text-white px-1 font-bold" title="Terminkollision – Details für Lösungen öffnen" aria-label="Terminkollision">⚠</span>}
       <span className="truncate">{rbcEvent.title}</span>
+    </div>
+  );
+};
+
+/* ── Week/Day/Agenda event component with reported office changes ── */
+const TimeGridEvent = ({ event, title }: EventProps<RBCEvent>) => {
+  const resource = toCalendarEventViewModel(event)?.resource;
+  const reported = resource?.reportedChange;
+  const reportedStart = reported?.newStartTime ? new Date(reported.newStartTime) : null;
+  const reportedEndIso = reportedStart && resource
+    ? shiftEndWithStart(resource.date.toISOString(), resource.endTime?.toISOString(), reportedStart.toISOString())
+    : null;
+  const reportedEnd = reportedEndIso ? new Date(reportedEndIso) : null;
+  const reportedLocation = reported?.newLocation?.trim() || null;
+  const text = title ?? resource?.title ?? '';
+
+  if (event.allDay) {
+    return <div className="rbc-event-content">{text}</div>;
+  }
+
+  const start = event.start as Date;
+  const end = event.end as Date;
+  const endLabel = reportedEnd
+    ? (isSameDay(reportedStart!, reportedEnd) ? format(reportedEnd, 'HH:mm', { locale: de }) : format(reportedEnd, 'd.MM. HH:mm', { locale: de }))
+    : null;
+
+  return (
+    <div className="flex h-full min-h-0 flex-col gap-0.5 overflow-hidden">
+      <div className="rbc-event-label">
+        {reportedStart ? (
+          <span className="inline-flex flex-wrap items-baseline gap-1">
+            <span className="line-through opacity-70">{format(start, 'HH:mm', { locale: de })}</span>
+            <span className="font-semibold">{format(reportedStart, 'HH:mm', { locale: de })}</span>
+            {endLabel && <><span aria-hidden="true">–</span><span>{endLabel}</span></>}
+          </span>
+        ) : `${format(start, 'HH:mm', { locale: de })} – ${format(end, 'HH:mm', { locale: de })}`}
+      </div>
+      <div className="rbc-event-content">{text}</div>
+      {reportedLocation && (
+        <div className="truncate text-[0.65rem] leading-tight opacity-90">
+          <span className="line-through">{resource?.location}</span>{' '}
+          <span className="font-semibold">{reportedLocation}</span>
+        </div>
+      )}
     </div>
   );
 };
@@ -432,7 +486,7 @@ const ProperReactBigCalendar: React.FC<ProperReactBigCalendarProps> = ({
         views={[Views.MONTH, Views.WEEK, Views.DAY, Views.AGENDA]}
         defaultView={Views.WEEK}
         components={{
-          event: MonthEvent as React.ComponentType<EventProps<RBCEvent>>,
+          event: TimeGridEvent as React.ComponentType<EventProps<RBCEvent>>,
           week: {
             header: WeekHeader,
           },
