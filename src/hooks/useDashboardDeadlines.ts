@@ -6,6 +6,7 @@ import { useAuth } from '@/hooks/useAuth';
 import { useTenant } from '@/hooks/useTenant';
 import { useDashboardRealtime } from '@/hooks/useDashboardRealtime';
 import { STALE_TIME } from '@/lib/query-cache';
+import type { Tables } from '@/integrations/supabase/types';
 import type {
   ChecklistRelation,
   DeadlineItem,
@@ -29,96 +30,140 @@ const isAssignedToUser = (assignedTo: string | null | undefined, userId: string)
 const formatCaseStepTitle = (subject: string | null | undefined, step: string | null | undefined) =>
   `${subject?.trim() || 'Vorgang'} - ${step?.trim() || 'Nächster Schritt'}`;
 
+/** Zeilentypen der sechs Fristen-Quellen, direkt aus den generierten DB-Typen. */
+type TaskDeadlineRow = Pick<
+  Tables<'tasks'>,
+  'id' | 'title' | 'due_date' | 'assigned_to' | 'user_id' | 'priority' | 'source_type' | 'source_id'
+>;
+type NoteDeadlineRow = Pick<Tables<'quick_notes'>, 'id' | 'title' | 'content' | 'follow_up_date'>;
+type CaseDeadlineRow = Pick<
+  Tables<'case_items'>,
+  'id' | 'subject' | 'due_at' | 'priority' | 'owner_user_id' | 'user_id'
+>;
+type DecisionDeadlineRow = Pick<
+  Tables<'task_decisions'>,
+  'id' | 'title' | 'response_deadline' | 'created_by' | 'priority'
+>;
+type CaseActionDeadlineRow = Pick<
+  Tables<'case_items'>,
+  'id' | 'subject' | 'next_action_label' | 'next_action_due_at' | 'next_action_assignee_id' | 'owner_user_id' | 'user_id'
+>;
+
 interface DeadlineFetchResult {
   items: DeadlineItem[];
   failedSources: string[];
   allSourcesFailed: boolean;
 }
 
+/** Antwortform einer Fristen-Quelle: Datenzeilen plus ein Fehler, falls sie scheiterte. */
+interface DeadlineSourceResponse<T> {
+  data: T[] | null;
+  error: unknown;
+}
+
 const DEADLINE_SOURCE_COUNT = 6;
 
+/**
+ * Führt eine Quelle aus und vereinheitlicht ihre Antwort; `null` steht für
+ * "ohne Mandant übersprungen" und verhält sich wie eine leere, erfolgreiche Abfrage.
+ */
+const loadDeadlineSource = async <T,>(
+  query: PromiseLike<DeadlineSourceResponse<T>> | null,
+): Promise<DeadlineSourceResponse<T>> => {
+  if (!query) return { data: [], error: null };
+  const { data, error } = await query;
+  return { data: data ?? [], error };
+};
+
 const fetchDeadlineItems = async (userId: string, tenantId?: string): Promise<DeadlineFetchResult> => {
+  // Jede Quelle liefert dieselbe Hülle, damit "kein Mandant" und "Abfrage
+  // gelaufen" unten gleich behandelt werden können; die Zeilentypen kommen aus
+  // den generierten Supabase-Typen (select-Liste).
   const [tasksRes, notesRes, casesRes, decisionsRes, planningDeadlinesRes, caseActionsRes] = await Promise.all([
-    tenantId
-      ? supabase.from('tasks').select('id, title, due_date, assigned_to, user_id, priority, source_type, source_id')
-          .eq('tenant_id', tenantId)
-          .or(`assigned_to.eq.${userId},assigned_to.ilike.%${userId}%,user_id.eq.${userId}`)
-          .not('status', 'in', '(completed,cancelled)')
-          .not('due_date', 'is', null)
-      : Promise.resolve({ data: [] }),
-    tenantId
-      ? supabase.from('quick_notes').select('id, title, content, follow_up_date')
-          .eq('tenant_id', tenantId)
-          .eq('user_id', userId)
-          .is('deleted_at', null)
-          .or('is_archived.is.null,is_archived.eq.false')
-          .not('follow_up_date', 'is', null)
-      : Promise.resolve({ data: [] }),
-    tenantId
-      ? supabase.from('case_items').select('id, subject, due_at, priority, owner_user_id, user_id')
-          .eq('tenant_id', tenantId)
-          .not('due_at', 'is', null)
-          .neq('status', 'erledigt')
-      : Promise.resolve({ data: [] }),
-    tenantId
-      ? supabase.from('task_decisions').select('id, title, response_deadline, created_by, priority')
-          .eq('tenant_id', tenantId)
-          // Offene Entscheidungen tragen 'active' oder 'open'; 'resolved' existiert im Schema nicht.
-          .in('status', ['active', 'open'])
-          .is('archived_at', null)
-          .not('response_deadline', 'is', null)
-      : Promise.resolve({ data: [] }),
+    loadDeadlineSource<TaskDeadlineRow>(
+      tenantId
+        ? supabase.from('tasks').select('id, title, due_date, assigned_to, user_id, priority, source_type, source_id')
+            .eq('tenant_id', tenantId)
+            .or(`assigned_to.eq.${userId},assigned_to.ilike.%${userId}%,user_id.eq.${userId}`)
+            .not('status', 'in', '(completed,cancelled)')
+            .not('due_date', 'is', null)
+        : null,
+    ),
+    loadDeadlineSource<NoteDeadlineRow>(
+      tenantId
+        ? supabase.from('quick_notes').select('id, title, content, follow_up_date')
+            .eq('tenant_id', tenantId)
+            .eq('user_id', userId)
+            .is('deleted_at', null)
+            .or('is_archived.is.null,is_archived.eq.false')
+            .not('follow_up_date', 'is', null)
+        : null,
+    ),
+    loadDeadlineSource<CaseDeadlineRow>(
+      tenantId
+        ? supabase.from('case_items').select('id, subject, due_at, priority, owner_user_id, user_id')
+            .eq('tenant_id', tenantId)
+            .not('due_at', 'is', null)
+            .neq('status', 'erledigt')
+        : null,
+    ),
+    loadDeadlineSource<DecisionDeadlineRow>(
+      tenantId
+        ? supabase.from('task_decisions').select('id, title, response_deadline, created_by, priority')
+            .eq('tenant_id', tenantId)
+            // Offene Entscheidungen tragen 'active' oder 'open'; 'resolved' existiert im Schema nicht.
+            .in('status', ['active', 'open'])
+            .is('archived_at', null)
+            .not('response_deadline', 'is', null)
+        : null,
+    ),
     // event_plannings.tenant_id ist nullable: Planungen ohne Büro werden bewusst
     // nicht gezeigt, weil sie sich keinem Büro zuordnen lassen (eq schließt NULL aus).
-    tenantId
-      ? supabase
-          .from('event_planning_timeline_assignments')
-          .select(`
-            id,
-            due_date,
-            event_planning_id,
-            event_plannings!inner (id, title, user_id, is_archived, is_completed),
-            event_planning_checklist_items (id, title, is_completed)
-          `)
-          .eq('event_plannings.tenant_id', tenantId)
-      : Promise.resolve({ data: [] }),
-    tenantId
-      ? supabase.from('case_items').select('id, subject, next_action_label, next_action_due_at, next_action_assignee_id, owner_user_id, user_id')
-          .eq('tenant_id', tenantId)
-          .not('next_action_due_at', 'is', null)
-          .not('status', 'in', '(erledigt,archiviert)')
-          .or(`next_action_assignee_id.eq.${userId},and(next_action_assignee_id.is.null,owner_user_id.eq.${userId})`)
-      : Promise.resolve({ data: [] })
+    loadDeadlineSource<PlanningTimelineAssignment>(
+      tenantId
+        ? supabase
+            .from('event_planning_timeline_assignments')
+            .select(`
+              id,
+              due_date,
+              event_planning_id,
+              event_plannings!inner (id, title, user_id, is_archived, is_completed),
+              event_planning_checklist_items (id, title, is_completed)
+            `)
+            .eq('event_plannings.tenant_id', tenantId)
+        : null,
+    ),
+    loadDeadlineSource<CaseActionDeadlineRow>(
+      tenantId
+        ? supabase.from('case_items').select('id, subject, next_action_label, next_action_due_at, next_action_assignee_id, owner_user_id, user_id')
+            .eq('tenant_id', tenantId)
+            .not('next_action_due_at', 'is', null)
+            .not('status', 'in', '(erledigt,archiviert)')
+            .or(`next_action_assignee_id.eq.${userId},and(next_action_assignee_id.is.null,owner_user_id.eq.${userId})`)
+        : null,
+    ),
   ]);
 
   // Eine fehlerhafte Quelle darf die übrigen nicht verdecken: Fehler werden je
   // Quelle gesammelt, die Daten der erfolgreichen Quellen bleiben sichtbar.
   const failedSources: string[] = [];
-  const isFailed = (result: unknown): boolean =>
-    'error' in (result as Record<string, unknown>) && Boolean((result as { error?: unknown }).error);
-  const rows = <T,>(failed: boolean, data: T[] | null | undefined, label: string): T[] => {
-    if (failed) {
+  const collect = <T,>(source: DeadlineSourceResponse<T>, label: string): T[] => {
+    if (source.error) {
       failedSources.push(label);
       return [];
     }
-    return data ?? [];
+    return source.data ?? [];
   };
 
-  const tasksFailed = isFailed(tasksRes);
-  const notesFailed = isFailed(notesRes);
-  const casesFailed = isFailed(casesRes);
-  const decisionsFailed = isFailed(decisionsRes);
-  const planningFailed = isFailed(planningDeadlinesRes);
-  const caseActionsFailed = isFailed(caseActionsRes);
-  const failedSourceCount = [tasksFailed, notesFailed, casesFailed, decisionsFailed, planningFailed, caseActionsFailed]
-    .filter(Boolean).length;
+  const failedSourceCount = [tasksRes, notesRes, casesRes, decisionsRes, planningDeadlinesRes, caseActionsRes]
+    .filter((source) => Boolean(source.error)).length;
 
-  const tasks = rows(tasksFailed, tasksRes.data, 'Aufgaben');
-  const notes = rows(notesFailed, notesRes.data, 'Notizen');
-  const cases = rows(casesFailed, casesRes.data, 'Vorgänge');
-  const decisions = rows(decisionsFailed, decisionsRes.data, 'Entscheidungen');
-  const planningDeadlines = rows(planningFailed, planningDeadlinesRes.data, 'Veranstaltungen');
-  const caseActions = rows(caseActionsFailed, caseActionsRes.data, 'Nächste Schritte');
+  const tasks = collect(tasksRes, 'Aufgaben');
+  const notes = collect(notesRes, 'Notizen');
+  const cases = collect(casesRes, 'Vorgänge');
+  const decisions = collect(decisionsRes, 'Entscheidungen');
+  const planningDeadlines = collect(planningDeadlinesRes, 'Veranstaltungen');
+  const caseActions = collect(caseActionsRes, 'Nächste Schritte');
 
   const caseStepIds = [...new Set(tasks
     .filter(task => task.source_type === 'case_step' && task.source_id)
@@ -176,7 +221,7 @@ const fetchDeadlineItems = async (userId: string, tenantId?: string): Promise<De
       priority: d.priority ?? 0,
       canSnooze: d.created_by === userId,
     })),
-    ...((planningDeadlines as unknown as PlanningTimelineAssignment[])
+    ...(planningDeadlines
       .filter((assignment) => {
         const planning = pickFirst<EventPlanningRelation>(assignment.event_plannings);
         const checklistItem = pickFirst<ChecklistRelation>(assignment.event_planning_checklist_items);
