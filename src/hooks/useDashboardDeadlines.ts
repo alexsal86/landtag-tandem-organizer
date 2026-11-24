@@ -29,7 +29,15 @@ const isAssignedToUser = (assignedTo: string | null | undefined, userId: string)
 const formatCaseStepTitle = (subject: string | null | undefined, step: string | null | undefined) =>
   `${subject?.trim() || 'Vorgang'} - ${step?.trim() || 'Nächster Schritt'}`;
 
-const fetchDeadlineItems = async (userId: string, tenantId?: string): Promise<DeadlineItem[]> => {
+interface DeadlineFetchResult {
+  items: DeadlineItem[];
+  failedSources: string[];
+  allSourcesFailed: boolean;
+}
+
+const DEADLINE_SOURCE_COUNT = 6;
+
+const fetchDeadlineItems = async (userId: string, tenantId?: string): Promise<DeadlineFetchResult> => {
   const [tasksRes, notesRes, casesRes, decisionsRes, planningDeadlinesRes, caseActionsRes] = await Promise.all([
     tenantId
       ? supabase.from('tasks').select('id, title, due_date, assigned_to, user_id, priority, source_type, source_id')
@@ -83,23 +91,52 @@ const fetchDeadlineItems = async (userId: string, tenantId?: string): Promise<De
       : Promise.resolve({ data: [] })
   ]);
 
-  for (const result of [tasksRes, notesRes, casesRes, decisionsRes, planningDeadlinesRes, caseActionsRes]) {
-    if ('error' in result && result.error) throw result.error;
-  }
+  // Eine fehlerhafte Quelle darf die übrigen nicht verdecken: Fehler werden je
+  // Quelle gesammelt, die Daten der erfolgreichen Quellen bleiben sichtbar.
+  const failedSources: string[] = [];
+  const isFailed = (result: unknown): boolean =>
+    'error' in (result as Record<string, unknown>) && Boolean((result as { error?: unknown }).error);
+  const rows = <T,>(failed: boolean, data: T[] | null | undefined, label: string): T[] => {
+    if (failed) {
+      failedSources.push(label);
+      return [];
+    }
+    return data ?? [];
+  };
 
-  const caseStepIds = [...new Set((tasksRes.data ?? [])
+  const tasksFailed = isFailed(tasksRes);
+  const notesFailed = isFailed(notesRes);
+  const casesFailed = isFailed(casesRes);
+  const decisionsFailed = isFailed(decisionsRes);
+  const planningFailed = isFailed(planningDeadlinesRes);
+  const caseActionsFailed = isFailed(caseActionsRes);
+  const failedSourceCount = [tasksFailed, notesFailed, casesFailed, decisionsFailed, planningFailed, caseActionsFailed]
+    .filter(Boolean).length;
+
+  const tasks = rows(tasksFailed, tasksRes.data, 'Aufgaben');
+  const notes = rows(notesFailed, notesRes.data, 'Notizen');
+  const cases = rows(casesFailed, casesRes.data, 'Vorgänge');
+  const decisions = rows(decisionsFailed, decisionsRes.data, 'Entscheidungen');
+  const planningDeadlines = rows(planningFailed, planningDeadlinesRes.data, 'Veranstaltungen');
+  const caseActions = rows(caseActionsFailed, caseActionsRes.data, 'Nächste Schritte');
+
+  const caseStepIds = [...new Set(tasks
     .filter(task => task.source_type === 'case_step' && task.source_id)
     .map(task => task.source_id!))];
   const caseSubjects = new Map<string, string | null>();
   if (caseStepIds.length > 0) {
     const { data, error } = await supabase.from('case_items')
       .select('id, subject').in('id', caseStepIds);
-    if (error) throw error;
-    for (const item of data ?? []) caseSubjects.set(item.id, item.subject);
+    if (error) {
+      // Nur die Fallbezeichnungen fehlen; die Aufgaben selbst bleiben sichtbar.
+      failedSources.push('Fallbezeichnungen');
+    } else {
+      for (const item of data ?? []) caseSubjects.set(item.id, item.subject);
+    }
   }
 
   const all: DeadlineItem[] = [
-    ...(tasksRes.data || []).filter((t) => t.due_date && t.title?.trim()).map((t) => ({
+    ...tasks.filter((t) => t.due_date && t.title?.trim()).map((t) => ({
       id: t.id,
       title: t.source_type === 'case_step'
         ? formatCaseStepTitle(caseSubjects.get(t.source_id ?? ''), t.title)
@@ -109,14 +146,14 @@ const fetchDeadlineItems = async (userId: string, tenantId?: string): Promise<De
       priority: ({ urgent: 3, high: 2, medium: 1 } as Record<string, number>)[t.priority] ?? 0,
       canSnooze: isAssignedToUser(t.assigned_to, userId) || t.user_id === userId,
     })),
-    ...(notesRes.data || []).filter((n) => n.follow_up_date).map((n) => ({
+    ...notes.filter((n) => n.follow_up_date).map((n) => ({
       id: n.id,
       title: (n.title || n.content || '').trim().substring(0, 80),
       dueDate: n.follow_up_date!,
       type: 'note' as const,
       canSnooze: true, // already filtered by user_id
     })),
-    ...(casesRes.data || []).filter((c) => c.due_at).map((c) => ({
+    ...cases.filter((c) => c.due_at).map((c) => ({
       id: c.id,
       title: (c.subject || 'Vorgang').trim(),
       dueDate: c.due_at!,
@@ -124,14 +161,14 @@ const fetchDeadlineItems = async (userId: string, tenantId?: string): Promise<De
       canSnooze: c.owner_user_id === userId || c.user_id === userId,
       priority: ({ urgent: 3, high: 2, medium: 1 } as Record<string, number>)[c.priority] ?? 0,
     })),
-    ...(caseActionsRes.data || []).filter((c) => c.next_action_due_at && !caseStepIds.includes(c.id)).map((c) => ({
+    ...caseActions.filter((c) => c.next_action_due_at && !caseStepIds.includes(c.id)).map((c) => ({
       id: c.id,
       title: formatCaseStepTitle(c.subject, c.next_action_label),
       dueDate: c.next_action_due_at!,
       type: 'caseAction' as const,
       canSnooze: true,
     })),
-    ...(decisionsRes.data || []).filter((d) => d.response_deadline && d.title?.trim()).map((d) => ({
+    ...decisions.filter((d) => d.response_deadline && d.title?.trim()).map((d) => ({
       id: d.id,
       title: d.title.trim(),
       dueDate: d.response_deadline!,
@@ -139,7 +176,7 @@ const fetchDeadlineItems = async (userId: string, tenantId?: string): Promise<De
       priority: d.priority ?? 0,
       canSnooze: d.created_by === userId,
     })),
-    ...(((planningDeadlinesRes.data || []) as PlanningTimelineAssignment[])
+    ...((planningDeadlines as unknown as PlanningTimelineAssignment[])
       .filter((assignment) => {
         const planning = pickFirst<EventPlanningRelation>(assignment.event_plannings);
         const checklistItem = pickFirst<ChecklistRelation>(assignment.event_planning_checklist_items);
@@ -169,7 +206,11 @@ const fetchDeadlineItems = async (userId: string, tenantId?: string): Promise<De
       })),
   ];
 
-  return all.sort((a, b) => new Date(a.dueDate).getTime() - new Date(b.dueDate).getTime());
+  return {
+    items: all.sort((a, b) => new Date(a.dueDate).getTime() - new Date(b.dueDate).getTime()),
+    failedSources,
+    allSourcesFailed: failedSourceCount === DEADLINE_SOURCE_COUNT,
+  };
 };
 
 export const useDashboardDeadlines = () => {
@@ -190,13 +231,18 @@ export const useDashboardDeadlines = () => {
     refetchOnWindowFocus: false,
   });
 
-  const grouped = useMemo<GroupedDeadlineItems>(() => groupDeadlineItems(query.data ?? []), [query.data]);
+  const items = useMemo(() => query.data?.items ?? [], [query.data]);
+  const grouped = useMemo<GroupedDeadlineItems>(() => groupDeadlineItems(items), [items]);
+  const allSourcesFailed = query.data?.allSourcesFailed ?? false;
 
   return {
-    items: query.data ?? [],
+    items,
     grouped,
     isLoading: query.isLoading,
-    isError: query.isError,
+    // Totalausfall nur, wenn keine einzige Quelle geladen wurde; sonst bleibt die
+    // Kachel nutzbar und meldet den Teilausfall über `failedSources`.
+    isError: query.isError || allSourcesFailed,
+    failedSources: allSourcesFailed ? [] : (query.data?.failedSources ?? []),
     refetch: () => { void query.refetch(); },
   };
 };

@@ -23,7 +23,7 @@ import { useWorkspaceView } from '@/contexts/WorkspaceViewContext';
 import { BriefingComposerCard, TodayBriefingPanel } from '@/features/briefings';
 import { DashboardDecisionsWidget } from '@/components/dashboard/DashboardDecisionsWidget';
 import { DashboardJourFixeWidget } from '@/components/dashboard/DashboardJourFixeWidget';
-import { ErrorState, LoadingState } from '@/components/ui-patterns';
+import { ErrorState, LoadingState, WidgetLoadWarning } from '@/components/ui-patterns';
 import { cn } from '@/lib/utils';
 import { useEffect, useState } from 'react';
 
@@ -67,6 +67,8 @@ interface DashboardWidgetContainerProps {
   loadingVariant?: 'list' | 'card' | 'detail' | 'inline';
   errorMessage?: string;
   onRetry?: () => void;
+  /** Schmale Warnzeile für Teilausfälle; entfällt im Totalausfall (dann greift `hasError`). */
+  warning?: ReactNode;
   children: ReactNode;
 }
 
@@ -82,6 +84,7 @@ function DashboardWidgetContainer({
   loadingVariant = 'list',
   errorMessage = 'Daten konnten nicht geladen werden.',
   onRetry,
+  warning,
   children,
 }: DashboardWidgetContainerProps) {
   let content: ReactNode = children;
@@ -101,13 +104,16 @@ function DashboardWidgetContainer({
         </h3>
         {headerAction}
       </CardHeader>
-      <CardContent className="px-5 pb-5 pt-0">{content}</CardContent>
+      <CardContent className="px-5 pb-5 pt-0">
+        {!hasError && warning}
+        {content}
+      </CardContent>
     </Card>
   );
 }
 
 function DeadlinesWidget() {
-  const { items, grouped, isLoading, isError, refetch } = useDashboardDeadlines();
+  const { items, grouped, isLoading, isError, failedSources, refetch } = useDashboardDeadlines();
 
   return (
     <DashboardWidgetContainer
@@ -116,6 +122,12 @@ function DeadlinesWidget() {
       hasError={isError}
       onRetry={refetch}
       errorMessage="Fristen konnten nicht geladen werden. Das heißt nicht, dass nichts ansteht."
+      warning={failedSources.length > 0
+        ? <WidgetLoadWarning
+            message={`${failedSources.join(' und ')} konnten nicht geladen werden. Die übrigen Fristen sind vollständig.`}
+            onRetry={refetch}
+          />
+        : undefined}
     >
       <DashboardTasksSection items={items} grouped={grouped} />
     </DashboardWidgetContainer>
@@ -154,6 +166,12 @@ function AppointmentsWidget({ isDeputyView }: { isDeputyView: boolean }) {
       onRetry={() => { void dashboardData.refetch(); }}
       loadingVariant="card"
       errorMessage="Termine konnten nicht geladen werden. Das heißt nicht, dass nichts ansteht."
+      warning={dashboardData.failedSources.length > 0
+        ? <WidgetLoadWarning
+            message={`${dashboardData.failedSources.join(' und ')} konnten nicht geladen werden. Die übrigen Termine sind vollständig.`}
+            onRetry={() => { void dashboardData.refetch(); }}
+          />
+        : undefined}
     >
       <DashboardAppointments data={dashboardData} />
     </DashboardWidgetContainer>

@@ -4,7 +4,7 @@ import { format } from 'date-fns';
 import { de } from 'date-fns/locale';
 import { useAuth } from '@/hooks/useAuth';
 import { useMyWorkJourFixeMeetings } from '@/hooks/useMyWorkJourFixeMeetings';
-import { ErrorState } from '@/components/ui-patterns';
+import { ErrorState, WidgetLoadWarning } from '@/components/ui-patterns';
 
 function formatMeetingWhen(date: string, time?: string | null): string {
   const d = new Date(date);
@@ -16,7 +16,7 @@ function formatMeetingWhen(date: string, time?: string | null): string {
 export function DashboardJourFixeWidget() {
   const { user } = useAuth();
   const navigate = useNavigate();
-  const { upcomingMeetings, meetingParticipants, loading, isError, refetch } = useMyWorkJourFixeMeetings(user?.id);
+  const { upcomingMeetings, meetingParticipants, loading, isError, failedSources, refetch } = useMyWorkJourFixeMeetings(user?.id);
 
   if (loading) return <div className="animate-pulse h-24 bg-muted rounded-lg" />;
 
@@ -32,6 +32,12 @@ export function DashboardJourFixeWidget() {
 
   return (
     <div className="space-y-2">
+      {failedSources.length > 0 && (
+        <WidgetLoadWarning
+          message={`${failedSources.join(' und ')} konnten nicht geladen werden. Die Jour fixes sind vollständig.`}
+          onRetry={refetch}
+        />
+      )}
       {items.map((m) => {
         const participants = meetingParticipants[m.id] || [];
         return (

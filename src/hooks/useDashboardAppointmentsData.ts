@@ -86,7 +86,7 @@ export const fetchSpecialDays = async (tenantId: string | undefined): Promise<Sp
   }
 };
 
-export const fetchDashboardRpc = async (userId: string, userEmail: string | undefined, tenantId: string, includePastToday = false): Promise<DashboardRpcData> => {
+export const fetchDashboardRpc = async (userId: string, userEmail: string | undefined, tenantId: string, includePastToday = false): Promise<DashboardRpcData & { failedSources: string[] }> => {
   const { data, error } = await supabase.rpc('get_dashboard_data', {
     p_user_id: userId,
     p_tenant_id: tenantId,
@@ -99,6 +99,9 @@ export const fetchDashboardRpc = async (userId: string, userEmail: string | unde
   }
 
   const rpcResult = data;
+  // Teilausfälle werden gesammelt, statt die ganze Terminkachel in den Fehlerzustand
+  // zu schicken: interne Termine bleiben sichtbar, fehlende Quellen werden benannt.
+  const failedSources = new Set<string>();
   const userName = rpcResult.display_name || userEmail?.split('@')[0] || 'Nutzer';
   const userRole = rpcResult.role || '';
   const openTasksCount = rpcResult.open_tasks_count ?? 0;
@@ -111,9 +114,9 @@ export const fetchDashboardRpc = async (userId: string, userEmail: string | unde
   const tomorrowDay = new Date(Date.parse(berlinDay(now) + "T12:00:00Z") + 86400_000).toISOString().slice(0, 10);
 
   // Ein Ladefehler der externen Kalender darf nicht als "keine externen Termine"
-  // durchgehen: er bricht die Dashboard-Abfrage ab, damit die Terminkachel den
-  // Fehlerzustand mit erneutem Laden zeigt. Ein Büro ohne verbundene Kalender ist
-  // dagegen kein Fehler, es kommen schlicht keine Zeilen zurück.
+  // durchgehen: er wird als Teilausfall gemeldet, während interne Termine sichtbar
+  // bleiben. Ein Büro ohne verbundene Kalender ist dagegen kein Fehler, es kommen
+  // schlicht keine Zeilen zurück.
   const externalResult = await supabase.from('external_events')
     .select('id, title, start_time, end_time, all_day, location, external_calendars!inner(tenant_id)')
     .eq('external_calendars.tenant_id', tenantId)
@@ -121,7 +124,7 @@ export const fetchDashboardRpc = async (userId: string, userEmail: string | unde
     .lt('start_time', new Date(today.getTime() + 3 * 86400000).toISOString())
     .order('start_time', { ascending: true });
 
-  if (externalResult.error) throw externalResult.error;
+  if (externalResult.error) failedSources.add('Externe Kalender');
 
   const externalAppointments: AppointmentData[] = (externalResult.data as ExternalEventRow[] | null ?? []).map((event) => ({
     id: event.id,
@@ -145,7 +148,10 @@ export const fetchDashboardRpc = async (userId: string, userEmail: string | unde
       .in('id', appointmentIds)
       .eq('tenant_id', tenantId);
 
-    if (metadataError) throw metadataError;
+    if (metadataError) {
+      // Nur Ort und Geburtstags-Kennzeichnung fehlen; die Termine selbst bleiben sichtbar.
+      failedSources.add('Termindetails');
+    }
     for (const row of appointmentLocations ?? []) {
       if (isDashboardBirthday(row)) birthdayIds.add(row.id);
     }
@@ -172,9 +178,9 @@ export const fetchDashboardRpc = async (userId: string, userEmail: string | unde
       .eq('tenant_id', tenantId).or('category.is.null,category.neq.birthday').eq('is_all_day', true).lte('start_time', now.toISOString())
       .gt('end_time', now.toISOString()).not('status', 'in', '(cancelled,canceled)'),
   ]);
-  if (ongoingAllDay.error) throw ongoingAllDay.error;
-  if (nextInternal.error) throw nextInternal.error;
-  if (nextExternal.error) throw nextExternal.error;
+  if (ongoingAllDay.error) failedSources.add('Laufende Termine');
+  if (nextInternal.error) failedSources.add('Folgetermine');
+  if (nextExternal.error) failedSources.add('Externe Kalender');
   const future: AppointmentData[] = [
     ...(nextInternal.data ?? []).map(e => ({ ...e, is_all_day: e.is_all_day ?? false, end_time: e.end_time ?? undefined, location: e.location ?? undefined })),
     ...(nextExternal.data ?? []).map(e => ({ ...e, is_all_day: e.all_day ?? false, end_time: e.end_time ?? undefined, location: e.location ?? undefined })),
@@ -209,10 +215,10 @@ export const fetchDashboardRpc = async (userId: string, userEmail: string | unde
     if (appointments.length === 1) tomorrowAppointments = tomorrowAll;
   }
 
-  return { userName, userRole, appointments, nextAppointment, isShowingTomorrow, tomorrowAppointments, openTasksCount, completedTasksToday, openTaskTitles };
+  return { userName, userRole, appointments, nextAppointment, isShowingTomorrow, tomorrowAppointments, openTasksCount, completedTasksToday, openTaskTitles, failedSources: [...failedSources] };
 };
 
-export const useDashboardAppointmentsData = (includePastToday = false): DashboardData & { isError: boolean; refetch: () => void } => {
+export const useDashboardAppointmentsData = (includePastToday = false): DashboardData & { isError: boolean; refetch: () => void; failedSources: string[] } => {
   const { user } = useAuth();
   const { currentTenant, loading: tenantLoading } = useTenant();
   const { appointments: feedbackAppointments } = useAppointmentFeedback();
@@ -263,5 +269,6 @@ export const useDashboardAppointmentsData = (includePastToday = false): Dashboar
     hasTenant: !!tenantId,
     isError,
     refetch,
+    failedSources: rpcData?.failedSources ?? [],
   };
 };

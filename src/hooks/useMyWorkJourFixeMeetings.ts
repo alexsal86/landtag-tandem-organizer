@@ -312,8 +312,11 @@ export function useMyWorkJourFixeMeetings(userId?: string) {
     data: { upcomingMeetings, pastMeetings, meetingParticipants },
     isLoading: meetingsLoading,
     loading: meetingsLoading,
-    error: meetingsError?.message ?? participantsError?.message ?? null,
-    isError: Boolean(meetingsError || participantsError),
+    // Teilnehmerfehler verdecken die Meetings nicht: sie werden als Teilausfall
+    // gemeldet, während die Jour fixes sichtbar bleiben.
+    error: meetingsError?.message ?? null,
+    isError: Boolean(meetingsError),
+    failedSources: participantsError ? ['Teilnehmende'] : [],
     refetch: () => {
       void queryClient.refetchQueries({ queryKey: ['my-work-jour-fixe-meetings', userId], exact: true });
       void queryClient.refetchQueries({ queryKey: ['my-work-jour-fixe-participants'] });
