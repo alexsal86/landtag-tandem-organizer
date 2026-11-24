@@ -6,7 +6,7 @@ import { ContactImportDuplicateDialog } from "@/components/contacts/ContactImpor
 
 export function ContactImport() {
   const {
-    data, fieldMappings, step, progress, importedCount, skippedCount, errors,
+    data, fieldMappings, step, progress, importedCount, skippedCount, mergedCount, overwrittenCount, errors,
     duplicateWarnings, currentDuplicate, duplicateStrategy, setDuplicateStrategy,
     handleFileUpload, updateFieldMapping, proceedToPreview, startImport, reset, downloadTemplate,
     handleDuplicateSkip, handleDuplicateOverwrite, handleDuplicateMerge, handleDuplicateImportAnyway, handleDuplicateApplyToAll,
@@ -24,6 +24,7 @@ export function ContactImport() {
       <ImportSteps
         step={step} data={data} fieldMappings={fieldMappings}
         progress={progress} importedCount={importedCount} skippedCount={skippedCount}
+        mergedCount={mergedCount} overwrittenCount={overwrittenCount}
         errors={errors} duplicateWarnings={duplicateWarnings}
         duplicateStrategy={duplicateStrategy} setDuplicateStrategy={setDuplicateStrategy}
         handleFileUpload={handleFileUpload} updateFieldMapping={updateFieldMapping}

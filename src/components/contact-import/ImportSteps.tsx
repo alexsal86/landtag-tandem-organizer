@@ -18,6 +18,8 @@ interface ImportStepsProps {
   progress: number;
   importedCount: number;
   skippedCount: number;
+  mergedCount: number;
+  overwrittenCount: number;
   errors: string[];
   duplicateWarnings: string[];
   duplicateStrategy: "ask" | "skip" | "overwrite" | "merge" | "import";
@@ -30,7 +32,7 @@ interface ImportStepsProps {
 }
 
 export const ImportSteps: React.FC<ImportStepsProps> = ({
-  step, data, fieldMappings, progress, importedCount, skippedCount, errors,
+  step, data, fieldMappings, progress, importedCount, skippedCount, mergedCount, overwrittenCount, errors,
   duplicateWarnings, duplicateStrategy, setDuplicateStrategy,
   handleFileUpload, updateFieldMapping, proceedToPreview, startImport, reset,
 }) => {
@@ -95,6 +97,8 @@ export const ImportSteps: React.FC<ImportStepsProps> = ({
                 <SelectContent>
                   <SelectItem value="ask">Bei jedem Duplikat nachfragen</SelectItem>
                   <SelectItem value="skip">Alle Duplikate automatisch überspringen</SelectItem>
+                  <SelectItem value="merge">Alle Duplikate zusammenführen</SelectItem>
+                  <SelectItem value="overwrite">Alle Duplikate überschreiben</SelectItem>
                   <SelectItem value="import">Alle Duplikate trotzdem importieren</SelectItem>
                 </SelectContent>
               </Select>
@@ -140,6 +144,8 @@ export const ImportSteps: React.FC<ImportStepsProps> = ({
         <CardContent className="space-y-4">
           <div className="flex flex-wrap gap-2">
             <Badge variant="default" className="text-sm py-1 px-3">✓ {importedCount} importiert</Badge>
+            {mergedCount > 0 && <Badge variant="secondary" className="text-sm py-1 px-3">⊕ {mergedCount} zusammengeführt</Badge>}
+            {overwrittenCount > 0 && <Badge variant="secondary" className="text-sm py-1 px-3">↻ {overwrittenCount} überschrieben</Badge>}
             {skippedCount > 0 && <Badge variant="outline" className="text-sm py-1 px-3">⊘ {skippedCount} übersprungen</Badge>}
             {errors.length > 0 && <Badge variant="destructive" className="text-sm py-1 px-3">✗ {errors.length} Fehler</Badge>}
           </div>

@@ -2,6 +2,7 @@ import { supabase } from "@/integrations/supabase/client";
 import type { TestScenario } from "../types";
 import { SELFTEST_MARKER, SELFTEST_PREFIX } from "../runner";
 import { describeError, expectFields } from "../verify";
+import { resolveDuplicateContact } from "@/components/contact-import/duplicateResolution";
 
 export const contactLifecycleScenario: TestScenario = {
   id: "contact-lifecycle",
@@ -44,6 +45,38 @@ export const contactLifecycleScenario: TestScenario = {
         if (error || !data) return { ok: false, message: describeError(error) };
         ctx.trackRecord({ table: "contact_activities", id: data.id });
         return expectFields("contact_activities", data.id, payload, "Aktivität");
+      },
+    },
+    {
+      id: "import-duplicate-resolution",
+      label: "Import-Duplikate werden zusammengeführt oder überschrieben statt neu angelegt",
+      kind: "logic",
+      run: async () => {
+        const existing = { name: "Erika Muster", email: "erika@example.org", phone: "+49 721 123456", organization: "Bürgerverein Südstadt", notes: "Erstkontakt", tags: ["verein"] };
+        const incoming = { name: "Erika Muster", email: "erika.neu@example.org", phone: "+49 721 123456", mobile_phone: "+49 170 1234567", organization: "Bürgerverein Süd", organization_id: "org-2", notes: "Rückruf", tags: ["presse"] };
+        const merged = resolveDuplicateContact(existing, incoming, "merge");
+        const overwritten = resolveDuplicateContact(existing, incoming, "overwrite");
+        const unchanged = resolveDuplicateContact(existing, { name: "Erika Muster", email: "erika@example.org" }, "merge");
+        const protectedAttempt = resolveDuplicateContact(existing, { ...incoming, id: "fremd", tenant_id: "fremd", user_id: "fremd", created_at: "2020-01-01" }, "overwrite");
+        const checks = {
+          mergeKeepsExistingEmail: merged.payload.email === undefined,
+          mergeFillsGap: merged.payload.mobile_phone === "+49 170 1234567",
+          mergeKeepsExistingOrganization: merged.payload.organization === undefined,
+          mergeAppendsNotes: merged.payload.notes === "Erstkontakt\n\nRückruf",
+          mergeUnitesTags: (merged.payload.tags ?? []).join(",") === "verein,presse",
+          overwriteReplacesEmail: overwritten.payload.email === "erika.neu@example.org",
+          overwriteReplacesOrganization: overwritten.payload.organization === "Bürgerverein Süd" && overwritten.payload.organization_id === "org-2",
+          overwriteKeepsTags: (overwritten.payload.tags ?? []).join(",") === "verein,presse",
+          identicalRowChangesNothing: Object.keys(unchanged.payload).length === 0,
+          protectedColumnsUntouched: ["id", "tenant_id", "user_id", "created_at"].every((key) => !(key in protectedAttempt.payload)),
+        };
+        const failed = Object.entries(checks).filter(([, ok]) => !ok).map(([name]) => name);
+        return {
+          ok: failed.length === 0,
+          message: failed.length === 0
+            ? "Zusammenführen füllt nur Lücken und vereinigt Notizen/Tags; Überschreiben ersetzt Konflikte; Identität, Mandant und Auditfelder bleiben unangetastet."
+            : `Fehlgeschlagen: ${failed.join(", ")}`,
+        };
       },
     },
     {
