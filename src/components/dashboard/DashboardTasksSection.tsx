@@ -6,6 +6,7 @@ import type { DeadlineItem, GroupedDeadlineItems } from '@/types/dashboardDeadli
 import { useDeadlineActions } from '@/hooks/useDeadlineActions';
 import { DeadlineReviewDialog } from './DeadlineReviewDialog';
 import { DeadlineSnoozeButton } from './DeadlineSnoozeButton';
+import { WidgetListFooter } from '@/components/ui-patterns';
 import {
   formatDeadlineDateLabel,
   getDeadlineContextLabel,
@@ -191,6 +192,12 @@ export const DashboardTasksSection = ({ items, grouped }: DashboardTasksSectionP
           )}
         </div>
       )}
+
+      <WidgetListFooter
+        countLabel={items.length === 1 ? '1 offene Frist' : `${items.length} offene Fristen`}
+        linkLabel="Alle Fristen ansehen"
+        to="/mywork?tab=tasks"
+      />
     </div>
   );
 };

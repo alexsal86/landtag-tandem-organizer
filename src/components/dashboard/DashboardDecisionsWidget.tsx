@@ -15,6 +15,7 @@ import { supabase } from '@/integrations/supabase/client';
 import { cn } from '@/lib/utils';
 import { notify } from "@/lib/notify";
 import { ErrorState } from '@/components/ui-patterns';
+import { WidgetListFooter } from '@/components/ui-patterns';
 
 function formatDeadline(deadline: string | null): { label: string; isOverdue: boolean } {
   if (!deadline) return { label: '', isOverdue: false };
@@ -278,6 +279,8 @@ export function DashboardDecisionsWidget() {
   const currentExpandedId = expandedId === null ? null
     : items.some(item => item.id === expandedId) ? expandedId : items[0]?.id;
 
+  const totalOpen = eligibleDecisions.length;
+
   const goToDecision = (id: string) => {
     navigate(`/mywork?tab=decisions&highlight=${id}`);
   };
@@ -298,23 +301,32 @@ export function DashboardDecisionsWidget() {
   }
 
   return (
-    <div className="divide-y divide-border">
-      {isDeputyView && nudges.isError && <p role="status" className="pb-3 text-xs text-muted-foreground">Anstups-Hinweise konnten nicht geladen werden.</p>}
-      {items.map((d) => (
-        <DecisionRow
-          key={d.id}
-          decision={d}
-          expanded={currentExpandedId === d.id}
-          onToggle={() => setExpandedId(currentExpandedId === d.id ? null : d.id)}
-          nudge={nudges.data?.find(nudge => nudge.decision_id === d.id)}
-          onDismissConfirmed={handleDismissConfirmed}
-          onOpen={goToDecision}
-          onPromptOpen={handlePromptOpen}
-          onPromptClose={handlePromptClose}
-          onUndoConfirmed={handleUndoConfirmed}
-          forcePrompt={pendingIds.has(d.id) && d.hasResponded ? { color: 'green' } : null}
-        />
-      ))}
+    <div>
+      <div className="divide-y divide-border">
+        {isDeputyView && nudges.isError && <p role="status" className="pb-3 text-xs text-muted-foreground">Anstups-Hinweise konnten nicht geladen werden.</p>}
+        {items.map((d) => (
+          <DecisionRow
+            key={d.id}
+            decision={d}
+            expanded={currentExpandedId === d.id}
+            onToggle={() => setExpandedId(currentExpandedId === d.id ? null : d.id)}
+            nudge={nudges.data?.find(nudge => nudge.decision_id === d.id)}
+            onDismissConfirmed={handleDismissConfirmed}
+            onOpen={goToDecision}
+            onPromptOpen={handlePromptOpen}
+            onPromptClose={handlePromptClose}
+            onUndoConfirmed={handleUndoConfirmed}
+            forcePrompt={pendingIds.has(d.id) && d.hasResponded ? { color: 'green' } : null}
+          />
+        ))}
+      </div>
+      <WidgetListFooter
+        countLabel={totalOpen > items.length
+          ? `${items.length} von ${totalOpen} offenen Entscheidungen`
+          : totalOpen === 1 ? '1 offene Entscheidung' : `${totalOpen} offene Entscheidungen`}
+        linkLabel="Alle Entscheidungen"
+        to="/mywork?tab=decisions"
+      />
     </div>
   );
 }
