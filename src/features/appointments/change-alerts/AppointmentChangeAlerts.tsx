@@ -1,6 +1,9 @@
+import { useUserPreference } from "@/hooks/useUserPreference";
+import { berlinDay } from "@/utils/dashboard/daySummary";
+import { visibleSentChanges } from "./sentChangeVisibility";
 import { useEffect, useMemo, useState, type ReactNode } from "react";
 import { useQuery, useQueryClient } from "@tanstack/react-query";
-import { AlertTriangle, ArrowRight, Clock, MapPin, MessageSquare, Send } from "lucide-react";
+import { AlertTriangle, ArrowRight, Clock, MapPin, MessageSquare, Send, X } from "lucide-react";
 import { supabase } from "@/integrations/supabase/client";
 import { useTenant } from "@/hooks/useTenant";
 import { useAuth } from "@/hooks/useAuth";
@@ -127,18 +130,35 @@ export function AppointmentChangeBanner() {
 /** Büro: zuletzt gemeldete Änderungen samt Lesebestätigung. */
 export function AppointmentChangeSentList() {
   const { data = [] } = useAlerts();
-  if (!data.length) return null;
+  const { user } = useAuth();
+  const { currentTenant } = useTenant();
+  const [now, setNow] = useState(() => new Date());
+  useEffect(() => {
+    const interval = window.setInterval(() => setNow(new Date()), 60_000);
+    return () => window.clearInterval(interval);
+  }, []);
+  const [dismissed, setDismissed] = useUserPreference<string[]>(
+    `appointment-change-hidden:${currentTenant?.id}:${user?.id}:${berlinDay(now)}`, [],
+  );
+  const visible = visibleSentChanges(data, Array.isArray(dismissed) ? dismissed : [], now);
+  if (!visible.length) return null;
   return (
     <div className="rounded-xl border border-border/70 bg-card/60 px-3 py-2">
-      <p className="mb-1 text-label font-semibold uppercase tracking-wide text-muted-foreground">Zuletzt gemeldete Änderungen</p>
+      <p className="mb-1 text-label font-semibold uppercase tracking-wide text-muted-foreground">Zuletzt gemeldete Änderungen · Heute</p>
       <ul className="space-y-1">
-        {data.slice(0, 3).map((a) => (
+        {visible.slice(0, 3).map((a) => (
           <li key={a.id} className="flex flex-wrap items-center gap-x-2 gap-y-0.5 text-caption">
             <span className="rounded-pill bg-muted px-1.5 py-0.5 font-medium text-foreground">{changeKindLabel(a.kind)}</span>
+            <span className="text-muted-foreground">Heute {fmt(a.created_at)}</span>
             <span className="min-w-0 flex-1 truncate text-muted-foreground">{a.title} · {changeSummary(a)}</span>
             <span className={a.acknowledged_at ? "text-palette-green" : "text-palette-amber"}>
               {a.acknowledged_at ? `Gelesen ${fmt(a.acknowledged_at)}` : "noch nicht gelesen"}
             </span>
+            <button type="button" aria-label={`Änderung für mich ausblenden: ${a.title}`}
+              className="inline-flex h-6 w-6 shrink-0 items-center justify-center rounded text-muted-foreground hover:bg-muted hover:text-foreground focus-visible:outline focus-visible:outline-2 focus-visible:outline-primary"
+              onClick={() => setDismissed(previous => [...new Set([...(Array.isArray(previous) ? previous : []), a.id])])}>
+              <X className="h-3.5 w-3.5" aria-hidden="true" />
+            </button>
           </li>
         ))}
       </ul>
