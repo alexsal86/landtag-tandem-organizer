@@ -403,12 +403,12 @@ export const DashboardAppointments = ({ data }: Props) => {
             <div className="flex w-full flex-wrap items-center justify-end gap-2">
               {!ended && badgeLabel && <span className="relative z-10 inline-flex">
                 {canChooseBriefing ? (
-                  <button type="button" className={cn("pointer-events-auto inline-flex items-center gap-1.5 rounded-md px-2 py-0.5 text-caption hover:underline focus-visible:outline focus-visible:outline-2", badgeClass)}
+                  <button type="button" className={`pointer-events-auto inline-flex items-center gap-1.5 rounded-md px-2 py-0.5 text-caption hover:underline focus-visible:outline focus-visible:outline-2 ${badgeClass}`}
                     onClick={() => setBriefingDecision(apt)} aria-label={`${badgeLabel}: ${apt.title} – Briefing anfordern oder ablehnen`}>
                     <BadgeIcon className="h-3 w-3" aria-hidden="true" />{badgeLabel}
                   </button>
                 ) : (
-                  <span className={cn("inline-flex items-center gap-1.5 rounded-md px-2 py-0.5 text-caption", badgeClass)}>
+                  <span className={`inline-flex items-center gap-1.5 rounded-md px-2 py-0.5 text-caption ${badgeClass}`}>
                     <BadgeIcon className="h-3 w-3" aria-hidden="true" />{badgeLabel}
                   </span>
                 )}
