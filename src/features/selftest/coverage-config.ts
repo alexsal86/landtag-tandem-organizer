@@ -93,6 +93,8 @@ export const IGNORED_TABLES: string[] = [
   "matrix_bot_logs",
   "poll_versions",
   "rss_cache",
+  "news_articles",
+  "news_article_states",
   "search_analytics",
   "task_decision_response_history",
   "time_entry_corrections",

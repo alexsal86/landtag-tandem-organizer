@@ -4,7 +4,7 @@ import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 import { Button } from '@/components/ui/button';
 import { Badge } from '@/components/ui/badge';
 import { ScrollArea } from '@/components/ui/scroll-area';
-import { RefreshCw, ExternalLink, Filter, Rss, Share2, CheckSquare } from 'lucide-react';
+import { RefreshCw, ExternalLink, Rss, Share2, CheckSquare, Bookmark, BookmarkCheck, Check, Circle } from 'lucide-react';
 import { supabase } from '@/integrations/supabase/client';
 import { NewsShareDialog } from './NewsShareDialog';
 import { NewsToTaskDialog } from './NewsToTaskDialog';
@@ -19,6 +19,10 @@ interface NewsArticle {
   source: string;
   category: string;
   image_url?: string;
+  is_read?: boolean;
+  is_saved?: boolean;
+  read_at?: string | null;
+  saved_at?: string | null;
 }
 
 interface NewsWidgetProps {
@@ -26,14 +30,19 @@ interface NewsWidgetProps {
   compact?: boolean;
 }
 
-export const NewsWidget: React.FC<NewsWidgetProps> = ({ widgetId, compact = false }) => {
+type NewsView = 'all' | 'unread' | 'saved';
+
+export const NewsWidget: React.FC<NewsWidgetProps> = ({ compact = false }) => {
   const [articles, setArticles] = useState<NewsArticle[]>([]);
   const [loading, setLoading] = useState(false);
   const [selectedCategory, setSelectedCategory] = useState<string>('all');
+  const [view, setView] = useState<NewsView>('all');
   const [error, setError] = useState<string | null>(null);
   const [shareDialogOpen, setShareDialogOpen] = useState(false);
   const [taskDialogOpen, setTaskDialogOpen] = useState(false);
   const [selectedArticle, setSelectedArticle] = useState<NewsArticle | null>(null);
+  const [userId, setUserId] = useState<string | null>(null);
+  const [tenantId, setTenantId] = useState<string | null>(null);
 
   const categories = [
     { value: 'all', label: 'Alle' },
@@ -60,6 +69,9 @@ export const NewsWidget: React.FC<NewsWidgetProps> = ({ widgetId, compact = fals
         .single();
 
       if (!memberships?.tenant_id) throw new Error('No tenant found');
+
+      setUserId(user.id);
+      setTenantId(memberships.tenant_id);
 
       const timeoutPromise = new Promise((_, reject) => 
         setTimeout(() => reject(new Error('Request timeout')), 10000)
@@ -98,9 +110,50 @@ export const NewsWidget: React.FC<NewsWidgetProps> = ({ widgetId, compact = fals
     return () => clearTimeout(timer);
   }, [selectedCategory]);
 
-  const filteredArticles = articles.filter(article => 
-    selectedCategory === 'all' || article.category === selectedCategory
-  );
+  /** Persists gelesen/merken for the current user; the article id is stable. */
+  const updateArticleState = async (article: NewsArticle, patch: { is_read?: boolean; is_saved?: boolean }) => {
+    if (!userId || !tenantId) return;
+
+    const nextRead = patch.is_read ?? Boolean(article.is_read);
+    const nextSaved = patch.is_saved ?? Boolean(article.is_saved);
+    const now = new Date().toISOString();
+    const readAt = nextRead ? (article.read_at ?? now) : null;
+    const savedAt = nextSaved ? (article.saved_at ?? now) : null;
+
+    const { error } = await supabase
+      .from('news_article_states')
+      .upsert({
+        tenant_id: tenantId,
+        user_id: userId,
+        article_id: article.id,
+        is_read: nextRead,
+        is_saved: nextSaved,
+        read_at: readAt,
+        saved_at: savedAt,
+      }, { onConflict: 'tenant_id,user_id,article_id' });
+
+    if (error) {
+      debugConsole.error('Error updating news article state:', error);
+      return;
+    }
+
+    setArticles((current) => current.map((entry) =>
+      entry.id === article.id
+        ? { ...entry, is_read: nextRead, is_saved: nextSaved, read_at: readAt, saved_at: savedAt }
+        : entry
+    ));
+  };
+
+  const openArticle = (article: NewsArticle) => {
+    window.open(article.link, '_blank');
+    if (!article.is_read) void updateArticleState(article, { is_read: true });
+  };
+
+  const filteredArticles = articles
+    .filter(article => selectedCategory === 'all' || article.category === selectedCategory)
+    .filter(article => view === 'all' || (view === 'unread' ? !article.is_read : Boolean(article.is_saved)));
+
+  const savedCount = articles.filter(article => article.is_saved).length;
 
   const formatDate = (dateString: string) => {
     return new Date(dateString).toLocaleDateString('de-DE', {
@@ -148,15 +201,44 @@ export const NewsWidget: React.FC<NewsWidgetProps> = ({ widgetId, compact = fals
                   <div
                     key={article.id}
                     className="group cursor-pointer py-3 first:pt-0 last:pb-0 -mx-2 px-2 rounded hover:bg-muted/30 transition-colors"
-                    onClick={() => window.open(article.link, '_blank')}
+                    onClick={() => openArticle(article)}
                   >
                     <div className="flex items-center justify-between gap-2">
                       <div className="min-w-0 flex items-center gap-2 text-xs">
                         <span className="font-bold text-primary truncate">{article.source}</span>
                         <span className="text-muted-foreground">·</span>
                         <span className="text-muted-foreground">{formatRelativeTime(article.pub_date)}</span>
+                        {article.is_saved && (
+                          <BookmarkCheck className="h-3 w-3 shrink-0 text-primary" aria-label="Gemerkt" />
+                        )}
                       </div>
-                      <div className="flex shrink-0 items-center gap-0.5 opacity-0 transition-opacity group-hover:opacity-100">
+                      <div className="flex shrink-0 items-center gap-0.5 opacity-0 transition-opacity group-hover:opacity-100 focus-within:opacity-100">
+                        <Button
+                          variant="ghost"
+                          size="sm"
+                          className="h-6 w-6 p-0"
+                          onClick={(e) => {
+                            e.stopPropagation();
+                            void updateArticleState(article, { is_read: !article.is_read });
+                          }}
+                          title={article.is_read ? 'Als ungelesen markieren' : 'Als gelesen markieren'}
+                          aria-label={article.is_read ? 'Als ungelesen markieren' : 'Als gelesen markieren'}
+                        >
+                          {article.is_read ? <Check className="h-3 w-3" /> : <Circle className="h-3 w-3" />}
+                        </Button>
+                        <Button
+                          variant="ghost"
+                          size="sm"
+                          className="h-6 w-6 p-0"
+                          onClick={(e) => {
+                            e.stopPropagation();
+                            void updateArticleState(article, { is_saved: !article.is_saved });
+                          }}
+                          title={article.is_saved ? 'Aus Merkliste entfernen' : 'Merken'}
+                          aria-label={article.is_saved ? 'Aus Merkliste entfernen' : 'Merken'}
+                        >
+                          {article.is_saved ? <BookmarkCheck className="h-3 w-3 text-primary" /> : <Bookmark className="h-3 w-3" />}
+                        </Button>
                         <Button
                           variant="ghost"
                           size="sm"
@@ -167,6 +249,7 @@ export const NewsWidget: React.FC<NewsWidgetProps> = ({ widgetId, compact = fals
                             setShareDialogOpen(true);
                           }}
                           title="News teilen"
+                          aria-label="News teilen"
                         >
                           <Share2 className="h-3 w-3" />
                         </Button>
@@ -180,12 +263,13 @@ export const NewsWidget: React.FC<NewsWidgetProps> = ({ widgetId, compact = fals
                             setTaskDialogOpen(true);
                           }}
                           title="Aufgabe erstellen"
+                          aria-label="Aufgabe erstellen"
                         >
                           <CheckSquare className="h-3 w-3" />
                         </Button>
                       </div>
                     </div>
-                    <p className="text-body leading-snug text-foreground line-clamp-2">
+                    <p className={`text-body leading-snug line-clamp-2 ${article.is_read ? 'text-muted-foreground' : 'text-foreground'}`}>
                       {decodeHtmlEntities(article.title)}
                     </p>
                   </div>
@@ -213,26 +297,38 @@ export const NewsWidget: React.FC<NewsWidgetProps> = ({ widgetId, compact = fals
   return (
     <Card className="h-full flex flex-col">
       <CardHeader className="pb-3">
-        <div className="flex items-center justify-between">
+        <div className="flex flex-wrap items-center justify-between gap-2">
           <CardTitle className="flex items-center gap-2 text-base">
             <Rss className="h-4 w-4" />
             News
           </CardTitle>
-          <div className="flex gap-2">
+          <div className="flex flex-wrap gap-2">
             <select
               value={selectedCategory}
               onChange={(e) => setSelectedCategory(e.target.value)}
+              aria-label="Kategorie"
               className="text-xs px-2 py-1 border rounded bg-background"
             >
               {categories.map(cat => (
                 <option key={cat.value} value={cat.value}>{cat.label}</option>
               ))}
             </select>
+            <select
+              value={view}
+              onChange={(e) => setView(e.target.value as NewsView)}
+              aria-label="Ansicht"
+              className="text-xs px-2 py-1 border rounded bg-background"
+            >
+              <option value="all">Alle</option>
+              <option value="unread">Ungelesen</option>
+              <option value="saved">Gemerkt{savedCount > 0 ? ` (${savedCount})` : ''}</option>
+            </select>
             <Button
               variant="ghost"
               size="sm"
               onClick={fetchNews}
               disabled={loading}
+              aria-label="Nachrichten neu laden"
             >
               <RefreshCw className={`h-3 w-3 ${loading ? 'animate-spin' : ''}`} />
             </Button>
@@ -257,7 +353,22 @@ export const NewsWidget: React.FC<NewsWidgetProps> = ({ widgetId, compact = fals
           <ScrollArea className="h-full">
             <div className="space-y-3 p-4">
               {filteredArticles.length === 0 ? (
-                <EmptyState icon={Rss} title="Keine Artikel gefunden" description="Wähle eine andere Kategorie oder lade die Liste neu." action={{ label: 'Neu laden', icon: RefreshCw, onClick: fetchNews }} />
+                <EmptyState
+                  icon={Rss}
+                  title={
+                    view === 'saved'
+                      ? 'Noch keine gemerkten Artikel'
+                      : view === 'unread'
+                        ? 'Alles gelesen'
+                        : 'Keine Artikel gefunden'
+                  }
+                  description={
+                    view === 'all'
+                      ? 'Wähle eine andere Kategorie oder lade die Liste neu.'
+                      : 'Wechsle die Ansicht, um alle Nachrichten zu sehen.'
+                  }
+                  action={{ label: 'Neu laden', icon: RefreshCw, onClick: fetchNews }}
+                />
               ) : (
                 filteredArticles.map((article) => (
                   <div
@@ -266,12 +377,38 @@ export const NewsWidget: React.FC<NewsWidgetProps> = ({ widgetId, compact = fals
                   >
                     <div className="flex justify-between items-start gap-2 mb-1">
                       <h4 
-                        className="font-medium text-sm line-clamp-2 hover:text-primary cursor-pointer flex-1"
-                        onClick={() => window.open(article.link, '_blank')}
+                        className={`font-medium text-sm line-clamp-2 hover:text-primary cursor-pointer flex-1 ${article.is_read ? 'text-muted-foreground' : ''}`}
+                        onClick={() => openArticle(article)}
                       >
                         {decodeHtmlEntities(article.title)}
                       </h4>
-                      <div className="flex gap-1 opacity-0 group-hover:opacity-100 transition-opacity">
+                      <div className="flex gap-1 opacity-0 group-hover:opacity-100 focus-within:opacity-100 transition-opacity">
+                        <Button
+                          variant="ghost"
+                          size="sm"
+                          className="h-7 w-7 p-0"
+                          onClick={(e) => {
+                            e.stopPropagation();
+                            void updateArticleState(article, { is_read: !article.is_read });
+                          }}
+                          title={article.is_read ? 'Als ungelesen markieren' : 'Als gelesen markieren'}
+                          aria-label={article.is_read ? 'Als ungelesen markieren' : 'Als gelesen markieren'}
+                        >
+                          {article.is_read ? <Check className="h-3 w-3" /> : <Circle className="h-3 w-3" />}
+                        </Button>
+                        <Button
+                          variant="ghost"
+                          size="sm"
+                          className="h-7 w-7 p-0"
+                          onClick={(e) => {
+                            e.stopPropagation();
+                            void updateArticleState(article, { is_saved: !article.is_saved });
+                          }}
+                          title={article.is_saved ? 'Aus Merkliste entfernen' : 'Merken'}
+                          aria-label={article.is_saved ? 'Aus Merkliste entfernen' : 'Merken'}
+                        >
+                          {article.is_saved ? <BookmarkCheck className="h-3 w-3 text-primary" /> : <Bookmark className="h-3 w-3" />}
+                        </Button>
                         <Button
                           variant="ghost"
                           size="sm"
@@ -282,6 +419,7 @@ export const NewsWidget: React.FC<NewsWidgetProps> = ({ widgetId, compact = fals
                             setShareDialogOpen(true);
                           }}
                           title="News teilen"
+                          aria-label="News teilen"
                         >
                           <Share2 className="h-3 w-3" />
                         </Button>
@@ -295,6 +433,7 @@ export const NewsWidget: React.FC<NewsWidgetProps> = ({ widgetId, compact = fals
                             setTaskDialogOpen(true);
                           }}
                           title="Aufgabe erstellen"
+                          aria-label="Aufgabe erstellen"
                         >
                           <CheckSquare className="h-3 w-3" />
                         </Button>
@@ -304,9 +443,10 @@ export const NewsWidget: React.FC<NewsWidgetProps> = ({ widgetId, compact = fals
                           className="h-7 w-7 p-0"
                           onClick={(e) => {
                             e.stopPropagation();
-                            window.open(article.link, '_blank');
+                            openArticle(article);
                           }}
                           title="Artikel öffnen"
+                          aria-label="Artikel öffnen"
                         >
                           <ExternalLink className="h-3 w-3" />
                         </Button>
@@ -327,6 +467,12 @@ export const NewsWidget: React.FC<NewsWidgetProps> = ({ widgetId, compact = fals
                         {article.category !== 'general' && (
                           <Badge variant="outline" className="text-xs py-0 px-2">
                             {article.category}
+                          </Badge>
+                        )}
+                        {article.is_saved && (
+                          <Badge variant="outline" className="text-xs py-0 px-2 gap-1">
+                            <BookmarkCheck className="h-3 w-3" />
+                            Gemerkt
                           </Badge>
                         )}
                       </div>

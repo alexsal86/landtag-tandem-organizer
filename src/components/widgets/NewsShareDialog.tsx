@@ -132,7 +132,8 @@ export const NewsShareDialog: React.FC<NewsShareDialogProps> = ({
             recipients: emails,
             internalRecipientUserIds: selectedUserIds,
             senderName,
-            personalMessage: personalMessage || undefined
+            personalMessage: personalMessage || undefined,
+            tenant_id: currentTenant?.id
           }
         });
 
