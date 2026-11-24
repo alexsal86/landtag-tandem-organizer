@@ -61,6 +61,64 @@ function referencePhrase(reference: ConfigImpactReference): string {
   return reference.count === 1 ? forms.one : `${reference.count} ${forms.many}`;
 }
 
+const ACCUSATIVE: Record<string, { one: string; many: string }> = {
+  documents: { one: "1 Dokument", many: "Dokumente" },
+  case_files: { one: "1 Fallakte", many: "Fallakten" },
+  tasks: { one: "1 Aufgabe", many: "Aufgaben" },
+  todos: { one: "1 ToDo", many: "ToDos" },
+  appointments: { one: "1 Termin", many: "Termine" },
+};
+
+export interface ConfigRenameResult {
+  known: boolean;
+  label: string | null;
+  newName: string | null;
+  total: number;
+  updated: ConfigImpactReference[];
+}
+
+/** Ergebnis eines Umbenennens; unlesbare Antwort verhindert nur die Zusatzmeldung, nicht die Umbenennung. */
+export function parseConfigRename(raw: unknown): ConfigRenameResult {
+  if (!raw || typeof raw !== "object" || Array.isArray(raw)) return { ...unknownRename() };
+  const record = raw as Record<string, unknown>;
+  const rawUpdated = record.updated;
+  const rawTotal = record.total;
+  if (!Array.isArray(rawUpdated)) return unknownRename();
+  if (typeof rawTotal !== "number" || !Number.isFinite(rawTotal) || rawTotal < 0) return unknownRename();
+
+  const updated: ConfigImpactReference[] = [];
+  for (const entry of rawUpdated) {
+    if (!entry || typeof entry !== "object" || Array.isArray(entry)) return unknownRename();
+    const reference = entry as Record<string, unknown>;
+    const count = reference.count;
+    if (typeof reference.key !== "string" || typeof reference.label !== "string") return unknownRename();
+    if (typeof count !== "number" || !Number.isFinite(count) || count <= 0) return unknownRename();
+    updated.push({ key: reference.key, label: reference.label, count });
+  }
+
+  return {
+    known: true,
+    label: typeof record.label === "string" ? record.label : null,
+    newName: typeof record.new_name === "string" ? record.new_name : null,
+    total: rawTotal,
+    updated,
+  };
+}
+
+export function unknownRename(): ConfigRenameResult {
+  return { known: false, label: null, newName: null, total: 0, updated: [] };
+}
+
+export function summarizeConfigRename(result: ConfigRenameResult): string {
+  if (result.updated.length === 0) return "Keine Verweise mussten angepasst werden.";
+  const parts = result.updated.map((reference) => {
+    const forms = ACCUSATIVE[reference.key];
+    if (!forms) return `${reference.count} ${reference.label}`;
+    return reference.count === 1 ? forms.one : `${reference.count} ${forms.many}`;
+  });
+  return `Verweise aktualisiert: ${parts.join(", ")}.`;
+}
+
 export function summarizeConfigImpact(impact: ConfigImpact): string {
   if (!impact.known) return "Auswirkung konnte nicht geprüft werden.";
   if (impact.total === 0 || impact.references.length === 0) return "Keine Verwendung gefunden.";

@@ -22,7 +22,7 @@ import type { TestScenario } from "../types";
 import { calendarOccurrence, nextCalendarOccurrence, scheduleRunKey } from "@/features/automation/calendarSchedule";
 import { ACTION_MODULE } from "@/features/permissions/catalog";
 import { buildPermissionDiff, diffSimulation, parsePermissionExplanation } from "@/features/permissions/explain";
-import { parseConfigImpact, summarizeConfigImpact } from "@/features/admin/configImpact";
+import { parseConfigImpact, parseConfigRename, summarizeConfigImpact, summarizeConfigRename } from "@/features/admin/configImpact";
 import { calculateWeeklyTarget, isBadenWuerttembergHoliday } from "@/features/timetracking/weeklyTarget";
 
 export const workflowRulesScenario: TestScenario = {
@@ -366,6 +366,26 @@ export const workflowRulesScenario: TestScenario = {
           unknownBlocks: !unreadable.known && summarizeConfigImpact(unreadable) === "Auswirkung konnte nicht geprüft werden.",
         };
         return { ok: Object.values(checks).every(Boolean), message: "Der Löschdialog nennt Verwendungen in Klartext und sperrt das Löschen ohne belastbare Auskunft.", details: checks };
+      },
+    },
+    {
+      id: "config-rename-cascade", label: "Konfiguration: Umbenennen zieht Verweise mit und lehnt Mehrdeutigkeit ab", kind: "logic",
+      run: async () => {
+        const renamed = parseConfigRename({
+          total: 3,
+          updated: [
+            { key: "documents", label: "Dokument", count: 1 },
+            { key: "appointments", label: "Termin", count: 2 },
+          ],
+        });
+        const untouched = parseConfigRename({ total: 0, updated: [] });
+        const unreadable = parseConfigRename({ total: 1 });
+        const checks = {
+          summaryNamesUpdatedRows: summarizeConfigRename(renamed) === "Verweise aktualisiert: 1 Dokument, 2 Termine.",
+          untouchedClear: summarizeConfigRename(untouched) === "Keine Verweise mussten angepasst werden.",
+          unreadableTolerated: !unreadable.known,
+        };
+        return { ok: Object.values(checks).every(Boolean), message: "Umbenennen meldet mitgezogene Verweise; die Datenbank lehnt mehrdeutige Altnamen und Kollisionen ab.", details: checks };
       },
     },
     {

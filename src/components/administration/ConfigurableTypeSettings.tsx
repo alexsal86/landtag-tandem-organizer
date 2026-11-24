@@ -16,6 +16,7 @@ import { DragDropContext, Droppable, Draggable, type DropResult } from "@hello-p
 import { TagIconPicker } from "@/components/contacts/TagIconPicker";
 import { notify } from "@/lib/notify";
 import { ConfigDeleteDialog } from "@/features/admin/ConfigDeleteDialog";
+import { parseConfigRename, summarizeConfigRename } from "@/features/admin/configImpact";
 
 type ConfigurableType = {
   id: string;
@@ -179,6 +180,9 @@ export function ConfigurableTypeSettings({
   const handleSave = async () => {
     if (!editingItem?.label.trim()) return;
 
+    const original = items.find(item => item.id === editingItem.id);
+    const labelChanged = (original?.label ?? '') !== editingItem.label;
+
     // Optimistic UI: Update state immediately
     const previousItems = [...items];
     const updatedItems = items.map(item => 
@@ -190,6 +194,30 @@ export function ConfigurableTypeSettings({
     setEditingItem(null);
 
     try {
+      // Umbenennen zieht die referenzierten name/label-Werte in den Fachdaten mit.
+      // Ein direktes UPDATE der Konfigurationszeile würde die Verweise zurücklassen.
+      if (labelChanged) {
+        const { data, error } = await supabase.rpc('rename_config_item', {
+          _table: tableName,
+          _id: editingItem.id,
+          _label: editingItem.label,
+          _color: hasColor ? editingItem.color : null,
+          _icon: hasIcon ? (editingItem.icon ?? null) : null,
+          _set_color: hasColor,
+          _set_icon: hasIcon,
+        });
+        if (error) throw error;
+
+        const renamed = parseConfigRename(data);
+        await loadItems();
+        notify.success("Erfolg", {
+          description: renamed.known
+            ? `${entityName} wurde umbenannt. ${summarizeConfigRename(renamed)}`
+            : `${entityName} wurde umbenannt.`
+        });
+        return;
+      }
+
       const updateData: Record<string, unknown> = {
         name: editingItem.label.toLowerCase().replace(/\s+/g, '_'),
         label: editingItem.label
@@ -213,9 +241,12 @@ export function ConfigurableTypeSettings({
       notify.success("Erfolg", { description: `${entityName} wurde erfolgreich aktualisiert.` 
 });
     } catch (error: unknown) {
+      setItems(previousItems);
       debugConsole.error(`Error updating ${entityName}:`, error);
-      notify.error("Fehler", { description: `${entityName} konnte nicht aktualisiert werden.`
-});
+      const message = error && typeof error === 'object' && 'message' in error
+        ? String((error as { message: unknown }).message)
+        : `${entityName} konnte nicht aktualisiert werden.`;
+      notify.error("Fehler", { description: message });
     }
   };
 

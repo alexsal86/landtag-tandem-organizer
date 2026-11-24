@@ -17473,6 +17473,19 @@ export type Database = {
         Args: { _id: string; _table: string }
         Returns: Json
       }
+      config_item_name: { Args: { _label: string }; Returns: string }
+      rename_config_item: {
+        Args: {
+          _color?: string | null
+          _icon?: string | null
+          _id: string
+          _label: string
+          _set_color?: boolean
+          _set_icon?: boolean
+          _table: string
+        }
+        Returns: Json
+      }
       complete_appointment_briefing: {
         Args: { _appointment_id: string }
         Returns: undefined
