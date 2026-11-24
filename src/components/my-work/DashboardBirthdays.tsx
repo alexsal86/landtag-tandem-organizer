@@ -118,7 +118,7 @@ export function DashboardBirthdays({ allDayAppointments = [], includeBirthdays =
           {(planning.isError || planning.isPending || (action?.action && birthdayActionLabel(action.action))) && <p className="text-caption text-muted-foreground">{planning.isError ? 'Jour-fixe-Planung konnte nicht geladen werden' : planning.isPending ? 'Jour-fixe-Planung wird geladen…' : action?.action && birthdayActionLabel(action.action)
             ? `${birthdayActionLabel(action.action)} vorgesehen${action.assigned_to?.length ? ' · zugewiesen' : ' · noch niemandem zugewiesen'}` : null}</p>}
         </div>
-        <div className="ml-auto flex shrink-0 flex-col items-end gap-2">
+        <div className="ml-auto flex shrink-0 flex-col items-end gap-2 self-center">
           {requested ? <span role="status" className="inline-flex items-center rounded-full bg-[#eaf5df] px-3 py-1 text-caption font-medium text-[#397d16]">Büro kümmert sich ✓</span> :
             <DropdownMenu>
               <DropdownMenuTrigger asChild>

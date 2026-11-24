@@ -35,15 +35,18 @@ const PROMPT_COLOR_CLASS: Record<string, string> = {
   default: 'border-border bg-muted/40',
 };
 
+// Textfarbe jeweils als dunkle Variante der Chip-Farbe, damit "Büro: …" auf dem
+// hellen Chip lesbar bleibt. Für Grün gilt das schon im Geburtstags-Chip genutzte
+// Dunkelgrün, die übrigen Töne entsprechen den 700er-Stufen derselben Hues.
 const RECOMMENDATION_COLOR_CLASS: Record<string, { background: string; text: string }> = {
-  green: { background: 'bg-[#eaf5df]', text: 'text-[#55ad21]' },
-  red: { background: 'bg-palette-red/10', text: 'text-palette-red' },
-  orange: { background: 'bg-palette-orange/10', text: 'text-palette-orange' },
-  yellow: { background: 'bg-palette-yellow/10', text: 'text-palette-yellow' },
-  blue: { background: 'bg-palette-blue/10', text: 'text-palette-blue' },
-  purple: { background: 'bg-palette-purple/10', text: 'text-palette-purple' },
-  lime: { background: 'bg-palette-lime/10', text: 'text-palette-lime' },
-  gray: { background: 'bg-palette-gray/10', text: 'text-palette-gray' },
+  green: { background: 'bg-[#eaf5df]', text: 'text-[#397d16]' },
+  red: { background: 'bg-palette-red/10', text: 'text-[#b91c1c]' },
+  orange: { background: 'bg-palette-orange/10', text: 'text-[#c2410c]' },
+  yellow: { background: 'bg-palette-yellow/10', text: 'text-[#a16207]' },
+  blue: { background: 'bg-palette-blue/10', text: 'text-[#1d4ed8]' },
+  purple: { background: 'bg-palette-purple/10', text: 'text-[#7e22ce]' },
+  lime: { background: 'bg-palette-lime/10', text: 'text-[#4d7c0f]' },
+  gray: { background: 'bg-palette-gray/10', text: 'text-[#374151]' },
 };
 
 interface DecisionRowProps {
@@ -161,7 +164,7 @@ function DecisionRow({ decision, expanded, onToggle, nudge, onDismissConfirmed, 
           <span className="block break-words text-body-lg font-medium">{decision.title}</span>
           {label && <span className={`mt-1 block text-meta ${isOverdue ? "text-destructive" : "text-muted-foreground"}`}>{label}</span>}
         </span>
-        {recommendation && <span className={`ml-auto max-w-[45%] shrink-0 rounded-full px-2.5 py-1 text-caption font-medium ${recommendationColor.background} ${recommendation.color === 'green' ? 'text-foreground' : recommendationColor.text}`}>
+        {recommendation && <span className={`ml-auto max-w-[45%] shrink-0 rounded-full px-2.5 py-1 text-caption font-medium ${recommendationColor.background} ${recommendationColor.text}`}>
           Büro: {recommendation.label}
         </span>}
         <ChevronRight className={cn("mt-1 h-4 w-4 shrink-0 transition-transform duration-500 motion-reduce:transition-none", expanded && "rotate-90")} aria-hidden="true" />
