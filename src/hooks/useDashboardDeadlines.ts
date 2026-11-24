@@ -59,15 +59,20 @@ const fetchDeadlineItems = async (userId: string, tenantId?: string): Promise<De
           .is('archived_at', null)
           .not('response_deadline', 'is', null)
       : Promise.resolve({ data: [] }),
-    supabase
-      .from('event_planning_timeline_assignments')
-      .select(`
-        id,
-        due_date,
-        event_planning_id,
-        event_plannings (id, title, user_id, is_archived, is_completed),
-        event_planning_checklist_items (id, title, is_completed)
-      `),
+    // event_plannings.tenant_id ist nullable: Planungen ohne Büro werden bewusst
+    // nicht gezeigt, weil sie sich keinem Büro zuordnen lassen (eq schließt NULL aus).
+    tenantId
+      ? supabase
+          .from('event_planning_timeline_assignments')
+          .select(`
+            id,
+            due_date,
+            event_planning_id,
+            event_plannings!inner (id, title, user_id, is_archived, is_completed),
+            event_planning_checklist_items (id, title, is_completed)
+          `)
+          .eq('event_plannings.tenant_id', tenantId)
+      : Promise.resolve({ data: [] }),
     tenantId
       ? supabase.from('case_items').select('id, subject, next_action_label, next_action_due_at, next_action_assignee_id, owner_user_id, user_id')
           .eq('tenant_id', tenantId)
