@@ -67,6 +67,8 @@ const ACCUSATIVE: Record<string, { one: string; many: string }> = {
   tasks: { one: "1 Aufgabe", many: "Aufgaben" },
   todos: { one: "1 ToDo", many: "ToDos" },
   appointments: { one: "1 Termin", many: "Termine" },
+  automation_rules: { one: "1 Automatisierungsregel", many: "Automatisierungsregeln" },
+  workflow_definitions: { one: "1 Workflow", many: "Workflows" },
 };
 
 export interface ConfigRenameResult {
@@ -107,6 +109,20 @@ export function parseConfigRename(raw: unknown): ConfigRenameResult {
 
 export function unknownRename(): ConfigRenameResult {
   return { known: false, label: null, newName: null, total: 0, updated: [] };
+}
+
+/**
+ * Ergebnis eines abgelehnten Löschens. 55000 heißt: die Bestätigung passt nicht
+ * mehr zur aktuellen Zählung, also nicht löschen, sondern erneut prüfen lassen.
+ */
+export function configDeleteFailure(code: string | null | undefined, message: string): { stale: boolean; message: string } {
+  if (code === "55000") {
+    return {
+      stale: true,
+      message: "Die Verwendungen haben sich seit der Prüfung geändert. Bitte erneut prüfen.",
+    };
+  }
+  return { stale: false, message };
 }
 
 export function summarizeConfigRename(result: ConfigRenameResult): string {

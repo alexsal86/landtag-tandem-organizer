@@ -20,6 +20,12 @@ const ts1 = 'e0000000-0000-4000-8000-000000000001';
 const ac1 = 'f0000000-0000-4000-8000-000000000001';
 const al1 = 'f0000000-0000-4000-8000-000000000002';
 const tdc1 = '07000000-0000-4000-8000-000000000001';
+const ts2 = 'e0000000-0000-4000-8000-000000000002';
+const tc2 = 'd0000000-0000-4000-8000-000000000002';
+const r1 = '90000000-0000-4000-8000-000000000001';
+const r2 = '90000000-0000-4000-8000-000000000002';
+const r3 = '90000000-0000-4000-8000-000000000003';
+const w1 = '91000000-0000-4000-8000-000000000001';
 
 const migration = (name) => readFile(new URL(`../supabase/migrations/${name}`, import.meta.url), 'utf8');
 const actor = async (id) => {
@@ -65,12 +71,15 @@ try {
     CREATE TABLE tasks(id uuid PRIMARY KEY, tenant_id uuid, category text, status text);
     CREATE TABLE appointments(id uuid PRIMARY KEY, tenant_id uuid, category text, status text, location text);
     CREATE TABLE todos(id uuid PRIMARY KEY, tenant_id uuid, category_id uuid);
+    CREATE TABLE automation_rules(id uuid PRIMARY KEY, tenant_id uuid, module text, name text, trigger_config jsonb, conditions jsonb, actions jsonb);
+    CREATE TABLE workflow_definitions(id uuid PRIMARY KEY, tenant_id uuid, name text, trigger_config jsonb, conditions jsonb, actions jsonb);
     GRANT USAGE ON SCHEMA public, auth TO authenticated;
     GRANT SELECT, INSERT, UPDATE, DELETE ON ALL TABLES IN SCHEMA public TO authenticated;
   `);
 
   await db.exec(await migration('20261124230000_config_delete_impact.sql'));
   await db.exec(await migration('20261124240000_config_rename_cascade.sql'));
+  await db.exec(await migration('20261124300000_config_rename_automation_refs.sql'));
 
   await db.exec(`
     INSERT INTO user_tenant_memberships(user_id,tenant_id,role,is_active) VALUES
@@ -186,6 +195,68 @@ try {
   const todos = await rename('todo_categories', tdc1, 'Ideen');
   assert.equal(todos.new_name, 'ideen');
   assert.equal((await q('SELECT category_id FROM todos WHERE id=$1', ['50000000-0000-4000-8000-000000000001']))[0].category_id, tdc1);
+
+  // 11. Automatisierung: Statuswerte in Regeln aller Büros werden mitgezogen;
+  //     fremde Module und Status auf anderen Tabellen bleiben unangetastet.
+  await owner();
+  await db.exec(`
+    INSERT INTO task_statuses(id,name,label) VALUES('${ts2}','in_arbeit','In Arbeit');
+    INSERT INTO task_categories(id,tenant_id,name,label) VALUES('${tc2}','${a}','presse','Presse');
+    INSERT INTO automation_rules(id,tenant_id,module,name,trigger_config,conditions,actions) VALUES
+      ('${r1}','${a}','tasks','Statusregel',
+       '{"field":"status","value":"in_arbeit"}',
+       '{"all":[{"field":"status","operator":"equals","value":"in_arbeit"},{"field":"priority","operator":"equals","value":"in_arbeit"}]}',
+       '[{"type":"create_task","payload":{"table":"tasks","category":"presse","status":"in_arbeit"}},{"type":"update_record_status","payload":{"table":"decisions","status":"in_arbeit"}}]'),
+      ('${r2}','${b}','tasks','Statusregel anderes Büro','{"field":"status","value":"in_arbeit"}','{"all":[{"field":"status","operator":"equals","value":"in_arbeit"}]}','[]'),
+      ('${r3}','${a}','contacts','Kontaktregel','{}','{"all":[{"field":"status","operator":"equals","value":"in_arbeit"}]}','[]');
+    INSERT INTO workflow_definitions(id,tenant_id,name,trigger_config,conditions,actions) VALUES
+      ('${w1}','${a}','Workflow','{"field":"category","value":"presse"}','[{"field":"category","op":"equals","value":"presse"}]','[{"type":"create_task","config":{"category":"presse"}}]');
+  `);
+
+  await actor(platform);
+  const statusRename2 = await rename('task_statuses', ts2, 'In Arbeit neu');
+  assert.equal(statusRename2.new_name, 'in_arbeit_neu');
+  assert.deepEqual(
+    statusRename2.updated.find((entry) => entry.key === 'automation_rules'),
+    { key: 'automation_rules', label: 'Automatisierungsregel', count: 2 },
+    'Regeln beider Büros werden ausgewiesen',
+  );
+  const ruleA = (await q('SELECT conditions, trigger_config, actions FROM automation_rules WHERE id=$1', [r1]))[0];
+  assert.equal(ruleA.conditions.all[0].value, 'in_arbeit_neu');
+  assert.equal(ruleA.conditions.all[1].value, 'in_arbeit', 'Anderes Feld bleibt unverändert');
+  assert.equal(ruleA.trigger_config.value, 'in_arbeit_neu');
+  assert.equal(ruleA.actions[0].payload.status, 'in_arbeit_neu');
+  assert.equal(ruleA.actions[1].payload.status, 'in_arbeit', 'Status auf decisions wandert nicht mit');
+  assert.equal(
+    (await q('SELECT conditions FROM automation_rules WHERE id=$1', [r2]))[0].conditions.all[0].value,
+    'in_arbeit_neu',
+    'Plattformweiter Status gilt in allen Büros',
+  );
+  assert.equal(
+    (await q('SELECT conditions FROM automation_rules WHERE id=$1', [r3]))[0].conditions.all[0].value,
+    'in_arbeit',
+    'Kontaktregel bleibt unangetastet',
+  );
+
+  // 12. Kategoriewerte in Regeln und Workflows werden fortgeschrieben und ausgewiesen.
+  await actor(admin);
+  const categoryRename = await rename('task_categories', tc2, 'Presse & Medien');
+  assert.equal(categoryRename.new_name, 'presse_&_medien');
+  assert.deepEqual(
+    categoryRename.updated.find((entry) => entry.key === 'automation_rules'),
+    { key: 'automation_rules', label: 'Automatisierungsregel', count: 1 },
+  );
+  assert.deepEqual(
+    categoryRename.updated.find((entry) => entry.key === 'workflow_definitions'),
+    { key: 'workflow_definitions', label: 'Workflow', count: 1 },
+  );
+  const ruleAfterCategory = (await q('SELECT actions FROM automation_rules WHERE id=$1', [r1]))[0];
+  assert.equal(ruleAfterCategory.actions[0].payload.category, 'presse_&_medien');
+  assert.equal(ruleAfterCategory.actions[0].payload.status, 'in_arbeit_neu');
+  const workflow = (await q('SELECT conditions, trigger_config, actions FROM workflow_definitions WHERE id=$1', [w1]))[0];
+  assert.equal(workflow.conditions[0].value, 'presse_&_medien');
+  assert.equal(workflow.trigger_config.value, 'presse_&_medien');
+  assert.equal(workflow.actions[0].config.category, 'presse_&_medien');
 
   await owner();
   console.log('Config rename passed: references migrated per office, arrays deduplicated, collisions and ambiguous names refused, platform scope respected.');

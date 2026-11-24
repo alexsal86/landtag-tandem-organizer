@@ -7,28 +7,33 @@ import {
 } from "@/components/ui/alert-dialog";
 import { Skeleton } from "@/components/ui/skeleton";
 import { Trash2 } from "lucide-react";
-import { parseConfigImpact, summarizeConfigImpact, unknownImpact, type ConfigImpact } from "./configImpact";
+import {
+  configDeleteFailure, parseConfigImpact, summarizeConfigImpact, unknownImpact, type ConfigImpact,
+} from "./configImpact";
 
 interface ConfigDeleteDialogProps {
   tableName: string;
   item: { id: string; label: string | null; is_active: boolean | null };
   entityName: string;
   deleteWarning?: string;
-  onDelete: (id: string) => Promise<void> | void;
+  onDeleted: (id: string) => Promise<void> | void;
   onDeactivate: (id: string) => Promise<void> | void;
 }
 
 /**
  * Löschbestätigung mit Folgenabschätzung: zählt vor dem Löschen, wie viele
  * Datensätze den Eintrag verwenden, und bietet das Deaktivieren als sichere
- * Alternative an. Ohne belastbare Auskunft ist das Löschen gesperrt.
+ * Alternative an. Gelöscht wird über delete_config_item, das erneut zählt und
+ * die hier angezeigte Zahl als Bestätigung verlangt; ohne belastbare Auskunft
+ * ist das Löschen gesperrt.
  */
 export function ConfigDeleteDialog({
-  tableName, item, entityName, deleteWarning, onDelete, onDeactivate,
+  tableName, item, entityName, deleteWarning, onDeleted, onDeactivate,
 }: ConfigDeleteDialogProps) {
   const [open, setOpen] = useState(false);
   const [impact, setImpact] = useState<ConfigImpact | null>(null);
   const [error, setError] = useState<string | null>(null);
+  const [deleteError, setDeleteError] = useState<string | null>(null);
   const [busy, setBusy] = useState(false);
   const [reloadKey, setReloadKey] = useState(0);
 
@@ -37,6 +42,7 @@ export function ConfigDeleteDialog({
     let cancelled = false;
     setImpact(null);
     setError(null);
+    setDeleteError(null);
     void supabase.rpc("config_delete_impact", { _table: tableName, _id: item.id }).then(({ data, error: rpcError }) => {
       if (cancelled) return;
       if (rpcError) {
@@ -60,9 +66,21 @@ export function ConfigDeleteDialog({
   };
 
   const handleDelete = async () => {
+    if (!impact?.known) return;
     setBusy(true);
+    setDeleteError(null);
     try {
-      await onDelete(item.id);
+      const { error: rpcError } = await supabase.rpc("delete_config_item", {
+        _table: tableName,
+        _id: item.id,
+        _expected_refs: impact.total,
+      });
+      if (rpcError) {
+        // Die Datenbank hat die Zahl erneut geprüft; eine Abweichung heißt: neu prüfen.
+        setDeleteError(configDeleteFailure(rpcError.code, rpcError.message).message);
+        return;
+      }
+      await onDeleted(item.id);
       setOpen(false);
     } finally {
       setBusy(false);
@@ -142,6 +160,16 @@ export function ConfigDeleteDialog({
           )
         )}
 
+        {deleteError && (
+          <div className="space-y-2 rounded-md border border-destructive/40 bg-destructive/5 p-3 text-sm" role="alert">
+            <p className="font-medium">Nicht gelöscht.</p>
+            <p className="text-muted-foreground">{deleteError}</p>
+            <Button type="button" size="sm" variant="outline" onClick={() => setReloadKey((key) => key + 1)}>
+              Erneut prüfen
+            </Button>
+          </div>
+        )}
+
         <AlertDialogFooter className="gap-2">
           <AlertDialogCancel disabled={busy}>Abbrechen</AlertDialogCancel>
           {item.is_active !== false && (
@@ -152,7 +180,7 @@ export function ConfigDeleteDialog({
           <Button
             type="button"
             variant="destructive"
-            disabled={busy || !assessed}
+            disabled={busy || !assessed || Boolean(deleteError)}
             onClick={() => void handleDelete()}
           >
             {referenced ? "Trotzdem löschen" : "Löschen"}

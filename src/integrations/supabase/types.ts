@@ -17524,6 +17524,10 @@ export type Database = {
         Returns: Json
       }
       config_item_name: { Args: { _label: string }; Returns: string }
+      delete_config_item: {
+        Args: { _expected_refs: number; _id: string; _table: string }
+        Returns: Json
+      }
       rename_config_item: {
         Args: {
           _color?: string | null

@@ -250,19 +250,11 @@ export function ConfigurableTypeSettings({
     }
   };
 
-  const handleDelete = async (id: string) => {
-    try {
-      const { error } = await supabase.from(tableName).delete().eq('id', id);
-      if (error) throw error;
-
-      await loadItems();
-      notify.success("Erfolg", { description: `${entityName} wurde erfolgreich gelöscht.` 
-});
-    } catch (error: unknown) {
-      debugConsole.error(`Error deleting ${entityName}:`, error);
-      notify.error("Fehler", { description: `${entityName} konnte nicht gelöscht werden.`
-});
-    }
+  // Gelöscht wird ausschließlich über delete_config_item (Dialog mit Folgenabschätzung);
+  // ein direktes DELETE auf die Tabelle weist der Guard-Trigger ab.
+  const handleDeleted = async () => {
+    await loadItems();
+    notify.success("Erfolg", { description: `${entityName} wurde erfolgreich gelöscht.` });
   };
 
   const deactivateItem = async (id: string) => {
@@ -542,7 +534,7 @@ export function ConfigurableTypeSettings({
                                       item={item}
                                       entityName={entityName}
                                       deleteWarning={deleteWarning}
-                                      onDelete={handleDelete}
+                                      onDeleted={handleDeleted}
                                       onDeactivate={deactivateItem}
                                     />
                                   </>

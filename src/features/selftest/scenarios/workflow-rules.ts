@@ -22,7 +22,7 @@ import type { TestScenario } from "../types";
 import { calendarOccurrence, nextCalendarOccurrence, scheduleRunKey } from "@/features/automation/calendarSchedule";
 import { ACTION_MODULE } from "@/features/permissions/catalog";
 import { buildPermissionDiff, diffSimulation, parsePermissionExplanation } from "@/features/permissions/explain";
-import { parseConfigImpact, parseConfigRename, summarizeConfigImpact, summarizeConfigRename } from "@/features/admin/configImpact";
+import { configDeleteFailure, parseConfigImpact, parseConfigRename, summarizeConfigImpact, summarizeConfigRename } from "@/features/admin/configImpact";
 import { calculateWeeklyTarget, isBadenWuerttembergHoliday, isDefaultWorkdays } from "@/features/timetracking/weeklyTarget";
 import { checkArbzgDay, elapsedWorkedMinutes, requiredBreakMinutes, requiredPauseForSpan, summarizeArbzgDay } from "@/features/timetracking/arbzg";
 
@@ -453,20 +453,36 @@ export const workflowRulesScenario: TestScenario = {
       id: "config-rename-cascade", label: "Konfiguration: Umbenennen zieht Verweise mit und lehnt Mehrdeutigkeit ab", kind: "logic",
       run: async () => {
         const renamed = parseConfigRename({
-          total: 3,
+          total: 6,
           updated: [
             { key: "documents", label: "Dokument", count: 1 },
             { key: "appointments", label: "Termin", count: 2 },
+            { key: "automation_rules", label: "Automatisierungsregel", count: 3 },
           ],
         });
         const untouched = parseConfigRename({ total: 0, updated: [] });
         const unreadable = parseConfigRename({ total: 1 });
         const checks = {
-          summaryNamesUpdatedRows: summarizeConfigRename(renamed) === "Verweise aktualisiert: 1 Dokument, 2 Termine.",
+          summaryNamesUpdatedRows: summarizeConfigRename(renamed) === "Verweise aktualisiert: 1 Dokument, 2 Termine, 3 Automatisierungsregeln.",
+          summaryNamesWorkflows: summarizeConfigRename(parseConfigRename({ total: 1, updated: [{ key: "workflow_definitions", label: "Workflow", count: 1 }] })) === "Verweise aktualisiert: 1 Workflow.",
           untouchedClear: summarizeConfigRename(untouched) === "Keine Verweise mussten angepasst werden.",
           unreadableTolerated: !unreadable.known,
         };
         return { ok: Object.values(checks).every(Boolean), message: "Umbenennen meldet mitgezogene Verweise; die Datenbank lehnt mehrdeutige Altnamen und Kollisionen ab.", details: checks };
+      },
+    },
+    {
+      id: "config-delete-guard", label: "Konfiguration: Löschen verlangt eine frische, bestätigte Zählung", kind: "logic",
+      run: async () => {
+        const stale = configDeleteFailure("55000", "raw");
+        const denied = configDeleteFailure("42501", "Keine Berechtigung");
+        const offline = configDeleteFailure(undefined, "Netzwerkfehler");
+        const checks = {
+          staleAsksAgain: stale.stale && stale.message.includes("erneut prüfen"),
+          permissionStaysFailure: !denied.stale && denied.message === "Keine Berechtigung",
+          missingCodeIsFailure: !offline.stale && offline.message === "Netzwerkfehler",
+        };
+        return { ok: Object.values(checks).every(Boolean), message: "Löschen läuft über delete_config_item; eine abweichende Zählung wird abgelehnt und verlangt eine erneute Prüfung, ein direkter DELETE blockt der Trigger.", details: checks };
       },
     },
     {
