@@ -83,7 +83,10 @@ describe("SystemPulse: selftest_runs", () => {
       {
         scenario_id: "jour-fixe-platform-integration", scenario_title: "Jour fixe (Plattform)", status: "failed", created_at: ago(7_200_000),
         duration_ms: 987, failed_steps: 1, total_steps: 10, keep_data: false, cleanup: { status: "ok" },
-        steps: [{ id: "agenda-combine", label: "Agenda: Hauptpunkt verschieben", status: "failed", message: "Agenda konnte nicht verschoben werden.", durationMs: 35 }],
+        steps: [{
+          id: "agenda-combine", label: "Agenda: Hauptpunkt verschieben", status: "failed", message: "Agenda konnte nicht verschoben werden.", durationMs: 35,
+          details: { step: { id: "agenda-combine", label: "Agenda: Hauptpunkt verschieben" }, error: { code: "42501", details: "policy meeting_agenda_update" } },
+        }],
       },
     ];
     const history = [
@@ -134,6 +137,10 @@ describe("SystemPulse: selftest_runs", () => {
     expect(stepNodes.length).toBeGreaterThan(1);
     fireEvent.click(screen.getByRole("checkbox", { name: /Nur fehlgeschlagene Schritte/ }));
     expect(screen.getAllByTestId("pulse-step")).toHaveLength(1);
+
+    const diagnostic = within(screen.getAllByTestId("pulse-step")[0]).getByTestId("pulse-step-diagnostic");
+    expect(diagnostic).toHaveTextContent("Code 42501");
+    expect(diagnostic).toHaveTextContent("policy meeting_agenda_update");
 
     const failedStep = screen.getByRole("button", { name: /Agenda: Hauptpunkt.*fehlgeschlagen/ });
     fireEvent.click(failedStep);

@@ -11,6 +11,7 @@ import { useAuth } from "@/hooks/useAuth";
 import { useTenant } from "@/hooks/useTenant";
 import { supabase } from "@/integrations/supabase/client";
 import { featureCatalogHref } from "@/features/feature-catalog/securityLinks";
+import { stepDiagnostic } from "@/features/selftest/stepDiagnostics";
 import {
   PULSE_AREAS, PULSE_GROUPS, areaAssessment, assessRun, consecutiveFailures, durationTrend,
   gapSummary, historyByScenario, latestRunDetails, latestRuns, latestRunSteps, mergeRuns,
@@ -501,6 +502,17 @@ export function SystemPulse({ gaps, gapsState }: Props) {
                                   {step.label}
                                 </span>
                               )}
+                              {(() => {
+                                const diagnostic = result ? stepDiagnostic(result) : null;
+                                if (!diagnostic || (!diagnostic.code && !diagnostic.summary)) return null;
+                                return (
+                                  <div data-testid="pulse-step-diagnostic" className="mt-0.5 break-words text-[10px] leading-snug text-destructive">
+                                    {diagnostic.code ? <span className="font-mono">Code {diagnostic.code}</span> : null}
+                                    {diagnostic.code && diagnostic.summary ? " · " : ""}
+                                    {diagnostic.summary}
+                                  </div>
+                                );
+                              })()}
                               {result?.durationMs !== undefined && (
                                 <div className="mt-1 text-[10px] tabular-nums text-muted-foreground">{formatDuration(result.durationMs)}</div>
                               )}

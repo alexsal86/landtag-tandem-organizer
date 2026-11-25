@@ -129,6 +129,13 @@ describe("latestRunSteps", () => {
       s2: {},
     });
   });
+  it("behält Fehlerdetails für die Anzeige des Prüfpunkts", () => {
+    const steps = latestRunSteps([{
+      scenario_id: "s1", status: "failed", created_at: "2026-11-22T10:00:00Z",
+      steps: [{ id: "check", label: "Prüfen", status: "failed", details: { error: { code: "42501", details: "policy tasks_update" } } }],
+    }]);
+    expect(steps.s1.check.details).toEqual({ error: { code: "42501", details: "policy tasks_update" } });
+  });
   it("ignoriert unbrauchbare Schritt-Einträge", () => {
     expect(latestRunSteps([
       { scenario_id: "s1", status: "ok", created_at: "2026-11-20T10:00:00Z", steps: [null, "x", { id: 1 }, { id: "ok", status: "ok" }] },

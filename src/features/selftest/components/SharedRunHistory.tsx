@@ -1,5 +1,6 @@
 import { useEffect, useState } from "react";
 import { compareRuns, loadHistory, type HistoryRun } from "../history";
+import { stepDiagnostic } from "../stepDiagnostics";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 
 export function SharedRunHistory({ tenantId, refreshKey }: { tenantId: string; refreshKey: string }) {
@@ -16,7 +17,15 @@ export function SharedRunHistory({ tenantId, refreshKey }: { tenantId: string; r
       const previous = history.find(r => r.scenario_id === run.scenario_id && r.created_at < run.created_at);
       const diff = previous ? compareRuns(previous.steps, run.steps) : null;
       return <details key={run.id}><summary className="cursor-pointer">{run.scenario_title} · {run.status} · {new Date(run.created_at).toLocaleString("de-DE")}{diff ? ` · ${diff.fixed.length} behoben / ${diff.broken.length} neue Fehler` : ""}</summary>
-        <ul>{run.steps.map(step => <li key={step.id} className="py-1">{step.label}: {step.status} {step.message}{step.details !== undefined && <pre className="whitespace-pre-wrap break-all text-xs">{JSON.stringify(step.details, null, 2)}</pre>}</li>)}</ul>
+        <ul>{run.steps.map(step => {
+          const diagnostic = stepDiagnostic(step);
+          return <li key={step.id} className="py-1">{step.label}: {step.status}
+            {diagnostic
+              ? <>{diagnostic.code ? ` · Code ${diagnostic.code}` : ""}{diagnostic.summary ? ` · ${diagnostic.summary}` : ""}</>
+              : step.message ? ` ${step.message}` : ""}
+            {step.details !== undefined && <pre className="whitespace-pre-wrap break-all text-xs">{JSON.stringify(step.details, null, 2)}</pre>}
+          </li>;
+        })}</ul>
       </details>;
     })}
   </CardContent></Card>;

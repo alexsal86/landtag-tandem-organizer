@@ -146,7 +146,7 @@ export interface PersistedRun {
   cleanup?: { status?: string; message?: string } | null;
   steps?: unknown;
 }
-export interface PersistedStep { id: string; label?: string; status: string; message?: string; durationMs?: number }
+export interface PersistedStep { id: string; label?: string; status: string; message?: string; durationMs?: number; details?: unknown }
 
 export interface RunDetails {
   status: string;
@@ -231,6 +231,7 @@ export function latestRunSteps(rows: PersistedRun[]): Record<string, Record<stri
         status: step.status,
         message: typeof step.message === "string" ? step.message : undefined,
         durationMs: typeof step.durationMs === "number" ? step.durationMs : undefined,
+        ...(step.details !== undefined ? { details: step.details } : {}),
       };
     }
     result[scenarioId] = steps;
