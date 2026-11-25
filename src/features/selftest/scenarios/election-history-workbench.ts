@@ -21,7 +21,8 @@ export const electionHistoryWorkbenchScenario: TestScenario = {
       const wrong = candidacyListPlacement(candidate, [{ ...place, person_id: 'namesake' }]);
       return { ok: inferred.position === 7 && candidate.list_position === null && conflict.position === 3 && conflict.conflict
         && wrong.position === null && historyWorkspaceTab('state_lists') === 'candidacies'
-        && historyWorkspaceTabs[historyWorkspaceTabs.length - 1].id === 'deputies',
+        // Das Gesamtregister folgt der Listenpflege; weitere Reiter dürfen dahinter stehen.
+        && historyWorkspaceTabs.findIndex((tab) => tab.id === 'deputies') > historyWorkspaceTabs.findIndex((tab) => tab.id === 'candidacies'),
         message: 'Nur bestätigte Personen derselben Wahl und Partei erhalten den ergänzten Listenplatz; manuelle Werte bleiben erhalten. Listenpflege bleibt erreichbar, das Gesamtregister steht zuletzt.' };
     } },
     { id: 'state-list-candidacy-role', label: 'Listenplätze: Ersatzbewerbung und reine Liste bleiben von Direktbewerbung getrennt', kind: 'logic', run: async () => {

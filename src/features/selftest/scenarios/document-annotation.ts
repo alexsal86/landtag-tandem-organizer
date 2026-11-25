@@ -35,7 +35,8 @@ export const documentAnnotationScenario: TestScenario = {
     { id: 'ocr-export-version-history', label: 'OCR-Bruchteile, PDF-Exportkoordinaten, Textanker und Verlauf', kind: 'logic', run: async () => {
       const word=ocrWord('Text',{x0:100,y0:200,x1:300,y1:240},1000,1000,95);
       const point=exportPoint({x:.2,y:.3},600,800),rect=exportRect({x:.1,y:.2,w:.3,h:.1},600,800);
-      return { ok: word?.rect.x === .1 && word.rect.h === .04 && word.confidence === 95
+      // Höhe entsteht als Differenz normierter Pixel (0.24 - 0.2), deshalb mit Toleranz vergleichen.
+      return { ok: word?.rect.x === .1 && Math.abs(word.rect.h - .04) < 1e-9 && word.confidence === 95
         && ocrWord('',{x0:0,y0:0,x1:1,y1:1},1,1,0) === null
         && point.x === 120 && point.y === 560 && rect.width === 180 && Math.abs(rect.y-560)<1e-8
         && !!uniqueTextAnchor('Der neue   Haushalt ist da','neue Haushalt')

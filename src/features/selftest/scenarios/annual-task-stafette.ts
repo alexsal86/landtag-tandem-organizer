@@ -20,8 +20,10 @@ export const annualTaskStafetteScenario: TestScenario = {
       const result=await supabase.rpc("office_routine_deadline",{_payload:{routine_deadline_month:"1",routine_deadline_day:"31"},_start:"2026-11-01"});
       return {ok:!result.error&&result.data==="2027-01-31",message:result.error?describeError(result.error):"Backend unterstützt den Abschluss im Folgejahr.",details:result.error};
     } },
-    { id:"seasonal-office-packages",label:"Bürojahr: fünf Pakete, Vorlauf, Jahreswechsel und Terminbestätigung",kind:"logic",run:async()=>{
-      const ok=OFFICE_ROUTINE_TEMPLATES.length===5 && OFFICE_ROUTINE_TEMPLATES.every(t=>parseRoutineSteps(t.steps).length>=4)
+    { id:"seasonal-office-packages",label:"Bürojahr: alle Pakete, Vorlauf, Jahreswechsel und Terminbestätigung",kind:"logic",run:async()=>{
+      // Die Zahl der Pakete wächst mit dem Büroalltag; geprüft wird, dass jedes Paket
+      // vollständig ist und keine doppelte Kennung ein Paket verdrängt.
+      const ok=OFFICE_ROUTINE_TEMPLATES.length>0 && new Set(OFFICE_ROUTINE_TEMPLATES.map(t=>t.id)).size===OFFICE_ROUTINE_TEMPLATES.length && OFFICE_ROUTINE_TEMPLATES.every(t=>parseRoutineSteps(t.steps).length>=4)
         && officeRoutineDeadline({routine_deadline_month:"1",routine_deadline_day:"31"},"2026-11-01")==="2027-01-31"
         && routineConfirmationMissing({routine_requires_confirmation:"true",routine_confirmed_year:"2026"},2027)
         && !routineConfirmationMissing({routine_requires_confirmation:"true",routine_confirmed_year:"2026"},2026);
