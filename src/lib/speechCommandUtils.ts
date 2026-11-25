@@ -181,6 +181,11 @@ export const formatDictatedText = (text: string): string => {
     formatted = formatted.replace(pattern, replacement);
   }
 
+  // Anführungszeichen ohne Leerzeichen setzen, bevor großgeschrieben wird: sonst
+  // steht zwischen „ und dem ersten Wort ein Leerzeichen und der Satzanfang
+  // bleibt klein („ ja“ statt „Ja“).
+  formatted = formatted.replace(/„[ \t]+/g, '„').replace(/[ \t]+“/g, '“');
+
   // Capitalize after sentence-ending punctuation (. ! ?) and after newlines
   const withSentenceCase = formatted
     .replace(/([.!?])\s*(\p{L})/gu, (_, punct: string, letter: string) => `${punct} ${letter.toUpperCase()}`)
