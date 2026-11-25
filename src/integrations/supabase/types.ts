@@ -1122,10 +1122,9 @@ export type Database = {
           contact_id: string | null
           coordinates: Json | null
           created_at: string
-          description: string | null
-          dashboard_focus: string | null
           dashboard_contribution: string | null
-          travel_minutes: number | null
+          dashboard_focus: string | null
+          description: string | null
           district_id: string | null
           end_time: string
           has_external_guests: boolean | null
@@ -1147,6 +1146,7 @@ export type Database = {
           status: string | null
           tenant_id: string
           title: string
+          travel_minutes: number | null
           updated_at: string
           user_id: string
         }
@@ -1164,10 +1164,9 @@ export type Database = {
           contact_id?: string | null
           coordinates?: Json | null
           created_at?: string
-          description?: string | null
-          dashboard_focus?: string | null
           dashboard_contribution?: string | null
-          travel_minutes?: number | null
+          dashboard_focus?: string | null
+          description?: string | null
           district_id?: string | null
           end_time: string
           has_external_guests?: boolean | null
@@ -1189,6 +1188,7 @@ export type Database = {
           status?: string | null
           tenant_id: string
           title: string
+          travel_minutes?: number | null
           updated_at?: string
           user_id: string
         }
@@ -1206,10 +1206,9 @@ export type Database = {
           contact_id?: string | null
           coordinates?: Json | null
           created_at?: string
-          description?: string | null
-          dashboard_focus?: string | null
           dashboard_contribution?: string | null
-          travel_minutes?: number | null
+          dashboard_focus?: string | null
+          description?: string | null
           district_id?: string | null
           end_time?: string
           has_external_guests?: boolean | null
@@ -1231,6 +1230,7 @@ export type Database = {
           status?: string | null
           tenant_id?: string
           title?: string
+          travel_minutes?: number | null
           updated_at?: string
           user_id?: string
         }
@@ -11084,6 +11084,7 @@ export type Database = {
       }
       meeting_agenda_items: {
         Row: {
+          actual_minutes: number
           assigned_to: string[] | null
           carried_over_from: string | null
           carry_over_to_next: boolean | null
@@ -11110,10 +11111,12 @@ export type Database = {
           source_meeting_id: string | null
           system_type: string | null
           task_id: string | null
+          timer_started_at: string | null
           title: string
           updated_at: string
         }
         Insert: {
+          actual_minutes?: number
           assigned_to?: string[] | null
           carried_over_from?: string | null
           carry_over_to_next?: boolean | null
@@ -11140,10 +11143,12 @@ export type Database = {
           source_meeting_id?: string | null
           system_type?: string | null
           task_id?: string | null
+          timer_started_at?: string | null
           title: string
           updated_at?: string
         }
         Update: {
+          actual_minutes?: number
           assigned_to?: string[] | null
           carried_over_from?: string | null
           carry_over_to_next?: boolean | null
@@ -11170,6 +11175,7 @@ export type Database = {
           source_meeting_id?: string | null
           system_type?: string | null
           task_id?: string | null
+          timer_started_at?: string | null
           title?: string
           updated_at?: string
         }
@@ -11379,6 +11385,7 @@ export type Database = {
           meeting_time: string | null
           parent_meeting_id: string | null
           recurrence_rule: Json | null
+          started_at: string | null
           status: string
           template_id: string | null
           tenant_id: string | null
@@ -11397,6 +11404,7 @@ export type Database = {
           meeting_time?: string | null
           parent_meeting_id?: string | null
           recurrence_rule?: Json | null
+          started_at?: string | null
           status?: string
           template_id?: string | null
           tenant_id?: string | null
@@ -11415,6 +11423,7 @@ export type Database = {
           meeting_time?: string | null
           parent_meeting_id?: string | null
           recurrence_rule?: Json | null
+          started_at?: string | null
           status?: string
           template_id?: string | null
           tenant_id?: string | null
@@ -11870,6 +11879,50 @@ export type Database = {
             columns: ["tenant_id"]
             isOneToOne: false
             referencedRelation: "tenants"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
+      office_debrief_state: {
+        Row: {
+          confirmed_at: string | null
+          due_on: string | null
+          entered_by: string | null
+          feedback_id: string
+          handled_at: string | null
+          promise: string | null
+          question: string | null
+          source: string | null
+          spoken_seconds: number | null
+        }
+        Insert: {
+          confirmed_at?: string | null
+          due_on?: string | null
+          entered_by?: string | null
+          feedback_id: string
+          handled_at?: string | null
+          promise?: string | null
+          question?: string | null
+          source?: string | null
+          spoken_seconds?: number | null
+        }
+        Update: {
+          confirmed_at?: string | null
+          due_on?: string | null
+          entered_by?: string | null
+          feedback_id?: string
+          handled_at?: string | null
+          promise?: string | null
+          question?: string | null
+          source?: string | null
+          spoken_seconds?: number | null
+        }
+        Relationships: [
+          {
+            foreignKeyName: "office_debrief_state_feedback_id_fkey"
+            columns: ["feedback_id"]
+            isOneToOne: true
+            referencedRelation: "appointment_feedback"
             referencedColumns: ["id"]
           },
         ]
@@ -12959,6 +13012,52 @@ export type Database = {
           },
         ]
       }
+      quick_note_topic_mention_deliveries: {
+        Row: {
+          note_id: string
+          notified_at: string
+          tenant_id: string
+          topic_id: string
+          user_id: string
+        }
+        Insert: {
+          note_id: string
+          notified_at?: string
+          tenant_id: string
+          topic_id: string
+          user_id: string
+        }
+        Update: {
+          note_id?: string
+          notified_at?: string
+          tenant_id?: string
+          topic_id?: string
+          user_id?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "quick_note_topic_mention_deliveries_note_id_fkey"
+            columns: ["note_id"]
+            isOneToOne: false
+            referencedRelation: "quick_notes"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "quick_note_topic_mention_deliveries_tenant_id_fkey"
+            columns: ["tenant_id"]
+            isOneToOne: false
+            referencedRelation: "tenants"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "quick_note_topic_mention_deliveries_topic_id_fkey"
+            columns: ["topic_id"]
+            isOneToOne: false
+            referencedRelation: "topics"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
       quick_note_versions: {
         Row: {
           content: string
@@ -13235,6 +13334,45 @@ export type Database = {
             referencedColumns: ["id"]
           },
         ]
+      }
+      rls_policy_snapshot_20261124: {
+        Row: {
+          captured_at: string
+          cmd: string
+          id: number
+          permissive: string
+          policy_name: unknown
+          qual: string | null
+          roles: unknown[]
+          schema_name: unknown
+          table_name: unknown
+          with_check: string | null
+        }
+        Insert: {
+          captured_at?: string
+          cmd: string
+          id?: never
+          permissive: string
+          policy_name: unknown
+          qual?: string | null
+          roles: unknown[]
+          schema_name: unknown
+          table_name: unknown
+          with_check?: string | null
+        }
+        Update: {
+          captured_at?: string
+          cmd?: string
+          id?: never
+          permissive?: string
+          policy_name?: unknown
+          qual?: string | null
+          roles?: unknown[]
+          schema_name?: unknown
+          table_name?: unknown
+          with_check?: string | null
+        }
+        Relationships: []
       }
       routine_package_runs: {
         Row: {
@@ -17595,18 +17733,6 @@ export type Database = {
       }
     }
     Functions: {
-      batch_task_stafette_action: {
-        Args: { _tenant_id: string; _task_ids: string[]; _action: string }
-        Returns: Json
-      }
-      batch_task_stafette_preview: {
-        Args: { _tenant_id: string; _task_ids: string[]; _action: string }
-        Returns: Json
-      }
-      undo_task_batch_action: {
-        Args: { _batch_id: string }
-        Returns: number
-      }
       _briefing_task_event: {
         Args: { _task: string; _text: string }
         Returns: undefined
@@ -17691,7 +17817,7 @@ export type Database = {
           has_using: boolean
           permissive: string
           policy_name: string
-          roles: string[]
+          roles: unknown[]
           table_name: string
         }[]
       }
@@ -17782,6 +17908,10 @@ export type Database = {
       }
       cleanup_bulk_action_audit: { Args: never; Returns: number }
       cleanup_edge_function_cache: { Args: never; Returns: number }
+      cleanup_stale_news_articles: {
+        Args: { retention_days?: number }
+        Returns: number
+      }
       cleanup_workflow_runs: { Args: never; Returns: number }
       complete_appointment_briefing: {
         Args: { _appointment_id: string }
@@ -17842,6 +17972,14 @@ export type Database = {
       confirm_employee_hr_gdpr: {
         Args: { p_step: string; p_version: string }
         Returns: undefined
+      }
+      confirm_event_planning_calendar_date: {
+        Args: {
+          _calendar_user?: string
+          _date_id: string
+          _planning_id: string
+        }
+        Returns: string
       }
       confirm_poll_winner: {
         Args: { _poll_id: string; _slot_id: string }
@@ -18029,10 +18167,6 @@ export type Database = {
         }
         Returns: string
       }
-      confirm_event_planning_calendar_date: {
-        Args: { _planning_id: string; _date_id: string; _calendar_user?: string }
-        Returns: string
-      }
       create_briefing_follow_up_task: {
         Args: {
           _appointment_id: string
@@ -18051,16 +18185,8 @@ export type Database = {
             Args: { planning_id: string; template_id_param?: string }
             Returns: undefined
           }
-      create_decision_task: {
-        Args: { p_decision_id: string }
-        Returns: string
-      }
       create_document_annotation_task: {
         Args: { _annotation: string; _assignee?: string; _title?: string }
-        Returns: string
-      }
-      create_note_work: {
-        Args: { p_note_id: string; p_kind: string }
         Returns: string
       }
       create_election_candidate_person: {
@@ -18188,6 +18314,14 @@ export type Database = {
       dispatch_employee_preparation_reminders: { Args: never; Returns: number }
       dispatch_office_feedback_reminders: { Args: never; Returns: undefined }
       dispatch_scheduled_emails_if_due: { Args: never; Returns: undefined }
+      dispatch_settled_topic_mentions: {
+        Args: { p_quiet_seconds?: number; p_window_hours?: number }
+        Returns: number
+      }
+      dispatch_topic_mentions_for_note: {
+        Args: { p_note_id: string }
+        Returns: number
+      }
       dispatch_workflow_trigger: {
         Args: {
           _entity_id: string
@@ -19281,6 +19415,10 @@ export type Database = {
         Args: { page_offset?: number; search_text?: string }
         Returns: Json
       }
+      list_office_debriefs: {
+        Args: { _deputy_view?: boolean; _tenant: string }
+        Returns: Json
+      }
       list_quick_notes: {
         Args: { p_note_id?: string; p_tenant_id: string }
         Returns: Json
@@ -19354,14 +19492,6 @@ export type Database = {
       next_recurrence_date: {
         Args: { _base: string; _rule: string }
         Returns: string
-      }
-      list_office_debriefs: {
-        Args: { _tenant: string; _deputy_view?: boolean }
-        Returns: Json
-      }
-      update_office_debrief: {
-        Args: { _tenant: string; _action: string; _id: string; _text?: string; _source?: string; _promise?: string; _due?: string; _seconds?: number; _external?: boolean }
-        Returns: undefined
       }
       nudge_dashboard_decision: {
         Args: { _decision_id: string; _note?: string }
@@ -19645,6 +19775,23 @@ export type Database = {
         }
       }
       resolve_history_faction: { Args: { value: string }; Returns: string }
+      respond_to_meeting_invitation: {
+        Args: { _meeting_id: string; _status: string }
+        Returns: {
+          created_at: string | null
+          id: string
+          meeting_id: string
+          role: string | null
+          status: string | null
+          user_id: string
+        }
+        SetofOptions: {
+          from: "*"
+          to: "meeting_participants"
+          isOneToOne: true
+          isSetofReturn: false
+        }
+      }
       run_data_lint: {
         Args: { _tenant_id: string }
         Returns: {
@@ -19881,6 +20028,10 @@ export type Database = {
       }
       sync_birthday_appointments: { Args: never; Returns: undefined }
       sync_existing_contact_tags: { Args: never; Returns: undefined }
+      sync_jour_fixe_agenda_timer: {
+        Args: { _item_id?: string; _meeting_id: string }
+        Returns: Json
+      }
       team_bingo_config: { Args: { p_tenant: string }; Returns: Json }
       team_ritual_employment: { Args: { p_tenant: string }; Returns: Json }
       team_ritual_enabled: { Args: { p_tenant: string }; Returns: boolean }
@@ -19901,6 +20052,7 @@ export type Database = {
           user_id: string
         }[]
       }
+      topic_mention_selftest: { Args: { p_tenant: string }; Returns: Json }
       topic_name_from_label: { Args: { p_label: string }; Returns: string }
       undo_contact_bulk_action: { Args: { _audit_id: string }; Returns: number }
       update_contact_usage: {
@@ -19909,6 +20061,20 @@ export type Database = {
       }
       update_meeting_protocol: {
         Args: { _action: string; _data?: Json; _meeting_id: string }
+        Returns: undefined
+      }
+      update_office_debrief: {
+        Args: {
+          _action: string
+          _due?: string
+          _external?: boolean
+          _id: string
+          _promise?: string
+          _seconds?: number
+          _source?: string
+          _tenant: string
+          _text?: string
+        }
         Returns: undefined
       }
       update_waiting_routine_steps: {
