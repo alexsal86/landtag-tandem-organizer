@@ -26,7 +26,7 @@ serve(withSafeHandler("auto-sync-calendars", async (req) => {
     // Get all tenants with sync settings enabled
     const { data: syncSettings, error: settingsError } = await supabase
       .from('calendar_sync_settings')
-      .select('*')
+      .select('id, tenant_id')
       .eq('is_enabled', true);
 
     if (settingsError) {

@@ -169,7 +169,7 @@ const handler = async (req: Request): Promise<Response> => {
     // Get appointment data
     const { data: appointment, error: appointmentError } = await supabase
       .from('appointments')
-      .select('*')
+      .select('id, tenant_id, user_id, title, description, location, meeting_link, start_time, end_time, calendar_uid, calendar_sequence, last_invitation_sequence')
       .eq('id', appointmentId)
       .eq('tenant_id', access.tenantId)
       .maybeSingle();
@@ -245,7 +245,7 @@ const handler = async (req: Request): Promise<Response> => {
     // Get guests to invite
     const { data: guests, error: guestsError } = await supabase
       .from('appointment_guests')
-      .select('*')
+      .select('id, email, name, status, invited_at, invitation_token')
       .eq('appointment_id', appointmentId)
       .order('name');
 

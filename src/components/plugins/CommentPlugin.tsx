@@ -349,7 +349,7 @@ export function CommentPlugin({ documentId }: { documentId?: string }) {
       // Get all comments (main comments and replies)
       const { data: commentsData, error: commentsError } = await supabase
         .from('letter_comments')
-        .select('*')
+        .select('id, user_id, content, text_position, text_length, parent_comment_id, resolved, created_at')
         .eq('letter_id', documentId)
         .order('created_at', { ascending: true });
 

@@ -109,7 +109,7 @@ Deno.serve(withSafeHandler("send-matrix-morning-greeting", async (req) => {
     // Get all users with enabled morning settings for this hour
     const { data: settings, error: settingsError } = await supabaseAdmin
       .from("matrix_morning_settings")
-      .select("*")
+      .select("user_id, send_time, include_greeting, include_weather, include_appointments")
       .eq("enabled", true);
 
     if (settingsError) {

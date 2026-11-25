@@ -119,7 +119,7 @@ Deno.serve(withSafeHandler("import-party-associations", async (req) => {
     // Load administrative boundaries for mapping
     const { data: boundaries, error: boundariesError } = await supabase
       .from('election_districts')
-      .select('*')
+      .select('district_name')
       .eq('district_type', 'kreis');
 
     if (boundariesError) {

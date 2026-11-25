@@ -108,7 +108,7 @@ Deno.serve(withSafeHandler("publish-to-ghost", async (req) => {
     // Load press release from DB
     const { data: pressRelease, error: prError } = await supabase
       .from('press_releases')
-      .select('*')
+      .select('id, title, tags, status, slug, meta_title, meta_description, feature_image_url, excerpt, content_html, content')
       .eq('id', pressReleaseId)
       .single();
 

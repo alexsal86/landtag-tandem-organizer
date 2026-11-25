@@ -15,7 +15,7 @@ serve(withSafeHandler("process-scheduled-emails", async (req) => {
     // Fetch scheduled emails that should be sent now
     const { data: scheduledEmails, error: fetchError } = await supabase
       .from("scheduled_emails")
-      .select("*")
+      .select("id, user_id, tenant_id, sender_id, subject, body_html, reply_to, recipients, cc, bcc, distribution_list_ids, contact_ids, document_ids")
       .eq("status", "scheduled")
       .lte("scheduled_for", new Date().toISOString())
       .limit(50);

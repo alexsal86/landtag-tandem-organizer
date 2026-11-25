@@ -31,7 +31,7 @@ serve(withSafeHandler("auto-archive-decisions", async (req) => {
     // 1. Hole alle Archivierungseinstellungen
     const { data: settings, error: settingsError } = await supabase
       .from('decision_archive_settings')
-      .select('*')
+      .select('id, user_id, tenant_id, auto_archive_days, auto_delete_after_days')
       .or('auto_archive_days.not.is.null,auto_delete_after_days.not.is.null');
 
     if (settingsError) {

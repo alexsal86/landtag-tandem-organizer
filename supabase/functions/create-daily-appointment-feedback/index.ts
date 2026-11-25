@@ -93,7 +93,7 @@ Deno.serve(withSafeHandler("create-daily-appointment-feedback", async (req) => {
         // Get user settings
         const { data: settings } = await supabase
           .from('appointment_feedback_settings')
-          .select('*')
+          .select('user_id, priority_categories, auto_skip_internal')
           .eq('user_id', appointment.user_id)
           .maybeSingle();
 
@@ -170,7 +170,7 @@ Deno.serve(withSafeHandler("create-daily-appointment-feedback", async (req) => {
         // Get user settings
         const { data: settings } = await supabase
           .from('appointment_feedback_settings')
-          .select('*')
+          .select('user_id, priority_categories, auto_skip_internal')
           .eq('user_id', userId)
           .maybeSingle();
 

@@ -37,7 +37,7 @@ Deno.serve(withSafeHandler("gdpr-process", async (req) => {
     // Load request
     const { data: request, error: reqErr } = await admin
       .from("gdpr_requests")
-      .select("*")
+      .select("id, tenant_id, request_type, status, subject_contact_id, subject_email, subject_name, requested_by, approved_by")
       .eq("id", body.request_id)
       .maybeSingle();
     if (reqErr || !request) return json({ error: "request not found" }, 404);

@@ -205,7 +205,7 @@ serve(withSafeHandler("fetch-rss-feeds", async (req) => {
 
     const { data: cachedData, error: cacheError } = await supabase
       .from('rss_cache')
-      .select('*')
+      .select('content, expires_at')
       .eq('cache_key', cacheKey)
       .gt('expires_at', new Date().toISOString())
       .maybeSingle();
@@ -233,7 +233,7 @@ serve(withSafeHandler("fetch-rss-feeds", async (req) => {
     // Load settings from database
     const { data: settings } = await supabase
       .from('rss_settings')
-      .select('*')
+      .select('articles_per_feed, total_articles_limit')
       .eq('tenant_id', tenant_id)
       .single();
 
@@ -243,7 +243,7 @@ serve(withSafeHandler("fetch-rss-feeds", async (req) => {
     // Load sources from database (only active)
     const { data: sources, error: sourcesError } = await supabase
       .from('rss_sources')
-      .select('*')
+      .select('id, name, url, category')
       .eq('tenant_id', tenant_id)
       .eq('is_active', true)
       .order('order_index');

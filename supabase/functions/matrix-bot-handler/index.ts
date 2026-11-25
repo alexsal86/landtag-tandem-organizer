@@ -162,7 +162,7 @@ async function resolveTargetedSubscriptions(
 
   let query = supabaseAdmin
     .from("matrix_subscriptions")
-    .select("*")
+    .select("id, user_id, room_id")
     .eq("is_active", true);
 
   if (body.user_id) {

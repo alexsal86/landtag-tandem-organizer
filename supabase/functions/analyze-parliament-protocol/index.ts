@@ -126,7 +126,7 @@ serve(withSafeHandler("analyze-parliament-protocol", async (req) => {
 
       const { data: protocol, error: protocolError } = await supabaseClient
         .from('parliament_protocols')
-        .select('*')
+        .select('file_path')
         .eq('id', protocolId)
         .single();
 

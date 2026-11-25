@@ -22,7 +22,7 @@ export function AnnotationAudit({
     queryFn: async ({ pageParam }) => {
       let query = supabase
         .from("document_annotation_events")
-        .select("*")
+        .select("id, annotation_id, thread_id, actor_id, event_type, before_data, after_data, created_at")
         .eq("document_id", documentId);
       if (threadId) query = query.eq("thread_id", threadId);
       const result = await query

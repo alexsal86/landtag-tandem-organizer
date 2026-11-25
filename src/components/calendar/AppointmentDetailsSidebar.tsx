@@ -110,7 +110,7 @@ export function AppointmentDetailsSidebar({
     try {
       const { data: guestsData, error } = await supabase
         .from('appointment_guests')
-        .select('*')
+        .select('id, name, email, status, responded_at, response_note')
         .eq('appointment_id', appointment.id)
         .order('name');
 

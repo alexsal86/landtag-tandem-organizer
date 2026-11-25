@@ -96,7 +96,7 @@ export function DecisionFileUpload({
     try {
       const { data, error } = await supabase
         .from('task_decision_attachments')
-        .select('*')
+        .select('id, file_name, file_path, file_size, file_type, email_metadata, uploaded_by, created_at')
         .eq('decision_id', decisionId!)
         .order('created_at', { ascending: false });
 

@@ -85,7 +85,7 @@ const handler = async (req: Request): Promise<Response> => {
 
     const { data: templates, error: templateError } = await supabase
       .from('decision_email_templates')
-      .select('*')
+      .select('id, subject, details_block_template, greeting, introduction, instruction, question_prompt, closing, signature')
       .eq('tenant_id', effectiveTenantId)
       .order('created_at', { ascending: false })
       .limit(1);

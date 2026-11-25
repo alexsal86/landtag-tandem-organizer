@@ -39,7 +39,7 @@ export function AppointmentPreparationFileUpload({
     try {
       const { data, error } = await supabase
         .from('appointment_preparation_documents')
-        .select('*')
+        .select('id, file_name, file_path, file_size, file_type')
         .eq('preparation_id', preparationId)
         .order('created_at', { ascending: false });
 

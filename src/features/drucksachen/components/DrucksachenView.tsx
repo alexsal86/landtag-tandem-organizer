@@ -43,7 +43,7 @@ export function DrucksachenView() {
     try {
       const { data, error } = await supabase
         .from('parliament_protocols')
-        .select('*')
+        .select('id, protocol_date, session_number, legislature_period, original_filename, processing_status, processing_error_message, created_at, file_size, structured_data')
         .eq('tenant_id', currentTenant.id)
         .order('protocol_date', { ascending: false });
 

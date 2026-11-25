@@ -45,7 +45,7 @@ export function ChecklistItemEmailDialog({
   const loadEmailAction = async () => {
     const { data, error } = await supabase
       .from("event_planning_item_actions")
-      .select("*")
+      .select("id, is_enabled, action_config")
       .eq("checklist_item_id", checklistItemId)
       .eq("action_type", "email")
       .maybeSingle();
