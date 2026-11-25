@@ -1,17 +1,19 @@
 import { DropdownMenu, DropdownMenuTrigger, DropdownMenuContent, DropdownMenuItem } from '@/components/ui/dropdown-menu';
 import { reconstructedGeometryAttribution } from '@/utils/electoralGeometryCatalog';
 import { HistoricalGeometryNotice } from '@/features/election-history/HistoricalGeometryNotice';
-import { usePeriodGeometry } from '@/features/election-history/usePeriodGeometry';
+import { prefetchPeriodGeometry, usePeriodGeometry } from '@/features/election-history/usePeriodGeometry';
 import { PeriodMembersOverview } from '@/features/election-history/PeriodMembersOverview';
-import { useElectionHistory, useElectionPeriods, historyError } from '@/features/election-history/useElectionHistory';
+import { useElectionHistory, useElectionPeriods, electionPeriodQueryKey, fetchElectionPeriod, ELECTION_PERIOD_STALE_TIME, historyError } from '@/features/election-history/useElectionHistory';
 import { confirmedPeriodGeometryYear } from '@/features/election-history/periodGeometry';
 import { projectHistoricalDistricts } from '@/features/election-history/mapProjection';
 import { DistrictElectionHistory } from '@/features/election-history/DistrictElectionHistory';
+import { useQueryClient } from '@tanstack/react-query';
+import { useAuth } from '@/hooks/useAuth';
 import React, { useCallback, useEffect, useMemo, useRef, useState } from "react";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Badge } from "@/components/ui/badge";
 import { Input } from "@/components/ui/input";
-import { boundaryAreaKm2, directMandateParty, partyColors, hasRenderableBoundary, searchElectionDistricts, electionDistrictNumberLabel } from "../mapModel";
+import { boundaryAreaKm2, directMandateParty, partyColors, hasRenderableBoundary, searchElectionDistricts, electionDistrictNumberLabel, timeTravelOrder, timeTravelPeriodAt } from "../mapModel";
 import { Button } from "@/components/ui/button";
 import { Users, BarChart3, ChevronDown, Download, Play, Printer, Share2, Square } from "lucide-react";
 import { useElectionDistricts } from "@/hooks/useElectionDistricts";
@@ -66,8 +68,12 @@ class ErrorBoundary extends React.Component<
   }
 }
 
+const REPLAY_INTERVAL_MS = 1800;
+
 export const ElectionDistrictsView = ({ sidebarHeader }: { sidebarHeader?: React.ReactNode }) => {
   const sidebarRef = useRef<HTMLDivElement>(null);
+  const queryClient = useQueryClient();
+  const { user } = useAuth();
   const [searchParams, setSearchParams] = useSearchParams();
   // The first render takes the whole map view from the URL; later edits write back.
   const [initialUrlState] = useState(() => decodeMapViewState(searchParams));
@@ -347,19 +353,47 @@ export const ElectionDistrictsView = ({ sidebarHeader }: { sidebarHeader?: React
   };
 
   const [replaying, setReplaying] = useState(false);
-  const chronology = useMemo(
-    () => [...publishedPeriods].sort((a, b) => (a.election_year ?? 0) - (b.election_year ?? 0)),
-    [publishedPeriods],
-  );
+  const [replayStep, setReplayStep] = useState(0);
+  const [replayTarget, setReplayTarget] = useState<string | null>(null);
+  const chronology = useMemo(() => timeTravelOrder(publishedPeriods), [publishedPeriods]);
 
-  // Time travel replays every published boundary state from oldest to newest.
+  // Time travel always starts at the oldest released period and keeps the current
+  // boundary state on screen until the next frame and its geometry are cached.
   useEffect(() => {
-    if (!replaying || chronology.length < 2) return;
-    const index = chronology.findIndex(period => period.id === historyPeriod?.id);
-    const next = chronology[(index + 1) % chronology.length];
-    const timer = window.setTimeout(() => selectPeriod(next.id, true), 2400);
-    return () => window.clearTimeout(timer);
-  }, [replaying, chronology, historyPeriod?.id, selectPeriod]);
+    if (!replaying) { setReplayTarget(null); return; }
+    const next = timeTravelPeriodAt(chronology, replayStep);
+    if (!next || !user) { setReplayTarget(null); return; }
+    const firstFrame = replayStep === 0;
+    let cancelled = false;
+    let timer: number | undefined;
+    setReplayTarget(next.name);
+    const loaded = Promise.all([
+      queryClient.fetchQuery({
+        queryKey: electionPeriodQueryKey(user.id, next.id),
+        queryFn: ({ signal }) => fetchElectionPeriod(next.id, signal),
+        staleTime: ELECTION_PERIOD_STALE_TIME, gcTime: 300_000,
+      }),
+      prefetchPeriodGeometry(queryClient, confirmedPeriodGeometryYear(next)),
+    ]);
+    // The start jumps to the oldest period as soon as it is ready; every later
+    // frame stays for at least one beat, longer while its data is still loading.
+    const hold = firstFrame
+      ? Promise.resolve()
+      : new Promise<void>(resolve => { timer = window.setTimeout(resolve, REPLAY_INTERVAL_MS); });
+    void Promise.all([loaded, hold])
+      .then(() => {
+        if (cancelled) return;
+        selectPeriod(next.id, true);
+        setReplayStep(step => step + 1);
+      })
+      .catch(() => {
+        if (cancelled) return;
+        setReplaying(false);
+        notify.error(`Zeitreise gestoppt: ${next.name} konnte nicht geladen werden.`);
+      })
+      .finally(() => { if (!cancelled) setReplayTarget(null); });
+    return () => { cancelled = true; window.clearTimeout(timer); };
+  }, [replaying, replayStep, chronology, selectPeriod, queryClient, user]);
 
   if (loading || periodIndex.isLoading) {
     return (
@@ -448,11 +482,19 @@ export const ElectionDistrictsView = ({ sidebarHeader }: { sidebarHeader?: React
                 className={`border-l border-border px-2 py-1 text-xs hover:bg-accent focus-visible:ring-1 focus-visible:ring-ring ${viewMode === 'kartogramm' ? 'bg-accent font-medium' : ''}`}>Kartogramm</button>
             </div>
             {chronology.length > 1 && (
-              <button type="button" aria-pressed={replaying} onClick={() => setReplaying(value => !value)}
-                className="inline-flex items-center gap-1 rounded border border-border px-2 py-1 text-xs hover:bg-accent focus-visible:ring-1 focus-visible:ring-ring">
-                {replaying ? <Square className="h-3.5 w-3.5" aria-hidden="true" /> : <Play className="h-3.5 w-3.5" aria-hidden="true" />}
-                Zeitreise
-              </button>
+              <>
+                <button type="button" aria-pressed={replaying} title={replaying ? 'Zeitreise anhalten' : 'Zeitreise ab der ältesten freigegebenen Legislaturperiode'}
+                  aria-label={replaying ? 'Zeitreise anhalten' : 'Zeitreise ab der ältesten Legislaturperiode starten'}
+                  onClick={() => {
+                    if (replaying) setReplaying(false);
+                    else { setReplayStep(0); setReplaying(true); }
+                  }}
+                  className="inline-flex items-center gap-1 rounded border border-border px-2 py-1 text-xs hover:bg-accent focus-visible:ring-1 focus-visible:ring-ring">
+                  {replaying ? <Square className="h-3.5 w-3.5" aria-hidden="true" /> : <Play className="h-3.5 w-3.5" aria-hidden="true" />}
+                  Zeitreise
+                </button>
+                {replaying && replayTarget && <span role="status" className="px-1 text-xs text-muted-foreground">Nächste: {replayTarget}</span>}
+              </>
             )}
             <button type="button" onClick={() => void shareView()}
               className="inline-flex items-center gap-1 rounded border border-border px-2 py-1 text-xs hover:bg-accent focus-visible:ring-1 focus-visible:ring-ring">
@@ -493,7 +535,6 @@ export const ElectionDistrictsView = ({ sidebarHeader }: { sidebarHeader?: React
           ) : (
             <ErrorBoundary onError={handleMapError}>
               <SimpleLeafletMap
-                key={historyPeriod?.id || 'legacy'}
                 districtCount={electionDistrictCount}
                 geometryAttribution={reconstructedGeometryAttribution(historyPeriod?.boundary_geometry_year)}
                 districts={displayedDistricts}

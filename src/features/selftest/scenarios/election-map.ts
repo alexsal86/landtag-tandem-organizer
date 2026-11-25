@@ -14,7 +14,7 @@ import { withHistoricalDistrictNames } from '@/features/election-history/histori
 import { sourceHistoricalDistrictName, isReconstructedBoundary } from '@/utils/electoralGeometryCatalog';
 import { confirmedPeriodGeometryYear, withPeriodGeometry } from '@/features/election-history/periodGeometry';
 import type { ElectionHistoryData, ElectionPeriod } from '@/features/election-history/types';
-import { hasRenderableBoundary, searchElectionDistricts } from '@/features/election-districts/mapModel';
+import { hasRenderableBoundary, searchElectionDistricts, timeTravelOrder, timeTravelPeriodAt } from '@/features/election-districts/mapModel';
 import type { TestScenario } from '../types';
 
 export const electionMapScenario: TestScenario = {
@@ -196,6 +196,23 @@ export const electionMapScenario: TestScenario = {
         && data.districts[0].boundaries === null
         && withPeriodGeometry({ ...data, periods: [{ ...period, boundary_geometry_confirmed: false }] }, 'p', geometry).districts[0].boundaries === null,
         message: 'Keine ungeprüften Grenzstände; 2026 nutzt bestätigt 2021. Einzelumrisse, fremde Perioden und fehlende Nummern bleiben unverändert.' };
+    } },
+    { id: 'time-travel-order', label: 'Zeitreise beginnt bei der ältesten Periode und folgt den Wahljahren', kind: 'logic', run: async () => {
+      const periods = [
+        { id: 'p18', election_year: 2026 },
+        { id: 'p1', election_year: 1952 },
+        { id: 'p11', election_year: 1992 },
+        { id: 'unknown-year', election_year: null },
+      ];
+      const chronology = timeTravelOrder(periods);
+      return { ok: chronology.map(period => period.id).join(',') === 'p1,p11,p18,unknown-year'
+        && timeTravelPeriodAt(chronology, 0)?.id === 'p1'
+        && timeTravelPeriodAt(chronology, 1)?.id === 'p11'
+        && timeTravelPeriodAt(chronology, 3)?.id === 'unknown-year'
+        && timeTravelPeriodAt(chronology, 4)?.id === 'p1'
+        && timeTravelPeriodAt([], 0) === null
+        && timeTravelPeriodAt([{ id: 'only' }], 0) === null,
+        message: 'Die Zeitreise beginnt bei der ältesten Periode, läuft aufwärts durch die Wahljahre und wiederholt keine einzelne Periode.' };
     } },
     { id: 'search', label: 'Wahlkreise nach Name oder exakter Nummer finden', kind: 'logic', run: async () => {
       const districts = [

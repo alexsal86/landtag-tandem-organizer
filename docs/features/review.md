@@ -343,7 +343,7 @@ Eindeutige Fehler werden im CI-Lauf ausgegeben und brechen die Prüfung ab; sie 
 - `events.legacy-rsvp` — Legacy-Einladungslinks (veraltet)
 - `cases.legacy-routes` — Legacy-Vorgangsrouten (veraltet)
 
-## Funktionen mit Einschränkungen oder offenen Punkten (61)
+## Funktionen mit Einschränkungen oder offenen Punkten (62)
 
 ### `mywork.dashboard`
 
@@ -592,6 +592,10 @@ Eindeutige Fehler werden im CI-Lauf ausgegeben und brechen die Prüfung ab; sie 
 ### `election.seat-distribution`
 
 - Für seatDistributionModel.ts ist keine dedizierte Testdatei vorhanden.
+
+### `election.map`
+
+- Schlägt das Vorabladen der nächsten Periode fehl, hält die Zeitreise an und nennt die betroffene Periode, statt sie zu überspringen.
 
 ### `election.history.districts-geometry`
 

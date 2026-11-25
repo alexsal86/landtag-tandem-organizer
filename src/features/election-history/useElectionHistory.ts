@@ -42,19 +42,30 @@ export function useElectionPeriodOverview(): UseQueryResult<ElectionPeriodOvervi
   });
 }
 
+export const ELECTION_PERIOD_STALE_TIME = 60_000;
+
+/** Shared key and fetcher: the map's time travel preloads the next period with them. */
+export const electionPeriodQueryKey = (userId: string | undefined, periodId: string | undefined) =>
+  ['election-history', userId, 'period', periodId] as const;
+
+export async function fetchElectionPeriod(periodId: string, signal?: AbortSignal): Promise<ElectionHistoryData> {
+  const request = supabase.rpc('get_election_history_period', { period: periodId });
+  const { data, error } = await (signal ? request.abortSignal(signal) : request);
+  if (error) throw error;
+  if (!data || typeof data !== 'object' || Array.isArray(data)
+      || !Array.isArray(data.periods) || !Array.isArray(data.people) || !Array.isArray(data.districts)
+      || !Array.isArray(data.candidacies) || !Array.isArray(data.mandates)) throw new Error('Ungültige Periodendaten.');
+  return withHistoricalDistrictNames(data as unknown as ElectionHistoryData);
+}
+
 export function useElectionHistory(periodId?: string): UseQueryResult<ElectionHistoryData, Error> {
   const { user } = useAuth();
   return useQuery({
-    queryKey: ['election-history', user?.id, 'period', periodId], enabled: !!user && !!periodId,
+    queryKey: electionPeriodQueryKey(user?.id, periodId), enabled: !!user && !!periodId,
     queryFn: async ({ signal }): Promise<ElectionHistoryData> => {
       if (!periodId) throw new Error('Bitte eine Legislaturperiode auswählen.');
-      const { data, error } = await supabase.rpc('get_election_history_period', { period: periodId }).abortSignal(signal);
-      if (error) throw error;
-      if (!data || typeof data !== 'object' || Array.isArray(data)
-          || !Array.isArray(data.periods) || !Array.isArray(data.people) || !Array.isArray(data.districts)
-          || !Array.isArray(data.candidacies) || !Array.isArray(data.mandates)) throw new Error('Ungültige Periodendaten.');
-      return withHistoricalDistrictNames(data as unknown as ElectionHistoryData);
-    }, staleTime: 60_000, gcTime: 120_000, retry: false,
+      return fetchElectionPeriod(periodId, signal);
+    }, staleTime: ELECTION_PERIOD_STALE_TIME, gcTime: 120_000, retry: false,
   });
 }
 /** Search is bounded and explicit; never download the complete person register. */

@@ -4,6 +4,7 @@
 - Ein Klick auf eine Zahl oder Gebietsfläche zeigt Informationen und bearbeitbare Arbeitsnotizen in der Seitenleiste, ohne Klick-Popup. Die Statistik zeigt das ausgewählte Gebiet; „Gesamtübersicht anzeigen“ hebt die Auswahl auf.
 - CDU wird schwarz, FDP/DVP gelb mit schwarzer Schrift dargestellt. Karte, Parteibadges und Legende verwenden dieselben Farben; die Legende enthält CDU, SPD, GRÜNE, FDP/DVP und AfD.
 - Unter „Ebenen“ lassen sich farbige Wahlkreisflächen und Nummernkreise getrennt schalten. Verwaltungsgrenzen und Kreisverbände bleiben eigene Ebenen.
+- „Zeitreise“ beginnt immer bei der ältesten freigegebenen Legislaturperiode und läuft dann in Wahljahresfolge durch alle Perioden. Die Karte wird dabei nicht neu aufgebaut; Ausschnitt und Zoom bleiben erhalten. Die nächste Periode und ihr bestätigter Grenzstand werden vorab geladen, sodass kein leerer Zwischenzustand erscheint. Schlägt das Laden fehl, hält die Zeitreise an und nennt die betroffene Periode, statt sie zu überspringen.
 - Auf kleinen Bildschirmen öffnet „Ebenen & Infos“ die einklappbare Seitenleiste. Die Suche bleibt sichtbar.
 - Fehlende, leere oder unbrauchbare WGS84-Grenzdaten werden mit einer aufklappbaren Gebietsliste angezeigt. Ein defektes Polygon verhindert nicht die Darstellung der anderen Gebiete.
 - Die Kartenebenen verwenden Leaflets Reihenfolge: Kacheln 200, Polygone 400, Marker 600, Tooltips 650, Popups 700. Keine einzelnen Ebenen unter die Kacheln setzen.

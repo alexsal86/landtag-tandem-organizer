@@ -31,6 +31,19 @@ export function searchElectionDistricts<T extends { district_number: number; dis
 
 export { partyColors } from './partyColors';
 
+/** Published boundary states in election order; unknown years stay at the end. */
+export function timeTravelOrder<T extends { id: string; election_year: number | null }>(periods: T[]): T[] {
+  return [...periods].sort((a, b) =>
+    (a.election_year ?? Number.MAX_SAFE_INTEGER) - (b.election_year ?? Number.MAX_SAFE_INTEGER));
+}
+
+/** Frame of the map's time travel; step 0 is always the oldest period, later steps wrap. */
+export function timeTravelPeriodAt<T extends { id: string }>(chronology: T[], step: number): T | null {
+  if (chronology.length < 2) return null;
+  const index = ((step % chronology.length) + chronology.length) % chronology.length;
+  return chronology[index] ?? null;
+}
+
 export function directMandateParty(district: { representatives?: { mandate_type: string; party: string }[] | null }): string {
   const party = district.representatives?.find(rep => rep.mandate_type === 'direct')?.party?.trim().toUpperCase();
   if (party === 'DIE LINKE') return 'LINKE';

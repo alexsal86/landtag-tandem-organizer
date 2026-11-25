@@ -356,7 +356,7 @@ Führt Forschungsauswertungen, kommunale Ergebnisse, Kandidatenabdeckung und Rel
 - Keine.
 
 ### `election.map` — Wahlkreiskarte anzeigen
-Zeigt Wahlkreise auf einer interaktiven Karte mit Ergebnissen, Notizen und Ebenen.
+Zeigt Wahlkreise auf einer interaktiven Karte mit Ergebnissen, Notizen und Ebenen. Die Zeitreise beginnt immer bei der ältesten freigegebenen Legislaturperiode, läuft dann in Wahljahresfolge durch alle Perioden, hält die Karte samt Ausschnitt fest und lädt die nächste Periode mit ihrem bestätigten Grenzstand vor, bevor sie erscheint.
 
 - **Kategorie:** fachlich
 - **Implementierung:** implementiert
@@ -382,11 +382,12 @@ Zeigt Wahlkreise auf einer interaktiven Karte mit Ergebnissen, Notizen und Ebene
 
 - src/pages/MapsView.tsx
 - src/features/election-districts/mapModel.ts
+- src/features/election-districts/components/ElectionDistrictsView.tsx
 - src/features/selftest/scenarios/election-map.ts
 
 **Bekannte Einschränkungen**
 
-- Keine.
+- Schlägt das Vorabladen der nächsten Periode fehl, hält die Zeitreise an und nennt die betroffene Periode, statt sie zu überspringen.
 
 **Offene Prüfpunkte**
 

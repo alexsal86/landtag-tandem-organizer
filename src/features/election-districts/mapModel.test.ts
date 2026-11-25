@@ -1,5 +1,5 @@
 import { describe, expect, it } from 'vitest';
-import { hasRenderableBoundary, searchElectionDistricts } from './mapModel';
+import { hasRenderableBoundary, searchElectionDistricts, timeTravelOrder, timeTravelPeriodAt } from './mapModel';
 import { electionMapScenario } from '@/features/selftest/scenarios/election-map';
 import { runScenario } from '@/features/selftest/runner';
 
@@ -7,7 +7,7 @@ describe('Wahlkreiskarte', () => {
   it('führt die Such- und Grenzdatenregeln auch im Selbsttest-Center aus', async () => {
     const result = await runScenario(electionMapScenario, { tenantId: '', userId: '', onUpdate: () => {} });
     expect(result.status).toBe('ok');
-    expect(result.steps).toHaveLength(2);
+    expect(result.steps).toHaveLength(electionMapScenario.steps.length);
     expect(result.steps.every(step => step.status === 'ok')).toBe(true);
   });
 
@@ -20,6 +20,21 @@ describe('Wahlkreiskarte', () => {
     expect(searchElectionDistricts(rows, ' SCHWÄBISCH ').map(row => row.id)).toEqual(['a', 'b']);
     expect(searchElectionDistricts(rows, '22').map(row => row.id)).toEqual(['b']);
     expect(searchElectionDistricts(rows, '2')).toEqual([]);
+  });
+
+  it('startet die Zeitreise bei der ältesten Periode und läuft dann aufwärts durch die Wahljahre', () => {
+    const chronology = timeTravelOrder([
+      { id: 'newest', election_year: 2026 },
+      { id: 'oldest', election_year: 1952 },
+      { id: 'unknown', election_year: null },
+    ]);
+    expect(chronology.map(period => period.id)).toEqual(['oldest', 'newest', 'unknown']);
+    expect(timeTravelPeriodAt(chronology, 0)?.id).toBe('oldest');
+    expect(timeTravelPeriodAt(chronology, 1)?.id).toBe('newest');
+    expect(timeTravelPeriodAt(chronology, 2)?.id).toBe('unknown');
+    expect(timeTravelPeriodAt(chronology, 3)?.id).toBe('oldest');
+    expect(timeTravelPeriodAt([], 0)).toBeNull();
+    expect(timeTravelPeriodAt([{ id: 'only' }], 0)).toBeNull();
   });
 
   it.each([null, [], [[[8, 48]]], [[[8, 48], [9, 48], [NaN, 49], [8, 48]]],
