@@ -5,7 +5,6 @@ import { useResolvedUserRole } from "@/hooks/useResolvedUserRole";
 import { Badge } from "@/components/ui/badge";
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
 import { Input } from "@/components/ui/input";
-import { ScrollArea } from "@/components/ui/scroll-area";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
 import { cn } from "@/lib/utils";
 import { catalogAreas, catalogFeatures } from "./inventory";
@@ -470,7 +469,7 @@ export function FeatureCatalogView() {
       </div>
 
       <div className="grid gap-4 lg:grid-cols-[20rem_minmax(0,1fr)]">
-        <Card className="h-fit">
+        <Card className="h-fit lg:sticky lg:top-4 lg:self-start">
           <CardHeader className="pb-2">
             <CardTitle className="text-sm">Katalog</CardTitle>
             <CardDescription className="text-xs">
@@ -605,8 +604,7 @@ export function FeatureCatalogView() {
         </Card>
 
         <Card className="min-w-0 overflow-hidden">
-          <ScrollArea className="max-h-[calc(100vh-12rem)]">
-            <CardContent className="px-5 py-4">
+          <CardContent className="px-5 py-4">
               {view.type === "overview" ? renderOverview() : null}
               {view.type === "map" ? (
                 <FeatureMap
@@ -639,7 +637,6 @@ export function FeatureCatalogView() {
                 <p className="mt-4 text-xs text-muted-foreground">Kein Eintrag entspricht den aktiven Filtern.</p>
               ) : null}
             </CardContent>
-          </ScrollArea>
         </Card>
       </div>
     </div>

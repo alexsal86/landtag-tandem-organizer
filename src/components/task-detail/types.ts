@@ -1,9 +1,11 @@
+import type { TaskStatus } from "@/components/tasks/types";
+
 export interface Task {
   id: string;
   title: string;
   description: string;
   priority: "low" | "medium" | "high";
-  status: "todo" | "in_progress" | "completed";
+  status: TaskStatus;
   dueDate: string | null;
   category: "legislation" | "constituency" | "committee" | "personal" | "call_followup" | "call_follow_up";
   assignedTo?: string;

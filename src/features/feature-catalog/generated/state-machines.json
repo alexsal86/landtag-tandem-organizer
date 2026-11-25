@@ -5,12 +5,12 @@
   "sources": {
     "types": "src/integrations/supabase/types.ts",
     "migrationsDirectory": "supabase/migrations",
-    "migrationCount": 897,
+    "migrationCount": 898,
     "tsModules": [
       "src/components/letters/types.ts"
     ]
   },
-  "machineCount": 49,
+  "machineCount": 51,
   "anomalies": [],
   "machines": [
     {
@@ -3210,6 +3210,258 @@
           "severity": "warn",
           "states": [],
           "message": "Kein Spalten-Default und kein literaler INSERT belegt einen Startzustand."
+        }
+      ]
+    },
+    {
+      "id": "letter_status_transitions.from_status",
+      "table": "letter_status_transitions",
+      "column": "from_status",
+      "enumType": null,
+      "states": [
+        {
+          "value": "approved",
+          "sources": [
+            "insert:supabase/migrations/20261125150000_enforce_letter_status_transitions.sql"
+          ]
+        },
+        {
+          "value": "draft",
+          "sources": [
+            "insert:supabase/migrations/20261125150000_enforce_letter_status_transitions.sql"
+          ]
+        },
+        {
+          "value": "pending_approval",
+          "sources": [
+            "insert:supabase/migrations/20261125150000_enforce_letter_status_transitions.sql"
+          ]
+        },
+        {
+          "value": "review",
+          "sources": [
+            "insert:supabase/migrations/20261125150000_enforce_letter_status_transitions.sql"
+          ]
+        },
+        {
+          "value": "revision_requested",
+          "sources": [
+            "insert:supabase/migrations/20261125150000_enforce_letter_status_transitions.sql"
+          ]
+        }
+      ],
+      "initialStates": [
+        "approved",
+        "draft",
+        "pending_approval",
+        "review",
+        "revision_requested"
+      ],
+      "transitions": [
+        {
+          "from": null,
+          "to": "approved",
+          "kind": "initial",
+          "param": null,
+          "sources": [
+            "supabase/migrations/20261125150000_enforce_letter_status_transitions.sql"
+          ],
+          "guards": []
+        },
+        {
+          "from": null,
+          "to": "draft",
+          "kind": "initial",
+          "param": null,
+          "sources": [
+            "supabase/migrations/20261125150000_enforce_letter_status_transitions.sql"
+          ],
+          "guards": []
+        },
+        {
+          "from": null,
+          "to": "pending_approval",
+          "kind": "initial",
+          "param": null,
+          "sources": [
+            "supabase/migrations/20261125150000_enforce_letter_status_transitions.sql"
+          ],
+          "guards": []
+        },
+        {
+          "from": null,
+          "to": "review",
+          "kind": "initial",
+          "param": null,
+          "sources": [
+            "supabase/migrations/20261125150000_enforce_letter_status_transitions.sql"
+          ],
+          "guards": []
+        },
+        {
+          "from": null,
+          "to": "revision_requested",
+          "kind": "initial",
+          "param": null,
+          "sources": [
+            "supabase/migrations/20261125150000_enforce_letter_status_transitions.sql"
+          ],
+          "guards": []
+        }
+      ],
+      "guards": [],
+      "reconciliation": null,
+      "limitations": [
+        "Keine Enum- oder CHECK-Beschränkung belegt; die Zustandswerte stammen nur aus Schreibvorgängen und Triggern.",
+        "Kein Trigger im Migrationsbestand gefunden; Übergänge sind nicht durch Trigger abgesichert."
+      ],
+      "findings": [
+        {
+          "kind": "sackgasse",
+          "severity": "info",
+          "states": [
+            "approved",
+            "draft",
+            "pending_approval",
+            "review",
+            "revision_requested"
+          ],
+          "message": "Zustände mit Eingang, aber ohne belegten ausgehenden Übergang (möglicher Endzustand)."
+        }
+      ]
+    },
+    {
+      "id": "letter_status_transitions.to_status",
+      "table": "letter_status_transitions",
+      "column": "to_status",
+      "enumType": null,
+      "states": [
+        {
+          "value": "approved",
+          "sources": [
+            "insert:supabase/migrations/20261125150000_enforce_letter_status_transitions.sql"
+          ]
+        },
+        {
+          "value": "draft",
+          "sources": [
+            "insert:supabase/migrations/20261125150000_enforce_letter_status_transitions.sql"
+          ]
+        },
+        {
+          "value": "pending_approval",
+          "sources": [
+            "insert:supabase/migrations/20261125150000_enforce_letter_status_transitions.sql"
+          ]
+        },
+        {
+          "value": "review",
+          "sources": [
+            "insert:supabase/migrations/20261125150000_enforce_letter_status_transitions.sql"
+          ]
+        },
+        {
+          "value": "revision_requested",
+          "sources": [
+            "insert:supabase/migrations/20261125150000_enforce_letter_status_transitions.sql"
+          ]
+        },
+        {
+          "value": "sent",
+          "sources": [
+            "insert:supabase/migrations/20261125150000_enforce_letter_status_transitions.sql"
+          ]
+        }
+      ],
+      "initialStates": [
+        "approved",
+        "draft",
+        "pending_approval",
+        "review",
+        "revision_requested",
+        "sent"
+      ],
+      "transitions": [
+        {
+          "from": null,
+          "to": "approved",
+          "kind": "initial",
+          "param": null,
+          "sources": [
+            "supabase/migrations/20261125150000_enforce_letter_status_transitions.sql"
+          ],
+          "guards": []
+        },
+        {
+          "from": null,
+          "to": "draft",
+          "kind": "initial",
+          "param": null,
+          "sources": [
+            "supabase/migrations/20261125150000_enforce_letter_status_transitions.sql"
+          ],
+          "guards": []
+        },
+        {
+          "from": null,
+          "to": "pending_approval",
+          "kind": "initial",
+          "param": null,
+          "sources": [
+            "supabase/migrations/20261125150000_enforce_letter_status_transitions.sql"
+          ],
+          "guards": []
+        },
+        {
+          "from": null,
+          "to": "review",
+          "kind": "initial",
+          "param": null,
+          "sources": [
+            "supabase/migrations/20261125150000_enforce_letter_status_transitions.sql"
+          ],
+          "guards": []
+        },
+        {
+          "from": null,
+          "to": "revision_requested",
+          "kind": "initial",
+          "param": null,
+          "sources": [
+            "supabase/migrations/20261125150000_enforce_letter_status_transitions.sql"
+          ],
+          "guards": []
+        },
+        {
+          "from": null,
+          "to": "sent",
+          "kind": "initial",
+          "param": null,
+          "sources": [
+            "supabase/migrations/20261125150000_enforce_letter_status_transitions.sql"
+          ],
+          "guards": []
+        }
+      ],
+      "guards": [],
+      "reconciliation": null,
+      "limitations": [
+        "Keine Enum- oder CHECK-Beschränkung belegt; die Zustandswerte stammen nur aus Schreibvorgängen und Triggern.",
+        "Kein Trigger im Migrationsbestand gefunden; Übergänge sind nicht durch Trigger abgesichert."
+      ],
+      "findings": [
+        {
+          "kind": "sackgasse",
+          "severity": "info",
+          "states": [
+            "approved",
+            "draft",
+            "pending_approval",
+            "review",
+            "revision_requested",
+            "sent"
+          ],
+          "message": "Zustände mit Eingang, aber ohne belegten ausgehenden Übergang (möglicher Endzustand)."
         }
       ]
     },

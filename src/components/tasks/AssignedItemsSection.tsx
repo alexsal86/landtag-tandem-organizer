@@ -24,13 +24,14 @@ import {
 } from "@/components/ui/dropdown-menu";
 import { cn } from "@/lib/utils";
 import { supabase } from "@/integrations/supabase/client";
+import type { TaskStatus } from "@/components/tasks/types";
 
 interface Task {
   id: string;
   title: string;
   description: string;
   priority: "low" | "medium" | "high";
-  status: "todo" | "in_progress" | "completed";
+  status: TaskStatus;
   dueDate: string | null;
   category: string;
   assignedTo?: string;
@@ -67,7 +68,7 @@ interface AssignedItemsSectionProps {
     title: string;
     description: string;
     priority: "low" | "medium" | "high";
-    status: "todo" | "in_progress" | "completed";
+    status: TaskStatus;
     dueDate: string | null;
     category: string;
     assignedTo?: string;
