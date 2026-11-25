@@ -15,6 +15,7 @@ import { sourceHistoricalDistrictName, isReconstructedBoundary } from '@/utils/e
 import { confirmedPeriodGeometryYear, withPeriodGeometry } from '@/features/election-history/periodGeometry';
 import type { ElectionHistoryData, ElectionPeriod } from '@/features/election-history/types';
 import { hasRenderableBoundary, partyFilterForPeriod, searchElectionDistricts, timeTravelOrder, timeTravelPeriodAt } from '@/features/election-districts/mapModel';
+import { interpolateMorph, planMorph, resampleRing } from '@/features/election-districts/morphGeometry';
 import type { TestScenario } from '../types';
 
 export const electionMapScenario: TestScenario = {
@@ -222,6 +223,36 @@ export const electionMapScenario: TestScenario = {
         && seeded2026.size === 2 && !seeded2026.has('Ohne Direktmandat')
         && partyFilterForPeriod(chosen, ['CDU', 'AfD'], 2026) === chosen,
         message: 'Nur die erste Periode setzt die Auswahl (1952 inklusive offener Zuordnung); spätere Perioden behalten die Filterauswahl des Nutzers.' };
+    } },
+    { id: 'morph-geometry', label: 'Periodenwechsel morpht gleiche Wahlkreise und blendet den Rest über', kind: 'logic', run: async () => {
+      const square = (size: number, x = 0, y = 0): [number, number][] =>
+        [[x, y], [x + size, y], [x + size, y + size], [x, y + size]];
+      const plan = planMorph(
+        [{ key: '1', name: 'Bruchsal', multi: false, polygons: [[square(10)]] }],
+        [
+          { key: '1', name: 'Bruchsal', multi: false, polygons: [[square(20)]] },
+          { key: '2', name: 'Wiesloch', multi: false, polygons: [[square(5, 50, 50)]] },
+        ],
+      );
+      const start = interpolateMorph(plan.pairs[0], 0, 8)[0][0][2][0];
+      const end = interpolateMorph(plan.pairs[0], 1, 8)[0][0][2][0];
+      const reform = planMorph(
+        [{ key: '37', name: 'Mannheim III', multi: false, polygons: [[square(10)]] }],
+        [{ key: '37', name: 'Wiesloch', multi: false, polygons: [[square(10, 50, 50)]] }],
+      );
+      const overlap = planMorph(
+        [{ key: '1', name: 'Stuttgart I', multi: false, polygons: [[square(10)]] }],
+        [{ key: '2', name: 'Stuttgart-Nord', multi: false, polygons: [[square(10, 1, 1)]] }],
+      );
+      const budget = planMorph([{ key: '1', name: 'Bruchsal', multi: false, polygons: [[square(10)]] }],
+        [{ key: '1', name: 'Bruchsal', multi: false, polygons: [[square(20)]] }], { maxTotalPoints: 1 });
+      return { ok: plan.pairs.length === 1 && plan.fadeKeys.join(',') === '2'
+        && Math.abs(start - 10) < 1e-6 && Math.abs(end - 20) < 1e-6
+        && reform.pairs.length === 0 && reform.fadeKeys.join(',') === '37'
+        && overlap.pairs.map(entry => entry.key).join(',') === '2'
+        && resampleRing(square(4), 12).length === 12
+        && budget.pairs.length === 0,
+        message: 'Gleicher Name oder klare Flächenüberlappung morpht in projizierten Pixeln; gleiche Nummer mit anderem Namen, Splits und das Punktbudget blenden über.' };
     } },
     { id: 'search', label: 'Wahlkreise nach Name oder exakter Nummer finden', kind: 'logic', run: async () => {
       const districts = [

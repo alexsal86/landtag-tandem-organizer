@@ -356,7 +356,7 @@ Führt Forschungsauswertungen, kommunale Ergebnisse, Kandidatenabdeckung und Rel
 - Keine.
 
 ### `election.map` — Wahlkreiskarte anzeigen
-Zeigt Wahlkreise auf einer interaktiven Karte mit Ergebnissen, Notizen und Ebenen. Die Zeitreise beginnt immer bei der ältesten freigegebenen Legislaturperiode, läuft dann in Wahljahresfolge durch alle Perioden, hält die Karte samt Ausschnitt fest und lädt die nächste Periode mit ihrem bestätigten Grenzstand vor, bevor sie erscheint. Die Parteifilter-Auswahl bleibt beim Wechsel der Legislaturperiode erhalten. Der Wechsel blendet den neuen Grenzstand weich ein und zeigt den Fortschritt als Statusanzeige auf der Karte.
+Zeigt Wahlkreise auf einer interaktiven Karte mit Ergebnissen, Notizen und Ebenen. Die Zeitreise beginnt immer bei der ältesten freigegebenen Legislaturperiode, läuft dann in Wahljahresfolge durch alle Perioden, hält die Karte samt Ausschnitt fest und lädt die nächste Periode mit ihrem bestätigten Grenzstand vor, bevor sie erscheint. Die Parteifilter-Auswahl bleibt beim Wechsel der Legislaturperiode erhalten. Der Wechsel morpht Wahlkreise mit gleichem Namen oder klar überlappender Fläche in projizierten Pixeln und blendet Wahlkreise ohne Gegenstück über; Nummern gelten nie als periodenübergreifende Identität. Der Fortschritt steht als Statusanzeige auf der Karte.
 
 - **Kategorie:** fachlich
 - **Implementierung:** implementiert
@@ -388,6 +388,8 @@ Zeigt Wahlkreise auf einer interaktiven Karte mit Ergebnissen, Notizen und Ebene
 **Bekannte Einschränkungen**
 
 - Schlägt das Vorabladen der nächsten Periode fehl, hält die Zeitreise an und nennt die betroffene Periode, statt sie zu überspringen.
+- Sehr große Grenzstände über dem Punktbudget sowie aktivierte Bewegungseinschränkung wechseln ohne Morph.
+- Wahlkreise mit neuem Namen und ohne gemeinsame Fläche (Reformen) blenden über, statt zu morphen.
 
 **Offene Prüfpunkte**
 

@@ -597,6 +597,8 @@ Eindeutige Fehler werden im CI-Lauf ausgegeben und brechen die Prüfung ab; sie 
 ### `election.map`
 
 - Schlägt das Vorabladen der nächsten Periode fehl, hält die Zeitreise an und nennt die betroffene Periode, statt sie zu überspringen.
+- Sehr große Grenzstände über dem Punktbudget sowie aktivierte Bewegungseinschränkung wechseln ohne Morph.
+- Wahlkreise mit neuem Namen und ohne gemeinsame Fläche (Reformen) blenden über, statt zu morphen.
 
 ### `election.history.districts-geometry`
 

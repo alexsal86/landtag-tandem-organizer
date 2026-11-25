@@ -1,4 +1,4 @@
-import React, { useEffect, useRef, useState } from 'react';
+import React, { useCallback, useEffect, useRef, useState } from 'react';
 import { debugConsole } from '@/utils/debugConsole';
 import 'leaflet/dist/leaflet.css';
 import '@/styles/leaflet-overrides.css';
@@ -12,6 +12,10 @@ import sunflowerIcon from '@/assets/sunflower.svg';
 import type { LocalArea, LocalBallot } from './LocalElectionResults';
 import { useLocalResultMap } from './localResultMap';
 import { createMapIconBubble } from '@/lib/leafletPopupDom';
+import { geometryToMorphPolygons, interpolateMorph, planMorph, type MorphGeometryInput, type MorphPair } from '../morphGeometry';
+
+/** Long enough to read as a morph, short enough for the 1.8 s replay beat. */
+const MORPH_DURATION_MS = 600;
 
 interface LeafletKarlsruheMapProps {
   districts: ElectionDistrict[];
@@ -108,6 +112,10 @@ const SimpleLeafletMap: React.FC<LeafletKarlsruheMapProps> = ({
   const userNavigatedRef = useRef(false);
   const initialViewportRef = useRef(initialViewport);
   const onViewportChangeRef = useRef(onViewportChange);
+  const shapesByNumberRef = useRef(new Map<string, MorphGeometryInput>());
+  const morphKeyRef = useRef<string | undefined>(undefined);
+  const morphRafRef = useRef<number | null>(null);
+  const [morphing, setMorphing] = useState(false);
 
   // Every new boundary state fades in instead of cutting over; selections must
   // not flash, so the reveal marker is removed again after the animation.
@@ -116,6 +124,39 @@ const SimpleLeafletMap: React.FC<LeafletKarlsruheMapProps> = ({
     const timer = window.setTimeout(() => setRevealing(false), 700);
     return () => window.clearTimeout(timer);
   }, [revealKey]);
+
+  // Morph the previous boundary state into the new one. The caller only gets
+  // here for districts with a counterpart; everything else fades in instead.
+  const startMorph = useCallback((pairs: MorphPair[], paths: Map<string, L.Polygon>, zoom: number) => {
+    const startedAt = performance.now();
+    const apply = (progress: number) => {
+      pairs.forEach(pair => {
+        const path = paths.get(pair.key);
+        if (!path) return;
+        const polygons = interpolateMorph(pair, progress, zoom);
+        const nested: L.LatLng[][][] = polygons.map(polygon => polygon.map(ring =>
+          ring.map(([lng, lat]) => L.latLng(lat, lng))));
+        path.setLatLngs(pair.multi ? nested : nested[0]);
+      });
+    };
+    apply(0);
+    setMorphing(true);
+    const step = (now: number) => {
+      const progress = Math.min(1, (now - startedAt) / MORPH_DURATION_MS);
+      apply(progress * progress * (3 - 2 * progress));
+      if (progress < 1) {
+        morphRafRef.current = requestAnimationFrame(step);
+      } else {
+        morphRafRef.current = null;
+        setMorphing(false);
+      }
+    };
+    morphRafRef.current = requestAnimationFrame(step);
+  }, []);
+
+  useEffect(() => () => {
+    if (morphRafRef.current !== null) cancelAnimationFrame(morphRafRef.current);
+  }, []);
 
   // Keep callback refs in sync without triggering effects
   useEffect(() => {
@@ -256,6 +297,13 @@ const SimpleLeafletMap: React.FC<LeafletKarlsruheMapProps> = ({
     const map = mapRef.current;
     if (!map || !districtLayerRef.current || !markerLayerRef.current) return;
 
+    // A rebuild always wins over a running morph; the new state renders fully.
+    if (morphRafRef.current !== null) {
+      cancelAnimationFrame(morphRafRef.current);
+      morphRafRef.current = null;
+      setMorphing(false);
+    }
+
     // Clear existing layers
     districtLayerRef.current.clearLayers();
     markerLayerRef.current.clearLayers();
@@ -263,6 +311,8 @@ const SimpleLeafletMap: React.FC<LeafletKarlsruheMapProps> = ({
     if (!districts.length && !showPartyAssociations) return;
 
     let renderedBounds: L.LatLngBounds | null = null;
+    // Counterpart key (district number) → drawn polygon, for the morph below.
+    const pathsByNumber = new Map<string, L.Polygon>();
 
     // Collect all districts to render (normal districts + party association boundaries)
     const allDistrictsToRender: Array<{ district: ElectionDistrict; isPartyBoundary: boolean; associationName?: string }> = [];
@@ -336,6 +386,10 @@ const SimpleLeafletMap: React.FC<LeafletKarlsruheMapProps> = ({
           const allDistricts = allDistrictsToRender.map(item => item.district);
           const district = allDistricts.find(d => d.id === districtId);
           if (!district) return;
+
+          if (!feature?.properties?.isPartyBoundary && district.district_type !== 'verwaltungsgrenze') {
+            pathsByNumber.set(String(district.district_number), layer as L.Polygon);
+          }
           
           const isSelected = selectedDistrict?.id === district.id;
           const directMandate = district.representatives?.find(rep => rep.mandate_type === 'direct');
@@ -547,6 +601,33 @@ const SimpleLeafletMap: React.FC<LeafletKarlsruheMapProps> = ({
       });
     }
 
+    // Morph the new boundary state out of the previous one. Districts without a
+    // counterpart (splits, merges, new shapes) are faded in by the reveal CSS.
+    const nextShapes = new Map<string, MorphGeometryInput>();
+    allDistrictsToRender.forEach(item => {
+      const district = item.district;
+      if (item.isPartyBoundary || district.district_type === 'verwaltungsgrenze') return;
+      const key = String(district.district_number);
+      if (nextShapes.has(key)) return;
+      const normalized = geometryToMorphPolygons(district.boundaries);
+      if (!normalized) return;
+      nextShapes.set(key, { key, name: district.district_name, ...normalized });
+    });
+
+    const previousShapes = shapesByNumberRef.current;
+    const boundaryChanged = revealKey !== morphKeyRef.current;
+    const reducedMotion = window.matchMedia?.('(prefers-reduced-motion: reduce)').matches ?? false;
+    if (boundaryChanged && !reducedMotion && previousShapes.size > 0 && nextShapes.size > 0) {
+      const plan = planMorph([...previousShapes.values()], [...nextShapes.values()], { zoom: map.getZoom() });
+      if (plan.pairs.length > 0) {
+        plan.fadeKeys.forEach(key =>
+          pathsByNumber.get(key)?.getElement()?.classList.add('bw-shape-fade-in'));
+        startMorph(plan.pairs, pathsByNumber, map.getZoom());
+      }
+    }
+    shapesByNumberRef.current = nextShapes;
+    morphKeyRef.current = revealKey;
+
     // Keep the overview bounds for the reset control even when a link pinned the view.
     if (!overviewBoundsRef.current && renderedBounds && renderedBounds.isValid()) {
       overviewBoundsRef.current = renderedBounds;
@@ -582,7 +663,7 @@ const SimpleLeafletMap: React.FC<LeafletKarlsruheMapProps> = ({
         map.setView([48.7758, 9.1829], 8);
       }
     }
-  }, [districts, selectedDistrict, showPartyAssociations, associations, mapReady, zoomLevel, showDistrictMarkers]);
+  }, [districts, selectedDistrict, showPartyAssociations, associations, mapReady, zoomLevel, showDistrictMarkers, revealKey, startMorph]);
 
   useEffect(() => {
     const map = mapRef.current;
@@ -696,6 +777,7 @@ const SimpleLeafletMap: React.FC<LeafletKarlsruheMapProps> = ({
     <div
       className="bw-election-map relative w-full h-[55dvh] min-h-[320px] md:h-full md:min-h-0 bg-[#e6eadf] rounded-lg overflow-hidden border border-border z-0"
       data-reveal={revealing ? 'true' : undefined}
+      data-morph={morphing ? 'true' : undefined}
     >
       <div
         ref={mapEl}

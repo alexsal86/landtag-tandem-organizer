@@ -86,6 +86,15 @@
   to { opacity: 1; }
 }
 
+/* During a vertex morph the shape positions animate instead of fading; only
+   shapes without a counterpart get their own fade-in. */
+.bw-election-map[data-morph='true'][data-reveal='true'] .bw-district-path:not(.bw-shape-fade-in) {
+  animation: none;
+}
+.bw-election-map .bw-shape-fade-in {
+  animation: bw-district-reveal 480ms ease-out both;
+}
+
 @media (prefers-reduced-motion: reduce) {
   .bw-election-map[data-reveal='true'] .bw-district-path,
   .bw-election-map[data-reveal='true'] .leaflet-marker-pane { animation: none; }
