@@ -35,6 +35,11 @@ export const DIN5008LetterLayout: React.FC<DIN5008LetterLayoutProps> = ({
   layoutSettings,
   salutation,
   hideClosing = false,
+  subjectEditor,
+  salutationEditor,
+  recipientEditor,
+  subjectRef,
+  salutationRef,
   addressFieldElements,
   returnAddressElements,
   infoBlockElements,
@@ -102,6 +107,8 @@ export const DIN5008LetterLayout: React.FC<DIN5008LetterLayoutProps> = ({
   const returnAddressFontSizePt = toFontSizePt(layout.addressField?.returnAddressFontSize, 8);
   const recipientFontSizePt = toFontSizePt(layout.addressField?.recipientFontSize, 10);
   const subjectFontSizePt = toFontSizePt(layout.subject?.fontSize, 13);
+  const showSubject = Boolean(subject || subjectEditor);
+  const showSalutation = Boolean(salutation || salutationEditor);
   const attachmentList = getLetterAttachmentNames(attachments);
   const hasSignature = Boolean(layout.closing?.signatureName || layout.closing?.signatureImagePath);
   const signatureImageUrl = getLetterAssetPublicUrl(layout.closing?.signatureImagePath);
@@ -535,6 +542,7 @@ export const DIN5008LetterLayout: React.FC<DIN5008LetterLayoutProps> = ({
         recipientFontSizePt={recipientFontSizePt}
         formatAddress={formatAddress}
         recipientAddress={recipientAddress}
+        recipientEditor={recipientEditor}
         infoBlockLines={infoBlockLines}
         infoBlockElements={infoBlockElements}
         renderInformationBlock={renderInformationBlock}
@@ -560,8 +568,8 @@ export const DIN5008LetterLayout: React.FC<DIN5008LetterLayoutProps> = ({
           }}
         >
           {/* Subject line (bold) with optional prefix shape */}
-          {subject && (
-            <div style={{ 
+          {showSubject && (
+            <div ref={subjectRef} style={{ 
               fontWeight: layout.subject?.fontWeight || 'bold', 
               fontSize: `${subjectFontSizePt}pt`,
               marginBottom: '0',
@@ -579,19 +587,19 @@ export const DIN5008LetterLayout: React.FC<DIN5008LetterLayoutProps> = ({
                   {layout.subject.prefixShape === 'wappen' && <img src="/assets/wappen-bw.svg" alt="Wappen" style={{ width: '3.5mm', height: '3.5mm', objectFit: 'contain' }} />}
                 </span>
               )}
-              {subject}
+              {subjectEditor ?? subject}
             </div>
           )}
           {/* 2 blank lines after subject (or start here if no subject) */}
-          {subject && <div style={{ height: '9mm' }} />}
+          {showSubject && <div style={{ height: '9mm' }} />}
           {/* Salutation */}
-          {salutation && (
-            <div style={{ fontSize: `${layout.salutation?.fontSize || 11}pt` }}>
-              {salutation}
+          {showSalutation && (
+            <div ref={salutationRef} style={{ fontSize: `${layout.salutation?.fontSize || 11}pt` }}>
+              {salutationEditor ?? salutation}
             </div>
           )}
           {/* 1 blank line after salutation */}
-          {salutation && <div style={{ height: '4.5mm' }} />}
+          {showSalutation && <div style={{ height: '4.5mm' }} />}
           {/* Letter content */}
           <div className="din5008-content-text" style={contentTextStyle} dangerouslySetInnerHTML={{ __html: sanitizeRichHtml(content) }} />
           {/* Closing formula + signature */}
@@ -616,7 +624,7 @@ export const DIN5008LetterLayout: React.FC<DIN5008LetterLayoutProps> = ({
       ) : (
         <>
           {/* Legacy mode: separate subject block + content */}
-          {(subject || (subjectElements && subjectElements.length > 0)) && (
+          {(showSubject || (subjectElements && subjectElements.length > 0)) && (
             <div style={{ 
               position: 'absolute',
               top: `calc(${contentTopMm}mm + 3mm)`,
@@ -630,7 +638,7 @@ export const DIN5008LetterLayout: React.FC<DIN5008LetterLayoutProps> = ({
               {subjectElements && subjectElements.length > 0 ? (
                 renderCanvasBlockElements(subjectElements)
               ) : (
-                subject
+                subjectEditor ?? subject
               )}
             </div>
           )}

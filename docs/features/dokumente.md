@@ -420,7 +420,7 @@ Schlägt bei geänderter Dateiversion einen eindeutigen Textanker vor und verlan
 - Keine.
 
 ### `letters.create` — Brief erstellen und bearbeiten
-Erstellt Briefe im Lexical-Editor mit DIN-5008-Layout, Adressen, Vorlagen und Anlagen.
+Erstellt Briefe im Lexical-Editor mit DIN-5008-Layout, direkt auf dem Blatt beschreibbarem Briefkopf (Empfänger, Betreff, Anrede), Adressen, Vorlagen und Anlagen.
 
 - **Kategorie:** fachlich
 - **Implementierung:** implementiert
@@ -429,7 +429,7 @@ Erstellt Briefe im Lexical-Editor mit DIN-5008-Layout, Adressen, Vorlagen und An
 - **Letztes Testergebnis:** unbekannt (nicht aus der Existenz einer Testdatei abgeleitet)
 - **Rollen:** `abgeordneter`, `bueroleitung`, `mitarbeiter`
 - **Routen:** `/letters/:letterId`
-- **Frontend-Komponenten:** `src/pages/LetterDetail.tsx`, `src/features/letters/components/LetterEditor.tsx`, `src/components/letters/LetterEditorCanvas.tsx`, `src/components/letters/DIN5008LetterLayout.tsx`
+- **Frontend-Komponenten:** `src/pages/LetterDetail.tsx`, `src/features/letters/components/LetterEditor.tsx`, `src/components/letters/LetterEditorCanvas.tsx`, `src/components/letters/DIN5008LetterLayout.tsx`, `src/components/letters/InlineEditableText.tsx`, `src/components/letters/DIN5008AddressInfoSection.tsx`, `src/components/letters/din5008/headerMetrics.ts`
 - **Services:** —
 - **Hooks:** —
 - **Edge Functions:** —
@@ -568,7 +568,7 @@ Verwaltet Briefvorlagen, Anlassarten, Absenderdaten und Textbausteine.
 - Keine.
 
 ### `letters.export` — Brief als PDF oder DOCX exportieren
-Erzeugt PDF- und DOCX-Ausgaben aus dem Editorinhalt inklusive Layout und Anlagen.
+Erzeugt PDF- und DOCX-Ausgaben aus dem Editorinhalt inklusive Layout und Anlagen; Betreff-, Anreden- und Inhaltsbeginn folgen derselben DIN-Berechnung wie die Vorschau.
 
 - **Kategorie:** fachlich
 - **Implementierung:** implementiert
@@ -577,7 +577,7 @@ Erzeugt PDF- und DOCX-Ausgaben aus dem Editorinhalt inklusive Layout und Anlagen
 - **Letztes Testergebnis:** nicht-ausgefuehrt (nicht aus der Existenz einer Testdatei abgeleitet)
 - **Rollen:** `abgeordneter`, `bueroleitung`, `mitarbeiter`
 - **Routen:** —
-- **Frontend-Komponenten:** `src/features/letters/components/LetterPDFExport.tsx`, `src/features/letters/components/LetterDOCXExport.tsx`, `src/components/letter-pdf`
+- **Frontend-Komponenten:** `src/features/letters/components/LetterPDFExport.tsx`, `src/features/letters/components/LetterDOCXExport.tsx`, `src/components/letter-pdf`, `src/components/letters/din5008/headerMetrics.ts`
 - **Services:** —
 - **Hooks:** —
 - **Edge Functions:** —

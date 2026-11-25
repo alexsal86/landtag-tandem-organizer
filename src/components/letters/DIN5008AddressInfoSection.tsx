@@ -15,6 +15,7 @@ interface DIN5008AddressInfoSectionProps {
   recipientFontSizePt: number;
   formatAddress: (address?: RecipientAddress | string) => string;
   recipientAddress?: RecipientAddress | string;
+  recipientEditor?: React.ReactNode;
   infoBlockLines?: LetterBlockLine[];
   infoBlockElements?: LetterCanvasElement[];
   renderInformationBlock: (informationBlock?: InformationBlockRecord) => React.ReactNode;
@@ -36,6 +37,7 @@ export const DIN5008AddressInfoSection: React.FC<DIN5008AddressInfoSectionProps>
   recipientFontSizePt,
   formatAddress,
   recipientAddress,
+  recipientEditor,
   infoBlockLines,
   infoBlockElements,
   renderInformationBlock,
@@ -82,7 +84,7 @@ export const DIN5008AddressInfoSection: React.FC<DIN5008AddressInfoSectionProps>
             renderCanvasBlockElements(addressFieldElements)
           ) : (
             <div style={{ fontSize: `${recipientFontSizePt}pt`, lineHeight: '1.2', maxWidth: '75mm' }}>
-              {formatAddress(recipientAddress)}
+              {recipientEditor ?? formatAddress(recipientAddress)}
             </div>
           )}
         </div>

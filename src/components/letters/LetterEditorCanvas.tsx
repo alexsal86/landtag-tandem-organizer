@@ -1,6 +1,6 @@
-import React, { useEffect, useState, useRef, useCallback } from 'react';
+import React, { useEffect, useLayoutEffect, useState, useRef, useCallback } from 'react';
 import { sanitizeRichHtml } from '@/utils/htmlSanitizer';
-import { ZoomIn, ZoomOut, RotateCcw, Layout, Pencil } from 'lucide-react';
+import { ZoomIn, ZoomOut, RotateCcw, Layout, Pencil, Search } from 'lucide-react';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
 import { Textarea } from '@/components/ui/textarea';
@@ -11,6 +11,8 @@ import { Popover, PopoverContent, PopoverTrigger } from '@/components/ui/popover
 import { ContactSelector } from '@/features/contacts/components/ContactSelector';
 import { DIN5008LetterLayout } from './DIN5008LetterLayout';
 import { EditableCanvasOverlay } from './EditableCanvasOverlay';
+import { InlineEditableText } from './InlineEditableText';
+import { computeLetterHeaderMetrics } from './din5008/headerMetrics';
 import { LetterAttachmentList, LetterClosingBlock } from './LetterContentBlocks';
 import type {
   InformationBlockRecord,
@@ -39,6 +41,34 @@ interface EditableAttachment {
   file_name?: string;
   display_name?: string;
 }
+
+/**
+ * Display-only dedupe for the inline recipient block, mirroring the DIN layout:
+ * when the stored address starts with the recipient name, that line is hidden.
+ * `hiddenPrefix` lets an edit write the original leading lines back unchanged.
+ */
+const dedupeRecipientAddress = (
+  name: string | undefined,
+  address: string | undefined,
+): { display: string; hiddenPrefix: string } => {
+  const raw = (address ?? '').replace(/\r\n?/g, '\n');
+  const trimmedName = (name ?? '').trim();
+  if (!raw || !trimmedName) return { display: raw, hiddenPrefix: '' };
+
+  const lines = raw.split('\n');
+  const firstContentIndex = lines.findIndex((line) => line.trim() !== '');
+  if (firstContentIndex === -1 || lines[firstContentIndex].trim() !== trimmedName) {
+    return { display: raw, hiddenPrefix: '' };
+  }
+
+  let restIndex = firstContentIndex + 1;
+  while (restIndex < lines.length && lines[restIndex].trim() === '') restIndex += 1;
+
+  return {
+    display: lines.slice(restIndex).join('\n'),
+    hiddenPrefix: `${lines.slice(0, restIndex).join('\n')}\n`,
+  };
+};
 
 const isEditableAttachment = (value: unknown): value is EditableAttachment => {
   if (!value || typeof value !== 'object' || Array.isArray(value)) return false;
@@ -175,6 +205,13 @@ export const LetterEditorCanvas: React.FC<LetterEditorCanvasProps> = ({
 
   const [isAttachmentOverlayHovered, setIsAttachmentOverlayHovered] = useState(false);
   const [isAttachmentOverlayOpen, setIsAttachmentOverlayOpen] = useState(false);
+  const [isContactPopoverOpen, setIsContactPopoverOpen] = useState(false);
+  // The layout can be rebuilt (e.g. template switch) and replace these nodes.
+  // Storing the elements in state re-runs the measurement for the new nodes.
+  const [subjectMeasureEl, setSubjectMeasureEl] = useState<HTMLDivElement | null>(null);
+  const [salutationMeasureEl, setSalutationMeasureEl] = useState<HTMLDivElement | null>(null);
+  const [measuredSubjectMm, setMeasuredSubjectMm] = useState<number | null>(null);
+  const [measuredSalutationMm, setMeasuredSalutationMm] = useState<number | null>(null);
 
 
   // ── layout ──
@@ -185,6 +222,45 @@ export const LetterEditorCanvas: React.FC<LetterEditorCanvasProps> = ({
   const subjectFontSizePt = toFontSizePt(layout.subject?.fontSize, 13);
   const salutationFontSizePt = toFontSizePt(layout.salutation?.fontSize, 11);
   const closingFontSizePt = toFontSizePt(layout.closing?.fontSize, 11);
+
+  // ── inline header fields (page mode) ──
+  // In page mode the header zones are typed into directly on the sheet; the
+  // sender, return-address line and info block stay as selection overlays.
+  const isInlinePage = Boolean(inlineEditor);
+  const inlineHeaderEditing = isInlinePage && canEdit;
+  const showSubjectField = Boolean(subject) || (inlineHeaderEditing && Boolean(onSubjectChange));
+  const showSalutationField = Boolean(salutation) || (inlineHeaderEditing && Boolean(onSalutationChange));
+  const showRecipientEditor = inlineHeaderEditing && Boolean(onRecipientNameChange) && Boolean(onRecipientAddressChange);
+
+  // Measure the rendered subject/salutation so wrapped lines push the body down.
+  useLayoutEffect(() => {
+    const subjectEl = subjectMeasureEl;
+    const salutationEl = salutationMeasureEl;
+
+    const measureElement = (el: HTMLDivElement | null, setValue: React.Dispatch<React.SetStateAction<number | null>>) => {
+      const next = el ? el.offsetHeight / MM_TO_PX : null;
+      setValue((prev) => {
+        if (prev === null || next === null) return next;
+        return Math.abs(prev - next) < 0.01 ? prev : next;
+      });
+    };
+
+    const measureAll = () => {
+      measureElement(subjectEl, setMeasuredSubjectMm);
+      measureElement(salutationEl, setMeasuredSalutationMm);
+    };
+
+    measureAll();
+    if (document.fonts?.ready) {
+      void document.fonts.ready.then(measureAll).catch(() => undefined);
+    }
+
+    if (typeof ResizeObserver === 'undefined') return;
+    const observer = new ResizeObserver(measureAll);
+    if (subjectEl) observer.observe(subjectEl);
+    if (salutationEl) observer.observe(salutationEl);
+    return () => observer.disconnect();
+  }, [subjectMeasureEl, salutationMeasureEl, showSubjectField, showSalutationField, isInlinePage]);
 
   const footerTopMm: number = layout.footer?.top ?? 272;
   const paginationGapMm = 4.23;
@@ -202,17 +278,19 @@ export const LetterEditorCanvas: React.FC<LetterEditorCanvasProps> = ({
     : page2BottomRaw;
 
   // ── where content starts on page 1 ──
-  const subjectTopMm: number = layout.subject?.top ?? 98.46;
-  const subjectHeightMm = subject ? subjectFontSizePt * 0.3528 * 1.2 : 0;
-  const gapAfterSubjectMm = subject ? 9 : 0;
-  const salutationHeightMm = salutation ? salutationFontSizePt * 0.3528 * 1.2 : 0;
-  const gapAfterSalutationMm = salutation ? 4.5 : 0;
-  const contentStartMm =
-    subjectTopMm
-    + subjectHeightMm
-    + gapAfterSubjectMm
-    + salutationHeightMm
-    + gapAfterSalutationMm;
+  const headerMetrics = computeLetterHeaderMetrics({
+    layout,
+    subjectLines: showSubjectField ? 1 : 0,
+    salutationLines: showSalutationField ? 1 : 0,
+    subjectHeightMm: measuredSubjectMm,
+    salutationHeightMm: measuredSalutationMm,
+  });
+  const subjectTopMm = headerMetrics.subjectTopMm;
+  const subjectHeightMm = headerMetrics.subjectHeightMm;
+  const gapAfterSubjectMm = headerMetrics.gapAfterSubjectMm;
+  const salutationHeightMm = headerMetrics.salutationHeightMm;
+  const gapAfterSalutationMm = headerMetrics.gapAfterSalutationMm;
+  const contentStartMm = headerMetrics.contentTopMm;
 
   // ── available body height per page (raw, no snapping) ──
   const page1BodyMmRaw = contentBottomMm - contentStartMm;
@@ -498,8 +576,83 @@ export const LetterEditorCanvas: React.FC<LetterEditorCanvasProps> = ({
     </>
   );
 
+  // ── inline editors rendered inside the DIN layout ──
+  const renderSubjectEditor = () => {
+    if (!showSubjectField || !onSubjectChange) return undefined;
+    return (
+      <InlineEditableText
+        value={subject ?? ''}
+        onChange={onSubjectChange}
+        ariaLabel="Betreff"
+        placeholder="Betreff"
+        style={{ flex: 1, fontWeight: 'inherit', fontSize: 'inherit', minHeight: '1.2em' }}
+      />
+    );
+  };
+
+  const renderSalutationEditor = () => {
+    if (!showSalutationField || !onSalutationChange) return undefined;
+    return (
+      <InlineEditableText
+        value={salutation ?? ''}
+        onChange={onSalutationChange}
+        ariaLabel="Anrede"
+        placeholder="Sehr geehrte Damen und Herren,"
+        style={{ fontSize: 'inherit', minHeight: '1.2em' }}
+      />
+    );
+  };
+
+  const renderRecipientEditor = () => {
+    if (!showRecipientEditor) return undefined;
+    const addressDisplay = dedupeRecipientAddress(recipientAddress?.name, recipientAddress?.address);
+    return (
+      <div className="group/recipient relative h-full">
+        <InlineEditableText
+          value={recipientAddress?.name ?? ''}
+          onChange={(value) => onRecipientNameChange?.(value)}
+          ariaLabel="Empfängername"
+          placeholder="Name"
+        />
+        <InlineEditableText
+          value={addressDisplay.display}
+          onChange={(value) => onRecipientAddressChange?.(`${addressDisplay.hiddenPrefix}${value}`)}
+          ariaLabel="Empfängeradresse"
+          placeholder="Straße, PLZ Ort"
+          multiline
+        />
+        {onRecipientContactSelect && (
+          <div className="absolute -top-3 -right-3 opacity-0 transition-opacity group-hover/recipient:opacity-100 focus-within:opacity-100">
+            <Popover open={isContactPopoverOpen} onOpenChange={setIsContactPopoverOpen}>
+              <PopoverTrigger asChild>
+                <button
+                  type="button"
+                  title="Empfänger aus Kontakten wählen"
+                  aria-label="Empfänger aus Kontakten wählen"
+                  className="h-7 w-7 rounded-full bg-primary text-primary-foreground shadow-md flex items-center justify-center hover:bg-primary/90"
+                >
+                  <Search className="h-3.5 w-3.5" />
+                </button>
+              </PopoverTrigger>
+              <PopoverContent className="w-96 p-2 z-[200]" side="right" align="center" sideOffset={8}>
+                <ContactSelector
+                  onSelect={(contact) => {
+                    onRecipientContactSelect(contact);
+                    setIsContactPopoverOpen(false);
+                  }}
+                  selectedContactId={selectedRecipientContactId}
+                  placeholder="Kontakt aus Adressbuch wählen..."
+                />
+              </PopoverContent>
+            </Popover>
+          </div>
+        )}
+      </div>
+    );
+  };
+
   // ── editable overlays for page-1 zones ──
-  const renderOverlays = () => (
+  const renderOverlays = (includeTextFieldOverlays = true) => (
     <>
             <EditableCanvasOverlay
               top={50}
@@ -528,6 +681,7 @@ export const LetterEditorCanvas: React.FC<LetterEditorCanvasProps> = ({
               </div>
             </EditableCanvasOverlay>
 
+            {includeTextFieldOverlays && (
             <EditableCanvasOverlay
               top={50 + returnAddressHeight}
               left={MARGIN_L_MM}
@@ -567,6 +721,7 @@ export const LetterEditorCanvas: React.FC<LetterEditorCanvasProps> = ({
                 </div>
               </div>
             </EditableCanvasOverlay>
+            )}
 
             <EditableCanvasOverlay
               top={50}
@@ -600,6 +755,8 @@ export const LetterEditorCanvas: React.FC<LetterEditorCanvasProps> = ({
               </div>
             </EditableCanvasOverlay>
 
+            {includeTextFieldOverlays && (
+            <>
             <EditableCanvasOverlay
               top={subjectTopMm}
               left={MARGIN_L_MM}
@@ -644,6 +801,8 @@ export const LetterEditorCanvas: React.FC<LetterEditorCanvasProps> = ({
                 </div>
               </EditableCanvasOverlay>
             )}
+            </>
+            )}
           </>
   );
 
@@ -678,6 +837,11 @@ export const LetterEditorCanvas: React.FC<LetterEditorCanvasProps> = ({
           salutation={salutation}
           hideClosing={true}
           allowContentOverflow={false}
+          subjectEditor={renderSubjectEditor()}
+          salutationEditor={renderSalutationEditor()}
+          recipientEditor={renderRecipientEditor()}
+          subjectRef={setSubjectMeasureEl}
+          salutationRef={setSalutationMeasureEl}
           addressFieldElements={addressFieldElements}
           returnAddressElements={returnAddressElements}
           infoBlockElements={infoBlockElements}
@@ -715,7 +879,7 @@ export const LetterEditorCanvas: React.FC<LetterEditorCanvasProps> = ({
             </span>
           </div>
         ))}
-        {renderOverlays()}
+        {renderOverlays(false)}
       </div>
     );
   };
@@ -764,6 +928,8 @@ export const LetterEditorCanvas: React.FC<LetterEditorCanvasProps> = ({
             salutation={salutation}
             hideClosing={true}
             allowContentOverflow={false}
+            subjectRef={setSubjectMeasureEl}
+            salutationRef={setSalutationMeasureEl}
             addressFieldElements={addressFieldElements}
             returnAddressElements={returnAddressElements}
             infoBlockElements={infoBlockElements}
@@ -951,6 +1117,23 @@ export const LetterEditorCanvas: React.FC<LetterEditorCanvasProps> = ({
       </div>
 
       <style>{`
+        .inline-edit-field {
+          border-radius: 2px;
+          transition: background-color 120ms ease, box-shadow 120ms ease;
+          cursor: text;
+        }
+        .inline-edit-field:hover {
+          background-color: rgba(59, 130, 246, 0.05);
+        }
+        .inline-edit-field:focus {
+          background-color: rgba(59, 130, 246, 0.07);
+          box-shadow: 0 0 0 1px rgba(59, 130, 246, 0.4);
+        }
+        .inline-edit-field:empty::before {
+          content: attr(data-placeholder);
+          color: rgba(0, 0, 0, 0.35);
+          pointer-events: none;
+        }
         .din5008-content-text,
         .din5008-content-text * {
           color: #000 !important;

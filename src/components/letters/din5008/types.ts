@@ -26,6 +26,13 @@ export interface DIN5008LetterLayoutProps {
   layoutSettings?: LetterLayoutSettings;
   salutation?: string;
   hideClosing?: boolean;
+  // Inline editing slots: rendered in place of the plain text when provided
+  subjectEditor?: React.ReactNode;
+  salutationEditor?: React.ReactNode;
+  recipientEditor?: React.ReactNode;
+  // Refs for measuring the rendered height of the header fields
+  subjectRef?: React.Ref<HTMLDivElement>;
+  salutationRef?: React.Ref<HTMLDivElement>;
   // Canvas-based block elements (substituted)
   addressFieldElements?: LetterCanvasElement[];
   returnAddressElements?: LetterCanvasElement[];

@@ -8,6 +8,7 @@ import { supabase } from '@/integrations/supabase/client';
 import { buildVariableMap, substituteBlockLines, substituteVariables, isLineMode } from '@/lib/letterVariables';
 import type { BlockLine } from '@/components/letters/BlockLineEditor';
 import { getLetterAssetPublicUrl } from '@/components/letters/letterAssetUrls';
+import { baselineOffsetMm, computeLetterHeaderMetrics, toFontSizePt } from '@/components/letters/din5008/headerMetrics';
 import { DEFAULT_DIN5008_LAYOUT, isLetterLayoutSettings, type LetterLayoutSettings } from '@/types/letterLayout';
 import { isRecord } from '@/utils/typeSafety';
 import type { Letter, LetterTemplate, DbContact, SenderInfoContract, InformationBlockContract, AttachmentContract } from './types';
@@ -716,35 +717,63 @@ export async function generatePDF(options: GeneratePDFOptions): Promise<{ blob: 
     }
   }
   
-  // Subject line
-  const subjectFontSize = layout.subject?.fontSize || 13;
-  const contentFontSize = layout.content?.fontSize || 11;
+  // ── Subject + salutation, measured with the same rules as the preview ──
+  const subjectText = (letter.subject || letter.title || '').trim();
+  const contentFontSize = toFontSizePt(layout.content?.fontSize, 11);
   const lineHeight = layout.content?.lineHeight || 4.5;
-  let contentStartY = CONTENT_TOP + 3;
-  
-  if (letter.subject || letter.title) {
-    pdf.setFontSize(subjectFontSize);
-    pdf.setFont('helvetica', layout.subject?.fontWeight || 'bold');
-    pdf.text(letter.subject || letter.title, LEFT_MARGIN, contentStartY);
-    contentStartY += 9; // 2 blank lines after subject (matching HTML: height 9mm)
-  }
-  
-  // ── Salutation (with {{anrede}} substitution) ──
-  let salutationText = layout.salutation?.template || '';
-  if (salutationText === '{{anrede}}') {
-    salutationText = varMap['{{anrede}}'] || 'Sehr geehrte Damen und Herren,';
-  } else if (salutationText.includes('{{')) {
-    for (const [placeholder, value] of Object.entries(varMap)) {
-      salutationText = salutationText.split(placeholder).join(value);
+
+  const salutationOverride = typeof (letter as { salutation_override?: unknown }).salutation_override === 'string'
+    ? ((letter as { salutation_override?: string }).salutation_override || '').trim()
+    : '';
+  let salutationText = salutationOverride;
+  if (!salutationText) {
+    salutationText = layout.salutation?.template || '';
+    if (salutationText === '{{anrede}}') {
+      salutationText = varMap['{{anrede}}'] || 'Sehr geehrte Damen und Herren,';
+    } else if (salutationText.includes('{{')) {
+      for (const [placeholder, value] of Object.entries(varMap)) {
+        salutationText = salutationText.split(placeholder).join(value);
+      }
     }
   }
-  if (salutationText) {
-    const salutationFontSize = layout.salutation?.fontSize || contentFontSize;
-    pdf.setFontSize(salutationFontSize);
-    pdf.setFont('helvetica', 'normal');
-    pdf.text(salutationText, LEFT_MARGIN, contentStartY);
-    contentStartY += lineHeight; // 1 blank line after salutation
+  salutationText = salutationText.trim();
+
+  const contentWidthMm = pageMetrics.widthMm - pageMetrics.margins.leftMm - pageMetrics.margins.rightMm;
+
+  // splitTextToSize measures with the currently selected font, so set it first.
+  pdf.setFontSize(toFontSizePt(layout.subject?.fontSize, 13));
+  pdf.setFont('helvetica', layout.subject?.fontWeight || 'bold');
+  const subjectLines = subjectText ? (pdf.splitTextToSize(subjectText, contentWidthMm) as string[]) : [];
+
+  pdf.setFontSize(toFontSizePt(layout.salutation?.fontSize, 11));
+  pdf.setFont('helvetica', 'normal');
+  const salutationLines = salutationText ? (pdf.splitTextToSize(salutationText, contentWidthMm) as string[]) : [];
+
+  const headerMetrics = computeLetterHeaderMetrics({
+    layout,
+    subjectLines: subjectLines.length,
+    salutationLines: salutationLines.length,
+  });
+
+  if (subjectLines.length > 0) {
+    pdf.setFontSize(headerMetrics.subjectFontSizePt);
+    pdf.setFont('helvetica', layout.subject?.fontWeight || 'bold');
+    const subjectBaseline = headerMetrics.subjectTopMm + baselineOffsetMm(headerMetrics.subjectFontSizePt);
+    subjectLines.forEach((line, index) => {
+      pdf.text(line, LEFT_MARGIN, subjectBaseline + index * headerMetrics.subjectLineHeightMm);
+    });
   }
+
+  if (salutationLines.length > 0) {
+    pdf.setFontSize(headerMetrics.salutationFontSizePt);
+    pdf.setFont('helvetica', 'normal');
+    const salutationBaseline = headerMetrics.salutationTopMm + baselineOffsetMm(headerMetrics.salutationFontSizePt);
+    salutationLines.forEach((line, index) => {
+      pdf.text(line, LEFT_MARGIN, salutationBaseline + index * headerMetrics.salutationLineHeightMm);
+    });
+  }
+
+  let contentStartY = headerMetrics.contentTopMm + baselineOffsetMm(contentFontSize);
   
   // Letter content
   pdf.setFontSize(contentFontSize);
@@ -838,7 +867,6 @@ export async function generatePDF(options: GeneratePDFOptions): Promise<{ blob: 
     if (layout.closing?.signatureTitle) {
       pdf.setFont('helvetica', 'normal');
       pdf.text(layout.closing.signatureTitle, LEFT_MARGIN, endY);
-      endY += lineHeight;
     }
   }
   

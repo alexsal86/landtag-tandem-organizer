@@ -440,6 +440,7 @@ const LetterEditor: React.FC<LetterEditorProps> = ({ letter, isOpen, onClose, on
                   infoBlockLines={substitutedBlocks.lineBlocks.infoBlock} canEdit={canEdit} documentId={letter?.id}
                   onContentChange={(content, nodes, html) => { setDraftContent(content || ''); setDraftContentNodes(nodes && nodes.trim() !== '' ? nodes : null); setDraftContentHtml(html || null); }}
                   onSubjectChange={(value) => setEditedLetter(prev => ({ ...prev, subject: value, title: value }))}
+                  onSalutationChange={(value) => setEditedLetter(prev => ({ ...prev, salutation_override: value }))}
                   onRecipientNameChange={(value) => setEditedLetter(prev => ({ ...prev, recipient_name: value }))}
                   onRecipientAddressChange={(value) => setEditedLetter(prev => ({ ...prev, recipient_address: value }))}
                   onRecipientContactSelect={(contact) => {

@@ -372,7 +372,7 @@
       "id": "letters.create",
       "subarea": "Briefe",
       "name": "Brief erstellen und bearbeiten",
-      "description": "Erstellt Briefe im Lexical-Editor mit DIN-5008-Layout, Adressen, Vorlagen und Anlagen.",
+      "description": "Erstellt Briefe im Lexical-Editor mit DIN-5008-Layout, direkt auf dem Blatt beschreibbarem Briefkopf (Empfänger, Betreff, Anrede), Adressen, Vorlagen und Anlagen.",
       "category": "fachlich",
       "implementationStatus": "implementiert",
       "integrationStatus": "rollenabhaengig",
@@ -390,7 +390,10 @@
         "src/pages/LetterDetail.tsx",
         "src/features/letters/components/LetterEditor.tsx",
         "src/components/letters/LetterEditorCanvas.tsx",
-        "src/components/letters/DIN5008LetterLayout.tsx"
+        "src/components/letters/DIN5008LetterLayout.tsx",
+        "src/components/letters/InlineEditableText.tsx",
+        "src/components/letters/DIN5008AddressInfoSection.tsx",
+        "src/components/letters/din5008/headerMetrics.ts"
       ],
       "tables": [
         "letters",
@@ -542,7 +545,7 @@
       "id": "letters.export",
       "subarea": "Briefe",
       "name": "Brief als PDF oder DOCX exportieren",
-      "description": "Erzeugt PDF- und DOCX-Ausgaben aus dem Editorinhalt inklusive Layout und Anlagen.",
+      "description": "Erzeugt PDF- und DOCX-Ausgaben aus dem Editorinhalt inklusive Layout und Anlagen; Betreff-, Anreden- und Inhaltsbeginn folgen derselben DIN-Berechnung wie die Vorschau.",
       "category": "fachlich",
       "implementationStatus": "implementiert",
       "integrationStatus": "ui",
@@ -555,7 +558,8 @@
       "components": [
         "src/features/letters/components/LetterPDFExport.tsx",
         "src/features/letters/components/LetterDOCXExport.tsx",
-        "src/components/letter-pdf"
+        "src/components/letter-pdf",
+        "src/components/letters/din5008/headerMetrics.ts"
       ],
       "tables": [
         "letters"
