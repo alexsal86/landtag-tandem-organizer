@@ -124,7 +124,9 @@ export const DashboardAppointments = ({ data }: Props) => {
   const navigate = useNavigate();
   const [now, setNow] = useState(() => new Date());
   useEffect(() => {
-    const timer = window.setInterval(() => setNow(new Date()), 1_000);
+    // Countdown, Restminuten und Uhrzeit zeigen nur Minuten – 30 s halten die Anzeige
+    // aktuell, ohne das Panel jede Sekunde neu zu rendern.
+    const timer = window.setInterval(() => setNow(new Date()), 30_000);
     return () => window.clearInterval(timer);
   }, []);
   const { currentTenant } = useTenant();
