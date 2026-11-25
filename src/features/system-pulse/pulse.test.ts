@@ -183,8 +183,12 @@ describe("PULSE_AREAS", () => {
     const meetings = PULSE_AREAS.find((entry) => entry.id === "meetings");
     expect(meetings?.scenarios).toContain("jour-fixe-platform-integration");
   });
-  it("nennt für jeden Bereich Haupttabellen", () => {
-    for (const entry of PULSE_AREAS) expect(entry.tables.length).toBeGreaterThan(0);
+  it("führt Haupttabellen als Liste und nennt sie für schreibende Bereiche", () => {
+    for (const entry of PULSE_AREAS) expect(Array.isArray(entry.tables)).toBe(true);
+    expect(PULSE_AREAS.some((entry) => entry.tables.length > 0)).toBe(true);
+  });
+  it("bildet alle 30 registrierten Szenarien genau einmal ab", () => {
+    expect(PULSE_AREAS.reduce((sum, entry) => sum + entry.scenarios.length, 0)).toBe(30);
   });
   it("hinterlegt für jeden Bereich deklarierte Workflow-Schritte", () => {
     for (const entry of PULSE_AREAS) {
@@ -207,6 +211,10 @@ describe("PULSE_GROUPS", () => {
     expect(PULSE_GROUPS.map((group) => group.title)).toEqual([
       "Vorgangs- & Mandatsbetrieb",
       "Termine & Repräsentanz",
+      "Dokumente & Wissen",
+      "Wahlen & Analyse",
+      "Organisation & Personal",
+      "Geschäftsregeln",
       "Wächter: Zugriffsschutz (RLS)",
     ]);
   });

@@ -11,7 +11,8 @@
         "cases",
         "tasks",
         "decisions",
-        "meetings"
+        "meetings",
+        "day-slip"
       ]
     },
     {
@@ -19,6 +20,37 @@
       "title": "Termine & Repräsentanz",
       "areas": [
         "appointments"
+      ]
+    },
+    {
+      "id": "documents",
+      "title": "Dokumente & Wissen",
+      "areas": [
+        "documents",
+        "knowledge"
+      ]
+    },
+    {
+      "id": "elections",
+      "title": "Wahlen & Analyse",
+      "areas": [
+        "elections"
+      ]
+    },
+    {
+      "id": "organization",
+      "title": "Organisation & Personal",
+      "areas": [
+        "employees",
+        "team-rituals",
+        "events"
+      ]
+    },
+    {
+      "id": "rules",
+      "title": "Geschäftsregeln",
+      "areas": [
+        "rules"
       ]
     },
     {
@@ -771,6 +803,56 @@
       ]
     },
     {
+      "id": "day-slip",
+      "title": "Tageszettel",
+      "primaryTags": [
+        "dayslip"
+      ],
+      "scenarioIds": [],
+      "scenarios": [
+        "day-slip-lifecycle"
+      ],
+      "tables": [
+        "day_slips"
+      ],
+      "workflows": [
+        {
+          "scenario": "day-slip-lifecycle",
+          "title": "Tageszettel-Lifecycle (Links → Neuladen → Übernahme auf Folgetag)",
+          "description": "Schreibt einen Tageszettel mit verlinkten Zeilen (Notiz, Aufgabe, Vorgang, Entscheidung), lädt ihn neu, prüft die Sprungziele und überträgt offene Zeilen auf den Folgetag, ohne Links zu verlieren.",
+          "checks": [
+            "Speichern und erneutes Laden",
+            "Link-Erhalt bei Übernahme",
+            "Keine doppelte Übernahme"
+          ],
+          "tables": [
+            "day_slips"
+          ],
+          "features": [
+            "daily.briefing"
+          ],
+          "steps": [
+            {
+              "id": "write",
+              "label": "Tageszettel mit 4 verlinkten Zeilen speichern"
+            },
+            {
+              "id": "reload",
+              "label": "Neuladen: alle Links + Sprungziele vorhanden"
+            },
+            {
+              "id": "carry",
+              "label": "Offene Zeilen auf Folgetag übernehmen (Links bleiben)"
+            },
+            {
+              "id": "no-duplicate-carry",
+              "label": "Erneute Übernahme erzeugt keine doppelten Zeilen"
+            }
+          ]
+        }
+      ]
+    },
+    {
       "id": "decisions",
       "title": "Entscheidungen",
       "primaryTags": [
@@ -1030,6 +1112,946 @@
             {
               "id": "protocol-task-status",
               "label": "Aufgabenstatus und Rückblickquote berechnen"
+            }
+          ]
+        }
+      ]
+    },
+    {
+      "id": "documents",
+      "title": "Dokumente & Korrespondenz",
+      "primaryTags": [
+        "documents",
+        "letters"
+      ],
+      "scenarioIds": [],
+      "scenarios": [
+        "document-annotation",
+        "document-list",
+        "letter-lifecycle"
+      ],
+      "tables": [
+        "documents",
+        "letters"
+      ],
+      "workflows": [
+        {
+          "scenario": "document-annotation",
+          "title": "Dokument-Annotation",
+          "description": "Dateiregeln, Koordinaten, Polygon, Verschieben und Eckpunkte sowie Speicherung, Antworten und Zugriffsgrenzen.",
+          "checks": [
+            "Mehrseitige Textauswahl",
+            "Suche und Navigation",
+            "OCR-Geometrie",
+            "PDF-Exportkoordinaten",
+            "Textanker und Änderungsverlauf",
+            "Dateityp",
+            "Bruchteil-Koordinaten",
+            "Polygon-Mindestpunkte",
+            "Verschieben und Eckpunkte",
+            "Zoomgrenzen",
+            "Anlegen, Antworten, Erledigen und Löschen",
+            "Fremde Autorenschaft und Mandatsgrenzen",
+            "Serverrollen und aktive RLS/Trigger",
+            "Erwähnungen mit Thread-Link"
+          ],
+          "tables": [
+            "documents",
+            "document_annotations",
+            "document_annotation_events",
+            "document_annotation_tasks",
+            "tasks",
+            "task_assignees"
+          ],
+          "features": [
+            "annotations.create",
+            "annotations.tasks"
+          ],
+          "steps": [
+            {
+              "id": "search-navigation",
+              "label": "Kommentar, Antwort und Text durchsuchen und Treffer zyklisch anspringen"
+            },
+            {
+              "id": "ocr-export-version-history",
+              "label": "OCR-Bruchteile, PDF-Exportkoordinaten, Textanker und Verlauf"
+            },
+            {
+              "id": "multipage-text-selection",
+              "label": "Mehrseitige Textmarkierungen bleiben seitengetreu bearbeitbar"
+            },
+            {
+              "id": "annotation-task-status",
+              "label": "Aufgabenstatus anzeigen und Anmerkungen bewusst abschließen"
+            },
+            {
+              "id": "file-kind",
+              "label": "Unterstützte Dateitypen"
+            },
+            {
+              "id": "fractions",
+              "label": "Koordinaten normalisieren und begrenzen"
+            },
+            {
+              "id": "polygon",
+              "label": "Polygon benötigt mindestens drei Punkte"
+            },
+            {
+              "id": "edit-geometry",
+              "label": "Markierungen verschieben, Eckpunkte anpassen und Zoom begrenzen"
+            },
+            {
+              "id": "annotation-presentation",
+              "label": "Nummern, Filter, Anker und Polygonabschluss"
+            },
+            {
+              "id": "edit-history",
+              "label": "Bearbeitungen rückgängig und wiederholen, ohne fremde Änderungen zu überschreiben"
+            },
+            {
+              "id": "arrow-note-shortcuts",
+              "label": "Pfeile, Notiz-Nadeln und Tastaturbelegung"
+            },
+            {
+              "id": "arrow-pin-anchor",
+              "label": "Pfeilnummer bleibt bei jeder Richtung am Startpunkt"
+            },
+            {
+              "id": "pdf-text-layer",
+              "label": "PDF-Textmarker ist direkt aktiv und Textschicht erhält ihre Skalierungswerte"
+            },
+            {
+              "id": "zoom-invariance",
+              "label": "Zoom- und Koordinatentreue bei 25 bis 400 Prozent"
+            },
+            {
+              "id": "permission-matrix",
+              "label": "Autor, Mitarbeitende, Leitung und fehlende Mitgliedschaft unterscheiden"
+            },
+            {
+              "id": "mention-link",
+              "label": "Erwähnungen eindeutig auflösen und direkt zum Thread verlinken"
+            },
+            {
+              "id": "annotation-task-rules",
+              "label": "Zuständigkeit, Mein-Filter und Stafette-Vorgaben"
+            },
+            {
+              "id": "annotation-task-storage",
+              "label": "Zuweisung und eindeutige Stafette-Aufgabe atomar speichern"
+            },
+            {
+              "id": "schema",
+              "label": "Antwortspalte im aktiven Backend vorhanden"
+            },
+            {
+              "id": "server-mentions",
+              "label": "Client und Datenbank erkennen dieselben erwähnten Personen"
+            },
+            {
+              "id": "server-permissions",
+              "label": "Serverrollen, Löschpolicy und aktive Schutz-Trigger prüfen"
+            },
+            {
+              "id": "persistence",
+              "label": "Anlegen → Antworten → Erledigen → Löschen; Rechte prüfen"
+            }
+          ]
+        },
+        {
+          "scenario": "document-list",
+          "title": "Dokumente: Suche, Kategorien, Sortierung und Auswahl",
+          "description": "Gemeinsame Listenregeln für Karten und Tabelle, ohne Testdatensätze anzulegen.",
+          "checks": [],
+          "tables": [],
+          "features": [
+            "documents.list"
+          ],
+          "steps": [
+            {
+              "id": "filters",
+              "label": "Suche und Kategorie-Chips im aktuellen Ordner kombinieren"
+            },
+            {
+              "id": "sort",
+              "label": "Titel und Erstelldatum in beiden Richtungen sortieren"
+            },
+            {
+              "id": "selection",
+              "label": "Mehrfachauswahl und Alle auswählen auf sichtbare Dokumente begrenzen"
+            }
+          ]
+        },
+        {
+          "scenario": "letter-lifecycle",
+          "title": "Brief-Lifecycle (Entwurf → Prüfung → Freigabe → Archiv und Folgeaufgabe)",
+          "description": "Lädt eine echte Testdatei hoch und nutzt die Funktionen des Briefeditors für Statuswechsel und Archivierung. Prüft danach Dokument, PDF und Folgeaufgabe.",
+          "checks": [
+            "Datei hochladen und wieder herunterladen",
+            "Prüfung und Freigabe über Anwendungsfunktionen",
+            "Archivfunktion erzeugt PDF, Dokument und Folgeaufgabe"
+          ],
+          "tables": [
+            "letters",
+            "letter_attachments",
+            "documents",
+            "tasks"
+          ],
+          "features": [
+            "letters.archive",
+            "letters.workflow"
+          ],
+          "steps": [
+            {
+              "id": "create-letter",
+              "label": "Briefentwurf mit Empfänger anlegen"
+            },
+            {
+              "id": "invalid-transition",
+              "label": "Direkter Sprung vom Entwurf zu versendet ist verboten"
+            },
+            {
+              "id": "attachment",
+              "label": "Echte Anlage hochladen und Inhalt zurücklesen"
+            },
+            {
+              "id": "archive",
+              "label": "Versandstatus, Archiv-PDF und Folgeaufgabe über Anwendungsfunktion"
+            },
+            {
+              "id": "verify-archive",
+              "label": "Archivdatei und Folgeaufgabe sind tatsächlich vorhanden"
+            }
+          ]
+        }
+      ]
+    },
+    {
+      "id": "knowledge",
+      "title": "Wissen",
+      "primaryTags": [
+        "knowledge"
+      ],
+      "scenarioIds": [],
+      "scenarios": [
+        "knowledge-lifecycle"
+      ],
+      "tables": [
+        "knowledge_questions"
+      ],
+      "workflows": [
+        {
+          "scenario": "knowledge-lifecycle",
+          "title": "Wissen: Fragen, Antworten und manuelle Prüfung",
+          "description": "Prüft Eingaben und den echten Frage-Antwort-Ablauf. Testdatensätze und Verlauf werden in einer Datenbank-Untertransaktion vollständig zurückgerollt.",
+          "checks": [
+            "Frage als einziges Pflichtfeld",
+            "Validierte Antwort und sichere Links",
+            "Drei Prüfzustände und Fälligkeit",
+            "Anhanggrenzen",
+            "Lesen außerhalb des eigenen Büros"
+          ],
+          "tables": [
+            "knowledge_questions",
+            "knowledge_question_events",
+            "knowledge_qa_notification_deliveries"
+          ],
+          "features": [
+            "knowledge.answer",
+            "knowledge.ask",
+            "knowledge.review",
+            "knowledge.search"
+          ],
+          "steps": [
+            {
+              "id": "person-presentation",
+              "label": "Stabile Avatarfarben, Initialen und fehlende Zuordnung"
+            },
+            {
+              "id": "notification-delivery",
+              "label": "Serverzustellung, Einstellungen und dauerhafte Duplikatsperre"
+            },
+            {
+              "id": "manage-workflow",
+              "label": "Pflegeberechtigung, Bearbeiten, Archiv und Duplikat mit Revisionsschutz"
+            },
+            {
+              "id": "notification-question-link",
+              "label": "Benachrichtigungen öffnen die konkrete Wissensfrage"
+            },
+            {
+              "id": "filter-state",
+              "label": "Ansichten und Filter aus URL wiederherstellen"
+            },
+            {
+              "id": "bounded-list",
+              "label": "Kompakte Seite mit explizitem Cursor und Gesamtzahl"
+            },
+            {
+              "id": "real-workflow",
+              "label": "Echte Speicherung, Verlauf, Prüfbestätigung und Rücksetzung ohne bleibende Testdaten"
+            },
+            {
+              "id": "question-input",
+              "label": "Frage ohne Kategorien oder Zuständigkeit zulässig"
+            },
+            {
+              "id": "answer-input",
+              "label": "Antworttext und Links sicher validieren"
+            },
+            {
+              "id": "review-status",
+              "label": "Ungeprüft, manuell bestätigt und fällige Überprüfung unterscheiden"
+            },
+            {
+              "id": "attachment-input",
+              "label": "Nur unterstützte Dateien innerhalb der Größenbegrenzung"
+            },
+            {
+              "id": "foreign-office-search",
+              "label": "Suche mit nicht zugehöriger Büro-ID liefert keine Daten"
+            }
+          ]
+        }
+      ]
+    },
+    {
+      "id": "elections",
+      "title": "Wahlen & Analyse",
+      "primaryTags": [
+        "election-districts",
+        "election-analysis",
+        "election-history"
+      ],
+      "scenarioIds": [],
+      "scenarios": [
+        "election-analysis",
+        "election-deputy-reader",
+        "election-history-workbench",
+        "election-map"
+      ],
+      "tables": [],
+      "workflows": [
+        {
+          "scenario": "election-analysis",
+          "title": "Wahlanalyse: Datenqualität und Vergleichbarkeit",
+          "description": "Reine Rechenregeln ohne Datenbankänderungen.",
+          "checks": [
+            "Unbekannt gegenüber echter Null",
+            "Getrennte Stimmenarten und gemeinsame Beteiligung",
+            "Keine erfundenen historischen Identitäten",
+            "AfD vor Parteigründung"
+          ],
+          "tables": [],
+          "features": [
+            "election.analysis"
+          ],
+          "steps": [
+            {
+              "id": "district-series-year-limit",
+              "label": "Wahlkreis-Steckbrief: alle Wahljahre innerhalb der RPC-Grenze laden"
+            },
+            {
+              "id": "analysis-four-pillars-navigation",
+              "label": "Wahlanalyse: vier Säulen, alte Links und zentrale Datenprüfung im Super-Admin"
+            },
+            {
+              "id": "candidacy-admin-import",
+              "label": "Kandidatenimport: deutsche Zahlen, reine Liste und Wahlkreiszwang"
+            },
+            {
+              "id": "boundary-difference-rendering",
+              "label": "Grenzänderungen als Teilflächen ohne erfundene Ergebniswerte"
+            },
+            {
+              "id": "state-history-denominators-and-matrix",
+              "label": "Landesgeschichte: Bezugsgrößen und gerichtete Wanderungsmatrix"
+            },
+            {
+              "id": "election-shape-packages",
+              "label": "Wahlkreisformen: gemeinsame 68 Formen wiederverwenden, nur Änderungen laden"
+            },
+            {
+              "id": "election-topology-years",
+              "label": "TopoJSON: Grenzstände, gemeinsame und umgekehrte Grenzlinien"
+            },
+            {
+              "id": "swing-atlas-selection",
+              "label": "Swing-Atlas: exakte Suche, getrennte Ranglisten und feste Skala"
+            },
+            {
+              "id": "analysis-reports",
+              "label": "Bericht: sichtbare Werte einfrieren und aktive Inhalte entfernen"
+            },
+            {
+              "id": "election-workspaces",
+              "label": "Sitze, Mandatsschwellen, private Szenarien und Gemeinde-Nullwerte"
+            },
+            {
+              "id": "research-lab",
+              "label": "Wahlforschung: explorative Gruppen, OLS, Szenarien und Annahmen"
+            },
+            {
+              "id": "mandate-analysis",
+              "label": "Mandate: Identitäten, Nachrücker und tatsächliche Amtszeit"
+            },
+            {
+              "id": "turnout-statistics",
+              "label": "Beteiligung: vollständige Paare und symmetrische Stimmenzerlegung"
+            },
+            {
+              "id": "analysis-presentation",
+              "label": "Shapley aktiv, Zahlenzitat, Sankey, Wabenraster und generiertes Kurzfazit"
+            },
+            {
+              "id": "election-quality",
+              "label": "Fehlende Werte, Stimmenarten, Beteiligung und Grenzen"
+            }
+          ]
+        },
+        {
+          "scenario": "election-deputy-reader",
+          "title": "Wahlanalyse: Abgeordnetenübersicht",
+          "description": "Prüft lesend die begrenzte Suche und die Chronologie freigegebener Mandate.",
+          "checks": [],
+          "tables": [],
+          "features": [
+            "election.deputy-results",
+            "election.history.people"
+          ],
+          "steps": [
+            {
+              "id": "published-deputy-history",
+              "label": "Suche und Detail zeigen ausschließlich freigegebene Legislaturperioden"
+            }
+          ]
+        },
+        {
+          "scenario": "election-history-workbench",
+          "title": "Wahldaten: Problemfälle und Landeslisten",
+          "description": "Prüft die eindeutige Namenszuordnung und liest die begrenzte Problemübersicht ohne Datenänderung.",
+          "checks": [],
+          "tables": [],
+          "features": [
+            "election.history.candidacies",
+            "election.history.mandates",
+            "election.history.periods",
+            "election.history.quality"
+          ],
+          "steps": [
+            {
+              "id": "candidate-state-list-place",
+              "label": "Kandidaturergebnisse: bestätigte Listenplätze mit Konfliktschutz und gemeinsamer Navigation"
+            },
+            {
+              "id": "state-list-candidacy-role",
+              "label": "Listenplätze: Ersatzbewerbung und reine Liste bleiben von Direktbewerbung getrennt"
+            },
+            {
+              "id": "central-factions",
+              "label": "Fraktionen: eindeutige Schreibweisen und historische Gruppen"
+            },
+            {
+              "id": "period-seat-snapshot",
+              "label": "Sitzverteilung: unbekannte Gesamtsitze und Teilmengen bleiben unterscheidbar"
+            },
+            {
+              "id": "candidate-before-member",
+              "label": "Erfolglose Kandidatur bleibt mit späterem Mandat verbunden, ohne selbst als Mandat zu zählen"
+            },
+            {
+              "id": "state-list-identity",
+              "label": "Landeslisten: keine automatische Auswahl bei mehreren gleichnamigen Historien"
+            },
+            {
+              "id": "cross-period-issues",
+              "label": "Problemfälle: begrenzte globale Suche und Filter nach Problemart"
+            }
+          ]
+        },
+        {
+          "scenario": "election-map",
+          "title": "Wahlkreiskarte: Suche und Grenzdaten",
+          "description": "Prüft die Such- und Geometrieregeln ohne Datenbankzugriffe.",
+          "checks": [],
+          "tables": [],
+          "features": [
+            "election.map"
+          ],
+          "steps": [
+            {
+              "id": "deputy-candidacy-without-tenure",
+              "label": "Profilzeitleiste: erfolglose Wahlteilnahme bleibt von einer Mitgliedschaft getrennt"
+            },
+            {
+              "id": "deputy-parliament-party-order",
+              "label": "Landes- und Profilgrafik ordnen Sitze in der vorgegebenen Parteienfolge"
+            },
+            {
+              "id": "deputy-tenure-coverage",
+              "label": "Mandatsbalken zeigen echte Teilzeiten, Lücken und keine zukünftige Mitgliedschaft"
+            },
+            {
+              "id": "deputy-profile-election-bars",
+              "label": "Profil zeigt eigene Kandidatur, bekannte Gegenkandidaturen und nur belegte Reststimmen"
+            },
+            {
+              "id": "assembled-candidacy-result-provenance",
+              "label": "Automatische Ergebnisübernahme bewahrt manuelle Zahlen und fehlende Werte"
+            },
+            {
+              "id": "candidate-result-conflicts",
+              "label": "Persönliche Ergebnisse und zugeordnete Wahlkreisergebnisse bleiben getrennt"
+            },
+            {
+              "id": "deputy-portrait-crop",
+              "label": "Porträtausschnitt füllt den 3:4-Rahmen; sichere Bildnachweise bleiben an ihrer Mandatsverbindung"
+            },
+            {
+              "id": "completed-deputy-history",
+              "label": "Zusammengefasste Personen öffnen eine chronologische Übersicht ohne weitere Bestätigungsaufforderung"
+            },
+            {
+              "id": "deputy-explicit-selection",
+              "label": "Mandatsverbindungen bestätigen, erweitern und bei Datumskorrekturen erhalten"
+            },
+            {
+              "id": "regional-1952-source",
+              "label": "1952: 74 Quellen, regionale Nummern und keine technische Mandatszuordnung"
+            },
+            {
+              "id": "district-detail-assets",
+              "label": "Detailkarten teilen bestätigte Grenzstände ohne Ersatz für fehlende Jahre"
+            },
+            {
+              "id": "historical-geometry-confirmation",
+              "label": "Historische Geometrie nur nach Bestätigung und nur für die gewählte Periode"
+            },
+            {
+              "id": "time-travel-order",
+              "label": "Zeitreise beginnt bei der ältesten Periode und folgt den Wahljahren"
+            },
+            {
+              "id": "party-filter-stable",
+              "label": "Parteifilter bleibt beim Wechsel der Legislaturperiode erhalten"
+            },
+            {
+              "id": "morph-geometry",
+              "label": "Periodenwechsel morpht gleiche Wahlkreise und blendet den Rest über"
+            },
+            {
+              "id": "search",
+              "label": "Wahlkreise nach Name oder exakter Nummer finden"
+            },
+            {
+              "id": "boundaries",
+              "label": "Fehlende, leere und projizierte Grenzdaten erkennen"
+            }
+          ]
+        }
+      ]
+    },
+    {
+      "id": "employees",
+      "title": "Personal & Zuständigkeiten",
+      "primaryTags": [
+        "employees"
+      ],
+      "scenarioIds": [],
+      "scenarios": [
+        "onboarding-hr",
+        "responsibilities"
+      ],
+      "tables": [
+        "employee_lifecycle",
+        "tasks"
+      ],
+      "workflows": [
+        {
+          "scenario": "onboarding-hr",
+          "title": "HR-Onboarding und Offboarding",
+          "description": "Kalendertage, Pflichtfortschritt, Rollensichtbarkeit und echter Paketstart mit zurückgerollten Testdaten.",
+          "checks": [],
+          "tables": [
+            "employee_lifecycle",
+            "employee_hr_templates",
+            "routine_package_runs",
+            "routine_package_steps",
+            "employee_hr_evidence",
+            "employee_hr_gdpr_declarations",
+            "employee_hr_reminder_log",
+            "notification_types",
+            "notifications",
+            "tasks",
+            "subtasks"
+          ],
+          "features": [
+            "hr.offboarding",
+            "hr.onboarding"
+          ],
+          "steps": [
+            {
+              "id": "gdpr-edit-validation",
+              "label": "Datenschutztext: vollständige Vorlage und Eingabegrenzen prüfen"
+            },
+            {
+              "id": "gdpr-personal-confirmation",
+              "label": "DSGVO: nur persönlich und erst nach dem Textende bestätigen"
+            },
+            {
+              "id": "deadlines",
+              "label": "Eintrittsfristen, Überfälligkeit und anstehende Austritte"
+            },
+            {
+              "id": "progress",
+              "label": "Pflicht und optionale Punkte getrennt zählen"
+            },
+            {
+              "id": "roles",
+              "label": "Betroffene sehen nur eigene HR-Punkte; Leitung sieht das Team"
+            },
+            {
+              "id": "templates",
+              "label": "Drei Rollenvorlagen und Offboarding behalten Phasen und Nachweise"
+            },
+            {
+              "id": "start-once",
+              "label": "Vorlage starten, wiederholen und Nachweissperre prüfen (vollständig zurückgerollt)"
+            },
+            {
+              "id": "foreign-tenant",
+              "label": "Fremdtenant darf weder Beschäftigung noch Erinnerung schreiben"
+            }
+          ]
+        },
+        {
+          "scenario": "responsibilities",
+          "title": "Zuständigkeiten & Matrix",
+          "description": "Vorschläge, Lücken und Tenant-Grenzen der Matrix.",
+          "checks": [],
+          "tables": [
+            "tasks"
+          ],
+          "features": [
+            "responsibilities.matrix"
+          ],
+          "steps": [
+            {
+              "id": "topic-conversion-boundary",
+              "label": "Themenumwandlung verlangt Tenant und Leitungsrolle"
+            },
+            {
+              "id": "matrix-multiple-primary",
+              "label": "Mehrere Primärpersonen und unterschiedliche Abdeckungslücken"
+            },
+            {
+              "id": "priority",
+              "label": "Thema und Region, Primärstufe und deterministische Gleichstände"
+            },
+            {
+              "id": "confirmed-handover",
+              "label": "Bestätigte Übergabe erhält Ball-Kategorie und ist wiederholbar"
+            },
+            {
+              "id": "catalog-write-boundary",
+              "label": "Katalogänderungen und Zusammenführen erzwingen Tenant und Rolle"
+            },
+            {
+              "id": "topic-mention-token",
+              "label": "Themen-Token hält die ID stabil und wird aus HTML wie Text gelesen"
+            },
+            {
+              "id": "topic-mention-server-only",
+              "label": "Themen-Meldungen löst nur der serverseitige Ruhephase-Anlauf aus"
+            },
+            {
+              "id": "topic-mention-delivery",
+              "label": "Themen-Meldung kommt genau einmal an, ohne Primärzuständigkeit gar nicht"
+            },
+            {
+              "id": "suggest",
+              "label": "Sekundärzuständigkeit bei Abwesenheit vorschlagen"
+            },
+            {
+              "id": "gaps",
+              "label": "Lücken erkennen"
+            },
+            {
+              "id": "berlin-day",
+              "label": "Abwesenheit nach Berliner Kalendertag abfragen"
+            },
+            {
+              "id": "foreign-tenant",
+              "label": "Fremdtenant darf keine Matrixdaten liefern"
+            }
+          ]
+        }
+      ]
+    },
+    {
+      "id": "team-rituals",
+      "title": "Team-Rituale",
+      "primaryTags": [
+        "dashboard"
+      ],
+      "scenarioIds": [],
+      "scenarios": [
+        "team-rituals"
+      ],
+      "tables": [],
+      "workflows": [
+        {
+          "scenario": "team-rituals",
+          "title": "Freiwillige Team-Rituale",
+          "description": "Fragenrotation und Team-Ereignisse ohne Datenbankzugriff.",
+          "checks": [],
+          "tables": [],
+          "features": [
+            "teamrituals.weekly"
+          ],
+          "steps": [
+            {
+              "id": "dashboard-urgency",
+              "label": "Wochenfrage: Restzeit und Eil-Änderungen"
+            },
+            {
+              "id": "ritual-history",
+              "label": "Wiederverwendbare Wochenfragen und getrenntes Archiv"
+            },
+            {
+              "id": "weekly-answer-reveal",
+              "label": "Teamantworten erst nach eigenem Beitrag anzeigen"
+            },
+            {
+              "id": "dashboard-discovery",
+              "label": "Team-Rituale bleiben im Dashboard auffindbar, ohne automatische Teilnahme"
+            },
+            {
+              "id": "ritual-deeplink",
+              "label": "Dashboard-Einstieg öffnet direkt den Team-Rituale-Tab"
+            },
+            {
+              "id": "team-routine-templates",
+              "label": "Editierbare freiwillige Team-Vorlagen"
+            },
+            {
+              "id": "bingo-rules",
+              "label": "Bingo-Reihen und lokaler Wochenzustand"
+            },
+            {
+              "id": "two-truths-profile",
+              "label": "Drei verschiedene Aussagen und genau eine Lüge"
+            },
+            {
+              "id": "employee-access-anniversary",
+              "label": "Leitungsrollen und automatische Eintrittsjubiläen"
+            },
+            {
+              "id": "answer-length",
+              "label": "Freiwillige Antworten mit höchstens 280 Zeichen"
+            },
+            {
+              "id": "rotation",
+              "label": "Fragen erst nach vollständigem Durchlauf wiederholen"
+            },
+            {
+              "id": "berlin-week",
+              "label": "Wochenwechsel am Berliner Montag"
+            },
+            {
+              "id": "team-events",
+              "label": "Datumsfreigabe, Schaltjahr und Jahreswechsel"
+            }
+          ]
+        }
+      ]
+    },
+    {
+      "id": "events",
+      "title": "Veranstaltungen",
+      "primaryTags": [
+        "event-planning"
+      ],
+      "scenarioIds": [],
+      "scenarios": [
+        "event-planning-lifecycle"
+      ],
+      "tables": [
+        "event_plannings"
+      ],
+      "workflows": [
+        {
+          "scenario": "event-planning-lifecycle",
+          "title": "Event-Planung (komplett: Termine, Speaker, Checkliste, Timeline)",
+          "description": "Erstellt eine Event-Planung mit zwei Terminoptionen, Speakern, Ansprechpartner, Checklisten-Items (inkl. social_media + rsvp) und Timeline-Zuweisung.",
+          "checks": [],
+          "tables": [
+            "event_plannings",
+            "event_planning_dates",
+            "event_planning_speakers",
+            "event_planning_contacts",
+            "event_planning_checklist_items",
+            "event_planning_timeline_assignments"
+          ],
+          "features": [
+            "events.checklist",
+            "events.plan"
+          ],
+          "steps": [
+            {
+              "id": "create-event-planning",
+              "label": "Event-Planung anlegen"
+            },
+            {
+              "id": "create-dates",
+              "label": "Zwei Terminoptionen (eine bestätigt)"
+            },
+            {
+              "id": "create-speakers",
+              "label": "Speaker (2)"
+            },
+            {
+              "id": "create-contact",
+              "label": "Ansprechpartner anlegen"
+            },
+            {
+              "id": "create-checklist",
+              "label": "Checkliste mit social_media + rsvp Items"
+            },
+            {
+              "id": "create-timeline",
+              "label": "Timeline-Zuweisung für erstes Item"
+            },
+            {
+              "id": "verify",
+              "label": "Vollständigkeit prüfen"
+            }
+          ]
+        }
+      ]
+    },
+    {
+      "id": "rules",
+      "title": "Freigabe, Rollen & Fristen",
+      "primaryTags": [],
+      "scenarioIds": [
+        "workflow-rules"
+      ],
+      "scenarios": [
+        "workflow-rules"
+      ],
+      "tables": [],
+      "workflows": [
+        {
+          "scenario": "workflow-rules",
+          "title": "Geschäftsregeln (Freigabe, Rollen, Fristen)",
+          "description": "Prüft die von der Anwendung verwendeten Regeln ohne Datenbankzugriff oder Testdatensätze.",
+          "checks": [
+            "Erlaubte und verbotene Brief-Statuswechsel",
+            "Entscheiderrollen",
+            "Ministeriumsfrist und Wiedervorlage"
+          ],
+          "tables": [],
+          "features": [
+            "automation.rules",
+            "automation.workflows"
+          ],
+          "steps": [
+            {
+              "id": "dashboard-greetings",
+              "label": "My Work: Begrüßungen nach Tageszeit, Wochentag und Monat"
+            },
+            {
+              "id": "team-weekly-target",
+              "label": "Team: Wochen-Soll aus individuellem Arbeitsplan, Abwesenheiten und BW-Feiertagen"
+            },
+            {
+              "id": "arbzg-breaks",
+              "label": "Zeiterfassung: Pausenpflicht und Tagesgrenze nach ArbZG"
+            },
+            {
+              "id": "seat-poll-basis",
+              "label": "Mandatssimulator: Umfragewerte als Ausgangsbasis"
+            },
+            {
+              "id": "seat-district-model",
+              "label": "Mandatssimulator: Zweitstimmen auf Wahlkreise übertragen"
+            },
+            {
+              "id": "seat-other-vote-offset",
+              "label": "Mandatssimulator: Gegenbuchung bei den Sonstigen"
+            },
+            {
+              "id": "seat-district-transfer",
+              "label": "Mandatssimulator: knappen Wahlkreis durch Erststimmenübertragung kippen"
+            },
+            {
+              "id": "routine-relative-deadlines-deputies",
+              "label": "Routinen: relative Fristen und Abwesenheitsvertretung konfigurieren"
+            },
+            {
+              "id": "shared-condition-dates",
+              "label": "Regeln: identische Datumsauswertung für Vorschau und Server"
+            },
+            {
+              "id": "rule-editor-preview",
+              "label": "Regel-Editor: JSON, verschachtelte Vorschau und unbedingte Regeln"
+            },
+            {
+              "id": "routine-dependencies-preview",
+              "label": "Routinen: Freigaben, Abhängigkeiten und Jahreswechsel bleiben nachvollziehbar"
+            },
+            {
+              "id": "routine-step-types",
+              "label": "Routinen: Schritttypen bleiben vollständig und abwärtskompatibel"
+            },
+            {
+              "id": "calendar-automation",
+              "label": "Stichtage: Jahresdatum, Monatsende, Quartal und doppelte Ausführung"
+            },
+            {
+              "id": "automation-hub-links",
+              "label": "Automatisierung: alte Workflow- und RSS-Links bleiben erreichbar"
+            },
+            {
+              "id": "administration-access",
+              "label": "Administration: Büro- und Plattformrechte bleiben getrennt"
+            },
+            {
+              "id": "permission-explorer",
+              "label": "Rechte-Explorer: Rolle, Modul und Feldrecht erklären und Widersprüche finden"
+            },
+            {
+              "id": "config-delete-impact",
+              "label": "Konfiguration: Verwendung vor dem Löschen ausweisen"
+            },
+            {
+              "id": "config-rename-cascade",
+              "label": "Konfiguration: Umbenennen zieht Verweise mit und lehnt Mehrdeutigkeit ab"
+            },
+            {
+              "id": "config-delete-guard",
+              "label": "Konfiguration: Löschen verlangt eine frische, bestätigte Zählung"
+            },
+            {
+              "id": "letter-rules",
+              "label": "Brief: Freigabe erforderlich; versendete Briefe bleiben abgeschlossen"
+            },
+            {
+              "id": "decider-roles",
+              "label": "Terminanfragen: nur Abgeordnete und Büroleitung entscheiden"
+            },
+            {
+              "id": "deadlines",
+              "label": "Ministeriumsfrist; fällige Vorgänge verlassen die Wiedervorlage"
+            },
+            {
+              "id": "redaktion-planner",
+              "label": "Redaktion: Verschieben behält Uhrzeit, volle Tage, Bildzuschnitt"
+            },
+            {
+              "id": "redaktion-freigabe",
+              "label": "Redaktion: Freigabe nur durch Leitung, Änderungswunsch mit Frist"
             }
           ]
         }

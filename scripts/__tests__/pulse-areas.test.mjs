@@ -195,10 +195,31 @@ test('kein Szenario liegt in zwei Bereichen', () => {
   assert.equal(seen.size, areas.reduce((sum, area) => sum + area.scenarios.length, 0));
 });
 
-test('Gruppen entsprechen den fachlichen Hauptbereichen und dem Wächter', () => {
+test('Gruppen decken Vorgangsbetrieb, Termine, Dokumente, Wahlen, Organisation, Regeln und Wächter', () => {
   const { groups } = realAreas();
-  assert.deepEqual(groups.map((group) => group.id), ['operations', 'representation', 'guard']);
-  assert.deepEqual(groups[0].areas, ['contacts', 'cases', 'tasks', 'decisions', 'meetings']);
+  assert.deepEqual(groups.map((group) => group.id), [
+    'operations', 'representation', 'documents', 'elections', 'organization', 'rules', 'guard',
+  ]);
+  assert.deepEqual(groups[0].areas, ['contacts', 'cases', 'tasks', 'decisions', 'meetings', 'day-slip']);
   assert.deepEqual(groups[1].areas, ['appointments']);
-  assert.deepEqual(groups[2].areas, ['security']);
+  assert.deepEqual(groups[2].areas, ['documents', 'knowledge']);
+  assert.deepEqual(groups[3].areas, ['elections']);
+  assert.deepEqual(groups[4].areas, ['employees', 'team-rituals', 'events']);
+  assert.deepEqual(groups[5].areas, ['rules']);
+  assert.deepEqual(groups[6].areas, ['security']);
+});
+
+test('jedes registrierte Szenario ist genau einem Bereich zugeordnet', () => {
+  const { areas } = realAreas();
+  const assigned = areas.flatMap((area) => area.scenarios);
+  assert.equal(assigned.length, 30);
+  assert.equal(new Set(assigned).size, 30);
+});
+
+test('ein registriertes Szenario ohne Bereich schlägt fehl', () => {
+  const { errors } = derivePulseAreas({
+    config: { groups: [{ id: 'g', title: 'G', areas: ['a'] }], areas: [{ id: 'a', title: 'A', primaryTags: ['ta'] }] },
+    scenarios: [scenario('s-a', ['ta']), scenario('s-b', ['tb'])],
+  });
+  assert.ok(errors.some((error) => error.includes('Szenario "s-b" ist keinem Puls-Bereich zugeordnet')), errors.join('\n'));
 });

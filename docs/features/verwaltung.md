@@ -436,7 +436,7 @@ Zeigt RLS-Lücken, Policies, Snapshots und Audit-Trail als eigenständige Sicher
 - Funktionen ohne Tabellenbezug erhalten keinen RLS-Bezug; ob das fachlich korrekt ist, bleibt je Funktion zu prüfen.
 
 ### `admin.system-pulse` — System-Puls
-Zeigt je Funktionsbereich die letzten funktionalen Selbsttest-Ergebnisse als Ampel, startet die zugeordneten Szenarien aus der Detailkarte im Hintergrund, stellt die deklarierten Szenario-Schritte als Prozesskette mit gespeicherten Schritt-Ergebnissen dar, zeigt je Workflow Testname, Zeitpunkt, Dauer, Beschreibung und Prüfumfang, bewertet Frische, App-Version, Demo- und Aufräumstatus, nennt Abdeckung und Verlauf, erlaubt gezielte Nachläufe und verknüpft betroffene Katalogfunktionen sowie RLS-Befunde, während RLS-Lücken als eigene Kennzahl getrennt von den Testergebnissen aus.
+Bildet alle registrierten Selbsttest-Szenarien in fachlichen Bereichen ab und zeigt je Funktionsbereich die letzten funktionalen Selbsttest-Ergebnisse als Ampel, startet die zugeordneten Szenarien aus der Detailkarte im Hintergrund, stellt die deklarierten Szenario-Schritte als Prozesskette mit gespeicherten Schritt-Ergebnissen dar, zeigt je Workflow Testname, Zeitpunkt, Dauer, Beschreibung und Prüfumfang, bewertet Frische, App-Version, Demo- und Aufräumstatus, nennt Abdeckung und Verlauf, erlaubt gezielte Nachläufe und verknüpft betroffene Katalogfunktionen sowie RLS-Befunde, während RLS-Lücken als eigene Kennzahl getrennt von den Testergebnissen aus.
 
 - **Kategorie:** administrativ
 - **Implementierung:** implementiert

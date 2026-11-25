@@ -131,6 +131,14 @@ export function derivePulseAreas({ config, scenarios, features = [] }) {
     }
   }
 
+  // Kein registriertes Szenario darf im Cockpit fehlen: neue Szenarien ohne
+  // passenden Tag müssen einer bestehenden oder neuen Kategorie zugeordnet werden.
+  for (const scenario of registered) {
+    if (!assigned.has(scenario.id)) {
+      errors.push(`Registriertes Szenario "${scenario.id}" ist keinem Puls-Bereich zugeordnet.`);
+    }
+  }
+
   const areas = configured.map((area) => {
     const areaScenarios = registered
       .filter((scenario) => assigned.get(scenario.id) === area.id)

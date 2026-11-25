@@ -3,12 +3,32 @@
     {
       "id": "operations",
       "title": "Vorgangs- & Mandatsbetrieb",
-      "areas": ["contacts", "cases", "tasks", "decisions", "meetings"]
+      "areas": ["contacts", "cases", "tasks", "decisions", "meetings", "day-slip"]
     },
     {
       "id": "representation",
       "title": "Termine & Repräsentanz",
       "areas": ["appointments"]
+    },
+    {
+      "id": "documents",
+      "title": "Dokumente & Wissen",
+      "areas": ["documents", "knowledge"]
+    },
+    {
+      "id": "elections",
+      "title": "Wahlen & Analyse",
+      "areas": ["elections"]
+    },
+    {
+      "id": "organization",
+      "title": "Organisation & Personal",
+      "areas": ["employees", "team-rituals", "events"]
+    },
+    {
+      "id": "rules",
+      "title": "Geschäftsregeln",
+      "areas": ["rules"]
     },
     {
       "id": "guard",
@@ -38,6 +58,11 @@
       "primaryTags": ["tasks", "quick-notes"]
     },
     {
+      "id": "day-slip",
+      "title": "Tageszettel",
+      "primaryTags": ["dayslip"]
+    },
+    {
       "id": "decisions",
       "title": "Entscheidungen",
       "primaryTags": ["decisions"]
@@ -46,6 +71,42 @@
       "id": "meetings",
       "title": "Jour fixe",
       "primaryTags": ["meetings"]
+    },
+    {
+      "id": "documents",
+      "title": "Dokumente & Korrespondenz",
+      "primaryTags": ["documents", "letters"]
+    },
+    {
+      "id": "knowledge",
+      "title": "Wissen",
+      "primaryTags": ["knowledge"]
+    },
+    {
+      "id": "elections",
+      "title": "Wahlen & Analyse",
+      "primaryTags": ["election-districts", "election-analysis", "election-history"]
+    },
+    {
+      "id": "employees",
+      "title": "Personal & Zuständigkeiten",
+      "primaryTags": ["employees"]
+    },
+    {
+      "id": "team-rituals",
+      "title": "Team-Rituale",
+      "primaryTags": ["dashboard"]
+    },
+    {
+      "id": "events",
+      "title": "Veranstaltungen",
+      "primaryTags": ["event-planning"]
+    },
+    {
+      "id": "rules",
+      "title": "Freigabe, Rollen & Fristen",
+      "primaryTags": [],
+      "scenarioIds": ["workflow-rules"]
     },
     {
       "id": "security",
