@@ -17846,6 +17846,14 @@ export type Database = {
       }
       auto_archive_completed_preparations: { Args: never; Returns: undefined }
       auto_update_poll_status: { Args: never; Returns: undefined }
+      batch_task_stafette_action: {
+        Args: { _action: string; _task_ids: string[]; _tenant_id: string }
+        Returns: Json
+      }
+      batch_task_stafette_preview: {
+        Args: { _action: string; _task_ids: string[]; _tenant_id: string }
+        Returns: Json
+      }
       bulk_update_contact_fields: {
         Args: {
           _ids: string[]
@@ -18208,6 +18216,10 @@ export type Database = {
             Args: { planning_id: string; template_id_param?: string }
             Returns: undefined
           }
+      create_decision_task: {
+        Args: { p_decision_id: string }
+        Returns: string
+      }
       create_document_annotation_task: {
         Args: { _annotation: string; _assignee?: string; _title?: string }
         Returns: string
@@ -18261,6 +18273,10 @@ export type Database = {
             }
             Returns: string
           }
+      create_note_work: {
+        Args: { p_kind: string; p_note_id: string }
+        Returns: string
+      }
       create_poll_notification: {
         Args: {
           _notification_type: string
@@ -20117,6 +20133,7 @@ export type Database = {
       topic_mention_selftest: { Args: { p_tenant: string }; Returns: Json }
       topic_name_from_label: { Args: { p_label: string }; Returns: string }
       undo_contact_bulk_action: { Args: { _audit_id: string }; Returns: number }
+      undo_task_batch_action: { Args: { _batch_id: string }; Returns: number }
       update_contact_usage: {
         Args: { p_contact_id: string; p_tenant_id?: string; p_user_id?: string }
         Returns: undefined
