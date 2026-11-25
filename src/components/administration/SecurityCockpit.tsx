@@ -1,6 +1,8 @@
 import type { JSX } from "react";
 import { useMemo } from "react";
 import { Link } from "react-router-dom";
+import { useAuth } from "@/hooks/useAuth";
+import { useTenant } from "@/hooks/useTenant";
 import { EmptyState } from '@/components/ui-patterns';
 import { useQuery } from "@tanstack/react-query";
 import { supabase } from "@/integrations/supabase/client";
@@ -51,11 +53,13 @@ const sevVariant = (s: Gap["severity"]): "default" | "secondary" | "destructive"
 };
 
 export function SecurityCockpit(): JSX.Element {
+  const { user } = useAuth();
+  const { currentTenant } = useTenant();
   const [filter, setFilter] = useState("");
   const [onlyIssues, setOnlyIssues] = useState(true);
 
   const gapsQuery = useQuery({
-    queryKey: ["rls_gaps"],
+    queryKey: ["rls_gaps", user?.id],
     queryFn: async () => {
       const { data, error } = await supabase.rpc("audit_rls_gaps");
       if (error) throw error;
@@ -65,7 +69,7 @@ export function SecurityCockpit(): JSX.Element {
   });
 
   const snapshotsQuery = useQuery({
-    queryKey: ["security_snapshots"],
+    queryKey: ["security_snapshots", user?.id],
     queryFn: async () => {
       const { data, error } = await supabase
         .from("security_audit_snapshots")
@@ -79,7 +83,7 @@ export function SecurityCockpit(): JSX.Element {
   });
 
   const auditQuery = useQuery({
-    queryKey: ["audit_log_recent"],
+    queryKey: ["audit_log_recent", user?.id, currentTenant?.id],
     queryFn: async () => {
       const { data, error } = await supabase
         .from("audit_log_entries")
@@ -122,7 +126,6 @@ export function SecurityCockpit(): JSX.Element {
     void snapshotsQuery.refetch();
   };
 
-  if (gapsQuery.isError || snapshotsQuery.isError || auditQuery.isError) return <div role="alert" className="rounded border border-destructive p-4">Daten konnten nicht geladen werden. Eine verlässliche Bewertung ist derzeit nicht möglich. Bitte laden Sie die Seite erneut.</div>;
 
   return (
     <div className="space-y-6">
@@ -141,7 +144,7 @@ export function SecurityCockpit(): JSX.Element {
           </p>
         </div>
         <div className="flex gap-2">
-          <Button variant="outline" size="sm" onClick={() => gapsQuery.refetch()}>
+          <Button variant="outline" size="sm" onClick={() => { void gapsQuery.refetch(); void snapshotsQuery.refetch(); void auditQuery.refetch(); }}>
             <RefreshCw className="mr-2 h-4 w-4" /> Aktualisieren
           </Button>
           <Button size="sm" onClick={takeSnapshot}>
@@ -154,7 +157,7 @@ export function SecurityCockpit(): JSX.Element {
         <Card>
           <CardHeader className="pb-2">
             <CardDescription className="flex items-center gap-1"><Database className="h-4 w-4" /> Tabellen</CardDescription>
-            <CardTitle className="text-h2 tabular-nums">{stats.total}</CardTitle>
+            <CardTitle className="text-h2 tabular-nums">{gapsQuery.isSuccess ? stats.total : "—"}</CardTitle>
           </CardHeader>
         </Card>
         <Card>
@@ -162,19 +165,19 @@ export function SecurityCockpit(): JSX.Element {
             <CardDescription className="text-destructive flex items-center gap-1">
               <AlertTriangle className="h-4 w-4" /> Kritisch
             </CardDescription>
-            <CardTitle className="text-h2 tabular-nums text-destructive">{stats.critical}</CardTitle>
+            <CardTitle className="text-h2 tabular-nums text-destructive">{gapsQuery.isSuccess ? stats.critical : "—"}</CardTitle>
           </CardHeader>
         </Card>
         <Card>
           <CardHeader className="pb-2">
             <CardDescription className="flex items-center gap-1"><AlertTriangle className="h-4 w-4" /> Warnung</CardDescription>
-            <CardTitle className="text-h2 tabular-nums">{stats.warning}</CardTitle>
+            <CardTitle className="text-h2 tabular-nums">{gapsQuery.isSuccess ? stats.warning : "—"}</CardTitle>
           </CardHeader>
         </Card>
         <Card>
           <CardHeader className="pb-2">
             <CardDescription>OK</CardDescription>
-            <CardTitle className="text-h2 tabular-nums text-palette-green">{stats.ok}</CardTitle>
+            <CardTitle className="text-h2 tabular-nums text-palette-green">{gapsQuery.isSuccess ? stats.ok : "—"}</CardTitle>
           </CardHeader>
         </Card>
       </div>
@@ -207,53 +210,57 @@ export function SecurityCockpit(): JSX.Element {
               </div>
             </CardHeader>
             <CardContent>
-              <Table>
-                <TableHeader>
-                  <TableRow>
-                    <TableHead>Schwere</TableHead>
-                    <TableHead>Tabelle</TableHead>
-                    <TableHead>Begründung</TableHead>
-                    <TableHead className="text-right">Policies</TableHead>
-                    <TableHead>tenant_id</TableHead>
-                    <TableHead>Funktionen</TableHead>
-                  </TableRow>
-                </TableHeader>
-                <TableBody>
-                  {filteredGaps.map((g) => (
-                    <TableRow key={g.table_name}>
-                      <TableCell>
-                        <Badge variant={sevVariant(g.severity)}>{g.severity}</Badge>
-                      </TableCell>
-                      <TableCell className="font-mono text-caption">{g.table_name}</TableCell>
-                      <TableCell className="text-caption">{g.reason}</TableCell>
-                      <TableCell className="text-right tabular-nums">{g.policy_count}</TableCell>
-                      <TableCell>{g.has_tenant_id ? "ja" : "—"}</TableCell>
-                      <TableCell>
-                        <div className="flex flex-wrap gap-1">
-                          {featuresForTable(g.table_name).map((feature) => (
-                            <Link
-                              key={feature.id}
-                              to={featureCatalogHref(feature.id)}
-                              className="rounded border px-1 py-0.5 font-mono text-[0.7rem] text-primary underline-offset-2 hover:underline"
-                              title={feature.name}
-                            >
-                              {feature.id}
-                            </Link>
-                          ))}
-                          {featuresForTable(g.table_name).length === 0 ? <span className="text-muted-foreground">—</span> : null}
-                        </div>
-                      </TableCell>
-                    </TableRow>
-                  ))}
-                  {filteredGaps.length === 0 && (
+              {gapsQuery.isPending ? <p role="status">Wird geladen …</p> : gapsQuery.isError ? (
+                <p role="alert" className="text-sm text-destructive">RLS-Befunde konnten nicht geladen werden.</p>
+              ) : (
+                <Table>
+                  <TableHeader>
                     <TableRow>
-                      <TableCell colSpan={6} className="text-center text-muted-foreground py-6">
-                        Keine Treffer.
-                      </TableCell>
+                      <TableHead>Schwere</TableHead>
+                      <TableHead>Tabelle</TableHead>
+                      <TableHead>Begründung</TableHead>
+                      <TableHead className="text-right">Policies</TableHead>
+                      <TableHead>tenant_id</TableHead>
+                      <TableHead>Funktionen</TableHead>
                     </TableRow>
-                  )}
-                </TableBody>
-              </Table>
+                  </TableHeader>
+                  <TableBody>
+                    {filteredGaps.map((g) => (
+                      <TableRow key={g.table_name}>
+                        <TableCell>
+                          <Badge variant={sevVariant(g.severity)}>{g.severity}</Badge>
+                        </TableCell>
+                        <TableCell className="font-mono text-caption">{g.table_name}</TableCell>
+                        <TableCell className="text-caption">{g.reason}</TableCell>
+                        <TableCell className="text-right tabular-nums">{g.policy_count}</TableCell>
+                        <TableCell>{g.has_tenant_id ? "ja" : "—"}</TableCell>
+                        <TableCell>
+                          <div className="flex flex-wrap gap-1">
+                            {featuresForTable(g.table_name).map((feature) => (
+                              <Link
+                                key={feature.id}
+                                to={featureCatalogHref(feature.id)}
+                                className="rounded border px-1 py-0.5 font-mono text-[0.7rem] text-primary underline-offset-2 hover:underline"
+                                title={feature.name}
+                              >
+                                {feature.id}
+                              </Link>
+                            ))}
+                            {featuresForTable(g.table_name).length === 0 ? <span className="text-muted-foreground">—</span> : null}
+                          </div>
+                        </TableCell>
+                      </TableRow>
+                    ))}
+                    {filteredGaps.length === 0 && (
+                      <TableRow>
+                        <TableCell colSpan={6} className="text-center text-muted-foreground py-6">
+                          Keine Treffer.
+                        </TableCell>
+                      </TableRow>
+                    )}
+                  </TableBody>
+                </Table>
+              )}
             </CardContent>
           </Card>
         </TabsContent>
@@ -265,37 +272,41 @@ export function SecurityCockpit(): JSX.Element {
               <CardDescription>Historische RLS-Coverage-Berichte.</CardDescription>
             </CardHeader>
             <CardContent>
-              <Table>
-                <TableHeader>
-                  <TableRow>
-                    <TableHead>Erfasst</TableHead>
-                    <TableHead className="text-right">Tabellen</TableHead>
-                    <TableHead className="text-right">RLS aktiv</TableHead>
-                    <TableHead className="text-right">Kritisch</TableHead>
-                    <TableHead className="text-right">Warnung</TableHead>
-                  </TableRow>
-                </TableHeader>
-                <TableBody>
-                  {(snapshotsQuery.data ?? []).map((s) => (
-                    <TableRow key={s.id}>
-                      <TableCell className="text-caption">
-                        {format(parseISO(s.captured_at), "dd.MM.yyyy HH:mm", { locale: de })}
-                      </TableCell>
-                      <TableCell className="text-right tabular-nums">{s.total_tables}</TableCell>
-                      <TableCell className="text-right tabular-nums">{s.rls_enabled_count}</TableCell>
-                      <TableCell className="text-right tabular-nums text-destructive">{s.critical_count}</TableCell>
-                      <TableCell className="text-right tabular-nums">{s.warning_count}</TableCell>
-                    </TableRow>
-                  ))}
-                  {(snapshotsQuery.data ?? []).length === 0 && (
+              {snapshotsQuery.isPending ? <p role="status">Wird geladen …</p> : snapshotsQuery.isError ? (
+                <p role="alert" className="text-sm text-destructive">Snapshots konnten nicht geladen werden.</p>
+              ) : (
+                <Table>
+                  <TableHeader>
                     <TableRow>
-                      <TableCell colSpan={5} className="py-space-md">
-                        <EmptyState size="sm" title="Noch keine Snapshots" />
-                      </TableCell>
+                      <TableHead>Erfasst</TableHead>
+                      <TableHead className="text-right">Tabellen</TableHead>
+                      <TableHead className="text-right">RLS aktiv</TableHead>
+                      <TableHead className="text-right">Kritisch</TableHead>
+                      <TableHead className="text-right">Warnung</TableHead>
                     </TableRow>
-                  )}
-                </TableBody>
-              </Table>
+                  </TableHeader>
+                  <TableBody>
+                    {(snapshotsQuery.data ?? []).map((s) => (
+                      <TableRow key={s.id}>
+                        <TableCell className="text-caption">
+                          {format(parseISO(s.captured_at), "dd.MM.yyyy HH:mm", { locale: de })}
+                        </TableCell>
+                        <TableCell className="text-right tabular-nums">{s.total_tables}</TableCell>
+                        <TableCell className="text-right tabular-nums">{s.rls_enabled_count}</TableCell>
+                        <TableCell className="text-right tabular-nums text-destructive">{s.critical_count}</TableCell>
+                        <TableCell className="text-right tabular-nums">{s.warning_count}</TableCell>
+                      </TableRow>
+                    ))}
+                    {(snapshotsQuery.data ?? []).length === 0 && (
+                      <TableRow>
+                        <TableCell colSpan={5} className="py-space-md">
+                          <EmptyState size="sm" title="Noch keine Snapshots" />
+                        </TableCell>
+                      </TableRow>
+                    )}
+                  </TableBody>
+                </Table>
+              )}
             </CardContent>
           </Card>
         </TabsContent>
@@ -306,37 +317,41 @@ export function SecurityCockpit(): JSX.Element {
               <CardTitle>Audit-Trail (letzte 100)</CardTitle>
             </CardHeader>
             <CardContent>
-              <Table>
-                <TableHeader>
-                  <TableRow>
-                    <TableHead>Zeit</TableHead>
-                    <TableHead>Nutzer</TableHead>
-                    <TableHead>IP</TableHead>
-                    <TableHead>Payload</TableHead>
-                  </TableRow>
-                </TableHeader>
-                <TableBody>
-                  {(auditQuery.data ?? []).map((a) => (
-                    <TableRow key={a.id}>
-                      <TableCell className="text-caption">
-                        {format(parseISO(a.created_at), "dd.MM HH:mm:ss", { locale: de })}
-                      </TableCell>
-                      <TableCell className="font-mono text-caption">{a.user_id?.slice(0, 8) ?? "—"}</TableCell>
-                      <TableCell className="font-mono text-caption">{a.ip_address ?? "—"}</TableCell>
-                      <TableCell className="text-caption max-w-md truncate">
-                        {JSON.stringify(a.payload)}
-                      </TableCell>
-                    </TableRow>
-                  ))}
-                  {(auditQuery.data ?? []).length === 0 && (
+              {auditQuery.isPending ? <p role="status">Wird geladen …</p> : auditQuery.isError ? (
+                <p role="alert" className="text-sm text-destructive">Audit-Trail konnten nicht geladen werden.</p>
+              ) : (
+                <Table>
+                  <TableHeader>
                     <TableRow>
-                      <TableCell colSpan={4} className="text-center text-muted-foreground py-6">
-                        Keine Einträge.
-                      </TableCell>
+                      <TableHead>Zeit</TableHead>
+                      <TableHead>Nutzer</TableHead>
+                      <TableHead>IP</TableHead>
+                      <TableHead>Payload</TableHead>
                     </TableRow>
-                  )}
-                </TableBody>
-              </Table>
+                  </TableHeader>
+                  <TableBody>
+                    {(auditQuery.data ?? []).map((a) => (
+                      <TableRow key={a.id}>
+                        <TableCell className="text-caption">
+                          {format(parseISO(a.created_at), "dd.MM HH:mm:ss", { locale: de })}
+                        </TableCell>
+                        <TableCell className="font-mono text-caption">{a.user_id?.slice(0, 8) ?? "—"}</TableCell>
+                        <TableCell className="font-mono text-caption">{a.ip_address ?? "—"}</TableCell>
+                        <TableCell className="text-caption max-w-md truncate">
+                          {JSON.stringify(a.payload)}
+                        </TableCell>
+                      </TableRow>
+                    ))}
+                    {(auditQuery.data ?? []).length === 0 && (
+                      <TableRow>
+                        <TableCell colSpan={4} className="text-center text-muted-foreground py-6">
+                          Keine Einträge.
+                        </TableCell>
+                      </TableRow>
+                    )}
+                  </TableBody>
+                </Table>
+              )}
             </CardContent>
           </Card>
         </TabsContent>

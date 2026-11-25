@@ -4,6 +4,7 @@ import { renderHook, waitFor } from "@testing-library/react";
 import { beforeEach, describe, expect, it, vi } from "vitest";
 
 const rpc = vi.hoisted(() => vi.fn());
+vi.mock("@/hooks/useAuth", () => ({ useAuth: () => ({ user: { id: "security-reader" } }) }));
 
 vi.mock("@/integrations/supabase/client", () => ({
   supabase: { rpc },

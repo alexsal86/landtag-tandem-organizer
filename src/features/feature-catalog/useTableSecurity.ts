@@ -1,3 +1,4 @@
+import { useAuth } from "@/hooks/useAuth";
 import { useQuery } from "@tanstack/react-query";
 import { supabase } from "@/integrations/supabase/client";
 
@@ -48,10 +49,11 @@ export function groupSecurityByTable(
  * weder eine Sicherheitsbewertung der Funktion noch ein funktionales Testergebnis.
  */
 export function useTableSecurity(tables: string[]) {
-  const enabled = tables.length > 0;
+  const { user } = useAuth();
+  const enabled = !!user?.id && tables.length > 0;
 
   const gapsQuery = useQuery({
-    queryKey: ["rls_gaps"],
+    queryKey: ["rls_gaps", user?.id],
     queryFn: async () => {
       const { data, error } = await supabase.rpc("audit_rls_gaps");
       if (error) throw error;
@@ -62,7 +64,7 @@ export function useTableSecurity(tables: string[]) {
   });
 
   const policiesQuery = useQuery({
-    queryKey: ["rls_policies", [...tables].sort().join(",")],
+    queryKey: ["rls_policies", user?.id, [...tables].sort().join(",")],
     queryFn: async () => {
       const { data, error } = await supabase.rpc("audit_rls_policies", { _tables: tables });
       if (error) throw error;
