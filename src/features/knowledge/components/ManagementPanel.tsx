@@ -18,6 +18,7 @@ import {
   type KnowledgeMergeTarget,
 } from "../hooks/useKnowledgeQuestions";
 import styles from "./KnowledgeWorkspace.module.css";
+import { ARCHIVE_REASONS } from "./archiveReasons";
 
 export type KnowledgeManagementMode = "edit" | "archive" | "merge" | "restore";
 const TITLES = {
@@ -25,12 +26,6 @@ const TITLES = {
   archive: "Archivieren / schließen",
   merge: "Als Duplikat zusammenführen",
   restore: "Frage wiederherstellen",
-};
-export const ARCHIVE_REASONS: Record<string, string> = {
-  completed: "Erledigt",
-  obsolete: "Nicht mehr relevant",
-  duplicate: "Doppelte Frage",
-  other: "Sonstiges",
 };
 // Mounted for each opening so these values remain the user's revision baseline.
 export function ManagementPanel({

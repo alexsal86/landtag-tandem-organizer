@@ -8,7 +8,7 @@ import styles from "./KnowledgeWorkspace.module.css";
 import { KnowledgePersonLabel } from "./KnowledgePersonAvatar";
 import { knowledgePersonForId } from "../person";
 import { Link } from "react-router-dom";
-import { ARCHIVE_REASONS } from "./ManagementPanel";
+import { ARCHIVE_REASONS } from "./archiveReasons";
 import { useMemo, useRef, useState } from "react";
 import { Pencil } from "lucide-react";
 import EnhancedLexicalEditor from "@/components/lexical/EnhancedLexicalEditor";
