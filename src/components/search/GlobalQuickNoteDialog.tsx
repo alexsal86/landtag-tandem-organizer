@@ -166,6 +166,7 @@ export function GlobalQuickNoteDialog({ open, onOpenChange }: GlobalQuickNoteDia
             onChange={setContent}
             placeholder="Notiz eingeben..."
             minHeight="120px"
+            autoFocus
             onKeyDown={handleContentKeyDown}
             disabled={saving}
           />

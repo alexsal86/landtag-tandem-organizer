@@ -1,6 +1,6 @@
 # Globale Wissensfragen
 
-Das globale Erstellen-Menü steht in der linken Navigation neben der Suche, im mobilen Kopfbereich und in den Kopfzeilen der Detailseiten bereit. Es enthält „Schnelle Notiz“, „Terminanfrage vormerken“ (Strg/⌘ + Umschalt + .) und, mit `knowledge.write`, „Wissensfrage stellen“. Die bisherigen bereichsbezogenen Aktionen bleiben erhalten.
+Das globale Erstellen-Menü steht in der linken Navigation neben der Suche, im mobilen Kopfbereich und in den Kopfzeilen der Detailseiten bereit. Es enthält „Schnelle Notiz“ (Strg/⌘ + . – der Shortcut öffnet den Dialog von jeder Seite aus und setzt den Fokus direkt in den Notiztext), „Terminanfrage vormerken“ (Strg/⌘ + Umschalt + .) und, mit `knowledge.write`, „Wissensfrage stellen“. Die bisherigen bereichsbezogenen Aktionen bleiben erhalten.
 
 `Strg + Alt + F` beziehungsweise `⌘ + ⌥ + F` öffnet den vorhandenen Fragedialog. Während eines offenen Dialogs, bei Wiederholungsereignissen und während einer Texteingabekomposition öffnet dieser Shortcut keinen weiteren Dialog. Der zentrale Host ist unter `GlobalOverlays` dauerhaft eingebunden und nach Nutzer und Büro getrennt; ein Büro- oder Nutzerwechsel verwirft den offenen Dialog.
 

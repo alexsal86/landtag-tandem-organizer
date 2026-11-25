@@ -10,6 +10,7 @@ export const MYWORK_HELP_CONTENT: Record<string, HelpContent> = {
     description: "Erfasse schnell Gedanken, Ideen oder Aufgaben.",
     features: [
       { label: "Direkt links eine neue Notiz erfassen und rechts bestehende Notizen prüfen" },
+      { label: "Mit Strg/⌘ + . von jeder Seite aus eine Schnelle Notiz erfassen" },
       { label: "Notizen priorisieren, einfärben und in Aufgaben/Entscheidungen/Vorgänge umwandeln" },
       { label: "Notizen mit Jour Fixe verknüpfen, teilen oder archivieren" },
       { label: "Über den Neu-Button sofort eine neue Aufgabe/Entscheidung/Jour Fixe/Akte anlegen", targetId: "mywork-new-menu" }

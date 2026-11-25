@@ -23,6 +23,7 @@ import {
   openKnowledgeQuestion,
   KNOWLEDGE_QUESTION_SHORTCUT,
 } from "@/features/knowledge/globalQuestion";
+import { openGlobalQuickNote, QUICK_NOTE_SHORTCUT } from "@/features/quick-notes/globalCapture";
 
 export function GlobalCreateMenu() {
   const { user } = useAuth();
@@ -54,13 +55,18 @@ export function GlobalCreateMenu() {
         <DropdownMenuLabel>Erstellen</DropdownMenuLabel>
         <DropdownMenuSeparator />
         <DropdownMenuItem
+          aria-keyshortcuts="Control+. Meta+."
           onSelect={() => {
-            nextAction.current = () =>
-              window.dispatchEvent(new Event("openGlobalQuickNote"));
+            nextAction.current = () => openGlobalQuickNote();
           }}
         >
           <FilePenLine className="mr-2 h-4 w-4" aria-hidden="true" />
-          Schnelle Notiz
+          <span className="flex flex-col">
+            <span>Schnelle Notiz</span>
+            <span className="text-xs text-muted-foreground">
+              {QUICK_NOTE_SHORTCUT} · von jeder Seite
+            </span>
+          </span>
         </DropdownMenuItem>
         <DropdownMenuItem
           aria-keyshortcuts="Control+Shift+. Meta+Shift+."

@@ -1,5 +1,6 @@
 import { useState, useEffect } from "react";
 import { lazyWithRetry } from "@/lib/lazyWithRetry";
+import { OPEN_GLOBAL_QUICK_NOTE } from "@/features/quick-notes/globalCapture";
 
 const GlobalSearchCommand = lazyWithRetry(() =>
   import("@/components/search/GlobalSearchCommand").then((m) => ({
@@ -31,22 +32,30 @@ const GlobalKnowledgeQuestionHost = lazyWithRetry(() =>
 export const GlobalOverlays = () => {
   const [quickNoteOpen, setQuickNoteOpen] = useState(false);
 
+  // Global keyboard shortcut: Cmd/Ctrl + . (period) on every page, also while
+  // typing in an editor. Cmd/Ctrl + Shift + . is handled by AppointmentRequestHost.
   useEffect(() => {
     const openNote = () => setQuickNoteOpen(true);
-    window.addEventListener("openGlobalQuickNote", openNote);
-    return () => window.removeEventListener("openGlobalQuickNote", openNote);
-  }, []);
-
-  // Global keyboard shortcut: Cmd/Ctrl + . (period). Cmd/Ctrl + Shift + . is handled by AppointmentRequestHost.
-  useEffect(() => {
     const handleKeyDown = (e: KeyboardEvent) => {
-      if ((e.metaKey || e.ctrlKey) && !e.shiftKey && e.code === "Period") {
-        e.preventDefault();
-        setQuickNoteOpen(true);
-      }
+      if (
+        e.defaultPrevented ||
+        e.repeat ||
+        e.isComposing ||
+        e.shiftKey ||
+        e.altKey ||
+        !(e.metaKey || e.ctrlKey) ||
+        e.code !== "Period"
+      )
+        return;
+      e.preventDefault();
+      openNote();
     };
+    window.addEventListener(OPEN_GLOBAL_QUICK_NOTE, openNote);
     window.addEventListener("keydown", handleKeyDown);
-    return () => window.removeEventListener("keydown", handleKeyDown);
+    return () => {
+      window.removeEventListener(OPEN_GLOBAL_QUICK_NOTE, openNote);
+      window.removeEventListener("keydown", handleKeyDown);
+    };
   }, []);
 
   return (
