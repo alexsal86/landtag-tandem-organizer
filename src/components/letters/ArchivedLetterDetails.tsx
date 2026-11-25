@@ -56,7 +56,7 @@ export const ArchivedLetterDetails: React.FC<ArchivedLetterDetailsProps> = ({
       // Fetch letter details
       const { data: letter, error: letterError } = await supabase
         .from('letters')
-        .select('*')
+        .select('id, title, content, status, recipient_name, recipient_address, sent_at, sent_method, created_at')
         .eq('id', document.source_letter_id)
         .single();
 
@@ -91,7 +91,7 @@ export const ArchivedLetterDetails: React.FC<ArchivedLetterDetailsProps> = ({
       // Fetch archived attachments
       const { data: attachmentDocs, error: attachmentError } = await supabase
         .from('documents')
-        .select('*')
+        .select('id, title, file_name, file_path, file_size')
         .eq('source_letter_id', document.source_letter_id)
         .eq('document_type', 'letter_attachment');
 

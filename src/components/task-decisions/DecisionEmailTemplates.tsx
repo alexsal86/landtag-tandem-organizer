@@ -39,7 +39,7 @@ export const DecisionEmailTemplates = () => {
       setIsLoading(true);
       const { data, error } = await supabase
         .from('decision_email_templates')
-        .select('*')
+        .select('id, tenant_id, subject, introduction, greeting, instruction, question_prompt, details_block_template, closing, signature')
         .eq('tenant_id', currentTenant.id)
         .maybeSingle();
 

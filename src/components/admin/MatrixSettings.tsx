@@ -55,7 +55,7 @@ export const MatrixSettings: React.FC = () => {
         // Load subscriptions
         const { data: subs, error: subsError } = await supabase
           .from("matrix_subscriptions")
-          .select("*")
+          .select("id, matrix_username, room_id, is_active")
           .eq("user_id", user.id)
           .order("created_at", { ascending: false });
 

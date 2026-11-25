@@ -48,7 +48,7 @@ export const DefaultGuestsAdmin: React.FC = () => {
     try {
       const { data, error } = await supabase
         .from('default_appointment_guests')
-        .select('*')
+        .select('id, name, email, order_index, is_active')
         .eq('tenant_id', currentTenant.id)
         .order('order_index');
 

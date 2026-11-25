@@ -81,7 +81,7 @@ export const LetterTemplateIntegration: React.FC<LetterTemplateIntegrationProps>
     try {
       const { data, error } = await supabase
         .from('letter_templates')
-        .select('*')
+        .select('id, name, is_active, is_default, layout_settings, letterhead_html, letterhead_css, header_text_elements, response_time_days')
         .eq('tenant_id', currentTenant.id)
         .eq('is_active', true)
         .order('name');

@@ -52,7 +52,7 @@ export function VacationHistoryDialog({
     try {
       const { data, error } = await supabase
         .from("vacation_history")
-        .select("*")
+        .select("id, year, annual_entitlement, carry_over_from_previous, carry_over_to_next, total_taken, expired_days")
         .eq("user_id", targetUserId)
         .order("year", { ascending: false });
 

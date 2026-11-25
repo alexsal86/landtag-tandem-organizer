@@ -58,7 +58,7 @@ export function MeetingTemplateManager() {
   }, [currentTenant?.id]);
 
   const loadTemplates = async () => {
-    const { data, error } = await supabase.from('meeting_templates').select('*').eq('tenant_id', currentTenant?.id ?? '').order('name');
+    const { data, error } = await supabase.from('meeting_templates').select('id, name, template_items, is_default, default_participants, default_recurrence, auto_create_count, default_visibility').eq('tenant_id', currentTenant?.id ?? '').order('name');
     if (!error) setMeetingTemplates((data ?? []).map(normalizeMeetingTemplate));
   };
 

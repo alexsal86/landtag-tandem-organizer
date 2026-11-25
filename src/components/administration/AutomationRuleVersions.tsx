@@ -62,7 +62,7 @@ export function AutomationRuleVersions({
     setLoading(true);
     const { data, error } = await supabase
       .from("automation_rule_versions")
-      .select("*")
+      .select("id, version_number, name, description, module, trigger_type, trigger_config, conditions, actions, enabled, created_at")
       .eq("rule_id", ruleId)
       .eq("tenant_id", currentTenant.id)
       .order("version_number", { ascending: false });

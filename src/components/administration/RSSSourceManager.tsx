@@ -67,7 +67,7 @@ export function RSSSourceManager() {
     setLoading(true);
     const { data, error } = await supabase
       .from("rss_sources")
-      .select("*")
+      .select("id, name, url, category, is_active, order_index")
       .eq("tenant_id", currentTenant.id)
       .order("order_index");
 

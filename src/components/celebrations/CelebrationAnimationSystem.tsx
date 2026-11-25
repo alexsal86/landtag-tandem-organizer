@@ -66,7 +66,7 @@ export function CelebrationAnimationSystem({
     try {
       const { data, error } = await supabase
         .from('celebration_settings')
-        .select('*')
+        .select('enabled, frequency, mode, size, speed, selected_animation')
         .eq('user_id', user.id)
         .single();
 

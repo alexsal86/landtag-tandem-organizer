@@ -33,7 +33,7 @@ export function VacationChecklistAdmin() {
     setLoading(true);
     const { data } = await supabase
       .from("vacation_checklist_templates")
-      .select("*")
+      .select("id, label, description, sort_order, reminder_after, is_active")
       .eq("tenant_id", currentTenant.id)
       .order("sort_order");
     setItems((data as ChecklistTemplate[]) || []);

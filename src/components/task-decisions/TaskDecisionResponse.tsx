@@ -163,7 +163,7 @@ export const TaskDecisionResponse = ({
     try {
       const { data, error } = await supabase
         .from('task_decision_responses')
-        .select('*')
+        .select('id, participant_id, response_type, comment, creator_response, created_at')
         .eq('participant_id', participantId)
         .is('parent_response_id', null)
         .order('created_at', { ascending: false })

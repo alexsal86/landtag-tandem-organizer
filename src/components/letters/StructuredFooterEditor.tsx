@@ -93,7 +93,7 @@ export const StructuredFooterEditor: React.FC<StructuredFooterEditorProps> = ({
     try {
       const { data, error } = await supabase
         .from('sender_information')
-        .select('*')
+        .select('id, name, organization, phone, fax, website, instagram_profile, facebook_profile, landtag_street, landtag_house_number, landtag_postal_code, landtag_city, landtag_email, wahlkreis_street, wahlkreis_house_number, wahlkreis_postal_code, wahlkreis_city, wahlkreis_email')
         .eq('tenant_id', currentTenant.id)
         .eq('is_active', true)
         .eq('is_default', true)

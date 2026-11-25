@@ -127,7 +127,7 @@ export function PlanningTemplateManager() {
   const hasPhases = phaseGroups.some((g) => g.phaseName !== null);
 
   const loadTemplates = async () => {
-    const { data, error } = await supabase.from("planning_templates").select("*").eq("tenant_id", currentTenant?.id ?? "").order("name");
+    const { data, error } = await supabase.from("planning_templates").select("id, name, template_items").eq("tenant_id", currentTenant?.id ?? "").order("name");
     if (error) {
       debugConsole.error(error);
       return;

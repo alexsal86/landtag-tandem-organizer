@@ -98,7 +98,7 @@ export function SenderInformationManager() {
     try {
       const { data, error } = await supabase
         .from('sender_information')
-        .select('*')
+        .select('id, name, organization, return_address_line, landtag_street, landtag_house_number, landtag_postal_code, landtag_city, landtag_email, wahlkreis_street, wahlkreis_house_number, wahlkreis_postal_code, wahlkreis_city, wahlkreis_email, phone, fax, website, facebook_profile, instagram_profile, is_default')
         .eq('tenant_id', currentTenant.id)
         .eq('is_active', true);
       if (error) throw error;
