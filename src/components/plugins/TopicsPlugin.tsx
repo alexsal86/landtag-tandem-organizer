@@ -17,7 +17,7 @@ import { TextNode } from 'lexical';
 
 import { $createTopicNode } from '@/components/nodes/TopicNode';
 import { supabase } from '@/integrations/supabase/client';
-import { useTenant } from '@/hooks/useTenant';
+import { useOptionalTenant } from '@/hooks/useTenant';
 import { debugConsole } from '@/utils/debugConsole';
 
 const SUGGESTION_LIST_LENGTH_LIMIT = 8;
@@ -108,19 +108,23 @@ const TypeaheadMenuPlugin = LexicalTypeaheadMenuPlugin as React.ComponentType<To
 
 export function TopicsPlugin(): React.JSX.Element | null {
   const [editor] = useLexicalComposerContext();
-  const { currentTenant } = useTenant();
+  // Ohne TenantProvider gibt es keinen Themenkatalog: dann kein Menü statt Absturz.
+  const tenantId = useOptionalTenant()?.currentTenant?.id ?? null;
   const [topics, setTopics] = useState<TopicRow[]>([]);
   const [queryString, setQueryString] = useState<string | null>(null);
 
   useEffect(() => {
-    if (!currentTenant) return;
+    if (!tenantId) {
+      setTopics([]);
+      return;
+    }
 
     const fetchTopics = async () => {
       try {
         const { data, error } = await supabase
           .from('topics')
           .select('id, label, color')
-          .eq('tenant_id', currentTenant.id)
+          .eq('tenant_id', tenantId)
           .eq('is_active', true)
           .order('order_index');
 
@@ -138,7 +142,7 @@ export function TopicsPlugin(): React.JSX.Element | null {
     };
 
     fetchTopics();
-  }, [currentTenant]);
+  }, [tenantId]);
 
   const checkForTriggerMatch = useBasicTypeaheadTriggerMatch('#', {
     minLength: 0,

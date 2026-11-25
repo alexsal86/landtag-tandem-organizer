@@ -247,3 +247,10 @@ export const useTenant = (): TenantContextType => {
   }
   return context;
 };
+
+/**
+ * Wie useTenant, aber ohne Fehler außerhalb eines Providers.
+ * Für Bausteine, die ohne Mandantenkontext einfach nichts anbieten sollen.
+ */
+export const useOptionalTenant = (): TenantContextType | null =>
+  useContext(TenantContext) ?? null;
