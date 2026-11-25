@@ -15,20 +15,21 @@ describe("MarkdownView mit den generierten Katalogdateien", () => {
     render(<MarkdownView markdown={index.markdown} />);
 
     expect(screen.getByRole("heading", { level: 1, name: "Funktionskatalog" })).toBeTruthy();
-    expect(screen.getByRole("heading", { name: "Bereiche" })).toBeTruthy();
-    const table = screen.getByRole("table");
-    expect(within(table).getByText("Aufgaben & Stafette")).toBeTruthy();
-    expect(within(table).getByText("Wahlanalyse & Wahlhistorie")).toBeTruthy();
+    expect(screen.getByRole("heading", { name: "Funktionsbereiche" })).toBeTruthy();
+    const areaTable = screen.getAllByRole("table").find((table) => within(table).queryByText("Aufgaben & Stafette"));
+    expect(areaTable).toBeTruthy();
+    expect(within(areaTable as HTMLElement).getByText("Wahlanalyse & Wahlhistorie")).toBeTruthy();
   });
 
-  it("rendert eine echte Bereichsseite samt Prüfumfang und Tabellen", () => {
+  it("rendert eine echte Bereichsseite samt Funktionsdetails und Szenarien", () => {
     const area = page("aufgaben");
     render(<MarkdownView markdown={area.markdown} />);
 
     expect(screen.getByRole("heading", { level: 1, name: "Aufgaben & Stafette" })).toBeTruthy();
-    expect(screen.getByRole("heading", { name: "Prüfumfang" })).toBeTruthy();
+    expect(screen.getByRole("heading", { name: "Funktionsdetails" })).toBeTruthy();
+    expect(screen.getByRole("heading", { name: "Selbsttest-Szenarien" })).toBeTruthy();
     expect(screen.getAllByText(/task-lifecycle/).length).toBeGreaterThan(0);
-    // Die Tabelle nennt die geschriebene Tabelle mit ihrem Szenario.
+    // Die Detailbeschreibung nennt die betroffene Tabelle.
     expect(screen.getAllByText("tasks").length).toBeGreaterThan(0);
   });
 

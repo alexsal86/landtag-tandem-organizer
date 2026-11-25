@@ -1,0 +1,567 @@
+{
+  "area": {
+    "id": "wissen",
+    "title": "Wissensbereich",
+    "purpose": "Fragen im Büro stellen und beantworten, Antworten prüfen, mit Quellen, Tags und Anhängen versehen und die Gültigkeit überwachen."
+  },
+  "features": [
+    {
+      "id": "knowledge.ask",
+      "subarea": "Fragen",
+      "name": "Wissensfrage stellen",
+      "description": "Erstellt eine Frage mit Titel, Kontext, Frist, Zuständigkeit, Tags und optionalen Anhängen.",
+      "category": "fachlich",
+      "implementationStatus": "implementiert",
+      "integrationStatus": "ui",
+      "coverage": "selftest",
+      "testResult": "nicht-ausgefuehrt",
+      "evidence": [
+        "src/features/knowledge/components/AskQuestionDialog.tsx",
+        "src/features/knowledge/components/KnowledgeBaseView.tsx",
+        "src/features/selftest/scenarios/knowledge-lifecycle.ts"
+      ],
+      "routes": [
+        "/knowledge",
+        "/wissen"
+      ],
+      "components": [
+        "src/features/knowledge/components/KnowledgeBaseView.tsx",
+        "src/features/knowledge/components/AskQuestionDialog.tsx",
+        "src/features/knowledge/components/KnowledgeQuestionCard.tsx"
+      ],
+      "hooks": [
+        "src/features/knowledge/hooks/useKnowledgeQuestions.ts"
+      ],
+      "rpcs": [
+        "knowledge_qa_create_question",
+        "knowledge_qa_list"
+      ],
+      "tables": [
+        "knowledge_questions",
+        "knowledge_question_tags",
+        "knowledge_question_attachments",
+        "knowledge_question_followers"
+      ],
+      "roles": [
+        "abgeordneter",
+        "bueroleitung",
+        "mitarbeiter",
+        "praktikant"
+      ],
+      "scenarios": [
+        "knowledge-lifecycle"
+      ],
+      "docs": [
+        "docs/knowledge-global-question.md"
+      ]
+    },
+    {
+      "id": "knowledge.answer",
+      "subarea": "Antworten",
+      "name": "Frage beantworten",
+      "description": "Verfasst und speichert Antworten mit Rich-Text, speichert Versionen und benachrichtigt Fragende und Folgende.",
+      "category": "fachlich",
+      "implementationStatus": "implementiert",
+      "integrationStatus": "ui",
+      "coverage": "selftest",
+      "testResult": "nicht-ausgefuehrt",
+      "evidence": [
+        "src/features/knowledge/components/KnowledgeAnswerEditor.tsx",
+        "src/features/knowledge/components/KnowledgeDetailPanel.tsx"
+      ],
+      "components": [
+        "src/features/knowledge/components/KnowledgeAnswerEditor.tsx",
+        "src/features/knowledge/components/KnowledgeDetailPanel.tsx"
+      ],
+      "rpcs": [
+        "knowledge_qa_save_answer",
+        "knowledge_qa_notify",
+        "knowledge_qa_refresh_tags",
+        "knowledge_qa_guard_archived",
+        "knowledge_qa_keep_legacy_identity",
+        "knowledge_qa_node_text",
+        "knowledge_qa_normalize",
+        "knowledge_qa_record_event"
+      ],
+      "tables": [
+        "knowledge_questions",
+        "knowledge_document_versions",
+        "knowledge_document_snapshots"
+      ],
+      "roles": [
+        "abgeordneter",
+        "bueroleitung",
+        "mitarbeiter"
+      ],
+      "scenarios": [
+        "knowledge-lifecycle"
+      ],
+      "unitTests": [
+        "src/features/knowledge/logic.test.ts"
+      ]
+    },
+    {
+      "id": "knowledge.review",
+      "subarea": "Qualität",
+      "name": "Wissensantwort prüfen und freigeben",
+      "description": "Führt Antworten durch Review, setzt Prüffristen, versendet Review-Erinnerungen und dokumentiert Ablehnungen.",
+      "category": "fachlich",
+      "implementationStatus": "implementiert",
+      "integrationStatus": "rollenabhaengig",
+      "coverage": "selftest",
+      "testResult": "nicht-ausgefuehrt",
+      "evidence": [
+        "src/features/knowledge/components/ReviewPanel.tsx",
+        "src/features/knowledge/hooks/useReviewDeadline.ts"
+      ],
+      "components": [
+        "src/features/knowledge/components/ReviewPanel.tsx"
+      ],
+      "hooks": [
+        "src/features/knowledge/hooks/useReviewDeadline.ts"
+      ],
+      "rpcs": [
+        "knowledge_qa_review",
+        "knowledge_qa_sync_review_task",
+        "dispatch_due_knowledge_reviews",
+        "knowledge_qa_notify_event",
+        "knowledge_qa_review_task_trigger",
+        "knowledge_qa_seed_notifications",
+        "knowledge_qa_seed_tenant_notifications",
+        "knowledge_qa_notification_selftest",
+        "knowledge_qa_selftest"
+      ],
+      "tables": [
+        "knowledge_questions",
+        "knowledge_question_events",
+        "tasks",
+        "notifications"
+      ],
+      "roles": [
+        "bueroleitung",
+        "admin",
+        "mitarbeiter"
+      ],
+      "scenarios": [
+        "knowledge-lifecycle"
+      ],
+      "docs": [
+        "docs/knowledge-validity.md"
+      ]
+    },
+    {
+      "id": "knowledge.validity",
+      "subarea": "Qualität",
+      "name": "Gültigkeit und Veraltung",
+      "description": "Überwacht Gültigkeitsdaten, meldet veraltete Antworten und erzwingt Regeln beim Speichern.",
+      "category": "automatisiert",
+      "implementationStatus": "implementiert",
+      "integrationStatus": "system",
+      "coverage": "unit",
+      "testResult": "unbekannt",
+      "evidence": [
+        "src/features/knowledge/hooks/useReviewDeadline.ts",
+        "src/features/knowledge/logic.ts"
+      ],
+      "services": [
+        "src/features/knowledge/logic.ts"
+      ],
+      "rpcs": [
+        "knowledge_qa_enforce_validity",
+        "knowledge_qa_report_outdated",
+        "knowledge_qa_max_valid_until"
+      ],
+      "tables": [
+        "knowledge_questions",
+        "knowledge_question_outdated_reports"
+      ],
+      "roles": [
+        "system",
+        "bueroleitung",
+        "mitarbeiter"
+      ],
+      "unitTests": [
+        "src/features/knowledge/logic.test.ts"
+      ],
+      "docs": [
+        "docs/knowledge-validity.md"
+      ]
+    },
+    {
+      "id": "knowledge.tags",
+      "subarea": "Struktur",
+      "name": "Tags und Themenzuordnung",
+      "description": "Vergibt Tags, schlägt Tag-Zuordnungen vor und synchronisiert Wissen mit Themen.",
+      "category": "fachlich",
+      "implementationStatus": "implementiert",
+      "integrationStatus": "ui",
+      "coverage": "unit",
+      "testResult": "unbekannt",
+      "evidence": [
+        "src/features/knowledge/components/KnowledgeTagsPanel.tsx",
+        "src/features/knowledge/hooks/useKnowledgeExtras.ts"
+      ],
+      "components": [
+        "src/features/knowledge/components/KnowledgeTagsPanel.tsx"
+      ],
+      "hooks": [
+        "src/features/knowledge/hooks/useKnowledgeExtras.ts"
+      ],
+      "rpcs": [
+        "knowledge_qa_set_tags",
+        "knowledge_qa_tag_suggestions",
+        "knowledge_qa_tag_topics",
+        "knowledge_tag_sync_topic",
+        "knowledge_qa_manage_tag"
+      ],
+      "tables": [
+        "knowledge_tags",
+        "knowledge_question_tags",
+        "knowledge_document_topics",
+        "topics"
+      ],
+      "roles": [
+        "abgeordneter",
+        "bueroleitung",
+        "mitarbeiter"
+      ],
+      "unitTests": [
+        "src/features/knowledge/logic.test.ts"
+      ]
+    },
+    {
+      "id": "knowledge.sources",
+      "subarea": "Struktur",
+      "name": "Quellen und Belege",
+      "description": "Hinterlegt Quellen, prüft sie und protokolliert Quellenänderungen.",
+      "category": "fachlich",
+      "implementationStatus": "implementiert",
+      "integrationStatus": "ui",
+      "coverage": "keine",
+      "testResult": "nicht-ausgefuehrt",
+      "evidence": [
+        "src/features/knowledge/components/KnowledgeSourcesPanel.tsx"
+      ],
+      "components": [
+        "src/features/knowledge/components/KnowledgeSourcesPanel.tsx"
+      ],
+      "rpcs": [
+        "knowledge_qa_add_source",
+        "knowledge_qa_remove_source",
+        "knowledge_qa_source_guard",
+        "knowledge_qa_source_audit"
+      ],
+      "tables": [
+        "knowledge_question_sources"
+      ],
+      "roles": [
+        "abgeordneter",
+        "bueroleitung",
+        "mitarbeiter"
+      ]
+    },
+    {
+      "id": "knowledge.attachments",
+      "subarea": "Struktur",
+      "name": "Anhänge an Wissensfragen",
+      "description": "Reserviert Uploads, prüft Dateitypen und schließt Anhänge an Fragen ab.",
+      "category": "fachlich",
+      "implementationStatus": "implementiert",
+      "integrationStatus": "ui",
+      "coverage": "keine",
+      "testResult": "nicht-ausgefuehrt",
+      "evidence": [
+        "src/features/knowledge/components/KnowledgeAttachments.tsx"
+      ],
+      "components": [
+        "src/features/knowledge/components/KnowledgeAttachments.tsx"
+      ],
+      "rpcs": [
+        "knowledge_qa_reserve_attachment",
+        "knowledge_qa_file_allowed",
+        "knowledge_qa_finish_attachment"
+      ],
+      "tables": [
+        "knowledge_question_attachments"
+      ],
+      "roles": [
+        "abgeordneter",
+        "bueroleitung",
+        "mitarbeiter"
+      ]
+    },
+    {
+      "id": "knowledge.comments-follow",
+      "subarea": "Zusammenarbeit",
+      "name": "Kommentare und Folgen",
+      "description": "Kommentiert Fragen und Antworten, folgt Fragen und steuert Benachrichtigungen für Mitlesende.",
+      "category": "fachlich",
+      "implementationStatus": "implementiert",
+      "integrationStatus": "ui",
+      "coverage": "keine",
+      "testResult": "nicht-ausgefuehrt",
+      "evidence": [
+        "src/features/knowledge/components/KnowledgeConversationPanel.tsx"
+      ],
+      "components": [
+        "src/features/knowledge/components/KnowledgeConversationPanel.tsx"
+      ],
+      "rpcs": [
+        "knowledge_qa_comment",
+        "knowledge_qa_follow",
+        "knowledge_qa_auto_follow"
+      ],
+      "tables": [
+        "knowledge_question_comments",
+        "knowledge_question_followers",
+        "knowledge_qa_notification_deliveries"
+      ],
+      "roles": [
+        "abgeordneter",
+        "bueroleitung",
+        "mitarbeiter"
+      ]
+    },
+    {
+      "id": "knowledge.search",
+      "subarea": "Suchen",
+      "name": "Wissenssuche",
+      "description": "Durchsucht Fragen und Antworten mit gepflegtem Suchindex und liefert Trefferzahlen.",
+      "category": "fachlich",
+      "implementationStatus": "implementiert",
+      "integrationStatus": "ui",
+      "coverage": "selftest",
+      "testResult": "nicht-ausgefuehrt",
+      "evidence": [
+        "src/features/knowledge/components/KnowledgeQuestionRow.tsx",
+        "src/features/knowledge/hooks/useKnowledgeQuestions.ts"
+      ],
+      "rpcs": [
+        "knowledge_qa_update_search",
+        "search_knowledge_questions",
+        "knowledge_qa_counts"
+      ],
+      "tables": [
+        "knowledge_questions",
+        "knowledge_question_summaries"
+      ],
+      "roles": [
+        "abgeordneter",
+        "bueroleitung",
+        "mitarbeiter"
+      ],
+      "scenarios": [
+        "knowledge-lifecycle"
+      ],
+      "e2eTests": [
+        "e2e/knowledge.spec.ts",
+        "e2e/knowledge-workspace.spec.ts"
+      ]
+    },
+    {
+      "id": "knowledge.versions",
+      "subarea": "Qualität",
+      "name": "Snapshots und Versionen",
+      "description": "Erzeugt Snapshots von Wissensdokumenten und zeigt frühere Fassungen im Verlauf.",
+      "category": "fachlich",
+      "implementationStatus": "implementiert",
+      "integrationStatus": "ui",
+      "coverage": "keine",
+      "testResult": "nicht-ausgefuehrt",
+      "evidence": [
+        "src/features/knowledge/components/HistoryPanel.tsx"
+      ],
+      "components": [
+        "src/features/knowledge/components/HistoryPanel.tsx"
+      ],
+      "rpcs": [
+        "create_knowledge_document_snapshot"
+      ],
+      "tables": [
+        "knowledge_document_versions",
+        "knowledge_document_snapshots"
+      ],
+      "roles": [
+        "abgeordneter",
+        "bueroleitung",
+        "mitarbeiter"
+      ]
+    },
+    {
+      "id": "knowledge.permissions",
+      "subarea": "Sicherheit",
+      "name": "Zugriffsrechte auf Wissensdokumente",
+      "description": "Beschränkt Wissensdokumente auf berechtigte Personen und prüft Lesen und Bearbeiten getrennt.",
+      "category": "sicherheit",
+      "implementationStatus": "implementiert",
+      "integrationStatus": "system",
+      "coverage": "selftest",
+      "testResult": "nicht-ausgefuehrt",
+      "evidence": [
+        "src/features/knowledge/logic.ts",
+        "src/features/selftest/scenarios/access-boundaries.ts"
+      ],
+      "services": [
+        "src/features/knowledge/logic.ts"
+      ],
+      "rpcs": [
+        "can_access_knowledge_document",
+        "can_edit_knowledge_document",
+        "knowledge_qa_can_access",
+        "knowledge_qa_manage"
+      ],
+      "tables": [
+        "knowledge_document_permissions",
+        "knowledge_documents",
+        "knowledge_document_collaborators"
+      ],
+      "roles": [
+        "abgeordneter",
+        "bueroleitung",
+        "mitarbeiter"
+      ],
+      "scenarios": [
+        "access-boundaries"
+      ],
+      "docs": [
+        "docs/security-function-matrix.md"
+      ]
+    },
+    {
+      "id": "knowledge.collaboration",
+      "subarea": "Zusammenarbeit",
+      "name": "Kollaborative Wissensbearbeitung",
+      "description": "Synchronisiert Wissensdokumente in Echtzeit über einen eigenen Kollaborationskanal.",
+      "category": "integration",
+      "implementationStatus": "implementiert",
+      "integrationStatus": "system",
+      "coverage": "keine",
+      "testResult": "nicht-ausgefuehrt",
+      "evidence": [
+        "supabase/functions/knowledge-collaboration/index.ts",
+        "src/hooks/useYjsCollaboration.tsx"
+      ],
+      "edgeFunctions": [
+        "knowledge-collaboration"
+      ],
+      "hooks": [
+        "src/hooks/useYjsCollaboration.tsx"
+      ],
+      "tables": [
+        "knowledge_documents",
+        "knowledge_document_collaborators"
+      ],
+      "roles": [
+        "abgeordneter",
+        "bueroleitung",
+        "mitarbeiter"
+      ],
+      "limitations": [
+        "Öffentlicher Kollaborationsendpunkt; ein zusätzlicher serverseitiger Guard ist laut Sicherheitsmatrix empfohlen."
+      ],
+      "reviewPoints": [
+        "Sicherheitsklassifikation public-webhook; Schutzbedarf prüfen."
+      ]
+    },
+    {
+      "id": "knowledge.global-question",
+      "subarea": "Fragen",
+      "name": "Globale Wissensfrage aus jedem Bereich",
+      "description": "Öffnet den FrageDialog aus anderen Fachbereichen und übergibt den Kontext an den Wissensbereich.",
+      "category": "fachlich",
+      "implementationStatus": "implementiert",
+      "integrationStatus": "ui",
+      "coverage": "keine",
+      "testResult": "nicht-ausgefuehrt",
+      "evidence": [
+        "src/features/knowledge/globalQuestion.ts",
+        "src/features/knowledge/components/GlobalKnowledgeQuestionHost.tsx"
+      ],
+      "components": [
+        "src/features/knowledge/components/GlobalKnowledgeQuestionHost.tsx"
+      ],
+      "services": [
+        "src/features/knowledge/globalQuestion.ts"
+      ],
+      "tables": [
+        "knowledge_questions"
+      ],
+      "roles": [
+        "abgeordneter",
+        "bueroleitung",
+        "mitarbeiter"
+      ],
+      "docs": [
+        "docs/knowledge-global-question.md"
+      ]
+    },
+    {
+      "id": "knowledge.persons",
+      "subarea": "Struktur",
+      "name": "Wissenspersonen und Zuständigkeit",
+      "description": "Verknüpft Wissensfragen mit Personen und zeigt Ansprechpartner für Themen.",
+      "category": "fachlich",
+      "implementationStatus": "implementiert",
+      "integrationStatus": "ui",
+      "coverage": "unit",
+      "testResult": "unbekannt",
+      "evidence": [
+        "src/features/knowledge/person.ts",
+        "src/features/knowledge/person.test.ts"
+      ],
+      "services": [
+        "src/features/knowledge/person.ts"
+      ],
+      "components": [
+        "src/features/knowledge/components/KnowledgePersonAvatar.tsx"
+      ],
+      "rpcs": [
+        "knowledge_qa_set_assignee"
+      ],
+      "tables": [
+        "knowledge_questions",
+        "profiles"
+      ],
+      "roles": [
+        "abgeordneter",
+        "bueroleitung",
+        "mitarbeiter"
+      ],
+      "unitTests": [
+        "src/features/knowledge/person.test.ts"
+      ]
+    },
+    {
+      "id": "knowledge.management",
+      "subarea": "Administration",
+      "name": "Wissensverwaltung",
+      "description": "Verwaltet Tags, Berechtigungen, Review-Zuweisungen und administrative Wissenseinstellungen.",
+      "category": "administrativ",
+      "implementationStatus": "implementiert",
+      "integrationStatus": "rollenabhaengig",
+      "coverage": "keine",
+      "testResult": "nicht-ausgefuehrt",
+      "evidence": [
+        "src/features/knowledge/components/ManagementPanel.tsx"
+      ],
+      "components": [
+        "src/features/knowledge/components/ManagementPanel.tsx"
+      ],
+      "rpcs": [
+        "knowledge_qa_manage",
+        "knowledge_qa_manage_selftest",
+        "knowledge_qa_seed_manage_permission"
+      ],
+      "tables": [
+        "knowledge_documents",
+        "knowledge_document_permissions",
+        "knowledge_tags"
+      ],
+      "roles": [
+        "bueroleitung",
+        "admin",
+        "mitarbeiter"
+      ]
+    }
+  ]
+}

@@ -1,0 +1,612 @@
+{
+  "area": {
+    "id": "organisation",
+    "title": "Jour fixe, Dossiers & Themen",
+    "purpose": "Jour-fixe-Sitzungen mit Agenden und Protokollen führen, Dossiers und Positionen pflegen, Drucksachen, Themen und Fakten verwalten."
+  },
+  "features": [
+    {
+      "id": "meetings.jour-fixe",
+      "subarea": "Jour fixe",
+      "name": "Jour-fixe-Sitzung planen und durchführen",
+      "description": "Legt Sitzungen mit Teilnehmenden, Agenda und Vorlagen an, lädt ein und führt durch die Sitzung.",
+      "category": "fachlich",
+      "implementationStatus": "implementiert",
+      "integrationStatus": "rollenabhaengig",
+      "coverage": "selftest",
+      "testResult": "nicht-ausgefuehrt",
+      "evidence": [
+        "src/features/meetings/components/MeetingsView.tsx",
+        "src/features/selftest/scenarios/meeting-lifecycle.ts"
+      ],
+      "routes": [
+        "/meetings"
+      ],
+      "components": [
+        "src/features/meetings/components/MeetingsView.tsx",
+        "src/components/meetings/MeetingCreateDialog.tsx",
+        "src/components/meetings/MeetingParticipantsManager.tsx"
+      ],
+      "hooks": [
+        "src/hooks/useMeetingParticipants.tsx"
+      ],
+      "edgeFunctions": [
+        "check-meeting-reminders"
+      ],
+      "tables": [
+        "meetings",
+        "meeting_participants",
+        "meeting_templates"
+      ],
+      "roles": [
+        "abgeordneter",
+        "bueroleitung",
+        "mitarbeiter"
+      ],
+      "scenarios": [
+        "meeting-lifecycle"
+      ],
+      "docs": [
+        "docs/team-rituals.md"
+      ]
+    },
+    {
+      "id": "meetings.agenda",
+      "subarea": "Jour fixe",
+      "name": "Agenda führen",
+      "description": "Füllt und sortiert Agenda-Punkte aus Vorgängen, Aufgaben, Geburtstagen, Dokumenten und manuellen Einträgen.",
+      "category": "fachlich",
+      "implementationStatus": "implementiert",
+      "integrationStatus": "ui",
+      "coverage": "selftest",
+      "testResult": "nicht-ausgefuehrt",
+      "evidence": [
+        "src/components/meetings/AgendaEditorPanel.tsx",
+        "src/features/selftest/scenarios/meeting-lifecycle.ts"
+      ],
+      "components": [
+        "src/components/meetings/AgendaEditorPanel.tsx",
+        "src/components/meetings/SystemAgendaItem.tsx",
+        "src/components/meetings/AgendaResultEditor.tsx"
+      ],
+      "tables": [
+        "meeting_agenda_items",
+        "meeting_agenda_documents",
+        "case_items",
+        "tasks"
+      ],
+      "roles": [
+        "abgeordneter",
+        "bueroleitung",
+        "mitarbeiter"
+      ],
+      "scenarios": [
+        "meeting-lifecycle"
+      ]
+    },
+    {
+      "id": "meetings.protocol",
+      "subarea": "Jour fixe",
+      "name": "Sitzungsprotokoll",
+      "description": "Schreibt und aktualisiert Protokolle, erlaubt Wiedereröffnung und erzeugt bestätigte Aufgaben.",
+      "category": "fachlich",
+      "implementationStatus": "implementiert",
+      "integrationStatus": "rollenabhaengig",
+      "coverage": "selftest",
+      "testResult": "nicht-ausgefuehrt",
+      "evidence": [
+        "src/features/meetings/components/MeetingProtocolView.tsx"
+      ],
+      "components": [
+        "src/features/meetings/components/MeetingProtocolView.tsx"
+      ],
+      "rpcs": [
+        "update_meeting_protocol",
+        "reopen_meeting_protocol",
+        "create_acknowledged_meeting_tasks"
+      ],
+      "tables": [
+        "meeting_protocol_details",
+        "protocol_sessions",
+        "protocol_speeches",
+        "protocol_agenda_items"
+      ],
+      "roles": [
+        "abgeordneter",
+        "bueroleitung",
+        "mitarbeiter"
+      ],
+      "scenarios": [
+        "meeting-lifecycle"
+      ]
+    },
+    {
+      "id": "meetings.decisions",
+      "subarea": "Jour fixe",
+      "name": "Sitzungsentscheidungen dokumentieren",
+      "description": "Hält Entscheidungen zu Agenda-Punkten fest, ohne Abstimmungen zu erfinden, und verknüpft Dokumente.",
+      "category": "fachlich",
+      "implementationStatus": "implementiert",
+      "integrationStatus": "ui",
+      "coverage": "selftest",
+      "testResult": "nicht-ausgefuehrt",
+      "evidence": [
+        "src/features/meetings/meetingDecision.ts",
+        "src/features/meetings/components/MeetingDecisionDialog.tsx"
+      ],
+      "components": [
+        "src/features/meetings/components/MeetingDecisionDialog.tsx",
+        "src/features/meetings/components/OpenDecisionsCockpit.tsx"
+      ],
+      "services": [
+        "src/features/meetings/meetingDecision.ts"
+      ],
+      "rpcs": [
+        "document_meeting_decision",
+        "guard_meeting_decision_documentation"
+      ],
+      "tables": [
+        "meetings",
+        "meeting_agenda_items",
+        "documents"
+      ],
+      "roles": [
+        "abgeordneter",
+        "bueroleitung",
+        "mitarbeiter"
+      ],
+      "scenarios": [
+        "meeting-lifecycle"
+      ]
+    },
+    {
+      "id": "meetings.archive",
+      "subarea": "Jour fixe",
+      "name": "Sitzung archivieren",
+      "description": "Archiviert Sitzungen samt Stafette-Folgen und hält die Herkunft je Sitzung eindeutig.",
+      "category": "fachlich",
+      "implementationStatus": "implementiert",
+      "integrationStatus": "rollenabhaengig",
+      "coverage": "selftest",
+      "testResult": "nicht-ausgefuehrt",
+      "evidence": [
+        "src/features/meetings/components/MeetingArchiveView.tsx"
+      ],
+      "components": [
+        "src/features/meetings/components/MeetingArchiveView.tsx"
+      ],
+      "rpcs": [
+        "archive_meeting_with_stafette"
+      ],
+      "tables": [
+        "meetings",
+        "archived_meeting_protocol_tasks",
+        "tasks"
+      ],
+      "roles": [
+        "abgeordneter",
+        "bueroleitung",
+        "mitarbeiter"
+      ],
+      "scenarios": [
+        "meeting-lifecycle"
+      ]
+    },
+    {
+      "id": "meetings.templates",
+      "subarea": "Jour fixe",
+      "name": "Sitzungsvorlagen",
+      "description": "Verwaltet Sitzungsvorlagen mit Standardagenda und Teilnehmern.",
+      "category": "administrativ",
+      "implementationStatus": "implementiert",
+      "integrationStatus": "rollenabhaengig",
+      "coverage": "keine",
+      "testResult": "nicht-ausgefuehrt",
+      "evidence": [
+        "src/components/administration/MeetingTemplateManager.tsx"
+      ],
+      "components": [
+        "src/components/administration/MeetingTemplateManager.tsx"
+      ],
+      "rpcs": [
+        "ensure_single_default_meeting_template",
+        "get_meeting_protocol_participants"
+      ],
+      "tables": [
+        "meeting_templates"
+      ],
+      "roles": [
+        "admin",
+        "bueroleitung"
+      ]
+    },
+    {
+      "id": "meetings.zombie-points",
+      "subarea": "Jour fixe",
+      "name": "Liegengebliebene Agenda-Punkte",
+      "description": "Erkennt seit mehreren Sitzungen offene Punkte und zeigt sie im Entscheidungs-Cockpit.",
+      "category": "fachlich",
+      "implementationStatus": "implementiert",
+      "integrationStatus": "ui",
+      "coverage": "keine",
+      "testResult": "nicht-ausgefuehrt",
+      "evidence": [
+        "src/features/meetings/zombiePoints.ts"
+      ],
+      "services": [
+        "src/features/meetings/zombiePoints.ts"
+      ],
+      "tables": [
+        "meeting_agenda_items"
+      ],
+      "roles": [
+        "bueroleitung",
+        "abgeordneter",
+        "mitarbeiter"
+      ],
+      "reviewPoints": [
+        "Für zombiePoints.ts ist keine Testdatei vorhanden."
+      ]
+    },
+    {
+      "id": "dossiers.manage",
+      "subarea": "Dossiers",
+      "name": "Dossier anlegen und führen",
+      "description": "Führt Dossiers mit Zusammenfassung, Qualitätsfeldern, Review-Erinnerungen und Verknüpfungen.",
+      "category": "fachlich",
+      "implementationStatus": "implementiert",
+      "integrationStatus": "ui",
+      "coverage": "keine",
+      "testResult": "nicht-ausgefuehrt",
+      "evidence": [
+        "src/features/dossiers/components/DossiersMainView.tsx",
+        "src/features/dossiers/hooks/useDossiers.ts"
+      ],
+      "components": [
+        "src/features/dossiers/components/DossiersMainView.tsx",
+        "src/features/dossiers/components/DossierDetailView.tsx",
+        "src/features/dossiers/components/DossierQualityFields.tsx"
+      ],
+      "hooks": [
+        "src/features/dossiers/hooks/useDossiers.ts"
+      ],
+      "tables": [
+        "dossiers",
+        "dossier_entries"
+      ],
+      "roles": [
+        "abgeordneter",
+        "bueroleitung",
+        "mitarbeiter"
+      ],
+      "docs": [
+        "docs/dossier-umsetzungsplan.md"
+      ],
+      "rpcs": [
+        "dossier_is_duplicate_entry"
+      ]
+    },
+    {
+      "id": "dossiers.entries",
+      "subarea": "Dossiers",
+      "name": "Dossier-Einträge und Timeline",
+      "description": "Erfasst Einträge, ordnet sie chronologisch und verknüpft Quellen.",
+      "category": "fachlich",
+      "implementationStatus": "implementiert",
+      "integrationStatus": "ui",
+      "coverage": "keine",
+      "testResult": "nicht-ausgefuehrt",
+      "evidence": [
+        "src/features/dossiers/components/EntryCard.tsx",
+        "src/features/dossiers/hooks/useDossierEntries.ts"
+      ],
+      "components": [
+        "src/features/dossiers/components/EntryCard.tsx",
+        "src/features/dossiers/components/EntryTimeline.tsx"
+      ],
+      "hooks": [
+        "src/features/dossiers/hooks/useDossierEntries.ts",
+        "src/features/dossiers/hooks/useEntryFollowups.ts"
+      ],
+      "tables": [
+        "dossier_entries",
+        "dossiers"
+      ],
+      "roles": [
+        "abgeordneter",
+        "bueroleitung",
+        "mitarbeiter"
+      ]
+    },
+    {
+      "id": "dossiers.links-stakeholders",
+      "subarea": "Dossiers",
+      "name": "Dossier-Verknüpfungen und Stakeholder",
+      "description": "Verknüpft Dossiers mit Kontakten, Dokumenten und anderen Dossiers und zeigt Beteiligte.",
+      "category": "fachlich",
+      "implementationStatus": "implementiert",
+      "integrationStatus": "ui",
+      "coverage": "keine",
+      "testResult": "nicht-ausgefuehrt",
+      "evidence": [
+        "src/features/dossiers/components/DossierLinksView.tsx",
+        "src/features/dossiers/components/DossierStakeholdersTab.tsx"
+      ],
+      "components": [
+        "src/features/dossiers/components/DossierLinksView.tsx",
+        "src/features/dossiers/components/DossierStakeholdersTab.tsx"
+      ],
+      "hooks": [
+        "src/features/dossiers/hooks/useDossierLinks.ts",
+        "src/features/dossiers/hooks/useDossierStakeholders.ts"
+      ],
+      "tables": [
+        "dossier_links",
+        "dossier_stakeholders"
+      ],
+      "roles": [
+        "abgeordneter",
+        "bueroleitung",
+        "mitarbeiter"
+      ]
+    },
+    {
+      "id": "dossiers.talking-points",
+      "subarea": "Dossiers",
+      "name": "Talking Points und Positionsversionen",
+      "description": "Hält Gesprächspunkte und Positionsfassungen je Dossier fest.",
+      "category": "fachlich",
+      "implementationStatus": "implementiert",
+      "integrationStatus": "ui",
+      "coverage": "keine",
+      "testResult": "nicht-ausgefuehrt",
+      "evidence": [
+        "src/features/dossiers/components/DossierTalkingPoints.tsx",
+        "src/features/dossiers/hooks/usePositionVersions.ts"
+      ],
+      "components": [
+        "src/features/dossiers/components/DossierTalkingPoints.tsx"
+      ],
+      "hooks": [
+        "src/features/dossiers/hooks/useTalkingPoints.ts",
+        "src/features/dossiers/hooks/usePositionVersions.ts"
+      ],
+      "tables": [
+        "dossier_talking_points",
+        "dossier_position_versions"
+      ],
+      "roles": [
+        "abgeordneter",
+        "bueroleitung",
+        "mitarbeiter"
+      ]
+    },
+    {
+      "id": "dossiers.capture-radar",
+      "subarea": "Dossiers",
+      "name": "Schnellerfassung und Mein Radar",
+      "description": "Erfasst Dossier-Einträge aus dem Alltag und zeigt persönlich relevante Dossiers mit Review-Hinweisen.",
+      "category": "fachlich",
+      "implementationStatus": "implementiert",
+      "integrationStatus": "ui",
+      "coverage": "keine",
+      "testResult": "nicht-ausgefuehrt",
+      "evidence": [
+        "src/features/dossiers/components/SmartCapture.tsx",
+        "src/features/dossiers/components/MeinRadarView.tsx"
+      ],
+      "components": [
+        "src/features/dossiers/components/SmartCapture.tsx",
+        "src/features/dossiers/components/QuickCapture.tsx",
+        "src/features/dossiers/components/MeinRadarView.tsx",
+        "src/features/dossiers/components/DossierReviewReminder.tsx"
+      ],
+      "tables": [
+        "dossiers",
+        "dossier_entries"
+      ],
+      "roles": [
+        "abgeordneter",
+        "bueroleitung",
+        "mitarbeiter"
+      ]
+    },
+    {
+      "id": "dossiers.sources",
+      "subarea": "Dossiers",
+      "name": "Dossier-Quellenbeobachtung",
+      "description": "Beobachtet externe Quellen und synchronisiert neue Einträge in Dossiers.",
+      "category": "integration",
+      "implementationStatus": "implementiert",
+      "integrationStatus": "system",
+      "coverage": "keine",
+      "testResult": "nicht-ausgefuehrt",
+      "evidence": [
+        "src/features/dossiers/components/DossierSourceWatchersPanel.tsx",
+        "supabase/functions/sync-dossier-external-sources/index.ts"
+      ],
+      "components": [
+        "src/features/dossiers/components/DossierSourceWatchersPanel.tsx"
+      ],
+      "hooks": [
+        "src/features/dossiers/hooks/useDossierSourceWatchers.ts"
+      ],
+      "edgeFunctions": [
+        "sync-dossier-external-sources"
+      ],
+      "tables": [
+        "dossier_source_watchers",
+        "dossier_entries"
+      ],
+      "roles": [
+        "abgeordneter",
+        "bueroleitung",
+        "mitarbeiter",
+        "system"
+      ]
+    },
+    {
+      "id": "dossiers.search",
+      "subarea": "Dossiers",
+      "name": "Globale Dossier-Suche",
+      "description": "Durchsucht Dossier-Einträge und Dossiers zentral und öffnet Treffer im Kontext.",
+      "category": "fachlich",
+      "implementationStatus": "implementiert",
+      "integrationStatus": "ui",
+      "coverage": "keine",
+      "testResult": "nicht-ausgefuehrt",
+      "evidence": [
+        "src/features/dossiers/components/GlobalEntrySearch.tsx"
+      ],
+      "components": [
+        "src/features/dossiers/components/GlobalEntrySearch.tsx"
+      ],
+      "tables": [
+        "dossier_entries",
+        "dossiers"
+      ],
+      "roles": [
+        "abgeordneter",
+        "bueroleitung",
+        "mitarbeiter"
+      ]
+    },
+    {
+      "id": "drucksachen.view",
+      "subarea": "Drucksachen",
+      "name": "Drucksachen anzeigen",
+      "description": "Listet parlamentarische Drucksachen mit Bezug zu Themen und Dokumenten.",
+      "category": "fachlich",
+      "implementationStatus": "teilweise",
+      "integrationStatus": "ui",
+      "coverage": "keine",
+      "testResult": "nicht-ausgefuehrt",
+      "evidence": [
+        "src/features/drucksachen/components/DrucksachenView.tsx",
+        "src/components/drucksachen"
+      ],
+      "components": [
+        "src/features/drucksachen/components/DrucksachenView.tsx"
+      ],
+      "tables": [
+        "documents"
+      ],
+      "roles": [
+        "abgeordneter",
+        "bueroleitung",
+        "mitarbeiter"
+      ],
+      "limitations": [
+        "Eine eigene Drucksachen-Tabelle existiert in den generierten Typen nicht; die Anzeige arbeitet auf Dokumenten."
+      ],
+      "reviewPoints": [
+        "Fachlicher Umfang der Drucksachenansicht ist unklar; nur die Ansicht ist nachgewiesen."
+      ]
+    },
+    {
+      "id": "topics.manage",
+      "subarea": "Themen",
+      "name": "Themen verwalten",
+      "description": "Pflegt Themen mit Zuständigkeiten, Verknüpfungen und Sichtbarkeit.",
+      "category": "fachlich",
+      "implementationStatus": "implementiert",
+      "integrationStatus": "ui",
+      "coverage": "keine",
+      "testResult": "nicht-ausgefuehrt",
+      "evidence": [
+        "src/features/topics/TopicOverview.tsx",
+        "src/hooks/useTopics.tsx"
+      ],
+      "components": [
+        "src/features/topics/TopicOverview.tsx",
+        "src/components/topics/TopicSelector.tsx"
+      ],
+      "hooks": [
+        "src/hooks/useTopics.tsx"
+      ],
+      "rpcs": [
+        "ensure_topic",
+        "merge_topics",
+        "topic_name_from_label"
+      ],
+      "tables": [
+        "topics",
+        "committees",
+        "regions"
+      ],
+      "roles": [
+        "abgeordneter",
+        "bueroleitung",
+        "mitarbeiter"
+      ]
+    },
+    {
+      "id": "topics.convert-catalog",
+      "subarea": "Themen",
+      "name": "Thema in Katalog überführen",
+      "description": "Wandelt ein Thema atomar in einen Katalogeintrag um, erhält historische Verknüpfungen und übernimmt Zuständigkeiten.",
+      "category": "fachlich",
+      "implementationStatus": "implementiert",
+      "integrationStatus": "ui",
+      "coverage": "keine",
+      "testResult": "nicht-ausgefuehrt",
+      "evidence": [
+        "src/features/topics/TopicConversionButton.tsx",
+        "src/features/topics/useTopicCatalogLinks.ts"
+      ],
+      "components": [
+        "src/features/topics/TopicConversionButton.tsx"
+      ],
+      "hooks": [
+        "src/features/topics/useTopicCatalogLinks.ts"
+      ],
+      "rpcs": [
+        "convert_topic_to_catalog"
+      ],
+      "tables": [
+        "topics",
+        "topic_catalog_links",
+        "employee_responsibilities"
+      ],
+      "roles": [
+        "bueroleitung",
+        "admin"
+      ],
+      "docs": [
+        "docs/entity-map.md"
+      ]
+    },
+    {
+      "id": "facts.manage",
+      "subarea": "Fakten",
+      "name": "Fakten und Argumente pflegen",
+      "description": "Verwaltet Fakten mit Quellen, Nutzungszähler und CSV-Import/-Export.",
+      "category": "fachlich",
+      "implementationStatus": "implementiert",
+      "integrationStatus": "ui",
+      "coverage": "keine",
+      "testResult": "nicht-ausgefuehrt",
+      "evidence": [
+        "src/features/facts/csvIo.ts",
+        "src/features/facts/hooks"
+      ],
+      "services": [
+        "src/features/facts/csvIo.ts"
+      ],
+      "components": [
+        "src/features/facts/components"
+      ],
+      "rpcs": [
+        "increment_fact_usage"
+      ],
+      "tables": [
+        "facts"
+      ],
+      "roles": [
+        "abgeordneter",
+        "bueroleitung",
+        "mitarbeiter"
+      ]
+    }
+  ]
+}

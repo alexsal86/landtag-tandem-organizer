@@ -1,0 +1,827 @@
+{
+  "area": {
+    "id": "mitarbeit",
+    "title": "Mitarbeit, Personal & Zeit",
+    "purpose": "Mitarbeitergespräche und Protokolle führen, Onboarding/Offboarding, Zuständigkeiten, Teamrituale sowie Zeit- und Urlaubskonten verwalten."
+  },
+  "features": [
+    {
+      "id": "employees.meetings",
+      "subarea": "Mitarbeitergespräche",
+      "name": "Mitarbeitergespräch planen und führen",
+      "description": "Plant Gespräche, verwaltet Anfragen und führt das Gespräch mit Protokoll, Maßnahmen und Vertraulichkeitsstufen.",
+      "category": "fachlich",
+      "implementationStatus": "implementiert",
+      "integrationStatus": "rollenabhaengig",
+      "coverage": "keine",
+      "testResult": "nicht-ausgefuehrt",
+      "evidence": [
+        "src/features/employees/components/EmployeesView.tsx",
+        "src/features/employees/components/EmployeeMeetingScheduler.tsx"
+      ],
+      "routes": [
+        "/employee",
+        "/employee-meeting/:id"
+      ],
+      "components": [
+        "src/features/employees/components/EmployeesView.tsx",
+        "src/features/employees/components/EmployeeMeetingScheduler.tsx",
+        "src/pages/EmployeeMeetingDetail.tsx"
+      ],
+      "rpcs": [
+        "save_employee_meeting",
+        "require_employee_meeting_access",
+        "guard_employee_protocol",
+        "delete_employee_meeting"
+      ],
+      "tables": [
+        "employee_meetings",
+        "employee_meeting_requests",
+        "employee_settings"
+      ],
+      "roles": [
+        "abgeordneter",
+        "bueroleitung",
+        "mitarbeiter"
+      ],
+      "docs": [
+        "docs/employee-meeting-leadership.md"
+      ],
+      "reviewPoints": [
+        "Für Mitarbeitergespräche existiert kein registriertes Selbsttest-Szenario."
+      ]
+    },
+    {
+      "id": "employees.protocol",
+      "subarea": "Mitarbeitergespräche",
+      "name": "Gesprächsprotokoll freigeben und sperren",
+      "description": "Führt Protokolle durch Freigabe, Widerspruch und Wiedereröffnung, schützt eingefrorene Inhalte und speichert private Notizen je Nutzer.",
+      "category": "fachlich",
+      "implementationStatus": "implementiert",
+      "integrationStatus": "rollenabhaengig",
+      "coverage": "keine",
+      "testResult": "nicht-ausgefuehrt",
+      "evidence": [
+        "src/features/employees/protocolWorkflow.ts",
+        "src/features/employees/components/EmployeeMeetingProtocol.tsx"
+      ],
+      "components": [
+        "src/features/employees/components/EmployeeMeetingProtocol.tsx"
+      ],
+      "services": [
+        "src/features/employees/protocolWorkflow.ts",
+        "src/features/employees/protocolText.ts"
+      ],
+      "rpcs": [
+        "mutate_employee_meeting_action",
+        "request_protocol_acknowledgement",
+        "acknowledge_meeting_protocol",
+        "reopen_meeting_protocol",
+        "employee_protocol_hash"
+      ],
+      "tables": [
+        "employee_meetings",
+        "employee_meeting_audit",
+        "employee_meeting_private_notes"
+      ],
+      "roles": [
+        "abgeordneter",
+        "bueroleitung",
+        "mitarbeiter"
+      ],
+      "docs": [
+        "docs/employee-meeting-leadership.md"
+      ],
+      "reviewPoints": [
+        "Protokollfreigabe ist eine sensible Regel ohne zugeordneten Test."
+      ]
+    },
+    {
+      "id": "employees.action-tasks",
+      "subarea": "Mitarbeitergespräche",
+      "name": "Maßnahmen als Aufgaben",
+      "description": "Erzeugt nach unbestrittener Protokollabnahme genau eine Aufgabe mit Ball bei der Mitarbeiterschaft und synchronisiert den Abschluss in beide Richtungen.",
+      "category": "fachlich",
+      "implementationStatus": "implementiert",
+      "integrationStatus": "system",
+      "coverage": "keine",
+      "testResult": "nicht-ausgefuehrt",
+      "evidence": [
+        "src/features/employees/actionTasks.ts"
+      ],
+      "services": [
+        "src/features/employees/actionTasks.ts"
+      ],
+      "rpcs": [
+        "create_meeting_action_task",
+        "sync_employee_action_task_status",
+        "guard_employee_action_content"
+      ],
+      "tables": [
+        "employee_meeting_action_items",
+        "tasks"
+      ],
+      "roles": [
+        "abgeordneter",
+        "bueroleitung",
+        "mitarbeiter",
+        "system"
+      ],
+      "dependsOn": [
+        "tasks.create",
+        "employees.protocol"
+      ]
+    },
+    {
+      "id": "employees.preparation",
+      "subarea": "Mitarbeitergespräche",
+      "name": "Gesprächsvorbereitung und Erinnerungen",
+      "description": "Öffnet die Vorbereitung sieben Kalendertage vor dem Gespräch, erinnert per Cron und füllt leere Felder mit Vorschlägen.",
+      "category": "automatisiert",
+      "implementationStatus": "implementiert",
+      "integrationStatus": "system",
+      "coverage": "keine",
+      "testResult": "nicht-ausgefuehrt",
+      "evidence": [
+        "src/features/employees/preparation.ts"
+      ],
+      "services": [
+        "src/features/employees/preparation.ts"
+      ],
+      "rpcs": [
+        "dispatch_employee_preparation_reminders",
+        "guard_employee_preparation_window",
+        "remind_employee_hr",
+        "automation_private.remind_employee_hr"
+      ],
+      "tables": [
+        "employee_hr_reminder_log",
+        "employee_meetings"
+      ],
+      "roles": [
+        "mitarbeiter",
+        "bueroleitung",
+        "system"
+      ],
+      "docs": [
+        "docs/employee-meeting-leadership.md"
+      ],
+      "reviewPoints": [
+        "Cron-Versand wurde nicht ausgeführt."
+      ]
+    },
+    {
+      "id": "employees.review",
+      "subarea": "Mitarbeitergespräche",
+      "name": "Vorgesprächs-Review",
+      "description": "Vergleicht mit dem letzten abgeschlossenen Gespräch, übernimmt offene Maßnahmen und dokumentiert Review-Gründe am aktuellen Protokoll.",
+      "category": "fachlich",
+      "implementationStatus": "implementiert",
+      "integrationStatus": "ui",
+      "coverage": "keine",
+      "testResult": "nicht-ausgefuehrt",
+      "evidence": [
+        "src/features/employees/previousMeeting.ts",
+        "src/features/employees/components/PreviousMeetingReview.tsx"
+      ],
+      "components": [
+        "src/features/employees/components/PreviousMeetingReview.tsx"
+      ],
+      "services": [
+        "src/features/employees/previousMeeting.ts"
+      ],
+      "rpcs": [
+        "get_latest_employee_meetings"
+      ],
+      "tables": [
+        "employee_meetings",
+        "employee_meeting_action_items",
+        "tasks"
+      ],
+      "roles": [
+        "abgeordneter",
+        "bueroleitung"
+      ]
+    },
+    {
+      "id": "employees.wellbeing",
+      "subarea": "Mitarbeitergespräche",
+      "name": "Wohlbefinden und Trends",
+      "description": "Erfasst Wohlbefinden als geschützte JSON-Daten und zeigt Trends ausschließlich der Person und der direkten Führungskraft.",
+      "category": "sicherheit",
+      "implementationStatus": "implementiert",
+      "integrationStatus": "rollenabhaengig",
+      "coverage": "keine",
+      "testResult": "nicht-ausgefuehrt",
+      "evidence": [
+        "src/features/employees/wellbeing.ts",
+        "src/features/employees/components/WellbeingTrend.tsx"
+      ],
+      "components": [
+        "src/features/employees/components/WellbeingTrend.tsx"
+      ],
+      "services": [
+        "src/features/employees/wellbeing.ts"
+      ],
+      "rpcs": [
+        "guard_employee_settings_entitlements",
+        "get_employee_meeting_trend"
+      ],
+      "tables": [
+        "employee_settings",
+        "employee_settings_history"
+      ],
+      "roles": [
+        "mitarbeiter",
+        "bueroleitung"
+      ],
+      "limitations": [
+        "Schwellenwerte liegen im reinen Modul; teamweite Auswertungen sind ausdrücklich ausgeschlossen."
+      ],
+      "reviewPoints": [
+        "Kein Test für die Datenbankpolitik der Wohlbefindensdaten vorhanden."
+      ]
+    },
+    {
+      "id": "employees.requests",
+      "subarea": "Mitarbeitergespräche",
+      "name": "Gesprächsanfragen der Mitarbeitenden",
+      "description": "Erlaubt Mitarbeitenden, Gespräche anzufragen, und gleicht Anfragen mit geplanten Gesprächen ab.",
+      "category": "fachlich",
+      "implementationStatus": "implementiert",
+      "integrationStatus": "rollenabhaengig",
+      "coverage": "keine",
+      "testResult": "nicht-ausgefuehrt",
+      "evidence": [
+        "src/features/employees/components/EmployeeMeetingRequestManager.tsx",
+        "src/features/employees/components/EmployeeMeetingRequestDialog.tsx"
+      ],
+      "components": [
+        "src/features/employees/components/EmployeeMeetingRequestManager.tsx",
+        "src/features/employees/components/EmployeeMeetingRequestDialog.tsx"
+      ],
+      "rpcs": [
+        "reconcile_employee_meeting_requests"
+      ],
+      "tables": [
+        "employee_meeting_requests",
+        "employee_meetings"
+      ],
+      "roles": [
+        "mitarbeiter",
+        "bueroleitung",
+        "abgeordneter"
+      ]
+    },
+    {
+      "id": "employees.export-stats",
+      "subarea": "Mitarbeitergespräche",
+      "name": "Gesprächs-PDF und Jahresstatistik",
+      "description": "Exportiert Protokolle als PDF und erzeugt Jahresstatistiken je Mitarbeiter.",
+      "category": "fachlich",
+      "implementationStatus": "implementiert",
+      "integrationStatus": "ui",
+      "coverage": "keine",
+      "testResult": "nicht-ausgefuehrt",
+      "evidence": [
+        "src/features/employees/components/EmployeeMeetingPDFExport.tsx",
+        "src/features/employees/components/EmployeeYearlyStatsView.tsx"
+      ],
+      "components": [
+        "src/features/employees/components/EmployeeMeetingPDFExport.tsx",
+        "src/features/employees/components/EmployeeYearlyStatsView.tsx"
+      ],
+      "rpcs": [
+        "generate_current_year_stats",
+        "generate_yearly_stats_for_year",
+        "archive_employee_year_stats"
+      ],
+      "tables": [
+        "employee_yearly_stats",
+        "employee_meetings"
+      ],
+      "roles": [
+        "abgeordneter",
+        "bueroleitung",
+        "mitarbeiter"
+      ]
+    },
+    {
+      "id": "hr.onboarding",
+      "subarea": "Onboarding & Offboarding",
+      "name": "Onboarding-Ablauf",
+      "description": "Führt neue Mitarbeitende durch einen Routineablauf mit Schritten, Nachweisen, Fristen und DSGVO-Erklärung.",
+      "category": "fachlich",
+      "implementationStatus": "implementiert",
+      "integrationStatus": "rollenabhaengig",
+      "coverage": "selftest",
+      "testResult": "nicht-ausgefuehrt",
+      "evidence": [
+        "src/features/onboarding-hr/HrWorkspace.tsx",
+        "src/features/onboarding-hr/useHrData.ts",
+        "src/features/selftest/scenarios/onboarding-hr.ts"
+      ],
+      "components": [
+        "src/features/onboarding-hr/HrWorkspace.tsx",
+        "src/features/onboarding-hr/EmploymentFields.tsx",
+        "src/features/onboarding-hr/EmployeeEmploymentEditor.tsx"
+      ],
+      "hooks": [
+        "src/features/onboarding-hr/useHrData.ts"
+      ],
+      "rpcs": [
+        "start_employee_hr",
+        "complete_employee_hr_step",
+        "save_employee_lifecycle",
+        "confirm_employee_hr_gdpr",
+        "hr_task_visible",
+        "selftest_employee_hr"
+      ],
+      "tables": [
+        "routine_package_runs",
+        "routine_package_steps",
+        "employee_lifecycle",
+        "employee_hr_evidence",
+        "employee_hr_gdpr_declarations"
+      ],
+      "roles": [
+        "bueroleitung",
+        "admin",
+        "mitarbeiter"
+      ],
+      "scenarios": [
+        "onboarding-hr"
+      ],
+      "unitTests": [
+        "src/features/onboarding-hr/progress.test.ts",
+        "src/features/onboarding-hr/useHrData.test.tsx"
+      ],
+      "docs": [
+        "docs/rollenrechte-matrix.md"
+      ]
+    },
+    {
+      "id": "hr.templates",
+      "subarea": "Onboarding & Offboarding",
+      "name": "HR-Vorlagen und DSGVO-Erklärung",
+      "description": "Verwaltet Onboarding-/Offboarding-Vorlagen, Standardfelder und die datenschutzrechtliche Erklärung.",
+      "category": "administrativ",
+      "implementationStatus": "implementiert",
+      "integrationStatus": "rollenabhaengig",
+      "coverage": "unit",
+      "testResult": "unbekannt",
+      "evidence": [
+        "src/features/onboarding-hr/HrTemplateEditor.tsx",
+        "src/features/onboarding-hr/gdpr.ts",
+        "src/features/onboarding-hr/GdprDeclarationEditor.tsx"
+      ],
+      "components": [
+        "src/features/onboarding-hr/HrTemplateEditor.tsx",
+        "src/features/onboarding-hr/GdprDeclarationDialog.tsx"
+      ],
+      "services": [
+        "src/features/onboarding-hr/templates.ts",
+        "src/features/onboarding-hr/progress.ts",
+        "src/features/onboarding-hr/gdpr.ts"
+      ],
+      "rpcs": [
+        "save_employee_hr_template",
+        "seed_employee_hr_templates",
+        "save_employee_hr_gdpr_declaration"
+      ],
+      "tables": [
+        "employee_hr_templates",
+        "employee_hr_gdpr_declarations"
+      ],
+      "roles": [
+        "admin",
+        "bueroleitung"
+      ],
+      "unitTests": [
+        "src/features/onboarding-hr/GdprDeclarationEditor.test.tsx",
+        "src/features/onboarding-hr/GdprDeclarationDialog.test.tsx"
+      ]
+    },
+    {
+      "id": "hr.offboarding",
+      "subarea": "Onboarding & Offboarding",
+      "name": "Offboarding mit Übergaben",
+      "description": "Führt Offboarding-Schritte aus, bewahrt Ball-Owner bei Übergaben und schließt persönliche HR-Ziele aus.",
+      "category": "fachlich",
+      "implementationStatus": "implementiert",
+      "integrationStatus": "system",
+      "coverage": "selftest",
+      "testResult": "nicht-ausgefuehrt",
+      "evidence": [
+        "src/features/onboarding-hr/useHrData.ts",
+        "src/features/selftest/scenarios/onboarding-hr.ts"
+      ],
+      "services": [
+        "src/features/onboarding-hr/progress.ts"
+      ],
+      "rpcs": [
+        "save_employee_lifecycle",
+        "guard_employee_hr_target",
+        "delete_employee_lifecycle",
+        "delete_employee_hr"
+      ],
+      "tables": [
+        "employee_lifecycle",
+        "routine_package_runs",
+        "tasks"
+      ],
+      "roles": [
+        "bueroleitung",
+        "admin",
+        "mitarbeiter"
+      ],
+      "scenarios": [
+        "onboarding-hr"
+      ]
+    },
+    {
+      "id": "responsibilities.matrix",
+      "subarea": "Zuständigkeiten",
+      "name": "Zuständigkeitsmatrix",
+      "description": "Ordnet Themen und Bereiche mehreren Hauptzuständigkeiten zu und schreibt die Matrix über geprüfte RPCs.",
+      "category": "fachlich",
+      "implementationStatus": "implementiert",
+      "integrationStatus": "ui",
+      "coverage": "selftest",
+      "testResult": "nicht-ausgefuehrt",
+      "evidence": [
+        "src/features/responsibilities/ResponsibilityMatrix.tsx",
+        "src/features/selftest/scenarios/responsibilities.ts"
+      ],
+      "components": [
+        "src/features/responsibilities/ResponsibilityMatrix.tsx"
+      ],
+      "hooks": [
+        "src/features/responsibilities/useResponsibilities.ts"
+      ],
+      "rpcs": [
+        "save_responsibility_catalog",
+        "merge_responsibility_catalog",
+        "set_employee_responsibility"
+      ],
+      "tables": [
+        "employee_responsibilities",
+        "topics",
+        "committees",
+        "regions"
+      ],
+      "roles": [
+        "bueroleitung",
+        "admin",
+        "mitarbeiter"
+      ],
+      "scenarios": [
+        "responsibilities"
+      ],
+      "unitTests": [
+        "src/features/responsibilities/suggest.test.ts",
+        "src/features/responsibilities/matrixCoverage.test.ts"
+      ]
+    },
+    {
+      "id": "responsibilities.suggest",
+      "subarea": "Zuständigkeiten",
+      "name": "Zuständigkeitsvorschläge",
+      "description": "Schlägt anhand von Thema, Region und Kontakt die zuständige Person vor und kennzeichnet Abdeckungslücken.",
+      "category": "fachlich",
+      "implementationStatus": "implementiert",
+      "integrationStatus": "ui",
+      "coverage": "unit",
+      "testResult": "unbekannt",
+      "evidence": [
+        "src/features/responsibilities/suggest.ts",
+        "src/features/responsibilities/ResponsibleSuggestion.tsx"
+      ],
+      "components": [
+        "src/features/responsibilities/ResponsibleSuggestion.tsx",
+        "src/features/responsibilities/AssignmentPicker.tsx"
+      ],
+      "services": [
+        "src/features/responsibilities/suggest.ts"
+      ],
+      "rpcs": [
+        "assign_from_responsibility_matrix"
+      ],
+      "tables": [
+        "employee_responsibilities",
+        "topics",
+        "case_items"
+      ],
+      "roles": [
+        "abgeordneter",
+        "bueroleitung",
+        "mitarbeiter"
+      ],
+      "unitTests": [
+        "src/features/responsibilities/suggest.test.ts",
+        "src/features/responsibilities/ResponsibleSuggestion.test.tsx"
+      ]
+    },
+    {
+      "id": "responsibilities.coverage",
+      "subarea": "Zuständigkeiten",
+      "name": "Abdeckungsprüfung",
+      "description": "Unterscheidet fehlenden Hauptansprechpartner von gänzlich unbesetzten Bereichen und zeigt Lücken.",
+      "category": "fachlich",
+      "implementationStatus": "implementiert",
+      "integrationStatus": "ui",
+      "coverage": "unit",
+      "testResult": "unbekannt",
+      "evidence": [
+        "src/features/responsibilities/matrixCoverage.test.ts",
+        "src/features/responsibilities/useResponsibilities.ts"
+      ],
+      "hooks": [
+        "src/features/responsibilities/useResponsibilities.ts"
+      ],
+      "tables": [
+        "employee_responsibilities"
+      ],
+      "roles": [
+        "bueroleitung",
+        "admin"
+      ],
+      "unitTests": [
+        "src/features/responsibilities/matrixCoverage.test.ts"
+      ]
+    },
+    {
+      "id": "teamrituals.weekly",
+      "subarea": "Teamrituale",
+      "name": "Wöchentliche Teamfrage",
+      "description": "Stellt wöchentliche Fragen, sammelt Antworten und zeigt Teilnahme sowie Historie.",
+      "category": "fachlich",
+      "implementationStatus": "implementiert",
+      "integrationStatus": "rollenabhaengig",
+      "coverage": "selftest",
+      "testResult": "nicht-ausgefuehrt",
+      "evidence": [
+        "src/features/team-rituals/TeamRitualWorkspace.tsx",
+        "src/features/selftest/scenarios/team-rituals.ts"
+      ],
+      "components": [
+        "src/features/team-rituals/TeamRitualWorkspace.tsx",
+        "src/features/team-rituals/WeeklyQuestionWidget.tsx",
+        "src/features/team-rituals/WeeklyAnswers.tsx"
+      ],
+      "services": [
+        "src/features/team-rituals/logic.ts",
+        "src/features/team-rituals/history.ts"
+      ],
+      "rpcs": [
+        "save_team_question",
+        "upsert_weekly_answer",
+        "delete_weekly_answer",
+        "team_weekly_question_participation",
+        "configure_team_rituals",
+        "save_team_ritual_profile",
+        "team_ritual_employment",
+        "team_ritual_enabled",
+        "team_ritual_member",
+        "team_ritual_visible"
+      ],
+      "tables": [
+        "team_questions",
+        "team_question_weeks",
+        "team_question_answers",
+        "team_ritual_settings"
+      ],
+      "roles": [
+        "abgeordneter",
+        "bueroleitung",
+        "mitarbeiter",
+        "praktikant"
+      ],
+      "scenarios": [
+        "team-rituals"
+      ],
+      "unitTests": [
+        "src/features/team-rituals/logic.test.ts",
+        "src/features/team-rituals/history.test.tsx"
+      ],
+      "docs": [
+        "docs/team-rituals.md"
+      ]
+    },
+    {
+      "id": "teamrituals.games",
+      "subarea": "Teamrituale",
+      "name": "Teamspiele (Bingo, Zwei Wahrheiten, Fun Facts)",
+      "description": "Betreibt Bingo, Zwei-Wahrheiten-Runden und Fun-Facts mit Monatsarchiv und Teilnehmerverwaltung.",
+      "category": "fachlich",
+      "implementationStatus": "implementiert",
+      "integrationStatus": "ui",
+      "coverage": "unit",
+      "testResult": "unbekannt",
+      "evidence": [
+        "src/features/team-rituals/BingoWidget.tsx",
+        "src/features/team-rituals/bingo.ts",
+        "src/features/team-rituals/twoTruths.ts"
+      ],
+      "components": [
+        "src/features/team-rituals/BingoWidget.tsx",
+        "src/features/team-rituals/TwoTruthsWidget.tsx",
+        "src/features/team-rituals/FunFactsEditor.tsx"
+      ],
+      "services": [
+        "src/features/team-rituals/bingo.ts",
+        "src/features/team-rituals/twoTruths.ts"
+      ],
+      "rpcs": [
+        "save_team_bingo_config",
+        "answer_two_truths_quiz",
+        "save_team_fun_facts",
+        "own_team_fun_facts",
+        "delete_team_fun_facts",
+        "clear_team_quiz_consent",
+        "team_bingo_config",
+        "team_two_truths_archive",
+        "team_two_truths_snapshot",
+        "team_ritual_participant",
+        "team_ritual_snapshot"
+      ],
+      "tables": [
+        "team_bingo_settings",
+        "team_two_truths_answers",
+        "team_two_truths_months",
+        "team_fun_facts"
+      ],
+      "roles": [
+        "abgeordneter",
+        "bueroleitung",
+        "mitarbeiter",
+        "praktikant"
+      ],
+      "unitTests": [
+        "src/features/team-rituals/bingo.test.ts"
+      ],
+      "docs": [
+        "docs/team-rituals.md"
+      ]
+    },
+    {
+      "id": "timetracking.entries",
+      "subarea": "Zeiterfassung",
+      "name": "Arbeitszeit erfassen",
+      "description": "Erfasst Arbeitszeiten, Pausen und Korrekturen mit Verlauf und Prüfung der Arbeitszeitregeln.",
+      "category": "fachlich",
+      "implementationStatus": "implementiert",
+      "integrationStatus": "rollenabhaengig",
+      "coverage": "keine",
+      "testResult": "nicht-ausgefuehrt",
+      "evidence": [
+        "src/features/timetracking/components/TimeTrackingView.tsx",
+        "src/features/timetracking/arbzg.ts"
+      ],
+      "components": [
+        "src/features/timetracking/components/TimeTrackingView.tsx"
+      ],
+      "services": [
+        "src/features/timetracking/arbzg.ts",
+        "src/features/timetracking/weeklyTarget.ts"
+      ],
+      "rpcs": [
+        "ensure_net_minutes",
+        "get_daily_hours",
+        "get_latest_time_entry_dates",
+        "auto_calculate_hours_per_month"
+      ],
+      "tables": [
+        "time_entries",
+        "time_entry_corrections",
+        "time_entry_history"
+      ],
+      "roles": [
+        "abgeordneter",
+        "bueroleitung",
+        "mitarbeiter",
+        "praktikant"
+      ],
+      "reviewPoints": [
+        "Arbeitszeitregeln sind als reine Funktionen vorhanden, aber ohne dedizierten Test für arbzg.ts."
+      ]
+    },
+    {
+      "id": "timetracking.vacation",
+      "subarea": "Zeiterfassung",
+      "name": "Urlaub und Resturlaub",
+      "description": "Beantragt Urlaub, berechnet Anspruch und Resttage, überträgt Resturlaub und archiviert Krankheitstage.",
+      "category": "fachlich",
+      "implementationStatus": "implementiert",
+      "integrationStatus": "rollenabhaengig",
+      "coverage": "unit",
+      "testResult": "unbekannt",
+      "evidence": [
+        "src/features/timetracking/components/VacationHistoryDialog.tsx",
+        "src/hooks/useYearlyBalance.ts",
+        "src/hooks/useVacationReminders.ts"
+      ],
+      "components": [
+        "src/features/timetracking/components/VacationHistoryDialog.tsx",
+        "src/components/administration/VacationChecklistAdmin.tsx"
+      ],
+      "hooks": [
+        "src/hooks/useYearlyBalance.ts",
+        "src/hooks/useVacationReminders.ts"
+      ],
+      "rpcs": [
+        "execute_reset_vacation_days",
+        "execute_expire_carry_over",
+        "execute_archive_sick_days",
+        "notify_on_leave_request",
+        "handle_leave_request_notifications",
+        "expire_carry_over_vacation"
+      ],
+      "tables": [
+        "leave_requests",
+        "vacation_history",
+        "carryover_items",
+        "sick_days",
+        "vacation_checklist_templates"
+      ],
+      "roles": [
+        "abgeordneter",
+        "bueroleitung",
+        "mitarbeiter",
+        "praktikant"
+      ],
+      "unitTests": [
+        "src/features/timetracking/annualTaskRules.test.ts"
+      ]
+    },
+    {
+      "id": "timetracking.admin",
+      "subarea": "Zeiterfassung",
+      "name": "Zeiterfassung administrieren",
+      "description": "Korrigiert Zeiten, zeigt Teamauswertungen und schützt sensible Datensätze durch Maskierung.",
+      "category": "administrativ",
+      "implementationStatus": "implementiert",
+      "integrationStatus": "rollenabhaengig",
+      "coverage": "keine",
+      "testResult": "nicht-ausgefuehrt",
+      "evidence": [
+        "src/features/timetracking/components/AdminTimeEntryEditor.tsx",
+        "src/components/admin/AdminTimeTrackingView.tsx"
+      ],
+      "components": [
+        "src/features/timetracking/components/AdminTimeEntryEditor.tsx",
+        "src/components/admin/AdminTimeTrackingView.tsx"
+      ],
+      "rpcs": [
+        "mask_secured_record",
+        "read_secured_letters",
+        "get_employee_admin_overview"
+      ],
+      "tables": [
+        "time_entries",
+        "employee_settings"
+      ],
+      "roles": [
+        "bueroleitung",
+        "admin"
+      ]
+    },
+    {
+      "id": "timetracking.annual-tasks",
+      "subarea": "Zeiterfassung",
+      "name": "Jahresaufgaben im Zeitbereich",
+      "description": "Zeigt und erledigt jährliche Pflichtaufgaben mit Fristen und Abschlusshistorie.",
+      "category": "fachlich",
+      "implementationStatus": "implementiert",
+      "integrationStatus": "ui",
+      "coverage": "unit",
+      "testResult": "unbekannt",
+      "evidence": [
+        "src/features/timetracking/components/AnnualTasksView.tsx",
+        "src/features/timetracking/annualTaskRules.ts"
+      ],
+      "components": [
+        "src/features/timetracking/components/AnnualTasksView.tsx"
+      ],
+      "services": [
+        "src/features/timetracking/annualTaskRules.ts"
+      ],
+      "rpcs": [
+        "execute_annual_automation_routine",
+        "spawn_annual_task_to_stafette"
+      ],
+      "tables": [
+        "annual_tasks",
+        "annual_task_completions"
+      ],
+      "roles": [
+        "abgeordneter",
+        "bueroleitung",
+        "mitarbeiter"
+      ],
+      "unitTests": [
+        "src/features/timetracking/annualTaskRules.test.ts"
+      ]
+    }
+  ]
+}

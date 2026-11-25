@@ -1,0 +1,369 @@
+{
+  "area": {
+    "id": "schnittstellen",
+    "title": "Externe Schnittstellen",
+    "purpose": "Anbindung an Kalenderanbieter, E-Mail, Push, ICS, Geocoding, KI-Dienste und Betriebsüberwachung."
+  },
+  "features": [
+    {
+      "id": "integration.calendar-sync",
+      "subarea": "Kalender",
+      "name": "Externe Kalender synchronisieren",
+      "description": "Synchronisiert verbundene externe Kalender bidirektional, claimt Zeitfenster atomar und protokolliert den Sync.",
+      "category": "integration",
+      "implementationStatus": "implementiert",
+      "integrationStatus": "rollenabhaengig",
+      "coverage": "keine",
+      "testResult": "nicht-ausgefuehrt",
+      "evidence": [
+        "src/features/calendar/components/ExternalCalendarSettings.tsx",
+        "supabase/functions/sync-external-calendar/index.ts",
+        "supabase/functions/auto-sync-calendars/index.ts"
+      ],
+      "components": [
+        "src/features/calendar/components/ExternalCalendarSettings.tsx",
+        "src/components/administration/CalendarSyncSettings.tsx",
+        "src/features/calendar/components/CalendarSyncDebug.tsx"
+      ],
+      "edgeFunctions": [
+        "sync-external-calendar",
+        "auto-sync-calendars",
+        "force-resync-calendar"
+      ],
+      "rpcs": [
+        "claim_calendar_sync",
+        "finish_calendar_sync",
+        "calendar_sync_slot"
+      ],
+      "tables": [
+        "external_calendars",
+        "external_events",
+        "calendar_sync_settings"
+      ],
+      "roles": [
+        "abgeordneter",
+        "bueroleitung",
+        "mitarbeiter",
+        "system"
+      ],
+      "docs": [
+        "docs/ci-quality-gates.md",
+        "docs/operations"
+      ],
+      "reviewPoints": [
+        "Ein echter Sync gegen einen externen Anbieter ist nicht ausgeführt worden; nur Code und Contract-Tests liegen vor."
+      ]
+    },
+    {
+      "id": "integration.ics",
+      "subarea": "Kalender",
+      "name": "ICS-Feeds und Einladungsdateien",
+      "description": "Erzeugt ICS-Dateien, prüft ICS-Zugriffe und stellt Feed-Endpunkte für Abonnements bereit.",
+      "category": "integration",
+      "implementationStatus": "implementiert",
+      "integrationStatus": "rollenabhaengig",
+      "coverage": "unit",
+      "testResult": "unbekannt",
+      "evidence": [
+        "supabase/functions/ics-validation/index.ts",
+        "supabase/functions/_shared/icsTime.ts"
+      ],
+      "edgeFunctions": [
+        "ics-validation",
+        "generate-calendar-invite"
+      ],
+      "services": [
+        "supabase/functions/_shared/icsTime.ts"
+      ],
+      "tables": [
+        "appointments",
+        "external_calendars"
+      ],
+      "roles": [
+        "admin",
+        "bueroleitung",
+        "abgeordneter"
+      ],
+      "unitTests": [
+        "supabase/functions/_shared/icsTime.test.ts"
+      ],
+      "docs": [
+        "docs/security-function-matrix.md"
+      ],
+      "rpcs": [
+        "validate_contract_file"
+      ]
+    },
+    {
+      "id": "integration.email",
+      "subarea": "E-Mail",
+      "name": "Transaktions-E-Mail-Versand",
+      "description": "Versendet E-Mails über zentrale Vorlagen, protokolliert Zustellungen und verarbeitet geplante E-Mails.",
+      "category": "integration",
+      "implementationStatus": "implementiert",
+      "integrationStatus": "system",
+      "coverage": "keine",
+      "testResult": "nicht-ausgefuehrt",
+      "evidence": [
+        "supabase/functions/process-scheduled-emails/index.ts",
+        "src/components/emails"
+      ],
+      "edgeFunctions": [
+        "process-scheduled-emails",
+        "send-checklist-email"
+      ],
+      "tables": [
+        "email_logs",
+        "email_templates",
+        "scheduled_emails"
+      ],
+      "roles": [
+        "system",
+        "admin"
+      ],
+      "limitations": [
+        "Ein echter Mailversand ist in dieser Umgebung nicht geprüft; Zustellbarkeit und Bounce-Verhalten sind offen."
+      ],
+      "reviewPoints": [
+        "Zentrale Vorlagenpflege und Versand sind über mehrere Funktionen verteilt; eine vollständige Liste der Absender liegt nicht zentral vor."
+      ]
+    },
+    {
+      "id": "integration.push",
+      "subarea": "Benachrichtigungen",
+      "name": "Push-Benachrichtigungen",
+      "description": "Registriert Push-Token, versendet Push-Nachrichten für Benachrichtigungen und räumt veraltete Tokens auf.",
+      "category": "integration",
+      "implementationStatus": "implementiert",
+      "integrationStatus": "system",
+      "coverage": "keine",
+      "testResult": "nicht-ausgefuehrt",
+      "evidence": [
+        "supabase/functions/dispatch-mobile-push/index.ts",
+        "supabase/functions/push-notification-worker/index.ts"
+      ],
+      "edgeFunctions": [
+        "dispatch-mobile-push",
+        "send-push-notification",
+        "push-notification-worker",
+        "register-mobile-push-token"
+      ],
+      "rpcs": [
+        "dispatch_mobile_push_on_notification",
+        "notify_push_on_insert",
+        "track_employee_settings_changes",
+        "touch_mobile_push_tokens"
+      ],
+      "tables": [
+        "push_subscriptions",
+        "mobile_push_tokens",
+        "notifications"
+      ],
+      "roles": [
+        "system",
+        "abgeordneter",
+        "bueroleitung",
+        "mitarbeiter"
+      ],
+      "docs": [
+        "docs/security-function-matrix.md"
+      ]
+    },
+    {
+      "id": "integration.geocoding",
+      "subarea": "Geodaten",
+      "name": "Adress-Geocoding",
+      "description": "Geokodiert Kontaktadressen einzeln und im Batch und triggert Geocoding bei Adressänderungen.",
+      "category": "integration",
+      "implementationStatus": "implementiert",
+      "integrationStatus": "system",
+      "coverage": "keine",
+      "testResult": "nicht-ausgefuehrt",
+      "evidence": [
+        "supabase/functions/geocode-contact-address/index.ts",
+        "supabase/functions/batch-geocode-contacts/index.ts"
+      ],
+      "edgeFunctions": [
+        "geocode-contact-address",
+        "batch-geocode-contacts"
+      ],
+      "rpcs": [
+        "trigger_geocoding_on_address_change"
+      ],
+      "tables": [
+        "contacts",
+        "election_districts"
+      ],
+      "roles": [
+        "system",
+        "mitarbeiter",
+        "bueroleitung"
+      ]
+    },
+    {
+      "id": "integration.ai-suggestions",
+      "subarea": "KI",
+      "name": "KI-Vorschläge für Vorbereitung und Eingang",
+      "description": "Erzeugt Vorbereitungsvorschläge und Aufgaben-Vorschläge aus freiem Text über einen zentralen KI-Client mit Ratenbegrenzung.",
+      "category": "integration",
+      "implementationStatus": "implementiert",
+      "integrationStatus": "rollenabhaengig",
+      "coverage": "keine",
+      "testResult": "nicht-ausgefuehrt",
+      "evidence": [
+        "supabase/functions/generate-preparation-suggestions/index.ts",
+        "supabase/functions/propose-task-from-intake/index.ts",
+        "supabase/functions/_shared/aiClient.ts"
+      ],
+      "edgeFunctions": [
+        "generate-preparation-suggestions",
+        "propose-task-from-intake"
+      ],
+      "services": [
+        "supabase/functions/_shared/aiClient.ts"
+      ],
+      "tables": [
+        "appointment_preparations",
+        "tasks"
+      ],
+      "roles": [
+        "abgeordneter",
+        "bueroleitung",
+        "mitarbeiter"
+      ],
+      "limitations": [
+        "Der Vorschlag erzeugt keine Datenbankeinträge; die Übernahme bleibt eine bewusste Benutzeraktion."
+      ],
+      "reviewPoints": [
+        "Kein Test für Prompt-Grenzen oder Ratenbegrenzung vorhanden."
+      ]
+    },
+    {
+      "id": "integration.transcription",
+      "subarea": "KI",
+      "name": "Sprachaufnahme transkribieren",
+      "description": "Transkribiert Sprachaufnahmen serverseitig für Notizen und Brieftexte.",
+      "category": "integration",
+      "implementationStatus": "implementiert",
+      "integrationStatus": "rollenabhaengig",
+      "coverage": "keine",
+      "testResult": "nicht-ausgefuehrt",
+      "evidence": [
+        "supabase/functions/transcribe-voice-note/index.ts",
+        "src/hooks/useSpeechDictation.ts"
+      ],
+      "edgeFunctions": [
+        "transcribe-voice-note"
+      ],
+      "hooks": [
+        "src/hooks/useSpeechDictation.ts"
+      ],
+      "services": [
+        "src/lib/speechToTextAdapter.ts"
+      ],
+      "tables": [
+        "quick_notes",
+        "letters"
+      ],
+      "roles": [
+        "abgeordneter",
+        "bueroleitung",
+        "mitarbeiter"
+      ]
+    },
+    {
+      "id": "integration.unsplash",
+      "subarea": "Medien",
+      "name": "Bildsuche für Beiträge",
+      "description": "Sucht passende Bilder über Unsplash und übernimmt sie in Pressemitteilungen und Social-Beiträge.",
+      "category": "integration",
+      "implementationStatus": "implementiert",
+      "integrationStatus": "ui",
+      "coverage": "keine",
+      "testResult": "nicht-ausgefuehrt",
+      "evidence": [
+        "supabase/functions/search-unsplash/index.ts",
+        "src/components/dashboard/UnsplashImagePicker.tsx"
+      ],
+      "edgeFunctions": [
+        "search-unsplash"
+      ],
+      "components": [
+        "src/components/dashboard/UnsplashImagePicker.tsx",
+        "src/components/press/FeatureImagePicker.tsx"
+      ],
+      "tables": [
+        "press_releases",
+        "social_assets"
+      ],
+      "roles": [
+        "abgeordneter",
+        "bueroleitung",
+        "mitarbeiter"
+      ]
+    },
+    {
+      "id": "integration.egress-monitoring",
+      "subarea": "Betrieb",
+      "name": "Egress-Überwachung",
+      "description": "Sammelt Egress-Metriken, erkennt Anomalien und stellt sie im Betriebs-Dashboard bereit.",
+      "category": "sicherheit",
+      "implementationStatus": "implementiert",
+      "integrationStatus": "system",
+      "coverage": "keine",
+      "testResult": "nicht-ausgefuehrt",
+      "evidence": [
+        "supabase/functions/collect-egress-metrics/index.ts",
+        "supabase/functions/check-egress-anomaly/index.ts"
+      ],
+      "edgeFunctions": [
+        "collect-egress-metrics",
+        "check-egress-anomaly"
+      ],
+      "tables": [
+        "egress_metrics",
+        "egress_anomalies",
+        "system_health"
+      ],
+      "roles": [
+        "system",
+        "admin"
+      ],
+      "docs": [
+        "docs/performance-audit-2026-05.md"
+      ]
+    },
+    {
+      "id": "integration.edge-contract-tests",
+      "subarea": "Betrieb",
+      "name": "Edge-Function-Vertragstests",
+      "description": "Prüft Auth-, Rollen- und Mandantengrenzen der Edge Functions über Contract-Tests.",
+      "category": "sicherheit",
+      "implementationStatus": "implementiert",
+      "integrationStatus": "nicht-anwendbar",
+      "coverage": "security",
+      "testResult": "unbekannt",
+      "evidence": [
+        "supabase/functions/contract-tests.edge-functions.test.ts",
+        "scripts/check-edge-function-security.mjs"
+      ],
+      "services": [
+        "scripts/check-edge-function-security.mjs",
+        "scripts/security-function-whitelist.json"
+      ],
+      "unitTests": [
+        "supabase/functions/contract-tests.edge-functions.test.ts"
+      ],
+      "roles": [
+        "system"
+      ],
+      "docs": [
+        "docs/security-function-matrix.md",
+        "docs/ci-quality-gates.md"
+      ],
+      "reviewPoints": [
+        "Die Contract-Tests wurden hier nicht ausgeführt; der Nachweis ist die Datei."
+      ]
+    }
+  ]
+}

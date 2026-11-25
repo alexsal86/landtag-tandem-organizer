@@ -1,0 +1,560 @@
+{
+  "area": {
+    "id": "arbeitsbereich",
+    "title": "Meine Arbeit & Benachrichtigungen",
+    "purpose": "Tagesarbeitsfläche, Schnellzugriffe, Benachrichtigungen, globale Suche und Schnellnotizen als gemeinsamer Einstieg in alle Fachbereiche."
+  },
+  "features": [
+    {
+      "id": "mywork.dashboard",
+      "subarea": "Meine Arbeit",
+      "name": "Meine Arbeit – Dashboard",
+      "description": "Aggregiert Fristen, Termine, Aufgaben, Entscheidungen und Jour-fixe-Hinweise auf einer Arbeitsfläche; Kennzahlen kommen aus get_dashboard_data und get_my_work_counts.",
+      "category": "fachlich",
+      "implementationStatus": "implementiert",
+      "integrationStatus": "rollenabhaengig",
+      "coverage": "selftest",
+      "testResult": "nicht-ausgefuehrt",
+      "evidence": [
+        "src/features/dashboard/components/MyWorkView.tsx",
+        "src/features/dashboard/components/BlackBoard.tsx",
+        "src/components/my-work/MyWorkDashboardTab.tsx",
+        "src/hooks/useDashboardData.ts"
+      ],
+      "routes": [
+        "/mywork",
+        "/mywork?tab=dashboard",
+        "/dashboard/*"
+      ],
+      "components": [
+        "src/features/dashboard/components/MyWorkView.tsx",
+        "src/components/dashboard/DashboardTasksSection.tsx",
+        "src/components/dashboard/DashboardDecisionsWidget.tsx",
+        "src/components/dashboard/DashboardJourFixeWidget.tsx"
+      ],
+      "hooks": [
+        "src/hooks/useDashboardData.ts",
+        "src/hooks/useDashboardDeadlines.ts",
+        "src/hooks/useDashboardRealtime.ts",
+        "src/hooks/useCounts.tsx"
+      ],
+      "rpcs": [
+        "get_dashboard_data",
+        "get_my_work_counts",
+        "get_my_work_new_counts"
+      ],
+      "tables": [
+        "dashboard_layouts",
+        "user_mywork_settings",
+        "widget_configurations"
+      ],
+      "roles": [
+        "abgeordneter",
+        "bueroleitung",
+        "mitarbeiter",
+        "praktikant"
+      ],
+      "scenarios": [
+        "task-lifecycle",
+        "decision-lifecycle"
+      ],
+      "docs": [
+        "docs/my-work-architecture.md"
+      ],
+      "reviewPoints": [
+        "Kein Szenario prüft die Dashboard-Aggregation selbst; die Zuordnung stützt sich auf die dort erzeugten Datensätze."
+      ]
+    },
+    {
+      "id": "mywork.tabs",
+      "subarea": "Meine Arbeit",
+      "name": "Meine Arbeit – Bereichsnavigation und Einstellungen",
+      "description": "Schaltet zwischen Dashboard, Aufgaben, Vorgängen, Entscheidungen, Jour fixe, Planungen, Redaktion und Feedback um und speichert die persönliche Bereichsauswahl.",
+      "category": "fachlich",
+      "implementationStatus": "implementiert",
+      "integrationStatus": "ui",
+      "coverage": "keine",
+      "testResult": "nicht-ausgefuehrt",
+      "evidence": [
+        "src/components/my-work/MyWorkDashboardTab.tsx",
+        "src/components/my-work/MyWorkDecisionsTab.tsx",
+        "src/components/my-work/MyWorkJourFixeTab.tsx",
+        "src/hooks/useMyWorkSettings.tsx"
+      ],
+      "routes": [
+        "/mywork?tab=tasks",
+        "/mywork?tab=cases",
+        "/mywork?tab=decisions",
+        "/mywork?tab=jourfixe",
+        "/mywork?tab=plannings",
+        "/mywork?tab=redaktion"
+      ],
+      "hooks": [
+        "src/hooks/useMyWorkSettings.tsx",
+        "src/hooks/useViewPreference.tsx"
+      ],
+      "tables": [
+        "user_mywork_settings",
+        "user_planning_preferences"
+      ],
+      "roles": [
+        "abgeordneter",
+        "bueroleitung",
+        "mitarbeiter",
+        "praktikant"
+      ],
+      "dependsOn": [
+        "mywork.dashboard"
+      ],
+      "limitations": [
+        "Die Tab-Auswahl ist eine reine UI-Präferenz und hat keine eigene Geschäftsregel."
+      ]
+    },
+    {
+      "id": "mywork.quick-access",
+      "subarea": "Meine Arbeit",
+      "name": "Schnellzugriff und zuletzt besuchte Seiten",
+      "description": "Merkt sich zuletzt besuchte Bereiche und stellt konfigurierbare Schnellzugriffe in der Navigation bereit.",
+      "category": "fachlich",
+      "implementationStatus": "implementiert",
+      "integrationStatus": "ui",
+      "coverage": "keine",
+      "testResult": "nicht-ausgefuehrt",
+      "evidence": [
+        "src/hooks/useQuickAccessPages.ts",
+        "src/hooks/useRecentlyVisited.ts",
+        "src/components/shared/QuickAccessMenuItem.tsx"
+      ],
+      "components": [
+        "src/components/shared/QuickAccessMenuItem.tsx"
+      ],
+      "hooks": [
+        "src/hooks/useQuickAccessPages.ts",
+        "src/hooks/useRecentlyVisited.ts",
+        "src/hooks/useNavCollapse.ts",
+        "src/hooks/useNavWidth.ts"
+      ],
+      "tables": [
+        "user_navigation_visits",
+        "user_preferences"
+      ],
+      "roles": [
+        "abgeordneter",
+        "bueroleitung",
+        "mitarbeiter",
+        "praktikant"
+      ]
+    },
+    {
+      "id": "notifications.inbox",
+      "subarea": "Benachrichtigungen",
+      "name": "Benachrichtigungen lesen und als gelesen markieren",
+      "description": "Zeigt In-App-Benachrichtigungen, ungelesene Zähler und Deep-Links in den auslösenden Fachbereich; Lesen wird pro Nutzer persistiert.",
+      "category": "fachlich",
+      "implementationStatus": "implementiert",
+      "integrationStatus": "ui",
+      "coverage": "keine",
+      "testResult": "nicht-ausgefuehrt",
+      "evidence": [
+        "src/pages/NotificationsPage.tsx",
+        "src/components/notifications/NotificationCenter.tsx",
+        "src/hooks/useNotifications.tsx"
+      ],
+      "routes": [
+        "/notifications"
+      ],
+      "components": [
+        "src/pages/NotificationsPage.tsx",
+        "src/components/notifications/NotificationCenter.tsx",
+        "src/components/notifications/NotificationBell.tsx",
+        "src/components/notifications/NotificationDot.tsx"
+      ],
+      "hooks": [
+        "src/hooks/useNotifications.tsx",
+        "src/hooks/useNavigationNotifications.tsx",
+        "src/hooks/useNewItemIndicators.tsx",
+        "src/hooks/useNotificationHighlight.tsx"
+      ],
+      "rpcs": [
+        "get_unread_notification_counts",
+        "get_authored_messages"
+      ],
+      "tables": [
+        "notifications",
+        "notification_types",
+        "notification_navigation_mapping",
+        "message_confirmations"
+      ],
+      "roles": [
+        "abgeordneter",
+        "bueroleitung",
+        "mitarbeiter",
+        "praktikant"
+      ],
+      "docs": [
+        "docs/ci-quality-gates.md"
+      ],
+      "reviewPoints": [
+        "Benachrichtigungen entstehen über viele Datenbank-Trigger; die Zuordnung ist bereichsübergreifend und nicht vollständig je Trigger geprüft."
+      ]
+    },
+    {
+      "id": "notifications.preferences",
+      "subarea": "Benachrichtigungen",
+      "name": "Benachrichtigungseinstellungen und Stummschaltung",
+      "description": "Steuert Anzeige- und Versandpräferenzen je Benachrichtigungstyp und verwaltet zurückgestellte Fristen.",
+      "category": "fachlich",
+      "implementationStatus": "implementiert",
+      "integrationStatus": "ui",
+      "coverage": "keine",
+      "testResult": "nicht-ausgefuehrt",
+      "evidence": [
+        "src/components/notifications/NotificationSettings.tsx",
+        "src/hooks/useNotificationDisplayPreferences.ts"
+      ],
+      "components": [
+        "src/components/notifications/NotificationSettings.tsx",
+        "src/components/notifications/SnoozeManagementSidebar.tsx"
+      ],
+      "hooks": [
+        "src/hooks/useNotificationDisplayPreferences.ts",
+        "src/hooks/useSnoozeDeadline.ts"
+      ],
+      "tables": [
+        "user_notification_settings",
+        "task_snoozes"
+      ],
+      "roles": [
+        "abgeordneter",
+        "bueroleitung",
+        "mitarbeiter",
+        "praktikant"
+      ]
+    },
+    {
+      "id": "search.global",
+      "subarea": "Suche",
+      "name": "Globale Suche und Befehlspalette",
+      "description": "Durchsucht Kontakte, Aufgaben, Dokumente und weitere Objekte über eine Befehlspalette und protokolliert Suchanfragen für die Auswertung.",
+      "category": "fachlich",
+      "implementationStatus": "implementiert",
+      "integrationStatus": "ui",
+      "coverage": "keine",
+      "testResult": "nicht-ausgefuehrt",
+      "evidence": [
+        "src/components/search/GlobalSearchCommand.tsx",
+        "src/components/search/postgrestSearch.ts"
+      ],
+      "components": [
+        "src/components/search/GlobalSearchCommand.tsx",
+        "src/components/search/GlobalQuickNoteDialog.tsx"
+      ],
+      "services": [
+        "src/components/search/postgrestSearch.ts"
+      ],
+      "tables": [
+        "search_analytics"
+      ],
+      "roles": [
+        "abgeordneter",
+        "bueroleitung",
+        "mitarbeiter",
+        "praktikant"
+      ],
+      "reviewPoints": [
+        "Die Suche nutzt PostgREST-Abfragen je Entität; eine vollständige Liste der durchsuchten Tabellen ist nicht zentral deklariert."
+      ]
+    },
+    {
+      "id": "quicknotes.manage",
+      "subarea": "Schnellnotizen",
+      "name": "Schnellnotizen anlegen, bearbeiten und verlinken",
+      "description": "Erfasst Notizen mit Priorität, Anheften, Verknüpfungen zu Entscheidungen und Aufgaben sowie Teilen mit anderen Nutzern.",
+      "category": "fachlich",
+      "implementationStatus": "implementiert",
+      "integrationStatus": "ui",
+      "coverage": "selftest",
+      "testResult": "nicht-ausgefuehrt",
+      "evidence": [
+        "src/features/quick-notes/useQuickNoteActions.ts",
+        "src/features/quick-notes/useQuickNoteEditor.ts",
+        "src/components/shared/QuickNotesList.tsx"
+      ],
+      "components": [
+        "src/components/shared/QuickNotesList.tsx",
+        "src/components/shared/NoteCard.tsx",
+        "src/components/shared/NoteShareDialog.tsx",
+        "src/components/shared/NoteDecisionCreator.tsx"
+      ],
+      "hooks": [
+        "src/features/quick-notes/useQuickNoteActions.ts",
+        "src/features/quick-notes/useQuickNoteEditor.ts",
+        "src/features/quick-notes/useQuickNoteLinks.ts",
+        "src/features/quick-notes/useQuickNoteFollowUps.ts",
+        "src/features/quick-notes/useQuickNotesData.ts"
+      ],
+      "rpcs": [
+        "save_quick_note",
+        "delete_quick_note_with_links",
+        "list_quick_notes",
+        "quick_note_access",
+        "create_note_work",
+        "quick_note_member",
+        "quick_note_owned"
+      ],
+      "tables": [
+        "quick_notes",
+        "quick_note_shares",
+        "quick_note_global_shares",
+        "quick_note_versions",
+        "quick_note_write_receipts"
+      ],
+      "roles": [
+        "abgeordneter",
+        "bueroleitung",
+        "mitarbeiter",
+        "praktikant"
+      ],
+      "scenarios": [
+        "quick-note-lifecycle"
+      ],
+      "unitTests": [
+        "src/features/quick-notes/repository.test.ts"
+      ],
+      "docs": [
+        "docs/quick-notes"
+      ],
+      "limitations": [
+        "Das Szenario prüft den Lebenszyklus, nicht jede Teilen-Variante."
+      ]
+    },
+    {
+      "id": "quicknotes.offline",
+      "subarea": "Schnellnotizen",
+      "name": "Offline-Synchronisation für Schnellnotizen",
+      "description": "Hält Notizen lokal vor, synchronisiert Schreibvorgänge mit Belegquittungen und zeigt den Sync-Status an.",
+      "category": "fachlich",
+      "implementationStatus": "implementiert",
+      "integrationStatus": "ui",
+      "coverage": "unit",
+      "testResult": "unbekannt",
+      "evidence": [
+        "src/features/quick-notes/storage.ts",
+        "src/features/quick-notes/repository.ts",
+        "src/features/quick-notes/QuickNotesSyncStatus.tsx",
+        "scripts/viteQuickNotesOffline.ts"
+      ],
+      "components": [
+        "src/features/quick-notes/QuickNotesSyncStatus.tsx"
+      ],
+      "services": [
+        "src/features/quick-notes/storage.ts",
+        "src/features/quick-notes/repository.ts",
+        "src/features/quick-notes/api.ts"
+      ],
+      "tables": [
+        "quick_notes",
+        "quick_note_write_receipts",
+        "quick_note_versions"
+      ],
+      "roles": [
+        "abgeordneter",
+        "bueroleitung",
+        "mitarbeiter",
+        "praktikant"
+      ],
+      "unitTests": [
+        "src/features/quick-notes/repository.test.ts",
+        "src/features/quick-notes/tenant-offline.test.tsx"
+      ],
+      "reviewPoints": [
+        "Offline-Verhalten ist nur über Unit-Tests belegt; ein echter Browser-Offline-Test existiert nicht."
+      ]
+    },
+    {
+      "id": "quicknotes.checklists",
+      "subarea": "Schnellnotizen",
+      "name": "Checklisten in Schnellnotizen",
+      "description": "Wandelt Notizinhalte in Checklisten um und hält Erledigt-Zustände beim Speichern stabil.",
+      "category": "fachlich",
+      "implementationStatus": "implementiert",
+      "integrationStatus": "ui",
+      "coverage": "unit",
+      "testResult": "unbekannt",
+      "evidence": [
+        "src/features/quick-notes/checklists.ts",
+        "src/features/quick-notes/checklists.test.ts"
+      ],
+      "services": [
+        "src/features/quick-notes/checklists.ts"
+      ],
+      "tables": [
+        "quick_notes"
+      ],
+      "roles": [
+        "abgeordneter",
+        "bueroleitung",
+        "mitarbeiter",
+        "praktikant"
+      ],
+      "unitTests": [
+        "src/features/quick-notes/checklists.test.ts"
+      ],
+      "dependsOn": [
+        "quicknotes.manage"
+      ]
+    },
+    {
+      "id": "quicknotes.drag-sort",
+      "subarea": "Schnellnotizen",
+      "name": "Notizen per Drag-and-drop sortieren",
+      "description": "Ordnet angeheftete Notizen per Ziehen neu und persistiert die Reihenfolge.",
+      "category": "fachlich",
+      "implementationStatus": "implementiert",
+      "integrationStatus": "ui",
+      "coverage": "unit",
+      "testResult": "unbekannt",
+      "evidence": [
+        "src/features/quick-notes/noteDrag.ts",
+        "src/features/quick-notes/noteDrag.test.ts"
+      ],
+      "services": [
+        "src/features/quick-notes/noteDrag.ts"
+      ],
+      "tables": [
+        "quick_notes"
+      ],
+      "roles": [
+        "abgeordneter",
+        "bueroleitung",
+        "mitarbeiter",
+        "praktikant"
+      ],
+      "unitTests": [
+        "src/features/quick-notes/noteDrag.test.ts"
+      ],
+      "dependsOn": [
+        "quicknotes.manage"
+      ]
+    },
+    {
+      "id": "platform.auth",
+      "subarea": "Zugang",
+      "name": "Anmeldung und Sitzung",
+      "description": "Meldet Benutzer an, stellt die Sitzung wieder her und leitet auf die geschützte Arbeitsfläche weiter.",
+      "category": "sicherheit",
+      "implementationStatus": "implementiert",
+      "integrationStatus": "ui",
+      "coverage": "keine",
+      "testResult": "nicht-ausgefuehrt",
+      "evidence": [
+        "src/pages/Auth.tsx",
+        "src/hooks/useAuth.tsx",
+        "src/router/ProtectedRoute.tsx"
+      ],
+      "routes": [
+        "/auth"
+      ],
+      "components": [
+        "src/pages/Auth.tsx",
+        "src/components/layout"
+      ],
+      "hooks": [
+        "src/hooks/useAuth.tsx",
+        "src/hooks/useTenant.tsx"
+      ],
+      "tables": [
+        "profiles",
+        "user_sessions",
+        "user_tenant_memberships"
+      ],
+      "roles": [
+        "oeffentlich",
+        "abgeordneter",
+        "bueroleitung",
+        "mitarbeiter",
+        "praktikant"
+      ],
+      "dependsOn": [],
+      "docs": [
+        "docs/ci-quality-gates.md"
+      ],
+      "reviewPoints": [
+        "Der Login ist in den Browser-Smokes öffentlich geprüft, aber ohne echtes Testkonto nicht erfolgreich durchlaufen."
+      ]
+    },
+    {
+      "id": "profile.edit",
+      "subarea": "Profil",
+      "name": "Eigenes Profil bearbeiten",
+      "description": "Ändert Profildaten, Benachrichtigungspräferenzen und persönliche Anzeigeeinstellungen.",
+      "category": "fachlich",
+      "implementationStatus": "implementiert",
+      "integrationStatus": "ui",
+      "coverage": "keine",
+      "testResult": "nicht-ausgefuehrt",
+      "evidence": [
+        "src/pages/EditProfile.tsx",
+        "src/hooks/useUserPreference.ts"
+      ],
+      "routes": [
+        "/profile/edit",
+        "/profile-edit"
+      ],
+      "components": [
+        "src/pages/EditProfile.tsx"
+      ],
+      "hooks": [
+        "src/hooks/useUserPreference.ts",
+        "src/hooks/useCurrentProfileId.ts"
+      ],
+      "tables": [
+        "profiles",
+        "user_preferences",
+        "user_notification_settings"
+      ],
+      "roles": [
+        "abgeordneter",
+        "bueroleitung",
+        "mitarbeiter",
+        "praktikant"
+      ],
+      "dependsOn": [
+        "platform.auth"
+      ],
+      "rpcs": [
+        "create_user_status"
+      ]
+    },
+    {
+      "id": "mobile.app",
+      "subarea": "Mobile",
+      "name": "Mobile App (Expo)",
+      "description": "Eigenständige Expo-App im Workspace mit eigener Navigation und Build-Profilen; nutzt dieselbe Supabase-Instanz.",
+      "category": "fachlich",
+      "implementationStatus": "teilweise",
+      "integrationStatus": "ohne-einbindung",
+      "coverage": "keine",
+      "testResult": "nicht-ausgefuehrt",
+      "evidence": [
+        "apps/mobile/package.json",
+        "apps/mobile/app",
+        "apps/mobile/src"
+      ],
+      "roles": [
+        "abgeordneter",
+        "bueroleitung",
+        "mitarbeiter"
+      ],
+      "docs": [
+        "docs/mobile"
+      ],
+      "limitations": [
+        "Der Funktionsumfang der Mobile-App wurde nicht zeilenweise inventarisiert; die Web-Plattform ist die Referenz."
+      ],
+      "reviewPoints": [
+        "Mobile-Bildschirme und -Aktionen sind als eigener Bereich noch nicht im Detail katalogisiert."
+      ]
+    }
+  ]
+}

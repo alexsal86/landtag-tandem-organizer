@@ -1,0 +1,353 @@
+{
+  "area": {
+    "id": "veranstaltungen",
+    "title": "Veranstaltungen & Umfragen",
+    "purpose": "Veranstaltungen planen, Gäste einladen, öffentliche Rückmeldungen einsammeln und Termin-/Meinungsumfragen durchführen."
+  },
+  "features": [
+    {
+      "id": "events.plan",
+      "subarea": "Planung",
+      "name": "Veranstaltung planen",
+      "description": "Plant Veranstaltungen mit Terminen, Checklisten, Rednern, Dokumenten, Beteiligten und Statusübergängen.",
+      "category": "fachlich",
+      "implementationStatus": "implementiert",
+      "integrationStatus": "rollenabhaengig",
+      "coverage": "selftest",
+      "testResult": "nicht-ausgefuehrt",
+      "evidence": [
+        "src/features/event-planning/components/EventPlanningView.tsx",
+        "src/components/event-planning/useEventPlanningData.ts",
+        "supabase/migrations/20261125113000_appointment_dashboard_focus.sql",
+        "src/features/selftest/scenarios/event-planning-lifecycle.ts"
+      ],
+      "routes": [
+        "/eventplanning"
+      ],
+      "components": [
+        "src/features/event-planning/components/EventPlanningView.tsx",
+        "src/components/event-planning/useEventPlanningData.ts"
+      ],
+      "hooks": [
+        "src/components/event-planning/useEventPlanningData.ts"
+      ],
+      "rpcs": [
+        "confirm_event_planning_calendar_date"
+      ],
+      "tables": [
+        "event_plannings",
+        "event_planning_dates",
+        "event_planning_collaborators",
+        "event_planning_contacts",
+        "event_planning_timeline_assignments",
+        "event_planning_action_logs"
+      ],
+      "roles": [
+        "abgeordneter",
+        "bueroleitung",
+        "mitarbeiter"
+      ],
+      "scenarios": [
+        "event-planning-lifecycle"
+      ],
+      "docs": [
+        "docs/public-event-invitations.md"
+      ]
+    },
+    {
+      "id": "events.checklist",
+      "subarea": "Planung",
+      "name": "Veranstaltungs-Checkliste und Aufgaben",
+      "description": "Führt Checklistenpunkte und Aktionen je Veranstaltung und protokolliert deren Ausführung.",
+      "category": "fachlich",
+      "implementationStatus": "implementiert",
+      "integrationStatus": "ui",
+      "coverage": "selftest",
+      "testResult": "nicht-ausgefuehrt",
+      "evidence": [
+        "src/features/event-planning/components/EventPlanningView.tsx"
+      ],
+      "tables": [
+        "event_planning_checklist_items",
+        "event_planning_item_actions"
+      ],
+      "roles": [
+        "abgeordneter",
+        "bueroleitung",
+        "mitarbeiter"
+      ],
+      "scenarios": [
+        "event-planning-lifecycle"
+      ],
+      "rpcs": [
+        "create_default_checklist_items"
+      ]
+    },
+    {
+      "id": "events.speakers-documents",
+      "subarea": "Planung",
+      "name": "Redner und Dokumente zur Veranstaltung",
+      "description": "Verwaltet Redner, Dokumente und Gästelisten einer Veranstaltung.",
+      "category": "fachlich",
+      "implementationStatus": "implementiert",
+      "integrationStatus": "ui",
+      "coverage": "keine",
+      "testResult": "nicht-ausgefuehrt",
+      "evidence": [
+        "src/features/event-planning/components/EventPlanningView.tsx"
+      ],
+      "tables": [
+        "event_planning_speakers",
+        "event_planning_documents"
+      ],
+      "roles": [
+        "abgeordneter",
+        "bueroleitung",
+        "mitarbeiter"
+      ]
+    },
+    {
+      "id": "events.invitations",
+      "subarea": "Einladungen",
+      "name": "Veranstaltungseinladungen versenden",
+      "description": "Versendet Einladungen auf Basis von Vorlagen und protokolliert den Versand.",
+      "category": "integration",
+      "implementationStatus": "implementiert",
+      "integrationStatus": "rollenabhaengig",
+      "coverage": "keine",
+      "testResult": "nicht-ausgefuehrt",
+      "evidence": [
+        "supabase/functions/send-event-invitation/index.ts",
+        "src/components/administration/EventEmailTemplateManager.tsx"
+      ],
+      "components": [
+        "src/components/administration/EventEmailTemplateManager.tsx"
+      ],
+      "edgeFunctions": [
+        "send-event-invitation"
+      ],
+      "tables": [
+        "event_email_templates",
+        "event_rsvps",
+        "email_logs"
+      ],
+      "roles": [
+        "abgeordneter",
+        "bueroleitung",
+        "mitarbeiter"
+      ],
+      "docs": [
+        "docs/public-event-invitations.md"
+      ]
+    },
+    {
+      "id": "events.rsvp-public",
+      "subarea": "Einladungen",
+      "name": "Öffentliche Veranstaltungs-Rückmeldung",
+      "description": "Lädt Gastdaten ausschließlich über einen starken public_code und nimmt Zu-/Absagen ohne Anmeldung entgegen, mit Rate-Limits und Widerrufsprüfung.",
+      "category": "integration",
+      "implementationStatus": "implementiert",
+      "integrationStatus": "ui",
+      "coverage": "integration",
+      "testResult": "unbekannt",
+      "evidence": [
+        "src/pages/EventRSVP.tsx",
+        "supabase/functions/get-public-event-invitation/index.ts",
+        "supabase/functions/respond-public-event-invitation/index.ts"
+      ],
+      "routes": [
+        "/einladung/:code"
+      ],
+      "components": [
+        "src/pages/EventRSVP.tsx"
+      ],
+      "edgeFunctions": [
+        "get-public-event-invitation",
+        "respond-public-event-invitation"
+      ],
+      "tables": [
+        "event_rsvps",
+        "event_rsvp_public_links",
+        "event_plannings"
+      ],
+      "roles": [
+        "oeffentlich"
+      ],
+      "e2eTests": [
+        "e2e/public.spec.ts"
+      ],
+      "docs": [
+        "docs/public-event-invitations.md"
+      ],
+      "reviewPoints": [
+        "Ein vollständiger öffentlicher RSVP-Durchlauf gegen ein echtes Backend ist nicht in dieser Umgebung ausgeführt worden."
+      ]
+    },
+    {
+      "id": "events.legacy-rsvp",
+      "subarea": "Einladungen",
+      "name": "Legacy-Einladungslinks",
+      "description": "Leitet alte Einladungs- und Gastlinks auf die aktuellen Pfade um, solange Altlinks im Umlauf sind.",
+      "category": "fachlich",
+      "implementationStatus": "veraltet",
+      "integrationStatus": "ui",
+      "coverage": "keine",
+      "testResult": "nicht-ausgefuehrt",
+      "evidence": [
+        "src/pages/LegacyEventRSVPRedirect.tsx",
+        "src/pages/GuestResponse.tsx"
+      ],
+      "routes": [
+        "/event-rsvp/:eventId",
+        "/guest-response/:token"
+      ],
+      "components": [
+        "src/pages/LegacyEventRSVPRedirect.tsx",
+        "src/pages/GuestResponse.tsx"
+      ],
+      "tables": [
+        "event_rsvps"
+      ],
+      "roles": [
+        "oeffentlich"
+      ],
+      "limitations": [
+        "Bewusst nur Kompatibilität; das Entfernungsdatum hängt vom Ende alter Mailings ab."
+      ],
+      "reviewPoints": [
+        "Offen: Prüfen, ob noch Altlinks aktiv sind, bevor die Route entfernt wird."
+      ]
+    },
+    {
+      "id": "polls.respond",
+      "subarea": "Umfragen",
+      "name": "An Umfrage teilnehmen",
+      "description": "Erlaubt angemeldeten und öffentlichen Teilnehmenden die Abgabe und Änderung von Antworten über Token.",
+      "category": "fachlich",
+      "implementationStatus": "implementiert",
+      "integrationStatus": "ui",
+      "coverage": "selftest",
+      "testResult": "nicht-ausgefuehrt",
+      "evidence": [
+        "src/pages/PollGuest.tsx",
+        "supabase/functions/submit-poll-response-by-token/index.ts",
+        "src/features/selftest/scenarios/poll-lifecycle.ts"
+      ],
+      "routes": [
+        "/poll-guest/:pollId"
+      ],
+      "components": [
+        "src/pages/PollGuest.tsx"
+      ],
+      "edgeFunctions": [
+        "get-poll-by-token",
+        "submit-poll-response-by-token"
+      ],
+      "rpcs": [
+        "generate_participant_token",
+        "generate_guest_invitation_token",
+        "link_poll_participant_user"
+      ],
+      "tables": [
+        "poll_participants",
+        "poll_responses",
+        "poll_versions",
+        "appointment_polls"
+      ],
+      "roles": [
+        "oeffentlich",
+        "abgeordneter",
+        "bueroleitung",
+        "mitarbeiter"
+      ],
+      "scenarios": [
+        "poll-lifecycle"
+      ]
+    },
+    {
+      "id": "polls.manage",
+      "subarea": "Umfragen",
+      "name": "Umfragen verwalten und auswerten",
+      "description": "Versendet Einladungen und Erinnerungen, wertet Antworten aus und bestätigt Gewinner-Zeitfenster.",
+      "category": "fachlich",
+      "implementationStatus": "implementiert",
+      "integrationStatus": "ui",
+      "coverage": "selftest",
+      "testResult": "nicht-ausgefuehrt",
+      "evidence": [
+        "src/features/polls/pollRules.ts",
+        "supabase/functions/send-poll-followups/index.ts"
+      ],
+      "edgeFunctions": [
+        "send-poll-invitation",
+        "resend-poll-invitation",
+        "send-poll-notifications",
+        "send-poll-followups"
+      ],
+      "services": [
+        "src/features/polls/pollRules.ts"
+      ],
+      "rpcs": [
+        "get_user_polls_with_aggregation",
+        "confirm_poll_winner",
+        "create_poll_notification",
+        "get_due_poll_followups",
+        "finalize_poll_followup",
+        "claim_poll_followup",
+        "auto_update_poll_status",
+        "poll_followup_send_key"
+      ],
+      "tables": [
+        "appointment_polls",
+        "poll_participants",
+        "poll_responses",
+        "poll_notifications"
+      ],
+      "roles": [
+        "abgeordneter",
+        "bueroleitung",
+        "mitarbeiter"
+      ],
+      "scenarios": [
+        "poll-lifecycle"
+      ],
+      "unitTests": [
+        "supabase/functions/_shared/pollFollowup.test.ts"
+      ]
+    },
+    {
+      "id": "polls.availability",
+      "subarea": "Umfragen",
+      "name": "Verfügbarkeit und Zeitfenster",
+      "description": "Ermittelt freie Zeitfenster und Verfügbarkeiten Beteiligter und schlägt Termine vor.",
+      "category": "fachlich",
+      "implementationStatus": "implementiert",
+      "integrationStatus": "ui",
+      "coverage": "unit",
+      "testResult": "unbekannt",
+      "evidence": [
+        "supabase/functions/_shared/pollSlotSuggestion.ts",
+        "supabase/functions/_shared/pollSlotSuggestion.test.ts"
+      ],
+      "services": [
+        "supabase/functions/_shared/pollSlotSuggestion.ts"
+      ],
+      "rpcs": [
+        "get_poll_availability"
+      ],
+      "tables": [
+        "poll_time_slots",
+        "poll_responses",
+        "appointment_polls"
+      ],
+      "roles": [
+        "abgeordneter",
+        "bueroleitung",
+        "mitarbeiter"
+      ],
+      "unitTests": [
+        "supabase/functions/_shared/pollSlotSuggestion.test.ts"
+      ]
+    }
+  ]
+}

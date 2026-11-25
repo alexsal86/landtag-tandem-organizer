@@ -1,0 +1,618 @@
+{
+  "area": {
+    "id": "dokumente",
+    "title": "Dokumente, Briefe & Annotationen",
+    "purpose": "Dokumente ablegen und versionieren, Briefe im Freigabeworkflow erstellen und archivieren, Annotationen und OCR auf Originalen nutzen."
+  },
+  "features": [
+    {
+      "id": "documents.list",
+      "subarea": "Dokumente",
+      "name": "Dokumentenliste und Suche",
+      "description": "Listet Dokumente mit Kategorien, Ordnern, Kontakten, Themen und Filterung; die Listenlogik liegt in einem eigenen Modul.",
+      "category": "fachlich",
+      "implementationStatus": "implementiert",
+      "integrationStatus": "ui",
+      "coverage": "selftest",
+      "testResult": "nicht-ausgefuehrt",
+      "evidence": [
+        "src/features/documents/components/DocumentsView.tsx",
+        "src/features/documents/documentListModel.ts",
+        "src/features/selftest/scenarios/document-list.ts"
+      ],
+      "routes": [
+        "/documents"
+      ],
+      "components": [
+        "src/features/documents/components/DocumentsView.tsx"
+      ],
+      "services": [
+        "src/features/documents/documentListModel.ts"
+      ],
+      "tables": [
+        "documents",
+        "document_categories",
+        "document_folders",
+        "document_contacts",
+        "document_topics"
+      ],
+      "roles": [
+        "abgeordneter",
+        "bueroleitung",
+        "mitarbeiter",
+        "praktikant"
+      ],
+      "scenarios": [
+        "document-list"
+      ],
+      "docs": [
+        "docs/knowledge-validity.md"
+      ]
+    },
+    {
+      "id": "documents.upload-version",
+      "subarea": "Dokumente",
+      "name": "Dokument hochladen und versionieren",
+      "description": "Lädt Dateien hoch, legt Versionen an und protokolliert Löschungen nachvollziehbar.",
+      "category": "fachlich",
+      "implementationStatus": "implementiert",
+      "integrationStatus": "ui",
+      "coverage": "keine",
+      "testResult": "nicht-ausgefuehrt",
+      "evidence": [
+        "src/components/documents/DocumentDialogs.tsx",
+        "src/components/documents/operationsContract.ts"
+      ],
+      "components": [
+        "src/components/documents/DocumentDialogs.tsx"
+      ],
+      "services": [
+        "src/components/documents/operationsContract.ts"
+      ],
+      "rpcs": [
+        "update_document_version",
+        "audit_document_deletion"
+      ],
+      "tables": [
+        "documents",
+        "document_annotation_events"
+      ],
+      "roles": [
+        "abgeordneter",
+        "bueroleitung",
+        "mitarbeiter",
+        "praktikant"
+      ]
+    },
+    {
+      "id": "documents.contacts",
+      "subarea": "Dokumente",
+      "name": "Dokumente mit Kontakten verknüpfen",
+      "description": "Ordnet Dokumente Kontakten zu und zeigt sie im Kontaktprofil.",
+      "category": "fachlich",
+      "implementationStatus": "implementiert",
+      "integrationStatus": "ui",
+      "coverage": "keine",
+      "testResult": "nicht-ausgefuehrt",
+      "evidence": [
+        "src/components/documents/DocumentContactManager.tsx",
+        "src/hooks/useContactDocuments.tsx"
+      ],
+      "components": [
+        "src/components/documents/DocumentContactManager.tsx"
+      ],
+      "hooks": [
+        "src/hooks/useContactDocuments.tsx",
+        "src/hooks/useDocumentContacts.tsx"
+      ],
+      "tables": [
+        "document_contacts",
+        "documents",
+        "contacts"
+      ],
+      "roles": [
+        "abgeordneter",
+        "bueroleitung",
+        "mitarbeiter"
+      ]
+    },
+    {
+      "id": "documents.email",
+      "subarea": "Dokumente",
+      "name": "Dokumente per E-Mail versenden",
+      "description": "Versendet Dokumente als E-Mail-Anhang über eine Edge Function und protokolliert den Versand.",
+      "category": "integration",
+      "implementationStatus": "implementiert",
+      "integrationStatus": "ui",
+      "coverage": "keine",
+      "testResult": "nicht-ausgefuehrt",
+      "evidence": [
+        "supabase/functions/send-document-email/index.ts"
+      ],
+      "edgeFunctions": [
+        "send-document-email"
+      ],
+      "tables": [
+        "email_logs",
+        "documents"
+      ],
+      "roles": [
+        "abgeordneter",
+        "bueroleitung",
+        "mitarbeiter"
+      ]
+    },
+    {
+      "id": "annotations.create",
+      "subarea": "Annotationen",
+      "name": "Dokumente annotieren",
+      "description": "Setzt Markierungen, Hervorhebungen und Kommentare auf PDF- und Bildseiten in relativen Koordinaten, ohne Originale zu verändern.",
+      "category": "fachlich",
+      "implementationStatus": "implementiert",
+      "integrationStatus": "ui",
+      "coverage": "selftest",
+      "testResult": "nicht-ausgefuehrt",
+      "evidence": [
+        "src/features/annotations/annotationModel.ts",
+        "src/features/annotations/useAnnotations.ts",
+        "src/features/selftest/scenarios/document-annotation.ts"
+      ],
+      "components": [
+        "src/features/annotations/components"
+      ],
+      "hooks": [
+        "src/features/annotations/useAnnotations.ts",
+        "src/features/annotations/useAnnotationMembers.ts"
+      ],
+      "rpcs": [
+        "document_annotations_validate",
+        "document_annotations_guard_edit",
+        "document_annotations_permissions_selftest",
+        "document_annotation_assignment_guard",
+        "document_annotation_can_manage",
+        "document_annotation_mention_ids",
+        "document_annotation_mention_members",
+        "document_annotation_mentions",
+        "document_annotation_reply_guard"
+      ],
+      "tables": [
+        "document_annotations",
+        "documents"
+      ],
+      "roles": [
+        "abgeordneter",
+        "bueroleitung",
+        "mitarbeiter"
+      ],
+      "scenarios": [
+        "document-annotation"
+      ],
+      "unitTests": [
+        "src/features/annotations/annotationModel.test.ts"
+      ],
+      "docs": [
+        "docs/dangerouslysetinnerhtml-inventory.md"
+      ]
+    },
+    {
+      "id": "annotations.history",
+      "subarea": "Annotationen",
+      "name": "Annotationsverlauf",
+      "description": "Führt einen ausschließlich per Trigger geschriebenen, für Clients lesenden Verlauf aller Annotationsänderungen.",
+      "category": "fachlich",
+      "implementationStatus": "implementiert",
+      "integrationStatus": "ui",
+      "coverage": "unit",
+      "testResult": "unbekannt",
+      "evidence": [
+        "src/features/annotations/annotationHistory.ts",
+        "src/features/annotations/useAnnotationHistory.ts"
+      ],
+      "hooks": [
+        "src/features/annotations/useAnnotationHistory.ts"
+      ],
+      "services": [
+        "src/features/annotations/annotationHistory.ts"
+      ],
+      "rpcs": [
+        "record_document_annotation_event"
+      ],
+      "tables": [
+        "document_annotation_events",
+        "document_annotations"
+      ],
+      "roles": [
+        "abgeordneter",
+        "bueroleitung",
+        "mitarbeiter"
+      ],
+      "unitTests": [
+        "src/features/annotations/annotationModel.test.ts"
+      ]
+    },
+    {
+      "id": "annotations.tasks",
+      "subarea": "Annotationen",
+      "name": "Folgeaufgabe aus Annotation",
+      "description": "Erzeugt atomar eine Stafette-Aufgabe aus einer Annotation und hält die Verknüpfung unveränderlich.",
+      "category": "fachlich",
+      "implementationStatus": "implementiert",
+      "integrationStatus": "ui",
+      "coverage": "selftest",
+      "testResult": "nicht-ausgefuehrt",
+      "evidence": [
+        "src/features/annotations/taskModel.ts"
+      ],
+      "services": [
+        "src/features/annotations/taskModel.ts"
+      ],
+      "rpcs": [
+        "create_document_annotation_task",
+        "document_annotation_task_selftest"
+      ],
+      "tables": [
+        "document_annotation_tasks",
+        "document_annotations",
+        "tasks"
+      ],
+      "roles": [
+        "abgeordneter",
+        "bueroleitung",
+        "mitarbeiter"
+      ],
+      "scenarios": [
+        "document-annotation"
+      ],
+      "dependsOn": [
+        "tasks.create"
+      ]
+    },
+    {
+      "id": "annotations.ocr",
+      "subarea": "Annotationen",
+      "name": "OCR für gescannte Dokumente",
+      "description": "Erkennt Text lokal über selbst gehostete Tesseract-Assets und erlaubt das Anlegen von Textmarkierungen.",
+      "category": "fachlich",
+      "implementationStatus": "implementiert",
+      "integrationStatus": "ui",
+      "coverage": "keine",
+      "testResult": "nicht-ausgefuehrt",
+      "evidence": [
+        "src/features/annotations/ocrModel.ts",
+        "src/features/annotations/useAnnotationOcr.ts",
+        "scripts/viteAnnotationOcr.ts"
+      ],
+      "hooks": [
+        "src/features/annotations/useAnnotationOcr.ts"
+      ],
+      "services": [
+        "src/features/annotations/ocrModel.ts"
+      ],
+      "tables": [
+        "documents",
+        "document_annotations"
+      ],
+      "roles": [
+        "abgeordneter",
+        "bueroleitung",
+        "mitarbeiter"
+      ],
+      "limitations": [
+        "OCR-Qualität hängt vom Scan ab; ein automatisierter Qualitätstest existiert nicht."
+      ]
+    },
+    {
+      "id": "annotations.export",
+      "subarea": "Annotationen",
+      "name": "Annotationen exportieren",
+      "description": "Exportiert annotierte Dokumente als separate PDF-Kopie, ohne das Original zu verändern.",
+      "category": "fachlich",
+      "implementationStatus": "implementiert",
+      "integrationStatus": "ui",
+      "coverage": "keine",
+      "testResult": "nicht-ausgefuehrt",
+      "evidence": [
+        "src/features/annotations/exportModel.ts",
+        "src/features/annotations/exportPdf.ts",
+        "src/lib/pdfjs.ts"
+      ],
+      "services": [
+        "src/features/annotations/exportModel.ts",
+        "src/features/annotations/exportPdf.ts"
+      ],
+      "tables": [
+        "documents",
+        "document_annotations"
+      ],
+      "roles": [
+        "abgeordneter",
+        "bueroleitung",
+        "mitarbeiter"
+      ],
+      "dependsOn": [
+        "annotations.create"
+      ]
+    },
+    {
+      "id": "annotations.relocate",
+      "subarea": "Annotationen",
+      "name": "Annotationen bei neuer Dateiversion verschieben",
+      "description": "Schlägt bei geänderter Dateiversion einen eindeutigen Textanker vor und verlangt eine ausdrückliche Bestätigung.",
+      "category": "fachlich",
+      "implementationStatus": "implementiert",
+      "integrationStatus": "ui",
+      "coverage": "keine",
+      "testResult": "nicht-ausgefuehrt",
+      "evidence": [
+        "src/features/annotations/relocateText.ts",
+        "src/features/annotations/textAnchors.ts"
+      ],
+      "services": [
+        "src/features/annotations/relocateText.ts",
+        "src/features/annotations/textAnchors.ts"
+      ],
+      "tables": [
+        "document_annotations",
+        "documents"
+      ],
+      "roles": [
+        "abgeordneter",
+        "bueroleitung",
+        "mitarbeiter"
+      ]
+    },
+    {
+      "id": "letters.create",
+      "subarea": "Briefe",
+      "name": "Brief erstellen und bearbeiten",
+      "description": "Erstellt Briefe im Lexical-Editor mit DIN-5008-Layout, Adressen, Vorlagen und Anlagen.",
+      "category": "fachlich",
+      "implementationStatus": "implementiert",
+      "integrationStatus": "rollenabhaengig",
+      "coverage": "unit",
+      "testResult": "unbekannt",
+      "evidence": [
+        "src/features/letters/components/LetterEditor.tsx",
+        "src/pages/LetterDetail.tsx",
+        "src/components/letters/LetterEditorCanvas.tsx"
+      ],
+      "routes": [
+        "/letters/:letterId"
+      ],
+      "components": [
+        "src/pages/LetterDetail.tsx",
+        "src/features/letters/components/LetterEditor.tsx",
+        "src/components/letters/LetterEditorCanvas.tsx",
+        "src/components/letters/DIN5008LetterLayout.tsx"
+      ],
+      "tables": [
+        "letters",
+        "letter_template_settings",
+        "letter_attachments"
+      ],
+      "roles": [
+        "abgeordneter",
+        "bueroleitung",
+        "mitarbeiter"
+      ],
+      "unitTests": [
+        "src/components/letters/__tests__/types.test.ts"
+      ],
+      "docs": [
+        "docs/workflow-consistency.md"
+      ]
+    },
+    {
+      "id": "letters.workflow",
+      "subarea": "Briefe",
+      "name": "Brief-Freigabeworkflow",
+      "description": "Führt Briefe durch Entwurf, Prüfung, Freigabe und Versand, protokolliert Statuswechsel und verhindert falsche Erfolgsmeldungen.",
+      "category": "fachlich",
+      "implementationStatus": "implementiert",
+      "integrationStatus": "rollenabhaengig",
+      "coverage": "selftest",
+      "testResult": "nicht-ausgefuehrt",
+      "evidence": [
+        "src/services/letterWorkflow.ts",
+        "src/features/selftest/scenarios/letter-lifecycle.ts",
+        "supabase/functions/archive-letter/index.ts"
+      ],
+      "services": [
+        "src/services/letterWorkflow.ts"
+      ],
+      "edgeFunctions": [
+        "archive-letter"
+      ],
+      "rpcs": [
+        "handle_letter_status_change",
+        "log_letter_workflow_change"
+      ],
+      "tables": [
+        "letters",
+        "letter_workflow_history",
+        "letter_archive_settings",
+        "documents"
+      ],
+      "roles": [
+        "abgeordneter",
+        "bueroleitung",
+        "mitarbeiter"
+      ],
+      "scenarios": [
+        "letter-lifecycle"
+      ],
+      "unitTests": [
+        "src/services/letterWorkflow.test.ts"
+      ],
+      "integrationTests": [
+        "src/components/letters/hooks/useLetterOperations.integration.test.tsx"
+      ],
+      "docs": [
+        "docs/workflow-consistency.md",
+        "docs/selftest-center.md"
+      ]
+    },
+    {
+      "id": "letters.archive",
+      "subarea": "Briefe",
+      "name": "Brief archivieren und Folgeaufgabe anlegen",
+      "description": "Erzeugt beim Versand ein PDF-Archivdokument, verknüpft es und legt optional eine Folgeaufgabe an.",
+      "category": "automatisiert",
+      "implementationStatus": "implementiert",
+      "integrationStatus": "system",
+      "coverage": "selftest",
+      "testResult": "nicht-ausgefuehrt",
+      "evidence": [
+        "src/hooks/useLetterArchiving.tsx",
+        "supabase/functions/archive-letter/index.ts",
+        "src/components/letters/ArchivedLetterDetails.tsx"
+      ],
+      "hooks": [
+        "src/hooks/useLetterArchiving.tsx"
+      ],
+      "edgeFunctions": [
+        "archive-letter"
+      ],
+      "rpcs": [
+        "create_letter_followup_task"
+      ],
+      "tables": [
+        "letters",
+        "documents",
+        "letter_attachments",
+        "tasks"
+      ],
+      "roles": [
+        "abgeordneter",
+        "bueroleitung",
+        "mitarbeiter",
+        "system"
+      ],
+      "scenarios": [
+        "letter-lifecycle"
+      ],
+      "dependsOn": [
+        "letters.workflow",
+        "tasks.create"
+      ]
+    },
+    {
+      "id": "letters.templates",
+      "subarea": "Briefe",
+      "name": "Briefvorlagen und Anlässe",
+      "description": "Verwaltet Briefvorlagen, Anlassarten, Absenderdaten und Textbausteine.",
+      "category": "administrativ",
+      "implementationStatus": "implementiert",
+      "integrationStatus": "rollenabhaengig",
+      "coverage": "keine",
+      "testResult": "nicht-ausgefuehrt",
+      "evidence": [
+        "src/features/letters/components/LetterTemplateManager.tsx",
+        "src/components/administration/LetterOccasionManager.tsx",
+        "src/components/administration/SenderInformationManager.tsx"
+      ],
+      "components": [
+        "src/features/letters/components/LetterTemplateManager.tsx",
+        "src/components/letters/LetterTemplateIntegration.tsx"
+      ],
+      "tables": [
+        "letter_templates",
+        "letter_occasions",
+        "letter_template_assets",
+        "letter_template_settings",
+        "sender_information"
+      ],
+      "roles": [
+        "admin",
+        "bueroleitung",
+        "abgeordneter",
+        "mitarbeiter"
+      ]
+    },
+    {
+      "id": "letters.export",
+      "subarea": "Briefe",
+      "name": "Brief als PDF oder DOCX exportieren",
+      "description": "Erzeugt PDF- und DOCX-Ausgaben aus dem Editorinhalt inklusive Layout und Anlagen.",
+      "category": "fachlich",
+      "implementationStatus": "implementiert",
+      "integrationStatus": "ui",
+      "coverage": "keine",
+      "testResult": "nicht-ausgefuehrt",
+      "evidence": [
+        "src/features/letters/components/LetterPDFExport.tsx",
+        "src/features/letters/components/LetterDOCXExport.tsx"
+      ],
+      "components": [
+        "src/features/letters/components/LetterPDFExport.tsx",
+        "src/features/letters/components/LetterDOCXExport.tsx",
+        "src/components/letter-pdf"
+      ],
+      "tables": [
+        "letters"
+      ],
+      "roles": [
+        "abgeordneter",
+        "bueroleitung",
+        "mitarbeiter"
+      ]
+    },
+    {
+      "id": "letters.collaboration",
+      "subarea": "Briefe",
+      "name": "Brief-Kommentare und Zusammenarbeit",
+      "description": "Erlaubt Kommentare, Mitwirkende und Zugriffsschutz für gemeinsam bearbeitete Briefe.",
+      "category": "fachlich",
+      "implementationStatus": "implementiert",
+      "integrationStatus": "ui",
+      "coverage": "keine",
+      "testResult": "nicht-ausgefuehrt",
+      "evidence": [
+        "src/components/letters/LetterCommentDialog.tsx"
+      ],
+      "components": [
+        "src/components/letters/LetterCommentDialog.tsx"
+      ],
+      "rpcs": [
+        "can_access_letter_for_collaboration",
+        "letters_secured"
+      ],
+      "tables": [
+        "letter_comments",
+        "letter_collaborators",
+        "letters"
+      ],
+      "roles": [
+        "abgeordneter",
+        "bueroleitung",
+        "mitarbeiter"
+      ]
+    },
+    {
+      "id": "letters.attachments",
+      "subarea": "Briefe",
+      "name": "Briefanlagen verwalten",
+      "description": "Fügt Anlagen hinzu, entfernt sie und hält sie beim Archivieren am Dokument.",
+      "category": "fachlich",
+      "implementationStatus": "implementiert",
+      "integrationStatus": "ui",
+      "coverage": "keine",
+      "testResult": "nicht-ausgefuehrt",
+      "evidence": [
+        "src/components/letters/LetterAttachmentManager.tsx"
+      ],
+      "components": [
+        "src/components/letters/LetterAttachmentManager.tsx"
+      ],
+      "tables": [
+        "letter_attachments",
+        "letters"
+      ],
+      "roles": [
+        "abgeordneter",
+        "bueroleitung",
+        "mitarbeiter"
+      ]
+    }
+  ]
+}

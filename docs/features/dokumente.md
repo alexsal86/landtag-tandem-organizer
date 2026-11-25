@@ -1,148 +1,677 @@
-# Dokumente & Wissen
+# Dokumente, Briefe & Annotationen
 
-_Auto-generiert mit `npm run update:feature-catalog` aus den Selbsttest-Szenarien. Nicht von Hand bearbeiten._
+_Auto-generiert mit `npm run update:feature-catalog` aus dem zentralen Funktionskatalog (`src/features/feature-catalog/inventory/dokumente.json`). Nicht von Hand bearbeiten._
 
-**Zweck:** Dokumente ablegen, Anmerkungen und Antworten mit Aufgaben verknüpfen und den Wissensbereich nutzen.
+**Zweck:** Dokumente ablegen und versionieren, Briefe im Freigabeworkflow erstellen und archivieren, Annotationen und OCR auf Originalen nutzen.
 
-## Seiten
+## Kennzahlen
 
-- `/documents`
-- `/knowledge`
-- `/wissen`
+- Funktionen: **17** in **3** Unterbereichen
+- implementiert: **17**, teilweise: **0**, deaktiviert: **0**, potenziell verwaist: **0**
+- ohne zugeordneten Test: **10**
+- ohne Dokumentationsverweis: **13**
+
+## Funktionen
+
+| Funktion | Unterbereich | Kategorie | Implementierung | Einbindung | Abdeckung |
+|---|---|---|---|---|---|
+| `annotations.relocate` Annotationen bei neuer Dateiversion verschieben | Annotationen | fachlich | implementiert | UI | kein Test |
+| `annotations.export` Annotationen exportieren | Annotationen | fachlich | implementiert | UI | kein Test |
+| `annotations.history` Annotationsverlauf | Annotationen | fachlich | implementiert | UI | Unit-Test |
+| `annotations.create` Dokumente annotieren | Annotationen | fachlich | implementiert | UI | Selbsttest |
+| `annotations.tasks` Folgeaufgabe aus Annotation | Annotationen | fachlich | implementiert | UI | Selbsttest |
+| `annotations.ocr` OCR für gescannte Dokumente | Annotationen | fachlich | implementiert | UI | kein Test |
+| `letters.export` Brief als PDF oder DOCX exportieren | Briefe | fachlich | implementiert | UI | kein Test |
+| `letters.archive` Brief archivieren und Folgeaufgabe anlegen | Briefe | automatisiert | implementiert | systemseitig | Selbsttest |
+| `letters.create` Brief erstellen und bearbeiten | Briefe | fachlich | implementiert | rollenabhängig | Unit-Test |
+| `letters.workflow` Brief-Freigabeworkflow | Briefe | fachlich | implementiert | rollenabhängig | Selbsttest |
+| `letters.collaboration` Brief-Kommentare und Zusammenarbeit | Briefe | fachlich | implementiert | UI | kein Test |
+| `letters.attachments` Briefanlagen verwalten | Briefe | fachlich | implementiert | UI | kein Test |
+| `letters.templates` Briefvorlagen und Anlässe | Briefe | administrativ | implementiert | rollenabhängig | kein Test |
+| `documents.upload-version` Dokument hochladen und versionieren | Dokumente | fachlich | implementiert | UI | kein Test |
+| `documents.contacts` Dokumente mit Kontakten verknüpfen | Dokumente | fachlich | implementiert | UI | kein Test |
+| `documents.email` Dokumente per E-Mail versenden | Dokumente | integration | implementiert | UI | kein Test |
+| `documents.list` Dokumentenliste und Suche | Dokumente | fachlich | implementiert | UI | Selbsttest |
+
+## Unterbereiche
+
+- Dokumente
+- Annotationen
+- Briefe
 
 ## Rollen
 
-Keine besondere Rolle deklariert; es gilt die aktive Büro-Mitgliedschaft.
+`abgeordneter`, `bueroleitung`, `mitarbeiter`, `praktikant`, `system`, `admin`
 
-## Tabellen
+## Datenbanktabellen
 
-Diese Tabellen schreiben die Szenarien laut `touches`. Fehlende Tabellen bedeuten nicht, dass der Bereich sie nicht liest.
+`contacts`, `document_annotation_events`, `document_annotation_tasks`, `document_annotations`, `document_categories`, `document_contacts`, `document_folders`, `document_topics`, `documents`, `email_logs`, `letter_archive_settings`, `letter_attachments`, `letter_collaborators`, `letter_comments`, `letter_occasions`, `letter_template_assets`, `letter_template_settings`, `letter_templates`, `letter_workflow_history`, `letters`, `sender_information`, `tasks`
 
-| Tabelle | Szenario |
-|---|---|
-| `document_annotation_events` | `document-annotation` |
-| `document_annotation_tasks` | `document-annotation` |
-| `document_annotations` | `document-annotation` |
-| `documents` | `document-annotation` |
-| `knowledge_qa_notification_deliveries` | `knowledge-lifecycle` |
-| `knowledge_question_events` | `knowledge-lifecycle` |
-| `knowledge_questions` | `knowledge-lifecycle` |
-| `task_assignees` | `document-annotation` |
-| `tasks` | `document-annotation` |
+## Selbsttest-Szenarien
 
-## Fremdschlüssel
+| Szenario | Titel | deklarierte Tabellen | deklarierte Prüfungen |
+|---|---|---:|---:|
+| `document-annotation` | Dokument-Annotation | 6 | 14 |
+| `document-list` | Dokumente: Suche, Kategorien, Sortierung und Auswahl | 0 | 0 |
+| `letter-lifecycle` | Brief-Lifecycle (Entwurf → Prüfung → Freigabe → Archiv und Folgeaufgabe) | 4 | 3 |
 
-Aus `docs/entity-map.md` für die oben genannten Tabellen. Eingehende Verweise zeigen, welche anderen Tabellen auf diesen Bereich zeigen.
+## Funktionsdetails
 
-### Ausgehend
+### `documents.list` — Dokumentenliste und Suche
+Listet Dokumente mit Kategorien, Ordnern, Kontakten, Themen und Filterung; die Listenlogik liegt in einem eigenen Modul.
 
-| Tabelle | Spalte | Zieltabelle |
-|---|---|---|
-| `document_annotation_events` | `document_id` | `documents` |
-| `document_annotation_tasks` | `annotation_id` | `document_annotations` |
-| `document_annotation_tasks` | `document_id` | `documents` |
-| `document_annotation_tasks` | `task_id` | `tasks` |
-| `document_annotations` | `parent_id` | `document_annotations` |
-| `document_annotations` | `document_id` | `documents` |
-| `documents` | `folder_id` | `document_folders` |
-| `documents` | `tenant_id` | `tenants` |
-| `knowledge_question_events` | `tenant_id`, `question_id` | `knowledge_question_cards` |
-| `knowledge_question_events` | `tenant_id`, `question_id` | `knowledge_question_summaries` |
-| `knowledge_question_events` | `tenant_id`, `question_id` | `knowledge_questions` |
-| `knowledge_questions` | `tenant_id`, `merged_into` | `knowledge_question_cards` |
-| `knowledge_questions` | `tenant_id`, `merged_into` | `knowledge_question_summaries` |
-| `knowledge_questions` | `tenant_id`, `merged_into` | `knowledge_questions` |
-| `knowledge_questions` | `tenant_id` | `tenants` |
-| `task_assignees` | `assigned_by` | `profiles` |
-| `task_assignees` | `user_id` | `profiles` |
-| `task_assignees` | `task_id` | `tasks` |
-| `tasks` | `call_log_id` | `call_logs` |
-| `tasks` | `meeting_id` | `meetings` |
-| `tasks` | `parent_task_id` | `tasks` |
-| `tasks` | `tenant_id` | `tenants` |
+- **Kategorie:** fachlich
+- **Implementierung:** implementiert
+- **Einbindung:** UI
+- **Testabdeckung:** Selbsttest
+- **Letztes Testergebnis:** nicht-ausgefuehrt (nicht aus der Existenz einer Testdatei abgeleitet)
+- **Rollen:** `abgeordneter`, `bueroleitung`, `mitarbeiter`, `praktikant`
+- **Routen:** `/documents`
+- **Frontend-Komponenten:** `src/features/documents/components/DocumentsView.tsx`
+- **Services:** `src/features/documents/documentListModel.ts`
+- **Hooks:** —
+- **Edge Functions:** —
+- **Datenbankfunktionen:** —
+- **Tabellen:** `documents`, `document_categories`, `document_folders`, `document_contacts`, `document_topics`
+- **Abhängigkeiten:** —
+- **Selbsttests:** `document-list`
+- **Unit-Tests:** —
+- **Integrationstests:** —
+- **Browser-Tests:** —
+- **Dokumentation:** `docs/knowledge-validity.md`
 
-### Eingehend
+**Nachweise im Quellcode**
 
-| Zieltabelle im Bereich | Von | Spalte |
-|---|---|---|
-| `tasks` | `annual_task_completions` | `linked_task_id` |
-| `documents` | `case_file_documents` | `document_id` |
-| `tasks` | `case_file_tasks` | `task_id` |
-| `documents` | `case_item_attachments` | `document_id` |
-| `documents` | `document_annotation_events` | `document_id` |
-| `document_annotations` | `document_annotation_tasks` | `annotation_id` |
-| `documents` | `document_annotation_tasks` | `document_id` |
-| `tasks` | `document_annotation_tasks` | `task_id` |
-| `document_annotations` | `document_annotations` | `parent_id` |
-| `documents` | `document_annotations` | `document_id` |
-| `documents` | `document_contacts` | `document_id` |
-| `documents` | `document_topics` | `document_id` |
-| `documents` | `employee_hr_evidence` | `document_id` |
-| `tasks` | `employee_meeting_action_items` | `task_id` |
-| `knowledge_questions` | `knowledge_question_attachments` | `tenant_id`, `question_id` |
-| `knowledge_questions` | `knowledge_question_comments` | `tenant_id`, `question_id` |
-| `knowledge_questions` | `knowledge_question_events` | `tenant_id`, `question_id` |
-| `knowledge_questions` | `knowledge_question_followers` | `tenant_id`, `question_id` |
-| `knowledge_questions` | `knowledge_question_outdated_reports` | `tenant_id`, `question_id` |
-| `documents` | `knowledge_question_sources` | `document_id` |
-| `knowledge_questions` | `knowledge_question_sources` | `tenant_id`, `question_id` |
-| `knowledge_questions` | `knowledge_question_tags` | `tenant_id`, `question_id` |
-| `knowledge_questions` | `knowledge_questions` | `tenant_id`, `merged_into` |
-| `tasks` | `matrix_widget_callback_requests` | `task_id` |
-| `tasks` | `quick_notes` | `task_id` |
-| `tasks` | `routine_package_runs` | `task_id` |
-| `tasks` | `subtasks` | `task_id` |
-| `tasks` | `task_assignees` | `task_id` |
-| `tasks` | `task_comments` | `task_id` |
-| `tasks` | `task_decisions` | `task_id` |
-| `tasks` | `task_topics` | `task_id` |
-| `tasks` | `tasks` | `parent_task_id` |
+- src/features/documents/components/DocumentsView.tsx
+- src/features/documents/documentListModel.ts
+- src/features/selftest/scenarios/document-list.ts
 
-## Prüfumfang
+**Bekannte Einschränkungen**
 
-### `document-list` — Dokumente: Suche, Kategorien, Sortierung und Auswahl
+- Keine.
 
-- **Prüfungen:**
-  - Keine Einzelprüfungen deklariert; der Lauf bestätigt nur den Ablauf.
-- **Grenzen:**
-  - Keine deklariert.
+**Offene Prüfpunkte**
 
-### `document-annotation` — Dokument-Annotation
+- Keine.
 
-- **Prüfungen:**
-  - Mehrseitige Textauswahl
-  - Suche und Navigation
-  - OCR-Geometrie
-  - PDF-Exportkoordinaten
-  - Textanker und Änderungsverlauf
-  - Dateityp
-  - Bruchteil-Koordinaten
-  - Polygon-Mindestpunkte
-  - Verschieben und Eckpunkte
-  - Zoomgrenzen
-  - Anlegen, Antworten, Erledigen und Löschen
-  - Fremde Autorenschaft und Mandatsgrenzen
-  - Serverrollen und aktive RLS/Trigger
-  - Erwähnungen mit Thread-Link
-- **Grenzen:**
-  - OCR-Erkennungsqualität, Textauswahl und PDF-Exportdarstellung erfordern eine interaktive Prüfung.
-  - Realtime, Scrollen und Benachrichtigungszustellung erfordern zwei interaktive Sitzungen. Die Serverrollenprüfung gilt für das angemeldete Konto; die UI-Regeln decken alle Rollen ab. Fremde Datensätze werden nicht testweise verändert.
+### `documents.upload-version` — Dokument hochladen und versionieren
+Lädt Dateien hoch, legt Versionen an und protokolliert Löschungen nachvollziehbar.
 
-### `knowledge-lifecycle` — Wissen: Fragen, Antworten und manuelle Prüfung
+- **Kategorie:** fachlich
+- **Implementierung:** implementiert
+- **Einbindung:** UI
+- **Testabdeckung:** kein Test
+- **Letztes Testergebnis:** nicht-ausgefuehrt (nicht aus der Existenz einer Testdatei abgeleitet)
+- **Rollen:** `abgeordneter`, `bueroleitung`, `mitarbeiter`, `praktikant`
+- **Routen:** —
+- **Frontend-Komponenten:** `src/components/documents/DocumentDialogs.tsx`
+- **Services:** `src/components/documents/operationsContract.ts`
+- **Hooks:** —
+- **Edge Functions:** —
+- **Datenbankfunktionen:** `update_document_version`, `audit_document_deletion`
+- **Tabellen:** `documents`, `document_annotation_events`
+- **Abhängigkeiten:** —
+- **Selbsttests:** —
+- **Unit-Tests:** —
+- **Integrationstests:** —
+- **Browser-Tests:** —
+- **Dokumentation:** —
 
-- **Prüfungen:**
-  - Frage als einziges Pflichtfeld
-  - Validierte Antwort und sichere Links
-  - Drei Prüfzustände und Fälligkeit
-  - Anhanggrenzen
-  - Lesen außerhalb des eigenen Büros
-- **Grenzen:**
-  - Zwei-Büro-Isolation, FTS und Storage-Policies werden zusätzlich mit scripts/test-knowledge-qa.mjs in isoliertem PostgreSQL geprüft. Echte Storage-HTTP-Zugriffe benötigen eine Supabase-Testinstanz.
+**Nachweise im Quellcode**
 
-## Detaildoku
+- src/components/documents/DocumentDialogs.tsx
+- src/components/documents/operationsContract.ts
 
-- [knowledge-validity.md](../knowledge-validity.md)
-- [knowledge-global-question.md](../knowledge-global-question.md)
+**Bekannte Einschränkungen**
+
+- Keine.
+
+**Offene Prüfpunkte**
+
+- Keine.
+
+### `documents.contacts` — Dokumente mit Kontakten verknüpfen
+Ordnet Dokumente Kontakten zu und zeigt sie im Kontaktprofil.
+
+- **Kategorie:** fachlich
+- **Implementierung:** implementiert
+- **Einbindung:** UI
+- **Testabdeckung:** kein Test
+- **Letztes Testergebnis:** nicht-ausgefuehrt (nicht aus der Existenz einer Testdatei abgeleitet)
+- **Rollen:** `abgeordneter`, `bueroleitung`, `mitarbeiter`
+- **Routen:** —
+- **Frontend-Komponenten:** `src/components/documents/DocumentContactManager.tsx`
+- **Services:** —
+- **Hooks:** `src/hooks/useContactDocuments.tsx`, `src/hooks/useDocumentContacts.tsx`
+- **Edge Functions:** —
+- **Datenbankfunktionen:** —
+- **Tabellen:** `document_contacts`, `documents`, `contacts`
+- **Abhängigkeiten:** —
+- **Selbsttests:** —
+- **Unit-Tests:** —
+- **Integrationstests:** —
+- **Browser-Tests:** —
+- **Dokumentation:** —
+
+**Nachweise im Quellcode**
+
+- src/components/documents/DocumentContactManager.tsx
+- src/hooks/useContactDocuments.tsx
+
+**Bekannte Einschränkungen**
+
+- Keine.
+
+**Offene Prüfpunkte**
+
+- Keine.
+
+### `documents.email` — Dokumente per E-Mail versenden
+Versendet Dokumente als E-Mail-Anhang über eine Edge Function und protokolliert den Versand.
+
+- **Kategorie:** integration
+- **Implementierung:** implementiert
+- **Einbindung:** UI
+- **Testabdeckung:** kein Test
+- **Letztes Testergebnis:** nicht-ausgefuehrt (nicht aus der Existenz einer Testdatei abgeleitet)
+- **Rollen:** `abgeordneter`, `bueroleitung`, `mitarbeiter`
+- **Routen:** —
+- **Frontend-Komponenten:** —
+- **Services:** —
+- **Hooks:** —
+- **Edge Functions:** `send-document-email`
+- **Datenbankfunktionen:** —
+- **Tabellen:** `email_logs`, `documents`
+- **Abhängigkeiten:** —
+- **Selbsttests:** —
+- **Unit-Tests:** —
+- **Integrationstests:** —
+- **Browser-Tests:** —
+- **Dokumentation:** —
+
+**Nachweise im Quellcode**
+
+- supabase/functions/send-document-email/index.ts
+
+**Bekannte Einschränkungen**
+
+- Keine.
+
+**Offene Prüfpunkte**
+
+- Keine.
+
+### `annotations.create` — Dokumente annotieren
+Setzt Markierungen, Hervorhebungen und Kommentare auf PDF- und Bildseiten in relativen Koordinaten, ohne Originale zu verändern.
+
+- **Kategorie:** fachlich
+- **Implementierung:** implementiert
+- **Einbindung:** UI
+- **Testabdeckung:** Selbsttest
+- **Letztes Testergebnis:** nicht-ausgefuehrt (nicht aus der Existenz einer Testdatei abgeleitet)
+- **Rollen:** `abgeordneter`, `bueroleitung`, `mitarbeiter`
+- **Routen:** —
+- **Frontend-Komponenten:** `src/features/annotations/components`
+- **Services:** —
+- **Hooks:** `src/features/annotations/useAnnotations.ts`, `src/features/annotations/useAnnotationMembers.ts`
+- **Edge Functions:** —
+- **Datenbankfunktionen:** `document_annotations_validate`, `document_annotations_guard_edit`, `document_annotations_permissions_selftest`, `document_annotation_assignment_guard`, `document_annotation_can_manage`, `document_annotation_mention_ids`, `document_annotation_mention_members`, `document_annotation_mentions`, `document_annotation_reply_guard`
+- **Tabellen:** `document_annotations`, `documents`
+- **Abhängigkeiten:** —
+- **Selbsttests:** `document-annotation`
+- **Unit-Tests:** `src/features/annotations/annotationModel.test.ts`
+- **Integrationstests:** —
+- **Browser-Tests:** —
+- **Dokumentation:** `docs/dangerouslysetinnerhtml-inventory.md`
+
+**Nachweise im Quellcode**
+
+- src/features/annotations/annotationModel.ts
+- src/features/annotations/useAnnotations.ts
+- src/features/selftest/scenarios/document-annotation.ts
+
+**Bekannte Einschränkungen**
+
+- Keine.
+
+**Offene Prüfpunkte**
+
+- Keine.
+
+### `annotations.history` — Annotationsverlauf
+Führt einen ausschließlich per Trigger geschriebenen, für Clients lesenden Verlauf aller Annotationsänderungen.
+
+- **Kategorie:** fachlich
+- **Implementierung:** implementiert
+- **Einbindung:** UI
+- **Testabdeckung:** Unit-Test
+- **Letztes Testergebnis:** unbekannt (nicht aus der Existenz einer Testdatei abgeleitet)
+- **Rollen:** `abgeordneter`, `bueroleitung`, `mitarbeiter`
+- **Routen:** —
+- **Frontend-Komponenten:** —
+- **Services:** `src/features/annotations/annotationHistory.ts`
+- **Hooks:** `src/features/annotations/useAnnotationHistory.ts`
+- **Edge Functions:** —
+- **Datenbankfunktionen:** `record_document_annotation_event`
+- **Tabellen:** `document_annotation_events`, `document_annotations`
+- **Abhängigkeiten:** —
+- **Selbsttests:** —
+- **Unit-Tests:** `src/features/annotations/annotationModel.test.ts`
+- **Integrationstests:** —
+- **Browser-Tests:** —
+- **Dokumentation:** —
+
+**Nachweise im Quellcode**
+
+- src/features/annotations/annotationHistory.ts
+- src/features/annotations/useAnnotationHistory.ts
+
+**Bekannte Einschränkungen**
+
+- Keine.
+
+**Offene Prüfpunkte**
+
+- Keine.
+
+### `annotations.tasks` — Folgeaufgabe aus Annotation
+Erzeugt atomar eine Stafette-Aufgabe aus einer Annotation und hält die Verknüpfung unveränderlich.
+
+- **Kategorie:** fachlich
+- **Implementierung:** implementiert
+- **Einbindung:** UI
+- **Testabdeckung:** Selbsttest
+- **Letztes Testergebnis:** nicht-ausgefuehrt (nicht aus der Existenz einer Testdatei abgeleitet)
+- **Rollen:** `abgeordneter`, `bueroleitung`, `mitarbeiter`
+- **Routen:** —
+- **Frontend-Komponenten:** —
+- **Services:** `src/features/annotations/taskModel.ts`
+- **Hooks:** —
+- **Edge Functions:** —
+- **Datenbankfunktionen:** `create_document_annotation_task`, `document_annotation_task_selftest`
+- **Tabellen:** `document_annotation_tasks`, `document_annotations`, `tasks`
+- **Abhängigkeiten:** `tasks.create`
+- **Selbsttests:** `document-annotation`
+- **Unit-Tests:** —
+- **Integrationstests:** —
+- **Browser-Tests:** —
+- **Dokumentation:** —
+
+**Nachweise im Quellcode**
+
+- src/features/annotations/taskModel.ts
+
+**Bekannte Einschränkungen**
+
+- Keine.
+
+**Offene Prüfpunkte**
+
+- Keine.
+
+### `annotations.ocr` — OCR für gescannte Dokumente
+Erkennt Text lokal über selbst gehostete Tesseract-Assets und erlaubt das Anlegen von Textmarkierungen.
+
+- **Kategorie:** fachlich
+- **Implementierung:** implementiert
+- **Einbindung:** UI
+- **Testabdeckung:** kein Test
+- **Letztes Testergebnis:** nicht-ausgefuehrt (nicht aus der Existenz einer Testdatei abgeleitet)
+- **Rollen:** `abgeordneter`, `bueroleitung`, `mitarbeiter`
+- **Routen:** —
+- **Frontend-Komponenten:** —
+- **Services:** `src/features/annotations/ocrModel.ts`
+- **Hooks:** `src/features/annotations/useAnnotationOcr.ts`
+- **Edge Functions:** —
+- **Datenbankfunktionen:** —
+- **Tabellen:** `documents`, `document_annotations`
+- **Abhängigkeiten:** —
+- **Selbsttests:** —
+- **Unit-Tests:** —
+- **Integrationstests:** —
+- **Browser-Tests:** —
+- **Dokumentation:** —
+
+**Nachweise im Quellcode**
+
+- src/features/annotations/ocrModel.ts
+- src/features/annotations/useAnnotationOcr.ts
+- scripts/viteAnnotationOcr.ts
+
+**Bekannte Einschränkungen**
+
+- OCR-Qualität hängt vom Scan ab; ein automatisierter Qualitätstest existiert nicht.
+
+**Offene Prüfpunkte**
+
+- Keine.
+
+### `annotations.export` — Annotationen exportieren
+Exportiert annotierte Dokumente als separate PDF-Kopie, ohne das Original zu verändern.
+
+- **Kategorie:** fachlich
+- **Implementierung:** implementiert
+- **Einbindung:** UI
+- **Testabdeckung:** kein Test
+- **Letztes Testergebnis:** nicht-ausgefuehrt (nicht aus der Existenz einer Testdatei abgeleitet)
+- **Rollen:** `abgeordneter`, `bueroleitung`, `mitarbeiter`
+- **Routen:** —
+- **Frontend-Komponenten:** —
+- **Services:** `src/features/annotations/exportModel.ts`, `src/features/annotations/exportPdf.ts`
+- **Hooks:** —
+- **Edge Functions:** —
+- **Datenbankfunktionen:** —
+- **Tabellen:** `documents`, `document_annotations`
+- **Abhängigkeiten:** `annotations.create`
+- **Selbsttests:** —
+- **Unit-Tests:** —
+- **Integrationstests:** —
+- **Browser-Tests:** —
+- **Dokumentation:** —
+
+**Nachweise im Quellcode**
+
+- src/features/annotations/exportModel.ts
+- src/features/annotations/exportPdf.ts
+- src/lib/pdfjs.ts
+
+**Bekannte Einschränkungen**
+
+- Keine.
+
+**Offene Prüfpunkte**
+
+- Keine.
+
+### `annotations.relocate` — Annotationen bei neuer Dateiversion verschieben
+Schlägt bei geänderter Dateiversion einen eindeutigen Textanker vor und verlangt eine ausdrückliche Bestätigung.
+
+- **Kategorie:** fachlich
+- **Implementierung:** implementiert
+- **Einbindung:** UI
+- **Testabdeckung:** kein Test
+- **Letztes Testergebnis:** nicht-ausgefuehrt (nicht aus der Existenz einer Testdatei abgeleitet)
+- **Rollen:** `abgeordneter`, `bueroleitung`, `mitarbeiter`
+- **Routen:** —
+- **Frontend-Komponenten:** —
+- **Services:** `src/features/annotations/relocateText.ts`, `src/features/annotations/textAnchors.ts`
+- **Hooks:** —
+- **Edge Functions:** —
+- **Datenbankfunktionen:** —
+- **Tabellen:** `document_annotations`, `documents`
+- **Abhängigkeiten:** —
+- **Selbsttests:** —
+- **Unit-Tests:** —
+- **Integrationstests:** —
+- **Browser-Tests:** —
+- **Dokumentation:** —
+
+**Nachweise im Quellcode**
+
+- src/features/annotations/relocateText.ts
+- src/features/annotations/textAnchors.ts
+
+**Bekannte Einschränkungen**
+
+- Keine.
+
+**Offene Prüfpunkte**
+
+- Keine.
+
+### `letters.create` — Brief erstellen und bearbeiten
+Erstellt Briefe im Lexical-Editor mit DIN-5008-Layout, Adressen, Vorlagen und Anlagen.
+
+- **Kategorie:** fachlich
+- **Implementierung:** implementiert
+- **Einbindung:** rollenabhängig
+- **Testabdeckung:** Unit-Test
+- **Letztes Testergebnis:** unbekannt (nicht aus der Existenz einer Testdatei abgeleitet)
+- **Rollen:** `abgeordneter`, `bueroleitung`, `mitarbeiter`
+- **Routen:** `/letters/:letterId`
+- **Frontend-Komponenten:** `src/pages/LetterDetail.tsx`, `src/features/letters/components/LetterEditor.tsx`, `src/components/letters/LetterEditorCanvas.tsx`, `src/components/letters/DIN5008LetterLayout.tsx`
+- **Services:** —
+- **Hooks:** —
+- **Edge Functions:** —
+- **Datenbankfunktionen:** —
+- **Tabellen:** `letters`, `letter_template_settings`, `letter_attachments`
+- **Abhängigkeiten:** —
+- **Selbsttests:** —
+- **Unit-Tests:** `src/components/letters/__tests__/types.test.ts`
+- **Integrationstests:** —
+- **Browser-Tests:** —
+- **Dokumentation:** `docs/workflow-consistency.md`
+
+**Nachweise im Quellcode**
+
+- src/features/letters/components/LetterEditor.tsx
+- src/pages/LetterDetail.tsx
+- src/components/letters/LetterEditorCanvas.tsx
+
+**Bekannte Einschränkungen**
+
+- Keine.
+
+**Offene Prüfpunkte**
+
+- Keine.
+
+### `letters.workflow` — Brief-Freigabeworkflow
+Führt Briefe durch Entwurf, Prüfung, Freigabe und Versand, protokolliert Statuswechsel und verhindert falsche Erfolgsmeldungen.
+
+- **Kategorie:** fachlich
+- **Implementierung:** implementiert
+- **Einbindung:** rollenabhängig
+- **Testabdeckung:** Selbsttest
+- **Letztes Testergebnis:** nicht-ausgefuehrt (nicht aus der Existenz einer Testdatei abgeleitet)
+- **Rollen:** `abgeordneter`, `bueroleitung`, `mitarbeiter`
+- **Routen:** —
+- **Frontend-Komponenten:** —
+- **Services:** `src/services/letterWorkflow.ts`
+- **Hooks:** —
+- **Edge Functions:** `archive-letter`
+- **Datenbankfunktionen:** `handle_letter_status_change`, `log_letter_workflow_change`
+- **Tabellen:** `letters`, `letter_workflow_history`, `letter_archive_settings`, `documents`
+- **Abhängigkeiten:** —
+- **Selbsttests:** `letter-lifecycle`
+- **Unit-Tests:** `src/services/letterWorkflow.test.ts`
+- **Integrationstests:** `src/components/letters/hooks/useLetterOperations.integration.test.tsx`
+- **Browser-Tests:** —
+- **Dokumentation:** `docs/workflow-consistency.md`, `docs/selftest-center.md`
+
+**Nachweise im Quellcode**
+
+- src/services/letterWorkflow.ts
+- src/features/selftest/scenarios/letter-lifecycle.ts
+- supabase/functions/archive-letter/index.ts
+
+**Bekannte Einschränkungen**
+
+- Keine.
+
+**Offene Prüfpunkte**
+
+- Keine.
+
+### `letters.archive` — Brief archivieren und Folgeaufgabe anlegen
+Erzeugt beim Versand ein PDF-Archivdokument, verknüpft es und legt optional eine Folgeaufgabe an.
+
+- **Kategorie:** automatisiert
+- **Implementierung:** implementiert
+- **Einbindung:** systemseitig
+- **Testabdeckung:** Selbsttest
+- **Letztes Testergebnis:** nicht-ausgefuehrt (nicht aus der Existenz einer Testdatei abgeleitet)
+- **Rollen:** `abgeordneter`, `bueroleitung`, `mitarbeiter`, `system`
+- **Routen:** —
+- **Frontend-Komponenten:** —
+- **Services:** —
+- **Hooks:** `src/hooks/useLetterArchiving.tsx`
+- **Edge Functions:** `archive-letter`
+- **Datenbankfunktionen:** `create_letter_followup_task`
+- **Tabellen:** `letters`, `documents`, `letter_attachments`, `tasks`
+- **Abhängigkeiten:** `letters.workflow`, `tasks.create`
+- **Selbsttests:** `letter-lifecycle`
+- **Unit-Tests:** —
+- **Integrationstests:** —
+- **Browser-Tests:** —
+- **Dokumentation:** —
+
+**Nachweise im Quellcode**
+
+- src/hooks/useLetterArchiving.tsx
+- supabase/functions/archive-letter/index.ts
+- src/components/letters/ArchivedLetterDetails.tsx
+
+**Bekannte Einschränkungen**
+
+- Keine.
+
+**Offene Prüfpunkte**
+
+- Keine.
+
+### `letters.templates` — Briefvorlagen und Anlässe
+Verwaltet Briefvorlagen, Anlassarten, Absenderdaten und Textbausteine.
+
+- **Kategorie:** administrativ
+- **Implementierung:** implementiert
+- **Einbindung:** rollenabhängig
+- **Testabdeckung:** kein Test
+- **Letztes Testergebnis:** nicht-ausgefuehrt (nicht aus der Existenz einer Testdatei abgeleitet)
+- **Rollen:** `admin`, `bueroleitung`, `abgeordneter`, `mitarbeiter`
+- **Routen:** —
+- **Frontend-Komponenten:** `src/features/letters/components/LetterTemplateManager.tsx`, `src/components/letters/LetterTemplateIntegration.tsx`
+- **Services:** —
+- **Hooks:** —
+- **Edge Functions:** —
+- **Datenbankfunktionen:** —
+- **Tabellen:** `letter_templates`, `letter_occasions`, `letter_template_assets`, `letter_template_settings`, `sender_information`
+- **Abhängigkeiten:** —
+- **Selbsttests:** —
+- **Unit-Tests:** —
+- **Integrationstests:** —
+- **Browser-Tests:** —
+- **Dokumentation:** —
+
+**Nachweise im Quellcode**
+
+- src/features/letters/components/LetterTemplateManager.tsx
+- src/components/administration/LetterOccasionManager.tsx
+- src/components/administration/SenderInformationManager.tsx
+
+**Bekannte Einschränkungen**
+
+- Keine.
+
+**Offene Prüfpunkte**
+
+- Keine.
+
+### `letters.export` — Brief als PDF oder DOCX exportieren
+Erzeugt PDF- und DOCX-Ausgaben aus dem Editorinhalt inklusive Layout und Anlagen.
+
+- **Kategorie:** fachlich
+- **Implementierung:** implementiert
+- **Einbindung:** UI
+- **Testabdeckung:** kein Test
+- **Letztes Testergebnis:** nicht-ausgefuehrt (nicht aus der Existenz einer Testdatei abgeleitet)
+- **Rollen:** `abgeordneter`, `bueroleitung`, `mitarbeiter`
+- **Routen:** —
+- **Frontend-Komponenten:** `src/features/letters/components/LetterPDFExport.tsx`, `src/features/letters/components/LetterDOCXExport.tsx`, `src/components/letter-pdf`
+- **Services:** —
+- **Hooks:** —
+- **Edge Functions:** —
+- **Datenbankfunktionen:** —
+- **Tabellen:** `letters`
+- **Abhängigkeiten:** —
+- **Selbsttests:** —
+- **Unit-Tests:** —
+- **Integrationstests:** —
+- **Browser-Tests:** —
+- **Dokumentation:** —
+
+**Nachweise im Quellcode**
+
+- src/features/letters/components/LetterPDFExport.tsx
+- src/features/letters/components/LetterDOCXExport.tsx
+
+**Bekannte Einschränkungen**
+
+- Keine.
+
+**Offene Prüfpunkte**
+
+- Keine.
+
+### `letters.collaboration` — Brief-Kommentare und Zusammenarbeit
+Erlaubt Kommentare, Mitwirkende und Zugriffsschutz für gemeinsam bearbeitete Briefe.
+
+- **Kategorie:** fachlich
+- **Implementierung:** implementiert
+- **Einbindung:** UI
+- **Testabdeckung:** kein Test
+- **Letztes Testergebnis:** nicht-ausgefuehrt (nicht aus der Existenz einer Testdatei abgeleitet)
+- **Rollen:** `abgeordneter`, `bueroleitung`, `mitarbeiter`
+- **Routen:** —
+- **Frontend-Komponenten:** `src/components/letters/LetterCommentDialog.tsx`
+- **Services:** —
+- **Hooks:** —
+- **Edge Functions:** —
+- **Datenbankfunktionen:** `can_access_letter_for_collaboration`, `letters_secured`
+- **Tabellen:** `letter_comments`, `letter_collaborators`, `letters`
+- **Abhängigkeiten:** —
+- **Selbsttests:** —
+- **Unit-Tests:** —
+- **Integrationstests:** —
+- **Browser-Tests:** —
+- **Dokumentation:** —
+
+**Nachweise im Quellcode**
+
+- src/components/letters/LetterCommentDialog.tsx
+
+**Bekannte Einschränkungen**
+
+- Keine.
+
+**Offene Prüfpunkte**
+
+- Keine.
+
+### `letters.attachments` — Briefanlagen verwalten
+Fügt Anlagen hinzu, entfernt sie und hält sie beim Archivieren am Dokument.
+
+- **Kategorie:** fachlich
+- **Implementierung:** implementiert
+- **Einbindung:** UI
+- **Testabdeckung:** kein Test
+- **Letztes Testergebnis:** nicht-ausgefuehrt (nicht aus der Existenz einer Testdatei abgeleitet)
+- **Rollen:** `abgeordneter`, `bueroleitung`, `mitarbeiter`
+- **Routen:** —
+- **Frontend-Komponenten:** `src/components/letters/LetterAttachmentManager.tsx`
+- **Services:** —
+- **Hooks:** —
+- **Edge Functions:** —
+- **Datenbankfunktionen:** —
+- **Tabellen:** `letter_attachments`, `letters`
+- **Abhängigkeiten:** —
+- **Selbsttests:** —
+- **Unit-Tests:** —
+- **Integrationstests:** —
+- **Browser-Tests:** —
+- **Dokumentation:** —
+
+**Nachweise im Quellcode**
+
+- src/components/letters/LetterAttachmentManager.tsx
+
+**Bekannte Einschränkungen**
+
+- Keine.
+
+**Offene Prüfpunkte**
+
+- Keine.
 
 ## Regeln
 

@@ -1,0 +1,11 @@
+{
+  "version": 1,
+  "description": "Begründete, versionierte Ausnahmen für den Funktionskatalog. Eine Ausnahme entbindet nur von der Pflicht, ein inventarisiertes Objekt einer Funktion zuzuordnen. Sie ist kein Testnachweis und keine Aussage über Verwaistheit. Jede Ausnahme benötigt kind, key und reason. Arten: route, edge-function, rpc, scenario, page.",
+  "exceptions": [
+    {
+      "kind": "page",
+      "key": "src/pages/NotFound.tsx",
+      "reason": "Technische Fallback-Seite für unbekannte Routen ohne eigenständigen fachlichen Funktionsumfang; Verhalten wird durch den Router bestimmt."
+    }
+  ]
+}

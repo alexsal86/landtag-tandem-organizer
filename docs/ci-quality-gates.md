@@ -84,6 +84,17 @@ const payload: any = legacyInput;
 legacyApi.call();
 ```
 
+### Funktionskatalog-Gate
+
+Im Job **`node-quality-gates`** und in `.github/workflows/selftests.yml` sind verpflichtend:
+
+- `npm run check:feature-catalog` — blockierend bei doppelten Funktions-IDs, fehlenden Pflichtfeldern, ungültigen Datei-/Tabellen-/RPC-/Szenario-Referenzen, veralteten generierten Katalogdateien sowie nicht zugeordneten Routen und Edge Functions ohne begründete Ausnahme.
+- `npm run audit:feature-catalog` — Inventarbericht (Routen, Edge Functions, wirksame Datenbankfunktionen, Tabellen, Szenarien).
+- `npm run report:feature-coverage` — Kennzahlen des Funktionskatalogs.
+- `npm run test:feature-catalog` — Struktur-, Kennzahlen- und Konsistenztests des Katalogs.
+
+Heuristisch erkannte Prüfkandidaten (z. B. technische Datenbankfunktionen ohne Funktionszuordnung) erzeugen Review-Hinweise, aber keinen Build-Abbruch. Ausnahmen sind nur über die versionierte Datei `src/features/feature-catalog/exceptions.json` mit `kind`, `key` und `reason` zulässig. Der Katalog selbst ist keine Soll-Spezifikation; maßgeblich ist der nachgewiesene Quellcode.
+
 6. **`fast-unit-integration`**
    - `npm run test:unit-integration:ci` (schneller Vitest-Run)
 7. **`coverage-thresholds`**

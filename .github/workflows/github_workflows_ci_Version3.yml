@@ -162,6 +162,12 @@ jobs:
       - name: Mandatory diagram drift check
         run: npm run check:diagram-drift
 
+      - name: Mandatory feature catalog checks
+        run: |
+          npm run check:feature-catalog
+          npm run audit:feature-catalog
+          npm run report:feature-coverage
+
       - name: Type Check (falls TS)
         run: |
           if [ -f tsconfig.json ]; then

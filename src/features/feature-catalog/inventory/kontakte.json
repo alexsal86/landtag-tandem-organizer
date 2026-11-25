@@ -1,0 +1,535 @@
+{
+  "area": {
+    "id": "kontakte",
+    "title": "Kontakte & Netzwerk",
+    "purpose": "Kontakte, Organisationen und Verteilergruppen pflegen, importieren, Duplikate zusammenführen und Datenschutzvorgaben einhalten."
+  },
+  "features": [
+    {
+      "id": "contacts.create",
+      "subarea": "Stammdaten",
+      "name": "Kontakt anlegen",
+      "description": "Legt Personen und Organisationen mit Stammdaten, Kategorien, Tags, Themen und Zuordnungen an.",
+      "category": "fachlich",
+      "implementationStatus": "implementiert",
+      "integrationStatus": "rollenabhaengig",
+      "coverage": "selftest",
+      "testResult": "nicht-ausgefuehrt",
+      "evidence": [
+        "src/pages/CreateContact.tsx",
+        "src/features/contacts/components/ContactEditForm.tsx",
+        "src/features/selftest/scenarios/contact-lifecycle.ts"
+      ],
+      "routes": [
+        "/contacts/new",
+        "/contacts?action=new"
+      ],
+      "components": [
+        "src/pages/CreateContact.tsx",
+        "src/features/contacts/components/ContactEditForm.tsx"
+      ],
+      "rpcs": [
+        "log_contact_creation",
+        "validate_organization_reference",
+        "assign_contact_to_organization"
+      ],
+      "tables": [
+        "contacts",
+        "contact_topics",
+        "tags",
+        "party_associations",
+        "regions"
+      ],
+      "roles": [
+        "abgeordneter",
+        "bueroleitung",
+        "mitarbeiter",
+        "praktikant"
+      ],
+      "scenarios": [
+        "contact-lifecycle"
+      ],
+      "docs": [
+        "docs/contacts-system-review.md"
+      ]
+    },
+    {
+      "id": "contacts.edit",
+      "subarea": "Stammdaten",
+      "name": "Kontakt bearbeiten",
+      "description": "Ändert Kontaktfelder mit Feldrechten, protokolliert Änderungen und aktualisiert abhängige Anzeigen.",
+      "category": "fachlich",
+      "implementationStatus": "implementiert",
+      "integrationStatus": "rollenabhaengig",
+      "coverage": "selftest",
+      "testResult": "nicht-ausgefuehrt",
+      "evidence": [
+        "src/pages/EditContact.tsx",
+        "src/features/contacts/components/ContactEditForm.tsx"
+      ],
+      "routes": [
+        "/contacts/:id/edit"
+      ],
+      "components": [
+        "src/pages/EditContact.tsx",
+        "src/features/contacts/components/ContactEditForm.tsx"
+      ],
+      "hooks": [
+        "src/hooks/useFieldPermission.ts"
+      ],
+      "rpcs": [
+        "log_contact_edit_activity",
+        "audit_contact_field_updates",
+        "handle_contact_birthday_change",
+        "update_contact_usage"
+      ],
+      "tables": [
+        "contacts",
+        "contact_activities",
+        "audit_log_entries",
+        "field_permissions"
+      ],
+      "roles": [
+        "abgeordneter",
+        "bueroleitung",
+        "mitarbeiter"
+      ],
+      "scenarios": [
+        "contact-lifecycle"
+      ]
+    },
+    {
+      "id": "contacts.detail",
+      "subarea": "Stammdaten",
+      "name": "Kontaktprofil mit Aktivitäten",
+      "description": "Zeigt Stammdaten, Aktivitäten, Dokumente, Finanzierungen, Themen, Vorgänge und Briefingwissen eines Kontakts.",
+      "category": "fachlich",
+      "implementationStatus": "implementiert",
+      "integrationStatus": "ui",
+      "coverage": "keine",
+      "testResult": "nicht-ausgefuehrt",
+      "evidence": [
+        "src/pages/ContactDetail.tsx",
+        "src/features/contacts/components/ContactDetailPanel.tsx"
+      ],
+      "routes": [
+        "/contacts/:id"
+      ],
+      "components": [
+        "src/pages/ContactDetail.tsx",
+        "src/features/contacts/components/ContactDetailPanel.tsx",
+        "src/components/contacts/ContactInfoTab.tsx",
+        "src/components/contacts/ActivityTimeline.tsx"
+      ],
+      "tables": [
+        "contacts",
+        "contact_activities",
+        "contact_topics",
+        "document_contacts",
+        "fundings"
+      ],
+      "roles": [
+        "abgeordneter",
+        "bueroleitung",
+        "mitarbeiter",
+        "praktikant"
+      ]
+    },
+    {
+      "id": "contacts.import",
+      "subarea": "Import",
+      "name": "Kontakte importieren",
+      "description": "Importiert Kontakte aus CSV/VCF/MSG, erkennt Dubletten und ordnet Spalten zu.",
+      "category": "fachlich",
+      "implementationStatus": "implementiert",
+      "integrationStatus": "ui",
+      "coverage": "keine",
+      "testResult": "nicht-ausgefuehrt",
+      "evidence": [
+        "src/pages/ImportContacts.tsx",
+        "src/features/contacts/components/ContactImport.tsx",
+        "src/components/contact-import"
+      ],
+      "routes": [
+        "/contacts/import"
+      ],
+      "components": [
+        "src/pages/ImportContacts.tsx",
+        "src/features/contacts/components/ContactImport.tsx",
+        "src/components/contacts/ContactImportDuplicateDialog.tsx"
+      ],
+      "tables": [
+        "contacts",
+        "contact_activities"
+      ],
+      "roles": [
+        "abgeordneter",
+        "bueroleitung",
+        "mitarbeiter"
+      ],
+      "docs": [
+        "docs/contacts-overhaul-proposals.md"
+      ],
+      "rpcs": [
+        "insert_sample_contacts"
+      ]
+    },
+    {
+      "id": "contacts.duplicates",
+      "subarea": "Qualität",
+      "name": "Dubletten finden",
+      "description": "Findet ähnliche Kontakte über Trigramm-Suche und zeigt Dublettenprüfungen in der Administration.",
+      "category": "fachlich",
+      "implementationStatus": "implementiert",
+      "integrationStatus": "rollenabhaengig",
+      "coverage": "keine",
+      "testResult": "nicht-ausgefuehrt",
+      "evidence": [
+        "src/features/contacts/components/DuplicateWarning.tsx",
+        "src/components/administration/DuplicateScanDashboard.tsx"
+      ],
+      "components": [
+        "src/features/contacts/components/DuplicateWarning.tsx",
+        "src/components/contacts/DuplicateContactsSheet.tsx",
+        "src/components/administration/DuplicateScanDashboard.tsx"
+      ],
+      "rpcs": [
+        "find_contact_duplicates_trgm"
+      ],
+      "tables": [
+        "contacts"
+      ],
+      "roles": [
+        "abgeordneter",
+        "bueroleitung",
+        "mitarbeiter",
+        "admin"
+      ],
+      "reviewPoints": [
+        "Die Trefferheuristik ist nicht qualitätsgetestet; falsche Paare sind möglich."
+      ]
+    },
+    {
+      "id": "contacts.merge",
+      "subarea": "Qualität",
+      "name": "Kontakte zusammenführen",
+      "description": "Führt zwei Kontakte transaktional zusammen, verschiebt alle Verweise und bricht bei nicht verifizierbaren Referenzen ab.",
+      "category": "fachlich",
+      "implementationStatus": "implementiert",
+      "integrationStatus": "rollenabhaengig",
+      "coverage": "selftest",
+      "testResult": "nicht-ausgefuehrt",
+      "evidence": [
+        "src/components/contacts/MergeContactsDialog.tsx",
+        "src/features/selftest/scenarios/contact-lifecycle.ts"
+      ],
+      "components": [
+        "src/components/contacts/MergeContactsDialog.tsx"
+      ],
+      "rpcs": [
+        "merge_contacts"
+      ],
+      "tables": [
+        "contacts",
+        "contact_activities",
+        "contact_topics",
+        "document_contacts",
+        "fundings"
+      ],
+      "roles": [
+        "abgeordneter",
+        "bueroleitung",
+        "mitarbeiter"
+      ],
+      "scenarios": [
+        "contact-lifecycle"
+      ],
+      "docs": [
+        "docs/contacts-system-review.md"
+      ]
+    },
+    {
+      "id": "contacts.distribution-lists",
+      "subarea": "Verteiler",
+      "name": "Verteilerlisten verwalten",
+      "description": "Erstellt und bearbeitet Verteilerlisten, ordnet Mitglieder zu und wandelt Stakeholder in Verteiler um.",
+      "category": "fachlich",
+      "implementationStatus": "implementiert",
+      "integrationStatus": "ui",
+      "coverage": "keine",
+      "testResult": "nicht-ausgefuehrt",
+      "evidence": [
+        "src/pages/CreateDistributionList.tsx",
+        "src/pages/EditDistributionList.tsx",
+        "src/features/contacts/components/DistributionListForm.tsx"
+      ],
+      "routes": [
+        "/contacts?tab=distributionlists"
+      ],
+      "components": [
+        "src/pages/CreateDistributionList.tsx",
+        "src/pages/EditDistributionList.tsx",
+        "src/features/contacts/components/DistributionListForm.tsx",
+        "src/components/contacts/DistributionListsTab.tsx"
+      ],
+      "tables": [
+        "distribution_lists",
+        "distribution_list_members"
+      ],
+      "roles": [
+        "abgeordneter",
+        "bueroleitung",
+        "mitarbeiter"
+      ]
+    },
+    {
+      "id": "contacts.stakeholders",
+      "subarea": "Netzwerk",
+      "name": "Stakeholder-Netzwerk",
+      "description": "Zeigt Stakeholder auf Karten, verwaltet Flags, Ebenen und Netzwerk-Tags.",
+      "category": "fachlich",
+      "implementationStatus": "implementiert",
+      "integrationStatus": "ui",
+      "coverage": "keine",
+      "testResult": "nicht-ausgefuehrt",
+      "evidence": [
+        "src/features/contacts/components/StakeholderView.tsx",
+        "src/components/contacts/StakeholderNetworkPage.tsx"
+      ],
+      "routes": [
+        "/contacts/netzwerk",
+        "/contacts/stakeholder"
+      ],
+      "components": [
+        "src/features/contacts/components/StakeholderView.tsx",
+        "src/components/contacts/StakeholderNetworkPage.tsx",
+        "src/components/dashboard/StakeholderNetworkWidget.tsx"
+      ],
+      "hooks": [
+        "src/hooks/useMapFlags.tsx",
+        "src/hooks/useMapLayers.ts",
+        "src/hooks/useMapFlagStakeholders.tsx"
+      ],
+      "tables": [
+        "map_flags",
+        "map_flag_topics",
+        "map_flag_types",
+        "map_layers",
+        "contacts"
+      ],
+      "roles": [
+        "abgeordneter",
+        "bueroleitung",
+        "mitarbeiter"
+      ]
+    },
+    {
+      "id": "contacts.tags-topics",
+      "subarea": "Struktur",
+      "name": "Kontakt-Tags und Themen",
+      "description": "Vergibt Tags und Themen an Kontakte und synchronisiert sie mit der zentralen Tag- und Themenstruktur.",
+      "category": "fachlich",
+      "implementationStatus": "implementiert",
+      "integrationStatus": "ui",
+      "coverage": "keine",
+      "testResult": "nicht-ausgefuehrt",
+      "evidence": [
+        "src/hooks/useTags.tsx",
+        "src/hooks/useContactTopics.tsx"
+      ],
+      "hooks": [
+        "src/hooks/useTags.tsx",
+        "src/hooks/useContactTopics.tsx"
+      ],
+      "rpcs": [
+        "sync_contact_tags_to_tags_table",
+        "sync_existing_contact_tags",
+        "get_contact_tags",
+        "sync_tags_to_topics",
+        "inherit_organization_tags"
+      ],
+      "tables": [
+        "tags",
+        "contact_topics",
+        "topics"
+      ],
+      "roles": [
+        "abgeordneter",
+        "bueroleitung",
+        "mitarbeiter"
+      ],
+      "reviewPoints": [
+        "Der Abgleich zwischen Kontakt-Tags und zentralen Tags ist nicht durch einen Test abgedeckt."
+      ]
+    },
+    {
+      "id": "contacts.privacy",
+      "subarea": "Datenschutz",
+      "name": "Kontakt-Datenschutz und Aufbewahrung",
+      "description": "Zeigt Datenschutzhinweise, berechnet Aufbewahrungsfristen und maskiert geschützte Kontaktdaten.",
+      "category": "sicherheit",
+      "implementationStatus": "implementiert",
+      "integrationStatus": "ui",
+      "coverage": "keine",
+      "testResult": "nicht-ausgefuehrt",
+      "evidence": [
+        "src/features/contacts/privacy/ContactPrivacyCard.tsx",
+        "src/features/contacts/privacy/retention.ts"
+      ],
+      "components": [
+        "src/features/contacts/privacy/ContactPrivacyCard.tsx"
+      ],
+      "services": [
+        "src/features/contacts/privacy/retention.ts"
+      ],
+      "rpcs": [
+        "contacts_default_retention",
+        "read_secured_contacts",
+        "mask_secured_record",
+        "mutate_secured_records",
+        "contacts_secured"
+      ],
+      "tables": [
+        "contacts"
+      ],
+      "roles": [
+        "admin",
+        "bueroleitung",
+        "mitarbeiter"
+      ],
+      "docs": [
+        "docs/security-function-matrix.md"
+      ]
+    },
+    {
+      "id": "contacts.bulk",
+      "subarea": "Bearbeitung",
+      "name": "Kontakte in Massen bearbeiten",
+      "description": "Aktualisiert Felder für viele Kontakte gleichzeitig, protokolliert die Aktion und erlaubt die Rücknahme.",
+      "category": "fachlich",
+      "implementationStatus": "implementiert",
+      "integrationStatus": "rollenabhaengig",
+      "coverage": "keine",
+      "testResult": "nicht-ausgefuehrt",
+      "evidence": [
+        "src/components/contacts/BulkActionsToolbar.tsx"
+      ],
+      "components": [
+        "src/components/contacts/BulkActionsToolbar.tsx"
+      ],
+      "rpcs": [
+        "bulk_update_contact_fields",
+        "undo_contact_bulk_action",
+        "cleanup_bulk_action_audit"
+      ],
+      "tables": [
+        "contacts",
+        "bulk_action_audit"
+      ],
+      "roles": [
+        "abgeordneter",
+        "bueroleitung",
+        "mitarbeiter"
+      ]
+    },
+    {
+      "id": "contacts.activities",
+      "subarea": "Beziehungen",
+      "name": "Kontaktaktivitäten und Anrufe",
+      "description": "Protokolliert Anrufe, E-Mails, Treffen und Notizen am Kontakt und zeigt sie im Verlauf.",
+      "category": "fachlich",
+      "implementationStatus": "implementiert",
+      "integrationStatus": "ui",
+      "coverage": "keine",
+      "testResult": "nicht-ausgefuehrt",
+      "evidence": [
+        "src/components/contacts/ActivityTimeline.tsx",
+        "src/components/my-work/CallNoteQuickCapture.tsx"
+      ],
+      "components": [
+        "src/components/contacts/ActivityTimeline.tsx",
+        "src/components/my-work/CallNoteQuickCapture.tsx",
+        "src/components/my-work/EmailQuickCapture.tsx"
+      ],
+      "rpcs": [
+        "log_contact_activity",
+        "log_call_log_activity"
+      ],
+      "tables": [
+        "contact_activities",
+        "call_logs"
+      ],
+      "roles": [
+        "abgeordneter",
+        "bueroleitung",
+        "mitarbeiter",
+        "praktikant"
+      ]
+    },
+    {
+      "id": "contacts.briefing-memory",
+      "subarea": "Beziehungen",
+      "name": "Briefingwissen je Kontakt",
+      "description": "Merkt sich Gesprächswissen und Vorlieben je Kontakt für Terminbriefings.",
+      "category": "fachlich",
+      "implementationStatus": "implementiert",
+      "integrationStatus": "ui",
+      "coverage": "keine",
+      "testResult": "nicht-ausgefuehrt",
+      "evidence": [
+        "src/hooks/useContactBriefingMemory.ts",
+        "src/components/contacts/ContactBriefingMemoryTab.tsx"
+      ],
+      "components": [
+        "src/components/contacts/ContactBriefingMemoryTab.tsx"
+      ],
+      "hooks": [
+        "src/hooks/useContactBriefingMemory.ts"
+      ],
+      "tables": [
+        "contact_briefing_memory",
+        "contacts"
+      ],
+      "roles": [
+        "abgeordneter",
+        "bueroleitung",
+        "mitarbeiter"
+      ],
+      "dependsOn": [
+        "appointments.briefing"
+      ]
+    },
+    {
+      "id": "contacts.fundings",
+      "subarea": "Beziehungen",
+      "name": "Finanzierungen und Beteiligungen",
+      "description": "Erfasst Finanzierungen, beteiligte Kontakte und Budgetbezüge.",
+      "category": "fachlich",
+      "implementationStatus": "implementiert",
+      "integrationStatus": "ui",
+      "coverage": "keine",
+      "testResult": "nicht-ausgefuehrt",
+      "evidence": [
+        "src/hooks/useContactFundings.tsx",
+        "src/components/contacts/FundingDialog.tsx"
+      ],
+      "components": [
+        "src/components/contacts/FundingDialog.tsx",
+        "src/components/contacts/ContactFundingsList.tsx"
+      ],
+      "hooks": [
+        "src/hooks/useContactFundings.tsx"
+      ],
+      "tables": [
+        "fundings",
+        "funding_participants",
+        "expense_budgets"
+      ],
+      "roles": [
+        "abgeordneter",
+        "bueroleitung",
+        "mitarbeiter"
+      ]
+    }
+  ]
+}

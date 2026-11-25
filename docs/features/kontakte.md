@@ -1,72 +1,568 @@
-# Kontakte
+# Kontakte & Netzwerk
 
-_Auto-generiert mit `npm run update:feature-catalog` aus den Selbsttest-Szenarien. Nicht von Hand bearbeiten._
+_Auto-generiert mit `npm run update:feature-catalog` aus dem zentralen Funktionskatalog (`src/features/feature-catalog/inventory/kontakte.json`). Nicht von Hand bearbeiten._
 
-**Zweck:** Kontakte mit Stammdaten, Kategorien und Aktivitäten pflegen, Import-Duplikate auflösen und Zusammenführungen ohne Datenverlust ausführen.
+**Zweck:** Kontakte, Organisationen und Verteilergruppen pflegen, importieren, Duplikate zusammenführen und Datenschutzvorgaben einhalten.
 
-## Seiten
+## Kennzahlen
 
-- `/contacts`
-- `/contacts/:id`
-- `/contacts/:id/edit`
-- `/contacts/import`
+- Funktionen: **14** in **9** Unterbereichen
+- implementiert: **14**, teilweise: **0**, deaktiviert: **0**, potenziell verwaist: **0**
+- ohne zugeordneten Test: **11**
+- ohne Dokumentationsverweis: **10**
+
+## Funktionen
+
+| Funktion | Unterbereich | Kategorie | Implementierung | Einbindung | Abdeckung |
+|---|---|---|---|---|---|
+| `contacts.bulk` Kontakte in Massen bearbeiten | Bearbeitung | fachlich | implementiert | rollenabhängig | kein Test |
+| `contacts.briefing-memory` Briefingwissen je Kontakt | Beziehungen | fachlich | implementiert | UI | kein Test |
+| `contacts.fundings` Finanzierungen und Beteiligungen | Beziehungen | fachlich | implementiert | UI | kein Test |
+| `contacts.activities` Kontaktaktivitäten und Anrufe | Beziehungen | fachlich | implementiert | UI | kein Test |
+| `contacts.privacy` Kontakt-Datenschutz und Aufbewahrung | Datenschutz | sicherheit | implementiert | UI | kein Test |
+| `contacts.import` Kontakte importieren | Import | fachlich | implementiert | UI | kein Test |
+| `contacts.stakeholders` Stakeholder-Netzwerk | Netzwerk | fachlich | implementiert | UI | kein Test |
+| `contacts.duplicates` Dubletten finden | Qualität | fachlich | implementiert | rollenabhängig | kein Test |
+| `contacts.merge` Kontakte zusammenführen | Qualität | fachlich | implementiert | rollenabhängig | Selbsttest |
+| `contacts.create` Kontakt anlegen | Stammdaten | fachlich | implementiert | rollenabhängig | Selbsttest |
+| `contacts.edit` Kontakt bearbeiten | Stammdaten | fachlich | implementiert | rollenabhängig | Selbsttest |
+| `contacts.detail` Kontaktprofil mit Aktivitäten | Stammdaten | fachlich | implementiert | UI | kein Test |
+| `contacts.tags-topics` Kontakt-Tags und Themen | Struktur | fachlich | implementiert | UI | kein Test |
+| `contacts.distribution-lists` Verteilerlisten verwalten | Verteiler | fachlich | implementiert | UI | kein Test |
+
+## Unterbereiche
+
+- Stammdaten
+- Import
+- Qualität
+- Verteiler
+- Netzwerk
+- Struktur
+- Datenschutz
+- Bearbeitung
+- Beziehungen
 
 ## Rollen
 
-Keine besondere Rolle deklariert; es gilt die aktive Büro-Mitgliedschaft.
+`abgeordneter`, `bueroleitung`, `mitarbeiter`, `praktikant`, `admin`
 
-## Tabellen
+## Datenbanktabellen
 
-Diese Tabellen schreiben die Szenarien laut `touches`. Fehlende Tabellen bedeuten nicht, dass der Bereich sie nicht liest.
+`audit_log_entries`, `bulk_action_audit`, `call_logs`, `contact_activities`, `contact_briefing_memory`, `contact_topics`, `contacts`, `distribution_list_members`, `distribution_lists`, `document_contacts`, `expense_budgets`, `field_permissions`, `funding_participants`, `fundings`, `map_flag_topics`, `map_flag_types`, `map_flags`, `map_layers`, `party_associations`, `regions`, `tags`, `topics`
 
-| Tabelle | Szenario |
-|---|---|
-| `contact_activities` | `contact-lifecycle` |
-| `contact_usage_stats` | `contact-lifecycle` |
-| `contacts` | `contact-lifecycle` |
+## Selbsttest-Szenarien
 
-## Fremdschlüssel
+| Szenario | Titel | deklarierte Tabellen | deklarierte Prüfungen |
+|---|---|---:|---:|
+| `contact-lifecycle` | Kontakt-Lifecycle (Anlegen → Kategorie/Tags → Aktivität → Suche) | 3 | 0 |
 
-Aus `docs/entity-map.md` für die oben genannten Tabellen. Eingehende Verweise zeigen, welche anderen Tabellen auf diesen Bereich zeigen.
+## Funktionsdetails
 
-### Ausgehend
+### `contacts.create` — Kontakt anlegen
+Legt Personen und Organisationen mit Stammdaten, Kategorien, Tags, Themen und Zuordnungen an.
 
-| Tabelle | Spalte | Zieltabelle |
-|---|---|---|
-| `contact_activities` | `contact_id` | `contacts` |
-| `contacts` | `organization_id` | `contacts` |
-| `contacts` | `tenant_id` | `tenants` |
+- **Kategorie:** fachlich
+- **Implementierung:** implementiert
+- **Einbindung:** rollenabhängig
+- **Testabdeckung:** Selbsttest
+- **Letztes Testergebnis:** nicht-ausgefuehrt (nicht aus der Existenz einer Testdatei abgeleitet)
+- **Rollen:** `abgeordneter`, `bueroleitung`, `mitarbeiter`, `praktikant`
+- **Routen:** `/contacts/new`, `/contacts?action=new`
+- **Frontend-Komponenten:** `src/pages/CreateContact.tsx`, `src/features/contacts/components/ContactEditForm.tsx`
+- **Services:** —
+- **Hooks:** —
+- **Edge Functions:** —
+- **Datenbankfunktionen:** `log_contact_creation`, `validate_organization_reference`, `assign_contact_to_organization`
+- **Tabellen:** `contacts`, `contact_topics`, `tags`, `party_associations`, `regions`
+- **Abhängigkeiten:** —
+- **Selbsttests:** `contact-lifecycle`
+- **Unit-Tests:** —
+- **Integrationstests:** —
+- **Browser-Tests:** —
+- **Dokumentation:** `docs/contacts-system-review.md`
 
-### Eingehend
+**Nachweise im Quellcode**
 
-| Zieltabelle im Bereich | Von | Spalte |
-|---|---|---|
-| `contacts` | `appointment_contacts` | `contact_id` |
-| `contacts` | `appointments` | `contact_id` |
-| `contacts` | `case_file_contacts` | `contact_id` |
-| `contacts` | `case_items` | `contact_id` |
-| `contacts` | `contact_activities` | `contact_id` |
-| `contacts` | `contact_briefing_memory` | `contact_id` |
-| `contacts` | `contact_topics` | `contact_id` |
-| `contacts` | `contacts` | `organization_id` |
-| `contacts` | `distribution_list_members` | `contact_id` |
-| `contacts` | `document_contacts` | `contact_id` |
-| `contacts` | `facts` | `contact_id` |
-| `contacts` | `funding_participants` | `contact_id` |
+- src/pages/CreateContact.tsx
+- src/features/contacts/components/ContactEditForm.tsx
+- src/features/selftest/scenarios/contact-lifecycle.ts
 
-## Prüfumfang
+**Bekannte Einschränkungen**
 
-### `contact-lifecycle` — Kontakt-Lifecycle (Anlegen → Kategorie/Tags → Aktivität → Suche)
+- Keine.
 
-- **Prüfungen:**
-  - Keine Einzelprüfungen deklariert; der Lauf bestätigt nur den Ablauf.
-- **Grenzen:**
-  - Keine deklariert.
+**Offene Prüfpunkte**
 
-## Detaildoku
+- Keine.
 
-- [contacts-system-review.md](../contacts-system-review.md)
-- [contacts-overhaul-proposals.md](../contacts-overhaul-proposals.md)
+### `contacts.edit` — Kontakt bearbeiten
+Ändert Kontaktfelder mit Feldrechten, protokolliert Änderungen und aktualisiert abhängige Anzeigen.
+
+- **Kategorie:** fachlich
+- **Implementierung:** implementiert
+- **Einbindung:** rollenabhängig
+- **Testabdeckung:** Selbsttest
+- **Letztes Testergebnis:** nicht-ausgefuehrt (nicht aus der Existenz einer Testdatei abgeleitet)
+- **Rollen:** `abgeordneter`, `bueroleitung`, `mitarbeiter`
+- **Routen:** `/contacts/:id/edit`
+- **Frontend-Komponenten:** `src/pages/EditContact.tsx`, `src/features/contacts/components/ContactEditForm.tsx`
+- **Services:** —
+- **Hooks:** `src/hooks/useFieldPermission.ts`
+- **Edge Functions:** —
+- **Datenbankfunktionen:** `log_contact_edit_activity`, `audit_contact_field_updates`, `handle_contact_birthday_change`, `update_contact_usage`
+- **Tabellen:** `contacts`, `contact_activities`, `audit_log_entries`, `field_permissions`
+- **Abhängigkeiten:** —
+- **Selbsttests:** `contact-lifecycle`
+- **Unit-Tests:** —
+- **Integrationstests:** —
+- **Browser-Tests:** —
+- **Dokumentation:** —
+
+**Nachweise im Quellcode**
+
+- src/pages/EditContact.tsx
+- src/features/contacts/components/ContactEditForm.tsx
+
+**Bekannte Einschränkungen**
+
+- Keine.
+
+**Offene Prüfpunkte**
+
+- Keine.
+
+### `contacts.detail` — Kontaktprofil mit Aktivitäten
+Zeigt Stammdaten, Aktivitäten, Dokumente, Finanzierungen, Themen, Vorgänge und Briefingwissen eines Kontakts.
+
+- **Kategorie:** fachlich
+- **Implementierung:** implementiert
+- **Einbindung:** UI
+- **Testabdeckung:** kein Test
+- **Letztes Testergebnis:** nicht-ausgefuehrt (nicht aus der Existenz einer Testdatei abgeleitet)
+- **Rollen:** `abgeordneter`, `bueroleitung`, `mitarbeiter`, `praktikant`
+- **Routen:** `/contacts/:id`
+- **Frontend-Komponenten:** `src/pages/ContactDetail.tsx`, `src/features/contacts/components/ContactDetailPanel.tsx`, `src/components/contacts/ContactInfoTab.tsx`, `src/components/contacts/ActivityTimeline.tsx`
+- **Services:** —
+- **Hooks:** —
+- **Edge Functions:** —
+- **Datenbankfunktionen:** —
+- **Tabellen:** `contacts`, `contact_activities`, `contact_topics`, `document_contacts`, `fundings`
+- **Abhängigkeiten:** —
+- **Selbsttests:** —
+- **Unit-Tests:** —
+- **Integrationstests:** —
+- **Browser-Tests:** —
+- **Dokumentation:** —
+
+**Nachweise im Quellcode**
+
+- src/pages/ContactDetail.tsx
+- src/features/contacts/components/ContactDetailPanel.tsx
+
+**Bekannte Einschränkungen**
+
+- Keine.
+
+**Offene Prüfpunkte**
+
+- Keine.
+
+### `contacts.import` — Kontakte importieren
+Importiert Kontakte aus CSV/VCF/MSG, erkennt Dubletten und ordnet Spalten zu.
+
+- **Kategorie:** fachlich
+- **Implementierung:** implementiert
+- **Einbindung:** UI
+- **Testabdeckung:** kein Test
+- **Letztes Testergebnis:** nicht-ausgefuehrt (nicht aus der Existenz einer Testdatei abgeleitet)
+- **Rollen:** `abgeordneter`, `bueroleitung`, `mitarbeiter`
+- **Routen:** `/contacts/import`
+- **Frontend-Komponenten:** `src/pages/ImportContacts.tsx`, `src/features/contacts/components/ContactImport.tsx`, `src/components/contacts/ContactImportDuplicateDialog.tsx`
+- **Services:** —
+- **Hooks:** —
+- **Edge Functions:** —
+- **Datenbankfunktionen:** `insert_sample_contacts`
+- **Tabellen:** `contacts`, `contact_activities`
+- **Abhängigkeiten:** —
+- **Selbsttests:** —
+- **Unit-Tests:** —
+- **Integrationstests:** —
+- **Browser-Tests:** —
+- **Dokumentation:** `docs/contacts-overhaul-proposals.md`
+
+**Nachweise im Quellcode**
+
+- src/pages/ImportContacts.tsx
+- src/features/contacts/components/ContactImport.tsx
+- src/components/contact-import
+
+**Bekannte Einschränkungen**
+
+- Keine.
+
+**Offene Prüfpunkte**
+
+- Keine.
+
+### `contacts.duplicates` — Dubletten finden
+Findet ähnliche Kontakte über Trigramm-Suche und zeigt Dublettenprüfungen in der Administration.
+
+- **Kategorie:** fachlich
+- **Implementierung:** implementiert
+- **Einbindung:** rollenabhängig
+- **Testabdeckung:** kein Test
+- **Letztes Testergebnis:** nicht-ausgefuehrt (nicht aus der Existenz einer Testdatei abgeleitet)
+- **Rollen:** `abgeordneter`, `bueroleitung`, `mitarbeiter`, `admin`
+- **Routen:** —
+- **Frontend-Komponenten:** `src/features/contacts/components/DuplicateWarning.tsx`, `src/components/contacts/DuplicateContactsSheet.tsx`, `src/components/administration/DuplicateScanDashboard.tsx`
+- **Services:** —
+- **Hooks:** —
+- **Edge Functions:** —
+- **Datenbankfunktionen:** `find_contact_duplicates_trgm`
+- **Tabellen:** `contacts`
+- **Abhängigkeiten:** —
+- **Selbsttests:** —
+- **Unit-Tests:** —
+- **Integrationstests:** —
+- **Browser-Tests:** —
+- **Dokumentation:** —
+
+**Nachweise im Quellcode**
+
+- src/features/contacts/components/DuplicateWarning.tsx
+- src/components/administration/DuplicateScanDashboard.tsx
+
+**Bekannte Einschränkungen**
+
+- Keine.
+
+**Offene Prüfpunkte**
+
+- Die Trefferheuristik ist nicht qualitätsgetestet; falsche Paare sind möglich.
+
+### `contacts.merge` — Kontakte zusammenführen
+Führt zwei Kontakte transaktional zusammen, verschiebt alle Verweise und bricht bei nicht verifizierbaren Referenzen ab.
+
+- **Kategorie:** fachlich
+- **Implementierung:** implementiert
+- **Einbindung:** rollenabhängig
+- **Testabdeckung:** Selbsttest
+- **Letztes Testergebnis:** nicht-ausgefuehrt (nicht aus der Existenz einer Testdatei abgeleitet)
+- **Rollen:** `abgeordneter`, `bueroleitung`, `mitarbeiter`
+- **Routen:** —
+- **Frontend-Komponenten:** `src/components/contacts/MergeContactsDialog.tsx`
+- **Services:** —
+- **Hooks:** —
+- **Edge Functions:** —
+- **Datenbankfunktionen:** `merge_contacts`
+- **Tabellen:** `contacts`, `contact_activities`, `contact_topics`, `document_contacts`, `fundings`
+- **Abhängigkeiten:** —
+- **Selbsttests:** `contact-lifecycle`
+- **Unit-Tests:** —
+- **Integrationstests:** —
+- **Browser-Tests:** —
+- **Dokumentation:** `docs/contacts-system-review.md`
+
+**Nachweise im Quellcode**
+
+- src/components/contacts/MergeContactsDialog.tsx
+- src/features/selftest/scenarios/contact-lifecycle.ts
+
+**Bekannte Einschränkungen**
+
+- Keine.
+
+**Offene Prüfpunkte**
+
+- Keine.
+
+### `contacts.distribution-lists` — Verteilerlisten verwalten
+Erstellt und bearbeitet Verteilerlisten, ordnet Mitglieder zu und wandelt Stakeholder in Verteiler um.
+
+- **Kategorie:** fachlich
+- **Implementierung:** implementiert
+- **Einbindung:** UI
+- **Testabdeckung:** kein Test
+- **Letztes Testergebnis:** nicht-ausgefuehrt (nicht aus der Existenz einer Testdatei abgeleitet)
+- **Rollen:** `abgeordneter`, `bueroleitung`, `mitarbeiter`
+- **Routen:** `/contacts?tab=distributionlists`
+- **Frontend-Komponenten:** `src/pages/CreateDistributionList.tsx`, `src/pages/EditDistributionList.tsx`, `src/features/contacts/components/DistributionListForm.tsx`, `src/components/contacts/DistributionListsTab.tsx`
+- **Services:** —
+- **Hooks:** —
+- **Edge Functions:** —
+- **Datenbankfunktionen:** —
+- **Tabellen:** `distribution_lists`, `distribution_list_members`
+- **Abhängigkeiten:** —
+- **Selbsttests:** —
+- **Unit-Tests:** —
+- **Integrationstests:** —
+- **Browser-Tests:** —
+- **Dokumentation:** —
+
+**Nachweise im Quellcode**
+
+- src/pages/CreateDistributionList.tsx
+- src/pages/EditDistributionList.tsx
+- src/features/contacts/components/DistributionListForm.tsx
+
+**Bekannte Einschränkungen**
+
+- Keine.
+
+**Offene Prüfpunkte**
+
+- Keine.
+
+### `contacts.stakeholders` — Stakeholder-Netzwerk
+Zeigt Stakeholder auf Karten, verwaltet Flags, Ebenen und Netzwerk-Tags.
+
+- **Kategorie:** fachlich
+- **Implementierung:** implementiert
+- **Einbindung:** UI
+- **Testabdeckung:** kein Test
+- **Letztes Testergebnis:** nicht-ausgefuehrt (nicht aus der Existenz einer Testdatei abgeleitet)
+- **Rollen:** `abgeordneter`, `bueroleitung`, `mitarbeiter`
+- **Routen:** `/contacts/netzwerk`, `/contacts/stakeholder`
+- **Frontend-Komponenten:** `src/features/contacts/components/StakeholderView.tsx`, `src/components/contacts/StakeholderNetworkPage.tsx`, `src/components/dashboard/StakeholderNetworkWidget.tsx`
+- **Services:** —
+- **Hooks:** `src/hooks/useMapFlags.tsx`, `src/hooks/useMapLayers.ts`, `src/hooks/useMapFlagStakeholders.tsx`
+- **Edge Functions:** —
+- **Datenbankfunktionen:** —
+- **Tabellen:** `map_flags`, `map_flag_topics`, `map_flag_types`, `map_layers`, `contacts`
+- **Abhängigkeiten:** —
+- **Selbsttests:** —
+- **Unit-Tests:** —
+- **Integrationstests:** —
+- **Browser-Tests:** —
+- **Dokumentation:** —
+
+**Nachweise im Quellcode**
+
+- src/features/contacts/components/StakeholderView.tsx
+- src/components/contacts/StakeholderNetworkPage.tsx
+
+**Bekannte Einschränkungen**
+
+- Keine.
+
+**Offene Prüfpunkte**
+
+- Keine.
+
+### `contacts.tags-topics` — Kontakt-Tags und Themen
+Vergibt Tags und Themen an Kontakte und synchronisiert sie mit der zentralen Tag- und Themenstruktur.
+
+- **Kategorie:** fachlich
+- **Implementierung:** implementiert
+- **Einbindung:** UI
+- **Testabdeckung:** kein Test
+- **Letztes Testergebnis:** nicht-ausgefuehrt (nicht aus der Existenz einer Testdatei abgeleitet)
+- **Rollen:** `abgeordneter`, `bueroleitung`, `mitarbeiter`
+- **Routen:** —
+- **Frontend-Komponenten:** —
+- **Services:** —
+- **Hooks:** `src/hooks/useTags.tsx`, `src/hooks/useContactTopics.tsx`
+- **Edge Functions:** —
+- **Datenbankfunktionen:** `sync_contact_tags_to_tags_table`, `sync_existing_contact_tags`, `get_contact_tags`, `sync_tags_to_topics`, `inherit_organization_tags`
+- **Tabellen:** `tags`, `contact_topics`, `topics`
+- **Abhängigkeiten:** —
+- **Selbsttests:** —
+- **Unit-Tests:** —
+- **Integrationstests:** —
+- **Browser-Tests:** —
+- **Dokumentation:** —
+
+**Nachweise im Quellcode**
+
+- src/hooks/useTags.tsx
+- src/hooks/useContactTopics.tsx
+
+**Bekannte Einschränkungen**
+
+- Keine.
+
+**Offene Prüfpunkte**
+
+- Der Abgleich zwischen Kontakt-Tags und zentralen Tags ist nicht durch einen Test abgedeckt.
+
+### `contacts.privacy` — Kontakt-Datenschutz und Aufbewahrung
+Zeigt Datenschutzhinweise, berechnet Aufbewahrungsfristen und maskiert geschützte Kontaktdaten.
+
+- **Kategorie:** sicherheit
+- **Implementierung:** implementiert
+- **Einbindung:** UI
+- **Testabdeckung:** kein Test
+- **Letztes Testergebnis:** nicht-ausgefuehrt (nicht aus der Existenz einer Testdatei abgeleitet)
+- **Rollen:** `admin`, `bueroleitung`, `mitarbeiter`
+- **Routen:** —
+- **Frontend-Komponenten:** `src/features/contacts/privacy/ContactPrivacyCard.tsx`
+- **Services:** `src/features/contacts/privacy/retention.ts`
+- **Hooks:** —
+- **Edge Functions:** —
+- **Datenbankfunktionen:** `contacts_default_retention`, `read_secured_contacts`, `mask_secured_record`, `mutate_secured_records`, `contacts_secured`
+- **Tabellen:** `contacts`
+- **Abhängigkeiten:** —
+- **Selbsttests:** —
+- **Unit-Tests:** —
+- **Integrationstests:** —
+- **Browser-Tests:** —
+- **Dokumentation:** `docs/security-function-matrix.md`
+
+**Nachweise im Quellcode**
+
+- src/features/contacts/privacy/ContactPrivacyCard.tsx
+- src/features/contacts/privacy/retention.ts
+
+**Bekannte Einschränkungen**
+
+- Keine.
+
+**Offene Prüfpunkte**
+
+- Keine.
+
+### `contacts.bulk` — Kontakte in Massen bearbeiten
+Aktualisiert Felder für viele Kontakte gleichzeitig, protokolliert die Aktion und erlaubt die Rücknahme.
+
+- **Kategorie:** fachlich
+- **Implementierung:** implementiert
+- **Einbindung:** rollenabhängig
+- **Testabdeckung:** kein Test
+- **Letztes Testergebnis:** nicht-ausgefuehrt (nicht aus der Existenz einer Testdatei abgeleitet)
+- **Rollen:** `abgeordneter`, `bueroleitung`, `mitarbeiter`
+- **Routen:** —
+- **Frontend-Komponenten:** `src/components/contacts/BulkActionsToolbar.tsx`
+- **Services:** —
+- **Hooks:** —
+- **Edge Functions:** —
+- **Datenbankfunktionen:** `bulk_update_contact_fields`, `undo_contact_bulk_action`, `cleanup_bulk_action_audit`
+- **Tabellen:** `contacts`, `bulk_action_audit`
+- **Abhängigkeiten:** —
+- **Selbsttests:** —
+- **Unit-Tests:** —
+- **Integrationstests:** —
+- **Browser-Tests:** —
+- **Dokumentation:** —
+
+**Nachweise im Quellcode**
+
+- src/components/contacts/BulkActionsToolbar.tsx
+
+**Bekannte Einschränkungen**
+
+- Keine.
+
+**Offene Prüfpunkte**
+
+- Keine.
+
+### `contacts.activities` — Kontaktaktivitäten und Anrufe
+Protokolliert Anrufe, E-Mails, Treffen und Notizen am Kontakt und zeigt sie im Verlauf.
+
+- **Kategorie:** fachlich
+- **Implementierung:** implementiert
+- **Einbindung:** UI
+- **Testabdeckung:** kein Test
+- **Letztes Testergebnis:** nicht-ausgefuehrt (nicht aus der Existenz einer Testdatei abgeleitet)
+- **Rollen:** `abgeordneter`, `bueroleitung`, `mitarbeiter`, `praktikant`
+- **Routen:** —
+- **Frontend-Komponenten:** `src/components/contacts/ActivityTimeline.tsx`, `src/components/my-work/CallNoteQuickCapture.tsx`, `src/components/my-work/EmailQuickCapture.tsx`
+- **Services:** —
+- **Hooks:** —
+- **Edge Functions:** —
+- **Datenbankfunktionen:** `log_contact_activity`, `log_call_log_activity`
+- **Tabellen:** `contact_activities`, `call_logs`
+- **Abhängigkeiten:** —
+- **Selbsttests:** —
+- **Unit-Tests:** —
+- **Integrationstests:** —
+- **Browser-Tests:** —
+- **Dokumentation:** —
+
+**Nachweise im Quellcode**
+
+- src/components/contacts/ActivityTimeline.tsx
+- src/components/my-work/CallNoteQuickCapture.tsx
+
+**Bekannte Einschränkungen**
+
+- Keine.
+
+**Offene Prüfpunkte**
+
+- Keine.
+
+### `contacts.briefing-memory` — Briefingwissen je Kontakt
+Merkt sich Gesprächswissen und Vorlieben je Kontakt für Terminbriefings.
+
+- **Kategorie:** fachlich
+- **Implementierung:** implementiert
+- **Einbindung:** UI
+- **Testabdeckung:** kein Test
+- **Letztes Testergebnis:** nicht-ausgefuehrt (nicht aus der Existenz einer Testdatei abgeleitet)
+- **Rollen:** `abgeordneter`, `bueroleitung`, `mitarbeiter`
+- **Routen:** —
+- **Frontend-Komponenten:** `src/components/contacts/ContactBriefingMemoryTab.tsx`
+- **Services:** —
+- **Hooks:** `src/hooks/useContactBriefingMemory.ts`
+- **Edge Functions:** —
+- **Datenbankfunktionen:** —
+- **Tabellen:** `contact_briefing_memory`, `contacts`
+- **Abhängigkeiten:** `appointments.briefing`
+- **Selbsttests:** —
+- **Unit-Tests:** —
+- **Integrationstests:** —
+- **Browser-Tests:** —
+- **Dokumentation:** —
+
+**Nachweise im Quellcode**
+
+- src/hooks/useContactBriefingMemory.ts
+- src/components/contacts/ContactBriefingMemoryTab.tsx
+
+**Bekannte Einschränkungen**
+
+- Keine.
+
+**Offene Prüfpunkte**
+
+- Keine.
+
+### `contacts.fundings` — Finanzierungen und Beteiligungen
+Erfasst Finanzierungen, beteiligte Kontakte und Budgetbezüge.
+
+- **Kategorie:** fachlich
+- **Implementierung:** implementiert
+- **Einbindung:** UI
+- **Testabdeckung:** kein Test
+- **Letztes Testergebnis:** nicht-ausgefuehrt (nicht aus der Existenz einer Testdatei abgeleitet)
+- **Rollen:** `abgeordneter`, `bueroleitung`, `mitarbeiter`
+- **Routen:** —
+- **Frontend-Komponenten:** `src/components/contacts/FundingDialog.tsx`, `src/components/contacts/ContactFundingsList.tsx`
+- **Services:** —
+- **Hooks:** `src/hooks/useContactFundings.tsx`
+- **Edge Functions:** —
+- **Datenbankfunktionen:** —
+- **Tabellen:** `fundings`, `funding_participants`, `expense_budgets`
+- **Abhängigkeiten:** —
+- **Selbsttests:** —
+- **Unit-Tests:** —
+- **Integrationstests:** —
+- **Browser-Tests:** —
+- **Dokumentation:** —
+
+**Nachweise im Quellcode**
+
+- src/hooks/useContactFundings.tsx
+- src/components/contacts/FundingDialog.tsx
+
+**Bekannte Einschränkungen**
+
+- Keine.
+
+**Offene Prüfpunkte**
+
+- Keine.
 
 ## Regeln
 

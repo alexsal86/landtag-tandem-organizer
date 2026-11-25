@@ -1,0 +1,700 @@
+{
+  "area": {
+    "id": "termine",
+    "title": "Termine, Anfragen & Briefings",
+    "purpose": "Kalender führen, Termine anlegen und abstimmen, Einladungen und Erinnerungen versenden, Briefings vorbereiten und nachbereiten."
+  },
+  "features": [
+    {
+      "id": "calendar.view",
+      "subarea": "Kalender",
+      "name": "Terminkalender anzeigen",
+      "description": "Stellt Termine in Monats-, Wochen- und Tagesansicht dar, inklusive Quellen, Kollisionen und Statusfiltern.",
+      "category": "fachlich",
+      "implementationStatus": "implementiert",
+      "integrationStatus": "ui",
+      "coverage": "selftest",
+      "testResult": "nicht-ausgefuehrt",
+      "evidence": [
+        "src/features/calendar/components/CalendarView.tsx",
+        "src/components/calendar/EnhancedCalendar.tsx",
+        "src/features/selftest/scenarios/appointment-lifecycle.ts"
+      ],
+      "routes": [
+        "/calendar"
+      ],
+      "components": [
+        "src/features/calendar/components/CalendarView.tsx",
+        "src/components/calendar/EnhancedCalendar.tsx",
+        "src/components/calendar/MonthView.tsx",
+        "src/components/calendar/WeekView.tsx",
+        "src/components/calendar/DayView.tsx"
+      ],
+      "tables": [
+        "appointments",
+        "appointment_statuses",
+        "appointment_categories",
+        "external_events",
+        "starred_appointments"
+      ],
+      "roles": [
+        "abgeordneter",
+        "bueroleitung",
+        "mitarbeiter",
+        "praktikant"
+      ],
+      "scenarios": [
+        "appointment-lifecycle"
+      ],
+      "docs": [
+        "docs/rollenrechte-matrix.md"
+      ]
+    },
+    {
+      "id": "calendar.create-appointment",
+      "subarea": "Kalender",
+      "name": "Termin anlegen",
+      "description": "Legt Termine mit Zeitraum, Ort, Kategorie, Kontakten, Gästen und Vorbereitungsbezug an.",
+      "category": "fachlich",
+      "implementationStatus": "implementiert",
+      "integrationStatus": "rollenabhaengig",
+      "coverage": "selftest",
+      "testResult": "nicht-ausgefuehrt",
+      "evidence": [
+        "src/features/appointments/components/CreateAppointmentDialog.tsx",
+        "src/pages/Index.tsx"
+      ],
+      "components": [
+        "src/features/appointments/components/CreateAppointmentDialog.tsx"
+      ],
+      "tables": [
+        "appointments",
+        "appointment_categories",
+        "appointment_locations",
+        "appointment_contacts"
+      ],
+      "roles": [
+        "abgeordneter",
+        "bueroleitung",
+        "mitarbeiter",
+        "praktikant"
+      ],
+      "scenarios": [
+        "appointment-lifecycle"
+      ]
+    },
+    {
+      "id": "calendar.edit-move",
+      "subarea": "Kalender",
+      "name": "Termin bearbeiten und verschieben",
+      "description": "Ändert Termine, verschiebt sie im Kalender und erzeugt bei relevanten Änderungen Hinweise an Beteiligte.",
+      "category": "fachlich",
+      "implementationStatus": "implementiert",
+      "integrationStatus": "ui",
+      "coverage": "keine",
+      "testResult": "nicht-ausgefuehrt",
+      "evidence": [
+        "src/features/appointments/change-alerts/AppointmentChangeAlerts.tsx",
+        "src/features/appointments/change-alerts/changeModel.ts"
+      ],
+      "components": [
+        "src/features/appointments/change-alerts/AppointmentChangeAlerts.tsx"
+      ],
+      "services": [
+        "src/features/appointments/change-alerts/changeModel.ts"
+      ],
+      "rpcs": [
+        "reset_appointment_reminders_on_move",
+        "reopen_changed_appointment_briefing"
+      ],
+      "tables": [
+        "appointments",
+        "appointment_change_alerts",
+        "appointment_reminder_dispatches"
+      ],
+      "roles": [
+        "abgeordneter",
+        "bueroleitung",
+        "mitarbeiter"
+      ]
+    },
+    {
+      "id": "calendar.guests",
+      "subarea": "Kalender",
+      "name": "Gäste und Teilnehmende verwalten",
+      "description": "Verwaltet Termingäste, Standardgäste und Zu-/Absagen mit E-Mail-Normalisierung.",
+      "category": "fachlich",
+      "implementationStatus": "implementiert",
+      "integrationStatus": "ui",
+      "coverage": "keine",
+      "testResult": "nicht-ausgefuehrt",
+      "evidence": [
+        "src/features/appointments/components/GuestManager.tsx",
+        "src/features/appointments/components/DefaultGuestsAdmin.tsx"
+      ],
+      "components": [
+        "src/features/appointments/components/GuestManager.tsx",
+        "src/features/appointments/components/DefaultGuestsAdmin.tsx"
+      ],
+      "rpcs": [
+        "upsert_appointment_guests",
+        "normalize_appointment_guest_email"
+      ],
+      "tables": [
+        "appointment_guests",
+        "default_appointment_guests",
+        "appointments"
+      ],
+      "roles": [
+        "abgeordneter",
+        "bueroleitung",
+        "mitarbeiter",
+        "praktikant"
+      ]
+    },
+    {
+      "id": "calendar.reminders",
+      "subarea": "Kalender",
+      "name": "Terminerinnerungen",
+      "description": "Versendet In-App-, Push- und optional E-Mail-Erinnerungen gemäß reminder_minutes und verhindert Doppelversand.",
+      "category": "automatisiert",
+      "implementationStatus": "implementiert",
+      "integrationStatus": "system",
+      "coverage": "keine",
+      "testResult": "nicht-ausgefuehrt",
+      "evidence": [
+        "src/features/appointments/reminderRules.ts",
+        "supabase/functions/send-appointment-reminders/index.ts",
+        "supabase/functions/_shared/appointmentReminder.ts"
+      ],
+      "edgeFunctions": [
+        "send-appointment-reminders"
+      ],
+      "services": [
+        "supabase/functions/_shared/appointmentReminder.ts",
+        "src/features/appointments/reminderRules.ts"
+      ],
+      "rpcs": [
+        "dispatch_due_appointment_reminders",
+        "seed_appointment_reminder_type"
+      ],
+      "tables": [
+        "appointments",
+        "appointment_reminder_dispatches",
+        "notifications"
+      ],
+      "roles": [
+        "system",
+        "abgeordneter",
+        "bueroleitung",
+        "mitarbeiter"
+      ],
+      "docs": [
+        "docs/operations"
+      ]
+    },
+    {
+      "id": "calendar.invitations",
+      "subarea": "Kalender",
+      "name": "Termineinladungen und Kalendereinträge versenden",
+      "description": "Erzeugt ICS-Einladungen, versendet sie und stempelt den Versand am Termin.",
+      "category": "integration",
+      "implementationStatus": "implementiert",
+      "integrationStatus": "ui",
+      "coverage": "unit",
+      "testResult": "unbekannt",
+      "evidence": [
+        "supabase/functions/_shared/appointmentInvite.ts",
+        "supabase/functions/generate-calendar-invite/index.ts",
+        "supabase/functions/send-appointment-invitation/index.ts"
+      ],
+      "edgeFunctions": [
+        "generate-calendar-invite",
+        "send-appointment-invitation"
+      ],
+      "services": [
+        "supabase/functions/_shared/appointmentInvite.ts",
+        "src/features/appointments/invitations/invitationRules.ts"
+      ],
+      "rpcs": [
+        "stamp_appointment_calendar_invite"
+      ],
+      "tables": [
+        "appointments",
+        "appointment_guests",
+        "email_logs"
+      ],
+      "roles": [
+        "abgeordneter",
+        "bueroleitung",
+        "mitarbeiter"
+      ],
+      "unitTests": [
+        "supabase/functions/_shared/appointmentInvite.test.ts"
+      ]
+    },
+    {
+      "id": "appointments.requests",
+      "subarea": "Terminanfragen",
+      "name": "Terminanfrage stellen und entscheiden",
+      "description": "Erfasst Terminanfragen in einer eigenen Tabelle; nur die Entscheiderrolle darf über decide_appointment_request zusagen und damit atomar einen Termin erzeugen.",
+      "category": "fachlich",
+      "implementationStatus": "implementiert",
+      "integrationStatus": "rollenabhaengig",
+      "coverage": "selftest",
+      "testResult": "nicht-ausgefuehrt",
+      "evidence": [
+        "src/features/appointment-requests/AppointmentRequestHost.tsx",
+        "src/features/appointment-requests/logic.ts",
+        "src/features/selftest/scenarios/appointment-request-lifecycle.ts"
+      ],
+      "components": [
+        "src/features/appointment-requests/AppointmentRequestHost.tsx",
+        "src/features/appointment-requests/AppointmentRequestCreateDialog.tsx",
+        "src/features/appointment-requests/AppointmentRequestDetailDialog.tsx",
+        "src/features/appointment-requests/AppointmentRequestList.tsx"
+      ],
+      "hooks": [
+        "src/features/appointment-requests/useAppointmentRequests.ts"
+      ],
+      "rpcs": [
+        "decide_appointment_request",
+        "appointment_requests_guard"
+      ],
+      "tables": [
+        "appointment_requests",
+        "appointments"
+      ],
+      "roles": [
+        "abgeordneter",
+        "bueroleitung",
+        "mitarbeiter"
+      ],
+      "scenarios": [
+        "appointment-request-lifecycle"
+      ],
+      "docs": [
+        "docs/rollenrechte-matrix.md"
+      ],
+      "limitations": [
+        "Ein direkter Statuswechsel wird durch einen Trigger blockiert; der Negativpfad ist im Szenario geprüft."
+      ]
+    },
+    {
+      "id": "appointments.briefing",
+      "subarea": "Briefings",
+      "name": "Terminbriefing erstellen",
+      "description": "Erstellt Kurz-, 7-Phasen- und Live-Briefings auf einem gemeinsamen preparation_data-Datensatz und erzeugt Folgeaufgaben.",
+      "category": "fachlich",
+      "implementationStatus": "implementiert",
+      "integrationStatus": "rollenabhaengig",
+      "coverage": "selftest",
+      "testResult": "nicht-ausgefuehrt",
+      "evidence": [
+        "src/features/appointments/briefing/briefingModel.ts",
+        "src/features/appointments/briefing.ts",
+        "src/features/selftest/scenarios/appointment-briefing-lifecycle.ts"
+      ],
+      "routes": [
+        "/appointment-preparation/:id"
+      ],
+      "components": [
+        "src/features/appointments/components/AppointmentPreparationSidebar.tsx",
+        "src/features/appointments/briefing/CompactBriefingEditor.tsx",
+        "src/features/appointments/briefing/AppointmentBriefingStatusCard.tsx"
+      ],
+      "hooks": [
+        "src/features/appointments/briefing/useBriefing.ts",
+        "src/hooks/useAppointmentPreparation.tsx"
+      ],
+      "rpcs": [
+        "set_appointment_briefing",
+        "set_appointment_briefing_depth",
+        "advance_appointment_briefing",
+        "complete_appointment_briefing",
+        "create_briefing_follow_up_task",
+        "appointment_preparation_ready",
+        "auto_archive_completed_preparations",
+        "create_preparation_followup",
+        "preserve_preparation_task_links",
+        "record_preparation_history",
+        "validate_appointment_briefing_status"
+      ],
+      "tables": [
+        "appointment_preparations",
+        "appointment_preparation_documents",
+        "appointments",
+        "tasks"
+      ],
+      "roles": [
+        "abgeordneter",
+        "bueroleitung",
+        "mitarbeiter"
+      ],
+      "scenarios": [
+        "appointment-briefing-lifecycle"
+      ],
+      "unitTests": [
+        "src/features/appointments/briefing.test.ts"
+      ],
+      "docs": [
+        "docs/dossier-umsetzungsplan.md"
+      ]
+    },
+    {
+      "id": "appointments.briefing-live",
+      "subarea": "Briefings",
+      "name": "Live-Briefing und Nachbereitung",
+      "description": "Führt das Briefing im Termin, erlaubt Statusfortschritt und erzeugt Nachbereitungsaufgaben mit Stafette-Feldern.",
+      "category": "fachlich",
+      "implementationStatus": "implementiert",
+      "integrationStatus": "ui",
+      "coverage": "selftest",
+      "testResult": "nicht-ausgefuehrt",
+      "evidence": [
+        "src/pages/BriefingLivePage.tsx",
+        "src/features/appointments/briefing/useBriefingEditorView.ts",
+        "src/features/appointments/briefing/debriefActions.ts"
+      ],
+      "routes": [
+        "/briefing-live/:id"
+      ],
+      "components": [
+        "src/pages/BriefingLivePage.tsx",
+        "src/features/appointments/briefing/PendingBriefingNotice.tsx"
+      ],
+      "services": [
+        "src/features/appointments/briefing/briefingModel.ts"
+      ],
+      "rpcs": [
+        "advance_appointment_briefing",
+        "complete_appointment_briefing"
+      ],
+      "tables": [
+        "appointment_preparations",
+        "tasks"
+      ],
+      "roles": [
+        "abgeordneter",
+        "bueroleitung",
+        "mitarbeiter"
+      ],
+      "scenarios": [
+        "appointment-briefing-lifecycle"
+      ]
+    },
+    {
+      "id": "appointments.debrief",
+      "subarea": "Nachbereitung",
+      "name": "Nachbereitung und Büro-Feedback",
+      "description": "Sammelt Rückmeldungen aus dem Termin, zeigt offene Nachbereitungen und schließt Feedback-Erinnerungen.",
+      "category": "fachlich",
+      "implementationStatus": "implementiert",
+      "integrationStatus": "ui",
+      "coverage": "keine",
+      "testResult": "nicht-ausgefuehrt",
+      "evidence": [
+        "src/features/appointments/briefing/OfficeDebriefInboxCard.tsx",
+        "src/features/appointments/briefing/officeDebriefInbox.ts",
+        "src/features/appointments/briefing/OfficeFeedbackCard.tsx"
+      ],
+      "components": [
+        "src/features/appointments/briefing/OfficeDebriefInboxCard.tsx",
+        "src/features/appointments/briefing/OfficeFeedbackCard.tsx",
+        "src/features/appointments/briefing/DeputyDebriefReview.tsx"
+      ],
+      "services": [
+        "src/features/appointments/briefing/officeDebriefInbox.ts",
+        "src/features/appointments/briefing/officeFeedback.ts"
+      ],
+      "rpcs": [
+        "list_office_debriefs",
+        "update_office_debrief",
+        "close_office_feedback_reminder"
+      ],
+      "tables": [
+        "appointment_feedback",
+        "appointment_preparations"
+      ],
+      "roles": [
+        "abgeordneter",
+        "bueroleitung",
+        "mitarbeiter"
+      ]
+    },
+    {
+      "id": "appointments.feedback",
+      "subarea": "Nachbereitung",
+      "name": "Termin-Feedback erfassen",
+      "description": "Erfasst Feedback zu vergangenen Terminen, erzeugt Feedback-Einträge automatisch und steuert Erinnerungen.",
+      "category": "automatisiert",
+      "implementationStatus": "implementiert",
+      "integrationStatus": "system",
+      "coverage": "keine",
+      "testResult": "nicht-ausgefuehrt",
+      "evidence": [
+        "supabase/functions/create-daily-appointment-feedback/index.ts",
+        "src/components/dashboard/AppointmentFeedbackWidget.tsx"
+      ],
+      "edgeFunctions": [
+        "create-daily-appointment-feedback"
+      ],
+      "components": [
+        "src/components/dashboard/AppointmentFeedbackWidget.tsx"
+      ],
+      "rpcs": [
+        "create_appointment_feedback_entry",
+        "create_appointment_feedback_on_past",
+        "create_feedback_for_past_appointment",
+        "dispatch_office_feedback_reminders",
+        "request_birthday_congratulations"
+      ],
+      "tables": [
+        "appointment_feedback",
+        "appointment_feedback_settings"
+      ],
+      "roles": [
+        "abgeordneter",
+        "bueroleitung",
+        "mitarbeiter",
+        "system"
+      ]
+    },
+    {
+      "id": "appointments.preparation",
+      "subarea": "Vorbereitung",
+      "name": "Terminvorbereitung mit Vorschlägen",
+      "description": "Bereitet Termine mit Dokumenten, Themen, Kontaktwissen und KI-Vorschlägen vor.",
+      "category": "fachlich",
+      "implementationStatus": "implementiert",
+      "integrationStatus": "ui",
+      "coverage": "keine",
+      "testResult": "nicht-ausgefuehrt",
+      "evidence": [
+        "src/pages/AppointmentPreparationDetail.tsx",
+        "src/hooks/useAppointmentPreparation.tsx"
+      ],
+      "routes": [
+        "/appointment-preparation/:id"
+      ],
+      "components": [
+        "src/pages/AppointmentPreparationDetail.tsx",
+        "src/components/appointment-preparations"
+      ],
+      "hooks": [
+        "src/hooks/useAppointmentPreparation.tsx",
+        "src/hooks/useAppointmentPreparationShortcuts.ts"
+      ],
+      "edgeFunctions": [
+        "generate-preparation-suggestions",
+        "detect-appointment-district"
+      ],
+      "tables": [
+        "appointment_preparations",
+        "appointment_preparation_templates",
+        "appointment_topics",
+        "appointment_preparation_documents"
+      ],
+      "roles": [
+        "abgeordneter",
+        "bueroleitung",
+        "mitarbeiter"
+      ],
+      "dependsOn": [
+        "appointments.briefing"
+      ]
+    },
+    {
+      "id": "appointments.jour-fixe",
+      "subarea": "Jour fixe",
+      "name": "Jour-fixe-Agende und Systempunkte",
+      "description": "Füllt die Jour-fixe-Agende aus Vorgängen, Aufgaben, Geburtstagen und weiteren Quellen und reserviert Termine.",
+      "category": "fachlich",
+      "implementationStatus": "implementiert",
+      "integrationStatus": "ui",
+      "coverage": "selftest",
+      "testResult": "nicht-ausgefuehrt",
+      "evidence": [
+        "src/components/meetings/PlatformAgendaSection.tsx",
+        "src/hooks/useMyWorkJourFixeSystemData.ts",
+        "src/features/selftest/scenarios/jour-fixe-platform-integration.ts"
+      ],
+      "components": [
+        "src/components/meetings/PlatformAgendaSection.tsx",
+        "src/components/meetings/PendingJourFixeCaseItems.tsx",
+        "src/components/meetings/PendingJourFixeNotes.tsx"
+      ],
+      "hooks": [
+        "src/hooks/useMyWorkJourFixeMeetings.ts",
+        "src/hooks/useMyWorkJourFixeSystemData.ts"
+      ],
+      "rpcs": [
+        "claim_jour_fixe_reservations",
+        "capture_archived_jour_fixe_task",
+        "restore_jour_fixe_task_provenance",
+        "sync_jour_fixe_agenda_timer",
+        "respond_to_meeting_invitation"
+      ],
+      "tables": [
+        "meetings",
+        "meeting_agenda_items",
+        "case_items",
+        "tasks"
+      ],
+      "roles": [
+        "abgeordneter",
+        "bueroleitung",
+        "mitarbeiter"
+      ],
+      "scenarios": [
+        "jour-fixe-platform-integration"
+      ],
+      "docs": [
+        "docs/team-rituals.md"
+      ]
+    },
+    {
+      "id": "daily.briefing",
+      "subarea": "Tagesbriefing",
+      "name": "Tagesbriefing und Tageszettel",
+      "description": "Erzeugt Tagesbriefings und Tageszettel mit Terminen und Aufgaben, hält Lesebestätigungen fest und archiviert Tageszettel.",
+      "category": "fachlich",
+      "implementationStatus": "implementiert",
+      "integrationStatus": "ui",
+      "coverage": "selftest",
+      "testResult": "nicht-ausgefuehrt",
+      "evidence": [
+        "src/features/briefings/components/TodayBriefingPanel.tsx",
+        "src/features/briefings/hooks/useTodayBriefings.ts",
+        "src/features/selftest/scenarios/daily-briefing-lifecycle.ts"
+      ],
+      "components": [
+        "src/features/briefings/components/TodayBriefingPanel.tsx",
+        "src/features/briefings/components/BriefingComposerCard.tsx"
+      ],
+      "hooks": [
+        "src/features/briefings/hooks/useTodayBriefings.ts",
+        "src/features/briefings/hooks/useMarkBriefingRead.ts",
+        "src/features/briefings/hooks/useMyDraftBriefing.ts"
+      ],
+      "rpcs": [
+        "can_view_daily_briefing_receipt",
+        "get_authored_daily_briefing_read_status",
+        "validate_daily_briefing_date"
+      ],
+      "tables": [
+        "daily_briefings",
+        "daily_briefing_reads",
+        "day_slips"
+      ],
+      "roles": [
+        "abgeordneter",
+        "bueroleitung",
+        "mitarbeiter"
+      ],
+      "scenarios": [
+        "daily-briefing-lifecycle",
+        "day-slip-lifecycle"
+      ],
+      "docs": [
+        "docs/my-work-architecture.md"
+      ]
+    },
+    {
+      "id": "calendar.categories-locations",
+      "subarea": "Kalender",
+      "name": "Terminkategorien und -orte pflegen",
+      "description": "Verwaltet konfigurierbare Terminkategorien, Status und Orte in der Administration.",
+      "category": "administrativ",
+      "implementationStatus": "implementiert",
+      "integrationStatus": "rollenabhaengig",
+      "coverage": "keine",
+      "testResult": "nicht-ausgefuehrt",
+      "evidence": [
+        "src/components/administration/ConfigurableTypeSettings.tsx",
+        "src/hooks/useAppointmentCategories.tsx"
+      ],
+      "components": [
+        "src/components/administration/ConfigurableTypeSettings.tsx"
+      ],
+      "hooks": [
+        "src/hooks/useAppointmentCategories.tsx"
+      ],
+      "rpcs": [
+        "config_delete_guard",
+        "delete_config_item",
+        "rename_config_item",
+        "config_rename_keys"
+      ],
+      "tables": [
+        "appointment_categories",
+        "appointment_statuses",
+        "appointment_locations"
+      ],
+      "roles": [
+        "admin",
+        "bueroleitung"
+      ]
+    },
+    {
+      "id": "calendar.polls",
+      "subarea": "Terminabstimmung",
+      "name": "Terminumfrage erstellen",
+      "description": "Erstellt Terminumfragen mit Zeitfenstern und Teilnehmenden und wertet Antworten aus.",
+      "category": "fachlich",
+      "implementationStatus": "implementiert",
+      "integrationStatus": "ui",
+      "coverage": "selftest",
+      "testResult": "nicht-ausgefuehrt",
+      "evidence": [
+        "src/features/polls/pollRules.ts",
+        "supabase/functions/_shared/pollSlotSuggestion.ts"
+      ],
+      "services": [
+        "src/features/polls/pollRules.ts"
+      ],
+      "rpcs": [
+        "create_appointment_poll_with_details"
+      ],
+      "tables": [
+        "appointment_polls",
+        "poll_time_slots",
+        "poll_participants"
+      ],
+      "roles": [
+        "abgeordneter",
+        "bueroleitung",
+        "mitarbeiter"
+      ],
+      "scenarios": [
+        "poll-lifecycle"
+      ]
+    },
+    {
+      "id": "calendar.holidays",
+      "subarea": "Kalender",
+      "name": "Feiertage synchronisieren",
+      "description": "Lädt gesetzliche Feiertage und stellt sie Kalender- und Fristberechnungen zur Verfügung.",
+      "category": "automatisiert",
+      "implementationStatus": "implementiert",
+      "integrationStatus": "system",
+      "coverage": "keine",
+      "testResult": "nicht-ausgefuehrt",
+      "evidence": [
+        "supabase/functions/sync-holidays/index.ts"
+      ],
+      "edgeFunctions": [
+        "sync-holidays"
+      ],
+      "tables": [
+        "public_holidays"
+      ],
+      "roles": [
+        "system"
+      ],
+      "reviewPoints": [
+        "Der Sync-Lauf wurde nicht ausgeführt; Datenquelle und Aktualisierungsintervall sind nicht dokumentiert."
+      ]
+    }
+  ]
+}

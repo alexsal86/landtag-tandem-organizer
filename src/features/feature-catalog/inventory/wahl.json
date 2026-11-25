@@ -1,0 +1,898 @@
+{
+  "area": {
+    "id": "wahl",
+    "title": "Wahlanalyse & Wahlhistorie",
+    "purpose": "Aktuelle und historische Wahlergebnisse auswerten, Wahlkreiskarten darstellen, Mandate, Kandidaturen und Landeslisten pflegen und Datenqualität sichern."
+  },
+  "features": [
+    {
+      "id": "election.analysis",
+      "subarea": "Analyse",
+      "name": "Wahlanalyse durchführen",
+      "description": "Wertet Ergebnisse nach Jahren, Parteien, Wahlkreisen und Mandaten aus und stellt Vergleichs- und Detailansichten bereit.",
+      "category": "fachlich",
+      "implementationStatus": "implementiert",
+      "integrationStatus": "rollenabhaengig",
+      "coverage": "selftest",
+      "testResult": "nicht-ausgefuehrt",
+      "evidence": [
+        "src/features/election-analysis/ElectionAnalysis.tsx",
+        "src/features/election-analysis/useElectionAnalysis.ts",
+        "src/features/selftest/scenarios/election-analysis.ts"
+      ],
+      "routes": [
+        "/daten"
+      ],
+      "components": [
+        "src/features/election-analysis/ElectionAnalysis.tsx",
+        "src/features/election-analysis/AnalysisToolbar.tsx",
+        "src/features/election-analysis/AnalysisInfo.tsx"
+      ],
+      "hooks": [
+        "src/features/election-analysis/useElectionAnalysis.ts"
+      ],
+      "rpcs": [
+        "get_analysis_comparison",
+        "get_analysis_district_history",
+        "get_analysis_district_series"
+      ],
+      "tables": [
+        "election_analysis_years",
+        "election_analysis_districts",
+        "election_analysis_flows",
+        "election_analysis_state_totals",
+        "election_analysis_versions"
+      ],
+      "roles": [
+        "abgeordneter",
+        "bueroleitung",
+        "mitarbeiter"
+      ],
+      "scenarios": [
+        "election-analysis"
+      ],
+      "unitTests": [
+        "src/features/election-analysis/ElectionAnalysis.test.tsx",
+        "src/features/election-analysis/rowTypes.test.ts"
+      ],
+      "docs": [
+        "docs/wahlanalyse.md"
+      ]
+    },
+    {
+      "id": "election.analysis-navigation",
+      "subarea": "Analyse",
+      "name": "Analyse-Navigation und gespeicherte Szenarien",
+      "description": "Navigiert zwischen Analyseebenen und speichert Analyse-Szenarien.",
+      "category": "fachlich",
+      "implementationStatus": "implementiert",
+      "integrationStatus": "ui",
+      "coverage": "unit",
+      "testResult": "unbekannt",
+      "evidence": [
+        "src/features/election-analysis/navigation.ts",
+        "src/features/election-analysis/research/SavedScenariosPanel.tsx"
+      ],
+      "services": [
+        "src/features/election-analysis/navigation.ts"
+      ],
+      "components": [
+        "src/features/election-analysis/research/SavedScenariosPanel.tsx"
+      ],
+      "rpcs": [
+        "guard_analysis_scenario"
+      ],
+      "tables": [
+        "election_analysis_scenarios"
+      ],
+      "roles": [
+        "abgeordneter",
+        "bueroleitung",
+        "mitarbeiter"
+      ],
+      "unitTests": [
+        "src/features/election-analysis/navigation.test.ts"
+      ]
+    },
+    {
+      "id": "election.analysis-map",
+      "subarea": "Analyse",
+      "name": "Analyse-Karten und Wahlkreiszuschnitt",
+      "description": "Zeigt Analyseergebnisse auf Karten und verknüpft Wahlkreise mit Analyseversionen.",
+      "category": "fachlich",
+      "implementationStatus": "implementiert",
+      "integrationStatus": "ui",
+      "coverage": "keine",
+      "testResult": "nicht-ausgefuehrt",
+      "evidence": [
+        "src/features/election-analysis/research/AnalysisMap.tsx",
+        "src/features/election-analysis/research/mapModel.ts"
+      ],
+      "components": [
+        "src/features/election-analysis/research/AnalysisMap.tsx"
+      ],
+      "services": [
+        "src/features/election-analysis/research/mapModel.ts",
+        "src/features/election-analysis/research/confirmedGeometry.ts"
+      ],
+      "rpcs": [
+        "match_analysis_history_district",
+        "guard_analysis_version_link",
+        "guard_analysis_period_link"
+      ],
+      "tables": [
+        "election_analysis_geographies",
+        "election_analysis_districts",
+        "election_history_districts"
+      ],
+      "roles": [
+        "abgeordneter",
+        "bueroleitung",
+        "mitarbeiter"
+      ],
+      "docs": [
+        "docs/wahlkreiskarte.md"
+      ]
+    },
+    {
+      "id": "election.turnout",
+      "subarea": "Analyse",
+      "name": "Wahlbeteiligung",
+      "description": "Stellt Wahlbeteiligung im Zeitvergleich und je Gebiet dar.",
+      "category": "fachlich",
+      "implementationStatus": "implementiert",
+      "integrationStatus": "ui",
+      "coverage": "keine",
+      "testResult": "nicht-ausgefuehrt",
+      "evidence": [
+        "src/features/election-analysis/TurnoutPanel.tsx",
+        "src/features/election-analysis/research/turnoutModel.ts"
+      ],
+      "components": [
+        "src/features/election-analysis/TurnoutPanel.tsx"
+      ],
+      "services": [
+        "src/features/election-analysis/research/turnoutModel.ts"
+      ],
+      "rpcs": [
+        "get_analysis_turnout_comparison"
+      ],
+      "tables": [
+        "election_analysis_turnout"
+      ],
+      "roles": [
+        "abgeordneter",
+        "bueroleitung",
+        "mitarbeiter"
+      ]
+    },
+    {
+      "id": "election.seat-distribution",
+      "subarea": "Analyse",
+      "name": "Sitzverteilung und Hemizykel",
+      "description": "Berechnet Sitzverteilungen und stellt sie als Hemizykel und Parteienvergleich dar.",
+      "category": "fachlich",
+      "implementationStatus": "implementiert",
+      "integrationStatus": "ui",
+      "coverage": "keine",
+      "testResult": "nicht-ausgefuehrt",
+      "evidence": [
+        "src/features/election-analysis/seatDistributionModel.ts",
+        "src/features/election-analysis/ParliamentHemicycle.tsx"
+      ],
+      "components": [
+        "src/features/election-analysis/ParliamentHemicycle.tsx",
+        "src/features/election-analysis/StateSeatDistribution.tsx"
+      ],
+      "services": [
+        "src/features/election-analysis/seatDistributionModel.ts"
+      ],
+      "rpcs": [
+        "valid_bw_poll_shares"
+      ],
+      "tables": [
+        "election_analysis_state",
+        "election_analysis_bw_polls"
+      ],
+      "roles": [
+        "abgeordneter",
+        "bueroleitung",
+        "mitarbeiter"
+      ],
+      "reviewPoints": [
+        "Für seatDistributionModel.ts ist keine dedizierte Testdatei vorhanden."
+      ]
+    },
+    {
+      "id": "election.deputy-results",
+      "subarea": "Analyse",
+      "name": "Abgeordneten- und Kandidatenergebnisse",
+      "description": "Zeigt persönliche Wahlergebnisse, Kandidaturen und Mandatszeiträume je Person.",
+      "category": "fachlich",
+      "implementationStatus": "implementiert",
+      "integrationStatus": "ui",
+      "coverage": "unit",
+      "testResult": "unbekannt",
+      "evidence": [
+        "src/features/election-analysis/DeputyElectionResult.tsx",
+        "src/features/election-analysis/deputyElectionResult.ts",
+        "src/features/election-analysis/deputyTenure.ts"
+      ],
+      "components": [
+        "src/features/election-analysis/DeputyElectionResult.tsx",
+        "src/features/election-analysis/DeputyCandidacyResult.tsx",
+        "src/features/election-analysis/DeputySeatDistribution.tsx"
+      ],
+      "services": [
+        "src/features/election-analysis/deputyElectionResult.ts",
+        "src/features/election-analysis/deputyTenure.ts"
+      ],
+      "rpcs": [
+        "get_analysis_deputy_election_result",
+        "list_analysis_deputies",
+        "list_analysis_deputy_factions"
+      ],
+      "tables": [
+        "election_analysis_candidates",
+        "election_history_candidacies",
+        "election_history_mandates"
+      ],
+      "roles": [
+        "abgeordneter",
+        "bueroleitung",
+        "mitarbeiter"
+      ],
+      "scenarios": [
+        "election-deputy-reader"
+      ]
+    },
+    {
+      "id": "election.state-history",
+      "subarea": "Analyse",
+      "name": "Landesweite Zeitreihen",
+      "description": "Stellt landesweite Ergebnisse, Parteienanteile und historische Vergleichsreihen dar.",
+      "category": "fachlich",
+      "implementationStatus": "implementiert",
+      "integrationStatus": "ui",
+      "coverage": "unit",
+      "testResult": "unbekannt",
+      "evidence": [
+        "src/features/election-analysis/StateHistoryPanels.tsx",
+        "src/features/election-analysis/stateHistoryModel.ts"
+      ],
+      "components": [
+        "src/features/election-analysis/StateHistoryPanels.tsx",
+        "src/features/election-analysis/StateShareChart.tsx"
+      ],
+      "services": [
+        "src/features/election-analysis/stateHistoryModel.ts"
+      ],
+      "tables": [
+        "election_analysis_state",
+        "election_analysis_state_totals"
+      ],
+      "roles": [
+        "abgeordneter",
+        "bueroleitung",
+        "mitarbeiter"
+      ],
+      "unitTests": [
+        "src/features/election-analysis/StateHistoryPanels.test.tsx"
+      ]
+    },
+    {
+      "id": "election.research-workbench",
+      "subarea": "Analyse",
+      "name": "Analyse-Workbench und Kommunalpanel",
+      "description": "Führt Forschungsauswertungen, kommunale Ergebnisse, Kandidatenabdeckung und Release-Prüfungen zusammen.",
+      "category": "fachlich",
+      "implementationStatus": "implementiert",
+      "integrationStatus": "rollenabhaengig",
+      "coverage": "keine",
+      "testResult": "nicht-ausgefuehrt",
+      "evidence": [
+        "src/features/election-analysis/research/ResearchWorkbench.tsx",
+        "src/features/election-analysis/research/MunicipalPanel.tsx"
+      ],
+      "components": [
+        "src/features/election-analysis/research/ResearchWorkbench.tsx",
+        "src/features/election-analysis/research/MunicipalPanel.tsx",
+        "src/features/election-analysis/research/CandidateCoverageReview.tsx",
+        "src/features/election-analysis/research/ReleaseCockpit.tsx"
+      ],
+      "hooks": [
+        "src/features/election-analysis/research/hooks.ts"
+      ],
+      "rpcs": [
+        "get_analysis_local_page",
+        "import_analysis_local_rows",
+        "confirm_analysis_candidate_identity",
+        "invalidate_election_candidate_coverage"
+      ],
+      "tables": [
+        "election_analysis_local_results",
+        "election_analysis_candidate_coverage",
+        "election_analysis_source_reviews",
+        "election_analysis_correction_audit"
+      ],
+      "roles": [
+        "superadmin",
+        "bueroleitung"
+      ],
+      "docs": [
+        "docs/wahlanalyse.md"
+      ]
+    },
+    {
+      "id": "election.map",
+      "subarea": "Wahlkreiskarte",
+      "name": "Wahlkreiskarte anzeigen",
+      "description": "Zeigt Wahlkreise auf einer interaktiven Karte mit Ergebnissen, Notizen und Ebenen.",
+      "category": "fachlich",
+      "implementationStatus": "implementiert",
+      "integrationStatus": "ui",
+      "coverage": "selftest",
+      "testResult": "nicht-ausgefuehrt",
+      "evidence": [
+        "src/pages/MapsView.tsx",
+        "src/features/election-districts/mapModel.ts",
+        "src/features/selftest/scenarios/election-map.ts"
+      ],
+      "routes": [
+        "/karten",
+        "/maps"
+      ],
+      "components": [
+        "src/pages/MapsView.tsx",
+        "src/features/election-districts/components"
+      ],
+      "hooks": [
+        "src/hooks/useElectionDistricts.tsx",
+        "src/hooks/useMapLayers.ts",
+        "src/hooks/useHeatmapData.tsx"
+      ],
+      "tables": [
+        "election_districts",
+        "election_district_municipalities",
+        "election_district_notes",
+        "map_layers",
+        "map_routes"
+      ],
+      "roles": [
+        "abgeordneter",
+        "bueroleitung",
+        "mitarbeiter"
+      ],
+      "scenarios": [
+        "election-map"
+      ],
+      "unitTests": [
+        "src/features/election-districts/mapModel.test.ts"
+      ],
+      "e2eTests": [
+        "e2e/election-map.spec.ts"
+      ],
+      "docs": [
+        "docs/wahlkreiskarte.md"
+      ]
+    },
+    {
+      "id": "election.districts-import",
+      "subarea": "Wahlkreiskarte",
+      "name": "Wahlkreise und Gebiete importieren",
+      "description": "Importiert Wahlkreise, Karlsruher Stadtteile und administrative Grenzen.",
+      "category": "integration",
+      "implementationStatus": "implementiert",
+      "integrationStatus": "rollenabhaengig",
+      "coverage": "keine",
+      "testResult": "nicht-ausgefuehrt",
+      "evidence": [
+        "supabase/functions/import-election-districts/index.ts",
+        "supabase/functions/import-karlsruhe-districts/index.ts",
+        "src/components/administration/GeoDataImport.tsx"
+      ],
+      "components": [
+        "src/components/administration/GeoDataImport.tsx"
+      ],
+      "edgeFunctions": [
+        "import-election-districts",
+        "import-karlsruhe-districts",
+        "fetch-karlsruhe-districts",
+        "import-administrative-boundaries"
+      ],
+      "tables": [
+        "election_districts",
+        "karlsruhe_districts"
+      ],
+      "roles": [
+        "admin",
+        "superadmin"
+      ]
+    },
+    {
+      "id": "election.representatives",
+      "subarea": "Wahlkreiskarte",
+      "name": "Abgeordnete und Parteiassoziationen importieren",
+      "description": "Importiert Mandatsträger und Parteiassoziationen und ordnet sie Wahlkreisen zu.",
+      "category": "integration",
+      "implementationStatus": "implementiert",
+      "integrationStatus": "rollenabhaengig",
+      "coverage": "keine",
+      "testResult": "nicht-ausgefuehrt",
+      "evidence": [
+        "supabase/functions/import-representatives/index.ts",
+        "supabase/functions/import-party-associations/index.ts"
+      ],
+      "edgeFunctions": [
+        "import-representatives",
+        "import-party-associations"
+      ],
+      "tables": [
+        "election_representatives",
+        "party_associations"
+      ],
+      "roles": [
+        "admin",
+        "superadmin"
+      ]
+    },
+    {
+      "id": "election.history.periods",
+      "subarea": "Wahlhistorie",
+      "name": "Wahlperioden verwalten",
+      "description": "Pflegt Legislaturperioden mit Sitzzahlen, Parteien-Snapshots und Veröffentlichungsstatus; nur Superadmins schreiben.",
+      "category": "fachlich",
+      "implementationStatus": "implementiert",
+      "integrationStatus": "rollenabhaengig",
+      "coverage": "selftest",
+      "testResult": "nicht-ausgefuehrt",
+      "evidence": [
+        "src/features/election-history/ElectionHistoryAdmin.tsx",
+        "src/features/selftest/scenarios/election-history-workbench.ts"
+      ],
+      "routes": [
+        "/daten?tab=wahlhistorie"
+      ],
+      "components": [
+        "src/features/election-history/ElectionHistoryAdmin.tsx",
+        "src/features/election-history/PeriodSeatSummary.tsx",
+        "src/features/election-history/ElectionPeriodPreview.tsx"
+      ],
+      "hooks": [
+        "src/features/election-history/useElectionHistory.ts"
+      ],
+      "rpcs": [
+        "get_election_history_period",
+        "get_election_history_period_overview",
+        "set_current_election_history_period",
+        "guard_election_history_period_dates",
+        "guard_election_period_seats"
+      ],
+      "tables": [
+        "election_history_periods",
+        "election_history_mandates",
+        "election_history_factions"
+      ],
+      "roles": [
+        "superadmin",
+        "abgeordneter",
+        "bueroleitung"
+      ],
+      "scenarios": [
+        "election-history-workbench"
+      ],
+      "unitTests": [
+        "src/features/election-history/ElectionHistoryAdmin.test.tsx"
+      ],
+      "docs": [
+        "docs/elections"
+      ]
+    },
+    {
+      "id": "election.history.mandates",
+      "subarea": "Wahlhistorie",
+      "name": "Historische Mandate pflegen",
+      "description": "Erfasst Mandatszeiträume mit Vererbung aus der Periode, Nachfolge- und Überschneidungsprüfungen.",
+      "category": "fachlich",
+      "implementationStatus": "implementiert",
+      "integrationStatus": "rollenabhaengig",
+      "coverage": "selftest",
+      "testResult": "nicht-ausgefuehrt",
+      "evidence": [
+        "src/features/election-history/mandateLabel.ts",
+        "src/features/election-history/admin/HistoryDataGrid.tsx"
+      ],
+      "components": [
+        "src/features/election-history/admin/HistoryDataGrid.tsx"
+      ],
+      "rpcs": [
+        "inherit_election_mandate_dates",
+        "guard_election_history_dates",
+        "connect_matching_election_history_mandate",
+        "assign_election_mandate_connection",
+        "merge_election_history_deputies"
+      ],
+      "tables": [
+        "election_history_mandates",
+        "election_history_connection_people",
+        "election_history_mandate_birthdays"
+      ],
+      "roles": [
+        "superadmin"
+      ],
+      "scenarios": [
+        "election-history-workbench"
+      ]
+    },
+    {
+      "id": "election.history.candidacies",
+      "subarea": "Wahlhistorie",
+      "name": "Kandidaturen und Ergebnisse pflegen",
+      "description": "Erfasst Kandidaturen mit persönlichen Ergebnissen, getrennt von tatsächlichen Mandatszeiträumen.",
+      "category": "fachlich",
+      "implementationStatus": "implementiert",
+      "integrationStatus": "rollenabhaengig",
+      "coverage": "selftest",
+      "testResult": "nicht-ausgefuehrt",
+      "evidence": [
+        "src/features/election-history/candidateResults.ts",
+        "src/features/election-history/admin/CandidacyImportDialog.tsx"
+      ],
+      "components": [
+        "src/features/election-history/CandidateDistrictResults.tsx",
+        "src/features/election-history/admin/CandidacyImportDialog.tsx"
+      ],
+      "services": [
+        "src/features/election-history/candidateResults.ts",
+        "src/features/election-history/admin/candidacyImport.ts"
+      ],
+      "rpcs": [
+        "import_election_history_candidacies",
+        "guard_election_history_candidacy",
+        "guard_local_result_coherence"
+      ],
+      "tables": [
+        "election_history_candidacies",
+        "election_history_districts",
+        "election_history_candidate_workbook_audit"
+      ],
+      "roles": [
+        "superadmin"
+      ],
+      "scenarios": [
+        "election-history-workbench"
+      ]
+    },
+    {
+      "id": "election.history.people",
+      "subarea": "Wahlhistorie",
+      "name": "Personenregister und Karrieren",
+      "description": "Führt Personen über Perioden hinweg, verknüpft Kandidaturen und Mandate und zeigt Karriereverläufe.",
+      "category": "fachlich",
+      "implementationStatus": "implementiert",
+      "integrationStatus": "rollenabhaengig",
+      "coverage": "selftest",
+      "testResult": "nicht-ausgefuehrt",
+      "evidence": [
+        "src/features/election-history/PersonCareer.tsx",
+        "src/features/election-history/useElectionHistory.ts"
+      ],
+      "components": [
+        "src/features/election-history/ElectionDeputyDirectory.tsx",
+        "src/features/election-history/PersonCareer.tsx",
+        "src/features/election-history/PersonElectionSummary.tsx"
+      ],
+      "rpcs": [
+        "create_election_candidate_person",
+        "get_election_person_career",
+        "get_election_person_summary",
+        "search_election_person_careers",
+        "search_election_state_list_people",
+        "list_election_history_deputies",
+        "confirm_election_history_deputy",
+        "connect_election_history_mandates"
+      ],
+      "tables": [
+        "election_history_people",
+        "election_history_candidacies",
+        "election_history_mandates"
+      ],
+      "roles": [
+        "superadmin",
+        "abgeordneter",
+        "bueroleitung"
+      ],
+      "scenarios": [
+        "election-deputy-reader"
+      ]
+    },
+    {
+      "id": "election.history.state-lists",
+      "subarea": "Wahlhistorie",
+      "name": "Landeslisten verwalten",
+      "description": "Erfasst Landeslisten und Listenplätze ab Periode 18 ohne Personen, Mandate oder Ergebnisse zu erzeugen.",
+      "category": "fachlich",
+      "implementationStatus": "implementiert",
+      "integrationStatus": "rollenabhaengig",
+      "coverage": "keine",
+      "testResult": "nicht-ausgefuehrt",
+      "evidence": [
+        "src/features/election-history/stateListPlaces.ts",
+        "src/features/election-history/DeputyStateListPlaces.tsx"
+      ],
+      "components": [
+        "src/features/election-history/DeputyStateListPlaces.tsx"
+      ],
+      "services": [
+        "src/features/election-history/stateListPlaces.ts"
+      ],
+      "rpcs": [
+        "get_deputy_state_list_places",
+        "guard_election_period_state_lists",
+        "guard_election_state_list",
+        "link_election_state_list_entry",
+        "refresh_state_lists_after_birth_change"
+      ],
+      "tables": [
+        "election_history_state_lists",
+        "election_history_state_list_entries"
+      ],
+      "roles": [
+        "superadmin",
+        "abgeordneter"
+      ]
+    },
+    {
+      "id": "election.history.factions",
+      "subarea": "Wahlhistorie",
+      "name": "Historische Fraktionen",
+      "description": "Pflegt Fraktionskatalog, Aliase und relationale Verweise in Mandaten, Kandidaturen und Sitz-Snapshots.",
+      "category": "fachlich",
+      "implementationStatus": "implementiert",
+      "integrationStatus": "rollenabhaengig",
+      "coverage": "keine",
+      "testResult": "nicht-ausgefuehrt",
+      "evidence": [
+        "src/features/election-history/factions.ts",
+        "src/features/election-history/admin/FactionsAdmin.tsx"
+      ],
+      "components": [
+        "src/features/election-history/admin/FactionsAdmin.tsx"
+      ],
+      "services": [
+        "src/features/election-history/factions.ts"
+      ],
+      "rpcs": [
+        "guard_history_faction_catalog",
+        "normalize_history_faction_reference",
+        "propagate_history_faction_name",
+        "normalize_history_seat_factions",
+        "resolve_history_faction",
+        "history_faction_key",
+        "history_list_person_key",
+        "history_result_party"
+      ],
+      "tables": [
+        "election_history_factions",
+        "election_history_mandates",
+        "election_history_candidacies",
+        "election_history_periods"
+      ],
+      "roles": [
+        "superadmin"
+      ]
+    },
+    {
+      "id": "election.history.quality",
+      "subarea": "Datenqualität",
+      "name": "Wahlhistorien-Datenqualität",
+      "description": "Prüft Datenqualität und Quellenabgleich, zeigt Befunde paginiert und lädt nur den gewählten Datensatz.",
+      "category": "fachlich",
+      "implementationStatus": "implementiert",
+      "integrationStatus": "rollenabhaengig",
+      "coverage": "selftest",
+      "testResult": "nicht-ausgefuehrt",
+      "evidence": [
+        "src/features/election-history/admin/ElectionDataChecks.tsx",
+        "src/features/election-history/admin/historyQuality.ts"
+      ],
+      "components": [
+        "src/features/election-history/admin/ElectionDataChecks.tsx"
+      ],
+      "services": [
+        "src/features/election-history/admin/historyQuality.ts"
+      ],
+      "rpcs": [
+        "get_election_history_issues",
+        "election_history_issue_rows",
+        "get_election_history_assembly_status"
+      ],
+      "tables": [
+        "election_history_assembly_issues",
+        "election_history_audit",
+        "election_analysis_workbook_audit"
+      ],
+      "roles": [
+        "superadmin"
+      ],
+      "scenarios": [
+        "election-history-workbench"
+      ]
+    },
+    {
+      "id": "election.history.audit",
+      "subarea": "Datenqualität",
+      "name": "Wahlhistorien-Audit",
+      "description": "Protokolliert Änderungen an historischen Daten und zeigt Audit-Einträge.",
+      "category": "sicherheit",
+      "implementationStatus": "implementiert",
+      "integrationStatus": "rollenabhaengig",
+      "coverage": "keine",
+      "testResult": "nicht-ausgefuehrt",
+      "evidence": [
+        "src/features/election-history/ElectionHistoryAudit.tsx"
+      ],
+      "components": [
+        "src/features/election-history/ElectionHistoryAudit.tsx"
+      ],
+      "rpcs": [
+        "audit_election_history"
+      ],
+      "tables": [
+        "election_history_audit"
+      ],
+      "roles": [
+        "superadmin"
+      ]
+    },
+    {
+      "id": "election.history.assembly",
+      "subarea": "Wahlhistorie",
+      "name": "Historien-Assemblierung",
+      "description": "Setzt bestätigte Verbindungen in Personen und ursprüngliche Kandidaturen um, ohne neue Wahlen zu erfinden.",
+      "category": "automatisiert",
+      "implementationStatus": "implementiert",
+      "integrationStatus": "system",
+      "coverage": "keine",
+      "testResult": "nicht-ausgefuehrt",
+      "evidence": [
+        "src/features/election-history/CandidacyAssemblyStatus.tsx"
+      ],
+      "components": [
+        "src/features/election-history/CandidacyAssemblyStatus.tsx"
+      ],
+      "rpcs": [
+        "assemble_election_history",
+        "sync_assembled_election_history",
+        "apply_verified_election_period",
+        "election_history_1952_source"
+      ],
+      "tables": [
+        "election_history_candidacies",
+        "election_history_people",
+        "election_history_1952_result_sources"
+      ],
+      "roles": [
+        "superadmin",
+        "system"
+      ]
+    },
+    {
+      "id": "election.history.districts-geometry",
+      "subarea": "Wahlhistorie",
+      "name": "Historische Wahlkreise und Geometrie",
+      "description": "Ordnet historische Wahlkreise zu, zeigt Grenzverläufe und kennzeichnet Rekonstruktionen und Quellen.",
+      "category": "fachlich",
+      "implementationStatus": "implementiert",
+      "integrationStatus": "rollenabhaengig",
+      "coverage": "keine",
+      "testResult": "nicht-ausgefuehrt",
+      "evidence": [
+        "src/features/election-history/DistrictBoundaryMap.tsx",
+        "src/features/election-history/HistoricalGeometryNotice.tsx"
+      ],
+      "components": [
+        "src/features/election-history/DistrictBoundaryMap.tsx",
+        "src/features/election-history/DistrictBoundarySection.tsx",
+        "src/features/election-history/HistoricalGeometryNotice.tsx"
+      ],
+      "services": [
+        "src/features/election-history/historicalDistrictNames.ts",
+        "src/features/election-history/mapProjection.ts"
+      ],
+      "rpcs": [
+        "guard_analysis_version_link",
+        "guard_election_history_1988_district_name",
+        "election_history_source_district_name",
+        "invalidate_election_history_geometry"
+      ],
+      "tables": [
+        "election_history_districts",
+        "election_analysis_geographies"
+      ],
+      "roles": [
+        "superadmin",
+        "abgeordneter",
+        "bueroleitung"
+      ],
+      "docs": [
+        "docs/election-analysis",
+        "docs/wahlkreiskarte.md"
+      ],
+      "limitations": [
+        "Rekonstruierte Grenzstände sind ausdrücklich nicht als verifizierte historische Identität behandelt."
+      ]
+    },
+    {
+      "id": "election.parliament-protocols",
+      "subarea": "Analyse",
+      "name": "Plenarprotokolle auswerten",
+      "description": "Analysiert Plenarprotokolle und ordnet Reden und Sitzungen auswertbar zu.",
+      "category": "integration",
+      "implementationStatus": "implementiert",
+      "integrationStatus": "system",
+      "coverage": "keine",
+      "testResult": "nicht-ausgefuehrt",
+      "evidence": [
+        "supabase/functions/analyze-parliament-protocol/index.ts"
+      ],
+      "edgeFunctions": [
+        "analyze-parliament-protocol"
+      ],
+      "tables": [
+        "parliament_protocols",
+        "protocol_sessions",
+        "protocol_speeches"
+      ],
+      "roles": [
+        "system",
+        "bueroleitung"
+      ],
+      "docs": [
+        "docs/wahlanalyse.md"
+      ],
+      "reviewPoints": [
+        "Die Analysefunktion ist nicht dokumentiert; Eingabeformat und Ausgabequalität sind ungeprüft."
+      ]
+    },
+    {
+      "id": "election.history.portraits",
+      "subarea": "Wahlhistorie",
+      "name": "Abgeordnetenporträts",
+      "description": "Schneidet Porträts zu, erzeugt WebP und Thumbnail und committet sie über einen serverseitigen GitHub-Schreibvorgang.",
+      "category": "integration",
+      "implementationStatus": "implementiert",
+      "integrationStatus": "rollenabhaengig",
+      "coverage": "keine",
+      "testResult": "nicht-ausgefuehrt",
+      "evidence": [
+        "src/features/election-history/DeputyPortraitEditor.tsx",
+        "supabase/functions/_shared/deputyPortrait.ts",
+        "supabase/functions/save-deputy-portrait/index.ts"
+      ],
+      "components": [
+        "src/features/election-history/DeputyPortrait.tsx",
+        "src/features/election-history/DeputyPortraitEditor.tsx"
+      ],
+      "edgeFunctions": [
+        "save-deputy-portrait",
+        "extract-photo-data"
+      ],
+      "services": [
+        "supabase/functions/_shared/deputyPortrait.ts"
+      ],
+      "tables": [
+        "election_history_connection_people"
+      ],
+      "roles": [
+        "superadmin"
+      ],
+      "docs": [
+        "docs/security-function-matrix.md"
+      ],
+      "limitations": [
+        "Ein Upload gilt erst nach Veröffentlichung des Repository-Commits durch den Hosting-Anbieter als sichtbar."
+      ]
+    }
+  ]
+}

@@ -2,35 +2,117 @@
 
 _Auto-generiert mit `npm run update:feature-catalog`. Nicht von Hand bearbeiten._
 
-Der Katalog ist ein Zeiger, keine zweite Wahrheit: Zweck, Seiten und Rollen stammen aus dieser Bereichsliste, Prüfumfang und Tabellen aus den Selbsttest-Szenarien, die Fremdschlüssel aus `docs/entity-map.md`. Die Regeln selbst stehen in [AGENTS.md](../../AGENTS.md).
+Der Katalog ist das führende Verzeichnis des tatsächlich implementierten Funktionsumfangs. Er beschreibt keine Soll-Anforderungen. Quellcode liefert die Nachweise, Selbsttests den Prüfumfang, das Security-Cockpit Sicherheitsbefunde – ohne dass daraus automatisch ein bestandener Test wird.
 
-8 Bereiche mit zusammen 25 Szenarien.
+## Kennzahlen
 
-## Bereiche
+| Kennzahl | Wert |
+|---|---:|
+| Erfasste Funktionen | 252 |
+| Funktionsbereiche | 16 |
+| Unterbereiche | 108 |
+| Implementiert | 248 |
+| Teilweise implementiert | 2 |
+| Deaktiviert | 0 |
+| Potenziell verwaist | 0 |
+| Prüfkandidaten (offene Punkte) | 49 |
+| Funktionen mit Selbsttest | 65 |
+| Funktionen mit Unit-Test | 53 |
+| Funktionen mit Integrationstest | 1 |
+| Funktionen mit Browser-Test | 4 |
+| Funktionen mit Security-Test | 1 |
+| Funktionen ohne zugeordneten Test | 151 |
+| Funktionen ohne Dokumentationsverweis | 162 |
+| Funktionen mit bekannten Einschränkungen | 22 |
+| Nicht nachweisbar eingebundene Funktionen | 1 |
+| Technische Zuordnungen | 1196 |
 
-| Bereich | Seiten | Szenarien | Tabellen | Rollen |
-|---|---|---:|---:|---|
-| [Aufgaben & Stafette](./aufgaben.md) | `/tasks`, `/tasks/archive`, `/tasks/new`, `/mywork?tab=tasks`, `/mywork?tab=dashboard` | 6 | 8 | `abgeordneter`, `bueroleitung` |
-| [Vorgänge](./vorgaenge.md) | `/vorgaenge/:caseItemId`, `/mywork?tab=cases`, `/casefiles` | 1 | 9 | `abgeordneter`, `bueroleitung` |
-| [Termine & Briefings](./termine.md) | `/calendar`, `/eventplanning`, `/appointment-preparation/:id`, `/briefing-live/:id` | 5 | 16 | `abgeordneter`, `bueroleitung` |
-| [Entscheidungen](./entscheidungen.md) | `/decisions`, `/decision-response/:participantId` | 1 | 3 | — |
-| [Dokumente & Wissen](./dokumente.md) | `/documents`, `/knowledge`, `/wissen` | 3 | 9 | — |
-| [Kontakte](./kontakte.md) | `/contacts`, `/contacts/:id`, `/contacts/:id/edit`, `/contacts/import` | 1 | 3 | — |
-| [Mitarbeit & Personal](./mitarbeit.md) | `/employee`, `/employee-meeting/:id`, `/meetings` | 4 | 19 | `abgeordneter`, `bueroleitung` |
-| [Wahlanalyse & Wahlhistorie](./wahl.md) | `/karten`, `/daten` | 4 | 0 | — |
+## Funktionsbereiche
 
-## Szenarien ohne eigenen Bereich
+| Bereich | Unterbereiche | Funktionen | implementiert | ohne Test | ohne Doku |
+|---|---:|---:|---:|---:|---:|
+| [Administration, Sicherheit & Qualität](./verwaltung.md) | 11 | 23 | 23 | 15 | 9 |
+| [Aufgaben & Stafette](./aufgaben.md) | 12 | 18 | 18 | 7 | 9 |
+| [Automatisierung & Workflows](./automation.md) | 8 | 15 | 15 | 9 | 8 |
+| [Dokumente, Briefe & Annotationen](./dokumente.md) | 3 | 17 | 17 | 10 | 13 |
+| [Entscheidungen](./entscheidungen.md) | 7 | 10 | 10 | 7 | 8 |
+| [Externe Schnittstellen](./schnittstellen.md) | 7 | 10 | 10 | 8 | 5 |
+| [Jour fixe, Dossiers & Themen](./organisation.md) | 5 | 18 | 17 | 13 | 15 |
+| [Kontakte & Netzwerk](./kontakte.md) | 9 | 14 | 14 | 11 | 10 |
+| [Meine Arbeit & Benachrichtigungen](./arbeitsbereich.md) | 7 | 13 | 12 | 8 | 8 |
+| [Mitarbeit, Personal & Zeit](./mitarbeit.md) | 5 | 20 | 20 | 10 | 14 |
+| [Redaktion, News & Chat](./kommunikation.md) | 5 | 14 | 14 | 14 | 10 |
+| [Termine, Anfragen & Briefings](./termine.md) | 8 | 17 | 17 | 8 | 11 |
+| [Veranstaltungen & Umfragen](./veranstaltungen.md) | 3 | 9 | 8 | 3 | 6 |
+| [Vorgänge & Fallakten](./vorgaenge.md) | 6 | 16 | 15 | 8 | 11 |
+| [Wahlanalyse & Wahlhistorie](./wahl.md) | 4 | 23 | 23 | 13 | 15 |
+| [Wissensbereich](./wissen.md) | 8 | 15 | 15 | 7 | 10 |
 
-Diese Szenarien sind registriert, aber keinem der Startbereiche zugeordnet. Sie zuordnen oder bewusst hier stehen lassen.
+## Kategorien
 
-- `access-boundaries` — Zugriffsschutz (Bürogrenzen und Entscheiderrolle)
-- `admin-controls` — Adminregeln: Feldschutz, Aktionen, Export, Rücknahme und Feeds
-- `letter-lifecycle` — Brief-Lifecycle (Entwurf → Prüfung → Freigabe → Archiv und Folgeaufgabe)
-- `quick-note-lifecycle` — Notizen-Lifecycle (Anlegen → Priorität → Anheften → Aufgabe → Archiv)
-- `workflow-rules` — Geschäftsregeln (Freigabe, Rollen, Fristen)
+| Kategorie | Funktionen |
+|---|---:|
+| fachlich | 163 |
+| administrativ | 25 |
+| automatisiert | 20 |
+| integration | 27 |
+| sicherheit | 15 |
+| technisch | 2 |
+
+## Implementierungsstatus
+
+| Status | Funktionen |
+|---|---:|
+| implementiert | 248 |
+| teilweise | 2 |
+| deaktiviert | 0 |
+| verwaist | 0 |
+| veraltet | 2 |
+| entfernt | 0 |
+| unklar | 0 |
+
+## Einbindungsstatus
+
+| Einbindung | Funktionen |
+|---|---:|
+| UI | 124 |
+| systemseitig | 36 |
+| rollenabhängig | 87 |
+| Feature Flag | 1 |
+| ohne Einbindung | 1 |
+| ungeprüft | 0 |
+| nicht anwendbar | 3 |
+
+## Testabdeckung
+
+| Abdeckung | Funktionen |
+|---|---:|
+| Selbsttest | 64 |
+| Unit-Test | 35 |
+| Integrationstest | 1 |
+| Browser-Test | 0 |
+| Security-Test | 1 |
+| teilweise | 0 |
+| kein Test | 151 |
+| ungeprüft | 0 |
+
+## Konsistenz
+
+Der Generator inventarisiert Routen, Edge Functions, wirksame Datenbankfunktionen, Tabellen, Testszenarien und Testdateien. Aktuell **0** nicht zugeordnete Prüfkandidaten und **0** Review-Hinweise. Eindeutige Inkonsistenzen brechen `npm run check:feature-catalog` ab; Details: [Prüfbericht](./review.md).
+
+## Dokumentation
+
+- [Funktions- und Testabdeckungsmatrix](./matrix.md)
+- [Rollen- und Berechtigungszuordnungen](./roles.md)
+- [Modulübergreifende Abhängigkeiten](./dependencies.md)
+- [Ungeprüfte Funktionen und Prüfkandidaten](./review.md)
+- [Entitätskarte](../entity-map.md)
 
 ## Pflege
 
-- Bereich hinzufügen oder Seiten ändern: `scripts/build-feature-catalog.mjs`.
-- Prüfungen ändern: das jeweilige Szenario unter `src/features/selftest/scenarios`.
-- Danach `npm run update:feature-catalog`; `npm run check:feature-catalog` meldet Abweichungen in der CI.
+1. Funktion in `src/features/feature-catalog/inventory/<bereich>.json` erfassen oder aktualisieren.
+2. Mindestens einen Quellcode-Nachweis in `evidence` hinterlegen.
+3. Testzuordnung und Abdeckungsstatus ehrlich setzen; fehlende Tests bleiben sichtbar.
+4. `npm run update:feature-catalog` und `npm run check:feature-catalog` ausführen.
+
+Verbindlich: Abschnitt „Funktionskatalog" in [AGENTS.md](../../AGENTS.md).

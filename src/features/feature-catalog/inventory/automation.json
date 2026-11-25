@@ -1,0 +1,548 @@
+{
+  "area": {
+    "id": "automation",
+    "title": "Automatisierung & Workflows",
+    "purpose": "Regeln, Jahresroutinen, Routinepakete, Workflow-Definitionen und zeitgesteuerte Läufe verwalten und ausführen."
+  },
+  "features": [
+    {
+      "id": "automation.rules",
+      "subarea": "Regeln",
+      "name": "Automatisierungsregel verwalten",
+      "description": "Erstellt, bearbeitet und löscht Regeln mit Auslöser, Bedingungen und Aktionen und führt sie manuell oder ereignisgesteuert aus.",
+      "category": "administrativ",
+      "implementationStatus": "implementiert",
+      "integrationStatus": "rollenabhaengig",
+      "coverage": "selftest",
+      "testResult": "nicht-ausgefuehrt",
+      "evidence": [
+        "src/components/administration/AutomationRulesManager.tsx",
+        "src/features/selftest/scenarios/workflow-rules.ts"
+      ],
+      "components": [
+        "src/components/administration/AutomationRulesManager.tsx",
+        "src/components/administration/AutomationRulesList.tsx",
+        "src/components/administration/AutomationRuleWizard.tsx"
+      ],
+      "edgeFunctions": [
+        "run-automation-rule"
+      ],
+      "rpcs": [
+        "enforce_configured_action",
+        "validate_annual_rule_action"
+      ],
+      "tables": [
+        "automation_rules",
+        "automation_rate_limits"
+      ],
+      "roles": [
+        "admin",
+        "bueroleitung"
+      ],
+      "scenarios": [
+        "workflow-rules"
+      ],
+      "docs": [
+        "docs/automation-no-code-umsetzung.md",
+        "docs/automation"
+      ]
+    },
+    {
+      "id": "automation.conditions",
+      "subarea": "Regeln",
+      "name": "Regelbedingungen und Feldtypen",
+      "description": "Wertet Bedingungsbäume in Browser und Executor identisch aus und vergleicht Datumswerte in Berliner Kalendertagen.",
+      "category": "automatisiert",
+      "implementationStatus": "implementiert",
+      "integrationStatus": "system",
+      "coverage": "keine",
+      "testResult": "nicht-ausgefuehrt",
+      "evidence": [
+        "src/features/automation/conditions.ts",
+        "supabase/functions/_shared/automationConditions.ts"
+      ],
+      "services": [
+        "src/features/automation/conditions.ts",
+        "supabase/functions/_shared/automationConditions.ts"
+      ],
+      "edgeFunctions": [
+        "run-automation-rule"
+      ],
+      "tables": [
+        "automation_rules"
+      ],
+      "roles": [
+        "system",
+        "admin"
+      ],
+      "docs": [
+        "docs/automation-no-code-umsetzung.md"
+      ]
+    },
+    {
+      "id": "automation.rule-validation",
+      "subarea": "Regeln",
+      "name": "Regelvalidierung im Editor",
+      "description": "Prüft Regeldefinitionen feldgenau, zeigt Inline-Fehler und verlinkt sie mit der Zusammenfassung.",
+      "category": "administrativ",
+      "implementationStatus": "implementiert",
+      "integrationStatus": "ui",
+      "coverage": "keine",
+      "testResult": "nicht-ausgefuehrt",
+      "evidence": [
+        "src/components/administration/automationRule/ruleValidation.ts",
+        "src/components/administration/automationRule/RuleValidationContext.tsx"
+      ],
+      "components": [
+        "src/components/administration/automationRule/RuleValidationContext.tsx",
+        "src/components/administration/automationRule/RuleEditorSummary.tsx"
+      ],
+      "services": [
+        "src/components/administration/automationRule/ruleValidation.ts",
+        "src/components/administration/automationRule/editorModel.ts"
+      ],
+      "tables": [
+        "automation_rules"
+      ],
+      "roles": [
+        "admin",
+        "bueroleitung"
+      ]
+    },
+    {
+      "id": "automation.rule-versions",
+      "subarea": "Regeln",
+      "name": "Regelversionen und Import/Export",
+      "description": "Versioniert Regeln automatisch, zeigt Fassungen und erlaubt Import und Export.",
+      "category": "administrativ",
+      "implementationStatus": "implementiert",
+      "integrationStatus": "ui",
+      "coverage": "keine",
+      "testResult": "nicht-ausgefuehrt",
+      "evidence": [
+        "src/components/administration/AutomationRuleVersions.tsx",
+        "src/components/administration/AutomationRuleImportExport.tsx"
+      ],
+      "components": [
+        "src/components/administration/AutomationRuleVersions.tsx",
+        "src/components/administration/AutomationRuleImportExport.tsx"
+      ],
+      "rpcs": [
+        "auto_version_automation_rule"
+      ],
+      "tables": [
+        "automation_rule_versions",
+        "automation_rules"
+      ],
+      "roles": [
+        "admin",
+        "bueroleitung"
+      ]
+    },
+    {
+      "id": "automation.runs",
+      "subarea": "Ausführung",
+      "name": "Regelläufe und Fehlerdashboard",
+      "description": "Protokolliert Läufe und Schritte, zeigt Fehler und erlaubt die Nachverfolgung.",
+      "category": "automatisiert",
+      "implementationStatus": "implementiert",
+      "integrationStatus": "ui",
+      "coverage": "keine",
+      "testResult": "nicht-ausgefuehrt",
+      "evidence": [
+        "src/components/administration/AutomationErrorDashboard.tsx"
+      ],
+      "components": [
+        "src/components/administration/AutomationErrorDashboard.tsx"
+      ],
+      "tables": [
+        "automation_rule_runs",
+        "automation_rule_run_steps"
+      ],
+      "roles": [
+        "admin",
+        "bueroleitung"
+      ]
+    },
+    {
+      "id": "automation.annual-routines",
+      "subarea": "Jahresroutinen",
+      "name": "Jahresroutinen verwalten",
+      "description": "Synchronisiert Jahresroutinen transaktional mit Jahresaufgaben und sperrt den Jahresabschluss gegen Doppelausführung.",
+      "category": "administrativ",
+      "implementationStatus": "implementiert",
+      "integrationStatus": "rollenabhaengig",
+      "coverage": "unit",
+      "testResult": "unbekannt",
+      "evidence": [
+        "src/features/automation/annualRoutines.ts",
+        "src/components/administration/AnnualRoutinesOverview.tsx"
+      ],
+      "components": [
+        "src/components/administration/AnnualRoutinesOverview.tsx"
+      ],
+      "services": [
+        "src/features/automation/annualRoutines.ts",
+        "src/features/automation/annualRoutinePresentation.ts"
+      ],
+      "edgeFunctions": [
+        "execute-annual-tasks"
+      ],
+      "rpcs": [
+        "execute_annual_automation_routine",
+        "sync_annual_automation_rule",
+        "guard_linked_annual_routine",
+        "automation_private.spawn_annual_task_to_stafette"
+      ],
+      "tables": [
+        "automation_rules",
+        "annual_tasks",
+        "annual_task_completions"
+      ],
+      "roles": [
+        "admin",
+        "bueroleitung"
+      ],
+      "scenarios": [
+        "annual-task-stafette"
+      ],
+      "unitTests": [
+        "src/features/automation/annualRoutines.test.ts",
+        "src/features/automation/annualRoutinePresentation.test.ts"
+      ]
+    },
+    {
+      "id": "automation.office-packages",
+      "subarea": "Büropakete",
+      "name": "Saisonale Büropakete",
+      "description": "Stellt editierbare Standardpakete bereit und erzeugt Haupt- und Unteraufgaben atomar nach Jahresbestätigung.",
+      "category": "automatisiert",
+      "implementationStatus": "implementiert",
+      "integrationStatus": "rollenabhaengig",
+      "coverage": "unit",
+      "testResult": "unbekannt",
+      "evidence": [
+        "src/features/automation/officeRoutineTemplates.ts",
+        "src/components/administration/OfficeRoutineTemplates.tsx"
+      ],
+      "components": [
+        "src/components/administration/OfficeRoutineTemplates.tsx",
+        "src/components/administration/RoutinePackageProgress.tsx"
+      ],
+      "services": [
+        "src/features/automation/officeRoutineTemplates.ts",
+        "supabase/functions/_shared/officeRoutinePlan.ts"
+      ],
+      "rpcs": [
+        "execute_annual_automation_routine",
+        "office_routine_steps",
+        "office_routine_step_kinds",
+        "office_routine_step_settings_v2",
+        "office_routine_deadline",
+        "office_routine_step_settings",
+        "validate_office_routine_package"
+      ],
+      "tables": [
+        "automation_rules",
+        "annual_tasks"
+      ],
+      "roles": [
+        "admin",
+        "bueroleitung"
+      ],
+      "unitTests": [
+        "src/features/automation/officeRoutineTemplates.test.ts"
+      ]
+    },
+    {
+      "id": "automation.routine-packages",
+      "subarea": "Routineabläufe",
+      "name": "Dauerhafte Routineabläufe",
+      "description": "Snapshotet Schritte, führt sie unter Sperre und Savepoints aus und lässt nur den Fortschrittsdienst Ziele erzeugen.",
+      "category": "automatisiert",
+      "implementationStatus": "implementiert",
+      "integrationStatus": "system",
+      "coverage": "keine",
+      "testResult": "nicht-ausgefuehrt",
+      "evidence": [
+        "src/features/automation/routineWorkflow.ts",
+        "src/features/automation/routinePackages.ts"
+      ],
+      "services": [
+        "src/features/automation/routineWorkflow.ts",
+        "src/features/automation/routinePackages.ts"
+      ],
+      "rpcs": [
+        "get_routine_packages",
+        "refresh_routine_package",
+        "automation_private.advance_routine_package",
+        "reassign_routine_step",
+        "update_waiting_routine_steps",
+        "guard_open_routine_package",
+        "automation_private.apply_routine_deputy",
+        "automation_private.prepare_routine_step",
+        "automation_private.routine_due_day",
+        "automation_private.routine_effective_deputy",
+        "automation_private.routine_graph_visit",
+        "automation_private.routine_vote",
+        "automation_private.track_routine_completion"
+      ],
+      "tables": [
+        "routine_package_runs",
+        "routine_package_steps",
+        "tasks",
+        "case_items"
+      ],
+      "roles": [
+        "system",
+        "admin",
+        "bueroleitung"
+      ],
+      "docs": [
+        "docs/automation-no-code-umsetzung.md"
+      ],
+      "reviewPoints": [
+        "Der Fortschrittsdienst ist als Datenbankfunktion nachgewiesen; ein Szenario dafür existiert nicht."
+      ]
+    },
+    {
+      "id": "automation.task-packages",
+      "subarea": "Routineabläufe",
+      "name": "Aufgabenpakete",
+      "description": "Erzeugt aus Aufgabenpaketen mehrere Aufgaben und führt manuelle und ausgelöste Ausführung über denselben Executor.",
+      "category": "automatisiert",
+      "implementationStatus": "implementiert",
+      "integrationStatus": "rollenabhaengig",
+      "coverage": "keine",
+      "testResult": "nicht-ausgefuehrt",
+      "evidence": [
+        "src/components/administration/automationRule/TaskPackageFields.tsx"
+      ],
+      "components": [
+        "src/components/administration/automationRule/TaskPackageFields.tsx"
+      ],
+      "rpcs": [
+        "execute_task_package"
+      ],
+      "tables": [
+        "automation_rules",
+        "tasks"
+      ],
+      "roles": [
+        "admin",
+        "bueroleitung"
+      ]
+    },
+    {
+      "id": "automation.scheduler",
+      "subarea": "Zeitsteuerung",
+      "name": "Zeitgesteuerte Automatisierung",
+      "description": "Führt fällige Regeln, Workflows und geplante E-Mails über Cron- und Dispatcher-Funktionen aus.",
+      "category": "automatisiert",
+      "implementationStatus": "implementiert",
+      "integrationStatus": "system",
+      "coverage": "keine",
+      "testResult": "nicht-ausgefuehrt",
+      "evidence": [
+        "supabase/functions/run-scheduled-automation-rules/index.ts",
+        "supabase/functions/workflow-dispatcher/index.ts",
+        "supabase/functions/run-workflow-cron/index.ts"
+      ],
+      "edgeFunctions": [
+        "run-scheduled-automation-rules",
+        "workflow-dispatcher",
+        "run-workflow-cron",
+        "process-scheduled-emails"
+      ],
+      "rpcs": [
+        "dispatch_scheduled_emails_if_due",
+        "dispatch_workflow_trigger"
+      ],
+      "tables": [
+        "automation_rules",
+        "automation_rule_runs",
+        "workflow_runs",
+        "scheduled_emails"
+      ],
+      "roles": [
+        "system"
+      ],
+      "docs": [
+        "docs/operations"
+      ],
+      "reviewPoints": [
+        "Cron-Zeitpläne und Service-Role-Prüfungen wurden nicht in dieser Umgebung ausgeführt."
+      ]
+    },
+    {
+      "id": "automation.webhooks",
+      "subarea": "Zeitsteuerung",
+      "name": "Automatisierungs-Webhooks",
+      "description": "Nimmt externe Webhook-Aufrufe je Regel mit Secret-Prüfung und Ratenbegrenzung entgegen.",
+      "category": "integration",
+      "implementationStatus": "implementiert",
+      "integrationStatus": "system",
+      "coverage": "keine",
+      "testResult": "nicht-ausgefuehrt",
+      "evidence": [
+        "supabase/functions/automation-webhook/index.ts"
+      ],
+      "edgeFunctions": [
+        "automation-webhook"
+      ],
+      "tables": [
+        "automation_rules",
+        "automation_rate_limits"
+      ],
+      "roles": [
+        "system"
+      ],
+      "docs": [
+        "docs/security-function-matrix.md"
+      ],
+      "reviewPoints": [
+        "Secret-Prüfung ist dokumentiert; ein eigener Webhook-Test existiert nicht."
+      ]
+    },
+    {
+      "id": "automation.workflows",
+      "subarea": "Workflows",
+      "name": "Workflow-Definitionen und -Läufe",
+      "description": "Definiert mehrstufige Workflows, validiert sie und führt Läufe mit Aktionen und Verknüpfungen aus.",
+      "category": "administrativ",
+      "implementationStatus": "implementiert",
+      "integrationStatus": "rollenabhaengig",
+      "coverage": "selftest",
+      "testResult": "nicht-ausgefuehrt",
+      "evidence": [
+        "src/components/administration/WorkflowEngineManager.tsx",
+        "src/features/automation/runtime/workflowRuntime.ts"
+      ],
+      "components": [
+        "src/components/administration/WorkflowEngineManager.tsx",
+        "src/components/workflow/WorkflowLinks.tsx"
+      ],
+      "services": [
+        "src/features/automation/runtime/workflowRuntime.ts",
+        "src/features/automation/domain/workflowDefinition.ts"
+      ],
+      "rpcs": [
+        "validate_workflow_definition",
+        "touch_workflow_definitions",
+        "cleanup_workflow_runs",
+        "trg_workflow_on_task_created",
+        "trg_workflow_on_case_created"
+      ],
+      "tables": [
+        "workflow_definitions",
+        "workflow_runs",
+        "workflow_action_log"
+      ],
+      "roles": [
+        "admin",
+        "bueroleitung"
+      ],
+      "scenarios": [
+        "workflow-rules"
+      ],
+      "docs": [
+        "docs/workflow-consistency.md"
+      ]
+    },
+    {
+      "id": "automation.rss",
+      "subarea": "Quellen",
+      "name": "RSS-Quellen und Monitoring",
+      "description": "Verwaltet RSS-Quellen, testet Feeds und überwacht eingehende Meldungen.",
+      "category": "integration",
+      "implementationStatus": "implementiert",
+      "integrationStatus": "rollenabhaengig",
+      "coverage": "selftest",
+      "testResult": "nicht-ausgefuehrt",
+      "evidence": [
+        "src/components/administration/RSSSourceManager.tsx",
+        "supabase/functions/fetch-rss-feeds/index.ts"
+      ],
+      "components": [
+        "src/components/administration/RSSSourceManager.tsx",
+        "src/components/administration/RSSMonitoringManager.tsx",
+        "src/components/administration/RSSSettingsManager.tsx"
+      ],
+      "edgeFunctions": [
+        "fetch-rss-feeds",
+        "test-rss-feed"
+      ],
+      "tables": [
+        "rss_sources",
+        "rss_cache",
+        "rss_settings"
+      ],
+      "roles": [
+        "admin",
+        "bueroleitung"
+      ],
+      "scenarios": [
+        "admin-controls"
+      ],
+      "docs": [
+        "docs/security-function-matrix.md"
+      ]
+    },
+    {
+      "id": "automation.templates",
+      "subarea": "Regeln",
+      "name": "Automatisierungs-Vorlagen",
+      "description": "Stellt vorgefertigte Regelvorlagen zur Auswahl und Übernahme bereit.",
+      "category": "administrativ",
+      "implementationStatus": "implementiert",
+      "integrationStatus": "ui",
+      "coverage": "keine",
+      "testResult": "nicht-ausgefuehrt",
+      "evidence": [
+        "src/components/administration/AutomationTemplateGallery.tsx"
+      ],
+      "components": [
+        "src/components/administration/AutomationTemplateGallery.tsx"
+      ],
+      "tables": [
+        "automation_rules"
+      ],
+      "roles": [
+        "admin",
+        "bueroleitung"
+      ]
+    },
+    {
+      "id": "automation.calendar-schedule",
+      "subarea": "Zeitsteuerung",
+      "name": "Kalenderbezogene Zeitberechnung",
+      "description": "Berechnet Berliner Vorkommensschlüssel und Vorschauen für kalenderbezogene Regeln.",
+      "category": "technisch",
+      "implementationStatus": "implementiert",
+      "integrationStatus": "system",
+      "coverage": "unit",
+      "testResult": "unbekannt",
+      "evidence": [
+        "src/features/automation/calendarSchedule.ts",
+        "supabase/functions/_shared/calendarSchedule.ts"
+      ],
+      "services": [
+        "src/features/automation/calendarSchedule.ts",
+        "supabase/functions/_shared/calendarSchedule.ts"
+      ],
+      "tables": [
+        "automation_rules",
+        "calendar_sync_settings"
+      ],
+      "roles": [
+        "system"
+      ],
+      "unitTests": [
+        "src/features/automation/calendarSchedule.test.ts"
+      ],
+      "limitations": [
+        "Reine Hilfsfunktion; fachlich den Kalender- und Automatisierungsfunktionen zugeordnet."
+      ]
+    }
+  ]
+}

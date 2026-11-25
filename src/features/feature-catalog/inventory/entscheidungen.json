@@ -1,0 +1,349 @@
+{
+  "area": {
+    "id": "entscheidungen",
+    "title": "Entscheidungen",
+    "purpose": "Entscheidungen vorbereiten, Teilnehmende abstimmen lassen, Antworten und Kommentare führen, erinnern und archivieren."
+  },
+  "features": [
+    {
+      "id": "decisions.create",
+      "subarea": "Anlegen",
+      "name": "Entscheidung anlegen",
+      "description": "Erstellt eine Entscheidung mit Optionen, Frist, Teilnehmenden, Anhängen und Bezug zu Aufgabe, Vorgang oder Meeting.",
+      "category": "fachlich",
+      "implementationStatus": "implementiert",
+      "integrationStatus": "rollenabhaengig",
+      "coverage": "selftest",
+      "testResult": "nicht-ausgefuehrt",
+      "evidence": [
+        "src/pages/Decisions.tsx",
+        "src/features/selftest/scenarios/decision-lifecycle.ts"
+      ],
+      "routes": [
+        "/decisions"
+      ],
+      "components": [
+        "src/pages/Decisions.tsx",
+        "src/components/task-decisions"
+      ],
+      "hooks": [
+        "src/hooks/useMyWorkDecisionsData.ts",
+        "src/hooks/useDefaultDecisionSettings.ts"
+      ],
+      "rpcs": [
+        "create_work_decision"
+      ],
+      "tables": [
+        "task_decisions",
+        "task_decision_participants",
+        "task_decision_topics",
+        "task_decision_attachments"
+      ],
+      "roles": [
+        "abgeordneter",
+        "bueroleitung",
+        "mitarbeiter"
+      ],
+      "scenarios": [
+        "decision-lifecycle"
+      ],
+      "docs": [
+        "docs/my-work-decisions-button-flowchart.md"
+      ]
+    },
+    {
+      "id": "decisions.participants",
+      "subarea": "Teilnehmende",
+      "name": "Teilnehmende und Antwort-Token verwalten",
+      "description": "Bestimmt den Teilnehmerkreis, erzeugt eindeutige Antwort-Token und schützt den Zugriff auf die Antwortseite.",
+      "category": "fachlich",
+      "implementationStatus": "implementiert",
+      "integrationStatus": "rollenabhaengig",
+      "coverage": "selftest",
+      "testResult": "nicht-ausgefuehrt",
+      "evidence": [
+        "src/pages/DecisionResponse.tsx",
+        "supabase/functions/process-decision-response/index.ts"
+      ],
+      "routes": [
+        "/decision-response/:participantId"
+      ],
+      "components": [
+        "src/pages/DecisionResponse.tsx"
+      ],
+      "edgeFunctions": [
+        "process-decision-response"
+      ],
+      "rpcs": [
+        "generate_decision_participant_token",
+        "set_decision_participant_token",
+        "can_access_decision",
+        "user_can_access_task_decision"
+      ],
+      "tables": [
+        "task_decision_participants",
+        "task_decisions"
+      ],
+      "roles": [
+        "oeffentlich",
+        "abgeordneter",
+        "bueroleitung",
+        "mitarbeiter"
+      ],
+      "scenarios": [
+        "decision-lifecycle"
+      ]
+    },
+    {
+      "id": "decisions.vote",
+      "subarea": "Abstimmung",
+      "name": "Abstimmen",
+      "description": "Nimmt Ja/Nein/Enthaltung an, protokolliert die Antwort und stößt Benachrichtigungen und Aufgabenfolgen an.",
+      "category": "fachlich",
+      "implementationStatus": "implementiert",
+      "integrationStatus": "ui",
+      "coverage": "selftest",
+      "testResult": "nicht-ausgefuehrt",
+      "evidence": [
+        "src/pages/DecisionResponse.tsx",
+        "src/hooks/useDecisionRefreshScheduler.ts"
+      ],
+      "rpcs": [
+        "log_decision_response_change",
+        "return_task_ball_after_vote"
+      ],
+      "tables": [
+        "task_decision_responses",
+        "task_decision_participants",
+        "tasks"
+      ],
+      "roles": [
+        "abgeordneter",
+        "bueroleitung",
+        "mitarbeiter"
+      ],
+      "scenarios": [
+        "decision-lifecycle"
+      ]
+    },
+    {
+      "id": "decisions.change-vote",
+      "subarea": "Abstimmung",
+      "name": "Antwort ändern und Verlauf einsehen",
+      "description": "Erlaubt die Änderung einer abgegebenen Antwort und hält die Antwort-Historie revisionsfähig fest.",
+      "category": "fachlich",
+      "implementationStatus": "implementiert",
+      "integrationStatus": "ui",
+      "coverage": "keine",
+      "testResult": "nicht-ausgefuehrt",
+      "evidence": [
+        "src/pages/DecisionResponse.tsx"
+      ],
+      "tables": [
+        "task_decision_responses",
+        "task_decision_response_history"
+      ],
+      "roles": [
+        "abgeordneter",
+        "bueroleitung",
+        "mitarbeiter"
+      ],
+      "reviewPoints": [
+        "Die Änderungsmöglichkeit ist im Szenario nur als Folgepfad, nicht als eigener Prüfschritt abgedeckt."
+      ],
+      "rpcs": [
+        "check_archive_after_creator_response"
+      ]
+    },
+    {
+      "id": "decisions.comments",
+      "subarea": "Abstimmung",
+      "name": "Kommentare und Reaktionen",
+      "description": "Ermöglicht Kommentare zu Entscheidungen, Antworten auf Kommentare und Emoji-Reaktionen.",
+      "category": "fachlich",
+      "implementationStatus": "implementiert",
+      "integrationStatus": "ui",
+      "coverage": "keine",
+      "testResult": "nicht-ausgefuehrt",
+      "evidence": [
+        "src/hooks/useDecisionComments.ts",
+        "src/components/shared/DecisionResponseSummary.tsx"
+      ],
+      "components": [
+        "src/components/shared/DecisionResponseSummary.tsx"
+      ],
+      "hooks": [
+        "src/hooks/useDecisionComments.ts"
+      ],
+      "tables": [
+        "task_decision_comments",
+        "task_decision_comment_reactions"
+      ],
+      "roles": [
+        "abgeordneter",
+        "bueroleitung",
+        "mitarbeiter"
+      ],
+      "docs": [
+        "docs/task-decision-reactions-rollout.md",
+        "docs/emoji-reactions-dod-v1.md"
+      ]
+    },
+    {
+      "id": "decisions.attachments",
+      "subarea": "Anlegen",
+      "name": "Anhänge an Entscheidungen",
+      "description": "Lädt Anhänge zu Entscheidungen hoch, verknüpft sie und stellt sie Teilnehmenden bereit.",
+      "category": "fachlich",
+      "implementationStatus": "implementiert",
+      "integrationStatus": "ui",
+      "coverage": "keine",
+      "testResult": "nicht-ausgefuehrt",
+      "evidence": [
+        "src/hooks/useDecisionAttachmentUpload.ts"
+      ],
+      "hooks": [
+        "src/hooks/useDecisionAttachmentUpload.ts"
+      ],
+      "tables": [
+        "task_decision_attachments",
+        "task_decisions"
+      ],
+      "roles": [
+        "abgeordneter",
+        "bueroleitung",
+        "mitarbeiter"
+      ]
+    },
+    {
+      "id": "decisions.remind",
+      "subarea": "Erinnerungen",
+      "name": "Offene Entscheidungen anmahnen",
+      "description": "Zeigt offene Entscheidungen im Abgeordneten-Dashboard und erlaubt gezielte Erinnerungen.",
+      "category": "fachlich",
+      "implementationStatus": "implementiert",
+      "integrationStatus": "ui",
+      "coverage": "keine",
+      "testResult": "nicht-ausgefuehrt",
+      "evidence": [
+        "src/features/decisions/DeputyWaitingCard.tsx",
+        "src/features/decisions/dashboardNudges.ts"
+      ],
+      "components": [
+        "src/features/decisions/DeputyWaitingCard.tsx",
+        "src/components/dashboard/DashboardDecisionsWidget.tsx"
+      ],
+      "services": [
+        "src/features/decisions/dashboardNudges.ts"
+      ],
+      "rpcs": [
+        "nudge_dashboard_decision",
+        "get_deputy_dashboard_decisions",
+        "get_my_work_decisions"
+      ],
+      "tables": [
+        "dashboard_decision_nudges",
+        "task_decisions"
+      ],
+      "roles": [
+        "abgeordneter",
+        "bueroleitung"
+      ]
+    },
+    {
+      "id": "decisions.archive",
+      "subarea": "Archiv",
+      "name": "Entscheidungen archivieren",
+      "description": "Archiviert abgeschlossene Entscheidungen automatisch oder manuell und hält die Archivkonfiguration je Büro.",
+      "category": "automatisiert",
+      "implementationStatus": "implementiert",
+      "integrationStatus": "system",
+      "coverage": "keine",
+      "testResult": "nicht-ausgefuehrt",
+      "evidence": [
+        "supabase/functions/auto-archive-decisions/index.ts",
+        "src/components/administration/DecisionArchiveSettings.tsx"
+      ],
+      "components": [
+        "src/components/administration/DecisionArchiveSettings.tsx"
+      ],
+      "edgeFunctions": [
+        "auto-archive-decisions"
+      ],
+      "rpcs": [
+        "auto_archive_completed_decisions",
+        "check_and_archive_decision"
+      ],
+      "tables": [
+        "task_decisions",
+        "decision_archive_settings"
+      ],
+      "roles": [
+        "admin",
+        "bueroleitung",
+        "system"
+      ],
+      "reviewPoints": [
+        "Der Cron-Lauf wurde hier nicht ausgeführt; der Nachweis ist die Funktion plus Einstellungsdialog."
+      ]
+    },
+    {
+      "id": "decisions.email",
+      "subarea": "Benachrichtigung",
+      "name": "Entscheidungs-E-Mails",
+      "description": "Versendet Einladungs- und Erinnerungs-E-Mails zu Entscheidungen auf Basis konfigurierbarer Vorlagen.",
+      "category": "integration",
+      "implementationStatus": "implementiert",
+      "integrationStatus": "rollenabhaengig",
+      "coverage": "keine",
+      "testResult": "nicht-ausgefuehrt",
+      "evidence": [
+        "supabase/functions/send-decision-email/index.ts",
+        "src/components/administration"
+      ],
+      "edgeFunctions": [
+        "send-decision-email"
+      ],
+      "tables": [
+        "decision_email_templates",
+        "email_logs"
+      ],
+      "roles": [
+        "abgeordneter",
+        "bueroleitung",
+        "mitarbeiter"
+      ]
+    },
+    {
+      "id": "decisions.matrix",
+      "subarea": "Integration",
+      "name": "Entscheidungen über Matrix beantworten",
+      "description": "Nimmt Antworten über einen Matrix-Handler entgegen und protokolliert die Zustellung im Matrix-Verlauf.",
+      "category": "integration",
+      "implementationStatus": "implementiert",
+      "integrationStatus": "system",
+      "coverage": "keine",
+      "testResult": "nicht-ausgefuehrt",
+      "evidence": [
+        "supabase/functions/matrix-decision-handler/index.ts"
+      ],
+      "edgeFunctions": [
+        "matrix-decision-handler"
+      ],
+      "tables": [
+        "decision_matrix_messages",
+        "task_decision_responses"
+      ],
+      "roles": [
+        "system",
+        "abgeordneter"
+      ],
+      "limitations": [
+        "Der Handler ist öffentlich erreichbar und benötigt einen eigenen Signatur-/Secret-Schutz; die Härtung ist offen."
+      ],
+      "reviewPoints": [
+        "Sicherheitsklassifikation public-webhook; zusätzlicher Schutz im Code nicht nachgewiesen."
+      ]
+    }
+  ]
+}

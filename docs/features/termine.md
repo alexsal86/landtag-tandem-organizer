@@ -1,193 +1,690 @@
-# Termine & Briefings
+# Termine, Anfragen & Briefings
 
-_Auto-generiert mit `npm run update:feature-catalog` aus den Selbsttest-Szenarien. Nicht von Hand bearbeiten._
+_Auto-generiert mit `npm run update:feature-catalog` aus dem zentralen Funktionskatalog (`src/features/feature-catalog/inventory/termine.json`). Nicht von Hand bearbeiten._
 
-**Zweck:** Kalender, Terminanfragen, Briefings, Veranstaltungen und Terminabstimmungen inklusive Einladungs- und Erinnerungsregeln.
+**Zweck:** Kalender führen, Termine anlegen und abstimmen, Einladungen und Erinnerungen versenden, Briefings vorbereiten und nachbereiten.
 
-## Seiten
+## Kennzahlen
 
-- `/calendar`
-- `/eventplanning`
-- `/appointment-preparation/:id`
-- `/briefing-live/:id`
+- Funktionen: **17** in **8** Unterbereichen
+- implementiert: **17**, teilweise: **0**, deaktiviert: **0**, potenziell verwaist: **0**
+- ohne zugeordneten Test: **8**
+- ohne Dokumentationsverweis: **11**
+
+## Funktionen
+
+| Funktion | Unterbereich | Kategorie | Implementierung | Einbindung | Abdeckung |
+|---|---|---|---|---|---|
+| `appointments.briefing-live` Live-Briefing und Nachbereitung | Briefings | fachlich | implementiert | UI | Selbsttest |
+| `appointments.briefing` Terminbriefing erstellen | Briefings | fachlich | implementiert | rollenabhängig | Selbsttest |
+| `appointments.jour-fixe` Jour-fixe-Agende und Systempunkte | Jour fixe | fachlich | implementiert | UI | Selbsttest |
+| `calendar.holidays` Feiertage synchronisieren | Kalender | automatisiert | implementiert | systemseitig | kein Test |
+| `calendar.guests` Gäste und Teilnehmende verwalten | Kalender | fachlich | implementiert | UI | kein Test |
+| `calendar.create-appointment` Termin anlegen | Kalender | fachlich | implementiert | rollenabhängig | Selbsttest |
+| `calendar.edit-move` Termin bearbeiten und verschieben | Kalender | fachlich | implementiert | UI | kein Test |
+| `calendar.invitations` Termineinladungen und Kalendereinträge versenden | Kalender | integration | implementiert | UI | Unit-Test |
+| `calendar.reminders` Terminerinnerungen | Kalender | automatisiert | implementiert | systemseitig | kein Test |
+| `calendar.view` Terminkalender anzeigen | Kalender | fachlich | implementiert | UI | Selbsttest |
+| `calendar.categories-locations` Terminkategorien und -orte pflegen | Kalender | administrativ | implementiert | rollenabhängig | kein Test |
+| `appointments.debrief` Nachbereitung und Büro-Feedback | Nachbereitung | fachlich | implementiert | UI | kein Test |
+| `appointments.feedback` Termin-Feedback erfassen | Nachbereitung | automatisiert | implementiert | systemseitig | kein Test |
+| `daily.briefing` Tagesbriefing und Tageszettel | Tagesbriefing | fachlich | implementiert | UI | Selbsttest |
+| `calendar.polls` Terminumfrage erstellen | Terminabstimmung | fachlich | implementiert | UI | Selbsttest |
+| `appointments.requests` Terminanfrage stellen und entscheiden | Terminanfragen | fachlich | implementiert | rollenabhängig | Selbsttest |
+| `appointments.preparation` Terminvorbereitung mit Vorschlägen | Vorbereitung | fachlich | implementiert | UI | kein Test |
+
+## Unterbereiche
+
+- Kalender
+- Terminanfragen
+- Briefings
+- Nachbereitung
+- Vorbereitung
+- Jour fixe
+- Tagesbriefing
+- Terminabstimmung
 
 ## Rollen
 
-`abgeordneter`, `bueroleitung` (aus den Szenarien; zusätzlich gilt die aktive Büro-Mitgliedschaft)
+`abgeordneter`, `bueroleitung`, `mitarbeiter`, `praktikant`, `system`, `admin`
 
-## Tabellen
+## Datenbanktabellen
 
-Diese Tabellen schreiben die Szenarien laut `touches`. Fehlende Tabellen bedeuten nicht, dass der Bereich sie nicht liest.
+`appointment_categories`, `appointment_change_alerts`, `appointment_contacts`, `appointment_feedback`, `appointment_feedback_settings`, `appointment_guests`, `appointment_locations`, `appointment_polls`, `appointment_preparation_documents`, `appointment_preparation_templates`, `appointment_preparations`, `appointment_reminder_dispatches`, `appointment_requests`, `appointment_statuses`, `appointment_topics`, `appointments`, `case_items`, `daily_briefing_reads`, `daily_briefings`, `day_slips`, `default_appointment_guests`, `email_logs`, `external_events`, `meeting_agenda_items`, `meetings`, `notifications`, `poll_participants`, `poll_time_slots`, `public_holidays`, `starred_appointments`, `tasks`
 
-| Tabelle | Szenario |
-|---|---|
-| `appointment_change_alerts` | `appointment-briefing-lifecycle` |
-| `appointment_feedback` | `appointment-lifecycle` |
-| `appointment_guests` | `poll-lifecycle` |
-| `appointment_polls` | `poll-lifecycle` |
-| `appointment_preparations` | `appointment-lifecycle` |
-| `appointment_requests` | `appointment-request-lifecycle` |
-| `appointments` | `appointment-lifecycle`, `appointment-request-lifecycle`, `appointment-briefing-lifecycle`, `poll-lifecycle` |
-| `event_planning_checklist_items` | `event-planning-lifecycle` |
-| `event_planning_contacts` | `event-planning-lifecycle` |
-| `event_planning_dates` | `event-planning-lifecycle` |
-| `event_planning_speakers` | `event-planning-lifecycle` |
-| `event_planning_timeline_assignments` | `event-planning-lifecycle` |
-| `event_plannings` | `event-planning-lifecycle` |
-| `poll_participants` | `poll-lifecycle` |
-| `poll_time_slots` | `poll-lifecycle` |
-| `tasks` | `appointment-briefing-lifecycle` |
+## Selbsttest-Szenarien
 
-## Fremdschlüssel
+| Szenario | Titel | deklarierte Tabellen | deklarierte Prüfungen |
+|---|---|---:|---:|
+| `appointment-briefing-lifecycle` | Briefing-Lifecycle (vergeben → Aufgabe → vorlegen → freigeben) | 3 | 5 |
+| `appointment-lifecycle` | Termin-Lifecycle (Kalender + Briefing + Feedback) | 3 | 0 |
+| `appointment-request-lifecycle` | Terminanfragen-Lifecycle (Eingang → Sperre → Entscheidung → Termin) | 2 | 4 |
+| `daily-briefing-lifecycle` | Tages-Briefings (Vortag-Regel) | 1 | 0 |
+| `day-slip-lifecycle` | Tageszettel-Lifecycle (Links → Neuladen → Übernahme auf Folgetag) | 1 | 3 |
+| `jour-fixe-platform-integration` | Jour Fixe: Plattformquellen & Stafetten-Abschluss | 4 | 4 |
+| `poll-lifecycle` | Terminabstimmung (Gewinner-Slot übernehmen + Nachfassen) | 5 | 6 |
 
-Aus `docs/entity-map.md` für die oben genannten Tabellen. Eingehende Verweise zeigen, welche anderen Tabellen auf diesen Bereich zeigen.
+## Funktionsdetails
 
-### Ausgehend
+### `calendar.view` — Terminkalender anzeigen
+Stellt Termine in Monats-, Wochen- und Tagesansicht dar, inklusive Quellen, Kollisionen und Statusfiltern.
 
-| Tabelle | Spalte | Zieltabelle |
-|---|---|---|
-| `appointment_feedback` | `appointment_id` | `appointments` |
-| `appointment_feedback` | `external_event_id` | `external_events` |
-| `appointment_feedback` | `tenant_id` | `tenants` |
-| `appointment_guests` | `appointment_id` | `appointments` |
-| `appointment_polls` | `confirmed_appointment_id` | `appointments` |
-| `appointment_polls` | `confirmed_slot_id` | `poll_time_slots` |
-| `appointment_polls` | `tenant_id` | `tenants` |
-| `appointment_preparations` | `template_id` | `appointment_preparation_templates` |
-| `appointment_preparations` | `appointment_id` | `appointments` |
-| `appointment_preparations` | `tenant_id` | `tenants` |
-| `appointment_requests` | `appointment_id` | `appointments` |
-| `appointment_requests` | `tenant_id` | `tenants` |
-| `appointments` | `poll_id` | `appointment_polls` |
-| `appointments` | `call_log_id` | `call_logs` |
-| `appointments` | `contact_id` | `contacts` |
-| `appointments` | `district_id` | `election_districts` |
-| `appointments` | `meeting_id` | `meetings` |
-| `appointments` | `party_association_id` | `party_associations` |
-| `appointments` | `tenant_id` | `tenants` |
-| `event_planning_checklist_items` | `event_planning_id` | `event_plannings` |
-| `event_planning_contacts` | `event_planning_id` | `event_plannings` |
-| `event_planning_dates` | `appointment_id` | `appointments` |
-| `event_planning_dates` | `event_planning_id` | `event_plannings` |
-| `event_planning_speakers` | `event_planning_id` | `event_plannings` |
-| `event_planning_timeline_assignments` | `checklist_item_id` | `event_planning_checklist_items` |
-| `event_planning_timeline_assignments` | `event_planning_id` | `event_plannings` |
-| `event_plannings` | `template_id` | `planning_templates` |
-| `event_plannings` | `tenant_id` | `tenants` |
-| `poll_participants` | `poll_id` | `appointment_polls` |
-| `poll_time_slots` | `poll_id` | `appointment_polls` |
-| `tasks` | `call_log_id` | `call_logs` |
-| `tasks` | `meeting_id` | `meetings` |
-| `tasks` | `parent_task_id` | `tasks` |
-| `tasks` | `tenant_id` | `tenants` |
+- **Kategorie:** fachlich
+- **Implementierung:** implementiert
+- **Einbindung:** UI
+- **Testabdeckung:** Selbsttest
+- **Letztes Testergebnis:** nicht-ausgefuehrt (nicht aus der Existenz einer Testdatei abgeleitet)
+- **Rollen:** `abgeordneter`, `bueroleitung`, `mitarbeiter`, `praktikant`
+- **Routen:** `/calendar`
+- **Frontend-Komponenten:** `src/features/calendar/components/CalendarView.tsx`, `src/components/calendar/EnhancedCalendar.tsx`, `src/components/calendar/MonthView.tsx`, `src/components/calendar/WeekView.tsx`, `src/components/calendar/DayView.tsx`
+- **Services:** —
+- **Hooks:** —
+- **Edge Functions:** —
+- **Datenbankfunktionen:** —
+- **Tabellen:** `appointments`, `appointment_statuses`, `appointment_categories`, `external_events`, `starred_appointments`
+- **Abhängigkeiten:** —
+- **Selbsttests:** `appointment-lifecycle`
+- **Unit-Tests:** —
+- **Integrationstests:** —
+- **Browser-Tests:** —
+- **Dokumentation:** `docs/rollenrechte-matrix.md`
 
-### Eingehend
+**Nachweise im Quellcode**
 
-| Zieltabelle im Bereich | Von | Spalte |
-|---|---|---|
-| `tasks` | `annual_task_completions` | `linked_task_id` |
-| `appointments` | `appointment_contacts` | `appointment_id` |
-| `appointments` | `appointment_documents` | `appointment_id` |
-| `appointments` | `appointment_feedback` | `appointment_id` |
-| `appointments` | `appointment_guests` | `appointment_id` |
-| `appointments` | `appointment_polls` | `confirmed_appointment_id` |
-| `poll_time_slots` | `appointment_polls` | `confirmed_slot_id` |
-| `appointment_preparations` | `appointment_preparation_documents` | `preparation_id` |
-| `appointments` | `appointment_preparations` | `appointment_id` |
-| `appointments` | `appointment_reminder_dispatches` | `appointment_id` |
-| `appointments` | `appointment_requests` | `appointment_id` |
-| `appointments` | `appointment_topics` | `appointment_id` |
-| `appointment_polls` | `appointments` | `poll_id` |
-| `appointments` | `case_file_appointments` | `appointment_id` |
-| `tasks` | `case_file_tasks` | `task_id` |
-| `tasks` | `document_annotation_tasks` | `task_id` |
-| `tasks` | `employee_meeting_action_items` | `task_id` |
-| `event_planning_checklist_items` | `event_planning_action_logs` | `checklist_item_id` |
-| `event_plannings` | `event_planning_checklist_items` | `event_planning_id` |
-| `event_plannings` | `event_planning_collaborators` | `event_planning_id` |
-| `event_plannings` | `event_planning_contacts` | `event_planning_id` |
-| `appointments` | `event_planning_dates` | `appointment_id` |
-| `event_plannings` | `event_planning_dates` | `event_planning_id` |
-| `event_plannings` | `event_planning_documents` | `event_planning_id` |
-| `event_planning_checklist_items` | `event_planning_item_actions` | `checklist_item_id` |
-| `event_plannings` | `event_planning_speakers` | `event_planning_id` |
-| `event_planning_checklist_items` | `event_planning_timeline_assignments` | `checklist_item_id` |
-| `event_plannings` | `event_planning_timeline_assignments` | `event_planning_id` |
-| `event_plannings` | `event_rsvps` | `event_planning_id` |
-| `tasks` | `matrix_widget_callback_requests` | `task_id` |
-| `appointment_polls` | `poll_notifications` | `poll_id` |
-| `poll_participants` | `poll_notifications` | `participant_id` |
-| `appointment_polls` | `poll_participants` | `poll_id` |
-| `appointment_polls` | `poll_responses` | `poll_id` |
-| `poll_participants` | `poll_responses` | `participant_id` |
-| `poll_time_slots` | `poll_responses` | `time_slot_id` |
-| `appointment_polls` | `poll_time_slots` | `poll_id` |
-| `appointment_polls` | `poll_versions` | `poll_id` |
-| `tasks` | `quick_notes` | `task_id` |
-| `tasks` | `routine_package_runs` | `task_id` |
-| `appointments` | `starred_appointments` | `appointment_id` |
-| `tasks` | `subtasks` | `task_id` |
-| `tasks` | `task_assignees` | `task_id` |
-| `tasks` | `task_comments` | `task_id` |
-| `tasks` | `task_decisions` | `task_id` |
-| `tasks` | `task_topics` | `task_id` |
-| `tasks` | `tasks` | `parent_task_id` |
+- src/features/calendar/components/CalendarView.tsx
+- src/components/calendar/EnhancedCalendar.tsx
+- src/features/selftest/scenarios/appointment-lifecycle.ts
 
-## Prüfumfang
+**Bekannte Einschränkungen**
 
-### `appointment-lifecycle` — Termin-Lifecycle (Kalender + Briefing + Feedback)
+- Keine.
 
-- **Prüfungen:**
-  - Keine Einzelprüfungen deklariert; der Lauf bestätigt nur den Ablauf.
-- **Grenzen:**
-  - Keine deklariert.
+**Offene Prüfpunkte**
 
-### `appointment-request-lifecycle` — Terminanfragen-Lifecycle (Eingang → Sperre → Entscheidung → Termin)
+- Keine.
 
-- **Prüfungen:**
-  - Statussperre bei direktem Schreiben
-  - Zusage über die Anwendungs-RPC
-  - Verknüpfter Termin
-  - Wiederholung erzeugt keinen zweiten Termin
-- **Grenzen:**
-  - Bedienung der Kalenderoberfläche und externe Kalendersynchronisation werden nicht geprüft.
+### `calendar.create-appointment` — Termin anlegen
+Legt Termine mit Zeitraum, Ort, Kategorie, Kontakten, Gästen und Vorbereitungsbezug an.
 
-### `appointment-briefing-lifecycle` — Briefing-Lifecycle (vergeben → Aufgabe → vorlegen → freigeben)
+- **Kategorie:** fachlich
+- **Implementierung:** implementiert
+- **Einbindung:** rollenabhängig
+- **Testabdeckung:** Selbsttest
+- **Letztes Testergebnis:** nicht-ausgefuehrt (nicht aus der Existenz einer Testdatei abgeleitet)
+- **Rollen:** `abgeordneter`, `bueroleitung`, `mitarbeiter`, `praktikant`
+- **Routen:** —
+- **Frontend-Komponenten:** `src/features/appointments/components/CreateAppointmentDialog.tsx`
+- **Services:** —
+- **Hooks:** —
+- **Edge Functions:** —
+- **Datenbankfunktionen:** —
+- **Tabellen:** `appointments`, `appointment_categories`, `appointment_locations`, `appointment_contacts`
+- **Abhängigkeiten:** —
+- **Selbsttests:** `appointment-lifecycle`
+- **Unit-Tests:** —
+- **Integrationstests:** —
+- **Browser-Tests:** —
+- **Dokumentation:** —
 
-- **Prüfungen:**
-  - Regeln für Freigabe und Fristvorschlag
-  - Aufgabe entsteht beim Vergeben
-  - Ball wechselt bei Vorlage
-  - Freigabe erledigt Aufgabe
-  - Kein Briefing schließt Aufgabe
-- **Grenzen:**
-  - Bedienung von Kalender- und Jour-Fixe-Oberfläche wird nicht geprüft.
+**Nachweise im Quellcode**
 
-### `event-planning-lifecycle` — Event-Planung (komplett: Termine, Speaker, Checkliste, Timeline)
+- src/features/appointments/components/CreateAppointmentDialog.tsx
+- src/pages/Index.tsx
 
-- **Prüfungen:**
-  - Keine Einzelprüfungen deklariert; der Lauf bestätigt nur den Ablauf.
-- **Grenzen:**
-  - Keine deklariert.
+**Bekannte Einschränkungen**
 
-### `poll-lifecycle` — Terminabstimmung (Gewinner-Slot übernehmen + Nachfassen)
+- Keine.
 
-- **Prüfungen:**
-  - confirm_poll_winner legt genau einen Termin an und verknüpft ihn mit der Abstimmung
-  - Zweiter Aufruf (gleicher und anderer Slot) liefert denselben Termin und den tatsächlich gespeicherten Slot
-  - Externe Teilnehmer werden als Gäste am Termin angelegt, interne nicht
-  - Fremde Slots und unbekannte Abstimmungen werden abgelehnt
-  - Fremde Abstimmungen im Mandanten können nicht übernommen werden
-  - get_poll_availability verweigert fremde Mandanten
-- **Grenzen:**
-  - Die Erstellerprüfung läuft gegen eine vorhandene fremde Abstimmung im Mandanten; in einem Büro ohne fremde Abstimmung meldet der Schritt diese Teilprüfung als nicht ausführbar.
-  - Eine ausgeschiedene Büromitgliedschaft lässt sich im Selbsttest nicht gefahrlos simulieren; die Prüfung auf aktive Mitgliedschaft und der Versand der Erinnerungswarteschlange sind in der Migration und in den Logikschritten abgesichert.
+**Offene Prüfpunkte**
 
-## Detaildoku
+- Keine.
 
-- [dossier-umsetzungsplan.md](../dossier-umsetzungsplan.md)
-- [public-event-invitations.md](../public-event-invitations.md)
-- [rollenrechte-matrix.md](../rollenrechte-matrix.md)
+### `calendar.edit-move` — Termin bearbeiten und verschieben
+Ändert Termine, verschiebt sie im Kalender und erzeugt bei relevanten Änderungen Hinweise an Beteiligte.
+
+- **Kategorie:** fachlich
+- **Implementierung:** implementiert
+- **Einbindung:** UI
+- **Testabdeckung:** kein Test
+- **Letztes Testergebnis:** nicht-ausgefuehrt (nicht aus der Existenz einer Testdatei abgeleitet)
+- **Rollen:** `abgeordneter`, `bueroleitung`, `mitarbeiter`
+- **Routen:** —
+- **Frontend-Komponenten:** `src/features/appointments/change-alerts/AppointmentChangeAlerts.tsx`
+- **Services:** `src/features/appointments/change-alerts/changeModel.ts`
+- **Hooks:** —
+- **Edge Functions:** —
+- **Datenbankfunktionen:** `reset_appointment_reminders_on_move`, `reopen_changed_appointment_briefing`
+- **Tabellen:** `appointments`, `appointment_change_alerts`, `appointment_reminder_dispatches`
+- **Abhängigkeiten:** —
+- **Selbsttests:** —
+- **Unit-Tests:** —
+- **Integrationstests:** —
+- **Browser-Tests:** —
+- **Dokumentation:** —
+
+**Nachweise im Quellcode**
+
+- src/features/appointments/change-alerts/AppointmentChangeAlerts.tsx
+- src/features/appointments/change-alerts/changeModel.ts
+
+**Bekannte Einschränkungen**
+
+- Keine.
+
+**Offene Prüfpunkte**
+
+- Keine.
+
+### `calendar.guests` — Gäste und Teilnehmende verwalten
+Verwaltet Termingäste, Standardgäste und Zu-/Absagen mit E-Mail-Normalisierung.
+
+- **Kategorie:** fachlich
+- **Implementierung:** implementiert
+- **Einbindung:** UI
+- **Testabdeckung:** kein Test
+- **Letztes Testergebnis:** nicht-ausgefuehrt (nicht aus der Existenz einer Testdatei abgeleitet)
+- **Rollen:** `abgeordneter`, `bueroleitung`, `mitarbeiter`, `praktikant`
+- **Routen:** —
+- **Frontend-Komponenten:** `src/features/appointments/components/GuestManager.tsx`, `src/features/appointments/components/DefaultGuestsAdmin.tsx`
+- **Services:** —
+- **Hooks:** —
+- **Edge Functions:** —
+- **Datenbankfunktionen:** `upsert_appointment_guests`, `normalize_appointment_guest_email`
+- **Tabellen:** `appointment_guests`, `default_appointment_guests`, `appointments`
+- **Abhängigkeiten:** —
+- **Selbsttests:** —
+- **Unit-Tests:** —
+- **Integrationstests:** —
+- **Browser-Tests:** —
+- **Dokumentation:** —
+
+**Nachweise im Quellcode**
+
+- src/features/appointments/components/GuestManager.tsx
+- src/features/appointments/components/DefaultGuestsAdmin.tsx
+
+**Bekannte Einschränkungen**
+
+- Keine.
+
+**Offene Prüfpunkte**
+
+- Keine.
+
+### `calendar.reminders` — Terminerinnerungen
+Versendet In-App-, Push- und optional E-Mail-Erinnerungen gemäß reminder_minutes und verhindert Doppelversand.
+
+- **Kategorie:** automatisiert
+- **Implementierung:** implementiert
+- **Einbindung:** systemseitig
+- **Testabdeckung:** kein Test
+- **Letztes Testergebnis:** nicht-ausgefuehrt (nicht aus der Existenz einer Testdatei abgeleitet)
+- **Rollen:** `system`, `abgeordneter`, `bueroleitung`, `mitarbeiter`
+- **Routen:** —
+- **Frontend-Komponenten:** —
+- **Services:** `supabase/functions/_shared/appointmentReminder.ts`, `src/features/appointments/reminderRules.ts`
+- **Hooks:** —
+- **Edge Functions:** `send-appointment-reminders`
+- **Datenbankfunktionen:** `dispatch_due_appointment_reminders`, `seed_appointment_reminder_type`
+- **Tabellen:** `appointments`, `appointment_reminder_dispatches`, `notifications`
+- **Abhängigkeiten:** —
+- **Selbsttests:** —
+- **Unit-Tests:** —
+- **Integrationstests:** —
+- **Browser-Tests:** —
+- **Dokumentation:** `docs/operations`
+
+**Nachweise im Quellcode**
+
+- src/features/appointments/reminderRules.ts
+- supabase/functions/send-appointment-reminders/index.ts
+- supabase/functions/_shared/appointmentReminder.ts
+
+**Bekannte Einschränkungen**
+
+- Keine.
+
+**Offene Prüfpunkte**
+
+- Keine.
+
+### `calendar.invitations` — Termineinladungen und Kalendereinträge versenden
+Erzeugt ICS-Einladungen, versendet sie und stempelt den Versand am Termin.
+
+- **Kategorie:** integration
+- **Implementierung:** implementiert
+- **Einbindung:** UI
+- **Testabdeckung:** Unit-Test
+- **Letztes Testergebnis:** unbekannt (nicht aus der Existenz einer Testdatei abgeleitet)
+- **Rollen:** `abgeordneter`, `bueroleitung`, `mitarbeiter`
+- **Routen:** —
+- **Frontend-Komponenten:** —
+- **Services:** `supabase/functions/_shared/appointmentInvite.ts`, `src/features/appointments/invitations/invitationRules.ts`
+- **Hooks:** —
+- **Edge Functions:** `generate-calendar-invite`, `send-appointment-invitation`
+- **Datenbankfunktionen:** `stamp_appointment_calendar_invite`
+- **Tabellen:** `appointments`, `appointment_guests`, `email_logs`
+- **Abhängigkeiten:** —
+- **Selbsttests:** —
+- **Unit-Tests:** `supabase/functions/_shared/appointmentInvite.test.ts`
+- **Integrationstests:** —
+- **Browser-Tests:** —
+- **Dokumentation:** —
+
+**Nachweise im Quellcode**
+
+- supabase/functions/_shared/appointmentInvite.ts
+- supabase/functions/generate-calendar-invite/index.ts
+- supabase/functions/send-appointment-invitation/index.ts
+
+**Bekannte Einschränkungen**
+
+- Keine.
+
+**Offene Prüfpunkte**
+
+- Keine.
+
+### `appointments.requests` — Terminanfrage stellen und entscheiden
+Erfasst Terminanfragen in einer eigenen Tabelle; nur die Entscheiderrolle darf über decide_appointment_request zusagen und damit atomar einen Termin erzeugen.
+
+- **Kategorie:** fachlich
+- **Implementierung:** implementiert
+- **Einbindung:** rollenabhängig
+- **Testabdeckung:** Selbsttest
+- **Letztes Testergebnis:** nicht-ausgefuehrt (nicht aus der Existenz einer Testdatei abgeleitet)
+- **Rollen:** `abgeordneter`, `bueroleitung`, `mitarbeiter`
+- **Routen:** —
+- **Frontend-Komponenten:** `src/features/appointment-requests/AppointmentRequestHost.tsx`, `src/features/appointment-requests/AppointmentRequestCreateDialog.tsx`, `src/features/appointment-requests/AppointmentRequestDetailDialog.tsx`, `src/features/appointment-requests/AppointmentRequestList.tsx`
+- **Services:** —
+- **Hooks:** `src/features/appointment-requests/useAppointmentRequests.ts`
+- **Edge Functions:** —
+- **Datenbankfunktionen:** `decide_appointment_request`, `appointment_requests_guard`
+- **Tabellen:** `appointment_requests`, `appointments`
+- **Abhängigkeiten:** —
+- **Selbsttests:** `appointment-request-lifecycle`
+- **Unit-Tests:** —
+- **Integrationstests:** —
+- **Browser-Tests:** —
+- **Dokumentation:** `docs/rollenrechte-matrix.md`
+
+**Nachweise im Quellcode**
+
+- src/features/appointment-requests/AppointmentRequestHost.tsx
+- src/features/appointment-requests/logic.ts
+- src/features/selftest/scenarios/appointment-request-lifecycle.ts
+
+**Bekannte Einschränkungen**
+
+- Ein direkter Statuswechsel wird durch einen Trigger blockiert; der Negativpfad ist im Szenario geprüft.
+
+**Offene Prüfpunkte**
+
+- Keine.
+
+### `appointments.briefing` — Terminbriefing erstellen
+Erstellt Kurz-, 7-Phasen- und Live-Briefings auf einem gemeinsamen preparation_data-Datensatz und erzeugt Folgeaufgaben.
+
+- **Kategorie:** fachlich
+- **Implementierung:** implementiert
+- **Einbindung:** rollenabhängig
+- **Testabdeckung:** Selbsttest
+- **Letztes Testergebnis:** nicht-ausgefuehrt (nicht aus der Existenz einer Testdatei abgeleitet)
+- **Rollen:** `abgeordneter`, `bueroleitung`, `mitarbeiter`
+- **Routen:** `/appointment-preparation/:id`
+- **Frontend-Komponenten:** `src/features/appointments/components/AppointmentPreparationSidebar.tsx`, `src/features/appointments/briefing/CompactBriefingEditor.tsx`, `src/features/appointments/briefing/AppointmentBriefingStatusCard.tsx`
+- **Services:** —
+- **Hooks:** `src/features/appointments/briefing/useBriefing.ts`, `src/hooks/useAppointmentPreparation.tsx`
+- **Edge Functions:** —
+- **Datenbankfunktionen:** `set_appointment_briefing`, `set_appointment_briefing_depth`, `advance_appointment_briefing`, `complete_appointment_briefing`, `create_briefing_follow_up_task`, `appointment_preparation_ready`, `auto_archive_completed_preparations`, `create_preparation_followup`, `preserve_preparation_task_links`, `record_preparation_history`, `validate_appointment_briefing_status`
+- **Tabellen:** `appointment_preparations`, `appointment_preparation_documents`, `appointments`, `tasks`
+- **Abhängigkeiten:** —
+- **Selbsttests:** `appointment-briefing-lifecycle`
+- **Unit-Tests:** `src/features/appointments/briefing.test.ts`
+- **Integrationstests:** —
+- **Browser-Tests:** —
+- **Dokumentation:** `docs/dossier-umsetzungsplan.md`
+
+**Nachweise im Quellcode**
+
+- src/features/appointments/briefing/briefingModel.ts
+- src/features/appointments/briefing.ts
+- src/features/selftest/scenarios/appointment-briefing-lifecycle.ts
+
+**Bekannte Einschränkungen**
+
+- Keine.
+
+**Offene Prüfpunkte**
+
+- Keine.
+
+### `appointments.briefing-live` — Live-Briefing und Nachbereitung
+Führt das Briefing im Termin, erlaubt Statusfortschritt und erzeugt Nachbereitungsaufgaben mit Stafette-Feldern.
+
+- **Kategorie:** fachlich
+- **Implementierung:** implementiert
+- **Einbindung:** UI
+- **Testabdeckung:** Selbsttest
+- **Letztes Testergebnis:** nicht-ausgefuehrt (nicht aus der Existenz einer Testdatei abgeleitet)
+- **Rollen:** `abgeordneter`, `bueroleitung`, `mitarbeiter`
+- **Routen:** `/briefing-live/:id`
+- **Frontend-Komponenten:** `src/pages/BriefingLivePage.tsx`, `src/features/appointments/briefing/PendingBriefingNotice.tsx`
+- **Services:** `src/features/appointments/briefing/briefingModel.ts`
+- **Hooks:** —
+- **Edge Functions:** —
+- **Datenbankfunktionen:** `advance_appointment_briefing`, `complete_appointment_briefing`
+- **Tabellen:** `appointment_preparations`, `tasks`
+- **Abhängigkeiten:** —
+- **Selbsttests:** `appointment-briefing-lifecycle`
+- **Unit-Tests:** —
+- **Integrationstests:** —
+- **Browser-Tests:** —
+- **Dokumentation:** —
+
+**Nachweise im Quellcode**
+
+- src/pages/BriefingLivePage.tsx
+- src/features/appointments/briefing/useBriefingEditorView.ts
+- src/features/appointments/briefing/debriefActions.ts
+
+**Bekannte Einschränkungen**
+
+- Keine.
+
+**Offene Prüfpunkte**
+
+- Keine.
+
+### `appointments.debrief` — Nachbereitung und Büro-Feedback
+Sammelt Rückmeldungen aus dem Termin, zeigt offene Nachbereitungen und schließt Feedback-Erinnerungen.
+
+- **Kategorie:** fachlich
+- **Implementierung:** implementiert
+- **Einbindung:** UI
+- **Testabdeckung:** kein Test
+- **Letztes Testergebnis:** nicht-ausgefuehrt (nicht aus der Existenz einer Testdatei abgeleitet)
+- **Rollen:** `abgeordneter`, `bueroleitung`, `mitarbeiter`
+- **Routen:** —
+- **Frontend-Komponenten:** `src/features/appointments/briefing/OfficeDebriefInboxCard.tsx`, `src/features/appointments/briefing/OfficeFeedbackCard.tsx`, `src/features/appointments/briefing/DeputyDebriefReview.tsx`
+- **Services:** `src/features/appointments/briefing/officeDebriefInbox.ts`, `src/features/appointments/briefing/officeFeedback.ts`
+- **Hooks:** —
+- **Edge Functions:** —
+- **Datenbankfunktionen:** `list_office_debriefs`, `update_office_debrief`, `close_office_feedback_reminder`
+- **Tabellen:** `appointment_feedback`, `appointment_preparations`
+- **Abhängigkeiten:** —
+- **Selbsttests:** —
+- **Unit-Tests:** —
+- **Integrationstests:** —
+- **Browser-Tests:** —
+- **Dokumentation:** —
+
+**Nachweise im Quellcode**
+
+- src/features/appointments/briefing/OfficeDebriefInboxCard.tsx
+- src/features/appointments/briefing/officeDebriefInbox.ts
+- src/features/appointments/briefing/OfficeFeedbackCard.tsx
+
+**Bekannte Einschränkungen**
+
+- Keine.
+
+**Offene Prüfpunkte**
+
+- Keine.
+
+### `appointments.feedback` — Termin-Feedback erfassen
+Erfasst Feedback zu vergangenen Terminen, erzeugt Feedback-Einträge automatisch und steuert Erinnerungen.
+
+- **Kategorie:** automatisiert
+- **Implementierung:** implementiert
+- **Einbindung:** systemseitig
+- **Testabdeckung:** kein Test
+- **Letztes Testergebnis:** nicht-ausgefuehrt (nicht aus der Existenz einer Testdatei abgeleitet)
+- **Rollen:** `abgeordneter`, `bueroleitung`, `mitarbeiter`, `system`
+- **Routen:** —
+- **Frontend-Komponenten:** `src/components/dashboard/AppointmentFeedbackWidget.tsx`
+- **Services:** —
+- **Hooks:** —
+- **Edge Functions:** `create-daily-appointment-feedback`
+- **Datenbankfunktionen:** `create_appointment_feedback_entry`, `create_appointment_feedback_on_past`, `create_feedback_for_past_appointment`, `dispatch_office_feedback_reminders`, `request_birthday_congratulations`
+- **Tabellen:** `appointment_feedback`, `appointment_feedback_settings`
+- **Abhängigkeiten:** —
+- **Selbsttests:** —
+- **Unit-Tests:** —
+- **Integrationstests:** —
+- **Browser-Tests:** —
+- **Dokumentation:** —
+
+**Nachweise im Quellcode**
+
+- supabase/functions/create-daily-appointment-feedback/index.ts
+- src/components/dashboard/AppointmentFeedbackWidget.tsx
+
+**Bekannte Einschränkungen**
+
+- Keine.
+
+**Offene Prüfpunkte**
+
+- Keine.
+
+### `appointments.preparation` — Terminvorbereitung mit Vorschlägen
+Bereitet Termine mit Dokumenten, Themen, Kontaktwissen und KI-Vorschlägen vor.
+
+- **Kategorie:** fachlich
+- **Implementierung:** implementiert
+- **Einbindung:** UI
+- **Testabdeckung:** kein Test
+- **Letztes Testergebnis:** nicht-ausgefuehrt (nicht aus der Existenz einer Testdatei abgeleitet)
+- **Rollen:** `abgeordneter`, `bueroleitung`, `mitarbeiter`
+- **Routen:** `/appointment-preparation/:id`
+- **Frontend-Komponenten:** `src/pages/AppointmentPreparationDetail.tsx`, `src/components/appointment-preparations`
+- **Services:** —
+- **Hooks:** `src/hooks/useAppointmentPreparation.tsx`, `src/hooks/useAppointmentPreparationShortcuts.ts`
+- **Edge Functions:** `generate-preparation-suggestions`, `detect-appointment-district`
+- **Datenbankfunktionen:** —
+- **Tabellen:** `appointment_preparations`, `appointment_preparation_templates`, `appointment_topics`, `appointment_preparation_documents`
+- **Abhängigkeiten:** `appointments.briefing`
+- **Selbsttests:** —
+- **Unit-Tests:** —
+- **Integrationstests:** —
+- **Browser-Tests:** —
+- **Dokumentation:** —
+
+**Nachweise im Quellcode**
+
+- src/pages/AppointmentPreparationDetail.tsx
+- src/hooks/useAppointmentPreparation.tsx
+
+**Bekannte Einschränkungen**
+
+- Keine.
+
+**Offene Prüfpunkte**
+
+- Keine.
+
+### `appointments.jour-fixe` — Jour-fixe-Agende und Systempunkte
+Füllt die Jour-fixe-Agende aus Vorgängen, Aufgaben, Geburtstagen und weiteren Quellen und reserviert Termine.
+
+- **Kategorie:** fachlich
+- **Implementierung:** implementiert
+- **Einbindung:** UI
+- **Testabdeckung:** Selbsttest
+- **Letztes Testergebnis:** nicht-ausgefuehrt (nicht aus der Existenz einer Testdatei abgeleitet)
+- **Rollen:** `abgeordneter`, `bueroleitung`, `mitarbeiter`
+- **Routen:** —
+- **Frontend-Komponenten:** `src/components/meetings/PlatformAgendaSection.tsx`, `src/components/meetings/PendingJourFixeCaseItems.tsx`, `src/components/meetings/PendingJourFixeNotes.tsx`
+- **Services:** —
+- **Hooks:** `src/hooks/useMyWorkJourFixeMeetings.ts`, `src/hooks/useMyWorkJourFixeSystemData.ts`
+- **Edge Functions:** —
+- **Datenbankfunktionen:** `claim_jour_fixe_reservations`, `capture_archived_jour_fixe_task`, `restore_jour_fixe_task_provenance`, `sync_jour_fixe_agenda_timer`, `respond_to_meeting_invitation`
+- **Tabellen:** `meetings`, `meeting_agenda_items`, `case_items`, `tasks`
+- **Abhängigkeiten:** —
+- **Selbsttests:** `jour-fixe-platform-integration`
+- **Unit-Tests:** —
+- **Integrationstests:** —
+- **Browser-Tests:** —
+- **Dokumentation:** `docs/team-rituals.md`
+
+**Nachweise im Quellcode**
+
+- src/components/meetings/PlatformAgendaSection.tsx
+- src/hooks/useMyWorkJourFixeSystemData.ts
+- src/features/selftest/scenarios/jour-fixe-platform-integration.ts
+
+**Bekannte Einschränkungen**
+
+- Keine.
+
+**Offene Prüfpunkte**
+
+- Keine.
+
+### `daily.briefing` — Tagesbriefing und Tageszettel
+Erzeugt Tagesbriefings und Tageszettel mit Terminen und Aufgaben, hält Lesebestätigungen fest und archiviert Tageszettel.
+
+- **Kategorie:** fachlich
+- **Implementierung:** implementiert
+- **Einbindung:** UI
+- **Testabdeckung:** Selbsttest
+- **Letztes Testergebnis:** nicht-ausgefuehrt (nicht aus der Existenz einer Testdatei abgeleitet)
+- **Rollen:** `abgeordneter`, `bueroleitung`, `mitarbeiter`
+- **Routen:** —
+- **Frontend-Komponenten:** `src/features/briefings/components/TodayBriefingPanel.tsx`, `src/features/briefings/components/BriefingComposerCard.tsx`
+- **Services:** —
+- **Hooks:** `src/features/briefings/hooks/useTodayBriefings.ts`, `src/features/briefings/hooks/useMarkBriefingRead.ts`, `src/features/briefings/hooks/useMyDraftBriefing.ts`
+- **Edge Functions:** —
+- **Datenbankfunktionen:** `can_view_daily_briefing_receipt`, `get_authored_daily_briefing_read_status`, `validate_daily_briefing_date`
+- **Tabellen:** `daily_briefings`, `daily_briefing_reads`, `day_slips`
+- **Abhängigkeiten:** —
+- **Selbsttests:** `daily-briefing-lifecycle`, `day-slip-lifecycle`
+- **Unit-Tests:** —
+- **Integrationstests:** —
+- **Browser-Tests:** —
+- **Dokumentation:** `docs/my-work-architecture.md`
+
+**Nachweise im Quellcode**
+
+- src/features/briefings/components/TodayBriefingPanel.tsx
+- src/features/briefings/hooks/useTodayBriefings.ts
+- src/features/selftest/scenarios/daily-briefing-lifecycle.ts
+
+**Bekannte Einschränkungen**
+
+- Keine.
+
+**Offene Prüfpunkte**
+
+- Keine.
+
+### `calendar.categories-locations` — Terminkategorien und -orte pflegen
+Verwaltet konfigurierbare Terminkategorien, Status und Orte in der Administration.
+
+- **Kategorie:** administrativ
+- **Implementierung:** implementiert
+- **Einbindung:** rollenabhängig
+- **Testabdeckung:** kein Test
+- **Letztes Testergebnis:** nicht-ausgefuehrt (nicht aus der Existenz einer Testdatei abgeleitet)
+- **Rollen:** `admin`, `bueroleitung`
+- **Routen:** —
+- **Frontend-Komponenten:** `src/components/administration/ConfigurableTypeSettings.tsx`
+- **Services:** —
+- **Hooks:** `src/hooks/useAppointmentCategories.tsx`
+- **Edge Functions:** —
+- **Datenbankfunktionen:** `config_delete_guard`, `delete_config_item`, `rename_config_item`, `config_rename_keys`
+- **Tabellen:** `appointment_categories`, `appointment_statuses`, `appointment_locations`
+- **Abhängigkeiten:** —
+- **Selbsttests:** —
+- **Unit-Tests:** —
+- **Integrationstests:** —
+- **Browser-Tests:** —
+- **Dokumentation:** —
+
+**Nachweise im Quellcode**
+
+- src/components/administration/ConfigurableTypeSettings.tsx
+- src/hooks/useAppointmentCategories.tsx
+
+**Bekannte Einschränkungen**
+
+- Keine.
+
+**Offene Prüfpunkte**
+
+- Keine.
+
+### `calendar.polls` — Terminumfrage erstellen
+Erstellt Terminumfragen mit Zeitfenstern und Teilnehmenden und wertet Antworten aus.
+
+- **Kategorie:** fachlich
+- **Implementierung:** implementiert
+- **Einbindung:** UI
+- **Testabdeckung:** Selbsttest
+- **Letztes Testergebnis:** nicht-ausgefuehrt (nicht aus der Existenz einer Testdatei abgeleitet)
+- **Rollen:** `abgeordneter`, `bueroleitung`, `mitarbeiter`
+- **Routen:** —
+- **Frontend-Komponenten:** —
+- **Services:** `src/features/polls/pollRules.ts`
+- **Hooks:** —
+- **Edge Functions:** —
+- **Datenbankfunktionen:** `create_appointment_poll_with_details`
+- **Tabellen:** `appointment_polls`, `poll_time_slots`, `poll_participants`
+- **Abhängigkeiten:** —
+- **Selbsttests:** `poll-lifecycle`
+- **Unit-Tests:** —
+- **Integrationstests:** —
+- **Browser-Tests:** —
+- **Dokumentation:** —
+
+**Nachweise im Quellcode**
+
+- src/features/polls/pollRules.ts
+- supabase/functions/_shared/pollSlotSuggestion.ts
+
+**Bekannte Einschränkungen**
+
+- Keine.
+
+**Offene Prüfpunkte**
+
+- Keine.
+
+### `calendar.holidays` — Feiertage synchronisieren
+Lädt gesetzliche Feiertage und stellt sie Kalender- und Fristberechnungen zur Verfügung.
+
+- **Kategorie:** automatisiert
+- **Implementierung:** implementiert
+- **Einbindung:** systemseitig
+- **Testabdeckung:** kein Test
+- **Letztes Testergebnis:** nicht-ausgefuehrt (nicht aus der Existenz einer Testdatei abgeleitet)
+- **Rollen:** `system`
+- **Routen:** —
+- **Frontend-Komponenten:** —
+- **Services:** —
+- **Hooks:** —
+- **Edge Functions:** `sync-holidays`
+- **Datenbankfunktionen:** —
+- **Tabellen:** `public_holidays`
+- **Abhängigkeiten:** —
+- **Selbsttests:** —
+- **Unit-Tests:** —
+- **Integrationstests:** —
+- **Browser-Tests:** —
+- **Dokumentation:** —
+
+**Nachweise im Quellcode**
+
+- supabase/functions/sync-holidays/index.ts
+
+**Bekannte Einschränkungen**
+
+- Keine.
+
+**Offene Prüfpunkte**
+
+- Der Sync-Lauf wurde nicht ausgeführt; Datenquelle und Aktualisierungsintervall sind nicht dokumentiert.
 
 ## Regeln
 

@@ -87,3 +87,33 @@
 - Supplied 2026 state-list imports preserve all 339 positions and their original row/source snapshot, including direct/substitute/list-only roles. A list entry never creates a mandate or implies election. Normalized exact names (comma order/titles only) must identify one connection across all histories before party/birth-year checks; ambiguous/conflicting identities stay unlinked and manual picks survive. Profiles load only the selected connection's published list positions via get_deputy_state_list_places.
 
 - Election data quality and workbook source reconciliation live only in the Super-Admin election-history workspace. Load their selected-year panels on demand behind ElectionHistoryAdmin access checks; Daten contains result provenance but no quality/source reconciliation workbench or embedded audit queries. Legacy analysisCheck URLs normalize without reopening admin tools.
+
+## Funktionskatalog (verbindlich)
+
+Der Funktionskatalog unter `src/features/feature-catalog/` ist das führende Verzeichnis des tatsächlich implementierten fachlichen Funktionsumfangs. Er ist keine Soll-Spezifikation und keine zweite Anforderungsliste. Maßgeblich sind Quellcode, Migrationen und generierte Supabase-Typen.
+
+### Pflicht zur Funktionsinventarisierung
+
+- Jede neue fachliche Funktion wird im zentralen Katalog (`src/features/feature-catalog/inventory/<bereich>.json`) mit stabiler ID erfasst.
+- Jede Änderung des fachlichen Funktionsumfangs wird im bestehenden Katalogeintrag nachvollzogen (Beschreibung, Status, Referenzen, Tests, Einschränkungen).
+- Wird eine Funktion entfernt oder deaktiviert, wird `implementationStatus` auf `entfernt`, `deaktiviert`, `veraltet` oder `verwaist` gesetzt; der Eintrag bleibt mit Begründung erhalten.
+- Neue Seiten, Benutzeraktionen, fachliche Services, Edge Functions, RPCs, Integrationen und Automatisierungen werden vorhandenen oder neuen Funktions-IDs zugeordnet. Nicht zugeordnete Routen und Edge Functions lassen `check:feature-catalog` fehlschlagen.
+- Eine fehlende Testabdeckung wird ausdrücklich mit `coverage: "keine"` und `testResult: "nicht-ausgefuehrt"` gekennzeichnet und ist kein Grund, eine Funktion wegzulassen.
+- Reine technische Refactorings ohne Veränderung des fachlichen Funktionsumfangs erfordern keine neuen Katalogeinträge.
+- Stabile Funktions-IDs bleiben bei Umbenennung oder Verschiebung einer Funktion erhalten; geändert wird der Eintrag, nicht die ID.
+- Technische Hilfsfunktionen erhalten keinen eigenen Facheintrag, sondern werden der Funktion zugeordnet, der sie dienen.
+- Eine vorhandene Testdatei, ein registriertes Szenario oder eine vorhandene Komponente ist kein Nachweis für einen bestandenen Test oder eine funktionierende Oberfläche.
+
+### Definition of Done für funktionale Änderungen
+
+Eine funktionale Softwareänderung ist erst abgeschlossen, wenn:
+
+- der Funktionskatalog berücksichtigt und gegebenenfalls aktualisiert wurde,
+- neue Funktionen eine eindeutige, stabile ID besitzen,
+- relevante technische Referenzen (Routen, Komponenten, Services, Hooks, Edge Functions, RPCs, Tabellen, Rollen) hinterlegt sind,
+- die Testabdeckung bewertet und von einem Testergebnis getrennt wurde,
+- fehlende Tests und bekannte Einschränkungen dokumentiert sind,
+- `npm run check:feature-catalog`, `npm run audit:feature-catalog` und `npm run test:feature-catalog` erfolgreich liefen,
+- `npm run update:feature-catalog` die generierte Dokumentation aktualisiert hat und keine veralteten Katalogdateien verbleiben.
+
+Diese Regeln gelten für menschliche Entwickler und alle KI-Entwicklungsagenten.

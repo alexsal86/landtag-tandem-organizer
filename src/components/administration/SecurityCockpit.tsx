@@ -1,5 +1,6 @@
 import type { JSX } from "react";
 import { useMemo } from "react";
+import { Link } from "react-router-dom";
 import { EmptyState, LoadingState } from '@/components/ui-patterns';
 import { useQuery } from "@tanstack/react-query";
 import { supabase } from "@/integrations/supabase/client";
@@ -131,7 +132,12 @@ export function SecurityCockpit(): JSX.Element {
             <Shield className="h-5 w-5" /> Security-Cockpit
           </h2>
           <p className="text-body text-muted-foreground">
-            RLS-Coverage, Audit-Trail und Snapshots zur Datenbanksicherheit.
+            RLS-Coverage, Audit-Trail und Snapshots zur Datenbanksicherheit. Sicherheitsbefunde stehen hier getrennt
+            von fachlichen Testergebnissen; Tabellen, Rollen und Datenbankfunktionen je Funktion führt der{" "}
+            <Link to="/funktionskatalog" className="font-medium text-primary underline underline-offset-2">
+              Funktionskatalog
+            </Link>
+            .
           </p>
         </div>
         <div className="flex gap-2">

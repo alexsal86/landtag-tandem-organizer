@@ -1,0 +1,480 @@
+{
+  "area": {
+    "id": "kommunikation",
+    "title": "Redaktion, News & Chat",
+    "purpose": "Social-Media-Planung und Freigaben, Pressemitteilungen und Newsversand sowie die interne Matrix-Kommunikation."
+  },
+  "features": [
+    {
+      "id": "redaktion.planner",
+      "subarea": "Social Planner",
+      "name": "Social-Media-Planung",
+      "description": "Plant Beiträge im Kalender, ordnet Kanäle und Varianten zu und führt den Redaktionsstatus.",
+      "category": "fachlich",
+      "implementationStatus": "implementiert",
+      "integrationStatus": "ui",
+      "coverage": "keine",
+      "testResult": "nicht-ausgefuehrt",
+      "evidence": [
+        "src/features/redaktion/components/RedaktionFeature.tsx",
+        "src/features/redaktion/hooks/useSocialPlannerItems.ts"
+      ],
+      "routes": [
+        "/mywork?tab=redaktion",
+        "/redaktion"
+      ],
+      "components": [
+        "src/features/redaktion/components/RedaktionFeature.tsx",
+        "src/features/redaktion/components/PlannerBoard.tsx",
+        "src/features/redaktion/components/PlannerCalendarGrid.tsx"
+      ],
+      "hooks": [
+        "src/features/redaktion/hooks/useSocialPlannerItems.ts"
+      ],
+      "tables": [
+        "social_content_items",
+        "social_content_channels",
+        "social_content_item_channels",
+        "social_content_variants"
+      ],
+      "roles": [
+        "abgeordneter",
+        "bueroleitung",
+        "mitarbeiter"
+      ],
+      "docs": [
+        "docs/emoji-reactions-dod-v1.md"
+      ]
+    },
+    {
+      "id": "redaktion.approval",
+      "subarea": "Social Planner",
+      "name": "Social-Media-Freigabe",
+      "description": "Führt Beiträge durch Freigabe, fordert Änderungen an, protokolliert Entscheidungen und benachrichtigt Beteiligte.",
+      "category": "fachlich",
+      "implementationStatus": "implementiert",
+      "integrationStatus": "rollenabhaengig",
+      "coverage": "keine",
+      "testResult": "nicht-ausgefuehrt",
+      "evidence": [
+        "src/features/redaktion/approval.ts",
+        "src/features/redaktion/hooks/useApprovalComments.ts"
+      ],
+      "services": [
+        "src/features/redaktion/approval.ts"
+      ],
+      "rpcs": [
+        "request_social_post_changes",
+        "notify_social_post_approved",
+        "queue_social_content_reapproval",
+        "reopen_social_content_after_variant_change",
+        "enforce_social_content_approval_permissions",
+        "log_social_content_approval_event"
+      ],
+      "tables": [
+        "social_content_items",
+        "social_content_approval_events",
+        "social_approval_comments"
+      ],
+      "roles": [
+        "abgeordneter",
+        "bueroleitung",
+        "mitarbeiter"
+      ]
+    },
+    {
+      "id": "redaktion.assets-campaigns",
+      "subarea": "Social Planner",
+      "name": "Social-Assets und Kampagnen",
+      "description": "Verwaltet Bild-/Video-Assets und fasst Beiträge zu Kampagnen zusammen.",
+      "category": "fachlich",
+      "implementationStatus": "implementiert",
+      "integrationStatus": "ui",
+      "coverage": "keine",
+      "testResult": "nicht-ausgefuehrt",
+      "evidence": [
+        "src/features/redaktion/hooks/useSocialAssets.ts",
+        "src/features/redaktion/hooks/useSocialCampaigns.ts"
+      ],
+      "hooks": [
+        "src/features/redaktion/hooks/useSocialAssets.ts",
+        "src/features/redaktion/hooks/useSocialCampaigns.ts"
+      ],
+      "tables": [
+        "social_assets",
+        "social_campaigns"
+      ],
+      "roles": [
+        "abgeordneter",
+        "bueroleitung",
+        "mitarbeiter"
+      ]
+    },
+    {
+      "id": "redaktion.themenspeicher",
+      "subarea": "Social Planner",
+      "name": "Themenspeicher und Hashtags",
+      "description": "Sammelt Themenvorrat, überführt Notizen in den Themenspeicher und verwaltet Hashtag-Sets.",
+      "category": "fachlich",
+      "implementationStatus": "implementiert",
+      "integrationStatus": "ui",
+      "coverage": "keine",
+      "testResult": "nicht-ausgefuehrt",
+      "evidence": [
+        "src/features/redaktion/components/Themenspeicher.tsx",
+        "src/features/redaktion/hooks/useTopicBacklog.ts"
+      ],
+      "components": [
+        "src/features/redaktion/components/Themenspeicher.tsx",
+        "src/features/redaktion/components/TransferToThemenspeicherDialog.tsx"
+      ],
+      "hooks": [
+        "src/features/redaktion/hooks/useTopicBacklog.ts",
+        "src/features/redaktion/hooks/useHashtagSets.ts"
+      ],
+      "rpcs": [
+        "queue_social_content_reapproval"
+      ],
+      "tables": [
+        "topic_backlog",
+        "social_hashtag_sets"
+      ],
+      "roles": [
+        "abgeordneter",
+        "bueroleitung",
+        "mitarbeiter"
+      ]
+    },
+    {
+      "id": "redaktion.calendar-reminders",
+      "subarea": "Social Planner",
+      "name": "Redaktionskalender und Erinnerungen",
+      "description": "Zeigt Redaktionstermine und besondere Tage und versendet Erinnerungen für geplante Beiträge.",
+      "category": "automatisiert",
+      "implementationStatus": "implementiert",
+      "integrationStatus": "system",
+      "coverage": "keine",
+      "testResult": "nicht-ausgefuehrt",
+      "evidence": [
+        "src/features/redaktion/components/Kalenderansicht.tsx",
+        "supabase/functions/social-planner-reminders/index.ts"
+      ],
+      "components": [
+        "src/features/redaktion/components/Kalenderansicht.tsx"
+      ],
+      "services": [
+        "src/features/redaktion/utils/fetchSpecialDays.ts",
+        "src/features/redaktion/utils/plannerRules.ts"
+      ],
+      "edgeFunctions": [
+        "social-planner-reminders"
+      ],
+      "tables": [
+        "social_content_items",
+        "social_planner_notes"
+      ],
+      "roles": [
+        "abgeordneter",
+        "bueroleitung",
+        "mitarbeiter",
+        "system"
+      ]
+    },
+    {
+      "id": "press.releases",
+      "subarea": "Presse",
+      "name": "Pressemitteilungen erstellen und freigeben",
+      "description": "Verfasst Pressemitteilungen im Wizard, pflegt Revisionen und Kommentare und verfolgt den Status.",
+      "category": "fachlich",
+      "implementationStatus": "implementiert",
+      "integrationStatus": "ui",
+      "coverage": "keine",
+      "testResult": "nicht-ausgefuehrt",
+      "evidence": [
+        "src/components/press/PressReleaseWizard.tsx",
+        "src/components/press/PressReleasesList.tsx"
+      ],
+      "routes": [
+        "/news"
+      ],
+      "components": [
+        "src/components/press/PressReleasesList.tsx",
+        "src/components/press/PressReleaseWizard.tsx",
+        "src/components/press/PressReleaseEditor.tsx",
+        "src/components/press/RevisionCommentDialog.tsx"
+      ],
+      "tables": [
+        "press_releases"
+      ],
+      "roles": [
+        "abgeordneter",
+        "bueroleitung",
+        "mitarbeiter"
+      ]
+    },
+    {
+      "id": "press.ghost",
+      "subarea": "Presse",
+      "name": "Pressemitteilung nach Ghost veröffentlichen",
+      "description": "Veröffentlicht Pressemitteilungen über die Ghost-API und protokolliert den Versand.",
+      "category": "integration",
+      "implementationStatus": "implementiert",
+      "integrationStatus": "rollenabhaengig",
+      "coverage": "keine",
+      "testResult": "nicht-ausgefuehrt",
+      "evidence": [
+        "supabase/functions/publish-to-ghost/index.ts",
+        "src/components/press/GhostPublishDialog.tsx"
+      ],
+      "components": [
+        "src/components/press/GhostPublishDialog.tsx"
+      ],
+      "edgeFunctions": [
+        "publish-to-ghost"
+      ],
+      "tables": [
+        "press_releases"
+      ],
+      "roles": [
+        "bueroleitung",
+        "mitarbeiter"
+      ],
+      "docs": [
+        "docs/ghost-rsvp-widget"
+      ]
+    },
+    {
+      "id": "news.articles",
+      "subarea": "News",
+      "name": "News-Artikel und Lesestatus",
+      "description": "Zeigt News-Artikel, speichert Lesestatus und bereinigt alte Artikel.",
+      "category": "fachlich",
+      "implementationStatus": "implementiert",
+      "integrationStatus": "ui",
+      "coverage": "keine",
+      "testResult": "nicht-ausgefuehrt",
+      "evidence": [
+        "src/pages/NewsPage.tsx"
+      ],
+      "routes": [
+        "/news"
+      ],
+      "components": [
+        "src/pages/NewsPage.tsx"
+      ],
+      "rpcs": [
+        "cleanup_stale_news_articles"
+      ],
+      "tables": [
+        "news_articles",
+        "news_article_states"
+      ],
+      "roles": [
+        "abgeordneter",
+        "bueroleitung",
+        "mitarbeiter",
+        "praktikant"
+      ]
+    },
+    {
+      "id": "news.email",
+      "subarea": "News",
+      "name": "News per E-Mail versenden",
+      "description": "Versendet News-Artikel als E-Mail auf Basis von Vorlagen.",
+      "category": "integration",
+      "implementationStatus": "implementiert",
+      "integrationStatus": "rollenabhaengig",
+      "coverage": "keine",
+      "testResult": "nicht-ausgefuehrt",
+      "evidence": [
+        "supabase/functions/send-news-email/index.ts",
+        "src/components/administration/NewsEmailTemplateManager.tsx"
+      ],
+      "components": [
+        "src/components/administration/NewsEmailTemplateManager.tsx"
+      ],
+      "edgeFunctions": [
+        "send-news-email"
+      ],
+      "tables": [
+        "news_email_templates",
+        "email_logs"
+      ],
+      "roles": [
+        "bueroleitung",
+        "mitarbeiter"
+      ]
+    },
+    {
+      "id": "chat.messages",
+      "subarea": "Chat",
+      "name": "Interner Chat über Matrix",
+      "description": "Stellt Räume, Nachrichten, Reaktionen, Anhänge und Lesestatus über den Matrix-Client bereit.",
+      "category": "fachlich",
+      "implementationStatus": "implementiert",
+      "integrationStatus": "ui",
+      "coverage": "keine",
+      "testResult": "nicht-ausgefuehrt",
+      "evidence": [
+        "src/components/chat/MatrixChatView.tsx",
+        "src/hooks/useMatrixClient.tsx"
+      ],
+      "routes": [
+        "/chat"
+      ],
+      "components": [
+        "src/components/chat/MatrixChatView.tsx",
+        "src/components/chat/ChatMessages.tsx",
+        "src/components/chat/RoomList.tsx"
+      ],
+      "hooks": [
+        "src/hooks/useMatrixClient.tsx",
+        "src/hooks/useMessagesRealtime.tsx"
+      ],
+      "tables": [
+        "messages",
+        "message_recipients",
+        "message_confirmations"
+      ],
+      "roles": [
+        "abgeordneter",
+        "bueroleitung",
+        "mitarbeiter",
+        "praktikant"
+      ],
+      "rpcs": [
+        "mark_message_read",
+        "send_message"
+      ]
+    },
+    {
+      "id": "news.matrix",
+      "subarea": "News",
+      "name": "News über Matrix verteilen",
+      "description": "Veröffentlicht News-Artikel in Matrix-Räumen und protokolliert die Zustellung.",
+      "category": "integration",
+      "implementationStatus": "implementiert",
+      "integrationStatus": "system",
+      "coverage": "keine",
+      "testResult": "nicht-ausgefuehrt",
+      "evidence": [
+        "supabase/functions/send-news-matrix/index.ts",
+        "src/components/admin/MatrixSettings.tsx"
+      ],
+      "components": [
+        "src/components/admin/MatrixSettings.tsx"
+      ],
+      "edgeFunctions": [
+        "send-news-matrix"
+      ],
+      "tables": [
+        "news_articles",
+        "matrix_subscriptions"
+      ],
+      "roles": [
+        "bueroleitung",
+        "mitarbeiter",
+        "system"
+      ],
+      "docs": [
+        "docs/matrix-chatbot-integration.md"
+      ]
+    },
+    {
+      "id": "chat.matrix-bot",
+      "subarea": "Chat",
+      "name": "Matrix-Bot und morgendliche Begrüßung",
+      "description": "Verbindet das Büro mit einem Matrix-Bot und versendet morgendliche Zusammenfassungen.",
+      "category": "integration",
+      "implementationStatus": "implementiert",
+      "integrationStatus": "system",
+      "coverage": "keine",
+      "testResult": "nicht-ausgefuehrt",
+      "evidence": [
+        "supabase/functions/matrix-bot-handler/index.ts",
+        "supabase/functions/send-matrix-morning-greeting/index.ts"
+      ],
+      "edgeFunctions": [
+        "matrix-bot-handler",
+        "send-matrix-morning-greeting"
+      ],
+      "tables": [
+        "matrix_bot_logs",
+        "matrix_morning_settings",
+        "matrix_subscriptions"
+      ],
+      "roles": [
+        "system",
+        "abgeordneter",
+        "bueroleitung"
+      ],
+      "reviewPoints": [
+        "Der Bot-Handler ist JWT-geschützt, aber der fachliche Befehlsraum ist nicht dokumentiert."
+      ]
+    },
+    {
+      "id": "chat.team-announcements",
+      "subarea": "Chat",
+      "name": "Team-Ankündigungen",
+      "description": "Veröffentlicht Ankündigungen im Team und merkt sich Ausblendungen je Nutzer.",
+      "category": "fachlich",
+      "implementationStatus": "implementiert",
+      "integrationStatus": "ui",
+      "coverage": "keine",
+      "testResult": "nicht-ausgefuehrt",
+      "evidence": [
+        "src/hooks/useTeamAnnouncements.ts"
+      ],
+      "hooks": [
+        "src/hooks/useTeamAnnouncements.ts"
+      ],
+      "tables": [
+        "team_announcements",
+        "team_announcement_dismissals"
+      ],
+      "roles": [
+        "abgeordneter",
+        "bueroleitung",
+        "mitarbeiter"
+      ]
+    },
+    {
+      "id": "widget.matrix-website",
+      "subarea": "Matrix",
+      "name": "Matrix-Website-Widget",
+      "description": "Bindet einen Website-Chat als Matrix-Widget ein und nimmt Rückmeldungen und Verbesserungsvorschläge entgegen.",
+      "category": "integration",
+      "implementationStatus": "implementiert",
+      "integrationStatus": "ui",
+      "coverage": "keine",
+      "testResult": "nicht-ausgefuehrt",
+      "evidence": [
+        "src/features/matrix-widget/MatrixWebsiteWidget.tsx",
+        "src/components/administration/MatrixWidgetAdmin.tsx"
+      ],
+      "components": [
+        "src/features/matrix-widget/MatrixWebsiteWidget.tsx",
+        "src/components/administration/MatrixWidgetAdmin.tsx"
+      ],
+      "services": [
+        "src/features/matrix-widget/api.ts"
+      ],
+      "rpcs": [
+        "create_matrix_widget_improvement_trigger"
+      ],
+      "tables": [
+        "matrix_widget_callback_requests",
+        "matrix_widget_improvement_triggers",
+        "matrix_widget_message_feedback"
+      ],
+      "roles": [
+        "oeffentlich",
+        "admin",
+        "bueroleitung"
+      ],
+      "docs": [
+        "docs/matrix-chatbot-integration.md"
+      ]
+    }
+  ]
+}

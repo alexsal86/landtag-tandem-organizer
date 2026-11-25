@@ -1,0 +1,714 @@
+{
+  "area": {
+    "id": "aufgaben",
+    "title": "Aufgaben & Stafette",
+    "purpose": "Aufgaben anlegen, zuweisen, über Fristen, Wiedervorlagen und Stafette führen, mit Entscheidungen und Vorgängen verknüpfen und archivieren."
+  },
+  "features": [
+    {
+      "id": "tasks.create",
+      "subarea": "Erfassung",
+      "name": "Aufgabe erstellen",
+      "description": "Legt eine Aufgabe mit Titel, Beschreibung, Fälligkeit, Priorität, Kategorie, Empfängern und optionaler Verknüpfung an.",
+      "category": "fachlich",
+      "implementationStatus": "implementiert",
+      "integrationStatus": "rollenabhaengig",
+      "coverage": "selftest",
+      "testResult": "nicht-ausgefuehrt",
+      "evidence": [
+        "src/pages/CreateTask.tsx",
+        "src/features/tasks/components/TodoCreateDialog.tsx",
+        "src/features/selftest/scenarios/task-lifecycle.ts"
+      ],
+      "routes": [
+        "/tasks/new",
+        "/tasks/:taskId"
+      ],
+      "components": [
+        "src/pages/CreateTask.tsx",
+        "src/features/tasks/components/TodoCreateDialog.tsx"
+      ],
+      "hooks": [
+        "src/hooks/useTaskCategories.ts",
+        "src/hooks/useTaskStatuses.ts",
+        "src/hooks/useTaskTopics.tsx"
+      ],
+      "tables": [
+        "tasks",
+        "task_assignees",
+        "task_categories",
+        "task_statuses",
+        "task_topics"
+      ],
+      "roles": [
+        "abgeordneter",
+        "bueroleitung",
+        "mitarbeiter",
+        "praktikant"
+      ],
+      "scenarios": [
+        "task-lifecycle"
+      ],
+      "docs": [
+        "docs/my-work-architecture.md"
+      ],
+      "limitations": [
+        "Das Szenario deckt den Standardpfad ab, nicht jede Feldkombination."
+      ]
+    },
+    {
+      "id": "tasks.edit",
+      "subarea": "Bearbeitung",
+      "name": "Aufgabe bearbeiten",
+      "description": "Ändert Felder, Status, Priorität und Beschreibung einer bestehenden Aufgabe inklusive Protokollierung der Änderung.",
+      "category": "fachlich",
+      "implementationStatus": "implementiert",
+      "integrationStatus": "rollenabhaengig",
+      "coverage": "selftest",
+      "testResult": "nicht-ausgefuehrt",
+      "evidence": [
+        "src/features/tasks/components/TaskDetailSidebar.tsx",
+        "src/features/tasks/components/TasksView.tsx"
+      ],
+      "components": [
+        "src/features/tasks/components/TaskDetailSidebar.tsx",
+        "src/components/tasks/TaskDialogs.tsx"
+      ],
+      "tables": [
+        "tasks",
+        "task_statuses",
+        "task_snoozes"
+      ],
+      "roles": [
+        "abgeordneter",
+        "bueroleitung",
+        "mitarbeiter",
+        "praktikant"
+      ],
+      "dependsOn": [
+        "tasks.create"
+      ],
+      "scenarios": [
+        "task-lifecycle"
+      ]
+    },
+    {
+      "id": "tasks.complete",
+      "subarea": "Bearbeitung",
+      "name": "Aufgabe abschließen",
+      "description": "Setzt eine Aufgabe auf abgeschlossen, stempelt die Erledigung und stößt Folgeprozesse wie Wiederholung und Ball-Rückgabe an.",
+      "category": "fachlich",
+      "implementationStatus": "implementiert",
+      "integrationStatus": "rollenabhaengig",
+      "coverage": "selftest",
+      "testResult": "nicht-ausgefuehrt",
+      "evidence": [
+        "src/features/tasks/stafette.ts",
+        "src/features/tasks/components/TasksView.tsx"
+      ],
+      "services": [
+        "src/features/tasks/stafette.ts"
+      ],
+      "rpcs": [
+        "stamp_task_completion"
+      ],
+      "tables": [
+        "tasks",
+        "archived_tasks"
+      ],
+      "roles": [
+        "abgeordneter",
+        "bueroleitung",
+        "mitarbeiter",
+        "praktikant"
+      ],
+      "scenarios": [
+        "task-lifecycle",
+        "task-stafette-lifecycle"
+      ],
+      "unitTests": [
+        "src/features/tasks/stafette.test.ts"
+      ],
+      "docs": [
+        "docs/my-work-architecture.md"
+      ]
+    },
+    {
+      "id": "tasks.assign",
+      "subarea": "Zuweisung",
+      "name": "Aufgabe zuweisen",
+      "description": "Weist eine oder mehrere Personen zu, hält die Zuweisungsliste synchron und erlaubt die Übergabe an die Stellvertretung.",
+      "category": "fachlich",
+      "implementationStatus": "implementiert",
+      "integrationStatus": "rollenabhaengig",
+      "coverage": "selftest",
+      "testResult": "nicht-ausgefuehrt",
+      "evidence": [
+        "src/lib/taskAssignees.ts",
+        "src/hooks/useAllPersonContacts.tsx",
+        "src/hooks/useTenantProfiles.ts"
+      ],
+      "services": [
+        "src/lib/taskAssignees.ts"
+      ],
+      "rpcs": [
+        "parse_task_assignee_ids",
+        "sync_task_assignees_from_task",
+        "handover_tasks_to_deputy",
+        "list_task_deputy_ids"
+      ],
+      "tables": [
+        "tasks",
+        "task_assignees",
+        "profiles"
+      ],
+      "roles": [
+        "abgeordneter",
+        "bueroleitung",
+        "mitarbeiter",
+        "praktikant"
+      ],
+      "scenarios": [
+        "task-lifecycle",
+        "task-stafette-lifecycle"
+      ],
+      "reviewPoints": [
+        "Die Regel, wer wem zuweisen darf, liegt teils in RLS und teils im Code; sie ist hier nicht vollständig rekonstruiert."
+      ]
+    },
+    {
+      "id": "tasks.handover-stafette",
+      "subarea": "Stafette",
+      "name": "Aufgabe weitergeben (Stafette)",
+      "description": "Übergibt den Ball an eine andere Person oder ein Büro, schreibt Timeline-Eintrag, nächsten Schritt und Benachrichtigung.",
+      "category": "fachlich",
+      "implementationStatus": "implementiert",
+      "integrationStatus": "ui",
+      "coverage": "selftest",
+      "testResult": "nicht-ausgefuehrt",
+      "evidence": [
+        "src/features/tasks/stafette.ts",
+        "src/features/selftest/scenarios/task-stafette-lifecycle.ts"
+      ],
+      "services": [
+        "src/features/tasks/stafette.ts"
+      ],
+      "rpcs": [
+        "record_task_stafette_handover",
+        "batch_task_stafette_action",
+        "batch_task_stafette_preview",
+        "undo_task_batch_action",
+        "task_batch_plan",
+        "task_stafette_batch_snapshot"
+      ],
+      "tables": [
+        "tasks",
+        "task_assignees",
+        "task_snoozes",
+        "bulk_action_audit"
+      ],
+      "roles": [
+        "abgeordneter",
+        "bueroleitung",
+        "mitarbeiter"
+      ],
+      "scenarios": [
+        "task-stafette-lifecycle"
+      ],
+      "unitTests": [
+        "src/features/tasks/stafette.test.ts"
+      ],
+      "docs": [
+        "docs/my-work-architecture.md",
+        "docs/workflow-consistency.md"
+      ]
+    },
+    {
+      "id": "tasks.ball-owner",
+      "subarea": "Stafette",
+      "name": "Wer ist am Zug? (Ball-Owner)",
+      "description": "Bestimmt aus Status, Zuweisung und Stafette, bei wem die Aufgabe liegt, und zeigt das in Listen und Filtern.",
+      "category": "fachlich",
+      "implementationStatus": "implementiert",
+      "integrationStatus": "ui",
+      "coverage": "unit",
+      "testResult": "unbekannt",
+      "evidence": [
+        "src/features/tasks/stafette.ts",
+        "src/features/tasks/stafette.test.ts",
+        "src/components/tasks/TaskBadges.tsx"
+      ],
+      "components": [
+        "src/components/tasks/TaskBadges.tsx"
+      ],
+      "services": [
+        "src/features/tasks/stafette.ts"
+      ],
+      "tables": [
+        "tasks",
+        "task_assignees"
+      ],
+      "roles": [
+        "abgeordneter",
+        "bueroleitung",
+        "mitarbeiter",
+        "praktikant"
+      ],
+      "unitTests": [
+        "src/features/tasks/stafette.test.ts"
+      ],
+      "reviewPoints": [
+        "Die reine Regel ist getestet; die Anzeige in allen Listen ist nicht durchgängig geprüft."
+      ],
+      "rpcs": [
+        "validate_task_ball_owner"
+      ]
+    },
+    {
+      "id": "tasks.deadline",
+      "subarea": "Fristen",
+      "name": "Frist setzen und überwachen",
+      "description": "Setzt Fälligkeiten, hebt überfällige Aufgaben hervor und speist Fristen-Widgets und Erinnerungen.",
+      "category": "fachlich",
+      "implementationStatus": "implementiert",
+      "integrationStatus": "ui",
+      "coverage": "keine",
+      "testResult": "nicht-ausgefuehrt",
+      "evidence": [
+        "src/hooks/useDashboardDeadlines.ts",
+        "src/components/dashboard/DeadlineReviewDialog.tsx",
+        "src/components/dashboard/TasksSummary.tsx"
+      ],
+      "components": [
+        "src/components/dashboard/DeadlineReviewDialog.tsx",
+        "src/components/dashboard/TasksSummary.tsx"
+      ],
+      "hooks": [
+        "src/hooks/useDashboardDeadlines.ts",
+        "src/hooks/useDeadlineActions.ts"
+      ],
+      "tables": [
+        "tasks",
+        "task_snoozes"
+      ],
+      "roles": [
+        "abgeordneter",
+        "bueroleitung",
+        "mitarbeiter",
+        "praktikant"
+      ],
+      "docs": [
+        "docs/my-work-architecture.md"
+      ]
+    },
+    {
+      "id": "tasks.snooze",
+      "subarea": "Fristen",
+      "name": "Aufgabe zurückstellen (Wiedervorlage)",
+      "description": "Verschiebt die Wiedervorlage einer Aufgabe, protokolliert den Zeitpunkt und blendet sie bis dahin aus den aktiven Listen aus.",
+      "category": "fachlich",
+      "implementationStatus": "implementiert",
+      "integrationStatus": "ui",
+      "coverage": "keine",
+      "testResult": "nicht-ausgefuehrt",
+      "evidence": [
+        "src/hooks/useSnoozeDeadline.ts",
+        "src/components/dashboard/DeadlineSnoozeButton.tsx"
+      ],
+      "components": [
+        "src/components/dashboard/DeadlineSnoozeButton.tsx",
+        "src/components/notifications/SnoozeManagementSidebar.tsx"
+      ],
+      "hooks": [
+        "src/hooks/useSnoozeDeadline.ts"
+      ],
+      "tables": [
+        "task_snoozes",
+        "tasks"
+      ],
+      "roles": [
+        "abgeordneter",
+        "bueroleitung",
+        "mitarbeiter",
+        "praktikant"
+      ],
+      "reviewPoints": [
+        "Ob Rückstellungen fachlich als Wiedervorlage oder nur als Anzeige-Unterdrückung gelten, ist im Code nicht abschließend dokumentiert."
+      ]
+    },
+    {
+      "id": "tasks.subtasks",
+      "subarea": "Bearbeitung",
+      "name": "Unteraufgaben",
+      "description": "Zerlegt Aufgaben in Unteraufgaben und zeigt deren Fortschritt in der Hauptaufgabe.",
+      "category": "fachlich",
+      "implementationStatus": "implementiert",
+      "integrationStatus": "ui",
+      "coverage": "keine",
+      "testResult": "nicht-ausgefuehrt",
+      "evidence": [
+        "src/components/tasks/TaskListRow.tsx",
+        "src/components/tasks/TaskCard.tsx"
+      ],
+      "components": [
+        "src/components/tasks/TaskListRow.tsx",
+        "src/components/tasks/TaskCard.tsx"
+      ],
+      "tables": [
+        "subtasks",
+        "tasks"
+      ],
+      "roles": [
+        "abgeordneter",
+        "bueroleitung",
+        "mitarbeiter",
+        "praktikant"
+      ],
+      "reviewPoints": [
+        "Die Unteraufgaben-Oberfläche wurde nicht im Browser geprüft; der Nachweis stützt sich auf Komponenten und Tabelle."
+      ]
+    },
+    {
+      "id": "tasks.link-decision",
+      "subarea": "Verknüpfung",
+      "name": "Aufgabe mit Entscheidung verknüpfen",
+      "description": "Erzeugt aus einer Aufgabe eine Entscheidung oder verknüpft sie; nach der Abstimmung gibt ein Trigger den Ball an den Ersteller zurück.",
+      "category": "fachlich",
+      "implementationStatus": "implementiert",
+      "integrationStatus": "rollenabhaengig",
+      "coverage": "selftest",
+      "testResult": "nicht-ausgefuehrt",
+      "evidence": [
+        "src/features/decisions/useDeputyDashboardDecisions.ts",
+        "src/components/shared/NoteDecisionCreator.tsx"
+      ],
+      "components": [
+        "src/components/shared/NoteDecisionCreator.tsx",
+        "src/components/task-decisions"
+      ],
+      "rpcs": [
+        "create_decision_task",
+        "return_task_ball_after_vote",
+        "user_can_access_task_decision"
+      ],
+      "tables": [
+        "task_decisions",
+        "tasks",
+        "task_decision_participants"
+      ],
+      "roles": [
+        "abgeordneter",
+        "bueroleitung",
+        "mitarbeiter"
+      ],
+      "scenarios": [
+        "decision-lifecycle"
+      ],
+      "docs": [
+        "docs/task-decision-reactions-rollout.md",
+        "docs/my-work-decisions-button-flowchart.md"
+      ]
+    },
+    {
+      "id": "tasks.link-case",
+      "subarea": "Verknüpfung",
+      "name": "Aufgabe mit Vorgang verknüpfen",
+      "description": "Verknüpft Aufgaben mit Vorgängen und Fallakten und synchronisiert Schritt- und Erledigungsstatus in beide Richtungen.",
+      "category": "fachlich",
+      "implementationStatus": "implementiert",
+      "integrationStatus": "system",
+      "coverage": "unit",
+      "testResult": "unbekannt",
+      "evidence": [
+        "src/features/cases/items/taskEvents.ts",
+        "src/features/cases/items/workflow.ts"
+      ],
+      "services": [
+        "src/features/cases/items/taskEvents.ts",
+        "src/features/cases/items/workflow.ts"
+      ],
+      "rpcs": [
+        "sync_case_office_step_task",
+        "sync_case_step_from_task",
+        "journal_case_step_task",
+        "create_case_file_task"
+      ],
+      "tables": [
+        "case_file_tasks",
+        "case_item_timeline",
+        "tasks"
+      ],
+      "roles": [
+        "abgeordneter",
+        "bueroleitung",
+        "mitarbeiter"
+      ],
+      "unitTests": [
+        "src/features/cases/items/taskEvents.test.ts",
+        "src/features/cases/items/workflow.test.ts"
+      ],
+      "dependsOn": [
+        "cases.steps"
+      ]
+    },
+    {
+      "id": "tasks.link-document",
+      "subarea": "Verknüpfung",
+      "name": "Aufgabe mit Dokument verknüpfen",
+      "description": "Hängt Dokumente an Aufgaben und öffnet sie aus der Aufgabenansicht.",
+      "category": "fachlich",
+      "implementationStatus": "implementiert",
+      "integrationStatus": "ui",
+      "coverage": "keine",
+      "testResult": "nicht-ausgefuehrt",
+      "evidence": [
+        "src/components/tasks/TaskDocumentDialog.tsx"
+      ],
+      "components": [
+        "src/components/tasks/TaskDocumentDialog.tsx"
+      ],
+      "tables": [
+        "task_documents",
+        "documents"
+      ],
+      "roles": [
+        "abgeordneter",
+        "bueroleitung",
+        "mitarbeiter",
+        "praktikant"
+      ]
+    },
+    {
+      "id": "tasks.recurring",
+      "subarea": "Wiederholung",
+      "name": "Wiederkehrende Aufgabe",
+      "description": "Erzeugt beim Abschluss automatisch die nächste Aufgabe anhand einer Wiederholungsregel; die Datumsberechnung liegt in reinen Funktionen.",
+      "category": "automatisiert",
+      "implementationStatus": "implementiert",
+      "integrationStatus": "system",
+      "coverage": "unit",
+      "testResult": "unbekannt",
+      "evidence": [
+        "src/features/tasks/templates.ts",
+        "src/features/tasks/templates.test.ts"
+      ],
+      "services": [
+        "src/features/tasks/templates.ts"
+      ],
+      "rpcs": [
+        "spawn_recurring_task",
+        "next_recurrence_date",
+        "validate_task_recurrence"
+      ],
+      "tables": [
+        "tasks"
+      ],
+      "roles": [
+        "system"
+      ],
+      "unitTests": [
+        "src/features/tasks/templates.test.ts"
+      ],
+      "docs": [
+        "docs/automation-no-code-umsetzung.md"
+      ],
+      "limitations": [
+        "Ob die Wiederholung im Browser sichtbar ausgelöst wurde, ist nicht geprüft; der Nachweis ist die Trigger-/RPC-Kette."
+      ]
+    },
+    {
+      "id": "tasks.templates",
+      "subarea": "Vorlagen",
+      "name": "Aufgabenvorlagen anwenden und pflegen",
+      "description": "Speichert Mandats-/Bürovorlagen und wendet sie beim Anlegen an, inklusive Frist- und Zuweisungsfeldern.",
+      "category": "fachlich",
+      "implementationStatus": "implementiert",
+      "integrationStatus": "ui",
+      "coverage": "unit",
+      "testResult": "unbekannt",
+      "evidence": [
+        "src/features/tasks/templates.ts",
+        "src/hooks/usePreparationTemplates.ts"
+      ],
+      "services": [
+        "src/features/tasks/templates.ts"
+      ],
+      "hooks": [
+        "src/hooks/usePreparationTemplates.ts"
+      ],
+      "tables": [
+        "preparation_templates",
+        "tasks"
+      ],
+      "roles": [
+        "bueroleitung",
+        "mitarbeiter",
+        "admin"
+      ],
+      "unitTests": [
+        "src/features/tasks/templates.test.ts"
+      ]
+    },
+    {
+      "id": "tasks.archive",
+      "subarea": "Archiv",
+      "name": "Aufgabe archivieren und wiederherstellen",
+      "description": "Verschiebt abgeschlossene Aufgaben ins Archiv, erlaubt Wiederherstellung und protokolliert Archivaktionen.",
+      "category": "fachlich",
+      "implementationStatus": "implementiert",
+      "integrationStatus": "ui",
+      "coverage": "keine",
+      "testResult": "nicht-ausgefuehrt",
+      "evidence": [
+        "src/features/tasks/components/TaskArchiveView.tsx",
+        "src/features/tasks/components/TaskArchiveModal.tsx"
+      ],
+      "routes": [
+        "/tasks/archive"
+      ],
+      "components": [
+        "src/features/tasks/components/TaskArchiveView.tsx",
+        "src/features/tasks/components/TaskArchiveModal.tsx"
+      ],
+      "rpcs": [
+        "archive_completed_task",
+        "restore_archived_task",
+        "undo_task_batch_action"
+      ],
+      "tables": [
+        "archived_tasks",
+        "tasks",
+        "task_archive_settings",
+        "bulk_action_audit"
+      ],
+      "roles": [
+        "abgeordneter",
+        "bueroleitung",
+        "mitarbeiter"
+      ],
+      "docs": [
+        "docs/my-work-architecture.md"
+      ]
+    },
+    {
+      "id": "tasks.search-filter",
+      "subarea": "Suchen & Filtern",
+      "name": "Aufgaben suchen, filtern und sortieren",
+      "description": "Filtert Aufgaben nach Status, Kategorie, Zuständigkeit, Frist und Text und sortiert die Ergebnisliste.",
+      "category": "fachlich",
+      "implementationStatus": "implementiert",
+      "integrationStatus": "ui",
+      "coverage": "keine",
+      "testResult": "nicht-ausgefuehrt",
+      "evidence": [
+        "src/features/tasks/components/TasksView.tsx",
+        "src/hooks/useMyWorkTasksData.ts"
+      ],
+      "components": [
+        "src/features/tasks/components/TasksView.tsx"
+      ],
+      "hooks": [
+        "src/hooks/useMyWorkTasksData.ts",
+        "src/hooks/useTaskStatuses.ts",
+        "src/hooks/useTaskCategories.ts"
+      ],
+      "tables": [
+        "tasks",
+        "task_statuses",
+        "task_categories"
+      ],
+      "roles": [
+        "abgeordneter",
+        "bueroleitung",
+        "mitarbeiter",
+        "praktikant"
+      ],
+      "reviewPoints": [
+        "Die Filterlogik liegt in der Ansicht; eine eigene getestete Regeldatei existiert nicht."
+      ]
+    },
+    {
+      "id": "tasks.nudge",
+      "subarea": "Erinnerungen",
+      "name": "Aufgabe anmahnen und Erinnerungen versenden",
+      "description": "Erlaubt Anmahnen über eine RPC mit 24-Stunden-Grenze und versendet fällige Erinnerungen stündlich per Cron.",
+      "category": "automatisiert",
+      "implementationStatus": "implementiert",
+      "integrationStatus": "system",
+      "coverage": "keine",
+      "testResult": "nicht-ausgefuehrt",
+      "evidence": [
+        "supabase/functions/_shared/security.ts",
+        "src/hooks/useNotifications.tsx"
+      ],
+      "rpcs": [
+        "nudge_task",
+        "ack_task_nudge",
+        "dispatch_due_task_reminders",
+        "escalate_task",
+        "task_approval_sla"
+      ],
+      "tables": [
+        "tasks",
+        "notifications",
+        "dashboard_decision_nudges"
+      ],
+      "roles": [
+        "abgeordneter",
+        "bueroleitung",
+        "mitarbeiter",
+        "system"
+      ],
+      "docs": [
+        "docs/workflow-consistency.md"
+      ],
+      "reviewPoints": [
+        "Der Cron-Versand ist nicht in dieser Umgebung ausgeführt worden."
+      ]
+    },
+    {
+      "id": "tasks.annual",
+      "subarea": "Jahresaufgaben",
+      "name": "Jahresaufgaben und Jahresabschluss",
+      "description": "Führt wiederkehrende Jahresaufgaben mit Abschlusshistorie, Sperre je Jahr und Überführung in die Stafette.",
+      "category": "automatisiert",
+      "implementationStatus": "implementiert",
+      "integrationStatus": "system",
+      "coverage": "selftest",
+      "testResult": "nicht-ausgefuehrt",
+      "evidence": [
+        "src/features/timetracking/annualTaskRules.ts",
+        "src/features/selftest/scenarios/annual-task-stafette.ts"
+      ],
+      "services": [
+        "src/features/timetracking/annualTaskRules.ts"
+      ],
+      "rpcs": [
+        "execute_annual_automation_routine",
+        "spawn_annual_task_to_stafette",
+        "sync_annual_task_completion",
+        "guard_annual_completion_link"
+      ],
+      "tables": [
+        "annual_tasks",
+        "annual_task_completions",
+        "routine_package_runs",
+        "routine_package_steps"
+      ],
+      "roles": [
+        "bueroleitung",
+        "admin",
+        "system"
+      ],
+      "scenarios": [
+        "annual-task-stafette"
+      ],
+      "unitTests": [
+        "src/features/timetracking/annualTaskRules.test.ts"
+      ],
+      "docs": [
+        "docs/automation-no-code-umsetzung.md"
+      ]
+    }
+  ]
+}
