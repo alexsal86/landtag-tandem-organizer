@@ -11,6 +11,7 @@ import { cn } from "@/lib/utils";
 import { catalogAreas, catalogFeatures } from "./inventory";
 import { EMPTY_FILTERS, computeMetrics, filterFeatures, type FeatureFilters } from "./metrics";
 import { catalogPages, entityMapMarkdown, type CatalogPage } from "./catalogContent";
+import { FeatureMap } from "./FeatureMap";
 import { MarkdownView } from "./MarkdownView";
 import { groupSecurityByTable, useTableSecurity } from "./useTableSecurity";
 import {
@@ -35,6 +36,7 @@ const labelForPage = (page: CatalogPage) => docLabels[page.id] ?? page.title;
 
 type View =
   | { type: "overview" }
+  | { type: "map" }
   | { type: "area"; id: string }
   | { type: "feature"; id: string }
   | { type: "doc"; id: string };
@@ -513,6 +515,14 @@ export function FeatureCatalogView() {
               >
                 Übersicht
               </button>
+              <button
+                type="button"
+                onClick={() => setView({ type: "map" })}
+                aria-current={view.type === "map" ? "page" : undefined}
+                className={cn("rounded-md px-3 py-2 text-left text-sm transition-colors", view.type === "map" ? "bg-primary/10 font-medium text-primary" : "hover:bg-muted")}
+              >
+                Landkarte
+              </button>
               {catalogAreas.map((area) => {
                 const areaFeatures = filtered.filter((feature) => feature.area === area.id);
                 const expanded = expandedAreas.has(area.id) || Boolean(filters.query) || Boolean(filters.area);
@@ -588,6 +598,14 @@ export function FeatureCatalogView() {
           <ScrollArea className="max-h-[calc(100vh-12rem)]">
             <CardContent className="px-5 py-4">
               {view.type === "overview" ? renderOverview() : null}
+              {view.type === "map" ? (
+                <FeatureMap
+                  features={filtered}
+                  areas={catalogAreas}
+                  onOpenArea={(id) => setView({ type: "area", id })}
+                  onOpenFeature={showFeature}
+                />
+              ) : null}
               {view.type === "area" ? renderArea(view.id) : null}
               {view.type === "feature" && selectedFeature ? <FeatureDetail feature={selectedFeature} /> : null}
               {view.type === "feature" && !selectedFeature ? (

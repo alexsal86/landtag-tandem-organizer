@@ -98,7 +98,8 @@
       ],
       "unitTests": [
         "src/features/knowledge/logic.test.ts"
-      ]
+      ],
+      "dependsOn": ["knowledge.ask"]
     },
     {
       "id": "knowledge.review",
@@ -147,7 +148,8 @@
       ],
       "docs": [
         "docs/knowledge-validity.md"
-      ]
+      ],
+      "dependsOn": ["knowledge.answer", "tasks.create"]
     },
     {
       "id": "knowledge.validity",
@@ -185,7 +187,8 @@
       ],
       "docs": [
         "docs/knowledge-validity.md"
-      ]
+      ],
+      "dependsOn": ["knowledge.answer"]
     },
     {
       "id": "knowledge.tags",
@@ -227,7 +230,8 @@
       ],
       "unitTests": [
         "src/features/knowledge/logic.test.ts"
-      ]
+      ],
+      "dependsOn": ["knowledge.answer", "topics.manage"]
     },
     {
       "id": "knowledge.sources",
@@ -258,7 +262,8 @@
         "abgeordneter",
         "bueroleitung",
         "mitarbeiter"
-      ]
+      ],
+      "dependsOn": ["knowledge.answer"]
     },
     {
       "id": "knowledge.attachments",
@@ -288,7 +293,8 @@
         "abgeordneter",
         "bueroleitung",
         "mitarbeiter"
-      ]
+      ],
+      "dependsOn": ["knowledge.ask"]
     },
     {
       "id": "knowledge.comments-follow",
@@ -320,7 +326,8 @@
         "abgeordneter",
         "bueroleitung",
         "mitarbeiter"
-      ]
+      ],
+      "dependsOn": ["knowledge.ask"]
     },
     {
       "id": "knowledge.search",
@@ -356,7 +363,8 @@
       "e2eTests": [
         "e2e/knowledge.spec.ts",
         "e2e/knowledge-workspace.spec.ts"
-      ]
+      ],
+      "dependsOn": ["knowledge.ask"]
     },
     {
       "id": "knowledge.versions",
@@ -385,7 +393,8 @@
         "abgeordneter",
         "bueroleitung",
         "mitarbeiter"
-      ]
+      ],
+      "dependsOn": ["knowledge.answer"]
     },
     {
       "id": "knowledge.permissions",
@@ -461,7 +470,8 @@
       ],
       "reviewPoints": [
         "Sicherheitsklassifikation public-webhook; Schutzbedarf prüfen."
-      ]
+      ],
+      "dependsOn": ["knowledge.answer"]
     },
     {
       "id": "knowledge.global-question",
@@ -493,7 +503,8 @@
       ],
       "docs": [
         "docs/knowledge-global-question.md"
-      ]
+      ],
+      "dependsOn": ["knowledge.ask"]
     },
     {
       "id": "knowledge.persons",

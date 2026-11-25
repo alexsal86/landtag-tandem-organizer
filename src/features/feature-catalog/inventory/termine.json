@@ -81,7 +81,8 @@
       ],
       "scenarios": [
         "appointment-lifecycle"
-      ]
+      ],
+      "dependsOn": ["calendar.categories-locations"]
     },
     {
       "id": "calendar.edit-move",
@@ -116,7 +117,8 @@
         "abgeordneter",
         "bueroleitung",
         "mitarbeiter"
-      ]
+      ],
+      "dependsOn": ["calendar.create-appointment"]
     },
     {
       "id": "calendar.guests",
@@ -150,7 +152,8 @@
         "bueroleitung",
         "mitarbeiter",
         "praktikant"
-      ]
+      ],
+      "dependsOn": ["calendar.create-appointment"]
     },
     {
       "id": "calendar.reminders",
@@ -191,7 +194,8 @@
       ],
       "docs": [
         "docs/operations"
-      ]
+      ],
+      "dependsOn": ["calendar.create-appointment"]
     },
     {
       "id": "calendar.invitations",
@@ -231,7 +235,8 @@
       ],
       "unitTests": [
         "supabase/functions/_shared/appointmentInvite.test.ts"
-      ]
+      ],
+      "dependsOn": ["calendar.guests", "integration.email"]
     },
     {
       "id": "appointments.requests",
@@ -278,7 +283,8 @@
       ],
       "limitations": [
         "Ein direkter Statuswechsel wird durch einen Trigger blockiert; der Negativpfad ist im Szenario geprüft."
-      ]
+      ],
+      "dependsOn": ["calendar.create-appointment"]
     },
     {
       "id": "appointments.briefing",
@@ -339,7 +345,8 @@
       ],
       "docs": [
         "docs/dossier-umsetzungsplan.md"
-      ]
+      ],
+      "dependsOn": ["tasks.create", "integration.ai-suggestions"]
     },
     {
       "id": "appointments.briefing-live",
@@ -381,7 +388,8 @@
       ],
       "scenarios": [
         "appointment-briefing-lifecycle"
-      ]
+      ],
+      "dependsOn": ["appointments.briefing", "integration.transcription"]
     },
     {
       "id": "appointments.debrief",
@@ -420,7 +428,8 @@
         "abgeordneter",
         "bueroleitung",
         "mitarbeiter"
-      ]
+      ],
+      "dependsOn": ["appointments.briefing"]
     },
     {
       "id": "appointments.feedback",
@@ -458,7 +467,8 @@
         "bueroleitung",
         "mitarbeiter",
         "system"
-      ]
+      ],
+      "dependsOn": ["calendar.create-appointment"]
     },
     {
       "id": "appointments.preparation",
@@ -501,7 +511,8 @@
         "mitarbeiter"
       ],
       "dependsOn": [
-        "appointments.briefing"
+        "appointments.briefing",
+        "integration.ai-suggestions"
       ]
     },
     {
@@ -551,7 +562,8 @@
       ],
       "docs": [
         "docs/team-rituals.md"
-      ]
+      ],
+      "dependsOn": ["meetings.agenda"]
     },
     {
       "id": "daily.briefing",
@@ -668,7 +680,8 @@
       ],
       "scenarios": [
         "poll-lifecycle"
-      ]
+      ],
+      "dependsOn": ["polls.manage"]
     },
     {
       "id": "calendar.holidays",

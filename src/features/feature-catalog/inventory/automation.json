@@ -77,7 +77,8 @@
       ],
       "docs": [
         "docs/automation-no-code-umsetzung.md"
-      ]
+      ],
+      "dependsOn": ["automation.rules"]
     },
     {
       "id": "automation.rule-validation",
@@ -107,7 +108,8 @@
       "roles": [
         "admin",
         "bueroleitung"
-      ]
+      ],
+      "dependsOn": ["automation.rules", "automation.conditions"]
     },
     {
       "id": "automation.rule-versions",
@@ -137,7 +139,8 @@
       "roles": [
         "admin",
         "bueroleitung"
-      ]
+      ],
+      "dependsOn": ["automation.rules"]
     },
     {
       "id": "automation.runs",
@@ -162,7 +165,8 @@
       "roles": [
         "admin",
         "bueroleitung"
-      ]
+      ],
+      "dependsOn": ["automation.rules"]
     },
     {
       "id": "automation.annual-routines",
@@ -209,7 +213,8 @@
       "unitTests": [
         "src/features/automation/annualRoutines.test.ts",
         "src/features/automation/annualRoutinePresentation.test.ts"
-      ]
+      ],
+      "dependsOn": ["tasks.annual"]
     },
     {
       "id": "automation.office-packages",
@@ -252,7 +257,8 @@
       ],
       "unitTests": [
         "src/features/automation/officeRoutineTemplates.test.ts"
-      ]
+      ],
+      "dependsOn": ["automation.annual-routines", "automation.routine-packages", "tasks.annual"]
     },
     {
       "id": "automation.routine-packages",
@@ -303,7 +309,8 @@
       ],
       "reviewPoints": [
         "Der Fortschrittsdienst ist als Datenbankfunktion nachgewiesen; ein Szenario dafür existiert nicht."
-      ]
+      ],
+      "dependsOn": ["tasks.create"]
     },
     {
       "id": "automation.task-packages",
@@ -331,7 +338,8 @@
       "roles": [
         "admin",
         "bueroleitung"
-      ]
+      ],
+      "dependsOn": ["tasks.create"]
     },
     {
       "id": "automation.scheduler",
@@ -372,7 +380,8 @@
       ],
       "reviewPoints": [
         "Cron-Zeitpläne und Service-Role-Prüfungen wurden nicht in dieser Umgebung ausgeführt."
-      ]
+      ],
+      "dependsOn": ["automation.rules", "integration.email"]
     },
     {
       "id": "automation.webhooks",
@@ -402,7 +411,8 @@
       ],
       "reviewPoints": [
         "Secret-Prüfung ist dokumentiert; ein eigener Webhook-Test existiert nicht."
-      ]
+      ],
+      "dependsOn": ["automation.rules"]
     },
     {
       "id": "automation.workflows",
@@ -510,7 +520,8 @@
       "roles": [
         "admin",
         "bueroleitung"
-      ]
+      ],
+      "dependsOn": ["automation.rules"]
     },
     {
       "id": "automation.calendar-schedule",

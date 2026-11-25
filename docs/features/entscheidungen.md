@@ -104,7 +104,7 @@ Bestimmt den Teilnehmerkreis, erzeugt eindeutige Antwort-Token und schützt den 
 - **Edge Functions:** `process-decision-response`
 - **Datenbankfunktionen:** `generate_decision_participant_token`, `set_decision_participant_token`, `can_access_decision`, `user_can_access_task_decision`
 - **Tabellen:** `task_decision_participants`, `task_decisions`
-- **Abhängigkeiten:** —
+- **Abhängigkeiten:** `decisions.create`
 - **Selbsttests:** `decision-lifecycle`
 - **Unit-Tests:** —
 - **Integrationstests:** —
@@ -140,7 +140,7 @@ Nimmt Ja/Nein/Enthaltung an, protokolliert die Antwort und stößt Benachrichtig
 - **Edge Functions:** —
 - **Datenbankfunktionen:** `log_decision_response_change`, `return_task_ball_after_vote`
 - **Tabellen:** `task_decision_responses`, `task_decision_participants`, `tasks`
-- **Abhängigkeiten:** —
+- **Abhängigkeiten:** `decisions.participants`
 - **Selbsttests:** `decision-lifecycle`
 - **Unit-Tests:** —
 - **Integrationstests:** —
@@ -176,7 +176,7 @@ Erlaubt die Änderung einer abgegebenen Antwort und hält die Antwort-Historie r
 - **Edge Functions:** —
 - **Datenbankfunktionen:** `check_archive_after_creator_response`
 - **Tabellen:** `task_decision_responses`, `task_decision_response_history`
-- **Abhängigkeiten:** —
+- **Abhängigkeiten:** `decisions.vote`
 - **Selbsttests:** —
 - **Unit-Tests:** —
 - **Integrationstests:** —
@@ -211,7 +211,7 @@ Ermöglicht Kommentare zu Entscheidungen, Antworten auf Kommentare und Emoji-Rea
 - **Edge Functions:** —
 - **Datenbankfunktionen:** —
 - **Tabellen:** `task_decision_comments`, `task_decision_comment_reactions`
-- **Abhängigkeiten:** —
+- **Abhängigkeiten:** `decisions.create`
 - **Selbsttests:** —
 - **Unit-Tests:** —
 - **Integrationstests:** —
@@ -247,7 +247,7 @@ Lädt Anhänge zu Entscheidungen hoch, verknüpft sie und stellt sie Teilnehmend
 - **Edge Functions:** —
 - **Datenbankfunktionen:** —
 - **Tabellen:** `task_decision_attachments`, `task_decisions`
-- **Abhängigkeiten:** —
+- **Abhängigkeiten:** `decisions.create`
 - **Selbsttests:** —
 - **Unit-Tests:** —
 - **Integrationstests:** —
@@ -282,7 +282,7 @@ Zeigt offene Entscheidungen im Abgeordneten-Dashboard und erlaubt gezielte Erinn
 - **Edge Functions:** —
 - **Datenbankfunktionen:** `nudge_dashboard_decision`, `get_deputy_dashboard_decisions`, `get_my_work_decisions`
 - **Tabellen:** `dashboard_decision_nudges`, `task_decisions`
-- **Abhängigkeiten:** —
+- **Abhängigkeiten:** `decisions.create`
 - **Selbsttests:** —
 - **Unit-Tests:** —
 - **Integrationstests:** —
@@ -318,7 +318,7 @@ Archiviert abgeschlossene Entscheidungen automatisch oder manuell und hält die 
 - **Edge Functions:** `auto-archive-decisions`
 - **Datenbankfunktionen:** `auto_archive_completed_decisions`, `check_and_archive_decision`
 - **Tabellen:** `task_decisions`, `decision_archive_settings`
-- **Abhängigkeiten:** —
+- **Abhängigkeiten:** `decisions.vote`
 - **Selbsttests:** —
 - **Unit-Tests:** —
 - **Integrationstests:** —
@@ -354,7 +354,7 @@ Versendet Einladungs- und Erinnerungs-E-Mails zu Entscheidungen auf Basis konfig
 - **Edge Functions:** `send-decision-email`
 - **Datenbankfunktionen:** —
 - **Tabellen:** `decision_email_templates`, `email_logs`
-- **Abhängigkeiten:** —
+- **Abhängigkeiten:** `decisions.create`, `integration.email`
 - **Selbsttests:** —
 - **Unit-Tests:** —
 - **Integrationstests:** —
@@ -390,7 +390,7 @@ Nimmt Antworten über einen Matrix-Handler entgegen und protokolliert die Zustel
 - **Edge Functions:** `matrix-decision-handler`
 - **Datenbankfunktionen:** —
 - **Tabellen:** `decision_matrix_messages`, `task_decision_responses`
-- **Abhängigkeiten:** —
+- **Abhängigkeiten:** `decisions.vote`
 - **Selbsttests:** —
 - **Unit-Tests:** —
 - **Integrationstests:** —

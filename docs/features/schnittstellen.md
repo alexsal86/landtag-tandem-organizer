@@ -66,7 +66,7 @@ Synchronisiert verbundene externe Kalender bidirektional, claimt Zeitfenster ato
 - **Edge Functions:** `sync-external-calendar`, `auto-sync-calendars`, `force-resync-calendar`
 - **Datenbankfunktionen:** `claim_calendar_sync`, `finish_calendar_sync`, `calendar_sync_slot`
 - **Tabellen:** `external_calendars`, `external_events`, `calendar_sync_settings`
-- **Abhängigkeiten:** —
+- **Abhängigkeiten:** `calendar.create-appointment`
 - **Selbsttests:** —
 - **Unit-Tests:** —
 - **Integrationstests:** —
@@ -103,7 +103,7 @@ Erzeugt ICS-Dateien, prüft ICS-Zugriffe und stellt Feed-Endpunkte für Abonneme
 - **Edge Functions:** `ics-validation`, `generate-calendar-invite`
 - **Datenbankfunktionen:** `validate_contract_file`
 - **Tabellen:** `appointments`, `external_calendars`
-- **Abhängigkeiten:** —
+- **Abhängigkeiten:** `calendar.create-appointment`
 - **Selbsttests:** —
 - **Unit-Tests:** `supabase/functions/_shared/icsTime.test.ts`
 - **Integrationstests:** —
@@ -139,7 +139,7 @@ Versendet E-Mails über zentrale Vorlagen, protokolliert Zustellungen und verarb
 - **Edge Functions:** `process-scheduled-emails`, `send-checklist-email`
 - **Datenbankfunktionen:** —
 - **Tabellen:** `email_logs`, `email_templates`, `scheduled_emails`
-- **Abhängigkeiten:** —
+- **Abhängigkeiten:** `admin.templates-senders`
 - **Selbsttests:** —
 - **Unit-Tests:** —
 - **Integrationstests:** —
@@ -175,7 +175,7 @@ Registriert Push-Token, versendet Push-Nachrichten für Benachrichtigungen und r
 - **Edge Functions:** `dispatch-mobile-push`, `send-push-notification`, `push-notification-worker`, `register-mobile-push-token`
 - **Datenbankfunktionen:** `dispatch_mobile_push_on_notification`, `notify_push_on_insert`, `track_employee_settings_changes`, `touch_mobile_push_tokens`
 - **Tabellen:** `push_subscriptions`, `mobile_push_tokens`, `notifications`
-- **Abhängigkeiten:** —
+- **Abhängigkeiten:** `platform.notification-dispatch`
 - **Selbsttests:** —
 - **Unit-Tests:** —
 - **Integrationstests:** —
@@ -211,7 +211,7 @@ Geokodiert Kontaktadressen einzeln und im Batch und triggert Geocoding bei Adres
 - **Edge Functions:** `geocode-contact-address`, `batch-geocode-contacts`
 - **Datenbankfunktionen:** `trigger_geocoding_on_address_change`
 - **Tabellen:** `contacts`, `election_districts`
-- **Abhängigkeiten:** —
+- **Abhängigkeiten:** `contacts.create`
 - **Selbsttests:** —
 - **Unit-Tests:** —
 - **Integrationstests:** —

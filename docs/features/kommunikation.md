@@ -68,7 +68,7 @@ Plant Beiträge im Kalender, ordnet Kanäle und Varianten zu und führt den Reda
 - **Edge Functions:** —
 - **Datenbankfunktionen:** —
 - **Tabellen:** `social_content_items`, `social_content_channels`, `social_content_item_channels`, `social_content_variants`
-- **Abhängigkeiten:** —
+- **Abhängigkeiten:** `redaktion.themenspeicher`
 - **Selbsttests:** —
 - **Unit-Tests:** —
 - **Integrationstests:** —
@@ -104,7 +104,7 @@ Führt Beiträge durch Freigabe, fordert Änderungen an, protokolliert Entscheid
 - **Edge Functions:** —
 - **Datenbankfunktionen:** `request_social_post_changes`, `notify_social_post_approved`, `queue_social_content_reapproval`, `reopen_social_content_after_variant_change`, `enforce_social_content_approval_permissions`, `log_social_content_approval_event`
 - **Tabellen:** `social_content_items`, `social_content_approval_events`, `social_approval_comments`
-- **Abhängigkeiten:** —
+- **Abhängigkeiten:** `redaktion.planner`
 - **Selbsttests:** —
 - **Unit-Tests:** —
 - **Integrationstests:** —
@@ -140,7 +140,7 @@ Verwaltet Bild-/Video-Assets und fasst Beiträge zu Kampagnen zusammen.
 - **Edge Functions:** —
 - **Datenbankfunktionen:** —
 - **Tabellen:** `social_assets`, `social_campaigns`
-- **Abhängigkeiten:** —
+- **Abhängigkeiten:** `redaktion.planner`
 - **Selbsttests:** —
 - **Unit-Tests:** —
 - **Integrationstests:** —
@@ -212,7 +212,7 @@ Zeigt Redaktionstermine und besondere Tage und versendet Erinnerungen für gepla
 - **Edge Functions:** `social-planner-reminders`
 - **Datenbankfunktionen:** —
 - **Tabellen:** `social_content_items`, `social_planner_notes`
-- **Abhängigkeiten:** —
+- **Abhängigkeiten:** `redaktion.planner`
 - **Selbsttests:** —
 - **Unit-Tests:** —
 - **Integrationstests:** —
@@ -284,7 +284,7 @@ Veröffentlicht Pressemitteilungen über die Ghost-API und protokolliert den Ver
 - **Edge Functions:** `publish-to-ghost`
 - **Datenbankfunktionen:** —
 - **Tabellen:** `press_releases`
-- **Abhängigkeiten:** —
+- **Abhängigkeiten:** `press.releases`
 - **Selbsttests:** —
 - **Unit-Tests:** —
 - **Integrationstests:** —
@@ -355,7 +355,7 @@ Versendet News-Artikel als E-Mail auf Basis von Vorlagen.
 - **Edge Functions:** `send-news-email`
 - **Datenbankfunktionen:** —
 - **Tabellen:** `news_email_templates`, `email_logs`
-- **Abhängigkeiten:** —
+- **Abhängigkeiten:** `news.articles`, `integration.email`
 - **Selbsttests:** —
 - **Unit-Tests:** —
 - **Integrationstests:** —
@@ -427,7 +427,7 @@ Veröffentlicht News-Artikel in Matrix-Räumen und protokolliert die Zustellung.
 - **Edge Functions:** `send-news-matrix`
 - **Datenbankfunktionen:** —
 - **Tabellen:** `news_articles`, `matrix_subscriptions`
-- **Abhängigkeiten:** —
+- **Abhängigkeiten:** `news.articles`
 - **Selbsttests:** —
 - **Unit-Tests:** —
 - **Integrationstests:** —
@@ -463,7 +463,7 @@ Verbindet das Büro mit einem Matrix-Bot und versendet morgendliche Zusammenfass
 - **Edge Functions:** `matrix-bot-handler`, `send-matrix-morning-greeting`
 - **Datenbankfunktionen:** —
 - **Tabellen:** `matrix_bot_logs`, `matrix_morning_settings`, `matrix_subscriptions`
-- **Abhängigkeiten:** —
+- **Abhängigkeiten:** `chat.messages`
 - **Selbsttests:** —
 - **Unit-Tests:** —
 - **Integrationstests:** —
@@ -499,7 +499,7 @@ Veröffentlicht Ankündigungen im Team und merkt sich Ausblendungen je Nutzer.
 - **Edge Functions:** —
 - **Datenbankfunktionen:** —
 - **Tabellen:** `team_announcements`, `team_announcement_dismissals`
-- **Abhängigkeiten:** —
+- **Abhängigkeiten:** `chat.messages`
 - **Selbsttests:** —
 - **Unit-Tests:** —
 - **Integrationstests:** —

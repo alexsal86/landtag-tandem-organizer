@@ -157,7 +157,7 @@ Setzt eine Aufgabe auf abgeschlossen, stempelt die Erledigung und stößt Folgep
 - **Edge Functions:** —
 - **Datenbankfunktionen:** `stamp_task_completion`
 - **Tabellen:** `tasks`, `archived_tasks`
-- **Abhängigkeiten:** —
+- **Abhängigkeiten:** `tasks.create`
 - **Selbsttests:** `task-lifecycle`, `task-stafette-lifecycle`
 - **Unit-Tests:** `src/features/tasks/stafette.test.ts`
 - **Integrationstests:** —
@@ -193,7 +193,7 @@ Weist eine oder mehrere Personen zu, hält die Zuweisungsliste synchron und erla
 - **Edge Functions:** —
 - **Datenbankfunktionen:** `parse_task_assignee_ids`, `sync_task_assignees_from_task`, `handover_tasks_to_deputy`, `list_task_deputy_ids`
 - **Tabellen:** `tasks`, `task_assignees`, `profiles`
-- **Abhängigkeiten:** —
+- **Abhängigkeiten:** `tasks.create`, `tasks.ball-owner`
 - **Selbsttests:** `task-lifecycle`, `task-stafette-lifecycle`
 - **Unit-Tests:** —
 - **Integrationstests:** —
@@ -230,7 +230,7 @@ Weist eine oder mehrere Personen zu, hält die Zuweisungsliste synchron und erla
 - **Edge Functions:** —
 - **Datenbankfunktionen:** `record_task_stafette_handover`, `batch_task_stafette_action`, `batch_task_stafette_preview`, `undo_task_batch_action`, `task_batch_plan`, `task_stafette_batch_snapshot`
 - **Tabellen:** `tasks`, `task_assignees`, `task_snoozes`, `bulk_action_audit`
-- **Abhängigkeiten:** —
+- **Abhängigkeiten:** `tasks.ball-owner`, `tasks.create`
 - **Selbsttests:** `task-stafette-lifecycle`
 - **Unit-Tests:** `src/features/tasks/stafette.test.ts`
 - **Integrationstests:** —
@@ -266,7 +266,7 @@ Bestimmt aus Status, Zuweisung und Stafette, bei wem die Aufgabe liegt, und zeig
 - **Edge Functions:** —
 - **Datenbankfunktionen:** `validate_task_ball_owner`
 - **Tabellen:** `tasks`, `task_assignees`
-- **Abhängigkeiten:** —
+- **Abhängigkeiten:** `tasks.create`
 - **Selbsttests:** —
 - **Unit-Tests:** `src/features/tasks/stafette.test.ts`
 - **Integrationstests:** —
@@ -303,7 +303,7 @@ Setzt Fälligkeiten, hebt überfällige Aufgaben hervor und speist Fristen-Widge
 - **Edge Functions:** —
 - **Datenbankfunktionen:** —
 - **Tabellen:** `tasks`, `task_snoozes`
-- **Abhängigkeiten:** —
+- **Abhängigkeiten:** `tasks.create`
 - **Selbsttests:** —
 - **Unit-Tests:** —
 - **Integrationstests:** —
@@ -340,7 +340,7 @@ Verschiebt die Wiedervorlage einer Aufgabe, protokolliert den Zeitpunkt und blen
 - **Edge Functions:** —
 - **Datenbankfunktionen:** —
 - **Tabellen:** `task_snoozes`, `tasks`
-- **Abhängigkeiten:** —
+- **Abhängigkeiten:** `tasks.create`
 - **Selbsttests:** —
 - **Unit-Tests:** —
 - **Integrationstests:** —
@@ -376,7 +376,7 @@ Zerlegt Aufgaben in Unteraufgaben und zeigt deren Fortschritt in der Hauptaufgab
 - **Edge Functions:** —
 - **Datenbankfunktionen:** —
 - **Tabellen:** `subtasks`, `tasks`
-- **Abhängigkeiten:** —
+- **Abhängigkeiten:** `tasks.create`
 - **Selbsttests:** —
 - **Unit-Tests:** —
 - **Integrationstests:** —
@@ -412,7 +412,7 @@ Erzeugt aus einer Aufgabe eine Entscheidung oder verknüpft sie; nach der Abstim
 - **Edge Functions:** —
 - **Datenbankfunktionen:** `create_decision_task`, `return_task_ball_after_vote`, `user_can_access_task_decision`
 - **Tabellen:** `task_decisions`, `tasks`, `task_decision_participants`
-- **Abhängigkeiten:** —
+- **Abhängigkeiten:** `tasks.create`, `decisions.create`
 - **Selbsttests:** `decision-lifecycle`
 - **Unit-Tests:** —
 - **Integrationstests:** —
@@ -448,7 +448,7 @@ Verknüpft Aufgaben mit Vorgängen und Fallakten und synchronisiert Schritt- und
 - **Edge Functions:** —
 - **Datenbankfunktionen:** `sync_case_office_step_task`, `sync_case_step_from_task`, `journal_case_step_task`, `create_case_file_task`
 - **Tabellen:** `case_file_tasks`, `case_item_timeline`, `tasks`
-- **Abhängigkeiten:** `cases.steps`
+- **Abhängigkeiten:** `cases.steps`, `tasks.create`
 - **Selbsttests:** —
 - **Unit-Tests:** `src/features/cases/items/taskEvents.test.ts`, `src/features/cases/items/workflow.test.ts`
 - **Integrationstests:** —
@@ -484,7 +484,7 @@ Hängt Dokumente an Aufgaben und öffnet sie aus der Aufgabenansicht.
 - **Edge Functions:** —
 - **Datenbankfunktionen:** —
 - **Tabellen:** `task_documents`, `documents`
-- **Abhängigkeiten:** —
+- **Abhängigkeiten:** `tasks.create`, `documents.upload-version`
 - **Selbsttests:** —
 - **Unit-Tests:** —
 - **Integrationstests:** —
@@ -519,7 +519,7 @@ Erzeugt beim Abschluss automatisch die nächste Aufgabe anhand einer Wiederholun
 - **Edge Functions:** —
 - **Datenbankfunktionen:** `spawn_recurring_task`, `next_recurrence_date`, `validate_task_recurrence`
 - **Tabellen:** `tasks`
-- **Abhängigkeiten:** —
+- **Abhängigkeiten:** `tasks.create`
 - **Selbsttests:** —
 - **Unit-Tests:** `src/features/tasks/templates.test.ts`
 - **Integrationstests:** —
@@ -555,7 +555,7 @@ Speichert Mandats-/Bürovorlagen und wendet sie beim Anlegen an, inklusive Frist
 - **Edge Functions:** —
 - **Datenbankfunktionen:** —
 - **Tabellen:** `preparation_templates`, `tasks`
-- **Abhängigkeiten:** —
+- **Abhängigkeiten:** `tasks.create`
 - **Selbsttests:** —
 - **Unit-Tests:** `src/features/tasks/templates.test.ts`
 - **Integrationstests:** —
@@ -591,7 +591,7 @@ Verschiebt abgeschlossene Aufgaben ins Archiv, erlaubt Wiederherstellung und pro
 - **Edge Functions:** —
 - **Datenbankfunktionen:** `archive_completed_task`, `restore_archived_task`, `undo_task_batch_action`
 - **Tabellen:** `archived_tasks`, `tasks`, `task_archive_settings`, `bulk_action_audit`
-- **Abhängigkeiten:** —
+- **Abhängigkeiten:** `tasks.create`, `tasks.complete`
 - **Selbsttests:** —
 - **Unit-Tests:** —
 - **Integrationstests:** —
@@ -627,7 +627,7 @@ Filtert Aufgaben nach Status, Kategorie, Zuständigkeit, Frist und Text und sort
 - **Edge Functions:** —
 - **Datenbankfunktionen:** —
 - **Tabellen:** `tasks`, `task_statuses`, `task_categories`
-- **Abhängigkeiten:** —
+- **Abhängigkeiten:** `tasks.create`
 - **Selbsttests:** —
 - **Unit-Tests:** —
 - **Integrationstests:** —
@@ -663,7 +663,7 @@ Erlaubt Anmahnen über eine RPC mit 24-Stunden-Grenze und versendet fällige Eri
 - **Edge Functions:** —
 - **Datenbankfunktionen:** `nudge_task`, `ack_task_nudge`, `dispatch_due_task_reminders`, `escalate_task`, `task_approval_sla`
 - **Tabellen:** `tasks`, `notifications`, `dashboard_decision_nudges`
-- **Abhängigkeiten:** —
+- **Abhängigkeiten:** `tasks.create`, `tasks.ball-owner`
 - **Selbsttests:** —
 - **Unit-Tests:** —
 - **Integrationstests:** —
@@ -699,7 +699,7 @@ Führt wiederkehrende Jahresaufgaben mit Abschlusshistorie, Sperre je Jahr und �
 - **Edge Functions:** —
 - **Datenbankfunktionen:** `execute_annual_automation_routine`, `spawn_annual_task_to_stafette`, `sync_annual_task_completion`, `guard_annual_completion_link`
 - **Tabellen:** `annual_tasks`, `annual_task_completions`, `routine_package_runs`, `routine_package_steps`
-- **Abhängigkeiten:** —
+- **Abhängigkeiten:** `tasks.create`
 - **Selbsttests:** `annual-task-stafette`
 - **Unit-Tests:** `src/features/timetracking/annualTaskRules.test.ts`
 - **Integrationstests:** —

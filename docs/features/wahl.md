@@ -118,7 +118,7 @@ Navigiert zwischen Analyseebenen und speichert Analyse-Szenarien.
 - **Edge Functions:** —
 - **Datenbankfunktionen:** `guard_analysis_scenario`
 - **Tabellen:** `election_analysis_scenarios`
-- **Abhängigkeiten:** —
+- **Abhängigkeiten:** `election.analysis`
 - **Selbsttests:** —
 - **Unit-Tests:** `src/features/election-analysis/navigation.test.ts`
 - **Integrationstests:** —
@@ -154,7 +154,7 @@ Zeigt Analyseergebnisse auf Karten und verknüpft Wahlkreise mit Analyseversione
 - **Edge Functions:** —
 - **Datenbankfunktionen:** `match_analysis_history_district`, `guard_analysis_version_link`, `guard_analysis_period_link`
 - **Tabellen:** `election_analysis_geographies`, `election_analysis_districts`, `election_history_districts`
-- **Abhängigkeiten:** —
+- **Abhängigkeiten:** `election.analysis`, `election.history.districts-geometry`
 - **Selbsttests:** —
 - **Unit-Tests:** —
 - **Integrationstests:** —
@@ -190,7 +190,7 @@ Stellt Wahlbeteiligung im Zeitvergleich und je Gebiet dar.
 - **Edge Functions:** —
 - **Datenbankfunktionen:** `get_analysis_turnout_comparison`
 - **Tabellen:** `election_analysis_turnout`
-- **Abhängigkeiten:** —
+- **Abhängigkeiten:** `election.analysis`
 - **Selbsttests:** —
 - **Unit-Tests:** —
 - **Integrationstests:** —
@@ -226,7 +226,7 @@ Berechnet Sitzverteilungen und stellt sie als Hemizykel und Parteienvergleich da
 - **Edge Functions:** —
 - **Datenbankfunktionen:** `valid_bw_poll_shares`
 - **Tabellen:** `election_analysis_state`, `election_analysis_bw_polls`
-- **Abhängigkeiten:** —
+- **Abhängigkeiten:** `election.analysis`
 - **Selbsttests:** —
 - **Unit-Tests:** —
 - **Integrationstests:** —
@@ -262,7 +262,7 @@ Zeigt persönliche Wahlergebnisse, Kandidaturen und Mandatszeiträume je Person.
 - **Edge Functions:** —
 - **Datenbankfunktionen:** `get_analysis_deputy_election_result`, `list_analysis_deputies`, `list_analysis_deputy_factions`
 - **Tabellen:** `election_analysis_candidates`, `election_history_candidacies`, `election_history_mandates`
-- **Abhängigkeiten:** —
+- **Abhängigkeiten:** `election.analysis`
 - **Selbsttests:** `election-deputy-reader`
 - **Unit-Tests:** —
 - **Integrationstests:** —
@@ -299,7 +299,7 @@ Stellt landesweite Ergebnisse, Parteienanteile und historische Vergleichsreihen 
 - **Edge Functions:** —
 - **Datenbankfunktionen:** —
 - **Tabellen:** `election_analysis_state`, `election_analysis_state_totals`
-- **Abhängigkeiten:** —
+- **Abhängigkeiten:** `election.analysis`
 - **Selbsttests:** —
 - **Unit-Tests:** `src/features/election-analysis/StateHistoryPanels.test.tsx`
 - **Integrationstests:** —
@@ -335,7 +335,7 @@ Führt Forschungsauswertungen, kommunale Ergebnisse, Kandidatenabdeckung und Rel
 - **Edge Functions:** —
 - **Datenbankfunktionen:** `get_analysis_local_page`, `import_analysis_local_rows`, `confirm_analysis_candidate_identity`, `invalidate_election_candidate_coverage`
 - **Tabellen:** `election_analysis_local_results`, `election_analysis_candidate_coverage`, `election_analysis_source_reviews`, `election_analysis_correction_audit`
-- **Abhängigkeiten:** —
+- **Abhängigkeiten:** `election.analysis`
 - **Selbsttests:** —
 - **Unit-Tests:** —
 - **Integrationstests:** —
@@ -371,7 +371,7 @@ Zeigt Wahlkreise auf einer interaktiven Karte mit Ergebnissen, Notizen und Ebene
 - **Edge Functions:** —
 - **Datenbankfunktionen:** —
 - **Tabellen:** `election_districts`, `election_district_municipalities`, `election_district_notes`, `map_layers`, `map_routes`
-- **Abhängigkeiten:** —
+- **Abhängigkeiten:** `election.districts-import`
 - **Selbsttests:** `election-map`
 - **Unit-Tests:** `src/features/election-districts/mapModel.test.ts`
 - **Integrationstests:** —
@@ -517,7 +517,7 @@ Erfasst Mandatszeiträume mit Vererbung aus der Periode, Nachfolge- und Übersch
 - **Edge Functions:** —
 - **Datenbankfunktionen:** `inherit_election_mandate_dates`, `guard_election_history_dates`, `connect_matching_election_history_mandate`, `assign_election_mandate_connection`, `merge_election_history_deputies`
 - **Tabellen:** `election_history_mandates`, `election_history_connection_people`, `election_history_mandate_birthdays`
-- **Abhängigkeiten:** —
+- **Abhängigkeiten:** `election.history.periods`, `election.history.people`, `election.history.districts-geometry`, `election.history.factions`
 - **Selbsttests:** `election-history-workbench`
 - **Unit-Tests:** —
 - **Integrationstests:** —
@@ -553,7 +553,7 @@ Erfasst Kandidaturen mit persönlichen Ergebnissen, getrennt von tatsächlichen 
 - **Edge Functions:** —
 - **Datenbankfunktionen:** `import_election_history_candidacies`, `guard_election_history_candidacy`, `guard_local_result_coherence`
 - **Tabellen:** `election_history_candidacies`, `election_history_districts`, `election_history_candidate_workbook_audit`
-- **Abhängigkeiten:** —
+- **Abhängigkeiten:** `election.history.periods`, `election.history.people`
 - **Selbsttests:** `election-history-workbench`
 - **Unit-Tests:** —
 - **Integrationstests:** —
@@ -589,7 +589,7 @@ Führt Personen über Perioden hinweg, verknüpft Kandidaturen und Mandate und z
 - **Edge Functions:** —
 - **Datenbankfunktionen:** `create_election_candidate_person`, `get_election_person_career`, `get_election_person_summary`, `search_election_person_careers`, `search_election_state_list_people`, `list_election_history_deputies`, `confirm_election_history_deputy`, `connect_election_history_mandates`
 - **Tabellen:** `election_history_people`, `election_history_candidacies`, `election_history_mandates`
-- **Abhängigkeiten:** —
+- **Abhängigkeiten:** `election.history.periods`
 - **Selbsttests:** `election-deputy-reader`
 - **Unit-Tests:** —
 - **Integrationstests:** —
@@ -625,7 +625,7 @@ Erfasst Landeslisten und Listenplätze ab Periode 18 ohne Personen, Mandate oder
 - **Edge Functions:** —
 - **Datenbankfunktionen:** `get_deputy_state_list_places`, `guard_election_period_state_lists`, `guard_election_state_list`, `link_election_state_list_entry`, `refresh_state_lists_after_birth_change`
 - **Tabellen:** `election_history_state_lists`, `election_history_state_list_entries`
-- **Abhängigkeiten:** —
+- **Abhängigkeiten:** `election.history.periods`, `election.history.people`, `election.history.factions`
 - **Selbsttests:** —
 - **Unit-Tests:** —
 - **Integrationstests:** —
@@ -697,7 +697,7 @@ Prüft Datenqualität und Quellenabgleich, zeigt Befunde paginiert und lädt nur
 - **Edge Functions:** —
 - **Datenbankfunktionen:** `get_election_history_issues`, `election_history_issue_rows`, `get_election_history_assembly_status`
 - **Tabellen:** `election_history_assembly_issues`, `election_history_audit`, `election_analysis_workbook_audit`
-- **Abhängigkeiten:** —
+- **Abhängigkeiten:** `election.history.periods`
 - **Selbsttests:** `election-history-workbench`
 - **Unit-Tests:** —
 - **Integrationstests:** —
@@ -733,7 +733,7 @@ Protokolliert Änderungen an historischen Daten und zeigt Audit-Einträge.
 - **Edge Functions:** —
 - **Datenbankfunktionen:** `audit_election_history`
 - **Tabellen:** `election_history_audit`
-- **Abhängigkeiten:** —
+- **Abhängigkeiten:** `election.history.quality`
 - **Selbsttests:** —
 - **Unit-Tests:** —
 - **Integrationstests:** —
@@ -768,7 +768,7 @@ Setzt bestätigte Verbindungen in Personen und ursprüngliche Kandidaturen um, o
 - **Edge Functions:** —
 - **Datenbankfunktionen:** `assemble_election_history`, `sync_assembled_election_history`, `apply_verified_election_period`, `election_history_1952_source`
 - **Tabellen:** `election_history_candidacies`, `election_history_people`, `election_history_1952_result_sources`
-- **Abhängigkeiten:** —
+- **Abhängigkeiten:** `election.history.candidacies`, `election.history.mandates`
 - **Selbsttests:** —
 - **Unit-Tests:** —
 - **Integrationstests:** —
@@ -803,7 +803,7 @@ Ordnet historische Wahlkreise zu, zeigt Grenzverläufe und kennzeichnet Rekonstr
 - **Edge Functions:** —
 - **Datenbankfunktionen:** `guard_analysis_version_link`, `guard_election_history_1988_district_name`, `election_history_source_district_name`, `invalidate_election_history_geometry`
 - **Tabellen:** `election_history_districts`, `election_analysis_geographies`
-- **Abhängigkeiten:** —
+- **Abhängigkeiten:** `election.history.periods`
 - **Selbsttests:** —
 - **Unit-Tests:** —
 - **Integrationstests:** —
@@ -874,7 +874,7 @@ Schneidet Porträts zu, erzeugt WebP und Thumbnail und committet sie über einen
 - **Edge Functions:** `save-deputy-portrait`, `extract-photo-data`
 - **Datenbankfunktionen:** —
 - **Tabellen:** `election_history_connection_people`
-- **Abhängigkeiten:** —
+- **Abhängigkeiten:** `election.history.people`
 - **Selbsttests:** —
 - **Unit-Tests:** —
 - **Integrationstests:** —

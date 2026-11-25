@@ -92,7 +92,8 @@
       ],
       "scenarios": [
         "decision-lifecycle"
-      ]
+      ],
+      "dependsOn": ["decisions.create"]
     },
     {
       "id": "decisions.vote",
@@ -124,7 +125,8 @@
       ],
       "scenarios": [
         "decision-lifecycle"
-      ]
+      ],
+      "dependsOn": ["decisions.participants"]
     },
     {
       "id": "decisions.change-vote",
@@ -153,7 +155,8 @@
       ],
       "rpcs": [
         "check_archive_after_creator_response"
-      ]
+      ],
+      "dependsOn": ["decisions.vote"]
     },
     {
       "id": "decisions.comments",
@@ -187,7 +190,8 @@
       "docs": [
         "docs/task-decision-reactions-rollout.md",
         "docs/emoji-reactions-dod-v1.md"
-      ]
+      ],
+      "dependsOn": ["decisions.create"]
     },
     {
       "id": "decisions.attachments",
@@ -213,7 +217,8 @@
         "abgeordneter",
         "bueroleitung",
         "mitarbeiter"
-      ]
+      ],
+      "dependsOn": ["decisions.create"]
     },
     {
       "id": "decisions.remind",
@@ -248,7 +253,8 @@
       "roles": [
         "abgeordneter",
         "bueroleitung"
-      ]
+      ],
+      "dependsOn": ["decisions.create"]
     },
     {
       "id": "decisions.archive",
@@ -285,7 +291,8 @@
       ],
       "reviewPoints": [
         "Der Cron-Lauf wurde hier nicht ausgeführt; der Nachweis ist die Funktion plus Einstellungsdialog."
-      ]
+      ],
+      "dependsOn": ["decisions.vote"]
     },
     {
       "id": "decisions.email",
@@ -312,7 +319,8 @@
         "abgeordneter",
         "bueroleitung",
         "mitarbeiter"
-      ]
+      ],
+      "dependsOn": ["decisions.create", "integration.email"]
     },
     {
       "id": "decisions.matrix",
@@ -343,7 +351,8 @@
       ],
       "reviewPoints": [
         "Sicherheitsklassifikation public-webhook; zusätzlicher Schutz im Code nicht nachgewiesen."
-      ]
+      ],
+      "dependsOn": ["decisions.vote"]
     }
   ]
 }

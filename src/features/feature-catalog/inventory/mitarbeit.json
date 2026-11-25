@@ -94,7 +94,8 @@
       ],
       "reviewPoints": [
         "Protokollfreigabe ist eine sensible Regel ohne zugeordneten Test."
-      ]
+      ],
+      "dependsOn": ["employees.meetings"]
     },
     {
       "id": "employees.action-tasks",
@@ -129,7 +130,8 @@
       ],
       "dependsOn": [
         "tasks.create",
-        "employees.protocol"
+        "employees.protocol",
+        "employees.meetings"
       ]
     },
     {
@@ -168,7 +170,8 @@
       ],
       "reviewPoints": [
         "Cron-Versand wurde nicht ausgeführt."
-      ]
+      ],
+      "dependsOn": ["employees.meetings"]
     },
     {
       "id": "employees.review",
@@ -201,7 +204,8 @@
       "roles": [
         "abgeordneter",
         "bueroleitung"
-      ]
+      ],
+      "dependsOn": ["employees.meetings"]
     },
     {
       "id": "employees.wellbeing",
@@ -240,7 +244,8 @@
       ],
       "reviewPoints": [
         "Kein Test für die Datenbankpolitik der Wohlbefindensdaten vorhanden."
-      ]
+      ],
+      "dependsOn": ["employees.meetings"]
     },
     {
       "id": "employees.requests",
@@ -271,7 +276,8 @@
         "mitarbeiter",
         "bueroleitung",
         "abgeordneter"
-      ]
+      ],
+      "dependsOn": ["employees.meetings"]
     },
     {
       "id": "employees.export-stats",
@@ -304,7 +310,8 @@
         "abgeordneter",
         "bueroleitung",
         "mitarbeiter"
-      ]
+      ],
+      "dependsOn": ["employees.protocol", "employees.meetings"]
     },
     {
       "id": "hr.onboarding",
@@ -358,7 +365,8 @@
       ],
       "docs": [
         "docs/rollenrechte-matrix.md"
-      ]
+      ],
+      "dependsOn": ["hr.templates", "tasks.create", "automation.routine-packages"]
     },
     {
       "id": "hr.templates",
@@ -437,7 +445,8 @@
       ],
       "scenarios": [
         "onboarding-hr"
-      ]
+      ],
+      "dependsOn": ["tasks.create", "automation.routine-packages"]
     },
     {
       "id": "responsibilities.matrix",
@@ -520,7 +529,8 @@
       "unitTests": [
         "src/features/responsibilities/suggest.test.ts",
         "src/features/responsibilities/ResponsibleSuggestion.test.tsx"
-      ]
+      ],
+      "dependsOn": ["responsibilities.matrix"]
     },
     {
       "id": "responsibilities.coverage",
@@ -548,7 +558,8 @@
       ],
       "unitTests": [
         "src/features/responsibilities/matrixCoverage.test.ts"
-      ]
+      ],
+      "dependsOn": ["responsibilities.matrix"]
     },
     {
       "id": "teamrituals.weekly",
@@ -784,7 +795,8 @@
       "roles": [
         "bueroleitung",
         "admin"
-      ]
+      ],
+      "dependsOn": ["timetracking.entries"]
     },
     {
       "id": "timetracking.annual-tasks",
@@ -821,7 +833,8 @@
       ],
       "unitTests": [
         "src/features/timetracking/annualTaskRules.test.ts"
-      ]
+      ],
+      "dependsOn": ["tasks.annual", "automation.annual-routines"]
     }
   ]
 }

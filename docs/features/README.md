@@ -23,9 +23,9 @@ Der Katalog ist das führende Verzeichnis des tatsächlich implementierten Funkt
 | Funktionen mit Security-Test | 1 |
 | Funktionen ohne zugeordneten Test | 151 |
 | Funktionen ohne Dokumentationsverweis | 162 |
-| Funktionen mit bekannten Einschränkungen | 22 |
+| Funktionen mit bekannten Einschränkungen | 23 |
 | Nicht nachweisbar eingebundene Funktionen | 1 |
-| Technische Zuordnungen | 1201 |
+| Technische Zuordnungen | 1204 |
 
 ## Funktionsbereiche
 

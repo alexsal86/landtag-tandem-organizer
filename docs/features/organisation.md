@@ -110,7 +110,7 @@ Füllt und sortiert Agenda-Punkte aus Vorgängen, Aufgaben, Geburtstagen, Dokume
 - **Edge Functions:** —
 - **Datenbankfunktionen:** —
 - **Tabellen:** `meeting_agenda_items`, `meeting_agenda_documents`, `case_items`, `tasks`
-- **Abhängigkeiten:** —
+- **Abhängigkeiten:** `meetings.jour-fixe`
 - **Selbsttests:** `meeting-lifecycle`
 - **Unit-Tests:** —
 - **Integrationstests:** —
@@ -146,7 +146,7 @@ Schreibt und aktualisiert Protokolle, erlaubt Wiedereröffnung und erzeugt best�
 - **Edge Functions:** —
 - **Datenbankfunktionen:** `update_meeting_protocol`, `reopen_meeting_protocol`, `create_acknowledged_meeting_tasks`
 - **Tabellen:** `meeting_protocol_details`, `protocol_sessions`, `protocol_speeches`, `protocol_agenda_items`
-- **Abhängigkeiten:** —
+- **Abhängigkeiten:** `meetings.agenda`, `tasks.create`
 - **Selbsttests:** `meeting-lifecycle`
 - **Unit-Tests:** —
 - **Integrationstests:** —
@@ -181,7 +181,7 @@ Hält Entscheidungen zu Agenda-Punkten fest, ohne Abstimmungen zu erfinden, und 
 - **Edge Functions:** —
 - **Datenbankfunktionen:** `document_meeting_decision`, `guard_meeting_decision_documentation`
 - **Tabellen:** `meetings`, `meeting_agenda_items`, `documents`
-- **Abhängigkeiten:** —
+- **Abhängigkeiten:** `meetings.agenda`, `decisions.create`
 - **Selbsttests:** `meeting-lifecycle`
 - **Unit-Tests:** —
 - **Integrationstests:** —
@@ -217,7 +217,7 @@ Archiviert Sitzungen samt Stafette-Folgen und hält die Herkunft je Sitzung eind
 - **Edge Functions:** —
 - **Datenbankfunktionen:** `archive_meeting_with_stafette`
 - **Tabellen:** `meetings`, `archived_meeting_protocol_tasks`, `tasks`
-- **Abhängigkeiten:** —
+- **Abhängigkeiten:** `meetings.protocol`, `tasks.create`
 - **Selbsttests:** `meeting-lifecycle`
 - **Unit-Tests:** —
 - **Integrationstests:** —
@@ -252,7 +252,7 @@ Verwaltet Sitzungsvorlagen mit Standardagenda und Teilnehmern.
 - **Edge Functions:** —
 - **Datenbankfunktionen:** `ensure_single_default_meeting_template`, `get_meeting_protocol_participants`
 - **Tabellen:** `meeting_templates`
-- **Abhängigkeiten:** —
+- **Abhängigkeiten:** `meetings.agenda`
 - **Selbsttests:** —
 - **Unit-Tests:** —
 - **Integrationstests:** —
@@ -287,7 +287,7 @@ Erkennt seit mehreren Sitzungen offene Punkte und zeigt sie im Entscheidungs-Coc
 - **Edge Functions:** —
 - **Datenbankfunktionen:** —
 - **Tabellen:** `meeting_agenda_items`
-- **Abhängigkeiten:** —
+- **Abhängigkeiten:** `meetings.agenda`
 - **Selbsttests:** —
 - **Unit-Tests:** —
 - **Integrationstests:** —
@@ -358,7 +358,7 @@ Erfasst Einträge, ordnet sie chronologisch und verknüpft Quellen.
 - **Edge Functions:** —
 - **Datenbankfunktionen:** —
 - **Tabellen:** `dossier_entries`, `dossiers`
-- **Abhängigkeiten:** —
+- **Abhängigkeiten:** `dossiers.manage`
 - **Selbsttests:** —
 - **Unit-Tests:** —
 - **Integrationstests:** —
@@ -394,7 +394,7 @@ Verknüpft Dossiers mit Kontakten, Dokumenten und anderen Dossiers und zeigt Bet
 - **Edge Functions:** —
 - **Datenbankfunktionen:** —
 - **Tabellen:** `dossier_links`, `dossier_stakeholders`
-- **Abhängigkeiten:** —
+- **Abhängigkeiten:** `dossiers.manage`, `contacts.create`
 - **Selbsttests:** —
 - **Unit-Tests:** —
 - **Integrationstests:** —
@@ -430,7 +430,7 @@ Hält Gesprächspunkte und Positionsfassungen je Dossier fest.
 - **Edge Functions:** —
 - **Datenbankfunktionen:** —
 - **Tabellen:** `dossier_talking_points`, `dossier_position_versions`
-- **Abhängigkeiten:** —
+- **Abhängigkeiten:** `dossiers.manage`
 - **Selbsttests:** —
 - **Unit-Tests:** —
 - **Integrationstests:** —
@@ -466,7 +466,7 @@ Erfasst Dossier-Einträge aus dem Alltag und zeigt persönlich relevante Dossier
 - **Edge Functions:** —
 - **Datenbankfunktionen:** —
 - **Tabellen:** `dossiers`, `dossier_entries`
-- **Abhängigkeiten:** —
+- **Abhängigkeiten:** `dossiers.manage`
 - **Selbsttests:** —
 - **Unit-Tests:** —
 - **Integrationstests:** —
@@ -502,7 +502,7 @@ Beobachtet externe Quellen und synchronisiert neue Einträge in Dossiers.
 - **Edge Functions:** `sync-dossier-external-sources`
 - **Datenbankfunktionen:** —
 - **Tabellen:** `dossier_source_watchers`, `dossier_entries`
-- **Abhängigkeiten:** —
+- **Abhängigkeiten:** `dossiers.manage`
 - **Selbsttests:** —
 - **Unit-Tests:** —
 - **Integrationstests:** —
@@ -538,7 +538,7 @@ Durchsucht Dossier-Einträge und Dossiers zentral und öffnet Treffer im Kontext
 - **Edge Functions:** —
 - **Datenbankfunktionen:** —
 - **Tabellen:** `dossier_entries`, `dossiers`
-- **Abhängigkeiten:** —
+- **Abhängigkeiten:** `dossiers.manage`
 - **Selbsttests:** —
 - **Unit-Tests:** —
 - **Integrationstests:** —
@@ -645,7 +645,7 @@ Wandelt ein Thema atomar in einen Katalogeintrag um, erhält historische Verknü
 - **Edge Functions:** —
 - **Datenbankfunktionen:** `convert_topic_to_catalog`
 - **Tabellen:** `topics`, `topic_catalog_links`, `employee_responsibilities`
-- **Abhängigkeiten:** —
+- **Abhängigkeiten:** `topics.manage`, `responsibilities.matrix`
 - **Selbsttests:** —
 - **Unit-Tests:** —
 - **Integrationstests:** —

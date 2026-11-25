@@ -1,4 +1,4 @@
-import { render, screen } from "@testing-library/react";
+import { fireEvent, render, screen } from "@testing-library/react";
 import { MemoryRouter } from "react-router-dom";
 import { beforeEach, describe, expect, it, vi } from "vitest";
 
@@ -93,6 +93,21 @@ describe("Funktionskatalog: Zugriff", () => {
 
     expect(screen.getByText(/Zugriff wird geprüft/)).toBeTruthy();
     expect(screen.queryByRole("navigation", { name: "Katalogbereiche" })).toBeNull();
+  });
+
+  it("zeigt die abgeleitete Funktionslandkarte mit Bereichen und Wirkungsketten", async () => {
+    renderCatalog();
+    fireEvent.click(screen.getByRole("button", { name: "Landkarte" }));
+
+    expect(await screen.findByRole("heading", { name: "Funktionslandkarte" })).toBeTruthy();
+    expect(screen.getByText(/Automatisch aus Bereich, Unterbereich/)).toBeTruthy();
+    // Kopplungen stehen in den Bereichskacheln, nicht als separate Liste darunter.
+    expect(screen.getAllByText(/hängt ab von Aufgaben & Stafette/).length).toBeGreaterThan(0);
+    expect(screen.queryByText("Kopplungen zwischen Bereichen")).toBeNull();
+    expect(screen.getByText("Wirkungsketten")).toBeTruthy();
+    // Die deklarierten Abhängigkeiten bilden Ketten ab drei Funktionen.
+    expect(screen.queryByText(/Keine Kette mit mindestens drei Funktionen/)).toBeNull();
+    expect(screen.getByRole("list").querySelectorAll("li").length).toBeGreaterThan(0);
   });
 
   it("öffnet eine Funktion per Deep-Link und trennt RLS-Befunde von Testergebnissen", async () => {

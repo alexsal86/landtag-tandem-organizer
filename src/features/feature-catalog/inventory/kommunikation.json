@@ -44,7 +44,8 @@
       ],
       "docs": [
         "docs/emoji-reactions-dod-v1.md"
-      ]
+      ],
+      "dependsOn": ["redaktion.themenspeicher"]
     },
     {
       "id": "redaktion.approval",
@@ -80,7 +81,8 @@
         "abgeordneter",
         "bueroleitung",
         "mitarbeiter"
-      ]
+      ],
+      "dependsOn": ["redaktion.planner"]
     },
     {
       "id": "redaktion.assets-campaigns",
@@ -108,7 +110,8 @@
         "abgeordneter",
         "bueroleitung",
         "mitarbeiter"
-      ]
+      ],
+      "dependsOn": ["redaktion.planner"]
     },
     {
       "id": "redaktion.themenspeicher",
@@ -178,7 +181,8 @@
         "bueroleitung",
         "mitarbeiter",
         "system"
-      ]
+      ],
+      "dependsOn": ["redaktion.planner"]
     },
     {
       "id": "press.releases",
@@ -241,7 +245,8 @@
       ],
       "docs": [
         "docs/ghost-rsvp-widget"
-      ]
+      ],
+      "dependsOn": ["press.releases"]
     },
     {
       "id": "news.articles",
@@ -303,7 +308,8 @@
       "roles": [
         "bueroleitung",
         "mitarbeiter"
-      ]
+      ],
+      "dependsOn": ["news.articles", "integration.email"]
     },
     {
       "id": "chat.messages",
@@ -378,7 +384,8 @@
       ],
       "docs": [
         "docs/matrix-chatbot-integration.md"
-      ]
+      ],
+      "dependsOn": ["news.articles"]
     },
     {
       "id": "chat.matrix-bot",
@@ -410,7 +417,8 @@
       ],
       "reviewPoints": [
         "Der Bot-Handler ist JWT-geschützt, aber der fachliche Befehlsraum ist nicht dokumentiert."
-      ]
+      ],
+      "dependsOn": ["chat.messages"]
     },
     {
       "id": "chat.team-announcements",
@@ -436,7 +444,8 @@
         "abgeordneter",
         "bueroleitung",
         "mitarbeiter"
-      ]
+      ],
+      "dependsOn": ["chat.messages"]
     },
     {
       "id": "widget.matrix-website",

@@ -119,7 +119,7 @@ Legt Termine mit Zeitraum, Ort, Kategorie, Kontakten, Gästen und Vorbereitungsb
 - **Edge Functions:** —
 - **Datenbankfunktionen:** —
 - **Tabellen:** `appointments`, `appointment_categories`, `appointment_locations`, `appointment_contacts`
-- **Abhängigkeiten:** —
+- **Abhängigkeiten:** `calendar.categories-locations`
 - **Selbsttests:** `appointment-lifecycle`
 - **Unit-Tests:** —
 - **Integrationstests:** —
@@ -155,7 +155,7 @@ Legt Termine mit Zeitraum, Ort, Kategorie, Kontakten, Gästen und Vorbereitungsb
 - **Edge Functions:** —
 - **Datenbankfunktionen:** `reset_appointment_reminders_on_move`, `reopen_changed_appointment_briefing`
 - **Tabellen:** `appointments`, `appointment_change_alerts`, `appointment_reminder_dispatches`
-- **Abhängigkeiten:** —
+- **Abhängigkeiten:** `calendar.create-appointment`
 - **Selbsttests:** —
 - **Unit-Tests:** —
 - **Integrationstests:** —
@@ -191,7 +191,7 @@ Verwaltet Termingäste, Standardgäste und Zu-/Absagen mit E-Mail-Normalisierung
 - **Edge Functions:** —
 - **Datenbankfunktionen:** `upsert_appointment_guests`, `normalize_appointment_guest_email`
 - **Tabellen:** `appointment_guests`, `default_appointment_guests`, `appointments`
-- **Abhängigkeiten:** —
+- **Abhängigkeiten:** `calendar.create-appointment`
 - **Selbsttests:** —
 - **Unit-Tests:** —
 - **Integrationstests:** —
@@ -227,7 +227,7 @@ Versendet In-App-, Push- und optional E-Mail-Erinnerungen gemäß reminder_minut
 - **Edge Functions:** `send-appointment-reminders`
 - **Datenbankfunktionen:** `dispatch_due_appointment_reminders`, `seed_appointment_reminder_type`
 - **Tabellen:** `appointments`, `appointment_reminder_dispatches`, `notifications`
-- **Abhängigkeiten:** —
+- **Abhängigkeiten:** `calendar.create-appointment`
 - **Selbsttests:** —
 - **Unit-Tests:** —
 - **Integrationstests:** —
@@ -264,7 +264,7 @@ Erzeugt ICS-Einladungen, versendet sie und stempelt den Versand am Termin.
 - **Edge Functions:** `generate-calendar-invite`, `send-appointment-invitation`
 - **Datenbankfunktionen:** `stamp_appointment_calendar_invite`
 - **Tabellen:** `appointments`, `appointment_guests`, `email_logs`
-- **Abhängigkeiten:** —
+- **Abhängigkeiten:** `calendar.guests`, `integration.email`
 - **Selbsttests:** —
 - **Unit-Tests:** `supabase/functions/_shared/appointmentInvite.test.ts`
 - **Integrationstests:** —
@@ -301,7 +301,7 @@ Erfasst Terminanfragen in einer eigenen Tabelle; nur die Entscheiderrolle darf �
 - **Edge Functions:** —
 - **Datenbankfunktionen:** `decide_appointment_request`, `appointment_requests_guard`
 - **Tabellen:** `appointment_requests`, `appointments`
-- **Abhängigkeiten:** —
+- **Abhängigkeiten:** `calendar.create-appointment`
 - **Selbsttests:** `appointment-request-lifecycle`
 - **Unit-Tests:** —
 - **Integrationstests:** —
@@ -338,7 +338,7 @@ Erstellt Kurz-, 7-Phasen- und Live-Briefings auf einem gemeinsamen preparation_d
 - **Edge Functions:** —
 - **Datenbankfunktionen:** `set_appointment_briefing`, `set_appointment_briefing_depth`, `advance_appointment_briefing`, `complete_appointment_briefing`, `create_briefing_follow_up_task`, `appointment_preparation_ready`, `auto_archive_completed_preparations`, `create_preparation_followup`, `preserve_preparation_task_links`, `record_preparation_history`, `validate_appointment_briefing_status`
 - **Tabellen:** `appointment_preparations`, `appointment_preparation_documents`, `appointments`, `tasks`
-- **Abhängigkeiten:** —
+- **Abhängigkeiten:** `tasks.create`, `integration.ai-suggestions`
 - **Selbsttests:** `appointment-briefing-lifecycle`
 - **Unit-Tests:** `src/features/appointments/briefing.test.ts`
 - **Integrationstests:** —
@@ -375,7 +375,7 @@ Führt das Briefing im Termin, erlaubt Statusfortschritt und erzeugt Nachbereitu
 - **Edge Functions:** —
 - **Datenbankfunktionen:** `advance_appointment_briefing`, `complete_appointment_briefing`
 - **Tabellen:** `appointment_preparations`, `tasks`
-- **Abhängigkeiten:** —
+- **Abhängigkeiten:** `appointments.briefing`, `integration.transcription`
 - **Selbsttests:** `appointment-briefing-lifecycle`
 - **Unit-Tests:** —
 - **Integrationstests:** —
@@ -412,7 +412,7 @@ Sammelt Rückmeldungen aus dem Termin, zeigt offene Nachbereitungen und schließ
 - **Edge Functions:** —
 - **Datenbankfunktionen:** `list_office_debriefs`, `update_office_debrief`, `close_office_feedback_reminder`
 - **Tabellen:** `appointment_feedback`, `appointment_preparations`
-- **Abhängigkeiten:** —
+- **Abhängigkeiten:** `appointments.briefing`
 - **Selbsttests:** —
 - **Unit-Tests:** —
 - **Integrationstests:** —
@@ -449,7 +449,7 @@ Erfasst Feedback zu vergangenen Terminen, erzeugt Feedback-Einträge automatisch
 - **Edge Functions:** `create-daily-appointment-feedback`
 - **Datenbankfunktionen:** `create_appointment_feedback_entry`, `create_appointment_feedback_on_past`, `create_feedback_for_past_appointment`, `dispatch_office_feedback_reminders`, `request_birthday_congratulations`
 - **Tabellen:** `appointment_feedback`, `appointment_feedback_settings`
-- **Abhängigkeiten:** —
+- **Abhängigkeiten:** `calendar.create-appointment`
 - **Selbsttests:** —
 - **Unit-Tests:** —
 - **Integrationstests:** —
@@ -485,7 +485,7 @@ Bereitet Termine mit Dokumenten, Themen, Kontaktwissen und KI-Vorschlägen vor.
 - **Edge Functions:** `generate-preparation-suggestions`, `detect-appointment-district`
 - **Datenbankfunktionen:** —
 - **Tabellen:** `appointment_preparations`, `appointment_preparation_templates`, `appointment_topics`, `appointment_preparation_documents`
-- **Abhängigkeiten:** `appointments.briefing`
+- **Abhängigkeiten:** `appointments.briefing`, `integration.ai-suggestions`
 - **Selbsttests:** —
 - **Unit-Tests:** —
 - **Integrationstests:** —
@@ -521,7 +521,7 @@ Füllt die Jour-fixe-Agende aus Vorgängen, Aufgaben, Geburtstagen und weiteren 
 - **Edge Functions:** —
 - **Datenbankfunktionen:** `claim_jour_fixe_reservations`, `capture_archived_jour_fixe_task`, `restore_jour_fixe_task_provenance`, `sync_jour_fixe_agenda_timer`, `respond_to_meeting_invitation`
 - **Tabellen:** `meetings`, `meeting_agenda_items`, `case_items`, `tasks`
-- **Abhängigkeiten:** —
+- **Abhängigkeiten:** `meetings.agenda`
 - **Selbsttests:** `jour-fixe-platform-integration`
 - **Unit-Tests:** —
 - **Integrationstests:** —
@@ -631,7 +631,7 @@ Erstellt Terminumfragen mit Zeitfenstern und Teilnehmenden und wertet Antworten 
 - **Edge Functions:** —
 - **Datenbankfunktionen:** `create_appointment_poll_with_details`
 - **Tabellen:** `appointment_polls`, `poll_time_slots`, `poll_participants`
-- **Abhängigkeiten:** —
+- **Abhängigkeiten:** `polls.manage`
 - **Selbsttests:** `poll-lifecycle`
 - **Unit-Tests:** —
 - **Integrationstests:** —

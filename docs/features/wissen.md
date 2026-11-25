@@ -112,7 +112,7 @@ Verfasst und speichert Antworten mit Rich-Text, speichert Versionen und benachri
 - **Edge Functions:** —
 - **Datenbankfunktionen:** `knowledge_qa_save_answer`, `knowledge_qa_notify`, `knowledge_qa_refresh_tags`, `knowledge_qa_guard_archived`, `knowledge_qa_keep_legacy_identity`, `knowledge_qa_node_text`, `knowledge_qa_normalize`, `knowledge_qa_record_event`
 - **Tabellen:** `knowledge_questions`, `knowledge_document_versions`, `knowledge_document_snapshots`
-- **Abhängigkeiten:** —
+- **Abhängigkeiten:** `knowledge.ask`
 - **Selbsttests:** `knowledge-lifecycle`
 - **Unit-Tests:** `src/features/knowledge/logic.test.ts`
 - **Integrationstests:** —
@@ -148,7 +148,7 @@ Führt Antworten durch Review, setzt Prüffristen, versendet Review-Erinnerungen
 - **Edge Functions:** —
 - **Datenbankfunktionen:** `knowledge_qa_review`, `knowledge_qa_sync_review_task`, `dispatch_due_knowledge_reviews`, `knowledge_qa_notify_event`, `knowledge_qa_review_task_trigger`, `knowledge_qa_seed_notifications`, `knowledge_qa_seed_tenant_notifications`, `knowledge_qa_notification_selftest`, `knowledge_qa_selftest`
 - **Tabellen:** `knowledge_questions`, `knowledge_question_events`, `tasks`, `notifications`
-- **Abhängigkeiten:** —
+- **Abhängigkeiten:** `knowledge.answer`, `tasks.create`
 - **Selbsttests:** `knowledge-lifecycle`
 - **Unit-Tests:** —
 - **Integrationstests:** —
@@ -184,7 +184,7 @@ Führt Antworten durch Review, setzt Prüffristen, versendet Review-Erinnerungen
 - **Edge Functions:** —
 - **Datenbankfunktionen:** `knowledge_qa_enforce_validity`, `knowledge_qa_report_outdated`, `knowledge_qa_max_valid_until`
 - **Tabellen:** `knowledge_questions`, `knowledge_question_outdated_reports`
-- **Abhängigkeiten:** —
+- **Abhängigkeiten:** `knowledge.answer`
 - **Selbsttests:** —
 - **Unit-Tests:** `src/features/knowledge/logic.test.ts`
 - **Integrationstests:** —
@@ -220,7 +220,7 @@ Vergibt Tags, schlägt Tag-Zuordnungen vor und synchronisiert Wissen mit Themen.
 - **Edge Functions:** —
 - **Datenbankfunktionen:** `knowledge_qa_set_tags`, `knowledge_qa_tag_suggestions`, `knowledge_qa_tag_topics`, `knowledge_tag_sync_topic`, `knowledge_qa_manage_tag`
 - **Tabellen:** `knowledge_tags`, `knowledge_question_tags`, `knowledge_document_topics`, `topics`
-- **Abhängigkeiten:** —
+- **Abhängigkeiten:** `knowledge.answer`, `topics.manage`
 - **Selbsttests:** —
 - **Unit-Tests:** `src/features/knowledge/logic.test.ts`
 - **Integrationstests:** —
@@ -256,7 +256,7 @@ Hinterlegt Quellen, prüft sie und protokolliert Quellenänderungen.
 - **Edge Functions:** —
 - **Datenbankfunktionen:** `knowledge_qa_add_source`, `knowledge_qa_remove_source`, `knowledge_qa_source_guard`, `knowledge_qa_source_audit`
 - **Tabellen:** `knowledge_question_sources`
-- **Abhängigkeiten:** —
+- **Abhängigkeiten:** `knowledge.answer`
 - **Selbsttests:** —
 - **Unit-Tests:** —
 - **Integrationstests:** —
@@ -291,7 +291,7 @@ Reserviert Uploads, prüft Dateitypen und schließt Anhänge an Fragen ab.
 - **Edge Functions:** —
 - **Datenbankfunktionen:** `knowledge_qa_reserve_attachment`, `knowledge_qa_file_allowed`, `knowledge_qa_finish_attachment`
 - **Tabellen:** `knowledge_question_attachments`
-- **Abhängigkeiten:** —
+- **Abhängigkeiten:** `knowledge.ask`
 - **Selbsttests:** —
 - **Unit-Tests:** —
 - **Integrationstests:** —
@@ -326,7 +326,7 @@ Kommentiert Fragen und Antworten, folgt Fragen und steuert Benachrichtigungen f�
 - **Edge Functions:** —
 - **Datenbankfunktionen:** `knowledge_qa_comment`, `knowledge_qa_follow`, `knowledge_qa_auto_follow`
 - **Tabellen:** `knowledge_question_comments`, `knowledge_question_followers`, `knowledge_qa_notification_deliveries`
-- **Abhängigkeiten:** —
+- **Abhängigkeiten:** `knowledge.ask`
 - **Selbsttests:** —
 - **Unit-Tests:** —
 - **Integrationstests:** —
@@ -361,7 +361,7 @@ Durchsucht Fragen und Antworten mit gepflegtem Suchindex und liefert Trefferzahl
 - **Edge Functions:** —
 - **Datenbankfunktionen:** `knowledge_qa_update_search`, `search_knowledge_questions`, `knowledge_qa_counts`
 - **Tabellen:** `knowledge_questions`, `knowledge_question_summaries`
-- **Abhängigkeiten:** —
+- **Abhängigkeiten:** `knowledge.ask`
 - **Selbsttests:** `knowledge-lifecycle`
 - **Unit-Tests:** —
 - **Integrationstests:** —
@@ -397,7 +397,7 @@ Erzeugt Snapshots von Wissensdokumenten und zeigt frühere Fassungen im Verlauf.
 - **Edge Functions:** —
 - **Datenbankfunktionen:** `create_knowledge_document_snapshot`
 - **Tabellen:** `knowledge_document_versions`, `knowledge_document_snapshots`
-- **Abhängigkeiten:** —
+- **Abhängigkeiten:** `knowledge.answer`
 - **Selbsttests:** —
 - **Unit-Tests:** —
 - **Integrationstests:** —
@@ -468,7 +468,7 @@ Synchronisiert Wissensdokumente in Echtzeit über einen eigenen Kollaborationska
 - **Edge Functions:** `knowledge-collaboration`
 - **Datenbankfunktionen:** —
 - **Tabellen:** `knowledge_documents`, `knowledge_document_collaborators`
-- **Abhängigkeiten:** —
+- **Abhängigkeiten:** `knowledge.answer`
 - **Selbsttests:** —
 - **Unit-Tests:** —
 - **Integrationstests:** —
@@ -504,7 +504,7 @@ Synchronisiert Wissensdokumente in Echtzeit über einen eigenen Kollaborationska
 - **Edge Functions:** —
 - **Datenbankfunktionen:** —
 - **Tabellen:** `knowledge_questions`
-- **Abhängigkeiten:** —
+- **Abhängigkeiten:** `knowledge.ask`
 - **Selbsttests:** —
 - **Unit-Tests:** —
 - **Integrationstests:** —

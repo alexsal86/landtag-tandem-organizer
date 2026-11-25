@@ -114,7 +114,7 @@ Führt Protokolle durch Freigabe, Widerspruch und Wiedereröffnung, schützt ein
 - **Edge Functions:** —
 - **Datenbankfunktionen:** `mutate_employee_meeting_action`, `request_protocol_acknowledgement`, `acknowledge_meeting_protocol`, `reopen_meeting_protocol`, `employee_protocol_hash`
 - **Tabellen:** `employee_meetings`, `employee_meeting_audit`, `employee_meeting_private_notes`
-- **Abhängigkeiten:** —
+- **Abhängigkeiten:** `employees.meetings`
 - **Selbsttests:** —
 - **Unit-Tests:** —
 - **Integrationstests:** —
@@ -150,7 +150,7 @@ Erzeugt nach unbestrittener Protokollabnahme genau eine Aufgabe mit Ball bei der
 - **Edge Functions:** —
 - **Datenbankfunktionen:** `create_meeting_action_task`, `sync_employee_action_task_status`, `guard_employee_action_content`
 - **Tabellen:** `employee_meeting_action_items`, `tasks`
-- **Abhängigkeiten:** `tasks.create`, `employees.protocol`
+- **Abhängigkeiten:** `tasks.create`, `employees.protocol`, `employees.meetings`
 - **Selbsttests:** —
 - **Unit-Tests:** —
 - **Integrationstests:** —
@@ -185,7 +185,7 @@ Erzeugt nach unbestrittener Protokollabnahme genau eine Aufgabe mit Ball bei der
 - **Edge Functions:** —
 - **Datenbankfunktionen:** `dispatch_employee_preparation_reminders`, `guard_employee_preparation_window`, `remind_employee_hr`, `automation_private.remind_employee_hr`
 - **Tabellen:** `employee_hr_reminder_log`, `employee_meetings`
-- **Abhängigkeiten:** —
+- **Abhängigkeiten:** `employees.meetings`
 - **Selbsttests:** —
 - **Unit-Tests:** —
 - **Integrationstests:** —
@@ -220,7 +220,7 @@ Vergleicht mit dem letzten abgeschlossenen Gespräch, übernimmt offene Maßnahm
 - **Edge Functions:** —
 - **Datenbankfunktionen:** `get_latest_employee_meetings`
 - **Tabellen:** `employee_meetings`, `employee_meeting_action_items`, `tasks`
-- **Abhängigkeiten:** —
+- **Abhängigkeiten:** `employees.meetings`
 - **Selbsttests:** —
 - **Unit-Tests:** —
 - **Integrationstests:** —
@@ -256,7 +256,7 @@ Erfasst Wohlbefinden als geschützte JSON-Daten und zeigt Trends ausschließlich
 - **Edge Functions:** —
 - **Datenbankfunktionen:** `guard_employee_settings_entitlements`, `get_employee_meeting_trend`
 - **Tabellen:** `employee_settings`, `employee_settings_history`
-- **Abhängigkeiten:** —
+- **Abhängigkeiten:** `employees.meetings`
 - **Selbsttests:** —
 - **Unit-Tests:** —
 - **Integrationstests:** —
@@ -292,7 +292,7 @@ Erlaubt Mitarbeitenden, Gespräche anzufragen, und gleicht Anfragen mit geplante
 - **Edge Functions:** —
 - **Datenbankfunktionen:** `reconcile_employee_meeting_requests`
 - **Tabellen:** `employee_meeting_requests`, `employee_meetings`
-- **Abhängigkeiten:** —
+- **Abhängigkeiten:** `employees.meetings`
 - **Selbsttests:** —
 - **Unit-Tests:** —
 - **Integrationstests:** —
@@ -328,7 +328,7 @@ Exportiert Protokolle als PDF und erzeugt Jahresstatistiken je Mitarbeiter.
 - **Edge Functions:** —
 - **Datenbankfunktionen:** `generate_current_year_stats`, `generate_yearly_stats_for_year`, `archive_employee_year_stats`
 - **Tabellen:** `employee_yearly_stats`, `employee_meetings`
-- **Abhängigkeiten:** —
+- **Abhängigkeiten:** `employees.protocol`, `employees.meetings`
 - **Selbsttests:** —
 - **Unit-Tests:** —
 - **Integrationstests:** —
@@ -364,7 +364,7 @@ Führt neue Mitarbeitende durch einen Routineablauf mit Schritten, Nachweisen, F
 - **Edge Functions:** —
 - **Datenbankfunktionen:** `start_employee_hr`, `complete_employee_hr_step`, `save_employee_lifecycle`, `confirm_employee_hr_gdpr`, `hr_task_visible`, `selftest_employee_hr`
 - **Tabellen:** `routine_package_runs`, `routine_package_steps`, `employee_lifecycle`, `employee_hr_evidence`, `employee_hr_gdpr_declarations`
-- **Abhängigkeiten:** —
+- **Abhängigkeiten:** `hr.templates`, `tasks.create`, `automation.routine-packages`
 - **Selbsttests:** `onboarding-hr`
 - **Unit-Tests:** `src/features/onboarding-hr/progress.test.ts`, `src/features/onboarding-hr/useHrData.test.tsx`
 - **Integrationstests:** —
@@ -438,7 +438,7 @@ Führt Offboarding-Schritte aus, bewahrt Ball-Owner bei Übergaben und schließt
 - **Edge Functions:** —
 - **Datenbankfunktionen:** `save_employee_lifecycle`, `guard_employee_hr_target`, `delete_employee_lifecycle`, `delete_employee_hr`
 - **Tabellen:** `employee_lifecycle`, `routine_package_runs`, `tasks`
-- **Abhängigkeiten:** —
+- **Abhängigkeiten:** `tasks.create`, `automation.routine-packages`
 - **Selbsttests:** `onboarding-hr`
 - **Unit-Tests:** —
 - **Integrationstests:** —
@@ -510,7 +510,7 @@ Schlägt anhand von Thema, Region und Kontakt die zuständige Person vor und ken
 - **Edge Functions:** —
 - **Datenbankfunktionen:** `assign_from_responsibility_matrix`
 - **Tabellen:** `employee_responsibilities`, `topics`, `case_items`
-- **Abhängigkeiten:** —
+- **Abhängigkeiten:** `responsibilities.matrix`
 - **Selbsttests:** —
 - **Unit-Tests:** `src/features/responsibilities/suggest.test.ts`, `src/features/responsibilities/ResponsibleSuggestion.test.tsx`
 - **Integrationstests:** —
@@ -546,7 +546,7 @@ Unterscheidet fehlenden Hauptansprechpartner von gänzlich unbesetzten Bereichen
 - **Edge Functions:** —
 - **Datenbankfunktionen:** —
 - **Tabellen:** `employee_responsibilities`
-- **Abhängigkeiten:** —
+- **Abhängigkeiten:** `responsibilities.matrix`
 - **Selbsttests:** —
 - **Unit-Tests:** `src/features/responsibilities/matrixCoverage.test.ts`
 - **Integrationstests:** —
@@ -728,7 +728,7 @@ Korrigiert Zeiten, zeigt Teamauswertungen und schützt sensible Datensätze durc
 - **Edge Functions:** —
 - **Datenbankfunktionen:** `mask_secured_record`, `read_secured_letters`, `get_employee_admin_overview`
 - **Tabellen:** `time_entries`, `employee_settings`
-- **Abhängigkeiten:** —
+- **Abhängigkeiten:** `timetracking.entries`
 - **Selbsttests:** —
 - **Unit-Tests:** —
 - **Integrationstests:** —
@@ -764,7 +764,7 @@ Zeigt und erledigt jährliche Pflichtaufgaben mit Fristen und Abschlusshistorie.
 - **Edge Functions:** —
 - **Datenbankfunktionen:** `execute_annual_automation_routine`, `spawn_annual_task_to_stafette`
 - **Tabellen:** `annual_tasks`, `annual_task_completions`
-- **Abhängigkeiten:** —
+- **Abhängigkeiten:** `tasks.annual`, `automation.annual-routines`
 - **Selbsttests:** —
 - **Unit-Tests:** `src/features/timetracking/annualTaskRules.test.ts`
 - **Integrationstests:** —

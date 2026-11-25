@@ -1,0 +1,2395 @@
+{
+  "version": 1,
+  "generatedBy": "scripts/build-state-artifact.mjs",
+  "description": "Abgeleitetes Zustandsartefakt. Zustände stammen aus Enum-Typen, CHECK-Constraints, belegten Schreibvorgängen und Guard-Vergleichen; Übergänge ausschließlich aus belegten UPDATE-Schreibvorgängen. Keine handgepflegten Übergänge.",
+  "sources": {
+    "types": "src/integrations/supabase/types.ts",
+    "migrationsDirectory": "supabase/migrations",
+    "migrationCount": 887
+  },
+  "machineCount": 39,
+  "anomalies": [
+    {
+      "machine": "tasks.status",
+      "values": [
+        "in-progress",
+        "in_progress"
+      ],
+      "reason": "Zustandswerte unterscheiden sich nur in Trennzeichen oder Groß-/Kleinschreibung; im Quellcode sind sie verschieden."
+    }
+  ],
+  "machines": [
+    {
+      "id": "appointment_feedback.feedback_status",
+      "table": "appointment_feedback",
+      "column": "feedback_status",
+      "enumType": null,
+      "states": [
+        {
+          "value": "completed",
+          "sources": [
+            "check:supabase/migrations/20251026225547_e7fcbb61-b8dd-4fdd-aa15-515023e59fea.sql",
+            "guard:supabase/migrations/20251026225547_e7fcbb61-b8dd-4fdd-aa15-515023e59fea.sql",
+            "guard:supabase/migrations/20261121230000_office_feedback_followup.sql"
+          ]
+        },
+        {
+          "value": "pending",
+          "sources": [
+            "check:supabase/migrations/20251026225547_e7fcbb61-b8dd-4fdd-aa15-515023e59fea.sql"
+          ]
+        },
+        {
+          "value": "skipped",
+          "sources": [
+            "check:supabase/migrations/20251026225547_e7fcbb61-b8dd-4fdd-aa15-515023e59fea.sql",
+            "guard:supabase/migrations/20261121230000_office_feedback_followup.sql"
+          ]
+        }
+      ],
+      "transitions": [],
+      "guards": [
+        {
+          "trigger": "appointment_feedback_notify_team",
+          "function": "notify_team_on_feedback",
+          "timing": "after",
+          "events": "update of feedback_status",
+          "source": "supabase/migrations/20251026225547_e7fcbb61-b8dd-4fdd-aa15-515023e59fea.sql",
+          "functionSource": "supabase/migrations/20261121230000_office_feedback_followup.sql",
+          "kind": "trigger",
+          "readsOld": true,
+          "readsNew": true,
+          "raises": false,
+          "states": [
+            "completed"
+          ]
+        },
+        {
+          "trigger": "close_office_feedback_reminder",
+          "function": "close_office_feedback_reminder",
+          "timing": "after",
+          "events": "update of feedback_status, notes",
+          "source": "supabase/migrations/20261121230000_office_feedback_followup.sql",
+          "functionSource": "supabase/migrations/20261125110500_repair_office_feedback_reminder_source.sql",
+          "kind": "trigger",
+          "readsOld": false,
+          "readsNew": true,
+          "raises": false,
+          "states": [
+            "completed",
+            "skipped"
+          ]
+        }
+      ],
+      "limitations": [
+        "Nur beobachtende oder synchronisierende Trigger, keine Guard-Funktion mit RAISE EXCEPTION.",
+        "Keine belegten Statusübergänge im Migrationsbestand."
+      ]
+    },
+    {
+      "id": "appointment_polls.status",
+      "table": "appointment_polls",
+      "column": "status",
+      "enumType": null,
+      "states": [
+        {
+          "value": "active",
+          "sources": [
+            "write:supabase/migrations/20251008075550_f365c460-b9d4-4210-94a0-395006e7ea46.sql"
+          ]
+        },
+        {
+          "value": "cancelled",
+          "sources": [
+            "write:supabase/migrations/20251008075550_f365c460-b9d4-4210-94a0-395006e7ea46.sql"
+          ]
+        },
+        {
+          "value": "completed",
+          "sources": [
+            "write:supabase/migrations/20251008075550_f365c460-b9d4-4210-94a0-395006e7ea46.sql",
+            "write:supabase/migrations/20261124220000_poll_result_and_followups.sql",
+            "write:supabase/migrations/20261124230000_poll_winner_guests_and_list_result.sql",
+            "write:supabase/migrations/20261124240000_poll_followup_queue_and_scope.sql"
+          ]
+        }
+      ],
+      "transitions": [
+        {
+          "from": [
+            "active"
+          ],
+          "to": "cancelled",
+          "sources": [
+            "supabase/migrations/20251008075550_f365c460-b9d4-4210-94a0-395006e7ea46.sql"
+          ]
+        },
+        {
+          "from": [
+            "active"
+          ],
+          "to": "completed",
+          "sources": [
+            "supabase/migrations/20251008075550_f365c460-b9d4-4210-94a0-395006e7ea46.sql"
+          ]
+        },
+        {
+          "from": null,
+          "to": "completed",
+          "sources": [
+            "supabase/migrations/20261124220000_poll_result_and_followups.sql",
+            "supabase/migrations/20261124230000_poll_winner_guests_and_list_result.sql",
+            "supabase/migrations/20261124240000_poll_followup_queue_and_scope.sql"
+          ]
+        }
+      ],
+      "guards": [],
+      "limitations": [
+        "Keine Enum- oder CHECK-Beschränkung belegt; die Zustandswerte stammen nur aus Schreibvorgängen und Triggern.",
+        "Kein Trigger im Migrationsbestand gefunden; Übergänge sind nicht durch Trigger abgesichert.",
+        "Übergänge ohne belegten Ausgangszustand sind mit \"from\": null gekennzeichnet."
+      ]
+    },
+    {
+      "id": "appointments.briefing_status",
+      "table": "appointments",
+      "column": "briefing_status",
+      "enumType": null,
+      "states": [
+        {
+          "value": "approved",
+          "sources": [
+            "write:supabase/migrations/20261108113437_6ceab425-38b4-4d82-a042-446e77bbbd90.sql",
+            "write:supabase/migrations/20261109100000_connect_appointment_preparation_workflow.sql"
+          ]
+        },
+        {
+          "value": "assigned",
+          "sources": [
+            "write:supabase/migrations/20261108113437_6ceab425-38b4-4d82-a042-446e77bbbd90.sql",
+            "write:supabase/migrations/20261109100000_connect_appointment_preparation_workflow.sql",
+            "write:supabase/migrations/20261109120000_confirm_briefing_assignment_and_team_preparations.sql"
+          ]
+        },
+        {
+          "value": "completed",
+          "sources": [
+            "write:supabase/migrations/20261109101304_dcd43720-f9f8-4d30-9637-1bc1b0853954.sql"
+          ]
+        },
+        {
+          "value": "in_review",
+          "sources": [
+            "write:supabase/migrations/20261108113437_6ceab425-38b4-4d82-a042-446e77bbbd90.sql",
+            "write:supabase/migrations/20261109100000_connect_appointment_preparation_workflow.sql"
+          ]
+        },
+        {
+          "value": "none",
+          "sources": [
+            "write:supabase/migrations/20261108113437_6ceab425-38b4-4d82-a042-446e77bbbd90.sql",
+            "write:supabase/migrations/20261109100000_connect_appointment_preparation_workflow.sql",
+            "write:supabase/migrations/20261109120000_confirm_briefing_assignment_and_team_preparations.sql"
+          ]
+        }
+      ],
+      "transitions": [
+        {
+          "from": [
+            "approved"
+          ],
+          "to": "in_review",
+          "sources": [
+            "supabase/migrations/20261109100000_connect_appointment_preparation_workflow.sql"
+          ]
+        },
+        {
+          "from": null,
+          "to": "approved",
+          "sources": [
+            "supabase/migrations/20261108113437_6ceab425-38b4-4d82-a042-446e77bbbd90.sql",
+            "supabase/migrations/20261109100000_connect_appointment_preparation_workflow.sql"
+          ]
+        },
+        {
+          "from": null,
+          "to": "assigned",
+          "sources": [
+            "supabase/migrations/20261108113437_6ceab425-38b4-4d82-a042-446e77bbbd90.sql",
+            "supabase/migrations/20261109100000_connect_appointment_preparation_workflow.sql",
+            "supabase/migrations/20261109120000_confirm_briefing_assignment_and_team_preparations.sql"
+          ]
+        },
+        {
+          "from": null,
+          "to": "completed",
+          "sources": [
+            "supabase/migrations/20261109101304_dcd43720-f9f8-4d30-9637-1bc1b0853954.sql"
+          ]
+        },
+        {
+          "from": null,
+          "to": "in_review",
+          "sources": [
+            "supabase/migrations/20261108113437_6ceab425-38b4-4d82-a042-446e77bbbd90.sql",
+            "supabase/migrations/20261109100000_connect_appointment_preparation_workflow.sql"
+          ]
+        },
+        {
+          "from": null,
+          "to": "none",
+          "sources": [
+            "supabase/migrations/20261108113437_6ceab425-38b4-4d82-a042-446e77bbbd90.sql",
+            "supabase/migrations/20261109100000_connect_appointment_preparation_workflow.sql",
+            "supabase/migrations/20261109120000_confirm_briefing_assignment_and_team_preparations.sql"
+          ]
+        }
+      ],
+      "guards": [
+        {
+          "trigger": "trg_validate_appointment_briefing_status",
+          "function": "validate_appointment_briefing_status",
+          "timing": "before",
+          "events": "insert or update of briefing_status",
+          "source": "supabase/migrations/20261108113437_6ceab425-38b4-4d82-a042-446e77bbbd90.sql",
+          "functionSource": "supabase/migrations/20261109101304_dcd43720-f9f8-4d30-9637-1bc1b0853954.sql",
+          "kind": "guard",
+          "readsOld": false,
+          "readsNew": true,
+          "raises": true,
+          "states": []
+        }
+      ],
+      "limitations": [
+        "Keine Enum- oder CHECK-Beschränkung belegt; die Zustandswerte stammen nur aus Schreibvorgängen und Triggern.",
+        "Guards werden zitiert, aber nicht als vollständiger Automat interpretiert; abgeleitet werden nur belegte Schreibvorgänge.",
+        "Übergänge ohne belegten Ausgangszustand sind mit \"from\": null gekennzeichnet."
+      ]
+    },
+    {
+      "id": "appointments.status",
+      "table": "appointments",
+      "column": "status",
+      "enumType": null,
+      "states": [
+        {
+          "value": "archived",
+          "sources": [
+            "check:supabase/migrations/20250816013840_d517b46e-1205-4472-874f-c8d5f4a1cfba.sql"
+          ]
+        },
+        {
+          "value": "cancelled",
+          "sources": [
+            "check:supabase/migrations/20250722075209-0a43b074-55a1-43e5-9515-179d2b07dd49.sql",
+            "check:supabase/migrations/20250816013840_d517b46e-1205-4472-874f-c8d5f4a1cfba.sql"
+          ]
+        },
+        {
+          "value": "completed",
+          "sources": [
+            "check:supabase/migrations/20250722075209-0a43b074-55a1-43e5-9515-179d2b07dd49.sql",
+            "check:supabase/migrations/20250816013840_d517b46e-1205-4472-874f-c8d5f4a1cfba.sql"
+          ]
+        },
+        {
+          "value": "confirmed",
+          "sources": [
+            "check:supabase/migrations/20250722075209-0a43b074-55a1-43e5-9515-179d2b07dd49.sql",
+            "check:supabase/migrations/20250816013840_d517b46e-1205-4472-874f-c8d5f4a1cfba.sql",
+            "write:supabase/migrations/20261125113000_appointment_dashboard_focus.sql"
+          ]
+        },
+        {
+          "value": "planned",
+          "sources": [
+            "check:supabase/migrations/20250722075209-0a43b074-55a1-43e5-9515-179d2b07dd49.sql",
+            "check:supabase/migrations/20250816013840_d517b46e-1205-4472-874f-c8d5f4a1cfba.sql"
+          ]
+        }
+      ],
+      "transitions": [
+        {
+          "from": null,
+          "to": "confirmed",
+          "sources": [
+            "supabase/migrations/20261125113000_appointment_dashboard_focus.sql"
+          ]
+        }
+      ],
+      "guards": [
+        {
+          "trigger": "trigger_create_appointment_feedback",
+          "function": "create_appointment_feedback_entry",
+          "timing": "after",
+          "events": "insert or update of end_time, status, category",
+          "source": "supabase/migrations/20261124250000_appointment_feedback_trigger_scope.sql",
+          "functionSource": "supabase/migrations/20261124250000_appointment_feedback_trigger_scope.sql",
+          "kind": "trigger",
+          "readsOld": false,
+          "readsNew": true,
+          "raises": false,
+          "states": []
+        }
+      ],
+      "limitations": [
+        "Nur beobachtende oder synchronisierende Trigger, keine Guard-Funktion mit RAISE EXCEPTION.",
+        "Übergänge ohne belegten Ausgangszustand sind mit \"from\": null gekennzeichnet."
+      ]
+    },
+    {
+      "id": "automation_rule_run_steps.status",
+      "table": "automation_rule_run_steps",
+      "column": "status",
+      "enumType": null,
+      "states": [
+        {
+          "value": "failed",
+          "sources": [
+            "check:supabase/migrations/20260301133000_extend_automation_runs.sql"
+          ]
+        },
+        {
+          "value": "skipped",
+          "sources": [
+            "check:supabase/migrations/20260301133000_extend_automation_runs.sql"
+          ]
+        },
+        {
+          "value": "success",
+          "sources": [
+            "check:supabase/migrations/20260301133000_extend_automation_runs.sql"
+          ]
+        }
+      ],
+      "transitions": [],
+      "guards": [],
+      "limitations": [
+        "Kein Trigger im Migrationsbestand gefunden; Übergänge sind nicht durch Trigger abgesichert.",
+        "Keine belegten Statusübergänge im Migrationsbestand."
+      ]
+    },
+    {
+      "id": "automation_rule_runs.status",
+      "table": "automation_rule_runs",
+      "column": "status",
+      "enumType": null,
+      "states": [
+        {
+          "value": "dry_run",
+          "sources": [
+            "check:supabase/migrations/20260301120000_add_automation_rules.sql"
+          ]
+        },
+        {
+          "value": "failed",
+          "sources": [
+            "check:supabase/migrations/20260301120000_add_automation_rules.sql"
+          ]
+        },
+        {
+          "value": "queued",
+          "sources": [
+            "check:supabase/migrations/20260301120000_add_automation_rules.sql"
+          ]
+        },
+        {
+          "value": "running",
+          "sources": [
+            "check:supabase/migrations/20260301120000_add_automation_rules.sql"
+          ]
+        },
+        {
+          "value": "success",
+          "sources": [
+            "check:supabase/migrations/20260301120000_add_automation_rules.sql"
+          ]
+        }
+      ],
+      "transitions": [],
+      "guards": [],
+      "limitations": [
+        "Kein Trigger im Migrationsbestand gefunden; Übergänge sind nicht durch Trigger abgesichert.",
+        "Keine belegten Statusübergänge im Migrationsbestand."
+      ]
+    },
+    {
+      "id": "case_files.status",
+      "table": "case_files",
+      "column": "status",
+      "enumType": null,
+      "states": [
+        {
+          "value": "closed",
+          "sources": [
+            "guard:supabase/migrations/20260306100000_add_case_item_interactions.sql"
+          ]
+        }
+      ],
+      "transitions": [],
+      "guards": [
+        {
+          "trigger": "automation_case_files_trigger",
+          "function": "notify_automation_case_files",
+          "timing": "after",
+          "events": "insert or update",
+          "source": "supabase/migrations/20260308174128_05d198da-3138-4062-a7aa-d90806fe0fc0.sql",
+          "functionSource": "supabase/migrations/20260308174128_05d198da-3138-4062-a7aa-d90806fe0fc0.sql",
+          "kind": "trigger",
+          "readsOld": false,
+          "readsNew": true,
+          "raises": false,
+          "states": []
+        },
+        {
+          "trigger": "ensure_resolution_interaction_before_case_close",
+          "function": "require_resolution_interaction_on_case_close",
+          "timing": "before",
+          "events": "update",
+          "source": "supabase/migrations/20260306100000_add_case_item_interactions.sql",
+          "functionSource": "supabase/migrations/20260306100000_add_case_item_interactions.sql",
+          "kind": "guard",
+          "readsOld": true,
+          "readsNew": true,
+          "raises": true,
+          "states": [
+            "closed"
+          ]
+        }
+      ],
+      "limitations": [
+        "Keine Enum- oder CHECK-Beschränkung belegt; die Zustandswerte stammen nur aus Schreibvorgängen und Triggern.",
+        "Guards werden zitiert, aber nicht als vollständiger Automat interpretiert; abgeleitet werden nur belegte Schreibvorgänge.",
+        "Keine belegten Statusübergänge im Migrationsbestand."
+      ]
+    },
+    {
+      "id": "case_item_escalation_suggestions.status",
+      "table": "case_item_escalation_suggestions",
+      "column": "status",
+      "enumType": "case_item_escalation_status",
+      "states": [
+        {
+          "value": "accepted",
+          "sources": [
+            "enum:case_item_escalation_status"
+          ]
+        },
+        {
+          "value": "pending",
+          "sources": [
+            "enum:case_item_escalation_status"
+          ]
+        },
+        {
+          "value": "rejected",
+          "sources": [
+            "enum:case_item_escalation_status"
+          ]
+        }
+      ],
+      "transitions": [],
+      "guards": [],
+      "limitations": [
+        "Kein Trigger im Migrationsbestand gefunden; Übergänge sind nicht durch Trigger abgesichert.",
+        "Keine belegten Statusübergänge im Migrationsbestand."
+      ]
+    },
+    {
+      "id": "case_items.status",
+      "table": "case_items",
+      "column": "status",
+      "enumType": "case_item_status",
+      "states": [
+        {
+          "value": "antwort_ausstehend",
+          "sources": [
+            "enum:case_item_status"
+          ]
+        },
+        {
+          "value": "archiviert",
+          "sources": [
+            "enum:case_item_status",
+            "write:supabase/migrations/20261104120000_delete_quick_note_with_links_atomically.sql"
+          ]
+        },
+        {
+          "value": "erledigt",
+          "sources": [
+            "enum:case_item_status",
+            "guard:supabase/migrations/20260305133000_harden_case_items_rls_and_audit.sql"
+          ]
+        },
+        {
+          "value": "in_klaerung",
+          "sources": [
+            "enum:case_item_status"
+          ]
+        },
+        {
+          "value": "neu",
+          "sources": [
+            "enum:case_item_status"
+          ]
+        }
+      ],
+      "transitions": [
+        {
+          "from": null,
+          "to": "archiviert",
+          "sources": [
+            "supabase/migrations/20261104120000_delete_quick_note_with_links_atomically.sql"
+          ]
+        }
+      ],
+      "guards": [
+        {
+          "trigger": "case_office_step_task",
+          "function": "sync_case_office_step_task",
+          "timing": "after",
+          "events": "insert or update of ball_owner, next_action_label, next_action_due_at, next_action_assignee_id, owner_user_id, status",
+          "source": "supabase/migrations/20261106180000_link_case_steps_to_tasks.sql",
+          "functionSource": "supabase/migrations/20261106180000_link_case_steps_to_tasks.sql",
+          "kind": "guard",
+          "readsOld": true,
+          "readsNew": true,
+          "raises": true,
+          "states": []
+        },
+        {
+          "trigger": "trg_case_items_audit_lifecycle",
+          "function": "audit_case_item_lifecycle_changes",
+          "timing": "after",
+          "events": "update",
+          "source": "supabase/migrations/20260305133000_harden_case_items_rls_and_audit.sql",
+          "functionSource": "supabase/migrations/20260306143000_case_item_status_workflow.sql",
+          "kind": "trigger",
+          "readsOld": true,
+          "readsNew": true,
+          "raises": false,
+          "states": [
+            "erledigt"
+          ]
+        }
+      ],
+      "limitations": [
+        "Guards werden zitiert, aber nicht als vollständiger Automat interpretiert; abgeleitet werden nur belegte Schreibvorgänge.",
+        "Übergänge ohne belegten Ausgangszustand sind mit \"from\": null gekennzeichnet."
+      ]
+    },
+    {
+      "id": "documents.status",
+      "table": "documents",
+      "column": "status",
+      "enumType": null,
+      "states": [
+        {
+          "value": "approved",
+          "sources": [
+            "check:supabase/migrations/20250723102114-7c65bf58-e737-4ea9-8748-77c0861aee39.sql"
+          ]
+        },
+        {
+          "value": "archived",
+          "sources": [
+            "check:supabase/migrations/20250723102114-7c65bf58-e737-4ea9-8748-77c0861aee39.sql"
+          ]
+        },
+        {
+          "value": "draft",
+          "sources": [
+            "check:supabase/migrations/20250723102114-7c65bf58-e737-4ea9-8748-77c0861aee39.sql"
+          ]
+        },
+        {
+          "value": "review",
+          "sources": [
+            "check:supabase/migrations/20250723102114-7c65bf58-e737-4ea9-8748-77c0861aee39.sql"
+          ]
+        }
+      ],
+      "transitions": [],
+      "guards": [],
+      "limitations": [
+        "Kein Trigger im Migrationsbestand gefunden; Übergänge sind nicht durch Trigger abgesichert.",
+        "Keine belegten Statusübergänge im Migrationsbestand."
+      ]
+    },
+    {
+      "id": "election_analysis_correction_audit.status",
+      "table": "election_analysis_correction_audit",
+      "column": "status",
+      "enumType": null,
+      "states": [
+        {
+          "value": "conflict",
+          "sources": [
+            "check:supabase/migrations/20261117130000_reviewed_district_corrections.sql"
+          ]
+        },
+        {
+          "value": "matched",
+          "sources": [
+            "check:supabase/migrations/20261117130000_reviewed_district_corrections.sql"
+          ]
+        },
+        {
+          "value": "missing",
+          "sources": [
+            "check:supabase/migrations/20261117130000_reviewed_district_corrections.sql"
+          ]
+        },
+        {
+          "value": "updated",
+          "sources": [
+            "check:supabase/migrations/20261117130000_reviewed_district_corrections.sql"
+          ]
+        }
+      ],
+      "transitions": [],
+      "guards": [],
+      "limitations": [
+        "Kein Trigger im Migrationsbestand gefunden; Übergänge sind nicht durch Trigger abgesichert.",
+        "Keine belegten Statusübergänge im Migrationsbestand."
+      ]
+    },
+    {
+      "id": "election_analysis_district_workbook_audit.status",
+      "table": "election_analysis_district_workbook_audit",
+      "column": "status",
+      "enumType": null,
+      "states": [
+        {
+          "value": "added",
+          "sources": [
+            "check:supabase/migrations/20261117100000_workbook_district_history.sql"
+          ]
+        },
+        {
+          "value": "conflict",
+          "sources": [
+            "check:supabase/migrations/20261117100000_workbook_district_history.sql"
+          ]
+        },
+        {
+          "value": "matched",
+          "sources": [
+            "check:supabase/migrations/20261117100000_workbook_district_history.sql"
+          ]
+        }
+      ],
+      "transitions": [],
+      "guards": [],
+      "limitations": [
+        "Kein Trigger im Migrationsbestand gefunden; Übergänge sind nicht durch Trigger abgesichert.",
+        "Keine belegten Statusübergänge im Migrationsbestand."
+      ]
+    },
+    {
+      "id": "election_analysis_source_reviews.status",
+      "table": "election_analysis_source_reviews",
+      "column": "status",
+      "enumType": null,
+      "states": [
+        {
+          "value": "conflict",
+          "sources": [
+            "check:supabase/migrations/20261114140000_election_analysis_research.sql"
+          ]
+        },
+        {
+          "value": "pending",
+          "sources": [
+            "check:supabase/migrations/20261114140000_election_analysis_research.sql"
+          ]
+        },
+        {
+          "value": "verified",
+          "sources": [
+            "check:supabase/migrations/20261114140000_election_analysis_research.sql"
+          ]
+        }
+      ],
+      "transitions": [],
+      "guards": [],
+      "limitations": [
+        "Kein Trigger im Migrationsbestand gefunden; Übergänge sind nicht durch Trigger abgesichert.",
+        "Keine belegten Statusübergänge im Migrationsbestand."
+      ]
+    },
+    {
+      "id": "election_analysis_workbook_audit.status",
+      "table": "election_analysis_workbook_audit",
+      "column": "status",
+      "enumType": null,
+      "states": [
+        {
+          "value": "added",
+          "sources": [
+            "check:supabase/migrations/20261115140000_election_state_history.sql"
+          ]
+        },
+        {
+          "value": "conflict",
+          "sources": [
+            "check:supabase/migrations/20261115140000_election_state_history.sql"
+          ]
+        },
+        {
+          "value": "matched",
+          "sources": [
+            "check:supabase/migrations/20261115140000_election_state_history.sql"
+          ]
+        }
+      ],
+      "transitions": [],
+      "guards": [],
+      "limitations": [
+        "Kein Trigger im Migrationsbestand gefunden; Übergänge sind nicht durch Trigger abgesichert.",
+        "Keine belegten Statusübergänge im Migrationsbestand."
+      ]
+    },
+    {
+      "id": "election_history_candidate_workbook_audit.status",
+      "table": "election_history_candidate_workbook_audit",
+      "column": "status",
+      "enumType": null,
+      "states": [
+        {
+          "value": "existing",
+          "sources": [
+            "write:supabase/migrations/20261118130000_correct_dederer_election_history.sql"
+          ]
+        }
+      ],
+      "transitions": [
+        {
+          "from": null,
+          "to": "existing",
+          "sources": [
+            "supabase/migrations/20261118130000_correct_dederer_election_history.sql"
+          ]
+        }
+      ],
+      "guards": [],
+      "limitations": [
+        "Keine Enum- oder CHECK-Beschränkung belegt; die Zustandswerte stammen nur aus Schreibvorgängen und Triggern.",
+        "Kein Trigger im Migrationsbestand gefunden; Übergänge sind nicht durch Trigger abgesichert.",
+        "Übergänge ohne belegten Ausgangszustand sind mit \"from\": null gekennzeichnet."
+      ]
+    },
+    {
+      "id": "email_logs.status",
+      "table": "email_logs",
+      "column": "status",
+      "enumType": null,
+      "states": [
+        {
+          "value": "failed",
+          "sources": [
+            "check:supabase/migrations/20251008142916_9d616c05-1073-4def-acf7-46550310e7dc.sql"
+          ]
+        },
+        {
+          "value": "scheduled",
+          "sources": [
+            "check:supabase/migrations/20251008142916_9d616c05-1073-4def-acf7-46550310e7dc.sql"
+          ]
+        },
+        {
+          "value": "sent",
+          "sources": [
+            "check:supabase/migrations/20251008142916_9d616c05-1073-4def-acf7-46550310e7dc.sql"
+          ]
+        }
+      ],
+      "transitions": [],
+      "guards": [],
+      "limitations": [
+        "Kein Trigger im Migrationsbestand gefunden; Übergänge sind nicht durch Trigger abgesichert.",
+        "Keine belegten Statusübergänge im Migrationsbestand."
+      ]
+    },
+    {
+      "id": "employee_meeting_action_items.status",
+      "table": "employee_meeting_action_items",
+      "column": "status",
+      "enumType": null,
+      "states": [
+        {
+          "value": "cancelled",
+          "sources": [
+            "check:supabase/migrations/20251008003926_514357f8-c8dc-4fe4-9afe-477dad611034.sql"
+          ]
+        },
+        {
+          "value": "completed",
+          "sources": [
+            "check:supabase/migrations/20251008003926_514357f8-c8dc-4fe4-9afe-477dad611034.sql",
+            "write:supabase/migrations/20261113121000_employee_action_stafette.sql",
+            "guard:supabase/migrations/20261113121000_employee_action_stafette.sql"
+          ]
+        },
+        {
+          "value": "in_progress",
+          "sources": [
+            "check:supabase/migrations/20251008003926_514357f8-c8dc-4fe4-9afe-477dad611034.sql",
+            "write:supabase/migrations/20261113121000_employee_action_stafette.sql",
+            "guard:supabase/migrations/20261113121000_employee_action_stafette.sql"
+          ]
+        },
+        {
+          "value": "open",
+          "sources": [
+            "check:supabase/migrations/20251008003926_514357f8-c8dc-4fe4-9afe-477dad611034.sql"
+          ]
+        }
+      ],
+      "transitions": [
+        {
+          "from": [
+            "completed",
+            "in_progress"
+          ],
+          "to": "completed",
+          "sources": [
+            "supabase/migrations/20261113121000_employee_action_stafette.sql"
+          ]
+        },
+        {
+          "from": [
+            "completed",
+            "in_progress"
+          ],
+          "to": "in_progress",
+          "sources": [
+            "supabase/migrations/20261113121000_employee_action_stafette.sql"
+          ]
+        }
+      ],
+      "guards": [
+        {
+          "trigger": "sync_employee_task_from_action",
+          "function": "sync_employee_action_task_status",
+          "timing": "after",
+          "events": "update of status",
+          "source": "supabase/migrations/20261113121000_employee_action_stafette.sql",
+          "functionSource": "supabase/migrations/20261113121000_employee_action_stafette.sql",
+          "kind": "trigger",
+          "readsOld": true,
+          "readsNew": true,
+          "raises": false,
+          "states": [
+            "completed",
+            "in_progress"
+          ]
+        }
+      ],
+      "limitations": [
+        "Nur beobachtende oder synchronisierende Trigger, keine Guard-Funktion mit RAISE EXCEPTION."
+      ]
+    },
+    {
+      "id": "employee_meeting_requests.status",
+      "table": "employee_meeting_requests",
+      "column": "status",
+      "enumType": null,
+      "states": [
+        {
+          "value": "declined",
+          "sources": [
+            "check:supabase/migrations/20251008002713_306e5588-b2e8-4826-8aad-c96e515975be.sql"
+          ]
+        },
+        {
+          "value": "pending",
+          "sources": [
+            "check:supabase/migrations/20251008002713_306e5588-b2e8-4826-8aad-c96e515975be.sql"
+          ]
+        },
+        {
+          "value": "scheduled",
+          "sources": [
+            "check:supabase/migrations/20251008002713_306e5588-b2e8-4826-8aad-c96e515975be.sql"
+          ]
+        }
+      ],
+      "transitions": [],
+      "guards": [],
+      "limitations": [
+        "Kein Trigger im Migrationsbestand gefunden; Übergänge sind nicht durch Trigger abgesichert.",
+        "Keine belegten Statusübergänge im Migrationsbestand."
+      ]
+    },
+    {
+      "id": "employee_meetings.status",
+      "table": "employee_meetings",
+      "column": "status",
+      "enumType": null,
+      "states": [
+        {
+          "value": "acknowledged",
+          "sources": [
+            "check:supabase/migrations/20261113120000_employee_protocol_acknowledgement.sql"
+          ]
+        },
+        {
+          "value": "cancelled",
+          "sources": [
+            "check:supabase/migrations/20251008002713_306e5588-b2e8-4826-8aad-c96e515975be.sql",
+            "check:supabase/migrations/20260210212601_1f7501d4-6d9f-4d13-add2-a11e1188a3e9.sql",
+            "check:supabase/migrations/20261113120000_employee_protocol_acknowledgement.sql"
+          ]
+        },
+        {
+          "value": "cancelled_by_employee",
+          "sources": [
+            "check:supabase/migrations/20260210212601_1f7501d4-6d9f-4d13-add2-a11e1188a3e9.sql",
+            "check:supabase/migrations/20261113120000_employee_protocol_acknowledgement.sql"
+          ]
+        },
+        {
+          "value": "completed",
+          "sources": [
+            "check:supabase/migrations/20251008002713_306e5588-b2e8-4826-8aad-c96e515975be.sql",
+            "check:supabase/migrations/20260210212601_1f7501d4-6d9f-4d13-add2-a11e1188a3e9.sql",
+            "check:supabase/migrations/20261113120000_employee_protocol_acknowledgement.sql"
+          ]
+        },
+        {
+          "value": "in_progress",
+          "sources": [
+            "check:supabase/migrations/20260210212601_1f7501d4-6d9f-4d13-add2-a11e1188a3e9.sql",
+            "check:supabase/migrations/20261113120000_employee_protocol_acknowledgement.sql",
+            "write:supabase/migrations/20261113120000_employee_protocol_acknowledgement.sql"
+          ]
+        },
+        {
+          "value": "pending_acknowledgement",
+          "sources": [
+            "check:supabase/migrations/20261113120000_employee_protocol_acknowledgement.sql",
+            "write:supabase/migrations/20261113120000_employee_protocol_acknowledgement.sql"
+          ]
+        },
+        {
+          "value": "rescheduled",
+          "sources": [
+            "check:supabase/migrations/20260210212601_1f7501d4-6d9f-4d13-add2-a11e1188a3e9.sql",
+            "check:supabase/migrations/20261113120000_employee_protocol_acknowledgement.sql"
+          ]
+        },
+        {
+          "value": "scheduled",
+          "sources": [
+            "check:supabase/migrations/20251008002713_306e5588-b2e8-4826-8aad-c96e515975be.sql",
+            "check:supabase/migrations/20260210212601_1f7501d4-6d9f-4d13-add2-a11e1188a3e9.sql",
+            "check:supabase/migrations/20261113120000_employee_protocol_acknowledgement.sql"
+          ]
+        }
+      ],
+      "transitions": [
+        {
+          "from": null,
+          "to": "in_progress",
+          "sources": [
+            "supabase/migrations/20261113120000_employee_protocol_acknowledgement.sql"
+          ]
+        },
+        {
+          "from": null,
+          "to": "pending_acknowledgement",
+          "sources": [
+            "supabase/migrations/20261113120000_employee_protocol_acknowledgement.sql"
+          ]
+        }
+      ],
+      "guards": [],
+      "limitations": [
+        "Kein Trigger im Migrationsbestand gefunden; Übergänge sind nicht durch Trigger abgesichert.",
+        "Übergänge ohne belegten Ausgangszustand sind mit \"from\": null gekennzeichnet."
+      ]
+    },
+    {
+      "id": "fundings.status",
+      "table": "fundings",
+      "column": "status",
+      "enumType": null,
+      "states": [
+        {
+          "value": "active",
+          "sources": [
+            "check:supabase/migrations/20251020231916_4bd35977-f4fa-40d8-a839-ca9d5aaa4e06.sql"
+          ]
+        },
+        {
+          "value": "cancelled",
+          "sources": [
+            "check:supabase/migrations/20251020231916_4bd35977-f4fa-40d8-a839-ca9d5aaa4e06.sql"
+          ]
+        },
+        {
+          "value": "completed",
+          "sources": [
+            "check:supabase/migrations/20251020231916_4bd35977-f4fa-40d8-a839-ca9d5aaa4e06.sql"
+          ]
+        },
+        {
+          "value": "planned",
+          "sources": [
+            "check:supabase/migrations/20251020231916_4bd35977-f4fa-40d8-a839-ca9d5aaa4e06.sql"
+          ]
+        }
+      ],
+      "transitions": [],
+      "guards": [],
+      "limitations": [
+        "Kein Trigger im Migrationsbestand gefunden; Übergänge sind nicht durch Trigger abgesichert.",
+        "Keine belegten Statusübergänge im Migrationsbestand."
+      ]
+    },
+    {
+      "id": "gdpr_requests.status",
+      "table": "gdpr_requests",
+      "column": "status",
+      "enumType": null,
+      "states": [
+        {
+          "value": "approved",
+          "sources": [
+            "check:supabase/migrations/20260507190106_964aec00-97b8-4df7-817d-fba76bba4038.sql",
+            "write:supabase/migrations/20261103234405_6bbdc076-40ca-4b87-bdb0-601eb9590bc9.sql",
+            "guard:supabase/migrations/20260507190106_964aec00-97b8-4df7-817d-fba76bba4038.sql"
+          ]
+        },
+        {
+          "value": "completed",
+          "sources": [
+            "check:supabase/migrations/20260507190106_964aec00-97b8-4df7-817d-fba76bba4038.sql",
+            "guard:supabase/migrations/20260507190106_964aec00-97b8-4df7-817d-fba76bba4038.sql"
+          ]
+        },
+        {
+          "value": "failed",
+          "sources": [
+            "check:supabase/migrations/20260507190106_964aec00-97b8-4df7-817d-fba76bba4038.sql"
+          ]
+        },
+        {
+          "value": "pending",
+          "sources": [
+            "check:supabase/migrations/20260507190106_964aec00-97b8-4df7-817d-fba76bba4038.sql",
+            "write:supabase/migrations/20261103234405_6bbdc076-40ca-4b87-bdb0-601eb9590bc9.sql",
+            "guard:supabase/migrations/20260507190106_964aec00-97b8-4df7-817d-fba76bba4038.sql"
+          ]
+        },
+        {
+          "value": "processing",
+          "sources": [
+            "check:supabase/migrations/20260507190106_964aec00-97b8-4df7-817d-fba76bba4038.sql",
+            "write:supabase/migrations/20261103234405_6bbdc076-40ca-4b87-bdb0-601eb9590bc9.sql",
+            "write:supabase/migrations/20261103234535_c0c4be9b-04f3-459c-b7fe-5fb0e7d3d934.sql",
+            "guard:supabase/migrations/20260507190106_964aec00-97b8-4df7-817d-fba76bba4038.sql"
+          ]
+        },
+        {
+          "value": "rejected",
+          "sources": [
+            "check:supabase/migrations/20260507190106_964aec00-97b8-4df7-817d-fba76bba4038.sql"
+          ]
+        }
+      ],
+      "transitions": [
+        {
+          "from": [
+            "approved",
+            "processing"
+          ],
+          "to": "pending",
+          "sources": [
+            "supabase/migrations/20261103234405_6bbdc076-40ca-4b87-bdb0-601eb9590bc9.sql"
+          ]
+        },
+        {
+          "from": null,
+          "to": "processing",
+          "sources": [
+            "supabase/migrations/20261103234535_c0c4be9b-04f3-459c-b7fe-5fb0e7d3d934.sql"
+          ]
+        },
+        {
+          "from": [
+            "pending"
+          ],
+          "to": "approved",
+          "sources": [
+            "supabase/migrations/20261103234405_6bbdc076-40ca-4b87-bdb0-601eb9590bc9.sql"
+          ]
+        }
+      ],
+      "guards": [
+        {
+          "trigger": "trg_gdpr_four_eyes",
+          "function": "gdpr_check_four_eyes",
+          "timing": "before",
+          "events": "insert or update",
+          "source": "supabase/migrations/20260507190106_964aec00-97b8-4df7-817d-fba76bba4038.sql",
+          "functionSource": "supabase/migrations/20261103234405_6bbdc076-40ca-4b87-bdb0-601eb9590bc9.sql",
+          "kind": "guard",
+          "readsOld": true,
+          "readsNew": true,
+          "raises": true,
+          "states": [
+            "approved",
+            "completed",
+            "pending",
+            "processing"
+          ]
+        }
+      ],
+      "limitations": [
+        "Guards werden zitiert, aber nicht als vollständiger Automat interpretiert; abgeleitet werden nur belegte Schreibvorgänge.",
+        "Übergänge ohne belegten Ausgangszustand sind mit \"from\": null gekennzeichnet."
+      ]
+    },
+    {
+      "id": "knowledge_question_attachments.state",
+      "table": "knowledge_question_attachments",
+      "column": "state",
+      "enumType": null,
+      "states": [
+        {
+          "value": "pending",
+          "sources": [
+            "check:supabase/migrations/20261110180000_knowledge_qa_core.sql"
+          ]
+        },
+        {
+          "value": "ready",
+          "sources": [
+            "check:supabase/migrations/20261110180000_knowledge_qa_core.sql",
+            "write:supabase/migrations/20261110180200_knowledge_qa_storage.sql"
+          ]
+        },
+        {
+          "value": "removed",
+          "sources": [
+            "check:supabase/migrations/20261110180000_knowledge_qa_core.sql",
+            "write:supabase/migrations/20261110180200_knowledge_qa_storage.sql"
+          ]
+        }
+      ],
+      "transitions": [
+        {
+          "from": null,
+          "to": "ready",
+          "sources": [
+            "supabase/migrations/20261110180200_knowledge_qa_storage.sql"
+          ]
+        },
+        {
+          "from": null,
+          "to": "removed",
+          "sources": [
+            "supabase/migrations/20261110180200_knowledge_qa_storage.sql"
+          ]
+        }
+      ],
+      "guards": [],
+      "limitations": [
+        "Kein Trigger im Migrationsbestand gefunden; Übergänge sind nicht durch Trigger abgesichert.",
+        "Übergänge ohne belegten Ausgangszustand sind mit \"from\": null gekennzeichnet."
+      ]
+    },
+    {
+      "id": "knowledge_questions.review_status",
+      "table": "knowledge_questions",
+      "column": "review_status",
+      "enumType": null,
+      "states": [
+        {
+          "value": "needs_review",
+          "sources": [
+            "check:supabase/migrations/20261110180000_knowledge_qa_core.sql",
+            "write:supabase/migrations/20261111101000_knowledge_conversation_followers.sql",
+            "write:supabase/migrations/20261112090000_knowledge_validity_and_review_tasks.sql",
+            "guard:supabase/migrations/20261110180000_knowledge_qa_core.sql"
+          ]
+        },
+        {
+          "value": "unverified",
+          "sources": [
+            "check:supabase/migrations/20261110180000_knowledge_qa_core.sql",
+            "write:supabase/migrations/20261110180000_knowledge_qa_core.sql",
+            "write:supabase/migrations/20261110180200_knowledge_qa_storage.sql",
+            "write:supabase/migrations/20261111100900_knowledge_sources.sql"
+          ]
+        },
+        {
+          "value": "verified",
+          "sources": [
+            "check:supabase/migrations/20261110180000_knowledge_qa_core.sql",
+            "guard:supabase/migrations/20261110180000_knowledge_qa_core.sql",
+            "guard:supabase/migrations/20261112090000_knowledge_validity_and_review_tasks.sql"
+          ]
+        }
+      ],
+      "transitions": [
+        {
+          "from": null,
+          "to": "needs_review",
+          "sources": [
+            "supabase/migrations/20261111101000_knowledge_conversation_followers.sql",
+            "supabase/migrations/20261112090000_knowledge_validity_and_review_tasks.sql"
+          ]
+        },
+        {
+          "from": null,
+          "to": "unverified",
+          "sources": [
+            "supabase/migrations/20261110180000_knowledge_qa_core.sql",
+            "supabase/migrations/20261110180200_knowledge_qa_storage.sql",
+            "supabase/migrations/20261111100900_knowledge_sources.sql"
+          ]
+        }
+      ],
+      "guards": [
+        {
+          "trigger": "knowledge_qa_audit",
+          "function": "knowledge_qa_record_event",
+          "timing": "after",
+          "events": "insert or update",
+          "source": "supabase/migrations/20261110180000_knowledge_qa_core.sql",
+          "functionSource": "supabase/migrations/20261111101100_knowledge_workspace_filters.sql",
+          "kind": "trigger",
+          "readsOld": true,
+          "readsNew": true,
+          "raises": false,
+          "states": [
+            "needs_review",
+            "verified"
+          ]
+        },
+        {
+          "trigger": "knowledge_qa_validity",
+          "function": "knowledge_qa_enforce_validity",
+          "timing": "before",
+          "events": "insert or update",
+          "source": "supabase/migrations/20261112090000_knowledge_validity_and_review_tasks.sql",
+          "functionSource": "supabase/migrations/20261112090000_knowledge_validity_and_review_tasks.sql",
+          "kind": "trigger",
+          "readsOld": true,
+          "readsNew": true,
+          "raises": false,
+          "states": [
+            "verified"
+          ]
+        }
+      ],
+      "limitations": [
+        "Nur beobachtende oder synchronisierende Trigger, keine Guard-Funktion mit RAISE EXCEPTION.",
+        "Übergänge ohne belegten Ausgangszustand sind mit \"from\": null gekennzeichnet."
+      ]
+    },
+    {
+      "id": "leave_requests.status",
+      "table": "leave_requests",
+      "column": "status",
+      "enumType": "leave_status",
+      "states": [
+        {
+          "value": "approved",
+          "sources": [
+            "enum:leave_status"
+          ]
+        },
+        {
+          "value": "cancel_requested",
+          "sources": [
+            "enum:leave_status"
+          ]
+        },
+        {
+          "value": "cancelled",
+          "sources": [
+            "enum:leave_status"
+          ]
+        },
+        {
+          "value": "pending",
+          "sources": [
+            "enum:leave_status",
+            "guard:supabase/migrations/20251220220041_f64c0d61-0e1e-4381-94d4-7f93b9c26997.sql"
+          ]
+        },
+        {
+          "value": "rejected",
+          "sources": [
+            "enum:leave_status"
+          ]
+        }
+      ],
+      "transitions": [],
+      "guards": [
+        {
+          "trigger": "leave_request_notification_trigger",
+          "function": "notify_on_leave_request",
+          "timing": "after",
+          "events": "insert",
+          "source": "supabase/migrations/20251220220041_f64c0d61-0e1e-4381-94d4-7f93b9c26997.sql",
+          "functionSource": "supabase/migrations/20260129153814_397c29a6-e8e1-4dbc-9c14-2bf0363fc0e2.sql",
+          "kind": "trigger",
+          "readsOld": false,
+          "readsNew": true,
+          "raises": false,
+          "states": [
+            "pending"
+          ]
+        }
+      ],
+      "limitations": [
+        "Nur beobachtende oder synchronisierende Trigger, keine Guard-Funktion mit RAISE EXCEPTION.",
+        "Keine belegten Statusübergänge im Migrationsbestand."
+      ]
+    },
+    {
+      "id": "letters.status",
+      "table": "letters",
+      "column": "status",
+      "enumType": null,
+      "states": [
+        {
+          "value": "approved",
+          "sources": [
+            "check:supabase/migrations/20250829231458_174e86d4-df6b-43d6-8438-585d11673e6b.sql",
+            "check:supabase/migrations/20250829231607_d0f74fd1-ed04-4d99-b39f-95615562ec30.sql",
+            "check:supabase/migrations/20250829231652_9d319a79-b026-4da1-bb64-bf1332c6d63f.sql",
+            "write:supabase/migrations/20250901004249_6c8060e0-28d4-4adc-a890-514025795c0a.sql",
+            "write:supabase/migrations/20250901004331_e7e79e52-32bb-4315-bcc1-5e23585bb7ce.sql",
+            "write:supabase/migrations/20250901004403_e601cf2f-3dd2-46f8-9f5f-5b8731fa03eb.sql"
+          ]
+        },
+        {
+          "value": "archived",
+          "sources": [
+            "write:supabase/migrations/20250901002205_e44c9137-114c-4d43-84aa-6927a115fa8e.sql",
+            "guard:supabase/migrations/20250901000838_15dd536a-931d-4dab-8bc6-21294035b6e9.sql"
+          ]
+        },
+        {
+          "value": "draft",
+          "sources": [
+            "check:supabase/migrations/20250829231458_174e86d4-df6b-43d6-8438-585d11673e6b.sql",
+            "check:supabase/migrations/20250829231607_d0f74fd1-ed04-4d99-b39f-95615562ec30.sql",
+            "check:supabase/migrations/20250829231652_9d319a79-b026-4da1-bb64-bf1332c6d63f.sql"
+          ]
+        },
+        {
+          "value": "review",
+          "sources": [
+            "check:supabase/migrations/20250829231458_174e86d4-df6b-43d6-8438-585d11673e6b.sql",
+            "check:supabase/migrations/20250829231607_d0f74fd1-ed04-4d99-b39f-95615562ec30.sql",
+            "check:supabase/migrations/20250829231652_9d319a79-b026-4da1-bb64-bf1332c6d63f.sql"
+          ]
+        },
+        {
+          "value": "sent",
+          "sources": [
+            "check:supabase/migrations/20250829231458_174e86d4-df6b-43d6-8438-585d11673e6b.sql",
+            "check:supabase/migrations/20250829231607_d0f74fd1-ed04-4d99-b39f-95615562ec30.sql",
+            "check:supabase/migrations/20250829231652_9d319a79-b026-4da1-bb64-bf1332c6d63f.sql",
+            "write:supabase/migrations/20250901004624_e4007eaf-ea99-4c2f-b696-71dea9c3655d.sql",
+            "guard:supabase/migrations/20250901000838_15dd536a-931d-4dab-8bc6-21294035b6e9.sql",
+            "guard:supabase/migrations/20250901095901_db66aa45-6db8-4471-85ac-ca8edf369ca8.sql",
+            "guard:supabase/migrations/20251206234031_61179556-148b-4c5d-845a-0bf784e35260.sql"
+          ]
+        }
+      ],
+      "transitions": [
+        {
+          "from": null,
+          "to": "approved",
+          "sources": [
+            "supabase/migrations/20250901004249_6c8060e0-28d4-4adc-a890-514025795c0a.sql",
+            "supabase/migrations/20250901004331_e7e79e52-32bb-4315-bcc1-5e23585bb7ce.sql",
+            "supabase/migrations/20250901004403_e601cf2f-3dd2-46f8-9f5f-5b8731fa03eb.sql"
+          ]
+        },
+        {
+          "from": null,
+          "to": "archived",
+          "sources": [
+            "supabase/migrations/20250901002205_e44c9137-114c-4d43-84aa-6927a115fa8e.sql"
+          ]
+        },
+        {
+          "from": null,
+          "to": "sent",
+          "sources": [
+            "supabase/migrations/20250901004624_e4007eaf-ea99-4c2f-b696-71dea9c3655d.sql"
+          ]
+        }
+      ],
+      "guards": [
+        {
+          "trigger": "audit_letters_trigger",
+          "function": "audit_letter_changes",
+          "timing": "after",
+          "events": "update or delete",
+          "source": "supabase/migrations/20251206234031_61179556-148b-4c5d-845a-0bf784e35260.sql",
+          "functionSource": "supabase/migrations/20251206234031_61179556-148b-4c5d-845a-0bf784e35260.sql",
+          "kind": "trigger",
+          "readsOld": true,
+          "readsNew": true,
+          "raises": false,
+          "states": [
+            "sent"
+          ]
+        },
+        {
+          "trigger": "log_letter_workflow_trigger",
+          "function": "log_letter_workflow_change",
+          "timing": "after",
+          "events": "update",
+          "source": "supabase/migrations/20250901001457_305a5553-0b1f-41c7-b734-c816c3ef8065.sql",
+          "functionSource": "supabase/migrations/20250901001457_305a5553-0b1f-41c7-b734-c816c3ef8065.sql",
+          "kind": "trigger",
+          "readsOld": true,
+          "readsNew": true,
+          "raises": false,
+          "states": []
+        },
+        {
+          "trigger": "trigger_letter_followup_task",
+          "function": "create_letter_followup_task",
+          "timing": "after",
+          "events": "update",
+          "source": "supabase/migrations/20250901095901_db66aa45-6db8-4471-85ac-ca8edf369ca8.sql",
+          "functionSource": "supabase/migrations/20250901095950_1e2b8e44-b0e3-47f7-b40b-9036adb4239f.sql",
+          "kind": "trigger",
+          "readsOld": true,
+          "readsNew": true,
+          "raises": false,
+          "states": [
+            "sent"
+          ]
+        },
+        {
+          "trigger": "trigger_letter_status_change",
+          "function": "handle_letter_status_change",
+          "timing": "before",
+          "events": "update",
+          "source": "supabase/migrations/20250901000838_15dd536a-931d-4dab-8bc6-21294035b6e9.sql",
+          "functionSource": "supabase/migrations/20250901001846_31e438c1-e015-4cfa-97f2-89ec0f3e156b.sql",
+          "kind": "trigger",
+          "readsOld": true,
+          "readsNew": true,
+          "raises": false,
+          "states": [
+            "archived",
+            "sent"
+          ]
+        }
+      ],
+      "limitations": [
+        "Nur beobachtende oder synchronisierende Trigger, keine Guard-Funktion mit RAISE EXCEPTION.",
+        "Übergänge ohne belegten Ausgangszustand sind mit \"from\": null gekennzeichnet."
+      ]
+    },
+    {
+      "id": "matrix_widget_improvement_triggers.status",
+      "table": "matrix_widget_improvement_triggers",
+      "column": "status",
+      "enumType": null,
+      "states": [
+        {
+          "value": "done",
+          "sources": [
+            "check:supabase/migrations/20260304120000_matrix_widget_feedback.sql"
+          ]
+        },
+        {
+          "value": "in_progress",
+          "sources": [
+            "check:supabase/migrations/20260304120000_matrix_widget_feedback.sql"
+          ]
+        },
+        {
+          "value": "open",
+          "sources": [
+            "check:supabase/migrations/20260304120000_matrix_widget_feedback.sql"
+          ]
+        }
+      ],
+      "transitions": [],
+      "guards": [],
+      "limitations": [
+        "Kein Trigger im Migrationsbestand gefunden; Übergänge sind nicht durch Trigger abgesichert.",
+        "Keine belegten Statusübergänge im Migrationsbestand."
+      ]
+    },
+    {
+      "id": "meeting_participants.status",
+      "table": "meeting_participants",
+      "column": "status",
+      "enumType": null,
+      "states": [
+        {
+          "value": "confirmed",
+          "sources": [
+            "check:supabase/migrations/20251213235501_300367bb-918c-408b-b126-1376e24a5f61.sql",
+            "check:supabase/migrations/20261125090000_jour_fixe_actual_times_and_rsvp.sql"
+          ]
+        },
+        {
+          "value": "declined",
+          "sources": [
+            "check:supabase/migrations/20251213235501_300367bb-918c-408b-b126-1376e24a5f61.sql",
+            "check:supabase/migrations/20261125090000_jour_fixe_actual_times_and_rsvp.sql"
+          ]
+        },
+        {
+          "value": "pending",
+          "sources": [
+            "check:supabase/migrations/20251213235501_300367bb-918c-408b-b126-1376e24a5f61.sql",
+            "check:supabase/migrations/20261125090000_jour_fixe_actual_times_and_rsvp.sql"
+          ]
+        },
+        {
+          "value": "vacation",
+          "sources": [
+            "check:supabase/migrations/20261125090000_jour_fixe_actual_times_and_rsvp.sql"
+          ]
+        }
+      ],
+      "transitions": [],
+      "guards": [],
+      "limitations": [
+        "Kein Trigger im Migrationsbestand gefunden; Übergänge sind nicht durch Trigger abgesichert.",
+        "Keine belegten Statusübergänge im Migrationsbestand."
+      ]
+    },
+    {
+      "id": "meetings.status",
+      "table": "meetings",
+      "column": "status",
+      "enumType": null,
+      "states": [
+        {
+          "value": "archived",
+          "sources": [
+            "write:supabase/migrations/20261108115704_0906b2c3-18e1-4278-b3a5-8c95939be324.sql",
+            "write:supabase/migrations/20261108120031_8cccd49f-ff9d-42fd-9f12-4f578c6ebd6a.sql"
+          ]
+        },
+        {
+          "value": "planned",
+          "sources": [
+            "write:supabase/migrations/20261108120031_8cccd49f-ff9d-42fd-9f12-4f578c6ebd6a.sql"
+          ]
+        }
+      ],
+      "transitions": [
+        {
+          "from": null,
+          "to": "archived",
+          "sources": [
+            "supabase/migrations/20261108115704_0906b2c3-18e1-4278-b3a5-8c95939be324.sql",
+            "supabase/migrations/20261108120031_8cccd49f-ff9d-42fd-9f12-4f578c6ebd6a.sql"
+          ]
+        },
+        {
+          "from": [
+            "planned"
+          ],
+          "to": "archived",
+          "sources": [
+            "supabase/migrations/20261108120031_8cccd49f-ff9d-42fd-9f12-4f578c6ebd6a.sql"
+          ]
+        }
+      ],
+      "guards": [
+        {
+          "trigger": "trg_meetings_after_update",
+          "function": "handle_meeting_update",
+          "timing": "after",
+          "events": "update",
+          "source": "supabase/migrations/20250809001112_84c793f9-51cd-487e-8020-9ba281aff16d.sql",
+          "functionSource": "supabase/migrations/20250826130550_981c61c6-ce5f-44be-9a9e-35ea12579bc0.sql",
+          "kind": "trigger",
+          "readsOld": false,
+          "readsNew": true,
+          "raises": false,
+          "states": []
+        }
+      ],
+      "limitations": [
+        "Keine Enum- oder CHECK-Beschränkung belegt; die Zustandswerte stammen nur aus Schreibvorgängen und Triggern.",
+        "Nur beobachtende oder synchronisierende Trigger, keine Guard-Funktion mit RAISE EXCEPTION.",
+        "Übergänge ohne belegten Ausgangszustand sind mit \"from\": null gekennzeichnet."
+      ]
+    },
+    {
+      "id": "parliament_protocols.processing_status",
+      "table": "parliament_protocols",
+      "column": "processing_status",
+      "enumType": null,
+      "states": [
+        {
+          "value": "completed",
+          "sources": [
+            "check:supabase/migrations/20250921095100_b6c5eb8a-c75c-4a56-be00-427a3da17a78.sql"
+          ]
+        },
+        {
+          "value": "error",
+          "sources": [
+            "check:supabase/migrations/20250921095100_b6c5eb8a-c75c-4a56-be00-427a3da17a78.sql"
+          ]
+        },
+        {
+          "value": "processing",
+          "sources": [
+            "check:supabase/migrations/20250921095100_b6c5eb8a-c75c-4a56-be00-427a3da17a78.sql"
+          ]
+        },
+        {
+          "value": "uploaded",
+          "sources": [
+            "check:supabase/migrations/20250921095100_b6c5eb8a-c75c-4a56-be00-427a3da17a78.sql"
+          ]
+        }
+      ],
+      "transitions": [],
+      "guards": [],
+      "limitations": [
+        "Kein Trigger im Migrationsbestand gefunden; Übergänge sind nicht durch Trigger abgesichert.",
+        "Keine belegten Statusübergänge im Migrationsbestand."
+      ]
+    },
+    {
+      "id": "poll_responses.status",
+      "table": "poll_responses",
+      "column": "status",
+      "enumType": null,
+      "states": [
+        {
+          "value": "available",
+          "sources": [
+            "check:supabase/migrations/20250819215926_9e43e2d9-58f6-4691-a1c3-73c7c579a0b1.sql"
+          ]
+        },
+        {
+          "value": "tentative",
+          "sources": [
+            "check:supabase/migrations/20250819215926_9e43e2d9-58f6-4691-a1c3-73c7c579a0b1.sql"
+          ]
+        },
+        {
+          "value": "unavailable",
+          "sources": [
+            "check:supabase/migrations/20250819215926_9e43e2d9-58f6-4691-a1c3-73c7c579a0b1.sql"
+          ]
+        }
+      ],
+      "transitions": [],
+      "guards": [],
+      "limitations": [
+        "Kein Trigger im Migrationsbestand gefunden; Übergänge sind nicht durch Trigger abgesichert.",
+        "Keine belegten Statusübergänge im Migrationsbestand."
+      ]
+    },
+    {
+      "id": "routine_package_steps.status",
+      "table": "routine_package_steps",
+      "column": "status",
+      "enumType": null,
+      "states": [
+        {
+          "value": "active",
+          "sources": [
+            "check:supabase/migrations/20261110160000_routine_workflow_runtime.sql",
+            "write:supabase/migrations/20261110160000_routine_workflow_runtime.sql",
+            "write:supabase/migrations/20261110170000_routine_deputies_relative_deadlines.sql",
+            "write:supabase/migrations/20261113150000_employee_hr_lifecycle.sql"
+          ]
+        },
+        {
+          "value": "blocked",
+          "sources": [
+            "check:supabase/migrations/20261110160000_routine_workflow_runtime.sql",
+            "write:supabase/migrations/20261110160000_routine_workflow_runtime.sql",
+            "write:supabase/migrations/20261110170000_routine_deputies_relative_deadlines.sql",
+            "write:supabase/migrations/20261113150000_employee_hr_lifecycle.sql"
+          ]
+        },
+        {
+          "value": "completed",
+          "sources": [
+            "check:supabase/migrations/20261110160000_routine_workflow_runtime.sql"
+          ]
+        },
+        {
+          "value": "failed",
+          "sources": [
+            "check:supabase/migrations/20261110160000_routine_workflow_runtime.sql",
+            "write:supabase/migrations/20261110160000_routine_workflow_runtime.sql",
+            "write:supabase/migrations/20261110170000_routine_deputies_relative_deadlines.sql",
+            "write:supabase/migrations/20261113150000_employee_hr_lifecycle.sql"
+          ]
+        },
+        {
+          "value": "waiting",
+          "sources": [
+            "check:supabase/migrations/20261110160000_routine_workflow_runtime.sql",
+            "write:supabase/migrations/20261110160000_routine_workflow_runtime.sql",
+            "write:supabase/migrations/20261110170000_routine_deputies_relative_deadlines.sql",
+            "write:supabase/migrations/20261113150000_employee_hr_lifecycle.sql"
+          ]
+        }
+      ],
+      "transitions": [
+        {
+          "from": [
+            "failed"
+          ],
+          "to": "waiting",
+          "sources": [
+            "supabase/migrations/20261110160000_routine_workflow_runtime.sql"
+          ]
+        },
+        {
+          "from": null,
+          "to": "active",
+          "sources": [
+            "supabase/migrations/20261110160000_routine_workflow_runtime.sql",
+            "supabase/migrations/20261110170000_routine_deputies_relative_deadlines.sql",
+            "supabase/migrations/20261113150000_employee_hr_lifecycle.sql"
+          ]
+        },
+        {
+          "from": null,
+          "to": "blocked",
+          "sources": [
+            "supabase/migrations/20261110160000_routine_workflow_runtime.sql",
+            "supabase/migrations/20261110170000_routine_deputies_relative_deadlines.sql",
+            "supabase/migrations/20261113150000_employee_hr_lifecycle.sql"
+          ]
+        },
+        {
+          "from": null,
+          "to": "failed",
+          "sources": [
+            "supabase/migrations/20261110160000_routine_workflow_runtime.sql",
+            "supabase/migrations/20261110170000_routine_deputies_relative_deadlines.sql",
+            "supabase/migrations/20261113150000_employee_hr_lifecycle.sql"
+          ]
+        },
+        {
+          "from": null,
+          "to": "waiting",
+          "sources": [
+            "supabase/migrations/20261110160000_routine_workflow_runtime.sql",
+            "supabase/migrations/20261110170000_routine_deputies_relative_deadlines.sql",
+            "supabase/migrations/20261113150000_employee_hr_lifecycle.sql"
+          ]
+        }
+      ],
+      "guards": [],
+      "limitations": [
+        "Kein Trigger im Migrationsbestand gefunden; Übergänge sind nicht durch Trigger abgesichert.",
+        "Übergänge ohne belegten Ausgangszustand sind mit \"from\": null gekennzeichnet."
+      ]
+    },
+    {
+      "id": "sick_days.status",
+      "table": "sick_days",
+      "column": "status",
+      "enumType": null,
+      "states": [
+        {
+          "value": "approved",
+          "sources": [
+            "check:supabase/migrations/20251118230558_2ee9656a-f63b-4934-afb3-cbd44f397abd.sql"
+          ]
+        },
+        {
+          "value": "pending",
+          "sources": [
+            "check:supabase/migrations/20251118230558_2ee9656a-f63b-4934-afb3-cbd44f397abd.sql"
+          ]
+        },
+        {
+          "value": "rejected",
+          "sources": [
+            "check:supabase/migrations/20251118230558_2ee9656a-f63b-4934-afb3-cbd44f397abd.sql"
+          ]
+        }
+      ],
+      "transitions": [],
+      "guards": [],
+      "limitations": [
+        "Kein Trigger im Migrationsbestand gefunden; Übergänge sind nicht durch Trigger abgesichert.",
+        "Keine belegten Statusübergänge im Migrationsbestand."
+      ]
+    },
+    {
+      "id": "social_campaigns.status",
+      "table": "social_campaigns",
+      "column": "status",
+      "enumType": null,
+      "states": [
+        {
+          "value": "active",
+          "sources": [
+            "check:supabase/migrations/20260407170000_add_social_campaigns_and_content_pillars.sql"
+          ]
+        },
+        {
+          "value": "completed",
+          "sources": [
+            "check:supabase/migrations/20260407170000_add_social_campaigns_and_content_pillars.sql"
+          ]
+        },
+        {
+          "value": "draft",
+          "sources": [
+            "check:supabase/migrations/20260407170000_add_social_campaigns_and_content_pillars.sql"
+          ]
+        },
+        {
+          "value": "paused",
+          "sources": [
+            "check:supabase/migrations/20260407170000_add_social_campaigns_and_content_pillars.sql"
+          ]
+        }
+      ],
+      "transitions": [],
+      "guards": [],
+      "limitations": [
+        "Kein Trigger im Migrationsbestand gefunden; Übergänge sind nicht durch Trigger abgesichert.",
+        "Keine belegten Statusübergänge im Migrationsbestand."
+      ]
+    },
+    {
+      "id": "social_content_items.workflow_status",
+      "table": "social_content_items",
+      "column": "workflow_status",
+      "enumType": null,
+      "states": [
+        {
+          "value": "approval",
+          "sources": [
+            "check:supabase/migrations/20260317113000_add_social_content_domain.sql",
+            "write:supabase/migrations/20261124260000_freeze_approved_social_content.sql"
+          ]
+        },
+        {
+          "value": "draft",
+          "sources": [
+            "check:supabase/migrations/20260317113000_add_social_content_domain.sql",
+            "write:supabase/migrations/20261124200000_editorial_approval_workflow.sql"
+          ]
+        },
+        {
+          "value": "idea",
+          "sources": [
+            "check:supabase/migrations/20260317113000_add_social_content_domain.sql"
+          ]
+        },
+        {
+          "value": "published",
+          "sources": [
+            "check:supabase/migrations/20260317113000_add_social_content_domain.sql",
+            "guard:supabase/migrations/20260317113000_add_social_content_domain.sql",
+            "guard:supabase/migrations/20261124200000_editorial_approval_workflow.sql",
+            "guard:supabase/migrations/20261124260000_freeze_approved_social_content.sql"
+          ]
+        },
+        {
+          "value": "scheduled",
+          "sources": [
+            "check:supabase/migrations/20260317113000_add_social_content_domain.sql"
+          ]
+        }
+      ],
+      "transitions": [
+        {
+          "from": null,
+          "to": "approval",
+          "sources": [
+            "supabase/migrations/20261124260000_freeze_approved_social_content.sql"
+          ]
+        },
+        {
+          "from": null,
+          "to": "draft",
+          "sources": [
+            "supabase/migrations/20261124200000_editorial_approval_workflow.sql"
+          ]
+        }
+      ],
+      "guards": [
+        {
+          "trigger": "trg_social_content_approval_permissions",
+          "function": "enforce_social_content_approval_permissions",
+          "timing": "before",
+          "events": "update",
+          "source": "supabase/migrations/20260317113000_add_social_content_domain.sql",
+          "functionSource": "supabase/migrations/20261124260000_freeze_approved_social_content.sql",
+          "kind": "guard",
+          "readsOld": true,
+          "readsNew": true,
+          "raises": true,
+          "states": [
+            "published"
+          ]
+        }
+      ],
+      "limitations": [
+        "Guards werden zitiert, aber nicht als vollständiger Automat interpretiert; abgeleitet werden nur belegte Schreibvorgänge.",
+        "Übergänge ohne belegten Ausgangszustand sind mit \"from\": null gekennzeichnet."
+      ]
+    },
+    {
+      "id": "social_content_variants.platform_status",
+      "table": "social_content_variants",
+      "column": "platform_status",
+      "enumType": null,
+      "states": [
+        {
+          "value": "draft",
+          "sources": [
+            "check:supabase/migrations/20260407170000_add_social_content_variants.sql"
+          ]
+        },
+        {
+          "value": "failed",
+          "sources": [
+            "check:supabase/migrations/20260407170000_add_social_content_variants.sql"
+          ]
+        },
+        {
+          "value": "published",
+          "sources": [
+            "check:supabase/migrations/20260407170000_add_social_content_variants.sql"
+          ]
+        },
+        {
+          "value": "ready",
+          "sources": [
+            "check:supabase/migrations/20260407170000_add_social_content_variants.sql"
+          ]
+        },
+        {
+          "value": "scheduled",
+          "sources": [
+            "check:supabase/migrations/20260407170000_add_social_content_variants.sql"
+          ]
+        }
+      ],
+      "transitions": [],
+      "guards": [],
+      "limitations": [
+        "Kein Trigger im Migrationsbestand gefunden; Übergänge sind nicht durch Trigger abgesichert.",
+        "Keine belegten Statusübergänge im Migrationsbestand."
+      ]
+    },
+    {
+      "id": "system_health.status",
+      "table": "system_health",
+      "column": "status",
+      "enumType": null,
+      "states": [
+        {
+          "value": "critical",
+          "sources": [
+            "check:supabase/migrations/20260507190106_964aec00-97b8-4df7-817d-fba76bba4038.sql"
+          ]
+        },
+        {
+          "value": "ok",
+          "sources": [
+            "check:supabase/migrations/20260507190106_964aec00-97b8-4df7-817d-fba76bba4038.sql"
+          ]
+        },
+        {
+          "value": "warning",
+          "sources": [
+            "check:supabase/migrations/20260507190106_964aec00-97b8-4df7-817d-fba76bba4038.sql"
+          ]
+        }
+      ],
+      "transitions": [],
+      "guards": [],
+      "limitations": [
+        "Kein Trigger im Migrationsbestand gefunden; Übergänge sind nicht durch Trigger abgesichert.",
+        "Keine belegten Statusübergänge im Migrationsbestand."
+      ]
+    },
+    {
+      "id": "task_decisions.status",
+      "table": "task_decisions",
+      "column": "status",
+      "enumType": null,
+      "states": [
+        {
+          "value": "active",
+          "sources": [
+            "check:supabase/migrations/20250826224258_edec5262-0a2a-414e-87bd-85d0e524ffa6.sql",
+            "check:supabase/migrations/20260209094422_7cce038b-0e7e-4f45-931d-19b0fc237929.sql",
+            "write:supabase/migrations/20260209100456_1f1d79dc-a773-4379-82bd-99a16d806d49.sql"
+          ]
+        },
+        {
+          "value": "archived",
+          "sources": [
+            "check:supabase/migrations/20250826224258_edec5262-0a2a-414e-87bd-85d0e524ffa6.sql",
+            "check:supabase/migrations/20260209094422_7cce038b-0e7e-4f45-931d-19b0fc237929.sql",
+            "write:supabase/migrations/20251008092243_13bc77ce-3770-4a50-b88c-2444fb69206c.sql",
+            "write:supabase/migrations/20260209100456_1f1d79dc-a773-4379-82bd-99a16d806d49.sql"
+          ]
+        },
+        {
+          "value": "open",
+          "sources": [
+            "check:supabase/migrations/20260209094422_7cce038b-0e7e-4f45-931d-19b0fc237929.sql",
+            "write:supabase/migrations/20260209100456_1f1d79dc-a773-4379-82bd-99a16d806d49.sql"
+          ]
+        }
+      ],
+      "transitions": [
+        {
+          "from": [
+            "active",
+            "open"
+          ],
+          "to": "archived",
+          "sources": [
+            "supabase/migrations/20260209100456_1f1d79dc-a773-4379-82bd-99a16d806d49.sql"
+          ]
+        },
+        {
+          "from": null,
+          "to": "archived",
+          "sources": [
+            "supabase/migrations/20251008092243_13bc77ce-3770-4a50-b88c-2444fb69206c.sql"
+          ]
+        }
+      ],
+      "guards": [],
+      "limitations": [
+        "Kein Trigger im Migrationsbestand gefunden; Übergänge sind nicht durch Trigger abgesichert.",
+        "Übergänge ohne belegten Ausgangszustand sind mit \"from\": null gekennzeichnet."
+      ]
+    },
+    {
+      "id": "tasks.status",
+      "table": "tasks",
+      "column": "status",
+      "enumType": null,
+      "states": [
+        {
+          "value": "cancelled",
+          "sources": [
+            "guard:supabase/migrations/20261106180000_link_case_steps_to_tasks.sql"
+          ]
+        },
+        {
+          "value": "completed",
+          "sources": [
+            "check:supabase/migrations/20250803191041_74873018-a03c-434d-a935-86b817a22f64.sql",
+            "write:supabase/migrations/20261108113437_6ceab425-38b4-4d82-a042-446e77bbbd90.sql",
+            "write:supabase/migrations/20261109100000_connect_appointment_preparation_workflow.sql",
+            "write:supabase/migrations/20261109101304_dcd43720-f9f8-4d30-9637-1bc1b0853954.sql",
+            "write:supabase/migrations/20261109120000_confirm_briefing_assignment_and_team_preparations.sql",
+            "write:supabase/migrations/20261110160000_routine_workflow_runtime.sql",
+            "write:supabase/migrations/20261110170000_routine_deputies_relative_deadlines.sql",
+            "write:supabase/migrations/20261112090000_knowledge_validity_and_review_tasks.sql",
+            "write:supabase/migrations/20261113121000_employee_action_stafette.sql",
+            "write:supabase/migrations/20261113150000_employee_hr_lifecycle.sql",
+            "write:supabase/migrations/20261113203000_employee_hr_gdpr_acknowledgement.sql",
+            "write:supabase/migrations/20261121230000_office_feedback_followup.sql",
+            "write:supabase/migrations/20261122121517_29ae2f40-a68d-451b-988f-9d4e3d79b8a0.sql",
+            "write:supabase/migrations/20261125110500_repair_office_feedback_reminder_source.sql",
+            "guard:supabase/migrations/20261106180000_link_case_steps_to_tasks.sql",
+            "guard:supabase/migrations/20261109233505_20da467a-e374-40c6-9766-b08231ba5bc3.sql",
+            "guard:supabase/migrations/20261113121000_employee_action_stafette.sql",
+            "guard:supabase/migrations/20261119220000_jour_fixe_protocol_review.sql"
+          ]
+        },
+        {
+          "value": "in_progress",
+          "sources": [
+            "write:supabase/migrations/20261113121000_employee_action_stafette.sql",
+            "guard:supabase/migrations/20261113121000_employee_action_stafette.sql"
+          ]
+        },
+        {
+          "value": "in-progress",
+          "sources": [
+            "check:supabase/migrations/20250803191041_74873018-a03c-434d-a935-86b817a22f64.sql"
+          ]
+        },
+        {
+          "value": "todo",
+          "sources": [
+            "check:supabase/migrations/20250803191041_74873018-a03c-434d-a935-86b817a22f64.sql",
+            "write:supabase/migrations/20261109100000_connect_appointment_preparation_workflow.sql",
+            "write:supabase/migrations/20261124200000_editorial_approval_workflow.sql",
+            "write:supabase/migrations/20261124280000_social_approval_reopen_notifications.sql"
+          ]
+        }
+      ],
+      "transitions": [
+        {
+          "from": [
+            "completed",
+            "in_progress"
+          ],
+          "to": "completed",
+          "sources": [
+            "supabase/migrations/20261113121000_employee_action_stafette.sql"
+          ]
+        },
+        {
+          "from": [
+            "completed",
+            "in_progress"
+          ],
+          "to": "in_progress",
+          "sources": [
+            "supabase/migrations/20261113121000_employee_action_stafette.sql"
+          ]
+        },
+        {
+          "from": null,
+          "to": "completed",
+          "sources": [
+            "supabase/migrations/20261108113437_6ceab425-38b4-4d82-a042-446e77bbbd90.sql",
+            "supabase/migrations/20261109100000_connect_appointment_preparation_workflow.sql",
+            "supabase/migrations/20261109101304_dcd43720-f9f8-4d30-9637-1bc1b0853954.sql",
+            "supabase/migrations/20261109120000_confirm_briefing_assignment_and_team_preparations.sql",
+            "supabase/migrations/20261110160000_routine_workflow_runtime.sql",
+            "supabase/migrations/20261110170000_routine_deputies_relative_deadlines.sql",
+            "supabase/migrations/20261112090000_knowledge_validity_and_review_tasks.sql",
+            "supabase/migrations/20261113150000_employee_hr_lifecycle.sql",
+            "supabase/migrations/20261113203000_employee_hr_gdpr_acknowledgement.sql",
+            "supabase/migrations/20261121230000_office_feedback_followup.sql",
+            "supabase/migrations/20261122121517_29ae2f40-a68d-451b-988f-9d4e3d79b8a0.sql",
+            "supabase/migrations/20261125110500_repair_office_feedback_reminder_source.sql"
+          ]
+        },
+        {
+          "from": null,
+          "to": "todo",
+          "sources": [
+            "supabase/migrations/20261109100000_connect_appointment_preparation_workflow.sql",
+            "supabase/migrations/20261124200000_editorial_approval_workflow.sql",
+            "supabase/migrations/20261124280000_social_approval_reopen_notifications.sql"
+          ]
+        }
+      ],
+      "guards": [
+        {
+          "trigger": "case_step_task_journal",
+          "function": "journal_case_step_task",
+          "timing": "after",
+          "events": "insert or update or delete",
+          "source": "supabase/migrations/20261106180000_link_case_steps_to_tasks.sql",
+          "functionSource": "supabase/migrations/20261106180000_link_case_steps_to_tasks.sql",
+          "kind": "guard",
+          "readsOld": true,
+          "readsNew": true,
+          "raises": true,
+          "states": [
+            "cancelled",
+            "completed"
+          ]
+        },
+        {
+          "trigger": "stamp_task_completion",
+          "function": "stamp_task_completion",
+          "timing": "before",
+          "events": "insert or update of status, completed_at",
+          "source": "supabase/migrations/20261119220000_jour_fixe_protocol_review.sql",
+          "functionSource": "supabase/migrations/20261119220000_jour_fixe_protocol_review.sql",
+          "kind": "trigger",
+          "readsOld": true,
+          "readsNew": true,
+          "raises": false,
+          "states": [
+            "completed"
+          ]
+        },
+        {
+          "trigger": "sync_annual_task_completion",
+          "function": "sync_annual_task_completion",
+          "timing": "after",
+          "events": "update of status",
+          "source": "supabase/migrations/20261109233505_20da467a-e374-40c6-9766-b08231ba5bc3.sql",
+          "functionSource": "supabase/migrations/20261109233505_20da467a-e374-40c6-9766-b08231ba5bc3.sql",
+          "kind": "trigger",
+          "readsOld": true,
+          "readsNew": true,
+          "raises": false,
+          "states": [
+            "completed"
+          ]
+        },
+        {
+          "trigger": "sync_employee_action_from_task",
+          "function": "sync_employee_action_task_status",
+          "timing": "after",
+          "events": "update of status",
+          "source": "supabase/migrations/20261113121000_employee_action_stafette.sql",
+          "functionSource": "supabase/migrations/20261113121000_employee_action_stafette.sql",
+          "kind": "trigger",
+          "readsOld": true,
+          "readsNew": true,
+          "raises": false,
+          "states": [
+            "completed",
+            "in_progress"
+          ]
+        }
+      ],
+      "limitations": [
+        "Guards werden zitiert, aber nicht als vollständiger Automat interpretiert; abgeleitet werden nur belegte Schreibvorgänge.",
+        "Übergänge ohne belegten Ausgangszustand sind mit \"from\": null gekennzeichnet."
+      ]
+    },
+    {
+      "id": "topic_backlog.status",
+      "table": "topic_backlog",
+      "column": "status",
+      "enumType": null,
+      "states": [
+        {
+          "value": "archived",
+          "sources": [
+            "check:supabase/migrations/20260317113000_add_social_content_domain.sql"
+          ]
+        },
+        {
+          "value": "done",
+          "sources": [
+            "check:supabase/migrations/20260317113000_add_social_content_domain.sql"
+          ]
+        },
+        {
+          "value": "idea",
+          "sources": [
+            "check:supabase/migrations/20260317113000_add_social_content_domain.sql"
+          ]
+        },
+        {
+          "value": "in_progress",
+          "sources": [
+            "check:supabase/migrations/20260317113000_add_social_content_domain.sql"
+          ]
+        },
+        {
+          "value": "ready",
+          "sources": [
+            "check:supabase/migrations/20260317113000_add_social_content_domain.sql"
+          ]
+        },
+        {
+          "value": "research",
+          "sources": [
+            "check:supabase/migrations/20260317113000_add_social_content_domain.sql"
+          ]
+        }
+      ],
+      "transitions": [],
+      "guards": [],
+      "limitations": [
+        "Kein Trigger im Migrationsbestand gefunden; Übergänge sind nicht durch Trigger abgesichert.",
+        "Keine belegten Statusübergänge im Migrationsbestand."
+      ]
+    }
+  ],
+  "unresolved": [
+    {
+      "table": "appointment_guests",
+      "column": "status",
+      "reason": "keine belegten Zustandswerte"
+    },
+    {
+      "table": "appointment_preparations",
+      "column": "status",
+      "reason": "keine belegten Zustandswerte"
+    },
+    {
+      "table": "appointment_requests",
+      "column": "status",
+      "reason": "keine belegten Zustandswerte"
+    },
+    {
+      "table": "case_files",
+      "column": "processing_status",
+      "reason": "keine belegten Zustandswerte"
+    },
+    {
+      "table": "contacts",
+      "column": "retention_status",
+      "reason": "keine belegten Zustandswerte"
+    },
+    {
+      "table": "dossiers",
+      "column": "status",
+      "reason": "keine belegten Zustandswerte"
+    },
+    {
+      "table": "event_planning_action_logs",
+      "column": "execution_status",
+      "reason": "keine belegten Zustandswerte"
+    },
+    {
+      "table": "event_rsvps",
+      "column": "status",
+      "reason": "keine belegten Zustandswerte"
+    },
+    {
+      "table": "matrix_bot_logs",
+      "column": "status",
+      "reason": "keine belegten Zustandswerte"
+    },
+    {
+      "table": "messages",
+      "column": "status",
+      "reason": "keine belegten Zustandswerte"
+    },
+    {
+      "table": "press_releases",
+      "column": "status",
+      "reason": "keine belegten Zustandswerte"
+    },
+    {
+      "table": "public_holidays",
+      "column": "state",
+      "reason": "keine belegten Zustandswerte"
+    },
+    {
+      "table": "scheduled_emails",
+      "column": "status",
+      "reason": "keine belegten Zustandswerte"
+    },
+    {
+      "table": "selftest_runs",
+      "column": "status",
+      "reason": "keine belegten Zustandswerte"
+    },
+    {
+      "table": "workflow_action_log",
+      "column": "status",
+      "reason": "keine belegten Zustandswerte"
+    },
+    {
+      "table": "workflow_runs",
+      "column": "status",
+      "reason": "keine belegten Zustandswerte"
+    }
+  ]
+}

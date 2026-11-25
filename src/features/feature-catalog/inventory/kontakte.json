@@ -96,7 +96,8 @@
       ],
       "scenarios": [
         "contact-lifecycle"
-      ]
+      ],
+      "dependsOn": ["contacts.create"]
     },
     {
       "id": "contacts.detail",
@@ -133,7 +134,8 @@
         "bueroleitung",
         "mitarbeiter",
         "praktikant"
-      ]
+      ],
+      "dependsOn": ["contacts.create"]
     },
     {
       "id": "contacts.import",
@@ -172,7 +174,8 @@
       ],
       "rpcs": [
         "insert_sample_contacts"
-      ]
+      ],
+      "dependsOn": ["contacts.create"]
     },
     {
       "id": "contacts.duplicates",
@@ -207,7 +210,8 @@
       ],
       "reviewPoints": [
         "Die Trefferheuristik ist nicht qualitätsgetestet; falsche Paare sind möglich."
-      ]
+      ],
+      "dependsOn": ["contacts.create"]
     },
     {
       "id": "contacts.merge",
@@ -246,7 +250,8 @@
       ],
       "docs": [
         "docs/contacts-system-review.md"
-      ]
+      ],
+      "dependsOn": ["contacts.create", "contacts.edit"]
     },
     {
       "id": "contacts.distribution-lists",
@@ -280,7 +285,8 @@
         "abgeordneter",
         "bueroleitung",
         "mitarbeiter"
-      ]
+      ],
+      "dependsOn": ["contacts.create"]
     },
     {
       "id": "contacts.stakeholders",
@@ -321,7 +327,8 @@
         "abgeordneter",
         "bueroleitung",
         "mitarbeiter"
-      ]
+      ],
+      "dependsOn": ["contacts.create"]
     },
     {
       "id": "contacts.tags-topics",
@@ -360,7 +367,8 @@
       ],
       "reviewPoints": [
         "Der Abgleich zwischen Kontakt-Tags und zentralen Tags ist nicht durch einen Test abgedeckt."
-      ]
+      ],
+      "dependsOn": ["contacts.create", "topics.manage"]
     },
     {
       "id": "contacts.privacy",
@@ -399,7 +407,8 @@
       ],
       "docs": [
         "docs/security-function-matrix.md"
-      ]
+      ],
+      "dependsOn": ["contacts.create"]
     },
     {
       "id": "contacts.bulk",
@@ -430,7 +439,8 @@
         "abgeordneter",
         "bueroleitung",
         "mitarbeiter"
-      ]
+      ],
+      "dependsOn": ["contacts.create"]
     },
     {
       "id": "contacts.activities",
@@ -464,7 +474,8 @@
         "bueroleitung",
         "mitarbeiter",
         "praktikant"
-      ]
+      ],
+      "dependsOn": ["contacts.create"]
     },
     {
       "id": "contacts.briefing-memory",
@@ -529,7 +540,8 @@
         "abgeordneter",
         "bueroleitung",
         "mitarbeiter"
-      ]
+      ],
+      "dependsOn": ["contacts.create"]
     }
   ]
 }

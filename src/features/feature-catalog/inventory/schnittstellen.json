@@ -52,7 +52,8 @@
       ],
       "reviewPoints": [
         "Ein echter Sync gegen einen externen Anbieter ist nicht ausgeführt worden; nur Code und Contract-Tests liegen vor."
-      ]
+      ],
+      "dependsOn": ["calendar.create-appointment"]
     },
     {
       "id": "integration.ics",
@@ -92,7 +93,8 @@
       ],
       "rpcs": [
         "validate_contract_file"
-      ]
+      ],
+      "dependsOn": ["calendar.create-appointment"]
     },
     {
       "id": "integration.email",
@@ -126,7 +128,8 @@
       ],
       "reviewPoints": [
         "Zentrale Vorlagenpflege und Versand sind über mehrere Funktionen verteilt; eine vollständige Liste der Absender liegt nicht zentral vor."
-      ]
+      ],
+      "dependsOn": ["admin.templates-senders"]
     },
     {
       "id": "integration.push",
@@ -167,7 +170,8 @@
       ],
       "docs": [
         "docs/security-function-matrix.md"
-      ]
+      ],
+      "dependsOn": ["platform.notification-dispatch"]
     },
     {
       "id": "integration.geocoding",
@@ -198,7 +202,8 @@
         "system",
         "mitarbeiter",
         "bueroleitung"
-      ]
+      ],
+      "dependsOn": ["contacts.create"]
     },
     {
       "id": "integration.ai-suggestions",

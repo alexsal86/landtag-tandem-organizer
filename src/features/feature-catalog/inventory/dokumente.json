@@ -114,7 +114,8 @@
         "abgeordneter",
         "bueroleitung",
         "mitarbeiter"
-      ]
+      ],
+      "dependsOn": ["contacts.create"]
     },
     {
       "id": "documents.email",
@@ -140,7 +141,8 @@
         "abgeordneter",
         "bueroleitung",
         "mitarbeiter"
-      ]
+      ],
+      "dependsOn": ["documents.upload-version", "integration.email"]
     },
     {
       "id": "annotations.create",
@@ -192,7 +194,8 @@
       ],
       "docs": [
         "docs/dangerouslysetinnerhtml-inventory.md"
-      ]
+      ],
+      "dependsOn": ["documents.upload-version"]
     },
     {
       "id": "annotations.history",
@@ -228,7 +231,8 @@
       ],
       "unitTests": [
         "src/features/annotations/annotationModel.test.ts"
-      ]
+      ],
+      "dependsOn": ["annotations.create"]
     },
     {
       "id": "annotations.tasks",
@@ -264,7 +268,8 @@
         "document-annotation"
       ],
       "dependsOn": [
-        "tasks.create"
+        "tasks.create",
+        "annotations.create"
       ]
     },
     {
@@ -299,7 +304,8 @@
       ],
       "limitations": [
         "OCR-Qualität hängt vom Scan ab; ein automatisierter Qualitätstest existiert nicht."
-      ]
+      ],
+      "dependsOn": ["documents.upload-version"]
     },
     {
       "id": "annotations.export",
@@ -359,7 +365,8 @@
         "abgeordneter",
         "bueroleitung",
         "mitarbeiter"
-      ]
+      ],
+      "dependsOn": ["annotations.create", "documents.upload-version"]
     },
     {
       "id": "letters.create",
@@ -450,7 +457,8 @@
       "docs": [
         "docs/workflow-consistency.md",
         "docs/selftest-center.md"
-      ]
+      ],
+      "dependsOn": ["letters.create"]
     },
     {
       "id": "letters.archive",
@@ -555,7 +563,8 @@
         "abgeordneter",
         "bueroleitung",
         "mitarbeiter"
-      ]
+      ],
+      "dependsOn": ["letters.create"]
     },
     {
       "id": "letters.collaboration",
@@ -586,7 +595,8 @@
         "abgeordneter",
         "bueroleitung",
         "mitarbeiter"
-      ]
+      ],
+      "dependsOn": ["letters.create"]
     },
     {
       "id": "letters.attachments",
@@ -612,7 +622,8 @@
         "abgeordneter",
         "bueroleitung",
         "mitarbeiter"
-      ]
+      ],
+      "dependsOn": ["letters.create"]
     }
   ]
 }

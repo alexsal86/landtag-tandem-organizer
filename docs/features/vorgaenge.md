@@ -110,7 +110,7 @@ Bestimmt Ball-Owner, nächsten Schritt und Fälligkeit aus Kategorie, Status und
 - **Edge Functions:** —
 - **Datenbankfunktionen:** `validate_case_item_ball`
 - **Tabellen:** `case_items`, `case_item_timeline`
-- **Abhängigkeiten:** —
+- **Abhängigkeiten:** `cases.create`
 - **Selbsttests:** —
 - **Unit-Tests:** `src/features/cases/items/ball.test.ts`
 - **Integrationstests:** —
@@ -146,7 +146,7 @@ Bestimmt Ball-Owner, nächsten Schritt und Fälligkeit aus Kategorie, Status und
 - **Edge Functions:** —
 - **Datenbankfunktionen:** `handover_case_items`, `log_case_item_handover`, `assign_from_responsibility_matrix`
 - **Tabellen:** `case_items`, `case_item_handover_log`, `case_item_timeline`
-- **Abhängigkeiten:** —
+- **Abhängigkeiten:** `cases.triage`, `responsibilities.suggest`
 - **Selbsttests:** `case-item-lifecycle`
 - **Unit-Tests:** `src/features/cases/items/timeline.test.ts`
 - **Integrationstests:** —
@@ -182,7 +182,7 @@ Legt Schritte mit Frist und Zuständigkeit an und erzeugt daraus Büro-Aufgaben,
 - **Edge Functions:** —
 - **Datenbankfunktionen:** `sync_case_office_step_task`, `sync_case_step_from_task`, `journal_case_step_task`
 - **Tabellen:** `case_items`, `case_file_tasks`, `tasks`, `case_item_timeline`
-- **Abhängigkeiten:** `tasks.link-case`
+- **Abhängigkeiten:** `tasks.link-case`, `cases.create`, `tasks.create`
 - **Selbsttests:** —
 - **Unit-Tests:** `src/features/cases/items/workflow.test.ts`
 - **Integrationstests:** —
@@ -218,7 +218,7 @@ Erfasst Gespräche, E-Mails und Notizen mit Sichtbarkeitsstufe und verlangt vor 
 - **Edge Functions:** —
 - **Datenbankfunktionen:** `require_resolution_interaction_on_case_close`, `user_can_access_case_item_interaction`
 - **Tabellen:** `case_item_interactions`, `case_items`
-- **Abhängigkeiten:** —
+- **Abhängigkeiten:** `cases.create`, `contacts.create`
 - **Selbsttests:** —
 - **Unit-Tests:** —
 - **Integrationstests:** —
@@ -254,7 +254,7 @@ Zeigt Statuswechsel, Übergaben, Aufgaben und Interaktionen chronologisch und pr
 - **Edge Functions:** —
 - **Datenbankfunktionen:** `audit_case_item_lifecycle_changes`
 - **Tabellen:** `case_item_timeline`, `audit_log_entries`
-- **Abhängigkeiten:** —
+- **Abhängigkeiten:** `cases.create`
 - **Selbsttests:** —
 - **Unit-Tests:** `src/features/cases/items/timeline.test.ts`
 - **Integrationstests:** —
@@ -290,7 +290,7 @@ Verknüpft Vorgänge mit Terminen und Fallakten und zeigt anstehende Gespräche 
 - **Edge Functions:** —
 - **Datenbankfunktionen:** —
 - **Tabellen:** `case_file_appointments`, `appointments`, `case_items`
-- **Abhängigkeiten:** —
+- **Abhängigkeiten:** `cases.create`, `calendar.create-appointment`
 - **Selbsttests:** —
 - **Unit-Tests:** `src/features/cases/items/appointmentLink.test.ts`
 - **Integrationstests:** —
@@ -326,7 +326,7 @@ Erzeugt aus einem Vorgang einen Briefentwurf mit Adress- und Bezugsdaten und ver
 - **Edge Functions:** —
 - **Datenbankfunktionen:** —
 - **Tabellen:** `case_file_letters`, `letters`, `case_items`
-- **Abhängigkeiten:** `letters.create`
+- **Abhängigkeiten:** `letters.create`, `cases.create`
 - **Selbsttests:** —
 - **Unit-Tests:** `src/features/cases/items/caseLetter.test.ts`
 - **Integrationstests:** —
@@ -362,7 +362,7 @@ Verknüpft Entscheidungen mit einem Vorgang und prüft die Zulässigkeit der Ver
 - **Edge Functions:** —
 - **Datenbankfunktionen:** `validate_decision_case_file`
 - **Tabellen:** `task_decisions`, `case_file_tasks`, `case_items`
-- **Abhängigkeiten:** —
+- **Abhängigkeiten:** `cases.create`, `decisions.create`
 - **Selbsttests:** —
 - **Unit-Tests:** —
 - **Integrationstests:** —
@@ -397,7 +397,7 @@ Erkennt liegengebliebene Vorgänge und schlägt Eskalationen vor, ohne sie autom
 - **Edge Functions:** `suggest-case-escalations`
 - **Datenbankfunktionen:** —
 - **Tabellen:** `case_item_escalation_suggestions`, `case_items`
-- **Abhängigkeiten:** —
+- **Abhängigkeiten:** `cases.triage`
 - **Selbsttests:** —
 - **Unit-Tests:** —
 - **Integrationstests:** —
@@ -432,7 +432,7 @@ Schließt Vorgänge nach dokumentierter Reaktion, erledigt offene Schritte und a
 - **Edge Functions:** —
 - **Datenbankfunktionen:** `complete_case_step_on_archive`, `require_resolution_interaction_on_case_close`
 - **Tabellen:** `case_items`, `case_item_timeline`, `tasks`
-- **Abhängigkeiten:** —
+- **Abhängigkeiten:** `cases.steps`, `cases.interactions`
 - **Selbsttests:** `case-item-lifecycle`
 - **Unit-Tests:** —
 - **Integrationstests:** —
@@ -539,7 +539,7 @@ Führt Fallakten mit Typ, Status, Risiken, Chancen, nächsten Schritten, Beteili
 - **Edge Functions:** —
 - **Datenbankfunktionen:** —
 - **Tabellen:** `case_files`, `case_file_processing_statuses`, `case_file_status_history`
-- **Abhängigkeiten:** —
+- **Abhängigkeiten:** `casefiles.manage`
 - **Selbsttests:** —
 - **Unit-Tests:** —
 - **Integrationstests:** —
@@ -575,7 +575,7 @@ Verknüpft Dokumente, Kontakte, Themen und Notizen mit einer Fallakte und zeigt 
 - **Edge Functions:** —
 - **Datenbankfunktionen:** —
 - **Tabellen:** `case_file_documents`, `case_file_contacts`, `case_file_topics`, `case_file_notes`
-- **Abhängigkeiten:** —
+- **Abhängigkeiten:** `casefiles.manage`, `documents.upload-version`, `contacts.create`
 - **Selbsttests:** —
 - **Unit-Tests:** —
 - **Integrationstests:** —
@@ -611,7 +611,7 @@ Erfasst interne Notizen an einer Fallakte und zeigt sie im Verlauf.
 - **Edge Functions:** —
 - **Datenbankfunktionen:** —
 - **Tabellen:** `case_file_notes`, `case_files`
-- **Abhängigkeiten:** —
+- **Abhängigkeiten:** `casefiles.manage`
 - **Selbsttests:** —
 - **Unit-Tests:** —
 - **Integrationstests:** —

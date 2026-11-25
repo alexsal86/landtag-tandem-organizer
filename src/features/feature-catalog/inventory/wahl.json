@@ -92,7 +92,8 @@
       ],
       "unitTests": [
         "src/features/election-analysis/navigation.test.ts"
-      ]
+      ],
+      "dependsOn": ["election.analysis"]
     },
     {
       "id": "election.analysis-map",
@@ -132,7 +133,8 @@
       ],
       "docs": [
         "docs/wahlkreiskarte.md"
-      ]
+      ],
+      "dependsOn": ["election.analysis", "election.history.districts-geometry"]
     },
     {
       "id": "election.turnout",
@@ -164,7 +166,8 @@
         "abgeordneter",
         "bueroleitung",
         "mitarbeiter"
-      ]
+      ],
+      "dependsOn": ["election.analysis"]
     },
     {
       "id": "election.seat-distribution",
@@ -201,7 +204,8 @@
       ],
       "reviewPoints": [
         "Für seatDistributionModel.ts ist keine dedizierte Testdatei vorhanden."
-      ]
+      ],
+      "dependsOn": ["election.analysis"]
     },
     {
       "id": "election.deputy-results",
@@ -244,7 +248,8 @@
       ],
       "scenarios": [
         "election-deputy-reader"
-      ]
+      ],
+      "dependsOn": ["election.analysis"]
     },
     {
       "id": "election.state-history",
@@ -278,7 +283,8 @@
       ],
       "unitTests": [
         "src/features/election-analysis/StateHistoryPanels.test.tsx"
-      ]
+      ],
+      "dependsOn": ["election.analysis"]
     },
     {
       "id": "election.research-workbench",
@@ -321,7 +327,8 @@
       ],
       "docs": [
         "docs/wahlanalyse.md"
-      ]
+      ],
+      "dependsOn": ["election.analysis"]
     },
     {
       "id": "election.map",
@@ -374,7 +381,8 @@
       ],
       "docs": [
         "docs/wahlkreiskarte.md"
-      ]
+      ],
+      "dependsOn": ["election.districts-import"]
     },
     {
       "id": "election.districts-import",
@@ -522,7 +530,8 @@
       ],
       "scenarios": [
         "election-history-workbench"
-      ]
+      ],
+      "dependsOn": ["election.history.periods", "election.history.people", "election.history.districts-geometry", "election.history.factions"]
     },
     {
       "id": "election.history.candidacies",
@@ -561,7 +570,8 @@
       ],
       "scenarios": [
         "election-history-workbench"
-      ]
+      ],
+      "dependsOn": ["election.history.periods", "election.history.people"]
     },
     {
       "id": "election.history.people",
@@ -604,7 +614,8 @@
       ],
       "scenarios": [
         "election-deputy-reader"
-      ]
+      ],
+      "dependsOn": ["election.history.periods"]
     },
     {
       "id": "election.history.state-lists",
@@ -640,7 +651,8 @@
       "roles": [
         "superadmin",
         "abgeordneter"
-      ]
+      ],
+      "dependsOn": ["election.history.periods", "election.history.people", "election.history.factions"]
     },
     {
       "id": "election.history.factions",
@@ -717,7 +729,8 @@
       ],
       "scenarios": [
         "election-history-workbench"
-      ]
+      ],
+      "dependsOn": ["election.history.periods"]
     },
     {
       "id": "election.history.audit",
@@ -743,7 +756,8 @@
       ],
       "roles": [
         "superadmin"
-      ]
+      ],
+      "dependsOn": ["election.history.quality"]
     },
     {
       "id": "election.history.assembly",
@@ -775,7 +789,8 @@
       "roles": [
         "superadmin",
         "system"
-      ]
+      ],
+      "dependsOn": ["election.history.candidacies", "election.history.mandates"]
     },
     {
       "id": "election.history.districts-geometry",
@@ -821,7 +836,8 @@
       ],
       "limitations": [
         "Rekonstruierte Grenzstände sind ausdrücklich nicht als verifizierte historische Identität behandelt."
-      ]
+      ],
+      "dependsOn": ["election.history.periods"]
     },
     {
       "id": "election.parliament-protocols",
@@ -892,7 +908,8 @@
       ],
       "limitations": [
         "Ein Upload gilt erst nach Veröffentlichung des Repository-Commits durch den Hosting-Anbieter als sichtbar."
-      ]
+      ],
+      "dependsOn": ["election.history.people"]
     }
   ]
 }

@@ -131,7 +131,8 @@
       ],
       "docs": [
         "docs/my-work-architecture.md"
-      ]
+      ],
+      "dependsOn": ["tasks.create"]
     },
     {
       "id": "tasks.assign",
@@ -174,7 +175,8 @@
       ],
       "reviewPoints": [
         "Die Regel, wer wem zuweisen darf, liegt teils in RLS und teils im Code; sie ist hier nicht vollständig rekonstruiert."
-      ]
+      ],
+      "dependsOn": ["tasks.create", "tasks.ball-owner"]
     },
     {
       "id": "tasks.handover-stafette",
@@ -221,7 +223,8 @@
       "docs": [
         "docs/my-work-architecture.md",
         "docs/workflow-consistency.md"
-      ]
+      ],
+      "dependsOn": ["tasks.ball-owner", "tasks.create"]
     },
     {
       "id": "tasks.ball-owner",
@@ -262,7 +265,8 @@
       ],
       "rpcs": [
         "validate_task_ball_owner"
-      ]
+      ],
+      "dependsOn": ["tasks.create"]
     },
     {
       "id": "tasks.deadline",
@@ -299,7 +303,8 @@
       ],
       "docs": [
         "docs/my-work-architecture.md"
-      ]
+      ],
+      "dependsOn": ["tasks.create"]
     },
     {
       "id": "tasks.snooze",
@@ -334,7 +339,8 @@
       ],
       "reviewPoints": [
         "Ob Rückstellungen fachlich als Wiedervorlage oder nur als Anzeige-Unterdrückung gelten, ist im Code nicht abschließend dokumentiert."
-      ]
+      ],
+      "dependsOn": ["tasks.create"]
     },
     {
       "id": "tasks.subtasks",
@@ -366,7 +372,8 @@
       ],
       "reviewPoints": [
         "Die Unteraufgaben-Oberfläche wurde nicht im Browser geprüft; der Nachweis stützt sich auf Komponenten und Tabelle."
-      ]
+      ],
+      "dependsOn": ["tasks.create"]
     },
     {
       "id": "tasks.link-decision",
@@ -407,7 +414,8 @@
       "docs": [
         "docs/task-decision-reactions-rollout.md",
         "docs/my-work-decisions-button-flowchart.md"
-      ]
+      ],
+      "dependsOn": ["tasks.create", "decisions.create"]
     },
     {
       "id": "tasks.link-case",
@@ -448,7 +456,8 @@
         "src/features/cases/items/workflow.test.ts"
       ],
       "dependsOn": [
-        "cases.steps"
+        "cases.steps",
+        "tasks.create"
       ]
     },
     {
@@ -476,7 +485,8 @@
         "bueroleitung",
         "mitarbeiter",
         "praktikant"
-      ]
+      ],
+      "dependsOn": ["tasks.create", "documents.upload-version"]
     },
     {
       "id": "tasks.recurring",
@@ -514,7 +524,8 @@
       ],
       "limitations": [
         "Ob die Wiederholung im Browser sichtbar ausgelöst wurde, ist nicht geprüft; der Nachweis ist die Trigger-/RPC-Kette."
-      ]
+      ],
+      "dependsOn": ["tasks.create"]
     },
     {
       "id": "tasks.templates",
@@ -547,7 +558,8 @@
       ],
       "unitTests": [
         "src/features/tasks/templates.test.ts"
-      ]
+      ],
+      "dependsOn": ["tasks.create"]
     },
     {
       "id": "tasks.archive",
@@ -588,7 +600,8 @@
       ],
       "docs": [
         "docs/my-work-architecture.md"
-      ]
+      ],
+      "dependsOn": ["tasks.create", "tasks.complete"]
     },
     {
       "id": "tasks.search-filter",
@@ -625,7 +638,8 @@
       ],
       "reviewPoints": [
         "Die Filterlogik liegt in der Ansicht; eine eigene getestete Regeldatei existiert nicht."
-      ]
+      ],
+      "dependsOn": ["tasks.create"]
     },
     {
       "id": "tasks.nudge",
@@ -664,7 +678,8 @@
       ],
       "reviewPoints": [
         "Der Cron-Versand ist nicht in dieser Umgebung ausgeführt worden."
-      ]
+      ],
+      "dependsOn": ["tasks.create", "tasks.ball-owner"]
     },
     {
       "id": "tasks.annual",
@@ -708,7 +723,8 @@
       ],
       "docs": [
         "docs/automation-no-code-umsetzung.md"
-      ]
+      ],
+      "dependsOn": ["tasks.create"]
     }
   ]
 }

@@ -112,7 +112,7 @@ Wertet Bedingungsbäume in Browser und Executor identisch aus und vergleicht Dat
 - **Edge Functions:** `run-automation-rule`
 - **Datenbankfunktionen:** —
 - **Tabellen:** `automation_rules`
-- **Abhängigkeiten:** —
+- **Abhängigkeiten:** `automation.rules`
 - **Selbsttests:** —
 - **Unit-Tests:** —
 - **Integrationstests:** —
@@ -148,7 +148,7 @@ Prüft Regeldefinitionen feldgenau, zeigt Inline-Fehler und verlinkt sie mit der
 - **Edge Functions:** —
 - **Datenbankfunktionen:** —
 - **Tabellen:** `automation_rules`
-- **Abhängigkeiten:** —
+- **Abhängigkeiten:** `automation.rules`, `automation.conditions`
 - **Selbsttests:** —
 - **Unit-Tests:** —
 - **Integrationstests:** —
@@ -184,7 +184,7 @@ Versioniert Regeln automatisch, zeigt Fassungen und erlaubt Import und Export.
 - **Edge Functions:** —
 - **Datenbankfunktionen:** `auto_version_automation_rule`
 - **Tabellen:** `automation_rule_versions`, `automation_rules`
-- **Abhängigkeiten:** —
+- **Abhängigkeiten:** `automation.rules`
 - **Selbsttests:** —
 - **Unit-Tests:** —
 - **Integrationstests:** —
@@ -220,7 +220,7 @@ Protokolliert Läufe und Schritte, zeigt Fehler und erlaubt die Nachverfolgung.
 - **Edge Functions:** —
 - **Datenbankfunktionen:** —
 - **Tabellen:** `automation_rule_runs`, `automation_rule_run_steps`
-- **Abhängigkeiten:** —
+- **Abhängigkeiten:** `automation.rules`
 - **Selbsttests:** —
 - **Unit-Tests:** —
 - **Integrationstests:** —
@@ -255,7 +255,7 @@ Synchronisiert Jahresroutinen transaktional mit Jahresaufgaben und sperrt den Ja
 - **Edge Functions:** `execute-annual-tasks`
 - **Datenbankfunktionen:** `execute_annual_automation_routine`, `sync_annual_automation_rule`, `guard_linked_annual_routine`, `automation_private.spawn_annual_task_to_stafette`
 - **Tabellen:** `automation_rules`, `annual_tasks`, `annual_task_completions`
-- **Abhängigkeiten:** —
+- **Abhängigkeiten:** `tasks.annual`
 - **Selbsttests:** `annual-task-stafette`
 - **Unit-Tests:** `src/features/automation/annualRoutines.test.ts`, `src/features/automation/annualRoutinePresentation.test.ts`
 - **Integrationstests:** —
@@ -291,7 +291,7 @@ Stellt editierbare Standardpakete bereit und erzeugt Haupt- und Unteraufgaben at
 - **Edge Functions:** —
 - **Datenbankfunktionen:** `execute_annual_automation_routine`, `office_routine_steps`, `office_routine_step_kinds`, `office_routine_step_settings_v2`, `office_routine_deadline`, `office_routine_step_settings`, `validate_office_routine_package`
 - **Tabellen:** `automation_rules`, `annual_tasks`
-- **Abhängigkeiten:** —
+- **Abhängigkeiten:** `automation.annual-routines`, `automation.routine-packages`, `tasks.annual`
 - **Selbsttests:** —
 - **Unit-Tests:** `src/features/automation/officeRoutineTemplates.test.ts`
 - **Integrationstests:** —
@@ -327,7 +327,7 @@ Snapshotet Schritte, führt sie unter Sperre und Savepoints aus und lässt nur d
 - **Edge Functions:** —
 - **Datenbankfunktionen:** `get_routine_packages`, `refresh_routine_package`, `automation_private.advance_routine_package`, `reassign_routine_step`, `update_waiting_routine_steps`, `guard_open_routine_package`, `automation_private.apply_routine_deputy`, `automation_private.prepare_routine_step`, `automation_private.routine_due_day`, `automation_private.routine_effective_deputy`, `automation_private.routine_graph_visit`, `automation_private.routine_vote`, `automation_private.track_routine_completion`
 - **Tabellen:** `routine_package_runs`, `routine_package_steps`, `tasks`, `case_items`
-- **Abhängigkeiten:** —
+- **Abhängigkeiten:** `tasks.create`
 - **Selbsttests:** —
 - **Unit-Tests:** —
 - **Integrationstests:** —
@@ -363,7 +363,7 @@ Erzeugt aus Aufgabenpaketen mehrere Aufgaben und führt manuelle und ausgelöste
 - **Edge Functions:** —
 - **Datenbankfunktionen:** `execute_task_package`
 - **Tabellen:** `automation_rules`, `tasks`
-- **Abhängigkeiten:** —
+- **Abhängigkeiten:** `tasks.create`
 - **Selbsttests:** —
 - **Unit-Tests:** —
 - **Integrationstests:** —
@@ -398,7 +398,7 @@ Führt fällige Regeln, Workflows und geplante E-Mails über Cron- und Dispatche
 - **Edge Functions:** `run-scheduled-automation-rules`, `workflow-dispatcher`, `run-workflow-cron`, `process-scheduled-emails`
 - **Datenbankfunktionen:** `dispatch_scheduled_emails_if_due`, `dispatch_workflow_trigger`
 - **Tabellen:** `automation_rules`, `automation_rule_runs`, `workflow_runs`, `scheduled_emails`
-- **Abhängigkeiten:** —
+- **Abhängigkeiten:** `automation.rules`, `integration.email`
 - **Selbsttests:** —
 - **Unit-Tests:** —
 - **Integrationstests:** —
@@ -435,7 +435,7 @@ Nimmt externe Webhook-Aufrufe je Regel mit Secret-Prüfung und Ratenbegrenzung e
 - **Edge Functions:** `automation-webhook`
 - **Datenbankfunktionen:** —
 - **Tabellen:** `automation_rules`, `automation_rate_limits`
-- **Abhängigkeiten:** —
+- **Abhängigkeiten:** `automation.rules`
 - **Selbsttests:** —
 - **Unit-Tests:** —
 - **Integrationstests:** —
@@ -542,7 +542,7 @@ Stellt vorgefertigte Regelvorlagen zur Auswahl und Übernahme bereit.
 - **Edge Functions:** —
 - **Datenbankfunktionen:** —
 - **Tabellen:** `automation_rules`
-- **Abhängigkeiten:** —
+- **Abhängigkeiten:** `automation.rules`
 - **Selbsttests:** —
 - **Unit-Tests:** —
 - **Integrationstests:** —

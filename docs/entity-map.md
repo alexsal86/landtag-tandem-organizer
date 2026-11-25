@@ -2,13 +2,13 @@
 
 _Auto-generiert mit `npm run update:feature-catalog` aus den Fremdschlüsseln in `src/integrations/supabase/types.ts`. Nicht von Hand bearbeiten._
 
-344 Tabellen, 462 Fremdschlüsselverweise. Die Karte zeigt, welche Tabelle auf welche zeigt; fachliche Bedeutung steht im [Funktionskatalog](./features/README.md).
+347 Tabellen, 466 Fremdschlüsselverweise. Die Karte zeigt, welche Tabelle auf welche zeigt; fachliche Bedeutung steht im [Funktionskatalog](./features/README.md).
 
 ## Zentrale Tabellen
 
 Tabellen mit mindestens drei eingehenden Verweisen.
 
-### `tenants` — 137 eingehende Verweise
+### `tenants` — 138 eingehende Verweise
 
 | Von | Spalte |
 |---|---|
@@ -104,6 +104,7 @@ Tabellen mit mindestens drei eingehenden Verweisen.
 | `public_holidays` | `tenant_id` |
 | `quick_note_global_shares` | `tenant_id` |
 | `quick_note_shares` | `tenant_id` |
+| `quick_note_topic_mention_deliveries` | `tenant_id` |
 | `quick_note_versions` | `tenant_id` |
 | `quick_note_write_receipts` | `tenant_id` |
 | `quick_notes` | `tenant_id` |
@@ -279,7 +280,7 @@ Tabellen mit mindestens drei eingehenden Verweisen.
 | `task_decisions` | `meeting_id` |
 | `tasks` | `meeting_id` |
 
-### `topics` — 11 eingehende Verweise
+### `topics` — 12 eingehende Verweise
 
 | Von | Spalte |
 |---|---|
@@ -291,6 +292,7 @@ Tabellen mit mindestens drei eingehenden Verweisen.
 | `employee_responsibilities` | `tenant_id`, `topic_id` |
 | `knowledge_document_topics` | `topic_id` |
 | `map_flag_topics` | `topic_id` |
+| `quick_note_topic_mention_deliveries` | `topic_id` |
 | `task_decision_topics` | `topic_id` |
 | `task_topics` | `topic_id` |
 | `topic_catalog_links` | `tenant_id`, `topic_id` |
@@ -491,6 +493,15 @@ Tabellen mit mindestens drei eingehenden Verweisen.
 | `knowledge_document_topics` | `document_id` |
 | `knowledge_document_versions` | `document_id` |
 
+### `quick_notes` — 4 eingehende Verweise
+
+| Von | Spalte |
+|---|---|
+| `quick_note_shares` | `note_id` |
+| `quick_note_topic_mention_deliveries` | `note_id` |
+| `quick_note_versions` | `note_id` |
+| `quick_note_write_receipts` | `note_id` |
+
 ### `social_content_items` — 4 eingehende Verweise
 
 | Von | Spalte |
@@ -531,14 +542,6 @@ Tabellen mit mindestens drei eingehenden Verweisen.
 | `protocol_agenda_items` | `protocol_id` |
 | `protocol_sessions` | `protocol_id` |
 | `protocol_speeches` | `protocol_id` |
-
-### `quick_notes` — 3 eingehende Verweise
-
-| Von | Spalte |
-|---|---|
-| `quick_note_shares` | `note_id` |
-| `quick_note_versions` | `note_id` |
-| `quick_note_write_receipts` | `note_id` |
 
 ### `sender_information` — 3 eingehende Verweise
 
@@ -881,6 +884,7 @@ Tabellen mit mindestens drei eingehenden Verweisen.
 | `notification_types` | `tenant_id` | `tenants` |
 | `notifications` | `notification_type_id` | `notification_types` |
 | `notifications` | `tenant_id` | `tenants` |
+| `office_debrief_state` | `feedback_id` | `appointment_feedback` |
 | `planning_item_documents` | `tenant_id` | `tenants` |
 | `planning_templates` | `tenant_id` | `tenants` |
 | `poll_notifications` | `poll_id` | `appointment_polls` |
@@ -901,6 +905,9 @@ Tabellen mit mindestens drei eingehenden Verweisen.
 | `quick_note_global_shares` | `tenant_id` | `tenants` |
 | `quick_note_shares` | `note_id` | `quick_notes` |
 | `quick_note_shares` | `tenant_id` | `tenants` |
+| `quick_note_topic_mention_deliveries` | `note_id` | `quick_notes` |
+| `quick_note_topic_mention_deliveries` | `tenant_id` | `tenants` |
+| `quick_note_topic_mention_deliveries` | `topic_id` | `topics` |
 | `quick_note_versions` | `note_id` | `quick_notes` |
 | `quick_note_versions` | `tenant_id` | `tenants` |
 | `quick_note_write_receipts` | `note_id` | `quick_notes` |

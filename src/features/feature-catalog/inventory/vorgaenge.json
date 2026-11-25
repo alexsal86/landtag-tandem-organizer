@@ -40,7 +40,8 @@
       "tables": ["case_items", "case_item_timeline"],
       "roles": ["abgeordneter", "bueroleitung", "mitarbeiter"],
       "unitTests": ["src/features/cases/items/ball.test.ts"],
-      "docs": ["docs/case-items-intake-validation.md"]
+      "docs": ["docs/case-items-intake-validation.md"],
+      "dependsOn": ["cases.create"]
     },
     {
       "id": "cases.handover",
@@ -59,7 +60,8 @@
       "roles": ["abgeordneter", "bueroleitung", "mitarbeiter"],
       "scenarios": ["case-item-lifecycle"],
       "unitTests": ["src/features/cases/items/timeline.test.ts"],
-      "docs": ["docs/my-work-architecture.md"]
+      "docs": ["docs/my-work-architecture.md"],
+      "dependsOn": ["cases.triage", "responsibilities.suggest"]
     },
     {
       "id": "cases.steps",
@@ -77,7 +79,7 @@
       "tables": ["case_items", "case_file_tasks", "tasks", "case_item_timeline"],
       "roles": ["abgeordneter", "bueroleitung", "mitarbeiter", "system"],
       "unitTests": ["src/features/cases/items/workflow.test.ts"],
-      "dependsOn": ["tasks.link-case"]
+      "dependsOn": ["tasks.link-case", "cases.create", "tasks.create"]
     },
     {
       "id": "cases.interactions",
@@ -94,7 +96,8 @@
       "rpcs": ["require_resolution_interaction_on_case_close", "user_can_access_case_item_interaction"],
       "tables": ["case_item_interactions", "case_items"],
       "roles": ["abgeordneter", "bueroleitung", "mitarbeiter"],
-      "docs": ["docs/case-items-intake-validation.md"]
+      "docs": ["docs/case-items-intake-validation.md"],
+      "dependsOn": ["cases.create", "contacts.create"]
     },
     {
       "id": "cases.timeline",
@@ -111,7 +114,8 @@
       "rpcs": ["audit_case_item_lifecycle_changes"],
       "tables": ["case_item_timeline", "audit_log_entries"],
       "roles": ["abgeordneter", "bueroleitung", "mitarbeiter"],
-      "unitTests": ["src/features/cases/items/timeline.test.ts"]
+      "unitTests": ["src/features/cases/items/timeline.test.ts"],
+      "dependsOn": ["cases.create"]
     },
     {
       "id": "cases.link-appointment",
@@ -127,7 +131,8 @@
       "services": ["src/features/cases/items/appointmentLink.ts"],
       "tables": ["case_file_appointments", "appointments", "case_items"],
       "roles": ["abgeordneter", "bueroleitung", "mitarbeiter"],
-      "unitTests": ["src/features/cases/items/appointmentLink.test.ts"]
+      "unitTests": ["src/features/cases/items/appointmentLink.test.ts"],
+      "dependsOn": ["cases.create", "calendar.create-appointment"]
     },
     {
       "id": "cases.link-letter",
@@ -144,7 +149,7 @@
       "tables": ["case_file_letters", "letters", "case_items"],
       "roles": ["abgeordneter", "bueroleitung", "mitarbeiter"],
       "unitTests": ["src/features/cases/items/caseLetter.test.ts"],
-      "dependsOn": ["letters.create"]
+      "dependsOn": ["letters.create", "cases.create"]
     },
     {
       "id": "cases.link-decision",
@@ -160,7 +165,8 @@
       "rpcs": ["validate_decision_case_file"],
       "tables": ["task_decisions", "case_file_tasks", "case_items"],
       "roles": ["abgeordneter", "bueroleitung", "mitarbeiter"],
-      "reviewPoints": ["Die Verknüpfung wird nur über eine Validierungsfunktion und nicht über einen eigenen UI-Nachweis belegt."]
+      "reviewPoints": ["Die Verknüpfung wird nur über eine Validierungsfunktion und nicht über einen eigenen UI-Nachweis belegt."],
+      "dependsOn": ["cases.create", "decisions.create"]
     },
     {
       "id": "cases.escalation",
@@ -176,7 +182,8 @@
       "edgeFunctions": ["suggest-case-escalations"],
       "tables": ["case_item_escalation_suggestions", "case_items"],
       "roles": ["system", "bueroleitung"],
-      "reviewPoints": ["Der Vorschlagsalgorithmus ist nicht durch einen Test abgedeckt."]
+      "reviewPoints": ["Der Vorschlagsalgorithmus ist nicht durch einen Test abgedeckt."],
+      "dependsOn": ["cases.triage"]
     },
     {
       "id": "cases.close-archive",
@@ -193,7 +200,8 @@
       "rpcs": ["complete_case_step_on_archive", "require_resolution_interaction_on_case_close"],
       "tables": ["case_items", "case_item_timeline", "tasks"],
       "roles": ["abgeordneter", "bueroleitung", "mitarbeiter"],
-      "scenarios": ["case-item-lifecycle"]
+      "scenarios": ["case-item-lifecycle"],
+      "dependsOn": ["cases.steps", "cases.interactions"]
     },
     {
       "id": "cases.legacy-routes",
@@ -247,7 +255,8 @@
       "components": ["src/features/cases/files/components/CaseFileCurrentStatus.tsx", "src/features/cases/files/components/CaseFileNextSteps.tsx"],
       "hooks": ["src/hooks/useCaseFileProcessingStatuses.tsx"],
       "tables": ["case_files", "case_file_processing_statuses", "case_file_status_history"],
-      "roles": ["abgeordneter", "bueroleitung", "mitarbeiter"]
+      "roles": ["abgeordneter", "bueroleitung", "mitarbeiter"],
+      "dependsOn": ["casefiles.manage"]
     },
     {
       "id": "casefiles.links",
@@ -262,7 +271,8 @@
       "evidence": ["src/features/cases/files/components/CaseFileDocumentsCard.tsx", "src/features/cases/files/components/CaseFileUnifiedTimeline.tsx"],
       "components": ["src/features/cases/files/components/CaseFileDocumentsCard.tsx", "src/features/cases/files/components/CaseFileUnifiedTimeline.tsx"],
       "tables": ["case_file_documents", "case_file_contacts", "case_file_topics", "case_file_notes"],
-      "roles": ["abgeordneter", "bueroleitung", "mitarbeiter"]
+      "roles": ["abgeordneter", "bueroleitung", "mitarbeiter"],
+      "dependsOn": ["casefiles.manage", "documents.upload-version", "contacts.create"]
     },
     {
       "id": "casefiles.notes",
@@ -277,7 +287,8 @@
       "evidence": ["src/features/cases/files/components/CaseFileRightSidebar.tsx"],
       "components": ["src/features/cases/files/components/CaseFileRightSidebar.tsx"],
       "tables": ["case_file_notes", "case_files"],
-      "roles": ["abgeordneter", "bueroleitung", "mitarbeiter"]
+      "roles": ["abgeordneter", "bueroleitung", "mitarbeiter"],
+      "dependsOn": ["casefiles.manage"]
     }
   ]
 }

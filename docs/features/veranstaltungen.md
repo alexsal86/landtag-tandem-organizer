@@ -102,7 +102,7 @@ Führt Checklistenpunkte und Aktionen je Veranstaltung und protokolliert deren A
 - **Edge Functions:** —
 - **Datenbankfunktionen:** `create_default_checklist_items`
 - **Tabellen:** `event_planning_checklist_items`, `event_planning_item_actions`
-- **Abhängigkeiten:** —
+- **Abhängigkeiten:** `events.plan`, `tasks.create`
 - **Selbsttests:** `event-planning-lifecycle`
 - **Unit-Tests:** —
 - **Integrationstests:** —
@@ -137,7 +137,7 @@ Verwaltet Redner, Dokumente und Gästelisten einer Veranstaltung.
 - **Edge Functions:** —
 - **Datenbankfunktionen:** —
 - **Tabellen:** `event_planning_speakers`, `event_planning_documents`
-- **Abhängigkeiten:** —
+- **Abhängigkeiten:** `events.plan`, `documents.upload-version`
 - **Selbsttests:** —
 - **Unit-Tests:** —
 - **Integrationstests:** —
@@ -172,7 +172,7 @@ Versendet Einladungen auf Basis von Vorlagen und protokolliert den Versand.
 - **Edge Functions:** `send-event-invitation`
 - **Datenbankfunktionen:** —
 - **Tabellen:** `event_email_templates`, `event_rsvps`, `email_logs`
-- **Abhängigkeiten:** —
+- **Abhängigkeiten:** `events.plan`, `integration.email`
 - **Selbsttests:** —
 - **Unit-Tests:** —
 - **Integrationstests:** —
@@ -208,7 +208,7 @@ Lädt Gastdaten ausschließlich über einen starken public_code und nimmt Zu-/Ab
 - **Edge Functions:** `get-public-event-invitation`, `respond-public-event-invitation`
 - **Datenbankfunktionen:** —
 - **Tabellen:** `event_rsvps`, `event_rsvp_public_links`, `event_plannings`
-- **Abhängigkeiten:** —
+- **Abhängigkeiten:** `events.plan`
 - **Selbsttests:** —
 - **Unit-Tests:** —
 - **Integrationstests:** —
@@ -245,7 +245,7 @@ Leitet alte Einladungs- und Gastlinks auf die aktuellen Pfade um, solange Altlin
 - **Edge Functions:** —
 - **Datenbankfunktionen:** —
 - **Tabellen:** `event_rsvps`
-- **Abhängigkeiten:** —
+- **Abhängigkeiten:** `events.plan`
 - **Selbsttests:** —
 - **Unit-Tests:** —
 - **Integrationstests:** —
@@ -281,7 +281,7 @@ Erlaubt angemeldeten und öffentlichen Teilnehmenden die Abgabe und Änderung vo
 - **Edge Functions:** `get-poll-by-token`, `submit-poll-response-by-token`
 - **Datenbankfunktionen:** `generate_participant_token`, `generate_guest_invitation_token`, `link_poll_participant_user`
 - **Tabellen:** `poll_participants`, `poll_responses`, `poll_versions`, `appointment_polls`
-- **Abhängigkeiten:** —
+- **Abhängigkeiten:** `polls.manage`
 - **Selbsttests:** `poll-lifecycle`
 - **Unit-Tests:** —
 - **Integrationstests:** —
@@ -354,7 +354,7 @@ Ermittelt freie Zeitfenster und Verfügbarkeiten Beteiligter und schlägt Termin
 - **Edge Functions:** —
 - **Datenbankfunktionen:** `get_poll_availability`
 - **Tabellen:** `poll_time_slots`, `poll_responses`, `appointment_polls`
-- **Abhängigkeiten:** —
+- **Abhängigkeiten:** `polls.manage`
 - **Selbsttests:** —
 - **Unit-Tests:** `supabase/functions/_shared/pollSlotSuggestion.test.ts`
 - **Integrationstests:** —

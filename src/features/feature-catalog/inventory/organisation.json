@@ -82,7 +82,8 @@
       ],
       "scenarios": [
         "meeting-lifecycle"
-      ]
+      ],
+      "dependsOn": ["meetings.jour-fixe"]
     },
     {
       "id": "meetings.protocol",
@@ -118,7 +119,8 @@
       ],
       "scenarios": [
         "meeting-lifecycle"
-      ]
+      ],
+      "dependsOn": ["meetings.agenda", "tasks.create"]
     },
     {
       "id": "meetings.decisions",
@@ -157,7 +159,8 @@
       ],
       "scenarios": [
         "meeting-lifecycle"
-      ]
+      ],
+      "dependsOn": ["meetings.agenda", "decisions.create"]
     },
     {
       "id": "meetings.archive",
@@ -190,7 +193,8 @@
       ],
       "scenarios": [
         "meeting-lifecycle"
-      ]
+      ],
+      "dependsOn": ["meetings.protocol", "tasks.create"]
     },
     {
       "id": "meetings.templates",
@@ -218,7 +222,8 @@
       "roles": [
         "admin",
         "bueroleitung"
-      ]
+      ],
+      "dependsOn": ["meetings.agenda"]
     },
     {
       "id": "meetings.zombie-points",
@@ -246,7 +251,8 @@
       ],
       "reviewPoints": [
         "Für zombiePoints.ts ist keine Testdatei vorhanden."
-      ]
+      ],
+      "dependsOn": ["meetings.agenda"]
     },
     {
       "id": "dossiers.manage",
@@ -316,7 +322,8 @@
         "abgeordneter",
         "bueroleitung",
         "mitarbeiter"
-      ]
+      ],
+      "dependsOn": ["dossiers.manage"]
     },
     {
       "id": "dossiers.links-stakeholders",
@@ -348,7 +355,8 @@
         "abgeordneter",
         "bueroleitung",
         "mitarbeiter"
-      ]
+      ],
+      "dependsOn": ["dossiers.manage", "contacts.create"]
     },
     {
       "id": "dossiers.talking-points",
@@ -379,7 +387,8 @@
         "abgeordneter",
         "bueroleitung",
         "mitarbeiter"
-      ]
+      ],
+      "dependsOn": ["dossiers.manage"]
     },
     {
       "id": "dossiers.capture-radar",
@@ -409,7 +418,8 @@
         "abgeordneter",
         "bueroleitung",
         "mitarbeiter"
-      ]
+      ],
+      "dependsOn": ["dossiers.manage"]
     },
     {
       "id": "dossiers.sources",
@@ -443,7 +453,8 @@
         "bueroleitung",
         "mitarbeiter",
         "system"
-      ]
+      ],
+      "dependsOn": ["dossiers.manage"]
     },
     {
       "id": "dossiers.search",
@@ -469,7 +480,8 @@
         "abgeordneter",
         "bueroleitung",
         "mitarbeiter"
-      ]
+      ],
+      "dependsOn": ["dossiers.manage"]
     },
     {
       "id": "drucksachen.view",
@@ -574,7 +586,8 @@
       ],
       "docs": [
         "docs/entity-map.md"
-      ]
+      ],
+      "dependsOn": ["topics.manage", "responsibilities.matrix"]
     },
     {
       "id": "facts.manage",

@@ -111,7 +111,7 @@ Legt Personen und Organisationen mit Stammdaten, Kategorien, Tags, Themen und Zu
 - **Edge Functions:** —
 - **Datenbankfunktionen:** `log_contact_edit_activity`, `audit_contact_field_updates`, `handle_contact_birthday_change`, `update_contact_usage`
 - **Tabellen:** `contacts`, `contact_activities`, `audit_log_entries`, `field_permissions`
-- **Abhängigkeiten:** —
+- **Abhängigkeiten:** `contacts.create`
 - **Selbsttests:** `contact-lifecycle`
 - **Unit-Tests:** —
 - **Integrationstests:** —
@@ -147,7 +147,7 @@ Zeigt Stammdaten, Aktivitäten, Dokumente, Finanzierungen, Themen, Vorgänge und
 - **Edge Functions:** —
 - **Datenbankfunktionen:** —
 - **Tabellen:** `contacts`, `contact_activities`, `contact_topics`, `document_contacts`, `fundings`
-- **Abhängigkeiten:** —
+- **Abhängigkeiten:** `contacts.create`
 - **Selbsttests:** —
 - **Unit-Tests:** —
 - **Integrationstests:** —
@@ -183,7 +183,7 @@ Importiert Kontakte aus CSV/VCF/MSG, erkennt Dubletten und ordnet Spalten zu.
 - **Edge Functions:** —
 - **Datenbankfunktionen:** `insert_sample_contacts`
 - **Tabellen:** `contacts`, `contact_activities`
-- **Abhängigkeiten:** —
+- **Abhängigkeiten:** `contacts.create`
 - **Selbsttests:** —
 - **Unit-Tests:** —
 - **Integrationstests:** —
@@ -220,7 +220,7 @@ Findet ähnliche Kontakte über Trigramm-Suche und zeigt Dublettenprüfungen in 
 - **Edge Functions:** —
 - **Datenbankfunktionen:** `find_contact_duplicates_trgm`
 - **Tabellen:** `contacts`
-- **Abhängigkeiten:** —
+- **Abhängigkeiten:** `contacts.create`
 - **Selbsttests:** —
 - **Unit-Tests:** —
 - **Integrationstests:** —
@@ -256,7 +256,7 @@ Führt zwei Kontakte transaktional zusammen, verschiebt alle Verweise und bricht
 - **Edge Functions:** —
 - **Datenbankfunktionen:** `merge_contacts`
 - **Tabellen:** `contacts`, `contact_activities`, `contact_topics`, `document_contacts`, `fundings`
-- **Abhängigkeiten:** —
+- **Abhängigkeiten:** `contacts.create`, `contacts.edit`
 - **Selbsttests:** `contact-lifecycle`
 - **Unit-Tests:** —
 - **Integrationstests:** —
@@ -292,7 +292,7 @@ Erstellt und bearbeitet Verteilerlisten, ordnet Mitglieder zu und wandelt Stakeh
 - **Edge Functions:** —
 - **Datenbankfunktionen:** —
 - **Tabellen:** `distribution_lists`, `distribution_list_members`
-- **Abhängigkeiten:** —
+- **Abhängigkeiten:** `contacts.create`
 - **Selbsttests:** —
 - **Unit-Tests:** —
 - **Integrationstests:** —
@@ -329,7 +329,7 @@ Zeigt Stakeholder auf Karten, verwaltet Flags, Ebenen und Netzwerk-Tags.
 - **Edge Functions:** —
 - **Datenbankfunktionen:** —
 - **Tabellen:** `map_flags`, `map_flag_topics`, `map_flag_types`, `map_layers`, `contacts`
-- **Abhängigkeiten:** —
+- **Abhängigkeiten:** `contacts.create`
 - **Selbsttests:** —
 - **Unit-Tests:** —
 - **Integrationstests:** —
@@ -365,7 +365,7 @@ Vergibt Tags und Themen an Kontakte und synchronisiert sie mit der zentralen Tag
 - **Edge Functions:** —
 - **Datenbankfunktionen:** `sync_contact_tags_to_tags_table`, `sync_existing_contact_tags`, `get_contact_tags`, `sync_tags_to_topics`, `inherit_organization_tags`
 - **Tabellen:** `tags`, `contact_topics`, `topics`
-- **Abhängigkeiten:** —
+- **Abhängigkeiten:** `contacts.create`, `topics.manage`
 - **Selbsttests:** —
 - **Unit-Tests:** —
 - **Integrationstests:** —
@@ -401,7 +401,7 @@ Zeigt Datenschutzhinweise, berechnet Aufbewahrungsfristen und maskiert geschütz
 - **Edge Functions:** —
 - **Datenbankfunktionen:** `contacts_default_retention`, `read_secured_contacts`, `mask_secured_record`, `mutate_secured_records`, `contacts_secured`
 - **Tabellen:** `contacts`
-- **Abhängigkeiten:** —
+- **Abhängigkeiten:** `contacts.create`
 - **Selbsttests:** —
 - **Unit-Tests:** —
 - **Integrationstests:** —
@@ -437,7 +437,7 @@ Aktualisiert Felder für viele Kontakte gleichzeitig, protokolliert die Aktion u
 - **Edge Functions:** —
 - **Datenbankfunktionen:** `bulk_update_contact_fields`, `undo_contact_bulk_action`, `cleanup_bulk_action_audit`
 - **Tabellen:** `contacts`, `bulk_action_audit`
-- **Abhängigkeiten:** —
+- **Abhängigkeiten:** `contacts.create`
 - **Selbsttests:** —
 - **Unit-Tests:** —
 - **Integrationstests:** —
@@ -472,7 +472,7 @@ Protokolliert Anrufe, E-Mails, Treffen und Notizen am Kontakt und zeigt sie im V
 - **Edge Functions:** —
 - **Datenbankfunktionen:** `log_contact_activity`, `log_call_log_activity`
 - **Tabellen:** `contact_activities`, `call_logs`
-- **Abhängigkeiten:** —
+- **Abhängigkeiten:** `contacts.create`
 - **Selbsttests:** —
 - **Unit-Tests:** —
 - **Integrationstests:** —
@@ -544,7 +544,7 @@ Erfasst Finanzierungen, beteiligte Kontakte und Budgetbezüge.
 - **Edge Functions:** —
 - **Datenbankfunktionen:** —
 - **Tabellen:** `fundings`, `funding_participants`, `expense_budgets`
-- **Abhängigkeiten:** —
+- **Abhängigkeiten:** `contacts.create`
 - **Selbsttests:** —
 - **Unit-Tests:** —
 - **Integrationstests:** —

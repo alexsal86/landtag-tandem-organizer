@@ -146,7 +146,7 @@ Ordnet Dokumente Kontakten zu und zeigt sie im Kontaktprofil.
 - **Edge Functions:** —
 - **Datenbankfunktionen:** —
 - **Tabellen:** `document_contacts`, `documents`, `contacts`
-- **Abhängigkeiten:** —
+- **Abhängigkeiten:** `contacts.create`
 - **Selbsttests:** —
 - **Unit-Tests:** —
 - **Integrationstests:** —
@@ -182,7 +182,7 @@ Versendet Dokumente als E-Mail-Anhang über eine Edge Function und protokolliert
 - **Edge Functions:** `send-document-email`
 - **Datenbankfunktionen:** —
 - **Tabellen:** `email_logs`, `documents`
-- **Abhängigkeiten:** —
+- **Abhängigkeiten:** `documents.upload-version`, `integration.email`
 - **Selbsttests:** —
 - **Unit-Tests:** —
 - **Integrationstests:** —
@@ -217,7 +217,7 @@ Setzt Markierungen, Hervorhebungen und Kommentare auf PDF- und Bildseiten in rel
 - **Edge Functions:** —
 - **Datenbankfunktionen:** `document_annotations_validate`, `document_annotations_guard_edit`, `document_annotations_permissions_selftest`, `document_annotation_assignment_guard`, `document_annotation_can_manage`, `document_annotation_mention_ids`, `document_annotation_mention_members`, `document_annotation_mentions`, `document_annotation_reply_guard`
 - **Tabellen:** `document_annotations`, `documents`
-- **Abhängigkeiten:** —
+- **Abhängigkeiten:** `documents.upload-version`
 - **Selbsttests:** `document-annotation`
 - **Unit-Tests:** `src/features/annotations/annotationModel.test.ts`
 - **Integrationstests:** —
@@ -254,7 +254,7 @@ Führt einen ausschließlich per Trigger geschriebenen, für Clients lesenden Ve
 - **Edge Functions:** —
 - **Datenbankfunktionen:** `record_document_annotation_event`
 - **Tabellen:** `document_annotation_events`, `document_annotations`
-- **Abhängigkeiten:** —
+- **Abhängigkeiten:** `annotations.create`
 - **Selbsttests:** —
 - **Unit-Tests:** `src/features/annotations/annotationModel.test.ts`
 - **Integrationstests:** —
@@ -290,7 +290,7 @@ Erzeugt atomar eine Stafette-Aufgabe aus einer Annotation und hält die Verknüp
 - **Edge Functions:** —
 - **Datenbankfunktionen:** `create_document_annotation_task`, `document_annotation_task_selftest`
 - **Tabellen:** `document_annotation_tasks`, `document_annotations`, `tasks`
-- **Abhängigkeiten:** `tasks.create`
+- **Abhängigkeiten:** `tasks.create`, `annotations.create`
 - **Selbsttests:** `document-annotation`
 - **Unit-Tests:** —
 - **Integrationstests:** —
@@ -325,7 +325,7 @@ Erkennt Text lokal über selbst gehostete Tesseract-Assets und erlaubt das Anleg
 - **Edge Functions:** —
 - **Datenbankfunktionen:** —
 - **Tabellen:** `documents`, `document_annotations`
-- **Abhängigkeiten:** —
+- **Abhängigkeiten:** `documents.upload-version`
 - **Selbsttests:** —
 - **Unit-Tests:** —
 - **Integrationstests:** —
@@ -399,7 +399,7 @@ Schlägt bei geänderter Dateiversion einen eindeutigen Textanker vor und verlan
 - **Edge Functions:** —
 - **Datenbankfunktionen:** —
 - **Tabellen:** `document_annotations`, `documents`
-- **Abhängigkeiten:** —
+- **Abhängigkeiten:** `annotations.create`, `documents.upload-version`
 - **Selbsttests:** —
 - **Unit-Tests:** —
 - **Integrationstests:** —
@@ -472,7 +472,7 @@ Führt Briefe durch Entwurf, Prüfung, Freigabe und Versand, protokolliert Statu
 - **Edge Functions:** `archive-letter`
 - **Datenbankfunktionen:** `handle_letter_status_change`, `log_letter_workflow_change`
 - **Tabellen:** `letters`, `letter_workflow_history`, `letter_archive_settings`, `documents`
-- **Abhängigkeiten:** —
+- **Abhängigkeiten:** `letters.create`
 - **Selbsttests:** `letter-lifecycle`
 - **Unit-Tests:** `src/services/letterWorkflow.test.ts`
 - **Integrationstests:** `src/components/letters/hooks/useLetterOperations.integration.test.tsx`
@@ -583,7 +583,7 @@ Erzeugt PDF- und DOCX-Ausgaben aus dem Editorinhalt inklusive Layout und Anlagen
 - **Edge Functions:** —
 - **Datenbankfunktionen:** —
 - **Tabellen:** `letters`
-- **Abhängigkeiten:** —
+- **Abhängigkeiten:** `letters.create`
 - **Selbsttests:** —
 - **Unit-Tests:** —
 - **Integrationstests:** —
@@ -619,7 +619,7 @@ Erlaubt Kommentare, Mitwirkende und Zugriffsschutz für gemeinsam bearbeitete Br
 - **Edge Functions:** —
 - **Datenbankfunktionen:** `can_access_letter_for_collaboration`, `letters_secured`
 - **Tabellen:** `letter_comments`, `letter_collaborators`, `letters`
-- **Abhängigkeiten:** —
+- **Abhängigkeiten:** `letters.create`
 - **Selbsttests:** —
 - **Unit-Tests:** —
 - **Integrationstests:** —
@@ -654,7 +654,7 @@ Fügt Anlagen hinzu, entfernt sie und hält sie beim Archivieren am Dokument.
 - **Edge Functions:** —
 - **Datenbankfunktionen:** —
 - **Tabellen:** `letter_attachments`, `letters`
-- **Abhängigkeiten:** —
+- **Abhängigkeiten:** `letters.create`
 - **Selbsttests:** —
 - **Unit-Tests:** —
 - **Integrationstests:** —

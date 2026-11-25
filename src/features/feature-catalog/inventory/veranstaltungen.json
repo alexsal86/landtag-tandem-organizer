@@ -81,7 +81,8 @@
       ],
       "rpcs": [
         "create_default_checklist_items"
-      ]
+      ],
+      "dependsOn": ["events.plan", "tasks.create"]
     },
     {
       "id": "events.speakers-documents",
@@ -104,7 +105,8 @@
         "abgeordneter",
         "bueroleitung",
         "mitarbeiter"
-      ]
+      ],
+      "dependsOn": ["events.plan", "documents.upload-version"]
     },
     {
       "id": "events.invitations",
@@ -138,7 +140,8 @@
       ],
       "docs": [
         "docs/public-event-invitations.md"
-      ]
+      ],
+      "dependsOn": ["events.plan", "integration.email"]
     },
     {
       "id": "events.rsvp-public",
@@ -181,7 +184,8 @@
       ],
       "reviewPoints": [
         "Ein vollständiger öffentlicher RSVP-Durchlauf gegen ein echtes Backend ist nicht in dieser Umgebung ausgeführt worden."
-      ]
+      ],
+      "dependsOn": ["events.plan"]
     },
     {
       "id": "events.legacy-rsvp",
@@ -216,7 +220,8 @@
       ],
       "reviewPoints": [
         "Offen: Prüfen, ob noch Altlinks aktiv sind, bevor die Route entfernt wird."
-      ]
+      ],
+      "dependsOn": ["events.plan"]
     },
     {
       "id": "polls.respond",
@@ -262,7 +267,8 @@
       ],
       "scenarios": [
         "poll-lifecycle"
-      ]
+      ],
+      "dependsOn": ["polls.manage"]
     },
     {
       "id": "polls.manage",
@@ -347,7 +353,8 @@
       ],
       "unitTests": [
         "supabase/functions/_shared/pollSlotSuggestion.test.ts"
-      ]
+      ],
+      "dependsOn": ["polls.manage"]
     }
   ]
 }
