@@ -4,13 +4,21 @@ import { join } from 'node:path';
 import test from 'node:test';
 import {
   ARTIFACT_FILE,
+  analyzeMachine,
+  blockedStates,
   buildStateArtifact,
   collectChecks,
+  collectClientWrites,
   collectEnumDefinitions,
   collectGuards,
+  collectInitialStates,
+  collectParametricWrites,
+  collectTsTransitions,
   collectWrites,
+  guardChecks,
   parseGeneratedTypes,
   renderArtifact,
+  splitTopLevel,
   validateArtifact,
 } from '../build-state-artifact.mjs';
 
@@ -114,6 +122,77 @@ test('Schreibvorgänge belegen Ausgangs- und Zielzustand nur bei explizitem WHER
   ]);
 });
 
+test('Tabellen-Alias zwischen Tabelle und SET wird gelesen', () => {
+  const writes = collectWrites(
+    migrations([
+      ['a.sql', `update public.meeting_participants participant set status='declined' where participant.status='pending';`],
+    ]),
+  );
+  assert.deepEqual(writes, [
+    {
+      table: 'meeting_participants',
+      column: 'status',
+      to: 'declined',
+      from: ['pending'],
+      source: 'supabase/migrations/a.sql',
+    },
+  ]);
+});
+
+test('Startzustände kommen aus Spalten-Defaults und literalen INSERTs', () => {
+  const initial = collectInitialStates(
+    migrations([
+      [
+        'a.sql',
+        `create table public.tasks (id uuid, status text not null default 'todo', title text);
+         insert into public.tasks (id, status, title) values (gen_random_uuid(), 'blocked', 'x'), (gen_random_uuid(), 'todo', 'y');
+         insert into public.other (id, status) select id, 'ignored' from public.tasks;`,
+      ],
+    ]),
+  );
+  assert.deepEqual(
+    initial.map((entry) => `${entry.table}.${entry.column}=${entry.value}:${entry.via}`),
+    ['tasks.status=todo:default', 'tasks.status=blocked:insert', 'tasks.status=todo:insert'],
+  );
+});
+
+test('parametrische Schreibvorgänge übernehmen nur belegte Parameterwerte', () => {
+  const writes = collectParametricWrites(
+    migrations([
+      [
+        'a.sql',
+        `create or replace function public.decide_leave(_id uuid, _decision text) returns void language plpgsql as $$
+         begin
+           if _decision not in ('approved','rejected') then
+             raise exception 'invalid decision';
+           end if;
+           update public.leave_requests set status = _decision where id = _id;
+         end $$;`,
+      ],
+    ]),
+  );
+  assert.equal(writes.length, 1);
+  assert.equal(writes[0].table, 'leave_requests');
+  assert.equal(writes[0].param, '_decision');
+  assert.deepEqual(writes[0].checks, [{ operator: 'not in', values: ['approved', 'rejected'] }]);
+});
+
+test('Guard-Vergleiche behalten Seite und Polarität', () => {
+  const checks = guardChecks(
+    `if old.status in ('completed','cancelled') and new.status <> 'completed' then raise exception 'nein'; end if;`,
+    'status',
+  );
+  assert.deepEqual(checks, [
+    { side: 'OLD', operator: 'in', negated: false, values: ['cancelled', 'completed'] },
+    { side: 'NEW', operator: '<>', negated: true, values: ['completed'] },
+  ]);
+
+  const blocked = blockedStates({ raises: true, checks }, ['completed', 'cancelled', 'todo']);
+  assert.deepEqual(blocked.blockedTo, ['cancelled', 'todo']);
+  assert.deepEqual(blocked.blockedFrom, ['cancelled', 'completed']);
+  assert.deepEqual(blockedStates({ raises: false, checks }, ['todo']), { blockedTo: [], blockedFrom: [] });
+});
+
 test('nur abbrechende Funktionen sind Guards, andere Trigger werden als beobachtend markiert', () => {
   const guards = collectGuards(
     migrations([
@@ -140,17 +219,19 @@ test('nur abbrechende Funktionen sind Guards, andere Trigger werden als beobacht
   const guard = guards.find((entry) => entry.function === 'guard_tasks');
   const observer = guards.find((entry) => entry.function === 'notify_tasks');
   assert.equal(guard.raises, true);
+  assert.equal(guard.message, 'gesperrt');
   assert.deepEqual(guard.updateOf, ['status']);
   assert.equal(observer.raises, false);
 });
 
-test('baut Maschinen mit Zuständen, Übergängen und Triggern und meldet offene Spalten', () => {
+test('baut Maschinen mit Startzuständen, Übergängen und Guard-Blockaden', () => {
   const artifact = buildStateArtifact({
     typesSource,
     migrations: migrations([
       [
         'a.sql',
-        `create or replace function public.guard_tasks() returns trigger language plpgsql as $$
+        `create table public.tasks (id uuid, status text default 'todo');
+         create or replace function public.guard_tasks() returns trigger language plpgsql as $$
          begin
            if new.status = 'completed' then raise exception 'nein'; end if;
            return new;
@@ -164,12 +245,87 @@ test('baut Maschinen mit Zuständen, Übergängen und Triggern und meldet offene
 
   const tasks = artifact.machines.find((machine) => machine.id === 'tasks.status');
   assert.deepEqual(tasks.states.map((state) => state.value), ['completed', 'in_progress', 'todo']);
+  assert.deepEqual(tasks.initialStates, ['todo']);
   assert.deepEqual(tasks.transitions, [
-    { from: ['todo'], to: 'in_progress', sources: ['supabase/migrations/a.sql'] },
+    { from: null, to: 'todo', kind: 'initial', param: null, sources: ['supabase/migrations/a.sql'], guards: [] },
+    { from: ['todo'], to: 'in_progress', kind: 'write', param: null, sources: ['supabase/migrations/a.sql'], guards: [] },
   ]);
   assert.equal(tasks.guards[0].kind, 'guard');
-  assert.deepEqual(tasks.guards[0].states, ['completed']);
+  assert.deepEqual(tasks.guards[0].blockedTo, ['completed']);
+  assert.deepEqual(tasks.guards[0].allowedTo, ['in_progress', 'todo']);
+  assert.deepEqual(tasks.findings.map((finding) => finding.kind).sort(), [
+    'isoliert',
+    'nur-im-guard',
+    'sackgasse',
+    'unerreichbar',
+  ]);
   assert.deepEqual(artifact.unresolved, []);
+});
+
+test('Befunde benennen unerreichbare Zustände und Sackgassen statt sie zu glätten', () => {
+  const machine = {
+    id: 'tasks.status',
+    states: [
+      { value: 'todo', sources: ['default:a.sql'] },
+      { value: 'done', sources: ['write:a.sql'] },
+      { value: 'verwaist', sources: ['guard:a.sql'] },
+    ],
+    initialStates: ['todo'],
+    transitions: [{ from: ['todo'], to: 'done', kind: 'write', param: null, sources: ['a.sql'], guards: [] }],
+    guards: [],
+    reconciliation: null,
+  };
+  const findings = analyzeMachine(machine);
+  const unreachable = findings.find((finding) => finding.kind === 'unerreichbar');
+  assert.deepEqual(unreachable.states, ['verwaist']);
+  assert.equal(unreachable.severity, 'warn');
+  assert.deepEqual(findings.find((finding) => finding.kind === 'sackgasse').states, ['done']);
+  assert.deepEqual(findings.find((finding) => finding.kind === 'nur-im-guard').states, ['verwaist']);
+});
+
+test('Abgleich meldet TS-Übergänge und Client-Werte, die die Datenbank nicht kennt', () => {
+  const artifact = buildStateArtifact({
+    typesSource,
+    migrations: migrations([['a.sql', `update public.tasks set status='done' where status='todo';`]]),
+    tsSources: [
+      {
+        machine: 'tasks.status',
+        file: 'src/components/tasks/types.ts',
+        label: 'Testregeln',
+        transitions: [
+          { from: 'todo', to: 'done' },
+          { from: 'done', to: 'todo' },
+        ],
+      },
+    ],
+    clientWrites: [{ table: 'tasks', column: 'status', value: 'ghost', source: 'src/example.ts' }],
+  });
+
+  const tasks = artifact.machines.find((machine) => machine.id === 'tasks.status');
+  assert.deepEqual(tasks.reconciliation.onlyInCode, [{ from: 'done', to: 'todo' }]);
+  assert.deepEqual(tasks.reconciliation.onlyInArtifact, []);
+  assert.deepEqual(tasks.reconciliation.clientValues, [{ value: 'ghost', source: 'src/example.ts' }]);
+  assert.deepEqual(tasks.findings.find((finding) => finding.kind === 'nur-im-code').states, ['todo']);
+  assert.deepEqual(tasks.findings.find((finding) => finding.kind === 'client-wert-unbelegt').states, ['ghost']);
+});
+
+test('Client-Schreibvorgänge werden nur als Literale gelesen', () => {
+  const writes = collectClientWrites(root, 'src/features/feature-catalog');
+  assert.ok(Array.isArray(writes));
+  const literal = collectClientWrites(root, 'src/components/letters');
+  assert.ok(literal.every((entry) => typeof entry.value === 'string' && entry.value.length > 0));
+  assert.deepEqual(splitTopLevel(`a, coalesce(b, 'x,y'), 'z'`), ['a', `coalesce(b, 'x,y')`, `'z'`]);
+});
+
+test('TS-Regelmodule werden aus dem Objektliteral gelesen', () => {
+  const sources = collectTsTransitions(root);
+  const tasks = sources.find((source) => source.machine === 'letters.status');
+  assert.ok(tasks, 'letters.status muss registriert sein');
+  assert.deepEqual(tasks.transitions.find((entry) => entry.from === 'draft' && entry.to === 'review'), {
+    from: 'draft',
+    to: 'review',
+  });
+  assert.equal(tasks.transitions.length, 9);
 });
 
 test('die Strukturprüfung meldet fehlende Quellen und falsch markierte Guards', () => {
@@ -179,15 +335,22 @@ test('die Strukturprüfung meldet fehlende Quellen und falsch markierte Guards',
         {
           id: 'tasks.status',
           states: [{ value: 'todo', sources: [] }],
-          transitions: [{ from: null, to: 'todo', sources: ['supabase/migrations/gibt-es-nicht.sql'] }],
+          initialStates: [],
+          transitions: [
+            { from: null, to: 'todo', kind: 'write', param: null, sources: ['supabase/migrations/gibt-es-nicht.sql'], guards: [] },
+          ],
           guards: [
             {
               trigger: 'guard_x',
               kind: 'guard',
               raises: false,
               source: 'supabase/migrations/gibt-es-nicht.sql',
+              blockedTo: [],
+              allowedTo: [],
             },
           ],
+          findings: [],
+          reconciliation: null,
         },
       ],
     },
@@ -195,6 +358,26 @@ test('die Strukturprüfung meldet fehlende Quellen und falsch markierte Guards',
   );
   assert.ok(errors.some((error) => error.includes('Quelle fehlt')));
   assert.ok(errors.some((error) => error.includes('bricht aber nicht ab')));
+});
+
+test('Startkanten dürfen keinen Ausgangszustand tragen', () => {
+  const errors = validateArtifact(
+    {
+      machines: [
+        {
+          id: 'tasks.status',
+          states: [{ value: 'todo', sources: [] }],
+          initialStates: ['todo'],
+          transitions: [{ from: ['todo'], to: 'todo', kind: 'initial', param: null, sources: [], guards: [] }],
+          guards: [],
+          findings: [],
+          reconciliation: null,
+        },
+      ],
+    },
+    root,
+  );
+  assert.ok(errors.some((error) => error.includes('darf keinen Ausgangszustand haben')));
 });
 
 test('meldet Schreibweisen-Kollisionen statt sie zu normalisieren', () => {

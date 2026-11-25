@@ -115,7 +115,8 @@ describe("Funktionskatalog: Zugriff", () => {
     fireEvent.click(screen.getByRole("button", { name: "Zustände" }));
 
     expect(await screen.findByRole("heading", { name: "Zustandsmaschinen" })).toBeTruthy();
-    expect(screen.getByText("39 Maschinen")).toBeTruthy();
+    expect(screen.getByText(/^\d+ Maschinen$/)).toBeTruthy();
+    expect(screen.getAllByText(/^\d+ Startzustände$/).length).toBeGreaterThan(0);
     expect(screen.getAllByText("tasks.status").length).toBeGreaterThan(0);
     expect(screen.getAllByText(/→ completed/).length).toBeGreaterThan(0);
     expect(screen.getAllByText(/Guard \(bricht ab\)/).length).toBeGreaterThan(0);

@@ -557,7 +557,8 @@ Eindeutige Fehler werden im CI-Lauf ausgegeben und brechen die Prüfung ab; sie 
 ### `admin.feature-catalog`
 
 - Die Landkarte leitet Kanten ausschließlich aus deklarierten `dependsOn`-Bezügen ab und behauptet keine Laufzeitaufrufe.
-- Das Zustandsartefakt leitet Übergänge nur aus belegten literalen Schreibvorgängen ab und behauptet keinen vollständigen Automaten; Guard-Funktionen werden zitiert, nicht interpretiert.
+- Das Zustandsartefakt leitet Übergänge nur aus belegten Schreibvorgängen, Defaults, INSERTs und validierten Funktionsparametern ab; ein vollständiger Automat wird nicht behauptet. Guards liefern geprüfte Werte und blockierte Zustände, aber keine Kontrollfluss-Auswertung.
+- Der Abgleich mit TS-Regelmodulen und Client-Schreibvorgängen ist ein Prüfauftrag: Er vergleicht registrierte Quellen und Literale, keine Laufzeitaufrufe und keine dynamischen Statuswerte.
 - Der Katalog ist so vollständig wie die manuelle Inventarisierung; heuristische Lücken werden im Review-Bericht ausgewiesen.
 
 ### `platform.notification-dispatch`

@@ -883,7 +883,7 @@ Führt registrierte Prüfszenarien gegen die Anwendung aus, protokolliert Läufe
 - Keine.
 
 ### `admin.feature-catalog` — Funktionskatalog und Inventarisierung
-Führt den vollständigen, versionierten Funktionskatalog, gleicht ihn mit Routen, Edge Functions, RPCs und Szenarien ab, erzeugt die Dokumentation und leitet daraus eine Funktionslandkarte mit Bereichen, Bereichskopplungen und Wirkungsketten ab. Zusätzlich entsteht ein Zustandsartefakt aus Statusspalten, CHECK-Constraints, Schreibvorgängen und Guard-Triggern der Migrationen, das gegen den Quellcode auf Drift geprüft und als eigene Katalogansicht mit Zuständen, belegten Übergängen und Guards angezeigt wird.
+Führt den vollständigen, versionierten Funktionskatalog, gleicht ihn mit Routen, Edge Functions, RPCs und Szenarien ab, erzeugt die Dokumentation und leitet daraus eine Funktionslandkarte mit Bereichen, Bereichskopplungen und Wirkungsketten ab. Zusätzlich entsteht ein Zustandsartefakt aus Statusspalten, CHECK-Constraints, Defaults, INSERT-/UPDATE-Schreibvorgängen, Funktionsparametern und Guard-Triggern der Migrationen. Es wird gegen den Quellcode auf Drift geprüft, mit registrierten TS-Regelmodulen und Client-Schreibvorgängen abgeglichen, um berechnete Befunde (unerreichbar, Sackgasse, nur im Guard, unbelegter Client-Wert) ergänzt und als Katalogansicht mit Zustandsgraph, Guards und Abweichungen angezeigt.
 
 - **Kategorie:** administrativ
 - **Implementierung:** implementiert
@@ -892,15 +892,15 @@ Führt den vollständigen, versionierten Funktionskatalog, gleicht ihn mit Route
 - **Letztes Testergebnis:** unbekannt (nicht aus der Existenz einer Testdatei abgeleitet)
 - **Rollen:** `admin`, `bueroleitung`
 - **Routen:** `/funktionskatalog`
-- **Frontend-Komponenten:** `src/features/feature-catalog/FeatureCatalogView.tsx`, `src/features/feature-catalog/FeatureMap.tsx`, `src/features/feature-catalog/StateMachineView.tsx`
-- **Services:** `scripts/build-feature-catalog.mjs`, `scripts/build-state-artifact.mjs`, `src/features/feature-catalog/metrics.ts`, `src/features/feature-catalog/map.ts`, `src/features/feature-catalog/stateMachines.ts`
+- **Frontend-Komponenten:** `src/features/feature-catalog/FeatureCatalogView.tsx`, `src/features/feature-catalog/FeatureMap.tsx`, `src/features/feature-catalog/StateMachineView.tsx`, `src/features/feature-catalog/StateMachineGraph.tsx`
+- **Services:** `scripts/build-feature-catalog.mjs`, `scripts/build-state-artifact.mjs`, `src/features/feature-catalog/metrics.ts`, `src/features/feature-catalog/map.ts`, `src/features/feature-catalog/stateMachines.ts`, `src/features/feature-catalog/graphLayout.ts`
 - **Hooks:** —
 - **Edge Functions:** —
 - **Datenbankfunktionen:** —
 - **Tabellen:** —
 - **Abhängigkeiten:** —
 - **Selbsttests:** —
-- **Unit-Tests:** `src/features/feature-catalog/metrics.test.ts`, `src/features/feature-catalog/map.test.ts`, `src/features/feature-catalog/stateMachines.test.ts`, `scripts/__tests__/feature-catalog.test.mjs`, `scripts/__tests__/state-artifact.test.mjs`
+- **Unit-Tests:** `src/features/feature-catalog/metrics.test.ts`, `src/features/feature-catalog/map.test.ts`, `src/features/feature-catalog/stateMachines.test.ts`, `src/features/feature-catalog/graphLayout.test.ts`, `src/features/feature-catalog/FeatureCatalogView.test.tsx`, `scripts/__tests__/feature-catalog.test.mjs`, `scripts/__tests__/state-artifact.test.mjs`
 - **Integrationstests:** —
 - **Browser-Tests:** —
 - **Dokumentation:** `docs/features/README.md`, `docs/features/review.md`, `docs/entity-map.md`
@@ -916,7 +916,8 @@ Führt den vollständigen, versionierten Funktionskatalog, gleicht ihn mit Route
 **Bekannte Einschränkungen**
 
 - Die Landkarte leitet Kanten ausschließlich aus deklarierten `dependsOn`-Bezügen ab und behauptet keine Laufzeitaufrufe.
-- Das Zustandsartefakt leitet Übergänge nur aus belegten literalen Schreibvorgängen ab und behauptet keinen vollständigen Automaten; Guard-Funktionen werden zitiert, nicht interpretiert.
+- Das Zustandsartefakt leitet Übergänge nur aus belegten Schreibvorgängen, Defaults, INSERTs und validierten Funktionsparametern ab; ein vollständiger Automat wird nicht behauptet. Guards liefern geprüfte Werte und blockierte Zustände, aber keine Kontrollfluss-Auswertung.
+- Der Abgleich mit TS-Regelmodulen und Client-Schreibvorgängen ist ein Prüfauftrag: Er vergleicht registrierte Quellen und Literale, keine Laufzeitaufrufe und keine dynamischen Statuswerte.
 
 **Offene Prüfpunkte**
 

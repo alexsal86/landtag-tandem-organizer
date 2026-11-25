@@ -1,13 +1,16 @@
 {
-  "version": 1,
+  "version": 2,
   "generatedBy": "scripts/build-state-artifact.mjs",
-  "description": "Abgeleitetes Zustandsartefakt. Zustände stammen aus Enum-Typen, CHECK-Constraints, belegten Schreibvorgängen und Guard-Vergleichen; Übergänge ausschließlich aus belegten UPDATE-Schreibvorgängen. Keine handgepflegten Übergänge.",
+  "description": "Abgeleitetes Zustandsartefakt. Zustände stammen aus Enum-Typen, CHECK-Constraints, Defaults, INSERTs, belegten UPDATE-Schreibvorgängen und Guard-Vergleichen; Übergänge aus Schreibvorgängen, Startzuständen und parametrischen Funktionswerten. Guards tragen ihre geprüften Werte und blockierten Zustände. Befunde und Abgleich mit TS-Regelmodulen und Client-Schreibvorgängen sind berechnet, nicht gepflegt.",
   "sources": {
     "types": "src/integrations/supabase/types.ts",
     "migrationsDirectory": "supabase/migrations",
-    "migrationCount": 894
+    "migrationCount": 894,
+    "tsModules": [
+      "src/components/letters/types.ts"
+    ]
   },
-  "machineCount": 39,
+  "machineCount": 49,
   "anomalies": [
     {
       "machine": "tasks.status",
@@ -36,18 +39,57 @@
         {
           "value": "pending",
           "sources": [
-            "check:supabase/migrations/20251026225547_e7fcbb61-b8dd-4fdd-aa15-515023e59fea.sql"
+            "check:supabase/migrations/20251026225547_e7fcbb61-b8dd-4fdd-aa15-515023e59fea.sql",
+            "insert:supabase/migrations/20251026225547_e7fcbb61-b8dd-4fdd-aa15-515023e59fea.sql",
+            "insert:supabase/migrations/20251104233514_e6a40344-a74b-43fe-b61b-19e635318041.sql",
+            "insert:supabase/migrations/20251105225116_26ea3416-99cb-4901-80b1-5e284acaf26d.sql",
+            "insert:supabase/migrations/20251107164446_46c66f29-b41d-4548-a419-5c4cfa946814.sql",
+            "insert:supabase/migrations/20261124250000_appointment_feedback_trigger_scope.sql"
           ]
         },
         {
           "value": "skipped",
           "sources": [
             "check:supabase/migrations/20251026225547_e7fcbb61-b8dd-4fdd-aa15-515023e59fea.sql",
+            "insert:supabase/migrations/20251104233514_e6a40344-a74b-43fe-b61b-19e635318041.sql",
+            "insert:supabase/migrations/20251105225116_26ea3416-99cb-4901-80b1-5e284acaf26d.sql",
+            "insert:supabase/migrations/20261124250000_appointment_feedback_trigger_scope.sql",
             "guard:supabase/migrations/20261121230000_office_feedback_followup.sql"
           ]
         }
       ],
-      "transitions": [],
+      "initialStates": [
+        "pending",
+        "skipped"
+      ],
+      "transitions": [
+        {
+          "from": null,
+          "to": "pending",
+          "kind": "initial",
+          "param": null,
+          "sources": [
+            "supabase/migrations/20251026225547_e7fcbb61-b8dd-4fdd-aa15-515023e59fea.sql",
+            "supabase/migrations/20251104233514_e6a40344-a74b-43fe-b61b-19e635318041.sql",
+            "supabase/migrations/20251105225116_26ea3416-99cb-4901-80b1-5e284acaf26d.sql",
+            "supabase/migrations/20251107164446_46c66f29-b41d-4548-a419-5c4cfa946814.sql",
+            "supabase/migrations/20261124250000_appointment_feedback_trigger_scope.sql"
+          ],
+          "guards": []
+        },
+        {
+          "from": null,
+          "to": "skipped",
+          "kind": "initial",
+          "param": null,
+          "sources": [
+            "supabase/migrations/20251104233514_e6a40344-a74b-43fe-b61b-19e635318041.sql",
+            "supabase/migrations/20251105225116_26ea3416-99cb-4901-80b1-5e284acaf26d.sql",
+            "supabase/migrations/20261124250000_appointment_feedback_trigger_scope.sql"
+          ],
+          "guards": []
+        }
+      ],
       "guards": [
         {
           "trigger": "appointment_feedback_notify_team",
@@ -60,8 +102,39 @@
           "readsOld": true,
           "readsNew": true,
           "raises": false,
+          "message": null,
+          "checks": [
+            {
+              "side": "OLD",
+              "operator": "=",
+              "negated": false,
+              "values": [
+                "completed"
+              ]
+            },
+            {
+              "side": "NEW",
+              "operator": "<>",
+              "negated": true,
+              "values": [
+                "completed"
+              ]
+            }
+          ],
           "states": [
             "completed"
+          ],
+          "blockedTo": [],
+          "blockedFrom": [],
+          "allowedTo": [
+            "completed",
+            "pending",
+            "skipped"
+          ],
+          "allowedFrom": [
+            "completed",
+            "pending",
+            "skipped"
           ]
         },
         {
@@ -75,15 +148,126 @@
           "readsOld": false,
           "readsNew": true,
           "raises": false,
+          "message": null,
+          "checks": [
+            {
+              "side": "NEW",
+              "operator": "in",
+              "negated": false,
+              "values": [
+                "completed",
+                "skipped"
+              ]
+            }
+          ],
           "states": [
             "completed",
+            "skipped"
+          ],
+          "blockedTo": [],
+          "blockedFrom": [],
+          "allowedTo": [
+            "completed",
+            "pending",
+            "skipped"
+          ],
+          "allowedFrom": [
+            "completed",
+            "pending",
             "skipped"
           ]
         }
       ],
+      "reconciliation": {
+        "source": null,
+        "label": null,
+        "onlyInCode": [],
+        "onlyInArtifact": [],
+        "clientValues": [
+          {
+            "value": "completed",
+            "source": "src/components/dashboard/DashboardAppointmentList.tsx"
+          },
+          {
+            "value": "completed",
+            "source": "src/pages/BriefingLivePage.tsx"
+          }
+        ]
+      },
       "limitations": [
-        "Nur beobachtende oder synchronisierende Trigger, keine Guard-Funktion mit RAISE EXCEPTION.",
-        "Keine belegten Statusübergänge im Migrationsbestand."
+        "Nur beobachtende oder synchronisierende Trigger, keine Guard-Funktion mit RAISE EXCEPTION."
+      ],
+      "findings": [
+        {
+          "kind": "isoliert",
+          "severity": "info",
+          "states": [
+            "completed"
+          ],
+          "message": "Zustände ohne jede Verbindung im belegten Graphen."
+        },
+        {
+          "kind": "sackgasse",
+          "severity": "info",
+          "states": [
+            "pending",
+            "skipped"
+          ],
+          "message": "Zustände mit Eingang, aber ohne belegten ausgehenden Übergang (möglicher Endzustand)."
+        },
+        {
+          "kind": "unerreichbar",
+          "severity": "info",
+          "states": [
+            "completed"
+          ],
+          "message": "Zustände ohne belegten Eingang; der Graph enthält noch keinen Übergang mit Ausgangszustand, daher keine Aussage über Erreichbarkeit."
+        }
+      ]
+    },
+    {
+      "id": "appointment_guests.status",
+      "table": "appointment_guests",
+      "column": "status",
+      "enumType": null,
+      "states": [
+        {
+          "value": "invited",
+          "sources": [
+            "default:supabase/migrations/20250905150014_32e98481-ce2b-4d35-81d8-c819239daf48.sql"
+          ]
+        }
+      ],
+      "initialStates": [
+        "invited"
+      ],
+      "transitions": [
+        {
+          "from": null,
+          "to": "invited",
+          "kind": "initial",
+          "param": null,
+          "sources": [
+            "supabase/migrations/20250905150014_32e98481-ce2b-4d35-81d8-c819239daf48.sql"
+          ],
+          "guards": []
+        }
+      ],
+      "guards": [],
+      "reconciliation": null,
+      "limitations": [
+        "Keine Enum- oder CHECK-Beschränkung belegt; die Zustandswerte stammen nur aus Schreibvorgängen und Triggern.",
+        "Kein Trigger im Migrationsbestand gefunden; Übergänge sind nicht durch Trigger abgesichert."
+      ],
+      "findings": [
+        {
+          "kind": "sackgasse",
+          "severity": "info",
+          "states": [
+            "invited"
+          ],
+          "message": "Zustände mit Eingang, aber ohne belegten ausgehenden Übergang (möglicher Endzustand)."
+        }
       ]
     },
     {
@@ -95,6 +279,8 @@
         {
           "value": "active",
           "sources": [
+            "default:supabase/migrations/20250819215926_9e43e2d9-58f6-4691-a1c3-73c7c579a0b1.sql",
+            "insert:supabase/migrations/20260310103000_create_poll_with_slots_and_participants_rpc.sql",
             "write:supabase/migrations/20251008075550_f365c460-b9d4-4210-94a0-395006e7ea46.sql"
           ]
         },
@@ -114,40 +300,257 @@
           ]
         }
       ],
+      "initialStates": [
+        "active"
+      ],
       "transitions": [
         {
           "from": [
             "active"
           ],
           "to": "cancelled",
+          "kind": "write",
+          "param": null,
           "sources": [
             "supabase/migrations/20251008075550_f365c460-b9d4-4210-94a0-395006e7ea46.sql"
-          ]
+          ],
+          "guards": []
         },
         {
           "from": [
             "active"
           ],
           "to": "completed",
+          "kind": "write",
+          "param": null,
           "sources": [
             "supabase/migrations/20251008075550_f365c460-b9d4-4210-94a0-395006e7ea46.sql"
-          ]
+          ],
+          "guards": []
+        },
+        {
+          "from": null,
+          "to": "active",
+          "kind": "initial",
+          "param": null,
+          "sources": [
+            "supabase/migrations/20250819215926_9e43e2d9-58f6-4691-a1c3-73c7c579a0b1.sql",
+            "supabase/migrations/20260310103000_create_poll_with_slots_and_participants_rpc.sql"
+          ],
+          "guards": []
         },
         {
           "from": null,
           "to": "completed",
+          "kind": "write",
+          "param": null,
           "sources": [
             "supabase/migrations/20261124220000_poll_result_and_followups.sql",
             "supabase/migrations/20261124230000_poll_winner_guests_and_list_result.sql",
             "supabase/migrations/20261124240000_poll_followup_queue_and_scope.sql"
-          ]
+          ],
+          "guards": []
         }
       ],
       "guards": [],
+      "reconciliation": {
+        "source": null,
+        "label": null,
+        "onlyInCode": [],
+        "onlyInArtifact": [],
+        "clientValues": [
+          {
+            "value": "active",
+            "source": "src/components/poll/PollListView.tsx"
+          }
+        ]
+      },
       "limitations": [
         "Keine Enum- oder CHECK-Beschränkung belegt; die Zustandswerte stammen nur aus Schreibvorgängen und Triggern.",
         "Kein Trigger im Migrationsbestand gefunden; Übergänge sind nicht durch Trigger abgesichert.",
         "Übergänge ohne belegten Ausgangszustand sind mit \"from\": null gekennzeichnet."
+      ],
+      "findings": [
+        {
+          "kind": "sackgasse",
+          "severity": "info",
+          "states": [
+            "cancelled",
+            "completed"
+          ],
+          "message": "Zustände mit Eingang, aber ohne belegten ausgehenden Übergang (möglicher Endzustand)."
+        },
+        {
+          "kind": "unbelegter-start",
+          "severity": "info",
+          "states": [
+            "completed"
+          ],
+          "message": "Schreibvorgänge ohne belegten Ausgangszustand; die Kante bleibt gerichtet, aber ohne Quelle."
+        }
+      ]
+    },
+    {
+      "id": "appointment_preparations.status",
+      "table": "appointment_preparations",
+      "column": "status",
+      "enumType": null,
+      "states": [
+        {
+          "value": "draft",
+          "sources": [
+            "default:supabase/migrations/20250827173145_78441e45-29d8-45f6-99aa-f3bc49917c20.sql",
+            "insert:supabase/migrations/20261109120000_confirm_briefing_assignment_and_team_preparations.sql"
+          ]
+        }
+      ],
+      "initialStates": [
+        "draft"
+      ],
+      "transitions": [
+        {
+          "from": null,
+          "to": "draft",
+          "kind": "initial",
+          "param": null,
+          "sources": [
+            "supabase/migrations/20250827173145_78441e45-29d8-45f6-99aa-f3bc49917c20.sql",
+            "supabase/migrations/20261109120000_confirm_briefing_assignment_and_team_preparations.sql"
+          ],
+          "guards": []
+        }
+      ],
+      "guards": [],
+      "reconciliation": null,
+      "limitations": [
+        "Keine Enum- oder CHECK-Beschränkung belegt; die Zustandswerte stammen nur aus Schreibvorgängen und Triggern.",
+        "Kein Trigger im Migrationsbestand gefunden; Übergänge sind nicht durch Trigger abgesichert."
+      ],
+      "findings": [
+        {
+          "kind": "sackgasse",
+          "severity": "info",
+          "states": [
+            "draft"
+          ],
+          "message": "Zustände mit Eingang, aber ohne belegten ausgehenden Übergang (möglicher Endzustand)."
+        }
+      ]
+    },
+    {
+      "id": "appointment_requests.status",
+      "table": "appointment_requests",
+      "column": "status",
+      "enumType": null,
+      "states": [
+        {
+          "value": "accepted",
+          "sources": [
+            "param:supabase/migrations/20261108113437_6ceab425-38b4-4d82-a042-446e77bbbd90.sql"
+          ]
+        },
+        {
+          "value": "declined",
+          "sources": [
+            "param:supabase/migrations/20261108113437_6ceab425-38b4-4d82-a042-446e77bbbd90.sql"
+          ]
+        },
+        {
+          "value": "open",
+          "sources": [
+            "default:supabase/migrations/20261105212555_2cd5693c-1150-4997-9a48-f84071a1b73a.sql"
+          ]
+        }
+      ],
+      "initialStates": [
+        "open"
+      ],
+      "transitions": [
+        {
+          "from": null,
+          "to": "accepted",
+          "kind": "parametric",
+          "param": "_decision",
+          "sources": [
+            "supabase/migrations/20261108113437_6ceab425-38b4-4d82-a042-446e77bbbd90.sql"
+          ],
+          "guards": []
+        },
+        {
+          "from": null,
+          "to": "declined",
+          "kind": "parametric",
+          "param": "_decision",
+          "sources": [
+            "supabase/migrations/20261108113437_6ceab425-38b4-4d82-a042-446e77bbbd90.sql"
+          ],
+          "guards": []
+        },
+        {
+          "from": null,
+          "to": "open",
+          "kind": "initial",
+          "param": null,
+          "sources": [
+            "supabase/migrations/20261105212555_2cd5693c-1150-4997-9a48-f84071a1b73a.sql"
+          ],
+          "guards": []
+        }
+      ],
+      "guards": [
+        {
+          "trigger": "appointment_requests_guard",
+          "function": "appointment_requests_guard",
+          "timing": "before",
+          "events": "insert or update",
+          "source": "supabase/migrations/20261105212555_2cd5693c-1150-4997-9a48-f84071a1b73a.sql",
+          "functionSource": "supabase/migrations/20261106161554_836d12f4-2b92-41e3-95a3-8c571306d6e1.sql",
+          "kind": "guard",
+          "readsOld": true,
+          "readsNew": true,
+          "raises": true,
+          "message": "invalid channel",
+          "checks": [],
+          "states": [],
+          "blockedTo": [],
+          "blockedFrom": [],
+          "allowedTo": [
+            "accepted",
+            "declined",
+            "open"
+          ],
+          "allowedFrom": [
+            "accepted",
+            "declined",
+            "open"
+          ]
+        }
+      ],
+      "reconciliation": null,
+      "limitations": [
+        "Keine Enum- oder CHECK-Beschränkung belegt; die Zustandswerte stammen nur aus Schreibvorgängen und Triggern.",
+        "Guards werden zitiert, aber nicht als vollständiger Automat interpretiert; abgeleitet werden nur belegte Schreibvorgänge."
+      ],
+      "findings": [
+        {
+          "kind": "parametrisch",
+          "severity": "info",
+          "states": [
+            "accepted",
+            "declined"
+          ],
+          "message": "Zielwerte stammen aus Funktionsparametern (_decision); der Ausgangszustand ist im SQL nicht benannt."
+        },
+        {
+          "kind": "sackgasse",
+          "severity": "info",
+          "states": [
+            "accepted",
+            "declined",
+            "open"
+          ],
+          "message": "Zustände mit Eingang, aber ohne belegten ausgehenden Übergang (möglicher Endzustand)."
+        }
       ]
     },
     {
@@ -160,7 +563,8 @@
           "value": "approved",
           "sources": [
             "write:supabase/migrations/20261108113437_6ceab425-38b4-4d82-a042-446e77bbbd90.sql",
-            "write:supabase/migrations/20261109100000_connect_appointment_preparation_workflow.sql"
+            "write:supabase/migrations/20261109100000_connect_appointment_preparation_workflow.sql",
+            "guard:supabase/migrations/20261108113437_6ceab425-38b4-4d82-a042-446e77bbbd90.sql"
           ]
         },
         {
@@ -168,20 +572,23 @@
           "sources": [
             "write:supabase/migrations/20261108113437_6ceab425-38b4-4d82-a042-446e77bbbd90.sql",
             "write:supabase/migrations/20261109100000_connect_appointment_preparation_workflow.sql",
-            "write:supabase/migrations/20261109120000_confirm_briefing_assignment_and_team_preparations.sql"
+            "write:supabase/migrations/20261109120000_confirm_briefing_assignment_and_team_preparations.sql",
+            "guard:supabase/migrations/20261108113437_6ceab425-38b4-4d82-a042-446e77bbbd90.sql"
           ]
         },
         {
           "value": "completed",
           "sources": [
-            "write:supabase/migrations/20261109101304_dcd43720-f9f8-4d30-9637-1bc1b0853954.sql"
+            "write:supabase/migrations/20261109101304_dcd43720-f9f8-4d30-9637-1bc1b0853954.sql",
+            "guard:supabase/migrations/20261108113437_6ceab425-38b4-4d82-a042-446e77bbbd90.sql"
           ]
         },
         {
           "value": "in_review",
           "sources": [
             "write:supabase/migrations/20261108113437_6ceab425-38b4-4d82-a042-446e77bbbd90.sql",
-            "write:supabase/migrations/20261109100000_connect_appointment_preparation_workflow.sql"
+            "write:supabase/migrations/20261109100000_connect_appointment_preparation_workflow.sql",
+            "guard:supabase/migrations/20261108113437_6ceab425-38b4-4d82-a042-446e77bbbd90.sql"
           ]
         },
         {
@@ -189,60 +596,86 @@
           "sources": [
             "write:supabase/migrations/20261108113437_6ceab425-38b4-4d82-a042-446e77bbbd90.sql",
             "write:supabase/migrations/20261109100000_connect_appointment_preparation_workflow.sql",
-            "write:supabase/migrations/20261109120000_confirm_briefing_assignment_and_team_preparations.sql"
+            "write:supabase/migrations/20261109120000_confirm_briefing_assignment_and_team_preparations.sql",
+            "guard:supabase/migrations/20261108113437_6ceab425-38b4-4d82-a042-446e77bbbd90.sql"
+          ]
+        },
+        {
+          "value": "undecided",
+          "sources": [
+            "guard:supabase/migrations/20261108113437_6ceab425-38b4-4d82-a042-446e77bbbd90.sql"
           ]
         }
       ],
+      "initialStates": [],
       "transitions": [
         {
           "from": [
             "approved"
           ],
           "to": "in_review",
+          "kind": "write",
+          "param": null,
           "sources": [
             "supabase/migrations/20261109100000_connect_appointment_preparation_workflow.sql"
-          ]
+          ],
+          "guards": []
         },
         {
           "from": null,
           "to": "approved",
+          "kind": "write",
+          "param": null,
           "sources": [
             "supabase/migrations/20261108113437_6ceab425-38b4-4d82-a042-446e77bbbd90.sql",
             "supabase/migrations/20261109100000_connect_appointment_preparation_workflow.sql"
-          ]
+          ],
+          "guards": []
         },
         {
           "from": null,
           "to": "assigned",
+          "kind": "write",
+          "param": null,
           "sources": [
             "supabase/migrations/20261108113437_6ceab425-38b4-4d82-a042-446e77bbbd90.sql",
             "supabase/migrations/20261109100000_connect_appointment_preparation_workflow.sql",
             "supabase/migrations/20261109120000_confirm_briefing_assignment_and_team_preparations.sql"
-          ]
+          ],
+          "guards": []
         },
         {
           "from": null,
           "to": "completed",
+          "kind": "write",
+          "param": null,
           "sources": [
             "supabase/migrations/20261109101304_dcd43720-f9f8-4d30-9637-1bc1b0853954.sql"
-          ]
+          ],
+          "guards": []
         },
         {
           "from": null,
           "to": "in_review",
+          "kind": "write",
+          "param": null,
           "sources": [
             "supabase/migrations/20261108113437_6ceab425-38b4-4d82-a042-446e77bbbd90.sql",
             "supabase/migrations/20261109100000_connect_appointment_preparation_workflow.sql"
-          ]
+          ],
+          "guards": []
         },
         {
           "from": null,
           "to": "none",
+          "kind": "write",
+          "param": null,
           "sources": [
             "supabase/migrations/20261108113437_6ceab425-38b4-4d82-a042-446e77bbbd90.sql",
             "supabase/migrations/20261109100000_connect_appointment_preparation_workflow.sql",
             "supabase/migrations/20261109120000_confirm_briefing_assignment_and_team_preparations.sql"
-          ]
+          ],
+          "guards": []
         }
       ],
       "guards": [
@@ -257,13 +690,111 @@
           "readsOld": false,
           "readsNew": true,
           "raises": true,
-          "states": []
+          "message": "invalid briefing_status %",
+          "checks": [
+            {
+              "side": "NEW",
+              "operator": "not in",
+              "negated": true,
+              "values": [
+                "approved",
+                "assigned",
+                "completed",
+                "in_review",
+                "none",
+                "undecided"
+              ]
+            }
+          ],
+          "states": [
+            "approved",
+            "assigned",
+            "completed",
+            "in_review",
+            "none",
+            "undecided"
+          ],
+          "blockedTo": [],
+          "blockedFrom": [],
+          "allowedTo": [
+            "approved",
+            "assigned",
+            "completed",
+            "in_review",
+            "none",
+            "undecided"
+          ],
+          "allowedFrom": [
+            "approved",
+            "assigned",
+            "completed",
+            "in_review",
+            "none",
+            "undecided"
+          ]
         }
       ],
+      "reconciliation": null,
       "limitations": [
         "Keine Enum- oder CHECK-Beschränkung belegt; die Zustandswerte stammen nur aus Schreibvorgängen und Triggern.",
         "Guards werden zitiert, aber nicht als vollständiger Automat interpretiert; abgeleitet werden nur belegte Schreibvorgänge.",
-        "Übergänge ohne belegten Ausgangszustand sind mit \"from\": null gekennzeichnet."
+        "Übergänge ohne belegten Ausgangszustand sind mit \"from\": null gekennzeichnet.",
+        "Kein Startzustand belegt; der Eintritt in die Maschine ist nicht nachweisbar."
+      ],
+      "findings": [
+        {
+          "kind": "kein-startzustand",
+          "severity": "warn",
+          "states": [],
+          "message": "Kein Spalten-Default und kein literaler INSERT belegt einen Startzustand."
+        },
+        {
+          "kind": "unerreichbar",
+          "severity": "warn",
+          "states": [
+            "undecided"
+          ],
+          "message": "Zustände ohne belegten Eingang: weder Startzustand noch Ziel eines Übergangs."
+        },
+        {
+          "kind": "isoliert",
+          "severity": "info",
+          "states": [
+            "undecided"
+          ],
+          "message": "Zustände ohne jede Verbindung im belegten Graphen."
+        },
+        {
+          "kind": "nur-im-guard",
+          "severity": "info",
+          "states": [
+            "undecided"
+          ],
+          "message": "Zustandswerte stammen ausschließlich aus Trigger-Vergleichen, aus keinem Schreibvorgang."
+        },
+        {
+          "kind": "sackgasse",
+          "severity": "info",
+          "states": [
+            "assigned",
+            "completed",
+            "in_review",
+            "none"
+          ],
+          "message": "Zustände mit Eingang, aber ohne belegten ausgehenden Übergang (möglicher Endzustand)."
+        },
+        {
+          "kind": "unbelegter-start",
+          "severity": "info",
+          "states": [
+            "approved",
+            "assigned",
+            "completed",
+            "in_review",
+            "none"
+          ],
+          "message": "Schreibvorgänge ohne belegten Ausgangszustand; die Kante bleibt gerichtet, aber ohne Quelle."
+        }
       ]
     },
     {
@@ -297,6 +828,10 @@
           "sources": [
             "check:supabase/migrations/20250722075209-0a43b074-55a1-43e5-9515-179d2b07dd49.sql",
             "check:supabase/migrations/20250816013840_d517b46e-1205-4472-874f-c8d5f4a1cfba.sql",
+            "insert:supabase/migrations/20261124220000_poll_result_and_followups.sql",
+            "insert:supabase/migrations/20261124230000_poll_winner_guests_and_list_result.sql",
+            "insert:supabase/migrations/20261124240000_poll_followup_queue_and_scope.sql",
+            "insert:supabase/migrations/20261125113000_appointment_dashboard_focus.sql",
             "write:supabase/migrations/20261125113000_appointment_dashboard_focus.sql"
           ]
         },
@@ -304,17 +839,66 @@
           "value": "planned",
           "sources": [
             "check:supabase/migrations/20250722075209-0a43b074-55a1-43e5-9515-179d2b07dd49.sql",
-            "check:supabase/migrations/20250816013840_d517b46e-1205-4472-874f-c8d5f4a1cfba.sql"
+            "check:supabase/migrations/20250816013840_d517b46e-1205-4472-874f-c8d5f4a1cfba.sql",
+            "default:supabase/migrations/20250722075209-0a43b074-55a1-43e5-9515-179d2b07dd49.sql",
+            "insert:supabase/migrations/20250811235528_8924780e-710a-454c-8995-7ac3ad50b591.sql",
+            "insert:supabase/migrations/20250811235630_47ee9aed-d843-4e41-bbcb-f7d739471707.sql",
+            "insert:supabase/migrations/20250811235733_5859f2df-81a7-476c-bd62-fe4f8e429169.sql",
+            "insert:supabase/migrations/20250829165224_af312b28-f06f-4439-9a9c-fa798f60436e.sql",
+            "insert:supabase/migrations/20250829165703_69ea2154-ecc2-4d92-a332-353b404658b3.sql",
+            "insert:supabase/migrations/20250919121403_a4ff08fd-e096-4abd-a0c3-19153b4118d0.sql",
+            "insert:supabase/migrations/20250919132949_fdbb040f-c9e4-432f-ac2d-4ff8fb01a9db.sql",
+            "insert:supabase/migrations/20261105212555_2cd5693c-1150-4997-9a48-f84071a1b73a.sql",
+            "insert:supabase/migrations/20261108113437_6ceab425-38b4-4d82-a042-446e77bbbd90.sql"
           ]
         }
+      ],
+      "initialStates": [
+        "confirmed",
+        "planned"
       ],
       "transitions": [
         {
           "from": null,
           "to": "confirmed",
+          "kind": "initial",
+          "param": null,
+          "sources": [
+            "supabase/migrations/20261124220000_poll_result_and_followups.sql",
+            "supabase/migrations/20261124230000_poll_winner_guests_and_list_result.sql",
+            "supabase/migrations/20261124240000_poll_followup_queue_and_scope.sql",
+            "supabase/migrations/20261125113000_appointment_dashboard_focus.sql"
+          ],
+          "guards": []
+        },
+        {
+          "from": null,
+          "to": "confirmed",
+          "kind": "write",
+          "param": null,
           "sources": [
             "supabase/migrations/20261125113000_appointment_dashboard_focus.sql"
-          ]
+          ],
+          "guards": []
+        },
+        {
+          "from": null,
+          "to": "planned",
+          "kind": "initial",
+          "param": null,
+          "sources": [
+            "supabase/migrations/20250722075209-0a43b074-55a1-43e5-9515-179d2b07dd49.sql",
+            "supabase/migrations/20250811235528_8924780e-710a-454c-8995-7ac3ad50b591.sql",
+            "supabase/migrations/20250811235630_47ee9aed-d843-4e41-bbcb-f7d739471707.sql",
+            "supabase/migrations/20250811235733_5859f2df-81a7-476c-bd62-fe4f8e429169.sql",
+            "supabase/migrations/20250829165224_af312b28-f06f-4439-9a9c-fa798f60436e.sql",
+            "supabase/migrations/20250829165703_69ea2154-ecc2-4d92-a332-353b404658b3.sql",
+            "supabase/migrations/20250919121403_a4ff08fd-e096-4abd-a0c3-19153b4118d0.sql",
+            "supabase/migrations/20250919132949_fdbb040f-c9e4-432f-ac2d-4ff8fb01a9db.sql",
+            "supabase/migrations/20261105212555_2cd5693c-1150-4997-9a48-f84071a1b73a.sql",
+            "supabase/migrations/20261108113437_6ceab425-38b4-4d82-a042-446e77bbbd90.sql"
+          ],
+          "guards": []
         }
       ],
       "guards": [
@@ -329,12 +913,81 @@
           "readsOld": false,
           "readsNew": true,
           "raises": false,
-          "states": []
+          "message": null,
+          "checks": [],
+          "states": [],
+          "blockedTo": [],
+          "blockedFrom": [],
+          "allowedTo": [
+            "archived",
+            "cancelled",
+            "completed",
+            "confirmed",
+            "planned"
+          ],
+          "allowedFrom": [
+            "archived",
+            "cancelled",
+            "completed",
+            "confirmed",
+            "planned"
+          ]
         }
       ],
+      "reconciliation": {
+        "source": null,
+        "label": null,
+        "onlyInCode": [],
+        "onlyInArtifact": [],
+        "clientValues": [
+          {
+            "value": "completed",
+            "source": "src/components/widgets/CallLogWidget.tsx"
+          }
+        ]
+      },
       "limitations": [
         "Nur beobachtende oder synchronisierende Trigger, keine Guard-Funktion mit RAISE EXCEPTION.",
         "Übergänge ohne belegten Ausgangszustand sind mit \"from\": null gekennzeichnet."
+      ],
+      "findings": [
+        {
+          "kind": "isoliert",
+          "severity": "info",
+          "states": [
+            "archived",
+            "cancelled",
+            "completed"
+          ],
+          "message": "Zustände ohne jede Verbindung im belegten Graphen."
+        },
+        {
+          "kind": "sackgasse",
+          "severity": "info",
+          "states": [
+            "confirmed",
+            "planned"
+          ],
+          "message": "Zustände mit Eingang, aber ohne belegten ausgehenden Übergang (möglicher Endzustand)."
+        },
+        {
+          "kind": "unbelegter-start",
+          "severity": "info",
+          "states": [
+            "confirmed"
+          ],
+          "message": "Schreibvorgänge ohne belegten Ausgangszustand; die Kante bleibt gerichtet, aber ohne Quelle."
+        },
+        {
+          "kind": "unerreichbar",
+          "severity": "info",
+          "states": [
+            "archived",
+            "cancelled",
+            "completed"
+          ],
+          "message": "Zustände ohne belegten Eingang; der Graph enthält noch keinen Übergang mit Ausgangszustand, daher keine Aussage über Erreichbarkeit."
+        }
       ]
     },
     {
@@ -362,11 +1015,22 @@
           ]
         }
       ],
+      "initialStates": [],
       "transitions": [],
       "guards": [],
+      "reconciliation": null,
       "limitations": [
         "Kein Trigger im Migrationsbestand gefunden; Übergänge sind nicht durch Trigger abgesichert.",
-        "Keine belegten Statusübergänge im Migrationsbestand."
+        "Keine belegten Statusübergänge im Migrationsbestand.",
+        "Kein Startzustand belegt; der Eintritt in die Maschine ist nicht nachweisbar."
+      ],
+      "findings": [
+        {
+          "kind": "kein-startzustand",
+          "severity": "warn",
+          "states": [],
+          "message": "Kein Spalten-Default und kein literaler INSERT belegt einen Startzustand."
+        }
       ]
     },
     {
@@ -406,11 +1070,22 @@
           ]
         }
       ],
+      "initialStates": [],
       "transitions": [],
       "guards": [],
+      "reconciliation": null,
       "limitations": [
         "Kein Trigger im Migrationsbestand gefunden; Übergänge sind nicht durch Trigger abgesichert.",
-        "Keine belegten Statusübergänge im Migrationsbestand."
+        "Keine belegten Statusübergänge im Migrationsbestand.",
+        "Kein Startzustand belegt; der Eintritt in die Maschine ist nicht nachweisbar."
+      ],
+      "findings": [
+        {
+          "kind": "kein-startzustand",
+          "severity": "warn",
+          "states": [],
+          "message": "Kein Spalten-Default und kein literaler INSERT belegt einen Startzustand."
+        }
       ]
     },
     {
@@ -420,13 +1095,33 @@
       "enumType": null,
       "states": [
         {
+          "value": "active",
+          "sources": [
+            "default:supabase/migrations/20251202235359_2656eead-cf2f-426b-8db8-49215aae5052.sql"
+          ]
+        },
+        {
           "value": "closed",
           "sources": [
             "guard:supabase/migrations/20260306100000_add_case_item_interactions.sql"
           ]
         }
       ],
-      "transitions": [],
+      "initialStates": [
+        "active"
+      ],
+      "transitions": [
+        {
+          "from": null,
+          "to": "active",
+          "kind": "initial",
+          "param": null,
+          "sources": [
+            "supabase/migrations/20251202235359_2656eead-cf2f-426b-8db8-49215aae5052.sql"
+          ],
+          "guards": []
+        }
+      ],
       "guards": [
         {
           "trigger": "automation_case_files_trigger",
@@ -439,7 +1134,19 @@
           "readsOld": false,
           "readsNew": true,
           "raises": false,
-          "states": []
+          "message": null,
+          "checks": [],
+          "states": [],
+          "blockedTo": [],
+          "blockedFrom": [],
+          "allowedTo": [
+            "active",
+            "closed"
+          ],
+          "allowedFrom": [
+            "active",
+            "closed"
+          ]
         },
         {
           "trigger": "ensure_resolution_interaction_before_case_close",
@@ -452,15 +1159,71 @@
           "readsOld": true,
           "readsNew": true,
           "raises": true,
+          "message": "Zum Abschließen des Vorgangs ist mindestens eine Abschlussinteraktion erforderlich.",
+          "checks": [
+            {
+              "side": "NEW",
+              "operator": "=",
+              "negated": false,
+              "values": [
+                "closed"
+              ]
+            }
+          ],
           "states": [
+            "closed"
+          ],
+          "blockedTo": [
+            "closed"
+          ],
+          "blockedFrom": [],
+          "allowedTo": [
+            "active"
+          ],
+          "allowedFrom": [
+            "active",
             "closed"
           ]
         }
       ],
+      "reconciliation": null,
       "limitations": [
         "Keine Enum- oder CHECK-Beschränkung belegt; die Zustandswerte stammen nur aus Schreibvorgängen und Triggern.",
-        "Guards werden zitiert, aber nicht als vollständiger Automat interpretiert; abgeleitet werden nur belegte Schreibvorgänge.",
-        "Keine belegten Statusübergänge im Migrationsbestand."
+        "Guards werden zitiert, aber nicht als vollständiger Automat interpretiert; abgeleitet werden nur belegte Schreibvorgänge."
+      ],
+      "findings": [
+        {
+          "kind": "isoliert",
+          "severity": "info",
+          "states": [
+            "closed"
+          ],
+          "message": "Zustände ohne jede Verbindung im belegten Graphen."
+        },
+        {
+          "kind": "nur-im-guard",
+          "severity": "info",
+          "states": [
+            "closed"
+          ],
+          "message": "Zustandswerte stammen ausschließlich aus Trigger-Vergleichen, aus keinem Schreibvorgang."
+        },
+        {
+          "kind": "sackgasse",
+          "severity": "info",
+          "states": [
+            "active"
+          ],
+          "message": "Zustände mit Eingang, aber ohne belegten ausgehenden Übergang (möglicher Endzustand)."
+        },
+        {
+          "kind": "unerreichbar",
+          "severity": "info",
+          "states": [
+            "closed"
+          ],
+          "message": "Zustände ohne belegten Eingang; der Graph enthält noch keinen Übergang mit Ausgangszustand, daher keine Aussage über Erreichbarkeit."
+        }
       ]
     },
     {
@@ -488,11 +1251,22 @@
           ]
         }
       ],
+      "initialStates": [],
       "transitions": [],
       "guards": [],
+      "reconciliation": null,
       "limitations": [
         "Kein Trigger im Migrationsbestand gefunden; Übergänge sind nicht durch Trigger abgesichert.",
-        "Keine belegten Statusübergänge im Migrationsbestand."
+        "Keine belegten Statusübergänge im Migrationsbestand.",
+        "Kein Startzustand belegt; der Eintritt in die Maschine ist nicht nachweisbar."
+      ],
+      "findings": [
+        {
+          "kind": "kein-startzustand",
+          "severity": "warn",
+          "states": [],
+          "message": "Kein Spalten-Default und kein literaler INSERT belegt einen Startzustand."
+        }
       ]
     },
     {
@@ -501,6 +1275,12 @@
       "column": "status",
       "enumType": "case_item_status",
       "states": [
+        {
+          "value": "active",
+          "sources": [
+            "insert:supabase/migrations/20261110150000_typed_office_routine_steps.sql"
+          ]
+        },
         {
           "value": "antwort_ausstehend",
           "sources": [
@@ -530,17 +1310,51 @@
         {
           "value": "neu",
           "sources": [
-            "enum:case_item_status"
+            "enum:case_item_status",
+            "insert:supabase/migrations/20261107150000_workflow_consistency.sql",
+            "insert:supabase/migrations/20261110160000_routine_workflow_runtime.sql",
+            "insert:supabase/migrations/20261110170000_routine_deputies_relative_deadlines.sql",
+            "insert:supabase/migrations/20261113150000_employee_hr_lifecycle.sql"
           ]
         }
+      ],
+      "initialStates": [
+        "active",
+        "neu"
       ],
       "transitions": [
         {
           "from": null,
+          "to": "active",
+          "kind": "initial",
+          "param": null,
+          "sources": [
+            "supabase/migrations/20261110150000_typed_office_routine_steps.sql"
+          ],
+          "guards": []
+        },
+        {
+          "from": null,
           "to": "archiviert",
+          "kind": "write",
+          "param": null,
           "sources": [
             "supabase/migrations/20261104120000_delete_quick_note_with_links_atomically.sql"
-          ]
+          ],
+          "guards": []
+        },
+        {
+          "from": null,
+          "to": "neu",
+          "kind": "initial",
+          "param": null,
+          "sources": [
+            "supabase/migrations/20261107150000_workflow_consistency.sql",
+            "supabase/migrations/20261110160000_routine_workflow_runtime.sql",
+            "supabase/migrations/20261110170000_routine_deputies_relative_deadlines.sql",
+            "supabase/migrations/20261113150000_employee_hr_lifecycle.sql"
+          ],
+          "guards": []
         }
       ],
       "guards": [
@@ -555,7 +1369,27 @@
           "readsOld": true,
           "readsNew": true,
           "raises": true,
-          "states": []
+          "message": "Die zuständige Person gehört nicht zum Büro",
+          "checks": [],
+          "states": [],
+          "blockedTo": [],
+          "blockedFrom": [],
+          "allowedTo": [
+            "active",
+            "antwort_ausstehend",
+            "archiviert",
+            "erledigt",
+            "in_klaerung",
+            "neu"
+          ],
+          "allowedFrom": [
+            "active",
+            "antwort_ausstehend",
+            "archiviert",
+            "erledigt",
+            "in_klaerung",
+            "neu"
+          ]
         },
         {
           "trigger": "trg_case_items_audit_lifecycle",
@@ -568,14 +1402,84 @@
           "readsOld": true,
           "readsNew": true,
           "raises": false,
+          "message": null,
+          "checks": [
+            {
+              "side": "NEW",
+              "operator": "=",
+              "negated": false,
+              "values": [
+                "erledigt"
+              ]
+            }
+          ],
           "states": [
             "erledigt"
+          ],
+          "blockedTo": [],
+          "blockedFrom": [],
+          "allowedTo": [
+            "active",
+            "antwort_ausstehend",
+            "archiviert",
+            "erledigt",
+            "in_klaerung",
+            "neu"
+          ],
+          "allowedFrom": [
+            "active",
+            "antwort_ausstehend",
+            "archiviert",
+            "erledigt",
+            "in_klaerung",
+            "neu"
           ]
         }
       ],
+      "reconciliation": null,
       "limitations": [
         "Guards werden zitiert, aber nicht als vollständiger Automat interpretiert; abgeleitet werden nur belegte Schreibvorgänge.",
         "Übergänge ohne belegten Ausgangszustand sind mit \"from\": null gekennzeichnet."
+      ],
+      "findings": [
+        {
+          "kind": "isoliert",
+          "severity": "info",
+          "states": [
+            "antwort_ausstehend",
+            "erledigt",
+            "in_klaerung"
+          ],
+          "message": "Zustände ohne jede Verbindung im belegten Graphen."
+        },
+        {
+          "kind": "sackgasse",
+          "severity": "info",
+          "states": [
+            "active",
+            "archiviert",
+            "neu"
+          ],
+          "message": "Zustände mit Eingang, aber ohne belegten ausgehenden Übergang (möglicher Endzustand)."
+        },
+        {
+          "kind": "unbelegter-start",
+          "severity": "info",
+          "states": [
+            "archiviert"
+          ],
+          "message": "Schreibvorgänge ohne belegten Ausgangszustand; die Kante bleibt gerichtet, aber ohne Quelle."
+        },
+        {
+          "kind": "unerreichbar",
+          "severity": "info",
+          "states": [
+            "antwort_ausstehend",
+            "erledigt",
+            "in_klaerung"
+          ],
+          "message": "Zustände ohne belegten Eingang; der Graph enthält noch keinen Übergang mit Ausgangszustand, daher keine Aussage über Erreichbarkeit."
+        }
       ]
     },
     {
@@ -599,7 +1503,8 @@
         {
           "value": "draft",
           "sources": [
-            "check:supabase/migrations/20250723102114-7c65bf58-e737-4ea9-8748-77c0861aee39.sql"
+            "check:supabase/migrations/20250723102114-7c65bf58-e737-4ea9-8748-77c0861aee39.sql",
+            "default:supabase/migrations/20250723102114-7c65bf58-e737-4ea9-8748-77c0861aee39.sql"
           ]
         },
         {
@@ -609,11 +1514,100 @@
           ]
         }
       ],
-      "transitions": [],
+      "initialStates": [
+        "draft"
+      ],
+      "transitions": [
+        {
+          "from": null,
+          "to": "draft",
+          "kind": "initial",
+          "param": null,
+          "sources": [
+            "supabase/migrations/20250723102114-7c65bf58-e737-4ea9-8748-77c0861aee39.sql"
+          ],
+          "guards": []
+        }
+      ],
       "guards": [],
+      "reconciliation": null,
       "limitations": [
-        "Kein Trigger im Migrationsbestand gefunden; Übergänge sind nicht durch Trigger abgesichert.",
-        "Keine belegten Statusübergänge im Migrationsbestand."
+        "Kein Trigger im Migrationsbestand gefunden; Übergänge sind nicht durch Trigger abgesichert."
+      ],
+      "findings": [
+        {
+          "kind": "isoliert",
+          "severity": "info",
+          "states": [
+            "approved",
+            "archived",
+            "review"
+          ],
+          "message": "Zustände ohne jede Verbindung im belegten Graphen."
+        },
+        {
+          "kind": "sackgasse",
+          "severity": "info",
+          "states": [
+            "draft"
+          ],
+          "message": "Zustände mit Eingang, aber ohne belegten ausgehenden Übergang (möglicher Endzustand)."
+        },
+        {
+          "kind": "unerreichbar",
+          "severity": "info",
+          "states": [
+            "approved",
+            "archived",
+            "review"
+          ],
+          "message": "Zustände ohne belegten Eingang; der Graph enthält noch keinen Übergang mit Ausgangszustand, daher keine Aussage über Erreichbarkeit."
+        }
+      ]
+    },
+    {
+      "id": "dossiers.status",
+      "table": "dossiers",
+      "column": "status",
+      "enumType": null,
+      "states": [
+        {
+          "value": "aktiv",
+          "sources": [
+            "default:supabase/migrations/20260325224919_cfb1734e-455f-4014-bc2b-713f7216da90.sql"
+          ]
+        }
+      ],
+      "initialStates": [
+        "aktiv"
+      ],
+      "transitions": [
+        {
+          "from": null,
+          "to": "aktiv",
+          "kind": "initial",
+          "param": null,
+          "sources": [
+            "supabase/migrations/20260325224919_cfb1734e-455f-4014-bc2b-713f7216da90.sql"
+          ],
+          "guards": []
+        }
+      ],
+      "guards": [],
+      "reconciliation": null,
+      "limitations": [
+        "Keine Enum- oder CHECK-Beschränkung belegt; die Zustandswerte stammen nur aus Schreibvorgängen und Triggern.",
+        "Kein Trigger im Migrationsbestand gefunden; Übergänge sind nicht durch Trigger abgesichert."
+      ],
+      "findings": [
+        {
+          "kind": "sackgasse",
+          "severity": "info",
+          "states": [
+            "aktiv"
+          ],
+          "message": "Zustände mit Eingang, aber ohne belegten ausgehenden Übergang (möglicher Endzustand)."
+        }
       ]
     },
     {
@@ -647,11 +1641,22 @@
           ]
         }
       ],
+      "initialStates": [],
       "transitions": [],
       "guards": [],
+      "reconciliation": null,
       "limitations": [
         "Kein Trigger im Migrationsbestand gefunden; Übergänge sind nicht durch Trigger abgesichert.",
-        "Keine belegten Statusübergänge im Migrationsbestand."
+        "Keine belegten Statusübergänge im Migrationsbestand.",
+        "Kein Startzustand belegt; der Eintritt in die Maschine ist nicht nachweisbar."
+      ],
+      "findings": [
+        {
+          "kind": "kein-startzustand",
+          "severity": "warn",
+          "states": [],
+          "message": "Kein Spalten-Default und kein literaler INSERT belegt einen Startzustand."
+        }
       ]
     },
     {
@@ -679,11 +1684,22 @@
           ]
         }
       ],
+      "initialStates": [],
       "transitions": [],
       "guards": [],
+      "reconciliation": null,
       "limitations": [
         "Kein Trigger im Migrationsbestand gefunden; Übergänge sind nicht durch Trigger abgesichert.",
-        "Keine belegten Statusübergänge im Migrationsbestand."
+        "Keine belegten Statusübergänge im Migrationsbestand.",
+        "Kein Startzustand belegt; der Eintritt in die Maschine ist nicht nachweisbar."
+      ],
+      "findings": [
+        {
+          "kind": "kein-startzustand",
+          "severity": "warn",
+          "states": [],
+          "message": "Kein Spalten-Default und kein literaler INSERT belegt einen Startzustand."
+        }
       ]
     },
     {
@@ -707,15 +1723,58 @@
         {
           "value": "verified",
           "sources": [
-            "check:supabase/migrations/20261114140000_election_analysis_research.sql"
+            "check:supabase/migrations/20261114140000_election_analysis_research.sql",
+            "insert:supabase/migrations/20261114145000_verified_2026_state_parties.sql"
           ]
         }
       ],
-      "transitions": [],
+      "initialStates": [
+        "verified"
+      ],
+      "transitions": [
+        {
+          "from": null,
+          "to": "verified",
+          "kind": "initial",
+          "param": null,
+          "sources": [
+            "supabase/migrations/20261114145000_verified_2026_state_parties.sql"
+          ],
+          "guards": []
+        }
+      ],
       "guards": [],
+      "reconciliation": null,
       "limitations": [
-        "Kein Trigger im Migrationsbestand gefunden; Übergänge sind nicht durch Trigger abgesichert.",
-        "Keine belegten Statusübergänge im Migrationsbestand."
+        "Kein Trigger im Migrationsbestand gefunden; Übergänge sind nicht durch Trigger abgesichert."
+      ],
+      "findings": [
+        {
+          "kind": "isoliert",
+          "severity": "info",
+          "states": [
+            "conflict",
+            "pending"
+          ],
+          "message": "Zustände ohne jede Verbindung im belegten Graphen."
+        },
+        {
+          "kind": "sackgasse",
+          "severity": "info",
+          "states": [
+            "verified"
+          ],
+          "message": "Zustände mit Eingang, aber ohne belegten ausgehenden Übergang (möglicher Endzustand)."
+        },
+        {
+          "kind": "unerreichbar",
+          "severity": "info",
+          "states": [
+            "conflict",
+            "pending"
+          ],
+          "message": "Zustände ohne belegten Eingang; der Graph enthält noch keinen Übergang mit Ausgangszustand, daher keine Aussage über Erreichbarkeit."
+        }
       ]
     },
     {
@@ -743,11 +1802,22 @@
           ]
         }
       ],
+      "initialStates": [],
       "transitions": [],
       "guards": [],
+      "reconciliation": null,
       "limitations": [
         "Kein Trigger im Migrationsbestand gefunden; Übergänge sind nicht durch Trigger abgesichert.",
-        "Keine belegten Statusübergänge im Migrationsbestand."
+        "Keine belegten Statusübergänge im Migrationsbestand.",
+        "Kein Startzustand belegt; der Eintritt in die Maschine ist nicht nachweisbar."
+      ],
+      "findings": [
+        {
+          "kind": "kein-startzustand",
+          "severity": "warn",
+          "states": [],
+          "message": "Kein Spalten-Default und kein literaler INSERT belegt einen Startzustand."
+        }
       ]
     },
     {
@@ -763,20 +1833,50 @@
           ]
         }
       ],
+      "initialStates": [],
       "transitions": [
         {
           "from": null,
           "to": "existing",
+          "kind": "write",
+          "param": null,
           "sources": [
             "supabase/migrations/20261118130000_correct_dederer_election_history.sql"
-          ]
+          ],
+          "guards": []
         }
       ],
       "guards": [],
+      "reconciliation": null,
       "limitations": [
         "Keine Enum- oder CHECK-Beschränkung belegt; die Zustandswerte stammen nur aus Schreibvorgängen und Triggern.",
         "Kein Trigger im Migrationsbestand gefunden; Übergänge sind nicht durch Trigger abgesichert.",
-        "Übergänge ohne belegten Ausgangszustand sind mit \"from\": null gekennzeichnet."
+        "Übergänge ohne belegten Ausgangszustand sind mit \"from\": null gekennzeichnet.",
+        "Kein Startzustand belegt; der Eintritt in die Maschine ist nicht nachweisbar."
+      ],
+      "findings": [
+        {
+          "kind": "kein-startzustand",
+          "severity": "warn",
+          "states": [],
+          "message": "Kein Spalten-Default und kein literaler INSERT belegt einen Startzustand."
+        },
+        {
+          "kind": "sackgasse",
+          "severity": "info",
+          "states": [
+            "existing"
+          ],
+          "message": "Zustände mit Eingang, aber ohne belegten ausgehenden Übergang (möglicher Endzustand)."
+        },
+        {
+          "kind": "unbelegter-start",
+          "severity": "info",
+          "states": [
+            "existing"
+          ],
+          "message": "Schreibvorgänge ohne belegten Ausgangszustand; die Kante bleibt gerichtet, aber ohne Quelle."
+        }
       ]
     },
     {
@@ -800,15 +1900,58 @@
         {
           "value": "sent",
           "sources": [
-            "check:supabase/migrations/20251008142916_9d616c05-1073-4def-acf7-46550310e7dc.sql"
+            "check:supabase/migrations/20251008142916_9d616c05-1073-4def-acf7-46550310e7dc.sql",
+            "default:supabase/migrations/20251008142916_9d616c05-1073-4def-acf7-46550310e7dc.sql"
           ]
         }
       ],
-      "transitions": [],
+      "initialStates": [
+        "sent"
+      ],
+      "transitions": [
+        {
+          "from": null,
+          "to": "sent",
+          "kind": "initial",
+          "param": null,
+          "sources": [
+            "supabase/migrations/20251008142916_9d616c05-1073-4def-acf7-46550310e7dc.sql"
+          ],
+          "guards": []
+        }
+      ],
       "guards": [],
+      "reconciliation": null,
       "limitations": [
-        "Kein Trigger im Migrationsbestand gefunden; Übergänge sind nicht durch Trigger abgesichert.",
-        "Keine belegten Statusübergänge im Migrationsbestand."
+        "Kein Trigger im Migrationsbestand gefunden; Übergänge sind nicht durch Trigger abgesichert."
+      ],
+      "findings": [
+        {
+          "kind": "isoliert",
+          "severity": "info",
+          "states": [
+            "failed",
+            "scheduled"
+          ],
+          "message": "Zustände ohne jede Verbindung im belegten Graphen."
+        },
+        {
+          "kind": "sackgasse",
+          "severity": "info",
+          "states": [
+            "sent"
+          ],
+          "message": "Zustände mit Eingang, aber ohne belegten ausgehenden Übergang (möglicher Endzustand)."
+        },
+        {
+          "kind": "unerreichbar",
+          "severity": "info",
+          "states": [
+            "failed",
+            "scheduled"
+          ],
+          "message": "Zustände ohne belegten Eingang; der Graph enthält noch keinen Übergang mit Ausgangszustand, daher keine Aussage über Erreichbarkeit."
+        }
       ]
     },
     {
@@ -842,9 +1985,13 @@
         {
           "value": "open",
           "sources": [
-            "check:supabase/migrations/20251008003926_514357f8-c8dc-4fe4-9afe-477dad611034.sql"
+            "check:supabase/migrations/20251008003926_514357f8-c8dc-4fe4-9afe-477dad611034.sql",
+            "default:supabase/migrations/20251008003926_514357f8-c8dc-4fe4-9afe-477dad611034.sql"
           ]
         }
+      ],
+      "initialStates": [
+        "open"
       ],
       "transitions": [
         {
@@ -853,9 +2000,12 @@
             "in_progress"
           ],
           "to": "completed",
+          "kind": "write",
+          "param": null,
           "sources": [
             "supabase/migrations/20261113121000_employee_action_stafette.sql"
-          ]
+          ],
+          "guards": []
         },
         {
           "from": [
@@ -863,9 +2013,22 @@
             "in_progress"
           ],
           "to": "in_progress",
+          "kind": "write",
+          "param": null,
           "sources": [
             "supabase/migrations/20261113121000_employee_action_stafette.sql"
-          ]
+          ],
+          "guards": []
+        },
+        {
+          "from": null,
+          "to": "open",
+          "kind": "initial",
+          "param": null,
+          "sources": [
+            "supabase/migrations/20251008003926_514357f8-c8dc-4fe4-9afe-477dad611034.sql"
+          ],
+          "guards": []
         }
       ],
       "guards": [
@@ -880,14 +2043,122 @@
           "readsOld": true,
           "readsNew": true,
           "raises": false,
+          "message": null,
+          "checks": [
+            {
+              "side": "NEW",
+              "operator": "=",
+              "negated": false,
+              "values": [
+                "completed"
+              ]
+            },
+            {
+              "side": "NEW",
+              "operator": "=",
+              "negated": false,
+              "values": [
+                "in_progress"
+              ]
+            },
+            {
+              "side": "NEW",
+              "operator": "=",
+              "negated": false,
+              "values": [
+                "completed"
+              ]
+            },
+            {
+              "side": "NEW",
+              "operator": "=",
+              "negated": false,
+              "values": [
+                "completed"
+              ]
+            },
+            {
+              "side": "NEW",
+              "operator": "=",
+              "negated": false,
+              "values": [
+                "in_progress"
+              ]
+            },
+            {
+              "side": "NEW",
+              "operator": "=",
+              "negated": false,
+              "values": [
+                "completed"
+              ]
+            },
+            {
+              "side": "NEW",
+              "operator": "=",
+              "negated": false,
+              "values": [
+                "in_progress"
+              ]
+            },
+            {
+              "side": "NEW",
+              "operator": "=",
+              "negated": false,
+              "values": [
+                "completed"
+              ]
+            }
+          ],
           "states": [
             "completed",
             "in_progress"
+          ],
+          "blockedTo": [],
+          "blockedFrom": [],
+          "allowedTo": [
+            "cancelled",
+            "completed",
+            "in_progress",
+            "open"
+          ],
+          "allowedFrom": [
+            "cancelled",
+            "completed",
+            "in_progress",
+            "open"
           ]
         }
       ],
+      "reconciliation": null,
       "limitations": [
         "Nur beobachtende oder synchronisierende Trigger, keine Guard-Funktion mit RAISE EXCEPTION."
+      ],
+      "findings": [
+        {
+          "kind": "unerreichbar",
+          "severity": "warn",
+          "states": [
+            "cancelled"
+          ],
+          "message": "Zustände ohne belegten Eingang: weder Startzustand noch Ziel eines Übergangs."
+        },
+        {
+          "kind": "isoliert",
+          "severity": "info",
+          "states": [
+            "cancelled"
+          ],
+          "message": "Zustände ohne jede Verbindung im belegten Graphen."
+        },
+        {
+          "kind": "sackgasse",
+          "severity": "info",
+          "states": [
+            "open"
+          ],
+          "message": "Zustände mit Eingang, aber ohne belegten ausgehenden Übergang (möglicher Endzustand)."
+        }
       ]
     },
     {
@@ -897,6 +2168,12 @@
       "enumType": null,
       "states": [
         {
+          "value": "completed",
+          "sources": [
+            "write:supabase/migrations/20260310110000_reconcile_employee_meeting_requests.sql"
+          ]
+        },
+        {
           "value": "declined",
           "sources": [
             "check:supabase/migrations/20251008002713_306e5588-b2e8-4826-8aad-c96e515975be.sql"
@@ -905,7 +2182,9 @@
         {
           "value": "pending",
           "sources": [
-            "check:supabase/migrations/20251008002713_306e5588-b2e8-4826-8aad-c96e515975be.sql"
+            "check:supabase/migrations/20251008002713_306e5588-b2e8-4826-8aad-c96e515975be.sql",
+            "default:supabase/migrations/20251008002713_306e5588-b2e8-4826-8aad-c96e515975be.sql",
+            "write:supabase/migrations/20260310110000_reconcile_employee_meeting_requests.sql"
           ]
         },
         {
@@ -915,11 +2194,84 @@
           ]
         }
       ],
-      "transitions": [],
+      "initialStates": [
+        "pending"
+      ],
+      "transitions": [
+        {
+          "from": null,
+          "to": "completed",
+          "kind": "write",
+          "param": null,
+          "sources": [
+            "supabase/migrations/20260310110000_reconcile_employee_meeting_requests.sql"
+          ],
+          "guards": []
+        },
+        {
+          "from": null,
+          "to": "pending",
+          "kind": "initial",
+          "param": null,
+          "sources": [
+            "supabase/migrations/20251008002713_306e5588-b2e8-4826-8aad-c96e515975be.sql"
+          ],
+          "guards": []
+        },
+        {
+          "from": [
+            "pending"
+          ],
+          "to": "completed",
+          "kind": "write",
+          "param": null,
+          "sources": [
+            "supabase/migrations/20260310110000_reconcile_employee_meeting_requests.sql"
+          ],
+          "guards": []
+        }
+      ],
       "guards": [],
+      "reconciliation": null,
       "limitations": [
         "Kein Trigger im Migrationsbestand gefunden; Übergänge sind nicht durch Trigger abgesichert.",
-        "Keine belegten Statusübergänge im Migrationsbestand."
+        "Übergänge ohne belegten Ausgangszustand sind mit \"from\": null gekennzeichnet."
+      ],
+      "findings": [
+        {
+          "kind": "unerreichbar",
+          "severity": "warn",
+          "states": [
+            "declined",
+            "scheduled"
+          ],
+          "message": "Zustände ohne belegten Eingang: weder Startzustand noch Ziel eines Übergangs."
+        },
+        {
+          "kind": "isoliert",
+          "severity": "info",
+          "states": [
+            "declined",
+            "scheduled"
+          ],
+          "message": "Zustände ohne jede Verbindung im belegten Graphen."
+        },
+        {
+          "kind": "sackgasse",
+          "severity": "info",
+          "states": [
+            "completed"
+          ],
+          "message": "Zustände mit Eingang, aber ohne belegten ausgehenden Übergang (möglicher Endzustand)."
+        },
+        {
+          "kind": "unbelegter-start",
+          "severity": "info",
+          "states": [
+            "completed"
+          ],
+          "message": "Schreibvorgänge ohne belegten Ausgangszustand; die Kante bleibt gerichtet, aber ohne Quelle."
+        }
       ]
     },
     {
@@ -984,30 +2336,141 @@
           "sources": [
             "check:supabase/migrations/20251008002713_306e5588-b2e8-4826-8aad-c96e515975be.sql",
             "check:supabase/migrations/20260210212601_1f7501d4-6d9f-4d13-add2-a11e1188a3e9.sql",
-            "check:supabase/migrations/20261113120000_employee_protocol_acknowledgement.sql"
+            "check:supabase/migrations/20261113120000_employee_protocol_acknowledgement.sql",
+            "default:supabase/migrations/20251008002713_306e5588-b2e8-4826-8aad-c96e515975be.sql"
           ]
         }
+      ],
+      "initialStates": [
+        "scheduled"
       ],
       "transitions": [
         {
           "from": null,
           "to": "in_progress",
+          "kind": "write",
+          "param": null,
           "sources": [
             "supabase/migrations/20261113120000_employee_protocol_acknowledgement.sql"
-          ]
+          ],
+          "guards": []
         },
         {
           "from": null,
           "to": "pending_acknowledgement",
+          "kind": "write",
+          "param": null,
           "sources": [
             "supabase/migrations/20261113120000_employee_protocol_acknowledgement.sql"
-          ]
+          ],
+          "guards": []
+        },
+        {
+          "from": null,
+          "to": "scheduled",
+          "kind": "initial",
+          "param": null,
+          "sources": [
+            "supabase/migrations/20251008002713_306e5588-b2e8-4826-8aad-c96e515975be.sql"
+          ],
+          "guards": []
         }
       ],
       "guards": [],
+      "reconciliation": null,
       "limitations": [
         "Kein Trigger im Migrationsbestand gefunden; Übergänge sind nicht durch Trigger abgesichert.",
         "Übergänge ohne belegten Ausgangszustand sind mit \"from\": null gekennzeichnet."
+      ],
+      "findings": [
+        {
+          "kind": "isoliert",
+          "severity": "info",
+          "states": [
+            "acknowledged",
+            "cancelled",
+            "cancelled_by_employee",
+            "completed",
+            "rescheduled"
+          ],
+          "message": "Zustände ohne jede Verbindung im belegten Graphen."
+        },
+        {
+          "kind": "sackgasse",
+          "severity": "info",
+          "states": [
+            "in_progress",
+            "pending_acknowledgement",
+            "scheduled"
+          ],
+          "message": "Zustände mit Eingang, aber ohne belegten ausgehenden Übergang (möglicher Endzustand)."
+        },
+        {
+          "kind": "unbelegter-start",
+          "severity": "info",
+          "states": [
+            "in_progress",
+            "pending_acknowledgement"
+          ],
+          "message": "Schreibvorgänge ohne belegten Ausgangszustand; die Kante bleibt gerichtet, aber ohne Quelle."
+        },
+        {
+          "kind": "unerreichbar",
+          "severity": "info",
+          "states": [
+            "acknowledged",
+            "cancelled",
+            "cancelled_by_employee",
+            "completed",
+            "rescheduled"
+          ],
+          "message": "Zustände ohne belegten Eingang; der Graph enthält noch keinen Übergang mit Ausgangszustand, daher keine Aussage über Erreichbarkeit."
+        }
+      ]
+    },
+    {
+      "id": "event_rsvps.status",
+      "table": "event_rsvps",
+      "column": "status",
+      "enumType": null,
+      "states": [
+        {
+          "value": "invited",
+          "sources": [
+            "default:supabase/migrations/20260214221312_e6693634-9744-43f2-a615-3a41cf7d08aa.sql"
+          ]
+        }
+      ],
+      "initialStates": [
+        "invited"
+      ],
+      "transitions": [
+        {
+          "from": null,
+          "to": "invited",
+          "kind": "initial",
+          "param": null,
+          "sources": [
+            "supabase/migrations/20260214221312_e6693634-9744-43f2-a615-3a41cf7d08aa.sql"
+          ],
+          "guards": []
+        }
+      ],
+      "guards": [],
+      "reconciliation": null,
+      "limitations": [
+        "Keine Enum- oder CHECK-Beschränkung belegt; die Zustandswerte stammen nur aus Schreibvorgängen und Triggern.",
+        "Kein Trigger im Migrationsbestand gefunden; Übergänge sind nicht durch Trigger abgesichert."
+      ],
+      "findings": [
+        {
+          "kind": "sackgasse",
+          "severity": "info",
+          "states": [
+            "invited"
+          ],
+          "message": "Zustände mit Eingang, aber ohne belegten ausgehenden Übergang (möglicher Endzustand)."
+        }
       ]
     },
     {
@@ -1037,15 +2500,60 @@
         {
           "value": "planned",
           "sources": [
-            "check:supabase/migrations/20251020231916_4bd35977-f4fa-40d8-a839-ca9d5aaa4e06.sql"
+            "check:supabase/migrations/20251020231916_4bd35977-f4fa-40d8-a839-ca9d5aaa4e06.sql",
+            "default:supabase/migrations/20251020231916_4bd35977-f4fa-40d8-a839-ca9d5aaa4e06.sql"
           ]
         }
       ],
-      "transitions": [],
+      "initialStates": [
+        "planned"
+      ],
+      "transitions": [
+        {
+          "from": null,
+          "to": "planned",
+          "kind": "initial",
+          "param": null,
+          "sources": [
+            "supabase/migrations/20251020231916_4bd35977-f4fa-40d8-a839-ca9d5aaa4e06.sql"
+          ],
+          "guards": []
+        }
+      ],
       "guards": [],
+      "reconciliation": null,
       "limitations": [
-        "Kein Trigger im Migrationsbestand gefunden; Übergänge sind nicht durch Trigger abgesichert.",
-        "Keine belegten Statusübergänge im Migrationsbestand."
+        "Kein Trigger im Migrationsbestand gefunden; Übergänge sind nicht durch Trigger abgesichert."
+      ],
+      "findings": [
+        {
+          "kind": "isoliert",
+          "severity": "info",
+          "states": [
+            "active",
+            "cancelled",
+            "completed"
+          ],
+          "message": "Zustände ohne jede Verbindung im belegten Graphen."
+        },
+        {
+          "kind": "sackgasse",
+          "severity": "info",
+          "states": [
+            "planned"
+          ],
+          "message": "Zustände mit Eingang, aber ohne belegten ausgehenden Übergang (möglicher Endzustand)."
+        },
+        {
+          "kind": "unerreichbar",
+          "severity": "info",
+          "states": [
+            "active",
+            "cancelled",
+            "completed"
+          ],
+          "message": "Zustände ohne belegten Eingang; der Graph enthält noch keinen Übergang mit Ausgangszustand, daher keine Aussage über Erreichbarkeit."
+        }
       ]
     },
     {
@@ -1079,6 +2587,7 @@
           "value": "pending",
           "sources": [
             "check:supabase/migrations/20260507190106_964aec00-97b8-4df7-817d-fba76bba4038.sql",
+            "default:supabase/migrations/20260507190106_964aec00-97b8-4df7-817d-fba76bba4038.sql",
             "write:supabase/migrations/20261103234405_6bbdc076-40ca-4b87-bdb0-601eb9590bc9.sql",
             "guard:supabase/migrations/20260507190106_964aec00-97b8-4df7-817d-fba76bba4038.sql"
           ]
@@ -1099,6 +2608,9 @@
           ]
         }
       ],
+      "initialStates": [
+        "pending"
+      ],
       "transitions": [
         {
           "from": [
@@ -1106,15 +2618,37 @@
             "processing"
           ],
           "to": "pending",
+          "kind": "write",
+          "param": null,
           "sources": [
             "supabase/migrations/20261103234405_6bbdc076-40ca-4b87-bdb0-601eb9590bc9.sql"
+          ],
+          "guards": [
+            "trg_gdpr_four_eyes"
+          ]
+        },
+        {
+          "from": null,
+          "to": "pending",
+          "kind": "initial",
+          "param": null,
+          "sources": [
+            "supabase/migrations/20260507190106_964aec00-97b8-4df7-817d-fba76bba4038.sql"
+          ],
+          "guards": [
+            "trg_gdpr_four_eyes"
           ]
         },
         {
           "from": null,
           "to": "processing",
+          "kind": "write",
+          "param": null,
           "sources": [
             "supabase/migrations/20261103234535_c0c4be9b-04f3-459c-b7fe-5fb0e7d3d934.sql"
+          ],
+          "guards": [
+            "trg_gdpr_four_eyes"
           ]
         },
         {
@@ -1122,8 +2656,13 @@
             "pending"
           ],
           "to": "approved",
+          "kind": "write",
+          "param": null,
           "sources": [
             "supabase/migrations/20261103234405_6bbdc076-40ca-4b87-bdb0-601eb9590bc9.sql"
+          ],
+          "guards": [
+            "trg_gdpr_four_eyes"
           ]
         }
       ],
@@ -1139,17 +2678,165 @@
           "readsOld": true,
           "readsNew": true,
           "raises": true,
+          "message": "Neue Anfragen dürfen keine Freigabe enthalten.",
+          "checks": [
+            {
+              "side": "OLD",
+              "operator": "not in",
+              "negated": true,
+              "values": [
+                "completed",
+                "processing"
+              ]
+            },
+            {
+              "side": "OLD",
+              "operator": "is distinct from",
+              "negated": true,
+              "values": [
+                "approved"
+              ]
+            },
+            {
+              "side": "OLD",
+              "operator": "<>",
+              "negated": true,
+              "values": [
+                "pending"
+              ]
+            },
+            {
+              "side": "OLD",
+              "operator": "<>",
+              "negated": true,
+              "values": [
+                "approved"
+              ]
+            },
+            {
+              "side": "NEW",
+              "operator": "in",
+              "negated": false,
+              "values": [
+                "approved",
+                "completed",
+                "processing"
+              ]
+            },
+            {
+              "side": "NEW",
+              "operator": "<>",
+              "negated": true,
+              "values": [
+                "pending"
+              ]
+            },
+            {
+              "side": "NEW",
+              "operator": "<>",
+              "negated": true,
+              "values": [
+                "approved"
+              ]
+            },
+            {
+              "side": "NEW",
+              "operator": "=",
+              "negated": false,
+              "values": [
+                "approved"
+              ]
+            },
+            {
+              "side": "NEW",
+              "operator": "=",
+              "negated": false,
+              "values": [
+                "processing"
+              ]
+            },
+            {
+              "side": "NEW",
+              "operator": "=",
+              "negated": false,
+              "values": [
+                "completed"
+              ]
+            }
+          ],
           "states": [
             "approved",
             "completed",
             "pending",
             "processing"
-          ]
+          ],
+          "blockedTo": [
+            "approved",
+            "completed",
+            "failed",
+            "pending",
+            "processing",
+            "rejected"
+          ],
+          "blockedFrom": [
+            "approved",
+            "completed",
+            "failed",
+            "pending",
+            "processing",
+            "rejected"
+          ],
+          "allowedTo": [],
+          "allowedFrom": []
         }
       ],
+      "reconciliation": null,
       "limitations": [
         "Guards werden zitiert, aber nicht als vollständiger Automat interpretiert; abgeleitet werden nur belegte Schreibvorgänge.",
         "Übergänge ohne belegten Ausgangszustand sind mit \"from\": null gekennzeichnet."
+      ],
+      "findings": [
+        {
+          "kind": "guard-widerspruch",
+          "severity": "warn",
+          "states": [
+            "approved",
+            "completed",
+            "failed",
+            "pending",
+            "processing",
+            "rejected"
+          ],
+          "message": "trg_gdpr_four_eyes blockiert jeden belegten Zielzustand."
+        },
+        {
+          "kind": "unerreichbar",
+          "severity": "warn",
+          "states": [
+            "completed",
+            "failed",
+            "rejected"
+          ],
+          "message": "Zustände ohne belegten Eingang: weder Startzustand noch Ziel eines Übergangs."
+        },
+        {
+          "kind": "isoliert",
+          "severity": "info",
+          "states": [
+            "completed",
+            "failed",
+            "rejected"
+          ],
+          "message": "Zustände ohne jede Verbindung im belegten Graphen."
+        },
+        {
+          "kind": "unbelegter-start",
+          "severity": "info",
+          "states": [
+            "processing"
+          ],
+          "message": "Schreibvorgänge ohne belegten Ausgangszustand; die Kante bleibt gerichtet, aber ohne Quelle."
+        }
       ]
     },
     {
@@ -1161,7 +2848,8 @@
         {
           "value": "pending",
           "sources": [
-            "check:supabase/migrations/20261110180000_knowledge_qa_core.sql"
+            "check:supabase/migrations/20261110180000_knowledge_qa_core.sql",
+            "default:supabase/migrations/20261110180000_knowledge_qa_core.sql"
           ]
         },
         {
@@ -1179,26 +2867,67 @@
           ]
         }
       ],
+      "initialStates": [
+        "pending"
+      ],
       "transitions": [
         {
           "from": null,
+          "to": "pending",
+          "kind": "initial",
+          "param": null,
+          "sources": [
+            "supabase/migrations/20261110180000_knowledge_qa_core.sql"
+          ],
+          "guards": []
+        },
+        {
+          "from": null,
           "to": "ready",
+          "kind": "write",
+          "param": null,
           "sources": [
             "supabase/migrations/20261110180200_knowledge_qa_storage.sql"
-          ]
+          ],
+          "guards": []
         },
         {
           "from": null,
           "to": "removed",
+          "kind": "write",
+          "param": null,
           "sources": [
             "supabase/migrations/20261110180200_knowledge_qa_storage.sql"
-          ]
+          ],
+          "guards": []
         }
       ],
       "guards": [],
+      "reconciliation": null,
       "limitations": [
         "Kein Trigger im Migrationsbestand gefunden; Übergänge sind nicht durch Trigger abgesichert.",
         "Übergänge ohne belegten Ausgangszustand sind mit \"from\": null gekennzeichnet."
+      ],
+      "findings": [
+        {
+          "kind": "sackgasse",
+          "severity": "info",
+          "states": [
+            "pending",
+            "ready",
+            "removed"
+          ],
+          "message": "Zustände mit Eingang, aber ohne belegten ausgehenden Übergang (möglicher Endzustand)."
+        },
+        {
+          "kind": "unbelegter-start",
+          "severity": "info",
+          "states": [
+            "ready",
+            "removed"
+          ],
+          "message": "Schreibvorgänge ohne belegten Ausgangszustand; die Kante bleibt gerichtet, aber ohne Quelle."
+        }
       ]
     },
     {
@@ -1220,6 +2949,7 @@
           "value": "unverified",
           "sources": [
             "check:supabase/migrations/20261110180000_knowledge_qa_core.sql",
+            "default:supabase/migrations/20261110180000_knowledge_qa_core.sql",
             "write:supabase/migrations/20261110180000_knowledge_qa_core.sql",
             "write:supabase/migrations/20261110180200_knowledge_qa_storage.sql",
             "write:supabase/migrations/20261111100900_knowledge_sources.sql"
@@ -1234,23 +2964,42 @@
           ]
         }
       ],
+      "initialStates": [
+        "unverified"
+      ],
       "transitions": [
         {
           "from": null,
           "to": "needs_review",
+          "kind": "write",
+          "param": null,
           "sources": [
             "supabase/migrations/20261111101000_knowledge_conversation_followers.sql",
             "supabase/migrations/20261112090000_knowledge_validity_and_review_tasks.sql"
-          ]
+          ],
+          "guards": []
         },
         {
           "from": null,
           "to": "unverified",
+          "kind": "initial",
+          "param": null,
+          "sources": [
+            "supabase/migrations/20261110180000_knowledge_qa_core.sql"
+          ],
+          "guards": []
+        },
+        {
+          "from": null,
+          "to": "unverified",
+          "kind": "write",
+          "param": null,
           "sources": [
             "supabase/migrations/20261110180000_knowledge_qa_core.sql",
             "supabase/migrations/20261110180200_knowledge_qa_storage.sql",
             "supabase/migrations/20261111100900_knowledge_sources.sql"
-          ]
+          ],
+          "guards": []
         }
       ],
       "guards": [
@@ -1265,8 +3014,39 @@
           "readsOld": true,
           "readsNew": true,
           "raises": false,
+          "message": null,
+          "checks": [
+            {
+              "side": "NEW",
+              "operator": "=",
+              "negated": false,
+              "values": [
+                "verified"
+              ]
+            },
+            {
+              "side": "NEW",
+              "operator": "=",
+              "negated": false,
+              "values": [
+                "needs_review"
+              ]
+            }
+          ],
           "states": [
             "needs_review",
+            "verified"
+          ],
+          "blockedTo": [],
+          "blockedFrom": [],
+          "allowedTo": [
+            "needs_review",
+            "unverified",
+            "verified"
+          ],
+          "allowedFrom": [
+            "needs_review",
+            "unverified",
             "verified"
           ]
         },
@@ -1281,14 +3061,74 @@
           "readsOld": true,
           "readsNew": true,
           "raises": false,
+          "message": null,
+          "checks": [
+            {
+              "side": "NEW",
+              "operator": "=",
+              "negated": false,
+              "values": [
+                "verified"
+              ]
+            }
+          ],
           "states": [
+            "verified"
+          ],
+          "blockedTo": [],
+          "blockedFrom": [],
+          "allowedTo": [
+            "needs_review",
+            "unverified",
+            "verified"
+          ],
+          "allowedFrom": [
+            "needs_review",
+            "unverified",
             "verified"
           ]
         }
       ],
+      "reconciliation": null,
       "limitations": [
         "Nur beobachtende oder synchronisierende Trigger, keine Guard-Funktion mit RAISE EXCEPTION.",
         "Übergänge ohne belegten Ausgangszustand sind mit \"from\": null gekennzeichnet."
+      ],
+      "findings": [
+        {
+          "kind": "isoliert",
+          "severity": "info",
+          "states": [
+            "verified"
+          ],
+          "message": "Zustände ohne jede Verbindung im belegten Graphen."
+        },
+        {
+          "kind": "sackgasse",
+          "severity": "info",
+          "states": [
+            "needs_review",
+            "unverified"
+          ],
+          "message": "Zustände mit Eingang, aber ohne belegten ausgehenden Übergang (möglicher Endzustand)."
+        },
+        {
+          "kind": "unbelegter-start",
+          "severity": "info",
+          "states": [
+            "needs_review",
+            "unverified"
+          ],
+          "message": "Schreibvorgänge ohne belegten Ausgangszustand; die Kante bleibt gerichtet, aber ohne Quelle."
+        },
+        {
+          "kind": "unerreichbar",
+          "severity": "info",
+          "states": [
+            "verified"
+          ],
+          "message": "Zustände ohne belegten Eingang; der Graph enthält noch keinen Übergang mit Ausgangszustand, daher keine Aussage über Erreichbarkeit."
+        }
       ]
     },
     {
@@ -1329,6 +3169,7 @@
           ]
         }
       ],
+      "initialStates": [],
       "transitions": [],
       "guards": [
         {
@@ -1342,14 +3183,51 @@
           "readsOld": false,
           "readsNew": true,
           "raises": false,
+          "message": null,
+          "checks": [
+            {
+              "side": "NEW",
+              "operator": "=",
+              "negated": false,
+              "values": [
+                "pending"
+              ]
+            }
+          ],
           "states": [
             "pending"
+          ],
+          "blockedTo": [],
+          "blockedFrom": [],
+          "allowedTo": [
+            "approved",
+            "cancel_requested",
+            "cancelled",
+            "pending",
+            "rejected"
+          ],
+          "allowedFrom": [
+            "approved",
+            "cancel_requested",
+            "cancelled",
+            "pending",
+            "rejected"
           ]
         }
       ],
+      "reconciliation": null,
       "limitations": [
         "Nur beobachtende oder synchronisierende Trigger, keine Guard-Funktion mit RAISE EXCEPTION.",
-        "Keine belegten Statusübergänge im Migrationsbestand."
+        "Keine belegten Statusübergänge im Migrationsbestand.",
+        "Kein Startzustand belegt; der Eintritt in die Maschine ist nicht nachweisbar."
+      ],
+      "findings": [
+        {
+          "kind": "kein-startzustand",
+          "severity": "warn",
+          "states": [],
+          "message": "Kein Spalten-Default und kein literaler INSERT belegt einen Startzustand."
+        }
       ]
     },
     {
@@ -1405,29 +3283,39 @@
           ]
         }
       ],
+      "initialStates": [],
       "transitions": [
         {
           "from": null,
           "to": "approved",
+          "kind": "write",
+          "param": null,
           "sources": [
             "supabase/migrations/20250901004249_6c8060e0-28d4-4adc-a890-514025795c0a.sql",
             "supabase/migrations/20250901004331_e7e79e52-32bb-4315-bcc1-5e23585bb7ce.sql",
             "supabase/migrations/20250901004403_e601cf2f-3dd2-46f8-9f5f-5b8731fa03eb.sql"
-          ]
+          ],
+          "guards": []
         },
         {
           "from": null,
           "to": "archived",
+          "kind": "write",
+          "param": null,
           "sources": [
             "supabase/migrations/20250901002205_e44c9137-114c-4d43-84aa-6927a115fa8e.sql"
-          ]
+          ],
+          "guards": []
         },
         {
           "from": null,
           "to": "sent",
+          "kind": "write",
+          "param": null,
           "sources": [
             "supabase/migrations/20250901004624_e4007eaf-ea99-4c2f-b696-71dea9c3655d.sql"
-          ]
+          ],
+          "guards": []
         }
       ],
       "guards": [
@@ -1442,7 +3330,42 @@
           "readsOld": true,
           "readsNew": true,
           "raises": false,
+          "message": null,
+          "checks": [
+            {
+              "side": "OLD",
+              "operator": "!=",
+              "negated": true,
+              "values": [
+                "sent"
+              ]
+            },
+            {
+              "side": "NEW",
+              "operator": "=",
+              "negated": false,
+              "values": [
+                "sent"
+              ]
+            }
+          ],
           "states": [
+            "sent"
+          ],
+          "blockedTo": [],
+          "blockedFrom": [],
+          "allowedTo": [
+            "approved",
+            "archived",
+            "draft",
+            "review",
+            "sent"
+          ],
+          "allowedFrom": [
+            "approved",
+            "archived",
+            "draft",
+            "review",
             "sent"
           ]
         },
@@ -1457,7 +3380,25 @@
           "readsOld": true,
           "readsNew": true,
           "raises": false,
-          "states": []
+          "message": null,
+          "checks": [],
+          "states": [],
+          "blockedTo": [],
+          "blockedFrom": [],
+          "allowedTo": [
+            "approved",
+            "archived",
+            "draft",
+            "review",
+            "sent"
+          ],
+          "allowedFrom": [
+            "approved",
+            "archived",
+            "draft",
+            "review",
+            "sent"
+          ]
         },
         {
           "trigger": "trigger_letter_followup_task",
@@ -1470,7 +3411,42 @@
           "readsOld": true,
           "readsNew": true,
           "raises": false,
+          "message": null,
+          "checks": [
+            {
+              "side": "OLD",
+              "operator": "!=",
+              "negated": true,
+              "values": [
+                "sent"
+              ]
+            },
+            {
+              "side": "NEW",
+              "operator": "=",
+              "negated": false,
+              "values": [
+                "sent"
+              ]
+            }
+          ],
           "states": [
+            "sent"
+          ],
+          "blockedTo": [],
+          "blockedFrom": [],
+          "allowedTo": [
+            "approved",
+            "archived",
+            "draft",
+            "review",
+            "sent"
+          ],
+          "allowedFrom": [
+            "approved",
+            "archived",
+            "draft",
+            "review",
             "sent"
           ]
         },
@@ -1485,15 +3461,228 @@
           "readsOld": true,
           "readsNew": true,
           "raises": false,
+          "message": null,
+          "checks": [
+            {
+              "side": "OLD",
+              "operator": "!=",
+              "negated": true,
+              "values": [
+                "sent"
+              ]
+            },
+            {
+              "side": "NEW",
+              "operator": "=",
+              "negated": false,
+              "values": [
+                "sent"
+              ]
+            },
+            {
+              "side": "NEW",
+              "operator": "=",
+              "negated": false,
+              "values": [
+                "archived"
+              ]
+            }
+          ],
           "states": [
             "archived",
+            "sent"
+          ],
+          "blockedTo": [],
+          "blockedFrom": [],
+          "allowedTo": [
+            "approved",
+            "archived",
+            "draft",
+            "review",
+            "sent"
+          ],
+          "allowedFrom": [
+            "approved",
+            "archived",
+            "draft",
+            "review",
             "sent"
           ]
         }
       ],
+      "reconciliation": {
+        "source": "src/components/letters/types.ts",
+        "label": "Freigaberegeln des Briefeditors",
+        "onlyInCode": [
+          {
+            "from": "draft",
+            "to": "review"
+          },
+          {
+            "from": "draft",
+            "to": "pending_approval"
+          },
+          {
+            "from": "review",
+            "to": "pending_approval"
+          },
+          {
+            "from": "review",
+            "to": "draft"
+          },
+          {
+            "from": "pending_approval",
+            "to": "approved"
+          },
+          {
+            "from": "pending_approval",
+            "to": "revision_requested"
+          },
+          {
+            "from": "revision_requested",
+            "to": "draft"
+          },
+          {
+            "from": "approved",
+            "to": "sent"
+          },
+          {
+            "from": "approved",
+            "to": "pending_approval"
+          }
+        ],
+        "onlyInArtifact": [],
+        "clientValues": [
+          {
+            "value": "approved",
+            "source": "src/components/task-decisions/TaskDecisionResponse.tsx"
+          },
+          {
+            "value": "approved",
+            "source": "src/features/letters/components/LetterEditor.tsx"
+          },
+          {
+            "value": "revision_requested",
+            "source": "src/components/task-decisions/TaskDecisionResponse.tsx"
+          }
+        ]
+      },
       "limitations": [
         "Nur beobachtende oder synchronisierende Trigger, keine Guard-Funktion mit RAISE EXCEPTION.",
-        "Übergänge ohne belegten Ausgangszustand sind mit \"from\": null gekennzeichnet."
+        "Übergänge ohne belegten Ausgangszustand sind mit \"from\": null gekennzeichnet.",
+        "Kein Startzustand belegt; der Eintritt in die Maschine ist nicht nachweisbar."
+      ],
+      "findings": [
+        {
+          "kind": "client-wert-unbelegt",
+          "severity": "warn",
+          "states": [
+            "revision_requested"
+          ],
+          "message": "Der Client schreibt Zustandswerte, die in Migrationen oder Typen nicht belegt sind."
+        },
+        {
+          "kind": "kein-startzustand",
+          "severity": "warn",
+          "states": [],
+          "message": "Kein Spalten-Default und kein literaler INSERT belegt einen Startzustand."
+        },
+        {
+          "kind": "nur-im-code",
+          "severity": "warn",
+          "states": [
+            "approved",
+            "draft",
+            "pending_approval",
+            "review",
+            "revision_requested",
+            "sent"
+          ],
+          "message": "Freigaberegeln des Briefeditors erlaubt Übergänge, die in der Datenbank nicht belegt sind."
+        },
+        {
+          "kind": "isoliert",
+          "severity": "info",
+          "states": [
+            "draft",
+            "review"
+          ],
+          "message": "Zustände ohne jede Verbindung im belegten Graphen."
+        },
+        {
+          "kind": "sackgasse",
+          "severity": "info",
+          "states": [
+            "approved",
+            "archived",
+            "sent"
+          ],
+          "message": "Zustände mit Eingang, aber ohne belegten ausgehenden Übergang (möglicher Endzustand)."
+        },
+        {
+          "kind": "unbelegter-start",
+          "severity": "info",
+          "states": [
+            "approved",
+            "archived",
+            "sent"
+          ],
+          "message": "Schreibvorgänge ohne belegten Ausgangszustand; die Kante bleibt gerichtet, aber ohne Quelle."
+        },
+        {
+          "kind": "unerreichbar",
+          "severity": "info",
+          "states": [
+            "draft",
+            "review"
+          ],
+          "message": "Zustände ohne belegten Eingang; der Graph enthält noch keinen Übergang mit Ausgangszustand, daher keine Aussage über Erreichbarkeit."
+        }
+      ]
+    },
+    {
+      "id": "matrix_bot_logs.status",
+      "table": "matrix_bot_logs",
+      "column": "status",
+      "enumType": null,
+      "states": [
+        {
+          "value": "success",
+          "sources": [
+            "default:supabase/migrations/20250928223747_e5019fd6-8191-42be-b6df-3f58e9038aca.sql"
+          ]
+        }
+      ],
+      "initialStates": [
+        "success"
+      ],
+      "transitions": [
+        {
+          "from": null,
+          "to": "success",
+          "kind": "initial",
+          "param": null,
+          "sources": [
+            "supabase/migrations/20250928223747_e5019fd6-8191-42be-b6df-3f58e9038aca.sql"
+          ],
+          "guards": []
+        }
+      ],
+      "guards": [],
+      "reconciliation": null,
+      "limitations": [
+        "Keine Enum- oder CHECK-Beschränkung belegt; die Zustandswerte stammen nur aus Schreibvorgängen und Triggern.",
+        "Kein Trigger im Migrationsbestand gefunden; Übergänge sind nicht durch Trigger abgesichert."
+      ],
+      "findings": [
+        {
+          "kind": "sackgasse",
+          "severity": "info",
+          "states": [
+            "success"
+          ],
+          "message": "Zustände mit Eingang, aber ohne belegten ausgehenden Übergang (möglicher Endzustand)."
+        }
       ]
     },
     {
@@ -1517,15 +3706,58 @@
         {
           "value": "open",
           "sources": [
-            "check:supabase/migrations/20260304120000_matrix_widget_feedback.sql"
+            "check:supabase/migrations/20260304120000_matrix_widget_feedback.sql",
+            "default:supabase/migrations/20260304120000_matrix_widget_feedback.sql"
           ]
         }
       ],
-      "transitions": [],
+      "initialStates": [
+        "open"
+      ],
+      "transitions": [
+        {
+          "from": null,
+          "to": "open",
+          "kind": "initial",
+          "param": null,
+          "sources": [
+            "supabase/migrations/20260304120000_matrix_widget_feedback.sql"
+          ],
+          "guards": []
+        }
+      ],
       "guards": [],
+      "reconciliation": null,
       "limitations": [
-        "Kein Trigger im Migrationsbestand gefunden; Übergänge sind nicht durch Trigger abgesichert.",
-        "Keine belegten Statusübergänge im Migrationsbestand."
+        "Kein Trigger im Migrationsbestand gefunden; Übergänge sind nicht durch Trigger abgesichert."
+      ],
+      "findings": [
+        {
+          "kind": "isoliert",
+          "severity": "info",
+          "states": [
+            "done",
+            "in_progress"
+          ],
+          "message": "Zustände ohne jede Verbindung im belegten Graphen."
+        },
+        {
+          "kind": "sackgasse",
+          "severity": "info",
+          "states": [
+            "open"
+          ],
+          "message": "Zustände mit Eingang, aber ohne belegten ausgehenden Übergang (möglicher Endzustand)."
+        },
+        {
+          "kind": "unerreichbar",
+          "severity": "info",
+          "states": [
+            "done",
+            "in_progress"
+          ],
+          "message": "Zustände ohne belegten Eingang; der Graph enthält noch keinen Übergang mit Ausgangszustand, daher keine Aussage über Erreichbarkeit."
+        }
       ]
     },
     {
@@ -1538,35 +3770,118 @@
           "value": "confirmed",
           "sources": [
             "check:supabase/migrations/20251213235501_300367bb-918c-408b-b126-1376e24a5f61.sql",
-            "check:supabase/migrations/20261125090000_jour_fixe_actual_times_and_rsvp.sql"
+            "check:supabase/migrations/20261125090000_jour_fixe_actual_times_and_rsvp.sql",
+            "param:supabase/migrations/20261125090000_jour_fixe_actual_times_and_rsvp.sql"
           ]
         },
         {
           "value": "declined",
           "sources": [
             "check:supabase/migrations/20251213235501_300367bb-918c-408b-b126-1376e24a5f61.sql",
-            "check:supabase/migrations/20261125090000_jour_fixe_actual_times_and_rsvp.sql"
+            "check:supabase/migrations/20261125090000_jour_fixe_actual_times_and_rsvp.sql",
+            "param:supabase/migrations/20261125090000_jour_fixe_actual_times_and_rsvp.sql"
           ]
         },
         {
           "value": "pending",
           "sources": [
             "check:supabase/migrations/20251213235501_300367bb-918c-408b-b126-1376e24a5f61.sql",
-            "check:supabase/migrations/20261125090000_jour_fixe_actual_times_and_rsvp.sql"
+            "check:supabase/migrations/20261125090000_jour_fixe_actual_times_and_rsvp.sql",
+            "default:supabase/migrations/20251213235501_300367bb-918c-408b-b126-1376e24a5f61.sql",
+            "param:supabase/migrations/20261125090000_jour_fixe_actual_times_and_rsvp.sql"
           ]
         },
         {
           "value": "vacation",
           "sources": [
-            "check:supabase/migrations/20261125090000_jour_fixe_actual_times_and_rsvp.sql"
+            "check:supabase/migrations/20261125090000_jour_fixe_actual_times_and_rsvp.sql",
+            "param:supabase/migrations/20261125090000_jour_fixe_actual_times_and_rsvp.sql"
           ]
         }
       ],
-      "transitions": [],
+      "initialStates": [
+        "pending"
+      ],
+      "transitions": [
+        {
+          "from": null,
+          "to": "confirmed",
+          "kind": "parametric",
+          "param": "_status",
+          "sources": [
+            "supabase/migrations/20261125090000_jour_fixe_actual_times_and_rsvp.sql"
+          ],
+          "guards": []
+        },
+        {
+          "from": null,
+          "to": "declined",
+          "kind": "parametric",
+          "param": "_status",
+          "sources": [
+            "supabase/migrations/20261125090000_jour_fixe_actual_times_and_rsvp.sql"
+          ],
+          "guards": []
+        },
+        {
+          "from": null,
+          "to": "pending",
+          "kind": "initial",
+          "param": null,
+          "sources": [
+            "supabase/migrations/20251213235501_300367bb-918c-408b-b126-1376e24a5f61.sql"
+          ],
+          "guards": []
+        },
+        {
+          "from": null,
+          "to": "pending",
+          "kind": "parametric",
+          "param": "_status",
+          "sources": [
+            "supabase/migrations/20261125090000_jour_fixe_actual_times_and_rsvp.sql"
+          ],
+          "guards": []
+        },
+        {
+          "from": null,
+          "to": "vacation",
+          "kind": "parametric",
+          "param": "_status",
+          "sources": [
+            "supabase/migrations/20261125090000_jour_fixe_actual_times_and_rsvp.sql"
+          ],
+          "guards": []
+        }
+      ],
       "guards": [],
+      "reconciliation": null,
       "limitations": [
-        "Kein Trigger im Migrationsbestand gefunden; Übergänge sind nicht durch Trigger abgesichert.",
-        "Keine belegten Statusübergänge im Migrationsbestand."
+        "Kein Trigger im Migrationsbestand gefunden; Übergänge sind nicht durch Trigger abgesichert."
+      ],
+      "findings": [
+        {
+          "kind": "parametrisch",
+          "severity": "info",
+          "states": [
+            "confirmed",
+            "declined",
+            "pending",
+            "vacation"
+          ],
+          "message": "Zielwerte stammen aus Funktionsparametern (_status); der Ausgangszustand ist im SQL nicht benannt."
+        },
+        {
+          "kind": "sackgasse",
+          "severity": "info",
+          "states": [
+            "confirmed",
+            "declined",
+            "pending",
+            "vacation"
+          ],
+          "message": "Zustände mit Eingang, aber ohne belegten ausgehenden Übergang (möglicher Endzustand)."
+        }
       ]
     },
     {
@@ -1585,27 +3900,47 @@
         {
           "value": "planned",
           "sources": [
+            "default:supabase/migrations/20250805075918_a34aefca-d5d2-416c-8932-d8c2b4ec8ca7.sql",
             "write:supabase/migrations/20261108120031_8cccd49f-ff9d-42fd-9f12-4f578c6ebd6a.sql"
           ]
         }
+      ],
+      "initialStates": [
+        "planned"
       ],
       "transitions": [
         {
           "from": null,
           "to": "archived",
+          "kind": "write",
+          "param": null,
           "sources": [
             "supabase/migrations/20261108115704_0906b2c3-18e1-4278-b3a5-8c95939be324.sql",
             "supabase/migrations/20261108120031_8cccd49f-ff9d-42fd-9f12-4f578c6ebd6a.sql"
-          ]
+          ],
+          "guards": []
+        },
+        {
+          "from": null,
+          "to": "planned",
+          "kind": "initial",
+          "param": null,
+          "sources": [
+            "supabase/migrations/20250805075918_a34aefca-d5d2-416c-8932-d8c2b4ec8ca7.sql"
+          ],
+          "guards": []
         },
         {
           "from": [
             "planned"
           ],
           "to": "archived",
+          "kind": "write",
+          "param": null,
           "sources": [
             "supabase/migrations/20261108120031_8cccd49f-ff9d-42fd-9f12-4f578c6ebd6a.sql"
-          ]
+          ],
+          "guards": []
         }
       ],
       "guards": [
@@ -1620,13 +3955,44 @@
           "readsOld": false,
           "readsNew": true,
           "raises": false,
-          "states": []
+          "message": null,
+          "checks": [],
+          "states": [],
+          "blockedTo": [],
+          "blockedFrom": [],
+          "allowedTo": [
+            "archived",
+            "planned"
+          ],
+          "allowedFrom": [
+            "archived",
+            "planned"
+          ]
         }
       ],
+      "reconciliation": null,
       "limitations": [
         "Keine Enum- oder CHECK-Beschränkung belegt; die Zustandswerte stammen nur aus Schreibvorgängen und Triggern.",
         "Nur beobachtende oder synchronisierende Trigger, keine Guard-Funktion mit RAISE EXCEPTION.",
         "Übergänge ohne belegten Ausgangszustand sind mit \"from\": null gekennzeichnet."
+      ],
+      "findings": [
+        {
+          "kind": "sackgasse",
+          "severity": "info",
+          "states": [
+            "archived"
+          ],
+          "message": "Zustände mit Eingang, aber ohne belegten ausgehenden Übergang (möglicher Endzustand)."
+        },
+        {
+          "kind": "unbelegter-start",
+          "severity": "info",
+          "states": [
+            "archived"
+          ],
+          "message": "Schreibvorgänge ohne belegten Ausgangszustand; die Kante bleibt gerichtet, aber ohne Quelle."
+        }
       ]
     },
     {
@@ -1656,15 +4022,71 @@
         {
           "value": "uploaded",
           "sources": [
-            "check:supabase/migrations/20250921095100_b6c5eb8a-c75c-4a56-be00-427a3da17a78.sql"
+            "check:supabase/migrations/20250921095100_b6c5eb8a-c75c-4a56-be00-427a3da17a78.sql",
+            "default:supabase/migrations/20250921095100_b6c5eb8a-c75c-4a56-be00-427a3da17a78.sql"
           ]
         }
       ],
-      "transitions": [],
+      "initialStates": [
+        "uploaded"
+      ],
+      "transitions": [
+        {
+          "from": null,
+          "to": "uploaded",
+          "kind": "initial",
+          "param": null,
+          "sources": [
+            "supabase/migrations/20250921095100_b6c5eb8a-c75c-4a56-be00-427a3da17a78.sql"
+          ],
+          "guards": []
+        }
+      ],
       "guards": [],
+      "reconciliation": {
+        "source": null,
+        "label": null,
+        "onlyInCode": [],
+        "onlyInArtifact": [],
+        "clientValues": [
+          {
+            "value": "uploaded",
+            "source": "src/components/drucksachen/ProtocolsList.tsx"
+          }
+        ]
+      },
       "limitations": [
-        "Kein Trigger im Migrationsbestand gefunden; Übergänge sind nicht durch Trigger abgesichert.",
-        "Keine belegten Statusübergänge im Migrationsbestand."
+        "Kein Trigger im Migrationsbestand gefunden; Übergänge sind nicht durch Trigger abgesichert."
+      ],
+      "findings": [
+        {
+          "kind": "isoliert",
+          "severity": "info",
+          "states": [
+            "completed",
+            "error",
+            "processing"
+          ],
+          "message": "Zustände ohne jede Verbindung im belegten Graphen."
+        },
+        {
+          "kind": "sackgasse",
+          "severity": "info",
+          "states": [
+            "uploaded"
+          ],
+          "message": "Zustände mit Eingang, aber ohne belegten ausgehenden Übergang (möglicher Endzustand)."
+        },
+        {
+          "kind": "unerreichbar",
+          "severity": "info",
+          "states": [
+            "completed",
+            "error",
+            "processing"
+          ],
+          "message": "Zustände ohne belegten Eingang; der Graph enthält noch keinen Übergang mit Ausgangszustand, daher keine Aussage über Erreichbarkeit."
+        }
       ]
     },
     {
@@ -1692,11 +4114,67 @@
           ]
         }
       ],
+      "initialStates": [],
       "transitions": [],
       "guards": [],
+      "reconciliation": null,
       "limitations": [
         "Kein Trigger im Migrationsbestand gefunden; Übergänge sind nicht durch Trigger abgesichert.",
-        "Keine belegten Statusübergänge im Migrationsbestand."
+        "Keine belegten Statusübergänge im Migrationsbestand.",
+        "Kein Startzustand belegt; der Eintritt in die Maschine ist nicht nachweisbar."
+      ],
+      "findings": [
+        {
+          "kind": "kein-startzustand",
+          "severity": "warn",
+          "states": [],
+          "message": "Kein Spalten-Default und kein literaler INSERT belegt einen Startzustand."
+        }
+      ]
+    },
+    {
+      "id": "press_releases.status",
+      "table": "press_releases",
+      "column": "status",
+      "enumType": null,
+      "states": [
+        {
+          "value": "draft",
+          "sources": [
+            "default:supabase/migrations/20260208114836_000e4dd0-7fab-4b67-83c0-585254c7c5fb.sql"
+          ]
+        }
+      ],
+      "initialStates": [
+        "draft"
+      ],
+      "transitions": [
+        {
+          "from": null,
+          "to": "draft",
+          "kind": "initial",
+          "param": null,
+          "sources": [
+            "supabase/migrations/20260208114836_000e4dd0-7fab-4b67-83c0-585254c7c5fb.sql"
+          ],
+          "guards": []
+        }
+      ],
+      "guards": [],
+      "reconciliation": null,
+      "limitations": [
+        "Keine Enum- oder CHECK-Beschränkung belegt; die Zustandswerte stammen nur aus Schreibvorgängen und Triggern.",
+        "Kein Trigger im Migrationsbestand gefunden; Übergänge sind nicht durch Trigger abgesichert."
+      ],
+      "findings": [
+        {
+          "kind": "sackgasse",
+          "severity": "info",
+          "states": [
+            "draft"
+          ],
+          "message": "Zustände mit Eingang, aber ohne belegten ausgehenden Übergang (möglicher Endzustand)."
+        }
       ]
     },
     {
@@ -1742,11 +4220,15 @@
           "value": "waiting",
           "sources": [
             "check:supabase/migrations/20261110160000_routine_workflow_runtime.sql",
+            "default:supabase/migrations/20261110160000_routine_workflow_runtime.sql",
             "write:supabase/migrations/20261110160000_routine_workflow_runtime.sql",
             "write:supabase/migrations/20261110170000_routine_deputies_relative_deadlines.sql",
             "write:supabase/migrations/20261113150000_employee_hr_lifecycle.sql"
           ]
         }
+      ],
+      "initialStates": [
+        "waiting"
       ],
       "transitions": [
         {
@@ -1754,51 +4236,161 @@
             "failed"
           ],
           "to": "waiting",
+          "kind": "write",
+          "param": null,
           "sources": [
             "supabase/migrations/20261110160000_routine_workflow_runtime.sql"
-          ]
+          ],
+          "guards": []
         },
         {
           "from": null,
           "to": "active",
+          "kind": "write",
+          "param": null,
           "sources": [
             "supabase/migrations/20261110160000_routine_workflow_runtime.sql",
             "supabase/migrations/20261110170000_routine_deputies_relative_deadlines.sql",
             "supabase/migrations/20261113150000_employee_hr_lifecycle.sql"
-          ]
+          ],
+          "guards": []
         },
         {
           "from": null,
           "to": "blocked",
+          "kind": "write",
+          "param": null,
           "sources": [
             "supabase/migrations/20261110160000_routine_workflow_runtime.sql",
             "supabase/migrations/20261110170000_routine_deputies_relative_deadlines.sql",
             "supabase/migrations/20261113150000_employee_hr_lifecycle.sql"
-          ]
+          ],
+          "guards": []
         },
         {
           "from": null,
           "to": "failed",
+          "kind": "write",
+          "param": null,
           "sources": [
             "supabase/migrations/20261110160000_routine_workflow_runtime.sql",
             "supabase/migrations/20261110170000_routine_deputies_relative_deadlines.sql",
             "supabase/migrations/20261113150000_employee_hr_lifecycle.sql"
-          ]
+          ],
+          "guards": []
         },
         {
           "from": null,
           "to": "waiting",
+          "kind": "initial",
+          "param": null,
+          "sources": [
+            "supabase/migrations/20261110160000_routine_workflow_runtime.sql"
+          ],
+          "guards": []
+        },
+        {
+          "from": null,
+          "to": "waiting",
+          "kind": "write",
+          "param": null,
           "sources": [
             "supabase/migrations/20261110160000_routine_workflow_runtime.sql",
             "supabase/migrations/20261110170000_routine_deputies_relative_deadlines.sql",
             "supabase/migrations/20261113150000_employee_hr_lifecycle.sql"
-          ]
+          ],
+          "guards": []
         }
       ],
       "guards": [],
+      "reconciliation": null,
       "limitations": [
         "Kein Trigger im Migrationsbestand gefunden; Übergänge sind nicht durch Trigger abgesichert.",
         "Übergänge ohne belegten Ausgangszustand sind mit \"from\": null gekennzeichnet."
+      ],
+      "findings": [
+        {
+          "kind": "unerreichbar",
+          "severity": "warn",
+          "states": [
+            "completed"
+          ],
+          "message": "Zustände ohne belegten Eingang: weder Startzustand noch Ziel eines Übergangs."
+        },
+        {
+          "kind": "isoliert",
+          "severity": "info",
+          "states": [
+            "completed"
+          ],
+          "message": "Zustände ohne jede Verbindung im belegten Graphen."
+        },
+        {
+          "kind": "sackgasse",
+          "severity": "info",
+          "states": [
+            "active",
+            "blocked",
+            "waiting"
+          ],
+          "message": "Zustände mit Eingang, aber ohne belegten ausgehenden Übergang (möglicher Endzustand)."
+        },
+        {
+          "kind": "unbelegter-start",
+          "severity": "info",
+          "states": [
+            "active",
+            "blocked",
+            "failed",
+            "waiting"
+          ],
+          "message": "Schreibvorgänge ohne belegten Ausgangszustand; die Kante bleibt gerichtet, aber ohne Quelle."
+        }
+      ]
+    },
+    {
+      "id": "scheduled_emails.status",
+      "table": "scheduled_emails",
+      "column": "status",
+      "enumType": null,
+      "states": [
+        {
+          "value": "scheduled",
+          "sources": [
+            "default:supabase/migrations/20251008145948_5624f32d-647c-4e54-a265-c7190bb1fa51.sql"
+          ]
+        }
+      ],
+      "initialStates": [
+        "scheduled"
+      ],
+      "transitions": [
+        {
+          "from": null,
+          "to": "scheduled",
+          "kind": "initial",
+          "param": null,
+          "sources": [
+            "supabase/migrations/20251008145948_5624f32d-647c-4e54-a265-c7190bb1fa51.sql"
+          ],
+          "guards": []
+        }
+      ],
+      "guards": [],
+      "reconciliation": null,
+      "limitations": [
+        "Keine Enum- oder CHECK-Beschränkung belegt; die Zustandswerte stammen nur aus Schreibvorgängen und Triggern.",
+        "Kein Trigger im Migrationsbestand gefunden; Übergänge sind nicht durch Trigger abgesichert."
+      ],
+      "findings": [
+        {
+          "kind": "sackgasse",
+          "severity": "info",
+          "states": [
+            "scheduled"
+          ],
+          "message": "Zustände mit Eingang, aber ohne belegten ausgehenden Übergang (möglicher Endzustand)."
+        }
       ]
     },
     {
@@ -1826,11 +4418,22 @@
           ]
         }
       ],
+      "initialStates": [],
       "transitions": [],
       "guards": [],
+      "reconciliation": null,
       "limitations": [
         "Kein Trigger im Migrationsbestand gefunden; Übergänge sind nicht durch Trigger abgesichert.",
-        "Keine belegten Statusübergänge im Migrationsbestand."
+        "Keine belegten Statusübergänge im Migrationsbestand.",
+        "Kein Startzustand belegt; der Eintritt in die Maschine ist nicht nachweisbar."
+      ],
+      "findings": [
+        {
+          "kind": "kein-startzustand",
+          "severity": "warn",
+          "states": [],
+          "message": "Kein Spalten-Default und kein literaler INSERT belegt einen Startzustand."
+        }
       ]
     },
     {
@@ -1854,7 +4457,8 @@
         {
           "value": "draft",
           "sources": [
-            "check:supabase/migrations/20260407170000_add_social_campaigns_and_content_pillars.sql"
+            "check:supabase/migrations/20260407170000_add_social_campaigns_and_content_pillars.sql",
+            "default:supabase/migrations/20260407170000_add_social_campaigns_and_content_pillars.sql"
           ]
         },
         {
@@ -1864,11 +4468,55 @@
           ]
         }
       ],
-      "transitions": [],
+      "initialStates": [
+        "draft"
+      ],
+      "transitions": [
+        {
+          "from": null,
+          "to": "draft",
+          "kind": "initial",
+          "param": null,
+          "sources": [
+            "supabase/migrations/20260407170000_add_social_campaigns_and_content_pillars.sql"
+          ],
+          "guards": []
+        }
+      ],
       "guards": [],
+      "reconciliation": null,
       "limitations": [
-        "Kein Trigger im Migrationsbestand gefunden; Übergänge sind nicht durch Trigger abgesichert.",
-        "Keine belegten Statusübergänge im Migrationsbestand."
+        "Kein Trigger im Migrationsbestand gefunden; Übergänge sind nicht durch Trigger abgesichert."
+      ],
+      "findings": [
+        {
+          "kind": "isoliert",
+          "severity": "info",
+          "states": [
+            "active",
+            "completed",
+            "paused"
+          ],
+          "message": "Zustände ohne jede Verbindung im belegten Graphen."
+        },
+        {
+          "kind": "sackgasse",
+          "severity": "info",
+          "states": [
+            "draft"
+          ],
+          "message": "Zustände mit Eingang, aber ohne belegten ausgehenden Übergang (möglicher Endzustand)."
+        },
+        {
+          "kind": "unerreichbar",
+          "severity": "info",
+          "states": [
+            "active",
+            "completed",
+            "paused"
+          ],
+          "message": "Zustände ohne belegten Eingang; der Graph enthält noch keinen Übergang mit Ausgangszustand, daher keine Aussage über Erreichbarkeit."
+        }
       ]
     },
     {
@@ -1894,7 +4542,8 @@
         {
           "value": "idea",
           "sources": [
-            "check:supabase/migrations/20260317113000_add_social_content_domain.sql"
+            "check:supabase/migrations/20260317113000_add_social_content_domain.sql",
+            "default:supabase/migrations/20260317113000_add_social_content_domain.sql"
           ]
         },
         {
@@ -1913,20 +4562,39 @@
           ]
         }
       ],
+      "initialStates": [
+        "idea"
+      ],
       "transitions": [
         {
           "from": null,
           "to": "approval",
+          "kind": "write",
+          "param": null,
           "sources": [
             "supabase/migrations/20261124260000_freeze_approved_social_content.sql"
-          ]
+          ],
+          "guards": []
         },
         {
           "from": null,
           "to": "draft",
+          "kind": "write",
+          "param": null,
           "sources": [
             "supabase/migrations/20261124200000_editorial_approval_workflow.sql"
-          ]
+          ],
+          "guards": []
+        },
+        {
+          "from": null,
+          "to": "idea",
+          "kind": "initial",
+          "param": null,
+          "sources": [
+            "supabase/migrations/20260317113000_add_social_content_domain.sql"
+          ],
+          "guards": []
         }
       ],
       "guards": [
@@ -1941,14 +4609,82 @@
           "readsOld": true,
           "readsNew": true,
           "raises": true,
+          "message": "Nur Büroleitung und Abgeordnete dürfen Freigaben erteilen.",
+          "checks": [
+            {
+              "side": "OLD",
+              "operator": "<>",
+              "negated": true,
+              "values": [
+                "published"
+              ]
+            }
+          ],
           "states": [
+            "published"
+          ],
+          "blockedTo": [],
+          "blockedFrom": [
+            "approval",
+            "draft",
+            "idea",
+            "scheduled"
+          ],
+          "allowedTo": [
+            "approval",
+            "draft",
+            "idea",
+            "published",
+            "scheduled"
+          ],
+          "allowedFrom": [
             "published"
           ]
         }
       ],
+      "reconciliation": null,
       "limitations": [
         "Guards werden zitiert, aber nicht als vollständiger Automat interpretiert; abgeleitet werden nur belegte Schreibvorgänge.",
         "Übergänge ohne belegten Ausgangszustand sind mit \"from\": null gekennzeichnet."
+      ],
+      "findings": [
+        {
+          "kind": "isoliert",
+          "severity": "info",
+          "states": [
+            "published",
+            "scheduled"
+          ],
+          "message": "Zustände ohne jede Verbindung im belegten Graphen."
+        },
+        {
+          "kind": "sackgasse",
+          "severity": "info",
+          "states": [
+            "approval",
+            "draft",
+            "idea"
+          ],
+          "message": "Zustände mit Eingang, aber ohne belegten ausgehenden Übergang (möglicher Endzustand)."
+        },
+        {
+          "kind": "unbelegter-start",
+          "severity": "info",
+          "states": [
+            "approval",
+            "draft"
+          ],
+          "message": "Schreibvorgänge ohne belegten Ausgangszustand; die Kante bleibt gerichtet, aber ohne Quelle."
+        },
+        {
+          "kind": "unerreichbar",
+          "severity": "info",
+          "states": [
+            "published",
+            "scheduled"
+          ],
+          "message": "Zustände ohne belegten Eingang; der Graph enthält noch keinen Übergang mit Ausgangszustand, daher keine Aussage über Erreichbarkeit."
+        }
       ]
     },
     {
@@ -1960,7 +4696,8 @@
         {
           "value": "draft",
           "sources": [
-            "check:supabase/migrations/20260407170000_add_social_content_variants.sql"
+            "check:supabase/migrations/20260407170000_add_social_content_variants.sql",
+            "default:supabase/migrations/20260407170000_add_social_content_variants.sql"
           ]
         },
         {
@@ -1988,11 +4725,57 @@
           ]
         }
       ],
-      "transitions": [],
+      "initialStates": [
+        "draft"
+      ],
+      "transitions": [
+        {
+          "from": null,
+          "to": "draft",
+          "kind": "initial",
+          "param": null,
+          "sources": [
+            "supabase/migrations/20260407170000_add_social_content_variants.sql"
+          ],
+          "guards": []
+        }
+      ],
       "guards": [],
+      "reconciliation": null,
       "limitations": [
-        "Kein Trigger im Migrationsbestand gefunden; Übergänge sind nicht durch Trigger abgesichert.",
-        "Keine belegten Statusübergänge im Migrationsbestand."
+        "Kein Trigger im Migrationsbestand gefunden; Übergänge sind nicht durch Trigger abgesichert."
+      ],
+      "findings": [
+        {
+          "kind": "isoliert",
+          "severity": "info",
+          "states": [
+            "failed",
+            "published",
+            "ready",
+            "scheduled"
+          ],
+          "message": "Zustände ohne jede Verbindung im belegten Graphen."
+        },
+        {
+          "kind": "sackgasse",
+          "severity": "info",
+          "states": [
+            "draft"
+          ],
+          "message": "Zustände mit Eingang, aber ohne belegten ausgehenden Übergang (möglicher Endzustand)."
+        },
+        {
+          "kind": "unerreichbar",
+          "severity": "info",
+          "states": [
+            "failed",
+            "published",
+            "ready",
+            "scheduled"
+          ],
+          "message": "Zustände ohne belegten Eingang; der Graph enthält noch keinen Übergang mit Ausgangszustand, daher keine Aussage über Erreichbarkeit."
+        }
       ]
     },
     {
@@ -2020,11 +4803,22 @@
           ]
         }
       ],
+      "initialStates": [],
       "transitions": [],
       "guards": [],
+      "reconciliation": null,
       "limitations": [
         "Kein Trigger im Migrationsbestand gefunden; Übergänge sind nicht durch Trigger abgesichert.",
-        "Keine belegten Statusübergänge im Migrationsbestand."
+        "Keine belegten Statusübergänge im Migrationsbestand.",
+        "Kein Startzustand belegt; der Eintritt in die Maschine ist nicht nachweisbar."
+      ],
+      "findings": [
+        {
+          "kind": "kein-startzustand",
+          "severity": "warn",
+          "states": [],
+          "message": "Kein Spalten-Default und kein literaler INSERT belegt einen Startzustand."
+        }
       ]
     },
     {
@@ -2038,6 +4832,11 @@
           "sources": [
             "check:supabase/migrations/20250826224258_edec5262-0a2a-414e-87bd-85d0e524ffa6.sql",
             "check:supabase/migrations/20260209094422_7cce038b-0e7e-4f45-931d-19b0fc237929.sql",
+            "default:supabase/migrations/20250826224258_edec5262-0a2a-414e-87bd-85d0e524ffa6.sql",
+            "insert:supabase/migrations/20261110150000_typed_office_routine_steps.sql",
+            "insert:supabase/migrations/20261110160000_routine_workflow_runtime.sql",
+            "insert:supabase/migrations/20261110170000_routine_deputies_relative_deadlines.sql",
+            "insert:supabase/migrations/20261113150000_employee_hr_lifecycle.sql",
             "write:supabase/migrations/20260209100456_1f1d79dc-a773-4379-82bd-99a16d806d49.sql"
           ]
         },
@@ -2058,6 +4857,9 @@
           ]
         }
       ],
+      "initialStates": [
+        "active"
+      ],
       "transitions": [
         {
           "from": [
@@ -2065,22 +4867,96 @@
             "open"
           ],
           "to": "archived",
+          "kind": "write",
+          "param": null,
           "sources": [
             "supabase/migrations/20260209100456_1f1d79dc-a773-4379-82bd-99a16d806d49.sql"
-          ]
+          ],
+          "guards": []
+        },
+        {
+          "from": null,
+          "to": "active",
+          "kind": "initial",
+          "param": null,
+          "sources": [
+            "supabase/migrations/20250826224258_edec5262-0a2a-414e-87bd-85d0e524ffa6.sql",
+            "supabase/migrations/20261110150000_typed_office_routine_steps.sql",
+            "supabase/migrations/20261110160000_routine_workflow_runtime.sql",
+            "supabase/migrations/20261110170000_routine_deputies_relative_deadlines.sql",
+            "supabase/migrations/20261113150000_employee_hr_lifecycle.sql"
+          ],
+          "guards": []
         },
         {
           "from": null,
           "to": "archived",
+          "kind": "write",
+          "param": null,
           "sources": [
             "supabase/migrations/20251008092243_13bc77ce-3770-4a50-b88c-2444fb69206c.sql"
-          ]
+          ],
+          "guards": []
         }
       ],
       "guards": [],
+      "reconciliation": {
+        "source": null,
+        "label": null,
+        "onlyInCode": [],
+        "onlyInArtifact": [],
+        "clientValues": [
+          {
+            "value": "approved",
+            "source": "src/components/task-decisions/TaskDecisionResponse.tsx"
+          },
+          {
+            "value": "archived",
+            "source": "src/components/task-decisions/TaskDecisionDetails.tsx"
+          },
+          {
+            "value": "archived",
+            "source": "src/components/task-decisions/TaskDecisionStatus.tsx"
+          }
+        ]
+      },
       "limitations": [
         "Kein Trigger im Migrationsbestand gefunden; Übergänge sind nicht durch Trigger abgesichert.",
         "Übergänge ohne belegten Ausgangszustand sind mit \"from\": null gekennzeichnet."
+      ],
+      "findings": [
+        {
+          "kind": "client-wert-unbelegt",
+          "severity": "warn",
+          "states": [
+            "approved"
+          ],
+          "message": "Der Client schreibt Zustandswerte, die in Migrationen oder Typen nicht belegt sind."
+        },
+        {
+          "kind": "unerreichbar",
+          "severity": "warn",
+          "states": [
+            "open"
+          ],
+          "message": "Zustände ohne belegten Eingang: weder Startzustand noch Ziel eines Übergangs."
+        },
+        {
+          "kind": "sackgasse",
+          "severity": "info",
+          "states": [
+            "archived"
+          ],
+          "message": "Zustände mit Eingang, aber ohne belegten ausgehenden Übergang (möglicher Endzustand)."
+        },
+        {
+          "kind": "unbelegter-start",
+          "severity": "info",
+          "states": [
+            "archived"
+          ],
+          "message": "Schreibvorgänge ohne belegten Ausgangszustand; die Kante bleibt gerichtet, aber ohne Quelle."
+        }
       ]
     },
     {
@@ -2119,6 +4995,12 @@
           ]
         },
         {
+          "value": "in-progress",
+          "sources": [
+            "check:supabase/migrations/20250803191041_74873018-a03c-434d-a935-86b817a22f64.sql"
+          ]
+        },
+        {
           "value": "in_progress",
           "sources": [
             "write:supabase/migrations/20261113121000_employee_action_stafette.sql",
@@ -2126,20 +5008,52 @@
           ]
         },
         {
-          "value": "in-progress",
-          "sources": [
-            "check:supabase/migrations/20250803191041_74873018-a03c-434d-a935-86b817a22f64.sql"
-          ]
-        },
-        {
           "value": "todo",
           "sources": [
             "check:supabase/migrations/20250803191041_74873018-a03c-434d-a935-86b817a22f64.sql",
+            "default:supabase/migrations/20250803191041_74873018-a03c-434d-a935-86b817a22f64.sql",
+            "insert:supabase/migrations/20250901095901_db66aa45-6db8-4471-85ac-ca8edf369ca8.sql",
+            "insert:supabase/migrations/20250901095950_1e2b8e44-b0e3-47f7-b40b-9036adb4239f.sql",
+            "insert:supabase/migrations/20250901100030_09847d9a-6b1e-4cc4-afa0-d71aff943238.sql",
+            "insert:supabase/migrations/20250901100139_1edacf92-ed1c-4583-875e-9df9f96d4a11.sql",
+            "insert:supabase/migrations/20250901100427_b114937a-a7cb-4e15-a308-73ba1d185cd5.sql",
+            "insert:supabase/migrations/20261106180000_link_case_steps_to_tasks.sql",
+            "insert:supabase/migrations/20261107105845_b0b95751-67d1-49b9-973c-26cec3a14c1e.sql",
+            "insert:supabase/migrations/20261107150000_workflow_consistency.sql",
+            "insert:supabase/migrations/20261108113437_6ceab425-38b4-4d82-a042-446e77bbbd90.sql",
+            "insert:supabase/migrations/20261108115704_0906b2c3-18e1-4278-b3a5-8c95939be324.sql",
+            "insert:supabase/migrations/20261108120031_8cccd49f-ff9d-42fd-9f12-4f578c6ebd6a.sql",
+            "insert:supabase/migrations/20261109100000_connect_appointment_preparation_workflow.sql",
+            "insert:supabase/migrations/20261109101304_dcd43720-f9f8-4d30-9637-1bc1b0853954.sql",
+            "insert:supabase/migrations/20261109120000_confirm_briefing_assignment_and_team_preparations.sql",
+            "insert:supabase/migrations/20261109233505_20da467a-e374-40c6-9766-b08231ba5bc3.sql",
+            "insert:supabase/migrations/20261110085747_70f61083-3057-42ed-9121-4e0971d9eceb.sql",
+            "insert:supabase/migrations/20261110150000_typed_office_routine_steps.sql",
+            "insert:supabase/migrations/20261110160000_routine_workflow_runtime.sql",
+            "insert:supabase/migrations/20261110170000_routine_deputies_relative_deadlines.sql",
+            "insert:supabase/migrations/20261112090000_knowledge_validity_and_review_tasks.sql",
+            "insert:supabase/migrations/20261112235945_annotation_assignments_tasks.sql",
+            "insert:supabase/migrations/20261113150000_employee_hr_lifecycle.sql",
+            "insert:supabase/migrations/20261120233021_21c3f3a4-eb56-4edd-92ab-cb783446936c.sql",
+            "insert:supabase/migrations/20261121000814_c7895a7d-c9d6-43a7-9ea2-a2018183c20a.sql",
+            "insert:supabase/migrations/20261121230000_office_feedback_followup.sql",
+            "insert:supabase/migrations/20261122121517_29ae2f40-a68d-451b-988f-9d4e3d79b8a0.sql",
+            "insert:supabase/migrations/20261123105326_99585400-ba0a-4043-ae02-97dbef21cabe.sql",
+            "insert:supabase/migrations/20261123140000_dashboard_birthday_congratulations.sql",
+            "insert:supabase/migrations/20261124110000_birthday_congratulations_action.sql",
+            "insert:supabase/migrations/20261124200000_editorial_approval_workflow.sql",
+            "insert:supabase/migrations/20261124280000_social_approval_reopen_notifications.sql",
+            "insert:supabase/migrations/20261124370000_task_review_sla_and_undo.sql",
+            "insert:supabase/migrations/20261125110500_repair_office_feedback_reminder_source.sql",
+            "insert:supabase/migrations/20261125111000_office_debrief_inbox.sql",
             "write:supabase/migrations/20261109100000_connect_appointment_preparation_workflow.sql",
             "write:supabase/migrations/20261124200000_editorial_approval_workflow.sql",
             "write:supabase/migrations/20261124280000_social_approval_reopen_notifications.sql"
           ]
         }
+      ],
+      "initialStates": [
+        "todo"
       ],
       "transitions": [
         {
@@ -2148,8 +5062,13 @@
             "in_progress"
           ],
           "to": "completed",
+          "kind": "write",
+          "param": null,
           "sources": [
             "supabase/migrations/20261113121000_employee_action_stafette.sql"
+          ],
+          "guards": [
+            "case_step_task_journal"
           ]
         },
         {
@@ -2158,13 +5077,20 @@
             "in_progress"
           ],
           "to": "in_progress",
+          "kind": "write",
+          "param": null,
           "sources": [
             "supabase/migrations/20261113121000_employee_action_stafette.sql"
+          ],
+          "guards": [
+            "case_step_task_journal"
           ]
         },
         {
           "from": null,
           "to": "completed",
+          "kind": "write",
+          "param": null,
           "sources": [
             "supabase/migrations/20261108113437_6ceab425-38b4-4d82-a042-446e77bbbd90.sql",
             "supabase/migrations/20261109100000_connect_appointment_preparation_workflow.sql",
@@ -2178,16 +5104,66 @@
             "supabase/migrations/20261121230000_office_feedback_followup.sql",
             "supabase/migrations/20261122121517_29ae2f40-a68d-451b-988f-9d4e3d79b8a0.sql",
             "supabase/migrations/20261125110500_repair_office_feedback_reminder_source.sql"
+          ],
+          "guards": [
+            "case_step_task_journal"
           ]
         },
         {
           "from": null,
           "to": "todo",
+          "kind": "initial",
+          "param": null,
+          "sources": [
+            "supabase/migrations/20250803191041_74873018-a03c-434d-a935-86b817a22f64.sql",
+            "supabase/migrations/20250901095901_db66aa45-6db8-4471-85ac-ca8edf369ca8.sql",
+            "supabase/migrations/20250901095950_1e2b8e44-b0e3-47f7-b40b-9036adb4239f.sql",
+            "supabase/migrations/20250901100030_09847d9a-6b1e-4cc4-afa0-d71aff943238.sql",
+            "supabase/migrations/20250901100139_1edacf92-ed1c-4583-875e-9df9f96d4a11.sql",
+            "supabase/migrations/20250901100427_b114937a-a7cb-4e15-a308-73ba1d185cd5.sql",
+            "supabase/migrations/20261106180000_link_case_steps_to_tasks.sql",
+            "supabase/migrations/20261107105845_b0b95751-67d1-49b9-973c-26cec3a14c1e.sql",
+            "supabase/migrations/20261107150000_workflow_consistency.sql",
+            "supabase/migrations/20261108113437_6ceab425-38b4-4d82-a042-446e77bbbd90.sql",
+            "supabase/migrations/20261108115704_0906b2c3-18e1-4278-b3a5-8c95939be324.sql",
+            "supabase/migrations/20261108120031_8cccd49f-ff9d-42fd-9f12-4f578c6ebd6a.sql",
+            "supabase/migrations/20261109100000_connect_appointment_preparation_workflow.sql",
+            "supabase/migrations/20261109101304_dcd43720-f9f8-4d30-9637-1bc1b0853954.sql",
+            "supabase/migrations/20261109120000_confirm_briefing_assignment_and_team_preparations.sql",
+            "supabase/migrations/20261109233505_20da467a-e374-40c6-9766-b08231ba5bc3.sql",
+            "supabase/migrations/20261110085747_70f61083-3057-42ed-9121-4e0971d9eceb.sql",
+            "supabase/migrations/20261110150000_typed_office_routine_steps.sql",
+            "supabase/migrations/20261110160000_routine_workflow_runtime.sql",
+            "supabase/migrations/20261110170000_routine_deputies_relative_deadlines.sql",
+            "supabase/migrations/20261112090000_knowledge_validity_and_review_tasks.sql",
+            "supabase/migrations/20261112235945_annotation_assignments_tasks.sql",
+            "supabase/migrations/20261113150000_employee_hr_lifecycle.sql",
+            "supabase/migrations/20261120233021_21c3f3a4-eb56-4edd-92ab-cb783446936c.sql",
+            "supabase/migrations/20261121000814_c7895a7d-c9d6-43a7-9ea2-a2018183c20a.sql",
+            "supabase/migrations/20261121230000_office_feedback_followup.sql",
+            "supabase/migrations/20261122121517_29ae2f40-a68d-451b-988f-9d4e3d79b8a0.sql",
+            "supabase/migrations/20261123105326_99585400-ba0a-4043-ae02-97dbef21cabe.sql",
+            "supabase/migrations/20261123140000_dashboard_birthday_congratulations.sql",
+            "supabase/migrations/20261124110000_birthday_congratulations_action.sql",
+            "supabase/migrations/20261124200000_editorial_approval_workflow.sql",
+            "supabase/migrations/20261124280000_social_approval_reopen_notifications.sql",
+            "supabase/migrations/20261124370000_task_review_sla_and_undo.sql",
+            "supabase/migrations/20261125110500_repair_office_feedback_reminder_source.sql",
+            "supabase/migrations/20261125111000_office_debrief_inbox.sql"
+          ],
+          "guards": []
+        },
+        {
+          "from": null,
+          "to": "todo",
+          "kind": "write",
+          "param": null,
           "sources": [
             "supabase/migrations/20261109100000_connect_appointment_preparation_workflow.sql",
             "supabase/migrations/20261124200000_editorial_approval_workflow.sql",
             "supabase/migrations/20261124280000_social_approval_reopen_notifications.sql"
-          ]
+          ],
+          "guards": []
         }
       ],
       "guards": [
@@ -2202,9 +5178,55 @@
           "readsOld": true,
           "readsNew": true,
           "raises": true,
+          "message": "Die Verknüpfung einer Büro-Aufgabe darf nicht entfernt werden",
+          "checks": [
+            {
+              "side": "OLD",
+              "operator": "in",
+              "negated": false,
+              "values": [
+                "cancelled",
+                "completed"
+              ]
+            },
+            {
+              "side": "NEW",
+              "operator": "=",
+              "negated": false,
+              "values": [
+                "completed"
+              ]
+            },
+            {
+              "side": "NEW",
+              "operator": "=",
+              "negated": false,
+              "values": [
+                "cancelled"
+              ]
+            }
+          ],
           "states": [
             "cancelled",
             "completed"
+          ],
+          "blockedTo": [
+            "cancelled",
+            "completed"
+          ],
+          "blockedFrom": [
+            "cancelled",
+            "completed"
+          ],
+          "allowedTo": [
+            "in-progress",
+            "in_progress",
+            "todo"
+          ],
+          "allowedFrom": [
+            "in-progress",
+            "in_progress",
+            "todo"
           ]
         },
         {
@@ -2218,8 +5240,35 @@
           "readsOld": true,
           "readsNew": true,
           "raises": false,
+          "message": null,
+          "checks": [
+            {
+              "side": "NEW",
+              "operator": "is distinct from",
+              "negated": true,
+              "values": [
+                "completed"
+              ]
+            }
+          ],
           "states": [
             "completed"
+          ],
+          "blockedTo": [],
+          "blockedFrom": [],
+          "allowedTo": [
+            "cancelled",
+            "completed",
+            "in-progress",
+            "in_progress",
+            "todo"
+          ],
+          "allowedFrom": [
+            "cancelled",
+            "completed",
+            "in-progress",
+            "in_progress",
+            "todo"
           ]
         },
         {
@@ -2233,8 +5282,43 @@
           "readsOld": true,
           "readsNew": true,
           "raises": false,
+          "message": null,
+          "checks": [
+            {
+              "side": "NEW",
+              "operator": "=",
+              "negated": false,
+              "values": [
+                "completed"
+              ]
+            },
+            {
+              "side": "NEW",
+              "operator": "=",
+              "negated": false,
+              "values": [
+                "completed"
+              ]
+            }
+          ],
           "states": [
             "completed"
+          ],
+          "blockedTo": [],
+          "blockedFrom": [],
+          "allowedTo": [
+            "cancelled",
+            "completed",
+            "in-progress",
+            "in_progress",
+            "todo"
+          ],
+          "allowedFrom": [
+            "cancelled",
+            "completed",
+            "in-progress",
+            "in_progress",
+            "todo"
           ]
         },
         {
@@ -2248,15 +5332,163 @@
           "readsOld": true,
           "readsNew": true,
           "raises": false,
+          "message": null,
+          "checks": [
+            {
+              "side": "NEW",
+              "operator": "=",
+              "negated": false,
+              "values": [
+                "completed"
+              ]
+            },
+            {
+              "side": "NEW",
+              "operator": "=",
+              "negated": false,
+              "values": [
+                "in_progress"
+              ]
+            },
+            {
+              "side": "NEW",
+              "operator": "=",
+              "negated": false,
+              "values": [
+                "completed"
+              ]
+            },
+            {
+              "side": "NEW",
+              "operator": "=",
+              "negated": false,
+              "values": [
+                "completed"
+              ]
+            },
+            {
+              "side": "NEW",
+              "operator": "=",
+              "negated": false,
+              "values": [
+                "in_progress"
+              ]
+            },
+            {
+              "side": "NEW",
+              "operator": "=",
+              "negated": false,
+              "values": [
+                "completed"
+              ]
+            },
+            {
+              "side": "NEW",
+              "operator": "=",
+              "negated": false,
+              "values": [
+                "in_progress"
+              ]
+            },
+            {
+              "side": "NEW",
+              "operator": "=",
+              "negated": false,
+              "values": [
+                "completed"
+              ]
+            }
+          ],
           "states": [
             "completed",
             "in_progress"
+          ],
+          "blockedTo": [],
+          "blockedFrom": [],
+          "allowedTo": [
+            "cancelled",
+            "completed",
+            "in-progress",
+            "in_progress",
+            "todo"
+          ],
+          "allowedFrom": [
+            "cancelled",
+            "completed",
+            "in-progress",
+            "in_progress",
+            "todo"
           ]
         }
       ],
+      "reconciliation": {
+        "source": null,
+        "label": null,
+        "onlyInCode": [],
+        "onlyInArtifact": [],
+        "clientValues": [
+          {
+            "value": "completed",
+            "source": "src/components/widgets/CallLogWidget.tsx"
+          },
+          {
+            "value": "completed",
+            "source": "src/features/cases/files/hooks/useCaseFileDetails.tsx"
+          },
+          {
+            "value": "todo",
+            "source": "src/features/tasks/components/TaskArchiveModal.tsx"
+          }
+        ]
+      },
       "limitations": [
         "Guards werden zitiert, aber nicht als vollständiger Automat interpretiert; abgeleitet werden nur belegte Schreibvorgänge.",
         "Übergänge ohne belegten Ausgangszustand sind mit \"from\": null gekennzeichnet."
+      ],
+      "findings": [
+        {
+          "kind": "unerreichbar",
+          "severity": "warn",
+          "states": [
+            "cancelled",
+            "in-progress"
+          ],
+          "message": "Zustände ohne belegten Eingang: weder Startzustand noch Ziel eines Übergangs."
+        },
+        {
+          "kind": "isoliert",
+          "severity": "info",
+          "states": [
+            "cancelled",
+            "in-progress"
+          ],
+          "message": "Zustände ohne jede Verbindung im belegten Graphen."
+        },
+        {
+          "kind": "nur-im-guard",
+          "severity": "info",
+          "states": [
+            "cancelled"
+          ],
+          "message": "Zustandswerte stammen ausschließlich aus Trigger-Vergleichen, aus keinem Schreibvorgang."
+        },
+        {
+          "kind": "sackgasse",
+          "severity": "info",
+          "states": [
+            "todo"
+          ],
+          "message": "Zustände mit Eingang, aber ohne belegten ausgehenden Übergang (möglicher Endzustand)."
+        },
+        {
+          "kind": "unbelegter-start",
+          "severity": "info",
+          "states": [
+            "completed",
+            "todo"
+          ],
+          "message": "Schreibvorgänge ohne belegten Ausgangszustand; die Kante bleibt gerichtet, aber ohne Quelle."
+        }
       ]
     },
     {
@@ -2280,7 +5512,8 @@
         {
           "value": "idea",
           "sources": [
-            "check:supabase/migrations/20260317113000_add_social_content_domain.sql"
+            "check:supabase/migrations/20260317113000_add_social_content_domain.sql",
+            "default:supabase/migrations/20260317113000_add_social_content_domain.sql"
           ]
         },
         {
@@ -2302,30 +5535,153 @@
           ]
         }
       ],
-      "transitions": [],
+      "initialStates": [
+        "idea"
+      ],
+      "transitions": [
+        {
+          "from": null,
+          "to": "idea",
+          "kind": "initial",
+          "param": null,
+          "sources": [
+            "supabase/migrations/20260317113000_add_social_content_domain.sql"
+          ],
+          "guards": []
+        }
+      ],
       "guards": [],
+      "reconciliation": null,
       "limitations": [
-        "Kein Trigger im Migrationsbestand gefunden; Übergänge sind nicht durch Trigger abgesichert.",
-        "Keine belegten Statusübergänge im Migrationsbestand."
+        "Kein Trigger im Migrationsbestand gefunden; Übergänge sind nicht durch Trigger abgesichert."
+      ],
+      "findings": [
+        {
+          "kind": "isoliert",
+          "severity": "info",
+          "states": [
+            "archived",
+            "done",
+            "in_progress",
+            "ready",
+            "research"
+          ],
+          "message": "Zustände ohne jede Verbindung im belegten Graphen."
+        },
+        {
+          "kind": "sackgasse",
+          "severity": "info",
+          "states": [
+            "idea"
+          ],
+          "message": "Zustände mit Eingang, aber ohne belegten ausgehenden Übergang (möglicher Endzustand)."
+        },
+        {
+          "kind": "unerreichbar",
+          "severity": "info",
+          "states": [
+            "archived",
+            "done",
+            "in_progress",
+            "ready",
+            "research"
+          ],
+          "message": "Zustände ohne belegten Eingang; der Graph enthält noch keinen Übergang mit Ausgangszustand, daher keine Aussage über Erreichbarkeit."
+        }
+      ]
+    },
+    {
+      "id": "workflow_action_log.status",
+      "table": "workflow_action_log",
+      "column": "status",
+      "enumType": null,
+      "states": [
+        {
+          "value": "pending",
+          "sources": [
+            "default:supabase/migrations/20260507184723_cfb49c22-ff3d-47d1-acd1-0ec0c35b1392.sql"
+          ]
+        }
+      ],
+      "initialStates": [
+        "pending"
+      ],
+      "transitions": [
+        {
+          "from": null,
+          "to": "pending",
+          "kind": "initial",
+          "param": null,
+          "sources": [
+            "supabase/migrations/20260507184723_cfb49c22-ff3d-47d1-acd1-0ec0c35b1392.sql"
+          ],
+          "guards": []
+        }
+      ],
+      "guards": [],
+      "reconciliation": null,
+      "limitations": [
+        "Keine Enum- oder CHECK-Beschränkung belegt; die Zustandswerte stammen nur aus Schreibvorgängen und Triggern.",
+        "Kein Trigger im Migrationsbestand gefunden; Übergänge sind nicht durch Trigger abgesichert."
+      ],
+      "findings": [
+        {
+          "kind": "sackgasse",
+          "severity": "info",
+          "states": [
+            "pending"
+          ],
+          "message": "Zustände mit Eingang, aber ohne belegten ausgehenden Übergang (möglicher Endzustand)."
+        }
+      ]
+    },
+    {
+      "id": "workflow_runs.status",
+      "table": "workflow_runs",
+      "column": "status",
+      "enumType": null,
+      "states": [
+        {
+          "value": "pending",
+          "sources": [
+            "default:supabase/migrations/20260507184723_cfb49c22-ff3d-47d1-acd1-0ec0c35b1392.sql"
+          ]
+        }
+      ],
+      "initialStates": [
+        "pending"
+      ],
+      "transitions": [
+        {
+          "from": null,
+          "to": "pending",
+          "kind": "initial",
+          "param": null,
+          "sources": [
+            "supabase/migrations/20260507184723_cfb49c22-ff3d-47d1-acd1-0ec0c35b1392.sql"
+          ],
+          "guards": []
+        }
+      ],
+      "guards": [],
+      "reconciliation": null,
+      "limitations": [
+        "Keine Enum- oder CHECK-Beschränkung belegt; die Zustandswerte stammen nur aus Schreibvorgängen und Triggern.",
+        "Kein Trigger im Migrationsbestand gefunden; Übergänge sind nicht durch Trigger abgesichert."
+      ],
+      "findings": [
+        {
+          "kind": "sackgasse",
+          "severity": "info",
+          "states": [
+            "pending"
+          ],
+          "message": "Zustände mit Eingang, aber ohne belegten ausgehenden Übergang (möglicher Endzustand)."
+        }
       ]
     }
   ],
   "unresolved": [
-    {
-      "table": "appointment_guests",
-      "column": "status",
-      "reason": "keine belegten Zustandswerte"
-    },
-    {
-      "table": "appointment_preparations",
-      "column": "status",
-      "reason": "keine belegten Zustandswerte"
-    },
-    {
-      "table": "appointment_requests",
-      "column": "status",
-      "reason": "keine belegten Zustandswerte"
-    },
     {
       "table": "case_files",
       "column": "processing_status",
@@ -2337,32 +5693,12 @@
       "reason": "keine belegten Zustandswerte"
     },
     {
-      "table": "dossiers",
-      "column": "status",
-      "reason": "keine belegten Zustandswerte"
-    },
-    {
       "table": "event_planning_action_logs",
       "column": "execution_status",
       "reason": "keine belegten Zustandswerte"
     },
     {
-      "table": "event_rsvps",
-      "column": "status",
-      "reason": "keine belegten Zustandswerte"
-    },
-    {
-      "table": "matrix_bot_logs",
-      "column": "status",
-      "reason": "keine belegten Zustandswerte"
-    },
-    {
       "table": "messages",
-      "column": "status",
-      "reason": "keine belegten Zustandswerte"
-    },
-    {
-      "table": "press_releases",
       "column": "status",
       "reason": "keine belegten Zustandswerte"
     },
@@ -2372,22 +5708,7 @@
       "reason": "keine belegten Zustandswerte"
     },
     {
-      "table": "scheduled_emails",
-      "column": "status",
-      "reason": "keine belegten Zustandswerte"
-    },
-    {
       "table": "selftest_runs",
-      "column": "status",
-      "reason": "keine belegten Zustandswerte"
-    },
-    {
-      "table": "workflow_action_log",
-      "column": "status",
-      "reason": "keine belegten Zustandswerte"
-    },
-    {
-      "table": "workflow_runs",
       "column": "status",
       "reason": "keine belegten Zustandswerte"
     }
