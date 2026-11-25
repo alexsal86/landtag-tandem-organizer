@@ -1,4 +1,5 @@
 import { supabase } from "@/integrations/supabase/client";
+import { CORE_TASK_STATUS_KEYS, missingCoreTaskStatuses } from "@/components/tasks/types";
 import type { TestScenario } from "../types";
 import { SELFTEST_MARKER, SELFTEST_PREFIX } from "../runner";
 import { describeError, expectFields } from "../verify";
@@ -8,14 +9,31 @@ const dueIn = (d: number) => { const n = new Date(); n.setDate(n.getDate() + d);
 export const taskLifecycleScenario: TestScenario = {
   id: "task-lifecycle",
   title: "Aufgaben-Lifecycle (Zuweisung → Frist → Entscheidung → Jour fixe → erledigt)",
-  description: "Legt eine Aufgabe an, weist sie zu, setzt eine Frist, erstellt daraus eine Entscheidung, markiert sie für den Jour fixe und schließt sie ab.",
-  touches: ["tasks", "task_decisions"],
+  description: "Prüft zuerst die Status-Registry, legt dann eine Aufgabe an, weist sie zu, setzt eine Frist, erstellt daraus eine Entscheidung, markiert sie für den Jour fixe und schließt sie ab.",
+  touches: ["tasks", "task_decisions", "task_statuses"],
   features: ["tasks", "decisions"],
   writes: [
     { table: "tasks", columns: ["title", "description", "status", "priority", "user_id", "tenant_id", "assigned_to", "due_date", "progress", "pending_for_jour_fixe"] },
     { table: "task_decisions", columns: ["title", "description", "status", "created_by", "tenant_id", "task_id"] },
   ],
   steps: [
+    {
+      id: "status-registry", label: "Status-Registry führt die fünf Kernstatus", critical: true,
+      run: async () => {
+        const { data, error } = await supabase.from("task_statuses").select("name");
+        if (error) return { ok: false, message: describeError(error) };
+        const registered = (data ?? []).map((row) => row.name);
+        const missing = missingCoreTaskStatuses(registered);
+        if (missing.length > 0) {
+          return {
+            ok: false,
+            message: `task_statuses führt nicht alle Kernstatus: ${missing.join(", ")}. Aufgaben mit diesem Status werden mit 22023 abgewiesen; Migration 20261126130000 anwenden und den Status aktivieren.`,
+            details: { missing, registered: [...registered].sort() },
+          };
+        }
+        return { ok: true, message: `Alle Kernstatus sind registriert (${CORE_TASK_STATUS_KEYS.join(", ")}).` };
+      },
+    },
     {
       id: "create", label: "Aufgabe anlegen", critical: true,
       run: async (ctx) => {

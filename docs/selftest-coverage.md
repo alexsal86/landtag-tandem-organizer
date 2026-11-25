@@ -4,7 +4,7 @@ _Auto-generiert mit `npm run update:selftest-coverage`._
 
 Quelle: `src/integrations/supabase/types.ts`. Die Angaben beschreiben deklarierte Prüfumfänge, keine erfolgreichen Testläufe und keine Code-Coverage.
 
-Von 347 Tabellen haben 62 ein registriertes Szenario. 125 sind als Ausbau offen, 160 ausgenommen und 0 noch nicht eingeordnet. Ausnahmen zählen nicht als bestanden.
+Von 348 Tabellen haben 63 ein registriertes Szenario. 125 sind als Ausbau offen, 160 ausgenommen und 0 noch nicht eingeordnet. Ausnahmen zählen nicht als bestanden.
 
 ## Szenarien
 
@@ -39,7 +39,7 @@ Von 347 Tabellen haben 62 ein registriertes Szenario. 125 sind als Ausbau offen,
 | `quick-note-lifecycle` | Notizen-Lifecycle (Anlegen → Priorität → Anheften → Aufgabe → Archiv) | quick_notes, tasks, task_decisions, task_decision_participants |
 | `responsibilities` | Zuständigkeiten & Matrix | tasks |
 | `security-hardening` | Sicherheitsregeln: Porträtdateien und E-Mail-Inhalte | Keine (reine Regeln) |
-| `task-lifecycle` | Aufgaben-Lifecycle (Zuweisung → Frist → Entscheidung → Jour fixe → erledigt) | tasks, task_decisions |
+| `task-lifecycle` | Aufgaben-Lifecycle (Zuweisung → Frist → Entscheidung → Jour fixe → erledigt) | tasks, task_decisions, task_statuses |
 | `task-stafette-lifecycle` | Aufgaben-Stafette (Am Zug, Wiedervorlage, Freigabe) | tasks |
 | `team-rituals` | Freiwillige Team-Rituale | Keine (reine Regeln) |
 | `workflow-rules` | Geschäftsregeln (Freigabe, Rollen, Fristen) | Keine (reine Regeln) |
@@ -245,6 +245,7 @@ Von 347 Tabellen haben 62 ein registriertes Szenario. 125 sind als Ausbau offen,
 | `letter_collaborators` | Ausgenommen (nicht geprüft) | — |
 | `letter_comments` | Ausgenommen (nicht geprüft) | — |
 | `letter_occasions` | Ausgenommen (nicht geprüft) | — |
+| `letter_status_transitions` | Ausgenommen (nicht geprüft) | — |
 | `letter_template_assets` | Ausgenommen (nicht geprüft) | — |
 | `letter_template_settings` | Ausgenommen (nicht geprüft) | — |
 | `letter_templates` | Ausgenommen (nicht geprüft) | — |
@@ -348,7 +349,7 @@ Von 347 Tabellen haben 62 ein registriertes Szenario. 125 sind als Ausbau offen,
 | `task_decisions` | Szenario vorhanden | case-item-lifecycle, decision-lifecycle, jour-fixe-platform-integration, quick-note-lifecycle, task-lifecycle |
 | `task_documents` | Ausgenommen (nicht geprüft) | — |
 | `task_snoozes` | Ausgenommen (nicht geprüft) | — |
-| `task_statuses` | Ausgenommen (nicht geprüft) | — |
+| `task_statuses` | Szenario vorhanden | task-lifecycle |
 | `task_topics` | Ausgenommen (nicht geprüft) | — |
 | `tasks` | Szenario vorhanden | annual-task-stafette, appointment-briefing-lifecycle, case-item-lifecycle, document-annotation, jour-fixe-platform-integration, letter-lifecycle, meeting-lifecycle, onboarding-hr, quick-note-lifecycle, responsibilities, task-lifecycle, task-stafette-lifecycle |
 | `team_announcement_dismissals` | Ausgenommen (nicht geprüft) | — |

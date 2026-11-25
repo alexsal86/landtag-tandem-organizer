@@ -53,7 +53,7 @@ _Auto-generiert mit `npm run update:feature-catalog` aus dem zentralen Funktions
 |---|---|---:|---:|
 | `decision-lifecycle` | Entscheidungs-Lifecycle (active → open → archived) | 3 | 0 |
 | `quick-note-lifecycle` | Notizen-Lifecycle (Anlegen → Priorität → Anheften → Aufgabe → Archiv) | 4 | 0 |
-| `task-lifecycle` | Aufgaben-Lifecycle (Zuweisung → Frist → Entscheidung → Jour fixe → erledigt) | 2 | 0 |
+| `task-lifecycle` | Aufgaben-Lifecycle (Zuweisung → Frist → Entscheidung → Jour fixe → erledigt) | 3 | 0 |
 
 ## Funktionsdetails
 

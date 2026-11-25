@@ -63,13 +63,13 @@ _Auto-generiert mit `npm run update:feature-catalog` aus dem zentralen Funktions
 |---|---|---:|---:|
 | `annual-task-stafette` | Jahresaufgabe → Büroaufgabe → Jahresabschluss | 3 | 5 |
 | `decision-lifecycle` | Entscheidungs-Lifecycle (active → open → archived) | 3 | 0 |
-| `task-lifecycle` | Aufgaben-Lifecycle (Zuweisung → Frist → Entscheidung → Jour fixe → erledigt) | 2 | 0 |
+| `task-lifecycle` | Aufgaben-Lifecycle (Zuweisung → Frist → Entscheidung → Jour fixe → erledigt) | 3 | 0 |
 | `task-stafette-lifecycle` | Aufgaben-Stafette (Am Zug, Wiedervorlage, Freigabe) | 1 | 4 |
 
 ## Funktionsdetails
 
 ### `tasks.create` — Aufgabe erstellen
-Legt eine Aufgabe mit Titel, Beschreibung, Fälligkeit, Priorität, Kategorie, Empfängern und optionaler Verknüpfung an.
+Legt eine Aufgabe mit Titel, Beschreibung, Fälligkeit, Priorität, Kategorie, Empfängern und optionaler Verknüpfung an. Der Selbsttest prüft vor dem Anlegen, dass task_statuses die fünf Kernstatus führt, und meldet Registry-Drift direkt.
 
 - **Kategorie:** fachlich
 - **Implementierung:** implementiert

@@ -3,7 +3,7 @@ import { pollPartyBasis, POLL_FEATURED_PARTIES } from "@/features/election-analy
 import { getAdministrationAccess } from "@/components/administration/access";
 import { automationTabFromParams, normalizeAutomationParams, rssTabFromParams } from "@/components/administration/automationNavigation";
 import { ALLOWED_TRANSITIONS, canTransitionStatus, LETTER_STATUSES } from "@/components/letters/types";
-import { TASK_STATUSES } from "@/components/tasks/types";
+import { CORE_TASK_STATUS_KEYS, missingCoreTaskStatuses, TASK_STATUSES } from "@/components/tasks/types";
 import { canDecide } from "@/features/appointment-requests/logic";
 import { isOnResubmission, MINISTRY_RESPONSE_DAYS, withAutoDeadline, type TriageItem } from "@/features/cases/items/ball";
 import { computeCropRect, isCrowdedDay, parseTopicDrop, rescheduleToDay } from "@/features/redaktion/utils/plannerRules";
@@ -512,18 +512,21 @@ export const workflowRulesScenario: TestScenario = {
 
         // Die Registry task_statuses führt den Unterstrich; der alte Bindestrich
         // darf nirgends mehr als schreibbarer Wert auftauchen.
-        const taskRegistry = ["todo", "in_progress", "completed", "cancelled"];
+        const taskRegistry = [...CORE_TASK_STATUS_KEYS];
         const taskValues = TASK_STATUSES as readonly string[];
+        const undetected = missingCoreTaskStatuses(["todo", "in_progress"]);
         const taskOk = taskValues.every((value) => taskRegistry.includes(value))
           && !taskValues.includes("in-progress")
-          && taskValues.includes("in_progress");
+          && taskValues.includes("in_progress")
+          && missingCoreTaskStatuses(taskRegistry).length === 0
+          && undetected.join(",") === "completed,cancelled,review";
 
         return {
           ok: letterOk && taskOk,
           message: letterOk && taskOk
             ? "Brief- und Aufgabenstatus decken sich mit den Datenbankwerten."
             : "Statuswerte weichen von den Datenbankwerten ab.",
-          details: { letterValues, letterDb, taskValues },
+          details: { letterValues, letterDb, taskValues, taskRegistry, undetected },
         };
       },
     },

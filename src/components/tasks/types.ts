@@ -7,6 +7,20 @@
 export const TASK_STATUSES = ["todo", "in_progress", "completed", "cancelled"] as const;
 export type TaskStatus = (typeof TASK_STATUSES)[number];
 
+/**
+ * Technische Statuswerte, die Spalten-Default, Client und Datenbankfunktionen
+ * direkt schreiben. Sie müssen in `task_statuses` registriert sein; die
+ * Datenbankfunktion `public.core_task_status_keys()` führt dieselbe Liste und
+ * schützt ihre Namen vor Umbenennen und Löschen.
+ */
+export const CORE_TASK_STATUS_KEYS = ["todo", "in_progress", "completed", "cancelled", "review"] as const;
+
+/** Kernstatus, die in der übergebenen Registry-Auswahl fehlen. */
+export function missingCoreTaskStatuses(registered: readonly string[]): string[] {
+  const present = new Set(registered);
+  return CORE_TASK_STATUS_KEYS.filter((key) => !present.has(key));
+}
+
 export interface Task {
   id: string;
   title: string;

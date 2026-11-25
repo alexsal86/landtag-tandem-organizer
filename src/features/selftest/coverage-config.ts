@@ -43,6 +43,8 @@ export const IGNORED_TABLES: string[] = [
   "event_email_templates",
   "letter_archive_settings",
   "letter_occasions",
+  // Lookup der erlaubten Brief-Statuswechsel; durchgesetzt vom DB-Trigger, keine eigene Fachlogik.
+  "letter_status_transitions",
   "letter_template_assets",
   "letter_template_settings",
   "letter_templates",
@@ -60,7 +62,6 @@ export const IGNORED_TABLES: string[] = [
   "rss_sources",
   "task_archive_settings",
   "task_categories",
-  "task_statuses",
   "tags",
   "tenants",
   "todo_categories",

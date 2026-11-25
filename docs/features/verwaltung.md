@@ -731,7 +731,7 @@ Verwaltet Kategorien, Status und Typen zentral, prüft Abhängigkeiten vor dem L
 
 **Bekannte Einschränkungen**
 
-- Bei den Kernstatus der Aufgaben (todo, in_progress, completed, cancelled, review) ändert Umbenennen nur den Anzeigenamen; der technische Name bleibt stabil, weil Spalten-Default, Client und Datenbankfunktionen ihn schreiben. Löschen und direktes Umbenennen weist die Datenbank ab (22023).
+- Bei den Kernstatus der Aufgaben (todo, in_progress, completed, cancelled, review) ändert Umbenennen nur den Anzeigenamen; der technische Name bleibt stabil, weil Spalten-Default, Client und Datenbankfunktionen ihn schreiben. Löschen und direktes Umbenennen weist die Datenbank ab (22023). Der Aufgaben-Selbsttest prüft vor dem Anlegen einer Aufgabe, ob die fünf Kernstatus registriert sind, und meldet fehlende Einträge als eigenen Schritt.
 
 **Offene Prüfpunkte**
 

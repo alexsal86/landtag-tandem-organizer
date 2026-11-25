@@ -671,11 +671,12 @@
         {
           "scenario": "task-lifecycle",
           "title": "Aufgaben-Lifecycle (Zuweisung → Frist → Entscheidung → Jour fixe → erledigt)",
-          "description": "Legt eine Aufgabe an, weist sie zu, setzt eine Frist, erstellt daraus eine Entscheidung, markiert sie für den Jour fixe und schließt sie ab.",
+          "description": "Prüft zuerst die Status-Registry, legt dann eine Aufgabe an, weist sie zu, setzt eine Frist, erstellt daraus eine Entscheidung, markiert sie für den Jour fixe und schließt sie ab.",
           "checks": [],
           "tables": [
             "tasks",
-            "task_decisions"
+            "task_decisions",
+            "task_statuses"
           ],
           "features": [
             "mywork.dashboard",
@@ -685,6 +686,10 @@
             "tasks.edit"
           ],
           "steps": [
+            {
+              "id": "status-registry",
+              "label": "Status-Registry führt die fünf Kernstatus"
+            },
             {
               "id": "create",
               "label": "Aufgabe anlegen"

@@ -196,6 +196,7 @@
   "letter_collaborators",
   "letter_comments",
   "letter_occasions",
+  "letter_status_transitions",
   "letter_template_assets",
   "letter_template_settings",
   "letter_templates",

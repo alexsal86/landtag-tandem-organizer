@@ -2,8 +2,8 @@
   "schemaVersion": 1,
   "source": "src/integrations/supabase/types.ts",
   "counts": {
-    "total": 347,
-    "scenario": 62,
+    "total": 348,
+    "scenario": 63,
     "deferred": 125,
     "excluded": 160,
     "missing": 0
@@ -1046,7 +1046,8 @@
       "title": "Aufgaben-Lifecycle (Zuweisung → Frist → Entscheidung → Jour fixe → erledigt)",
       "touches": [
         "tasks",
-        "task_decisions"
+        "task_decisions",
+        "task_statuses"
       ],
       "features": [
         "tasks",
@@ -2211,6 +2212,11 @@
       "scenarios": []
     },
     {
+      "table": "letter_status_transitions",
+      "status": "excluded",
+      "scenarios": []
+    },
+    {
       "table": "letter_template_assets",
       "status": "excluded",
       "scenarios": []
@@ -2776,8 +2782,10 @@
     },
     {
       "table": "task_statuses",
-      "status": "excluded",
-      "scenarios": []
+      "status": "scenario",
+      "scenarios": [
+        "task-lifecycle"
+      ]
     },
     {
       "table": "task_topics",
