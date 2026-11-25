@@ -10,6 +10,7 @@ import { supabase } from '@/integrations/supabase/client';
 import { lucideIconToSvg, isLucideIcon } from '@/utils/lucideIconToSvg';
 import { debugConsole } from '@/utils/debugConsole';
 import { Feature, LayerConfig, hasProperties, isFeatureCollection } from '@/types/geoDomain';
+import { appendText, createMapIconBubble, safeContactHref } from '@/lib/leafletPopupDom';
 import 'leaflet.heat';
 import 'leaflet-routing-machine';
 
@@ -42,60 +43,6 @@ const getIconDisplay = (iconName: string, color: string = '#ffffff', size: numbe
   return wrapper;
 };
 
-/** Marker bubbles are built from elements so tenant-configured colors stay CSS values. */
-const createMapIconBubble = (
-  background: string,
-  size: number,
-  content: HTMLElement,
-  extraStyles: Record<string, string> = {},
-): HTMLElement => {
-  const bubble = document.createElement('div');
-  Object.assign(bubble.style, {
-    background,
-    borderRadius: '50%',
-    width: `${size}px`,
-    height: `${size}px`,
-    display: 'flex',
-    alignItems: 'center',
-    justifyContent: 'center',
-    border: '2px solid white',
-    cursor: 'pointer',
-    ...extraStyles,
-  });
-  bubble.appendChild(content);
-  return bubble;
-};
-
-
-
-/** Contacts may store a website with or without a scheme. Only http(s)
- * targets become links; anything else (javascript:, data:, mailto:) stays text. */
-const safeHttpUrl = (raw: string | null | undefined): string | null => {
-  const value = raw?.trim();
-  if (!value) return null;
-  const candidate = /^[a-z][a-z0-9+.-]*:/i.test(value) ? value : `https://${value}`;
-  try {
-    const url = new URL(candidate);
-    return url.protocol === 'http:' || url.protocol === 'https:' ? url.href : null;
-  } catch {
-    return null;
-  }
-};
-
-/** Popup content is assembled from DOM nodes so contact data is never parsed as HTML. */
-const appendPopupText = (
-  parent: HTMLElement,
-  tag: 'p' | 'span' | 'div' | 'h3',
-  text: string,
-  styles: Record<string, string>,
-): HTMLElement => {
-  const element = document.createElement(tag);
-  Object.assign(element.style, styles);
-  element.textContent = text;
-  parent.appendChild(element);
-  return element;
-};
-
 const appendPopupDivider = (parent: HTMLElement): void => {
   const divider = document.createElement('div');
   Object.assign(divider.style, { marginTop: '8px', paddingTop: '8px', borderTop: '1px solid #ddd' });
@@ -108,31 +55,31 @@ const createStakeholderPopup = (stakeholder: StakeholderContact, tagFilter: stri
 
   const header = document.createElement('div');
   Object.assign(header.style, { display: 'flex', alignItems: 'center', gap: '8px', marginBottom: '8px' });
-  appendPopupText(header, 'span', '🏢', { fontSize: '18px' });
-  appendPopupText(header, 'h3', stakeholder.name || 'Kontakt', { margin: '0', fontSize: '15px', fontWeight: '600' });
+  appendText(header, 'span', '🏢', { fontSize: '18px' });
+  appendText(header, 'h3', stakeholder.name || 'Kontakt', { margin: '0', fontSize: '15px', fontWeight: '600' });
   popup.appendChild(header);
 
   if (stakeholder.organization) {
-    appendPopupText(popup, 'p', stakeholder.organization, { margin: '4px 0', color: '#666', fontSize: '13px' });
+    appendText(popup, 'p', stakeholder.organization, { margin: '4px 0', color: '#666', fontSize: '13px' });
   }
 
   const address = [stakeholder.business_street, stakeholder.business_postal_code, stakeholder.business_city]
     .filter(Boolean)
     .join(', ');
   if (address) {
-    appendPopupText(popup, 'p', `📮 ${address}`, { margin: '4px 0', color: '#666', fontSize: '12px' });
+    appendText(popup, 'p', `📮 ${address}`, { margin: '4px 0', color: '#666', fontSize: '12px' });
   }
-  appendPopupText(popup, 'p', '📍 Geocodierte Adresse', { margin: '2px 0', fontSize: '11px', color: '#10b981' });
+  appendText(popup, 'p', '📍 Geocodierte Adresse', { margin: '2px 0', fontSize: '11px', color: '#10b981' });
 
   appendPopupDivider(popup);
   if (stakeholder.email) {
-    appendPopupText(popup, 'p', `📧 ${stakeholder.email}`, { margin: '2px 0', fontSize: '12px' });
+    appendText(popup, 'p', `📧 ${stakeholder.email}`, { margin: '2px 0', fontSize: '12px' });
   }
   if (stakeholder.phone) {
-    appendPopupText(popup, 'p', `📞 ${stakeholder.phone}`, { margin: '2px 0', fontSize: '12px' });
+    appendText(popup, 'p', `📞 ${stakeholder.phone}`, { margin: '2px 0', fontSize: '12px' });
   }
   if (stakeholder.website) {
-    const websiteUrl = safeHttpUrl(stakeholder.website);
+    const websiteUrl = safeContactHref(stakeholder.website, 'website');
     const line = document.createElement('p');
     Object.assign(line.style, { margin: '2px 0', fontSize: '12px' });
     line.appendChild(document.createTextNode('🌐 '));
@@ -151,7 +98,7 @@ const createStakeholderPopup = (stakeholder: StakeholderContact, tagFilter: stri
   }
 
   appendPopupDivider(popup);
-  appendPopupText(popup, 'p', `Verknüpft über Tag: ${tagFilter}`, { margin: '0', fontSize: '11px', color: '#888' });
+  appendText(popup, 'p', `Verknüpft über Tag: ${tagFilter}`, { margin: '0', fontSize: '11px', color: '#888' });
   const details = document.createElement('a');
   details.href = `/contacts/${encodeURIComponent(stakeholder.id)}`;
   details.target = '_blank';
@@ -191,9 +138,9 @@ const createDistrictLabel = (name: string): HTMLElement => {
 const createDistrictPopup = (district: KarlsruheDistrict): HTMLElement => {
   const popup = document.createElement('div');
   popup.style.fontFamily = 'sans-serif';
-  appendPopupText(popup, 'h3', district.name, { margin: '0 0 8px 0', fontSize: '16px', fontWeight: '600' });
+  appendText(popup, 'h3', district.name, { margin: '0 0 8px 0', fontSize: '16px', fontWeight: '600' });
   if (district.population) {
-    appendPopupText(popup, 'p', `Einwohner: ${district.population.toLocaleString('de-DE')}`, { margin: '4px 0' });
+    appendText(popup, 'p', `Einwohner: ${district.population.toLocaleString('de-DE')}`, { margin: '4px 0' });
   }
   return popup;
 };
@@ -226,11 +173,11 @@ const createFlagPopup = (flag: MapFlag, flagType: MapFlagType): HTMLElement => {
   Object.assign(icon.style, { display: 'inline-flex', alignItems: 'center', justifyContent: 'center' });
   icon.appendChild(getIconDisplay(flagType.icon, flagType.color, 20));
   header.appendChild(icon);
-  appendPopupText(header, 'h3', flag.title, { margin: '0', fontSize: '16px', fontWeight: '600' });
+  appendText(header, 'h3', flag.title, { margin: '0', fontSize: '16px', fontWeight: '600' });
   popup.appendChild(header);
 
   if (flag.description) {
-    appendPopupText(popup, 'p', flag.description, { margin: '8px 0', color: '#666' });
+    appendText(popup, 'p', flag.description, { margin: '8px 0', color: '#666' });
   }
 
   const actions = document.createElement('div');
@@ -449,12 +396,10 @@ export const KarlsruheDistrictsMap = ({
 
         const stakeholderMarker = L.marker([lat, lng], {
           icon: L.divIcon({
-            html: createMapIconBubble(
-              `linear-gradient(135deg, ${flagType.color} 0%, ${flagType.color}dd 100%)`,
-              28,
-              getIconDisplay(flagType.icon, '#ffffff', 16),
-              { boxShadow: '0 2px 6px rgba(0,0,0,0.25)' },
-            ),
+            html: createMapIconBubble(28, getIconDisplay(flagType.icon, '#ffffff', 16), {
+              background: `linear-gradient(135deg, ${flagType.color} 0%, ${flagType.color}dd 100%)`,
+              boxShadow: '0 2px 6px rgba(0,0,0,0.25)',
+            }),
             iconSize: [28, 28],
             className: 'stakeholder-marker',
           }),
@@ -754,12 +699,10 @@ export const KarlsruheDistrictsMap = ({
 
       const marker = L.marker([flag.coordinates.lat, flag.coordinates.lng], {
         icon: L.divIcon({
-          html: createMapIconBubble(
-            flagType.color,
-            32,
-            getIconDisplay(flagType.icon, '#ffffff', 18),
-            { boxShadow: '0 2px 8px rgba(0,0,0,0.3)' },
-          ),
+          html: createMapIconBubble(32, getIconDisplay(flagType.icon, '#ffffff', 18), {
+            background: flagType.color,
+            boxShadow: '0 2px 8px rgba(0,0,0,0.3)',
+          }),
           iconSize: [32, 32],
           className: 'map-flag-marker',
         }),
@@ -844,7 +787,8 @@ export const KarlsruheDistrictsMap = ({
 
       const marker = L.marker([wp.lat, wp.lng], {
         icon: L.divIcon({
-          html: createMapIconBubble('#3b82f6', 28, position, {
+          html: createMapIconBubble(28, position, {
+            background: '#3b82f6',
             boxShadow: '0 2px 6px rgba(0,0,0,0.3)',
             color: '#ffffff',
             fontWeight: 'bold',

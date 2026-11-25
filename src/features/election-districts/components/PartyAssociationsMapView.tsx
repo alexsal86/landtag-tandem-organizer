@@ -7,6 +7,7 @@ import { Badge } from "@/components/ui/badge";
 import { MapPin, Users, Building, Phone, Mail, Globe, Loader2 } from "lucide-react";
 import { PartyAssociation, usePartyAssociations } from '@/hooks/usePartyAssociations';
 import { hasOwnProperty } from '@/utils/typeSafety';
+import { appendText, createMapIconBubble, safeContactHref } from '@/lib/leafletPopupDom';
 
 interface PartyAssociationMapProps {
   associations: PartyAssociationViewModel[];
@@ -68,48 +69,6 @@ const toAssociationViewModel = (association: PartyAssociation): PartyAssociation
     centerCoordinates,
     coverageAreas: toCoverageAreas(association.coverage_areas),
   };
-};
-
-/** Association markers and popups are built from elements, so contact data is never parsed as HTML. */
-const appendText = (
-  parent: HTMLElement,
-  tag: 'span' | 'strong' | 'h3' | 'p' | 'div',
-  text: string,
-  styles: Record<string, string>,
-): HTMLElement => {
-  const element = document.createElement(tag);
-  Object.assign(element.style, styles);
-  element.textContent = text;
-  parent.appendChild(element);
-  return element;
-};
-
-const EMAIL_PATTERN = /^[A-Za-z0-9._%+-]+@[A-Za-z0-9.-]+\.[A-Za-z]{2,}$/;
-
-/** Contact values only become links for the scheme they belong to; anything else stays text. */
-const safeContactHref = (
-  raw: string | null | undefined,
-  kind: 'phone' | 'email' | 'website',
-): string | null => {
-  const value = raw?.trim();
-  if (!value) return null;
-
-  if (kind === 'phone') {
-    const digits = value.replace(/[^\d+]/g, '');
-    return /^\+?\d{3,}$/.test(digits) ? `tel:${digits}` : null;
-  }
-
-  if (kind === 'email') {
-    return EMAIL_PATTERN.test(value) ? `mailto:${value}` : null;
-  }
-
-  const candidate = /^[a-z][a-z0-9+.-]*:/i.test(value) ? value : `https://${value}`;
-  try {
-    const url = new URL(candidate);
-    return url.protocol === 'http:' || url.protocol === 'https:' ? url.href : null;
-  } catch {
-    return null;
-  }
 };
 
 const appendContactRow = (
@@ -335,23 +294,14 @@ const PartyAssociationMap: React.FC<PartyAssociationMapProps> = ({
         const badge = document.createElement('span');
         badge.textContent = '🌱';
 
-        const markerIcon = document.createElement('div');
-        Object.assign(markerIcon.style, {
+        const markerIcon = createMapIconBubble(size, badge, {
           background: isSelected ? '#15803d' : '#16a34a',
           border: '2px solid #15803d',
-          borderRadius: '50%',
-          width: `${size}px`,
-          height: `${size}px`,
-          display: 'flex',
-          alignItems: 'center',
-          justifyContent: 'center',
           fontWeight: 'bold',
           fontSize: '12px',
           color: '#ffffff',
           boxShadow: '0 2px 6px rgba(0,0,0,0.3)',
-          cursor: 'pointer',
         });
-        markerIcon.appendChild(badge);
 
         const marker = L.marker([coords.lat, coords.lng], {
           icon: L.divIcon({

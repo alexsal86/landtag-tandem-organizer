@@ -10,6 +10,7 @@ import { Plus, Minus, MoveDiagonal } from 'lucide-react';
 import sunflowerIcon from '@/assets/sunflower.svg';
 import type { LocalArea, LocalBallot } from './LocalElectionResults';
 import { useLocalResultMap } from './localResultMap';
+import { createMapIconBubble } from '@/lib/leafletPopupDom';
 
 interface LeafletKarlsruheMapProps {
   districts: ElectionDistrict[];
@@ -58,26 +59,6 @@ const getDistrictMarkerDimensions = (zoomLevel: number) => {
   const borderWidth = Math.max(2.5, Math.round(size * 0.1));
 
   return { size, fontSize, borderWidth };
-};
-
-/** Marker icons are assembled from elements so labels and asset URLs never become HTML. */
-const createMarkerBubble = (
-  content: HTMLElement,
-  size: number,
-  styles: Record<string, string>,
-): HTMLElement => {
-  const bubble = document.createElement('div');
-  Object.assign(bubble.style, {
-    display: 'flex',
-    alignItems: 'center',
-    justifyContent: 'center',
-    borderRadius: '50%',
-    width: `${size}px`,
-    height: `${size}px`,
-    ...styles,
-  });
-  bubble.appendChild(content);
-  return bubble;
 };
 
 const SimpleLeafletMap: React.FC<LeafletKarlsruheMapProps> = ({ 
@@ -351,7 +332,7 @@ const SimpleLeafletMap: React.FC<LeafletKarlsruheMapProps> = ({
       const marker = L.marker([lat, lng], {
         alt: `WK:${district.id}`,
         icon: L.divIcon({
-          html: createMarkerBubble(markerNumber, size, {
+          html: createMapIconBubble(size, markerNumber, {
             background: '#ffffff',
             border: `${borderWidth}px solid ${partyColor}`,
             fontWeight: 'bold',
@@ -459,7 +440,7 @@ const SimpleLeafletMap: React.FC<LeafletKarlsruheMapProps> = ({
 
           const marker = L.marker([lat, lng], {
             icon: L.divIcon({
-              html: createMarkerBubble(sunflower, 32, {
+              html: createMapIconBubble(32, sunflower, {
                 background: 'rgba(34, 197, 94, 0.9)',
                 border: '2px solid #ffffff',
                 boxShadow: '0 2px 6px rgba(0,0,0,0.3)',
