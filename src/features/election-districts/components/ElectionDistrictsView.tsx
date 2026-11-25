@@ -26,6 +26,7 @@ import { useSearchParams } from 'react-router-dom';
 import { decodeMapViewState, encodeMapViewState, type MapViewState, type MapViewport } from '../mapViewState';
 import { DistrictDataTable } from './DistrictDataTable';
 import { DistrictCartogram } from './DistrictCartogram';
+import { exportDistrictMapPng } from '../mapExportPng';
 import { csvCell } from '@/lib/csvSafe';
 import { notify } from '@/lib/notify';
 import '@/styles/map-print.css';
@@ -165,6 +166,8 @@ export const ElectionDistrictsView = ({ sidebarHeader }: { sidebarHeader?: React
     ? electionDistricts.filter(d => directMandateParty(d) === party).length
     : history.data ? history.data.mandates.filter(m => m.entry_type === 'election' && m.mandate_type === 'direct' && directMandateParty({ representatives: [{ mandate_type: 'direct', party: m.party }] }) === party).length : electionDistricts.filter(d => directMandateParty(d) === party).length;
   const hasAdministrativeData = administrativeBoundaries.length > 0;
+  const partyLabel = (party: string) => party === 'Ohne Direktmandat' && historyPeriod?.election_year === 1952
+    ? 'Zuordnung offen' : party === 'AFD' ? 'AfD' : party;
 
   // Filter displayed districts based on toggles
   const displayedDistricts = useMemo(() => districts.filter(d => {
@@ -307,6 +310,31 @@ export const ElectionDistrictsView = ({ sidebarHeader }: { sidebarHeader?: React
     URL.revokeObjectURL(objectUrl);
   };
 
+  // PNG export re-draws the geometry as SVG because the number markers are divIcons.
+  const [exportingPng, setExportingPng] = useState(false);
+  const exportPng = async () => {
+    if (exportingPng) return;
+    setExportingPng(true);
+    try {
+      await exportDistrictMapPng({
+        districts: displayedDistricts,
+        parties: selectedParties,
+        legend: partyChoices.map(party => ({ party, label: partyLabel(party), count: partyCount(party) })),
+        title: `Wahlkreise Baden-Württemberg${historyPeriod ? ` · ${historyPeriod.name}` : ''}`,
+        standLabel: `Grenzstand ${historyPeriod?.boundary_geometry_year ?? 2021}${historyPeriod ? ` · Wahl ${historyPeriod.election_year}` : ''}`,
+        sourceLabel: 'Quelle: LGL Baden-Württemberg, Statistisches Landesamt, © OpenStreetMap-Mitwirkende',
+        selectedDistrictId: selectedDistrict?.id,
+        fileName: `wahlkreise-${historyPeriod?.election_year ?? 'aktuell'}.png`,
+      });
+      notify.success('Karte als PNG heruntergeladen');
+    } catch (error) {
+      debugConsole.error('PNG export failed', error);
+      notify.error(error instanceof Error ? error.message : 'PNG-Export fehlgeschlagen');
+    } finally {
+      setExportingPng(false);
+    }
+  };
+
   const [replaying, setReplaying] = useState(false);
   const chronology = useMemo(
     () => [...publishedPeriods].sort((a, b) => (a.election_year ?? 0) - (b.election_year ?? 0)),
@@ -423,6 +451,10 @@ export const ElectionDistrictsView = ({ sidebarHeader }: { sidebarHeader?: React
               className="inline-flex items-center gap-1 rounded border border-border px-2 py-1 text-xs hover:bg-accent focus-visible:ring-1 focus-visible:ring-ring">
               Einbetten
             </button>
+            <button type="button" onClick={() => void exportPng()} disabled={exportingPng}
+              className="inline-flex items-center gap-1 rounded border border-border px-2 py-1 text-xs hover:bg-accent focus-visible:ring-1 focus-visible:ring-ring disabled:opacity-60">
+              <Download className="h-3.5 w-3.5" aria-hidden="true" /> {exportingPng ? 'PNG …' : 'PNG'}
+            </button>
             <button type="button" onClick={() => window.print()}
               className="inline-flex items-center gap-1 rounded border border-border px-2 py-1 text-xs hover:bg-accent focus-visible:ring-1 focus-visible:ring-ring">
               <Printer className="h-3.5 w-3.5" aria-hidden="true" /> Drucken
@@ -489,7 +521,7 @@ export const ElectionDistrictsView = ({ sidebarHeader }: { sidebarHeader?: React
                 {partyChoices.map(party => (
                   <li key={party} className="flex items-center gap-2 text-sm">
                     <span aria-hidden="true" className="h-3 w-3 rounded-sm border border-black/20" style={{ backgroundColor: partyColors[party] || '#9ca3af' }} />
-                    <span>{party === 'Ohne Direktmandat' && historyPeriod?.election_year === 1952 ? 'Zuordnung offen' : party === 'AFD' ? 'AfD' : party}</span>
+                    <span>{partyLabel(party)}</span>
                     <span className="ml-auto text-xs tabular-nums text-muted-foreground">{partyCount(party)}</span>
                   </li>
                 ))}
@@ -691,7 +723,7 @@ export const ElectionDistrictsView = ({ sidebarHeader }: { sidebarHeader?: React
                       onClick={() => toggleParty(party)}
                       className={`inline-flex items-center gap-1.5 rounded-full border px-2.5 py-1 text-xs transition-all duration-200 motion-reduce:transition-none ${selectedParties.has(party) ? 'border-[#626a59] bg-[#f0f2ed] dark:border-[#929b86] dark:bg-[#292c26] shadow-sm' : 'border-[#858d7b] dark:border-[#767e6b] bg-transparent text-muted-foreground hover:border-[#626a59]'}`}>
                       <span className="h-2.5 w-2.5 rounded-full" style={{ backgroundColor: partyColors[party] || '#9ca3af' }} />
-                      {party === 'Ohne Direktmandat' && historyPeriod?.election_year === 1952 ? 'Zuordnung offen' : party === 'AFD' ? 'AfD' : party}
+                      {partyLabel(party)}
                       <span className="text-muted-foreground">{partyCount(party)}</span>
                     </button>
                   ))}
