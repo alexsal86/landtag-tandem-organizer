@@ -137,9 +137,11 @@ export const caseItemLifecycleScenario: TestScenario = {
       run: wrap(async (ctx) => {
         const { titles } = await applyBallPatch(ctx, { next_action_label: "Rückruf Bürger", next_action_due_at: inDays(7), next_action_assignee_id: ctx.userId });
         const row = await load(ctx.data.caseItemId as string);
-        const miss = ["Schritt festgelegt", "Auf Wiedervorlage gelegt"].filter((t) => !titles.includes(t) || !events(row).some((e) => e.title === t));
+        // Schritt und Wiedervorlage landen als ein zusammengefasster Verlaufseintrag (ballChangeEvents).
+        const expected = "Neuer Schritt festgelegt + Wiedervorlage";
+        const miss = [expected].filter((t) => !titles.includes(t) || !events(row).some((e) => e.title === t));
         if (!isOnResubmission(row)) return { ok: false, message: "Vorgang liegt nicht auf Wiedervorlage." };
-        return miss.length ? { ok: false, message: `Verlauf fehlt: ${miss.join(", ")}` } : { ok: true, message: "Wiedervorlage aktiv, 2 Verlaufseinträge." };
+        return miss.length ? { ok: false, message: `Verlauf fehlt: ${miss.join(", ")} (vorhanden: ${titles.join(", ") || "keine"})` } : { ok: true, message: "Wiedervorlage aktiv, Verlaufseintrag geschrieben." };
       }),
     },
     {
@@ -174,7 +176,9 @@ export const caseItemLifecycleScenario: TestScenario = {
         await applyBallPatch(ctx, { ball_owner: "ministry" });
         const row = await load(ctx.data.caseItemId as string);
         if (row.ball_owner !== "ministry") return { ok: false, message: `ball_owner = ${row.ball_owner}` };
-        if (!events(row).some((e) => e.title === "Am Zug geändert")) return { ok: false, message: "Kein Verlaufseintrag „Am Zug geändert“." };
+        // Bei festgelegtem Schritt fasst ballChangeEvents Zuständigkeitswechsel und Wiedervorlage zusammen.
+        const change = events(row).find((e) => e.title === "Schritt geändert + Wiedervorlage" && !!e.note?.includes("→"));
+        if (!change) return { ok: false, message: "Kein Verlaufseintrag zum Wechsel an „Am Zug“.", details: events(row).map((e) => e.title) };
         const days = Math.round((new Date(row.next_action_due_at!).getTime() - new Date(inDays(0)).getTime()) / 86400000);
         return days === MINISTRY_RESPONSE_DAYS ? { ok: true, message: "Ministerium am Zug, Frist 21 Tage, Verlauf geschrieben." } : { ok: false, message: `Frist ${days} Tage` };
       }),
