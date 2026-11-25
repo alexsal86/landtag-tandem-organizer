@@ -343,7 +343,7 @@ Eindeutige Fehler werden im CI-Lauf ausgegeben und brechen die Prüfung ab; sie 
 - `events.legacy-rsvp` — Legacy-Einladungslinks (veraltet)
 - `cases.legacy-routes` — Legacy-Vorgangsrouten (veraltet)
 
-## Funktionen mit Einschränkungen oder offenen Punkten (60)
+## Funktionen mit Einschränkungen oder offenen Punkten (61)
 
 ### `mywork.dashboard`
 
@@ -537,6 +537,16 @@ Eindeutige Fehler werden im CI-Lauf ausgegeben und brechen die Prüfung ab; sie 
 - Eine vorhandene RLS-Policy ist kein Nachweis für korrekte Mandantentrennung; das Cockpit liefert nur Befunde.
 - Policy-Details stammen live aus pg_policies und bewerten weder die Funktion noch ihre Tests.
 - Funktionen ohne Tabellenbezug erhalten keinen RLS-Bezug; ob das fachlich korrekt ist, bleibt je Funktion zu prüfen.
+
+### `admin.system-pulse`
+
+- Die Testhistorie lädt über get_latest_selftest_runs; bis die Migration 20261125170000_get_latest_selftest_runs.sql angewendet ist, zeigt die Karte „Testlage unbekannt“ statt serverseitiger Ergebnisse.
+- Der Live-Teststart schreibt echte Testdaten und Dateien, ist bestätigungspflichtig und räumt anschließend auf; fehlende Rollen führen zu „Voraussetzung fehlt“.
+- Die Bereichsampel bewertet ausschließlich funktionale Selbsttests; RLS-Lücken bleiben eine getrennte Kennzahl und ergeben keine Gesamtbewertung.
+- Ausgeführt wurden Unit-, Generator- und Komponententests mit gemocktem RPC; RPC-Antwort, angewendete Migration und Darstellung im Browser wurden nicht gegen ein laufendes Backend geprüft.
+- Die Ampel zeigt den neuesten Lauf je Szenario über alle Mitglieder des Mandanten, nicht nur den letzten Lauf des angemeldeten Nutzers.
+- Migration vor Inbetriebnahme anwenden; ohne sie bleibt die Testlage unbekannt.
+- SVG-Flusspfeile und Live-Aktualisierung sind nicht im Browser geprüft.
 
 ### `admin.edge-function-security`
 

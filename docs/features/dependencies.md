@@ -172,6 +172,8 @@ _Auto-generiert mit `npm run update:feature-catalog`. Nicht von Hand bearbeiten.
 | `polls.respond` | `polls.manage` |
 | `polls.availability` | `polls.manage` |
 | `admin.workspace` | `admin.roles` |
+| `admin.system-pulse` | `admin.security-cockpit` |
+| `admin.system-pulse` | `admin.selftest-center` |
 | `cases.triage` | `cases.create` |
 | `cases.handover` | `cases.triage` |
 | `cases.handover` | `responsibilities.suggest` |

@@ -637,7 +637,7 @@ Die Angaben sind deklarierte Mindestrollen. Die tatsächlich wirksame Berechtigu
 - `cases.create` — Vorgang erfassen
 - `knowledge.ask` — Wissensfrage stellen
 
-### `admin` — 54 Funktionen
+### `admin` — 55 Funktionen
 
 - `tasks.templates` — Aufgabenvorlagen anwenden und pflegen
 - `tasks.annual` — Jahresaufgaben und Jahresabschluss
@@ -680,6 +680,7 @@ Die Angaben sind deklarierte Mindestrollen. Die tatsächlich wirksame Berechtigu
 - `admin.bulk-audit` — Massenaktions-Audit
 - `admin.gdpr` — DSGVO-Löschanträge
 - `admin.security-cockpit` — Security-Cockpit
+- `admin.system-pulse` — System-Puls
 - `admin.data-lint` — Datenqualitätsprüfung
 - `admin.performance` — Performance- und Größen-Dashboard
 - `admin.tenants` — Mandantenverwaltung
@@ -694,7 +695,7 @@ Die Angaben sind deklarierte Mindestrollen. Die tatsächlich wirksame Berechtigu
 - `knowledge.review` — Wissensantwort prüfen und freigeben
 - `knowledge.management` — Wissensverwaltung
 
-### `superadmin` — 25 Funktionen
+### `superadmin` — 26 Funktionen
 
 - `admin.workspace` — Administrationsbereich und Zugriff
 - `admin.roles` — Benutzerrollen verwalten
@@ -703,6 +704,7 @@ Die Angaben sind deklarierte Mindestrollen. Die tatsächlich wirksame Berechtigu
 - `admin.audit-log` — Audit-Trail einsehen und exportieren
 - `admin.gdpr` — DSGVO-Löschanträge
 - `admin.security-cockpit` — Security-Cockpit
+- `admin.system-pulse` — System-Puls
 - `admin.edge-function-security` — Edge-Function-Sicherheitsklassifikation
 - `admin.performance` — Performance- und Größen-Dashboard
 - `admin.tenants` — Mandantenverwaltung
@@ -791,6 +793,7 @@ Die Angaben sind deklarierte Mindestrollen. Die tatsächlich wirksame Berechtigu
 | `admin.roles` | `admin`, `bueroleitung`, `superadmin` |
 | `admin.security-cockpit` | `admin`, `superadmin` |
 | `admin.selftest-center` | `admin`, `bueroleitung`, `abgeordneter`, `mitarbeiter` |
+| `admin.system-pulse` | `admin`, `superadmin` |
 | `admin.templates-senders` | `admin`, `bueroleitung` |
 | `admin.tenants` | `superadmin`, `admin` |
 | `admin.users-sessions` | `admin`, `superadmin`, `abgeordneter`, `bueroleitung`, `mitarbeiter` |

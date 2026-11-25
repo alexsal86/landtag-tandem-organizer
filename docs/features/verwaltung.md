@@ -6,8 +6,8 @@ _Auto-generiert mit `npm run update:feature-catalog` aus dem zentralen Funktions
 
 ## Kennzahlen
 
-- Funktionen: **23** in **11** Unterbereichen
-- implementiert: **23**, teilweise: **0**, deaktiviert: **0**, potenziell verwaist: **0**
+- Funktionen: **24** in **11** Unterbereichen
+- implementiert: **24**, teilweise: **0**, deaktiviert: **0**, potenziell verwaist: **0**
 - ohne zugeordneten Test: **15**
 - ohne Dokumentationsverweis: **9**
 
@@ -29,6 +29,7 @@ _Auto-generiert mit `npm run update:feature-catalog` aus dem zentralen Funktions
 | `admin.tenants` Mandantenverwaltung | Mandanten | administrativ | implementiert | rollenabhängig | kein Test |
 | `admin.feature-catalog` Funktionskatalog und Inventarisierung | Qualität | administrativ | implementiert | rollenabhängig | Unit-Test |
 | `admin.selftest-center` Selbsttest-Center | Qualität | administrativ | implementiert | rollenabhängig | Selbsttest |
+| `admin.system-pulse` System-Puls | Qualität | administrativ | implementiert | rollenabhängig | Unit-Test |
 | `admin.action-permissions` Aktionsberechtigungen | Rollen & Rechte | sicherheit | implementiert | rollenabhängig | Selbsttest |
 | `admin.roles` Benutzerrollen verwalten | Rollen & Rechte | administrativ | implementiert | rollenabhängig | Selbsttest |
 | `admin.feature-flags` Feature Flags | Rollen & Rechte | administrativ | implementiert | Feature Flag | kein Test |
@@ -46,11 +47,11 @@ _Auto-generiert mit `npm run update:feature-catalog` aus dem zentralen Funktions
 - Audit
 - Datenschutz
 - Sicherheit
+- Qualität
 - Datenqualität
 - Betrieb
 - Mandanten
 - Konfiguration
-- Qualität
 - Technische Basisfunktionen
 
 ## Rollen
@@ -433,6 +434,51 @@ Zeigt RLS-Lücken, Policies, Snapshots und Audit-Trail als eigenständige Sicher
 **Offene Prüfpunkte**
 
 - Funktionen ohne Tabellenbezug erhalten keinen RLS-Bezug; ob das fachlich korrekt ist, bleibt je Funktion zu prüfen.
+
+### `admin.system-pulse` — System-Puls
+Zeigt je Funktionsbereich die letzten funktionalen Selbsttest-Ergebnisse als Ampel, startet die zugeordneten Szenarien aus der Detailkarte im Hintergrund und weist RLS-Lücken als eigene Kennzahl getrennt von den Testergebnissen aus.
+
+- **Kategorie:** administrativ
+- **Implementierung:** implementiert
+- **Einbindung:** rollenabhängig
+- **Testabdeckung:** Unit-Test
+- **Letztes Testergebnis:** bestanden (nicht aus der Existenz einer Testdatei abgeleitet)
+- **Rollen:** `admin`, `superadmin`
+- **Routen:** —
+- **Frontend-Komponenten:** `src/features/system-pulse/SystemPulse.tsx`, `src/features/system-pulse/pulse.ts`, `src/features/system-pulse/pulse-areas.config.json`, `src/features/system-pulse/generated/pulse-areas.json`
+- **Services:** `scripts/build-pulse-areas.mjs`
+- **Hooks:** —
+- **Edge Functions:** —
+- **Datenbankfunktionen:** `get_latest_selftest_runs`
+- **Tabellen:** `selftest_runs`
+- **Abhängigkeiten:** `admin.security-cockpit`, `admin.selftest-center`
+- **Selbsttests:** —
+- **Unit-Tests:** `src/features/system-pulse/pulse.test.ts`, `src/features/system-pulse/SystemPulse.test.tsx`, `scripts/__tests__/pulse-areas.test.mjs`
+- **Integrationstests:** —
+- **Browser-Tests:** —
+- **Dokumentation:** `docs/selftest-center.md`
+
+**Nachweise im Quellcode**
+
+- src/features/system-pulse/SystemPulse.tsx
+- src/features/system-pulse/pulse.ts
+- src/features/system-pulse/pulse-areas.config.json
+- src/features/system-pulse/generated/pulse-areas.json
+- scripts/build-pulse-areas.mjs
+- supabase/migrations/20261125170000_get_latest_selftest_runs.sql
+
+**Bekannte Einschränkungen**
+
+- Die Testhistorie lädt über get_latest_selftest_runs; bis die Migration 20261125170000_get_latest_selftest_runs.sql angewendet ist, zeigt die Karte „Testlage unbekannt“ statt serverseitiger Ergebnisse.
+- Der Live-Teststart schreibt echte Testdaten und Dateien, ist bestätigungspflichtig und räumt anschließend auf; fehlende Rollen führen zu „Voraussetzung fehlt“.
+- Die Bereichsampel bewertet ausschließlich funktionale Selbsttests; RLS-Lücken bleiben eine getrennte Kennzahl und ergeben keine Gesamtbewertung.
+- Ausgeführt wurden Unit-, Generator- und Komponententests mit gemocktem RPC; RPC-Antwort, angewendete Migration und Darstellung im Browser wurden nicht gegen ein laufendes Backend geprüft.
+- Die Ampel zeigt den neuesten Lauf je Szenario über alle Mitglieder des Mandanten, nicht nur den letzten Lauf des angemeldeten Nutzers.
+
+**Offene Prüfpunkte**
+
+- Migration vor Inbetriebnahme anwenden; ohne sie bleibt die Testlage unbekannt.
+- SVG-Flusspfeile und Live-Aktualisierung sind nicht im Browser geprüft.
 
 ### `admin.edge-function-security` — Edge-Function-Sicherheitsklassifikation
 Klassifiziert jede Edge Function nach verify_jwt und Zusatzschutz und prüft die Matrix gegen den Code.

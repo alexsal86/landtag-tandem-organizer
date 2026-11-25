@@ -203,6 +203,67 @@
       "reviewPoints": ["Funktionen ohne Tabellenbezug erhalten keinen RLS-Bezug; ob das fachlich korrekt ist, bleibt je Funktion zu prüfen."]
     },
     {
+      "id": "admin.system-pulse",
+      "subarea": "Qualität",
+      "name": "System-Puls",
+      "description": "Zeigt je Funktionsbereich die letzten funktionalen Selbsttest-Ergebnisse als Ampel, startet die zugeordneten Szenarien aus der Detailkarte im Hintergrund und weist RLS-Lücken als eigene Kennzahl getrennt von den Testergebnissen aus.",
+      "category": "administrativ",
+      "implementationStatus": "implementiert",
+      "integrationStatus": "rollenabhaengig",
+      "coverage": "unit",
+      "testResult": "bestanden",
+      "evidence": [
+        "src/features/system-pulse/SystemPulse.tsx",
+        "src/features/system-pulse/pulse.ts",
+        "src/features/system-pulse/pulse-areas.config.json",
+        "src/features/system-pulse/generated/pulse-areas.json",
+        "scripts/build-pulse-areas.mjs",
+        "supabase/migrations/20261125170000_get_latest_selftest_runs.sql"
+      ],
+      "components": [
+        "src/features/system-pulse/SystemPulse.tsx",
+        "src/features/system-pulse/pulse.ts",
+        "src/features/system-pulse/pulse-areas.config.json",
+        "src/features/system-pulse/generated/pulse-areas.json"
+      ],
+      "services": [
+        "scripts/build-pulse-areas.mjs"
+      ],
+      "rpcs": [
+        "get_latest_selftest_runs"
+      ],
+      "tables": [
+        "selftest_runs"
+      ],
+      "roles": [
+        "admin",
+        "superadmin"
+      ],
+      "dependsOn": [
+        "admin.security-cockpit",
+        "admin.selftest-center"
+      ],
+      "unitTests": [
+        "src/features/system-pulse/pulse.test.ts",
+        "src/features/system-pulse/SystemPulse.test.tsx",
+        "scripts/__tests__/pulse-areas.test.mjs"
+      ],
+      "docs": [
+        "docs/selftest-center.md"
+      ],
+      "limitations": [
+        "Die Testhistorie lädt über get_latest_selftest_runs; bis die Migration 20261125170000_get_latest_selftest_runs.sql angewendet ist, zeigt die Karte „Testlage unbekannt“ statt serverseitiger Ergebnisse.",
+        "Der Live-Teststart schreibt echte Testdaten und Dateien, ist bestätigungspflichtig und räumt anschließend auf; fehlende Rollen führen zu „Voraussetzung fehlt“.",
+        "Die Bereichsampel bewertet ausschließlich funktionale Selbsttests; RLS-Lücken bleiben eine getrennte Kennzahl und ergeben keine Gesamtbewertung.",
+        "Ausgeführt wurden Unit-, Generator- und Komponententests mit gemocktem RPC; RPC-Antwort, angewendete Migration und Darstellung im Browser wurden nicht gegen ein laufendes Backend geprüft.",
+        "Die Ampel zeigt den neuesten Lauf je Szenario über alle Mitglieder des Mandanten, nicht nur den letzten Lauf des angemeldeten Nutzers."
+      ],
+      "reviewPoints": [
+        "Migration vor Inbetriebnahme anwenden; ohne sie bleibt die Testlage unbekannt.",
+        "SVG-Flusspfeile und Live-Aktualisierung sind nicht im Browser geprüft."
+      ]
+    },
+    {
       "id": "admin.edge-function-security",
       "subarea": "Sicherheit",
       "name": "Edge-Function-Sicherheitsklassifikation",

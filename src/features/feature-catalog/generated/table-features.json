@@ -2989,6 +2989,11 @@
       "id": "admin.selftest-center",
       "name": "Selbsttest-Center",
       "area": "verwaltung"
+    },
+    {
+      "id": "admin.system-pulse",
+      "name": "System-Puls",
+      "area": "verwaltung"
     }
   ],
   "sender_information": [
