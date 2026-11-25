@@ -1,5 +1,6 @@
 import React, { useState, useRef } from 'react';
 import { debugConsole } from '@/utils/debugConsole';
+import { asJson } from '@/lib/json';
 import { useAuth } from '@/hooks/useAuth';
 import { useTenant } from '@/hooks/useTenant';
 import { supabase } from '@/integrations/supabase/client';
@@ -380,7 +381,7 @@ export function DrucksachenUpload({ onUploadSuccess, onProtocolsRefresh }: Druck
           session_number: parsedProtocol.metadata.session_number,
           legislature_period: parsedProtocol.metadata.legislature_period,
           protocol_date: parsedProtocol.metadata.protocol_date,
-          structured_data: parsedProtocol.structured_data,
+          structured_data: asJson(parsedProtocol.structured_data),
           raw_text: JSON.stringify(jsonData, null, 2).slice(0, 50000)
         }])
         .select()

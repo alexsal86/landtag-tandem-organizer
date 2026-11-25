@@ -13,7 +13,7 @@ export interface ProfileSummary {
   avatar_url?: string | null;
 }
 
-export interface ChecklistSubItem {
+export type ChecklistSubItem = {
   title: string;
   is_completed: boolean;
 }

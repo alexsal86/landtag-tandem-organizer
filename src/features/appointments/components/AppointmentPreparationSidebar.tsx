@@ -1,6 +1,7 @@
 import { useState, useEffect } from 'react';
 import type { ChangeEvent } from 'react';
 import { supabase } from '@/integrations/supabase/client';
+import { asJson } from '@/lib/json';
 import { useTenant } from '@/hooks/useTenant';
 import { Sheet, SheetContent, SheetDescription, SheetHeader, SheetTitle } from '@/components/ui/sheet';
 import { Button } from '@/components/ui/button';
@@ -252,7 +253,7 @@ export default function AppointmentPreparationSidebar({
           title: appointmentTitle || 'Termin',
           status: 'draft' as PreparationStatus,
           preparation_data: preparationData,
-          checklist_items: checklistItems,
+          checklist_items: asJson(checklistItems),
         }])
         .select()
         .single();
@@ -282,7 +283,7 @@ export default function AppointmentPreparationSidebar({
         .from('appointment_preparations')
         .update({
           preparation_data: preparation.preparation_data,
-          checklist_items: preparation.checklist_items,
+          checklist_items: asJson(preparation.checklist_items),
           notes: preparation.notes,
           status: preparation.status,
         })

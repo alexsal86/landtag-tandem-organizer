@@ -15,7 +15,7 @@ import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@
 import { Switch } from '@/components/ui/switch';
 import { notify } from "@/lib/notify";
 
-interface TemplateField {
+type TemplateField = {
   id: string;
   label: string;
   type: 'text' | 'textarea' | 'select';
@@ -23,7 +23,7 @@ interface TemplateField {
   required: boolean;
 }
 
-interface TemplateSection {
+type TemplateSection = {
   id: string;
   title: string;
   type: 'section' | 'checklist';

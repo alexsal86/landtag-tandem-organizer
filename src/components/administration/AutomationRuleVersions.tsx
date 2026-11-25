@@ -1,5 +1,6 @@
 import { useState, useEffect } from "react";
 import { supabase } from "@/integrations/supabase/client";
+import type { Json } from "@/integrations/supabase/types";
 import { EmptyState, LoadingState } from '@/components/ui-patterns';
 import { useTenant } from "@/hooks/useTenant";
 import { useToast } from "@/components/ui/use-toast";
@@ -25,9 +26,9 @@ interface VersionRow {
   description: string | null;
   module: string;
   trigger_type: string;
-  trigger_config: Record<string, unknown>;
-  conditions: Record<string, unknown>;
-  actions: Array<Record<string, unknown>>;
+  trigger_config: Json;
+  conditions: Json;
+  actions: Json;
   enabled: boolean;
   created_at: string;
 }

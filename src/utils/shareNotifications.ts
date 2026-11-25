@@ -1,4 +1,5 @@
 import { supabase } from '@/integrations/supabase/client';
+import { asJson } from '@/lib/json';
 import { debugConsole } from '@/utils/debugConsole';
 import type { NotificationData } from '@/hooks/useNotifications';
 
@@ -24,7 +25,7 @@ const createShareNotification = async (
     type_name: typeName,
     title_param: title,
     message_param: message,
-    data_param: data,
+    data_param: asJson(data),
     priority_param: 'medium',
   });
 

@@ -49,7 +49,7 @@ export interface DossierPositionVersion {
   created_at: string;
 }
 
-export interface TalkingPointsContent {
+export type TalkingPointsContent = {
   key_messages?: string[];
   qa?: { q: string; a: string }[];
   do_not_say?: string;

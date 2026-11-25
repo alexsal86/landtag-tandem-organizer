@@ -1,5 +1,6 @@
 import { useState, useEffect, useCallback, useRef } from "react";
 import { supabase } from "@/integrations/supabase/client";
+import { asJson } from "@/lib/json";
 import { useAuth } from "@/hooks/useAuth";
 import { debugConsole } from "@/utils/debugConsole";
 import { useTenant } from "@/hooks/useTenant";
@@ -125,7 +126,7 @@ export function useUserPreference<T>(key: string, defaultValue: T) {
               user_id: user.id,
               tenant_id: tenantId,
               key,
-              value: newValue as unknown,
+              value: asJson(newValue),
               updated_at: new Date().toISOString(),
             },
             { onConflict: "user_id,tenant_id,key" }

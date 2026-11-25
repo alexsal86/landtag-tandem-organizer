@@ -9,7 +9,7 @@ import { supabase } from "@/integrations/supabase/client";
 import { debugConsole } from '@/utils/debugConsole';
 import { notify } from "@/lib/notify";
 
-export interface UnsplashAttribution {
+export type UnsplashAttribution = {
   photographer: string;
   photographer_url: string;
   unsplash_url: string;

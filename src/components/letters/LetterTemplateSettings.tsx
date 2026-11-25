@@ -1,5 +1,6 @@
 import React, { useState, useEffect } from 'react';
 import { debugConsole } from '@/utils/debugConsole';
+import { asJson } from '@/lib/json';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
 import { Label } from '@/components/ui/label';
@@ -193,8 +194,8 @@ export const LetterTemplateSettings: React.FC<LetterTemplateSettingsProps> = ({ 
         const { error } = await supabase
           .from('letter_template_settings')
           .update({
-            variable_defaults: variableDefaults,
-            din5008_defaults: din5008Defaults,
+            variable_defaults: asJson(variableDefaults),
+            din5008_defaults: asJson(din5008Defaults),
           })
           .eq('id', existing.id);
         if (error) throw error;
@@ -203,8 +204,8 @@ export const LetterTemplateSettings: React.FC<LetterTemplateSettingsProps> = ({ 
           .from('letter_template_settings')
           .insert([{
             tenant_id: currentTenant.id,
-            variable_defaults: variableDefaults,
-            din5008_defaults: din5008Defaults,
+            variable_defaults: asJson(variableDefaults),
+            din5008_defaults: asJson(din5008Defaults),
           }]);
         if (error) throw error;
       }

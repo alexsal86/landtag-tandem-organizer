@@ -1,5 +1,6 @@
 import { useQuery, useMutation, useQueryClient } from "@tanstack/react-query";
 import { supabase } from "@/integrations/supabase/client";
+import { asJson } from "@/lib/json";
 import { useTenant } from "@/hooks/useTenant";
 import { useCurrentProfileId } from "@/hooks/useCurrentProfileId";
 import type { DossierEntry } from "../types";
@@ -159,7 +160,7 @@ export function useCreateEntry() {
           source_url: input.source_url ?? null,
           file_path: input.file_path ?? null,
           file_name: input.file_name ?? null,
-          metadata: input.metadata ?? {},
+          metadata: asJson(input.metadata ?? {}),
           tenant_id: currentTenant.id,
           created_by: profileId,
         })

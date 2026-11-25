@@ -1,5 +1,6 @@
 import { ResponsibleSuggestion } from "@/features/responsibilities/ResponsibleSuggestion";
 import { mergeStepChangeEvents } from "@/features/cases/items/timeline";
+import { asJson } from "@/lib/json";
 import { useCaseWorkflow } from "@/components/my-work/hooks/useCaseWorkflow";
 import { type KeyboardEvent, useCallback, useEffect, useMemo, useRef, useState } from "react";
 import { de } from "date-fns/locale";
@@ -428,7 +429,7 @@ export function MyWorkCasesWorkspace() {
     await applyItemOptimisticUpdate(
       item.id,
       (row) => ({ ...row, owner_user_id: ownerUserId, intake_payload: payload }),
-      () => supabase.from("case_items").update({ owner_user_id: ownerUserId, intake_payload: payload }).eq("id", item.id),
+      () => supabase.from("case_items").update({ owner_user_id: ownerUserId, intake_payload: asJson(payload) }).eq("id", item.id),
       "Zuweisung konnte nicht gespeichert werden.",
     );
   };

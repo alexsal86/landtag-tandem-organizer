@@ -1,0 +1,13 @@
+// Prüft die App gegen die echten @supabase/supabase-js-Typen.
+// Die Ambient-Deklarationen in src/supabase-fix.d.ts und src/types/supabase-auth.d.ts
+// ersetzen das Paket durch `any`; hier sind sie ausgenommen, damit der Abbau der
+// Typfehler messbar bleibt. Ziel: beide Dateien löschen, sobald diese Prüfung grün ist.
+{
+  "extends": "./tsconfig.app.json",
+  "exclude": [
+    "src/**/*.test.ts",
+    "src/**/*.test.tsx",
+    "src/supabase-fix.d.ts",
+    "src/types/supabase-auth.d.ts"
+  ]
+}
