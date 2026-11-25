@@ -3,6 +3,7 @@ import { useState, useEffect } from "react";
 import { supabase } from "@/integrations/supabase/client";
 import { useAuth } from "@/hooks/useAuth";
 import { debugConsole } from '@/utils/debugConsole';
+import type { Database, Json } from '@/integrations/supabase/types';
 
 export interface AppointmentPreparation {
   id: string;
@@ -308,11 +309,22 @@ export function useAppointmentPreparation(preparationId: string | undefined) {
 
     try {
       setSaveStatus("saving");
-      // Das lokale View-Model führt Felder optional/nullable, die Tabelle verlangt sie enger.
-      const updatePayload = {
-        ...updates,
+      // Nur schreibbare Spalten in der Breite der Tabelle: appointment_id ist dort NOT NULL,
+      // darum wird ein null-Wert ausgelassen statt die Spalte zu überschreiben.
+      const asJson = (value: unknown): Json => value as Json;
+      const updatePayload: Database["public"]["Tables"]["appointment_preparations"]["Update"] = {
         updated_at: new Date().toISOString(),
-      } as Partial<AppointmentPreparationRow> as never;
+      };
+      if (updates.title !== undefined) updatePayload.title = updates.title;
+      if (updates.status !== undefined) updatePayload.status = updates.status;
+      if (updates.notes !== undefined) updatePayload.notes = updates.notes;
+      if (updates.is_archived !== undefined) updatePayload.is_archived = updates.is_archived;
+      if (updates.archived_at !== undefined) updatePayload.archived_at = updates.archived_at;
+      if (updates.template_id !== undefined) updatePayload.template_id = updates.template_id;
+      if (updates.appointment_id) updatePayload.appointment_id = updates.appointment_id;
+      if (updates.preparation_data !== undefined) updatePayload.preparation_data = asJson(updates.preparation_data);
+      if (updates.checklist_items !== undefined) updatePayload.checklist_items = asJson(updates.checklist_items);
+      if (updates.shared_with !== undefined) updatePayload.shared_with = updates.shared_with ?? [];
 
       // Optimistic local update — no refetch
       setPreparation(prev => prev ? { ...prev, ...updates, updated_at: new Date().toISOString() } : prev);

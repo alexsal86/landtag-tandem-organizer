@@ -9,6 +9,7 @@ import { toast } from './use-toast';
 import { debugConsole } from '@/utils/debugConsole';
 import type { ExternalCalendarSummary } from '@/components/meetings/types';
 import type { AppointmentPreparation } from './useAppointmentPreparation';
+import type { Database } from '@/integrations/supabase/types';
 
 export interface AppointmentWithFeedback {
   id: string;
@@ -57,6 +58,18 @@ interface AppointmentFeedbackRow {
   event_type: 'appointment' | 'external_event';
   priority_score: number;
   reminder_dismissed: boolean | null;
+}
+
+type FeedbackDbRow = Database["public"]["Tables"]["appointment_feedback"]["Row"];
+
+/** Übernimmt nur bekannte Status- und Typwerte; alles andere bleibt außen vor statt zu lügen. */
+function normalizeFeedbackRow(row: FeedbackDbRow): AppointmentFeedbackRow | null {
+  const status = row.feedback_status;
+  const eventType = row.event_type;
+  if (status !== 'pending' && status !== 'completed' && status !== 'skipped') return null;
+  if (eventType !== 'appointment' && eventType !== 'external_event') return null;
+  // priority_score ist in der Tabelle nullable, fällt aber auf den Standardwert 0 zurück.
+  return { ...row, feedback_status: status, event_type: eventType, priority_score: row.priority_score ?? 0 };
 }
 
 interface ExternalEventWithCalendarRow {
@@ -221,7 +234,10 @@ export const useAppointmentFeedback = () => {
 
         if (!insertError && newFeedback) {
           // Füge neue Feedback-Einträge zur Map hinzu
-          newFeedback.forEach((f) => { if (f.external_event_id) feedbackMap.set(f.external_event_id, f as unknown as AppointmentFeedbackRow); });
+          newFeedback.forEach((f) => {
+            const row = normalizeFeedbackRow(f);
+            if (row?.external_event_id) feedbackMap.set(row.external_event_id, row);
+          });
         }
       }
 
