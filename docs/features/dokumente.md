@@ -437,7 +437,7 @@ Erstellt Briefe im Lexical-Editor mit DIN-5008-Layout, Adressen, Vorlagen und An
 - **Tabellen:** `letters`, `letter_template_settings`, `letter_attachments`
 - **Abhängigkeiten:** —
 - **Selbsttests:** —
-- **Unit-Tests:** `src/components/letters/__tests__/types.test.ts`
+- **Unit-Tests:** `src/components/letters/__tests__/types.test.ts`, `src/components/letters/din5008/headerMetrics.test.ts`
 - **Integrationstests:** —
 - **Browser-Tests:** —
 - **Dokumentation:** `docs/workflow-consistency.md`

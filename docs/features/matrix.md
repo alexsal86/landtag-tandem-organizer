@@ -60,7 +60,7 @@ Die Spalten zählen **zugeordnete** Prüfungen, nicht bestandene Läufe. „Erge
 | `annotations.ocr` | dokumente | fachlich | implementiert | UI | kein Test | nicht-ausgefuehrt | 0 | 0 | 0 | 0 | nein |
 | `letters.export` | dokumente | fachlich | implementiert | UI | kein Test | nicht-ausgefuehrt | 0 | 0 | 0 | 0 | nein |
 | `letters.archive` | dokumente | automatisiert | implementiert | systemseitig | Selbsttest | nicht-ausgefuehrt | 1 | 0 | 0 | 0 | nein |
-| `letters.create` | dokumente | fachlich | implementiert | rollenabhängig | Unit-Test | unbekannt | 0 | 1 | 0 | 0 | ja |
+| `letters.create` | dokumente | fachlich | implementiert | rollenabhängig | Unit-Test | unbekannt | 0 | 2 | 0 | 0 | ja |
 | `letters.workflow` | dokumente | fachlich | implementiert | rollenabhängig | Selbsttest | nicht-ausgefuehrt | 1 | 1 | 1 | 0 | ja |
 | `letters.collaboration` | dokumente | fachlich | implementiert | UI | kein Test | nicht-ausgefuehrt | 0 | 0 | 0 | 0 | nein |
 | `letters.attachments` | dokumente | fachlich | implementiert | UI | kein Test | nicht-ausgefuehrt | 0 | 0 | 0 | 0 | nein |

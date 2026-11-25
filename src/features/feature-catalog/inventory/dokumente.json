@@ -403,7 +403,8 @@
         "mitarbeiter"
       ],
       "unitTests": [
-        "src/components/letters/__tests__/types.test.ts"
+        "src/components/letters/__tests__/types.test.ts",
+        "src/components/letters/din5008/headerMetrics.test.ts"
       ],
       "docs": [
         "docs/workflow-consistency.md"
