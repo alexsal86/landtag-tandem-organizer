@@ -17,7 +17,9 @@ export function useEntryFollowups(daysAhead: number = 14) {
       const until = new Date(Date.now() + daysAhead * 24 * 60 * 60 * 1000).toISOString();
       const { data, error } = await supabase
         .from("dossier_entries")
-        .select("*")
+        .select(
+          "id, dossier_id, entry_type, title, content, source_url, file_path, file_name, metadata, is_curated, is_pinned, tags, created_by, tenant_id, created_at, updated_at, followup_at"
+        )
         .eq("tenant_id", tenantId!)
         .not("followup_at", "is", null)
         .lte("followup_at", until)

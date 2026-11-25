@@ -340,7 +340,7 @@ serve(withSafeHandler("send-push-notification", async (req) => {
       console.log('🧪 Processing TEST request...');
 
       const { data: subscriptions, error } = await supabaseAdmin
-        .from('push_subscriptions').select('*').eq('is_active', true);
+        .from('push_subscriptions').select('id, user_id, endpoint, p256dh_key, auth_key').eq('is_active', true);
 
       if (error || !subscriptions?.length) {
         return new Response(JSON.stringify({
@@ -393,7 +393,7 @@ serve(withSafeHandler("send-push-notification", async (req) => {
 
     // Query subscriptions (filter by user if specified)
     let query = supabaseAdmin
-      .from('push_subscriptions').select('*').eq('is_active', true);
+      .from('push_subscriptions').select('id, user_id, endpoint, p256dh_key, auth_key').eq('is_active', true);
     if (targetUserId) {
       query = query.eq('user_id', targetUserId);
       console.log(`🎯 Filtering for user: ${targetUserId}`);

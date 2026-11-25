@@ -9,6 +9,12 @@ import { format, startOfMonth, endOfMonth, eachDayOfInterval, parseISO, getYear 
 import type { TimeEntryRow, EmployeeSettingsRow, LeaveRow, HolidayRow } from "../types";
 import { notify } from "@/lib/notify";
 
+// Only the columns the calendar/balance math consumes — keeps the yearly leave query small.
+const LEAVE_COLUMNS =
+  "id, type, status, start_date, end_date, reason, medical_reason, start_time, end_time, minutes_counted" as const;
+// state/is_nationwide are read by isBadenWuerttembergHoliday (weeklyTarget) — keep them.
+const HOLIDAY_COLUMNS = "id, holiday_date, name, state, is_nationwide" as const;
+
 interface TimeTrackingBaseData {
   entries: TimeEntryRow[];
   employeeSettings: EmployeeSettingsRow | null;
@@ -30,12 +36,12 @@ async function fetchTimeTrackingBaseData(userId: string, selectedMonth: Date): P
   const [e, s, v, sick, medical, overtime, h, pending] = await Promise.all([
     supabase.from("time_entries").select("*, edited_by, edited_at, edit_reason").eq("user_id", userId).gte("work_date", format(monthStart, "yyyy-MM-dd")).lte("work_date", format(monthEnd, "yyyy-MM-dd")).order("work_date", { ascending: false }),
     supabase.from("employee_settings").select("*, carry_over_expires_at").eq("user_id", userId).single(),
-    supabase.from("leave_requests").select("*").eq("user_id", userId).eq("type", "vacation").in("status", ["approved", "pending", "rejected"]).gte("start_date", `${year}-01-01`).lte("end_date", `${year}-12-31`).order("start_date"),
-    supabase.from("leave_requests").select("*").eq("user_id", userId).eq("type", "sick").in("status", ["pending", "approved", "rejected"]).gte("start_date", `${year}-01-01`).lte("end_date", `${year}-12-31`).order("start_date"),
-    supabase.from("leave_requests").select("*").eq("user_id", userId).eq("type", "medical").in("status", ["pending", "approved", "rejected"]).gte("start_date", `${year}-01-01`).lte("end_date", `${year}-12-31`).order("start_date"),
-    supabase.from("leave_requests").select("*").eq("user_id", userId).eq("type", "overtime_reduction").in("status", ["pending", "approved", "rejected"]).gte("start_date", `${year}-01-01`).lte("end_date", `${year}-12-31`).order("start_date"),
-    supabase.from("public_holidays").select("*").gte("holiday_date", `${year}-01-01`).lte("holiday_date", `${year}-12-31`).order("holiday_date"),
-    supabase.from("leave_requests").select("*").eq("user_id", userId).eq("status", "pending").order("start_date"),
+    supabase.from("leave_requests").select(LEAVE_COLUMNS).eq("user_id", userId).eq("type", "vacation").in("status", ["approved", "pending", "rejected"]).gte("start_date", `${year}-01-01`).lte("end_date", `${year}-12-31`).order("start_date"),
+    supabase.from("leave_requests").select(LEAVE_COLUMNS).eq("user_id", userId).eq("type", "sick").in("status", ["pending", "approved", "rejected"]).gte("start_date", `${year}-01-01`).lte("end_date", `${year}-12-31`).order("start_date"),
+    supabase.from("leave_requests").select(LEAVE_COLUMNS).eq("user_id", userId).eq("type", "medical").in("status", ["pending", "approved", "rejected"]).gte("start_date", `${year}-01-01`).lte("end_date", `${year}-12-31`).order("start_date"),
+    supabase.from("leave_requests").select(LEAVE_COLUMNS).eq("user_id", userId).eq("type", "overtime_reduction").in("status", ["pending", "approved", "rejected"]).gte("start_date", `${year}-01-01`).lte("end_date", `${year}-12-31`).order("start_date"),
+    supabase.from("public_holidays").select(HOLIDAY_COLUMNS).gte("holiday_date", `${year}-01-01`).lte("holiday_date", `${year}-12-31`).order("holiday_date"),
+    supabase.from("leave_requests").select(LEAVE_COLUMNS).eq("user_id", userId).eq("status", "pending").order("start_date"),
   ]);
 
   if (e.error) throw e.error;

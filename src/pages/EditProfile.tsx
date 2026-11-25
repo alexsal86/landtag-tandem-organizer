@@ -52,7 +52,7 @@ export function EditProfile() {
     try {
       const { data, error } = await supabase
         .from('profiles')
-        .select('*')
+        .select('display_name, bio, avatar_url')
         .eq('user_id', user!.id)
         .maybeSingle();
 

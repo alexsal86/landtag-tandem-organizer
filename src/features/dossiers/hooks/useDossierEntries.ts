@@ -5,6 +5,10 @@ import { useCurrentProfileId } from "@/hooks/useCurrentProfileId";
 import type { DossierEntry } from "../types";
 import { notify } from "@/lib/notify";
 
+/** Explicit column list keeps egress low: source_hash/title_fingerprint are write-only dedupe keys. */
+const ENTRY_COLUMNS =
+  "id, dossier_id, entry_type, title, content, source_url, file_path, file_name, metadata, is_curated, is_pinned, tags, created_by, tenant_id, created_at, updated_at, followup_at" as const;
+
 /** Map raw row to DossierEntry with safe defaults */
 function mapEntry(d: Record<string, unknown>): DossierEntry {
   return {
@@ -26,7 +30,7 @@ export function useInboxEntries() {
     queryFn: async () => {
       const { data, error } = await supabase
         .from("dossier_entries")
-        .select("*")
+        .select(ENTRY_COLUMNS)
         .eq("tenant_id", tenantId!)
         .is("dossier_id", null)
         .order("created_at", { ascending: false });
@@ -47,7 +51,7 @@ export function useDossierEntries(dossierId: string | null) {
     queryFn: async () => {
       const { data, error } = await supabase
         .from("dossier_entries")
-        .select("*")
+        .select(ENTRY_COLUMNS)
         .eq("tenant_id", tenantId!)
         .eq("dossier_id", dossierId!)
         .order("created_at", { ascending: false });
@@ -70,7 +74,7 @@ export function useRecentEntriesAcrossDossiers(daysBack: number = 7) {
       const since = new Date(Date.now() - daysBack * 24 * 60 * 60 * 1000).toISOString();
       const { data, error } = await supabase
         .from("dossier_entries")
-        .select("*")
+        .select(ENTRY_COLUMNS)
         .eq("tenant_id", tenantId!)
         .not("dossier_id", "is", null)
         .gte("created_at", since)
@@ -96,7 +100,7 @@ export function useGlobalEntrySearch(searchTerm: string) {
       const pattern = `%${trimmed.replace(/[%_]/g, (m) => `\\${m}`)}%`;
       const { data, error } = await supabase
         .from("dossier_entries")
-        .select("*")
+        .select(ENTRY_COLUMNS)
         .eq("tenant_id", tenantId!)
         .or(`title.ilike.${pattern},content.ilike.${pattern}`)
         .order("created_at", { ascending: false })

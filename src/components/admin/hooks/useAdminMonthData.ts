@@ -33,7 +33,9 @@ export function useAdminMonthData({ selectedUserId, currentMonth, isAdmin }: Use
       const [entriesRes, leavesRes, correctionsRes, holidaysRes] = await Promise.all([
         supabase
           .from("time_entries")
-          .select("*")
+          .select(
+            "id, user_id, work_date, started_at, ended_at, minutes, pause_minutes, arbzg_pause_minutes, notes, edited_by, edited_at, edit_reason"
+          )
           .eq("user_id", selectedUserId)
           .gte("work_date", format(monthStart, "yyyy-MM-dd"))
           .lte("work_date", format(monthEnd, "yyyy-MM-dd"))

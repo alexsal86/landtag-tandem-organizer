@@ -41,7 +41,7 @@ export function SettingsView(): React.JSX.Element {
   const [autoSave, setAutoSave] = useState<boolean>(true);
   const [language, setLanguage] = useState<string>("de");
   const [timezone, setTimezone] = useState<string>("Europe/Berlin");
-  const [userProfile, setUserProfile] = useState<ProfileRow | null>(null);
+  const [userProfile, setUserProfile] = useState<Pick<ProfileRow, "avatar_url" | "display_name"> | null>(null);
   
   // Password change state
   const [passwordDialogOpen, setPasswordDialogOpen] = useState<boolean>(false);
@@ -70,7 +70,7 @@ export function SettingsView(): React.JSX.Element {
     const loadUserData = async (): Promise<void> => {
       const { data: profile } = await supabase
         .from("profiles")
-        .select("*")
+        .select("avatar_url, display_name")
         .eq("user_id", user.id)
         .maybeSingle();
       setUserProfile(profile);

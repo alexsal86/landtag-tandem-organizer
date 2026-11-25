@@ -116,7 +116,7 @@ export function useMeetingArchive(deps: ArchiveDeps) {
     if (!user || !meeting.template_id) return;
     try {
       const { data: nextMeeting } = await supabase
-        .from('meetings').select('*').eq('user_id', user.id).eq('template_id', meeting.template_id)
+        .from('meetings').select('id').eq('user_id', user.id).eq('template_id', meeting.template_id)
         .eq('status', 'planned').gt('meeting_date', meeting.meeting_date)
         .order('meeting_date', { ascending: true }).limit(1).maybeSingle();
 
@@ -151,7 +151,9 @@ export function useMeetingArchive(deps: ArchiveDeps) {
     if (!user) return;
     try {
       const { data: pendingItems, error } = await supabase
-        .from('carryover_items').select('*').eq('user_id', user.id).eq('template_id', templateId);
+        .from('carryover_items')
+        .select('id, original_meeting_id, title, description, notes, result_text, result_html, assigned_to, carryover_count, original_meeting_date, original_meeting_title')
+        .eq('user_id', user.id).eq('template_id', templateId);
       if (error || !pendingItems || pendingItems.length === 0) return;
 
       const reviewParentId = await ensureReviewParentItem(meetingId);
@@ -200,7 +202,7 @@ export function useMeetingArchive(deps: ArchiveDeps) {
         if (error) throw error;
       }
       const { data: agendaItemsData, error: agendaError } = await supabase
-        .from('meeting_agenda_items').select('*').eq('meeting_id', meeting.id);
+        .from('meeting_agenda_items').select('id').eq('meeting_id', meeting.id);
       if (agendaError) throw agendaError;
       await persistMeetingArchive(meeting.id);
       await clearCompletedCarryoverBuffer(meeting);

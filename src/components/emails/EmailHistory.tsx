@@ -54,7 +54,7 @@ interface EmailLog {
   recipients: string[];
   cc: string[];
   bcc: string[];
-  body_html: string;
+  body_html?: string;
   status: string;
   error_message?: string;
   sent_at: string;
@@ -72,6 +72,7 @@ export function EmailHistory() {
   const [loading, setLoading] = useState(false);
   const [searchTerm, setSearchTerm] = useState("");
   const [selectedEmail, setSelectedEmail] = useState<EmailLog | null>(null);
+  const [detailBody, setDetailBody] = useState<string | null>(null);
   const [showDetailsDialog, setShowDetailsDialog] = useState(false);
   const [showRetryDialog, setShowRetryDialog] = useState(false);
   const [activeTab, setActiveTab] = useState<string>("sent");
@@ -95,7 +96,7 @@ export function EmailHistory() {
     try {
       const { data, error } = await supabase
         .from("email_logs")
-        .select("*")
+        .select("id, subject, recipients, cc, bcc, status, sent_at, created_at, failed_recipients")
         .eq("tenant_id", currentTenant!.id)
         .eq("user_id", user!.id)
         .order("sent_at", { ascending: false })
@@ -125,7 +126,7 @@ export function EmailHistory() {
     try {
       const { data, error } = await supabase
         .from("scheduled_emails")
-        .select("*")
+        .select("id, subject, recipients, status, scheduled_for")
         .eq("tenant_id", currentTenant!.id)
         .eq("user_id", user!.id)
         .in("status", ["scheduled"])
@@ -259,8 +260,21 @@ export function EmailHistory() {
 });
   };
 
-  const handleRetry = (email: EmailLog) => {
-    setSelectedEmail(email);
+  /** Full HTML body is loaded on demand only, so the list query stays small. */
+  const fetchEmailBody = async (emailId: string): Promise<string> => {
+    const { data } = await supabase
+      .from("email_logs")
+      .select("body_html")
+      .eq("id", emailId)
+      .eq("tenant_id", currentTenant!.id)
+      .eq("user_id", user!.id)
+      .maybeSingle();
+    return data?.body_html ?? "";
+  };
+
+  const handleRetry = async (email: EmailLog) => {
+    const bodyHtml = email.body_html ?? (await fetchEmailBody(email.id));
+    setSelectedEmail({ ...email, body_html: bodyHtml });
     setShowRetryDialog(true);
   };
 
@@ -288,9 +302,11 @@ export function EmailHistory() {
     return <Badge variant={config.variant}>{config.label}</Badge>;
   };
 
-  const handleViewDetails = (email: EmailLog) => {
+  const handleViewDetails = async (email: EmailLog) => {
     setSelectedEmail(email);
+    setDetailBody(null);
     setShowDetailsDialog(true);
+    setDetailBody(await fetchEmailBody(email.id));
   };
 
   return (
@@ -513,7 +529,13 @@ export function EmailHistory() {
               </div>
               <div>
                 <Label>Nachricht</Label>
-                <div className="mt-1 p-4 border rounded" dangerouslySetInnerHTML={{ __html: sanitizeRichHtml(selectedEmail.body_html) }} />
+                <div className="mt-1 p-4 border rounded">
+                  {detailBody === null ? (
+                    <span className="text-muted-foreground">Lädt...</span>
+                  ) : (
+                    <div dangerouslySetInnerHTML={{ __html: sanitizeRichHtml(detailBody) }} />
+                  )}
+                </div>
               </div>
             </div>
           )}
@@ -545,7 +567,7 @@ export function EmailHistory() {
           emailLogId={selectedEmail.id}
           failedRecipients={selectedEmail.failed_recipients}
           emailSubject={selectedEmail.subject}
-          emailBody={selectedEmail.body_html}
+          emailBody={selectedEmail.body_html ?? ""}
           onRetrySuccess={() => {
             fetchEmailLogs();
             setShowRetryDialog(false);
