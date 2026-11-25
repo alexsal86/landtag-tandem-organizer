@@ -721,7 +721,7 @@ export function CaseItemDetailPanel({
       />
 
       <div className="mt-4 pt-4 border-t border-dashed flex items-center justify-between">
-        <Button disabled={!editableCaseItem.category} onClick={onSave}>Speichern</Button>
+        <Button onClick={onSave}>Speichern</Button>
       </div>
     </div>
   );

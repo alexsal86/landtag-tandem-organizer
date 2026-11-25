@@ -98,7 +98,7 @@ export function MyWorkCasesWorkspace() {
   const workflow = useCaseWorkflow(detailItemId);
   const [detailFileId, setDetailFileId] = useState<string | null>(null);
   const [detailTab, setDetailTab] = useState<"overview" | "timeline" | "documents">("overview");
-  const { editableCaseItem, setEditableCaseItem, updateEdit, appendTimelineEvent, deleteTimelineEvent } = useCaseItemEdit();
+  const { editableCaseItem, setEditableCaseItem, updateEdit, deleteTimelineEvent } = useCaseItemEdit();
   const [itemSort, setItemSort] = useState<CaseWorkspaceSort>({
     primary: { key: "received", direction: "desc" },
     secondary: { enabled: false, direction: "asc" },
@@ -797,7 +797,7 @@ export function MyWorkCasesWorkspace() {
   }, []);
 
   const handleAddInteraction = useCallback(async (files: File[] = []) => {
-    if (!editableCaseItem) return;
+    if (!editableCaseItem || !detailItemId) return;
     if (!editableCaseItem.interactionType) {
       notify.error("Bitte zuerst eine Interaktion auswählen.");
       return;
@@ -807,6 +807,7 @@ export function MyWorkCasesWorkspace() {
     const fallbackTypeLabel = typeMeta?.label || "Interaktion";
 
     let title = fallbackTypeLabel;
+    let uploadedDocuments: CaseItemInteractionDocument[] = [];
 
     if (editableCaseItem.interactionType === "dokument") {
       if (!currentTenant?.id || !user?.id) {
@@ -861,10 +862,7 @@ export function MyWorkCasesWorkspace() {
         });
       }
 
-      updateEdit({
-        interactionDocuments: [...editableCaseItem.interactionDocuments, ...uploaded].sort((a, b) => a.title.localeCompare(b.title, "de", { sensitivity: "base" })),
-      });
-      notify.success(uploaded.length > 1 ? `${uploaded.length} Dokumente hinzugefügt.` : "Dokument hinzugefügt.");
+      uploadedDocuments = uploaded;
     } else if (editableCaseItem.interactionType === "anruf") {
       title = `Telefonat mit ${contact || "unbekannt"}`;
     } else if (editableCaseItem.interactionType === "mail") {
@@ -873,17 +871,47 @@ export function MyWorkCasesWorkspace() {
       title = `${fallbackTypeLabel} mit ${contact}`;
     }
 
-    if (editableCaseItem.interactionType !== "dokument") {
-      appendTimelineEvent({
-        type: "interaktion",
+    const nextTimelineEvents = editableCaseItem.interactionType === "dokument"
+      ? editableCaseItem.timelineEvents
+      : [...editableCaseItem.timelineEvents, {
+        id: crypto.randomUUID(),
+        type: "interaktion" as const,
         title,
         note: normalizeRichTextValue(editableCaseItem.interactionNote) || undefined,
-        interactionType: editableCaseItem.interactionType,
+        interactionType: editableCaseItem.interactionType as TimelineEvent["interactionType"],
         timestamp: formatInteractionTimestamp(editableCaseItem.interactionDateTime),
-      });
-    }
-    updateEdit({ interactionContact: "", interactionDateTime: "", interactionNote: "" });
-  }, [appendTimelineEvent, currentTenant?.id, editableCaseItem, formatInteractionTimestamp, teamUsers, updateEdit, user?.id]);
+      }];
+    const nextInteractionDocuments = uploadedDocuments.length > 0
+      ? [...editableCaseItem.interactionDocuments, ...uploadedDocuments].sort((a, b) => a.title.localeCompare(b.title, "de", { sensitivity: "base" }))
+      : editableCaseItem.interactionDocuments;
+    const nextIntakePayload = {
+      ...((detailItem?.intake_payload as unknown as Record<string, unknown> | null | undefined) ?? {}),
+      timeline_events: nextTimelineEvents,
+      interaction_documents: nextInteractionDocuments,
+    };
+
+    // Interaktion sofort persistieren, damit sie nicht vom globalen „Speichern“ abhängt.
+    const saved = await applyItemOptimisticUpdate(
+      detailItemId,
+      (row) => ({ ...row, intake_payload: nextIntakePayload as unknown as CaseItem["intake_payload"] }),
+      () => supabase.from("case_items").update({ intake_payload: nextIntakePayload as unknown as TablesUpdate<"case_items">["intake_payload"] }).eq("id", detailItemId),
+      "Interaktion konnte nicht gespeichert werden.",
+    );
+    if (!saved) return;
+
+    updateEdit({
+      timelineEvents: nextTimelineEvents,
+      interactionDocuments: nextInteractionDocuments,
+      interactionContact: "",
+      interactionDateTime: "",
+      interactionNote: "",
+    });
+    notify.success(
+      editableCaseItem.interactionType === "dokument"
+        ? (uploadedDocuments.length > 1 ? `${uploadedDocuments.length} Dokumente hinzugefügt.` : "Dokument hinzugefügt.")
+        : "Interaktion gespeichert.",
+    );
+  }, [applyItemOptimisticUpdate, currentTenant?.id, detailItem, detailItemId, editableCaseItem, formatInteractionTimestamp, teamUsers, updateEdit, user?.id]);
 
   const handleRequestDecision = useCallback(() => {
     if (!editableCaseItem || !detailItemId) return;
