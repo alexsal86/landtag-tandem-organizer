@@ -1,10 +1,13 @@
 import type { ElectionDistrict } from '@/hooks/useElectionDistricts';
 import { directMandateParty, electionDistrictNumberLabel, hasRenderableBoundary, partyColors } from './mapModel';
+import { getPartyTextColor } from './partyColors';
+import { CARTOGRAM_BANDS, cartogramLayout } from './cartogramLayout';
 
 /**
  * Renders the district map as a standalone PNG. The live map draws numbers as
  * divIcons, which cannot be serialised from the DOM, so this builds its own SVG
- * from the district geometries, rasterises it and triggers a download.
+ * from the district geometries, rasterises it and triggers a download. The
+ * cartogram uses the same export chrome so both views download a comparable image.
  */
 
 export type MapExportLegendItem = { party: string; label: string; count: number };
@@ -70,6 +73,32 @@ const labelAnchor = (district: ElectionDistrict, rings: Ring[]) => {
   return centroidOf(rings);
 };
 
+const headerSection = (title: string, standLabel?: string) => `<text x="${MARGIN}" y="${MARGIN + 34}" font-family="${FONT}" font-size="40" font-weight="700" fill="#1f2418">${escapeXml(title)}</text>`
+  + (standLabel ? `<text x="${MARGIN}" y="${MARGIN + 72}" font-family="${FONT}" font-size="22" fill="#5a6350">${escapeXml(standLabel)}</text>` : '');
+
+const legendSection = (legend: MapExportLegendItem[], left: number, top: number, notes: string[]) => {
+  const rowsBottom = top + 62 + legend.length * 38;
+  return `<line x1="${left}" y1="${top + 22}" x2="${left + LEGEND_WIDTH}" y2="${top + 22}" stroke="#d5dac9" />`
+    + `<text x="${left}" y="${top + 18}" font-family="${FONT}" font-size="20" font-weight="700" fill="#1f2418">Legende</text>`
+    + legend.map((item, index) => {
+      const y = top + 62 + index * 38;
+      return `<g>`
+        + `<rect x="${left}" y="${y - 15}" width="22" height="22" rx="3" fill="${partyColors[item.party] || '#9ca3af'}" stroke="#000000" stroke-opacity="0.18" />`
+        + `<text x="${left + 34}" y="${y + 2}" font-family="${FONT}" font-size="21" fill="#1f2418">${escapeXml(item.label)}</text>`
+        + `<text x="${left + LEGEND_WIDTH}" y="${y + 2}" text-anchor="end" font-family="${FONT}" font-size="20" fill="#5a6350">${item.count}</text>`
+        + '</g>';
+    }).join('')
+    + `<line x1="${left}" y1="${rowsBottom}" x2="${left + LEGEND_WIDTH}" y2="${rowsBottom}" stroke="#d5dac9" />`
+    + notes.map((note, index) => `<text x="${left}" y="${rowsBottom + 30 + index * 24}" font-family="${FONT}" font-size="18" fill="#5a6350">${escapeXml(note)}</text>`).join('');
+};
+
+const footerSection = (sourceLabel: string | undefined, missing: number, pageHeight: number) =>
+  (sourceLabel ? `<text x="${MARGIN}" y="${pageHeight - MARGIN + 6}" font-family="${FONT}" font-size="18" fill="#3f4938">${escapeXml(sourceLabel)}</text>` : '')
+  + (missing > 0 ? `<text x="${MARGIN}" y="${pageHeight - MARGIN + 32}" font-family="${FONT}" font-size="17" fill="#7a5b16">${missing} Gebiete ohne Grenzdaten nicht dargestellt.</text>` : '');
+
+const missingCount = (districts: ElectionDistrict[]) => districts
+  .filter(district => district.district_type !== 'verwaltungsgrenze' && !hasRenderableBoundary(district.boundaries)).length;
+
 export function buildDistrictMapSvg(options: MapExportOptions): { svg: string; width: number; height: number } {
   const { districts, parties, legend, title, standLabel, sourceLabel, selectedDistrictId } = options;
   const drawable = districts
@@ -117,7 +146,6 @@ export function buildDistrictMapSvg(options: MapExportOptions): { svg: string; w
 
   const pageHeight = Math.round(mapTop + mapHeight + FOOTER_HEIGHT + MARGIN);
   const legendLeft = PAGE_WIDTH - MARGIN - LEGEND_WIDTH;
-  const missing = districts.filter(district => district.district_type !== 'verwaltungsgrenze' && !hasRenderableBoundary(district.boundaries)).length;
 
   const shapes = drawable.map(({ district, rings }) => {
     const party = directMandateParty(district);
@@ -152,30 +180,70 @@ export function buildDistrictMapSvg(options: MapExportOptions): { svg: string; w
       + '</g>';
   }).join('');
 
-  const legendRows = legend.map((item, index) => {
-    const y = mapTop + 62 + index * 38;
+  const svg = `<svg xmlns="http://www.w3.org/2000/svg" width="${PAGE_WIDTH}" height="${pageHeight}" viewBox="0 0 ${PAGE_WIDTH} ${pageHeight}">`
+    + `<rect width="${PAGE_WIDTH}" height="${pageHeight}" fill="#ffffff" />`
+    + headerSection(title, standLabel)
+    + `<rect x="${mapLeft}" y="${mapTop}" width="${mapWidth}" height="${mapHeight}" rx="6" fill="#e9ede2" />`
+    + `<clipPath id="map-clip"><rect x="${mapLeft}" y="${mapTop}" width="${mapWidth}" height="${mapHeight}" rx="6" /></clipPath>`
+    + `<g clip-path="url(#map-clip)">${shapes.join('')}${labels}</g>`
+    + legendSection(legend, legendLeft, mapTop, ['Farbe = Partei des Direktmandats', 'Nummer = Wahlkreisnummer'])
+    + footerSection(sourceLabel, missingCount(districts), pageHeight)
+    + '</svg>';
+
+  return { svg, width: PAGE_WIDTH, height: pageHeight };
+}
+
+export function buildDistrictCartogramSvg(options: MapExportOptions): { svg: string; width: number; height: number } {
+  const { districts, parties, legend, title, standLabel, sourceLabel, selectedDistrictId } = options;
+  const { tiles, columns } = cartogramLayout(districts);
+  if (!tiles.length) throw new Error('Keine Wahlkreise für das Kartogramm vorhanden');
+
+  const panelLeft = MARGIN;
+  const panelTop = MARGIN + HEADER_HEIGHT;
+  const panelWidth = PAGE_WIDTH - MARGIN * 2 - LEGEND_WIDTH - GAP;
+  const gridWidthLimit = panelWidth;
+  const tile = Math.floor(Math.min(174, gridWidthLimit / Math.max(columns, 1), MAX_MAP_HEIGHT / CARTOGRAM_BANDS));
+  const gridWidth = tile * Math.max(columns, 1);
+  const gridHeight = tile * CARTOGRAM_BANDS;
+  const legendHeight = 132 + legend.length * 38;
+  const panelHeight = Math.max(gridHeight, legendHeight, 340);
+  const gridLeft = panelLeft + (panelWidth - gridWidth) / 2;
+  const gridTop = panelTop + (panelHeight - gridHeight) / 2;
+  const pageHeight = Math.round(panelTop + panelHeight + FOOTER_HEIGHT + MARGIN);
+  const legendLeft = PAGE_WIDTH - MARGIN - LEGEND_WIDTH;
+
+  const numberFont = Math.max(11, Math.round(tile * 0.3));
+  const partyFont = Math.max(9, Math.round(tile * 0.15));
+  const tileLabels = new Map(legend.map(item => [item.party, item.label]));
+
+  const cells = tiles.map(({ district, row, column }) => {
+    const party = directMandateParty(district);
+    const active = !parties || parties.has(party);
+    const selected = district.id === selectedDistrictId;
+    const gap = 4;
+    const x = gridLeft + column * tile + gap / 2;
+    const y = gridTop + row * tile + gap / 2;
+    const size = Math.max(8, tile - gap);
+    const centerX = x + size / 2;
+    const centerY = y + size / 2;
+    const fill = active ? partyColors[party] || '#9ca3af' : '#e5e7df';
+    const textColor = active ? getPartyTextColor(party) : '#5a6350';
+    const label = tileLabels.get(party) ?? party;
+    const partyText = label.length > 11 ? `${label.slice(0, 10)}…` : label;
     return `<g>`
-      + `<rect x="${legendLeft}" y="${y - 15}" width="22" height="22" rx="3" fill="${partyColors[item.party] || '#9ca3af'}" stroke="#000000" stroke-opacity="0.18" />`
-      + `<text x="${legendLeft + 34}" y="${y + 2}" font-family="${FONT}" font-size="21" fill="#1f2418">${escapeXml(item.label)}</text>`
-      + `<text x="${legendLeft + LEGEND_WIDTH}" y="${y + 2}" text-anchor="end" font-family="${FONT}" font-size="20" fill="#5a6350">${item.count}</text>`
+      + `<rect x="${x.toFixed(1)}" y="${y.toFixed(1)}" width="${size}" height="${size}" rx="4" fill="${fill}" stroke="${selected ? '#2563eb' : '#ffffff'}" stroke-width="${selected ? 4 : 1.5}" />`
+      + `<text x="${centerX.toFixed(1)}" y="${(centerY + numberFont * 0.1).toFixed(1)}" text-anchor="middle" font-family="${FONT}" font-size="${numberFont}" font-weight="700" fill="${textColor}">${escapeXml(electionDistrictNumberLabel(district))}</text>`
+      + `<text x="${centerX.toFixed(1)}" y="${(centerY + numberFont * 0.1 + partyFont + 4).toFixed(1)}" text-anchor="middle" font-family="${FONT}" font-size="${partyFont}" letter-spacing="0.6" fill="${textColor}" fill-opacity="0.92">${escapeXml(partyText.toUpperCase())}</text>`
       + '</g>';
   }).join('');
 
   const svg = `<svg xmlns="http://www.w3.org/2000/svg" width="${PAGE_WIDTH}" height="${pageHeight}" viewBox="0 0 ${PAGE_WIDTH} ${pageHeight}">`
     + `<rect width="${PAGE_WIDTH}" height="${pageHeight}" fill="#ffffff" />`
-    + `<text x="${MARGIN}" y="${MARGIN + 34}" font-family="${FONT}" font-size="40" font-weight="700" fill="#1f2418">${escapeXml(title)}</text>`
-    + (standLabel ? `<text x="${MARGIN}" y="${MARGIN + 72}" font-family="${FONT}" font-size="22" fill="#5a6350">${escapeXml(standLabel)}</text>` : '')
-    + `<rect x="${mapLeft}" y="${mapTop}" width="${mapWidth}" height="${mapHeight}" rx="6" fill="#e9ede2" />`
-    + `<clipPath id="map-clip"><rect x="${mapLeft}" y="${mapTop}" width="${mapWidth}" height="${mapHeight}" rx="6" /></clipPath>`
-    + `<g clip-path="url(#map-clip)">${shapes.join('')}${labels}</g>`
-    + `<line x1="${legendLeft}" y1="${mapTop + 22}" x2="${legendLeft + LEGEND_WIDTH}" y2="${mapTop + 22}" stroke="#d5dac9" />`
-    + `<text x="${legendLeft}" y="${mapTop + 18}" font-family="${FONT}" font-size="20" font-weight="700" fill="#1f2418">Legende</text>`
-    + legendRows
-    + `<line x1="${legendLeft}" y1="${mapTop + 62 + legend.length * 38}" x2="${legendLeft + LEGEND_WIDTH}" y2="${mapTop + 62 + legend.length * 38}" stroke="#d5dac9" />`
-    + `<text x="${legendLeft}" y="${mapTop + 92 + legend.length * 38}" font-family="${FONT}" font-size="18" fill="#5a6350">Farbe = Partei des Direktmandats</text>`
-    + `<text x="${legendLeft}" y="${mapTop + 116 + legend.length * 38}" font-family="${FONT}" font-size="18" fill="#5a6350">Nummer = Wahlkreisnummer</text>`
-    + (sourceLabel ? `<text x="${MARGIN}" y="${pageHeight - MARGIN + 6}" font-family="${FONT}" font-size="18" fill="#3f4938">${escapeXml(sourceLabel)}</text>` : '')
-    + (missing > 0 ? `<text x="${MARGIN}" y="${pageHeight - MARGIN + 32}" font-family="${FONT}" font-size="17" fill="#7a5b16">${missing} Gebiete ohne Grenzdaten nicht dargestellt.</text>` : '')
+    + headerSection(title, standLabel)
+    + `<rect x="${panelLeft}" y="${panelTop}" width="${panelWidth}" height="${panelHeight}" rx="6" fill="#f7f8f3" />`
+    + cells
+    + legendSection(legend, legendLeft, panelTop, ['Gleiche Fläche je Wahlkreis', 'Farbe = Partei des Direktmandats', 'Zahl = Wahlkreisnummer'])
+    + footerSection(sourceLabel, missingCount(districts), pageHeight)
     + '</svg>';
 
   return { svg, width: PAGE_WIDTH, height: pageHeight };
@@ -192,9 +260,8 @@ const canvasToBlob = (canvas: HTMLCanvasElement) => new Promise<Blob>((resolve, 
   canvas.toBlob(blob => (blob ? resolve(blob) : reject(new Error('Canvas konnte nicht als PNG geschrieben werden'))), 'image/png');
 });
 
-/** Draws the export SVG into a canvas and saves it as a PNG download. */
-export async function exportDistrictMapPng(options: MapExportOptions): Promise<void> {
-  const { svg, width, height } = buildDistrictMapSvg(options);
+/** Draws an export SVG into a canvas and saves it as a PNG download. */
+const downloadSvgAsPng = async ({ svg, width, height }: { svg: string; width: number; height: number }, fileName: string) => {
   const svgUrl = URL.createObjectURL(new Blob([svg], { type: 'image/svg+xml;charset=utf-8' }));
   try {
     const image = await loadImage(svgUrl);
@@ -211,7 +278,7 @@ export async function exportDistrictMapPng(options: MapExportOptions): Promise<v
     try {
       const anchor = document.createElement('a');
       anchor.href = downloadUrl;
-      anchor.download = options.fileName;
+      anchor.download = fileName;
       anchor.click();
     } finally {
       URL.revokeObjectURL(downloadUrl);
@@ -219,4 +286,12 @@ export async function exportDistrictMapPng(options: MapExportOptions): Promise<v
   } finally {
     URL.revokeObjectURL(svgUrl);
   }
+};
+
+export async function exportDistrictMapPng(options: MapExportOptions): Promise<void> {
+  await downloadSvgAsPng(buildDistrictMapSvg(options), options.fileName);
+}
+
+export async function exportDistrictCartogramPng(options: MapExportOptions): Promise<void> {
+  await downloadSvgAsPng(buildDistrictCartogramSvg(options), options.fileName);
 }

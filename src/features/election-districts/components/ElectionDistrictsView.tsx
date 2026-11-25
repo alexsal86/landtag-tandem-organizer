@@ -26,7 +26,7 @@ import { useSearchParams } from 'react-router-dom';
 import { decodeMapViewState, encodeMapViewState, type MapViewState, type MapViewport } from '../mapViewState';
 import { DistrictDataTable } from './DistrictDataTable';
 import { DistrictCartogram } from './DistrictCartogram';
-import { exportDistrictMapPng } from '../mapExportPng';
+import { exportDistrictCartogramPng, exportDistrictMapPng } from '../mapExportPng';
 import { csvCell } from '@/lib/csvSafe';
 import { notify } from '@/lib/notify';
 import '@/styles/map-print.css';
@@ -312,22 +312,26 @@ export const ElectionDistrictsView = ({ sidebarHeader }: { sidebarHeader?: React
   };
 
   // PNG export re-draws the geometry as SVG because the number markers are divIcons.
+  // It follows the active view, so the download always matches what is on screen.
   const [exportingPng, setExportingPng] = useState(false);
   const exportPng = async () => {
     if (exportingPng) return;
     setExportingPng(true);
+    const cartogram = viewMode === 'kartogramm';
+    const year = historyPeriod?.election_year ?? 'aktuell';
+    const standLabel = `Grenzstand ${historyPeriod?.boundary_geometry_year ?? 2021}${historyPeriod ? ` · Wahl ${historyPeriod.election_year}` : ''}`;
     try {
-      await exportDistrictMapPng({
+      await (cartogram ? exportDistrictCartogramPng : exportDistrictMapPng)({
         districts: displayedDistricts,
         parties: selectedParties,
         legend: partyChoices.map(party => ({ party, label: partyLabel(party), count: partyCount(party) })),
-        title: `Wahlkreise Baden-Württemberg${historyPeriod ? ` · ${historyPeriod.name}` : ''}`,
-        standLabel: `Grenzstand ${historyPeriod?.boundary_geometry_year ?? 2021}${historyPeriod ? ` · Wahl ${historyPeriod.election_year}` : ''}`,
+        title: `${cartogram ? 'Kartogramm der Wahlkreise' : 'Wahlkreise'} Baden-Württemberg${historyPeriod ? ` · ${historyPeriod.name}` : ''}`,
+        standLabel: cartogram ? `Gleiche Fläche je Wahlkreis · ${standLabel}` : standLabel,
         sourceLabel: 'Quelle: LGL Baden-Württemberg, Statistisches Landesamt, © OpenStreetMap-Mitwirkende',
         selectedDistrictId: selectedDistrict?.id,
-        fileName: `wahlkreise-${historyPeriod?.election_year ?? 'aktuell'}.png`,
+        fileName: `${cartogram ? 'kartogramm' : 'wahlkreise'}-${year}.png`,
       });
-      notify.success('Karte als PNG heruntergeladen');
+      notify.success(`${cartogram ? 'Kartogramm' : 'Karte'} als PNG heruntergeladen`);
     } catch (error) {
       debugConsole.error('PNG export failed', error);
       notify.error(error instanceof Error ? error.message : 'PNG-Export fehlgeschlagen');
@@ -453,6 +457,8 @@ export const ElectionDistrictsView = ({ sidebarHeader }: { sidebarHeader?: React
               Einbetten
             </button>
             <button type="button" onClick={() => void exportPng()} disabled={exportingPng}
+              title={viewMode === 'kartogramm' ? 'Kartogramm als PNG' : 'Karte als PNG'}
+              aria-label={viewMode === 'kartogramm' ? 'Kartogramm als PNG herunterladen' : 'Karte als PNG herunterladen'}
               className="inline-flex items-center gap-1 rounded border border-border px-2 py-1 text-xs hover:bg-accent focus-visible:ring-1 focus-visible:ring-ring disabled:opacity-60">
               <Download className="h-3.5 w-3.5" aria-hidden="true" /> {exportingPng ? 'PNG …' : 'PNG'}
             </button>
