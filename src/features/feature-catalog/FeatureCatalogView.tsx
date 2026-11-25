@@ -13,6 +13,7 @@ import { EMPTY_FILTERS, computeMetrics, filterFeatures, type FeatureFilters } fr
 import { catalogPages, entityMapMarkdown, type CatalogPage } from "./catalogContent";
 import { FeatureMap } from "./FeatureMap";
 import { MarkdownView } from "./MarkdownView";
+import { StateMachineView } from "./StateMachineView";
 import { groupSecurityByTable, useTableSecurity } from "./useTableSecurity";
 import {
   FEATURE_CATEGORIES,
@@ -37,6 +38,7 @@ const labelForPage = (page: CatalogPage) => docLabels[page.id] ?? page.title;
 type View =
   | { type: "overview" }
   | { type: "map" }
+  | { type: "states" }
   | { type: "area"; id: string }
   | { type: "feature"; id: string }
   | { type: "doc"; id: string };
@@ -523,6 +525,14 @@ export function FeatureCatalogView() {
               >
                 Landkarte
               </button>
+              <button
+                type="button"
+                onClick={() => setView({ type: "states" })}
+                aria-current={view.type === "states" ? "page" : undefined}
+                className={cn("rounded-md px-3 py-2 text-left text-sm transition-colors", view.type === "states" ? "bg-primary/10 font-medium text-primary" : "hover:bg-muted")}
+              >
+                Zustände
+              </button>
               {catalogAreas.map((area) => {
                 const areaFeatures = filtered.filter((feature) => feature.area === area.id);
                 const expanded = expandedAreas.has(area.id) || Boolean(filters.query) || Boolean(filters.area);
@@ -605,6 +615,9 @@ export function FeatureCatalogView() {
                   onOpenArea={(id) => setView({ type: "area", id })}
                   onOpenFeature={showFeature}
                 />
+              ) : null}
+              {view.type === "states" ? (
+                <StateMachineView features={catalogFeatures} onOpenFeature={showFeature} />
               ) : null}
               {view.type === "area" ? renderArea(view.id) : null}
               {view.type === "feature" && selectedFeature ? <FeatureDetail feature={selectedFeature} /> : null}

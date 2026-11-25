@@ -110,6 +110,17 @@ describe("Funktionskatalog: Zugriff", () => {
     expect(screen.getByRole("list").querySelectorAll("li").length).toBeGreaterThan(0);
   });
 
+  it("zeigt die generierten Zustandsmaschinen mit Zuständen, Übergängen und Guards", async () => {
+    renderCatalog();
+    fireEvent.click(screen.getByRole("button", { name: "Zustände" }));
+
+    expect(await screen.findByRole("heading", { name: "Zustandsmaschinen" })).toBeTruthy();
+    expect(screen.getByText("39 Maschinen")).toBeTruthy();
+    expect(screen.getAllByText("tasks.status").length).toBeGreaterThan(0);
+    expect(screen.getAllByText(/→ completed/).length).toBeGreaterThan(0);
+    expect(screen.getAllByText(/Guard \(bricht ab\)/).length).toBeGreaterThan(0);
+  });
+
   it("öffnet eine Funktion per Deep-Link und trennt RLS-Befunde von Testergebnissen", async () => {
     renderCatalog("/funktionskatalog?feature=events.plan");
 

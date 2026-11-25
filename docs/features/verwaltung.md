@@ -832,7 +832,7 @@ Führt registrierte Prüfszenarien gegen die Anwendung aus, protokolliert Läufe
 - Keine.
 
 ### `admin.feature-catalog` — Funktionskatalog und Inventarisierung
-Führt den vollständigen, versionierten Funktionskatalog, gleicht ihn mit Routen, Edge Functions, RPCs und Szenarien ab, erzeugt die Dokumentation und leitet daraus eine Funktionslandkarte mit Bereichen, Bereichskopplungen und Wirkungsketten ab. Zusätzlich entsteht ein Zustandsartefakt aus Statusspalten, CHECK-Constraints, Schreibvorgängen und Guard-Triggern der Migrationen, das gegen den Quellcode auf Drift geprüft wird.
+Führt den vollständigen, versionierten Funktionskatalog, gleicht ihn mit Routen, Edge Functions, RPCs und Szenarien ab, erzeugt die Dokumentation und leitet daraus eine Funktionslandkarte mit Bereichen, Bereichskopplungen und Wirkungsketten ab. Zusätzlich entsteht ein Zustandsartefakt aus Statusspalten, CHECK-Constraints, Schreibvorgängen und Guard-Triggern der Migrationen, das gegen den Quellcode auf Drift geprüft und als eigene Katalogansicht mit Zuständen, belegten Übergängen und Guards angezeigt wird.
 
 - **Kategorie:** administrativ
 - **Implementierung:** implementiert
@@ -841,15 +841,15 @@ Führt den vollständigen, versionierten Funktionskatalog, gleicht ihn mit Route
 - **Letztes Testergebnis:** unbekannt (nicht aus der Existenz einer Testdatei abgeleitet)
 - **Rollen:** `admin`, `bueroleitung`
 - **Routen:** `/funktionskatalog`
-- **Frontend-Komponenten:** `src/features/feature-catalog/FeatureCatalogView.tsx`, `src/features/feature-catalog/FeatureMap.tsx`
-- **Services:** `scripts/build-feature-catalog.mjs`, `scripts/build-state-artifact.mjs`, `src/features/feature-catalog/metrics.ts`, `src/features/feature-catalog/map.ts`
+- **Frontend-Komponenten:** `src/features/feature-catalog/FeatureCatalogView.tsx`, `src/features/feature-catalog/FeatureMap.tsx`, `src/features/feature-catalog/StateMachineView.tsx`
+- **Services:** `scripts/build-feature-catalog.mjs`, `scripts/build-state-artifact.mjs`, `src/features/feature-catalog/metrics.ts`, `src/features/feature-catalog/map.ts`, `src/features/feature-catalog/stateMachines.ts`
 - **Hooks:** —
 - **Edge Functions:** —
 - **Datenbankfunktionen:** —
 - **Tabellen:** —
 - **Abhängigkeiten:** —
 - **Selbsttests:** —
-- **Unit-Tests:** `src/features/feature-catalog/metrics.test.ts`, `src/features/feature-catalog/map.test.ts`, `scripts/__tests__/feature-catalog.test.mjs`, `scripts/__tests__/state-artifact.test.mjs`
+- **Unit-Tests:** `src/features/feature-catalog/metrics.test.ts`, `src/features/feature-catalog/map.test.ts`, `src/features/feature-catalog/stateMachines.test.ts`, `scripts/__tests__/feature-catalog.test.mjs`, `scripts/__tests__/state-artifact.test.mjs`
 - **Integrationstests:** —
 - **Browser-Tests:** —
 - **Dokumentation:** `docs/features/README.md`, `docs/features/review.md`, `docs/entity-map.md`

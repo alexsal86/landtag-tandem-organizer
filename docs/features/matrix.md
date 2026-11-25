@@ -193,7 +193,7 @@ Die Spalten zählen **zugeordnete** Prüfungen, nicht bestandene Läufe. „Erge
 | `admin.onboarding-login` | verwaltung | administrativ | implementiert | rollenabhängig | kein Test | nicht-ausgefuehrt | 0 | 0 | 0 | 0 | nein |
 | `admin.users-sessions` | verwaltung | administrativ | implementiert | rollenabhängig | kein Test | nicht-ausgefuehrt | 0 | 0 | 0 | 0 | ja |
 | `admin.tenants` | verwaltung | administrativ | implementiert | rollenabhängig | kein Test | nicht-ausgefuehrt | 0 | 0 | 0 | 0 | ja |
-| `admin.feature-catalog` | verwaltung | administrativ | implementiert | rollenabhängig | Unit-Test | unbekannt | 0 | 4 | 0 | 0 | ja |
+| `admin.feature-catalog` | verwaltung | administrativ | implementiert | rollenabhängig | Unit-Test | unbekannt | 0 | 5 | 0 | 0 | ja |
 | `admin.selftest-center` | verwaltung | administrativ | implementiert | rollenabhängig | Selbsttest | nicht-ausgefuehrt | 0 | 3 | 0 | 1 | ja |
 | `admin.action-permissions` | verwaltung | sicherheit | implementiert | rollenabhängig | Selbsttest | nicht-ausgefuehrt | 1 | 0 | 0 | 0 | nein |
 | `admin.roles` | verwaltung | administrativ | implementiert | rollenabhängig | Selbsttest | nicht-ausgefuehrt | 1 | 0 | 0 | 0 | ja |
