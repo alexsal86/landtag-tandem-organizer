@@ -92,7 +92,7 @@
         "task-lifecycle"
       ],
       "limitations": [
-        "Ein Statuswechsel ist nur auf einen Namen aus der konfigurierbaren Liste task_statuses möglich; der Trigger enforce_task_status lehnt andere Werte ab. Der frühere Bindestrich-Wert ist migriert und wird nicht mehr geschrieben."
+        "Ein Statuswechsel ist nur auf einen Namen aus der konfigurierbaren Liste task_statuses möglich; der Trigger enforce_task_status lehnt andere Werte ab. Der frühere Bindestrich-Wert ist migriert und wird nicht mehr geschrieben. Die technischen Namen der Kernstatus (todo, in_progress, completed, cancelled, review) sind gegen Umbenennen und Löschen geschützt, weil Spalten-Default, Client und Datenbankfunktionen sie direkt schreiben; ändern lässt sich der Anzeigename. Fehlte ein Kernstatus, stellt die Migration 20261126130000 ihn wieder her."
       ]
     },
     {

@@ -714,7 +714,7 @@ Verwaltet Kategorien, Status und Typen zentral, prüft Abhängigkeiten vor dem L
 - **Services:** `src/features/admin/configImpact.ts`
 - **Hooks:** —
 - **Edge Functions:** —
-- **Datenbankfunktionen:** `config_delete_impact`, `config_delete_guard`, `config_item_references`, `delete_config_item`, `rename_config_item`, `config_rename_action_field`, `config_rename_conditions`, `config_rename_keys`, `config_item_name`
+- **Datenbankfunktionen:** `config_delete_impact`, `config_delete_guard`, `config_item_references`, `delete_config_item`, `rename_config_item`, `config_rename_action_field`, `config_rename_conditions`, `config_rename_keys`, `config_item_name`, `core_task_status_keys`
 - **Tabellen:** `task_categories`, `task_statuses`, `document_categories`, `appointment_categories`, `todo_categories`
 - **Abhängigkeiten:** —
 - **Selbsttests:** —
@@ -731,7 +731,7 @@ Verwaltet Kategorien, Status und Typen zentral, prüft Abhängigkeiten vor dem L
 
 **Bekannte Einschränkungen**
 
-- Keine.
+- Bei den Kernstatus der Aufgaben (todo, in_progress, completed, cancelled, review) ändert Umbenennen nur den Anzeigenamen; der technische Name bleibt stabil, weil Spalten-Default, Client und Datenbankfunktionen ihn schreiben. Löschen und direktes Umbenennen weist die Datenbank ab (22023).
 
 **Offene Prüfpunkte**
 

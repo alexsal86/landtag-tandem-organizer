@@ -218,8 +218,11 @@ export function ConfigurableTypeSettings({
         return;
       }
 
+      // `name` ist der technische Schlüssel und wird beim Bearbeiten nicht aus
+      // der Bezeichnung neu abgeleitet: sonst ändert schon das Speichern von
+      // Farbe oder Icon den Statuswert, den Client und Datenbankfunktionen
+      // schreiben. Umbenennen läuft über rename_config_item.
       const updateData: Record<string, unknown> = {
-        name: editingItem.label.toLowerCase().replace(/\s+/g, '_'),
         label: editingItem.label
       };
 
