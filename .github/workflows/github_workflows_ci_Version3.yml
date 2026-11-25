@@ -168,6 +168,9 @@ jobs:
           npm run audit:feature-catalog
           npm run report:feature-coverage
 
+      - name: Mandatory Supabase RPC type check
+        run: npm run check:supabase-rpc-types
+
       - name: Type Check (falls TS)
         run: |
           if [ -f tsconfig.json ]; then
