@@ -1,4 +1,5 @@
-import { useEffect, useMemo, useRef, useState } from "react";
+import { officeFeedbackDraftKey, readOfficeFeedbackDraft, writeOfficeFeedbackDraft } from "./officeFeedbackDraft";
+import { useCallback, useEffect, useMemo, useRef, useState } from "react";
 import { useQueryClient } from "@tanstack/react-query";
 import { AlarmClock, Mic, Square } from "lucide-react";
 import { useAppointmentFeedback, type AppointmentWithFeedback } from "@/hooks/useAppointmentFeedback";
@@ -45,6 +46,8 @@ function OfficeFeedbackForm() {
   const [drafts, setDrafts] = useState<Record<string, string>>({});
   const draftsRef = useRef(drafts);
   draftsRef.current = drafts;
+  const storedKey = useCallback((key: string) => key && currentTenant?.id && user?.id
+    ? officeFeedbackDraftKey(currentTenant.id, user.id, key) : undefined, [currentTenant?.id, user?.id]);
   const [mode, setMode] = useState<"write" | "review" | "remind">("write");
   const [expanded, setExpanded] = useState(false);
   const [busy, setBusy] = useState(false);
@@ -77,7 +80,8 @@ function OfficeFeedbackForm() {
       const key = speechTarget.current;
       if (key) {
         dictated.current = true;
-        const next = { ...draftsRef.current, [key]: [draftsRef.current[key], text].filter(Boolean).join(" ") };
+        const localKey = storedKey(key);
+        const next = { ...draftsRef.current, [key]: [draftsRef.current[key] ?? readOfficeFeedbackDraft(localKey), text].filter(Boolean).join(" ") };
         draftsRef.current = next;
         setDrafts(next);
       }
@@ -88,7 +92,7 @@ function OfficeFeedbackForm() {
       speech.onStateChange = undefined;
       speech.destroy();
     };
-  }, [speech]);
+  }, [speech, storedKey]);
 
   const pending = feedback.appointments.filter(event => needsOfficeFeedback(event.feedback)
     && !(feedback.settings?.auto_skip_internal && event.category === "intern"));
@@ -100,7 +104,7 @@ function OfficeFeedbackForm() {
       - Date.parse(readOfficeSnooze(snoozes[eventKey(b)])!.until));
   const current = pending.find(event => eventKey(event) === selected) ?? due[0] ?? visible[0];
   const key = current ? eventKey(current) : "";
-  const text = drafts[key] ?? "";
+  const text = drafts[key] ?? readOfficeFeedbackDraft(storedKey(key));
   const deferred = pending.filter(event => isDeferred(event) && eventKey(event) !== key);
   const others = visible.filter(event => eventKey(event) !== key);
   const older = others.filter(event => isOlderOfficeFeedback(event.start_time, now));
@@ -114,7 +118,7 @@ function OfficeFeedbackForm() {
 
   useEffect(() => {
     if (!reminderToken || reminderToken === openedReminder.current || recording || busy || mode !== "write") return;
-    if (draftsRef.current[key]?.trim()) return;
+    if (text.trim()) return;
     openedReminder.current = reminderToken;
     setAcknowledgedReminder(reminderToken);
     setSelected(nextDueKey);
@@ -193,7 +197,13 @@ function OfficeFeedbackForm() {
         saved.forEach(event => { delete next[eventKey(event)]; });
         return next;
       });
-      saved.forEach(event => { delete spokenSeconds.current[eventKey(event)]; });
+      saved.forEach(event => {
+        delete spokenSeconds.current[eventKey(event)];
+        const localKey = storedKey(eventKey(event));
+        if (localKey) {
+          try { writeOfficeFeedbackDraft(localKey, ""); } catch { /* Storage can be disabled. */ }
+        }
+      });
       setMode("write");
       setSelected(null);
       setInterim("");
@@ -233,7 +243,7 @@ function OfficeFeedbackForm() {
 
   const review = async () => {
     if (recording && !(await speech.stop())) return;
-    if (draftsRef.current[key]?.trim()) setMode("review");
+    if ((draftsRef.current[key] ?? readOfficeFeedbackDraft(storedKey(key))).trim()) setMode("review");
   };
 
   return (

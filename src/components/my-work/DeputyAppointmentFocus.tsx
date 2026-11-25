@@ -1,5 +1,5 @@
 import { useQuery } from "@tanstack/react-query";
-import { Check, MapPin, Mic, Navigation, Phone } from "lucide-react";
+import { Check, MapPin, Navigation, Phone } from "lucide-react";
 import { Link } from "react-router-dom";
 import { Card, CardContent } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
@@ -11,7 +11,8 @@ import type { AppointmentData, DashboardData } from "@/hooks/useDashboardAppoint
 import type { Tables } from "@/integrations/supabase/types";
 import { supabase } from "@/integrations/supabase/client";
 import { dashboardBriefingState } from "@/features/appointments/briefing";
-import { BriefingRequestPopover } from "@/features/appointments/briefing/BriefingRequestPopover";
+import { RunningAppointmentFeedback } from "./RunningAppointmentFeedback";
+import { officeFeedbackDraftKey } from "@/features/appointments/briefing/officeFeedbackDraft";
 import { mergeLegacy } from "@/features/appointments/briefing/briefingModel";
 import { applyReportedStart, summarizeReportedChanges, type MinimalChangeAlert } from "@/features/appointments/change-alerts/changeModel";
 import { appointmentFocusMode, departureTime, focusCountdown, pickFocusAppointment } from "@/features/appointments/dashboardFocus";
@@ -26,7 +27,7 @@ const amber = "bg-[#965806] text-white hover:bg-[#784604]";
 const badge = "rounded-full bg-muted px-2.5 py-1 text-xs font-medium text-muted-foreground";
 const text = (value?: string | null) => typeof value === "string" ? stripHtml(value) : "";
 
-type CalendarInfo = Pick<Tables<"appointments">, "id" | "category" | "status" | "briefing_status" | "description" | "contact_id" | "location">;
+type CalendarInfo = Pick<Tables<"appointments">, "id" | "category" | "status" | "briefing_status" | "description" | "contact_id" | "location" | "user_id">;
 type Candidate = AppointmentData & { original: string; category?: string | null; status?: string | null };
 
 function clockWithDay(time: string, now: Date) {
@@ -50,7 +51,7 @@ export function DeputyAppointmentFocus({ data, now, alerts }: {
     refetchInterval: 30_000,
     refetchIntervalInBackground: false,
     queryFn: async () => {
-      const { data, error } = await supabase.from("appointments").select("id,category,status,briefing_status,description,contact_id,location")
+      const { data, error } = await supabase.from("appointments").select("id,category,status,briefing_status,description,contact_id,location,user_id")
         .eq("tenant_id", tenant!).in("id", ids);
       if (error) throw error;
       return data;
@@ -69,16 +70,31 @@ export function DeputyAppointmentFocus({ data, now, alerts }: {
     };
   });
   const focus = pickFocusAppointment(effective, now);
+  const internal = focus.appointment ? byId.get(focus.appointment.id) : undefined;
+  const externalId = !internal ? focus.appointment?.id.replace(/^external-/, "") : undefined;
+  const externalOwner = useQuery({
+    queryKey: ["dashboard-focus-external-owner", tenant, user?.id, externalId],
+    enabled: focus.running && !!externalId && !!tenant && !!user?.id && isAbgeordneter && metadata.isSuccess,
+    queryFn: async () => {
+      const { data, error } = await supabase.from("external_events").select("id,external_calendars!inner(user_id,tenant_id)")
+        .eq("id", externalId!).eq("external_calendars.tenant_id", tenant!).eq("external_calendars.user_id", user!.id).maybeSingle();
+      if (error) throw error;
+      return !!data;
+    },
+  });
   if (!focus.appointment || !tenant || metadata.isPending || metadata.isError) return null;
-  const internal = byId.get(focus.appointment.id);
+  const afterInfo = focus.after ? byId.get(focus.after.id) : undefined;
+  const draftKey = isAbgeordneter && user && (internal ? internal.user_id === user.id : externalOwner.data)
+    ? officeFeedbackDraftKey(tenant, user.id, `${internal ? "appointment" : "external_event"}:${focus.appointment.id.replace(/^external-/, "")}`)
+    : undefined;
   return <FocusCard key={`${tenant}:${user?.id}:${focus.appointment.id}`} appointment={focus.appointment} now={now}
     running={focus.running} after={focus.after} tenant={tenant} briefingStatus={internal?.briefing_status}
-    internal={!!internal} description={internal?.description} contactId={internal?.contact_id} canRequest={isAbgeordneter} />;
+    internal={!!internal} description={internal?.description} contactId={internal?.contact_id} draftKey={draftKey} afterStatus={afterInfo?.briefing_status} afterInternal={!!afterInfo} />;
 }
 
-function FocusCard({ appointment, now, running, after, tenant, briefingStatus, internal, description, contactId, canRequest }: {
+function FocusCard({ appointment, now, running, after, tenant, briefingStatus, internal, description, contactId, draftKey, afterStatus, afterInternal }: {
   appointment: Candidate; now: Date; running: boolean; after?: Candidate; tenant: string;
-  briefingStatus?: string; internal: boolean; description?: string | null; contactId?: string | null; canRequest: boolean;
+  briefingStatus?: string; internal: boolean; description?: string | null; contactId?: string | null; draftKey?: string; afterStatus?: string; afterInternal: boolean;
 }) {
   const id = appointment.id;
   const approved = briefingStatus === "approved" || briefingStatus === "completed";
@@ -141,20 +157,44 @@ function FocusCard({ appointment, now, running, after, tenant, briefingStatus, i
   const routeFirst = imminent || !ready || (due !== null && due <= 15);
   const status = running ? "Läuft gerade" : imminent ? "Jetzt losfahren" : "Als Nächstes";
   const minutes = focusCountdown(appointment.start_time, now);
-  const next = after && <Link to={`/calendar?date=${berlinDayKey(after.start_time)}`} className="text-sm text-muted-foreground hover:underline">
-    Danach · {clockWithDay(after.start_time, now)} {after.title}
-  </Link>;
+  const afterTravel = useQuery({
+    queryKey: ["appointment-briefing", "dashboard-focus-travel", tenant, after?.id, afterStatus],
+    enabled: running && !!after && afterInternal,
+    queryFn: async () => {
+      const [settings, prep] = await Promise.all([
+        supabase.from("appointments").select("travel_minutes").eq("tenant_id", tenant).eq("id", after!.id).maybeSingle(),
+        ["approved", "completed"].includes(afterStatus ?? "")
+          ? supabase.from("appointment_preparations").select("preparation_data").eq("tenant_id", tenant).eq("appointment_id", after!.id)
+            .eq("is_archived", false).order("updated_at", { ascending: false }).limit(1).maybeSingle()
+          : null,
+      ]);
+      return { minutes: settings.data?.travel_minutes, legacy: (prep?.data?.preparation_data as PreparationData | null)?.travel_time };
+    },
+  });
+  const afterDeparture = after && departureTime(after.start_time, afterTravel.data?.minutes, afterTravel.data?.legacy);
+  const next = after && <div className="min-w-0 basis-full text-right @min-[30rem]:max-w-[40%] @min-[30rem]:basis-auto">
+    <p className="text-xs text-muted-foreground">Danach</p>
+    <Link to={`/calendar?date=${berlinDayKey(after.start_time)}&highlight=${encodeURIComponent(afterInternal ? after.id : `external-${after.id.replace(/^external-/, "")}`)}`}
+      className="break-words text-sm font-semibold hover:underline">
+      {clockWithDay(after.start_time, now)} {after.title}
+    </Link>
+    {afterDeparture && <p className="text-xs text-muted-foreground">Losfahren {clockWithDay(afterDeparture.at.toISOString(), now)}</p>}
+  </div>;
+  const runningDot = running && <span aria-hidden="true" className="relative size-3 shrink-0 rounded-full border-2 border-[#397d16] bg-[#397d16]">
+    <span className="absolute -inset-0.5 animate-ring rounded-full bg-[#55ad21] blur-[1px] motion-reduce:hidden" />
+  </span>;
 
   if (mode === "hint") return (
     <Card className="rounded-dashboard-card py-0 shadow-dashboard-card">
-      <CardContent className="flex flex-wrap items-center gap-x-3 gap-y-2 px-4 py-3">
+      <CardContent className="@container flex flex-wrap items-center gap-x-3 gap-y-2 px-4 py-3">
         <Link to={calendar} className="min-w-0 flex-1 basis-40 font-medium hover:underline">
-          {status} · {startLabel} {appointment.title}
+          <span className="inline-flex items-center gap-1.5">{runningDot}{status}</span> · {startLabel} {appointment.title}
           {location && <span className="font-normal text-muted-foreground"> · {location}</span>}
         </Link>
         {appointment.category === "intern" && <span className={badge}>intern</span>}
         {!running && minutes !== null && <span className={cn(badge, green)}>{minutes === 0 ? "Jetzt" : `in ${minutes} Min.`}</span>}
         {next}
+        {running && draftKey && <div className="basis-full"><RunningAppointmentFeedback draftKey={draftKey} /></div>}
       </CardContent>
     </Card>
   );
@@ -173,32 +213,38 @@ function FocusCard({ appointment, now, running, after, tenant, briefingStatus, i
     .flatMap(([, value]) => text(value).split(/\s+/)).filter(Boolean).length + text(info?.prep?.notes).split(/\s+/).filter(Boolean).length : 0;
   const reading = Math.max(1, Math.ceil(wordCount / 200));
   const briefingPath = info?.prep ? `/appointment-preparation/${info.prep.id}?view=briefing` : null;
-  const livePath = info?.prep ? `/briefing-live?preparationId=${info.prep.id}&appointmentId=${id}#notes` : null;
   const memory = person.data?.memory ?? [];
   const shortDescription = text(description).slice(0, 240);
 
   return (
     <Card className={cn("rounded-dashboard-card border-l-4 py-0 shadow-dashboard-card", imminent ? "border-l-[#965806]" : "border-l-[#38761c]")}>
-      <CardContent className="space-y-4 px-4 py-4 sm:px-5 sm:py-5">
+      <CardContent className="@container space-y-4 px-4 py-4 sm:px-5 sm:py-5">
         <div className="flex flex-wrap items-start gap-x-4 gap-y-3">
           <div className="shrink-0">
-            <p className={cn("text-xs font-bold uppercase tracking-wide", imminent ? "text-[#965806] dark:text-amber-300" : "text-[#38761c] dark:text-green-300")}>{status}</p>
-            <p className={cn("tabular-nums font-semibold leading-tight", mode === "detailed" ? "text-4xl" : "text-2xl")}>{berlinClock(appointment.start_time)}</p>
-            <p className="text-xs text-muted-foreground">{berlinDayKey(appointment.start_time) === berlinDayKey(now) ? "Uhr" : berlinWeekdayShortDate(appointment.start_time)}
-              {appointment.original !== appointment.start_time && ` · vorher ${berlinClock(appointment.original)}`}</p>
+            <p className={cn("flex items-center gap-1.5 text-xs font-bold uppercase tracking-wide", imminent ? "text-[#965806] dark:text-amber-300" : "text-[#38761c] dark:text-green-300")}>{runningDot}{status}</p>
+            <p className={cn("tabular-nums font-semibold leading-tight", running ? "text-5xl" : mode === "detailed" ? "text-4xl" : "text-2xl")}>{berlinClock(appointment.start_time)}</p>
+            {(berlinDayKey(appointment.start_time) !== berlinDayKey(now) || appointment.original !== appointment.start_time) && (
+              <p className="text-xs text-muted-foreground">
+                {[berlinDayKey(appointment.start_time) !== berlinDayKey(now) ? berlinWeekdayShortDate(appointment.start_time) : null,
+                  appointment.original !== appointment.start_time ? `vorher ${berlinClock(appointment.original)}` : null].filter(Boolean).join(" · ")}
+              </p>
+            )}
           </div>
           <div className="min-w-0 flex-1 basis-32">
-            <h3 className={cn("break-words font-semibold leading-tight", mode === "detailed" ? "text-xl" : "text-lg")}>
+            <h3 className={cn("break-words font-semibold leading-tight", running ? "text-2xl" : mode === "detailed" ? "text-xl" : "text-lg")}>
               <Link to={calendar} className="hover:underline">{appointment.title}</Link>
             </h3>
             {location && <p className="mt-1 flex items-start gap-1.5 text-sm text-muted-foreground">
               <MapPin aria-hidden="true" className="mt-0.5 size-4 shrink-0" /><span className="break-words">{location}{mode === "compact" && departure && ` · ${departure.travel} Min. Fahrt`}</span>
             </p>}
             <div className="mt-2 flex flex-wrap gap-1">
-              <span className={cn(badge, ready && "bg-[#e7f3df] text-[#326a1c]")}>{ready ? "Briefing liegt bereit" : briefing?.label || "Kein Briefing"}</span>
+              {briefingStatus !== "undecided" && (briefing || !internal) && (
+                <span className={cn(badge, ready && "bg-[#e7f3df] text-[#326a1c]")}>{ready ? "Briefing liegt bereit" : briefing?.label || "Kein Briefing"}</span>
+              )}
               {ready && <span className={badge}>{reading} Min. Lesezeit</span>}
             </div>
           </div>
+          {running && next}
           {!running && departure && <div className="min-w-16 text-center">
             {due !== null && <div className="mx-auto grid size-14 place-items-center rounded-full p-1"
               style={{ background: imminent ? "#965806" : `conic-gradient(#38761c ${Math.min(100, due / 120 * 100)}%, hsl(var(--muted)) 0)` }}>
@@ -210,7 +256,6 @@ function FocusCard({ appointment, now, running, after, tenant, briefingStatus, i
             <p className="text-sm font-semibold tabular-nums">{clockWithDay(departure.at.toISOString(), now)}</p>
           </div>}
         </div>
-        {running && next}
         {mode === "detailed" && (contactName || contribution || pd.dress_code || departure) && (
           <dl className="grid grid-cols-[repeat(auto-fit,minmax(min(100%,8rem),1fr))] gap-2 text-sm">
             {contactName && <div className="min-w-0 rounded-xl bg-muted px-3 py-2">
@@ -240,8 +285,8 @@ function FocusCard({ appointment, now, running, after, tenant, briefingStatus, i
           </div>
         )}
         {!ready && shortDescription && <p className="rounded-xl bg-muted p-2.5 text-sm text-muted-foreground">{shortDescription}</p>}
-        <div className="flex flex-wrap gap-2">
-          {running && livePath && <Button asChild className={cn(action, green)}><Link to={livePath}><Mic aria-hidden="true" />Notiz diktieren</Link></Button>}
+        {running && draftKey && <RunningAppointmentFeedback draftKey={draftKey} />}
+        <div className="flex flex-wrap gap-2 empty:hidden">
           {!running && route && <Button asChild variant={routeFirst ? "default" : "secondary"}
             className={cn(action, imminent ? amber : routeFirst && green)}>
             <a href={route} target="_blank" rel="noreferrer"><Navigation aria-hidden="true" />{imminent ? "Jetzt losfahren · Route starten" : routeFirst ? "Route starten" : "Route ansehen"}</a>
@@ -249,10 +294,7 @@ function FocusCard({ appointment, now, running, after, tenant, briefingStatus, i
           {briefingPath && <Button asChild variant="secondary" className={cn(action, !running && (!route || !routeFirst) && green)}>
             <Link to={briefingPath}>{running || imminent ? "Briefing" : `Briefing lesen · ${reading} Min.`}</Link>
           </Button>}
-          {canRequest && internal && ["undecided", "none"].includes(briefingStatus ?? "") && (
-            <BriefingRequestPopover appointmentId={id} startTime={appointment.start_time}
-              trigger={<Button variant="secondary" className={action}>Büro um Briefing bitten</Button>} />
-          )}
+
         </div>
       </CardContent>
     </Card>
