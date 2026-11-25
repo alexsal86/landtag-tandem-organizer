@@ -425,5 +425,31 @@ export const appointmentLifecycleScenario: TestScenario = {
         return expectFields("appointment_feedback", data.id, payload, "Feedback");
       },
     },
+    {
+      id: "feedback-unique", label: "Zweite Rückmeldung zum selben Termin wird abgewiesen", kind: "workflow",
+      run: async (ctx) => {
+        const base = {
+          appointment_id: ctx.data.appointmentId as string,
+          user_id: ctx.userId,
+          tenant_id: ctx.tenantId,
+          notes: SELFTEST_MARKER,
+          event_type: "appointment",
+          completed_at: new Date().toISOString(),
+        };
+        const first = await supabase.from("appointment_feedback").insert({ ...base, feedback_status: "completed" }).select("id").single();
+        if (first.data) ctx.trackRecord({ table: "appointment_feedback", id: first.data.id });
+        // Gleiche Werte, gleicher Termin, gleiche Person: nur die Eindeutigkeit darf greifen.
+        const second = await supabase.from("appointment_feedback").insert({ ...base, feedback_status: "completed" }).select("id").single();
+        if (second.data) ctx.trackRecord({ table: "appointment_feedback", id: second.data.id });
+        if (second.error?.code !== "23505") {
+          return {
+            ok: false,
+            message: `Zweite Rückmeldung wurde nicht von der Eindeutigkeitssperre abgewiesen: ${describeError(second.error)}`,
+            details: { first: first.error, second: second.error },
+          };
+        }
+        return { ok: true, message: "UNIQUE(appointment_id, user_id) verhindert eine zweite Rückmeldung je Termin und Person." };
+      },
+    },
   ],
 };

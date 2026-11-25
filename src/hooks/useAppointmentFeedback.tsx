@@ -221,7 +221,7 @@ export const useAppointmentFeedback = () => {
 
         if (!insertError && newFeedback) {
           // Füge neue Feedback-Einträge zur Map hinzu
-          newFeedback.forEach((f: AppointmentFeedbackRow) => { if (f.external_event_id) feedbackMap.set(f.external_event_id, f); });
+          newFeedback.forEach((f) => { if (f.external_event_id) feedbackMap.set(f.external_event_id, f as unknown as AppointmentFeedbackRow); });
         }
       }
 

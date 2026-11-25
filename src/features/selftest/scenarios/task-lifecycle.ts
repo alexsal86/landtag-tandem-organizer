@@ -65,5 +65,27 @@ export const taskLifecycleScenario: TestScenario = {
         return expectFields("tasks", id, { status: "completed", progress: 100 }, "completed");
       },
     },
+    {
+      id: "tenant-boundary", label: "Aufgabe lässt sich keinem fremden Büro zuordnen", kind: "workflow",
+      run: async (ctx) => {
+        const id = ctx.data.taskId as string;
+        // Der Client-Schutz wirft teils, statt einen Fehler zurückzugeben; beides ist ein gültiger Abschlag.
+        let error: { code?: string; message?: string } | null = null;
+        try {
+          const result = await supabase.from("tasks").update({ tenant_id: crypto.randomUUID() }).eq("id", id);
+          error = result.error;
+        } catch (thrown) {
+          const message = thrown instanceof Error ? thrown.message : String(thrown);
+          error = { code: "TENANT_SCOPE_CONFLICT", message };
+        }
+        if (!error) return { ok: false, message: "Die Aufgabe wurde in ein fremdes Büro umgehängt — Mandantensperre fehlt!" };
+        const blocked = error.code === "42501" || error.code === "TENANT_SCOPE_CONFLICT"
+          || /tenant reassignment|row-level security/i.test(error.message ?? "");
+        if (!blocked) return { ok: false, message: `Unerwarteter Fehler statt Mandantensperre: ${describeError(error)}`, details: error };
+        const unchanged = await expectFields("tasks", id, { tenant_id: ctx.tenantId }, "Büro nach abgewiesenem Umhängen");
+        if (!unchanged.ok) return unchanged;
+        return { ok: true, message: `Umhängen in ein fremdes Büro verweigert (${error.code ?? error.message}).` };
+      },
+    },
   ],
 };

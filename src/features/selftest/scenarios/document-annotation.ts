@@ -247,9 +247,9 @@ export const documentAnnotationScenario: TestScenario = {
       if (reply.data) ctx.trackRecord({ table: 'document_annotations', id: reply.data.id });
       checks.reply = !reply.error && reply.data?.parent_id === created.data.id;
       if (reply.data) {
-        const nested = await supabase.from('document_annotations').insert({ ...payload, parent_id: reply.data.id }).select('id');
-        for (const row of nested.data ?? []) ctx.trackRecord({ table: 'document_annotations', id: row.id });
-        checks.noNestedReplies = !!nested.error && !nested.data?.length;
+        const nested = await supabase.from('document_annotations').insert({ ...payload, parent_id: reply.data.id }).select('id').maybeSingle();
+        if (nested.data) ctx.trackRecord({ table: 'document_annotations', id: nested.data.id });
+        checks.noNestedReplies = !!nested.error && !nested.data;
         const moved = await supabase.from('document_annotations').update({ parent_id: null }).eq('id', reply.data.id).select('id');
         checks.immutableParent = !!moved.error;
       }
@@ -258,18 +258,18 @@ export const documentAnnotationScenario: TestScenario = {
       checks.otherDocumentCreated = !otherDoc.error && !!otherDoc.data;
       if (otherDoc.data) {
         ctx.trackRecord({ table: 'documents', id: otherDoc.data.id });
-        const crossDocument = await supabase.from('document_annotations').insert({ ...payload, document_id: otherDoc.data.id, parent_id: created.data.id }).select('id');
-        for (const row of crossDocument.data ?? []) ctx.trackRecord({ table: 'document_annotations', id: row.id });
-        checks.crossDocumentDenied = !!crossDocument.error && !crossDocument.data?.length;
+        const crossDocument = await supabase.from('document_annotations').insert({ ...payload, document_id: otherDoc.data.id, parent_id: created.data.id }).select('id').maybeSingle();
+        if (crossDocument.data) ctx.trackRecord({ table: 'document_annotations', id: crossDocument.data.id });
+        checks.crossDocumentDenied = !!crossDocument.error && !crossDocument.data;
       }
       const loadedReplies = await supabase.from('document_annotations').select('id,parent_id,content').eq('document_id', doc.data.id).eq('parent_id', created.data.id);
       checks.threadReadback = !loadedReplies.error && loadedReplies.data?.length === 1 && loadedReplies.data[0].id === reply.data?.id && loadedReplies.data[0].content === '[SELFTEST] Antwort';
-      const forged = await supabase.from('document_annotations').insert({ ...payload, created_by: crypto.randomUUID() }).select('id');
-      for (const row of forged.data ?? []) ctx.trackRecord({ table: 'document_annotations', id: row.id });
-      checks.authorGuard = !!forged.error && !forged.data?.length;
-      const foreign = await supabase.from('document_annotations').insert({ ...payload, tenant_id: crypto.randomUUID() }).select('id');
-      for (const row of foreign.data ?? []) ctx.trackRecord({ table: 'document_annotations', id: row.id });
-      checks.tenantGuard = !!foreign.error && !foreign.data?.length;
+      const forged = await supabase.from('document_annotations').insert({ ...payload, created_by: crypto.randomUUID() }).select('id').maybeSingle();
+      if (forged.data) ctx.trackRecord({ table: 'document_annotations', id: forged.data.id });
+      checks.authorGuard = !!forged.error && !forged.data;
+      const foreign = await supabase.from('document_annotations').insert({ ...payload, tenant_id: crypto.randomUUID() }).select('id').maybeSingle();
+      if (foreign.data) ctx.trackRecord({ table: 'document_annotations', id: foreign.data.id });
+      checks.tenantGuard = !!foreign.error && !foreign.data;
       for (const shape of [
         { type: 'arrow', points: [{ x: .1, y: .2 }, { x: .7, y: .6 }], moved: [{ x: .2, y: .3 }, { x: .8, y: .7 }] },
         { type: 'note', points: [{ x: .5, y: .5 }], moved: [{ x: .6, y: .7 }] },
@@ -283,9 +283,9 @@ export const documentAnnotationScenario: TestScenario = {
           const removedShape = await supabase.from('document_annotations').delete().eq('id', saved.data.id).select('id').single();
           checks[`${shape.type}Deleted`] = !removedShape.error && removedShape.data?.id === saved.data.id;
         }
-        const invalid = await supabase.from('document_annotations').insert({ ...payload, annotation_type: shape.type, target_selector: { points: [] } }).select('id');
-        for (const row of invalid.data ?? []) ctx.trackRecord({ table: 'document_annotations', id: row.id });
-        checks[`${shape.type}Guard`] = !!invalid.error && !invalid.data?.length;
+        const invalid = await supabase.from('document_annotations').insert({ ...payload, annotation_type: shape.type, target_selector: { points: [] } }).select('id').maybeSingle();
+        if (invalid.data) ctx.trackRecord({ table: 'document_annotations', id: invalid.data.id });
+        checks[`${shape.type}Guard`] = !!invalid.error && !invalid.data;
       }
       const textDraft = textHighlightDraft([{page_number:1,rects:[{x:.1,y:.2,w:.3,h:.04}],quote_text:'Erste Seite'},
         {page_number:2,rects:[{x:.2,y:.3,w:.4,h:.04}],quote_text:'Zweite Seite'}])!;

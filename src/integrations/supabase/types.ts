@@ -17586,6 +17586,18 @@ export type Database = {
       }
     }
     Functions: {
+      batch_task_stafette_action: {
+        Args: { _tenant_id: string; _task_ids: string[]; _action: string }
+        Returns: Json
+      }
+      batch_task_stafette_preview: {
+        Args: { _tenant_id: string; _task_ids: string[]; _action: string }
+        Returns: Json
+      }
+      undo_task_batch_action: {
+        Args: { _batch_id: string }
+        Returns: number
+      }
       _briefing_task_event: {
         Args: { _task: string; _text: string }
         Returns: undefined
@@ -18014,8 +18026,16 @@ export type Database = {
             Args: { planning_id: string; template_id_param?: string }
             Returns: undefined
           }
+      create_decision_task: {
+        Args: { p_decision_id: string }
+        Returns: string
+      }
       create_document_annotation_task: {
         Args: { _annotation: string; _assignee?: string; _title?: string }
+        Returns: string
+      }
+      create_note_work: {
+        Args: { p_note_id: string; p_kind: string }
         Returns: string
       }
       create_election_candidate_person: {

@@ -4,6 +4,7 @@ import { useAuth } from "@/hooks/useAuth";
 import { useTenant } from "@/hooks/useTenant";
 import { useCurrentProfileId } from "@/hooks/useCurrentProfileId";
 import { getErrorMessage } from "@/utils/errorHandler";
+import type { Database, Json } from "@/integrations/supabase/types";
 
 export type PlannerWorkflowStatus = "ideas" | "in_progress" | "in_review" | "approved" | "scheduled" | "published";
 
@@ -359,7 +360,7 @@ export function useSocialPlannerItems() {
           hashtags: payload.hashtags || [],
           hashtags_in_comment: payload.hashtags_in_comment ?? false,
           recurrence_group_id: payload.recurrence_group_id || null,
-          recurrence_rule: payload.recurrence_rule ?? null,
+          recurrence_rule: (payload.recurrence_rule ?? null) as Json | null,
         });
 
       if (error) {
@@ -398,7 +399,7 @@ export function useSocialPlannerItems() {
             asset_ids: variant.asset_ids || [],
             platform_metadata: variant.platform_metadata || {},
             platform_status: variant.platform_status || "draft",
-          })),
+          })) as Database["public"]["Tables"]["social_content_variants"]["Insert"][],
         );
         if (variantError) throw new Error(getErrorMessage(variantError));
       }
@@ -415,7 +416,7 @@ export function useSocialPlannerItems() {
   ) => {
     if (!currentTenant?.id || !user?.id || !profileId) throw new Error("Anmeldung oder aktives Team fehlt. Bitte erneut anmelden.");
 
-    const dbPatch: Record<string, string | string[] | boolean | null> = {};
+    const dbPatch: Database["public"]["Tables"]["social_content_items"]["Update"] = {};
 
     if (patch.workflow_status) {
       dbPatch.workflow_status = STATUS_TO_DB[patch.workflow_status];
@@ -519,7 +520,7 @@ export function useSocialPlannerItems() {
             platform_status: variant.platform_status || "draft",
             publish_link: variant.publish_link ?? null,
             published_at: variant.published_at ?? null,
-          })),
+          })) as Database["public"]["Tables"]["social_content_variants"]["Insert"][],
           { onConflict: "content_item_id,channel_id" },
         );
         if (upsertError) throw new Error(getErrorMessage(upsertError));

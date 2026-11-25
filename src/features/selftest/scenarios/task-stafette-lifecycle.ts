@@ -239,5 +239,14 @@ export const taskStafetteLifecycleScenario: TestScenario = {
         return { ok, message: ok ? "Frist verschoben und vollständig zurückgenommen." : "Frist oder Rücknahme weicht ab.", details: { dueDay, expected, shiftedRow, restoredRow, restoredCount } };
       },
     },
+    {
+      id: "nudge-boundary", label: "Anstupsen erreicht keine Aufgabe außerhalb des eigenen Büros", kind: "workflow",
+      run: async () => {
+        const { data, error } = await supabase.rpc("nudge_task", { _task_id: crypto.randomUUID(), _note: "Selbsttest" });
+        const blocked = !data && !!error && /task not accessible/i.test(error.message);
+        if (!blocked) return { ok: false, message: "Anstupsen einer fremden bzw. unbekannten Aufgabe war möglich.", details: { data, error } };
+        return { ok: true, message: `Anstupsen ohne Zugriff auf die Aufgabe verweigert (${error.code ?? error.message}).` };
+      },
+    },
   ],
 };

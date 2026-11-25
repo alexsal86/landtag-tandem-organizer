@@ -308,10 +308,11 @@ export function useAppointmentPreparation(preparationId: string | undefined) {
 
     try {
       setSaveStatus("saving");
-      const updatePayload: Partial<AppointmentPreparationRow> = {
+      // Das lokale View-Model führt Felder optional/nullable, die Tabelle verlangt sie enger.
+      const updatePayload = {
         ...updates,
         updated_at: new Date().toISOString(),
-      };
+      } as Partial<AppointmentPreparationRow> as never;
 
       // Optimistic local update — no refetch
       setPreparation(prev => prev ? { ...prev, ...updates, updated_at: new Date().toISOString() } : prev);

@@ -182,5 +182,16 @@ export const decisionLifecycleScenario: TestScenario = {
         return { ok, message: ok ? "Entscheidung archiviert." : `Status: ${data?.status}` };
       },
     },
+    {
+      id: "nudge-boundary", label: "Fremde oder unbekannte Entscheidung lässt sich nicht anstupsen", kind: "workflow",
+      run: async () => {
+        const { data, error } = await supabase.rpc("nudge_dashboard_decision", {
+          _decision_id: crypto.randomUUID(), _note: "Selbsttest",
+        });
+        const blocked = !data && error?.code === "42501";
+        if (!blocked) return { ok: false, message: "Anstupsen ohne Zugriff auf die Entscheidung war möglich.", details: { data, error } };
+        return { ok: true, message: "Anstupsen einer nicht zugänglichen Entscheidung wird mit 42501 verweigert." };
+      },
+    },
   ],
 };

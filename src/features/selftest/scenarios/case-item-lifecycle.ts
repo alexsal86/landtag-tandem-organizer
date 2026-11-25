@@ -55,7 +55,7 @@ export const caseItemLifecycleScenario: TestScenario = {
   touches: ["case_items", "case_item_interactions", "case_item_handover_log", "task_decisions", "task_decision_participants", "task_decision_responses", "appointment_requests", "day_slips", "tasks"],
   features: ["case-items", "decisions", "dayslip", "appointment-requests"],
   requiredRoles: ["abgeordneter", "bueroleitung"],
-  checks: ["Geschäftsregeln für Wiedervorlage und Fristen", "Übergabe über die Anwendungs-RPC", "Entscheidung und Abstimmung", "Tageszettel-Link nach erneutem Laden"],
+  checks: ["Geschäftsregeln für Wiedervorlage und Fristen", "Übergabe über die Anwendungs-RPC", "Entscheidung und Abstimmung", "Tageszettel-Link nach erneutem Laden", "Vorgang bleibt im eigenen Büro"],
   limitations: ["Keine Bedienprüfung der Vorgangsoberfläche", "Übergabe benötigt eine zweite aktive Person im Büro"],
   collectArtifacts: async (ctx) => {
     const id = ctx.data.caseItemId as string | undefined;
@@ -272,6 +272,20 @@ export const caseItemLifecycleScenario: TestScenario = {
         const { error } = await supabase.from("case_items").update(update).eq("id", id);
         if (error) return { ok: false, message: describeError(error) };
         return expectFields("case_items", id, update, "Abschluss");
+      }),
+    },
+    {
+      id: "tenant-boundary", label: "Vorgang lässt sich keinem fremden Büro zuordnen", kind: "workflow",
+      run: wrap(async (ctx) => {
+        const id = ctx.data.caseItemId as string;
+        const { error } = await supabase.from("case_items").update({ tenant_id: crypto.randomUUID() }).eq("id", id);
+        if (!error) return { ok: false, message: "Der Vorgang wurde in ein fremdes Büro umgehängt — Mandantensperre fehlt!" };
+        const blocked = error.code === "42501" || error.code === "TENANT_SCOPE_CONFLICT"
+          || /tenant reassignment|row-level security/i.test(error.message);
+        if (!blocked) return { ok: false, message: `Unerwarteter Fehler statt Mandantensperre: ${describeError(error)}`, details: error };
+        const unchanged = await expectFields("case_items", id, { tenant_id: ctx.tenantId }, "Büro nach abgewiesenem Umhängen");
+        if (!unchanged.ok) return unchanged;
+        return { ok: true, message: `Umhängen in ein fremdes Büro verweigert (${error.code ?? error.message}).` };
       }),
     },
   ],
