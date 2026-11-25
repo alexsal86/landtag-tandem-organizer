@@ -17823,6 +17823,14 @@ export type Database = {
       }
       auto_archive_completed_preparations: { Args: never; Returns: undefined }
       auto_update_poll_status: { Args: never; Returns: undefined }
+      batch_task_stafette_action: {
+        Args: { _action: string; _task_ids: string[]; _tenant_id: string }
+        Returns: Json
+      }
+      batch_task_stafette_preview: {
+        Args: { _action: string; _task_ids: string[]; _tenant_id: string }
+        Returns: Json
+      }
       bulk_update_contact_fields: {
         Args: {
           _ids: string[]
@@ -18179,6 +18187,10 @@ export type Database = {
         }
         Returns: string
       }
+      create_decision_task: {
+        Args: { p_decision_id: string }
+        Returns: string
+      }
       create_default_checklist_items:
         | { Args: { planning_id: string }; Returns: undefined }
         | {
@@ -18212,6 +18224,10 @@ export type Database = {
           }
       create_meeting_action_task: {
         Args: { p_action_item_id: string }
+        Returns: string
+      }
+      create_note_work: {
+        Args: { p_kind: string; p_note_id: string }
         Returns: string
       }
       create_notification:
@@ -20082,6 +20098,7 @@ export type Database = {
       topic_mention_selftest: { Args: { p_tenant: string }; Returns: Json }
       topic_name_from_label: { Args: { p_label: string }; Returns: string }
       undo_contact_bulk_action: { Args: { _audit_id: string }; Returns: number }
+      undo_task_batch_action: { Args: { _batch_id: string }; Returns: number }
       update_contact_usage: {
         Args: { p_contact_id: string; p_tenant_id?: string; p_user_id?: string }
         Returns: undefined
