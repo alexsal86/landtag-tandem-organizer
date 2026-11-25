@@ -1659,6 +1659,7 @@
       ],
       "scenarioIds": [],
       "scenarios": [
+        "employee-protection",
         "onboarding-hr",
         "responsibilities"
       ],
@@ -1667,6 +1668,53 @@
         "tasks"
       ],
       "workflows": [
+        {
+          "scenario": "employee-protection",
+          "title": "Mitarbeiterschutz: Protokollsperre, Belastungsgrenzen und Vorbereitung",
+          "description": "Prüft Protokollrechte, Wohlbefindens-Schwellen, Vorbereitungsfenster, Vorbefunde und Maßnahmenverantwortung ohne Datenbankzugriff.",
+          "checks": [
+            "Protokoll ist nur während des Gesprächs bearbeitbar und nach Freigabe gesperrt",
+            "Wohlbefindens-Trend zählt nur abgeschlossene Gespräche und respektiert Schwellen",
+            "Vorbereitung öffnet sieben Berliner Kalendertage vor dem Gespräch",
+            "Vorschläge füllen nur leere Protokollfelder und verändern die Vorlage nicht",
+            "Vorbefund stammt nur aus einem früheren, abgeschlossenen Gespräch derselben Person",
+            "Bei gemeinsamer Maßnahme hält die Führungskraft die Aufgabe, die Person den Ball"
+          ],
+          "tables": [],
+          "features": [
+            "employees.action-tasks",
+            "employees.preparation",
+            "employees.protocol",
+            "employees.review",
+            "employees.wellbeing"
+          ],
+          "steps": [
+            {
+              "id": "protocol-lock",
+              "label": "Protokoll: bearbeitbar nur im Gespräch, gesperrt nach Freigabe"
+            },
+            {
+              "id": "wellbeing-thresholds",
+              "label": "Wohlbefinden: nur abgeschlossene Gespräche, gehaltene Belastung und fallende Werte"
+            },
+            {
+              "id": "preparation-window",
+              "label": "Vorbereitung: sieben Berliner Kalendertage vor dem Gespräch"
+            },
+            {
+              "id": "preparation-suggestions",
+              "label": "Vorbereitung: Vorschläge füllen nur leere Protokollfelder"
+            },
+            {
+              "id": "previous-meeting",
+              "label": "Vorbefund: nur ein früheres, abgeschlossenes Gespräch derselben Person"
+            },
+            {
+              "id": "action-task",
+              "label": "Maßnahme: eine Aufgabe, Ball bei der Person, Begleitung durch die Führungskraft"
+            }
+          ]
+        },
         {
           "scenario": "onboarding-hr",
           "title": "HR-Onboarding und Offboarding",
@@ -2068,7 +2116,8 @@
       ],
       "scenarios": [
         "access-boundaries",
-        "admin-controls"
+        "admin-controls",
+        "security-hardening"
       ],
       "tables": [
         "appointment_requests"
@@ -2179,6 +2228,44 @@
             {
               "id": "invalid-bulk",
               "label": "Leere Sammelaktion und unbekannte Rücknahme verändern keine Kontakte"
+            }
+          ]
+        },
+        {
+          "scenario": "security-hardening",
+          "title": "Sicherheitsregeln: Porträtdateien und E-Mail-Inhalte",
+          "description": "Prüft die geteilten Datei- und HTML-Prüfregeln ohne Datenbankzugriff, Upload oder E-Mail-Versand.",
+          "checks": [
+            "Porträt-WebP: Signatur, RIFF-Länge und Pflichtmaße je Variante",
+            "Porträt-Metadaten: Quelle, Verbindung und Dateinamen",
+            "Bildzuschnitt deckt das 3:4-Format und begrenzt Zoom sowie Versatz",
+            "E-Mail-HTML entfernt Skripte, Ereignis-Handler und aktive URLs"
+          ],
+          "tables": [],
+          "features": [
+            "election.history.portraits",
+            "integration.email"
+          ],
+          "steps": [
+            {
+              "id": "portrait-files",
+              "label": "Porträtdateien: WebP-Signatur, RIFF-Länge und Pflichtmaße"
+            },
+            {
+              "id": "portrait-source",
+              "label": "Porträtquelle: nur http(s) ohne Zugangsdaten und mit Feldgrenzen"
+            },
+            {
+              "id": "portrait-record",
+              "label": "Porträt-Metadaten: Verbindung, Versions-ID und feste Dateinamen"
+            },
+            {
+              "id": "portrait-crop",
+              "label": "Bildzuschnitt: 3:4-Rahmen, begrenzter Zoom und geklemmter Versatz"
+            },
+            {
+              "id": "email-html",
+              "label": "E-Mail-HTML: maskieren, sichere Links und entfernte aktive Inhalte"
             }
           ]
         }

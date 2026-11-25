@@ -104,7 +104,8 @@
       "category": "integration",
       "implementationStatus": "implementiert",
       "integrationStatus": "system",
-      "coverage": "keine",
+      "coverage": "selftest",
+      "scenarios": ["security-hardening"],
       "testResult": "nicht-ausgefuehrt",
       "evidence": [
         "supabase/functions/process-scheduled-emails/index.ts",

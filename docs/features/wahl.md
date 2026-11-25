@@ -8,7 +8,7 @@ _Auto-generiert mit `npm run update:feature-catalog` aus dem zentralen Funktions
 
 - Funktionen: **23** in **4** Unterbereichen
 - implementiert: **23**, teilweise: **0**, deaktiviert: **0**, potenziell verwaist: **0**
-- ohne zugeordneten Test: **13**
+- ohne zugeordneten Test: **12**
 - ohne Dokumentationsverweis: **15**
 
 ## Funktionen
@@ -26,7 +26,7 @@ _Auto-generiert mit `npm run update:feature-catalog` aus dem zentralen Funktions
 | `election.turnout` Wahlbeteiligung | Analyse | fachlich | implementiert | UI | kein Test |
 | `election.history.audit` Wahlhistorien-Audit | Datenqualität | sicherheit | implementiert | rollenabhängig | kein Test |
 | `election.history.quality` Wahlhistorien-Datenqualität | Datenqualität | fachlich | implementiert | rollenabhängig | Selbsttest |
-| `election.history.portraits` Abgeordnetenporträts | Wahlhistorie | integration | implementiert | rollenabhängig | kein Test |
+| `election.history.portraits` Abgeordnetenporträts | Wahlhistorie | integration | implementiert | rollenabhängig | Selbsttest |
 | `election.history.assembly` Historien-Assemblierung | Wahlhistorie | automatisiert | implementiert | systemseitig | kein Test |
 | `election.history.factions` Historische Fraktionen | Wahlhistorie | fachlich | implementiert | rollenabhängig | kein Test |
 | `election.history.mandates` Historische Mandate pflegen | Wahlhistorie | fachlich | implementiert | rollenabhängig | Selbsttest |
@@ -62,6 +62,7 @@ _Auto-generiert mit `npm run update:feature-catalog` aus dem zentralen Funktions
 | `election-deputy-reader` | Wahlanalyse: Abgeordnetenübersicht | 0 | 0 |
 | `election-history-workbench` | Wahldaten: Problemfälle und Landeslisten | 0 | 0 |
 | `election-map` | Wahlkreiskarte: Suche und Grenzdaten | 0 | 0 |
+| `security-hardening` | Sicherheitsregeln: Porträtdateien und E-Mail-Inhalte | 0 | 4 |
 
 ## Funktionsdetails
 
@@ -867,7 +868,7 @@ Schneidet Porträts zu, erzeugt WebP und Thumbnail und committet sie über einen
 - **Kategorie:** integration
 - **Implementierung:** implementiert
 - **Einbindung:** rollenabhängig
-- **Testabdeckung:** kein Test
+- **Testabdeckung:** Selbsttest
 - **Letztes Testergebnis:** nicht-ausgefuehrt (nicht aus der Existenz einer Testdatei abgeleitet)
 - **Rollen:** `superadmin`
 - **Routen:** —
@@ -878,7 +879,7 @@ Schneidet Porträts zu, erzeugt WebP und Thumbnail und committet sie über einen
 - **Datenbankfunktionen:** —
 - **Tabellen:** `election_history_connection_people`
 - **Abhängigkeiten:** `election.history.people`
-- **Selbsttests:** —
+- **Selbsttests:** `security-hardening`
 - **Unit-Tests:** —
 - **Integrationstests:** —
 - **Browser-Tests:** —

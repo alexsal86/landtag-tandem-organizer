@@ -11,7 +11,7 @@ Eindeutige Fehler werden im CI-Lauf ausgegeben und brechen die Prüfung ab; sie 
 - Review-Hinweise: **0**
 - Nicht zugeordnete Objekte: **1**, davon ohne Ausnahme: **0**
 
-## Funktionen ohne zugeordneten Test (150)
+## Funktionen ohne zugeordneten Test (143)
 
 - `mywork.tabs` — Meine Arbeit – Bereichsnavigation und Einstellungen
 - `mywork.quick-access` — Schnellzugriff und zuletzt besuchte Seiten
@@ -79,11 +79,6 @@ Eindeutige Fehler werden im CI-Lauf ausgegeben und brechen die Prüfung ab; sie 
 - `contacts.briefing-memory` — Briefingwissen je Kontakt
 - `contacts.fundings` — Finanzierungen und Beteiligungen
 - `employees.meetings` — Mitarbeitergespräch planen und führen
-- `employees.protocol` — Gesprächsprotokoll freigeben und sperren
-- `employees.action-tasks` — Maßnahmen als Aufgaben
-- `employees.preparation` — Gesprächsvorbereitung und Erinnerungen
-- `employees.review` — Vorgesprächs-Review
-- `employees.wellbeing` — Wohlbefinden und Trends
 - `employees.requests` — Gesprächsanfragen der Mitarbeitenden
 - `employees.export-stats` — Gesprächs-PDF und Jahresstatistik
 - `timetracking.entries` — Arbeitszeit erfassen
@@ -102,7 +97,6 @@ Eindeutige Fehler werden im CI-Lauf ausgegeben und brechen die Prüfung ab; sie 
 - `topics.convert-catalog` — Thema in Katalog überführen
 - `facts.manage` — Fakten und Argumente pflegen
 - `integration.calendar-sync` — Externe Kalender synchronisieren
-- `integration.email` — Transaktions-E-Mail-Versand
 - `integration.push` — Push-Benachrichtigungen
 - `integration.geocoding` — Adress-Geocoding
 - `integration.ai-suggestions` — KI-Vorschläge für Vorbereitung und Eingang
@@ -155,7 +149,6 @@ Eindeutige Fehler werden im CI-Lauf ausgegeben und brechen die Prüfung ab; sie 
 - `election.history.assembly` — Historien-Assemblierung
 - `election.history.districts-geometry` — Historische Wahlkreise und Geometrie
 - `election.parliament-protocols` — Plenarprotokolle auswerten
-- `election.history.portraits` — Abgeordnetenporträts
 - `knowledge.sources` — Quellen und Belege
 - `knowledge.attachments` — Anhänge an Wissensfragen
 - `knowledge.comments-follow` — Kommentare und Folgen

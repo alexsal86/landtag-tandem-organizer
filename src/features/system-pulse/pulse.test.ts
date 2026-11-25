@@ -1,4 +1,5 @@
 import { describe, expect, it } from "vitest";
+import { SELFTEST_SCENARIOS } from "@/features/selftest/registry";
 import {
   PULSE_AREAS, PULSE_GROUPS, areaAssessment, areaLevel, assessRun, consecutiveFailures,
   durationTrend, gapSummary, historyByScenario, latestRunDetails, latestRuns, latestRunSteps, mergeRuns,
@@ -187,8 +188,8 @@ describe("PULSE_AREAS", () => {
     for (const entry of PULSE_AREAS) expect(Array.isArray(entry.tables)).toBe(true);
     expect(PULSE_AREAS.some((entry) => entry.tables.length > 0)).toBe(true);
   });
-  it("bildet alle 30 registrierten Szenarien genau einmal ab", () => {
-    expect(PULSE_AREAS.reduce((sum, entry) => sum + entry.scenarios.length, 0)).toBe(30);
+  it("bildet alle registrierten Szenarien genau einmal ab", () => {
+    expect(PULSE_AREAS.reduce((sum, entry) => sum + entry.scenarios.length, 0)).toBe(SELFTEST_SCENARIOS.length);
   });
   it("hinterlegt für jeden Bereich deklarierte Workflow-Schritte", () => {
     for (const entry of PULSE_AREAS) {

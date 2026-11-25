@@ -14,7 +14,10 @@ export const IGNORED_TABLES: string[] = [
   "egress_anomalies", "egress_metrics", "mobile_push_tokens",
   // Versandprotokoll der Termin-Erinnerungen: nur Service-Role, kein Client-Pfad.
   "appointment_reminder_dispatches",
-  "quick_note_write_receipts", "security_audit_snapshots", "system_health",
+  "quick_note_write_receipts", "quick_note_topic_mention_deliveries",
+  "security_audit_snapshots", "system_health",
+  // Eingefrorener RLS-Policy-Snapshot der Migration; kein Fachdatenbestand.
+  "rls_policy_snapshot_20261124",
   "tenant_feature_flags", "preparation_templates",
   // Settings / Konfiguration
   "admin_status_options",
@@ -280,6 +283,9 @@ export const DEFERRED_TABLES: string[] = [
   "employee_meeting_requests",
   "employee_meetings",
   "event_plannings",
+
+  // Büro-Nachbereitung (Debrief): eigenes Szenario steht noch aus.
+  "office_debrief_state",
 
   // Wahlanalyse und Wahlhistorie: die Szenarien prüfen Regeln und Lesezugriffe,
   // schreiben aber bewusst keine importierten Bestandsdaten.

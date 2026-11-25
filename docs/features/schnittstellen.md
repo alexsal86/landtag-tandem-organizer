@@ -8,7 +8,7 @@ _Auto-generiert mit `npm run update:feature-catalog` aus dem zentralen Funktions
 
 - Funktionen: **10** in **7** Unterbereichen
 - implementiert: **10**, teilweise: **0**, deaktiviert: **0**, potenziell verwaist: **0**
-- ohne zugeordneten Test: **8**
+- ohne zugeordneten Test: **7**
 - ohne Dokumentationsverweis: **5**
 
 ## Funktionen
@@ -18,7 +18,7 @@ _Auto-generiert mit `npm run update:feature-catalog` aus dem zentralen Funktions
 | `integration.push` Push-Benachrichtigungen | Benachrichtigungen | integration | implementiert | systemseitig | kein Test |
 | `integration.edge-contract-tests` Edge-Function-Vertragstests | Betrieb | sicherheit | implementiert | nicht anwendbar | Security-Test |
 | `integration.egress-monitoring` Egress-Überwachung | Betrieb | sicherheit | implementiert | systemseitig | kein Test |
-| `integration.email` Transaktions-E-Mail-Versand | E-Mail | integration | implementiert | systemseitig | kein Test |
+| `integration.email` Transaktions-E-Mail-Versand | E-Mail | integration | implementiert | systemseitig | Selbsttest |
 | `integration.geocoding` Adress-Geocoding | Geodaten | integration | implementiert | systemseitig | kein Test |
 | `integration.calendar-sync` Externe Kalender synchronisieren | Kalender | integration | implementiert | rollenabhängig | kein Test |
 | `integration.ics` ICS-Feeds und Einladungsdateien | Kalender | integration | implementiert | rollenabhängig | Unit-Test |
@@ -46,7 +46,9 @@ _Auto-generiert mit `npm run update:feature-catalog` aus dem zentralen Funktions
 
 ## Selbsttest-Szenarien
 
-Keine Szenarien zugeordnet. Das bedeutet nicht, dass der Bereich ungetestet ist – es fehlt eine Selbsttest-Abdeckung.
+| Szenario | Titel | deklarierte Tabellen | deklarierte Prüfungen |
+|---|---|---:|---:|
+| `security-hardening` | Sicherheitsregeln: Porträtdateien und E-Mail-Inhalte | 0 | 4 |
 
 ## Funktionsdetails
 
@@ -129,7 +131,7 @@ Versendet E-Mails über zentrale Vorlagen, protokolliert Zustellungen und verarb
 - **Kategorie:** integration
 - **Implementierung:** implementiert
 - **Einbindung:** systemseitig
-- **Testabdeckung:** kein Test
+- **Testabdeckung:** Selbsttest
 - **Letztes Testergebnis:** nicht-ausgefuehrt (nicht aus der Existenz einer Testdatei abgeleitet)
 - **Rollen:** `system`, `admin`
 - **Routen:** —
@@ -140,7 +142,7 @@ Versendet E-Mails über zentrale Vorlagen, protokolliert Zustellungen und verarb
 - **Datenbankfunktionen:** —
 - **Tabellen:** `email_logs`, `email_templates`, `scheduled_emails`
 - **Abhängigkeiten:** `admin.templates-senders`
-- **Selbsttests:** —
+- **Selbsttests:** `security-hardening`
 - **Unit-Tests:** —
 - **Integrationstests:** —
 - **Browser-Tests:** —

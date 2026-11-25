@@ -211,9 +211,10 @@ test('Gruppen decken Vorgangsbetrieb, Termine, Dokumente, Wahlen, Organisation, 
 
 test('jedes registrierte Szenario ist genau einem Bereich zugeordnet', () => {
   const { areas } = realAreas();
+  const registered = collectScenarios(root).filter((entry) => entry.registered);
   const assigned = areas.flatMap((area) => area.scenarios);
-  assert.equal(assigned.length, 30);
-  assert.equal(new Set(assigned).size, 30);
+  assert.equal(assigned.length, registered.length);
+  assert.equal(new Set(assigned).size, registered.length);
 });
 
 test('ein registriertes Szenario ohne Bereich schlägt fehl', () => {

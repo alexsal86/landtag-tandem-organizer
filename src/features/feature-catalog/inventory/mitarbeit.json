@@ -59,7 +59,8 @@
       "category": "fachlich",
       "implementationStatus": "implementiert",
       "integrationStatus": "rollenabhaengig",
-      "coverage": "keine",
+      "coverage": "selftest",
+      "scenarios": ["employee-protection"],
       "testResult": "nicht-ausgefuehrt",
       "evidence": [
         "src/features/employees/protocolWorkflow.ts",
@@ -105,7 +106,8 @@
       "category": "fachlich",
       "implementationStatus": "implementiert",
       "integrationStatus": "system",
-      "coverage": "keine",
+      "coverage": "selftest",
+      "scenarios": ["employee-protection"],
       "testResult": "nicht-ausgefuehrt",
       "evidence": [
         "src/features/employees/actionTasks.ts"
@@ -142,7 +144,8 @@
       "category": "automatisiert",
       "implementationStatus": "implementiert",
       "integrationStatus": "system",
-      "coverage": "keine",
+      "coverage": "selftest",
+      "scenarios": ["employee-protection"],
       "testResult": "nicht-ausgefuehrt",
       "evidence": [
         "src/features/employees/preparation.ts"
@@ -181,7 +184,8 @@
       "category": "fachlich",
       "implementationStatus": "implementiert",
       "integrationStatus": "ui",
-      "coverage": "keine",
+      "coverage": "selftest",
+      "scenarios": ["employee-protection"],
       "testResult": "nicht-ausgefuehrt",
       "evidence": [
         "src/features/employees/previousMeeting.ts",
@@ -215,7 +219,8 @@
       "category": "sicherheit",
       "implementationStatus": "implementiert",
       "integrationStatus": "rollenabhaengig",
-      "coverage": "keine",
+      "coverage": "selftest",
+      "scenarios": ["employee-protection"],
       "testResult": "nicht-ausgefuehrt",
       "evidence": [
         "src/features/employees/wellbeing.ts",

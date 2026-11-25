@@ -2,7 +2,9 @@ import { electionHistoryWorkbenchScenario } from './scenarios/election-history-w
 import { electionDeputyReaderScenario } from './scenarios/election-deputy-reader';
 import { electionAnalysisScenario } from './scenarios/election-analysis';
 import { electionMapScenario } from './scenarios/election-map';
-import {onboardingHrScenario} from "./scenarios/onboarding-hr";
+import { onboardingHrScenario } from "./scenarios/onboarding-hr";
+import { employeeProtectionScenario } from "./scenarios/employee-protection";
+import { securityHardeningScenario } from "./scenarios/security-hardening";
 import { teamRitualsScenario } from './scenarios/team-rituals';
 import { responsibilitiesScenario } from "./scenarios/responsibilities";
 import { documentListScenario } from "./scenarios/document-list";
@@ -32,6 +34,7 @@ import { jourFixePlatformIntegrationScenario } from './scenarios/jour-fixe-platf
 
 export const SELFTEST_SCENARIOS: TestScenario[] = [
   onboardingHrScenario,
+  employeeProtectionScenario,
   teamRitualsScenario,
   responsibilitiesScenario,
   documentListScenario,
@@ -45,6 +48,7 @@ export const SELFTEST_SCENARIOS: TestScenario[] = [
   annualTaskStafetteScenario,
   workflowRulesScenario,
   accessBoundariesScenario,
+  securityHardeningScenario,
   meetingLifecycleScenario,
   jourFixePlatformIntegrationScenario,
   appointmentLifecycleScenario,

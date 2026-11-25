@@ -885,7 +885,8 @@
       "category": "integration",
       "implementationStatus": "implementiert",
       "integrationStatus": "rollenabhaengig",
-      "coverage": "keine",
+      "coverage": "selftest",
+      "scenarios": ["security-hardening"],
       "testResult": "nicht-ausgefuehrt",
       "evidence": [
         "src/features/election-history/DeputyPortraitEditor.tsx",

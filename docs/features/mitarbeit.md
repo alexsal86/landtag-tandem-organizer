@@ -8,7 +8,7 @@ _Auto-generiert mit `npm run update:feature-catalog` aus dem zentralen Funktions
 
 - Funktionen: **20** in **5** Unterbereichen
 - implementiert: **20**, teilweise: **0**, deaktiviert: **0**, potenziell verwaist: **0**
-- ohne zugeordneten Test: **10**
+- ohne zugeordneten Test: **5**
 - ohne Dokumentationsverweis: **14**
 
 ## Funktionen
@@ -17,12 +17,12 @@ _Auto-generiert mit `npm run update:feature-catalog` aus dem zentralen Funktions
 |---|---|---|---|---|---|
 | `employees.export-stats` Gesprächs-PDF und Jahresstatistik | Mitarbeitergespräche | fachlich | implementiert | UI | kein Test |
 | `employees.requests` Gesprächsanfragen der Mitarbeitenden | Mitarbeitergespräche | fachlich | implementiert | rollenabhängig | kein Test |
-| `employees.protocol` Gesprächsprotokoll freigeben und sperren | Mitarbeitergespräche | fachlich | implementiert | rollenabhängig | kein Test |
-| `employees.preparation` Gesprächsvorbereitung und Erinnerungen | Mitarbeitergespräche | automatisiert | implementiert | systemseitig | kein Test |
-| `employees.action-tasks` Maßnahmen als Aufgaben | Mitarbeitergespräche | fachlich | implementiert | systemseitig | kein Test |
+| `employees.protocol` Gesprächsprotokoll freigeben und sperren | Mitarbeitergespräche | fachlich | implementiert | rollenabhängig | Selbsttest |
+| `employees.preparation` Gesprächsvorbereitung und Erinnerungen | Mitarbeitergespräche | automatisiert | implementiert | systemseitig | Selbsttest |
+| `employees.action-tasks` Maßnahmen als Aufgaben | Mitarbeitergespräche | fachlich | implementiert | systemseitig | Selbsttest |
 | `employees.meetings` Mitarbeitergespräch planen und führen | Mitarbeitergespräche | fachlich | implementiert | rollenabhängig | kein Test |
-| `employees.review` Vorgesprächs-Review | Mitarbeitergespräche | fachlich | implementiert | UI | kein Test |
-| `employees.wellbeing` Wohlbefinden und Trends | Mitarbeitergespräche | sicherheit | implementiert | rollenabhängig | kein Test |
+| `employees.review` Vorgesprächs-Review | Mitarbeitergespräche | fachlich | implementiert | UI | Selbsttest |
+| `employees.wellbeing` Wohlbefinden und Trends | Mitarbeitergespräche | sicherheit | implementiert | rollenabhängig | Selbsttest |
 | `hr.templates` HR-Vorlagen und DSGVO-Erklärung | Onboarding & Offboarding | administrativ | implementiert | rollenabhängig | Unit-Test |
 | `hr.offboarding` Offboarding mit Übergaben | Onboarding & Offboarding | fachlich | implementiert | systemseitig | Selbsttest |
 | `hr.onboarding` Onboarding-Ablauf | Onboarding & Offboarding | fachlich | implementiert | rollenabhängig | Selbsttest |
@@ -56,6 +56,7 @@ _Auto-generiert mit `npm run update:feature-catalog` aus dem zentralen Funktions
 
 | Szenario | Titel | deklarierte Tabellen | deklarierte Prüfungen |
 |---|---|---:|---:|
+| `employee-protection` | Mitarbeiterschutz: Protokollsperre, Belastungsgrenzen und Vorbereitung | 0 | 6 |
 | `onboarding-hr` | HR-Onboarding und Offboarding | 11 | 0 |
 | `responsibilities` | Zuständigkeiten & Matrix | 1 | 0 |
 | `team-rituals` | Freiwillige Team-Rituale | 0 | 0 |
@@ -104,7 +105,7 @@ Führt Protokolle durch Freigabe, Widerspruch und Wiedereröffnung, schützt ein
 - **Kategorie:** fachlich
 - **Implementierung:** implementiert
 - **Einbindung:** rollenabhängig
-- **Testabdeckung:** kein Test
+- **Testabdeckung:** Selbsttest
 - **Letztes Testergebnis:** nicht-ausgefuehrt (nicht aus der Existenz einer Testdatei abgeleitet)
 - **Rollen:** `abgeordneter`, `bueroleitung`, `mitarbeiter`
 - **Routen:** —
@@ -115,7 +116,7 @@ Führt Protokolle durch Freigabe, Widerspruch und Wiedereröffnung, schützt ein
 - **Datenbankfunktionen:** `mutate_employee_meeting_action`, `request_protocol_acknowledgement`, `acknowledge_meeting_protocol`, `reopen_meeting_protocol`, `employee_protocol_hash`
 - **Tabellen:** `employee_meetings`, `employee_meeting_audit`, `employee_meeting_private_notes`
 - **Abhängigkeiten:** `employees.meetings`
-- **Selbsttests:** —
+- **Selbsttests:** `employee-protection`
 - **Unit-Tests:** —
 - **Integrationstests:** —
 - **Browser-Tests:** —
@@ -140,7 +141,7 @@ Erzeugt nach unbestrittener Protokollabnahme genau eine Aufgabe mit Ball bei der
 - **Kategorie:** fachlich
 - **Implementierung:** implementiert
 - **Einbindung:** systemseitig
-- **Testabdeckung:** kein Test
+- **Testabdeckung:** Selbsttest
 - **Letztes Testergebnis:** nicht-ausgefuehrt (nicht aus der Existenz einer Testdatei abgeleitet)
 - **Rollen:** `abgeordneter`, `bueroleitung`, `mitarbeiter`, `system`
 - **Routen:** —
@@ -151,7 +152,7 @@ Erzeugt nach unbestrittener Protokollabnahme genau eine Aufgabe mit Ball bei der
 - **Datenbankfunktionen:** `create_meeting_action_task`, `sync_employee_action_task_status`, `guard_employee_action_content`
 - **Tabellen:** `employee_meeting_action_items`, `tasks`
 - **Abhängigkeiten:** `tasks.create`, `employees.protocol`, `employees.meetings`
-- **Selbsttests:** —
+- **Selbsttests:** `employee-protection`
 - **Unit-Tests:** —
 - **Integrationstests:** —
 - **Browser-Tests:** —
@@ -175,7 +176,7 @@ Erzeugt nach unbestrittener Protokollabnahme genau eine Aufgabe mit Ball bei der
 - **Kategorie:** automatisiert
 - **Implementierung:** implementiert
 - **Einbindung:** systemseitig
-- **Testabdeckung:** kein Test
+- **Testabdeckung:** Selbsttest
 - **Letztes Testergebnis:** nicht-ausgefuehrt (nicht aus der Existenz einer Testdatei abgeleitet)
 - **Rollen:** `mitarbeiter`, `bueroleitung`, `system`
 - **Routen:** —
@@ -186,7 +187,7 @@ Erzeugt nach unbestrittener Protokollabnahme genau eine Aufgabe mit Ball bei der
 - **Datenbankfunktionen:** `dispatch_employee_preparation_reminders`, `guard_employee_preparation_window`, `remind_employee_hr`, `automation_private.remind_employee_hr`
 - **Tabellen:** `employee_hr_reminder_log`, `employee_meetings`
 - **Abhängigkeiten:** `employees.meetings`
-- **Selbsttests:** —
+- **Selbsttests:** `employee-protection`
 - **Unit-Tests:** —
 - **Integrationstests:** —
 - **Browser-Tests:** —
@@ -210,7 +211,7 @@ Vergleicht mit dem letzten abgeschlossenen Gespräch, übernimmt offene Maßnahm
 - **Kategorie:** fachlich
 - **Implementierung:** implementiert
 - **Einbindung:** UI
-- **Testabdeckung:** kein Test
+- **Testabdeckung:** Selbsttest
 - **Letztes Testergebnis:** nicht-ausgefuehrt (nicht aus der Existenz einer Testdatei abgeleitet)
 - **Rollen:** `abgeordneter`, `bueroleitung`
 - **Routen:** —
@@ -221,7 +222,7 @@ Vergleicht mit dem letzten abgeschlossenen Gespräch, übernimmt offene Maßnahm
 - **Datenbankfunktionen:** `get_latest_employee_meetings`
 - **Tabellen:** `employee_meetings`, `employee_meeting_action_items`, `tasks`
 - **Abhängigkeiten:** `employees.meetings`
-- **Selbsttests:** —
+- **Selbsttests:** `employee-protection`
 - **Unit-Tests:** —
 - **Integrationstests:** —
 - **Browser-Tests:** —
@@ -246,7 +247,7 @@ Erfasst Wohlbefinden als geschützte JSON-Daten und zeigt Trends ausschließlich
 - **Kategorie:** sicherheit
 - **Implementierung:** implementiert
 - **Einbindung:** rollenabhängig
-- **Testabdeckung:** kein Test
+- **Testabdeckung:** Selbsttest
 - **Letztes Testergebnis:** nicht-ausgefuehrt (nicht aus der Existenz einer Testdatei abgeleitet)
 - **Rollen:** `mitarbeiter`, `bueroleitung`
 - **Routen:** —
@@ -257,7 +258,7 @@ Erfasst Wohlbefinden als geschützte JSON-Daten und zeigt Trends ausschließlich
 - **Datenbankfunktionen:** `guard_employee_settings_entitlements`, `get_employee_meeting_trend`
 - **Tabellen:** `employee_settings`, `employee_settings_history`
 - **Abhängigkeiten:** `employees.meetings`
-- **Selbsttests:** —
+- **Selbsttests:** `employee-protection`
 - **Unit-Tests:** —
 - **Integrationstests:** —
 - **Browser-Tests:** —

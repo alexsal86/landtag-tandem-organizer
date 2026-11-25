@@ -2,10 +2,10 @@
   "schemaVersion": 1,
   "source": "src/integrations/supabase/types.ts",
   "counts": {
-    "total": 344,
+    "total": 347,
     "scenario": 57,
-    "deferred": 129,
-    "excluded": 158,
+    "deferred": 130,
+    "excluded": 160,
     "missing": 0
   },
   "scenarios": [
@@ -481,6 +481,16 @@
       "registered": true
     },
     {
+      "id": "employee-protection",
+      "title": "Mitarbeiterschutz: Protokollsperre, Belastungsgrenzen und Vorbereitung",
+      "touches": [],
+      "features": [
+        "employees"
+      ],
+      "writes": [],
+      "registered": true
+    },
+    {
       "id": "event-planning-lifecycle",
       "title": "Event-Planung (komplett: Termine, Speaker, Checkliste, Timeline)",
       "touches": [
@@ -949,6 +959,16 @@
       ],
       "features": [
         "employees",
+        "permissions"
+      ],
+      "writes": [],
+      "registered": true
+    },
+    {
+      "id": "security-hardening",
+      "title": "Sicherheitsregeln: Porträtdateien und E-Mail-Inhalte",
+      "touches": [],
+      "features": [
         "permissions"
       ],
       "writes": [],
@@ -2306,6 +2326,11 @@
       ]
     },
     {
+      "table": "office_debrief_state",
+      "status": "deferred",
+      "scenarios": []
+    },
+    {
       "table": "parliament_protocols",
       "status": "deferred",
       "scenarios": []
@@ -2420,6 +2445,11 @@
       "scenarios": []
     },
     {
+      "table": "quick_note_topic_mention_deliveries",
+      "status": "excluded",
+      "scenarios": []
+    },
+    {
       "table": "quick_note_versions",
       "status": "excluded",
       "scenarios": []
@@ -2439,6 +2469,11 @@
     {
       "table": "regions",
       "status": "deferred",
+      "scenarios": []
+    },
+    {
+      "table": "rls_policy_snapshot_20261124",
+      "status": "excluded",
       "scenarios": []
     },
     {

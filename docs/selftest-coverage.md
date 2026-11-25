@@ -4,7 +4,7 @@ _Auto-generiert mit `npm run update:selftest-coverage`._
 
 Quelle: `src/integrations/supabase/types.ts`. Die Angaben beschreiben deklarierte Prüfumfänge, keine erfolgreichen Testläufe und keine Code-Coverage.
 
-Von 344 Tabellen haben 57 ein registriertes Szenario. 129 sind als Ausbau offen, 158 ausgenommen und 0 noch nicht eingeordnet. Ausnahmen zählen nicht als bestanden.
+Von 347 Tabellen haben 57 ein registriertes Szenario. 130 sind als Ausbau offen, 160 ausgenommen und 0 noch nicht eingeordnet. Ausnahmen zählen nicht als bestanden.
 
 ## Szenarien
 
@@ -27,6 +27,7 @@ Von 344 Tabellen haben 57 ein registriertes Szenario. 129 sind als Ausbau offen,
 | `election-deputy-reader` | Wahlanalyse: Abgeordnetenübersicht | Keine (reine Regeln) |
 | `election-history-workbench` | Wahldaten: Problemfälle und Landeslisten | Keine (reine Regeln) |
 | `election-map` | Wahlkreiskarte: Suche und Grenzdaten | Keine (reine Regeln) |
+| `employee-protection` | Mitarbeiterschutz: Protokollsperre, Belastungsgrenzen und Vorbereitung | Keine (reine Regeln) |
 | `event-planning-lifecycle` | Event-Planung (komplett: Termine, Speaker, Checkliste, Timeline) | event_plannings, event_planning_dates, event_planning_speakers, event_planning_contacts, event_planning_checklist_items, event_planning_timeline_assignments |
 | `jour-fixe-platform-integration` | Jour Fixe: Plattformquellen & Stafetten-Abschluss | meetings, meeting_agenda_items, tasks, task_decisions |
 | `knowledge-lifecycle` | Wissen: Fragen, Antworten und manuelle Prüfung | knowledge_questions, knowledge_question_events, knowledge_qa_notification_deliveries |
@@ -36,6 +37,7 @@ Von 344 Tabellen haben 57 ein registriertes Szenario. 129 sind als Ausbau offen,
 | `poll-lifecycle` | Terminabstimmung (Gewinner-Slot übernehmen + Nachfassen) | appointment_polls, poll_time_slots, poll_participants, appointments, appointment_guests |
 | `quick-note-lifecycle` | Notizen-Lifecycle (Anlegen → Priorität → Anheften → Aufgabe → Archiv) | quick_notes, tasks, task_decisions, task_decision_participants |
 | `responsibilities` | Zuständigkeiten & Matrix | tasks |
+| `security-hardening` | Sicherheitsregeln: Porträtdateien und E-Mail-Inhalte | Keine (reine Regeln) |
 | `task-lifecycle` | Aufgaben-Lifecycle (Zuweisung → Frist → Entscheidung → Jour fixe → erledigt) | tasks, task_decisions |
 | `task-stafette-lifecycle` | Aufgaben-Stafette (Am Zug, Wiedervorlage, Freigabe) | tasks |
 | `team-rituals` | Freiwillige Team-Rituale | Keine (reine Regeln) |
@@ -276,6 +278,7 @@ Von 344 Tabellen haben 57 ein registriertes Szenario. 129 sind als Ausbau offen,
 | `notification_navigation_mapping` | Ausgenommen (nicht geprüft) | — |
 | `notification_types` | Szenario vorhanden | onboarding-hr |
 | `notifications` | Szenario vorhanden | onboarding-hr |
+| `office_debrief_state` | Ausstehend | — |
 | `parliament_protocols` | Ausstehend | — |
 | `party_associations` | Ausstehend | — |
 | `planning_item_comments` | Ausgenommen (nicht geprüft) | — |
@@ -298,10 +301,12 @@ Von 344 Tabellen haben 57 ein registriertes Szenario. 129 sind als Ausbau offen,
 | `push_subscriptions` | Ausgenommen (nicht geprüft) | — |
 | `quick_note_global_shares` | Ausstehend | — |
 | `quick_note_shares` | Ausstehend | — |
+| `quick_note_topic_mention_deliveries` | Ausgenommen (nicht geprüft) | — |
 | `quick_note_versions` | Ausgenommen (nicht geprüft) | — |
 | `quick_note_write_receipts` | Ausgenommen (nicht geprüft) | — |
 | `quick_notes` | Szenario vorhanden | quick-note-lifecycle |
 | `regions` | Ausstehend | — |
+| `rls_policy_snapshot_20261124` | Ausgenommen (nicht geprüft) | — |
 | `routine_package_runs` | Szenario vorhanden | onboarding-hr |
 | `routine_package_steps` | Szenario vorhanden | onboarding-hr |
 | `rss_cache` | Ausgenommen (nicht geprüft) | — |

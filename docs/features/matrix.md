@@ -109,12 +109,12 @@ Die Spalten zählen **zugeordnete** Prüfungen, nicht bestandene Läufe. „Erge
 | `contacts.distribution-lists` | kontakte | fachlich | implementiert | UI | kein Test | nicht-ausgefuehrt | 0 | 0 | 0 | 0 | nein |
 | `employees.export-stats` | mitarbeit | fachlich | implementiert | UI | kein Test | nicht-ausgefuehrt | 0 | 0 | 0 | 0 | nein |
 | `employees.requests` | mitarbeit | fachlich | implementiert | rollenabhängig | kein Test | nicht-ausgefuehrt | 0 | 0 | 0 | 0 | nein |
-| `employees.protocol` | mitarbeit | fachlich | implementiert | rollenabhängig | kein Test | nicht-ausgefuehrt | 0 | 0 | 0 | 0 | ja |
-| `employees.preparation` | mitarbeit | automatisiert | implementiert | systemseitig | kein Test | nicht-ausgefuehrt | 0 | 0 | 0 | 0 | ja |
-| `employees.action-tasks` | mitarbeit | fachlich | implementiert | systemseitig | kein Test | nicht-ausgefuehrt | 0 | 0 | 0 | 0 | nein |
+| `employees.protocol` | mitarbeit | fachlich | implementiert | rollenabhängig | Selbsttest | nicht-ausgefuehrt | 1 | 0 | 0 | 0 | ja |
+| `employees.preparation` | mitarbeit | automatisiert | implementiert | systemseitig | Selbsttest | nicht-ausgefuehrt | 1 | 0 | 0 | 0 | ja |
+| `employees.action-tasks` | mitarbeit | fachlich | implementiert | systemseitig | Selbsttest | nicht-ausgefuehrt | 1 | 0 | 0 | 0 | nein |
 | `employees.meetings` | mitarbeit | fachlich | implementiert | rollenabhängig | kein Test | nicht-ausgefuehrt | 0 | 0 | 0 | 0 | ja |
-| `employees.review` | mitarbeit | fachlich | implementiert | UI | kein Test | nicht-ausgefuehrt | 0 | 0 | 0 | 0 | nein |
-| `employees.wellbeing` | mitarbeit | sicherheit | implementiert | rollenabhängig | kein Test | nicht-ausgefuehrt | 0 | 0 | 0 | 0 | nein |
+| `employees.review` | mitarbeit | fachlich | implementiert | UI | Selbsttest | nicht-ausgefuehrt | 1 | 0 | 0 | 0 | nein |
+| `employees.wellbeing` | mitarbeit | sicherheit | implementiert | rollenabhängig | Selbsttest | nicht-ausgefuehrt | 1 | 0 | 0 | 0 | nein |
 | `hr.templates` | mitarbeit | administrativ | implementiert | rollenabhängig | Unit-Test | unbekannt | 0 | 2 | 0 | 0 | nein |
 | `hr.offboarding` | mitarbeit | fachlich | implementiert | systemseitig | Selbsttest | nicht-ausgefuehrt | 1 | 0 | 0 | 0 | nein |
 | `hr.onboarding` | mitarbeit | fachlich | implementiert | rollenabhängig | Selbsttest | nicht-ausgefuehrt | 1 | 2 | 0 | 0 | ja |
@@ -148,7 +148,7 @@ Die Spalten zählen **zugeordnete** Prüfungen, nicht bestandene Läufe. „Erge
 | `integration.push` | schnittstellen | integration | implementiert | systemseitig | kein Test | nicht-ausgefuehrt | 0 | 0 | 0 | 0 | ja |
 | `integration.edge-contract-tests` | schnittstellen | sicherheit | implementiert | nicht anwendbar | Security-Test | unbekannt | 0 | 1 | 0 | 0 | ja |
 | `integration.egress-monitoring` | schnittstellen | sicherheit | implementiert | systemseitig | kein Test | nicht-ausgefuehrt | 0 | 0 | 0 | 0 | ja |
-| `integration.email` | schnittstellen | integration | implementiert | systemseitig | kein Test | nicht-ausgefuehrt | 0 | 0 | 0 | 0 | nein |
+| `integration.email` | schnittstellen | integration | implementiert | systemseitig | Selbsttest | nicht-ausgefuehrt | 1 | 0 | 0 | 0 | nein |
 | `integration.geocoding` | schnittstellen | integration | implementiert | systemseitig | kein Test | nicht-ausgefuehrt | 0 | 0 | 0 | 0 | nein |
 | `integration.calendar-sync` | schnittstellen | integration | implementiert | rollenabhängig | kein Test | nicht-ausgefuehrt | 0 | 0 | 0 | 0 | ja |
 | `integration.ics` | schnittstellen | integration | implementiert | rollenabhängig | Unit-Test | unbekannt | 0 | 1 | 0 | 0 | ja |
@@ -232,7 +232,7 @@ Die Spalten zählen **zugeordnete** Prüfungen, nicht bestandene Läufe. „Erge
 | `election.turnout` | wahl | fachlich | implementiert | UI | kein Test | nicht-ausgefuehrt | 0 | 0 | 0 | 0 | nein |
 | `election.history.audit` | wahl | sicherheit | implementiert | rollenabhängig | kein Test | nicht-ausgefuehrt | 0 | 0 | 0 | 0 | nein |
 | `election.history.quality` | wahl | fachlich | implementiert | rollenabhängig | Selbsttest | nicht-ausgefuehrt | 1 | 0 | 0 | 0 | nein |
-| `election.history.portraits` | wahl | integration | implementiert | rollenabhängig | kein Test | nicht-ausgefuehrt | 0 | 0 | 0 | 0 | ja |
+| `election.history.portraits` | wahl | integration | implementiert | rollenabhängig | Selbsttest | nicht-ausgefuehrt | 1 | 0 | 0 | 0 | ja |
 | `election.history.assembly` | wahl | automatisiert | implementiert | systemseitig | kein Test | nicht-ausgefuehrt | 0 | 0 | 0 | 0 | nein |
 | `election.history.factions` | wahl | fachlich | implementiert | rollenabhängig | kein Test | nicht-ausgefuehrt | 0 | 0 | 0 | 0 | nein |
 | `election.history.mandates` | wahl | fachlich | implementiert | rollenabhängig | Selbsttest | nicht-ausgefuehrt | 1 | 0 | 0 | 0 | nein |
