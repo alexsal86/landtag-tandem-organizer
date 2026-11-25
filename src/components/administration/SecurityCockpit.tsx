@@ -19,6 +19,7 @@ import { format, parseISO } from "date-fns";
 import { de } from "date-fns/locale";
 import { useState } from "react";
 import { notify } from "@/lib/notify";
+import { SystemPulse } from "@/features/system-pulse/SystemPulse";
 import { featureCatalogHref, featuresForTable } from "@/features/feature-catalog/securityLinks";
 
 type Gap = {
@@ -129,6 +130,7 @@ export function SecurityCockpit(): JSX.Element {
 
   return (
     <div className="space-y-6">
+      <SystemPulse gaps={gapsQuery.data ?? []} />
       <header className="flex items-start justify-between gap-3">
         <div>
           <h2 className="text-h2 font-semibold flex items-center gap-2">
