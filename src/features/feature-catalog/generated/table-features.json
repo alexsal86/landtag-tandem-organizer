@@ -1690,6 +1690,11 @@
       "area": "mitarbeit"
     },
     {
+      "id": "employees.meetings",
+      "name": "Mitarbeitergespräch planen und führen",
+      "area": "mitarbeit"
+    },
+    {
       "id": "employees.review",
       "name": "Vorgesprächs-Review",
       "area": "mitarbeit"
@@ -1697,12 +1702,22 @@
   ],
   "employee_meeting_audit": [
     {
+      "id": "employees.meetings",
+      "name": "Mitarbeitergespräch planen und führen",
+      "area": "mitarbeit"
+    },
+    {
       "id": "employees.protocol",
       "name": "Gesprächsprotokoll freigeben und sperren",
       "area": "mitarbeit"
     }
   ],
   "employee_meeting_private_notes": [
+    {
+      "id": "employees.meetings",
+      "name": "Mitarbeitergespräch planen und führen",
+      "area": "mitarbeit"
+    },
     {
       "id": "employees.protocol",
       "name": "Gesprächsprotokoll freigeben und sperren",

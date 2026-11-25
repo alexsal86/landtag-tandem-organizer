@@ -16,16 +16,16 @@ Der Katalog ist das führende Verzeichnis des tatsächlich implementierten Funkt
 | Deaktiviert | 0 |
 | Potenziell verwaist | 0 |
 | Prüfkandidaten (offene Punkte) | 50 |
-| Funktionen mit Selbsttest | 73 |
+| Funktionen mit Selbsttest | 74 |
 | Funktionen mit Unit-Test | 56 |
 | Funktionen mit Integrationstest | 1 |
 | Funktionen mit Browser-Test | 4 |
 | Funktionen mit Security-Test | 1 |
-| Funktionen ohne zugeordneten Test | 143 |
+| Funktionen ohne zugeordneten Test | 142 |
 | Funktionen ohne Dokumentationsverweis | 163 |
-| Funktionen mit bekannten Einschränkungen | 27 |
+| Funktionen mit bekannten Einschränkungen | 30 |
 | Nicht nachweisbar eingebundene Funktionen | 1 |
-| Technische Zuordnungen | 1230 |
+| Technische Zuordnungen | 1232 |
 
 ## Funktionsbereiche
 
@@ -40,7 +40,7 @@ Der Katalog ist das führende Verzeichnis des tatsächlich implementierten Funkt
 | [Jour fixe, Dossiers & Themen](./organisation.md) | 5 | 18 | 17 | 13 | 15 |
 | [Kontakte & Netzwerk](./kontakte.md) | 9 | 14 | 14 | 11 | 10 |
 | [Meine Arbeit & Benachrichtigungen](./arbeitsbereich.md) | 7 | 13 | 12 | 8 | 8 |
-| [Mitarbeit, Personal & Zeit](./mitarbeit.md) | 5 | 20 | 20 | 5 | 14 |
+| [Mitarbeit, Personal & Zeit](./mitarbeit.md) | 5 | 20 | 20 | 4 | 14 |
 | [Redaktion, News & Chat](./kommunikation.md) | 5 | 14 | 14 | 14 | 10 |
 | [Termine, Anfragen & Briefings](./termine.md) | 8 | 17 | 17 | 8 | 11 |
 | [Veranstaltungen & Umfragen](./veranstaltungen.md) | 3 | 9 | 8 | 3 | 6 |
@@ -87,13 +87,13 @@ Der Katalog ist das führende Verzeichnis des tatsächlich implementierten Funkt
 
 | Abdeckung | Funktionen |
 |---|---:|
-| Selbsttest | 72 |
+| Selbsttest | 73 |
 | Unit-Test | 37 |
 | Integrationstest | 1 |
 | Browser-Test | 0 |
 | Security-Test | 1 |
 | teilweise | 0 |
-| kein Test | 143 |
+| kein Test | 142 |
 | ungeprüft | 0 |
 
 ## Konsistenz

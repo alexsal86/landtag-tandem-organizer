@@ -8,7 +8,7 @@ _Auto-generiert mit `npm run update:feature-catalog` aus dem zentralen Funktions
 
 - Funktionen: **20** in **5** Unterbereichen
 - implementiert: **20**, teilweise: **0**, deaktiviert: **0**, potenziell verwaist: **0**
-- ohne zugeordneten Test: **5**
+- ohne zugeordneten Test: **4**
 - ohne Dokumentationsverweis: **14**
 
 ## Funktionen
@@ -20,7 +20,7 @@ _Auto-generiert mit `npm run update:feature-catalog` aus dem zentralen Funktions
 | `employees.protocol` Gesprächsprotokoll freigeben und sperren | Mitarbeitergespräche | fachlich | implementiert | rollenabhängig | Selbsttest |
 | `employees.preparation` Gesprächsvorbereitung und Erinnerungen | Mitarbeitergespräche | automatisiert | implementiert | systemseitig | Selbsttest |
 | `employees.action-tasks` Maßnahmen als Aufgaben | Mitarbeitergespräche | fachlich | implementiert | systemseitig | Selbsttest |
-| `employees.meetings` Mitarbeitergespräch planen und führen | Mitarbeitergespräche | fachlich | implementiert | rollenabhängig | kein Test |
+| `employees.meetings` Mitarbeitergespräch planen und führen | Mitarbeitergespräche | fachlich | implementiert | rollenabhängig | Selbsttest |
 | `employees.review` Vorgesprächs-Review | Mitarbeitergespräche | fachlich | implementiert | UI | Selbsttest |
 | `employees.wellbeing` Wohlbefinden und Trends | Mitarbeitergespräche | sicherheit | implementiert | rollenabhängig | Selbsttest |
 | `hr.templates` HR-Vorlagen und DSGVO-Erklärung | Onboarding & Offboarding | administrativ | implementiert | rollenabhängig | Unit-Test |
@@ -56,6 +56,7 @@ _Auto-generiert mit `npm run update:feature-catalog` aus dem zentralen Funktions
 
 | Szenario | Titel | deklarierte Tabellen | deklarierte Prüfungen |
 |---|---|---:|---:|
+| `employee-meetings` | Mitarbeitergespräche (Anfrage → Termin → Vorbereitung → Freigabe/Sperre) | 5 | 7 |
 | `employee-protection` | Mitarbeiterschutz: Protokollsperre, Belastungsgrenzen und Vorbereitung | 0 | 6 |
 | `onboarding-hr` | HR-Onboarding und Offboarding | 11 | 0 |
 | `responsibilities` | Zuständigkeiten & Matrix | 1 | 0 |
@@ -64,12 +65,12 @@ _Auto-generiert mit `npm run update:feature-catalog` aus dem zentralen Funktions
 ## Funktionsdetails
 
 ### `employees.meetings` — Mitarbeitergespräch planen und führen
-Plant Gespräche, verwaltet Anfragen und führt das Gespräch mit Protokoll, Maßnahmen und Vertraulichkeitsstufen.
+Plant Gespräche, verwaltet Anfragen und führt das Gespräch mit Protokoll, Maßnahmen und Vertraulichkeitsstufen; der Selbsttest prüft Anfrage, Termin, Vorbereitungsfenster, private Notizen, die Freigabesperre und den positiven Freigabepfad (vollständig zurückgerollt) mit echten Datensätzen.
 
 - **Kategorie:** fachlich
 - **Implementierung:** implementiert
 - **Einbindung:** rollenabhängig
-- **Testabdeckung:** kein Test
+- **Testabdeckung:** Selbsttest
 - **Letztes Testergebnis:** nicht-ausgefuehrt (nicht aus der Existenz einer Testdatei abgeleitet)
 - **Rollen:** `abgeordneter`, `bueroleitung`, `mitarbeiter`
 - **Routen:** `/employee`, `/employee-meeting/:id`
@@ -77,10 +78,10 @@ Plant Gespräche, verwaltet Anfragen und führt das Gespräch mit Protokoll, Ma�
 - **Services:** —
 - **Hooks:** —
 - **Edge Functions:** —
-- **Datenbankfunktionen:** `save_employee_meeting`, `require_employee_meeting_access`, `guard_employee_protocol`, `delete_employee_meeting`
-- **Tabellen:** `employee_meetings`, `employee_meeting_requests`, `employee_settings`
+- **Datenbankfunktionen:** `save_employee_meeting`, `mutate_employee_meeting_action`, `require_employee_meeting_access`, `guard_employee_protocol`, `delete_employee_meeting`
+- **Tabellen:** `employee_meetings`, `employee_meeting_requests`, `employee_meeting_private_notes`, `employee_meeting_action_items`, `employee_meeting_audit`, `employee_settings`
 - **Abhängigkeiten:** —
-- **Selbsttests:** —
+- **Selbsttests:** `employee-meetings`
 - **Unit-Tests:** —
 - **Integrationstests:** —
 - **Browser-Tests:** —
@@ -90,17 +91,18 @@ Plant Gespräche, verwaltet Anfragen und führt das Gespräch mit Protokoll, Ma�
 
 - src/features/employees/components/EmployeesView.tsx
 - src/features/employees/components/EmployeeMeetingScheduler.tsx
+- src/features/selftest/scenarios/employee-meetings.ts
 
 **Bekannte Einschränkungen**
 
-- Keine.
+- Freigabe, Bestätigung, Wiedereröffnung und Einspruch prüft nur `selftest_employee_protocol`: Der Aufruf führt die echten RPCs aus und rollt alle Schreibzugriffe zurück, weil `guard_employee_protocol` ein Gespräch mit Auditzeilen absichtlich unlöschbar macht. Ein dauerhaft freigegebenes Gespräch hinterlässt der Selbsttest deshalb nicht.
 
 **Offene Prüfpunkte**
 
-- Für Mitarbeitergespräche existiert kein registriertes Selbsttest-Szenario.
+- Das Szenario führt Mitarbeitende Person und Gesprächsleitung im selben Konto; die Rollentrennung deckt access-boundaries ab.
 
 ### `employees.protocol` — Gesprächsprotokoll freigeben und sperren
-Führt Protokolle durch Freigabe, Widerspruch und Wiedereröffnung, schützt eingefrorene Inhalte und speichert private Notizen je Nutzer.
+Führt Protokolle durch Freigabe, Widerspruch und Wiedereröffnung, schützt eingefrorene Inhalte und speichert private Notizen je Nutzer; der Selbsttest führt den positiven Pfad über die echten RPCs in einer zurückgerollten Untertransaktion aus.
 
 - **Kategorie:** fachlich
 - **Implementierung:** implementiert
@@ -113,10 +115,10 @@ Führt Protokolle durch Freigabe, Widerspruch und Wiedereröffnung, schützt ein
 - **Services:** `src/features/employees/protocolWorkflow.ts`, `src/features/employees/protocolText.ts`
 - **Hooks:** —
 - **Edge Functions:** —
-- **Datenbankfunktionen:** `mutate_employee_meeting_action`, `request_protocol_acknowledgement`, `acknowledge_meeting_protocol`, `reopen_meeting_protocol`, `employee_protocol_hash`
+- **Datenbankfunktionen:** `mutate_employee_meeting_action`, `request_protocol_acknowledgement`, `acknowledge_meeting_protocol`, `reopen_meeting_protocol`, `employee_protocol_hash`, `selftest_employee_protocol`
 - **Tabellen:** `employee_meetings`, `employee_meeting_audit`, `employee_meeting_private_notes`
 - **Abhängigkeiten:** `employees.meetings`
-- **Selbsttests:** `employee-protection`
+- **Selbsttests:** `employee-protection`, `employee-meetings`
 - **Unit-Tests:** —
 - **Integrationstests:** —
 - **Browser-Tests:** —
@@ -126,14 +128,15 @@ Führt Protokolle durch Freigabe, Widerspruch und Wiedereröffnung, schützt ein
 
 - src/features/employees/protocolWorkflow.ts
 - src/features/employees/components/EmployeeMeetingProtocol.tsx
+- src/features/selftest/scenarios/employee-meetings.ts
 
 **Bekannte Einschränkungen**
 
-- Keine.
+- Ein dauerhaft freigegebenes Gespräch bleibt absichtlich unlöschbar; `selftest_employee_protocol` prüft den positiven Pfad deshalb nur mit vollständigem Rollback. Nicht geprüft: die Zustellung der Freigabe-Benachrichtigung und Wirkungen nach dem Aufräumen.
 
 **Offene Prüfpunkte**
 
-- Protokollfreigabe ist eine sensible Regel ohne zugeordneten Test.
+- Freigabe und Bestätigung sind nur im zurückgerollten Prüfpfad ausgeführt; einen persistenten Freigabelauf gibt es im Selbsttest bewusst nicht.
 
 ### `employees.action-tasks` — Maßnahmen als Aufgaben
 Erzeugt nach unbestrittener Protokollabnahme genau eine Aufgabe mit Ball bei der Mitarbeiterschaft und synchronisiert den Abschluss in beide Richtungen.
@@ -152,7 +155,7 @@ Erzeugt nach unbestrittener Protokollabnahme genau eine Aufgabe mit Ball bei der
 - **Datenbankfunktionen:** `create_meeting_action_task`, `sync_employee_action_task_status`, `guard_employee_action_content`
 - **Tabellen:** `employee_meeting_action_items`, `tasks`
 - **Abhängigkeiten:** `tasks.create`, `employees.protocol`, `employees.meetings`
-- **Selbsttests:** `employee-protection`
+- **Selbsttests:** `employee-protection`, `employee-meetings`
 - **Unit-Tests:** —
 - **Integrationstests:** —
 - **Browser-Tests:** —
@@ -164,7 +167,7 @@ Erzeugt nach unbestrittener Protokollabnahme genau eine Aufgabe mit Ball bei der
 
 **Bekannte Einschränkungen**
 
-- Keine.
+- Die Aufgabe entsteht im Selbsttest nur innerhalb des zurückgerollten Freigabepfads; ein persistierter Aufgabenlauf wird nicht erzeugt.
 
 **Offene Prüfpunkte**
 

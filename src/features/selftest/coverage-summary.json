@@ -3,8 +3,8 @@
   "source": "src/integrations/supabase/types.ts",
   "counts": {
     "total": 347,
-    "scenario": 57,
-    "deferred": 130,
+    "scenario": 62,
+    "deferred": 125,
     "excluded": 160,
     "missing": 0
   },
@@ -478,6 +478,73 @@
         "election-districts"
       ],
       "writes": [],
+      "registered": true
+    },
+    {
+      "id": "employee-meetings",
+      "title": "Mitarbeitergespräche (Anfrage → Termin → Vorbereitung → Freigabe/Sperre)",
+      "touches": [
+        "employee_meeting_requests",
+        "employee_meetings",
+        "employee_meeting_private_notes",
+        "employee_meeting_action_items",
+        "employee_meeting_audit"
+      ],
+      "features": [
+        "employees"
+      ],
+      "writes": [
+        {
+          "table": "employee_meeting_requests",
+          "columns": [
+            "employee_id",
+            "tenant_id",
+            "reason",
+            "urgency",
+            "status"
+          ]
+        },
+        {
+          "table": "employee_meetings",
+          "columns": [
+            "employee_id",
+            "conducted_by",
+            "tenant_id",
+            "meeting_date",
+            "meeting_type",
+            "status",
+            "employee_preparation"
+          ]
+        },
+        {
+          "table": "employee_meeting_private_notes",
+          "columns": [
+            "meeting_id",
+            "user_id",
+            "notes"
+          ]
+        },
+        {
+          "table": "employee_meeting_action_items",
+          "columns": [
+            "meeting_id",
+            "tenant_id",
+            "description",
+            "owner",
+            "assigned_to"
+          ]
+        },
+        {
+          "table": "employee_meeting_audit",
+          "columns": [
+            "meeting_id",
+            "actor",
+            "action",
+            "reason",
+            "protocol_hash"
+          ]
+        }
+      ],
       "registered": true
     },
     {
@@ -1825,28 +1892,38 @@
     },
     {
       "table": "employee_meeting_action_items",
-      "status": "deferred",
-      "scenarios": []
+      "status": "scenario",
+      "scenarios": [
+        "employee-meetings"
+      ]
     },
     {
       "table": "employee_meeting_audit",
-      "status": "deferred",
-      "scenarios": []
+      "status": "scenario",
+      "scenarios": [
+        "employee-meetings"
+      ]
     },
     {
       "table": "employee_meeting_private_notes",
-      "status": "deferred",
-      "scenarios": []
+      "status": "scenario",
+      "scenarios": [
+        "employee-meetings"
+      ]
     },
     {
       "table": "employee_meeting_requests",
-      "status": "deferred",
-      "scenarios": []
+      "status": "scenario",
+      "scenarios": [
+        "employee-meetings"
+      ]
     },
     {
       "table": "employee_meetings",
-      "status": "deferred",
-      "scenarios": []
+      "status": "scenario",
+      "scenarios": [
+        "employee-meetings"
+      ]
     },
     {
       "table": "employee_responsibilities",

@@ -9,15 +9,17 @@
       "id": "employees.meetings",
       "subarea": "Mitarbeitergespräche",
       "name": "Mitarbeitergespräch planen und führen",
-      "description": "Plant Gespräche, verwaltet Anfragen und führt das Gespräch mit Protokoll, Maßnahmen und Vertraulichkeitsstufen.",
+      "description": "Plant Gespräche, verwaltet Anfragen und führt das Gespräch mit Protokoll, Maßnahmen und Vertraulichkeitsstufen; der Selbsttest prüft Anfrage, Termin, Vorbereitungsfenster, private Notizen, die Freigabesperre und den positiven Freigabepfad (vollständig zurückgerollt) mit echten Datensätzen.",
       "category": "fachlich",
       "implementationStatus": "implementiert",
       "integrationStatus": "rollenabhaengig",
-      "coverage": "keine",
+      "coverage": "selftest",
+      "scenarios": ["employee-meetings"],
       "testResult": "nicht-ausgefuehrt",
       "evidence": [
         "src/features/employees/components/EmployeesView.tsx",
-        "src/features/employees/components/EmployeeMeetingScheduler.tsx"
+        "src/features/employees/components/EmployeeMeetingScheduler.tsx",
+        "src/features/selftest/scenarios/employee-meetings.ts"
       ],
       "routes": [
         "/employee",
@@ -30,6 +32,7 @@
       ],
       "rpcs": [
         "save_employee_meeting",
+        "mutate_employee_meeting_action",
         "require_employee_meeting_access",
         "guard_employee_protocol",
         "delete_employee_meeting"
@@ -37,6 +40,9 @@
       "tables": [
         "employee_meetings",
         "employee_meeting_requests",
+        "employee_meeting_private_notes",
+        "employee_meeting_action_items",
+        "employee_meeting_audit",
         "employee_settings"
       ],
       "roles": [
@@ -47,24 +53,28 @@
       "docs": [
         "docs/employee-meeting-leadership.md"
       ],
+      "limitations": [
+        "Freigabe, Bestätigung, Wiedereröffnung und Einspruch prüft nur `selftest_employee_protocol`: Der Aufruf führt die echten RPCs aus und rollt alle Schreibzugriffe zurück, weil `guard_employee_protocol` ein Gespräch mit Auditzeilen absichtlich unlöschbar macht. Ein dauerhaft freigegebenes Gespräch hinterlässt der Selbsttest deshalb nicht."
+      ],
       "reviewPoints": [
-        "Für Mitarbeitergespräche existiert kein registriertes Selbsttest-Szenario."
+        "Das Szenario führt Mitarbeitende Person und Gesprächsleitung im selben Konto; die Rollentrennung deckt access-boundaries ab."
       ]
     },
     {
       "id": "employees.protocol",
       "subarea": "Mitarbeitergespräche",
       "name": "Gesprächsprotokoll freigeben und sperren",
-      "description": "Führt Protokolle durch Freigabe, Widerspruch und Wiedereröffnung, schützt eingefrorene Inhalte und speichert private Notizen je Nutzer.",
+      "description": "Führt Protokolle durch Freigabe, Widerspruch und Wiedereröffnung, schützt eingefrorene Inhalte und speichert private Notizen je Nutzer; der Selbsttest führt den positiven Pfad über die echten RPCs in einer zurückgerollten Untertransaktion aus.",
       "category": "fachlich",
       "implementationStatus": "implementiert",
       "integrationStatus": "rollenabhaengig",
       "coverage": "selftest",
-      "scenarios": ["employee-protection"],
+      "scenarios": ["employee-protection", "employee-meetings"],
       "testResult": "nicht-ausgefuehrt",
       "evidence": [
         "src/features/employees/protocolWorkflow.ts",
-        "src/features/employees/components/EmployeeMeetingProtocol.tsx"
+        "src/features/employees/components/EmployeeMeetingProtocol.tsx",
+        "src/features/selftest/scenarios/employee-meetings.ts"
       ],
       "components": [
         "src/features/employees/components/EmployeeMeetingProtocol.tsx"
@@ -78,7 +88,8 @@
         "request_protocol_acknowledgement",
         "acknowledge_meeting_protocol",
         "reopen_meeting_protocol",
-        "employee_protocol_hash"
+        "employee_protocol_hash",
+        "selftest_employee_protocol"
       ],
       "tables": [
         "employee_meetings",
@@ -93,8 +104,11 @@
       "docs": [
         "docs/employee-meeting-leadership.md"
       ],
+      "limitations": [
+        "Ein dauerhaft freigegebenes Gespräch bleibt absichtlich unlöschbar; `selftest_employee_protocol` prüft den positiven Pfad deshalb nur mit vollständigem Rollback. Nicht geprüft: die Zustellung der Freigabe-Benachrichtigung und Wirkungen nach dem Aufräumen."
+      ],
       "reviewPoints": [
-        "Protokollfreigabe ist eine sensible Regel ohne zugeordneten Test."
+        "Freigabe und Bestätigung sind nur im zurückgerollten Prüfpfad ausgeführt; einen persistenten Freigabelauf gibt es im Selbsttest bewusst nicht."
       ],
       "dependsOn": ["employees.meetings"]
     },
@@ -107,8 +121,11 @@
       "implementationStatus": "implementiert",
       "integrationStatus": "system",
       "coverage": "selftest",
-      "scenarios": ["employee-protection"],
+      "scenarios": ["employee-protection", "employee-meetings"],
       "testResult": "nicht-ausgefuehrt",
+      "limitations": [
+        "Die Aufgabe entsteht im Selbsttest nur innerhalb des zurückgerollten Freigabepfads; ein persistierter Aufgabenlauf wird nicht erzeugt."
+      ],
       "evidence": [
         "src/features/employees/actionTasks.ts"
       ],

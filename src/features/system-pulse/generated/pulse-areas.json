@@ -1674,15 +1674,77 @@
       ],
       "scenarioIds": [],
       "scenarios": [
+        "employee-meetings",
         "employee-protection",
         "onboarding-hr",
         "responsibilities"
       ],
       "tables": [
         "employee_lifecycle",
+        "employee_meeting_requests",
         "tasks"
       ],
       "workflows": [
+        {
+          "scenario": "employee-meetings",
+          "title": "Mitarbeitergespräche (Anfrage → Termin → Vorbereitung → Freigabe/Sperre)",
+          "description": "Legt eine Gesprächsanfrage und zwei echte Termine an, prüft das Sieben-Tage-Fenster der Vorbereitung, private Notizen je Nutzer, eine Maßnahme, die Sperren der Protokollfreigabe und den positiven Freigabepfad in einem zurückgerollten Prüfpfad.",
+          "checks": [
+            "Anfrage und Termin werden als echte Datensätze angelegt und zurückgelesen",
+            "Vorbereitung wird vor dem Sieben-Tage-Fenster mit 55000 abgewiesen und innerhalb des Fensters gespeichert",
+            "Private Notizen liegen in employee_meeting_private_notes und nicht in den geteilten Vorbereitungsfeldern",
+            "Maßnahme wird über mutate_employee_meeting_action angelegt und zurückgelesen",
+            "Direkte Statusänderung ist gesperrt; Freigabe, Bestätigung und Wiedereröffnung werden vor Abschluss mit 22023 abgewiesen",
+            "Ein veralteter Autosave-Stand wird mit 40001 abgewiesen",
+            "Abschluss, Freigabe, Bestätigung, Wiedereröffnung und Einspruch laufen im positiven Pfad über die echten RPCs und werden vollständig zurückgerollt: Status, Auditzeilen, Maßnahmen-Aufgabe, Benachrichtigungen und der letzte Gesprächstermin bleiben unverändert"
+          ],
+          "tables": [
+            "employee_meeting_requests",
+            "employee_meetings",
+            "employee_meeting_private_notes",
+            "employee_meeting_action_items",
+            "employee_meeting_audit"
+          ],
+          "features": [
+            "employees.action-tasks",
+            "employees.meetings",
+            "employees.protocol"
+          ],
+          "steps": [
+            {
+              "id": "preparation-and-lock-rule",
+              "label": "Reine Regel: Sieben-Tage-Fenster und Protokollsperre"
+            },
+            {
+              "id": "create-request",
+              "label": "Gesprächsanfrage anlegen und zurücklesen"
+            },
+            {
+              "id": "create-meetings",
+              "label": "Zwei Termine anlegen (außerhalb und innerhalb des Vorbereitungsfensters)"
+            },
+            {
+              "id": "preparation-window",
+              "label": "Vorbereitung: außerhalb gesperrt, innerhalb speicherbar"
+            },
+            {
+              "id": "private-notes",
+              "label": "Private Notizen getrennt von den geteilten Vorbereitungsfeldern speichern"
+            },
+            {
+              "id": "action-item",
+              "label": "Maßnahme über die RPC anlegen und zurücklesen"
+            },
+            {
+              "id": "release-guard",
+              "label": "Freigabe nur über den Workflow: direkte und vorzeitige Wechsel sind gesperrt"
+            },
+            {
+              "id": "release-workflow",
+              "label": "Positiver Pfad: Abschluss, Freigabe, Bestätigung, Wiedereröffnung und Einspruch"
+            }
+          ]
+        },
         {
           "scenario": "employee-protection",
           "title": "Mitarbeiterschutz: Protokollsperre, Belastungsgrenzen und Vorbereitung",

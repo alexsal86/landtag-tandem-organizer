@@ -11,7 +11,7 @@ Eindeutige Fehler werden im CI-Lauf ausgegeben und brechen die Prüfung ab; sie 
 - Review-Hinweise: **0**
 - Nicht zugeordnete Objekte: **1**, davon ohne Ausnahme: **0**
 
-## Funktionen ohne zugeordneten Test (143)
+## Funktionen ohne zugeordneten Test (142)
 
 - `mywork.tabs` — Meine Arbeit – Bereichsnavigation und Einstellungen
 - `mywork.quick-access` — Schnellzugriff und zuletzt besuchte Seiten
@@ -78,7 +78,6 @@ Eindeutige Fehler werden im CI-Lauf ausgegeben und brechen die Prüfung ab; sie 
 - `contacts.activities` — Kontaktaktivitäten und Anrufe
 - `contacts.briefing-memory` — Briefingwissen je Kontakt
 - `contacts.fundings` — Finanzierungen und Beteiligungen
-- `employees.meetings` — Mitarbeitergespräch planen und führen
 - `employees.requests` — Gesprächsanfragen der Mitarbeitenden
 - `employees.export-stats` — Gesprächs-PDF und Jahresstatistik
 - `timetracking.entries` — Arbeitszeit erfassen
@@ -336,7 +335,7 @@ Eindeutige Fehler werden im CI-Lauf ausgegeben und brechen die Prüfung ab; sie 
 - `events.legacy-rsvp` — Legacy-Einladungslinks (veraltet)
 - `cases.legacy-routes` — Legacy-Vorgangsrouten (veraltet)
 
-## Funktionen mit Einschränkungen oder offenen Punkten (64)
+## Funktionen mit Einschränkungen oder offenen Punkten (65)
 
 ### `mywork.dashboard`
 
@@ -459,11 +458,17 @@ Eindeutige Fehler werden im CI-Lauf ausgegeben und brechen die Prüfung ab; sie 
 
 ### `employees.meetings`
 
-- Für Mitarbeitergespräche existiert kein registriertes Selbsttest-Szenario.
+- Freigabe, Bestätigung, Wiedereröffnung und Einspruch prüft nur `selftest_employee_protocol`: Der Aufruf führt die echten RPCs aus und rollt alle Schreibzugriffe zurück, weil `guard_employee_protocol` ein Gespräch mit Auditzeilen absichtlich unlöschbar macht. Ein dauerhaft freigegebenes Gespräch hinterlässt der Selbsttest deshalb nicht.
+- Das Szenario führt Mitarbeitende Person und Gesprächsleitung im selben Konto; die Rollentrennung deckt access-boundaries ab.
 
 ### `employees.protocol`
 
-- Protokollfreigabe ist eine sensible Regel ohne zugeordneten Test.
+- Ein dauerhaft freigegebenes Gespräch bleibt absichtlich unlöschbar; `selftest_employee_protocol` prüft den positiven Pfad deshalb nur mit vollständigem Rollback. Nicht geprüft: die Zustellung der Freigabe-Benachrichtigung und Wirkungen nach dem Aufräumen.
+- Freigabe und Bestätigung sind nur im zurückgerollten Prüfpfad ausgeführt; einen persistenten Freigabelauf gibt es im Selbsttest bewusst nicht.
+
+### `employees.action-tasks`
+
+- Die Aufgabe entsteht im Selbsttest nur innerhalb des zurückgerollten Freigabepfads; ein persistierter Aufgabenlauf wird nicht erzeugt.
 
 ### `employees.preparation`
 

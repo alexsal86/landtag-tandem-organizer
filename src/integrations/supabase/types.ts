@@ -20027,6 +20027,10 @@ export type Database = {
         Returns: undefined
       }
       selftest_employee_hr: { Args: { p_tenant: string }; Returns: Json }
+      selftest_employee_protocol: {
+        Args: { p_meeting_id: string }
+        Returns: Json
+      }
       send_message: {
         Args: {
           author_id_param: string

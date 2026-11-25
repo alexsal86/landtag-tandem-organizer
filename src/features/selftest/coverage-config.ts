@@ -193,9 +193,6 @@ export const IGNORED_TABLES: string[] = [
 
 /** Bekannte Lücken. Diese Tabellen zählen ausdrücklich NICHT als getestet. */
 export const DEFERRED_TABLES: string[] = [
-  // Explicit task instruction: no new tests for the employee leadership rollout.
-  "employee_meeting_audit",
-  "employee_meeting_private_notes",
   // Knowledge 11–14 use only the requested targeted acceptance suite, not new live selftest scenarios.
   "knowledge_tags", "knowledge_question_tags", "knowledge_question_sources",
   "knowledge_question_comments", "knowledge_question_followers", "knowledge_question_outdated_reports",
@@ -279,9 +276,6 @@ export const DEFERRED_TABLES: string[] = [
   "call_logs",
   "case_files",
   "case_item_attachments",
-  "employee_meeting_action_items",
-  "employee_meeting_requests",
-  "employee_meetings",
   "event_plannings",
 
   // Büro-Nachbereitung (Debrief): eigenes Szenario steht noch aus.

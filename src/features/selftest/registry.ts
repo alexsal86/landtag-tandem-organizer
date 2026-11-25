@@ -4,6 +4,7 @@ import { electionAnalysisScenario } from './scenarios/election-analysis';
 import { electionMapScenario } from './scenarios/election-map';
 import { onboardingHrScenario } from "./scenarios/onboarding-hr";
 import { employeeProtectionScenario } from "./scenarios/employee-protection";
+import { employeeMeetingsScenario } from "./scenarios/employee-meetings";
 import { securityHardeningScenario } from "./scenarios/security-hardening";
 import { teamRitualsScenario } from './scenarios/team-rituals';
 import { responsibilitiesScenario } from "./scenarios/responsibilities";
@@ -35,6 +36,7 @@ import { jourFixePlatformIntegrationScenario } from './scenarios/jour-fixe-platf
 export const SELFTEST_SCENARIOS: TestScenario[] = [
   onboardingHrScenario,
   employeeProtectionScenario,
+  employeeMeetingsScenario,
   teamRitualsScenario,
   responsibilitiesScenario,
   documentListScenario,

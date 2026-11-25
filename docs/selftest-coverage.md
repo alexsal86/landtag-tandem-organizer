@@ -4,7 +4,7 @@ _Auto-generiert mit `npm run update:selftest-coverage`._
 
 Quelle: `src/integrations/supabase/types.ts`. Die Angaben beschreiben deklarierte Prüfumfänge, keine erfolgreichen Testläufe und keine Code-Coverage.
 
-Von 347 Tabellen haben 57 ein registriertes Szenario. 130 sind als Ausbau offen, 160 ausgenommen und 0 noch nicht eingeordnet. Ausnahmen zählen nicht als bestanden.
+Von 347 Tabellen haben 62 ein registriertes Szenario. 125 sind als Ausbau offen, 160 ausgenommen und 0 noch nicht eingeordnet. Ausnahmen zählen nicht als bestanden.
 
 ## Szenarien
 
@@ -27,6 +27,7 @@ Von 347 Tabellen haben 57 ein registriertes Szenario. 130 sind als Ausbau offen,
 | `election-deputy-reader` | Wahlanalyse: Abgeordnetenübersicht | Keine (reine Regeln) |
 | `election-history-workbench` | Wahldaten: Problemfälle und Landeslisten | Keine (reine Regeln) |
 | `election-map` | Wahlkreiskarte: Suche und Grenzdaten | Keine (reine Regeln) |
+| `employee-meetings` | Mitarbeitergespräche (Anfrage → Termin → Vorbereitung → Freigabe/Sperre) | employee_meeting_requests, employee_meetings, employee_meeting_private_notes, employee_meeting_action_items, employee_meeting_audit |
 | `employee-protection` | Mitarbeiterschutz: Protokollsperre, Belastungsgrenzen und Vorbereitung | Keine (reine Regeln) |
 | `event-planning-lifecycle` | Event-Planung (komplett: Termine, Speaker, Checkliste, Timeline) | event_plannings, event_planning_dates, event_planning_speakers, event_planning_contacts, event_planning_checklist_items, event_planning_timeline_assignments |
 | `jour-fixe-platform-integration` | Jour Fixe: Plattformquellen & Stafetten-Abschluss | meetings, meeting_agenda_items, tasks, task_decisions |
@@ -186,11 +187,11 @@ Von 347 Tabellen haben 57 ein registriertes Szenario. 130 sind als Ausbau offen,
 | `employee_hr_reminder_log` | Szenario vorhanden | onboarding-hr |
 | `employee_hr_templates` | Szenario vorhanden | onboarding-hr |
 | `employee_lifecycle` | Szenario vorhanden | onboarding-hr |
-| `employee_meeting_action_items` | Ausstehend | — |
-| `employee_meeting_audit` | Ausstehend | — |
-| `employee_meeting_private_notes` | Ausstehend | — |
-| `employee_meeting_requests` | Ausstehend | — |
-| `employee_meetings` | Ausstehend | — |
+| `employee_meeting_action_items` | Szenario vorhanden | employee-meetings |
+| `employee_meeting_audit` | Szenario vorhanden | employee-meetings |
+| `employee_meeting_private_notes` | Szenario vorhanden | employee-meetings |
+| `employee_meeting_requests` | Szenario vorhanden | employee-meetings |
+| `employee_meetings` | Szenario vorhanden | employee-meetings |
 | `employee_responsibilities` | Ausstehend | — |
 | `employee_settings` | Ausgenommen (nicht geprüft) | — |
 | `employee_settings_history` | Ausgenommen (nicht geprüft) | — |
@@ -419,6 +420,11 @@ Diese Manifeste sind keine Messung ausgeführter Assertions.
 - decision-lifecycle: `task_decisions`: title, description, status, created_by, tenant_id, visible_to_all, priority, response_deadline, archived_at, archived_by
 - decision-lifecycle: `task_decision_participants`: decision_id, user_id
 - decision-lifecycle: `task_decision_responses`: decision_id, participant_id, response_type, comment
+- employee-meetings: `employee_meeting_requests`: employee_id, tenant_id, reason, urgency, status
+- employee-meetings: `employee_meetings`: employee_id, conducted_by, tenant_id, meeting_date, meeting_type, status, employee_preparation
+- employee-meetings: `employee_meeting_private_notes`: meeting_id, user_id, notes
+- employee-meetings: `employee_meeting_action_items`: meeting_id, tenant_id, description, owner, assigned_to
+- employee-meetings: `employee_meeting_audit`: meeting_id, actor, action, reason, protocol_hash
 - event-planning-lifecycle: `event_plannings`: title, description, location, background_info, is_private, is_digital, user_id, tenant_id
 - event-planning-lifecycle: `event_planning_dates`: event_planning_id, date_time, is_confirmed
 - event-planning-lifecycle: `event_planning_speakers`: event_planning_id, name, bio, topic, order_index

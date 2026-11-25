@@ -109,10 +109,10 @@ Die Spalten zählen **zugeordnete** Prüfungen, nicht bestandene Läufe. „Erge
 | `contacts.distribution-lists` | kontakte | fachlich | implementiert | UI | kein Test | nicht-ausgefuehrt | 0 | 0 | 0 | 0 | nein |
 | `employees.export-stats` | mitarbeit | fachlich | implementiert | UI | kein Test | nicht-ausgefuehrt | 0 | 0 | 0 | 0 | nein |
 | `employees.requests` | mitarbeit | fachlich | implementiert | rollenabhängig | kein Test | nicht-ausgefuehrt | 0 | 0 | 0 | 0 | nein |
-| `employees.protocol` | mitarbeit | fachlich | implementiert | rollenabhängig | Selbsttest | nicht-ausgefuehrt | 1 | 0 | 0 | 0 | ja |
+| `employees.protocol` | mitarbeit | fachlich | implementiert | rollenabhängig | Selbsttest | nicht-ausgefuehrt | 2 | 0 | 0 | 0 | ja |
 | `employees.preparation` | mitarbeit | automatisiert | implementiert | systemseitig | Selbsttest | nicht-ausgefuehrt | 1 | 0 | 0 | 0 | ja |
-| `employees.action-tasks` | mitarbeit | fachlich | implementiert | systemseitig | Selbsttest | nicht-ausgefuehrt | 1 | 0 | 0 | 0 | nein |
-| `employees.meetings` | mitarbeit | fachlich | implementiert | rollenabhängig | kein Test | nicht-ausgefuehrt | 0 | 0 | 0 | 0 | ja |
+| `employees.action-tasks` | mitarbeit | fachlich | implementiert | systemseitig | Selbsttest | nicht-ausgefuehrt | 2 | 0 | 0 | 0 | nein |
+| `employees.meetings` | mitarbeit | fachlich | implementiert | rollenabhängig | Selbsttest | nicht-ausgefuehrt | 1 | 0 | 0 | 0 | ja |
 | `employees.review` | mitarbeit | fachlich | implementiert | UI | Selbsttest | nicht-ausgefuehrt | 1 | 0 | 0 | 0 | nein |
 | `employees.wellbeing` | mitarbeit | sicherheit | implementiert | rollenabhängig | Selbsttest | nicht-ausgefuehrt | 1 | 0 | 0 | 0 | nein |
 | `hr.templates` | mitarbeit | administrativ | implementiert | rollenabhängig | Unit-Test | unbekannt | 0 | 2 | 0 | 0 | nein |
