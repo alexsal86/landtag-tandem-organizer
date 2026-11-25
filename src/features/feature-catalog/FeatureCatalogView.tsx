@@ -83,13 +83,13 @@ function Metric({ label, value, hint }: { label: string; value: number | string;
 
 function RefList({ title, values, empty = "—" }: { title: string; values: string[]; empty?: string }) {
   return (
-    <div>
+    <div className="min-w-0">
       <div className="text-xs font-semibold uppercase tracking-wide text-muted-foreground">{title}</div>
       {values.length ? (
-        <ul className="mt-1 flex flex-wrap gap-1">
+        <ul className="mt-1 flex min-w-0 flex-wrap gap-1">
           {values.map((value) => (
-            <li key={value}>
-              <code className="rounded bg-muted px-1 py-0.5 font-mono text-[0.75rem]">{value}</code>
+            <li key={value} className="min-w-0 max-w-full">
+              <code className="block break-all rounded bg-muted px-1 py-0.5 font-mono text-[0.75rem]">{value}</code>
             </li>
           ))}
         </ul>
@@ -469,7 +469,7 @@ export function FeatureCatalogView() {
         </p>
       </div>
 
-      <div className="grid gap-4 lg:grid-cols-[20rem_1fr]">
+      <div className="grid gap-4 lg:grid-cols-[20rem_minmax(0,1fr)]">
         <Card className="h-fit">
           <CardHeader className="pb-2">
             <CardTitle className="text-sm">Katalog</CardTitle>
@@ -604,7 +604,7 @@ export function FeatureCatalogView() {
           </CardContent>
         </Card>
 
-        <Card>
+        <Card className="min-w-0 overflow-hidden">
           <ScrollArea className="max-h-[calc(100vh-12rem)]">
             <CardContent className="px-5 py-4">
               {view.type === "overview" ? renderOverview() : null}
