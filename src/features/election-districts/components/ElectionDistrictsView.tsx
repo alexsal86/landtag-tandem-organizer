@@ -7,13 +7,13 @@ import { useElectionHistory, useElectionPeriods, historyError } from '@/features
 import { confirmedPeriodGeometryYear } from '@/features/election-history/periodGeometry';
 import { projectHistoricalDistricts } from '@/features/election-history/mapProjection';
 import { DistrictElectionHistory } from '@/features/election-history/DistrictElectionHistory';
-import React, { useEffect, useMemo, useRef, useState } from "react";
+import React, { useCallback, useEffect, useMemo, useRef, useState } from "react";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Badge } from "@/components/ui/badge";
 import { Input } from "@/components/ui/input";
 import { boundaryAreaKm2, directMandateParty, partyColors, hasRenderableBoundary, searchElectionDistricts, electionDistrictNumberLabel } from "../mapModel";
 import { Button } from "@/components/ui/button";
-import { Users, BarChart3, ChevronDown } from "lucide-react";
+import { Users, BarChart3, ChevronDown, Download, Play, Printer, Share2, Square } from "lucide-react";
 import { useElectionDistricts } from "@/hooks/useElectionDistricts";
 import { DistrictNotes } from "./DistrictNotes";
 import { LocalElectionResults, useLocalElectionResults, type LocalBallot } from "./LocalElectionResults";
@@ -22,6 +22,13 @@ import SimpleLeafletMap from "@/features/election-districts/components/SimpleLea
 import LeafletMapFallback from "@/features/election-districts/components/LeafletMapFallback";
 import { debugConsole } from '@/utils/debugConsole';
 import { ElectionDistrict } from "@/hooks/useElectionDistricts";
+import { useSearchParams } from 'react-router-dom';
+import { decodeMapViewState, encodeMapViewState, type MapViewState, type MapViewport } from '../mapViewState';
+import { DistrictDataTable } from './DistrictDataTable';
+import { DistrictCartogram } from './DistrictCartogram';
+import { csvCell } from '@/lib/csvSafe';
+import { notify } from '@/lib/notify';
+import '@/styles/map-print.css';
 
 // Error Boundary Component
 class ErrorBoundary extends React.Component<
@@ -60,12 +67,25 @@ class ErrorBoundary extends React.Component<
 
 export const ElectionDistrictsView = ({ sidebarHeader }: { sidebarHeader?: React.ReactNode }) => {
   const sidebarRef = useRef<HTMLDivElement>(null);
+  const [searchParams, setSearchParams] = useSearchParams();
+  // The first render takes the whole map view from the URL; later edits write back.
+  const [initialUrlState] = useState(() => decodeMapViewState(searchParams));
+  const urlParties = useRef(initialUrlState.parties);
+  const previousDistrictParam = useRef<string | null>(searchParams.get('wk'));
+  const embed = searchParams.get('embed') === '1' || searchParams.get('embed') === 'true';
+  const updateUrl = useCallback((mutate: (state: MapViewState) => MapViewState, replace = true) => {
+    setSearchParams(previous => {
+      const next = encodeMapViewState(previous, mutate(decodeMapViewState(previous)));
+      return next.toString() === previous.toString() ? previous : next;
+    }, { replace });
+  }, [setSearchParams]);
+  const [viewMode, setViewMode] = useState<'karte' | 'kartogramm'>(initialUrlState.mode);
   const periodIndex = useElectionPeriods();
-  const [historyPeriodId, setHistoryPeriodId] = useState('');
+  const [historyPeriodId, setHistoryPeriodId] = useState(initialUrlState.periodId ?? '');
   const [selectedHistoricalDistrict, setSelectedHistoricalDistrict] = useState('');
   const publishedPeriods = periodIndex.data?.filter(p => p.is_published) || [];
   const historyPeriod = publishedPeriods.find(p => p.id === historyPeriodId) || publishedPeriods.find(p => p.is_current) || publishedPeriods[0];
-  const [showAdministrativeBoundaries, setShowAdministrativeBoundaries] = useState(false);
+  const [showAdministrativeBoundaries, setShowAdministrativeBoundaries] = useState(initialUrlState.layers.administrative);
   const { districts: baseDistricts, loading } = useElectionDistricts({ enabled: !periodIndex.isLoading && (!historyPeriod || showAdministrativeBoundaries) });
   const history = useElectionHistory(historyPeriod?.id);
   const periodGeometry = usePeriodGeometry(history.data, historyPeriod?.id);
@@ -84,29 +104,46 @@ export const ElectionDistrictsView = ({ sidebarHeader }: { sidebarHeader?: React
     if (localDistrict) setLocalSelection({ districtId: localDistrict.id, key });
   }, [localDistrict]);
   const [useMapFallback, setUseMapFallback] = useState(false);
-  const [showElectionDistricts, setShowElectionDistricts] = useState(true);
-  const [showDistrictPolygons, setShowDistrictPolygons] = useState(true);
-  const [showDistrictMarkers, setShowDistrictMarkers] = useState(true);
+  const [showElectionDistricts, setShowElectionDistricts] = useState(initialUrlState.layers.districts);
+  const [showDistrictPolygons, setShowDistrictPolygons] = useState(initialUrlState.layers.polygons);
+  const [showDistrictMarkers, setShowDistrictMarkers] = useState(initialUrlState.layers.markers);
   const [searchQuery, setSearchQuery] = useState('');
   const [searchOpen, setSearchOpen] = useState(false);
   const [activeResult, setActiveResult] = useState(0);
-  const [selectedParties, setSelectedParties] = useState<Set<string>>(() => new Set(['CDU', 'GRÜNE', 'SPD', 'FDP', 'AFD']));
+  const [selectedParties, setSelectedParties] = useState<Set<string>>(() => new Set(initialUrlState.parties ?? ['CDU', 'GRÜNE', 'SPD', 'FDP', 'AFD']));
   useEffect(() => {
     if (history.data) {
       const parties = new Set(history.data.mandates.map(m => directMandateParty({ representatives: [{ mandate_type: 'direct', party: m.party }] })));
       if (historyPeriod?.election_year === 1952) parties.add('Ohne Direktmandat');
-      setSelectedParties(parties);
+      setSelectedParties(urlParties.current ? new Set(urlParties.current) : parties);
+      urlParties.current = null;
     }
   }, [history.data, historyPeriod?.election_year]);
-  const [showBaseMap, setShowBaseMap] = useState(false);
+  const [showBaseMap, setShowBaseMap] = useState(initialUrlState.layers.baseMap);
   const [focusedDistrict, setFocusedDistrict] = useState<ElectionDistrict>();
-  const [showPartyAssociations, setShowPartyAssociations] = useState(false);
+  const [showPartyAssociations, setShowPartyAssociations] = useState(initialUrlState.layers.partyAssociations);
+
+  // Every toggle is part of the shareable view.
+  useEffect(() => {
+    updateUrl(state => ({
+      ...state,
+      layers: {
+        districts: showElectionDistricts,
+        polygons: showDistrictPolygons,
+        markers: showDistrictMarkers,
+        administrative: showAdministrativeBoundaries,
+        partyAssociations: showPartyAssociations,
+        baseMap: showBaseMap,
+      },
+    }));
+  }, [showElectionDistricts, showDistrictPolygons, showDistrictMarkers, showAdministrativeBoundaries, showPartyAssociations, showBaseMap, updateUrl]);
 
   const handleDistrictClick = (district: ElectionDistrict) => {
     setSelectedDistrict(district);
     if (historyPeriod) setSelectedHistoricalDistrict(district.id);
     setFocusedDistrict({ ...district });
     sidebarRef.current?.scrollTo({ top: 0, behavior: 'smooth' });
+    updateUrl(state => ({ ...state, districtId: district.id, periodId: historyPeriod?.id ?? state.periodId }), false);
   };
 
   const handleMapError = () => {
@@ -134,6 +171,12 @@ export const ElectionDistrictsView = ({ sidebarHeader }: { sidebarHeader?: React
     if (d.district_type === 'verwaltungsgrenze') return showAdministrativeBoundaries;
     return showElectionDistricts;
   }), [districts, showAdministrativeBoundaries, showElectionDistricts]);
+  const tableDistricts = useMemo(
+    () => displayedDistricts
+      .filter(district => district.district_type !== 'verwaltungsgrenze')
+      .sort((a, b) => a.district_number - b.district_number),
+    [displayedDistricts],
+  );
 
   const searchResults = searchQuery.trim() ? searchElectionDistricts(electionDistricts, searchQuery) : electionDistricts;
   const activeResultIndex = activeResult < searchResults.length ? activeResult : 0;
@@ -152,6 +195,7 @@ export const ElectionDistrictsView = ({ sidebarHeader }: { sidebarHeader?: React
     setSearchOpen(false);
     sidebarRef.current?.scrollTo({ top: 0, behavior: 'smooth' });
     setSelectedParties(previous => new Set([...previous, directMandateParty(district)]));
+    updateUrl(state => ({ ...state, districtId: district.id, periodId: historyPeriod?.id ?? state.periodId }), false);
   };
 
   const selectHistoricalDistrict = (id: string) => {
@@ -162,8 +206,121 @@ export const ElectionDistrictsView = ({ sidebarHeader }: { sidebarHeader?: React
       setSelectedDistrict(null);
       setFocusedDistrict(undefined);
       sidebarRef.current?.scrollTo({ top: 0, behavior: 'smooth' });
+      updateUrl(state => ({ ...state, districtId: null }), false);
     }
   };
+
+  const selectPeriod = useCallback((periodId: string, replace = false) => {
+    setHistoryPeriodId(periodId);
+    setFocusedDistrict(undefined);
+    setSelectedHistoricalDistrict('');
+    setSelectedDistrict(null);
+    updateUrl(state => ({ ...state, periodId, districtId: null }), replace);
+  }, [updateUrl]);
+
+  // Links, reloads and browser back/forward drive the legislature and selection.
+  const periodParam = searchParams.get('periode');
+  const districtParam = searchParams.get('wk');
+  useEffect(() => {
+    if (periodParam && periodParam !== historyPeriodId) setHistoryPeriodId(periodParam);
+  }, [periodParam, historyPeriodId]);
+
+  useEffect(() => {
+    const changed = previousDistrictParam.current !== districtParam;
+    previousDistrictParam.current = districtParam;
+    if (!districtParam) {
+      if (changed && selectedDistrictRecord) {
+        setSelectedDistrict(null);
+        setFocusedDistrict(undefined);
+      }
+      return;
+    }
+    if (selectedDistrictRecord?.id === districtParam || districts.length === 0) return;
+    const district = districts.find(d => d.id === districtParam || String(d.district_number) === districtParam);
+    if (!district) return;
+    setSelectedDistrict(district);
+    setSelectedHistoricalDistrict(district.id);
+    setFocusedDistrict({ ...district });
+  }, [districtParam, districts, selectedDistrictRecord]);
+
+  const handleViewportChange = useCallback((viewport: MapViewport) => {
+    updateUrl(state => ({ ...state, viewport }));
+  }, [updateUrl]);
+
+  const selectViewMode = (mode: 'karte' | 'kartogramm') => {
+    setViewMode(mode);
+    updateUrl(state => ({ ...state, mode }));
+  };
+
+  const toggleParty = (party: string) => {
+    const next = new Set(selectedParties);
+    if (next.has(party)) next.delete(party);
+    else next.add(party);
+    setSelectedParties(next);
+    updateUrl(state => ({ ...state, parties: [...next] }));
+  };
+
+  const shareView = async () => {
+    try {
+      await navigator.clipboard.writeText(window.location.href);
+      notify.success('Link zur Kartenansicht kopiert');
+    } catch {
+      notify.error('Link konnte nicht kopiert werden');
+    }
+  };
+
+  const shareEmbed = async () => {
+    const url = new URL(window.location.href);
+    url.searchParams.set('tab', 'wahlkreise');
+    url.searchParams.set('embed', '1');
+    const snippet = `<iframe src="${url.toString()}" title="Karte der Wahlkreise Baden-Württemberg" width="100%" height="640" loading="lazy" style="border:0"></iframe>`;
+    try {
+      await navigator.clipboard.writeText(snippet);
+      notify.success('Einbettungscode kopiert');
+    } catch {
+      notify.error('Einbettungscode konnte nicht kopiert werden');
+    }
+  };
+
+  const downloadCsv = () => {
+    const rows = [
+      ['Wahlkreis', 'Name', 'Direktmandat', 'Partei', 'Fläche (km²)', 'Einwohner'],
+      ...tableDistricts.map(district => {
+        const direct = district.representatives?.find(rep => rep.mandate_type === 'direct');
+        return [
+          electionDistrictNumberLabel(district),
+          district.district_name,
+          direct?.name ?? '',
+          directMandateParty(district),
+          boundaryAreaKm2(district.boundaries)?.toFixed(1) ?? '',
+          district.population ?? '',
+        ];
+      }),
+    ];
+    const csv = rows.map(row => row.map(csvCell).join(';')).join('\r\n');
+    const blob = new Blob([`\uFEFF${csv}`], { type: 'text/csv;charset=utf-8' });
+    const objectUrl = URL.createObjectURL(blob);
+    const anchor = document.createElement('a');
+    anchor.href = objectUrl;
+    anchor.download = `wahlkreise-${historyPeriod?.election_year ?? 'aktuell'}.csv`;
+    anchor.click();
+    URL.revokeObjectURL(objectUrl);
+  };
+
+  const [replaying, setReplaying] = useState(false);
+  const chronology = useMemo(
+    () => [...publishedPeriods].sort((a, b) => (a.election_year ?? 0) - (b.election_year ?? 0)),
+    [publishedPeriods],
+  );
+
+  // Time travel replays every published boundary state from oldest to newest.
+  useEffect(() => {
+    if (!replaying || chronology.length < 2) return;
+    const index = chronology.findIndex(period => period.id === historyPeriod?.id);
+    const next = chronology[(index + 1) % chronology.length];
+    const timer = window.setTimeout(() => selectPeriod(next.id, true), 2400);
+    return () => window.clearTimeout(timer);
+  }, [replaying, chronology, historyPeriod?.id, selectPeriod]);
 
   if (loading || periodIndex.isLoading) {
     return (
@@ -177,11 +334,12 @@ export const ElectionDistrictsView = ({ sidebarHeader }: { sidebarHeader?: React
   }
 
   return (
-    <div className="h-full min-h-0 flex flex-col overflow-hidden">
-      <div className="flex-1 flex flex-col md:flex-row min-h-0">
+    <div className="h-full min-h-0 flex flex-col overflow-hidden print:h-auto print:overflow-visible">
+      <div className="flex-1 flex flex-col md:flex-row min-h-0 print:block">
         {/* Map */}
         <div className="flex-1 min-w-0 min-h-0 flex flex-col">
-          <nav aria-label="Kartennavigation" className="relative z-[1100] flex shrink-0 flex-wrap items-center gap-x-6 gap-y-1 border-b bg-background px-3 py-1">
+          {!embed && (
+          <nav aria-label="Kartennavigation" className="relative z-[1100] flex shrink-0 flex-wrap items-center gap-x-6 gap-y-1 border-b bg-background px-3 py-1 print:hidden">
           <div className="min-w-0">
             <form className="relative flex min-w-0 items-center gap-2" onSubmit={event => {
               event.preventDefault();
@@ -238,14 +396,50 @@ export const ElectionDistrictsView = ({ sidebarHeader }: { sidebarHeader?: React
                   </button>
                 </DropdownMenuTrigger>
                 <DropdownMenuContent align="start" className="z-[1200] max-h-80 overflow-y-auto">
-                  {publishedPeriods.map(p => <DropdownMenuItem key={p.id} onSelect={() => { setHistoryPeriodId(p.id); setFocusedDistrict(undefined); setSelectedHistoricalDistrict(''); setSelectedDistrict(null); }}>{p.name}{p.is_current ? ' · aktuell' : ''}</DropdownMenuItem>)}
+                  {publishedPeriods.map(p => <DropdownMenuItem key={p.id} onSelect={() => { setReplaying(false); selectPeriod(p.id); }}>{p.name}{p.is_current ? ' · aktuell' : ''}</DropdownMenuItem>)}
                 </DropdownMenuContent>
               </DropdownMenu>
             </div>
           )}
+          <div className="ml-auto flex flex-wrap items-center gap-1">
+            <div role="group" aria-label="Darstellung" className="flex items-center rounded border border-border">
+              <button type="button" aria-pressed={viewMode === 'karte'} onClick={() => selectViewMode('karte')}
+                className={`px-2 py-1 text-xs hover:bg-accent focus-visible:ring-1 focus-visible:ring-ring ${viewMode === 'karte' ? 'bg-accent font-medium' : ''}`}>Karte</button>
+              <button type="button" aria-pressed={viewMode === 'kartogramm'} onClick={() => selectViewMode('kartogramm')}
+                className={`border-l border-border px-2 py-1 text-xs hover:bg-accent focus-visible:ring-1 focus-visible:ring-ring ${viewMode === 'kartogramm' ? 'bg-accent font-medium' : ''}`}>Kartogramm</button>
+            </div>
+            {chronology.length > 1 && (
+              <button type="button" aria-pressed={replaying} onClick={() => setReplaying(value => !value)}
+                className="inline-flex items-center gap-1 rounded border border-border px-2 py-1 text-xs hover:bg-accent focus-visible:ring-1 focus-visible:ring-ring">
+                {replaying ? <Square className="h-3.5 w-3.5" aria-hidden="true" /> : <Play className="h-3.5 w-3.5" aria-hidden="true" />}
+                Zeitreise
+              </button>
+            )}
+            <button type="button" onClick={() => void shareView()}
+              className="inline-flex items-center gap-1 rounded border border-border px-2 py-1 text-xs hover:bg-accent focus-visible:ring-1 focus-visible:ring-ring">
+              <Share2 className="h-3.5 w-3.5" aria-hidden="true" /> Link teilen
+            </button>
+            <button type="button" onClick={() => void shareEmbed()}
+              className="inline-flex items-center gap-1 rounded border border-border px-2 py-1 text-xs hover:bg-accent focus-visible:ring-1 focus-visible:ring-ring">
+              Einbetten
+            </button>
+            <button type="button" onClick={() => window.print()}
+              className="inline-flex items-center gap-1 rounded border border-border px-2 py-1 text-xs hover:bg-accent focus-visible:ring-1 focus-visible:ring-ring">
+              <Printer className="h-3.5 w-3.5" aria-hidden="true" /> Drucken
+            </button>
+          </div>
           </nav>
-          <div className="relative h-[400px] shrink-0 md:h-auto md:flex-1 md:min-h-0">
-          {useMapFallback ? (
+          )}
+          <div className="relative h-[55dvh] min-h-[320px] shrink-0 md:h-auto md:flex-1 md:min-h-0 print:h-auto print:min-h-0">
+          {viewMode === 'kartogramm' ? (
+            <div className="h-full overflow-auto bg-card p-3">
+              <DistrictCartogram
+                districts={displayedDistricts}
+                selectedDistrictId={selectedDistrict?.id}
+                onSelect={handleDistrictClick}
+              />
+            </div>
+          ) : useMapFallback ? (
             <LeafletMapFallback
               districts={displayedDistricts}
               onDistrictClick={handleDistrictClick}
@@ -272,6 +466,10 @@ export const ElectionDistrictsView = ({ sidebarHeader }: { sidebarHeader?: React
                 focusedDistrict={focusedDistrict}
                 selectedParties={selectedParties}
                 showBaseMap={showBaseMap}
+                initialViewport={initialUrlState.viewport}
+                onViewportChange={handleViewportChange}
+                standLabel={historyPeriod ? `Grenzstand ${historyPeriod.boundary_geometry_year ?? 2021} · Wahl ${historyPeriod.election_year}` : 'Wahlkreise Baden-Württemberg'}
+                sourceLabel="Quelle: LGL Baden-Württemberg, Statistisches Landesamt, © OpenStreetMap-Mitwirkende"
               />
             </ErrorBoundary>
           )}
@@ -279,8 +477,44 @@ export const ElectionDistrictsView = ({ sidebarHeader }: { sidebarHeader?: React
         </div>
 
         {/* Sidebar */}
-        <div ref={sidebarRef} id="district-sidebar" className="w-full md:w-96 md:shrink-0 min-h-0 border-t md:border-t-0 md:border-l bg-muted/30 overflow-y-auto overscroll-contain md:h-full p-4 space-y-4">
+        {!embed && (
+        <div ref={sidebarRef} id="district-sidebar" className="w-full md:w-96 md:shrink-0 min-h-0 border-t md:border-t-0 md:border-l bg-muted/30 overflow-y-auto overscroll-contain md:h-full p-4 space-y-4 print:hidden">
           {sidebarHeader}
+          <Card>
+            <CardHeader>
+              <CardTitle className="text-lg">Legende</CardTitle>
+            </CardHeader>
+            <CardContent className="space-y-2">
+              <ul className="space-y-1">
+                {partyChoices.map(party => (
+                  <li key={party} className="flex items-center gap-2 text-sm">
+                    <span aria-hidden="true" className="h-3 w-3 rounded-sm border border-black/20" style={{ backgroundColor: partyColors[party] || '#9ca3af' }} />
+                    <span>{party === 'Ohne Direktmandat' && historyPeriod?.election_year === 1952 ? 'Zuordnung offen' : party === 'AFD' ? 'AfD' : party}</span>
+                    <span className="ml-auto text-xs tabular-nums text-muted-foreground">{partyCount(party)}</span>
+                  </li>
+                ))}
+              </ul>
+              <dl className="grid grid-cols-[auto_1fr] gap-x-2 gap-y-1 border-t pt-2 text-xs text-muted-foreground">
+                <dt aria-hidden="true">◯</dt><dd>Nummernkreis mit Wahlkreisnummer</dd>
+                <dt aria-hidden="true">▭</dt><dd>Farbfläche = Partei des Direktmandats</dd>
+                <dt aria-hidden="true">▨</dt><dd>Verwaltungsgrenze (gestrichelt)</dd>
+              </dl>
+            </CardContent>
+          </Card>
+          <Card>
+            <CardHeader className="flex flex-row items-center justify-between gap-2 space-y-0">
+              <CardTitle className="text-lg">Daten als Tabelle</CardTitle>
+              <Button variant="outline" size="sm" onClick={downloadCsv}><Download className="mr-1 h-4 w-4" />CSV</Button>
+            </CardHeader>
+            <CardContent>
+              <DistrictDataTable
+                districts={tableDistricts}
+                caption="Wahlkreise als Tabelle – Textalternative zur Karte"
+                onSelect={focusDistrict}
+                className="max-h-80 overflow-auto"
+              />
+            </CardContent>
+          </Card>
           {localDistrict && <LocalElectionResults query={localResults} area={localArea} ballot={localBallot}
             onAreaChange={selectLocalArea} onBallotChange={setLocalBallot} />}
           {/* District Information */}
@@ -454,11 +688,7 @@ export const ElectionDistrictsView = ({ sidebarHeader }: { sidebarHeader?: React
                 <div className="flex flex-wrap gap-1.5">
                   {partyChoices.map(party => (
                     <button key={party} type="button" aria-pressed={selectedParties.has(party)}
-                      onClick={() => setSelectedParties(previous => {
-                        const next = new Set(previous);
-                        if (next.has(party)) next.delete(party); else next.add(party);
-                        return next;
-                      })}
+                      onClick={() => toggleParty(party)}
                       className={`inline-flex items-center gap-1.5 rounded-full border px-2.5 py-1 text-xs transition-all duration-200 motion-reduce:transition-none ${selectedParties.has(party) ? 'border-[#626a59] bg-[#f0f2ed] dark:border-[#929b86] dark:bg-[#292c26] shadow-sm' : 'border-[#858d7b] dark:border-[#767e6b] bg-transparent text-muted-foreground hover:border-[#626a59]'}`}>
                       <span className="h-2.5 w-2.5 rounded-full" style={{ backgroundColor: partyColors[party] || '#9ca3af' }} />
                       {party === 'Ohne Direktmandat' && historyPeriod?.election_year === 1952 ? 'Zuordnung offen' : party === 'AFD' ? 'AfD' : party}
@@ -496,7 +726,8 @@ export const ElectionDistrictsView = ({ sidebarHeader }: { sidebarHeader?: React
                       <Badge variant="outline" className="border-[#dfe3da] bg-[#f0f2ed] text-[#3f4938] dark:border-[#42483b] dark:bg-[#292c26] dark:text-[#dce3d5]">{selectedDistrict.rural_percentage.toLocaleString('de-DE')} %</Badge>
                     </div>
                   )}
-                  <Button variant="outline" size="sm" onClick={() => setSelectedDistrict(null)}>Gesamtübersicht anzeigen</Button>
+                  {/* Clearing the URL parameter also clears the selection through the sync effect. */}
+                  <Button variant="outline" size="sm" onClick={() => updateUrl(state => ({ ...state, districtId: null }))}>Gesamtübersicht anzeigen</Button>
                 </>
               ) : (
                 <>
@@ -537,7 +768,18 @@ export const ElectionDistrictsView = ({ sidebarHeader }: { sidebarHeader?: React
 
 
         </div>
+        )}
       </div>
+      <section className="hidden print:block">
+        <h1 className="mt-2 text-base font-semibold">
+          Wahlkreise Baden-Württemberg{historyPeriod ? ` · ${historyPeriod.name}` : ''}
+        </h1>
+        <p className="mb-2 text-xs text-muted-foreground">
+          Grenzstand {historyPeriod?.boundary_geometry_year ?? 2021}. Quelle: LGL Baden-Württemberg,
+          Statistisches Landesamt, © OpenStreetMap-Mitwirkende.
+        </p>
+        <DistrictDataTable districts={tableDistricts} caption="Wahlkreise Baden-Württemberg als Tabelle" />
+      </section>
     </div>
   );
 };

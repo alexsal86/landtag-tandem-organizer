@@ -22,13 +22,32 @@ import { Switch } from '@/components/ui/switch';
 import { Label } from '@/components/ui/label';
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
 import { notify } from "@/lib/notify";
+import { useSearchParams } from 'react-router-dom';
 
 export const KarlsruheDistrictsView = ({ sidebarHeader }: { sidebarHeader?: ReactNode }) => {
   const { districts, isLoading, refetch } = useKarlsruheDistricts();
   const { flags, deleteFlag } = useMapFlags();
   const { flagTypes } = useMapFlagTypes();
   const { activeLayers } = useMapLayers();
+  const [searchParams, setSearchParams] = useSearchParams();
+  const selectedDistrictParam = searchParams.get('stadtteil');
   const [selectedDistrict, setSelectedDistrict] = useState<KarlsruheDistrict | null>(null);
+  // The selected Stadtteil is linkable, so "schau mal Stadtteil X" is a URL.
+  const selectDistrict = useCallback((district: KarlsruheDistrict | null) => {
+    setSelectedDistrict(district);
+    setSearchParams(previous => {
+      const next = new URLSearchParams(previous);
+      if (district) next.set('stadtteil', district.id);
+      else next.delete('stadtteil');
+      return next;
+    }, { replace: true });
+  }, [setSearchParams]);
+
+  useEffect(() => {
+    if (!selectedDistrictParam || selectedDistrict || districts.length === 0) return;
+    const district = districts.find(entry => entry.id === selectedDistrictParam || entry.name === selectedDistrictParam);
+    if (district) setSelectedDistrict(district);
+  }, [selectedDistrictParam, selectedDistrict, districts]);
   const [isRefreshing, setIsRefreshing] = useState(false);
   const [flagMode, setFlagMode] = useState(false);
   const [flagEditorOpen, setFlagEditorOpen] = useState(false);
@@ -175,7 +194,7 @@ export const KarlsruheDistrictsView = ({ sidebarHeader }: { sidebarHeader?: Reac
           <CardHeader>
             <CardTitle>Stadtteilkarte</CardTitle>
             <CardDescription>
-              {districts.length} Stadtteile in Karlsruhe
+              {districts.length} Stadtteile in Karlsruhe · Quelle: Stadt Karlsruhe, © OpenStreetMap-Mitwirkende
             </CardDescription>
           </CardHeader>
           <CardContent>
@@ -184,7 +203,7 @@ export const KarlsruheDistrictsView = ({ sidebarHeader }: { sidebarHeader?: Reac
             ) : (
               <KarlsruheDistrictsMap
                 districts={displayedDistricts}
-                onDistrictClick={setSelectedDistrict}
+                onDistrictClick={selectDistrict}
                 selectedDistrict={selectedDistrict}
                 flags={flags}
                 flagTypes={flagTypes}
@@ -492,7 +511,7 @@ export const KarlsruheDistrictsView = ({ sidebarHeader }: { sidebarHeader?: Reac
                 districts.map(district => (
                   <button
                     key={district.id}
-                    onClick={() => setSelectedDistrict(district)}
+                    onClick={() => selectDistrict(district)}
                     className={`w-full flex items-center gap-2 p-2 rounded-lg text-left transition-colors ${
                       selectedDistrict?.id === district.id
                         ? 'bg-accent'

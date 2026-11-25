@@ -421,8 +421,8 @@ export const KarlsruheDistrictsMap = ({
       center: [49.0069, 8.4037],
       zoom: 12,
       zoomControl: true,
-      minZoom: 10,
-      maxZoom: 16,
+      minZoom: 9,
+      maxZoom: 18,
     });
 
     tileLayerRef.current = L.tileLayer('https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png', {
@@ -440,6 +440,7 @@ export const KarlsruheDistrictsMap = ({
     });
 
     mapInstanceRef.current = map;
+    L.control.scale({ position: 'bottomleft', metric: true, imperial: false, maxWidth: 140 }).addTo(map);
     setMapReady(true);
     onMapReady?.(map);
 
@@ -860,7 +861,7 @@ export const KarlsruheDistrictsMap = ({
   return (
     <div
       ref={mapRef}
-      className={`w-full h-[600px] rounded-lg border border-border z-0 ${flagMode ? 'cursor-crosshair' : ''}`}
+      className={`w-full h-[min(70dvh,600px)] min-h-[320px] rounded-lg border border-border z-0 md:h-[600px] ${flagMode ? 'cursor-crosshair' : ''}`}
     />
   );
 };

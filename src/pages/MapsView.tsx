@@ -24,7 +24,12 @@ export const MapsView = () => {
 
   const handleTabChange = (value: string) => {
     setActiveTab(value);
-    setSearchParams({ tab: value });
+    // Keep the map parameters of the other tab so links survive switching.
+    setSearchParams(previous => {
+      const next = new URLSearchParams(previous);
+      next.set('tab', value);
+      return next;
+    }, { replace: true });
   };
 
   const mapSwitcher = (

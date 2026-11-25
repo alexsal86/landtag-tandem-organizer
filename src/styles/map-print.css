@@ -1,0 +1,30 @@
+/* Print view of the election map: one page with the map and its data table. */
+@media print {
+  @page {
+    size: A4 landscape;
+    margin: 10mm;
+  }
+
+  body {
+    background: #fff !important;
+  }
+
+  .bw-election-map {
+    height: 140mm !important;
+    min-height: 0 !important;
+    border: 1px solid #666 !important;
+    border-radius: 0 !important;
+    break-inside: avoid;
+    print-color-adjust: exact;
+    -webkit-print-color-adjust: exact;
+  }
+
+  .bw-election-map .leaflet-control-attribution {
+    display: none !important;
+  }
+
+  .leaflet-container {
+    print-color-adjust: exact;
+    -webkit-print-color-adjust: exact;
+  }
+}

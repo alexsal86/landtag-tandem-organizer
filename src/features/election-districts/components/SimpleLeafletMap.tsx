@@ -6,6 +6,7 @@ import * as L from 'leaflet';
 import { ElectionDistrict } from '@/hooks/useElectionDistricts';
 import { usePartyAssociations } from '@/hooks/usePartyAssociations';
 import { directMandateParty, partyColors, hasRenderableBoundary, electionDistrictNumberLabel } from '../mapModel';
+import type { MapViewport } from '../mapViewState';
 import { Plus, Minus, MoveDiagonal } from 'lucide-react';
 import sunflowerIcon from '@/assets/sunflower.svg';
 import type { LocalArea, LocalBallot } from './LocalElectionResults';
@@ -30,6 +31,10 @@ interface LeafletKarlsruheMapProps {
   focusedDistrict?: ElectionDistrict;
   showBaseMap?: boolean;
   selectedParties?: Set<string>;
+  initialViewport?: MapViewport | null;
+  onViewportChange?: (viewport: MapViewport) => void;
+  standLabel?: string;
+  sourceLabel?: string;
 }
 
 const districtsWithoutLocalAreas = new Set([35, 36, 46, 47]);
@@ -79,10 +84,16 @@ const SimpleLeafletMap: React.FC<LeafletKarlsruheMapProps> = ({
   focusedDistrict,
   showBaseMap = false,
   selectedParties,
+  initialViewport,
+  onViewportChange,
+  standLabel,
+  sourceLabel,
 }) => {
   const { associations } = usePartyAssociations(showPartyAssociations);
   const [zoomLevel, setZoomLevel] = useState(8);
   const [mapReady, setMapReady] = useState(0);
+  const [viewportLabel, setViewportLabel] = useState('');
+  const [revealing, setRevealing] = useState(true);
   const mapEl = useRef<HTMLDivElement | null>(null);
   const mapRef = useRef<L.Map | null>(null);
   const tileLayerRef = useRef<L.TileLayer | null>(null);
@@ -92,10 +103,19 @@ const SimpleLeafletMap: React.FC<LeafletKarlsruheMapProps> = ({
   const hasFittedBoundsRef = useRef(false);
   const overviewBoundsRef = useRef<L.LatLngBounds | null>(null);
   const userNavigatedRef = useRef(false);
+  const initialViewportRef = useRef(initialViewport);
+  const onViewportChangeRef = useRef(onViewportChange);
 
-  // Keep callback ref in sync without triggering effects
+  // The reveal animation marks a new boundary state; selections must not flash.
+  useEffect(() => {
+    const timer = window.setTimeout(() => setRevealing(false), 700);
+    return () => window.clearTimeout(timer);
+  }, []);
+
+  // Keep callback refs in sync without triggering effects
   useEffect(() => {
     onDistrictClickRef.current = onDistrictClick;
+    onViewportChangeRef.current = onViewportChange;
   });
 
   useEffect(() => {
@@ -118,6 +138,8 @@ const SimpleLeafletMap: React.FC<LeafletKarlsruheMapProps> = ({
     const map = L.map(mapEl.current, {
       center: [48.7758, 9.1829], // Center of Baden-Württemberg (Stuttgart area)
       zoom: initialZoom,
+      minZoom: 6,
+      maxZoom: 18,
       zoomControl: false,
       keyboard: true,
       dragging: true,
@@ -127,6 +149,14 @@ const SimpleLeafletMap: React.FC<LeafletKarlsruheMapProps> = ({
       preferCanvas: false, // Use SVG for better precision
     });
     mapRef.current = map;
+    const sharedViewport = initialViewportRef.current;
+    if (sharedViewport
+      && Number.isFinite(sharedViewport.center.lat) && Number.isFinite(sharedViewport.center.lng)
+      && Number.isFinite(sharedViewport.zoom)) {
+      map.setView([sharedViewport.center.lat, sharedViewport.center.lng], sharedViewport.zoom);
+      // A shared link pins its viewport; the first data load must not re-fit it.
+      hasFittedBoundsRef.current = true;
+    }
     map.on('dragstart zoomstart', (event: L.LeafletEvent) => {
       if ('originalEvent' in event) userNavigatedRef.current = true;
     });
@@ -174,6 +204,47 @@ const SimpleLeafletMap: React.FC<LeafletKarlsruheMapProps> = ({
       map.off('zoomend', handleZoomEnd);
     };
   }, []);
+
+  // Scale bar, print sizing and a spoken description of the current viewport.
+  useEffect(() => {
+    const map = mapRef.current;
+    if (!map || !mapReady) return;
+    const scale = L.control.scale({ position: 'bottomleft', metric: true, imperial: false, maxWidth: 140 });
+    scale.addTo(map);
+    const handleBeforePrint = () => map.invalidateSize({ pan: false });
+    window.addEventListener('beforeprint', handleBeforePrint);
+    return () => {
+      window.removeEventListener('beforeprint', handleBeforePrint);
+      scale.remove();
+    };
+  }, [mapReady]);
+
+  useEffect(() => {
+    const map = mapRef.current;
+    if (!map || !mapReady) return;
+    let timer: number | undefined;
+    const report = () => {
+      const center = map.getCenter();
+      const bounds = map.getBounds();
+      const visible = districts.filter((district) => {
+        const coords = district.center_coordinates as { lat?: number; lng?: number } | null | undefined;
+        return typeof coords?.lat === 'number' && typeof coords?.lng === 'number'
+          && bounds.contains([coords.lat, coords.lng]);
+      }).length;
+      setViewportLabel(`Ausschnitt: Zoom ${map.getZoom().toFixed(1)}, Mitte ${center.lat.toFixed(2)}° N, ${center.lng.toFixed(2)}° O, ${visible} Wahlkreise im Bild.`);
+      onViewportChangeRef.current?.({ center: { lat: center.lat, lng: center.lng }, zoom: map.getZoom() });
+    };
+    const schedule = () => {
+      window.clearTimeout(timer);
+      timer = window.setTimeout(report, 450);
+    };
+    report();
+    map.on('moveend zoomend', schedule);
+    return () => {
+      window.clearTimeout(timer);
+      map.off('moveend zoomend', schedule);
+    };
+  }, [mapReady, districts]);
 
   // Render districts and markers whenever data changes
   useEffect(() => {
@@ -329,23 +400,36 @@ const SimpleLeafletMap: React.FC<LeafletKarlsruheMapProps> = ({
       if (occupied.some(other => other.distanceTo(point) < size + 3)) return;
       occupied.push(point);
       
+      const markerAriaLabel = `Wahlkreis ${electionDistrictNumberLabel(district)}: ${district.district_name}${directMandate ? `, Direktmandat ${directMandate.party}` : ''}`;
+      const bubble = createMapIconBubble(size, markerNumber, {
+        background: '#ffffff',
+        border: `${borderWidth}px solid ${partyColor}`,
+        fontWeight: 'bold',
+        fontSize: `${fontSize}px`,
+        color: '#000000',
+        boxShadow: '0 2px 4px rgba(0,0,0,0.2)',
+      });
       const marker = L.marker([lat, lng], {
+        // The party-filter effect identifies number markers by this prefix.
         alt: `WK:${district.id}`,
         icon: L.divIcon({
-          html: createMapIconBubble(size, markerNumber, {
-            background: '#ffffff',
-            border: `${borderWidth}px solid ${partyColor}`,
-            fontWeight: 'bold',
-            fontSize: `${fontSize}px`,
-            color: '#000000',
-            boxShadow: '0 2px 4px rgba(0,0,0,0.2)',
-          }),
+          html: bubble,
           className: 'custom-district-marker',
           iconSize: [size, size],
           iconAnchor: [size / 2, size / 2]
         })
       });
-      
+      // Number markers are divIcons. Leaflet makes the icon focusable and fires
+      // a click on Enter; the role and label make that activation meaningful.
+      marker.on('add', () => {
+        const element = marker.getElement();
+        if (!element) return;
+        if (!element.hasAttribute('tabindex')) element.setAttribute('tabindex', '0');
+        element.setAttribute('role', 'button');
+        element.setAttribute('aria-label', markerAriaLabel);
+        element.setAttribute('aria-pressed', String(selectedDistrict?.id === district.id));
+      });
+
       const label = document.createElement('span');
       label.textContent = `${electionDistrictNumberLabel(district)}: ${district.district_name}`;
       marker.bindTooltip(label);
@@ -457,6 +541,11 @@ const SimpleLeafletMap: React.FC<LeafletKarlsruheMapProps> = ({
           markerLayerRef.current!.addLayer(marker);
         }); 
       });
+    }
+
+    // Keep the overview bounds for the reset control even when a link pinned the view.
+    if (!overviewBoundsRef.current && renderedBounds && renderedBounds.isValid()) {
+      overviewBoundsRef.current = renderedBounds;
     }
 
     // Fit bounds only on first data load
@@ -600,8 +689,17 @@ const SimpleLeafletMap: React.FC<LeafletKarlsruheMapProps> = ({
   }, [focusedDistrict, mapReady]);
 
   return (
-    <div className="bw-election-map relative w-full h-[400px] md:h-full md:min-h-0 bg-[#e6eadf] rounded-lg overflow-hidden border border-border z-0">
-      <div ref={mapEl} className="w-full h-full" />
+    <div
+      className="bw-election-map relative w-full h-[55dvh] min-h-[320px] md:h-full md:min-h-0 bg-[#e6eadf] rounded-lg overflow-hidden border border-border z-0"
+      data-reveal={revealing ? 'true' : undefined}
+    >
+      <div
+        ref={mapEl}
+        className="w-full h-full"
+        role="region"
+        aria-label="Karte der Wahlkreise Baden-Württemberg"
+        aria-describedby="bw-map-viewport"
+      />
       
       <div className="absolute top-3 left-3 z-[1000] flex flex-col gap-2">
         <button type="button" aria-label="Vergrößern" title="Vergrößern" className="bw-map-control" onClick={() => { userNavigatedRef.current = true; mapRef.current?.zoomIn(); }}><Plus className="h-4 w-4" /></button>
@@ -614,6 +712,17 @@ const SimpleLeafletMap: React.FC<LeafletKarlsruheMapProps> = ({
       <div className="pointer-events-none absolute top-3 right-3 z-[1000] rounded-full border border-border bg-card/95 px-3 py-1.5 text-xs shadow-[0_2px_3px_rgba(20,30,10,0.08),0_5px_12px_rgba(20,30,10,0.14)]" role="status">
         {districtCount ?? districts.filter(d => d.district_type !== 'verwaltungsgrenze').length} Wahlkreise
       </div>
+      <div aria-hidden="true" className="pointer-events-none absolute right-3 top-14 z-[1000] flex flex-col items-center rounded-lg border border-border bg-card/95 px-2 py-1 text-[11px] font-semibold shadow-sm">
+        <svg viewBox="0 0 12 16" className="h-4 w-3 fill-current"><path d="M6 0 11 14 6 11.5 1 14Z" /></svg>
+        <span>N</span>
+      </div>
+      {(standLabel || sourceLabel) && (
+        <div className="pointer-events-none absolute bottom-7 right-3 z-[1000] max-w-[min(22rem,70vw)] rounded-md border border-border bg-card/95 px-2.5 py-1.5 text-[11px] leading-snug shadow-sm">
+          {standLabel && <p className="font-medium text-foreground">{standLabel}</p>}
+          {sourceLabel && <p className="text-muted-foreground">{sourceLabel}</p>}
+        </div>
+      )}
+      <p id="bw-map-viewport" role="status" aria-live="polite" className="sr-only">{viewportLabel}</p>
     </div>
   );
 };
