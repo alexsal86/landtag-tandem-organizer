@@ -18725,13 +18725,27 @@ export type Database = {
       get_latest_selftest_runs: {
         Args: { p_tenant_id: string }
         Returns: {
+          app_version: string | null
+          cleanup: Json
           created_at: string
           duration_ms: number | null
           failed_steps: number
+          keep_data: boolean
           scenario_id: string
           scenario_title: string
           status: string
           steps: Json
+          total_steps: number
+        }[]
+      }
+      get_selftest_run_history: {
+        Args: { p_runs_per_scenario?: number; p_tenant_id: string }
+        Returns: {
+          created_at: string
+          duration_ms: number | null
+          failed_steps: number
+          scenario_id: string
+          status: string
           total_steps: number
         }[]
       }

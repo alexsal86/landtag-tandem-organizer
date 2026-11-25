@@ -18,10 +18,11 @@ import { collectScenarios, loadInventory } from './build-feature-catalog.mjs';
  * sondern zeigt die Gruppen und im Detail die deklarierten Schritte der
  * Szenarien mit ihren gespeicherten Ergebnissen.
  *
- * `workflows` übernimmt je Szenario die deklarierten Schritte (id, label).
- * Schritte deklarieren selbst keine Features; die Katalog-Funktionen, die das
- * Szenario in `scenarios` beanspruchen, stehen deshalb einmal am Workflow und
- * dienen dem Link in den Funktionskatalog.
+ * `workflows` übernimmt je Szenario Titel, Beschreibung, Prüfumfang (`checks`)
+ * und die deklarierten Schritte (id, label) aus der Registry. So zeigt der Puls
+ * dieselbe Bedeutung wie das Selbsttest-Center, ohne die Registry im Browser
+ * nachzuladen. Schritte deklarieren selbst keine Features; die Katalog-Funktionen,
+ * die das Szenario in `scenarios` beansprucht, stehen einmal am Workflow.
  *
  * Geprüft wird:
  *  - jede `scenarioIds`-Referenz existiert und ist registriert,
@@ -146,6 +147,9 @@ export function derivePulseAreas({ config, scenarios, features = [] }) {
       return {
         scenario: id,
         title: scenario?.title ?? id,
+        description: scenario?.description ?? '',
+        checks: [...(scenario?.checks ?? [])],
+        tables: [...(scenario?.touches ?? [])],
         features: scenarioFeatures,
         steps: (scenario?.steps ?? []).map((step) => ({ id: step.id, label: step.label })),
       };
@@ -171,7 +175,7 @@ export function derivePulseAreas({ config, scenarios, features = [] }) {
 
 export function buildArtifact(areas, groups) {
   return {
-    version: 4,
+    version: 5,
     generatedBy: 'scripts/build-pulse-areas.mjs',
     source: REGISTRY_FILE,
     groups,

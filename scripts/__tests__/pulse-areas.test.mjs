@@ -8,7 +8,9 @@ import { ARTIFACT_FILE, CONFIG_FILE, buildArtifact, derivePulseAreas, renderArti
 
 const root = resolve(dirname(fileURLToPath(import.meta.url)), '../..');
 const defaultSteps = [{ id: 'step', label: 'Schritt' }];
-const scenario = (id, features, registered = true, touches = [], steps = defaultSteps) => ({ id, features, registered, touches, steps });
+const scenario = (id, features, registered = true, touches = [], steps = defaultSteps) => ({
+  id, features, registered, touches, steps, description: `Beschreibung ${id}`, checks: ['Prüfung A'],
+});
 
 const twoAreas = {
   groups: [{ id: 'g', title: 'Gruppe', areas: ['a', 'b'] }],
@@ -63,6 +65,9 @@ test('übernimmt deklarierte Schritte und Katalog-Funktionen in den Workflow', (
   assert.deepEqual(errors, []);
   const workflow = areas[0].workflows[0];
   assert.equal(workflow.scenario, 's-a');
+  assert.equal(workflow.description, 'Beschreibung s-a');
+  assert.deepEqual(workflow.checks, ['Prüfung A']);
+  assert.deepEqual(workflow.tables, ['contacts']);
   assert.deepEqual(workflow.features, ['contacts.create', 'tasks.close']);
   assert.deepEqual(workflow.steps.map((step) => step.id), ['create', 'check']);
   assert.deepEqual(workflow.steps, [
@@ -150,6 +155,17 @@ test('Jour fixe enthält das registrierte Plattform-Szenario mit Schritten', () 
   const workflow = meetings.workflows.find((entry) => entry.scenario === 'jour-fixe-platform-integration');
   assert.ok(workflow.steps.length > 0);
   assert.ok(workflow.steps.every((step) => step.label.length > 0));
+  assert.ok(workflow.description.length > 0);
+  assert.ok(workflow.checks.length > 0);
+});
+
+test('jeder Workflow trägt Beschreibung und Prüfumfang aus der Registry', () => {
+  for (const area of realAreas().areas) {
+    for (const workflow of area.workflows) {
+      assert.ok(workflow.description.length > 0, `${workflow.scenario} ohne Beschreibung`);
+      assert.ok(Array.isArray(workflow.checks), `${workflow.scenario} ohne checks`);
+    }
+  }
 });
 
 test('Kontakte verlinken auf ihre Katalogfunktionen', () => {

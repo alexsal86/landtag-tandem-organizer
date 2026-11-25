@@ -5,7 +5,7 @@
   "sources": {
     "types": "src/integrations/supabase/types.ts",
     "migrationsDirectory": "supabase/migrations",
-    "migrationCount": 890
+    "migrationCount": 891
   },
   "machineCount": 39,
   "anomalies": [

@@ -436,7 +436,7 @@ Zeigt RLS-Lücken, Policies, Snapshots und Audit-Trail als eigenständige Sicher
 - Funktionen ohne Tabellenbezug erhalten keinen RLS-Bezug; ob das fachlich korrekt ist, bleibt je Funktion zu prüfen.
 
 ### `admin.system-pulse` — System-Puls
-Zeigt je Funktionsbereich die letzten funktionalen Selbsttest-Ergebnisse als Ampel, startet die zugeordneten Szenarien aus der Detailkarte im Hintergrund, stellt die deklarierten Szenario-Schritte als Prozesskette mit gespeicherten Schritt-Ergebnissen dar, zeigt je Workflow Testname, Zeitpunkt, Dauer, Beschreibung und Prüfumfang und weist RLS-Lücken als eigene Kennzahl getrennt von den Testergebnissen aus.
+Zeigt je Funktionsbereich die letzten funktionalen Selbsttest-Ergebnisse als Ampel, startet die zugeordneten Szenarien aus der Detailkarte im Hintergrund, stellt die deklarierten Szenario-Schritte als Prozesskette mit gespeicherten Schritt-Ergebnissen dar, zeigt je Workflow Testname, Zeitpunkt, Dauer, Beschreibung und Prüfumfang, bewertet Frische, App-Version, Demo- und Aufräumstatus, nennt Abdeckung und Verlauf, erlaubt gezielte Nachläufe und verknüpft betroffene Katalogfunktionen sowie RLS-Befunde, während RLS-Lücken als eigene Kennzahl getrennt von den Testergebnissen aus.
 
 - **Kategorie:** administrativ
 - **Implementierung:** implementiert
@@ -449,7 +449,7 @@ Zeigt je Funktionsbereich die letzten funktionalen Selbsttest-Ergebnisse als Amp
 - **Services:** `scripts/build-pulse-areas.mjs`
 - **Hooks:** —
 - **Edge Functions:** —
-- **Datenbankfunktionen:** `get_latest_selftest_runs`
+- **Datenbankfunktionen:** `get_latest_selftest_runs`, `get_selftest_run_history`
 - **Tabellen:** `selftest_runs`
 - **Abhängigkeiten:** `admin.security-cockpit`, `admin.selftest-center`
 - **Selbsttests:** —
@@ -468,11 +468,13 @@ Zeigt je Funktionsbereich die letzten funktionalen Selbsttest-Ergebnisse als Amp
 - supabase/migrations/20261125170000_get_latest_selftest_runs.sql
 - supabase/migrations/20261125180000_latest_selftest_runs_steps.sql
 - supabase/migrations/20261125190000_latest_selftest_runs_run_meta.sql
+- supabase/migrations/20261125200000_selftest_pulse_quality_and_history.sql
 
 **Bekannte Einschränkungen**
 
-- Die Testhistorie lädt über get_latest_selftest_runs; bis die Migrationen 20261125170000_get_latest_selftest_runs.sql, 20261125180000_latest_selftest_runs_steps.sql und 20261125190000_latest_selftest_runs_run_meta.sql angewendet sind, zeigt die Karte „Testlage unbekannt“ statt serverseitiger Ergebnisse.
-- Dynamisch erzeugte Schritte (z. B. die Plattformquellen im Jour fixe) erscheinen nicht in der Kette, weil sie nicht literal im Szenario deklariert sind.
+- Die Testhistorie lädt über get_latest_selftest_runs; bis die Migrationen 20261125170000_get_latest_selftest_runs.sql, 20261125180000_latest_selftest_runs_steps.sql und 20261125190000_latest_selftest_runs_run_meta.sql und 20261125200000_selftest_pulse_quality_and_history.sql angewendet sind, zeigt die Karte „Testlage unbekannt“ statt serverseitiger Ergebnisse.
+- Dynamisch erzeugte Schritte (z. B. die Plattformquellen im Jour fixe) stehen erst nach einem Lauf in der Kette; sie werden dann aus den gespeicherten Schritten ergänzt und als nicht deklariert gekennzeichnet.
+- Verlauf und Dauertrend benötigen die separate RPC get_selftest_run_history; ohne sie bleibt die Ampel nutzbar, aber ohne Trend und Wiederholungszähler.
 - Der Live-Teststart schreibt echte Testdaten und Dateien, ist bestätigungspflichtig und räumt anschließend auf; fehlende Rollen führen zu „Voraussetzung fehlt“.
 - Die Bereichsampel bewertet ausschließlich funktionale Selbsttests; RLS-Lücken bleiben eine getrennte Kennzahl und ergeben keine Gesamtbewertung.
 - Ausgeführt wurden Unit-, Generator- und Komponententests mit gemocktem RPC; RPC-Antwort, angewendete Migration und Darstellung im Browser wurden nicht gegen ein laufendes Backend geprüft.

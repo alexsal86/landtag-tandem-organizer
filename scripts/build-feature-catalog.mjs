@@ -96,6 +96,7 @@ export function collectScenarios(root) {
         id: value.id,
         file,
         title: value.title ?? value.id,
+        description: value.description ?? '',
         steps,
         touches: Array.isArray(value.touches) ? value.touches : [],
         features: Array.isArray(value.features) ? value.features : [],

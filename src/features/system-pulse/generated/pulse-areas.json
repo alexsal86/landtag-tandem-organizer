@@ -1,5 +1,5 @@
 {
-  "version": 4,
+  "version": 5,
   "generatedBy": "scripts/build-pulse-areas.mjs",
   "source": "src/features/selftest/registry.ts",
   "groups": [
@@ -47,6 +47,13 @@
         {
           "scenario": "contact-lifecycle",
           "title": "Kontakt-Lifecycle (Anlegen → Kategorie/Tags → Aktivität → Suche)",
+          "description": "Legt einen vollständigen Kontakt an, ändert Kategorie und Schlagworte, protokolliert eine Aktivität und prüft, dass er über die Suche gefunden wird.",
+          "checks": [],
+          "tables": [
+            "contacts",
+            "contact_activities",
+            "contact_usage_stats"
+          ],
           "features": [
             "contacts.create",
             "contacts.edit",
@@ -111,6 +118,19 @@
         {
           "scenario": "appointment-briefing-lifecycle",
           "title": "Briefing-Lifecycle (vergeben → Aufgabe → vorlegen → freigeben)",
+          "description": "Legt einen Termin an, vergibt ein Briefing (es entsteht eine Aufgabe), legt es vor, gibt es frei (Aufgabe erledigt) und prüft „Kein Briefing“.",
+          "checks": [
+            "Regeln für Freigabe und Fristvorschlag",
+            "Aufgabe entsteht beim Vergeben",
+            "Ball wechselt bei Vorlage",
+            "Freigabe erledigt Aufgabe",
+            "Kein Briefing schließt Aufgabe"
+          ],
+          "tables": [
+            "appointments",
+            "tasks",
+            "appointment_change_alerts"
+          ],
           "features": [
             "appointments.briefing",
             "appointments.briefing-live"
@@ -193,6 +213,13 @@
         {
           "scenario": "appointment-lifecycle",
           "title": "Termin-Lifecycle (Kalender + Briefing + Feedback)",
+          "description": "Erzeugt einen vollständigen Kalender-Termin inkl. Vorbereitung/Briefing (visit_reason, conversation_partners, companions, program, sections) und Feedback. Verifiziert jedes geschriebene Feld.",
+          "checks": [],
+          "tables": [
+            "appointments",
+            "appointment_preparations",
+            "appointment_feedback"
+          ],
           "features": [
             "calendar.create-appointment",
             "calendar.view"
@@ -255,6 +282,17 @@
         {
           "scenario": "appointment-request-lifecycle",
           "title": "Terminanfragen-Lifecycle (Eingang → Sperre → Entscheidung → Termin)",
+          "description": "Legt eine Terminanfrage an, prüft dass der Status nicht direkt geändert werden kann, und entscheidet sie über die gesicherte Freigabe. Dabei muss ein Termin entstehen. Die Freigabe klappt nur mit der Rolle Abgeordnete oder Büroleitung.",
+          "checks": [
+            "Statussperre bei direktem Schreiben",
+            "Zusage über die Anwendungs-RPC",
+            "Verknüpfter Termin",
+            "Wiederholung erzeugt keinen zweiten Termin"
+          ],
+          "tables": [
+            "appointment_requests",
+            "appointments"
+          ],
           "features": [
             "appointments.requests"
           ],
@@ -280,6 +318,11 @@
         {
           "scenario": "daily-briefing-lifecycle",
           "title": "Tages-Briefings (Vortag-Regel)",
+          "description": "Prüft, dass Briefings für heute abgelehnt werden, und legt zwei Briefings für morgen und übermorgen an, damit das Briefing-Widget inkl. Vortag-Regel sichtbar wird. Verifiziert alle Felder zurück.",
+          "checks": [],
+          "tables": [
+            "daily_briefings"
+          ],
           "features": [
             "daily.briefing"
           ],
@@ -325,6 +368,22 @@
         {
           "scenario": "poll-lifecycle",
           "title": "Terminabstimmung (Gewinner-Slot übernehmen + Nachfassen)",
+          "description": "Legt eine Abstimmung mit Slots und Teilnehmern an und übernimmt den Gewinner-Slot über confirm_poll_winner. Prüft, dass nur die erstellende Person mit aktiver Büromitgliedschaft übernehmen darf, fremde Slots abgelehnt werden und ein zweiter Aufruf denselben Termin samt tatsächlich gespeichertem Slot liefert.",
+          "checks": [
+            "confirm_poll_winner legt genau einen Termin an und verknüpft ihn mit der Abstimmung",
+            "Zweiter Aufruf (gleicher und anderer Slot) liefert denselben Termin und den tatsächlich gespeicherten Slot",
+            "Externe Teilnehmer werden als Gäste am Termin angelegt, interne nicht",
+            "Fremde Slots und unbekannte Abstimmungen werden abgelehnt",
+            "Fremde Abstimmungen im Mandanten können nicht übernommen werden",
+            "get_poll_availability verweigert fremde Mandanten"
+          ],
+          "tables": [
+            "appointment_polls",
+            "poll_time_slots",
+            "poll_participants",
+            "appointments",
+            "appointment_guests"
+          ],
           "features": [
             "calendar.polls",
             "polls.manage",
@@ -364,6 +423,25 @@
         {
           "scenario": "case-item-lifecycle",
           "title": "Vorgangs-Lifecycle (Am Zug → Schritt → Wiedervorlage → Entscheidung → Tageszettel → Abschluss)",
+          "description": "Durchläuft einen Vorgang so, wie das Büro ihn bearbeitet: Interaktionen, „Wer ist am Zug?“, Schritt festlegen, Wiedervorlage, Ministeriumsfrist, Übergabe, Entscheidung mit Abstimmung, Tageszettel-Link, Jour fixe, Ortstermin, Schritt erledigt und Abschluss. Regel-Schritte prüfen die Logik ohne Datenbank.",
+          "checks": [
+            "Geschäftsregeln für Wiedervorlage und Fristen",
+            "Übergabe über die Anwendungs-RPC",
+            "Entscheidung und Abstimmung",
+            "Tageszettel-Link nach erneutem Laden",
+            "Vorgang bleibt im eigenen Büro"
+          ],
+          "tables": [
+            "case_items",
+            "case_item_interactions",
+            "case_item_handover_log",
+            "task_decisions",
+            "task_decision_participants",
+            "task_decision_responses",
+            "appointment_requests",
+            "day_slips",
+            "tasks"
+          ],
           "features": [
             "cases.close-archive",
             "cases.create",
@@ -461,6 +539,19 @@
         {
           "scenario": "annual-task-stafette",
           "title": "Jahresaufgabe → Büroaufgabe → Jahresabschluss",
+          "description": "Prüft die Übergabe einer Jahresaufgabe, Schutz vor Duplikaten, Abschluss und Wiederöffnen.",
+          "checks": [
+            "Exakte Stichtage",
+            "System-Routinen nicht delegierbar",
+            "Eine Aufgabe pro Jahr",
+            "Abschluss und Wiederöffnung synchron",
+            "Direkter Jahresabschluss gesperrt"
+          ],
+          "tables": [
+            "annual_tasks",
+            "annual_task_completions",
+            "tasks"
+          ],
           "features": [
             "automation.annual-routines",
             "tasks.annual"
@@ -507,6 +598,14 @@
         {
           "scenario": "quick-note-lifecycle",
           "title": "Notizen-Lifecycle (Anlegen → Priorität → Anheften → Aufgabe → Archiv)",
+          "description": "Legt eine Notiz mit Priorität, Farbe und Schlagworten an, heftet sie an, macht daraus eine Aufgabe und archiviert sie. Jeder Schritt liest seine Felder zurück.",
+          "checks": [],
+          "tables": [
+            "quick_notes",
+            "tasks",
+            "task_decisions",
+            "task_decision_participants"
+          ],
           "features": [
             "quicknotes.manage"
           ],
@@ -540,6 +639,12 @@
         {
           "scenario": "task-lifecycle",
           "title": "Aufgaben-Lifecycle (Zuweisung → Frist → Entscheidung → Jour fixe → erledigt)",
+          "description": "Legt eine Aufgabe an, weist sie zu, setzt eine Frist, erstellt daraus eine Entscheidung, markiert sie für den Jour fixe und schließt sie ab.",
+          "checks": [],
+          "tables": [
+            "tasks",
+            "task_decisions"
+          ],
           "features": [
             "mywork.dashboard",
             "tasks.assign",
@@ -577,6 +682,16 @@
         {
           "scenario": "task-stafette-lifecycle",
           "title": "Aufgaben-Stafette (Am Zug, Wiedervorlage, Freigabe)",
+          "description": "Spielt den Weg einer Aufgabe durch: Schritt festlegen, Wiedervorlage, Freigabe vorlegen, Rückgabe und Abschluss.",
+          "checks": [
+            "Zonen Mein Zug / Wartet / Wiedervorlage",
+            "Verlaufseinträge bei Übergaben und Erledigungen",
+            "Sammelaktionen: Vorschau ohne erfundene Frist, ohne überschriebene Schritte, mit Rücknahme",
+            "Wochenreview, Eskalationsgründe, Einzeiler-Befehle und SLA-Stufen als reine Regeln"
+          ],
+          "tables": [
+            "tasks"
+          ],
           "features": [
             "tasks.assign",
             "tasks.complete",
@@ -672,6 +787,13 @@
         {
           "scenario": "decision-lifecycle",
           "title": "Entscheidungs-Lifecycle (active → open → archived)",
+          "description": "Erstellt eine Entscheidung, fügt sich selbst als Teilnehmer hinzu, prüft die Default-Antwortoptionen, archiviert die Entscheidung und liest jedes geschriebene Feld zurück.",
+          "checks": [],
+          "tables": [
+            "task_decisions",
+            "task_decision_participants",
+            "task_decision_responses"
+          ],
           "features": [
             "decisions.create",
             "decisions.participants",
@@ -742,6 +864,19 @@
         {
           "scenario": "jour-fixe-platform-integration",
           "title": "Jour Fixe: Plattformquellen & Stafetten-Abschluss",
+          "description": "Prüft Quellenabfragen, 12 Systemtypen, echte Entscheidungs-IDs, atomaren Sitzungsabschluss und doppelfreie Wiederholung.",
+          "checks": [
+            "Quellenabfragen unter bestehenden Zugriffsrechten",
+            "Folgeaufgaben mit Zuständigkeit und Verlauf",
+            "Notizen ändern keine Abstimmung",
+            "Wiederholung erzeugt keine Duplikate"
+          ],
+          "tables": [
+            "meetings",
+            "meeting_agenda_items",
+            "tasks",
+            "task_decisions"
+          ],
           "features": [
             "appointments.jour-fixe"
           ],
@@ -791,6 +926,19 @@
         {
           "scenario": "meeting-lifecycle",
           "title": "Meeting-Lifecycle (vollständig + Field-Verifikation)",
+          "description": "Erstellt ein Meeting mit Termin, Teilnehmer, regulären und allen System-Agenda-Punkten (Geburtstage, Termine, Quick-Notes, Aufgaben, Vorgänge, Entscheidungen), Sub-Item, Dokument, Aufgabe, Carry-Over und Folge-Meeting. Liest jedes geschriebene Feld zurück und vergleicht — inkl. Renderer-Sanity (utils.tsx-Mapping).",
+          "checks": [],
+          "tables": [
+            "meetings",
+            "meeting_templates",
+            "meeting_protocol_details",
+            "meeting_protocol_addenda",
+            "meeting_agenda_items",
+            "meeting_agenda_documents",
+            "meeting_participants",
+            "appointments",
+            "tasks"
+          ],
           "features": [
             "meetings.agenda",
             "meetings.archive",
@@ -907,6 +1055,16 @@
         {
           "scenario": "access-boundaries",
           "title": "Zugriffsschutz (Bürogrenzen und Entscheiderrolle)",
+          "description": "Prüft Schreibsperren mit der aktuellen Anmeldung und die Entscheidung einer Terminanfrage gemäß der tatsächlichen Rolle.",
+          "checks": [
+            "Fachdatenabfragen werden zentral auf das aktive Büro begrenzt",
+            "Schreibversuch mit fremder Büro-ID scheitert am Client-Schutz oder an RLS",
+            "Unberechtigte Rolle darf nicht entscheiden",
+            "Berechtigte Rolle darf ablehnen"
+          ],
+          "tables": [
+            "appointment_requests"
+          ],
           "features": [
             "admin.access-boundaries",
             "admin.action-permissions",
@@ -954,6 +1112,14 @@
         {
           "scenario": "admin-controls",
           "title": "Adminregeln: Feldschutz, Aktionen, Export, Rücknahme und Feeds",
+          "description": "Prüft serverseitige Regeln mit der aktuellen Rolle und reine Export-/Feedregeln ohne externe Aufrufe.",
+          "checks": [
+            "Export über 1000 Einträge ohne CSV-Formeln",
+            "Private Feedziele abgewiesen",
+            "Beide Feldlesemodi im aktuellen Büro",
+            "Fremde Aktion und ungültige Rücknahme abgewiesen"
+          ],
+          "tables": [],
           "features": [
             "admin.field-permissions",
             "admin.roles",
