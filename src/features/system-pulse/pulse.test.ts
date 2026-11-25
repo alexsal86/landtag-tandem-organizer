@@ -1,5 +1,5 @@
 import { describe, expect, it } from "vitest";
-import { PULSE_AREAS, PULSE_GROUPS, areaLevel, gapSummary, latestRuns, latestRunSteps, type PulseArea } from "./pulse";
+import { PULSE_AREAS, PULSE_GROUPS, areaLevel, gapSummary, latestRunDetails, latestRuns, latestRunSteps, type PulseArea } from "./pulse";
 
 const area: PulseArea = { id: "a", title: "A", scenarios: ["s1", "s2"], tables: ["t"], workflows: [] };
 
@@ -27,14 +27,14 @@ describe("latestRunSteps", () => {
     expect(latestRunSteps([
       { scenario_id: "s1", status: "ok", created_at: "2026-11-20T10:00:00Z", steps: [{ id: "old", label: "Alt", status: "failed", message: "alt" }] },
       { scenario_id: "s1", status: "failed", created_at: "2026-11-22T10:00:00Z", steps: [
-        { id: "create", label: "Anlegen", status: "ok" },
-        { id: "check", label: "Prüfen", status: "failed", message: "Prüfung kaputt" },
+        { id: "create", label: "Anlegen", status: "ok", durationMs: 120 },
+        { id: "check", label: "Prüfen", status: "failed", message: "Prüfung kaputt", durationMs: 35 },
       ] },
       { scenario_id: "s2", status: "ok", created_at: "2026-11-21T10:00:00Z" },
     ])).toEqual({
       s1: {
-        create: { id: "create", status: "ok", message: undefined },
-        check: { id: "check", status: "failed", message: "Prüfung kaputt" },
+        create: { id: "create", status: "ok", message: undefined, durationMs: 120 },
+        check: { id: "check", status: "failed", message: "Prüfung kaputt", durationMs: 35 },
       },
       s2: {},
     });
@@ -43,6 +43,19 @@ describe("latestRunSteps", () => {
     expect(latestRunSteps([
       { scenario_id: "s1", status: "ok", created_at: "2026-11-20T10:00:00Z", steps: [null, "x", { id: 1 }, { id: "ok", status: "ok" }] },
     ])).toEqual({ s1: { ok: { id: "ok", status: "ok", message: undefined } } });
+  });
+});
+
+describe("latestRunDetails", () => {
+  it("liefert Name, Zeitpunkt, Dauer und Schrittzahlen des neuesten Laufs", () => {
+    expect(latestRunDetails([
+      { scenario_id: "s1", scenario_title: "Alter Name", status: "failed", created_at: "2026-11-20T10:00:00Z", duration_ms: 50, failed_steps: 2, total_steps: 5 },
+      { scenario_id: "s1", scenario_title: "Kontakt-Lifecycle", status: "ok", created_at: "2026-11-22T10:00:00Z", duration_ms: 820, failed_steps: 0, total_steps: 7 },
+      { scenario_id: "s2", status: "ok", created_at: "2026-11-21T10:00:00Z", duration_ms: null },
+    ])).toEqual({
+      s1: { status: "ok", createdAt: "2026-11-22T10:00:00Z", title: "Kontakt-Lifecycle", durationMs: 820, failedSteps: 0, totalSteps: 7 },
+      s2: { status: "ok", createdAt: "2026-11-21T10:00:00Z", title: undefined, durationMs: undefined, failedSteps: undefined, totalSteps: undefined },
+    });
   });
 });
 

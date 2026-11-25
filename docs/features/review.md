@@ -540,7 +540,7 @@ Eindeutige Fehler werden im CI-Lauf ausgegeben und brechen die Prüfung ab; sie 
 
 ### `admin.system-pulse`
 
-- Die Testhistorie lädt über get_latest_selftest_runs; bis die Migrationen 20261125170000_get_latest_selftest_runs.sql und 20261125180000_latest_selftest_runs_steps.sql angewendet sind, zeigt die Karte „Testlage unbekannt“ statt serverseitiger Ergebnisse.
+- Die Testhistorie lädt über get_latest_selftest_runs; bis die Migrationen 20261125170000_get_latest_selftest_runs.sql, 20261125180000_latest_selftest_runs_steps.sql und 20261125190000_latest_selftest_runs_run_meta.sql angewendet sind, zeigt die Karte „Testlage unbekannt“ statt serverseitiger Ergebnisse.
 - Dynamisch erzeugte Schritte (z. B. die Plattformquellen im Jour fixe) erscheinen nicht in der Kette, weil sie nicht literal im Szenario deklariert sind.
 - Der Live-Teststart schreibt echte Testdaten und Dateien, ist bestätigungspflichtig und räumt anschließend auf; fehlende Rollen führen zu „Voraussetzung fehlt“.
 - Die Bereichsampel bewertet ausschließlich funktionale Selbsttests; RLS-Lücken bleiben eine getrennte Kennzahl und ergeben keine Gesamtbewertung.

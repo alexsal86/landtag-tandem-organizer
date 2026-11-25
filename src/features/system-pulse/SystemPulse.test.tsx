@@ -10,6 +10,13 @@ const rpc = vi.hoisted(() => vi.fn());
 vi.mock("@/integrations/supabase/client", () => ({ supabase: { rpc } }));
 vi.mock("@/hooks/useTenant", () => ({ useTenant: () => ({ currentTenant: { id: "tenant-1" } }) }));
 vi.mock("@/hooks/useAuth", () => ({ useAuth: () => ({ user: { id: "user-1" } }) }));
+vi.mock("@/features/selftest/registry", () => ({
+  SELFTEST_SCENARIOS: [
+    { id: "contact-lifecycle", title: "Kontakt-Lifecycle", description: "Legt einen vollständigen Kontakt an.", checks: ["Stammdaten", "Suche"] },
+    { id: "meeting-lifecycle", title: "Meeting-Lifecycle", description: "Prüft den Meetingablauf.", checks: ["Agenda"] },
+    { id: "jour-fixe-platform-integration", title: "Jour fixe", description: "Prüft die Plattformquellen.", checks: ["Agenda", "Regeln"] },
+  ],
+}));
 
 const renderPulse = () => {
   const client = new QueryClient({ defaultOptions: { queries: { retry: false, gcTime: 0 } } });
@@ -51,16 +58,18 @@ describe("SystemPulse: selftest_runs", () => {
     rpc.mockResolvedValue({
       data: [
         // Älterer Fehlschlag, neuerer Erfolg: Kontakte muss grün sein.
-        { scenario_id: "contact-lifecycle", status: "failed", created_at: "2026-11-20T10:00:00Z", steps: [] },
+        { scenario_id: "contact-lifecycle", scenario_title: "Kontakt (alt)", status: "failed", created_at: "2026-11-20T10:00:00Z", duration_ms: 40, failed_steps: 1, total_steps: 7, steps: [] },
         {
-          scenario_id: "contact-lifecycle", status: "ok", created_at: "2026-11-25T10:00:00Z",
-          steps: [{ id: "create", label: "Kontakt mit allen Stammdaten anlegen", status: "ok" }],
+          scenario_id: "contact-lifecycle", scenario_title: "Kontakt-Lifecycle (gespeichert)", status: "ok", created_at: "2026-11-25T10:00:00Z",
+          duration_ms: 820, failed_steps: 0, total_steps: 7,
+          steps: [{ id: "create", label: "Kontakt mit allen Stammdaten anlegen", status: "ok", durationMs: 120 }],
         },
-        { scenario_id: "meeting-lifecycle", status: "ok", created_at: "2026-11-24T10:00:00Z", steps: [] },
+        { scenario_id: "meeting-lifecycle", scenario_title: "Meeting-Lifecycle", status: "ok", created_at: "2026-11-24T10:00:00Z", duration_ms: 1500, failed_steps: 0, total_steps: 21, steps: [] },
         // Meeting besteht früher, Jour fixe scheitert später: Bereich muss rot sein.
         {
-          scenario_id: "jour-fixe-platform-integration", status: "failed", created_at: "2026-11-24T12:00:00Z",
-          steps: [{ id: "agenda-combine", label: "Agenda: Hauptpunkt verschieben", status: "failed", message: "Agenda konnte nicht verschoben werden." }],
+          scenario_id: "jour-fixe-platform-integration", scenario_title: "Jour fixe (Plattform)", status: "failed", created_at: "2026-11-24T12:00:00Z",
+          duration_ms: 987, failed_steps: 1, total_steps: 10,
+          steps: [{ id: "agenda-combine", label: "Agenda: Hauptpunkt verschieben", status: "failed", message: "Agenda konnte nicht verschoben werden.", durationMs: 35 }],
         },
       ],
       error: null,
@@ -75,10 +84,17 @@ describe("SystemPulse: selftest_runs", () => {
 
     fireEvent.click(tile(/Kontakte/));
     expect(await screen.findByLabelText(/Kontakt mit allen Stammdaten anlegen: bestanden/)).toBeInTheDocument();
+    expect(screen.getByText("Kontakt-Lifecycle (gespeichert)")).toBeInTheDocument();
+    expect(screen.getByText(/820 ms/)).toBeInTheDocument();
+    expect(screen.getByText(/7 Schritte · 0 fehlgeschlagen/)).toBeInTheDocument();
+    expect(screen.getByText("120 ms")).toBeInTheDocument();
+    expect(await screen.findByText(/Legt einen vollständigen Kontakt an\./)).toBeInTheDocument();
+    expect(screen.getByText("Geprüft (2)")).toBeInTheDocument();
     const catalogLink = screen.getAllByRole("link", { name: /im Funktionskatalog öffnen/ })[0];
     expect(catalogLink.getAttribute("href")).toContain("/funktionskatalog?feature=");
 
     fireEvent.click(tile(/Jour fixe/));
+    expect(await screen.findByText(/10 Schritte · 1 fehlgeschlagen/)).toBeInTheDocument();
     const failedStep = screen.getByRole("button", { name: /Agenda: Hauptpunkt.*fehlgeschlagen/ });
     fireEvent.click(failedStep);
     expect(screen.getByRole("alert")).toHaveTextContent("Agenda konnte nicht verschoben werden.");

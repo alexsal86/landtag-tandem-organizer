@@ -436,7 +436,7 @@ Zeigt RLS-Lücken, Policies, Snapshots und Audit-Trail als eigenständige Sicher
 - Funktionen ohne Tabellenbezug erhalten keinen RLS-Bezug; ob das fachlich korrekt ist, bleibt je Funktion zu prüfen.
 
 ### `admin.system-pulse` — System-Puls
-Zeigt je Funktionsbereich die letzten funktionalen Selbsttest-Ergebnisse als Ampel, startet die zugeordneten Szenarien aus der Detailkarte im Hintergrund, stellt die deklarierten Szenario-Schritte als Prozesskette mit gespeicherten Schritt-Ergebnissen dar und weist RLS-Lücken als eigene Kennzahl getrennt von den Testergebnissen aus.
+Zeigt je Funktionsbereich die letzten funktionalen Selbsttest-Ergebnisse als Ampel, startet die zugeordneten Szenarien aus der Detailkarte im Hintergrund, stellt die deklarierten Szenario-Schritte als Prozesskette mit gespeicherten Schritt-Ergebnissen dar, zeigt je Workflow Testname, Zeitpunkt, Dauer, Beschreibung und Prüfumfang und weist RLS-Lücken als eigene Kennzahl getrennt von den Testergebnissen aus.
 
 - **Kategorie:** administrativ
 - **Implementierung:** implementiert
@@ -467,10 +467,11 @@ Zeigt je Funktionsbereich die letzten funktionalen Selbsttest-Ergebnisse als Amp
 - scripts/build-pulse-areas.mjs
 - supabase/migrations/20261125170000_get_latest_selftest_runs.sql
 - supabase/migrations/20261125180000_latest_selftest_runs_steps.sql
+- supabase/migrations/20261125190000_latest_selftest_runs_run_meta.sql
 
 **Bekannte Einschränkungen**
 
-- Die Testhistorie lädt über get_latest_selftest_runs; bis die Migrationen 20261125170000_get_latest_selftest_runs.sql und 20261125180000_latest_selftest_runs_steps.sql angewendet sind, zeigt die Karte „Testlage unbekannt“ statt serverseitiger Ergebnisse.
+- Die Testhistorie lädt über get_latest_selftest_runs; bis die Migrationen 20261125170000_get_latest_selftest_runs.sql, 20261125180000_latest_selftest_runs_steps.sql und 20261125190000_latest_selftest_runs_run_meta.sql angewendet sind, zeigt die Karte „Testlage unbekannt“ statt serverseitiger Ergebnisse.
 - Dynamisch erzeugte Schritte (z. B. die Plattformquellen im Jour fixe) erscheinen nicht in der Kette, weil sie nicht literal im Szenario deklariert sind.
 - Der Live-Teststart schreibt echte Testdaten und Dateien, ist bestätigungspflichtig und räumt anschließend auf; fehlende Rollen führen zu „Voraussetzung fehlt“.
 - Die Bereichsampel bewertet ausschließlich funktionale Selbsttests; RLS-Lücken bleiben eine getrennte Kennzahl und ergeben keine Gesamtbewertung.

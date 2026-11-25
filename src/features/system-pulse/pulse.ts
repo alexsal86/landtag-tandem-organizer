@@ -53,9 +53,26 @@ export function gapSummary(gaps: Array<{ severity: string }>, state: GapsState):
   return { level, critical, warning, unknown: false };
 }
 
-export interface PersistedRun { scenario_id: string; status: string; created_at: string; steps?: unknown }
+export interface PersistedRun {
+  scenario_id: string;
+  scenario_title?: string;
+  status: string;
+  created_at: string;
+  duration_ms?: number | null;
+  failed_steps?: number;
+  total_steps?: number;
+  steps?: unknown;
+}
+export interface PersistedStep { id: string; status: string; message?: string; durationMs?: number }
 
-export interface PersistedStep { id: string; status: string; message?: string }
+export interface RunDetails {
+  status: string;
+  createdAt: string;
+  title?: string;
+  durationMs?: number;
+  failedSteps?: number;
+  totalSteps?: number;
+}
 
 function newestByScenario(rows: PersistedRun[]): Map<string, PersistedRun> {
   const newest = new Map<string, PersistedRun>();
@@ -74,6 +91,21 @@ export function latestRuns(rows: PersistedRun[]): Record<string, string> {
   return Object.fromEntries([...newestByScenario(rows)].map(([scenarioId, row]) => [scenarioId, row.status]));
 }
 
+/**
+ * Metadaten des neuesten Laufs je Szenario: gespeicherter Testname, Zeitpunkt,
+ * Dauer und Schrittzahlen. Ältere RPC-Antworten ohne diese Felder bleiben gültig.
+ */
+export function latestRunDetails(rows: PersistedRun[]): Record<string, RunDetails> {
+  return Object.fromEntries([...newestByScenario(rows)].map(([scenarioId, row]) => [scenarioId, {
+    status: row.status,
+    createdAt: row.created_at,
+    title: row.scenario_title,
+    durationMs: typeof row.duration_ms === "number" ? row.duration_ms : undefined,
+    failedSteps: typeof row.failed_steps === "number" ? row.failed_steps : undefined,
+    totalSteps: typeof row.total_steps === "number" ? row.total_steps : undefined,
+  }]));
+}
+
 /** Schritt-Ergebnisse des neuesten Laufs je Szenario, nach Schritt-ID. */
 export function latestRunSteps(rows: PersistedRun[]): Record<string, Record<string, PersistedStep>> {
   const result: Record<string, Record<string, PersistedStep>> = {};
@@ -87,6 +119,7 @@ export function latestRunSteps(rows: PersistedRun[]): Record<string, Record<stri
         id: step.id,
         status: step.status,
         message: typeof step.message === "string" ? step.message : undefined,
+        durationMs: typeof step.durationMs === "number" ? step.durationMs : undefined,
       };
     }
     result[scenarioId] = steps;

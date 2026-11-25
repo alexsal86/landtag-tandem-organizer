@@ -11,7 +11,7 @@ import { useTenant } from "@/hooks/useTenant";
 import { supabase } from "@/integrations/supabase/client";
 import { featureCatalogHref } from "@/features/feature-catalog/securityLinks";
 import {
-  PULSE_AREAS, PULSE_GROUPS, areaLevel, gapSummary, latestRuns, latestRunSteps,
+  PULSE_AREAS, PULSE_GROUPS, areaLevel, gapSummary, latestRunDetails, latestRuns, latestRunSteps,
   type GapsState, type PersistedRun, type PulseArea, type PulseLevel,
 } from "./pulse";
 
@@ -30,6 +30,13 @@ const statusLabel = (status?: string) =>
           : status === "cancelled" ? "abgebrochen"
             : status ?? "noch nie gelaufen";
 const stepLevel = (status?: string): PulseLevel => status === "ok" ? "green" : status === "failed" ? "red" : "grey";
+const formatDuration = (ms?: number) => ms === undefined
+  ? "Dauer unbekannt"
+  : ms < 1000
+    ? `${ms} ms`
+    : `${(ms / 1000).toLocaleString("de-DE", { maximumFractionDigits: 1 })} s`;
+
+type ScenarioInfo = { title: string; description: string; checks?: string[] };
 
 export function SystemPulse({ gaps, gapsState }: Props) {
   const { currentTenant } = useTenant();
@@ -40,6 +47,7 @@ export function SystemPulse({ gaps, gapsState }: Props) {
   const [openStep, setOpenStep] = useState<string | null>(null);
   const [liveRuns, setLiveRuns] = useState<Record<string, string>>({});
   const [runningArea, setRunningArea] = useState<string | null>(null);
+  const [scenarioInfo, setScenarioInfo] = useState<Record<string, ScenarioInfo>>({});
 
   // Mandantenweite Sicht: RLS lässt alle Mitglieder die Läufe des Mandanten lesen,
   // und der Puls soll den Systemzustand zeigen, nicht nur den letzten Lauf eines Nutzers.
@@ -57,11 +65,35 @@ export function SystemPulse({ gaps, gapsState }: Props) {
 
   useEffect(() => { setLiveRuns({}); setOpenStep(null); }, [currentTenant?.id]);
 
+  // Beschreibung und Prüfumfang stehen nur in der Szenario-Registry. Sie wird
+  // erst beim Öffnen eines Bereichs geladen, damit das Cockpit leicht bleibt.
+  useEffect(() => {
+    const area = open ? PULSE_AREAS.find((entry) => entry.id === open) : undefined;
+    if (!area) return;
+    let active = true;
+    void import("@/features/selftest/registry").then(({ SELFTEST_SCENARIOS }) => {
+      if (!active) return;
+      const byId = new Map(SELFTEST_SCENARIOS.map((scenario) => [scenario.id, scenario]));
+      setScenarioInfo((previous) => {
+        const next = { ...previous };
+        for (const id of area.scenarios) {
+          const scenario = byId.get(id);
+          if (scenario) next[id] = { title: scenario.title, description: scenario.description, checks: scenario.checks };
+        }
+        return next;
+      });
+    }).catch(() => {
+      // Die Lauf-Metadaten bleiben sichtbar; nur Beschreibung und Prüfumfang fehlen.
+    });
+    return () => { active = false; };
+  }, [open]);
+
   const runs = useMemo(
     () => ({ ...latestRuns(runsQuery.data ?? []), ...liveRuns }),
     [runsQuery.data, liveRuns],
   );
   const stepsByScenario = useMemo(() => latestRunSteps(runsQuery.data ?? []), [runsQuery.data]);
+  const runDetails = useMemo(() => latestRunDetails(runsQuery.data ?? []), [runsQuery.data]);
   const loadingRuns = Boolean(currentTenant?.id) && runsQuery.isPending;
   const unknownRuns = !currentTenant?.id || runsQuery.isError;
   const latest = runsQuery.data?.[0]?.created_at;
@@ -199,6 +231,9 @@ export function SystemPulse({ gaps, gapsState }: Props) {
             )}
             {selected.area.workflows.map((workflow) => {
               const results = stepsByScenario[workflow.scenario] ?? {};
+              const storedRun = runDetails[workflow.scenario];
+              const info = scenarioInfo[workflow.scenario];
+              const title = storedRun?.title ?? info?.title ?? workflow.title;
               const counts = { ok: 0, failed: 0, other: 0 };
               for (const step of workflow.steps) {
                 const status = results[step.id]?.status;
@@ -206,11 +241,12 @@ export function SystemPulse({ gaps, gapsState }: Props) {
                 else if (status === "failed") counts.failed += 1;
                 else counts.other += 1;
               }
+              const failedSteps = storedRun?.failedSteps ?? counts.failed;
               return (
                 <div key={workflow.scenario} className="space-y-1.5">
                   <div className="flex flex-wrap items-baseline justify-between gap-x-3 gap-y-0.5">
                     <div className="flex min-w-0 items-baseline gap-2">
-                      <span className="text-xs font-medium">{workflow.title}</span>
+                      <span className="text-xs font-medium">{title}</span>
                       <code className="hidden text-[10px] text-muted-foreground sm:inline">{workflow.scenario}</code>
                     </div>
                     <span className="text-[11px] tabular-nums text-muted-foreground">
@@ -220,8 +256,25 @@ export function SystemPulse({ gaps, gapsState }: Props) {
                       {counts.other > 0 && <> · {counts.other} ungetestet</>}
                     </span>
                   </div>
+                  <p className="text-[11px] tabular-nums text-muted-foreground">
+                    {storedRun ? (
+                      <>
+                        Zuletzt {stamp(storedRun.createdAt)} · {formatDuration(storedRun.durationMs)}
+                        {(storedRun.totalSteps ?? 0) > 0 && (
+                          <> · {storedRun.totalSteps} Schritte · {failedSteps} fehlgeschlagen</>
+                        )}
+                      </>
+                    ) : "Noch kein gespeicherter Lauf"}
+                  </p>
+                  {info?.description && <p className="text-xs text-muted-foreground">{info.description}</p>}
+                  {info?.checks && info.checks.length > 0 && (
+                    <details className="text-xs text-muted-foreground">
+                      <summary className="cursor-pointer">Geprüft ({info.checks.length})</summary>
+                      <p className="mt-1">{info.checks.join(" · ")}</p>
+                    </details>
+                  )}
                   <div className="-mx-1 overflow-x-auto rounded pb-1 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring"
-                    tabIndex={0} role="group" aria-label={`Prozesskette ${workflow.title}`}>
+                    tabIndex={0} role="group" aria-label={`Prozesskette ${title}`}>
                     <div className="flex w-max items-stretch gap-1 px-1">
                       {workflow.steps.map((step, index) => {
                         const key = `${workflow.scenario}:${step.id}`;
@@ -250,6 +303,9 @@ export function SystemPulse({ gaps, gapsState }: Props) {
                                   className="mt-0.5 block whitespace-normal break-words leading-snug">
                                   {step.label}
                                 </span>
+                              )}
+                              {result?.durationMs !== undefined && (
+                                <div className="mt-1 text-[10px] tabular-nums text-muted-foreground">{formatDuration(result.durationMs)}</div>
                               )}
                               {workflow.features[0] && (
                                 <Link to={featureCatalogHref(workflow.features[0])} aria-label={`${step.label} im Funktionskatalog öffnen`}

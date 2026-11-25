@@ -18726,9 +18726,13 @@ export type Database = {
         Args: { p_tenant_id: string }
         Returns: {
           created_at: string
+          duration_ms: number | null
+          failed_steps: number
           scenario_id: string
+          scenario_title: string
           status: string
           steps: Json
+          total_steps: number
         }[]
       }
       get_meeting_protocol_participants: {
