@@ -258,7 +258,7 @@ export function TaskStafetteWorkspace({ userId, tasks, profiles, onReload, onCom
   };
 
   const nudge = async (task: MyWorkTask, note: string) => {
-    const { error } = await supabase.rpc("nudge_task", { _task_id: task.id, _note: note || null });
+    const { error } = await supabase.rpc("nudge_task", { _task_id: task.id, _note: note || undefined });
     if (error) { notify.error(error.message.includes("bereits") ? "Heute schon angestupst" : "Anstupsen fehlgeschlagen"); return; }
     notify.success("Angestupst");
     void onReload();
@@ -290,7 +290,7 @@ export function TaskStafetteWorkspace({ userId, tasks, profiles, onReload, onCom
 
   const ackNudge = async (task: MyWorkTask, reply: string) => {
     setLocal((l) => ({ ...l, [task.id]: { ...l[task.id], nudge_seen_at: new Date().toISOString() } }));
-    const { error } = await supabase.rpc("ack_task_nudge", { _task_id: task.id, _reply: reply || null });
+    const { error } = await supabase.rpc("ack_task_nudge", { _task_id: task.id, _reply: reply || undefined });
     if (error) notify.error("Speichern fehlgeschlagen");
     void onReload();
   };
