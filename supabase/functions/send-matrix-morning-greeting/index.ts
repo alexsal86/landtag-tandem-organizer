@@ -231,10 +231,6 @@ Deno.serve(withSafeHandler("send-matrix-morning-greeting", async (req) => {
       }
     }
 
-    console.log(
-      `📊 Morning greetings completed: ${sentCount} sent, ${skippedCount} skipped, ${errorCount} errors`,
-    );
-
     return new Response(
       JSON.stringify({
         success: true,

@@ -19,8 +19,6 @@ serve(withSafeHandler("auto-sync-calendars", async (req) => {
       Deno.env.get('SUPABASE_SERVICE_ROLE_KEY') ?? ''
     );
 
-    console.log('Starting automatic calendar sync...');
-
     const now = new Date();
 
     // Get all tenants with sync settings enabled
@@ -32,8 +30,6 @@ serve(withSafeHandler("auto-sync-calendars", async (req) => {
     if (settingsError) {
       throw settingsError;
     }
-
-    console.log(`Found ${syncSettings?.length || 0} tenants with enabled sync`);
 
     const results = [];
 
@@ -63,12 +59,8 @@ serve(withSafeHandler("auto-sync-calendars", async (req) => {
         continue;
       }
 
-      console.log(`Found ${calendars?.length || 0} calendars for tenant ${setting.tenant_id}`);
-
       for (const calendar of calendars || []) {
         try {
-          console.log(`Syncing calendar: ${calendar.name} (ID: ${calendar.id})`);
-
           // Call the sync function for this calendar
           const { data: syncResult, error: syncError } = await supabase.functions.invoke('sync-external-calendar', {
             body: { calendar_id: calendar.id }
@@ -85,7 +77,6 @@ serve(withSafeHandler("auto-sync-calendars", async (req) => {
               error: syncError?.message ?? "Sync failed"
             });
           } else {
-            console.log(`Successfully synced calendar ${calendar.name}`);
             results.push({
               tenant_id: setting.tenant_id,
               calendar_id: calendar.id,
@@ -111,8 +102,6 @@ serve(withSafeHandler("auto-sync-calendars", async (req) => {
       });
       if (finishError) throw finishError;
     }
-
-    console.log('Auto-sync completed:', results);
 
     return new Response(
       JSON.stringify({
