@@ -1,4 +1,4 @@
-import { useMemo } from 'react';
+import { useEffect, useMemo, useState } from 'react';
 import { useQuery } from '@tanstack/react-query';
 import { groupDeadlineItems } from '@/utils/deadlineFormatting';
 import { supabase } from '@/integrations/supabase/client';
@@ -6,6 +6,7 @@ import { useAuth } from '@/hooks/useAuth';
 import { useTenant } from '@/hooks/useTenant';
 import { useDashboardRealtime } from '@/hooks/useDashboardRealtime';
 import { STALE_TIME } from '@/lib/query-cache';
+import { berlinDateTimeToInstant, berlinDayKey, shiftBerlinDay } from '@/utils/berlinDate';
 import type { Tables } from '@/integrations/supabase/types';
 import type {
   ChecklistRelation,
@@ -258,6 +259,31 @@ const fetchDeadlineItems = async (userId: string, tenantId?: string): Promise<De
   };
 };
 
+/**
+ * Berliner Kalendertag, der beim Tageswechsel neu rendert. Ein Timer zielt auf die
+ * nächste Berliner Mitternacht; `focus` und `visibilitychange` holen den Wechsel
+ * nach, wenn ein gedrosselter Tab den Timer verschlafen hat. Kein Netzzugriff.
+ */
+const useBerlinDayKey = (): string => {
+  const [dayKey, setDayKey] = useState(() => berlinDayKey(new Date()));
+
+  useEffect(() => {
+    const sync = () => setDayKey(berlinDayKey(new Date()));
+    const nextMidnight = berlinDateTimeToInstant(`${shiftBerlinDay(berlinDayKey(new Date()), 1)}T00:00`);
+    // Ein Sekundenpuffer hält den Wechsel sicher hinter der Tagesgrenze.
+    const timer = window.setTimeout(sync, Math.max(1_000, nextMidnight.getTime() - Date.now() + 1_000));
+    window.addEventListener('focus', sync);
+    document.addEventListener('visibilitychange', sync);
+    return () => {
+      window.clearTimeout(timer);
+      window.removeEventListener('focus', sync);
+      document.removeEventListener('visibilitychange', sync);
+    };
+  }, [dayKey]);
+
+  return dayKey;
+};
+
 export const useDashboardDeadlines = () => {
   const { user } = useAuth();
   const { currentTenant } = useTenant();
@@ -273,12 +299,19 @@ export const useDashboardDeadlines = () => {
     staleTime: STALE_TIME.LIST_WITH_REALTIME,
     // Kein Polling: alle Quellen (tasks, quick_notes, case_items, task_decisions, event_plannings
     // samt Timeline- und Checklisten-Zuweisungen) invalidieren diesen Key über useDashboardRealtime,
-    // und die Abfrage filtert nicht relativ zum aktuellen Datum.
+    // und die Abfrage filtert nicht relativ zum aktuellen Datum. Die Einordnung nach
+    // heute/morgen hängt dagegen am Kalendertag und wird über useBerlinDayKey neu berechnet.
     refetchOnWindowFocus: false,
   });
 
   const items = useMemo(() => query.data?.items ?? [], [query.data]);
-  const grouped = useMemo<GroupedDeadlineItems>(() => groupDeadlineItems(items), [items]);
+  const dayKey = useBerlinDayKey();
+  // Mittag des Berliner Bezugstags: stabil innerhalb des Tages, einheitlich für alle Gruppen.
+  const dayAnchor = useMemo(() => berlinDateTimeToInstant(`${dayKey}T12:00`), [dayKey]);
+  const grouped = useMemo<GroupedDeadlineItems>(
+    () => groupDeadlineItems(items, dayAnchor),
+    [items, dayAnchor],
+  );
   const allSourcesFailed = query.data?.allSourcesFailed ?? false;
 
   return {

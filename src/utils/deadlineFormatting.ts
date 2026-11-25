@@ -60,11 +60,15 @@ export const DEADLINE_STATUS_BAR_CLASS: Record<DeadlineStatus, string> = {
   later: 'bg-muted-foreground/30',
 };
 
-/** Disjoint calendar groups: today, tomorrow through Sunday, and following weeks. */
-export function groupDeadlineItems(items: DeadlineItem[]): GroupedDeadlineItems {
+/**
+ * Disjoint calendar groups: today, tomorrow through Sunday, and following weeks.
+ * `now` macht den Bezugstag explizit, damit ein offener Tab die Einordnung am
+ * Kalendertagwechsel neu berechnen kann, ohne die Daten erneut zu laden.
+ */
+export function groupDeadlineItems(items: DeadlineItem[], now: Date = new Date()): GroupedDeadlineItems {
   const groups: GroupedDeadlineItems = { overdue: [], today: [], thisWeek: [], later: [] };
   for (const item of items) {
-    const status = getDeadlineStatus(item.dueDate);
+    const status = getDeadlineStatus(item.dueDate, now);
     groups[status === 'soon' ? 'thisWeek' : status].push(item);
   }
   for (const list of [groups.today, groups.thisWeek, groups.later]) {
