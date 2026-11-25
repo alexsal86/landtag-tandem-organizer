@@ -24,7 +24,7 @@ export interface Letter {
   sender_info_id?: string;
   information_block_ids?: string[];
   letter_date?: string;
-  status: 'draft' | 'review' | 'approved' | 'sent' | 'pending_approval' | 'revision_requested';
+  status: LetterStatus;
   sent_date?: string;
   sent_method?: 'post' | 'email' | 'both';
   expected_response_date?: string;
@@ -76,6 +76,21 @@ export interface LetterCollaborator {
 
 export const DEFAULT_LETTER_FONT_STACK = 'Calibri, Carlito, "Segoe UI", Arial, sans-serif';
 
+/**
+ * Geschlossene Statusmenge der Briefe. Sie muss mit dem CHECK-Constraint
+ * `letters_status_check` übereinstimmen; `archived` setzt die Archivierung.
+ */
+export const LETTER_STATUSES = [
+  'draft',
+  'review',
+  'pending_approval',
+  'approved',
+  'revision_requested',
+  'sent',
+  'archived',
+] as const;
+export type LetterStatus = (typeof LETTER_STATUSES)[number];
+
 export const STATUS_LABELS: Record<string, string> = {
   draft: 'Entwurf',
   review: 'Kollegenprüfung',
@@ -83,6 +98,7 @@ export const STATUS_LABELS: Record<string, string> = {
   approved: 'Freigegeben',
   revision_requested: 'Überarbeitung',
   sent: 'Versendet',
+  archived: 'Archiviert',
 };
 
 export const SENT_METHOD_LABELS: Record<string, string> = {
@@ -106,6 +122,7 @@ export const ALLOWED_TRANSITIONS: Record<string, string[]> = {
   revision_requested: ['draft'],
   approved: ['sent', 'pending_approval'],
   sent: [],
+  archived: [],
 };
 
 export const getNextStatus = (currentStatus: string) => STATUS_FLOW[currentStatus];

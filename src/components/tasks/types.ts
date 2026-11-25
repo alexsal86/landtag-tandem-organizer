@@ -1,9 +1,18 @@
+/**
+ * Kanonische Aufgabenstatus. Die Datenbank prüft gegen die konfigurierbare
+ * Registry `task_statuses`; diese Liste beschreibt die Werte, die der Code
+ * selbst setzt. Der frühere Wert `in-progress` ist migriert und wird nicht
+ * mehr geschrieben.
+ */
+export const TASK_STATUSES = ["todo", "in_progress", "completed", "cancelled"] as const;
+export type TaskStatus = (typeof TASK_STATUSES)[number];
+
 export interface Task {
   id: string;
   title: string;
   description: string;
   priority: "low" | "medium" | "high";
-  status: "todo" | "in-progress" | "completed";
+  status: TaskStatus;
   dueDate: string | null;
   category: "legislation" | "constituency" | "committee" | "personal" | "call_followup" | "call_follow_up";
   assignedTo?: string;

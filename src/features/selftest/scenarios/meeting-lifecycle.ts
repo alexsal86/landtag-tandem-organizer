@@ -575,7 +575,7 @@ export const meetingLifecycleScenario: TestScenario = {
       run: async () => {
         const tasks = [
           { id: "1", title: "Erledigt", status: "completed", due_date: "2026-11-17" },
-          { id: "2", title: "In Bearbeitung", status: "in-progress", due_date: "2026-11-19" },
+          { id: "2", title: "In Bearbeitung", status: "in_progress", due_date: "2026-11-19" },
           { id: "3", title: "In Verzug", status: "todo", due_date: "2026-11-17" },
         ];
         const states = tasks.map((task) => protocolTaskStatus(task, new Date("2026-11-19T10:00:00Z")));

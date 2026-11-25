@@ -25,7 +25,7 @@ import {
   createLetterSendTask,
 } from '@/utils/letterWorkflowActions';
 
-const DB_ALLOWED_STATUSES = new Set(['todo', 'in-progress', 'completed']);
+const DB_ALLOWED_STATUSES = new Set(['todo', 'in_progress', 'completed']);
 const DB_ALLOWED_PRIORITIES = new Set(['low', 'medium', 'high']);
 const ALLOWED_FRONTEND_OR_TENANT_CATEGORIES = new Set(['personal', 'meeting', 'call_follow_up', 'call_followup']);
 const UUID_RE = /^[0-9a-f]{8}-[0-9a-f]{4}-[1-5][0-9a-f]{3}-[89ab][0-9a-f]{3}-[0-9a-f]{12}$/i;

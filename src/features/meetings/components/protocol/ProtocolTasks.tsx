@@ -5,7 +5,7 @@ import type { CreatedTask } from "./types";
 const statusLabels = {
   completed: "Erledigt",
   overdue: "In Verzug",
-  "in-progress": "In Bearbeitung",
+  "in_progress": "In Bearbeitung",
   open: "Offen",
 };
 

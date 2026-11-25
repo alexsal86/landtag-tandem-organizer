@@ -59,7 +59,7 @@ export const documentAnnotationScenario: TestScenario = {
         message: 'Auswahl wird nach Seite sortiert; Teilbearbeitungen erhalten andere Seiten und das bisherige Speicherformat.' };
     } },
     { id: 'annotation-task-status', label: 'Aufgabenstatus anzeigen und Anmerkungen bewusst abschließen', kind: 'logic', run: async () => ({
-      ok: annotationTaskStatusLabel('todo') === 'Offen' && annotationTaskStatusLabel('in-progress') === 'In Bearbeitung'
+      ok: annotationTaskStatusLabel('todo') === 'Offen' && annotationTaskStatusLabel('in_progress') === 'In Bearbeitung'
         && annotationTaskStatusLabel('completed') === 'Abgeschlossen' && annotationTaskStatusLabel(null) === 'Status nicht verfügbar',
       message: 'Aufgabenstatus und fehlende Leserechte werden eindeutig dargestellt; Erledigen bleibt eine eigene Aktion.',
     }) },

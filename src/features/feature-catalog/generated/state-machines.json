@@ -5,22 +5,13 @@
   "sources": {
     "types": "src/integrations/supabase/types.ts",
     "migrationsDirectory": "supabase/migrations",
-    "migrationCount": 895,
+    "migrationCount": 896,
     "tsModules": [
       "src/components/letters/types.ts"
     ]
   },
   "machineCount": 49,
-  "anomalies": [
-    {
-      "machine": "tasks.status",
-      "values": [
-        "in-progress",
-        "in_progress"
-      ],
-      "reason": "Zustandswerte unterscheiden sich nur in Trennzeichen oder Groß-/Kleinschreibung; im Quellcode sind sie verschieden."
-    }
-  ],
+  "anomalies": [],
   "machines": [
     {
       "id": "appointment_feedback.feedback_status",
@@ -181,6 +172,7 @@
       "reconciliation": {
         "source": null,
         "label": null,
+        "valuesNotInDatabase": [],
         "onlyInCode": [],
         "onlyInArtifact": [],
         "clientValues": [
@@ -356,6 +348,7 @@
       "reconciliation": {
         "source": null,
         "label": null,
+        "valuesNotInDatabase": [],
         "onlyInCode": [],
         "onlyInArtifact": [],
         "clientValues": [
@@ -812,21 +805,18 @@
         {
           "value": "cancelled",
           "sources": [
-            "check:supabase/migrations/20250722075209-0a43b074-55a1-43e5-9515-179d2b07dd49.sql",
             "check:supabase/migrations/20250816013840_d517b46e-1205-4472-874f-c8d5f4a1cfba.sql"
           ]
         },
         {
           "value": "completed",
           "sources": [
-            "check:supabase/migrations/20250722075209-0a43b074-55a1-43e5-9515-179d2b07dd49.sql",
             "check:supabase/migrations/20250816013840_d517b46e-1205-4472-874f-c8d5f4a1cfba.sql"
           ]
         },
         {
           "value": "confirmed",
           "sources": [
-            "check:supabase/migrations/20250722075209-0a43b074-55a1-43e5-9515-179d2b07dd49.sql",
             "check:supabase/migrations/20250816013840_d517b46e-1205-4472-874f-c8d5f4a1cfba.sql",
             "insert:supabase/migrations/20261124220000_poll_result_and_followups.sql",
             "insert:supabase/migrations/20261124230000_poll_winner_guests_and_list_result.sql",
@@ -838,7 +828,6 @@
         {
           "value": "planned",
           "sources": [
-            "check:supabase/migrations/20250722075209-0a43b074-55a1-43e5-9515-179d2b07dd49.sql",
             "check:supabase/migrations/20250816013840_d517b46e-1205-4472-874f-c8d5f4a1cfba.sql",
             "default:supabase/migrations/20250722075209-0a43b074-55a1-43e5-9515-179d2b07dd49.sql",
             "insert:supabase/migrations/20250811235528_8924780e-710a-454c-8995-7ac3ad50b591.sql",
@@ -937,6 +926,7 @@
       "reconciliation": {
         "source": null,
         "label": null,
+        "valuesNotInDatabase": [],
         "onlyInCode": [],
         "onlyInArtifact": [],
         "clientValues": [
@@ -2289,30 +2279,24 @@
         {
           "value": "cancelled",
           "sources": [
-            "check:supabase/migrations/20251008002713_306e5588-b2e8-4826-8aad-c96e515975be.sql",
-            "check:supabase/migrations/20260210212601_1f7501d4-6d9f-4d13-add2-a11e1188a3e9.sql",
             "check:supabase/migrations/20261113120000_employee_protocol_acknowledgement.sql"
           ]
         },
         {
           "value": "cancelled_by_employee",
           "sources": [
-            "check:supabase/migrations/20260210212601_1f7501d4-6d9f-4d13-add2-a11e1188a3e9.sql",
             "check:supabase/migrations/20261113120000_employee_protocol_acknowledgement.sql"
           ]
         },
         {
           "value": "completed",
           "sources": [
-            "check:supabase/migrations/20251008002713_306e5588-b2e8-4826-8aad-c96e515975be.sql",
-            "check:supabase/migrations/20260210212601_1f7501d4-6d9f-4d13-add2-a11e1188a3e9.sql",
             "check:supabase/migrations/20261113120000_employee_protocol_acknowledgement.sql"
           ]
         },
         {
           "value": "in_progress",
           "sources": [
-            "check:supabase/migrations/20260210212601_1f7501d4-6d9f-4d13-add2-a11e1188a3e9.sql",
             "check:supabase/migrations/20261113120000_employee_protocol_acknowledgement.sql",
             "write:supabase/migrations/20261113120000_employee_protocol_acknowledgement.sql"
           ]
@@ -2327,15 +2311,12 @@
         {
           "value": "rescheduled",
           "sources": [
-            "check:supabase/migrations/20260210212601_1f7501d4-6d9f-4d13-add2-a11e1188a3e9.sql",
             "check:supabase/migrations/20261113120000_employee_protocol_acknowledgement.sql"
           ]
         },
         {
           "value": "scheduled",
           "sources": [
-            "check:supabase/migrations/20251008002713_306e5588-b2e8-4826-8aad-c96e515975be.sql",
-            "check:supabase/migrations/20260210212601_1f7501d4-6d9f-4d13-add2-a11e1188a3e9.sql",
             "check:supabase/migrations/20261113120000_employee_protocol_acknowledgement.sql",
             "default:supabase/migrations/20251008002713_306e5588-b2e8-4826-8aad-c96e515975be.sql"
           ]
@@ -3241,9 +3222,7 @@
         {
           "value": "approved",
           "sources": [
-            "check:supabase/migrations/20250829231458_174e86d4-df6b-43d6-8438-585d11673e6b.sql",
-            "check:supabase/migrations/20250829231607_d0f74fd1-ed04-4d99-b39f-95615562ec30.sql",
-            "check:supabase/migrations/20250829231652_9d319a79-b026-4da1-bb64-bf1332c6d63f.sql",
+            "check:supabase/migrations/20261125130000_align_task_and_letter_status_values.sql",
             "write:supabase/migrations/20250901004249_6c8060e0-28d4-4adc-a890-514025795c0a.sql",
             "write:supabase/migrations/20250901004331_e7e79e52-32bb-4315-bcc1-5e23585bb7ce.sql",
             "write:supabase/migrations/20250901004403_e601cf2f-3dd2-46f8-9f5f-5b8731fa03eb.sql"
@@ -3252,6 +3231,7 @@
         {
           "value": "archived",
           "sources": [
+            "check:supabase/migrations/20261125130000_align_task_and_letter_status_values.sql",
             "write:supabase/migrations/20250901002205_e44c9137-114c-4d43-84aa-6927a115fa8e.sql",
             "guard:supabase/migrations/20250901000838_15dd536a-931d-4dab-8bc6-21294035b6e9.sql"
           ]
@@ -3259,25 +3239,31 @@
         {
           "value": "draft",
           "sources": [
-            "check:supabase/migrations/20250829231458_174e86d4-df6b-43d6-8438-585d11673e6b.sql",
-            "check:supabase/migrations/20250829231607_d0f74fd1-ed04-4d99-b39f-95615562ec30.sql",
-            "check:supabase/migrations/20250829231652_9d319a79-b026-4da1-bb64-bf1332c6d63f.sql"
+            "check:supabase/migrations/20261125130000_align_task_and_letter_status_values.sql"
+          ]
+        },
+        {
+          "value": "pending_approval",
+          "sources": [
+            "check:supabase/migrations/20261125130000_align_task_and_letter_status_values.sql"
           ]
         },
         {
           "value": "review",
           "sources": [
-            "check:supabase/migrations/20250829231458_174e86d4-df6b-43d6-8438-585d11673e6b.sql",
-            "check:supabase/migrations/20250829231607_d0f74fd1-ed04-4d99-b39f-95615562ec30.sql",
-            "check:supabase/migrations/20250829231652_9d319a79-b026-4da1-bb64-bf1332c6d63f.sql"
+            "check:supabase/migrations/20261125130000_align_task_and_letter_status_values.sql"
+          ]
+        },
+        {
+          "value": "revision_requested",
+          "sources": [
+            "check:supabase/migrations/20261125130000_align_task_and_letter_status_values.sql"
           ]
         },
         {
           "value": "sent",
           "sources": [
-            "check:supabase/migrations/20250829231458_174e86d4-df6b-43d6-8438-585d11673e6b.sql",
-            "check:supabase/migrations/20250829231607_d0f74fd1-ed04-4d99-b39f-95615562ec30.sql",
-            "check:supabase/migrations/20250829231652_9d319a79-b026-4da1-bb64-bf1332c6d63f.sql",
+            "check:supabase/migrations/20261125130000_align_task_and_letter_status_values.sql",
             "write:supabase/migrations/20250901004624_e4007eaf-ea99-4c2f-b696-71dea9c3655d.sql",
             "guard:supabase/migrations/20250901000838_15dd536a-931d-4dab-8bc6-21294035b6e9.sql",
             "guard:supabase/migrations/20250901095901_db66aa45-6db8-4471-85ac-ca8edf369ca8.sql",
@@ -3360,14 +3346,18 @@
             "approved",
             "archived",
             "draft",
+            "pending_approval",
             "review",
+            "revision_requested",
             "sent"
           ],
           "allowedFrom": [
             "approved",
             "archived",
             "draft",
+            "pending_approval",
             "review",
+            "revision_requested",
             "sent"
           ]
         },
@@ -3391,14 +3381,18 @@
             "approved",
             "archived",
             "draft",
+            "pending_approval",
             "review",
+            "revision_requested",
             "sent"
           ],
           "allowedFrom": [
             "approved",
             "archived",
             "draft",
+            "pending_approval",
             "review",
+            "revision_requested",
             "sent"
           ]
         },
@@ -3441,14 +3435,18 @@
             "approved",
             "archived",
             "draft",
+            "pending_approval",
             "review",
+            "revision_requested",
             "sent"
           ],
           "allowedFrom": [
             "approved",
             "archived",
             "draft",
+            "pending_approval",
             "review",
+            "revision_requested",
             "sent"
           ]
         },
@@ -3500,14 +3498,18 @@
             "approved",
             "archived",
             "draft",
+            "pending_approval",
             "review",
+            "revision_requested",
             "sent"
           ],
           "allowedFrom": [
             "approved",
             "archived",
             "draft",
+            "pending_approval",
             "review",
+            "revision_requested",
             "sent"
           ]
         }
@@ -3515,6 +3517,7 @@
       "reconciliation": {
         "source": "src/components/letters/types.ts",
         "label": "Freigaberegeln des Briefeditors",
+        "valuesNotInDatabase": [],
         "onlyInCode": [
           {
             "from": "draft",
@@ -3576,22 +3579,25 @@
       ],
       "findings": [
         {
-          "kind": "client-wert-unbelegt",
-          "severity": "warn",
-          "states": [
-            "revision_requested"
-          ],
-          "message": "Der Client schreibt Zustandswerte, die in Migrationen oder Typen nicht belegt sind."
-        },
-        {
           "kind": "kein-startzustand",
           "severity": "warn",
           "states": [],
           "message": "Kein Spalten-Default und kein literaler INSERT belegt einen Startzustand."
         },
         {
-          "kind": "nur-im-code",
-          "severity": "warn",
+          "kind": "isoliert",
+          "severity": "info",
+          "states": [
+            "draft",
+            "pending_approval",
+            "review",
+            "revision_requested"
+          ],
+          "message": "Zustände ohne jede Verbindung im belegten Graphen."
+        },
+        {
+          "kind": "kanten-nicht-belegt",
+          "severity": "info",
           "states": [
             "approved",
             "draft",
@@ -3600,16 +3606,7 @@
             "revision_requested",
             "sent"
           ],
-          "message": "Freigaberegeln des Briefeditors erlaubt Übergänge, die in der Datenbank nicht belegt sind."
-        },
-        {
-          "kind": "isoliert",
-          "severity": "info",
-          "states": [
-            "draft",
-            "review"
-          ],
-          "message": "Zustände ohne jede Verbindung im belegten Graphen."
+          "message": "TS-Regeln erlauben Übergänge, die kein Migrationsschreibvorgang belegt; bei benutzergesteuerten Wechseln ist das erwartbar."
         },
         {
           "kind": "sackgasse",
@@ -3636,7 +3633,9 @@
           "severity": "info",
           "states": [
             "draft",
-            "review"
+            "pending_approval",
+            "review",
+            "revision_requested"
           ],
           "message": "Zustände ohne belegten Eingang; der Graph enthält noch keinen Übergang mit Ausgangszustand, daher keine Aussage über Erreichbarkeit."
         }
@@ -3771,7 +3770,6 @@
         {
           "value": "confirmed",
           "sources": [
-            "check:supabase/migrations/20251213235501_300367bb-918c-408b-b126-1376e24a5f61.sql",
             "check:supabase/migrations/20261125090000_jour_fixe_actual_times_and_rsvp.sql",
             "param:supabase/migrations/20261125090000_jour_fixe_actual_times_and_rsvp.sql"
           ]
@@ -3779,7 +3777,6 @@
         {
           "value": "declined",
           "sources": [
-            "check:supabase/migrations/20251213235501_300367bb-918c-408b-b126-1376e24a5f61.sql",
             "check:supabase/migrations/20261125090000_jour_fixe_actual_times_and_rsvp.sql",
             "param:supabase/migrations/20261125090000_jour_fixe_actual_times_and_rsvp.sql"
           ]
@@ -3787,7 +3784,6 @@
         {
           "value": "pending",
           "sources": [
-            "check:supabase/migrations/20251213235501_300367bb-918c-408b-b126-1376e24a5f61.sql",
             "check:supabase/migrations/20261125090000_jour_fixe_actual_times_and_rsvp.sql",
             "default:supabase/migrations/20251213235501_300367bb-918c-408b-b126-1376e24a5f61.sql",
             "param:supabase/migrations/20261125090000_jour_fixe_actual_times_and_rsvp.sql"
@@ -4048,6 +4044,7 @@
       "reconciliation": {
         "source": null,
         "label": null,
+        "valuesNotInDatabase": [],
         "onlyInCode": [],
         "onlyInArtifact": [],
         "clientValues": [
@@ -4698,32 +4695,7 @@
         {
           "value": "draft",
           "sources": [
-            "check:supabase/migrations/20260407170000_add_social_content_variants.sql",
             "default:supabase/migrations/20260407170000_add_social_content_variants.sql"
-          ]
-        },
-        {
-          "value": "failed",
-          "sources": [
-            "check:supabase/migrations/20260407170000_add_social_content_variants.sql"
-          ]
-        },
-        {
-          "value": "published",
-          "sources": [
-            "check:supabase/migrations/20260407170000_add_social_content_variants.sql"
-          ]
-        },
-        {
-          "value": "ready",
-          "sources": [
-            "check:supabase/migrations/20260407170000_add_social_content_variants.sql"
-          ]
-        },
-        {
-          "value": "scheduled",
-          "sources": [
-            "check:supabase/migrations/20260407170000_add_social_content_variants.sql"
           ]
         }
       ],
@@ -4745,20 +4717,10 @@
       "guards": [],
       "reconciliation": null,
       "limitations": [
+        "Keine Enum- oder CHECK-Beschränkung belegt; die Zustandswerte stammen nur aus Schreibvorgängen und Triggern.",
         "Kein Trigger im Migrationsbestand gefunden; Übergänge sind nicht durch Trigger abgesichert."
       ],
       "findings": [
-        {
-          "kind": "isoliert",
-          "severity": "info",
-          "states": [
-            "failed",
-            "published",
-            "ready",
-            "scheduled"
-          ],
-          "message": "Zustände ohne jede Verbindung im belegten Graphen."
-        },
         {
           "kind": "sackgasse",
           "severity": "info",
@@ -4766,17 +4728,6 @@
             "draft"
           ],
           "message": "Zustände mit Eingang, aber ohne belegten ausgehenden Übergang (möglicher Endzustand)."
-        },
-        {
-          "kind": "unerreichbar",
-          "severity": "info",
-          "states": [
-            "failed",
-            "published",
-            "ready",
-            "scheduled"
-          ],
-          "message": "Zustände ohne belegten Eingang; der Graph enthält noch keinen Übergang mit Ausgangszustand, daher keine Aussage über Erreichbarkeit."
         }
       ]
     },
@@ -4832,7 +4783,6 @@
         {
           "value": "active",
           "sources": [
-            "check:supabase/migrations/20250826224258_edec5262-0a2a-414e-87bd-85d0e524ffa6.sql",
             "check:supabase/migrations/20260209094422_7cce038b-0e7e-4f45-931d-19b0fc237929.sql",
             "default:supabase/migrations/20250826224258_edec5262-0a2a-414e-87bd-85d0e524ffa6.sql",
             "insert:supabase/migrations/20261110150000_typed_office_routine_steps.sql",
@@ -4845,7 +4795,6 @@
         {
           "value": "archived",
           "sources": [
-            "check:supabase/migrations/20250826224258_edec5262-0a2a-414e-87bd-85d0e524ffa6.sql",
             "check:supabase/migrations/20260209094422_7cce038b-0e7e-4f45-931d-19b0fc237929.sql",
             "write:supabase/migrations/20251008092243_13bc77ce-3770-4a50-b88c-2444fb69206c.sql",
             "write:supabase/migrations/20260209100456_1f1d79dc-a773-4379-82bd-99a16d806d49.sql"
@@ -4905,6 +4854,7 @@
       "reconciliation": {
         "source": null,
         "label": null,
+        "valuesNotInDatabase": [],
         "onlyInCode": [],
         "onlyInArtifact": [],
         "clientValues": [
@@ -4976,7 +4926,6 @@
         {
           "value": "completed",
           "sources": [
-            "check:supabase/migrations/20250803191041_74873018-a03c-434d-a935-86b817a22f64.sql",
             "write:supabase/migrations/20261108113437_6ceab425-38b4-4d82-a042-446e77bbbd90.sql",
             "write:supabase/migrations/20261109100000_connect_appointment_preparation_workflow.sql",
             "write:supabase/migrations/20261109101304_dcd43720-f9f8-4d30-9637-1bc1b0853954.sql",
@@ -4997,12 +4946,6 @@
           ]
         },
         {
-          "value": "in-progress",
-          "sources": [
-            "check:supabase/migrations/20250803191041_74873018-a03c-434d-a935-86b817a22f64.sql"
-          ]
-        },
-        {
           "value": "in_progress",
           "sources": [
             "write:supabase/migrations/20261113121000_employee_action_stafette.sql",
@@ -5012,7 +4955,6 @@
         {
           "value": "todo",
           "sources": [
-            "check:supabase/migrations/20250803191041_74873018-a03c-434d-a935-86b817a22f64.sql",
             "default:supabase/migrations/20250803191041_74873018-a03c-434d-a935-86b817a22f64.sql",
             "insert:supabase/migrations/20250901095901_db66aa45-6db8-4471-85ac-ca8edf369ca8.sql",
             "insert:supabase/migrations/20250901095950_1e2b8e44-b0e3-47f7-b40b-9036adb4239f.sql",
@@ -5221,12 +5163,39 @@
             "completed"
           ],
           "allowedTo": [
-            "in-progress",
             "in_progress",
             "todo"
           ],
           "allowedFrom": [
-            "in-progress",
+            "in_progress",
+            "todo"
+          ]
+        },
+        {
+          "trigger": "enforce_task_status",
+          "function": "enforce_task_status",
+          "timing": "before",
+          "events": "insert or update of status",
+          "source": "supabase/migrations/20261125130000_align_task_and_letter_status_values.sql",
+          "functionSource": "supabase/migrations/20261125130000_align_task_and_letter_status_values.sql",
+          "kind": "guard",
+          "readsOld": false,
+          "readsNew": true,
+          "raises": true,
+          "message": "Aufgabenstatus fehlt",
+          "checks": [],
+          "states": [],
+          "blockedTo": [],
+          "blockedFrom": [],
+          "allowedTo": [
+            "cancelled",
+            "completed",
+            "in_progress",
+            "todo"
+          ],
+          "allowedFrom": [
+            "cancelled",
+            "completed",
             "in_progress",
             "todo"
           ]
@@ -5261,14 +5230,12 @@
           "allowedTo": [
             "cancelled",
             "completed",
-            "in-progress",
             "in_progress",
             "todo"
           ],
           "allowedFrom": [
             "cancelled",
             "completed",
-            "in-progress",
             "in_progress",
             "todo"
           ]
@@ -5311,14 +5278,12 @@
           "allowedTo": [
             "cancelled",
             "completed",
-            "in-progress",
             "in_progress",
             "todo"
           ],
           "allowedFrom": [
             "cancelled",
             "completed",
-            "in-progress",
             "in_progress",
             "todo"
           ]
@@ -5410,14 +5375,12 @@
           "allowedTo": [
             "cancelled",
             "completed",
-            "in-progress",
             "in_progress",
             "todo"
           ],
           "allowedFrom": [
             "cancelled",
             "completed",
-            "in-progress",
             "in_progress",
             "todo"
           ]
@@ -5426,6 +5389,7 @@
       "reconciliation": {
         "source": null,
         "label": null,
+        "valuesNotInDatabase": [],
         "onlyInCode": [],
         "onlyInArtifact": [],
         "clientValues": [
@@ -5444,6 +5408,7 @@
         ]
       },
       "limitations": [
+        "Keine Enum- oder CHECK-Beschränkung belegt; die Zustandswerte stammen nur aus Schreibvorgängen und Triggern.",
         "Guards werden zitiert, aber nicht als vollständiger Automat interpretiert; abgeleitet werden nur belegte Schreibvorgänge.",
         "Übergänge ohne belegten Ausgangszustand sind mit \"from\": null gekennzeichnet."
       ],
@@ -5452,8 +5417,7 @@
           "kind": "unerreichbar",
           "severity": "warn",
           "states": [
-            "cancelled",
-            "in-progress"
+            "cancelled"
           ],
           "message": "Zustände ohne belegten Eingang: weder Startzustand noch Ziel eines Übergangs."
         },
@@ -5461,8 +5425,7 @@
           "kind": "isoliert",
           "severity": "info",
           "states": [
-            "cancelled",
-            "in-progress"
+            "cancelled"
           ],
           "message": "Zustände ohne jede Verbindung im belegten Graphen."
         },

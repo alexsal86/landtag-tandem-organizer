@@ -61,6 +61,44 @@ test('Statusspalten stammen aus den generierten Typen; status_from ist keine Mas
   assert.equal(columns[1].enumName, null);
 });
 
+test('nur Kanten ohne Schreibbeleg bleiben ein Hinweis, fehlende Zustandswerte eine Warnung', () => {
+  const base = {
+    id: 'letters.status',
+    states: [{ value: 'draft', sources: [] }, { value: 'sent', sources: [] }],
+    initialStates: ['draft'],
+    transitions: [{ from: ['draft'], to: 'sent', kind: 'write', param: null, sources: ['a.sql'], guards: [] }],
+    guards: [],
+  };
+  const withEdges = analyzeMachine({
+    ...base,
+    reconciliation: {
+      source: 'src/components/letters/types.ts',
+      label: 'Briefregeln',
+      valuesNotInDatabase: [],
+      onlyInCode: [{ from: 'draft', to: 'review' }],
+      onlyInArtifact: [],
+      clientValues: [],
+    },
+  });
+  assert.equal(withEdges.find((finding) => finding.kind === 'nur-im-code'), undefined);
+  assert.equal(withEdges.find((finding) => finding.kind === 'kanten-nicht-belegt').severity, 'info');
+
+  const withValues = analyzeMachine({
+    ...base,
+    reconciliation: {
+      source: 'src/components/letters/types.ts',
+      label: 'Briefregeln',
+      valuesNotInDatabase: ['review'],
+      onlyInCode: [{ from: 'draft', to: 'review' }],
+      onlyInArtifact: [],
+      clientValues: [],
+    },
+  });
+  const warn = withValues.find((finding) => finding.kind === 'nur-im-code');
+  assert.equal(warn.severity, 'warn');
+  assert.deepEqual(warn.states, ['review']);
+});
+
 test('Enum-Werte werden zu Zuständen, auch wenn die Migration sie nicht wiederholt', () => {
   const artifact = buildStateArtifact({ typesSource, migrations: [] });
   const leave = artifact.machines.find((machine) => machine.id === 'leave_requests.status');
@@ -72,7 +110,7 @@ test('Enum-Werte werden zu Zuständen, auch wenn die Migration sie nicht wiederh
 });
 
 test('CHECK-Constraints liefern Zustände für die Tabelle davor', () => {
-  const [check] = collectChecks(
+  const checks = collectChecks(
     migrations([
       [
         'a.sql',
@@ -83,12 +121,37 @@ test('CHECK-Constraints liefern Zustände für die Tabelle davor', () => {
       ],
     ]),
   );
+  const check = checks.find((entry) => entry.table === 'tasks');
   assert.deepEqual(check, {
     table: 'tasks',
     column: 'status',
     values: ['todo', 'done'],
     source: 'supabase/migrations/a.sql',
   });
+});
+
+test('gedroppte CHECK-Constraints liefern keine Zustände mehr', () => {
+  const checks = collectChecks(
+    migrations([
+      [
+        'a.sql',
+        `create table public.tasks (id uuid, status text check (status in ('todo','in-progress','completed')));`,
+      ],
+      [
+        'b.sql',
+        `alter table public.tasks drop constraint if exists tasks_status_check;
+         alter table public.tasks add constraint tasks_status_check check (status in ('todo','in_progress','completed'));`,
+      ],
+    ]),
+  );
+  assert.deepEqual(checks, [
+    {
+      table: 'tasks',
+      column: 'status',
+      values: ['todo', 'in_progress', 'completed'],
+      source: 'supabase/migrations/b.sql',
+    },
+  ]);
 });
 
 test('Enum-Definitionen werden gelesen; die spätere Datei gewinnt', () => {
@@ -283,8 +346,8 @@ test('Befunde benennen unerreichbare Zustände und Sackgassen statt sie zu glät
   assert.deepEqual(findings.find((finding) => finding.kind === 'nur-im-guard').states, ['verwaist']);
 });
 
-test('Abgleich meldet TS-Übergänge und Client-Werte, die die Datenbank nicht kennt', () => {
-  const artifact = buildStateArtifact({
+test('Abgleich trennt fehlende Zustandswerte von Kanten ohne Schreibbeleg', () => {
+  const build = (transitions) => buildStateArtifact({
     typesSource,
     migrations: migrations([['a.sql', `update public.tasks set status='done' where status='todo';`]]),
     tsSources: [
@@ -292,21 +355,30 @@ test('Abgleich meldet TS-Übergänge und Client-Werte, die die Datenbank nicht k
         machine: 'tasks.status',
         file: 'src/components/tasks/types.ts',
         label: 'Testregeln',
-        transitions: [
-          { from: 'todo', to: 'done' },
-          { from: 'done', to: 'todo' },
-        ],
+        transitions,
       },
     ],
     clientWrites: [{ table: 'tasks', column: 'status', value: 'ghost', source: 'src/example.ts' }],
   });
+  const tasksOf = (artifact) => artifact.machines.find((machine) => machine.id === 'tasks.status');
 
-  const tasks = artifact.machines.find((machine) => machine.id === 'tasks.status');
-  assert.deepEqual(tasks.reconciliation.onlyInCode, [{ from: 'done', to: 'todo' }]);
-  assert.deepEqual(tasks.reconciliation.onlyInArtifact, []);
-  assert.deepEqual(tasks.reconciliation.clientValues, [{ value: 'ghost', source: 'src/example.ts' }]);
-  assert.deepEqual(tasks.findings.find((finding) => finding.kind === 'nur-im-code').states, ['todo']);
-  assert.deepEqual(tasks.findings.find((finding) => finding.kind === 'client-wert-unbelegt').states, ['ghost']);
+  // Beide TS-Werte sind in der Datenbank belegt: nur die Kante selbst ist offen.
+  const known = tasksOf(build([{ from: 'todo', to: 'done' }, { from: 'done', to: 'todo' }]));
+  assert.deepEqual(known.reconciliation.valuesNotInDatabase, []);
+  assert.deepEqual(known.reconciliation.onlyInCode, [{ from: 'done', to: 'todo' }]);
+  assert.deepEqual(known.reconciliation.onlyInArtifact, []);
+  assert.deepEqual(known.reconciliation.clientValues, [{ value: 'ghost', source: 'src/example.ts' }]);
+  assert.equal(known.findings.find((finding) => finding.kind === 'nur-im-code'), undefined);
+  assert.equal(known.findings.find((finding) => finding.kind === 'kanten-nicht-belegt').severity, 'info');
+  assert.deepEqual(known.findings.find((finding) => finding.kind === 'client-wert-unbelegt').states, ['ghost']);
+
+  // Ein TS-Zustand ohne DB-Beleg bleibt dagegen eine Warnung.
+  const drift = tasksOf(build([{ from: 'todo', to: 'done' }, { from: 'done', to: 'ghost2' }]));
+  assert.deepEqual(drift.reconciliation.valuesNotInDatabase, ['ghost2']);
+  const warn = drift.findings.find((finding) => finding.kind === 'nur-im-code');
+  assert.equal(warn.severity, 'warn');
+  assert.deepEqual(warn.states, ['ghost2']);
+  assert.equal(drift.findings.find((finding) => finding.kind === 'kanten-nicht-belegt'), undefined);
 });
 
 test('Client-Schreibvorgänge werden nur als Literale gelesen', () => {

@@ -211,23 +211,83 @@ export function collectEnumDefinitions(migrations) {
 }
 
 /**
- * CHECK-Constraints auf Statusspalten. Der Tabellenbezug ergibt sich aus dem
- * letzten `create table`/`alter table` vor dem Constraint im selben Skript.
+ * CHECK-Constraints auf Statusspalten – unter Berücksichtigung von
+ * `drop constraint`. Ohne die Drops würden längst entfernte Wertelisten
+ * weiter als Zustände gelten (etwa `in-progress` nach dem Entfernen von
+ * `tasks_status_check`). Benannte Constraints tragen ihren Namen; unbenannte
+ * erhalten den von PostgreSQL vergebenen Namen `<tabelle>_<spalte>_check`.
  */
 export function collectChecks(migrations) {
-  const checks = [];
+  const active = new Map();
+  const toValues = (text) => [...(text ?? '').matchAll(/'([^']*)'/g)].map((entry) => entry[1]);
+
   for (const { file, sql } of migrations) {
     const contexts = tableContexts(sql);
-    const pattern = /check\s*\(\s*([a-z0-9_]+)\s*(?:in\s*\(([^)]*)\)|=\s*any\s*\(\s*array\s*\[([^\]]*)\]\s*\))/gi;
-    for (const match of sql.matchAll(pattern)) {
+    const events = [];
+
+    for (const match of sql.matchAll(
+      /alter\s+table\s+(?:if\s+exists\s+)?(?:public\.)?"?([a-z0-9_]+)"?\s+add\s+constraint\s+([a-z0-9_]+)\s+check\s*\(\s*([a-z0-9_]+)\s*(?:in\s*\(([^)]*)\)|=\s*any\s*\(\s*array\s*\[([^\]]*)\]\s*\))/gi,
+    )) {
+      events.push({
+        index: match.index ?? 0,
+        kind: 'add',
+        table: match[1],
+        name: match[2],
+        column: match[3],
+        values: toValues(match[4] ?? match[5]),
+      });
+    }
+
+    for (const match of sql.matchAll(
+      /check\s*\(\s*([a-z0-9_]+)\s*(?:in\s*\(([^)]*)\)|=\s*any\s*\(\s*array\s*\[([^\]]*)\]\s*\))/gi,
+    )) {
+      const index = match.index ?? 0;
       if (!isStateColumn(match[1])) continue;
-      const context = [...contexts].reverse().find((entry) => entry.index < (match.index ?? 0));
+      const prefix = sql.slice(Math.max(0, index - 80), index);
+      if (/constraint\s+[a-z0-9_]+\s*$/i.test(prefix)) continue;
+      const context = [...contexts].reverse().find((entry) => entry.index < index);
       if (!context) continue;
-      const values = [...(match[2] ?? match[3] ?? '').matchAll(/'([^']*)'/g)].map((entry) => entry[1]);
-      if (values.length) checks.push({ table: context.table, column: match[1], values, source: file });
+      events.push({
+        index,
+        kind: 'add',
+        table: context.table,
+        name: `${context.table}_${match[1]}_check`,
+        column: match[1],
+        values: toValues(match[2] ?? match[3]),
+      });
+    }
+
+    for (const match of sql.matchAll(
+      /alter\s+table\s+(?:if\s+exists\s+)?(?:public\.)?"?([a-z0-9_]+)"?\s+drop\s+constraint\s+(?:if\s+exists\s+)?([a-z0-9_]+)/gi,
+    )) {
+      events.push({ index: match.index ?? 0, kind: 'drop', table: match[1], name: match[2] });
+    }
+
+    events.sort((a, b) => a.index - b.index);
+    for (const event of events) {
+      if (event.kind === 'drop') {
+        active.delete(event.name);
+        continue;
+      }
+      if (!event.values.length) continue;
+      active.set(event.name, {
+        table: event.table,
+        column: event.column,
+        values: event.values,
+        source: file,
+        name: event.name,
+      });
     }
   }
-  return checks;
+
+  return [...active.values()]
+    .map(({ name: _name, ...check }) => check)
+    .sort(
+      (a, b) =>
+        a.table.localeCompare(b.table) ||
+        a.column.localeCompare(b.column) ||
+        a.values.join(',').localeCompare(b.values.join(',')),
+    );
 }
 
 /** Belegte Schreibvorgänge: `UPDATE <tabelle> SET <status>='x' [WHERE <status>='y'|IN (…)]`. */
@@ -693,12 +753,21 @@ export function analyzeMachine(machine) {
     });
   }
 
-  if (machine.reconciliation?.onlyInCode.length) {
+  const missingValues = machine.reconciliation?.valuesNotInDatabase ?? [];
+  if (missingValues.length) {
     findings.push({
       kind: 'nur-im-code',
       severity: 'warn',
+      states: missingValues,
+      message: `${machine.reconciliation.label} erlaubt Zustände, die in der Datenbank nicht belegt sind.`,
+    });
+  } else if (machine.reconciliation?.onlyInCode.length) {
+    findings.push({
+      kind: 'kanten-nicht-belegt',
+      severity: 'info',
       states: [...new Set(machine.reconciliation.onlyInCode.map((entry) => entry.to))].sort(),
-      message: `${machine.reconciliation.label} erlaubt Übergänge, die in der Datenbank nicht belegt sind.`,
+      message:
+        'TS-Regeln erlauben Übergänge, die kein Migrationsschreibvorgang belegt; bei benutzergesteuerten Wechseln ist das erwartbar.',
     });
   }
   if (machine.reconciliation?.onlyInArtifact.length) {
@@ -907,9 +976,18 @@ export function buildStateArtifact({ typesSource, migrations, typesFile = TYPES_
       const codePairs = reconciliationSource
         ? reconciliationSource.transitions.map((entry) => `${entry.from}->${entry.to}`)
         : [];
+      // Echte Abweichung ist ein Zustandswert, den die Datenbank nicht kennt –
+      // nicht jede Kante ohne Migrationsschreibvorgang (benutzergesteuerte
+      // Wechsel schreibt der Client).
+      const tsValues = new Set(
+        reconciliationSource
+          ? reconciliationSource.transitions.flatMap((entry) => [entry.from, entry.to])
+          : [],
+      );
       reconciliation = {
         source: reconciliationSource?.file ?? null,
         label: reconciliationSource?.label ?? null,
+        valuesNotInDatabase: [...tsValues].filter((value) => !stateValues.includes(value)).sort(),
         onlyInCode: reconciliationSource
           ? reconciliationSource.transitions.filter((entry) => !pairs.has(`${entry.from}->${entry.to}`))
           : [],

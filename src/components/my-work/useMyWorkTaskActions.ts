@@ -120,7 +120,7 @@ export function useMyWorkTaskActions({
       ? taskStatuses
       : [
           { name: "todo", label: "Offen" },
-          { name: "in-progress", label: "In Bearbeitung" },
+          { name: "in_progress", label: "In Bearbeitung" },
           { name: "completed", label: "Erledigt" },
         ];
   const availableTaskCategories =

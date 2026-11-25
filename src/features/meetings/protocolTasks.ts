@@ -11,7 +11,8 @@ export function protocolTaskStatus(task: CreatedTask, now = new Date()) {
       : new Date(task.due_date) < now;
     if (overdue) return "overdue";
   }
-  return task.status === "in-progress" || task.status === "in_progress" ? "in-progress" : "open";
+  // "in-progress" ist hier ein Anzeigewert des Protokolls, kein Datenbankstatus.
+  return task.status === "in_progress" ? "in-progress" : "open";
 }
 
 export function protocolTaskProgress(tasks: CreatedTask[]) {

@@ -487,7 +487,7 @@ Führt Briefe durch Entwurf, Prüfung, Freigabe und Versand, protokolliert Statu
 
 **Bekannte Einschränkungen**
 
-- Keine.
+- Die Statusmenge ist geschlossen (draft, review, pending_approval, approved, revision_requested, sent, archived); der CHECK-Constraint letters_status_check und der Client lehnen andere Werte ab.
 
 **Offene Prüfpunkte**
 

@@ -30,7 +30,7 @@ interface Task {
   title: string;
   description: string;
   priority: "low" | "medium" | "high";
-  status: "todo" | "in-progress" | "completed";
+  status: "todo" | "in_progress" | "completed";
   dueDate: string | null;
   category: string;
   assignedTo?: string;
@@ -67,7 +67,7 @@ interface AssignedItemsSectionProps {
     title: string;
     description: string;
     priority: "low" | "medium" | "high";
-    status: "todo" | "in-progress" | "completed";
+    status: "todo" | "in_progress" | "completed";
     dueDate: string | null;
     category: string;
     assignedTo?: string;

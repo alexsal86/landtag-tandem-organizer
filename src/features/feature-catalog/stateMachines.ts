@@ -74,6 +74,8 @@ export interface TransitionPair {
 export interface StateMachineReconciliation {
   source: string | null;
   label: string | null;
+  /** Zustände aus dem TS-Regelmodul, die die Datenbank nicht kennt. */
+  valuesNotInDatabase: string[];
   onlyInCode: TransitionPair[];
   onlyInArtifact: TransitionPair[];
   clientValues: { value: string; source: string }[];
@@ -208,7 +210,8 @@ const FINDING_LABELS: Record<string, string> = {
   parametrisch: "Parametrisch",
   "guard-widerspruch": "Guard blockiert alles",
   "client-wert-unbelegt": "Client-Wert ohne Beleg",
-  "nur-im-code": "Nur im TS-Code",
+  "nur-im-code": "TS-Zustand ohne DB-Beleg",
+  "kanten-nicht-belegt": "Kanten ohne Schreibbeleg",
   "nur-in-der-datenbank": "Nur in der Datenbank",
 };
 

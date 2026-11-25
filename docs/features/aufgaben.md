@@ -135,7 +135,7 @@ Legt eine Aufgabe mit Titel, Beschreibung, Fälligkeit, Priorität, Kategorie, E
 
 **Bekannte Einschränkungen**
 
-- Keine.
+- Ein Statuswechsel ist nur auf einen Namen aus der konfigurierbaren Liste task_statuses möglich; der Trigger enforce_task_status lehnt andere Werte ab. Der frühere Bindestrich-Wert ist migriert und wird nicht mehr geschrieben.
 
 **Offene Prüfpunkte**
 

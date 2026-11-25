@@ -2,7 +2,8 @@ import { formatDashboardGreeting, parseDashboardGreetings, selectDashboardGreeti
 import { pollPartyBasis, POLL_FEATURED_PARTIES } from "@/features/election-analysis/research/simulator/polls";
 import { getAdministrationAccess } from "@/components/administration/access";
 import { automationTabFromParams, normalizeAutomationParams, rssTabFromParams } from "@/components/administration/automationNavigation";
-import { canTransitionStatus } from "@/components/letters/types";
+import { ALLOWED_TRANSITIONS, canTransitionStatus, LETTER_STATUSES } from "@/components/letters/types";
+import { TASK_STATUSES } from "@/components/tasks/types";
 import { canDecide } from "@/features/appointment-requests/logic";
 import { isOnResubmission, MINISTRY_RESPONSE_DAYS, withAutoDeadline, type TriageItem } from "@/features/cases/items/ball";
 import { computeCropRect, isCrowdedDay, parseTopicDrop, rescheduleToDay } from "@/features/redaktion/utils/plannerRules";
@@ -495,6 +496,35 @@ export const workflowRulesScenario: TestScenario = {
         ];
         const failures = cases.filter(([from, to, allowed]) => canTransitionStatus(from, to) !== allowed);
         return { ok: failures.length === 0, message: `${cases.length - failures.length}/${cases.length} Statusregeln bestanden.`, details: failures };
+      },
+    },
+    {
+      id: "status-values", label: "Statuswerte: Brief und Aufgabe nutzen dieselbe Menge wie die Datenbank", kind: "logic",
+      run: async () => {
+        // Muss mit letters_status_check übereinstimmen.
+        const letterDb = ["draft", "review", "pending_approval", "approved", "revision_requested", "sent", "archived"];
+        const letterValues = [...new Set([
+          ...Object.keys(ALLOWED_TRANSITIONS),
+          ...Object.values(ALLOWED_TRANSITIONS).flat(),
+        ])].sort();
+        const letterOk = letterValues.join(",") === [...letterDb].sort().join(",")
+          && LETTER_STATUSES.slice().sort().join(",") === [...letterDb].sort().join(",");
+
+        // Die Registry task_statuses führt den Unterstrich; der alte Bindestrich
+        // darf nirgends mehr als schreibbarer Wert auftauchen.
+        const taskRegistry = ["todo", "in_progress", "completed", "cancelled"];
+        const taskValues = TASK_STATUSES as readonly string[];
+        const taskOk = taskValues.every((value) => taskRegistry.includes(value))
+          && !taskValues.includes("in-progress")
+          && taskValues.includes("in_progress");
+
+        return {
+          ok: letterOk && taskOk,
+          message: letterOk && taskOk
+            ? "Brief- und Aufgabenstatus decken sich mit den Datenbankwerten."
+            : "Statuswerte weichen von den Datenbankwerten ab.",
+          details: { letterValues, letterDb, taskValues },
+        };
       },
     },
     {

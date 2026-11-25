@@ -126,7 +126,7 @@ export const PRIORITY_STYLES = {
 
 export const STATUS_STYLES = {
   todo:          { dot: "bg-muted-foreground", text: "text-muted-foreground", border: "border-border",          bgLight: "bg-muted/40",         label: "Offen" },
-  "in-progress": { dot: "bg-palette-blue",     text: "text-palette-blue",     border: "border-palette-blue/40", bgLight: "bg-palette-blue/10",  label: "In Arbeit" },
+  "in_progress": { dot: "bg-palette-blue",     text: "text-palette-blue",     border: "border-palette-blue/40", bgLight: "bg-palette-blue/10",  label: "In Arbeit" },
   completed:    { dot: "bg-priority-low",     text: "text-priority-low",     border: "border-priority-low/40", bgLight: "bg-priority-low/10",  label: "Erledigt" },
 } as const;
 

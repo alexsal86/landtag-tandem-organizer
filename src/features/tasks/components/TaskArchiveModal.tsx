@@ -41,7 +41,7 @@ interface Task {
   title: string;
   description: string;
   priority: "low" | "medium" | "high";
-  status: "todo" | "in-progress" | "completed";
+  status: "todo" | "in_progress" | "completed";
   dueDate: string | null;
   category: "legislation" | "constituency" | "committee" | "personal";
   assignedTo?: string;

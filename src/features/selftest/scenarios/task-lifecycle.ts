@@ -31,7 +31,7 @@ export const taskLifecycleScenario: TestScenario = {
       id: "assign", label: "Aufgabe zuweisen + Frist setzen",
       run: async (ctx) => {
         const id = ctx.data.taskId as string;
-        const update = { assigned_to: ctx.userId, due_date: dueIn(5), status: "in-progress", progress: 30 };
+        const update = { assigned_to: ctx.userId, due_date: dueIn(5), status: "in_progress", progress: 30 };
         const { error } = await supabase.from("tasks").update(update).eq("id", id);
         if (error) return { ok: false, message: describeError(error) };
         return expectFields("tasks", id, update, "Zuweisung");

@@ -2097,6 +2097,10 @@
               "label": "Brief: Freigabe erforderlich; versendete Briefe bleiben abgeschlossen"
             },
             {
+              "id": "status-values",
+              "label": "Statuswerte: Brief und Aufgabe nutzen dieselbe Menge wie die Datenbank"
+            },
+            {
               "id": "decider-roles",
               "label": "Terminanfragen: nur Abgeordnete und Büroleitung entscheiden"
             },

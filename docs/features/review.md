@@ -336,7 +336,7 @@ Eindeutige Fehler werden im CI-Lauf ausgegeben und brechen die Prüfung ab; sie 
 - `events.legacy-rsvp` — Legacy-Einladungslinks (veraltet)
 - `cases.legacy-routes` — Legacy-Vorgangsrouten (veraltet)
 
-## Funktionen mit Einschränkungen oder offenen Punkten (62)
+## Funktionen mit Einschränkungen oder offenen Punkten (64)
 
 ### `mywork.dashboard`
 
@@ -374,6 +374,10 @@ Eindeutige Fehler werden im CI-Lauf ausgegeben und brechen die Prüfung ab; sie 
 ### `tasks.create`
 
 - Das Szenario deckt den Standardpfad ab, nicht jede Feldkombination.
+
+### `tasks.edit`
+
+- Ein Statuswechsel ist nur auf einen Namen aus der konfigurierbaren Liste task_statuses möglich; der Trigger enforce_task_status lehnt andere Werte ab. Der frühere Bindestrich-Wert ist migriert und wird nicht mehr geschrieben.
 
 ### `tasks.assign`
 
@@ -422,6 +426,10 @@ Eindeutige Fehler werden im CI-Lauf ausgegeben und brechen die Prüfung ab; sie 
 ### `annotations.ocr`
 
 - OCR-Qualität hängt vom Scan ab; ein automatisierter Qualitätstest existiert nicht.
+
+### `letters.workflow`
+
+- Die Statusmenge ist geschlossen (draft, review, pending_approval, approved, revision_requested, sent, archived); der CHECK-Constraint letters_status_check und der Client lehnen andere Werte ab.
 
 ### `decisions.change-vote`
 

@@ -20,7 +20,7 @@ export function annotationTaskDefaults(annotation: Pick<DocumentAnnotation, 'con
 export function annotationTaskStatusLabel(status: string | null | undefined): string {
   switch (status) {
     case 'todo': return 'Offen';
-    case 'in-progress': return 'In Bearbeitung';
+    case 'in_progress': return 'In Bearbeitung';
     case 'completed': return 'Abgeschlossen';
     default: return 'Status nicht verfügbar';
   }

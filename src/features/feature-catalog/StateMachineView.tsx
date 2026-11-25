@@ -95,9 +95,21 @@ function ReconciliationBlock({ reconciliation }: { reconciliation: StateMachineR
           {reconciliation.label ? ` (${reconciliation.label})` : ""}
         </p>
       ) : null}
+      {reconciliation.valuesNotInDatabase.length ? (
+        <div className="mt-1">
+          <div className="font-medium text-destructive">Zustände ohne DB-Beleg</div>
+          <ul className="mt-0.5 flex flex-wrap gap-1">
+            {reconciliation.valuesNotInDatabase.map((value) => (
+              <li key={value} className="rounded bg-destructive/10 px-1.5 py-0.5 font-mono text-[0.65rem]">
+                {value}
+              </li>
+            ))}
+          </ul>
+        </div>
+      ) : null}
       {reconciliation.onlyInCode.length ? (
         <div className="mt-1">
-          <div className="font-medium text-destructive">Nur im TS-Code erlaubt</div>
+          <div className="font-medium">TS-Kanten ohne Schreibbeleg</div>
           <ul className="mt-0.5 flex flex-wrap gap-1">
             {reconciliation.onlyInCode.map((pair) => (
               <li key={`${pair.from}->${pair.to}`} className="rounded bg-destructive/10 px-1.5 py-0.5 font-mono text-[0.65rem]">

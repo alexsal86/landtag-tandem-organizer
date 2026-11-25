@@ -85,7 +85,7 @@ function NoteTaskStatus({ taskId, onNotFound }: { taskId: string; onNotFound?: (
   const getStatusLabel = (status: string) => {
     switch (status) {
       case 'todo': return 'Offen';
-      case 'in-progress': return 'In Bearbeitung';
+      case 'in_progress': return 'In Bearbeitung';
       case 'completed': return 'Erledigt';
       default: return status;
     }
@@ -94,7 +94,7 @@ function NoteTaskStatus({ taskId, onNotFound }: { taskId: string; onNotFound?: (
   const getStatusVariant = (status: string): "default" | "secondary" | "outline" => {
     switch (status) {
       case 'completed': return 'default';
-      case 'in-progress': return 'secondary';
+      case 'in_progress': return 'secondary';
       default: return 'outline';
     }
   };

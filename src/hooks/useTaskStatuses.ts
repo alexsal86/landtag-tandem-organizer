@@ -9,7 +9,7 @@ export interface TaskStatusOption {
 
 export const DEFAULT_TASK_STATUSES: TaskStatusOption[] = [
   { name: "todo", label: "Offen" },
-  { name: "in-progress", label: "In Bearbeitung" },
+  { name: "in_progress", label: "In Bearbeitung" },
   { name: "completed", label: "Erledigt" },
 ];
 

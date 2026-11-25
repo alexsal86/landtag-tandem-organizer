@@ -146,7 +146,7 @@ export const caseItemLifecycleScenario: TestScenario = {
       id: "office-task", label: "Büroschritt erzeugt genau eine verknüpfte Aufgabe", kind: "workflow",
       run: wrap(async ctx => {
         const result = await supabase.from("tasks").select("id").eq("tenant_id", ctx.tenantId)
-          .eq("source_type", "case_step").eq("source_id", ctx.data.caseItemId as string).in("status", ["todo", "in-progress"]);
+          .eq("source_type", "case_step").eq("source_id", ctx.data.caseItemId as string).in("status", ["todo", "in_progress"]);
         if (result.error) return { ok: false, message: describeError(result.error) };
         for (const task of result.data ?? []) ctx.trackRecord({ table: "tasks", id: task.id });
         if (result.data?.length !== 1) return { ok: false, message: `${result.data?.length ?? 0} aktive Büro-Aufgaben statt einer.`, details: { expected: 1, actual: result.data?.length } };

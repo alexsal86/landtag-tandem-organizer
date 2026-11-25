@@ -19,7 +19,7 @@ const LETTER_APPROVAL_OPTIONS: LetterApprovalResponseOption[] = [
 
 const LETTER_TASK_STATUS = 'todo';
 const LETTER_TASK_CATEGORY = 'personal';
-const VALID_TASK_STATUSES = new Set(['todo', 'in-progress', 'completed']);
+const VALID_TASK_STATUSES = new Set(['todo', 'in_progress', 'completed']);
 const VALID_TASK_PRIORITIES = new Set(['low', 'medium', 'high']);
 const VALID_TASK_CATEGORIES = new Set(['personal', 'meeting', 'call_follow_up', 'call_followup']);
 

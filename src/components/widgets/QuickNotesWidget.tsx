@@ -59,7 +59,7 @@ const toTaskPriority = (value: string | null): TaskPriority => (
 );
 
 const toTaskStatus = (value: string | null): TaskStatus => (
-  value === 'todo' || value === 'in-progress' || value === 'completed' ? value : 'todo'
+  value === 'todo' || value === 'in_progress' || value === 'completed' ? value : 'todo'
 );
 
 const toTaskCategory = (value: string | null): TaskCategory => (
@@ -126,7 +126,7 @@ export const QuickNotesWidget: React.FC<QuickNotesWidgetProps> = ({
 
   const taskStatuses = [
     { name: 'todo', label: 'Zu erledigen' },
-    { name: 'in-progress', label: 'In Bearbeitung' },
+    { name: 'in_progress', label: 'In Bearbeitung' },
     { name: 'completed', label: 'Abgeschlossen' }
   ];
 

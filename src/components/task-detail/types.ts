@@ -3,7 +3,7 @@ export interface Task {
   title: string;
   description: string;
   priority: "low" | "medium" | "high";
-  status: "todo" | "in-progress" | "completed";
+  status: "todo" | "in_progress" | "completed";
   dueDate: string | null;
   category: "legislation" | "constituency" | "committee" | "personal" | "call_followup" | "call_follow_up";
   assignedTo?: string;
