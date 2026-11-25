@@ -1,7 +1,7 @@
 import { useHistoryFactions } from '@/features/election-history/useHistoryFactions';
 import { PeriodSeatSummary } from '@/features/election-history/PeriodSeatSummary';
 import { AnalysisControls, AnalysisToolbarLayout } from "../AnalysisToolbar";
-import { useMemo, useState } from "react";
+import { useMemo } from "react";
 import { useSearchParams } from "react-router-dom";
 
 import { Input } from "@/components/ui/input";
@@ -17,8 +17,8 @@ import {
   useCandidateCoverage,
   useCandidatePartyReference,
 } from "./mandateHooks";
-import {
-  candidateComparison,
+import { readFlag, setFlag } from "../viewState";
+import { candidateComparison,
   candidateCoverageReady,
   directPartyChanges,
   mandateCounts,
@@ -50,7 +50,7 @@ export default function MandateAnalysis() {
   const current = useElectionHistory(period?.id),
     before = useElectionHistory(previous?.id);
   const coverage = useCandidateCoverage(period?.id || "");
-  const [candidatesOpen, setCandidatesOpen] = useState(false);
+  const candidatesOpen = readFlag(params, "mandateCandidates");
   const ready =
     !!current.data &&
     candidateCoverageReady(current.data, coverage.data) &&
@@ -129,11 +129,11 @@ export default function MandateAnalysis() {
           label="Legislaturperiode"
           value={period?.id || ""}
           onChange={(v) => {
-            setCandidatesOpen(false);
             setParams((old) => {
               const next = new URLSearchParams(old);
               next.set("analysisPeriod", v);
               next.delete("mandateBefore");
+              next.delete("mandateCandidates");
               return next;
             });
           }}
@@ -359,7 +359,11 @@ export default function MandateAnalysis() {
           )}
           <details
             className="rounded-lg border p-4"
-            onToggle={(e) => setCandidatesOpen(e.currentTarget.open)}
+            open={candidatesOpen}
+            onToggle={(e) => {
+              if (e.currentTarget.open !== candidatesOpen)
+                setParams((old) => setFlag(old, "mandateCandidates", e.currentTarget.open));
+            }}
           >
             <summary className="cursor-pointer font-medium">
               Kandidaturergebnisse und Parteireferenz

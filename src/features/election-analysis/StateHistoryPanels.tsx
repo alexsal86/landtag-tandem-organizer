@@ -1,7 +1,6 @@
 import { AnalysisInfo } from './AnalysisInfo';
 import { TurnoutPanel } from './TurnoutPanel';
 import { PartyEndLabels } from './StateShareChart';
-import { useState } from 'react';
 import { useSearchParams } from 'react-router-dom';
 import { CartesianGrid, Line, LineChart, ReferenceLine, ResponsiveContainer, Tooltip, XAxis, YAxis } from 'recharts';
 import { Portal } from '@radix-ui/react-tooltip';
@@ -10,8 +9,11 @@ import { Button } from '@/components/ui/button';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 import { AnalysisControls } from './AnalysisToolbar';
 import { DataState, DataTable, Selection, StatusNote, chartColor } from './shared';
+import { ChartExport } from './ChartExport';
+import { sankeyLayout } from './research/sankey';
 import { ballotLabels, ballotsForYear, effectiveBallot, number, parties, percent } from './model';
 import { matrixAxes, matrixCell, stateTotalMetrics } from './stateHistoryModel';
+import { readPartySelection, setPartySelection, toggleParty } from './viewState';
 import { useFlowMatrix, useStateHistory } from './useStateHistory';
 const partyHeaders = parties.map(party => party === 'GRÜNE' ? 'Grüne' : party);
 const partyHeaderColors = Object.fromEntries(parties.map((party, index) => [partyHeaders[index], chartColor(party)]));
@@ -49,11 +51,19 @@ export function StateHistoryPanel({ year, years, initiallyShowTurnout = false }:
         turnout: totalsByYear.get(electionYear)?.turnout ?? null,
       };
     });
-    const [hiddenParties, setHiddenParties] = useState<string[]>([]);
+    const hiddenParties = readPartySelection(params, 'historyHidden', parties);
     const availableParties = parties.filter(party => rows.some(row => row[party] != null));
     const visibleParties = availableParties.filter(party => !hiddenParties.includes(party));
     const maximum = Math.ceil((Math.max(10, ...rows.flatMap(row => availableParties.map(party => row[party] ?? 0))) + 5) / 5) * 5;
     const turnoutMinimum = Math.floor(Math.min(40, ...rows.map(row => row.turnout ?? 40)) / 10) * 10;
+    const citationBase = {
+      source: 'election_analysis_state_totals',
+      release: null,
+      url: typeof window === 'undefined' ? null : window.location.href,
+    };
+    const latest = rows[rows.length - 1];
+    const partyCitation = { ...citationBase, title: `Parteianteile ${from}–${year}`, values: visibleParties.map(party => `${party} ${percent(latest?.[party] ?? null)}`) };
+    const turnoutCitation = { ...citationBase, title: `Wahlbeteiligung ${from}–${year}`, values: [`${latest?.year ?? year}: ${percent(latest?.turnout ?? null)}`] };
     const secondVoteMarker = chartYears.includes(2026) &&
       <ReferenceLine x={2026} stroke="currentColor" strokeDasharray="5 4" label={{ value: 'Zweitstimme ab 2026', position: 'insideTopRight', fill: 'currentColor', fontSize: 12 }}/>;
     return <div className="space-y-4 [&_tbody]:bg-white [&_tbody]:text-slate-900">
@@ -66,7 +76,7 @@ export function StateHistoryPanel({ year, years, initiallyShowTurnout = false }:
         <Card className="min-w-0">
           <CardHeader><CardTitle className="text-lg">Parteien</CardTitle></CardHeader>
           <CardContent className="space-y-4">
-            {visibleParties.length ? <div className="h-96" role="img" aria-label={`Parteianteile in Prozent, ${from} bis ${year}`}>
+            {visibleParties.length ? <ChartExport title={partyCitation.title} filename={`parteien-${from}-${year}`} citation={partyCitation}><div className="h-96" role="img" aria-label={`Parteianteile in Prozent, ${from} bis ${year}`}>
               <ResponsiveContainer><LineChart data={rows} margin={{ top: 24, left: 0, right: 110, bottom: 10 }}>
                 <CartesianGrid vertical={false} strokeDasharray="3 3"/>
                 <XAxis dataKey="year"/>
@@ -76,14 +86,12 @@ export function StateHistoryPanel({ year, years, initiallyShowTurnout = false }:
                 {secondVoteMarker}
                 <PartyEndLabels result={rows[rows.length - 1]} visibleParties={visibleParties} maximum={maximum}/>
               </LineChart></ResponsiveContainer>
-            </div> : <p className="py-12 text-center text-sm text-muted-foreground">{availableParties.length ? 'Keine Partei ausgewählt.' : 'Keine Parteianteile verfügbar.'}</p>}
+            </div></ChartExport> : <p className="py-12 text-center text-sm text-muted-foreground">{availableParties.length ? 'Keine Partei ausgewählt.' : 'Keine Parteianteile verfügbar.'}</p>}
             {availableParties.length > 0 && <fieldset className="flex flex-wrap gap-x-4 gap-y-2">
               <legend className="sr-only">Parteien im Diagramm anzeigen</legend>
               {availableParties.map(party => <label key={party} className="flex items-center gap-2 text-sm">
-                <input type="checkbox" checked={!hiddenParties.includes(party)} onChange={event => {
-                  const checked = event.target.checked;
-                  setHiddenParties(current => checked ? current.filter(value => value !== party) : [...current, party]);
-                }}/>
+                <input type="checkbox" checked={!hiddenParties.includes(party)} onChange={() =>
+                  setParams(previous => setPartySelection(previous, 'historyHidden', toggleParty(hiddenParties, party), parties))}/>
                 <span style={{ color: chartColor(party) }} aria-hidden="true">●</span>{party}
               </label>)}
             </fieldset>}
@@ -92,7 +100,7 @@ export function StateHistoryPanel({ year, years, initiallyShowTurnout = false }:
         <Card className="min-w-0">
           <CardHeader><CardTitle className="text-lg">Wahlbeteiligung</CardTitle></CardHeader>
           <CardContent>
-            <div className="h-96" role="img" aria-label={`Wahlbeteiligung in Prozent, ${from} bis ${year}`}>
+            <ChartExport title={turnoutCitation.title} filename={`wahlbeteiligung-${from}-${year}`} citation={turnoutCitation}><div className="h-96" role="img" aria-label={`Wahlbeteiligung in Prozent, ${from} bis ${year}`}>
               <ResponsiveContainer><LineChart data={rows} margin={{ top: 24, left: 0, right: 26, bottom: 10 }}>
                 <CartesianGrid vertical={false} strokeDasharray="3 3"/>
                 <XAxis dataKey="year"/>
@@ -101,7 +109,7 @@ export function StateHistoryPanel({ year, years, initiallyShowTurnout = false }:
                 <Line dataKey="turnout" name="Wahlbeteiligung" stroke="#4b8b39" strokeWidth={2} connectNulls={false}/>
                 {secondVoteMarker}
               </LineChart></ResponsiveContainer>
-            </div>
+            </div></ChartExport>
           </CardContent>
         </Card>
       </div>
@@ -150,12 +158,40 @@ export function FlowMatrixPanel({ year }: {
     const cells = query.data || [];
     const { origins, destinations } = matrixAxes(cells);
     const previous = cells[0]?.previous_year;
+    const links = origins.flatMap(origin => destinations.map(destination => ({
+      from: origin,
+      to: destination,
+      value: matrixCell(cells, origin, destination) ?? 0,
+    }))).filter(link => link.value > 0);
+    const sankey = sankeyLayout(links, { width: 760, height: Math.max(360, Math.min(820, destinations.length * 44)) });
     return <div className="space-y-4">
 
     <StatusNote>Die vollständige Wanderungsmatrix liegt aus dieser Arbeitsmappe für 2001 → 2006 vor. Alle Werte sind gerundete landesweite Modellschätzungen von Infratest dimap. Zeilen zeigen das Ziel, Spalten die Herkunft. Diagonalwerte zeigen Parteibindung beziehungsweise fortgesetzte Nichtwahl. Erstwählende und Zugezogene stehen auf der Herkunftsseite, Gestorbene und Weggezogene auf der Zielseite. Keine beobachteten individuellen Wechsel, keine Wahlkreisdaten und keine amtlich ausgezählten Parteiergebnisse.</StatusNote>
     <DataState loading={query.isLoading} error={query.error} empty={!cells.length} retry={() => void query.refetch()}>
       <h2 className="text-lg font-semibold">Wählerwanderung {previous} → {year} · Personen</h2>
       <div className="overflow-x-auto"><DataTable headers={[`Ziel ${year} / Herkunft ${previous}`, ...origins]} rows={destinations.map(destination => [destination, ...origins.map(origin => <span key={origin} className={origin === destination ? 'font-semibold' : ''}>{number(matrixCell(cells, origin, destination))}</span>)])}/></div>
+      {sankey.bands.length > 0 && <Card>
+        <CardHeader><CardTitle className="text-lg">Wanderungsströme als Sankey</CardTitle></CardHeader>
+        <CardContent className="space-y-2">
+          <ChartExport title={`Wanderungsmatrix ${previous} → ${year}`} filename={`wanderungsmatrix-${previous}-${year}`} citation={{ title: `Wanderungsmatrix ${previous} → ${year}`, values: [`${destinations.length} Zielgruppen`, `${origins.length} Herkunftsgruppen`], source: 'election_analysis_flow_matrix', url: typeof window === 'undefined' ? null : window.location.href }}>
+            <svg viewBox={`0 0 ${sankey.width} ${sankey.height}`} className="h-auto w-full rounded-lg border bg-card" role="img" aria-label="Sankey der geschätzten Wanderungsströme; genaue Werte in der Matrix">
+              {sankey.bands.map((band, index) => {
+                const color = chartColor(band.to);
+                return <path key={`${band.from}-${band.to}-${index}`} d={band.path} fill={color} fillOpacity={0.32} stroke="none"><title>{`${band.from} → ${band.to}: ${number(band.value)}`}</title></path>;
+              })}
+              {sankey.origins.map(node => <g key={`o-${node.id}`}>
+                <rect x={node.x} y={node.y} width={12} height={Math.max(1, node.height)} rx={2} fill={chartColor(node.id)} />
+                <text x={node.x + 16} y={node.y + Math.max(6, node.height / 2)} fontSize={11} fill="currentColor" dominantBaseline="central">{node.id}</text>
+              </g>)}
+              {sankey.destinations.map(node => <g key={`d-${node.id}`}>
+                <rect x={node.x} y={node.y} width={12} height={Math.max(1, node.height)} rx={2} fill={chartColor(node.id)} />
+                <text x={node.x - 4} y={node.y + Math.max(6, node.height / 2)} fontSize={11} fill="currentColor" textAnchor="end" dominantBaseline="central">{node.id}</text>
+              </g>)}
+            </svg>
+          </ChartExport>
+          <p className="text-xs text-muted-foreground">Bandbreite proportional zur geschätzten Personenzahl. Herkunfts- und Zielspalte sind jeweils für sich skaliert; die Fläche ist kein amtlich gezählter Personenstrom.</p>
+        </CardContent>
+      </Card>}
       {cells[0] && <p className="text-sm"><SourceLink url={cells[0].source_url}/> · Wahlreport 2006, S. 33 · {cells.every(c => c.source_verified) ? 'Original unabhängig geprüft.' : 'Aus Arbeitsmappe übernommen; Originalprüfung offen.'} Der Zustrom von den Grünen zur CDU beträgt in der Arbeitsmappe 11.000 Personen.</p>}
     </DataState>
   </div>;

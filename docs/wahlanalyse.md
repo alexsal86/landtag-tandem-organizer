@@ -322,11 +322,17 @@ Die vorhandenen RLS-Regeln gelten unverändert. Es werden keine Wahlergebnisse,
 Mandate oder Verwaltungsdaten verändert. Anfragen sind abbrechbar, nach Nutzer und
 Auswahl gecacht und laden keine anderen Wahljahre vor.
 
-`research/turnoutModel.ts` kapselt Vergleich und Korrelation. `voteFactors` und
-`decomposeVotes` bereiten die in [research-concept.md](elections/research-concept.md)
-definierte Shapley-Zerlegung über alle 24 Reihenfolgen vor. Die Zerlegung wird
-**noch nicht in der produktiven Oberfläche angeboten**, da mathematische Tests
-auf Wunsch nicht ausgeführt und die methodische Freigabe noch offen sind.
+`research/turnoutModel.ts` kapselt Vergleich und Korrelation. `voteFactors`,
+`decomposeVotes` und `decomposeDistricts` liefern die in
+[research-concept.md](elections/research-concept.md) definierte symmetrische
+Shapley-Zerlegung über alle 24 Reihenfolgen. Sie ist im Reiter „Beteiligung &
+Stimmen“ aktiv: vier Beiträge (Wahlberechtigte, Beteiligungsquote,
+Gültigkeitsquote, Parteianteil) summieren sich exakt zur Änderung der
+Parteistimmen. Wahlkreise ohne gemeinsam bestätigten Nenner werden gezählt und
+ausgeschlossen, nicht als null Stimmen ergänzt. Die Anzeige ist ausdrücklich
+deskriptiv und nicht kausal oder individuell zu lesen. Die zugehörigen
+mathematischen Tests sind ergänzt; die Zerlegtests in
+`turnoutModel.test.ts` wurden ausgeführt.
 
 Ergänzt, nicht ausgeführt: `turnoutModel.test.ts` (Differenzen, fehlende Werte,
 Grenzen/Status, keine doppelte Beteiligung, Korrelation, Summenidentität und
@@ -1078,3 +1084,45 @@ eindeutig bestätigte Personen-ID der ausgewählten Mandatshistorie und filtert
 bereits serverseitig auf veröffentlichte Perioden. Keine Namensverknüpfung, keine
 Nutzung des Super-Admin-Laufbahn-RPC, keine neue Migration oder Datenänderung.
 Ein Logikschritt im Selbsttest-Center ist ergänzt; auf Wunsch keine Tests ausgeführt.
+
+### Darstellung, Export und generiertes Kurzfazit
+
+Die Auswahl liegt vollständig in der URL: `analysisCompare` und `analysisHidden`
+im Landesvergleich, `analysisAge` und `analysisAgeHidden` bei Alter & Geschlecht,
+`districtSearch` im Wahlkreisvergleich, `analysisSearch`, `analysisAutoScale`,
+`atlasView` und `mapParty` im Atlas sowie `analysisChart`/`analysisChartYear`
+für Balken/Verlauf. Auch die übrigen Ansichten schreiben ihren Filterzustand in
+die URL: `historyFrom`, `historyHidden` und `historyDetails` unter „Vergangene
+Wahlen“, `profileHidden` und `profileHistory` im Wahlkreis-Steckbrief,
+`turnoutSearch` in den Beteiligungsdetails, `analysisPeriod`, `mandateBefore` und
+`mandateCandidates` in den Mandaten sowie `seatTab`, `seatCoalition` und
+`seatDistrictPreview` im Sitzrechner. Ein kopierter Link öffnet damit dieselbe
+Auswahl; ungültige Werte fallen auf den Standard zurück.
+
+Parteiauswahlen stehen als kommagetrennte Liste in der URL. Unbekannte Codes
+werden beim Lesen verworfen, und eine leere Auswahl entfernt den Parameter
+statt ihn leer zu schreiben (`src/features/election-analysis/viewState.ts`).
+Flüchtig bleibt nur die Seitengröße/Sortierung der Tabellen, weil dieselbe
+Tabelle mehrfach auf einer Seite vorkommt.
+
+Jede Grafik bietet SVG- und PNG-Export der tatsächlich gerenderten Figur sowie
+ein „Zahlenzitat“: sichtbare Werte, Quelle, Datenstand und Abrufdatum als
+kopierbarer String. Der Berichtsexport bleibt unverändert und übernimmt nur die
+dargestellten Zeilen und Figuren.
+
+Der Atlas bietet neben der Karte eine schematische Wabenkarte (ein gleich großes
+Sechseck je Wahlkreis, aus den Geometrie-Schwerpunkten einsortiert, ohne
+Flächen- oder Grenzaussage) und kleine Vielfache mit gemeinsamer Skala. In den
+kleinen Vielfachen beschreiben Linie und beschriftete Zahl immer dieselbe
+Kennzahl: Bei Stimmen und Abweichung vom Landestrend startet die Linie bei 0,
+bei Anteilsänderungen verbindet sie die beiden Anteile. Die
+vollständige Wanderungsmatrix 2001 → 2006 wird zusätzlich als Sankey gezeigt;
+Herkunfts- und Zielspalte sind getrennt skaliert, fehlende Zellen bleiben ausgespart.
+
+Der Insight-Digest erzeugt kurze Sätze ausschließlich aus vollständigen
+Wertepaaren und markiert sie sichtbar als „automatisch generiert“. Jeder Satz
+nennt seine Grundlage (Eingabewerte), fehlende Paare werden gezählt statt als
+null interpretiert, und es gibt keine Prognose- oder Kausalformulierung. Ein
+Logikschritt im Selbsttest-Center prüft Digest, Sankey, Wabenraster, Zahlenzitat
+und die aggregierte Shapley-Zerlegung; Laufzeit- und Browsertests wurden auf
+Wunsch nicht ausgeführt.

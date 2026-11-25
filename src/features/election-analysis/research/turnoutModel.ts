@@ -218,6 +218,56 @@ export function voteFactors(
     partyShare: votes / valid_votes,
   };
 }
+export interface DistrictDecomposition {
+  districtNumber: number;
+  districtName: string;
+  contributions: VoteContributions;
+}
+export interface DecompositionSummary {
+  rows: DistrictDecomposition[];
+  total: VoteContributions;
+  included: number;
+  excluded: number;
+}
+/**
+ * Adds the exact four-factor Shapley contributions of each comparable district.
+ * Districts without jointly confirmed denominators are excluded, never zero-filled.
+ */
+export function decomposeDistricts(
+  rows: Pick<
+    TurnoutChange,
+    "districtNumber" | "districtName" | "before" | "after" | "resultBefore" | "resultAfter"
+  >[],
+): DecompositionSummary {
+  const total: VoteContributions = {
+    eligible: 0,
+    participation: 0,
+    validity: 0,
+    partyShare: 0,
+    total: 0,
+  };
+  const included: DistrictDecomposition[] = [];
+  for (const row of rows) {
+    const contributions = decomposeVotes(
+      row.before && row.resultBefore ? voteFactors(row.before, row.resultBefore) : null,
+      row.after && row.resultAfter ? voteFactors(row.after, row.resultAfter) : null,
+    );
+    if (!contributions) continue;
+    included.push({
+      districtNumber: row.districtNumber,
+      districtName: row.districtName,
+      contributions,
+    });
+    for (const key of ["eligible", "participation", "validity", "partyShare", "total"] as const)
+      total[key] += contributions[key];
+  }
+  return {
+    rows: included,
+    total,
+    included: included.length,
+    excluded: rows.length - included.length,
+  };
+}
 export function decomposeVotes(
   before: VoteFactors | null,
   after: VoteFactors | null,

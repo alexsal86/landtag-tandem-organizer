@@ -1,4 +1,4 @@
-import { useState } from "react";
+import { useSearchParams } from "react-router-dom";
 import { Button } from "@/components/ui/button";
 import { DataTable } from "../../shared";
 import { attempt, format } from "../lab/shared";
@@ -26,7 +26,24 @@ export function SeatDistricts({
   assumptions: Record<string, string>;
   onApply: (district: number, target: string) => void;
 }) {
-  const [activeDistrict, setActiveDistrict] = useState<number | null>(null);
+  const [params, setParams] = useSearchParams();
+  const requestedPreview = Number(params.get("seatDistrictPreview"));
+  const activeDistrict =
+    Number.isInteger(requestedPreview) && requestedPreview >= 1 && requestedPreview <= 70
+      ? requestedPreview
+      : null;
+  const openPreview = (district: number) =>
+    setParams((old) => {
+      const next = new URLSearchParams(old);
+      next.set("seatDistrictPreview", String(district));
+      return next;
+    });
+  const closePreview = () =>
+    setParams((old) => {
+      const next = new URLSearchParams(old);
+      next.delete("seatDistrictPreview");
+      return next;
+    });
   const rows = file.districts.flatMap((district) => {
     const winner = winners.find(
       (candidate) => candidate.district === district.number,
@@ -124,7 +141,7 @@ export function SeatDistricts({
               size="sm"
               onClick={() => {
                 onApply(active.district.number, active.challenger.id);
-                setActiveDistrict(null);
+                closePreview();
               }}
             >
               Ins Szenario übernehmen
@@ -134,7 +151,7 @@ export function SeatDistricts({
             type="button"
             size="sm"
             variant="ghost"
-            onClick={() => setActiveDistrict(null)}
+            onClick={() => closePreview()}
           >
             Vorschau schließen
           </Button>
@@ -176,7 +193,7 @@ export function SeatDistricts({
             className="border-stone-300 bg-white text-slate-950 hover:bg-stone-100 hover:text-slate-950"
             disabled={transfer === null || !!assumptions[district.number]}
             aria-pressed={activeDistrict === district.number}
-            onClick={() => setActiveDistrict(district.number)}
+            onClick={() => openPreview(district.number)}
           >
             {assumptions[district.number] ? "Übernommen" : "Wahlkreis kippen"}
           </Button>,

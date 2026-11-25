@@ -1,4 +1,4 @@
-import { useCallback, useMemo, useRef, useState } from "react";
+import { useCallback, useMemo, useRef } from "react";
 import { useSearchParams } from "react-router-dom";
 import { Button } from "@/components/ui/button";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
@@ -6,7 +6,10 @@ import { DataTable, Selection, StatusNote } from "../shared";
 import { ballotLabels, number, percent } from "../model";
 import type { Ballot } from "../types";
 import { AnalysisMap } from "./AnalysisMap";
-import { atlasRankings, atlasRows, atlasScale, atlasValue } from "./atlasModel";
+import { HexMap } from "./HexMap";
+import { SmallMultiples } from "./SmallMultiples";
+import { ChartExport } from "../ChartExport";
+import { atlasRankings, atlasRows, atlasScale, atlasValue, smallMultipleEndpoints } from "./atlasModel";
 import type { ComparisonValue, DistrictVersion, Metric } from "./types";
 
 const signed = (value: number | null | undefined) =>
@@ -42,8 +45,20 @@ export function SwingAtlas({
   onOpenDistrict: (district: number) => void;
 }) {
   const [params, setParams] = useSearchParams();
-  const [search, setSearch] = useState("");
-  const [automatic, setAutomatic] = useState(false);
+  const search = params.get("analysisSearch") || "";
+  const automatic = params.get("analysisAutoScale") === "1";
+  const view = params.get("atlasView") === "waben"
+    ? "waben"
+    : params.get("atlasView") === "vielfache"
+      ? "vielfache"
+      : "karte";
+  const setParam = (key: string, value: string) =>
+    setParams((previous) => {
+      const next = new URLSearchParams(previous);
+      if (value) next.set(key, value);
+      else next.delete(key);
+      return next;
+    });
   const detail = useRef<HTMLDivElement>(null);
   const requested = Number(params.get("atlasDistrict"));
   const selected =
@@ -138,17 +153,27 @@ export function SwingAtlas({
             className="h-10 rounded-md border bg-card px-3 font-normal"
             placeholder="Name oder exakte Nummer …"
             value={search}
-            onChange={(e) => setSearch(e.target.value)}
+            onChange={(e) => setParam("analysisSearch", e.target.value)}
           />
         </label>
         <label className="flex items-center gap-2 text-sm">
           <input
             type="checkbox"
             checked={automatic}
-            onChange={(e) => setAutomatic(e.target.checked)}
+            onChange={(e) => setParam("analysisAutoScale", e.target.checked ? "1" : "")}
           />
           Automatische Farbskala
         </label>
+        <Selection
+          id="atlas-view"
+          label="Darstellung"
+          value={view}
+          onChange={(value) => setParam("atlasView", value === "karte" ? "" : value)}
+        >
+          <option value="karte">Karte</option>
+          <option value="waben">Wabenkarte</option>
+          <option value="vielfache">Kleine Vielfache</option>
+        </Selection>
 
       </div>
       <StatusNote>
@@ -189,21 +214,60 @@ export function SwingAtlas({
         Land.
       </p>
       <div className="grid items-start gap-4 lg:grid-cols-[minmax(0,1fr)_340px]">
-        <AnalysisMap
-          geometryYear={afterYear}
-          comparisonVersions={beforeVersions}
-          comparisonYear={beforeYear}
-          allowGeometryPreview
-          versions={versions}
-          values={values}
-          label={relative ? "% gegenüber Landestrend" : unit}
-          onOpenDistrict={select}
-          scaleMax={scale}
-          selectedDistrict={selected}
-          visibleDistricts={visible}
-          referenceValue={stateMarker}
-          referenceLabel={relative ? "Landestrend" : "Landes-Swing"}
-        />
+        {view === "waben" ? (
+          <HexMap
+            versions={versions}
+            values={values}
+            label={relative ? "% gegenüber Landestrend" : unit}
+            onOpenDistrict={select}
+            scaleMax={scale}
+            selectedDistrict={selected}
+            geometryYear={afterYear}
+            citation={{ title: `Wabenkarte ${party} ${afterYear}`, values: [`Landes-Swing ${signed(land)} %`], source: "election_analysis_districts", url: typeof window === "undefined" ? null : window.location.href }}
+          />
+        ) : view === "vielfache" ? (
+          <SmallMultiples
+            cells={filtered.map((row) => {
+              const endpoints = smallMultipleEndpoints(row, metric);
+              return {
+                districtNumber: row.districtNumber,
+                districtName: row.districtName,
+                from: endpoints.from,
+                to: endpoints.to,
+                value: atlasValue(row, metric),
+              };
+            })}
+            selectedDistrict={selected}
+            onSelect={select}
+            label={relative ? "% gegenüber Landestrend" : unit}
+            note={
+              relative
+                ? "Die Linie läuft von 0 (Landestrend) bis zur Abweichung; die Zahl nennt dieselbe Abweichung in Prozentpunkten."
+                : metric === "votes"
+                  ? "Die Linie läuft von 0 bis zur Stimmendifferenz; die Zahl nennt dieselbe Differenz in Stimmen."
+                  : "Die Linie verbindet die beiden Stimmenanteile; die Zahl nennt deren Differenz in Prozentpunkten."
+            }
+            citation={{ title: `Kleine Vielfache ${party} ${afterYear}`, values: [`${filtered.length} Wahlkreise`], source: "election_analysis_districts", url: typeof window === "undefined" ? null : window.location.href }}
+          />
+        ) : (
+          <ChartExport title={`Wahlkreiskarte ${party} ${afterYear}`} filename={`karte-${party}-${afterYear}`} citation={{ title: `Wahlkreiskarte ${party} ${afterYear}`, values: [`Landes-Swing ${signed(land)} %`, `${filtered.length} Wahlkreise in der Auswahl`], source: "election_analysis_districts", url: typeof window === "undefined" ? null : window.location.href }}>
+          <AnalysisMap
+            geometryYear={afterYear}
+            comparisonVersions={beforeVersions}
+            comparisonYear={beforeYear}
+            allowGeometryPreview
+            versions={versions}
+            values={values}
+            label={relative ? "% gegenüber Landestrend" : unit}
+            onOpenDistrict={select}
+            scaleMax={scale}
+            selectedDistrict={selected}
+            visibleDistricts={visible}
+            referenceValue={stateMarker}
+            referenceLabel={relative ? "Landestrend" : "Landes-Swing"}
+          />
+          </ChartExport>
+        )}
         <div className="space-y-4">
           <div
             ref={detail}

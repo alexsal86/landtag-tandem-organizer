@@ -4,7 +4,7 @@ import { boundaryDifferencePath } from "@/features/election-analysis/research/bo
 import { parseCandidacyImport } from "@/features/election-history/admin/candidacyImport";
 import { matrixAxes, matrixCell, stateTotalMetrics, type FlowCell, type StateTotal } from '@/features/election-analysis/stateHistoryModel';
 import { decodeElectoralTopology, electoralGeometryYear, parseElectoralManifest, requiredElectoralPackages } from "@/utils/electoralTopology";
-import { atlasRows, atlasRankings, atlasScale } from "@/features/election-analysis/research/atlasModel";
+import { atlasRows, atlasRankings, atlasScale, smallMultipleEndpoints } from "@/features/election-analysis/research/atlasModel";
 import type { ComparisonValue } from "@/features/election-analysis/research/types";
 import { analysisReport } from "@/features/election-analysis/research/reports";
 import {
@@ -37,10 +37,16 @@ import type {
   HistoricalMandate,
 } from "@/features/election-history/types";
 import {
+  decomposeDistricts,
   decomposeVotes,
   turnoutCorrelation,
   turnoutChanges,
 } from "@/features/election-analysis/research/turnoutModel";
+import { buildInsightDigest } from "@/features/election-analysis/research/insights";
+import { citationText } from "@/features/election-analysis/citation";
+import { readFlag, readPartySelection, setFlag, setPartySelection, toggleParty } from "@/features/election-analysis/viewState";
+import { sankeyLayout } from "@/features/election-analysis/research/sankey";
+import { hexGridLayout, hexPolygon } from "@/features/election-analysis/research/hexGrid";
 import {
   boundaryCompatibility,
   compareDistrict,
@@ -210,6 +216,19 @@ export const electionAnalysisScenario: TestScenario = {
         });
         const rows = [row(1, -2), row(11, -1), row(2, 0), row(3, null)];
         const ranked = atlasRankings(rows, "pp");
+        const comparable: ComparisonValue = {
+          ...row(4, 3),
+          before: { year: 2021, ballot: "single", district_number: 4, district_name: "Stuttgart 4", party: "GRÜNE", votes: 1000, share: 10, preliminary: false, data_release: "before", notes: null },
+          after: { year: 2026, ballot: "second", district_number: 4, district_name: "Stuttgart 4", party: "GRÜNE", votes: 1500, share: 13, preliminary: false, data_release: "after", notes: null },
+          voteDelta: 500,
+          swing: 3,
+          stateSwing: 1,
+          relativeSwing: 2,
+        };
+        const shareLine = smallMultipleEndpoints(comparable, "pp");
+        const voteLine = smallMultipleEndpoints(comparable, "votes");
+        const relativeLine = smallMultipleEndpoints(comparable, "relative");
+        const unknownLine = smallMultipleEndpoints(row(5, null), "votes");
         return {
           ok:
             atlasRows(rows, "GRÜNE", "1").length === 1 &&
@@ -220,9 +239,17 @@ export const electionAnalysisScenario: TestScenario = {
             ranked.unknown === 1 &&
             ranked.unchanged === 1 &&
             atlasScale("pp") === atlasScale("relative") &&
-            atlasScale("votes") === 10000,
+            atlasScale("votes") === 10000 &&
+            shareLine.from === 10 &&
+            shareLine.to === 13 &&
+            voteLine.from === 0 &&
+            voteLine.to === 500 &&
+            relativeLine.from === 0 &&
+            relativeLine.to === 2 &&
+            unknownLine.from === null &&
+            unknownLine.to === null,
           message:
-            "Verluste werden nie als Zugewinne gelistet; unbekannt bleibt getrennt von Null.",
+            "Verluste werden nie als Zugewinne gelistet; unbekannt bleibt getrennt von Null, und Linie und Zahl der kleinen Vielfachen zeigen dieselbe Kennzahl.",
         };
       },
     },
@@ -525,7 +552,160 @@ export const electionAnalysisScenario: TestScenario = {
         return {
           ok: Object.values(checks).every(Boolean),
           message:
-            "Deskriptive Korrelation, fehlende Paare und vorbereitete Shapley-Zerlegung.",
+            "Deskriptive Korrelation, fehlende Paare und symmetrische Shapley-Zerlegung.",
+          details: checks,
+        };
+      },
+    },
+    {
+      id: "analysis-presentation",
+      label:
+        "Shapley aktiv, Zahlenzitat, Sankey, Wabenraster und generiertes Kurzfazit",
+      kind: "logic",
+      run: async () => {
+        const turnoutOf = (
+          year: number,
+          values: { eligible: number; voters: number; valid: number },
+        ): Turnout => ({
+          year,
+          ballot: "second",
+          district_number: 1,
+          district_name: "Beispiel",
+          eligible: values.eligible,
+          voters: values.voters,
+          valid_votes: values.valid,
+          turnout: (values.voters / values.eligible) * 100,
+          preliminary: false,
+          data_release: `final-${year}`,
+          notes: null,
+        });
+        const resultOf = (year: number, votes: number): DistrictResult => ({
+          year,
+          ballot: "second",
+          district_number: 1,
+          district_name: "Beispiel",
+          party: "CDU",
+          votes,
+          share: votes / 5,
+          preliminary: false,
+          data_release: `final-${year}`,
+          notes: null,
+        });
+        const summary = decomposeDistricts([
+          {
+            districtNumber: 1,
+            districtName: "Beispiel",
+            before: turnoutOf(2021, { eligible: 1000, voters: 600, valid: 500 }),
+            after: turnoutOf(2026, { eligible: 1100, voters: 770, valid: 600 }),
+            resultBefore: resultOf(2021, 100),
+            resultAfter: resultOf(2026, 150),
+          },
+          {
+            districtNumber: 2,
+            districtName: "Ohne Paar",
+            before: turnoutOf(2021, { eligible: 1000, voters: 600, valid: 500 }),
+            after: undefined,
+            resultBefore: resultOf(2021, 100),
+            resultAfter: undefined,
+          },
+        ]);
+        const digest = buildInsightDigest({
+          beforeYear: 2021,
+          afterYear: 2026,
+          ballotLabel: "Zweitstimme",
+          turnoutBefore: 60,
+          turnoutAfter: 70,
+          parties: [
+            { party: "CDU", before: 20, after: 24 },
+            { party: "SPD", before: 30, after: 28 },
+            { party: "GRÜNE", before: null, after: null },
+          ],
+          source: "election_analysis_state",
+          release: "final-2026",
+        });
+        const sankey = sankeyLayout(
+          [
+            { from: "CDU", to: "GRÜNE", value: 10 },
+            { from: "CDU", to: "SPD", value: 5 },
+            { from: "FDP", to: "SPD", value: -2 },
+          ],
+          { width: 300, height: 200 },
+        );
+        const hex = hexGridLayout([
+          { number: 1, name: "A", x: 0, y: 0 },
+          { number: 2, name: "B", x: 1, y: 1 },
+          { number: 3, name: "C", x: 0.5, y: 0.2 },
+        ]);
+        const citation = citationText({
+          title: "Test",
+          values: ["CDU 24,0 %"],
+          source: "election_analysis_state",
+          release: "final-2026",
+          accessedAt: "25.11.2026",
+        });
+        const gain = digest.sentences.find(
+          (sentence) => sentence.id === "largest-gain",
+        );
+        const hidden = setPartySelection(
+          new URLSearchParams("analysisYear=2026"),
+          "historyHidden",
+          ["CDU", "Fremd"],
+          ["CDU", "SPD"],
+        );
+        const cleared = setPartySelection(
+          hidden,
+          "historyHidden",
+          [],
+          ["CDU", "SPD"],
+        );
+        const checks = {
+          shapleyIncluded:
+            summary.included === 1 &&
+            summary.excluded === 1 &&
+            Math.abs(summary.total.total - 50) < 1e-9 &&
+            Math.abs(
+              summary.total.eligible +
+                summary.total.participation +
+                summary.total.validity +
+                summary.total.partyShare -
+                summary.total.total,
+            ) < 1e-9,
+          digestGenerated:
+            digest.generated === true &&
+            digest.compared === 2 &&
+            digest.excluded === 1 &&
+            !!gain &&
+            gain.text.includes("CDU") &&
+            !gain.text.includes("Grüne") &&
+            digest.sentences.some((sentence) => sentence.id === "turnout"),
+          sankey:
+            sankey.bands.length === 2 &&
+            sankey.origins.length === 1 &&
+            sankey.destinations.length === 2 &&
+            sankey.bands.every(
+              (band) => band.path.startsWith("M ") && band.path.endsWith("Z"),
+            ),
+          hex:
+            hex.cells.length === 3 &&
+            new Set(hex.cells.map((cell) => `${cell.column}:${cell.row}`)).size === 3 &&
+            hexPolygon(0, 0, 10).split(" ").length === 6,
+          citation:
+            citation ===
+            "„Test: CDU 24,0 %“ — Quelle: election_analysis_state, Datenstand final-2026 — abgerufen am 25.11.2026",
+          viewState:
+            hidden.get("historyHidden") === "CDU" &&
+            hidden.get("analysisYear") === "2026" &&
+            !cleared.has("historyHidden") &&
+            readPartySelection(hidden, "historyHidden", ["CDU", "SPD"]).join(",") === "CDU" &&
+            readPartySelection(hidden, "historyHidden", ["SPD"]).length === 0 &&
+            toggleParty(["CDU", "SPD"], "CDU").join(",") === "SPD" &&
+            readFlag(new URLSearchParams("profileHistory=1"), "profileHistory") &&
+            !setFlag(new URLSearchParams("profileHistory=1"), "profileHistory", false).has("profileHistory"),
+        };
+        return {
+          ok: Object.values(checks).every(Boolean),
+          message:
+            "Aktive Shapley-Zerlegung, generiertes Kurzfazit, Sankey, Wabenraster, Quellenzitat und URL-Ansichtszustand prüfen dieselben Regeln wie die Oberfläche.",
           details: checks,
         };
       },

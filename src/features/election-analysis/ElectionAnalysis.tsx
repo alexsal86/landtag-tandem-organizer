@@ -4,16 +4,21 @@ import { StateSeatDistribution } from './StateSeatDistribution';
 import { AnalysisInfo } from './AnalysisInfo';
 import { AnalysisControls, AnalysisToolbarLayout } from './AnalysisToolbar';
 import { Selection, DataState, DataTable, StatusNote, PartyLabel, PartyVisibilityChips, chartColor } from './shared';
-import { lazy, Suspense, useEffect, useState } from 'react';
+import { lazy, Suspense, useEffect } from 'react';
 import { useSearchParams } from 'react-router-dom';
 import { Bar, BarChart, CartesianGrid, Cell, LabelList, Line, LineChart, ReferenceLine, ResponsiveContainer, Tooltip, XAxis, YAxis } from 'recharts';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
 import { useAnalysisRows, useAnalysisYears, useStateComparisonSeries } from './useElectionAnalysis';
+import { useStateTotal } from './useStateHistory';
+import { buildInsightDigest } from './research/insights';
+import { InsightDigest } from './InsightDigest';
+import { ChartExport } from './ChartExport';
 import { ballotLabels, ballotsForYear, effectiveBallot, parties, sectionLabels, percent, number, stateComparison, compareAnalysisValues } from './model';
 import type { Ballot } from './types';
 import { analysisDestination, dataPillars, normalizeAnalysisParams, resolveAnalysisNavigation, type PrimaryView } from './navigation';
+import { readPartySelection, setPartySelection, toggleParty } from './viewState';
 
 const DeputyDirectory = lazy(() => import('./DeputyDirectory'));
 const ResearchWorkbench = lazy(() => import('./research/ResearchWorkbench'));
@@ -80,9 +85,16 @@ type PanelProps = { year: number; ballot: Ballot; party: string; gender: string 
 
 function StatePanel({ year, ballot, party, gender, years }: PanelProps & { years: number[] }) {
   const query = useAnalysisRows('state', year, ballot, party, gender);
-  const [previousYear, setPreviousYear] = useState(0);
-  const [hiddenParties, setHiddenParties] = useState<string[]>([]);
-  const toggleParty = (party: string) => setHiddenParties(current => current.includes(party) ? current.filter(p => p !== party) : [...current, party]);
+  const [params, setParams] = useSearchParams();
+  const setParam = (key: string, value: string) => setParams(current => {
+    const next = new URLSearchParams(current);
+    if (value) next.set(key, value); else next.delete(key);
+    return next;
+  });
+  const requestedCompare = Number(params.get('analysisCompare'));
+  const previousYear = years.includes(requestedCompare) && requestedCompare !== year ? requestedCompare : 0;
+  const hiddenParties = (params.get('analysisHidden') || '').split(',').filter(p => parties.includes(p));
+  const toggleParty = (party: string) => setParam('analysisHidden', hiddenParties.includes(party) ? hiddenParties.filter(p => p !== party).join(',') : [...hiddenParties, party].join(','));
   const previousBallot = effectiveBallot(previousYear, ballot);
   const previous = useAnalysisRows('state', previousYear, previousBallot, party, gender, previousYear > 0);
   const rows = stateComparison(query.data || [], previous.data || []).sort((a, b) =>
@@ -95,8 +107,21 @@ function StatePanel({ year, ballot, party, gender, years }: PanelProps & { years
   const visibleParties = parties.filter(p => !hiddenParties.includes(p));
   const comparisonStart = comparisonYears[0];
   const comparisonEnd = comparisonYears[comparisonYears.length - 1];
+  const turnoutNow = useStateTotal(year, effectiveBallot(year, 'second'));
+  const turnoutBefore = useStateTotal(previousYear, effectiveBallot(previousYear, 'second'));
+  const turnoutShare = (total: typeof turnoutNow.data) => total?.eligible && total.voters != null ? (total.voters / total.eligible) * 100 : null;
+  const digest = buildInsightDigest({
+    beforeYear: previousYear || year,
+    afterYear: year,
+    ballotLabel: ballotLabels[effectiveBallot(year, ballot)],
+    turnoutBefore: turnoutShare(turnoutBefore.data),
+    turnoutAfter: turnoutShare(turnoutNow.data),
+    parties: parties.map(p => ({ party: p, before: previous.data?.find(row => row.party === p)?.share ?? null, after: rows.find(row => row.party === p)?.share ?? null })),
+    source: 'election_analysis_state',
+    release: rows[0]?.data_release ?? null,
+  });
   return <div className="space-y-4">
-    <AnalysisControls><Selection id="analysis-compare" label="Mit Wahl vergleichen" value={String(previousYear)} onChange={value => setPreviousYear(Number(value))}><option value="0">Kein Vergleich</option>{years.filter(y => y !== year).map(y => <option key={y} value={y}>{y} · {ballotLabels[effectiveBallot(y, ballot)]}</option>)}</Selection></AnalysisControls>
+    <AnalysisControls><Selection id="analysis-compare" label="Mit Wahl vergleichen" value={String(previousYear)} onChange={value => setParam('analysisCompare', value === '0' ? '' : value)}><option value="0">Kein Vergleich</option>{years.filter(y => y !== year).map(y => <option key={y} value={y}>{y} · {ballotLabels[effectiveBallot(y, ballot)]}</option>)}</Selection></AnalysisControls>
     {previousYear > 0 && previous.isLoading && <p role="status" className="text-sm">Lade Vergleichswahl …</p>}
     {previous.error && <p role="alert" className="text-sm">Die Vergleichswahl konnte nicht geladen werden.</p>}
     <DataState loading={query.isLoading} error={query.error} empty={!rows.length} retry={() => void query.refetch()}>
@@ -118,6 +143,7 @@ function StatePanel({ year, ballot, party, gender, years }: PanelProps & { years
       </div>
       {rows.map(r => r.notes && <p key={r.party} className="text-xs text-muted-foreground">{r.party}: {r.notes}</p>)}
     </DataState>
+    {previousYear > 0 && <InsightDigest digest={digest} source="election_analysis_state" title={`Kurzfazit ${previousYear} → ${year}`} />}
     <StatusNote>Ausgewählte Parteien, kein vollständiges Landesergebnis. Historische Ergänzungen stammen aus der Arbeitsmappe; die Originalprüfung ist offen. Leere Felder werden nicht als null Stimmen oder null Sitze interpretiert. {year === 2026 && 'Die Sitzverteilung steht bei den Zweitstimmen.'}{previousYear > 0 && previousBallot !== ballot && ' Der Vergleich umfasst unterschiedliche Wahlsysteme: Einzelstimme und Erst-/Zweitstimme.'}</StatusNote>
   </div>;
 }
@@ -125,7 +151,9 @@ function StatePanel({ year, ballot, party, gender, years }: PanelProps & { years
 function DistrictPanel({ year, ballot, party, gender }: PanelProps) {
   const query = useAnalysisRows('districts', year, ballot, party, gender);
   const state = useAnalysisRows('state', year, ballot, party, gender);
-  const [search, setSearch] = useState('');
+  const [searchParams, setSearchParams] = useSearchParams();
+  const search = searchParams.get('districtSearch') || '';
+  const setSearch = (value: string) => setSearchParams(previous => { const next = new URLSearchParams(previous); if (value) next.set('districtSearch', value); else next.delete('districtSearch'); return next; });
   const allRows = query.data || [];
   const term = search.trim().toLocaleLowerCase('de');
   const rows = allRows.filter(row => /^\d+$/.test(term)
@@ -136,6 +164,13 @@ function DistrictPanel({ year, ballot, party, gender }: PanelProps) {
   const stateShare = state.data?.find(row => row.party === party)?.share ?? null;
   const color = chartColor(party);
   const axisMaximum = Math.min(100, Math.ceil(Math.max(10, (topRows[0]?.share ?? 0) + 3, stateShare ?? 0) / 10) * 10);
+  const districtCitation = {
+    title: `${party}: zehn stärkste Wahlkreise ${year}`,
+    values: topRows.map(row => `${row.district_name} ${percent(row.share)}`),
+    source: 'election_analysis_districts',
+    release: allRows.find(row => row.data_release)?.data_release ?? null,
+    url: typeof window === 'undefined' ? null : window.location.href,
+  };
 
   return <div className="space-y-4">
     <AnalysisControls placement="filters">
@@ -183,7 +218,7 @@ function DistrictPanel({ year, ballot, party, gender }: PanelProps) {
             <p className="text-sm text-muted-foreground">Anteil in Prozent. {stateShare != null ? 'Die gestrichelte Linie zeigt das Landesergebnis.' : state.isLoading ? 'Landesergebnis wird geladen …' : 'Landesergebnis nicht verfügbar.'}</p>
           </CardHeader>
           <CardContent>
-            {topRows.length ? <div className="h-[26rem]" role="img" aria-label="Stimmenanteile der stärksten Wahlkreise in der Auswahl">
+            {topRows.length ? <ChartExport title={districtCitation.title} filename={`wahlkreise-${party}-${year}`} citation={districtCitation}><div className="h-[26rem]" role="img" aria-label="Stimmenanteile der stärksten Wahlkreise in der Auswahl">
               <ResponsiveContainer>
                 <BarChart data={topRows} layout="vertical" margin={{ right: 54 }}>
                   <CartesianGrid horizontal={false} />
@@ -197,7 +232,7 @@ function DistrictPanel({ year, ballot, party, gender }: PanelProps) {
                   {stateShare != null && <ReferenceLine x={stateShare} stroke="#b91c1c" strokeWidth={2} strokeDasharray="4 3" zIndex={500} />}
                 </BarChart>
               </ResponsiveContainer>
-            </div> : <p className="text-sm text-muted-foreground">Für diese Auswahl liegen keine Stimmenanteile vor.</p>}
+            </div></ChartExport> : <p className="text-sm text-muted-foreground">Für diese Auswahl liegen keine Stimmenanteile vor.</p>}
           </CardContent>
         </Card>
       </div>
@@ -210,10 +245,17 @@ function DistrictPanel({ year, ballot, party, gender }: PanelProps) {
 function FlowPanel({ year, ballot, party, gender }: PanelProps) {
   const query = useAnalysisRows('flows', year, ballot, party, gender);
   const rows = (query.data || []).slice().sort((a, b) => (b.balance ?? -Infinity) - (a.balance ?? -Infinity));
+  const citation = {
+    title: `Wählerwanderung nach ${party} ${rows[0]?.previous_year ?? ''} → ${year}`,
+    values: rows.filter(row => row.balance != null).map(row => `${row.partner} ${number(row.balance)}`),
+    source: 'election_analysis_flows',
+    release: null,
+    url: typeof window === 'undefined' ? null : window.location.href,
+  };
   return <div className="space-y-4">
     <DataState loading={query.isLoading} error={query.error} empty={!rows.length} retry={() => void query.refetch()}>
       <div className="flex flex-wrap items-center justify-between gap-3"><h2 className="text-lg font-semibold">{party}: {rows[0]?.previous_year} → {year}</h2></div>
-      <Card><CardContent className="pt-5"><div className="h-96" role="img" aria-label="Geschätzte Wanderungssalden; genaue Werte und Hinweise folgen in der Tabelle"><ResponsiveContainer><BarChart data={rows.filter(r => r.balance !== null)} layout="vertical" margin={{ left: 20, right: 20 }}><XAxis type="number" tickFormatter={value => number(typeof value === 'number' ? value : null)} /><YAxis type="category" dataKey="partner" width={190} tick={{ fontSize: 10 }} /><Tooltip formatter={value => number(typeof value === 'number' ? value : null)} /><ReferenceLine x={0} stroke="#8b9381" /><Bar dataKey="balance" name="Geschätzter Saldo">{rows.filter(r => r.balance !== null).map(r => <Cell key={r.partner} fill={(r.balance || 0) >= 0 ? '#4b8b39' : '#b65c55'} />)}</Bar></BarChart></ResponsiveContainer></div></CardContent></Card>
+      <Card><CardContent className="pt-5"><ChartExport title={citation.title} filename={`wanderung-${party}-${year}`} citation={citation}><div className="h-96" role="img" aria-label="Geschätzte Wanderungssalden; genaue Werte und Hinweise folgen in der Tabelle"><ResponsiveContainer><BarChart data={rows.filter(r => r.balance !== null)} layout="vertical" margin={{ left: 20, right: 20 }}><XAxis type="number" tickFormatter={value => number(typeof value === 'number' ? value : null)} /><YAxis type="category" dataKey="partner" width={190} tick={{ fontSize: 10 }} /><Tooltip formatter={value => number(typeof value === 'number' ? value : null)} /><ReferenceLine x={0} stroke="#8b9381" /><Bar dataKey="balance" name="Geschätzter Saldo">{rows.filter(r => r.balance !== null).map(r => <Cell key={r.partner} fill={(r.balance || 0) >= 0 ? '#4b8b39' : '#b65c55'} />)}</Bar></BarChart></ResponsiveContainer></div></ChartExport></CardContent></Card>
       <DataTable headers={['Austausch mit', 'Zustrom', 'Abstrom', 'Saldo', 'Methodischer Hinweis']} rows={rows.map(r => [r.partner, number(r.inflow), number(r.outflow), number(r.balance), r.notes || 'Modellschätzung'])} />
     </DataState>
   </div>;
@@ -225,12 +267,14 @@ function DemographicPanel({ year, ballot, party, gender }: PanelProps) {
   const ageGroups = [...new Set(rows.map(row => row.age_group))].filter(age => age !== 'Insgesamt')
     .sort((a, b) => a.localeCompare(b, 'de', { numeric: true }));
   const ages = ['Insgesamt', ...ageGroups];
-  const [age, setAge] = useState('Insgesamt');
+  const [params, setParams] = useSearchParams();
+  const age = params.get('analysisAge') || 'Insgesamt';
+  const setAge = (value: string) => setParams(previous => { const next = new URLSearchParams(previous); next.set('analysisAge', value); return next; });
   const selectedAge = ages.includes(age) ? age : 'Insgesamt';
   const showOverall = selectedAge === 'Insgesamt';
   const showAverage = gender !== 'Insgesamt';
   const state = useAnalysisRows('state', year, ballot, party, gender, showOverall);
-  const [hiddenParties, setHiddenParties] = useState<string[]>([]);
+  const hiddenParties = readPartySelection(params, 'analysisAgeHidden', parties);
   const availableParties = parties.filter(party => rows.some(row => row.party === party));
   const visibleParties = availableParties.filter(party => !hiddenParties.includes(party));
   const selected = rows.filter(row => row.age_group === selectedAge && !hiddenParties.includes(row.party))
@@ -248,6 +292,16 @@ function DemographicPanel({ year, ballot, party, gender }: PanelProps) {
       ...(showAverage ? [rows.find(row => row.age_group === 'Insgesamt' && row.party === party)?.share ?? null] : []),
     ],
   })).sort((a, b) => compareAnalysisValues(a.values[0], b.values[0], 'desc'));
+  const ageCitation = {
+    title: `Parteianteile nach Alter · ${gender} · ${year}`,
+    values: visibleParties.map(party => {
+      const ageRow = chart[chart.length - 1];
+      return `${party} ${percent(ageRow?.shares[party] ?? null)} (${ageRow?.age ?? '—'})`;
+    }),
+    source: 'election_analysis_demographics',
+    release: null,
+    url: typeof window === 'undefined' ? null : window.location.href,
+  };
   const columnMaxima = overallHeaders.map((_, index) =>
     Math.max(-Infinity, ...overallRows.map(row => row.values[index] ?? -Infinity)));
   return <div className="space-y-4 [&_tbody]:bg-white [&_tbody]:text-slate-900">
@@ -255,7 +309,7 @@ function DemographicPanel({ year, ballot, party, gender }: PanelProps) {
       <Card>
         <CardHeader><CardTitle className="text-lg">Parteianteile nach Alter · {gender}</CardTitle></CardHeader>
         <CardContent>
-          {visibleParties.length ? <div className="h-80" role="img" aria-label="Parteianteile nach Altersgruppe; genaue Werte stehen in der Tabelle">
+          {visibleParties.length ? <ChartExport title={ageCitation.title} filename={`alter-${gender}-${year}`} citation={ageCitation}><div className="h-80" role="img" aria-label="Parteianteile nach Altersgruppe; genaue Werte stehen in der Tabelle">
             <ResponsiveContainer><LineChart data={chart}>
               <CartesianGrid vertical={false} strokeDasharray="3 3" />
               <XAxis dataKey="age" />
@@ -267,9 +321,9 @@ function DemographicPanel({ year, ballot, party, gender }: PanelProps) {
               />
               {visibleParties.map(party => <Line key={party} dataKey={`shares.${party}`} name={party} stroke={chartColor(party)} strokeWidth={2} connectNulls={false} />)}
             </LineChart></ResponsiveContainer>
-          </div> : <p className="py-12 text-center text-sm text-muted-foreground">Bitte mindestens eine Partei einblenden.</p>}
-          <PartyVisibilityChips parties={availableParties} hidden={hiddenParties} onToggle={party => setHiddenParties(current =>
-            current.includes(party) ? current.filter(value => value !== party) : [...current, party])} />
+          </div></ChartExport> : <p className="py-12 text-center text-sm text-muted-foreground">Bitte mindestens eine Partei einblenden.</p>}
+          <PartyVisibilityChips parties={availableParties} hidden={hiddenParties} onToggle={party => setParams(previous =>
+            setPartySelection(previous, 'analysisAgeHidden', toggleParty(hiddenParties, party), parties))} />
         </CardContent>
       </Card>
       <AnalysisControls placement="filters"><Selection id="analysis-age" label="Altersgruppe für die Tabelle" value={selectedAge} onChange={setAge}>{ages.map(a => <option key={a}>{a}</option>)}</Selection></AnalysisControls>

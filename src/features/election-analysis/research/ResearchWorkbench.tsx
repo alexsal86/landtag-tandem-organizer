@@ -4,7 +4,7 @@ import { ProfileBoundarySection } from "./ProfileBoundarySection";
 import { AnalysisControls } from "../AnalysisToolbar";
 import ResearchLab from "./lab/ResearchLab";
 import MandateAnalysis from "./MandateAnalysis";
-import { lazy, Suspense, useCallback, useMemo, useState } from "react";
+import { lazy, Suspense, useCallback, useMemo } from "react";
 import { useSearchParams } from "react-router-dom";
 import {
   Bar,
@@ -60,6 +60,7 @@ import { signedColor } from "./mapModel";
 import { SwingAtlas } from "./SwingAtlas";
 
 import { analysisDestination } from "../navigation";
+import { readFlag, readPartySelection, setFlag, setPartySelection, toggleParty } from "../viewState";
 
 const SeatSimulator = lazy(() => import("./simulator/SeatSimulator"));
 
@@ -139,10 +140,10 @@ function DistrictProfile({
   const selectedBallot = ballotForComparison(year, ballot);
   const turnoutBallot = ballotForComparison(year, "second");
   const stateTotal = useStateTotal(year, turnoutBallot);
-  const [hiddenParties, setHiddenParties] = useState<string[]>([]);
-  const [historyOpen, setHistoryOpen] = useState(false);
+  const [params, setParams] = useSearchParams();
+  const hiddenParties = readPartySelection(params, "profileHidden", parties);
+  const historyOpen = readFlag(params, "profileHistory");
   const history = useDistrictHistory(district, year, historyOpen);
-  const [params] = useSearchParams();
   const requestedBefore = Number(params.get("analysisBefore"));
   const beforeYear =
     years.includes(requestedBefore) && requestedBefore !== year
@@ -347,7 +348,7 @@ function DistrictProfile({
                 </ResponsiveContainer>
               </div> : <p className="py-12 text-center text-sm text-muted-foreground">Bitte mindestens eine Partei einblenden.</p>}
               <PartyVisibilityChips parties={rankedParties} hidden={hiddenParties} onToggle={party =>
-                setHiddenParties(current => current.includes(party) ? current.filter(value => value !== party) : [...current, party])}
+                setParams(previous => setPartySelection(previous, "profileHidden", toggleParty(hiddenParties, party), parties))}
               />
             </DataState>
           </CardContent>
@@ -433,7 +434,11 @@ function DistrictProfile({
         />
         <details
           className="rounded-lg border p-4"
-          onToggle={(event) => setHistoryOpen(event.currentTarget.open)}
+          open={historyOpen}
+          onToggle={(event) => {
+            if (event.currentTarget.open !== historyOpen)
+              setParams(previous => setFlag(previous, "profileHistory", event.currentTarget.open));
+          }}
         >
           <summary className="cursor-pointer font-medium">
             Verifizierte Mandatshistorie laden
@@ -536,10 +541,12 @@ function AtlasPanel({
     .filter((p) => parties.some((knownParty) => knownParty === p));
   const splitParty = parties.find((p) => p === params.get("splitParty")) ?? chosen[0] ?? party;
   const selectedParties = split ? [splitParty] : chosen.length ? [...new Set(chosen)] : [party];
-  const [mapParty, setMapParty] = useState(selectedParties[0]);
-  const activeMapParty = split ? splitParty : selectedParties.includes(mapParty)
-    ? mapParty
-    : selectedParties[0];
+  const requestedMapParty = parties.find((p) => p === params.get("mapParty"));
+  const activeMapParty = split
+    ? splitParty
+    : requestedMapParty && selectedParties.includes(requestedMapParty)
+      ? requestedMapParty
+      : selectedParties[0];
   const rawMetric = params.get("analysisMetric");
   const metric: Metric =
     rawMetric === "votes" || (!split && rawMetric === "relative")
@@ -827,7 +834,7 @@ function AtlasPanel({
             beforeVersions={data?.versions.filter(v => v.year === beforeYear) ?? []}
             party={activeMapParty}
             parties={selectedParties}
-            onPartyChange={setMapParty}
+            onPartyChange={(next) => set("mapParty", next)}
             metric={metric}
             beforeYear={beforeYear}
             afterYear={afterYear}

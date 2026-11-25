@@ -1,4 +1,5 @@
-import { useState } from 'react';
+import { useSearchParams } from 'react-router-dom';
+import { ChartExport } from './ChartExport';
 import { CartesianGrid, Line, LineChart, ReferenceLine, ResponsiveContainer, Tooltip, usePlotArea, XAxis, YAxis } from 'recharts';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 import { ballotLabels, effectiveBallot, parties, percent } from './model';
@@ -54,9 +55,13 @@ export function StateShareChart({ year, ballot, rows, comparisonYears, series, l
   hidden: string[];
   onToggleParty: (party: string) => void;
 }) {
-  const [mode, setMode] = useState('bar');
-  const [barYear, setBarYear] = useState(year);
+  const [params, setParams] = useSearchParams();
   const multiple = comparisonYears.length > 1;
+  const mode = multiple && params.get('analysisChart') === 'line' ? 'line' : 'bar';
+  const setMode = (value: string) => setParams(previous => { const next = new URLSearchParams(previous); next.set('analysisChart', value); return next; });
+  const requestedBarYear = Number(params.get('analysisChartYear'));
+  const barYear = comparisonYears.includes(requestedBarYear) ? requestedBarYear : year;
+  const setBarYear = (value: number) => setParams(previous => { const next = new URLSearchParams(previous); next.set('analysisChartYear', String(value)); return next; });
   const showLine = multiple && mode === 'line';
   const selectedYear = multiple && comparisonYears.includes(barYear) ? barYear : year;
   const visibleParties = parties.filter(p => !hidden.includes(p));
@@ -68,6 +73,14 @@ export function StateShareChart({ year, ballot, rows, comparisonYears, series, l
   const bars = rankedParties.filter(row => !hidden.includes(row.party));
   const maximum = Math.ceil((Math.max(10, ...(multiple ? series.flatMap(row => parties.map(p => row[p] ?? 0)) : rows.map(row => row.share ?? 0))) + 5) / 5) * 5;
   const percentageDomain: [number, number] = [0, maximum];
+  const displayed = (showLine ? rankedParties : bars).filter(row => row.share != null);
+  const citation = {
+    title: `Parteianteile Landtagswahl Baden-Württemberg ${showLine ? `${comparisonYears[0]}–${comparisonYears[comparisonYears.length - 1]}` : selectedYear}`,
+    values: displayed.map(row => `${row.party === 'GRÜNE' ? 'Grüne' : row.party} ${percent(row.share)}`),
+    source: 'election_analysis_state',
+    release: rows[0]?.data_release ?? null,
+    url: typeof window === 'undefined' ? null : window.location.href,
+  };
   return <Card className="min-w-0 rounded-2xl">
     <CardHeader className="gap-1.5 space-y-0 pb-2">
       <div className="grid grid-cols-[minmax(0,1fr)_auto] items-start gap-x-2 gap-y-1">
@@ -84,6 +97,7 @@ export function StateShareChart({ year, ballot, rows, comparisonYears, series, l
     </CardHeader>
     <CardContent>
       <DataState loading={multiple && loading} error={multiple ? error : null} empty={multiple && !series.length} retry={retry}>
+        <ChartExport title={citation.title} filename={`parteianteile-${selectedYear}`} citation={citation}>
         {!visibleParties.length ? <p className="py-12 text-center text-sm text-muted-foreground">Bitte mindestens eine Partei einblenden.</p> : showLine ? <div className="h-80" role="img" aria-label="Parteianteile über alle Wahlen im gewählten Zeitraum; genaue Werte per Tooltip">
           <ResponsiveContainer><LineChart data={series} margin={{ top: 20, right: 110, left: 0, bottom: 10 }}>
             <CartesianGrid strokeDasharray="3 3" vertical={false} />
@@ -104,6 +118,7 @@ export function StateShareChart({ year, ballot, rows, comparisonYears, series, l
             <span className="text-right font-semibold tabular-nums">{percent(row.share)}</span>
           </div>)}
         </div>}
+        </ChartExport>
       </DataState>
         <PartyVisibilityChips parties={rankedParties.map(row => row.party)} hidden={hidden} onToggle={onToggleParty} />
         <p className="mt-3 text-xs text-muted-foreground">Gestrichelte Linie: 5-%-Hürde. Parteien lassen sich über die Legende ein- und ausblenden. Fehlende Werte bleiben unbekannt.</p>

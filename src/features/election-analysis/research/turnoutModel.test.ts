@@ -1,5 +1,6 @@
 import { describe, expect, it } from "vitest";
 import {
+  decomposeDistricts,
   decomposeVotes,
   turnoutChanges,
   turnoutCorrelation,
@@ -168,6 +169,55 @@ describe("Beteiligung und Stimmenentwicklung", () => {
         { turnoutDelta: 2, shareDelta: 3 },
       ]).value,
     ).toBeNull();
+  });
+});
+describe("Aggregierte symmetrische Stimmenzerlegung", () => {
+  it("summiert nur Wahlkreise mit gemeinsamem Datenstand und bleibt exakt", () => {
+    const summary = decomposeDistricts([
+      {
+        districtNumber: 1,
+        districtName: "A",
+        before: totals(2021),
+        after: totals(2026, {
+          eligible: 1100,
+          voters: 770,
+          valid_votes: 600,
+          turnout: 70,
+        }),
+        resultBefore: result(2021),
+        resultAfter: result(2026, { votes: 150, share: 30 }),
+      },
+      {
+        districtNumber: 2,
+        districtName: "B",
+        before: totals(2021, { district_number: 2 }),
+        after: undefined,
+        resultBefore: result(2021, { district_number: 2 }),
+        resultAfter: undefined,
+      },
+    ]);
+    expect(summary.included).toBe(1);
+    expect(summary.excluded).toBe(1);
+    expect(summary.total.total).toBeCloseTo(50, 10);
+    expect(
+      summary.total.eligible +
+        summary.total.participation +
+        summary.total.validity +
+        summary.total.partyShare,
+    ).toBeCloseTo(summary.total.total, 10);
+  });
+  it("erzwingt keine Zerlegung bei abweichendem Datenstand", () => {
+    const summary = decomposeDistricts([
+      {
+        districtNumber: 1,
+        districtName: "A",
+        before: totals(2021),
+        after: totals(2026, { data_release: "other" }),
+        resultBefore: result(2021),
+        resultAfter: result(2026),
+      },
+    ]);
+    expect(summary).toMatchObject({ included: 0, excluded: 1 });
   });
 });
 describe("Vorbereitete symmetrische Stimmenzerlegung", () => {

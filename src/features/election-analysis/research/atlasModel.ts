@@ -10,6 +10,19 @@ export const atlasValue = (
       ? row.relativeSwing
       : row.swing;
 
+/**
+ * Slope endpoints for the small multiples. Their difference is exactly
+ * atlasValue(row, metric), so the line never shows a different metric than the
+ * labelled number. Stimmen und Abweichung start at 0 (no difference / land trend).
+ */
+export function smallMultipleEndpoints(row: ComparisonValue, metric: Metric) {
+  const value = atlasValue(row, metric);
+  if (value === null) return { from: null, to: null };
+  return metric === "pp"
+    ? { from: row.before?.share ?? null, to: row.after?.share ?? null }
+    : { from: 0, to: value };
+}
+
 /** Exact district numbers; names are case-insensitive substrings. */
 export function atlasRows(
   rows: ComparisonValue[],

@@ -1,4 +1,4 @@
-import { useState } from "react";
+import { useSearchParams } from "react-router-dom";
 import { getPartyColor } from "@/features/election-districts/partyColors";
 import { ParliamentHemicycle } from "../../ParliamentHemicycle";
 import { DataTable } from "../../shared";
@@ -22,7 +22,14 @@ export function SeatOverview({
   official: boolean;
   unfilled: number | null;
 }) {
-  const [selected, setSelected] = useState<string[] | null>(null);
+  const [params, setParams] = useSearchParams();
+  const storedCoalition = params.get("seatCoalition");
+  const selected =
+    storedCoalition === null
+      ? null
+      : storedCoalition === "none"
+        ? []
+        : storedCoalition.split(",").filter(Boolean);
   const parties = seats.rows.filter((row) => row.total > 0);
   const threshold = Math.floor(seats.total / 2) + 1;
   const coalitionParties = [...parties].sort(
@@ -155,11 +162,13 @@ export function SeatOverview({
                 checked={selectedIds.includes(party.id)}
                 onChange={(event) => {
                   const checked = event.target.checked;
-                  setSelected((old) => {
-                    const ids = old ?? selectedIds;
-                    return checked
-                      ? [...ids, party.id]
-                      : ids.filter((id) => id !== party.id);
+                  const ids = checked
+                    ? [...selectedIds, party.id]
+                    : selectedIds.filter((id) => id !== party.id);
+                  setParams((old) => {
+                    const next = new URLSearchParams(old);
+                    next.set("seatCoalition", ids.length ? ids.join(",") : "none");
+                    return next;
                   });
                 }}
               />

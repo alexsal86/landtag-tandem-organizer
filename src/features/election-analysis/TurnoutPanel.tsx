@@ -1,4 +1,4 @@
-import { useState } from 'react';
+import { useSearchParams } from 'react-router-dom';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 import { Input } from '@/components/ui/input';
 import { AnalysisControls } from './AnalysisToolbar';
@@ -12,7 +12,13 @@ type PanelProps = { year: number; ballot: Ballot; party: string; gender: string 
 
 export function TurnoutPanel({ year, ballot, party, gender }: PanelProps) {
   const query = useAnalysisRows('turnout', year, ballot, party, gender);
-  const [search, setSearch] = useState('');
+  const [params, setParams] = useSearchParams();
+  const search = params.get('turnoutSearch') || '';
+  const setSearch = (value: string) => setParams(previous => {
+    const next = new URLSearchParams(previous);
+    if (value) next.set('turnoutSearch', value); else next.delete('turnoutSearch');
+    return next;
+  });
   const totalQuery = useStateTotal(year, ballot);
   const total = totalQuery.data ? stateTotalMetrics(totalQuery.data) : null;
   const all = (query.data || []).map(row => ({ ...row, invalid_votes: row.voters !== null && row.valid_votes !== null && row.voters >= row.valid_votes ? row.voters - row.valid_votes : null }));

@@ -68,8 +68,11 @@ function Seat2026() {
     [, setParams] = useSearchParams();
   const saved = useSavedScenario(params.get("savedScenario")),
     state = useFullState(params.get("savedScenario") ? 0 : 2026);
-  const [tab, setTab] = useState("seats");
-  const [districtsRequested, setDistrictsRequested] = useState(false);
+  const requestedTab = params.get("seatTab");
+  const tab = ["seats", "coalitions", "threshold", "districts"].includes(requestedTab ?? "")
+    ? (requestedTab as string)
+    : "seats";
+  const [districtsRequested, setDistrictsRequested] = useState(tab === "districts");
   const savedInput = saved.data?.input_snapshot;
   const polls = useBwPolls();
   const savedPoll = isRecord(savedInput)
@@ -118,7 +121,6 @@ function Seat2026() {
       return next;
     });
   const switchBaseline = (nextPoll = "", keepSaved = false) => {
-    setTab("seats");
     setDistrictsRequested(false);
     setParams((old) => {
       const next = new URLSearchParams(old);
@@ -133,6 +135,7 @@ function Seat2026() {
             "seatCorrections",
             "seatSpecialFirst",
             "seatThresholdParty",
+            "seatTab",
           ].includes(key) ||
           [
             "seatFirst_",
@@ -999,7 +1002,12 @@ function Seat2026() {
                 className="min-w-0"
                 value={tab}
                 onValueChange={(value) => {
-                  setTab(value);
+                  setParams((old) => {
+                    const next = new URLSearchParams(old);
+                    if (value === "seats") next.delete("seatTab");
+                    else next.set("seatTab", value);
+                    return next;
+                  });
                   if (value === "districts") setDistrictsRequested(true);
                 }}
               >

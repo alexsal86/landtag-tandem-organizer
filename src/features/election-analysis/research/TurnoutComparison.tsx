@@ -26,7 +26,8 @@ import { ballotLabels, number, parties, percent } from "../model";
 import type { Ballot } from "../types";
 import { ballotForComparison } from "./calculations";
 import { useTurnoutComparison } from "./hooks";
-import { turnoutChanges, turnoutCorrelation } from "./turnoutModel";
+import { decomposeDistricts, turnoutChanges, turnoutCorrelation } from "./turnoutModel";
+import { ChartExport } from "../ChartExport";
 
 const signed = (n: number | null | undefined) =>
   n == null
@@ -107,6 +108,17 @@ export default function TurnoutComparison({
     [rows],
   );
   const correlation = useMemo(() => turnoutCorrelation(rows), [rows]);
+  const decomposition = useMemo(() => decomposeDistricts(rows), [rows]);
+  const citation = {
+    title: `Beteiligung und ${party}-Anteil ${beforeYear} → ${year}`,
+    values: rows
+      .filter((row) => row.before?.turnout != null && row.after?.turnout != null)
+      .slice(0, 8)
+      .map((row) => `${row.districtName} ${percent(row.before?.turnout)} → ${percent(row.after?.turnout)}`),
+    source: "get_analysis_turnout_comparison",
+    release: rows.find((row) => row.after?.data_release)?.after?.data_release ?? null,
+    url: typeof window === "undefined" ? null : window.location.href,
+  };
   const openPoint = (entry: unknown) => {
     const value =
       isRecord(entry) && isRecord(entry.payload) ? entry.payload : entry;
@@ -227,6 +239,7 @@ export default function TurnoutComparison({
           </CardHeader>
           <CardContent>
             {points.length ? (
+              <ChartExport title={citation.title} filename={`beteiligung-${party}-${beforeYear}-${year}`} citation={citation}>
               <div
                 className="h-80 sm:h-96"
                 role="img"
@@ -297,6 +310,7 @@ export default function TurnoutComparison({
                   </ScatterChart>
                 </ResponsiveContainer>
               </div>
+              </ChartExport>
             ) : (
               <p className="rounded-lg border p-4 text-sm">
                 Keine vollständigen, zugelassenen Vergleichspaare. Ungeprüfte
@@ -313,6 +327,47 @@ export default function TurnoutComparison({
                   })}{" "}
               · n = {correlation.pairs}. {correlation.reason} Kein
               Kausalnachweis; Filter und Ausschlüsse verändern die Auswahl.
+            </p>
+          </CardContent>
+        </Card>
+        <Card>
+          <CardHeader>
+            <CardTitle className="text-lg">
+              Stimmenzerlegung {party}: {beforeYear} → {year}
+            </CardTitle>
+          </CardHeader>
+          <CardContent className="space-y-3">
+            <p className="text-sm text-muted-foreground">
+              Symmetrische Shapley-Zerlegung über alle 24 Reihenfolgen der vier
+              Faktoren Wahlberechtigte × Beteiligungsquote × Gültigkeitsquote ×
+              Parteianteil. Die vier Beiträge summieren sich exakt zur Änderung
+              der {party}-Stimmen; es gibt keine willkürliche Reihenfolge.
+            </p>
+            <p className="text-sm" role="status">
+              {decomposition.included} Wahlkreise einbezogen · {decomposition.excluded}{" "}
+              ohne vollständige, gemeinsam bestätigte Nenner ausgeschlossen.
+            </p>
+            <div className="grid gap-3 sm:grid-cols-2 xl:grid-cols-5">
+              {([
+                ["Wahlberechtigte", decomposition.total.eligible],
+                ["Beteiligung", decomposition.total.participation],
+                ["Gültigkeitsquote", decomposition.total.validity],
+                ["Parteianteil", decomposition.total.partyShare],
+                ["Gesamt", decomposition.total.total],
+              ] as const).map(([title, value]) => (
+                <div key={title} className="rounded-lg border p-3">
+                  <p className="text-xs text-muted-foreground">{title}</p>
+                  <p className={`text-xl font-semibold tabular-nums ${value < 0 ? "text-destructive" : ""}`}>
+                    {number(Math.round(value))}
+                  </p>
+                </div>
+              ))}
+            </div>
+            <p className="text-xs text-muted-foreground">
+              Einheit: Parteistimmen. Beiträge sind rechnerische Anteile, keine
+              kausalen oder individuellen Effekte; Wahlberechtigte, Beteiligung und
+              Gültigkeit wirken gemeinsam. Fehlende Nenner bleiben ausgeschlossen
+              und werden nicht als null Stimmen ergänzt.
             </p>
           </CardContent>
         </Card>
