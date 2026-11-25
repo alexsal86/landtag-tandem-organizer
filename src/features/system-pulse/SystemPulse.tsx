@@ -1,6 +1,7 @@
+import type { ReactElement } from "react";
 import { Fragment, useEffect, useMemo, useRef, useState } from "react";
 import { useQuery, useQueryClient } from "@tanstack/react-query";
-import { Activity, ArrowRight, ExternalLink, Shield } from "lucide-react";
+import { Activity, ArrowDown, ArrowLeft, ArrowRight, ExternalLink, Shield } from "lucide-react";
 import { Link, useNavigate } from "react-router-dom";
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
@@ -38,6 +39,69 @@ const formatDuration = (ms?: number) => ms === undefined
     : `${(ms / 1000).toLocaleString("de-DE", { maximumFractionDigits: 1 })} s`;
 
 const CURRENT_VERSION = import.meta.env.VITE_COMMIT_SHA as string | undefined;
+
+const stepWidth = 160;
+const connectorWidth = 24;
+
+function ProcessChain({ title, children }: { title: string; children: ReactElement[] }) {
+  const chainRef = useRef<HTMLDivElement>(null);
+  const [columns, setColumns] = useState(1);
+
+  useEffect(() => {
+    const chain = chainRef.current;
+    if (!chain) return;
+
+    const observer = new ResizeObserver(([entry]) => {
+      const width = entry.contentRect.width;
+      setColumns(Math.max(1, Math.floor((width + connectorWidth) / (stepWidth + connectorWidth))));
+    });
+    observer.observe(chain);
+    return () => observer.disconnect();
+  }, []);
+
+  const stepColumns = Math.min(columns, children.length);
+  return (
+    <div
+      ref={chainRef}
+      role="group"
+      aria-label={`Prozesskette ${title}`}
+      className="grid min-w-0"
+      style={{
+        gridTemplateColumns: Array.from({ length: stepColumns }, () => "minmax(0, 1fr)").join(` ${connectorWidth}px `),
+      }}
+    >
+      {children.map((step, index) => {
+        const row = Math.floor(index / stepColumns);
+        const position = index % stepColumns;
+        const goesLeft = row % 2 === 1;
+        const cardColumn = (goesLeft ? stepColumns - 1 - position : position) * 2 + 1;
+        const cardRow = row * 2 + 1;
+        const wraps = position === stepColumns - 1;
+        const Arrow = wraps ? ArrowDown : goesLeft ? ArrowLeft : ArrowRight;
+
+        return (
+          <Fragment key={step.key}>
+            <div className="min-w-0" style={{ gridColumn: cardColumn, gridRow: cardRow }}>
+              {step}
+            </div>
+            {index < children.length - 1 && (
+              <span
+                aria-hidden="true"
+                className="grid h-6 place-items-center self-center text-muted-foreground"
+                style={{
+                  gridColumn: wraps ? cardColumn : cardColumn + (goesLeft ? -1 : 1),
+                  gridRow: wraps ? cardRow + 1 : cardRow,
+                }}
+              >
+                <Arrow className="h-4 w-4" />
+              </span>
+            )}
+          </Fragment>
+        );
+      })}
+    </div>
+  );
+}
 
 export function SystemPulse({ gaps, gapsState }: Props) {
   const { currentTenant } = useTenant();
@@ -409,62 +473,47 @@ export function SystemPulse({ gaps, gapsState }: Props) {
                     {visibleSteps.length === 0 ? (
                       <p className="text-xs text-muted-foreground">Keine fehlgeschlagenen Schritte in diesem Workflow.</p>
                     ) : (
-                      <div
-                        className="-mx-1 overflow-x-auto rounded pb-1 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring"
-                        tabIndex={0}
-                        role="group"
-                        aria-label={`Prozesskette ${title}`}
-                        onKeyDown={(event) => {
-                          if (event.key !== "ArrowLeft" && event.key !== "ArrowRight") return;
-                          event.preventDefault();
-                          event.currentTarget.scrollBy({ left: (event.key === "ArrowRight" ? 1 : -1) * 184, behavior: "smooth" });
-                        }}
-                      >
-                        <div className="flex w-max items-stretch gap-1 px-1">
-                          {visibleSteps.map((step, index) => {
-                            const key = `${workflow.scenario}:${step.id}`;
-                            const result = results[step.id];
-                            const level = stepLevel(result?.status);
-                            const position = chain.findIndex((entry) => entry.id === step.id) + 1;
-                            return (
-                              <Fragment key={step.id}>
-                                {index > 0 && <ArrowRight aria-hidden className="h-3 w-3 shrink-0 self-center text-muted-foreground" />}
-                                <div data-testid="pulse-step" className={cn(
-                                  "relative w-40 shrink-0 rounded border bg-background p-1.5 pr-6 text-xs",
-                                  level === "red" && "border-destructive/50",
-                                  level === "green" && "border-emerald-500/40",
-                                )}>
-                                  <div className="flex items-center gap-1">
-                                    <span className="text-[10px] tabular-nums text-muted-foreground">{position}</span>
-                                    <span aria-hidden className={cn("h-2 w-2 shrink-0 rounded-full", dot[level])} />
-                                  </div>
-                                  {result?.status === "failed" ? (
-                                    <button type="button" onClick={() => setOpenStep(openStep === key ? null : key)}
-                                      aria-expanded={openStep === key} aria-label={`${step.label}: fehlgeschlagen`}
-                                      className="mt-0.5 block w-full whitespace-normal break-words text-left leading-snug underline-offset-2 hover:underline">
-                                      {step.label}
-                                    </button>
-                                  ) : (
-                                    <span aria-label={`${step.label}: ${statusLabel(result?.status)}`}
-                                      className="mt-0.5 block whitespace-normal break-words leading-snug">
-                                      {step.label}
-                                    </span>
-                                  )}
-                                  {result?.durationMs !== undefined && (
-                                    <div className="mt-1 text-[10px] tabular-nums text-muted-foreground">{formatDuration(result.durationMs)}</div>
-                                  )}
-                                  {workflow.features[0] && (
-                                    <Link to={featureCatalogHref(workflow.features[0])} aria-label={`${step.label} im Funktionskatalog öffnen`}
-                                      className="absolute right-1.5 top-1.5 text-muted-foreground hover:text-foreground">
-                                      <ExternalLink aria-hidden className="h-3 w-3" />
-                                    </Link>
-                                  )}
-                                </div>
-                              </Fragment>
-                            );
-                          })}
-                        </div>
-                      </div>
+                      <ProcessChain title={title}>
+                        {visibleSteps.map((step) => {
+                          const key = `${workflow.scenario}:${step.id}`;
+                          const result = results[step.id];
+                          const level = stepLevel(result?.status);
+                          const position = chain.findIndex((entry) => entry.id === step.id) + 1;
+                          return (
+                            <div key={step.id} data-testid="pulse-step" className={cn(
+                              "relative h-full rounded border bg-background p-1.5 pr-6 text-xs",
+                              level === "red" && "border-destructive/50",
+                              level === "green" && "border-emerald-500/40",
+                            )}>
+                              <div className="flex items-center gap-1">
+                                <span className="text-[10px] tabular-nums text-muted-foreground">{position}</span>
+                                <span aria-hidden className={cn("h-2 w-2 shrink-0 rounded-full", dot[level])} />
+                              </div>
+                              {result?.status === "failed" ? (
+                                <button type="button" onClick={() => setOpenStep(openStep === key ? null : key)}
+                                  aria-expanded={openStep === key} aria-label={`${step.label}: fehlgeschlagen`}
+                                  className="mt-0.5 block w-full whitespace-normal break-words text-left leading-snug underline-offset-2 hover:underline">
+                                  {step.label}
+                                </button>
+                              ) : (
+                                <span aria-label={`${step.label}: ${statusLabel(result?.status)}`}
+                                  className="mt-0.5 block whitespace-normal break-words leading-snug">
+                                  {step.label}
+                                </span>
+                              )}
+                              {result?.durationMs !== undefined && (
+                                <div className="mt-1 text-[10px] tabular-nums text-muted-foreground">{formatDuration(result.durationMs)}</div>
+                              )}
+                              {workflow.features[0] && (
+                                <Link to={featureCatalogHref(workflow.features[0])} aria-label={`${step.label} im Funktionskatalog öffnen`}
+                                  className="absolute right-1.5 top-1.5 text-muted-foreground hover:text-foreground">
+                                  <ExternalLink aria-hidden className="h-3 w-3" />
+                                </Link>
+                              )}
+                            </div>
+                          );
+                        })}
+                      </ProcessChain>
                     )}
                     {extraSteps.length > 0 && (
                       <p className="text-[11px] text-muted-foreground">
