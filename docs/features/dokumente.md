@@ -8,7 +8,7 @@ _Auto-generiert mit `npm run update:feature-catalog` aus dem zentralen Funktions
 
 - Funktionen: **17** in **3** Unterbereichen
 - implementiert: **17**, teilweise: **0**, deaktiviert: **0**, potenziell verwaist: **0**
-- ohne zugeordneten Test: **10**
+- ohne zugeordneten Test: **9**
 - ohne Dokumentationsverweis: **13**
 
 ## Funktionen
@@ -21,7 +21,7 @@ _Auto-generiert mit `npm run update:feature-catalog` aus dem zentralen Funktions
 | `annotations.create` Dokumente annotieren | Annotationen | fachlich | implementiert | UI | Selbsttest |
 | `annotations.tasks` Folgeaufgabe aus Annotation | Annotationen | fachlich | implementiert | UI | Selbsttest |
 | `annotations.ocr` OCR für gescannte Dokumente | Annotationen | fachlich | implementiert | UI | kein Test |
-| `letters.export` Brief als PDF oder DOCX exportieren | Briefe | fachlich | implementiert | UI | kein Test |
+| `letters.export` Brief als PDF oder DOCX exportieren | Briefe | fachlich | implementiert | UI | Unit-Test |
 | `letters.archive` Brief archivieren und Folgeaufgabe anlegen | Briefe | automatisiert | implementiert | systemseitig | Selbsttest |
 | `letters.create` Brief erstellen und bearbeiten | Briefe | fachlich | implementiert | rollenabhängig | Unit-Test |
 | `letters.workflow` Brief-Freigabeworkflow | Briefe | fachlich | implementiert | rollenabhängig | Selbsttest |
@@ -420,7 +420,7 @@ Schlägt bei geänderter Dateiversion einen eindeutigen Textanker vor und verlan
 - Keine.
 
 ### `letters.create` — Brief erstellen und bearbeiten
-Erstellt Briefe im Lexical-Editor mit DIN-5008-Layout, direkt auf dem Blatt beschreibbarem Briefkopf (Empfänger, Betreff, Anrede), Adressen, Vorlagen und Anlagen.
+Erstellt Briefe im Lexical-Editor mit DIN-5008-Layout, direkt auf dem Blatt beschreibbarem Briefkopf (Empfänger, Betreff, Anrede), Adressen, Vorlagen und Anlagen; die Blattvorschau setzt den Fließtext auf das gespeicherte Zeilenraster (layout.content.lineHeight) und denselben Absatzabstand wie der PDF-Export und paginiert ohne leere Folgeseite.
 
 - **Kategorie:** fachlich
 - **Implementierung:** implementiert
@@ -429,7 +429,7 @@ Erstellt Briefe im Lexical-Editor mit DIN-5008-Layout, direkt auf dem Blatt besc
 - **Letztes Testergebnis:** unbekannt (nicht aus der Existenz einer Testdatei abgeleitet)
 - **Rollen:** `abgeordneter`, `bueroleitung`, `mitarbeiter`
 - **Routen:** `/letters/:letterId`
-- **Frontend-Komponenten:** `src/pages/LetterDetail.tsx`, `src/features/letters/components/LetterEditor.tsx`, `src/components/letters/LetterEditorCanvas.tsx`, `src/components/letters/DIN5008LetterLayout.tsx`, `src/components/letters/InlineEditableText.tsx`, `src/components/letters/DIN5008AddressInfoSection.tsx`, `src/components/letters/din5008/headerMetrics.ts`
+- **Frontend-Komponenten:** `src/pages/LetterDetail.tsx`, `src/features/letters/components/LetterEditor.tsx`, `src/components/letters/LetterEditorCanvas.tsx`, `src/components/letters/DIN5008LetterLayout.tsx`, `src/components/letters/InlineEditableText.tsx`, `src/components/letters/DIN5008AddressInfoSection.tsx`, `src/components/letters/din5008/headerMetrics.ts`, `src/components/letters/din5008/pagination.ts`
 - **Services:** —
 - **Hooks:** —
 - **Edge Functions:** —
@@ -437,7 +437,7 @@ Erstellt Briefe im Lexical-Editor mit DIN-5008-Layout, direkt auf dem Blatt besc
 - **Tabellen:** `letters`, `letter_template_settings`, `letter_attachments`
 - **Abhängigkeiten:** —
 - **Selbsttests:** —
-- **Unit-Tests:** `src/components/letters/__tests__/types.test.ts`, `src/components/letters/din5008/headerMetrics.test.ts`
+- **Unit-Tests:** `src/components/letters/__tests__/types.test.ts`, `src/components/letters/din5008/headerMetrics.test.ts`, `src/components/letters/din5008/pagination.test.ts`
 - **Integrationstests:** —
 - **Browser-Tests:** —
 - **Dokumentation:** `docs/workflow-consistency.md`
@@ -568,16 +568,16 @@ Verwaltet Briefvorlagen, Anlassarten, Absenderdaten und Textbausteine.
 - Keine.
 
 ### `letters.export` — Brief als PDF oder DOCX exportieren
-Erzeugt PDF- und DOCX-Ausgaben aus dem Editorinhalt inklusive Layout und Anlagen; Betreff-, Anreden- und Inhaltsbeginn folgen derselben DIN-Berechnung wie die Vorschau.
+Erzeugt PDF- und DOCX-Ausgaben aus dem Editorinhalt inklusive Layout und Anlagen; Betreff, Anrede und Fließtext folgen derselben DIN-Berechnung wie die Vorschau: Briefkopf und Fließtext werden mit einer eingebetteten Carlito-Teilmenge gesetzt, und Zeilenraster (layout.content.lineHeight) sowie Absatzabstand gelten in Vorschau und Export identisch, damit die Seitenumbrüche übereinstimmen.
 
 - **Kategorie:** fachlich
 - **Implementierung:** implementiert
 - **Einbindung:** UI
-- **Testabdeckung:** kein Test
+- **Testabdeckung:** Unit-Test
 - **Letztes Testergebnis:** nicht-ausgefuehrt (nicht aus der Existenz einer Testdatei abgeleitet)
 - **Rollen:** `abgeordneter`, `bueroleitung`, `mitarbeiter`
 - **Routen:** —
-- **Frontend-Komponenten:** `src/features/letters/components/LetterPDFExport.tsx`, `src/features/letters/components/LetterDOCXExport.tsx`, `src/components/letter-pdf`, `src/components/letters/din5008/headerMetrics.ts`
+- **Frontend-Komponenten:** `src/features/letters/components/LetterPDFExport.tsx`, `src/features/letters/components/LetterDOCXExport.tsx`, `src/components/letter-pdf`, `src/components/letter-pdf/carlitoFont.ts`, `src/components/letters/din5008/headerMetrics.ts`, `src/components/letters/din5008/pagination.ts`
 - **Services:** —
 - **Hooks:** —
 - **Edge Functions:** —
@@ -585,7 +585,7 @@ Erzeugt PDF- und DOCX-Ausgaben aus dem Editorinhalt inklusive Layout und Anlagen
 - **Tabellen:** `letters`
 - **Abhängigkeiten:** `letters.create`
 - **Selbsttests:** —
-- **Unit-Tests:** —
+- **Unit-Tests:** `src/components/letter-pdf/carlitoFont.test.ts`, `src/components/letters/din5008/headerMetrics.test.ts`, `src/components/letters/din5008/pagination.test.ts`
 - **Integrationstests:** —
 - **Browser-Tests:** —
 - **Dokumentation:** —

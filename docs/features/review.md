@@ -11,7 +11,7 @@ Eindeutige Fehler werden im CI-Lauf ausgegeben und brechen die Prüfung ab; sie 
 - Review-Hinweise: **0**
 - Nicht zugeordnete Objekte: **1**, davon ohne Ausnahme: **0**
 
-## Funktionen ohne zugeordneten Test (151)
+## Funktionen ohne zugeordneten Test (150)
 
 - `mywork.tabs` — Meine Arbeit – Bereichsnavigation und Einstellungen
 - `mywork.quick-access` — Schnellzugriff und zuletzt besuchte Seiten
@@ -44,7 +44,6 @@ Eindeutige Fehler werden im CI-Lauf ausgegeben und brechen die Prüfung ab; sie 
 - `annotations.export` — Annotationen exportieren
 - `annotations.relocate` — Annotationen bei neuer Dateiversion verschieben
 - `letters.templates` — Briefvorlagen und Anlässe
-- `letters.export` — Brief als PDF oder DOCX exportieren
 - `letters.collaboration` — Brief-Kommentare und Zusammenarbeit
 - `letters.attachments` — Briefanlagen verwalten
 - `decisions.change-vote` — Antwort ändern und Verlauf einsehen

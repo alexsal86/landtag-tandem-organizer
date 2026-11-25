@@ -8,7 +8,8 @@ import { supabase } from '@/integrations/supabase/client';
 import { buildVariableMap, substituteBlockLines, substituteVariables, isLineMode } from '@/lib/letterVariables';
 import type { BlockLine } from '@/components/letters/BlockLineEditor';
 import { getLetterAssetPublicUrl } from '@/components/letters/letterAssetUrls';
-import { baselineOffsetMm, computeLetterHeaderMetrics, toFontSizePt } from '@/components/letters/din5008/headerMetrics';
+import { baselineOffsetMm, computeLetterHeaderMetrics, resolveBodyLineHeightMm, resolveBodyParagraphGapMm, resolvePage2TopMm, toFontSizePt } from '@/components/letters/din5008/headerMetrics';
+import { registerHeaderTextFont } from './carlitoFont';
 import { DEFAULT_DIN5008_LAYOUT, isLetterLayoutSettings, type LetterLayoutSettings } from '@/types/letterLayout';
 import { isRecord } from '@/utils/typeSafety';
 import type { Letter, LetterTemplate, DbContact, SenderInfoContract, InformationBlockContract, AttachmentContract } from './types';
@@ -720,7 +721,9 @@ export async function generatePDF(options: GeneratePDFOptions): Promise<{ blob: 
   // ── Subject + salutation, measured with the same rules as the preview ──
   const subjectText = (letter.subject || letter.title || '').trim();
   const contentFontSize = toFontSizePt(layout.content?.fontSize, 11);
-  const lineHeight = layout.content?.lineHeight || 4.5;
+  // Body grid shared with the preview: same line pitch, same paragraph gap.
+  const lineHeight = resolveBodyLineHeightMm(layout);
+  const paragraphGap = resolveBodyParagraphGapMm(lineHeight);
 
   const salutationOverride = typeof (letter as { salutation_override?: unknown }).salutation_override === 'string'
     ? ((letter as { salutation_override?: string }).salutation_override || '').trim()
@@ -740,13 +743,17 @@ export async function generatePDF(options: GeneratePDFOptions): Promise<{ blob: 
 
   const contentWidthMm = pageMetrics.widthMm - pageMetrics.margins.leftMm - pageMetrics.margins.rightMm;
 
+  // The preview lays out the header in Calibri; drawing it with the embedded
+  // Carlito keeps the line breaks identical instead of using Helvetica metrics.
+  const headerFontFamily = await registerHeaderTextFont(pdf);
+
   // splitTextToSize measures with the currently selected font, so set it first.
   pdf.setFontSize(toFontSizePt(layout.subject?.fontSize, 13));
-  pdf.setFont('helvetica', layout.subject?.fontWeight || 'bold');
+  pdf.setFont(headerFontFamily, layout.subject?.fontWeight || 'bold');
   const subjectLines = subjectText ? (pdf.splitTextToSize(subjectText, contentWidthMm) as string[]) : [];
 
   pdf.setFontSize(toFontSizePt(layout.salutation?.fontSize, 11));
-  pdf.setFont('helvetica', 'normal');
+  pdf.setFont(headerFontFamily, 'normal');
   const salutationLines = salutationText ? (pdf.splitTextToSize(salutationText, contentWidthMm) as string[]) : [];
 
   const headerMetrics = computeLetterHeaderMetrics({
@@ -757,7 +764,7 @@ export async function generatePDF(options: GeneratePDFOptions): Promise<{ blob: 
 
   if (subjectLines.length > 0) {
     pdf.setFontSize(headerMetrics.subjectFontSizePt);
-    pdf.setFont('helvetica', layout.subject?.fontWeight || 'bold');
+    pdf.setFont(headerFontFamily, layout.subject?.fontWeight || 'bold');
     const subjectBaseline = headerMetrics.subjectTopMm + baselineOffsetMm(headerMetrics.subjectFontSizePt);
     subjectLines.forEach((line, index) => {
       pdf.text(line, LEFT_MARGIN, subjectBaseline + index * headerMetrics.subjectLineHeightMm);
@@ -766,23 +773,37 @@ export async function generatePDF(options: GeneratePDFOptions): Promise<{ blob: 
 
   if (salutationLines.length > 0) {
     pdf.setFontSize(headerMetrics.salutationFontSizePt);
-    pdf.setFont('helvetica', 'normal');
+    pdf.setFont(headerFontFamily, 'normal');
     const salutationBaseline = headerMetrics.salutationTopMm + baselineOffsetMm(headerMetrics.salutationFontSizePt);
     salutationLines.forEach((line, index) => {
       pdf.text(line, LEFT_MARGIN, salutationBaseline + index * headerMetrics.salutationLineHeightMm);
     });
   }
 
-  let contentStartY = headerMetrics.contentTopMm + baselineOffsetMm(contentFontSize);
+  // Baselines are placed by their line box: the PDF draws at the baseline, the
+  // preview stacks line boxes. Both therefore break a page at the box bottom.
+  const contentBaselineOffsetMm = baselineOffsetMm(contentFontSize);
+  let contentStartY = headerMetrics.contentTopMm + contentBaselineOffsetMm;
+  const page2TopY = resolvePage2TopMm(layout) + contentBaselineOffsetMm;
   
   // Letter content
   pdf.setFontSize(contentFontSize);
-  pdf.setFont('helvetica', 'normal');
+  pdf.setFont(headerFontFamily, 'normal');
   const contentText = letter.content_html ? convertHtmlToText(letter.content_html) : letter.content;
   
   let currentPage = 1;
   let letterPages = 1;
-  const shouldShowPagination = showPagination || letter.show_pagination;
+  const shouldShowPagination = (showPagination || letter.show_pagination) && (layout.pagination?.enabled ?? true);
+
+  // Page capacities mirror the preview: a page ends at the same mm value and
+  // page numbers reserve the same gap below the body.
+  const paginationTopMm = layout.pagination?.top ?? 263.77;
+  const page1BottomMm = shouldShowPagination
+    ? Math.min(pageMetrics.footerTopMm, paginationTopMm - pageMetrics.paginationGapMm)
+    : pageMetrics.footerTopMm;
+  const pageBottomMm = shouldShowPagination
+    ? Math.min(layout.content?.page2BottomMm ?? pageMetrics.footerTopMm, paginationTopMm - pageMetrics.paginationGapMm)
+    : (layout.content?.page2BottomMm ?? pageMetrics.footerTopMm);
   
   const renderContentText = (text: string, startY: number): number => {
     let currentY = startY;
@@ -793,27 +814,24 @@ export async function generatePDF(options: GeneratePDFOptions): Promise<{ blob: 
       const lines = pdf.splitTextToSize(paragraph.trim(), currentMaxWidth);
       
       lines.forEach((line: string) => {
-        const paginationTop = 263.77;
-        const contentBottom = shouldShowPagination
-          ? paginationTop - pageMetrics.paginationGapMm
-          : Math.min(pageMetrics.contentTopMm + 165, pageMetrics.footerTopMm - pageMetrics.paginationGapMm);
+        const contentBottom = currentPage === 1 ? page1BottomMm : pageBottomMm;
         
-        if (currentY + lineHeight > contentBottom) {
+        if (currentY + lineHeight - contentBaselineOffsetMm > contentBottom) {
           pdf.addPage();
           letterPages++;
           currentPage++;
           if (debugMode) drawDebugGuides(pdf, currentPage);
           renderFooterBlocksSimple(pdf, template);
-          currentY = layout.content?.page2TopMm || 30;
+          currentY = page2TopY;
           pdf.setFontSize(contentFontSize);
-          pdf.setFont('helvetica', 'normal');
+          pdf.setFont(headerFontFamily, 'normal');
         }
         
         pdf.text(line, pageMetrics.margins.leftMm, currentY);
         currentY += lineHeight;
       });
       
-      if (paragIndex < paragraphs.length - 1) currentY += lineHeight / 2;
+      if (paragIndex < paragraphs.length - 1) currentY += paragraphGap;
     });
     return currentY;
   };
@@ -824,7 +842,7 @@ export async function generatePDF(options: GeneratePDFOptions): Promise<{ blob: 
   if (layout.closing?.formula) {
     endY += lineHeight; // blank line before closing
     pdf.setFontSize(layout.closing?.fontSize || contentFontSize);
-    pdf.setFont('helvetica', 'normal');
+    pdf.setFont(headerFontFamily, 'normal');
     pdf.text(layout.closing.formula, LEFT_MARGIN, endY);
     endY += lineHeight;
     
@@ -860,12 +878,12 @@ export async function generatePDF(options: GeneratePDFOptions): Promise<{ blob: 
     
     // Signature name
     if (layout.closing?.signatureName) {
-      pdf.setFont('helvetica', 'normal');
+      pdf.setFont(headerFontFamily, 'normal');
       pdf.text(layout.closing.signatureName, LEFT_MARGIN, endY);
       endY += lineHeight;
     }
     if (layout.closing?.signatureTitle) {
-      pdf.setFont('helvetica', 'normal');
+      pdf.setFont(headerFontFamily, 'normal');
       pdf.text(layout.closing.signatureTitle, LEFT_MARGIN, endY);
     }
   }

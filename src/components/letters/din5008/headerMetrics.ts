@@ -28,12 +28,35 @@ export const toFontSizePt = (value: unknown, fallback: number): number =>
   toPositiveNumber(value) ?? fallback;
 
 /**
- * Baseline offset from the top of a 1.2 line box for Helvetica/Arial,
- * used when the PDF has to place text by baseline while the preview
- * positions the line box by its top edge.
+ * Baseline offset from the top of a 1.2 line box, used when the PDF places text
+ * by baseline while the preview positions the line box by its top edge. Calibri
+ * and its metric-compatible Carlito share this value because Carlito's wider
+ * ascent tracks Calibri's ascent plus half its line gap.
  */
 export const baselineOffsetMm = (fontSizePt: number): number =>
   fontSizePt * MM_PER_PT * 0.85;
+
+/** Body line pitch used when a template does not store layout.content.lineHeight. */
+export const DEFAULT_BODY_LINE_HEIGHT_MM = 4.5;
+
+/**
+ * Line pitch (mm) of the letter body. The preview renders every body line box
+ * with exactly this height and the PDF advances its baseline by it, so both sit
+ * on the same vertical grid and page breaks land on the same line.
+ */
+export const resolveBodyLineHeightMm = (layout?: Partial<LetterLayoutSettings> | null): number =>
+  toPositiveNumber(layout?.content?.lineHeight) ?? DEFAULT_BODY_LINE_HEIGHT_MM;
+
+/** Gap between two body paragraphs: one blank line, identical in preview and PDF. */
+export const resolveBodyParagraphGapMm = (lineHeightMm: number): number => lineHeightMm;
+
+/** Top edge of the body on page 2 and later (mm); preview and PDF share it. */
+export const resolvePage2TopMm = (layout?: Partial<LetterLayoutSettings> | null): number =>
+  toPositiveNumber(layout?.content?.page2TopMm) ?? toPositiveNumber(layout?.margins?.top) ?? 45;
+
+/** Unitless CSS line-height that produces the stored mm pitch for a font size. */
+export const bodyLineHeightCss = (lineHeightMm: number, fontSizePt: number): number =>
+  fontSizePt > 0 ? lineHeightMm / (fontSizePt * MM_PER_PT) : 1;
 
 export interface LetterHeaderMetricsInput {
   layout?: Partial<LetterLayoutSettings> | null;

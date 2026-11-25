@@ -8,6 +8,24 @@
 /* Import React Big Calendar styles */
 @import './styles/react-big-calendar.css';
 
+/* Bundled Carlito for letter previews. The PDF export embeds the same subset,
+   so preview and print share Calibri's advance widths on every platform. */
+@font-face {
+  font-family: 'Carlito';
+  src: url('/fonts/Carlito-Regular.ttf') format('truetype');
+  font-weight: 400;
+  font-style: normal;
+  font-display: swap;
+}
+
+@font-face {
+  font-family: 'Carlito';
+  src: url('/fonts/Carlito-Bold.ttf') format('truetype');
+  font-weight: 700;
+  font-style: normal;
+  font-display: swap;
+}
+
 /* Definition of the design system. All colors, gradients, fonts, etc should be defined here. 
 All colors MUST be HSL.
 */

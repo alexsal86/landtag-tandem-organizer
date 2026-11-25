@@ -7,6 +7,7 @@ import { LetterAttachmentList, LetterClosingBlock, getLetterAttachmentNames } fr
 import { FoldHoleMarks, PaginationFooter, TemplateFooterBlocks } from './DIN5008LayoutChrome';
 import { DIN5008AddressInfoSection } from './DIN5008AddressInfoSection';
 import { getLetterAssetPublicUrl } from './letterAssetUrls';
+import { bodyLineHeightCss, resolveBodyLineHeightMm, resolveBodyParagraphGapMm } from './din5008/headerMetrics';
 import type { DIN5008LetterLayoutProps } from './din5008/types';
 import type {
   InformationBlockRecord,
@@ -104,6 +105,10 @@ export const DIN5008LetterLayout: React.FC<DIN5008LetterLayoutProps> = ({
   const layout = layoutSettings || template?.layout_settings || DEFAULT_LAYOUT;
   const salutationFontSizePt = toFontSizePt(layout.salutation?.fontSize, 11);
   const contentFontSizePt = toFontSizePt(layout.content?.fontSize, salutationFontSizePt);
+  // Same body grid as the editor canvas and the PDF export.
+  const bodyLineHeightMm = resolveBodyLineHeightMm(layout);
+  const bodyParagraphGapMm = resolveBodyParagraphGapMm(bodyLineHeightMm);
+  const bodyLineHeightRatio = bodyLineHeightCss(bodyLineHeightMm, contentFontSizePt);
   const returnAddressFontSizePt = toFontSizePt(layout.addressField?.returnAddressFontSize, 8);
   const recipientFontSizePt = toFontSizePt(layout.addressField?.recipientFontSize, 10);
   const subjectFontSizePt = toFontSizePt(layout.subject?.fontSize, 13);
@@ -422,8 +427,9 @@ export const DIN5008LetterLayout: React.FC<DIN5008LetterLayoutProps> = ({
       fontFamily: 'Calibri, Carlito, "Segoe UI", Arial, sans-serif',
       fontSize: '11pt',
       lineHeight: '1.2',
-      position: 'relative'
-    }}>
+      position: 'relative',
+      '--letter-paragraph-gap': `${bodyParagraphGapMm}mm`,
+    } as React.CSSProperties}>
       <FoldHoleMarks foldHoleMarks={foldHoleMarks} />
       {/* Template Header */}
       {template && (
@@ -601,7 +607,11 @@ export const DIN5008LetterLayout: React.FC<DIN5008LetterLayoutProps> = ({
           {/* 1 blank line after salutation */}
           {showSalutation && <div style={{ height: '4.5mm' }} />}
           {/* Letter content */}
-          <div className="din5008-content-text" style={contentTextStyle} dangerouslySetInnerHTML={{ __html: sanitizeRichHtml(content) }} />
+          <div
+            className="din5008-content-text"
+            style={{ ...contentTextStyle, lineHeight: bodyLineHeightRatio }}
+            dangerouslySetInnerHTML={{ __html: sanitizeRichHtml(content) }}
+          />
           {/* Closing formula + signature */}
           {!hideClosing && (
             <LetterClosingBlock
@@ -651,7 +661,7 @@ export const DIN5008LetterLayout: React.FC<DIN5008LetterLayoutProps> = ({
               right: '20mm',
               maxHeight: `${contentMaxHeightMm}mm`,
               fontSize: `${contentFontSizePt}pt`,
-              lineHeight: '1.2',
+              lineHeight: bodyLineHeightRatio,
               color: '#000',
               backgroundColor: debugMode ? 'rgba(0,255,0,0.02)' : 'transparent',
               overflow: 'hidden'
@@ -660,6 +670,7 @@ export const DIN5008LetterLayout: React.FC<DIN5008LetterLayoutProps> = ({
             <div
               dangerouslySetInnerHTML={{ __html: sanitizeRichHtml(content) }}
               className="din5008-content-text"
+              style={{ lineHeight: bodyLineHeightRatio }}
             />
             {/* Closing formula + signature */}
             {!hideClosing && (
@@ -688,7 +699,7 @@ export const DIN5008LetterLayout: React.FC<DIN5008LetterLayoutProps> = ({
           color: #000 !important;
         }
         .din5008-content-text p {
-          margin: 0 0 4.5mm 0;
+          margin: 0 0 var(--letter-paragraph-gap, 4.5mm) 0;
         }
         .din5008-content-text p:last-child {
           margin-bottom: 0;

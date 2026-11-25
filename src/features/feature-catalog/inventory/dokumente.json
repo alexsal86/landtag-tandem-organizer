@@ -372,7 +372,7 @@
       "id": "letters.create",
       "subarea": "Briefe",
       "name": "Brief erstellen und bearbeiten",
-      "description": "Erstellt Briefe im Lexical-Editor mit DIN-5008-Layout, direkt auf dem Blatt beschreibbarem Briefkopf (Empfänger, Betreff, Anrede), Adressen, Vorlagen und Anlagen.",
+      "description": "Erstellt Briefe im Lexical-Editor mit DIN-5008-Layout, direkt auf dem Blatt beschreibbarem Briefkopf (Empfänger, Betreff, Anrede), Adressen, Vorlagen und Anlagen; die Blattvorschau setzt den Fließtext auf das gespeicherte Zeilenraster (layout.content.lineHeight) und denselben Absatzabstand wie der PDF-Export und paginiert ohne leere Folgeseite.",
       "category": "fachlich",
       "implementationStatus": "implementiert",
       "integrationStatus": "rollenabhaengig",
@@ -393,7 +393,8 @@
         "src/components/letters/DIN5008LetterLayout.tsx",
         "src/components/letters/InlineEditableText.tsx",
         "src/components/letters/DIN5008AddressInfoSection.tsx",
-        "src/components/letters/din5008/headerMetrics.ts"
+        "src/components/letters/din5008/headerMetrics.ts",
+        "src/components/letters/din5008/pagination.ts"
       ],
       "tables": [
         "letters",
@@ -407,7 +408,8 @@
       ],
       "unitTests": [
         "src/components/letters/__tests__/types.test.ts",
-        "src/components/letters/din5008/headerMetrics.test.ts"
+        "src/components/letters/din5008/headerMetrics.test.ts",
+        "src/components/letters/din5008/pagination.test.ts"
       ],
       "docs": [
         "docs/workflow-consistency.md"
@@ -545,11 +547,11 @@
       "id": "letters.export",
       "subarea": "Briefe",
       "name": "Brief als PDF oder DOCX exportieren",
-      "description": "Erzeugt PDF- und DOCX-Ausgaben aus dem Editorinhalt inklusive Layout und Anlagen; Betreff-, Anreden- und Inhaltsbeginn folgen derselben DIN-Berechnung wie die Vorschau.",
+      "description": "Erzeugt PDF- und DOCX-Ausgaben aus dem Editorinhalt inklusive Layout und Anlagen; Betreff, Anrede und Fließtext folgen derselben DIN-Berechnung wie die Vorschau: Briefkopf und Fließtext werden mit einer eingebetteten Carlito-Teilmenge gesetzt, und Zeilenraster (layout.content.lineHeight) sowie Absatzabstand gelten in Vorschau und Export identisch, damit die Seitenumbrüche übereinstimmen.",
       "category": "fachlich",
       "implementationStatus": "implementiert",
       "integrationStatus": "ui",
-      "coverage": "keine",
+      "coverage": "unit",
       "testResult": "nicht-ausgefuehrt",
       "evidence": [
         "src/features/letters/components/LetterPDFExport.tsx",
@@ -559,7 +561,9 @@
         "src/features/letters/components/LetterPDFExport.tsx",
         "src/features/letters/components/LetterDOCXExport.tsx",
         "src/components/letter-pdf",
-        "src/components/letters/din5008/headerMetrics.ts"
+        "src/components/letter-pdf/carlitoFont.ts",
+        "src/components/letters/din5008/headerMetrics.ts",
+        "src/components/letters/din5008/pagination.ts"
       ],
       "tables": [
         "letters"
@@ -568,6 +572,11 @@
         "abgeordneter",
         "bueroleitung",
         "mitarbeiter"
+      ],
+      "unitTests": [
+        "src/components/letter-pdf/carlitoFont.test.ts",
+        "src/components/letters/din5008/headerMetrics.test.ts",
+        "src/components/letters/din5008/pagination.test.ts"
       ],
       "dependsOn": ["letters.create"]
     },

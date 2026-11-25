@@ -12,7 +12,14 @@ import { ContactSelector } from '@/features/contacts/components/ContactSelector'
 import { DIN5008LetterLayout } from './DIN5008LetterLayout';
 import { EditableCanvasOverlay } from './EditableCanvasOverlay';
 import { InlineEditableText } from './InlineEditableText';
-import { computeLetterHeaderMetrics } from './din5008/headerMetrics';
+import {
+  bodyLineHeightCss,
+  computeLetterHeaderMetrics,
+  resolveBodyLineHeightMm,
+  resolveBodyParagraphGapMm,
+  resolvePage2TopMm,
+} from './din5008/headerMetrics';
+import { computePageBreaks } from './din5008/pagination';
 import { LetterAttachmentList, LetterClosingBlock } from './LetterContentBlocks';
 import type {
   InformationBlockRecord,
@@ -219,6 +226,11 @@ export const LetterEditorCanvas: React.FC<LetterEditorCanvasProps> = ({
   const contentFontSizePt = toFontSizePt(
     layout.content?.fontSize ?? layout.salutation?.fontSize, 11,
   );
+  // Body grid shared with the PDF export: every line box is exactly
+  // layout.content.lineHeight high and paragraphs keep one blank line.
+  const bodyLineHeightMm = resolveBodyLineHeightMm(layout);
+  const bodyParagraphGapMm = resolveBodyParagraphGapMm(bodyLineHeightMm);
+  const bodyLineHeightRatio = bodyLineHeightCss(bodyLineHeightMm, contentFontSizePt);
   const subjectFontSizePt = toFontSizePt(layout.subject?.fontSize, 13);
   const salutationFontSizePt = toFontSizePt(layout.salutation?.fontSize, 11);
   const closingFontSizePt = toFontSizePt(layout.closing?.fontSize, 11);
@@ -271,7 +283,7 @@ export const LetterEditorCanvas: React.FC<LetterEditorCanvasProps> = ({
     : footerTopMm;
 
   // ── page 2+ content boundaries from layout ──
-  const page2TopMm: number = layout.content?.page2TopMm ?? layout.margins?.top ?? 25;
+  const page2TopMm: number = resolvePage2TopMm(layout);
   const page2BottomRaw: number = layout.content?.page2BottomMm ?? footerTopMm;
   const page2BottomMm = paginationEnabled
     ? Math.min(page2BottomRaw, paginationTopMm - paginationGapMm)
@@ -398,59 +410,7 @@ export const LetterEditorCanvas: React.FC<LetterEditorCanvasProps> = ({
   }, [renderedHtml, closingFormula, closingName, attachments, collectLineBreaks]);
 
   // ── Compute page breaks from line-level break boundaries ──
-  const lineHeightMm = layout.content?.lineHeight ?? 4.5;
-
-  const computePageBreaks = useCallback(
-    (breaks: number[], p1Body: number, pNBody: number, lineHMm: number): number[] => {
-      if (breaks.length === 0) return [];
-      // pageOffsets[i] = the flow-offset (mm) where page i starts
-      const pageOffsets: number[] = [0];
-      let consumed = 0;
-
-      while (consumed < (breaks[breaks.length - 1] ?? 0)) {
-        const isFirst = pageOffsets.length === 1;
-        const capacity = isFirst ? p1Body : pNBody;
-        const limit = consumed + capacity;
-
-        // Find the last line break that fits within this page
-        let bestBreak = consumed; // fallback: no content fits
-        for (const b of breaks) {
-          if (b <= consumed) continue;
-          if (b <= limit + 0.1) {
-            bestBreak = b;
-          } else {
-            break;
-          }
-        }
-
-        // If no line fits (single block taller than page), force-advance
-        if (bestBreak <= consumed) {
-          bestBreak = limit;
-        }
-
-        // Snap bestBreak down to the nearest line-grid multiple so that the
-        // page always ends flush with a complete line (the user's insight:
-        // we know the line height, so we use it as a snapping grid).
-        if (lineHMm > 0) {
-          bestBreak = Math.floor(bestBreak / lineHMm) * lineHMm;
-          // Guard: snap must not regress behind consumed
-          if (bestBreak <= consumed) bestBreak = consumed + lineHMm;
-        }
-
-        // If remaining content after bestBreak is negligible, stop
-        const remaining = (breaks[breaks.length - 1] ?? 0) - bestBreak;
-        if (remaining < 2) break;
-
-        consumed = bestBreak;
-        pageOffsets.push(consumed);
-      }
-
-      return pageOffsets;
-    },
-    [],
-  );
-
-  const pageOffsets = computePageBreaks(blockBreaks, page1BodyMmRaw, pageNBodyMmRaw, lineHeightMm);
+  const pageOffsets = computePageBreaks(blockBreaks, page1BodyMmRaw, pageNBodyMmRaw, bodyLineHeightMm);
   const totalPages = Math.max(1, pageOffsets.length);
 
   // ── overlay dimensions ──
@@ -819,7 +779,7 @@ export const LetterEditorCanvas: React.FC<LetterEditorCanvasProps> = ({
           boxShadow: '0 4px 24px rgba(0,0,0,0.12), 0 1px 4px rgba(0,0,0,0.08)',
           fontFamily: 'Calibri,Carlito,"Segoe UI",Arial,sans-serif',
           fontSize: `${contentFontSizePt}pt`,
-          lineHeight: '1.2',
+          lineHeight: bodyLineHeightRatio,
         }}
       >
         <DIN5008LetterLayout
@@ -859,7 +819,7 @@ export const LetterEditorCanvas: React.FC<LetterEditorCanvasProps> = ({
             left: `${MARGIN_L_MM}mm`,
             right: `${MARGIN_R_MM}mm`,
             fontSize: `${contentFontSizePt}pt`,
-            lineHeight: '1.2',
+            lineHeight: bodyLineHeightRatio,
             color: '#000',
             zIndex: 20,
             cursor: 'text',
@@ -907,7 +867,7 @@ export const LetterEditorCanvas: React.FC<LetterEditorCanvasProps> = ({
           boxShadow: '0 4px 24px rgba(0,0,0,0.12), 0 1px 4px rgba(0,0,0,0.08)',
           fontFamily: 'Calibri,Carlito,"Segoe UI",Arial,sans-serif',
           fontSize: `${contentFontSizePt}pt`,
-          lineHeight: '1.2',
+          lineHeight: bodyLineHeightRatio,
           marginBottom: pageIndex < totalPages - 1 ? '8mm' : 0,
         }}
       >
@@ -980,7 +940,7 @@ export const LetterEditorCanvas: React.FC<LetterEditorCanvasProps> = ({
             height: `${bodyHeightMm}mm`,
             overflow: 'hidden',
             fontSize: `${contentFontSizePt}pt`,
-            lineHeight: '1.2',
+            lineHeight: bodyLineHeightRatio,
             color: '#000',
           }}
         >
@@ -1048,7 +1008,10 @@ export const LetterEditorCanvas: React.FC<LetterEditorCanvasProps> = ({
 
   // ── main render ──
   return (
-    <div className="flex flex-col h-full">
+    <div
+      className="flex flex-col h-full"
+      style={{ '--letter-paragraph-gap': `${bodyParagraphGapMm}mm` } as React.CSSProperties}
+    >
       {/* Hidden measurement container — same width/font as real body */}
       <div
         ref={flowMeasureRef}
@@ -1060,7 +1023,7 @@ export const LetterEditorCanvas: React.FC<LetterEditorCanvasProps> = ({
           width: `${CONTENT_W_MM}mm`,
           fontSize: `${contentFontSizePt}pt`,
           fontFamily: 'Calibri,Carlito,"Segoe UI",Arial,sans-serif',
-          lineHeight: '1.2',
+          lineHeight: bodyLineHeightRatio,
           top: '-99999px',
           left: '-99999px',
         }}
@@ -1139,7 +1102,7 @@ export const LetterEditorCanvas: React.FC<LetterEditorCanvasProps> = ({
           color: #000 !important;
         }
         .din5008-content-text p {
-          margin: 0 0 4.5mm 0;
+          margin: 0 0 var(--letter-paragraph-gap, 4.5mm) 0;
         }
         .din5008-content-text p:last-child {
           margin-bottom: 0;
