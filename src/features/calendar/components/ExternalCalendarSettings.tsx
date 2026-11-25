@@ -94,10 +94,12 @@ export function ExternalCalendarSettings() {
     
     setIsLoading(true);
     try {
-      // Fetch all calendars in the tenant (visible to all office users)
+      // Fetch all calendars in the tenant (visible to all office users).
+      // Nur die Felder, die die Liste rendert – ics_url und is_active liest niemand;
+      // created_at bleibt reiner Sortierschlüssel.
       const { data, error } = await supabase
         .from('external_calendars')
-        .select('*')
+        .select('id, name, calendar_type, color, sync_enabled, sync_interval, last_sync, user_id')
         .eq('tenant_id', currentTenant.id)
         .order('created_at', { ascending: false });
 
