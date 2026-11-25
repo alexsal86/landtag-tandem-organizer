@@ -4,7 +4,7 @@ test.use({ viewport: { width: 1280, height: 960 }, serviceWorkers: 'block' });
 test('questions, answers, reviews, private attachments, search, errors and legacy access', async ({ page, context }, info) => {
   const user = { id: '33333333-3333-4333-8333-333333333333', email: 'staff@example.test', aud: 'authenticated', role: 'authenticated', app_metadata: { provider: 'email' }, user_metadata: { display_name: 'Test Mitarbeiter' } };
   const tenant = { id: '11111111-1111-4111-8111-111111111111', name: 'Testbüro', settings: {}, is_active: true, created_at: '2026-01-01T00:00:00Z' };
-  type Question = { id: string; title: string; description: string; tenant_id: string; assigned_to: string | null; created_by: string; updated_by: string; created_at: string; updated_at: string; answer_content: unknown; answer_text: string; answered_by: string | null; answered_at: string | null; answer_updated_at: string | null; revision: number; answer_revision: number; review_status: string; verified_at: string | null; verified_by: string | null; verified_answer_revision: number | null; review_due_at: string | null; archived_at?: string | null; merged_into?: string | null };
+  type Question = { id: string; title: string; description: string; tenant_id: string; assigned_to: string | null; created_by: string; updated_by: string; created_at: string; updated_at: string; answer_content: unknown; answer_text: string; answer_short: string | null; answered_by: string | null; answered_at: string | null; answer_updated_at: string | null; revision: number; answer_revision: number; review_status: string; verified_at: string | null; verified_by: string | null; verified_answer_revision: number | null; review_due_at: string | null; archived_at?: string | null; merged_into?: string | null };
   const avatarUrl='https://wawofclbehbkebjivdte.supabase.co/storage/v1/object/public/avatars/test.png';
   const personFor=(id: string | null) => id ? { user_id: id, display_name: 'Test Mitarbeiter', avatar_url: avatarUrl } : null;
   const peopleFor=(question: Question) => ({ created_by_person: personFor(question.created_by), assigned_to_person: personFor(question.assigned_to), verified_by_person: personFor(question.verified_by) });
@@ -31,14 +31,14 @@ test('questions, answers, reviews, private attachments, search, errors and legac
           `${question.title} ${question.answer_text}`.toLowerCase().includes(String(body.p_query ?? '').toLowerCase())));
         data = [{ items: filtered.slice(0,body.p_limit ?? 20).map(question => {
           const { answer_content, answer_text, ...summary } = question;
-          return { ...summary, ...peopleFor(question), answer_excerpt: answer_text.slice(0,200), server_now: new Date().toISOString(), effective_review_status: question.review_status };
+          return { ...summary, ...peopleFor(question), answer_excerpt: question.answer_short ?? answer_text.slice(0,200), server_now: new Date().toISOString(), effective_review_status: question.review_status };
         }), total_count: filtered.length, next_cursor: null }];
       } else if (name === 'knowledge_qa_counts') {
         data = [{ answers: questions.filter(q=>q.answered_at).length, open: questions.filter(q=>!q.answered_at).length, mine: questions.length, assigned: questions.filter(q=>q.assigned_to===user.id).length, review: questions.filter(q=>q.review_status==='needs_review').length }];
       } else if (name === 'knowledge_qa_create_question') {
         const time = new Date().toISOString();
         const question: Question = { id: `77777777-7777-4777-8777-${777777777777 + questions.length}`, title: body.p_title, description: body.p_description, tenant_id: tenant.id, assigned_to: body.p_assigned_to || null,
-          created_by: user.id, updated_by: user.id, created_at: time, updated_at: time, answer_content: null, answer_text: '', answered_at: null, answered_by: null, answer_updated_at: null,
+          created_by: user.id, updated_by: user.id, created_at: time, updated_at: time, answer_content: null, answer_text: '', answer_short: null, answered_at: null, answered_by: null, answer_updated_at: null,
           revision: 1, answer_revision: 0, review_status: 'unverified', verified_at: null, verified_by: null, verified_answer_revision: null, review_due_at: null };
         questions.push(question); data = question;
       } else if (name === 'knowledge_qa_reserve_attachment') {
@@ -50,7 +50,7 @@ test('questions, answers, reviews, private attachments, search, errors and legac
         if (conflict || body.p_expected_revision !== question.revision) { conflict = false; return json({ code: '40001', message: 'Die Frage wurde inzwischen geändert. Bitte neu laden.' }, 409); }
         if (name === 'knowledge_qa_save_answer') {
           const text = (node: { text?: string; children?: unknown[] }): string => node.text ?? node.children?.map(child => text(child as typeof node)).join('') ?? '';
-          question.answer_content = body.p_content; question.answer_text = text(body.p_content.root); question.answered_by = user.id; question.answered_at = new Date().toISOString(); question.answer_updated_at = question.answered_at;
+          question.answer_content = body.p_content; question.answer_text = text(body.p_content.root); question.answer_short = body.p_short ?? null; question.answered_by = user.id; question.answered_at = new Date().toISOString(); question.answer_updated_at = question.answered_at;
           question.answer_revision++; question.review_status = 'unverified'; question.verified_at = null; question.verified_by = null;
         } else if (name === 'knowledge_qa_review') {
           question.review_status = body.p_verified ? 'verified' : 'needs_review'; question.verified_at = body.p_verified ? new Date().toISOString() : null; question.verified_by = body.p_verified ? user.id : null;
@@ -113,6 +113,7 @@ test('questions, answers, reviews, private attachments, search, errors and legac
   await page.getByRole('button', { name: 'Beantworten', exact: true }).click();
   const editor = page.locator('[contenteditable="true"][aria-label="Antwort"]');
   await editor.fill('Bitte den Antrag an die Büroleitung senden.');
+  await page.getByLabel('Kurzantwort', { exact: true }).fill('Antrag an die Büroleitung senden.');
   conflict = true;
   await page.getByRole('button', { name: 'Antwort speichern', exact: true }).click();
   await expect(page.getByRole('alert')).toContainText('inzwischen geändert');
@@ -125,6 +126,7 @@ test('questions, answers, reviews, private attachments, search, errors and legac
   await page.screenshot({ path: info.outputPath('wissen-geprueft.png'), fullPage: true });
   await page.getByRole('button', { name: 'Antwort bearbeiten' }).click();
   await editor.fill('Bitte den Antrag mit Datum an die Büroleitung senden.');
+  await page.getByLabel('Kurzantwort', { exact: true }).fill('Antrag mit Datum an die Büroleitung senden.');
   await page.getByRole('button', { name: 'Antwort speichern', exact: true }).click();
   await expect(page.locator('div.rounded-full').getByText('Ungeprüft', { exact: true })).toBeVisible();
   await page.getByRole('button', { name: 'Überprüfung anfordern', exact: true }).click();
@@ -137,7 +139,7 @@ test('questions, answers, reviews, private attachments, search, errors and legac
   await page.getByRole('button', { name: /^Antworten/ }).click();
   const search = page.getByRole('textbox', { name: 'Wissen durchsuchen' });
   await search.fill('Urlaub');
-  await expect(page.getByText('Bitte den Antrag mit Datum an die Büroleitung senden.', { exact: true })).toBeVisible();
+  await expect(page.getByText('Antrag mit Datum an die Büroleitung senden.', { exact: true })).toBeVisible();
   await expect(page.locator('section[aria-label="Wissen"] [title="Test Mitarbeiter"][aria-hidden="true"]')).toHaveCount(0);
   const profileRequestsBeforeExpand=requests.filter(path=>path.endsWith('/profiles')).length;
 

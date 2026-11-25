@@ -9625,6 +9625,7 @@ export type Database = {
         Row: {
           answer_content: Json | null
           answer_revision: number
+          answer_short: string | null
           answer_text: string
           answer_updated_at: string | null
           answered_at: string | null
@@ -9658,6 +9659,7 @@ export type Database = {
         Insert: {
           answer_content?: Json | null
           answer_revision?: number
+          answer_short?: string | null
           answer_text?: string
           answer_updated_at?: string | null
           answered_at?: string | null
@@ -9691,6 +9693,7 @@ export type Database = {
         Update: {
           answer_content?: Json | null
           answer_revision?: number
+          answer_short?: string | null
           answer_text?: string
           answer_updated_at?: string | null
           answered_at?: string | null
@@ -17552,6 +17555,7 @@ export type Database = {
         Row: {
           answer_content: Json | null
           answer_revision: number | null
+          answer_short: string | null
           answer_text: string | null
           answer_updated_at: string | null
           answered_at: string | null
@@ -17653,6 +17657,7 @@ export type Database = {
       knowledge_question_summaries: {
         Row: {
           answer_excerpt: string | null
+          answer_short: string | null
           answer_updated_at: string | null
           answered_at: string | null
           assigned_to: string | null
@@ -18998,6 +19003,7 @@ export type Database = {
         Returns: {
           answer_content: Json | null
           answer_revision: number
+          answer_short: string | null
           answer_text: string
           answer_updated_at: string | null
           answered_at: string | null
@@ -19048,6 +19054,7 @@ export type Database = {
         Returns: {
           answer_content: Json | null
           answer_revision: number
+          answer_short: string | null
           answer_text: string
           answer_updated_at: string | null
           answered_at: string | null
@@ -19139,6 +19146,7 @@ export type Database = {
         Returns: {
           answer_content: Json | null
           answer_revision: number
+          answer_short: string | null
           answer_text: string
           answer_updated_at: string | null
           answered_at: string | null
@@ -19260,6 +19268,7 @@ export type Database = {
         Returns: {
           answer_content: Json | null
           answer_revision: number
+          answer_short: string | null
           answer_text: string
           answer_updated_at: string | null
           answered_at: string | null
@@ -19302,10 +19311,12 @@ export type Database = {
           p_content: Json
           p_expected_revision: number
           p_question: string
+          p_short?: string
         }
         Returns: {
           answer_content: Json | null
           answer_revision: number
+          answer_short: string | null
           answer_text: string
           answer_updated_at: string | null
           answered_at: string | null
@@ -19357,6 +19368,7 @@ export type Database = {
         Returns: {
           answer_content: Json | null
           answer_revision: number
+          answer_short: string | null
           answer_text: string
           answer_updated_at: string | null
           answered_at: string | null
@@ -19997,6 +20009,7 @@ export type Database = {
         Returns: {
           answer_content: Json | null
           answer_revision: number | null
+          answer_short: string | null
           answer_text: string | null
           answer_updated_at: string | null
           answered_at: string | null

@@ -34,7 +34,8 @@ export function KnowledgeQuestionRow({
       <span className={styles.rowBody}>
         <span className={styles.rowTitle}>{question.title}</span>
         <span className={styles.rowExcerpt}>
-          {question.answer_excerpt ||
+          {question.answer_short ||
+            question.answer_excerpt ||
             question.description ||
             "Diese Frage wartet auf eine Antwort."}
         </span>

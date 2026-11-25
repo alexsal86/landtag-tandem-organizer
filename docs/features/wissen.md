@@ -6,10 +6,10 @@ _Auto-generiert mit `npm run update:feature-catalog` aus dem zentralen Funktions
 
 ## Kennzahlen
 
-- Funktionen: **15** in **8** Unterbereichen
-- implementiert: **15**, teilweise: **0**, deaktiviert: **0**, potenziell verwaist: **0**
+- Funktionen: **16** in **8** Unterbereichen
+- implementiert: **16**, teilweise: **0**, deaktiviert: **0**, potenziell verwaist: **0**
 - ohne zugeordneten Test: **7**
-- ohne Dokumentationsverweis: **10**
+- ohne Dokumentationsverweis: **11**
 
 ## Funktionen
 
@@ -17,6 +17,7 @@ _Auto-generiert mit `npm run update:feature-catalog` aus dem zentralen Funktions
 |---|---|---|---|---|---|
 | `knowledge.management` Wissensverwaltung | Administration | administrativ | implementiert | rollenabhängig | kein Test |
 | `knowledge.answer` Frage beantworten | Antworten | fachlich | implementiert | UI | Selbsttest |
+| `knowledge.short-answer` Kurzantwort neben der Langantwort | Antworten | fachlich | implementiert | UI | Selbsttest |
 | `knowledge.global-question` Globale Wissensfrage aus jedem Bereich | Fragen | fachlich | implementiert | UI | kein Test |
 | `knowledge.ask` Wissensfrage stellen | Fragen | fachlich | implementiert | UI | Selbsttest |
 | `knowledge.validity` Gültigkeit und Veraltung | Qualität | automatisiert | implementiert | systemseitig | Unit-Test |
@@ -55,7 +56,7 @@ _Auto-generiert mit `npm run update:feature-catalog` aus dem zentralen Funktions
 | Szenario | Titel | deklarierte Tabellen | deklarierte Prüfungen |
 |---|---|---:|---:|
 | `access-boundaries` | Zugriffsschutz (Bürogrenzen und Entscheiderrolle) | 1 | 4 |
-| `knowledge-lifecycle` | Wissen: Fragen, Antworten und manuelle Prüfung | 3 | 5 |
+| `knowledge-lifecycle` | Wissen: Fragen, Antworten und manuelle Prüfung | 3 | 7 |
 
 ## Funktionsdetails
 
@@ -97,7 +98,7 @@ Erstellt eine Frage mit Titel, Kontext, Frist, Zuständigkeit, Tags und optional
 - Keine.
 
 ### `knowledge.answer` — Frage beantworten
-Verfasst und speichert Antworten mit Rich-Text, speichert Versionen und benachrichtigt Fragende und Folgende.
+Verfasst und speichert Antworten mit Kurzantwort und Rich-Text, speichert Versionen und benachrichtigt Fragende und Folgende.
 
 - **Kategorie:** fachlich
 - **Implementierung:** implementiert
@@ -123,6 +124,43 @@ Verfasst und speichert Antworten mit Rich-Text, speichert Versionen und benachri
 
 - src/features/knowledge/components/KnowledgeAnswerEditor.tsx
 - src/features/knowledge/components/KnowledgeDetailPanel.tsx
+
+**Bekannte Einschränkungen**
+
+- Keine.
+
+**Offene Prüfpunkte**
+
+- Keine.
+
+### `knowledge.short-answer` — Kurzantwort neben der Langantwort
+Verlangt beim Beantworten eine Kurzantwort mit 1–3 Sätzen, zeigt sie in Liste und Detail, gewichtet sie in der Suche und liefert sie mit Prüfstatus als Zitat.
+
+- **Kategorie:** fachlich
+- **Implementierung:** implementiert
+- **Einbindung:** UI
+- **Testabdeckung:** Selbsttest
+- **Letztes Testergebnis:** nicht-ausgefuehrt (nicht aus der Existenz einer Testdatei abgeleitet)
+- **Rollen:** `abgeordneter`, `bueroleitung`, `mitarbeiter`
+- **Routen:** —
+- **Frontend-Komponenten:** `src/features/knowledge/components/KnowledgeAnswerEditor.tsx`, `src/features/knowledge/components/KnowledgeQuestionCard.tsx`, `src/features/knowledge/components/KnowledgeQuestionRow.tsx`, `src/features/knowledge/components/KnowledgeDetailPanel.tsx`
+- **Services:** `src/features/knowledge/logic.ts`
+- **Hooks:** —
+- **Edge Functions:** —
+- **Datenbankfunktionen:** `knowledge_qa_save_answer`, `knowledge_qa_selftest`, `knowledge_qa_require_short_answer`
+- **Tabellen:** `knowledge_questions`
+- **Abhängigkeiten:** `knowledge.answer`
+- **Selbsttests:** `knowledge-lifecycle`
+- **Unit-Tests:** `src/features/knowledge/logic.test.ts`
+- **Integrationstests:** —
+- **Browser-Tests:** —
+- **Dokumentation:** —
+
+**Nachweise im Quellcode**
+
+- src/features/knowledge/components/KnowledgeAnswerEditor.tsx
+- src/features/knowledge/logic.ts
+- supabase/migrations/20261125230000_knowledge_answer_short.sql
 
 **Bekannte Einschränkungen**
 
@@ -346,7 +384,7 @@ Kommentiert Fragen und Antworten, folgt Fragen und steuert Benachrichtigungen f�
 - Keine.
 
 ### `knowledge.search` — Wissenssuche
-Durchsucht Fragen und Antworten mit gepflegtem Suchindex und liefert Trefferzahlen.
+Durchsucht Fragen, Kurzantworten und Langantworten mit gepflegtem Suchindex und liefert Trefferzahlen.
 
 - **Kategorie:** fachlich
 - **Implementierung:** implementiert

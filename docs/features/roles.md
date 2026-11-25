@@ -6,7 +6,7 @@ Die Angaben sind deklarierte Mindestrollen. Die tatsächlich wirksame Berechtigu
 
 ## Funktionen je Rolle
 
-### `abgeordneter` — 177 Funktionen
+### `abgeordneter` — 178 Funktionen
 
 - `mywork.dashboard` — Meine Arbeit – Dashboard
 - `mywork.tabs` — Meine Arbeit – Bereichsnavigation und Einstellungen
@@ -175,6 +175,7 @@ Die Angaben sind deklarierte Mindestrollen. Die tatsächlich wirksame Berechtigu
 - `election.history.districts-geometry` — Historische Wahlkreise und Geometrie
 - `knowledge.ask` — Wissensfrage stellen
 - `knowledge.answer` — Frage beantworten
+- `knowledge.short-answer` — Kurzantwort neben der Langantwort
 - `knowledge.tags` — Tags und Themenzuordnung
 - `knowledge.sources` — Quellen und Belege
 - `knowledge.attachments` — Anhänge an Wissensfragen
@@ -186,7 +187,7 @@ Die Angaben sind deklarierte Mindestrollen. Die tatsächlich wirksame Berechtigu
 - `knowledge.global-question` — Globale Wissensfrage aus jedem Bereich
 - `knowledge.persons` — Wissenspersonen und Zuständigkeit
 
-### `bueroleitung` — 222 Funktionen
+### `bueroleitung` — 223 Funktionen
 
 - `mywork.dashboard` — Meine Arbeit – Dashboard
 - `mywork.tabs` — Meine Arbeit – Bereichsnavigation und Einstellungen
@@ -397,6 +398,7 @@ Die Angaben sind deklarierte Mindestrollen. Die tatsächlich wirksame Berechtigu
 - `election.parliament-protocols` — Plenarprotokolle auswerten
 - `knowledge.ask` — Wissensfrage stellen
 - `knowledge.answer` — Frage beantworten
+- `knowledge.short-answer` — Kurzantwort neben der Langantwort
 - `knowledge.review` — Wissensantwort prüfen und freigeben
 - `knowledge.validity` — Gültigkeit und Veraltung
 - `knowledge.tags` — Tags und Themenzuordnung
@@ -411,7 +413,7 @@ Die Angaben sind deklarierte Mindestrollen. Die tatsächlich wirksame Berechtigu
 - `knowledge.persons` — Wissenspersonen und Zuständigkeit
 - `knowledge.management` — Wissensverwaltung
 
-### `mitarbeiter` — 182 Funktionen
+### `mitarbeiter` — 183 Funktionen
 
 - `mywork.dashboard` — Meine Arbeit – Dashboard
 - `mywork.tabs` — Meine Arbeit – Bereichsnavigation und Einstellungen
@@ -582,6 +584,7 @@ Die Angaben sind deklarierte Mindestrollen. Die tatsächlich wirksame Berechtigu
 - `election.map` — Wahlkreiskarte anzeigen
 - `knowledge.ask` — Wissensfrage stellen
 - `knowledge.answer` — Frage beantworten
+- `knowledge.short-answer` — Kurzantwort neben der Langantwort
 - `knowledge.review` — Wissensantwort prüfen und freigeben
 - `knowledge.validity` — Gültigkeit und Veraltung
 - `knowledge.tags` — Tags und Themenzuordnung
@@ -953,6 +956,7 @@ Die Angaben sind deklarierte Mindestrollen. Die tatsächlich wirksame Berechtigu
 | `knowledge.persons` | `abgeordneter`, `bueroleitung`, `mitarbeiter` |
 | `knowledge.review` | `bueroleitung`, `admin`, `mitarbeiter` |
 | `knowledge.search` | `abgeordneter`, `bueroleitung`, `mitarbeiter` |
+| `knowledge.short-answer` | `abgeordneter`, `bueroleitung`, `mitarbeiter` |
 | `knowledge.sources` | `abgeordneter`, `bueroleitung`, `mitarbeiter` |
 | `knowledge.tags` | `abgeordneter`, `bueroleitung`, `mitarbeiter` |
 | `knowledge.validity` | `system`, `bueroleitung`, `mitarbeiter` |

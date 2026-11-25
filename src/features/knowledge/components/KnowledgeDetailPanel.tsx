@@ -16,6 +16,12 @@ import { useEffect, useRef, useState } from "react";
 import { Button } from "@/components/ui/button";
 import { Sheet, SheetContent, SheetTitle } from "@/components/ui/sheet";
 import { useKnowledgeQuestion } from "../hooks/useKnowledgeQuestions";
+import {
+  effectiveReviewStatus,
+  formatKnowledgeCitation,
+  knowledgeQuestionPath,
+} from "../logic";
+import { knowledgePersonLabel } from "../person";
 import { KnowledgeQuestionDetailContent } from "./KnowledgeQuestionCard";
 import type { TenantProfileOption } from "@/hooks/useTenantProfiles";
 import styles from "./KnowledgeWorkspace.module.css";
@@ -123,6 +129,40 @@ export function KnowledgeDetailPanel({
                   >
                     Link kopieren
                   </DropdownMenuItem>
+                  {detail.data?.answer_short && (
+                    <DropdownMenuItem
+                      onSelect={() => {
+                        const question = detail.data;
+                        if (!question) return;
+                        void (async () => {
+                          try {
+                            await navigator.clipboard.writeText(
+                              formatKnowledgeCitation({
+                                title: question.title,
+                                shortAnswer: question.answer_short ?? "",
+                                status: effectiveReviewStatus(question),
+                                updatedAt: question.answer_updated_at,
+                                verifiedBy: question.verified_by
+                                  ? knowledgePersonLabel(
+                                      question.verified_by_person,
+                                    )
+                                  : null,
+                                verifiedAt: question.verified_at,
+                                url: `${window.location.origin}${knowledgeQuestionPath(question.id)}`,
+                              }),
+                            );
+                            setCopyMessage("Zitat kopiert");
+                          } catch {
+                            setCopyMessage(
+                              "Zitat konnte nicht kopiert werden.",
+                            );
+                          }
+                        })();
+                      }}
+                    >
+                      Antwort zitieren
+                    </DropdownMenuItem>
+                  )}
                   {canManage && detail.data && (
                     <>
                       <DropdownMenuSeparator />

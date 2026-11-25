@@ -1,5 +1,5 @@
 import { knowledgePersonColor, knowledgePersonInitials, knowledgePersonLabel } from '@/features/knowledge/person';
-import { answerText, effectiveReviewStatus, knowledgeUrlState, knowledgeQuestionPath, parseAnswer, validateAttachment, validateQuestion } from '@/features/knowledge/logic';
+import { answerText, effectiveReviewStatus, formatKnowledgeCitation, knowledgeUrlState, knowledgeQuestionPath, normalizeShortAnswer, parseAnswer, validateAttachment, validateQuestion, validateShortAnswer } from '@/features/knowledge/logic';
 import { supabase } from '@/integrations/supabase/client';
 import type { TestScenario } from '../types';
 
@@ -7,7 +7,7 @@ export const knowledgeLifecycleScenario: TestScenario = {
   id: 'knowledge-lifecycle', title: 'Wissen: Fragen, Antworten und manuelle Prüfung',
   description: 'Prüft Eingaben und den echten Frage-Antwort-Ablauf. Testdatensätze und Verlauf werden in einer Datenbank-Untertransaktion vollständig zurückgerollt.',
   features: ['knowledge', 'permissions'], touches: ['knowledge_questions', 'knowledge_question_events', 'knowledge_qa_notification_deliveries'],
-  checks: ['Frage als einziges Pflichtfeld', 'Validierte Antwort und sichere Links', 'Drei Prüfzustände und Fälligkeit', 'Anhanggrenzen', 'Lesen außerhalb des eigenen Büros'],
+  checks: ['Frage als einziges Pflichtfeld', 'Kurzantwort als Pflichtangabe', 'Validierte Antwort und sichere Links', 'Drei Prüfzustände und Fälligkeit', 'Zitat mit Kurzantwort, Stand und Status', 'Anhanggrenzen', 'Lesen außerhalb des eigenen Büros'],
   limitations: ['Zwei-Büro-Isolation, FTS und Storage-Policies werden zusätzlich mit scripts/test-knowledge-qa.mjs in isoliertem PostgreSQL geprüft. Echte Storage-HTTP-Zugriffe benötigen eine Supabase-Testinstanz.'],
   steps: [
     { id: 'person-presentation', label: 'Stabile Avatarfarben, Initialen und fehlende Zuordnung', kind: 'logic', run: async () => ({
@@ -54,6 +54,18 @@ export const knowledgeLifecycleScenario: TestScenario = {
       try { parseAnswer(JSON.stringify({ root: { type: 'root', children: [{ type: 'link', url: 'javascript:alert(1)', children: [{ type: 'text', text: 'Klick' }] }] } })); }
       catch { rejected = true; }
       return { ok: text === 'Bitte das Bürohandbuch lesen.' && rejected, message: 'Suchtext stammt aus der Antwortstruktur; gefährliche Links werden abgewiesen.' };
+    } },
+    { id: 'short-answer-input', label: 'Kurzantwort ist Pflicht und auf 500 Zeichen begrenzt', kind: 'logic', run: async () => ({
+      ok: validateShortAnswer('  Zwei   Sätze.  Mit Abstand. ') === null && normalizeShortAnswer('Zwei  Sätze. ') === 'Zwei Sätze.' && validateShortAnswer('   ') !== null && validateShortAnswer('x'.repeat(501)) !== null,
+      message: 'Leere und überlange Kurzantworten werden abgewiesen; Leerraum wird normalisiert.',
+    }) },
+    { id: 'citation-output', label: 'Zitat enthält Kurzantwort, Stand und Prüfstatus', kind: 'logic', run: async () => {
+      const citation = formatKnowledgeCitation({
+        title: 'Wie beantrage ich Urlaub?', shortAnswer: 'Antrag an die Büroleitung.', status: 'verified',
+        updatedAt: '2026-11-25T10:00:00Z', verifiedBy: 'Alice Beispiel', verifiedAt: '2026-11-25T09:00:00Z',
+        url: 'https://example.test/wissen?frage=abc',
+      });
+      return { ok: citation.includes('Kurzantwort: Antrag an die Büroleitung.') && citation.includes('Stand: 25.11.2026') && citation.includes('Geprüft durch Alice Beispiel') && !citation.includes('Ungeprüft'), message: 'Zitat trägt Kurzantwort, Stand, Prüfstatus und Link für Mail, Rede und Social.' };
     } },
     { id: 'review-status', label: 'Ungeprüft, manuell bestätigt und fällige Überprüfung unterscheiden', kind: 'logic', run: async () => {
       const checks = [

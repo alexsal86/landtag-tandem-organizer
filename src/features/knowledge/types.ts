@@ -57,7 +57,11 @@ export type KnowledgeSummary = Pick<
   | "server_now"
   | "verified_at"
 > &
-  KnowledgePersonFields & { answer_excerpt: string; tags?: KnowledgeTag[] };
+  KnowledgePersonFields & {
+    answer_excerpt: string;
+    answer_short: string | null;
+    tags?: KnowledgeTag[];
+  };
 export interface KnowledgePage {
   items: KnowledgeSummary[];
   total_count: number;

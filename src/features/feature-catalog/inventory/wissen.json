@@ -59,7 +59,7 @@
       "id": "knowledge.answer",
       "subarea": "Antworten",
       "name": "Frage beantworten",
-      "description": "Verfasst und speichert Antworten mit Rich-Text, speichert Versionen und benachrichtigt Fragende und Folgende.",
+      "description": "Verfasst und speichert Antworten mit Kurzantwort und Rich-Text, speichert Versionen und benachrichtigt Fragende und Folgende.",
       "category": "fachlich",
       "implementationStatus": "implementiert",
       "integrationStatus": "ui",
@@ -100,6 +100,51 @@
         "src/features/knowledge/logic.test.ts"
       ],
       "dependsOn": ["knowledge.ask"]
+    },
+    {
+      "id": "knowledge.short-answer",
+      "subarea": "Antworten",
+      "name": "Kurzantwort neben der Langantwort",
+      "description": "Verlangt beim Beantworten eine Kurzantwort mit 1–3 Sätzen, zeigt sie in Liste und Detail, gewichtet sie in der Suche und liefert sie mit Prüfstatus als Zitat.",
+      "category": "fachlich",
+      "implementationStatus": "implementiert",
+      "integrationStatus": "ui",
+      "coverage": "selftest",
+      "testResult": "nicht-ausgefuehrt",
+      "evidence": [
+        "src/features/knowledge/components/KnowledgeAnswerEditor.tsx",
+        "src/features/knowledge/logic.ts",
+        "supabase/migrations/20261125230000_knowledge_answer_short.sql"
+      ],
+      "components": [
+        "src/features/knowledge/components/KnowledgeAnswerEditor.tsx",
+        "src/features/knowledge/components/KnowledgeQuestionCard.tsx",
+        "src/features/knowledge/components/KnowledgeQuestionRow.tsx",
+        "src/features/knowledge/components/KnowledgeDetailPanel.tsx"
+      ],
+      "services": [
+        "src/features/knowledge/logic.ts"
+      ],
+      "rpcs": [
+        "knowledge_qa_save_answer",
+        "knowledge_qa_selftest",
+        "knowledge_qa_require_short_answer"
+      ],
+      "tables": [
+        "knowledge_questions"
+      ],
+      "roles": [
+        "abgeordneter",
+        "bueroleitung",
+        "mitarbeiter"
+      ],
+      "scenarios": [
+        "knowledge-lifecycle"
+      ],
+      "unitTests": [
+        "src/features/knowledge/logic.test.ts"
+      ],
+      "dependsOn": ["knowledge.answer"]
     },
     {
       "id": "knowledge.review",
@@ -333,7 +378,7 @@
       "id": "knowledge.search",
       "subarea": "Suchen",
       "name": "Wissenssuche",
-      "description": "Durchsucht Fragen und Antworten mit gepflegtem Suchindex und liefert Trefferzahlen.",
+      "description": "Durchsucht Fragen, Kurzantworten und Langantworten mit gepflegtem Suchindex und liefert Trefferzahlen.",
       "category": "fachlich",
       "implementationStatus": "implementiert",
       "integrationStatus": "ui",

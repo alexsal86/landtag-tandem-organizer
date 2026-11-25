@@ -22,7 +22,7 @@ const actor = async (user, role = 'authenticated') => {
 };
 const content = text => ({ root: { type: 'root', version: 1, children: [{ type: 'paragraph', version: 1, children: [{ type: 'text', version: 1, text, format: 0, detail: 0, mode: 'normal', style: '' }], direction: null, format: '', indent: 0 }], direction: null, format: '', indent: 0 } });
 const create = async (office, title, assignee = null) => (await read('SELECT * FROM knowledge_qa_create_question($1,$2,$3,$4)', [office, title, '', assignee]))[0];
-const save = async (q, text) => (await read('SELECT * FROM knowledge_qa_save_answer($1,$2,$3::jsonb)', [q.id, q.revision, JSON.stringify(content(text))]))[0];
+const save = async (q, text, short = 'Kurzantwort für den Test.') => (await read('SELECT * FROM knowledge_qa_save_answer($1,$2,$3::jsonb,$4)', [q.id, q.revision, JSON.stringify(content(text)), short]))[0];
 const review = async (q, verified = true, due = null) => (await read('SELECT * FROM knowledge_qa_review($1,$2,$3,$4)', [q.id, q.revision, verified, due]))[0];
 const search = (office, term = '', view = 'answers') => read('SELECT * FROM search_knowledge_questions($1,$2,$3)', [office, term, view]);
 const denied = operation => assert.rejects(operation, error => error.code === '42501');
@@ -75,15 +75,18 @@ try {
   `);
   const actions = await readFile(new URL('../supabase/migrations/20261109142000_enforce_admin_actions.sql', import.meta.url), 'utf8');
   await db.exec(actions.slice(actions.indexOf('CREATE OR REPLACE FUNCTION public.is_tenant_action_allowed'), actions.indexOf('CREATE OR REPLACE FUNCTION public.enforce_configured_action')));
-  for (const file of ['20261110180000_knowledge_qa_core.sql', '20261110180100_knowledge_qa_search.sql', '20261110180200_knowledge_qa_storage.sql', '20261110180300_knowledge_legacy_access.sql', '20261111100000_knowledge_list_payload.sql', '20261111100100_knowledge_keyset.sql', '20261111100200_knowledge_search.sql', '20261111100300_knowledge_views_filters.sql', '20261111100400_knowledge_notifications.sql', '20261111100500_knowledge_manage.sql', '20261111100600_knowledge_manage_trigram_recovery.sql', '20261111100700_knowledge_person_avatars.sql']) {
+  for (const file of ['20261110180000_knowledge_qa_core.sql', '20261110180100_knowledge_qa_search.sql', '20261110180200_knowledge_qa_storage.sql', '20261110180300_knowledge_legacy_access.sql', '20261111100000_knowledge_list_payload.sql', '20261111100100_knowledge_keyset.sql', '20261111100200_knowledge_search.sql', '20261111100300_knowledge_views_filters.sql', '20261111100400_knowledge_notifications.sql', '20261111100500_knowledge_manage.sql', '20261111100600_knowledge_manage_trigram_recovery.sql', '20261111100700_knowledge_person_avatars.sql', '20261111100800_knowledge_tags.sql']) {
     if (file === '20261111100500_knowledge_manage.sql' && process.env.KNOWLEDGE_SKIP_FAILED_MANAGE === '1') continue;
     const migration=await readFile(new URL(`../supabase/migrations/${file}`, import.meta.url), 'utf8');
     await db.exec(migration);
     if (file.startsWith('20261111')) await db.exec(migration);
   }
-  // Re-running additive migrations must preserve functions and data.
-  await db.exec(await readFile(new URL('../supabase/migrations/20261111100700_knowledge_person_avatars.sql', import.meta.url), 'utf8'));
-  const listConfiguration=(await read("SELECT proconfig FROM pg_proc WHERE oid='public.knowledge_qa_list(uuid,text,text,integer,jsonb,text,text,text)'::regprocedure"))[0].proconfig;
+  // Re-running an additive migration must preserve functions and data. This runs
+  // before 20261125230000, because that later migration appends columns and an
+  // older view definition cannot be replayed on top of them.
+  await db.exec(await readFile(new URL('../supabase/migrations/20261111100800_knowledge_tags.sql', import.meta.url), 'utf8'));
+  await db.exec(await readFile(new URL('../supabase/migrations/20261125230000_knowledge_answer_short.sql', import.meta.url), 'utf8'));
+  const listConfiguration=(await read("SELECT proconfig FROM pg_proc WHERE oid='public.knowledge_qa_list(uuid,text,text,integer,jsonb,text,text,text,text,text)'::regprocedure"))[0].proconfig;
   assert.ok(!listConfiguration.some(setting=>setting.startsWith('pg_trgm.')), 'List creation and execution require no extension parameter privileges');
   await db.query('INSERT INTO profiles VALUES($1,$2,$3,$4),($5,$6,$7,$8),($9,$2,$10,$11)',[alice,officeA,'Alice Beispiel','https://example.test/alice.png',bob,officeB,'Bob Privat','https://example.test/private.png',clara,'Clara Beispiel','https://example.test/clara.png']);
   await actor(alice);
@@ -102,14 +105,20 @@ try {
   await denied(read("UPDATE knowledge_questions SET review_status='verified',verified_by=$1 WHERE id=$2", [bob, q.id]));
   await denied(read("INSERT INTO knowledge_question_events(tenant_id,question_id,revision,event_type,actor_id,snapshot) VALUES($1,$2,99,'verified',$3,'{}')", [officeA, q.id, bob]));
   await assert.rejects(review(q), error => error.code === '22023');
-  await assert.rejects(read('SELECT * FROM knowledge_qa_save_answer($1,$2,$3::jsonb)', [q.id, q.revision, JSON.stringify(content('   '))]), error => error.code === '22023');
+  await assert.rejects(read('SELECT * FROM knowledge_qa_save_answer($1,$2,$3::jsonb,$4)', [q.id, q.revision, JSON.stringify(content('   ')), 'Kurz']), error => error.code === '22023');
+  await assert.rejects(read('SELECT * FROM knowledge_qa_save_answer($1,$2,$3::jsonb,$4)', [q.id, q.revision, JSON.stringify(content('Antwort ohne Kurzantwort.')), '   ']), error => error.code === '22023', 'Short answer is mandatory');
+  await assert.rejects(read('SELECT * FROM knowledge_qa_save_answer($1,$2,$3::jsonb,$4)', [q.id, q.revision, JSON.stringify(content('Antwort mit zu langer Kurzantwort.')), 'x'.repeat(501)]), error => error.code === '22023', 'Short answer length is bounded');
   const malicious = content('Link'); malicious.root.children[0].children = [{ type: 'link', url: 'javascript:alert(1)', children: [{ type: 'text', text: 'Klick' }] }];
-  await assert.rejects(read('SELECT * FROM knowledge_qa_save_answer($1,$2,$3::jsonb)', [q.id, q.revision, JSON.stringify(malicious)]), error => error.code === '22023');
-  q = await save(q, 'Urlaub wird bei der Büroleitung beantragt.');
+  await assert.rejects(read('SELECT * FROM knowledge_qa_save_answer($1,$2,$3::jsonb,$4)', [q.id, q.revision, JSON.stringify(malicious), 'Kurz']), error => error.code === '22023');
+  q = await save(q, 'Urlaub wird bei der Büroleitung beantragt.', 'Kurzantwort mit Sonderwort Dachsbau.');
+  assert.equal(q.answer_short, 'Kurzantwort mit Sonderwort Dachsbau.', 'Short answer is stored');
   assert.equal((await search(officeA, 'beantragen')).length, 1, 'German verb stemming');
+  assert.ok((await search(officeA, 'Dachsbau')).some(row => row.id === q.id), 'Short answer is searchable');
   const summaryPage = (await read('SELECT * FROM knowledge_qa_list($1)', [officeA]))[0];
   assert.equal(summaryPage.total_count, 1);
   assert.equal(summaryPage.items[0].id, q.id);
+  assert.equal(summaryPage.items[0].answer_short, 'Kurzantwort mit Sonderwort Dachsbau.');
+  assert.equal(summaryPage.items[0].answer_excerpt, 'Kurzantwort mit Sonderwort Dachsbau.', 'Lists show the short answer as excerpt');
   assert.equal('answer_content' in summaryPage.items[0], false);
   assert.equal('answer_text' in summaryPage.items[0], false);
   assert.deepEqual(summaryPage.items[0].created_by_person,{user_id:alice,display_name:'Alice Beispiel',avatar_url:'https://example.test/alice.png'});
@@ -121,7 +130,7 @@ try {
   assert.equal(q.review_status, 'unverified'); assert.equal((await search(officeA, '', 'open')).length, 0);
   q = await review(q); const verifiedRevision = q.revision;
   assert.equal(q.verified_by, alice); assert.ok(q.verified_at); assert.equal(q.verified_answer_revision, q.answer_revision);
-  assert.equal((await save(q, q.answer_text)).revision, q.revision, 'Identical save preserves confirmation');
+  assert.equal((await save(q, q.answer_text, q.answer_short)).revision, q.revision, 'Identical save preserves confirmation');
   q = (await read('SELECT * FROM knowledge_qa_set_assignee($1,$2,$3)', [q.id, q.revision, clara]))[0];
   assert.equal(q.review_status, 'verified', 'Assignment does not invalidate content');
   const peoplePage=(await read('SELECT * FROM knowledge_qa_list($1)',[officeA]))[0];
@@ -175,7 +184,7 @@ try {
   q = await review(q);
   const linkContent = content(q.answer_text);
   linkContent.root.children[0].children = [{ type: 'link', url: 'https://example.test/urlaub', children: [{ type: 'text', text: q.answer_text }] }];
-  q = (await read('SELECT * FROM knowledge_qa_save_answer($1,$2,$3::jsonb)', [q.id, q.revision, JSON.stringify(linkContent)]))[0];
+  q = (await read('SELECT * FROM knowledge_qa_save_answer($1,$2,$3::jsonb,$4)', [q.id, q.revision, JSON.stringify(linkContent), q.answer_short]))[0];
   assert.equal(q.review_status, 'unverified', 'Changing a link invalidates a review even when the visible text stays the same');
   const a = (await read('SELECT * FROM knowledge_qa_reserve_attachment($1,$2,$3,$4)', [q.id, 'Hinweise.pdf', 'application/pdf', 12]))[0];
   await denied(read("INSERT INTO storage.objects(bucket_id,name,metadata) VALUES('knowledge-attachments','fremder-pfad','{}')"));
@@ -296,8 +305,8 @@ try {
   await actor(bob);
   await denied(read("SELECT * FROM knowledge_qa_manage($1,$2,'archive')",[managed.id,managed.revision]));
   await owner();
-  await db.query(`INSERT INTO knowledge_questions(tenant_id,title,description,created_by,updated_by,answer_content,answer_text,answered_at,updated_at)
-    SELECT $1,'Referenzfrage '||i,'Kontext für Lasttest',$2,$2,$3::jsonb,'Allgemeine Antwort',now(),now()-make_interval(secs=>i)
+  await db.query(`INSERT INTO knowledge_questions(tenant_id,title,description,created_by,updated_by,answer_content,answer_text,answer_short,answered_at,updated_at)
+    SELECT $1,'Referenzfrage '||i,'Kontext für Lasttest',$2,$2,$3::jsonb,'Allgemeine Antwort','Kurzantwort',now(),now()-make_interval(secs=>i)
     FROM generate_series(1,2000) i`, [officeA,alice,JSON.stringify(content('Allgemeine Antwort'))]);
   await db.exec('ANALYZE knowledge_questions');
   await actor(alice);

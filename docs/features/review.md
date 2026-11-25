@@ -157,7 +157,7 @@ Eindeutige Fehler werden im CI-Lauf ausgegeben und brechen die Prüfung ab; sie 
 - `knowledge.global-question` — Globale Wissensfrage aus jedem Bereich
 - `knowledge.management` — Wissensverwaltung
 
-## Funktionen ohne Dokumentationsverweis (162)
+## Funktionen ohne Dokumentationsverweis (163)
 
 - `mywork.tabs` — Meine Arbeit – Bereichsnavigation und Einstellungen
 - `mywork.quick-access` — Schnellzugriff und zuletzt besuchte Seiten
@@ -312,6 +312,7 @@ Eindeutige Fehler werden im CI-Lauf ausgegeben und brechen die Prüfung ab; sie 
 - `election.history.audit` — Wahlhistorien-Audit
 - `election.history.assembly` — Historien-Assemblierung
 - `knowledge.answer` — Frage beantworten
+- `knowledge.short-answer` — Kurzantwort neben der Langantwort
 - `knowledge.tags` — Tags und Themenzuordnung
 - `knowledge.sources` — Quellen und Belege
 - `knowledge.attachments` — Anhänge an Wissensfragen

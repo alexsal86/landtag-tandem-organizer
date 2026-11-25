@@ -5,7 +5,7 @@
   "sources": {
     "types": "src/integrations/supabase/types.ts",
     "migrationsDirectory": "supabase/migrations",
-    "migrationCount": 894,
+    "migrationCount": 895,
     "tsModules": [
       "src/components/letters/types.ts"
     ]
@@ -2952,7 +2952,8 @@
             "default:supabase/migrations/20261110180000_knowledge_qa_core.sql",
             "write:supabase/migrations/20261110180000_knowledge_qa_core.sql",
             "write:supabase/migrations/20261110180200_knowledge_qa_storage.sql",
-            "write:supabase/migrations/20261111100900_knowledge_sources.sql"
+            "write:supabase/migrations/20261111100900_knowledge_sources.sql",
+            "write:supabase/migrations/20261125230000_knowledge_answer_short.sql"
           ]
         },
         {
@@ -2997,7 +2998,8 @@
           "sources": [
             "supabase/migrations/20261110180000_knowledge_qa_core.sql",
             "supabase/migrations/20261110180200_knowledge_qa_storage.sql",
-            "supabase/migrations/20261111100900_knowledge_sources.sql"
+            "supabase/migrations/20261111100900_knowledge_sources.sql",
+            "supabase/migrations/20261125230000_knowledge_answer_short.sql"
           ],
           "guards": []
         }

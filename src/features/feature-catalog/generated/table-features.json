@@ -2194,6 +2194,11 @@
       "area": "wissen"
     },
     {
+      "id": "knowledge.short-answer",
+      "name": "Kurzantwort neben der Langantwort",
+      "area": "wissen"
+    },
+    {
       "id": "knowledge.validity",
       "name": "Gültigkeit und Veraltung",
       "area": "wissen"

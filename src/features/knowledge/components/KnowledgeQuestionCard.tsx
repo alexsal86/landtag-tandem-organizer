@@ -110,6 +110,19 @@ export function KnowledgeQuestionDetailContent({
           />
         ) : question.answered_at ? (
           <>
+            <div className="rounded-md border bg-muted/40 p-3">
+              <h4 className="text-xs font-medium uppercase tracking-wide text-muted-foreground">
+                Kurzantwort
+              </h4>
+              {question.answer_short ? (
+                <p className="mt-1 text-sm">{question.answer_short}</p>
+              ) : (
+                <p className="mt-1 text-sm text-muted-foreground">
+                  Für diese ältere Antwort fehlt die Kurzantwort. Sie wird beim
+                  nächsten Bearbeiten verlangt.
+                </p>
+              )}
+            </div>
             <div className={styles.answer}>
               <EnhancedLexicalEditor
                 key={`${question.id}-${question.answer_revision}`}

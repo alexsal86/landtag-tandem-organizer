@@ -223,6 +223,7 @@ _Auto-generiert mit `npm run update:feature-catalog`. Nicht von Hand bearbeiten.
 | `election.history.districts-geometry` | `election.history.periods` |
 | `election.history.portraits` | `election.history.people` |
 | `knowledge.answer` | `knowledge.ask` |
+| `knowledge.short-answer` | `knowledge.answer` |
 | `knowledge.review` | `knowledge.answer` |
 | `knowledge.review` | `tasks.create` |
 | `knowledge.validity` | `knowledge.answer` |

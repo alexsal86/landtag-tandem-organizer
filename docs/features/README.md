@@ -8,24 +8,24 @@ Der Katalog ist das führende Verzeichnis des tatsächlich implementierten Funkt
 
 | Kennzahl | Wert |
 |---|---:|
-| Erfasste Funktionen | 253 |
+| Erfasste Funktionen | 254 |
 | Funktionsbereiche | 16 |
 | Unterbereiche | 108 |
-| Implementiert | 249 |
+| Implementiert | 250 |
 | Teilweise implementiert | 2 |
 | Deaktiviert | 0 |
 | Potenziell verwaist | 0 |
 | Prüfkandidaten (offene Punkte) | 50 |
-| Funktionen mit Selbsttest | 72 |
-| Funktionen mit Unit-Test | 55 |
+| Funktionen mit Selbsttest | 73 |
+| Funktionen mit Unit-Test | 56 |
 | Funktionen mit Integrationstest | 1 |
 | Funktionen mit Browser-Test | 4 |
 | Funktionen mit Security-Test | 1 |
 | Funktionen ohne zugeordneten Test | 143 |
-| Funktionen ohne Dokumentationsverweis | 162 |
+| Funktionen ohne Dokumentationsverweis | 163 |
 | Funktionen mit bekannten Einschränkungen | 25 |
 | Nicht nachweisbar eingebundene Funktionen | 1 |
-| Technische Zuordnungen | 1222 |
+| Technische Zuordnungen | 1230 |
 
 ## Funktionsbereiche
 
@@ -46,13 +46,13 @@ Der Katalog ist das führende Verzeichnis des tatsächlich implementierten Funkt
 | [Veranstaltungen & Umfragen](./veranstaltungen.md) | 3 | 9 | 8 | 3 | 6 |
 | [Vorgänge & Fallakten](./vorgaenge.md) | 6 | 16 | 15 | 8 | 11 |
 | [Wahlanalyse & Wahlhistorie](./wahl.md) | 4 | 23 | 23 | 12 | 15 |
-| [Wissensbereich](./wissen.md) | 8 | 15 | 15 | 7 | 10 |
+| [Wissensbereich](./wissen.md) | 8 | 16 | 16 | 7 | 11 |
 
 ## Kategorien
 
 | Kategorie | Funktionen |
 |---|---:|
-| fachlich | 163 |
+| fachlich | 164 |
 | administrativ | 26 |
 | automatisiert | 20 |
 | integration | 27 |
@@ -63,7 +63,7 @@ Der Katalog ist das führende Verzeichnis des tatsächlich implementierten Funkt
 
 | Status | Funktionen |
 |---|---:|
-| implementiert | 249 |
+| implementiert | 250 |
 | teilweise | 2 |
 | deaktiviert | 0 |
 | verwaist | 0 |
@@ -75,7 +75,7 @@ Der Katalog ist das führende Verzeichnis des tatsächlich implementierten Funkt
 
 | Einbindung | Funktionen |
 |---|---:|
-| UI | 124 |
+| UI | 125 |
 | systemseitig | 36 |
 | rollenabhängig | 88 |
 | Feature Flag | 1 |
@@ -87,7 +87,7 @@ Der Katalog ist das führende Verzeichnis des tatsächlich implementierten Funkt
 
 | Abdeckung | Funktionen |
 |---|---:|
-| Selbsttest | 71 |
+| Selbsttest | 72 |
 | Unit-Test | 37 |
 | Integrationstest | 1 |
 | Browser-Test | 0 |

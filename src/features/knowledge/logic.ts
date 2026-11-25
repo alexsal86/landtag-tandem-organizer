@@ -213,8 +213,69 @@ export function validateKnowledgeTagNames(names: string[]): string | null {
   return null;
 }
 
+export const MAX_SHORT_ANSWER = 500;
+
+export function normalizeShortAnswer(value: string): string {
+  return value.replace(/\s+/gu, " ").trim();
+}
+
+export function validateShortAnswer(value: string): string | null {
+  const short = normalizeShortAnswer(value);
+  if (!short) return "Bitte eine Kurzantwort mit 1–3 Sätzen eingeben.";
+  if (short.length > MAX_SHORT_ANSWER)
+    return `Die Kurzantwort darf höchstens ${MAX_SHORT_ANSWER} Zeichen enthalten.`;
+  return null;
+}
+
+const BERLIN_DATE = new Intl.DateTimeFormat("de-DE", {
+  timeZone: "Europe/Berlin",
+  day: "2-digit",
+  month: "2-digit",
+  year: "numeric",
+});
+
+function citationDate(value: string | null | undefined): string {
+  if (!value) return "";
+  const date = new Date(value);
+  return Number.isNaN(date.getTime()) ? "" : BERLIN_DATE.format(date);
+}
+
+// Citation output for mails, speeches and posts: the short answer plus the
+// status that justifies it, never the full editorial answer.
+export function formatKnowledgeCitation(input: {
+  title: string;
+  shortAnswer: string;
+  status: ReviewStatus;
+  updatedAt: string | null;
+  verifiedBy: string | null;
+  verifiedAt: string | null;
+  url: string;
+}): string {
+  const lines = [
+    `Frage: ${input.title.trim()}`,
+    `Kurzantwort: ${normalizeShortAnswer(input.shortAnswer)}`,
+  ];
+  const updated = citationDate(input.updatedAt);
+  if (updated) lines.push(`Stand: ${updated}`);
+  const verified = citationDate(input.verifiedAt);
+  lines.push(
+    input.status === "verified"
+      ? `Status: ${REVIEW_LABELS.verified}${input.verifiedBy ? ` durch ${input.verifiedBy}` : ""}${verified ? ` am ${verified}` : ""}`
+      : `Status: ${REVIEW_LABELS[input.status]}`,
+  );
+  if (input.url) lines.push(`Link: ${input.url}`);
+  return lines.join("\n");
+}
+
 export function isSafeKnowledgeSourceUrl(value: string): boolean {
-  if (value.length > 2048 || /[\s\u0000-\u001f\u007f]/u.test(value))
+  if (
+    value.length > 2048 ||
+    /\s/u.test(value) ||
+    Array.from(value).some(
+      (character) =>
+        character.charCodeAt(0) < 32 || character.charCodeAt(0) === 127,
+    )
+  )
     return false;
   try {
     const url = new URL(value);

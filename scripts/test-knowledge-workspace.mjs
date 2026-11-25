@@ -22,7 +22,7 @@ const actor = async (user, role = 'authenticated') => {
 };
 const content = text => ({ root: { type: 'root', version: 1, children: [{ type: 'paragraph', version: 1, children: [{ type: 'text', version: 1, text, format: 0, detail: 0, mode: 'normal', style: '' }], direction: null, format: '', indent: 0 }], direction: null, format: '', indent: 0 } });
 const create = async (office, title, assignee = null) => (await read('SELECT * FROM knowledge_qa_create_question($1,$2,$3,$4)', [office, title, '', assignee]))[0];
-const save = async (q, text) => (await read('SELECT * FROM knowledge_qa_save_answer($1,$2,$3::jsonb)', [q.id, q.revision, JSON.stringify(content(text))]))[0];
+const save = async (q, text, short = 'Kurzantwort für den Test.') => (await read('SELECT * FROM knowledge_qa_save_answer($1,$2,$3::jsonb,$4)', [q.id, q.revision, JSON.stringify(content(text)), short]))[0];
 const review = async (q, verified = true, due = null) => (await read('SELECT * FROM knowledge_qa_review($1,$2,$3,$4)', [q.id, q.revision, verified, due]))[0];
 const search = (office, term = '', view = 'answers') => read('SELECT * FROM search_knowledge_questions($1,$2,$3)', [office, term, view]);
 const denied = operation => assert.rejects(operation, error => error.code === '42501');
@@ -88,7 +88,7 @@ try {
 
   }
 
-  for (const file of ['20261111100800_knowledge_tags.sql','20261111100900_knowledge_sources.sql','20261111101000_knowledge_conversation_followers.sql','20261111101100_knowledge_workspace_filters.sql']) {
+  for (const file of ['20261111100800_knowledge_tags.sql','20261111100900_knowledge_sources.sql','20261111101000_knowledge_conversation_followers.sql','20261111101100_knowledge_workspace_filters.sql','20261125230000_knowledge_answer_short.sql']) {
     const migration=await readFile(new URL(`../supabase/migrations/${file}`,import.meta.url),'utf8');
     await db.exec(migration); await db.exec(migration);
   }

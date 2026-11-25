@@ -3,9 +3,13 @@ import {
   answerExcerpt,
   answerText,
   effectiveReviewStatus,
+  formatKnowledgeCitation,
+  MAX_SHORT_ANSWER,
+  normalizeShortAnswer,
   parseAnswer,
   validateAttachment,
   validateQuestion,
+  validateShortAnswer,
 } from "./logic";
 import type { Json } from "@/integrations/supabase/types";
 
@@ -143,7 +147,48 @@ describe("shared office knowledge rules", () => {
 });
 
 import { knowledgeUrlState } from "./logic";
-it("restores only whitelisted views, filters and ordering from the URL", () => {
+  it("requires a normalized, bounded short answer next to the long answer", () => {
+    expect(validateShortAnswer("  Zwei   Sätze.  Mit Abstand. ")).toBeNull();
+    expect(normalizeShortAnswer("  Zwei   Sätze. ")).toBe("Zwei Sätze.");
+    expect(validateShortAnswer("   ")).toBeTruthy();
+    expect(validateShortAnswer("x".repeat(MAX_SHORT_ANSWER + 1))).toBeTruthy();
+    expect(validateShortAnswer("x".repeat(MAX_SHORT_ANSWER))).toBeNull();
+  });
+  it("cites the short answer with status, date and link", () => {
+    expect(
+      formatKnowledgeCitation({
+        title: "Wie beantrage ich Urlaub?",
+        shortAnswer: "Antrag an die Büroleitung.",
+        status: "verified",
+        updatedAt: "2026-11-25T10:00:00Z",
+        verifiedBy: "Alice Beispiel",
+        verifiedAt: "2026-11-25T09:00:00Z",
+        url: "https://example.test/wissen?frage=abc",
+      }),
+    ).toBe(
+      [
+        "Frage: Wie beantrage ich Urlaub?",
+        "Kurzantwort: Antrag an die Büroleitung.",
+        "Stand: 25.11.2026",
+        "Status: Geprüft durch Alice Beispiel am 25.11.2026",
+        "Link: https://example.test/wissen?frage=abc",
+      ].join("\n"),
+    );
+    expect(
+      formatKnowledgeCitation({
+        title: "Frage",
+        shortAnswer: "Kurz",
+        status: "needs_review",
+        updatedAt: null,
+        verifiedBy: null,
+        verifiedAt: null,
+        url: "",
+      }),
+    ).toBe(
+      "Frage: Frage\nKurzantwort: Kurz\nStatus: Überprüfung erforderlich",
+    );
+  });
+  it("restores only whitelisted views, filters and ordering from the URL", () => {
   expect(
     knowledgeUrlState(
       new URLSearchParams(

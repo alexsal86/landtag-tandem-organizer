@@ -246,6 +246,7 @@ Die Spalten zählen **zugeordnete** Prüfungen, nicht bestandene Läufe. „Erge
 | `election.map` | wahl | fachlich | implementiert | UI | Selbsttest | nicht-ausgefuehrt | 1 | 1 | 0 | 1 | ja |
 | `knowledge.management` | wissen | administrativ | implementiert | rollenabhängig | kein Test | nicht-ausgefuehrt | 0 | 0 | 0 | 0 | nein |
 | `knowledge.answer` | wissen | fachlich | implementiert | UI | Selbsttest | nicht-ausgefuehrt | 1 | 1 | 0 | 0 | nein |
+| `knowledge.short-answer` | wissen | fachlich | implementiert | UI | Selbsttest | nicht-ausgefuehrt | 1 | 1 | 0 | 0 | nein |
 | `knowledge.global-question` | wissen | fachlich | implementiert | UI | kein Test | nicht-ausgefuehrt | 0 | 0 | 0 | 0 | ja |
 | `knowledge.ask` | wissen | fachlich | implementiert | UI | Selbsttest | nicht-ausgefuehrt | 1 | 0 | 0 | 0 | ja |
 | `knowledge.validity` | wissen | automatisiert | implementiert | systemseitig | Unit-Test | unbekannt | 0 | 1 | 0 | 0 | ja |

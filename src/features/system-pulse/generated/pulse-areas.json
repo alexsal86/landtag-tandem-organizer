@@ -1346,8 +1346,10 @@
           "description": "Prüft Eingaben und den echten Frage-Antwort-Ablauf. Testdatensätze und Verlauf werden in einer Datenbank-Untertransaktion vollständig zurückgerollt.",
           "checks": [
             "Frage als einziges Pflichtfeld",
+            "Kurzantwort als Pflichtangabe",
             "Validierte Antwort und sichere Links",
             "Drei Prüfzustände und Fälligkeit",
+            "Zitat mit Kurzantwort, Stand und Status",
             "Anhanggrenzen",
             "Lesen außerhalb des eigenen Büros"
           ],
@@ -1360,7 +1362,8 @@
             "knowledge.answer",
             "knowledge.ask",
             "knowledge.review",
-            "knowledge.search"
+            "knowledge.search",
+            "knowledge.short-answer"
           ],
           "steps": [
             {
@@ -1398,6 +1401,14 @@
             {
               "id": "answer-input",
               "label": "Antworttext und Links sicher validieren"
+            },
+            {
+              "id": "short-answer-input",
+              "label": "Kurzantwort ist Pflicht und auf 500 Zeichen begrenzt"
+            },
+            {
+              "id": "citation-output",
+              "label": "Zitat enthält Kurzantwort, Stand und Prüfstatus"
             },
             {
               "id": "review-status",
