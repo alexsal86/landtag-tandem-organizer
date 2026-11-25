@@ -50,7 +50,7 @@ export const handler = async (req: Request) => {
     console.log(`📅 Fetching calendar config for: ${calendar_id}`);
     const { data: calendarConfig, error: configError } = await supabase
       .from('external_calendars')
-      .select('*')
+      .select('tenant_id, ics_url, sync_start_date, sync_end_date, max_events')
       .eq('id', calendar_id)
       .single();
 

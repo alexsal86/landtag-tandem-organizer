@@ -473,8 +473,11 @@ export function useMeetingsData() {
   const loadCarryoverBufferItems = async () => {
     if (!user?.id) return;
     try {
+      // Nur die Felder, die der Zwischenspeicher-Dialog rendert – sub_items/result_html bleiben draußen.
       const { data, error } = await supabase
-        .from('carryover_items').select('*').eq('user_id', user.id).order('created_at', { ascending: false });
+        .from('carryover_items')
+        .select('id, title, description, original_meeting_title, original_meeting_date, carryover_count')
+        .eq('user_id', user.id).order('created_at', { ascending: false });
       if (error) throw error;
       setCarryoverBufferItems((data || []).map((d: Record<string, any>) => ({ ...d, is_completed: false, is_recurring: false })));
     } catch (error) {

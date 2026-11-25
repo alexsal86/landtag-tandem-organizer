@@ -44,9 +44,10 @@ serve(withSafeHandler("auto-sync-calendars", async (req) => {
       let success = true;
 
       // Get all active external calendars for this tenant
+      // Der Scheduler reicht nur die ID an sync-external-calendar weiter und loggt den Namen.
       const { data: calendars, error: calendarsError } = await supabase
         .from('external_calendars')
-        .select('*')
+        .select('id, name')
         .eq('tenant_id', setting.tenant_id)
         .eq('is_active', true)
         .eq('sync_enabled', true);
