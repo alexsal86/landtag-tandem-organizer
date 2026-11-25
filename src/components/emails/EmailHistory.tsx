@@ -1,4 +1,4 @@
-import { useState, useEffect } from "react";
+import { useState, useEffect, useRef } from "react";
 import { debugConsole } from '@/utils/debugConsole';
 import { sanitizeRichHtml } from '@/utils/htmlSanitizer';
 import { Card, CardContent, CardHeader } from "@/components/ui/card";
@@ -73,6 +73,10 @@ export function EmailHistory() {
   const [searchTerm, setSearchTerm] = useState("");
   const [selectedEmail, setSelectedEmail] = useState<EmailLog | null>(null);
   const [detailBody, setDetailBody] = useState<string | null>(null);
+  const [detailBodyError, setDetailBodyError] = useState<string | null>(null);
+  // Laufende Nachlade-Anfragen: nur die Antwort der zuletzt geöffneten Mail darf schreiben.
+  const detailRequestRef = useRef(0);
+  const retryRequestRef = useRef(0);
   const [showDetailsDialog, setShowDetailsDialog] = useState(false);
   const [showRetryDialog, setShowRetryDialog] = useState(false);
   const [activeTab, setActiveTab] = useState<string>("sent");
@@ -262,20 +266,31 @@ export function EmailHistory() {
 
   /** Full HTML body is loaded on demand only, so the list query stays small. */
   const fetchEmailBody = async (emailId: string): Promise<string> => {
-    const { data } = await supabase
+    const { data, error } = await supabase
       .from("email_logs")
       .select("body_html")
       .eq("id", emailId)
       .eq("tenant_id", currentTenant!.id)
       .eq("user_id", user!.id)
       .maybeSingle();
-    return data?.body_html ?? "";
+    if (error) throw error;
+    if (!data) throw new Error("E-Mail-Eintrag nicht gefunden");
+    return data.body_html ?? "";
   };
 
   const handleRetry = async (email: EmailLog) => {
-    const bodyHtml = email.body_html ?? (await fetchEmailBody(email.id));
-    setSelectedEmail({ ...email, body_html: bodyHtml });
-    setShowRetryDialog(true);
+    const requestId = ++retryRequestRef.current;
+    try {
+      const bodyHtml = email.body_html ?? (await fetchEmailBody(email.id));
+      if (requestId !== retryRequestRef.current) return;
+      setSelectedEmail({ ...email, body_html: bodyHtml });
+      setShowRetryDialog(true);
+    } catch (error: unknown) {
+      if (requestId !== retryRequestRef.current) return;
+      notify.error("Nachricht konnte nicht geladen werden", {
+        description: error instanceof Error ? error.message : String(error),
+      });
+    }
   };
 
   const getStatusIcon = (status: string) => {
@@ -303,10 +318,20 @@ export function EmailHistory() {
   };
 
   const handleViewDetails = async (email: EmailLog) => {
+    const requestId = ++detailRequestRef.current;
     setSelectedEmail(email);
     setDetailBody(null);
+    setDetailBodyError(null);
     setShowDetailsDialog(true);
-    setDetailBody(await fetchEmailBody(email.id));
+    try {
+      const bodyHtml = await fetchEmailBody(email.id);
+      // Eine verspätete Antwort einer vorher geöffneten Mail darf den Body nicht überschreiben.
+      if (requestId !== detailRequestRef.current) return;
+      setDetailBody(bodyHtml);
+    } catch (error: unknown) {
+      if (requestId !== detailRequestRef.current) return;
+      setDetailBodyError(error instanceof Error ? error.message : String(error));
+    }
   };
 
   return (
@@ -530,7 +555,11 @@ export function EmailHistory() {
               <div>
                 <Label>Nachricht</Label>
                 <div className="mt-1 p-4 border rounded">
-                  {detailBody === null ? (
+                  {detailBodyError !== null ? (
+                    <p className="text-sm text-destructive" role="alert">
+                      Nachricht konnte nicht geladen werden: {detailBodyError}
+                    </p>
+                  ) : detailBody === null ? (
                     <span className="text-muted-foreground">Lädt...</span>
                   ) : (
                     <div dangerouslySetInnerHTML={{ __html: sanitizeRichHtml(detailBody) }} />
