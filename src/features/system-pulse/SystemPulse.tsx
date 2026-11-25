@@ -1,7 +1,7 @@
-import { useEffect, useLayoutEffect, useMemo, useRef, useState } from "react";
+import { Fragment, useEffect, useMemo, useState } from "react";
 import { useQuery, useQueryClient } from "@tanstack/react-query";
-import { Activity, ArrowRight, Shield } from "lucide-react";
-import { useNavigate } from "react-router-dom";
+import { Activity, ArrowRight, ExternalLink, Shield } from "lucide-react";
+import { Link, useNavigate } from "react-router-dom";
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
 import { cn } from "@/lib/utils";
@@ -9,12 +9,15 @@ import { notify } from "@/lib/notify";
 import { useAuth } from "@/hooks/useAuth";
 import { useTenant } from "@/hooks/useTenant";
 import { supabase } from "@/integrations/supabase/client";
+import { featureCatalogHref } from "@/features/feature-catalog/securityLinks";
 import {
-  PULSE_AREAS, PULSE_FLOW, areaLevel, flowPath, gapSummary, latestRuns,
-  type FlowBox, type GapsState, type PersistedRun, type PulseArea, type PulseLevel,
+  PULSE_AREAS, PULSE_GROUPS, areaLevel, gapSummary, latestRuns, latestRunSteps,
+  type GapsState, type PersistedRun, type PulseArea, type PulseLevel,
 } from "./pulse";
 
 interface Props { gaps: Array<{ table_name: string; severity: string }>; gapsState: GapsState }
+
+type LevelEntry = { area: PulseArea; level: PulseLevel };
 
 const dot: Record<PulseLevel, string> = { green: "bg-palette-green", yellow: "bg-warning", red: "bg-destructive", grey: "bg-muted-foreground/40" };
 const text: Record<PulseLevel, string> = { green: "Alles in Ordnung", yellow: "Prüfen", red: "Fehler", grey: "Noch nie getestet" };
@@ -26,6 +29,7 @@ const statusLabel = (status?: string) =>
         : status === "blocked" ? "Voraussetzung fehlt"
           : status === "cancelled" ? "abgebrochen"
             : status ?? "noch nie gelaufen";
+const stepLevel = (status?: string): PulseLevel => status === "ok" ? "green" : status === "failed" ? "red" : "grey";
 
 export function SystemPulse({ gaps, gapsState }: Props) {
   const { currentTenant } = useTenant();
@@ -33,12 +37,9 @@ export function SystemPulse({ gaps, gapsState }: Props) {
   const queryClient = useQueryClient();
   const navigate = useNavigate();
   const [open, setOpen] = useState<string | null>(null);
+  const [openStep, setOpenStep] = useState<string | null>(null);
   const [liveRuns, setLiveRuns] = useState<Record<string, string>>({});
   const [runningArea, setRunningArea] = useState<string | null>(null);
-  const containerRef = useRef<HTMLDivElement | null>(null);
-  const tileRefs = useRef(new Map<string, HTMLButtonElement>());
-  const [paths, setPaths] = useState<Array<{ key: string; d: string }>>([]);
-  const flowKey = PULSE_FLOW.join("|");
 
   // Mandantenweite Sicht: RLS lässt alle Mitglieder die Läufe des Mandanten lesen,
   // und der Puls soll den Systemzustand zeigen, nicht nur den letzten Lauf eines Nutzers.
@@ -46,7 +47,7 @@ export function SystemPulse({ gaps, gapsState }: Props) {
     queryKey: ["selftest_runs_pulse", currentTenant?.id],
     enabled: Boolean(currentTenant?.id),
     queryFn: async () => {
-      // DISTINCT ON in der Datenbank: genau der neueste Lauf je Szenario, ohne Zeilenfenster.
+      // DISTINCT ON in der Datenbank: genau der neueste Lauf je Szenario, inklusive Schritten.
       const { data, error } = await supabase.rpc("get_latest_selftest_runs", { p_tenant_id: currentTenant!.id });
       if (error) throw error;
       return (data ?? []) as PersistedRun[];
@@ -54,50 +55,24 @@ export function SystemPulse({ gaps, gapsState }: Props) {
     staleTime: 60_000,
   });
 
-  useEffect(() => { setLiveRuns({}); }, [currentTenant?.id]);
+  useEffect(() => { setLiveRuns({}); setOpenStep(null); }, [currentTenant?.id]);
 
   const runs = useMemo(
     () => ({ ...latestRuns(runsQuery.data ?? []), ...liveRuns }),
     [runsQuery.data, liveRuns],
   );
+  const stepsByScenario = useMemo(() => latestRunSteps(runsQuery.data ?? []), [runsQuery.data]);
   const loadingRuns = Boolean(currentTenant?.id) && runsQuery.isPending;
   const unknownRuns = !currentTenant?.id || runsQuery.isError;
   const latest = runsQuery.data?.[0]?.created_at;
 
-  const levels = PULSE_AREAS.map((area) => ({ area, level: areaLevel(area, { runs }) }));
-  const flowLevels = PULSE_FLOW
-    .map((id) => levels.find((entry) => entry.area.id === id))
-    .filter((entry): entry is { area: PulseArea; level: PulseLevel } => Boolean(entry));
-  const restLevels = levels.filter((entry) => !PULSE_FLOW.includes(entry.area.id));
+  const levels: LevelEntry[] = PULSE_AREAS.map((area) => ({ area, level: areaLevel(area, { runs }) }));
   const count = (level: PulseLevel) => levels.filter((entry) => entry.level === level).length;
   const selected = levels.find((entry) => entry.area.id === open);
   const security = gapSummary(gaps, gapsState);
-
-  useLayoutEffect(() => {
-    const container = containerRef.current;
-    if (!container) return;
-    const measure = () => {
-      const base = container.getBoundingClientRect();
-      const boxes = new Map<string, FlowBox>();
-      for (const [id, element] of tileRefs.current) {
-        if (!element) continue;
-        const rect = element.getBoundingClientRect();
-        boxes.set(id, { x: rect.left - base.left, y: rect.top - base.top, w: rect.width, h: rect.height });
-      }
-      const next: Array<{ key: string; d: string }> = [];
-      for (let index = 0; index < PULSE_FLOW.length - 1; index += 1) {
-        const from = boxes.get(PULSE_FLOW[index]);
-        const to = boxes.get(PULSE_FLOW[index + 1]);
-        if (from && to) next.push({ key: `${PULSE_FLOW[index]}-${PULSE_FLOW[index + 1]}`, d: flowPath(from, to) });
-      }
-      setPaths(next);
-    };
-    measure();
-    const observer = new ResizeObserver(measure);
-    observer.observe(container);
-    for (const element of tileRefs.current.values()) observer.observe(element);
-    return () => observer.disconnect();
-  }, [flowKey]);
+  const byId = new Map(levels.map((entry) => [entry.area.id, entry]));
+  const grouped = new Set(PULSE_GROUPS.flatMap((group) => group.areas));
+  const restLevels = levels.filter((entry) => !grouped.has(entry.area.id));
 
   const runArea = async (area: PulseArea) => {
     if (runningArea || !currentTenant?.id || !user?.id) return;
@@ -137,16 +112,12 @@ export function SystemPulse({ gaps, gapsState }: Props) {
     }
   };
 
-  const tile = ({ area, level }: { area: PulseArea; level: PulseLevel }) => {
+  const tile = ({ area, level }: LevelEntry) => {
     const active = runningArea === area.id;
     return (
-      <button key={area.id} type="button" onClick={() => setOpen(open === area.id ? null : area.id)}
-        ref={(element) => {
-          if (element) tileRefs.current.set(area.id, element);
-          else tileRefs.current.delete(area.id);
-        }}
+      <button key={area.id} type="button" onClick={() => { setOpen(open === area.id ? null : area.id); setOpenStep(null); }}
         aria-expanded={open === area.id}
-        className={cn("relative z-10 rounded-lg border bg-card p-3 text-left transition-colors hover:bg-muted", open === area.id && "ring-2 ring-ring")}>
+        className={cn("rounded-lg border bg-card p-3 text-left transition-colors hover:bg-muted", open === area.id && "ring-2 ring-ring")}>
         <div className="flex items-center gap-2">
           <span aria-hidden className={cn("h-3 w-3 rounded-full", dot[level])} />
           <span className="font-medium">{area.title}</span>
@@ -172,29 +143,23 @@ export function SystemPulse({ gaps, gapsState }: Props) {
         </CardDescription>
       </CardHeader>
       <CardContent className="space-y-4">
-        <p className="sr-only">
-          Arbeitsablauf: {flowLevels.map((entry) => entry.area.title).join(" → ")}.
-        </p>
-        <div ref={containerRef} className="relative">
-          <svg aria-hidden focusable="false" className="pointer-events-none absolute inset-0 z-0 h-full w-full overflow-visible text-muted-foreground">
-            <defs>
-              <marker id="pulse-flow-arrow" viewBox="0 0 10 10" refX="8" refY="5" markerWidth="6" markerHeight="6" orient="auto-start-reverse">
-                <path d="M 0 0 L 10 5 L 0 10 z" fill="currentColor" />
-              </marker>
-            </defs>
-            {paths.map((path) => (
-              <path key={path.key} d={path.d} fill="none" stroke="currentColor" strokeWidth={1.5} markerEnd="url(#pulse-flow-arrow)" />
-            ))}
-          </svg>
-          <div className="grid grid-cols-1 gap-x-6 gap-y-8 sm:grid-cols-2 lg:grid-cols-3">
-            {flowLevels.map(tile)}
-          </div>
-        </div>
+        {PULSE_GROUPS.map((group) => {
+          const groupLevels = group.areas
+            .map((id) => byId.get(id))
+            .filter((entry): entry is LevelEntry => Boolean(entry));
+          if (groupLevels.length === 0) return null;
+          return (
+            <section key={group.id} className="space-y-2" aria-label={group.title}>
+              <h3 className="text-xs font-medium text-muted-foreground">{group.title}</h3>
+              <div className="grid grid-cols-1 gap-2 sm:grid-cols-2 lg:grid-cols-3">{groupLevels.map(tile)}</div>
+            </section>
+          );
+        })}
         {restLevels.length > 0 && (
-          <div className="space-y-2">
-            <p className="text-xs font-medium text-muted-foreground">Weitere Bereiche</p>
-            <div className="grid gap-2 sm:grid-cols-2 lg:grid-cols-3">{restLevels.map(tile)}</div>
-          </div>
+          <section className="space-y-2" aria-label="Weitere Bereiche">
+            <h3 className="text-xs font-medium text-muted-foreground">Weitere Bereiche</h3>
+            <div className="grid grid-cols-1 gap-2 sm:grid-cols-2 lg:grid-cols-3">{restLevels.map(tile)}</div>
+          </section>
         )}
         <div className="flex flex-wrap items-center justify-between gap-2 rounded-lg border p-3">
           <div className="flex items-center gap-2">
@@ -227,20 +192,87 @@ export function SystemPulse({ gaps, gapsState }: Props) {
                 ))}
               </div>
             )}
-            {loadingRuns || unknownRuns ? (
-              <p className="text-muted-foreground">
+            {(loadingRuns || unknownRuns) && (
+              <p className="text-xs text-muted-foreground">
                 Ergebnisse {loadingRuns ? "werden geladen …" : "sind unbekannt."}
               </p>
-            ) : (
-              <ul className="space-y-1">
-                {selected.area.scenarios.map((scenarioId) => (
-                  <li key={scenarioId} className="flex items-center gap-2">
-                    <span aria-hidden className={cn("h-2 w-2 rounded-full", dot[runs[scenarioId] === "ok" ? "green" : runs[scenarioId] === "failed" ? "red" : runs[scenarioId] ? "yellow" : "grey"])} />
-                    Test „{scenarioId}“: {statusLabel(runs[scenarioId])}
-                  </li>
-                ))}
-              </ul>
             )}
+            {selected.area.workflows.map((workflow) => {
+              const results = stepsByScenario[workflow.scenario] ?? {};
+              const counts = { ok: 0, failed: 0, other: 0 };
+              for (const step of workflow.steps) {
+                const status = results[step.id]?.status;
+                if (status === "ok") counts.ok += 1;
+                else if (status === "failed") counts.failed += 1;
+                else counts.other += 1;
+              }
+              return (
+                <div key={workflow.scenario} className="space-y-1.5">
+                  <div className="flex flex-wrap items-baseline justify-between gap-x-3 gap-y-0.5">
+                    <div className="flex min-w-0 items-baseline gap-2">
+                      <span className="text-xs font-medium">{workflow.title}</span>
+                      <code className="hidden text-[10px] text-muted-foreground sm:inline">{workflow.scenario}</code>
+                    </div>
+                    <span className="text-[11px] tabular-nums text-muted-foreground">
+                      {workflow.steps.length} Schritte
+                      {counts.failed > 0 && <span className="text-destructive"> · {counts.failed} fehlgeschlagen</span>}
+                      {counts.ok > 0 && <> · {counts.ok} bestanden</>}
+                      {counts.other > 0 && <> · {counts.other} ungetestet</>}
+                    </span>
+                  </div>
+                  <div className="-mx-1 overflow-x-auto rounded pb-1 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring"
+                    tabIndex={0} role="group" aria-label={`Prozesskette ${workflow.title}`}>
+                    <div className="flex w-max items-stretch gap-1 px-1">
+                      {workflow.steps.map((step, index) => {
+                        const key = `${workflow.scenario}:${step.id}`;
+                        const result = results[step.id];
+                        const level = stepLevel(result?.status);
+                        return (
+                          <Fragment key={step.id}>
+                            {index > 0 && <ArrowRight aria-hidden className="h-3 w-3 shrink-0 self-center text-muted-foreground" />}
+                            <div className={cn(
+                              "relative w-40 shrink-0 rounded border bg-background p-1.5 pr-6 text-xs",
+                              level === "red" && "border-destructive/50",
+                              level === "green" && "border-emerald-500/40",
+                            )}>
+                              <div className="flex items-center gap-1">
+                                <span className="text-[10px] tabular-nums text-muted-foreground">{index + 1}</span>
+                                <span aria-hidden className={cn("h-2 w-2 shrink-0 rounded-full", dot[level])} />
+                              </div>
+                              {result?.status === "failed" ? (
+                                <button type="button" onClick={() => setOpenStep(openStep === key ? null : key)}
+                                  aria-expanded={openStep === key} aria-label={`${step.label}: fehlgeschlagen`}
+                                  className="mt-0.5 block w-full whitespace-normal break-words text-left leading-snug underline-offset-2 hover:underline">
+                                  {step.label}
+                                </button>
+                              ) : (
+                                <span aria-label={`${step.label}: ${statusLabel(result?.status)}`}
+                                  className="mt-0.5 block whitespace-normal break-words leading-snug">
+                                  {step.label}
+                                </span>
+                              )}
+                              {workflow.features[0] && (
+                                <Link to={featureCatalogHref(workflow.features[0])} aria-label={`${step.label} im Funktionskatalog öffnen`}
+                                  className="absolute right-1.5 top-1.5 text-muted-foreground hover:text-foreground">
+                                  <ExternalLink aria-hidden className="h-3 w-3" />
+                                </Link>
+                              )}
+                            </div>
+                          </Fragment>
+                        );
+                      })}
+                    </div>
+                  </div>
+                  {workflow.steps.map((step) => ({ step, result: results[step.id] }))
+                    .filter(({ step, result }) => openStep === `${workflow.scenario}:${step.id}` && result?.message)
+                    .map(({ step, result }) => (
+                      <p key={step.id} role="alert" className="rounded border border-destructive/40 bg-destructive/5 p-2 text-xs text-destructive">
+                        {result?.message}
+                      </p>
+                    ))}
+                </div>
+              );
+            })}
             <div className="flex flex-wrap gap-2 pt-1">
               <Button size="sm" onClick={() => void runArea(selected.area)} disabled={runningArea !== null}>
                 {runningArea === selected.area.id ? "Läuft …" : "▶ Diesen Bereich jetzt testen"}

@@ -82,10 +82,21 @@ export function collectScenarios(root) {
         .find((d) => ts.isObjectLiteralExpression(d.initializer) && member(d.initializer, 'touches'));
       const value = literal(declaration?.initializer);
       if (!value?.id) throw new Error(`Ungültiges Szenario: ${file}`);
+      const stepsNode = member(declaration.initializer, 'steps')?.initializer;
+      const steps = ts.isArrayLiteralExpression(stepsNode)
+        ? stepsNode.elements
+          .filter(ts.isObjectLiteralExpression)
+          .map((step) => ({
+            id: literal(member(step, 'id')?.initializer),
+            label: literal(member(step, 'label')?.initializer),
+          }))
+          .filter((step) => typeof step.id === 'string' && typeof step.label === 'string')
+        : [];
       return {
         id: value.id,
         file,
         title: value.title ?? value.id,
+        steps,
         touches: Array.isArray(value.touches) ? value.touches : [],
         features: Array.isArray(value.features) ? value.features : [],
         checks: Array.isArray(value.checks) ? value.checks : [],

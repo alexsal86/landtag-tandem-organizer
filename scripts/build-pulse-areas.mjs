@@ -2,7 +2,7 @@
 import { existsSync, mkdirSync, readFileSync, writeFileSync } from 'node:fs';
 import { dirname, join, resolve } from 'node:path';
 import { fileURLToPath } from 'node:url';
-import { collectScenarios } from './build-feature-catalog.mjs';
+import { collectScenarios, loadInventory } from './build-feature-catalog.mjs';
 
 /**
  * Puls-Bereiche: leitet die Szenarien je Bereich aus den registrierten
@@ -10,23 +10,24 @@ import { collectScenarios } from './build-feature-catalog.mjs';
  *
  * Quelle der Zuordnung ist der **erste Domänen-Tag** eines Szenarios
  * (`features[0]`, z. B. `meetings` bei `jour-fixe-platform-integration`).
- * Jeder Bereich der Konfiguration beansprucht eine Menge dieser Tags. Neue
- * Szenarien erscheinen dadurch automatisch im passenden Bereich, sobald sie
- * registriert sind und ihren Domänen-Tag zuerst nennen.
+ * Jeder Bereich beansprucht eine Menge dieser Tags; neue Szenarien erscheinen
+ * dadurch automatisch, sobald sie registriert sind.
  *
- * Einzelne Szenarien lassen sich mit `scenarioIds` fest zuordnen, wenn ihr
- * erster Tag eine andere Domäne nennt (z. B. `access-boundaries`, das fachlich
- * zum Zugriffsschutz gehört, aber zuerst `appointment-requests` taggt).
+ * `groups` fasst die Bereiche fachlich zusammen (Vorgangsbetrieb, Termine &
+ * Repräsentanz, Wächter). Die Karte zeichnet keine künstliche Gesamtkette mehr,
+ * sondern zeigt die Gruppen und im Detail die deklarierten Schritte der
+ * Szenarien mit ihren gespeicherten Ergebnissen.
  *
- * `flow` ist der geordnete Arbeitsablauf der Kacheln; die Karte zeichnet
- * zwischen aufeinanderfolgenden Einträgen echte Pfeile. `tables` je Bereich
- * sind die Haupttabellen der zugeordneten Szenarien (erster `touches`-Eintrag).
+ * `workflows` übernimmt je Szenario die deklarierten Schritte (id, label).
+ * Schritte deklarieren selbst keine Features; die Katalog-Funktionen, die das
+ * Szenario in `scenarios` beanspruchen, stehen deshalb einmal am Workflow und
+ * dienen dem Link in den Funktionskatalog.
  *
  * Geprüft wird:
  *  - jede `scenarioIds`-Referenz existiert und ist registriert,
  *  - jeder Tag trifft mindestens ein registriertes Szenario,
  *  - jeder Bereich hat mindestens ein Szenario,
- *  - `flow` nennt nur existierende Bereiche, ohne Doppelte,
+ *  - `groups` nennt nur existierende Bereiche, jeden genau einmal,
  *  - das eingecheckte Artefakt entspricht der Registry (Drift-Sperre).
  *
  * Aufrufe:
@@ -42,14 +43,14 @@ export const REGISTRY_FILE = 'src/features/selftest/registry.ts';
 const ROOT = resolve(dirname(fileURLToPath(import.meta.url)), '..');
 
 /**
- * Reine Ableitung: nimmt Bereichs-Konfiguration und Szenarien und liefert die
- * Bereiche mit aufgelösten Szenario-IDs, den Fluss und alle Fehler.
+ * Reine Ableitung: nimmt Bereichs-Konfiguration, Szenarien und Katalogfunktionen
+ * und liefert Bereiche mit Workflows, Gruppen und alle Fehler.
  */
-export function derivePulseAreas({ config, scenarios }) {
+export function derivePulseAreas({ config, scenarios, features = [] }) {
   const errors = [];
   const configured = config?.areas;
   if (!Array.isArray(configured) || configured.length === 0) {
-    return { areas: [], flow: [], errors: ['Konfiguration enthält keine Bereiche.'] };
+    return { areas: [], groups: [], errors: ['Konfiguration enthält keine Bereiche.'] };
   }
 
   const registered = scenarios.filter((scenario) => scenario.registered !== false);
@@ -71,13 +72,29 @@ export function derivePulseAreas({ config, scenarios }) {
     }
   }
 
-  const flow = Array.isArray(config.flow) ? config.flow : [];
-  if (flow.length < 2) errors.push('flow muss mindestens zwei Bereiche nennen.');
-  const seenFlow = new Set();
-  for (const id of flow) {
-    if (seenFlow.has(id)) errors.push(`Bereich "${id}" steht doppelt in flow.`);
-    seenFlow.add(id);
-    if (!areaIds.has(id)) errors.push(`flow verweist auf unbekannten Bereich "${id}".`);
+  const groups = Array.isArray(config.groups) ? config.groups : [];
+  if (groups.length === 0) errors.push('groups muss mindestens eine Gruppe nennen.');
+  const groupedAreas = new Map();
+  for (const group of groups) {
+    if (!group.id || !group.title) errors.push(`Gruppe ohne id/title: ${JSON.stringify(group)}`);
+    if (!Array.isArray(group.areas) || group.areas.length === 0) errors.push(`Gruppe "${group.id ?? '?'}" nennt keine Bereiche.`);
+    for (const id of group.areas ?? []) {
+      if (!areaIds.has(id)) errors.push(`Gruppe "${group.id}" verweist auf unbekannten Bereich "${id}".`);
+      const owner = groupedAreas.get(id);
+      if (owner) errors.push(`Bereich "${id}" ist mehrfach gruppiert: ${owner} und ${group.id}.`);
+      groupedAreas.set(id, group.id);
+    }
+  }
+  for (const area of configured) {
+    if (area.id && !groupedAreas.has(area.id)) errors.push(`Bereich "${area.id}" ist keiner Gruppe zugeordnet.`);
+  }
+
+  const featureIdsByScenario = new Map();
+  for (const feature of features) {
+    for (const scenarioId of feature.scenarios ?? []) {
+      if (!featureIdsByScenario.has(scenarioId)) featureIdsByScenario.set(scenarioId, []);
+      featureIdsByScenario.get(scenarioId).push(feature.id);
+    }
   }
 
   const assigned = new Map();
@@ -123,6 +140,16 @@ export function derivePulseAreas({ config, scenarios }) {
         .map((id) => knownScenarios.get(id)?.touches?.[0])
         .filter((table) => typeof table === 'string' && table.length > 0),
     )].sort((a, b) => a.localeCompare(b));
+    const workflows = areaScenarios.map((id) => {
+      const scenario = knownScenarios.get(id);
+      const scenarioFeatures = [...new Set(featureIdsByScenario.get(id) ?? [])].sort((a, b) => a.localeCompare(b));
+      return {
+        scenario: id,
+        title: scenario?.title ?? id,
+        features: scenarioFeatures,
+        steps: (scenario?.steps ?? []).map((step) => ({ id: step.id, label: step.label })),
+      };
+    });
     return {
       id: area.id,
       title: area.title,
@@ -130,22 +157,24 @@ export function derivePulseAreas({ config, scenarios }) {
       scenarioIds: [...(area.scenarioIds ?? [])],
       scenarios: areaScenarios,
       tables,
+      workflows,
     };
   });
 
   for (const area of areas) {
     if (area.scenarios.length === 0) errors.push(`Bereich "${area.id}" hat kein Szenario.`);
+    if (area.workflows.every((workflow) => workflow.steps.length === 0)) errors.push(`Bereich "${area.id}" hat keine deklarierten Schritte.`);
   }
 
-  return { areas, flow, errors };
+  return { areas, groups, errors };
 }
 
-export function buildArtifact(areas, flow) {
+export function buildArtifact(areas, groups) {
   return {
-    version: 2,
+    version: 4,
     generatedBy: 'scripts/build-pulse-areas.mjs',
     source: REGISTRY_FILE,
-    flow,
+    groups,
     areas,
   };
 }
@@ -155,14 +184,15 @@ export const renderArtifact = (artifact) => `${JSON.stringify(artifact, null, 2)
 function load() {
   const config = JSON.parse(readFileSync(join(ROOT, CONFIG_FILE), 'utf8'));
   const scenarios = collectScenarios(ROOT);
-  return { config, scenarios };
+  const inventory = loadInventory(ROOT);
+  return { config, scenarios, features: inventory.features };
 }
 
 function main() {
   const write = process.argv.includes('--write');
   const audit = process.argv.includes('--audit');
-  const { config, scenarios } = load();
-  const { areas, flow, errors } = derivePulseAreas({ config, scenarios });
+  const { config, scenarios, features } = load();
+  const { areas, groups, errors } = derivePulseAreas({ config, scenarios, features });
 
   if (errors.length > 0) {
     console.error('Puls-Bereiche sind nicht ableitbar:');
@@ -170,18 +200,20 @@ function main() {
     process.exit(1);
   }
 
-  const artifact = buildArtifact(areas, flow);
+  const artifact = buildArtifact(areas, groups);
   const rendered = renderArtifact(artifact);
   const scenarioCount = scenarios.filter((scenario) => scenario.registered !== false).length;
 
   if (audit) {
-    for (const area of areas) {
-      console.log(`${area.title} (${area.id}): ${area.scenarios.length} Szenario(en)`);
-      for (const id of area.scenarios) console.log(`  - ${id}`);
-      if (area.tables.length > 0) console.log(`  Tabellen: ${area.tables.join(', ')}`);
+    for (const group of groups) {
+      console.log(`${group.title} (${group.id})`);
+      for (const id of group.areas) {
+        const area = areas.find((entry) => entry.id === id);
+        console.log(`  ${area.title}: ${area.scenarios.length} Szenario(en), ${area.workflows.reduce((sum, workflow) => sum + workflow.steps.length, 0)} Schritte`);
+        for (const workflow of area.workflows) console.log(`    - ${workflow.scenario} (${workflow.steps.length} Schritte)`);
+      }
     }
-    console.log(`\nAblauf: ${flow.join(' → ')}`);
-    console.log(`${areas.length} Bereiche aus ${scenarioCount} registrierten Szenarien.`);
+    console.log(`\n${groups.length} Gruppen, ${areas.length} Bereiche aus ${scenarioCount} registrierten Szenarien.`);
     return;
   }
 

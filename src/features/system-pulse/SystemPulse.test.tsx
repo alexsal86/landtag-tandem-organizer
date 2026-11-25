@@ -1,5 +1,6 @@
 import { QueryClient, QueryClientProvider } from "@tanstack/react-query";
 import { fireEvent, render, screen, waitFor, within } from "@testing-library/react";
+import { MemoryRouter } from "react-router-dom";
 import { beforeEach, describe, expect, it, vi } from "vitest";
 import { PULSE_AREAS } from "./pulse";
 import { SystemPulse } from "./SystemPulse";
@@ -9,14 +10,15 @@ const rpc = vi.hoisted(() => vi.fn());
 vi.mock("@/integrations/supabase/client", () => ({ supabase: { rpc } }));
 vi.mock("@/hooks/useTenant", () => ({ useTenant: () => ({ currentTenant: { id: "tenant-1" } }) }));
 vi.mock("@/hooks/useAuth", () => ({ useAuth: () => ({ user: { id: "user-1" } }) }));
-vi.mock("react-router-dom", () => ({ useNavigate: () => vi.fn() }));
 
 const renderPulse = () => {
   const client = new QueryClient({ defaultOptions: { queries: { retry: false, gcTime: 0 } } });
   return render(
-    <QueryClientProvider client={client}>
-      <SystemPulse gaps={[]} gapsState="ready" />
-    </QueryClientProvider>,
+    <MemoryRouter>
+      <QueryClientProvider client={client}>
+        <SystemPulse gaps={[]} gapsState="ready" />
+      </QueryClientProvider>
+    </MemoryRouter>,
   );
 };
 
@@ -49,11 +51,17 @@ describe("SystemPulse: selftest_runs", () => {
     rpc.mockResolvedValue({
       data: [
         // Älterer Fehlschlag, neuerer Erfolg: Kontakte muss grün sein.
-        { scenario_id: "contact-lifecycle", status: "failed", created_at: "2026-11-20T10:00:00Z" },
-        { scenario_id: "contact-lifecycle", status: "ok", created_at: "2026-11-25T10:00:00Z" },
+        { scenario_id: "contact-lifecycle", status: "failed", created_at: "2026-11-20T10:00:00Z", steps: [] },
+        {
+          scenario_id: "contact-lifecycle", status: "ok", created_at: "2026-11-25T10:00:00Z",
+          steps: [{ id: "create", label: "Kontakt mit allen Stammdaten anlegen", status: "ok" }],
+        },
+        { scenario_id: "meeting-lifecycle", status: "ok", created_at: "2026-11-24T10:00:00Z", steps: [] },
         // Meeting besteht früher, Jour fixe scheitert später: Bereich muss rot sein.
-        { scenario_id: "meeting-lifecycle", status: "ok", created_at: "2026-11-24T10:00:00Z" },
-        { scenario_id: "jour-fixe-platform-integration", status: "failed", created_at: "2026-11-24T12:00:00Z" },
+        {
+          scenario_id: "jour-fixe-platform-integration", status: "failed", created_at: "2026-11-24T12:00:00Z",
+          steps: [{ id: "agenda-combine", label: "Agenda: Hauptpunkt verschieben", status: "failed", message: "Agenda konnte nicht verschoben werden." }],
+        },
       ],
       error: null,
     });
@@ -66,6 +74,13 @@ describe("SystemPulse: selftest_runs", () => {
     expect(within(tile(/Vorgänge/)).getByText("Noch nie getestet")).toBeInTheDocument();
 
     fireEvent.click(tile(/Kontakte/));
-    expect(await screen.findByText(/contact-lifecycle/)).toHaveTextContent("bestanden");
+    expect(await screen.findByLabelText(/Kontakt mit allen Stammdaten anlegen: bestanden/)).toBeInTheDocument();
+    const catalogLink = screen.getAllByRole("link", { name: /im Funktionskatalog öffnen/ })[0];
+    expect(catalogLink.getAttribute("href")).toContain("/funktionskatalog?feature=");
+
+    fireEvent.click(tile(/Jour fixe/));
+    const failedStep = screen.getByRole("button", { name: /Agenda: Hauptpunkt.*fehlgeschlagen/ });
+    fireEvent.click(failedStep);
+    expect(screen.getByRole("alert")).toHaveTextContent("Agenda konnte nicht verschoben werden.");
   });
 });

@@ -3,14 +3,15 @@ import { readFileSync } from 'node:fs';
 import { dirname, join, resolve } from 'node:path';
 import { test } from 'node:test';
 import { fileURLToPath } from 'node:url';
-import { collectScenarios } from '../build-feature-catalog.mjs';
+import { collectScenarios, loadInventory } from '../build-feature-catalog.mjs';
 import { ARTIFACT_FILE, CONFIG_FILE, buildArtifact, derivePulseAreas, renderArtifact } from '../build-pulse-areas.mjs';
 
 const root = resolve(dirname(fileURLToPath(import.meta.url)), '../..');
-const scenario = (id, features, registered = true, touches = []) => ({ id, features, registered, touches });
+const defaultSteps = [{ id: 'step', label: 'Schritt' }];
+const scenario = (id, features, registered = true, touches = [], steps = defaultSteps) => ({ id, features, registered, touches, steps });
 
 const twoAreas = {
-  flow: ['a', 'b'],
+  groups: [{ id: 'g', title: 'Gruppe', areas: ['a', 'b'] }],
   areas: [
     { id: 'a', title: 'A', primaryTags: ['ta'] },
     { id: 'b', title: 'B', primaryTags: ['tb'] },
@@ -29,7 +30,7 @@ test('leitet Szenarien über den ersten Domänen-Tag ab', () => {
 
 test('fest zugeordnete Szenarien haben Vorrang vor ihrem Tag', () => {
   const config = {
-    flow: ['a', 'c'],
+    groups: [{ id: 'g', title: 'G', areas: ['a', 'c'] }],
     areas: [
       { id: 'a', title: 'A', primaryTags: ['ta'] },
       { id: 'c', title: 'C', primaryTags: ['tc'], scenarioIds: ['s-pin'] },
@@ -44,6 +45,32 @@ test('fest zugeordnete Szenarien haben Vorrang vor ihrem Tag', () => {
   assert.deepEqual(areas[1].scenarios, ['s-c', 's-pin']);
 });
 
+test('übernimmt deklarierte Schritte und Katalog-Funktionen in den Workflow', () => {
+  const { areas, errors } = derivePulseAreas({
+    config: twoAreas,
+    scenarios: [
+      scenario('s-a', ['ta'], true, ['contacts'], [
+        { id: 'create', label: 'Anlegen' },
+        { id: 'check', label: 'Prüfen' },
+      ]),
+      scenario('s-b', ['tb'], true, ['tasks'], [{ id: 'finish', label: 'Abschluss' }]),
+    ],
+    features: [
+      { id: 'contacts.create', scenarios: ['s-a'] },
+      { id: 'tasks.close', scenarios: ['s-a', 's-b'] },
+    ],
+  });
+  assert.deepEqual(errors, []);
+  const workflow = areas[0].workflows[0];
+  assert.equal(workflow.scenario, 's-a');
+  assert.deepEqual(workflow.features, ['contacts.create', 'tasks.close']);
+  assert.deepEqual(workflow.steps.map((step) => step.id), ['create', 'check']);
+  assert.deepEqual(workflow.steps, [
+    { id: 'create', label: 'Anlegen' },
+    { id: 'check', label: 'Prüfen' },
+  ]);
+});
+
 test('Haupttabellen stammen aus dem ersten touches-Eintrag der Szenarien', () => {
   const { areas, errors } = derivePulseAreas({
     config: twoAreas,
@@ -55,19 +82,19 @@ test('Haupttabellen stammen aus dem ersten touches-Eintrag der Szenarien', () =>
 });
 
 test('unbekannte Szenario-ID schlägt fehl', () => {
-  const config = { flow: ['a', 'b'], areas: [{ id: 'a', title: 'A', primaryTags: ['ta'], scenarioIds: ['gibt-es-nicht'] }, { id: 'b', title: 'B', primaryTags: ['tb'] }] };
+  const config = { groups: [{ id: 'g', title: 'G', areas: ['a', 'b'] }], areas: [{ id: 'a', title: 'A', primaryTags: ['ta'], scenarioIds: ['gibt-es-nicht'] }, { id: 'b', title: 'B', primaryTags: ['tb'] }] };
   const { errors } = derivePulseAreas({ config, scenarios: [scenario('s-a', ['ta']), scenario('s-b', ['tb'])] });
   assert.ok(errors.some((error) => error.includes('gibt-es-nicht')), errors.join('\n'));
 });
 
 test('nicht registriertes Szenario schlägt fehl', () => {
-  const config = { flow: ['a', 'b'], areas: [{ id: 'a', title: 'A', primaryTags: ['ta'], scenarioIds: ['s-a'] }, { id: 'b', title: 'B', primaryTags: ['tb'] }] };
+  const config = { groups: [{ id: 'g', title: 'G', areas: ['a', 'b'] }], areas: [{ id: 'a', title: 'A', primaryTags: ['ta'], scenarioIds: ['s-a'] }, { id: 'b', title: 'B', primaryTags: ['tb'] }] };
   const { errors } = derivePulseAreas({ config, scenarios: [scenario('s-a', ['ta'], false), scenario('s-b', ['tb'])] });
   assert.ok(errors.some((error) => error.includes('nicht registriertes Szenario "s-a"')), errors.join('\n'));
 });
 
 test('Tag ohne registriertes Szenario schlägt fehl', () => {
-  const config = { flow: ['a'], areas: [{ id: 'a', title: 'A', primaryTags: ['ta', 'leer'] }] };
+  const config = { groups: [{ id: 'g', title: 'G', areas: ['a'] }], areas: [{ id: 'a', title: 'A', primaryTags: ['ta', 'leer'] }] };
   const { errors } = derivePulseAreas({ config, scenarios: [scenario('s-a', ['ta'])] });
   assert.ok(errors.some((error) => error.includes('Tag "leer"')), errors.join('\n'));
 });
@@ -77,16 +104,23 @@ test('ein Bereich ohne Szenario schlägt fehl', () => {
   assert.ok(errors.some((error) => error.includes('Bereich "b" hat kein Szenario')), errors.join('\n'));
 });
 
-test('unbekannter oder doppelter flow-Eintrag schlägt fehl', () => {
-  const config = { flow: ['a', 'woanders', 'a'], areas: [{ id: 'a', title: 'A', primaryTags: ['ta'] }] };
-  const { errors } = derivePulseAreas({ config, scenarios: [scenario('s-a', ['ta'])] });
+test('Gruppen müssen jeden Bereich genau einmal nennen', () => {
+  const config = {
+    groups: [
+      { id: 'g1', title: 'G1', areas: ['a', 'woanders'] },
+      { id: 'g2', title: 'G2', areas: ['a'] },
+    ],
+    areas: [{ id: 'a', title: 'A', primaryTags: ['ta'] }, { id: 'b', title: 'B', primaryTags: ['tb'] }],
+  };
+  const { errors } = derivePulseAreas({ config, scenarios: [scenario('s-a', ['ta']), scenario('s-b', ['tb'])] });
   assert.ok(errors.some((error) => error.includes('unbekannten Bereich "woanders"')));
-  assert.ok(errors.some((error) => error.includes('steht doppelt in flow')));
+  assert.ok(errors.some((error) => error.includes('mehrfach gruppiert')));
+  assert.ok(errors.some((error) => error.includes('Bereich "b" ist keiner Gruppe zugeordnet')));
 });
 
 test('ein Tag darf nur einem Bereich gehören', () => {
   const config = {
-    flow: ['a', 'b'],
+    groups: [{ id: 'g', title: 'G', areas: ['a', 'b'] }],
     areas: [
       { id: 'a', title: 'A', primaryTags: ['ta'] },
       { id: 'b', title: 'B', primaryTags: ['ta'] },
@@ -99,21 +133,29 @@ test('ein Tag darf nur einem Bereich gehören', () => {
 const realAreas = () => {
   const config = JSON.parse(readFileSync(join(root, CONFIG_FILE), 'utf8'));
   const scenarios = collectScenarios(root);
-  return derivePulseAreas({ config, scenarios });
+  const inventory = loadInventory(root);
+  return derivePulseAreas({ config, scenarios, features: inventory.features });
 };
 
 test('Artefakt entspricht der Szenario-Registry', () => {
-  const { areas, flow, errors } = realAreas();
+  const { areas, groups, errors } = realAreas();
   assert.deepEqual(errors, []);
-  assert.equal(readFileSync(join(root, ARTIFACT_FILE), 'utf8'), renderArtifact(buildArtifact(areas, flow)));
+  assert.equal(readFileSync(join(root, ARTIFACT_FILE), 'utf8'), renderArtifact(buildArtifact(areas, groups)));
 });
 
-test('Jour fixe enthält das registrierte Plattform-Szenario', () => {
+test('Jour fixe enthält das registrierte Plattform-Szenario mit Schritten', () => {
   const areas = realAreas().areas;
-  const scenarios = collectScenarios(root);
   const meetings = areas.find((area) => area.id === 'meetings');
   assert.ok(meetings.scenarios.includes('jour-fixe-platform-integration'));
-  assert.ok(scenarios.some((s) => s.id === 'jour-fixe-platform-integration' && s.registered));
+  const workflow = meetings.workflows.find((entry) => entry.scenario === 'jour-fixe-platform-integration');
+  assert.ok(workflow.steps.length > 0);
+  assert.ok(workflow.steps.every((step) => step.label.length > 0));
+});
+
+test('Kontakte verlinken auf ihre Katalogfunktionen', () => {
+  const workflow = realAreas().areas.find((area) => area.id === 'contacts').workflows[0];
+  assert.ok(workflow.features.includes('contacts.create'));
+  assert.deepEqual(Object.keys(workflow.steps[0]).sort(), ['id', 'label']);
 });
 
 test('Zugriffsschutz enthält ausschließlich geprüfte Szenarien', () => {
@@ -137,7 +179,10 @@ test('kein Szenario liegt in zwei Bereichen', () => {
   assert.equal(seen.size, areas.reduce((sum, area) => sum + area.scenarios.length, 0));
 });
 
-test('Ablauf führt die sechs Fachbereiche in der geforderten Reihenfolge', () => {
-  const { flow } = realAreas();
-  assert.deepEqual(flow, ['contacts', 'appointments', 'cases', 'tasks', 'decisions', 'meetings']);
+test('Gruppen entsprechen den fachlichen Hauptbereichen und dem Wächter', () => {
+  const { groups } = realAreas();
+  assert.deepEqual(groups.map((group) => group.id), ['operations', 'representation', 'guard']);
+  assert.deepEqual(groups[0].areas, ['contacts', 'cases', 'tasks', 'decisions', 'meetings']);
+  assert.deepEqual(groups[1].areas, ['appointments']);
+  assert.deepEqual(groups[2].areas, ['security']);
 });

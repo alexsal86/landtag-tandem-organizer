@@ -1,14 +1,33 @@
 {
-  "version": 2,
+  "version": 4,
   "generatedBy": "scripts/build-pulse-areas.mjs",
   "source": "src/features/selftest/registry.ts",
-  "flow": [
-    "contacts",
-    "appointments",
-    "cases",
-    "tasks",
-    "decisions",
-    "meetings"
+  "groups": [
+    {
+      "id": "operations",
+      "title": "Vorgangs- & Mandatsbetrieb",
+      "areas": [
+        "contacts",
+        "cases",
+        "tasks",
+        "decisions",
+        "meetings"
+      ]
+    },
+    {
+      "id": "representation",
+      "title": "Termine & Repräsentanz",
+      "areas": [
+        "appointments"
+      ]
+    },
+    {
+      "id": "guard",
+      "title": "Wächter: Zugriffsschutz (RLS)",
+      "areas": [
+        "security"
+      ]
+    }
   ],
   "areas": [
     {
@@ -23,6 +42,47 @@
       ],
       "tables": [
         "contacts"
+      ],
+      "workflows": [
+        {
+          "scenario": "contact-lifecycle",
+          "title": "Kontakt-Lifecycle (Anlegen → Kategorie/Tags → Aktivität → Suche)",
+          "features": [
+            "contacts.create",
+            "contacts.edit",
+            "contacts.merge"
+          ],
+          "steps": [
+            {
+              "id": "create",
+              "label": "Kontakt mit allen Stammdaten anlegen"
+            },
+            {
+              "id": "categorize",
+              "label": "Kategorie + Schlagworte ändern"
+            },
+            {
+              "id": "activity",
+              "label": "Aktivität protokollieren"
+            },
+            {
+              "id": "import-duplicate-resolution",
+              "label": "Import-Duplikate werden zusammengeführt oder überschrieben statt neu angelegt"
+            },
+            {
+              "id": "merge-contact-guardrails",
+              "label": "Zusammenführen verlangt gültige Kontakte und unveränderliche Identitätsfelder"
+            },
+            {
+              "id": "merge-contact-atomic",
+              "label": "Zusammenführen ist atomar: Verknüpfungen wandern, Kollisionen behalten ihre Daten"
+            },
+            {
+              "id": "search",
+              "label": "Kontakt über Namenssuche auffindbar"
+            }
+          ]
+        }
       ]
     },
     {
@@ -46,6 +106,245 @@
         "appointment_requests",
         "appointments",
         "daily_briefings"
+      ],
+      "workflows": [
+        {
+          "scenario": "appointment-briefing-lifecycle",
+          "title": "Briefing-Lifecycle (vergeben → Aufgabe → vorlegen → freigeben)",
+          "features": [
+            "appointments.briefing",
+            "appointments.briefing-live"
+          ],
+          "steps": [
+            {
+              "id": "personal-sent-changes",
+              "label": "Gemeldete Änderungen nur heute und persönlich ausblendbar"
+            },
+            {
+              "id": "day-appointment-progress",
+              "label": "Dein Tag: vergangen, laufend und als nächstes"
+            },
+            {
+              "id": "appointment-change-rules",
+              "label": "Terminänderung: Schnellwahl, eigene Zeit, Ort und Hinweis-Chip"
+            },
+            {
+              "id": "dashboard-briefing-status",
+              "label": "Dashboard-Briefing: Auftrag, Entscheidung und Freigabe"
+            },
+            {
+              "id": "appointment-dashboard-focus",
+              "label": "Termin-Fokus: Größe, Abfahrt und laufender Termin"
+            },
+            {
+              "id": "office-debrief-inbox",
+              "label": "Nachbereitung: Zusagen priorisieren und Quelle anzeigen"
+            },
+            {
+              "id": "office-feedback",
+              "label": "Bürorückmeldung: Abschluss, Erinnerung und ältere Termine"
+            },
+            {
+              "id": "day-summary",
+              "label": "Tagesüberblick: leere Tage, laufende Termine, Briefings und offene Rückmeldungen"
+            },
+            {
+              "id": "reminder",
+              "label": "Briefing-Hinweis: Zuständigkeit, Vorlauf und Montag"
+            },
+            {
+              "id": "rules",
+              "label": "Regeln: nur Entscheider geben frei; Frist am Vortag 12:00"
+            },
+            {
+              "id": "model",
+              "label": "Regeln: Kurz/Dossier-Umrechnung, Live nur am Termintag, Folgeaufgabe, Abschluss"
+            },
+            {
+              "id": "create",
+              "label": "Termin anlegen (Briefing offen)"
+            },
+            {
+              "id": "change-alert",
+              "label": "Eil-Änderung mit neuer Zeit und Hinweis speichern"
+            },
+            {
+              "id": "assign",
+              "label": "Briefing vergeben → Aufgabe entsteht"
+            },
+            {
+              "id": "submit",
+              "label": "Vorlegen → Ball bei Abgeordnete/r"
+            },
+            {
+              "id": "approve",
+              "label": "Freigeben → Aufgabe erledigt"
+            },
+            {
+              "id": "none",
+              "label": "„Kein Briefing“ setzt Status und löst Aufgabe"
+            },
+            {
+              "id": "accept-with-briefing",
+              "label": "Zusage im Jour Fixe vergibt Briefing in einem Schritt"
+            }
+          ]
+        },
+        {
+          "scenario": "appointment-lifecycle",
+          "title": "Termin-Lifecycle (Kalender + Briefing + Feedback)",
+          "features": [
+            "calendar.create-appointment",
+            "calendar.view"
+          ],
+          "steps": [
+            {
+              "id": "birthday-congratulations-options",
+              "label": "Dashboard und Jour fixe teilen die Glückwunsch-Optionen"
+            },
+            {
+              "id": "dashboard-occasions",
+              "label": "Geburtstage und ganztägige Termine getrennt darstellen"
+            },
+            {
+              "id": "invitation-uid-sequence",
+              "label": "Einladungen: stabile UID und fortlaufende SEQUENCE"
+            },
+            {
+              "id": "invitation-guest-identity",
+              "label": "Einladungen: Gäste per E-Mail angleichen, RSVP und Antwortlink erhalten"
+            },
+            {
+              "id": "poll-slot-suggestions",
+              "label": "Terminabstimmung: Slots aus Frei/Gebucht samt Puffer"
+            },
+            {
+              "id": "poll-answer-followup",
+              "label": "Terminabstimmung: automatisches Nachfassen ohne Antwort"
+            },
+            {
+              "id": "poll-followup-queue",
+              "label": "Terminabstimmung: Versandwarteschlange mit Wiederholungen"
+            },
+            {
+              "id": "appointment-reminder-due",
+              "label": "Termin-Erinnerung: Vorlauf, Fälligkeit und ein Versand je Termin"
+            },
+            {
+              "id": "appointment-reminder-reset-on-move",
+              "label": "Terminverschiebung macht die Erinnerung wieder scharf"
+            },
+            {
+              "id": "create-appointment",
+              "label": "Termin anlegen (heute, 2h Block)"
+            },
+            {
+              "id": "create-preparation",
+              "label": "Briefing/Vorbereitung mit allen Strukturfeldern"
+            },
+            {
+              "id": "create-feedback",
+              "label": "Feedback (abgeschlossen, mit Notizen)"
+            },
+            {
+              "id": "feedback-unique",
+              "label": "Zweite Rückmeldung zum selben Termin wird abgewiesen"
+            }
+          ]
+        },
+        {
+          "scenario": "appointment-request-lifecycle",
+          "title": "Terminanfragen-Lifecycle (Eingang → Sperre → Entscheidung → Termin)",
+          "features": [
+            "appointments.requests"
+          ],
+          "steps": [
+            {
+              "id": "create",
+              "label": "Anfrage anlegen"
+            },
+            {
+              "id": "guard",
+              "label": "Direkte Statusänderung wird blockiert"
+            },
+            {
+              "id": "decide",
+              "label": "Über Freigabe-Funktion zusagen → Termin entsteht"
+            },
+            {
+              "id": "repeat-decision",
+              "label": "Erneute Zusage wird abgewiesen; kein doppelter Termin"
+            }
+          ]
+        },
+        {
+          "scenario": "daily-briefing-lifecycle",
+          "title": "Tages-Briefings (Vortag-Regel)",
+          "features": [
+            "daily.briefing"
+          ],
+          "steps": [
+            {
+              "id": "relative-read-day",
+              "label": "Lesebestätigung unterscheidet heute und gestern in Berlin"
+            },
+            {
+              "id": "read-ahead",
+              "label": "Vorliegende Tagesbriefings vorab lesen"
+            },
+            {
+              "id": "collapse-read-briefing",
+              "label": "Nur gelesene Tagesbriefings einklappen"
+            },
+            {
+              "id": "read-receipt-time",
+              "label": "Lesezeitpunkt als Berliner Uhrzeit anzeigen"
+            },
+            {
+              "id": "date-chips",
+              "label": "Morgen und übermorgen sind Berliner Kalendertage"
+            },
+            {
+              "id": "reject-today",
+              "label": "Vortag-Regel: Briefing für heute wird abgelehnt"
+            },
+            {
+              "id": "create-yesterday",
+              "label": "Briefing für morgen anlegen"
+            },
+            {
+              "id": "create-today",
+              "label": "Briefing für übermorgen anlegen"
+            },
+            {
+              "id": "verify-list",
+              "label": "Beide Briefings für Tenant lesbar"
+            }
+          ]
+        },
+        {
+          "scenario": "poll-lifecycle",
+          "title": "Terminabstimmung (Gewinner-Slot übernehmen + Nachfassen)",
+          "features": [
+            "calendar.polls",
+            "polls.manage",
+            "polls.respond"
+          ],
+          "steps": [
+            {
+              "id": "create-poll",
+              "label": "Abstimmung mit Slots und Teilnehmern anlegen"
+            },
+            {
+              "id": "confirm-winner",
+              "label": "Gewinner-Slot übernehmen (idempotent, genau ein Termin)"
+            },
+            {
+              "id": "confirm-winner-guards",
+              "label": "Ersteller-, Slot- und Mandantenprüfung"
+            }
+          ]
+        }
       ]
     },
     {
@@ -60,6 +359,83 @@
       ],
       "tables": [
         "case_items"
+      ],
+      "workflows": [
+        {
+          "scenario": "case-item-lifecycle",
+          "title": "Vorgangs-Lifecycle (Am Zug → Schritt → Wiedervorlage → Entscheidung → Tageszettel → Abschluss)",
+          "features": [
+            "cases.close-archive",
+            "cases.create",
+            "cases.handover"
+          ],
+          "steps": [
+            {
+              "id": "rules",
+              "label": "Regeln prüfen: Schritt, Wiedervorlage, Fristen (ohne Datenbank)"
+            },
+            {
+              "id": "create",
+              "label": "Vorgang anlegen + Standardwerte (Büro am Zug, kein Schritt)"
+            },
+            {
+              "id": "interactions",
+              "label": "Interaktionen erfassen (Anruf, Mail, Treffen)"
+            },
+            {
+              "id": "draft-no-resubmission",
+              "label": "Am Zug nur vorbereiten → keine Wiedervorlage"
+            },
+            {
+              "id": "set-step",
+              "label": "Schritt festlegen mit Frist → Wiedervorlage + Verlauf"
+            },
+            {
+              "id": "office-task",
+              "label": "Büroschritt erzeugt genau eine verknüpfte Aufgabe"
+            },
+            {
+              "id": "reverse-task",
+              "label": "Aufgabe erledigen schließt den zugehörigen Vorgangsschritt"
+            },
+            {
+              "id": "ministry",
+              "label": "Am Zug: Ministerium (21-Tage-Frist + Verlauf)"
+            },
+            {
+              "id": "handover",
+              "label": "Übergabe an zweite Person über Freigabe-Funktion"
+            },
+            {
+              "id": "decision",
+              "label": "Entscheidung anfordern + abstimmen"
+            },
+            {
+              "id": "dayslip",
+              "label": "Auf Tageszettel → Link übersteht erneutes Laden"
+            },
+            {
+              "id": "jour-fixe",
+              "label": "Auf Jour fixe setzen"
+            },
+            {
+              "id": "onsite",
+              "label": "Ortstermin anfragen (Eingang per: Vorgang)"
+            },
+            {
+              "id": "step-done",
+              "label": "Schritt erledigt → Schritt leer, „Schritt festlegen“ erscheint wieder"
+            },
+            {
+              "id": "complete",
+              "label": "Vorgang abschließen"
+            },
+            {
+              "id": "tenant-boundary",
+              "label": "Vorgang lässt sich keinem fremden Büro zuordnen"
+            }
+          ]
+        }
       ]
     },
     {
@@ -80,6 +456,203 @@
         "annual_tasks",
         "quick_notes",
         "tasks"
+      ],
+      "workflows": [
+        {
+          "scenario": "annual-task-stafette",
+          "title": "Jahresaufgabe → Büroaufgabe → Jahresabschluss",
+          "features": [
+            "automation.annual-routines",
+            "tasks.annual"
+          ],
+          "steps": [
+            {
+              "id": "seasonal-office-backend",
+              "label": "Büropakete: Backend und Abschluss im Folgejahr"
+            },
+            {
+              "id": "seasonal-office-packages",
+              "label": "Bürojahr: fünf Pakete, Vorlauf, Jahreswechsel und Terminbestätigung"
+            },
+            {
+              "id": "annual-overview",
+              "label": "Jahresübersicht: Statusfilter und Berliner Tagesgrenze"
+            },
+            {
+              "id": "unified-routine",
+              "label": "Jahresroutine im gemeinsamen Regel-Assistenten prüfen"
+            },
+            {
+              "id": "rules",
+              "label": "Stichtage und System-Routinen prüfen"
+            },
+            {
+              "id": "create",
+              "label": "Organisatorische Jahresaufgabe anlegen"
+            },
+            {
+              "id": "delegate",
+              "label": "Übergeben: Stafette, Frist und Quelle lesen"
+            },
+            {
+              "id": "duplicate",
+              "label": "Erneute Übergabe liefert dieselbe Aufgabe"
+            },
+            {
+              "id": "guard",
+              "label": "Jahresabschluss außerhalb der Büroaufgabe blockiert"
+            }
+          ]
+        },
+        {
+          "scenario": "quick-note-lifecycle",
+          "title": "Notizen-Lifecycle (Anlegen → Priorität → Anheften → Aufgabe → Archiv)",
+          "features": [
+            "quicknotes.manage"
+          ],
+          "steps": [
+            {
+              "id": "dictation-commands",
+              "label": "Notizen: Diktatbefehle und Rechtszitate erkennen"
+            },
+            {
+              "id": "create",
+              "label": "Notiz mit Priorität, Farbe und Schlagworten anlegen"
+            },
+            {
+              "id": "pin",
+              "label": "Anheften + Priorität erhöhen"
+            },
+            {
+              "id": "to-task",
+              "label": "Aus Notiz eine Aufgabe machen (verknüpft)"
+            },
+            {
+              "id": "decision-links",
+              "label": "Entscheidung atomar verknüpfen und Folgeaufgabe mit Herkunft erzeugen"
+            },
+            {
+              "id": "archive",
+              "label": "Archivieren"
+            }
+          ]
+        },
+        {
+          "scenario": "task-lifecycle",
+          "title": "Aufgaben-Lifecycle (Zuweisung → Frist → Entscheidung → Jour fixe → erledigt)",
+          "features": [
+            "mywork.dashboard",
+            "tasks.assign",
+            "tasks.complete",
+            "tasks.create",
+            "tasks.edit"
+          ],
+          "steps": [
+            {
+              "id": "create",
+              "label": "Aufgabe anlegen"
+            },
+            {
+              "id": "assign",
+              "label": "Aufgabe zuweisen + Frist setzen"
+            },
+            {
+              "id": "decision",
+              "label": "Entscheidung aus Aufgabe erstellen"
+            },
+            {
+              "id": "jour-fixe",
+              "label": "Für Jour fixe markieren"
+            },
+            {
+              "id": "complete",
+              "label": "Status → completed"
+            },
+            {
+              "id": "tenant-boundary",
+              "label": "Aufgabe lässt sich keinem fremden Büro zuordnen"
+            }
+          ]
+        },
+        {
+          "scenario": "task-stafette-lifecycle",
+          "title": "Aufgaben-Stafette (Am Zug, Wiedervorlage, Freigabe)",
+          "features": [
+            "tasks.assign",
+            "tasks.complete",
+            "tasks.handover-stafette"
+          ],
+          "steps": [
+            {
+              "id": "nudge",
+              "label": "Anstupsen: Empfänger sieht Aufgabe oben, 24h-Limit"
+            },
+            {
+              "id": "checklist-batch",
+              "label": "Checkpunkt im Verlauf, Frist +1 Woche"
+            },
+            {
+              "id": "reminder",
+              "label": "Fällige Erinnerung holt wartende Aufgabe in Mein Zug"
+            },
+            {
+              "id": "set-step",
+              "label": "Frist bleibt sichtbar; eine ausdrückliche Wiedervorlage verschiebt die Anzeige"
+            },
+            {
+              "id": "handover",
+              "label": "Zur Freigabe vorlegen → Wartet auf andere + Verlauf"
+            },
+            {
+              "id": "return",
+              "label": "Rückgabe ans Büro → wieder Mein Zug"
+            },
+            {
+              "id": "complete",
+              "label": "Abschluss: verschwindet aus allen Zonen + Verlauf"
+            },
+            {
+              "id": "recurrence",
+              "label": "Wiederholung: nächste Frist korrekt berechnet"
+            },
+            {
+              "id": "template-validation",
+              "label": "Aufgabenpakete: Fristen und Unteraufgaben verbindlich"
+            },
+            {
+              "id": "template-automation-rule",
+              "label": "Aufgabenpaket ist eine manuelle Automatisierungsregel"
+            },
+            {
+              "id": "template-subtasks",
+              "label": "Vorlage legt Hauptaufgabe mit verknüpften Unteraufgaben an"
+            },
+            {
+              "id": "week-review",
+              "label": "Wochenreview findet fehlende Schritte, namenlose Bälle, Stille und Duplikate"
+            },
+            {
+              "id": "task-command",
+              "label": "Einzeiler-Befehle und SLA-Stufen"
+            },
+            {
+              "id": "batch-create",
+              "label": "Sammelaktion: Aufgabe ohne Frist wird übersprungen"
+            },
+            {
+              "id": "batch-keeps-step",
+              "label": "Sammelaktion: Freigabe behält den vorhandenen nächsten Schritt"
+            },
+            {
+              "id": "batch-undo",
+              "label": "Sammelaktion: Frist +1 Woche samt Rücknahme"
+            },
+            {
+              "id": "nudge-boundary",
+              "label": "Anstupsen erreicht keine Aufgabe außerhalb des eigenen Büros"
+            }
+          ]
+        }
       ]
     },
     {
@@ -94,6 +667,61 @@
       ],
       "tables": [
         "task_decisions"
+      ],
+      "workflows": [
+        {
+          "scenario": "decision-lifecycle",
+          "title": "Entscheidungs-Lifecycle (active → open → archived)",
+          "features": [
+            "decisions.create",
+            "decisions.participants",
+            "decisions.vote",
+            "mywork.dashboard",
+            "tasks.link-decision"
+          ],
+          "steps": [
+            {
+              "id": "dashboard-nudges",
+              "label": "Anstupsen: zehn Sekunden und 24-Stunden-Sperre"
+            },
+            {
+              "id": "dashboard-voting",
+              "label": "Dashboard: nur eigene ausstehende Abstimmungen, keine eigenen Anfragen"
+            },
+            {
+              "id": "create",
+              "label": "Entscheidung anlegen (active)"
+            },
+            {
+              "id": "add-participant",
+              "label": "Teilnehmer (sich selbst) hinzufügen"
+            },
+            {
+              "id": "withdraw-responses",
+              "label": "Ja, Nein und Rückfrage speichern und nachweisbar zurücknehmen"
+            },
+            {
+              "id": "check-options",
+              "label": "Default-Antwortoptionen prüfen"
+            },
+            {
+              "id": "set-open",
+              "label": "Status auf 'open'"
+            },
+            {
+              "id": "archive",
+              "label": "Archivieren"
+            },
+            {
+              "id": "verify",
+              "label": "Verifikation"
+            },
+            {
+              "id": "nudge-boundary",
+              "label": "Fremde oder unbekannte Entscheidung lässt sich nicht anstupsen"
+            }
+          ]
+        }
       ]
     },
     {
@@ -109,6 +737,154 @@
       ],
       "tables": [
         "meetings"
+      ],
+      "workflows": [
+        {
+          "scenario": "jour-fixe-platform-integration",
+          "title": "Jour Fixe: Plattformquellen & Stafetten-Abschluss",
+          "features": [
+            "appointments.jour-fixe"
+          ],
+          "steps": [
+            {
+              "id": "agenda-combine",
+              "label": "Agenda: Hauptpunkt mit Unterpunkten unter anderen Hauptpunkt verschieben"
+            },
+            {
+              "id": "agenda-timing",
+              "label": "Agenda: nur Hauptpunkte zählen, Altbestand ohne erfundene Endzeit"
+            },
+            {
+              "id": "radar-rules",
+              "label": "Radar: mehrfache Anstupser, 7-Tage-Grenze und abgeschlossene Aufgaben"
+            },
+            {
+              "id": "horizon-rules",
+              "label": "Zeitfenster: Redaktion 10, Briefings/Abwesenheiten 14 und Veranstaltungen 60 Tage"
+            },
+            {
+              "id": "zombie-points",
+              "label": "Agenda: Zombie-Punkte ab der dritten Verschiebung"
+            },
+            {
+              "id": "actual-times",
+              "label": "Agenda: Ist-Zeiten, Rundung und Abweichung"
+            },
+            {
+              "id": "meeting-decision-note",
+              "label": "Beschluss: Entscheidungsblock verliert keine bestehende Notiz"
+            },
+            {
+              "id": "create",
+              "label": "Sitzung, Hauptpunkt, alle Systemtypen und zwei gleichnamige Entscheidungen"
+            },
+            {
+              "id": "archive",
+              "label": "Gemeinsamen Sitzungsabschluss ausführen und Stafetten-Aufgabe zurücklesen"
+            },
+            {
+              "id": "retry",
+              "label": "Erneuter Abschluss erzeugt keine zweite Folgeaufgabe"
+            }
+          ]
+        },
+        {
+          "scenario": "meeting-lifecycle",
+          "title": "Meeting-Lifecycle (vollständig + Field-Verifikation)",
+          "features": [
+            "meetings.agenda",
+            "meetings.archive",
+            "meetings.decisions",
+            "meetings.jour-fixe",
+            "meetings.protocol"
+          ],
+          "steps": [
+            {
+              "id": "create-meeting",
+              "label": "Meeting anlegen"
+            },
+            {
+              "id": "create-appointment",
+              "label": "Verknüpften Kalender-Termin erzeugen"
+            },
+            {
+              "id": "add-participant",
+              "label": "Teilnehmer (sich selbst) hinzufügen"
+            },
+            {
+              "id": "add-regular-agenda",
+              "label": "Reguläre Agenda-Punkte (3) anlegen"
+            },
+            {
+              "id": "add-system-agenda",
+              "label": "System-Agenda-Punkte (Geburtstage, Termine, Notes, Aufgaben, Vorgänge, Entscheidungen)"
+            },
+            {
+              "id": "add-sub-agenda",
+              "label": "Sub-Agenda-Punkt mit parent_id anlegen"
+            },
+            {
+              "id": "add-agenda-document",
+              "label": "Agenda-Dokument anhängen"
+            },
+            {
+              "id": "create-task-link",
+              "label": "Aufgabe erzeugen und mit Sub-Agenda verknüpfen"
+            },
+            {
+              "id": "complete-agenda-item",
+              "label": "Agenda-Punkt abschließen (notes + result)"
+            },
+            {
+              "id": "mark-carryover",
+              "label": "Carry-Over markieren"
+            },
+            {
+              "id": "create-followup-meeting",
+              "label": "Folge-Meeting (rekursiv) mit Carry-Over anlegen"
+            },
+            {
+              "id": "verify-links",
+              "label": "Verknüpfungen vollständig prüfen"
+            },
+            {
+              "id": "complete-task",
+              "label": "Aufgabe abschließen"
+            },
+            {
+              "id": "archive-meetings",
+              "label": "Meetings archivieren"
+            },
+            {
+              "id": "protocol-record",
+              "label": "Anwesenheit, Protokollführung und Nachtrag dokumentieren"
+            },
+            {
+              "id": "agenda-template-icon",
+              "label": "Symbole aus der Meeting-Vorlage übernehmen"
+            },
+            {
+              "id": "jour-fixe-reservations",
+              "label": "Vormerkungen ausschließlich im übernommenen Jour fixe kennzeichnen"
+            },
+            {
+              "id": "system-agenda-subpoints",
+              "label": "System-Unterpunkte nummerieren und Reihenfolge erhalten"
+            },
+            {
+              "id": "live-agenda-position",
+              "label": "Position der laufenden Tagesordnung bestimmen"
+            },
+            {
+              "id": "agenda-drop-level",
+              "label": "Agenda-Punkte per Ziehen hoch- und herunterstufen"
+            },
+            {
+              "id": "protocol-task-status",
+              "label": "Aufgabenstatus und Rückblickquote berechnen"
+            }
+          ]
+        }
       ]
     },
     {
@@ -126,6 +902,98 @@
       ],
       "tables": [
         "appointment_requests"
+      ],
+      "workflows": [
+        {
+          "scenario": "access-boundaries",
+          "title": "Zugriffsschutz (Bürogrenzen und Entscheiderrolle)",
+          "features": [
+            "admin.access-boundaries",
+            "admin.action-permissions",
+            "knowledge.permissions"
+          ],
+          "steps": [
+            {
+              "id": "edge-tenant-role-boundary",
+              "label": "Erhöhte Rechte gelten nur im ausgewählten Büro"
+            },
+            {
+              "id": "active-tenant-query-guard",
+              "label": "Fachdatenabfragen bleiben im aktiven Büro"
+            },
+            {
+              "id": "admin-sort-guard",
+              "label": "Konfigurationssortierung: Rollenprüfung und Tabellen-Whitelist"
+            },
+            {
+              "id": "calendar-schedule",
+              "label": "Kalenderplan: Minuten, Sommerzeit und Wiederholungsstunde"
+            },
+            {
+              "id": "office-default-template",
+              "label": "Meeting-Standardvorlage ist pro Büro eindeutig"
+            },
+            {
+              "id": "admin-role-guard",
+              "label": "Globale Rollenänderung: Plattformrecht und gültige Rolle erforderlich"
+            },
+            {
+              "id": "foreign-tenant",
+              "label": "Schreiben mit nicht zugehöriger Büro-ID wird verweigert"
+            },
+            {
+              "id": "create-request",
+              "label": "Eigene Testanfrage für Rollenprüfung anlegen"
+            },
+            {
+              "id": "role-decision",
+              "label": "Entscheidungsfunktion respektiert die aktuelle Rolle"
+            }
+          ]
+        },
+        {
+          "scenario": "admin-controls",
+          "title": "Adminregeln: Feldschutz, Aktionen, Export, Rücknahme und Feeds",
+          "features": [
+            "admin.field-permissions",
+            "admin.roles",
+            "automation.rss"
+          ],
+          "steps": [
+            {
+              "id": "feed-rules",
+              "label": "Feedtest sperrt lokale Ziele, Zugangsdaten und Sonderports"
+            },
+            {
+              "id": "full-export",
+              "label": "Gesamtexport paginiert und schützt vor Formelauswertung"
+            },
+            {
+              "id": "module-routes",
+              "label": "Direktlinks der Module sind dem jeweiligen Schalter zugeordnet"
+            },
+            {
+              "id": "module-tabs",
+              "label": "Redaktions-Reiter hängt am Modulschalter"
+            },
+            {
+              "id": "redaktion-meldungen",
+              "label": "Redaktionsmeldungen sind je Mandant angelegt"
+            },
+            {
+              "id": "field-modes",
+              "label": "Leseregeln liefern erlauben, Feld ausblenden oder Datensatz sperren"
+            },
+            {
+              "id": "foreign-action",
+              "label": "Aktionsprüfung kann nicht für eine fremde Identität aufgerufen werden"
+            },
+            {
+              "id": "invalid-bulk",
+              "label": "Leere Sammelaktion und unbekannte Rücknahme verändern keine Kontakte"
+            }
+          ]
+        }
       ]
     }
   ]

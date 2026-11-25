@@ -1,5 +1,21 @@
 {
-  "flow": ["contacts", "appointments", "cases", "tasks", "decisions", "meetings"],
+  "groups": [
+    {
+      "id": "operations",
+      "title": "Vorgangs- & Mandatsbetrieb",
+      "areas": ["contacts", "cases", "tasks", "decisions", "meetings"]
+    },
+    {
+      "id": "representation",
+      "title": "Termine & Repräsentanz",
+      "areas": ["appointments"]
+    },
+    {
+      "id": "guard",
+      "title": "Wächter: Zugriffsschutz (RLS)",
+      "areas": ["security"]
+    }
+  ],
   "areas": [
     {
       "id": "contacts",

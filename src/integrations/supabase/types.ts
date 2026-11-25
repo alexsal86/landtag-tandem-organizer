@@ -18728,6 +18728,7 @@ export type Database = {
           created_at: string
           scenario_id: string
           status: string
+          steps: Json
         }[]
       }
       get_meeting_protocol_participants: {
