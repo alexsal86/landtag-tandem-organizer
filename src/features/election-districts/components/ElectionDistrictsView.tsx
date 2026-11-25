@@ -324,6 +324,12 @@ export const ElectionDistrictsView = ({ sidebarHeader }: { sidebarHeader?: React
       await (cartogram ? exportDistrictCartogramPng : exportDistrictMapPng)({
         districts: displayedDistricts,
         parties: selectedParties,
+        // Only what the view currently shows ends up in the file.
+        layers: {
+          polygons: showDistrictPolygons,
+          markers: showDistrictMarkers,
+          administrative: showAdministrativeBoundaries,
+        },
         legend: partyChoices.map(party => ({ party, label: partyLabel(party), count: partyCount(party) })),
         title: `${cartogram ? 'Kartogramm der Wahlkreise' : 'Wahlkreise'} Baden-Württemberg${historyPeriod ? ` · ${historyPeriod.name}` : ''}`,
         standLabel: cartogram ? `Gleiche Fläche je Wahlkreis · ${standLabel}` : standLabel,

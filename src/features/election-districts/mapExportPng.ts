@@ -12,9 +12,17 @@ import { CARTOGRAM_BANDS, cartogramLayout } from './cartogramLayout';
 
 export type MapExportLegendItem = { party: string; label: string; count: number };
 
+/** The layer switches of the view; the export must not add hidden layers back. */
+export type MapExportLayers = {
+  polygons: boolean;
+  markers: boolean;
+  administrative: boolean;
+};
+
 export type MapExportOptions = {
   districts: ElectionDistrict[];
   parties?: Set<string>;
+  layers?: Partial<MapExportLayers>;
   legend: MapExportLegendItem[];
   title: string;
   standLabel?: string;
@@ -24,6 +32,7 @@ export type MapExportOptions = {
 };
 
 type Ring = [number, number][];
+type ShapeEntry = { district: ElectionDistrict; rings: Ring[] };
 
 const PAGE_WIDTH = 2000;
 const MARGIN = 48;
@@ -34,6 +43,8 @@ const MAX_MAP_HEIGHT = 1500;
 const FOOTER_HEIGHT = 76;
 const FONT = 'Helvetica Neue, Arial, sans-serif';
 const PIXEL_RATIO = 2;
+
+const DEFAULT_LAYERS: MapExportLayers = { polygons: true, markers: true, administrative: false };
 
 const escapeXml = (value: string) => value
   .replace(/&/g, '&amp;')
@@ -99,19 +110,31 @@ const footerSection = (sourceLabel: string | undefined, missing: number, pageHei
 const missingCount = (districts: ElectionDistrict[]) => districts
   .filter(district => district.district_type !== 'verwaltungsgrenze' && !hasRenderableBoundary(district.boundaries)).length;
 
+const pathOf = (rings: Ring[], project: (lng: number, lat: number) => [number, number]) => rings
+  .map(ring => `${ring.map(([lng, lat], index) => `${index === 0 ? 'M' : 'L'}${project(lng, lat).map(value => value.toFixed(1)).join(',')}`).join('')}Z`)
+  .join('');
+
 export function buildDistrictMapSvg(options: MapExportOptions): { svg: string; width: number; height: number } {
   const { districts, parties, legend, title, standLabel, sourceLabel, selectedDistrictId } = options;
-  const drawable = districts
+  const layers = { ...DEFAULT_LAYERS, ...options.layers };
+  const electionShapes: ShapeEntry[] = districts
     .filter(district => district.district_type !== 'verwaltungsgrenze')
     .map(district => ({ district, rings: ringsOf(district) }))
     .filter(entry => entry.rings.length > 0);
-  if (!drawable.length) throw new Error('Keine Wahlkreisflächen mit Grenzdaten vorhanden');
+  const adminShapes: ShapeEntry[] = layers.administrative
+    ? districts
+      .filter(district => district.district_type === 'verwaltungsgrenze')
+      .map(district => ({ district, rings: ringsOf(district) }))
+      .filter(entry => entry.rings.length > 0)
+    : [];
+  const drawn = [...adminShapes, ...electionShapes];
+  if (!drawn.length) throw new Error('Keine Wahlkreisflächen mit Grenzdaten vorhanden');
 
   let minLng = Infinity;
   let maxLng = -Infinity;
   let minLat = Infinity;
   let maxLat = -Infinity;
-  for (const { rings } of drawable) {
+  for (const { rings } of drawn) {
     for (const ring of rings) {
       for (const [lng, lat] of ring) {
         if (lng < minLng) minLng = lng;
@@ -147,13 +170,19 @@ export function buildDistrictMapSvg(options: MapExportOptions): { svg: string; w
   const pageHeight = Math.round(mapTop + mapHeight + FOOTER_HEIGHT + MARGIN);
   const legendLeft = PAGE_WIDTH - MARGIN - LEGEND_WIDTH;
 
-  const shapes = drawable.map(({ district, rings }) => {
+  // Administrative boundaries sit underneath, like in the live map.
+  const adminPaths = adminShapes.map(({ rings }) =>
+    `<path d="${pathOf(rings, project)}" fill="#6B46C1" fill-opacity="0.16" fill-rule="evenodd" stroke="#6B46C1" stroke-width="1.6" stroke-dasharray="6 4" stroke-linejoin="round" />`);
+
+  const shapes = electionShapes.map(({ district, rings }) => {
     const party = directMandateParty(district);
     const active = !parties || parties.has(party);
     const selected = district.id === selectedDistrictId;
-    const path = rings
-      .map(ring => `${ring.map(([lng, lat], index) => `${index === 0 ? 'M' : 'L'}${project(lng, lat).map(value => value.toFixed(1)).join(',')}`).join('')}Z`)
-      .join('');
+    const path = pathOf(rings, project);
+    // Without the polygon layer the map shows outlines only, so the export does too.
+    if (!layers.polygons) {
+      return `<path d="${path}" fill="none" stroke="${selected ? '#2563eb' : '#7b8475'}" stroke-width="${selected ? 4 : 1.4}" stroke-linejoin="round" />`;
+    }
     const fill = active ? (partyColors[party] || '#9ca3af') : '#ffffff';
     const stroke = selected ? '#2563eb' : active ? '#ffffff' : '#8b9384';
     const strokeWidth = selected ? 4 : active ? 1.4 : 1;
@@ -162,7 +191,7 @@ export function buildDistrictMapSvg(options: MapExportOptions): { svg: string; w
   });
 
   const numberFont = Math.min(15, Math.max(10, Math.round(mapWidth / 110)));
-  const labels = drawable.map(({ district, rings }) => {
+  const labels = !layers.markers ? '' : electionShapes.map(({ district, rings }) => {
     if (!(district.district_number > 0)) return '';
     const anchor = labelAnchor(district, rings);
     if (!anchor) return '';
@@ -180,13 +209,19 @@ export function buildDistrictMapSvg(options: MapExportOptions): { svg: string; w
       + '</g>';
   }).join('');
 
+  const notes = [
+    layers.polygons ? 'Farbe = Partei des Direktmandats' : 'Farbige Flächen ausgeblendet',
+    ...(layers.markers ? ['Nummer = Wahlkreisnummer'] : []),
+    ...(adminPaths.length ? ['Verwaltungsgrenze (gestrichelt)'] : []),
+  ];
+
   const svg = `<svg xmlns="http://www.w3.org/2000/svg" width="${PAGE_WIDTH}" height="${pageHeight}" viewBox="0 0 ${PAGE_WIDTH} ${pageHeight}">`
     + `<rect width="${PAGE_WIDTH}" height="${pageHeight}" fill="#ffffff" />`
     + headerSection(title, standLabel)
     + `<rect x="${mapLeft}" y="${mapTop}" width="${mapWidth}" height="${mapHeight}" rx="6" fill="#e9ede2" />`
     + `<clipPath id="map-clip"><rect x="${mapLeft}" y="${mapTop}" width="${mapWidth}" height="${mapHeight}" rx="6" /></clipPath>`
-    + `<g clip-path="url(#map-clip)">${shapes.join('')}${labels}</g>`
-    + legendSection(legend, legendLeft, mapTop, ['Farbe = Partei des Direktmandats', 'Nummer = Wahlkreisnummer'])
+    + `<g clip-path="url(#map-clip)">${adminPaths.join('')}${shapes.join('')}${labels}</g>`
+    + legendSection(legend, legendLeft, mapTop, notes)
     + footerSection(sourceLabel, missingCount(districts), pageHeight)
     + '</svg>';
 
@@ -195,14 +230,15 @@ export function buildDistrictMapSvg(options: MapExportOptions): { svg: string; w
 
 export function buildDistrictCartogramSvg(options: MapExportOptions): { svg: string; width: number; height: number } {
   const { districts, parties, legend, title, standLabel, sourceLabel, selectedDistrictId } = options;
+  // The cartogram always shows one tile per district; only the district layer
+  // decides whether districts are part of the export at all.
   const { tiles, columns } = cartogramLayout(districts);
   if (!tiles.length) throw new Error('Keine Wahlkreise für das Kartogramm vorhanden');
 
   const panelLeft = MARGIN;
   const panelTop = MARGIN + HEADER_HEIGHT;
   const panelWidth = PAGE_WIDTH - MARGIN * 2 - LEGEND_WIDTH - GAP;
-  const gridWidthLimit = panelWidth;
-  const tile = Math.floor(Math.min(174, gridWidthLimit / Math.max(columns, 1), MAX_MAP_HEIGHT / CARTOGRAM_BANDS));
+  const tile = Math.floor(Math.min(174, panelWidth / Math.max(columns, 1), MAX_MAP_HEIGHT / CARTOGRAM_BANDS));
   const gridWidth = tile * Math.max(columns, 1);
   const gridHeight = tile * CARTOGRAM_BANDS;
   const legendHeight = 132 + legend.length * 38;
