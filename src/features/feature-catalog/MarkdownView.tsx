@@ -23,7 +23,7 @@ function renderInline(text: string, onNavigatePage?: (id: string) => void): Reac
       nodes.push(<strong key={key++}>{token.slice(2, -2)}</strong>);
     } else if (token.startsWith("`")) {
       nodes.push(
-        <code key={key++} className="rounded bg-muted px-1 py-0.5 font-mono text-[0.85em]">
+        <code key={key++} className="rounded bg-muted px-1 py-0.5 font-mono text-[0.85em] [overflow-wrap:anywhere]">
           {token.slice(1, -1)}
         </code>,
       );
@@ -79,17 +79,17 @@ export function MarkdownView({ markdown, onNavigatePage }: MarkdownViewProps) {
     }
 
     if (line.startsWith("### ")) {
-      blocks.push(<h3 key={key++} className="mt-5 text-base font-semibold">{renderInline(line.slice(4), onNavigatePage)}</h3>);
+      blocks.push(<h3 key={key++} className="mt-5 text-base font-semibold [overflow-wrap:anywhere]">{renderInline(line.slice(4), onNavigatePage)}</h3>);
       index++;
       continue;
     }
     if (line.startsWith("## ")) {
-      blocks.push(<h2 key={key++} className="mt-7 border-b pb-1 text-lg font-semibold">{renderInline(line.slice(3), onNavigatePage)}</h2>);
+      blocks.push(<h2 key={key++} className="mt-7 border-b pb-1 text-lg font-semibold [overflow-wrap:anywhere]">{renderInline(line.slice(3), onNavigatePage)}</h2>);
       index++;
       continue;
     }
     if (line.startsWith("# ")) {
-      blocks.push(<h1 key={key++} className="text-2xl font-semibold tracking-tight">{renderInline(line.slice(2), onNavigatePage)}</h1>);
+      blocks.push(<h1 key={key++} className="text-2xl font-semibold tracking-tight [overflow-wrap:anywhere]">{renderInline(line.slice(2), onNavigatePage)}</h1>);
       index++;
       continue;
     }
@@ -107,7 +107,7 @@ export function MarkdownView({ markdown, onNavigatePage }: MarkdownViewProps) {
             <thead>
               <tr className="border-b bg-muted/50">
                 {(head ?? []).map((cell, cellIndex) => (
-                  <th key={cellIndex} className="px-3 py-2 text-left font-medium">
+                  <th key={cellIndex} className="px-3 py-2 text-left font-medium [overflow-wrap:anywhere]">
                     {renderInline(cell, onNavigatePage)}
                   </th>
                 ))}
@@ -117,7 +117,7 @@ export function MarkdownView({ markdown, onNavigatePage }: MarkdownViewProps) {
               {body.map((row, rowIndex) => (
                 <tr key={rowIndex} className="border-b last:border-0">
                   {row.map((cell, cellIndex) => (
-                    <td key={cellIndex} className="px-3 py-2 align-top">
+                    <td key={cellIndex} className="px-3 py-2 align-top [overflow-wrap:anywhere]">
                       {renderInline(cell, onNavigatePage)}
                     </td>
                   ))}
@@ -139,16 +139,16 @@ export function MarkdownView({ markdown, onNavigatePage }: MarkdownViewProps) {
       blocks.push(
         <ul key={key++} className="my-3 list-disc space-y-1 pl-6 text-sm">
           {items.map((item, itemIndex) => (
-            <li key={itemIndex}>{renderInline(item, onNavigatePage)}</li>
+            <li key={itemIndex} className="[overflow-wrap:anywhere]">{renderInline(item, onNavigatePage)}</li>
           ))}
         </ul>,
       );
       continue;
     }
 
-    blocks.push(<p key={key++} className="my-3 text-sm leading-relaxed">{renderInline(line, onNavigatePage)}</p>);
+    blocks.push(<p key={key++} className="my-3 text-sm leading-relaxed [overflow-wrap:anywhere]">{renderInline(line, onNavigatePage)}</p>);
     index++;
   }
 
-  return <div className="text-foreground">{blocks}</div>;
+  return <div className="min-w-0 text-foreground">{blocks}</div>;
 }

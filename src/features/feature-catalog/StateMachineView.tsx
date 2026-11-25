@@ -27,7 +27,7 @@ interface StateMachineViewProps {
 
 function SourceRef({ source }: { source: string }) {
   return (
-    <span className="font-mono text-[0.65rem] text-muted-foreground" title={source}>
+    <span className="font-mono text-[0.65rem] text-muted-foreground [overflow-wrap:anywhere]" title={source}>
       {sourceLabel(source)}
     </span>
   );
@@ -42,7 +42,7 @@ function GuardRow({ guard }: { guard: StateMachineGuard }) {
   return (
     <li className="rounded border p-2 text-xs">
       <div className="flex flex-wrap items-center gap-2">
-        <span className="font-mono font-medium">{guard.trigger}</span>
+        <span className="min-w-0 font-mono font-medium [overflow-wrap:anywhere]">{guard.trigger}</span>
         <Badge variant={guard.kind === "guard" ? "default" : "secondary"}>{guardKindLabel(guard.kind)}</Badge>
         <span className="text-muted-foreground">
           {guard.timing} {guard.events}
@@ -51,12 +51,12 @@ function GuardRow({ guard }: { guard: StateMachineGuard }) {
       </div>
 
       {guard.message ? (
-        <p className="mt-1 rounded bg-muted px-2 py-1 font-mono text-[0.65rem] text-muted-foreground">{guard.message}</p>
+        <p className="mt-1 rounded bg-muted px-2 py-1 font-mono text-[0.65rem] text-muted-foreground [overflow-wrap:anywhere]">{guard.message}</p>
       ) : null}
 
       <div className="mt-1 flex flex-wrap gap-x-3 gap-y-1 text-muted-foreground">
         <span>
-          Funktion: <code className="font-mono">{guard.function}</code>
+          Funktion: <code className="font-mono [overflow-wrap:anywhere]">{guard.function}</code>
         </span>
         {guard.blockedTo.length ? <span>blockiert als Ziel: {guard.blockedTo.map((value) => `"${value}"`).join(", ")}</span> : null}
         {guard.blockedFrom.length ? <span>blockiert als Ausgang: {guard.blockedFrom.map((value) => `"${value}"`).join(", ")}</span> : null}
@@ -65,7 +65,7 @@ function GuardRow({ guard }: { guard: StateMachineGuard }) {
       </div>
 
       {guard.checks.length ? (
-        <ul className="mt-1 space-y-0.5 font-mono text-[0.65rem] text-muted-foreground">
+        <ul className="mt-1 space-y-0.5 font-mono text-[0.65rem] text-muted-foreground [overflow-wrap:anywhere]">
           {guard.checks.map((check, index) => (
             <li key={`${check.side}-${check.operator}-${index}`}>
               {check.side} {check.operator} {check.values.map((value) => `"${value}"`).join(", ")}
@@ -100,7 +100,7 @@ function ReconciliationBlock({ reconciliation }: { reconciliation: StateMachineR
           <div className="font-medium text-destructive">Zustände ohne DB-Beleg</div>
           <ul className="mt-0.5 flex flex-wrap gap-1">
             {reconciliation.valuesNotInDatabase.map((value) => (
-              <li key={value} className="rounded bg-destructive/10 px-1.5 py-0.5 font-mono text-[0.65rem]">
+              <li key={value} className="rounded bg-destructive/10 px-1.5 py-0.5 font-mono text-[0.65rem] [overflow-wrap:anywhere]">
                 {value}
               </li>
             ))}
@@ -112,7 +112,7 @@ function ReconciliationBlock({ reconciliation }: { reconciliation: StateMachineR
           <div className="font-medium">TS-Kanten ohne Schreibbeleg</div>
           <ul className="mt-0.5 flex flex-wrap gap-1">
             {reconciliation.onlyInCode.map((pair) => (
-              <li key={`${pair.from}->${pair.to}`} className="rounded bg-destructive/10 px-1.5 py-0.5 font-mono text-[0.65rem]">
+              <li key={`${pair.from}->${pair.to}`} className="rounded bg-destructive/10 px-1.5 py-0.5 font-mono text-[0.65rem] [overflow-wrap:anywhere]">
                 {pair.from} → {pair.to}
               </li>
             ))}
@@ -124,7 +124,7 @@ function ReconciliationBlock({ reconciliation }: { reconciliation: StateMachineR
           <div className="font-medium">Nur in der Datenbank belegt</div>
           <ul className="mt-0.5 flex flex-wrap gap-1">
             {reconciliation.onlyInArtifact.map((pair) => (
-              <li key={`${pair.from}->${pair.to}`} className="rounded bg-muted px-1.5 py-0.5 font-mono text-[0.65rem]">
+              <li key={`${pair.from}->${pair.to}`} className="rounded bg-muted px-1.5 py-0.5 font-mono text-[0.65rem] [overflow-wrap:anywhere]">
                 {pair.from} → {pair.to}
               </li>
             ))}
@@ -137,7 +137,7 @@ function ReconciliationBlock({ reconciliation }: { reconciliation: StateMachineR
           <ul className="mt-0.5 space-y-0.5">
             {reconciliation.clientValues.map((entry) => (
               <li key={`${entry.value}:${entry.source}`} className="flex flex-wrap items-center gap-2">
-                <span className="font-mono">{entry.value}</span>
+                <span className="font-mono [overflow-wrap:anywhere]">{entry.value}</span>
                 <SourceRef source={entry.source} />
               </li>
             ))}
@@ -164,7 +164,7 @@ function StateMachineCard({
       <CardHeader className="pb-2">
         <div className="flex flex-wrap items-center gap-2">
           <CardTitle className="text-base">
-            <span className="font-mono text-sm">{machine.id}</span>
+            <span className="min-w-0 font-mono text-sm [overflow-wrap:anywhere]">{machine.id}</span>
           </CardTitle>
           {machine.enumType ? <Badge variant="secondary">Enum: {machine.enumType}</Badge> : null}
           <Badge variant="outline">{machine.states.length} Zustände</Badge>
@@ -225,7 +225,7 @@ function StateMachineCard({
               return (
                 <li key={state.value}>
                   <span
-                    className={`rounded px-1.5 py-0.5 font-mono text-[0.7rem] ${
+                    className={`rounded px-1.5 py-0.5 font-mono text-[0.7rem] [overflow-wrap:anywhere] ${
                       isInitial ? "border border-primary text-primary" : "bg-muted"
                     }`}
                     title={state.sources.join("\n")}
@@ -250,9 +250,9 @@ function StateMachineCard({
                   className="flex flex-wrap items-center gap-2 text-xs"
                 >
                   <ArrowRight aria-hidden="true" className="h-3 w-3 text-muted-foreground" />
-                  <span className="font-mono">{transitionLabel(transition)}</span>
+                  <span className="min-w-0 font-mono [overflow-wrap:anywhere]">{transitionLabel(transition)}</span>
                   <Badge variant="outline">{transitionKindLabel(transition.kind)}</Badge>
-                  {transition.param ? <span className="font-mono text-muted-foreground">{transition.param}</span> : null}
+                  {transition.param ? <span className="font-mono text-muted-foreground [overflow-wrap:anywhere]">{transition.param}</span> : null}
                   {transition.guards.length ? (
                     <span className="text-muted-foreground">geprüft: {transition.guards.join(", ")}</span>
                   ) : null}
@@ -397,7 +397,7 @@ export function StateMachineView({ features, onOpenFeature }: StateMachineViewPr
             <ul className="space-y-1 text-xs">
               {stateMachineArtifact.anomalies.map((anomaly) => (
                 <li key={`${anomaly.machine}:${anomaly.values.join(",")}`}>
-                  <span className="font-mono">{anomaly.machine}</span>:{" "}
+                  <span className="font-mono [overflow-wrap:anywhere]">{anomaly.machine}</span>:{" "}
                   {anomaly.values.map((value) => `"${value}"`).join(" und ")}
                 </li>
               ))}
@@ -418,8 +418,8 @@ export function StateMachineView({ features, onOpenFeature }: StateMachineViewPr
           <CardContent>
             <ul className="space-y-1 text-xs">
               {drifts.map((machine) => (
-                <li key={machine.id} className="flex flex-wrap items-center gap-2">
-                  <span className="font-mono">{machine.id}</span>
+                <li key={machine.id} className="flex min-w-0 flex-wrap items-center gap-2">
+                  <span className="font-mono [overflow-wrap:anywhere]">{machine.id}</span>
                   {machine.reconciliation!.onlyInCode.length ? (
                     <Badge variant="destructive">
                       {machine.reconciliation!.onlyInCode.length} nur im TS
@@ -471,7 +471,7 @@ export function StateMachineView({ features, onOpenFeature }: StateMachineViewPr
             <ul className="flex flex-wrap gap-1">
               {stateMachineArtifact.unresolved.map((entry) => (
                 <li key={`${entry.table}.${entry.column}`}>
-                  <code className="rounded bg-muted px-1.5 py-0.5 font-mono text-[0.7rem]">
+                  <code className="rounded bg-muted px-1.5 py-0.5 font-mono text-[0.7rem] [overflow-wrap:anywhere]">
                     {entry.table}.{entry.column}
                   </code>
                 </li>

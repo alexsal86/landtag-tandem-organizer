@@ -55,12 +55,12 @@ export function FeatureMap({ features, areas, onOpenArea, onOpenFeature }: Featu
           const total = node.features || 1;
           const coupled = node.outgoing.length + node.incoming.length > 0;
           return (
-            <div key={node.id} className="rounded-lg border p-3 transition-colors hover:bg-muted/60">
+            <div key={node.id} className="min-w-0 rounded-lg border p-3 transition-colors hover:bg-muted/60">
               <div className="flex items-center justify-between gap-2">
                 <button
                   type="button"
                   onClick={() => onOpenArea(node.id)}
-                  className="text-left font-medium underline-offset-2 hover:underline"
+                  className="min-w-0 text-left font-medium underline-offset-2 [overflow-wrap:anywhere] hover:underline"
                 >
                   {node.title}
                 </button>
@@ -86,14 +86,14 @@ export function FeatureMap({ features, areas, onOpenArea, onOpenFeature }: Featu
                 {node.outgoing.map((coupling) => (
                   <div key={`out-${coupling.area}`} className="flex items-center gap-1 text-foreground">
                     <ArrowRight aria-hidden="true" className="h-3 w-3 text-muted-foreground" />
-                    <span>hängt ab von {areaTitle.get(coupling.area) ?? coupling.area}</span>
+                    <span className="min-w-0 [overflow-wrap:anywhere]">hängt ab von {areaTitle.get(coupling.area) ?? coupling.area}</span>
                     <Badge variant="outline">{coupling.weight}</Badge>
                   </div>
                 ))}
                 {node.incoming.map((coupling) => (
                   <div key={`in-${coupling.area}`} className="flex items-center gap-1 text-muted-foreground">
                     <ArrowRight aria-hidden="true" className="h-3 w-3 rotate-180" />
-                    <span>wird vorausgesetzt von {areaTitle.get(coupling.area) ?? coupling.area}</span>
+                    <span className="min-w-0 [overflow-wrap:anywhere]">wird vorausgesetzt von {areaTitle.get(coupling.area) ?? coupling.area}</span>
                     <Badge variant="outline">{coupling.weight}</Badge>
                   </div>
                 ))}
@@ -126,17 +126,17 @@ export function FeatureMap({ features, areas, onOpenArea, onOpenFeature }: Featu
           ) : (
             <ol className="space-y-3">
               {model.chains.map((chain) => (
-                <li key={chain.ids.join(">")} className="flex flex-wrap items-center gap-1.5">
+                <li key={chain.ids.join(">")} className="flex min-w-0 flex-wrap items-center gap-1.5">
                   {chain.ids.map((id, index) => (
                     <span key={id} className="flex items-center gap-1.5">
                       {index > 0 ? <ArrowRight aria-hidden="true" className="h-3.5 w-3.5 text-muted-foreground" /> : null}
                       <button
                         type="button"
                         onClick={() => onOpenFeature(id)}
-                        className="rounded border px-2 py-1 text-left text-xs transition-colors hover:bg-muted"
+                        className="max-w-full min-w-0 rounded border px-2 py-1 text-left text-xs transition-colors hover:bg-muted"
                       >
-                        <span className="block font-medium">{byId.get(id)?.name ?? id}</span>
-                        <span className="block font-mono text-[0.65rem] text-muted-foreground">{id}</span>
+                        <span className="block font-medium [overflow-wrap:anywhere]">{byId.get(id)?.name ?? id}</span>
+                        <span className="block font-mono text-[0.65rem] text-muted-foreground [overflow-wrap:anywhere]">{id}</span>
                       </button>
                     </span>
                   ))}

@@ -155,7 +155,7 @@ function SecuritySection({ feature }: { feature: ResolvedFeature }) {
           <p role="status" className="rounded border border-dashed p-2 text-xs text-muted-foreground">
             Policy-Details sind nicht verfügbar. Vermutlich ist die Migration
             {" "}
-            <code className="font-mono">20261125160000_feature_security_policy_links.sql</code> noch nicht angewendet.
+            <code className="font-mono [overflow-wrap:anywhere]">20261125160000_feature_security_policy_links.sql</code> noch nicht angewendet.
             Die RLS-Befunde bleiben sichtbar; eine Bewertung wird nicht ersatzweise angenommen.
           </p>
         ) : null}
@@ -164,7 +164,7 @@ function SecuritySection({ feature }: { feature: ResolvedFeature }) {
           return (
             <div key={table} className="rounded-md border p-3">
               <div className="flex flex-wrap items-center gap-2">
-                <code className="font-mono text-xs">{table}</code>
+                <code className="font-mono text-xs [overflow-wrap:anywhere]">{table}</code>
                 {gap ? (
                   <Badge variant={rlsSeverityVariant(gap.severity)}>{gap.severity}</Badge>
                 ) : (
@@ -179,7 +179,7 @@ function SecuritySection({ feature }: { feature: ResolvedFeature }) {
                 <ul className="mt-2 space-y-1">
                   {policies.map((policy) => (
                     <li key={`${policy.table_name}:${policy.policy_name}`} className="flex flex-wrap items-center gap-2 text-xs">
-                      <code className="rounded bg-muted px-1 py-0.5 font-mono">{policy.policy_name}</code>
+                      <code className="rounded bg-muted px-1 py-0.5 font-mono [overflow-wrap:anywhere]">{policy.policy_name}</code>
                       <Badge variant="outline">{policy.command}</Badge>
                       <span className="text-muted-foreground">{policy.roles.join(", ") || "—"}</span>
                       {policy.has_using ? <span className="text-muted-foreground">USING</span> : null}
@@ -214,7 +214,7 @@ function FeatureDetail({ feature }: { feature: ResolvedFeature }) {
           <Badge variant={statusVariant(feature.implementationStatus)}>{feature.implementationStatus}</Badge>
           <Badge variant="outline">{feature.category}</Badge>
         </div>
-        <p className="mt-1 font-mono text-xs text-muted-foreground">{feature.id}</p>
+        <p className="mt-1 font-mono text-xs text-muted-foreground [overflow-wrap:anywhere]">{feature.id}</p>
         <p className="mt-2 text-sm">{feature.description}</p>
       </div>
 
@@ -449,7 +449,7 @@ export function FeatureCatalogView() {
                       <Badge variant="outline">{coverageLabel[feature.coverage]}</Badge>
                     </span>
                     <span className="text-xs text-muted-foreground">{feature.description}</span>
-                    <span className="font-mono text-[0.7rem] text-muted-foreground">{feature.id}</span>
+                    <span className="font-mono text-[0.7rem] text-muted-foreground [overflow-wrap:anywhere]">{feature.id}</span>
                   </button>
                 ))}
               </div>
