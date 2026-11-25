@@ -10062,6 +10062,24 @@ export type Database = {
           },
         ]
       }
+      letter_status_transitions: {
+        Row: {
+          created_at: string
+          from_status: string
+          to_status: string
+        }
+        Insert: {
+          created_at?: string
+          from_status: string
+          to_status: string
+        }
+        Update: {
+          created_at?: string
+          from_status?: string
+          to_status?: string
+        }
+        Relationships: []
+      }
       letter_template_assets: {
         Row: {
           asset_type: string
@@ -17828,14 +17846,6 @@ export type Database = {
       }
       auto_archive_completed_preparations: { Args: never; Returns: undefined }
       auto_update_poll_status: { Args: never; Returns: undefined }
-      batch_task_stafette_action: {
-        Args: { _action: string; _task_ids: string[]; _tenant_id: string }
-        Returns: Json
-      }
-      batch_task_stafette_preview: {
-        Args: { _action: string; _task_ids: string[]; _tenant_id: string }
-        Returns: Json
-      }
       bulk_update_contact_fields: {
         Args: {
           _ids: string[]
@@ -18192,19 +18202,6 @@ export type Database = {
         }
         Returns: string
       }
-      create_case_file_task: {
-        Args: {
-          p_assigned_to?: string
-          p_case_file_id: string
-          p_id: string
-          p_title: string
-        }
-        Returns: string
-      }
-      create_decision_task: {
-        Args: { p_decision_id: string }
-        Returns: string
-      }
       create_default_checklist_items:
         | { Args: { planning_id: string }; Returns: undefined }
         | {
@@ -18240,10 +18237,6 @@ export type Database = {
         Args: { p_action_item_id: string }
         Returns: string
       }
-      create_note_work: {
-        Args: { p_kind: string; p_note_id: string }
-        Returns: string
-      }
       create_notification:
         | {
             Args: {
@@ -18274,10 +18267,6 @@ export type Database = {
           _participant_id: string
           _poll_id: string
         }
-        Returns: string
-      }
-      create_preparation_followup: {
-        Args: { _point_id?: string; _preparation_id: string }
         Returns: string
       }
       create_work_decision: {
@@ -18438,10 +18427,6 @@ export type Database = {
         Returns: string
       }
       ensure_weekly_question: { Args: { p_tenant: string }; Returns: string }
-      escalate_task: {
-        Args: { _note?: string; _task_id: string }
-        Returns: undefined
-      }
       execute_annual_automation_routine: {
         Args: { _annual_task_id: string; _rule_id: string; _year: number }
         Returns: Json
@@ -18760,38 +18745,19 @@ export type Database = {
         Args: { _user_id: string }
         Returns: string[]
       }
-      get_latest_employee_meetings: {
-        Args: { p_employee_ids: string[] }
-        Returns: {
-          employee_id: string
-          meeting_date: string
-          meeting_id: string
-        }[]
-      }
       get_latest_selftest_runs: {
         Args: { p_tenant_id: string }
         Returns: {
-          app_version: string | null
+          app_version: string
           cleanup: Json
           created_at: string
-          duration_ms: number | null
+          duration_ms: number
           failed_steps: number
           keep_data: boolean
           scenario_id: string
           scenario_title: string
           status: string
           steps: Json
-          total_steps: number
-        }[]
-      }
-      get_selftest_run_history: {
-        Args: { p_runs_per_scenario?: number; p_tenant_id: string }
-        Returns: {
-          created_at: string
-          duration_ms: number | null
-          failed_steps: number
-          scenario_id: string
-          status: string
           total_steps: number
         }[]
       }
@@ -18826,6 +18792,17 @@ export type Database = {
         }[]
       }
       get_routine_packages: { Args: { _rule_ids: string[] }; Returns: Json }
+      get_selftest_run_history: {
+        Args: { p_runs_per_scenario?: number; p_tenant_id: string }
+        Returns: {
+          created_at: string
+          duration_ms: number
+          failed_steps: number
+          scenario_id: string
+          status: string
+          total_steps: number
+        }[]
+      }
       get_shared_note_ids: { Args: { _user_id: string }; Returns: string[] }
       get_table_size_metrics: {
         Args: never
@@ -19872,10 +19849,6 @@ export type Database = {
           isSetofReturn: false
         }
       }
-      restore_archived_task: {
-        Args: { _archived_id: string; _tenant_id: string }
-        Returns: number
-      }
       run_data_lint: {
         Args: { _tenant_id: string }
         Returns: {
@@ -20117,10 +20090,6 @@ export type Database = {
         Args: { _item_id?: string; _meeting_id: string }
         Returns: Json
       }
-      task_approval_sla: {
-        Args: { _tenant_id: string }
-        Returns: Json
-      }
       team_bingo_config: { Args: { p_tenant: string }; Returns: Json }
       team_ritual_employment: { Args: { p_tenant: string }; Returns: Json }
       team_ritual_enabled: { Args: { p_tenant: string }; Returns: boolean }
@@ -20144,7 +20113,6 @@ export type Database = {
       topic_mention_selftest: { Args: { p_tenant: string }; Returns: Json }
       topic_name_from_label: { Args: { p_label: string }; Returns: string }
       undo_contact_bulk_action: { Args: { _audit_id: string }; Returns: number }
-      undo_task_batch_action: { Args: { _batch_id: string }; Returns: number }
       update_contact_usage: {
         Args: { p_contact_id: string; p_tenant_id?: string; p_user_id?: string }
         Returns: undefined
