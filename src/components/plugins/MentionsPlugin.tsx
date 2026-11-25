@@ -20,7 +20,7 @@ import { TextNode } from 'lexical';
 import { $createMentionNode } from '@/components/nodes/MentionNode';
 import { Avatar, AvatarFallback, AvatarImage } from '@/components/ui/avatar';
 import { supabase } from '@/integrations/supabase/client';
-import { useTenant } from '@/hooks/useTenant';
+import { useOptionalTenant } from '@/hooks/useTenant';
 import { getHashedColor, AVAILABLE_COLORS } from '@/utils/userColors';
 
 const SUGGESTION_LIST_LENGTH_LIMIT = 8;
@@ -151,20 +151,24 @@ const TypeaheadMenuPlugin = LexicalTypeaheadMenuPlugin as React.ComponentType<Me
 
 export function MentionsPlugin({ onMentionInsert }: MentionsPluginProps = {}): React.JSX.Element | null {
   const [editor] = useLexicalComposerContext();
-  const { currentTenant } = useTenant();
+  // Ohne TenantProvider gibt es keine Personenliste: dann kein Menü statt Absturz.
+  const tenantId = useOptionalTenant()?.currentTenant?.id ?? null;
   const [users, setUsers] = useState<UserProfile[]>([]);
   const [queryString, setQueryString] = useState<string | null>(null);
 
   // Fetch tenant users
   useEffect(() => {
-    if (!currentTenant) return;
+    if (!tenantId) {
+      setUsers([]);
+      return;
+    }
 
     const fetchUsers = async () => {
       try {
         const { data, error } = await supabase
           .from('profiles')
           .select('user_id, display_name, avatar_url, badge_color')
-          .eq('tenant_id', currentTenant.id);
+          .eq('tenant_id', tenantId);
 
         if (error) throw error;
         setUsers(
@@ -181,7 +185,7 @@ export function MentionsPlugin({ onMentionInsert }: MentionsPluginProps = {}): R
     };
 
     fetchUsers();
-  }, [currentTenant]);
+  }, [tenantId]);
 
   // Use official trigger match for '@'
   const checkForTriggerMatch = useBasicTypeaheadTriggerMatch('@', {
