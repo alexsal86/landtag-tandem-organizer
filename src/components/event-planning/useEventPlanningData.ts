@@ -744,26 +744,21 @@ export function useEventPlanningData() {
     return true;
   };
 
-  const confirmDate = async (dateId: string) => {
-    if (!selectedPlanning) return;
-    await supabase.from("event_planning_dates").update({ is_confirmed: false }).eq("event_planning_id", selectedPlanning.id);
-    const { data, error } = await supabase.from("event_planning_dates").update({ is_confirmed: true }).eq("id", dateId).select().single();
-    if (error) { notify.error("Fehler", { description: "Termin konnte nicht bestätigt werden."
-}); return; }
-    if (!(await persistConfirmedPlanningDate(selectedPlanning.id, data.date_time))) return;
-    await syncRelativeTimelineAssignments(selectedPlanning.id, data.date_time);
-    const confirmedDate = planningDates.find(d => d.id === dateId);
-    if (confirmedDate?.appointment_id) {
-      await supabase.from("appointments").update({ title: selectedPlanning.title, category: "appointment", status: "confirmed" }).eq("id", confirmedDate.appointment_id);
+  const confirmDate = async (dateId: string, calendarUser?: string) => {
+    if (!selectedPlanning) return false;
+    const { id } = selectedPlanning;
+    const { data: confirmedAt, error } = await supabase.rpc("confirm_event_planning_calendar_date", {
+      _planning_id: id, _date_id: dateId, _calendar_user: calendarUser,
+    });
+    if (error || !confirmedAt) {
+      notify.error("Termin konnte nicht bestätigt werden.", { description: error?.message });
+      return false;
     }
-    const otherDates = planningDates.filter(d => d.id !== dateId);
-    for (const date of otherDates) {
-      if (date.appointment_id) await supabase.from("appointments").delete().eq("id", date.appointment_id);
-    }
-    await supabase.from("event_planning_dates").delete().eq("event_planning_id", selectedPlanning.id).neq("id", dateId);
-    fetchPlanningDetails(selectedPlanning.id);
-    notify.success("Erfolg", { description: "Termin wurde bestätigt und andere Termine entfernt." 
-});
+    setSelectedPlanning(previous => previous?.id === id ? { ...previous, confirmed_date: confirmedAt } : previous);
+    setPlannings(previous => previous.map(planning => planning.id === id ? { ...planning, confirmed_date: confirmedAt } : planning));
+    await syncRelativeTimelineAssignments(id, confirmedAt);
+    await fetchPlanningDetails(id);
+    return true;
   };
 
   const updateConfirmedDate = async (dateId: string, newDateTime: string) => {

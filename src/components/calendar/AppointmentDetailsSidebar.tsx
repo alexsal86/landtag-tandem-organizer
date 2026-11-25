@@ -1,3 +1,6 @@
+import { useQuery, useQueryClient } from "@tanstack/react-query";
+import { focusModes, focusModeLabels } from "@/features/appointments/dashboardFocus";
+import { useTenant } from "@/hooks/useTenant";
 import { Link } from "react-router-dom";
 import { caseSourceHref } from "@/features/cases/items/appointmentLink";
 import { AppointmentContactCards } from "./AppointmentContactCards";
@@ -38,6 +41,8 @@ export function AppointmentDetailsSidebar({
   onUpdate 
 }: AppointmentDetailsSidebarProps) {
   const navigate = useNavigate();
+  const qc = useQueryClient();
+  const { currentTenant } = useTenant();
   const { role: resolvedRole } = useResolvedUserRole();
   const reportedChange = appointment?.reportedChange;
   const reportedStart = reportedChange?.newStartTime ? new Date(reportedChange.newStartTime) : null;
@@ -48,6 +53,21 @@ export function AppointmentDetailsSidebar({
   const reportedLocation = reportedChange?.newLocation?.trim() || null;
   const [isDeleting, setIsDeleting] = useState(false);
   const [isEditing, setIsEditing] = useState(false);
+  const [focusEdits, setFocusEdits] = useState<{
+    dashboard_focus?: string | null; travel_minutes?: number | null; dashboard_contribution?: string | null;
+  }>({});
+  const focusSettings = useQuery({
+    queryKey: ["calendar-focus-settings", currentTenant?.id, appointment?.id],
+    enabled: open && isEditing && !!appointment?.id && !appointment.id.startsWith("external-") && !!currentTenant?.id,
+    retry: false,
+    queryFn: async () => {
+      const { data, error } = await supabase.from("appointments").select("dashboard_focus,travel_minutes,dashboard_contribution")
+        .eq("tenant_id", currentTenant!.id).eq("id", appointment!.id).maybeSingle();
+      if (error) throw error;
+      return data;
+    },
+  });
+  const focusValues = { ...focusSettings.data, ...focusEdits };
   const [appointmentCategories, setAppointmentCategories] = useState<Array<{ name: string; label: string; color: string | null }>>([]);
   const [guests, setGuests] = useState<Array<{
     id: string;
@@ -210,6 +230,7 @@ export function AppointmentDetailsSidebar({
       startTime: appointment.time,
       endTime: endTime
     });
+    setFocusEdits({});
     setGuestEmailsAtEdit(guests.map(guest => invitationGuestKey(guest.email)));
     setIsEditing(true);
   };
@@ -270,7 +291,8 @@ export function AppointmentDetailsSidebar({
           priority: editData.priority,
           category: editData.category,
           start_time: startTime.toISOString(),
-          end_time: endTime.toISOString()
+          end_time: endTime.toISOString(),
+          ...focusEdits,
         })
         .eq('id', appointment.id);
 
@@ -341,6 +363,10 @@ export function AppointmentDetailsSidebar({
       
 });
       
+      void qc.invalidateQueries({ queryKey: ["calendar-focus-settings", currentTenant?.id, appointment.id] });
+      void qc.invalidateQueries({ queryKey: ["appointment-briefing", "dashboard-focus-status"] });
+      void qc.invalidateQueries({ queryKey: ["appointment-briefing", "dashboard-focus"] });
+      void qc.invalidateQueries({ queryKey: ["dashboard-rpc-data"] });
       setIsEditing(false);
       onUpdate();
     } catch (error) {
@@ -796,6 +822,37 @@ export function AppointmentDetailsSidebar({
             <Link to={caseSourceHref(appointment.description)!} className="inline-flex items-center gap-2 text-sm font-medium text-primary hover:underline">
               Zum verknüpften Vorgang →
             </Link>
+          )}
+
+          {isEditing && focusSettings.data && !appointment.is_all_day && (
+            <div className="grid grid-cols-2 gap-2">
+              <label className="space-y-1 text-sm">
+                <span>Darstellung in „Als Nächstes“</span>
+                <select className="h-9 w-full rounded-md border bg-background px-2"
+                  value={focusValues.dashboard_focus ?? "auto"} onChange={event => setFocusEdits(previous => ({
+                    ...previous, dashboard_focus: event.target.value === "auto" ? null : event.target.value,
+                  }))}>
+                  {focusModes.map(mode => <option key={mode} value={mode}>{focusModeLabels[mode]}</option>)}
+                </select>
+              </label>
+              <label className="space-y-1 text-sm">
+                <span>Fahrtzeit in Minuten</span>
+                <Input type="number" min={1} max={1440} step={1} value={focusValues.travel_minutes ?? ""}
+                  onChange={event => {
+                    const minutes = event.target.valueAsNumber;
+                    if (event.target.value === "" || Number.isInteger(minutes) && minutes >= 1 && minutes <= 1440) {
+                      setFocusEdits(previous => ({ ...previous, travel_minutes: event.target.value === "" ? null : minutes }));
+                    }
+                  }} />
+              </label>
+              <label className="col-span-2 space-y-1 text-sm">
+                <span>Beitrag beim Termin</span>
+                <Input maxLength={200} value={focusValues.dashboard_contribution ?? ""} onChange={event => {
+                  const value = event.target.value;
+                  setFocusEdits(previous => ({ ...previous, dashboard_contribution: value || null }));
+                }} />
+              </label>
+            </div>
           )}
 
           {/* Description */}

@@ -1123,6 +1123,9 @@ export type Database = {
           coordinates: Json | null
           created_at: string
           description: string | null
+          dashboard_focus: string | null
+          dashboard_contribution: string | null
+          travel_minutes: number | null
           district_id: string | null
           end_time: string
           has_external_guests: boolean | null
@@ -1162,6 +1165,9 @@ export type Database = {
           coordinates?: Json | null
           created_at?: string
           description?: string | null
+          dashboard_focus?: string | null
+          dashboard_contribution?: string | null
+          travel_minutes?: number | null
           district_id?: string | null
           end_time: string
           has_external_guests?: boolean | null
@@ -1201,6 +1207,9 @@ export type Database = {
           coordinates?: Json | null
           created_at?: string
           description?: string | null
+          dashboard_focus?: string | null
+          dashboard_contribution?: string | null
+          travel_minutes?: number | null
           district_id?: string | null
           end_time?: string
           has_external_guests?: boolean | null
@@ -18006,6 +18015,10 @@ export type Database = {
           p_time_slots?: Json
           p_title: string
         }
+        Returns: string
+      }
+      confirm_event_planning_calendar_date: {
+        Args: { _planning_id: string; _date_id: string; _calendar_user?: string }
         Returns: string
       }
       create_briefing_follow_up_task: {

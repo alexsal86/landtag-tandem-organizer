@@ -1,3 +1,4 @@
+import { useQuery, useQueryClient } from "@tanstack/react-query";
 import { useLocation } from "react-router-dom";
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import { useEffect, useMemo, useRef, useState, type RefObject } from "react";
@@ -53,7 +54,7 @@ export function EventPlanningDetailView(data: EventPlanningDataReturn) {
   };
 
   const {
-    user, selectedPlanning, setSelectedPlanning,
+    user, currentTenant, selectedPlanning, setSelectedPlanning,
     planningDates, checklistItems, collaborators, allProfiles,
     contacts, speakers,
     isCollaboratorDialogOpen, setIsCollaboratorDialogOpen,
@@ -113,6 +114,20 @@ export function EventPlanningDetailView(data: EventPlanningDataReturn) {
   useEffect(() => {
     setActiveTab(hash === "#rsvp-manager" ? "guests" : "overview");
   }, [selectedPlanning?.id, hash]);
+
+  const qc = useQueryClient();
+  const [calendarChoice, setCalendarChoice] = useState<{ planning: string; user: string }>();
+  const [confirming, setConfirming] = useState(false);
+  const deputyCalendars = useQuery({
+    queryKey: ["planning-deputy-calendars", currentTenant?.id],
+    enabled: !!currentTenant?.id && !!selectedPlanning?.id,
+    queryFn: async () => {
+      const { data, error } = await supabase.from("user_tenant_memberships").select("user_id")
+        .eq("tenant_id", currentTenant!.id).eq("is_active", true).eq("role", "abgeordneter");
+      if (error) throw error;
+      return data.map(member => member.user_id);
+    },
+  });
 
   if (!selectedPlanning) return null;
 
@@ -254,6 +269,24 @@ export function EventPlanningDetailView(data: EventPlanningDataReturn) {
 
   const sectionTitleClassName = "text-xl font-semibold tracking-tight text-foreground";
   const fieldLabelClassName = "text-sm font-semibold text-foreground";
+  const deputyIds = deputyCalendars.data ?? [];
+  const calendarOwner = calendarChoice?.planning === selectedPlanning.id
+    ? calendarChoice.user : deputyIds.length === 1 ? deputyIds[0] : "";
+  const confirmCalendarDate = async (dateId: string) => {
+    if (confirming) return;
+    setConfirming(true);
+    try {
+      if (await confirmDate(dateId, calendarOwner || undefined)) {
+        await Promise.all([
+          qc.invalidateQueries({ queryKey: ["calendar-data"] }),
+          qc.invalidateQueries({ queryKey: ["dashboard-rpc-data"] }),
+        ]);
+      }
+    } finally {
+      setConfirming(false);
+    }
+  };
+
   const confirmedPlanningDate = planningDates.find((date) => date.is_confirmed)?.date_time ?? selectedPlanning.confirmed_date ?? null;
   const headerDateLabel = confirmedPlanningDate
     ? format(new Date(confirmedPlanningDate), "dd.MM.yyyy", { locale: de })
@@ -620,7 +653,19 @@ export function EventPlanningDetailView(data: EventPlanningDataReturn) {
                             <Clock className="h-4 w-4 shrink-0" />
                             <span className="break-words">{format(new Date(date.date_time), "dd.MM.yyyy HH:mm", { locale: de })}</span>
                           </div>
-                          <Button size="sm" onClick={() => confirmDate(date.id)}><Check className="h-4 w-4" /></Button>
+                          <div className="flex flex-wrap items-center gap-2">
+                            {deputyIds.length > 0 && <select aria-label="Kalender für bestätigten Termin"
+                              value={calendarOwner} className="max-w-full rounded-md border bg-background px-2 py-1.5 text-sm"
+                              onChange={event => setCalendarChoice({ planning: selectedPlanning.id, user: event.target.value })}>
+                              <option value="">Bisheriger Kalender</option>
+                              {deputyIds.map(id => <option key={id} value={id}>
+                                {allProfiles.find(profile => profile.user_id === id)?.display_name || "Abgeordnetenkalender"}
+                              </option>)}
+                            </select>}
+                            <Button size="sm" disabled={confirming || deputyCalendars.isPending} onClick={() => void confirmCalendarDate(date.id)}>
+                              <Check className="h-4 w-4" />Bestätigen
+                            </Button>
+                          </div>
                         </div>
                       )}
                     </div>

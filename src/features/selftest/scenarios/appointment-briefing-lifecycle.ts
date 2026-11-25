@@ -1,3 +1,4 @@
+import { appointmentFocusMode, departureTime, focusCountdown, pickFocusAppointment } from "@/features/appointments/dashboardFocus";
 import { visibleSentChanges } from "@/features/appointments/change-alerts/sentChangeVisibility";
 import { debriefDuration, debriefReceivedAt, debriefSourceLabel, sortDebriefReports } from "@/features/appointments/briefing/officeDebriefInbox";
 import { isOfficeReminderDue, isOlderOfficeFeedback, needsOfficeFeedback, officeReminderLabel, officeReminderTime, readOfficeSnooze, showsOfficeTaskHint } from "@/features/appointments/briefing/officeFeedback";
@@ -141,6 +142,23 @@ export const appointmentBriefingLifecycleScenario: TestScenario = {
           !dashboardBriefingState("approved", false)?.canOpen,
         ];
         return { ok: checks.every(Boolean), message: `${checks.filter(Boolean).length}/${checks.length} Statusfälle bestanden.` };
+      },
+    },
+    {
+      id: "appointment-dashboard-focus", label: "Termin-Fokus: Größe, Abfahrt und laufender Termin", kind: "logic",
+      run: async () => {
+        const now = new Date("2026-11-25T13:00:00+01:00");
+        const base = { id: "intern", category: "intern", is_all_day: false,
+          start_time: "2026-11-25T12:50:00+01:00", end_time: "2026-11-25T13:15:00+01:00" };
+        const planned = { ...base, id: "blocked", category: "blocked", start_time: "2026-11-25T13:20:00+01:00" };
+        const next = { ...base, id: "next", category: "appointment", start_time: "2026-11-25T14:30:00+01:00" };
+        const focus = pickFocusAppointment([planned, next, base], now);
+        const departure = departureTime(next.start_time, 12);
+        const ok = focus.running && focus.appointment?.id === base.id && focus.after?.id === next.id
+          && appointmentFocusMode(base, false) === "hint" && appointmentFocusMode(next, false) === "compact"
+          && appointmentFocusMode(next, true) === "detailed" && appointmentFocusMode(base, true, "compact") === "compact"
+          && departure?.at.toISOString() === "2026-11-25T13:13:00.000Z" && focusCountdown(departure.at, now) === 73;
+        return { ok, message: ok ? "Termin, Darstellung und Abfahrtszeit stimmen." : "Termin-Fokus weicht ab." };
       },
     },
     {

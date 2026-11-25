@@ -47,6 +47,7 @@ export interface DashboardData {
   userRole: string;
   appointments: AppointmentData[];
   nextAppointment?: AppointmentData;
+  nextTimedAppointment?: AppointmentData;
   isShowingTomorrow: boolean;
   /** Filled when only one appointment remains today, so the next day can be previewed. */
   tomorrowAppointments: AppointmentData[];
@@ -66,6 +67,7 @@ interface DashboardRpcData {
   userRole: string;
   appointments: AppointmentData[];
   nextAppointment?: AppointmentData;
+  nextTimedAppointment?: AppointmentData;
   isShowingTomorrow: boolean;
   /** Filled when only one appointment remains today, so the next day can be previewed. */
   tomorrowAppointments: AppointmentData[];
@@ -168,7 +170,7 @@ export const fetchDashboardRpc = async (userId: string, userEmail: string | unde
   }));
 
   // Fetch the next actual appointment independently of the short dashboard RPC window.
-  const [nextInternal, nextExternal, ongoingAllDay] = await Promise.all([
+  const [nextInternal, nextExternal, ongoingAllDay, nextTimedInternal, nextTimedExternal] = await Promise.all([
     supabase.from('appointments').select('id,title,start_time,end_time,is_all_day,location')
       .eq('tenant_id', tenantId).or('category.is.null,category.neq.birthday').gte('start_time', now.toISOString())
       .not('status', 'in', '(cancelled,canceled)').order('start_time').limit(1),
@@ -177,6 +179,12 @@ export const fetchDashboardRpc = async (userId: string, userEmail: string | unde
     supabase.from('appointments').select('id,title,start_time,end_time,is_all_day,location')
       .eq('tenant_id', tenantId).or('category.is.null,category.neq.birthday').eq('is_all_day', true).lte('start_time', now.toISOString())
       .gt('end_time', now.toISOString()).not('status', 'in', '(cancelled,canceled)'),
+    supabase.from('appointments').select('id,title,start_time,end_time,is_all_day,location')
+      .eq('tenant_id', tenantId).eq('is_all_day', false)
+      .or('category.is.null,category.not.in.(birthday,blocked)').or('status.is.null,status.not.in.(cancelled,canceled)')
+      .gte('start_time', now.toISOString()).order('start_time').limit(1),
+    supabase.from('external_events').select('id,title,start_time,end_time,all_day,location,external_calendars!inner(tenant_id)')
+      .eq('external_calendars.tenant_id', tenantId).eq('all_day', false).gte('start_time', now.toISOString()).order('start_time').limit(1),
   ]);
   if (ongoingAllDay.error) failedSources.add('Laufende Termine');
   if (nextInternal.error) failedSources.add('Folgetermine');
@@ -190,6 +198,11 @@ export const fetchDashboardRpc = async (userId: string, userEmail: string | unde
   ].map(e => [e.id, e])).values()];
   const nextAppointment = [...all, ...future].filter(e => Date.parse(e.start_time) > now.getTime())
     .sort((a,b) => Date.parse(a.start_time)-Date.parse(b.start_time))[0];
+
+  const nextTimedAppointment = [
+    ...(nextTimedInternal.data ?? []).map(event => ({ ...event, location: event.location ?? undefined })),
+    ...(nextTimedExternal.data ?? []).map(event => ({ ...event, is_all_day: false, location: event.location ?? undefined })),
+  ].sort((a,b) => Date.parse(a.start_time) - Date.parse(b.start_time))[0];
 
   const todayAll = all.filter(event => occursOnDay(event, berlinDay(now)))
     .sort((a, b) => Date.parse(a.start_time) - Date.parse(b.start_time));
@@ -215,7 +228,7 @@ export const fetchDashboardRpc = async (userId: string, userEmail: string | unde
     if (appointments.length === 1) tomorrowAppointments = tomorrowAll;
   }
 
-  return { userName, userRole, appointments, nextAppointment, isShowingTomorrow, tomorrowAppointments, openTasksCount, completedTasksToday, openTaskTitles, failedSources: [...failedSources] };
+  return { userName, userRole, appointments, nextAppointment, nextTimedAppointment, isShowingTomorrow, tomorrowAppointments, openTasksCount, completedTasksToday, openTaskTitles, failedSources: [...failedSources] };
 };
 
 export const useDashboardAppointmentsData = (includePastToday = false): DashboardData & { isError: boolean; refetch: () => void; failedSources: string[] } => {
@@ -260,6 +273,7 @@ export const useDashboardAppointmentsData = (includePastToday = false): Dashboar
     userRole: rpcData?.userRole ?? '',
     appointments: rpcData?.appointments ?? [],
     nextAppointment: rpcData?.nextAppointment,
+    nextTimedAppointment: rpcData?.nextTimedAppointment,
     isShowingTomorrow: rpcData?.isShowingTomorrow ?? false,
     tomorrowAppointments: rpcData?.tomorrowAppointments ?? [],
     openTasksCount: rpcData?.openTasksCount ?? 0,

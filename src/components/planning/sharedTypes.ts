@@ -46,6 +46,9 @@ export interface CreateAppointmentPayload {
   category: string;
   status: string;
   reminder_minutes: number;
+  dashboard_focus?: string;
+  dashboard_contribution?: string;
+  travel_minutes?: number;
   user_id: string;
   tenant_id: string;
   is_all_day: boolean;

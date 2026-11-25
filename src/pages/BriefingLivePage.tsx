@@ -1,5 +1,5 @@
 import { useState, useCallback, useEffect } from 'react';
-import { useSearchParams, useNavigate } from 'react-router-dom';
+import { useSearchParams, useNavigate, useLocation } from 'react-router-dom';
 import { useQuery, useQueryClient } from '@tanstack/react-query';
 import { DebriefQuickActions } from '@/features/appointments/briefing/DebriefQuickActions';
 import { StandaloneDecisionCreator } from '@/components/task-decisions/StandaloneDecisionCreator';
@@ -46,6 +46,7 @@ interface CreatedTask {
 export default function BriefingLivePage() {
   const [searchParams] = useSearchParams();
   const navigate = useNavigate();
+  const { hash } = useLocation();
   const { user } = useAuth();
   const { currentTenant } = useTenant();
   const queryClient = useQueryClient();
@@ -54,6 +55,14 @@ export default function BriefingLivePage() {
   const appointmentId = searchParams.get('appointmentId') || undefined;
 
   const { preparation, loading: prepLoading } = useAppointmentPreparation(preparationId);
+  useEffect(() => {
+    if (hash === "#notes" && !prepLoading && preparation) {
+      const notes = document.getElementById("notes");
+      notes?.scrollIntoView({ block: "start" });
+      notes?.focus({ preventScroll: true });
+    }
+  }, [hash, prepLoading, preparation?.id]);
+
 
   // Fetch appointment info
   const { data: appointmentInfo } = useQuery({
@@ -325,7 +334,7 @@ export default function BriefingLivePage() {
       <Separator />
 
       {/* Inline Notes */}
-      <Card>
+      <Card id="notes" tabIndex={-1} className="scroll-mt-20">
         <CardHeader className="pb-3">
           <CardTitle className="flex items-center gap-2 text-base">
             <StickyNote className="h-4 w-4" />

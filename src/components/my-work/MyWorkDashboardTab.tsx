@@ -1,3 +1,4 @@
+import { DeputyAppointmentFocus } from "./DeputyAppointmentFocus";
 import { SignatureFolder } from "./SignatureFolder";
 import { AppointmentChangeBanner, AppointmentChangeSentList, useAlerts as useChangeAlerts } from "@/features/appointments/change-alerts/AppointmentChangeAlerts";
 import { applyReportedStart, summarizeReportedChanges } from "@/features/appointments/change-alerts/changeModel";
@@ -143,7 +144,7 @@ function AppointmentsWidget({ isDeputyView }: { isDeputyView: boolean }) {
   const { data: changeAlerts = [] } = useChangeAlerts();
   const [now, setNow] = useState(() => new Date());
   useEffect(() => {
-    const timer = window.setInterval(() => setNow(new Date()), 60_000);
+    const timer = window.setInterval(() => setNow(new Date()), 30_000);
     return () => window.clearInterval(timer);
   }, []);
   const noAppointmentsToday = dashboardData.isShowingTomorrow || dashboardData.appointments.length === 0;
@@ -162,23 +163,28 @@ function AppointmentsWidget({ isDeputyView }: { isDeputyView: boolean }) {
   ) : isDeputyView ? 'Dein Tag' : 'Nächste Termine';
 
   return (
-    <DashboardWidgetContainer
-      icon={CalendarDays} title={title}
-      headerAction={<CollapsingCalendarLink />}
-      isLoading={dashboardData.isLoading || dashboardData.tenantLoading}
-      hasError={dashboardData.isError}
-      onRetry={() => { void dashboardData.refetch(); }}
-      loadingVariant="card"
-      errorMessage="Termine konnten nicht geladen werden. Das heißt nicht, dass nichts ansteht."
-      warning={dashboardData.failedSources.length > 0
-        ? <WidgetLoadWarning
-            message={`${dashboardData.failedSources.join(' und ')} konnten nicht geladen werden. Die übrigen Termine sind vollständig.`}
-            onRetry={() => { void dashboardData.refetch(); }}
-          />
-        : undefined}
-    >
-      <DashboardAppointments data={dashboardData} />
-    </DashboardWidgetContainer>
+    <>
+      {isDeputyView && !dashboardData.isLoading && !dashboardData.isError && (
+        <DeputyAppointmentFocus data={dashboardData} now={now} alerts={changeAlerts} />
+      )}
+      <DashboardWidgetContainer
+        icon={CalendarDays} title={title}
+        headerAction={<CollapsingCalendarLink />}
+        isLoading={dashboardData.isLoading || dashboardData.tenantLoading}
+        hasError={dashboardData.isError}
+        onRetry={() => { void dashboardData.refetch(); }}
+        loadingVariant="card"
+        errorMessage="Termine konnten nicht geladen werden. Das heißt nicht, dass nichts ansteht."
+        warning={dashboardData.failedSources.length > 0
+          ? <WidgetLoadWarning
+              message={`${dashboardData.failedSources.join(' und ')} konnten nicht geladen werden. Die übrigen Termine sind vollständig.`}
+              onRetry={() => { void dashboardData.refetch(); }}
+            />
+          : undefined}
+      >
+        <DashboardAppointments data={dashboardData} />
+      </DashboardWidgetContainer>
+    </>
   );
 }
 

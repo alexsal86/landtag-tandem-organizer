@@ -1,3 +1,4 @@
+import { focusModes, focusModeLabels } from "@/features/appointments/dashboardFocus";
 import { Calendar, Clock, MapPin, Users, Save, Plus, X, ChevronDown, Tag } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
@@ -82,6 +83,29 @@ export const CreateAppointmentDialog = ({ open, onOpenChange }: CreateAppointmen
                   <FormField control={hook.form.control} name="priority" render={({ field }) => (<FormItem><FormLabel>Priorität</FormLabel><FormControl><Select value={field.value} onValueChange={field.onChange}><SelectTrigger><SelectValue /></SelectTrigger><SelectContent>{Object.entries(hook.priorityLabels).map(([v, l]) => <SelectItem key={v} value={v}>{l}</SelectItem>)}</SelectContent></Select></FormControl><FormMessage /></FormItem>)} />
                   <FormField control={hook.form.control} name="reminder_minutes" render={({ field }) => (<FormItem><FormLabel>Erinnerung (Minuten)</FormLabel><FormControl><Select value={field.value?.toString()} onValueChange={(v) => field.onChange(parseInt(v))}><SelectTrigger><SelectValue /></SelectTrigger><SelectContent><SelectItem value="0">Keine Erinnerung</SelectItem><SelectItem value="5">5 Minuten</SelectItem><SelectItem value="15">15 Minuten</SelectItem><SelectItem value="30">30 Minuten</SelectItem><SelectItem value="60">1 Stunde</SelectItem><SelectItem value="1440">1 Tag</SelectItem></SelectContent></Select></FormControl><FormMessage /></FormItem>)} />
                 </div>
+
+                {!hook.isAllDay && <div className="grid gap-4 sm:grid-cols-2">
+                  <FormField control={hook.form.control} name="dashboard_focus" render={({ field }) => (
+                    <FormItem><FormLabel>Darstellung in „Als Nächstes“</FormLabel>
+                      <Select value={field.value} onValueChange={field.onChange}>
+                        <FormControl><SelectTrigger><SelectValue /></SelectTrigger></FormControl>
+                        <SelectContent>{focusModes.map(mode => <SelectItem key={mode} value={mode}>{focusModeLabels[mode]}</SelectItem>)}</SelectContent>
+                      </Select><FormMessage />
+                    </FormItem>
+                  )} />
+                  <FormField control={hook.form.control} name="travel_minutes" render={({ field }) => (
+                    <FormItem><FormLabel>Fahrtzeit in Minuten</FormLabel>
+                      <FormControl><Input type="number" min={1} max={1440} step={1} value={field.value ?? ""}
+                        onChange={event => field.onChange(event.target.value === "" ? undefined : event.target.valueAsNumber)} /></FormControl>
+                      <FormDescription>Optional. Für die Abfahrt kommen 5 Minuten Puffer dazu.</FormDescription><FormMessage />
+                    </FormItem>
+                  )} />
+                  <FormField control={hook.form.control} name="dashboard_contribution" render={({ field }) => (
+                    <FormItem className="sm:col-span-2"><FormLabel>Beitrag beim Termin</FormLabel>
+                      <FormControl><Input {...field} value={field.value ?? ""} maxLength={200} placeholder="z. B. Grußwort · 5 Min." /></FormControl><FormMessage />
+                    </FormItem>
+                  )} />
+                </div>}
 
                 <BriefingChoiceBlock hook={hook} />
 

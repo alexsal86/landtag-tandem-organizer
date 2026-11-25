@@ -1,3 +1,4 @@
+import { focusModes } from "@/features/appointments/dashboardFocus";
 import { suggestBriefingDue } from "@/features/appointments/briefing";
 import { useState, useEffect } from 'react';
 import { useNavigate, useLocation } from 'react-router-dom';
@@ -39,6 +40,9 @@ const appointmentSchema = z.object({
   category: z.string().min(1, "Kategorie ist erforderlich"),
   status: z.string().min(1, "Status ist erforderlich"),
   reminder_minutes: z.number().min(0),
+  dashboard_focus: z.enum(focusModes),
+  dashboard_contribution: z.string().trim().max(200).optional(),
+  travel_minutes: z.number().int().min(1).max(1440).optional(),
   is_all_day: z.boolean().default(false),
 }).refine((data) => {
   if (data.is_all_day) { return new Date(data.end_date || data.start_date) >= new Date(data.start_date); }
@@ -81,6 +85,9 @@ function mapCreateAppointmentPayload(
     category: values.category,
     status: values.status,
     reminder_minutes: values.reminder_minutes,
+    ...(values.dashboard_focus !== "auto" ? { dashboard_focus: values.dashboard_focus } : {}),
+    ...(values.dashboard_contribution ? { dashboard_contribution: values.dashboard_contribution } : {}),
+    ...(values.travel_minutes ? { travel_minutes: values.travel_minutes } : {}),
     user_id: userId,
     tenant_id: tenantId,
     is_all_day: values.is_all_day,
@@ -115,7 +122,7 @@ export function useCreateAppointment(open: boolean, onOpenChange: (open: boolean
       title: "", description: "",
       start_date: formatDateForInput(defaultStart), start_time: formatTimeForInput(defaultStart),
       end_date: formatDateForInput(defaultStart), end_time: formatTimeForInput(addHours(defaultStart, 1)),
-      location: "", priority: "medium" as const, category: "meeting", status: "planned", reminder_minutes: 15, is_all_day: false,
+      location: "", priority: "medium" as const, category: "meeting", status: "planned", reminder_minutes: 15, dashboard_focus: "auto", is_all_day: false,
     },
   });
 
@@ -215,7 +222,10 @@ export function useCreateAppointment(open: boolean, onOpenChange: (open: boolean
       }
       notify.success("Termin erstellt", { description: "Der Termin wurde erfolgreich gespeichert." 
 });
-      await queryClient.invalidateQueries({ queryKey: ["calendar-data"] });
+      await Promise.all([
+        queryClient.invalidateQueries({ queryKey: ["calendar-data"] }),
+        queryClient.invalidateQueries({ queryKey: ["dashboard-rpc-data"] }),
+      ]);
       onOpenChange(false);
       navigate("/calendar");
     } catch (error: unknown) {
