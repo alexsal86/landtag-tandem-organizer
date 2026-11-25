@@ -16,6 +16,7 @@ export function QuickNoteRichTextEditor(props: SimpleRichTextEditorProps) {
       <SimpleRichTextEditor
         {...props}
         enableChecklists
+        enableTopicMentions
         onDictatedTaskDraft={userId && tenantId
           ? (text) => setDraft({ text, userId, tenantId })
           : undefined}

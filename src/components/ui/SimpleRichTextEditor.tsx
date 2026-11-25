@@ -81,6 +81,11 @@ export interface SimpleRichTextEditorProps {
   onDictatedTaskDraft?: (text: string) => void;
   autoFocus?: boolean;
   enableChecklists?: boolean;
+  /**
+   * Themen-Erwähnungen (#Thema) nur in Notizeditoren: nur dort entsteht aus dem Chip
+   * eine topic_mention-Meldung. Kommentare, Protokolle und Mails bleiben ohne Menü.
+   */
+  enableTopicMentions?: boolean;
 }
 
 const hashContent = (content: string): string => {
@@ -510,6 +515,7 @@ const SimpleRichTextEditor: React.FC<SimpleRichTextEditorProps> = ({
   onDictatedTaskDraft,
   autoFocus = false,
   enableChecklists = false,
+  enableTopicMentions = false,
 }) => {
   const rehydrateKey = React.useMemo(
     () => String(contentVersion ?? hashContent(initialContent)),
@@ -609,7 +615,7 @@ const SimpleRichTextEditor: React.FC<SimpleRichTextEditorProps> = ({
         {enableChecklists && <CheckListPlugin />}
         {enableChecklists && <MarkdownShortcutPlugin transformers={[CHECK_LIST]} />}
         <MentionsPlugin onMentionInsert={onMentionInsert} />
-        <TopicsPlugin />
+        {enableTopicMentions && <TopicsPlugin />}
         <InitialContentPlugin initialContent={enableChecklists ? normalizeChecklistHtml(initialContent) : initialContent} rehydrateKey={rehydrateKey} enableChecklists={enableChecklists} />
         {autoFocus && <AutoFocusPlugin />}
       </LexicalComposer>
