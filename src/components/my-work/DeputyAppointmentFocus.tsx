@@ -172,7 +172,9 @@ function FocusCard({ appointment, now, running, after, tenant, briefingStatus, i
     },
   });
   const afterDeparture = after && departureTime(after.start_time, afterTravel.data?.minutes, afterTravel.data?.legacy);
-  const next = after && <div className="min-w-0 basis-full text-right @min-[30rem]:max-w-[40%] @min-[30rem]:basis-auto">
+  const next = after && <div className={cn("min-w-0 text-right", mode === "hint"
+    ? "basis-full @min-[30rem]:max-w-[40%] @min-[30rem]:basis-auto"
+    : "col-span-full @min-[32rem]:col-span-1")}>
     <p className="text-xs text-muted-foreground">Danach</p>
     <Link to={`/calendar?date=${berlinDayKey(after.start_time)}&highlight=${encodeURIComponent(afterInternal ? after.id : `external-${after.id.replace(/^external-/, "")}`)}`}
       className="break-words text-sm font-semibold hover:underline">
@@ -219,7 +221,9 @@ function FocusCard({ appointment, now, running, after, tenant, briefingStatus, i
   return (
     <Card className={cn("rounded-dashboard-card border-l-4 py-0 shadow-dashboard-card", imminent ? "border-l-[#965806]" : "border-l-[#38761c]")}>
       <CardContent className="@container space-y-4 px-4 py-4 sm:px-5 sm:py-5">
-        <div className="flex flex-wrap items-start gap-x-4 gap-y-3">
+        <div className={cn("items-start gap-x-4 gap-y-3", running
+          ? cn("grid grid-cols-[auto_minmax(0,1fr)]", after && "@min-[32rem]:grid-cols-[auto_minmax(0,1.8fr)_minmax(0,1fr)]")
+          : "flex flex-wrap")}>
           <div className="shrink-0">
             <p className={cn("flex items-center gap-1.5 text-xs font-bold uppercase tracking-wide", imminent ? "text-[#965806] dark:text-amber-300" : "text-[#38761c] dark:text-green-300")}>{runningDot}{status}</p>
             <p className={cn("tabular-nums leading-tight", running ? "text-[2.875rem] font-medium" : mode === "detailed" ? "text-4xl font-semibold" : "text-2xl font-semibold")}>{berlinClock(appointment.start_time)}</p>
