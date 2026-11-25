@@ -6,7 +6,7 @@ import { useNavigate } from 'react-router-dom';
 import { buildDeepLinkPath } from '@/utils/notificationDeepLinks';
 import {
   Bell, CheckCheck, Calendar, MessageSquare, FileText, Users,
-  BookOpen, Clock, BarChart3, MapPin, StickyNote, Settings,
+  BookOpen, Clock, BarChart3, MapPin, StickyNote, Tag, Settings,
   Search, Filter, X, DollarSign, Volume2, VolumeX, Play,
   Monitor, ArrowUpRight, ArrowDownRight, ArrowUp, Upload, Trash2, Info
 } from 'lucide-react';
@@ -67,6 +67,7 @@ const getNotificationIcon = (type: string) => {
     case 'knowledge_document_created': return BookOpen;
     case 'meeting_created': return Calendar;
     case 'note_follow_up': return StickyNote;
+    case 'topic_mention': return Tag;
     case 'poll_auto_cancelled': case 'poll_auto_completed': case 'poll_restored': return BarChart3;
     case 'vacation_request_pending': case 'sick_leave_request_pending':
     case 'leave_request_approved': case 'leave_request_rejected': return Clock;

@@ -38,6 +38,8 @@ import { Button } from '@/components/ui/button';
 import { cn } from '@/lib/utils';
 import { MentionNode } from '@/components/nodes/MentionNode';
 import { MentionsPlugin } from '@/components/plugins/MentionsPlugin';
+import { TopicNode } from '@/components/nodes/TopicNode';
+import { TopicsPlugin } from '@/components/plugins/TopicsPlugin';
 import { SPEECH_INTERIM_UPDATE_TAG, useSpeechDictation } from '@/hooks/useSpeechDictation';
 import { $editDictationBlock } from '@/lib/lexicalDictation';
 import type { SpeechCommand } from '@/lib/speechCommandUtils';
@@ -537,6 +539,7 @@ const SimpleRichTextEditor: React.FC<SimpleRichTextEditorProps> = ({
       ListNode,
       ListItemNode,
       MentionNode,
+      TopicNode,
       HeadingNode,
       QuoteNode,
     ],
@@ -606,6 +609,7 @@ const SimpleRichTextEditor: React.FC<SimpleRichTextEditorProps> = ({
         {enableChecklists && <CheckListPlugin />}
         {enableChecklists && <MarkdownShortcutPlugin transformers={[CHECK_LIST]} />}
         <MentionsPlugin onMentionInsert={onMentionInsert} />
+        <TopicsPlugin />
         <InitialContentPlugin initialContent={enableChecklists ? normalizeChecklistHtml(initialContent) : initialContent} rehydrateKey={rehydrateKey} enableChecklists={enableChecklists} />
         {autoFocus && <AutoFocusPlugin />}
       </LexicalComposer>

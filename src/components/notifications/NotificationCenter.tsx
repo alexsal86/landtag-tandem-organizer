@@ -16,6 +16,7 @@ import {
   BarChart3,
   MapPin,
   StickyNote,
+  Tag,
   X,
   History,
 } from 'lucide-react';
@@ -90,6 +91,8 @@ const getNotificationIcon = (type: string): LucideIcon => {
       return Calendar;
     case 'note_follow_up':
       return StickyNote;
+    case 'topic_mention':
+      return Tag;
     case 'poll_auto_cancelled':
     case 'poll_auto_completed':
     case 'poll_restored':

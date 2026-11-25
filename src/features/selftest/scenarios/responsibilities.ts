@@ -5,6 +5,7 @@ import {
   findCoverageGaps,
 } from "@/features/responsibilities/suggest";
 import { formatInTimeZone } from "@/features/responsibilities/berlinDay";
+import { topicMentionIds, topicMentionToken } from "@/features/topics/topicMentions";
 import { supabase } from "@/integrations/supabase/client";
 import type { TestScenario } from "../types";
 export const responsibilitiesScenario: TestScenario = {
@@ -15,6 +16,7 @@ export const responsibilitiesScenario: TestScenario = {
   features: ["employees", "permissions"],
   limitations: [
     "Der Fremdtenant-Lesetest verwendet für das angemeldete Konto nicht zugängliche IDs. Zwei echte Sitzungen und RPC-Schreibtests werden zusätzlich im isolierten Datenbanktest geprüft.",
+    "Die positive Themen-Meldung (Empfänger mit Primärzuständigkeit) braucht ein zweites Konto und wird nur im isolierten Datenbanktest geprüft; hier wird die Servergrenze des Anlaufs abgesichert.",
   ],
   steps: [
     {id:'topic-conversion-boundary',label:'Themenumwandlung verlangt Tenant und Leitungsrolle',kind:'workflow',run:async()=>{const r=await supabase.rpc('convert_topic_to_catalog',{p_topic:crypto.randomUUID(),p_kind:'committee'});return {ok:r.error?.code==='42501',message:'Unbekannte bzw. fremde Themen können nicht umgewandelt werden.'};}},
@@ -171,6 +173,93 @@ export const responsibilitiesScenario: TestScenario = {
             merge.error?.code === (admin ? "22023" : "42501"),
           message:
             "Fremdtenant-Schreiben und unzulässige Zusammenführung werden serverseitig abgewiesen.",
+        };
+      },
+    },
+
+    {
+      id: "topic-mention-token",
+      label: "Themen-Token hält die ID stabil und wird aus HTML wie Text gelesen",
+      kind: "logic",
+      run: async () => {
+        const topicId = "3f7c1e0a-5b2d-4c8a-9d61-2a4b6c8d0e1f";
+        const token = topicMentionToken("Presse", topicId);
+        const html = `<p>Notiz <span data-lexical-topic-id="${topicId}" data-lexical-topic-label="Presse">#Presse</span></p>`;
+        return {
+          ok:
+            token === `#[Presse](${topicId})` &&
+            topicMentionIds(token).join() === topicId &&
+            topicMentionIds(html).join() === topicId &&
+            topicMentionIds("#[Presse](keine-uuid)").length === 0,
+          message:
+            "Token und gespeichertes HTML liefern dieselbe Themen-ID; ungültige IDs lösen keine Meldung aus.",
+        };
+      },
+    },
+
+    {
+      id: "topic-mention-server-only",
+      label: "Themen-Meldungen löst nur der serverseitige Ruhephase-Anlauf aus",
+      kind: "db",
+      run: async () => {
+        const callServerOnly = supabase.rpc as unknown as (
+          fn: string,
+          args?: Record<string, unknown>,
+        ) => Promise<{ error: { code?: string } | null }>;
+        const direct = await callServerOnly("dispatch_topic_mentions_for_note", {
+          p_note_id: crypto.randomUUID(),
+        });
+        const settled = await callServerOnly("dispatch_settled_topic_mentions", {
+          p_quiet_seconds: 0,
+          p_window_hours: 1,
+        });
+        return {
+          ok: direct.error?.code === "42501" && settled.error?.code === "42501",
+          message:
+            "Weder der Kern noch der verzögerte Anlauf sind für Clients aufrufbar; Meldungen entstehen ausschließlich in der Datenbank und erst nach der Ruhephase.",
+        };
+      },
+    },
+
+    {
+      id: "topic-mention-delivery",
+      label: "Themen-Meldung kommt genau einmal an, ohne Primärzuständigkeit gar nicht",
+      kind: "workflow",
+      run: async (ctx) => {
+        const callSelftest = supabase.rpc as unknown as (
+          fn: string,
+          args?: Record<string, unknown>,
+        ) => Promise<{ data: unknown; error: { code?: string; message?: string } | null }>;
+        const response = await callSelftest("topic_mention_selftest", {
+          p_tenant: ctx.tenantId,
+        });
+        if (response.error) {
+          return {
+            ok: false,
+            message:
+              response.error.message ??
+              response.error.code ??
+              "Server-Selbsttest nicht ausführbar",
+          };
+        }
+        const result =
+          response.data && typeof response.data === "object" && !Array.isArray(response.data)
+            ? (response.data as {
+                ok?: boolean;
+                skipped?: string;
+                message?: string;
+                checks?: Record<string, boolean>;
+              })
+            : null;
+        if (result?.skipped) return { ok: true, message: result.skipped };
+        return {
+          ok: result?.ok === true,
+          message:
+            result?.message ??
+            (result?.ok === true
+              ? "Genau eine Meldung bei der primären Zuständigkeit, keine ohne Primärzuständigkeit; Testthemen, Zuständigkeit, Notizen und Meldungen wurden zurückgerollt."
+              : "Zustellung oder Stille weicht vom erwarteten Verhalten ab."),
+          details: result?.checks,
         };
       },
     },

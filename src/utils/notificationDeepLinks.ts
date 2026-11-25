@@ -111,6 +111,9 @@ export const buildDeepLinkPath = (notification: Notification): string => {
     case 'quick_note_shared':
       return buildHighlightPath('/mywork?tab=notes', getNotificationDataId(data, 'noteId'));
 
+    case 'topic_mention':
+      return buildHighlightPath('/mywork?tab=notes', getNotificationDataId(data, 'note_id', 'noteId'));
+
     case 'appointment_feedback': {
       if (data.office_debrief_question === true) return '/mywork?tab=dashboard';
       const targetType = data.feedback_context?.target?.type ?? null;
