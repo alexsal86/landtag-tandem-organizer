@@ -281,6 +281,10 @@ export const isLetterLayoutSettings = (value: unknown): value is LetterLayoutSet
   );
 };
 
+/** Normalisiert eine jsonb-Spalte (z. B. letter_templates.layout_settings) auf den Domänentyp. */
+export const normalizeLetterLayoutSettings = (value: unknown): LetterLayoutSettings | null =>
+  isLetterLayoutSettings(value) ? value : null;
+
 export const isLineModeBlockData = (value: unknown): value is LineModeBlockData => {
   if (!value || typeof value !== 'object' || Array.isArray(value)) return false;
   const candidate = value as Partial<LineModeBlockData>;

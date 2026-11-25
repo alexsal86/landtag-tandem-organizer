@@ -4,6 +4,7 @@ import { supabase } from '@/integrations/supabase/client';
 import type { Contact, LetterTemplate, LetterCollaborator, Letter } from '../types';
 import { debugConsole } from '@/utils/debugConsole';
 import type { Database } from '@/integrations/supabase/types';
+import { normalizeLetterLayoutSettings } from '@/types/letterLayout';
 
 type SenderInformation = Database['public']['Tables']['sender_information']['Row'];
 type InformationBlock = Database['public']['Tables']['information_blocks']['Row'];
@@ -41,7 +42,10 @@ async function fetchTemplates(tenantId: string): Promise<LetterTemplate[]> {
     .order('is_default', { ascending: false })
     .order('name');
   if (error) throw error;
-  return data || [];
+  return (data || []).map((row) => ({
+    ...row,
+    layout_settings: normalizeLetterLayoutSettings(row.layout_settings),
+  }));
 }
 
 async function fetchSenderInfos(tenantId: string): Promise<SenderInformation[]> {

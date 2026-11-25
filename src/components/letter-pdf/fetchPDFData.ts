@@ -1,4 +1,5 @@
 import { supabase } from '@/integrations/supabase/client';
+import { normalizeLetterLayoutSettings } from '@/types/letterLayout';
 import type { LetterRecord, PDFDataState } from './types';
 
 export async function fetchPDFData(letter: LetterRecord): Promise<PDFDataState> {
@@ -26,7 +27,9 @@ export async function fetchPDFData(letter: LetterRecord): Promise<PDFDataState> 
   }
 
   return {
-    template: template?.data ?? null,
+    template: template?.data
+      ? { ...template.data, layout_settings: normalizeLetterLayoutSettings(template.data.layout_settings) }
+      : null,
     senderInfo: sender?.data ?? null,
     informationBlock: block?.data ?? null,
     attachments: attachments?.data ?? [],
