@@ -5,7 +5,7 @@ vi.mock("@/integrations/supabase/client", () => ({ supabase: {
   from: () => ({ update: mock.update, insert: mock.insert }),
   storage: { from: () => ({ upload: mock.upload, remove: mock.remove }) },
 } }));
-import { letterTransitionUpdates, persistLetterTransition, uploadLetterAttachment } from "./letterWorkflow";
+import { approveLetterWithoutReview, letterApprovalSteps, letterTransitionUpdates, persistLetterTransition, uploadLetterAttachment } from "./letterWorkflow";
 beforeEach(() => {
   mock.update.mockReturnValue({ eq: mock.eq }); mock.eq.mockResolvedValue({ error: null });
   mock.insert.mockReturnValue({ select: () => ({ single: mock.single }) });
@@ -30,6 +30,20 @@ describe("Gemeinsamer Brief-Workflow", () => {
   it("verschweigt fehlgeschlagene Archivierung nicht", async () => {
     mock.archive.mockResolvedValue({ success: false, error: "PDF fehlgeschlagen" });
     await expect(persistLetterTransition("letter", "approved", "sent", "sender")).rejects.toThrow("PDF fehlgeschlagen");
+  });
+  it("führt die Freigabe ohne Prüfung über die erlaubten Kanten", async () => {
+    const result = await approveLetterWithoutReview("letter", "draft", "author");
+    expect(result.steps).toEqual(["pending_approval", "approved"]);
+    expect(mock.update).toHaveBeenNthCalledWith(1, expect.objectContaining({ status: "pending_approval" }));
+    expect(mock.update).toHaveBeenNthCalledWith(2, expect.objectContaining({ status: "approved" }));
+  });
+  it("überspringt aus pending_approval nur die letzte Stufe", () => {
+    expect(letterApprovalSteps("pending_approval")).toEqual(["approved"]);
+  });
+  it("verweigert die Abkürzung aus Endzuständen", async () => {
+    expect(() => letterApprovalSteps("sent")).toThrow("nicht möglich");
+    await expect(approveLetterWithoutReview("letter", "archived", "author")).rejects.toThrow("nicht möglich");
+    expect(mock.update).not.toHaveBeenCalled();
   });
   it("behält Bearbeitungshistorie bei gesperrtem Workflow", () => {
     expect(letterTransitionUpdates("approved", "sent", "sender", true)).not.toHaveProperty("sent_by");

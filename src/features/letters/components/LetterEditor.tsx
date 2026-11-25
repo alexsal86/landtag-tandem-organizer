@@ -18,6 +18,7 @@ import type { BlockLine } from '@/components/letters/BlockLineEditor';
 
 import { useLetterData } from '@/components/letters/hooks/useLetterData';
 import { useLetterOperations } from '@/components/letters/hooks/useLetterOperations';
+import { approveLetterWithoutReview } from '@/services/letterWorkflow';
 import { debugConsole } from '@/utils/debugConsole';
 import LetterBriefDetails from '@/components/letters/LetterBriefDetails';
 import LetterCommentDialog from '@/components/letters/LetterCommentDialog';
@@ -480,9 +481,14 @@ const LetterEditor: React.FC<LetterEditorProps> = ({ letter, isOpen, onClose, on
           try { const { error } = await supabase.from('letters').update({ status: newStatus, submitted_for_review_at: now, submitted_for_review_by: user?.id, updated_at: now }).eq('id', letter!.id); if (error) throw error; } catch (error) { debugConsole.error('Error saving status:', error); } finally { setSaving(false); }
         }}
         onSkipReview={async () => {
-          const now = new Date().toISOString();
-          setShowAssignmentDialog(false); setEditedLetter(prev => ({ ...prev, status: 'approved', approved_at: now, approved_by: user?.id })); setIsProofreadingMode(false); setSaving(true);
-          try { const { error } = await supabase.from('letters').update({ status: 'approved', approved_at: now, approved_by: user?.id, updated_at: now }).eq('id', letter!.id); if (error) throw error; } catch (error) { debugConsole.error('Error saving status:', error); } finally { setSaving(false); }
+          setShowAssignmentDialog(false); setSaving(true);
+          try {
+            // Die Datenbank kennt nur die Kanten aus ALLOWED_TRANSITIONS;
+            // deshalb läuft die Abkürzung über pending_approval.
+            const result = await approveLetterWithoutReview(letter!.id, editedLetter.status || 'draft', user!.id, !!editedLetter.workflow_locked);
+            setEditedLetter(prev => ({ ...prev, ...(result.updates as Partial<Letter>) }));
+            setIsProofreadingMode(false);
+          } catch (error) { debugConsole.error('Error saving status:', error); } finally { setSaving(false); }
         }}
       />
 

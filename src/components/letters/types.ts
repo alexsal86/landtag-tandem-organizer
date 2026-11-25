@@ -115,7 +115,17 @@ export const STATUS_FLOW: Record<string, string> = {
   approved: 'sent',
 };
 
-export const ALLOWED_TRANSITIONS: Record<string, string[]> = {
+/**
+ * Erlaubte Statuswechsel des Briefs. Diese Matrix ist die Quelle der Kanten:
+ * `public.letter_status_transitions` spiegelt sie, und der Trigger
+ * `enforce_letter_status_transition` weist jeden anderen Wechsel ab. Der
+ * Abgleich zwischen beiden läuft in `scripts/build-state-artifact.mjs`
+ * (`check:state-artifact`), damit die Datenbank nicht unbemerkt abweicht.
+ *
+ * `sent` und `archived` sind Endzustände. `archived` wird von keinem aktuellen
+ * Pfad geschrieben: Die Archivierung setzt `sent` plus Archivmetadaten.
+ */
+export const ALLOWED_TRANSITIONS: Record<LetterStatus, readonly LetterStatus[]> = {
   draft: ['review', 'pending_approval'],
   review: ['pending_approval', 'draft'],
   pending_approval: ['approved', 'revision_requested'],
@@ -128,7 +138,7 @@ export const ALLOWED_TRANSITIONS: Record<string, string[]> = {
 export const getNextStatus = (currentStatus: string) => STATUS_FLOW[currentStatus];
 
 export const canTransitionStatus = (fromStatus: string, toStatus: string) =>
-  ALLOWED_TRANSITIONS[fromStatus]?.includes(toStatus) || false;
+  (ALLOWED_TRANSITIONS[fromStatus as LetterStatus] as readonly string[] | undefined)?.includes(toStatus) || false;
 
 const isLexicalNodeLike = (value: unknown): value is LexicalNodeLike => (
   typeof value === 'object' && value !== null

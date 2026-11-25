@@ -1311,6 +1311,10 @@
               "label": "Direkter Sprung vom Entwurf zu versendet ist verboten"
             },
             {
+              "id": "db-invalid-transition",
+              "label": "Datenbank weist Entwurf → versendet ab"
+            },
+            {
               "id": "attachment",
               "label": "Echte Anlage hochladen und Inhalt zurücklesen"
             },

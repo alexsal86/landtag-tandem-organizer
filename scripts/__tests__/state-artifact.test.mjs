@@ -13,8 +13,10 @@ import {
   collectGuards,
   collectInitialStates,
   collectParametricWrites,
+  collectTransitionSeeds,
   collectTsTransitions,
   collectWrites,
+  compareTransitionSeeds,
   guardChecks,
   parseGeneratedTypes,
   renderArtifact,
@@ -50,6 +52,29 @@ export type Database = {
 `;
 
 const migrations = (entries) => entries.map(([file, sql]) => ({ file: `supabase/migrations/${file}`, sql }));
+
+test('Übergangsseed wird aus dem INSERT der Regeltabelle gelesen', () => {
+  const sql = `INSERT INTO public.letter_status_transitions (from_status, to_status) VALUES
+    ('draft', 'review'),
+    ('approved', 'sent')
+  ON CONFLICT (from_status, to_status) DO NOTHING;`;
+  const seeds = collectTransitionSeeds(migrations([['a.sql', sql]]), {
+    table: 'letter_status_transitions', fromColumn: 'from_status', toColumn: 'to_status',
+  });
+  assert.deepEqual([...seeds].sort(), ['approved->sent', 'draft->review']);
+});
+
+test('Seed und TS-Matrix müssen in beide Richtungen übereinstimmen', () => {
+  const sql = `INSERT INTO public.letter_status_transitions (from_status, to_status) VALUES
+    ('draft', 'review'),
+    ('draft', 'sent');`;
+  const tsSources = [{ machine: 'letters.status', exportName: 'ALLOWED_TRANSITIONS', transitions: [{ from: 'draft', to: 'review' }, { from: 'review', to: 'draft' }] }];
+  const errors = compareTransitionSeeds({ migrations: migrations([['a.sql', sql]]), tsSources });
+  assert.deepEqual(errors.sort(), [
+    'letters.status: draft->sent steht in letter_status_transitions, nicht in ALLOWED_TRANSITIONS',
+    'letters.status: review->draft fehlt in letter_status_transitions',
+  ]);
+});
 
 test('Statusspalten stammen aus den generierten Typen; status_from ist keine Maschine', () => {
   const { columns } = parseGeneratedTypes(typesSource);

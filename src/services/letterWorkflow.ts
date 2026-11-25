@@ -33,6 +33,43 @@ export async function persistLetterTransition(letterId: string, from: string, to
   return { updates, archive: undefined };
 }
 
+/**
+ * Schrittfolge für „ohne Prüfzuweisung freigeben". Der Editor bietet sie aus
+ * Entwurf und Prüfung an; die Datenbank kennt nur die Kanten aus
+ * ALLOWED_TRANSITIONS. Deshalb läuft die Abkürzung über `pending_approval`,
+ * statt die Matrix um draft/review → approved zu erweitern.
+ */
+export function letterApprovalSteps(from: string): string[] {
+  if (from === "approved") return [];
+  const steps: string[] = [];
+  let current = from;
+  if (current !== "pending_approval") {
+    if (!canTransitionStatus(current, "pending_approval")) {
+      throw new Error(`Freigabe ohne Prüfung ist aus ${from} nicht möglich.`);
+    }
+    steps.push("pending_approval");
+    current = "pending_approval";
+  }
+  if (!canTransitionStatus(current, "approved")) {
+    throw new Error(`Freigabe ohne Prüfung ist aus ${from} nicht möglich.`);
+  }
+  steps.push("approved");
+  return steps;
+}
+
+/** Freigabe ohne Prüfzuweisung auf demselben Regelpfad wie der Editor. */
+export async function approveLetterWithoutReview(letterId: string, from: string, userId: string, locked = false) {
+  const steps = letterApprovalSteps(from);
+  const updates: Database["public"]["Tables"]["letters"]["Update"] = {};
+  let current = from;
+  for (const step of steps) {
+    const result = await persistLetterTransition(letterId, current, step, userId, locked);
+    Object.assign(updates, result.updates);
+    current = step;
+  }
+  return { updates, steps };
+}
+
 export async function uploadLetterAttachment(file: File, letterId: string, userId: string, trackUpload?: (path: string) => void) {
   if (!userId) throw new Error("Anmeldung für Upload erforderlich.");
   if (file.size > 10 * 1024 * 1024) throw new Error("Die Anlage ist größer als 10 MB.");

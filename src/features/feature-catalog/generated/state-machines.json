@@ -5,7 +5,7 @@
   "sources": {
     "types": "src/integrations/supabase/types.ts",
     "migrationsDirectory": "supabase/migrations",
-    "migrationCount": 896,
+    "migrationCount": 897,
     "tsModules": [
       "src/components/letters/types.ts"
     ]
@@ -3362,6 +3362,41 @@
           ]
         },
         {
+          "trigger": "enforce_letter_status_transition",
+          "function": "enforce_letter_status_transition",
+          "timing": "before",
+          "events": "update of status",
+          "source": "supabase/migrations/20261125150000_enforce_letter_status_transitions.sql",
+          "functionSource": "supabase/migrations/20261125150000_enforce_letter_status_transitions.sql",
+          "kind": "guard",
+          "readsOld": true,
+          "readsNew": true,
+          "raises": true,
+          "message": "Briefstatus fehlt",
+          "checks": [],
+          "states": [],
+          "blockedTo": [],
+          "blockedFrom": [],
+          "allowedTo": [
+            "approved",
+            "archived",
+            "draft",
+            "pending_approval",
+            "review",
+            "revision_requested",
+            "sent"
+          ],
+          "allowedFrom": [
+            "approved",
+            "archived",
+            "draft",
+            "pending_approval",
+            "review",
+            "revision_requested",
+            "sent"
+          ]
+        },
+        {
           "trigger": "log_letter_workflow_trigger",
           "function": "log_letter_workflow_change",
           "timing": "after",
@@ -3563,17 +3598,13 @@
             "source": "src/components/task-decisions/TaskDecisionResponse.tsx"
           },
           {
-            "value": "approved",
-            "source": "src/features/letters/components/LetterEditor.tsx"
-          },
-          {
             "value": "revision_requested",
             "source": "src/components/task-decisions/TaskDecisionResponse.tsx"
           }
         ]
       },
       "limitations": [
-        "Nur beobachtende oder synchronisierende Trigger, keine Guard-Funktion mit RAISE EXCEPTION.",
+        "Guards werden zitiert, aber nicht als vollständiger Automat interpretiert; abgeleitet werden nur belegte Schreibvorgänge.",
         "Übergänge ohne belegten Ausgangszustand sind mit \"from\": null gekennzeichnet.",
         "Kein Startzustand belegt; der Eintritt in die Maschine ist nicht nachweisbar."
       ],

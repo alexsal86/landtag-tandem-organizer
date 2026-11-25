@@ -546,6 +546,69 @@ export function collectTsTransitions(root, sources = TS_STATE_SOURCES) {
   return collected;
 }
 
+/**
+ * Übergangsregeln, die sowohl als TS-Matrix als auch als Datenbanktabelle
+ * existieren. Der Seed der Tabelle muss der Matrix entsprechen; sonst prüft die
+ * Datenbank andere Kanten als der Client.
+ */
+export const TRANSITION_SEED_SPECS = [
+  {
+    machine: 'letters.status',
+    table: 'letter_status_transitions',
+    fromColumn: 'from_status',
+    toColumn: 'to_status',
+  },
+];
+
+/** Kanten aus `INSERT INTO <tabelle> (from, to) VALUES (…)` in den Migrationen. */
+export function collectTransitionSeeds(migrations, spec) {
+  const pairs = new Set();
+  const pattern = new RegExp(
+    `insert\\s+into\\s+(?:public\\.)?${spec.table}\\s*\\(([^)]*)\\)\\s*values\\s*([\\s\\S]*?);`,
+    'gi',
+  );
+  for (const { sql } of migrations) {
+    for (const match of sql.matchAll(pattern)) {
+      const names = splitTopLevel(match[1]).map((name) => name.replace(/"/g, '').trim().toLowerCase());
+      const fromIndex = names.indexOf(spec.fromColumn);
+      const toIndex = names.indexOf(spec.toColumn);
+      if (fromIndex < 0 || toIndex < 0) continue;
+      for (const tuple of extractTuples(match[2])) {
+        const values = splitTopLevel(tuple);
+        const from = literal(values[fromIndex]);
+        const to = literal(values[toIndex]);
+        if (from && to) pairs.add(`${from}->${to}`);
+      }
+    }
+  }
+  return pairs;
+}
+
+/** Abgleich zwischen TS-Matrix und Datenbank-Seed; beide Richtungen sind Fehler. */
+export function compareTransitionSeeds({ migrations, tsSources, specs = TRANSITION_SEED_SPECS }) {
+  const errors = [];
+  for (const spec of specs) {
+    const source = tsSources.find((entry) => entry.machine === spec.machine);
+    if (!source) {
+      errors.push(`${spec.machine}: kein TS-Regelmodul für ${spec.table} registriert`);
+      continue;
+    }
+    const seeds = collectTransitionSeeds(migrations, spec);
+    if (!seeds.size) {
+      errors.push(`${spec.machine}: ${spec.table} enthält keinen Seed`);
+      continue;
+    }
+    const code = new Set(source.transitions.map((entry) => `${entry.from}->${entry.to}`));
+    for (const pair of code) {
+      if (!seeds.has(pair)) errors.push(`${spec.machine}: ${pair} fehlt in ${spec.table}`);
+    }
+    for (const pair of seeds) {
+      if (!code.has(pair)) errors.push(`${spec.machine}: ${pair} steht in ${spec.table}, nicht in ${source.exportName}`);
+    }
+  }
+  return errors;
+}
+
 const CLIENT_SKIP = /(^|\/)(node_modules|dist|build|generated|__tests__)(\/|$)|\.(test|spec)\.[tj]sx?$/;
 
 function walkFiles(directory, files = []) {
@@ -1113,8 +1176,9 @@ export function collectSources(root) {
 }
 
 export function renderArtifact(root) {
-  const artifact = buildStateArtifact(collectSources(root));
-  const errors = validateArtifact(artifact, root);
+  const sources = collectSources(root);
+  const artifact = buildStateArtifact(sources);
+  const errors = [...compareTransitionSeeds(sources), ...validateArtifact(artifact, root)];
   if (errors.length) throw new Error(errors.join('\n'));
   return `${JSON.stringify(artifact, null, 2)}\n`;
 }
@@ -1195,8 +1259,9 @@ function printAudit(artifact) {
 
 if (resolve(process.argv[1] ?? '') === fileURLToPath(import.meta.url)) {
   const root = process.cwd();
-  const artifact = buildStateArtifact(collectSources(root));
-  const errors = validateArtifact(artifact, root);
+  const sources = collectSources(root);
+  const artifact = buildStateArtifact(sources);
+  const errors = [...compareTransitionSeeds(sources), ...validateArtifact(artifact, root)];
   const expected = `${JSON.stringify(artifact, null, 2)}\n`;
   const target = join(root, ARTIFACT_FILE);
   const write = process.argv.includes('--write');

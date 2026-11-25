@@ -1,5 +1,5 @@
 import { supabase } from "@/integrations/supabase/client";
-import { canTransitionStatus } from "@/components/letters/types";
+import { ALLOWED_TRANSITIONS, canTransitionStatus, LETTER_STATUSES } from "@/components/letters/types";
 import { persistLetterTransition, uploadLetterAttachment } from "@/services/letterWorkflow";
 import type { TestScenario, TestStep } from "../types";
 import { SELFTEST_MARKER, SELFTEST_PREFIX } from "../runner";
@@ -62,7 +62,31 @@ export const letterLifecycleScenario: TestScenario = {
     },
     {
       id: "invalid-transition", label: "Direkter Sprung vom Entwurf zu versendet ist verboten", kind: "logic",
-      run: async () => ({ ok: !canTransitionStatus("draft", "sent"), message: "Freigaberegel aus dem Briefeditor geprüft." }),
+      run: async () => {
+        const known = LETTER_STATUSES as readonly string[];
+        const unknown = [...new Set(Object.values(ALLOWED_TRANSITIONS).flat())].filter((target) => !known.includes(target));
+        const ok = !canTransitionStatus("draft", "sent")
+          && !canTransitionStatus("draft", "approved")
+          && unknown.length === 0
+          && ALLOWED_TRANSITIONS.sent.length === 0
+          && ALLOWED_TRANSITIONS.archived.length === 0;
+        return {
+          ok,
+          message: ok ? "Die Freigabekette enthält keine Abkürzung und nur bekannte Zustände." : "Die Freigabekette enthält eine unbekannte oder zu weite Kante.",
+          details: ok ? undefined : { unknown },
+        };
+      },
+    },
+    {
+      id: "db-invalid-transition", label: "Datenbank weist Entwurf → versendet ab", kind: "workflow",
+      run: async ctx => {
+        const { error } = await supabase.from("letters").update({ status: "sent" }).eq("id", ctx.data.letterId as string);
+        return {
+          ok: Boolean(error),
+          message: error ? "Der Trigger hat den direkten Sprung abgewiesen." : "Die Datenbank hat den direkten Sprung zugelassen.",
+          details: error ? { code: error.code, message: error.message } : { status: "sent" },
+        };
+      },
     },
     {
       id: "attachment", label: "Echte Anlage hochladen und Inhalt zurücklesen", kind: "workflow",
