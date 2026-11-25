@@ -3,10 +3,10 @@
   "source": "src/integrations/supabase/types.ts",
   "counts": {
     "total": 344,
-    "scenario": 58,
-    "deferred": 85,
-    "excluded": 153,
-    "missing": 48
+    "scenario": 57,
+    "deferred": 129,
+    "excluded": 158,
+    "missing": 0
   },
   "scenarios": [
     {
@@ -999,8 +999,7 @@
       "id": "task-stafette-lifecycle",
       "title": "Aufgaben-Stafette (Am Zug, Wiedervorlage, Freigabe)",
       "touches": [
-        "tasks",
-        "task_batch_actions"
+        "tasks"
       ],
       "features": [
         "tasks"
@@ -1361,7 +1360,7 @@
     },
     {
       "table": "committees",
-      "status": "missing",
+      "status": "deferred",
       "scenarios": []
     },
     {
@@ -1409,7 +1408,7 @@
     },
     {
       "table": "dashboard_decision_nudges",
-      "status": "missing",
+      "status": "deferred",
       "scenarios": []
     },
     {
@@ -1571,102 +1570,102 @@
     },
     {
       "table": "election_analysis_bw_polls",
-      "status": "missing",
+      "status": "deferred",
       "scenarios": []
     },
     {
       "table": "election_analysis_candidate_coverage",
-      "status": "missing",
+      "status": "deferred",
       "scenarios": []
     },
     {
       "table": "election_analysis_candidates",
-      "status": "missing",
+      "status": "deferred",
       "scenarios": []
     },
     {
       "table": "election_analysis_correction_audit",
-      "status": "missing",
+      "status": "deferred",
       "scenarios": []
     },
     {
       "table": "election_analysis_demographics",
-      "status": "missing",
+      "status": "deferred",
       "scenarios": []
     },
     {
       "table": "election_analysis_district_workbook_audit",
-      "status": "missing",
+      "status": "deferred",
       "scenarios": []
     },
     {
       "table": "election_analysis_districts",
-      "status": "missing",
+      "status": "deferred",
       "scenarios": []
     },
     {
       "table": "election_analysis_flow_matrix",
-      "status": "missing",
+      "status": "deferred",
       "scenarios": []
     },
     {
       "table": "election_analysis_flows",
-      "status": "missing",
+      "status": "deferred",
       "scenarios": []
     },
     {
       "table": "election_analysis_geographies",
-      "status": "missing",
+      "status": "deferred",
       "scenarios": []
     },
     {
       "table": "election_analysis_local_results",
-      "status": "missing",
+      "status": "deferred",
       "scenarios": []
     },
     {
       "table": "election_analysis_period_proposals",
-      "status": "missing",
+      "status": "deferred",
       "scenarios": []
     },
     {
       "table": "election_analysis_scenarios",
-      "status": "missing",
+      "status": "deferred",
       "scenarios": []
     },
     {
       "table": "election_analysis_source_reviews",
-      "status": "missing",
+      "status": "deferred",
       "scenarios": []
     },
     {
       "table": "election_analysis_state",
-      "status": "missing",
+      "status": "deferred",
       "scenarios": []
     },
     {
       "table": "election_analysis_state_totals",
-      "status": "missing",
+      "status": "deferred",
       "scenarios": []
     },
     {
       "table": "election_analysis_turnout",
-      "status": "missing",
+      "status": "deferred",
       "scenarios": []
     },
     {
       "table": "election_analysis_versions",
-      "status": "missing",
+      "status": "deferred",
       "scenarios": []
     },
     {
       "table": "election_analysis_workbook_audit",
-      "status": "missing",
+      "status": "deferred",
       "scenarios": []
     },
     {
       "table": "election_analysis_years",
-      "status": "missing",
+      "status": "deferred",
       "scenarios": []
     },
     {
@@ -1686,72 +1685,72 @@
     },
     {
       "table": "election_history_1952_result_sources",
-      "status": "missing",
+      "status": "deferred",
       "scenarios": []
     },
     {
       "table": "election_history_assembly_issues",
-      "status": "missing",
+      "status": "deferred",
       "scenarios": []
     },
     {
       "table": "election_history_audit",
-      "status": "missing",
+      "status": "deferred",
       "scenarios": []
     },
     {
       "table": "election_history_candidacies",
-      "status": "missing",
+      "status": "deferred",
       "scenarios": []
     },
     {
       "table": "election_history_candidate_workbook_audit",
-      "status": "missing",
+      "status": "deferred",
       "scenarios": []
     },
     {
       "table": "election_history_connection_people",
-      "status": "missing",
+      "status": "deferred",
       "scenarios": []
     },
     {
       "table": "election_history_districts",
-      "status": "missing",
+      "status": "deferred",
       "scenarios": []
     },
     {
       "table": "election_history_factions",
-      "status": "missing",
+      "status": "deferred",
       "scenarios": []
     },
     {
       "table": "election_history_mandate_birthdays",
-      "status": "missing",
+      "status": "deferred",
       "scenarios": []
     },
     {
       "table": "election_history_mandates",
-      "status": "missing",
+      "status": "deferred",
       "scenarios": []
     },
     {
       "table": "election_history_people",
-      "status": "missing",
+      "status": "deferred",
       "scenarios": []
     },
     {
       "table": "election_history_periods",
-      "status": "missing",
+      "status": "deferred",
       "scenarios": []
     },
     {
       "table": "election_history_state_list_entries",
-      "status": "missing",
+      "status": "deferred",
       "scenarios": []
     },
     {
       "table": "election_history_state_lists",
-      "status": "missing",
+      "status": "deferred",
       "scenarios": []
     },
     {
@@ -1831,7 +1830,7 @@
     },
     {
       "table": "employee_responsibilities",
-      "status": "missing",
+      "status": "deferred",
       "scenarios": []
     },
     {
@@ -2439,7 +2438,7 @@
     },
     {
       "table": "regions",
-      "status": "missing",
+      "status": "deferred",
       "scenarios": []
     },
     {
@@ -2517,6 +2516,11 @@
       "scenarios": []
     },
     {
+      "table": "social_content_approval_events",
+      "status": "excluded",
+      "scenarios": []
+    },
+    {
       "table": "social_content_channels",
       "status": "deferred",
       "scenarios": []
@@ -2583,13 +2587,6 @@
       "status": "scenario",
       "scenarios": [
         "document-annotation"
-      ]
-    },
-    {
-      "table": "task_batch_actions",
-      "status": "scenario",
-      "scenarios": [
-        "task-stafette-lifecycle"
       ]
     },
     {
@@ -2705,7 +2702,7 @@
     },
     {
       "table": "team_bingo_settings",
-      "status": "missing",
+      "status": "excluded",
       "scenarios": []
     },
     {
@@ -2720,42 +2717,42 @@
     },
     {
       "table": "team_fun_facts",
-      "status": "missing",
+      "status": "deferred",
       "scenarios": []
     },
     {
       "table": "team_question_answers",
-      "status": "missing",
+      "status": "deferred",
       "scenarios": []
     },
     {
       "table": "team_question_weeks",
-      "status": "missing",
+      "status": "deferred",
       "scenarios": []
     },
     {
       "table": "team_questions",
-      "status": "missing",
+      "status": "deferred",
       "scenarios": []
     },
     {
       "table": "team_ritual_profiles",
-      "status": "missing",
+      "status": "excluded",
       "scenarios": []
     },
     {
       "table": "team_ritual_settings",
-      "status": "missing",
+      "status": "excluded",
       "scenarios": []
     },
     {
       "table": "team_two_truths_answers",
-      "status": "missing",
+      "status": "deferred",
       "scenarios": []
     },
     {
       "table": "team_two_truths_months",
-      "status": "missing",
+      "status": "deferred",
       "scenarios": []
     },
     {
@@ -2815,7 +2812,7 @@
     },
     {
       "table": "topic_catalog_links",
-      "status": "missing",
+      "status": "excluded",
       "scenarios": []
     },
     {
@@ -2914,54 +2911,5 @@
       "scenarios": []
     }
   ],
-  "errors": [
-    "Neue Tabelle ohne Einordnung: committees",
-    "Neue Tabelle ohne Einordnung: dashboard_decision_nudges",
-    "Neue Tabelle ohne Einordnung: election_analysis_bw_polls",
-    "Neue Tabelle ohne Einordnung: election_analysis_candidate_coverage",
-    "Neue Tabelle ohne Einordnung: election_analysis_candidates",
-    "Neue Tabelle ohne Einordnung: election_analysis_correction_audit",
-    "Neue Tabelle ohne Einordnung: election_analysis_demographics",
-    "Neue Tabelle ohne Einordnung: election_analysis_district_workbook_audit",
-    "Neue Tabelle ohne Einordnung: election_analysis_districts",
-    "Neue Tabelle ohne Einordnung: election_analysis_flow_matrix",
-    "Neue Tabelle ohne Einordnung: election_analysis_flows",
-    "Neue Tabelle ohne Einordnung: election_analysis_geographies",
-    "Neue Tabelle ohne Einordnung: election_analysis_local_results",
-    "Neue Tabelle ohne Einordnung: election_analysis_period_proposals",
-    "Neue Tabelle ohne Einordnung: election_analysis_scenarios",
-    "Neue Tabelle ohne Einordnung: election_analysis_source_reviews",
-    "Neue Tabelle ohne Einordnung: election_analysis_state",
-    "Neue Tabelle ohne Einordnung: election_analysis_state_totals",
-    "Neue Tabelle ohne Einordnung: election_analysis_turnout",
-    "Neue Tabelle ohne Einordnung: election_analysis_versions",
-    "Neue Tabelle ohne Einordnung: election_analysis_workbook_audit",
-    "Neue Tabelle ohne Einordnung: election_analysis_years",
-    "Neue Tabelle ohne Einordnung: election_history_1952_result_sources",
-    "Neue Tabelle ohne Einordnung: election_history_assembly_issues",
-    "Neue Tabelle ohne Einordnung: election_history_audit",
-    "Neue Tabelle ohne Einordnung: election_history_candidacies",
-    "Neue Tabelle ohne Einordnung: election_history_candidate_workbook_audit",
-    "Neue Tabelle ohne Einordnung: election_history_connection_people",
-    "Neue Tabelle ohne Einordnung: election_history_districts",
-    "Neue Tabelle ohne Einordnung: election_history_factions",
-    "Neue Tabelle ohne Einordnung: election_history_mandate_birthdays",
-    "Neue Tabelle ohne Einordnung: election_history_mandates",
-    "Neue Tabelle ohne Einordnung: election_history_people",
-    "Neue Tabelle ohne Einordnung: election_history_periods",
-    "Neue Tabelle ohne Einordnung: election_history_state_list_entries",
-    "Neue Tabelle ohne Einordnung: election_history_state_lists",
-    "Neue Tabelle ohne Einordnung: employee_responsibilities",
-    "Neue Tabelle ohne Einordnung: regions",
-    "Neue Tabelle ohne Einordnung: team_bingo_settings",
-    "Neue Tabelle ohne Einordnung: team_fun_facts",
-    "Neue Tabelle ohne Einordnung: team_question_answers",
-    "Neue Tabelle ohne Einordnung: team_question_weeks",
-    "Neue Tabelle ohne Einordnung: team_questions",
-    "Neue Tabelle ohne Einordnung: team_ritual_profiles",
-    "Neue Tabelle ohne Einordnung: team_ritual_settings",
-    "Neue Tabelle ohne Einordnung: team_two_truths_answers",
-    "Neue Tabelle ohne Einordnung: team_two_truths_months",
-    "Neue Tabelle ohne Einordnung: topic_catalog_links"
-  ]
+  "errors": []
 }

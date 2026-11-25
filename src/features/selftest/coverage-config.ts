@@ -71,6 +71,10 @@ export const IGNORED_TABLES: string[] = [
   "user_tenant_memberships",
   "vacation_checklist_templates",
   "widget_configurations",
+  "team_bingo_settings",
+  "team_ritual_settings",
+  // Persönliche Ritual-Einstellungen (Opt-in, Datumsfelder) je Nutzer.
+  "team_ritual_profiles",
 
   // Audit / Logs / Caches
   "audit_log_entries",
@@ -105,6 +109,8 @@ export const IGNORED_TABLES: string[] = [
   "dossier_position_versions",
   "dossier_source_watchers",
   "quick_note_versions",
+  // Freigabeprotokoll der Redaktion: nur lesbar, geschrieben ausschließlich von Datenbankfunktionen.
+  "social_content_approval_events",
 
   // Push / Realtime / Subscriptions
   "push_subscriptions",
@@ -138,6 +144,7 @@ export const IGNORED_TABLES: string[] = [
   "distribution_list_members",
   "document_contacts",
   "document_topics",
+  "topic_catalog_links",
   "dossier_links",
   "dossier_stakeholders",
   "dossier_talking_points",
@@ -273,4 +280,54 @@ export const DEFERRED_TABLES: string[] = [
   "employee_meeting_requests",
   "employee_meetings",
   "event_plannings",
+
+  // Wahlanalyse und Wahlhistorie: die Szenarien prüfen Regeln und Lesezugriffe,
+  // schreiben aber bewusst keine importierten Bestandsdaten.
+  "election_analysis_bw_polls",
+  "election_analysis_candidate_coverage",
+  "election_analysis_candidates",
+  "election_analysis_correction_audit",
+  "election_analysis_demographics",
+  "election_analysis_district_workbook_audit",
+  "election_analysis_districts",
+  "election_analysis_flow_matrix",
+  "election_analysis_flows",
+  "election_analysis_geographies",
+  "election_analysis_local_results",
+  "election_analysis_period_proposals",
+  "election_analysis_scenarios",
+  "election_analysis_source_reviews",
+  "election_analysis_state",
+  "election_analysis_state_totals",
+  "election_analysis_turnout",
+  "election_analysis_versions",
+  "election_analysis_workbook_audit",
+  "election_analysis_years",
+  "election_history_1952_result_sources",
+  "election_history_assembly_issues",
+  "election_history_audit",
+  "election_history_candidacies",
+  "election_history_candidate_workbook_audit",
+  "election_history_connection_people",
+  "election_history_districts",
+  "election_history_factions",
+  "election_history_mandate_birthdays",
+  "election_history_mandates",
+  "election_history_people",
+  "election_history_periods",
+  "election_history_state_list_entries",
+  "election_history_state_lists",
+
+  // Katalog- und Teamdaten: Szenarien lesen sie, schreiben sie aber nicht.
+  "committees",
+  "regions",
+  "employee_responsibilities",
+  // Nudge-Protokoll der Entscheidungen; die 24-h-Sperre prüft bisher kein Szenario.
+  "dashboard_decision_nudges",
+  "team_fun_facts",
+  "team_questions",
+  "team_question_weeks",
+  "team_question_answers",
+  "team_two_truths_answers",
+  "team_two_truths_months",
 ];

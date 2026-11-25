@@ -4,7 +4,7 @@ _Auto-generiert mit `npm run update:selftest-coverage`._
 
 Quelle: `src/integrations/supabase/types.ts`. Die Angaben beschreiben deklarierte Prüfumfänge, keine erfolgreichen Testläufe und keine Code-Coverage.
 
-Von 344 Tabellen haben 58 ein registriertes Szenario. 85 sind als Ausbau offen, 153 ausgenommen und 48 noch nicht eingeordnet. Ausnahmen zählen nicht als bestanden.
+Von 344 Tabellen haben 57 ein registriertes Szenario. 129 sind als Ausbau offen, 158 ausgenommen und 0 noch nicht eingeordnet. Ausnahmen zählen nicht als bestanden.
 
 ## Szenarien
 
@@ -37,7 +37,7 @@ Von 344 Tabellen haben 58 ein registriertes Szenario. 85 sind als Ausbau offen, 
 | `quick-note-lifecycle` | Notizen-Lifecycle (Anlegen → Priorität → Anheften → Aufgabe → Archiv) | quick_notes, tasks, task_decisions, task_decision_participants |
 | `responsibilities` | Zuständigkeiten & Matrix | tasks |
 | `task-lifecycle` | Aufgaben-Lifecycle (Zuweisung → Frist → Entscheidung → Jour fixe → erledigt) | tasks, task_decisions |
-| `task-stafette-lifecycle` | Aufgaben-Stafette (Am Zug, Wiedervorlage, Freigabe) | tasks, task_batch_actions |
+| `task-stafette-lifecycle` | Aufgaben-Stafette (Am Zug, Wiedervorlage, Freigabe) | tasks |
 | `team-rituals` | Freiwillige Team-Rituale | Keine (reine Regeln) |
 | `workflow-rules` | Geschäftsregeln (Freigabe, Rollen, Fristen) | Keine (reine Regeln) |
 
@@ -101,7 +101,7 @@ Von 344 Tabellen haben 58 ein registriertes Szenario. 85 sind als Ausbau offen, 
 | `case_items` | Szenario vorhanden | case-item-lifecycle |
 | `celebration_animations` | Ausgenommen (nicht geprüft) | — |
 | `celebration_settings` | Ausgenommen (nicht geprüft) | — |
-| `committees` | Einordnung fehlt | — |
+| `committees` | Ausstehend | — |
 | `contact_activities` | Szenario vorhanden | contact-lifecycle |
 | `contact_briefing_memory` | Ausstehend | — |
 | `contact_topics` | Ausgenommen (nicht geprüft) | — |
@@ -109,7 +109,7 @@ Von 344 Tabellen haben 58 ein registriertes Szenario. 85 sind als Ausbau offen, 
 | `contacts` | Szenario vorhanden | contact-lifecycle |
 | `daily_briefing_reads` | Ausstehend | — |
 | `daily_briefings` | Szenario vorhanden | daily-briefing-lifecycle |
-| `dashboard_decision_nudges` | Einordnung fehlt | — |
+| `dashboard_decision_nudges` | Ausstehend | — |
 | `dashboard_layouts` | Ausgenommen (nicht geprüft) | — |
 | `data_lint_findings` | Ausgenommen (nicht geprüft) | — |
 | `day_slips` | Szenario vorhanden | case-item-lifecycle, day-slip-lifecycle |
@@ -139,43 +139,43 @@ Von 344 Tabellen haben 58 ein registriertes Szenario. 85 sind als Ausbau offen, 
 | `edge_function_cache` | Ausgenommen (nicht geprüft) | — |
 | `egress_anomalies` | Ausgenommen (nicht geprüft) | — |
 | `egress_metrics` | Ausgenommen (nicht geprüft) | — |
-| `election_analysis_bw_polls` | Einordnung fehlt | — |
-| `election_analysis_candidate_coverage` | Einordnung fehlt | — |
-| `election_analysis_candidates` | Einordnung fehlt | — |
-| `election_analysis_correction_audit` | Einordnung fehlt | — |
-| `election_analysis_demographics` | Einordnung fehlt | — |
-| `election_analysis_district_workbook_audit` | Einordnung fehlt | — |
-| `election_analysis_districts` | Einordnung fehlt | — |
-| `election_analysis_flow_matrix` | Einordnung fehlt | — |
-| `election_analysis_flows` | Einordnung fehlt | — |
-| `election_analysis_geographies` | Einordnung fehlt | — |
-| `election_analysis_local_results` | Einordnung fehlt | — |
-| `election_analysis_period_proposals` | Einordnung fehlt | — |
-| `election_analysis_scenarios` | Einordnung fehlt | — |
-| `election_analysis_source_reviews` | Einordnung fehlt | — |
-| `election_analysis_state` | Einordnung fehlt | — |
-| `election_analysis_state_totals` | Einordnung fehlt | — |
-| `election_analysis_turnout` | Einordnung fehlt | — |
-| `election_analysis_versions` | Einordnung fehlt | — |
-| `election_analysis_workbook_audit` | Einordnung fehlt | — |
-| `election_analysis_years` | Einordnung fehlt | — |
+| `election_analysis_bw_polls` | Ausstehend | — |
+| `election_analysis_candidate_coverage` | Ausstehend | — |
+| `election_analysis_candidates` | Ausstehend | — |
+| `election_analysis_correction_audit` | Ausstehend | — |
+| `election_analysis_demographics` | Ausstehend | — |
+| `election_analysis_district_workbook_audit` | Ausstehend | — |
+| `election_analysis_districts` | Ausstehend | — |
+| `election_analysis_flow_matrix` | Ausstehend | — |
+| `election_analysis_flows` | Ausstehend | — |
+| `election_analysis_geographies` | Ausstehend | — |
+| `election_analysis_local_results` | Ausstehend | — |
+| `election_analysis_period_proposals` | Ausstehend | — |
+| `election_analysis_scenarios` | Ausstehend | — |
+| `election_analysis_source_reviews` | Ausstehend | — |
+| `election_analysis_state` | Ausstehend | — |
+| `election_analysis_state_totals` | Ausstehend | — |
+| `election_analysis_turnout` | Ausstehend | — |
+| `election_analysis_versions` | Ausstehend | — |
+| `election_analysis_workbook_audit` | Ausstehend | — |
+| `election_analysis_years` | Ausstehend | — |
 | `election_district_municipalities` | Ausgenommen (nicht geprüft) | — |
 | `election_district_notes` | Ausgenommen (nicht geprüft) | — |
 | `election_districts` | Ausstehend | — |
-| `election_history_1952_result_sources` | Einordnung fehlt | — |
-| `election_history_assembly_issues` | Einordnung fehlt | — |
-| `election_history_audit` | Einordnung fehlt | — |
-| `election_history_candidacies` | Einordnung fehlt | — |
-| `election_history_candidate_workbook_audit` | Einordnung fehlt | — |
-| `election_history_connection_people` | Einordnung fehlt | — |
-| `election_history_districts` | Einordnung fehlt | — |
-| `election_history_factions` | Einordnung fehlt | — |
-| `election_history_mandate_birthdays` | Einordnung fehlt | — |
-| `election_history_mandates` | Einordnung fehlt | — |
-| `election_history_people` | Einordnung fehlt | — |
-| `election_history_periods` | Einordnung fehlt | — |
-| `election_history_state_list_entries` | Einordnung fehlt | — |
-| `election_history_state_lists` | Einordnung fehlt | — |
+| `election_history_1952_result_sources` | Ausstehend | — |
+| `election_history_assembly_issues` | Ausstehend | — |
+| `election_history_audit` | Ausstehend | — |
+| `election_history_candidacies` | Ausstehend | — |
+| `election_history_candidate_workbook_audit` | Ausstehend | — |
+| `election_history_connection_people` | Ausstehend | — |
+| `election_history_districts` | Ausstehend | — |
+| `election_history_factions` | Ausstehend | — |
+| `election_history_mandate_birthdays` | Ausstehend | — |
+| `election_history_mandates` | Ausstehend | — |
+| `election_history_people` | Ausstehend | — |
+| `election_history_periods` | Ausstehend | — |
+| `election_history_state_list_entries` | Ausstehend | — |
+| `election_history_state_lists` | Ausstehend | — |
 | `election_representatives` | Ausstehend | — |
 | `email_logs` | Ausgenommen (nicht geprüft) | — |
 | `email_templates` | Ausgenommen (nicht geprüft) | — |
@@ -189,7 +189,7 @@ Von 344 Tabellen haben 58 ein registriertes Szenario. 85 sind als Ausbau offen, 
 | `employee_meeting_private_notes` | Ausstehend | — |
 | `employee_meeting_requests` | Ausstehend | — |
 | `employee_meetings` | Ausstehend | — |
-| `employee_responsibilities` | Einordnung fehlt | — |
+| `employee_responsibilities` | Ausstehend | — |
 | `employee_settings` | Ausgenommen (nicht geprüft) | — |
 | `employee_settings_history` | Ausgenommen (nicht geprüft) | — |
 | `employee_yearly_stats` | Ausgenommen (nicht geprüft) | — |
@@ -301,7 +301,7 @@ Von 344 Tabellen haben 58 ein registriertes Szenario. 85 sind als Ausbau offen, 
 | `quick_note_versions` | Ausgenommen (nicht geprüft) | — |
 | `quick_note_write_receipts` | Ausgenommen (nicht geprüft) | — |
 | `quick_notes` | Szenario vorhanden | quick-note-lifecycle |
-| `regions` | Einordnung fehlt | — |
+| `regions` | Ausstehend | — |
 | `routine_package_runs` | Szenario vorhanden | onboarding-hr |
 | `routine_package_steps` | Szenario vorhanden | onboarding-hr |
 | `rss_cache` | Ausgenommen (nicht geprüft) | — |
@@ -316,6 +316,7 @@ Von 344 Tabellen haben 58 ein registriertes Szenario. 85 sind als Ausbau offen, 
 | `social_approval_comments` | Ausstehend | — |
 | `social_assets` | Ausstehend | — |
 | `social_campaigns` | Ausstehend | — |
+| `social_content_approval_events` | Ausgenommen (nicht geprüft) | — |
 | `social_content_channels` | Ausstehend | — |
 | `social_content_item_channels` | Ausstehend | — |
 | `social_content_items` | Ausstehend | — |
@@ -329,7 +330,6 @@ Von 344 Tabellen haben 58 ein registriertes Szenario. 85 sind als Ausbau offen, 
 | `tags` | Ausgenommen (nicht geprüft) | — |
 | `task_archive_settings` | Ausgenommen (nicht geprüft) | — |
 | `task_assignees` | Szenario vorhanden | document-annotation |
-| `task_batch_actions` | Szenario vorhanden | task-stafette-lifecycle |
 | `task_categories` | Ausgenommen (nicht geprüft) | — |
 | `task_comments` | Ausgenommen (nicht geprüft) | — |
 | `task_decision_attachments` | Ausgenommen (nicht geprüft) | — |
@@ -347,17 +347,17 @@ Von 344 Tabellen haben 58 ein registriertes Szenario. 85 sind als Ausbau offen, 
 | `tasks` | Szenario vorhanden | annual-task-stafette, appointment-briefing-lifecycle, case-item-lifecycle, document-annotation, jour-fixe-platform-integration, letter-lifecycle, meeting-lifecycle, onboarding-hr, quick-note-lifecycle, responsibilities, task-lifecycle, task-stafette-lifecycle |
 | `team_announcement_dismissals` | Ausgenommen (nicht geprüft) | — |
 | `team_announcements` | Ausstehend | — |
-| `team_bingo_settings` | Einordnung fehlt | — |
+| `team_bingo_settings` | Ausgenommen (nicht geprüft) | — |
 | `team_dashboard_members` | Ausgenommen (nicht geprüft) | — |
 | `team_dashboards` | Ausstehend | — |
-| `team_fun_facts` | Einordnung fehlt | — |
-| `team_question_answers` | Einordnung fehlt | — |
-| `team_question_weeks` | Einordnung fehlt | — |
-| `team_questions` | Einordnung fehlt | — |
-| `team_ritual_profiles` | Einordnung fehlt | — |
-| `team_ritual_settings` | Einordnung fehlt | — |
-| `team_two_truths_answers` | Einordnung fehlt | — |
-| `team_two_truths_months` | Einordnung fehlt | — |
+| `team_fun_facts` | Ausstehend | — |
+| `team_question_answers` | Ausstehend | — |
+| `team_question_weeks` | Ausstehend | — |
+| `team_questions` | Ausstehend | — |
+| `team_ritual_profiles` | Ausgenommen (nicht geprüft) | — |
+| `team_ritual_settings` | Ausgenommen (nicht geprüft) | — |
+| `team_two_truths_answers` | Ausstehend | — |
+| `team_two_truths_months` | Ausstehend | — |
 | `tenant_collaborations` | Ausstehend | — |
 | `tenant_feature_flags` | Ausgenommen (nicht geprüft) | — |
 | `tenant_onboarding_checklist_items` | Ausstehend | — |
@@ -369,7 +369,7 @@ Von 344 Tabellen haben 58 ein registriertes Szenario. 85 sind als Ausbau offen, 
 | `todo_categories` | Ausgenommen (nicht geprüft) | — |
 | `todos` | Ausstehend | — |
 | `topic_backlog` | Ausstehend | — |
-| `topic_catalog_links` | Einordnung fehlt | — |
+| `topic_catalog_links` | Ausgenommen (nicht geprüft) | — |
 | `topics` | Ausstehend | — |
 | `user_mywork_settings` | Ausgenommen (nicht geprüft) | — |
 | `user_navigation_visits` | Ausgenommen (nicht geprüft) | — |

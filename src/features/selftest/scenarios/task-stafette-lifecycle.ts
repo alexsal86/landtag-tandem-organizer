@@ -13,7 +13,7 @@ export const taskStafetteLifecycleScenario: TestScenario = {
   title: "Aufgaben-Stafette (Am Zug, Wiedervorlage, Freigabe)",
   description: "Spielt den Weg einer Aufgabe durch: Schritt festlegen, Wiedervorlage, Freigabe vorlegen, Rückgabe und Abschluss.",
   features: ["tasks"],
-  touches: ["tasks", "task_batch_actions"],
+  touches: ["tasks"],
   checks: [
     "Zonen Mein Zug / Wartet / Wiedervorlage",
     "Verlaufseinträge bei Übergaben und Erledigungen",
