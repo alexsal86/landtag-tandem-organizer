@@ -48,6 +48,7 @@ export async function saveRun(state: ScenarioRunState, meta: { tenantId: string;
     tenant_id: meta.tenantId, user_id: meta.userId, scenario_id: state.scenarioId, scenario_title: meta.title,
     keep_data: meta.keepData, status: p.status, duration_ms: p.duration_ms, failed_steps: p.failed_steps,
     total_steps: p.total_steps, steps: p.steps as unknown as Json, cleanup: p.cleanup as unknown as Json,
+    app_version: import.meta.env.VITE_COMMIT_SHA ?? null,
   });
   if (error) console.warn("Selbsttest-Verlauf nicht gespeichert:", error.message);
 }

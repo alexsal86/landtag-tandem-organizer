@@ -18722,6 +18722,14 @@ export type Database = {
         Args: { _user_id: string }
         Returns: string[]
       }
+      get_latest_selftest_runs: {
+        Args: { p_tenant_id: string }
+        Returns: {
+          created_at: string
+          scenario_id: string
+          status: string
+        }[]
+      }
       get_meeting_protocol_participants: {
         Args: { _meeting_id: string }
         Returns: {

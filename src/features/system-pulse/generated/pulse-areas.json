@@ -1,0 +1,132 @@
+{
+  "version": 2,
+  "generatedBy": "scripts/build-pulse-areas.mjs",
+  "source": "src/features/selftest/registry.ts",
+  "flow": [
+    "contacts",
+    "appointments",
+    "cases",
+    "tasks",
+    "decisions",
+    "meetings"
+  ],
+  "areas": [
+    {
+      "id": "contacts",
+      "title": "Kontakte",
+      "primaryTags": [
+        "contacts"
+      ],
+      "scenarioIds": [],
+      "scenarios": [
+        "contact-lifecycle"
+      ],
+      "tables": [
+        "contacts"
+      ]
+    },
+    {
+      "id": "appointments",
+      "title": "Termine & Briefings",
+      "primaryTags": [
+        "appointments",
+        "briefings",
+        "appointment-requests"
+      ],
+      "scenarioIds": [],
+      "scenarios": [
+        "appointment-briefing-lifecycle",
+        "appointment-lifecycle",
+        "appointment-request-lifecycle",
+        "daily-briefing-lifecycle",
+        "poll-lifecycle"
+      ],
+      "tables": [
+        "appointment_polls",
+        "appointment_requests",
+        "appointments",
+        "daily_briefings"
+      ]
+    },
+    {
+      "id": "cases",
+      "title": "Vorgänge",
+      "primaryTags": [
+        "case-items"
+      ],
+      "scenarioIds": [],
+      "scenarios": [
+        "case-item-lifecycle"
+      ],
+      "tables": [
+        "case_items"
+      ]
+    },
+    {
+      "id": "tasks",
+      "title": "Aufgaben & Stafette",
+      "primaryTags": [
+        "tasks",
+        "quick-notes"
+      ],
+      "scenarioIds": [],
+      "scenarios": [
+        "annual-task-stafette",
+        "quick-note-lifecycle",
+        "task-lifecycle",
+        "task-stafette-lifecycle"
+      ],
+      "tables": [
+        "annual_tasks",
+        "quick_notes",
+        "tasks"
+      ]
+    },
+    {
+      "id": "decisions",
+      "title": "Entscheidungen",
+      "primaryTags": [
+        "decisions"
+      ],
+      "scenarioIds": [],
+      "scenarios": [
+        "decision-lifecycle"
+      ],
+      "tables": [
+        "task_decisions"
+      ]
+    },
+    {
+      "id": "meetings",
+      "title": "Jour fixe",
+      "primaryTags": [
+        "meetings"
+      ],
+      "scenarioIds": [],
+      "scenarios": [
+        "jour-fixe-platform-integration",
+        "meeting-lifecycle"
+      ],
+      "tables": [
+        "meetings"
+      ]
+    },
+    {
+      "id": "security",
+      "title": "Zugriffsschutz",
+      "primaryTags": [
+        "permissions"
+      ],
+      "scenarioIds": [
+        "access-boundaries"
+      ],
+      "scenarios": [
+        "access-boundaries",
+        "admin-controls"
+      ],
+      "tables": [
+        "appointment_requests"
+      ]
+    }
+  ]
+}

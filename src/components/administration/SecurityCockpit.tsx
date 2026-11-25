@@ -130,7 +130,10 @@ export function SecurityCockpit(): JSX.Element {
 
   return (
     <div className="space-y-6">
-      <SystemPulse gaps={gapsQuery.data ?? []} />
+      <SystemPulse
+        gaps={gapsQuery.data ?? []}
+        gapsState={gapsQuery.isPending ? "loading" : gapsQuery.isError ? "error" : "ready"}
+      />
       <header className="flex items-start justify-between gap-3">
         <div>
           <h2 className="text-h2 font-semibold flex items-center gap-2">

@@ -1,0 +1,41 @@
+{
+  "flow": ["contacts", "appointments", "cases", "tasks", "decisions", "meetings"],
+  "areas": [
+    {
+      "id": "contacts",
+      "title": "Kontakte",
+      "primaryTags": ["contacts"]
+    },
+    {
+      "id": "appointments",
+      "title": "Termine & Briefings",
+      "primaryTags": ["appointments", "briefings", "appointment-requests"]
+    },
+    {
+      "id": "cases",
+      "title": "Vorgänge",
+      "primaryTags": ["case-items"]
+    },
+    {
+      "id": "tasks",
+      "title": "Aufgaben & Stafette",
+      "primaryTags": ["tasks", "quick-notes"]
+    },
+    {
+      "id": "decisions",
+      "title": "Entscheidungen",
+      "primaryTags": ["decisions"]
+    },
+    {
+      "id": "meetings",
+      "title": "Jour fixe",
+      "primaryTags": ["meetings"]
+    },
+    {
+      "id": "security",
+      "title": "Zugriffsschutz",
+      "primaryTags": ["permissions"],
+      "scenarioIds": ["access-boundaries"]
+    }
+  ]
+}
