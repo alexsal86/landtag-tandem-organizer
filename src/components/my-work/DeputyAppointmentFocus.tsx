@@ -180,7 +180,7 @@ function FocusCard({ appointment, now, running, after, tenant, briefingStatus, i
     </Link>
     {afterDeparture && <p className="text-xs text-muted-foreground">Losfahren {clockWithDay(afterDeparture.at.toISOString(), now)}</p>}
   </div>;
-  const runningDot = running && <span aria-hidden="true" className="relative size-3 shrink-0 rounded-full border-2 border-[#397d16] bg-[#397d16]">
+  const runningDot = running && <span aria-hidden="true" className="relative size-2.5 shrink-0 rounded-full border border-[#397d16] bg-[#397d16]">
     <span className="absolute -inset-0.5 animate-ring rounded-full bg-[#55ad21] blur-[1px] motion-reduce:hidden" />
   </span>;
 
@@ -222,7 +222,7 @@ function FocusCard({ appointment, now, running, after, tenant, briefingStatus, i
         <div className="flex flex-wrap items-start gap-x-4 gap-y-3">
           <div className="shrink-0">
             <p className={cn("flex items-center gap-1.5 text-xs font-bold uppercase tracking-wide", imminent ? "text-[#965806] dark:text-amber-300" : "text-[#38761c] dark:text-green-300")}>{runningDot}{status}</p>
-            <p className={cn("tabular-nums font-semibold leading-tight", running ? "text-5xl" : mode === "detailed" ? "text-4xl" : "text-2xl")}>{berlinClock(appointment.start_time)}</p>
+            <p className={cn("tabular-nums leading-tight", running ? "text-[2.875rem] font-medium" : mode === "detailed" ? "text-4xl font-semibold" : "text-2xl font-semibold")}>{berlinClock(appointment.start_time)}</p>
             {(berlinDayKey(appointment.start_time) !== berlinDayKey(now) || appointment.original !== appointment.start_time) && (
               <p className="text-xs text-muted-foreground">
                 {[berlinDayKey(appointment.start_time) !== berlinDayKey(now) ? berlinWeekdayShortDate(appointment.start_time) : null,
@@ -231,7 +231,7 @@ function FocusCard({ appointment, now, running, after, tenant, briefingStatus, i
             )}
           </div>
           <div className="min-w-0 flex-1 basis-32">
-            <h3 className={cn("break-words font-semibold leading-tight", running ? "text-2xl" : mode === "detailed" ? "text-xl" : "text-lg")}>
+            <h3 className={cn("break-words leading-tight", running ? "text-[1.375rem] font-medium" : mode === "detailed" ? "text-xl font-semibold" : "text-lg font-semibold")}>
               <Link to={calendar} className="hover:underline">{appointment.title}</Link>
             </h3>
             {location && <p className="mt-1 flex items-start gap-1.5 text-sm text-muted-foreground">

@@ -12,7 +12,7 @@ export function RunningAppointmentFeedback({ draftKey }: { draftKey: string }) {
   const [draft, setDraft] = useState(saved);
 
   return <div className="space-y-2">
-    <Button type="button" variant="secondary" aria-expanded={open} aria-controls={open ? panel : undefined}
+    <Button type="button" className="bg-[#38761c] text-white hover:bg-[#2b5e15]" aria-expanded={open} aria-controls={open ? panel : undefined}
       onClick={() => { if (!open) setDraft(saved); setOpen(!open); }}>
       <MessageSquare aria-hidden="true" />{saved ? "Rückmeldung bearbeiten" : "Rückmeldung hinterlegen"}
     </Button>
