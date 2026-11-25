@@ -2,7 +2,7 @@
 
 _Auto-generiert mit `npm run update:feature-catalog`. Nicht von Hand bearbeiten._
 
-Der Katalog ist ein Zeiger, keine zweite Wahrheit: Zweck, Seiten und Rollen stammen aus dieser Bereichsliste, Prüfumfang und Tabellen aus den Selbsttest-Szenarien. Die Regeln selbst stehen in [AGENTS.md](../../AGENTS.md).
+Der Katalog ist ein Zeiger, keine zweite Wahrheit: Zweck, Seiten und Rollen stammen aus dieser Bereichsliste, Prüfumfang und Tabellen aus den Selbsttest-Szenarien, die Fremdschlüssel aus `docs/entity-map.md`. Die Regeln selbst stehen in [AGENTS.md](../../AGENTS.md).
 
 8 Bereiche mit zusammen 25 Szenarien.
 

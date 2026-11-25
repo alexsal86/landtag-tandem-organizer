@@ -1,5 +1,6 @@
 import { useMemo, useState } from "react";
-import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
+import { useResolvedUserRole } from "@/hooks/useResolvedUserRole";
+import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
 import { ScrollArea } from "@/components/ui/scroll-area";
 import { cn } from "@/lib/utils";
 import { catalogPages, entityMapMarkdown, type CatalogPage } from "./catalogContent";
@@ -10,9 +11,30 @@ const entityPage: CatalogPage = { id: "entity-map", title: "Entitätskarte", mar
 const labelFor = (page: CatalogPage) => (page.id === "README" ? "Übersicht" : page.title);
 
 export function FeatureCatalogView() {
+  const { hasAdminAccess, loading } = useResolvedUserRole();
   const pages = useMemo(() => [...catalogPages, entityPage], []);
   const [selectedId, setSelectedId] = useState(pages[0]?.id ?? "README");
   const current = pages.find((page) => page.id === selectedId) ?? pages[0];
+
+  if (loading) {
+    return <div className="p-6 text-sm text-muted-foreground">Zugriff wird geprüft …</div>;
+  }
+
+  if (!hasAdminAccess) {
+    return (
+      <div className="p-4 md:p-6">
+        <Card className="max-w-lg">
+          <CardHeader>
+            <CardTitle className="text-base">Kein Zugriff</CardTitle>
+            <CardDescription>
+              Der Funktionskatalog zeigt Tabellen- und Beziehungswissen und ist nur für Administration und Büroleitung
+              sichtbar. Bitte wenden Sie sich an die Büroleitung.
+            </CardDescription>
+          </CardHeader>
+        </Card>
+      </div>
+    );
+  }
 
   if (!current) {
     return (
@@ -37,7 +59,7 @@ export function FeatureCatalogView() {
       <div className="grid gap-4 lg:grid-cols-[16rem_1fr]">
         <Card className="h-fit">
           <CardHeader className="pb-2">
-            <CardTitle className="text-sm">Bereiche</CardTitle>
+            <CardTitle className="text-sm">Katalog</CardTitle>
           </CardHeader>
           <CardContent className="p-2">
             <nav className="flex flex-col gap-1" aria-label="Katalogbereiche">

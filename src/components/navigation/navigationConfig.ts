@@ -21,6 +21,8 @@ export interface NavSubItem {
   id: string;
   label: string;
   icon: typeof Home;
+  /** Nur für Administration und Büroleitung sichtbar. */
+  adminOnly?: boolean;
 }
 
 export interface NavGroup {
@@ -96,7 +98,7 @@ export const navigationGroups: NavGroup[] = [
     subItems: [
       { id: "karten", label: "Karten", icon: MapPin },
       { id: "daten", label: "Daten", icon: Calculator },
-      { id: "funktionskatalog", label: "Funktionskatalog", icon: BookOpen },
+      { id: "funktionskatalog", label: "Funktionskatalog", icon: BookOpen, adminOnly: true },
     ]
   }
 ];

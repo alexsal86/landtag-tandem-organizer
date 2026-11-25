@@ -119,6 +119,13 @@ export function AppNavigation({
   const { navigationCounts, markNavigationAsVisited } = useNavigationNotifications();
   const { totalUnreadCount: matrixUnreadCount } = useMatrixUnread();
   const { role: userRole, hasAdminAccess, loading: isRoleLoading } = useResolvedUserRole();
+  // Bereiche mit `adminOnly` bleiben Mitarbeitenden verborgen (z. B. Funktionskatalog).
+  const visibleGroups = useMemo(
+    () => getNavigationGroups().map((group) => group.subItems
+      ? { ...group, subItems: group.subItems.filter((item) => !item.adminOnly || hasAdminAccess) }
+      : group),
+    [hasAdminAccess],
+  );
   const { isDeputyView, loading: isViewLoading, setView } = useWorkspaceView();
   const appSettings = useAppSettings();
   useFavicon(appSettings.app_logo_url);
@@ -440,7 +447,7 @@ export function AppNavigation({
     <>
       {/* Main Navigation */}
       <div className="flex-1 flex flex-col py-2 px-2 gap-0.5 overflow-y-auto">
-        {navigationGroups.map(group => renderNavGroup(group))}
+        {visibleGroups.map(group => renderNavGroup(group))}
       </div>
 
       {/* Recently Visited */}

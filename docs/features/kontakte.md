@@ -25,6 +25,35 @@ Diese Tabellen schreiben die Szenarien laut `touches`. Fehlende Tabellen bedeute
 | `contact_usage_stats` | `contact-lifecycle` |
 | `contacts` | `contact-lifecycle` |
 
+## Fremdschlüssel
+
+Aus `docs/entity-map.md` für die oben genannten Tabellen. Eingehende Verweise zeigen, welche anderen Tabellen auf diesen Bereich zeigen.
+
+### Ausgehend
+
+| Tabelle | Spalte | Zieltabelle |
+|---|---|---|
+| `contact_activities` | `contact_id` | `contacts` |
+| `contacts` | `organization_id` | `contacts` |
+| `contacts` | `tenant_id` | `tenants` |
+
+### Eingehend
+
+| Zieltabelle im Bereich | Von | Spalte |
+|---|---|---|
+| `contacts` | `appointment_contacts` | `contact_id` |
+| `contacts` | `appointments` | `contact_id` |
+| `contacts` | `case_file_contacts` | `contact_id` |
+| `contacts` | `case_items` | `contact_id` |
+| `contacts` | `contact_activities` | `contact_id` |
+| `contacts` | `contact_briefing_memory` | `contact_id` |
+| `contacts` | `contact_topics` | `contact_id` |
+| `contacts` | `contacts` | `organization_id` |
+| `contacts` | `distribution_list_members` | `contact_id` |
+| `contacts` | `document_contacts` | `contact_id` |
+| `contacts` | `facts` | `contact_id` |
+| `contacts` | `funding_participants` | `contact_id` |
+
 ## Prüfumfang
 
 ### `contact-lifecycle` — Kontakt-Lifecycle (Anlegen → Kategorie/Tags → Aktivität → Suche)

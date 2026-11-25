@@ -21,6 +21,18 @@ Diese Tabellen schreiben die Szenarien laut `touches`. Fehlende Tabellen bedeute
 |---|---|
 | — | — |
 
+## Fremdschlüssel
+
+Der Bereich schreibt laut Szenarien keine Tabellen (nur lesende Prüfungen), deshalb sind hier keine Verweise zugeordnet; die Datenebene steht in `docs/entity-map.md`.
+
+### Ausgehend
+
+Keine ausgehenden Fremdschlüssel.
+
+### Eingehend
+
+Keine eingehenden Fremdschlüssel.
+
 ## Prüfumfang
 
 ### `election-analysis` — Wahlanalyse: Datenqualität und Vergleichbarkeit

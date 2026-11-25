@@ -38,6 +38,101 @@ Diese Tabellen schreiben die Szenarien laut `touches`. Fehlende Tabellen bedeute
 | `poll_time_slots` | `poll-lifecycle` |
 | `tasks` | `appointment-briefing-lifecycle` |
 
+## Fremdschlüssel
+
+Aus `docs/entity-map.md` für die oben genannten Tabellen. Eingehende Verweise zeigen, welche anderen Tabellen auf diesen Bereich zeigen.
+
+### Ausgehend
+
+| Tabelle | Spalte | Zieltabelle |
+|---|---|---|
+| `appointment_feedback` | `appointment_id` | `appointments` |
+| `appointment_feedback` | `external_event_id` | `external_events` |
+| `appointment_feedback` | `tenant_id` | `tenants` |
+| `appointment_guests` | `appointment_id` | `appointments` |
+| `appointment_polls` | `confirmed_appointment_id` | `appointments` |
+| `appointment_polls` | `confirmed_slot_id` | `poll_time_slots` |
+| `appointment_polls` | `tenant_id` | `tenants` |
+| `appointment_preparations` | `template_id` | `appointment_preparation_templates` |
+| `appointment_preparations` | `appointment_id` | `appointments` |
+| `appointment_preparations` | `tenant_id` | `tenants` |
+| `appointment_requests` | `appointment_id` | `appointments` |
+| `appointment_requests` | `tenant_id` | `tenants` |
+| `appointments` | `poll_id` | `appointment_polls` |
+| `appointments` | `call_log_id` | `call_logs` |
+| `appointments` | `contact_id` | `contacts` |
+| `appointments` | `district_id` | `election_districts` |
+| `appointments` | `meeting_id` | `meetings` |
+| `appointments` | `party_association_id` | `party_associations` |
+| `appointments` | `tenant_id` | `tenants` |
+| `event_planning_checklist_items` | `event_planning_id` | `event_plannings` |
+| `event_planning_contacts` | `event_planning_id` | `event_plannings` |
+| `event_planning_dates` | `appointment_id` | `appointments` |
+| `event_planning_dates` | `event_planning_id` | `event_plannings` |
+| `event_planning_speakers` | `event_planning_id` | `event_plannings` |
+| `event_planning_timeline_assignments` | `checklist_item_id` | `event_planning_checklist_items` |
+| `event_planning_timeline_assignments` | `event_planning_id` | `event_plannings` |
+| `event_plannings` | `template_id` | `planning_templates` |
+| `event_plannings` | `tenant_id` | `tenants` |
+| `poll_participants` | `poll_id` | `appointment_polls` |
+| `poll_time_slots` | `poll_id` | `appointment_polls` |
+| `tasks` | `call_log_id` | `call_logs` |
+| `tasks` | `meeting_id` | `meetings` |
+| `tasks` | `parent_task_id` | `tasks` |
+| `tasks` | `tenant_id` | `tenants` |
+
+### Eingehend
+
+| Zieltabelle im Bereich | Von | Spalte |
+|---|---|---|
+| `tasks` | `annual_task_completions` | `linked_task_id` |
+| `appointments` | `appointment_contacts` | `appointment_id` |
+| `appointments` | `appointment_documents` | `appointment_id` |
+| `appointments` | `appointment_feedback` | `appointment_id` |
+| `appointments` | `appointment_guests` | `appointment_id` |
+| `appointments` | `appointment_polls` | `confirmed_appointment_id` |
+| `poll_time_slots` | `appointment_polls` | `confirmed_slot_id` |
+| `appointment_preparations` | `appointment_preparation_documents` | `preparation_id` |
+| `appointments` | `appointment_preparations` | `appointment_id` |
+| `appointments` | `appointment_reminder_dispatches` | `appointment_id` |
+| `appointments` | `appointment_requests` | `appointment_id` |
+| `appointments` | `appointment_topics` | `appointment_id` |
+| `appointment_polls` | `appointments` | `poll_id` |
+| `appointments` | `case_file_appointments` | `appointment_id` |
+| `tasks` | `case_file_tasks` | `task_id` |
+| `tasks` | `document_annotation_tasks` | `task_id` |
+| `tasks` | `employee_meeting_action_items` | `task_id` |
+| `event_planning_checklist_items` | `event_planning_action_logs` | `checklist_item_id` |
+| `event_plannings` | `event_planning_checklist_items` | `event_planning_id` |
+| `event_plannings` | `event_planning_collaborators` | `event_planning_id` |
+| `event_plannings` | `event_planning_contacts` | `event_planning_id` |
+| `appointments` | `event_planning_dates` | `appointment_id` |
+| `event_plannings` | `event_planning_dates` | `event_planning_id` |
+| `event_plannings` | `event_planning_documents` | `event_planning_id` |
+| `event_planning_checklist_items` | `event_planning_item_actions` | `checklist_item_id` |
+| `event_plannings` | `event_planning_speakers` | `event_planning_id` |
+| `event_planning_checklist_items` | `event_planning_timeline_assignments` | `checklist_item_id` |
+| `event_plannings` | `event_planning_timeline_assignments` | `event_planning_id` |
+| `event_plannings` | `event_rsvps` | `event_planning_id` |
+| `tasks` | `matrix_widget_callback_requests` | `task_id` |
+| `appointment_polls` | `poll_notifications` | `poll_id` |
+| `poll_participants` | `poll_notifications` | `participant_id` |
+| `appointment_polls` | `poll_participants` | `poll_id` |
+| `appointment_polls` | `poll_responses` | `poll_id` |
+| `poll_participants` | `poll_responses` | `participant_id` |
+| `poll_time_slots` | `poll_responses` | `time_slot_id` |
+| `appointment_polls` | `poll_time_slots` | `poll_id` |
+| `appointment_polls` | `poll_versions` | `poll_id` |
+| `tasks` | `quick_notes` | `task_id` |
+| `tasks` | `routine_package_runs` | `task_id` |
+| `appointments` | `starred_appointments` | `appointment_id` |
+| `tasks` | `subtasks` | `task_id` |
+| `tasks` | `task_assignees` | `task_id` |
+| `tasks` | `task_comments` | `task_id` |
+| `tasks` | `task_decisions` | `task_id` |
+| `tasks` | `task_topics` | `task_id` |
+| `tasks` | `tasks` | `parent_task_id` |
+
 ## Prüfumfang
 
 ### `appointment-lifecycle` — Termin-Lifecycle (Kalender + Briefing + Feedback)

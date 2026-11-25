@@ -31,6 +31,77 @@ Diese Tabellen schreiben die Szenarien laut `touches`. Fehlende Tabellen bedeute
 | `task_decisions` | `task-lifecycle`, `jour-fixe-platform-integration` |
 | `tasks` | `task-lifecycle`, `task-stafette-lifecycle`, `annual-task-stafette`, `jour-fixe-platform-integration` |
 
+## Fremdschlüssel
+
+Aus `docs/entity-map.md` für die oben genannten Tabellen. Eingehende Verweise zeigen, welche anderen Tabellen auf diesen Bereich zeigen.
+
+### Ausgehend
+
+| Tabelle | Spalte | Zieltabelle |
+|---|---|---|
+| `annual_task_completions` | `annual_task_id` | `annual_tasks` |
+| `annual_task_completions` | `linked_task_id` | `tasks` |
+| `annual_tasks` | `automation_rule_id` | `automation_rules` |
+| `annual_tasks` | `tenant_id` | `tenants` |
+| `day_slips` | `tenant_id` | `tenants` |
+| `meeting_agenda_items` | `parent_id` | `meeting_agenda_items` |
+| `meeting_agenda_items` | `meeting_id` | `meetings` |
+| `meetings` | `parent_meeting_id` | `meetings` |
+| `meetings` | `tenant_id` | `tenants` |
+| `task_decisions` | `case_file_id` | `case_files` |
+| `task_decisions` | `case_item_id` | `case_items` |
+| `task_decisions` | `meeting_id` | `meetings` |
+| `task_decisions` | `task_id` | `tasks` |
+| `task_decisions` | `tenant_id` | `tenants` |
+| `tasks` | `call_log_id` | `call_logs` |
+| `tasks` | `meeting_id` | `meetings` |
+| `tasks` | `parent_task_id` | `tasks` |
+| `tasks` | `tenant_id` | `tenants` |
+
+### Eingehend
+
+| Zieltabelle im Bereich | Von | Spalte |
+|---|---|---|
+| `annual_tasks` | `annual_task_completions` | `annual_task_id` |
+| `tasks` | `annual_task_completions` | `linked_task_id` |
+| `meetings` | `appointments` | `meeting_id` |
+| `meetings` | `archived_tasks` | `meeting_id` |
+| `tasks` | `case_file_tasks` | `task_id` |
+| `meetings` | `case_items` | `meeting_id` |
+| `daily_briefings` | `daily_briefing_reads` | `briefing_id` |
+| `task_decisions` | `dashboard_decision_nudges` | `decision_id` |
+| `task_decisions` | `decision_matrix_messages` | `decision_id` |
+| `tasks` | `document_annotation_tasks` | `task_id` |
+| `tasks` | `employee_meeting_action_items` | `task_id` |
+| `tasks` | `matrix_widget_callback_requests` | `task_id` |
+| `meeting_agenda_items` | `meeting_agenda_items` | `parent_id` |
+| `meetings` | `meeting_agenda_items` | `meeting_id` |
+| `meetings` | `meeting_participants` | `meeting_id` |
+| `meetings` | `meeting_protocol_addenda` | `meeting_id` |
+| `meetings` | `meeting_protocol_details` | `meeting_id` |
+| `meetings` | `meetings` | `parent_meeting_id` |
+| `meetings` | `quick_notes` | `meeting_id` |
+| `task_decisions` | `quick_notes` | `decision_id` |
+| `tasks` | `quick_notes` | `task_id` |
+| `annual_tasks` | `routine_package_runs` | `annual_task_id` |
+| `tasks` | `routine_package_runs` | `task_id` |
+| `task_decisions` | `routine_package_steps` | `approval_id` |
+| `meetings` | `starred_appointments` | `meeting_id` |
+| `tasks` | `subtasks` | `task_id` |
+| `tasks` | `task_assignees` | `task_id` |
+| `tasks` | `task_comments` | `task_id` |
+| `task_decisions` | `task_decision_attachments` | `decision_id` |
+| `task_decisions` | `task_decision_comments` | `decision_id` |
+| `task_decisions` | `task_decision_participants` | `decision_id` |
+| `task_decisions` | `task_decision_response_history` | `decision_id` |
+| `task_decisions` | `task_decision_responses` | `decision_id` |
+| `task_decisions` | `task_decision_topics` | `decision_id` |
+| `meetings` | `task_decisions` | `meeting_id` |
+| `tasks` | `task_decisions` | `task_id` |
+| `tasks` | `task_topics` | `task_id` |
+| `meetings` | `tasks` | `meeting_id` |
+| `tasks` | `tasks` | `parent_task_id` |
+
 ## Prüfumfang
 
 ### `task-lifecycle` — Aufgaben-Lifecycle (Zuweisung → Frist → Entscheidung → Jour fixe → erledigt)

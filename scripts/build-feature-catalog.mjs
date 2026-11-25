@@ -221,7 +221,7 @@ export function collectCatalog(root) {
 
 const quoted = (values) => values.length ? values.map((v) => `\`${v}\``).join(', ') : '—';
 
-function renderArea(area) {
+function renderArea(area, entityMap) {
   const scenarioSections = area.scenarios.map((scenario) => {
     const checks = scenario.checks.length
       ? scenario.checks.map((check) => `  - ${check}`).join('\n')
@@ -243,6 +243,16 @@ function renderArea(area) {
     .map(([table, scenarioIds]) => `| \`${table}\` | ${scenarioIds.map((id) => `\`${id}\``).join(', ')} |`)
     .join('\n');
 
+  const columns = (edge) => edge.columns.map((column) => `\`${column}\``).join(', ') || '—';
+  const outgoing = entityMap.edges.filter((edge) => area.tables.includes(edge.from));
+  const incoming = entityMap.edges.filter((edge) => area.tables.includes(edge.to));
+  const outgoingSection = outgoing.length
+    ? `| Tabelle | Spalte | Zieltabelle |\n|---|---|---|\n${outgoing.map((edge) => `| \`${edge.from}\` | ${columns(edge)} | \`${edge.to}\` |`).join('\n')}`
+    : 'Keine ausgehenden Fremdschlüssel.';
+  const incomingSection = incoming.length
+    ? `| Zieltabelle im Bereich | Von | Spalte |\n|---|---|---|\n${incoming.map((edge) => `| \`${edge.to}\` | \`${edge.from}\` | ${columns(edge)} |`).join('\n')}`
+    : 'Keine eingehenden Fremdschlüssel.';
+
   return `# ${area.title}\n\n` +
     `_Auto-generiert mit \`npm run update:feature-catalog\` aus den Selbsttest-Szenarien. Nicht von Hand bearbeiten._\n\n` +
     `**Zweck:** ${area.purpose}\n\n` +
@@ -250,6 +260,11 @@ function renderArea(area) {
     `## Rollen\n\n${area.roles.length ? `${quoted(area.roles)} (aus den Szenarien; zusätzlich gilt die aktive Büro-Mitgliedschaft)` : 'Keine besondere Rolle deklariert; es gilt die aktive Büro-Mitgliedschaft.'}\n\n` +
     `## Tabellen\n\nDiese Tabellen schreiben die Szenarien laut \`touches\`. Fehlende Tabellen bedeuten nicht, dass der Bereich sie nicht liest.\n\n` +
     `| Tabelle | Szenario |\n|---|---|\n${tableRows || '| — | — |'}\n\n` +
+    `## Fremdschlüssel\n\n${area.tables.length
+      ? 'Aus `docs/entity-map.md` für die oben genannten Tabellen. Eingehende Verweise zeigen, welche anderen Tabellen auf diesen Bereich zeigen.'
+      : 'Der Bereich schreibt laut Szenarien keine Tabellen (nur lesende Prüfungen), deshalb sind hier keine Verweise zugeordnet; die Datenebene steht in `docs/entity-map.md`.'}\n\n` +
+    `### Ausgehend\n\n${outgoingSection}\n\n` +
+    `### Eingehend\n\n${incomingSection}\n\n` +
     `## Prüfumfang\n\n${scenarioSections}\n\n` +
     `## Detaildoku\n\n${area.docs.map((doc) => doc.endsWith('/') || !doc.endsWith('.md') ? `- \`${doc}\`` : `- [${doc.split('/').pop()}](../${doc.split('/').pop()})`).join('\n')}\n\n` +
     `## Regeln\n\nFachliche Invarianten stehen in [AGENTS.md](../../AGENTS.md); Rollen und Rechte in [rollenrechte-matrix.md](../rollenrechte-matrix.md).\n`;
@@ -264,7 +279,8 @@ function renderIndex(catalog) {
   return `# Funktionskatalog\n\n` +
     `_Auto-generiert mit \`npm run update:feature-catalog\`. Nicht von Hand bearbeiten._\n\n` +
     `Der Katalog ist ein Zeiger, keine zweite Wahrheit: Zweck, Seiten und Rollen stammen aus dieser Bereichsliste, ` +
-    `Prüfumfang und Tabellen aus den Selbsttest-Szenarien. Die Regeln selbst stehen in [AGENTS.md](../../AGENTS.md).\n\n` +
+    `Prüfumfang und Tabellen aus den Selbsttest-Szenarien, die Fremdschlüssel aus \`docs/entity-map.md\`. ` +
+    `Die Regeln selbst stehen in [AGENTS.md](../../AGENTS.md).\n\n` +
     `${catalog.areas.length} Bereiche mit zusammen ${catalog.areas.reduce((sum, area) => sum + area.scenarios.length, 0)} Szenarien.\n\n` +
     `## Bereiche\n\n| Bereich | Seiten | Szenarien | Tabellen | Rollen |\n|---|---|---:|---:|---|\n${rows}\n\n` +
     `## Szenarien ohne eigenen Bereich\n\nDiese Szenarien sind registriert, aber keinem der Startbereiche zugeordnet. ` +
@@ -296,7 +312,7 @@ export function renderCatalog(catalog, entityMap) {
     ['docs/features/README.md', renderIndex(catalog)],
     ['docs/entity-map.md', renderEntityMap(entityMap)],
   ]);
-  for (const area of catalog.areas) files.set(`docs/features/${area.id}.md`, renderArea(area));
+  for (const area of catalog.areas) files.set(`docs/features/${area.id}.md`, renderArea(area, entityMap));
   return files;
 }
 

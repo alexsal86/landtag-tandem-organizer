@@ -23,6 +23,44 @@ Diese Tabellen schreiben die Szenarien laut `touches`. Fehlende Tabellen bedeute
 | `task_decision_responses` | `decision-lifecycle` |
 | `task_decisions` | `decision-lifecycle` |
 
+## Fremdschlüssel
+
+Aus `docs/entity-map.md` für die oben genannten Tabellen. Eingehende Verweise zeigen, welche anderen Tabellen auf diesen Bereich zeigen.
+
+### Ausgehend
+
+| Tabelle | Spalte | Zieltabelle |
+|---|---|---|
+| `task_decision_participants` | `decision_id` | `task_decisions` |
+| `task_decision_responses` | `participant_id` | `task_decision_participants` |
+| `task_decision_responses` | `parent_response_id` | `task_decision_responses` |
+| `task_decision_responses` | `decision_id` | `task_decisions` |
+| `task_decisions` | `case_file_id` | `case_files` |
+| `task_decisions` | `case_item_id` | `case_items` |
+| `task_decisions` | `meeting_id` | `meetings` |
+| `task_decisions` | `task_id` | `tasks` |
+| `task_decisions` | `tenant_id` | `tenants` |
+
+### Eingehend
+
+| Zieltabelle im Bereich | Von | Spalte |
+|---|---|---|
+| `task_decisions` | `dashboard_decision_nudges` | `decision_id` |
+| `task_decision_participants` | `decision_matrix_messages` | `participant_id` |
+| `task_decisions` | `decision_matrix_messages` | `decision_id` |
+| `task_decisions` | `quick_notes` | `decision_id` |
+| `task_decisions` | `routine_package_steps` | `approval_id` |
+| `task_decisions` | `task_decision_attachments` | `decision_id` |
+| `task_decisions` | `task_decision_comments` | `decision_id` |
+| `task_decisions` | `task_decision_participants` | `decision_id` |
+| `task_decision_participants` | `task_decision_response_history` | `participant_id` |
+| `task_decision_responses` | `task_decision_response_history` | `response_id` |
+| `task_decisions` | `task_decision_response_history` | `decision_id` |
+| `task_decision_participants` | `task_decision_responses` | `participant_id` |
+| `task_decision_responses` | `task_decision_responses` | `parent_response_id` |
+| `task_decisions` | `task_decision_responses` | `decision_id` |
+| `task_decisions` | `task_decision_topics` | `decision_id` |
+
 ## Prüfumfang
 
 ### `decision-lifecycle` — Entscheidungs-Lifecycle (active → open → archived)
