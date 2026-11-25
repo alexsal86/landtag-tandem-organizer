@@ -14,7 +14,7 @@ import { withHistoricalDistrictNames } from '@/features/election-history/histori
 import { sourceHistoricalDistrictName, isReconstructedBoundary } from '@/utils/electoralGeometryCatalog';
 import { confirmedPeriodGeometryYear, withPeriodGeometry } from '@/features/election-history/periodGeometry';
 import type { ElectionHistoryData, ElectionPeriod } from '@/features/election-history/types';
-import { hasRenderableBoundary, searchElectionDistricts, timeTravelOrder, timeTravelPeriodAt } from '@/features/election-districts/mapModel';
+import { hasRenderableBoundary, partyFilterForPeriod, searchElectionDistricts, timeTravelOrder, timeTravelPeriodAt } from '@/features/election-districts/mapModel';
 import type { TestScenario } from '../types';
 
 export const electionMapScenario: TestScenario = {
@@ -213,6 +213,15 @@ export const electionMapScenario: TestScenario = {
         && timeTravelPeriodAt([], 0) === null
         && timeTravelPeriodAt([{ id: 'only' }], 0) === null,
         message: 'Die Zeitreise beginnt bei der ältesten Periode, läuft aufwärts durch die Wahljahre und wiederholt keine einzelne Periode.' };
+    } },
+    { id: 'party-filter-stable', label: 'Parteifilter bleibt beim Wechsel der Legislaturperiode erhalten', kind: 'logic', run: async () => {
+      const seeded1952 = partyFilterForPeriod(null, ['CDU', 'SPD'], 1952);
+      const seeded2026 = partyFilterForPeriod(null, ['CDU', 'AfD'], 2026);
+      const chosen = new Set(['SPD']);
+      return { ok: seeded1952.size === 3 && seeded1952.has('CDU') && seeded1952.has('SPD') && seeded1952.has('Ohne Direktmandat')
+        && seeded2026.size === 2 && !seeded2026.has('Ohne Direktmandat')
+        && partyFilterForPeriod(chosen, ['CDU', 'AfD'], 2026) === chosen,
+        message: 'Nur die erste Periode setzt die Auswahl (1952 inklusive offener Zuordnung); spätere Perioden behalten die Filterauswahl des Nutzers.' };
     } },
     { id: 'search', label: 'Wahlkreise nach Name oder exakter Nummer finden', kind: 'logic', run: async () => {
       const districts = [

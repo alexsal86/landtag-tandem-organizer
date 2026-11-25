@@ -44,6 +44,20 @@ export function timeTravelPeriodAt<T extends { id: string }>(chronology: T[], st
   return chronology[index] ?? null;
 }
 
+/** Party filter after a period loads: only the first period seeds it (the URL's
+ * choice first, otherwise the period's direct mandates); later periods keep the
+ * user's selection, so switching periods never resets or flickers the filter. */
+export function partyFilterForPeriod(
+  seeded: Set<string> | null,
+  periodParties: Iterable<string>,
+  year: number | null,
+): Set<string> {
+  if (seeded) return seeded;
+  const next = new Set(periodParties);
+  if (year === 1952) next.add('Ohne Direktmandat');
+  return next;
+}
+
 export function directMandateParty(district: { representatives?: { mandate_type: string; party: string }[] | null }): string {
   const party = district.representatives?.find(rep => rep.mandate_type === 'direct')?.party?.trim().toUpperCase();
   if (party === 'DIE LINKE') return 'LINKE';

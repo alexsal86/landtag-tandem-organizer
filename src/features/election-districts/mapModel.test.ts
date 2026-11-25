@@ -1,5 +1,5 @@
 import { describe, expect, it } from 'vitest';
-import { hasRenderableBoundary, searchElectionDistricts, timeTravelOrder, timeTravelPeriodAt } from './mapModel';
+import { hasRenderableBoundary, partyFilterForPeriod, searchElectionDistricts, timeTravelOrder, timeTravelPeriodAt } from './mapModel';
 import { electionMapScenario } from '@/features/selftest/scenarios/election-map';
 import { runScenario } from '@/features/selftest/runner';
 
@@ -35,6 +35,13 @@ describe('Wahlkreiskarte', () => {
     expect(timeTravelPeriodAt(chronology, 3)?.id).toBe('oldest');
     expect(timeTravelPeriodAt([], 0)).toBeNull();
     expect(timeTravelPeriodAt([{ id: 'only' }], 0)).toBeNull();
+  });
+
+  it('behält die Parteifilter-Auswahl beim Wechsel der Legislaturperiode', () => {
+    expect([...partyFilterForPeriod(null, ['CDU', 'SPD'], 1952)].sort()).toEqual(['CDU', 'Ohne Direktmandat', 'SPD']);
+    expect([...partyFilterForPeriod(null, ['CDU', 'SPD'], 2026)].sort()).toEqual(['CDU', 'SPD']);
+    const chosen = new Set(['SPD']);
+    expect(partyFilterForPeriod(chosen, ['CDU', 'AfD'], 2026)).toBe(chosen);
   });
 
   it.each([null, [], [[[8, 48]]], [[[8, 48], [9, 48], [NaN, 49], [8, 48]]],

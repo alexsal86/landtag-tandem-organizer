@@ -35,6 +35,8 @@ interface LeafletKarlsruheMapProps {
   onViewportChange?: (viewport: MapViewport) => void;
   standLabel?: string;
   sourceLabel?: string;
+  /** Changes whenever the drawn boundary state changes; re-triggers the reveal. */
+  revealKey?: string;
 }
 
 const districtsWithoutLocalAreas = new Set([35, 36, 46, 47]);
@@ -88,6 +90,7 @@ const SimpleLeafletMap: React.FC<LeafletKarlsruheMapProps> = ({
   onViewportChange,
   standLabel,
   sourceLabel,
+  revealKey,
 }) => {
   const { associations } = usePartyAssociations(showPartyAssociations);
   const [zoomLevel, setZoomLevel] = useState(8);
@@ -106,11 +109,13 @@ const SimpleLeafletMap: React.FC<LeafletKarlsruheMapProps> = ({
   const initialViewportRef = useRef(initialViewport);
   const onViewportChangeRef = useRef(onViewportChange);
 
-  // The reveal animation marks a new boundary state; selections must not flash.
+  // Every new boundary state fades in instead of cutting over; selections must
+  // not flash, so the reveal marker is removed again after the animation.
   useEffect(() => {
+    setRevealing(true);
     const timer = window.setTimeout(() => setRevealing(false), 700);
     return () => window.clearTimeout(timer);
-  }, []);
+  }, [revealKey]);
 
   // Keep callback refs in sync without triggering effects
   useEffect(() => {

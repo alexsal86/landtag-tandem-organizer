@@ -13,7 +13,7 @@ import React, { useCallback, useEffect, useMemo, useRef, useState } from "react"
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Badge } from "@/components/ui/badge";
 import { Input } from "@/components/ui/input";
-import { boundaryAreaKm2, directMandateParty, partyColors, hasRenderableBoundary, searchElectionDistricts, electionDistrictNumberLabel, timeTravelOrder, timeTravelPeriodAt } from "../mapModel";
+import { boundaryAreaKm2, directMandateParty, partyColors, hasRenderableBoundary, searchElectionDistricts, electionDistrictNumberLabel, partyFilterForPeriod, timeTravelOrder, timeTravelPeriodAt } from "../mapModel";
 import { Button } from "@/components/ui/button";
 import { Users, BarChart3, ChevronDown, Download, Play, Printer, Share2, Square } from "lucide-react";
 import { useElectionDistricts } from "@/hooks/useElectionDistricts";
@@ -119,13 +119,16 @@ export const ElectionDistrictsView = ({ sidebarHeader }: { sidebarHeader?: React
   const [searchOpen, setSearchOpen] = useState(false);
   const [activeResult, setActiveResult] = useState(0);
   const [selectedParties, setSelectedParties] = useState<Set<string>>(() => new Set(initialUrlState.parties ?? ['CDU', 'GRÜNE', 'SPD', 'FDP', 'AFD']));
+  // The filter belongs to the user: only the first loaded period seeds it, so
+  // switching periods (time travel) keeps the selection instead of resetting it.
+  const seededParties = useRef<Set<string> | null>(null);
   useEffect(() => {
-    if (history.data) {
-      const parties = new Set(history.data.mandates.map(m => directMandateParty({ representatives: [{ mandate_type: 'direct', party: m.party }] })));
-      if (historyPeriod?.election_year === 1952) parties.add('Ohne Direktmandat');
-      setSelectedParties(urlParties.current ? new Set(urlParties.current) : parties);
-      urlParties.current = null;
-    }
+    if (!history.data || seededParties.current) return;
+    const parties = history.data.mandates.map(m => directMandateParty({ representatives: [{ mandate_type: 'direct', party: m.party }] }));
+    const seeded = partyFilterForPeriod(urlParties.current ? new Set(urlParties.current) : null, parties, historyPeriod?.election_year ?? null);
+    seededParties.current = seeded;
+    urlParties.current = null;
+    setSelectedParties(seeded);
   }, [history.data, historyPeriod?.election_year]);
   const [showBaseMap, setShowBaseMap] = useState(initialUrlState.layers.baseMap);
   const [focusedDistrict, setFocusedDistrict] = useState<ElectionDistrict>();
@@ -391,7 +394,6 @@ export const ElectionDistrictsView = ({ sidebarHeader }: { sidebarHeader?: React
         setReplaying(false);
         notify.error(`Zeitreise gestoppt: ${next.name} konnte nicht geladen werden.`);
       })
-      .finally(() => { if (!cancelled) setReplayTarget(null); });
     return () => { cancelled = true; window.clearTimeout(timer); };
   }, [replaying, replayStep, chronology, selectPeriod, queryClient, user]);
 
@@ -482,19 +484,16 @@ export const ElectionDistrictsView = ({ sidebarHeader }: { sidebarHeader?: React
                 className={`border-l border-border px-2 py-1 text-xs hover:bg-accent focus-visible:ring-1 focus-visible:ring-ring ${viewMode === 'kartogramm' ? 'bg-accent font-medium' : ''}`}>Kartogramm</button>
             </div>
             {chronology.length > 1 && (
-              <>
-                <button type="button" aria-pressed={replaying} title={replaying ? 'Zeitreise anhalten' : 'Zeitreise ab der ältesten freigegebenen Legislaturperiode'}
-                  aria-label={replaying ? 'Zeitreise anhalten' : 'Zeitreise ab der ältesten Legislaturperiode starten'}
-                  onClick={() => {
-                    if (replaying) setReplaying(false);
-                    else { setReplayStep(0); setReplaying(true); }
-                  }}
-                  className="inline-flex items-center gap-1 rounded border border-border px-2 py-1 text-xs hover:bg-accent focus-visible:ring-1 focus-visible:ring-ring">
-                  {replaying ? <Square className="h-3.5 w-3.5" aria-hidden="true" /> : <Play className="h-3.5 w-3.5" aria-hidden="true" />}
-                  Zeitreise
-                </button>
-                {replaying && replayTarget && <span role="status" className="px-1 text-xs text-muted-foreground">Nächste: {replayTarget}</span>}
-              </>
+              <button type="button" aria-pressed={replaying} title={replaying ? 'Zeitreise anhalten' : 'Zeitreise ab der ältesten freigegebenen Legislaturperiode'}
+                aria-label={replaying ? 'Zeitreise anhalten' : 'Zeitreise ab der ältesten Legislaturperiode starten'}
+                onClick={() => {
+                  if (replaying) setReplaying(false);
+                  else { setReplayStep(0); setReplaying(true); }
+                }}
+                className="inline-flex items-center gap-1 rounded border border-border px-2 py-1 text-xs hover:bg-accent focus-visible:ring-1 focus-visible:ring-ring">
+                {replaying ? <Square className="h-3.5 w-3.5" aria-hidden="true" /> : <Play className="h-3.5 w-3.5" aria-hidden="true" />}
+                Zeitreise
+              </button>
             )}
             <button type="button" onClick={() => void shareView()}
               className="inline-flex items-center gap-1 rounded border border-border px-2 py-1 text-xs hover:bg-accent focus-visible:ring-1 focus-visible:ring-ring">
@@ -518,6 +517,12 @@ export const ElectionDistrictsView = ({ sidebarHeader }: { sidebarHeader?: React
           </nav>
           )}
           <div className="relative h-[55dvh] min-h-[320px] shrink-0 md:h-auto md:flex-1 md:min-h-0 print:h-auto print:min-h-0">
+          {/* Status sits on the map, so it never shifts the toolbar while it updates. */}
+          {replaying && (
+            <div role="status" className="pointer-events-none absolute right-3 top-3 z-[1000] rounded-full border border-border bg-background/95 px-3 py-1 text-xs tabular-nums text-muted-foreground shadow-sm">
+              Zeitreise · Nächste: {replayTarget ?? historyPeriod?.name ?? '…'}
+            </div>
+          )}
           {viewMode === 'kartogramm' ? (
             <div className="h-full overflow-auto bg-card p-3">
               <DistrictCartogram
@@ -554,6 +559,7 @@ export const ElectionDistrictsView = ({ sidebarHeader }: { sidebarHeader?: React
                 showBaseMap={showBaseMap}
                 initialViewport={initialUrlState.viewport}
                 onViewportChange={handleViewportChange}
+                revealKey={`${historyPeriod?.id ?? 'legacy'}:${mapHistory ? 'ready' : 'pending'}`}
                 standLabel={historyPeriod ? `Grenzstand ${historyPeriod.boundary_geometry_year ?? 2021} · Wahl ${historyPeriod.election_year}` : 'Wahlkreise Baden-Württemberg'}
                 sourceLabel="Quelle: LGL Baden-Württemberg, Statistisches Landesamt, © OpenStreetMap-Mitwirkende"
               />

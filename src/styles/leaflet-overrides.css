@@ -74,8 +74,10 @@
   font-weight: 700;
 }
 
-/* Boundary state reveal on legislature switch and time-travel playback. */
-.bw-election-map[data-reveal='true'] .bw-district-path {
+/* Boundary state reveal on legislature switch and time-travel playback: the new
+   shapes and their number markers fade in instead of cutting over. */
+.bw-election-map[data-reveal='true'] .bw-district-path,
+.bw-election-map[data-reveal='true'] .leaflet-marker-pane {
   animation: bw-district-reveal 480ms ease-out both;
 }
 
@@ -85,5 +87,6 @@
 }
 
 @media (prefers-reduced-motion: reduce) {
-  .bw-election-map[data-reveal='true'] .bw-district-path { animation: none; }
+  .bw-election-map[data-reveal='true'] .bw-district-path,
+  .bw-election-map[data-reveal='true'] .leaflet-marker-pane { animation: none; }
 }
