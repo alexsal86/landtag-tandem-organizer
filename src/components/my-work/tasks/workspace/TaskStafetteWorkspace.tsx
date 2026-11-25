@@ -264,7 +264,9 @@ export function TaskStafetteWorkspace({ userId, tasks, profiles, onReload, onCom
     void onReload();
   };
   const escalateTask = async (taskId: string, note: string) => {
-    const { error } = await supabase.rpc("escalate_task", { _task_id: taskId, _note: note || null });
+    // Der RPC nimmt eine optionale Notiz; die Datenbank behandelt NULL und
+    // „nicht übergeben“ gleich, der Typ kennt nur string | undefined.
+    const { error } = await supabase.rpc("escalate_task", { _task_id: taskId, _note: note || undefined });
     if (error) { notify.error("Eskalation fehlgeschlagen", { description: error.message }); return; }
     notify.success("Büroleitung informiert");
     void onReload();
