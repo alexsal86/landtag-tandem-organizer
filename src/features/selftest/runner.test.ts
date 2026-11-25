@@ -76,10 +76,18 @@ describe("Selbsttest-Runner", () => {
     } }, { ...ok, id: "next", run: next }]), { ...options(), signal: controller.signal, keepData: true });
     expect(result.status).toBe("cancelled"); expect(next).not.toHaveBeenCalled(); expect(mock.rows.size).toBe(0); expect(result.cleanup.status).toBe("ok");
   });
-  it("meldet einen durch RLS wirkungslosen DELETE als Cleanup-Fehler", async () => {
+  it("meldet einen durch RLS wirkungslosen DELETE als Cleanup-Fehler und nennt den Datensatz", async () => {
     mock.rows.add("protected"); mock.denyDelete = true;
     const result = await cleanupCreated([{ table: "tasks", id: "protected" }]);
     expect(result.ok).toBe(false); expect(result.remaining).toHaveLength(1);
+    expect(result.errors.some(message => message.startsWith("tasks/protected: "))).toBe(true);
+  });
+  it("hält Fehlercode und Prüfpunkt eines geworfenen Fehlers für Bericht und Verlauf fest", async () => {
+    const result = await runScenario(scenario([{ id: "archive", label: "Archivierung", run: async () => {
+      throw Object.assign(new Error("new row violates row-level security policy"), { code: "42501", details: "policy letters_insert", hint: "Büro prüfen" });
+    } }]), options());
+    expect(result.steps[0].message).toContain("Code 42501");
+    expect(result.steps[0].details).toMatchObject({ step: { id: "archive", label: "Archivierung" }, error: { code: "42501", details: "policy letters_insert", hint: "Büro prüfen" } });
   });
   it("entfernt Antworten vor Teilnehmern und nur bekannte Tabellen", async () => {
     await cleanupCreated([{ table: "task_decision_participants", id: "p" }, { table: "task_decision_responses", id: "r" }]);
@@ -91,6 +99,7 @@ describe("Selbsttest-Runner", () => {
     mock.storageError = true;
     const result = await cleanupCreated([], [{ bucket: "documents", path: "test/file.txt" }]);
     expect(result.ok).toBe(false); expect(result.storageRemaining).toHaveLength(1);
+    expect(result.errors.some(message => message.startsWith("documents/test/file.txt: "))).toBe(true);
   });
   it("führt unabhängige Szenarien trotz eines Fehlers weiter aus", async () => {
     const results = await runSuite([scenario([{ ...ok, run: async () => { throw new Error("defekt"); } }]), scenario([ok], { id: "second" })], options());

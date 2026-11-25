@@ -438,7 +438,7 @@
       "id": "admin.selftest-center",
       "subarea": "Qualität",
       "name": "Selbsttest-Center",
-      "description": "Führt registrierte Prüfszenarien gegen die Anwendung aus, protokolliert Läufe je Mandant und räumt Testdaten auf.",
+      "description": "Führt registrierte Prüfszenarien gegen die Anwendung aus, protokolliert Läufe je Mandant, ordnet Fehler dem betroffenen Prüfpunkt mit Fehlercode, Details und Cleanup-Datensatz zu und räumt Testdaten auf.",
       "category": "administrativ",
       "implementationStatus": "implementiert",
       "integrationStatus": "rollenabhaengig",
@@ -454,7 +454,7 @@
       "unitTests": ["src/features/selftest/runner.test.ts", "src/features/selftest/reports.test.ts", "src/features/selftest/verify.test.ts"],
       "e2eTests": ["e2e/selftest-live.spec.ts"],
       "docs": ["docs/selftest-center.md", "docs/selftest-coverage.md"],
-      "limitations": ["Ein grüner Lauf bestätigt nur den angezeigten Prüfumfang; die Läufe wurden hier nicht gegen ein Backend ausgeführt."]
+      "limitations": ["Ein grüner Lauf bestätigt nur den angezeigten Prüfumfang; die Läufe wurden hier nicht gegen ein Backend ausgeführt.", "Fehlercode, Details und Hinweis stammen aus der tatsächlich fehlgeschlagenen Operation; ein Befund ohne diese Zuordnung bleibt offen."]
     },
     {
       "id": "admin.feature-catalog",

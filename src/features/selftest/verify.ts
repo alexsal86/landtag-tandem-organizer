@@ -1,9 +1,36 @@
 import { selftestDatabase } from "./database";
-import type { StepResult } from "./types";
+import type { StepResult, TestStep } from "./types";
 
-export function errorMessage(error: unknown): string {
-  if (error && typeof error === "object" && "message" in error && typeof error.message === "string") return error.message;
-  return String(error);
+export interface ErrorFacts {
+  message: string;
+  code?: string;
+  details?: string;
+  hint?: string;
+}
+
+/** Zerlegt geworfene Fehler in einzeln prüfbare Bestandteile statt nur die Meldung. */
+export function errorFacts(error: unknown): ErrorFacts {
+  if (error && typeof error === "object") {
+    const record = error as Record<string, unknown>;
+    const text = (key: string) => (typeof record[key] === "string" && record[key] ? record[key] as string : undefined);
+    return {
+      message: typeof record.message === "string" ? record.message : String(error),
+      code: text("code"),
+      details: text("details"),
+      hint: text("hint"),
+    };
+  }
+  return { message: String(error) };
+}
+
+/** Macht aus einem geworfenen Fehler einen präzisen Befund am betroffenen Prüfpunkt. */
+export function stepFailure(step: Pick<TestStep, "id" | "label">, error: unknown): StepResult {
+  const facts = errorFacts(error);
+  return {
+    ok: false,
+    message: describeError(facts),
+    details: { step: { id: step.id, label: step.label }, error: facts },
+  };
 }
 
 /** Vergleicht erwartete Felder gegen tatsächlich in der DB gespeicherte Werte. */
@@ -64,11 +91,16 @@ export function deepEqual(a: unknown, b: unknown): boolean {
   return false;
 }
 
-/** Klassifiziert Postgrest-/RLS-Fehler in eine verständliche Meldung. */
-export function describeError(err: { code?: string; message?: string } | null | undefined): string {
+/** Klassifiziert Postgrest-/RLS-Fehler und behält Code, Details und Hinweis für die Zuordnung. */
+export function describeError(err: { code?: string; message?: string; details?: string; hint?: string } | null | undefined): string {
   if (!err) return "Unbekannter Fehler";
-  if (err.code === "42501" || /row-level security/i.test(err.message ?? "")) {
-    return `RLS verweigert (${err.message}). Mögliche Ursachen: Session abgelaufen, fehlende aktive Tenant-Membership, oder user_id ≠ auth.uid().`;
-  }
-  return err.message ?? String(err);
+  const base = err.code === "42501" || /row-level security/i.test(err.message ?? "")
+    ? `RLS verweigert (${err.message}). Mögliche Ursachen: Session abgelaufen, fehlende aktive Tenant-Membership, oder user_id ≠ auth.uid().`
+    : err.message ?? String(err);
+  return [
+    base,
+    err.code ? `Code ${err.code}` : "",
+    err.details ? `Details: ${err.details}` : "",
+    err.hint ? `Hinweis: ${err.hint}` : "",
+  ].filter(Boolean).join(" · ");
 }

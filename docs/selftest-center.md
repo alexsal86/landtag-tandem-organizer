@@ -11,6 +11,12 @@ Das bestehende Center unter `/selftest` bleibt der Einstieg für interaktive Pr�
 - Demo-Daten werden nur bei vollständig erfolgreichem Lauf behalten. Fehlerhafte oder abgebrochene Demos werden aufgeräumt.
 - Berichte enthalten Lauf-ID, Benutzer/Büro, Ursprung, optional `VITE_COMMIT_SHA`, Einzelprüfungen, Soll/Ist-Details und Aufräumergebnis. Sie sind pro Benutzer und Büro im Browser gespeichert und als JSON exportierbar. Zusätzlich bleibt der gemeinsame serverseitige Verlauf im Büro mit Vergleich zum vorherigen Lauf erhalten. Die lokale Historie hält die IDs für Wiederherstellung und Cleanup bereit.
 
+## Fehlerzuordnung
+
+Jeder fehlgeschlagene Prüfpunkt nennt sich selbst: Die Meldung stammt aus der tatsächlichen Operation, und `src/features/selftest/verify.ts` behält PostgREST-/PostgreSQL-Code, `details` und `hint` (`errorFacts`, `describeError`, `stepFailure`). Geworfene Fehler erhält der Runner als `details: { step: { id, label }, error: { code, details, hint, message } }`, damit Bericht, lokale Historie und `selftest_runs.steps` den Punkt ohne Nachfragen zuordnen. Aufräumfehler nennen zusätzlich Tabelle/Datensatz-ID bzw. Bucket/Pfad. Im Center sind die Prüfdetails eines fehlgeschlagenen Punkts aufgeklappt, und die Suite-Zusammenfassung nennt die betroffenen Szenarien.
+
+Fehlt eine solche Zuordnung, ist der Befund offen und nicht als bestanden zu werten.
+
 ## Testdaten und Wiederherstellung
 
 Alle Szenarien registrieren erzeugte IDs sofort beim Runner; Dateien werden vor dem Upload registriert. Die Historie behält unaufgeräumte Läufe auch über die Begrenzung auf 20 abgeschlossene Läufe hinaus. Fehlgeschlagene lokale Speicherung wird sichtbar gemeldet.

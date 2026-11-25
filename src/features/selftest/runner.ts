@@ -2,7 +2,7 @@ import { supabase } from "@/integrations/supabase/client";
 import type { CreatedRecord, ScenarioRunState, StorageObject, TestContext, TestScenario } from "./types";
 import { recoverArtifacts } from "./artifacts";
 import { selftestDatabase } from "./database";
-import { errorMessage } from "./verify";
+import { describeError, errorFacts, stepFailure } from "./verify";
 
 export const SELFTEST_PREFIX = "[SELFTEST]";
 export const SELFTEST_MARKER = "__SELFTEST__";
@@ -34,7 +34,7 @@ export async function cleanupCreated(records: CreatedRecord[], storageObjects: S
       if (error) throw error;
     } catch (error) {
       storageRemaining.push(object);
-      errors.push(errorMessage(error));
+      errors.push(`${object.bucket}/${object.path}: ${describeError(errorFacts(error))}`);
     }
   }
   const sorted = [...records].reverse().sort((a, b) =>
@@ -51,7 +51,7 @@ export async function cleanupCreated(records: CreatedRecord[], storageObjects: S
       if (check.data) throw new Error(`${record.table}: Datensatz nach DELETE noch vorhanden.`);
     } catch (error) {
       remaining.push(record);
-      errors.push(errorMessage(error));
+      errors.push(`${record.table}/${record.id}: ${describeError(errorFacts(error))}`);
     }
   }
   return {
@@ -117,7 +117,7 @@ export async function runScenario(scenario: TestScenario, options: RunOptions): 
         }
       } catch (error) {
         state.status = "blocked";
-        state.message = errorMessage(error);
+        state.message = describeError(errorFacts(error));
         return state;
       }
     }
@@ -138,7 +138,9 @@ export async function runScenario(scenario: TestScenario, options: RunOptions): 
         slot.details = result.details;
       } catch (error) {
         slot.status = "failed";
-        slot.message = errorMessage(error);
+        const failure = stepFailure(slot.step, error);
+        slot.message = failure.message;
+        slot.details = failure.details;
       }
       slot.durationMs = Math.round(performance.now() - started);
       if (slot.status === "failed" && slot.step.critical !== false) failedDependency = true;

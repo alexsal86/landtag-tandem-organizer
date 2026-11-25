@@ -562,6 +562,7 @@ Eindeutige Fehler werden im CI-Lauf ausgegeben und brechen die Prüfung ab; sie 
 ### `admin.selftest-center`
 
 - Ein grüner Lauf bestätigt nur den angezeigten Prüfumfang; die Läufe wurden hier nicht gegen ein Backend ausgeführt.
+- Fehlercode, Details und Hinweis stammen aus der tatsächlich fehlgeschlagenen Operation; ein Befund ohne diese Zuordnung bleibt offen.
 
 ### `admin.feature-catalog`
 

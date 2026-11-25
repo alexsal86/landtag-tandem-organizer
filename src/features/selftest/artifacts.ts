@@ -1,6 +1,6 @@
 import { supabase } from "@/integrations/supabase/client";
 import type { CreatedRecord, StorageObject } from "./types";
-import { errorMessage } from "./verify";
+import { errorFacts, describeError } from "./verify";
 import { selftestDatabase } from "./database";
 
 /** Ältere Demo-Daten ohne lokales Laufprotokoll finden; nur eigene Daten im Büro.
@@ -72,7 +72,7 @@ export async function recoverArtifacts(records: CreatedRecord[], storageObjects:
       }
     } catch (error) {
       blocked.add(`${record.table}/${record.id}`);
-      errors.push(`Folgedaten von ${record.table}/${record.id}: ${errorMessage(error)}`);
+      errors.push(`Folgedaten von ${record.table}/${record.id}: ${describeError(errorFacts(error))}`);
     }
   }
   return { records: recovered, storageObjects: objects, blocked, errors };

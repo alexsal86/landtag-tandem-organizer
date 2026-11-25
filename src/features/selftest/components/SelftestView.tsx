@@ -83,7 +83,9 @@ export function SelftestView() {
       }
       const counts = { ok: 0, failed: 0, blocked: 0, cancelled: 0 };
       results.forEach(r => { if (r.status in counts) counts[r.status as keyof typeof counts] += 1; });
-      const text = `${counts.ok} bestanden · ${counts.failed} fehlgeschlagen · ${counts.blocked} Voraussetzung fehlt · ${counts.cancelled} abgebrochen · ${scenarios.length - results.length} nicht gestartet`;
+      const affected = results.filter(r => r.status === "failed" || r.status === "blocked")
+        .map(r => `${scenarios.find(s => s.id === r.scenarioId)?.title ?? r.scenarioId}${r.status === "blocked" ? " (Voraussetzung fehlt)" : ""}`);
+      const text = `${counts.ok} bestanden · ${counts.failed} fehlgeschlagen · ${counts.blocked} Voraussetzung fehlt · ${counts.cancelled} abgebrochen · ${scenarios.length - results.length} nicht gestartet${affected.length ? ` — Betroffen: ${affected.join(", ")}` : ""}`;
       setSummary(text);
       if (counts.ok === scenarios.length) notify.success("Testsuite bestanden", { description: text });
       else notify.error("Testsuite nicht vollständig bestanden", { description: text });
@@ -201,7 +203,7 @@ export function SelftestView() {
             {state.message && <p className="text-destructive">{state.message}</p>}
             <ol className="space-y-2">{state.steps.map(s => <li key={s.step.id} className="flex gap-3 border-l-2 pl-3 py-1">
               <StatusIcon status={s.status} /><div className="flex-1 min-w-0"><div>{s.step.label}</div>{s.message && <p className={s.status === "failed" ? "text-destructive text-xs" : "text-muted-foreground text-xs"}>{s.message}</p>}
-                {s.details !== undefined && <details className="mt-1"><summary className="cursor-pointer text-xs">Prüfdetails / Soll und Ist</summary><pre className="whitespace-pre-wrap break-all bg-muted rounded p-2 text-xs">{JSON.stringify(s.details, null, 2)}</pre></details>}
+                {s.details !== undefined && <details open={s.status === "failed"} className="mt-1"><summary className="cursor-pointer text-xs">Prüfdetails / Soll und Ist</summary><pre className="whitespace-pre-wrap break-all bg-muted rounded p-2 text-xs">{JSON.stringify(s.details, null, 2)}</pre></details>}
               </div>{s.durationMs !== undefined && <span className="text-xs tabular-nums">{s.durationMs} ms</span>}
             </li>)}</ol>
             <div className="flex gap-3 border-t pt-3"><StatusIcon status={state.cleanup.status} /><p><strong>Aufräumen:</strong> {state.cleanup.message ?? "Ausstehend"}</p></div>

@@ -846,7 +846,7 @@ Bereinigt Caches, veraltete Nachrichten, Workflow-Läufe und Testdaten über aut
 - Die Läufe sind nicht ausgeführt worden; Löschumfang und Aufbewahrungsfristen sind nicht geprüft.
 
 ### `admin.selftest-center` — Selbsttest-Center
-Führt registrierte Prüfszenarien gegen die Anwendung aus, protokolliert Läufe je Mandant und räumt Testdaten auf.
+Führt registrierte Prüfszenarien gegen die Anwendung aus, protokolliert Läufe je Mandant, ordnet Fehler dem betroffenen Prüfpunkt mit Fehlercode, Details und Cleanup-Datensatz zu und räumt Testdaten auf.
 
 - **Kategorie:** administrativ
 - **Implementierung:** implementiert
@@ -877,6 +877,7 @@ Führt registrierte Prüfszenarien gegen die Anwendung aus, protokolliert Läufe
 **Bekannte Einschränkungen**
 
 - Ein grüner Lauf bestätigt nur den angezeigten Prüfumfang; die Läufe wurden hier nicht gegen ein Backend ausgeführt.
+- Fehlercode, Details und Hinweis stammen aus der tatsächlich fehlgeschlagenen Operation; ein Befund ohne diese Zuordnung bleibt offen.
 
 **Offene Prüfpunkte**
 
