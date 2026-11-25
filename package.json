@@ -57,6 +57,8 @@
     "check:dangerouslysetinnerhtml-inventory": "node scripts/check-dangerouslysetinnerhtml-inventory.mjs",
     "check:selftest-coverage": "node scripts/check-selftest-coverage.mjs",
     "update:selftest-coverage": "node scripts/check-selftest-coverage.mjs --write",
+    "check:feature-catalog": "node scripts/build-feature-catalog.mjs",
+    "update:feature-catalog": "node scripts/build-feature-catalog.mjs --write",
     "test:selftest": "vitest run src/features/selftest src/services/letterWorkflow.test.ts src/components/letters/__tests__/types.test.ts src/components/letters/hooks/useLetterOperations.integration.test.tsx",
     "typecheck:selftest": "tsc -p tsconfig.selftest.json --noEmit",
     "test:selftest:coverage-check": "node --test scripts/__tests__/selftest-coverage.test.mjs",
