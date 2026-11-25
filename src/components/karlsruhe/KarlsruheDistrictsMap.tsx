@@ -649,7 +649,7 @@ export const KarlsruheDistrictsMap = ({
         schema: 'public',
         table: 'contacts',
         filter: `contact_type=eq.organization`
-      }, (payload: Record<string, any>) => {
+      }, (payload: { new?: Record<string, unknown> }) => {
         const updated = payload.new;
         debugConsole.log('Contact updated via realtime:', updated);
         
@@ -854,7 +854,9 @@ export const KarlsruheDistrictsMap = ({
     return () => {
       try {
         map.removeControl(routingControl);
-      } catch (e) {}
+      } catch {
+        // The control may already be detached together with the map.
+      }
     };
   }, [mapReady, showRouting, waypoints, onRouteFound]);
 

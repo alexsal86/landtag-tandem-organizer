@@ -43,8 +43,14 @@ export const KarlsruheDistrictsView = ({ sidebarHeader }: { sidebarHeader?: Reac
     }, { replace: true });
   }, [setSearchParams]);
 
+  // Back/forward and pasted links also change the selection, so compare ids
+  // instead of only filling an empty selection.
   useEffect(() => {
-    if (!selectedDistrictParam || selectedDistrict || districts.length === 0) return;
+    if (!selectedDistrictParam) {
+      if (selectedDistrict) setSelectedDistrict(null);
+      return;
+    }
+    if (districts.length === 0 || selectedDistrict?.id === selectedDistrictParam) return;
     const district = districts.find(entry => entry.id === selectedDistrictParam || entry.name === selectedDistrictParam);
     if (district) setSelectedDistrict(district);
   }, [selectedDistrictParam, selectedDistrict, districts]);
@@ -67,13 +73,12 @@ export const KarlsruheDistrictsView = ({ sidebarHeader }: { sidebarHeader?: Reac
   // Dynamic layer visibility (initialized from defaults)
   const [visibleLayerIds, setVisibleLayerIds] = useState<Set<string>>(new Set());
   
-  // Initialize layer visibility from defaults
+  // Initialize layer visibility from defaults once the layer catalog arrives.
   useEffect(() => {
-    if (activeLayers.length > 0 && visibleLayerIds.size === 0) {
-      setVisibleLayerIds(new Set(
-        activeLayers.filter(l => l.visible_by_default).map(l => l.id)
-      ));
-    }
+    if (activeLayers.length === 0) return;
+    setVisibleLayerIds(previous => previous.size > 0
+      ? previous
+      : new Set(activeLayers.filter(l => l.visible_by_default).map(l => l.id)));
   }, [activeLayers]);
 
   const toggleLayerVisibility = useCallback((layerId: string) => {
@@ -98,9 +103,8 @@ export const KarlsruheDistrictsView = ({ sidebarHeader }: { sidebarHeader?: Reac
 
   // Initialize visible flag types when flagTypes are loaded
   useEffect(() => {
-    if (flagTypes.length > 0 && visibleFlagTypes.size === 0) {
-      setVisibleFlagTypes(new Set(flagTypes.map(t => t.id)));
-    }
+    if (flagTypes.length === 0) return;
+    setVisibleFlagTypes(previous => previous.size > 0 ? previous : new Set(flagTypes.map(t => t.id)));
   }, [flagTypes]);
 
   const handleRefresh = async () => {
@@ -108,7 +112,7 @@ export const KarlsruheDistrictsView = ({ sidebarHeader }: { sidebarHeader?: Reac
     try {
       await refetch();
       notify.success('Stadtteile wurden aktualisiert');
-    } catch (error) {
+    } catch {
       notify.error('Fehler beim Aktualisieren der Stadtteile');
     } finally {
       setIsRefreshing(false);

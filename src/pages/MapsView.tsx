@@ -16,11 +16,12 @@ export const MapsView = () => {
   const tabParam = searchParams.get('tab');
   const [activeTab, setActiveTab] = useState(tabParam || 'wahlkreise');
 
+  // Browser back/forward and pasted links set the tab through the URL.
   useEffect(() => {
     if (tabParam && tabParam !== activeTab) {
       setActiveTab(tabParam);
     }
-  }, [tabParam]);
+  }, [tabParam, activeTab]);
 
   const handleTabChange = (value: string) => {
     setActiveTab(value);

@@ -328,7 +328,6 @@ const SimpleLeafletMap: React.FC<LeafletKarlsruheMapProps> = ({
         },
         onEachFeature: (feature, layer) => {
           const districtId = feature?.properties?.district_id;
-          const isPartyBoundary = feature?.properties?.isPartyBoundary;
           const allDistricts = allDistrictsToRender.map(item => item.district);
           const district = allDistricts.find(d => d.id === districtId);
           if (!district) return;

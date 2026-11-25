@@ -41,7 +41,7 @@ class ErrorBoundary extends React.Component<
     this.state = { hasError: false };
   }
 
-  static getDerivedStateFromError(error: Error) {
+  static getDerivedStateFromError(_error: Error) {
     return { hasError: true };
   }
 
@@ -84,14 +84,15 @@ export const ElectionDistrictsView = ({ sidebarHeader }: { sidebarHeader?: React
   const periodIndex = useElectionPeriods();
   const [historyPeriodId, setHistoryPeriodId] = useState(initialUrlState.periodId ?? '');
   const [selectedHistoricalDistrict, setSelectedHistoricalDistrict] = useState('');
-  const publishedPeriods = periodIndex.data?.filter(p => p.is_published) || [];
+  const publishedPeriods = useMemo(() => periodIndex.data?.filter(p => p.is_published) ?? [], [periodIndex.data]);
   const historyPeriod = publishedPeriods.find(p => p.id === historyPeriodId) || publishedPeriods.find(p => p.is_current) || publishedPeriods[0];
   const [showAdministrativeBoundaries, setShowAdministrativeBoundaries] = useState(initialUrlState.layers.administrative);
   const { districts: baseDistricts, loading } = useElectionDistricts({ enabled: !periodIndex.isLoading && (!historyPeriod || showAdministrativeBoundaries) });
   const history = useElectionHistory(historyPeriod?.id);
   const periodGeometry = usePeriodGeometry(history.data, historyPeriod?.id);
   const mapHistory = periodGeometry.data;
-  const districts = useMemo(() => historyPeriod ? (mapHistory ? projectHistoricalDistricts(baseDistricts, mapHistory, historyPeriod.id) : baseDistricts.filter(d => d.district_type === 'verwaltungsgrenze')) : baseDistricts, [baseDistricts, mapHistory, historyPeriod?.id]);
+  const activeHistoryPeriodId = historyPeriod?.id;
+  const districts = useMemo(() => activeHistoryPeriodId ? (mapHistory ? projectHistoricalDistricts(baseDistricts, mapHistory, activeHistoryPeriodId) : baseDistricts.filter(d => d.district_type === 'verwaltungsgrenze')) : baseDistricts, [baseDistricts, mapHistory, activeHistoryPeriodId]);
   const [selectedDistrictRecord, setSelectedDistrict] = useState<ElectionDistrict | null>(null);
   const selectedDistrict = districts.find(d => d.id === selectedDistrictRecord?.id) || null;
   const localDistrict = historyPeriod?.election_year === 2026 && selectedDistrict?.district_type === 'wahlkreis' &&
