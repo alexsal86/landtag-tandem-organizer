@@ -14,7 +14,7 @@
 | Davon neu katalogisiert (Vorgängerkatalog hatte keine Funktions-IDs) | **252** |
 | Funktionsbereiche | **16** |
 | Unterbereiche | **108** |
-| Technische Zuordnungen (Referenzen über alle Funktionen) | **1.196** |
+| Technische Zuordnungen (Referenzen über alle Funktionen) | **1.199** |
 | Implementiert | 248 |
 | Teilweise implementiert | 2 |
 | Deaktiviert | 0 |
@@ -34,7 +34,7 @@
 | Nicht zugeordnete Prüfkandidaten (offen) | **0** |
 | Versionierte Ausnahmen | 1 |
 
-**Automatisch inventarisiert:** 39 Routen, 74 Edge Functions, 537 wirksame Datenbankfunktionen (nach Drop-Auflösung), 344 Tabellen, 7 Views, 30 registrierte Selbsttest-Szenarien, 318 verschiedene referenzierte Tabellen, 467 referenzierte RPCs, 8 Rollen.
+**Automatisch inventarisiert:** 39 Routen, 74 Edge Functions, 538 wirksame Datenbankfunktionen (nach Drop-Auflösung), 344 Tabellen, 7 Views, 30 registrierte Selbsttest-Szenarien, 318 verschiedene referenzierte Tabellen, 468 referenzierte RPCs, 8 Rollen.
 
 Die Zahlen stammen ausschließlich aus dem Kataloglauf (`npm run report:feature-coverage`, `npm run audit:feature-catalog`) und sind nicht manuell gepflegt.
 
@@ -106,7 +106,7 @@ Neu verdrahtet:
 | `npm run report:feature-coverage` | bestanden – Kennzahlen siehe oben |
 | `npm run update:feature-catalog` | ausgeführt – 21 generierte Dateien, keine veralteten Reste |
 | `npm run test:feature-catalog` (Node-Tests) | **10/10 bestanden** |
-| `npm run test:feature-catalog` (Vitest `src/features/feature-catalog`) | **21/21 bestanden** (3 Dateien, inkl. Rendering der generierten Seiten und Entitätskarte) |
+| `npm run test:feature-catalog` (Vitest `src/features/feature-catalog`) | **25/25 bestanden** (4 Dateien, inkl. Rendering der generierten Seiten, Entitätskarte, Deep-Link und RLS-Verknüpfung) |
 | `npm run check:selftest-coverage` | bestanden – `missing: 0` (344 Einträge: 57 Szenario, 129 zurückgestellt, 158 ausgeschlossen) |
 | `npx tsc -p tsconfig.app.json --noEmit --types node` | **0 Fehler** |
 | `npm run build` | **bestanden** (Vite, 6,25 s; nur bestehende Chunk-/Dynamic-Import-Hinweise) |
@@ -117,7 +117,7 @@ Neu verdrahtet:
 - Der unveränderte Aufruf `npx tsc -p tsconfig.app.json --noEmit` scheitert an `TS2688: Cannot find type definition file for 'react-grid-layout'`, weil `@types/react-grid-layout@2.1.0` ein veraltetes Stub-Paket ohne Typdatei ist. Das ist ein vorbestehendes Umgebungs-/Paketproblem und betrifft keinen der geänderten Fachpfade; mit `--types node` läuft der Typecheck vollständig durch.
 - ESLint meldet in `SecurityCockpit.tsx` zwei vorbestehende ungenutzte Importe (`LoadingState`, `useToast`); sie wurden nicht im Rahmen dieses Auftrags verändert.
 - Kein Browser-/E2E-Lauf und keine Live-Datenbankprüfung: Die Oberfläche wurde über Komponententests, nicht durch Klicken im Browser geprüft. RLS-Policies wurden nicht gegen eine laufende Datenbank getestet.
-- Die 467 referenzierten RPCs wurden über Signatur, Tabellenbezug und Funktionszuordnung inventarisiert, nicht jede RPC semantisch im Detail nachvollzogen.
+- Die 468 referenzierten RPCs wurden über Signatur, Tabellenbezug und Funktionszuordnung inventarisiert, nicht jede RPC semantisch im Detail nachvollzogen.
 - Die mobile Oberfläche (`src/pages/mobile.tsx`) ist nur in ihren nachgewiesenen Teilfunktionen erfasst; ein vollständiger Abgleich mit der Desktop-Variante steht aus.
 - Historische Migrationen wurden statisch (Dateireihenfolge, Drop-Erkennung) ausgewertet, nicht gegen eine Produktivdatenbank verifiziert.
 
@@ -161,7 +161,7 @@ Neu verdrahtet:
 1. **Dokumentationslücken:** 162 Funktionen haben keinen Dokumentationsverweis. Zu entscheiden ist, welche davon eine fachliche Doku erhalten und welche bewusst nur über Code und Katalog erschlossen bleiben.
 2. **Testlücken:** 151 Funktionen haben keine Testzuordnung, darunter zentrale administrative und kommunikative Funktionen. Priorisierung und Szenario-Erweiterung sind fachlich zu entscheiden.
 3. **Mobile Variante:** Der Abgleich der mobilen Oberfläche mit den Desktop-Funktionen ist unvollständig; `mobile.app` bleibt „teilweise / Einbindung ungeprüft“.
-4. **RPC-Tiefe:** Die technische Inventarisierung ist vollständig, die semantische Bewertung der 467 referenzierten Datenbankfunktionen (Fachzweck, Fehlerfälle, Berechtigungsannahmen) ist es nicht.
+4. **RPC-Tiefe:** Die technische Inventarisierung ist vollständig, die semantische Bewertung der 468 referenzierten Datenbankfunktionen (Fachzweck, Fehlerfälle, Berechtigungsannahmen) ist es nicht.
 5. **Sicherheitszuordnung:** RLS-Policies und Sicherheitsbefunde werden im Security-Cockpit geführt, nicht je Funktion dupliziert. Eine feinere Verknüpfung von Findings zu Funktions-IDs wäre ein eigener Schritt.
 6. **Ausnahmen:** Die NotFound-Ausnahme ist bewusst eng gefasst. Weitere Ausnahmen sollen nur mit nachvollziehbarer Begründung ergänzt werden.
 
@@ -170,3 +170,29 @@ Neu verdrahtet:
 ## 9. Ehrliche Abdeckungsaussage
 
 Die Inventarisierung deckt alle 16 fachlichen Bereiche und die automatisch auffindbaren technischen Objekte (Routen, Edge Functions, wirksame Datenbankfunktionen, Tabellen, Szenarien) ab. Sie behauptet **keine** vollständige semantische Erfassung jeder Datenbankfunktion, jeder RLS-Policy und jeder mobilen Interaktion. Funktionen ohne Tests oder ohne Dokumentation sind sichtbar und werden nicht durch die Katalogisierung als geprüft ausgegeben.
+
+---
+
+## 10. Nachtrag: Verknüpfung mit Sicherheitsbefunden (25.11.2026)
+
+Die Sicherheitssicht wurde nach dem Audit feiner mit den Funktions-IDs verknüpft:
+
+- **Neue, rein lesende Datenbankfunktion** `audit_rls_policies(_tables text[])` liefert je Tabelle die wirksamen Policies (Name, Kommando, Rollen, `USING`/`WITH CHECK`) aus `pg_policies`. Sie ändert keine Policy und keine Daten und erzeugt keine Sicherheitsbewertung. Migration: `supabase/migrations/20261125160000_feature_security_policy_links.sql`.
+- **Funktionsdetail im Katalog** zeigt je zugeordneter Tabelle den Live-Befund aus `audit_rls_gaps` (Severity, Begründung, Policy-Anzahl, `tenant_id`) und die Policies. Beides ist ausdrücklich als Sicherheitsbezug gekennzeichnet und von den funktionalen Testangaben getrennt.
+- **Security-Cockpit** verlinkt jede Tabelle auf die betroffenen Funktions-IDs; der Deep-Link `?feature=<id>` öffnet die Funktion direkt im Katalog.
+- **Generierter Index** `src/features/feature-catalog/generated/table-features.json` wird aus dem Inventar erzeugt und in `check:feature-catalog` auf Aktualität geprüft; das Cockpit lädt dadurch nicht den gesamten Katalog.
+- **Keine pauschale Bewertung:** Es gibt weiterhin keine aggregierte Sicherheitsnote je Funktion. Ein fehlender Tabellenbezug oder ein fehlender Befund wird als solcher benannt, nicht als „sicher“ gewertet.
+
+Aktualisierte Kennzahlen: 1.199 technische Zuordnungen, 538 wirksame Datenbankfunktionen, 468 referenzierte RPCs. Der Katalog bleibt bei 252 Funktionen; `check:feature-catalog` läuft mit 0 Fehlern und 0 Warnungen, die Katalogtests mit 26/26.
+
+### Verifikation der Migration gegen eine lokale Datenbank
+
+Ein lokaler PostgreSQL-Server war in dieser Umgebung nicht verfügbar: `psql`, `initdb` und `pg_ctl` fehlen, der Docker-Daemon antwortet nicht (`docker info` schlägt fehl). Die Migration wurde deshalb gegen eingebettetes PostgreSQL 17 (PGlite 0.6.0, WASM) mit nachgebautem Supabase-Minimalumfeld (`auth.uid()`, `public.has_role`, `authenticated`/`anon`, Tabellen mit RLS-Policies) ausgeführt. Ergebnisse:
+
+- Migration lädt fehlerfrei.
+- `pg_get_function_result` bestätigt exakt `TABLE(table_name text, policy_name text, command text, roles name[], permissive text, has_using boolean, has_check boolean)`.
+- `roles` wird als String-Array (`["authenticated"]`) serialisiert, `permissive` liefert `PERMISSIVE`; die in `types.ts` deklarierten Typen (`string[]`, `string`) passen dazu.
+- ACL nach der Migration: `postgres=X/postgres`, `authenticated=X/postgres`; `anon` hat keine EXECUTE-Berechtigung. Die Grants sind damit korrekt und nicht zu weit gefasst.
+- `_tables`-Filter und `NULL` (alle Tabellen) funktionieren; ohne `abgeordneter`-Rolle bricht der Aufruf mit `forbidden` ab.
+
+Eine Korrektur an `name[]`, `permissive` oder den Grants war nicht erforderlich. Die UI-Degradation bei fehlender Migration ist durch einen eigenen Test abgedeckt: Der Hinweis nennt die Migrationsdatei, der RLS-Befund bleibt sichtbar, und es wird keine Ersatzbewertung angezeigt.

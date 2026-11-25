@@ -535,7 +535,8 @@ Eindeutige Fehler werden im CI-Lauf ausgegeben und brechen die Prüfung ab; sie 
 ### `admin.security-cockpit`
 
 - Eine vorhandene RLS-Policy ist kein Nachweis für korrekte Mandantentrennung; das Cockpit liefert nur Befunde.
-- Die Verknüpfung von Sicherheitsbefunden mit einzelnen Funktionen ist manuell und derzeit nicht vollständig.
+- Policy-Details stammen live aus pg_policies und bewerten weder die Funktion noch ihre Tests.
+- Funktionen ohne Tabellenbezug erhalten keinen RLS-Bezug; ob das fachlich korrekt ist, bleibt je Funktion zu prüfen.
 
 ### `admin.edge-function-security`
 

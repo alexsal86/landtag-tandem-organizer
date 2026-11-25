@@ -17683,6 +17683,18 @@ export type Database = {
           table_name: string
         }[]
       }
+      audit_rls_policies: {
+        Args: { _tables?: string[] }
+        Returns: {
+          command: string
+          has_check: boolean
+          has_using: boolean
+          permissive: string
+          policy_name: string
+          roles: string[]
+          table_name: string
+        }[]
+      }
       auto_archive_completed_preparations: { Args: never; Returns: undefined }
       auto_update_poll_status: { Args: never; Returns: undefined }
       bulk_update_contact_fields: {

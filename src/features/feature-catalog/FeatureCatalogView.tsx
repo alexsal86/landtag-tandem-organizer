@@ -1,5 +1,6 @@
-import { useMemo, useState } from "react";
-import { ChevronDown, ChevronRight, Search } from "lucide-react";
+import { useEffect, useMemo, useState } from "react";
+import { ChevronDown, ChevronRight, Search, ShieldCheck } from "lucide-react";
+import { useSearchParams } from "react-router-dom";
 import { useResolvedUserRole } from "@/hooks/useResolvedUserRole";
 import { Badge } from "@/components/ui/badge";
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
@@ -11,6 +12,7 @@ import { catalogAreas, catalogFeatures } from "./inventory";
 import { EMPTY_FILTERS, computeMetrics, filterFeatures, type FeatureFilters } from "./metrics";
 import { catalogPages, entityMapMarkdown, type CatalogPage } from "./catalogContent";
 import { MarkdownView } from "./MarkdownView";
+import { groupSecurityByTable, useTableSecurity } from "./useTableSecurity";
 import {
   FEATURE_CATEGORIES,
   IMPLEMENTATION_STATUSES,
@@ -94,6 +96,110 @@ function RefList({ title, values, empty = "—" }: { title: string; values: stri
   );
 }
 
+const rlsSeverityVariant = (severity: string): "default" | "secondary" | "destructive" | "outline" => {
+  if (severity === "critical") return "destructive";
+  if (severity === "warning") return "default";
+  if (severity === "ok") return "secondary";
+  return "outline";
+};
+
+/**
+ * Sicherheitsbefunde und Policies je Tabelle – getrennt von den funktionalen
+ * Testergebnissen und ohne daraus eine Gesamtbewertung der Funktion abzuleiten.
+ */
+function SecuritySection({ feature }: { feature: ResolvedFeature }) {
+  const { gapsQuery, policiesQuery } = useTableSecurity(feature.tables);
+  const securityByTable = groupSecurityByTable(feature.tables, gapsQuery.data ?? [], policiesQuery.data ?? []);
+
+  if (feature.tables.length === 0) {
+    return (
+      <Card>
+        <CardHeader className="pb-2">
+          <CardTitle className="flex items-center gap-2 text-base">
+            <ShieldCheck aria-hidden="true" className="h-4 w-4" /> Sicherheitsbezug (RLS)
+          </CardTitle>
+          <CardDescription>
+            Dieser Funktion sind keine Datenbanktabellen zugeordnet. Damit gibt es keinen RLS-Bezug; das ist keine
+            Aussage über die Sicherheit der Funktion.
+          </CardDescription>
+        </CardHeader>
+      </Card>
+    );
+  }
+
+  return (
+    <Card>
+      <CardHeader className="pb-2">
+        <CardTitle className="flex items-center gap-2 text-base">
+          <ShieldCheck aria-hidden="true" className="h-4 w-4" /> Sicherheitsbezug (RLS)
+        </CardTitle>
+        <CardDescription>
+          Live-Befunde des Security-Cockpits für die zugeordneten Tabellen. Sie bewerten nicht die Funktion und sind
+          kein funktionales Testergebnis; die Testangaben oben bleiben davon getrennt.
+        </CardDescription>
+      </CardHeader>
+      <CardContent className="space-y-3">
+        {gapsQuery.isLoading || policiesQuery.isLoading ? (
+          <p className="text-sm text-muted-foreground">Sicherheitsdaten werden geladen …</p>
+        ) : null}
+        {gapsQuery.isError ? (
+          <p role="alert" className="text-sm text-destructive">
+            RLS-Befunde konnten nicht geladen werden. Es wird keine Bewertung ersatzweise angenommen.
+          </p>
+        ) : null}
+        {policiesQuery.isError ? (
+          <p role="status" className="rounded border border-dashed p-2 text-xs text-muted-foreground">
+            Policy-Details sind nicht verfügbar. Vermutlich ist die Migration
+            {" "}
+            <code className="font-mono">20261125160000_feature_security_policy_links.sql</code> noch nicht angewendet.
+            Die RLS-Befunde bleiben sichtbar; eine Bewertung wird nicht ersatzweise angenommen.
+          </p>
+        ) : null}
+
+        {securityByTable.map(({ table, gap, policies }) => {
+          return (
+            <div key={table} className="rounded-md border p-3">
+              <div className="flex flex-wrap items-center gap-2">
+                <code className="font-mono text-xs">{table}</code>
+                {gap ? (
+                  <Badge variant={rlsSeverityVariant(gap.severity)}>{gap.severity}</Badge>
+                ) : (
+                  <Badge variant="outline">kein Befund</Badge>
+                )}
+                {gap ? <span className="text-xs text-muted-foreground">{gap.reason}</span> : null}
+                {gap ? <span className="text-xs text-muted-foreground">{gap.policy_count} Policies</span> : null}
+                {gap ? <span className="text-xs text-muted-foreground">tenant_id: {gap.has_tenant_id ? "ja" : "nein"}</span> : null}
+              </div>
+
+              {policies.length > 0 ? (
+                <ul className="mt-2 space-y-1">
+                  {policies.map((policy) => (
+                    <li key={`${policy.table_name}:${policy.policy_name}`} className="flex flex-wrap items-center gap-2 text-xs">
+                      <code className="rounded bg-muted px-1 py-0.5 font-mono">{policy.policy_name}</code>
+                      <Badge variant="outline">{policy.command}</Badge>
+                      <span className="text-muted-foreground">{policy.roles.join(", ") || "—"}</span>
+                      {policy.has_using ? <span className="text-muted-foreground">USING</span> : null}
+                      {policy.has_check ? <span className="text-muted-foreground">WITH CHECK</span> : null}
+                    </li>
+                  ))}
+                </ul>
+              ) : (
+                <p className="mt-2 text-xs text-muted-foreground">
+                  {policiesQuery.isError
+                    ? "Für diese Tabelle liegen keine Policy-Details vor; der RLS-Befund oben gilt unabhängig davon."
+                    : policiesQuery.isSuccess
+                      ? "Keine Policy für diese Tabelle gefunden."
+                      : "Policies werden geladen …"}
+                </p>
+              )}
+            </div>
+          );
+        })}
+      </CardContent>
+    </Card>
+  );
+}
+
 function FeatureDetail({ feature }: { feature: ResolvedFeature }) {
   const area = catalogAreas.find((candidate) => candidate.id === feature.area);
   return (
@@ -132,6 +238,8 @@ function FeatureDetail({ feature }: { feature: ResolvedFeature }) {
         <RefList title="Dokumentation" values={feature.docs} empty="Kein Dokumentationsverweis" />
         <RefList title="Nachweise im Quellcode" values={feature.evidence} />
       </div>
+
+      <SecuritySection feature={feature} />
 
       <div className="grid gap-4 md:grid-cols-2">
         <div>
@@ -196,8 +304,16 @@ export function FeatureCatalogView() {
   const { hasAdminAccess, loading } = useResolvedUserRole();
   const [view, setView] = useState<View>({ type: "overview" });
   const [filters, setFilters] = useState<FeatureFilters>(EMPTY_FILTERS);
+  const [searchParams] = useSearchParams();
   const [expandedAreas, setExpandedAreas] = useState<Set<string>>(new Set());
   const pages = useMemo(() => [...catalogPages, entityPage], []);
+
+  useEffect(() => {
+    const featureId = searchParams.get("feature");
+    if (featureId && catalogFeatures.some((feature) => feature.id === featureId)) {
+      setView({ type: "feature", id: featureId });
+    }
+  }, [searchParams]);
 
   const filtered = useMemo(() => filterFeatures(catalogFeatures, filters), [filters]);
   const metrics = useMemo(() => computeMetrics(filtered), [filtered]);

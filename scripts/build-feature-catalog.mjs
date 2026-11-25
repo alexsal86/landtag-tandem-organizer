@@ -837,6 +837,18 @@ function renderEntityMap(entityMap) {
     `## Alle Verweise\n\n| Tabelle | Spalte | Zieltabelle |\n|---|---|---|\n${all || '| — | — | — |'}\n`;
 }
 
+function renderTableFeatureIndex(features) {
+  const index = new Map();
+  for (const feature of [...features].sort((a, b) => a.id.localeCompare(b.id))) {
+    for (const table of unique(feature.tables)) {
+      if (!index.has(table)) index.set(table, []);
+      index.get(table).push({ id: feature.id, name: feature.name, area: feature.area });
+    }
+  }
+  const sorted = [...index.entries()].sort((a, b) => a[0].localeCompare(b[0]));
+  return JSON.stringify(Object.fromEntries(sorted), null, 2) + '\n';
+}
+
 export function renderCatalog(state, root = process.cwd()) {
   const features = state.inventory.features;
   const areas = state.inventory.areas
@@ -849,6 +861,7 @@ export function renderCatalog(state, root = process.cwd()) {
   files.set('docs/features/dependencies.md', renderDependencies(features, areas));
   files.set('docs/features/review.md', renderReview(features, state));
   files.set('docs/entity-map.md', renderEntityMap(collectEntityMap(root)));
+  files.set('src/features/feature-catalog/generated/table-features.json', renderTableFeatureIndex(features));
   for (const area of areas) files.set(`docs/features/${area.id}.md`, renderArea(area, state));
   return files;
 }

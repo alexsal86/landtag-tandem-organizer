@@ -291,9 +291,9 @@ Erfasst Notizen mit Priorität, Anheften, Verknüpfungen zu Entscheidungen und A
 - **Routen:** —
 - **Frontend-Komponenten:** `src/components/shared/QuickNotesList.tsx`, `src/components/shared/NoteCard.tsx`, `src/components/shared/NoteShareDialog.tsx`, `src/components/shared/NoteDecisionCreator.tsx`
 - **Services:** —
-- **Hooks:** `src/features/quick-notes/useQuickNoteActions.ts`, `src/features/quick-notes/useQuickNoteEditor.ts`, `src/features/quick-notes/useQuickNoteLinks.ts`, `src/features/quick-notes/useQuickNoteFollowUps.ts`, `src/features/quick-notes/useQuickNotesData.ts`
+- **Hooks:** `src/features/quick-notes/useQuickNoteActions.ts`, `src/features/quick-notes/useQuickNoteEditor.ts`, `src/features/quick-notes/useQuickNoteLinks.ts`, `src/features/quick-notes/useQuickNoteFollowUps.ts`, `src/features/quick-notes/useQuickNotesData.ts`, `supabase/migrations/20261125140000_topic_mention_selftest.sql`
 - **Edge Functions:** —
-- **Datenbankfunktionen:** `save_quick_note`, `delete_quick_note_with_links`, `list_quick_notes`, `quick_note_access`, `create_note_work`, `quick_note_member`, `quick_note_owned`
+- **Datenbankfunktionen:** `save_quick_note`, `delete_quick_note_with_links`, `list_quick_notes`, `quick_note_access`, `create_note_work`, `quick_note_member`, `quick_note_owned`, `topic_mention_selftest`
 - **Tabellen:** `quick_notes`, `quick_note_shares`, `quick_note_global_shares`, `quick_note_versions`, `quick_note_write_receipts`
 - **Abhängigkeiten:** —
 - **Selbsttests:** `quick-note-lifecycle`

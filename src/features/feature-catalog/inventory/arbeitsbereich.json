@@ -291,7 +291,8 @@
         "src/features/quick-notes/useQuickNoteEditor.ts",
         "src/features/quick-notes/useQuickNoteLinks.ts",
         "src/features/quick-notes/useQuickNoteFollowUps.ts",
-        "src/features/quick-notes/useQuickNotesData.ts"
+        "src/features/quick-notes/useQuickNotesData.ts",
+        "supabase/migrations/20261125140000_topic_mention_selftest.sql"
       ],
       "rpcs": [
         "save_quick_note",
@@ -300,7 +301,8 @@
         "quick_note_access",
         "create_note_work",
         "quick_note_member",
-        "quick_note_owned"
+        "quick_note_owned",
+        "topic_mention_selftest"
       ],
       "tables": [
         "quick_notes",

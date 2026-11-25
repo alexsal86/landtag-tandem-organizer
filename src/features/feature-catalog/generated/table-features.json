@@ -1,0 +1,3898 @@
+{
+  "action_permissions": [
+    {
+      "id": "admin.action-permissions",
+      "name": "Aktionsberechtigungen",
+      "area": "verwaltung"
+    },
+    {
+      "id": "admin.field-permissions",
+      "name": "Feldschutz",
+      "area": "verwaltung"
+    },
+    {
+      "id": "admin.permissions-explorer",
+      "name": "Rechte-Explorer und Rechteerklärung",
+      "area": "verwaltung"
+    }
+  ],
+  "annual_task_completions": [
+    {
+      "id": "automation.annual-routines",
+      "name": "Jahresroutinen verwalten",
+      "area": "automation"
+    },
+    {
+      "id": "tasks.annual",
+      "name": "Jahresaufgaben und Jahresabschluss",
+      "area": "aufgaben"
+    },
+    {
+      "id": "timetracking.annual-tasks",
+      "name": "Jahresaufgaben im Zeitbereich",
+      "area": "mitarbeit"
+    }
+  ],
+  "annual_tasks": [
+    {
+      "id": "automation.annual-routines",
+      "name": "Jahresroutinen verwalten",
+      "area": "automation"
+    },
+    {
+      "id": "automation.office-packages",
+      "name": "Saisonale Büropakete",
+      "area": "automation"
+    },
+    {
+      "id": "tasks.annual",
+      "name": "Jahresaufgaben und Jahresabschluss",
+      "area": "aufgaben"
+    },
+    {
+      "id": "timetracking.annual-tasks",
+      "name": "Jahresaufgaben im Zeitbereich",
+      "area": "mitarbeit"
+    }
+  ],
+  "appointment_categories": [
+    {
+      "id": "admin.configuration",
+      "name": "Konfigurierbare Stammdaten pflegen",
+      "area": "verwaltung"
+    },
+    {
+      "id": "calendar.categories-locations",
+      "name": "Terminkategorien und -orte pflegen",
+      "area": "termine"
+    },
+    {
+      "id": "calendar.create-appointment",
+      "name": "Termin anlegen",
+      "area": "termine"
+    },
+    {
+      "id": "calendar.view",
+      "name": "Terminkalender anzeigen",
+      "area": "termine"
+    }
+  ],
+  "appointment_change_alerts": [
+    {
+      "id": "calendar.edit-move",
+      "name": "Termin bearbeiten und verschieben",
+      "area": "termine"
+    }
+  ],
+  "appointment_contacts": [
+    {
+      "id": "calendar.create-appointment",
+      "name": "Termin anlegen",
+      "area": "termine"
+    }
+  ],
+  "appointment_feedback": [
+    {
+      "id": "appointments.debrief",
+      "name": "Nachbereitung und Büro-Feedback",
+      "area": "termine"
+    },
+    {
+      "id": "appointments.feedback",
+      "name": "Termin-Feedback erfassen",
+      "area": "termine"
+    }
+  ],
+  "appointment_feedback_settings": [
+    {
+      "id": "appointments.feedback",
+      "name": "Termin-Feedback erfassen",
+      "area": "termine"
+    }
+  ],
+  "appointment_guests": [
+    {
+      "id": "calendar.guests",
+      "name": "Gäste und Teilnehmende verwalten",
+      "area": "termine"
+    },
+    {
+      "id": "calendar.invitations",
+      "name": "Termineinladungen und Kalendereinträge versenden",
+      "area": "termine"
+    }
+  ],
+  "appointment_locations": [
+    {
+      "id": "calendar.categories-locations",
+      "name": "Terminkategorien und -orte pflegen",
+      "area": "termine"
+    },
+    {
+      "id": "calendar.create-appointment",
+      "name": "Termin anlegen",
+      "area": "termine"
+    }
+  ],
+  "appointment_polls": [
+    {
+      "id": "calendar.polls",
+      "name": "Terminumfrage erstellen",
+      "area": "termine"
+    },
+    {
+      "id": "polls.availability",
+      "name": "Verfügbarkeit und Zeitfenster",
+      "area": "veranstaltungen"
+    },
+    {
+      "id": "polls.manage",
+      "name": "Umfragen verwalten und auswerten",
+      "area": "veranstaltungen"
+    },
+    {
+      "id": "polls.respond",
+      "name": "An Umfrage teilnehmen",
+      "area": "veranstaltungen"
+    }
+  ],
+  "appointment_preparation_documents": [
+    {
+      "id": "appointments.briefing",
+      "name": "Terminbriefing erstellen",
+      "area": "termine"
+    },
+    {
+      "id": "appointments.preparation",
+      "name": "Terminvorbereitung mit Vorschlägen",
+      "area": "termine"
+    }
+  ],
+  "appointment_preparation_templates": [
+    {
+      "id": "appointments.preparation",
+      "name": "Terminvorbereitung mit Vorschlägen",
+      "area": "termine"
+    }
+  ],
+  "appointment_preparations": [
+    {
+      "id": "appointments.briefing",
+      "name": "Terminbriefing erstellen",
+      "area": "termine"
+    },
+    {
+      "id": "appointments.briefing-live",
+      "name": "Live-Briefing und Nachbereitung",
+      "area": "termine"
+    },
+    {
+      "id": "appointments.debrief",
+      "name": "Nachbereitung und Büro-Feedback",
+      "area": "termine"
+    },
+    {
+      "id": "appointments.preparation",
+      "name": "Terminvorbereitung mit Vorschlägen",
+      "area": "termine"
+    },
+    {
+      "id": "integration.ai-suggestions",
+      "name": "KI-Vorschläge für Vorbereitung und Eingang",
+      "area": "schnittstellen"
+    }
+  ],
+  "appointment_reminder_dispatches": [
+    {
+      "id": "calendar.edit-move",
+      "name": "Termin bearbeiten und verschieben",
+      "area": "termine"
+    },
+    {
+      "id": "calendar.reminders",
+      "name": "Terminerinnerungen",
+      "area": "termine"
+    }
+  ],
+  "appointment_requests": [
+    {
+      "id": "admin.access-boundaries",
+      "name": "Zugriffsschutzprüfung",
+      "area": "verwaltung"
+    },
+    {
+      "id": "appointments.requests",
+      "name": "Terminanfrage stellen und entscheiden",
+      "area": "termine"
+    }
+  ],
+  "appointment_statuses": [
+    {
+      "id": "calendar.categories-locations",
+      "name": "Terminkategorien und -orte pflegen",
+      "area": "termine"
+    },
+    {
+      "id": "calendar.view",
+      "name": "Terminkalender anzeigen",
+      "area": "termine"
+    }
+  ],
+  "appointment_topics": [
+    {
+      "id": "appointments.preparation",
+      "name": "Terminvorbereitung mit Vorschlägen",
+      "area": "termine"
+    }
+  ],
+  "appointments": [
+    {
+      "id": "appointments.briefing",
+      "name": "Terminbriefing erstellen",
+      "area": "termine"
+    },
+    {
+      "id": "appointments.requests",
+      "name": "Terminanfrage stellen und entscheiden",
+      "area": "termine"
+    },
+    {
+      "id": "calendar.create-appointment",
+      "name": "Termin anlegen",
+      "area": "termine"
+    },
+    {
+      "id": "calendar.edit-move",
+      "name": "Termin bearbeiten und verschieben",
+      "area": "termine"
+    },
+    {
+      "id": "calendar.guests",
+      "name": "Gäste und Teilnehmende verwalten",
+      "area": "termine"
+    },
+    {
+      "id": "calendar.invitations",
+      "name": "Termineinladungen und Kalendereinträge versenden",
+      "area": "termine"
+    },
+    {
+      "id": "calendar.reminders",
+      "name": "Terminerinnerungen",
+      "area": "termine"
+    },
+    {
+      "id": "calendar.view",
+      "name": "Terminkalender anzeigen",
+      "area": "termine"
+    },
+    {
+      "id": "cases.link-appointment",
+      "name": "Vorgang mit Termin verknüpfen",
+      "area": "vorgaenge"
+    },
+    {
+      "id": "integration.ics",
+      "name": "ICS-Feeds und Einladungsdateien",
+      "area": "schnittstellen"
+    }
+  ],
+  "archived_meeting_protocol_tasks": [
+    {
+      "id": "meetings.archive",
+      "name": "Sitzung archivieren",
+      "area": "organisation"
+    }
+  ],
+  "archived_tasks": [
+    {
+      "id": "tasks.archive",
+      "name": "Aufgabe archivieren und wiederherstellen",
+      "area": "aufgaben"
+    },
+    {
+      "id": "tasks.complete",
+      "name": "Aufgabe abschließen",
+      "area": "aufgaben"
+    }
+  ],
+  "audit_log_entries": [
+    {
+      "id": "admin.audit-log",
+      "name": "Audit-Trail einsehen und exportieren",
+      "area": "verwaltung"
+    },
+    {
+      "id": "admin.security-cockpit",
+      "name": "Security-Cockpit",
+      "area": "verwaltung"
+    },
+    {
+      "id": "cases.timeline",
+      "name": "Vorgangs-Timeline und Änderungsprotokoll",
+      "area": "vorgaenge"
+    },
+    {
+      "id": "contacts.edit",
+      "name": "Kontakt bearbeiten",
+      "area": "kontakte"
+    },
+    {
+      "id": "platform.notification-dispatch",
+      "name": "Benachrichtigungs- und Audit-Trigger",
+      "area": "verwaltung"
+    }
+  ],
+  "automation_rate_limits": [
+    {
+      "id": "automation.rules",
+      "name": "Automatisierungsregel verwalten",
+      "area": "automation"
+    },
+    {
+      "id": "automation.webhooks",
+      "name": "Automatisierungs-Webhooks",
+      "area": "automation"
+    }
+  ],
+  "automation_rule_run_steps": [
+    {
+      "id": "automation.runs",
+      "name": "Regelläufe und Fehlerdashboard",
+      "area": "automation"
+    }
+  ],
+  "automation_rule_runs": [
+    {
+      "id": "automation.runs",
+      "name": "Regelläufe und Fehlerdashboard",
+      "area": "automation"
+    },
+    {
+      "id": "automation.scheduler",
+      "name": "Zeitgesteuerte Automatisierung",
+      "area": "automation"
+    }
+  ],
+  "automation_rule_versions": [
+    {
+      "id": "automation.rule-versions",
+      "name": "Regelversionen und Import/Export",
+      "area": "automation"
+    }
+  ],
+  "automation_rules": [
+    {
+      "id": "automation.annual-routines",
+      "name": "Jahresroutinen verwalten",
+      "area": "automation"
+    },
+    {
+      "id": "automation.calendar-schedule",
+      "name": "Kalenderbezogene Zeitberechnung",
+      "area": "automation"
+    },
+    {
+      "id": "automation.conditions",
+      "name": "Regelbedingungen und Feldtypen",
+      "area": "automation"
+    },
+    {
+      "id": "automation.office-packages",
+      "name": "Saisonale Büropakete",
+      "area": "automation"
+    },
+    {
+      "id": "automation.rule-validation",
+      "name": "Regelvalidierung im Editor",
+      "area": "automation"
+    },
+    {
+      "id": "automation.rule-versions",
+      "name": "Regelversionen und Import/Export",
+      "area": "automation"
+    },
+    {
+      "id": "automation.rules",
+      "name": "Automatisierungsregel verwalten",
+      "area": "automation"
+    },
+    {
+      "id": "automation.scheduler",
+      "name": "Zeitgesteuerte Automatisierung",
+      "area": "automation"
+    },
+    {
+      "id": "automation.task-packages",
+      "name": "Aufgabenpakete",
+      "area": "automation"
+    },
+    {
+      "id": "automation.templates",
+      "name": "Automatisierungs-Vorlagen",
+      "area": "automation"
+    },
+    {
+      "id": "automation.webhooks",
+      "name": "Automatisierungs-Webhooks",
+      "area": "automation"
+    }
+  ],
+  "bulk_action_audit": [
+    {
+      "id": "admin.bulk-audit",
+      "name": "Massenaktions-Audit",
+      "area": "verwaltung"
+    },
+    {
+      "id": "contacts.bulk",
+      "name": "Kontakte in Massen bearbeiten",
+      "area": "kontakte"
+    },
+    {
+      "id": "tasks.archive",
+      "name": "Aufgabe archivieren und wiederherstellen",
+      "area": "aufgaben"
+    },
+    {
+      "id": "tasks.handover-stafette",
+      "name": "Aufgabe weitergeben (Stafette)",
+      "area": "aufgaben"
+    }
+  ],
+  "calendar_sync_settings": [
+    {
+      "id": "automation.calendar-schedule",
+      "name": "Kalenderbezogene Zeitberechnung",
+      "area": "automation"
+    },
+    {
+      "id": "integration.calendar-sync",
+      "name": "Externe Kalender synchronisieren",
+      "area": "schnittstellen"
+    }
+  ],
+  "call_logs": [
+    {
+      "id": "contacts.activities",
+      "name": "Kontaktaktivitäten und Anrufe",
+      "area": "kontakte"
+    }
+  ],
+  "carryover_items": [
+    {
+      "id": "timetracking.vacation",
+      "name": "Urlaub und Resturlaub",
+      "area": "mitarbeit"
+    }
+  ],
+  "case_file_appointments": [
+    {
+      "id": "cases.link-appointment",
+      "name": "Vorgang mit Termin verknüpfen",
+      "area": "vorgaenge"
+    }
+  ],
+  "case_file_contacts": [
+    {
+      "id": "casefiles.links",
+      "name": "Fallakte verknüpfen (Dokumente, Kontakte, Themen, Notizen)",
+      "area": "vorgaenge"
+    }
+  ],
+  "case_file_documents": [
+    {
+      "id": "casefiles.links",
+      "name": "Fallakte verknüpfen (Dokumente, Kontakte, Themen, Notizen)",
+      "area": "vorgaenge"
+    }
+  ],
+  "case_file_letters": [
+    {
+      "id": "cases.link-letter",
+      "name": "Vorgang mit Brief verknüpfen",
+      "area": "vorgaenge"
+    }
+  ],
+  "case_file_notes": [
+    {
+      "id": "casefiles.links",
+      "name": "Fallakte verknüpfen (Dokumente, Kontakte, Themen, Notizen)",
+      "area": "vorgaenge"
+    },
+    {
+      "id": "casefiles.notes",
+      "name": "Fallakten-Notizen",
+      "area": "vorgaenge"
+    }
+  ],
+  "case_file_participants": [
+    {
+      "id": "casefiles.manage",
+      "name": "Fallakte anlegen und führen",
+      "area": "vorgaenge"
+    }
+  ],
+  "case_file_processing_statuses": [
+    {
+      "id": "casefiles.status-workflow",
+      "name": "Fallakten-Status und Bearbeitungsstatus",
+      "area": "vorgaenge"
+    }
+  ],
+  "case_file_status_history": [
+    {
+      "id": "casefiles.manage",
+      "name": "Fallakte anlegen und führen",
+      "area": "vorgaenge"
+    },
+    {
+      "id": "casefiles.status-workflow",
+      "name": "Fallakten-Status und Bearbeitungsstatus",
+      "area": "vorgaenge"
+    }
+  ],
+  "case_file_tasks": [
+    {
+      "id": "cases.link-decision",
+      "name": "Vorgang mit Entscheidung verknüpfen",
+      "area": "vorgaenge"
+    },
+    {
+      "id": "cases.steps",
+      "name": "Vorgangsschritte und Aufgaben",
+      "area": "vorgaenge"
+    },
+    {
+      "id": "tasks.link-case",
+      "name": "Aufgabe mit Vorgang verknüpfen",
+      "area": "aufgaben"
+    }
+  ],
+  "case_file_timeline": [
+    {
+      "id": "casefiles.manage",
+      "name": "Fallakte anlegen und führen",
+      "area": "vorgaenge"
+    }
+  ],
+  "case_file_topics": [
+    {
+      "id": "casefiles.links",
+      "name": "Fallakte verknüpfen (Dokumente, Kontakte, Themen, Notizen)",
+      "area": "vorgaenge"
+    }
+  ],
+  "case_file_types": [
+    {
+      "id": "casefiles.manage",
+      "name": "Fallakte anlegen und führen",
+      "area": "vorgaenge"
+    }
+  ],
+  "case_files": [
+    {
+      "id": "casefiles.manage",
+      "name": "Fallakte anlegen und führen",
+      "area": "vorgaenge"
+    },
+    {
+      "id": "casefiles.notes",
+      "name": "Fallakten-Notizen",
+      "area": "vorgaenge"
+    },
+    {
+      "id": "casefiles.status-workflow",
+      "name": "Fallakten-Status und Bearbeitungsstatus",
+      "area": "vorgaenge"
+    }
+  ],
+  "case_item_categories": [
+    {
+      "id": "cases.create",
+      "name": "Vorgang erfassen",
+      "area": "vorgaenge"
+    }
+  ],
+  "case_item_escalation_suggestions": [
+    {
+      "id": "cases.escalation",
+      "name": "Eskalationsvorschläge",
+      "area": "vorgaenge"
+    }
+  ],
+  "case_item_handover_log": [
+    {
+      "id": "cases.handover",
+      "name": "Vorgang weitergeben",
+      "area": "vorgaenge"
+    }
+  ],
+  "case_item_interactions": [
+    {
+      "id": "cases.interactions",
+      "name": "Kontakte und Interaktionen am Vorgang",
+      "area": "vorgaenge"
+    }
+  ],
+  "case_item_participants": [
+    {
+      "id": "cases.create",
+      "name": "Vorgang erfassen",
+      "area": "vorgaenge"
+    }
+  ],
+  "case_item_timeline": [
+    {
+      "id": "cases.close-archive",
+      "name": "Vorgang abschließen und archivieren",
+      "area": "vorgaenge"
+    },
+    {
+      "id": "cases.create",
+      "name": "Vorgang erfassen",
+      "area": "vorgaenge"
+    },
+    {
+      "id": "cases.handover",
+      "name": "Vorgang weitergeben",
+      "area": "vorgaenge"
+    },
+    {
+      "id": "cases.steps",
+      "name": "Vorgangsschritte und Aufgaben",
+      "area": "vorgaenge"
+    },
+    {
+      "id": "cases.timeline",
+      "name": "Vorgangs-Timeline und Änderungsprotokoll",
+      "area": "vorgaenge"
+    },
+    {
+      "id": "cases.triage",
+      "name": "Vorgang triagieren (Wer ist am Zug?)",
+      "area": "vorgaenge"
+    },
+    {
+      "id": "tasks.link-case",
+      "name": "Aufgabe mit Vorgang verknüpfen",
+      "area": "aufgaben"
+    }
+  ],
+  "case_items": [
+    {
+      "id": "admin.access-boundaries",
+      "name": "Zugriffsschutzprüfung",
+      "area": "verwaltung"
+    },
+    {
+      "id": "appointments.jour-fixe",
+      "name": "Jour-fixe-Agende und Systempunkte",
+      "area": "termine"
+    },
+    {
+      "id": "automation.routine-packages",
+      "name": "Dauerhafte Routineabläufe",
+      "area": "automation"
+    },
+    {
+      "id": "cases.close-archive",
+      "name": "Vorgang abschließen und archivieren",
+      "area": "vorgaenge"
+    },
+    {
+      "id": "cases.create",
+      "name": "Vorgang erfassen",
+      "area": "vorgaenge"
+    },
+    {
+      "id": "cases.escalation",
+      "name": "Eskalationsvorschläge",
+      "area": "vorgaenge"
+    },
+    {
+      "id": "cases.handover",
+      "name": "Vorgang weitergeben",
+      "area": "vorgaenge"
+    },
+    {
+      "id": "cases.interactions",
+      "name": "Kontakte und Interaktionen am Vorgang",
+      "area": "vorgaenge"
+    },
+    {
+      "id": "cases.link-appointment",
+      "name": "Vorgang mit Termin verknüpfen",
+      "area": "vorgaenge"
+    },
+    {
+      "id": "cases.link-decision",
+      "name": "Vorgang mit Entscheidung verknüpfen",
+      "area": "vorgaenge"
+    },
+    {
+      "id": "cases.link-letter",
+      "name": "Vorgang mit Brief verknüpfen",
+      "area": "vorgaenge"
+    },
+    {
+      "id": "cases.steps",
+      "name": "Vorgangsschritte und Aufgaben",
+      "area": "vorgaenge"
+    },
+    {
+      "id": "cases.triage",
+      "name": "Vorgang triagieren (Wer ist am Zug?)",
+      "area": "vorgaenge"
+    },
+    {
+      "id": "meetings.agenda",
+      "name": "Agenda führen",
+      "area": "organisation"
+    },
+    {
+      "id": "responsibilities.suggest",
+      "name": "Zuständigkeitsvorschläge",
+      "area": "mitarbeit"
+    }
+  ],
+  "committees": [
+    {
+      "id": "responsibilities.matrix",
+      "name": "Zuständigkeitsmatrix",
+      "area": "mitarbeit"
+    },
+    {
+      "id": "topics.manage",
+      "name": "Themen verwalten",
+      "area": "organisation"
+    }
+  ],
+  "contact_activities": [
+    {
+      "id": "contacts.activities",
+      "name": "Kontaktaktivitäten und Anrufe",
+      "area": "kontakte"
+    },
+    {
+      "id": "contacts.detail",
+      "name": "Kontaktprofil mit Aktivitäten",
+      "area": "kontakte"
+    },
+    {
+      "id": "contacts.edit",
+      "name": "Kontakt bearbeiten",
+      "area": "kontakte"
+    },
+    {
+      "id": "contacts.import",
+      "name": "Kontakte importieren",
+      "area": "kontakte"
+    },
+    {
+      "id": "contacts.merge",
+      "name": "Kontakte zusammenführen",
+      "area": "kontakte"
+    }
+  ],
+  "contact_briefing_memory": [
+    {
+      "id": "contacts.briefing-memory",
+      "name": "Briefingwissen je Kontakt",
+      "area": "kontakte"
+    }
+  ],
+  "contact_topics": [
+    {
+      "id": "contacts.create",
+      "name": "Kontakt anlegen",
+      "area": "kontakte"
+    },
+    {
+      "id": "contacts.detail",
+      "name": "Kontaktprofil mit Aktivitäten",
+      "area": "kontakte"
+    },
+    {
+      "id": "contacts.merge",
+      "name": "Kontakte zusammenführen",
+      "area": "kontakte"
+    },
+    {
+      "id": "contacts.tags-topics",
+      "name": "Kontakt-Tags und Themen",
+      "area": "kontakte"
+    }
+  ],
+  "contacts": [
+    {
+      "id": "admin.gdpr",
+      "name": "DSGVO-Löschanträge",
+      "area": "verwaltung"
+    },
+    {
+      "id": "contacts.briefing-memory",
+      "name": "Briefingwissen je Kontakt",
+      "area": "kontakte"
+    },
+    {
+      "id": "contacts.bulk",
+      "name": "Kontakte in Massen bearbeiten",
+      "area": "kontakte"
+    },
+    {
+      "id": "contacts.create",
+      "name": "Kontakt anlegen",
+      "area": "kontakte"
+    },
+    {
+      "id": "contacts.detail",
+      "name": "Kontaktprofil mit Aktivitäten",
+      "area": "kontakte"
+    },
+    {
+      "id": "contacts.duplicates",
+      "name": "Dubletten finden",
+      "area": "kontakte"
+    },
+    {
+      "id": "contacts.edit",
+      "name": "Kontakt bearbeiten",
+      "area": "kontakte"
+    },
+    {
+      "id": "contacts.import",
+      "name": "Kontakte importieren",
+      "area": "kontakte"
+    },
+    {
+      "id": "contacts.merge",
+      "name": "Kontakte zusammenführen",
+      "area": "kontakte"
+    },
+    {
+      "id": "contacts.privacy",
+      "name": "Kontakt-Datenschutz und Aufbewahrung",
+      "area": "kontakte"
+    },
+    {
+      "id": "contacts.stakeholders",
+      "name": "Stakeholder-Netzwerk",
+      "area": "kontakte"
+    },
+    {
+      "id": "documents.contacts",
+      "name": "Dokumente mit Kontakten verknüpfen",
+      "area": "dokumente"
+    },
+    {
+      "id": "integration.geocoding",
+      "name": "Adress-Geocoding",
+      "area": "schnittstellen"
+    }
+  ],
+  "daily_briefing_reads": [
+    {
+      "id": "daily.briefing",
+      "name": "Tagesbriefing und Tageszettel",
+      "area": "termine"
+    }
+  ],
+  "daily_briefings": [
+    {
+      "id": "daily.briefing",
+      "name": "Tagesbriefing und Tageszettel",
+      "area": "termine"
+    }
+  ],
+  "dashboard_decision_nudges": [
+    {
+      "id": "decisions.remind",
+      "name": "Offene Entscheidungen anmahnen",
+      "area": "entscheidungen"
+    },
+    {
+      "id": "tasks.nudge",
+      "name": "Aufgabe anmahnen und Erinnerungen versenden",
+      "area": "aufgaben"
+    }
+  ],
+  "dashboard_layouts": [
+    {
+      "id": "mywork.dashboard",
+      "name": "Meine Arbeit – Dashboard",
+      "area": "arbeitsbereich"
+    }
+  ],
+  "data_lint_findings": [
+    {
+      "id": "admin.data-lint",
+      "name": "Datenqualitätsprüfung",
+      "area": "verwaltung"
+    }
+  ],
+  "day_slips": [
+    {
+      "id": "daily.briefing",
+      "name": "Tagesbriefing und Tageszettel",
+      "area": "termine"
+    }
+  ],
+  "decision_archive_settings": [
+    {
+      "id": "decisions.archive",
+      "name": "Entscheidungen archivieren",
+      "area": "entscheidungen"
+    }
+  ],
+  "decision_email_templates": [
+    {
+      "id": "decisions.email",
+      "name": "Entscheidungs-E-Mails",
+      "area": "entscheidungen"
+    }
+  ],
+  "decision_matrix_messages": [
+    {
+      "id": "decisions.matrix",
+      "name": "Entscheidungen über Matrix beantworten",
+      "area": "entscheidungen"
+    }
+  ],
+  "default_appointment_guests": [
+    {
+      "id": "calendar.guests",
+      "name": "Gäste und Teilnehmende verwalten",
+      "area": "termine"
+    }
+  ],
+  "distribution_list_members": [
+    {
+      "id": "contacts.distribution-lists",
+      "name": "Verteilerlisten verwalten",
+      "area": "kontakte"
+    }
+  ],
+  "distribution_lists": [
+    {
+      "id": "contacts.distribution-lists",
+      "name": "Verteilerlisten verwalten",
+      "area": "kontakte"
+    }
+  ],
+  "document_annotation_events": [
+    {
+      "id": "annotations.history",
+      "name": "Annotationsverlauf",
+      "area": "dokumente"
+    },
+    {
+      "id": "documents.upload-version",
+      "name": "Dokument hochladen und versionieren",
+      "area": "dokumente"
+    }
+  ],
+  "document_annotation_tasks": [
+    {
+      "id": "annotations.tasks",
+      "name": "Folgeaufgabe aus Annotation",
+      "area": "dokumente"
+    }
+  ],
+  "document_annotations": [
+    {
+      "id": "annotations.create",
+      "name": "Dokumente annotieren",
+      "area": "dokumente"
+    },
+    {
+      "id": "annotations.export",
+      "name": "Annotationen exportieren",
+      "area": "dokumente"
+    },
+    {
+      "id": "annotations.history",
+      "name": "Annotationsverlauf",
+      "area": "dokumente"
+    },
+    {
+      "id": "annotations.ocr",
+      "name": "OCR für gescannte Dokumente",
+      "area": "dokumente"
+    },
+    {
+      "id": "annotations.relocate",
+      "name": "Annotationen bei neuer Dateiversion verschieben",
+      "area": "dokumente"
+    },
+    {
+      "id": "annotations.tasks",
+      "name": "Folgeaufgabe aus Annotation",
+      "area": "dokumente"
+    }
+  ],
+  "document_categories": [
+    {
+      "id": "admin.configuration",
+      "name": "Konfigurierbare Stammdaten pflegen",
+      "area": "verwaltung"
+    },
+    {
+      "id": "documents.list",
+      "name": "Dokumentenliste und Suche",
+      "area": "dokumente"
+    }
+  ],
+  "document_contacts": [
+    {
+      "id": "contacts.detail",
+      "name": "Kontaktprofil mit Aktivitäten",
+      "area": "kontakte"
+    },
+    {
+      "id": "contacts.merge",
+      "name": "Kontakte zusammenführen",
+      "area": "kontakte"
+    },
+    {
+      "id": "documents.contacts",
+      "name": "Dokumente mit Kontakten verknüpfen",
+      "area": "dokumente"
+    },
+    {
+      "id": "documents.list",
+      "name": "Dokumentenliste und Suche",
+      "area": "dokumente"
+    }
+  ],
+  "document_folders": [
+    {
+      "id": "documents.list",
+      "name": "Dokumentenliste und Suche",
+      "area": "dokumente"
+    }
+  ],
+  "document_topics": [
+    {
+      "id": "documents.list",
+      "name": "Dokumentenliste und Suche",
+      "area": "dokumente"
+    }
+  ],
+  "documents": [
+    {
+      "id": "annotations.create",
+      "name": "Dokumente annotieren",
+      "area": "dokumente"
+    },
+    {
+      "id": "annotations.export",
+      "name": "Annotationen exportieren",
+      "area": "dokumente"
+    },
+    {
+      "id": "annotations.ocr",
+      "name": "OCR für gescannte Dokumente",
+      "area": "dokumente"
+    },
+    {
+      "id": "annotations.relocate",
+      "name": "Annotationen bei neuer Dateiversion verschieben",
+      "area": "dokumente"
+    },
+    {
+      "id": "documents.contacts",
+      "name": "Dokumente mit Kontakten verknüpfen",
+      "area": "dokumente"
+    },
+    {
+      "id": "documents.email",
+      "name": "Dokumente per E-Mail versenden",
+      "area": "dokumente"
+    },
+    {
+      "id": "documents.list",
+      "name": "Dokumentenliste und Suche",
+      "area": "dokumente"
+    },
+    {
+      "id": "documents.upload-version",
+      "name": "Dokument hochladen und versionieren",
+      "area": "dokumente"
+    },
+    {
+      "id": "drucksachen.view",
+      "name": "Drucksachen anzeigen",
+      "area": "organisation"
+    },
+    {
+      "id": "letters.archive",
+      "name": "Brief archivieren und Folgeaufgabe anlegen",
+      "area": "dokumente"
+    },
+    {
+      "id": "letters.workflow",
+      "name": "Brief-Freigabeworkflow",
+      "area": "dokumente"
+    },
+    {
+      "id": "meetings.decisions",
+      "name": "Sitzungsentscheidungen dokumentieren",
+      "area": "organisation"
+    },
+    {
+      "id": "tasks.link-document",
+      "name": "Aufgabe mit Dokument verknüpfen",
+      "area": "aufgaben"
+    }
+  ],
+  "dossier_entries": [
+    {
+      "id": "dossiers.capture-radar",
+      "name": "Schnellerfassung und Mein Radar",
+      "area": "organisation"
+    },
+    {
+      "id": "dossiers.entries",
+      "name": "Dossier-Einträge und Timeline",
+      "area": "organisation"
+    },
+    {
+      "id": "dossiers.manage",
+      "name": "Dossier anlegen und führen",
+      "area": "organisation"
+    },
+    {
+      "id": "dossiers.search",
+      "name": "Globale Dossier-Suche",
+      "area": "organisation"
+    },
+    {
+      "id": "dossiers.sources",
+      "name": "Dossier-Quellenbeobachtung",
+      "area": "organisation"
+    }
+  ],
+  "dossier_links": [
+    {
+      "id": "dossiers.links-stakeholders",
+      "name": "Dossier-Verknüpfungen und Stakeholder",
+      "area": "organisation"
+    }
+  ],
+  "dossier_position_versions": [
+    {
+      "id": "dossiers.talking-points",
+      "name": "Talking Points und Positionsversionen",
+      "area": "organisation"
+    }
+  ],
+  "dossier_source_watchers": [
+    {
+      "id": "dossiers.sources",
+      "name": "Dossier-Quellenbeobachtung",
+      "area": "organisation"
+    }
+  ],
+  "dossier_stakeholders": [
+    {
+      "id": "dossiers.links-stakeholders",
+      "name": "Dossier-Verknüpfungen und Stakeholder",
+      "area": "organisation"
+    }
+  ],
+  "dossier_talking_points": [
+    {
+      "id": "dossiers.talking-points",
+      "name": "Talking Points und Positionsversionen",
+      "area": "organisation"
+    }
+  ],
+  "dossiers": [
+    {
+      "id": "dossiers.capture-radar",
+      "name": "Schnellerfassung und Mein Radar",
+      "area": "organisation"
+    },
+    {
+      "id": "dossiers.entries",
+      "name": "Dossier-Einträge und Timeline",
+      "area": "organisation"
+    },
+    {
+      "id": "dossiers.manage",
+      "name": "Dossier anlegen und führen",
+      "area": "organisation"
+    },
+    {
+      "id": "dossiers.search",
+      "name": "Globale Dossier-Suche",
+      "area": "organisation"
+    }
+  ],
+  "edge_function_cache": [
+    {
+      "id": "admin.maintenance",
+      "name": "Wartungs- und Aufräumläufe",
+      "area": "verwaltung"
+    }
+  ],
+  "egress_anomalies": [
+    {
+      "id": "integration.egress-monitoring",
+      "name": "Egress-Überwachung",
+      "area": "schnittstellen"
+    }
+  ],
+  "egress_metrics": [
+    {
+      "id": "integration.egress-monitoring",
+      "name": "Egress-Überwachung",
+      "area": "schnittstellen"
+    }
+  ],
+  "election_analysis_bw_polls": [
+    {
+      "id": "election.seat-distribution",
+      "name": "Sitzverteilung und Hemizykel",
+      "area": "wahl"
+    }
+  ],
+  "election_analysis_candidate_coverage": [
+    {
+      "id": "election.research-workbench",
+      "name": "Analyse-Workbench und Kommunalpanel",
+      "area": "wahl"
+    }
+  ],
+  "election_analysis_candidates": [
+    {
+      "id": "election.deputy-results",
+      "name": "Abgeordneten- und Kandidatenergebnisse",
+      "area": "wahl"
+    }
+  ],
+  "election_analysis_correction_audit": [
+    {
+      "id": "election.research-workbench",
+      "name": "Analyse-Workbench und Kommunalpanel",
+      "area": "wahl"
+    }
+  ],
+  "election_analysis_districts": [
+    {
+      "id": "election.analysis",
+      "name": "Wahlanalyse durchführen",
+      "area": "wahl"
+    },
+    {
+      "id": "election.analysis-map",
+      "name": "Analyse-Karten und Wahlkreiszuschnitt",
+      "area": "wahl"
+    }
+  ],
+  "election_analysis_flows": [
+    {
+      "id": "election.analysis",
+      "name": "Wahlanalyse durchführen",
+      "area": "wahl"
+    }
+  ],
+  "election_analysis_geographies": [
+    {
+      "id": "election.analysis-map",
+      "name": "Analyse-Karten und Wahlkreiszuschnitt",
+      "area": "wahl"
+    },
+    {
+      "id": "election.history.districts-geometry",
+      "name": "Historische Wahlkreise und Geometrie",
+      "area": "wahl"
+    }
+  ],
+  "election_analysis_local_results": [
+    {
+      "id": "election.research-workbench",
+      "name": "Analyse-Workbench und Kommunalpanel",
+      "area": "wahl"
+    }
+  ],
+  "election_analysis_scenarios": [
+    {
+      "id": "election.analysis-navigation",
+      "name": "Analyse-Navigation und gespeicherte Szenarien",
+      "area": "wahl"
+    }
+  ],
+  "election_analysis_source_reviews": [
+    {
+      "id": "election.research-workbench",
+      "name": "Analyse-Workbench und Kommunalpanel",
+      "area": "wahl"
+    }
+  ],
+  "election_analysis_state": [
+    {
+      "id": "election.seat-distribution",
+      "name": "Sitzverteilung und Hemizykel",
+      "area": "wahl"
+    },
+    {
+      "id": "election.state-history",
+      "name": "Landesweite Zeitreihen",
+      "area": "wahl"
+    }
+  ],
+  "election_analysis_state_totals": [
+    {
+      "id": "election.analysis",
+      "name": "Wahlanalyse durchführen",
+      "area": "wahl"
+    },
+    {
+      "id": "election.state-history",
+      "name": "Landesweite Zeitreihen",
+      "area": "wahl"
+    }
+  ],
+  "election_analysis_turnout": [
+    {
+      "id": "election.turnout",
+      "name": "Wahlbeteiligung",
+      "area": "wahl"
+    }
+  ],
+  "election_analysis_versions": [
+    {
+      "id": "election.analysis",
+      "name": "Wahlanalyse durchführen",
+      "area": "wahl"
+    }
+  ],
+  "election_analysis_workbook_audit": [
+    {
+      "id": "election.history.quality",
+      "name": "Wahlhistorien-Datenqualität",
+      "area": "wahl"
+    }
+  ],
+  "election_analysis_years": [
+    {
+      "id": "election.analysis",
+      "name": "Wahlanalyse durchführen",
+      "area": "wahl"
+    }
+  ],
+  "election_district_municipalities": [
+    {
+      "id": "election.map",
+      "name": "Wahlkreiskarte anzeigen",
+      "area": "wahl"
+    }
+  ],
+  "election_district_notes": [
+    {
+      "id": "election.map",
+      "name": "Wahlkreiskarte anzeigen",
+      "area": "wahl"
+    }
+  ],
+  "election_districts": [
+    {
+      "id": "election.districts-import",
+      "name": "Wahlkreise und Gebiete importieren",
+      "area": "wahl"
+    },
+    {
+      "id": "election.map",
+      "name": "Wahlkreiskarte anzeigen",
+      "area": "wahl"
+    },
+    {
+      "id": "integration.geocoding",
+      "name": "Adress-Geocoding",
+      "area": "schnittstellen"
+    }
+  ],
+  "election_history_1952_result_sources": [
+    {
+      "id": "election.history.assembly",
+      "name": "Historien-Assemblierung",
+      "area": "wahl"
+    }
+  ],
+  "election_history_assembly_issues": [
+    {
+      "id": "election.history.quality",
+      "name": "Wahlhistorien-Datenqualität",
+      "area": "wahl"
+    }
+  ],
+  "election_history_audit": [
+    {
+      "id": "election.history.audit",
+      "name": "Wahlhistorien-Audit",
+      "area": "wahl"
+    },
+    {
+      "id": "election.history.quality",
+      "name": "Wahlhistorien-Datenqualität",
+      "area": "wahl"
+    }
+  ],
+  "election_history_candidacies": [
+    {
+      "id": "election.deputy-results",
+      "name": "Abgeordneten- und Kandidatenergebnisse",
+      "area": "wahl"
+    },
+    {
+      "id": "election.history.assembly",
+      "name": "Historien-Assemblierung",
+      "area": "wahl"
+    },
+    {
+      "id": "election.history.candidacies",
+      "name": "Kandidaturen und Ergebnisse pflegen",
+      "area": "wahl"
+    },
+    {
+      "id": "election.history.factions",
+      "name": "Historische Fraktionen",
+      "area": "wahl"
+    },
+    {
+      "id": "election.history.people",
+      "name": "Personenregister und Karrieren",
+      "area": "wahl"
+    }
+  ],
+  "election_history_candidate_workbook_audit": [
+    {
+      "id": "election.history.candidacies",
+      "name": "Kandidaturen und Ergebnisse pflegen",
+      "area": "wahl"
+    }
+  ],
+  "election_history_connection_people": [
+    {
+      "id": "election.history.mandates",
+      "name": "Historische Mandate pflegen",
+      "area": "wahl"
+    },
+    {
+      "id": "election.history.portraits",
+      "name": "Abgeordnetenporträts",
+      "area": "wahl"
+    }
+  ],
+  "election_history_districts": [
+    {
+      "id": "election.analysis-map",
+      "name": "Analyse-Karten und Wahlkreiszuschnitt",
+      "area": "wahl"
+    },
+    {
+      "id": "election.history.candidacies",
+      "name": "Kandidaturen und Ergebnisse pflegen",
+      "area": "wahl"
+    },
+    {
+      "id": "election.history.districts-geometry",
+      "name": "Historische Wahlkreise und Geometrie",
+      "area": "wahl"
+    }
+  ],
+  "election_history_factions": [
+    {
+      "id": "election.history.factions",
+      "name": "Historische Fraktionen",
+      "area": "wahl"
+    },
+    {
+      "id": "election.history.periods",
+      "name": "Wahlperioden verwalten",
+      "area": "wahl"
+    }
+  ],
+  "election_history_mandate_birthdays": [
+    {
+      "id": "election.history.mandates",
+      "name": "Historische Mandate pflegen",
+      "area": "wahl"
+    }
+  ],
+  "election_history_mandates": [
+    {
+      "id": "election.deputy-results",
+      "name": "Abgeordneten- und Kandidatenergebnisse",
+      "area": "wahl"
+    },
+    {
+      "id": "election.history.factions",
+      "name": "Historische Fraktionen",
+      "area": "wahl"
+    },
+    {
+      "id": "election.history.mandates",
+      "name": "Historische Mandate pflegen",
+      "area": "wahl"
+    },
+    {
+      "id": "election.history.people",
+      "name": "Personenregister und Karrieren",
+      "area": "wahl"
+    },
+    {
+      "id": "election.history.periods",
+      "name": "Wahlperioden verwalten",
+      "area": "wahl"
+    }
+  ],
+  "election_history_people": [
+    {
+      "id": "election.history.assembly",
+      "name": "Historien-Assemblierung",
+      "area": "wahl"
+    },
+    {
+      "id": "election.history.people",
+      "name": "Personenregister und Karrieren",
+      "area": "wahl"
+    }
+  ],
+  "election_history_periods": [
+    {
+      "id": "election.history.factions",
+      "name": "Historische Fraktionen",
+      "area": "wahl"
+    },
+    {
+      "id": "election.history.periods",
+      "name": "Wahlperioden verwalten",
+      "area": "wahl"
+    }
+  ],
+  "election_history_state_list_entries": [
+    {
+      "id": "election.history.state-lists",
+      "name": "Landeslisten verwalten",
+      "area": "wahl"
+    }
+  ],
+  "election_history_state_lists": [
+    {
+      "id": "election.history.state-lists",
+      "name": "Landeslisten verwalten",
+      "area": "wahl"
+    }
+  ],
+  "election_representatives": [
+    {
+      "id": "election.representatives",
+      "name": "Abgeordnete und Parteiassoziationen importieren",
+      "area": "wahl"
+    }
+  ],
+  "email_logs": [
+    {
+      "id": "calendar.invitations",
+      "name": "Termineinladungen und Kalendereinträge versenden",
+      "area": "termine"
+    },
+    {
+      "id": "decisions.email",
+      "name": "Entscheidungs-E-Mails",
+      "area": "entscheidungen"
+    },
+    {
+      "id": "documents.email",
+      "name": "Dokumente per E-Mail versenden",
+      "area": "dokumente"
+    },
+    {
+      "id": "events.invitations",
+      "name": "Veranstaltungseinladungen versenden",
+      "area": "veranstaltungen"
+    },
+    {
+      "id": "integration.email",
+      "name": "Transaktions-E-Mail-Versand",
+      "area": "schnittstellen"
+    },
+    {
+      "id": "news.email",
+      "name": "News per E-Mail versenden",
+      "area": "kommunikation"
+    }
+  ],
+  "email_templates": [
+    {
+      "id": "admin.templates-senders",
+      "name": "Administrative Vorlagen und Absenderdaten",
+      "area": "verwaltung"
+    },
+    {
+      "id": "integration.email",
+      "name": "Transaktions-E-Mail-Versand",
+      "area": "schnittstellen"
+    }
+  ],
+  "employee_hr_evidence": [
+    {
+      "id": "hr.onboarding",
+      "name": "Onboarding-Ablauf",
+      "area": "mitarbeit"
+    }
+  ],
+  "employee_hr_gdpr_declarations": [
+    {
+      "id": "hr.onboarding",
+      "name": "Onboarding-Ablauf",
+      "area": "mitarbeit"
+    },
+    {
+      "id": "hr.templates",
+      "name": "HR-Vorlagen und DSGVO-Erklärung",
+      "area": "mitarbeit"
+    }
+  ],
+  "employee_hr_reminder_log": [
+    {
+      "id": "employees.preparation",
+      "name": "Gesprächsvorbereitung und Erinnerungen",
+      "area": "mitarbeit"
+    }
+  ],
+  "employee_hr_templates": [
+    {
+      "id": "hr.templates",
+      "name": "HR-Vorlagen und DSGVO-Erklärung",
+      "area": "mitarbeit"
+    }
+  ],
+  "employee_lifecycle": [
+    {
+      "id": "hr.offboarding",
+      "name": "Offboarding mit Übergaben",
+      "area": "mitarbeit"
+    },
+    {
+      "id": "hr.onboarding",
+      "name": "Onboarding-Ablauf",
+      "area": "mitarbeit"
+    }
+  ],
+  "employee_meeting_action_items": [
+    {
+      "id": "employees.action-tasks",
+      "name": "Maßnahmen als Aufgaben",
+      "area": "mitarbeit"
+    },
+    {
+      "id": "employees.review",
+      "name": "Vorgesprächs-Review",
+      "area": "mitarbeit"
+    }
+  ],
+  "employee_meeting_audit": [
+    {
+      "id": "employees.protocol",
+      "name": "Gesprächsprotokoll freigeben und sperren",
+      "area": "mitarbeit"
+    }
+  ],
+  "employee_meeting_private_notes": [
+    {
+      "id": "employees.protocol",
+      "name": "Gesprächsprotokoll freigeben und sperren",
+      "area": "mitarbeit"
+    }
+  ],
+  "employee_meeting_requests": [
+    {
+      "id": "employees.meetings",
+      "name": "Mitarbeitergespräch planen und führen",
+      "area": "mitarbeit"
+    },
+    {
+      "id": "employees.requests",
+      "name": "Gesprächsanfragen der Mitarbeitenden",
+      "area": "mitarbeit"
+    }
+  ],
+  "employee_meetings": [
+    {
+      "id": "employees.export-stats",
+      "name": "Gesprächs-PDF und Jahresstatistik",
+      "area": "mitarbeit"
+    },
+    {
+      "id": "employees.meetings",
+      "name": "Mitarbeitergespräch planen und führen",
+      "area": "mitarbeit"
+    },
+    {
+      "id": "employees.preparation",
+      "name": "Gesprächsvorbereitung und Erinnerungen",
+      "area": "mitarbeit"
+    },
+    {
+      "id": "employees.protocol",
+      "name": "Gesprächsprotokoll freigeben und sperren",
+      "area": "mitarbeit"
+    },
+    {
+      "id": "employees.requests",
+      "name": "Gesprächsanfragen der Mitarbeitenden",
+      "area": "mitarbeit"
+    },
+    {
+      "id": "employees.review",
+      "name": "Vorgesprächs-Review",
+      "area": "mitarbeit"
+    }
+  ],
+  "employee_responsibilities": [
+    {
+      "id": "responsibilities.coverage",
+      "name": "Abdeckungsprüfung",
+      "area": "mitarbeit"
+    },
+    {
+      "id": "responsibilities.matrix",
+      "name": "Zuständigkeitsmatrix",
+      "area": "mitarbeit"
+    },
+    {
+      "id": "responsibilities.suggest",
+      "name": "Zuständigkeitsvorschläge",
+      "area": "mitarbeit"
+    },
+    {
+      "id": "topics.convert-catalog",
+      "name": "Thema in Katalog überführen",
+      "area": "organisation"
+    }
+  ],
+  "employee_settings": [
+    {
+      "id": "employees.meetings",
+      "name": "Mitarbeitergespräch planen und führen",
+      "area": "mitarbeit"
+    },
+    {
+      "id": "employees.wellbeing",
+      "name": "Wohlbefinden und Trends",
+      "area": "mitarbeit"
+    },
+    {
+      "id": "timetracking.admin",
+      "name": "Zeiterfassung administrieren",
+      "area": "mitarbeit"
+    }
+  ],
+  "employee_settings_history": [
+    {
+      "id": "employees.wellbeing",
+      "name": "Wohlbefinden und Trends",
+      "area": "mitarbeit"
+    }
+  ],
+  "employee_yearly_stats": [
+    {
+      "id": "employees.export-stats",
+      "name": "Gesprächs-PDF und Jahresstatistik",
+      "area": "mitarbeit"
+    }
+  ],
+  "event_email_templates": [
+    {
+      "id": "events.invitations",
+      "name": "Veranstaltungseinladungen versenden",
+      "area": "veranstaltungen"
+    }
+  ],
+  "event_planning_action_logs": [
+    {
+      "id": "events.plan",
+      "name": "Veranstaltung planen",
+      "area": "veranstaltungen"
+    }
+  ],
+  "event_planning_checklist_items": [
+    {
+      "id": "events.checklist",
+      "name": "Veranstaltungs-Checkliste und Aufgaben",
+      "area": "veranstaltungen"
+    }
+  ],
+  "event_planning_collaborators": [
+    {
+      "id": "events.plan",
+      "name": "Veranstaltung planen",
+      "area": "veranstaltungen"
+    }
+  ],
+  "event_planning_contacts": [
+    {
+      "id": "events.plan",
+      "name": "Veranstaltung planen",
+      "area": "veranstaltungen"
+    }
+  ],
+  "event_planning_dates": [
+    {
+      "id": "events.plan",
+      "name": "Veranstaltung planen",
+      "area": "veranstaltungen"
+    }
+  ],
+  "event_planning_documents": [
+    {
+      "id": "events.speakers-documents",
+      "name": "Redner und Dokumente zur Veranstaltung",
+      "area": "veranstaltungen"
+    }
+  ],
+  "event_planning_item_actions": [
+    {
+      "id": "events.checklist",
+      "name": "Veranstaltungs-Checkliste und Aufgaben",
+      "area": "veranstaltungen"
+    }
+  ],
+  "event_planning_speakers": [
+    {
+      "id": "events.speakers-documents",
+      "name": "Redner und Dokumente zur Veranstaltung",
+      "area": "veranstaltungen"
+    }
+  ],
+  "event_planning_timeline_assignments": [
+    {
+      "id": "events.plan",
+      "name": "Veranstaltung planen",
+      "area": "veranstaltungen"
+    }
+  ],
+  "event_plannings": [
+    {
+      "id": "events.plan",
+      "name": "Veranstaltung planen",
+      "area": "veranstaltungen"
+    },
+    {
+      "id": "events.rsvp-public",
+      "name": "Öffentliche Veranstaltungs-Rückmeldung",
+      "area": "veranstaltungen"
+    }
+  ],
+  "event_rsvp_public_links": [
+    {
+      "id": "events.rsvp-public",
+      "name": "Öffentliche Veranstaltungs-Rückmeldung",
+      "area": "veranstaltungen"
+    }
+  ],
+  "event_rsvps": [
+    {
+      "id": "events.invitations",
+      "name": "Veranstaltungseinladungen versenden",
+      "area": "veranstaltungen"
+    },
+    {
+      "id": "events.legacy-rsvp",
+      "name": "Legacy-Einladungslinks",
+      "area": "veranstaltungen"
+    },
+    {
+      "id": "events.rsvp-public",
+      "name": "Öffentliche Veranstaltungs-Rückmeldung",
+      "area": "veranstaltungen"
+    }
+  ],
+  "expense_budgets": [
+    {
+      "id": "contacts.fundings",
+      "name": "Finanzierungen und Beteiligungen",
+      "area": "kontakte"
+    }
+  ],
+  "external_calendars": [
+    {
+      "id": "integration.calendar-sync",
+      "name": "Externe Kalender synchronisieren",
+      "area": "schnittstellen"
+    },
+    {
+      "id": "integration.ics",
+      "name": "ICS-Feeds und Einladungsdateien",
+      "area": "schnittstellen"
+    }
+  ],
+  "external_events": [
+    {
+      "id": "calendar.view",
+      "name": "Terminkalender anzeigen",
+      "area": "termine"
+    },
+    {
+      "id": "integration.calendar-sync",
+      "name": "Externe Kalender synchronisieren",
+      "area": "schnittstellen"
+    }
+  ],
+  "facts": [
+    {
+      "id": "facts.manage",
+      "name": "Fakten und Argumente pflegen",
+      "area": "organisation"
+    }
+  ],
+  "field_permissions": [
+    {
+      "id": "admin.field-permissions",
+      "name": "Feldschutz",
+      "area": "verwaltung"
+    },
+    {
+      "id": "admin.permissions-explorer",
+      "name": "Rechte-Explorer und Rechteerklärung",
+      "area": "verwaltung"
+    },
+    {
+      "id": "contacts.edit",
+      "name": "Kontakt bearbeiten",
+      "area": "kontakte"
+    }
+  ],
+  "funding_participants": [
+    {
+      "id": "contacts.fundings",
+      "name": "Finanzierungen und Beteiligungen",
+      "area": "kontakte"
+    }
+  ],
+  "fundings": [
+    {
+      "id": "contacts.detail",
+      "name": "Kontaktprofil mit Aktivitäten",
+      "area": "kontakte"
+    },
+    {
+      "id": "contacts.fundings",
+      "name": "Finanzierungen und Beteiligungen",
+      "area": "kontakte"
+    },
+    {
+      "id": "contacts.merge",
+      "name": "Kontakte zusammenführen",
+      "area": "kontakte"
+    }
+  ],
+  "gdpr_requests": [
+    {
+      "id": "admin.gdpr",
+      "name": "DSGVO-Löschanträge",
+      "area": "verwaltung"
+    }
+  ],
+  "information_blocks": [
+    {
+      "id": "admin.templates-senders",
+      "name": "Administrative Vorlagen und Absenderdaten",
+      "area": "verwaltung"
+    }
+  ],
+  "karlsruhe_districts": [
+    {
+      "id": "election.districts-import",
+      "name": "Wahlkreise und Gebiete importieren",
+      "area": "wahl"
+    }
+  ],
+  "knowledge_document_collaborators": [
+    {
+      "id": "knowledge.collaboration",
+      "name": "Kollaborative Wissensbearbeitung",
+      "area": "wissen"
+    },
+    {
+      "id": "knowledge.permissions",
+      "name": "Zugriffsrechte auf Wissensdokumente",
+      "area": "wissen"
+    }
+  ],
+  "knowledge_document_permissions": [
+    {
+      "id": "knowledge.management",
+      "name": "Wissensverwaltung",
+      "area": "wissen"
+    },
+    {
+      "id": "knowledge.permissions",
+      "name": "Zugriffsrechte auf Wissensdokumente",
+      "area": "wissen"
+    }
+  ],
+  "knowledge_document_snapshots": [
+    {
+      "id": "knowledge.answer",
+      "name": "Frage beantworten",
+      "area": "wissen"
+    },
+    {
+      "id": "knowledge.versions",
+      "name": "Snapshots und Versionen",
+      "area": "wissen"
+    }
+  ],
+  "knowledge_document_topics": [
+    {
+      "id": "knowledge.tags",
+      "name": "Tags und Themenzuordnung",
+      "area": "wissen"
+    }
+  ],
+  "knowledge_document_versions": [
+    {
+      "id": "knowledge.answer",
+      "name": "Frage beantworten",
+      "area": "wissen"
+    },
+    {
+      "id": "knowledge.versions",
+      "name": "Snapshots und Versionen",
+      "area": "wissen"
+    }
+  ],
+  "knowledge_documents": [
+    {
+      "id": "knowledge.collaboration",
+      "name": "Kollaborative Wissensbearbeitung",
+      "area": "wissen"
+    },
+    {
+      "id": "knowledge.management",
+      "name": "Wissensverwaltung",
+      "area": "wissen"
+    },
+    {
+      "id": "knowledge.permissions",
+      "name": "Zugriffsrechte auf Wissensdokumente",
+      "area": "wissen"
+    }
+  ],
+  "knowledge_qa_notification_deliveries": [
+    {
+      "id": "knowledge.comments-follow",
+      "name": "Kommentare und Folgen",
+      "area": "wissen"
+    }
+  ],
+  "knowledge_question_attachments": [
+    {
+      "id": "knowledge.ask",
+      "name": "Wissensfrage stellen",
+      "area": "wissen"
+    },
+    {
+      "id": "knowledge.attachments",
+      "name": "Anhänge an Wissensfragen",
+      "area": "wissen"
+    }
+  ],
+  "knowledge_question_comments": [
+    {
+      "id": "knowledge.comments-follow",
+      "name": "Kommentare und Folgen",
+      "area": "wissen"
+    }
+  ],
+  "knowledge_question_events": [
+    {
+      "id": "knowledge.review",
+      "name": "Wissensantwort prüfen und freigeben",
+      "area": "wissen"
+    }
+  ],
+  "knowledge_question_followers": [
+    {
+      "id": "knowledge.ask",
+      "name": "Wissensfrage stellen",
+      "area": "wissen"
+    },
+    {
+      "id": "knowledge.comments-follow",
+      "name": "Kommentare und Folgen",
+      "area": "wissen"
+    }
+  ],
+  "knowledge_question_outdated_reports": [
+    {
+      "id": "knowledge.validity",
+      "name": "Gültigkeit und Veraltung",
+      "area": "wissen"
+    }
+  ],
+  "knowledge_question_sources": [
+    {
+      "id": "knowledge.sources",
+      "name": "Quellen und Belege",
+      "area": "wissen"
+    }
+  ],
+  "knowledge_question_summaries": [
+    {
+      "id": "knowledge.search",
+      "name": "Wissenssuche",
+      "area": "wissen"
+    }
+  ],
+  "knowledge_question_tags": [
+    {
+      "id": "knowledge.ask",
+      "name": "Wissensfrage stellen",
+      "area": "wissen"
+    },
+    {
+      "id": "knowledge.tags",
+      "name": "Tags und Themenzuordnung",
+      "area": "wissen"
+    }
+  ],
+  "knowledge_questions": [
+    {
+      "id": "knowledge.answer",
+      "name": "Frage beantworten",
+      "area": "wissen"
+    },
+    {
+      "id": "knowledge.ask",
+      "name": "Wissensfrage stellen",
+      "area": "wissen"
+    },
+    {
+      "id": "knowledge.global-question",
+      "name": "Globale Wissensfrage aus jedem Bereich",
+      "area": "wissen"
+    },
+    {
+      "id": "knowledge.persons",
+      "name": "Wissenspersonen und Zuständigkeit",
+      "area": "wissen"
+    },
+    {
+      "id": "knowledge.review",
+      "name": "Wissensantwort prüfen und freigeben",
+      "area": "wissen"
+    },
+    {
+      "id": "knowledge.search",
+      "name": "Wissenssuche",
+      "area": "wissen"
+    },
+    {
+      "id": "knowledge.validity",
+      "name": "Gültigkeit und Veraltung",
+      "area": "wissen"
+    }
+  ],
+  "knowledge_tags": [
+    {
+      "id": "knowledge.management",
+      "name": "Wissensverwaltung",
+      "area": "wissen"
+    },
+    {
+      "id": "knowledge.tags",
+      "name": "Tags und Themenzuordnung",
+      "area": "wissen"
+    }
+  ],
+  "leave_requests": [
+    {
+      "id": "timetracking.vacation",
+      "name": "Urlaub und Resturlaub",
+      "area": "mitarbeit"
+    }
+  ],
+  "letter_archive_settings": [
+    {
+      "id": "letters.workflow",
+      "name": "Brief-Freigabeworkflow",
+      "area": "dokumente"
+    }
+  ],
+  "letter_attachments": [
+    {
+      "id": "letters.archive",
+      "name": "Brief archivieren und Folgeaufgabe anlegen",
+      "area": "dokumente"
+    },
+    {
+      "id": "letters.attachments",
+      "name": "Briefanlagen verwalten",
+      "area": "dokumente"
+    },
+    {
+      "id": "letters.create",
+      "name": "Brief erstellen und bearbeiten",
+      "area": "dokumente"
+    }
+  ],
+  "letter_collaborators": [
+    {
+      "id": "letters.collaboration",
+      "name": "Brief-Kommentare und Zusammenarbeit",
+      "area": "dokumente"
+    }
+  ],
+  "letter_comments": [
+    {
+      "id": "letters.collaboration",
+      "name": "Brief-Kommentare und Zusammenarbeit",
+      "area": "dokumente"
+    }
+  ],
+  "letter_occasions": [
+    {
+      "id": "letters.templates",
+      "name": "Briefvorlagen und Anlässe",
+      "area": "dokumente"
+    }
+  ],
+  "letter_template_assets": [
+    {
+      "id": "letters.templates",
+      "name": "Briefvorlagen und Anlässe",
+      "area": "dokumente"
+    }
+  ],
+  "letter_template_settings": [
+    {
+      "id": "letters.create",
+      "name": "Brief erstellen und bearbeiten",
+      "area": "dokumente"
+    },
+    {
+      "id": "letters.templates",
+      "name": "Briefvorlagen und Anlässe",
+      "area": "dokumente"
+    }
+  ],
+  "letter_templates": [
+    {
+      "id": "letters.templates",
+      "name": "Briefvorlagen und Anlässe",
+      "area": "dokumente"
+    }
+  ],
+  "letter_workflow_history": [
+    {
+      "id": "letters.workflow",
+      "name": "Brief-Freigabeworkflow",
+      "area": "dokumente"
+    }
+  ],
+  "letters": [
+    {
+      "id": "cases.link-letter",
+      "name": "Vorgang mit Brief verknüpfen",
+      "area": "vorgaenge"
+    },
+    {
+      "id": "integration.transcription",
+      "name": "Sprachaufnahme transkribieren",
+      "area": "schnittstellen"
+    },
+    {
+      "id": "letters.archive",
+      "name": "Brief archivieren und Folgeaufgabe anlegen",
+      "area": "dokumente"
+    },
+    {
+      "id": "letters.attachments",
+      "name": "Briefanlagen verwalten",
+      "area": "dokumente"
+    },
+    {
+      "id": "letters.collaboration",
+      "name": "Brief-Kommentare und Zusammenarbeit",
+      "area": "dokumente"
+    },
+    {
+      "id": "letters.create",
+      "name": "Brief erstellen und bearbeiten",
+      "area": "dokumente"
+    },
+    {
+      "id": "letters.export",
+      "name": "Brief als PDF oder DOCX exportieren",
+      "area": "dokumente"
+    },
+    {
+      "id": "letters.workflow",
+      "name": "Brief-Freigabeworkflow",
+      "area": "dokumente"
+    }
+  ],
+  "login_customization": [
+    {
+      "id": "admin.onboarding-login",
+      "name": "Onboarding-Folien und Login-Anpassung",
+      "area": "verwaltung"
+    }
+  ],
+  "map_flag_topics": [
+    {
+      "id": "contacts.stakeholders",
+      "name": "Stakeholder-Netzwerk",
+      "area": "kontakte"
+    }
+  ],
+  "map_flag_types": [
+    {
+      "id": "contacts.stakeholders",
+      "name": "Stakeholder-Netzwerk",
+      "area": "kontakte"
+    }
+  ],
+  "map_flags": [
+    {
+      "id": "contacts.stakeholders",
+      "name": "Stakeholder-Netzwerk",
+      "area": "kontakte"
+    }
+  ],
+  "map_layers": [
+    {
+      "id": "contacts.stakeholders",
+      "name": "Stakeholder-Netzwerk",
+      "area": "kontakte"
+    },
+    {
+      "id": "election.map",
+      "name": "Wahlkreiskarte anzeigen",
+      "area": "wahl"
+    }
+  ],
+  "map_routes": [
+    {
+      "id": "election.map",
+      "name": "Wahlkreiskarte anzeigen",
+      "area": "wahl"
+    }
+  ],
+  "matrix_bot_logs": [
+    {
+      "id": "chat.matrix-bot",
+      "name": "Matrix-Bot und morgendliche Begrüßung",
+      "area": "kommunikation"
+    }
+  ],
+  "matrix_morning_settings": [
+    {
+      "id": "chat.matrix-bot",
+      "name": "Matrix-Bot und morgendliche Begrüßung",
+      "area": "kommunikation"
+    }
+  ],
+  "matrix_subscriptions": [
+    {
+      "id": "chat.matrix-bot",
+      "name": "Matrix-Bot und morgendliche Begrüßung",
+      "area": "kommunikation"
+    },
+    {
+      "id": "news.matrix",
+      "name": "News über Matrix verteilen",
+      "area": "kommunikation"
+    }
+  ],
+  "matrix_widget_callback_requests": [
+    {
+      "id": "widget.matrix-website",
+      "name": "Matrix-Website-Widget",
+      "area": "kommunikation"
+    }
+  ],
+  "matrix_widget_improvement_triggers": [
+    {
+      "id": "widget.matrix-website",
+      "name": "Matrix-Website-Widget",
+      "area": "kommunikation"
+    }
+  ],
+  "matrix_widget_message_feedback": [
+    {
+      "id": "widget.matrix-website",
+      "name": "Matrix-Website-Widget",
+      "area": "kommunikation"
+    }
+  ],
+  "meeting_agenda_documents": [
+    {
+      "id": "meetings.agenda",
+      "name": "Agenda führen",
+      "area": "organisation"
+    }
+  ],
+  "meeting_agenda_items": [
+    {
+      "id": "appointments.jour-fixe",
+      "name": "Jour-fixe-Agende und Systempunkte",
+      "area": "termine"
+    },
+    {
+      "id": "meetings.agenda",
+      "name": "Agenda führen",
+      "area": "organisation"
+    },
+    {
+      "id": "meetings.decisions",
+      "name": "Sitzungsentscheidungen dokumentieren",
+      "area": "organisation"
+    },
+    {
+      "id": "meetings.zombie-points",
+      "name": "Liegengebliebene Agenda-Punkte",
+      "area": "organisation"
+    }
+  ],
+  "meeting_participants": [
+    {
+      "id": "meetings.jour-fixe",
+      "name": "Jour-fixe-Sitzung planen und durchführen",
+      "area": "organisation"
+    }
+  ],
+  "meeting_protocol_details": [
+    {
+      "id": "meetings.protocol",
+      "name": "Sitzungsprotokoll",
+      "area": "organisation"
+    }
+  ],
+  "meeting_templates": [
+    {
+      "id": "meetings.jour-fixe",
+      "name": "Jour-fixe-Sitzung planen und durchführen",
+      "area": "organisation"
+    },
+    {
+      "id": "meetings.templates",
+      "name": "Sitzungsvorlagen",
+      "area": "organisation"
+    }
+  ],
+  "meetings": [
+    {
+      "id": "appointments.jour-fixe",
+      "name": "Jour-fixe-Agende und Systempunkte",
+      "area": "termine"
+    },
+    {
+      "id": "meetings.archive",
+      "name": "Sitzung archivieren",
+      "area": "organisation"
+    },
+    {
+      "id": "meetings.decisions",
+      "name": "Sitzungsentscheidungen dokumentieren",
+      "area": "organisation"
+    },
+    {
+      "id": "meetings.jour-fixe",
+      "name": "Jour-fixe-Sitzung planen und durchführen",
+      "area": "organisation"
+    }
+  ],
+  "message_confirmations": [
+    {
+      "id": "chat.messages",
+      "name": "Interner Chat über Matrix",
+      "area": "kommunikation"
+    },
+    {
+      "id": "notifications.inbox",
+      "name": "Benachrichtigungen lesen und als gelesen markieren",
+      "area": "arbeitsbereich"
+    }
+  ],
+  "message_recipients": [
+    {
+      "id": "chat.messages",
+      "name": "Interner Chat über Matrix",
+      "area": "kommunikation"
+    }
+  ],
+  "messages": [
+    {
+      "id": "chat.messages",
+      "name": "Interner Chat über Matrix",
+      "area": "kommunikation"
+    }
+  ],
+  "mobile_push_tokens": [
+    {
+      "id": "integration.push",
+      "name": "Push-Benachrichtigungen",
+      "area": "schnittstellen"
+    }
+  ],
+  "news_article_states": [
+    {
+      "id": "news.articles",
+      "name": "News-Artikel und Lesestatus",
+      "area": "kommunikation"
+    }
+  ],
+  "news_articles": [
+    {
+      "id": "admin.maintenance",
+      "name": "Wartungs- und Aufräumläufe",
+      "area": "verwaltung"
+    },
+    {
+      "id": "news.articles",
+      "name": "News-Artikel und Lesestatus",
+      "area": "kommunikation"
+    },
+    {
+      "id": "news.matrix",
+      "name": "News über Matrix verteilen",
+      "area": "kommunikation"
+    }
+  ],
+  "news_email_templates": [
+    {
+      "id": "news.email",
+      "name": "News per E-Mail versenden",
+      "area": "kommunikation"
+    }
+  ],
+  "notification_navigation_mapping": [
+    {
+      "id": "notifications.inbox",
+      "name": "Benachrichtigungen lesen und als gelesen markieren",
+      "area": "arbeitsbereich"
+    }
+  ],
+  "notification_types": [
+    {
+      "id": "notifications.inbox",
+      "name": "Benachrichtigungen lesen und als gelesen markieren",
+      "area": "arbeitsbereich"
+    }
+  ],
+  "notifications": [
+    {
+      "id": "calendar.reminders",
+      "name": "Terminerinnerungen",
+      "area": "termine"
+    },
+    {
+      "id": "integration.push",
+      "name": "Push-Benachrichtigungen",
+      "area": "schnittstellen"
+    },
+    {
+      "id": "knowledge.review",
+      "name": "Wissensantwort prüfen und freigeben",
+      "area": "wissen"
+    },
+    {
+      "id": "notifications.inbox",
+      "name": "Benachrichtigungen lesen und als gelesen markieren",
+      "area": "arbeitsbereich"
+    },
+    {
+      "id": "platform.notification-dispatch",
+      "name": "Benachrichtigungs- und Audit-Trigger",
+      "area": "verwaltung"
+    },
+    {
+      "id": "tasks.nudge",
+      "name": "Aufgabe anmahnen und Erinnerungen versenden",
+      "area": "aufgaben"
+    }
+  ],
+  "parliament_protocols": [
+    {
+      "id": "election.parliament-protocols",
+      "name": "Plenarprotokolle auswerten",
+      "area": "wahl"
+    }
+  ],
+  "party_associations": [
+    {
+      "id": "contacts.create",
+      "name": "Kontakt anlegen",
+      "area": "kontakte"
+    },
+    {
+      "id": "election.representatives",
+      "name": "Abgeordnete und Parteiassoziationen importieren",
+      "area": "wahl"
+    }
+  ],
+  "planning_templates": [
+    {
+      "id": "admin.templates-senders",
+      "name": "Administrative Vorlagen und Absenderdaten",
+      "area": "verwaltung"
+    }
+  ],
+  "poll_notifications": [
+    {
+      "id": "polls.manage",
+      "name": "Umfragen verwalten und auswerten",
+      "area": "veranstaltungen"
+    }
+  ],
+  "poll_participants": [
+    {
+      "id": "calendar.polls",
+      "name": "Terminumfrage erstellen",
+      "area": "termine"
+    },
+    {
+      "id": "polls.manage",
+      "name": "Umfragen verwalten und auswerten",
+      "area": "veranstaltungen"
+    },
+    {
+      "id": "polls.respond",
+      "name": "An Umfrage teilnehmen",
+      "area": "veranstaltungen"
+    }
+  ],
+  "poll_responses": [
+    {
+      "id": "polls.availability",
+      "name": "Verfügbarkeit und Zeitfenster",
+      "area": "veranstaltungen"
+    },
+    {
+      "id": "polls.manage",
+      "name": "Umfragen verwalten und auswerten",
+      "area": "veranstaltungen"
+    },
+    {
+      "id": "polls.respond",
+      "name": "An Umfrage teilnehmen",
+      "area": "veranstaltungen"
+    }
+  ],
+  "poll_time_slots": [
+    {
+      "id": "calendar.polls",
+      "name": "Terminumfrage erstellen",
+      "area": "termine"
+    },
+    {
+      "id": "polls.availability",
+      "name": "Verfügbarkeit und Zeitfenster",
+      "area": "veranstaltungen"
+    }
+  ],
+  "poll_versions": [
+    {
+      "id": "polls.respond",
+      "name": "An Umfrage teilnehmen",
+      "area": "veranstaltungen"
+    }
+  ],
+  "preparation_templates": [
+    {
+      "id": "tasks.templates",
+      "name": "Aufgabenvorlagen anwenden und pflegen",
+      "area": "aufgaben"
+    }
+  ],
+  "press_releases": [
+    {
+      "id": "admin.templates-senders",
+      "name": "Administrative Vorlagen und Absenderdaten",
+      "area": "verwaltung"
+    },
+    {
+      "id": "integration.unsplash",
+      "name": "Bildsuche für Beiträge",
+      "area": "schnittstellen"
+    },
+    {
+      "id": "press.ghost",
+      "name": "Pressemitteilung nach Ghost veröffentlichen",
+      "area": "kommunikation"
+    },
+    {
+      "id": "press.releases",
+      "name": "Pressemitteilungen erstellen und freigeben",
+      "area": "kommunikation"
+    }
+  ],
+  "profiles": [
+    {
+      "id": "admin.roles",
+      "name": "Benutzerrollen verwalten",
+      "area": "verwaltung"
+    },
+    {
+      "id": "admin.users-sessions",
+      "name": "Benutzer, MFA und Sitzungen",
+      "area": "verwaltung"
+    },
+    {
+      "id": "knowledge.persons",
+      "name": "Wissenspersonen und Zuständigkeit",
+      "area": "wissen"
+    },
+    {
+      "id": "platform.auth",
+      "name": "Anmeldung und Sitzung",
+      "area": "arbeitsbereich"
+    },
+    {
+      "id": "profile.edit",
+      "name": "Eigenes Profil bearbeiten",
+      "area": "arbeitsbereich"
+    },
+    {
+      "id": "tasks.assign",
+      "name": "Aufgabe zuweisen",
+      "area": "aufgaben"
+    }
+  ],
+  "protocol_agenda_items": [
+    {
+      "id": "meetings.protocol",
+      "name": "Sitzungsprotokoll",
+      "area": "organisation"
+    }
+  ],
+  "protocol_sessions": [
+    {
+      "id": "election.parliament-protocols",
+      "name": "Plenarprotokolle auswerten",
+      "area": "wahl"
+    },
+    {
+      "id": "meetings.protocol",
+      "name": "Sitzungsprotokoll",
+      "area": "organisation"
+    }
+  ],
+  "protocol_speeches": [
+    {
+      "id": "election.parliament-protocols",
+      "name": "Plenarprotokolle auswerten",
+      "area": "wahl"
+    },
+    {
+      "id": "meetings.protocol",
+      "name": "Sitzungsprotokoll",
+      "area": "organisation"
+    }
+  ],
+  "public_holidays": [
+    {
+      "id": "calendar.holidays",
+      "name": "Feiertage synchronisieren",
+      "area": "termine"
+    }
+  ],
+  "push_subscriptions": [
+    {
+      "id": "integration.push",
+      "name": "Push-Benachrichtigungen",
+      "area": "schnittstellen"
+    },
+    {
+      "id": "platform.notification-dispatch",
+      "name": "Benachrichtigungs- und Audit-Trigger",
+      "area": "verwaltung"
+    }
+  ],
+  "quick_note_global_shares": [
+    {
+      "id": "quicknotes.manage",
+      "name": "Schnellnotizen anlegen, bearbeiten und verlinken",
+      "area": "arbeitsbereich"
+    }
+  ],
+  "quick_note_shares": [
+    {
+      "id": "quicknotes.manage",
+      "name": "Schnellnotizen anlegen, bearbeiten und verlinken",
+      "area": "arbeitsbereich"
+    }
+  ],
+  "quick_note_versions": [
+    {
+      "id": "quicknotes.manage",
+      "name": "Schnellnotizen anlegen, bearbeiten und verlinken",
+      "area": "arbeitsbereich"
+    },
+    {
+      "id": "quicknotes.offline",
+      "name": "Offline-Synchronisation für Schnellnotizen",
+      "area": "arbeitsbereich"
+    }
+  ],
+  "quick_note_write_receipts": [
+    {
+      "id": "quicknotes.manage",
+      "name": "Schnellnotizen anlegen, bearbeiten und verlinken",
+      "area": "arbeitsbereich"
+    },
+    {
+      "id": "quicknotes.offline",
+      "name": "Offline-Synchronisation für Schnellnotizen",
+      "area": "arbeitsbereich"
+    }
+  ],
+  "quick_notes": [
+    {
+      "id": "integration.transcription",
+      "name": "Sprachaufnahme transkribieren",
+      "area": "schnittstellen"
+    },
+    {
+      "id": "quicknotes.checklists",
+      "name": "Checklisten in Schnellnotizen",
+      "area": "arbeitsbereich"
+    },
+    {
+      "id": "quicknotes.drag-sort",
+      "name": "Notizen per Drag-and-drop sortieren",
+      "area": "arbeitsbereich"
+    },
+    {
+      "id": "quicknotes.manage",
+      "name": "Schnellnotizen anlegen, bearbeiten und verlinken",
+      "area": "arbeitsbereich"
+    },
+    {
+      "id": "quicknotes.offline",
+      "name": "Offline-Synchronisation für Schnellnotizen",
+      "area": "arbeitsbereich"
+    }
+  ],
+  "regions": [
+    {
+      "id": "contacts.create",
+      "name": "Kontakt anlegen",
+      "area": "kontakte"
+    },
+    {
+      "id": "responsibilities.matrix",
+      "name": "Zuständigkeitsmatrix",
+      "area": "mitarbeit"
+    },
+    {
+      "id": "topics.manage",
+      "name": "Themen verwalten",
+      "area": "organisation"
+    }
+  ],
+  "routine_package_runs": [
+    {
+      "id": "automation.routine-packages",
+      "name": "Dauerhafte Routineabläufe",
+      "area": "automation"
+    },
+    {
+      "id": "hr.offboarding",
+      "name": "Offboarding mit Übergaben",
+      "area": "mitarbeit"
+    },
+    {
+      "id": "hr.onboarding",
+      "name": "Onboarding-Ablauf",
+      "area": "mitarbeit"
+    },
+    {
+      "id": "tasks.annual",
+      "name": "Jahresaufgaben und Jahresabschluss",
+      "area": "aufgaben"
+    }
+  ],
+  "routine_package_steps": [
+    {
+      "id": "automation.routine-packages",
+      "name": "Dauerhafte Routineabläufe",
+      "area": "automation"
+    },
+    {
+      "id": "hr.onboarding",
+      "name": "Onboarding-Ablauf",
+      "area": "mitarbeit"
+    },
+    {
+      "id": "tasks.annual",
+      "name": "Jahresaufgaben und Jahresabschluss",
+      "area": "aufgaben"
+    }
+  ],
+  "rss_cache": [
+    {
+      "id": "automation.rss",
+      "name": "RSS-Quellen und Monitoring",
+      "area": "automation"
+    }
+  ],
+  "rss_settings": [
+    {
+      "id": "automation.rss",
+      "name": "RSS-Quellen und Monitoring",
+      "area": "automation"
+    }
+  ],
+  "rss_sources": [
+    {
+      "id": "automation.rss",
+      "name": "RSS-Quellen und Monitoring",
+      "area": "automation"
+    }
+  ],
+  "scheduled_emails": [
+    {
+      "id": "automation.scheduler",
+      "name": "Zeitgesteuerte Automatisierung",
+      "area": "automation"
+    },
+    {
+      "id": "integration.email",
+      "name": "Transaktions-E-Mail-Versand",
+      "area": "schnittstellen"
+    }
+  ],
+  "search_analytics": [
+    {
+      "id": "search.global",
+      "name": "Globale Suche und Befehlspalette",
+      "area": "arbeitsbereich"
+    }
+  ],
+  "security_audit_snapshots": [
+    {
+      "id": "admin.security-cockpit",
+      "name": "Security-Cockpit",
+      "area": "verwaltung"
+    }
+  ],
+  "selftest_runs": [
+    {
+      "id": "admin.selftest-center",
+      "name": "Selbsttest-Center",
+      "area": "verwaltung"
+    }
+  ],
+  "sender_information": [
+    {
+      "id": "admin.templates-senders",
+      "name": "Administrative Vorlagen und Absenderdaten",
+      "area": "verwaltung"
+    },
+    {
+      "id": "letters.templates",
+      "name": "Briefvorlagen und Anlässe",
+      "area": "dokumente"
+    }
+  ],
+  "sick_days": [
+    {
+      "id": "timetracking.vacation",
+      "name": "Urlaub und Resturlaub",
+      "area": "mitarbeit"
+    }
+  ],
+  "social_approval_comments": [
+    {
+      "id": "redaktion.approval",
+      "name": "Social-Media-Freigabe",
+      "area": "kommunikation"
+    }
+  ],
+  "social_assets": [
+    {
+      "id": "integration.unsplash",
+      "name": "Bildsuche für Beiträge",
+      "area": "schnittstellen"
+    },
+    {
+      "id": "redaktion.assets-campaigns",
+      "name": "Social-Assets und Kampagnen",
+      "area": "kommunikation"
+    }
+  ],
+  "social_campaigns": [
+    {
+      "id": "redaktion.assets-campaigns",
+      "name": "Social-Assets und Kampagnen",
+      "area": "kommunikation"
+    }
+  ],
+  "social_content_approval_events": [
+    {
+      "id": "redaktion.approval",
+      "name": "Social-Media-Freigabe",
+      "area": "kommunikation"
+    }
+  ],
+  "social_content_channels": [
+    {
+      "id": "redaktion.planner",
+      "name": "Social-Media-Planung",
+      "area": "kommunikation"
+    }
+  ],
+  "social_content_item_channels": [
+    {
+      "id": "redaktion.planner",
+      "name": "Social-Media-Planung",
+      "area": "kommunikation"
+    }
+  ],
+  "social_content_items": [
+    {
+      "id": "redaktion.approval",
+      "name": "Social-Media-Freigabe",
+      "area": "kommunikation"
+    },
+    {
+      "id": "redaktion.calendar-reminders",
+      "name": "Redaktionskalender und Erinnerungen",
+      "area": "kommunikation"
+    },
+    {
+      "id": "redaktion.planner",
+      "name": "Social-Media-Planung",
+      "area": "kommunikation"
+    }
+  ],
+  "social_content_variants": [
+    {
+      "id": "redaktion.planner",
+      "name": "Social-Media-Planung",
+      "area": "kommunikation"
+    }
+  ],
+  "social_hashtag_sets": [
+    {
+      "id": "redaktion.themenspeicher",
+      "name": "Themenspeicher und Hashtags",
+      "area": "kommunikation"
+    }
+  ],
+  "social_planner_notes": [
+    {
+      "id": "redaktion.calendar-reminders",
+      "name": "Redaktionskalender und Erinnerungen",
+      "area": "kommunikation"
+    }
+  ],
+  "starred_appointments": [
+    {
+      "id": "calendar.view",
+      "name": "Terminkalender anzeigen",
+      "area": "termine"
+    }
+  ],
+  "subtasks": [
+    {
+      "id": "tasks.subtasks",
+      "name": "Unteraufgaben",
+      "area": "aufgaben"
+    }
+  ],
+  "superadmin_users": [
+    {
+      "id": "admin.tenants",
+      "name": "Mandantenverwaltung",
+      "area": "verwaltung"
+    }
+  ],
+  "system_health": [
+    {
+      "id": "admin.performance",
+      "name": "Performance- und Größen-Dashboard",
+      "area": "verwaltung"
+    },
+    {
+      "id": "integration.egress-monitoring",
+      "name": "Egress-Überwachung",
+      "area": "schnittstellen"
+    }
+  ],
+  "tags": [
+    {
+      "id": "contacts.create",
+      "name": "Kontakt anlegen",
+      "area": "kontakte"
+    },
+    {
+      "id": "contacts.tags-topics",
+      "name": "Kontakt-Tags und Themen",
+      "area": "kontakte"
+    }
+  ],
+  "task_archive_settings": [
+    {
+      "id": "tasks.archive",
+      "name": "Aufgabe archivieren und wiederherstellen",
+      "area": "aufgaben"
+    }
+  ],
+  "task_assignees": [
+    {
+      "id": "tasks.assign",
+      "name": "Aufgabe zuweisen",
+      "area": "aufgaben"
+    },
+    {
+      "id": "tasks.ball-owner",
+      "name": "Wer ist am Zug? (Ball-Owner)",
+      "area": "aufgaben"
+    },
+    {
+      "id": "tasks.create",
+      "name": "Aufgabe erstellen",
+      "area": "aufgaben"
+    },
+    {
+      "id": "tasks.handover-stafette",
+      "name": "Aufgabe weitergeben (Stafette)",
+      "area": "aufgaben"
+    }
+  ],
+  "task_categories": [
+    {
+      "id": "admin.configuration",
+      "name": "Konfigurierbare Stammdaten pflegen",
+      "area": "verwaltung"
+    },
+    {
+      "id": "tasks.create",
+      "name": "Aufgabe erstellen",
+      "area": "aufgaben"
+    },
+    {
+      "id": "tasks.search-filter",
+      "name": "Aufgaben suchen, filtern und sortieren",
+      "area": "aufgaben"
+    }
+  ],
+  "task_decision_attachments": [
+    {
+      "id": "decisions.attachments",
+      "name": "Anhänge an Entscheidungen",
+      "area": "entscheidungen"
+    },
+    {
+      "id": "decisions.create",
+      "name": "Entscheidung anlegen",
+      "area": "entscheidungen"
+    }
+  ],
+  "task_decision_comment_reactions": [
+    {
+      "id": "decisions.comments",
+      "name": "Kommentare und Reaktionen",
+      "area": "entscheidungen"
+    }
+  ],
+  "task_decision_comments": [
+    {
+      "id": "decisions.comments",
+      "name": "Kommentare und Reaktionen",
+      "area": "entscheidungen"
+    }
+  ],
+  "task_decision_participants": [
+    {
+      "id": "decisions.create",
+      "name": "Entscheidung anlegen",
+      "area": "entscheidungen"
+    },
+    {
+      "id": "decisions.participants",
+      "name": "Teilnehmende und Antwort-Token verwalten",
+      "area": "entscheidungen"
+    },
+    {
+      "id": "decisions.vote",
+      "name": "Abstimmen",
+      "area": "entscheidungen"
+    },
+    {
+      "id": "tasks.link-decision",
+      "name": "Aufgabe mit Entscheidung verknüpfen",
+      "area": "aufgaben"
+    }
+  ],
+  "task_decision_response_history": [
+    {
+      "id": "decisions.change-vote",
+      "name": "Antwort ändern und Verlauf einsehen",
+      "area": "entscheidungen"
+    }
+  ],
+  "task_decision_responses": [
+    {
+      "id": "decisions.change-vote",
+      "name": "Antwort ändern und Verlauf einsehen",
+      "area": "entscheidungen"
+    },
+    {
+      "id": "decisions.matrix",
+      "name": "Entscheidungen über Matrix beantworten",
+      "area": "entscheidungen"
+    },
+    {
+      "id": "decisions.vote",
+      "name": "Abstimmen",
+      "area": "entscheidungen"
+    }
+  ],
+  "task_decision_topics": [
+    {
+      "id": "decisions.create",
+      "name": "Entscheidung anlegen",
+      "area": "entscheidungen"
+    }
+  ],
+  "task_decisions": [
+    {
+      "id": "cases.link-decision",
+      "name": "Vorgang mit Entscheidung verknüpfen",
+      "area": "vorgaenge"
+    },
+    {
+      "id": "decisions.archive",
+      "name": "Entscheidungen archivieren",
+      "area": "entscheidungen"
+    },
+    {
+      "id": "decisions.attachments",
+      "name": "Anhänge an Entscheidungen",
+      "area": "entscheidungen"
+    },
+    {
+      "id": "decisions.create",
+      "name": "Entscheidung anlegen",
+      "area": "entscheidungen"
+    },
+    {
+      "id": "decisions.participants",
+      "name": "Teilnehmende und Antwort-Token verwalten",
+      "area": "entscheidungen"
+    },
+    {
+      "id": "decisions.remind",
+      "name": "Offene Entscheidungen anmahnen",
+      "area": "entscheidungen"
+    },
+    {
+      "id": "tasks.link-decision",
+      "name": "Aufgabe mit Entscheidung verknüpfen",
+      "area": "aufgaben"
+    }
+  ],
+  "task_documents": [
+    {
+      "id": "tasks.link-document",
+      "name": "Aufgabe mit Dokument verknüpfen",
+      "area": "aufgaben"
+    }
+  ],
+  "task_snoozes": [
+    {
+      "id": "notifications.preferences",
+      "name": "Benachrichtigungseinstellungen und Stummschaltung",
+      "area": "arbeitsbereich"
+    },
+    {
+      "id": "tasks.deadline",
+      "name": "Frist setzen und überwachen",
+      "area": "aufgaben"
+    },
+    {
+      "id": "tasks.edit",
+      "name": "Aufgabe bearbeiten",
+      "area": "aufgaben"
+    },
+    {
+      "id": "tasks.handover-stafette",
+      "name": "Aufgabe weitergeben (Stafette)",
+      "area": "aufgaben"
+    },
+    {
+      "id": "tasks.snooze",
+      "name": "Aufgabe zurückstellen (Wiedervorlage)",
+      "area": "aufgaben"
+    }
+  ],
+  "task_statuses": [
+    {
+      "id": "admin.configuration",
+      "name": "Konfigurierbare Stammdaten pflegen",
+      "area": "verwaltung"
+    },
+    {
+      "id": "tasks.create",
+      "name": "Aufgabe erstellen",
+      "area": "aufgaben"
+    },
+    {
+      "id": "tasks.edit",
+      "name": "Aufgabe bearbeiten",
+      "area": "aufgaben"
+    },
+    {
+      "id": "tasks.search-filter",
+      "name": "Aufgaben suchen, filtern und sortieren",
+      "area": "aufgaben"
+    }
+  ],
+  "task_topics": [
+    {
+      "id": "tasks.create",
+      "name": "Aufgabe erstellen",
+      "area": "aufgaben"
+    }
+  ],
+  "tasks": [
+    {
+      "id": "annotations.tasks",
+      "name": "Folgeaufgabe aus Annotation",
+      "area": "dokumente"
+    },
+    {
+      "id": "appointments.briefing",
+      "name": "Terminbriefing erstellen",
+      "area": "termine"
+    },
+    {
+      "id": "appointments.briefing-live",
+      "name": "Live-Briefing und Nachbereitung",
+      "area": "termine"
+    },
+    {
+      "id": "appointments.jour-fixe",
+      "name": "Jour-fixe-Agende und Systempunkte",
+      "area": "termine"
+    },
+    {
+      "id": "automation.routine-packages",
+      "name": "Dauerhafte Routineabläufe",
+      "area": "automation"
+    },
+    {
+      "id": "automation.task-packages",
+      "name": "Aufgabenpakete",
+      "area": "automation"
+    },
+    {
+      "id": "cases.close-archive",
+      "name": "Vorgang abschließen und archivieren",
+      "area": "vorgaenge"
+    },
+    {
+      "id": "cases.steps",
+      "name": "Vorgangsschritte und Aufgaben",
+      "area": "vorgaenge"
+    },
+    {
+      "id": "decisions.vote",
+      "name": "Abstimmen",
+      "area": "entscheidungen"
+    },
+    {
+      "id": "employees.action-tasks",
+      "name": "Maßnahmen als Aufgaben",
+      "area": "mitarbeit"
+    },
+    {
+      "id": "employees.review",
+      "name": "Vorgesprächs-Review",
+      "area": "mitarbeit"
+    },
+    {
+      "id": "hr.offboarding",
+      "name": "Offboarding mit Übergaben",
+      "area": "mitarbeit"
+    },
+    {
+      "id": "integration.ai-suggestions",
+      "name": "KI-Vorschläge für Vorbereitung und Eingang",
+      "area": "schnittstellen"
+    },
+    {
+      "id": "knowledge.review",
+      "name": "Wissensantwort prüfen und freigeben",
+      "area": "wissen"
+    },
+    {
+      "id": "letters.archive",
+      "name": "Brief archivieren und Folgeaufgabe anlegen",
+      "area": "dokumente"
+    },
+    {
+      "id": "meetings.agenda",
+      "name": "Agenda führen",
+      "area": "organisation"
+    },
+    {
+      "id": "meetings.archive",
+      "name": "Sitzung archivieren",
+      "area": "organisation"
+    },
+    {
+      "id": "tasks.archive",
+      "name": "Aufgabe archivieren und wiederherstellen",
+      "area": "aufgaben"
+    },
+    {
+      "id": "tasks.assign",
+      "name": "Aufgabe zuweisen",
+      "area": "aufgaben"
+    },
+    {
+      "id": "tasks.ball-owner",
+      "name": "Wer ist am Zug? (Ball-Owner)",
+      "area": "aufgaben"
+    },
+    {
+      "id": "tasks.complete",
+      "name": "Aufgabe abschließen",
+      "area": "aufgaben"
+    },
+    {
+      "id": "tasks.create",
+      "name": "Aufgabe erstellen",
+      "area": "aufgaben"
+    },
+    {
+      "id": "tasks.deadline",
+      "name": "Frist setzen und überwachen",
+      "area": "aufgaben"
+    },
+    {
+      "id": "tasks.edit",
+      "name": "Aufgabe bearbeiten",
+      "area": "aufgaben"
+    },
+    {
+      "id": "tasks.handover-stafette",
+      "name": "Aufgabe weitergeben (Stafette)",
+      "area": "aufgaben"
+    },
+    {
+      "id": "tasks.link-case",
+      "name": "Aufgabe mit Vorgang verknüpfen",
+      "area": "aufgaben"
+    },
+    {
+      "id": "tasks.link-decision",
+      "name": "Aufgabe mit Entscheidung verknüpfen",
+      "area": "aufgaben"
+    },
+    {
+      "id": "tasks.nudge",
+      "name": "Aufgabe anmahnen und Erinnerungen versenden",
+      "area": "aufgaben"
+    },
+    {
+      "id": "tasks.recurring",
+      "name": "Wiederkehrende Aufgabe",
+      "area": "aufgaben"
+    },
+    {
+      "id": "tasks.search-filter",
+      "name": "Aufgaben suchen, filtern und sortieren",
+      "area": "aufgaben"
+    },
+    {
+      "id": "tasks.snooze",
+      "name": "Aufgabe zurückstellen (Wiedervorlage)",
+      "area": "aufgaben"
+    },
+    {
+      "id": "tasks.subtasks",
+      "name": "Unteraufgaben",
+      "area": "aufgaben"
+    },
+    {
+      "id": "tasks.templates",
+      "name": "Aufgabenvorlagen anwenden und pflegen",
+      "area": "aufgaben"
+    }
+  ],
+  "team_announcement_dismissals": [
+    {
+      "id": "chat.team-announcements",
+      "name": "Team-Ankündigungen",
+      "area": "kommunikation"
+    }
+  ],
+  "team_announcements": [
+    {
+      "id": "chat.team-announcements",
+      "name": "Team-Ankündigungen",
+      "area": "kommunikation"
+    }
+  ],
+  "team_bingo_settings": [
+    {
+      "id": "teamrituals.games",
+      "name": "Teamspiele (Bingo, Zwei Wahrheiten, Fun Facts)",
+      "area": "mitarbeit"
+    }
+  ],
+  "team_fun_facts": [
+    {
+      "id": "teamrituals.games",
+      "name": "Teamspiele (Bingo, Zwei Wahrheiten, Fun Facts)",
+      "area": "mitarbeit"
+    }
+  ],
+  "team_question_answers": [
+    {
+      "id": "teamrituals.weekly",
+      "name": "Wöchentliche Teamfrage",
+      "area": "mitarbeit"
+    }
+  ],
+  "team_question_weeks": [
+    {
+      "id": "teamrituals.weekly",
+      "name": "Wöchentliche Teamfrage",
+      "area": "mitarbeit"
+    }
+  ],
+  "team_questions": [
+    {
+      "id": "teamrituals.weekly",
+      "name": "Wöchentliche Teamfrage",
+      "area": "mitarbeit"
+    }
+  ],
+  "team_ritual_settings": [
+    {
+      "id": "teamrituals.weekly",
+      "name": "Wöchentliche Teamfrage",
+      "area": "mitarbeit"
+    }
+  ],
+  "team_two_truths_answers": [
+    {
+      "id": "teamrituals.games",
+      "name": "Teamspiele (Bingo, Zwei Wahrheiten, Fun Facts)",
+      "area": "mitarbeit"
+    }
+  ],
+  "team_two_truths_months": [
+    {
+      "id": "teamrituals.games",
+      "name": "Teamspiele (Bingo, Zwei Wahrheiten, Fun Facts)",
+      "area": "mitarbeit"
+    }
+  ],
+  "tenant_collaborations": [
+    {
+      "id": "admin.tenants",
+      "name": "Mandantenverwaltung",
+      "area": "verwaltung"
+    }
+  ],
+  "tenant_feature_flags": [
+    {
+      "id": "admin.feature-flags",
+      "name": "Feature Flags",
+      "area": "verwaltung"
+    },
+    {
+      "id": "admin.permissions-explorer",
+      "name": "Rechte-Explorer und Rechteerklärung",
+      "area": "verwaltung"
+    }
+  ],
+  "tenant_onboarding_checklist_items": [
+    {
+      "id": "admin.onboarding-login",
+      "name": "Onboarding-Folien und Login-Anpassung",
+      "area": "verwaltung"
+    }
+  ],
+  "tenant_onboarding_slides": [
+    {
+      "id": "admin.onboarding-login",
+      "name": "Onboarding-Folien und Login-Anpassung",
+      "area": "verwaltung"
+    }
+  ],
+  "tenants": [
+    {
+      "id": "admin.roles",
+      "name": "Benutzerrollen verwalten",
+      "area": "verwaltung"
+    },
+    {
+      "id": "admin.tenants",
+      "name": "Mandantenverwaltung",
+      "area": "verwaltung"
+    }
+  ],
+  "time_entries": [
+    {
+      "id": "timetracking.admin",
+      "name": "Zeiterfassung administrieren",
+      "area": "mitarbeit"
+    },
+    {
+      "id": "timetracking.entries",
+      "name": "Arbeitszeit erfassen",
+      "area": "mitarbeit"
+    }
+  ],
+  "time_entry_corrections": [
+    {
+      "id": "timetracking.entries",
+      "name": "Arbeitszeit erfassen",
+      "area": "mitarbeit"
+    }
+  ],
+  "time_entry_history": [
+    {
+      "id": "timetracking.entries",
+      "name": "Arbeitszeit erfassen",
+      "area": "mitarbeit"
+    }
+  ],
+  "todo_categories": [
+    {
+      "id": "admin.configuration",
+      "name": "Konfigurierbare Stammdaten pflegen",
+      "area": "verwaltung"
+    }
+  ],
+  "topic_backlog": [
+    {
+      "id": "redaktion.themenspeicher",
+      "name": "Themenspeicher und Hashtags",
+      "area": "kommunikation"
+    }
+  ],
+  "topic_catalog_links": [
+    {
+      "id": "topics.convert-catalog",
+      "name": "Thema in Katalog überführen",
+      "area": "organisation"
+    }
+  ],
+  "topics": [
+    {
+      "id": "contacts.tags-topics",
+      "name": "Kontakt-Tags und Themen",
+      "area": "kontakte"
+    },
+    {
+      "id": "knowledge.tags",
+      "name": "Tags und Themenzuordnung",
+      "area": "wissen"
+    },
+    {
+      "id": "responsibilities.matrix",
+      "name": "Zuständigkeitsmatrix",
+      "area": "mitarbeit"
+    },
+    {
+      "id": "responsibilities.suggest",
+      "name": "Zuständigkeitsvorschläge",
+      "area": "mitarbeit"
+    },
+    {
+      "id": "topics.convert-catalog",
+      "name": "Thema in Katalog überführen",
+      "area": "organisation"
+    },
+    {
+      "id": "topics.manage",
+      "name": "Themen verwalten",
+      "area": "organisation"
+    }
+  ],
+  "user_mywork_settings": [
+    {
+      "id": "mywork.dashboard",
+      "name": "Meine Arbeit – Dashboard",
+      "area": "arbeitsbereich"
+    },
+    {
+      "id": "mywork.tabs",
+      "name": "Meine Arbeit – Bereichsnavigation und Einstellungen",
+      "area": "arbeitsbereich"
+    }
+  ],
+  "user_navigation_visits": [
+    {
+      "id": "mywork.quick-access",
+      "name": "Schnellzugriff und zuletzt besuchte Seiten",
+      "area": "arbeitsbereich"
+    }
+  ],
+  "user_notification_settings": [
+    {
+      "id": "notifications.preferences",
+      "name": "Benachrichtigungseinstellungen und Stummschaltung",
+      "area": "arbeitsbereich"
+    },
+    {
+      "id": "profile.edit",
+      "name": "Eigenes Profil bearbeiten",
+      "area": "arbeitsbereich"
+    }
+  ],
+  "user_onboarding_state": [
+    {
+      "id": "admin.onboarding-login",
+      "name": "Onboarding-Folien und Login-Anpassung",
+      "area": "verwaltung"
+    }
+  ],
+  "user_planning_preferences": [
+    {
+      "id": "mywork.tabs",
+      "name": "Meine Arbeit – Bereichsnavigation und Einstellungen",
+      "area": "arbeitsbereich"
+    }
+  ],
+  "user_preferences": [
+    {
+      "id": "mywork.quick-access",
+      "name": "Schnellzugriff und zuletzt besuchte Seiten",
+      "area": "arbeitsbereich"
+    },
+    {
+      "id": "profile.edit",
+      "name": "Eigenes Profil bearbeiten",
+      "area": "arbeitsbereich"
+    }
+  ],
+  "user_roles": [
+    {
+      "id": "admin.roles",
+      "name": "Benutzerrollen verwalten",
+      "area": "verwaltung"
+    },
+    {
+      "id": "admin.workspace",
+      "name": "Administrationsbereich und Zugriff",
+      "area": "verwaltung"
+    }
+  ],
+  "user_sessions": [
+    {
+      "id": "admin.users-sessions",
+      "name": "Benutzer, MFA und Sitzungen",
+      "area": "verwaltung"
+    },
+    {
+      "id": "platform.auth",
+      "name": "Anmeldung und Sitzung",
+      "area": "arbeitsbereich"
+    }
+  ],
+  "user_status": [
+    {
+      "id": "admin.users-sessions",
+      "name": "Benutzer, MFA und Sitzungen",
+      "area": "verwaltung"
+    }
+  ],
+  "user_tenant_memberships": [
+    {
+      "id": "admin.roles",
+      "name": "Benutzerrollen verwalten",
+      "area": "verwaltung"
+    },
+    {
+      "id": "admin.tenants",
+      "name": "Mandantenverwaltung",
+      "area": "verwaltung"
+    },
+    {
+      "id": "admin.workspace",
+      "name": "Administrationsbereich und Zugriff",
+      "area": "verwaltung"
+    },
+    {
+      "id": "platform.auth",
+      "name": "Anmeldung und Sitzung",
+      "area": "arbeitsbereich"
+    }
+  ],
+  "v_rls_coverage": [
+    {
+      "id": "admin.security-cockpit",
+      "name": "Security-Cockpit",
+      "area": "verwaltung"
+    }
+  ],
+  "vacation_checklist_templates": [
+    {
+      "id": "timetracking.vacation",
+      "name": "Urlaub und Resturlaub",
+      "area": "mitarbeit"
+    }
+  ],
+  "vacation_history": [
+    {
+      "id": "timetracking.vacation",
+      "name": "Urlaub und Resturlaub",
+      "area": "mitarbeit"
+    }
+  ],
+  "widget_configurations": [
+    {
+      "id": "mywork.dashboard",
+      "name": "Meine Arbeit – Dashboard",
+      "area": "arbeitsbereich"
+    }
+  ],
+  "workflow_action_log": [
+    {
+      "id": "automation.workflows",
+      "name": "Workflow-Definitionen und -Läufe",
+      "area": "automation"
+    }
+  ],
+  "workflow_definitions": [
+    {
+      "id": "automation.workflows",
+      "name": "Workflow-Definitionen und -Läufe",
+      "area": "automation"
+    }
+  ],
+  "workflow_runs": [
+    {
+      "id": "admin.maintenance",
+      "name": "Wartungs- und Aufräumläufe",
+      "area": "verwaltung"
+    },
+    {
+      "id": "automation.scheduler",
+      "name": "Zeitgesteuerte Automatisierung",
+      "area": "automation"
+    },
+    {
+      "id": "automation.workflows",
+      "name": "Workflow-Definitionen und -Läufe",
+      "area": "automation"
+    }
+  ]
+}

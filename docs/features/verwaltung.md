@@ -396,7 +396,7 @@ Verwaltet Löschanträge mit Vier-Augen-Freigabe durch die Datenbank und atomare
 - Keine.
 
 ### `admin.security-cockpit` — Security-Cockpit
-Zeigt RLS-Lücken, Snapshots und Audit-Trail als eigenständige Sicherheitssicht; Befunde sind von fachlichen Testergebnissen getrennt.
+Zeigt RLS-Lücken, Policies, Snapshots und Audit-Trail als eigenständige Sicherheitssicht; Befunde verweisen auf die betroffenen Funktionen und sind von fachlichen Testergebnissen getrennt.
 
 - **Kategorie:** sicherheit
 - **Implementierung:** implementiert
@@ -405,11 +405,11 @@ Zeigt RLS-Lücken, Snapshots und Audit-Trail als eigenständige Sicherheitssicht
 - **Letztes Testergebnis:** nicht-ausgefuehrt (nicht aus der Existenz einer Testdatei abgeleitet)
 - **Rollen:** `admin`, `superadmin`
 - **Routen:** —
-- **Frontend-Komponenten:** `src/components/administration/SecurityCockpit.tsx`
+- **Frontend-Komponenten:** `src/components/administration/SecurityCockpit.tsx`, `src/features/feature-catalog/useTableSecurity.ts`, `src/features/feature-catalog/securityLinks.ts`
 - **Services:** —
 - **Hooks:** —
 - **Edge Functions:** —
-- **Datenbankfunktionen:** `audit_rls_gaps`, `snapshot_rls_coverage`, `snapshot_rls_coverage_internal`
+- **Datenbankfunktionen:** `audit_rls_gaps`, `audit_rls_policies`, `snapshot_rls_coverage`, `snapshot_rls_coverage_internal`
 - **Tabellen:** `security_audit_snapshots`, `audit_log_entries`, `v_rls_coverage`
 - **Abhängigkeiten:** —
 - **Selbsttests:** —
@@ -421,14 +421,18 @@ Zeigt RLS-Lücken, Snapshots und Audit-Trail als eigenständige Sicherheitssicht
 **Nachweise im Quellcode**
 
 - src/components/administration/SecurityCockpit.tsx
+- src/features/feature-catalog/useTableSecurity.ts
+- src/features/feature-catalog/securityLinks.ts
+- supabase/migrations/20261125160000_feature_security_policy_links.sql
 
 **Bekannte Einschränkungen**
 
 - Eine vorhandene RLS-Policy ist kein Nachweis für korrekte Mandantentrennung; das Cockpit liefert nur Befunde.
+- Policy-Details stammen live aus pg_policies und bewerten weder die Funktion noch ihre Tests.
 
 **Offene Prüfpunkte**
 
-- Die Verknüpfung von Sicherheitsbefunden mit einzelnen Funktionen ist manuell und derzeit nicht vollständig.
+- Funktionen ohne Tabellenbezug erhalten keinen RLS-Bezug; ob das fachlich korrekt ist, bleibt je Funktion zu prüfen.
 
 ### `admin.edge-function-security` — Edge-Function-Sicherheitsklassifikation
 Klassifiziert jede Edge Function nach verify_jwt und Zusatzschutz und prüft die Matrix gegen den Code.

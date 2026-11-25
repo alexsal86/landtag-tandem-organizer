@@ -1,13 +1,12 @@
 import type { JSX } from "react";
 import { useMemo } from "react";
 import { Link } from "react-router-dom";
-import { EmptyState, LoadingState } from '@/components/ui-patterns';
+import { EmptyState } from '@/components/ui-patterns';
 import { useQuery } from "@tanstack/react-query";
 import { supabase } from "@/integrations/supabase/client";
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
 import { Badge } from "@/components/ui/badge";
-import { useToast } from "@/components/ui/use-toast";
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import { Input } from "@/components/ui/input";
 import {
@@ -18,6 +17,7 @@ import { format, parseISO } from "date-fns";
 import { de } from "date-fns/locale";
 import { useState } from "react";
 import { notify } from "@/lib/notify";
+import { featureCatalogHref, featuresForTable } from "@/features/feature-catalog/securityLinks";
 
 type Gap = {
   table_name: string;
@@ -132,12 +132,12 @@ export function SecurityCockpit(): JSX.Element {
             <Shield className="h-5 w-5" /> Security-Cockpit
           </h2>
           <p className="text-body text-muted-foreground">
-            RLS-Coverage, Audit-Trail und Snapshots zur Datenbanksicherheit. Sicherheitsbefunde stehen hier getrennt
-            von fachlichen Testergebnissen; Tabellen, Rollen und Datenbankfunktionen je Funktion führt der{" "}
+            RLS-Coverage, Audit-Trail und Snapshots zur Datenbanksicherheit. Jede Tabelle verweist auf die
+            zugeordneten Funktionen; dort stehen auch die Policies und der Befund je Funktion. Sicherheitsbefunde
+            bleiben von fachlichen Testergebnissen getrennt und ergeben keine pauschale Funktionsbewertung.{" "}
             <Link to="/funktionskatalog" className="font-medium text-primary underline underline-offset-2">
               Funktionskatalog
             </Link>
-            .
           </p>
         </div>
         <div className="flex gap-2">
@@ -215,6 +215,7 @@ export function SecurityCockpit(): JSX.Element {
                     <TableHead>Begründung</TableHead>
                     <TableHead className="text-right">Policies</TableHead>
                     <TableHead>tenant_id</TableHead>
+                    <TableHead>Funktionen</TableHead>
                   </TableRow>
                 </TableHeader>
                 <TableBody>
@@ -227,11 +228,26 @@ export function SecurityCockpit(): JSX.Element {
                       <TableCell className="text-caption">{g.reason}</TableCell>
                       <TableCell className="text-right tabular-nums">{g.policy_count}</TableCell>
                       <TableCell>{g.has_tenant_id ? "ja" : "—"}</TableCell>
+                      <TableCell>
+                        <div className="flex flex-wrap gap-1">
+                          {featuresForTable(g.table_name).map((feature) => (
+                            <Link
+                              key={feature.id}
+                              to={featureCatalogHref(feature.id)}
+                              className="rounded border px-1 py-0.5 font-mono text-[0.7rem] text-primary underline-offset-2 hover:underline"
+                              title={feature.name}
+                            >
+                              {feature.id}
+                            </Link>
+                          ))}
+                          {featuresForTable(g.table_name).length === 0 ? <span className="text-muted-foreground">—</span> : null}
+                        </div>
+                      </TableCell>
                     </TableRow>
                   ))}
                   {filteredGaps.length === 0 && (
                     <TableRow>
-                      <TableCell colSpan={5} className="text-center text-muted-foreground py-6">
+                      <TableCell colSpan={6} className="text-center text-muted-foreground py-6">
                         Keine Treffer.
                       </TableCell>
                     </TableRow>
