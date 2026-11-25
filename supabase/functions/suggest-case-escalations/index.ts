@@ -53,7 +53,7 @@ Deno.serve(withSafeHandler("suggest-case-escalations", async (req) => {
       const { data: items, error: itemErr } = await service
         .from("case_items")
         .select("id, tenant_id, created_at, priority, is_legal_relevant, is_political_relevant, contact_id")
-        .in("status", ["active", "pending"])
+        .in("status", ["neu", "in_klaerung", "antwort_ausstehend"])
         .is("case_file_id", null);
       if (itemErr) throw itemErr;
 

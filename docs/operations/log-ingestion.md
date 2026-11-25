@@ -14,7 +14,7 @@ Warnings and errors remain available.
 ## Zweite Stufe: kein Aufruf ohne Arbeit
 
 Die verbleibenden geplanten HTTP-Aufrufe prüfen ihre Fälligkeit jetzt in SQL,
-bevor sie eine Edge Function starten (`20261125220000_log_ingestion_cron_gates.sql`).
+bevor sie eine Edge Function starten (`20261125240000_log_ingestion_cron_gates.sql`).
 Jeder vermiedene Aufruf spart einen kompletten Log-Satz aus Boot, Request und
 Execution – die Function wäre bei diesen Läufen ohnehin ohne Ergebnis
 zurückgekehrt.
@@ -74,7 +74,7 @@ Warnungen bleiben unverändert erhalten.
    and skips HTTP invocations when no email is due. Missing Vault credentials cause
    an explicit error when emails are due. The dispatcher is not callable by clients.
 4. Deploy the six modified Edge Functions.
-5. Apply `20261125220000_log_ingestion_cron_gates.sql` as `postgres`. It creates
+5. Apply `20261125240000_log_ingestion_cron_gates.sql` as `postgres`. It creates
    the shared helpers in `automation_private`, replaces the command of the five
    scheduled HTTP jobs with a due check, removes the duplicate morning-greeting
    job and is repeatable. It also rebuilds `dispatch_due_appointment_reminders()`

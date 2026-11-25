@@ -391,7 +391,7 @@ SET search_path = pg_catalog, public
 AS $$
   SELECT EXISTS (
     SELECT 1 FROM public.case_items i
-    WHERE i.status IN ('active', 'pending')
+    WHERE i.status IN ('neu', 'in_klaerung', 'antwort_ausstehend')
       AND i.case_file_id IS NULL
       AND (
         i.created_at <= now() - interval '21 days'
