@@ -23,7 +23,9 @@ import type {
   Collaborator,
   Profile,
   AppointmentPreparation,
+  ChecklistItem,
 } from "./types";
+import type { Database } from "@/integrations/supabase/types";
 import { notify } from "@/lib/notify";
 
 interface PlanningTemplateDto {
@@ -141,10 +143,15 @@ export function useEventPlanningData() {
     }
 
     const { data: items } = await supabase.from("event_planning_checklist_items").select("id, event_planning_id, title, is_completed, order_index, created_at, updated_at, sub_items, type, relative_due_days, color").eq("event_planning_id", planningId).order("order_index", { ascending: true });
-    const transformedItems = (items || []).map((item: Record<string, any>) => ({
-      ...item,
-      sub_items: Array.isArray(item.sub_items) ? item.sub_items : (item.sub_items ? JSON.parse(item.sub_items as string) : [])
-    }));
+    const transformedItems = (items || []).map((item) => {
+      const rawSubItems = item.sub_items;
+      const subItems = (Array.isArray(rawSubItems)
+        ? rawSubItems
+        : typeof rawSubItems === "string"
+          ? JSON.parse(rawSubItems)
+          : []) as ChecklistItem["sub_items"];
+      return { ...item, sub_items: subItems };
+    });
     checklist.setChecklistItems(transformedItems);
 
     if (transformedItems.length > 0) {
@@ -154,7 +161,7 @@ export function useEventPlanningData() {
     const { data: collabs } = await supabase.from("event_planning_collaborators").select("id, event_planning_id, user_id, can_edit, created_at").eq("event_planning_id", planningId);
     if (collabs) {
       const collabsWithProfiles = await Promise.all(
-        collabs.map(async (collab: Record<string, any>) => {
+        collabs.map(async (collab) => {
           const { data: profile } = await supabase.from("profiles").select("display_name, avatar_url").eq("user_id", collab.user_id).single();
           return { ...collab, profiles: profile };
         })
@@ -308,7 +315,7 @@ export function useEventPlanningData() {
   // ── Queries ──
   const fetchPlanningTemplates = async () => {
     if (!user) return;
-    const { data, error } = await supabase.from("planning_templates").select("id, name, description, template_data, is_default, created_at").order("name");
+    const { data, error } = await supabase.from("planning_templates").select("id, name, description, template_items, created_at").order("name");
     if (error) { debugConsole.error("Error fetching planning templates:", error); return; }
     setPlanningTemplates((data ?? []) as ReadonlyArray<PlanningTemplateDto>);
   };
@@ -357,7 +364,7 @@ export function useEventPlanningData() {
     const { data: collabs } = await supabase.from("event_planning_collaborators").select("id, event_planning_id, user_id, can_edit, created_at").in("event_planning_id", planningIds);
     if (collabs) {
       const collabsWithProfiles = await Promise.all(
-        collabs.map(async (collab: Record<string, any>) => {
+        collabs.map(async (collab) => {
           const { data: profile } = await supabase.from("profiles").select("display_name, avatar_url").eq("user_id", collab.user_id).single();
           return { ...collab, profiles: profile };
         })
@@ -452,7 +459,8 @@ export function useEventPlanningData() {
   // ── Mutations ──
   const debouncedUpdate = useCallback(
     debounce(async (field: string, value: unknown, planningId: string): Promise<void> => {
-      const { error } = await supabase.from("event_plannings").update({ [field]: value }).eq("id", planningId);
+      const patch = { [field]: value } as Database["public"]["Tables"]["event_plannings"]["Update"];
+      const { error } = await supabase.from("event_plannings").update(patch).eq("id", planningId);
       if (error) notify.error("Fehler", { description: "Änderung konnte nicht gespeichert werden."
 });
     }, 500),
@@ -477,7 +485,7 @@ export function useEventPlanningData() {
       if (confirmedAppointmentId) {
         const { error } = await supabase
           .from("appointments")
-          .update({ title: value })
+          .update({ title: value as string })
           .eq("id", confirmedAppointmentId);
 
         if (error) {

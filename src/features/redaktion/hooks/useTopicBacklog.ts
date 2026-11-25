@@ -4,6 +4,7 @@ import { useAuth } from "@/hooks/useAuth";
 import { useTenant } from "@/hooks/useTenant";
 import { useCurrentProfileId } from "@/hooks/useCurrentProfileId";
 import { getErrorMessage } from "@/utils/errorHandler";
+import type { Database } from "@/integrations/supabase/types";
 
 export type TopicEditorialStatus = "idea" | "planning" | "production" | "published" | "repurpose";
 
@@ -108,13 +109,13 @@ export function useTopicBacklog() {
 
       const eventPlanningTopicIds = new Set(
         (plannerActionRows || [])
-          .map((row: Record<string, unknown>) => (row.action_config as { topic_backlog_id?: string | null } | null)?.topic_backlog_id)
+          .map((row) => (row.action_config as { topic_backlog_id?: string | null } | null)?.topic_backlog_id)
           .filter((value: unknown): value is string => Boolean(value)),
       );
 
-      const topicData = (topicRows || []).filter((row: Record<string, unknown>) => !eventPlanningTopicIds.has(row.id));
-      const ownerIds = Array.from(new Set(topicData.map((row: Record<string, unknown>) => row.owner_id).filter((value: unknown): value is string => Boolean(value))));
-      const topicIds = topicData.map((row: Record<string, unknown>) => row.id);
+      const topicData = (topicRows || []).filter((row) => !eventPlanningTopicIds.has(row.id));
+      const ownerIds = Array.from(new Set(topicData.map((row) => row.owner_id).filter((value: unknown): value is string => Boolean(value))));
+      const topicIds = topicData.map((row) => row.id);
 
       const [{ data: ownerRows, error: ownerError }, { data: linkedRows, error: linkedError }] = await Promise.all([
         ownerIds.length
@@ -144,7 +145,7 @@ export function useTopicBacklog() {
       if (ownerError) throw ownerError;
       if (linkedError) throw linkedError;
 
-      const responsibleIds = Array.from(new Set((linkedRows || []).map((row: Record<string, unknown>) => row.responsible_user_id).filter((value: unknown): value is string => Boolean(value))));
+      const responsibleIds = Array.from(new Set((linkedRows || []).map((row) => row.responsible_user_id).filter((value: unknown): value is string => Boolean(value))));
       const { data: responsibleRows, error: responsibleError } = responsibleIds.length
         ? await supabase.from("profiles").select("id, display_name").in("id", responsibleIds).eq("tenant_id", currentTenant.id)
         : { data: [], error: null };
@@ -289,7 +290,7 @@ export function useTopicBacklog() {
 
     const { error } = await supabase
       .from("topic_backlog")
-      .update(topicPatch)
+      .update(topicPatch as Database["public"]["Tables"]["topic_backlog"]["Update"])
       .eq("id", id)
       .eq("tenant_id", currentTenant.id);
 
