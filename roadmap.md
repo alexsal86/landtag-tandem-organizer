@@ -194,3 +194,10 @@
 - [x] Fester Einstieg „Team-Rituale“ im Dashboard und in „Meine Arbeit“, einschließlich ausgeschaltetem Feature, fehlender Teilnahme oder Ladefehler. Freischaltung und persönliche Teilnahme bleiben ausdrücklich freiwillig.
 - [x] Zehn gezielte Vitest-Tests, Logic-/RPC-Selbsttestschritte, lokale Datenbankprüfung mit wiederholter Migration, Rollen-/Tenant-Ablehnung und Konvertierung/Merge. Chromium-Smoke mit gemockten Daten für Avatarfarbe, Abstand, Scrollcontainer und Ritual-Einstieg.
 - [ ] Migration `20261113180000_topic_catalog_conversion.sql` auf Supabase anwenden und mit echter Sitzung bedienen; keine externe Supabase-Testsitzung verfügbar. Vollständiger App-Typecheck trifft zusätzlich auf fehlende lokale Abhängigkeiten `pdf-lib`/`tesseract.js`; gezielte Feature-Typechecks separat geprüft.
+
+# Funktionskatalog: rechte Spalte vollständig sichtbar (25.11.2026)
+- [x] Künstliche Höhenbegrenzung der rechten Inhaltskarte entfernt; alle 16 Bereiche und Diagramme laufen jetzt über das normale Seitenscrollen.
+- [x] Linke Katalogspalte beim Scrollen per sticky gehalten.
+- [x] Vorher bestehende Build-Fehler behoben: TasksView-Typkonflikte (Status-Union ohne 'cancelled') und veraltete generierte Artefakte (Zustandsartefakt, Entitätskarte).
+- [x] Typprüfung fehlerfrei; check:feature-catalog, audit:feature-catalog und test:feature-catalog fehlerfrei (100 Tests).
+- [ ] Angemeldeten Katalogklick mit echtem Supabase-Zugang prüfen — externe Supabase-Testsitzung nicht verfügbar.
