@@ -919,7 +919,9 @@
             "Keine doppelte Übernahme",
             "Vortage ohne Abschluss bleiben lesbar",
             "Snooze-Vorschläge ohne doppeltes Ziel",
-            "Löschen mit Rückgängig"
+            "Löschen mit Rückgängig",
+            "Getippte Kürzel ohne Automatik",
+            "Archiv: erledigt/zugewiesen/offen, Suche, Datumsnachbarn"
           ],
           "tables": [
             "day_slips"
@@ -959,6 +961,14 @@
             {
               "id": "delete-undo",
               "label": "Löschen mit Rückgängig erhält Reihenfolge und Verknüpfung"
+            },
+            {
+              "id": "line-shortcuts",
+              "label": "Getippte Kürzel werden erkannt und aufgelöst"
+            },
+            {
+              "id": "archive-status",
+              "label": "Archiv trennt erledigt von zugewiesen und bleibt durchsuchbar"
             }
           ]
         }

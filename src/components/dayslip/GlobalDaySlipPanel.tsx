@@ -9,6 +9,8 @@ import { useNavigate } from "react-router-dom";
 import { toast } from "sonner";
 import { sourcePath, normalizeStore, emptyDay } from "./daySlipState";
 import { resolveDayView, openPastDays, openLineCount, snoozePresets } from "./daySlipNavigation";
+import { parseDaySlipLine } from "./daySlipShorthand";
+import { archiveNeighbours, archiveStatusLabel, buildArchiveEntry, filterArchive } from "./daySlipArchive";
 import type { DaySlipSource } from "./dayslipTypes";
 import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogDescription } from "@/components/ui/dialog";
 import {
@@ -29,6 +31,12 @@ import {
   WEEK_DAYS, WEEK_DAY_LABELS, DEFAULT_DAY_TEMPLATES,
   STORAGE_KEY, RECURRING_STORAGE_KEY, DAY_TEMPLATE_STORAGE_KEY, formatDate, stripHtml, isRuleLine, formatTimeStamp, normalizeDayTemplates,
 } from "@/components/dayslip/dayslipTypes";
+
+const archiveBadgeClass = (status: "done" | "assigned" | "snoozed" | "open") =>
+  status === "done" ? "border-palette-green/40 bg-palette-green/10 text-palette-green"
+    : status === "assigned" ? "border-primary/40 bg-primary/10 text-primary"
+      : status === "snoozed" ? "border-palette-amber/40 bg-palette-amber/10 text-palette-amber"
+        : "border-border/60 text-muted-foreground";
 
 function DaySlipSurface({ children }: { children: ReactNode }) {
   const layout = useDaySlipLayout();
@@ -77,6 +85,9 @@ function DaySlipPanel({ userId, tenantId }: { userId: string; tenantId: string }
   }, [open]);
 
   const [showArchive, setShowArchive] = useState(false);
+  const [archiveQuery, setArchiveQuery] = useState("");
+  const [archiveCursor, setArchiveCursor] = useState<string | null>(null);
+  const [archiveNotice, setArchiveNotice] = useState<string | null>(null);
   const [showSettings, setShowSettings] = useState(false);
   const [closing, setClosing] = useState(false);
   const [contentTransitioning, setContentTransitioning] = useState(false);
@@ -172,32 +183,18 @@ function DaySlipPanel({ userId, tenantId }: { userId: string; tenantId: string }
   useEffect(() => { if (!completionMessage) return; const t = window.setTimeout(() => setCompletionMessage(null), 2800); return () => window.clearTimeout(t); }, [completionMessage]);
   useEffect(() => { const close = () => setLineContextMenu(null); window.addEventListener("click", close); window.addEventListener("scroll", close); return () => { window.removeEventListener("click", close); window.removeEventListener("scroll", close); }; }, []);
 
-  // Strike visual sync
+  // Done and priority live on the node; only the timestamp tooltip still needs the DOM.
+  const timestampSignature = JSON.stringify(viewDay.lineTimestamps ?? {});
   useEffect(() => {
     if (!ds.editorRef.current) return;
-    const struckSet = new Set(viewDay.struckLineIds ?? viewDay.struckLines ?? []);
+    const stamps = viewDay.lineTimestamps ?? {};
     requestAnimationFrame(() => {
-      const nodes = document.querySelectorAll<HTMLElement>(".day-slip-item");
-      nodes.forEach((node) => {
-        const lineId = node.dataset.lineId ?? "";
-        const text = (node.textContent ?? "").trim();
-        node.classList.toggle("has-text", text.length > 0);
-        const struck = struckSet.has(lineId);
-        node.classList.toggle("line-through", struck);
-        node.classList.toggle("text-muted-foreground", struck);
-        node.classList.toggle("opacity-70", struck);
-        const isHighPriority = /^!!\s*/.test(text);
-        const isPriority = !isHighPriority && /^!\s*/.test(text);
-        node.classList.toggle("bg-priority-high/10", isHighPriority);
-        node.classList.toggle("border", isHighPriority || isPriority);
-        node.classList.toggle("border-priority-high/40", isHighPriority);
-        node.classList.toggle("bg-palette-amber/10", isPriority);
-        node.classList.toggle("border-palette-amber/40", isPriority);
-        const stamp = viewDay.lineTimestamps?.[lineId];
+      document.querySelectorAll<HTMLElement>(".day-slip-item").forEach((node) => {
+        const stamp = stamps[node.dataset.lineId ?? ""];
         node.title = stamp ? `Erfasst: ${formatTimeStamp(stamp.addedAt)} · Abgehakt: ${formatTimeStamp(stamp.checkedAt)}` : "";
       });
     });
-  }, [ds.editorRef, viewDay, open, ds.editorReadyVersion]);
+  }, [ds.editorRef, timestampSignature, viewDay.lineTimestamps, ds.editorReadyVersion]);
 
   // Changes are cached synchronously; closing also asks the queue to flush.
   const animateClosePanel = () => {
@@ -207,10 +204,30 @@ function DaySlipPanel({ userId, tenantId }: { userId: string; tenantId: string }
     setTimeout(() => { ds.setResolveMode(false); setOpen(false); setClosing(false); }, 220);
   };
 
+  const archiveEntries = useMemo(() => ds.archiveDays.map(key => buildArchiveEntry(key, ds.store[key])), [ds.archiveDays, ds.store]);
+  const archiveFiltered = useMemo(() => filterArchive(archiveEntries, archiveQuery), [archiveEntries, archiveQuery]);
+  const archiveCursorKey = archiveFiltered.some(entry => entry.key === archiveCursor) ? archiveCursor! : archiveFiltered[0]?.key;
+  const archiveNav = archiveNeighbours(archiveFiltered, archiveCursorKey ?? "");
+  const openArchiveDay = (key: string) => { setArchiveNotice(null); setViewKey(key); switchView("default"); };
+
+  /** Typed line shortcuts prefill the existing triage; nothing is created without that step. */
+  const applyLineShortcuts = useCallback(() => {
+    if (!ds.ready || ds.isProcessing) return;
+    const users = tenantUsers.map(person => ({ id: person.id, name: person.display_name }));
+    for (const line of ds.openLines) {
+      const parsed = parseDaySlipLine(line.text, { todayKey: ds.todayKey, users });
+      if (!parsed.kind || !parsed.text) continue;
+      ds.toggleResolveLine(line.id, parsed.text, parsed.kind, undefined, {
+        ...(parsed.person ? { assignedTo: parsed.person.id } : {}),
+        ...(parsed.dueDate ? { dueDate: parsed.dueDate } : {}),
+      });
+    }
+  }, [ds, tenantUsers]);
+
   const completeDay = async () => {
     if (closingRef.current || ds.isProcessing) return;
     if (ds.resolveMode && ds.unresolvedCount > 0) { ds.setResolveMode(false); return; }
-    if (ds.unresolvedCount > 0) { ds.setResolveMode(true); return; }
+    if (ds.unresolvedCount > 0) { applyLineShortcuts(); ds.setResolveMode(true); return; }
     closingRef.current = true;
     try {
       if (!await ds.completeDay()) {
@@ -524,18 +541,49 @@ function DaySlipPanel({ userId, tenantId }: { userId: string; tenantId: string }
             </div>
           ) : showArchive ? (
             <div className={`flex-1 space-y-3 overflow-y-auto p-4 transition-all duration-300 ease-out ${contentTransitioning ? "opacity-0 translate-y-1" : "opacity-100 translate-y-0"}`}>
-              <p className="text-sm font-medium">Archiv (nur lesen)</p>
-              {ds.archiveDays.length === 0 && <p className="text-sm text-muted-foreground">Noch keine abgeschlossenen Tage.</p>}
-              {ds.archiveDays.map((day) => {
-                const dayData = ds.store[day];
+              <div className="flex items-center justify-between gap-2">
+                <p className="text-sm font-medium">Archiv (nur lesen)</p>
+                <div className="flex items-center gap-1">
+                  <button type="button" className="rounded p-1 text-muted-foreground hover:bg-muted hover:text-foreground disabled:opacity-40" aria-label="Vorheriger Archivtag" title="Älterer Archivtag" disabled={!archiveNav.previousKey} onClick={() => archiveNav.previousKey && setArchiveCursor(archiveNav.previousKey)}><ChevronLeft className="h-4 w-4" /></button>
+                  <button type="button" className="rounded p-1 text-muted-foreground hover:bg-muted hover:text-foreground disabled:opacity-40" aria-label="Nächster Archivtag" title="Neuerer Archivtag" disabled={!archiveNav.nextKey} onClick={() => archiveNav.nextKey && setArchiveCursor(archiveNav.nextKey)}><ChevronRight className="h-4 w-4" /></button>
+                </div>
+              </div>
+              <input aria-label="Archiv durchsuchen" type="search" value={archiveQuery} onChange={event => setArchiveQuery(event.target.value)} placeholder="Text oder Datum suchen" className="h-8 w-full rounded border border-border/60 bg-background px-2 text-xs" />
+              <div className="flex flex-wrap items-center gap-2">
+                <label className="text-[11px] text-muted-foreground" htmlFor="archive-date-jump">Zu Datum springen</label>
+                <input id="archive-date-jump" aria-label="Archivdatum" type="date" className="h-8 rounded border border-border/60 bg-background px-2 text-xs" onChange={event => {
+                  const key = event.target.value;
+                  if (!key) return;
+                  if (!ds.store[key]) { setArchiveNotice(`Kein Zettel am ${formatDate(key)}.`); return; }
+                  openArchiveDay(key);
+                }} />
+                {archiveNotice && <span role="status" className="text-[11px] text-palette-amber">{archiveNotice}</span>}
+              </div>
+              {archiveEntries.length === 0 && <p className="text-sm text-muted-foreground">Noch keine abgeschlossenen Tage.</p>}
+              {archiveEntries.length > 0 && archiveFiltered.length === 0 && <p className="text-sm text-muted-foreground">Kein abgeschlossener Tag passt zu „{archiveQuery}“.</p>}
+              {archiveFiltered.map((entry) => {
+                const dayData = ds.store[entry.key];
                 const moodMap = ["😞", "🙁", "😐", "🙂", "😄"] as const;
                 const mood = dayData?.dayMood ? moodMap[dayData.dayMood - 1] : "—";
                 const completedInfo = dayData?.completedAt ? `Abgeschlossen um ${new Date(dayData.completedAt).toLocaleTimeString("de-DE", { hour: "2-digit", minute: "2-digit" })}` : "Nicht explizit abgeschlossen";
                 return (
-                  <div key={day} className="rounded-lg border border-border/60 p-3">
-                    <p className="mb-2 text-xs font-medium uppercase tracking-wide text-muted-foreground">{formatDate(day)}</p>
-                    <p className="mb-2 text-[11px] text-muted-foreground/90">{completedInfo} · {(dayData?.resolved ?? []).length} zugewiesen · Stimmung: {mood}</p>
-                    <p className="whitespace-pre-wrap text-sm text-muted-foreground">{stripHtml(dayData?.html ?? "") || "—"}</p>
+                  <div key={entry.key} className={cn("rounded-lg border p-3", entry.key === archiveCursorKey ? "border-primary/50 bg-primary/5" : "border-border/60")}>
+                    <div className="flex items-start justify-between gap-2">
+                      <div className="min-w-0">
+                        <p className="text-xs font-medium uppercase tracking-wide text-muted-foreground">{entry.label}</p>
+                        <p className="text-[11px] text-muted-foreground/90">{completedInfo} · {entry.counts.done} erledigt · {entry.counts.assigned} zugewiesen{entry.counts.snoozed > 0 ? ` · ${entry.counts.snoozed} Wiedervorlage` : ""} · {entry.counts.open} offen · Stimmung: {mood}</p>
+                      </div>
+                      <button type="button" className="shrink-0 rounded border border-border/60 px-2 py-0.5 text-[11px] hover:bg-muted" onClick={() => openArchiveDay(entry.key)}>Öffnen</button>
+                    </div>
+                    <ul className="mt-2 space-y-1">
+                      {entry.lines.length === 0 && <li className="text-sm text-muted-foreground">—</li>}
+                      {entry.lines.map((line) => (
+                        <li key={line.id} className="flex items-start justify-between gap-2 text-sm">
+                          <span className={cn("min-w-0 break-words", line.status === "done" && "text-muted-foreground line-through")}>{line.text}</span>
+                          <span className={cn("shrink-0 rounded border px-1.5 py-0.5 text-[10px]", archiveBadgeClass(line.status))}>{archiveStatusLabel(line)}</span>
+                        </li>
+                      ))}
+                    </ul>
                   </div>
                 );
               })}
@@ -556,6 +604,7 @@ function DaySlipPanel({ userId, tenantId }: { userId: string; tenantId: string }
                 initialHtml={viewDay.html}
                 initialNodes={viewDay.nodes}
                 dayKey={dayView.key}
+                doneLineIds={viewDay.struckLineIds ?? viewDay.struckLines}
                 resolveMode={false}
                 editorConfig={ds.editorConfig}
                 onEditorChange={() => { /* Past days are a record and never accept edits. */ }}
@@ -587,6 +636,7 @@ function DaySlipPanel({ userId, tenantId }: { userId: string; tenantId: string }
                 initialHtml={ds.todayData.html}
                 initialNodes={ds.todayData.nodes}
                 dayKey={ds.todayKey}
+                doneLineIds={ds.struckLineIds}
                 resolveMode={ds.resolveMode}
                 editorConfig={ds.editorConfig}
                 onEditorChange={handleEditorChange}
@@ -685,7 +735,7 @@ function DaySlipPanel({ userId, tenantId }: { userId: string; tenantId: string }
               {!ds.resolveMode && ds.resolvedItems.length > 0 && <div className="border-b px-4 py-2 text-xs">
                 <p>{ds.resolvedItems.filter(item => item.persisted).length} erfolgreich erstellt / verknüpft · {ds.resolvedItems.filter(item => !item.persisted && ["task", "note", "decision"].includes(item.target)).length} zur Erstellung vorgemerkt</p>
                 {ds.resolvedItems.filter(item => item.error).map(item => <p key={item.lineId} role="alert" className="mt-1 text-destructive">{item.text}: {item.error}</p>)}
-                {!ds.todayData.completedAt && <button className="mt-1 underline" onClick={() => ds.setResolveMode(true)}>Zuordnung prüfen</button>}
+                {!ds.todayData.completedAt && <button className="mt-1 underline" onClick={() => { applyLineShortcuts(); ds.setResolveMode(true); }}>Zuordnung prüfen</button>}
               </div>}
               {/* Footer */}
               <div className="shrink-0 space-y-2 p-3">

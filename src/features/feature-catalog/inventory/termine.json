@@ -569,7 +569,7 @@
       "id": "daily.briefing",
       "subarea": "Tagesbriefing",
       "name": "Tagesbriefing und Tageszettel",
-      "description": "Erzeugt Tagesbriefings und Tageszettel mit Terminen und Aufgaben, hält Lesebestätigungen fest und archiviert Tageszettel. Vergangene Zettel bleiben auch ohne Abschluss lesbar; Löschen ist rückgängig zu machen.",
+      "description": "Erzeugt Tagesbriefings und Tageszettel mit Terminen und Aufgaben, hält Lesebestätigungen fest und archiviert Tageszettel. Vergangene Zettel bleiben auch ohne Abschluss lesbar; Löschen ist rückgängig zu machen. Getippte Kürzel (+ Aufgabe, ~ Notiz, ? Entscheidung, @Person, >Fälligkeit) belegen die Zuordnung am Tagesende vor. Das Archiv ist durchsuchbar, per Datum anwählbar und zeigt je Zeile, ob sie erledigt, zugewiesen oder offen ist.",
       "category": "fachlich",
       "implementationStatus": "implementiert",
       "integrationStatus": "ui",
@@ -580,6 +580,8 @@
         "src/features/briefings/hooks/useTodayBriefings.ts",
         "src/components/dayslip/GlobalDaySlipPanel.tsx",
         "src/components/dayslip/daySlipNavigation.ts",
+        "src/components/dayslip/daySlipShorthand.ts",
+        "src/components/dayslip/daySlipArchive.ts",
         "src/components/dayslip/daySlipState.ts",
         "src/components/dayslip/hooks/useDaySlipStore.ts",
         "src/components/dayslip/__tests__/daySlipNavigation.test.ts",
@@ -605,6 +607,8 @@
       "unitTests": [
         "src/components/dayslip/__tests__/GlobalDaySlipPanel.test.tsx",
         "src/components/dayslip/__tests__/daySlipNavigation.test.ts",
+        "src/components/dayslip/__tests__/daySlipShorthand.test.ts",
+        "src/components/dayslip/__tests__/daySlipArchive.test.ts",
         "src/components/dayslip/__tests__/daySlipState.test.ts",
         "src/components/dayslip/__tests__/DaySlipLexicalEditor.test.tsx",
         "src/components/dayslip/__tests__/daySlipLifecycle.test.tsx",
@@ -612,7 +616,7 @@
       ],
       "limitations": [
         "Vortage sind schreibgeschützt; abgeschlossen werden kann nur der aktuelle Tag.",
-        "Die Zuordnung am Tagesende bleibt Einzelarbeit je Zeile."
+        "Kürzel belegen die Zuordnung nur vor; mehrdeutige Namen und unbekannte Fälligkeiten bleiben Text und werden in der Zuordnung geklärt."
       ],
       "rpcs": [
         "can_view_daily_briefing_receipt",

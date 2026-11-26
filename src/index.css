@@ -780,6 +780,22 @@ All colors MUST be HSL.
   border-color: hsl(var(--primary));
 }
 
+/* Tageszettel: Erledigt- und Prioritätszustand stehen im Knoten, nicht in einem DOM-Durchlauf */
+.day-slip-item[data-done="true"] {
+  text-decoration: line-through;
+  color: hsl(var(--muted-foreground));
+  opacity: 0.7;
+}
+.day-slip-item[data-priority="high"] {
+  background-color: hsl(var(--priority-high) / 0.1);
+  border: 1px solid hsl(var(--priority-high) / 0.4);
+}
+.day-slip-item[data-priority="normal"] {
+  background-color: hsl(var(--palette-amber) / 0.1);
+  border: 1px solid hsl(var(--palette-amber) / 0.4);
+}
+.day-slip-item:has([data-lexical-text])::before { opacity: 1; }
+
 /* Tageszettel: verknüpfte Zeilen zeigen rechts ein Sprung-Symbol zum Objekt */
 .day-slip-item[data-source-id] { padding-right: 1.75rem; }
 .day-slip-item[data-source-id]::after {

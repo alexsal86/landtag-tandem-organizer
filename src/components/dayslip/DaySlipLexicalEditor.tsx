@@ -23,7 +23,7 @@ import { $createHorizontalRuleNode } from "@lexical/react/LexicalHorizontalRuleN
 import { BLUR_COMMAND, FOCUS_COMMAND } from "lexical";
 import { $generateNodesFromDOM } from "@lexical/html";
 import FloatingTextFormatToolbar from "@/components/lexical/FloatingTextFormatToolbar";
-import { $createDaySlipLineNode, DaySlipLineNode } from "@/components/lexical/DaySlipLineNode";
+import { $createDaySlipLineNode, $isDaySlipLineNode, DaySlipLineNode, daySlipLinePriority } from "@/components/lexical/DaySlipLineNode";
 import { $createLabeledHorizontalRuleNode } from "@/components/lexical/LabeledHorizontalRuleNode";
 import { parseRuleLine } from "./dayslipTypes";
 import { DaySlipPages } from "./DaySlipPages";
@@ -66,6 +66,39 @@ function InitialContentPlugin({ initialHtml, initialNodes, dayKey, forceReloadTo
     });
   }, [reloadKey, editor, initialHtml, initialNodes]);
 
+  return null;
+}
+
+/**
+ * Sheets written before the done state lived in the content only carry it in the
+ * day's struck-line list. Seed the nodes once so display and export agree, then
+ * the node is the single source.
+ */
+function DoneSeedPlugin({ dayKey, doneLineIds }: { dayKey: string; doneLineIds?: string[] }) {
+  const [editor] = useLexicalComposerContext();
+  const seededRef = useRef<string | null>(null);
+
+  useEffect(() => {
+    if (!doneLineIds || seededRef.current === dayKey) return;
+    seededRef.current = dayKey;
+    editor.update(() => {
+      const done = new Set(doneLineIds);
+      $getRoot().getChildren().forEach(node => {
+        if ($isDaySlipLineNode(node) && node.getDone() === undefined) node.setDone(done.has(node.getLineId()));
+      });
+    });
+  }, [editor, dayKey, doneLineIds]);
+
+  return null;
+}
+
+/** Keeps the "!"/"!!" highlight on the node instead of a querySelectorAll pass per keystroke. */
+function LinePriorityPlugin() {
+  const [editor] = useLexicalComposerContext();
+  useEffect(() => editor.registerNodeTransform(DaySlipLineNode, node => {
+    const priority = daySlipLinePriority(node.getTextContent());
+    if (node.getPriority() !== priority) node.setPriority(priority);
+  }), [editor]);
   return null;
 }
 
@@ -161,12 +194,14 @@ export interface DaySlipEditorProps {
   onDrop: (e: DragEvent<HTMLElement>) => void;
   /** Alt+Enter on the focused line (keyboard equivalent of the margin click). */
   onToggleLine?: (lineId: string) => void;
+  /** Legacy done state from day data, seeded into the nodes when the content has none. */
+  doneLineIds?: string[];
   hidden?: boolean;
   readOnly?: boolean;
 }
 
 export const DaySlipLexicalEditor = memo(function DaySlipLexicalEditor(props: DaySlipEditorProps) {
-  const { initialHtml, initialNodes, dayKey, forceReloadToken, resolveMode, editorConfig, onEditorChange, onEditorReady, onEditorClick, onEditorContextMenu, onDrop, onToggleLine, hidden, readOnly } = props;
+  const { initialHtml, initialNodes, dayKey, forceReloadToken, resolveMode, editorConfig, onEditorChange, onEditorReady, onEditorClick, onEditorContextMenu, onDrop, onToggleLine, doneLineIds, hidden, readOnly } = props;
   const [isFocused, setIsFocused] = useState(false);
   const handleFocusChange = useCallback((focused: boolean) => setIsFocused(focused), []);
 
@@ -199,6 +234,8 @@ export const DaySlipLexicalEditor = memo(function DaySlipLexicalEditor(props: Da
         <DaySlipEnterBehaviorPlugin onToggleLine={onToggleLine} />
         <FocusPlugin onFocusChange={handleFocusChange} />
         <InitialContentPlugin initialHtml={initialHtml} initialNodes={initialNodes} dayKey={dayKey} forceReloadToken={forceReloadToken} />
+        <DoneSeedPlugin dayKey={dayKey} doneLineIds={doneLineIds} />
+        <LinePriorityPlugin />
       </LexicalComposer>
     </div>
   );

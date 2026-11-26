@@ -64,6 +64,14 @@ export function useDaySlipStore(userId: string, tenantId: string) {
   const setWeekPlan = useCallback((action: SetStateAction<DaySlipSettings["weekPlan"]>) => setSetting("weekPlan", action), [setSetting]);
 
   const setLineDone = useCallback((lineId: string, done: boolean, key = todayKey) => {
+    // The node carries the state so it survives in html and JSON; day data mirrors it for triage and carry.
+    if (key === todayKey) {
+      editorRef.current?.update(() => {
+        $getRoot().getChildren().forEach(node => {
+          if (node instanceof DaySlipLineNode && node.getLineId() === lineId) node.setDone(done);
+        });
+      });
+    }
     changeDay(day => {
       const struck = new Set(day.struckLineIds ?? day.struckLines ?? []);
       if (struck.has(lineId) === done) return day;
@@ -250,7 +258,10 @@ export function useDaySlipStore(userId: string, tenantId: string) {
         const lineTimestamps = { ...day.lineTimestamps };
         ids.forEach(id => { lineTimestamps[id] ??= { addedAt: new Date().toISOString() }; });
         const sources = Object.fromEntries(Object.entries({ ...day.sources, ...linked }).filter(([id]) => ids.has(id)));
-        return { ...prev, [todayKey]: { ...day, html, plainText, nodes, sources, lineTimestamps, resolved: day.resolved?.filter(item => ids.has(item.lineId)), struckLineIds: (day.struckLineIds ?? day.struckLines ?? []).filter(id => ids.has(id)) } };
+        // html is the record of checked lines, so a reloaded sheet keeps its state even without the mirror list.
+        const doneInHtml = new DOMParser().parseFromString(html, "text/html").querySelectorAll('p[data-done="true"]');
+        const struck = new Set([...(day.struckLineIds ?? day.struckLines ?? []), ...Array.from(doneInHtml, p => p.getAttribute("data-line-id") ?? "")].filter(id => ids.has(id)));
+        return { ...prev, [todayKey]: { ...day, html, plainText, nodes, sources, lineTimestamps, resolved: day.resolved?.filter(item => ids.has(item.lineId)), struckLineIds: [...struck] } };
       });
     });
   }, [ready, storeRef, todayKey, setStore]);

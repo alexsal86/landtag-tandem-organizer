@@ -4,6 +4,8 @@ import type { TestScenario } from "../types";
 import { describeError } from "../verify";
 import { appendEntries, carryLines, collectCarryLines, normalizeStore, removeLineFromDay, restoreLineToDay, sourcePath } from "@/components/dayslip/daySlipState";
 import { openLineCount, openPastDays, resolveDayView, shiftDayKey, snoozePresets } from "@/components/dayslip/daySlipNavigation";
+import { parseDaySlipLine } from "@/components/dayslip/daySlipShorthand";
+import { archiveNeighbours, buildArchiveEntry, matchesArchiveQuery } from "@/components/dayslip/daySlipArchive";
 import type { DaySlipDayData, DaySlipSource, DaySlipStore } from "@/components/dayslip/dayslipTypes";
 import { extractLinesFromHtml, toDayKey, toParagraphHtml, toRuleHtml } from "@/components/dayslip/dayslipTypes";
 import { testDay } from "../fixtures";
@@ -14,9 +16,10 @@ export const daySlipLifecycleScenario: TestScenario = {
   description: "Schreibt einen Tageszettel mit verlinkten Zeilen (Notiz, Aufgabe, Vorgang, Entscheidung), lädt ihn neu, prüft die Sprungziele und überträgt offene Zeilen auf den Folgetag, ohne Links zu verlieren.",
   touches: ["day_slips"],
   features: ["dayslip"],
-  checks: ["Speichern und erneutes Laden", "Link-Erhalt bei Übernahme", "Keine doppelte Übernahme", "Vortage ohne Abschluss bleiben lesbar", "Snooze-Vorschläge ohne doppeltes Ziel", "Löschen mit Rückgängig"],
+  checks: ["Speichern und erneutes Laden", "Link-Erhalt bei Übernahme", "Keine doppelte Übernahme", "Vortage ohne Abschluss bleiben lesbar", "Snooze-Vorschläge ohne doppeltes Ziel", "Löschen mit Rückgängig", "Getippte Kürzel ohne Automatik", "Archiv: erledigt/zugewiesen/offen, Suche, Datumsnachbarn"],
   limitations: [
     "Die verlinkten Ziele sind Test-IDs; ihre Bedienung wird nicht geprüft.",
+    "Kürzel belegen die Zuordnung nur vor; erstellt wird erst mit dem Abschluss, und Mehrdeutiges bleibt Text.",
     "Vortage werden nur gelesen; abgeschlossen werden kann weiterhin ausschließlich der aktuelle Tag.",
   ],
   writes: [{ table: "day_slips", columns: ["user_id", "tenant_id", "day_key", "data"] }],
@@ -156,6 +159,62 @@ export const daySlipLifecycleScenario: TestScenario = {
         return failed.length
           ? { ok: false, message: `Fehler: ${failed.join(", ")}`, details: checks }
           : { ok: true, message: "Löschen und Rückgängig erhalten Reihenfolge, Link, Status und Zeitstempel.", details: checks };
+      },
+    },
+    {
+      id: "line-shortcuts", label: "Getippte Kürzel werden erkannt und aufgelöst", kind: "logic",
+      run: async () => {
+        const today = toDayKey(new Date());
+        const users = [
+          { id: "user-1", name: "Joschka Fischer" },
+          { id: "user-2", name: "Müller" },
+          { id: "user-3", name: "Müller" },
+        ];
+        const task = parseDaySlipLine("+ Rückruf @Joschka >morgen", { todayKey: today, users });
+        const note = parseDaySlipLine("~ Gesprächsnotiz", { todayKey: today, users });
+        const decision = parseDaySlipLine("? Zustimmen?", { todayKey: today, users });
+        const ambiguous = parseDaySlipLine("+ Termin @Müller", { todayKey: today, users });
+        const phone = parseDaySlipLine("+49 30 123456", { todayKey: today, users });
+        const checks = {
+          aufgabe: task.kind === "task" && task.text === "Rückruf",
+          person: task.person?.id === "user-1",
+          faellig: task.dueDate === shiftDayKey(today, 1),
+          notiz: note.kind === "note" && note.text === "Gesprächsnotiz",
+          entscheidung: decision.kind === "decision" && decision.text === "Zustimmen?",
+          mehrdeutig: ambiguous.kind === "task" && ambiguous.person === undefined && ambiguous.text === "Termin @Müller",
+          telefon: phone.kind === undefined && phone.text === "+49 30 123456",
+        };
+        const failed = Object.entries(checks).filter(([, ok]) => !ok).map(([name]) => name);
+        return failed.length
+          ? { ok: false, message: `Fehler: ${failed.join(", ")}`, details: checks }
+          : { ok: true, message: "Aufgabe, Notiz, Entscheidung, Person und Fälligkeit werden erkannt; Mehrdeutiges bleibt Text.", details: checks };
+      },
+    },
+    {
+      id: "archive-status", label: "Archiv trennt erledigt von zugewiesen und bleibt durchsuchbar", kind: "logic",
+      run: async () => {
+        const day: DaySlipDayData = {
+          html: '<p data-line-id="a">Offen</p><p data-line-id="b" data-done="true">Erledigt</p><p data-line-id="c">Zugewiesen</p>',
+          plainText: "Offen",
+          struckLineIds: [],
+          resolved: [{ lineId: "c", text: "Zugewiesen", target: "task" }],
+          completedAt: "2026-11-25T17:00:00.000Z",
+        };
+        const entry = buildArchiveEntry("2026-11-25", day);
+        const older = buildArchiveEntry("2026-11-20", undefined);
+        const status = (id: string) => entry.lines.find(line => line.id === id)?.status;
+        const checks = {
+          erledigtAusInhalt: status("b") === "done",
+          zugewiesen: status("c") === "assigned",
+          offen: status("a") === "open",
+          summe: entry.counts.done === 1 && entry.counts.assigned === 1 && entry.counts.open === 1,
+          suche: matchesArchiveQuery(entry, "zugewiesen") && !matchesArchiveQuery(entry, "fehlt"),
+          nachbar: archiveNeighbours([entry, older], "2026-11-25").previousKey === "2026-11-20",
+        };
+        const failed = Object.entries(checks).filter(([, ok]) => !ok).map(([name]) => name);
+        return failed.length
+          ? { ok: false, message: `Fehler: ${failed.join(", ")}`, details: checks }
+          : { ok: true, message: "Archiv liest den Erledigt-Zustand aus dem Inhalt und trennt erledigt, zugewiesen und offen.", details: checks };
       },
     },
   ],

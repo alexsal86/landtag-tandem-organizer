@@ -2,6 +2,7 @@ import "@testing-library/jest-dom/vitest";
 import { act, render, waitFor } from "@testing-library/react";
 import { describe, expect, it, vi } from "vitest";
 import { $getRoot, ParagraphNode, KEY_ENTER_COMMAND, type LexicalEditor, type TextNode } from "lexical";
+import { $generateHtmlFromNodes } from "@lexical/html";
 import { DaySlipLexicalEditor, type DaySlipEditorProps } from "../DaySlipLexicalEditor";
 import { $createDaySlipLineNode, DaySlipLineNode } from "@/components/lexical/DaySlipLineNode";
 
@@ -52,6 +53,27 @@ describe("Tageszettel editor", () => {
     });
     expect(onToggleLine).toHaveBeenCalledWith("original");
     expect(view.container.querySelectorAll("p")).toHaveLength(1);
+  });
+
+  it("reads and exports the done state from the stored content", async () => {
+    let editor!: LexicalEditor;
+    const view = render(<DaySlipLexicalEditor {...props(value => { editor = value; })} initialHtml='<p data-line-id="done" data-done="true">Checked</p>' />);
+    await waitFor(() => expect(view.container.querySelector('p[data-line-id="done"]')).toHaveAttribute("data-done", "true"));
+    expect(editor.getEditorState().toJSON().root.children[0]).toMatchObject({ type: "dayslip-line", lineId: "done", done: true });
+    await act(async () => {
+      editor.update(() => {
+        $getRoot().getChildren().forEach(node => { if (node instanceof DaySlipLineNode) node.setDone(false); });
+      }, { discrete: true });
+    });
+    const html = editor.getEditorState().read(() => $generateHtmlFromNodes(editor, null));
+    expect(html).toContain('data-done="false"');
+  });
+
+  it("seeds the legacy struck list into the nodes once", async () => {
+    let editor!: LexicalEditor;
+    const view = render(<DaySlipLexicalEditor {...props(value => { editor = value; })} initialHtml='<p data-line-id="legacy">Old line</p>' doneLineIds={["legacy"]} />);
+    await waitFor(() => expect(view.container.querySelector('p[data-line-id="legacy"]')).toHaveAttribute("data-done", "true"));
+    expect(editor.getEditorState().toJSON().root.children[0]).toMatchObject({ done: true });
   });
 
   it("retains an imported task link in both editor JSON and exported HTML", async () => {

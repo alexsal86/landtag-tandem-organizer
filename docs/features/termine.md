@@ -60,7 +60,7 @@ _Auto-generiert mit `npm run update:feature-catalog` aus dem zentralen Funktions
 | `appointment-lifecycle` | Termin-Lifecycle (Kalender + Briefing + Feedback) | 3 | 0 |
 | `appointment-request-lifecycle` | Terminanfragen-Lifecycle (Eingang → Sperre → Entscheidung → Termin) | 2 | 4 |
 | `daily-briefing-lifecycle` | Tages-Briefings (Vortag-Regel) | 1 | 0 |
-| `day-slip-lifecycle` | Tageszettel-Lifecycle (Links → Neuladen → Übernahme auf Folgetag) | 1 | 6 |
+| `day-slip-lifecycle` | Tageszettel-Lifecycle (Links → Neuladen → Übernahme auf Folgetag) | 1 | 8 |
 | `jour-fixe-platform-integration` | Jour Fixe: Plattformquellen & Stafetten-Abschluss | 4 | 4 |
 | `poll-lifecycle` | Terminabstimmung (Gewinner-Slot übernehmen + Nachfassen) | 5 | 6 |
 
@@ -543,7 +543,7 @@ Füllt die Jour-fixe-Agende aus Vorgängen, Aufgaben, Geburtstagen und weiteren 
 - Keine.
 
 ### `daily.briefing` — Tagesbriefing und Tageszettel
-Erzeugt Tagesbriefings und Tageszettel mit Terminen und Aufgaben, hält Lesebestätigungen fest und archiviert Tageszettel. Vergangene Zettel bleiben auch ohne Abschluss lesbar; Löschen ist rückgängig zu machen.
+Erzeugt Tagesbriefings und Tageszettel mit Terminen und Aufgaben, hält Lesebestätigungen fest und archiviert Tageszettel. Vergangene Zettel bleiben auch ohne Abschluss lesbar; Löschen ist rückgängig zu machen. Getippte Kürzel (+ Aufgabe, ~ Notiz, ? Entscheidung, @Person, >Fälligkeit) belegen die Zuordnung am Tagesende vor. Das Archiv ist durchsuchbar, per Datum anwählbar und zeigt je Zeile, ob sie erledigt, zugewiesen oder offen ist.
 
 - **Kategorie:** fachlich
 - **Implementierung:** implementiert
@@ -560,7 +560,7 @@ Erzeugt Tagesbriefings und Tageszettel mit Terminen und Aufgaben, hält Lesebest
 - **Tabellen:** `daily_briefings`, `daily_briefing_reads`, `day_slips`
 - **Abhängigkeiten:** —
 - **Selbsttests:** `daily-briefing-lifecycle`, `day-slip-lifecycle`
-- **Unit-Tests:** `src/components/dayslip/__tests__/GlobalDaySlipPanel.test.tsx`, `src/components/dayslip/__tests__/daySlipNavigation.test.ts`, `src/components/dayslip/__tests__/daySlipState.test.ts`, `src/components/dayslip/__tests__/DaySlipLexicalEditor.test.tsx`, `src/components/dayslip/__tests__/daySlipLifecycle.test.tsx`, `src/features/selftest/scenarios/day-slip-lifecycle.test.ts`
+- **Unit-Tests:** `src/components/dayslip/__tests__/GlobalDaySlipPanel.test.tsx`, `src/components/dayslip/__tests__/daySlipNavigation.test.ts`, `src/components/dayslip/__tests__/daySlipShorthand.test.ts`, `src/components/dayslip/__tests__/daySlipArchive.test.ts`, `src/components/dayslip/__tests__/daySlipState.test.ts`, `src/components/dayslip/__tests__/DaySlipLexicalEditor.test.tsx`, `src/components/dayslip/__tests__/daySlipLifecycle.test.tsx`, `src/features/selftest/scenarios/day-slip-lifecycle.test.ts`
 - **Integrationstests:** —
 - **Browser-Tests:** —
 - **Dokumentation:** `docs/my-work-architecture.md`
@@ -571,6 +571,8 @@ Erzeugt Tagesbriefings und Tageszettel mit Terminen und Aufgaben, hält Lesebest
 - src/features/briefings/hooks/useTodayBriefings.ts
 - src/components/dayslip/GlobalDaySlipPanel.tsx
 - src/components/dayslip/daySlipNavigation.ts
+- src/components/dayslip/daySlipShorthand.ts
+- src/components/dayslip/daySlipArchive.ts
 - src/components/dayslip/daySlipState.ts
 - src/components/dayslip/hooks/useDaySlipStore.ts
 - src/components/dayslip/__tests__/daySlipNavigation.test.ts
@@ -580,7 +582,7 @@ Erzeugt Tagesbriefings und Tageszettel mit Terminen und Aufgaben, hält Lesebest
 **Bekannte Einschränkungen**
 
 - Vortage sind schreibgeschützt; abgeschlossen werden kann nur der aktuelle Tag.
-- Die Zuordnung am Tagesende bleibt Einzelarbeit je Zeile.
+- Kürzel belegen die Zuordnung nur vor; mehrdeutige Namen und unbekannte Fälligkeiten bleiben Text und werden in der Zuordnung geklärt.
 
 **Offene Prüfpunkte**
 

@@ -10,11 +10,15 @@ import {
   type Spread,
 } from "lexical";
 
+export type DaySlipLinePriority = "high" | "normal";
+
 export type SerializedDaySlipLineNode = Spread<
   {
     lineId: string;
     linkedTaskId?: string;
     linkedSource?: DaySlipLineSource;
+    /** Checked-off state lives in the stored content so the archive can read it. */
+    done?: boolean;
     type: "dayslip-line";
     version: 1;
   },
@@ -39,14 +43,38 @@ export function writeSourceToDataset(ds: DOMStringMap, source: DaySlipLineSource
   if (source.nextActionLabel) ds.sourceLabel = source.nextActionLabel;
 }
 
+/** undefined keeps legacy lines legacy until the day is written again. */
+export function readDoneFromDataset(ds: DOMStringMap): boolean | undefined {
+  if (ds.done === "true") return true;
+  if (ds.done === "false") return false;
+  return undefined;
+}
+
+function writeDoneToDataset(ds: DOMStringMap, done: boolean | undefined): void {
+  if (done === undefined) delete ds.done;
+  else ds.done = done ? "true" : "false";
+}
+
+/** "!" marks medium priority and "!!" high; the rule lives here so node and archive agree. */
+export function daySlipLinePriority(text: string): DaySlipLinePriority | undefined {
+  const trimmed = text.trimStart();
+  if (/^!!\s*/.test(trimmed)) return "high";
+  if (/^!\s*/.test(trimmed)) return "normal";
+  return undefined;
+}
+
 export class DaySlipLineNode extends ParagraphNode {
   __lineId: string;
   __source: DaySlipLineSource | undefined;
+  __done: boolean | undefined;
+  /** Derived from the text, never serialized; kept here so updateDOM can react to it. */
+  __priority: DaySlipLinePriority | undefined;
 
-  constructor(lineId?: string, key?: NodeKey, source?: DaySlipLineSource | string) {
+  constructor(lineId?: string, key?: NodeKey, source?: DaySlipLineSource | string, done?: boolean) {
     super(key);
     this.__lineId = lineId ?? crypto.randomUUID();
     this.__source = typeof source === "string" ? { type: "task", id: source } : source;
+    this.__done = done;
   }
 
   static getType(): string {
@@ -54,7 +82,8 @@ export class DaySlipLineNode extends ParagraphNode {
   }
 
   static clone(node: DaySlipLineNode): DaySlipLineNode {
-    const clone = new DaySlipLineNode(node.__lineId, node.__key, node.__source);
+    const clone = new DaySlipLineNode(node.__lineId, node.__key, node.__source, node.__done);
+    clone.__priority = node.__priority;
     return clone;
   }
 
@@ -66,6 +95,23 @@ export class DaySlipLineNode extends ParagraphNode {
 
   getLineId(): string { return this.__lineId; }
 
+  /** undefined means "written before the state was part of the content". */
+  getDone(): boolean | undefined { return this.__done; }
+
+  setDone(done: boolean): this {
+    const self = this.getWritable();
+    self.__done = done;
+    return self;
+  }
+
+  getPriority(): DaySlipLinePriority | undefined { return this.__priority; }
+
+  setPriority(priority: DaySlipLinePriority | undefined): this {
+    const self = this.getWritable();
+    self.__priority = priority;
+    return self;
+  }
+
   setLinkedTaskId(taskId: string | undefined): this {
     const self = this.getWritable();
     self.__source = taskId ? { type: "task", id: taskId } : undefined;
@@ -76,6 +122,10 @@ export class DaySlipLineNode extends ParagraphNode {
     const dom = super.createDOM(config);
     dom.dataset.lineId = this.__lineId;
     writeSourceToDataset(dom.dataset, this.__source);
+    writeDoneToDataset(dom.dataset, this.__done);
+    // No node mutation here: exportDOM reuses createDOM inside a read-only context.
+    const priority = daySlipLinePriority(this.getTextContent());
+    if (priority) dom.dataset.priority = priority;
     return dom;
   }
 
@@ -85,6 +135,9 @@ export class DaySlipLineNode extends ParagraphNode {
       dom.dataset.lineId = this.__lineId;
     }
     writeSourceToDataset(dom.dataset, this.__source);
+    writeDoneToDataset(dom.dataset, this.__done);
+    if (this.__priority) dom.dataset.priority = this.__priority;
+    else delete dom.dataset.priority;
     return updated;
   }
 
@@ -93,13 +146,14 @@ export class DaySlipLineNode extends ParagraphNode {
       ...super.exportJSON(),
       lineId: this.__lineId,
       ...(this.__source ? { linkedSource: this.__source } : {}),
+      ...(this.__done === undefined ? {} : { done: this.__done }),
       type: "dayslip-line",
       version: 1,
     };
   }
 
   static importJSON(serializedNode: SerializedDaySlipLineNode): DaySlipLineNode {
-    const node = new DaySlipLineNode(serializedNode.lineId, undefined, serializedNode.linkedSource ?? serializedNode.linkedTaskId);
+    const node = new DaySlipLineNode(serializedNode.lineId, undefined, serializedNode.linkedSource ?? serializedNode.linkedTaskId, serializedNode.done);
     return node.updateFromJSON(serializedNode);
   }
 
@@ -108,6 +162,7 @@ export class DaySlipLineNode extends ParagraphNode {
     if (output.element instanceof HTMLElement) {
       output.element.dataset.lineId = this.__lineId;
       writeSourceToDataset(output.element.dataset, this.__source);
+      writeDoneToDataset(output.element.dataset, this.__done);
     }
     return output;
   }
@@ -121,7 +176,7 @@ export class DaySlipLineNode extends ParagraphNode {
       p: () => ({
         conversion: (domNode: Node): DOMConversionOutput | null => {
           if (!(domNode instanceof HTMLParagraphElement)) return null;
-          return { node: new DaySlipLineNode(domNode.dataset.lineId, undefined, readSourceFromDataset(domNode.dataset)) };
+          return { node: new DaySlipLineNode(domNode.dataset.lineId, undefined, readSourceFromDataset(domNode.dataset), readDoneFromDataset(domNode.dataset)) };
         },
         priority: 1,
       }),
@@ -129,8 +184,8 @@ export class DaySlipLineNode extends ParagraphNode {
   }
 }
 
-export function $createDaySlipLineNode(lineId?: string, source?: DaySlipLineSource | string): DaySlipLineNode {
-  return new DaySlipLineNode(lineId, undefined, source);
+export function $createDaySlipLineNode(lineId?: string, source?: DaySlipLineSource | string, done?: boolean): DaySlipLineNode {
+  return new DaySlipLineNode(lineId, undefined, source, done);
 }
 
 export function $isDaySlipLineNode(

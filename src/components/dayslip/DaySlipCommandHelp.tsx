@@ -1,6 +1,7 @@
 import { useState } from "react";
 import { Info } from "lucide-react";
 import { Tooltip, TooltipContent, TooltipProvider, TooltipTrigger } from "@/components/ui/tooltip";
+import { SHORTCUT_HELP } from "./daySlipShorthand";
 
 export function DaySlipCommandHelp() {
   const [open, setOpen] = useState(false);
@@ -49,6 +50,16 @@ export function DaySlipCommandHelp() {
               <dd className="mt-1.5 rounded border border-priority-high/40 bg-priority-high/10 px-3 py-2">!! Wichtig</dd>
             </div>
           </dl>
+          <div className="space-y-1.5 border-t pt-2">
+            <p className="text-[11px] font-medium uppercase tracking-wide text-muted-foreground">Kürzel in der Zeile</p>
+            {SHORTCUT_HELP.map(entry => (
+              <div key={entry.marker} className="flex items-baseline justify-between gap-2 text-xs">
+                <code className="shrink-0 rounded border bg-background px-1.5 py-0.5">{entry.marker}</code>
+                <span className="text-right text-[11px] text-muted-foreground">{entry.description}</span>
+              </div>
+            ))}
+            <p className="text-[11px] text-muted-foreground">Wirkt beim Tag abschließen und bleibt in der Zuordnung änderbar.</p>
+          </div>
           <p className="border-t pt-2 text-xs text-muted-foreground">Zeile abhaken: links an den Rand klicken oder <code>Alt+Enter</code> in der Zeile drücken.</p>
           <p className="text-xs text-muted-foreground">Text markieren, um die Formatierungsleiste zu öffnen.</p>
         </TooltipContent>
