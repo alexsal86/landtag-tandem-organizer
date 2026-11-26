@@ -1,6 +1,7 @@
 import { beforeEach, describe, expect, it, vi } from "vitest";
 const mock = vi.hoisted(() => ({
   rows: new Map<string, unknown[]>(), failedTable: "", files: [] as Array<{ name: string }>, filters: [] as Array<[string, string, unknown]>,
+  listCalls: [] as Array<[string, unknown]>,
 }));
 vi.mock("@/integrations/supabase/client", () => ({ supabase: {
   from: (table: string) => {
@@ -14,10 +15,10 @@ vi.mock("@/integrations/supabase/client", () => ({ supabase: {
     };
     return query;
   },
-  storage: { from: () => ({ list: async () => ({ data: mock.files, error: null }) }) },
+  storage: { from: () => ({ list: async (folder: string, options?: unknown) => { mock.listCalls.push([folder, options]); return { data: mock.files, error: null }; } }) },
 } }));
 import { findLegacySelftestRecords, recoverArtifacts } from "./artifacts";
-beforeEach(() => { mock.rows.clear(); mock.files = []; mock.failedTable = ""; mock.filters.length = 0; });
+beforeEach(() => { mock.rows.clear(); mock.files = []; mock.failedTable = ""; mock.filters.length = 0; mock.listCalls.length = 0; });
 describe("Aufräumen nach unterbrochenen Workflow-Schritten", () => {
   it("sucht ältere Daten ausschließlich anhand Marker, Büro und Ersteller", async () => {
     mock.rows.set("tasks", [{ id: "legacy" }]);
@@ -37,12 +38,21 @@ describe("Aufräumen nach unterbrochenen Workflow-Schritten", () => {
     mock.rows.set("tasks", [{ id: "followup" }]);
     const prefix = `letter_${"[SELFTEST] Brief (run)".replace(/[^a-zA-Z0-9]/g, "_")}_`;
     mock.files = [{ name: `${prefix}123.pdf` }, { name: "unrelated.pdf" }];
-    const result = await recoverArtifacts([{ table: "letters", id: "letter" }], []);
+    const result = await recoverArtifacts([{ table: "letters", id: "letter" }], [], "user");
     expect(result.records).toEqual(expect.arrayContaining([{ table: "documents", id: "doc" }, { table: "tasks", id: "followup" }, { table: "letter_attachments", id: "attachment" }]));
-    expect(result.storageObjects.map(o => o.path)).toContain(`archived_letters/${prefix}123.pdf`);
-    expect(result.storageObjects.map(o => o.path)).not.toContain("archived_letters/unrelated.pdf");
+    expect(mock.listCalls).toEqual([["user/archived_letters", { search: prefix, limit: 100 }]]);
+    expect(result.storageObjects.map(o => o.path)).toContain(`user/archived_letters/${prefix}123.pdf`);
+    expect(result.storageObjects.map(o => o.path)).not.toContain(`user/archived_letters/unrelated.pdf`);
     expect(mock.filters).toContainEqual(["documents", "source_letter_id", "letter"]);
     expect(mock.filters).toContainEqual(["tasks", "tenant_id", "office"]);
+  });
+  it("sucht Archivdateien nicht im falschen Ordner, wenn der Archivbesitzer fehlt", async () => {
+    mock.rows.set("letters", [{ title: "[SELFTEST] Brief (run)", subject: "[SELFTEST] Betreff (run)", tenant_id: "office" }]);
+    mock.files = [{ name: "letter_x_123.pdf" }];
+    const result = await recoverArtifacts([{ table: "letters", id: "letter" }], []);
+    expect(mock.listCalls).toHaveLength(0);
+    expect(result.storageObjects).toHaveLength(0);
+    expect(result.blocked.has("letters/letter")).toBe(true);
   });
   it("hält bei fehlgeschlagener Suche den Elternsatz für den nächsten Cleanup-Versuch fest", async () => {
     mock.failedTable = "tasks";

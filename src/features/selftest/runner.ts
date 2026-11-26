@@ -24,8 +24,8 @@ const CLEANUP_ORDER = [
   "event_planning_dates", "event_plannings", "daily_briefings",
 ] as const;
 
-export async function cleanupCreated(records: CreatedRecord[], storageObjects: StorageObject[] = [], onDiscover?: (records: CreatedRecord[], objects: StorageObject[]) => void) {
-  const recovered = await recoverArtifacts(records, storageObjects);
+export async function cleanupCreated(records: CreatedRecord[], storageObjects: StorageObject[] = [], onDiscover?: (records: CreatedRecord[], objects: StorageObject[]) => void, archiveOwner?: string) {
+  const recovered = await recoverArtifacts(records, storageObjects, archiveOwner);
   records = recovered.records;
   storageObjects = recovered.storageObjects;
   onDiscover?.(records, storageObjects);
@@ -170,7 +170,7 @@ export async function runScenario(scenario: TestScenario, options: RunOptions): 
       const result = await cleanupCreated(ctx.created, ctx.storageObjects, (records, objects) => {
         records.forEach(record => ctx.trackRecord(record));
         objects.forEach(object => ctx.trackStorage(object));
-      });
+      }, ctx.userId);
       state.cleanup = { status: result.ok && !discoveryError ? "ok" : "failed", message: [result.message, ...result.errors, discoveryError].filter(Boolean).join(" "),
         remaining: result.remaining, storageRemaining: result.storageRemaining };
     }

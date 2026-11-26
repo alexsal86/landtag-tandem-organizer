@@ -26,8 +26,10 @@ export async function findLegacySelftestRecords(tenantId: string, userId: string
 }
 
 /** Folgedaten über die aufgezeichneten Eltern finden, auch nach einem Browserabbruch.
- * Scheitert die Suche, bleibt der Elternsatz für einen späteren Versuch erhalten. */
-export async function recoverArtifacts(records: CreatedRecord[], storageObjects: StorageObject[]) {
+ * Scheitert die Suche, bleibt der Elternsatz für einen späteren Versuch erhalten.
+ * archiveOwner ist die Benutzer-ID, unter der die Archivfunktion ablegt
+ * (<userId>/archived_letters/…); ohne sie sind Archivdateien nicht auffindbar. */
+export async function recoverArtifacts(records: CreatedRecord[], storageObjects: StorageObject[], archiveOwner?: string) {
   const recovered = [...records];
   const objects = [...storageObjects];
   const blocked = new Set<string>();
@@ -66,9 +68,11 @@ export async function recoverArtifacts(records: CreatedRecord[], storageObjects:
         if (tasks.error) throw tasks.error;
         for (const task of tasks.data ?? []) add({ table: "tasks", id: task.id });
         const prefix = `letter_${letter.data.title.replace(/[^a-zA-Z0-9]/g, "_")}_`;
-        const files = await supabase.storage.from("documents").list("archived_letters", { search: prefix, limit: 100 });
+        if (!archiveOwner) throw new Error("Archivbesitzer fehlt; Archivdateien können nicht zugeordnet werden.");
+        const folder = `${archiveOwner}/archived_letters`;
+        const files = await supabase.storage.from("documents").list(folder, { search: prefix, limit: 100 });
         if (files.error) throw files.error;
-        for (const file of files.data ?? []) if (file.name.startsWith(prefix)) addFile(`archived_letters/${file.name}`);
+        for (const file of files.data ?? []) if (file.name.startsWith(prefix)) addFile(`${folder}/${file.name}`);
       }
     } catch (error) {
       blocked.add(`${record.table}/${record.id}`);

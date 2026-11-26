@@ -39,10 +39,12 @@ export const letterLifecycleScenario: TestScenario = {
     for (const task of tasks.data ?? []) ctx.trackRecord({ table: "tasks", id: task.id });
     // Auch Uploads vor einem fehlgeschlagenen Dokument-INSERT finden.
     const prefix = `letter_${tag(ctx.runId, "Brief").replace(/[^a-zA-Z0-9]/g, "_")}_`;
-    const files = await supabase.storage.from("documents").list("archived_letters", { search: prefix, limit: 100 });
+    // Die Archivfunktion legt unter <userId>/archived_letters/ ab.
+    const folder = `${ctx.userId}/archived_letters`;
+    const files = await supabase.storage.from("documents").list(folder, { search: prefix, limit: 100 });
     if (files.error) throw new Error(files.error.message);
     for (const file of files.data ?? []) {
-      if (file.name.startsWith(prefix)) ctx.trackStorage({ bucket: "documents", path: `archived_letters/${file.name}` });
+      if (file.name.startsWith(prefix)) ctx.trackStorage({ bucket: "documents", path: `${folder}/${file.name}` });
     }
   },
   steps: [

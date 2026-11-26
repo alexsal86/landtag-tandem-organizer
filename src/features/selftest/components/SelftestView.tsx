@@ -131,7 +131,7 @@ export function SelftestView() {
         const result = await cleanupCreated(run.cleanup.remaining ?? run.records, run.cleanup.storageRemaining ?? run.storageObjects, (records, storageObjects) => {
           run = { ...run, records, storageObjects, cleanup: { ...run.cleanup, remaining: records, storageRemaining: storageObjects } };
           if (!saveReport(run)) setStorageFailed(true);
-        });
+        }, run.userId);
         const updated: RunReport = { ...run, links: [], status: run.status === "running" ? "cancelled" : run.status,
           finishedAt: run.finishedAt ?? Date.now(), cleanup: { status: result.ok ? "ok" : "failed", message: [result.message, ...result.errors].join(" "), remaining: result.remaining, storageRemaining: result.storageRemaining } };
         if (!saveReport(updated)) setStorageFailed(true);
