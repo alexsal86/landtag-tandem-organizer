@@ -120,6 +120,16 @@ describe("active tenant transport boundary", () => {
     expect(send).toHaveBeenCalled();
   });
 
+  it("lets the poll availability check reach the server-side tenant guard", async () => {
+    setActiveTenantScope(scope);
+    const send = vi.fn<typeof fetch>().mockResolvedValue(json([]));
+    const response = await createTenantScopeFetch(base, send)(`${base}/rest/v1/rpc/get_poll_availability`, {
+      method: "POST", body: JSON.stringify({ _tenant_id: "tenant-b", _emails: ["a@example.test"] }),
+    });
+    expect(response.status).toBe(200);
+    expect(send).toHaveBeenCalled();
+  });
+
   it("leaves membership discovery available before selecting a tenant", async () => {
     setActiveTenantScope(scope);
     const send = vi.fn<typeof fetch>().mockResolvedValue(json([]));
