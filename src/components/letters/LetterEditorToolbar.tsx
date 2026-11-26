@@ -1,6 +1,6 @@
 import React from 'react';
 import { Tooltip, TooltipContent, TooltipProvider, TooltipTrigger } from '@/components/ui/tooltip';
-import { Save, Users, Eye, AlertTriangle, FileText, MessageSquare, Paperclip, Settings, Layout, Building, Info, ZoomIn, ZoomOut, RotateCcw } from 'lucide-react';
+import { Save, Users, Eye, AlertTriangle, FileText, MessageSquare, Paperclip, Settings, Layout, Building, Info, ZoomIn, ZoomOut, RotateCcw, UserPlus } from 'lucide-react';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
 import { Textarea } from '@/components/ui/textarea';
@@ -29,6 +29,10 @@ interface LetterEditorToolbarProps {
   activeUsers: string[];
   showDINPreview: boolean;
   setShowDINPreview: (v: boolean) => void;
+  onManageCollaborators?: () => void;
+  viewMode: 'page' | 'split';
+  onViewModeChange: (mode: 'page' | 'split') => void;
+  onSave: () => void;
   zoom: number;
   onZoomChange: (zoom: number) => void;
   showBriefDetails: boolean;
@@ -50,6 +54,7 @@ export const LetterEditorToolbar: React.FC<LetterEditorToolbarProps> = React.mem
   saving, lastSaved, hasUnsavedChanges, activeUsers,
   showDINPreview, setShowDINPreview, showBriefDetails, setShowBriefDetails,
   showPagination, setShowPagination, zoom, onZoomChange,
+  onManageCollaborators, viewMode, onViewModeChange, onSave,
   attachments, fetchAttachments, senderInfos, informationBlocks, templates,
   computedSalutation, onTemplateChange, onAutoSaveSchedule,
 }) => {
@@ -76,9 +81,16 @@ export const LetterEditorToolbar: React.FC<LetterEditorToolbarProps> = React.mem
             </Badge>
           )}
 
-          <Button variant={showDINPreview ? 'default' : 'outline'} size="sm" onClick={() => setShowDINPreview(!showDINPreview)}>
-            <Eye className="h-4 w-4 mr-2" />Druckvorschau
-          </Button>
+          <div className="flex flex-wrap items-center gap-2">
+            <Button variant={showDINPreview ? 'default' : 'outline'} size="sm" onClick={() => setShowDINPreview(!showDINPreview)}>
+              <Eye className="h-4 w-4 mr-2" />Druckvorschau
+            </Button>
+            {onManageCollaborators && (
+              <Button variant="outline" size="sm" onClick={onManageCollaborators}>
+                <UserPlus className="h-4 w-4 mr-2" />Mitbearbeiter
+              </Button>
+            )}
+          </div>
           <Button variant={showBriefDetails ? 'default' : 'outline'} size="sm" onClick={() => setShowBriefDetails(!showBriefDetails)}>
             <FileText className="h-4 w-4 mr-2" />Briefdetails
           </Button>
@@ -238,6 +250,15 @@ export const LetterEditorToolbar: React.FC<LetterEditorToolbarProps> = React.mem
             </DropdownMenuContent>
           </DropdownMenu>
 
+          {!showDINPreview && (
+            <div className="inline-flex rounded-md border bg-background p-0.5" role="group" aria-label="Ansicht">
+              <Button size="sm" variant={viewMode === 'page' ? 'default' : 'ghost'} className="h-7 px-3"
+                aria-pressed={viewMode === 'page'} onClick={() => onViewModeChange('page')}>Auf der Seite schreiben</Button>
+              <Button size="sm" variant={viewMode === 'split' ? 'default' : 'ghost'} className="h-7 px-3"
+                aria-pressed={viewMode === 'split'} onClick={() => onViewModeChange('split')}>Geteilte Ansicht</Button>
+            </div>
+          )}
+
           <div className="flex items-center gap-1" role="group" aria-label="Zoom">
             <Button variant="outline" size="icon" aria-label="Verkleinern"
               onClick={() => onZoomChange(Math.max(0.3, zoom - 0.1))}>
@@ -254,10 +275,14 @@ export const LetterEditorToolbar: React.FC<LetterEditorToolbarProps> = React.mem
             </Button>
           </div>
 
-          {/* Workflow Buttons */}
-          <Button variant="outline" size="sm" onClick={() => {}}>
-            <MessageSquare className="h-4 w-4 mr-2" />Kommentare
-          </Button>
+          <div className="flex items-center gap-2">
+            <Button variant="outline" size="sm" onClick={() => {}}>
+              <MessageSquare className="h-4 w-4 mr-2" />Kommentare
+            </Button>
+            <Button variant="default" size="sm" disabled={!canEdit || saving} onClick={onSave}>
+              <Save className="h-4 w-4 mr-2" />Speichern
+            </Button>
+          </div>
         </div>
       </div>
     </div>

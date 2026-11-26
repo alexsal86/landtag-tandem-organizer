@@ -1,5 +1,5 @@
 import React, { useState, useEffect, useRef, useCallback, useMemo } from 'react';
-import { Save, X, Users, UserPlus, Eye, EyeOff, AlertTriangle, Edit3, FileText, MessageSquare, Ruler, Paperclip, Settings, Layout, Building, Info } from 'lucide-react';
+import { X, Users, Eye, EyeOff, AlertTriangle, Edit3, FileText, MessageSquare, Ruler, Paperclip, Settings, Layout, Building, Info } from 'lucide-react';
 import { Button } from '@/components/ui/button';
 import { Badge } from '@/components/ui/badge';
 import EnhancedLexicalEditor from '@/components/lexical/EnhancedLexicalEditor';
@@ -304,6 +304,16 @@ const LetterEditor: React.FC<LetterEditorProps> = ({ letter, isOpen, onClose, on
         activeUsers={activeUsers}
         showDINPreview={showDINPreview}
         setShowDINPreview={setShowDINPreview}
+        onManageCollaborators={canEdit && currentStatus === 'draft' && letter?.id ? () => setShowWriterDialog(true) : undefined}
+        viewMode={viewMode}
+        onViewModeChange={(mode) => {
+          if (mode === 'page') setShowTextSplitEditor(true);
+          setViewMode(mode);
+        }}
+        onSave={() => void handleManualSave(
+          latestContentRef.current.content,
+          toSerializedContentNodes(latestContentRef.current.contentNodes ?? undefined),
+        )}
         zoom={previewZoom}
         onZoomChange={setPreviewZoom}
         showBriefDetails={showBriefDetails}
@@ -326,15 +336,6 @@ const LetterEditor: React.FC<LetterEditorProps> = ({ letter, isOpen, onClose, on
       {!canEdit && editedLetter.status === 'sent' && (
         <div className="bg-muted p-3 rounded-lg flex items-center gap-2 text-sm mt-3 mx-4">
           <EyeOff className="h-4 w-4" />Dieser Brief ist versendet und kann nicht mehr bearbeitet werden.
-        </div>
-      )}
-
-      {/* Co-Author button bar */}
-      {canEdit && currentStatus === 'draft' && letter?.id && (
-        <div className="flex items-center gap-2 px-4 py-1.5 border-b bg-muted/20">
-          <Button variant="ghost" size="sm" className="h-7 text-xs" onClick={() => setShowWriterDialog(true)}>
-            <UserPlus className="h-3.5 w-3.5 mr-1" />Mitbearbeiter
-          </Button>
         </div>
       )}
 
@@ -377,10 +378,6 @@ const LetterEditor: React.FC<LetterEditorProps> = ({ letter, isOpen, onClose, on
                   <Edit3 className="h-4 w-4 text-muted-foreground" /><h3 className="text-sm font-medium">Brieftext</h3>
                   <Badge variant="secondary" className="text-[10px] px-1.5 py-0">Live</Badge>
                 </div>
-                <Button size="sm" variant="default" className="h-7 px-2" disabled={!canEdit || saving}
-                  onClick={() => handleManualSave(latestContentRef.current.content, toSerializedContentNodes(latestContentRef.current.contentNodes ?? undefined))}>
-                  <Save className="h-3.5 w-3.5 mr-1" />Speichern
-                </Button>
                 <Button size="sm" variant="ghost" className="h-7 px-2" onClick={() => setShowTextSplitEditor(false)}><X className="h-3.5 w-3.5" /></Button>
               </div>
               <div className="p-3">
@@ -392,20 +389,6 @@ const LetterEditor: React.FC<LetterEditorProps> = ({ letter, isOpen, onClose, on
             </div>
           )}
           <div className="flex-1 min-w-0 bg-muted/30 p-4">
-            <div className="flex flex-wrap items-center gap-2 mb-3">
-              <div className="inline-flex rounded-md border bg-background p-0.5" role="group" aria-label="Ansicht">
-                <Button size="sm" variant={viewMode === 'page' ? 'default' : 'ghost'} className="h-7 px-3"
-                  onClick={() => { setShowTextSplitEditor(true); setViewMode('page'); }}>Auf der Seite schreiben</Button>
-                <Button size="sm" variant={viewMode === 'split' ? 'default' : 'ghost'} className="h-7 px-3"
-                  onClick={() => setViewMode('split')}>Geteilte Ansicht</Button>
-              </div>
-              {viewMode === 'page' && (
-                <Button size="sm" variant="default" className="h-7 px-2 ml-auto" disabled={!canEdit || saving}
-                  onClick={() => handleManualSave(latestContentRef.current.content, toSerializedContentNodes(latestContentRef.current.contentNodes ?? undefined))}>
-                  <Save className="h-3.5 w-3.5 mr-1" />Speichern
-                </Button>
-              )}
-            </div>
             {viewMode === 'page' && canEdit && <div ref={pageToolbarRef} className="sticky top-0 z-sticky mb-3 rounded-md border bg-background shadow-sm" />}
             {viewMode === 'split' && !showTextSplitEditor && (
               <div className="flex flex-wrap items-center gap-2 mb-3">
