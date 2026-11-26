@@ -11,6 +11,8 @@ const DaySlipLayoutContext = createContext<{
   docked: boolean;
   desktop: boolean;
   width: number;
+  /** Platz, den der angedockte Tageszettel dem Inhalt rechts wegnimmt. */
+  reservedWidth: number;
   host: HTMLDivElement | null;
   setDocked: (docked: boolean) => void;
   setWidth: (width: number) => void;
@@ -31,6 +33,7 @@ export function DaySlipLayout({ children }: { children: ReactNode }) {
   const [visible, setVisible] = useState(false);
   const [host, setHost] = useState<HTMLDivElement | null>(null);
   const docked = preferredDocked && desktop;
+  const reservedWidth = docked && visible ? width : 0;
 
   useEffect(() => {
     const resize = () => {
@@ -48,10 +51,10 @@ export function DaySlipLayout({ children }: { children: ReactNode }) {
   }, [preferredWidth]);
 
   return (
-    <DaySlipLayoutContext.Provider value={{ docked, desktop, width, host, setDocked, setWidth: value => updateWidth(clampWidth(value)), setVisible }}>
+    <DaySlipLayoutContext.Provider value={{ docked, desktop, width, reservedWidth, host, setDocked, setWidth: value => updateWidth(clampWidth(value)), setVisible }}>
       <div className="flex min-h-app w-full">
         <div className="min-w-0 flex-1">{children}</div>
-        <div ref={setHost} style={{ width: docked && visible ? width : 0 }} className="sticky top-0 h-app shrink-0" />
+        <div ref={setHost} style={{ width: reservedWidth }} className="sticky top-0 h-app shrink-0" />
       </div>
     </DaySlipLayoutContext.Provider>
   );

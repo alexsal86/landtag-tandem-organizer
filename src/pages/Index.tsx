@@ -6,6 +6,7 @@ import { useTenant } from "@/hooks/useTenant";
 import { AppNavigation, getNavigationGroups } from "@/components/navigation/AppNavigation";
 import { prefetchRoute } from "@/lib/routePrefetch";
 import { useNavWidth } from "@/hooks/useNavWidth";
+import { useDaySlipLayout } from "@/components/dayslip/DaySlipLayout";
 
 const NewsPage = lazyWithRetry(() => import("@/pages/NewsPage"));
 
@@ -58,6 +59,8 @@ const NotFound = lazyWithRetry(() => import("./NotFound"));
 
 const Index = (): React.JSX.Element => {
   const { width: navWidth, isResizing, startResize } = useNavWidth();
+  // Der angedockte Tageszettel nimmt rechts Platz weg, statt den Inhalt zu überdecken.
+  const daySlipReservedWidth = useDaySlipLayout()?.reservedWidth ?? 0;
   const { user, loading: authLoading } = useAuth();
   const { loading: tenantLoading } = useTenant();
   const navigate = useNavigate();
@@ -279,7 +282,10 @@ const Index = (): React.JSX.Element => {
         Zum Hauptinhalt springen
       </a>
       
-      <div className={cn("fixed inset-0 flex h-app w-full bg-background overflow-hidden", isResizing && "select-none")}>
+      <div
+        className={cn("fixed inset-0 flex h-app w-full bg-background overflow-hidden", isResizing && "select-none")}
+        style={daySlipReservedWidth > 0 ? { right: daySlipReservedWidth } : undefined}
+      >
         <div className="hidden md:flex sticky top-0 h-app z-30" style={{ width: navWidth }}>
           <AppNavigation 
             activeSection={activeSection} 
