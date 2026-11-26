@@ -110,6 +110,16 @@ describe("active tenant transport boundary", () => {
     expect(send).not.toHaveBeenCalled();
   });
 
+  it("lets read-only RPCs probe another tenant", async () => {
+    setActiveTenantScope(scope);
+    const send = vi.fn<typeof fetch>().mockResolvedValue(json([]));
+    const response = await createTenantScopeFetch(base, send)(`${base}/rest/v1/rpc/read_secured_contacts`, {
+      method: "POST", body: JSON.stringify({ _tenant_id: "tenant-b", _ids: [] }),
+    });
+    expect(response.status).toBe(200);
+    expect(send).toHaveBeenCalled();
+  });
+
   it("leaves membership discovery available before selecting a tenant", async () => {
     setActiveTenantScope(scope);
     const send = vi.fn<typeof fetch>().mockResolvedValue(json([]));

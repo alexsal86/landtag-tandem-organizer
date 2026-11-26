@@ -79,6 +79,18 @@ export function scopeTenantUrl(url: URL, table: string, scope: ActiveTenantScope
   throw conflict();
 }
 
+/**
+ * Lesefunktionen, deren Mandantenargument nur ein Filter ist: RLS und die
+ * Funktionen selbst liefern für fremde Büros keine Zeilen. Der Selbsttest
+ * prüft genau diese Trennung am Server und darf dafür nicht am Client-Guard
+ * scheitern. Schreibende RPCs bleiben unverändert fail-closed.
+ */
+const READ_ONLY_TENANT_RPCS = new Set([
+  "knowledge_qa_list",
+  "read_secured_contacts",
+  "read_secured_letters",
+]);
+
 function validateTenantArguments(payload: Record<string, unknown>, scope: ActiveTenantScope): void {
   for (const key of TENANT_ARGUMENTS) {
     const value = payload[key];
@@ -95,7 +107,9 @@ export function scopeTenantPayload(
 ): unknown {
   if (!scope || !payload || typeof payload !== "object") return payload;
   if (!isTenantScopedTable(table)) {
-    if (table.startsWith("rpc/")) validateTenantArguments(payload as Record<string, unknown>, scope);
+    if (table.startsWith("rpc/") && !READ_ONLY_TENANT_RPCS.has(table.slice("rpc/".length))) {
+      validateTenantArguments(payload as Record<string, unknown>, scope);
+    }
     return payload;
   }
 

@@ -212,6 +212,8 @@ export const topicLinkingScenario: TestScenario = {
       id: "case-item-link", label: "Vorgang mit Thema verknüpfen und Duplikate sperren", critical: true,
       run: async ctx => {
         const topicId = ctx.data.topicId as string;
+        // Seit 20261126120000 ist der JSON-Spiegel stillgelegt: intake_payload legt
+        // keine Themen mehr an, damit spätere Payload-Updates sie nicht löschen.
         const item = await supabase.from("case_items").insert({
           subject: tag(ctx.runId, "Themenvorgang"), summary: SELFTEST_MARKER,
           user_id: ctx.userId, tenant_id: ctx.tenantId,
@@ -222,45 +224,40 @@ export const topicLinkingScenario: TestScenario = {
         }
         ctx.trackRecord({ table: "case_items", id: item.data.id });
         ctx.data.caseItemId = item.data.id;
-        const links = await supabase.from("case_item_topics")
-          .select("tenant_id,topic_id,created_by").eq("case_item_id", item.data.id);
+
+        const fromPayload = await supabase.from("case_item_topics")
+          .select("topic_id").eq("case_item_id", item.data.id);
+        const direct = await supabase.from("case_item_topics")
+          .insert({ case_item_id: item.data.id, topic_id: topicId, tenant_id: ctx.tenantId, created_by: ctx.userId })
+          .select("tenant_id,created_by,topic_id").single();
         const duplicate = await supabase.from("case_item_topics")
           .insert({ case_item_id: item.data.id, topic_id: topicId, tenant_id: ctx.tenantId });
+        const foreignTenant = await supabase.from("case_item_topics")
+          .insert({ case_item_id: item.data.id, topic_id: topicId, tenant_id: crypto.randomUUID(), created_by: ctx.userId });
         const cleared = await supabase.from("case_items")
           .update({ intake_payload: { topic_ids: [] } }).eq("id", item.data.id);
         const afterClear = await supabase.from("case_item_topics")
           .select("topic_id").eq("case_item_id", item.data.id);
-        const reassigned = await supabase.from("case_items")
-          .update({ intake_payload: { topic_ids: [topicId] } }).eq("id", item.data.id);
-        const afterSet = await supabase.from("case_item_topics")
+        const removed = await supabase.from("case_item_topics").delete()
+          .eq("case_item_id", item.data.id).eq("topic_id", topicId);
+        const afterDelete = await supabase.from("case_item_topics")
           .select("topic_id").eq("case_item_id", item.data.id);
 
-        const plain = await supabase.from("case_items").insert({
-          subject: tag(ctx.runId, "Themenvorgang direkt"), summary: SELFTEST_MARKER,
-          user_id: ctx.userId, tenant_id: ctx.tenantId,
-        }).select("id").single();
-        if (plain.error || !plain.data) {
-          return { ok: false, message: `Zweiten Vorgang anlegen: ${describeError(plain.error)}` };
-        }
-        ctx.trackRecord({ table: "case_items", id: plain.data.id });
-        // tenant_id wird bewusst falsch mitgeschickt: Der Trigger setzt es aus dem Vorgang.
-        const direct = await supabase.from("case_item_topics")
-          .insert({ case_item_id: plain.data.id, topic_id: topicId, tenant_id: "00000000-0000-4000-8000-000000000000" });
-        const directRow = await supabase.from("case_item_topics")
-          .select("tenant_id,created_by,topic_id").eq("case_item_id", plain.data.id).maybeSingle();
-
         const checks = {
-          linked: !links.error && links.data?.length === 1 && links.data?.[0].tenant_id === ctx.tenantId
-            && links.data?.[0].topic_id === topicId && links.data?.[0].created_by === ctx.userId,
+          payloadLegtNichtsAn: !fromPayload.error && fromPayload.data?.length === 0,
+          linked: !direct.error && direct.data?.tenant_id === ctx.tenantId
+            && direct.data?.topic_id === topicId && direct.data?.created_by === ctx.userId,
           duplicateBlocked: duplicate.error?.code === "23505",
-          removedWithPayload: !cleared.error && !afterClear.error && afterClear.data?.length === 0,
-          setAgain: !reassigned.error && !afterSet.error && afterSet.data?.length === 1,
-          tenantFilled: !direct.error && directRow.data?.tenant_id === ctx.tenantId
-            && directRow.data?.created_by === ctx.userId && directRow.data?.topic_id === topicId,
+          fremderMandantGesperrt: Boolean(foreignTenant.error),
+          payloadUpdateLaesstThemenStehen: !cleared.error && !afterClear.error && afterClear.data?.length === 1,
+          removed: !removed.error && !afterDelete.error && afterDelete.data?.length === 0,
         };
+        const failed = Object.entries(checks).filter(([, ok]) => !ok).map(([name]) => name);
         return {
-          ok: Object.values(checks).every(Boolean),
-          message: "Die Verknüpfung folgt dem Payload und dem Trigger; Duplikate und fremde Mandanten sind gesperrt.",
+          ok: failed.length === 0,
+          message: failed.length === 0
+            ? "Die Verknüpfung folgt dem direkten Schreibpfad; Payload-Updates lassen Themen stehen, Duplikate und fremde Mandanten sind gesperrt."
+            : `Fehlgeschlagen: ${failed.join(", ")}`,
           details: checks,
         };
       },
