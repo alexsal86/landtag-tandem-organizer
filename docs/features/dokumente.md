@@ -628,7 +628,7 @@ Führt Briefe durch Entwurf, Prüfung, Freigabe und Versand, protokolliert Statu
 - Keine.
 
 ### `letters.archive` — Brief archivieren und Folgeaufgabe anlegen
-Erzeugt beim Versand ein PDF-Archivdokument, verknüpft es und sichert die Folgeaufgabe: Meldet die Archivfunktion keine Aufgaben-ID, ermittelt oder erzeugt das RPC create_letter_archive_follow_up_task die kanonische Aufgabe des Briefes.
+Erzeugt beim Versand ein PDF-Archivdokument, verknüpft es und sichert die Folgeaufgabe: Die Archivfunktion legt keine eigene Aufgabe mehr an, sondern ermittelt die des Briefes über das RPC create_letter_archive_follow_up_task, das sie nur anlegt, wenn keine existiert.
 
 - **Kategorie:** automatisiert
 - **Implementierung:** implementiert
@@ -658,7 +658,7 @@ Erzeugt beim Versand ein PDF-Archivdokument, verknüpft es und sichert die Folge
 
 **Bekannte Einschränkungen**
 
-- Die Folgeaufgabe entsteht serverseitig beim Wechsel auf sent (Trigger trigger_letter_followup_task). Legt die eingesetzte Archivfunktion zusätzlich eine eigene Aufgabe an und scheitert dabei, bleibt das ohne Wirkung; der Client zieht die vorhandene Aufgabe über create_letter_archive_follow_up_task nach, das je Brief idempotent ist und ausschließlich die Kategorie abgeordnetenbrief schreibt.
+- Die Folgeaufgabe hat genau einen Erzeuger: den Trigger trigger_letter_followup_task beim Wechsel auf sent. Die Archivfunktion erzeugt keine zweite Aufgabe, sondern liefert die bestehende ID über create_letter_archive_follow_up_task; ein Fehler dabei wird als followUpTaskError gemeldet, ohne den abgeschlossenen Versand abzubrechen. Der Client zieht die Aufgabe nur nach, wenn die Funktion keine ID liefert.
 
 **Offene Prüfpunkte**
 

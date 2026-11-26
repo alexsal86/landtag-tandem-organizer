@@ -1,9 +1,14 @@
-// Isolated PostgreSQL check for the follow-up task archive-letter creates.
-// The edge function writes tasks.category, and tasks_category_check accepts only a
-// closed, case-sensitive list. A capitalised literal made the task insert fail with
-// 23514, so the letter selftest never saw its follow-up task. This check reads the
-// literals from the function and the allowed list from the migration, so drift on
-// either side fails here instead of in the Selbsttest-Center.
+// Isolated PostgreSQL check for the follow-up task created for an archived letter.
+//
+// Die Folgeaufgabe hat genau einen Erzeuger: den Trigger trigger_letter_followup_task.
+// Die Edge Function archive-letter legt keine eigene Aufgabe mehr an, sondern
+// ermittelt die bestehende über das RPC create_letter_archive_follow_up_task.
+// Dieses RPC schreibt tasks.category; tasks_category_check akzeptiert nur eine
+// geschlossene, kleingeschriebene Liste. Eine großgeschriebene Kategorie ließ die
+// Einfügung mit 23514 scheitern, weshalb der Brief-Selbsttest seine Folgeaufgabe
+// nie sah. Dieser Check liest die Kategorie aus der RPC-Migration und die
+// erlaubte Liste aus der Constraint-Migration; zusätzlich stellt er sicher, dass
+// die Edge Function weder eine Aufgabe einfügt noch eine Kategorie schreibt.
 import assert from 'node:assert/strict';
 import { readFile } from 'node:fs/promises';
 import { PGlite } from '../tests/database/node_modules/@electric-sql/pglite/dist/index.js';
@@ -20,12 +25,27 @@ try {
 
   await db.exec(`CREATE TABLE tasks(id uuid PRIMARY KEY DEFAULT gen_random_uuid(), title text, category text, ${rule})`);
 
-  const source = await read('../supabase/functions/archive-letter/index.ts');
-  const literals = [...source.matchAll(/category:\s*'([^']+)'/g)].map(match => match[1]);
-  assert.ok(literals.length > 0, 'archive-letter schreibt mindestens eine Kategorie');
-
+  // Die Aufgabe entsteht nur noch in der Datenbankfunktion.
+  const rpcMigration = await read('../supabase/migrations/20261127200000_letter_archive_follow_up_task.sql');
+  const insert = /INSERT INTO public\.tasks[\s\S]*?VALUES \(([\s\S]*?)\)\s*RETURNING/i.exec(rpcMigration)?.[1];
+  assert.ok(insert, 'create_letter_archive_follow_up_task fügt die Aufgabe selbst ein');
+  const literals = [...insert.matchAll(/'([^']+)'/g)].map(match => match[1]);
   const taskCategory = literals.find(value => /brief/i.test(value));
-  assert.ok(taskCategory, 'Die Folgeaufgabe aus archive-letter trägt eine Briefkategorie');
+  assert.ok(taskCategory, 'Die Folgeaufgabe trägt eine Briefkategorie');
+
+  const source = await read('../supabase/functions/archive-letter/index.ts');
+  assert.ok(
+    source.includes('create_letter_archive_follow_up_task'),
+    'archive-letter ermittelt die Folgeaufgabe über create_letter_archive_follow_up_task',
+  );
+  assert.equal(
+    /from\('tasks'\)/.test(source), false,
+    'archive-letter legt keine eigene Aufgabe mehr an (genau ein Erzeuger)',
+  );
+  assert.equal(
+    /category:\s*'/.test(source), false,
+    'archive-letter schreibt keine Aufgabenkategorie mehr',
+  );
 
   for (const value of [taskCategory]) {
     await db.query('INSERT INTO tasks(title, category) VALUES($1, $2)', ['Abgeordnetenbrief vom 26.11.2026', value]);
@@ -40,7 +60,7 @@ try {
     'Die großgeschriebene Kategorie verletzt tasks_category_check weiterhin',
   );
 
-  console.log(`archive-letter task passed: category "${taskCategory}" ist in tasks_category_check erlaubt (${allowed.join(', ')}); Großschreibung wird mit 23514 abgewiesen.`);
+  console.log(`archive-letter task passed: genau ein Erzeuger, Kategorie "${taskCategory}" ist in tasks_category_check erlaubt (${allowed.join(', ')}); Großschreibung wird mit 23514 abgewiesen.`);
 } catch (error) {
   console.error('FAILED:', error.code ?? '', error.message);
   process.exitCode = 1;

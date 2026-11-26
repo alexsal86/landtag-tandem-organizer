@@ -231,61 +231,24 @@ serve(withSafeHandler("archive-letter", async (req) => {
 
     console.log('Letter archived successfully');
 
-    // Create follow-up task for letter response
+    // Genau ein Erzeuger: Der Trigger trigger_letter_followup_task legt die
+    // Folgeaufgabe beim Wechsel auf `sent` an. Diese Funktion erzeugt keine
+    // eigene Aufgabe mehr, sondern holt die bestehende über das RPC; das RPC
+    // legt nur dann eine an, wenn keine existiert, und ist je Brief idempotent.
+    // Der Aufruf läuft mit dem Benutzer-Token, damit Anmeldung, Mandant und
+    // Briefzugriff serverseitig geprüft werden.
     let followUpTaskId: string | null = null;
+    let followUpTaskError: string | null = null;
+    const { data: followUpTask, error: followUpTaskFailure } = await reader
+      .rpc('create_letter_archive_follow_up_task', { _letter_id: letterId });
 
-    try {
-      console.log('Creating follow-up task for letter:', letter.title);
-
-      // Calculate due date based on template response time
-      const responseTimeDays = template?.response_time_days || 21; // Default 21 days
-      const sentDate = new Date(archiveTimestamp);
-      const dueDate = letter.expected_response_date ? new Date(letter.expected_response_date) : new Date(sentDate);
-      if (!letter.expected_response_date) {
-        dueDate.setDate(sentDate.getDate() + responseTimeDays);
-      }
-
-      // Format task title: "Abgeordnetenbrief "Betreff des Briefs" vom "Tag des Versands"
-      const formattedSentDate = sentDate.toLocaleDateString('de-DE');
-      const taskTitle = `Abgeordnetenbrief "${letter.subject || letter.title}" vom ${formattedSentDate}`;
-
-      // Create task description from first 300 characters of letter content
-      let taskDescription = '';
-      const contentText = letter.content_html ? convertHtmlToText(letter.content_html) : letter.content || '';
-      if (contentText.length > 300) {
-        taskDescription = contentText.substring(0, 300) + '...';
-      } else {
-        taskDescription = contentText;
-      }
-
-      // Create the follow-up task
-      const { data: taskData, error: taskError } = await supabase
-        .from('tasks')
-        .insert({
-          user_id: archivalUserId,
-          tenant_id: letter.tenant_id,
-          title: taskTitle,
-          description: taskDescription,
-          due_date: dueDate.toISOString(),
-          priority: 'medium',
-          status: 'todo',
-          // tasks_category_check erlaubt nur den kleingeschriebenen Wert.
-          category: 'abgeordnetenbrief',
-          assigned_to: null // Assigned to the creator (user_id)
-        })
-        .select()
-        .single();
-
-      if (taskError) {
-        console.error('Error creating follow-up task:', taskError);
-        // Don't fail the entire process if task creation fails
-      } else {
-        console.log('Follow-up task created successfully:', taskData.id);
-        followUpTaskId = taskData.id;
-      }
-    } catch (error) {
-      console.error('Error in task creation process:', error);
-      // Don't fail the entire process if task creation fails
+    if (followUpTaskFailure) {
+      // Der Versand ist abgeschlossen; der Befund wird gemeldet, nicht verschluckt.
+      console.error('Error resolving follow-up task:', followUpTaskFailure);
+      followUpTaskError = followUpTaskFailure.message;
+    } else {
+      followUpTaskId = typeof followUpTask === 'string' ? followUpTask : null;
+      console.log('Follow-up task resolved:', followUpTaskId);
     }
 
     return new Response(
@@ -295,6 +258,7 @@ serve(withSafeHandler("archive-letter", async (req) => {
         archivedAt: archiveTimestamp,
         archivedBy: archivalUserId,
         followUpTaskId,
+        followUpTaskError,
         archivedAttachments: archivedAttachmentIds.length
       }),
       { headers: { ...corsHeaders, 'Content-Type': 'application/json' } }
