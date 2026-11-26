@@ -20,8 +20,8 @@ _Auto-generiert mit `npm run update:feature-catalog` aus dem zentralen Funktions
 | `contacts.fundings` Finanzierungen und Beteiligungen | Beziehungen | fachlich | implementiert | UI | Selbsttest |
 | `contacts.activities` Kontaktaktivitäten und Anrufe | Beziehungen | fachlich | implementiert | UI | Selbsttest |
 | `contacts.privacy` Kontakt-Datenschutz und Aufbewahrung | Datenschutz | sicherheit | implementiert | UI | Selbsttest |
-| `contacts.import` Kontakte importieren | Import | fachlich | implementiert | UI | teilweise |
-| `contacts.stakeholders` Stakeholder-Netzwerk | Netzwerk | fachlich | implementiert | UI | teilweise |
+| `contacts.import` Kontakte importieren | Import | fachlich | implementiert | UI | Selbsttest |
+| `contacts.stakeholders` Stakeholder-Netzwerk | Netzwerk | fachlich | implementiert | UI | Selbsttest |
 | `contacts.duplicates` Dubletten finden | Qualität | fachlich | implementiert | rollenabhängig | Selbsttest |
 | `contacts.merge` Kontakte zusammenführen | Qualität | fachlich | implementiert | rollenabhängig | Selbsttest |
 | `contacts.create` Kontakt anlegen | Stammdaten | fachlich | implementiert | rollenabhängig | Selbsttest |
@@ -48,14 +48,14 @@ _Auto-generiert mit `npm run update:feature-catalog` aus dem zentralen Funktions
 
 ## Datenbanktabellen
 
-`audit_log_entries`, `bulk_action_audit`, `call_logs`, `contact_activities`, `contact_briefing_memory`, `contact_topics`, `contacts`, `distribution_list_members`, `distribution_lists`, `document_contacts`, `expense_budgets`, `field_permissions`, `funding_participants`, `fundings`, `map_flag_topics`, `map_flag_types`, `map_flags`, `map_layers`, `party_associations`, `regions`, `topics`
+`audit_log_entries`, `bulk_action_audit`, `call_logs`, `contact_activities`, `contact_briefing_memory`, `contact_topics`, `contacts`, `distribution_list_members`, `distribution_lists`, `document_contacts`, `expense_budgets`, `field_permissions`, `funding_participants`, `fundings`, `gdpr_requests`, `map_flag_topics`, `map_flag_types`, `map_flags`, `map_layers`, `party_associations`, `regions`, `topics`
 
 ## Selbsttest-Szenarien
 
 | Szenario | Titel | deklarierte Tabellen | deklarierte Prüfungen | letzter Lauf |
 |---|---|---:|---:|---|
 | `contact-lifecycle` | Kontakt-Lifecycle (Anlegen → Kategorie/Tags → Aktivität → Suche) | 3 | 0 | — |
-| `contact-relations` | Kontakt-Beziehungen (Datenschutz → Themen → Duplikate → Sammelaktion → Verteiler → Wissen → Förderungen) | 10 | 15 | — |
+| `contact-relations` | Kontakt-Beziehungen (Datenschutz → Themen → Duplikate → Sammelaktion → Verteiler → Wissen → Förderungen) | 13 | 20 | — |
 
 ## Selbsttest-Schritte
 
@@ -73,12 +73,16 @@ Diese Schritte führen die Szenarien aus; „letzter Lauf“ stammt aus `src/fea
 | `contact-relations` | `setup` | Ausgangskontakt für die Beziehungsprüfungen anlegen | db | — |
 | `contact-relations` | `retention-defaults` | Aufbewahrungsfristen werden beim Anlegen aus der Kategorie gesetzt | db | — |
 | `contact-relations` | `retention-rules` | Aufbewahrungsregeln rechnen und prüfen | logic | — |
-| `contact-relations` | `import-mapping` | Import ordnet Spalten zu, zerlegt Verteiler und erkennt Dubletten | logic | — |
+| `contact-relations` | `gdpr-four-eyes` | Vier-Augen-Regel der Löschanfrage als reine Regel prüfen | logic | — |
+| `contact-relations` | `gdpr-deletion` | Löschanfrage anlegen, Eigenfreigabe abweisen und zweite berechtigte Person prüfen | db | — |
+| `contact-relations` | `import-mapping` | Import liest CSV und VCF ein, ordnet Spalten zu und bereitet Zeilen auf | logic | — |
+| `contact-relations` | `import-assignment` | Importzeile anlegen und über die Verteiler-Spalte zuordnen | db | — |
 | `contact-relations` | `activity-triggers` | Anlegen, Bearbeiten und Anrufe protokollieren Aktivitäten automatisch | db | — |
 | `contact-relations` | `topics` | Themen verknüpfen, Duplikate sperren und Verwendung zählen | db | — |
 | `contact-relations` | `duplicate-scan` | Dubletten-Scan findet Kontakte im eigenen Büro und bleibt mandantengetrennt | db | — |
 | `contact-relations` | `bulk-update` | Sammelbearbeitung ändert mehrere Kontakte und protokolliert die Rücknahme | db | — |
 | `contact-relations` | `distribution-list` | Verteiler mit Stakeholder und Personen anlegen, prüfen und löschen | db | — |
+| `contact-relations` | `stakeholder-flag` | Kartenflag mit Flag-Typ und Koordinaten anlegen, lesen und löschen | db | — |
 | `contact-relations` | `briefing-memory` | Briefingwissen je Kontakt anlegen, ändern und löschen | db | — |
 | `contact-relations` | `fundings` | Förderung mit Kontaktbeteiligung anlegen und eindeutig halten | db | — |
 | `contact-relations` | `secured-read` | Gesicherte Kontaktlesung liefert eigene Daten und keine fremden Büros | db | — |
@@ -94,19 +98,24 @@ Keine Prüfungen deklariert.
 
 1. Der Datenbank-Trigger setzt Rechtsgrundlage und Prüffrist: Bürger 24 Monate ab Erfassung, alle anderen bis 31.03.2031
 2. Die reinen Aufbewahrungsregeln (Fristberechnung, Fälligkeit, Regeltext) stimmen mit dem Trigger überein
-3. Importzuordnung ordnet deutsche und englische Spalten zu und zerlegt die Verteiler-Spalte an ; , und |
-4. Die Import-Duplikaterkennung findet gleiche E-Mail- oder Telefonnummern und ignoriert unähnliche Kontakte
-5. Anlegen, Bearbeiten und ein Anrufprotokoll erzeugen die passenden contact_activities über Trigger
-6. Themen werden über contact_topics verknüpft, doppelte Verknüpfungen sind gesperrt und topic_usage zählt Kontakte
-7. find_contact_duplicates_trgm findet ein Dublettenpaar im Büro und weist fremde Mandanten ab
-8. bulk_update_contact_fields ändert Kategorie und Schlagworte für mehrere Kontakte, protokolliert die Sammelaktion und weist ungültige Eingaben ab
-9. undo_contact_bulk_action stellt die vorherigen Werte wieder her (Büroleitung) bzw. wird für Mitglieder abgewiesen
-10. Verteilerlisten nehmen mehrere Kontakte auf, doppelte Mitglieder sind gesperrt, das Löschen der Liste entfernt die Mitglieder
-11. Ein Stakeholder wird als Organisation angelegt und die zugeordnete Person über assign_contact_to_organization verknüpft
-12. Briefingwissen wird angelegt, geändert und gelöscht
-13. Eine Förderung mit Beteiligung des Kontakts wird angelegt, gelesen und doppelte Beteiligungen sind gesperrt
-14. Die gesicherte Kontaktlesung liefert den eigenen Kontakt und keine Zeilen aus fremden Büros
-15. Zusammenführen verschiebt Themen und Briefingwissen mit und löscht den Zweitkontakt
+3. Eine Löschanfrage entsteht ausstehend unter der eigenen Identität; Eigenfreigabe per Update und per approve_gdpr_delete wird abgewiesen, Anfrage und Gegenstand bleiben unverändert
+4. Die Vier-Augen-Regel erlaubt nur einer zweiten angemeldeten Person die Freigabe und verlangt deren eingetragenen Zustimmungszeitpunkt
+5. Importzuordnung ordnet deutsche und englische Spalten zu und zerlegt die Verteiler-Spalte an ; , und |
+6. CSV-Text (Komma und Semikolon) und VCF-Text werden eingelesen, zugeordnet und zu Kontaktwerten mit Anzeigename übersetzt
+7. Zeilen ohne Namen und mit ungültiger E-Mail-Adresse werden abgewiesen; eine echte Importzeile legt den Kontakt an und ordnet ihn den Verteilern zu, ohne Mitgliedschaften zu verdoppeln
+8. Die Import-Duplikaterkennung findet gleiche E-Mail- oder Telefonnummern und ignoriert unähnliche Kontakte
+9. Anlegen, Bearbeiten und ein Anrufprotokoll erzeugen die passenden contact_activities über Trigger
+10. Themen werden über contact_topics verknüpft, doppelte Verknüpfungen sind gesperrt und topic_usage zählt Kontakte
+11. find_contact_duplicates_trgm findet ein Dublettenpaar im Büro und weist fremde Mandanten ab
+12. bulk_update_contact_fields ändert Kategorie und Schlagworte für mehrere Kontakte, protokolliert die Sammelaktion und weist ungültige Eingaben ab
+13. undo_contact_bulk_action stellt die vorherigen Werte wieder her (Büroleitung) bzw. wird für Mitglieder abgewiesen
+14. Verteilerlisten nehmen mehrere Kontakte auf, doppelte Mitglieder sind gesperrt, das Löschen der Liste entfernt die Mitglieder
+15. Ein Stakeholder wird als Organisation angelegt und die zugeordnete Person über assign_contact_to_organization verknüpft
+16. Ein Kartenflag wird mit eigenem Flag-Typ und Koordinaten angelegt, mit Typ, Büro und Tags zurückgelesen und wieder gelöscht
+17. Briefingwissen wird angelegt, geändert und gelöscht
+18. Eine Förderung mit Beteiligung des Kontakts wird angelegt, gelesen und doppelte Beteiligungen sind gesperrt
+19. Die gesicherte Kontaktlesung liefert den eigenen Kontakt und keine Zeilen aus fremden Büros
+20. Zusammenführen verschiebt Themen und Briefingwissen mit und löscht den Zweitkontakt
 
 ## Funktionsdetails
 
@@ -220,12 +229,12 @@ Zeigt Stammdaten, Aktivitäten, Dokumente, Finanzierungen, Themen, Vorgänge und
 - Keine.
 
 ### `contacts.import` — Kontakte importieren
-Importiert Kontakte aus CSV/VCF/MSG, erkennt Dubletten und ordnet Spalten zu.
+Importiert Kontakte aus CSV/XLSX/VCF, erkennt Dubletten und ordnet Spalten samt Verteilern zu.
 
 - **Kategorie:** fachlich
 - **Implementierung:** implementiert
 - **Einbindung:** UI
-- **Testabdeckung:** teilweise
+- **Testabdeckung:** Selbsttest
 - **Letztes Testergebnis:** nicht-ausgefuehrt (kein Laufnachweis importiert; nicht aus der Existenz einer Testdatei abgeleitet)
 - **Rollen:** `abgeordneter`, `bueroleitung`, `mitarbeiter`
 - **Routen:** `/contacts/import`
@@ -250,7 +259,8 @@ Importiert Kontakte aus CSV/VCF/MSG, erkennt Dubletten und ordnet Spalten zu.
 
 **Bekannte Einschränkungen**
 
-- Geprüft werden Spaltenzuordnung, Verteilerzerlegung und Duplikaterkennung als reine Regeln sowie die Verteilerzuordnung; ein echter Datei-Upload (CSV/XLSX/VCF) läuft nicht im Selbsttest.
+- CSV-Text (Komma und Semikolon) und VCF-Text werden eingelesen, Spalten automatisch zugeordnet und Zeilen samt Namen, E-Mail-Prüfung und Verteiler-Spalte zu Kontaktwerten verarbeitet; eine daraus gebaute Zeile wird gespeichert und über denselben Verteilerpfad wie die Oberfläche zugeordnet.
+- Der Datei-Dialog selbst, das Excel-/ODS-Einlesen und die Duplikatdialoge der Oberfläche laufen nicht im Selbsttest.
 
 **Offene Prüfpunkte**
 
@@ -366,12 +376,12 @@ Erstellt und bearbeitet Verteilerlisten, ordnet Mitglieder zu und wandelt Stakeh
 - Keine.
 
 ### `contacts.stakeholders` — Stakeholder-Netzwerk
-Zeigt Stakeholder auf Karten, verwaltet Flags, Ebenen und Netzwerk-Tags.
+Zeigt Stakeholder auf Karten, verwaltet Kartenflags mit Flag-Typ und Koordinaten, Ebenen und Netzwerk-Tags.
 
 - **Kategorie:** fachlich
 - **Implementierung:** implementiert
 - **Einbindung:** UI
-- **Testabdeckung:** teilweise
+- **Testabdeckung:** Selbsttest
 - **Letztes Testergebnis:** nicht-ausgefuehrt (kein Laufnachweis importiert; nicht aus der Existenz einer Testdatei abgeleitet)
 - **Rollen:** `abgeordneter`, `bueroleitung`, `mitarbeiter`
 - **Routen:** `/contacts/netzwerk`, `/contacts/stakeholder`
@@ -395,7 +405,7 @@ Zeigt Stakeholder auf Karten, verwaltet Flags, Ebenen und Netzwerk-Tags.
 
 **Bekannte Einschränkungen**
 
-- Geprüft werden Stakeholder-Organisation, Personen zuordnung und Verteilerbildung; die Kartenflags (map_flags) samt Ebenen bleiben ausgeklammert.
+- Geprüft werden Stakeholder-Organisation, Personenzuordnung, Verteilerbildung sowie ein Kartenflag mit Flag-Typ und Koordinaten (anlegen, lesen, löschen); Kartenebenen (map_layers) und Flag-Themen (map_flag_topics) bleiben ausgeklammert.
 
 **Offene Prüfpunkte**
 
@@ -440,7 +450,7 @@ Vergibt Themen an Kontakte über contact_topics und zeigt sie in Liste, Detail u
 - Die Zuordnung über die Oberfläche (TopicPicker) wird nur mittelbar über denselben contact_topics-Schreibpfad geprüft.
 
 ### `contacts.privacy` — Kontakt-Datenschutz und Aufbewahrung
-Zeigt Datenschutzhinweise, berechnet Aufbewahrungsfristen und maskiert geschützte Kontaktdaten.
+Zeigt Datenschutzhinweise, berechnet Aufbewahrungsfristen, verwaltet DSGVO-Löschanträge mit Vier-Augen-Prinzip und maskiert geschützte Kontaktdaten.
 
 - **Kategorie:** sicherheit
 - **Implementierung:** implementiert
@@ -450,11 +460,11 @@ Zeigt Datenschutzhinweise, berechnet Aufbewahrungsfristen und maskiert geschütz
 - **Rollen:** `admin`, `bueroleitung`, `mitarbeiter`
 - **Routen:** —
 - **Frontend-Komponenten:** `src/features/contacts/privacy/ContactPrivacyCard.tsx`
-- **Services:** `src/features/contacts/privacy/retention.ts`
+- **Services:** `src/features/contacts/privacy/retention.ts`, `src/features/contacts/privacy/gdprApproval.ts`
 - **Hooks:** —
 - **Edge Functions:** —
-- **Datenbankfunktionen:** `contacts_default_retention`, `read_secured_contacts`, `mask_secured_record`, `mutate_secured_records`, `contacts_secured`
-- **Tabellen:** `contacts`
+- **Datenbankfunktionen:** `contacts_default_retention`, `read_secured_contacts`, `mask_secured_record`, `mutate_secured_records`, `contacts_secured`, `approve_gdpr_delete`
+- **Tabellen:** `contacts`, `gdpr_requests`
 - **Abhängigkeiten:** `contacts.create`
 - **Selbsttests:** `contact-relations`
 - **Unit-Tests:** —
@@ -466,10 +476,12 @@ Zeigt Datenschutzhinweise, berechnet Aufbewahrungsfristen und maskiert geschütz
 
 - src/features/contacts/privacy/ContactPrivacyCard.tsx
 - src/features/contacts/privacy/retention.ts
+- src/features/contacts/privacy/gdprApproval.ts
 
 **Bekannte Einschränkungen**
 
 - Rechtsgrundlage, Prüffrist und Fälligkeit werden als Regel und über den Datenbank-Trigger geprüft; eine konfigurierte Feldmaskierung (field_permissions) verändert der Selbsttest nicht.
+- Löschanfragen werden angelegt und die Eigenfreigabe per Update und approve_gdpr_delete abgewiesen; die positive Freigabe durch eine zweite berechtigte Person verlangt deren persönliche Anmeldung und wird im Selbsttest nur als Regel geprüft.
 
 **Offene Prüfpunkte**
 

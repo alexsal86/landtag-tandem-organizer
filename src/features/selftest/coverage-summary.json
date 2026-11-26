@@ -3,11 +3,11 @@
   "source": "src/integrations/supabase/types.ts",
   "counts": {
     "total": 351,
-    "scenario": 86,
-    "deferred": 118,
-    "excluded": 147,
+    "scenario": 89,
+    "deferred": 116,
+    "excluded": 146,
     "missing": 0,
-    "exceptions": 265
+    "exceptions": 262
   },
   "exceptionGroups": [
     {
@@ -71,7 +71,6 @@
         "letter_templates",
         "login_customization",
         "map_flag_topics",
-        "map_flag_types",
         "map_layers",
         "matrix_morning_settings",
         "news_email_templates",
@@ -195,7 +194,6 @@
         "external_events",
         "facts",
         "field_permissions",
-        "gdpr_requests",
         "superadmin_users",
         "tenant_onboarding_checklist_items",
         "tenant_onboarding_slides",
@@ -286,7 +284,6 @@
         "information_blocks",
         "karlsruhe_districts",
         "leave_requests",
-        "map_flags",
         "map_routes",
         "messages",
         "office_debrief_state",
@@ -831,6 +828,9 @@
         "call_logs",
         "distribution_lists",
         "distribution_list_members",
+        "gdpr_requests",
+        "map_flags",
+        "map_flag_types",
         "contact_briefing_memory",
         "fundings",
         "funding_participants"
@@ -906,6 +906,41 @@
           "columns": [
             "distribution_list_id",
             "contact_id"
+          ]
+        },
+        {
+          "table": "map_flag_types",
+          "columns": [
+            "tenant_id",
+            "name",
+            "icon",
+            "color",
+            "created_by"
+          ]
+        },
+        {
+          "table": "map_flags",
+          "columns": [
+            "tenant_id",
+            "flag_type_id",
+            "title",
+            "description",
+            "coordinates",
+            "created_by",
+            "tags",
+            "metadata"
+          ]
+        },
+        {
+          "table": "gdpr_requests",
+          "columns": [
+            "tenant_id",
+            "request_type",
+            "subject_contact_id",
+            "subject_name",
+            "subject_email",
+            "reason",
+            "requested_by"
           ]
         },
         {
@@ -3400,12 +3435,11 @@
     },
     {
       "table": "gdpr_requests",
-      "status": "deferred",
-      "scenarios": [],
-      "exception": {
-        "kind": "deferred",
-        "expiresOn": "2027-06-30"
-      }
+      "status": "scenario",
+      "scenarios": [
+        "contact-relations"
+      ],
+      "exception": null
     },
     {
       "table": "habit_completions",
@@ -3719,21 +3753,19 @@
     },
     {
       "table": "map_flag_types",
-      "status": "excluded",
-      "scenarios": [],
-      "exception": {
-        "kind": "excluded",
-        "expiresOn": "2027-06-30"
-      }
+      "status": "scenario",
+      "scenarios": [
+        "contact-relations"
+      ],
+      "exception": null
     },
     {
       "table": "map_flags",
-      "status": "deferred",
-      "scenarios": [],
-      "exception": {
-        "kind": "deferred",
-        "expiresOn": "2027-03-31"
-      }
+      "status": "scenario",
+      "scenarios": [
+        "contact-relations"
+      ],
+      "exception": null
     },
     {
       "table": "map_layers",

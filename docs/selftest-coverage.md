@@ -4,7 +4,7 @@ _Auto-generiert mit `npm run update:selftest-coverage`._
 
 Quelle: `src/integrations/supabase/types.ts`. Die Angaben beschreiben deklarierte Prüfumfänge, keine erfolgreichen Testläufe und keine Code-Coverage.
 
-Von 351 Tabellen haben 86 ein registriertes Szenario; 0 sind noch nicht eingeordnet. 265 sind befristet ausgenommen, davon 118 als Ausbau offen und 147 als technisch oder fachlich ausgenommen. Ausnahmen zählen nicht als bestanden.
+Von 351 Tabellen haben 89 ein registriertes Szenario; 0 sind noch nicht eingeordnet. 262 sind befristet ausgenommen, davon 116 als Ausbau offen und 146 als technisch oder fachlich ausgenommen. Ausnahmen zählen nicht als bestanden.
 
 ## Szenarien
 
@@ -19,7 +19,7 @@ Von 351 Tabellen haben 86 ein registriertes Szenario; 0 sind noch nicht eingeord
 | `case-file-lifecycle` | Fallakte mit Folgetabellen (Container) im Unterschied zum Vorgang | case_files, case_file_participants, case_file_status_history, case_file_notes, case_file_timeline, case_file_contacts, case_file_tasks, case_file_appointments, case_file_letters, case_items, contacts, tasks, appointments, letters |
 | `case-item-lifecycle` | Vorgangs-Lifecycle (Am Zug → Schritt → Wiedervorlage → Entscheidung → Tageszettel → Abschluss) | case_items, case_item_interactions, case_item_handover_log, task_decisions, task_decision_participants, task_decision_responses, appointment_requests, day_slips, tasks |
 | `contact-lifecycle` | Kontakt-Lifecycle (Anlegen → Kategorie/Tags → Aktivität → Suche) | contacts, contact_activities, contact_usage_stats |
-| `contact-relations` | Kontakt-Beziehungen (Datenschutz → Themen → Duplikate → Sammelaktion → Verteiler → Wissen → Förderungen) | contacts, contact_activities, contact_topics, topics, call_logs, distribution_lists, distribution_list_members, contact_briefing_memory, fundings, funding_participants |
+| `contact-relations` | Kontakt-Beziehungen (Datenschutz → Themen → Duplikate → Sammelaktion → Verteiler → Wissen → Förderungen) | contacts, contact_activities, contact_topics, topics, call_logs, distribution_lists, distribution_list_members, gdpr_requests, map_flags, map_flag_types, contact_briefing_memory, fundings, funding_participants |
 | `daily-briefing-lifecycle` | Tages-Briefings (Vortag-Regel) | daily_briefings |
 | `day-slip-lifecycle` | Tageszettel-Lifecycle (Links → Neuladen → Übernahme auf Folgetag) | day_slips, tasks, quick_notes |
 | `decision-lifecycle` | Entscheidungs-Lifecycle (active → open → archived) | task_decisions, task_decision_participants, task_decision_responses |
@@ -222,7 +222,7 @@ Von 351 Tabellen haben 86 ein registriertes Szenario; 0 sind noch nicht eingeord
 | `field_permissions` | Ausstehend bis 2027-06-30 | — |
 | `funding_participants` | Szenario vorhanden | contact-relations |
 | `fundings` | Szenario vorhanden | contact-relations |
-| `gdpr_requests` | Ausstehend bis 2027-06-30 | — |
+| `gdpr_requests` | Szenario vorhanden | contact-relations |
 | `habit_completions` | Ausstehend bis 2027-03-31 | — |
 | `habits` | Ausstehend bis 2027-03-31 | — |
 | `information_blocks` | Ausstehend bis 2027-03-31 | — |
@@ -258,8 +258,8 @@ Von 351 Tabellen haben 86 ein registriertes Szenario; 0 sind noch nicht eingeord
 | `letters` | Szenario vorhanden | case-file-lifecycle, letter-lifecycle |
 | `login_customization` | Ausgenommen bis 2027-06-30 | — |
 | `map_flag_topics` | Ausgenommen bis 2027-06-30 | — |
-| `map_flag_types` | Ausgenommen bis 2027-06-30 | — |
-| `map_flags` | Ausstehend bis 2027-03-31 | — |
+| `map_flag_types` | Szenario vorhanden | contact-relations |
+| `map_flags` | Szenario vorhanden | contact-relations |
 | `map_layers` | Ausgenommen bis 2027-06-30 | — |
 | `map_routes` | Ausstehend bis 2027-03-31 | — |
 | `matrix_bot_logs` | Ausgenommen bis 2027-06-30 | — |
@@ -410,13 +410,13 @@ Jede Ausnahme verlangt eine Begründung und ein Ablaufdatum. Abgelaufene, unbegr
 | Art | Gültig bis | Umfang | Begründung |
 |---|---|---|---|
 | Ausgenommen | 2027-06-30 | 20 Tabellen | Technische Infrastruktur-, Push-, Cache- oder Protokolltabelle ohne eigenen fachlichen Workflow; geprüft wird die auslösende Funktion. |
-| Ausgenommen | 2027-06-30 | 56 Tabellen | Konfigurations-, Lookup- oder Einstellungstabelle; das fachlich relevante Verhalten prüfen die Szenarien der zugehörigen Funktion. |
+| Ausgenommen | 2027-06-30 | 55 Tabellen | Konfigurations-, Lookup- oder Einstellungstabelle; das fachlich relevante Verhalten prüfen die Szenarien der zugehörigen Funktion. |
 | Ausgenommen | 2027-06-30 | 29 Tabellen | Audit-, Verlaufs- oder Versionsprotokoll; wird von Datenbankfunktionen geschrieben und im Szenario der auslösenden Funktion mitgeprüft. |
 | Ausgenommen | 2027-06-30 | 42 Tabellen | Reine Verknüpfungstabelle ohne eigene Fachlogik; die Beziehung entsteht im Szenario der zugehörigen Funktion. |
-| Ausstehend | 2027-06-30 | 13 Tabellen | Sicherheits-, Onboarding- oder Automationsablauf: Für diese Tabelle fehlt ein eigenes Szenario; der Ausbau ist geplant. |
+| Ausstehend | 2027-06-30 | 12 Tabellen | Sicherheits-, Onboarding- oder Automationsablauf: Für diese Tabelle fehlt ein eigenes Szenario; der Ausbau ist geplant. |
 | Ausstehend | 2027-06-30 | 8 Tabellen | Knowledge 11–14 nutzen eine gezielte Abnahme-Suite; ein Live-Selbsttest-Szenario für diese Tabelle steht aus. |
 | Ausstehend | 2027-06-30 | 36 Tabellen | Wahlanalyse und Wahlhistorie: Szenarien prüfen Regeln und Lesezugriffe, schreiben aber bewusst keine importierten Bestandsdaten. |
-| Ausstehend | 2027-03-31 | 61 Tabellen | Fachlicher Ausbau offen: Für diese Tabelle fehlt noch ein Szenario oder Step; der Eintrag muss bis zum Ablauf geprüft werden. |
+| Ausstehend | 2027-03-31 | 60 Tabellen | Fachlicher Ausbau offen: Für diese Tabelle fehlt noch ein Szenario oder Step; der Eintrag muss bis zum Ablauf geprüft werden. |
 
 ## Fachfunktionen ohne Selbsttest
 
@@ -523,6 +523,9 @@ Diese Manifeste sind keine Messung ausgeführter Assertions.
 - contact-relations: `call_logs`: contact_id, user_id, call_type, duration_minutes, notes, follow_up_required, priority
 - contact-relations: `distribution_lists`: user_id, tenant_id, name, description, topic
 - contact-relations: `distribution_list_members`: distribution_list_id, contact_id
+- contact-relations: `map_flag_types`: tenant_id, name, icon, color, created_by
+- contact-relations: `map_flags`: tenant_id, flag_type_id, title, description, coordinates, created_by, tags, metadata
+- contact-relations: `gdpr_requests`: tenant_id, request_type, subject_contact_id, subject_name, subject_email, reason, requested_by
 - contact-relations: `contact_briefing_memory`: tenant_id, contact_id, kind, content, question, answer, pinned_by
 - contact-relations: `fundings`: tenant_id, title, total_amount, status, created_by
 - contact-relations: `funding_participants`: funding_id, contact_id, allocated_amount, role

@@ -460,7 +460,8 @@ Eindeutige Fehler werden im CI-Lauf ausgegeben und brechen die Prüfung ab; sie 
 
 ### `contacts.import`
 
-- Geprüft werden Spaltenzuordnung, Verteilerzerlegung und Duplikaterkennung als reine Regeln sowie die Verteilerzuordnung; ein echter Datei-Upload (CSV/XLSX/VCF) läuft nicht im Selbsttest.
+- CSV-Text (Komma und Semikolon) und VCF-Text werden eingelesen, Spalten automatisch zugeordnet und Zeilen samt Namen, E-Mail-Prüfung und Verteiler-Spalte zu Kontaktwerten verarbeitet; eine daraus gebaute Zeile wird gespeichert und über denselben Verteilerpfad wie die Oberfläche zugeordnet.
+- Der Datei-Dialog selbst, das Excel-/ODS-Einlesen und die Duplikatdialoge der Oberfläche laufen nicht im Selbsttest.
 
 ### `contacts.duplicates`
 
@@ -473,7 +474,7 @@ Eindeutige Fehler werden im CI-Lauf ausgegeben und brechen die Prüfung ab; sie 
 
 ### `contacts.stakeholders`
 
-- Geprüft werden Stakeholder-Organisation, Personen zuordnung und Verteilerbildung; die Kartenflags (map_flags) samt Ebenen bleiben ausgeklammert.
+- Geprüft werden Stakeholder-Organisation, Personenzuordnung, Verteilerbildung sowie ein Kartenflag mit Flag-Typ und Koordinaten (anlegen, lesen, löschen); Kartenebenen (map_layers) und Flag-Themen (map_flag_topics) bleiben ausgeklammert.
 - Die Trefferheuristik der Netzwerkansicht ist nicht qualitätsgetestet; geprüft wird die Datenbasis, nicht die Darstellung.
 
 ### `contacts.tags-topics`
@@ -485,6 +486,7 @@ Eindeutige Fehler werden im CI-Lauf ausgegeben und brechen die Prüfung ab; sie 
 ### `contacts.privacy`
 
 - Rechtsgrundlage, Prüffrist und Fälligkeit werden als Regel und über den Datenbank-Trigger geprüft; eine konfigurierte Feldmaskierung (field_permissions) verändert der Selbsttest nicht.
+- Löschanfragen werden angelegt und die Eigenfreigabe per Update und approve_gdpr_delete abgewiesen; die positive Freigabe durch eine zweite berechtigte Person verlangt deren persönliche Anmeldung und wird im Selbsttest nur als Regel geprüft.
 
 ### `contacts.bulk`
 

@@ -25,7 +25,7 @@ Der Katalog ist das führende Verzeichnis des tatsächlich implementierten Funkt
 | Funktionen ohne Dokumentationsverweis | 165 |
 | Funktionen mit bekannten Einschränkungen | 53 |
 | Nicht nachweisbar eingebundene Funktionen | 1 |
-| Technische Zuordnungen | 1258 |
+| Technische Zuordnungen | 1260 |
 
 ## Funktionsbereiche
 
@@ -87,12 +87,12 @@ Der Katalog ist das führende Verzeichnis des tatsächlich implementierten Funkt
 
 | Abdeckung | Funktionen |
 |---|---:|
-| Selbsttest | 96 |
+| Selbsttest | 98 |
 | Unit-Test | 36 |
 | Integrationstest | 1 |
 | Browser-Test | 0 |
 | Security-Test | 1 |
-| teilweise | 2 |
+| teilweise | 0 |
 | kein Test | 120 |
 | ungeprüft | 0 |
 

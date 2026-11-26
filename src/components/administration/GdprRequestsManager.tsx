@@ -21,6 +21,7 @@ import { Shield, Plus, Download, Play, Check } from "lucide-react";
 import { format, parseISO } from "date-fns";
 import { de } from "date-fns/locale";
 import { notify } from "@/lib/notify";
+import { canApproveGdprDelete } from "@/features/contacts/privacy/gdprApproval";
 
 type GdprRequest = {
   id: string;
@@ -106,9 +107,9 @@ export function GdprRequestsManager(): JSX.Element {
 
   const approveDelete = async (req: GdprRequest) => {
     if (!user) return;
-    if (req.requested_by === user.id) {
-      notify.error("Vier-Augen-Prinzip", { description: "Genehmigung erfordert zweiten Admin."
-});
+    const decision = canApproveGdprDelete(req, user.id);
+    if (!decision.allowed) {
+      notify.error("Vier-Augen-Prinzip", { description: decision.reason });
       return;
     }
     if (req.tenant_id !== currentTenant?.id || approving) return;
@@ -262,11 +263,14 @@ export function GdprRequestsManager(): JSX.Element {
                   </TableCell>
                   <TableCell className="text-caption max-w-xs truncate">{r.reason ?? "—"}</TableCell>
                   <TableCell className="text-right space-x-1">
-                    {r.request_type === "delete" && r.status === "pending" && (
-                      <Button size="sm" variant="outline" disabled={r.requested_by === user?.id} onClick={() => setApprovalRequest(r)}>
-                        <Check className="mr-1 h-3 w-3" /> Freigeben
-                      </Button>
-                    )}
+                    {r.request_type === "delete" && r.status === "pending" && (() => {
+                      const decision = canApproveGdprDelete(r, user?.id);
+                      return (
+                        <Button size="sm" variant="outline" disabled={!decision.allowed} title={decision.allowed ? undefined : decision.reason} onClick={() => setApprovalRequest(r)}>
+                          <Check className="mr-1 h-3 w-3" /> Freigeben
+                        </Button>
+                      );
+                    })()}
                     {((r.request_type === "export" && r.status === "pending") || r.status === "approved") && (
                       <Button size="sm" onClick={() => runRequest(r)}>
                         <Play className="mr-1 h-3 w-3" /> Ausführen

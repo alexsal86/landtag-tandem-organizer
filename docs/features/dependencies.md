@@ -453,6 +453,7 @@ _Auto-generiert mit `npm run update:feature-catalog`. Nicht von Hand bearbeiten.
 | `email_templates` | schnittstellen, verwaltung |
 | `employee_responsibilities` | mitarbeit, organisation |
 | `field_permissions` | kontakte, verwaltung |
+| `gdpr_requests` | kontakte, verwaltung |
 | `knowledge_question_topics` | organisation, wissen |
 | `map_layers` | kontakte, wahl |
 | `meeting_agenda_items` | organisation, termine |

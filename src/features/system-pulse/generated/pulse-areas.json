@@ -132,7 +132,11 @@
           "checks": [
             "Der Datenbank-Trigger setzt Rechtsgrundlage und Prüffrist: Bürger 24 Monate ab Erfassung, alle anderen bis 31.03.2031",
             "Die reinen Aufbewahrungsregeln (Fristberechnung, Fälligkeit, Regeltext) stimmen mit dem Trigger überein",
+            "Eine Löschanfrage entsteht ausstehend unter der eigenen Identität; Eigenfreigabe per Update und per approve_gdpr_delete wird abgewiesen, Anfrage und Gegenstand bleiben unverändert",
+            "Die Vier-Augen-Regel erlaubt nur einer zweiten angemeldeten Person die Freigabe und verlangt deren eingetragenen Zustimmungszeitpunkt",
             "Importzuordnung ordnet deutsche und englische Spalten zu und zerlegt die Verteiler-Spalte an ; , und |",
+            "CSV-Text (Komma und Semikolon) und VCF-Text werden eingelesen, zugeordnet und zu Kontaktwerten mit Anzeigename übersetzt",
+            "Zeilen ohne Namen und mit ungültiger E-Mail-Adresse werden abgewiesen; eine echte Importzeile legt den Kontakt an und ordnet ihn den Verteilern zu, ohne Mitgliedschaften zu verdoppeln",
             "Die Import-Duplikaterkennung findet gleiche E-Mail- oder Telefonnummern und ignoriert unähnliche Kontakte",
             "Anlegen, Bearbeiten und ein Anrufprotokoll erzeugen die passenden contact_activities über Trigger",
             "Themen werden über contact_topics verknüpft, doppelte Verknüpfungen sind gesperrt und topic_usage zählt Kontakte",
@@ -141,6 +145,7 @@
             "undo_contact_bulk_action stellt die vorherigen Werte wieder her (Büroleitung) bzw. wird für Mitglieder abgewiesen",
             "Verteilerlisten nehmen mehrere Kontakte auf, doppelte Mitglieder sind gesperrt, das Löschen der Liste entfernt die Mitglieder",
             "Ein Stakeholder wird als Organisation angelegt und die zugeordnete Person über assign_contact_to_organization verknüpft",
+            "Ein Kartenflag wird mit eigenem Flag-Typ und Koordinaten angelegt, mit Typ, Büro und Tags zurückgelesen und wieder gelöscht",
             "Briefingwissen wird angelegt, geändert und gelöscht",
             "Eine Förderung mit Beteiligung des Kontakts wird angelegt, gelesen und doppelte Beteiligungen sind gesperrt",
             "Die gesicherte Kontaktlesung liefert den eigenen Kontakt und keine Zeilen aus fremden Büros",
@@ -154,6 +159,9 @@
             "call_logs",
             "distribution_lists",
             "distribution_list_members",
+            "gdpr_requests",
+            "map_flags",
+            "map_flag_types",
             "contact_briefing_memory",
             "fundings",
             "funding_participants"
@@ -186,8 +194,20 @@
               "label": "Aufbewahrungsregeln rechnen und prüfen"
             },
             {
+              "id": "gdpr-four-eyes",
+              "label": "Vier-Augen-Regel der Löschanfrage als reine Regel prüfen"
+            },
+            {
+              "id": "gdpr-deletion",
+              "label": "Löschanfrage anlegen, Eigenfreigabe abweisen und zweite berechtigte Person prüfen"
+            },
+            {
               "id": "import-mapping",
-              "label": "Import ordnet Spalten zu, zerlegt Verteiler und erkennt Dubletten"
+              "label": "Import liest CSV und VCF ein, ordnet Spalten zu und bereitet Zeilen auf"
+            },
+            {
+              "id": "import-assignment",
+              "label": "Importzeile anlegen und über die Verteiler-Spalte zuordnen"
             },
             {
               "id": "activity-triggers",
@@ -208,6 +228,10 @@
             {
               "id": "distribution-list",
               "label": "Verteiler mit Stakeholder und Personen anlegen, prüfen und löschen"
+            },
+            {
+              "id": "stakeholder-flag",
+              "label": "Kartenflag mit Flag-Typ und Koordinaten anlegen, lesen und löschen"
             },
             {
               "id": "briefing-memory",

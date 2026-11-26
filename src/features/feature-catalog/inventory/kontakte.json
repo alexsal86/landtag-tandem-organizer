@@ -153,11 +153,11 @@
       "id": "contacts.import",
       "subarea": "Import",
       "name": "Kontakte importieren",
-      "description": "Importiert Kontakte aus CSV/VCF/MSG, erkennt Dubletten und ordnet Spalten zu.",
+      "description": "Importiert Kontakte aus CSV/XLSX/VCF, erkennt Dubletten und ordnet Spalten samt Verteilern zu.",
       "category": "fachlich",
       "implementationStatus": "implementiert",
       "integrationStatus": "ui",
-      "coverage": "teilweise",
+      "coverage": "selftest",
       "testResult": "nicht-ausgefuehrt",
       "evidence": [
         "src/pages/ImportContacts.tsx",
@@ -194,7 +194,8 @@
         "contact-relations"
       ],
       "limitations": [
-        "Geprüft werden Spaltenzuordnung, Verteilerzerlegung und Duplikaterkennung als reine Regeln sowie die Verteilerzuordnung; ein echter Datei-Upload (CSV/XLSX/VCF) läuft nicht im Selbsttest."
+        "CSV-Text (Komma und Semikolon) und VCF-Text werden eingelesen, Spalten automatisch zugeordnet und Zeilen samt Namen, E-Mail-Prüfung und Verteiler-Spalte zu Kontaktwerten verarbeitet; eine daraus gebaute Zeile wird gespeichert und über denselben Verteilerpfad wie die Oberfläche zugeordnet.",
+        "Der Datei-Dialog selbst, das Excel-/ODS-Einlesen und die Duplikatdialoge der Oberfläche laufen nicht im Selbsttest."
       ]
     },
     {
@@ -332,11 +333,11 @@
       "id": "contacts.stakeholders",
       "subarea": "Netzwerk",
       "name": "Stakeholder-Netzwerk",
-      "description": "Zeigt Stakeholder auf Karten, verwaltet Flags, Ebenen und Netzwerk-Tags.",
+      "description": "Zeigt Stakeholder auf Karten, verwaltet Kartenflags mit Flag-Typ und Koordinaten, Ebenen und Netzwerk-Tags.",
       "category": "fachlich",
       "implementationStatus": "implementiert",
       "integrationStatus": "ui",
-      "coverage": "teilweise",
+      "coverage": "selftest",
       "testResult": "nicht-ausgefuehrt",
       "evidence": [
         "src/features/contacts/components/StakeholderView.tsx",
@@ -375,7 +376,7 @@
         "contact-relations"
       ],
       "limitations": [
-        "Geprüft werden Stakeholder-Organisation, Personen zuordnung und Verteilerbildung; die Kartenflags (map_flags) samt Ebenen bleiben ausgeklammert."
+        "Geprüft werden Stakeholder-Organisation, Personenzuordnung, Verteilerbildung sowie ein Kartenflag mit Flag-Typ und Koordinaten (anlegen, lesen, löschen); Kartenebenen (map_layers) und Flag-Themen (map_flag_topics) bleiben ausgeklammert."
       ],
       "reviewPoints": [
         "Die Trefferheuristik der Netzwerkansicht ist nicht qualitätsgetestet; geprüft wird die Datenbasis, nicht die Darstellung."
@@ -428,7 +429,7 @@
       "id": "contacts.privacy",
       "subarea": "Datenschutz",
       "name": "Kontakt-Datenschutz und Aufbewahrung",
-      "description": "Zeigt Datenschutzhinweise, berechnet Aufbewahrungsfristen und maskiert geschützte Kontaktdaten.",
+      "description": "Zeigt Datenschutzhinweise, berechnet Aufbewahrungsfristen, verwaltet DSGVO-Löschanträge mit Vier-Augen-Prinzip und maskiert geschützte Kontaktdaten.",
       "category": "sicherheit",
       "implementationStatus": "implementiert",
       "integrationStatus": "ui",
@@ -436,23 +437,27 @@
       "testResult": "nicht-ausgefuehrt",
       "evidence": [
         "src/features/contacts/privacy/ContactPrivacyCard.tsx",
-        "src/features/contacts/privacy/retention.ts"
+        "src/features/contacts/privacy/retention.ts",
+        "src/features/contacts/privacy/gdprApproval.ts"
       ],
       "components": [
         "src/features/contacts/privacy/ContactPrivacyCard.tsx"
       ],
       "services": [
-        "src/features/contacts/privacy/retention.ts"
+        "src/features/contacts/privacy/retention.ts",
+        "src/features/contacts/privacy/gdprApproval.ts"
       ],
       "rpcs": [
         "contacts_default_retention",
         "read_secured_contacts",
         "mask_secured_record",
         "mutate_secured_records",
-        "contacts_secured"
+        "contacts_secured",
+        "approve_gdpr_delete"
       ],
       "tables": [
-        "contacts"
+        "contacts",
+        "gdpr_requests"
       ],
       "roles": [
         "admin",
@@ -469,7 +474,8 @@
         "contact-relations"
       ],
       "limitations": [
-        "Rechtsgrundlage, Prüffrist und Fälligkeit werden als Regel und über den Datenbank-Trigger geprüft; eine konfigurierte Feldmaskierung (field_permissions) verändert der Selbsttest nicht."
+        "Rechtsgrundlage, Prüffrist und Fälligkeit werden als Regel und über den Datenbank-Trigger geprüft; eine konfigurierte Feldmaskierung (field_permissions) verändert der Selbsttest nicht.",
+        "Löschanfragen werden angelegt und die Eigenfreigabe per Update und approve_gdpr_delete abgewiesen; die positive Freigabe durch eine zweite berechtigte Person verlangt deren persönliche Anmeldung und wird im Selbsttest nur als Regel geprüft."
       ]
     },
     {

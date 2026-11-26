@@ -1,13 +1,21 @@
 import { supabase } from "@/integrations/supabase/client";
+import type { TablesInsert } from "@/integrations/supabase/types";
 import type { TestScenario } from "../types";
 import { SELFTEST_MARKER, SELFTEST_PREFIX } from "../runner";
 import { describeError, expectFields } from "../verify";
 import { FIELD_MAPPINGS, TARGET_FIELDS } from "@/components/contact-import/types";
 import { parseDistributionListNames } from "@/components/contact-import/distributionListNames";
+import {
+  autoMapFields, buildImportRow, parseCsvSource, parseVCardSource,
+} from "@/components/contact-import/importParsing";
+import { assignContactToDistributionLists } from "@/components/contact-import/assignContactToDistributionLists";
 import { findPotentialDuplicates } from "@/utils/duplicateDetection";
 import {
   defaultLegalBasis, defaultReviewDate, isReviewDue, retentionRuleText,
 } from "@/features/contacts/privacy/retention";
+import {
+  GDPR_APPROVER_ROLES, canApproveGdprDelete, isApprovedBySecondPerson,
+} from "@/features/contacts/privacy/gdprApproval";
 
 const stamp = (run: string, label: string) => `${SELFTEST_PREFIX} ${label} (${run})`;
 const CONFIG_ADMIN_ROLES = ["abgeordneter", "bueroleitung"];
@@ -26,14 +34,19 @@ export const contactRelationsScenario: TestScenario = {
     "Prüft die weiterführenden Kontakt-Workflows: Aufbewahrungsfristen, Importzuordnung und Dubletten, Themenverknüpfung, Dubletten-Scan, Sammelbearbeitung mit Rücknahme, Verteiler, Briefingwissen, Förderungen und die gesicherte Kontaktlesung. Ein fehlgeschlagener Schritt blockiert die übrigen nicht.",
   touches: [
     "contacts", "contact_activities", "contact_topics", "topics", "call_logs",
-    "distribution_lists", "distribution_list_members",
+    "distribution_lists", "distribution_list_members", "gdpr_requests",
+    "map_flags", "map_flag_types",
     "contact_briefing_memory", "fundings", "funding_participants",
   ],
   features: ["contacts"],
   checks: [
     "Der Datenbank-Trigger setzt Rechtsgrundlage und Prüffrist: Bürger 24 Monate ab Erfassung, alle anderen bis 31.03.2031",
     "Die reinen Aufbewahrungsregeln (Fristberechnung, Fälligkeit, Regeltext) stimmen mit dem Trigger überein",
+    "Eine Löschanfrage entsteht ausstehend unter der eigenen Identität; Eigenfreigabe per Update und per approve_gdpr_delete wird abgewiesen, Anfrage und Gegenstand bleiben unverändert",
+    "Die Vier-Augen-Regel erlaubt nur einer zweiten angemeldeten Person die Freigabe und verlangt deren eingetragenen Zustimmungszeitpunkt",
     "Importzuordnung ordnet deutsche und englische Spalten zu und zerlegt die Verteiler-Spalte an ; , und |",
+    "CSV-Text (Komma und Semikolon) und VCF-Text werden eingelesen, zugeordnet und zu Kontaktwerten mit Anzeigename übersetzt",
+    "Zeilen ohne Namen und mit ungültiger E-Mail-Adresse werden abgewiesen; eine echte Importzeile legt den Kontakt an und ordnet ihn den Verteilern zu, ohne Mitgliedschaften zu verdoppeln",
     "Die Import-Duplikaterkennung findet gleiche E-Mail- oder Telefonnummern und ignoriert unähnliche Kontakte",
     "Anlegen, Bearbeiten und ein Anrufprotokoll erzeugen die passenden contact_activities über Trigger",
     "Themen werden über contact_topics verknüpft, doppelte Verknüpfungen sind gesperrt und topic_usage zählt Kontakte",
@@ -42,6 +55,7 @@ export const contactRelationsScenario: TestScenario = {
     "undo_contact_bulk_action stellt die vorherigen Werte wieder her (Büroleitung) bzw. wird für Mitglieder abgewiesen",
     "Verteilerlisten nehmen mehrere Kontakte auf, doppelte Mitglieder sind gesperrt, das Löschen der Liste entfernt die Mitglieder",
     "Ein Stakeholder wird als Organisation angelegt und die zugeordnete Person über assign_contact_to_organization verknüpft",
+    "Ein Kartenflag wird mit eigenem Flag-Typ und Koordinaten angelegt, mit Typ, Büro und Tags zurückgelesen und wieder gelöscht",
     "Briefingwissen wird angelegt, geändert und gelöscht",
     "Eine Förderung mit Beteiligung des Kontakts wird angelegt, gelesen und doppelte Beteiligungen sind gesperrt",
     "Die gesicherte Kontaktlesung liefert den eigenen Kontakt und keine Zeilen aus fremden Büros",
@@ -50,9 +64,11 @@ export const contactRelationsScenario: TestScenario = {
   limitations: [
     "Die Oberfläche selbst (Grid/Liste, Detail-Sheet, Formulare) wird nicht gerendert; geprüft werden die zugrunde liegenden Schreib- und Lesepfade.",
     "Feldbasierte Maskierung (field_permissions mit can_read=false) wird nicht verändert; geprüft wird die gesicherte Lesefunktion read_secured_contacts, nicht eine konfigurierte Maskierung.",
-    "Die Stakeholder-Karte (map_flags samt Ebenen und Flag-Typen) bleibt ausgeklammert; das Szenario prüft die Stakeholder-Organisation und die Personen-/Verteilerzuordnung.",
+    "Die positive Freigabe einer Löschanfrage braucht die persönliche Anmeldung einer zweiten berechtigten Person und wird deshalb hier nur als Regel plus Datenbank-Abweisung der Eigenfreigabe geprüft; die Freigabe mit zwei Konten deckt der Rollback-Test der Migration ab.",
+    "Der ausstehende Löschantrag bleibt nach dem Lauf stehen, weil authenticated keine Löschrechte auf gdpr_requests hat; er ist am SELFTEST-Präfix erkennbar und einem SELFTEST-Kontakt zugeordnet.",
+    "Kartenflag, Flag-Typ, Koordinaten und Löschen sind geprüft; Kartenebenen (map_layers) und Flag-Themen (map_flag_topics) bleiben ausgeklammert.",
     "Die Rücknahme einer Sammelaktion verlangt Büroleitung oder Abgeordneten-Mandat; als Mitglied wird stattdessen die Abweisung geprüft.",
-    "Der Import wird über seine reinen Regeln geprüft (Spaltenzuordnung, Verteilerzerlegung, Duplikaterkennung), nicht über einen echten Datei-Upload.",
+    "Der Import wird über seine reinen Regeln und den gemeinsamen Verteilerpfad geprüft: CSV- und VCF-Text werden eingelesen und zugeordnet, eine daraus gebaute Zeile wird gespeichert und den Verteilern zugeordnet. Der Datei-Dialog selbst und das Excel-/ODS-Einlesen laufen nicht im Selbsttest.",
     "Briefingwissen folgt der Profil-Mandantenzuordnung; bei mehreren Büros kann die Sichtbarkeit einschränken. Genau deshalb blockiert dieser Schritt die übrigen Prüfungen nicht.",
     "Alle Prüfschritte außer dem Setup sind nicht blockierend: ein Policy- oder Triggerfehler wird am Schritt gemeldet, die folgenden Schritte laufen weiter.",
   ],
@@ -64,6 +80,9 @@ export const contactRelationsScenario: TestScenario = {
     { table: "call_logs", columns: ["contact_id", "user_id", "call_type", "duration_minutes", "notes", "follow_up_required", "priority"] },
     { table: "distribution_lists", columns: ["user_id", "tenant_id", "name", "description", "topic"] },
     { table: "distribution_list_members", columns: ["distribution_list_id", "contact_id"] },
+    { table: "map_flag_types", columns: ["tenant_id", "name", "icon", "color", "created_by"] },
+    { table: "map_flags", columns: ["tenant_id", "flag_type_id", "title", "description", "coordinates", "created_by", "tags", "metadata"] },
+    { table: "gdpr_requests", columns: ["tenant_id", "request_type", "subject_contact_id", "subject_name", "subject_email", "reason", "requested_by"] },
     { table: "contact_briefing_memory", columns: ["tenant_id", "contact_id", "kind", "content", "question", "answer", "pinned_by"] },
     { table: "fundings", columns: ["tenant_id", "title", "total_amount", "status", "created_by"] },
     { table: "funding_participants", columns: ["funding_id", "contact_id", "allocated_amount", "role"] },
@@ -153,14 +172,162 @@ export const contactRelationsScenario: TestScenario = {
       },
     },
     {
+      id: "gdpr-four-eyes",
+      label: "Vier-Augen-Regel der Löschanfrage als reine Regel prüfen",
+      kind: "logic", critical: false,
+      run: async () => {
+        const pending = { request_type: "delete", status: "pending", requested_by: "erste-person" };
+        const approved = { ...pending, status: "approved" };
+        const checks = {
+          eigenfreigabeGesperrt: !canApproveGdprDelete(pending, "erste-person").allowed,
+          zweitePersonErlaubt: canApproveGdprDelete(pending, "zweite-person").allowed,
+          freigegebenNichtErneut: !canApproveGdprDelete(approved, "zweite-person").allowed,
+          auskunftOhneFreigabe: !canApproveGdprDelete({ ...pending, request_type: "export" }, "zweite-person").allowed,
+          ohneAnmeldungGesperrt: !canApproveGdprDelete(pending, null).allowed,
+          zustimmungBrauchtZweite: isApprovedBySecondPerson({
+            ...approved, approved_by: "zweite-person", approved_at: "2026-01-01T00:00:00.000Z",
+          }),
+          eigeneZustimmungZaehltNicht: !isApprovedBySecondPerson({
+            ...approved, approved_by: "erste-person", approved_at: "2026-01-01T00:00:00.000Z",
+          }),
+          fehlenderZeitpunktZaehltNicht: !isApprovedBySecondPerson({
+            ...approved, approved_by: "zweite-person", approved_at: null,
+          }),
+        };
+        const failed = Object.entries(checks).filter(([, ok]) => !ok).map(([name]) => name);
+        return {
+          ok: failed.length === 0,
+          message: failed.length === 0
+            ? "Die Vier-Augen-Regel sperrt Eigenfreigaben und verlangt die Zustimmung einer zweiten Person mit Zeitpunkt."
+            : `Fehlgeschlagen: ${failed.join(", ")}`,
+          details: checks,
+        };
+      },
+    },
+    {
+      id: "gdpr-deletion",
+      label: "Löschanfrage anlegen, Eigenfreigabe abweisen und zweite berechtigte Person prüfen",
+      critical: false,
+      run: async (ctx) => {
+        const approverRoles: string[] = [...GDPR_APPROVER_ROLES];
+        if (!ctx.role || !approverRoles.includes(ctx.role)) {
+          return {
+            ok: true,
+            message: `Löschanfragen dürfen nur ${approverRoles.join(" oder ")} stellen; angemeldet ist ${ctx.role ?? "keine Rolle"}. Der Schritt wurde nicht ausgeführt.`,
+          };
+        }
+
+        const contactId = ctx.data.contactId as string;
+        const created = await supabase.from("gdpr_requests").insert({
+          tenant_id: ctx.tenantId,
+          request_type: "delete",
+          subject_contact_id: contactId,
+          subject_name: stamp(ctx.runId, "Erika Muster Löschanfrage"),
+          subject_email: "erika.muster@example.org",
+          reason: `${SELFTEST_MARKER} DSGVO-Löschantrag aus dem Selbsttest`,
+          requested_by: ctx.userId,
+        }).select("id, status, request_type, requested_by, approved_by, approved_at").single();
+        if (created.error || !created.data) return { ok: false, message: describeError(created.error) };
+        const request = created.data;
+        ctx.data.gdprRequestId = request.id;
+
+        // Beide Wege der Eigenfreigabe müssen die Datenbank-Bremse auslösen.
+        const selfUpdate = await supabase.from("gdpr_requests")
+          .update({ status: "approved" }).eq("id", request.id);
+        const selfRpc = await supabase.rpc("approve_gdpr_delete", { p_request_id: request.id });
+        const immutability = await supabase.from("gdpr_requests")
+          .update({ subject_email: "geaendert@example.org" }).eq("id", request.id);
+
+        const reload = await supabase.from("gdpr_requests")
+          .select("status, approved_by, approved_at, subject_email, subject_name")
+          .eq("id", request.id).single();
+        if (reload.error || !reload.data) return { ok: false, message: `Anfrage lesen: ${describeError(reload.error)}` };
+
+        const peer = await supabase.from("user_tenant_memberships")
+          .select("user_id, role")
+          .eq("tenant_id", ctx.tenantId).eq("is_active", true)
+          .in("role", approverRoles).neq("user_id", ctx.userId).limit(1).maybeSingle();
+        const peerId = peer.data?.user_id ?? null;
+        const peerRoleEligible = Boolean(peer.data?.role)
+          && approverRoles.includes(String(peer.data?.role));
+
+        const selfDecision = canApproveGdprDelete(request, ctx.userId);
+        const peerDecision = canApproveGdprDelete(request, peerId ?? "zweite-person");
+        const approvedRow = isApprovedBySecondPerson({
+          ...request, status: "approved",
+          approved_by: peerId ?? "zweite-person", approved_at: new Date().toISOString(),
+        });
+        const selfApprovedRow = isApprovedBySecondPerson({
+          ...request, status: "approved", approved_by: ctx.userId, approved_at: new Date().toISOString(),
+        });
+
+        const checks = {
+          antragAngelegt: reload.data.status === "pending" && request.request_type === "delete"
+            && request.requested_by === ctx.userId && request.approved_by === null,
+          selbstfreigabeAbgewiesen: Boolean(selfUpdate.error)
+            && /zweite aktive berechtigte Person/.test(selfUpdate.error?.message ?? ""),
+          rpcFreigabeAbgewiesen: Boolean(selfRpc.error)
+            && /zweite aktive berechtigte Person/.test(selfRpc.error?.message ?? ""),
+          anfrageUnveraendert: reload.data.status === "pending"
+            && reload.data.approved_by === null && reload.data.approved_at === null,
+          gegenstandUnveraenderlich: Boolean(immutability.error)
+            && /unveränderlich/.test(immutability.error?.message ?? "")
+            && reload.data.subject_email === "erika.muster@example.org",
+          regelBlockiertSelbstfreigabe: !selfDecision.allowed,
+          regelErlaubtZweitePerson: peerId ? (peerDecision.allowed && peerRoleEligible) : true,
+          regelVerlangtZweitePerson: approvedRow && !selfApprovedRow,
+        };
+        const failed = Object.entries(checks).filter(([, ok]) => !ok).map(([name]) => name);
+        return {
+          ok: failed.length === 0,
+          message: failed.length === 0
+            ? (peerId
+              ? "Löschanfrage entsteht ausstehend, Eigenfreigabe wird per Update und RPC abgewiesen; eine zweite berechtigte Person im Büro erfüllt die Vier-Augen-Regel."
+              : "Löschanfrage entsteht ausstehend, Eigenfreigabe wird per Update und RPC abgewiesen; im Büro fehlt eine zweite berechtigte Person, die Freigabe selbst bleibt hier ungeprüft.")
+            : `Fehlgeschlagen: ${failed.join(", ")}`,
+          details: { ...checks, requestId: request.id, secondPersonFound: Boolean(peerId) },
+        };
+      },
+    },
+    {
       id: "import-mapping",
-      label: "Import ordnet Spalten zu, zerlegt Verteiler und erkennt Dubletten",
+      label: "Import liest CSV und VCF ein, ordnet Spalten zu und bereitet Zeilen auf",
       kind: "logic", critical: false,
       run: async () => {
         const mappedTargets = [...new Set(Object.values(FIELD_MAPPINGS))];
         const unknownTargets = mappedTargets.filter((target) => !TARGET_FIELDS.includes(target));
         const unusedTargets = TARGET_FIELDS.filter((target) => !mappedTargets.includes(target));
         const lists = parseDistributionListNames("Presse; Umwelt, Vereine|Vorstand");
+
+        const csvText = [
+          "Nachname,Vorname,Firma,E-Mail 1,Verteiler",
+          'Mustermann,Max ,Beispiel GmbH, max.mustermann@example.org ,"Presse; Umwelt"',
+        ].join("\n");
+        const csvRows = parseCsvSource(csvText);
+        const csvRow = buildImportRow(csvRows[0] ?? {}, autoMapFields(Object.keys(csvRows[0] ?? {})));
+
+        const semicolonRows = parseCsvSource("Nachname;Vorname;E-Mail 1\nMusterfrau;Erika;erika@example.org");
+        const semicolonRow = buildImportRow(semicolonRows[0] ?? {}, autoMapFields(Object.keys(semicolonRows[0] ?? {})));
+
+        const vcfText = [
+          "BEGIN:VCARD",
+          "VERSION:3.0",
+          "N:Mustermann;Max;;;",
+          "FN:Max Mustermann",
+          "ORG:Beispiel GmbH;Vertrieb",
+          "TITLE:Geschäftsführer",
+          "EMAIL;TYPE=WORK:max@example.org",
+          "EMAIL;TYPE=HOME:max@privat.de",
+          "TEL;TYPE=CELL:+49 170 1234567",
+          "TEL;TYPE=WORK:+49 721 555",
+          "ADR;TYPE=WORK:;;Musterstraße 1;Musterstadt;;76133;Deutschland",
+          "URL:https://example.org",
+          "NOTE:Notiz",
+          "END:VCARD",
+        ].join("\n");
+        const vcfRows = parseVCardSource(vcfText);
+        const vcfRow = buildImportRow(vcfRows[0] ?? {}, autoMapFields(Object.keys(vcfRows[0] ?? {})));
+
         const duplicates = findPotentialDuplicates(
           { id: "", name: "Erika Muster", email: "ERIKA@example.org", phone: "+49 (721) 123456" },
           [
@@ -169,6 +336,7 @@ export const contactRelationsScenario: TestScenario = {
             { id: "c", name: "Max Beispiel", email: "max@example.org", phone: "+49 30 999999" },
           ],
         );
+
         const checks = {
           deutscheSpalten: FIELD_MAPPINGS["Nachname"] === "last_name"
             && FIELD_MAPPINGS["Vorname"] === "first_name"
@@ -184,14 +352,109 @@ export const contactRelationsScenario: TestScenario = {
           leereVerteilerSpalte: parseDistributionListNames("  ").length === 0,
           dublettenErkannt: duplicates.map((match) => match.contact.id).sort().join(",") === "a,b",
           aehnlicheStelleBewertet: duplicates[0]?.reasons.some((reason) => reason.includes("E-Mail") || reason.includes("Telefon")) ?? false,
+          csvGelesen: csvRows.length === 1,
+          csvSpaltenzugeordnet: csvRow.values.first_name === "Max"
+            && csvRow.values.last_name === "Mustermann"
+            && csvRow.values.organization === "Beispiel GmbH"
+            && csvRow.values.email === "max.mustermann@example.org",
+          csvNameGesetzt: csvRow.values.name === "Max Mustermann",
+          csvVerteilerZerlegt: csvRow.distributionListNames.join("|") === "Presse|Umwelt",
+          csvVerteilerNichtImKontakt: !("distribution_list_names" in csvRow.values) && csvRow.error === null,
+          semikolonErkannt: semicolonRow.values.email === "erika@example.org",
+          vcfGelesen: vcfRows.length === 1,
+          vcfNameUndFirma: vcfRow.values.name === "Max Mustermann"
+            && vcfRow.values.organization === "Beispiel GmbH"
+            && vcfRow.values.position === "Geschäftsführer",
+          vcfKontaktdaten: vcfRow.values.email === "max@example.org"
+            && vcfRow.values.mobile_phone === "+49 170 1234567"
+            && vcfRow.values.business_phone === "+49 721 555",
+          vcfAdresse: vcfRow.values.business_city === "Musterstadt"
+            && vcfRow.values.business_postal_code === "76133"
+            && vcfRow.values.business_street === "Musterstraße 1",
+          fehlenderNameGemeldet: buildImportRow(
+            { "E-Mail 1": "ohne.name@example.org" }, autoMapFields(["E-Mail 1"]),
+          ).error === "Kein Name angegeben",
+          ungueltigeMailGemeldet: (buildImportRow(
+            { Nachname: "Muster", "E-Mail 1": "keine-mail" }, autoMapFields(["Nachname", "E-Mail 1"]),
+          ).error ?? "").startsWith("Ungültige E-Mail-Adresse"),
         };
         const failed = Object.entries(checks).filter(([, ok]) => !ok).map(([name]) => name);
         return {
           ok: failed.length === 0,
           message: failed.length === 0
-            ? "Deutsche und englische Spalten werden zugeordnet, die Verteiler-Spalte wird zerlegt und Dubletten werden über E-Mail/Telefon erkannt."
+            ? "CSV (Komma/Semikolon) und VCF werden eingelesen, Spalten zugeordnet, Verteiler zerlegt und ungültige Zeilen abgewiesen."
             : `Fehlgeschlagen: ${failed.join(", ")} (unbekannte Ziele: ${unknownTargets.join(", ") || "keine"}; nicht zugeordnet: ${unusedTargets.join(", ") || "keine"})`,
           details: { ...checks, unknownTargets, unusedTargets },
+        };
+      },
+    },
+    {
+      id: "import-assignment",
+      label: "Importzeile anlegen und über die Verteiler-Spalte zuordnen",
+      critical: false,
+      run: async (ctx) => {
+        const listBase = `ST ${ctx.runId.slice(0, 8)} Importverteiler`;
+        const firstList = `${listBase} A`;
+        const secondList = `${listBase} B`;
+        const csvText = [
+          "Nachname,Vorname,Firma,E-Mail 1,Verteiler",
+          `Importling,Ida,${listBase} GmbH,ida.importling@example.org,"${firstList}; ${secondList}"`,
+        ].join("\n");
+        const rows = parseCsvSource(csvText);
+        const row = buildImportRow(rows[0] ?? {}, autoMapFields(Object.keys(rows[0] ?? {})));
+        if (row.error) return { ok: false, message: `Importzeile ungültig: ${row.error}` };
+
+        // Spalten stammen aus der dynamischen Zuordnung; Name, Mandant und Benutzer werden explizit gesetzt.
+        const inserted = await supabase.from("contacts").insert({
+          ...row.values, name: row.values.name ?? "", user_id: ctx.userId, tenant_id: ctx.tenantId, notes: SELFTEST_MARKER,
+        } as TablesInsert<"contacts">).select("id, name, email, first_name, last_name, organization").single();
+        if (inserted.error || !inserted.data) return { ok: false, message: describeError(inserted.error) };
+        ctx.trackRecord({ table: "contacts", id: inserted.data.id });
+
+        const assignment = {
+          contactId: inserted.data.id, listNames: row.distributionListNames,
+          userId: ctx.userId, tenantId: ctx.tenantId,
+        };
+        const failures = await assignContactToDistributionLists(supabase, assignment);
+        if (failures.length > 0) {
+          const detail = failures.map(({ listName, message }) => `${listName} (${message})`).join(", ");
+          return { ok: false, message: `Verteilerzuordnung: ${detail}` };
+        }
+
+        const lists = await supabase.from("distribution_lists")
+          .select("id, name").eq("tenant_id", ctx.tenantId).in("name", [firstList, secondList]);
+        if (lists.error || !lists.data) return { ok: false, message: `Verteiler lesen: ${describeError(lists.error)}` };
+        const createdLists = lists.data;
+        createdLists.forEach((list) => ctx.trackRecord({ table: "distribution_lists", id: list.id }));
+
+        const members = await supabase.from("distribution_list_members")
+          .select("id, distribution_list_id").eq("contact_id", inserted.data.id);
+        if (members.error || !members.data) return { ok: false, message: `Mitgliedschaften lesen: ${describeError(members.error)}` };
+        members.data.forEach((member) => ctx.trackRecord({ table: "distribution_list_members", id: member.id }));
+
+        const repeatedFailures = await assignContactToDistributionLists(supabase, assignment);
+        const afterRepeat = await supabase.from("distribution_list_members")
+          .select("id").eq("contact_id", inserted.data.id);
+
+        const checks = {
+          zeileVorbereitet: rows.length === 1 && row.distributionListNames.length === 2,
+          kontaktAngelegt: inserted.data.name === "Ida Importling"
+            && inserted.data.email === "ida.importling@example.org"
+            && inserted.data.first_name === "Ida"
+            && inserted.data.last_name === "Importling"
+            && inserted.data.organization === `${listBase} GmbH`,
+          zweiVerteilerAngelegt: createdLists.length === 2,
+          zweiMitgliedschaften: members.data.length === 2
+            && members.data.every((member) => createdLists.some((list) => list.id === member.distribution_list_id)),
+          wiederholungOhneDuplikat: repeatedFailures.length === 0 && afterRepeat.data?.length === 2,
+        };
+        const failed = Object.entries(checks).filter(([, ok]) => !ok).map(([name]) => name);
+        return {
+          ok: failed.length === 0,
+          message: failed.length === 0
+            ? "Die Importzeile wird gespeichert, beide Verteiler werden angelegt und zugeordnet; ein zweiter Lauf verdoppelt nichts."
+            : `Fehlgeschlagen: ${failed.join(", ")}`,
+          details: checks,
         };
       },
     },
@@ -497,6 +760,79 @@ export const contactRelationsScenario: TestScenario = {
           ok: failed.length === 0,
           message: failed.length === 0
             ? "Stakeholder, Personenzuordnung und Verteiler funktionieren; Mitglieder sind eindeutig und verschwinden mit der Liste."
+            : `Fehlgeschlagen: ${failed.join(", ")}`,
+          details: checks,
+        };
+      },
+    },
+    {
+      id: "stakeholder-flag",
+      label: "Kartenflag mit Flag-Typ und Koordinaten anlegen, lesen und löschen",
+      critical: false,
+      run: async (ctx) => {
+        let flagTypeId: string;
+
+        if (ctx.role && CONFIG_ADMIN_ROLES.includes(ctx.role)) {
+          const createdType = await supabase.from("map_flag_types").insert({
+            tenant_id: ctx.tenantId, name: stamp(ctx.runId, "Stakeholder-Flaggentyp"),
+            icon: "🏛️", color: "#2563eb", created_by: ctx.userId,
+          }).select("id, name, icon, color").single();
+          if (createdType.error || !createdType.data) {
+            return { ok: false, message: `Flag-Typ anlegen: ${describeError(createdType.error)}` };
+          }
+          flagTypeId = createdType.data.id;
+          ctx.trackRecord({ table: "map_flag_types", id: createdType.data.id });
+        } else {
+          // Ohne Adminrolle lässt sich kein Typ anlegen; dann muss ein vorhandener genügen.
+          const existingType = await supabase.from("map_flag_types")
+            .select("id, name").eq("tenant_id", ctx.tenantId).eq("is_active", true)
+            .order("order_index").limit(1).maybeSingle();
+          if (existingType.error) return { ok: false, message: `Flag-Typ lesen: ${describeError(existingType.error)}` };
+          if (!existingType.data) {
+            return {
+              ok: true,
+              message: `Ohne Adminrolle lässt sich kein Flag-Typ anlegen und im Büro ist keiner aktiv; der Schritt wurde nicht ausgeführt.`,
+            };
+          }
+          flagTypeId = existingType.data.id;
+        }
+
+        const coordinates = { lat: 49.0069, lng: 8.4037 };
+        const flag = await supabase.from("map_flags").insert({
+          tenant_id: ctx.tenantId, flag_type_id: flagTypeId,
+          title: stamp(ctx.runId, "Stakeholder-Kartenflag"),
+          description: `${SELFTEST_MARKER} Kartenflag aus dem Selbsttest`,
+          coordinates, created_by: ctx.userId,
+          tags: ["selftest"], metadata: { source: "selftest" },
+        }).select("id").single();
+        if (flag.error || !flag.data) return { ok: false, message: `Flag anlegen: ${describeError(flag.error)}` };
+        ctx.trackRecord({ table: "map_flags", id: flag.data.id });
+
+        const readBack = await supabase.from("map_flags")
+          .select("id, title, coordinates, flag_type_id, tenant_id, created_by, tags")
+          .eq("id", flag.data.id).maybeSingle();
+        if (readBack.error) return { ok: false, message: `Flag lesen: ${describeError(readBack.error)}` };
+        const typeRead = await supabase.from("map_flag_types")
+          .select("id, name, icon").eq("id", flagTypeId).maybeSingle();
+
+        const deleted = await supabase.from("map_flags").delete().eq("id", flag.data.id);
+        const afterDelete = await supabase.from("map_flags").select("id").eq("id", flag.data.id).maybeSingle();
+
+        const stored = readBack.data?.coordinates as { lat?: number; lng?: number } | null;
+        const checks = {
+          typVorhanden: typeRead.data?.id === flagTypeId,
+          koordinatenGespeichert: stored?.lat === coordinates.lat && stored?.lng === coordinates.lng,
+          typVerknuepft: readBack.data?.flag_type_id === flagTypeId,
+          eigenesBuero: readBack.data?.tenant_id === ctx.tenantId
+            && readBack.data?.created_by === ctx.userId,
+          tagsGespeichert: readBack.data?.tags?.includes("selftest") ?? false,
+          geloescht: !deleted.error && !afterDelete.data,
+        };
+        const failed = Object.entries(checks).filter(([, ok]) => !ok).map(([name]) => name);
+        return {
+          ok: failed.length === 0,
+          message: failed.length === 0
+            ? "Das Kartenflag trägt Typ, Koordinaten und Tags, gehört zum eigenen Büro und ist nach dem Löschen nicht mehr lesbar."
             : `Fehlgeschlagen: ${failed.join(", ")}`,
           details: checks,
         };

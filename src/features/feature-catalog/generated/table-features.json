@@ -2068,6 +2068,11 @@
       "id": "admin.gdpr",
       "name": "DSGVO-Löschanträge",
       "area": "verwaltung"
+    },
+    {
+      "id": "contacts.privacy",
+      "name": "Kontakt-Datenschutz und Aufbewahrung",
+      "area": "kontakte"
     }
   ],
   "information_blocks": [
