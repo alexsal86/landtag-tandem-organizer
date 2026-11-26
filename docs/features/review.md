@@ -522,7 +522,7 @@ Eindeutige Fehler werden im CI-Lauf ausgegeben und brechen die Prüfung ab; sie 
 
 ### `daily.briefing`
 
-- Vortage sind schreibgeschützt; abgeschlossen werden kann nur der aktuelle Tag.
+- Frühere Tage sind schreibgeschützt; abgeschlossen werden kann nur der aktuelle Tag.
 - Die automatische Wochentag-Vorlage wird nur einmal pro Tag, nur an noch leeren Zetteln und nie an abgeschlossenen oder bereits begonnenen Tagen eingefügt; die Entscheidung wird auch dann für den Tag festgehalten, wenn nichts eingefügt wurde, damit späteres Leeren und erneutes Laden die Vorlage nicht nachträglich erscheinen lässt. Manuell gewählte Vorlagen ersetzen sie für den Tag.
 - Kürzel belegen die Zuordnung nur vor; mehrdeutige Namen und unbekannte Fälligkeiten bleiben Text und werden in der Zuordnung geklärt.
 

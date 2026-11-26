@@ -16,12 +16,12 @@ export const daySlipLifecycleScenario: TestScenario = {
   description: "Schreibt einen Tageszettel mit verlinkten Zeilen (Notiz, Aufgabe, Vorgang, Entscheidung), lädt ihn neu, prüft die Sprungziele und überträgt offene Zeilen auf den Folgetag, ohne Links zu verlieren.",
   touches: ["day_slips"],
   features: ["dayslip"],
-  checks: ["Speichern und erneutes Laden", "Link-Erhalt bei Übernahme", "Keine doppelte Übernahme", "Wochentag-Vorlage nur an unbegonnenen Zetteln, Entscheidung je Tag festgehalten", "Vortage ohne Abschluss bleiben lesbar", "Snooze-Vorschläge ohne doppeltes Ziel", "Löschen mit Rückgängig", "Getippte Kürzel ohne Automatik", "Archiv: erledigt/zugewiesen/offen, Suche, Datumsnachbarn"],
+  checks: ["Speichern und erneutes Laden", "Link-Erhalt bei Übernahme", "Keine doppelte Übernahme", "Wochentag-Vorlage nur an unbegonnenen Zetteln, Entscheidung je Tag festgehalten", "Vorlagenentscheidung übersteht Speichern und Neuladen", "Vortage ohne Abschluss bleiben lesbar", "Snooze-Vorschläge ohne doppeltes Ziel", "Löschen mit Rückgängig", "Getippte Kürzel ohne Automatik", "Archiv: erledigt/zugewiesen/offen, Suche, Datumsnachbarn"],
   limitations: [
     "Die verlinkten Ziele sind Test-IDs; ihre Bedienung wird nicht geprüft.",
     "Kürzel belegen die Zuordnung nur vor; erstellt wird erst mit dem Abschluss, und Mehrdeutiges bleibt Text.",
     "Vortage werden nur gelesen; abgeschlossen werden kann weiterhin ausschließlich der aktuelle Tag.",
-    "Die Vorlagenentscheidung wird als reine Regel geprüft; das Öffnen des Zettels im Browser beobachtet der Selbsttest nicht.",
+    "Die Vorlagenentscheidung wird als Regel und über den gespeicherten Zettel geprüft; das automatische Einfügen beim ersten Öffnen im Browser beobachtet der Selbsttest nicht.",
   ],
   writes: [{ table: "day_slips", columns: ["user_id", "tenant_id", "day_key", "data"] }],
   steps: [
@@ -75,6 +75,30 @@ export const daySlipLifecycleScenario: TestScenario = {
       run: async (ctx) => {
         const lines = collectCarryLines(ctx.data.carriedStore as DaySlipStore, testDay(ctx.runId, 1));
         return { ok: lines.length === 0, message: `${lines.length} bereits übernommene Zeilen erneut angeboten.`, details: { expected: 0, actual: lines.length } };
+      },
+    },
+    {
+      id: "template-flag-persisted", label: "Vorlagenentscheidung bleibt nach Speichern und Neuladen erhalten",
+      run: async (ctx) => {
+        const DAY3 = testDay(ctx.runId, 2);
+        const day: DaySlipDayData = { html: "", plainText: "", struckLineIds: [], dayTemplateInjected: true };
+        const { data, error } = await supabase.from("day_slips").insert({ user_id: ctx.userId, tenant_id: ctx.tenantId, day_key: DAY3, data: day as unknown as Json }).select("id").single();
+        if (error || !data) return { ok: false, message: describeError(error) };
+        ctx.trackRecord({ table: "day_slips", id: data.id });
+        const { data: back, error: readError } = await supabase.from("day_slips").select("data").eq("id", data.id).single();
+        if (readError) return { ok: false, message: describeError(readError) };
+        const reloaded = normalizeStore({ [DAY3]: back?.data })[DAY3];
+        const decision = decideDayTemplate(reloaded, ["Plenartag", "Fraktionssitzung"]);
+        const checks = {
+          entscheidungGespeichert: reloaded?.dayTemplateInjected === true,
+          keineVorlageNachher: !decision.applies,
+          geleerterZettelBleibtLeer: decision.day.html === "" && extractLinesFromHtml(decision.day.html).length === 0,
+          entscheidungBleibt: decision.day.dayTemplateInjected === true,
+        };
+        const failed = Object.entries(checks).filter(([, ok]) => !ok).map(([name]) => name);
+        return failed.length
+          ? { ok: false, message: `Fehler: ${failed.join(", ")}`, details: checks }
+          : { ok: true, message: "Gespeicherte Vorlagenentscheidung bleibt nach dem Neuladen erhalten; der geleerte Zettel bekommt keine Vorlage.", details: checks };
       },
     },
     {
