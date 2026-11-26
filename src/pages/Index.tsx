@@ -60,7 +60,14 @@ const NotFound = lazyWithRetry(() => import("./NotFound"));
 const Index = (): React.JSX.Element => {
   const { width: navWidth, isResizing, startResize } = useNavWidth();
   // Der angedockte Tageszettel nimmt rechts Platz weg, statt den Inhalt zu überdecken.
-  const daySlipReservedWidth = useDaySlipLayout()?.reservedWidth ?? 0;
+  const daySlipLayout = useDaySlipLayout();
+  const daySlipReservedWidth = daySlipLayout?.reservedWidth ?? 0;
+  // Die tatsächliche Navigationsbreite (nicht ihr Mindestwert) bestimmt, wie viel
+  // Platz der Zettel beim Andocken wegnehmen darf.
+  const setDaySlipNavWidth = daySlipLayout?.setNavWidth;
+  useEffect(() => {
+    setDaySlipNavWidth?.(navWidth);
+  }, [setDaySlipNavWidth, navWidth]);
   const { user, loading: authLoading } = useAuth();
   const { loading: tenantLoading } = useTenant();
   const navigate = useNavigate();

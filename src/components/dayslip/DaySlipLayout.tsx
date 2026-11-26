@@ -17,6 +17,8 @@ const DaySlipLayoutContext = createContext<{
   /** Fensterbreite, ab der Andocken möglich ist. */
   minDockWidth: number;
   desktop: boolean;
+  /** Gemeldete Breite der Navigation; sie zählt zum festen Anteil neben dem Zettel. */
+  setNavWidth: (width: number) => void;
   width: number;
   /** Platz, den der angedockte Tageszettel dem Inhalt rechts wegnimmt. */
   reservedWidth: number;
@@ -35,14 +37,16 @@ export function DaySlipLayout({ children }: { children: ReactNode }) {
     return Math.min(640, Number.isFinite(saved) && saved >= MIN_WIDTH ? saved : 400);
   });
   const [screenWidth, setScreenWidth] = useState(() => window.innerWidth);
+  // Bis die Navigation ihre Breite meldet, gilt ihr Mindestwert.
+  const [navWidth, setNavWidth] = useState(NAV_MIN_WIDTH);
   const desktop = screenWidth >= 1024;
   const preferredWidthClamped = Math.max(MIN_WIDTH, Math.min(640, screenWidth * 0.45, preferredWidth));
   const [visible, setVisible] = useState(false);
   const [host, setHost] = useState<HTMLDivElement | null>(null);
   // Angedockt wird nur, wenn dem Inhalt neben Navigation und Zettel noch seine
   // Mindestbreite bleibt; sonst bliebe vom Inhalt zu wenig übrig.
-  const minDockWidth = NAV_MIN_WIDTH + MIN_CONTENT_WIDTH + MIN_WIDTH;
-  const availableForDaySlip = Math.max(0, screenWidth - NAV_MIN_WIDTH - MIN_CONTENT_WIDTH);
+  const minDockWidth = navWidth + MIN_CONTENT_WIDTH + MIN_WIDTH;
+  const availableForDaySlip = Math.max(0, screenWidth - navWidth - MIN_CONTENT_WIDTH);
   const canDock = desktop && availableForDaySlip >= MIN_WIDTH;
   const docked = preferredDocked && canDock;
   const dockWidth = Math.min(preferredWidthClamped, availableForDaySlip);
@@ -65,7 +69,7 @@ export function DaySlipLayout({ children }: { children: ReactNode }) {
   }, [preferredWidth]);
 
   return (
-    <DaySlipLayoutContext.Provider value={{ docked, canDock, minDockWidth, desktop, width, reservedWidth, host, setDocked, setWidth: value => updateWidth(clampWidth(value)), setVisible }}>
+    <DaySlipLayoutContext.Provider value={{ docked, canDock, minDockWidth, desktop, setNavWidth, width, reservedWidth, host, setDocked, setWidth: value => updateWidth(clampWidth(value)), setVisible }}>
       <div className="flex min-h-app w-full">
         <div className="min-w-0 flex-1">{children}</div>
         <div ref={setHost} style={{ width: reservedWidth }} className="sticky top-0 h-app shrink-0" />
