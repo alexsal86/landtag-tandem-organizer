@@ -4,12 +4,13 @@ import { addDays } from "date-fns";
 import { supabase } from "@/integrations/supabase/client";
 import { useAuth } from "@/hooks/useAuth";
 import { useTenant } from "@/hooks/useTenant";
-import type { ActivePanel, QuickAccessAddCategory, UpcomingAppointmentItem } from "./types";
+import type { ActivePanel, NavPreviewGroup, QuickAccessAddCategory, UpcomingAppointmentItem } from "./types";
 
 const STALE = 2 * 60 * 1000;
 
 interface UseNavPanelDataParams {
   activePanel: ActivePanel;
+  previewGroup: NavPreviewGroup | null;
   quickAccessPopoverOpen: boolean;
   quickAccessAddCategory: QuickAccessAddCategory | null;
 }
@@ -33,6 +34,7 @@ const sortByPreferredThenDate = (a: QuickAccessItem, b: QuickAccessItem) => {
 
 export function useNavPanelData({
   activePanel,
+  previewGroup,
   quickAccessPopoverOpen,
   quickAccessAddCategory,
 }: UseNavPanelDataParams) {
@@ -59,15 +61,15 @@ export function useNavPanelData({
 
   // Upcoming appointments
   const endDate = addDays(new Date(), 5);
-  const { data: upcomingAppointments = [] } = useQuery({
-    queryKey: ["nav-upcoming-appointments", tenantId],
+  const { data: upcomingAppointments = [], isLoading: appointmentsLoading, isError: appointmentsError } = useQuery({
+    queryKey: ["nav-upcoming-appointments", tenantId, user?.id],
     queryFn: async (): Promise<UpcomingAppointmentItem[]> => {
       if (!tenantId || !user?.id) return [];
       const nowIso = new Date().toISOString();
       const [appointmentsResult, externalEventsResult] = await Promise.all([
         supabase
           .from("appointments")
-          .select("id, title, start_time, end_time, location, is_all_day")
+          .select("id, title, start_time, end_time, location, is_all_day, briefing_status")
           .eq("tenant_id", tenantId)
           .eq("user_id", user.id)
           .gte("start_time", nowIso)
@@ -87,32 +89,87 @@ export function useNavPanelData({
           .limit(20),
       ]);
 
+      if (appointmentsResult.error && externalEventsResult.error) throw appointmentsResult.error;
+
       const internal: UpcomingAppointmentItem[] = (appointmentsResult.data || []).map(
-        (a: Record<string, any>) => ({
+        (a) => ({
           id: a.id,
           title: a.title,
           start_time: a.start_time,
           end_time: a.end_time,
           location: a.location,
           is_all_day: a.is_all_day ?? false,
+          briefingStatus: a.briefing_status ?? undefined,
         })
       );
       const external: UpcomingAppointmentItem[] = (externalEventsResult.data || []).map(
-        (e: Record<string, any>) => ({
+        (e) => ({
           id: e.id,
           title: e.title,
           start_time: e.start_time,
           end_time: e.end_time,
           location: e.location,
           is_all_day: e.all_day ?? false,
+          isExternal: true,
         })
       );
       return [...internal, ...external]
         .sort((a, b) => new Date(a.start_time).getTime() - new Date(b.start_time).getTime())
         .slice(0, 20);
     },
-    enabled: !!tenantId && !!user?.id && activePanel === "appointments",
+    enabled: !!tenantId && !!user?.id && (activePanel === "appointments" || previewGroup === "calendar"),
     staleTime: STALE,
+  });
+
+  const nextAppointment = upcomingAppointments.find((appointment) => Date.parse(appointment.start_time) >= Date.now());
+  const briefingAppointmentId = nextAppointment?.briefingStatus && nextAppointment.briefingStatus !== "none"
+    ? nextAppointment.id
+    : undefined;
+  const { data: briefing } = useQuery({
+    queryKey: ["nav-appointment-briefing", tenantId, user?.id, briefingAppointmentId],
+    enabled: previewGroup === "calendar" && !!tenantId && !!user?.id && !!briefingAppointmentId,
+    staleTime: STALE,
+    queryFn: async () => {
+      const { data, error } = await supabase
+        .from("appointment_preparations")
+        .select("id")
+        .eq("tenant_id", tenantId!)
+        .eq("appointment_id", briefingAppointmentId!)
+        .eq("is_archived", false)
+        .order("updated_at", { ascending: false })
+        .limit(1)
+        .maybeSingle();
+      if (error) throw error;
+      return data;
+    },
+  });
+
+  const { data: previewTask, isLoading: taskLoading, isError: taskError } = useQuery({
+    queryKey: ["nav-preview-task", tenantId, user?.id],
+    enabled: previewGroup === "tasks" && !!tenantId && !!user?.id,
+    staleTime: STALE,
+    queryFn: async () => {
+      const openTasks = () => supabase
+        .from("tasks")
+        .select("id, title, due_date, next_action_due, next_action, ball_owner, ball_assignee_id, ball_external_label")
+        .eq("tenant_id", tenantId!)
+        .is("parent_task_id", null)
+        .neq("status", "completed")
+        .not("category", "in", "(call_follow_up,call_followup)");
+
+      const [nextStep, regular] = await Promise.all([
+        openTasks().not("next_action_due", "is", null)
+          .order("next_action_due").order("updated_at", { ascending: false }).limit(1).maybeSingle(),
+        openTasks().is("next_action_due", null)
+          .order("due_date", { nullsFirst: false }).order("updated_at", { ascending: false }).limit(1).maybeSingle(),
+      ]);
+      if (nextStep.error) throw nextStep.error;
+      if (regular.error) throw regular.error;
+
+      const stepDue = nextStep.data?.next_action_due;
+      const taskDue = regular.data?.due_date;
+      return stepDue && (!taskDue || stepDue <= taskDue) ? nextStep.data : regular.data;
+    },
   });
 
   // Pending feedbacks
@@ -134,20 +191,21 @@ export function useNavPanelData({
   });
 
   // Case files
-  const { data: caseFiles = [] } = useQuery({
-    queryKey: ["nav-casefiles", tenantId],
+  const { data: caseFiles = [], isLoading: caseFilesLoading, isError: caseFilesError } = useQuery({
+    queryKey: ["nav-casefiles", tenantId, user?.id, activePanel === "casefiles"],
     queryFn: async () => {
       if (!tenantId || !user?.id) return [];
-      const { data } = await supabase
+      const { data, error } = await supabase
         .from("case_files")
-        .select("id, title, status, priority, case_type, reference_number, updated_at")
+        .select("id, title, status, priority, case_type, reference_number, updated_at, current_status_note")
         .eq("tenant_id", tenantId)
         .or(`user_id.eq.${user.id},assigned_to.eq.${user.id}`)
         .order("updated_at", { ascending: false })
-        .limit(30);
+        .limit(activePanel === "casefiles" ? 30 : 1);
+      if (error) throw error;
       return data || [];
     },
-    enabled: !!tenantId && !!user?.id && activePanel === "casefiles",
+    enabled: !!tenantId && !!user?.id && (activePanel === "casefiles" || previewGroup === "files"),
     staleTime: STALE,
   });
 
@@ -255,6 +313,15 @@ export function useNavPanelData({
   return {
     userProfile,
     upcomingAppointments,
+    nextAppointment,
+    appointmentsLoading,
+    appointmentsError,
+    briefing,
+    previewTask,
+    taskLoading,
+    taskError,
+    caseFilesLoading,
+    caseFilesError,
     pendingFeedbacks,
     caseFiles,
     quickAccessCaseItems,

@@ -1,3 +1,5 @@
+export type NavPreviewGroup = "calendar" | "tasks" | "files";
+
 export type ActivePanel = 'home' | 'notifications' | 'casefiles' | 'appointments';
 export type NotificationFilter = 'unread' | 'all';
 export type QuickAccessAddCategory = 'pages' | 'case-items' | 'documents' | 'event-plannings';
@@ -15,4 +17,6 @@ export type UpcomingAppointmentItem = {
   end_time: string | null;
   location: string | null;
   is_all_day: boolean;
+  briefingStatus?: string;
+  isExternal?: boolean;
 };

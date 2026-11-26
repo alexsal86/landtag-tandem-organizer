@@ -91,7 +91,7 @@ export function CaseFilesView({ mode = "casefiles" }: CaseFilesViewProps) {
 
   useEffect(() => {
     const caseFileId = searchParams.get('caseFileId');
-    if (!caseFileId || selectedCaseFile || visibleCaseFiles.length === 0) return;
+    if (!caseFileId || visibleCaseFiles.length === 0) return;
 
     const matched = visibleCaseFiles.find((caseFile) => caseFile.id === caseFileId);
     if (!matched) return;
@@ -100,7 +100,7 @@ export function CaseFilesView({ mode = "casefiles" }: CaseFilesViewProps) {
 
     searchParams.delete('caseFileId');
     setSearchParams(searchParams, { replace: true });
-  }, [searchParams, setSearchParams, visibleCaseFiles, selectedCaseFile]);
+  }, [searchParams, setSearchParams, visibleCaseFiles]);
 
   const baseFilteredCaseFiles = visibleCaseFiles.filter((cf) => {
     const matchesSearch = 
