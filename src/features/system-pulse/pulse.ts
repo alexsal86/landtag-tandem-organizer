@@ -246,7 +246,14 @@ export function latestRunSteps(rows: PersistedRun[]): Record<string, Record<stri
  * welcher Fehler gespeichert ist. Fehlt bei einem fehlgeschlagenen Lauf die
  * Schrittliste (ältere Läufe), erscheint eine Zeile für den gesamten Testlauf.
  */
-export interface FailedTestRow { area: string; scenario: string; test: string; error: string }
+export interface FailedTestRow {
+  area: string;
+  areaId: string;
+  scenario: string;
+  scenarioId: string;
+  test: string;
+  error: string;
+}
 
 export function failedTestRows(
   areas: PulseArea[],
@@ -261,7 +268,14 @@ export function failedTestRows(
       const scenarioTitle = run.title ?? scenarioId;
       const failedSteps = Object.values(steps[scenarioId] ?? {}).filter((step) => step.status === "failed");
       if (failedSteps.length === 0) {
-        rows.push({ area: area.title, scenario: scenarioTitle, test: "gesamter Testlauf", error: "Test fehlgeschlagen" });
+        rows.push({
+          area: area.title,
+          areaId: area.id,
+          scenario: scenarioTitle,
+          scenarioId,
+          test: "gesamter Testlauf",
+          error: "Test fehlgeschlagen",
+        });
         continue;
       }
       for (const step of failedSteps) {
@@ -271,7 +285,9 @@ export function failedTestRows(
           .join(" · ");
         rows.push({
           area: area.title,
+          areaId: area.id,
           scenario: scenarioTitle,
+          scenarioId,
           test: step.label ?? step.id,
           error: error || "Test fehlgeschlagen",
         });

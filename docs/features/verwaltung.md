@@ -437,7 +437,7 @@ Verwaltet Löschanträge mit Vier-Augen-Freigabe durch die Datenbank und atomare
 - Keine.
 
 ### `admin.security-cockpit` — Security-Cockpit
-Zeigt RLS-Lücken, Policies, Snapshots und Audit-Trail als eigenständige Sicherheitssicht; Befunde verweisen auf die betroffenen Funktionen und sind von fachlichen Testergebnissen getrennt.
+Zeigt RLS-Lücken, Policies, Snapshots und Audit-Trail als eigenständige Sicherheitssicht; Befunde verweisen auf die betroffenen Funktionen und sind von fachlichen Testergebnissen getrennt. Jeden auffälligen Befund kann man direkt an seiner Zeile erneut prüfen, statt die Aktualisierung der ganzen Tabelle abzuwarten.
 
 - **Kategorie:** sicherheit
 - **Implementierung:** implementiert
@@ -476,7 +476,7 @@ Zeigt RLS-Lücken, Policies, Snapshots und Audit-Trail als eigenständige Sicher
 - Funktionen ohne Tabellenbezug erhalten keinen RLS-Bezug; ob das fachlich korrekt ist, bleibt je Funktion zu prüfen.
 
 ### `admin.system-pulse` — System-Puls
-Bildet alle registrierten Selbsttest-Szenarien in fachlichen Bereichen ab und zeigt je Funktionsbereich die letzten funktionalen Selbsttest-Ergebnisse als Ampel, startet die zugeordneten Szenarien aus der Detailkarte im Hintergrund, stellt die deklarierten Szenario-Schritte als Prozesskette mit gespeicherten Schritt-Ergebnissen dar und nennt bei fehlgeschlagenen Schritten Prüfpunkt, Fehlercode und Kurzdetails, listet alle fehlgeschlagenen Tests als kompakte Tabelle oberhalb der Bereichskacheln mit Bereich, geprüftem Schritt und Fehler auf, erklärt die Bedeutung der Ampelfarben, zeigt je Workflow Testname, Zeitpunkt, Dauer, Beschreibung und Prüfumfang, bewertet Frische, App-Version, Demo- und Aufräumstatus, nennt Abdeckung und Verlauf, erlaubt gezielte Nachläufe und verknüpft betroffene Katalogfunktionen sowie RLS-Befunde, während RLS-Lücken als eigene Kennzahl getrennt von den Testergebnissen aus.
+Bildet alle registrierten Selbsttest-Szenarien in fachlichen Bereichen ab und zeigt je Funktionsbereich die letzten funktionalen Selbsttest-Ergebnisse als Ampel, startet die zugeordneten Szenarien aus der Detailkarte im Hintergrund, stellt die deklarierten Szenario-Schritte als Prozesskette mit gespeicherten Schritt-Ergebnissen dar und nennt bei fehlgeschlagenen Schritten Prüfpunkt, Fehlercode und Kurzdetails, listet alle fehlgeschlagenen Tests als kompakte Tabelle oberhalb der Bereichskacheln mit Bereich, geprüftem Schritt und Fehler auf und testet jeden Fehlschlag über einen Button direkt an der Zeile nach, ohne den Bereich erst zu öffnen, erklärt die Bedeutung der Ampelfarben, zeigt je Workflow Testname, Zeitpunkt, Dauer, Beschreibung und Prüfumfang, bewertet Frische, App-Version, Demo- und Aufräumstatus, nennt Abdeckung und Verlauf, erlaubt gezielte Nachläufe und verknüpft betroffene Katalogfunktionen sowie RLS-Befunde, während RLS-Lücken als eigene Kennzahl getrennt von den Testergebnissen aus.
 
 - **Kategorie:** administrativ
 - **Implementierung:** implementiert

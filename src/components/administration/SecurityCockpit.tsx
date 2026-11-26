@@ -58,6 +58,7 @@ export function SecurityCockpit(): JSX.Element {
   const { currentTenant } = useTenant();
   const [filter, setFilter] = useState("");
   const [onlyIssues, setOnlyIssues] = useState(true);
+  const [retesting, setRetesting] = useState<string | null>(null);
 
   const gapsQuery = useQuery({
     queryKey: ["rls_gaps", user?.id],
@@ -125,6 +126,31 @@ export function SecurityCockpit(): JSX.Element {
     }
     notify.success("Snapshot erstellt");
     void snapshotsQuery.refetch();
+  };
+
+  // Einzelnen Befund direkt an der Zeile neu prüfen, statt die ganze Tabelle
+  // neu zu laden und den Befund selbst wiederzufinden.
+  const retestGap = async (gap: Gap) => {
+    if (retesting) return;
+    setRetesting(gap.table_name);
+    try {
+      const result = await gapsQuery.refetch();
+      if (result.error) throw result.error;
+      const current = (result.data ?? []).find((entry) => entry.table_name === gap.table_name);
+      if (!current || current.severity === "ok") {
+        notify.success(`${gap.table_name}: Befund behoben`);
+      } else if (current.severity === gap.severity) {
+        notify.warning(`${gap.table_name}: Befund besteht weiter (${current.severity})`, { description: current.reason });
+      } else {
+        notify.info(`${gap.table_name}: Schwere geändert – jetzt ${current.severity}`, { description: current.reason });
+      }
+    } catch (error) {
+      notify.error("Nachtest fehlgeschlagen", {
+        description: error instanceof Error ? error.message : String(error),
+      });
+    } finally {
+      setRetesting(null);
+    }
   };
 
 
@@ -227,6 +253,7 @@ export function SecurityCockpit(): JSX.Element {
                       <TableHead className="text-right">Policies</TableHead>
                       <TableHead>tenant_id</TableHead>
                       <TableHead>Funktionen</TableHead>
+                      <TableHead className="text-right">Nachtesten</TableHead>
                     </TableRow>
                   </TableHeader>
                   <TableBody>
@@ -254,11 +281,29 @@ export function SecurityCockpit(): JSX.Element {
                             {featuresForTable(g.table_name).length === 0 ? <span className="text-muted-foreground">—</span> : null}
                           </div>
                         </TableCell>
+                        <TableCell className="text-right">
+                          {g.severity === "ok" ? (
+                            <span className="text-muted-foreground">—</span>
+                          ) : (
+                            <Button
+                              variant="outline"
+                              size="sm"
+                              className="h-7 px-2 text-[11px]"
+                              onClick={() => void retestGap(g)}
+                              disabled={retesting !== null}
+                              aria-label={`Befund für ${g.table_name} nachtesten`}
+                              title="Diesen RLS-Befund erneut prüfen"
+                            >
+                              <RefreshCw className={retesting === g.table_name ? "mr-1 h-3 w-3 animate-spin" : "mr-1 h-3 w-3"} />
+                              {retesting === g.table_name ? "Prüft …" : "Nachtesten"}
+                            </Button>
+                          )}
+                        </TableCell>
                       </TableRow>
                     ))}
                     {filteredGaps.length === 0 && (
                       <TableRow>
-                        <TableCell colSpan={6} className="text-center text-muted-foreground py-6">
+                        <TableCell colSpan={7} className="text-center text-muted-foreground py-6">
                           Keine Treffer.
                         </TableCell>
                       </TableRow>

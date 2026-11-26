@@ -1,7 +1,7 @@
 import type { ReactElement } from "react";
 import { Fragment, useEffect, useMemo, useRef, useState } from "react";
 import { useQuery, useQueryClient } from "@tanstack/react-query";
-import { Activity, AlertTriangle, ArrowDown, ArrowLeft, ArrowRight, ExternalLink, Shield } from "lucide-react";
+import { Activity, AlertTriangle, ArrowDown, ArrowLeft, ArrowRight, ExternalLink, RotateCw, Shield } from "lucide-react";
 import { Link, useNavigate } from "react-router-dom";
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
@@ -17,7 +17,8 @@ import { stepDiagnostic } from "@/features/selftest/stepDiagnostics";
 import {
   PULSE_AREAS, PULSE_GROUPS, areaAssessment, assessRun, consecutiveFailures, durationTrend,
   failedTestRows, gapSummary, historyByScenario, latestRunDetails, latestRuns, latestRunSteps, mergeRuns,
-  type AreaAssessment, type GapsState, type HistoryRun, type PersistedRun, type PulseArea, type PulseLevel, type PulseWorkflow,
+  type AreaAssessment, type FailedTestRow, type GapsState, type HistoryRun, type PersistedRun, type PulseArea,
+  type PulseLevel, type PulseWorkflow,
 } from "./pulse";
 
 interface Props { gaps: Array<{ table_name: string; severity: string }>; gapsState: GapsState }
@@ -241,6 +242,13 @@ export function SystemPulse({ gaps, gapsState }: Props) {
   const attentionIds = (area: PulseArea) =>
     area.scenarios.filter((id) => ["red", "yellow"].includes(assessScenario(id).level));
   const runAttention = (area: PulseArea) => void runScenarios(area, attentionIds(area), `attention:${area.id}`);
+  // Einzelnen Fehlschlag direkt aus der Fehlertabelle nachtesten, ohne den
+  // Bereich erst zu öffnen: es läuft nur das Szenario, zu dem der Schritt gehört.
+  const retestFailed = (row: FailedTestRow) => {
+    const area = PULSE_AREAS.find((entry) => entry.id === row.areaId);
+    if (!area) return;
+    void runScenarios(area, [row.scenarioId], `scenario:${row.scenarioId}`);
+  };
 
   const tile = ({ area, level }: LevelEntry) => {
     const active = runningArea === area.id;
@@ -301,6 +309,7 @@ export function SystemPulse({ gaps, gapsState }: Props) {
                     <TableHead>Bereich</TableHead>
                     <TableHead>Test</TableHead>
                     <TableHead>Fehler</TableHead>
+                    <TableHead className="text-right">Nachtesten</TableHead>
                   </TableRow>
                 </TableHeader>
                 <TableBody>
@@ -312,6 +321,21 @@ export function SystemPulse({ gaps, gapsState }: Props) {
                         <code className="text-[10px] text-muted-foreground">{row.scenario}</code>
                       </TableCell>
                       <TableCell className="align-top text-caption text-destructive">{row.error}</TableCell>
+                      <TableCell className="whitespace-nowrap align-top text-right">
+                        <Button
+                          size="sm"
+                          variant="outline"
+                          className="h-7 px-2 text-[11px]"
+                          onClick={() => retestFailed(row)}
+                          disabled={runningArea !== null}
+                          aria-label={`${row.test} nachtesten`}
+                          title={`Nur „${row.scenario}“ erneut ausführen`}
+                        >
+                          {runningArea === `scenario:${row.scenarioId}`
+                            ? <><RotateCw aria-hidden className="mr-1 h-3 w-3 animate-spin" /> Läuft …</>
+                            : <><RotateCw aria-hidden className="mr-1 h-3 w-3" /> Nachtesten</>}
+                        </Button>
+                      </TableCell>
                     </TableRow>
                   ))}
                 </TableBody>

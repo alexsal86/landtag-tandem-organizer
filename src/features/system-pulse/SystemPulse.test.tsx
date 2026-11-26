@@ -183,6 +183,32 @@ describe("SystemPulse: selftest_runs", () => {
     expect(screen.queryByText("Alles in Ordnung")).not.toBeInTheDocument();
   });
 
+  it("testet einen fehlgeschlagenen Test direkt aus der Fehlertabelle nach", async () => {
+    rpc.mockImplementation((name: string) => Promise.resolve(
+      name === "get_selftest_run_history"
+        ? { data: [], error: null }
+        : {
+          data: [{
+            scenario_id: "contact-lifecycle", scenario_title: "Kontakt-Lifecycle", status: "failed", created_at: ago(3_600_000),
+            duration_ms: 500, failed_steps: 1, total_steps: 1, keep_data: false, cleanup: { status: "ok" },
+            steps: [{ id: "create", label: "Anlegen", status: "failed", message: "Anlegen fehlgeschlagen" }],
+          }],
+          error: null,
+        },
+    ));
+    runSuite.mockResolvedValue([{ scenarioId: "contact-lifecycle", status: "ok", steps: [], cleanup: { status: "ok" } }]);
+    renderPulse();
+
+    const failedTests = screen.getByRole("region", { name: "Fehlgeschlagene Tests" });
+    fireEvent.click(await within(failedTests).findByRole("button", { name: "Anlegen nachtesten" }));
+
+    // Nur das betroffene Szenario läuft, nicht der ganze Bereich.
+    await waitFor(() => expect(runSuite).toHaveBeenCalled());
+    const [scenarios] = runSuite.mock.calls[0] as [Array<{ id: string }>];
+    expect(scenarios.map((scenario) => scenario.id)).toEqual(["contact-lifecycle"]);
+    await waitFor(() => expect(saveRun).toHaveBeenCalled());
+  });
+
   it("verknüpft RLS-Befunde mit Bereich und Workflow", async () => {
     rpc.mockImplementation((name: string) => Promise.resolve(
       name === "get_selftest_run_history"
