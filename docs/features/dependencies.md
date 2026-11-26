@@ -418,8 +418,8 @@ _Auto-generiert mit `npm run update:feature-catalog`. Nicht von Hand bearbeiten.
 | `email_logs` | dokumente, entscheidungen, kommunikation, schnittstellen, termine, veranstaltungen |
 | `notifications` | arbeitsbereich, aufgaben, schnittstellen, termine, verwaltung, wissen |
 | `topics` | dokumente, kontakte, mitarbeit, organisation, vorgaenge, wissen |
+| `contacts` | arbeitsbereich, dokumente, kontakte, schnittstellen, verwaltung |
 | `appointments` | arbeitsbereich, schnittstellen, termine, vorgaenge |
-| `contacts` | dokumente, kontakte, schnittstellen, verwaltung |
 | `profiles` | arbeitsbereich, aufgaben, verwaltung, wissen |
 | `annual_task_completions` | aufgaben, automation, mitarbeit |
 | `annual_tasks` | aufgaben, automation, mitarbeit |
@@ -436,9 +436,11 @@ _Auto-generiert mit `npm run update:feature-catalog`. Nicht von Hand bearbeiten.
 | `task_decisions` | aufgaben, entscheidungen, vorgaenge |
 | `topic_module_settings` | organisation, vorgaenge, wissen |
 | `appointment_categories` | termine, verwaltung |
+| `appointment_contacts` | arbeitsbereich, termine |
 | `appointment_polls` | termine, veranstaltungen |
 | `appointment_requests` | termine, verwaltung |
 | `calendar_sync_settings` | automation, schnittstellen |
+| `case_file_contacts` | arbeitsbereich, vorgaenge |
 | `case_file_tasks` | aufgaben, vorgaenge |
 | `case_files` | arbeitsbereich, vorgaenge |
 | `case_item_timeline` | aufgaben, vorgaenge |

@@ -1,5 +1,5 @@
 import { GlobalCreateMenu } from "@/components/layout/GlobalCreateMenu";
-import { useState, useEffect, useCallback, useMemo, type ElementType } from "react";
+import { useState, useEffect, useCallback, useMemo, type ElementType, type ReactElement } from "react";
 import { useUserPreference } from "@/hooks/useUserPreference";
 import { SHOW_RECENT_PREF_KEY } from "@/components/settings/SidebarPreferencesCard";
 import { NavGroupPreview } from "./appNavigation/NavGroupPreview";
@@ -121,7 +121,7 @@ export function AppNavigation({
   isMobile
 }: NavigationProps) {
   const { navigationCounts, markNavigationAsVisited } = useNavigationNotifications();
-  const { totalUnreadCount: matrixUnreadCount } = useMatrixUnread();
+  const { totalUnreadCount: matrixUnreadCount, hasCredentials: hasChatCredentials, unreadRooms, recentRoom } = useMatrixUnread();
   const { role: userRole, hasAdminAccess, loading: isRoleLoading } = useResolvedUserRole();
   // Bereiche mit `adminOnly` bleiben Mitarbeitenden verborgen (z. B. Funktionskatalog).
   const visibleGroups = useMemo(
@@ -189,6 +189,9 @@ export function AppNavigation({
     taskError,
     caseFilesLoading,
     caseFilesError,
+    previewContact,
+    contactLoading,
+    contactError,
     pendingFeedbacks,
     caseFiles,
     quickAccessCaseItems,
@@ -445,6 +448,38 @@ export function AppNavigation({
           [assignee, due && `Fällig ${format(parseISO(due), "dd.MM.")}`, previewTask.next_action?.trim()].filter(Boolean).join(" · "),
         );
       }
+    } else if (groupId === "communication") {
+      const unreadRoom = [...unreadRooms].sort((a, b) =>
+        Number(b.highlightCount > 0) - Number(a.highlightCount > 0) || (b.activity ?? 0) - (a.activity ?? 0),
+      )[0];
+      const room = unreadRoom ?? recentRoom;
+      const count = unreadRooms.length;
+      message = count > 0 ? `${count} ungelesene${count === 1 ? "r Chat" : " Chats"}`
+        : hasChatCredentials ? "Keine ungelesenen Chats."
+        : "Chat öffnen, um die Verbindung einzurichten.";
+      if (room) {
+        const detail = unreadRoom
+          ? unreadRoom.highlightCount > 0 ? "Ungelesene Hervorhebung" : "Ungelesene Nachrichten"
+          : "Zuletzt geöffneter Chat";
+        return (
+          <>
+            <p className="px-2 py-1 text-xs text-muted-foreground">{message}</p>
+            {renderEntry(`/chat?${new URLSearchParams({ room: room.roomId })}`, room.name === room.roomId ? "Chatraum" : room.name, detail)}
+          </>
+        );
+      }
+    } else if (groupId === "people") {
+      message = contactLoading ? "Kontakt wird geladen …"
+        : contactError ? "Kontakt konnte nicht geladen werden."
+        : "Kein Kontakt zum nächsten Termin oder zur letzten Fallakte.";
+      if (previewContact) {
+        const { contact, role, context } = previewContact;
+        return renderEntry(
+          `/contacts/${contact.id}`,
+          contact.name,
+          [context, role || contact.position, contact.organization].filter(Boolean).join(" · "),
+        );
+      }
     } else {
       message = caseFilesLoading ? "Fallakten werden geladen …"
         : caseFilesError ? "Fallakten konnten nicht geladen werden."
@@ -463,6 +498,33 @@ export function AppNavigation({
     return <p role="status" className="px-2 py-1.5 text-xs text-muted-foreground">{message}</p>;
   };
 
+  const withGroupPreview = (id: NavPreviewGroup, label: string, trigger: ReactElement, links: { id: string; label: string }[]) => (
+    <NavGroupPreview
+      key={id}
+      label={label}
+      open={previewGroup === id}
+      onOpenChange={(open) => setPreviewGroup((current) => open ? id : current === id ? null : current)}
+      trigger={trigger}
+    >
+      {renderPreviewSummary(id)}
+      <div className="mt-2 border-t pt-2">
+        {links.map((item) => (
+          <button
+            key={item.id}
+            type="button"
+            className={cn(previewLinkClass, "text-sm")}
+            onClick={() => {
+              setPreviewGroup(null);
+              void handleNavigationClick(item.id);
+            }}
+          >
+            {item.label}
+          </button>
+        ))}
+      </div>
+    </NavGroupPreview>
+  );
+
   const renderNavGroup = (group: NavGroup) => {
     const badge = getGroupBadge(group);
     const isActive = isGroupActive(group);
@@ -473,7 +535,13 @@ export function AppNavigation({
     if (subItems.length <= 1) {
       const Icon = subItems[0]?.icon || group.icon;
       const label = subItems[0]?.label || group.label;
-      return renderNavItem(targetId, Icon, label, badge);
+      const trigger = renderNavItem(targetId, Icon, label, badge);
+      if (!isMobile && (group.id === "communication" || group.id === "people")) {
+        return withGroupPreview(group.id, group.label, trigger, [
+          { id: targetId, label: group.id === "people" ? "Kontakte suchen" : "Chat öffnen" },
+        ]);
+      }
+      return trigger;
     }
 
     const submenuId = `app-nav-submenu-${isMobile ? "mobile" : "desktop"}-${group.id}`;
@@ -507,31 +575,7 @@ export function AppNavigation({
     return (
       <div key={id}>
         <div className="flex items-center">
-          {supportsPreview && !isMobile ? (
-            <NavGroupPreview
-              label={group.label}
-              open={previewGroup === id}
-              onOpenChange={(open) => setPreviewGroup((current) => open ? id : current === id ? null : current)}
-              trigger={trigger}
-            >
-              {renderPreviewSummary(id)}
-              <div className="mt-2 border-t pt-2">
-                {subItems.map((item) => (
-                  <button
-                    key={item.id}
-                    type="button"
-                    className={cn(previewLinkClass, "text-sm")}
-                    onClick={() => {
-                      setPreviewGroup(null);
-                      void handleNavigationClick(item.id);
-                    }}
-                  >
-                    {item.label}
-                  </button>
-                ))}
-              </div>
-            </NavGroupPreview>
-          ) : trigger}
+          {supportsPreview && !isMobile ? withGroupPreview(id, group.label, trigger, subItems) : trigger}
           <button
             type="button"
             onClick={() => toggleGroup(group.id)}

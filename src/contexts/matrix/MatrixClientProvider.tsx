@@ -57,7 +57,7 @@ const MatrixClientContext = createContext<MatrixClientContextType>(defaultMatrix
 export function MatrixClientProvider({ children }: MatrixClientProviderProps): React.JSX.Element {
   const { user } = useAuth();
   const { currentTenant } = useTenant();
-  const { setLiveUnreadCount } = useMatrixUnread();
+  const { setLiveRooms } = useMatrixUnread();
 
   const [client, setClient] = useState<sdk.MatrixClient | null>(null);
   const [isConnected, setIsConnected] = useState(false);
@@ -144,6 +144,7 @@ export function MatrixClientProvider({ children }: MatrixClientProviderProps): R
         lastMessage: lastMessageEvent?.getContent().body,
         lastMessageTimestamp: lastMessageEvent?.getTs(),
         unreadCount: room.getUnreadNotificationCount() || 0,
+        highlightCount: room.getUnreadNotificationCount(sdk.NotificationCountType.Highlight) || 0,
         isDirect,
         memberCount: room.getJoinedMemberCount(),
         isEncrypted,
@@ -982,7 +983,13 @@ export function MatrixClientProvider({ children }: MatrixClientProviderProps): R
   useEffect(() => { return () => { disconnect(); }; }, [disconnect]);
 
   const totalUnreadCount = rooms.reduce((sum, room) => sum + room.unreadCount, 0);
-  useEffect(() => { setLiveUnreadCount(totalUnreadCount); }, [totalUnreadCount, setLiveUnreadCount]);
+  useEffect(() => {
+    if (!isConnected) return;
+    setLiveRooms(rooms.map(({ roomId, name, unreadCount, highlightCount, lastMessageTimestamp }) => ({
+      roomId, name, unreadCount, highlightCount: highlightCount ?? 0, activity: lastMessageTimestamp,
+    })));
+  }, [isConnected, rooms, setLiveRooms]);
+  useEffect(() => () => setLiveRooms(null), [isConnected, setLiveRooms]);
 
   const value: MatrixClientContextType = {
     client, isConnected, isConnecting, connectionError, cryptoEnabled, e2eeDiagnostics, rooms, credentials,

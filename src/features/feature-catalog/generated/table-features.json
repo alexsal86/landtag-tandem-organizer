@@ -89,6 +89,11 @@
       "id": "calendar.create-appointment",
       "name": "Termin anlegen",
       "area": "termine"
+    },
+    {
+      "id": "mywork.navigation-previews",
+      "name": "Vorschauen für Kalender, Aufgaben, Akten, Chat und Kontakte",
+      "area": "arbeitsbereich"
     }
   ],
   "appointment_feedback": [
@@ -203,7 +208,7 @@
     },
     {
       "id": "mywork.navigation-previews",
-      "name": "Vorschauen für Kalender, Aufgaben und Akten",
+      "name": "Vorschauen für Kalender, Aufgaben, Akten, Chat und Kontakte",
       "area": "arbeitsbereich"
     }
   ],
@@ -303,7 +308,7 @@
     },
     {
       "id": "mywork.navigation-previews",
-      "name": "Vorschauen für Kalender, Aufgaben und Akten",
+      "name": "Vorschauen für Kalender, Aufgaben, Akten, Chat und Kontakte",
       "area": "arbeitsbereich"
     }
   ],
@@ -508,6 +513,11 @@
       "id": "casefiles.links",
       "name": "Fallakte verknüpfen (Dokumente, Kontakte, Themen, Notizen)",
       "area": "vorgaenge"
+    },
+    {
+      "id": "mywork.navigation-previews",
+      "name": "Vorschauen für Kalender, Aufgaben, Akten, Chat und Kontakte",
+      "area": "arbeitsbereich"
     }
   ],
   "case_file_documents": [
@@ -623,7 +633,7 @@
     },
     {
       "id": "mywork.navigation-previews",
-      "name": "Vorschauen für Kalender, Aufgaben und Akten",
+      "name": "Vorschauen für Kalender, Aufgaben, Akten, Chat und Kontakte",
       "area": "arbeitsbereich"
     }
   ],
@@ -921,6 +931,11 @@
       "id": "integration.geocoding",
       "name": "Adress-Geocoding",
       "area": "schnittstellen"
+    },
+    {
+      "id": "mywork.navigation-previews",
+      "name": "Vorschauen für Kalender, Aufgaben, Akten, Chat und Kontakte",
+      "area": "arbeitsbereich"
     }
   ],
   "daily_briefing_reads": [
@@ -1996,7 +2011,7 @@
     },
     {
       "id": "mywork.navigation-previews",
-      "name": "Vorschauen für Kalender, Aufgaben und Akten",
+      "name": "Vorschauen für Kalender, Aufgaben, Akten, Chat und Kontakte",
       "area": "arbeitsbereich"
     }
   ],
@@ -3520,7 +3535,7 @@
     },
     {
       "id": "mywork.navigation-previews",
-      "name": "Vorschauen für Kalender, Aufgaben und Akten",
+      "name": "Vorschauen für Kalender, Aufgaben, Akten, Chat und Kontakte",
       "area": "arbeitsbereich"
     },
     {
