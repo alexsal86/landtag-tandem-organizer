@@ -5,7 +5,7 @@
   "sources": {
     "types": "src/integrations/supabase/types.ts",
     "migrationsDirectory": "supabase/migrations",
-    "migrationCount": 925,
+    "migrationCount": 927,
     "tsModules": [
       "src/components/letters/types.ts"
     ]
@@ -2303,7 +2303,8 @@
           "sources": [
             "check:supabase/migrations/20261113120000_employee_protocol_acknowledgement.sql",
             "write:supabase/migrations/20261113120000_employee_protocol_acknowledgement.sql",
-            "write:supabase/migrations/20261126180000_protocol_error_code_and_matrix_timeline.sql"
+            "write:supabase/migrations/20261126180000_protocol_error_code_and_matrix_timeline.sql",
+            "write:supabase/migrations/20261127160000_release_guard_rule_repair.sql"
           ]
         },
         {
@@ -2338,7 +2339,8 @@
           "param": null,
           "sources": [
             "supabase/migrations/20261113120000_employee_protocol_acknowledgement.sql",
-            "supabase/migrations/20261126180000_protocol_error_code_and_matrix_timeline.sql"
+            "supabase/migrations/20261126180000_protocol_error_code_and_matrix_timeline.sql",
+            "supabase/migrations/20261127160000_release_guard_rule_repair.sql"
           ],
           "guards": []
         },

@@ -18158,6 +18158,14 @@ export type Database = {
       }
     }
     Functions: {
+      parlis_filter_options: {
+        Args: { period: number }
+        Returns: Json
+      }
+      parlis_topic_suggestions: {
+        Args: { period: number; term: string }
+        Returns: string[]
+      }
       parlis_page: {
         Args: { period: number; page_offset?: number; search_text?: string; document_kind?: string; faction?: string; topic?: string; date_from?: string; date_to?: string; deputy_key?: string; oldest_first?: boolean; chart_dimension?: string; chart_selection?: string; options_only?: boolean }
         Returns: Json

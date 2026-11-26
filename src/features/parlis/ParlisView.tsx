@@ -4,6 +4,7 @@ import { ChevronDown, Search } from "lucide-react";
 import { useInfiniteQuery, useQuery } from "@tanstack/react-query";
 import { Input } from "@/components/ui/input";
 import { Button } from "@/components/ui/button";
+import { TopicFilter } from "./TopicFilter";
 import { DocumentCard } from "./DocumentCard";
 import { documentCount, number } from "./documents";
 import { dimensions, type Dimension } from "./grouping";
@@ -75,7 +76,8 @@ function ProceedingsForLegislature({ legislature, changeLegislature }: {
   const options = useQuery({
     queryKey: ["parlis-filter-options", legislature],
     queryFn: ({ signal }) => loadOptions(legislature, signal),
-    staleTime: 5 * 60 * 1000,
+    staleTime: 60 * 60 * 1000,
+    gcTime: 60 * 60 * 1000,
   });
 
   const { fetchNextPage, hasNextPage, isFetching, isFetchNextPageError } = query;
@@ -146,10 +148,7 @@ function ProceedingsForLegislature({ legislature, changeLegislature }: {
               {options.data?.parties.map(party => <option key={party}>{party}</option>)}
               <option value="__unknown">Ohne Fraktionsangabe</option>
             </select></label>
-            <label>Schlagwort<select aria-label="Schlagwort" value={filters.topic} onChange={event => updateFilter("topic", event.target.value)}>
-              <option value="">Alle Schlagwörter</option>
-              {options.data?.topics.map(topic => <option key={topic}>{topic}</option>)}
-            </select></label>
+            <TopicFilter period={legislature} value={filters.topic} onChange={value => updateFilter("topic", value)} />
             <label>Datum von<Input type="date" value={filters.from} max={filters.to || undefined} onChange={event => updateFilter("from", event.target.value)} /></label>
             <label>Datum bis<Input type="date" value={filters.to} min={filters.from || undefined} onChange={event => updateFilter("to", event.target.value)} /></label>
             <label>Sortierung<select aria-label="Sortierung" value={oldestFirst ? "asc" : "desc"} onChange={event => {

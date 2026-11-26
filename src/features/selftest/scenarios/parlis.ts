@@ -10,7 +10,7 @@ export const parlisScenario: TestScenario = {
   description: "Prüft die Gruppierung und den Lesezugriff auf die Parlamentsdokumentation.",
   features: ["parlis.proceedings"],
   touches: [],
-  checks: ["Serverseitige Suche und begrenzte Dokumentenseiten", "Schlagwörter, Fraktionsfilter und mehrere Urheber", "Urhebertext mit Titeln und Namensbestandteilen bleibt vollständig", "Monatsgruppierung, eindeutige Schlagwörter und leere Ressorts", "Importierte Vorgänge sind lesbar", "Verknüpfte Urheber führen zu einem Mandat derselben Wahlperiode"],
+  checks: ["Schlagwortvorschläge bei Eingabe begrenzen", "Serverseitige Suche und begrenzte Dokumentenseiten", "Schlagwörter, Fraktionsfilter und mehrere Urheber", "Urhebertext mit Titeln und Namensbestandteilen bleibt vollständig", "Monatsgruppierung, eindeutige Schlagwörter und leere Ressorts", "Importierte Vorgänge sind lesbar", "Verknüpfte Urheber führen zu einem Mandat derselben Wahlperiode"],
   steps: [{
     id: "parlis-groups",
     label: "Monate, Schlagwörter und fehlende Ressorts korrekt zuordnen",
@@ -98,6 +98,23 @@ export const parlisScenario: TestScenario = {
           && secondIds.every(id => !firstIds.includes(id))
           && ids(search.data).join() === "V-248711",
         message: "Seiten bleiben begrenzt und die Suche findet Vorgänge außerhalb der geladenen Seite.",
+      };
+    },
+  }, {
+    id: "parlis-topic-suggestions",
+    label: "Schlagwörter erst auf Suche und höchstens 20 Vorschläge abrufen",
+    kind: "db",
+    run: async () => {
+      const [options, short, results] = await Promise.all([
+        supabase.rpc("parlis_filter_options", { period: 17 }),
+        supabase.rpc("parlis_topic_suggestions", { period: 17, term: "s" }),
+        supabase.rpc("parlis_topic_suggestions", { period: 17, term: "sch" }),
+      ]);
+      for (const response of [options, short, results]) if (response.error) throw response.error;
+      return {
+        ok: !!options.data && typeof options.data === "object" && !("topics" in options.data)
+          && short.data?.length === 0 && !!results.data?.length && results.data.length <= 20,
+        message: "Die Startoptionen enthalten nur Typen und Fraktionen; Vorschläge sind begrenzt.",
       };
     },
   }, {

@@ -13,7 +13,7 @@ type ProceedingsPage = {
   groups: [string, number][];
 };
 
-type ProceedingsOptions = { kinds: string[]; parties: string[]; topics: string[] };
+type ProceedingsOptions = { kinds: string[]; parties: string[] };
 
 export async function loadPage(args: PageArgs, signal: AbortSignal) {
   const { data, error } = await supabase.rpc("parlis_page", args).abortSignal(signal);
@@ -22,7 +22,13 @@ export async function loadPage(args: PageArgs, signal: AbortSignal) {
 }
 
 export async function loadOptions(period: number, signal: AbortSignal) {
-  const { data, error } = await supabase.rpc("parlis_page", { period, options_only: true }).abortSignal(signal);
+  const { data, error } = await supabase.rpc("parlis_filter_options", { period }).abortSignal(signal);
   if (error) throw error;
   return data as unknown as ProceedingsOptions;
+}
+
+export async function loadTopicSuggestions(period: number, term: string, signal: AbortSignal) {
+  const { data, error } = await supabase.rpc("parlis_topic_suggestions", { period, term }).abortSignal(signal);
+  if (error) throw error;
+  return data ?? [];
 }
