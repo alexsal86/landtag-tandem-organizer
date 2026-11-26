@@ -13,7 +13,7 @@
     {
       "id": "documents",
       "title": "Dokumente & Wissen",
-      "areas": ["documents", "knowledge"]
+      "areas": ["documents", "knowledge", "topics"]
     },
     {
       "id": "elections",
@@ -81,6 +81,11 @@
       "id": "knowledge",
       "title": "Wissen",
       "primaryTags": ["knowledge"]
+    },
+    {
+      "id": "topics",
+      "title": "Themen & Verknüpfungen",
+      "primaryTags": ["topics"]
     },
     {
       "id": "elections",

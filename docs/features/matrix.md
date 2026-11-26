@@ -145,7 +145,7 @@ Die Spalten zählen **zugeordnete** Prüfungen, nicht bestandene Läufe. „Erge
 | `meetings.protocol` | organisation | fachlich | implementiert | rollenabhängig | Selbsttest | nicht-ausgefuehrt | 1 | 0 | 0 | 0 | nein |
 | `meetings.templates` | organisation | administrativ | implementiert | rollenabhängig | kein Test | nicht-ausgefuehrt | 0 | 0 | 0 | 0 | nein |
 | `topics.convert-catalog` | organisation | fachlich | implementiert | UI | kein Test | nicht-ausgefuehrt | 0 | 0 | 0 | 0 | ja |
-| `topics.manage` | organisation | fachlich | implementiert | UI | Unit-Test | unbekannt | 0 | 1 | 0 | 0 | nein |
+| `topics.manage` | organisation | fachlich | implementiert | UI | Selbsttest | nicht-ausgefuehrt | 1 | 1 | 0 | 0 | nein |
 | `integration.push` | schnittstellen | integration | implementiert | systemseitig | kein Test | nicht-ausgefuehrt | 0 | 0 | 0 | 0 | ja |
 | `integration.edge-contract-tests` | schnittstellen | sicherheit | implementiert | nicht anwendbar | Security-Test | unbekannt | 0 | 1 | 0 | 0 | ja |
 | `integration.egress-monitoring` | schnittstellen | sicherheit | implementiert | systemseitig | kein Test | nicht-ausgefuehrt | 0 | 0 | 0 | 0 | ja |
@@ -169,7 +169,7 @@ Die Spalten zählen **zugeordnete** Prüfungen, nicht bestandene Läufe. „Erge
 | `calendar.categories-locations` | termine | administrativ | implementiert | rollenabhängig | kein Test | nicht-ausgefuehrt | 0 | 0 | 0 | 0 | nein |
 | `appointments.debrief` | termine | fachlich | implementiert | UI | kein Test | nicht-ausgefuehrt | 0 | 0 | 0 | 0 | nein |
 | `appointments.feedback` | termine | automatisiert | implementiert | systemseitig | kein Test | nicht-ausgefuehrt | 0 | 0 | 0 | 0 | nein |
-| `daily.briefing` | termine | fachlich | implementiert | UI | Selbsttest | nicht-ausgefuehrt | 2 | 0 | 0 | 0 | ja |
+| `daily.briefing` | termine | fachlich | implementiert | UI | Selbsttest | nicht-ausgefuehrt | 2 | 8 | 0 | 0 | ja |
 | `calendar.polls` | termine | fachlich | implementiert | UI | Selbsttest | nicht-ausgefuehrt | 1 | 0 | 0 | 0 | nein |
 | `appointments.requests` | termine | fachlich | implementiert | rollenabhängig | Selbsttest | nicht-ausgefuehrt | 1 | 0 | 0 | 0 | ja |
 | `appointments.preparation` | termine | fachlich | implementiert | UI | kein Test | nicht-ausgefuehrt | 0 | 0 | 0 | 0 | nein |

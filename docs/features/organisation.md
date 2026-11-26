@@ -32,7 +32,7 @@ _Auto-generiert mit `npm run update:feature-catalog` aus dem zentralen Funktions
 | `meetings.protocol` Sitzungsprotokoll | Jour fixe | fachlich | implementiert | rollenabhängig | Selbsttest |
 | `meetings.templates` Sitzungsvorlagen | Jour fixe | administrativ | implementiert | rollenabhängig | kein Test |
 | `topics.convert-catalog` Thema in Katalog überführen | Themen | fachlich | implementiert | UI | kein Test |
-| `topics.manage` Themen verwalten | Themen | fachlich | implementiert | UI | Unit-Test |
+| `topics.manage` Themen verwalten | Themen | fachlich | implementiert | UI | Selbsttest |
 
 ## Unterbereiche
 
@@ -55,6 +55,7 @@ _Auto-generiert mit `npm run update:feature-catalog` aus dem zentralen Funktions
 | Szenario | Titel | deklarierte Tabellen | deklarierte Prüfungen |
 |---|---|---:|---:|
 | `meeting-lifecycle` | Meeting-Lifecycle (vollständig + Field-Verifikation) | 9 | 0 |
+| `topic-linking` | Themenverknüpfung und Modul-Steuerung | 5 | 9 |
 
 ## Funktionsdetails
 
@@ -599,8 +600,8 @@ Pflegt Themen mit Zuständigkeiten, Verknüpfungen und Sichtbarkeit.
 - **Kategorie:** fachlich
 - **Implementierung:** implementiert
 - **Einbindung:** UI
-- **Testabdeckung:** Unit-Test
-- **Letztes Testergebnis:** unbekannt (nicht aus der Existenz einer Testdatei abgeleitet)
+- **Testabdeckung:** Selbsttest
+- **Letztes Testergebnis:** nicht-ausgefuehrt (nicht aus der Existenz einer Testdatei abgeleitet)
 - **Rollen:** `abgeordneter`, `bueroleitung`, `mitarbeiter`
 - **Routen:** —
 - **Frontend-Komponenten:** `src/features/topics/TopicOverview.tsx`, `src/components/topics/TopicSelector.tsx`
@@ -610,7 +611,7 @@ Pflegt Themen mit Zuständigkeiten, Verknüpfungen und Sichtbarkeit.
 - **Datenbankfunktionen:** `ensure_topic`, `merge_topics`, `topic_name_from_label`, `topic_usage`
 - **Tabellen:** `topics`, `committees`, `regions`, `case_item_topics`, `knowledge_question_topics`, `topic_module_settings`
 - **Abhängigkeiten:** —
-- **Selbsttests:** —
+- **Selbsttests:** `topic-linking`
 - **Unit-Tests:** `src/features/topics/moduleRules.test.ts`
 - **Integrationstests:** —
 - **Browser-Tests:** —
@@ -620,10 +621,12 @@ Pflegt Themen mit Zuständigkeiten, Verknüpfungen und Sichtbarkeit.
 
 - src/features/topics/TopicOverview.tsx
 - src/hooks/useTopics.tsx
+- src/features/selftest/scenarios/topic-linking.ts
 
 **Bekannte Einschränkungen**
 
-- Keine.
+- knowledge_question_topics hat nur eine Lesepolicy; Clients können Wissensfragen noch nicht selbst mit Themen verknüpfen, das Szenario prüft Lesbarkeit und die Abweisung des direkten Inserts.
+- merge_topics und Änderungen an topic_module_settings setzen eine Büroleitung voraus; als Mitglied prüft das Szenario die Abweisung.
 
 **Offene Prüfpunkte**
 

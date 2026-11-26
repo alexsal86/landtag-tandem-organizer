@@ -16916,41 +16916,53 @@ export type Database = {
         Row: {
           color: string | null
           created_at: string
+          created_by: string | null
           description: string | null
           icon: string | null
           id: string
           is_active: boolean
           label: string
+          merged_at: string | null
+          merged_into: string | null
           name: string
           order_index: number
           tenant_id: string
           updated_at: string
+          updated_by: string | null
         }
         Insert: {
           color?: string | null
           created_at?: string
+          created_by?: string | null
           description?: string | null
           icon?: string | null
           id?: string
           is_active?: boolean
           label: string
+          merged_at?: string | null
+          merged_into?: string | null
           name: string
           order_index?: number
           tenant_id: string
           updated_at?: string
+          updated_by?: string | null
         }
         Update: {
           color?: string | null
           created_at?: string
+          created_by?: string | null
           description?: string | null
           icon?: string | null
           id?: string
           is_active?: boolean
           label?: string
+          merged_at?: string | null
+          merged_into?: string | null
           name?: string
           order_index?: number
           tenant_id?: string
           updated_at?: string
+          updated_by?: string | null
         }
         Relationships: [
           {
@@ -18599,7 +18611,7 @@ export type Database = {
         Returns: string
       }
       ensure_topic: {
-        Args: { p_label: string; p_module?: string; p_tenant: string }
+        Args: { p_label: string; p_module?: string | null; p_tenant: string }
         Returns: string
       }
       ensure_weekly_question: { Args: { p_tenant: string }; Returns: string }
@@ -20317,6 +20329,23 @@ export type Database = {
       }
       topic_mention_selftest: { Args: { p_tenant: string }; Returns: Json }
       topic_name_from_label: { Args: { p_label: string }; Returns: string }
+      topic_usage: {
+        Args: { p_tenant: string }
+        Returns: {
+          appointments: number
+          case_files: number
+          case_items: number
+          contacts: number
+          decisions: number
+          documents: number
+          knowledge_documents: number
+          knowledge_questions: number
+          map_flags: number
+          tasks: number
+          topic_id: string
+          total: number
+        }[]
+      }
       undo_contact_bulk_action: { Args: { _audit_id: string }; Returns: number }
       undo_task_batch_action: { Args: { _batch_id: string }; Returns: number }
       update_contact_usage: {

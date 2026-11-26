@@ -107,7 +107,8 @@ try {
       ball_assignee_id uuid, next_action text, next_action_due date, source_type text, source_id text,
       timeline jsonb, updated_at timestamptz DEFAULT now());
     CREATE TABLE task_assignees(task_id uuid, user_id uuid, assigned_by uuid);
-    GRANT SELECT ON employee_meetings, employee_meeting_action_items TO authenticated;
+    -- Lesen genügt: geschrieben wird ausschließlich über die Workflow-RPCs.
+    GRANT SELECT ON employee_meetings, employee_meeting_action_items, tasks, task_assignees, notifications, employee_settings TO authenticated;
   `);
 
   await apply('20261113120000_employee_protocol_acknowledgement.sql');
@@ -151,6 +152,136 @@ try {
   assert.equal((await q('SELECT * FROM employee_meeting_private_notes')).length, 0);
   assert.equal((await q('SELECT last_meeting_date FROM employee_settings WHERE user_id=$1', [staff]))[0].last_meeting_date, null,
     'Completing inside the check does not touch employee settings');
+
+  // --- Zweipersonen-Fall: Die Gesprächsleitung schließt ab und gibt frei, die betroffene
+  // Person bestätigt bzw. legt Einspruch ein. Jede Rolle handelt in eigener Session
+  // (eigener Actor, eigener Rollenwechsel) wie in zwei getrennten Verbindungen; alles
+  // läuft in einer Untertransaktion, die am Ende zurückgerollt wird, weil auditierte
+  // Gespräche absichtlich unlöschbar sind.
+  await db.exec('RESET ROLE');
+  const two = 'aaaaaaaa-aaaa-4aaa-8aaa-aaaaaaaaaaaa';
+  const row2 = async () => (await q(
+    'SELECT status, version, protocol_hash, acknowledged_at, acknowledged_by, acknowledgement_comment, acknowledgement_requested_at, completed_at FROM employee_meetings WHERE id=$1',
+    [two]))[0];
+  await db.query(
+    `INSERT INTO employee_meetings(id,employee_id,conducted_by,tenant_id,meeting_date,status,protocol_data)
+     VALUES($1,$2,$3,$4,now(),'scheduled','{"goals":"Zweipersonen-Selbsttest"}')`,
+    [two, staff, lead, office],
+  );
+  await db.query(`INSERT INTO employee_meeting_action_items(meeting_id,tenant_id,description,owner)
+    VALUES($1,$2,'Protokoll ablegen','employee')`, [two, office]);
+
+  const auditCount = async (action, who, reason = null) => (await q(
+    'SELECT count(*)::int AS n FROM employee_meeting_audit WHERE meeting_id=$1 AND action=$2 AND actor=$3 AND ($4::text IS NULL OR reason=$4)',
+    [two, action, who, reason]))[0].n;
+  // Erwartete Abweisungen laufen in eigener Untertransaktion: ein SQL-Fehler bricht sonst
+  // die umgebende Transaktion ab und alle folgenden Schritte würden nur noch 25P02 melden.
+  const expectRejection = async (label, run, predicate) => {
+    await db.exec('SAVEPOINT expected_failure');
+    let failure = null;
+    try {
+      await run();
+    } catch (error) {
+      failure = error;
+    }
+    await db.exec('ROLLBACK TO SAVEPOINT expected_failure');
+    await db.exec('RELEASE SAVEPOINT expected_failure');
+    assert.ok(failure, `${label}: erwartete Abweisung blieb aus`);
+    assert.ok(predicate(failure), `${label}: unerwarteter Fehler ${failure.code} ${failure.message}`);
+  };
+
+  await db.exec('BEGIN');
+  try {
+    // Session Gesprächsleitung: abschließen und freigeben.
+    await actor(lead);
+    assert.equal((await q('SELECT auth.uid() AS id'))[0].id, lead, 'Session der Gesprächsleitung');
+    let r = await row2();
+    await q('SELECT save_employee_meeting($1,$2,$3::jsonb)', [two, r.version, '{"status":"in_progress"}']);
+    r = await row2();
+    assert.equal(r.status, 'in_progress', 'Die Leitung startet das Gespräch');
+    await q('SELECT save_employee_meeting($1,$2,$3::jsonb)', [two, r.version, '{"status":"completed"}']);
+    r = await row2();
+    assert.equal(r.status, 'completed');
+    assert.ok(r.completed_at, 'Die Leitung schließt das Gespräch ab');
+    await expectRejection('Die Leitung kann nicht selbst bestätigen',
+      () => q('SELECT acknowledge_meeting_protocol($1)', [two]), error => error.code === '42501');
+    await q('SELECT request_protocol_acknowledgement($1)', [two]);
+    r = await row2();
+    assert.equal(r.status, 'pending_acknowledgement', 'Die Freigabe wartet auf die betroffene Person');
+    const firstHash = r.protocol_hash;
+    assert.match(firstHash, /^[0-9a-f]{64}$/, 'Die Freigabe signiert das Protokoll');
+    assert.equal(await auditCount('requested', lead), 1, 'Die Freigabe wird der Leitung zugeordnet');
+
+    // Session betroffene Person: bestätigen.
+    await actor(staff);
+    assert.equal((await q('SELECT auth.uid() AS id'))[0].id, staff, 'Session der betroffenen Person');
+    await expectRejection('Die betroffene Person kann nicht freigeben',
+      () => q('SELECT request_protocol_acknowledgement($1)', [two]), error => error.code === '42501');
+    await expectRejection('Die betroffene Person kann nicht wieder öffnen',
+      () => q('SELECT reopen_meeting_protocol($1,$2)', [two, 'Selbsttest']), error => error.code === '42501');
+    const seenHash = (await q('SELECT protocol_hash FROM employee_meetings WHERE id=$1', [two]))[0].protocol_hash;
+    assert.equal(seenHash, firstHash, 'Beide Rollen sehen denselben signierten Hash');
+    await q('SELECT acknowledge_meeting_protocol($1,NULL,$2)', [two, seenHash]);
+    r = await row2();
+    assert.equal(r.status, 'acknowledged', 'Die betroffene Person bestätigt');
+    assert.equal(r.acknowledged_by, staff);
+    assert.equal(r.acknowledgement_comment, null);
+    assert.equal(await auditCount('acknowledged', staff), 1, 'Die Bestätigung wird der betroffenen Person zugeordnet');
+    const actionTask = (await q('SELECT task_id FROM employee_meeting_action_items WHERE meeting_id=$1', [two]))[0].task_id;
+    assert.ok(actionTask, 'Mit der Bestätigung entsteht die Aufgabe');
+    assert.equal((await q('SELECT count(*)::int AS n FROM task_assignees WHERE task_id=$1 AND user_id=$2', [actionTask, staff]))[0].n, 1,
+      'Die Aufgabe liegt bei der betroffenen Person, nicht bei der Leitung');
+    assert.equal((await q("SELECT count(*)::int AS n FROM notifications WHERE user_id=$1 AND title='Protokoll bestätigt'", [lead]))[0].n, 1,
+      'Die Leitung wird über die Bestätigung benachrichtigt');
+
+    // Session Gesprächsleitung: wieder öffnen, ergänzen, erneut abschließen und freigeben.
+    await actor(lead);
+    await q('SELECT reopen_meeting_protocol($1,$2)', [two, 'Selbsttest: Punkt 2 ergänzen']);
+    r = await row2();
+    assert.equal(r.status, 'in_progress', 'Die Leitung öffnet wieder');
+    assert.equal(r.protocol_hash, null, 'Die Wiedereröffnung hebt die Signatur auf');
+    assert.equal(await auditCount('reopened', lead, 'Selbsttest: Punkt 2 ergänzen'), 1);
+    await q('SELECT save_employee_meeting($1,$2,$3::jsonb)', [two, r.version,
+      '{"protocol_data":{"goals":"Zweipersonen-Selbsttest","agreements":"Punkt 2 ergänzt"}}']);
+    r = await row2();
+    await q('SELECT save_employee_meeting($1,$2,$3::jsonb)', [two, r.version, '{"status":"completed"}']);
+    await q('SELECT request_protocol_acknowledgement($1)', [two]);
+    r = await row2();
+    assert.equal(r.status, 'pending_acknowledgement');
+    const secondHash = r.protocol_hash;
+    assert.notEqual(secondHash, firstHash, 'Der ergänzte Inhalt wird neu signiert');
+
+    // Session betroffene Person: Einspruch.
+    await actor(staff);
+    await q('SELECT acknowledge_meeting_protocol($1,$2,$3)', [two, 'Punkt 2 fehlt noch', secondHash]);
+    r = await row2();
+    assert.equal(r.status, 'pending_acknowledgement', 'Der Einspruch lässt die Freigabe offen');
+    assert.equal(r.acknowledgement_comment, 'Punkt 2 fehlt noch');
+    assert.equal(r.acknowledged_at, null, 'Ein Einspruch bestätigt nichts');
+    assert.equal(await auditCount('objection', staff, 'Punkt 2 fehlt noch'), 1, 'Der Einspruch wird protokolliert');
+    await expectRejection('Der offene Einspruch blockiert die Bestätigung',
+      () => q('SELECT acknowledge_meeting_protocol($1,NULL,$2)', [two, secondHash]), error => /Einspruch/.test(error.message));
+    assert.equal((await q("SELECT count(*)::int AS n FROM notifications WHERE user_id=$1 AND title='Einspruch zum Protokoll'", [lead]))[0].n, 1,
+      'Die Leitung wird über den Einspruch benachrichtigt');
+  } finally {
+    await db.exec('ROLLBACK');
+    await db.exec('RESET ROLE');
+  }
+
+  assert.deepEqual(await row2(), {
+    status: 'scheduled', version: 0, protocol_hash: null, acknowledged_at: null, acknowledged_by: null,
+    acknowledgement_comment: null, acknowledgement_requested_at: null, completed_at: null,
+  }, 'Der Zweipersonen-Fall hinterlässt keinen Zustand am Gespräch');
+  assert.equal((await q('SELECT * FROM employee_meeting_audit WHERE meeting_id=$1', [two])).length, 0,
+    'Keine Auditzeilen aus Abschluss, Freigabe, Bestätigung und Einspruch');
+  assert.deepEqual((await q('SELECT status, task_id FROM employee_meeting_action_items WHERE meeting_id=$1', [two]))[0],
+    { status: 'open', task_id: null }, 'Die Maßnahme bleibt ohne Aufgabe zurück');
+  assert.equal((await q('SELECT * FROM tasks')).length, 0, 'Die Aufgabe aus der Bestätigung ist zurückgerollt');
+  assert.equal((await q('SELECT * FROM task_assignees')).length, 0);
+  assert.equal((await q('SELECT * FROM notifications')).length, 0, 'Alle Benachrichtigungen sind zurückgerollt');
+  assert.equal((await q('SELECT last_meeting_date FROM employee_settings WHERE user_id=$1', [staff]))[0].last_meeting_date, null,
+    'Auch der Abschluss im Zweipersonen-Fall lässt die Mitarbeitereinstellungen unberührt');
+
   await actor(staff);
 
   await assert.rejects(q('SELECT selftest_employee_protocol($1)', [audited]), error => error.code === '55000',
@@ -169,9 +300,12 @@ try {
 
   await db.exec('RESET ROLE');
   await db.query('DELETE FROM employee_meeting_audit WHERE meeting_id=$1', [audited]);
-  await db.query('DELETE FROM employee_meetings WHERE id = ANY($1::uuid[])', [[draft, audited, finished, closed]]);
+  await db.query('DELETE FROM employee_meetings WHERE id = ANY($1::uuid[])', [[draft, audited, finished, closed, two]]);
   assert.equal((await q('SELECT * FROM employee_meetings')).length, 0);
-  console.log('Employee protocol selftest passed: completion, release, acknowledgement, task hand-off, reopening and objection run through the real RPCs; every write is rolled back and all guards stay active.');
+  console.log('Employee protocol selftest passed: completion, release, acknowledgement, task hand-off, reopening and objection run through the real RPCs with a separate session per role (leader and affected person); every write is rolled back and all guards stay active.');
+} catch (error) {
+  console.error('FAILED:', error.code ?? '', error.message);
+  process.exitCode = 1;
 } finally {
   await db.close();
 }

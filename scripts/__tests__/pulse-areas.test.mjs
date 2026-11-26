@@ -202,7 +202,7 @@ test('Gruppen decken Vorgangsbetrieb, Termine, Dokumente, Wahlen, Organisation, 
   ]);
   assert.deepEqual(groups[0].areas, ['contacts', 'cases', 'tasks', 'decisions', 'meetings', 'day-slip']);
   assert.deepEqual(groups[1].areas, ['appointments']);
-  assert.deepEqual(groups[2].areas, ['documents', 'knowledge']);
+  assert.deepEqual(groups[2].areas, ['documents', 'knowledge', 'topics']);
   assert.deepEqual(groups[3].areas, ['elections']);
   assert.deepEqual(groups[4].areas, ['employees', 'team-rituals', 'events']);
   assert.deepEqual(groups[5].areas, ['rules']);

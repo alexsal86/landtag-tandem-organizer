@@ -331,7 +331,7 @@ Eindeutige Fehler werden im CI-Lauf ausgegeben und brechen die Prüfung ab; sie 
 - `events.legacy-rsvp` — Legacy-Einladungslinks (veraltet)
 - `cases.legacy-routes` — Legacy-Vorgangsrouten (veraltet)
 
-## Funktionen mit Einschränkungen oder offenen Punkten (68)
+## Funktionen mit Einschränkungen oder offenen Punkten (70)
 
 ### `mywork.dashboard`
 
@@ -493,6 +493,11 @@ Eindeutige Fehler werden im CI-Lauf ausgegeben und brechen die Prüfung ab; sie 
 - Eine eigene Drucksachen-Tabelle existiert in den generierten Typen nicht; die Anzeige arbeitet auf Dokumenten.
 - Fachlicher Umfang der Drucksachenansicht ist unklar; nur die Ansicht ist nachgewiesen.
 
+### `topics.manage`
+
+- knowledge_question_topics hat nur eine Lesepolicy; Clients können Wissensfragen noch nicht selbst mit Themen verknüpfen, das Szenario prüft Lesbarkeit und die Abweisung des direkten Inserts.
+- merge_topics und Änderungen an topic_module_settings setzen eine Büroleitung voraus; als Mitglied prüft das Szenario die Abweisung.
+
 ### `integration.calendar-sync`
 
 - Ein echter Sync gegen einen externen Anbieter ist nicht ausgeführt worden; nur Code und Contract-Tests liegen vor.
@@ -514,6 +519,11 @@ Eindeutige Fehler werden im CI-Lauf ausgegeben und brechen die Prüfung ab; sie 
 ### `appointments.requests`
 
 - Ein direkter Statuswechsel wird durch einen Trigger blockiert; der Negativpfad ist im Szenario geprüft.
+
+### `daily.briefing`
+
+- Vortage sind schreibgeschützt; abgeschlossen werden kann nur der aktuelle Tag.
+- Kürzel belegen die Zuordnung nur vor; mehrdeutige Namen und unbekannte Fälligkeiten bleiben Text und werden in der Zuordnung geklärt.
 
 ### `calendar.holidays`
 

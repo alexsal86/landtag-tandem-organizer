@@ -12,7 +12,7 @@ import {
   type ResolvedItem, type ResolveTarget, type TaskOptions, type DaySlipSettings,
   toDayKey, extractLinesFromHtml, parseRuleLine, toParagraphHtml, toRuleHtml, weekdayKey,
 } from "../dayslipTypes";
-import { appendEntries, carryLines, collectCarryLines, completedArchiveDays, emptyDay, exportId } from "../daySlipState";
+import { appendEntries, carryLines, collectCarryLines, completedArchiveDays, emptyDay, exportId, removeLineFromDay, restoreLineToDay, type RemovedDaySlipLine } from "../daySlipState";
 
 const errorMessage = (error: unknown) => error && typeof error === "object" && "message" in error ? String(error.message) : String(error);
 
@@ -64,6 +64,14 @@ export function useDaySlipStore(userId: string, tenantId: string) {
   const setWeekPlan = useCallback((action: SetStateAction<DaySlipSettings["weekPlan"]>) => setSetting("weekPlan", action), [setSetting]);
 
   const setLineDone = useCallback((lineId: string, done: boolean, key = todayKey) => {
+    // The node carries the state so it survives in html and JSON; day data mirrors it for triage and carry.
+    if (key === todayKey) {
+      editorRef.current?.update(() => {
+        $getRoot().getChildren().forEach(node => {
+          if (node instanceof DaySlipLineNode && node.getLineId() === lineId) node.setDone(done);
+        });
+      });
+    }
     changeDay(day => {
       const struck = new Set(day.struckLineIds ?? day.struckLines ?? []);
       if (struck.has(lineId) === done) return day;
@@ -97,16 +105,23 @@ export function useDaySlipStore(userId: string, tenantId: string) {
       return { ...day, html: nextHtml, plainText: extractLinesFromHtml(nextHtml).map(line => line.text).join("\n"), nodes: undefined };
     }, true);
   }, [changeDay]);
-  const deleteLine = useCallback((lineId: string) => {
-    changeDay(day => {
-      if (day.resolved?.some(item => item.lineId === lineId && item.persisted)) return day;
-      const doc = new DOMParser().parseFromString(day.html, "text/html");
-      doc.querySelectorAll("p").forEach(p => { if (p.dataset.lineId === lineId) p.remove(); });
-      const sources = { ...day.sources }; delete sources[lineId];
-      const timestamps = { ...day.lineTimestamps }; delete timestamps[lineId];
-      return { ...day, html: doc.body.innerHTML, plainText: extractLinesFromHtml(doc.body.innerHTML).map(line => line.text).join("\n"), nodes: undefined, sources, lineTimestamps: timestamps, struckLineIds: (day.struckLineIds ?? day.struckLines ?? []).filter(id => id !== lineId), resolved: day.resolved?.filter(item => item.lineId !== lineId) };
-    }, true);
-  }, [changeDay]);
+  /** Returns what was removed so the UI can offer undo; null when nothing was deleted. */
+  const deleteLine = useCallback((lineId: string): RemovedDaySlipLine | null => {
+    if (!ready || processing.current || storeRef.current[todayKey]?.completedAt) return null;
+    const day = storeRef.current[todayKey];
+    if (!day) return null;
+    const { removed } = removeLineFromDay(day, lineId);
+    if (!removed) return null;
+    setStore(prev => ({ ...prev, [todayKey]: removeLineFromDay(prev[todayKey] ?? emptyDay(), lineId).day }));
+    setEditorReloadToken(token => token + 1);
+    return removed;
+  }, [ready, setStore, storeRef, todayKey]);
+
+  const restoreLine = useCallback((removed: RemovedDaySlipLine) => {
+    if (!ready || processing.current || storeRef.current[todayKey]?.completedAt) return;
+    setStore(prev => ({ ...prev, [todayKey]: restoreLineToDay(prev[todayKey] ?? emptyDay(), removed) }));
+    setEditorReloadToken(token => token + 1);
+  }, [ready, setStore, storeRef, todayKey]);
 
   const toggleResolveLine = useCallback((lineId: string, text: string, target: ResolveTarget, snoozeUntil?: string, taskOptions?: TaskOptions) => {
     changeDay(day => {
@@ -243,7 +258,10 @@ export function useDaySlipStore(userId: string, tenantId: string) {
         const lineTimestamps = { ...day.lineTimestamps };
         ids.forEach(id => { lineTimestamps[id] ??= { addedAt: new Date().toISOString() }; });
         const sources = Object.fromEntries(Object.entries({ ...day.sources, ...linked }).filter(([id]) => ids.has(id)));
-        return { ...prev, [todayKey]: { ...day, html, plainText, nodes, sources, lineTimestamps, resolved: day.resolved?.filter(item => ids.has(item.lineId)), struckLineIds: (day.struckLineIds ?? day.struckLines ?? []).filter(id => ids.has(id)) } };
+        // html is the record of checked lines, so a reloaded sheet keeps its state even without the mirror list.
+        const doneInHtml = new DOMParser().parseFromString(html, "text/html").querySelectorAll('p[data-done="true"]');
+        const struck = new Set([...(day.struckLineIds ?? day.struckLines ?? []), ...Array.from(doneInHtml, p => p.getAttribute("data-line-id") ?? "")].filter(id => ids.has(id)));
+        return { ...prev, [todayKey]: { ...day, html, plainText, nodes, sources, lineTimestamps, resolved: day.resolved?.filter(item => ids.has(item.lineId)), struckLineIds: [...struck] } };
       });
     });
   }, [ready, storeRef, todayKey, setStore]);
@@ -337,7 +355,7 @@ export function useDaySlipStore(userId: string, tenantId: string) {
     weekPlan: settings.weekPlan, setWeekPlan, setMood,
     editorRef, editorReadyVersion, editorReloadToken, editorConfig,
     allLineEntries, struckLineIds, resolvedItems, resolvedByLineId, openLines, unresolvedCount: openLines.length, triageEntries, archiveDays,
-    carryEntries, carryOver, toggleStrike, appendLinesToToday, insertStructuredLines, deleteLine, toggleResolveLine, updateTaskOptions,
+    carryEntries, carryOver, toggleStrike, appendLinesToToday, insertStructuredLines, deleteLine, restoreLine, toggleResolveLine, updateTaskOptions,
     createFromLine, completeDay, reopenDay, onEditorChange, handleEditorReady,
     deadlineError,
   };
