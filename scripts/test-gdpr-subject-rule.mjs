@@ -2,13 +2,19 @@
 // wie sie in der Datenbank steht: echte Tabellen-, Policy- und Trigger-Definition
 // aus den Migrationen, echte Spaltenrechte, Ausführung als authenticated.
 // Der Lauf zeigt zuerst die Ursache (Spaltenberechtigung antwortet statt der
-// Regel) und danach die Wirkung der Reparaturmigration.
+// Regel) und danach die Wirkung der Gegenstands-Regel.
+//
+// Geprüft wird die eine, verbindliche Definition aus
+// 20261127170000_selftest_contact_case_task_repair.sql, Abschnitt 3
+// (GRANT UPDATE auf subject_email/subject_name, Trigger
+// guard_gdpr_request_subject). Eine zweite Migration mit denselben Rechten
+// gibt es bewusst nicht.
 import { readFileSync } from "node:fs";
 import { PGlite } from "../tests/database/node_modules/@electric-sql/pglite/dist/index.js";
 
 const BASE = "supabase/migrations/20260507190106_964aec00-97b8-4df7-817d-fba76bba4038.sql";
 const FOUR_EYES = "supabase/migrations/20261103234405_6bbdc076-40ca-4b87-bdb0-601eb9590bc9.sql";
-const REPAIR = "supabase/migrations/20261127200000_gdpr_subject_rule_repair.sql";
+const SUBJECT_RULE = "supabase/migrations/20261127170000_selftest_contact_case_task_repair.sql";
 
 const read = (path) => readFileSync(path, "utf8");
 const cut = (text, startMarker, endMarker) => {
@@ -21,6 +27,7 @@ const cut = (text, startMarker, endMarker) => {
 
 const base = read(BASE);
 const fourEyes = read(FOUR_EYES);
+const subjectRule = read(SUBJECT_RULE);
 
 // Tabelle, Policies und Trigger „gdpr_requests“ inklusive gdpr_check_four_eyes.
 const tableBlock = cut(base, "CREATE TABLE IF NOT EXISTS public.gdpr_requests",
@@ -31,6 +38,9 @@ const rightsBlock = cut(fourEyes, "REVOKE UPDATE ON public.gdpr_requests FROM au
   "GRANT ALL ON public.gdpr_requests TO service_role;");
 const policyBlock = cut(fourEyes, 'ALTER POLICY "Tenant admins create gdpr requests"',
   "WITH CHECK (public.has_active_tenant_role(auth.uid(), tenant_id, ARRAY['abgeordneter', 'bueroleitung']));");
+// Abschnitt 3: Spaltenrecht auf den Gegenstand plus der Trigger, der ihn sperrt.
+const repairBlock = cut(subjectRule, "-- 3) DSGVO-Gegenstand",
+  "EXECUTE FUNCTION public.guard_gdpr_request_subject();");
 
 const office = "11111111-1111-4111-8111-111111111111";
 const requester = "22222222-2222-4222-8222-222222222222";
@@ -91,17 +101,17 @@ const record = (name, ok, detail) => {
 const subject = `UPDATE public.gdpr_requests SET subject_email = 'geaendert@example.org' WHERE id = '${request}'`;
 
 const before = await asUser(requester, subject);
-record("Spaltenberechtigung antwortet vor der Reparatur",
+record("Ohne Spaltenrecht antwortet die Berechtigung statt der Regel",
   Boolean(before.error) && before.error.code === "42501" && /permission denied/i.test(before.error.message),
   `${before.error?.code} ${before.error?.message}`);
 
-await db.exec(read(REPAIR));
+await db.exec(repairBlock);
 
 const after = await asUser(requester, subject);
 // Geprüft wird wie im Selbsttest: Fehler vorhanden und die Meldung nennt die
 // Unveränderlichkeit. Den Fehlercode bestimmt der zuerst laufende Trigger
 // (gdpr_check_four_eyes, P0001); der Guard selbst meldet 42501.
-record("Regel antwortet nach der Reparatur",
+record("Mit dem Spaltenrecht aus 20261127170000 antwortet die Regel",
   Boolean(after.error) && /unveränderlich/.test(after.error.message),
   `${after.error?.code} ${after.error?.message}`);
 

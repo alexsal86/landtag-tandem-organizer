@@ -212,6 +212,8 @@ WITH CHECK (EXISTS (
 
 -- 3) DSGVO-Gegenstand: Spalten erreichbar machen, unveränderlich bleibt er
 --    durch guard_gdpr_request_subject (42501 „… unveränderlich“).
+--    Diese Stelle ist die einzige Rechte-Definition für den Gegenstand; keine
+--    weitere Migration wiederholt den GRANT.
 GRANT UPDATE (subject_email, subject_name) ON public.gdpr_requests TO authenticated;
 
 -- Den Trigger bei Bedarf erneut setzen; er ist die eigentliche Sperre.
