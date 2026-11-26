@@ -1,7 +1,7 @@
 import type { ReactElement } from "react";
 import { Fragment, useEffect, useMemo, useRef, useState } from "react";
 import { useQuery, useQueryClient } from "@tanstack/react-query";
-import { Activity, AlertTriangle, ArrowDown, ArrowLeft, ArrowRight, ExternalLink, Shield } from "lucide-react";
+import { Activity, AlertTriangle, ArrowDown, ArrowLeft, ArrowRight, ChevronDown, ExternalLink, RotateCw, Shield } from "lucide-react";
 import { Link, useNavigate } from "react-router-dom";
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
@@ -14,10 +14,13 @@ import { useTenant } from "@/hooks/useTenant";
 import { supabase } from "@/integrations/supabase/client";
 import { featureCatalogHref } from "@/features/feature-catalog/securityLinks";
 import { stepDiagnostic } from "@/features/selftest/stepDiagnostics";
+import { loadScenarioSuite, runAndSaveScenarioSuite } from "@/features/selftest/suite";
 import {
   PULSE_AREAS, PULSE_GROUPS, areaAssessment, assessRun, consecutiveFailures, durationTrend,
   failedTestRows, gapSummary, historyByScenario, latestRunDetails, latestRuns, latestRunSteps, mergeRuns,
-  type AreaAssessment, type GapsState, type HistoryRun, type PersistedRun, type PulseArea, type PulseLevel, type PulseWorkflow,
+  slowestTestSteps,
+  type AreaAssessment, type FailedTestRow, type GapsState, type HistoryRun, type PersistedRun, type PulseArea,
+  type PulseLevel, type PulseWorkflow,
 } from "./pulse";
 
 interface Props { gaps: Array<{ table_name: string; severity: string }>; gapsState: GapsState }
@@ -114,6 +117,7 @@ export function SystemPulse({ gaps, gapsState }: Props) {
   const [open, setOpen] = useState<string | null>(null);
   const [openStep, setOpenStep] = useState<string | null>(null);
   const [onlyFailed, setOnlyFailed] = useState(false);
+  const [showSlowest, setShowSlowest] = useState(false);
   const [liveRuns, setLiveRuns] = useState<Record<string, string>>({});
   const [runningArea, setRunningArea] = useState<string | null>(null);
   const [lastRunNotice, setLastRunNotice] = useState("");
@@ -163,6 +167,22 @@ export function SystemPulse({ gaps, gapsState }: Props) {
     () => failedTestRows(PULSE_AREAS, runDetails, stepsByScenario),
     [runDetails, stepsByScenario],
   );
+  // Mehrere fehlgeschlagene Schritte desselben Szenarios ergeben mehrere
+  // Zeilen, aber nur einen Nachtest. Die Zeilen eines Szenarios stehen
+  // zusammen, deshalb hält die Karte den ersten Index und die Zeilenzahl.
+  const failedScenarioGroups = useMemo(() => {
+    const groups = new Map<string, { first: number; count: number }>();
+    failedRows.forEach((row, index) => {
+      const existing = groups.get(row.scenarioId);
+      if (existing) existing.count += 1;
+      else groups.set(row.scenarioId, { first: index, count: 1 });
+    });
+    return groups;
+  }, [failedRows]);
+  const slowestTests = useMemo(
+    () => slowestTestSteps(PULSE_AREAS, runDetails, stepsByScenario),
+    [runDetails, stepsByScenario],
+  );
   const latest = runsQuery.data?.[0]?.created_at;
   const now = Date.now();
   const assessScenario = (scenarioId: string) => assessRun(runDetails[scenarioId], { now, currentVersion: CURRENT_VERSION });
@@ -185,14 +205,7 @@ export function SystemPulse({ gaps, gapsState }: Props) {
     const tenantId = currentTenant.id;
     const userId = user.id;
     try {
-      const [{ SELFTEST_SCENARIOS }, { runSuite }, { saveRun }] = await Promise.all([
-        import("@/features/selftest/registry"),
-        import("@/features/selftest/runner"),
-        import("@/features/selftest/history"),
-      ]);
-      const scenarios = ids
-        .map((id) => SELFTEST_SCENARIOS.find((scenario) => scenario.id === id))
-        .filter((scenario): scenario is (typeof SELFTEST_SCENARIOS)[number] => scenario !== undefined);
+      const scenarios = await loadScenarioSuite(ids);
       if (scenarios.length === 0) {
         notify.error("Keine Szenarien zugeordnet", { description: area.title });
         return;
@@ -205,14 +218,10 @@ export function SystemPulse({ gaps, gapsState }: Props) {
       setLastRunNotice("");
       const activeController = new AbortController();
       controller.current = activeController;
-      const results = await runSuite(scenarios, {
+      const results = await runAndSaveScenarioSuite(scenarios, {
         tenantId, userId, keepData: false, signal: activeController.signal,
         onUpdate: (state) => setLiveRuns((previous) => ({ ...previous, [state.scenarioId]: state.status })),
       });
-      for (const result of results) {
-        const scenario = SELFTEST_SCENARIOS.find((entry) => entry.id === result.scenarioId);
-        if (scenario) await saveRun(result, { tenantId, userId, title: scenario.title, keepData: false });
-      }
       await Promise.all([
         queryClient.invalidateQueries({ queryKey: ["selftest_runs_pulse", tenantId] }),
         queryClient.invalidateQueries({ queryKey: ["selftest_run_history", tenantId] }),
@@ -241,6 +250,13 @@ export function SystemPulse({ gaps, gapsState }: Props) {
   const attentionIds = (area: PulseArea) =>
     area.scenarios.filter((id) => ["red", "yellow"].includes(assessScenario(id).level));
   const runAttention = (area: PulseArea) => void runScenarios(area, attentionIds(area), `attention:${area.id}`);
+  // Einzelnen Fehlschlag direkt aus der Fehlertabelle nachtesten, ohne den
+  // Bereich erst zu öffnen: es läuft nur das Szenario, zu dem der Schritt gehört.
+  const retestFailed = (row: FailedTestRow) => {
+    const area = PULSE_AREAS.find((entry) => entry.id === row.areaId);
+    if (!area) return;
+    void runScenarios(area, [row.scenarioId], `scenario:${row.scenarioId}`);
+  };
 
   const tile = ({ area, level }: LevelEntry) => {
     const active = runningArea === area.id;
@@ -301,23 +317,103 @@ export function SystemPulse({ gaps, gapsState }: Props) {
                     <TableHead>Bereich</TableHead>
                     <TableHead>Test</TableHead>
                     <TableHead>Fehler</TableHead>
+                    <TableHead className="text-right">Nachtesten</TableHead>
                   </TableRow>
                 </TableHeader>
                 <TableBody>
-                  {failedRows.map((row, index) => (
-                    <TableRow key={`${row.scenario}-${row.test}-${index}`}>
+                  {failedRows.map((row, index) => {
+                    const group = failedScenarioGroups.get(row.scenarioId);
+                    return (
+                      <TableRow key={`${row.scenario}-${row.test}-${index}`}>
+                        <TableCell className="whitespace-nowrap align-top text-caption">{row.area}</TableCell>
+                        <TableCell className="align-top text-caption">
+                          <span className="block">{row.test}</span>
+                          <code className="text-[10px] text-muted-foreground">{row.scenario}</code>
+                        </TableCell>
+                        <TableCell className="align-top text-caption text-destructive">{row.error}</TableCell>
+                        {group?.first === index && (
+                          <TableCell rowSpan={group.count} className="whitespace-nowrap text-right align-middle">
+                            <Button
+                              size="sm"
+                              variant="outline"
+                              className="h-7 px-2 text-[11px]"
+                              onClick={() => retestFailed(row)}
+                              disabled={runningArea !== null}
+                              aria-label={`${row.scenario} nachtesten`}
+                              title={`Nur „${row.scenario}“ erneut ausführen`}
+                            >
+                              {runningArea === `scenario:${row.scenarioId}`
+                                ? <><RotateCw aria-hidden className="mr-1 h-3 w-3 animate-spin" /> Läuft …</>
+                                : <><RotateCw aria-hidden className="mr-1 h-3 w-3" /> Nachtesten</>}
+                            </Button>
+                          </TableCell>
+                        )}
+                      </TableRow>
+                    );
+                  })}
+                </TableBody>
+              </Table>
+            </div>
+          )}
+        </section>
+        <section data-testid="pulse-slowest" aria-label="Längste Testabschnitte" className="rounded-lg border">
+          <button type="button" onClick={() => setShowSlowest((value) => !value)} aria-expanded={showSlowest}
+            className="flex w-full items-center justify-between gap-2 px-3 py-2 text-left text-xs font-medium hover:bg-muted">
+            <span>
+              Längste Testabschnitte
+              <span className="ml-1.5 font-normal text-muted-foreground">
+                – je Test die zwei langsamsten Schritte, längster oben
+              </span>
+            </span>
+            <ChevronDown aria-hidden className={cn("h-4 w-4 shrink-0 transition-transform", showSlowest && "rotate-180")} />
+          </button>
+          {showSlowest && (slowestTests.length === 0 ? (
+            <p className="border-t px-3 py-2 text-xs text-muted-foreground">Kein Test ausführbar.</p>
+          ) : (
+            <div className="max-h-72 overflow-auto border-t">
+              <Table>
+                <TableHeader>
+                  <TableRow>
+                    <TableHead>Bereich</TableHead>
+                    <TableHead>Test</TableHead>
+                    <TableHead>1. Abschnitt (langsamster)</TableHead>
+                    <TableHead>2. Abschnitt</TableHead>
+                  </TableRow>
+                </TableHeader>
+                <TableBody>
+                  {slowestTests.map((row) => (
+                    <TableRow key={row.scenario}>
                       <TableCell className="whitespace-nowrap align-top text-caption">{row.area}</TableCell>
                       <TableCell className="align-top text-caption">
-                        <span className="block">{row.test}</span>
+                        <span className="block">{row.title}</span>
                         <code className="text-[10px] text-muted-foreground">{row.scenario}</code>
+                        {row.totalMs !== undefined && (
+                          <span className="block text-[10px] tabular-nums text-muted-foreground">gesamt {formatDuration(row.totalMs)}</span>
+                        )}
                       </TableCell>
-                      <TableCell className="align-top text-caption text-destructive">{row.error}</TableCell>
+                      {[0, 1].map((index) => {
+                        const step = row.steps[index];
+                        return (
+                          <TableCell key={index} className="align-top text-caption">
+                            {step ? (
+                              <>
+                                <span className="block">{step.label}</span>
+                                <span className="text-[10px] tabular-nums text-muted-foreground">{formatDuration(step.durationMs)}</span>
+                              </>
+                            ) : (
+                              <span className="text-muted-foreground">
+                                {index === 0 ? (loadingRuns ? "wird geladen …" : "noch keine Dauer gespeichert") : "—"}
+                              </span>
+                            )}
+                          </TableCell>
+                        );
+                      })}
                     </TableRow>
                   ))}
                 </TableBody>
               </Table>
             </div>
-          )}
+          ))}
         </section>
         <details className="rounded-lg border p-2 text-xs text-muted-foreground">
           <summary className="cursor-pointer">Was bedeuten die Farben?</summary>

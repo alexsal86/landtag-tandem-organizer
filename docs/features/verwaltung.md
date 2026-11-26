@@ -8,7 +8,7 @@ _Auto-generiert mit `npm run update:feature-catalog` aus dem zentralen Funktions
 
 - Funktionen: **24** in **11** Unterbereichen
 - implementiert: **24**, teilweise: **0**, deaktiviert: **0**, potenziell verwaist: **0**
-- ohne zugeordneten Test: **15**
+- ohne zugeordneten Test: **14**
 - ohne Dokumentationsverweis: **9**
 
 ## Funktionen
@@ -36,7 +36,7 @@ _Auto-generiert mit `npm run update:feature-catalog` aus dem zentralen Funktions
 | `admin.field-permissions` Feldschutz | Rollen & Rechte | sicherheit | implementiert | rollenabhängig | Selbsttest |
 | `admin.permissions-explorer` Rechte-Explorer und Rechteerklärung | Rollen & Rechte | administrativ | implementiert | UI | Unit-Test |
 | `admin.edge-function-security` Edge-Function-Sicherheitsklassifikation | Sicherheit | sicherheit | implementiert | nicht anwendbar | kein Test |
-| `admin.security-cockpit` Security-Cockpit | Sicherheit | sicherheit | implementiert | rollenabhängig | kein Test |
+| `admin.security-cockpit` Security-Cockpit | Sicherheit | sicherheit | implementiert | rollenabhängig | Unit-Test |
 | `admin.access-boundaries` Zugriffsschutzprüfung | Sicherheit | sicherheit | implementiert | nicht anwendbar | Selbsttest |
 | `platform.notification-dispatch` Benachrichtigungs- und Audit-Trigger | Technische Basisfunktionen | technisch | implementiert | systemseitig | kein Test |
 
@@ -437,13 +437,13 @@ Verwaltet Löschanträge mit Vier-Augen-Freigabe durch die Datenbank und atomare
 - Keine.
 
 ### `admin.security-cockpit` — Security-Cockpit
-Zeigt RLS-Lücken, Policies, Snapshots und Audit-Trail als eigenständige Sicherheitssicht; Befunde verweisen auf die betroffenen Funktionen und sind von fachlichen Testergebnissen getrennt.
+Zeigt RLS-Lücken, Policies, Snapshots und Audit-Trail als eigenständige Sicherheitssicht; Befunde verweisen auf die betroffenen Funktionen und sind von fachlichen Testergebnissen getrennt. Auffällige Befunde lassen sich je Zeile nachtesten: Es laufen die Selbsttests, die die betroffene Tabelle laut Coverage-Übersicht abdecken; Tabellen ohne abdeckendes Szenario bieten keinen Button.
 
 - **Kategorie:** sicherheit
 - **Implementierung:** implementiert
 - **Einbindung:** rollenabhängig
-- **Testabdeckung:** kein Test
-- **Letztes Testergebnis:** nicht-ausgefuehrt (kein Laufnachweis importiert; nicht aus der Existenz einer Testdatei abgeleitet)
+- **Testabdeckung:** Unit-Test
+- **Letztes Testergebnis:** bestanden (kein Laufnachweis importiert; nicht aus der Existenz einer Testdatei abgeleitet)
 - **Rollen:** `admin`, `superadmin`
 - **Routen:** —
 - **Frontend-Komponenten:** `src/components/administration/SecurityCockpit.tsx`, `src/features/feature-catalog/useTableSecurity.ts`, `src/features/feature-catalog/securityLinks.ts`
@@ -454,7 +454,7 @@ Zeigt RLS-Lücken, Policies, Snapshots und Audit-Trail als eigenständige Sicher
 - **Tabellen:** `security_audit_snapshots`, `audit_log_entries`, `v_rls_coverage`
 - **Abhängigkeiten:** —
 - **Selbsttests:** —
-- **Unit-Tests:** —
+- **Unit-Tests:** `src/components/administration/SecurityCockpit.test.tsx`, `src/features/selftest/tableRetests.test.ts`
 - **Integrationstests:** —
 - **Browser-Tests:** —
 - **Dokumentation:** `docs/security-function-matrix.md`, `docs/role-check-migration.md`
@@ -470,13 +470,15 @@ Zeigt RLS-Lücken, Policies, Snapshots und Audit-Trail als eigenständige Sicher
 
 - Eine vorhandene RLS-Policy ist kein Nachweis für korrekte Mandantentrennung; das Cockpit liefert nur Befunde.
 - Policy-Details stammen live aus pg_policies und bewerten weder die Funktion noch ihre Tests.
+- Der Nachtest führt die Selbsttests aus, die die Tabelle laut Coverage-Übersicht abdecken; er beweist nicht, dass genau die beanstandete Policy korrekt ist.
+- Für Tabellen ohne abdeckendes Selbsttest-Szenario bleibt die Nachtest-Zelle leer; diese Lücke schließt nur ein neues Szenario in src/features/selftest/scenarios.
 
 **Offene Prüfpunkte**
 
 - Funktionen ohne Tabellenbezug erhalten keinen RLS-Bezug; ob das fachlich korrekt ist, bleibt je Funktion zu prüfen.
 
 ### `admin.system-pulse` — System-Puls
-Bildet alle registrierten Selbsttest-Szenarien in fachlichen Bereichen ab und zeigt je Funktionsbereich die letzten funktionalen Selbsttest-Ergebnisse als Ampel, startet die zugeordneten Szenarien aus der Detailkarte im Hintergrund, stellt die deklarierten Szenario-Schritte als Prozesskette mit gespeicherten Schritt-Ergebnissen dar und nennt bei fehlgeschlagenen Schritten Prüfpunkt, Fehlercode und Kurzdetails, listet alle fehlgeschlagenen Tests als kompakte Tabelle oberhalb der Bereichskacheln mit Bereich, geprüftem Schritt und Fehler auf, erklärt die Bedeutung der Ampelfarben, zeigt je Workflow Testname, Zeitpunkt, Dauer, Beschreibung und Prüfumfang, bewertet Frische, App-Version, Demo- und Aufräumstatus, nennt Abdeckung und Verlauf, erlaubt gezielte Nachläufe und verknüpft betroffene Katalogfunktionen sowie RLS-Befunde, während RLS-Lücken als eigene Kennzahl getrennt von den Testergebnissen aus.
+Bildet alle registrierten Selbsttest-Szenarien in fachlichen Bereichen ab und zeigt je Funktionsbereich die letzten funktionalen Selbsttest-Ergebnisse als Ampel, startet die zugeordneten Szenarien aus der Detailkarte im Hintergrund, stellt die deklarierten Szenario-Schritte als Prozesskette mit gespeicherten Schritt-Ergebnissen dar und nennt bei fehlgeschlagenen Schritten Prüfpunkt, Fehlercode und Kurzdetails, listet alle fehlgeschlagenen Tests als kompakte Tabelle oberhalb der Bereichskacheln mit Bereich, geprüftem Schritt und Fehler auf und testet sie über einen je Szenario gebündelten Button direkt an der Zeile nach, ohne den Bereich erst zu öffnen, nennt darunter in einer einklappbaren Übersicht für jeden durchführbaren Test die zwei langsamsten Teilabschnitte mit Dauer und sortiert den langsamsten Abschnitt nach oben, erklärt die Bedeutung der Ampelfarben, zeigt je Workflow Testname, Zeitpunkt, Dauer, Beschreibung und Prüfumfang, bewertet Frische, App-Version, Demo- und Aufräumstatus, nennt Abdeckung und Verlauf, erlaubt gezielte Nachläufe und verknüpft betroffene Katalogfunktionen sowie RLS-Befunde, während RLS-Lücken als eigene Kennzahl getrennt von den Testergebnissen aus.
 
 - **Kategorie:** administrativ
 - **Implementierung:** implementiert
@@ -518,6 +520,7 @@ Bildet alle registrierten Selbsttest-Szenarien in fachlichen Bereichen ab und ze
 - Der Live-Teststart schreibt echte Testdaten und Dateien, ist bestätigungspflichtig und räumt anschließend auf; fehlende Rollen führen zu „Voraussetzung fehlt“.
 - Die Bereichsampel bewertet ausschließlich funktionale Selbsttests; RLS-Lücken bleiben eine getrennte Kennzahl und ergeben keine Gesamtbewertung.
 - Die Fehlertabelle über den Bereichskacheln zeigt nur den neuesten gespeicherten Lauf je Szenario; ältere Läufe ohne Schrittliste erscheinen dort als eine Zeile „gesamter Testlauf“.
+- Die Übersicht der längsten Testabschnitte misst die gespeicherten Schritt-Dauern des neuesten Laufs je Szenario; Tests ohne Dauer bleiben ohne Abschnitte gelistet, und die Laufzeit der Schritte außerhalb des Tests (Aufräumen) zählt nicht dazu.
 - Ausgeführt wurden Unit-, Generator- und Komponententests mit gemocktem RPC; RPC-Antwort, angewendete Migration und Darstellung im Browser wurden nicht gegen ein laufendes Backend geprüft.
 - Die Ampel zeigt den neuesten Lauf je Szenario über alle Mitglieder des Mandanten, nicht nur den letzten Lauf des angemeldeten Nutzers.
 

@@ -11,10 +11,16 @@ const saveRun = vi.hoisted(() => vi.fn());
 
 vi.mock("@/integrations/supabase/client", () => ({ supabase: { rpc } }));
 vi.mock("@/features/selftest/registry", () => ({
-  SELFTEST_SCENARIOS: [{
-    id: "contact-lifecycle", title: "Kontakt-Lifecycle", description: "", features: ["contacts"], touches: [],
-    steps: [{ id: "create", label: "Anlegen", kind: "logic", run: async () => ({ ok: true, message: "" }) }],
-  }],
+  SELFTEST_SCENARIOS: [
+    {
+      id: "contact-lifecycle", title: "Kontakt-Lifecycle", description: "", features: ["contacts"], touches: [],
+      steps: [{ id: "create", label: "Anlegen", kind: "logic", run: async () => ({ ok: true, message: "" }) }],
+    },
+    {
+      id: "contact-relations", title: "Kontakt-Beziehungen", description: "", features: ["contacts"], touches: [],
+      steps: [{ id: "setup", label: "Ausgangskontakt anlegen", kind: "logic", run: async () => ({ ok: true, message: "" }) }],
+    },
+  ],
 }));
 vi.mock("@/features/selftest/runner", () => ({ runSuite }));
 vi.mock("@/features/selftest/history", () => ({ saveRun }));
@@ -32,7 +38,10 @@ const renderPulse = (gaps: Array<{ table_name: string; severity: string }> = [])
   );
 };
 
-const tile = (name: RegExp) => screen.getByRole("button", { name });
+// Nur die Bereichskachel ist ein Aufklapp-Button (aria-expanded); die
+// Nachtest-Buttons der Fehlertabelle nennen denselben Bereich im Namen.
+const tile = (name: RegExp) => screen.getAllByRole("button", { name })
+  .find((button) => button.hasAttribute("aria-expanded"))!;
 const ago = (ms: number) => new Date(Date.now() - ms).toISOString();
 
 beforeEach(() => {
@@ -81,6 +90,11 @@ describe("SystemPulse: selftest_runs", () => {
         ],
       },
       {
+        scenario_id: "contact-relations", scenario_title: "Kontakt-Beziehungen", status: "ok", created_at: ago(3_000_000),
+        duration_ms: 640, failed_steps: 0, total_steps: 14, keep_data: false, cleanup: { status: "ok" },
+        steps: [{ id: "setup", label: "Ausgangskontakt anlegen", status: "ok", durationMs: 20 }],
+      },
+      {
         scenario_id: "meeting-lifecycle", scenario_title: "Meeting-Lifecycle", status: "ok", created_at: ago(2 * 3_600_000),
         duration_ms: 1500, failed_steps: 0, total_steps: 21, keep_data: false, cleanup: { status: "ok" }, steps: [],
       },
@@ -111,7 +125,7 @@ describe("SystemPulse: selftest_runs", () => {
     await waitFor(() => expect(within(tile(/Kontakte/)).getByText("Alles in Ordnung")).toBeInTheDocument());
     expect(rpc).toHaveBeenCalledWith("get_latest_selftest_runs", { p_tenant_id: "tenant-1" });
     expect(rpc).toHaveBeenCalledWith("get_selftest_run_history", { p_tenant_id: "tenant-1", p_runs_per_scenario: 8 });
-    expect(within(tile(/Kontakte/)).getByText("1/1 geprüft")).toBeInTheDocument();
+    expect(within(tile(/Kontakte/)).getByText("2/2 geprüft")).toBeInTheDocument();
     expect(within(tile(/Jour fixe/)).getByText("Test fehlgeschlagen")).toBeInTheDocument();
     expect(within(tile(/Vorgänge/)).getByText("Noch nie getestet")).toBeInTheDocument();
     expect(within(tile(/Vorgänge/)).getByText("0/2 geprüft")).toBeInTheDocument();
@@ -127,10 +141,17 @@ describe("SystemPulse: selftest_runs", () => {
     expect(screen.getByLabelText(/Letzte 3 Läufe/)).toBeInTheDocument();
     expect(screen.getByText(/Dauer -9 % zum Vorlauf/)).toBeInTheDocument();
     expect(screen.getByText(/langsamster Schritt: Kontakt mit allen Stammdaten anlegen \(120 ms\)/)).toBeInTheDocument();
+    // Die Übersicht der längsten Abschnitte ist einklappbar und lädt erst beim Öffnen.
+    const slowest = screen.getByTestId("pulse-slowest");
+    expect(within(slowest).queryByRole("table")).not.toBeInTheDocument();
+    fireEvent.click(within(slowest).getByRole("button", { name: /Längste Testabschnitte/ }));
+    expect(within(slowest).getByText(/je Test die zwei langsamsten Schritte/)).toBeInTheDocument();
+    expect(within(slowest).getByText("Kontakt mit allen Stammdaten anlegen")).toBeInTheDocument();
+    expect(within(slowest).getByText("120 ms")).toBeInTheDocument();
     expect(screen.getAllByRole("button", { name: /erneut testen/ }).length).toBeGreaterThan(0);
     const catalogLink = screen.getAllByRole("link", { name: /im Funktionskatalog öffnen/ })[0];
     expect(catalogLink.getAttribute("href")).toContain("/funktionskatalog?feature=");
-    expect(screen.getByText(/Betroffene Funktionen/)).toBeInTheDocument();
+    expect(screen.getAllByText(/Betroffene Funktionen/).length).toBeGreaterThan(0);
 
     fireEvent.click(tile(/Jour fixe/));
     expect(await screen.findByText(/10 Schritte · 1 fehlgeschlagen/)).toBeInTheDocument();
@@ -183,15 +204,54 @@ describe("SystemPulse: selftest_runs", () => {
     expect(screen.queryByText("Alles in Ordnung")).not.toBeInTheDocument();
   });
 
-  it("verknüpft RLS-Befunde mit Bereich und Workflow", async () => {
+  it("bündelt den Nachtest je Szenario und startet nur dieses Szenario", async () => {
     rpc.mockImplementation((name: string) => Promise.resolve(
       name === "get_selftest_run_history"
         ? { data: [], error: null }
         : {
           data: [{
-            scenario_id: "contact-lifecycle", scenario_title: "Kontakt-Lifecycle", status: "ok", created_at: ago(3_600_000),
-            duration_ms: 500, failed_steps: 0, total_steps: 7, keep_data: false, cleanup: { status: "ok" }, steps: [],
+            scenario_id: "contact-lifecycle", scenario_title: "Kontakt-Lifecycle", status: "failed", created_at: ago(3_600_000),
+            duration_ms: 500, failed_steps: 2, total_steps: 2, keep_data: false, cleanup: { status: "ok" },
+            steps: [
+              { id: "create", label: "Anlegen", status: "failed", message: "Anlegen fehlgeschlagen" },
+              { id: "search", label: "Suche prüfen", status: "failed", message: "Suche fehlgeschlagen" },
+            ],
           }],
+          error: null,
+        },
+    ));
+    runSuite.mockResolvedValue([{ scenarioId: "contact-lifecycle", status: "ok", steps: [], cleanup: { status: "ok" } }]);
+    renderPulse();
+
+    const failedTests = screen.getByRole("region", { name: "Fehlgeschlagene Tests" });
+    // Beide Schritte stehen als Zeile in der Tabelle, aber nur ein Nachtest.
+    expect(await within(failedTests).findByText("Suche prüfen")).toBeInTheDocument();
+    const retestButtons = within(failedTests).getAllByRole("button", { name: /nachtesten/i });
+    expect(retestButtons).toHaveLength(1);
+    fireEvent.click(retestButtons[0]);
+
+    // Nur das betroffene Szenario läuft, nicht der ganze Bereich.
+    await waitFor(() => expect(runSuite).toHaveBeenCalled());
+    const [scenarios] = runSuite.mock.calls[0] as [Array<{ id: string }>];
+    expect(scenarios.map((scenario) => scenario.id)).toEqual(["contact-lifecycle"]);
+    await waitFor(() => expect(saveRun).toHaveBeenCalled());
+  });
+
+  it("verknüpft RLS-Befunde mit Bereich und Workflow", async () => {
+    rpc.mockImplementation((name: string) => Promise.resolve(
+      name === "get_selftest_run_history"
+        ? { data: [], error: null }
+        : {
+          data: [
+            {
+              scenario_id: "contact-lifecycle", scenario_title: "Kontakt-Lifecycle", status: "ok", created_at: ago(3_600_000),
+              duration_ms: 500, failed_steps: 0, total_steps: 7, keep_data: false, cleanup: { status: "ok" }, steps: [],
+            },
+            {
+              scenario_id: "contact-relations", scenario_title: "Kontakt-Beziehungen", status: "ok", created_at: ago(3_500_000),
+              duration_ms: 400, failed_steps: 0, total_steps: 14, keep_data: false, cleanup: { status: "ok" }, steps: [],
+            },
+          ],
           error: null,
         },
     ));
@@ -200,7 +260,7 @@ describe("SystemPulse: selftest_runs", () => {
     await waitFor(() => expect(within(tile(/Kontakte/)).getByText("Alles in Ordnung")).toBeInTheDocument());
     fireEvent.click(tile(/Kontakte/));
     expect(screen.getByText(/RLS-Befunde in den Haupttabellen:/)).toBeInTheDocument();
-    expect(screen.getByText(/RLS: contacts \(critical\)/)).toBeInTheDocument();
-    expect(screen.getByText(/Tabellen: contacts/)).toBeInTheDocument();
+    expect(screen.getAllByText(/RLS: contacts \(critical\)/).length).toBeGreaterThan(0);
+    expect(screen.getAllByText(/Tabellen: contacts/).length).toBeGreaterThan(0);
   });
 });

@@ -8,27 +8,27 @@ _Auto-generiert mit `npm run update:feature-catalog` aus dem zentralen Funktions
 
 - Funktionen: **14** in **9** Unterbereichen
 - implementiert: **14**, teilweise: **0**, deaktiviert: **0**, potenziell verwaist: **0**
-- ohne zugeordneten Test: **11**
+- ohne zugeordneten Test: **0**
 - ohne Dokumentationsverweis: **10**
 
 ## Funktionen
 
 | Funktion | Unterbereich | Kategorie | Implementierung | Einbindung | Abdeckung |
 |---|---|---|---|---|---|
-| `contacts.bulk` Kontakte in Massen bearbeiten | Bearbeitung | fachlich | implementiert | rollenabhängig | kein Test |
-| `contacts.briefing-memory` Briefingwissen je Kontakt | Beziehungen | fachlich | implementiert | UI | kein Test |
-| `contacts.fundings` Finanzierungen und Beteiligungen | Beziehungen | fachlich | implementiert | UI | kein Test |
-| `contacts.activities` Kontaktaktivitäten und Anrufe | Beziehungen | fachlich | implementiert | UI | kein Test |
-| `contacts.privacy` Kontakt-Datenschutz und Aufbewahrung | Datenschutz | sicherheit | implementiert | UI | kein Test |
-| `contacts.import` Kontakte importieren | Import | fachlich | implementiert | UI | kein Test |
-| `contacts.stakeholders` Stakeholder-Netzwerk | Netzwerk | fachlich | implementiert | UI | kein Test |
-| `contacts.duplicates` Dubletten finden | Qualität | fachlich | implementiert | rollenabhängig | kein Test |
+| `contacts.bulk` Kontakte in Massen bearbeiten | Bearbeitung | fachlich | implementiert | rollenabhängig | Selbsttest |
+| `contacts.briefing-memory` Briefingwissen je Kontakt | Beziehungen | fachlich | implementiert | UI | Selbsttest |
+| `contacts.fundings` Finanzierungen und Beteiligungen | Beziehungen | fachlich | implementiert | UI | Selbsttest |
+| `contacts.activities` Kontaktaktivitäten und Anrufe | Beziehungen | fachlich | implementiert | UI | Selbsttest |
+| `contacts.privacy` Kontakt-Datenschutz und Aufbewahrung | Datenschutz | sicherheit | implementiert | UI | Selbsttest |
+| `contacts.import` Kontakte importieren | Import | fachlich | implementiert | UI | teilweise |
+| `contacts.stakeholders` Stakeholder-Netzwerk | Netzwerk | fachlich | implementiert | UI | teilweise |
+| `contacts.duplicates` Dubletten finden | Qualität | fachlich | implementiert | rollenabhängig | Selbsttest |
 | `contacts.merge` Kontakte zusammenführen | Qualität | fachlich | implementiert | rollenabhängig | Selbsttest |
 | `contacts.create` Kontakt anlegen | Stammdaten | fachlich | implementiert | rollenabhängig | Selbsttest |
 | `contacts.edit` Kontakt bearbeiten | Stammdaten | fachlich | implementiert | rollenabhängig | Selbsttest |
-| `contacts.detail` Kontaktprofil mit Aktivitäten | Stammdaten | fachlich | implementiert | UI | kein Test |
-| `contacts.tags-topics` Kontakt-Themen | Struktur | fachlich | implementiert | UI | kein Test |
-| `contacts.distribution-lists` Verteilerlisten verwalten | Verteiler | fachlich | implementiert | UI | kein Test |
+| `contacts.detail` Kontaktprofil mit Aktivitäten | Stammdaten | fachlich | implementiert | UI | Selbsttest |
+| `contacts.tags-topics` Kontakt-Themen | Struktur | fachlich | implementiert | UI | Selbsttest |
+| `contacts.distribution-lists` Verteilerlisten verwalten | Verteiler | fachlich | implementiert | UI | Selbsttest |
 
 ## Unterbereiche
 
@@ -55,6 +55,7 @@ _Auto-generiert mit `npm run update:feature-catalog` aus dem zentralen Funktions
 | Szenario | Titel | deklarierte Tabellen | deklarierte Prüfungen | letzter Lauf |
 |---|---|---:|---:|---|
 | `contact-lifecycle` | Kontakt-Lifecycle (Anlegen → Kategorie/Tags → Aktivität → Suche) | 3 | 0 | — |
+| `contact-relations` | Kontakt-Beziehungen (Datenschutz → Themen → Duplikate → Sammelaktion → Verteiler → Wissen → Förderungen) | 10 | 15 | — |
 
 ## Selbsttest-Schritte
 
@@ -69,12 +70,43 @@ Diese Schritte führen die Szenarien aus; „letzter Lauf“ stammt aus `src/fea
 | `contact-lifecycle` | `merge-contact-guardrails` | Zusammenführen verlangt gültige Kontakte und unveränderliche Identitätsfelder | workflow | — |
 | `contact-lifecycle` | `merge-contact-atomic` | Zusammenführen ist atomar: Verknüpfungen wandern, Kollisionen behalten ihre Daten | workflow | — |
 | `contact-lifecycle` | `search` | Kontakt über Namenssuche auffindbar | db | — |
+| `contact-relations` | `setup` | Ausgangskontakt für die Beziehungsprüfungen anlegen | db | — |
+| `contact-relations` | `retention-defaults` | Aufbewahrungsfristen werden beim Anlegen aus der Kategorie gesetzt | db | — |
+| `contact-relations` | `retention-rules` | Aufbewahrungsregeln rechnen und prüfen | logic | — |
+| `contact-relations` | `import-mapping` | Import ordnet Spalten zu, zerlegt Verteiler und erkennt Dubletten | logic | — |
+| `contact-relations` | `activity-triggers` | Anlegen, Bearbeiten und Anrufe protokollieren Aktivitäten automatisch | db | — |
+| `contact-relations` | `topics` | Themen verknüpfen, Duplikate sperren und Verwendung zählen | db | — |
+| `contact-relations` | `duplicate-scan` | Dubletten-Scan findet Kontakte im eigenen Büro und bleibt mandantengetrennt | db | — |
+| `contact-relations` | `bulk-update` | Sammelbearbeitung ändert mehrere Kontakte und protokolliert die Rücknahme | db | — |
+| `contact-relations` | `distribution-list` | Verteiler mit Stakeholder und Personen anlegen, prüfen und löschen | db | — |
+| `contact-relations` | `briefing-memory` | Briefingwissen je Kontakt anlegen, ändern und löschen | db | — |
+| `contact-relations` | `fundings` | Förderung mit Kontaktbeteiligung anlegen und eindeutig halten | db | — |
+| `contact-relations` | `secured-read` | Gesicherte Kontaktlesung liefert eigene Daten und keine fremden Büros | db | — |
+| `contact-relations` | `merge-links` | Zusammenführen verschiebt Themen und Briefingwissen mit | workflow | — |
 
 ## Deklarierter Prüfumfang
 
 ### `contact-lifecycle`
 
 Keine Prüfungen deklariert.
+
+### `contact-relations`
+
+1. Der Datenbank-Trigger setzt Rechtsgrundlage und Prüffrist: Bürger 24 Monate ab Erfassung, alle anderen bis 31.03.2031
+2. Die reinen Aufbewahrungsregeln (Fristberechnung, Fälligkeit, Regeltext) stimmen mit dem Trigger überein
+3. Importzuordnung ordnet deutsche und englische Spalten zu und zerlegt die Verteiler-Spalte an ; , und |
+4. Die Import-Duplikaterkennung findet gleiche E-Mail- oder Telefonnummern und ignoriert unähnliche Kontakte
+5. Anlegen, Bearbeiten und ein Anrufprotokoll erzeugen die passenden contact_activities über Trigger
+6. Themen werden über contact_topics verknüpft, doppelte Verknüpfungen sind gesperrt und topic_usage zählt Kontakte
+7. find_contact_duplicates_trgm findet ein Dublettenpaar im Büro und weist fremde Mandanten ab
+8. bulk_update_contact_fields ändert Kategorie und Schlagworte für mehrere Kontakte, protokolliert die Sammelaktion und weist ungültige Eingaben ab
+9. undo_contact_bulk_action stellt die vorherigen Werte wieder her (Büroleitung) bzw. wird für Mitglieder abgewiesen
+10. Verteilerlisten nehmen mehrere Kontakte auf, doppelte Mitglieder sind gesperrt, das Löschen der Liste entfernt die Mitglieder
+11. Ein Stakeholder wird als Organisation angelegt und die zugeordnete Person über assign_contact_to_organization verknüpft
+12. Briefingwissen wird angelegt, geändert und gelöscht
+13. Eine Förderung mit Beteiligung des Kontakts wird angelegt, gelesen und doppelte Beteiligungen sind gesperrt
+14. Die gesicherte Kontaktlesung liefert den eigenen Kontakt und keine Zeilen aus fremden Büros
+15. Zusammenführen verschiebt Themen und Briefingwissen mit und löscht den Zweitkontakt
 
 ## Funktionsdetails
 
@@ -157,7 +189,7 @@ Zeigt Stammdaten, Aktivitäten, Dokumente, Finanzierungen, Themen, Vorgänge und
 - **Kategorie:** fachlich
 - **Implementierung:** implementiert
 - **Einbindung:** UI
-- **Testabdeckung:** kein Test
+- **Testabdeckung:** Selbsttest
 - **Letztes Testergebnis:** nicht-ausgefuehrt (kein Laufnachweis importiert; nicht aus der Existenz einer Testdatei abgeleitet)
 - **Rollen:** `abgeordneter`, `bueroleitung`, `mitarbeiter`, `praktikant`
 - **Routen:** `/contacts/:id`
@@ -165,10 +197,10 @@ Zeigt Stammdaten, Aktivitäten, Dokumente, Finanzierungen, Themen, Vorgänge und
 - **Services:** —
 - **Hooks:** —
 - **Edge Functions:** —
-- **Datenbankfunktionen:** —
+- **Datenbankfunktionen:** `read_secured_contacts`
 - **Tabellen:** `contacts`, `contact_activities`, `contact_topics`, `document_contacts`, `fundings`
 - **Abhängigkeiten:** `contacts.create`
-- **Selbsttests:** —
+- **Selbsttests:** `contact-relations`
 - **Unit-Tests:** —
 - **Integrationstests:** —
 - **Browser-Tests:** —
@@ -181,7 +213,7 @@ Zeigt Stammdaten, Aktivitäten, Dokumente, Finanzierungen, Themen, Vorgänge und
 
 **Bekannte Einschränkungen**
 
-- Keine.
+- Gerendert wird das Detail-Sheet nicht; geprüft werden die gesicherte Kontaktlesung und die verknüpften Datenpfade (Aktivitäten, Briefingwissen, Förderungen).
 
 **Offene Prüfpunkte**
 
@@ -193,7 +225,7 @@ Importiert Kontakte aus CSV/VCF/MSG, erkennt Dubletten und ordnet Spalten zu.
 - **Kategorie:** fachlich
 - **Implementierung:** implementiert
 - **Einbindung:** UI
-- **Testabdeckung:** kein Test
+- **Testabdeckung:** teilweise
 - **Letztes Testergebnis:** nicht-ausgefuehrt (kein Laufnachweis importiert; nicht aus der Existenz einer Testdatei abgeleitet)
 - **Rollen:** `abgeordneter`, `bueroleitung`, `mitarbeiter`
 - **Routen:** `/contacts/import`
@@ -204,7 +236,7 @@ Importiert Kontakte aus CSV/VCF/MSG, erkennt Dubletten und ordnet Spalten zu.
 - **Datenbankfunktionen:** `insert_sample_contacts`
 - **Tabellen:** `contacts`, `contact_activities`
 - **Abhängigkeiten:** `contacts.create`
-- **Selbsttests:** —
+- **Selbsttests:** `contact-relations`
 - **Unit-Tests:** —
 - **Integrationstests:** —
 - **Browser-Tests:** —
@@ -218,7 +250,7 @@ Importiert Kontakte aus CSV/VCF/MSG, erkennt Dubletten und ordnet Spalten zu.
 
 **Bekannte Einschränkungen**
 
-- Keine.
+- Geprüft werden Spaltenzuordnung, Verteilerzerlegung und Duplikaterkennung als reine Regeln sowie die Verteilerzuordnung; ein echter Datei-Upload (CSV/XLSX/VCF) läuft nicht im Selbsttest.
 
 **Offene Prüfpunkte**
 
@@ -230,7 +262,7 @@ Findet ähnliche Kontakte über Trigramm-Suche und zeigt Dublettenprüfungen in 
 - **Kategorie:** fachlich
 - **Implementierung:** implementiert
 - **Einbindung:** rollenabhängig
-- **Testabdeckung:** kein Test
+- **Testabdeckung:** Selbsttest
 - **Letztes Testergebnis:** nicht-ausgefuehrt (kein Laufnachweis importiert; nicht aus der Existenz einer Testdatei abgeleitet)
 - **Rollen:** `abgeordneter`, `bueroleitung`, `mitarbeiter`, `admin`
 - **Routen:** —
@@ -241,7 +273,7 @@ Findet ähnliche Kontakte über Trigramm-Suche und zeigt Dublettenprüfungen in 
 - **Datenbankfunktionen:** `find_contact_duplicates_trgm`
 - **Tabellen:** `contacts`
 - **Abhängigkeiten:** `contacts.create`
-- **Selbsttests:** —
+- **Selbsttests:** `contact-relations`
 - **Unit-Tests:** —
 - **Integrationstests:** —
 - **Browser-Tests:** —
@@ -254,7 +286,7 @@ Findet ähnliche Kontakte über Trigramm-Suche und zeigt Dublettenprüfungen in 
 
 **Bekannte Einschränkungen**
 
-- Keine.
+- Der Trigramm-Scan wird mit zwei eigens angelegten Kontakten geprüft; die Trefferqualität für den Bestand bleibt ungemessen.
 
 **Offene Prüfpunkte**
 
@@ -277,7 +309,7 @@ Führt zwei Kontakte transaktional zusammen, verschiebt alle Verweise und bricht
 - **Datenbankfunktionen:** `merge_contacts`
 - **Tabellen:** `contacts`, `contact_activities`, `contact_topics`, `document_contacts`, `fundings`
 - **Abhängigkeiten:** `contacts.create`, `contacts.edit`
-- **Selbsttests:** `contact-lifecycle`
+- **Selbsttests:** `contact-lifecycle`, `contact-relations`
 - **Unit-Tests:** —
 - **Integrationstests:** —
 - **Browser-Tests:** —
@@ -302,7 +334,7 @@ Erstellt und bearbeitet Verteilerlisten, ordnet Mitglieder zu und wandelt Stakeh
 - **Kategorie:** fachlich
 - **Implementierung:** implementiert
 - **Einbindung:** UI
-- **Testabdeckung:** kein Test
+- **Testabdeckung:** Selbsttest
 - **Letztes Testergebnis:** nicht-ausgefuehrt (kein Laufnachweis importiert; nicht aus der Existenz einer Testdatei abgeleitet)
 - **Rollen:** `abgeordneter`, `bueroleitung`, `mitarbeiter`
 - **Routen:** `/contacts?tab=distributionlists`
@@ -313,7 +345,7 @@ Erstellt und bearbeitet Verteilerlisten, ordnet Mitglieder zu und wandelt Stakeh
 - **Datenbankfunktionen:** —
 - **Tabellen:** `distribution_lists`, `distribution_list_members`
 - **Abhängigkeiten:** `contacts.create`
-- **Selbsttests:** —
+- **Selbsttests:** `contact-relations`
 - **Unit-Tests:** —
 - **Integrationstests:** —
 - **Browser-Tests:** —
@@ -327,7 +359,7 @@ Erstellt und bearbeitet Verteilerlisten, ordnet Mitglieder zu und wandelt Stakeh
 
 **Bekannte Einschränkungen**
 
-- Keine.
+- Geprüft werden Anlegen, Mitglieder, Duplikatsperre und Löschen; die Umwandlung im Stakeholder-Dialog nutzt denselben Schreibpfad, wird aber nicht gerendert.
 
 **Offene Prüfpunkte**
 
@@ -339,7 +371,7 @@ Zeigt Stakeholder auf Karten, verwaltet Flags, Ebenen und Netzwerk-Tags.
 - **Kategorie:** fachlich
 - **Implementierung:** implementiert
 - **Einbindung:** UI
-- **Testabdeckung:** kein Test
+- **Testabdeckung:** teilweise
 - **Letztes Testergebnis:** nicht-ausgefuehrt (kein Laufnachweis importiert; nicht aus der Existenz einer Testdatei abgeleitet)
 - **Rollen:** `abgeordneter`, `bueroleitung`, `mitarbeiter`
 - **Routen:** `/contacts/netzwerk`, `/contacts/stakeholder`
@@ -350,7 +382,7 @@ Zeigt Stakeholder auf Karten, verwaltet Flags, Ebenen und Netzwerk-Tags.
 - **Datenbankfunktionen:** —
 - **Tabellen:** `map_flags`, `map_flag_topics`, `map_flag_types`, `map_layers`, `contacts`
 - **Abhängigkeiten:** `contacts.create`
-- **Selbsttests:** —
+- **Selbsttests:** `contact-relations`
 - **Unit-Tests:** —
 - **Integrationstests:** —
 - **Browser-Tests:** —
@@ -363,11 +395,11 @@ Zeigt Stakeholder auf Karten, verwaltet Flags, Ebenen und Netzwerk-Tags.
 
 **Bekannte Einschränkungen**
 
-- Keine.
+- Geprüft werden Stakeholder-Organisation, Personen zuordnung und Verteilerbildung; die Kartenflags (map_flags) samt Ebenen bleiben ausgeklammert.
 
 **Offene Prüfpunkte**
 
-- Keine.
+- Die Trefferheuristik der Netzwerkansicht ist nicht qualitätsgetestet; geprüft wird die Datenbasis, nicht die Darstellung.
 
 ### `contacts.tags-topics` — Kontakt-Themen
 Vergibt Themen an Kontakte über contact_topics und zeigt sie in Liste, Detail und Bearbeitung; die früheren Tag-Textarrays werden nicht mehr fortgeschrieben.
@@ -375,7 +407,7 @@ Vergibt Themen an Kontakte über contact_topics und zeigt sie in Liste, Detail u
 - **Kategorie:** fachlich
 - **Implementierung:** implementiert
 - **Einbindung:** UI
-- **Testabdeckung:** kein Test
+- **Testabdeckung:** Selbsttest
 - **Letztes Testergebnis:** nicht-ausgefuehrt (kein Laufnachweis importiert; nicht aus der Existenz einer Testdatei abgeleitet)
 - **Rollen:** `abgeordneter`, `bueroleitung`, `mitarbeiter`
 - **Routen:** —
@@ -386,7 +418,7 @@ Vergibt Themen an Kontakte über contact_topics und zeigt sie in Liste, Detail u
 - **Datenbankfunktionen:** —
 - **Tabellen:** `contact_topics`, `topics`
 - **Abhängigkeiten:** `contacts.create`, `topics.manage`
-- **Selbsttests:** —
+- **Selbsttests:** `contact-relations`
 - **Unit-Tests:** —
 - **Integrationstests:** —
 - **Browser-Tests:** —
@@ -401,10 +433,11 @@ Vergibt Themen an Kontakte über contact_topics und zeigt sie in Liste, Detail u
 **Bekannte Einschränkungen**
 
 - Das frühere Tag-Feld bleibt als historischer Bestand in contacts.tags erhalten.
+- Geprüft wird contact_topics samt Zählung; die Themenauswahl im Dialog wird nicht gerendert.
 
 **Offene Prüfpunkte**
 
-- Die Junction-Schreibpfade sind durch keinen eigenen Szenario-Schritt abgedeckt.
+- Die Zuordnung über die Oberfläche (TopicPicker) wird nur mittelbar über denselben contact_topics-Schreibpfad geprüft.
 
 ### `contacts.privacy` — Kontakt-Datenschutz und Aufbewahrung
 Zeigt Datenschutzhinweise, berechnet Aufbewahrungsfristen und maskiert geschützte Kontaktdaten.
@@ -412,7 +445,7 @@ Zeigt Datenschutzhinweise, berechnet Aufbewahrungsfristen und maskiert geschütz
 - **Kategorie:** sicherheit
 - **Implementierung:** implementiert
 - **Einbindung:** UI
-- **Testabdeckung:** kein Test
+- **Testabdeckung:** Selbsttest
 - **Letztes Testergebnis:** nicht-ausgefuehrt (kein Laufnachweis importiert; nicht aus der Existenz einer Testdatei abgeleitet)
 - **Rollen:** `admin`, `bueroleitung`, `mitarbeiter`
 - **Routen:** —
@@ -423,7 +456,7 @@ Zeigt Datenschutzhinweise, berechnet Aufbewahrungsfristen und maskiert geschütz
 - **Datenbankfunktionen:** `contacts_default_retention`, `read_secured_contacts`, `mask_secured_record`, `mutate_secured_records`, `contacts_secured`
 - **Tabellen:** `contacts`
 - **Abhängigkeiten:** `contacts.create`
-- **Selbsttests:** —
+- **Selbsttests:** `contact-relations`
 - **Unit-Tests:** —
 - **Integrationstests:** —
 - **Browser-Tests:** —
@@ -436,7 +469,7 @@ Zeigt Datenschutzhinweise, berechnet Aufbewahrungsfristen und maskiert geschütz
 
 **Bekannte Einschränkungen**
 
-- Keine.
+- Rechtsgrundlage, Prüffrist und Fälligkeit werden als Regel und über den Datenbank-Trigger geprüft; eine konfigurierte Feldmaskierung (field_permissions) verändert der Selbsttest nicht.
 
 **Offene Prüfpunkte**
 
@@ -448,7 +481,7 @@ Aktualisiert Felder für viele Kontakte gleichzeitig, protokolliert die Aktion u
 - **Kategorie:** fachlich
 - **Implementierung:** implementiert
 - **Einbindung:** rollenabhängig
-- **Testabdeckung:** kein Test
+- **Testabdeckung:** Selbsttest
 - **Letztes Testergebnis:** nicht-ausgefuehrt (kein Laufnachweis importiert; nicht aus der Existenz einer Testdatei abgeleitet)
 - **Rollen:** `abgeordneter`, `bueroleitung`, `mitarbeiter`
 - **Routen:** —
@@ -459,7 +492,7 @@ Aktualisiert Felder für viele Kontakte gleichzeitig, protokolliert die Aktion u
 - **Datenbankfunktionen:** `bulk_update_contact_fields`, `undo_contact_bulk_action`, `cleanup_bulk_action_audit`
 - **Tabellen:** `contacts`, `bulk_action_audit`
 - **Abhängigkeiten:** `contacts.create`
-- **Selbsttests:** —
+- **Selbsttests:** `contact-relations`
 - **Unit-Tests:** —
 - **Integrationstests:** —
 - **Browser-Tests:** —
@@ -471,7 +504,7 @@ Aktualisiert Felder für viele Kontakte gleichzeitig, protokolliert die Aktion u
 
 **Bekannte Einschränkungen**
 
-- Keine.
+- Die Rücknahme verlangt Büroleitung oder Abgeordneten-Mandat; als Mitglied wird nur die Abweisung geprüft.
 
 **Offene Prüfpunkte**
 
@@ -483,7 +516,7 @@ Protokolliert Anrufe, E-Mails, Treffen und Notizen am Kontakt und zeigt sie im V
 - **Kategorie:** fachlich
 - **Implementierung:** implementiert
 - **Einbindung:** UI
-- **Testabdeckung:** kein Test
+- **Testabdeckung:** Selbsttest
 - **Letztes Testergebnis:** nicht-ausgefuehrt (kein Laufnachweis importiert; nicht aus der Existenz einer Testdatei abgeleitet)
 - **Rollen:** `abgeordneter`, `bueroleitung`, `mitarbeiter`, `praktikant`
 - **Routen:** —
@@ -494,7 +527,7 @@ Protokolliert Anrufe, E-Mails, Treffen und Notizen am Kontakt und zeigt sie im V
 - **Datenbankfunktionen:** `log_contact_activity`, `log_call_log_activity`
 - **Tabellen:** `contact_activities`, `call_logs`
 - **Abhängigkeiten:** `contacts.create`
-- **Selbsttests:** —
+- **Selbsttests:** `contact-lifecycle`, `contact-relations`
 - **Unit-Tests:** —
 - **Integrationstests:** —
 - **Browser-Tests:** —
@@ -507,7 +540,7 @@ Protokolliert Anrufe, E-Mails, Treffen und Notizen am Kontakt und zeigt sie im V
 
 **Bekannte Einschränkungen**
 
-- Keine.
+- Geprüft werden die Datenbank-Trigger für Anlegen, Bearbeiten und Anrufprotokolle; die Quick-Capture-Oberflächen werden nicht gerendert.
 
 **Offene Prüfpunkte**
 
@@ -519,7 +552,7 @@ Merkt sich Gesprächswissen und Vorlieben je Kontakt für Terminbriefings.
 - **Kategorie:** fachlich
 - **Implementierung:** implementiert
 - **Einbindung:** UI
-- **Testabdeckung:** kein Test
+- **Testabdeckung:** Selbsttest
 - **Letztes Testergebnis:** nicht-ausgefuehrt (kein Laufnachweis importiert; nicht aus der Existenz einer Testdatei abgeleitet)
 - **Rollen:** `abgeordneter`, `bueroleitung`, `mitarbeiter`
 - **Routen:** —
@@ -530,7 +563,7 @@ Merkt sich Gesprächswissen und Vorlieben je Kontakt für Terminbriefings.
 - **Datenbankfunktionen:** —
 - **Tabellen:** `contact_briefing_memory`, `contacts`
 - **Abhängigkeiten:** `appointments.briefing`
-- **Selbsttests:** —
+- **Selbsttests:** `contact-relations`
 - **Unit-Tests:** —
 - **Integrationstests:** —
 - **Browser-Tests:** —
@@ -543,7 +576,7 @@ Merkt sich Gesprächswissen und Vorlieben je Kontakt für Terminbriefings.
 
 **Bekannte Einschränkungen**
 
-- Keine.
+- Die Leserechte folgen der Profil-Mandantenzuordnung; bei mehreren Büros kann die Sichtbarkeit eingeschränkt sein.
 
 **Offene Prüfpunkte**
 
@@ -555,7 +588,7 @@ Erfasst Finanzierungen, beteiligte Kontakte und Budgetbezüge.
 - **Kategorie:** fachlich
 - **Implementierung:** implementiert
 - **Einbindung:** UI
-- **Testabdeckung:** kein Test
+- **Testabdeckung:** Selbsttest
 - **Letztes Testergebnis:** nicht-ausgefuehrt (kein Laufnachweis importiert; nicht aus der Existenz einer Testdatei abgeleitet)
 - **Rollen:** `abgeordneter`, `bueroleitung`, `mitarbeiter`
 - **Routen:** —
@@ -566,7 +599,7 @@ Erfasst Finanzierungen, beteiligte Kontakte und Budgetbezüge.
 - **Datenbankfunktionen:** —
 - **Tabellen:** `fundings`, `funding_participants`, `expense_budgets`
 - **Abhängigkeiten:** `contacts.create`
-- **Selbsttests:** —
+- **Selbsttests:** `contact-relations`
 - **Unit-Tests:** —
 - **Integrationstests:** —
 - **Browser-Tests:** —
@@ -579,7 +612,7 @@ Erfasst Finanzierungen, beteiligte Kontakte und Budgetbezüge.
 
 **Bekannte Einschränkungen**
 
-- Keine.
+- Geprüft werden Förderung und Beteiligung samt eindeutiger Zuordnung; Budgetbezüge (expense_budgets) bleiben unberührt.
 
 **Offene Prüfpunkte**
 

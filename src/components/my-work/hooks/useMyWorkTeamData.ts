@@ -43,10 +43,7 @@ interface TeamTimeEntryRow {
   work_date: string;
 }
 
-interface LatestTimeEntryRow {
-  user_id: string;
-  last_work_date: string | null;
-}
+type LatestTimeEntryRow = Pick<TeamTimeEntryRow, "user_id" | "work_date">;
 
 interface TeamAbsenceRow extends WeeklyAbsence {
   user_id: string;
@@ -348,10 +345,7 @@ function mapTeamMembers({
     return acc;
   }, {});
 
-  const lastGlobalEntry = latestEntries.reduce<Record<string, string | null>>((acc, entry) => {
-    acc[entry.user_id] = entry.last_work_date;
-    return acc;
-  }, {});
+  const lastGlobalEntry = new Map(latestEntries.map((entry) => [entry.user_id, entry.work_date]));
 
   const absencesByUser = absences.reduce<Record<string, WeeklyAbsence[]>>((acc, absence) => {
     const list = acc[absence.user_id] ?? [];
@@ -385,7 +379,7 @@ function mapTeamMembers({
       holidays,
       absences: absencesByUser[userId] ?? [],
     });
-    const latestTimeEntryDate = lastGlobalEntry[userId] ?? null;
+    const latestTimeEntryDate = lastGlobalEntry.get(userId) ?? lastTimeEntryThisWeek[userId] ?? null;
     const workStatus = buildTeamWorkStatus(weeklyWorkedMinutes, weeklyTarget, latestTimeEntryDate, now);
     const displayName = profile?.display_name?.trim() || "Unbekannt";
 
@@ -406,10 +400,7 @@ function mapTeamMembers({
       lastTimeEntryDate: lastTimeEntryThisWeek[userId] ?? null,
       daysWithoutEntry: workStatus.daysWithoutEntry,
       initials: getInitials(displayName),
-      workStatus: {
-        ...workStatus,
-        lastTimeEntryDate: lastTimeEntryThisWeek[userId] ?? latestTimeEntryDate,
-      },
+      workStatus,
       meetingStatus: getMeetingStatus(nextMeetingDue),
     };
   });
@@ -464,6 +455,8 @@ async function fetchMyWorkTeamData(userId: string, tenantId: string): Promise<Us
 
   const weekStart = format(startOfWeek(new Date(), { weekStartsOn: 1 }), "yyyy-MM-dd");
   const today = format(new Date(), "yyyy-MM-dd");
+  // Older entry writers may leave tenant_id empty. Access still follows time_entries RLS.
+  const timeEntryTenantFilter = `tenant_id.eq.${tenantId},tenant_id.is.null`;
 
   const [profilesResult, settingsResult, requestsResult, timeEntriesResult, latestEntriesResult, absencesResult, holidaysResult] =
     await Promise.all([
@@ -477,12 +470,20 @@ async function fetchMyWorkTeamData(userId: string, tenantId: string): Promise<Us
         .from("time_entries")
         .select("user_id, minutes, work_date")
         .in("user_id", employeeIds)
+        .or(timeEntryTenantFilter)
         .gte("work_date", weekStart)
         .lte("work_date", today),
-      (supabase.rpc as unknown as <T>(fn: string, args: Record<string, unknown>) => Promise<{ data: T | null; error: unknown }>)(
-        "get_latest_time_entry_dates",
-        { p_user_ids: employeeIds },
-      ),
+      Promise.all(employeeIds.map((employeeId) =>
+        supabase
+          .from("time_entries")
+          .select("user_id, work_date")
+          .eq("user_id", employeeId)
+          .or(timeEntryTenantFilter)
+          .lte("work_date", today)
+          .order("work_date", { ascending: false })
+          .limit(1)
+          .maybeSingle(),
+      )),
       supabase
         .from("leave_requests")
         .select("user_id, start_date, end_date")
@@ -503,7 +504,8 @@ async function fetchMyWorkTeamData(userId: string, tenantId: string): Promise<Us
   if (settingsResult.error) debugConsole.error("Error loading team settings:", settingsResult.error);
   if (requestsResult.error) debugConsole.error("Error loading team meeting requests:", requestsResult.error);
   if (timeEntriesResult.error) debugConsole.error("Error loading team time entries:", timeEntriesResult.error);
-  if (latestEntriesResult.error) debugConsole.error("Error loading latest employee time entries:", latestEntriesResult.error);
+  const latestEntriesError = latestEntriesResult.find((result) => result.error)?.error;
+  if (latestEntriesError) debugConsole.error("Error loading latest employee time entries:", latestEntriesError);
   if (absencesResult.error) debugConsole.error("Error loading team absences:", absencesResult.error);
   if (holidaysResult.error) debugConsole.error("Error loading public holidays for team:", holidaysResult.error);
 
@@ -513,7 +515,7 @@ async function fetchMyWorkTeamData(userId: string, tenantId: string): Promise<Us
     settings: Boolean(settingsResult.error),
     meetingRequests: Boolean(requestsResult.error),
     timeEntries: Boolean(timeEntriesResult.error),
-    latestEntries: Boolean(latestEntriesResult.error),
+    latestEntries: Boolean(latestEntriesError),
     absences: Boolean(absencesResult.error),
     holidays: Boolean(holidaysResult.error),
   };
@@ -524,7 +526,7 @@ async function fetchMyWorkTeamData(userId: string, tenantId: string): Promise<Us
     settings: (settingsResult.data as TeamSettingsRow[] | null) ?? [],
     requests: (requestsResult.data as TeamMeetingRequestRow[] | null) ?? [],
     weekEntries: (timeEntriesResult.data as TeamTimeEntryRow[] | null) ?? [],
-    latestEntries: (latestEntriesResult.data as LatestTimeEntryRow[] | null) ?? [],
+    latestEntries: latestEntriesResult.flatMap(({ data }) => data ? [data] : []),
     absences: (absencesResult.data as TeamAbsenceRow[] | null) ?? [],
     holidays: (holidaysResult.data as PublicHolidayRow[] | null) ?? [],
     weekStart,

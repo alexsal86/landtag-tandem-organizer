@@ -3,6 +3,7 @@ import { SELFTEST_SCENARIOS } from "@/features/selftest/registry";
 import {
   PULSE_AREAS, PULSE_GROUPS, areaAssessment, areaLevel, assessRun, consecutiveFailures,
   durationTrend, gapSummary, historyByScenario, latestRunDetails, latestRuns, latestRunSteps, mergeRuns,
+  slowestTestSteps,
   type HistoryRun, type PulseArea,
 } from "./pulse";
 
@@ -140,6 +141,44 @@ describe("latestRunSteps", () => {
     expect(latestRunSteps([
       { scenario_id: "s1", status: "ok", created_at: "2026-11-20T10:00:00Z", steps: [null, "x", { id: 1 }, { id: "ok", status: "ok" }] },
     ])).toEqual({ s1: { ok: { id: "ok", status: "ok", message: undefined, durationMs: undefined, label: undefined } } });
+  });
+});
+
+describe("slowestTestSteps", () => {
+  const areas: PulseArea[] = [
+    { id: "a", title: "A", scenarios: ["s1", "s2"], tables: [], workflows: [] },
+    { id: "b", title: "B", scenarios: ["s3"], tables: [], workflows: [] },
+  ];
+
+  it("nennt je Test die zwei langsamsten Schritte, langsamster Test zuerst", () => {
+    const rows = slowestTestSteps(areas, {
+      s1: { status: "failed", createdAt: "", title: "Test 1", durationMs: 900 },
+      s3: { status: "ok", createdAt: "", title: "Test 3", durationMs: 5000 },
+    }, {
+      s1: {
+        create: { id: "create", label: "Anlegen", status: "ok", durationMs: 120 },
+        check: { id: "check", label: "Prüfen", status: "failed", durationMs: 620 },
+        cleanup: { id: "cleanup", label: "Aufräumen", status: "ok", durationMs: 35 },
+      },
+      s3: { load: { id: "load", label: "Laden", status: "ok", durationMs: 4000 } },
+    });
+
+    expect(rows.map((row) => row.title)).toEqual(["Test 3", "Test 1", "s2"]);
+    expect(rows[1].steps).toEqual([
+      { id: "check", label: "Prüfen", durationMs: 620 },
+      { id: "create", label: "Anlegen", durationMs: 120 },
+    ]);
+    expect(rows[1].totalMs).toBe(900);
+    expect(rows[1].measuredSteps).toBe(3);
+    // Ohne gespeicherte Messung bleibt der Test gelistet, aber ohne Abschnitte.
+    expect(rows[2]).toMatchObject({ scenario: "s2", steps: [], measuredSteps: 0 });
+  });
+
+  it("ignoriert Schritte ohne Dauer und behält die Schritt-ID als Ersatzlabel", () => {
+    const rows = slowestTestSteps([{ id: "a", title: "A", scenarios: ["s1"], tables: [], workflows: [] }], {}, {
+      s1: { open: { id: "open", status: "ok" }, wait: { id: "wait", label: "Warten", status: "ok", durationMs: 0 } },
+    });
+    expect(rows[0].steps).toEqual([{ id: "wait", label: "Warten", durationMs: 0 }]);
   });
 });
 

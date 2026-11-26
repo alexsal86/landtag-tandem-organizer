@@ -1,3 +1,5 @@
+import { useSearchParams } from "react-router-dom";
+import { useMatrixUnread } from "@/contexts/MatrixUnreadContext";
 import { useState, useEffect, useCallback, useMemo, useRef } from 'react';
 import { MessageSquare, Settings, Wifi, WifiOff, Loader2, AlertCircle, Search, Plus, Lock, ExternalLink, PanelLeft, PanelLeftClose } from 'lucide-react';
 import { Button } from '@/components/ui/button';
@@ -42,6 +44,9 @@ export function MatrixChatView() {
     resetCryptoStore,
   } = useMatrixClient();
 
+  const [searchParams, setSearchParams] = useSearchParams();
+  const requestedRoomId = searchParams.get("room");
+  const { rememberRoom } = useMatrixUnread();
   const [selectedRoomId, setSelectedRoomId] = useState<string | null>(null);
   const [showSettings, setShowSettings] = useState(false);
   const [showSearch, setShowSearch] = useState(false);
@@ -81,10 +86,24 @@ export function MatrixChatView() {
 
   // Auto-select first room
   useEffect(() => {
+    if (requestedRoomId && rooms.some((room) => room.roomId === requestedRoomId)) {
+      setSelectedRoomId(requestedRoomId);
+      setSearchParams((params) => {
+        const next = new URLSearchParams(params);
+        next.delete("room");
+        return next;
+      }, { replace: true });
+      return;
+    }
     if (rooms.length > 0 && !selectedRoomId) {
       setSelectedRoomId(rooms[0].roomId);
     }
-  }, [rooms, selectedRoomId]);
+  }, [rooms, requestedRoomId, selectedRoomId, setSearchParams]);
+
+  const selectedRoomName = selectedRoom?.name;
+  useEffect(() => {
+    if (selectedRoomId && selectedRoomName) rememberRoom({ roomId: selectedRoomId, name: selectedRoomName });
+  }, [rememberRoom, selectedRoomId, selectedRoomName]);
 
   // Load initial messages when room is selected
   useEffect(() => {

@@ -246,7 +246,14 @@ export function latestRunSteps(rows: PersistedRun[]): Record<string, Record<stri
  * welcher Fehler gespeichert ist. Fehlt bei einem fehlgeschlagenen Lauf die
  * Schrittliste (ältere Läufe), erscheint eine Zeile für den gesamten Testlauf.
  */
-export interface FailedTestRow { area: string; scenario: string; test: string; error: string }
+export interface FailedTestRow {
+  area: string;
+  areaId: string;
+  scenario: string;
+  scenarioId: string;
+  test: string;
+  error: string;
+}
 
 export function failedTestRows(
   areas: PulseArea[],
@@ -261,7 +268,14 @@ export function failedTestRows(
       const scenarioTitle = run.title ?? scenarioId;
       const failedSteps = Object.values(steps[scenarioId] ?? {}).filter((step) => step.status === "failed");
       if (failedSteps.length === 0) {
-        rows.push({ area: area.title, scenario: scenarioTitle, test: "gesamter Testlauf", error: "Test fehlgeschlagen" });
+        rows.push({
+          area: area.title,
+          areaId: area.id,
+          scenario: scenarioTitle,
+          scenarioId,
+          test: "gesamter Testlauf",
+          error: "Test fehlgeschlagen",
+        });
         continue;
       }
       for (const step of failedSteps) {
@@ -271,7 +285,9 @@ export function failedTestRows(
           .join(" · ");
         rows.push({
           area: area.title,
+          areaId: area.id,
           scenario: scenarioTitle,
+          scenarioId,
           test: step.label ?? step.id,
           error: error || "Test fehlgeschlagen",
         });
@@ -279,6 +295,53 @@ export function failedTestRows(
     }
   }
   return rows;
+}
+
+/**
+ * Die zwei langsamsten Teilabschnitte je durchführbarem Selbsttest. Grundlage
+ * sind die gespeicherten Schritt-Dauern des neuesten Laufs; die Schritte eines
+ * Tests stehen absteigend nach Dauer, und die Tests selbst sind so sortiert,
+ * dass der langsamste Abschnitt oben steht. Tests ohne gemessene Schritte
+ * bleiben gelistet (ohne Abschnitte) und folgen nach den gemessenen.
+ */
+export interface SlowestStep { id: string; label: string; durationMs: number }
+
+export interface SlowestTest {
+  area: string;
+  scenario: string;
+  title: string;
+  status?: string;
+  totalMs?: number;
+  measuredSteps: number;
+  steps: SlowestStep[];
+}
+
+export function slowestTestSteps(
+  areas: PulseArea[],
+  details: Record<string, RunDetails | undefined>,
+  steps: Record<string, Record<string, PersistedStep>>,
+  limit = 2,
+): SlowestTest[] {
+  const rows: SlowestTest[] = [];
+  for (const area of areas) {
+    for (const scenarioId of area.scenarios) {
+      const run = details[scenarioId];
+      const measured = Object.values(steps[scenarioId] ?? {})
+        .filter((step): step is PersistedStep & { durationMs: number } => typeof step.durationMs === "number")
+        .sort((a, b) => b.durationMs - a.durationMs);
+      rows.push({
+        area: area.title,
+        scenario: scenarioId,
+        title: run?.title ?? scenarioId,
+        status: run?.status,
+        totalMs: run?.durationMs,
+        measuredSteps: measured.length,
+        steps: measured.slice(0, limit).map((step) => ({ id: step.id, label: step.label ?? step.id, durationMs: step.durationMs })),
+      });
+    }
+  }
+  return rows.sort((a, b) =>
+    (b.steps[0]?.durationMs ?? -1) - (a.steps[0]?.durationMs ?? -1) || a.title.localeCompare(b.title, "de"));
 }
 
 /** Verlauf je Szenario, neuester Lauf zuerst. */

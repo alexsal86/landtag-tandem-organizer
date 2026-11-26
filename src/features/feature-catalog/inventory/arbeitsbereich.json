@@ -190,6 +190,46 @@
       ]
     },
     {
+      "id": "mywork.navigation-previews",
+      "subarea": "Navigation",
+      "name": "Vorschauen für Kalender, Aufgaben, Akten, Chat und Kontakte",
+      "description": "Zeigt Vorschauen mit dem nächsten Termin samt Briefingstatus, einer offenen Aufgabe mit Frist und Zuständigkeit, einer kürzlich aktualisierten Fallakte, einem ungelesenen Chat oder einem Kontakt mit Bezug zum nächsten Termin oder einer Fallakte. Verlinkt den jeweiligen Eintrag und die Unterbereiche.",
+      "category": "fachlich",
+      "implementationStatus": "implementiert",
+      "integrationStatus": "ui",
+      "coverage": "keine",
+      "testResult": "nicht-ausgefuehrt",
+      "evidence": [
+        "src/components/navigation/AppNavigation.tsx",
+        "src/components/navigation/appNavigation/NavGroupPreview.tsx",
+        "src/components/navigation/appNavigation/useNavPanelData.ts",
+        "src/contexts/MatrixUnreadContext.tsx",
+        "src/components/chat/MatrixChatView.tsx"
+      ],
+      "components": [
+        "src/components/navigation/AppNavigation.tsx",
+        "src/components/navigation/appNavigation/NavGroupPreview.tsx"
+      ],
+      "hooks": [
+        "src/components/navigation/appNavigation/useNavPanelData.ts"
+      ],
+      "tables": [
+        "appointments",
+        "external_events",
+        "appointment_preparations",
+        "tasks",
+        "case_files",
+        "appointment_contacts",
+        "case_file_contacts",
+        "contacts"
+      ],
+      "limitations": [
+        "In der Desktop-Navigation per Maus oder Pfeil nach rechts verfügbar. Die Terminvorschau blickt fünf Tage voraus und die Aktenvorschau berücksichtigt eigene oder zugewiesene Fallakten.",
+        "Chat-Hervorhebungen stammen von Matrix. Die Vorschau zeigt Raumnamen und Zähler. Der zuletzt geöffnete Chat wird für die aktuelle Sitzung gemerkt.",
+        "Ohne Kontakt am nächsten Termin oder in der jüngsten eigenen oder zugewiesenen Fallakte wird ein eigener Favorit angezeigt."
+      ]
+    },
+    {
       "id": "notifications.inbox",
       "subarea": "Benachrichtigungen",
       "name": "Benachrichtigungen lesen und als gelesen markieren",

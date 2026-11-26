@@ -3,11 +3,11 @@
   "source": "src/integrations/supabase/types.ts",
   "counts": {
     "total": 351,
-    "scenario": 79,
-    "deferred": 122,
-    "excluded": 150,
+    "scenario": 86,
+    "deferred": 118,
+    "excluded": 147,
     "missing": 0,
-    "exceptions": 272
+    "exceptions": 265
   },
   "exceptionGroups": [
     {
@@ -150,8 +150,6 @@
         "case_file_topics",
         "case_item_escalation_suggestions",
         "case_item_participants",
-        "contact_topics",
-        "distribution_list_members",
         "document_contacts",
         "document_topics",
         "dossier_links",
@@ -165,7 +163,6 @@
         "event_rsvps",
         "expense_budgets",
         "expense_categories",
-        "funding_participants",
         "knowledge_document_collaborators",
         "knowledge_document_permissions",
         "knowledge_document_topics",
@@ -194,7 +191,6 @@
       "expiresOn": "2027-06-30",
       "tables": [
         "action_permissions",
-        "contact_briefing_memory",
         "external_calendars",
         "external_events",
         "facts",
@@ -273,13 +269,11 @@
       "expiresOn": "2027-03-31",
       "tables": [
         "automation_rules",
-        "call_logs",
         "carryover_items",
         "case_item_attachments",
         "committees",
         "daily_briefing_reads",
         "dashboard_decision_nudges",
-        "distribution_lists",
         "district_notes",
         "district_support_assignments",
         "document_folders",
@@ -287,7 +281,6 @@
         "dossiers",
         "employee_responsibilities",
         "expenses",
-        "fundings",
         "habit_completions",
         "habits",
         "information_blocks",
@@ -822,6 +815,128 @@
             "tenant_id",
             "user_id",
             "usage_count"
+          ]
+        }
+      ],
+      "registered": true
+    },
+    {
+      "id": "contact-relations",
+      "title": "Kontakt-Beziehungen (Datenschutz → Themen → Duplikate → Sammelaktion → Verteiler → Wissen → Förderungen)",
+      "touches": [
+        "contacts",
+        "contact_activities",
+        "contact_topics",
+        "topics",
+        "call_logs",
+        "distribution_lists",
+        "distribution_list_members",
+        "contact_briefing_memory",
+        "fundings",
+        "funding_participants"
+      ],
+      "features": [
+        "contacts"
+      ],
+      "writes": [
+        {
+          "table": "contacts",
+          "columns": [
+            "name",
+            "user_id",
+            "tenant_id",
+            "email",
+            "phone",
+            "category",
+            "tags",
+            "notes",
+            "created_at"
+          ]
+        },
+        {
+          "table": "contact_activities",
+          "columns": [
+            "contact_id",
+            "tenant_id",
+            "created_by",
+            "activity_type",
+            "title",
+            "description"
+          ]
+        },
+        {
+          "table": "contact_topics",
+          "columns": [
+            "tenant_id",
+            "contact_id",
+            "topic_id"
+          ]
+        },
+        {
+          "table": "topics",
+          "columns": [
+            "label",
+            "tenant_id"
+          ]
+        },
+        {
+          "table": "call_logs",
+          "columns": [
+            "contact_id",
+            "user_id",
+            "call_type",
+            "duration_minutes",
+            "notes",
+            "follow_up_required",
+            "priority"
+          ]
+        },
+        {
+          "table": "distribution_lists",
+          "columns": [
+            "user_id",
+            "tenant_id",
+            "name",
+            "description",
+            "topic"
+          ]
+        },
+        {
+          "table": "distribution_list_members",
+          "columns": [
+            "distribution_list_id",
+            "contact_id"
+          ]
+        },
+        {
+          "table": "contact_briefing_memory",
+          "columns": [
+            "tenant_id",
+            "contact_id",
+            "kind",
+            "content",
+            "question",
+            "answer",
+            "pinned_by"
+          ]
+        },
+        {
+          "table": "fundings",
+          "columns": [
+            "tenant_id",
+            "title",
+            "total_amount",
+            "status",
+            "created_by"
+          ]
+        },
+        {
+          "table": "funding_participants",
+          "columns": [
+            "funding_id",
+            "contact_id",
+            "allocated_amount",
+            "role"
           ]
         }
       ],
@@ -2062,12 +2177,11 @@
     },
     {
       "table": "call_logs",
-      "status": "deferred",
-      "scenarios": [],
-      "exception": {
-        "kind": "deferred",
-        "expiresOn": "2027-03-31"
-      }
+      "status": "scenario",
+      "scenarios": [
+        "contact-relations"
+      ],
+      "exception": null
     },
     {
       "table": "carryover_items",
@@ -2296,27 +2410,26 @@
       "table": "contact_activities",
       "status": "scenario",
       "scenarios": [
-        "contact-lifecycle"
+        "contact-lifecycle",
+        "contact-relations"
       ],
       "exception": null
     },
     {
       "table": "contact_briefing_memory",
-      "status": "deferred",
-      "scenarios": [],
-      "exception": {
-        "kind": "deferred",
-        "expiresOn": "2027-06-30"
-      }
+      "status": "scenario",
+      "scenarios": [
+        "contact-relations"
+      ],
+      "exception": null
     },
     {
       "table": "contact_topics",
-      "status": "excluded",
-      "scenarios": [],
-      "exception": {
-        "kind": "excluded",
-        "expiresOn": "2027-06-30"
-      }
+      "status": "scenario",
+      "scenarios": [
+        "contact-relations"
+      ],
+      "exception": null
     },
     {
       "table": "contact_usage_stats",
@@ -2331,7 +2444,8 @@
       "status": "scenario",
       "scenarios": [
         "case-file-lifecycle",
-        "contact-lifecycle"
+        "contact-lifecycle",
+        "contact-relations"
       ],
       "exception": null
     },
@@ -2426,21 +2540,19 @@
     },
     {
       "table": "distribution_list_members",
-      "status": "excluded",
-      "scenarios": [],
-      "exception": {
-        "kind": "excluded",
-        "expiresOn": "2027-06-30"
-      }
+      "status": "scenario",
+      "scenarios": [
+        "contact-relations"
+      ],
+      "exception": null
     },
     {
       "table": "distribution_lists",
-      "status": "deferred",
-      "scenarios": [],
-      "exception": {
-        "kind": "deferred",
-        "expiresOn": "2027-03-31"
-      }
+      "status": "scenario",
+      "scenarios": [
+        "contact-relations"
+      ],
+      "exception": null
     },
     {
       "table": "district_notes",
@@ -3271,21 +3383,19 @@
     },
     {
       "table": "funding_participants",
-      "status": "excluded",
-      "scenarios": [],
-      "exception": {
-        "kind": "excluded",
-        "expiresOn": "2027-06-30"
-      }
+      "status": "scenario",
+      "scenarios": [
+        "contact-relations"
+      ],
+      "exception": null
     },
     {
       "table": "fundings",
-      "status": "deferred",
-      "scenarios": [],
-      "exception": {
-        "kind": "deferred",
-        "expiresOn": "2027-03-31"
-      }
+      "status": "scenario",
+      "scenarios": [
+        "contact-relations"
+      ],
+      "exception": null
     },
     {
       "table": "gdpr_requests",
@@ -4737,6 +4847,7 @@
       "table": "topics",
       "status": "scenario",
       "scenarios": [
+        "contact-relations",
         "topic-linking"
       ],
       "exception": null
@@ -5008,102 +5119,6 @@
       "tables": [
         "team_announcements",
         "team_announcement_dismissals"
-      ]
-    },
-    {
-      "id": "contacts.activities",
-      "name": "Kontaktaktivitäten und Anrufe",
-      "area": "kontakte",
-      "tables": [
-        "contact_activities",
-        "call_logs"
-      ]
-    },
-    {
-      "id": "contacts.briefing-memory",
-      "name": "Briefingwissen je Kontakt",
-      "area": "kontakte",
-      "tables": [
-        "contact_briefing_memory",
-        "contacts"
-      ]
-    },
-    {
-      "id": "contacts.bulk",
-      "name": "Kontakte in Massen bearbeiten",
-      "area": "kontakte",
-      "tables": [
-        "contacts",
-        "bulk_action_audit"
-      ]
-    },
-    {
-      "id": "contacts.detail",
-      "name": "Kontaktprofil mit Aktivitäten",
-      "area": "kontakte",
-      "tables": [
-        "contacts",
-        "contact_activities",
-        "contact_topics",
-        "document_contacts",
-        "fundings"
-      ]
-    },
-    {
-      "id": "contacts.distribution-lists",
-      "name": "Verteilerlisten verwalten",
-      "area": "kontakte",
-      "tables": [
-        "distribution_lists",
-        "distribution_list_members"
-      ]
-    },
-    {
-      "id": "contacts.duplicates",
-      "name": "Dubletten finden",
-      "area": "kontakte",
-      "tables": [
-        "contacts"
-      ]
-    },
-    {
-      "id": "contacts.fundings",
-      "name": "Finanzierungen und Beteiligungen",
-      "area": "kontakte",
-      "tables": [
-        "fundings",
-        "funding_participants",
-        "expense_budgets"
-      ]
-    },
-    {
-      "id": "contacts.import",
-      "name": "Kontakte importieren",
-      "area": "kontakte",
-      "tables": [
-        "contacts",
-        "contact_activities"
-      ]
-    },
-    {
-      "id": "contacts.stakeholders",
-      "name": "Stakeholder-Netzwerk",
-      "area": "kontakte",
-      "tables": [
-        "map_flags",
-        "map_flag_topics",
-        "map_flag_types",
-        "map_layers",
-        "contacts"
-      ]
-    },
-    {
-      "id": "contacts.tags-topics",
-      "name": "Kontakt-Themen",
-      "area": "kontakte",
-      "tables": [
-        "contact_topics",
-        "topics"
       ]
     },
     {
@@ -5387,6 +5402,21 @@
       "area": "organisation",
       "tables": [
         "meeting_agenda_items"
+      ]
+    },
+    {
+      "id": "mywork.navigation-previews",
+      "name": "Vorschauen für Kalender, Aufgaben, Akten, Chat und Kontakte",
+      "area": "arbeitsbereich",
+      "tables": [
+        "appointments",
+        "external_events",
+        "appointment_preparations",
+        "tasks",
+        "case_files",
+        "appointment_contacts",
+        "case_file_contacts",
+        "contacts"
       ]
     },
     {

@@ -89,6 +89,11 @@
       "id": "calendar.create-appointment",
       "name": "Termin anlegen",
       "area": "termine"
+    },
+    {
+      "id": "mywork.navigation-previews",
+      "name": "Vorschauen für Kalender, Aufgaben, Akten, Chat und Kontakte",
+      "area": "arbeitsbereich"
     }
   ],
   "appointment_feedback": [
@@ -200,6 +205,11 @@
       "id": "integration.ai-suggestions",
       "name": "KI-Vorschläge für Vorbereitung und Eingang",
       "area": "schnittstellen"
+    },
+    {
+      "id": "mywork.navigation-previews",
+      "name": "Vorschauen für Kalender, Aufgaben, Akten, Chat und Kontakte",
+      "area": "arbeitsbereich"
     }
   ],
   "appointment_reminder_dispatches": [
@@ -295,6 +305,11 @@
       "id": "integration.ics",
       "name": "ICS-Feeds und Einladungsdateien",
       "area": "schnittstellen"
+    },
+    {
+      "id": "mywork.navigation-previews",
+      "name": "Vorschauen für Kalender, Aufgaben, Akten, Chat und Kontakte",
+      "area": "arbeitsbereich"
     }
   ],
   "archived_meeting_protocol_tasks": [
@@ -498,6 +513,11 @@
       "id": "casefiles.links",
       "name": "Fallakte verknüpfen (Dokumente, Kontakte, Themen, Notizen)",
       "area": "vorgaenge"
+    },
+    {
+      "id": "mywork.navigation-previews",
+      "name": "Vorschauen für Kalender, Aufgaben, Akten, Chat und Kontakte",
+      "area": "arbeitsbereich"
     }
   ],
   "case_file_documents": [
@@ -610,6 +630,11 @@
       "id": "casefiles.status-workflow",
       "name": "Fallakten-Status und Bearbeitungsstatus",
       "area": "vorgaenge"
+    },
+    {
+      "id": "mywork.navigation-previews",
+      "name": "Vorschauen für Kalender, Aufgaben, Akten, Chat und Kontakte",
+      "area": "arbeitsbereich"
     }
   ],
   "case_item_categories": [
@@ -906,6 +931,11 @@
       "id": "integration.geocoding",
       "name": "Adress-Geocoding",
       "area": "schnittstellen"
+    },
+    {
+      "id": "mywork.navigation-previews",
+      "name": "Vorschauen für Kalender, Aufgaben, Akten, Chat und Kontakte",
+      "area": "arbeitsbereich"
     }
   ],
   "daily_briefing_reads": [
@@ -1978,6 +2008,11 @@
       "id": "integration.calendar-sync",
       "name": "Externe Kalender synchronisieren",
       "area": "schnittstellen"
+    },
+    {
+      "id": "mywork.navigation-previews",
+      "name": "Vorschauen für Kalender, Aufgaben, Akten, Chat und Kontakte",
+      "area": "arbeitsbereich"
     }
   ],
   "facts": [
@@ -3497,6 +3532,11 @@
       "id": "meetings.archive",
       "name": "Sitzung archivieren",
       "area": "organisation"
+    },
+    {
+      "id": "mywork.navigation-previews",
+      "name": "Vorschauen für Kalender, Aufgaben, Akten, Chat und Kontakte",
+      "area": "arbeitsbereich"
     },
     {
       "id": "tasks.archive",

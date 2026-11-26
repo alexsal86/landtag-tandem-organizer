@@ -14,6 +14,7 @@ import type { DuplicateMatch } from "@/utils/duplicateDetection";
 import type { ParsedVCard, SpreadsheetRow } from "@/types/contactImport";
 import { ImportData, FieldMapping, FIELD_MAPPINGS } from "../types";
 import { resolveDuplicateContact, type DuplicateResolutionMode } from "../duplicateResolution";
+import { parseDistributionListNames } from "../distributionListNames";
 import { notify } from "@/lib/notify";
 import { toast } from "@/hooks/use-toast";
 
@@ -182,14 +183,6 @@ export function useContactImport() {
       return;
     }
     setStep("preview");
-  };
-
-  const parseDistributionListNames = (rawValue: string | null | undefined): string[] => {
-    if (!rawValue) return [];
-    return rawValue
-      .split(/[;,|]/)
-      .map((name) => name.trim())
-      .filter(Boolean);
   };
 
   const assignContactToDistributionLists = async (contactId: string, listNames: string[], rowIndex: number): Promise<void> => {

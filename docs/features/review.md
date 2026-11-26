@@ -11,10 +11,11 @@ Eindeutige Fehler werden im CI-Lauf ausgegeben und brechen die Prüfung ab; sie 
 - Review-Hinweise: **0**
 - Nicht zugeordnete Objekte: **1**, davon ohne Ausnahme: **0**
 
-## Funktionen ohne zugeordneten Test (133)
+## Funktionen ohne zugeordneten Test (122)
 
 - `mywork.tabs` — Meine Arbeit – Bereichsnavigation und Einstellungen
 - `mywork.quick-access` — Schnellzugriff und zuletzt besuchte Seiten
+- `mywork.navigation-previews` — Vorschauen für Kalender, Aufgaben, Akten, Chat und Kontakte
 - `notifications.inbox` — Benachrichtigungen lesen und als gelesen markieren
 - `notifications.preferences` — Benachrichtigungseinstellungen und Stummschaltung
 - `search.global` — Globale Suche und Befehlspalette
@@ -63,17 +64,6 @@ Eindeutige Fehler werden im CI-Lauf ausgegeben und brechen die Prüfung ab; sie 
 - `chat.matrix-bot` — Matrix-Bot und morgendliche Begrüßung
 - `chat.team-announcements` — Team-Ankündigungen
 - `widget.matrix-website` — Matrix-Website-Widget
-- `contacts.detail` — Kontaktprofil mit Aktivitäten
-- `contacts.import` — Kontakte importieren
-- `contacts.duplicates` — Dubletten finden
-- `contacts.distribution-lists` — Verteilerlisten verwalten
-- `contacts.stakeholders` — Stakeholder-Netzwerk
-- `contacts.tags-topics` — Kontakt-Themen
-- `contacts.privacy` — Kontakt-Datenschutz und Aufbewahrung
-- `contacts.bulk` — Kontakte in Massen bearbeiten
-- `contacts.activities` — Kontaktaktivitäten und Anrufe
-- `contacts.briefing-memory` — Briefingwissen je Kontakt
-- `contacts.fundings` — Finanzierungen und Beteiligungen
 - `employees.requests` — Gesprächsanfragen der Mitarbeitenden
 - `employees.export-stats` — Gesprächs-PDF und Jahresstatistik
 - `timetracking.entries` — Arbeitszeit erfassen
@@ -112,7 +102,6 @@ Eindeutige Fehler werden im CI-Lauf ausgegeben und brechen die Prüfung ab; sie 
 - `admin.audit-log` — Audit-Trail einsehen und exportieren
 - `admin.bulk-audit` — Massenaktions-Audit
 - `admin.gdpr` — DSGVO-Löschanträge
-- `admin.security-cockpit` — Security-Cockpit
 - `admin.edge-function-security` — Edge-Function-Sicherheitsklassifikation
 - `admin.data-lint` — Datenqualitätsprüfung
 - `admin.performance` — Performance- und Größen-Dashboard
@@ -147,11 +136,12 @@ Eindeutige Fehler werden im CI-Lauf ausgegeben und brechen die Prüfung ab; sie 
 - `knowledge.global-question` — Globale Wissensfrage aus jedem Bereich
 - `knowledge.management` — Wissensverwaltung
 
-## Funktionen ohne Dokumentationsverweis (164)
+## Funktionen ohne Dokumentationsverweis (165)
 
 - `mywork.dashboard.today-priorities` — Heute zuerst
 - `mywork.tabs` — Meine Arbeit – Bereichsnavigation und Einstellungen
 - `mywork.quick-access` — Schnellzugriff und zuletzt besuchte Seiten
+- `mywork.navigation-previews` — Vorschauen für Kalender, Aufgaben, Akten, Chat und Kontakte
 - `notifications.preferences` — Benachrichtigungseinstellungen und Stummschaltung
 - `search.global` — Globale Suche und Befehlspalette
 - `quicknotes.offline` — Offline-Synchronisation für Schnellnotizen
@@ -327,7 +317,7 @@ Eindeutige Fehler werden im CI-Lauf ausgegeben und brechen die Prüfung ab; sie 
 - `events.legacy-rsvp` — Legacy-Einladungslinks (veraltet)
 - `cases.legacy-routes` — Legacy-Vorgangsrouten (veraltet)
 
-## Funktionen mit Einschränkungen oder offenen Punkten (72)
+## Funktionen mit Einschränkungen oder offenen Punkten (82)
 
 ### `mywork.dashboard`
 
@@ -340,6 +330,12 @@ Eindeutige Fehler werden im CI-Lauf ausgegeben und brechen die Prüfung ab; sie 
 ### `mywork.tabs`
 
 - Die Tab-Auswahl ist eine reine UI-Präferenz und hat keine eigene Geschäftsregel.
+
+### `mywork.navigation-previews`
+
+- In der Desktop-Navigation per Maus oder Pfeil nach rechts verfügbar. Die Terminvorschau blickt fünf Tage voraus und die Aktenvorschau berücksichtigt eigene oder zugewiesene Fallakten.
+- Chat-Hervorhebungen stammen von Matrix. Die Vorschau zeigt Raumnamen und Zähler. Der zuletzt geöffnete Chat wird für die aktuelle Sitzung gemerkt.
+- Ohne Kontakt am nächsten Termin oder in der jüngsten eigenen oder zugewiesenen Fallakte wird ein eigener Favorit angezeigt.
 
 ### `notifications.inbox`
 
@@ -455,14 +451,53 @@ Eindeutige Fehler werden im CI-Lauf ausgegeben und brechen die Prüfung ab; sie 
 
 - Der Bot-Handler ist JWT-geschützt, aber der fachliche Befehlsraum ist nicht dokumentiert.
 
+### `contacts.detail`
+
+- Gerendert wird das Detail-Sheet nicht; geprüft werden die gesicherte Kontaktlesung und die verknüpften Datenpfade (Aktivitäten, Briefingwissen, Förderungen).
+
+### `contacts.import`
+
+- Geprüft werden Spaltenzuordnung, Verteilerzerlegung und Duplikaterkennung als reine Regeln sowie die Verteilerzuordnung; ein echter Datei-Upload (CSV/XLSX/VCF) läuft nicht im Selbsttest.
+
 ### `contacts.duplicates`
 
+- Der Trigramm-Scan wird mit zwei eigens angelegten Kontakten geprüft; die Trefferqualität für den Bestand bleibt ungemessen.
 - Die Trefferheuristik ist nicht qualitätsgetestet; falsche Paare sind möglich.
+
+### `contacts.distribution-lists`
+
+- Geprüft werden Anlegen, Mitglieder, Duplikatsperre und Löschen; die Umwandlung im Stakeholder-Dialog nutzt denselben Schreibpfad, wird aber nicht gerendert.
+
+### `contacts.stakeholders`
+
+- Geprüft werden Stakeholder-Organisation, Personen zuordnung und Verteilerbildung; die Kartenflags (map_flags) samt Ebenen bleiben ausgeklammert.
+- Die Trefferheuristik der Netzwerkansicht ist nicht qualitätsgetestet; geprüft wird die Datenbasis, nicht die Darstellung.
 
 ### `contacts.tags-topics`
 
 - Das frühere Tag-Feld bleibt als historischer Bestand in contacts.tags erhalten.
-- Die Junction-Schreibpfade sind durch keinen eigenen Szenario-Schritt abgedeckt.
+- Geprüft wird contact_topics samt Zählung; die Themenauswahl im Dialog wird nicht gerendert.
+- Die Zuordnung über die Oberfläche (TopicPicker) wird nur mittelbar über denselben contact_topics-Schreibpfad geprüft.
+
+### `contacts.privacy`
+
+- Rechtsgrundlage, Prüffrist und Fälligkeit werden als Regel und über den Datenbank-Trigger geprüft; eine konfigurierte Feldmaskierung (field_permissions) verändert der Selbsttest nicht.
+
+### `contacts.bulk`
+
+- Die Rücknahme verlangt Büroleitung oder Abgeordneten-Mandat; als Mitglied wird nur die Abweisung geprüft.
+
+### `contacts.activities`
+
+- Geprüft werden die Datenbank-Trigger für Anlegen, Bearbeiten und Anrufprotokolle; die Quick-Capture-Oberflächen werden nicht gerendert.
+
+### `contacts.briefing-memory`
+
+- Die Leserechte folgen der Profil-Mandantenzuordnung; bei mehreren Büros kann die Sichtbarkeit eingeschränkt sein.
+
+### `contacts.fundings`
+
+- Geprüft werden Förderung und Beteiligung samt eindeutiger Zuordnung; Budgetbezüge (expense_budgets) bleiben unberührt.
 
 ### `employees.meetings`
 
@@ -562,6 +597,8 @@ Eindeutige Fehler werden im CI-Lauf ausgegeben und brechen die Prüfung ab; sie 
 
 - Eine vorhandene RLS-Policy ist kein Nachweis für korrekte Mandantentrennung; das Cockpit liefert nur Befunde.
 - Policy-Details stammen live aus pg_policies und bewerten weder die Funktion noch ihre Tests.
+- Der Nachtest führt die Selbsttests aus, die die Tabelle laut Coverage-Übersicht abdecken; er beweist nicht, dass genau die beanstandete Policy korrekt ist.
+- Für Tabellen ohne abdeckendes Selbsttest-Szenario bleibt die Nachtest-Zelle leer; diese Lücke schließt nur ein neues Szenario in src/features/selftest/scenarios.
 - Funktionen ohne Tabellenbezug erhalten keinen RLS-Bezug; ob das fachlich korrekt ist, bleibt je Funktion zu prüfen.
 
 ### `admin.system-pulse`
@@ -572,6 +609,7 @@ Eindeutige Fehler werden im CI-Lauf ausgegeben und brechen die Prüfung ab; sie 
 - Der Live-Teststart schreibt echte Testdaten und Dateien, ist bestätigungspflichtig und räumt anschließend auf; fehlende Rollen führen zu „Voraussetzung fehlt“.
 - Die Bereichsampel bewertet ausschließlich funktionale Selbsttests; RLS-Lücken bleiben eine getrennte Kennzahl und ergeben keine Gesamtbewertung.
 - Die Fehlertabelle über den Bereichskacheln zeigt nur den neuesten gespeicherten Lauf je Szenario; ältere Läufe ohne Schrittliste erscheinen dort als eine Zeile „gesamter Testlauf“.
+- Die Übersicht der längsten Testabschnitte misst die gespeicherten Schritt-Dauern des neuesten Laufs je Szenario; Tests ohne Dauer bleiben ohne Abschnitte gelistet, und die Laufzeit der Schritte außerhalb des Tests (Aufräumen) zählt nicht dazu.
 - Ausgeführt wurden Unit-, Generator- und Komponententests mit gemocktem RPC; RPC-Antwort, angewendete Migration und Darstellung im Browser wurden nicht gegen ein laufendes Backend geprüft.
 - Die Ampel zeigt den neuesten Lauf je Szenario über alle Mitglieder des Mandanten, nicht nur den letzten Lauf des angemeldeten Nutzers.
 - Migration vor Inbetriebnahme anwenden; ohne sie bleibt die Testlage unbekannt.

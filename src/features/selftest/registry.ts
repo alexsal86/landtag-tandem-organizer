@@ -30,6 +30,7 @@ import { appointmentBriefingLifecycleScenario } from "./scenarios/appointment-br
 import { daySlipLifecycleScenario } from "./scenarios/day-slip-lifecycle";
 import { quickNoteLifecycleScenario } from "./scenarios/quick-note-lifecycle";
 import { contactLifecycleScenario } from "./scenarios/contact-lifecycle";
+import { contactRelationsScenario } from "./scenarios/contact-relations";
 import { eventPlanningLifecycleScenario } from "./scenarios/event-planning-lifecycle";
 import { workflowRulesScenario } from "./scenarios/workflow-rules";
 import { accessBoundariesScenario } from "./scenarios/access-boundaries";
@@ -70,5 +71,6 @@ export const SELFTEST_SCENARIOS: TestScenario[] = [
   taskStafetteLifecycleScenario,
   quickNoteLifecycleScenario,
   contactLifecycleScenario,
+  contactRelationsScenario,
   pollLifecycleScenario,
 ];

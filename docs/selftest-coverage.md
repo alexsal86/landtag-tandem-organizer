@@ -4,7 +4,7 @@ _Auto-generiert mit `npm run update:selftest-coverage`._
 
 Quelle: `src/integrations/supabase/types.ts`. Die Angaben beschreiben deklarierte Prüfumfänge, keine erfolgreichen Testläufe und keine Code-Coverage.
 
-Von 351 Tabellen haben 79 ein registriertes Szenario; 0 sind noch nicht eingeordnet. 272 sind befristet ausgenommen, davon 122 als Ausbau offen und 150 als technisch oder fachlich ausgenommen. Ausnahmen zählen nicht als bestanden.
+Von 351 Tabellen haben 86 ein registriertes Szenario; 0 sind noch nicht eingeordnet. 265 sind befristet ausgenommen, davon 118 als Ausbau offen und 147 als technisch oder fachlich ausgenommen. Ausnahmen zählen nicht als bestanden.
 
 ## Szenarien
 
@@ -19,6 +19,7 @@ Von 351 Tabellen haben 79 ein registriertes Szenario; 0 sind noch nicht eingeord
 | `case-file-lifecycle` | Fallakte mit Folgetabellen (Container) im Unterschied zum Vorgang | case_files, case_file_participants, case_file_status_history, case_file_notes, case_file_timeline, case_file_contacts, case_file_tasks, case_file_appointments, case_file_letters, case_items, contacts, tasks, appointments, letters |
 | `case-item-lifecycle` | Vorgangs-Lifecycle (Am Zug → Schritt → Wiedervorlage → Entscheidung → Tageszettel → Abschluss) | case_items, case_item_interactions, case_item_handover_log, task_decisions, task_decision_participants, task_decision_responses, appointment_requests, day_slips, tasks |
 | `contact-lifecycle` | Kontakt-Lifecycle (Anlegen → Kategorie/Tags → Aktivität → Suche) | contacts, contact_activities, contact_usage_stats |
+| `contact-relations` | Kontakt-Beziehungen (Datenschutz → Themen → Duplikate → Sammelaktion → Verteiler → Wissen → Förderungen) | contacts, contact_activities, contact_topics, topics, call_logs, distribution_lists, distribution_list_members, contact_briefing_memory, fundings, funding_participants |
 | `daily-briefing-lifecycle` | Tages-Briefings (Vortag-Regel) | daily_briefings |
 | `day-slip-lifecycle` | Tageszettel-Lifecycle (Links → Neuladen → Übernahme auf Folgetag) | day_slips, tasks, quick_notes |
 | `decision-lifecycle` | Entscheidungs-Lifecycle (active → open → archived) | task_decisions, task_decision_participants, task_decision_responses |
@@ -81,7 +82,7 @@ Von 351 Tabellen haben 79 ein registriertes Szenario; 0 sind noch nicht eingeord
 | `automation_rules` | Ausstehend bis 2027-03-31 | — |
 | `bulk_action_audit` | Ausgenommen bis 2027-06-30 | — |
 | `calendar_sync_settings` | Ausgenommen bis 2027-06-30 | — |
-| `call_logs` | Ausstehend bis 2027-03-31 | — |
+| `call_logs` | Szenario vorhanden | contact-relations |
 | `carryover_items` | Ausstehend bis 2027-03-31 | — |
 | `case_file_appointments` | Szenario vorhanden | case-file-lifecycle |
 | `case_file_contacts` | Szenario vorhanden | case-file-lifecycle |
@@ -108,11 +109,11 @@ Von 351 Tabellen haben 79 ein registriertes Szenario; 0 sind noch nicht eingeord
 | `celebration_animations` | Ausgenommen bis 2027-06-30 | — |
 | `celebration_settings` | Ausgenommen bis 2027-06-30 | — |
 | `committees` | Ausstehend bis 2027-03-31 | — |
-| `contact_activities` | Szenario vorhanden | contact-lifecycle |
-| `contact_briefing_memory` | Ausstehend bis 2027-06-30 | — |
-| `contact_topics` | Ausgenommen bis 2027-06-30 | — |
+| `contact_activities` | Szenario vorhanden | contact-lifecycle, contact-relations |
+| `contact_briefing_memory` | Szenario vorhanden | contact-relations |
+| `contact_topics` | Szenario vorhanden | contact-relations |
 | `contact_usage_stats` | Szenario vorhanden | contact-lifecycle |
-| `contacts` | Szenario vorhanden | case-file-lifecycle, contact-lifecycle |
+| `contacts` | Szenario vorhanden | case-file-lifecycle, contact-lifecycle, contact-relations |
 | `daily_briefing_reads` | Ausstehend bis 2027-03-31 | — |
 | `daily_briefings` | Szenario vorhanden | daily-briefing-lifecycle |
 | `dashboard_decision_nudges` | Ausstehend bis 2027-03-31 | — |
@@ -123,8 +124,8 @@ Von 351 Tabellen haben 79 ein registriertes Szenario; 0 sind noch nicht eingeord
 | `decision_email_templates` | Ausgenommen bis 2027-06-30 | — |
 | `decision_matrix_messages` | Ausgenommen bis 2027-06-30 | — |
 | `default_appointment_guests` | Ausgenommen bis 2027-06-30 | — |
-| `distribution_list_members` | Ausgenommen bis 2027-06-30 | — |
-| `distribution_lists` | Ausstehend bis 2027-03-31 | — |
+| `distribution_list_members` | Szenario vorhanden | contact-relations |
+| `distribution_lists` | Szenario vorhanden | contact-relations |
 | `district_notes` | Ausstehend bis 2027-03-31 | — |
 | `district_support_assignments` | Ausstehend bis 2027-03-31 | — |
 | `document_annotation_events` | Szenario vorhanden | document-annotation |
@@ -219,8 +220,8 @@ Von 351 Tabellen haben 79 ein registriertes Szenario; 0 sind noch nicht eingeord
 | `external_events` | Ausstehend bis 2027-06-30 | — |
 | `facts` | Ausstehend bis 2027-06-30 | — |
 | `field_permissions` | Ausstehend bis 2027-06-30 | — |
-| `funding_participants` | Ausgenommen bis 2027-06-30 | — |
-| `fundings` | Ausstehend bis 2027-03-31 | — |
+| `funding_participants` | Szenario vorhanden | contact-relations |
+| `fundings` | Szenario vorhanden | contact-relations |
 | `gdpr_requests` | Ausstehend bis 2027-06-30 | — |
 | `habit_completions` | Ausstehend bis 2027-03-31 | — |
 | `habits` | Ausstehend bis 2027-03-31 | — |
@@ -382,7 +383,7 @@ Von 351 Tabellen haben 79 ein registriertes Szenario; 0 sind noch nicht eingeord
 | `topic_backlog` | Ausstehend bis 2027-03-31 | — |
 | `topic_catalog_links` | Ausgenommen bis 2027-06-30 | — |
 | `topic_module_settings` | Szenario vorhanden | topic-linking |
-| `topics` | Szenario vorhanden | topic-linking |
+| `topics` | Szenario vorhanden | contact-relations, topic-linking |
 | `user_mywork_settings` | Ausgenommen bis 2027-06-30 | — |
 | `user_navigation_visits` | Ausgenommen bis 2027-06-30 | — |
 | `user_notification_settings` | Ausgenommen bis 2027-06-30 | — |
@@ -411,11 +412,11 @@ Jede Ausnahme verlangt eine Begründung und ein Ablaufdatum. Abgelaufene, unbegr
 | Ausgenommen | 2027-06-30 | 20 Tabellen | Technische Infrastruktur-, Push-, Cache- oder Protokolltabelle ohne eigenen fachlichen Workflow; geprüft wird die auslösende Funktion. |
 | Ausgenommen | 2027-06-30 | 56 Tabellen | Konfigurations-, Lookup- oder Einstellungstabelle; das fachlich relevante Verhalten prüfen die Szenarien der zugehörigen Funktion. |
 | Ausgenommen | 2027-06-30 | 29 Tabellen | Audit-, Verlaufs- oder Versionsprotokoll; wird von Datenbankfunktionen geschrieben und im Szenario der auslösenden Funktion mitgeprüft. |
-| Ausgenommen | 2027-06-30 | 45 Tabellen | Reine Verknüpfungstabelle ohne eigene Fachlogik; die Beziehung entsteht im Szenario der zugehörigen Funktion. |
-| Ausstehend | 2027-06-30 | 14 Tabellen | Sicherheits-, Onboarding- oder Automationsablauf: Für diese Tabelle fehlt ein eigenes Szenario; der Ausbau ist geplant. |
+| Ausgenommen | 2027-06-30 | 42 Tabellen | Reine Verknüpfungstabelle ohne eigene Fachlogik; die Beziehung entsteht im Szenario der zugehörigen Funktion. |
+| Ausstehend | 2027-06-30 | 13 Tabellen | Sicherheits-, Onboarding- oder Automationsablauf: Für diese Tabelle fehlt ein eigenes Szenario; der Ausbau ist geplant. |
 | Ausstehend | 2027-06-30 | 8 Tabellen | Knowledge 11–14 nutzen eine gezielte Abnahme-Suite; ein Live-Selbsttest-Szenario für diese Tabelle steht aus. |
 | Ausstehend | 2027-06-30 | 36 Tabellen | Wahlanalyse und Wahlhistorie: Szenarien prüfen Regeln und Lesezugriffe, schreiben aber bewusst keine importierten Bestandsdaten. |
-| Ausstehend | 2027-03-31 | 64 Tabellen | Fachlicher Ausbau offen: Für diese Tabelle fehlt noch ein Szenario oder Step; der Eintrag muss bis zum Ablauf geprüft werden. |
+| Ausstehend | 2027-03-31 | 61 Tabellen | Fachlicher Ausbau offen: Für diese Tabelle fehlt noch ein Szenario oder Step; der Eintrag muss bis zum Ablauf geprüft werden. |
 
 ## Fachfunktionen ohne Selbsttest
 
@@ -434,16 +435,6 @@ Diese implementierten Fachfunktionen haben laut Funktionskatalog keine Selbsttes
 | `cases.link-decision` | Vorgang mit Entscheidung verknüpfen | vorgaenge | task_decisions, case_file_tasks, case_items |
 | `chat.messages` | Interner Chat über Matrix | kommunikation | messages, message_recipients, message_confirmations |
 | `chat.team-announcements` | Team-Ankündigungen | kommunikation | team_announcements, team_announcement_dismissals |
-| `contacts.activities` | Kontaktaktivitäten und Anrufe | kontakte | contact_activities, call_logs |
-| `contacts.briefing-memory` | Briefingwissen je Kontakt | kontakte | contact_briefing_memory, contacts |
-| `contacts.bulk` | Kontakte in Massen bearbeiten | kontakte | contacts, bulk_action_audit |
-| `contacts.detail` | Kontaktprofil mit Aktivitäten | kontakte | contacts, contact_activities, contact_topics, document_contacts, fundings |
-| `contacts.distribution-lists` | Verteilerlisten verwalten | kontakte | distribution_lists, distribution_list_members |
-| `contacts.duplicates` | Dubletten finden | kontakte | contacts |
-| `contacts.fundings` | Finanzierungen und Beteiligungen | kontakte | fundings, funding_participants, expense_budgets |
-| `contacts.import` | Kontakte importieren | kontakte | contacts, contact_activities |
-| `contacts.stakeholders` | Stakeholder-Netzwerk | kontakte | map_flags, map_flag_topics, map_flag_types, map_layers, contacts |
-| `contacts.tags-topics` | Kontakt-Themen | kontakte | contact_topics, topics |
 | `decisions.attachments` | Anhänge an Entscheidungen | entscheidungen | task_decision_attachments, task_decisions |
 | `decisions.change-vote` | Antwort ändern und Verlauf einsehen | entscheidungen | task_decision_responses, task_decision_response_history |
 | `decisions.comments` | Kommentare und Reaktionen | entscheidungen | task_decision_comments, task_decision_comment_reactions |
@@ -475,6 +466,7 @@ Diese implementierten Fachfunktionen haben laut Funktionskatalog keine Selbsttes
 | `letters.attachments` | Briefanlagen verwalten | dokumente | letter_attachments, letters |
 | `letters.collaboration` | Brief-Kommentare und Zusammenarbeit | dokumente | letter_comments, letter_collaborators, letters |
 | `meetings.zombie-points` | Liegengebliebene Agenda-Punkte | organisation | meeting_agenda_items |
+| `mywork.navigation-previews` | Vorschauen für Kalender, Aufgaben, Akten, Chat und Kontakte | arbeitsbereich | appointments, external_events, appointment_preparations, tasks, case_files, appointment_contacts, case_file_contacts, contacts |
 | `mywork.quick-access` | Schnellzugriff und zuletzt besuchte Seiten | arbeitsbereich | user_navigation_visits, user_preferences |
 | `mywork.tabs` | Meine Arbeit – Bereichsnavigation und Einstellungen | arbeitsbereich | user_mywork_settings, user_planning_preferences |
 | `news.articles` | News-Artikel und Lesestatus | kommunikation | news_articles, news_article_states |
@@ -526,6 +518,16 @@ Diese Manifeste sind keine Messung ausgeführter Assertions.
 - contact-lifecycle: `contacts`: name, user_id, tenant_id, email, phone, organization, title, category, tags, notes
 - contact-lifecycle: `contact_activities`: contact_id, tenant_id, created_by, activity_type, title, description
 - contact-lifecycle: `contact_usage_stats`: contact_id, tenant_id, user_id, usage_count
+- contact-relations: `contacts`: name, user_id, tenant_id, email, phone, category, tags, notes, created_at
+- contact-relations: `contact_activities`: contact_id, tenant_id, created_by, activity_type, title, description
+- contact-relations: `contact_topics`: tenant_id, contact_id, topic_id
+- contact-relations: `topics`: label, tenant_id
+- contact-relations: `call_logs`: contact_id, user_id, call_type, duration_minutes, notes, follow_up_required, priority
+- contact-relations: `distribution_lists`: user_id, tenant_id, name, description, topic
+- contact-relations: `distribution_list_members`: distribution_list_id, contact_id
+- contact-relations: `contact_briefing_memory`: tenant_id, contact_id, kind, content, question, answer, pinned_by
+- contact-relations: `fundings`: tenant_id, title, total_amount, status, created_by
+- contact-relations: `funding_participants`: funding_id, contact_id, allocated_amount, role
 - daily-briefing-lifecycle: `daily_briefings`: tenant_id, author_id, briefing_date, title, content
 - day-slip-lifecycle: `day_slips`: user_id, tenant_id, day_key, data
 - day-slip-lifecycle: `tasks`: id, user_id, tenant_id, title, description, status, priority, category, assigned_to, due_date

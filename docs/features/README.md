@@ -8,38 +8,38 @@ Der Katalog ist das führende Verzeichnis des tatsächlich implementierten Funkt
 
 | Kennzahl | Wert |
 |---|---:|
-| Erfasste Funktionen | 255 |
+| Erfasste Funktionen | 256 |
 | Funktionsbereiche | 16 |
-| Unterbereiche | 108 |
-| Implementiert | 251 |
+| Unterbereiche | 109 |
+| Implementiert | 252 |
 | Teilweise implementiert | 2 |
 | Deaktiviert | 0 |
 | Potenziell verwaist | 0 |
-| Prüfkandidaten (offene Punkte) | 51 |
-| Funktionen mit Selbsttest | 86 |
-| Funktionen mit Unit-Test | 60 |
+| Prüfkandidaten (offene Punkte) | 52 |
+| Funktionen mit Selbsttest | 97 |
+| Funktionen mit Unit-Test | 61 |
 | Funktionen mit Integrationstest | 1 |
 | Funktionen mit Browser-Test | 4 |
 | Funktionen mit Security-Test | 1 |
-| Funktionen ohne zugeordneten Test | 133 |
-| Funktionen ohne Dokumentationsverweis | 164 |
-| Funktionen mit bekannten Einschränkungen | 40 |
+| Funktionen ohne zugeordneten Test | 122 |
+| Funktionen ohne Dokumentationsverweis | 165 |
+| Funktionen mit bekannten Einschränkungen | 51 |
 | Nicht nachweisbar eingebundene Funktionen | 1 |
-| Technische Zuordnungen | 1254 |
+| Technische Zuordnungen | 1258 |
 
 ## Funktionsbereiche
 
 | Bereich | Unterbereiche | Funktionen | implementiert | ohne Test | ohne Doku |
 |---|---:|---:|---:|---:|---:|
-| [Administration, Sicherheit & Qualität](./verwaltung.md) | 11 | 24 | 24 | 15 | 9 |
+| [Administration, Sicherheit & Qualität](./verwaltung.md) | 11 | 24 | 24 | 14 | 9 |
 | [Aufgaben & Stafette](./aufgaben.md) | 12 | 18 | 18 | 3 | 9 |
 | [Automatisierung & Workflows](./automation.md) | 8 | 15 | 15 | 9 | 8 |
 | [Dokumente, Briefe & Annotationen](./dokumente.md) | 3 | 17 | 17 | 9 | 13 |
 | [Entscheidungen](./entscheidungen.md) | 7 | 10 | 10 | 7 | 8 |
 | [Externe Schnittstellen](./schnittstellen.md) | 7 | 10 | 10 | 7 | 5 |
 | [Jour fixe, Dossiers & Themen](./organisation.md) | 5 | 18 | 17 | 12 | 15 |
-| [Kontakte & Netzwerk](./kontakte.md) | 9 | 14 | 14 | 11 | 10 |
-| [Meine Arbeit & Benachrichtigungen](./arbeitsbereich.md) | 7 | 14 | 13 | 8 | 9 |
+| [Kontakte & Netzwerk](./kontakte.md) | 9 | 14 | 14 | 0 | 10 |
+| [Meine Arbeit & Benachrichtigungen](./arbeitsbereich.md) | 8 | 15 | 14 | 9 | 10 |
 | [Mitarbeit, Personal & Zeit](./mitarbeit.md) | 5 | 20 | 20 | 4 | 14 |
 | [Redaktion, News & Chat](./kommunikation.md) | 5 | 14 | 14 | 14 | 10 |
 | [Termine, Anfragen & Briefings](./termine.md) | 8 | 17 | 17 | 8 | 11 |
@@ -52,7 +52,7 @@ Der Katalog ist das führende Verzeichnis des tatsächlich implementierten Funkt
 
 | Kategorie | Funktionen |
 |---|---:|
-| fachlich | 165 |
+| fachlich | 166 |
 | administrativ | 26 |
 | automatisiert | 20 |
 | integration | 27 |
@@ -63,7 +63,7 @@ Der Katalog ist das führende Verzeichnis des tatsächlich implementierten Funkt
 
 | Status | Funktionen |
 |---|---:|
-| implementiert | 251 |
+| implementiert | 252 |
 | teilweise | 2 |
 | deaktiviert | 0 |
 | verwaist | 0 |
@@ -75,7 +75,7 @@ Der Katalog ist das führende Verzeichnis des tatsächlich implementierten Funkt
 
 | Einbindung | Funktionen |
 |---|---:|
-| UI | 125 |
+| UI | 126 |
 | systemseitig | 36 |
 | rollenabhängig | 89 |
 | Feature Flag | 1 |
@@ -87,13 +87,13 @@ Der Katalog ist das führende Verzeichnis des tatsächlich implementierten Funkt
 
 | Abdeckung | Funktionen |
 |---|---:|
-| Selbsttest | 85 |
-| Unit-Test | 35 |
+| Selbsttest | 94 |
+| Unit-Test | 36 |
 | Integrationstest | 1 |
 | Browser-Test | 0 |
 | Security-Test | 1 |
-| teilweise | 0 |
-| kein Test | 133 |
+| teilweise | 2 |
+| kein Test | 122 |
 | ungeprüft | 0 |
 
 ## Konsistenz

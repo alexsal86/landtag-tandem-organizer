@@ -31,7 +31,7 @@ export const FIELD_MAPPINGS: Record<string, string> = {
   Phone: "phone",
   Mobile: "mobile_phone",
   Address: "address",
-  City: "location",
+  City: "business_city",
   Verteiler: "distribution_list_names",
   Verteilerliste: "distribution_list_names",
   Verteilerlisten: "distribution_list_names",

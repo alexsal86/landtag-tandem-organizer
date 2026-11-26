@@ -981,6 +981,7 @@ Die Angaben sind deklarierte Mindestrollen. Die tatsächlich wirksame Berechtigu
 | `mobile.app` | `abgeordneter`, `bueroleitung`, `mitarbeiter` |
 | `mywork.dashboard` | `abgeordneter`, `bueroleitung`, `mitarbeiter`, `praktikant` |
 | `mywork.dashboard.today-priorities` | `bueroleitung`, `mitarbeiter`, `praktikant` |
+| `mywork.navigation-previews` | Keine besondere Rolle deklariert |
 | `mywork.quick-access` | `abgeordneter`, `bueroleitung`, `mitarbeiter`, `praktikant` |
 | `mywork.tabs` | `abgeordneter`, `bueroleitung`, `mitarbeiter`, `praktikant` |
 | `news.articles` | `abgeordneter`, `bueroleitung`, `mitarbeiter`, `praktikant` |

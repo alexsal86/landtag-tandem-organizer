@@ -22,6 +22,7 @@ export interface MatrixRoom {
   lastMessage?: string;
   lastMessageTimestamp?: number;
   unreadCount: number;
+  highlightCount?: number;
   isDirect: boolean;
   memberCount: number;
   isEncrypted: boolean;

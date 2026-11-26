@@ -4,17 +4,30 @@ import { useTenant } from '@/hooks/useTenant';
 import { supabase } from '@/integrations/supabase/client';
 import { safeGetItem, safeSetItem } from '@/utils/storage';
 
+interface ChatRoomPreview {
+  roomId: string;
+  name: string;
+  unreadCount: number;
+  highlightCount: number;
+  activity?: number;
+}
+
 interface MatrixUnreadContextType {
   totalUnreadCount: number;
   hasCredentials: boolean;
-  /** Called by the full MatrixClientProvider to push live counts */
-  setLiveUnreadCount: (count: number) => void;
+  unreadRooms: ChatRoomPreview[];
+  recentRoom: Pick<ChatRoomPreview, "roomId" | "name"> | null;
+  setLiveRooms: (rooms: ChatRoomPreview[] | null) => void;
+  rememberRoom: (room: Pick<ChatRoomPreview, "roomId" | "name">) => void;
 }
 
 const MatrixUnreadContext = createContext<MatrixUnreadContextType>({
   totalUnreadCount: 0,
   hasCredentials: false,
-  setLiveUnreadCount: () => {},
+  unreadRooms: [],
+  recentRoom: null,
+  setLiveRooms: () => {},
+  rememberRoom: () => {},
 });
 
 const POLL_INTERVAL_MS = 120_000;
@@ -28,8 +41,13 @@ export function MatrixUnreadProvider({ children }: { children: ReactNode }) {
     const cached = safeGetItem(STORAGE_KEY);
     return cached ? parseInt(cached, 10) || 0 : 0;
   });
-  const [hasCredentials, setHasCredentials] = useState(false);
-  const [credentials, setCredentials] = useState<{ accessToken: string; homeserverUrl: string } | null>(null);
+  const scope = user && currentTenant ? `${user.id}:${currentTenant.id}` : null;
+  const [roomSnapshot, setRoomSnapshot] = useState<{ scope: string | null; rooms: ChatRoomPreview[] }>();
+  const [recent, setRecent] = useState<{ scope: string | null; room: MatrixUnreadContextType["recentRoom"] }>();
+  const rememberRoom = useCallback((room: Pick<ChatRoomPreview, "roomId" | "name">) => {
+    setRecent({ scope, room });
+  }, [scope]);
+  const [credentials, setCredentials] = useState<{ scope: string | null; accessToken: string; homeserverUrl: string } | null>(null);
   const liveOverrideRef = useRef(false);
   const pollTimerRef = useRef<ReturnType<typeof setInterval>>(undefined);
 
@@ -49,11 +67,11 @@ export function MatrixUnreadProvider({ children }: { children: ReactNode }) {
   // Load credentials from profile (deferred until app has settled)
   useEffect(() => {
     if (!appSettled || !user || !currentTenant?.id) {
-      setHasCredentials(false);
       setCredentials(null);
       return;
     }
 
+    let cancelled = false;
     const load = async () => {
       const { data: profile } = await supabase
         .from('profiles')
@@ -62,30 +80,31 @@ export function MatrixUnreadProvider({ children }: { children: ReactNode }) {
         .eq('tenant_id', currentTenant.id)
         .maybeSingle();
 
+      if (cancelled) return;
       if (profile?.matrix_access_token) {
-        setHasCredentials(true);
         setCredentials({
+          scope,
           accessToken: profile.matrix_access_token,
           homeserverUrl: profile.matrix_homeserver_url || 'https://matrix.org',
         });
       } else {
-        setHasCredentials(false);
         setCredentials(null);
       }
     };
 
-    load();
-  }, [appSettled, user, currentTenant?.id]);
+    void load();
+    return () => { cancelled = true; };
+  }, [appSettled, user, currentTenant?.id, scope]);
 
   // Lightweight unread count polling via Matrix /sync with minimal filter
-  const fetchUnreadCount = useCallback(async () => {
-    if (!credentials || liveOverrideRef.current) return;
+  const fetchUnreadCount = useCallback(async (signal: AbortSignal) => {
+    if (!credentials || credentials.scope !== scope || liveOverrideRef.current) return;
 
     try {
       const filter = JSON.stringify({
         room: {
-          timeline: { limit: 0 },
-          state: { lazy_load_members: true, types: [] },
+          timeline: { limit: 1 },
+          state: { lazy_load_members: true, types: ["m.room.name", "m.room.canonical_alias"] },
           ephemeral: { types: [] },
         },
         presence: { types: [] },
@@ -94,55 +113,69 @@ export function MatrixUnreadProvider({ children }: { children: ReactNode }) {
 
       const res = await fetch(
         `${credentials.homeserverUrl}/_matrix/client/v3/sync?filter=${encodeURIComponent(filter)}&timeout=0&set_presence=offline`,
-        { headers: { Authorization: `Bearer ${credentials.accessToken}` } }
+        { signal, headers: { Authorization: `Bearer ${credentials.accessToken}` } }
       );
 
       if (!res.ok) return;
 
       const data = await res.json();
-      const rooms = data?.rooms?.join || {};
-      let total = 0;
-
-      for (const roomId in rooms) {
-        const notifCount = rooms[roomId]?.unread_notifications?.notification_count || 0;
-        total += notifCount;
-      }
-
+      if (signal.aborted || liveOverrideRef.current) return;
+      const rooms: Record<string, {
+        unread_notifications?: { notification_count?: number; highlight_count?: number };
+        state?: { events?: Array<{ type: string; content?: { name?: string; alias?: string } }> };
+        timeline?: { events?: Array<{ origin_server_ts?: number }> };
+      }> = data?.rooms?.join ?? {};
+      const unreadRooms = Object.entries(rooms).flatMap(([roomId, room]) => {
+        const unreadCount = room.unread_notifications?.notification_count ?? 0;
+        const highlightCount = room.unread_notifications?.highlight_count ?? 0;
+        if (!unreadCount && !highlightCount) return [];
+        const state = room.state?.events ?? [];
+        const name = state.find((event) => event.type === "m.room.name")?.content?.name
+          || state.find((event) => event.type === "m.room.canonical_alias")?.content?.alias
+          || "Chatraum";
+        return [{ roomId, name, unreadCount, highlightCount, activity: room.timeline?.events?.at(-1)?.origin_server_ts }];
+      });
+      const total = unreadRooms.reduce((sum, room) => sum + room.unreadCount, 0);
+      setRoomSnapshot({ scope, rooms: unreadRooms });
       setTotalUnreadCount(total);
       safeSetItem(STORAGE_KEY, String(total));
     } catch {
       // Silently fail - polling is best-effort
     }
-  }, [credentials]);
+  }, [credentials, scope]);
 
   // Start/stop polling
   useEffect(() => {
     if (!credentials) return;
 
-    // Initial fetch
-    fetchUnreadCount();
-
-    pollTimerRef.current = setInterval(fetchUnreadCount, POLL_INTERVAL_MS);
+    const controller = new AbortController();
+    const poll = () => { void fetchUnreadCount(controller.signal); };
+    poll();
+    pollTimerRef.current = setInterval(poll, POLL_INTERVAL_MS);
 
     return () => {
-      if (pollTimerRef.current) clearInterval(pollTimerRef.current);
+      controller.abort();
+      clearInterval(pollTimerRef.current);
     };
   }, [credentials, fetchUnreadCount]);
 
-  // Called by the full MatrixClientProvider when it's active (live WebSocket data)
-  const setLiveUnreadCount = useCallback((count: number) => {
-    liveOverrideRef.current = true;
-    setTotalUnreadCount(count);
-    localStorage.setItem(STORAGE_KEY, String(count));
-  }, []);
+  const setLiveRooms = useCallback((rooms: ChatRoomPreview[] | null) => {
+    liveOverrideRef.current = rooms !== null;
+    if (rooms === null) return;
+    const total = rooms.reduce((sum, room) => sum + room.unreadCount, 0);
+    setRoomSnapshot({ scope, rooms });
+    setTotalUnreadCount(total);
+    safeSetItem(STORAGE_KEY, String(total));
+  }, [scope]);
 
-  // When this component unmounts or credentials change, reset live override
-  useEffect(() => {
-    return () => { liveOverrideRef.current = false; };
-  }, [credentials]);
+  const unreadRooms = roomSnapshot && roomSnapshot.scope === scope
+    ? roomSnapshot.rooms.filter((room) => room.unreadCount > 0 || room.highlightCount > 0)
+    : [];
+  const recentRoom = recent && recent.scope === scope ? recent.room : null;
+  const hasCredentials = !!credentials && credentials.scope === scope;
 
   return (
-    <MatrixUnreadContext.Provider value={{ totalUnreadCount, hasCredentials, setLiveUnreadCount }}>
+    <MatrixUnreadContext.Provider value={{ totalUnreadCount, hasCredentials, unreadRooms, recentRoom, setLiveRooms, rememberRoom }}>
       {children}
     </MatrixUnreadContext.Provider>
   );

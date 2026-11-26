@@ -13,6 +13,7 @@ Die Spalten zählen **zugeordnete** Prüfungen, nicht bestandene Läufe. „Erge
 | `mywork.dashboard` | arbeitsbereich | fachlich | implementiert | rollenabhängig | Selbsttest | nicht-ausgefuehrt | 2 | 0 | 0 | 0 | ja |
 | `mywork.quick-access` | arbeitsbereich | fachlich | implementiert | UI | kein Test | nicht-ausgefuehrt | 0 | 0 | 0 | 0 | nein |
 | `mobile.app` | arbeitsbereich | fachlich | teilweise | ohne Einbindung | kein Test | nicht-ausgefuehrt | 0 | 0 | 0 | 0 | ja |
+| `mywork.navigation-previews` | arbeitsbereich | fachlich | implementiert | UI | kein Test | nicht-ausgefuehrt | 0 | 0 | 0 | 0 | nein |
 | `profile.edit` | arbeitsbereich | fachlich | implementiert | UI | kein Test | nicht-ausgefuehrt | 0 | 0 | 0 | 0 | nein |
 | `quicknotes.checklists` | arbeitsbereich | fachlich | implementiert | UI | Unit-Test | unbekannt | 0 | 1 | 0 | 0 | nein |
 | `quicknotes.drag-sort` | arbeitsbereich | fachlich | implementiert | UI | Unit-Test | unbekannt | 0 | 1 | 0 | 0 | nein |
@@ -94,20 +95,20 @@ Die Spalten zählen **zugeordnete** Prüfungen, nicht bestandene Läufe. „Erge
 | `redaktion.approval` | kommunikation | fachlich | implementiert | rollenabhängig | kein Test | nicht-ausgefuehrt | 0 | 0 | 0 | 0 | nein |
 | `redaktion.planner` | kommunikation | fachlich | implementiert | UI | kein Test | nicht-ausgefuehrt | 0 | 0 | 0 | 0 | ja |
 | `redaktion.themenspeicher` | kommunikation | fachlich | implementiert | UI | kein Test | nicht-ausgefuehrt | 0 | 0 | 0 | 0 | nein |
-| `contacts.bulk` | kontakte | fachlich | implementiert | rollenabhängig | kein Test | nicht-ausgefuehrt | 0 | 0 | 0 | 0 | nein |
-| `contacts.briefing-memory` | kontakte | fachlich | implementiert | UI | kein Test | nicht-ausgefuehrt | 0 | 0 | 0 | 0 | nein |
-| `contacts.fundings` | kontakte | fachlich | implementiert | UI | kein Test | nicht-ausgefuehrt | 0 | 0 | 0 | 0 | nein |
-| `contacts.activities` | kontakte | fachlich | implementiert | UI | kein Test | nicht-ausgefuehrt | 0 | 0 | 0 | 0 | nein |
-| `contacts.privacy` | kontakte | sicherheit | implementiert | UI | kein Test | nicht-ausgefuehrt | 0 | 0 | 0 | 0 | ja |
-| `contacts.import` | kontakte | fachlich | implementiert | UI | kein Test | nicht-ausgefuehrt | 0 | 0 | 0 | 0 | ja |
-| `contacts.stakeholders` | kontakte | fachlich | implementiert | UI | kein Test | nicht-ausgefuehrt | 0 | 0 | 0 | 0 | nein |
-| `contacts.duplicates` | kontakte | fachlich | implementiert | rollenabhängig | kein Test | nicht-ausgefuehrt | 0 | 0 | 0 | 0 | nein |
-| `contacts.merge` | kontakte | fachlich | implementiert | rollenabhängig | Selbsttest | nicht-ausgefuehrt | 1 | 0 | 0 | 0 | ja |
+| `contacts.bulk` | kontakte | fachlich | implementiert | rollenabhängig | Selbsttest | nicht-ausgefuehrt | 1 | 0 | 0 | 0 | nein |
+| `contacts.briefing-memory` | kontakte | fachlich | implementiert | UI | Selbsttest | nicht-ausgefuehrt | 1 | 0 | 0 | 0 | nein |
+| `contacts.fundings` | kontakte | fachlich | implementiert | UI | Selbsttest | nicht-ausgefuehrt | 1 | 0 | 0 | 0 | nein |
+| `contacts.activities` | kontakte | fachlich | implementiert | UI | Selbsttest | nicht-ausgefuehrt | 2 | 0 | 0 | 0 | nein |
+| `contacts.privacy` | kontakte | sicherheit | implementiert | UI | Selbsttest | nicht-ausgefuehrt | 1 | 0 | 0 | 0 | ja |
+| `contacts.import` | kontakte | fachlich | implementiert | UI | teilweise | nicht-ausgefuehrt | 1 | 0 | 0 | 0 | ja |
+| `contacts.stakeholders` | kontakte | fachlich | implementiert | UI | teilweise | nicht-ausgefuehrt | 1 | 0 | 0 | 0 | nein |
+| `contacts.duplicates` | kontakte | fachlich | implementiert | rollenabhängig | Selbsttest | nicht-ausgefuehrt | 1 | 0 | 0 | 0 | nein |
+| `contacts.merge` | kontakte | fachlich | implementiert | rollenabhängig | Selbsttest | nicht-ausgefuehrt | 2 | 0 | 0 | 0 | ja |
 | `contacts.create` | kontakte | fachlich | implementiert | rollenabhängig | Selbsttest | nicht-ausgefuehrt | 1 | 0 | 0 | 0 | ja |
 | `contacts.edit` | kontakte | fachlich | implementiert | rollenabhängig | Selbsttest | nicht-ausgefuehrt | 1 | 0 | 0 | 0 | nein |
-| `contacts.detail` | kontakte | fachlich | implementiert | UI | kein Test | nicht-ausgefuehrt | 0 | 0 | 0 | 0 | nein |
-| `contacts.tags-topics` | kontakte | fachlich | implementiert | UI | kein Test | nicht-ausgefuehrt | 0 | 0 | 0 | 0 | nein |
-| `contacts.distribution-lists` | kontakte | fachlich | implementiert | UI | kein Test | nicht-ausgefuehrt | 0 | 0 | 0 | 0 | nein |
+| `contacts.detail` | kontakte | fachlich | implementiert | UI | Selbsttest | nicht-ausgefuehrt | 1 | 0 | 0 | 0 | nein |
+| `contacts.tags-topics` | kontakte | fachlich | implementiert | UI | Selbsttest | nicht-ausgefuehrt | 1 | 0 | 0 | 0 | nein |
+| `contacts.distribution-lists` | kontakte | fachlich | implementiert | UI | Selbsttest | nicht-ausgefuehrt | 1 | 0 | 0 | 0 | nein |
 | `employees.export-stats` | mitarbeit | fachlich | implementiert | UI | kein Test | nicht-ausgefuehrt | 0 | 0 | 0 | 0 | nein |
 | `employees.requests` | mitarbeit | fachlich | implementiert | rollenabhängig | kein Test | nicht-ausgefuehrt | 0 | 0 | 0 | 0 | nein |
 | `employees.protocol` | mitarbeit | fachlich | implementiert | rollenabhängig | Selbsttest | nicht-ausgefuehrt | 2 | 0 | 0 | 0 | ja |
@@ -203,7 +204,7 @@ Die Spalten zählen **zugeordnete** Prüfungen, nicht bestandene Läufe. „Erge
 | `admin.field-permissions` | verwaltung | sicherheit | implementiert | rollenabhängig | Selbsttest | nicht-ausgefuehrt | 1 | 0 | 0 | 0 | ja |
 | `admin.permissions-explorer` | verwaltung | administrativ | implementiert | UI | Unit-Test | unbekannt | 0 | 1 | 0 | 0 | ja |
 | `admin.edge-function-security` | verwaltung | sicherheit | implementiert | nicht anwendbar | kein Test | unbekannt | 0 | 0 | 0 | 0 | ja |
-| `admin.security-cockpit` | verwaltung | sicherheit | implementiert | rollenabhängig | kein Test | nicht-ausgefuehrt | 0 | 0 | 0 | 0 | ja |
+| `admin.security-cockpit` | verwaltung | sicherheit | implementiert | rollenabhängig | Unit-Test | bestanden | 0 | 2 | 0 | 0 | ja |
 | `admin.access-boundaries` | verwaltung | sicherheit | implementiert | nicht anwendbar | Selbsttest | nicht-ausgefuehrt | 1 | 1 | 0 | 0 | ja |
 | `platform.notification-dispatch` | verwaltung | technisch | implementiert | systemseitig | kein Test | nicht-ausgefuehrt | 0 | 0 | 0 | 0 | nein |
 | `cases.close-archive` | vorgaenge | fachlich | implementiert | rollenabhängig | Selbsttest | nicht-ausgefuehrt | 1 | 0 | 0 | 0 | nein |
