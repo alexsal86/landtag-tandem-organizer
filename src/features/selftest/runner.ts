@@ -1,5 +1,5 @@
 import { supabase } from "@/integrations/supabase/client";
-import { documentBucket } from "@/features/documents/documentStorage";
+import { CLEANABLE_STORAGE_BUCKETS, documentBucket } from "@/features/documents/documentStorage";
 import type { CreatedRecord, ScenarioRunState, StorageObject, TestContext, TestScenario } from "./types";
 import { recoverArtifacts } from "./artifacts";
 import { selftestDatabase } from "./database";
@@ -45,7 +45,9 @@ export async function cleanupCreated(records: CreatedRecord[], storageObjects: S
       // Akten-Dateien liegen im Bucket case-file-documents, alles andere in
       // documents. Der Pfad bestimmt den erwarteten Bucket; ein abweichender
       // Eintrag wird nicht gelöscht, statt in einem fremden Ziel aufzuräumen.
-      if (!object.path || object.bucket !== documentBucket(object.path)) throw new Error("Unbekanntes Testdatei-Ziel.");
+      if (!object.path || !CLEANABLE_STORAGE_BUCKETS.has(object.bucket) || object.bucket !== documentBucket(object.path)) {
+        throw new Error("Unbekanntes Testdatei-Ziel.");
+      }
       const { error } = await supabase.storage.from(object.bucket).remove([object.path]);
       if (error) throw error;
     } catch (error) {

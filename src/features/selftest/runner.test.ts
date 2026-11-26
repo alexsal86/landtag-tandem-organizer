@@ -29,6 +29,7 @@ vi.mock("@/integrations/supabase/client", () => ({ supabase: {
   } }) },
 } }));
 
+import { CASE_DOCUMENT_BUCKET, CLEANABLE_STORAGE_BUCKETS } from "@/features/documents/documentStorage";
 import { CLEANUP_ORDER, cleanupCreated, runScenario, runSuite } from "./runner";
 
 const scenario = (steps: TestStep[], extra: Partial<TestScenario> = {}): TestScenario => ({ id: "test", title: "Test", description: "Test", features: [], touches: ["tasks"], steps, ...extra });
@@ -134,6 +135,24 @@ describe("Selbsttest-Runner", () => {
     expect(result.cleanup.status).toBe("skipped"); expect(mock.rows.has("demo")).toBe(true);
     const failed = await runScenario(scenario([write, { ...ok, id: "fail", run: async () => ({ ok: false, message: "Fehler" }) }]), { ...options(), keepData: true });
     expect(failed.cleanup.status).toBe("ok"); expect(mock.rows.size).toBe(0);
+  });
+  it("kennt für jeden in Szenarien aufgezeichneten Storage-Bucket ein Cleanup-Ziel", () => {
+    // Ein neuer Bucket soll hier scheitern, nicht erst beim Aufräumen eines Laufs.
+    const constants: Record<string, string> = { CASE_DOCUMENT_BUCKET };
+    const buckets = new Map<string, string[]>();
+    for (const [file, source] of Object.entries(scenarioSources).filter(([file]) => !file.includes(".test."))) {
+      for (const match of source.matchAll(/trackStorage\(\{[\s\S]{0,200}?bucket:\s*([^,}\n]+)/g)) {
+        const token = match[1].trim();
+        const bucket = constants[token] ?? /^["'](.+)["']$/.exec(token)?.[1]
+          ?? `unbekannter Ausdruck \`${token}\``;
+        buckets.set(bucket, [...(buckets.get(bucket) ?? []), file.split("/").pop() ?? file]);
+      }
+    }
+    expect([...buckets.keys()]).toEqual(expect.arrayContaining(["documents", CASE_DOCUMENT_BUCKET]));
+    const unsupported = [...buckets]
+      .filter(([bucket]) => !CLEANABLE_STORAGE_BUCKETS.has(bucket))
+      .map(([bucket, files]) => `${bucket} (${files.join(", ")}) – in CLEANABLE_STORAGE_BUCKETS und documentBucket ergänzen`);
+    expect(unsupported).toEqual([]);
   });
   it("kennt für jede aufgezeichnete Tabelle der Szenarien einen Aufräumeintrag", () => {
     const tracked = new Map<string, string[]>();
