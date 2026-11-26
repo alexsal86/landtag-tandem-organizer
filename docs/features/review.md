@@ -484,6 +484,7 @@ Eindeutige Fehler werden im CI-Lauf ausgegeben und brechen die Prüfung ab; sie 
 ### `contacts.duplicates`
 
 - Der Trigramm-Scan wird mit zwei eigens angelegten Kontakten geprüft; die Trefferqualität für den Bestand bleibt ungemessen.
+- Die Administrationsliste zeigt höchstens 200 Paare; bei gleicher Punktzahl entscheidet die Zeilenreihenfolge. Der Selbsttest fragt sein Paar deshalb kontaktbezogen ab (find_contact_duplicates_trgm mit _contact_id).
 - Die Trefferheuristik ist nicht qualitätsgetestet; falsche Paare sind möglich.
 
 ### `contacts.distribution-lists`

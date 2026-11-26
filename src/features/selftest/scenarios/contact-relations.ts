@@ -588,8 +588,14 @@ export const contactRelationsScenario: TestScenario = {
         if (twin.error || !twin.data) return { ok: false, message: describeError(twin.error) };
         ctx.trackRecord({ table: "contacts", id: twin.data.id });
 
+        // Kontaktbezogen abfragen: Die globale Liste ist auf 200 Paare begrenzt,
+        // und bei gleicher Punktzahl (gleiche E-Mail/Nummer) entscheidet die
+        // Zeilenreihenfolge. Mit Rückständen aus früheren Läufen fiel das eigene
+        // Paar dadurch aus dem Ergebnis, obwohl es gefunden worden wäre. Die
+        // Obergrenze des Scans (2000) gilt je Kontakt und reicht für dessen
+        // Dubletten; die Prüfung hängt damit nicht an der Bürogröße.
         const scan = await supabase.rpc("find_contact_duplicates_trgm", {
-          _tenant_id: ctx.tenantId, _threshold: 0.5, _limit: 200,
+          _tenant_id: ctx.tenantId, _threshold: 0.5, _limit: 2000, _contact_id: contactId,
         });
         if (scan.error || !scan.data) return { ok: false, message: `Dubletten-Scan: ${describeError(scan.error)}` };
         const pair = scan.data.find((row) =>

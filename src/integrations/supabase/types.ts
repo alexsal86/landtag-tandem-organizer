@@ -18993,7 +18993,7 @@ export type Database = {
         }[]
       }
       find_contact_duplicates_trgm: {
-        Args: { _limit?: number; _tenant_id: string; _threshold?: number }
+        Args: { _contact_id?: string; _limit?: number; _tenant_id: string; _threshold?: number }
         Returns: {
           contact1_email: string
           contact1_id: string

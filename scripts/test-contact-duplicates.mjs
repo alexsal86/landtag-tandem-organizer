@@ -2,10 +2,12 @@
 // Kein Zugriff auf die echte Datenbank.
 // npm ci --prefix tests/database && node scripts/test-contact-duplicates.mjs
 //
-// Geprüft wird die Migration 20261127180000: die Funktion lädt, sie findet
+// Geprüft wird die Migration 20261127190000: die Funktion lädt, sie findet
 // „M. Müller“ und „Max Müller“ über freie Trigramm-Ähnlichkeit (also nicht mehr
 // über gleiche Namensanfänge), und die Namenskandidaten werden über
 // idx_contacts_name_trgm gelesen statt über einen Vollvergleich aller Paare.
+// Zusätzlich: die kontaktbezogene Abfrage liefert das eigene Paar auch dann,
+// wenn die globale 200-Treffer-Liste mit gleichwertigen Paaren gefüllt ist.
 // Zusätzlich: fremde Büros werden abgewiesen, die Feldmaskierung verhindert
 // E-Mail-Kandidaten, und die Begründungen bleiben erhalten.
 import assert from 'node:assert/strict';
@@ -94,16 +96,21 @@ try {
     VALUES ('${me}', '${office}', 'bueroleitung', true);
   `);
 
-  // Genau die Migration, die ausgeliefert wird.
+  // Genau die Migrationen, die ausgeliefert werden: erst der bisherige Scan,
+  // dann die kontaktbezogene Erweiterung. Sie ersetzt die alte Signatur, weil
+  // CREATE OR REPLACE keinen Parameter ergänzen kann.
   await db.exec(await readFile(
     new URL('../supabase/migrations/20261127180000_duplicate_scan_trigram_candidates.sql', import.meta.url), 'utf8',
+  ));
+  await db.exec(await readFile(
+    new URL('../supabase/migrations/20261127190000_duplicate_scan_for_contact.sql', import.meta.url), 'utf8',
   ));
 
   const loaded = await q(
     "SELECT pg_get_function_identity_arguments(oid) AS args FROM pg_proc WHERE proname = 'find_contact_duplicates_trgm'",
   );
   assert.equal(loaded.length, 1, 'find_contact_duplicates_trgm ist genau einmal vorhanden');
-  assert.equal(loaded[0].args, '_tenant_id uuid, _threshold numeric, _limit integer');
+  assert.equal(loaded[0].args, '_tenant_id uuid, _threshold numeric, _limit integer, _contact_id uuid');
 
   const insert = async (name, email = null, phone = null, tenant = office) => (await q(
     'INSERT INTO contacts (tenant_id, name, email, phone) VALUES ($1,$2,$3,$4) RETURNING id',
@@ -243,7 +250,31 @@ try {
   const unordered = bulk.map((row) => [row.contact1_id, row.contact2_id].sort().join('|'));
   assert.equal(new Set(unordered).size, unordered.length, 'Die Funktion liefert eine Paarung mehrfach');
 
-  console.log('Duplicate scan passed: function loads with the shipped signature, "M. Müller" ↔ "Max Müller" is found by name similarity, candidate names are read through idx_contacts_name_trgm (not the primary key), foreign offices are rejected, masking suppresses email-only pairs and email values.');
+  // Rückstände aus Läufen mit behaltenen Testdaten: dieselbe E-Mail-Adresse und
+  // dieselbe Nummer. Sie füllen die 200 Treffer mit gleichwertigen Paaren
+  // (Punktzahl 1); die Zeilenreihenfolge entscheidet, wer übrig bleibt.
+  await db.exec('RESET ROLE');
+  for (let i = 0; i < 30; i += 1) {
+    await insert(`Erika Muster Rückstand ${i}`, 'erika.muster@example.org', '+49 721 123456');
+  }
+  const ownContact = await insert('Erika Muster Aktuell', 'erika.muster@example.org', '+49 721 123456');
+  const foreignContact = await insert('Erika Muster Fremd', 'erika.muster@example.org', '+49 721 123456', foreignOffice);
+  await asMe();
+
+  const crowded = await q('SELECT * FROM public.find_contact_duplicates_trgm($1, 0.5, 200)', [office]);
+  assert.equal(crowded.length, 200, 'Der ungefilterte Scan bleibt auf 200 Paare begrenzt');
+
+  const ownPairs = await q('SELECT * FROM public.find_contact_duplicates_trgm($1, 0.5, 200, $2)', [office, ownContact]);
+  assert.ok(ownPairs.every((row) => row.contact1_id === ownContact || row.contact2_id === ownContact),
+    'Der kontaktbezogene Scan liefert nur Paare mit diesem Kontakt');
+  assert.equal(ownPairs.length, 30, `Alle Paare des Kontakts kommen zurück, nicht nur die in die 200 passenden: ${ownPairs.length}`);
+  const ownEmailPair = ownPairs.find((row) => (row.match_reasons ?? []).some((reason) => reason.includes('E-Mail')));
+  assert.ok(ownEmailPair, 'Das eigene Paar kommt mit Begründung zurück, auch bei gefüllter Trefferliste');
+
+  const foreignTarget = await q('SELECT * FROM public.find_contact_duplicates_trgm($1, 0.5, 200, $2)', [office, foreignContact]);
+  assert.equal(foreignTarget.length, 0, 'Ein Kontakt aus einem fremden Büro liefert über den Büro-Scan keine Paare');
+
+  console.log('Duplicate scan passed: function loads with the shipped signature, "M. Müller" ↔ "Max Müller" is found by name similarity, candidate names are read through idx_contacts_name_trgm (not the primary key), foreign offices are rejected, masking suppresses email-only pairs and email values, and a contact-scoped scan returns its pairs even when the global 200-row list is filled with equally strong pairs.');
 } catch (error) {
   console.error('FAILED:', error.code ?? '', error.message); console.error(error.stack);
   process.exitCode = 1;

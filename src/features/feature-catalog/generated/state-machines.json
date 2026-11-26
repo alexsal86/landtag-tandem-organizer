@@ -5,7 +5,7 @@
   "sources": {
     "types": "src/integrations/supabase/types.ts",
     "migrationsDirectory": "supabase/migrations",
-    "migrationCount": 935,
+    "migrationCount": 938,
     "tsModules": [
       "src/components/letters/types.ts"
     ]
@@ -288,7 +288,8 @@
             "write:supabase/migrations/20251008075550_f365c460-b9d4-4210-94a0-395006e7ea46.sql",
             "write:supabase/migrations/20261124220000_poll_result_and_followups.sql",
             "write:supabase/migrations/20261124230000_poll_winner_guests_and_list_result.sql",
-            "write:supabase/migrations/20261124240000_poll_followup_queue_and_scope.sql"
+            "write:supabase/migrations/20261124240000_poll_followup_queue_and_scope.sql",
+            "write:supabase/migrations/20261127230000_poll_winner_slot_guard.sql"
           ]
         }
       ],
@@ -339,7 +340,8 @@
           "sources": [
             "supabase/migrations/20261124220000_poll_result_and_followups.sql",
             "supabase/migrations/20261124230000_poll_winner_guests_and_list_result.sql",
-            "supabase/migrations/20261124240000_poll_followup_queue_and_scope.sql"
+            "supabase/migrations/20261124240000_poll_followup_queue_and_scope.sql",
+            "supabase/migrations/20261127230000_poll_winner_slot_guard.sql"
           ],
           "guards": []
         }
@@ -822,6 +824,7 @@
             "insert:supabase/migrations/20261124230000_poll_winner_guests_and_list_result.sql",
             "insert:supabase/migrations/20261124240000_poll_followup_queue_and_scope.sql",
             "insert:supabase/migrations/20261125113000_appointment_dashboard_focus.sql",
+            "insert:supabase/migrations/20261127230000_poll_winner_slot_guard.sql",
             "write:supabase/migrations/20261125113000_appointment_dashboard_focus.sql"
           ]
         },
@@ -856,7 +859,8 @@
             "supabase/migrations/20261124220000_poll_result_and_followups.sql",
             "supabase/migrations/20261124230000_poll_winner_guests_and_list_result.sql",
             "supabase/migrations/20261124240000_poll_followup_queue_and_scope.sql",
-            "supabase/migrations/20261125113000_appointment_dashboard_focus.sql"
+            "supabase/migrations/20261125113000_appointment_dashboard_focus.sql",
+            "supabase/migrations/20261127230000_poll_winner_slot_guard.sql"
           ],
           "guards": []
         },
