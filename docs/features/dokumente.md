@@ -628,7 +628,7 @@ Führt Briefe durch Entwurf, Prüfung, Freigabe und Versand, protokolliert Statu
 - Keine.
 
 ### `letters.archive` — Brief archivieren und Folgeaufgabe anlegen
-Erzeugt beim Versand ein PDF-Archivdokument, verknüpft es und legt optional eine Folgeaufgabe an.
+Erzeugt beim Versand ein PDF-Archivdokument, verknüpft es und sichert die Folgeaufgabe: Meldet die Archivfunktion keine Aufgaben-ID, ermittelt oder erzeugt das RPC create_letter_archive_follow_up_task die kanonische Aufgabe des Briefes.
 
 - **Kategorie:** automatisiert
 - **Implementierung:** implementiert
@@ -641,7 +641,7 @@ Erzeugt beim Versand ein PDF-Archivdokument, verknüpft es und legt optional ein
 - **Services:** —
 - **Hooks:** `src/hooks/useLetterArchiving.tsx`
 - **Edge Functions:** `archive-letter`
-- **Datenbankfunktionen:** `create_letter_followup_task`
+- **Datenbankfunktionen:** `create_letter_followup_task`, `create_letter_archive_follow_up_task`
 - **Tabellen:** `letters`, `documents`, `letter_attachments`, `tasks`
 - **Abhängigkeiten:** `letters.workflow`, `tasks.create`
 - **Selbsttests:** `letter-lifecycle`
@@ -658,11 +658,12 @@ Erzeugt beim Versand ein PDF-Archivdokument, verknüpft es und legt optional ein
 
 **Bekannte Einschränkungen**
 
-- Keine.
+- Die Folgeaufgabe entsteht serverseitig beim Wechsel auf sent (Trigger trigger_letter_followup_task). Legt die eingesetzte Archivfunktion zusätzlich eine eigene Aufgabe an und scheitert dabei, bleibt das ohne Wirkung; der Client zieht die vorhandene Aufgabe über create_letter_archive_follow_up_task nach, das je Brief idempotent ist und ausschließlich die Kategorie abgeordnetenbrief schreibt.
 
 **Offene Prüfpunkte**
 
 - Keine.
+
 
 ### `letters.templates` — Briefvorlagen und Anlässe
 Verwaltet Briefvorlagen und Briefanlässe in zwei Reitern einer gemeinsamen Administrationsseite. Absenderdaten und Textbausteine bleiben Teil der Briefverwaltung.

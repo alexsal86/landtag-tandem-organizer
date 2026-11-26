@@ -18679,6 +18679,10 @@ export type Database = {
             }
             Returns: string
           }
+      create_letter_archive_follow_up_task: {
+        Args: { _letter_id: string }
+        Returns: string
+      }
       create_meeting_action_task: {
         Args: { p_action_item_id: string }
         Returns: string

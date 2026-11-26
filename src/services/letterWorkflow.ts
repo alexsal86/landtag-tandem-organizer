@@ -20,6 +20,22 @@ export function letterTransitionUpdates(from: string, to: string, userId: string
 }
 
 /**
+ * Liefert die Folgeaufgabe eines versendeten Briefes und legt sie bei Bedarf an.
+ *
+ * Die Aufgabe entsteht serverseitig beim Wechsel auf `sent` (Trigger
+ * trigger_letter_followup_task). Meldet die eingesetzte Archivfunktion keine ID
+ * – etwa weil ihre eigene Einfügung an einer Instanzregel scheitert –, wird die
+ * vorhandene Aufgabe über das RPC ermittelt, statt den Versand unvollständig zu
+ * melden. Das RPC ist je Brief idempotent.
+ */
+async function ensureLetterFollowUpTask(letterId: string): Promise<string> {
+  const { data, error } = await supabase.rpc("create_letter_archive_follow_up_task", { _letter_id: letterId });
+  if (error) throw error;
+  if (!data) throw new Error("Die Folgeaufgabe zum versendeten Brief fehlt.");
+  return data;
+}
+
+/**
  * Gemeinsamer Anwendungspfad für Editor und Selbsttest, inklusive Archivierung.
  * `extraUpdates` wird im selben UPDATE wie der Statuswechsel geschrieben, damit
  * z. B. eine Rückgabebegründung nie ohne den zugehörigen Status existiert. Beim
@@ -38,7 +54,8 @@ export async function persistLetterTransition(
   if (to === "sent") {
     const archive = await archiveLetter(letterId, userId);
     if (!archive.success) throw new Error(archive.error || "Die Archivierung konnte nicht abgeschlossen werden.");
-    return { updates, archive };
+    const followUpTaskId = archive.followUpTaskId ?? await ensureLetterFollowUpTask(letterId);
+    return { updates, archive: { ...archive, followUpTaskId } };
   }
   const { error } = await supabase.from("letters").update({ ...extraUpdates, ...updates, updated_at: now }).eq("id", letterId);
   if (error) throw error;
