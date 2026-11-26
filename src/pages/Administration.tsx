@@ -4,6 +4,7 @@ import { debugConsole } from "@/utils/debugConsole";
 import { useAuth } from "@/hooks/useAuth";
 import { useTenant } from "@/hooks/useTenant";
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
+import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import { Button } from "@/components/ui/button";
 import { Clock, MapPin, Building } from "lucide-react";
 import { AdminSidebar, adminMenuItems } from "@/components/administration/AdminSidebar";
@@ -84,11 +85,15 @@ export default function Administration(): React.JSX.Element | null {
   const [mobileSidebarOpen, setMobileSidebarOpen] = useState<boolean>(false);
   const isMobile = useIsMobile();
 
+  const navigationParams = new URLSearchParams(location.search);
   const { section: activeSection, subSection: activeSubSection } = resolveNavigationState(
-    new URLSearchParams(location.search).get("adminSection"),
-    new URLSearchParams(location.search).get("adminSubSection"),
+    navigationParams.get("adminSection"),
+    navigationParams.get("adminSubSection"),
     isSuperAdmin,
   );
+  const activeLetterTab = navigationParams.get("adminSubSection") === "occasions" || navigationParams.get("letterTab") === "occasions"
+    ? "occasions"
+    : "templates";
   const [pressTemplateRevision, setPressTemplateRevision] = useState(0);
   const [annualTasksBadge, setAnnualTasksBadge] = useState<number>(0);
 
@@ -102,6 +107,9 @@ export default function Administration(): React.JSX.Element | null {
       params.get("adminSubSection") !== nextNavigation.subSection ||
       params.toString() !== new URLSearchParams(location.search).toString()
     ) {
+      if (params.get("adminSection") === "templates" && params.get("adminSubSection") === "occasions") {
+        params.set("letterTab", "occasions");
+      }
       params.set("adminSection", nextNavigation.section);
       if (nextNavigation.subSection) {
         params.set("adminSubSection", nextNavigation.subSection);
@@ -157,6 +165,7 @@ export default function Administration(): React.JSX.Element | null {
     if (activeSection !== nextNavigation.section || activeSubSection !== nextNavigation.subSection) {
       params.delete("automationTab");
       params.delete("rssTab");
+      params.delete("letterTab");
     }
     params.set("adminSection", nextNavigation.section);
     if (nextNavigation.subSection) {
@@ -304,9 +313,34 @@ export default function Administration(): React.JSX.Element | null {
     // SECTION 5: Vorlagen
     if (activeSection === "templates") {
       switch (activeSubSection) {
-        case "letters": return <div className="space-y-6"><LetterTemplateManager /></div>;
-        case "occasions":
-          return <Card><CardContent className="pt-6"><LetterOccasionManager /></CardContent></Card>;
+        case "letters":
+          return (
+            <Tabs value={activeLetterTab} onValueChange={(tab) => {
+              const params = new URLSearchParams(location.search);
+              params.set("adminSubSection", "letters");
+              if (tab === "occasions") {
+                params.set("letterTab", tab);
+              } else {
+                params.delete("letterTab");
+              }
+              navigate({ pathname: location.pathname, search: params.toString() });
+            }}>
+              <TabsList aria-label="Briefverwaltung">
+                <TabsTrigger value="templates">Briefvorlagen</TabsTrigger>
+                <TabsTrigger value="occasions">Briefanlässe</TabsTrigger>
+              </TabsList>
+              <TabsContent value="templates">
+                <Suspense fallback={<p role="status">Bereich wird geladen…</p>}>
+                  <LetterTemplateManager />
+                </Suspense>
+              </TabsContent>
+              <TabsContent value="occasions">
+                <Suspense fallback={<p role="status">Bereich wird geladen…</p>}>
+                  <Card><CardContent className="pt-6"><LetterOccasionManager /></CardContent></Card>
+                </Suspense>
+              </TabsContent>
+            </Tabs>
+          );
         case "press-templates":
           return (
             <div className="space-y-6">

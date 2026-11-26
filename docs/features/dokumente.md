@@ -599,7 +599,7 @@ Erzeugt beim Versand ein PDF-Archivdokument, verknüpft es und legt optional ein
 - Keine.
 
 ### `letters.templates` — Briefvorlagen und Anlässe
-Verwaltet Briefvorlagen, Anlassarten, Absenderdaten und Textbausteine.
+Verwaltet Briefvorlagen und Briefanlässe in zwei Reitern einer gemeinsamen Administrationsseite. Absenderdaten und Textbausteine bleiben Teil der Briefverwaltung.
 
 - **Kategorie:** administrativ
 - **Implementierung:** implementiert

@@ -142,8 +142,7 @@ export const adminMenuItems: AdminMenuItem[] = [
     label: "Vorlagen",
     icon: FileStack,
     children: [
-      { id: "letters", label: "Briefvorlagen", icon: Mail },
-      { id: "occasions", label: "Brief-Anlässe", icon: File },
+      { id: "letters", label: "Briefvorlagen und Briefanlässe", icon: Mail },
       { id: "press-templates", label: "Pressevorlagen und Presse-Anlässe", icon: Newspaper },
       { id: "meetings", label: "Meeting-Templates", icon: Users2 },
       { id: "plannings", label: "Planungs-Templates", icon: Layout },
