@@ -6,7 +6,7 @@ Die Angaben sind deklarierte Mindestrollen. Die tatsächlich wirksame Berechtigu
 
 ## Funktionen je Rolle
 
-### `abgeordneter` — 180 Funktionen
+### `abgeordneter` — 181 Funktionen
 
 - `mywork.dashboard` — Meine Arbeit – Dashboard
 - `mywork.tabs` — Meine Arbeit – Bereichsnavigation und Einstellungen
@@ -163,6 +163,7 @@ Die Angaben sind deklarierte Mindestrollen. Die tatsächlich wirksame Berechtigu
 - `casefiles.links` — Fallakte verknüpfen (Dokumente, Kontakte, Themen, Notizen)
 - `casefiles.document-upload` — Datei aus der Akte ablegen
 - `casefiles.notes` — Fallakten-Notizen
+- `parlis.ministry-topics` — Ministerien und zentrale Themen zuordnen
 - `election.analysis` — Wahlanalyse durchführen
 - `election.analysis-navigation` — Analyse-Navigation und gespeicherte Szenarien
 - `election.analysis-map` — Analyse-Karten und Wahlkreiszuschnitt
@@ -189,7 +190,7 @@ Die Angaben sind deklarierte Mindestrollen. Die tatsächlich wirksame Berechtigu
 - `knowledge.global-question` — Globale Wissensfrage aus jedem Bereich
 - `knowledge.persons` — Wissenspersonen und Zuständigkeit
 
-### `bueroleitung` — 226 Funktionen
+### `bueroleitung` — 227 Funktionen
 
 - `mywork.dashboard` — Meine Arbeit – Dashboard
 - `mywork.dashboard.today-priorities` — Heute zuerst
@@ -388,6 +389,7 @@ Die Angaben sind deklarierte Mindestrollen. Die tatsächlich wirksame Berechtigu
 - `casefiles.links` — Fallakte verknüpfen (Dokumente, Kontakte, Themen, Notizen)
 - `casefiles.document-upload` — Datei aus der Akte ablegen
 - `casefiles.notes` — Fallakten-Notizen
+- `parlis.ministry-topics` — Ministerien und zentrale Themen zuordnen
 - `election.analysis` — Wahlanalyse durchführen
 - `election.analysis-navigation` — Analyse-Navigation und gespeicherte Szenarien
 - `election.analysis-map` — Analyse-Karten und Wahlkreiszuschnitt
@@ -998,6 +1000,7 @@ Die Angaben sind deklarierte Mindestrollen. Die tatsächlich wirksame Berechtigu
 | `news.matrix` | `bueroleitung`, `mitarbeiter`, `system` |
 | `notifications.inbox` | `abgeordneter`, `bueroleitung`, `mitarbeiter`, `praktikant` |
 | `notifications.preferences` | `abgeordneter`, `bueroleitung`, `mitarbeiter`, `praktikant` |
+| `parlis.ministry-topics` | `abgeordneter`, `bueroleitung` |
 | `parlis.proceedings` | Keine besondere Rolle deklariert |
 | `platform.auth` | `oeffentlich`, `abgeordneter`, `bueroleitung`, `mitarbeiter`, `praktikant` |
 | `platform.notification-dispatch` | `system` |

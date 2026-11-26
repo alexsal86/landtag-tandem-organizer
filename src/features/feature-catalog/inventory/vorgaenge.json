@@ -342,6 +342,24 @@
       "dependsOn": ["casefiles.manage"]
     },
     {
+      "id": "parlis.ministry-topics",
+      "subarea": "Parlamentsdokumentation",
+      "name": "Ministerien und zentrale Themen zuordnen",
+      "description": "Vergleicht PARLIS-Ministerien nach Wahlperiode, schlägt Ressortlinien vor und speichert überprüfte Zuordnungen und zentrale Themen pro Arbeitsbereich.",
+      "category": "fachlich",
+      "implementationStatus": "implementiert",
+      "integrationStatus": "rollenabhaengig",
+      "coverage": "selftest",
+      "testResult": "nicht-ausgefuehrt",
+      "routes": ["/administration", "/daten"],
+      "components": ["src/features/parlis/MinistryAdmin.tsx", "src/features/parlis/ParlisView.tsx"],
+      "evidence": ["supabase/migrations/20261128000000_parlis_ministry_topics.sql", "src/features/selftest/scenarios/parlis.ts"],
+      "rpcs": ["get_parlis_ministry_sources", "move_parlis_ministry_topics_after_merge"],
+      "tables": ["parlis_ministry_lines", "parlis_ministry_suggestions", "parlis_ministry_assignments", "parlis_ministry_topics", "topics"],
+      "roles": ["abgeordneter", "bueroleitung"],
+      "scenarios": ["parlis"]
+    },
+    {
       "id": "parlis.proceedings",
       "subarea": "Parlamentsdokumentation",
       "name": "Parlamentarische Vorgänge auswerten",

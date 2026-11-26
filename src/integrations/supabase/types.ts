@@ -35,6 +35,39 @@ export type Database = {
           },
         ]
       }
+      parlis_ministry_lines: {
+        Row: { id: string; label: string }
+        Insert: { id: string; label: string }
+        Update: { id?: string; label?: string }
+        Relationships: []
+      }
+      parlis_ministry_assignments: {
+        Row: { tenant_id: string; legislature: number; ressort: string; line_id: string | null }
+        Insert: { tenant_id: string; legislature: number; ressort: string; line_id?: string | null }
+        Update: { line_id?: string | null }
+        Relationships: [
+          { foreignKeyName: "parlis_ministry_assignments_tenant_id_fkey"; columns: ["tenant_id"]; isOneToOne: false; referencedRelation: "tenants"; referencedColumns: ["id"] },
+          { foreignKeyName: "parlis_ministry_assignments_line_id_fkey"; columns: ["line_id"]; isOneToOne: false; referencedRelation: "parlis_ministry_lines"; referencedColumns: ["id"] },
+        ]
+      }
+      parlis_ministry_topics: {
+        Row: { tenant_id: string; line_id: string; topic_id: string }
+        Insert: { tenant_id: string; line_id: string; topic_id: string }
+        Update: { tenant_id?: string; line_id?: string; topic_id?: string }
+        Relationships: [
+          { foreignKeyName: "parlis_ministry_topics_tenant_id_fkey"; columns: ["tenant_id"]; isOneToOne: false; referencedRelation: "tenants"; referencedColumns: ["id"] },
+          { foreignKeyName: "parlis_ministry_topics_line_id_fkey"; columns: ["line_id"]; isOneToOne: false; referencedRelation: "parlis_ministry_lines"; referencedColumns: ["id"] },
+          { foreignKeyName: "parlis_ministry_topics_tenant_id_topic_id_fkey"; columns: ["tenant_id", "topic_id"]; isOneToOne: false; referencedRelation: "topics"; referencedColumns: ["tenant_id", "id"] },
+        ]
+      }
+      parlis_ministry_suggestions: {
+        Row: { legislature: number; ressort: string; line_id: string }
+        Insert: { legislature: number; ressort: string; line_id: string }
+        Update: { legislature?: number; ressort?: string; line_id?: string }
+        Relationships: [
+          { foreignKeyName: "parlis_ministry_suggestions_line_id_fkey"; columns: ["line_id"]; isOneToOne: false; referencedRelation: "parlis_ministry_lines"; referencedColumns: ["id"] },
+        ]
+      }
       parlis_proceedings: {
         Row: {
           datum: string | null
@@ -18162,6 +18195,10 @@ export type Database = {
       }
     }
     Functions: {
+      get_parlis_ministry_sources: {
+        Args: Record<PropertyKey, never>
+        Returns: { legislature: number; ressort: string; requests: number; suggested_line: string | null }[]
+      }
       get_parlis_wp17_deputy_activity: {
         Args: { deputy_key: string }
         Returns: { document_kind: string; document_count: number }[]

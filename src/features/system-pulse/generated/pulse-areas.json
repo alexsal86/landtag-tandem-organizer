@@ -2136,6 +2136,7 @@
           "title": "Parlamentarische Vorgänge",
           "description": "Prüft die Gruppierung und den Lesezugriff auf die Parlamentsdokumentation.",
           "checks": [
+            "Ressortvorschläge für mehrere Wahlperioden",
             "Vorgangstypen der 17. Wahlperiode im Profil zusammenfassen",
             "Fünf persönlich zugeordnete Anträge mit gefiltertem Link im Profil",
             "Schlagwortvorschläge bei Eingabe begrenzen",
@@ -2148,6 +2149,7 @@
           ],
           "tables": [],
           "features": [
+            "parlis.ministry-topics",
             "parlis.proceedings"
           ],
           "steps": [
@@ -2182,6 +2184,10 @@
             {
               "id": "parlis-wp17-activity",
               "label": "Gespeicherte Typzahlen der 17. Wahlperiode entsprechen der PARLIS-Liste"
+            },
+            {
+              "id": "parlis-ministry-suggestions",
+              "label": "Ressortvorschläge verbinden ministerielle Quellen über Wahlperioden"
             },
             {
               "id": "parlis-deputy-profile",

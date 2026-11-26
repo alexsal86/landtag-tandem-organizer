@@ -9,9 +9,9 @@ export const parlisScenario: TestScenario = {
   id: "parlis",
   title: "Parlamentarische Vorgänge",
   description: "Prüft die Gruppierung und den Lesezugriff auf die Parlamentsdokumentation.",
-  features: ["parlis.proceedings"],
+  features: ["parlis.proceedings", "parlis.ministry-topics"],
   touches: [],
-  checks: ["Vorgangstypen der 17. Wahlperiode im Profil zusammenfassen", "Fünf persönlich zugeordnete Anträge mit gefiltertem Link im Profil", "Schlagwortvorschläge bei Eingabe begrenzen", "Serverseitige Suche und begrenzte Dokumentenseiten", "Schlagwörter, Fraktionsfilter und mehrere Urheber", "Urhebertext mit Titeln und Namensbestandteilen bleibt vollständig", "Monatsgruppierung, eindeutige Schlagwörter und leere Ressorts", "Importierte Vorgänge sind lesbar", "Verknüpfte Urheber führen zu einem Mandat derselben Wahlperiode"],
+  checks: ["Ressortvorschläge für mehrere Wahlperioden", "Vorgangstypen der 17. Wahlperiode im Profil zusammenfassen", "Fünf persönlich zugeordnete Anträge mit gefiltertem Link im Profil", "Schlagwortvorschläge bei Eingabe begrenzen", "Serverseitige Suche und begrenzte Dokumentenseiten", "Schlagwörter, Fraktionsfilter und mehrere Urheber", "Urhebertext mit Titeln und Namensbestandteilen bleibt vollständig", "Monatsgruppierung, eindeutige Schlagwörter und leere Ressorts", "Importierte Vorgänge sind lesbar", "Verknüpfte Urheber führen zu einem Mandat derselben Wahlperiode"],
   steps: [{
     id: "parlis-groups",
     label: "Monate, Schlagwörter und fehlende Ressorts korrekt zuordnen",
@@ -165,6 +165,24 @@ export const parlisScenario: TestScenario = {
       return {
         ok: total > 0 && !!page && typeof page === "object" && !Array.isArray(page) && page.count === total,
         message: "Bilanz und gefilterte PARLIS-Liste zählen dieselben persönlich zugeordneten Vorgänge.",
+      };
+    },
+  }, {
+    id: "parlis-ministry-suggestions",
+    label: "Ressortvorschläge verbinden ministerielle Quellen über Wahlperioden",
+    kind: "db",
+    run: async () => {
+      const { data, error } = await supabase.rpc("get_parlis_ministry_sources");
+      if (error) throw error;
+      const transport = data.filter(row => row.ressort === "Ministerium für Verkehr" && row.requests > 0
+        && row.suggested_line === "transport");
+      const interior = data.filter(row => row.ressort.startsWith("Ministerium des Inneren")
+        && row.suggested_line === "interior");
+      return {
+        ok: [17, 18].every(period => transport.some(row => row.legislature === period)
+          && interior.some(row => row.legislature === period))
+          && !data.some(row => row.ressort.startsWith("Ausschuss")),
+        message: "Identische und geänderte Ressortnamen bleiben je Wahlperiode sichtbar.",
       };
     },
   }, {

@@ -25,6 +25,7 @@ export default function ParlisView() {
   return <ProceedingsForLegislature key={legislature} legislature={legislature} changeLegislature={value => {
     const next = new URLSearchParams(params);
     next.set("wahlperiode", value);
+    next.delete("ressort");
     setParams(next);
   }} />;
 }
@@ -35,6 +36,7 @@ function ProceedingsForLegislature({ legislature, changeLegislature }: {
 }) {
   const [params, setParams] = useSearchParams();
   const deputyKey = params.get("urheber");
+  const ministry = params.get("ressort");
   const documentKind = params.get("vorgangstyp") ?? "";
   const [search, setSearch] = useState("");
   const [searchText, setSearchText] = useState("");
@@ -60,8 +62,8 @@ function ProceedingsForLegislature({ legislature, changeLegislature }: {
     date_to: filters.to || undefined,
     deputy_key: deputyKey ?? undefined,
     oldest_first: oldestFirst,
-    chart_dimension: analysisOpen || selected !== null ? dimension : undefined,
-    chart_selection: selected ?? undefined,
+    chart_dimension: ministry ? "ressort" : analysisOpen || selected !== null ? dimension : undefined,
+    chart_selection: ministry ?? selected ?? undefined,
   };
   const query = useInfiniteQuery({
     queryKey: ["parlis-pages", args],
@@ -98,7 +100,7 @@ function ProceedingsForLegislature({ legislature, changeLegislature }: {
     ?.deputies.find(([key]) => key === deputyKey)?.[1] : undefined;
   const chartGroups = first?.groups ?? [];
   const max = Math.max(1, ...chartGroups.map(([, count]) => count));
-  const hasFilters = !!(search || documentKind || selected || deputyKey || oldestFirst || Object.values(filters).some(Boolean));
+  const hasFilters = !!(search || documentKind || ministry || selected || deputyKey || oldestFirst || Object.values(filters).some(Boolean));
 
   function updateFilter(key: keyof typeof emptyFilters, value: string) {
     setFilters(current => ({ ...current, [key]: value }));
@@ -167,6 +169,11 @@ function ProceedingsForLegislature({ legislature, changeLegislature }: {
             </select></label>
           </div>
           <div className="parlis-filter-footer">
+            {ministry && <Button variant="outline" size="sm" onClick={() => {
+              const next = new URLSearchParams(params);
+              next.delete("ressort");
+              setParams(next);
+            }}>{ministry} · Auswahl entfernen</Button>}
             {deputyKey && <Button variant="outline" size="sm" onClick={clearDeputy}>
               {deputyName || "Ausgewähltes Abgeordnetenprofil"} · Auswahl entfernen
             </Button>}
@@ -178,12 +185,13 @@ function ProceedingsForLegislature({ legislature, changeLegislature }: {
               const next = new URLSearchParams(params);
               next.delete("urheber");
               next.delete("vorgangstyp");
+              next.delete("ressort");
               setParams(next);
               setSelected(null);
             }}>Filter zurücksetzen</Button>}
           </div>
         </section>
-        <details className="parlis-analysis" onToggle={event => setAnalysisOpen(event.currentTarget.open)}>
+        {!ministry && <details className="parlis-analysis" onToggle={event => setAnalysisOpen(event.currentTarget.open)}>
           <summary>Auswertung <ChevronDown size={16} aria-hidden="true" /></summary>
           <label>Gruppieren nach
             <select aria-label="Gruppieren nach" value={dimension} onChange={event => {
@@ -213,7 +221,7 @@ function ProceedingsForLegislature({ legislature, changeLegislature }: {
               ))}
             </div>
           )}
-        </details>
+        </details>}
         <section className="parlis-results" aria-label="Dokumente" aria-busy={isFetching}>
           {query.isPending ? <p role="status">Parlamentarische Vorgänge werden geladen …</p> : !first ? (
             <div role="alert">

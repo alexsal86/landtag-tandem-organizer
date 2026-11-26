@@ -17,6 +17,7 @@ import { useAdministrationAccess } from "@/components/administration/useAdminist
 import { resolveNavigationState } from "@/components/administration/adminNavigation";
 import { normalizeAutomationParams } from "@/components/administration/automationNavigation";
 
+const MinistryAdmin = lazy(() => import("@/features/parlis/MinistryAdmin"));
 const ElectionHistoryAdmin = lazy(() => import("@/features/election-history/ElectionHistoryAdmin"));
 const HrTemplateEditor = lazy(() => import("@/features/onboarding-hr/HrTemplateEditor"));
 const PlanningDefaultCollaboratorsSettings = lazy(() => import("@/components/administration/PlanningDefaultCollaboratorsSettings").then(module => ({ default: module.PlanningDefaultCollaboratorsSettings })));
@@ -273,6 +274,9 @@ export default function Administration(): React.JSX.Element | null {
     if (activeSection === "content") {
       switch (activeSubSection) {
         case "topics": return <TopicSettings />;
+        case "parlis-ministries": return currentTenant?.id
+          ? <MinistryAdmin key={currentTenant.id} tenantId={currentTenant.id} />
+          : <p>Kein Arbeitsbereich ausgewählt.</p>;
         case "tasks":
           return (
             <div className="space-y-6">

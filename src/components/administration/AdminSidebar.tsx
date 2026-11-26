@@ -125,6 +125,7 @@ export const adminMenuItems: AdminMenuItem[] = [
     icon: Database,
     children: [
       { id: "topics", label: "Themen", icon: Tag },
+      { id: "parlis-ministries", label: "Ministerien & Themen", icon: Landmark },
       { id: "tasks", label: "Aufgaben", icon: CheckSquare },
       { id: "todos", label: "ToDos", icon: ListTodo },
       { id: "decisions", label: "Entscheidungen", icon: Gavel },

@@ -2767,6 +2767,34 @@
       "area": "vorgaenge"
     }
   ],
+  "parlis_ministry_assignments": [
+    {
+      "id": "parlis.ministry-topics",
+      "name": "Ministerien und zentrale Themen zuordnen",
+      "area": "vorgaenge"
+    }
+  ],
+  "parlis_ministry_lines": [
+    {
+      "id": "parlis.ministry-topics",
+      "name": "Ministerien und zentrale Themen zuordnen",
+      "area": "vorgaenge"
+    }
+  ],
+  "parlis_ministry_suggestions": [
+    {
+      "id": "parlis.ministry-topics",
+      "name": "Ministerien und zentrale Themen zuordnen",
+      "area": "vorgaenge"
+    }
+  ],
+  "parlis_ministry_topics": [
+    {
+      "id": "parlis.ministry-topics",
+      "name": "Ministerien und zentrale Themen zuordnen",
+      "area": "vorgaenge"
+    }
+  ],
   "parlis_proceedings": [
     {
       "id": "parlis.proceedings",
@@ -3884,6 +3912,11 @@
       "id": "knowledge.tags",
       "name": "Themenzuordnung im Wissen",
       "area": "wissen"
+    },
+    {
+      "id": "parlis.ministry-topics",
+      "name": "Ministerien und zentrale Themen zuordnen",
+      "area": "vorgaenge"
     },
     {
       "id": "responsibilities.matrix",

@@ -6,10 +6,10 @@ _Auto-generiert mit `npm run update:feature-catalog` aus dem zentralen Funktions
 
 ## Kennzahlen
 
-- Funktionen: **18** in **7** Unterbereichen
-- implementiert: **17**, teilweise: **0**, deaktiviert: **0**, potenziell verwaist: **0**
+- Funktionen: **19** in **7** Unterbereichen
+- implementiert: **18**, teilweise: **0**, deaktiviert: **0**, potenziell verwaist: **0**
 - ohne zugeordneten Test: **4**
-- ohne Dokumentationsverweis: **13**
+- ohne Dokumentationsverweis: **14**
 
 ## Funktionen
 
@@ -27,6 +27,7 @@ _Auto-generiert mit `npm run update:feature-catalog` aus dem zentralen Funktions
 | `casefiles.links` Fallakte verknüpfen (Dokumente, Kontakte, Themen, Notizen) | Fallakten | fachlich | implementiert | UI | Selbsttest |
 | `casefiles.notes` Fallakten-Notizen | Fallakten | fachlich | implementiert | UI | Selbsttest |
 | `casefiles.status-workflow` Fallakten-Status und Bearbeitungsstatus | Fallakten | fachlich | implementiert | UI | Selbsttest |
+| `parlis.ministry-topics` Ministerien und zentrale Themen zuordnen | Parlamentsdokumentation | fachlich | implementiert | rollenabhängig | Selbsttest |
 | `parlis.proceedings` Parlamentarische Vorgänge auswerten | Parlamentsdokumentation | fachlich | implementiert | UI | Selbsttest |
 | `cases.triage` Vorgang triagieren (Wer ist am Zug?) | Triage | fachlich | implementiert | UI | Unit-Test |
 | `cases.handover` Vorgang weitergeben | Triage | fachlich | implementiert | rollenabhängig | Selbsttest |
@@ -50,7 +51,7 @@ _Auto-generiert mit `npm run update:feature-catalog` aus dem zentralen Funktions
 
 ## Datenbanktabellen
 
-`appointments`, `audit_log_entries`, `case_file_appointments`, `case_file_contacts`, `case_file_documents`, `case_file_letters`, `case_file_notes`, `case_file_participants`, `case_file_processing_statuses`, `case_file_status_history`, `case_file_tasks`, `case_file_timeline`, `case_file_topics`, `case_file_types`, `case_files`, `case_item_categories`, `case_item_escalation_suggestions`, `case_item_handover_log`, `case_item_interactions`, `case_item_participants`, `case_item_timeline`, `case_item_topics`, `case_items`, `documents`, `election_history_mandates`, `letters`, `parlis_deputy_mandates`, `parlis_proceedings`, `task_decisions`, `tasks`, `topic_module_settings`, `topics`
+`appointments`, `audit_log_entries`, `case_file_appointments`, `case_file_contacts`, `case_file_documents`, `case_file_letters`, `case_file_notes`, `case_file_participants`, `case_file_processing_statuses`, `case_file_status_history`, `case_file_tasks`, `case_file_timeline`, `case_file_topics`, `case_file_types`, `case_files`, `case_item_categories`, `case_item_escalation_suggestions`, `case_item_handover_log`, `case_item_interactions`, `case_item_participants`, `case_item_timeline`, `case_item_topics`, `case_items`, `documents`, `election_history_mandates`, `letters`, `parlis_deputy_mandates`, `parlis_ministry_assignments`, `parlis_ministry_lines`, `parlis_ministry_suggestions`, `parlis_ministry_topics`, `parlis_proceedings`, `task_decisions`, `tasks`, `topic_module_settings`, `topics`
 
 ## Selbsttest-Szenarien
 
@@ -58,7 +59,7 @@ _Auto-generiert mit `npm run update:feature-catalog` aus dem zentralen Funktions
 |---|---|---:|---:|---|
 | `case-file-lifecycle` | Fallakte mit Folgetabellen (Container) im Unterschied zum Vorgang | 16 | 9 | — |
 | `case-item-lifecycle` | Vorgangs-Lifecycle (Am Zug → Schritt → Wiedervorlage → Entscheidung → Tageszettel → Abschluss) | 9 | 5 | — |
-| `parlis` | Parlamentarische Vorgänge | 0 | 9 | — |
+| `parlis` | Parlamentarische Vorgänge | 0 | 10 | — |
 
 ## Selbsttest-Schritte
 
@@ -101,6 +102,7 @@ Diese Schritte führen die Szenarien aus; „letzter Lauf“ stammt aus `src/fea
 | `parlis` | `parlis-topic-suggestions` | Schlagwörter erst auf Suche und höchstens 20 Vorschläge abrufen | db | — |
 | `parlis` | `parlis-deputy-motions` | Profilvorschau auf fünf persönlich zugeordnete Anträge begrenzen | db | — |
 | `parlis` | `parlis-wp17-activity` | Gespeicherte Typzahlen der 17. Wahlperiode entsprechen der PARLIS-Liste | db | — |
+| `parlis` | `parlis-ministry-suggestions` | Ressortvorschläge verbinden ministerielle Quellen über Wahlperioden | db | — |
 | `parlis` | `parlis-deputy-profile` | Weirauchs Anfrage aus Drucksache 18/763 führt zum Abgeordnetenprofil | db | — |
 
 ## Deklarierter Prüfumfang
@@ -127,15 +129,16 @@ Diese Schritte führen die Szenarien aus; „letzter Lauf“ stammt aus `src/fea
 
 ### `parlis`
 
-1. Vorgangstypen der 17. Wahlperiode im Profil zusammenfassen
-2. Fünf persönlich zugeordnete Anträge mit gefiltertem Link im Profil
-3. Schlagwortvorschläge bei Eingabe begrenzen
-4. Serverseitige Suche und begrenzte Dokumentenseiten
-5. Schlagwörter, Fraktionsfilter und mehrere Urheber
-6. Urhebertext mit Titeln und Namensbestandteilen bleibt vollständig
-7. Monatsgruppierung, eindeutige Schlagwörter und leere Ressorts
-8. Importierte Vorgänge sind lesbar
-9. Verknüpfte Urheber führen zu einem Mandat derselben Wahlperiode
+1. Ressortvorschläge für mehrere Wahlperioden
+2. Vorgangstypen der 17. Wahlperiode im Profil zusammenfassen
+3. Fünf persönlich zugeordnete Anträge mit gefiltertem Link im Profil
+4. Schlagwortvorschläge bei Eingabe begrenzen
+5. Serverseitige Suche und begrenzte Dokumentenseiten
+6. Schlagwörter, Fraktionsfilter und mehrere Urheber
+7. Urhebertext mit Titeln und Namensbestandteilen bleibt vollständig
+8. Monatsgruppierung, eindeutige Schlagwörter und leere Ressorts
+9. Importierte Vorgänge sind lesbar
+10. Verknüpfte Urheber führen zu einem Mandat derselben Wahlperiode
 
 ## Funktionsdetails
 
@@ -740,6 +743,42 @@ Erfasst interne Notizen an einer Fallakte und zeigt sie im Verlauf; das Szenario
 **Nachweise im Quellcode**
 
 - src/features/cases/files/components/CaseFileRightSidebar.tsx
+
+**Bekannte Einschränkungen**
+
+- Keine.
+
+**Offene Prüfpunkte**
+
+- Keine.
+
+### `parlis.ministry-topics` — Ministerien und zentrale Themen zuordnen
+Vergleicht PARLIS-Ministerien nach Wahlperiode, schlägt Ressortlinien vor und speichert überprüfte Zuordnungen und zentrale Themen pro Arbeitsbereich.
+
+- **Kategorie:** fachlich
+- **Implementierung:** implementiert
+- **Einbindung:** rollenabhängig
+- **Testabdeckung:** Selbsttest
+- **Letztes Testergebnis:** nicht-ausgefuehrt (kein Laufnachweis importiert; nicht aus der Existenz einer Testdatei abgeleitet)
+- **Rollen:** `abgeordneter`, `bueroleitung`
+- **Routen:** `/administration`, `/daten`
+- **Frontend-Komponenten:** `src/features/parlis/MinistryAdmin.tsx`, `src/features/parlis/ParlisView.tsx`
+- **Services:** —
+- **Hooks:** —
+- **Edge Functions:** —
+- **Datenbankfunktionen:** `get_parlis_ministry_sources`, `move_parlis_ministry_topics_after_merge`
+- **Tabellen:** `parlis_ministry_lines`, `parlis_ministry_suggestions`, `parlis_ministry_assignments`, `parlis_ministry_topics`, `topics`
+- **Abhängigkeiten:** —
+- **Selbsttests:** `parlis`
+- **Unit-Tests:** —
+- **Integrationstests:** —
+- **Browser-Tests:** —
+- **Dokumentation:** —
+
+**Nachweise im Quellcode**
+
+- supabase/migrations/20261128000000_parlis_ministry_topics.sql
+- src/features/selftest/scenarios/parlis.ts
 
 **Bekannte Einschränkungen**
 
