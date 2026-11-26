@@ -322,7 +322,7 @@ Eindeutige Fehler werden im CI-Lauf ausgegeben und brechen die Prüfung ab; sie 
 - `events.legacy-rsvp` — Legacy-Einladungslinks (veraltet)
 - `cases.legacy-routes` — Legacy-Vorgangsrouten (veraltet)
 
-## Funktionen mit Einschränkungen oder offenen Punkten (84)
+## Funktionen mit Einschränkungen oder offenen Punkten (85)
 
 ### `mywork.dashboard`
 
@@ -438,6 +438,11 @@ Eindeutige Fehler werden im CI-Lauf ausgegeben und brechen die Prüfung ab; sie 
 ### `annotations.ocr`
 
 - OCR-Qualität hängt vom Scan ab; ein automatisierter Qualitätstest existiert nicht.
+
+### `letters.create`
+
+- Der Dirty-Guard vergleicht den geladenen Stand mit einem Snapshot der Editor-Felder; Änderungen außerhalb des Editors (z. B. Revisionsfelder) lösen keine Rückfrage aus.
+- Nach dem Speichern wird der gespeicherte Stand zur neuen Vergleichsbasis, sonst würde jede Schließung nachfragen.
 
 ### `letters.workflow`
 

@@ -20,6 +20,10 @@ import { useLetterData } from '@/components/letters/hooks/useLetterData';
 import { useLetterOperations } from '@/components/letters/hooks/useLetterOperations';
 import { approveLetterWithoutReview } from '@/services/letterWorkflow';
 import { debugConsole } from '@/utils/debugConsole';
+import {
+  AlertDialog, AlertDialogAction, AlertDialogCancel, AlertDialogContent,
+  AlertDialogDescription, AlertDialogFooter, AlertDialogHeader, AlertDialogTitle,
+} from '@/components/ui/alert-dialog';
 import LetterBriefDetails from '@/components/letters/LetterBriefDetails';
 import LetterCommentDialog from '@/components/letters/LetterCommentDialog';
 import {
@@ -106,6 +110,9 @@ const LetterEditor: React.FC<LetterEditorProps> = ({ letter, isOpen, onClose, on
   // Autosave erst, wenn der vollständige Datensatz in den Editor übernommen wurde.
   const [isHydrated, setIsHydrated] = useState(false);
   const hydratedSnapshotRef = useRef<string | null>(null);
+  // Schließen und Verwerfen dürfen nichts stillschweigend verlieren.
+  const [closePrompt, setClosePrompt] = useState<null | 'close' | 'discard'>(null);
+  const [isClosing, setIsClosing] = useState(false);
 
   const saveTimeoutRef = useRef<NodeJS.Timeout>(null);
   const isUpdatingFromRemoteRef = useRef(false);
@@ -150,6 +157,30 @@ const LetterEditor: React.FC<LetterEditorProps> = ({ letter, isOpen, onClose, on
     broadcastContentChange,
     applyTemplateDefaults,
   } = ops;
+
+  /** Ein neu angelegter Brief lebt nach dem ersten Speichern ohne neues `letter`-Prop weiter. */
+  const persistedLetterId = letter?.id ?? editedLetter.id;
+
+  const isDirty = useMemo(() => {
+    if (!canEdit) return false;
+    if (!isHydrated || hydratedSnapshotRef.current === null) {
+      return Boolean(editedLetter.title?.trim() || editedLetter.content?.trim());
+    }
+    return autosaveSnapshot(editedLetter, showPagination) !== hydratedSnapshotRef.current;
+  }, [canEdit, isHydrated, editedLetter, showPagination]);
+
+  const toSerializedContentNodes = (nodes: LetterContentNodes | undefined): string | undefined => {
+    if (!nodes) return undefined;
+    return typeof nodes === 'string' ? nodes : JSON.stringify(nodes);
+  };
+
+  /** Nach erfolgreichem Schreiben ist der gespeicherte Stand die neue Vergleichsbasis. */
+  const markSavedBaseline = useCallback((saved: Partial<Letter> = {}) => {
+    const content = (saved.content ?? latestContentRef.current.content ?? editedLetter.content ?? '').trim();
+    const contentNodes = saved.content_nodes ?? latestContentRef.current.contentNodes ?? editedLetter.content_nodes ?? null;
+    hydratedSnapshotRef.current = autosaveSnapshot({ ...editedLetter, ...saved, content, content_nodes: contentNodes }, showPagination);
+    setEditedLetter(prev => ({ ...prev, ...saved, content, content_nodes: contentNodes }));
+  }, [editedLetter, showPagination, setEditedLetter]);
 
   // Initialize draft content
   useEffect(() => {
@@ -226,13 +257,21 @@ const LetterEditor: React.FC<LetterEditorProps> = ({ letter, isOpen, onClose, on
 
   useEffect(() => {
     if (!isHydrated) return;
-    if (!canEdit || isUpdatingFromRemoteRef.current || !letter?.id) return;
+    if (!canEdit || isUpdatingFromRemoteRef.current || !persistedLetterId) return;
     // Unverändert gegenüber dem geladenen Stand: nichts zu speichern.
     if (autosaveSnapshot(editedLetter, showPagination) === hydratedSnapshotRef.current) return;
     if (saveTimeoutRef.current) clearTimeout(saveTimeoutRef.current);
-    saveTimeoutRef.current = setTimeout(() => { if (!isUpdatingFromRemoteRef.current && letter?.id) void handleAutoSave(); }, 3000);
+    saveTimeoutRef.current = setTimeout(() => {
+      if (isUpdatingFromRemoteRef.current) return;
+      void handleAutoSave().then(ok => { if (ok) markSavedBaseline(); });
+    }, 3000);
     return () => { if (saveTimeoutRef.current) clearTimeout(saveTimeoutRef.current); };
-  }, [editedLetter, canEdit, letter?.id, showPagination, isHydrated, handleAutoSave]);
+  }, [editedLetter, canEdit, persistedLetterId, showPagination, isHydrated, handleAutoSave, markSavedBaseline]);
+
+  // Ein neu angelegter Brief ist nach dem ersten Speichern kein Entwurf mehr.
+  useEffect(() => {
+    if (!letter && editedLetter.id && !isHydrated) setIsHydrated(true);
+  }, [letter, editedLetter.id, isHydrated]);
 
   const handleTemplateChange = async (templateId: string) => {
     if (!templateId || templateId === 'none') {
@@ -250,16 +289,6 @@ const LetterEditor: React.FC<LetterEditorProps> = ({ letter, isOpen, onClose, on
       setEditedLetter(prev => ({ ...prev, contact_id: contactId, recipient_name: contact.name, recipient_address: formatContactAddress(contact) }));
     }
   };
-
-  const hasUnsavedChanges = !isUpdatingFromRemoteRef.current && letter && (
-    editedLetter.title !== letter.title || editedLetter.content !== letter.content ||
-    editedLetter.recipient_name !== letter.recipient_name || editedLetter.recipient_address !== letter.recipient_address ||
-    editedLetter.subject !== letter.subject || editedLetter.reference_number !== letter.reference_number ||
-    editedLetter.sender_info_id !== letter.sender_info_id ||
-    JSON.stringify(editedLetter.information_block_ids || []) !== JSON.stringify(letter.information_block_ids || []) ||
-    editedLetter.letter_date !== letter.letter_date || editedLetter.status !== letter.status ||
-    showPagination !== (letter.show_pagination || false)
-  );
 
   const substitutedBlocks = useMemo(() => {
     if (!currentTemplate) return { canvasBlocks: {}, lineBlocks: {} };
@@ -329,11 +358,6 @@ const LetterEditor: React.FC<LetterEditorProps> = ({ letter, isOpen, onClose, on
     return ls;
   };
 
-  const toSerializedContentNodes = (nodes: LetterContentNodes | undefined): string | undefined => {
-    if (!nodes) return undefined;
-    return typeof nodes === 'string' ? nodes : JSON.stringify(nodes);
-  };
-
   const layoutTemplate: import('@/types/letterLayout').LetterLayoutTemplateLike | undefined = currentTemplate
     ? {
         layout_settings: currentTemplate.layout_settings ?? undefined,
@@ -347,6 +371,56 @@ const LetterEditor: React.FC<LetterEditorProps> = ({ letter, isOpen, onClose, on
       }
     : undefined;
 
+  /**
+   * Schreibt sofort, statt den Autosave-Timer abzuwarten: ausstehende
+   * Editor-Änderungen werden zuerst in den Stand übernommen (Flush).
+   */
+  const saveLetter = useCallback(async () => {
+    if (saveTimeoutRef.current) clearTimeout(saveTimeoutRef.current);
+    if (liveSyncTimerRef.current) clearTimeout(liveSyncTimerRef.current);
+    const content = (draftInitializedRef.current ? draftContent : latestContentRef.current.content) ?? '';
+    const contentNodes = draftInitializedRef.current ? draftContentNodes : latestContentRef.current.contentNodes;
+    const contentHtml = draftInitializedRef.current ? draftContentHtml : editedLetter.content_html;
+    latestContentRef.current = { content, contentNodes: contentNodes ?? null };
+    const ok = await handleManualSave(content, toSerializedContentNodes(contentNodes ?? undefined), contentHtml ?? undefined);
+    if (ok) markSavedBaseline({ content, content_nodes: contentNodes ?? null, content_html: contentHtml ?? undefined });
+    return ok;
+  }, [draftContent, draftContentNodes, draftContentHtml, editedLetter.content_html, handleManualSave, markSavedBaseline, toSerializedContentNodes]);
+
+  const finishClose = useCallback(() => {
+    if (saveTimeoutRef.current) clearTimeout(saveTimeoutRef.current);
+    if (liveSyncTimerRef.current) clearTimeout(liveSyncTimerRef.current);
+    setClosePrompt(null);
+    setIsClosing(false);
+    onClose();
+  }, [onClose]);
+
+  /** Schließen: ungespeicherte Änderungen werden nicht stillschweigend verworfen. */
+  const requestClose = useCallback(() => {
+    if (isClosing) return;
+    if (!isDirty) { finishClose(); return; }
+    setClosePrompt('close');
+  }, [finishClose, isClosing, isDirty]);
+
+  /** Verwerfen: bewusst ohne Schreiben schließen. */
+  const requestDiscard = useCallback(() => {
+    if (isClosing) return;
+    if (!isDirty) { finishClose(); return; }
+    setClosePrompt('discard');
+  }, [finishClose, isClosing, isDirty]);
+
+  const saveAndClose = useCallback(async () => {
+    setIsClosing(true);
+    const ok = await saveLetter();
+    if (!ok) { setIsClosing(false); return; }
+    finishClose();
+  }, [finishClose, saveLetter]);
+
+  const discardAndClose = useCallback(() => {
+    if (saveTimeoutRef.current) clearTimeout(saveTimeoutRef.current);
+    finishClose();
+  }, [finishClose]);
+
   if (!isOpen) return null;
 
   return (
@@ -359,7 +433,10 @@ const LetterEditor: React.FC<LetterEditorProps> = ({ letter, isOpen, onClose, on
         canEdit={canEdit}
         saving={saving}
         lastSaved={lastSaved}
-        hasUnsavedChanges={!!hasUnsavedChanges}
+        hasUnsavedChanges={isDirty}
+        closing={isClosing}
+        onClose={requestClose}
+        onDiscard={requestDiscard}
         activeUsers={activeUsers}
         showDINPreview={showDINPreview}
         setShowDINPreview={setShowDINPreview}
@@ -369,10 +446,7 @@ const LetterEditor: React.FC<LetterEditorProps> = ({ letter, isOpen, onClose, on
           if (mode === 'page') setShowTextSplitEditor(true);
           setViewMode(mode);
         }}
-        onSave={() => void handleManualSave(
-          latestContentRef.current.content,
-          toSerializedContentNodes(latestContentRef.current.contentNodes ?? undefined),
-        )}
+        onSave={() => void saveLetter()}
         zoom={previewZoom}
         onZoomChange={setPreviewZoom}
         showBriefDetails={showBriefDetails}
@@ -530,6 +604,30 @@ const LetterEditor: React.FC<LetterEditorProps> = ({ letter, isOpen, onClose, on
         <UserAssignmentDialog isOpen={showWriterDialog} onClose={() => setShowWriterDialog(false)} letterId={letter?.id || ''} role="writer"
           onAssignmentComplete={() => { fetchCollaborators(); setShowWriterDialog(false); }} />
       )}
+
+      {/* Dirty-Guard: Schließen und Verwerfen fragen nach, statt Tippen zu verlieren. */}
+      <AlertDialog open={closePrompt !== null} onOpenChange={(open) => { if (!open && !isClosing) setClosePrompt(null); }}>
+        <AlertDialogContent>
+          <AlertDialogHeader>
+            <AlertDialogTitle>Änderungen sind noch nicht gespeichert</AlertDialogTitle>
+            <AlertDialogDescription>
+              {closePrompt === 'discard'
+                ? 'Ihre Änderungen werden verworfen und der Editor geschlossen.'
+                : 'Beim Schließen bleiben Ihre Änderungen nur erhalten, wenn Sie sie vorher speichern.'}
+            </AlertDialogDescription>
+          </AlertDialogHeader>
+          <AlertDialogFooter>
+            <AlertDialogCancel disabled={isClosing}>Weiter bearbeiten</AlertDialogCancel>
+            <Button variant="destructive" onClick={discardAndClose} disabled={isClosing}>Verwerfen</Button>
+            <AlertDialogAction
+              disabled={isClosing || saving}
+              onClick={(event) => { event.preventDefault(); void saveAndClose(); }}
+            >
+              {isClosing ? 'Speichert…' : 'Speichern und schließen'}
+            </AlertDialogAction>
+          </AlertDialogFooter>
+        </AlertDialogContent>
+      </AlertDialog>
     </div>
   );
 };

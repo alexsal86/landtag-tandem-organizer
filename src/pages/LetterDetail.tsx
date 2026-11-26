@@ -107,7 +107,9 @@ const LetterDetail = () => {
           } as import('@/components/letters/types').Letter}
           isOpen
           onClose={handleBackToLetters}
-          onSave={fetchLetter}
+          // Nach dem Speichern nicht neu laden: das würde den Editor mitten im
+          // Bearbeiten neu hydrieren. Die Seite lädt beim Zurückkehren ohnehin neu.
+          onSave={() => undefined}
         />
       </div>
     </div>

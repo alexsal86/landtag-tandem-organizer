@@ -602,9 +602,8 @@ const LettersView: React.FC = () => {
           fetchLetters();
         }}
         onSave={() => {
+          // Speichern aktualisiert nur die Liste; der Editor bleibt offen.
           fetchLetters();
-          setIsEditorOpen(false);
-          setSelectedLetter(null);
         }}
       />
 

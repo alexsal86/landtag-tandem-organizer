@@ -413,7 +413,7 @@
       "id": "letters.create",
       "subarea": "Briefe",
       "name": "Brief erstellen und bearbeiten",
-      "description": "Erstellt Briefe im Lexical-Editor mit DIN-5008-Layout, direkt auf dem Blatt beschreibbarem Briefkopf (Empfänger, Betreff, Anrede), Adressen, Vorlagen und Anlagen; die Blattvorschau setzt den Fließtext auf das gespeicherte Zeilenraster (layout.content.lineHeight) und denselben Absatzabstand wie der PDF-Export und paginiert ohne leere Folgeseite.",
+      "description": "Erstellt Briefe im Lexical-Editor mit DIN-5008-Layout, direkt auf dem Blatt beschreibbarem Briefkopf (Empfänger, Betreff, Anrede), Adressen, Vorlagen und Anlagen; die Blattvorschau setzt den Fließtext auf das gespeicherte Zeilenraster (layout.content.lineHeight) und denselben Absatzabstand wie der PDF-Export und paginiert ohne leere Folgeseite. Speichern schreibt den Brief und lässt den Editor offen; Schließen und Verwerfen sind eigene Aktionen, die bei ungespeicherten Änderungen nachfragen.",
       "category": "fachlich",
       "implementationStatus": "implementiert",
       "integrationStatus": "rollenabhaengig",
@@ -450,7 +450,12 @@
       "unitTests": [
         "src/components/letters/__tests__/types.test.ts",
         "src/components/letters/din5008/headerMetrics.test.ts",
-        "src/components/letters/din5008/pagination.test.ts"
+        "src/components/letters/din5008/pagination.test.ts",
+        "src/components/letters/hooks/useLetterOperations.integration.test.tsx"
+      ],
+      "limitations": [
+        "Der Dirty-Guard vergleicht den geladenen Stand mit einem Snapshot der Editor-Felder; Änderungen außerhalb des Editors (z. B. Revisionsfelder) lösen keine Rückfrage aus.",
+        "Nach dem Speichern wird der gespeicherte Stand zur neuen Vergleichsbasis, sonst würde jede Schließung nachfragen."
       ],
       "docs": [
         "docs/workflow-consistency.md"

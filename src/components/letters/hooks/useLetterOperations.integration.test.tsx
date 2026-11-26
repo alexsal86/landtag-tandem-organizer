@@ -95,6 +95,23 @@ function renderWorkflow(status: Letter['status'], overrides: Partial<Letter> = {
   return { hook, state: () => state };
 }
 
+function renderSaving(letter: Letter | undefined, content = 'Hallo Welt') {
+  let state: Partial<Letter> = letter ? { ...letter } : { title: 'Neuer Brief', content, status: 'draft' };
+  const setEditedLetter: React.Dispatch<React.SetStateAction<Partial<Letter>>> = update => {
+    state = typeof update === 'function' ? update(state) : update;
+  };
+  const onSave = vi.fn();
+  const { result } = renderHook(() => useLetterOperations({
+    letter, editedLetter: state, setEditedLetter, canEdit: true,
+    userId: 'user-1', tenantId: 'tenant-1', showPagination: false,
+    latestContentRef: { current: { content, contentNodes: null } },
+    isUpdatingFromRemoteRef: { current: false }, pendingMentionsRef: { current: new Set<string>() },
+    onSave, setSaving: vi.fn(), setLastSaved: vi.fn(), setIsProofreadingMode: vi.fn(),
+    setShowAssignmentDialog: vi.fn(), fetchComments: vi.fn(), fetchCollaborators: vi.fn(), senderInfos: [], informationBlocks: [],
+  }));
+  return { result, state: () => state, onSave };
+}
+
 describe('useLetterOperations integration', () => {
   beforeEach(() => {
     mockSupabaseClient.reset();
@@ -159,6 +176,39 @@ describe('useLetterOperations integration', () => {
     expect(flow.state().status).toBe('approved');
     expect(flow.state().workflow_locked).toBe(false);
     expect(toastSpy).not.toHaveBeenCalledWith(expect.objectContaining({ title: 'Brief versendet und archiviert' }));
+  });
+
+  it('meldet ein erfolgreiches Speichern als true, ohne den Editor zu schließen', async () => {
+    const flow = renderSaving(baseLetter);
+    let saved: boolean | undefined;
+    await act(async () => { saved = await flow.result.current.handleManualSave(); });
+
+    expect(saved).toBe(true);
+    expect(flow.onSave).toHaveBeenCalledTimes(1);
+  });
+
+  it('übernimmt die ID eines neu angelegten Briefs, damit er nicht doppelt entsteht', async () => {
+    mockSupabaseClient.setTableResult('letters', {
+      data: { id: 'letter-new', status: 'draft', created_at: '2024-01-01T00:00:00.000Z', updated_at: '2024-01-01T00:00:00.000Z' },
+      error: null,
+    });
+    const flow = renderSaving(undefined);
+    let saved: boolean | undefined;
+    await act(async () => { saved = await flow.result.current.handleManualSave(); });
+
+    expect(saved).toBe(true);
+    expect(flow.state().id).toBe('letter-new');
+  });
+
+  it('meldet ein fehlgeschlagenes Speichern als false, damit der Editor offen bleibt', async () => {
+    mockSupabaseClient.setTableResult('letters', { data: null, error: new Error('Datenbank nicht erreichbar') });
+    const flow = renderSaving(baseLetter);
+    let saved: boolean | undefined;
+    await act(async () => { saved = await flow.result.current.handleManualSave(); });
+
+    expect(saved).toBe(false);
+    expect(flow.onSave).not.toHaveBeenCalled();
+    expect(toastSpy).toHaveBeenCalledWith(expect.objectContaining({ title: 'Fehler beim Speichern' }));
   });
 
   it('covers the approved -> sent -> archived flow and stores archive metadata', async () => {

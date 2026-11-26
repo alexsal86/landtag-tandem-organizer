@@ -551,7 +551,7 @@ Schlägt bei geänderter Dateiversion einen eindeutigen Textanker vor und verlan
 - Keine.
 
 ### `letters.create` — Brief erstellen und bearbeiten
-Erstellt Briefe im Lexical-Editor mit DIN-5008-Layout, direkt auf dem Blatt beschreibbarem Briefkopf (Empfänger, Betreff, Anrede), Adressen, Vorlagen und Anlagen; die Blattvorschau setzt den Fließtext auf das gespeicherte Zeilenraster (layout.content.lineHeight) und denselben Absatzabstand wie der PDF-Export und paginiert ohne leere Folgeseite.
+Erstellt Briefe im Lexical-Editor mit DIN-5008-Layout, direkt auf dem Blatt beschreibbarem Briefkopf (Empfänger, Betreff, Anrede), Adressen, Vorlagen und Anlagen; die Blattvorschau setzt den Fließtext auf das gespeicherte Zeilenraster (layout.content.lineHeight) und denselben Absatzabstand wie der PDF-Export und paginiert ohne leere Folgeseite. Speichern schreibt den Brief und lässt den Editor offen; Schließen und Verwerfen sind eigene Aktionen, die bei ungespeicherten Änderungen nachfragen.
 
 - **Kategorie:** fachlich
 - **Implementierung:** implementiert
@@ -568,7 +568,7 @@ Erstellt Briefe im Lexical-Editor mit DIN-5008-Layout, direkt auf dem Blatt besc
 - **Tabellen:** `letters`, `letter_template_settings`, `letter_attachments`
 - **Abhängigkeiten:** —
 - **Selbsttests:** —
-- **Unit-Tests:** `src/components/letters/__tests__/types.test.ts`, `src/components/letters/din5008/headerMetrics.test.ts`, `src/components/letters/din5008/pagination.test.ts`
+- **Unit-Tests:** `src/components/letters/__tests__/types.test.ts`, `src/components/letters/din5008/headerMetrics.test.ts`, `src/components/letters/din5008/pagination.test.ts`, `src/components/letters/hooks/useLetterOperations.integration.test.tsx`
 - **Integrationstests:** —
 - **Browser-Tests:** —
 - **Dokumentation:** `docs/workflow-consistency.md`
@@ -581,7 +581,8 @@ Erstellt Briefe im Lexical-Editor mit DIN-5008-Layout, direkt auf dem Blatt besc
 
 **Bekannte Einschränkungen**
 
-- Keine.
+- Der Dirty-Guard vergleicht den geladenen Stand mit einem Snapshot der Editor-Felder; Änderungen außerhalb des Editors (z. B. Revisionsfelder) lösen keine Rückfrage aus.
+- Nach dem Speichern wird der gespeicherte Stand zur neuen Vergleichsbasis, sonst würde jede Schließung nachfragen.
 
 **Offene Prüfpunkte**
 

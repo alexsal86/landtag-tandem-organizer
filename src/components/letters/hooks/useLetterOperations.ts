@@ -46,8 +46,11 @@ export function useLetterOperations(opts: UseLetterOperationsOptions) {
     // Yjs handles all real-time synchronization
   }, []);
 
-  const handleAutoSave = useCallback(async (immediateContent?: string, immediateContentNodes?: string) => {
-    if (!canEdit || isUpdatingFromRemoteRef.current || !letter?.id) return;
+  /** Gibt `true` zurück, wenn der Datensatz wirklich geschrieben wurde. */
+  const handleAutoSave = useCallback(async (immediateContent?: string, immediateContentNodes?: string): Promise<boolean> => {
+    // Ein neu angelegter Brief lebt nach dem ersten Speichern ohne neues `letter`-Prop weiter.
+    const targetId = letter?.id ?? editedLetter.id;
+    if (!canEdit || isUpdatingFromRemoteRef.current || !targetId) return false;
 
     const contentToSave = immediateContent !== undefined ? immediateContent : latestContentRef.current.content || editedLetter.content;
     const contentNodesToSave = immediateContentNodes !== undefined ? immediateContentNodes : latestContentRef.current.contentNodes || editedLetter.content_nodes;
@@ -56,7 +59,7 @@ export function useLetterOperations(opts: UseLetterOperationsOptions) {
       debugConsole.error('Detected corrupted content, aborting save');
       notify.error('Inhalt beschädigt', { description: 'Der Inhalt scheint beschädigt zu sein. Bitte laden Sie die Seite neu.', duration: 5000 
 });
-      return;
+      return false;
     }
 
     setSaving(true);
@@ -84,33 +87,37 @@ export function useLetterOperations(opts: UseLetterOperationsOptions) {
           closing_name: editedLetter.closing_name || null,
           updated_at: new Date().toISOString(),
         })
-        .eq('id', letter.id);
+        .eq('id', targetId);
       if (error) throw error;
       setLastSaved(new Date());
+      return true;
     } catch (error) {
       debugConsole.error('Error auto-saving letter:', error);
       notify.error('Auto-Speichern fehlgeschlagen', { description: 'Änderungen konnten nicht gespeichert werden.', duration: 3000 
 });
+      return false;
     } finally {
       setTimeout(() => setSaving(false), 200);
     }
   }, [canEdit, letter?.id, editedLetter, showPagination, latestContentRef, isUpdatingFromRemoteRef, setSaving, setLastSaved, toast]);
 
-  const handleManualSave = useCallback(async (immediateContent?: string, immediateContentNodes?: string) => {
-    if (!canEdit || !tenantId || !userId) return;
+  /** Speichert den Brief und meldet, ob der Schreibvorgang geklappt hat. */
+  const handleManualSave = useCallback(async (immediateContent?: string, immediateContentNodes?: string, immediateContentHtml?: string): Promise<boolean> => {
+    if (!canEdit || !tenantId || !userId) return false;
 
     const contentToSave = immediateContent !== undefined ? immediateContent : (latestContentRef.current.content || editedLetter.content || '');
     const contentNodesToSave = immediateContentNodes !== undefined ? immediateContentNodes : (latestContentRef.current.contentNodes || editedLetter.content_nodes || null);
+    const targetId = letter?.id ?? editedLetter.id;
 
     setSaving(true);
     try {
-      if (letter?.id) {
+      if (targetId) {
         const { error } = await supabase
           .from('letters')
           .update({
             title: editedLetter.title,
             content: contentToSave,
-            content_html: editedLetter.content_html,
+            content_html: immediateContentHtml ?? editedLetter.content_html,
             content_nodes: contentNodesToSave,
             recipient_name: editedLetter.recipient_name,
             recipient_address: editedLetter.recipient_address,
@@ -124,17 +131,19 @@ export function useLetterOperations(opts: UseLetterOperationsOptions) {
             status: editedLetter.status,
             updated_at: new Date().toISOString(),
           })
-          .eq('id', letter.id);
+          .eq('id', targetId);
         if (error) throw error;
       } else {
-        const { error } = await supabase
+        // Die neue ID wird sofort übernommen, damit ein zweiter Klick auf
+        // "Speichern" aktualisiert statt einen zweiten Brief anzulegen.
+        const { data: created, error } = await supabase
           .from('letters')
           .insert([{
             tenant_id: tenantId,
             created_by: userId,
             title: editedLetter.title || 'Neuer Brief',
             content: contentToSave || '',
-            content_html: editedLetter.content_html || '',
+            content_html: immediateContentHtml ?? editedLetter.content_html ?? '',
             content_nodes: contentNodesToSave,
             recipient_name: editedLetter.recipient_name,
             recipient_address: editedLetter.recipient_address,
@@ -147,8 +156,11 @@ export function useLetterOperations(opts: UseLetterOperationsOptions) {
             letter_date: editedLetter.letter_date,
             status: editedLetter.status || 'draft',
             show_pagination: showPagination,
-          }]);
+          }])
+          .select('id, status, created_at, updated_at')
+          .single();
         if (error) throw error;
+        if (created) setEditedLetter(prev => ({ ...prev, ...(created as unknown as Partial<Letter>) }));
       }
 
       setLastSaved(new Date());
@@ -175,14 +187,16 @@ export function useLetterOperations(opts: UseLetterOperationsOptions) {
       onSave();
       notify.success('Brief gespeichert', { description: 'Ihre Änderungen wurden erfolgreich gespeichert.' 
 });
+      return true;
     } catch (error) {
       debugConsole.error('Error saving letter:', error);
       notify.error('Fehler beim Speichern', { description: 'Der Brief konnte nicht gespeichert werden.'
 });
+      return false;
     } finally {
       setSaving(false);
     }
-  }, [canEdit, tenantId, userId, letter?.id, editedLetter, showPagination, latestContentRef, pendingMentionsRef, setSaving, setLastSaved, onSave, toast]);
+  }, [canEdit, tenantId, userId, letter?.id, editedLetter, setEditedLetter, showPagination, latestContentRef, pendingMentionsRef, setSaving, setLastSaved, onSave, toast]);
 
   const handleStatusTransition = useCallback(async (newStatus: string) => {
     if (!canTransitionStatus(editedLetter.status || 'draft', newStatus)) {

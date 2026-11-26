@@ -23,7 +23,7 @@ Der Katalog ist das führende Verzeichnis des tatsächlich implementierten Funkt
 | Funktionen mit Security-Test | 1 |
 | Funktionen ohne zugeordneten Test | 121 |
 | Funktionen ohne Dokumentationsverweis | 167 |
-| Funktionen mit bekannten Einschränkungen | 54 |
+| Funktionen mit bekannten Einschränkungen | 55 |
 | Nicht nachweisbar eingebundene Funktionen | 1 |
 | Technische Zuordnungen | 1269 |
 

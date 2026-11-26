@@ -1,6 +1,6 @@
 import React from 'react';
 import { Tooltip, TooltipContent, TooltipProvider, TooltipTrigger } from '@/components/ui/tooltip';
-import { Save, Users, Eye, AlertTriangle, FileText, MessageSquare, Paperclip, Settings, Layout, Building, Info, ZoomIn, ZoomOut, RotateCcw, UserPlus } from 'lucide-react';
+import { Save, Users, Eye, AlertTriangle, FileText, MessageSquare, Paperclip, Settings, Layout, Building, Info, ZoomIn, ZoomOut, RotateCcw, UserPlus, Undo2, X } from 'lucide-react';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
 import { Textarea } from '@/components/ui/textarea';
@@ -33,6 +33,9 @@ interface LetterEditorToolbarProps {
   viewMode: 'page' | 'split';
   onViewModeChange: (mode: 'page' | 'split') => void;
   onSave: () => void;
+  onClose: () => void;
+  onDiscard: () => void;
+  closing?: boolean;
   zoom: number;
   onZoomChange: (zoom: number) => void;
   showBriefDetails: boolean;
@@ -54,7 +57,7 @@ export const LetterEditorToolbar: React.FC<LetterEditorToolbarProps> = React.mem
   saving, lastSaved, hasUnsavedChanges, activeUsers,
   showDINPreview, setShowDINPreview, showBriefDetails, setShowBriefDetails,
   showPagination, setShowPagination, zoom, onZoomChange,
-  onManageCollaborators, viewMode, onViewModeChange, onSave,
+  onManageCollaborators, viewMode, onViewModeChange, onSave, onClose, onDiscard, closing,
   attachments, fetchAttachments, senderInfos, informationBlocks, templates,
   computedSalutation, onTemplateChange, onAutoSaveSchedule,
 }) => {
@@ -279,8 +282,14 @@ export const LetterEditorToolbar: React.FC<LetterEditorToolbarProps> = React.mem
             <Button variant="outline" size="sm" onClick={() => {}}>
               <MessageSquare className="h-4 w-4 mr-2" />Kommentare
             </Button>
-            <Button variant="default" size="sm" disabled={!canEdit || saving} onClick={onSave}>
+            <Button variant="outline" size="sm" disabled={!canEdit || saving || closing} onClick={onDiscard}>
+              <Undo2 className="h-4 w-4 mr-2" />Verwerfen
+            </Button>
+            <Button variant="default" size="sm" disabled={!canEdit || saving || closing} onClick={onSave}>
               <Save className="h-4 w-4 mr-2" />Speichern
+            </Button>
+            <Button variant="ghost" size="sm" disabled={closing} onClick={onClose} title="Editor schließen">
+              <X className="h-4 w-4 mr-2" />Schließen
             </Button>
           </div>
         </div>
