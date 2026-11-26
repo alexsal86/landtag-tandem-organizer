@@ -170,10 +170,12 @@ export default function SocialPlannerEditPanel({ item, open, scrollRequest = 0, 
   }, [draftText, selectedChannels]);
 
   const uploadImageBlob = useCallback(async (blob: Blob, ext: string) => {
+    // Der Bucket "documents" verlangt die Benutzer-ID als ersten Pfadabschnitt.
+    if (!user?.id) { notify.error("Upload fehlgeschlagen", { description: "Anmeldung erforderlich." }); return; }
     setUploadingImage(true);
     try {
       const fileName = `${Date.now()}-${Math.random().toString(36).slice(2)}.${ext}`;
-      const filePath = `${user?.id}/planner-images/${fileName}`;
+      const filePath = `${user.id}/planner-images/${fileName}`;
       const { error: uploadError } = await supabase.storage.from("documents").upload(filePath, blob, { contentType: blob.type || undefined });
       if (uploadError) throw uploadError;
       const { data } = supabase.storage.from("documents").getPublicUrl(filePath);

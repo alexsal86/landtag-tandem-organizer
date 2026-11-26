@@ -3,6 +3,7 @@ import { Paperclip, Send, Loader2 } from "lucide-react";
 import { useCreateEntry } from "@/features/dossiers/hooks/useDossierEntries";
 import { supabase } from "@/integrations/supabase/client";
 import { useTenant } from "@/hooks/useTenant";
+import { useAuth } from "@/hooks/useAuth";
 import { useCurrentProfileId } from "@/hooks/useCurrentProfileId";
 import { isEmailFile, isEmlFile, isMsgFile, parseEmlFile, parseMsgFile, buildEmlFromOutlookHtml } from "@/utils/emlParser";
 import { notify } from "@/lib/notify";
@@ -16,6 +17,7 @@ export function NavDossierCapture() {
   const fileRef = useRef<HTMLInputElement>(null);
   const createEntry = useCreateEntry();
   const { currentTenant } = useTenant();
+  const { user } = useAuth();
   const profileId = useCurrentProfileId();
 
   const isPending = createEntry.isPending || uploading;
@@ -40,7 +42,7 @@ export function NavDossierCapture() {
   }, [text, createEntry]);
 
   const processFile = useCallback(async (file: File) => {
-    if (!currentTenant?.id || !profileId) return;
+    if (!currentTenant?.id || !profileId || !user?.id) return;
     setUploading(true);
     try {
       if (isEmailFile(file)) {
@@ -52,7 +54,7 @@ export function NavDossierCapture() {
           const parsed = await parseMsgFile(file);
           metadata = { subject: parsed.metadata.subject, from: parsed.metadata.from, to: parsed.metadata.to, date: parsed.metadata.date };
         }
-        const path = `${currentTenant.id}/dossiers/${crypto.randomUUID()}/${file.name}`;
+        const path = `${user.id}/dossiers/${crypto.randomUUID()}/${file.name}`;
         const { error: uploadError } = await supabase.storage.from("documents").upload(path, file);
         if (uploadError) throw uploadError;
         createEntry.mutate({
@@ -64,7 +66,7 @@ export function NavDossierCapture() {
           metadata,
         });
       } else {
-        const path = `${currentTenant.id}/dossiers/${crypto.randomUUID()}/${file.name}`;
+        const path = `${user.id}/dossiers/${crypto.randomUUID()}/${file.name}`;
         const { error: uploadError } = await supabase.storage.from("documents").upload(path, file);
         if (uploadError) throw uploadError;
         createEntry.mutate({
@@ -80,7 +82,7 @@ export function NavDossierCapture() {
     } finally {
       setUploading(false);
     }
-  }, [currentTenant?.id, profileId, createEntry]);
+  }, [currentTenant?.id, user?.id, profileId, createEntry]);
 
   const handleFileChange = useCallback((e: React.ChangeEvent<HTMLInputElement>) => {
     const file = e.target.files?.[0];
@@ -109,7 +111,7 @@ export function NavDossierCapture() {
             to: parsed.metadata.to,
             date: parsed.metadata.date,
           };
-          if (!currentTenant?.id || !profileId) return;
+          if (!currentTenant?.id || !profileId || !user?.id) return;
           createEntry.mutate({
             dossier_id: null,
             entry_type: "email",
@@ -136,7 +138,7 @@ export function NavDossierCapture() {
         }
       }
     }
-  }, [currentTenant?.id, profileId, createEntry, processFile]);
+  }, [currentTenant?.id, user?.id, profileId, createEntry, processFile]);
 
   return (
     <div

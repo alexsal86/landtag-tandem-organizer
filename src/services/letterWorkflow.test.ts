@@ -48,6 +48,19 @@ describe("Gemeinsamer Brief-Workflow", () => {
   it("behält Bearbeitungshistorie bei gesperrtem Workflow", () => {
     expect(letterTransitionUpdates("approved", "sent", "sender", true)).not.toHaveProperty("sent_by");
   });
+  it("legt Briefanlagen im Benutzerordner ab, damit die Storage-Policy sie annimmt", async () => {
+    const track = vi.fn();
+    const file = new File(["Inhalt"], "anlage.txt", { type: "text/plain" });
+    const attachment = await uploadLetterAttachment(file, "letter-1", "user-1", track);
+    const [path] = mock.upload.mock.calls[0];
+    // Regression: der Bucket "documents" verlangt auth.uid() als ersten Pfadabschnitt.
+    expect(path.split("/")[0]).toBe("user-1");
+    expect(path).toMatch(/^user-1\/letter-1\/[0-9a-f-]{36}_anlage\.txt$/);
+    expect(mock.upload).toHaveBeenCalledWith(path, file);
+    expect(track).toHaveBeenCalledWith(path);
+    expect(mock.insert).toHaveBeenCalledWith(expect.objectContaining({ letter_id: "letter-1", file_path: path, uploaded_by: "user-1" }));
+    expect(attachment).toEqual({ id: "attachment" });
+  });
   it("registriert einen Upload vor dem Datenbankeintrag und räumt bei INSERT-Fehler auf", async () => {
     const track = vi.fn();
     mock.single.mockResolvedValue({ data: null, error: new Error("INSERT fehlgeschlagen") });

@@ -80,9 +80,11 @@ export function useExpenseData() {
   };
 
   const uploadReceipt = async (file: File): Promise<string | null> => {
+    // Der Bucket "documents" verlangt die Benutzer-ID als ersten Pfadabschnitt.
+    if (!user?.id) { notify.error("Fehler", { description: "Beleg-Upload ohne Anmeldung nicht möglich" }); return null; }
     const fileExt = file.name.split('.').pop();
     const fileName = `${Date.now()}.${fileExt}`;
-    const filePath = `${user?.id}/receipts/${fileName}`;
+    const filePath = `${user.id}/receipts/${fileName}`;
     const { error } = await supabase.storage.from('documents').upload(filePath, file);
     if (error) { notify.error("Fehler", { description: `Beleg konnte nicht hochgeladen werden: ${error.message}`
 }); return null; }

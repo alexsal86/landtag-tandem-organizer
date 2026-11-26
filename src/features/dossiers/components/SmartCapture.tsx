@@ -6,6 +6,7 @@ import { Paperclip, Send, ChevronDown, ChevronUp, Loader2, Mail } from "lucide-r
 import { useCreateEntry } from "../hooks/useDossierEntries";
 import { supabase } from "@/integrations/supabase/client";
 import { useTenant } from "@/hooks/useTenant";
+import { useAuth } from "@/hooks/useAuth";
 import { useCurrentProfileId } from "@/hooks/useCurrentProfileId";
 import { isEmailFile, isEmlFile, isMsgFile, parseEmlFile, parseMsgFile, buildEmlFromOutlookHtml } from "@/utils/emlParser";
 import { notify } from "@/lib/notify";
@@ -23,6 +24,7 @@ export function SmartCapture({ dossierId = null }: SmartCaptureProps) {
   const fileRef = useRef<HTMLInputElement>(null);
   const createEntry = useCreateEntry();
   const { currentTenant } = useTenant();
+  const { user } = useAuth();
   const profileId = useCurrentProfileId();
 
   const isPending = createEntry.isPending || uploading;
@@ -50,7 +52,7 @@ export function SmartCapture({ dossierId = null }: SmartCaptureProps) {
 
   const handleFileUpload = useCallback(async (e: React.ChangeEvent<HTMLInputElement>) => {
     const file = e.target.files?.[0];
-    if (!file || !currentTenant?.id || !profileId) return;
+    if (!file || !currentTenant?.id || !profileId || !user?.id) return;
     setUploading(true);
     try {
       // Check for email files
@@ -63,7 +65,7 @@ export function SmartCapture({ dossierId = null }: SmartCaptureProps) {
           const parsed = await parseMsgFile(file);
           metadata = { subject: parsed.metadata.subject, from: parsed.metadata.from, to: parsed.metadata.to, date: parsed.metadata.date };
         }
-        const path = `${currentTenant.id}/dossiers/${crypto.randomUUID()}/${file.name}`;
+        const path = `${user.id}/dossiers/${crypto.randomUUID()}/${file.name}`;
         const { error: uploadError } = await supabase.storage.from("documents").upload(path, file);
         if (uploadError) throw uploadError;
         createEntry.mutate({
@@ -75,7 +77,7 @@ export function SmartCapture({ dossierId = null }: SmartCaptureProps) {
           metadata,
         });
       } else {
-        const path = `${currentTenant.id}/dossiers/${crypto.randomUUID()}/${file.name}`;
+        const path = `${user.id}/dossiers/${crypto.randomUUID()}/${file.name}`;
         const { error: uploadError } = await supabase.storage.from("documents").upload(path, file);
         if (uploadError) throw uploadError;
         createEntry.mutate({
@@ -92,7 +94,7 @@ export function SmartCapture({ dossierId = null }: SmartCaptureProps) {
       setUploading(false);
       e.target.value = "";
     }
-  }, [dossierId, currentTenant?.id, profileId, createEntry]);
+  }, [dossierId, currentTenant?.id, user?.id, profileId, createEntry]);
 
   // Handle Outlook paste
   const handlePaste = useCallback(async (e: React.ClipboardEvent) => {
