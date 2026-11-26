@@ -95,8 +95,8 @@ Diese Schritte führen die Szenarien aus; „letzter Lauf“ stammt aus `src/fea
 | `case-item-lifecycle` | `tenant-boundary` | Vorgang lässt sich keinem fremden Büro zuordnen | workflow | — |
 | `parlis` | `parlis-groups` | Monate, Schlagwörter und fehlende Ressorts korrekt zuordnen | logic | — |
 | `parlis` | `parlis-inline-authors` | Urhebernamen mit Titeln und Namensbestandteilen im Originaltext verlinken | logic | — |
-| `parlis` | `parlis-document-groups` | Tagesgruppen, Schlagwörter und Fraktionen berücksichtigen | logic | — |
-| `parlis` | `parlis-import-readable` | Import der 18. Wahlperiode ist lesbar | db | — |
+| `parlis` | `parlis-author-presentation` | Parteien ohne Klammern und mehrere Urheber erkennen | logic | — |
+| `parlis` | `parlis-import-readable` | Importe der 17. und 18. Wahlperiode sind lesbar | db | — |
 | `parlis` | `parlis-deputy-profile` | Weirauchs Anfrage aus Drucksache 18/763 führt zum Abgeordnetenprofil | db | — |
 
 ## Deklarierter Prüfumfang
@@ -123,7 +123,7 @@ Diese Schritte führen die Szenarien aus; „letzter Lauf“ stammt aus `src/fea
 
 ### `parlis`
 
-1. Tagesgruppen, Schlagwörter und Fraktionsfilter
+1. Schlagwörter, Fraktionsfilter und mehrere Urheber
 2. Urhebertext mit Titeln und Namensbestandteilen bleibt vollständig
 3. Monatsgruppierung, eindeutige Schlagwörter und leere Ressorts
 4. Importierte Vorgänge sind lesbar
@@ -742,7 +742,7 @@ Erfasst interne Notizen an einer Fallakte und zeigt sie im Verlauf; das Szenario
 - Keine.
 
 ### `parlis.proceedings` — Parlamentarische Vorgänge auswerten
-Lädt die Vorgänge der 18. Wahlperiode des Landtags Baden-Württemberg aus der Datenbank, gruppiert sie nach Datum und Merkmalen und verlinkt die Originaldokumente und verbindet namentlich zugeordnete Urheber über Mandate mit ihren Abgeordnetenprofilen. Zeigt Karten nach Datum und bietet Suche, Sortierung und Filter nach Typ, Fraktion, Zeitraum und Schlagwort. Urheberlinks verwenden den vollständigen Namen aus der Quelle und Parteikürzel werden farblich markiert.
+Lädt die Vorgänge der 17. und 18. Wahlperiode des Landtags Baden-Württemberg aus der Datenbank, gruppiert sie nach Datum und Merkmalen und verlinkt die Originaldokumente und verbindet namentlich zugeordnete Urheber über Mandate mit ihren Abgeordnetenprofilen. Zeigt das Datum direkt auf der Dokumentenkarte und bietet Suche, Sortierung und Filter nach Typ, Fraktion, Zeitraum und Schlagwort. Urheberlinks verwenden den vollständigen Namen aus der Quelle und Parteikürzel werden farblich markiert.
 
 - **Kategorie:** fachlich
 - **Implementierung:** implementiert
@@ -769,6 +769,7 @@ Lädt die Vorgänge der 18. Wahlperiode des Landtags Baden-Württemberg aus der 
 - supabase/migrations/20261127140000_create_parlis_proceedings.sql
 - supabase/migrations/20261127141000_import_parlis_wp18.sql
 - supabase/migrations/20261127143000_link_parlis_deputy_mandates.sql
+- supabase/migrations/20261127144000_import_parlis_wp17.sql
 - src/features/parlis/grouping.ts
 - src/features/parlis/authors.ts
 - src/features/parlis/documents.ts

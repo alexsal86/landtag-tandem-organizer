@@ -1,5 +1,5 @@
-import { dateGroups, documentParties, keywords, type Proceeding } from "@/features/parlis/documents";
-import { authorSegments } from "@/features/parlis/authors";
+import { documentParties, keywords } from "@/features/parlis/documents";
+import { authorSegments, hasMultipleAuthors } from "@/features/parlis/authors";
 import { groupsFor } from "@/features/parlis/grouping";
 import { supabase } from "@/integrations/supabase/client";
 import type { TestScenario } from "../types";
@@ -10,7 +10,7 @@ export const parlisScenario: TestScenario = {
   description: "Prüft die Gruppierung und den Lesezugriff auf die Parlamentsdokumentation.",
   features: ["parlis.proceedings"],
   touches: [],
-  checks: ["Tagesgruppen, Schlagwörter und Fraktionsfilter", "Urhebertext mit Titeln und Namensbestandteilen bleibt vollständig", "Monatsgruppierung, eindeutige Schlagwörter und leere Ressorts", "Importierte Vorgänge sind lesbar", "Verknüpfte Urheber führen zu einem Mandat derselben Wahlperiode"],
+  checks: ["Schlagwörter, Fraktionsfilter und mehrere Urheber", "Urhebertext mit Titeln und Namensbestandteilen bleibt vollständig", "Monatsgruppierung, eindeutige Schlagwörter und leere Ressorts", "Importierte Vorgänge sind lesbar", "Verknüpfte Urheber führen zu einem Mandat derselben Wahlperiode"],
   steps: [{
     id: "parlis-groups",
     label: "Monate, Schlagwörter und fehlende Ressorts korrekt zuordnen",
@@ -19,6 +19,7 @@ export const parlisScenario: TestScenario = {
       const row = { datum: "2026-11-26", deskriptoren: " Verkehr; Verkehr ; Nahverkehr; ", vorgangstyp: "Antrag", ressort: "", urheber: "Landesregierung" };
       return {
         ok: groupsFor(row, "datum").join() === "2026-11"
+          && groupsFor({ ...row, datum: null }, "datum").join() === "Ohne Angabe"
           && groupsFor(row, "deskriptoren").join() === "Verkehr,Nahverkehr"
           && groupsFor(row, "ressort").join() === "Ohne Angabe",
         message: "Jeder Vorgang zählt pro Schlagwort einmal und bleibt bei fehlendem Ressort sichtbar.",
@@ -41,34 +42,38 @@ export const parlisScenario: TestScenario = {
       };
     },
   }, {
-    id: "parlis-document-groups",
-    label: "Tagesgruppen, Schlagwörter und Fraktionen berücksichtigen",
+    id: "parlis-author-presentation",
+    label: "Parteien ohne Klammern und mehrere Urheber erkennen",
     kind: "logic",
     run: async () => {
-      const row: Proceeding = {
-        datum: "2026-11-25", vorgangs_id: "a", titel: "", vorgangstyp: "", urheber: "",
-        ressort: "", drucksache: "", deskriptoren: "", pdf_url: "", dokument_url: "",
-      };
-      const days = dateGroups([row, { ...row, vorgangs_id: "b" }, { ...row, datum: "2026-11-24" }], 1);
+      const text = "Dr. Boris Weirauch (SPD) u. a.";
+      const authors = authorSegments(text, new Map([["weirauch", "Boris Weirauch"]]), true);
+      const role = "Cem Özdemir (Ministerpräsident)";
       return {
-        ok: days.length === 1 && days[0][1].count === 2 && days[0][1].rows.length === 1
+        ok: authors.map(segment => segment.text).join("") === "Dr. Boris Weirauch SPD u. a."
+          && authors.find(segment => segment.profileKey === "weirauch")?.text === "Dr. Boris Weirauch"
+          && hasMultipleAuthors(text, authors)
+          && authorSegments(role, undefined, true).map(segment => segment.text).join("") === role
           && keywords(" Bildung ; ; Schule; Bildung").join() === "Bildung,Schule"
           && documentParties("Fraktion GRÜNE, Fraktion der CDU").join() === "GRÜNE,CDU",
-        message: "Tageszahl umfasst alle Treffer, Schlagwörter sind eindeutig und Fraktionen werden erkannt.",
+        message: "Parteiklammern entfallen; Rollen, Profillinks und Miturheber bleiben erkennbar.",
       };
     },
   }, {
     id: "parlis-import-readable",
-    label: "Import der 18. Wahlperiode ist lesbar",
+    label: "Importe der 17. und 18. Wahlperiode sind lesbar",
     kind: "db",
     run: async () => {
-      const { count, error } = await supabase.from("parlis_proceedings")
-        .select("vorgangs_id", { count: "exact", head: true })
-        .eq("legislature", 18);
-      if (error) throw error;
+      const imports = await Promise.all([17, 18].map(async legislature => {
+        const { count, error } = await supabase.from("parlis_proceedings")
+          .select("vorgangs_id", { count: "exact", head: true })
+          .eq("legislature", legislature);
+        if (error) throw error;
+        return count ?? 0;
+      }));
       return {
-        ok: (count ?? 0) >= 1036,
-        message: `${count ?? 0} lesbare Vorgänge der 18. Wahlperiode (mindestens 1.036 erwartet).`,
+        ok: imports[0] >= 9855 && imports[1] >= 1036,
+        message: `17. Wahlperiode: ${imports[0]} Vorgänge. 18. Wahlperiode: ${imports[1]} Vorgänge.`,
       };
     },
   }, {

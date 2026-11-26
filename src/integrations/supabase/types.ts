@@ -37,7 +37,7 @@ export type Database = {
       }
       parlis_proceedings: {
         Row: {
-          datum: string
+          datum: string | null
           deskriptoren: string
           dokument_url: string
           dokumentnummer_intern: string
@@ -53,7 +53,7 @@ export type Database = {
           vorgangstyp: string
         }
         Insert: {
-          datum: string
+          datum: string | null
           deskriptoren: string
           dokument_url: string
           dokumentnummer_intern: string
@@ -69,7 +69,7 @@ export type Database = {
           vorgangstyp: string
         }
         Update: {
-          datum?: string
+          datum?: string | null
           deskriptoren?: string
           dokument_url?: string
           dokumentnummer_intern?: string

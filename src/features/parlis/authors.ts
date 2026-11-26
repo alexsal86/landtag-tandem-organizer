@@ -1,3 +1,5 @@
+import { getPartyColor } from "@/features/election-districts/partyColors";
+
 function authorKey(name: string) {
   const ordered = name.includes(",")
     ? name.split(",").slice(0, 2).reverse().join(" ")
@@ -12,7 +14,7 @@ function authorKey(name: string) {
   }
 }
 
-type AuthorSegment = { text: string; profileKey?: string; party?: string };
+type AuthorSegment = { text: string; profileKey?: string; party?: string; person?: boolean };
 
 function factionSegments(text: string): AuthorSegment[] {
   const result: AuthorSegment[] = [];
@@ -27,23 +29,29 @@ function factionSegments(text: string): AuthorSegment[] {
   return result;
 }
 
-export function authorSegments(text: string, deputies?: ReadonlyMap<string, string>) {
+export function authorSegments(text: string, deputies?: ReadonlyMap<string, string>, omitPartyParentheses = false) {
   const segments: AuthorSegment[] = [];
   let end = 0;
-  const authors = /(^|,)(\s*)([^,()]+?)(\s+\()(\s*)([^()]+?)(\s*\))(?=\s*(?:,|u\. a\.|$))/g;
+  const authors = /(^|,)(\s*)([^,()]+?)(\s+\()(\s*)([^()]+?)(\s*\))(?=\s*(?:,|u\.\s*a\.|$))/g;
   for (const match of text.matchAll(authors)) {
     const [whole, separator, leading, name, opening, partySpace, party, closing] = match;
     const start = match.index + separator.length + leading.length;
     const candidates = deputies ? [...deputies].filter(([, deputyName]) => authorKey(deputyName) === authorKey(name)) : [];
+    const isParty = getPartyColor(party) !== getPartyColor();
+    const omitParentheses = omitPartyParentheses && isParty;
     segments.push(
       ...factionSegments(text.slice(end, start)),
-      { text: name, profileKey: candidates.length === 1 ? candidates[0][0] : undefined },
-      { text: opening + partySpace },
+      { text: name, person: isParty, profileKey: candidates.length === 1 ? candidates[0][0] : undefined },
+      { text: omitParentheses ? " " : opening + partySpace },
       { text: party, party },
-      { text: closing },
+      { text: omitParentheses ? "" : closing },
     );
     end = match.index + whole.length;
   }
   segments.push(...factionSegments(text.slice(end)));
   return segments;
+}
+
+export function hasMultipleAuthors(text: string, segments: AuthorSegment[]) {
+  return /\bu\.\s*a\./i.test(text) || segments.filter(segment => segment.person).length > 1;
 }

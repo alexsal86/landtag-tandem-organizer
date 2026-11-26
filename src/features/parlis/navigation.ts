@@ -1,3 +1,3 @@
-export function parlisDeputyUrl(profileKey: string) {
-  return `/daten?${new URLSearchParams({ bereich: "parlis", urheber: profileKey })}`;
+export function parlisDeputyUrl(profileKey: string, legislature = 18) {
+  return `/daten?${new URLSearchParams({ bereich: "parlis", urheber: profileKey, wahlperiode: String(legislature) })}`;
 }

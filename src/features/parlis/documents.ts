@@ -19,14 +19,3 @@ export function documentParties(authors: string) {
   return authorSegments(authors).flatMap(({ party }) =>
     party && getPartyColor(party) !== getPartyColor() ? [party] : []);
 }
-
-export function dateGroups(sorted: Proceeding[], limit: number) {
-  const days = new Map<string, { count: number; rows: Proceeding[] }>();
-  sorted.forEach((row, index) => {
-    const day = days.get(row.datum) ?? { count: 0, rows: [] };
-    day.count++;
-    if (index < limit) day.rows.push(row);
-    days.set(row.datum, day);
-  });
-  return [...days].filter(([, day]) => day.rows.length);
-}

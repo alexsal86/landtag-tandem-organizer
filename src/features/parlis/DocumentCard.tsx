@@ -1,12 +1,12 @@
-import { Fragment, type ReactNode } from "react";
-import { ExternalLink, FileText, UserRound } from "lucide-react";
+import { Fragment } from "react";
+import { ExternalLink, FileText, UserRound, UsersRound } from "lucide-react";
 import { Link } from "react-router-dom";
 import { deputyProfileUrl } from "@/features/election-analysis/navigation";
 import { getPartyColor } from "@/features/election-districts/partyColors";
-import { authorSegments } from "./authors";
-import { documentCount, keywords, type Proceeding } from "./documents";
+import { authorSegments, hasMultipleAuthors } from "./authors";
+import { keywords, type Proceeding } from "./documents";
 
-const dayFormat = new Intl.DateTimeFormat("de-DE", { dateStyle: "full", timeZone: "UTC" });
+const dayFormat = new Intl.DateTimeFormat("de-DE", { day: "2-digit", month: "2-digit", year: "numeric", timeZone: "UTC" });
 
 function PartyLabel({ party }: { party: string }) {
   const color = getPartyColor(party);
@@ -25,15 +25,18 @@ function KeywordChips({ value }: { value: string }) {
 
 export function DocumentCard({ row, deputies }: { row: Proceeding; deputies?: ReadonlyMap<string, string> }) {
   const url = [row.pdf_url, row.dokument_url].find(value => /^https:\/\/www\.landtag-bw\.de\//i.test(value));
+  const authors = authorSegments(row.urheber, deputies, true);
+  const AuthorIcon = hasMultipleAuthors(row.urheber, authors) ? UsersRound : UserRound;
   return <article className="parlis-card">
     <div className="parlis-meta">
       {row.vorgangstyp && <span className="parlis-kind">{row.vorgangstyp}</span>}
+      {row.datum && <time className="parlis-date" dateTime={row.datum}>{dayFormat.format(new Date(row.datum))}</time>}
       {row.drucksache && <span>{row.drucksache}</span>}
     </div>
-    <h4>{row.titel || row.vorgangs_id}</h4>
+    <h3>{row.titel || row.vorgangs_id}</h3>
     {row.urheber && <div className="parlis-authors">
-      <UserRound size={16} aria-hidden="true" />
-      <p>{authorSegments(row.urheber, deputies).map((segment, index) => {
+      <AuthorIcon size={16} aria-hidden="true" />
+      <p>{authors.map((segment, index) => {
         if (segment.profileKey) return <Link key={index} to={deputyProfileUrl(segment.profileKey)}>{segment.text}</Link>;
         if (segment.party) return <PartyLabel key={index} party={segment.party} />;
         return <Fragment key={index}>{segment.text}</Fragment>;
@@ -50,14 +53,4 @@ export function DocumentCard({ row, deputies }: { row: Proceeding; deputies?: Re
       </a>
     </footer>}
   </article>;
-}
-
-export function DocumentDateGroup({ date, count, children }: { date: string; count: number; children: ReactNode }) {
-  return <section className="parlis-day" aria-labelledby={`parlis-day-${date}`}>
-    <header>
-      <h3 id={`parlis-day-${date}`}><time dateTime={date}>{dayFormat.format(new Date(date))}</time></h3>
-      <span>{documentCount(count)}</span>
-    </header>
-    <ul>{children}</ul>
-  </section>;
 }

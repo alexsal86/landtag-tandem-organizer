@@ -34,6 +34,8 @@
 }
 
 .parlis-content { max-width: 76rem; margin: 0 auto; display: grid; gap: 1rem; }
+.parlis-heading { display: flex; flex-wrap: wrap; align-items: end; justify-content: space-between; gap: .75rem 1.25rem; }
+.parlis-heading > label { flex: 0 1 11rem; }
 .parlis-heading h1 { font-size: clamp(1.55rem, 4vw, 2rem); font-weight: 650; letter-spacing: -.025em; }
 .parlis-heading p, .parlis-empty { color: var(--text-secondary); font-size: .875rem; }
 .parlis-filters, .parlis-analysis, .parlis-card {
@@ -47,7 +49,7 @@
 .parlis-search svg { position: absolute; inset: 50% auto auto .75rem; transform: translateY(-50%); color: var(--text-secondary); pointer-events: none; }
 .parlis-search input { padding-inline-start: 2.5rem; }
 .parlis-filter-grid { display: grid; grid-template-columns: repeat(auto-fit, minmax(min(100%, 9rem), 1fr)); gap: .75rem; }
-.parlis-filter-grid label, .parlis-analysis > label { min-width: 0; display: grid; gap: .3rem; font-size: .75rem; font-weight: 500; }
+.parlis-heading > label, .parlis-filter-grid label, .parlis-analysis > label { min-width: 0; display: grid; gap: .3rem; font-size: .75rem; font-weight: 500; }
 .parlis-page select, .parlis-page input {
   min-width: 0; width: 100%; min-height: 2.5rem; border: 1px solid var(--border-hover);
   border-radius: var(--radius-chip); background: var(--surface-card); color: var(--text-primary); font-size: .875rem;
@@ -70,17 +72,14 @@
 .parlis-results h2 { font-size: .875rem; font-weight: 600; }
 .parlis-results h2 span { font-weight: 400; color: var(--text-secondary); }
 .parlis-results > button { justify-self: start; }
-.parlis-day { display: grid; gap: .65rem; min-width: 0; }
-.parlis-day > header { display: flex; flex-wrap: wrap; align-items: baseline; gap: .25rem .75rem; }
-.parlis-day h3 { font-size: 1.25rem; font-weight: 600; letter-spacing: -.015em; }
-.parlis-day header > span { font-size: .8125rem; color: var(--text-secondary); }
-.parlis-day > ul { display: grid; gap: var(--spacing-card-gap); }
+.parlis-card-list { display: grid; gap: var(--spacing-card-gap); }
 .parlis-card { display: grid; gap: .75rem; padding: var(--spacing-card); transition: border-color var(--transition-fast); overflow-wrap: anywhere; }
 .parlis-card:hover, .parlis-card:focus-within { border-color: var(--border-hover); }
 .parlis-meta { display: flex; align-items: center; flex-wrap: wrap; gap: .4rem .65rem; font-size: .8125rem; color: var(--text-secondary); }
-.parlis-kind, .parlis-keywords li { background: var(--surface-muted); border-radius: var(--radius-chip); padding: .2rem .5rem; }
+.parlis-kind, .parlis-date, .parlis-keywords li { background: var(--surface-muted); border-radius: var(--radius-chip); padding: .2rem .5rem; }
+.parlis-date { white-space: nowrap; font-variant-numeric: tabular-nums; }
 .parlis-kind { color: var(--text-primary); font-weight: 500; }
-.parlis-card h4 { font-size: 1.1875rem; font-weight: 600; line-height: 1.4; }
+.parlis-card h3 { font-size: 1.1875rem; font-weight: 600; line-height: 1.4; }
 .parlis-authors { display: flex; align-items: baseline; gap: .5rem; font-size: .875rem; }
 .parlis-authors > svg { flex: none; align-self: flex-start; margin-top: .25rem; color: var(--text-secondary); }
 .parlis-party { display: inline-flex; align-items: center; gap: .25rem; color: var(--text-secondary); }
@@ -103,7 +102,7 @@
 @media (max-width: 639px) {
   .parlis-page { --spacing-card: 16px; }
   .parlis-filter-grid { grid-template-columns: repeat(2, minmax(0, 1fr)); }
-  .parlis-card h4 { font-size: 1.0625rem; }
+  .parlis-card h3 { font-size: 1.0625rem; }
   .parlis-page input, .parlis-page select { font-size: 1rem; }
 }
 @media (pointer: coarse) {
