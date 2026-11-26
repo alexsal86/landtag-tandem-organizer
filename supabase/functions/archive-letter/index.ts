@@ -203,7 +203,13 @@ serve(withSafeHandler("archive-letter", async (req) => {
       }
     }
 
-    // Update letter with sent and archive metadata in one canonical path
+    // Update letter with sent and archive metadata in one canonical path.
+    // `letters` kennt kein archived_at/archived_by (siehe generierte Typen und
+    // Migrationen). Der Versandzeitpunkt in sent_at ist zugleich der
+    // Archivzeitpunkt; archived_document_id verweist auf das Archiv-PDF.
+    // Ein Schreiben der beiden fehlenden Spalten ließ PostgREST mit PGRST204
+    // abbrechen, sodass die Funktion nach dem erfolgreichen Upload immer mit
+    // 500 antwortete ("Edge Function returned a non-2xx status code").
     const sentDate = archiveTimestamp.split('T')[0];
     const { error: updateError } = await supabase
       .from('letters')
@@ -213,9 +219,7 @@ serve(withSafeHandler("archive-letter", async (req) => {
         sent_by: archivalUserId,
         sent_date: sentDate,
         workflow_locked: true,
-        archived_document_id: document.id,
-        archived_at: archiveTimestamp,
-        archived_by: archivalUserId
+        archived_document_id: document.id
       })
       .eq('id', letterId)
       .eq('tenant_id', access.tenantId);
