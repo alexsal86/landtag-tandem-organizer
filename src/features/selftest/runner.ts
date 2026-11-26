@@ -11,7 +11,10 @@ export const SELFTEST_MARKER = "__SELFTEST__";
 const CLEANUP_ORDER = [
   "employee_meeting_action_items", "employee_meeting_requests", "employee_meetings",
   "task_decision_responses", "task_decision_participants", "task_decisions",
-  "document_annotations", "letter_attachments", "documents", "letters", "quick_notes", "contact_usage_stats", "contact_activities", "contacts", "tasks",
+  "document_annotations", "letter_attachments", "documents", "letters", "quick_notes",
+  "funding_participants", "fundings", "contact_briefing_memory", "contact_topics",
+  "distribution_list_members", "distribution_lists", "call_logs",
+  "contact_usage_stats", "contact_activities", "contacts", "tasks",
   "case_item_topics", "knowledge_question_topics", "topics",
   "case_item_interactions", "case_items",
   "case_file_status_history", "case_file_timeline", "case_file_notes", "case_file_documents", "case_file_topics",

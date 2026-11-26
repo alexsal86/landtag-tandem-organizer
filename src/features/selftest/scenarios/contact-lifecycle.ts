@@ -4,6 +4,13 @@ import { SELFTEST_MARKER, SELFTEST_PREFIX } from "../runner";
 import { describeError, expectFields } from "../verify";
 import { MANUAL_MERGE_FIELDS, resolveDuplicateContact } from "@/components/contact-import/duplicateResolution";
 
+/**
+ * Kern-Lifecycle eines Kontakts. Die weiterführenden Datenbank-Workflows
+ * (Datenschutz, Themen, Dubletten-Scan, Sammelbearbeitung, Verteiler,
+ * Briefingwissen, Förderungen) liegen im separaten Szenario
+ * `contact-relations`, damit ein Policy-Fehler dort diese Prüfungen nicht
+ * überspringt.
+ */
 export const contactLifecycleScenario: TestScenario = {
   id: "contact-lifecycle",
   title: "Kontakt-Lifecycle (Anlegen → Kategorie/Tags → Aktivität → Suche)",
@@ -173,6 +180,7 @@ export const contactLifecycleScenario: TestScenario = {
           message: failed.length === 0
             ? `Alle Verknüpfungen wandern mit (${moved} verschoben, ${dropped} Kollisionen ohne Datenverlust aufgelöst), der Zweitkontakt ist gelöscht.`
             : `Fehlgeschlagen: ${failed.join(", ")}`,
+          details: checks,
         };
       },
     },

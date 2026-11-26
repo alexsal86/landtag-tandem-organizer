@@ -11,7 +11,7 @@ Eindeutige Fehler werden im CI-Lauf ausgegeben und brechen die Prüfung ab; sie 
 - Review-Hinweise: **0**
 - Nicht zugeordnete Objekte: **1**, davon ohne Ausnahme: **0**
 
-## Funktionen ohne zugeordneten Test (137)
+## Funktionen ohne zugeordneten Test (126)
 
 - `mywork.tabs` — Meine Arbeit – Bereichsnavigation und Einstellungen
 - `mywork.quick-access` — Schnellzugriff und zuletzt besuchte Seiten
@@ -68,17 +68,6 @@ Eindeutige Fehler werden im CI-Lauf ausgegeben und brechen die Prüfung ab; sie 
 - `chat.matrix-bot` — Matrix-Bot und morgendliche Begrüßung
 - `chat.team-announcements` — Team-Ankündigungen
 - `widget.matrix-website` — Matrix-Website-Widget
-- `contacts.detail` — Kontaktprofil mit Aktivitäten
-- `contacts.import` — Kontakte importieren
-- `contacts.duplicates` — Dubletten finden
-- `contacts.distribution-lists` — Verteilerlisten verwalten
-- `contacts.stakeholders` — Stakeholder-Netzwerk
-- `contacts.tags-topics` — Kontakt-Themen
-- `contacts.privacy` — Kontakt-Datenschutz und Aufbewahrung
-- `contacts.bulk` — Kontakte in Massen bearbeiten
-- `contacts.activities` — Kontaktaktivitäten und Anrufe
-- `contacts.briefing-memory` — Briefingwissen je Kontakt
-- `contacts.fundings` — Finanzierungen und Beteiligungen
 - `employees.requests` — Gesprächsanfragen der Mitarbeitenden
 - `employees.export-stats` — Gesprächs-PDF und Jahresstatistik
 - `timetracking.entries` — Arbeitszeit erfassen
@@ -332,7 +321,7 @@ Eindeutige Fehler werden im CI-Lauf ausgegeben und brechen die Prüfung ab; sie 
 - `events.legacy-rsvp` — Legacy-Einladungslinks (veraltet)
 - `cases.legacy-routes` — Legacy-Vorgangsrouten (veraltet)
 
-## Funktionen mit Einschränkungen oder offenen Punkten (71)
+## Funktionen mit Einschränkungen oder offenen Punkten (80)
 
 ### `mywork.dashboard`
 
@@ -455,14 +444,53 @@ Eindeutige Fehler werden im CI-Lauf ausgegeben und brechen die Prüfung ab; sie 
 
 - Der Bot-Handler ist JWT-geschützt, aber der fachliche Befehlsraum ist nicht dokumentiert.
 
+### `contacts.detail`
+
+- Gerendert wird das Detail-Sheet nicht; geprüft werden die gesicherte Kontaktlesung und die verknüpften Datenpfade (Aktivitäten, Briefingwissen, Förderungen).
+
+### `contacts.import`
+
+- Geprüft werden Spaltenzuordnung, Verteilerzerlegung und Duplikaterkennung als reine Regeln sowie die Verteilerzuordnung; ein echter Datei-Upload (CSV/XLSX/VCF) läuft nicht im Selbsttest.
+
 ### `contacts.duplicates`
 
+- Der Trigramm-Scan wird mit zwei eigens angelegten Kontakten geprüft; die Trefferqualität für den Bestand bleibt ungemessen.
 - Die Trefferheuristik ist nicht qualitätsgetestet; falsche Paare sind möglich.
+
+### `contacts.distribution-lists`
+
+- Geprüft werden Anlegen, Mitglieder, Duplikatsperre und Löschen; die Umwandlung im Stakeholder-Dialog nutzt denselben Schreibpfad, wird aber nicht gerendert.
+
+### `contacts.stakeholders`
+
+- Geprüft werden Stakeholder-Organisation, Personen zuordnung und Verteilerbildung; die Kartenflags (map_flags) samt Ebenen bleiben ausgeklammert.
+- Die Trefferheuristik der Netzwerkansicht ist nicht qualitätsgetestet; geprüft wird die Datenbasis, nicht die Darstellung.
 
 ### `contacts.tags-topics`
 
 - Das frühere Tag-Feld bleibt als historischer Bestand in contacts.tags erhalten.
-- Die Junction-Schreibpfade sind durch keinen eigenen Szenario-Schritt abgedeckt.
+- Geprüft wird contact_topics samt Zählung; die Themenauswahl im Dialog wird nicht gerendert.
+- Die Zuordnung über die Oberfläche (TopicPicker) wird nur mittelbar über denselben contact_topics-Schreibpfad geprüft.
+
+### `contacts.privacy`
+
+- Rechtsgrundlage, Prüffrist und Fälligkeit werden als Regel und über den Datenbank-Trigger geprüft; eine konfigurierte Feldmaskierung (field_permissions) verändert der Selbsttest nicht.
+
+### `contacts.bulk`
+
+- Die Rücknahme verlangt Büroleitung oder Abgeordneten-Mandat; als Mitglied wird nur die Abweisung geprüft.
+
+### `contacts.activities`
+
+- Geprüft werden die Datenbank-Trigger für Anlegen, Bearbeiten und Anrufprotokolle; die Quick-Capture-Oberflächen werden nicht gerendert.
+
+### `contacts.briefing-memory`
+
+- Die Leserechte folgen der Profil-Mandantenzuordnung; bei mehreren Büros kann die Sichtbarkeit eingeschränkt sein.
+
+### `contacts.fundings`
+
+- Geprüft werden Förderung und Beteiligung samt eindeutiger Zuordnung; Budgetbezüge (expense_budgets) bleiben unberührt.
 
 ### `employees.meetings`
 

@@ -15,17 +15,17 @@ Der Katalog ist das führende Verzeichnis des tatsächlich implementierten Funkt
 | Teilweise implementiert | 2 |
 | Deaktiviert | 0 |
 | Potenziell verwaist | 0 |
-| Prüfkandidaten (offene Punkte) | 51 |
-| Funktionen mit Selbsttest | 80 |
+| Prüfkandidaten (offene Punkte) | 52 |
+| Funktionen mit Selbsttest | 91 |
 | Funktionen mit Unit-Test | 59 |
 | Funktionen mit Integrationstest | 1 |
 | Funktionen mit Browser-Test | 4 |
 | Funktionen mit Security-Test | 1 |
-| Funktionen ohne zugeordneten Test | 137 |
+| Funktionen ohne zugeordneten Test | 126 |
 | Funktionen ohne Dokumentationsverweis | 165 |
-| Funktionen mit bekannten Einschränkungen | 36 |
+| Funktionen mit bekannten Einschränkungen | 46 |
 | Nicht nachweisbar eingebundene Funktionen | 1 |
-| Technische Zuordnungen | 1257 |
+| Technische Zuordnungen | 1258 |
 
 ## Funktionsbereiche
 
@@ -38,7 +38,7 @@ Der Katalog ist das führende Verzeichnis des tatsächlich implementierten Funkt
 | [Entscheidungen](./entscheidungen.md) | 7 | 10 | 10 | 7 | 8 |
 | [Externe Schnittstellen](./schnittstellen.md) | 7 | 10 | 10 | 7 | 5 |
 | [Jour fixe, Dossiers & Themen](./organisation.md) | 5 | 18 | 17 | 12 | 15 |
-| [Kontakte & Netzwerk](./kontakte.md) | 9 | 14 | 14 | 11 | 10 |
+| [Kontakte & Netzwerk](./kontakte.md) | 9 | 14 | 14 | 0 | 10 |
 | [Meine Arbeit & Benachrichtigungen](./arbeitsbereich.md) | 8 | 15 | 14 | 9 | 10 |
 | [Mitarbeit, Personal & Zeit](./mitarbeit.md) | 5 | 20 | 20 | 4 | 14 |
 | [Redaktion, News & Chat](./kommunikation.md) | 5 | 14 | 14 | 14 | 10 |
@@ -87,13 +87,13 @@ Der Katalog ist das führende Verzeichnis des tatsächlich implementierten Funkt
 
 | Abdeckung | Funktionen |
 |---|---:|
-| Selbsttest | 79 |
+| Selbsttest | 88 |
 | Unit-Test | 38 |
 | Integrationstest | 1 |
 | Browser-Test | 0 |
 | Security-Test | 1 |
-| teilweise | 0 |
-| kein Test | 137 |
+| teilweise | 2 |
+| kein Test | 126 |
 | ungeprüft | 0 |
 
 ## Konsistenz
