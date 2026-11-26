@@ -89,6 +89,7 @@ export default function Administration(): React.JSX.Element | null {
     new URLSearchParams(location.search).get("adminSubSection"),
     isSuperAdmin,
   );
+  const [pressTemplateRevision, setPressTemplateRevision] = useState(0);
   const [annualTasksBadge, setAnnualTasksBadge] = useState<number>(0);
 
   useEffect(() => {
@@ -307,9 +308,20 @@ export default function Administration(): React.JSX.Element | null {
         case "occasions":
           return <Card><CardContent className="pt-6"><LetterOccasionManager /></CardContent></Card>;
         case "press-templates":
-          return <Card><CardContent className="pt-6"><PressTemplateManager /></CardContent></Card>;
-        case "press-occasions":
-          return <Card><CardContent className="pt-6"><PressOccasionManager /></CardContent></Card>;
+          return (
+            <div className="space-y-6">
+              <Card>
+                <CardContent className="pt-6">
+                  <PressTemplateManager onSaved={() => setPressTemplateRevision((revision) => revision + 1)} />
+                </CardContent>
+              </Card>
+              <Card>
+                <CardContent className="pt-6">
+                  <PressOccasionManager templateRevision={pressTemplateRevision} />
+                </CardContent>
+              </Card>
+            </div>
+          );
         case "meetings": return <MeetingTemplateManager />;
         case "plannings": return <PlanningTemplateManager />;
         case "emails":
