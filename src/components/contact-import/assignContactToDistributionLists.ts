@@ -1,4 +1,6 @@
-import type { SupabaseClient } from "@supabase/supabase-js";
+import type { supabase } from "@/integrations/supabase/client";
+
+type SupabaseClient = typeof supabase;
 
 export interface DistributionAssignmentFailure {
   listName: string;
