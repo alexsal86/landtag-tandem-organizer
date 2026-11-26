@@ -13,7 +13,6 @@ const GuestResponse = lazyWithRetry(() => import("@/pages/GuestResponse"));
 const EventRSVP = lazyWithRetry(() => import("@/pages/EventRSVP")); // Legacy-Kompatibilitätspfad für bereits versandte Einladungen
 const LegacyEventRSVPRedirect = lazyWithRetry(() => import("@/pages/LegacyEventRSVPRedirect")); // Legacy-Alias; erst entfernen, wenn keine Altlinks mehr im Umlauf sind
 const EmployeeMeetingDetail = lazyWithRetry(() => import("@/pages/EmployeeMeetingDetail"));
-const LetterDetail = lazyWithRetry(() => import("@/pages/LetterDetail"));
 const CaseItemDetail = lazyWithRetry(() =>
   import("@/features/cases/items/pages").then((m) => ({ default: m.CaseItemDetail }))
 );
@@ -95,7 +94,7 @@ export const AppRoutes = () => (
       <Route path="/contacts/import" element={<ImportContacts />} />
       <Route path="/maps" element={<Navigate to="/karten" replace />} />
       <Route path="/profile/edit" element={<Navigate to="/profile-edit" replace />} />
-      <Route path="/letters/:letterId" element={<LetterDetail />} />
+      <Route path="/letters/:letterId" element={<Index />} />
       <Route path="/vorgaenge" element={<CasesRedirect />} />
       <Route path="/cases" element={<CasesRedirect />} />
       <Route path="/cases/:caseItemId" element={<LegacyCaseItemRedirect />} />

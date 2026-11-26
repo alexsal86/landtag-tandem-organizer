@@ -1,11 +1,10 @@
 import React, { useEffect, useLayoutEffect, useState, useRef, useCallback } from 'react';
 import { sanitizeRichHtml } from '@/utils/htmlSanitizer';
-import { ZoomIn, ZoomOut, RotateCcw, Layout, Search } from 'lucide-react';
+import { Search } from 'lucide-react';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
 import { Textarea } from '@/components/ui/textarea';
 import { Label } from '@/components/ui/label';
-import { Badge } from '@/components/ui/badge';
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
 import { Popover, PopoverContent, PopoverTrigger } from '@/components/ui/popover';
 import { ContactSelector } from '@/features/contacts/components/ContactSelector';
@@ -98,9 +97,7 @@ interface LetterEditorCanvasProps {
   selectedSenderId?: string;
   selectedRecipientContactId?: string;
   selectedInfoBlockIds?: string[];
-  templateName?: string;
   zoom?: number;
-  onZoomChange?: (zoom: number) => void;
 }
 
 // ─── Component ───────────────────────────────────────────────────────────────
@@ -152,9 +149,7 @@ export const LetterEditorCanvas: React.FC<LetterEditorCanvasProps> = ({
   selectedSenderId,
   selectedRecipientContactId,
   selectedInfoBlockIds = [],
-  templateName,
-  zoom: externalZoom,
-  onZoomChange,
+  zoom = 1,
 }) => {
   // ── font size helper ──
   const toFontSizePt = (value: unknown, fallback: number): number => {
@@ -168,11 +163,6 @@ export const LetterEditorCanvas: React.FC<LetterEditorCanvasProps> = ({
     }
     return fallback;
   };
-
-  // ── zoom ──
-  const [internalZoom, setInternalZoom] = useState(0.75);
-  const zoom = externalZoom ?? internalZoom;
-  const setZoom = onZoomChange ?? setInternalZoom;
 
   const [isAttachmentOverlayHovered, setIsAttachmentOverlayHovered] = useState(false);
   const [isAttachmentOverlayOpen, setIsAttachmentOverlayOpen] = useState(false);
@@ -904,7 +894,6 @@ export const LetterEditorCanvas: React.FC<LetterEditorCanvasProps> = ({
   // ── main render ──
   return (
     <div
-      className="flex flex-col h-full"
       style={{ '--letter-paragraph-gap': `${bodyParagraphGapMm}mm` } as React.CSSProperties}
     >
       {/* Hidden measurement container — same width/font as real body */}
@@ -926,50 +915,8 @@ export const LetterEditorCanvas: React.FC<LetterEditorCanvasProps> = ({
         {renderContentFlow()}
       </div>
 
-      {/* Toolbar */}
-      <div className="flex-none flex items-center justify-between gap-2 p-2 border-b bg-muted/30">
-        <div className="flex items-center gap-2 flex-1 min-w-0 overflow-x-auto">
-          {templateName && (
-            <Badge variant="outline" className="text-xs gap-1 shrink-0">
-              <Layout className="h-3 w-3" />
-              {templateName}
-            </Badge>
-          )}
-        </div>
-        <div className="flex items-center gap-2">
-          <Button
-            variant="outline" size="sm" className="h-7 px-2"
-            onClick={() => setZoom(Math.max(0.3, zoom - 0.1))}
-          >
-            <ZoomOut className="h-3.5 w-3.5" />
-          </Button>
-          <span className="text-xs min-w-[50px] text-center font-medium">
-            {Math.round(zoom * 100)}%
-          </span>
-          <Button
-            variant="outline" size="sm" className="h-7 px-2"
-            onClick={() => setZoom(Math.min(1.5, zoom + 0.1))}
-          >
-            <ZoomIn className="h-3.5 w-3.5" />
-          </Button>
-          <Button
-            variant="outline" size="sm" className="h-7 px-2"
-            onClick={() => setZoom(0.75)}
-          >
-            <RotateCcw className="h-3.5 w-3.5" />
-          </Button>
-        </div>
-      </div>
-
-      {/* Scrollable canvas */}
-      <div className="flex-1 overflow-auto bg-muted/50" style={{ padding: '24px' }}>
-        <div
-          style={{
-            transform: `scale(${zoom})`,
-            transformOrigin: 'top center',
-            paddingBottom: `${(1 - zoom) * totalPages * PAGE_H_MM * MM_TO_PX}px`,
-          }}
-        >
+      <div className="bg-muted/50 p-6">
+        <div style={{ zoom, minWidth: `${PAGE_W_MM}mm` }}>
           {inlineEditor ? renderInlinePage() : Array.from({ length: totalPages }, (_, i) => renderPage(i))}
         </div>
       </div>
