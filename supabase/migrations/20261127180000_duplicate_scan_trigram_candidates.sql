@@ -56,18 +56,18 @@ BEGIN
   WITH name_pairs AS (
     -- LATERAL hält die Suche am Index: c1.name ist der Suchbegriff, other.name
     -- die indizierte Spalte. Kein Vollvergleich aller Zeilenpaare.
+    -- Bewusst ohne id-Vergleich im Rumpf: sonst schiebt der Planer ihn in die
+    -- innere Abfrage und liest dort den Primärschlüssel statt des Trigramms.
     SELECT c1.id AS id1, c2.id AS id2
     FROM public.contacts c1
     JOIN LATERAL (
       SELECT other.id
       FROM public.contacts other
       WHERE other.tenant_id = c1.tenant_id
-        AND other.id <> c1.id
         AND other.name % c1.name
     ) c2 ON true
     WHERE c1.tenant_id = _tenant_id
       AND c1.name IS NOT NULL
-      AND c1.id < c2.id
   ),
   field_pairs AS (
     SELECT a.id AS id1, b.id AS id2
@@ -88,9 +88,14 @@ BEGIN
           = regexp_replace(coalesce(b.phone, ''), '[^0-9]', '', 'g')
   ),
   candidate_pairs AS (
-    SELECT id1, id2 FROM name_pairs
-    UNION
-    SELECT id1, id2 FROM field_pairs
+    -- Jede Paarung genau einmal, unabhängig davon, welche Seite sie gefunden hat.
+    SELECT DISTINCT least(id1, id2) AS id1, greatest(id1, id2) AS id2
+    FROM (
+      SELECT id1, id2 FROM name_pairs
+      UNION ALL
+      SELECT id1, id2 FROM field_pairs
+    ) pairs
+    WHERE id1 <> id2
   ),
   scored AS (
     SELECT
