@@ -149,7 +149,7 @@ Keine Prüfungen deklariert.
 
 1. Datei hochladen und wieder herunterladen
 2. Prüfung und Freigabe über Anwendungsfunktionen
-3. Archivfunktion erzeugt PDF und Dokument; der Trigger legt die verknüpfte Folgeaufgabe an
+3. Archivfunktion erzeugt PDF, Dokument und Folgeaufgabe
 
 ## Funktionsdetails
 
@@ -663,7 +663,6 @@ Erzeugt beim Versand ein PDF-Archivdokument, verknüpft es und sichert die Folge
 **Offene Prüfpunkte**
 
 - Keine.
-
 
 ### `letters.templates` — Briefvorlagen und Anlässe
 Verwaltet Briefvorlagen und Briefanlässe in zwei Reitern einer gemeinsamen Administrationsseite. Absenderdaten und Textbausteine bleiben Teil der Briefverwaltung.

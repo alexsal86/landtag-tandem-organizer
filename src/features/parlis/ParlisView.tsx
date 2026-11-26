@@ -17,7 +17,7 @@ function groupLabel(key: string, dimension: Dimension) {
   return dimension === "datum" && key !== "Ohne Angabe" ? month.format(new Date(key + "-01T00:00:00Z")) : key;
 }
 
-const emptyFilters = { kind: "", party: "", from: "", to: "", topic: "" };
+const emptyFilters = { party: "", from: "", to: "", topic: "" };
 
 export default function ParlisView() {
   const [params, setParams] = useSearchParams();
@@ -35,6 +35,7 @@ function ProceedingsForLegislature({ legislature, changeLegislature }: {
 }) {
   const [params, setParams] = useSearchParams();
   const deputyKey = params.get("urheber");
+  const documentKind = params.get("vorgangstyp") ?? "";
   const [search, setSearch] = useState("");
   const [searchText, setSearchText] = useState("");
   const [filters, setFilters] = useState(emptyFilters);
@@ -52,7 +53,7 @@ function ProceedingsForLegislature({ legislature, changeLegislature }: {
   const args = {
     period: legislature,
     search_text: searchText,
-    document_kind: filters.kind,
+    document_kind: documentKind,
     faction: filters.party,
     topic: filters.topic,
     date_from: filters.from || undefined,
@@ -97,7 +98,7 @@ function ProceedingsForLegislature({ legislature, changeLegislature }: {
     ?.deputies.find(([key]) => key === deputyKey)?.[1] : undefined;
   const chartGroups = first?.groups ?? [];
   const max = Math.max(1, ...chartGroups.map(([, count]) => count));
-  const hasFilters = !!(search || selected || deputyKey || oldestFirst || Object.values(filters).some(Boolean));
+  const hasFilters = !!(search || documentKind || selected || deputyKey || oldestFirst || Object.values(filters).some(Boolean));
 
   function updateFilter(key: keyof typeof emptyFilters, value: string) {
     setFilters(current => ({ ...current, [key]: value }));
@@ -139,8 +140,15 @@ function ProceedingsForLegislature({ legislature, changeLegislature }: {
             }} />
           </label>
           <div className="parlis-filter-grid">
-            <label>Dokumententyp<select aria-label="Dokumententyp" value={filters.kind} onChange={event => updateFilter("kind", event.target.value)}>
+            <label>Dokumententyp<select aria-label="Dokumententyp" value={documentKind} onChange={event => {
+              const next = new URLSearchParams(params);
+              if (event.target.value) next.set("vorgangstyp", event.target.value);
+              else next.delete("vorgangstyp");
+              setParams(next);
+              setSelected(null);
+            }}>
               <option value="">Alle Typen</option>
+              {documentKind && !options.data?.kinds.includes(documentKind) && <option>{documentKind}</option>}
               {options.data?.kinds.map(kind => <option key={kind}>{kind}</option>)}
             </select></label>
             <label>Fraktion<select aria-label="Fraktion" value={filters.party} onChange={event => updateFilter("party", event.target.value)}>
@@ -167,8 +175,11 @@ function ProceedingsForLegislature({ legislature, changeLegislature }: {
               setSearchText("");
               setFilters(emptyFilters);
               setOldestFirst(false);
-              if (deputyKey) clearDeputy();
-              else setSelected(null);
+              const next = new URLSearchParams(params);
+              next.delete("urheber");
+              next.delete("vorgangstyp");
+              setParams(next);
+              setSelected(null);
             }}>Filter zurücksetzen</Button>}
           </div>
         </section>

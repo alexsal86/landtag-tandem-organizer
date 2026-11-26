@@ -323,7 +323,7 @@ Eindeutige Fehler werden im CI-Lauf ausgegeben und brechen die Prüfung ab; sie 
 - `events.legacy-rsvp` — Legacy-Einladungslinks (veraltet)
 - `cases.legacy-routes` — Legacy-Vorgangsrouten (veraltet)
 
-## Funktionen mit Einschränkungen oder offenen Punkten (85)
+## Funktionen mit Einschränkungen oder offenen Punkten (86)
 
 ### `mywork.dashboard`
 
@@ -450,6 +450,10 @@ Eindeutige Fehler werden im CI-Lauf ausgegeben und brechen die Prüfung ab; sie 
 - Die Statusmenge ist geschlossen (draft, review, pending_approval, approved, revision_requested, sent, archived); der CHECK-Constraint letters_status_check und der Client lehnen andere Werte ab.
 - Die erlaubten Wechsel prüft der Trigger enforce_letter_status_transition gegen letter_status_transitions; Quelle ist ALLOWED_TRANSITIONS, beide werden von check:state-artifact abgeglichen. Ein direkter Sprung wie draft → sent wird abgewiesen. Neuanlagen prüft weiterhin nur die Wertemenge.
 - Rückgaben laufen ausschließlich über das RPC return_letter_for_revision (SECURITY DEFINER): Es prüft Anmeldung, aktive Mandantzugehörigkeit und die Prüferzuordnung in letter_collaborators, setzt Status und Revisionsfelder in einem Schritt und benachrichtigt den Ersteller. Der Guard-Trigger guard_letter_return_transition weist direkte Statuswechsel review → draft bzw. pending_approval → revision_requested ohne das transaktionslokale Merkmal ab.
+
+### `letters.archive`
+
+- Die Folgeaufgabe hat genau einen Erzeuger: den Trigger trigger_letter_followup_task beim Wechsel auf sent. Die Archivfunktion erzeugt keine zweite Aufgabe, sondern liefert die bestehende ID über create_letter_archive_follow_up_task; ein Fehler dabei wird als followUpTaskError gemeldet, ohne den abgeschlossenen Versand abzubrechen. Der Client zieht die Aufgabe nur nach, wenn die Funktion keine ID liefert. Trigger und RPC verknüpfen die Aufgabe über source_type letter_followup und source_id des Briefes; der zusammengebaute Titel dient nur noch dem Altbestand und wird dabei in die Verknüpfung überführt.
 
 ### `decisions.change-vote`
 

@@ -17930,6 +17930,10 @@ export type Database = {
       }
     }
     Views: {
+      parlis_wp17_deputy_activity: {
+        Row: { profile_key: string | null; document_kind: string | null; document_count: number | null }
+        Relationships: []
+      }
       parlis_deputy_profiles: {
         Row: {
           legislature: number | null
@@ -18158,6 +18162,20 @@ export type Database = {
       }
     }
     Functions: {
+      get_parlis_wp17_deputy_activity: {
+        Args: { deputy_key: string }
+        Returns: { document_kind: string; document_count: number }[]
+      }
+      get_parlis_deputy_motions: {
+        Args: { period: number; deputy_key: string }
+        Returns: {
+          vorgangs_id: string
+          titel: string
+          datum: string | null
+          drucksache: string
+          pdf_url: string | null
+        }[]
+      }
       parlis_filter_options: {
         Args: { period: number }
         Returns: Json

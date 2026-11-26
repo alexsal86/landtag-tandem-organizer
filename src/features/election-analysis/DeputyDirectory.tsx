@@ -6,6 +6,8 @@ import { DeputySeatDistribution } from './DeputySeatDistribution';
 import { deputyTenureCoverage } from './deputyTenure';
 import { DeputyElectionResult } from './DeputyElectionResult';
 import { Link, useSearchParams } from "react-router-dom";
+import { DeputyActivity } from "@/features/parlis/DeputyActivity";
+import { DeputyMotions } from "@/features/parlis/DeputyMotions";
 import { parlisDeputyUrl } from "@/features/parlis/navigation";
 import { districtProfileUrl } from "./navigation";
 import { formatMandateType } from '@/features/election-history/mandateLabel';
@@ -244,9 +246,13 @@ export default function DeputyDirectory() {
               return <div key={row.id}><p>{formatMandateDateRange(row)}{row.end_is_expected ? ' (voraussichtliches Ende)' : ''}</p>{row.notes && <p className="whitespace-pre-wrap text-xs text-muted-foreground">{row.notes}</p>}{profileUrl && <Button variant="link" className="h-auto p-0 text-xs" asChild><Link to={profileUrl}>Wahlkreis-Steckbrief öffnen</Link></Button>}</div>;
             })}</div>}
             {profileKey && profileOpen && <DeputyStateListPlaces key={profileKey} connectionId={profileKey} />}
-            {profileKey && (selectedPeriod === 17 || selectedPeriod === 18) && served.includes(selectedPeriod) && <Button variant="link" className="px-0" asChild>
-              <Link to={parlisDeputyUrl(profileKey, selectedPeriod)}>Parlamentarische Vorgänge anzeigen</Link>
-            </Button>}
+            {profileKey && profileOpen && (selectedPeriod === 17 || selectedPeriod === 18) && served.includes(selectedPeriod) && <>
+              {selectedPeriod === 17 && <DeputyActivity profileKey={profileKey} />}
+              <DeputyMotions profileKey={profileKey} period={selectedPeriod} />
+              <Button variant="link" className="px-0" asChild>
+                <Link to={parlisDeputyUrl(profileKey, selectedPeriod)}>Parlamentarische Vorgänge anzeigen</Link>
+              </Button>
+            </>}
             {current && profileOpen && <DeputyElectionResult key={current.id} mandateId={current.id}
               secondaryPanel={<DeputySeatDistribution period={published.find(item => item.number === current.period_number)} party={current.party} />}
             />}

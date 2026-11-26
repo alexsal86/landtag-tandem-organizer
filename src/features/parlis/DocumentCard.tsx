@@ -4,9 +4,7 @@ import { Link } from "react-router-dom";
 import { deputyProfileUrl } from "@/features/election-analysis/navigation";
 import { getPartyColor } from "@/features/election-districts/partyColors";
 import { authorSegments, hasMultipleAuthors } from "./authors";
-import { keywords, type Proceeding } from "./documents";
-
-const dayFormat = new Intl.DateTimeFormat("de-DE", { day: "2-digit", month: "2-digit", year: "numeric", timeZone: "UTC" });
+import { keywords, parlisDateFormat, type Proceeding } from "./documents";
 
 function PartyLabel({ party }: { party: string }) {
   const color = getPartyColor(party);
@@ -29,7 +27,7 @@ export function DocumentCard({ row }: { row: Proceeding }) {
   return <article className="parlis-card">
     <div className="parlis-meta">
       {row.vorgangstyp && <span className="parlis-kind">{row.vorgangstyp}</span>}
-      {row.datum && <time className="parlis-date" dateTime={row.datum}>{dayFormat.format(new Date(row.datum))}</time>}
+      {row.datum && <time className="parlis-date" dateTime={row.datum}>{parlisDateFormat.format(new Date(row.datum))}</time>}
       {row.drucksache && <span>{row.drucksache}</span>}
     </div>
     <h3>{row.titel || row.vorgangs_id}</h3>

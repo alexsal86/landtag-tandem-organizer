@@ -1,3 +1,4 @@
+import { parlisDeputyUrl } from "@/features/parlis/navigation";
 import { documentParties, keywords } from "@/features/parlis/documents";
 import { authorSegments, hasMultipleAuthors } from "@/features/parlis/authors";
 import { groupsFor } from "@/features/parlis/grouping";
@@ -10,7 +11,7 @@ export const parlisScenario: TestScenario = {
   description: "Prüft die Gruppierung und den Lesezugriff auf die Parlamentsdokumentation.",
   features: ["parlis.proceedings"],
   touches: [],
-  checks: ["Schlagwortvorschläge bei Eingabe begrenzen", "Serverseitige Suche und begrenzte Dokumentenseiten", "Schlagwörter, Fraktionsfilter und mehrere Urheber", "Urhebertext mit Titeln und Namensbestandteilen bleibt vollständig", "Monatsgruppierung, eindeutige Schlagwörter und leere Ressorts", "Importierte Vorgänge sind lesbar", "Verknüpfte Urheber führen zu einem Mandat derselben Wahlperiode"],
+  checks: ["Vorgangstypen der 17. Wahlperiode im Profil zusammenfassen", "Fünf persönlich zugeordnete Anträge mit gefiltertem Link im Profil", "Schlagwortvorschläge bei Eingabe begrenzen", "Serverseitige Suche und begrenzte Dokumentenseiten", "Schlagwörter, Fraktionsfilter und mehrere Urheber", "Urhebertext mit Titeln und Namensbestandteilen bleibt vollständig", "Monatsgruppierung, eindeutige Schlagwörter und leere Ressorts", "Importierte Vorgänge sind lesbar", "Verknüpfte Urheber führen zu einem Mandat derselben Wahlperiode"],
   steps: [{
     id: "parlis-groups",
     label: "Monate, Schlagwörter und fehlende Ressorts korrekt zuordnen",
@@ -115,6 +116,55 @@ export const parlisScenario: TestScenario = {
         ok: !!options.data && typeof options.data === "object" && !("topics" in options.data)
           && short.data?.length === 0 && !!results.data?.length && results.data.length <= 20,
         message: "Die Startoptionen enthalten nur Typen und Fraktionen; Vorschläge sind begrenzt.",
+      };
+    },
+  }, {
+    id: "parlis-deputy-motions",
+    label: "Profilvorschau auf fünf persönlich zugeordnete Anträge begrenzen",
+    kind: "db",
+    run: async () => {
+      const { data: link, error } = await supabase.from("parlis_deputy_profiles")
+        .select("profile_key").eq("legislature", 18).eq("vorgangs_id", "V-248711").limit(1).maybeSingle();
+      if (error) throw error;
+      if (!link?.profile_key) return { ok: false, message: "Abgeordnetenprofil für den Vergleich fehlt." };
+      const profileKey = link.profile_key;
+      const [preview, all] = await Promise.all([
+        supabase.rpc("get_parlis_deputy_motions", { period: 18, deputy_key: profileKey }),
+        supabase.rpc("parlis_page", { period: 18, deputy_key: profileKey, document_kind: "Antrag" }),
+      ]);
+      if (preview.error) throw preview.error;
+      if (all.error) throw all.error;
+      const rows = all.data && typeof all.data === "object" && !Array.isArray(all.data) && Array.isArray(all.data.rows)
+        ? all.data.rows : [];
+      const ids = rows.slice(0, 5).flatMap(row => row && typeof row === "object" && !Array.isArray(row) ? [row.vorgangs_id] : []);
+      const params = new URL(parlisDeputyUrl(profileKey, 18, "Antrag"), "https://example.invalid").searchParams;
+      return {
+        ok: !!ids.length && preview.data.map(row => row.vorgangs_id).join() === ids.join()
+          && params.get("urheber") === profileKey && params.get("vorgangstyp") === "Antrag",
+        message: "Profilvorschau und vorausgewählte PARLIS-Liste zeigen dieselben Anträge.",
+      };
+    },
+  }, {
+    id: "parlis-wp17-activity",
+    label: "Gespeicherte Typzahlen der 17. Wahlperiode entsprechen der PARLIS-Liste",
+    kind: "db",
+    run: async () => {
+      const { data: link, error } = await supabase.from("parlis_deputy_profiles")
+        .select("profile_key").eq("legislature", 17).not("profile_key", "is", null).limit(1).maybeSingle();
+      if (error) throw error;
+      if (!link?.profile_key) return { ok: false, message: "Für den Bilanzvergleich fehlt ein verknüpftes Profil." };
+      const profileKey = link.profile_key;
+      const [activity, proceedings] = await Promise.all([
+        supabase.rpc("get_parlis_wp17_deputy_activity", { deputy_key: profileKey }),
+        supabase.rpc("parlis_page", { period: 17, deputy_key: profileKey }),
+      ]);
+      if (activity.error) throw activity.error;
+      if (proceedings.error) throw proceedings.error;
+      const page = proceedings.data;
+      const total = activity.data.reduce((sum, row) => sum + row.document_count, 0);
+      return {
+        ok: total > 0 && !!page && typeof page === "object" && !Array.isArray(page) && page.count === total,
+        message: "Bilanz und gefilterte PARLIS-Liste zählen dieselben persönlich zugeordneten Vorgänge.",
       };
     },
   }, {
