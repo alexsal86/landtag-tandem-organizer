@@ -11,7 +11,7 @@ Eindeutige Fehler werden im CI-Lauf ausgegeben und brechen die Prüfung ab; sie 
 - Review-Hinweise: **0**
 - Nicht zugeordnete Objekte: **1**, davon ohne Ausnahme: **0**
 
-## Funktionen ohne zugeordneten Test (126)
+## Funktionen ohne zugeordneten Test (122)
 
 - `mywork.tabs` — Meine Arbeit – Bereichsnavigation und Einstellungen
 - `mywork.quick-access` — Schnellzugriff und zuletzt besuchte Seiten
@@ -23,12 +23,8 @@ Eindeutige Fehler werden im CI-Lauf ausgegeben und brechen die Prüfung ab; sie 
 - `profile.edit` — Eigenes Profil bearbeiten
 - `mobile.app` — Mobile App (Expo)
 - `tasks.deadline` — Frist setzen und überwachen
-- `tasks.snooze` — Aufgabe zurückstellen (Wiedervorlage)
 - `tasks.subtasks` — Unteraufgaben
-- `tasks.link-document` — Aufgabe mit Dokument verknüpfen
-- `tasks.archive` — Aufgabe archivieren und wiederherstellen
 - `tasks.search-filter` — Aufgaben suchen, filtern und sortieren
-- `tasks.nudge` — Aufgabe anmahnen und Erinnerungen versenden
 - `automation.conditions` — Regelbedingungen und Feldtypen
 - `automation.rule-validation` — Regelvalidierung im Editor
 - `automation.rule-versions` — Regelversionen und Import/Export
@@ -321,7 +317,7 @@ Eindeutige Fehler werden im CI-Lauf ausgegeben und brechen die Prüfung ab; sie 
 - `events.legacy-rsvp` — Legacy-Einladungslinks (veraltet)
 - `cases.legacy-routes` — Legacy-Vorgangsrouten (veraltet)
 
-## Funktionen mit Einschränkungen oder offenen Punkten (80)
+## Funktionen mit Einschränkungen oder offenen Punkten (82)
 
 ### `mywork.dashboard`
 
@@ -376,23 +372,33 @@ Eindeutige Fehler werden im CI-Lauf ausgegeben und brechen die Prüfung ab; sie 
 
 ### `tasks.assign`
 
+- Die positive Vertretungsübergabe läuft nur, wenn die gewählte Vertretung keine eigenen offenen Aufgaben hat; sonst prüft der Selbsttest ausschließlich die Selbstübergabe-Sperre, damit keine fremden Bälle verschoben werden.
 - Die Regel, wer wem zuweisen darf, liegt teils in RLS und teils im Code; sie ist hier nicht vollständig rekonstruiert.
 
 ### `tasks.ball-owner`
 
-- Die reine Regel ist getestet; die Anzeige in allen Listen ist nicht durchgängig geprüft.
+- Die Zonenregel ist im Selbsttest als Logic-Step und über die Stafette-RPCs geprüft; die Anzeige in allen Listen ist nicht durchgängig geprüft.
 
 ### `tasks.snooze`
 
+- Der Selbsttest prüft die task_snoozes-Zeile samt Zielregel und das Aufräumen beim Archivieren; das Verschieben der Frist im Dashboard deckt nur der Unit-Test ab.
 - Ob Rückstellungen fachlich als Wiedervorlage oder nur als Anzeige-Unterdrückung gelten, ist im Code nicht abschließend dokumentiert.
 
 ### `tasks.subtasks`
 
 - Die Unteraufgaben-Oberfläche wurde nicht im Browser geprüft; der Nachweis stützt sich auf Komponenten und Tabelle.
 
+### `tasks.link-document`
+
+- Der Selbsttest prüft die Datenbank-Verknüpfung, nicht den Upload in den Storage-Bucket.
+
 ### `tasks.recurring`
 
-- Ob die Wiederholung im Browser sichtbar ausgelöst wurde, ist nicht geprüft; der Nachweis ist die Trigger-/RPC-Kette.
+- Der Selbsttest löst den Trigger über einen Statuswechsel aus und vergleicht die Folgeffrist mit der reinen Regel; die Anzeige im Browser ist nicht geprüft.
+
+### `tasks.archive`
+
+- Der Selbsttest archiviert eine Aufgabe samt Wiedervorlage, prüft die Fremdarchivierungssperre und stellt sie zurück; die Archivansicht selbst ist nicht im Browser geprüft.
 
 ### `tasks.search-filter`
 
@@ -400,6 +406,7 @@ Eindeutige Fehler werden im CI-Lauf ausgegeben und brechen die Prüfung ab; sie 
 
 ### `tasks.nudge`
 
+- Der Selbsttest prüft die 24-Stunden-Sperre, die Quittung mit Verlaufseintrag und die Zugriffssperre der RPCs; der stündliche Cron-Versand, escalate_task und task_approval_sla werden nicht ausgelöst.
 - Der Cron-Versand ist nicht in dieser Umgebung ausgeführt worden.
 
 ### `automation.routine-packages`

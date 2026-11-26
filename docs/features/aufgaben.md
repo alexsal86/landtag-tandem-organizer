@@ -8,30 +8,30 @@ _Auto-generiert mit `npm run update:feature-catalog` aus dem zentralen Funktions
 
 - Funktionen: **18** in **12** Unterbereichen
 - implementiert: **18**, teilweise: **0**, deaktiviert: **0**, potenziell verwaist: **0**
-- ohne zugeordneten Test: **7**
+- ohne zugeordneten Test: **3**
 - ohne Dokumentationsverweis: **9**
 
 ## Funktionen
 
 | Funktion | Unterbereich | Kategorie | Implementierung | Einbindung | Abdeckung |
 |---|---|---|---|---|---|
-| `tasks.archive` Aufgabe archivieren und wiederherstellen | Archiv | fachlich | implementiert | UI | kein Test |
+| `tasks.archive` Aufgabe archivieren und wiederherstellen | Archiv | fachlich | implementiert | UI | Selbsttest |
 | `tasks.complete` Aufgabe abschließen | Bearbeitung | fachlich | implementiert | rollenabhängig | Selbsttest |
 | `tasks.edit` Aufgabe bearbeiten | Bearbeitung | fachlich | implementiert | rollenabhängig | Selbsttest |
 | `tasks.subtasks` Unteraufgaben | Bearbeitung | fachlich | implementiert | UI | kein Test |
 | `tasks.create` Aufgabe erstellen | Erfassung | fachlich | implementiert | rollenabhängig | Selbsttest |
-| `tasks.nudge` Aufgabe anmahnen und Erinnerungen versenden | Erinnerungen | automatisiert | implementiert | systemseitig | kein Test |
-| `tasks.snooze` Aufgabe zurückstellen (Wiedervorlage) | Fristen | fachlich | implementiert | UI | kein Test |
+| `tasks.nudge` Aufgabe anmahnen und Erinnerungen versenden | Erinnerungen | automatisiert | implementiert | systemseitig | Selbsttest |
+| `tasks.snooze` Aufgabe zurückstellen (Wiedervorlage) | Fristen | fachlich | implementiert | UI | Selbsttest |
 | `tasks.deadline` Frist setzen und überwachen | Fristen | fachlich | implementiert | UI | kein Test |
 | `tasks.annual` Jahresaufgaben und Jahresabschluss | Jahresaufgaben | automatisiert | implementiert | systemseitig | Selbsttest |
 | `tasks.handover-stafette` Aufgabe weitergeben (Stafette) | Stafette | fachlich | implementiert | UI | Selbsttest |
-| `tasks.ball-owner` Wer ist am Zug? (Ball-Owner) | Stafette | fachlich | implementiert | UI | Unit-Test |
+| `tasks.ball-owner` Wer ist am Zug? (Ball-Owner) | Stafette | fachlich | implementiert | UI | Selbsttest |
 | `tasks.search-filter` Aufgaben suchen, filtern und sortieren | Suchen & Filtern | fachlich | implementiert | UI | kein Test |
-| `tasks.link-document` Aufgabe mit Dokument verknüpfen | Verknüpfung | fachlich | implementiert | UI | kein Test |
+| `tasks.link-document` Aufgabe mit Dokument verknüpfen | Verknüpfung | fachlich | implementiert | UI | Selbsttest |
 | `tasks.link-decision` Aufgabe mit Entscheidung verknüpfen | Verknüpfung | fachlich | implementiert | rollenabhängig | Selbsttest |
 | `tasks.link-case` Aufgabe mit Vorgang verknüpfen | Verknüpfung | fachlich | implementiert | systemseitig | Unit-Test |
 | `tasks.templates` Aufgabenvorlagen anwenden und pflegen | Vorlagen | fachlich | implementiert | UI | Unit-Test |
-| `tasks.recurring` Wiederkehrende Aufgabe | Wiederholung | automatisiert | implementiert | systemseitig | Unit-Test |
+| `tasks.recurring` Wiederkehrende Aufgabe | Wiederholung | automatisiert | implementiert | systemseitig | Selbsttest |
 | `tasks.assign` Aufgabe zuweisen | Zuweisung | fachlich | implementiert | rollenabhängig | Selbsttest |
 
 ## Unterbereiche
@@ -63,8 +63,8 @@ _Auto-generiert mit `npm run update:feature-catalog` aus dem zentralen Funktions
 |---|---|---:|---:|---|
 | `annual-task-stafette` | Jahresaufgabe → Büroaufgabe → Jahresabschluss | 3 | 5 | — |
 | `decision-lifecycle` | Entscheidungs-Lifecycle (active → open → archived) | 3 | 0 | — |
-| `task-lifecycle` | Aufgaben-Lifecycle (Zuweisung → Frist → Entscheidung → Jour fixe → erledigt) | 3 | 0 | — |
-| `task-stafette-lifecycle` | Aufgaben-Stafette (Am Zug, Wiedervorlage, Freigabe) | 1 | 4 | — |
+| `task-lifecycle` | Aufgaben-Lifecycle (Zuweisung → Frist → Entscheidung → Jour fixe → erledigt) | 6 | 5 | — |
+| `task-stafette-lifecycle` | Aufgaben-Stafette (Am Zug, Wiedervorlage, Freigabe) | 4 | 8 | — |
 
 ## Selbsttest-Schritte
 
@@ -93,10 +93,14 @@ Diese Schritte führen die Szenarien aus; „letzter Lauf“ stammt aus `src/fea
 | `decision-lifecycle` | `nudge-boundary` | Fremde oder unbekannte Entscheidung lässt sich nicht anstupsen | workflow | — |
 | `task-lifecycle` | `status-registry` | Status-Registry führt die fünf Kernstatus | db | — |
 | `task-lifecycle` | `create` | Aufgabe anlegen | db | — |
+| `task-lifecycle` | `document-link` | Dokument an Aufgabe hängen und wieder lösen | db | — |
 | `task-lifecycle` | `assign` | Aufgabe zuweisen + Frist setzen | db | — |
 | `task-lifecycle` | `decision` | Entscheidung aus Aufgabe erstellen | db | — |
 | `task-lifecycle` | `jour-fixe` | Für Jour fixe markieren | db | — |
 | `task-lifecycle` | `complete` | Status → completed | db | — |
+| `task-lifecycle` | `completion-stamp` | Abschluss stempelt completed_at, Wiederöffnen löscht den Stempel | db | — |
+| `task-lifecycle` | `recurrence-spawn` | Wiederholung legt beim Abschluss genau eine Folgeaufgabe an | workflow | — |
+| `task-lifecycle` | `decision-ball` | Votum holt den Ball zurück; Folgeaufgabe entsteht genau einmal | workflow | — |
 | `task-lifecycle` | `tenant-boundary` | Aufgabe lässt sich keinem fremden Büro zuordnen | workflow | — |
 | `task-stafette-lifecycle` | `nudge` | Anstupsen: Empfänger sieht Aufgabe oben, 24h-Limit | logic | — |
 | `task-stafette-lifecycle` | `checklist-batch` | Checkpunkt im Verlauf, Frist +1 Woche | logic | — |
@@ -115,6 +119,11 @@ Diese Schritte führen die Szenarien aus; „letzter Lauf“ stammt aus `src/fea
 | `task-stafette-lifecycle` | `batch-keeps-step` | Sammelaktion: Freigabe behält den vorhandenen nächsten Schritt | db | — |
 | `task-stafette-lifecycle` | `batch-undo` | Sammelaktion: Frist +1 Woche samt Rücknahme | db | — |
 | `task-stafette-lifecycle` | `nudge-boundary` | Anstupsen erreicht keine Aufgabe außerhalb des eigenen Büros | workflow | — |
+| `task-stafette-lifecycle` | `multi-assign` | Mehrfachzuweisung hält task_assignees und assigned_to synchron | db | — |
+| `task-stafette-lifecycle` | `deputy-handover` | Vertretungsübergabe: nur Leitung, nie an sich selbst, verschiebt den Ball | workflow | — |
+| `task-stafette-lifecycle` | `nudge-ack` | Anstupsen: 24-Stunden-Sperre der Datenbank und Quittung im Verlauf | workflow | — |
+| `task-stafette-lifecycle` | `snooze-rows` | Wiedervorlage: task_snoozes je Person, genau ein Ziel | db | — |
+| `task-stafette-lifecycle` | `archive-restore` | Archivieren entfernt Aufgabe und Wiedervorlage, Wiederherstellen holt sie zurück | workflow | — |
 
 ## Deklarierter Prüfumfang
 
@@ -132,7 +141,11 @@ Keine Prüfungen deklariert.
 
 ### `task-lifecycle`
 
-Keine Prüfungen deklariert.
+1. Status-Registry führt die fünf Kernstatus
+2. Dokument hängt an der Aufgabe, bleibt auf eigene Aufgaben beschränkt und lässt sich wieder lösen
+3. Abschluss setzt completed_at, Wiederöffnen entfernt es
+4. Wiederholungsregel legt beim Abschluss genau eine Folgeaufgabe an
+5. Votum zu einer verknüpften Entscheidung holt den Ball zurück und erzeugt die Folgeaufgabe genau einmal
 
 ### `task-stafette-lifecycle`
 
@@ -140,6 +153,10 @@ Keine Prüfungen deklariert.
 2. Verlaufseinträge bei Übergaben und Erledigungen
 3. Sammelaktionen: Vorschau ohne erfundene Frist, ohne überschriebene Schritte, mit Rücknahme
 4. Wochenreview, Eskalationsgründe, Einzeiler-Befehle und SLA-Stufen als reine Regeln
+5. Mehrfachzuweisung hält task_assignees und assigned_to synchron
+6. Vertretungsübergabe verschiebt nur eigene Bälle und verweigert Selbstübergabe
+7. Anstupsen: 24-Stunden-Sperre in der Datenbank und Quittung im Verlauf
+8. Wiedervorlage kennt genau ein Ziel; Archivieren räumt sie mit ab, Wiederherstellen bringt die Aufgabe zurück
 
 ## Funktionsdetails
 
@@ -217,7 +234,7 @@ Legt eine Aufgabe mit Titel, Beschreibung, Fälligkeit, Priorität, Kategorie, E
 - Keine.
 
 ### `tasks.complete` — Aufgabe abschließen
-Setzt eine Aufgabe auf abgeschlossen, stempelt die Erledigung und stößt Folgeprozesse wie Wiederholung und Ball-Rückgabe an.
+Setzt eine Aufgabe auf abgeschlossen, stempelt die Erledigung und stößt Folgeprozesse wie Wiederholung und Ball-Rückgabe an. Der Selbsttest prüft, dass completed_at dem Status in beide Richtungen folgt, dass eine Wiederholungsregel genau eine Folgeaufgabe erzeugt und dass ein Votum den Ball zurückholt.
 
 - **Kategorie:** fachlich
 - **Implementierung:** implementiert
@@ -253,7 +270,7 @@ Setzt eine Aufgabe auf abgeschlossen, stempelt die Erledigung und stößt Folgep
 - Keine.
 
 ### `tasks.assign` — Aufgabe zuweisen
-Weist eine oder mehrere Personen zu, hält die Zuweisungsliste synchron und erlaubt die Übergabe an die Stellvertretung.
+Weist eine oder mehrere Personen zu, hält die Zuweisungsliste synchron und erlaubt die Übergabe an die Stellvertretung. Der Selbsttest prüft Mehrfachzuweisung über task_assignees samt Altfeld sowie die Vertretungsübergabe mit Selbstübergabe-Sperre.
 
 - **Kategorie:** fachlich
 - **Implementierung:** implementiert
@@ -280,10 +297,11 @@ Weist eine oder mehrere Personen zu, hält die Zuweisungsliste synchron und erla
 - src/lib/taskAssignees.ts
 - src/hooks/useAllPersonContacts.tsx
 - src/hooks/useTenantProfiles.ts
+- src/features/selftest/scenarios/task-stafette-lifecycle.ts
 
 **Bekannte Einschränkungen**
 
-- Keine.
+- Die positive Vertretungsübergabe läuft nur, wenn die gewählte Vertretung keine eigenen offenen Aufgaben hat; sonst prüft der Selbsttest ausschließlich die Selbstübergabe-Sperre, damit keine fremden Bälle verschoben werden.
 
 **Offene Prüfpunkte**
 
@@ -331,8 +349,8 @@ Bestimmt aus Status, Zuweisung und Stafette, bei wem die Aufgabe liegt, und zeig
 - **Kategorie:** fachlich
 - **Implementierung:** implementiert
 - **Einbindung:** UI
-- **Testabdeckung:** Unit-Test
-- **Letztes Testergebnis:** unbekannt (kein Laufnachweis importiert; nicht aus der Existenz einer Testdatei abgeleitet)
+- **Testabdeckung:** Selbsttest
+- **Letztes Testergebnis:** nicht-ausgefuehrt (kein Laufnachweis importiert; nicht aus der Existenz einer Testdatei abgeleitet)
 - **Rollen:** `abgeordneter`, `bueroleitung`, `mitarbeiter`, `praktikant`
 - **Routen:** —
 - **Frontend-Komponenten:** `src/components/tasks/TaskBadges.tsx`
@@ -342,7 +360,7 @@ Bestimmt aus Status, Zuweisung und Stafette, bei wem die Aufgabe liegt, und zeig
 - **Datenbankfunktionen:** `validate_task_ball_owner`
 - **Tabellen:** `tasks`, `task_assignees`
 - **Abhängigkeiten:** `tasks.create`
-- **Selbsttests:** —
+- **Selbsttests:** `task-stafette-lifecycle`
 - **Unit-Tests:** `src/features/tasks/stafette.test.ts`
 - **Integrationstests:** —
 - **Browser-Tests:** —
@@ -352,6 +370,7 @@ Bestimmt aus Status, Zuweisung und Stafette, bei wem die Aufgabe liegt, und zeig
 
 - src/features/tasks/stafette.ts
 - src/features/tasks/stafette.test.ts
+- src/features/selftest/scenarios/task-stafette-lifecycle.ts
 - src/components/tasks/TaskBadges.tsx
 
 **Bekannte Einschränkungen**
@@ -360,7 +379,7 @@ Bestimmt aus Status, Zuweisung und Stafette, bei wem die Aufgabe liegt, und zeig
 
 **Offene Prüfpunkte**
 
-- Die reine Regel ist getestet; die Anzeige in allen Listen ist nicht durchgängig geprüft.
+- Die Zonenregel ist im Selbsttest als Logic-Step und über die Stafette-RPCs geprüft; die Anzeige in allen Listen ist nicht durchgängig geprüft.
 
 ### `tasks.deadline` — Frist setzen und überwachen
 Setzt Fälligkeiten, hebt überfällige Aufgaben hervor und speist Fristen-Widgets und Erinnerungen.
@@ -405,7 +424,7 @@ Verschiebt die Wiedervorlage einer Aufgabe, protokolliert den Zeitpunkt und blen
 - **Kategorie:** fachlich
 - **Implementierung:** implementiert
 - **Einbindung:** UI
-- **Testabdeckung:** kein Test
+- **Testabdeckung:** Selbsttest
 - **Letztes Testergebnis:** nicht-ausgefuehrt (kein Laufnachweis importiert; nicht aus der Existenz einer Testdatei abgeleitet)
 - **Rollen:** `abgeordneter`, `bueroleitung`, `mitarbeiter`, `praktikant`
 - **Routen:** —
@@ -416,8 +435,8 @@ Verschiebt die Wiedervorlage einer Aufgabe, protokolliert den Zeitpunkt und blen
 - **Datenbankfunktionen:** —
 - **Tabellen:** `task_snoozes`, `tasks`
 - **Abhängigkeiten:** `tasks.create`
-- **Selbsttests:** —
-- **Unit-Tests:** —
+- **Selbsttests:** `task-stafette-lifecycle`
+- **Unit-Tests:** `src/hooks/__tests__/deadlineActions.test.ts`
 - **Integrationstests:** —
 - **Browser-Tests:** —
 - **Dokumentation:** —
@@ -426,10 +445,11 @@ Verschiebt die Wiedervorlage einer Aufgabe, protokolliert den Zeitpunkt und blen
 
 - src/hooks/useSnoozeDeadline.ts
 - src/components/dashboard/DeadlineSnoozeButton.tsx
+- src/features/selftest/scenarios/task-stafette-lifecycle.ts
 
 **Bekannte Einschränkungen**
 
-- Keine.
+- Der Selbsttest prüft die task_snoozes-Zeile samt Zielregel und das Aufräumen beim Archivieren; das Verschieben der Frist im Dashboard deckt nur der Unit-Test ab.
 
 **Offene Prüfpunkte**
 
@@ -488,7 +508,7 @@ Erzeugt aus einer Aufgabe eine Entscheidung oder verknüpft sie; nach der Abstim
 - **Datenbankfunktionen:** `create_decision_task`, `return_task_ball_after_vote`, `user_can_access_task_decision`
 - **Tabellen:** `task_decisions`, `tasks`, `task_decision_participants`
 - **Abhängigkeiten:** `tasks.create`, `decisions.create`
-- **Selbsttests:** `decision-lifecycle`
+- **Selbsttests:** `decision-lifecycle`, `task-lifecycle`
 - **Unit-Tests:** —
 - **Integrationstests:** —
 - **Browser-Tests:** —
@@ -544,12 +564,12 @@ Verknüpft Aufgaben mit Vorgängen und Fallakten und synchronisiert Schritt- und
 - Keine.
 
 ### `tasks.link-document` — Aufgabe mit Dokument verknüpfen
-Hängt Dokumente an Aufgaben und öffnet sie aus der Aufgabenansicht.
+Hängt Dokumente an Aufgaben und öffnet sie aus der Aufgabenansicht. Der Selbsttest verknüpft eine Dokumentzeile mit einer eigenen Aufgabe, prüft die Ablage und löst die Verknüpfung wieder; fremde Aufgaben bleiben gesperrt.
 
 - **Kategorie:** fachlich
 - **Implementierung:** implementiert
 - **Einbindung:** UI
-- **Testabdeckung:** kein Test
+- **Testabdeckung:** Selbsttest
 - **Letztes Testergebnis:** nicht-ausgefuehrt (kein Laufnachweis importiert; nicht aus der Existenz einer Testdatei abgeleitet)
 - **Rollen:** `abgeordneter`, `bueroleitung`, `mitarbeiter`, `praktikant`
 - **Routen:** —
@@ -560,7 +580,7 @@ Hängt Dokumente an Aufgaben und öffnet sie aus der Aufgabenansicht.
 - **Datenbankfunktionen:** —
 - **Tabellen:** `task_documents`, `documents`
 - **Abhängigkeiten:** `tasks.create`, `documents.upload-version`
-- **Selbsttests:** —
+- **Selbsttests:** `task-lifecycle`
 - **Unit-Tests:** —
 - **Integrationstests:** —
 - **Browser-Tests:** —
@@ -569,10 +589,11 @@ Hängt Dokumente an Aufgaben und öffnet sie aus der Aufgabenansicht.
 **Nachweise im Quellcode**
 
 - src/components/tasks/TaskDocumentDialog.tsx
+- src/features/selftest/scenarios/task-lifecycle.ts
 
 **Bekannte Einschränkungen**
 
-- Keine.
+- Der Selbsttest prüft die Datenbank-Verknüpfung, nicht den Upload in den Storage-Bucket.
 
 **Offene Prüfpunkte**
 
@@ -584,8 +605,8 @@ Erzeugt beim Abschluss automatisch die nächste Aufgabe anhand einer Wiederholun
 - **Kategorie:** automatisiert
 - **Implementierung:** implementiert
 - **Einbindung:** systemseitig
-- **Testabdeckung:** Unit-Test
-- **Letztes Testergebnis:** unbekannt (kein Laufnachweis importiert; nicht aus der Existenz einer Testdatei abgeleitet)
+- **Testabdeckung:** Selbsttest
+- **Letztes Testergebnis:** nicht-ausgefuehrt (kein Laufnachweis importiert; nicht aus der Existenz einer Testdatei abgeleitet)
 - **Rollen:** `system`
 - **Routen:** —
 - **Frontend-Komponenten:** —
@@ -595,7 +616,7 @@ Erzeugt beim Abschluss automatisch die nächste Aufgabe anhand einer Wiederholun
 - **Datenbankfunktionen:** `spawn_recurring_task`, `next_recurrence_date`, `validate_task_recurrence`
 - **Tabellen:** `tasks`
 - **Abhängigkeiten:** `tasks.create`
-- **Selbsttests:** —
+- **Selbsttests:** `task-lifecycle`
 - **Unit-Tests:** `src/features/tasks/templates.test.ts`
 - **Integrationstests:** —
 - **Browser-Tests:** —
@@ -605,10 +626,11 @@ Erzeugt beim Abschluss automatisch die nächste Aufgabe anhand einer Wiederholun
 
 - src/features/tasks/templates.ts
 - src/features/tasks/templates.test.ts
+- src/features/selftest/scenarios/task-lifecycle.ts
 
 **Bekannte Einschränkungen**
 
-- Ob die Wiederholung im Browser sichtbar ausgelöst wurde, ist nicht geprüft; der Nachweis ist die Trigger-/RPC-Kette.
+- Der Selbsttest löst den Trigger über einen Statuswechsel aus und vergleicht die Folgeffrist mit der reinen Regel; die Anzeige im Browser ist nicht geprüft.
 
 **Offene Prüfpunkte**
 
@@ -656,7 +678,7 @@ Verschiebt abgeschlossene Aufgaben ins Archiv, erlaubt Wiederherstellung und pro
 - **Kategorie:** fachlich
 - **Implementierung:** implementiert
 - **Einbindung:** UI
-- **Testabdeckung:** kein Test
+- **Testabdeckung:** Selbsttest
 - **Letztes Testergebnis:** nicht-ausgefuehrt (kein Laufnachweis importiert; nicht aus der Existenz einer Testdatei abgeleitet)
 - **Rollen:** `abgeordneter`, `bueroleitung`, `mitarbeiter`
 - **Routen:** `/tasks/archive`
@@ -667,8 +689,8 @@ Verschiebt abgeschlossene Aufgaben ins Archiv, erlaubt Wiederherstellung und pro
 - **Datenbankfunktionen:** `archive_completed_task`, `restore_archived_task`, `undo_task_batch_action`
 - **Tabellen:** `archived_tasks`, `tasks`, `task_archive_settings`, `bulk_action_audit`
 - **Abhängigkeiten:** `tasks.create`, `tasks.complete`
-- **Selbsttests:** —
-- **Unit-Tests:** —
+- **Selbsttests:** `task-stafette-lifecycle`
+- **Unit-Tests:** `src/hooks/__tests__/deadlineActions.test.ts`
 - **Integrationstests:** —
 - **Browser-Tests:** —
 - **Dokumentation:** `docs/my-work-architecture.md`
@@ -677,10 +699,11 @@ Verschiebt abgeschlossene Aufgaben ins Archiv, erlaubt Wiederherstellung und pro
 
 - src/features/tasks/components/TaskArchiveView.tsx
 - src/features/tasks/components/TaskArchiveModal.tsx
+- src/features/selftest/scenarios/task-stafette-lifecycle.ts
 
 **Bekannte Einschränkungen**
 
-- Keine.
+- Der Selbsttest archiviert eine Aufgabe samt Wiedervorlage, prüft die Fremdarchivierungssperre und stellt sie zurück; die Archivansicht selbst ist nicht im Browser geprüft.
 
 **Offene Prüfpunkte**
 
@@ -728,7 +751,7 @@ Erlaubt Anmahnen über eine RPC mit 24-Stunden-Grenze und versendet fällige Eri
 - **Kategorie:** automatisiert
 - **Implementierung:** implementiert
 - **Einbindung:** systemseitig
-- **Testabdeckung:** kein Test
+- **Testabdeckung:** Selbsttest
 - **Letztes Testergebnis:** nicht-ausgefuehrt (kein Laufnachweis importiert; nicht aus der Existenz einer Testdatei abgeleitet)
 - **Rollen:** `abgeordneter`, `bueroleitung`, `mitarbeiter`, `system`
 - **Routen:** —
@@ -739,7 +762,7 @@ Erlaubt Anmahnen über eine RPC mit 24-Stunden-Grenze und versendet fällige Eri
 - **Datenbankfunktionen:** `nudge_task`, `ack_task_nudge`, `dispatch_due_task_reminders`, `escalate_task`, `task_approval_sla`
 - **Tabellen:** `tasks`, `notifications`, `dashboard_decision_nudges`
 - **Abhängigkeiten:** `tasks.create`, `tasks.ball-owner`
-- **Selbsttests:** —
+- **Selbsttests:** `task-stafette-lifecycle`
 - **Unit-Tests:** —
 - **Integrationstests:** —
 - **Browser-Tests:** —
@@ -749,10 +772,11 @@ Erlaubt Anmahnen über eine RPC mit 24-Stunden-Grenze und versendet fällige Eri
 
 - supabase/functions/_shared/security.ts
 - src/hooks/useNotifications.tsx
+- src/features/selftest/scenarios/task-stafette-lifecycle.ts
 
 **Bekannte Einschränkungen**
 
-- Keine.
+- Der Selbsttest prüft die 24-Stunden-Sperre, die Quittung mit Verlaufseintrag und die Zugriffssperre der RPCs; der stündliche Cron-Versand, escalate_task und task_approval_sla werden nicht ausgelöst.
 
 **Offene Prüfpunkte**
 

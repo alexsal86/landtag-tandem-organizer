@@ -57,7 +57,7 @@ _Auto-generiert mit `npm run update:feature-catalog` aus dem zentralen Funktions
 | `appointment-briefing-lifecycle` | Briefing-Lifecycle (vergeben → Aufgabe → vorlegen → freigeben) | 3 | 5 | — |
 | `decision-lifecycle` | Entscheidungs-Lifecycle (active → open → archived) | 3 | 0 | — |
 | `quick-note-lifecycle` | Notizen-Lifecycle (Anlegen → Priorität → Anheften → Aufgabe → Archiv) | 4 | 0 | — |
-| `task-lifecycle` | Aufgaben-Lifecycle (Zuweisung → Frist → Entscheidung → Jour fixe → erledigt) | 3 | 0 | — |
+| `task-lifecycle` | Aufgaben-Lifecycle (Zuweisung → Frist → Entscheidung → Jour fixe → erledigt) | 6 | 5 | — |
 
 ## Selbsttest-Schritte
 
@@ -102,10 +102,14 @@ Diese Schritte führen die Szenarien aus; „letzter Lauf“ stammt aus `src/fea
 | `quick-note-lifecycle` | `archive` | Archivieren | db | — |
 | `task-lifecycle` | `status-registry` | Status-Registry führt die fünf Kernstatus | db | — |
 | `task-lifecycle` | `create` | Aufgabe anlegen | db | — |
+| `task-lifecycle` | `document-link` | Dokument an Aufgabe hängen und wieder lösen | db | — |
 | `task-lifecycle` | `assign` | Aufgabe zuweisen + Frist setzen | db | — |
 | `task-lifecycle` | `decision` | Entscheidung aus Aufgabe erstellen | db | — |
 | `task-lifecycle` | `jour-fixe` | Für Jour fixe markieren | db | — |
 | `task-lifecycle` | `complete` | Status → completed | db | — |
+| `task-lifecycle` | `completion-stamp` | Abschluss stempelt completed_at, Wiederöffnen löscht den Stempel | db | — |
+| `task-lifecycle` | `recurrence-spawn` | Wiederholung legt beim Abschluss genau eine Folgeaufgabe an | workflow | — |
+| `task-lifecycle` | `decision-ball` | Votum holt den Ball zurück; Folgeaufgabe entsteht genau einmal | workflow | — |
 | `task-lifecycle` | `tenant-boundary` | Aufgabe lässt sich keinem fremden Büro zuordnen | workflow | — |
 
 ## Deklarierter Prüfumfang
@@ -128,7 +132,11 @@ Keine Prüfungen deklariert.
 
 ### `task-lifecycle`
 
-Keine Prüfungen deklariert.
+1. Status-Registry führt die fünf Kernstatus
+2. Dokument hängt an der Aufgabe, bleibt auf eigene Aufgaben beschränkt und lässt sich wieder lösen
+3. Abschluss setzt completed_at, Wiederöffnen entfernt es
+4. Wiederholungsregel legt beim Abschluss genau eine Folgeaufgabe an
+5. Votum zu einer verknüpften Entscheidung holt den Ball zurück und erzeugt die Folgeaufgabe genau einmal
 
 ## Funktionsdetails
 

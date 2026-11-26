@@ -19,7 +19,9 @@ export const resolveNavigationState = (
   subSection: string | null,
   isSuperAdmin: boolean,
 ) : { section: string; subSection: string } => {
-  // Preserve saved links when moving personal and financial settings.
+  // Preserve saved links when moving administration settings.
+  if (section === "templates" && subSection === "press-occasions") subSection = "press-templates";
+  if (section === "templates" && subSection === "occasions") subSection = "letters";
   if (section === "automation") subSection = resolveAutomationDestination(subSection);
   if (section === "security" && subSection === "expense") section = "finance";
   if ((section === "users" && subSection === "matrix") || (section === "content" && subSection === "archiving") || (section === "templates" && subSection === "celebrations")) section = "personal";

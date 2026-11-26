@@ -4,7 +4,7 @@ _Auto-generiert mit `npm run update:selftest-coverage`._
 
 Quelle: `src/integrations/supabase/types.ts`. Die Angaben beschreiben deklarierte Prüfumfänge, keine erfolgreichen Testläufe und keine Code-Coverage.
 
-Von 351 Tabellen haben 83 ein registriertes Szenario. 119 sind als Ausbau offen, 149 ausgenommen und 0 noch nicht eingeordnet. Ausnahmen zählen nicht als bestanden.
+Von 351 Tabellen haben 86 ein registriertes Szenario; 0 sind noch nicht eingeordnet. 265 sind befristet ausgenommen, davon 118 als Ausbau offen und 147 als technisch oder fachlich ausgenommen. Ausnahmen zählen nicht als bestanden.
 
 ## Szenarien
 
@@ -41,8 +41,8 @@ Von 351 Tabellen haben 83 ein registriertes Szenario. 119 sind als Ausbau offen,
 | `quick-note-lifecycle` | Notizen-Lifecycle (Anlegen → Priorität → Anheften → Aufgabe → Archiv) | quick_notes, tasks, task_decisions, task_decision_participants |
 | `responsibilities` | Zuständigkeiten & Matrix | tasks |
 | `security-hardening` | Sicherheitsregeln: Porträtdateien und E-Mail-Inhalte | Keine (reine Regeln) |
-| `task-lifecycle` | Aufgaben-Lifecycle (Zuweisung → Frist → Entscheidung → Jour fixe → erledigt) | tasks, task_decisions, task_statuses |
-| `task-stafette-lifecycle` | Aufgaben-Stafette (Am Zug, Wiedervorlage, Freigabe) | tasks |
+| `task-lifecycle` | Aufgaben-Lifecycle (Zuweisung → Frist → Entscheidung → Jour fixe → erledigt) | tasks, task_documents, task_decisions, task_decision_participants, task_decision_responses, task_statuses |
+| `task-stafette-lifecycle` | Aufgaben-Stafette (Am Zug, Wiedervorlage, Freigabe) | tasks, task_assignees, task_snoozes, archived_tasks |
 | `team-rituals` | Freiwillige Team-Rituale | Keine (reine Regeln) |
 | `topic-linking` | Themenverknüpfung und Modul-Steuerung | topics, case_item_topics, case_items, knowledge_question_topics, topic_module_settings |
 | `workflow-rules` | Geschäftsregeln (Freigabe, Rollen, Fristen) | Keine (reine Regeln) |
@@ -51,141 +51,141 @@ Von 351 Tabellen haben 83 ein registriertes Szenario. 119 sind als Ausbau offen,
 
 | Tabelle | Einordnung | Szenarien |
 |---|---|---|
-| `action_permissions` | Ausstehend | — |
-| `admin_status_options` | Ausgenommen (nicht geprüft) | — |
+| `action_permissions` | Ausstehend bis 2027-06-30 | — |
+| `admin_status_options` | Ausgenommen bis 2027-06-30 | — |
 | `annual_task_completions` | Szenario vorhanden | annual-task-stafette |
 | `annual_tasks` | Szenario vorhanden | annual-task-stafette |
-| `app_settings` | Ausgenommen (nicht geprüft) | — |
-| `appointment_categories` | Ausgenommen (nicht geprüft) | — |
+| `app_settings` | Ausgenommen bis 2027-06-30 | — |
+| `appointment_categories` | Ausgenommen bis 2027-06-30 | — |
 | `appointment_change_alerts` | Szenario vorhanden | appointment-briefing-lifecycle |
-| `appointment_contacts` | Ausgenommen (nicht geprüft) | — |
-| `appointment_documents` | Ausgenommen (nicht geprüft) | — |
+| `appointment_contacts` | Ausgenommen bis 2027-06-30 | — |
+| `appointment_documents` | Ausgenommen bis 2027-06-30 | — |
 | `appointment_feedback` | Szenario vorhanden | appointment-lifecycle |
-| `appointment_feedback_settings` | Ausgenommen (nicht geprüft) | — |
+| `appointment_feedback_settings` | Ausgenommen bis 2027-06-30 | — |
 | `appointment_guests` | Szenario vorhanden | poll-lifecycle |
-| `appointment_locations` | Ausgenommen (nicht geprüft) | — |
+| `appointment_locations` | Ausgenommen bis 2027-06-30 | — |
 | `appointment_polls` | Szenario vorhanden | poll-lifecycle |
-| `appointment_preparation_documents` | Ausgenommen (nicht geprüft) | — |
-| `appointment_preparation_templates` | Ausgenommen (nicht geprüft) | — |
+| `appointment_preparation_documents` | Ausgenommen bis 2027-06-30 | — |
+| `appointment_preparation_templates` | Ausgenommen bis 2027-06-30 | — |
 | `appointment_preparations` | Szenario vorhanden | appointment-lifecycle |
-| `appointment_reminder_dispatches` | Ausgenommen (nicht geprüft) | — |
+| `appointment_reminder_dispatches` | Ausgenommen bis 2027-06-30 | — |
 | `appointment_requests` | Szenario vorhanden | access-boundaries, appointment-request-lifecycle, case-item-lifecycle |
-| `appointment_statuses` | Ausgenommen (nicht geprüft) | — |
-| `appointment_topics` | Ausgenommen (nicht geprüft) | — |
+| `appointment_statuses` | Ausgenommen bis 2027-06-30 | — |
+| `appointment_topics` | Ausgenommen bis 2027-06-30 | — |
 | `appointments` | Szenario vorhanden | appointment-briefing-lifecycle, appointment-lifecycle, appointment-request-lifecycle, case-file-lifecycle, meeting-lifecycle, poll-lifecycle |
-| `archived_tasks` | Ausstehend | — |
-| `audit_log_entries` | Ausgenommen (nicht geprüft) | — |
-| `automation_rate_limits` | Ausgenommen (nicht geprüft) | — |
-| `automation_rule_run_steps` | Ausgenommen (nicht geprüft) | — |
-| `automation_rule_runs` | Ausgenommen (nicht geprüft) | — |
-| `automation_rule_versions` | Ausgenommen (nicht geprüft) | — |
-| `automation_rules` | Ausstehend | — |
-| `bulk_action_audit` | Ausgenommen (nicht geprüft) | — |
-| `calendar_sync_settings` | Ausgenommen (nicht geprüft) | — |
+| `archived_tasks` | Szenario vorhanden | task-stafette-lifecycle |
+| `audit_log_entries` | Ausgenommen bis 2027-06-30 | — |
+| `automation_rate_limits` | Ausgenommen bis 2027-06-30 | — |
+| `automation_rule_run_steps` | Ausgenommen bis 2027-06-30 | — |
+| `automation_rule_runs` | Ausgenommen bis 2027-06-30 | — |
+| `automation_rule_versions` | Ausgenommen bis 2027-06-30 | — |
+| `automation_rules` | Ausstehend bis 2027-03-31 | — |
+| `bulk_action_audit` | Ausgenommen bis 2027-06-30 | — |
+| `calendar_sync_settings` | Ausgenommen bis 2027-06-30 | — |
 | `call_logs` | Szenario vorhanden | contact-relations |
-| `carryover_items` | Ausstehend | — |
+| `carryover_items` | Ausstehend bis 2027-03-31 | — |
 | `case_file_appointments` | Szenario vorhanden | case-file-lifecycle |
 | `case_file_contacts` | Szenario vorhanden | case-file-lifecycle |
-| `case_file_documents` | Ausgenommen (nicht geprüft) | — |
+| `case_file_documents` | Ausgenommen bis 2027-06-30 | — |
 | `case_file_letters` | Szenario vorhanden | case-file-lifecycle |
 | `case_file_notes` | Szenario vorhanden | case-file-lifecycle |
 | `case_file_participants` | Szenario vorhanden | case-file-lifecycle |
-| `case_file_processing_statuses` | Ausgenommen (nicht geprüft) | — |
+| `case_file_processing_statuses` | Ausgenommen bis 2027-06-30 | — |
 | `case_file_status_history` | Szenario vorhanden | case-file-lifecycle |
 | `case_file_tasks` | Szenario vorhanden | case-file-lifecycle |
 | `case_file_timeline` | Szenario vorhanden | case-file-lifecycle |
-| `case_file_topics` | Ausgenommen (nicht geprüft) | — |
-| `case_file_types` | Ausgenommen (nicht geprüft) | — |
+| `case_file_topics` | Ausgenommen bis 2027-06-30 | — |
+| `case_file_types` | Ausgenommen bis 2027-06-30 | — |
 | `case_files` | Szenario vorhanden | case-file-lifecycle |
-| `case_item_attachments` | Ausstehend | — |
-| `case_item_categories` | Ausgenommen (nicht geprüft) | — |
-| `case_item_escalation_suggestions` | Ausgenommen (nicht geprüft) | — |
+| `case_item_attachments` | Ausstehend bis 2027-03-31 | — |
+| `case_item_categories` | Ausgenommen bis 2027-06-30 | — |
+| `case_item_escalation_suggestions` | Ausgenommen bis 2027-06-30 | — |
 | `case_item_handover_log` | Szenario vorhanden | case-item-lifecycle |
 | `case_item_interactions` | Szenario vorhanden | case-item-lifecycle |
-| `case_item_participants` | Ausgenommen (nicht geprüft) | — |
-| `case_item_timeline` | Ausgenommen (nicht geprüft) | — |
+| `case_item_participants` | Ausgenommen bis 2027-06-30 | — |
+| `case_item_timeline` | Ausgenommen bis 2027-06-30 | — |
 | `case_item_topics` | Szenario vorhanden | topic-linking |
 | `case_items` | Szenario vorhanden | case-file-lifecycle, case-item-lifecycle, topic-linking |
-| `celebration_animations` | Ausgenommen (nicht geprüft) | — |
-| `celebration_settings` | Ausgenommen (nicht geprüft) | — |
-| `committees` | Ausstehend | — |
+| `celebration_animations` | Ausgenommen bis 2027-06-30 | — |
+| `celebration_settings` | Ausgenommen bis 2027-06-30 | — |
+| `committees` | Ausstehend bis 2027-03-31 | — |
 | `contact_activities` | Szenario vorhanden | contact-lifecycle, contact-relations |
 | `contact_briefing_memory` | Szenario vorhanden | contact-relations |
 | `contact_topics` | Szenario vorhanden | contact-relations |
 | `contact_usage_stats` | Szenario vorhanden | contact-lifecycle |
 | `contacts` | Szenario vorhanden | case-file-lifecycle, contact-lifecycle, contact-relations |
-| `daily_briefing_reads` | Ausstehend | — |
+| `daily_briefing_reads` | Ausstehend bis 2027-03-31 | — |
 | `daily_briefings` | Szenario vorhanden | daily-briefing-lifecycle |
-| `dashboard_decision_nudges` | Ausstehend | — |
-| `dashboard_layouts` | Ausgenommen (nicht geprüft) | — |
-| `data_lint_findings` | Ausgenommen (nicht geprüft) | — |
+| `dashboard_decision_nudges` | Ausstehend bis 2027-03-31 | — |
+| `dashboard_layouts` | Ausgenommen bis 2027-06-30 | — |
+| `data_lint_findings` | Ausgenommen bis 2027-06-30 | — |
 | `day_slips` | Szenario vorhanden | case-item-lifecycle, day-slip-lifecycle |
-| `decision_archive_settings` | Ausgenommen (nicht geprüft) | — |
-| `decision_email_templates` | Ausgenommen (nicht geprüft) | — |
-| `decision_matrix_messages` | Ausgenommen (nicht geprüft) | — |
-| `default_appointment_guests` | Ausgenommen (nicht geprüft) | — |
+| `decision_archive_settings` | Ausgenommen bis 2027-06-30 | — |
+| `decision_email_templates` | Ausgenommen bis 2027-06-30 | — |
+| `decision_matrix_messages` | Ausgenommen bis 2027-06-30 | — |
+| `default_appointment_guests` | Ausgenommen bis 2027-06-30 | — |
 | `distribution_list_members` | Szenario vorhanden | contact-relations |
 | `distribution_lists` | Szenario vorhanden | contact-relations |
-| `district_notes` | Ausstehend | — |
-| `district_support_assignments` | Ausstehend | — |
+| `district_notes` | Ausstehend bis 2027-03-31 | — |
+| `district_support_assignments` | Ausstehend bis 2027-03-31 | — |
 | `document_annotation_events` | Szenario vorhanden | document-annotation |
 | `document_annotation_tasks` | Szenario vorhanden | document-annotation |
 | `document_annotations` | Szenario vorhanden | document-annotation |
-| `document_categories` | Ausgenommen (nicht geprüft) | — |
-| `document_contacts` | Ausgenommen (nicht geprüft) | — |
-| `document_folders` | Ausstehend | — |
-| `document_topics` | Ausgenommen (nicht geprüft) | — |
+| `document_categories` | Ausgenommen bis 2027-06-30 | — |
+| `document_contacts` | Ausgenommen bis 2027-06-30 | — |
+| `document_folders` | Ausstehend bis 2027-03-31 | — |
+| `document_topics` | Ausgenommen bis 2027-06-30 | — |
 | `documents` | Szenario vorhanden | document-annotation, letter-lifecycle |
-| `dossier_entries` | Ausstehend | — |
-| `dossier_links` | Ausgenommen (nicht geprüft) | — |
-| `dossier_position_versions` | Ausgenommen (nicht geprüft) | — |
-| `dossier_source_watchers` | Ausgenommen (nicht geprüft) | — |
-| `dossier_stakeholders` | Ausgenommen (nicht geprüft) | — |
-| `dossier_talking_points` | Ausgenommen (nicht geprüft) | — |
-| `dossiers` | Ausstehend | — |
-| `edge_function_cache` | Ausgenommen (nicht geprüft) | — |
-| `egress_anomalies` | Ausgenommen (nicht geprüft) | — |
-| `egress_metrics` | Ausgenommen (nicht geprüft) | — |
-| `election_analysis_bw_polls` | Ausstehend | — |
-| `election_analysis_candidate_coverage` | Ausstehend | — |
-| `election_analysis_candidates` | Ausstehend | — |
-| `election_analysis_correction_audit` | Ausstehend | — |
-| `election_analysis_demographics` | Ausstehend | — |
-| `election_analysis_district_workbook_audit` | Ausstehend | — |
-| `election_analysis_districts` | Ausstehend | — |
-| `election_analysis_flow_matrix` | Ausstehend | — |
-| `election_analysis_flows` | Ausstehend | — |
-| `election_analysis_geographies` | Ausstehend | — |
-| `election_analysis_local_results` | Ausstehend | — |
-| `election_analysis_period_proposals` | Ausstehend | — |
-| `election_analysis_scenarios` | Ausstehend | — |
-| `election_analysis_source_reviews` | Ausstehend | — |
-| `election_analysis_state` | Ausstehend | — |
-| `election_analysis_state_totals` | Ausstehend | — |
-| `election_analysis_turnout` | Ausstehend | — |
-| `election_analysis_versions` | Ausstehend | — |
-| `election_analysis_workbook_audit` | Ausstehend | — |
-| `election_analysis_years` | Ausstehend | — |
-| `election_district_municipalities` | Ausgenommen (nicht geprüft) | — |
-| `election_district_notes` | Ausgenommen (nicht geprüft) | — |
-| `election_districts` | Ausstehend | — |
-| `election_history_1952_result_sources` | Ausstehend | — |
-| `election_history_assembly_issues` | Ausstehend | — |
-| `election_history_audit` | Ausstehend | — |
-| `election_history_candidacies` | Ausstehend | — |
-| `election_history_candidate_workbook_audit` | Ausstehend | — |
-| `election_history_connection_people` | Ausstehend | — |
-| `election_history_districts` | Ausstehend | — |
-| `election_history_factions` | Ausstehend | — |
-| `election_history_mandate_birthdays` | Ausstehend | — |
-| `election_history_mandates` | Ausstehend | — |
-| `election_history_people` | Ausstehend | — |
-| `election_history_periods` | Ausstehend | — |
-| `election_history_state_list_entries` | Ausstehend | — |
-| `election_history_state_lists` | Ausstehend | — |
-| `election_representatives` | Ausstehend | — |
-| `email_logs` | Ausgenommen (nicht geprüft) | — |
-| `email_templates` | Ausgenommen (nicht geprüft) | — |
+| `dossier_entries` | Ausstehend bis 2027-03-31 | — |
+| `dossier_links` | Ausgenommen bis 2027-06-30 | — |
+| `dossier_position_versions` | Ausgenommen bis 2027-06-30 | — |
+| `dossier_source_watchers` | Ausgenommen bis 2027-06-30 | — |
+| `dossier_stakeholders` | Ausgenommen bis 2027-06-30 | — |
+| `dossier_talking_points` | Ausgenommen bis 2027-06-30 | — |
+| `dossiers` | Ausstehend bis 2027-03-31 | — |
+| `edge_function_cache` | Ausgenommen bis 2027-06-30 | — |
+| `egress_anomalies` | Ausgenommen bis 2027-06-30 | — |
+| `egress_metrics` | Ausgenommen bis 2027-06-30 | — |
+| `election_analysis_bw_polls` | Ausstehend bis 2027-06-30 | — |
+| `election_analysis_candidate_coverage` | Ausstehend bis 2027-06-30 | — |
+| `election_analysis_candidates` | Ausstehend bis 2027-06-30 | — |
+| `election_analysis_correction_audit` | Ausstehend bis 2027-06-30 | — |
+| `election_analysis_demographics` | Ausstehend bis 2027-06-30 | — |
+| `election_analysis_district_workbook_audit` | Ausstehend bis 2027-06-30 | — |
+| `election_analysis_districts` | Ausstehend bis 2027-06-30 | — |
+| `election_analysis_flow_matrix` | Ausstehend bis 2027-06-30 | — |
+| `election_analysis_flows` | Ausstehend bis 2027-06-30 | — |
+| `election_analysis_geographies` | Ausstehend bis 2027-06-30 | — |
+| `election_analysis_local_results` | Ausstehend bis 2027-06-30 | — |
+| `election_analysis_period_proposals` | Ausstehend bis 2027-06-30 | — |
+| `election_analysis_scenarios` | Ausstehend bis 2027-06-30 | — |
+| `election_analysis_source_reviews` | Ausstehend bis 2027-06-30 | — |
+| `election_analysis_state` | Ausstehend bis 2027-06-30 | — |
+| `election_analysis_state_totals` | Ausstehend bis 2027-06-30 | — |
+| `election_analysis_turnout` | Ausstehend bis 2027-06-30 | — |
+| `election_analysis_versions` | Ausstehend bis 2027-06-30 | — |
+| `election_analysis_workbook_audit` | Ausstehend bis 2027-06-30 | — |
+| `election_analysis_years` | Ausstehend bis 2027-06-30 | — |
+| `election_district_municipalities` | Ausgenommen bis 2027-06-30 | — |
+| `election_district_notes` | Ausgenommen bis 2027-06-30 | — |
+| `election_districts` | Ausstehend bis 2027-06-30 | — |
+| `election_history_1952_result_sources` | Ausstehend bis 2027-06-30 | — |
+| `election_history_assembly_issues` | Ausstehend bis 2027-06-30 | — |
+| `election_history_audit` | Ausstehend bis 2027-06-30 | — |
+| `election_history_candidacies` | Ausstehend bis 2027-06-30 | — |
+| `election_history_candidate_workbook_audit` | Ausstehend bis 2027-06-30 | — |
+| `election_history_connection_people` | Ausstehend bis 2027-06-30 | — |
+| `election_history_districts` | Ausstehend bis 2027-06-30 | — |
+| `election_history_factions` | Ausstehend bis 2027-06-30 | — |
+| `election_history_mandate_birthdays` | Ausstehend bis 2027-06-30 | — |
+| `election_history_mandates` | Ausstehend bis 2027-06-30 | — |
+| `election_history_people` | Ausstehend bis 2027-06-30 | — |
+| `election_history_periods` | Ausstehend bis 2027-06-30 | — |
+| `election_history_state_list_entries` | Ausstehend bis 2027-06-30 | — |
+| `election_history_state_lists` | Ausstehend bis 2027-06-30 | — |
+| `election_representatives` | Ausstehend bis 2027-06-30 | — |
+| `email_logs` | Ausgenommen bis 2027-06-30 | — |
+| `email_templates` | Ausgenommen bis 2027-06-30 | — |
 | `employee_hr_evidence` | Szenario vorhanden | onboarding-hr |
 | `employee_hr_gdpr_declarations` | Szenario vorhanden | onboarding-hr |
 | `employee_hr_reminder_log` | Szenario vorhanden | onboarding-hr |
@@ -196,78 +196,78 @@ Von 351 Tabellen haben 83 ein registriertes Szenario. 119 sind als Ausbau offen,
 | `employee_meeting_private_notes` | Szenario vorhanden | employee-meetings |
 | `employee_meeting_requests` | Szenario vorhanden | employee-meetings |
 | `employee_meetings` | Szenario vorhanden | employee-meetings |
-| `employee_responsibilities` | Ausstehend | — |
-| `employee_settings` | Ausgenommen (nicht geprüft) | — |
-| `employee_settings_history` | Ausgenommen (nicht geprüft) | — |
-| `employee_yearly_stats` | Ausgenommen (nicht geprüft) | — |
-| `event_email_templates` | Ausgenommen (nicht geprüft) | — |
-| `event_planning_action_logs` | Ausgenommen (nicht geprüft) | — |
+| `employee_responsibilities` | Ausstehend bis 2027-03-31 | — |
+| `employee_settings` | Ausgenommen bis 2027-06-30 | — |
+| `employee_settings_history` | Ausgenommen bis 2027-06-30 | — |
+| `employee_yearly_stats` | Ausgenommen bis 2027-06-30 | — |
+| `event_email_templates` | Ausgenommen bis 2027-06-30 | — |
+| `event_planning_action_logs` | Ausgenommen bis 2027-06-30 | — |
 | `event_planning_checklist_items` | Szenario vorhanden | event-planning-lifecycle |
-| `event_planning_collaborators` | Ausgenommen (nicht geprüft) | — |
+| `event_planning_collaborators` | Ausgenommen bis 2027-06-30 | — |
 | `event_planning_contacts` | Szenario vorhanden | event-planning-lifecycle |
 | `event_planning_dates` | Szenario vorhanden | event-planning-lifecycle |
-| `event_planning_documents` | Ausgenommen (nicht geprüft) | — |
-| `event_planning_item_actions` | Ausgenommen (nicht geprüft) | — |
+| `event_planning_documents` | Ausgenommen bis 2027-06-30 | — |
+| `event_planning_item_actions` | Ausgenommen bis 2027-06-30 | — |
 | `event_planning_speakers` | Szenario vorhanden | event-planning-lifecycle |
 | `event_planning_timeline_assignments` | Szenario vorhanden | event-planning-lifecycle |
 | `event_plannings` | Szenario vorhanden | event-planning-lifecycle |
-| `event_rsvp_public_links` | Ausgenommen (nicht geprüft) | — |
-| `event_rsvps` | Ausgenommen (nicht geprüft) | — |
-| `expense_budgets` | Ausgenommen (nicht geprüft) | — |
-| `expense_categories` | Ausgenommen (nicht geprüft) | — |
-| `expenses` | Ausstehend | — |
-| `external_calendars` | Ausstehend | — |
-| `external_events` | Ausstehend | — |
-| `facts` | Ausstehend | — |
-| `field_permissions` | Ausstehend | — |
+| `event_rsvp_public_links` | Ausgenommen bis 2027-06-30 | — |
+| `event_rsvps` | Ausgenommen bis 2027-06-30 | — |
+| `expense_budgets` | Ausgenommen bis 2027-06-30 | — |
+| `expense_categories` | Ausgenommen bis 2027-06-30 | — |
+| `expenses` | Ausstehend bis 2027-03-31 | — |
+| `external_calendars` | Ausstehend bis 2027-06-30 | — |
+| `external_events` | Ausstehend bis 2027-06-30 | — |
+| `facts` | Ausstehend bis 2027-06-30 | — |
+| `field_permissions` | Ausstehend bis 2027-06-30 | — |
 | `funding_participants` | Szenario vorhanden | contact-relations |
 | `fundings` | Szenario vorhanden | contact-relations |
-| `gdpr_requests` | Ausstehend | — |
-| `habit_completions` | Ausstehend | — |
-| `habits` | Ausstehend | — |
-| `information_blocks` | Ausstehend | — |
-| `karlsruhe_districts` | Ausstehend | — |
-| `knowledge_document_collaborators` | Ausgenommen (nicht geprüft) | — |
-| `knowledge_document_permissions` | Ausgenommen (nicht geprüft) | — |
-| `knowledge_document_snapshots` | Ausgenommen (nicht geprüft) | — |
-| `knowledge_document_topics` | Ausgenommen (nicht geprüft) | — |
-| `knowledge_document_versions` | Ausgenommen (nicht geprüft) | — |
-| `knowledge_documents` | Ausstehend | — |
+| `gdpr_requests` | Ausstehend bis 2027-06-30 | — |
+| `habit_completions` | Ausstehend bis 2027-03-31 | — |
+| `habits` | Ausstehend bis 2027-03-31 | — |
+| `information_blocks` | Ausstehend bis 2027-03-31 | — |
+| `karlsruhe_districts` | Ausstehend bis 2027-03-31 | — |
+| `knowledge_document_collaborators` | Ausgenommen bis 2027-06-30 | — |
+| `knowledge_document_permissions` | Ausgenommen bis 2027-06-30 | — |
+| `knowledge_document_snapshots` | Ausgenommen bis 2027-06-30 | — |
+| `knowledge_document_topics` | Ausgenommen bis 2027-06-30 | — |
+| `knowledge_document_versions` | Ausgenommen bis 2027-06-30 | — |
+| `knowledge_documents` | Ausstehend bis 2027-06-30 | — |
 | `knowledge_qa_notification_deliveries` | Szenario vorhanden | knowledge-lifecycle |
-| `knowledge_question_attachments` | Ausstehend | — |
-| `knowledge_question_comments` | Ausstehend | — |
+| `knowledge_question_attachments` | Ausstehend bis 2027-06-30 | — |
+| `knowledge_question_comments` | Ausstehend bis 2027-06-30 | — |
 | `knowledge_question_events` | Szenario vorhanden | knowledge-lifecycle |
-| `knowledge_question_followers` | Ausstehend | — |
-| `knowledge_question_outdated_reports` | Ausstehend | — |
-| `knowledge_question_sources` | Ausstehend | — |
-| `knowledge_question_tags` | Ausstehend | — |
+| `knowledge_question_followers` | Ausstehend bis 2027-06-30 | — |
+| `knowledge_question_outdated_reports` | Ausstehend bis 2027-06-30 | — |
+| `knowledge_question_sources` | Ausstehend bis 2027-06-30 | — |
+| `knowledge_question_tags` | Ausstehend bis 2027-06-30 | — |
 | `knowledge_question_topics` | Szenario vorhanden | topic-linking |
 | `knowledge_questions` | Szenario vorhanden | knowledge-lifecycle |
-| `knowledge_tags` | Ausstehend | — |
-| `leave_requests` | Ausstehend | — |
-| `letter_archive_settings` | Ausgenommen (nicht geprüft) | — |
+| `knowledge_tags` | Ausstehend bis 2027-06-30 | — |
+| `leave_requests` | Ausstehend bis 2027-03-31 | — |
+| `letter_archive_settings` | Ausgenommen bis 2027-06-30 | — |
 | `letter_attachments` | Szenario vorhanden | letter-lifecycle |
-| `letter_collaborators` | Ausgenommen (nicht geprüft) | — |
-| `letter_comments` | Ausgenommen (nicht geprüft) | — |
-| `letter_occasions` | Ausgenommen (nicht geprüft) | — |
-| `letter_status_transitions` | Ausgenommen (nicht geprüft) | — |
-| `letter_template_assets` | Ausgenommen (nicht geprüft) | — |
-| `letter_template_settings` | Ausgenommen (nicht geprüft) | — |
-| `letter_templates` | Ausgenommen (nicht geprüft) | — |
-| `letter_workflow_history` | Ausgenommen (nicht geprüft) | — |
+| `letter_collaborators` | Ausgenommen bis 2027-06-30 | — |
+| `letter_comments` | Ausgenommen bis 2027-06-30 | — |
+| `letter_occasions` | Ausgenommen bis 2027-06-30 | — |
+| `letter_status_transitions` | Ausgenommen bis 2027-06-30 | — |
+| `letter_template_assets` | Ausgenommen bis 2027-06-30 | — |
+| `letter_template_settings` | Ausgenommen bis 2027-06-30 | — |
+| `letter_templates` | Ausgenommen bis 2027-06-30 | — |
+| `letter_workflow_history` | Ausgenommen bis 2027-06-30 | — |
 | `letters` | Szenario vorhanden | case-file-lifecycle, letter-lifecycle |
-| `login_customization` | Ausgenommen (nicht geprüft) | — |
-| `map_flag_topics` | Ausgenommen (nicht geprüft) | — |
-| `map_flag_types` | Ausgenommen (nicht geprüft) | — |
-| `map_flags` | Ausstehend | — |
-| `map_layers` | Ausgenommen (nicht geprüft) | — |
-| `map_routes` | Ausstehend | — |
-| `matrix_bot_logs` | Ausgenommen (nicht geprüft) | — |
-| `matrix_morning_settings` | Ausgenommen (nicht geprüft) | — |
-| `matrix_subscriptions` | Ausgenommen (nicht geprüft) | — |
-| `matrix_widget_callback_requests` | Ausgenommen (nicht geprüft) | — |
-| `matrix_widget_improvement_triggers` | Ausgenommen (nicht geprüft) | — |
-| `matrix_widget_message_feedback` | Ausgenommen (nicht geprüft) | — |
+| `login_customization` | Ausgenommen bis 2027-06-30 | — |
+| `map_flag_topics` | Ausgenommen bis 2027-06-30 | — |
+| `map_flag_types` | Ausgenommen bis 2027-06-30 | — |
+| `map_flags` | Ausstehend bis 2027-03-31 | — |
+| `map_layers` | Ausgenommen bis 2027-06-30 | — |
+| `map_routes` | Ausstehend bis 2027-03-31 | — |
+| `matrix_bot_logs` | Ausgenommen bis 2027-06-30 | — |
+| `matrix_morning_settings` | Ausgenommen bis 2027-06-30 | — |
+| `matrix_subscriptions` | Ausgenommen bis 2027-06-30 | — |
+| `matrix_widget_callback_requests` | Ausgenommen bis 2027-06-30 | — |
+| `matrix_widget_improvement_triggers` | Ausgenommen bis 2027-06-30 | — |
+| `matrix_widget_message_feedback` | Ausgenommen bis 2027-06-30 | — |
 | `meeting_agenda_documents` | Szenario vorhanden | meeting-lifecycle |
 | `meeting_agenda_items` | Szenario vorhanden | jour-fixe-platform-integration, meeting-lifecycle |
 | `meeting_participants` | Szenario vorhanden | meeting-lifecycle |
@@ -275,133 +275,215 @@ Von 351 Tabellen haben 83 ein registriertes Szenario. 119 sind als Ausbau offen,
 | `meeting_protocol_details` | Szenario vorhanden | meeting-lifecycle |
 | `meeting_templates` | Szenario vorhanden | meeting-lifecycle |
 | `meetings` | Szenario vorhanden | jour-fixe-platform-integration, meeting-lifecycle |
-| `message_confirmations` | Ausgenommen (nicht geprüft) | — |
-| `message_recipients` | Ausgenommen (nicht geprüft) | — |
-| `messages` | Ausstehend | — |
-| `mobile_push_tokens` | Ausgenommen (nicht geprüft) | — |
-| `news_article_states` | Ausgenommen (nicht geprüft) | — |
-| `news_articles` | Ausgenommen (nicht geprüft) | — |
-| `news_email_templates` | Ausgenommen (nicht geprüft) | — |
-| `notification_navigation_mapping` | Ausgenommen (nicht geprüft) | — |
+| `message_confirmations` | Ausgenommen bis 2027-06-30 | — |
+| `message_recipients` | Ausgenommen bis 2027-06-30 | — |
+| `messages` | Ausstehend bis 2027-03-31 | — |
+| `mobile_push_tokens` | Ausgenommen bis 2027-06-30 | — |
+| `news_article_states` | Ausgenommen bis 2027-06-30 | — |
+| `news_articles` | Ausgenommen bis 2027-06-30 | — |
+| `news_email_templates` | Ausgenommen bis 2027-06-30 | — |
+| `notification_navigation_mapping` | Ausgenommen bis 2027-06-30 | — |
 | `notification_types` | Szenario vorhanden | onboarding-hr |
 | `notifications` | Szenario vorhanden | onboarding-hr |
-| `office_debrief_state` | Ausstehend | — |
-| `parliament_protocols` | Ausstehend | — |
-| `party_associations` | Ausstehend | — |
-| `planning_item_comments` | Ausgenommen (nicht geprüft) | — |
-| `planning_item_documents` | Ausgenommen (nicht geprüft) | — |
-| `planning_item_subtasks` | Ausgenommen (nicht geprüft) | — |
-| `planning_templates` | Ausgenommen (nicht geprüft) | — |
-| `poll_notifications` | Ausstehend | — |
+| `office_debrief_state` | Ausstehend bis 2027-03-31 | — |
+| `parliament_protocols` | Ausstehend bis 2027-03-31 | — |
+| `party_associations` | Ausstehend bis 2027-03-31 | — |
+| `planning_item_comments` | Ausgenommen bis 2027-06-30 | — |
+| `planning_item_documents` | Ausgenommen bis 2027-06-30 | — |
+| `planning_item_subtasks` | Ausgenommen bis 2027-06-30 | — |
+| `planning_templates` | Ausgenommen bis 2027-06-30 | — |
+| `poll_notifications` | Ausstehend bis 2027-03-31 | — |
 | `poll_participants` | Szenario vorhanden | poll-lifecycle |
-| `poll_responses` | Ausstehend | — |
+| `poll_responses` | Ausstehend bis 2027-03-31 | — |
 | `poll_time_slots` | Szenario vorhanden | poll-lifecycle |
-| `poll_versions` | Ausgenommen (nicht geprüft) | — |
-| `pomodoro_sessions` | Ausstehend | — |
-| `preparation_templates` | Ausgenommen (nicht geprüft) | — |
-| `press_releases` | Ausstehend | — |
-| `profiles` | Ausstehend | — |
-| `protocol_agenda_items` | Ausstehend | — |
-| `protocol_sessions` | Ausstehend | — |
-| `protocol_speeches` | Ausstehend | — |
-| `public_holidays` | Ausstehend | — |
-| `push_subscriptions` | Ausgenommen (nicht geprüft) | — |
-| `quick_note_global_shares` | Ausstehend | — |
-| `quick_note_shares` | Ausstehend | — |
-| `quick_note_topic_mention_deliveries` | Ausgenommen (nicht geprüft) | — |
-| `quick_note_versions` | Ausgenommen (nicht geprüft) | — |
-| `quick_note_write_receipts` | Ausgenommen (nicht geprüft) | — |
+| `poll_versions` | Ausgenommen bis 2027-06-30 | — |
+| `pomodoro_sessions` | Ausstehend bis 2027-03-31 | — |
+| `preparation_templates` | Ausgenommen bis 2027-06-30 | — |
+| `press_releases` | Ausstehend bis 2027-03-31 | — |
+| `profiles` | Ausstehend bis 2027-03-31 | — |
+| `protocol_agenda_items` | Ausstehend bis 2027-03-31 | — |
+| `protocol_sessions` | Ausstehend bis 2027-03-31 | — |
+| `protocol_speeches` | Ausstehend bis 2027-03-31 | — |
+| `public_holidays` | Ausstehend bis 2027-03-31 | — |
+| `push_subscriptions` | Ausgenommen bis 2027-06-30 | — |
+| `quick_note_global_shares` | Ausstehend bis 2027-03-31 | — |
+| `quick_note_shares` | Ausstehend bis 2027-03-31 | — |
+| `quick_note_topic_mention_deliveries` | Ausgenommen bis 2027-06-30 | — |
+| `quick_note_versions` | Ausgenommen bis 2027-06-30 | — |
+| `quick_note_write_receipts` | Ausgenommen bis 2027-06-30 | — |
 | `quick_notes` | Szenario vorhanden | day-slip-lifecycle, quick-note-lifecycle |
-| `regions` | Ausstehend | — |
-| `rls_policy_snapshot_20261124` | Ausgenommen (nicht geprüft) | — |
+| `regions` | Ausstehend bis 2027-03-31 | — |
+| `rls_policy_snapshot_20261124` | Ausgenommen bis 2027-06-30 | — |
 | `routine_package_runs` | Szenario vorhanden | onboarding-hr |
 | `routine_package_steps` | Szenario vorhanden | onboarding-hr |
-| `rss_cache` | Ausgenommen (nicht geprüft) | — |
-| `rss_settings` | Ausgenommen (nicht geprüft) | — |
-| `rss_sources` | Ausgenommen (nicht geprüft) | — |
-| `scheduled_emails` | Ausstehend | — |
-| `search_analytics` | Ausgenommen (nicht geprüft) | — |
-| `security_audit_snapshots` | Ausgenommen (nicht geprüft) | — |
-| `selftest_runs` | Ausgenommen (nicht geprüft) | — |
-| `sender_information` | Ausstehend | — |
-| `sick_days` | Ausstehend | — |
-| `social_approval_comments` | Ausstehend | — |
-| `social_assets` | Ausstehend | — |
-| `social_campaigns` | Ausstehend | — |
-| `social_content_approval_events` | Ausgenommen (nicht geprüft) | — |
-| `social_content_channels` | Ausstehend | — |
-| `social_content_item_channels` | Ausstehend | — |
-| `social_content_items` | Ausstehend | — |
-| `social_content_variants` | Ausstehend | — |
-| `social_hashtag_sets` | Ausstehend | — |
-| `social_planner_notes` | Ausstehend | — |
-| `starred_appointments` | Ausgenommen (nicht geprüft) | — |
+| `rss_cache` | Ausgenommen bis 2027-06-30 | — |
+| `rss_settings` | Ausgenommen bis 2027-06-30 | — |
+| `rss_sources` | Ausgenommen bis 2027-06-30 | — |
+| `scheduled_emails` | Ausstehend bis 2027-03-31 | — |
+| `search_analytics` | Ausgenommen bis 2027-06-30 | — |
+| `security_audit_snapshots` | Ausgenommen bis 2027-06-30 | — |
+| `selftest_runs` | Ausgenommen bis 2027-06-30 | — |
+| `sender_information` | Ausstehend bis 2027-03-31 | — |
+| `sick_days` | Ausstehend bis 2027-03-31 | — |
+| `social_approval_comments` | Ausstehend bis 2027-03-31 | — |
+| `social_assets` | Ausstehend bis 2027-03-31 | — |
+| `social_campaigns` | Ausstehend bis 2027-03-31 | — |
+| `social_content_approval_events` | Ausgenommen bis 2027-06-30 | — |
+| `social_content_channels` | Ausstehend bis 2027-03-31 | — |
+| `social_content_item_channels` | Ausstehend bis 2027-03-31 | — |
+| `social_content_items` | Ausstehend bis 2027-03-31 | — |
+| `social_content_variants` | Ausstehend bis 2027-03-31 | — |
+| `social_hashtag_sets` | Ausstehend bis 2027-03-31 | — |
+| `social_planner_notes` | Ausstehend bis 2027-03-31 | — |
+| `starred_appointments` | Ausgenommen bis 2027-06-30 | — |
 | `subtasks` | Szenario vorhanden | onboarding-hr |
-| `superadmin_users` | Ausstehend | — |
-| `system_health` | Ausgenommen (nicht geprüft) | — |
-| `tags` | Ausgenommen (nicht geprüft) | — |
-| `task_archive_settings` | Ausgenommen (nicht geprüft) | — |
-| `task_assignees` | Szenario vorhanden | document-annotation |
-| `task_categories` | Ausgenommen (nicht geprüft) | — |
-| `task_comments` | Ausgenommen (nicht geprüft) | — |
-| `task_decision_attachments` | Ausgenommen (nicht geprüft) | — |
-| `task_decision_comment_reactions` | Ausgenommen (nicht geprüft) | — |
-| `task_decision_comments` | Ausgenommen (nicht geprüft) | — |
-| `task_decision_participants` | Szenario vorhanden | case-item-lifecycle, decision-lifecycle, quick-note-lifecycle |
-| `task_decision_response_history` | Ausgenommen (nicht geprüft) | — |
-| `task_decision_responses` | Szenario vorhanden | case-item-lifecycle, decision-lifecycle |
-| `task_decision_topics` | Ausgenommen (nicht geprüft) | — |
+| `superadmin_users` | Ausstehend bis 2027-06-30 | — |
+| `system_health` | Ausgenommen bis 2027-06-30 | — |
+| `tags` | Ausgenommen bis 2027-06-30 | — |
+| `task_archive_settings` | Ausgenommen bis 2027-06-30 | — |
+| `task_assignees` | Szenario vorhanden | document-annotation, task-stafette-lifecycle |
+| `task_categories` | Ausgenommen bis 2027-06-30 | — |
+| `task_comments` | Ausgenommen bis 2027-06-30 | — |
+| `task_decision_attachments` | Ausgenommen bis 2027-06-30 | — |
+| `task_decision_comment_reactions` | Ausgenommen bis 2027-06-30 | — |
+| `task_decision_comments` | Ausgenommen bis 2027-06-30 | — |
+| `task_decision_participants` | Szenario vorhanden | case-item-lifecycle, decision-lifecycle, quick-note-lifecycle, task-lifecycle |
+| `task_decision_response_history` | Ausgenommen bis 2027-06-30 | — |
+| `task_decision_responses` | Szenario vorhanden | case-item-lifecycle, decision-lifecycle, task-lifecycle |
+| `task_decision_topics` | Ausgenommen bis 2027-06-30 | — |
 | `task_decisions` | Szenario vorhanden | case-item-lifecycle, decision-lifecycle, jour-fixe-platform-integration, quick-note-lifecycle, task-lifecycle |
-| `task_documents` | Ausgenommen (nicht geprüft) | — |
-| `task_snoozes` | Ausgenommen (nicht geprüft) | — |
+| `task_documents` | Szenario vorhanden | task-lifecycle |
+| `task_snoozes` | Szenario vorhanden | task-stafette-lifecycle |
 | `task_statuses` | Szenario vorhanden | task-lifecycle |
-| `task_topics` | Ausgenommen (nicht geprüft) | — |
+| `task_topics` | Ausgenommen bis 2027-06-30 | — |
 | `tasks` | Szenario vorhanden | annual-task-stafette, appointment-briefing-lifecycle, case-file-lifecycle, case-item-lifecycle, day-slip-lifecycle, document-annotation, jour-fixe-platform-integration, letter-lifecycle, meeting-lifecycle, onboarding-hr, quick-note-lifecycle, responsibilities, task-lifecycle, task-stafette-lifecycle |
-| `team_announcement_dismissals` | Ausgenommen (nicht geprüft) | — |
-| `team_announcements` | Ausstehend | — |
-| `team_bingo_settings` | Ausgenommen (nicht geprüft) | — |
-| `team_dashboard_members` | Ausgenommen (nicht geprüft) | — |
-| `team_dashboards` | Ausstehend | — |
-| `team_fun_facts` | Ausstehend | — |
-| `team_question_answers` | Ausstehend | — |
-| `team_question_weeks` | Ausstehend | — |
-| `team_questions` | Ausstehend | — |
-| `team_ritual_profiles` | Ausgenommen (nicht geprüft) | — |
-| `team_ritual_settings` | Ausgenommen (nicht geprüft) | — |
-| `team_two_truths_answers` | Ausstehend | — |
-| `team_two_truths_months` | Ausstehend | — |
-| `tenant_collaborations` | Ausstehend | — |
-| `tenant_feature_flags` | Ausgenommen (nicht geprüft) | — |
-| `tenant_onboarding_checklist_items` | Ausstehend | — |
-| `tenant_onboarding_slides` | Ausstehend | — |
-| `tenants` | Ausgenommen (nicht geprüft) | — |
-| `time_entries` | Ausstehend | — |
-| `time_entry_corrections` | Ausgenommen (nicht geprüft) | — |
-| `time_entry_history` | Ausgenommen (nicht geprüft) | — |
-| `todo_categories` | Ausgenommen (nicht geprüft) | — |
-| `todos` | Ausstehend | — |
-| `topic_backlog` | Ausstehend | — |
-| `topic_catalog_links` | Ausgenommen (nicht geprüft) | — |
+| `team_announcement_dismissals` | Ausgenommen bis 2027-06-30 | — |
+| `team_announcements` | Ausstehend bis 2027-03-31 | — |
+| `team_bingo_settings` | Ausgenommen bis 2027-06-30 | — |
+| `team_dashboard_members` | Ausgenommen bis 2027-06-30 | — |
+| `team_dashboards` | Ausstehend bis 2027-03-31 | — |
+| `team_fun_facts` | Ausstehend bis 2027-03-31 | — |
+| `team_question_answers` | Ausstehend bis 2027-03-31 | — |
+| `team_question_weeks` | Ausstehend bis 2027-03-31 | — |
+| `team_questions` | Ausstehend bis 2027-03-31 | — |
+| `team_ritual_profiles` | Ausgenommen bis 2027-06-30 | — |
+| `team_ritual_settings` | Ausgenommen bis 2027-06-30 | — |
+| `team_two_truths_answers` | Ausstehend bis 2027-03-31 | — |
+| `team_two_truths_months` | Ausstehend bis 2027-03-31 | — |
+| `tenant_collaborations` | Ausstehend bis 2027-03-31 | — |
+| `tenant_feature_flags` | Ausgenommen bis 2027-06-30 | — |
+| `tenant_onboarding_checklist_items` | Ausstehend bis 2027-06-30 | — |
+| `tenant_onboarding_slides` | Ausstehend bis 2027-06-30 | — |
+| `tenants` | Ausgenommen bis 2027-06-30 | — |
+| `time_entries` | Ausstehend bis 2027-03-31 | — |
+| `time_entry_corrections` | Ausgenommen bis 2027-06-30 | — |
+| `time_entry_history` | Ausgenommen bis 2027-06-30 | — |
+| `todo_categories` | Ausgenommen bis 2027-06-30 | — |
+| `todos` | Ausstehend bis 2027-03-31 | — |
+| `topic_backlog` | Ausstehend bis 2027-03-31 | — |
+| `topic_catalog_links` | Ausgenommen bis 2027-06-30 | — |
 | `topic_module_settings` | Szenario vorhanden | topic-linking |
 | `topics` | Szenario vorhanden | contact-relations, topic-linking |
-| `user_mywork_settings` | Ausgenommen (nicht geprüft) | — |
-| `user_navigation_visits` | Ausgenommen (nicht geprüft) | — |
-| `user_notification_settings` | Ausgenommen (nicht geprüft) | — |
-| `user_onboarding_state` | Ausstehend | — |
-| `user_planning_preferences` | Ausgenommen (nicht geprüft) | — |
-| `user_preferences` | Ausgenommen (nicht geprüft) | — |
-| `user_roles` | Ausgenommen (nicht geprüft) | — |
-| `user_sessions` | Ausgenommen (nicht geprüft) | — |
-| `user_status` | Ausgenommen (nicht geprüft) | — |
-| `user_tenant_memberships` | Ausgenommen (nicht geprüft) | — |
-| `vacation_checklist_responses` | Ausstehend | — |
-| `vacation_checklist_templates` | Ausgenommen (nicht geprüft) | — |
-| `vacation_history` | Ausgenommen (nicht geprüft) | — |
-| `widget_configurations` | Ausgenommen (nicht geprüft) | — |
-| `widget_rate_limits` | Ausgenommen (nicht geprüft) | — |
-| `workflow_action_log` | Ausstehend | — |
-| `workflow_definitions` | Ausstehend | — |
-| `workflow_runs` | Ausstehend | — |
+| `user_mywork_settings` | Ausgenommen bis 2027-06-30 | — |
+| `user_navigation_visits` | Ausgenommen bis 2027-06-30 | — |
+| `user_notification_settings` | Ausgenommen bis 2027-06-30 | — |
+| `user_onboarding_state` | Ausstehend bis 2027-06-30 | — |
+| `user_planning_preferences` | Ausgenommen bis 2027-06-30 | — |
+| `user_preferences` | Ausgenommen bis 2027-06-30 | — |
+| `user_roles` | Ausgenommen bis 2027-06-30 | — |
+| `user_sessions` | Ausgenommen bis 2027-06-30 | — |
+| `user_status` | Ausgenommen bis 2027-06-30 | — |
+| `user_tenant_memberships` | Ausgenommen bis 2027-06-30 | — |
+| `vacation_checklist_responses` | Ausstehend bis 2027-03-31 | — |
+| `vacation_checklist_templates` | Ausgenommen bis 2027-06-30 | — |
+| `vacation_history` | Ausgenommen bis 2027-06-30 | — |
+| `widget_configurations` | Ausgenommen bis 2027-06-30 | — |
+| `widget_rate_limits` | Ausgenommen bis 2027-06-30 | — |
+| `workflow_action_log` | Ausstehend bis 2027-06-30 | — |
+| `workflow_definitions` | Ausstehend bis 2027-06-30 | — |
+| `workflow_runs` | Ausstehend bis 2027-06-30 | — |
+
+## Befristete Ausnahmen
+
+Jede Ausnahme verlangt eine Begründung und ein Ablaufdatum. Abgelaufene, unbegründete oder bereits durch ein Szenario gedeckte Ausnahmen lassen `check:selftest-coverage` fehlschlagen.
+
+| Art | Gültig bis | Umfang | Begründung |
+|---|---|---|---|
+| Ausgenommen | 2027-06-30 | 20 Tabellen | Technische Infrastruktur-, Push-, Cache- oder Protokolltabelle ohne eigenen fachlichen Workflow; geprüft wird die auslösende Funktion. |
+| Ausgenommen | 2027-06-30 | 56 Tabellen | Konfigurations-, Lookup- oder Einstellungstabelle; das fachlich relevante Verhalten prüfen die Szenarien der zugehörigen Funktion. |
+| Ausgenommen | 2027-06-30 | 29 Tabellen | Audit-, Verlaufs- oder Versionsprotokoll; wird von Datenbankfunktionen geschrieben und im Szenario der auslösenden Funktion mitgeprüft. |
+| Ausgenommen | 2027-06-30 | 42 Tabellen | Reine Verknüpfungstabelle ohne eigene Fachlogik; die Beziehung entsteht im Szenario der zugehörigen Funktion. |
+| Ausstehend | 2027-06-30 | 13 Tabellen | Sicherheits-, Onboarding- oder Automationsablauf: Für diese Tabelle fehlt ein eigenes Szenario; der Ausbau ist geplant. |
+| Ausstehend | 2027-06-30 | 8 Tabellen | Knowledge 11–14 nutzen eine gezielte Abnahme-Suite; ein Live-Selbsttest-Szenario für diese Tabelle steht aus. |
+| Ausstehend | 2027-06-30 | 36 Tabellen | Wahlanalyse und Wahlhistorie: Szenarien prüfen Regeln und Lesezugriffe, schreiben aber bewusst keine importierten Bestandsdaten. |
+| Ausstehend | 2027-03-31 | 61 Tabellen | Fachlicher Ausbau offen: Für diese Tabelle fehlt noch ein Szenario oder Step; der Eintrag muss bis zum Ablauf geprüft werden. |
+
+## Fachfunktionen ohne Selbsttest
+
+Diese implementierten Fachfunktionen haben laut Funktionskatalog keine Selbsttest-Abdeckung — unabhängig davon, ob einzelne Tabellen von anderen Szenarien berührt werden.
+
+| Funktion | Name | Bereich | Tabellen |
+|---|---|---|---|
+| `annotations.export` | Annotationen exportieren | dokumente | documents, document_annotations |
+| `annotations.ocr` | OCR für gescannte Dokumente | dokumente | documents, document_annotations |
+| `annotations.relocate` | Annotationen bei neuer Dateiversion verschieben | dokumente | document_annotations, documents |
+| `appointments.debrief` | Nachbereitung und Büro-Feedback | termine | appointment_feedback, appointment_preparations |
+| `appointments.preparation` | Terminvorbereitung mit Vorschlägen | termine | appointment_preparations, appointment_preparation_templates, appointment_topics, appointment_preparation_documents |
+| `calendar.edit-move` | Termin bearbeiten und verschieben | termine | appointments, appointment_change_alerts, appointment_reminder_dispatches |
+| `calendar.guests` | Gäste und Teilnehmende verwalten | termine | appointment_guests, default_appointment_guests, appointments |
+| `cases.interactions` | Kontakte und Interaktionen am Vorgang | vorgaenge | case_item_interactions, case_items |
+| `cases.link-decision` | Vorgang mit Entscheidung verknüpfen | vorgaenge | task_decisions, case_file_tasks, case_items |
+| `chat.messages` | Interner Chat über Matrix | kommunikation | messages, message_recipients, message_confirmations |
+| `chat.team-announcements` | Team-Ankündigungen | kommunikation | team_announcements, team_announcement_dismissals |
+| `decisions.attachments` | Anhänge an Entscheidungen | entscheidungen | task_decision_attachments, task_decisions |
+| `decisions.change-vote` | Antwort ändern und Verlauf einsehen | entscheidungen | task_decision_responses, task_decision_response_history |
+| `decisions.comments` | Kommentare und Reaktionen | entscheidungen | task_decision_comments, task_decision_comment_reactions |
+| `decisions.remind` | Offene Entscheidungen anmahnen | entscheidungen | dashboard_decision_nudges, task_decisions |
+| `documents.contacts` | Dokumente mit Kontakten verknüpfen | dokumente | document_contacts, documents, contacts |
+| `documents.upload-version` | Dokument hochladen und versionieren | dokumente | documents, document_topics, topics, document_annotation_events |
+| `dossiers.capture-radar` | Schnellerfassung und Mein Radar | organisation | dossiers, dossier_entries |
+| `dossiers.entries` | Dossier-Einträge und Timeline | organisation | dossier_entries, dossiers |
+| `dossiers.links-stakeholders` | Dossier-Verknüpfungen und Stakeholder | organisation | dossier_links, dossier_stakeholders |
+| `dossiers.manage` | Dossier anlegen und führen | organisation | dossiers, dossier_entries |
+| `dossiers.search` | Globale Dossier-Suche | organisation | dossier_entries, dossiers |
+| `dossiers.talking-points` | Talking Points und Positionsversionen | organisation | dossier_talking_points, dossier_position_versions |
+| `election.analysis-map` | Analyse-Karten und Wahlkreiszuschnitt | wahl | election_analysis_geographies, election_analysis_districts, election_history_districts |
+| `election.history.districts-geometry` | Historische Wahlkreise und Geometrie | wahl | election_history_districts, election_analysis_geographies |
+| `election.history.factions` | Historische Fraktionen | wahl | election_history_factions, election_history_mandates, election_history_candidacies, election_history_periods |
+| `election.history.state-lists` | Landeslisten verwalten | wahl | election_history_state_lists, election_history_state_list_entries |
+| `election.research-workbench` | Analyse-Workbench und Kommunalpanel | wahl | election_analysis_local_results, election_analysis_candidate_coverage, election_analysis_source_reviews, election_analysis_correction_audit |
+| `election.seat-distribution` | Sitzverteilung und Hemizykel | wahl | election_analysis_state, election_analysis_bw_polls |
+| `election.turnout` | Wahlbeteiligung | wahl | election_analysis_turnout |
+| `employees.export-stats` | Gesprächs-PDF und Jahresstatistik | mitarbeit | employee_yearly_stats, employee_meetings |
+| `employees.requests` | Gesprächsanfragen der Mitarbeitenden | mitarbeit | employee_meeting_requests, employee_meetings |
+| `events.speakers-documents` | Redner und Dokumente zur Veranstaltung | veranstaltungen | event_planning_speakers, event_planning_documents |
+| `facts.manage` | Fakten und Argumente pflegen | organisation | facts |
+| `knowledge.attachments` | Anhänge an Wissensfragen | wissen | knowledge_question_attachments |
+| `knowledge.comments-follow` | Kommentare und Folgen | wissen | knowledge_question_comments, knowledge_question_followers, knowledge_qa_notification_deliveries |
+| `knowledge.global-question` | Globale Wissensfrage aus jedem Bereich | wissen | knowledge_questions |
+| `knowledge.sources` | Quellen und Belege | wissen | knowledge_question_sources |
+| `knowledge.versions` | Snapshots und Versionen | wissen | knowledge_document_versions, knowledge_document_snapshots |
+| `letters.attachments` | Briefanlagen verwalten | dokumente | letter_attachments, letters |
+| `letters.collaboration` | Brief-Kommentare und Zusammenarbeit | dokumente | letter_comments, letter_collaborators, letters |
+| `meetings.zombie-points` | Liegengebliebene Agenda-Punkte | organisation | meeting_agenda_items |
+| `mywork.navigation-previews` | Vorschauen für Kalender, Aufgaben, Akten, Chat und Kontakte | arbeitsbereich | appointments, external_events, appointment_preparations, tasks, case_files, appointment_contacts, case_file_contacts, contacts |
+| `mywork.quick-access` | Schnellzugriff und zuletzt besuchte Seiten | arbeitsbereich | user_navigation_visits, user_preferences |
+| `mywork.tabs` | Meine Arbeit – Bereichsnavigation und Einstellungen | arbeitsbereich | user_mywork_settings, user_planning_preferences |
+| `news.articles` | News-Artikel und Lesestatus | kommunikation | news_articles, news_article_states |
+| `notifications.inbox` | Benachrichtigungen lesen und als gelesen markieren | arbeitsbereich | notifications, notification_types, notification_navigation_mapping, message_confirmations |
+| `notifications.preferences` | Benachrichtigungseinstellungen und Stummschaltung | arbeitsbereich | user_notification_settings, task_snoozes |
+| `press.releases` | Pressemitteilungen erstellen und freigeben | kommunikation | press_releases |
+| `profile.edit` | Eigenes Profil bearbeiten | arbeitsbereich | profiles, user_preferences, user_notification_settings |
+| `redaktion.approval` | Social-Media-Freigabe | kommunikation | social_content_items, social_content_approval_events, social_approval_comments |
+| `redaktion.assets-campaigns` | Social-Assets und Kampagnen | kommunikation | social_assets, social_campaigns |
+| `redaktion.planner` | Social-Media-Planung | kommunikation | social_content_items, social_content_channels, social_content_item_channels, social_content_variants |
+| `redaktion.themenspeicher` | Themenspeicher und Hashtags | kommunikation | topic_backlog, social_hashtag_sets |
+| `search.global` | Globale Suche und Befehlspalette | arbeitsbereich | search_analytics |
+| `tasks.deadline` | Frist setzen und überwachen | aufgaben | tasks, task_snoozes |
+| `tasks.search-filter` | Aufgaben suchen, filtern und sortieren | aufgaben | tasks, task_statuses, task_categories |
+| `tasks.subtasks` | Unteraufgaben | aufgaben | subtasks, tasks |
+| `timetracking.entries` | Arbeitszeit erfassen | mitarbeit | time_entries, time_entry_corrections, time_entry_history |
+| `topics.convert-catalog` | Thema in Katalog überführen | organisation | topics, topic_catalog_links, employee_responsibilities |
 
 ## Deklarierte Schreibfelder
 
@@ -483,9 +565,13 @@ Diese Manifeste sind keine Messung ausgeführter Assertions.
 - poll-lifecycle: `appointments`: title, description, start_time, end_time, category, status, priority, user_id, tenant_id, poll_id
 - quick-note-lifecycle: `quick_notes`: title, content, user_id, tenant_id, priority_level, color, category, tags, is_pinned, task_id, is_archived, archived_at
 - quick-note-lifecycle: `tasks`: title, description, user_id, tenant_id, status, priority
-- task-lifecycle: `tasks`: title, description, status, priority, user_id, tenant_id, assigned_to, due_date, progress, pending_for_jour_fixe
+- task-lifecycle: `tasks`: title, description, status, priority, user_id, tenant_id, assigned_to, due_date, progress, pending_for_jour_fixe, completed_at, recurrence_rule, ball_owner, ball_assignee_id, next_action, next_action_due, timeline
+- task-lifecycle: `task_documents`: task_id, user_id, file_name, file_path, file_type, file_size
 - task-lifecycle: `task_decisions`: title, description, status, created_by, tenant_id, task_id
-- task-stafette-lifecycle: `tasks`: title, description, status, priority, tenant_id, user_id, ball_owner, ball_assignee_id, next_action, next_action_due, timeline
+- task-stafette-lifecycle: `tasks`: title, description, status, priority, tenant_id, user_id, ball_owner, ball_assignee_id, assigned_to, next_action, next_action_due, timeline
+- task-stafette-lifecycle: `task_assignees`: task_id, user_id, assigned_by
+- task-stafette-lifecycle: `task_snoozes`: user_id, task_id, snoozed_until
+- task-stafette-lifecycle: `archived_tasks`: task_id, user_id, title, archived_at
 - topic-linking: `topics`: name, label, icon, color, order_index, is_active, tenant_id, created_by, merged_into, merged_at, updated_by
 - topic-linking: `case_items`: subject, summary, user_id, tenant_id, intake_payload
 - topic-linking: `case_item_topics`: tenant_id, case_item_id, topic_id, created_by

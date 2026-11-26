@@ -99,7 +99,7 @@
       "id": "tasks.complete",
       "subarea": "Bearbeitung",
       "name": "Aufgabe abschließen",
-      "description": "Setzt eine Aufgabe auf abgeschlossen, stempelt die Erledigung und stößt Folgeprozesse wie Wiederholung und Ball-Rückgabe an.",
+      "description": "Setzt eine Aufgabe auf abgeschlossen, stempelt die Erledigung und stößt Folgeprozesse wie Wiederholung und Ball-Rückgabe an. Der Selbsttest prüft, dass completed_at dem Status in beide Richtungen folgt, dass eine Wiederholungsregel genau eine Folgeaufgabe erzeugt und dass ein Votum den Ball zurückholt.",
       "category": "fachlich",
       "implementationStatus": "implementiert",
       "integrationStatus": "rollenabhaengig",
@@ -141,7 +141,7 @@
       "id": "tasks.assign",
       "subarea": "Zuweisung",
       "name": "Aufgabe zuweisen",
-      "description": "Weist eine oder mehrere Personen zu, hält die Zuweisungsliste synchron und erlaubt die Übergabe an die Stellvertretung.",
+      "description": "Weist eine oder mehrere Personen zu, hält die Zuweisungsliste synchron und erlaubt die Übergabe an die Stellvertretung. Der Selbsttest prüft Mehrfachzuweisung über task_assignees samt Altfeld sowie die Vertretungsübergabe mit Selbstübergabe-Sperre.",
       "category": "fachlich",
       "implementationStatus": "implementiert",
       "integrationStatus": "rollenabhaengig",
@@ -150,7 +150,8 @@
       "evidence": [
         "src/lib/taskAssignees.ts",
         "src/hooks/useAllPersonContacts.tsx",
-        "src/hooks/useTenantProfiles.ts"
+        "src/hooks/useTenantProfiles.ts",
+        "src/features/selftest/scenarios/task-stafette-lifecycle.ts"
       ],
       "services": [
         "src/lib/taskAssignees.ts"
@@ -175,6 +176,9 @@
       "scenarios": [
         "task-lifecycle",
         "task-stafette-lifecycle"
+      ],
+      "limitations": [
+        "Die positive Vertretungsübergabe läuft nur, wenn die gewählte Vertretung keine eigenen offenen Aufgaben hat; sonst prüft der Selbsttest ausschließlich die Selbstübergabe-Sperre, damit keine fremden Bälle verschoben werden."
       ],
       "reviewPoints": [
         "Die Regel, wer wem zuweisen darf, liegt teils in RLS und teils im Code; sie ist hier nicht vollständig rekonstruiert."
@@ -237,11 +241,12 @@
       "category": "fachlich",
       "implementationStatus": "implementiert",
       "integrationStatus": "ui",
-      "coverage": "unit",
-      "testResult": "unbekannt",
+      "coverage": "selftest",
+      "testResult": "nicht-ausgefuehrt",
       "evidence": [
         "src/features/tasks/stafette.ts",
         "src/features/tasks/stafette.test.ts",
+        "src/features/selftest/scenarios/task-stafette-lifecycle.ts",
         "src/components/tasks/TaskBadges.tsx"
       ],
       "components": [
@@ -263,8 +268,11 @@
       "unitTests": [
         "src/features/tasks/stafette.test.ts"
       ],
+      "scenarios": [
+        "task-stafette-lifecycle"
+      ],
       "reviewPoints": [
-        "Die reine Regel ist getestet; die Anzeige in allen Listen ist nicht durchgängig geprüft."
+        "Die Zonenregel ist im Selbsttest als Logic-Step und über die Stafette-RPCs geprüft; die Anzeige in allen Listen ist nicht durchgängig geprüft."
       ],
       "rpcs": [
         "validate_task_ball_owner"
@@ -317,11 +325,12 @@
       "category": "fachlich",
       "implementationStatus": "implementiert",
       "integrationStatus": "ui",
-      "coverage": "keine",
+      "coverage": "selftest",
       "testResult": "nicht-ausgefuehrt",
       "evidence": [
         "src/hooks/useSnoozeDeadline.ts",
-        "src/components/dashboard/DeadlineSnoozeButton.tsx"
+        "src/components/dashboard/DeadlineSnoozeButton.tsx",
+        "src/features/selftest/scenarios/task-stafette-lifecycle.ts"
       ],
       "components": [
         "src/components/dashboard/DeadlineSnoozeButton.tsx",
@@ -339,6 +348,15 @@
         "bueroleitung",
         "mitarbeiter",
         "praktikant"
+      ],
+      "scenarios": [
+        "task-stafette-lifecycle"
+      ],
+      "unitTests": [
+        "src/hooks/__tests__/deadlineActions.test.ts"
+      ],
+      "limitations": [
+        "Der Selbsttest prüft die task_snoozes-Zeile samt Zielregel und das Aufräumen beim Archivieren; das Verschieben der Frist im Dashboard deckt nur der Unit-Test ab."
       ],
       "reviewPoints": [
         "Ob Rückstellungen fachlich als Wiedervorlage oder nur als Anzeige-Unterdrückung gelten, ist im Code nicht abschließend dokumentiert."
@@ -412,7 +430,8 @@
         "mitarbeiter"
       ],
       "scenarios": [
-        "decision-lifecycle"
+        "decision-lifecycle",
+        "task-lifecycle"
       ],
       "docs": [
         "docs/task-decision-reactions-rollout.md",
@@ -467,14 +486,15 @@
       "id": "tasks.link-document",
       "subarea": "Verknüpfung",
       "name": "Aufgabe mit Dokument verknüpfen",
-      "description": "Hängt Dokumente an Aufgaben und öffnet sie aus der Aufgabenansicht.",
+      "description": "Hängt Dokumente an Aufgaben und öffnet sie aus der Aufgabenansicht. Der Selbsttest verknüpft eine Dokumentzeile mit einer eigenen Aufgabe, prüft die Ablage und löst die Verknüpfung wieder; fremde Aufgaben bleiben gesperrt.",
       "category": "fachlich",
       "implementationStatus": "implementiert",
       "integrationStatus": "ui",
-      "coverage": "keine",
+      "coverage": "selftest",
       "testResult": "nicht-ausgefuehrt",
       "evidence": [
-        "src/components/tasks/TaskDocumentDialog.tsx"
+        "src/components/tasks/TaskDocumentDialog.tsx",
+        "src/features/selftest/scenarios/task-lifecycle.ts"
       ],
       "components": [
         "src/components/tasks/TaskDocumentDialog.tsx"
@@ -489,6 +509,12 @@
         "mitarbeiter",
         "praktikant"
       ],
+      "scenarios": [
+        "task-lifecycle"
+      ],
+      "limitations": [
+        "Der Selbsttest prüft die Datenbank-Verknüpfung, nicht den Upload in den Storage-Bucket."
+      ],
       "dependsOn": ["tasks.create", "documents.upload-version"]
     },
     {
@@ -499,11 +525,12 @@
       "category": "automatisiert",
       "implementationStatus": "implementiert",
       "integrationStatus": "system",
-      "coverage": "unit",
-      "testResult": "unbekannt",
+      "coverage": "selftest",
+      "testResult": "nicht-ausgefuehrt",
       "evidence": [
         "src/features/tasks/templates.ts",
-        "src/features/tasks/templates.test.ts"
+        "src/features/tasks/templates.test.ts",
+        "src/features/selftest/scenarios/task-lifecycle.ts"
       ],
       "services": [
         "src/features/tasks/templates.ts"
@@ -519,6 +546,9 @@
       "roles": [
         "system"
       ],
+      "scenarios": [
+        "task-lifecycle"
+      ],
       "unitTests": [
         "src/features/tasks/templates.test.ts"
       ],
@@ -526,7 +556,7 @@
         "docs/automation-no-code-umsetzung.md"
       ],
       "limitations": [
-        "Ob die Wiederholung im Browser sichtbar ausgelöst wurde, ist nicht geprüft; der Nachweis ist die Trigger-/RPC-Kette."
+        "Der Selbsttest löst den Trigger über einen Statuswechsel aus und vergleicht die Folgeffrist mit der reinen Regel; die Anzeige im Browser ist nicht geprüft."
       ],
       "dependsOn": ["tasks.create"]
     },
@@ -572,11 +602,12 @@
       "category": "fachlich",
       "implementationStatus": "implementiert",
       "integrationStatus": "ui",
-      "coverage": "keine",
+      "coverage": "selftest",
       "testResult": "nicht-ausgefuehrt",
       "evidence": [
         "src/features/tasks/components/TaskArchiveView.tsx",
-        "src/features/tasks/components/TaskArchiveModal.tsx"
+        "src/features/tasks/components/TaskArchiveModal.tsx",
+        "src/features/selftest/scenarios/task-stafette-lifecycle.ts"
       ],
       "routes": [
         "/tasks/archive"
@@ -600,6 +631,15 @@
         "abgeordneter",
         "bueroleitung",
         "mitarbeiter"
+      ],
+      "scenarios": [
+        "task-stafette-lifecycle"
+      ],
+      "unitTests": [
+        "src/hooks/__tests__/deadlineActions.test.ts"
+      ],
+      "limitations": [
+        "Der Selbsttest archiviert eine Aufgabe samt Wiedervorlage, prüft die Fremdarchivierungssperre und stellt sie zurück; die Archivansicht selbst ist nicht im Browser geprüft."
       ],
       "docs": [
         "docs/my-work-architecture.md"
@@ -652,11 +692,12 @@
       "category": "automatisiert",
       "implementationStatus": "implementiert",
       "integrationStatus": "system",
-      "coverage": "keine",
+      "coverage": "selftest",
       "testResult": "nicht-ausgefuehrt",
       "evidence": [
         "supabase/functions/_shared/security.ts",
-        "src/hooks/useNotifications.tsx"
+        "src/hooks/useNotifications.tsx",
+        "src/features/selftest/scenarios/task-stafette-lifecycle.ts"
       ],
       "rpcs": [
         "nudge_task",
@@ -675,6 +716,12 @@
         "bueroleitung",
         "mitarbeiter",
         "system"
+      ],
+      "scenarios": [
+        "task-stafette-lifecycle"
+      ],
+      "limitations": [
+        "Der Selbsttest prüft die 24-Stunden-Sperre, die Quittung mit Verlaufseintrag und die Zugriffssperre der RPCs; der stündliche Cron-Versand, escalate_task und task_approval_sla werden nicht ausgelöst."
       ],
       "docs": [
         "docs/workflow-consistency.md"

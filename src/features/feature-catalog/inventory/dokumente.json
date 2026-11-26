@@ -522,7 +522,7 @@
       "id": "letters.templates",
       "subarea": "Briefe",
       "name": "Briefvorlagen und Anlässe",
-      "description": "Verwaltet Briefvorlagen, Anlassarten, Absenderdaten und Textbausteine.",
+      "description": "Verwaltet Briefvorlagen und Briefanlässe in zwei Reitern einer gemeinsamen Administrationsseite. Absenderdaten und Textbausteine bleiben Teil der Briefverwaltung.",
       "category": "administrativ",
       "implementationStatus": "implementiert",
       "integrationStatus": "rollenabhaengig",

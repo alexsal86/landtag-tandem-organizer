@@ -1,13 +1,337 @@
 {
-  "schemaVersion": 1,
+  "schemaVersion": 2,
   "source": "src/integrations/supabase/types.ts",
   "counts": {
     "total": 351,
-    "scenario": 83,
-    "deferred": 119,
-    "excluded": 149,
-    "missing": 0
+    "scenario": 86,
+    "deferred": 118,
+    "excluded": 147,
+    "missing": 0,
+    "exceptions": 265
   },
+  "exceptionGroups": [
+    {
+      "kind": "excluded",
+      "reason": "Technische Infrastruktur-, Push-, Cache- oder Protokolltabelle ohne eigenen fachlichen Workflow; geprüft wird die auslösende Funktion.",
+      "expiresOn": "2027-06-30",
+      "tables": [
+        "appointment_reminder_dispatches",
+        "bulk_action_audit",
+        "data_lint_findings",
+        "decision_matrix_messages",
+        "edge_function_cache",
+        "egress_anomalies",
+        "egress_metrics",
+        "matrix_subscriptions",
+        "matrix_widget_callback_requests",
+        "matrix_widget_improvement_triggers",
+        "matrix_widget_message_feedback",
+        "mobile_push_tokens",
+        "push_subscriptions",
+        "quick_note_topic_mention_deliveries",
+        "quick_note_write_receipts",
+        "rls_policy_snapshot_20261124",
+        "security_audit_snapshots",
+        "selftest_runs",
+        "system_health",
+        "tenant_feature_flags"
+      ]
+    },
+    {
+      "kind": "excluded",
+      "reason": "Konfigurations-, Lookup- oder Einstellungstabelle; das fachlich relevante Verhalten prüfen die Szenarien der zugehörigen Funktion.",
+      "expiresOn": "2027-06-30",
+      "tables": [
+        "admin_status_options",
+        "app_settings",
+        "appointment_categories",
+        "appointment_feedback_settings",
+        "appointment_locations",
+        "appointment_statuses",
+        "calendar_sync_settings",
+        "case_file_processing_statuses",
+        "case_file_types",
+        "case_item_categories",
+        "celebration_animations",
+        "celebration_settings",
+        "dashboard_layouts",
+        "decision_archive_settings",
+        "decision_email_templates",
+        "default_appointment_guests",
+        "document_categories",
+        "email_templates",
+        "employee_settings",
+        "employee_settings_history",
+        "event_email_templates",
+        "letter_archive_settings",
+        "letter_occasions",
+        "letter_status_transitions",
+        "letter_template_assets",
+        "letter_template_settings",
+        "letter_templates",
+        "login_customization",
+        "map_flag_topics",
+        "map_flag_types",
+        "map_layers",
+        "matrix_morning_settings",
+        "news_email_templates",
+        "notification_navigation_mapping",
+        "planning_templates",
+        "preparation_templates",
+        "rss_settings",
+        "rss_sources",
+        "tags",
+        "task_archive_settings",
+        "task_categories",
+        "team_bingo_settings",
+        "team_ritual_profiles",
+        "team_ritual_settings",
+        "tenants",
+        "todo_categories",
+        "user_mywork_settings",
+        "user_navigation_visits",
+        "user_notification_settings",
+        "user_planning_preferences",
+        "user_preferences",
+        "user_roles",
+        "user_status",
+        "user_tenant_memberships",
+        "vacation_checklist_templates",
+        "widget_configurations"
+      ]
+    },
+    {
+      "kind": "excluded",
+      "reason": "Audit-, Verlaufs- oder Versionsprotokoll; wird von Datenbankfunktionen geschrieben und im Szenario der auslösenden Funktion mitgeprüft.",
+      "expiresOn": "2027-06-30",
+      "tables": [
+        "audit_log_entries",
+        "automation_rate_limits",
+        "automation_rule_run_steps",
+        "automation_rule_runs",
+        "automation_rule_versions",
+        "case_item_timeline",
+        "dossier_position_versions",
+        "dossier_source_watchers",
+        "email_logs",
+        "employee_yearly_stats",
+        "event_planning_action_logs",
+        "event_planning_item_actions",
+        "knowledge_document_snapshots",
+        "knowledge_document_versions",
+        "letter_workflow_history",
+        "matrix_bot_logs",
+        "news_article_states",
+        "news_articles",
+        "poll_versions",
+        "quick_note_versions",
+        "rss_cache",
+        "search_analytics",
+        "social_content_approval_events",
+        "task_decision_response_history",
+        "time_entry_corrections",
+        "time_entry_history",
+        "user_sessions",
+        "vacation_history",
+        "widget_rate_limits"
+      ]
+    },
+    {
+      "kind": "excluded",
+      "reason": "Reine Verknüpfungstabelle ohne eigene Fachlogik; die Beziehung entsteht im Szenario der zugehörigen Funktion.",
+      "expiresOn": "2027-06-30",
+      "tables": [
+        "appointment_contacts",
+        "appointment_documents",
+        "appointment_preparation_documents",
+        "appointment_preparation_templates",
+        "appointment_topics",
+        "case_file_documents",
+        "case_file_topics",
+        "case_item_escalation_suggestions",
+        "case_item_participants",
+        "document_contacts",
+        "document_topics",
+        "dossier_links",
+        "dossier_stakeholders",
+        "dossier_talking_points",
+        "election_district_municipalities",
+        "election_district_notes",
+        "event_planning_collaborators",
+        "event_planning_documents",
+        "event_rsvp_public_links",
+        "event_rsvps",
+        "expense_budgets",
+        "expense_categories",
+        "knowledge_document_collaborators",
+        "knowledge_document_permissions",
+        "knowledge_document_topics",
+        "letter_collaborators",
+        "letter_comments",
+        "message_confirmations",
+        "message_recipients",
+        "planning_item_comments",
+        "planning_item_documents",
+        "planning_item_subtasks",
+        "starred_appointments",
+        "task_comments",
+        "task_decision_attachments",
+        "task_decision_comment_reactions",
+        "task_decision_comments",
+        "task_decision_topics",
+        "task_topics",
+        "team_announcement_dismissals",
+        "team_dashboard_members",
+        "topic_catalog_links"
+      ]
+    },
+    {
+      "kind": "deferred",
+      "reason": "Sicherheits-, Onboarding- oder Automationsablauf: Für diese Tabelle fehlt ein eigenes Szenario; der Ausbau ist geplant.",
+      "expiresOn": "2027-06-30",
+      "tables": [
+        "action_permissions",
+        "external_calendars",
+        "external_events",
+        "facts",
+        "field_permissions",
+        "gdpr_requests",
+        "superadmin_users",
+        "tenant_onboarding_checklist_items",
+        "tenant_onboarding_slides",
+        "user_onboarding_state",
+        "workflow_action_log",
+        "workflow_definitions",
+        "workflow_runs"
+      ]
+    },
+    {
+      "kind": "deferred",
+      "reason": "Knowledge 11–14 nutzen eine gezielte Abnahme-Suite; ein Live-Selbsttest-Szenario für diese Tabelle steht aus.",
+      "expiresOn": "2027-06-30",
+      "tables": [
+        "knowledge_documents",
+        "knowledge_question_attachments",
+        "knowledge_question_comments",
+        "knowledge_question_followers",
+        "knowledge_question_outdated_reports",
+        "knowledge_question_sources",
+        "knowledge_question_tags",
+        "knowledge_tags"
+      ]
+    },
+    {
+      "kind": "deferred",
+      "reason": "Wahlanalyse und Wahlhistorie: Szenarien prüfen Regeln und Lesezugriffe, schreiben aber bewusst keine importierten Bestandsdaten.",
+      "expiresOn": "2027-06-30",
+      "tables": [
+        "election_analysis_bw_polls",
+        "election_analysis_candidate_coverage",
+        "election_analysis_candidates",
+        "election_analysis_correction_audit",
+        "election_analysis_demographics",
+        "election_analysis_district_workbook_audit",
+        "election_analysis_districts",
+        "election_analysis_flow_matrix",
+        "election_analysis_flows",
+        "election_analysis_geographies",
+        "election_analysis_local_results",
+        "election_analysis_period_proposals",
+        "election_analysis_scenarios",
+        "election_analysis_source_reviews",
+        "election_analysis_state",
+        "election_analysis_state_totals",
+        "election_analysis_turnout",
+        "election_analysis_versions",
+        "election_analysis_workbook_audit",
+        "election_analysis_years",
+        "election_districts",
+        "election_history_1952_result_sources",
+        "election_history_assembly_issues",
+        "election_history_audit",
+        "election_history_candidacies",
+        "election_history_candidate_workbook_audit",
+        "election_history_connection_people",
+        "election_history_districts",
+        "election_history_factions",
+        "election_history_mandate_birthdays",
+        "election_history_mandates",
+        "election_history_people",
+        "election_history_periods",
+        "election_history_state_list_entries",
+        "election_history_state_lists",
+        "election_representatives"
+      ]
+    },
+    {
+      "kind": "deferred",
+      "reason": "Fachlicher Ausbau offen: Für diese Tabelle fehlt noch ein Szenario oder Step; der Eintrag muss bis zum Ablauf geprüft werden.",
+      "expiresOn": "2027-03-31",
+      "tables": [
+        "automation_rules",
+        "carryover_items",
+        "case_item_attachments",
+        "committees",
+        "daily_briefing_reads",
+        "dashboard_decision_nudges",
+        "district_notes",
+        "district_support_assignments",
+        "document_folders",
+        "dossier_entries",
+        "dossiers",
+        "employee_responsibilities",
+        "expenses",
+        "habit_completions",
+        "habits",
+        "information_blocks",
+        "karlsruhe_districts",
+        "leave_requests",
+        "map_flags",
+        "map_routes",
+        "messages",
+        "office_debrief_state",
+        "parliament_protocols",
+        "party_associations",
+        "poll_notifications",
+        "poll_responses",
+        "pomodoro_sessions",
+        "press_releases",
+        "profiles",
+        "protocol_agenda_items",
+        "protocol_sessions",
+        "protocol_speeches",
+        "public_holidays",
+        "quick_note_global_shares",
+        "quick_note_shares",
+        "regions",
+        "scheduled_emails",
+        "sender_information",
+        "sick_days",
+        "social_approval_comments",
+        "social_assets",
+        "social_campaigns",
+        "social_content_channels",
+        "social_content_item_channels",
+        "social_content_items",
+        "social_content_variants",
+        "social_hashtag_sets",
+        "social_planner_notes",
+        "team_announcements",
+        "team_dashboards",
+        "team_fun_facts",
+        "team_question_answers",
+        "team_question_weeks",
+        "team_questions",
+        "team_two_truths_answers",
+        "team_two_truths_months",
+        "tenant_collaborations",
+        "time_entries",
+        "todos",
+        "topic_backlog",
+        "vacation_checklist_responses"
+      ]
+    }
+  ],
   "scenarios": [
     {
       "id": "access-boundaries",
@@ -1371,7 +1695,10 @@
       "title": "Aufgaben-Lifecycle (Zuweisung → Frist → Entscheidung → Jour fixe → erledigt)",
       "touches": [
         "tasks",
+        "task_documents",
         "task_decisions",
+        "task_decision_participants",
+        "task_decision_responses",
         "task_statuses"
       ],
       "features": [
@@ -1391,7 +1718,25 @@
             "assigned_to",
             "due_date",
             "progress",
-            "pending_for_jour_fixe"
+            "pending_for_jour_fixe",
+            "completed_at",
+            "recurrence_rule",
+            "ball_owner",
+            "ball_assignee_id",
+            "next_action",
+            "next_action_due",
+            "timeline"
+          ]
+        },
+        {
+          "table": "task_documents",
+          "columns": [
+            "task_id",
+            "user_id",
+            "file_name",
+            "file_path",
+            "file_type",
+            "file_size"
           ]
         },
         {
@@ -1412,7 +1757,10 @@
       "id": "task-stafette-lifecycle",
       "title": "Aufgaben-Stafette (Am Zug, Wiedervorlage, Freigabe)",
       "touches": [
-        "tasks"
+        "tasks",
+        "task_assignees",
+        "task_snoozes",
+        "archived_tasks"
       ],
       "features": [
         "tasks"
@@ -1429,9 +1777,35 @@
             "user_id",
             "ball_owner",
             "ball_assignee_id",
+            "assigned_to",
             "next_action",
             "next_action_due",
             "timeline"
+          ]
+        },
+        {
+          "table": "task_assignees",
+          "columns": [
+            "task_id",
+            "user_id",
+            "assigned_by"
+          ]
+        },
+        {
+          "table": "task_snoozes",
+          "columns": [
+            "user_id",
+            "task_id",
+            "snoozed_until"
+          ]
+        },
+        {
+          "table": "archived_tasks",
+          "columns": [
+            "task_id",
+            "user_id",
+            "title",
+            "archived_at"
           ]
         }
       ],
@@ -1528,106 +1902,157 @@
     {
       "table": "action_permissions",
       "status": "deferred",
-      "scenarios": []
+      "scenarios": [],
+      "exception": {
+        "kind": "deferred",
+        "expiresOn": "2027-06-30"
+      }
     },
     {
       "table": "admin_status_options",
       "status": "excluded",
-      "scenarios": []
+      "scenarios": [],
+      "exception": {
+        "kind": "excluded",
+        "expiresOn": "2027-06-30"
+      }
     },
     {
       "table": "annual_task_completions",
       "status": "scenario",
       "scenarios": [
         "annual-task-stafette"
-      ]
+      ],
+      "exception": null
     },
     {
       "table": "annual_tasks",
       "status": "scenario",
       "scenarios": [
         "annual-task-stafette"
-      ]
+      ],
+      "exception": null
     },
     {
       "table": "app_settings",
       "status": "excluded",
-      "scenarios": []
+      "scenarios": [],
+      "exception": {
+        "kind": "excluded",
+        "expiresOn": "2027-06-30"
+      }
     },
     {
       "table": "appointment_categories",
       "status": "excluded",
-      "scenarios": []
+      "scenarios": [],
+      "exception": {
+        "kind": "excluded",
+        "expiresOn": "2027-06-30"
+      }
     },
     {
       "table": "appointment_change_alerts",
       "status": "scenario",
       "scenarios": [
         "appointment-briefing-lifecycle"
-      ]
+      ],
+      "exception": null
     },
     {
       "table": "appointment_contacts",
       "status": "excluded",
-      "scenarios": []
+      "scenarios": [],
+      "exception": {
+        "kind": "excluded",
+        "expiresOn": "2027-06-30"
+      }
     },
     {
       "table": "appointment_documents",
       "status": "excluded",
-      "scenarios": []
+      "scenarios": [],
+      "exception": {
+        "kind": "excluded",
+        "expiresOn": "2027-06-30"
+      }
     },
     {
       "table": "appointment_feedback",
       "status": "scenario",
       "scenarios": [
         "appointment-lifecycle"
-      ]
+      ],
+      "exception": null
     },
     {
       "table": "appointment_feedback_settings",
       "status": "excluded",
-      "scenarios": []
+      "scenarios": [],
+      "exception": {
+        "kind": "excluded",
+        "expiresOn": "2027-06-30"
+      }
     },
     {
       "table": "appointment_guests",
       "status": "scenario",
       "scenarios": [
         "poll-lifecycle"
-      ]
+      ],
+      "exception": null
     },
     {
       "table": "appointment_locations",
       "status": "excluded",
-      "scenarios": []
+      "scenarios": [],
+      "exception": {
+        "kind": "excluded",
+        "expiresOn": "2027-06-30"
+      }
     },
     {
       "table": "appointment_polls",
       "status": "scenario",
       "scenarios": [
         "poll-lifecycle"
-      ]
+      ],
+      "exception": null
     },
     {
       "table": "appointment_preparation_documents",
       "status": "excluded",
-      "scenarios": []
+      "scenarios": [],
+      "exception": {
+        "kind": "excluded",
+        "expiresOn": "2027-06-30"
+      }
     },
     {
       "table": "appointment_preparation_templates",
       "status": "excluded",
-      "scenarios": []
+      "scenarios": [],
+      "exception": {
+        "kind": "excluded",
+        "expiresOn": "2027-06-30"
+      }
     },
     {
       "table": "appointment_preparations",
       "status": "scenario",
       "scenarios": [
         "appointment-lifecycle"
-      ]
+      ],
+      "exception": null
     },
     {
       "table": "appointment_reminder_dispatches",
       "status": "excluded",
-      "scenarios": []
+      "scenarios": [],
+      "exception": {
+        "kind": "excluded",
+        "expiresOn": "2027-06-30"
+      }
     },
     {
       "table": "appointment_requests",
@@ -1636,17 +2061,26 @@
         "access-boundaries",
         "appointment-request-lifecycle",
         "case-item-lifecycle"
-      ]
+      ],
+      "exception": null
     },
     {
       "table": "appointment_statuses",
       "status": "excluded",
-      "scenarios": []
+      "scenarios": [],
+      "exception": {
+        "kind": "excluded",
+        "expiresOn": "2027-06-30"
+      }
     },
     {
       "table": "appointment_topics",
       "status": "excluded",
-      "scenarios": []
+      "scenarios": [],
+      "exception": {
+        "kind": "excluded",
+        "expiresOn": "2027-06-30"
+      }
     },
     {
       "table": "appointments",
@@ -1658,193 +2092,282 @@
         "case-file-lifecycle",
         "meeting-lifecycle",
         "poll-lifecycle"
-      ]
+      ],
+      "exception": null
     },
     {
       "table": "archived_tasks",
-      "status": "deferred",
-      "scenarios": []
+      "status": "scenario",
+      "scenarios": [
+        "task-stafette-lifecycle"
+      ],
+      "exception": null
     },
     {
       "table": "audit_log_entries",
       "status": "excluded",
-      "scenarios": []
+      "scenarios": [],
+      "exception": {
+        "kind": "excluded",
+        "expiresOn": "2027-06-30"
+      }
     },
     {
       "table": "automation_rate_limits",
       "status": "excluded",
-      "scenarios": []
+      "scenarios": [],
+      "exception": {
+        "kind": "excluded",
+        "expiresOn": "2027-06-30"
+      }
     },
     {
       "table": "automation_rule_run_steps",
       "status": "excluded",
-      "scenarios": []
+      "scenarios": [],
+      "exception": {
+        "kind": "excluded",
+        "expiresOn": "2027-06-30"
+      }
     },
     {
       "table": "automation_rule_runs",
       "status": "excluded",
-      "scenarios": []
+      "scenarios": [],
+      "exception": {
+        "kind": "excluded",
+        "expiresOn": "2027-06-30"
+      }
     },
     {
       "table": "automation_rule_versions",
       "status": "excluded",
-      "scenarios": []
+      "scenarios": [],
+      "exception": {
+        "kind": "excluded",
+        "expiresOn": "2027-06-30"
+      }
     },
     {
       "table": "automation_rules",
       "status": "deferred",
-      "scenarios": []
+      "scenarios": [],
+      "exception": {
+        "kind": "deferred",
+        "expiresOn": "2027-03-31"
+      }
     },
     {
       "table": "bulk_action_audit",
       "status": "excluded",
-      "scenarios": []
+      "scenarios": [],
+      "exception": {
+        "kind": "excluded",
+        "expiresOn": "2027-06-30"
+      }
     },
     {
       "table": "calendar_sync_settings",
       "status": "excluded",
-      "scenarios": []
+      "scenarios": [],
+      "exception": {
+        "kind": "excluded",
+        "expiresOn": "2027-06-30"
+      }
     },
     {
       "table": "call_logs",
       "status": "scenario",
       "scenarios": [
         "contact-relations"
-      ]
+      ],
+      "exception": null
     },
     {
       "table": "carryover_items",
       "status": "deferred",
-      "scenarios": []
+      "scenarios": [],
+      "exception": {
+        "kind": "deferred",
+        "expiresOn": "2027-03-31"
+      }
     },
     {
       "table": "case_file_appointments",
       "status": "scenario",
       "scenarios": [
         "case-file-lifecycle"
-      ]
+      ],
+      "exception": null
     },
     {
       "table": "case_file_contacts",
       "status": "scenario",
       "scenarios": [
         "case-file-lifecycle"
-      ]
+      ],
+      "exception": null
     },
     {
       "table": "case_file_documents",
       "status": "excluded",
-      "scenarios": []
+      "scenarios": [],
+      "exception": {
+        "kind": "excluded",
+        "expiresOn": "2027-06-30"
+      }
     },
     {
       "table": "case_file_letters",
       "status": "scenario",
       "scenarios": [
         "case-file-lifecycle"
-      ]
+      ],
+      "exception": null
     },
     {
       "table": "case_file_notes",
       "status": "scenario",
       "scenarios": [
         "case-file-lifecycle"
-      ]
+      ],
+      "exception": null
     },
     {
       "table": "case_file_participants",
       "status": "scenario",
       "scenarios": [
         "case-file-lifecycle"
-      ]
+      ],
+      "exception": null
     },
     {
       "table": "case_file_processing_statuses",
       "status": "excluded",
-      "scenarios": []
+      "scenarios": [],
+      "exception": {
+        "kind": "excluded",
+        "expiresOn": "2027-06-30"
+      }
     },
     {
       "table": "case_file_status_history",
       "status": "scenario",
       "scenarios": [
         "case-file-lifecycle"
-      ]
+      ],
+      "exception": null
     },
     {
       "table": "case_file_tasks",
       "status": "scenario",
       "scenarios": [
         "case-file-lifecycle"
-      ]
+      ],
+      "exception": null
     },
     {
       "table": "case_file_timeline",
       "status": "scenario",
       "scenarios": [
         "case-file-lifecycle"
-      ]
+      ],
+      "exception": null
     },
     {
       "table": "case_file_topics",
       "status": "excluded",
-      "scenarios": []
+      "scenarios": [],
+      "exception": {
+        "kind": "excluded",
+        "expiresOn": "2027-06-30"
+      }
     },
     {
       "table": "case_file_types",
       "status": "excluded",
-      "scenarios": []
+      "scenarios": [],
+      "exception": {
+        "kind": "excluded",
+        "expiresOn": "2027-06-30"
+      }
     },
     {
       "table": "case_files",
       "status": "scenario",
       "scenarios": [
         "case-file-lifecycle"
-      ]
+      ],
+      "exception": null
     },
     {
       "table": "case_item_attachments",
       "status": "deferred",
-      "scenarios": []
+      "scenarios": [],
+      "exception": {
+        "kind": "deferred",
+        "expiresOn": "2027-03-31"
+      }
     },
     {
       "table": "case_item_categories",
       "status": "excluded",
-      "scenarios": []
+      "scenarios": [],
+      "exception": {
+        "kind": "excluded",
+        "expiresOn": "2027-06-30"
+      }
     },
     {
       "table": "case_item_escalation_suggestions",
       "status": "excluded",
-      "scenarios": []
+      "scenarios": [],
+      "exception": {
+        "kind": "excluded",
+        "expiresOn": "2027-06-30"
+      }
     },
     {
       "table": "case_item_handover_log",
       "status": "scenario",
       "scenarios": [
         "case-item-lifecycle"
-      ]
+      ],
+      "exception": null
     },
     {
       "table": "case_item_interactions",
       "status": "scenario",
       "scenarios": [
         "case-item-lifecycle"
-      ]
+      ],
+      "exception": null
     },
     {
       "table": "case_item_participants",
       "status": "excluded",
-      "scenarios": []
+      "scenarios": [],
+      "exception": {
+        "kind": "excluded",
+        "expiresOn": "2027-06-30"
+      }
     },
     {
       "table": "case_item_timeline",
       "status": "excluded",
-      "scenarios": []
+      "scenarios": [],
+      "exception": {
+        "kind": "excluded",
+        "expiresOn": "2027-06-30"
+      }
     },
     {
       "table": "case_item_topics",
       "status": "scenario",
       "scenarios": [
         "topic-linking"
-      ]
+      ],
+      "exception": null
     },
     {
       "table": "case_items",
@@ -1853,22 +2376,35 @@
         "case-file-lifecycle",
         "case-item-lifecycle",
         "topic-linking"
-      ]
+      ],
+      "exception": null
     },
     {
       "table": "celebration_animations",
       "status": "excluded",
-      "scenarios": []
+      "scenarios": [],
+      "exception": {
+        "kind": "excluded",
+        "expiresOn": "2027-06-30"
+      }
     },
     {
       "table": "celebration_settings",
       "status": "excluded",
-      "scenarios": []
+      "scenarios": [],
+      "exception": {
+        "kind": "excluded",
+        "expiresOn": "2027-06-30"
+      }
     },
     {
       "table": "committees",
       "status": "deferred",
-      "scenarios": []
+      "scenarios": [],
+      "exception": {
+        "kind": "deferred",
+        "expiresOn": "2027-03-31"
+      }
     },
     {
       "table": "contact_activities",
@@ -1876,28 +2412,32 @@
       "scenarios": [
         "contact-lifecycle",
         "contact-relations"
-      ]
+      ],
+      "exception": null
     },
     {
       "table": "contact_briefing_memory",
       "status": "scenario",
       "scenarios": [
         "contact-relations"
-      ]
+      ],
+      "exception": null
     },
     {
       "table": "contact_topics",
       "status": "scenario",
       "scenarios": [
         "contact-relations"
-      ]
+      ],
+      "exception": null
     },
     {
       "table": "contact_usage_stats",
       "status": "scenario",
       "scenarios": [
         "contact-lifecycle"
-      ]
+      ],
+      "exception": null
     },
     {
       "table": "contacts",
@@ -1906,34 +2446,52 @@
         "case-file-lifecycle",
         "contact-lifecycle",
         "contact-relations"
-      ]
+      ],
+      "exception": null
     },
     {
       "table": "daily_briefing_reads",
       "status": "deferred",
-      "scenarios": []
+      "scenarios": [],
+      "exception": {
+        "kind": "deferred",
+        "expiresOn": "2027-03-31"
+      }
     },
     {
       "table": "daily_briefings",
       "status": "scenario",
       "scenarios": [
         "daily-briefing-lifecycle"
-      ]
+      ],
+      "exception": null
     },
     {
       "table": "dashboard_decision_nudges",
       "status": "deferred",
-      "scenarios": []
+      "scenarios": [],
+      "exception": {
+        "kind": "deferred",
+        "expiresOn": "2027-03-31"
+      }
     },
     {
       "table": "dashboard_layouts",
       "status": "excluded",
-      "scenarios": []
+      "scenarios": [],
+      "exception": {
+        "kind": "excluded",
+        "expiresOn": "2027-06-30"
+      }
     },
     {
       "table": "data_lint_findings",
       "status": "excluded",
-      "scenarios": []
+      "scenarios": [],
+      "exception": {
+        "kind": "excluded",
+        "expiresOn": "2027-06-30"
+      }
     },
     {
       "table": "day_slips",
@@ -1941,92 +2499,138 @@
       "scenarios": [
         "case-item-lifecycle",
         "day-slip-lifecycle"
-      ]
+      ],
+      "exception": null
     },
     {
       "table": "decision_archive_settings",
       "status": "excluded",
-      "scenarios": []
+      "scenarios": [],
+      "exception": {
+        "kind": "excluded",
+        "expiresOn": "2027-06-30"
+      }
     },
     {
       "table": "decision_email_templates",
       "status": "excluded",
-      "scenarios": []
+      "scenarios": [],
+      "exception": {
+        "kind": "excluded",
+        "expiresOn": "2027-06-30"
+      }
     },
     {
       "table": "decision_matrix_messages",
       "status": "excluded",
-      "scenarios": []
+      "scenarios": [],
+      "exception": {
+        "kind": "excluded",
+        "expiresOn": "2027-06-30"
+      }
     },
     {
       "table": "default_appointment_guests",
       "status": "excluded",
-      "scenarios": []
+      "scenarios": [],
+      "exception": {
+        "kind": "excluded",
+        "expiresOn": "2027-06-30"
+      }
     },
     {
       "table": "distribution_list_members",
       "status": "scenario",
       "scenarios": [
         "contact-relations"
-      ]
+      ],
+      "exception": null
     },
     {
       "table": "distribution_lists",
       "status": "scenario",
       "scenarios": [
         "contact-relations"
-      ]
+      ],
+      "exception": null
     },
     {
       "table": "district_notes",
       "status": "deferred",
-      "scenarios": []
+      "scenarios": [],
+      "exception": {
+        "kind": "deferred",
+        "expiresOn": "2027-03-31"
+      }
     },
     {
       "table": "district_support_assignments",
       "status": "deferred",
-      "scenarios": []
+      "scenarios": [],
+      "exception": {
+        "kind": "deferred",
+        "expiresOn": "2027-03-31"
+      }
     },
     {
       "table": "document_annotation_events",
       "status": "scenario",
       "scenarios": [
         "document-annotation"
-      ]
+      ],
+      "exception": null
     },
     {
       "table": "document_annotation_tasks",
       "status": "scenario",
       "scenarios": [
         "document-annotation"
-      ]
+      ],
+      "exception": null
     },
     {
       "table": "document_annotations",
       "status": "scenario",
       "scenarios": [
         "document-annotation"
-      ]
+      ],
+      "exception": null
     },
     {
       "table": "document_categories",
       "status": "excluded",
-      "scenarios": []
+      "scenarios": [],
+      "exception": {
+        "kind": "excluded",
+        "expiresOn": "2027-06-30"
+      }
     },
     {
       "table": "document_contacts",
       "status": "excluded",
-      "scenarios": []
+      "scenarios": [],
+      "exception": {
+        "kind": "excluded",
+        "expiresOn": "2027-06-30"
+      }
     },
     {
       "table": "document_folders",
       "status": "deferred",
-      "scenarios": []
+      "scenarios": [],
+      "exception": {
+        "kind": "deferred",
+        "expiresOn": "2027-03-31"
+      }
     },
     {
       "table": "document_topics",
       "status": "excluded",
-      "scenarios": []
+      "scenarios": [],
+      "exception": {
+        "kind": "excluded",
+        "expiresOn": "2027-06-30"
+      }
     },
     {
       "table": "documents",
@@ -2034,648 +2638,1056 @@
       "scenarios": [
         "document-annotation",
         "letter-lifecycle"
-      ]
+      ],
+      "exception": null
     },
     {
       "table": "dossier_entries",
       "status": "deferred",
-      "scenarios": []
+      "scenarios": [],
+      "exception": {
+        "kind": "deferred",
+        "expiresOn": "2027-03-31"
+      }
     },
     {
       "table": "dossier_links",
       "status": "excluded",
-      "scenarios": []
+      "scenarios": [],
+      "exception": {
+        "kind": "excluded",
+        "expiresOn": "2027-06-30"
+      }
     },
     {
       "table": "dossier_position_versions",
       "status": "excluded",
-      "scenarios": []
+      "scenarios": [],
+      "exception": {
+        "kind": "excluded",
+        "expiresOn": "2027-06-30"
+      }
     },
     {
       "table": "dossier_source_watchers",
       "status": "excluded",
-      "scenarios": []
+      "scenarios": [],
+      "exception": {
+        "kind": "excluded",
+        "expiresOn": "2027-06-30"
+      }
     },
     {
       "table": "dossier_stakeholders",
       "status": "excluded",
-      "scenarios": []
+      "scenarios": [],
+      "exception": {
+        "kind": "excluded",
+        "expiresOn": "2027-06-30"
+      }
     },
     {
       "table": "dossier_talking_points",
       "status": "excluded",
-      "scenarios": []
+      "scenarios": [],
+      "exception": {
+        "kind": "excluded",
+        "expiresOn": "2027-06-30"
+      }
     },
     {
       "table": "dossiers",
       "status": "deferred",
-      "scenarios": []
+      "scenarios": [],
+      "exception": {
+        "kind": "deferred",
+        "expiresOn": "2027-03-31"
+      }
     },
     {
       "table": "edge_function_cache",
       "status": "excluded",
-      "scenarios": []
+      "scenarios": [],
+      "exception": {
+        "kind": "excluded",
+        "expiresOn": "2027-06-30"
+      }
     },
     {
       "table": "egress_anomalies",
       "status": "excluded",
-      "scenarios": []
+      "scenarios": [],
+      "exception": {
+        "kind": "excluded",
+        "expiresOn": "2027-06-30"
+      }
     },
     {
       "table": "egress_metrics",
       "status": "excluded",
-      "scenarios": []
+      "scenarios": [],
+      "exception": {
+        "kind": "excluded",
+        "expiresOn": "2027-06-30"
+      }
     },
     {
       "table": "election_analysis_bw_polls",
       "status": "deferred",
-      "scenarios": []
+      "scenarios": [],
+      "exception": {
+        "kind": "deferred",
+        "expiresOn": "2027-06-30"
+      }
     },
     {
       "table": "election_analysis_candidate_coverage",
       "status": "deferred",
-      "scenarios": []
+      "scenarios": [],
+      "exception": {
+        "kind": "deferred",
+        "expiresOn": "2027-06-30"
+      }
     },
     {
       "table": "election_analysis_candidates",
       "status": "deferred",
-      "scenarios": []
+      "scenarios": [],
+      "exception": {
+        "kind": "deferred",
+        "expiresOn": "2027-06-30"
+      }
     },
     {
       "table": "election_analysis_correction_audit",
       "status": "deferred",
-      "scenarios": []
+      "scenarios": [],
+      "exception": {
+        "kind": "deferred",
+        "expiresOn": "2027-06-30"
+      }
     },
     {
       "table": "election_analysis_demographics",
       "status": "deferred",
-      "scenarios": []
+      "scenarios": [],
+      "exception": {
+        "kind": "deferred",
+        "expiresOn": "2027-06-30"
+      }
     },
     {
       "table": "election_analysis_district_workbook_audit",
       "status": "deferred",
-      "scenarios": []
+      "scenarios": [],
+      "exception": {
+        "kind": "deferred",
+        "expiresOn": "2027-06-30"
+      }
     },
     {
       "table": "election_analysis_districts",
       "status": "deferred",
-      "scenarios": []
+      "scenarios": [],
+      "exception": {
+        "kind": "deferred",
+        "expiresOn": "2027-06-30"
+      }
     },
     {
       "table": "election_analysis_flow_matrix",
       "status": "deferred",
-      "scenarios": []
+      "scenarios": [],
+      "exception": {
+        "kind": "deferred",
+        "expiresOn": "2027-06-30"
+      }
     },
     {
       "table": "election_analysis_flows",
       "status": "deferred",
-      "scenarios": []
+      "scenarios": [],
+      "exception": {
+        "kind": "deferred",
+        "expiresOn": "2027-06-30"
+      }
     },
     {
       "table": "election_analysis_geographies",
       "status": "deferred",
-      "scenarios": []
+      "scenarios": [],
+      "exception": {
+        "kind": "deferred",
+        "expiresOn": "2027-06-30"
+      }
     },
     {
       "table": "election_analysis_local_results",
       "status": "deferred",
-      "scenarios": []
+      "scenarios": [],
+      "exception": {
+        "kind": "deferred",
+        "expiresOn": "2027-06-30"
+      }
     },
     {
       "table": "election_analysis_period_proposals",
       "status": "deferred",
-      "scenarios": []
+      "scenarios": [],
+      "exception": {
+        "kind": "deferred",
+        "expiresOn": "2027-06-30"
+      }
     },
     {
       "table": "election_analysis_scenarios",
       "status": "deferred",
-      "scenarios": []
+      "scenarios": [],
+      "exception": {
+        "kind": "deferred",
+        "expiresOn": "2027-06-30"
+      }
     },
     {
       "table": "election_analysis_source_reviews",
       "status": "deferred",
-      "scenarios": []
+      "scenarios": [],
+      "exception": {
+        "kind": "deferred",
+        "expiresOn": "2027-06-30"
+      }
     },
     {
       "table": "election_analysis_state",
       "status": "deferred",
-      "scenarios": []
+      "scenarios": [],
+      "exception": {
+        "kind": "deferred",
+        "expiresOn": "2027-06-30"
+      }
     },
     {
       "table": "election_analysis_state_totals",
       "status": "deferred",
-      "scenarios": []
+      "scenarios": [],
+      "exception": {
+        "kind": "deferred",
+        "expiresOn": "2027-06-30"
+      }
     },
     {
       "table": "election_analysis_turnout",
       "status": "deferred",
-      "scenarios": []
+      "scenarios": [],
+      "exception": {
+        "kind": "deferred",
+        "expiresOn": "2027-06-30"
+      }
     },
     {
       "table": "election_analysis_versions",
       "status": "deferred",
-      "scenarios": []
+      "scenarios": [],
+      "exception": {
+        "kind": "deferred",
+        "expiresOn": "2027-06-30"
+      }
     },
     {
       "table": "election_analysis_workbook_audit",
       "status": "deferred",
-      "scenarios": []
+      "scenarios": [],
+      "exception": {
+        "kind": "deferred",
+        "expiresOn": "2027-06-30"
+      }
     },
     {
       "table": "election_analysis_years",
       "status": "deferred",
-      "scenarios": []
+      "scenarios": [],
+      "exception": {
+        "kind": "deferred",
+        "expiresOn": "2027-06-30"
+      }
     },
     {
       "table": "election_district_municipalities",
       "status": "excluded",
-      "scenarios": []
+      "scenarios": [],
+      "exception": {
+        "kind": "excluded",
+        "expiresOn": "2027-06-30"
+      }
     },
     {
       "table": "election_district_notes",
       "status": "excluded",
-      "scenarios": []
+      "scenarios": [],
+      "exception": {
+        "kind": "excluded",
+        "expiresOn": "2027-06-30"
+      }
     },
     {
       "table": "election_districts",
       "status": "deferred",
-      "scenarios": []
+      "scenarios": [],
+      "exception": {
+        "kind": "deferred",
+        "expiresOn": "2027-06-30"
+      }
     },
     {
       "table": "election_history_1952_result_sources",
       "status": "deferred",
-      "scenarios": []
+      "scenarios": [],
+      "exception": {
+        "kind": "deferred",
+        "expiresOn": "2027-06-30"
+      }
     },
     {
       "table": "election_history_assembly_issues",
       "status": "deferred",
-      "scenarios": []
+      "scenarios": [],
+      "exception": {
+        "kind": "deferred",
+        "expiresOn": "2027-06-30"
+      }
     },
     {
       "table": "election_history_audit",
       "status": "deferred",
-      "scenarios": []
+      "scenarios": [],
+      "exception": {
+        "kind": "deferred",
+        "expiresOn": "2027-06-30"
+      }
     },
     {
       "table": "election_history_candidacies",
       "status": "deferred",
-      "scenarios": []
+      "scenarios": [],
+      "exception": {
+        "kind": "deferred",
+        "expiresOn": "2027-06-30"
+      }
     },
     {
       "table": "election_history_candidate_workbook_audit",
       "status": "deferred",
-      "scenarios": []
+      "scenarios": [],
+      "exception": {
+        "kind": "deferred",
+        "expiresOn": "2027-06-30"
+      }
     },
     {
       "table": "election_history_connection_people",
       "status": "deferred",
-      "scenarios": []
+      "scenarios": [],
+      "exception": {
+        "kind": "deferred",
+        "expiresOn": "2027-06-30"
+      }
     },
     {
       "table": "election_history_districts",
       "status": "deferred",
-      "scenarios": []
+      "scenarios": [],
+      "exception": {
+        "kind": "deferred",
+        "expiresOn": "2027-06-30"
+      }
     },
     {
       "table": "election_history_factions",
       "status": "deferred",
-      "scenarios": []
+      "scenarios": [],
+      "exception": {
+        "kind": "deferred",
+        "expiresOn": "2027-06-30"
+      }
     },
     {
       "table": "election_history_mandate_birthdays",
       "status": "deferred",
-      "scenarios": []
+      "scenarios": [],
+      "exception": {
+        "kind": "deferred",
+        "expiresOn": "2027-06-30"
+      }
     },
     {
       "table": "election_history_mandates",
       "status": "deferred",
-      "scenarios": []
+      "scenarios": [],
+      "exception": {
+        "kind": "deferred",
+        "expiresOn": "2027-06-30"
+      }
     },
     {
       "table": "election_history_people",
       "status": "deferred",
-      "scenarios": []
+      "scenarios": [],
+      "exception": {
+        "kind": "deferred",
+        "expiresOn": "2027-06-30"
+      }
     },
     {
       "table": "election_history_periods",
       "status": "deferred",
-      "scenarios": []
+      "scenarios": [],
+      "exception": {
+        "kind": "deferred",
+        "expiresOn": "2027-06-30"
+      }
     },
     {
       "table": "election_history_state_list_entries",
       "status": "deferred",
-      "scenarios": []
+      "scenarios": [],
+      "exception": {
+        "kind": "deferred",
+        "expiresOn": "2027-06-30"
+      }
     },
     {
       "table": "election_history_state_lists",
       "status": "deferred",
-      "scenarios": []
+      "scenarios": [],
+      "exception": {
+        "kind": "deferred",
+        "expiresOn": "2027-06-30"
+      }
     },
     {
       "table": "election_representatives",
       "status": "deferred",
-      "scenarios": []
+      "scenarios": [],
+      "exception": {
+        "kind": "deferred",
+        "expiresOn": "2027-06-30"
+      }
     },
     {
       "table": "email_logs",
       "status": "excluded",
-      "scenarios": []
+      "scenarios": [],
+      "exception": {
+        "kind": "excluded",
+        "expiresOn": "2027-06-30"
+      }
     },
     {
       "table": "email_templates",
       "status": "excluded",
-      "scenarios": []
+      "scenarios": [],
+      "exception": {
+        "kind": "excluded",
+        "expiresOn": "2027-06-30"
+      }
     },
     {
       "table": "employee_hr_evidence",
       "status": "scenario",
       "scenarios": [
         "onboarding-hr"
-      ]
+      ],
+      "exception": null
     },
     {
       "table": "employee_hr_gdpr_declarations",
       "status": "scenario",
       "scenarios": [
         "onboarding-hr"
-      ]
+      ],
+      "exception": null
     },
     {
       "table": "employee_hr_reminder_log",
       "status": "scenario",
       "scenarios": [
         "onboarding-hr"
-      ]
+      ],
+      "exception": null
     },
     {
       "table": "employee_hr_templates",
       "status": "scenario",
       "scenarios": [
         "onboarding-hr"
-      ]
+      ],
+      "exception": null
     },
     {
       "table": "employee_lifecycle",
       "status": "scenario",
       "scenarios": [
         "onboarding-hr"
-      ]
+      ],
+      "exception": null
     },
     {
       "table": "employee_meeting_action_items",
       "status": "scenario",
       "scenarios": [
         "employee-meetings"
-      ]
+      ],
+      "exception": null
     },
     {
       "table": "employee_meeting_audit",
       "status": "scenario",
       "scenarios": [
         "employee-meetings"
-      ]
+      ],
+      "exception": null
     },
     {
       "table": "employee_meeting_private_notes",
       "status": "scenario",
       "scenarios": [
         "employee-meetings"
-      ]
+      ],
+      "exception": null
     },
     {
       "table": "employee_meeting_requests",
       "status": "scenario",
       "scenarios": [
         "employee-meetings"
-      ]
+      ],
+      "exception": null
     },
     {
       "table": "employee_meetings",
       "status": "scenario",
       "scenarios": [
         "employee-meetings"
-      ]
+      ],
+      "exception": null
     },
     {
       "table": "employee_responsibilities",
       "status": "deferred",
-      "scenarios": []
+      "scenarios": [],
+      "exception": {
+        "kind": "deferred",
+        "expiresOn": "2027-03-31"
+      }
     },
     {
       "table": "employee_settings",
       "status": "excluded",
-      "scenarios": []
+      "scenarios": [],
+      "exception": {
+        "kind": "excluded",
+        "expiresOn": "2027-06-30"
+      }
     },
     {
       "table": "employee_settings_history",
       "status": "excluded",
-      "scenarios": []
+      "scenarios": [],
+      "exception": {
+        "kind": "excluded",
+        "expiresOn": "2027-06-30"
+      }
     },
     {
       "table": "employee_yearly_stats",
       "status": "excluded",
-      "scenarios": []
+      "scenarios": [],
+      "exception": {
+        "kind": "excluded",
+        "expiresOn": "2027-06-30"
+      }
     },
     {
       "table": "event_email_templates",
       "status": "excluded",
-      "scenarios": []
+      "scenarios": [],
+      "exception": {
+        "kind": "excluded",
+        "expiresOn": "2027-06-30"
+      }
     },
     {
       "table": "event_planning_action_logs",
       "status": "excluded",
-      "scenarios": []
+      "scenarios": [],
+      "exception": {
+        "kind": "excluded",
+        "expiresOn": "2027-06-30"
+      }
     },
     {
       "table": "event_planning_checklist_items",
       "status": "scenario",
       "scenarios": [
         "event-planning-lifecycle"
-      ]
+      ],
+      "exception": null
     },
     {
       "table": "event_planning_collaborators",
       "status": "excluded",
-      "scenarios": []
+      "scenarios": [],
+      "exception": {
+        "kind": "excluded",
+        "expiresOn": "2027-06-30"
+      }
     },
     {
       "table": "event_planning_contacts",
       "status": "scenario",
       "scenarios": [
         "event-planning-lifecycle"
-      ]
+      ],
+      "exception": null
     },
     {
       "table": "event_planning_dates",
       "status": "scenario",
       "scenarios": [
         "event-planning-lifecycle"
-      ]
+      ],
+      "exception": null
     },
     {
       "table": "event_planning_documents",
       "status": "excluded",
-      "scenarios": []
+      "scenarios": [],
+      "exception": {
+        "kind": "excluded",
+        "expiresOn": "2027-06-30"
+      }
     },
     {
       "table": "event_planning_item_actions",
       "status": "excluded",
-      "scenarios": []
+      "scenarios": [],
+      "exception": {
+        "kind": "excluded",
+        "expiresOn": "2027-06-30"
+      }
     },
     {
       "table": "event_planning_speakers",
       "status": "scenario",
       "scenarios": [
         "event-planning-lifecycle"
-      ]
+      ],
+      "exception": null
     },
     {
       "table": "event_planning_timeline_assignments",
       "status": "scenario",
       "scenarios": [
         "event-planning-lifecycle"
-      ]
+      ],
+      "exception": null
     },
     {
       "table": "event_plannings",
       "status": "scenario",
       "scenarios": [
         "event-planning-lifecycle"
-      ]
+      ],
+      "exception": null
     },
     {
       "table": "event_rsvp_public_links",
       "status": "excluded",
-      "scenarios": []
+      "scenarios": [],
+      "exception": {
+        "kind": "excluded",
+        "expiresOn": "2027-06-30"
+      }
     },
     {
       "table": "event_rsvps",
       "status": "excluded",
-      "scenarios": []
+      "scenarios": [],
+      "exception": {
+        "kind": "excluded",
+        "expiresOn": "2027-06-30"
+      }
     },
     {
       "table": "expense_budgets",
       "status": "excluded",
-      "scenarios": []
+      "scenarios": [],
+      "exception": {
+        "kind": "excluded",
+        "expiresOn": "2027-06-30"
+      }
     },
     {
       "table": "expense_categories",
       "status": "excluded",
-      "scenarios": []
+      "scenarios": [],
+      "exception": {
+        "kind": "excluded",
+        "expiresOn": "2027-06-30"
+      }
     },
     {
       "table": "expenses",
       "status": "deferred",
-      "scenarios": []
+      "scenarios": [],
+      "exception": {
+        "kind": "deferred",
+        "expiresOn": "2027-03-31"
+      }
     },
     {
       "table": "external_calendars",
       "status": "deferred",
-      "scenarios": []
+      "scenarios": [],
+      "exception": {
+        "kind": "deferred",
+        "expiresOn": "2027-06-30"
+      }
     },
     {
       "table": "external_events",
       "status": "deferred",
-      "scenarios": []
+      "scenarios": [],
+      "exception": {
+        "kind": "deferred",
+        "expiresOn": "2027-06-30"
+      }
     },
     {
       "table": "facts",
       "status": "deferred",
-      "scenarios": []
+      "scenarios": [],
+      "exception": {
+        "kind": "deferred",
+        "expiresOn": "2027-06-30"
+      }
     },
     {
       "table": "field_permissions",
       "status": "deferred",
-      "scenarios": []
+      "scenarios": [],
+      "exception": {
+        "kind": "deferred",
+        "expiresOn": "2027-06-30"
+      }
     },
     {
       "table": "funding_participants",
       "status": "scenario",
       "scenarios": [
         "contact-relations"
-      ]
+      ],
+      "exception": null
     },
     {
       "table": "fundings",
       "status": "scenario",
       "scenarios": [
         "contact-relations"
-      ]
+      ],
+      "exception": null
     },
     {
       "table": "gdpr_requests",
       "status": "deferred",
-      "scenarios": []
+      "scenarios": [],
+      "exception": {
+        "kind": "deferred",
+        "expiresOn": "2027-06-30"
+      }
     },
     {
       "table": "habit_completions",
       "status": "deferred",
-      "scenarios": []
+      "scenarios": [],
+      "exception": {
+        "kind": "deferred",
+        "expiresOn": "2027-03-31"
+      }
     },
     {
       "table": "habits",
       "status": "deferred",
-      "scenarios": []
+      "scenarios": [],
+      "exception": {
+        "kind": "deferred",
+        "expiresOn": "2027-03-31"
+      }
     },
     {
       "table": "information_blocks",
       "status": "deferred",
-      "scenarios": []
+      "scenarios": [],
+      "exception": {
+        "kind": "deferred",
+        "expiresOn": "2027-03-31"
+      }
     },
     {
       "table": "karlsruhe_districts",
       "status": "deferred",
-      "scenarios": []
+      "scenarios": [],
+      "exception": {
+        "kind": "deferred",
+        "expiresOn": "2027-03-31"
+      }
     },
     {
       "table": "knowledge_document_collaborators",
       "status": "excluded",
-      "scenarios": []
+      "scenarios": [],
+      "exception": {
+        "kind": "excluded",
+        "expiresOn": "2027-06-30"
+      }
     },
     {
       "table": "knowledge_document_permissions",
       "status": "excluded",
-      "scenarios": []
+      "scenarios": [],
+      "exception": {
+        "kind": "excluded",
+        "expiresOn": "2027-06-30"
+      }
     },
     {
       "table": "knowledge_document_snapshots",
       "status": "excluded",
-      "scenarios": []
+      "scenarios": [],
+      "exception": {
+        "kind": "excluded",
+        "expiresOn": "2027-06-30"
+      }
     },
     {
       "table": "knowledge_document_topics",
       "status": "excluded",
-      "scenarios": []
+      "scenarios": [],
+      "exception": {
+        "kind": "excluded",
+        "expiresOn": "2027-06-30"
+      }
     },
     {
       "table": "knowledge_document_versions",
       "status": "excluded",
-      "scenarios": []
+      "scenarios": [],
+      "exception": {
+        "kind": "excluded",
+        "expiresOn": "2027-06-30"
+      }
     },
     {
       "table": "knowledge_documents",
       "status": "deferred",
-      "scenarios": []
+      "scenarios": [],
+      "exception": {
+        "kind": "deferred",
+        "expiresOn": "2027-06-30"
+      }
     },
     {
       "table": "knowledge_qa_notification_deliveries",
       "status": "scenario",
       "scenarios": [
         "knowledge-lifecycle"
-      ]
+      ],
+      "exception": null
     },
     {
       "table": "knowledge_question_attachments",
       "status": "deferred",
-      "scenarios": []
+      "scenarios": [],
+      "exception": {
+        "kind": "deferred",
+        "expiresOn": "2027-06-30"
+      }
     },
     {
       "table": "knowledge_question_comments",
       "status": "deferred",
-      "scenarios": []
+      "scenarios": [],
+      "exception": {
+        "kind": "deferred",
+        "expiresOn": "2027-06-30"
+      }
     },
     {
       "table": "knowledge_question_events",
       "status": "scenario",
       "scenarios": [
         "knowledge-lifecycle"
-      ]
+      ],
+      "exception": null
     },
     {
       "table": "knowledge_question_followers",
       "status": "deferred",
-      "scenarios": []
+      "scenarios": [],
+      "exception": {
+        "kind": "deferred",
+        "expiresOn": "2027-06-30"
+      }
     },
     {
       "table": "knowledge_question_outdated_reports",
       "status": "deferred",
-      "scenarios": []
+      "scenarios": [],
+      "exception": {
+        "kind": "deferred",
+        "expiresOn": "2027-06-30"
+      }
     },
     {
       "table": "knowledge_question_sources",
       "status": "deferred",
-      "scenarios": []
+      "scenarios": [],
+      "exception": {
+        "kind": "deferred",
+        "expiresOn": "2027-06-30"
+      }
     },
     {
       "table": "knowledge_question_tags",
       "status": "deferred",
-      "scenarios": []
+      "scenarios": [],
+      "exception": {
+        "kind": "deferred",
+        "expiresOn": "2027-06-30"
+      }
     },
     {
       "table": "knowledge_question_topics",
       "status": "scenario",
       "scenarios": [
         "topic-linking"
-      ]
+      ],
+      "exception": null
     },
     {
       "table": "knowledge_questions",
       "status": "scenario",
       "scenarios": [
         "knowledge-lifecycle"
-      ]
+      ],
+      "exception": null
     },
     {
       "table": "knowledge_tags",
       "status": "deferred",
-      "scenarios": []
+      "scenarios": [],
+      "exception": {
+        "kind": "deferred",
+        "expiresOn": "2027-06-30"
+      }
     },
     {
       "table": "leave_requests",
       "status": "deferred",
-      "scenarios": []
+      "scenarios": [],
+      "exception": {
+        "kind": "deferred",
+        "expiresOn": "2027-03-31"
+      }
     },
     {
       "table": "letter_archive_settings",
       "status": "excluded",
-      "scenarios": []
+      "scenarios": [],
+      "exception": {
+        "kind": "excluded",
+        "expiresOn": "2027-06-30"
+      }
     },
     {
       "table": "letter_attachments",
       "status": "scenario",
       "scenarios": [
         "letter-lifecycle"
-      ]
+      ],
+      "exception": null
     },
     {
       "table": "letter_collaborators",
       "status": "excluded",
-      "scenarios": []
+      "scenarios": [],
+      "exception": {
+        "kind": "excluded",
+        "expiresOn": "2027-06-30"
+      }
     },
     {
       "table": "letter_comments",
       "status": "excluded",
-      "scenarios": []
+      "scenarios": [],
+      "exception": {
+        "kind": "excluded",
+        "expiresOn": "2027-06-30"
+      }
     },
     {
       "table": "letter_occasions",
       "status": "excluded",
-      "scenarios": []
+      "scenarios": [],
+      "exception": {
+        "kind": "excluded",
+        "expiresOn": "2027-06-30"
+      }
     },
     {
       "table": "letter_status_transitions",
       "status": "excluded",
-      "scenarios": []
+      "scenarios": [],
+      "exception": {
+        "kind": "excluded",
+        "expiresOn": "2027-06-30"
+      }
     },
     {
       "table": "letter_template_assets",
       "status": "excluded",
-      "scenarios": []
+      "scenarios": [],
+      "exception": {
+        "kind": "excluded",
+        "expiresOn": "2027-06-30"
+      }
     },
     {
       "table": "letter_template_settings",
       "status": "excluded",
-      "scenarios": []
+      "scenarios": [],
+      "exception": {
+        "kind": "excluded",
+        "expiresOn": "2027-06-30"
+      }
     },
     {
       "table": "letter_templates",
       "status": "excluded",
-      "scenarios": []
+      "scenarios": [],
+      "exception": {
+        "kind": "excluded",
+        "expiresOn": "2027-06-30"
+      }
     },
     {
       "table": "letter_workflow_history",
       "status": "excluded",
-      "scenarios": []
+      "scenarios": [],
+      "exception": {
+        "kind": "excluded",
+        "expiresOn": "2027-06-30"
+      }
     },
     {
       "table": "letters",
@@ -2683,74 +3695,124 @@
       "scenarios": [
         "case-file-lifecycle",
         "letter-lifecycle"
-      ]
+      ],
+      "exception": null
     },
     {
       "table": "login_customization",
       "status": "excluded",
-      "scenarios": []
+      "scenarios": [],
+      "exception": {
+        "kind": "excluded",
+        "expiresOn": "2027-06-30"
+      }
     },
     {
       "table": "map_flag_topics",
       "status": "excluded",
-      "scenarios": []
+      "scenarios": [],
+      "exception": {
+        "kind": "excluded",
+        "expiresOn": "2027-06-30"
+      }
     },
     {
       "table": "map_flag_types",
       "status": "excluded",
-      "scenarios": []
+      "scenarios": [],
+      "exception": {
+        "kind": "excluded",
+        "expiresOn": "2027-06-30"
+      }
     },
     {
       "table": "map_flags",
       "status": "deferred",
-      "scenarios": []
+      "scenarios": [],
+      "exception": {
+        "kind": "deferred",
+        "expiresOn": "2027-03-31"
+      }
     },
     {
       "table": "map_layers",
       "status": "excluded",
-      "scenarios": []
+      "scenarios": [],
+      "exception": {
+        "kind": "excluded",
+        "expiresOn": "2027-06-30"
+      }
     },
     {
       "table": "map_routes",
       "status": "deferred",
-      "scenarios": []
+      "scenarios": [],
+      "exception": {
+        "kind": "deferred",
+        "expiresOn": "2027-03-31"
+      }
     },
     {
       "table": "matrix_bot_logs",
       "status": "excluded",
-      "scenarios": []
+      "scenarios": [],
+      "exception": {
+        "kind": "excluded",
+        "expiresOn": "2027-06-30"
+      }
     },
     {
       "table": "matrix_morning_settings",
       "status": "excluded",
-      "scenarios": []
+      "scenarios": [],
+      "exception": {
+        "kind": "excluded",
+        "expiresOn": "2027-06-30"
+      }
     },
     {
       "table": "matrix_subscriptions",
       "status": "excluded",
-      "scenarios": []
+      "scenarios": [],
+      "exception": {
+        "kind": "excluded",
+        "expiresOn": "2027-06-30"
+      }
     },
     {
       "table": "matrix_widget_callback_requests",
       "status": "excluded",
-      "scenarios": []
+      "scenarios": [],
+      "exception": {
+        "kind": "excluded",
+        "expiresOn": "2027-06-30"
+      }
     },
     {
       "table": "matrix_widget_improvement_triggers",
       "status": "excluded",
-      "scenarios": []
+      "scenarios": [],
+      "exception": {
+        "kind": "excluded",
+        "expiresOn": "2027-06-30"
+      }
     },
     {
       "table": "matrix_widget_message_feedback",
       "status": "excluded",
-      "scenarios": []
+      "scenarios": [],
+      "exception": {
+        "kind": "excluded",
+        "expiresOn": "2027-06-30"
+      }
     },
     {
       "table": "meeting_agenda_documents",
       "status": "scenario",
       "scenarios": [
         "meeting-lifecycle"
-      ]
+      ],
+      "exception": null
     },
     {
       "table": "meeting_agenda_items",
@@ -2758,35 +3820,40 @@
       "scenarios": [
         "jour-fixe-platform-integration",
         "meeting-lifecycle"
-      ]
+      ],
+      "exception": null
     },
     {
       "table": "meeting_participants",
       "status": "scenario",
       "scenarios": [
         "meeting-lifecycle"
-      ]
+      ],
+      "exception": null
     },
     {
       "table": "meeting_protocol_addenda",
       "status": "scenario",
       "scenarios": [
         "meeting-lifecycle"
-      ]
+      ],
+      "exception": null
     },
     {
       "table": "meeting_protocol_details",
       "status": "scenario",
       "scenarios": [
         "meeting-lifecycle"
-      ]
+      ],
+      "exception": null
     },
     {
       "table": "meeting_templates",
       "status": "scenario",
       "scenarios": [
         "meeting-lifecycle"
-      ]
+      ],
+      "exception": null
     },
     {
       "table": "meetings",
@@ -2794,195 +3861,328 @@
       "scenarios": [
         "jour-fixe-platform-integration",
         "meeting-lifecycle"
-      ]
+      ],
+      "exception": null
     },
     {
       "table": "message_confirmations",
       "status": "excluded",
-      "scenarios": []
+      "scenarios": [],
+      "exception": {
+        "kind": "excluded",
+        "expiresOn": "2027-06-30"
+      }
     },
     {
       "table": "message_recipients",
       "status": "excluded",
-      "scenarios": []
+      "scenarios": [],
+      "exception": {
+        "kind": "excluded",
+        "expiresOn": "2027-06-30"
+      }
     },
     {
       "table": "messages",
       "status": "deferred",
-      "scenarios": []
+      "scenarios": [],
+      "exception": {
+        "kind": "deferred",
+        "expiresOn": "2027-03-31"
+      }
     },
     {
       "table": "mobile_push_tokens",
       "status": "excluded",
-      "scenarios": []
+      "scenarios": [],
+      "exception": {
+        "kind": "excluded",
+        "expiresOn": "2027-06-30"
+      }
     },
     {
       "table": "news_article_states",
       "status": "excluded",
-      "scenarios": []
+      "scenarios": [],
+      "exception": {
+        "kind": "excluded",
+        "expiresOn": "2027-06-30"
+      }
     },
     {
       "table": "news_articles",
       "status": "excluded",
-      "scenarios": []
+      "scenarios": [],
+      "exception": {
+        "kind": "excluded",
+        "expiresOn": "2027-06-30"
+      }
     },
     {
       "table": "news_email_templates",
       "status": "excluded",
-      "scenarios": []
+      "scenarios": [],
+      "exception": {
+        "kind": "excluded",
+        "expiresOn": "2027-06-30"
+      }
     },
     {
       "table": "notification_navigation_mapping",
       "status": "excluded",
-      "scenarios": []
+      "scenarios": [],
+      "exception": {
+        "kind": "excluded",
+        "expiresOn": "2027-06-30"
+      }
     },
     {
       "table": "notification_types",
       "status": "scenario",
       "scenarios": [
         "onboarding-hr"
-      ]
+      ],
+      "exception": null
     },
     {
       "table": "notifications",
       "status": "scenario",
       "scenarios": [
         "onboarding-hr"
-      ]
+      ],
+      "exception": null
     },
     {
       "table": "office_debrief_state",
       "status": "deferred",
-      "scenarios": []
+      "scenarios": [],
+      "exception": {
+        "kind": "deferred",
+        "expiresOn": "2027-03-31"
+      }
     },
     {
       "table": "parliament_protocols",
       "status": "deferred",
-      "scenarios": []
+      "scenarios": [],
+      "exception": {
+        "kind": "deferred",
+        "expiresOn": "2027-03-31"
+      }
     },
     {
       "table": "party_associations",
       "status": "deferred",
-      "scenarios": []
+      "scenarios": [],
+      "exception": {
+        "kind": "deferred",
+        "expiresOn": "2027-03-31"
+      }
     },
     {
       "table": "planning_item_comments",
       "status": "excluded",
-      "scenarios": []
+      "scenarios": [],
+      "exception": {
+        "kind": "excluded",
+        "expiresOn": "2027-06-30"
+      }
     },
     {
       "table": "planning_item_documents",
       "status": "excluded",
-      "scenarios": []
+      "scenarios": [],
+      "exception": {
+        "kind": "excluded",
+        "expiresOn": "2027-06-30"
+      }
     },
     {
       "table": "planning_item_subtasks",
       "status": "excluded",
-      "scenarios": []
+      "scenarios": [],
+      "exception": {
+        "kind": "excluded",
+        "expiresOn": "2027-06-30"
+      }
     },
     {
       "table": "planning_templates",
       "status": "excluded",
-      "scenarios": []
+      "scenarios": [],
+      "exception": {
+        "kind": "excluded",
+        "expiresOn": "2027-06-30"
+      }
     },
     {
       "table": "poll_notifications",
       "status": "deferred",
-      "scenarios": []
+      "scenarios": [],
+      "exception": {
+        "kind": "deferred",
+        "expiresOn": "2027-03-31"
+      }
     },
     {
       "table": "poll_participants",
       "status": "scenario",
       "scenarios": [
         "poll-lifecycle"
-      ]
+      ],
+      "exception": null
     },
     {
       "table": "poll_responses",
       "status": "deferred",
-      "scenarios": []
+      "scenarios": [],
+      "exception": {
+        "kind": "deferred",
+        "expiresOn": "2027-03-31"
+      }
     },
     {
       "table": "poll_time_slots",
       "status": "scenario",
       "scenarios": [
         "poll-lifecycle"
-      ]
+      ],
+      "exception": null
     },
     {
       "table": "poll_versions",
       "status": "excluded",
-      "scenarios": []
+      "scenarios": [],
+      "exception": {
+        "kind": "excluded",
+        "expiresOn": "2027-06-30"
+      }
     },
     {
       "table": "pomodoro_sessions",
       "status": "deferred",
-      "scenarios": []
+      "scenarios": [],
+      "exception": {
+        "kind": "deferred",
+        "expiresOn": "2027-03-31"
+      }
     },
     {
       "table": "preparation_templates",
       "status": "excluded",
-      "scenarios": []
+      "scenarios": [],
+      "exception": {
+        "kind": "excluded",
+        "expiresOn": "2027-06-30"
+      }
     },
     {
       "table": "press_releases",
       "status": "deferred",
-      "scenarios": []
+      "scenarios": [],
+      "exception": {
+        "kind": "deferred",
+        "expiresOn": "2027-03-31"
+      }
     },
     {
       "table": "profiles",
       "status": "deferred",
-      "scenarios": []
+      "scenarios": [],
+      "exception": {
+        "kind": "deferred",
+        "expiresOn": "2027-03-31"
+      }
     },
     {
       "table": "protocol_agenda_items",
       "status": "deferred",
-      "scenarios": []
+      "scenarios": [],
+      "exception": {
+        "kind": "deferred",
+        "expiresOn": "2027-03-31"
+      }
     },
     {
       "table": "protocol_sessions",
       "status": "deferred",
-      "scenarios": []
+      "scenarios": [],
+      "exception": {
+        "kind": "deferred",
+        "expiresOn": "2027-03-31"
+      }
     },
     {
       "table": "protocol_speeches",
       "status": "deferred",
-      "scenarios": []
+      "scenarios": [],
+      "exception": {
+        "kind": "deferred",
+        "expiresOn": "2027-03-31"
+      }
     },
     {
       "table": "public_holidays",
       "status": "deferred",
-      "scenarios": []
+      "scenarios": [],
+      "exception": {
+        "kind": "deferred",
+        "expiresOn": "2027-03-31"
+      }
     },
     {
       "table": "push_subscriptions",
       "status": "excluded",
-      "scenarios": []
+      "scenarios": [],
+      "exception": {
+        "kind": "excluded",
+        "expiresOn": "2027-06-30"
+      }
     },
     {
       "table": "quick_note_global_shares",
       "status": "deferred",
-      "scenarios": []
+      "scenarios": [],
+      "exception": {
+        "kind": "deferred",
+        "expiresOn": "2027-03-31"
+      }
     },
     {
       "table": "quick_note_shares",
       "status": "deferred",
-      "scenarios": []
+      "scenarios": [],
+      "exception": {
+        "kind": "deferred",
+        "expiresOn": "2027-03-31"
+      }
     },
     {
       "table": "quick_note_topic_mention_deliveries",
       "status": "excluded",
-      "scenarios": []
+      "scenarios": [],
+      "exception": {
+        "kind": "excluded",
+        "expiresOn": "2027-06-30"
+      }
     },
     {
       "table": "quick_note_versions",
       "status": "excluded",
-      "scenarios": []
+      "scenarios": [],
+      "exception": {
+        "kind": "excluded",
+        "expiresOn": "2027-06-30"
+      }
     },
     {
       "table": "quick_note_write_receipts",
       "status": "excluded",
-      "scenarios": []
+      "scenarios": [],
+      "exception": {
+        "kind": "excluded",
+        "expiresOn": "2027-06-30"
+      }
     },
     {
       "table": "quick_notes",
@@ -2990,190 +4190,320 @@
       "scenarios": [
         "day-slip-lifecycle",
         "quick-note-lifecycle"
-      ]
+      ],
+      "exception": null
     },
     {
       "table": "regions",
       "status": "deferred",
-      "scenarios": []
+      "scenarios": [],
+      "exception": {
+        "kind": "deferred",
+        "expiresOn": "2027-03-31"
+      }
     },
     {
       "table": "rls_policy_snapshot_20261124",
       "status": "excluded",
-      "scenarios": []
+      "scenarios": [],
+      "exception": {
+        "kind": "excluded",
+        "expiresOn": "2027-06-30"
+      }
     },
     {
       "table": "routine_package_runs",
       "status": "scenario",
       "scenarios": [
         "onboarding-hr"
-      ]
+      ],
+      "exception": null
     },
     {
       "table": "routine_package_steps",
       "status": "scenario",
       "scenarios": [
         "onboarding-hr"
-      ]
+      ],
+      "exception": null
     },
     {
       "table": "rss_cache",
       "status": "excluded",
-      "scenarios": []
+      "scenarios": [],
+      "exception": {
+        "kind": "excluded",
+        "expiresOn": "2027-06-30"
+      }
     },
     {
       "table": "rss_settings",
       "status": "excluded",
-      "scenarios": []
+      "scenarios": [],
+      "exception": {
+        "kind": "excluded",
+        "expiresOn": "2027-06-30"
+      }
     },
     {
       "table": "rss_sources",
       "status": "excluded",
-      "scenarios": []
+      "scenarios": [],
+      "exception": {
+        "kind": "excluded",
+        "expiresOn": "2027-06-30"
+      }
     },
     {
       "table": "scheduled_emails",
       "status": "deferred",
-      "scenarios": []
+      "scenarios": [],
+      "exception": {
+        "kind": "deferred",
+        "expiresOn": "2027-03-31"
+      }
     },
     {
       "table": "search_analytics",
       "status": "excluded",
-      "scenarios": []
+      "scenarios": [],
+      "exception": {
+        "kind": "excluded",
+        "expiresOn": "2027-06-30"
+      }
     },
     {
       "table": "security_audit_snapshots",
       "status": "excluded",
-      "scenarios": []
+      "scenarios": [],
+      "exception": {
+        "kind": "excluded",
+        "expiresOn": "2027-06-30"
+      }
     },
     {
       "table": "selftest_runs",
       "status": "excluded",
-      "scenarios": []
+      "scenarios": [],
+      "exception": {
+        "kind": "excluded",
+        "expiresOn": "2027-06-30"
+      }
     },
     {
       "table": "sender_information",
       "status": "deferred",
-      "scenarios": []
+      "scenarios": [],
+      "exception": {
+        "kind": "deferred",
+        "expiresOn": "2027-03-31"
+      }
     },
     {
       "table": "sick_days",
       "status": "deferred",
-      "scenarios": []
+      "scenarios": [],
+      "exception": {
+        "kind": "deferred",
+        "expiresOn": "2027-03-31"
+      }
     },
     {
       "table": "social_approval_comments",
       "status": "deferred",
-      "scenarios": []
+      "scenarios": [],
+      "exception": {
+        "kind": "deferred",
+        "expiresOn": "2027-03-31"
+      }
     },
     {
       "table": "social_assets",
       "status": "deferred",
-      "scenarios": []
+      "scenarios": [],
+      "exception": {
+        "kind": "deferred",
+        "expiresOn": "2027-03-31"
+      }
     },
     {
       "table": "social_campaigns",
       "status": "deferred",
-      "scenarios": []
+      "scenarios": [],
+      "exception": {
+        "kind": "deferred",
+        "expiresOn": "2027-03-31"
+      }
     },
     {
       "table": "social_content_approval_events",
       "status": "excluded",
-      "scenarios": []
+      "scenarios": [],
+      "exception": {
+        "kind": "excluded",
+        "expiresOn": "2027-06-30"
+      }
     },
     {
       "table": "social_content_channels",
       "status": "deferred",
-      "scenarios": []
+      "scenarios": [],
+      "exception": {
+        "kind": "deferred",
+        "expiresOn": "2027-03-31"
+      }
     },
     {
       "table": "social_content_item_channels",
       "status": "deferred",
-      "scenarios": []
+      "scenarios": [],
+      "exception": {
+        "kind": "deferred",
+        "expiresOn": "2027-03-31"
+      }
     },
     {
       "table": "social_content_items",
       "status": "deferred",
-      "scenarios": []
+      "scenarios": [],
+      "exception": {
+        "kind": "deferred",
+        "expiresOn": "2027-03-31"
+      }
     },
     {
       "table": "social_content_variants",
       "status": "deferred",
-      "scenarios": []
+      "scenarios": [],
+      "exception": {
+        "kind": "deferred",
+        "expiresOn": "2027-03-31"
+      }
     },
     {
       "table": "social_hashtag_sets",
       "status": "deferred",
-      "scenarios": []
+      "scenarios": [],
+      "exception": {
+        "kind": "deferred",
+        "expiresOn": "2027-03-31"
+      }
     },
     {
       "table": "social_planner_notes",
       "status": "deferred",
-      "scenarios": []
+      "scenarios": [],
+      "exception": {
+        "kind": "deferred",
+        "expiresOn": "2027-03-31"
+      }
     },
     {
       "table": "starred_appointments",
       "status": "excluded",
-      "scenarios": []
+      "scenarios": [],
+      "exception": {
+        "kind": "excluded",
+        "expiresOn": "2027-06-30"
+      }
     },
     {
       "table": "subtasks",
       "status": "scenario",
       "scenarios": [
         "onboarding-hr"
-      ]
+      ],
+      "exception": null
     },
     {
       "table": "superadmin_users",
       "status": "deferred",
-      "scenarios": []
+      "scenarios": [],
+      "exception": {
+        "kind": "deferred",
+        "expiresOn": "2027-06-30"
+      }
     },
     {
       "table": "system_health",
       "status": "excluded",
-      "scenarios": []
+      "scenarios": [],
+      "exception": {
+        "kind": "excluded",
+        "expiresOn": "2027-06-30"
+      }
     },
     {
       "table": "tags",
       "status": "excluded",
-      "scenarios": []
+      "scenarios": [],
+      "exception": {
+        "kind": "excluded",
+        "expiresOn": "2027-06-30"
+      }
     },
     {
       "table": "task_archive_settings",
       "status": "excluded",
-      "scenarios": []
+      "scenarios": [],
+      "exception": {
+        "kind": "excluded",
+        "expiresOn": "2027-06-30"
+      }
     },
     {
       "table": "task_assignees",
       "status": "scenario",
       "scenarios": [
-        "document-annotation"
-      ]
+        "document-annotation",
+        "task-stafette-lifecycle"
+      ],
+      "exception": null
     },
     {
       "table": "task_categories",
       "status": "excluded",
-      "scenarios": []
+      "scenarios": [],
+      "exception": {
+        "kind": "excluded",
+        "expiresOn": "2027-06-30"
+      }
     },
     {
       "table": "task_comments",
       "status": "excluded",
-      "scenarios": []
+      "scenarios": [],
+      "exception": {
+        "kind": "excluded",
+        "expiresOn": "2027-06-30"
+      }
     },
     {
       "table": "task_decision_attachments",
       "status": "excluded",
-      "scenarios": []
+      "scenarios": [],
+      "exception": {
+        "kind": "excluded",
+        "expiresOn": "2027-06-30"
+      }
     },
     {
       "table": "task_decision_comment_reactions",
       "status": "excluded",
-      "scenarios": []
+      "scenarios": [],
+      "exception": {
+        "kind": "excluded",
+        "expiresOn": "2027-06-30"
+      }
     },
     {
       "table": "task_decision_comments",
       "status": "excluded",
-      "scenarios": []
+      "scenarios": [],
+      "exception": {
+        "kind": "excluded",
+        "expiresOn": "2027-06-30"
+      }
     },
     {
       "table": "task_decision_participants",
@@ -3181,26 +4511,38 @@
       "scenarios": [
         "case-item-lifecycle",
         "decision-lifecycle",
-        "quick-note-lifecycle"
-      ]
+        "quick-note-lifecycle",
+        "task-lifecycle"
+      ],
+      "exception": null
     },
     {
       "table": "task_decision_response_history",
       "status": "excluded",
-      "scenarios": []
+      "scenarios": [],
+      "exception": {
+        "kind": "excluded",
+        "expiresOn": "2027-06-30"
+      }
     },
     {
       "table": "task_decision_responses",
       "status": "scenario",
       "scenarios": [
         "case-item-lifecycle",
-        "decision-lifecycle"
-      ]
+        "decision-lifecycle",
+        "task-lifecycle"
+      ],
+      "exception": null
     },
     {
       "table": "task_decision_topics",
       "status": "excluded",
-      "scenarios": []
+      "scenarios": [],
+      "exception": {
+        "kind": "excluded",
+        "expiresOn": "2027-06-30"
+      }
     },
     {
       "table": "task_decisions",
@@ -3211,29 +4553,41 @@
         "jour-fixe-platform-integration",
         "quick-note-lifecycle",
         "task-lifecycle"
-      ]
+      ],
+      "exception": null
     },
     {
       "table": "task_documents",
-      "status": "excluded",
-      "scenarios": []
+      "status": "scenario",
+      "scenarios": [
+        "task-lifecycle"
+      ],
+      "exception": null
     },
     {
       "table": "task_snoozes",
-      "status": "excluded",
-      "scenarios": []
+      "status": "scenario",
+      "scenarios": [
+        "task-stafette-lifecycle"
+      ],
+      "exception": null
     },
     {
       "table": "task_statuses",
       "status": "scenario",
       "scenarios": [
         "task-lifecycle"
-      ]
+      ],
+      "exception": null
     },
     {
       "table": "task_topics",
       "status": "excluded",
-      "scenarios": []
+      "scenarios": [],
+      "exception": {
+        "kind": "excluded",
+        "expiresOn": "2027-06-30"
+      }
     },
     {
       "table": "tasks",
@@ -3253,139 +4607,241 @@
         "responsibilities",
         "task-lifecycle",
         "task-stafette-lifecycle"
-      ]
+      ],
+      "exception": null
     },
     {
       "table": "team_announcement_dismissals",
       "status": "excluded",
-      "scenarios": []
+      "scenarios": [],
+      "exception": {
+        "kind": "excluded",
+        "expiresOn": "2027-06-30"
+      }
     },
     {
       "table": "team_announcements",
       "status": "deferred",
-      "scenarios": []
+      "scenarios": [],
+      "exception": {
+        "kind": "deferred",
+        "expiresOn": "2027-03-31"
+      }
     },
     {
       "table": "team_bingo_settings",
       "status": "excluded",
-      "scenarios": []
+      "scenarios": [],
+      "exception": {
+        "kind": "excluded",
+        "expiresOn": "2027-06-30"
+      }
     },
     {
       "table": "team_dashboard_members",
       "status": "excluded",
-      "scenarios": []
+      "scenarios": [],
+      "exception": {
+        "kind": "excluded",
+        "expiresOn": "2027-06-30"
+      }
     },
     {
       "table": "team_dashboards",
       "status": "deferred",
-      "scenarios": []
+      "scenarios": [],
+      "exception": {
+        "kind": "deferred",
+        "expiresOn": "2027-03-31"
+      }
     },
     {
       "table": "team_fun_facts",
       "status": "deferred",
-      "scenarios": []
+      "scenarios": [],
+      "exception": {
+        "kind": "deferred",
+        "expiresOn": "2027-03-31"
+      }
     },
     {
       "table": "team_question_answers",
       "status": "deferred",
-      "scenarios": []
+      "scenarios": [],
+      "exception": {
+        "kind": "deferred",
+        "expiresOn": "2027-03-31"
+      }
     },
     {
       "table": "team_question_weeks",
       "status": "deferred",
-      "scenarios": []
+      "scenarios": [],
+      "exception": {
+        "kind": "deferred",
+        "expiresOn": "2027-03-31"
+      }
     },
     {
       "table": "team_questions",
       "status": "deferred",
-      "scenarios": []
+      "scenarios": [],
+      "exception": {
+        "kind": "deferred",
+        "expiresOn": "2027-03-31"
+      }
     },
     {
       "table": "team_ritual_profiles",
       "status": "excluded",
-      "scenarios": []
+      "scenarios": [],
+      "exception": {
+        "kind": "excluded",
+        "expiresOn": "2027-06-30"
+      }
     },
     {
       "table": "team_ritual_settings",
       "status": "excluded",
-      "scenarios": []
+      "scenarios": [],
+      "exception": {
+        "kind": "excluded",
+        "expiresOn": "2027-06-30"
+      }
     },
     {
       "table": "team_two_truths_answers",
       "status": "deferred",
-      "scenarios": []
+      "scenarios": [],
+      "exception": {
+        "kind": "deferred",
+        "expiresOn": "2027-03-31"
+      }
     },
     {
       "table": "team_two_truths_months",
       "status": "deferred",
-      "scenarios": []
+      "scenarios": [],
+      "exception": {
+        "kind": "deferred",
+        "expiresOn": "2027-03-31"
+      }
     },
     {
       "table": "tenant_collaborations",
       "status": "deferred",
-      "scenarios": []
+      "scenarios": [],
+      "exception": {
+        "kind": "deferred",
+        "expiresOn": "2027-03-31"
+      }
     },
     {
       "table": "tenant_feature_flags",
       "status": "excluded",
-      "scenarios": []
+      "scenarios": [],
+      "exception": {
+        "kind": "excluded",
+        "expiresOn": "2027-06-30"
+      }
     },
     {
       "table": "tenant_onboarding_checklist_items",
       "status": "deferred",
-      "scenarios": []
+      "scenarios": [],
+      "exception": {
+        "kind": "deferred",
+        "expiresOn": "2027-06-30"
+      }
     },
     {
       "table": "tenant_onboarding_slides",
       "status": "deferred",
-      "scenarios": []
+      "scenarios": [],
+      "exception": {
+        "kind": "deferred",
+        "expiresOn": "2027-06-30"
+      }
     },
     {
       "table": "tenants",
       "status": "excluded",
-      "scenarios": []
+      "scenarios": [],
+      "exception": {
+        "kind": "excluded",
+        "expiresOn": "2027-06-30"
+      }
     },
     {
       "table": "time_entries",
       "status": "deferred",
-      "scenarios": []
+      "scenarios": [],
+      "exception": {
+        "kind": "deferred",
+        "expiresOn": "2027-03-31"
+      }
     },
     {
       "table": "time_entry_corrections",
       "status": "excluded",
-      "scenarios": []
+      "scenarios": [],
+      "exception": {
+        "kind": "excluded",
+        "expiresOn": "2027-06-30"
+      }
     },
     {
       "table": "time_entry_history",
       "status": "excluded",
-      "scenarios": []
+      "scenarios": [],
+      "exception": {
+        "kind": "excluded",
+        "expiresOn": "2027-06-30"
+      }
     },
     {
       "table": "todo_categories",
       "status": "excluded",
-      "scenarios": []
+      "scenarios": [],
+      "exception": {
+        "kind": "excluded",
+        "expiresOn": "2027-06-30"
+      }
     },
     {
       "table": "todos",
       "status": "deferred",
-      "scenarios": []
+      "scenarios": [],
+      "exception": {
+        "kind": "deferred",
+        "expiresOn": "2027-03-31"
+      }
     },
     {
       "table": "topic_backlog",
       "status": "deferred",
-      "scenarios": []
+      "scenarios": [],
+      "exception": {
+        "kind": "deferred",
+        "expiresOn": "2027-03-31"
+      }
     },
     {
       "table": "topic_catalog_links",
       "status": "excluded",
-      "scenarios": []
+      "scenarios": [],
+      "exception": {
+        "kind": "excluded",
+        "expiresOn": "2027-06-30"
+      }
     },
     {
       "table": "topic_module_settings",
       "status": "scenario",
       "scenarios": [
         "topic-linking"
-      ]
+      ],
+      "exception": null
     },
     {
       "table": "topics",
@@ -3393,97 +4849,735 @@
       "scenarios": [
         "contact-relations",
         "topic-linking"
-      ]
+      ],
+      "exception": null
     },
     {
       "table": "user_mywork_settings",
       "status": "excluded",
-      "scenarios": []
+      "scenarios": [],
+      "exception": {
+        "kind": "excluded",
+        "expiresOn": "2027-06-30"
+      }
     },
     {
       "table": "user_navigation_visits",
       "status": "excluded",
-      "scenarios": []
+      "scenarios": [],
+      "exception": {
+        "kind": "excluded",
+        "expiresOn": "2027-06-30"
+      }
     },
     {
       "table": "user_notification_settings",
       "status": "excluded",
-      "scenarios": []
+      "scenarios": [],
+      "exception": {
+        "kind": "excluded",
+        "expiresOn": "2027-06-30"
+      }
     },
     {
       "table": "user_onboarding_state",
       "status": "deferred",
-      "scenarios": []
+      "scenarios": [],
+      "exception": {
+        "kind": "deferred",
+        "expiresOn": "2027-06-30"
+      }
     },
     {
       "table": "user_planning_preferences",
       "status": "excluded",
-      "scenarios": []
+      "scenarios": [],
+      "exception": {
+        "kind": "excluded",
+        "expiresOn": "2027-06-30"
+      }
     },
     {
       "table": "user_preferences",
       "status": "excluded",
-      "scenarios": []
+      "scenarios": [],
+      "exception": {
+        "kind": "excluded",
+        "expiresOn": "2027-06-30"
+      }
     },
     {
       "table": "user_roles",
       "status": "excluded",
-      "scenarios": []
+      "scenarios": [],
+      "exception": {
+        "kind": "excluded",
+        "expiresOn": "2027-06-30"
+      }
     },
     {
       "table": "user_sessions",
       "status": "excluded",
-      "scenarios": []
+      "scenarios": [],
+      "exception": {
+        "kind": "excluded",
+        "expiresOn": "2027-06-30"
+      }
     },
     {
       "table": "user_status",
       "status": "excluded",
-      "scenarios": []
+      "scenarios": [],
+      "exception": {
+        "kind": "excluded",
+        "expiresOn": "2027-06-30"
+      }
     },
     {
       "table": "user_tenant_memberships",
       "status": "excluded",
-      "scenarios": []
+      "scenarios": [],
+      "exception": {
+        "kind": "excluded",
+        "expiresOn": "2027-06-30"
+      }
     },
     {
       "table": "vacation_checklist_responses",
       "status": "deferred",
-      "scenarios": []
+      "scenarios": [],
+      "exception": {
+        "kind": "deferred",
+        "expiresOn": "2027-03-31"
+      }
     },
     {
       "table": "vacation_checklist_templates",
       "status": "excluded",
-      "scenarios": []
+      "scenarios": [],
+      "exception": {
+        "kind": "excluded",
+        "expiresOn": "2027-06-30"
+      }
     },
     {
       "table": "vacation_history",
       "status": "excluded",
-      "scenarios": []
+      "scenarios": [],
+      "exception": {
+        "kind": "excluded",
+        "expiresOn": "2027-06-30"
+      }
     },
     {
       "table": "widget_configurations",
       "status": "excluded",
-      "scenarios": []
+      "scenarios": [],
+      "exception": {
+        "kind": "excluded",
+        "expiresOn": "2027-06-30"
+      }
     },
     {
       "table": "widget_rate_limits",
       "status": "excluded",
-      "scenarios": []
+      "scenarios": [],
+      "exception": {
+        "kind": "excluded",
+        "expiresOn": "2027-06-30"
+      }
     },
     {
       "table": "workflow_action_log",
       "status": "deferred",
-      "scenarios": []
+      "scenarios": [],
+      "exception": {
+        "kind": "deferred",
+        "expiresOn": "2027-06-30"
+      }
     },
     {
       "table": "workflow_definitions",
       "status": "deferred",
-      "scenarios": []
+      "scenarios": [],
+      "exception": {
+        "kind": "deferred",
+        "expiresOn": "2027-06-30"
+      }
     },
     {
       "table": "workflow_runs",
       "status": "deferred",
-      "scenarios": []
+      "scenarios": [],
+      "exception": {
+        "kind": "deferred",
+        "expiresOn": "2027-06-30"
+      }
+    }
+  ],
+  "uncoveredFeatures": [
+    {
+      "id": "annotations.export",
+      "name": "Annotationen exportieren",
+      "area": "dokumente",
+      "tables": [
+        "documents",
+        "document_annotations"
+      ]
+    },
+    {
+      "id": "annotations.ocr",
+      "name": "OCR für gescannte Dokumente",
+      "area": "dokumente",
+      "tables": [
+        "documents",
+        "document_annotations"
+      ]
+    },
+    {
+      "id": "annotations.relocate",
+      "name": "Annotationen bei neuer Dateiversion verschieben",
+      "area": "dokumente",
+      "tables": [
+        "document_annotations",
+        "documents"
+      ]
+    },
+    {
+      "id": "appointments.debrief",
+      "name": "Nachbereitung und Büro-Feedback",
+      "area": "termine",
+      "tables": [
+        "appointment_feedback",
+        "appointment_preparations"
+      ]
+    },
+    {
+      "id": "appointments.preparation",
+      "name": "Terminvorbereitung mit Vorschlägen",
+      "area": "termine",
+      "tables": [
+        "appointment_preparations",
+        "appointment_preparation_templates",
+        "appointment_topics",
+        "appointment_preparation_documents"
+      ]
+    },
+    {
+      "id": "calendar.edit-move",
+      "name": "Termin bearbeiten und verschieben",
+      "area": "termine",
+      "tables": [
+        "appointments",
+        "appointment_change_alerts",
+        "appointment_reminder_dispatches"
+      ]
+    },
+    {
+      "id": "calendar.guests",
+      "name": "Gäste und Teilnehmende verwalten",
+      "area": "termine",
+      "tables": [
+        "appointment_guests",
+        "default_appointment_guests",
+        "appointments"
+      ]
+    },
+    {
+      "id": "cases.interactions",
+      "name": "Kontakte und Interaktionen am Vorgang",
+      "area": "vorgaenge",
+      "tables": [
+        "case_item_interactions",
+        "case_items"
+      ]
+    },
+    {
+      "id": "cases.link-decision",
+      "name": "Vorgang mit Entscheidung verknüpfen",
+      "area": "vorgaenge",
+      "tables": [
+        "task_decisions",
+        "case_file_tasks",
+        "case_items"
+      ]
+    },
+    {
+      "id": "chat.messages",
+      "name": "Interner Chat über Matrix",
+      "area": "kommunikation",
+      "tables": [
+        "messages",
+        "message_recipients",
+        "message_confirmations"
+      ]
+    },
+    {
+      "id": "chat.team-announcements",
+      "name": "Team-Ankündigungen",
+      "area": "kommunikation",
+      "tables": [
+        "team_announcements",
+        "team_announcement_dismissals"
+      ]
+    },
+    {
+      "id": "decisions.attachments",
+      "name": "Anhänge an Entscheidungen",
+      "area": "entscheidungen",
+      "tables": [
+        "task_decision_attachments",
+        "task_decisions"
+      ]
+    },
+    {
+      "id": "decisions.change-vote",
+      "name": "Antwort ändern und Verlauf einsehen",
+      "area": "entscheidungen",
+      "tables": [
+        "task_decision_responses",
+        "task_decision_response_history"
+      ]
+    },
+    {
+      "id": "decisions.comments",
+      "name": "Kommentare und Reaktionen",
+      "area": "entscheidungen",
+      "tables": [
+        "task_decision_comments",
+        "task_decision_comment_reactions"
+      ]
+    },
+    {
+      "id": "decisions.remind",
+      "name": "Offene Entscheidungen anmahnen",
+      "area": "entscheidungen",
+      "tables": [
+        "dashboard_decision_nudges",
+        "task_decisions"
+      ]
+    },
+    {
+      "id": "documents.contacts",
+      "name": "Dokumente mit Kontakten verknüpfen",
+      "area": "dokumente",
+      "tables": [
+        "document_contacts",
+        "documents",
+        "contacts"
+      ]
+    },
+    {
+      "id": "documents.upload-version",
+      "name": "Dokument hochladen und versionieren",
+      "area": "dokumente",
+      "tables": [
+        "documents",
+        "document_topics",
+        "topics",
+        "document_annotation_events"
+      ]
+    },
+    {
+      "id": "dossiers.capture-radar",
+      "name": "Schnellerfassung und Mein Radar",
+      "area": "organisation",
+      "tables": [
+        "dossiers",
+        "dossier_entries"
+      ]
+    },
+    {
+      "id": "dossiers.entries",
+      "name": "Dossier-Einträge und Timeline",
+      "area": "organisation",
+      "tables": [
+        "dossier_entries",
+        "dossiers"
+      ]
+    },
+    {
+      "id": "dossiers.links-stakeholders",
+      "name": "Dossier-Verknüpfungen und Stakeholder",
+      "area": "organisation",
+      "tables": [
+        "dossier_links",
+        "dossier_stakeholders"
+      ]
+    },
+    {
+      "id": "dossiers.manage",
+      "name": "Dossier anlegen und führen",
+      "area": "organisation",
+      "tables": [
+        "dossiers",
+        "dossier_entries"
+      ]
+    },
+    {
+      "id": "dossiers.search",
+      "name": "Globale Dossier-Suche",
+      "area": "organisation",
+      "tables": [
+        "dossier_entries",
+        "dossiers"
+      ]
+    },
+    {
+      "id": "dossiers.talking-points",
+      "name": "Talking Points und Positionsversionen",
+      "area": "organisation",
+      "tables": [
+        "dossier_talking_points",
+        "dossier_position_versions"
+      ]
+    },
+    {
+      "id": "election.analysis-map",
+      "name": "Analyse-Karten und Wahlkreiszuschnitt",
+      "area": "wahl",
+      "tables": [
+        "election_analysis_geographies",
+        "election_analysis_districts",
+        "election_history_districts"
+      ]
+    },
+    {
+      "id": "election.history.districts-geometry",
+      "name": "Historische Wahlkreise und Geometrie",
+      "area": "wahl",
+      "tables": [
+        "election_history_districts",
+        "election_analysis_geographies"
+      ]
+    },
+    {
+      "id": "election.history.factions",
+      "name": "Historische Fraktionen",
+      "area": "wahl",
+      "tables": [
+        "election_history_factions",
+        "election_history_mandates",
+        "election_history_candidacies",
+        "election_history_periods"
+      ]
+    },
+    {
+      "id": "election.history.state-lists",
+      "name": "Landeslisten verwalten",
+      "area": "wahl",
+      "tables": [
+        "election_history_state_lists",
+        "election_history_state_list_entries"
+      ]
+    },
+    {
+      "id": "election.research-workbench",
+      "name": "Analyse-Workbench und Kommunalpanel",
+      "area": "wahl",
+      "tables": [
+        "election_analysis_local_results",
+        "election_analysis_candidate_coverage",
+        "election_analysis_source_reviews",
+        "election_analysis_correction_audit"
+      ]
+    },
+    {
+      "id": "election.seat-distribution",
+      "name": "Sitzverteilung und Hemizykel",
+      "area": "wahl",
+      "tables": [
+        "election_analysis_state",
+        "election_analysis_bw_polls"
+      ]
+    },
+    {
+      "id": "election.turnout",
+      "name": "Wahlbeteiligung",
+      "area": "wahl",
+      "tables": [
+        "election_analysis_turnout"
+      ]
+    },
+    {
+      "id": "employees.export-stats",
+      "name": "Gesprächs-PDF und Jahresstatistik",
+      "area": "mitarbeit",
+      "tables": [
+        "employee_yearly_stats",
+        "employee_meetings"
+      ]
+    },
+    {
+      "id": "employees.requests",
+      "name": "Gesprächsanfragen der Mitarbeitenden",
+      "area": "mitarbeit",
+      "tables": [
+        "employee_meeting_requests",
+        "employee_meetings"
+      ]
+    },
+    {
+      "id": "events.speakers-documents",
+      "name": "Redner und Dokumente zur Veranstaltung",
+      "area": "veranstaltungen",
+      "tables": [
+        "event_planning_speakers",
+        "event_planning_documents"
+      ]
+    },
+    {
+      "id": "facts.manage",
+      "name": "Fakten und Argumente pflegen",
+      "area": "organisation",
+      "tables": [
+        "facts"
+      ]
+    },
+    {
+      "id": "knowledge.attachments",
+      "name": "Anhänge an Wissensfragen",
+      "area": "wissen",
+      "tables": [
+        "knowledge_question_attachments"
+      ]
+    },
+    {
+      "id": "knowledge.comments-follow",
+      "name": "Kommentare und Folgen",
+      "area": "wissen",
+      "tables": [
+        "knowledge_question_comments",
+        "knowledge_question_followers",
+        "knowledge_qa_notification_deliveries"
+      ]
+    },
+    {
+      "id": "knowledge.global-question",
+      "name": "Globale Wissensfrage aus jedem Bereich",
+      "area": "wissen",
+      "tables": [
+        "knowledge_questions"
+      ]
+    },
+    {
+      "id": "knowledge.sources",
+      "name": "Quellen und Belege",
+      "area": "wissen",
+      "tables": [
+        "knowledge_question_sources"
+      ]
+    },
+    {
+      "id": "knowledge.versions",
+      "name": "Snapshots und Versionen",
+      "area": "wissen",
+      "tables": [
+        "knowledge_document_versions",
+        "knowledge_document_snapshots"
+      ]
+    },
+    {
+      "id": "letters.attachments",
+      "name": "Briefanlagen verwalten",
+      "area": "dokumente",
+      "tables": [
+        "letter_attachments",
+        "letters"
+      ]
+    },
+    {
+      "id": "letters.collaboration",
+      "name": "Brief-Kommentare und Zusammenarbeit",
+      "area": "dokumente",
+      "tables": [
+        "letter_comments",
+        "letter_collaborators",
+        "letters"
+      ]
+    },
+    {
+      "id": "meetings.zombie-points",
+      "name": "Liegengebliebene Agenda-Punkte",
+      "area": "organisation",
+      "tables": [
+        "meeting_agenda_items"
+      ]
+    },
+    {
+      "id": "mywork.navigation-previews",
+      "name": "Vorschauen für Kalender, Aufgaben, Akten, Chat und Kontakte",
+      "area": "arbeitsbereich",
+      "tables": [
+        "appointments",
+        "external_events",
+        "appointment_preparations",
+        "tasks",
+        "case_files",
+        "appointment_contacts",
+        "case_file_contacts",
+        "contacts"
+      ]
+    },
+    {
+      "id": "mywork.quick-access",
+      "name": "Schnellzugriff und zuletzt besuchte Seiten",
+      "area": "arbeitsbereich",
+      "tables": [
+        "user_navigation_visits",
+        "user_preferences"
+      ]
+    },
+    {
+      "id": "mywork.tabs",
+      "name": "Meine Arbeit – Bereichsnavigation und Einstellungen",
+      "area": "arbeitsbereich",
+      "tables": [
+        "user_mywork_settings",
+        "user_planning_preferences"
+      ]
+    },
+    {
+      "id": "news.articles",
+      "name": "News-Artikel und Lesestatus",
+      "area": "kommunikation",
+      "tables": [
+        "news_articles",
+        "news_article_states"
+      ]
+    },
+    {
+      "id": "notifications.inbox",
+      "name": "Benachrichtigungen lesen und als gelesen markieren",
+      "area": "arbeitsbereich",
+      "tables": [
+        "notifications",
+        "notification_types",
+        "notification_navigation_mapping",
+        "message_confirmations"
+      ]
+    },
+    {
+      "id": "notifications.preferences",
+      "name": "Benachrichtigungseinstellungen und Stummschaltung",
+      "area": "arbeitsbereich",
+      "tables": [
+        "user_notification_settings",
+        "task_snoozes"
+      ]
+    },
+    {
+      "id": "press.releases",
+      "name": "Pressemitteilungen erstellen und freigeben",
+      "area": "kommunikation",
+      "tables": [
+        "press_releases"
+      ]
+    },
+    {
+      "id": "profile.edit",
+      "name": "Eigenes Profil bearbeiten",
+      "area": "arbeitsbereich",
+      "tables": [
+        "profiles",
+        "user_preferences",
+        "user_notification_settings"
+      ]
+    },
+    {
+      "id": "redaktion.approval",
+      "name": "Social-Media-Freigabe",
+      "area": "kommunikation",
+      "tables": [
+        "social_content_items",
+        "social_content_approval_events",
+        "social_approval_comments"
+      ]
+    },
+    {
+      "id": "redaktion.assets-campaigns",
+      "name": "Social-Assets und Kampagnen",
+      "area": "kommunikation",
+      "tables": [
+        "social_assets",
+        "social_campaigns"
+      ]
+    },
+    {
+      "id": "redaktion.planner",
+      "name": "Social-Media-Planung",
+      "area": "kommunikation",
+      "tables": [
+        "social_content_items",
+        "social_content_channels",
+        "social_content_item_channels",
+        "social_content_variants"
+      ]
+    },
+    {
+      "id": "redaktion.themenspeicher",
+      "name": "Themenspeicher und Hashtags",
+      "area": "kommunikation",
+      "tables": [
+        "topic_backlog",
+        "social_hashtag_sets"
+      ]
+    },
+    {
+      "id": "search.global",
+      "name": "Globale Suche und Befehlspalette",
+      "area": "arbeitsbereich",
+      "tables": [
+        "search_analytics"
+      ]
+    },
+    {
+      "id": "tasks.deadline",
+      "name": "Frist setzen und überwachen",
+      "area": "aufgaben",
+      "tables": [
+        "tasks",
+        "task_snoozes"
+      ]
+    },
+    {
+      "id": "tasks.search-filter",
+      "name": "Aufgaben suchen, filtern und sortieren",
+      "area": "aufgaben",
+      "tables": [
+        "tasks",
+        "task_statuses",
+        "task_categories"
+      ]
+    },
+    {
+      "id": "tasks.subtasks",
+      "name": "Unteraufgaben",
+      "area": "aufgaben",
+      "tables": [
+        "subtasks",
+        "tasks"
+      ]
+    },
+    {
+      "id": "timetracking.entries",
+      "name": "Arbeitszeit erfassen",
+      "area": "mitarbeit",
+      "tables": [
+        "time_entries",
+        "time_entry_corrections",
+        "time_entry_history"
+      ]
+    },
+    {
+      "id": "topics.convert-catalog",
+      "name": "Thema in Katalog überführen",
+      "area": "organisation",
+      "tables": [
+        "topics",
+        "topic_catalog_links",
+        "employee_responsibilities"
+      ]
     }
   ],
   "errors": []

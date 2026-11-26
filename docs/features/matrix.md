@@ -21,23 +21,23 @@ Die Spalten zählen **zugeordnete** Prüfungen, nicht bestandene Läufe. „Erge
 | `quicknotes.manage` | arbeitsbereich | fachlich | implementiert | UI | Selbsttest | nicht-ausgefuehrt | 1 | 1 | 0 | 0 | ja |
 | `search.global` | arbeitsbereich | fachlich | implementiert | UI | kein Test | nicht-ausgefuehrt | 0 | 0 | 0 | 0 | nein |
 | `platform.auth` | arbeitsbereich | sicherheit | implementiert | UI | kein Test | nicht-ausgefuehrt | 0 | 0 | 0 | 0 | ja |
-| `tasks.archive` | aufgaben | fachlich | implementiert | UI | kein Test | nicht-ausgefuehrt | 0 | 0 | 0 | 0 | ja |
+| `tasks.archive` | aufgaben | fachlich | implementiert | UI | Selbsttest | nicht-ausgefuehrt | 1 | 1 | 0 | 0 | ja |
 | `tasks.complete` | aufgaben | fachlich | implementiert | rollenabhängig | Selbsttest | nicht-ausgefuehrt | 2 | 1 | 0 | 0 | ja |
 | `tasks.edit` | aufgaben | fachlich | implementiert | rollenabhängig | Selbsttest | nicht-ausgefuehrt | 1 | 0 | 0 | 0 | nein |
 | `tasks.subtasks` | aufgaben | fachlich | implementiert | UI | kein Test | nicht-ausgefuehrt | 0 | 0 | 0 | 0 | nein |
 | `tasks.create` | aufgaben | fachlich | implementiert | rollenabhängig | Selbsttest | nicht-ausgefuehrt | 1 | 0 | 0 | 0 | ja |
-| `tasks.nudge` | aufgaben | automatisiert | implementiert | systemseitig | kein Test | nicht-ausgefuehrt | 0 | 0 | 0 | 0 | ja |
-| `tasks.snooze` | aufgaben | fachlich | implementiert | UI | kein Test | nicht-ausgefuehrt | 0 | 0 | 0 | 0 | nein |
+| `tasks.nudge` | aufgaben | automatisiert | implementiert | systemseitig | Selbsttest | nicht-ausgefuehrt | 1 | 0 | 0 | 0 | ja |
+| `tasks.snooze` | aufgaben | fachlich | implementiert | UI | Selbsttest | nicht-ausgefuehrt | 1 | 1 | 0 | 0 | nein |
 | `tasks.deadline` | aufgaben | fachlich | implementiert | UI | kein Test | nicht-ausgefuehrt | 0 | 0 | 0 | 0 | ja |
 | `tasks.annual` | aufgaben | automatisiert | implementiert | systemseitig | Selbsttest | nicht-ausgefuehrt | 1 | 1 | 0 | 0 | ja |
 | `tasks.handover-stafette` | aufgaben | fachlich | implementiert | UI | Selbsttest | nicht-ausgefuehrt | 1 | 1 | 0 | 0 | ja |
-| `tasks.ball-owner` | aufgaben | fachlich | implementiert | UI | Unit-Test | unbekannt | 0 | 1 | 0 | 0 | nein |
+| `tasks.ball-owner` | aufgaben | fachlich | implementiert | UI | Selbsttest | nicht-ausgefuehrt | 1 | 1 | 0 | 0 | nein |
 | `tasks.search-filter` | aufgaben | fachlich | implementiert | UI | kein Test | nicht-ausgefuehrt | 0 | 0 | 0 | 0 | nein |
-| `tasks.link-document` | aufgaben | fachlich | implementiert | UI | kein Test | nicht-ausgefuehrt | 0 | 0 | 0 | 0 | nein |
-| `tasks.link-decision` | aufgaben | fachlich | implementiert | rollenabhängig | Selbsttest | nicht-ausgefuehrt | 1 | 0 | 0 | 0 | ja |
+| `tasks.link-document` | aufgaben | fachlich | implementiert | UI | Selbsttest | nicht-ausgefuehrt | 1 | 0 | 0 | 0 | nein |
+| `tasks.link-decision` | aufgaben | fachlich | implementiert | rollenabhängig | Selbsttest | nicht-ausgefuehrt | 2 | 0 | 0 | 0 | ja |
 | `tasks.link-case` | aufgaben | fachlich | implementiert | systemseitig | Unit-Test | unbekannt | 0 | 2 | 0 | 0 | nein |
 | `tasks.templates` | aufgaben | fachlich | implementiert | UI | Unit-Test | unbekannt | 0 | 1 | 0 | 0 | nein |
-| `tasks.recurring` | aufgaben | automatisiert | implementiert | systemseitig | Unit-Test | unbekannt | 0 | 1 | 0 | 0 | ja |
+| `tasks.recurring` | aufgaben | automatisiert | implementiert | systemseitig | Selbsttest | nicht-ausgefuehrt | 1 | 1 | 0 | 0 | ja |
 | `tasks.assign` | aufgaben | fachlich | implementiert | rollenabhängig | Selbsttest | nicht-ausgefuehrt | 2 | 0 | 0 | 0 | nein |
 | `automation.runs` | automation | automatisiert | implementiert | UI | kein Test | nicht-ausgefuehrt | 0 | 0 | 0 | 0 | nein |
 | `automation.office-packages` | automation | automatisiert | implementiert | rollenabhängig | Unit-Test | unbekannt | 0 | 1 | 0 | 0 | nein |

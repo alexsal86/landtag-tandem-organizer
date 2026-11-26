@@ -8,6 +8,7 @@
 
 - Every new business rule or workflow needs a matching step in a selftest scenario (src/features/selftest); pure rules run as kind:"logic" steps so the Selbsttest-Center verifies logic, not just persistence.
 - Selftest runs are persisted per tenant in selftest_runs (steps + error details as JSON) so the agent can read failures directly via SQL instead of relying on screenshots.
+- Coverage exceptions live only in COVERAGE_EXCEPTIONS (src/features/selftest/coverage-config.ts) with a reason and an expiry date. Expired, unjustified, duplicate or already scenario-covered exceptions make check:selftest-coverage fail, and every implemented business feature without a selftest stays visible by name in the coverage report.
 - Task triage (zones, resubmission, ball handover, timeline events) lives in src/features/tasks/stafette.ts as pure functions; the task workspace UI and selftests import it so rules stay testable.
 - After a vote on a task-linked decision, the DB trigger return_task_ball_after_vote hands the task back to the decision's creator (ball_owner office, next step, timeline, notification) so the loop closes without client logic.
 - Task nudges go only through the nudge_task/ack_task_nudge RPCs (tenant-checked, 24h limit enforced in DB); due reminders are dispatched hourly by dispatch_due_task_reminders via pg_cron.

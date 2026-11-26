@@ -50,7 +50,7 @@ const getBlockItems = (layout: LetterLayoutSettings, blockKey: BlockKey): Canvas
   return content[blockKey] || [];
 };
 
-export function PressTemplateManager() {
+export function PressTemplateManager({ onSaved }: { onSaved: () => void }) {
   const { currentTenant } = useTenant();
 
   const [templates, setTemplates] = useState<PressTemplate[]>([]);
@@ -100,6 +100,7 @@ export function PressTemplateManager() {
     try {
       await persistPressTemplates(currentTenant.id, nextTemplates);
       setTemplates(nextTemplates);
+      onSaved();
       return true;
     } catch (error: unknown) {
       notify.error('Fehler', { description: error instanceof Error ? error.message : 'Speichern fehlgeschlagen'
