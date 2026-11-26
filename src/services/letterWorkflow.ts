@@ -73,7 +73,10 @@ export async function approveLetterWithoutReview(letterId: string, from: string,
 export async function uploadLetterAttachment(file: File, letterId: string, userId: string, trackUpload?: (path: string) => void) {
   if (!userId) throw new Error("Anmeldung für Upload erforderlich.");
   if (file.size > 10 * 1024 * 1024) throw new Error("Die Anlage ist größer als 10 MB.");
-  const path = `${letterId}/${crypto.randomUUID()}_${file.name}`;
+  // Der Bucket "documents" erlaubt Uploads nur im eigenen Ordner
+  // ((storage.foldername(name))[1] = auth.uid()); andere Präfixe lehnt die
+  // Storage-Policy mit "new row violates row-level security policy" ab.
+  const path = `${userId}/${letterId}/${crypto.randomUUID()}_${file.name}`;
   trackUpload?.(path);
   const upload = await supabase.storage.from("documents").upload(path, file);
   if (upload.error) throw upload.error;
