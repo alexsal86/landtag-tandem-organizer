@@ -3310,6 +3310,13 @@
       "area": "aufgaben"
     }
   ],
+  "task_batch_actions": [
+    {
+      "id": "tasks.handover-stafette",
+      "name": "Aufgabe weitergeben (Stafette)",
+      "area": "aufgaben"
+    }
+  ],
   "task_categories": [
     {
       "id": "admin.configuration",

@@ -214,6 +214,7 @@
         "tasks",
         "task_assignees",
         "task_snoozes",
+        "task_batch_actions",
         "bulk_action_audit"
       ],
       "roles": [

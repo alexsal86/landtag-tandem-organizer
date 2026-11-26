@@ -14,7 +14,7 @@ export const taskStafetteLifecycleScenario: TestScenario = {
   title: "Aufgaben-Stafette (Am Zug, Wiedervorlage, Freigabe)",
   description: "Spielt den Weg einer Aufgabe durch: Schritt festlegen, Wiedervorlage, Freigabe vorlegen, Rückgabe, Abschluss, Mehrfachzuweisung, Vertretungsübergabe, Anstupsen mit Quittung sowie Archivieren und Wiederherstellen.",
   features: ["tasks"],
-  touches: ["tasks", "task_assignees", "task_snoozes", "archived_tasks"],
+  touches: ["tasks", "task_assignees", "task_snoozes", "archived_tasks", "task_batch_actions"],
   checks: [
     "Zonen Mein Zug / Wartet / Wiedervorlage",
     "Verlaufseinträge bei Übergaben und Erledigungen",
@@ -35,6 +35,7 @@ export const taskStafetteLifecycleScenario: TestScenario = {
     { table: "task_assignees", columns: ["task_id", "user_id", "assigned_by"] },
     { table: "task_snoozes", columns: ["user_id", "task_id", "snoozed_until"] },
     { table: "archived_tasks", columns: ["task_id", "user_id", "title", "archived_at"] },
+    { table: "task_batch_actions", columns: ["tenant_id", "actor_id", "action", "affected_count", "skipped_count", "undo_payload", "undone_at", "undone_by"] },
   ],
   steps: [
     {

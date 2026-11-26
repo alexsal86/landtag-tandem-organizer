@@ -55,7 +55,7 @@ _Auto-generiert mit `npm run update:feature-catalog` aus dem zentralen Funktions
 
 ## Datenbanktabellen
 
-`annual_task_completions`, `annual_tasks`, `archived_tasks`, `bulk_action_audit`, `case_file_tasks`, `case_item_timeline`, `dashboard_decision_nudges`, `documents`, `notifications`, `preparation_templates`, `profiles`, `routine_package_runs`, `routine_package_steps`, `subtasks`, `task_archive_settings`, `task_assignees`, `task_categories`, `task_decision_participants`, `task_decisions`, `task_documents`, `task_snoozes`, `task_statuses`, `task_topics`, `tasks`
+`annual_task_completions`, `annual_tasks`, `archived_tasks`, `bulk_action_audit`, `case_file_tasks`, `case_item_timeline`, `dashboard_decision_nudges`, `documents`, `notifications`, `preparation_templates`, `profiles`, `routine_package_runs`, `routine_package_steps`, `subtasks`, `task_archive_settings`, `task_assignees`, `task_batch_actions`, `task_categories`, `task_decision_participants`, `task_decisions`, `task_documents`, `task_snoozes`, `task_statuses`, `task_topics`, `tasks`
 
 ## Selbsttest-Szenarien
 
@@ -64,7 +64,7 @@ _Auto-generiert mit `npm run update:feature-catalog` aus dem zentralen Funktions
 | `annual-task-stafette` | Jahresaufgabe → Büroaufgabe → Jahresabschluss | 3 | 5 | — |
 | `decision-lifecycle` | Entscheidungs-Lifecycle (active → open → archived) | 3 | 0 | — |
 | `task-lifecycle` | Aufgaben-Lifecycle (Zuweisung → Frist → Entscheidung → Jour fixe → erledigt) | 6 | 7 | — |
-| `task-stafette-lifecycle` | Aufgaben-Stafette (Am Zug, Wiedervorlage, Freigabe) | 4 | 8 | — |
+| `task-stafette-lifecycle` | Aufgaben-Stafette (Am Zug, Wiedervorlage, Freigabe) | 5 | 8 | — |
 
 ## Selbsttest-Schritte
 
@@ -326,7 +326,7 @@ Weist eine oder mehrere Personen zu, hält die Zuweisungsliste synchron und erla
 - **Hooks:** —
 - **Edge Functions:** —
 - **Datenbankfunktionen:** `record_task_stafette_handover`, `batch_task_stafette_action`, `batch_task_stafette_preview`, `undo_task_batch_action`, `task_batch_plan`, `task_stafette_batch_snapshot`
-- **Tabellen:** `tasks`, `task_assignees`, `task_snoozes`, `bulk_action_audit`
+- **Tabellen:** `tasks`, `task_assignees`, `task_snoozes`, `task_batch_actions`, `bulk_action_audit`
 - **Abhängigkeiten:** `tasks.ball-owner`, `tasks.create`
 - **Selbsttests:** `task-stafette-lifecycle`
 - **Unit-Tests:** `src/features/tasks/stafette.test.ts`

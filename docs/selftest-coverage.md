@@ -4,7 +4,7 @@ _Auto-generiert mit `npm run update:selftest-coverage`._
 
 Quelle: `src/integrations/supabase/types.ts`. Die Angaben beschreiben deklarierte Prüfumfänge, keine erfolgreichen Testläufe und keine Code-Coverage.
 
-Von 354 Tabellen haben 91 ein registriertes Szenario; 1 sind noch nicht eingeordnet. 262 sind befristet ausgenommen, davon 118 als Ausbau offen und 144 als technisch oder fachlich ausgenommen. Ausnahmen zählen nicht als bestanden.
+Von 354 Tabellen haben 92 ein registriertes Szenario; 0 sind noch nicht eingeordnet. 262 sind befristet ausgenommen, davon 118 als Ausbau offen und 144 als technisch oder fachlich ausgenommen. Ausnahmen zählen nicht als bestanden.
 
 ## Szenarien
 
@@ -43,7 +43,7 @@ Von 354 Tabellen haben 91 ein registriertes Szenario; 1 sind noch nicht eingeord
 | `responsibilities` | Zuständigkeiten & Matrix | tasks |
 | `security-hardening` | Sicherheitsregeln: Porträtdateien und E-Mail-Inhalte | Keine (reine Regeln) |
 | `task-lifecycle` | Aufgaben-Lifecycle (Zuweisung → Frist → Entscheidung → Jour fixe → erledigt) | tasks, task_documents, task_decisions, task_decision_participants, task_decision_responses, task_statuses |
-| `task-stafette-lifecycle` | Aufgaben-Stafette (Am Zug, Wiedervorlage, Freigabe) | tasks, task_assignees, task_snoozes, archived_tasks |
+| `task-stafette-lifecycle` | Aufgaben-Stafette (Am Zug, Wiedervorlage, Freigabe) | tasks, task_assignees, task_snoozes, archived_tasks, task_batch_actions |
 | `team-rituals` | Freiwillige Team-Rituale | Keine (reine Regeln) |
 | `topic-linking` | Themenverknüpfung und Modul-Steuerung | topics, case_item_topics, case_items, knowledge_question_topics, topic_module_settings |
 | `workflow-rules` | Geschäftsregeln (Freigabe, Rollen, Fristen) | Keine (reine Regeln) |
@@ -345,7 +345,7 @@ Von 354 Tabellen haben 91 ein registriertes Szenario; 1 sind noch nicht eingeord
 | `tags` | Ausgenommen bis 2027-06-30 | — |
 | `task_archive_settings` | Ausgenommen bis 2027-06-30 | — |
 | `task_assignees` | Szenario vorhanden | document-annotation, task-stafette-lifecycle |
-| `task_batch_actions` | Einordnung fehlt | — |
+| `task_batch_actions` | Szenario vorhanden | task-stafette-lifecycle |
 | `task_categories` | Ausgenommen bis 2027-06-30 | — |
 | `task_comments` | Ausgenommen bis 2027-06-30 | — |
 | `task_decision_attachments` | Ausgenommen bis 2027-06-30 | — |
@@ -416,7 +416,7 @@ Jede Ausnahme verlangt eine Begründung und ein Ablaufdatum. Abgelaufene, unbegr
 | Ausgenommen | 2027-06-30 | 20 Tabellen | Technische Infrastruktur-, Push-, Cache- oder Protokolltabelle ohne eigenen fachlichen Workflow; geprüft wird die auslösende Funktion. |
 | Ausgenommen | 2027-06-30 | 55 Tabellen | Konfigurations-, Lookup- oder Einstellungstabelle; das fachlich relevante Verhalten prüfen die Szenarien der zugehörigen Funktion. |
 | Ausgenommen | 2027-06-30 | 29 Tabellen | Audit-, Verlaufs- oder Versionsprotokoll; wird von Datenbankfunktionen geschrieben und im Szenario der auslösenden Funktion mitgeprüft. |
-| Ausgenommen | 2027-06-30 | 42 Tabellen | Reine Verknüpfungstabelle ohne eigene Fachlogik; die Beziehung entsteht im Szenario der zugehörigen Funktion. |
+| Ausgenommen | 2027-06-30 | 40 Tabellen | Reine Verknüpfungstabelle ohne eigene Fachlogik; die Beziehung entsteht im Szenario der zugehörigen Funktion. |
 | Ausstehend | 2027-06-30 | 12 Tabellen | Sicherheits-, Onboarding- oder Automationsablauf: Für diese Tabelle fehlt ein eigenes Szenario; der Ausbau ist geplant. |
 | Ausstehend | 2027-06-30 | 8 Tabellen | Knowledge 11–14 nutzen eine gezielte Abnahme-Suite; ein Live-Selbsttest-Szenario für diese Tabelle steht aus. |
 | Ausstehend | 2027-06-30 | `parlis_proceedings`, `parlis_deputy_mandates` | Parlis: Der Selbsttest prüft importierte Referenzdaten lesend. Schreibzugriffe bleiben der Datenbankmigration vorbehalten. |
@@ -582,6 +582,7 @@ Diese Manifeste sind keine Messung ausgeführter Assertions.
 - task-stafette-lifecycle: `task_assignees`: task_id, user_id, assigned_by
 - task-stafette-lifecycle: `task_snoozes`: user_id, task_id, snoozed_until
 - task-stafette-lifecycle: `archived_tasks`: task_id, user_id, title, archived_at
+- task-stafette-lifecycle: `task_batch_actions`: tenant_id, actor_id, action, affected_count, skipped_count, undo_payload, undone_at, undone_by
 - topic-linking: `topics`: name, label, icon, color, order_index, is_active, tenant_id, created_by, merged_into, merged_at, updated_by
 - topic-linking: `case_items`: subject, summary, user_id, tenant_id, intake_payload
 - topic-linking: `case_item_topics`: tenant_id, case_item_id, topic_id, created_by

@@ -3,10 +3,10 @@
   "source": "src/integrations/supabase/types.ts",
   "counts": {
     "total": 354,
-    "scenario": 91,
+    "scenario": 92,
     "deferred": 118,
     "excluded": 144,
-    "missing": 1,
+    "missing": 0,
     "exceptions": 262
   },
   "exceptionGroups": [
@@ -145,7 +145,6 @@
         "appointment_preparation_documents",
         "appointment_preparation_templates",
         "appointment_topics",
-        "case_file_documents",
         "case_file_topics",
         "case_item_escalation_suggestions",
         "case_item_participants",
@@ -165,7 +164,6 @@
         "knowledge_document_collaborators",
         "knowledge_document_permissions",
         "knowledge_document_topics",
-        "letter_collaborators",
         "letter_comments",
         "message_confirmations",
         "message_recipients",
@@ -1852,7 +1850,8 @@
         "tasks",
         "task_assignees",
         "task_snoozes",
-        "archived_tasks"
+        "archived_tasks",
+        "task_batch_actions"
       ],
       "features": [
         "tasks"
@@ -1898,6 +1897,19 @@
             "user_id",
             "title",
             "archived_at"
+          ]
+        },
+        {
+          "table": "task_batch_actions",
+          "columns": [
+            "tenant_id",
+            "actor_id",
+            "action",
+            "affected_count",
+            "skipped_count",
+            "undo_payload",
+            "undone_at",
+            "undone_by"
           ]
         }
       ],
@@ -4568,8 +4580,10 @@
     },
     {
       "table": "task_batch_actions",
-      "status": "missing",
-      "scenarios": [],
+      "status": "scenario",
+      "scenarios": [
+        "task-stafette-lifecycle"
+      ],
       "exception": null
     },
     {
@@ -5685,9 +5699,5 @@
       ]
     }
   ],
-  "errors": [
-    "Ausnahme für case_file_documents ist überflüssig: bereits durch case-file-lifecycle gedeckt.",
-    "Ausnahme für letter_collaborators ist überflüssig: bereits durch letter-lifecycle gedeckt.",
-    "Neue Tabelle ohne Einordnung: task_batch_actions"
-  ]
+  "errors": []
 }
