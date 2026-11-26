@@ -633,8 +633,10 @@ export const contactRelationsScenario: TestScenario = {
             p_tenant: ctx.tenantId, p_label: `ST ${ctx.runId.slice(0, 8)} Merge-Thema`,
           });
           if (topic.error || !topic.data) return { ok: false, message: `Thema anlegen: ${describeError(topic.error)}` };
-          topicId = topic.data;
-          ctx.trackRecord({ table: "topics", id: topicId });
+          // topic.data ist nach der Prüfung ein string; der eigene const hält die Einengung fest.
+          const createdTopicId: string = topic.data;
+          ctx.trackRecord({ table: "topics", id: createdTopicId });
+          topicId = createdTopicId;
         }
 
         const secondary = await supabase.from("contacts").insert({
