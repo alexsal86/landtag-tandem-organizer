@@ -283,7 +283,13 @@ const Index = (): React.JSX.Element => {
       </a>
       
       <div
-        className={cn("fixed inset-0 flex h-app w-full bg-background overflow-hidden", isResizing && "select-none")}
+        className={cn(
+          "fixed inset-0 flex h-app bg-background overflow-hidden",
+          // Bei angedocktem Tageszettel keine feste Breite setzen: mit left/right
+          // bestimmt der Browser die Breite dann selbst und der Inhalt wird schmaler.
+          daySlipReservedWidth > 0 ? "w-auto" : "w-full",
+          isResizing && "select-none"
+        )}
         style={daySlipReservedWidth > 0 ? { right: daySlipReservedWidth } : undefined}
       >
         <div className="hidden md:flex sticky top-0 h-app z-30" style={{ width: navWidth }}>
