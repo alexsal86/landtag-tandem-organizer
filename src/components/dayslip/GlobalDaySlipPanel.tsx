@@ -798,27 +798,30 @@ function DaySlipPanel({ userId, tenantId }: { userId: string; tenantId: string }
                 {!ds.todayData.completedAt && <button className="mt-1 underline" onClick={() => { applyLineShortcuts(); ds.setResolveMode(true); }}>Zuordnung prüfen</button>}
               </div>}
               {/* Footer */}
-              <div className="shrink-0 space-y-2 p-3">
-                <div className="rounded-lg border border-border/60 px-3 py-2">
-                  <DaySlipMoodTrend store={ds.store} todayKey={ds.todayKey} />
-                </div>
-                {ds.resolveMode && (
-                  <div className="rounded-lg border border-border/60 px-3 py-2">
-                    <p className="mb-1 text-[11px] text-muted-foreground">Wie war dein Tag?</p>
-                    <div className="flex items-center justify-between">
-                      {["😞", "🙁", "😐", "🙂", "😄"].map((mood, index) => (
-                        <button key={mood} type="button" className={cn("rounded px-1.5 py-1 text-lg transition hover:bg-muted", ds.todayData.dayMood === (index + 1) ? "bg-palette-green/20 ring-1 ring-palette-green/50" : "opacity-70")}
-                          disabled={ds.isProcessing || !!ds.todayData.completedAt} onClick={() => ds.setMood((index + 1) as 1 | 2 | 3 | 4 | 5)}>{mood}</button>
-                      ))}
+              <div className="shrink-0 p-3">
+                <DaySlipMoodTrend
+                  key={ds.todayKey}
+                  store={ds.store}
+                  todayKey={ds.todayKey}
+                  moodPicker={ds.resolveMode && (
+                    <div className="rounded-lg border border-border/60 px-3 py-2">
+                      <p className="mb-1 text-[11px] text-muted-foreground">Wie war dein Tag?</p>
+                      <div className="flex items-center justify-between">
+                        {["😞", "🙁", "😐", "🙂", "😄"].map((mood, index) => (
+                          <button key={mood} type="button" className={cn("rounded px-1.5 py-1 text-lg transition hover:bg-muted", ds.todayData.dayMood === (index + 1) ? "bg-palette-green/20 ring-1 ring-palette-green/50" : "opacity-70")}
+                            disabled={ds.isProcessing || !!ds.todayData.completedAt} onClick={() => ds.setMood((index + 1) as 1 | 2 | 3 | 4 | 5)}>{mood}</button>
+                        ))}
+                      </div>
                     </div>
-                  </div>
-                )}
-                {ds.todayData.completedAt ? <div className="space-y-2 rounded border border-palette-green/40 p-3 text-sm">
-                  <p>✓ Tag abgeschlossen</p><button className="flex items-center gap-1 underline" onClick={() => void ds.reopenDay()}><RotateCcw className="h-4 w-4" />Tag wieder öffnen</button>
-                </div> : <button type="button" disabled={ds.isProcessing} onClick={() => void completeDay()} className="flex h-10 w-full items-center justify-between rounded-lg border border-palette-green/40 bg-palette-green/10 px-3 text-sm font-medium text-palette-green">
-                  <span>{ds.isProcessing ? "Einträge werden verarbeitet …" : completeButtonLabel}</span>
-                  <span className="text-xs opacity-70">{completeButtonHint}</span>
-                </button>}
+                  )}
+                >
+                  {ds.todayData.completedAt ? <div className="space-y-2 rounded border border-palette-green/40 p-3 text-sm">
+                    <p>✓ Tag abgeschlossen</p><button className="flex items-center gap-1 underline" onClick={() => void ds.reopenDay()}><RotateCcw className="h-4 w-4" />Tag wieder öffnen</button>
+                  </div> : <button type="button" disabled={ds.isProcessing} onClick={() => void completeDay()} className="flex min-h-10 w-full flex-wrap items-center justify-between gap-x-2 rounded-lg border border-palette-green/40 bg-palette-green/10 px-3 py-1 text-left text-sm font-medium text-palette-green">
+                    <span>{ds.isProcessing ? "Einträge werden verarbeitet …" : completeButtonLabel}</span>
+                    <span className="text-xs opacity-70">{completeButtonHint}</span>
+                  </button>}
+                </DaySlipMoodTrend>
               </div>
             </div>
           )}
