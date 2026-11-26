@@ -525,10 +525,10 @@ function DaySlipPanel({ userId, tenantId }: { userId: string; tenantId: string }
               </div>
               <div className="space-y-2 rounded-lg border border-border/60 p-3">
                 <p className="text-xs font-medium uppercase tracking-wide text-muted-foreground">Tagesvorlagen</p>
-                <p className="text-xs text-muted-foreground">Fügt vordefinierte Blöcke inkl. HR-Trennlinien ein. Die Wochentag-Zuordnung wird beim Öffnen eines neuen Tages automatisch übernommen.</p>
+                <p className="text-xs text-muted-foreground">Fügt vordefinierte Blöcke inkl. HR-Trennlinien ein. Die Wochentag-Zuordnung wird nur an noch leeren, unbegonnenen Tagen automatisch übernommen.</p>
                 <div className="space-y-1 rounded border border-border/50 p-2">
                   <p className="text-[11px] font-medium">Automatisch je Wochentag</p>
-                  <p className="text-[11px] text-muted-foreground">Zum Beispiel Dienstag = Plenartag, Donnerstag = Ausschuss. Gilt einmal pro Tag.</p>
+                  <p className="text-[11px] text-muted-foreground">Zum Beispiel Dienstag = Plenartag, Donnerstag = Ausschuss. Gilt einmal pro Tag und nur, solange der Zettel leer ist.</p>
                   {WEEK_DAYS.filter((day) => day !== "all").map((day) => (
                     <label key={day} className="flex items-center gap-2 text-xs">
                       <span className="w-20 shrink-0">{WEEK_DAY_LABELS[day]}</span>

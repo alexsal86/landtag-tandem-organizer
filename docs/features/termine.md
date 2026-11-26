@@ -543,7 +543,7 @@ Füllt die Jour-fixe-Agende aus Vorgängen, Aufgaben, Geburtstagen und weiteren 
 - Keine.
 
 ### `daily.briefing` — Tagesbriefing und Tageszettel
-Erzeugt Tagesbriefings und Tageszettel mit Terminen und Aufgaben, hält Lesebestätigungen fest und archiviert Tageszettel. Vergangene Zettel bleiben auch ohne Abschluss lesbar; Löschen ist rückgängig zu machen. Getippte Kürzel (+ Aufgabe, ~ Notiz, ? Entscheidung, @Person, >Fälligkeit) belegen die Zuordnung am Tagesende vor. Das Archiv ist durchsuchbar, per Datum anwählbar und zeigt je Zeile, ob sie erledigt, zugewiesen oder offen ist. Der Stimmungsverlauf der letzten 14 Tage steht als schmale Leiste neben dem Tagesabschluss. Tagesvorlagen lassen sich je Wochentag fest zuordnen (Standard: Dienstag Plenartag, Donnerstag Ausschusstag) und werden beim Öffnen eines neuen Tages einmalig automatisch eingefügt.
+Erzeugt Tagesbriefings und Tageszettel mit Terminen und Aufgaben, hält Lesebestätigungen fest und archiviert Tageszettel. Vergangene Zettel bleiben auch ohne Abschluss lesbar; Löschen ist rückgängig zu machen. Getippte Kürzel (+ Aufgabe, ~ Notiz, ? Entscheidung, @Person, >Fälligkeit) belegen die Zuordnung am Tagesende vor. Das Archiv ist durchsuchbar, per Datum anwählbar und zeigt je Zeile, ob sie erledigt, zugewiesen oder offen ist. Der Stimmungsverlauf der letzten 14 Tage steht als schmale Leiste neben dem Tagesabschluss. Tagesvorlagen lassen sich je Wochentag fest zuordnen (Standard: Dienstag Plenartag, Donnerstag Ausschusstag) und werden nur an noch leeren, unbegonnenen Tagen einmalig automatisch eingefügt; begonnene Zettel bleiben unverändert.
 
 - **Kategorie:** fachlich
 - **Implementierung:** implementiert
@@ -582,7 +582,7 @@ Erzeugt Tagesbriefings und Tageszettel mit Terminen und Aufgaben, hält Lesebest
 **Bekannte Einschränkungen**
 
 - Vortage sind schreibgeschützt; abgeschlossen werden kann nur der aktuelle Tag.
-- Die automatische Wochentag-Vorlage wird nur einmal pro Tag und nie an abgeschlossenen Tagen eingefügt; manuell gewählte Vorlagen ersetzen sie für den Tag.
+- Die automatische Wochentag-Vorlage wird nur einmal pro Tag, nur an noch leeren Zetteln und nie an abgeschlossenen oder bereits begonnenen Tagen eingefügt; manuell gewählte Vorlagen ersetzen sie für den Tag.
 - Kürzel belegen die Zuordnung nur vor; mehrdeutige Namen und unbekannte Fälligkeiten bleiben Text und werden in der Zuordnung geklärt.
 
 **Offene Prüfpunkte**

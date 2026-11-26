@@ -71,6 +71,18 @@ export function appendEntries(day: DaySlipDayData, entries: Array<DaySlipLineEnt
   return { ...day, html: day.html + added.map(toParagraphHtml).join(""), plainText: [...existing, ...added].map(line => line.text).join("\n"), nodes: undefined, sources, lineTimestamps: timestamps };
 }
 
+/**
+ * A slip counts as not started while it has no lines, links, rules, triage entries or timestamps.
+ * The automatic weekday template must never be inserted into a slip that is already in use.
+ */
+export function isUnstartedDaySlip(day?: DaySlipDayData): boolean {
+  if (!day) return true;
+  if (day.completedAt || day.dayTemplateInjected) return false;
+  if (extractLinesFromHtml(day.html).length > 0 || day.html.includes("labeled-hr")) return false;
+  if (Object.keys(day.sources ?? {}).length > 0 || Object.keys(day.lineTimestamps ?? {}).length > 0) return false;
+  return (day.resolved ?? []).length === 0;
+}
+
 /** Template lines keep their section rules and priorities; they are not plain text entries. */
 export function appendStructuredLines(day: DaySlipDayData, lines: string[]): DaySlipDayData {
   const trimmed = lines.map(line => line.trim()).filter(Boolean);

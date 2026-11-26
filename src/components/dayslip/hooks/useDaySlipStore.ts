@@ -12,7 +12,7 @@ import {
   type ResolvedItem, type ResolveTarget, type TaskOptions, type DaySlipSettings,
   toDayKey, extractLinesFromHtml, templateForDayKey, weekdayOfDayKey,
 } from "../dayslipTypes";
-import { appendEntries, appendStructuredLines, carryLines, collectCarryLines, completedArchiveDays, emptyDay, exportId, removeLineFromDay, restoreLineToDay, type RemovedDaySlipLine } from "../daySlipState";
+import { appendEntries, appendStructuredLines, carryLines, collectCarryLines, completedArchiveDays, emptyDay, exportId, isUnstartedDaySlip, removeLineFromDay, restoreLineToDay, type RemovedDaySlipLine } from "../daySlipState";
 
 const errorMessage = (error: unknown) => error && typeof error === "object" && "message" in error ? String(error.message) : String(error);
 
@@ -269,16 +269,18 @@ export function useDaySlipStore(userId: string, tenantId: string) {
     const templateLines = weekdayTemplate?.lines ?? [];
     const recurring = settings.recurringItems.filter(item => item.weekday === "all" || item.weekday === weekdayOfDayKey(todayKey)).map(item => item.text);
     const planned = settings.weekPlan?.applied ? settings.weekPlan.days[todayKey] ?? [] : [];
-    const needsTemplate = !todayData.dayTemplateInjected && templateLines.length > 0;
+    // Only a slip that has not begun gets the weekday template; an existing, half-used day stays untouched.
+    const needsTemplate = !todayData.dayTemplateInjected && templateLines.length > 0 && isUnstartedDaySlip(todayData);
     const needsRecurring = !todayData.recurringInjected && recurring.length > 0;
     const needsPlan = !todayData.weekPlanInjected && planned.length > 0;
     if (!needsTemplate && !needsRecurring && !needsPlan) return;
     changeDay(day => {
       let next = day;
-      if (!day.dayTemplateInjected && templateLines.length > 0) next = appendStructuredLines(next, templateLines);
+      const templateApplies = templateLines.length > 0 && !day.dayTemplateInjected && isUnstartedDaySlip(day);
+      if (templateApplies) next = appendStructuredLines(next, templateLines);
       const texts = [...(!day.recurringInjected ? recurring : []), ...(!day.weekPlanInjected ? planned : [])];
       if (texts.length) next = appendEntries(next, texts.map(text => ({ id: crypto.randomUUID(), text })));
-      return { ...next, recurringInjected: true, weekPlanInjected: day.weekPlanInjected || planned.length > 0, dayTemplateInjected: day.dayTemplateInjected || templateLines.length > 0 };
+      return { ...next, recurringInjected: true, weekPlanInjected: day.weekPlanInjected || planned.length > 0, dayTemplateInjected: day.dayTemplateInjected || templateApplies };
     }, true);
   }, [ready, todayData.completedAt, todayData.recurringInjected, todayData.weekPlanInjected, todayData.dayTemplateInjected, settings.recurringItems, settings.weekPlan, settings.dayTemplates, settings.weekdayTemplates, todayKey, changeDay]);
 
