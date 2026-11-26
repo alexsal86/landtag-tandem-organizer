@@ -1,6 +1,9 @@
 import { createContext, useContext, useEffect, useState, type ReactNode } from "react";
+import { NAV_MIN_WIDTH } from "@/hooks/useNavWidth";
 
 const MIN_WIDTH = 320;
+/** Mindestbreite, die dem Seiteninhalt neben dem angedockten Tageszettel bleibt. */
+const MIN_CONTENT_WIDTH = 720;
 const clampWidth = (width: number) => Math.max(MIN_WIDTH, Math.min(640, window.innerWidth * 0.45, width));
 
 function readPreference(key: string) {
@@ -9,6 +12,10 @@ function readPreference(key: string) {
 
 const DaySlipLayoutContext = createContext<{
   docked: boolean;
+  /** Ob genug Platz für das Andocken bleibt (sonst bleibt der Zettel schwebend). */
+  canDock: boolean;
+  /** Fensterbreite, ab der Andocken möglich ist. */
+  minDockWidth: number;
   desktop: boolean;
   width: number;
   /** Platz, den der angedockte Tageszettel dem Inhalt rechts wegnimmt. */
@@ -29,11 +36,18 @@ export function DaySlipLayout({ children }: { children: ReactNode }) {
   });
   const [screenWidth, setScreenWidth] = useState(() => window.innerWidth);
   const desktop = screenWidth >= 1024;
-  const width = Math.max(MIN_WIDTH, Math.min(640, screenWidth * 0.45, preferredWidth));
+  const preferredWidthClamped = Math.max(MIN_WIDTH, Math.min(640, screenWidth * 0.45, preferredWidth));
   const [visible, setVisible] = useState(false);
   const [host, setHost] = useState<HTMLDivElement | null>(null);
-  const docked = preferredDocked && desktop;
-  const reservedWidth = docked && visible ? width : 0;
+  // Angedockt wird nur, wenn dem Inhalt neben Navigation und Zettel noch seine
+  // Mindestbreite bleibt; sonst bliebe vom Inhalt zu wenig übrig.
+  const minDockWidth = NAV_MIN_WIDTH + MIN_CONTENT_WIDTH + MIN_WIDTH;
+  const availableForDaySlip = Math.max(0, screenWidth - NAV_MIN_WIDTH - MIN_CONTENT_WIDTH);
+  const canDock = desktop && availableForDaySlip >= MIN_WIDTH;
+  const docked = preferredDocked && canDock;
+  const dockWidth = Math.min(preferredWidthClamped, availableForDaySlip);
+  const width = docked ? dockWidth : preferredWidthClamped;
+  const reservedWidth = docked && visible ? dockWidth : 0;
 
   useEffect(() => {
     const resize = () => {
@@ -51,7 +65,7 @@ export function DaySlipLayout({ children }: { children: ReactNode }) {
   }, [preferredWidth]);
 
   return (
-    <DaySlipLayoutContext.Provider value={{ docked, desktop, width, reservedWidth, host, setDocked, setWidth: value => updateWidth(clampWidth(value)), setVisible }}>
+    <DaySlipLayoutContext.Provider value={{ docked, canDock, minDockWidth, desktop, width, reservedWidth, host, setDocked, setWidth: value => updateWidth(clampWidth(value)), setVisible }}>
       <div className="flex min-h-app w-full">
         <div className="min-w-0 flex-1">{children}</div>
         <div ref={setHost} style={{ width: reservedWidth }} className="sticky top-0 h-app shrink-0" />

@@ -442,7 +442,7 @@ function DaySlipPanel({ userId, tenantId }: { userId: string; tenantId: string }
               </div>
               <div className="flex items-center gap-2">
                 <DaySlipCommandHelp />
-                {layout?.desktop && <button type="button" className="rounded p-1 text-muted-foreground hover:bg-muted hover:text-foreground focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring" onClick={() => layout.setDocked(!docked)} aria-label={docked ? "Tageszettel schwebend anzeigen" : "Tageszettel rechts andocken"} title={docked ? "Schwebend anzeigen" : "Rechts andocken"}>
+                {layout?.desktop && <button type="button" className="rounded p-1 text-muted-foreground hover:bg-muted hover:text-foreground focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring disabled:cursor-not-allowed disabled:opacity-40 disabled:hover:bg-transparent" onClick={() => layout.setDocked(!docked)} disabled={!layout.canDock} aria-label={docked ? "Tageszettel schwebend anzeigen" : "Tageszettel rechts andocken"} title={!layout.canDock ? `Andocken erst ab ${layout.minDockWidth} px Fensterbreite, damit der Inhalt lesbar bleibt` : docked ? "Schwebend anzeigen" : "Rechts andocken"}>
                   {docked ? <PanelRightClose className="h-4 w-4" /> : <PanelRightOpen className="h-4 w-4" />}
                 </button>}
                 <button type="button" className="rounded p-1 text-muted-foreground hover:bg-muted hover:text-foreground" onClick={() => switchView(showSettings ? "default" : "settings")} aria-label="Einstellungen anzeigen"><Settings className="h-4 w-4" /></button>
