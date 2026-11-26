@@ -1,4 +1,5 @@
 import artifact from "./generated/pulse-areas.json";
+import { stepDiagnostic } from "@/features/selftest/stepDiagnostics";
 
 /** Reine Ampel-Logik für den System-Puls: aus Testläufen und Sicherheitslücken je Bereich einen Status ableiten. */
 export type PulseLevel = "green" | "yellow" | "red" | "grey";
@@ -237,6 +238,47 @@ export function latestRunSteps(rows: PersistedRun[]): Record<string, Record<stri
     result[scenarioId] = steps;
   }
   return result;
+}
+
+/**
+ * Genau die fehlgeschlagenen Tests je Bereich – ohne RLS-Befunde und ohne
+ * bestandene Schritte. Jede Zeile nennt, was geprüft wurde (Schrittlabel) und
+ * welcher Fehler gespeichert ist. Fehlt bei einem fehlgeschlagenen Lauf die
+ * Schrittliste (ältere Läufe), erscheint eine Zeile für den gesamten Testlauf.
+ */
+export interface FailedTestRow { area: string; scenario: string; test: string; error: string }
+
+export function failedTestRows(
+  areas: PulseArea[],
+  details: Record<string, RunDetails | undefined>,
+  steps: Record<string, Record<string, PersistedStep>>,
+): FailedTestRow[] {
+  const rows: FailedTestRow[] = [];
+  for (const area of areas) {
+    for (const scenarioId of area.scenarios) {
+      const run = details[scenarioId];
+      if (!run || run.status !== "failed") continue;
+      const scenarioTitle = run.title ?? scenarioId;
+      const failedSteps = Object.values(steps[scenarioId] ?? {}).filter((step) => step.status === "failed");
+      if (failedSteps.length === 0) {
+        rows.push({ area: area.title, scenario: scenarioTitle, test: "gesamter Testlauf", error: "Test fehlgeschlagen" });
+        continue;
+      }
+      for (const step of failedSteps) {
+        const diagnostic = stepDiagnostic(step);
+        const error = [diagnostic?.code ? `Code ${diagnostic.code}` : "", diagnostic?.summary ?? ""]
+          .filter(Boolean)
+          .join(" · ");
+        rows.push({
+          area: area.title,
+          scenario: scenarioTitle,
+          test: step.label ?? step.id,
+          error: error || "Test fehlgeschlagen",
+        });
+      }
+    }
+  }
+  return rows;
 }
 
 /** Verlauf je Szenario, neuester Lauf zuerst. */

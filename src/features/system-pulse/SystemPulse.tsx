@@ -1,10 +1,11 @@
 import type { ReactElement } from "react";
 import { Fragment, useEffect, useMemo, useRef, useState } from "react";
 import { useQuery, useQueryClient } from "@tanstack/react-query";
-import { Activity, ArrowDown, ArrowLeft, ArrowRight, ExternalLink, Shield } from "lucide-react";
+import { Activity, AlertTriangle, ArrowDown, ArrowLeft, ArrowRight, ExternalLink, Shield } from "lucide-react";
 import { Link, useNavigate } from "react-router-dom";
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
+import { Badge } from "@/components/ui/badge";
 import { cn } from "@/lib/utils";
 import { notify } from "@/lib/notify";
 import { useAuth } from "@/hooks/useAuth";
@@ -14,7 +15,7 @@ import { featureCatalogHref } from "@/features/feature-catalog/securityLinks";
 import { stepDiagnostic } from "@/features/selftest/stepDiagnostics";
 import {
   PULSE_AREAS, PULSE_GROUPS, areaAssessment, assessRun, consecutiveFailures, durationTrend,
-  gapSummary, historyByScenario, latestRunDetails, latestRuns, latestRunSteps, mergeRuns,
+  failedTestRows, gapSummary, historyByScenario, latestRunDetails, latestRuns, latestRunSteps, mergeRuns,
   type AreaAssessment, type GapsState, type HistoryRun, type PersistedRun, type PulseArea, type PulseLevel, type PulseWorkflow,
 } from "./pulse";
 
@@ -157,6 +158,10 @@ export function SystemPulse({ gaps, gapsState }: Props) {
   const histories = useMemo(() => historyByScenario(historyQuery.data ?? []), [historyQuery.data]);
   const loadingRuns = Boolean(currentTenant?.id) && runsQuery.isPending;
   const unknownRuns = !currentTenant?.id || runsQuery.isError;
+  const failedRows = useMemo(
+    () => failedTestRows(PULSE_AREAS, runDetails, stepsByScenario),
+    [runDetails, stepsByScenario],
+  );
   const latest = runsQuery.data?.[0]?.created_at;
   const now = Date.now();
   const assessScenario = (scenarioId: string) => assessRun(runDetails[scenarioId], { now, currentVersion: CURRENT_VERSION });
@@ -272,6 +277,47 @@ export function SystemPulse({ gaps, gapsState }: Props) {
         </CardDescription>
       </CardHeader>
       <CardContent className="space-y-4">
+        <section aria-label="Fehlgeschlagene Tests" className="overflow-hidden rounded-lg border border-destructive/40">
+          <div className="flex flex-wrap items-center justify-between gap-2 border-b border-destructive/30 bg-destructive/5 px-3 py-2">
+            <h3 className="flex items-center gap-1.5 text-xs font-medium">
+              <AlertTriangle aria-hidden className="h-3.5 w-3.5 text-destructive" />
+              Fehlgeschlagene Tests
+              {failedRows.length > 0 && <Badge variant="destructive">{failedRows.length}</Badge>}
+            </h3>
+            <span className="text-[11px] text-muted-foreground">nur fehlgeschlagene Selbsttests · RLS-Befunde stehen getrennt darunter</span>
+          </div>
+          {failedRows.length === 0 ? (
+            <p className="px-3 py-2 text-xs text-muted-foreground">
+              {loadingRuns ? "Testlage wird geladen …"
+                : unknownRuns ? "Testlage unbekannt – es können keine Fehler angezeigt werden."
+                  : "Kein Test ist derzeit fehlgeschlagen."}
+            </p>
+          ) : (
+            <div className="max-h-56 overflow-auto">
+              <Table>
+                <TableHeader>
+                  <TableRow>
+                    <TableHead>Bereich</TableHead>
+                    <TableHead>Test</TableHead>
+                    <TableHead>Fehler</TableHead>
+                  </TableRow>
+                </TableHeader>
+                <TableBody>
+                  {failedRows.map((row, index) => (
+                    <TableRow key={`${row.scenario}-${row.test}-${index}`}>
+                      <TableCell className="whitespace-nowrap align-top text-caption">{row.area}</TableCell>
+                      <TableCell className="align-top text-caption">
+                        <span className="block">{row.test}</span>
+                        <code className="text-[10px] text-muted-foreground">{row.scenario}</code>
+                      </TableCell>
+                      <TableCell className="align-top text-caption text-destructive">{row.error}</TableCell>
+                    </TableRow>
+                  ))}
+                </TableBody>
+              </Table>
+            </div>
+          )}
+        </section>
         <details className="rounded-lg border p-2 text-xs text-muted-foreground">
           <summary className="cursor-pointer">Was bedeuten die Farben?</summary>
           <ul className="mt-2 grid gap-1 sm:grid-cols-2">
