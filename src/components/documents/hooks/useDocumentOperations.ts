@@ -12,6 +12,7 @@ import {
 } from "../operationsContract";
 import { debugConsole } from "@/utils/debugConsole";
 import { notify } from "@/lib/notify";
+import { replaceEntityTopics } from "@/features/topics/useEntityTopics";
 
 interface UseDocumentOperationsProps {
   user: User | null;
@@ -157,7 +158,6 @@ export function useDocumentOperations({
             file_size: uploadFile.size,
             file_type: uploadFile.type,
             category: mutation.category,
-            tags: mutation.tags,
             status: mutation.status,
             folder_id: mutation.folderId || null,
           },
@@ -165,6 +165,19 @@ export function useDocumentOperations({
         .select()
         .single();
       if (dbError) throw dbError;
+
+      if (documentData && mutation.topicIds.length > 0) {
+        if (!currentTenant?.id) throw new Error("Kein Büro ausgewählt");
+        try {
+          await replaceEntityTopics("document", documentData.id, mutation.topicIds, {
+            tenantId: currentTenant.id,
+            userId: user.id,
+          });
+        } catch (topicsError) {
+          await supabase.from("documents").delete().eq("id", documentData.id);
+          throw topicsError;
+        }
+      }
 
       if (mutation.contacts.length > 0 && documentData) {
         const contactLinks = mutation.contacts.map((contactId) => ({
@@ -202,12 +215,17 @@ export function useDocumentOperations({
           title: mutation.title,
           description: mutation.description,
           category: mutation.category,
-          tags: mutation.tags,
           status: mutation.status,
           folder_id: mutation.folderId || null,
         })
         .eq("id", editingDocument.id);
       if (error) throw error;
+      if (user && currentTenant?.id) {
+        await replaceEntityTopics("document", editingDocument.id, mutation.topicIds, {
+          tenantId: currentTenant.id,
+          userId: user.id,
+        });
+      }
       notify.success("Dokument aktualisiert");
       onSuccess();
       await fetchDocuments();

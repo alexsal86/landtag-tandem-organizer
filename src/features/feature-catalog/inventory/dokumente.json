@@ -53,7 +53,7 @@
       "id": "documents.upload-version",
       "subarea": "Dokumente",
       "name": "Dokument hochladen und versionieren",
-      "description": "Lädt Dateien hoch, legt Versionen an und protokolliert Löschungen nachvollziehbar.",
+      "description": "Lädt Dateien hoch, legt Versionen an, verknüpft Themen über document_topics und protokolliert Löschungen nachvollziehbar.",
       "category": "fachlich",
       "implementationStatus": "implementiert",
       "integrationStatus": "ui",
@@ -64,10 +64,12 @@
         "src/components/documents/operationsContract.ts"
       ],
       "components": [
-        "src/components/documents/DocumentDialogs.tsx"
+        "src/components/documents/DocumentDialogs.tsx",
+        "src/components/topics/TopicPicker.tsx"
       ],
       "services": [
-        "src/components/documents/operationsContract.ts"
+        "src/components/documents/operationsContract.ts",
+        "src/features/topics/useEntityTopics.ts"
       ],
       "rpcs": [
         "update_document_version",
@@ -75,6 +77,8 @@
       ],
       "tables": [
         "documents",
+        "document_topics",
+        "topics",
         "document_annotation_events"
       ],
       "roles": [

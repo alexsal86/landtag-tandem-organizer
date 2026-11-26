@@ -204,6 +204,11 @@ import { knowledgeUrlState } from "./logic";
   );
   expect(
     knowledgeUrlState(
+      new URLSearchParams("thema=11111111-1111-1111-1111-111111111111"),
+    ).filters.topic,
+  ).toBe("11111111-1111-1111-1111-111111111111");
+  expect(
+    knowledgeUrlState(
       new URLSearchParams(
         "ansicht=bad&status=bad&zustaendig=bad&sortierung=bad",
       ),

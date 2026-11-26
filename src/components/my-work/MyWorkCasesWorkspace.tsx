@@ -15,7 +15,7 @@ import type { DropResult } from "@hello-pangea/dnd";
 import { CaseFileDetail } from "@/features/cases/files/components";
 import { useCaseFileTypes } from "@/features/cases/files/hooks/useCaseFileTypes";
 import type { CaseItemIntakePayload } from "@/features/cases/items/types";
-import { useCaseItems } from "@/features/cases/items/hooks";
+import { useCaseItemTopicIds, useCaseItems } from "@/features/cases/items/hooks";
 import { useAuth } from "@/hooks/useAuth";
 import { useNavigate } from "react-router-dom";
 import { useQueryClient } from "@tanstack/react-query";
@@ -96,6 +96,7 @@ export function MyWorkCasesWorkspace() {
   const [hasHydratedDetailFromUrl, setHasHydratedDetailFromUrl] = useState(false);
 
   const [detailItemId, setDetailItemId] = useState<string | null>(null);
+  const detailTopicIds = useCaseItemTopicIds(detailItemId);
   const workflow = useCaseWorkflow(detailItemId);
   const [detailFileId, setDetailFileId] = useState<string | null>(null);
   const [detailTab, setDetailTab] = useState<"overview" | "timeline" | "documents">("overview");
@@ -1134,7 +1135,7 @@ export function MyWorkCasesWorkspace() {
   // Keep the ball controls in the central detail area; properties live in its sidebar.
   const ballPanelNode = detailItem && editableCaseItem ? (
                     <>{canHandover && <ResponsibleSuggestion context={{
-                      topicIds: Array.isArray(detailItem.intake_payload?.topic_ids) ? detailItem.intake_payload.topic_ids.filter((v):v is string=>typeof v==='string') : [],
+                      topicIds: detailTopicIds,
                       regionIds: Array.isArray(detailItem.intake_payload?.region_ids) ? detailItem.intake_payload.region_ids.filter((v):v is string=>typeof v==='string') : [],
                       committeeIds: Array.isArray(detailItem.intake_payload?.committee_ids) ? detailItem.intake_payload.committee_ids.filter((v):v is string=>typeof v==='string') : [],
                     }} onAccept={id=>runAsync(()=>handleHandover([detailItem.id],id))}/>}<CaseItemBallPanel

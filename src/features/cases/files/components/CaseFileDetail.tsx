@@ -5,7 +5,7 @@ import { trackPageVisit } from "@/hooks/useRecentlyVisited";
 import { supabase } from "@/integrations/supabase/client";
 import { useCaseFileDetails } from "@/features/cases/files/hooks";
 import { useCaseFiles } from "@/features/cases/files/hooks";
-import { useCaseFileTopics } from "@/hooks/useTopics";
+import { useEntityTopics } from "@/features/topics/useEntityTopics";
 import { Skeleton } from "@/components/ui/skeleton";
 import { Button } from "@/components/ui/button";
 import { Card, CardContent } from "@/components/ui/card";
@@ -45,7 +45,7 @@ export function CaseFileDetail({ caseFileId, onBack }: CaseFileDetailProps) {
   const queryClient = useQueryClient();
   const details = useCaseFileDetails(caseFileId);
   const { deleteCaseFile } = useCaseFiles();
-  const { assignedTopics, setTopics: setAssignedTopics } = useCaseFileTopics(caseFileId);
+  const { topicIds: assignedTopics, setTopics } = useEntityTopics("case_file", caseFileId);
 
   const [editDialogOpen, setEditDialogOpen] = useState(false);
   const [deleteDialogOpen, setDeleteDialogOpen] = useState(false);
@@ -143,7 +143,7 @@ export function CaseFileDetail({ caseFileId, onBack }: CaseFileDetailProps) {
             contacts={contacts}
             documents={documents}
             assignedTopics={assignedTopics}
-            onTopicsChange={setAssignedTopics}
+            onTopicsChange={(ids) => { void setTopics(ids); }}
             onAddContact={() => setShowAddContact(true)}
             onAssignUser={(userId) => details.updateAssignedTo(userId)}
             onMatrixAssign={(userId) => {void details.assignFromMatrix(userId);}}

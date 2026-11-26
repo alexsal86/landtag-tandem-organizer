@@ -44,6 +44,7 @@ export interface ContactBase extends ContactCommunicationFields {
   is_favorite?: boolean | null;
   gender?: string | null;
   tags?: string[] | null;
+  topic_ids?: string[] | null;
   business_street?: string | null;
   business_house_number?: string | null;
   business_postal_code?: string | null;

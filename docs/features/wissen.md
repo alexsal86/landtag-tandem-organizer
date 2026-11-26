@@ -26,7 +26,7 @@ _Auto-generiert mit `npm run update:feature-catalog` aus dem zentralen Funktions
 | `knowledge.permissions` Zugriffsrechte auf Wissensdokumente | Sicherheit | sicherheit | implementiert | systemseitig | Selbsttest |
 | `knowledge.attachments` Anhänge an Wissensfragen | Struktur | fachlich | implementiert | UI | kein Test |
 | `knowledge.sources` Quellen und Belege | Struktur | fachlich | implementiert | UI | kein Test |
-| `knowledge.tags` Tags und Themenzuordnung | Struktur | fachlich | implementiert | UI | Unit-Test |
+| `knowledge.tags` Themenzuordnung im Wissen | Struktur | fachlich | implementiert | UI | Unit-Test |
 | `knowledge.persons` Wissenspersonen und Zuständigkeit | Struktur | fachlich | implementiert | UI | Unit-Test |
 | `knowledge.search` Wissenssuche | Suchen | fachlich | implementiert | UI | Selbsttest |
 | `knowledge.collaboration` Kollaborative Wissensbearbeitung | Zusammenarbeit | integration | implementiert | systemseitig | kein Test |
@@ -49,7 +49,7 @@ _Auto-generiert mit `npm run update:feature-catalog` aus dem zentralen Funktions
 
 ## Datenbanktabellen
 
-`knowledge_document_collaborators`, `knowledge_document_permissions`, `knowledge_document_snapshots`, `knowledge_document_topics`, `knowledge_document_versions`, `knowledge_documents`, `knowledge_qa_notification_deliveries`, `knowledge_question_attachments`, `knowledge_question_comments`, `knowledge_question_events`, `knowledge_question_followers`, `knowledge_question_outdated_reports`, `knowledge_question_sources`, `knowledge_question_summaries`, `knowledge_question_tags`, `knowledge_questions`, `knowledge_tags`, `notifications`, `profiles`, `tasks`, `topics`
+`knowledge_document_collaborators`, `knowledge_document_permissions`, `knowledge_document_snapshots`, `knowledge_document_topics`, `knowledge_document_versions`, `knowledge_documents`, `knowledge_qa_notification_deliveries`, `knowledge_question_attachments`, `knowledge_question_comments`, `knowledge_question_events`, `knowledge_question_followers`, `knowledge_question_outdated_reports`, `knowledge_question_sources`, `knowledge_question_summaries`, `knowledge_question_tags`, `knowledge_question_topics`, `knowledge_questions`, `knowledge_tags`, `notifications`, `profiles`, `tasks`, `topic_module_settings`, `topics`
 
 ## Selbsttest-Szenarien
 
@@ -242,8 +242,8 @@ Führt Antworten durch Review, setzt Prüffristen, versendet Review-Erinnerungen
 
 - Keine.
 
-### `knowledge.tags` — Tags und Themenzuordnung
-Vergibt Tags, schlägt Tag-Zuordnungen vor und synchronisiert Wissen mit Themen.
+### `knowledge.tags` — Themenzuordnung im Wissen
+Verknüpft Wissensfragen direkt mit zentralen Themen; Modulregeln begrenzen Anzahl, Pflicht und Sichtbarkeit des Themenfilters.
 
 - **Kategorie:** fachlich
 - **Implementierung:** implementiert
@@ -254,13 +254,13 @@ Vergibt Tags, schlägt Tag-Zuordnungen vor und synchronisiert Wissen mit Themen.
 - **Routen:** —
 - **Frontend-Komponenten:** `src/features/knowledge/components/KnowledgeTagsPanel.tsx`
 - **Services:** —
-- **Hooks:** `src/features/knowledge/hooks/useKnowledgeExtras.ts`
+- **Hooks:** `src/features/knowledge/hooks/useKnowledgeExtras.ts`, `src/features/topics/useTopicModuleSettings.ts`
 - **Edge Functions:** —
-- **Datenbankfunktionen:** `knowledge_qa_set_tags`, `knowledge_qa_tag_suggestions`, `knowledge_qa_tag_topics`, `knowledge_tag_sync_topic`, `knowledge_qa_manage_tag`
-- **Tabellen:** `knowledge_tags`, `knowledge_question_tags`, `knowledge_document_topics`, `topics`
+- **Datenbankfunktionen:** `knowledge_qa_set_topics`, `knowledge_qa_topic_counts`, `knowledge_qa_set_tags`, `knowledge_qa_tag_suggestions`, `knowledge_qa_tag_topics`, `knowledge_tag_sync_topic`, `knowledge_qa_manage_tag`
+- **Tabellen:** `knowledge_question_topics`, `topics`, `topic_module_settings`, `knowledge_tags`, `knowledge_question_tags`, `knowledge_document_topics`
 - **Abhängigkeiten:** `knowledge.answer`, `topics.manage`
 - **Selbsttests:** —
-- **Unit-Tests:** `src/features/knowledge/logic.test.ts`
+- **Unit-Tests:** `src/features/knowledge/logic.test.ts`, `src/features/topics/moduleRules.test.ts`
 - **Integrationstests:** —
 - **Browser-Tests:** —
 - **Dokumentation:** —

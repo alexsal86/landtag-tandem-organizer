@@ -56,7 +56,6 @@ export interface UseContactsViewStateResult {
   setEditingDistributionListId: Dispatch<SetStateAction<string | null>>;
   creatingDistribution: boolean;
   setCreatingDistribution: Dispatch<SetStateAction<boolean>>;
-  allTags: string[];
   user: ReturnType<typeof useAuth>["user"];
   currentTenant: ReturnType<typeof useTenant>["currentTenant"];
   tenantLoading: boolean;
@@ -152,21 +151,6 @@ export function useContactsViewState(): UseContactsViewStateResult {
     [contacts, totalCount, reviewDueCount],
   );
 
-  const allTags = useMemo(() => {
-    const tags = new Set<string>();
-
-    for (const contact of contacts) {
-      for (const tag of contact.tags ?? []) {
-        const normalizedTag = tag.trim();
-        if (normalizedTag) {
-          tags.add(normalizedTag);
-        }
-      }
-    }
-
-    return [...tags].sort((a, b) => a.localeCompare(b, "de"));
-  }, [contacts]);
-
   const handleDeleteContact = async (contactId: string, contactName: string) => {
     try {
       const { error } = await supabase.from("contacts").delete().eq("id", contactId);
@@ -222,7 +206,6 @@ export function useContactsViewState(): UseContactsViewStateResult {
     setEditingDistributionListId: distributionListsState.setEditingDistributionListId,
     creatingDistribution: distributionListsState.creatingDistribution,
     setCreatingDistribution: distributionListsState.setCreatingDistribution,
-    allTags,
     user,
     currentTenant,
     tenantLoading,

@@ -5,11 +5,11 @@ import { Textarea } from "@/components/ui/textarea";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
 import { Label } from "@/components/ui/label";
 import { FolderInput, Loader2, Save } from "lucide-react";
-import { MultiSelect } from "@/components/ui/multi-select";
+import { TopicPicker } from "@/components/topics/TopicPicker";
 import { ArchivedLetterDetails } from "../letters/ArchivedLetterDetails";
 import type { Document, DocumentFolder, ParentTaskOption } from "./types";
 import { STATUS_LABELS } from "./types";
-import type { DocumentCategoryOption, DocumentTagOption } from "./operationsContract";
+import type { DocumentCategoryOption } from "./operationsContract";
 import { toArchivedLetterDocumentRow } from "./operationsContract";
 
 interface DocumentDialogsProps {
@@ -22,14 +22,13 @@ interface DocumentDialogsProps {
   setEditDescription: (v: string) => void;
   editCategory: string;
   setEditCategory: (v: string) => void;
-  editTags: string[];
-  setEditTags: (v: string[]) => void;
+  editTopicIds: string[];
+  setEditTopicIds: (v: string[]) => void;
   editStatus: string;
   setEditStatus: (v: string) => void;
   editFolderId: string;
   setEditFolderId: (v: string) => void;
   documentCategories: DocumentCategoryOption[];
-  tags: DocumentTagOption[];
   folders: DocumentFolder[];
   loading: boolean;
   onUpdateDocument: () => void | Promise<void>;
@@ -79,7 +78,7 @@ export function DocumentDialogs(props: DocumentDialogsProps) {
               <div><Label>Kategorie</Label><Select value={props.editCategory} onValueChange={props.setEditCategory}><SelectTrigger><SelectValue /></SelectTrigger><SelectContent>{props.documentCategories.map((c) => <SelectItem key={c.id} value={c.name}>{c.label}</SelectItem>)}</SelectContent></Select></div>
               <div><Label>Status</Label><Select value={props.editStatus} onValueChange={props.setEditStatus}><SelectTrigger><SelectValue /></SelectTrigger><SelectContent>{Object.entries(STATUS_LABELS).map(([v, l]) => <SelectItem key={v} value={v}>{l}</SelectItem>)}</SelectContent></Select></div>
             </div>
-            <div><Label>Tags</Label><MultiSelect options={props.tags.map((t) => ({ value: t.label, label: t.label }))} selected={props.editTags} onChange={props.setEditTags} placeholder="Tags auswählen..." /></div>
+            <div><Label>Themen</Label><TopicPicker selectedTopicIds={props.editTopicIds} onTopicsChange={props.setEditTopicIds} module="documents" /></div>
             <div><Label>Ordner</Label><Select value={props.editFolderId || undefined} onValueChange={(v) => props.setEditFolderId(v || "")}><SelectTrigger><SelectValue placeholder="Kein Ordner" /></SelectTrigger><SelectContent>{props.folders.map((f) => <SelectItem key={f.id} value={f.id}>{f.name}</SelectItem>)}</SelectContent></Select></div>
             <div className="flex justify-end gap-2">
               <Button variant="outline" onClick={() => props.setShowEditDialog(false)}>Abbrechen</Button>

@@ -23,7 +23,8 @@ import {
   type Contact,
 } from "@/lib/utils";
 import { DuplicateWarning } from "@/features/contacts/components/DuplicateWarning";
-import { TagInput } from "@/components/ui/tag-input";
+import { TopicPicker } from "@/components/topics/TopicPicker";
+import { replaceEntityTopics } from "@/features/topics/useEntityTopics";
 import type { ContactCategory, ContactDuplicateCandidate, ContactPriority, EditableContact } from "@/types/contact";
 import { createContactSchema } from "@/features/contacts/schemas/contact.schema";
 import { notify } from "@/lib/notify";
@@ -40,7 +41,7 @@ type ContactFormData = {
   website: string;
   address: string;
   notes: string;
-  tags: string[];
+  topic_ids: string[];
   industry: string;
   main_contact_person: string;
   category: ContactCategory | "";
@@ -80,7 +81,7 @@ export function CreateContact() {
     category: "",
     priority: "",
     notes: "",
-    tags: [],
+    topic_ids: [],
     industry: "",
     main_contact_person: "",
     legal_basis: "",
@@ -99,13 +100,11 @@ export function CreateContact() {
   const [showDuplicateWarning, setShowDuplicateWarning] = useState(false);
   const [emailValidationError, setEmailValidationError] = useState("");
   const [isSubmitting, setIsSubmitting] = useState(false);
-  const [allTags, setAllTags] = useState<string[]>([]);
 
   useEffect(() => {
     if (user && currentTenant) {
       fetchOrganizations();
       fetchExistingContacts();
-      fetchAllTags();
     }
   }, [user, currentTenant]);
 
@@ -139,23 +138,6 @@ export function CreateContact() {
         organization_id: contact.organization_id,
       })) || [],
     );
-  };
-
-  const fetchAllTags = async (): Promise<void> => {
-    const { data, error } = await supabase
-      .from("contacts")
-      .select("tags")
-      .eq("tenant_id", currentTenant!.id)
-      .not("tags", "is", null);
-    if (error) return;
-
-    const tagsSet = new Set<string>();
-    data?.forEach((contact: Record<string, any>) => {
-      if (contact.tags && Array.isArray(contact.tags)) {
-        contact.tags.forEach((tag: string) => tagsSet.add(tag));
-      }
-    });
-    setAllTags(Array.from(tagsSet));
   };
 
   const validateEmail = (email: string): boolean => {
@@ -242,7 +224,7 @@ export function CreateContact() {
               ?.name || null
           : null;
 
-      const { error } = await supabase.from("contacts").insert([{
+      const { data: createdContact, error } = await supabase.from("contacts").insert([{
         user_id: user.id,
         tenant_id: currentTenant.id,
         contact_type: formData.contact_type,
@@ -258,7 +240,6 @@ export function CreateContact() {
         priority: formData.priority || null,
         gender: formData.gender || null,
         notes: formData.notes || null,
-        tags: (formData.tags ?? []).length > 0 ? formData.tags : null,
         industry: formData.industry || null,
         main_contact_person: formData.main_contact_person || null,
         legal_basis: formData.legal_basis || defaultLegalBasis(formData.category),
@@ -266,9 +247,15 @@ export function CreateContact() {
         processing_purpose: formData.processing_purpose || null,
         consent_given_at: formData.legal_basis === "consent" && formData.consent_given_at ? formData.consent_given_at : null,
         retention_review_date: defaultReviewDate(formData.category),
-      }]);
+      }]).select("id").single();
 
       if (error) throw error;
+      if (formData.topic_ids.length > 0) {
+        await replaceEntityTopics("contact", createdContact.id, formData.topic_ids, {
+          tenantId: currentTenant.id,
+          userId: user.id,
+        });
+      }
 
       notify.success("Kontakt erstellt", {
         description: `${formData.name} wurde erfolgreich hinzugefügt.`
@@ -518,14 +505,13 @@ export function CreateContact() {
                   </div>
 
                   <div>
-                    <Label>Tags</Label>
-                    <TagInput
-                      tags={formData.tags}
-                      onTagsChange={(tags) =>
-                        setFormData((prev) => ({ ...prev, tags }))
+                    <Label>Themen</Label>
+                    <TopicPicker
+                      selectedTopicIds={formData.topic_ids}
+                      onTopicsChange={(topic_ids) =>
+                        setFormData((prev) => ({ ...prev, topic_ids }))
                       }
-                      suggestions={allTags}
-                      placeholder="Tags hinzufügen..."
+                      module="contacts"
                     />
                   </div>
                 </CardContent>

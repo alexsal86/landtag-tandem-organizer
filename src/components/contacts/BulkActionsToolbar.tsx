@@ -39,61 +39,64 @@ import {
 } from '@/components/ui/select';
 import { supabase } from '@/integrations/supabase/client';
 import { useTenant } from '@/hooks/useTenant';
+import { useAuth } from '@/hooks/useAuth';
+import { useTopics } from '@/hooks/useTopics';
+import { replaceEntityTopics } from '@/features/topics/useEntityTopics';
 import type { Contact } from '@/types/contact';
 import { notify } from "@/lib/notify";
 
 interface BulkActionsToolbarProps {
-  selectedContacts: Pick<Contact, "id" | "name" | "email" | "phone" | "category" | "tags">[];
+  selectedContacts: Pick<Contact, "id" | "name" | "email" | "phone" | "category" | "topic_ids">[];
   onClearSelection: () => void;
   onActionComplete: () => void;
-  allTags: string[];
 }
 
 export function BulkActionsToolbar({
   selectedContacts,
   onClearSelection,
   onActionComplete,
-  allTags,
 }: BulkActionsToolbarProps) {
   const [isTagDialogOpen, setIsTagDialogOpen] = useState(false);
   const [isCategoryDialogOpen, setIsCategoryDialogOpen] = useState(false);
   const [isDistributionDialogOpen, setIsDistributionDialogOpen] = useState(false);
   const [isDeleteDialogOpen, setIsDeleteDialogOpen] = useState(false);
-  const [selectedTags, setSelectedTags] = useState<string[]>([]);
-  const [newTag, setNewTag] = useState('');
+  const [selectedTopicIds, setSelectedTopicIds] = useState<string[]>([]);
   const [selectedCategory, setSelectedCategory] = useState('');
   const [distributionListName, setDistributionListName] = useState('');
   const [distributionListDescription, setDistributionListDescription] = useState('');
   const [processing, setProcessing] = useState(false);
   const { currentTenant } = useTenant();
+  const { user } = useAuth();
+  const { topics } = useTopics();
+  const activeTopics = topics.filter((topic) => topic.is_active);
+  const topicLabelById = new Map(activeTopics.map((topic) => [topic.id, topic.label]));
 
-  const handleAddTags = async () => {
-    if (selectedTags.length === 0 && !newTag) return;
+  const handleAddTopics = async () => {
+    if (selectedTopicIds.length === 0) return;
 
     setProcessing(true);
     try {
-      const tagsToAdd = [...selectedTags];
-      if (newTag) tagsToAdd.push(newTag);
+      if (!currentTenant?.id || !user?.id) throw new Error('Kein Büro ausgewählt');
+      for (const contact of selectedContacts) {
+        await replaceEntityTopics(
+          'contact',
+          contact.id,
+          [...new Set([...(contact.topic_ids ?? []), ...selectedTopicIds])],
+          { tenantId: currentTenant.id, userId: user.id },
+        );
+      }
 
-      if (!currentTenant?.id) throw new Error('Kein Büro ausgewählt');
-      const { error } = await supabase.rpc('bulk_update_contact_fields', {
-        _tenant_id: currentTenant.id, _ids: selectedContacts.map(contact => contact.id),
-        _operation: 'tags_add', _value: [...new Set(tagsToAdd.map(tag => tag.trim()).filter(Boolean))],
-      });
-      if (error) throw error;
-
-      notify.success('Tags hinzugefügt', {
+      notify.success('Themen hinzugefügt', {
         description: `${selectedContacts.length} Kontakte aktualisiert`
 });
 
       setIsTagDialogOpen(false);
-      setSelectedTags([]);
-      setNewTag('');
+      setSelectedTopicIds([]);
       onActionComplete();
     } catch (error) {
-      debugConsole.error('Error adding tags:', error);
+      debugConsole.error('Error adding topics:', error);
       notify.error('Fehler', {
-        description: 'Tags konnten nicht hinzugefügt werden'
+        description: 'Themen konnten nicht hinzugefügt werden'
 });
     } finally {
       setProcessing(false);
@@ -210,13 +213,13 @@ export function BulkActionsToolbar({
   };
 
   const exportToCSV = () => {
-    const headers = ['Name', 'E-Mail', 'Telefon', 'Kategorie', 'Tags'];
+    const headers = ['Name', 'E-Mail', 'Telefon', 'Kategorie', 'Themen'];
     const rows = selectedContacts.map(contact => [
       contact.name,
       contact.email || '',
       contact.phone || '',
       contact.category || '',
-      (contact.tags || []).join('; '),
+      (contact.topic_ids || []).map((id) => topicLabelById.get(id) ?? id).join('; '),
     ]);
 
     const csvContent = [
@@ -246,8 +249,8 @@ export function BulkActionsToolbar({
 
         if (contact.email) lines.push(`EMAIL:${contact.email}`);
         if (contact.phone) lines.push(`TEL:${contact.phone}`);
-        if (contact.tags && contact.tags.length > 0) {
-          lines.push(`CATEGORIES:${contact.tags.join(',')}`);
+        if (contact.topic_ids && contact.topic_ids.length > 0) {
+          lines.push(`CATEGORIES:${contact.topic_ids.map((id) => topicLabelById.get(id) ?? id).join(',')}`);
         }
 
         lines.push('END:VCARD');
@@ -287,7 +290,7 @@ export function BulkActionsToolbar({
             onClick={() => setIsTagDialogOpen(true)}
           >
             <Tags className="h-4 w-4 mr-2" />
-            Tags
+            Themen
           </Button>
 
           <Button
@@ -347,52 +350,43 @@ export function BulkActionsToolbar({
         </Button>
       </div>
 
-      {/* Tags Dialog */}
+      {/* Topics Dialog */}
       <Dialog open={isTagDialogOpen} onOpenChange={setIsTagDialogOpen}>
         <DialogContent>
           <DialogHeader>
-            <DialogTitle>Tags hinzufügen</DialogTitle>
+            <DialogTitle>Themen hinzufügen</DialogTitle>
             <DialogDescription>
-              Fügen Sie Tags zu {selectedContacts.length} Kontakten hinzu
+              Fügen Sie Themen zu {selectedContacts.length} Kontakten hinzu
             </DialogDescription>
           </DialogHeader>
           <div className="space-y-4">
             <div>
-              <Label>Vorhandene Tags</Label>
+              <Label>Vorhandene Themen</Label>
               <div className="flex flex-wrap gap-2 mt-2">
-                {allTags.map(tag => (
+                {activeTopics.map(topic => (
                   <Badge
-                    key={tag}
-                    variant={selectedTags.includes(tag) ? 'default' : 'outline'}
+                    key={topic.id}
+                    variant={selectedTopicIds.includes(topic.id) ? 'default' : 'outline'}
                     className="cursor-pointer"
                     onClick={() => {
-                      setSelectedTags(prev =>
-                        prev.includes(tag)
-                          ? prev.filter(t => t !== tag)
-                          : [...prev, tag]
+                      setSelectedTopicIds(prev =>
+                        prev.includes(topic.id)
+                          ? prev.filter(id => id !== topic.id)
+                          : [...prev, topic.id]
                       );
                     }}
                   >
-                    {tag}
+                    {topic.label}
                   </Badge>
                 ))}
               </div>
-            </div>
-            <div>
-              <Label htmlFor="newTag">Neuer Tag</Label>
-              <Input
-                id="newTag"
-                value={newTag}
-                onChange={e => setNewTag(e.target.value)}
-                placeholder="Neuen Tag eingeben..."
-              />
             </div>
           </div>
           <DialogFooter>
             <Button variant="outline" onClick={() => setIsTagDialogOpen(false)}>
               Abbrechen
             </Button>
-            <Button onClick={handleAddTags} disabled={processing}>
+            <Button onClick={handleAddTopics} disabled={processing || selectedTopicIds.length === 0}>
               {processing ? 'Wird hinzugefügt...' : 'Hinzufügen'}
             </Button>
           </DialogFooter>

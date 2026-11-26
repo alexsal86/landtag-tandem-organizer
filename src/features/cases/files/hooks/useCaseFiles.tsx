@@ -7,6 +7,7 @@ import { debugConsole } from "@/utils/debugConsole";
 import { handleAppError } from "@/utils/errorHandler";
 import type { Json, Tables, TablesInsert, TablesUpdate } from "@/integrations/supabase/types";
 import { notify } from "@/lib/notify";
+import { fetchEntityTopicIds, replaceEntityTopics } from "@/features/topics/useEntityTopics";
 
 export interface CaseFile {
   id: string;
@@ -22,6 +23,7 @@ export interface CaseFile {
   start_date: string | null;
   target_date: string | null;
   tags: string[] | null;
+  topic_ids?: string[] | null;
   is_private: boolean | null;
   visibility: string;
   current_status_note: string | null;
@@ -50,6 +52,7 @@ export interface CaseFileFormData {
   start_date?: string;
   target_date?: string;
   tags?: string[];
+  topic_ids?: string[];
   is_private?: boolean;
   visibility?: 'private' | 'shared' | 'public';
 }
@@ -152,7 +155,16 @@ export const useCaseFiles = () => {
       if (error) throw error;
 
       debugConsole.log('[useCaseFiles] received', (data ?? []).length, 'case files');
-      setCaseFiles(((data ?? []) as CaseFileCountRow[]).map(normalizeCaseFileRow));
+      const rows = (data ?? []) as CaseFileCountRow[];
+      const topicMap = await fetchEntityTopicIds(
+        "case_file",
+        rows.map((row) => row.id),
+        currentTenant.id,
+      );
+      setCaseFiles(rows.map((row) => ({
+        ...normalizeCaseFileRow(row),
+        topic_ids: topicMap[row.id] ?? [],
+      })));
     } catch (error) {
       handleAppError(error, {
         context: 'useCaseFiles.fetch',
@@ -167,8 +179,9 @@ export const useCaseFiles = () => {
     if (!user || !currentTenant) return null;
 
     try {
+      const { topic_ids: requestedTopicIds, ...caseFileData } = data;
       const insertPayload: CaseFileInsert = {
-        ...data,
+        ...caseFileData,
         user_id: user.id,
         tenant_id: currentTenant.id,
       };
@@ -181,11 +194,14 @@ export const useCaseFiles = () => {
 
       if (error) throw error;
 
-      if (topicIds.length > 0) {
-        const { error: topicsError } = await supabase.from('case_file_topics').insert(
-          [...new Set(topicIds)].map(topic_id => ({case_file_id:newCaseFile.id,topic_id}))
-        );
-        if (topicsError) {
+      const effectiveTopicIds = topicIds.length > 0 ? topicIds : (requestedTopicIds ?? []);
+      if (effectiveTopicIds.length > 0) {
+        try {
+          await replaceEntityTopics("case_file", newCaseFile.id, effectiveTopicIds, {
+            tenantId: currentTenant.id,
+            userId: user.id,
+          });
+        } catch (topicsError) {
           await supabase.from('case_files').delete().eq('id',newCaseFile.id);
           throw topicsError;
         }
@@ -230,12 +246,20 @@ export const useCaseFiles = () => {
 
   const updateCaseFile = async (id: string, data: Partial<CaseFileFormData>) => {
     try {
+      const { topic_ids: topicIds, ...caseFileData } = data;
       const { error } = await supabase
         .from('case_files')
-        .update(data as CaseFileUpdate)
+        .update(caseFileData as CaseFileUpdate)
         .eq('id', id);
 
       if (error) throw error;
+
+      if (topicIds !== undefined && user && currentTenant) {
+        await replaceEntityTopics("case_file", id, topicIds, {
+          tenantId: currentTenant.id,
+          userId: user.id,
+        });
+      }
 
       setCaseFiles((prev) =>
         prev.map((caseFile) =>

@@ -1,5 +1,12 @@
 import React from "react";
 import { useTopics } from "@/hooks/useTopics";
+import { useResolvedUserRole } from "@/hooks/useResolvedUserRole";
+import {
+  canAddTopic,
+  canCreateTopic,
+  type TopicModule,
+} from "@/features/topics/moduleRules";
+import { useTopicModuleSettings } from "@/features/topics/useTopicModuleSettings";
 import { useNavigate } from "react-router-dom";
 import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
@@ -14,6 +21,9 @@ interface TopicSelectorProps {
   onTopicsChange: (topicIds: string[]) => void;
   compact?: boolean;
   placeholder?: string;
+  module?: TopicModule;
+  maxTopics?: number;
+  disabled?: boolean;
 }
 
 const getIconComponent = (iconName: string, className?: string) => {
@@ -27,19 +37,38 @@ export const TopicSelector: React.FC<TopicSelectorProps> = ({
   onTopicsChange,
   compact = false,
   placeholder = "Themen hinzufügen...",
+  module,
+  maxTopics,
+  disabled = false,
 }) => {
   const { topics, loading, quickCreateTopic } = useTopics();
+  const rule = useTopicModuleSettings(module ?? null);
+  const { hasAdminAccess } = useResolvedUserRole();
   const [open, setOpen] = React.useState(false);
   const [search, setSearch] = React.useState("");
   const [creating, setCreating] = React.useState(false);
   const trimmed = search.trim();
   const exactMatch = topics.some(t => t.label.toLowerCase() === trimmed.toLowerCase());
-  const canCreate = trimmed.length >= 2 && trimmed.length <= 40 && !exactMatch;
+  const effectiveMax = maxTopics ?? rule.maxTopics;
+  const canAddMore = canAddTopic(selectedTopicIds.length, {
+    ...rule,
+    maxTopics: effectiveMax,
+  });
+  const mayCreate = canCreateTopic(
+    { ...rule, maxTopics: effectiveMax },
+    hasAdminAccess,
+  );
+  const canCreate =
+    trimmed.length >= 2 &&
+    trimmed.length <= 40 &&
+    !exactMatch &&
+    canAddMore &&
+    mayCreate;
 
   const handleCreate = async () => {
     if (!canCreate || creating) return;
     setCreating(true);
-    const id = await quickCreateTopic(trimmed);
+    const id = await quickCreateTopic(trimmed, module);
     setCreating(false);
     if (id && !selectedTopicIds.includes(id)) onTopicsChange([...selectedTopicIds, id]);
     setSearch("");
@@ -51,10 +80,12 @@ export const TopicSelector: React.FC<TopicSelectorProps> = ({
   const toggleTopic = (topicId: string) => {
     if (selectedTopicIds.includes(topicId)) {
       onTopicsChange(selectedTopicIds.filter(id => id !== topicId));
-    } else {
+    } else if (canAddMore) {
       onTopicsChange([...selectedTopicIds, topicId]);
     }
   };
+
+  if (module && !rule.isEnabled) return null;
 
   const removeTopic = (topicId: string, e: React.MouseEvent) => {
     e.stopPropagation();
@@ -100,6 +131,8 @@ export const TopicSelector: React.FC<TopicSelectorProps> = ({
           <Button
             variant="outline"
             size={compact ? "sm" : "default"}
+            disabled={disabled || !canAddMore}
+            title={!canAddMore ? `Höchstens ${effectiveMax} Themen` : undefined}
             className={cn(
               "gap-1 text-muted-foreground",
               compact && "h-7 text-xs"
@@ -107,6 +140,9 @@ export const TopicSelector: React.FC<TopicSelectorProps> = ({
           >
             <Plus className={compact ? "h-3 w-3" : "h-4 w-4"} />
             {placeholder}
+            <span className="text-[10px] opacity-70">
+              {selectedTopicIds.length}/{effectiveMax}
+            </span>
           </Button>
         </PopoverTrigger>
         <PopoverContent className="w-64 p-0" align="start">

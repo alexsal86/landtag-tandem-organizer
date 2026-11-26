@@ -1,5 +1,6 @@
 import React from 'react';
 import { Mail, Phone, MapPin, Calendar, ExternalLink, Tag } from 'lucide-react';
+import { TopicDisplay } from '@/components/topics/TopicSelector';
 import { Button } from '@/components/ui/button';
 import { Badge } from '@/components/ui/badge';
 import { Card, CardContent } from '@/components/ui/card';
@@ -9,7 +10,8 @@ import type { LucideIcon } from 'lucide-react';
 
 interface ContactInfoTabProps {
   contact: Contact;
-  allTags: { direct: string[]; inherited: string[] };
+  directTopicIds: string[];
+  inheritedTopicIds: string[];
 }
 
 const getCategoryColor = (category?: string) => {
@@ -59,7 +61,7 @@ const InfoRow: React.FC<InfoRowProps> = ({ icon: Icon, label, value, actionHref,
   </div>
 );
 
-export const ContactInfoTab: React.FC<ContactInfoTabProps> = React.memo(({ contact, allTags }) => {
+export const ContactInfoTab: React.FC<ContactInfoTabProps> = React.memo(({ contact, directTopicIds, inheritedTopicIds }) => {
   const contactInfoRows = [
     contact.email ? {
       icon: Mail, label: 'E-Mail', value: contact.email, actionHref: `mailto:${contact.email}`, actionLabel: 'E-Mail verfassen',
@@ -128,18 +130,24 @@ export const ContactInfoTab: React.FC<ContactInfoTabProps> = React.memo(({ conta
         </Card>
       )}
 
-      {(allTags.direct.length > 0 || allTags.inherited.length > 0) && (
+      {(directTopicIds.length > 0 || inheritedTopicIds.length > 0) && (
         <Card>
-          <CardContent className="p-4">
-            <h3 className="font-semibold mb-2">Tags</h3>
-            <div className="flex flex-wrap gap-1.5">
-              {allTags.inherited.map((tag) => (
-                <Badge key={`inherited-${tag}`} variant="outline" className="bg-muted/30 text-muted-foreground border-dashed flex items-center gap-1 text-xs">
-                  <Tag className="h-3 w-3" />{tag}<span className="text-[10px]">(geerbt)</span>
-                </Badge>
-              ))}
-              {allTags.direct.map((tag) => (<Badge key={`direct-${tag}`} variant="secondary" className="text-xs">{tag}</Badge>))}
-            </div>
+          <CardContent className="p-4 space-y-3">
+            <h3 className="font-semibold">Themen</h3>
+            {inheritedTopicIds.length > 0 && (
+              <div className="space-y-1">
+                <p className="flex items-center gap-1 text-xs text-muted-foreground">
+                  <Tag className="h-3 w-3" />Von der Organisation geerbt
+                </p>
+                <TopicDisplay topicIds={inheritedTopicIds} maxDisplay={5} />
+              </div>
+            )}
+            {directTopicIds.length > 0 && (
+              <div className="space-y-1">
+                <p className="text-xs text-muted-foreground">Direkt zugeordnet</p>
+                <TopicDisplay topicIds={directTopicIds} maxDisplay={8} />
+              </div>
+            )}
           </CardContent>
         </Card>
       )}

@@ -238,8 +238,8 @@
     {
       "id": "knowledge.tags",
       "subarea": "Struktur",
-      "name": "Tags und Themenzuordnung",
-      "description": "Vergibt Tags, schlägt Tag-Zuordnungen vor und synchronisiert Wissen mit Themen.",
+      "name": "Themenzuordnung im Wissen",
+      "description": "Verknüpft Wissensfragen direkt mit zentralen Themen; Modulregeln begrenzen Anzahl, Pflicht und Sichtbarkeit des Themenfilters.",
       "category": "fachlich",
       "implementationStatus": "implementiert",
       "integrationStatus": "ui",
@@ -253,9 +253,12 @@
         "src/features/knowledge/components/KnowledgeTagsPanel.tsx"
       ],
       "hooks": [
-        "src/features/knowledge/hooks/useKnowledgeExtras.ts"
+        "src/features/knowledge/hooks/useKnowledgeExtras.ts",
+        "src/features/topics/useTopicModuleSettings.ts"
       ],
       "rpcs": [
+        "knowledge_qa_set_topics",
+        "knowledge_qa_topic_counts",
         "knowledge_qa_set_tags",
         "knowledge_qa_tag_suggestions",
         "knowledge_qa_tag_topics",
@@ -263,10 +266,12 @@
         "knowledge_qa_manage_tag"
       ],
       "tables": [
+        "knowledge_question_topics",
+        "topics",
+        "topic_module_settings",
         "knowledge_tags",
         "knowledge_question_tags",
-        "knowledge_document_topics",
-        "topics"
+        "knowledge_document_topics"
       ],
       "roles": [
         "abgeordneter",
@@ -274,7 +279,8 @@
         "mitarbeiter"
       ],
       "unitTests": [
-        "src/features/knowledge/logic.test.ts"
+        "src/features/knowledge/logic.test.ts",
+        "src/features/topics/moduleRules.test.ts"
       ],
       "dependsOn": ["knowledge.answer", "topics.manage"]
     },

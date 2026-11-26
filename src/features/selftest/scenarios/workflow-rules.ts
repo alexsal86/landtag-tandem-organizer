@@ -26,6 +26,8 @@ import { buildPermissionDiff, diffSimulation, parsePermissionExplanation } from 
 import { configDeleteFailure, parseConfigImpact, parseConfigRename, summarizeConfigImpact, summarizeConfigRename } from "@/features/admin/configImpact";
 import { calculateWeeklyTarget, isBadenWuerttembergHoliday, isDefaultWorkdays } from "@/features/timetracking/weeklyTarget";
 import { checkArbzgDay, elapsedWorkedMinutes, requiredBreakMinutes, requiredPauseForSpan, summarizeArbzgDay } from "@/features/timetracking/arbzg";
+import { canAddTopic, canCreateTopic, normalizeTopicModuleRule, validateTopicSelection } from "@/features/topics/moduleRules";
+import { ENTITY_TOPIC_CONFIG } from "@/features/topics/entityTopicConfig";
 
 export const workflowRulesScenario: TestScenario = {
   id: "workflow-rules", title: "Geschäftsregeln (Freigabe, Rollen, Fristen)",
@@ -588,6 +590,43 @@ export const workflowRulesScenario: TestScenario = {
         };
         const ok = Object.values(checks).every(Boolean);
         return { ok, message: ok ? "Freigabe-Regeln korrekt." : "Freigabe-Regel weicht ab.", details: checks };
+      },
+    },
+    {
+      id: "topic-entity-junctions", label: "Zentrale Themen: Kontakte, Dokumente und Fallakten nutzen Junctions", kind: "logic",
+      run: async () => {
+        const checks = {
+          contact: ENTITY_TOPIC_CONFIG.contact.table === "contact_topics" && ENTITY_TOPIC_CONFIG.contact.idColumn === "contact_id",
+          document: ENTITY_TOPIC_CONFIG.document.table === "document_topics" && ENTITY_TOPIC_CONFIG.document.idColumn === "document_id",
+          caseFile: ENTITY_TOPIC_CONFIG.case_file.table === "case_file_topics" && ENTITY_TOPIC_CONFIG.case_file.idColumn === "case_file_id",
+          modules: ENTITY_TOPIC_CONFIG.contact.module === "contacts" && ENTITY_TOPIC_CONFIG.document.module === "documents" && ENTITY_TOPIC_CONFIG.case_file.module === "case_files",
+        };
+        const ok = Object.values(checks).every(Boolean);
+        return { ok, message: ok ? "Entity-Themen-Junctions korrekt zugeordnet." : "Entity-Themen-Junction weicht ab.", details: checks };
+      },
+    },
+    {
+      id: "topic-module-rules", label: "Zentrale Themen: Modulregeln begrenzen Auswahl und Anlage", kind: "logic",
+      run: async () => {
+        const limited = normalizeTopicModuleRule({
+          is_enabled: true, requirement: "required", max_topics: 2, creation_policy: "admins", show_filter: true,
+        });
+        const members = normalizeTopicModuleRule({
+          is_enabled: true, requirement: "optional", max_topics: 1, creation_policy: "members", show_filter: false,
+        });
+        const disabled = normalizeTopicModuleRule({
+          is_enabled: false, requirement: "optional", max_topics: 5, creation_policy: "members", show_filter: true,
+        });
+        const checks = {
+          limit: canAddTopic(1, limited) && !canAddTopic(2, limited),
+          requiredEmpty: validateTopicSelection(0, limited) === "Bitte mindestens ein Thema auswählen.",
+          requiredFilled: validateTopicSelection(1, limited) === null,
+          adminOnly: !canCreateTopic(limited, false) && canCreateTopic(limited, true),
+          membersCreate: canCreateTopic(members, false),
+          disabled: !canAddTopic(0, disabled) && !canCreateTopic(disabled, true),
+        };
+        const ok = Object.values(checks).every(Boolean);
+        return { ok, message: ok ? "Modulregeln für zentrale Themen korrekt." : "Modulregel weicht ab.", details: checks };
       },
     },
   ],

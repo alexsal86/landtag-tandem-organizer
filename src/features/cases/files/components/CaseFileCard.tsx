@@ -4,8 +4,9 @@ import { useCaseFileProcessingStatuses } from "@/hooks/useCaseFileProcessingStat
 import { useUserDisplay } from "@/hooks/useUserDisplay";
 import { Card, CardContent, CardHeader } from "@/components/ui/card";
 import { Badge } from "@/components/ui/badge";
+import { TopicDisplay } from "@/components/topics/TopicSelector";
 import { Avatar, AvatarFallback, AvatarImage } from "@/components/ui/avatar";
-import { Users, FileText, CheckSquare, Calendar, Mail, Clock, Tag } from "lucide-react";
+import { Users, FileText, CheckSquare, Calendar, Mail, Clock } from "lucide-react";
 import { LucideIcon } from "lucide-react";
 import { getLucideIcon } from "@/utils/iconUtils";
 import { format } from "date-fns";
@@ -211,21 +212,7 @@ export function CaseFileCard({ caseFile, viewMode, onClick, caseFileTypes = [] }
           </div>
         </div>
 
-        {caseFile.tags && caseFile.tags.length > 0 && (
-          <div className="flex items-center gap-1 flex-wrap">
-            <Tag className="h-3 w-3 text-muted-foreground" />
-            {caseFile.tags.slice(0, 3).map((tag) => (
-              <Badge key={tag} variant="secondary" className="text-xs">
-                {tag}
-              </Badge>
-            ))}
-            {caseFile.tags.length > 3 && (
-              <Badge variant="secondary" className="text-xs">
-                +{caseFile.tags.length - 3}
-              </Badge>
-            )}
-          </div>
-        )}
+        <TopicDisplay topicIds={caseFile.topic_ids ?? []} maxDisplay={3} />
 
         <div className="flex items-center justify-between text-xs text-muted-foreground pt-2 border-t">
           <div className="flex items-center gap-1">

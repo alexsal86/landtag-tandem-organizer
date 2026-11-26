@@ -11,7 +11,7 @@ Eindeutige Fehler werden im CI-Lauf ausgegeben und brechen die Prüfung ab; sie 
 - Review-Hinweise: **0**
 - Nicht zugeordnete Objekte: **1**, davon ohne Ausnahme: **0**
 
-## Funktionen ohne zugeordneten Test (138)
+## Funktionen ohne zugeordneten Test (137)
 
 - `mywork.tabs` — Meine Arbeit – Bereichsnavigation und Einstellungen
 - `mywork.quick-access` — Schnellzugriff und zuletzt besuchte Seiten
@@ -72,7 +72,7 @@ Eindeutige Fehler werden im CI-Lauf ausgegeben und brechen die Prüfung ab; sie 
 - `contacts.duplicates` — Dubletten finden
 - `contacts.distribution-lists` — Verteilerlisten verwalten
 - `contacts.stakeholders` — Stakeholder-Netzwerk
-- `contacts.tags-topics` — Kontakt-Tags und Themen
+- `contacts.tags-topics` — Kontakt-Themen
 - `contacts.privacy` — Kontakt-Datenschutz und Aufbewahrung
 - `contacts.bulk` — Kontakte in Massen bearbeiten
 - `contacts.activities` — Kontaktaktivitäten und Anrufe
@@ -92,7 +92,6 @@ Eindeutige Fehler werden im CI-Lauf ausgegeben und brechen die Prüfung ab; sie 
 - `dossiers.sources` — Dossier-Quellenbeobachtung
 - `dossiers.search` — Globale Dossier-Suche
 - `drucksachen.view` — Drucksachen anzeigen
-- `topics.manage` — Themen verwalten
 - `topics.convert-catalog` — Thema in Katalog überführen
 - `facts.manage` — Fakten und Argumente pflegen
 - `integration.calendar-sync` — Externe Kalender synchronisieren
@@ -216,7 +215,7 @@ Eindeutige Fehler werden im CI-Lauf ausgegeben und brechen die Prüfung ab; sie 
 - `contacts.duplicates` — Dubletten finden
 - `contacts.distribution-lists` — Verteilerlisten verwalten
 - `contacts.stakeholders` — Stakeholder-Netzwerk
-- `contacts.tags-topics` — Kontakt-Tags und Themen
+- `contacts.tags-topics` — Kontakt-Themen
 - `contacts.bulk` — Kontakte in Massen bearbeiten
 - `contacts.activities` — Kontaktaktivitäten und Anrufe
 - `contacts.briefing-memory` — Briefingwissen je Kontakt
@@ -309,7 +308,7 @@ Eindeutige Fehler werden im CI-Lauf ausgegeben und brechen die Prüfung ab; sie 
 - `election.history.assembly` — Historien-Assemblierung
 - `knowledge.answer` — Frage beantworten
 - `knowledge.short-answer` — Kurzantwort neben der Langantwort
-- `knowledge.tags` — Tags und Themenzuordnung
+- `knowledge.tags` — Themenzuordnung im Wissen
 - `knowledge.sources` — Quellen und Belege
 - `knowledge.attachments` — Anhänge an Wissensfragen
 - `knowledge.comments-follow` — Kommentare und Folgen
@@ -455,7 +454,8 @@ Eindeutige Fehler werden im CI-Lauf ausgegeben und brechen die Prüfung ab; sie 
 
 ### `contacts.tags-topics`
 
-- Der Abgleich zwischen Kontakt-Tags und zentralen Tags ist nicht durch einen Test abgedeckt.
+- Das frühere Tag-Feld bleibt als historischer Bestand in contacts.tags erhalten.
+- Die Junction-Schreibpfade sind durch keinen eigenen Szenario-Schritt abgedeckt.
 
 ### `employees.meetings`
 

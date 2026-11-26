@@ -5,16 +5,17 @@ import { Badge } from "@/components/ui/badge";
 import { FileText, Download, ExternalLink } from "lucide-react";
 import { LoadingState } from "@/components/ui-patterns";
 import { useContactDocuments } from "@/hooks/useContactDocuments";
+import { TopicDisplay } from "@/components/topics/TopicSelector";
 import { downloadDocument } from "./utils/downloadDocument";
 import { notify } from "@/lib/notify";
 
 interface ContactDocumentRowsProps {
   contactId: string;
-  contactTags: string[];
+  contactTopicIds: string[];
 }
 
-export function ContactDocumentRows({ contactId, contactTags }: ContactDocumentRowsProps) {
-  const { directDocuments, taggedDocuments, loading } = useContactDocuments(contactId, contactTags);
+export function ContactDocumentRows({ contactId, contactTopicIds }: ContactDocumentRowsProps) {
+  const { directDocuments, taggedDocuments, loading } = useContactDocuments(contactId, contactTopicIds);
 
   const handleDownload = async (filePath: string, fileName: string) => {
     await downloadDocument({
@@ -95,20 +96,7 @@ export function ContactDocumentRows({ contactId, contactTags }: ContactDocumentR
             )}
           </TableCell>
           <TableCell colSpan={2}>
-            {doc.tags && doc.tags.length > 0 && (
-              <div className="flex flex-wrap gap-1">
-                {doc.tags.slice(0, 2).map((tag) => (
-                  <Badge key={tag} variant="secondary" className="text-xs">
-                    {tag}
-                  </Badge>
-                ))}
-                {doc.tags.length > 2 && (
-                  <Badge variant="outline" className="text-xs">
-                    +{doc.tags.length - 2}
-                  </Badge>
-                )}
-              </div>
-            )}
+            <TopicDisplay topicIds={doc.topic_ids ?? []} maxDisplay={2} />
           </TableCell>
           <TableCell>
             <div className="flex items-center gap-1">
@@ -173,20 +161,7 @@ export function ContactDocumentRows({ contactId, contactTags }: ContactDocumentR
             )}
           </TableCell>
           <TableCell colSpan={2}>
-            {doc.tags && doc.tags.length > 0 && (
-              <div className="flex flex-wrap gap-1">
-                {doc.tags.slice(0, 2).map((tag) => (
-                  <Badge key={tag} variant="secondary" className="text-xs">
-                    {tag}
-                  </Badge>
-                ))}
-                {doc.tags.length > 2 && (
-                  <Badge variant="outline" className="text-xs">
-                    +{doc.tags.length - 2}
-                  </Badge>
-                )}
-              </div>
-            )}
+            <TopicDisplay topicIds={doc.topic_ids ?? []} maxDisplay={2} />
           </TableCell>
           <TableCell>
             <div className="flex items-center gap-1">

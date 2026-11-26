@@ -116,7 +116,8 @@ export function useKnowledgeQuestions(
           p_status: filters.status,
           p_assignee: filters.assignee,
           p_sort: filters.sort,
-          p_tag: filters.tag || "",
+          // The RPC keeps its historical argument name; it now carries a topic id.
+          p_tag: filters.topic || "",
           p_quick: filters.quick || "",
         })
         .abortSignal(signal);

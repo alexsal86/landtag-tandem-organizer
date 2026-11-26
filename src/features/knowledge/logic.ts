@@ -183,12 +183,18 @@ export function knowledgeUrlState(params: URLSearchParams): {
     /^[0-9a-f]{8}(-[0-9a-f]{4}){3}-[0-9a-f]{12}$/i.test(rawAssignee)
       ? rawAssignee
       : "";
+  // Legacy "tag" links are ignored; their ids are not topic ids and would
+  // otherwise make the topic filter reject the whole list request.
+  const rawTopic = params.get("thema") ?? "";
+  const topic = /^[0-9a-f]{8}(-[0-9a-f]{4}){3}-[0-9a-f]{12}$/i.test(rawTopic)
+    ? rawTopic
+    : "";
   return {
     view,
     filters: {
       status,
       assignee,
-      ...(params.has("tag") ? { tag: params.get("tag") ?? "" } : {}),
+      ...(topic ? { topic } : {}),
       ...(params.has("schnell") ? { quick: params.get("schnell") ?? "" } : {}),
       sort: params.get("sortierung") === "oldest" ? "oldest" : "updated",
     },

@@ -3,11 +3,11 @@ import { useState, useEffect } from "react";
 import { useNavigate, useSearchParams } from "react-router-dom";
 import { useNotificationHighlight } from "@/hooks/useNotificationHighlight";
 import { useViewPreference } from "@/hooks/useViewPreference";
-import { useTopics } from "@/hooks/useTopics";
 import { useDocumentCategories } from "@/hooks/useDocumentCategories";
 import { useAllPersonContacts } from "@/hooks/useAllPersonContacts";
 import { useStakeholderPreload } from "@/hooks/useStakeholderPreload";
-import { MultiSelect } from "@/components/ui/multi-select";
+import { TopicPicker } from "@/components/topics/TopicPicker";
+import { TopicDisplay } from "@/components/topics/TopicSelector";
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
@@ -21,7 +21,7 @@ import { Label } from "@/components/ui/label";
 import { Tooltip, TooltipContent, TooltipProvider, TooltipTrigger } from "@/components/ui/tooltip";
 import { Checkbox } from "@/components/ui/checkbox";
 import { DropdownMenu, DropdownMenuContent, DropdownMenuItem, DropdownMenuTrigger } from "@/components/ui/dropdown-menu";
-import { FileText, Upload, Download, Trash2, Plus, Search, ArrowUpDown, ArrowUp, ArrowDown, Calendar, Tag, FileType, Folder, FolderPlus, FolderInput, Home, ChevronRight, MoreVertical, Edit, Mail, Edit3, Send, Grid, List, Settings, RotateCcw, ListTodo, ListTree, Info, UserPlus, Newspaper, Save, Highlighter, MessageSquare } from "lucide-react";
+import { FileText, Upload, Download, Trash2, Plus, Search, ArrowUpDown, ArrowUp, ArrowDown, Calendar, FileType, Folder, FolderPlus, FolderInput, Home, ChevronRight, MoreVertical, Edit, Mail, Edit3, Send, Grid, List, Settings, RotateCcw, ListTodo, ListTree, Info, UserPlus, Newspaper, Save, Highlighter, MessageSquare } from "lucide-react";
 import { format } from "date-fns";
 import { de } from "date-fns/locale";
 import { supabase } from "@/integrations/supabase/client";
@@ -49,7 +49,6 @@ import { STATUS_LABELS } from "@/components/documents/types";
 import type { Document, Letter, DocumentFolder } from "@/components/documents/types";
 import {
   isDocumentCategoryOption,
-  isDocumentTagOption,
   isDocumentFolderWithCount,
   type DocumentDialogState,
 } from "@/components/documents/operationsContract";
@@ -79,7 +78,6 @@ export function DocumentsView() {
     initialTabParam === 'letters' || initialTabParam === 'emails' || initialTabParam === 'press' ? initialTabParam : 'documents';
   const { isHighlighted, highlightRef } = useNotificationHighlight();
   const { viewType, setViewType } = useViewPreference({ key: 'documents' });
-  const { topics: tags } = useTopics();
   const { categories: documentCategories } = useDocumentCategories();
   const { personContacts } = useAllPersonContacts();
   const { stakeholders } = useStakeholderPreload();
@@ -113,7 +111,7 @@ export function DocumentsView() {
   const [uploadTitle, setUploadTitle] = useState("");
   const [uploadDescription, setUploadDescription] = useState("");
   const [uploadCategory, setUploadCategory] = useState("");
-  const [uploadTags, setUploadTags] = useState<string[]>([]);
+  const [uploadTopicIds, setUploadTopicIds] = useState<string[]>([]);
   const [uploadStatus, setUploadStatus] = useState("draft");
   const [uploadFolderId, setUploadFolderId] = useState("");
   const [uploadContacts, setUploadContacts] = useState<string[]>([]);
@@ -126,7 +124,7 @@ export function DocumentsView() {
   const [editTitle, setEditTitle] = useState("");
   const [editDescription, setEditDescription] = useState("");
   const [editCategory, setEditCategory] = useState("");
-  const [editTags, setEditTags] = useState<string[]>([]);
+  const [editTopicIds, setEditTopicIds] = useState<string[]>([]);
   const [editStatus, setEditStatus] = useState("draft");
   const [editFolderId, setEditFolderId] = useState("");
 
@@ -153,7 +151,6 @@ export function DocumentsView() {
   });
 
   const safeCategories = documentCategories.filter(isDocumentCategoryOption);
-  const safeTags = tags.filter(isDocumentTagOption);
   const safeFolders = data.folders.filter(isDocumentFolderWithCount);
 
   const dialogState: DocumentDialogState = {
@@ -273,7 +270,7 @@ export function DocumentsView() {
 
   const handleEditDocument = (doc: Document) => {
     setEditingDocument(doc); setEditTitle(doc.title); setEditDescription(doc.description || "");
-    setEditCategory(doc.category ?? ''); setEditTags(doc.tags || []); setEditStatus(doc.status);
+    setEditCategory(doc.category ?? ''); setEditTopicIds(doc.topic_ids || []); setEditStatus(doc.status);
     setEditFolderId(doc.folder_id || ""); setShowEditDialog(true);
   };
 
@@ -285,7 +282,7 @@ export function DocumentsView() {
     setShowLetterEditor(true);
   };
 
-  const resetUploadForm = () => { setUploadFile(null); setUploadTitle(""); setUploadDescription(""); setUploadTags([]); setUploadFolderId(""); setUploadContacts([]); setUploadContactType("related"); setShowUploadDialog(false); };
+  const resetUploadForm = () => { setUploadFile(null); setUploadTitle(""); setUploadDescription(""); setUploadTopicIds([]); setUploadFolderId(""); setUploadContacts([]); setUploadContactType("related"); setShowUploadDialog(false); };
 
   const filteredContactsForUpload = allContacts.filter(c => c.name.toLowerCase().includes(contactSearch.toLowerCase()) || c.organization?.toLowerCase().includes(contactSearch.toLowerCase()));
 
@@ -414,7 +411,7 @@ export function DocumentsView() {
                             <div><Label>Kategorie</Label><Select value={uploadCategory} onValueChange={setUploadCategory}><SelectTrigger><SelectValue /></SelectTrigger><SelectContent>{safeCategories.map(c => <SelectItem key={c.id} value={c.name}>{c.label}</SelectItem>)}</SelectContent></Select></div>
                             <div><Label>Status</Label><Select value={uploadStatus} onValueChange={setUploadStatus}><SelectTrigger><SelectValue /></SelectTrigger><SelectContent>{Object.entries(STATUS_LABELS).map(([v, l]) => <SelectItem key={v} value={v}>{l}</SelectItem>)}</SelectContent></Select></div>
                           </div>
-                          <div><Label>Tags</Label><MultiSelect options={safeTags.map(t => ({ value: t.label, label: t.label }))} selected={uploadTags} onChange={setUploadTags} placeholder="Tags auswählen..." /></div>
+                          <div><Label>Themen</Label><TopicPicker selectedTopicIds={uploadTopicIds} onTopicsChange={setUploadTopicIds} module="documents" /></div>
                           <div><Label>Ordner (optional)</Label><Select value={uploadFolderId || undefined} onValueChange={v => setUploadFolderId(v || "")}><SelectTrigger><SelectValue placeholder="Kein Ordner" /></SelectTrigger><SelectContent>{data.folders.filter(f => f.parent_folder_id === currentFolder).map(f => <SelectItem key={f.id} value={f.id}>{f.name}</SelectItem>)}</SelectContent></Select></div>
                           <div>
                             <Label>Kontakte & Stakeholder (optional)</Label>
@@ -433,7 +430,7 @@ export function DocumentsView() {
                           </div>
                           <div className="flex justify-end gap-2">
                             <Button variant="outline" onClick={resetUploadForm}>Abbrechen</Button>
-                            <Button onClick={() => ops.handleUpload({ uploadFile, mutation: { type: "upload", title: uploadTitle, description: uploadDescription, category: uploadCategory, tags: uploadTags, status: uploadStatus, folderId: uploadFolderId, contacts: uploadContacts, contactType: uploadContactType }, setLoading: data.setLoading, onSuccess: resetUploadForm })} disabled={!uploadFile || !uploadTitle || data.loading}><Upload className="h-4 w-4 mr-2" />{data.loading ? "Wird hochgeladen..." : "Hochladen"}</Button>
+                            <Button onClick={() => ops.handleUpload({ uploadFile, mutation: { type: "upload", title: uploadTitle, description: uploadDescription, category: uploadCategory, topicIds: uploadTopicIds, status: uploadStatus, folderId: uploadFolderId, contacts: uploadContacts, contactType: uploadContactType }, setLoading: data.setLoading, onSuccess: resetUploadForm })} disabled={!uploadFile || !uploadTitle || data.loading}><Upload className="h-4 w-4 mr-2" />{data.loading ? "Wird hochgeladen..." : "Hochladen"}</Button>
                           </div>
                         </div>
                       </DialogContent>
@@ -575,7 +572,7 @@ export function DocumentsView() {
                         <div className="flex items-center gap-2"><FileType className="h-4 w-4 flex-shrink-0" /><span className="truncate">{doc.file_name}</span></div>
                       </div>
                       {annotationBadge(doc)}
-                      {doc.tags && doc.tags.length > 0 && <div className="flex flex-wrap gap-1">{doc.tags.map((tag, i) => <Badge key={i} variant="outline" className="text-xs"><Tag className="h-3 w-3 mr-1" />{tag}</Badge>)}</div>}
+                      <TopicDisplay topicIds={doc.topic_ids ?? []} maxDisplay={4} />
                       <DocumentContactManager documentId={doc.id} compact />
                       <Separator />
                       <TooltipProvider><div className="flex justify-between gap-2"><div className="flex gap-1">
@@ -655,12 +652,12 @@ export function DocumentsView() {
           editTitle={editTitle} setEditTitle={setEditTitle}
           editDescription={editDescription} setEditDescription={setEditDescription}
           editCategory={editCategory} setEditCategory={setEditCategory}
-          editTags={editTags} setEditTags={setEditTags}
+          editTopicIds={editTopicIds} setEditTopicIds={setEditTopicIds}
           editStatus={editStatus} setEditStatus={setEditStatus}
           editFolderId={editFolderId} setEditFolderId={setEditFolderId}
-          documentCategories={safeCategories} tags={safeTags} folders={safeFolders}
+          documentCategories={safeCategories} folders={safeFolders}
           loading={data.loading}
-          onUpdateDocument={() => { void ops.handleUpdateDocument({ editingDocument, mutation: { type: "update", documentId: editingDocument?.id || "", title: editTitle, description: editDescription, category: editCategory, tags: editTags, status: editStatus, folderId: editFolderId }, onSuccess: () => { setShowEditDialog(false); setEditingDocument(null); } }); }}
+          onUpdateDocument={() => { void ops.handleUpdateDocument({ editingDocument, mutation: { type: "update", documentId: editingDocument?.id || "", title: editTitle, description: editDescription, category: editCategory, topicIds: editTopicIds, status: editStatus, folderId: editFolderId }, onSuccess: () => { setShowEditDialog(false); setEditingDocument(null); } }); }}
           showMoveFolderDialog={dialogState.showMoveFolderDialog} setShowMoveFolderDialog={setShowMoveFolderDialog}
           selectedDocument={selectedDocument} setSelectedDocument={setSelectedDocument}
           moveToFolderId={moveToFolderId} setMoveToFolderId={setMoveToFolderId}

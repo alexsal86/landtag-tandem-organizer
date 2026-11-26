@@ -3,6 +3,7 @@ import { supabase } from "@/integrations/supabase/client";
 import { useAuth } from "@/hooks/useAuth";
 import { useTenant } from "@/hooks/useTenant";
 import { debugConsole } from "@/utils/debugConsole";
+import { fetchEntityTopicIds } from "@/features/topics/useEntityTopics";
 import type { Document, DocumentFolder, Letter } from "../types";
 import { notify } from "@/lib/notify";
 
@@ -38,15 +39,21 @@ export function useDocumentsData(activeTab: string) {
 
       const { data, error } = await supabase
         .from('documents')
-        .select('id, title, description, file_name, file_path, file_size, file_type, category, tags, status, folder_id, document_type, archived_attachments, created_at, updated_at, user_id, tenant_id')
+        .select('id, title, description, file_name, file_path, file_size, file_type, category, status, folder_id, document_type, archived_attachments, created_at, updated_at, user_id, tenant_id')
         .eq('tenant_id', currentTenant.id)
         .order('created_at', { ascending: false })
         .range(from, to);
 
       if (error) throw error;
 
+      const topicMap = await fetchEntityTopicIds(
+        "document",
+        (data ?? []).map((doc) => doc.id),
+        currentTenant.id,
+      );
       const mappedDocs = (data || []).map((doc: Record<string, any>) => ({
         ...doc,
+        topic_ids: topicMap[doc.id] ?? [],
         archived_attachments: Array.isArray(doc.archived_attachments) ? doc.archived_attachments : []
       })) as Document[];
 

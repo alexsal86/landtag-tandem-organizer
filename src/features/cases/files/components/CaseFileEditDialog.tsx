@@ -19,6 +19,7 @@ import { debugConsole } from "@/utils/debugConsole";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
 import { RadioGroup, RadioGroupItem } from "@/components/ui/radio-group";
 import { MultiSelect } from "@/components/ui/multi-select-simple";
+import { TopicPicker } from "@/components/topics/TopicPicker";
 import { Lock, Users, Globe } from "lucide-react";
 import { supabase } from "@/integrations/supabase/client";
 
@@ -37,6 +38,7 @@ export function CaseFileEditDialog({ caseFile, open, onOpenChange }: CaseFileEdi
   const { updateCaseFile } = useCaseFiles();
   const { caseFileTypes } = useCaseFileTypes();
   const [isSubmitting, setIsSubmitting] = useState(false);
+  const [topicIds, setTopicIds] = useState<string[]>([]);
   const [formData, setFormData] = useState<CaseFileFormData>({
     title: "",
     description: "",
@@ -72,6 +74,7 @@ export function CaseFileEditDialog({ caseFile, open, onOpenChange }: CaseFileEdi
         target_date: caseFile.target_date || undefined,
         is_private: caseFile.is_private ?? false,
       });
+      setTopicIds(caseFile.topic_ids ?? []);
       
       // Determine visibility from the case file data
       const vis = toVisibility(caseFile.visibility || (caseFile.is_private ? 'private' : 'public'));
@@ -132,6 +135,7 @@ export function CaseFileEditDialog({ caseFile, open, onOpenChange }: CaseFileEdi
     
     const submitData = {
       ...formData,
+      topic_ids: topicIds,
       is_private: visibility === 'private',
       visibility,
     };
@@ -186,6 +190,11 @@ export function CaseFileEditDialog({ caseFile, open, onOpenChange }: CaseFileEdi
                 onChange={(e) => setFormData({ ...formData, description: e.target.value })}
                 rows={3}
               />
+            </div>
+
+            <div className="grid gap-2">
+              <Label>Themen</Label>
+              <TopicPicker selectedTopicIds={topicIds} onTopicsChange={setTopicIds} module="case_files" />
             </div>
 
             <div className="grid grid-cols-2 gap-4">

@@ -15,7 +15,9 @@ import { isValidEmail, findPotentialDuplicates, DuplicateMatch, type Contact as 
 import { DuplicateWarning } from "@/features/contacts/components/DuplicateWarning";
 import { ImageCropper } from "@/components/ui/ImageCropper";
 
-import { TagInput } from "@/components/ui/tag-input";
+import { TopicPicker } from "@/components/topics/TopicPicker";
+import { TopicDisplay } from "@/components/topics/TopicSelector";
+import { replaceEntityTopics, useEntityTopics } from "@/features/topics/useEntityTopics";
 import type { ContactDuplicateCandidate, EditableContact } from "@/types/contact";
 import { notify } from "@/lib/notify";
 import { useQueryClient } from "@tanstack/react-query";
@@ -38,8 +40,7 @@ export function ContactEditForm({ contact, onSuccess, onCancel }: ContactEditFor
   const [duplicateMatches, setDuplicateMatches] = useState<DuplicateMatch[]>([]);
   const [showDuplicateWarning, setShowDuplicateWarning] = useState(false);
   const [emailValidationError, setEmailValidationError] = useState<string>('');
-  const [allTags, setAllTags] = useState<string[]>([]);
-  const [inheritedTags, setInheritedTags] = useState<string[]>([]);
+  const [topicIds, setTopicIds] = useState<string[]>([]);
   const [uploading, setUploading] = useState(false);
   const avatarInputRef = useRef<HTMLInputElement>(null);
   const [imageToEdit, setImageToEdit] = useState<string | null>(null);
@@ -47,17 +48,22 @@ export function ContactEditForm({ contact, onSuccess, onCancel }: ContactEditFor
   const { user } = useAuth();
   const { currentTenant } = useTenant();
   const queryClient = useQueryClient();
+  const entityTopics = useEntityTopics("contact", contact.id);
+  const organizationTopics = useEntityTopics(
+    "contact",
+    contact.contact_type === "person" ? formData.organization_id || null : null,
+  );
+
+  useEffect(() => {
+    setTopicIds(entityTopics.topicIds);
+  }, [entityTopics.topicIds]);
 
   useEffect(() => {
     if (contact.contact_type === "person") {
       fetchOrganizations();
     }
     fetchExistingContacts();
-    fetchAllTags();
-    if (formData.organization_id) {
-      fetchInheritedTags();
-    }
-  }, [contact.contact_type, formData.organization_id]);
+  }, [contact.contact_type]);
 
   useEffect(() => {
     if (contact.organization && organizations.length > 0) {
@@ -99,44 +105,6 @@ export function ContactEditForm({ contact, onSuccess, onCancel }: ContactEditFor
       })) || []);
     } catch (error) {
       debugConsole.error('Error fetching existing contacts:', error);
-    }
-  };
-
-  const fetchAllTags = async (): Promise<void> => {
-    try {
-      // Platform-wide topics are the single vocabulary; tags sync to topics in the DB.
-      const { data, error } = await supabase
-        .from('topics')
-        .select('label')
-        .eq('is_active', true)
-        .order('order_index');
-
-      if (error) throw error;
-      setAllTags((data ?? []).map((t) => t.label));
-    } catch (error) {
-      debugConsole.error('Error fetching tags:', error);
-    }
-  };
-
-  const fetchInheritedTags = async (): Promise<void> => {
-    if (!formData.organization_id) {
-      setInheritedTags([]);
-      return;
-    }
-    
-    try {
-      const { data, error } = await supabase
-        .from('contacts')
-        .select('tags')
-        .eq('id', formData.organization_id)
-        .single();
-
-      if (error) throw error;
-      
-      setInheritedTags((data?.tags as string[]) || []);
-    } catch (error) {
-      debugConsole.error('Error fetching inherited tags:', error);
-      setInheritedTags([]);
     }
   };
 
@@ -272,9 +240,9 @@ export function ContactEditForm({ contact, onSuccess, onCancel }: ContactEditFor
         }
       });
 
+      delete cleanedUpdateData.tags;
       const finalUpdateData = {
         ...cleanedUpdateData,
-        tags: formData.tags.length > 0 ? formData.tags : null,
         tenant_id: currentTenant.id,
         updated_at: new Date().toISOString()
       };
@@ -303,6 +271,11 @@ export function ContactEditForm({ contact, onSuccess, onCancel }: ContactEditFor
       }
 
       debugConsole.log('Contact updated successfully:', data);
+
+      await replaceEntityTopics("contact", contact.id, topicIds, {
+        tenantId: currentTenant.id,
+        userId: user.id,
+      });
 
       // Ein geänderter Geburtstag muss sofort im Dashboard stehen; dessen Abfrage cacht lange.
       void queryClient.invalidateQueries({ queryKey: ['dashboard-birthdays'] });
@@ -358,14 +331,6 @@ export function ContactEditForm({ contact, onSuccess, onCancel }: ContactEditFor
       }
     }
 
-    // Fetch inherited tags when organization changes via direct field edit
-    if (field === 'organization_id' && value !== formData.organization_id) {
-      if (value) {
-        fetchInheritedTags();
-      } else {
-        setInheritedTags([]);
-      }
-    }
   };
 
   const handleAvatarUpload = (event: React.ChangeEvent<HTMLInputElement>) => {
@@ -575,7 +540,6 @@ export function ContactEditForm({ contact, onSuccess, onCancel }: ContactEditFor
                           organization_id: '', 
                           organization: '' 
                         }));
-                        setInheritedTags([]);
                       } else {
                         // Existing organization selected - set both ID and name
                         const selectedOrg = organizations.find(org => org.id === value);
@@ -584,7 +548,6 @@ export function ContactEditForm({ contact, onSuccess, onCancel }: ContactEditFor
                           organization_id: value, 
                           organization: selectedOrg?.name || '' 
                         }));
-                        fetchInheritedTags();
                       }
                     }}
                   >
@@ -828,19 +791,19 @@ export function ContactEditForm({ contact, onSuccess, onCancel }: ContactEditFor
 
 
           <div>
-            <Label htmlFor="tags">Themen</Label>
-            <TagInput
-              tags={formData.tags}
-              onTagsChange={(tags) => handleChange('tags', tags)}
-              suggestions={allTags}
-              showInherited={formData.contact_type === 'person' && inheritedTags.length > 0}
-              inheritedTags={inheritedTags}
-              placeholder="Tags hinzufügen..."
+            <Label>Themen</Label>
+            <TopicPicker
+              selectedTopicIds={topicIds}
+              onTopicsChange={setTopicIds}
+              module="contacts"
             />
-            {inheritedTags.length > 0 && formData.contact_type === 'person' && (
-              <p className="text-xs text-muted-foreground mt-1">
-                Tags werden von der zugeordneten Organisation geerbt
-              </p>
+            {organizationTopics.topicIds.length > 0 && formData.contact_type === 'person' && (
+              <div className="mt-2 space-y-1">
+                <p className="text-xs text-muted-foreground">
+                  Von der Organisation geerbt:
+                </p>
+                <TopicDisplay topicIds={organizationTopics.topicIds} maxDisplay={4} />
+              </div>
             )}
           </div>
 
@@ -856,7 +819,7 @@ export function ContactEditForm({ contact, onSuccess, onCancel }: ContactEditFor
       </Card>
 
       <div className="flex gap-4">
-        <Button type="submit" disabled={loading} className="flex-1">
+        <Button type="submit" disabled={loading || entityTopics.loading} className="flex-1" title={entityTopics.loading ? "Themen werden noch geladen" : undefined}>
           {loading ? "Wird gespeichert..." : "Speichern"}
         </Button>
         <Button type="button" variant="outline" onClick={onCancel} className="flex-1">

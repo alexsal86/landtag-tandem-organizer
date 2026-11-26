@@ -145,7 +145,7 @@ Die Spalten zählen **zugeordnete** Prüfungen, nicht bestandene Läufe. „Erge
 | `meetings.protocol` | organisation | fachlich | implementiert | rollenabhängig | Selbsttest | nicht-ausgefuehrt | 1 | 0 | 0 | 0 | nein |
 | `meetings.templates` | organisation | administrativ | implementiert | rollenabhängig | kein Test | nicht-ausgefuehrt | 0 | 0 | 0 | 0 | nein |
 | `topics.convert-catalog` | organisation | fachlich | implementiert | UI | kein Test | nicht-ausgefuehrt | 0 | 0 | 0 | 0 | ja |
-| `topics.manage` | organisation | fachlich | implementiert | UI | kein Test | nicht-ausgefuehrt | 0 | 0 | 0 | 0 | nein |
+| `topics.manage` | organisation | fachlich | implementiert | UI | Unit-Test | unbekannt | 0 | 1 | 0 | 0 | nein |
 | `integration.push` | schnittstellen | integration | implementiert | systemseitig | kein Test | nicht-ausgefuehrt | 0 | 0 | 0 | 0 | ja |
 | `integration.edge-contract-tests` | schnittstellen | sicherheit | implementiert | nicht anwendbar | Security-Test | unbekannt | 0 | 1 | 0 | 0 | ja |
 | `integration.egress-monitoring` | schnittstellen | sicherheit | implementiert | systemseitig | kein Test | nicht-ausgefuehrt | 0 | 0 | 0 | 0 | ja |
@@ -256,7 +256,7 @@ Die Spalten zählen **zugeordnete** Prüfungen, nicht bestandene Läufe. „Erge
 | `knowledge.permissions` | wissen | sicherheit | implementiert | systemseitig | Selbsttest | nicht-ausgefuehrt | 1 | 0 | 0 | 0 | ja |
 | `knowledge.attachments` | wissen | fachlich | implementiert | UI | kein Test | nicht-ausgefuehrt | 0 | 0 | 0 | 0 | nein |
 | `knowledge.sources` | wissen | fachlich | implementiert | UI | kein Test | nicht-ausgefuehrt | 0 | 0 | 0 | 0 | nein |
-| `knowledge.tags` | wissen | fachlich | implementiert | UI | Unit-Test | unbekannt | 0 | 1 | 0 | 0 | nein |
+| `knowledge.tags` | wissen | fachlich | implementiert | UI | Unit-Test | unbekannt | 0 | 2 | 0 | 0 | nein |
 | `knowledge.persons` | wissen | fachlich | implementiert | UI | Unit-Test | unbekannt | 0 | 1 | 0 | 0 | nein |
 | `knowledge.search` | wissen | fachlich | implementiert | UI | Selbsttest | nicht-ausgefuehrt | 1 | 0 | 0 | 2 | nein |
 | `knowledge.collaboration` | wissen | integration | implementiert | systemseitig | kein Test | nicht-ausgefuehrt | 0 | 0 | 0 | 0 | nein |

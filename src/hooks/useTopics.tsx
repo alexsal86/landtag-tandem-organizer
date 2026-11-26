@@ -162,10 +162,14 @@ export const useTopics = () => {
 
   const getActiveTopics = () => topics.filter(t => t.is_active);
 
-  /** Any tenant member: find or create a topic by its label (dedupe in DB). */
-  const quickCreateTopic = async (label: string): Promise<string | null> => {
+  /** Find or create a topic by its label; the module enforces the creation policy. */
+  const quickCreateTopic = async (label: string, module?: string): Promise<string | null> => {
     if (!currentTenant) return null;
-    const { data, error } = await supabase.rpc('ensure_topic', { p_tenant: currentTenant.id, p_label: label });
+    const { data, error } = await supabase.rpc('ensure_topic', {
+      p_tenant: currentTenant.id,
+      p_label: label,
+      ...(module ? { p_module: module } : {}),
+    });
     if (error || !data) {
       notify.error("Thema konnte nicht angelegt werden", { description: error?.message });
       return null;

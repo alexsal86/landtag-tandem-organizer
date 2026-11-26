@@ -417,9 +417,9 @@ _Auto-generiert mit `npm run update:feature-catalog`. Nicht von Hand bearbeiten.
 | `case_items` | automation, mitarbeit, organisation, termine, verwaltung, vorgaenge |
 | `email_logs` | dokumente, entscheidungen, kommunikation, schnittstellen, termine, veranstaltungen |
 | `notifications` | arbeitsbereich, aufgaben, schnittstellen, termine, verwaltung, wissen |
+| `topics` | dokumente, kontakte, mitarbeit, organisation, vorgaenge, wissen |
 | `contacts` | dokumente, kontakte, schnittstellen, verwaltung |
 | `profiles` | arbeitsbereich, aufgaben, verwaltung, wissen |
-| `topics` | kontakte, mitarbeit, organisation, wissen |
 | `annual_task_completions` | aufgaben, automation, mitarbeit |
 | `annual_tasks` | aufgaben, automation, mitarbeit |
 | `appointments` | schnittstellen, termine, vorgaenge |
@@ -432,6 +432,7 @@ _Auto-generiert mit `npm run update:feature-catalog`. Nicht von Hand bearbeiten.
 | `routine_package_runs` | aufgaben, automation, mitarbeit |
 | `routine_package_steps` | aufgaben, automation, mitarbeit |
 | `task_decisions` | aufgaben, entscheidungen, vorgaenge |
+| `topic_module_settings` | organisation, vorgaenge, wissen |
 | `appointment_categories` | termine, verwaltung |
 | `appointment_polls` | termine, veranstaltungen |
 | `appointment_preparations` | schnittstellen, termine |
@@ -439,6 +440,7 @@ _Auto-generiert mit `npm run update:feature-catalog`. Nicht von Hand bearbeiten.
 | `calendar_sync_settings` | automation, schnittstellen |
 | `case_file_tasks` | aufgaben, vorgaenge |
 | `case_item_timeline` | aufgaben, vorgaenge |
+| `case_item_topics` | organisation, vorgaenge |
 | `committees` | mitarbeit, organisation |
 | `dashboard_decision_nudges` | aufgaben, entscheidungen |
 | `document_categories` | dokumente, verwaltung |
@@ -448,6 +450,7 @@ _Auto-generiert mit `npm run update:feature-catalog`. Nicht von Hand bearbeiten.
 | `employee_responsibilities` | mitarbeit, organisation |
 | `external_events` | schnittstellen, termine |
 | `field_permissions` | kontakte, verwaltung |
+| `knowledge_question_topics` | organisation, wissen |
 | `map_layers` | kontakte, wahl |
 | `meeting_agenda_items` | organisation, termine |
 | `meetings` | organisation, termine |

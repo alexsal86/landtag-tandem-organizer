@@ -18,6 +18,8 @@ import { CaseItemFormData, useCaseItems } from "@/features/cases/items/hooks";
 import { useAuth } from "@/hooks/useAuth";
 import { useTenant } from "@/hooks/useTenant";
 import { LinkedValueChip } from "@/components/my-work/LinkedValueChip";
+import { useTopicModuleSettings } from "@/features/topics/useTopicModuleSettings";
+import { validateTopicSelection } from "@/features/topics/moduleRules";
 
 interface CaseItemCreateDialogProps {
   open: boolean;
@@ -97,6 +99,7 @@ function WizardStepper({ currentStep }: { currentStep: number }) {
 export function CaseItemCreateDialog({ open, onOpenChange, onCreated, createCaseItem, assignees, defaultAssigneeId, categoryOptions }: CaseItemCreateDialogProps) {
   const { user } = useAuth();
   const { currentTenant } = useTenant();
+  const topicRule = useTopicModuleSettings("case_items");
   const [scope,setScope] = useState({regionIds:[] as string[],committeeIds:[] as string[]});
   const [topicIds, setTopicIds] = useState<string[]>([]);
   const [step, setStep] = useState(1);
@@ -192,9 +195,11 @@ export function CaseItemCreateDialog({ open, onOpenChange, onCreated, createCase
     return [contactEmail.trim(), contactPhone.trim()].filter(Boolean).join(" · ") || null;
   };
 
+  const topicError = validateTopicSelection(topicIds.length, topicRule);
   const canAdvance = (s: number): boolean => {
     if (s === 2) return subject.trim().length > 0;
-    if (s === 3) return category.length > 0;
+    if (s === 3)
+      return category.length > 0 && (!topicRule.isEnabled || !topicError);
     return true;
   };
 
@@ -222,9 +227,9 @@ export function CaseItemCreateDialog({ open, onOpenChange, onCreated, createCase
       reporter_name: contactName.trim() || null,
       reporter_contact: getReporterContact(),
       visible_to_all: visibleToAll,
+      topic_ids: topicRule.isEnabled ? topicIds : [],
       intake_payload: {
         category,
-        topic_ids: topicIds,
         region_ids: scope.regionIds,
         committee_ids: scope.committeeIds,
         assignee_ids: selectedAssigneeIds,
@@ -278,7 +283,24 @@ export function CaseItemCreateDialog({ open, onOpenChange, onCreated, createCase
 
         {submitError && <p className="text-sm text-destructive">{submitError}</p>}
 
-        {step === 3 && <div className="space-y-3"><Label>Themen</Label><TopicSelector selectedTopicIds={topicIds} onTopicsChange={setTopicIds} /><ResponsibilityContextFields {...scope} onChange={patch=>setScope(previous=>({...previous,...patch}))} /><ResponsibleSuggestion context={{topicIds,...scope}} onAccept={id=>setSelectedAssigneeIds([id])} /></div>}
+        {step === 3 && topicRule.isEnabled && (
+          <div className="space-y-3">
+            <Label>
+              Themen{topicRule.requirement === "required" ? " *" : ""}
+            </Label>
+            <TopicSelector
+              selectedTopicIds={topicIds}
+              onTopicsChange={setTopicIds}
+              module="case_items"
+              maxTopics={topicRule.maxTopics}
+            />
+            {topicError && (
+              <p className="text-xs text-muted-foreground">{topicError}</p>
+            )}
+            <ResponsibilityContextFields {...scope} onChange={patch=>setScope(previous=>({...previous,...patch}))} />
+            <ResponsibleSuggestion context={{topicIds,...scope}} onAccept={id=>setSelectedAssigneeIds([id])} />
+          </div>
+        )}
         {/* Step 1: Kanal & Kontakt */}
         {step === 1 && (
           <div className="space-y-4 py-2">
@@ -608,7 +630,7 @@ export function CaseItemCreateDialog({ open, onOpenChange, onCreated, createCase
                 <ChevronRight className="h-4 w-4 ml-1" />
               </Button>
             ) : (
-              <Button onClick={handleSubmit} disabled={submitting || !subject.trim() || !sourceReceivedDate || !category || !hasContext}>
+              <Button onClick={handleSubmit} disabled={submitting || !subject.trim() || !sourceReceivedDate || !category || !hasContext || (topicRule.isEnabled && Boolean(validateTopicSelection(topicIds.length, topicRule)))}>
                 {submitting ? "Erstelle…" : "Vorgang erstellen"}
               </Button>
             )}

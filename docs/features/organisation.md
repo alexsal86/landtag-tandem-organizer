@@ -8,7 +8,7 @@ _Auto-generiert mit `npm run update:feature-catalog` aus dem zentralen Funktions
 
 - Funktionen: **18** in **5** Unterbereichen
 - implementiert: **17**, teilweise: **1**, deaktiviert: **0**, potenziell verwaist: **0**
-- ohne zugeordneten Test: **13**
+- ohne zugeordneten Test: **12**
 - ohne Dokumentationsverweis: **15**
 
 ## Funktionen
@@ -32,7 +32,7 @@ _Auto-generiert mit `npm run update:feature-catalog` aus dem zentralen Funktions
 | `meetings.protocol` Sitzungsprotokoll | Jour fixe | fachlich | implementiert | rollenabhängig | Selbsttest |
 | `meetings.templates` Sitzungsvorlagen | Jour fixe | administrativ | implementiert | rollenabhängig | kein Test |
 | `topics.convert-catalog` Thema in Katalog überführen | Themen | fachlich | implementiert | UI | kein Test |
-| `topics.manage` Themen verwalten | Themen | fachlich | implementiert | UI | kein Test |
+| `topics.manage` Themen verwalten | Themen | fachlich | implementiert | UI | Unit-Test |
 
 ## Unterbereiche
 
@@ -599,19 +599,19 @@ Pflegt Themen mit Zuständigkeiten, Verknüpfungen und Sichtbarkeit.
 - **Kategorie:** fachlich
 - **Implementierung:** implementiert
 - **Einbindung:** UI
-- **Testabdeckung:** kein Test
-- **Letztes Testergebnis:** nicht-ausgefuehrt (nicht aus der Existenz einer Testdatei abgeleitet)
+- **Testabdeckung:** Unit-Test
+- **Letztes Testergebnis:** unbekannt (nicht aus der Existenz einer Testdatei abgeleitet)
 - **Rollen:** `abgeordneter`, `bueroleitung`, `mitarbeiter`
 - **Routen:** —
 - **Frontend-Komponenten:** `src/features/topics/TopicOverview.tsx`, `src/components/topics/TopicSelector.tsx`
-- **Services:** —
-- **Hooks:** `src/hooks/useTopics.tsx`
+- **Services:** `src/features/topics/moduleRules.ts`
+- **Hooks:** `src/hooks/useTopics.tsx`, `src/features/topics/useTopicModuleSettings.ts`
 - **Edge Functions:** —
 - **Datenbankfunktionen:** `ensure_topic`, `merge_topics`, `topic_name_from_label`, `topic_usage`
 - **Tabellen:** `topics`, `committees`, `regions`, `case_item_topics`, `knowledge_question_topics`, `topic_module_settings`
 - **Abhängigkeiten:** —
 - **Selbsttests:** —
-- **Unit-Tests:** —
+- **Unit-Tests:** `src/features/topics/moduleRules.test.ts`
 - **Integrationstests:** —
 - **Browser-Tests:** —
 - **Dokumentation:** —

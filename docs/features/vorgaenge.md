@@ -47,7 +47,7 @@ _Auto-generiert mit `npm run update:feature-catalog` aus dem zentralen Funktions
 
 ## Datenbanktabellen
 
-`appointments`, `audit_log_entries`, `case_file_appointments`, `case_file_contacts`, `case_file_documents`, `case_file_letters`, `case_file_notes`, `case_file_participants`, `case_file_processing_statuses`, `case_file_status_history`, `case_file_tasks`, `case_file_timeline`, `case_file_topics`, `case_file_types`, `case_files`, `case_item_categories`, `case_item_escalation_suggestions`, `case_item_handover_log`, `case_item_interactions`, `case_item_participants`, `case_item_timeline`, `case_items`, `letters`, `task_decisions`, `tasks`
+`appointments`, `audit_log_entries`, `case_file_appointments`, `case_file_contacts`, `case_file_documents`, `case_file_letters`, `case_file_notes`, `case_file_participants`, `case_file_processing_statuses`, `case_file_status_history`, `case_file_tasks`, `case_file_timeline`, `case_file_topics`, `case_file_types`, `case_files`, `case_item_categories`, `case_item_escalation_suggestions`, `case_item_handover_log`, `case_item_interactions`, `case_item_participants`, `case_item_timeline`, `case_item_topics`, `case_items`, `letters`, `task_decisions`, `tasks`, `topic_module_settings`, `topics`
 
 ## Selbsttest-Szenarien
 
@@ -59,7 +59,7 @@ _Auto-generiert mit `npm run update:feature-catalog` aus dem zentralen Funktions
 ## Funktionsdetails
 
 ### `cases.create` — Vorgang erfassen
-Legt einen Vorgang mit Kategorie, Priorität, Anliegen, Kontaktbezug und Zuständigkeit an und erzeugt den Timeline-Eintrag.
+Legt einen Vorgang mit Kategorie, Priorität, Anliegen, Kontaktbezug, zentralen Themen und Zuständigkeit an und erzeugt den Timeline-Eintrag.
 
 - **Kategorie:** fachlich
 - **Implementierung:** implementiert
@@ -70,10 +70,10 @@ Legt einen Vorgang mit Kategorie, Priorität, Anliegen, Kontaktbezug und Zustän
 - **Routen:** `/vorgaenge/:caseItemId`
 - **Frontend-Komponenten:** `src/components/my-work/CaseItemCreateDialog.tsx`, `src/features/cases/items/pages/CaseItemDetail.tsx`, `src/components/my-work/MyWorkCasesWorkspace.tsx`
 - **Services:** —
-- **Hooks:** `src/features/cases/items/hooks/useCaseItems.tsx`, `src/hooks/useCaseItemCategories.tsx`
+- **Hooks:** `src/features/cases/items/hooks/useCaseItems.tsx`, `src/hooks/useCaseItemCategories.tsx`, `src/features/topics/useTopicModuleSettings.ts`
 - **Edge Functions:** —
 - **Datenbankfunktionen:** —
-- **Tabellen:** `case_items`, `case_item_categories`, `case_item_timeline`, `case_item_participants`
+- **Tabellen:** `case_items`, `case_item_categories`, `case_item_timeline`, `case_item_participants`, `case_item_topics`, `topic_module_settings`
 - **Abhängigkeiten:** —
 - **Selbsttests:** `case-item-lifecycle`
 - **Unit-Tests:** —
@@ -489,7 +489,7 @@ Leitet alte Vorgangs- und Fallaktenrouten auf die aktuellen Arbeitsbereiche um.
 - Offen: Altlinks zählen, bevor die Routen entfernt werden.
 
 ### `casefiles.manage` — Fallakte anlegen und führen
-Führt Fallakten mit Typ, Status, Risiken, Chancen, nächsten Schritten, Beteiligten und Dokumenten; das Szenario prüft Anlage, Standardwerte, Sichtbarkeit, Folgetabellen und die Zählwerte der Akten-RPC.
+Führt Fallakten mit Typ, Status, Risiken, Chancen, nächsten Schritten, Beteiligten, Dokumenten und Themen; das Szenario prüft Anlage, Standardwerte, Sichtbarkeit, Folgetabellen und die Zählwerte der Akten-RPC.
 
 - **Kategorie:** fachlich
 - **Implementierung:** implementiert
@@ -498,12 +498,12 @@ Führt Fallakten mit Typ, Status, Risiken, Chancen, nächsten Schritten, Beteili
 - **Letztes Testergebnis:** nicht-ausgefuehrt (nicht aus der Existenz einer Testdatei abgeleitet)
 - **Rollen:** `abgeordneter`, `bueroleitung`, `mitarbeiter`
 - **Routen:** `/casefiles`
-- **Frontend-Komponenten:** `src/features/casefiles/components/CaseFilesView.tsx`, `src/features/cases/files/components/CaseFileDetail.tsx`, `src/features/cases/files/components/CaseFileCreateDialog.tsx`
+- **Frontend-Komponenten:** `src/features/casefiles/components/CaseFilesView.tsx`, `src/features/cases/files/components/CaseFileDetail.tsx`, `src/features/cases/files/components/CaseFileCreateDialog.tsx`, `src/components/topics/TopicPicker.tsx`
 - **Services:** —
-- **Hooks:** `src/features/cases/files/hooks/useCaseFiles.tsx`
+- **Hooks:** `src/features/cases/files/hooks/useCaseFiles.tsx`, `src/features/topics/useEntityTopics.ts`
 - **Edge Functions:** —
 - **Datenbankfunktionen:** `get_case_files_with_counts`
-- **Tabellen:** `case_files`, `case_file_types`, `case_file_participants`, `case_file_status_history`, `case_file_timeline`
+- **Tabellen:** `case_files`, `case_file_types`, `case_file_participants`, `case_file_status_history`, `case_file_timeline`, `case_file_topics`, `topics`
 - **Abhängigkeiten:** —
 - **Selbsttests:** `case-file-lifecycle`
 - **Unit-Tests:** —

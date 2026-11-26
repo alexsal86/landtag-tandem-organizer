@@ -41,13 +41,13 @@ export function KnowledgeQuestionRow({
         </span>
       </span>
       <span className={styles.rowTags}>
-        {question.tags?.slice(0, 2).map((tag) => (
-          <span className={styles.tagChip} key={tag.id}>
-            {tag.name}
+        {question.topics?.slice(0, 2).map((topic) => (
+          <span className={styles.tagChip} key={topic.id}>
+            {topic.name}
           </span>
         ))}
-        {(question.tags?.length ?? 0) > 2 && (
-          <span>+{question.tags!.length - 2}</span>
+        {(question.topics?.length ?? 0) > 2 && (
+          <span>+{question.topics!.length - 2}</span>
         )}
       </span>
       {showAvatar && (

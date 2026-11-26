@@ -523,8 +523,8 @@
       "category": "fachlich",
       "implementationStatus": "implementiert",
       "integrationStatus": "ui",
-      "coverage": "keine",
-      "testResult": "nicht-ausgefuehrt",
+      "coverage": "unit",
+      "testResult": "unbekannt",
       "evidence": [
         "src/features/topics/TopicOverview.tsx",
         "src/hooks/useTopics.tsx"
@@ -534,7 +534,14 @@
         "src/components/topics/TopicSelector.tsx"
       ],
       "hooks": [
-        "src/hooks/useTopics.tsx"
+        "src/hooks/useTopics.tsx",
+        "src/features/topics/useTopicModuleSettings.ts"
+      ],
+      "services": [
+        "src/features/topics/moduleRules.ts"
+      ],
+      "unitTests": [
+        "src/features/topics/moduleRules.test.ts"
       ],
       "rpcs": [
         "ensure_topic",

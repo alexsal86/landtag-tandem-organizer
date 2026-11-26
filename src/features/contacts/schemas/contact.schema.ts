@@ -20,7 +20,7 @@ export const createContactSchema = z.object({
   website: z.string().url('Bitte eine gültige URL eingeben').optional().or(z.literal('')),
   address: z.string().optional(),
   notes: z.string().optional(),
-  tags: z.array(z.string()).default([]),
+  topic_ids: z.array(z.string()).default([]),
   industry: z.string().optional(),
   main_contact_person: z.string().optional(),
   category: z.string().min(1, 'Kategorie ist erforderlich'),

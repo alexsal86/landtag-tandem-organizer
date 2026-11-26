@@ -15,6 +15,7 @@ export const knowledgePersonName = (
     : "Noch nicht zugeordnet";
 export const KNOWLEDGE_EVENT_NAMES: Record<string, string> = {
   tags_changed: "Tags geändert",
+  topics_changed: "Themen geändert",
   sources_changed: "Quellen geändert",
   comment_added: "Rückfrage",
   outdated_reported: "Als veraltet gemeldet",

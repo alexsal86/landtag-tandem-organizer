@@ -9,7 +9,7 @@
       "id": "contacts.create",
       "subarea": "Stammdaten",
       "name": "Kontakt anlegen",
-      "description": "Legt Personen und Organisationen mit Stammdaten, Kategorien, Tags, Themen und Zuordnungen an.",
+      "description": "Legt Personen und Organisationen mit Stammdaten, Kategorien, Themen und Zuordnungen an.",
       "category": "fachlich",
       "implementationStatus": "implementiert",
       "integrationStatus": "rollenabhaengig",
@@ -36,7 +36,6 @@
       "tables": [
         "contacts",
         "contact_topics",
-        "tags",
         "party_associations",
         "regions"
       ],
@@ -333,30 +332,23 @@
     {
       "id": "contacts.tags-topics",
       "subarea": "Struktur",
-      "name": "Kontakt-Tags und Themen",
-      "description": "Vergibt Tags und Themen an Kontakte und synchronisiert sie mit der zentralen Tag- und Themenstruktur.",
+      "name": "Kontakt-Themen",
+      "description": "Vergibt Themen an Kontakte über contact_topics und zeigt sie in Liste, Detail und Bearbeitung; die früheren Tag-Textarrays werden nicht mehr fortgeschrieben.",
       "category": "fachlich",
       "implementationStatus": "implementiert",
       "integrationStatus": "ui",
       "coverage": "keine",
       "testResult": "nicht-ausgefuehrt",
       "evidence": [
-        "src/hooks/useTags.tsx",
-        "src/hooks/useContactTopics.tsx"
+        "src/features/topics/useEntityTopics.ts",
+        "src/components/topics/TopicPicker.tsx",
+        "src/hooks/useContactDocuments.tsx"
       ],
       "hooks": [
-        "src/hooks/useTags.tsx",
-        "src/hooks/useContactTopics.tsx"
-      ],
-      "rpcs": [
-        "sync_contact_tags_to_tags_table",
-        "sync_existing_contact_tags",
-        "get_contact_tags",
-        "sync_tags_to_topics",
-        "inherit_organization_tags"
+        "src/features/topics/useEntityTopics.ts",
+        "src/components/topics/TopicPicker.tsx"
       ],
       "tables": [
-        "tags",
         "contact_topics",
         "topics"
       ],
@@ -365,8 +357,11 @@
         "bueroleitung",
         "mitarbeiter"
       ],
+      "limitations": [
+        "Das frühere Tag-Feld bleibt als historischer Bestand in contacts.tags erhalten."
+      ],
       "reviewPoints": [
-        "Der Abgleich zwischen Kontakt-Tags und zentralen Tags ist nicht durch einen Test abgedeckt."
+        "Die Junction-Schreibpfade sind durch keinen eigenen Szenario-Schritt abgedeckt."
       ],
       "dependsOn": ["contacts.create", "topics.manage"]
     },

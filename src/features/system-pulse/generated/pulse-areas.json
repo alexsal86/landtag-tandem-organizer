@@ -2273,6 +2273,14 @@
             {
               "id": "redaktion-freigabe",
               "label": "Redaktion: Freigabe nur durch Leitung, Änderungswunsch mit Frist"
+            },
+            {
+              "id": "topic-entity-junctions",
+              "label": "Zentrale Themen: Kontakte, Dokumente und Fallakten nutzen Junctions"
+            },
+            {
+              "id": "topic-module-rules",
+              "label": "Zentrale Themen: Modulregeln begrenzen Auswahl und Anlage"
             }
           ]
         }

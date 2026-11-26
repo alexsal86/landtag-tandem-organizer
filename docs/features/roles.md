@@ -80,7 +80,7 @@ Die Angaben sind deklarierte Mindestrollen. Die tatsächlich wirksame Berechtigu
 - `contacts.merge` — Kontakte zusammenführen
 - `contacts.distribution-lists` — Verteilerlisten verwalten
 - `contacts.stakeholders` — Stakeholder-Netzwerk
-- `contacts.tags-topics` — Kontakt-Tags und Themen
+- `contacts.tags-topics` — Kontakt-Themen
 - `contacts.bulk` — Kontakte in Massen bearbeiten
 - `contacts.activities` — Kontaktaktivitäten und Anrufe
 - `contacts.briefing-memory` — Briefingwissen je Kontakt
@@ -176,7 +176,7 @@ Die Angaben sind deklarierte Mindestrollen. Die tatsächlich wirksame Berechtigu
 - `knowledge.ask` — Wissensfrage stellen
 - `knowledge.answer` — Frage beantworten
 - `knowledge.short-answer` — Kurzantwort neben der Langantwort
-- `knowledge.tags` — Tags und Themenzuordnung
+- `knowledge.tags` — Themenzuordnung im Wissen
 - `knowledge.sources` — Quellen und Belege
 - `knowledge.attachments` — Anhänge an Wissensfragen
 - `knowledge.comments-follow` — Kommentare und Folgen
@@ -279,7 +279,7 @@ Die Angaben sind deklarierte Mindestrollen. Die tatsächlich wirksame Berechtigu
 - `contacts.merge` — Kontakte zusammenführen
 - `contacts.distribution-lists` — Verteilerlisten verwalten
 - `contacts.stakeholders` — Stakeholder-Netzwerk
-- `contacts.tags-topics` — Kontakt-Tags und Themen
+- `contacts.tags-topics` — Kontakt-Themen
 - `contacts.privacy` — Kontakt-Datenschutz und Aufbewahrung
 - `contacts.bulk` — Kontakte in Massen bearbeiten
 - `contacts.activities` — Kontaktaktivitäten und Anrufe
@@ -402,7 +402,7 @@ Die Angaben sind deklarierte Mindestrollen. Die tatsächlich wirksame Berechtigu
 - `knowledge.short-answer` — Kurzantwort neben der Langantwort
 - `knowledge.review` — Wissensantwort prüfen und freigeben
 - `knowledge.validity` — Gültigkeit und Veraltung
-- `knowledge.tags` — Tags und Themenzuordnung
+- `knowledge.tags` — Themenzuordnung im Wissen
 - `knowledge.sources` — Quellen und Belege
 - `knowledge.attachments` — Anhänge an Wissensfragen
 - `knowledge.comments-follow` — Kommentare und Folgen
@@ -490,7 +490,7 @@ Die Angaben sind deklarierte Mindestrollen. Die tatsächlich wirksame Berechtigu
 - `contacts.merge` — Kontakte zusammenführen
 - `contacts.distribution-lists` — Verteilerlisten verwalten
 - `contacts.stakeholders` — Stakeholder-Netzwerk
-- `contacts.tags-topics` — Kontakt-Tags und Themen
+- `contacts.tags-topics` — Kontakt-Themen
 - `contacts.privacy` — Kontakt-Datenschutz und Aufbewahrung
 - `contacts.bulk` — Kontakte in Massen bearbeiten
 - `contacts.activities` — Kontaktaktivitäten und Anrufe
@@ -589,7 +589,7 @@ Die Angaben sind deklarierte Mindestrollen. Die tatsächlich wirksame Berechtigu
 - `knowledge.short-answer` — Kurzantwort neben der Langantwort
 - `knowledge.review` — Wissensantwort prüfen und freigeben
 - `knowledge.validity` — Gültigkeit und Veraltung
-- `knowledge.tags` — Tags und Themenzuordnung
+- `knowledge.tags` — Themenzuordnung im Wissen
 - `knowledge.sources` — Quellen und Belege
 - `knowledge.attachments` — Anhänge an Wissensfragen
 - `knowledge.comments-follow` — Kommentare und Folgen

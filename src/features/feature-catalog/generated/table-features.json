@@ -581,6 +581,11 @@
       "id": "casefiles.links",
       "name": "Fallakte verknüpfen (Dokumente, Kontakte, Themen, Notizen)",
       "area": "vorgaenge"
+    },
+    {
+      "id": "casefiles.manage",
+      "name": "Fallakte anlegen und führen",
+      "area": "vorgaenge"
     }
   ],
   "case_file_types": [
@@ -680,6 +685,11 @@
     }
   ],
   "case_item_topics": [
+    {
+      "id": "cases.create",
+      "name": "Vorgang erfassen",
+      "area": "vorgaenge"
+    },
     {
       "id": "topics.manage",
       "name": "Themen verwalten",
@@ -827,7 +837,7 @@
     },
     {
       "id": "contacts.tags-topics",
-      "name": "Kontakt-Tags und Themen",
+      "name": "Kontakt-Themen",
       "area": "kontakte"
     }
   ],
@@ -1083,6 +1093,11 @@
     {
       "id": "documents.list",
       "name": "Dokumentenliste und Suche",
+      "area": "dokumente"
+    },
+    {
+      "id": "documents.upload-version",
+      "name": "Dokument hochladen und versionieren",
       "area": "dokumente"
     }
   ],
@@ -2073,7 +2088,7 @@
   "knowledge_document_topics": [
     {
       "id": "knowledge.tags",
-      "name": "Tags und Themenzuordnung",
+      "name": "Themenzuordnung im Wissen",
       "area": "wissen"
     }
   ],
@@ -2180,11 +2195,16 @@
     },
     {
       "id": "knowledge.tags",
-      "name": "Tags und Themenzuordnung",
+      "name": "Themenzuordnung im Wissen",
       "area": "wissen"
     }
   ],
   "knowledge_question_topics": [
+    {
+      "id": "knowledge.tags",
+      "name": "Themenzuordnung im Wissen",
+      "area": "wissen"
+    },
     {
       "id": "topics.manage",
       "name": "Themen verwalten",
@@ -2241,7 +2261,7 @@
     },
     {
       "id": "knowledge.tags",
-      "name": "Tags und Themenzuordnung",
+      "name": "Themenzuordnung im Wissen",
       "area": "wissen"
     }
   ],
@@ -3167,18 +3187,6 @@
       "area": "schnittstellen"
     }
   ],
-  "tags": [
-    {
-      "id": "contacts.create",
-      "name": "Kontakt anlegen",
-      "area": "kontakte"
-    },
-    {
-      "id": "contacts.tags-topics",
-      "name": "Kontakt-Tags und Themen",
-      "area": "kontakte"
-    }
-  ],
   "task_archive_settings": [
     {
       "id": "tasks.archive",
@@ -3735,6 +3743,16 @@
   ],
   "topic_module_settings": [
     {
+      "id": "cases.create",
+      "name": "Vorgang erfassen",
+      "area": "vorgaenge"
+    },
+    {
+      "id": "knowledge.tags",
+      "name": "Themenzuordnung im Wissen",
+      "area": "wissen"
+    },
+    {
       "id": "topics.manage",
       "name": "Themen verwalten",
       "area": "organisation"
@@ -3742,13 +3760,23 @@
   ],
   "topics": [
     {
+      "id": "casefiles.manage",
+      "name": "Fallakte anlegen und führen",
+      "area": "vorgaenge"
+    },
+    {
       "id": "contacts.tags-topics",
-      "name": "Kontakt-Tags und Themen",
+      "name": "Kontakt-Themen",
       "area": "kontakte"
     },
     {
+      "id": "documents.upload-version",
+      "name": "Dokument hochladen und versionieren",
+      "area": "dokumente"
+    },
+    {
       "id": "knowledge.tags",
-      "name": "Tags und Themenzuordnung",
+      "name": "Themenzuordnung im Wissen",
       "area": "wissen"
     },
     {

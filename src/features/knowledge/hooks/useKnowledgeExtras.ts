@@ -35,6 +35,14 @@ export function useKnowledgeTags() {
 }
 export type KnowledgeExtraRequest =
   | {
+      name: "knowledge_qa_set_topics";
+      args: {
+        p_question: string;
+        p_expected_revision: number;
+        p_topic_ids: string[];
+      };
+    }
+  | {
       name: "knowledge_qa_set_tags";
       args: {
         p_question: string;
@@ -81,6 +89,25 @@ export function useKnowledgeExtraWrite() {
     },
     onSettled: () =>
       client.invalidateQueries({ queryKey: knowledgeKey(userId, tenantId) }),
+  });
+}
+
+export function useKnowledgeQuestionTopics(questionId: string) {
+  const { userId, tenantId } = useKnowledgeScope();
+  return useQuery({
+    queryKey: [...knowledgeKey(userId, tenantId), "question-topics", questionId],
+    enabled: Boolean(userId && tenantId && questionId),
+    queryFn: async ({ signal }) => {
+      const { data, error } = await supabase
+        .from("knowledge_question_topics")
+        .select("topic_id")
+        .eq("tenant_id", tenantId!)
+        .eq("question_id", questionId)
+        .order("created_at")
+        .abortSignal(signal);
+      if (error) throw new Error(error.message);
+      return (data ?? []).map((row) => row.topic_id);
+    },
   });
 }
 

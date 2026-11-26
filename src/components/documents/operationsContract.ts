@@ -19,7 +19,7 @@ export interface UploadDocumentMutationInput {
   title: string;
   description: string;
   category: string;
-  tags: string[];
+  topicIds: string[];
   status: string;
   folderId: string;
   contacts: string[];
@@ -32,7 +32,7 @@ export interface UpdateDocumentMutationInput {
   title: string;
   description: string;
   category: string;
-  tags: string[];
+  topicIds: string[];
   status: string;
   folderId: string;
 }

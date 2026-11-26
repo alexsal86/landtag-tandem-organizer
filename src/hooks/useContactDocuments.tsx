@@ -12,7 +12,9 @@ export interface Document {
   file_type?: string;
   file_size?: number;
   category?: string;
+  /** Legacy field, kept for older callers; new links live in topic_ids. */
   tags?: string[];
+  topic_ids?: string[];
   status: string;
   folder_id?: string;
   created_at: string;
@@ -27,14 +29,20 @@ export interface DirectDocument extends Document {
   document_contact_id: string;
 }
 
-export const useContactDocuments = (contactId?: string, contactTags?: string[]) => {
+export const useContactDocuments = (contactId?: string, contactTopicIds?: string[]) => {
   const [directDocuments, setDirectDocuments] = useState<DirectDocument[]>([]);
   const [taggedDocuments, setTaggedDocuments] = useState<Document[]>([]);
   const [loading, setLoading] = useState(false);
   const { currentTenant } = useTenant();
 
-  const normalizedContactTags = useMemo(() => contactTags ?? [], [contactTags]);
-  const contactTagsKey = useMemo(() => normalizedContactTags.join(','), [normalizedContactTags]);
+  const topicIdsKey = useMemo(
+    () => [...new Set(contactTopicIds ?? [])].sort().join(','),
+    [contactTopicIds],
+  );
+  const normalizedTopicIds = useMemo(
+    () => (topicIdsKey ? topicIdsKey.split(',') : []),
+    [topicIdsKey],
+  );
 
   const fetchDocuments = useCallback(async () => {
     if (!contactId || !currentTenant?.id) return;
@@ -56,7 +64,6 @@ export const useContactDocuments = (contactId?: string, contactTags?: string[]) 
             file_type,
             file_size,
             category,
-            tags,
             status,
             folder_id,
             created_at,
@@ -81,38 +88,74 @@ export const useContactDocuments = (contactId?: string, contactTags?: string[]) 
           document_contact_id: item.id,
         }));
 
-      setDirectDocuments(directDocs);
+      const directDocIds = new Set(directDocs.map((doc) => doc.id));
+      let taggedIds: string[] = [];
 
-      const directDocIds = directDocs.map((doc) => doc.id);
-
-      if (normalizedContactTags.length > 0) {
-        let query = supabase
-          .from('documents')
-          .select('id, title, description, file_name, file_path, file_type, file_size, category, tags, status, folder_id, created_at, updated_at, user_id, tenant_id')
+      if (normalizedTopicIds.length > 0) {
+        const { data: links, error: linkError } = await supabase
+          .from('document_topics')
+          .select('document_id')
           .eq('tenant_id', currentTenant.id)
-          .overlaps('tags', normalizedContactTags);
+          .in('topic_id', normalizedTopicIds);
 
-        if (directDocIds.length > 0) {
-          query = query.not('id', 'in', `(${directDocIds.join(',')})`);
+        if (linkError) {
+          debugConsole.error('Error fetching topic-linked documents:', linkError);
+          throw linkError;
         }
 
-        const { data: taggedData, error: taggedError } = await query.order('created_at', { ascending: false });
+        taggedIds = [...new Set(
+          ((links ?? []) as Array<{ document_id: string }>).map((link) => link.document_id),
+        )].filter((id) => !directDocIds.has(id));
+      }
+
+      let taggedDocs: Document[] = [];
+      if (taggedIds.length > 0) {
+        const { data: taggedData, error: taggedError } = await supabase
+          .from('documents')
+          .select('id, title, description, file_name, file_path, file_type, file_size, category, status, folder_id, created_at, updated_at, user_id, tenant_id')
+          .eq('tenant_id', currentTenant.id)
+          .in('id', taggedIds)
+          .order('created_at', { ascending: false });
 
         if (taggedError) {
           debugConsole.error('Error fetching tagged documents:', taggedError);
           throw taggedError;
         }
-
-        setTaggedDocuments((taggedData || []) as Document[]);
-      } else {
-        setTaggedDocuments([]);
+        taggedDocs = (taggedData || []) as Document[];
       }
+
+      const allDocIds = [...new Set([...directDocIds, ...taggedDocs.map((doc) => doc.id)])];
+      const topicMap: Record<string, string[]> = {};
+      if (allDocIds.length > 0) {
+        const { data: topicLinks, error: topicError } = await supabase
+          .from('document_topics')
+          .select('document_id, topic_id')
+          .eq('tenant_id', currentTenant.id)
+          .in('document_id', allDocIds);
+
+        if (topicError) {
+          debugConsole.error('Error fetching document topics:', topicError);
+          throw topicError;
+        }
+        for (const link of topicLinks ?? []) {
+          topicMap[link.document_id] = [...(topicMap[link.document_id] ?? []), link.topic_id];
+        }
+      }
+
+      setDirectDocuments(directDocs.map((doc) => ({
+        ...doc,
+        topic_ids: topicMap[doc.id] ?? [],
+      })));
+      setTaggedDocuments(taggedDocs.map((doc) => ({
+        ...doc,
+        topic_ids: topicMap[doc.id] ?? [],
+      })));
     } catch (error) {
       debugConsole.error('Error fetching contact documents:', error);
     } finally {
       setLoading(false);
     }
-  }, [contactId, currentTenant?.id, normalizedContactTags]);
+  }, [contactId, currentTenant?.id, normalizedTopicIds]);
 
   const fetchDocumentsRef = useRef(fetchDocuments);
 
@@ -137,7 +180,7 @@ export const useContactDocuments = (contactId?: string, contactTags?: string[]) 
 
   useEffect(() => {
     void fetchDocuments();
-  }, [fetchDocuments, contactTagsKey]);
+  }, [fetchDocuments, topicIdsKey]);
 
   useEffect(() => {
     if (!contactId) return;

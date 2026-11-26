@@ -55,6 +55,8 @@ export function HistoryPanel({
                           .join(", ") || "Keine Tags"
                       : "Tags geändert";
                   })()}`
+                : event.event_type === "topics_changed"
+                  ? "Themen geändert"
                 : String(
                     (["comment_added", "outdated_reported"].includes(
                       event.event_type,

@@ -12,6 +12,12 @@ const alice = '33333333-3333-4333-8333-333333333333';
 const bob = '44444444-4444-4444-8444-444444444444';
 const clara = '55555555-5555-4555-8555-555555555555';
 const inactive = '66666666-6666-4666-8666-666666666666';
+const topicA = 'aaaaaaaa-1111-4111-8111-111111111111';
+const topicB = 'bbbbbbbb-1111-4111-8111-111111111111';
+const topicC = 'cccccccc-1111-4111-8111-111111111111';
+const topicD = 'dddddddd-1111-4111-8111-111111111111';
+const topicE = 'eeeeeeee-1111-4111-8111-111111111111';
+const topicF = 'ffffffff-1111-4111-8111-111111111111';
 const legacyA = '77777777-7777-4777-8777-777777777777';
 const legacyB = '88888888-8888-4888-8888-888888888888';
 const read = async (sql, args = []) => (await db.query(sql, args)).rows;
@@ -68,6 +74,10 @@ try {
     CREATE TABLE knowledge_document_snapshots(document_id uuid);
     CREATE TABLE knowledge_document_topics(document_id uuid);
     CREATE TABLE knowledge_document_collaborators(document_id uuid);
+    CREATE TABLE topics(id uuid PRIMARY KEY,tenant_id uuid NOT NULL,label text NOT NULL,is_active boolean NOT NULL DEFAULT true,merged_into uuid);
+    CREATE TABLE topic_module_settings(tenant_id uuid NOT NULL,module text NOT NULL,is_enabled boolean NOT NULL DEFAULT true,requirement text NOT NULL DEFAULT 'optional',max_topics integer NOT NULL DEFAULT 5,creation_policy text NOT NULL DEFAULT 'admins',show_filter boolean NOT NULL DEFAULT true,PRIMARY KEY(tenant_id,module));
+    CREATE TABLE knowledge_question_topics(tenant_id uuid NOT NULL,question_id uuid NOT NULL,topic_id uuid NOT NULL,created_at timestamptz NOT NULL DEFAULT now(),PRIMARY KEY(question_id,topic_id));
+    GRANT SELECT ON topics,topic_module_settings,knowledge_question_topics TO authenticated,anon;
     INSERT INTO knowledge_documents VALUES('${legacyA}','${officeA}','${alice}',false,false),('${legacyB}','${officeB}','${bob}',true,false);
     INSERT INTO knowledge_document_versions VALUES('${legacyA}','${officeA}'),('${legacyB}','${officeB}');
     INSERT INTO knowledge_document_snapshots VALUES('${legacyA}'),('${legacyB}');
@@ -88,26 +98,31 @@ try {
 
   }
 
-  for (const file of ['20261111100800_knowledge_tags.sql','20261111100900_knowledge_sources.sql','20261111101000_knowledge_conversation_followers.sql','20261111101100_knowledge_workspace_filters.sql','20261125230000_knowledge_answer_short.sql']) {
+  for (const file of ['20261111100800_knowledge_tags.sql','20261111100900_knowledge_sources.sql','20261111101000_knowledge_conversation_followers.sql','20261111101100_knowledge_workspace_filters.sql','20261125230000_knowledge_answer_short.sql','20261126120000_topic_etappe1_write_paths.sql']) {
     const migration=await readFile(new URL(`../supabase/migrations/${file}`,import.meta.url),'utf8');
     await db.exec(migration); await db.exec(migration);
   }
+  await db.exec(`
+    INSERT INTO topics(id,tenant_id,label) VALUES
+      ('${topicA}','${officeA}','Urlaub'),('${topicB}','${officeA}','Büro'),('${topicC}','${officeA}','Team'),
+      ('${topicD}','${officeA}','Vier'),('${topicE}','${officeA}','Fünf'),('${topicF}','${officeA}','Sechs');
+  `);
   await actor(alice);
-  let q=await create(officeA,'Tag-Abnahme');
-  await assert.rejects(read('SELECT knowledge_qa_set_tags($1,$2,$3)',[q.id,q.revision,['Urlaub']]),e=>e.code==='22023');
+  let q=await create(officeA,'Themen-Abnahme');
+  await assert.rejects(read('SELECT knowledge_qa_set_topics($1,$2,$3)',[q.id,q.revision,[topicA]]),e=>e.code==='22023');
   q=await save(q,'Eine Antwort.');
-  await read('SELECT knowledge_qa_set_tags($1,$2,$3)',[q.id,q.revision,['Urlaub','Büro']]);
+  await read('SELECT knowledge_qa_set_topics($1,$2,$3)',[q.id,q.revision,[topicA,topicB]]);
   q=(await read('SELECT * FROM knowledge_questions WHERE id=$1',[q.id]))[0];
   const page=(await read("SELECT * FROM knowledge_qa_list($1,'','answers',20,NULL,'','','updated','','')",[officeA]))[0];
-  assert.equal(page.items[0].tags.length,2); assert.ok(page.counts); assert.equal(page.topics.length,2);
-  const tag=page.items[0].tags.find(t=>t.name==='Urlaub');
-  assert.equal((await read("SELECT * FROM knowledge_qa_list($1,'','answers',20,NULL,'','','updated',$2,'')",[officeA,tag.id]))[0].total_count,1);
+  assert.equal(page.items[0].topics.length,2); assert.ok(page.counts); assert.equal(page.topics.length,2);
+  const topic=page.items[0].topics.find(t=>t.name==='Urlaub');
+  assert.equal((await read("SELECT * FROM knowledge_qa_list($1,'','answers',20,NULL,'','','updated',$2,'')",[officeA,topic.id]))[0].total_count,1);
   assert.equal((await read("SELECT * FROM knowledge_qa_list($1,'','answers',20,NULL,'','','updated','','open')",[officeA]))[0].total_count,0);
   assert.equal((await read("SELECT * FROM knowledge_qa_list($1,'Urlaub')",[officeA]))[0].total_count,1);
   await assert.rejects(read("SELECT * FROM knowledge_qa_list($1,'','answers',20,NULL,'','','updated','bad','')",[officeA]),e=>e.code==='22023');
   await assert.rejects(read("SELECT * FROM knowledge_qa_list($1,'','answers',20,NULL,'','','updated','','bad')",[officeA]),e=>e.code==='22023');
-  await assert.rejects(read('SELECT knowledge_qa_set_tags($1,$2,$3)',[q.id,q.revision,['Urlaub','urlaub']]),e=>e.code==='22023');
-  await assert.rejects(read('SELECT knowledge_qa_set_tags($1,$2,$3)',[q.id,q.revision,['aa','bb','cc','dd','ee','ff']]),e=>e.code==='22023');
+  await assert.rejects(read('SELECT knowledge_qa_set_topics($1,$2,$3)',[q.id,q.revision,[topicA,topicA]]),e=>e.code==='22023');
+  await assert.rejects(read('SELECT knowledge_qa_set_topics($1,$2,$3)',[q.id,q.revision,[topicA,topicB,topicC,topicD,topicE,topicF]]),e=>e.code==='22023');
   const doc='99999999-1111-4111-8111-111111111111'; const hidden='99999999-2222-4222-8222-222222222222';
   await owner(); await db.query('INSERT INTO documents VALUES($1,$2,$3,$4),($5,$2,$6,$7)',[doc,officeA,'Sichtbares Dokument',alice,hidden,'Vertrauliches Dokument',clara]); await db.query('INSERT INTO case_files VALUES($1,$2,$3,$4)',[hidden,officeA,'Vertrauliche Fallakte',clara]); await actor(alice);
   await denied(read("SELECT knowledge_qa_add_source($1,$2,'document','',NULL,$3)",[q.id,q.revision,hidden]));
@@ -117,8 +132,8 @@ try {
   assert.equal((await read('SELECT title FROM knowledge_question_sources WHERE question_id=$1',[q.id]))[0].title,'Sichtbares Dokument');
   await assert.rejects(read("SELECT knowledge_qa_add_source($1,$2,'link','Script','javascript:alert(1)')",[q.id,q.revision]),e=>e.code==='23514');
   await owner(); await db.query("INSERT INTO action_permissions VALUES($1,'knowledge.write','{}')",[officeA]); await actor(alice);
-  await denied(read('SELECT knowledge_qa_set_tags($1,$2,$3)',[q.id,q.revision,['Nein']]));
-  await denied(read('INSERT INTO knowledge_question_tags(tenant_id,question_id,tag_id) VALUES($1,$2,$3)',[officeA,q.id,tag.id]));
+  await denied(read('SELECT knowledge_qa_set_topics($1,$2,$3)',[q.id,q.revision,[topicC]]));
+  await denied(read('INSERT INTO knowledge_question_topics(tenant_id,question_id,topic_id) VALUES($1,$2,$3)',[officeA,q.id,topicC]));
   await denied(read("INSERT INTO knowledge_question_sources(tenant_id,question_id,kind,title,url,created_by,client_revision) VALUES($1,$2,'link','Verboten','https://example.test',$3,$4)",[officeA,q.id,alice,q.revision]));
   await denied(read("SELECT knowledge_qa_add_source($1,$2,'link','Gesperrt','https://example.test')",[q.id,q.revision]));
   await owner(); await db.query("DELETE FROM action_permissions WHERE action_key='knowledge.write'"); await actor(bob);
@@ -146,6 +161,6 @@ try {
   assert.equal((await read('SELECT * FROM knowledge_question_followers WHERE question_id=$1',[open.id])).length,0,'Migration replay preserves an explicit unfollow');
   await actor(bob); await denied(read('SELECT knowledge_qa_follow($1,true)',[open.id]));
   await denied(read('SELECT knowledge_qa_report_outdated($1,$2)',[open.id,open.revision]));
-  console.log('Knowledge 11–14 acceptance: quick/tag filters, tag rights, bounded metadata and idempotent migrations passed.');
+  console.log('Knowledge 11–14 acceptance: quick/topic filters, topic rights, bounded metadata and idempotent migrations passed.');
 } catch(error) { console.error(error.message,error.code??'',error.stack); process.exitCode=1; }
 finally { await db.close(); }

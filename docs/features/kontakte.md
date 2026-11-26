@@ -27,7 +27,7 @@ _Auto-generiert mit `npm run update:feature-catalog` aus dem zentralen Funktions
 | `contacts.create` Kontakt anlegen | Stammdaten | fachlich | implementiert | rollenabhängig | Selbsttest |
 | `contacts.edit` Kontakt bearbeiten | Stammdaten | fachlich | implementiert | rollenabhängig | Selbsttest |
 | `contacts.detail` Kontaktprofil mit Aktivitäten | Stammdaten | fachlich | implementiert | UI | kein Test |
-| `contacts.tags-topics` Kontakt-Tags und Themen | Struktur | fachlich | implementiert | UI | kein Test |
+| `contacts.tags-topics` Kontakt-Themen | Struktur | fachlich | implementiert | UI | kein Test |
 | `contacts.distribution-lists` Verteilerlisten verwalten | Verteiler | fachlich | implementiert | UI | kein Test |
 
 ## Unterbereiche
@@ -48,7 +48,7 @@ _Auto-generiert mit `npm run update:feature-catalog` aus dem zentralen Funktions
 
 ## Datenbanktabellen
 
-`audit_log_entries`, `bulk_action_audit`, `call_logs`, `contact_activities`, `contact_briefing_memory`, `contact_topics`, `contacts`, `distribution_list_members`, `distribution_lists`, `document_contacts`, `expense_budgets`, `field_permissions`, `funding_participants`, `fundings`, `map_flag_topics`, `map_flag_types`, `map_flags`, `map_layers`, `party_associations`, `regions`, `tags`, `topics`
+`audit_log_entries`, `bulk_action_audit`, `call_logs`, `contact_activities`, `contact_briefing_memory`, `contact_topics`, `contacts`, `distribution_list_members`, `distribution_lists`, `document_contacts`, `expense_budgets`, `field_permissions`, `funding_participants`, `fundings`, `map_flag_topics`, `map_flag_types`, `map_flags`, `map_layers`, `party_associations`, `regions`, `topics`
 
 ## Selbsttest-Szenarien
 
@@ -59,7 +59,7 @@ _Auto-generiert mit `npm run update:feature-catalog` aus dem zentralen Funktions
 ## Funktionsdetails
 
 ### `contacts.create` — Kontakt anlegen
-Legt Personen und Organisationen mit Stammdaten, Kategorien, Tags, Themen und Zuordnungen an.
+Legt Personen und Organisationen mit Stammdaten, Kategorien, Themen und Zuordnungen an.
 
 - **Kategorie:** fachlich
 - **Implementierung:** implementiert
@@ -73,7 +73,7 @@ Legt Personen und Organisationen mit Stammdaten, Kategorien, Tags, Themen und Zu
 - **Hooks:** —
 - **Edge Functions:** —
 - **Datenbankfunktionen:** `log_contact_creation`, `validate_organization_reference`, `assign_contact_to_organization`
-- **Tabellen:** `contacts`, `contact_topics`, `tags`, `party_associations`, `regions`
+- **Tabellen:** `contacts`, `contact_topics`, `party_associations`, `regions`
 - **Abhängigkeiten:** —
 - **Selbsttests:** `contact-lifecycle`
 - **Unit-Tests:** —
@@ -349,8 +349,8 @@ Zeigt Stakeholder auf Karten, verwaltet Flags, Ebenen und Netzwerk-Tags.
 
 - Keine.
 
-### `contacts.tags-topics` — Kontakt-Tags und Themen
-Vergibt Tags und Themen an Kontakte und synchronisiert sie mit der zentralen Tag- und Themenstruktur.
+### `contacts.tags-topics` — Kontakt-Themen
+Vergibt Themen an Kontakte über contact_topics und zeigt sie in Liste, Detail und Bearbeitung; die früheren Tag-Textarrays werden nicht mehr fortgeschrieben.
 
 - **Kategorie:** fachlich
 - **Implementierung:** implementiert
@@ -361,10 +361,10 @@ Vergibt Tags und Themen an Kontakte und synchronisiert sie mit der zentralen Tag
 - **Routen:** —
 - **Frontend-Komponenten:** —
 - **Services:** —
-- **Hooks:** `src/hooks/useTags.tsx`, `src/hooks/useContactTopics.tsx`
+- **Hooks:** `src/features/topics/useEntityTopics.ts`, `src/components/topics/TopicPicker.tsx`
 - **Edge Functions:** —
-- **Datenbankfunktionen:** `sync_contact_tags_to_tags_table`, `sync_existing_contact_tags`, `get_contact_tags`, `sync_tags_to_topics`, `inherit_organization_tags`
-- **Tabellen:** `tags`, `contact_topics`, `topics`
+- **Datenbankfunktionen:** —
+- **Tabellen:** `contact_topics`, `topics`
 - **Abhängigkeiten:** `contacts.create`, `topics.manage`
 - **Selbsttests:** —
 - **Unit-Tests:** —
@@ -374,16 +374,17 @@ Vergibt Tags und Themen an Kontakte und synchronisiert sie mit der zentralen Tag
 
 **Nachweise im Quellcode**
 
-- src/hooks/useTags.tsx
-- src/hooks/useContactTopics.tsx
+- src/features/topics/useEntityTopics.ts
+- src/components/topics/TopicPicker.tsx
+- src/hooks/useContactDocuments.tsx
 
 **Bekannte Einschränkungen**
 
-- Keine.
+- Das frühere Tag-Feld bleibt als historischer Bestand in contacts.tags erhalten.
 
 **Offene Prüfpunkte**
 
-- Der Abgleich zwischen Kontakt-Tags und zentralen Tags ist nicht durch einen Test abgedeckt.
+- Die Junction-Schreibpfade sind durch keinen eigenen Szenario-Schritt abgedeckt.
 
 ### `contacts.privacy` — Kontakt-Datenschutz und Aufbewahrung
 Zeigt Datenschutzhinweise, berechnet Aufbewahrungsfristen und maskiert geschützte Kontaktdaten.

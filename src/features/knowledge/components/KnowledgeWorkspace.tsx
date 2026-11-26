@@ -11,6 +11,7 @@ import {
   useKnowledgeScope,
 } from "../hooks/useKnowledgeQuestions";
 import { knowledgeUrlState } from "../logic";
+import { useTopicModuleSettings } from "@/features/topics/useTopicModuleSettings";
 import type { KnowledgeView } from "../types";
 import { AskQuestionDialog } from "./AskQuestionDialog";
 import { KnowledgeQuestionRow } from "./KnowledgeQuestionRow";
@@ -59,12 +60,18 @@ function KnowledgeWorkspaceContent() {
   const [asking, setAsking] = useState<string | null>(null);
   const questionId = params.get("frage");
   const { view, filters } = knowledgeUrlState(params);
-  const list = useKnowledgeQuestions(search, view, null, filters);
+  const topicRule = useTopicModuleSettings("knowledge_questions");
+  const showTopicFilter = topicRule.isEnabled && topicRule.showFilter;
+  const listFilters = showTopicFilter
+    ? filters
+    : { ...filters, topic: undefined };
+  const list = useKnowledgeQuestions(search, view, null, listFilters);
 
   const updateParam = (key: string, value: string) => {
     setParams((previous) => {
       const next = new URLSearchParams(previous);
       next.delete("frage");
+      if (key === "thema") next.delete("tag");
       if (value) next.set(key, value);
       else next.delete(key);
       return next;
@@ -130,33 +137,36 @@ function KnowledgeWorkspaceContent() {
             />
           )}
         </div>
-        {filters.tag && (
+        {showTopicFilter && filters.topic && (
           <Button
             variant="ghost"
             size="sm"
-            onClick={() => updateParam("tag", "")}
+            onClick={() => updateParam("thema", "")}
           >
-            Tagfilter entfernen
+            Themenfilter entfernen
           </Button>
         )}
-        {list.topics.length > 0 && (
+        {showTopicFilter && list.topics.length > 0 && (
           <nav
             aria-label="Häufige Themen"
             className={styles.frequentTopics}
           >
             <span>Häufige Themen</span>
-            {list.topics.map((tag) => (
+            {list.topics.map((topic) => (
               <Button
-                key={tag.id}
+                key={topic.id}
                 size="sm"
                 variant="outline"
                 className={styles.frequentTopicChip}
-                aria-pressed={filters.tag === tag.id}
+                aria-pressed={filters.topic === topic.id}
                 onClick={() =>
-                  updateParam("tag", filters.tag === tag.id ? "" : tag.id)
+                  updateParam(
+                    "thema",
+                    filters.topic === topic.id ? "" : topic.id,
+                  )
                 }
               >
-                {tag.name} <span>{tag.count}</span>
+                {topic.name} <span>{topic.count}</span>
               </Button>
             ))}
           </nav>

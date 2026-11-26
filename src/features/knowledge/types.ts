@@ -18,6 +18,7 @@ export type KnowledgeCard = KnowledgeQuestion &
     effective_review_status: string | null;
     server_now: string;
     tags?: KnowledgeTag[];
+    topics?: KnowledgeTopic[];
   };
 export type KnowledgeAttachment =
   Database["public"]["Tables"]["knowledge_question_attachments"]["Row"];
@@ -61,27 +62,30 @@ export type KnowledgeSummary = Pick<
     answer_excerpt: string;
     answer_short: string | null;
     tags?: KnowledgeTag[];
+    topics?: KnowledgeTopic[];
   };
 export interface KnowledgePage {
   items: KnowledgeSummary[];
   total_count: number;
   next_cursor: Json | null;
   counts?: Record<KnowledgeView, number>;
-  topics?: (KnowledgeTag & { count: number })[];
+  topics?: (KnowledgeTopic & { count: number })[];
 }
 
 export interface KnowledgeFilters {
   status: "" | "open" | "unverified" | "verified" | "needs_review";
   assignee: string;
   sort: "updated" | "oldest";
-  tag?: string;
+  topic?: string;
   quick?: string;
 }
 
-export interface KnowledgeTag {
+export interface KnowledgeTopic {
   id: string;
   name: string;
 }
+
+export type KnowledgeTag = KnowledgeTopic;
 
 export type KnowledgeSourceKind =
   "link" | "document" | "law" | "person" | "case" | "other";

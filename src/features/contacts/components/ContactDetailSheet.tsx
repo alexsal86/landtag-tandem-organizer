@@ -30,6 +30,8 @@ import { supabase } from "@/integrations/supabase/client";
 import { debugConsole } from "@/utils/debugConsole";
 import { getContactAvatarColor } from "@/components/contacts/utils/avatarColors";
 import { ContactEditForm } from "@/features/contacts/components/ContactEditForm";
+import { TopicDisplay } from "@/components/topics/TopicSelector";
+import { useEntityTopics } from "@/features/topics/useEntityTopics";
 import { notify } from "@/lib/notify";
 
 interface ContactRow {
@@ -205,6 +207,7 @@ export function ContactDetailSheet({ contactId, isOpen, onClose, onContactUpdate
   const [loading, setLoading] = useState(false);
   const [isEditing, setIsEditing] = useState(false);
   const [tab, setTab] = useState("overview");
+  const { topicIds } = useEntityTopics("contact", contactId);
 
   useEffect(() => {
     if (!contactId || !isOpen) return;
@@ -217,7 +220,7 @@ export function ContactDetailSheet({ contactId, isOpen, onClose, onContactUpdate
         const [{ data: c, error: cErr }, { data: act }, { data: cs }] = await Promise.all([
           supabase
             .from("contacts")
-            .select("id, contact_type, name, role:position, organization, organization_id, email, phone, address, birthday, website, linkedin, facebook, instagram, category, priority, last_contact, avatar_url, notes, tags, business_street, business_house_number, business_postal_code, business_city, business_country, updated_at")
+            .select("id, contact_type, name, role:position, organization, organization_id, email, phone, address, birthday, website, linkedin, facebook, instagram, category, priority, last_contact, avatar_url, notes, business_street, business_house_number, business_postal_code, business_city, business_country, updated_at")
             .eq("id", contactId)
             .maybeSingle(),
           supabase
@@ -565,17 +568,13 @@ export function ContactDetailSheet({ contactId, isOpen, onClose, onContactUpdate
                     </section>
                   )}
 
-                  {/* Tags + relations */}
-                  {((contact.tags?.length ?? 0) > 0 || relations.length > 0) && (
+                  {/* Topics + relations */}
+                  {(topicIds.length > 0 || relations.length > 0) && (
                     <section className="grid grid-cols-2 gap-5">
-                      {contact.tags && contact.tags.length > 0 && (
+                      {topicIds.length > 0 && (
                         <div>
-                          <div className="section-label mb-2">Tags</div>
-                          <div className="flex flex-wrap gap-1.5">
-                            {contact.tags.map((t) => (
-                              <Badge key={t} variant="secondary" className="font-normal">{t}</Badge>
-                            ))}
-                          </div>
+                          <div className="section-label mb-2">Themen</div>
+                          <TopicDisplay topicIds={topicIds} maxDisplay={5} />
                         </div>
                       )}
                       {relations.length > 0 && (

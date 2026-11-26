@@ -2299,19 +2299,25 @@ export type Database = {
         Row: {
           case_file_id: string
           created_at: string
+          created_by: string | null
           id: string
+          tenant_id: string
           topic_id: string
         }
         Insert: {
           case_file_id: string
           created_at?: string
+          created_by?: string | null
           id?: string
+          tenant_id?: string
           topic_id: string
         }
         Update: {
           case_file_id?: string
           created_at?: string
+          created_by?: string | null
           id?: string
+          tenant_id?: string
           topic_id?: string
         }
         Relationships: [
@@ -3232,19 +3238,25 @@ export type Database = {
         Row: {
           contact_id: string
           created_at: string
+          created_by: string | null
           id: string
+          tenant_id: string
           topic_id: string
         }
         Insert: {
           contact_id: string
           created_at?: string
+          created_by?: string | null
           id?: string
+          tenant_id?: string
           topic_id: string
         }
         Update: {
           contact_id?: string
           created_at?: string
+          created_by?: string | null
           id?: string
+          tenant_id?: string
           topic_id?: string
         }
         Relationships: [
@@ -4311,20 +4323,26 @@ export type Database = {
       document_topics: {
         Row: {
           created_at: string
+          created_by: string | null
           document_id: string
           id: string
+          tenant_id: string
           topic_id: string
         }
         Insert: {
           created_at?: string
+          created_by?: string | null
           document_id: string
           id?: string
+          tenant_id?: string
           topic_id: string
         }
         Update: {
           created_at?: string
+          created_by?: string | null
           document_id?: string
           id?: string
+          tenant_id?: string
           topic_id?: string
         }
         Relationships: [
@@ -18581,7 +18599,7 @@ export type Database = {
         Returns: string
       }
       ensure_topic: {
-        Args: { p_label: string; p_tenant: string }
+        Args: { p_label: string; p_module?: string; p_tenant: string }
         Returns: string
       }
       ensure_weekly_question: { Args: { p_tenant: string }; Returns: string }
@@ -19558,6 +19576,14 @@ export type Database = {
           p_expected_revision: number
           p_names: string[]
           p_question: string
+        }
+        Returns: undefined
+      }
+      knowledge_qa_set_topics: {
+        Args: {
+          p_expected_revision: number
+          p_question: string
+          p_topic_ids: string[]
         }
         Returns: undefined
       }

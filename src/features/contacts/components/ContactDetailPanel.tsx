@@ -32,6 +32,7 @@ import { ContactInfoTab } from "@/components/contacts/ContactInfoTab";
 import { Facebook, Instagram, Linkedin, Twitter } from "@/components/icons/SocialIcons";
 import { User, Calendar, Tag, Briefcase } from "lucide-react";
 import { ContactCasesTab, useContactCases } from "./ContactCasesTab";
+import { useEntityTopics } from "@/features/topics/useEntityTopics";
 import { notify } from "@/lib/notify";
 
 interface CallLog {
@@ -134,7 +135,6 @@ export function ContactDetailPanel({ contactId, onClose, onContactUpdate }: Cont
   const [activitiesLoading, setActivitiesLoading] = useState(false);
   const [isEditing, setIsEditing] = useState(false);
   const [showCallLogWidget, setShowCallLogWidget] = useState(false);
-  const [allTags, setAllTags] = useState<{ direct: string[], inherited: string[] }>({ direct: [], inherited: [] });
   const [showDirectDocs, setShowDirectDocs] = useState(true);
   const [showTaggedDocs, setShowTaggedDocs] = useState(true);
   const [fundingDialogOpen, setFundingDialogOpen] = useState(false);
@@ -142,7 +142,13 @@ export function ContactDetailPanel({ contactId, onClose, onContactUpdate }: Cont
   const [deleteDialogOpen, setDeleteDialogOpen] = useState(false);
   const [favoriteUpdating, setFavoriteUpdating] = useState(false);
 
-  const { directDocuments, taggedDocuments, loading: documentsLoading, removeDocumentLink } = useContactDocuments(contactId || undefined, [...(allTags.direct || []), ...(allTags.inherited || [])]);
+  const directTopics = useEntityTopics("contact", contactId);
+  const inheritedTopics = useEntityTopics(
+    "contact",
+    contact?.contact_type === "person" ? contact.organization_id : null,
+  );
+  const contactTopicIds = [...directTopics.topicIds, ...inheritedTopics.topicIds];
+  const { directDocuments, taggedDocuments, loading: documentsLoading, removeDocumentLink } = useContactDocuments(contactId || undefined, contactTopicIds);
   const { data: fundings = [], isLoading: fundingsLoading } = useContactFundings(contactId || undefined);
   const { data: contactCases } = useContactCases(contactId);
 
@@ -162,15 +168,9 @@ export function ContactDetailPanel({ contactId, onClose, onContactUpdate }: Cont
     if (!contactId) return;
     try {
       setLoading(true);
-      const { data, error } = await supabase.from('contacts').select('id, user_id, name, email, phone, notes, role:position, organization, category, priority, last_contact, avatar_url, address, birthday, website, linkedin, facebook, instagram, contact_type, organization_id, tags, tenant_id, first_name, last_name, title, position, business_street, business_house_number, business_postal_code, business_city, business_country, business_phone, mobile_phone, is_favorite, coordinates, gender').eq('id', contactId).single();
+      const { data, error } = await supabase.from('contacts').select('id, user_id, name, email, phone, notes, role:position, organization, category, priority, last_contact, avatar_url, address, birthday, website, linkedin, facebook, instagram, contact_type, organization_id, tenant_id, first_name, last_name, title, position, business_street, business_house_number, business_postal_code, business_city, business_country, business_phone, mobile_phone, is_favorite, coordinates, gender').eq('id', contactId).single();
       if (error) throw error;
-      setContact({ ...data, contact_type: data.contact_type as "person" | "organization", category: data.category as Contact["category"], priority: data.priority as Contact["priority"], tags: data.tags || [], coordinates: data.coordinates as { lat: number; lng: number } | undefined } as Contact);
-      let inheritedTags: string[] = [];
-      if (data.contact_type === 'person' && data.organization_id) {
-        const { data: orgData, error: orgError } = await supabase.from('contacts').select('tags').eq('id', data.organization_id).single();
-        if (!orgError && orgData?.tags) inheritedTags = orgData.tags;
-      }
-      setAllTags({ direct: data.tags || [], inherited: inheritedTags });
+      setContact({ ...data, contact_type: data.contact_type as "person" | "organization", category: data.category as Contact["category"], priority: data.priority as Contact["priority"], coordinates: data.coordinates as { lat: number; lng: number } | undefined } as Contact);
     } catch (error) { debugConsole.error('Error fetching contact:', error); notify.error("Fehler", { description: "Kontakt konnte nicht geladen werden."
 }); } finally { setLoading(false); }
   };
@@ -321,7 +321,7 @@ export function ContactDetailPanel({ contactId, onClose, onContactUpdate }: Cont
             </TabsList>
           </div>
 
-          <TabsContent value="details"><ContactInfoTab contact={contact} allTags={allTags} /></TabsContent>
+          <TabsContent value="details"><ContactInfoTab contact={contact} directTopicIds={directTopics.topicIds} inheritedTopicIds={inheritedTopics.topicIds} /></TabsContent>
 
           <TabsContent value="activities" className="space-y-4 mt-4"><ActivityTimeline activities={activities} loading={activitiesLoading} /></TabsContent>
 
@@ -361,7 +361,7 @@ export function ContactDetailPanel({ contactId, onClose, onContactUpdate }: Cont
                   <Card><CardHeader className="pb-3"><CollapsibleTrigger className="flex items-center justify-between w-full hover:opacity-80 transition-opacity"><div className="flex items-center gap-2"><FileText className="h-4 w-4 text-primary" /><CardTitle className="text-sm">Direkt verknüpft</CardTitle><Badge variant="secondary" className="text-xs">{directDocuments.length}</Badge></div><ChevronDown className={`h-4 w-4 transition-transform ${showDirectDocs ? 'rotate-180' : ''}`} /></CollapsibleTrigger></CardHeader><CollapsibleContent><CardContent><ContactDocumentList documents={directDocuments} type="direct" onRemove={removeDocumentLink} /></CardContent></CollapsibleContent></Card>
                 </Collapsible>
                 <Collapsible open={showTaggedDocs} onOpenChange={setShowTaggedDocs}>
-                  <Card><CardHeader className="pb-3"><CollapsibleTrigger className="flex items-center justify-between w-full hover:opacity-80 transition-opacity"><div className="flex items-center gap-2"><Tag className="h-4 w-4 text-primary" /><CardTitle className="text-sm">Über Tags verknüpft</CardTitle><Badge variant="secondary" className="text-xs">{taggedDocuments.length}</Badge></div><ChevronDown className={`h-4 w-4 transition-transform ${showTaggedDocs ? 'rotate-180' : ''}`} /></CollapsibleTrigger></CardHeader><CollapsibleContent><CardContent><ContactDocumentList documents={taggedDocuments} type="tagged" contactTags={[...(allTags.direct || []), ...(allTags.inherited || [])]} /></CardContent></CollapsibleContent></Card>
+                  <Card><CardHeader className="pb-3"><CollapsibleTrigger className="flex items-center justify-between w-full hover:opacity-80 transition-opacity"><div className="flex items-center gap-2"><Tag className="h-4 w-4 text-primary" /><CardTitle className="text-sm">Über Themen verknüpft</CardTitle><Badge variant="secondary" className="text-xs">{taggedDocuments.length}</Badge></div><ChevronDown className={`h-4 w-4 transition-transform ${showTaggedDocs ? 'rotate-180' : ''}`} /></CollapsibleTrigger></CardHeader><CollapsibleContent><CardContent><ContactDocumentList documents={taggedDocuments} type="tagged" contactTopicIds={contactTopicIds} /></CardContent></CollapsibleContent></Card>
                 </Collapsible>
               </>
             )}

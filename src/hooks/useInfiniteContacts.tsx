@@ -3,6 +3,7 @@ import { supabase } from "@/integrations/supabase/client";
 import { useAuth } from "@/hooks/useAuth";
 import { useTenant } from "@/hooks/useTenant";
 import { debugConsole } from '@/utils/debugConsole';
+import { fetchEntityTopicIds } from "@/features/topics/useEntityTopics";
 import type { Contact } from "@/types/contact";
 import { notify } from "@/lib/notify";
 export type { Contact } from "@/types/contact";
@@ -51,7 +52,7 @@ export const useInfiniteContacts = ({
       .select(
         // Felder für Listenansicht (Detail-only: website, twitter, facebook, instagram, xing, business_street/postal/country/house_number)
         'id, contact_type, name, role:position, organization, organization_id, email, phone, ' +
-        'avatar_url, is_favorite, tags, category, priority, last_contact, gender, ' +
+        'avatar_url, is_favorite, category, priority, last_contact, gender, ' +
         'address, business_city, birthday, notes, linkedin',
         { count: 'planned' }
       )
@@ -81,11 +82,6 @@ export const useInfiniteContacts = ({
       } else {
         query = query.eq('category', selectedCategory);
       }
-    }
-
-    // Tag filter
-    if (selectedTagFilter) {
-      query = query.contains('tags', [selectedTagFilter]);
     }
 
     // Type filter
@@ -157,7 +153,24 @@ export const useInfiniteContacts = ({
       }
 
       const offset = isLoadMore ? pageRef.current * ITEMS_PER_PAGE : 0;
-      const query = buildQuery(offset, ITEMS_PER_PAGE);
+      let query = buildQuery(offset, ITEMS_PER_PAGE);
+
+      if (selectedTagFilter) {
+        const { data: topicLinks, error: topicLinkError } = await supabase
+          .from('contact_topics')
+          .select('contact_id')
+          .eq('tenant_id', tenantId)
+          .eq('topic_id', selectedTagFilter);
+        if (topicLinkError) throw topicLinkError;
+        const filteredIds = [...new Set((topicLinks ?? []).map((link) => link.contact_id))];
+        if (filteredIds.length === 0) {
+          setContacts([]);
+          setTotalCount(0);
+          setHasMore(false);
+          return;
+        }
+        query = query.in('id', filteredIds);
+      }
 
       const { data, error, count } = await query;
 
@@ -168,6 +181,12 @@ export const useInfiniteContacts = ({
         debugConsole.error('Supabase query error:', error);
         throw error;
       }
+
+      const topicMap = await fetchEntityTopicIds(
+        "contact",
+        ((data ?? []) as Array<Record<string, any>>).map((contact) => contact.id),
+        tenantId,
+      );
 
       const formattedContacts = data?.map((contact: Record<string, any>) => ({
         id: contact.id,
@@ -188,7 +207,7 @@ export const useInfiniteContacts = ({
         notes: contact.notes,
         is_favorite: contact.is_favorite,
         gender: contact.gender,
-        tags: contact.tags || [],
+        topic_ids: topicMap[contact.id] ?? [],
         // Detail-only Felder (nicht in Listenansicht geladen): website, twitter, facebook, instagram, xing, business_street/postal/country/house_number
       })) || [];
 
@@ -204,6 +223,11 @@ export const useInfiniteContacts = ({
           const sampleInserted = await insertSampleContacts();
           if (sampleInserted && generation === fetchGenerationRef.current) {
             const { data: newData, error: newError, count: newCount } = await buildQuery(0, ITEMS_PER_PAGE);
+            const newTopicMap = await fetchEntityTopicIds(
+              "contact",
+              ((newData ?? []) as Array<Record<string, any>>).map((contact) => contact.id),
+              tenantId,
+            );
             if (!newError && newData && generation === fetchGenerationRef.current) {
               const newFormattedContacts = newData.map((contact: Record<string, any>) => ({
                 id: contact.id,
@@ -224,7 +248,7 @@ export const useInfiniteContacts = ({
                 notes: contact.notes,
                 is_favorite: contact.is_favorite,
                 gender: contact.gender,
-                tags: contact.tags || [],
+                topic_ids: newTopicMap[contact.id] ?? [],
               }));
               setContacts(newFormattedContacts);
               setTotalCount(newCount || 0);

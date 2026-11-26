@@ -23,6 +23,7 @@ export interface Document {
   file_type?: string | null;
   category: string | null;
   tags?: string[] | null;
+  topic_ids?: string[] | null;
   status: string;
   user_id: string;
   tenant_id: string;

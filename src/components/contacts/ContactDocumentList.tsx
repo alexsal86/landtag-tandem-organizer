@@ -21,6 +21,7 @@ import {
 import { debugConsole } from "@/utils/debugConsole";
 import { useState } from "react";
 import type { Document, DirectDocument } from "@/hooks/useContactDocuments";
+import { TopicDisplay } from "@/components/topics/TopicSelector";
 import { downloadDocument } from "./utils/downloadDocument";
 import { EmptyState } from "@/components/ui-patterns";
 import { notify } from "@/lib/notify";
@@ -28,7 +29,7 @@ import { notify } from "@/lib/notify";
 interface ContactDocumentListProps {
   documents: (Document | DirectDocument)[];
   type: 'direct' | 'tagged';
-  contactTags?: string[];
+  contactTopicIds?: string[];
   onRemove?: (documentContactId: string) => Promise<void>;
 }
 
@@ -57,7 +58,7 @@ const isDirectDocument = (doc: Document | DirectDocument): doc is DirectDocument
   return 'relationship_type' in doc && 'document_contact_id' in doc;
 };
 
-export function ContactDocumentList({ documents, type, contactTags = [], onRemove }: ContactDocumentListProps) {
+export function ContactDocumentList({ documents, type, contactTopicIds = [], onRemove }: ContactDocumentListProps) {
   const [removingDocId, setRemovingDocId] = useState<string | null>(null);
 
   const handleDownload = async (document: Document | DirectDocument) => {
@@ -95,8 +96,8 @@ export function ContactDocumentList({ documents, type, contactTags = [], onRemov
     }
   };
 
-  const getCommonTags = (docTags: string[] = []) => {
-    return docTags.filter(tag => contactTags.includes(tag));
+  const getCommonTopicIds = (docTopicIds: string[] = []) => {
+    return docTopicIds.filter((topicId) => contactTopicIds.includes(topicId));
   };
 
   if (documents.length === 0) {
@@ -104,10 +105,10 @@ export function ContactDocumentList({ documents, type, contactTags = [], onRemov
       <EmptyState
         icon={FileText}
         size="sm"
-        title={type === 'direct' ? "Noch keine Dokumente verknüpft" : "Keine Dokumente mit gemeinsamen Tags"}
+        title={type === 'direct' ? "Noch keine Dokumente verknüpft" : "Keine Dokumente mit gemeinsamen Themen"}
         description={type === 'direct'
           ? "Verknüpfe ein Dokument direkt mit diesem Kontakt."
-          : "Vergib Tags am Kontakt und an Dokumenten, um sie hier zusammenzuführen."}
+          : "Vergib Themen am Kontakt und an Dokumenten, um sie hier zusammenzuführen."}
       />
     );
   }
@@ -116,7 +117,7 @@ export function ContactDocumentList({ documents, type, contactTags = [], onRemov
     <TooltipProvider>
       <div className="space-y-3">
         {documents.map((doc) => {
-          const commonTags = type === 'tagged' ? getCommonTags(doc.tags) : [];
+          const commonTopicIds = type === 'tagged' ? getCommonTopicIds(doc.topic_ids) : [];
           const isDirectDoc = isDirectDocument(doc);
 
           return (
@@ -197,11 +198,9 @@ export function ContactDocumentList({ documents, type, contactTags = [], onRemov
                         </Badge>
                       )}
 
-                      {type === 'tagged' && commonTags.map(tag => (
-                        <Badge key={tag} variant="default" className="text-xs">
-                          {tag}
-                        </Badge>
-                      ))}
+                      {type === 'tagged' && commonTopicIds.length > 0 && (
+                        <TopicDisplay topicIds={commonTopicIds} maxDisplay={3} />
+                      )}
                     </div>
 
                     {isDirectDoc && doc.relationship_notes && (

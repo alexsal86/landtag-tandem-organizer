@@ -31,7 +31,7 @@ test('knowledge panel: focus, Escape, share URL, shortcut, compact list and one 
           `${question.title} ${question.answer_text}`.toLowerCase().includes(String(body.p_query ?? '').toLowerCase())));
         data = [{ items: filtered.slice(0,body.p_limit ?? 20).map(question => {
           const { answer_content, answer_text, ...summary } = question;
-          return { ...summary, ...peopleFor(question), tags:[{id:'tag-a',name:'Urlaub'},{id:'tag-b',name:'Büro'},{id:'tag-c',name:'Team'}], answer_excerpt: question.answer_short ?? answer_text.slice(0,200), server_now: new Date().toISOString(), effective_review_status: question.review_status };
+          return { ...summary, ...peopleFor(question), topics:[{id:'topic-a',name:'Urlaub'},{id:'topic-b',name:'Büro'},{id:'topic-c',name:'Team'}], answer_excerpt: question.answer_short ?? answer_text.slice(0,200), server_now: new Date().toISOString(), effective_review_status: question.review_status };
         }), total_count: filtered.length, next_cursor: null, counts:{answers:1,open:1,mine:2,assigned:2,review:1}, topics:[] }];
       } else if (name === 'knowledge_qa_counts') {
         data = [{ answers: questions.filter(q=>q.answered_at).length, open: questions.filter(q=>!q.answered_at).length, mine: questions.length, assigned: questions.filter(q=>q.assigned_to===user.id).length, review: questions.filter(q=>q.review_status==='needs_review').length }];
@@ -76,7 +76,7 @@ test('knowledge panel: focus, Escape, share URL, shortcut, compact list and one 
     else if (path.endsWith('/knowledge_question_attachments')) data = attachments.filter(file => file.state === 'ready');
     else if (path.includes('/storage/v1/object/knowledge-attachments/')) data = { Key: path.split('/object/')[1], Id: 'file' };
     else if (path.endsWith('/knowledge_question_cards')) {
-      const rows=questions.filter(q=>!url.searchParams.get('id') || url.searchParams.get('id')===`eq.${q.id}`).map(q=>({ ...q, ...peopleFor(q), tags:[], server_now: new Date().toISOString(), effective_review_status:q.review_status }));
+      const rows=questions.filter(q=>!url.searchParams.get('id') || url.searchParams.get('id')===`eq.${q.id}`).map(q=>({ ...q, ...peopleFor(q), tags:[], topics:[], server_now: new Date().toISOString(), effective_review_status:q.review_status }));
       data=single ? rows[0] ?? null : rows;
     }
     else if (path.endsWith('/knowledge_questions')) data = single ? questions[0] : questions;

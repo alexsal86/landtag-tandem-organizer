@@ -230,7 +230,7 @@ export function ContactsView() {
           {s.showScrollTop && <Button className="fixed bottom-6 right-6 rounded-full p-3 shadow-lg z-50" onClick={s.scrollToTop} size="sm"><ChevronUp className="h-4 w-4" /></Button>}
 
           <BulkActionsToolbar selectedContacts={s.contacts.filter(c => s.selectedContactIds.has(c.id))} onClearSelection={s.clearSelection}
-            onActionComplete={() => { s.clearSelection(); s.refreshContacts(); }} allTags={s.allTags} />
+            onActionComplete={() => { s.clearSelection(); s.refreshContacts(); }} />
 
           <ContactDetailSheet contactId={s.selectedContactId} isOpen={Boolean(s.selectedContactId)}
             onClose={() => { s.setIsSheetOpen(false); s.setSelectedContactId(null); }} onContactUpdate={s.refreshContacts} />

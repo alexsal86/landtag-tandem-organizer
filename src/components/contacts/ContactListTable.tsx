@@ -4,9 +4,9 @@ import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from "@
 import { Avatar, AvatarFallback, AvatarImage } from "@/components/ui/avatar";
 import { Tooltip, TooltipContent, TooltipProvider, TooltipTrigger } from "@/components/ui/tooltip";
 import { HoverCard, HoverCardContent, HoverCardTrigger } from "@/components/ui/hover-card";
-import { Badge } from "@/components/ui/badge";
 import { Checkbox } from "@/components/ui/checkbox";
-import { Mail, Phone, CalendarDays, User, Star, ChevronUp, ChevronDown, Clock, Tag } from "lucide-react";
+import { Mail, Phone, CalendarDays, User, Star, ChevronUp, ChevronDown, Clock } from "lucide-react";
+import { TopicDisplay } from "@/components/topics/TopicSelector";
 import { Contact } from "@/hooks/useInfiniteContacts";
 import { getGenderLabel } from "./hooks/useContactsViewState";
 import { getInitials } from "./utils/contactFormatters";
@@ -245,7 +245,7 @@ export function ContactListTable({
                             {contact.last_contact && <div className="flex items-center gap-2"><Clock className="h-3.5 w-3.5 text-muted-foreground" />Letzter Kontakt: {format(new Date(contact.last_contact), "dd.MM.yyyy", { locale: de })}</div>}
                             {contact.notes && <p className="text-muted-foreground line-clamp-2">{contact.notes}</p>}
                           </div>
-                          {!!contact.tags?.length && <div className="flex flex-wrap gap-1">{contact.tags.slice(0, 4).map(tag => <Badge key={tag} variant="secondary" className="text-xs"><Tag className="h-3 w-3 mr-1" />{tag}</Badge>)}</div>}
+                          <TopicDisplay topicIds={contact.topic_ids ?? []} maxDisplay={4} />
                         </HoverCardContent>
                       </HoverCard>
                     </TableCell>
@@ -269,7 +269,7 @@ export function ContactListTable({
                           {contact.last_contact && <div className="flex items-center gap-2"><Clock className="h-3.5 w-3.5 text-muted-foreground" />Letzter Kontakt: {format(new Date(contact.last_contact), "dd.MM.yyyy", { locale: de })}</div>}
                           {contact.notes && <p className="text-muted-foreground line-clamp-2">{contact.notes}</p>}
                         </div>
-                        {!!contact.tags?.length && <div className="flex flex-wrap gap-1">{contact.tags.slice(0, 4).map(tag => <Badge key={tag} variant="secondary" className="text-xs"><Tag className="h-3 w-3 mr-1" />{tag}</Badge>)}</div>}
+                        <TopicDisplay topicIds={contact.topic_ids ?? []} maxDisplay={4} />
                       </HoverCardContent>
                     </HoverCard>
                   </TableCell>

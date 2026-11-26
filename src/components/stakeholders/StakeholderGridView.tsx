@@ -132,7 +132,7 @@ export function StakeholderGridView({
                   {expandedDocuments.has(stakeholder.id) && (
                     <div className="border-t pt-4 mb-4">
                       <h4 className="font-medium mb-3 flex items-center gap-2"><FileText className="h-4 w-4" />Dokumente</h4>
-                      <div className="overflow-x-auto"><Table><TableBody><ContactDocumentRows contactId={stakeholder.id} contactTags={[]} /></TableBody></Table></div>
+                      <div className="overflow-x-auto"><Table><TableBody><ContactDocumentRows contactId={stakeholder.id} contactTopicIds={currentTopicIds} /></TableBody></Table></div>
                     </div>
                   )}
                   <div className="border-t pt-4">

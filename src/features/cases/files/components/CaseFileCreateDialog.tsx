@@ -1,6 +1,6 @@
 import { ResponsibleSuggestion } from "@/features/responsibilities/ResponsibleSuggestion";
 import { ResponsibilityContextFields } from "@/features/responsibilities/ResponsibilityContextFields";
-import { TopicSelector } from "@/components/topics/TopicSelector";
+import { TopicPicker } from "@/components/topics/TopicPicker";
 import { useState, useEffect, useMemo } from "react";
 import { useCaseFiles, CaseFileFormData } from "@/features/cases/files/hooks";
 import { useCaseFileTypes } from "@/features/cases/files/hooks";
@@ -174,7 +174,7 @@ export function CaseFileCreateDialog({ open, onOpenChange, onSuccess, defaultCas
           </DialogHeader>
 
           <div className="grid gap-4 py-4">
-            <Label>Themen</Label><TopicSelector selectedTopicIds={topicIds} onTopicsChange={setTopicIds}/>
+            <Label>Themen</Label><TopicPicker selectedTopicIds={topicIds} onTopicsChange={setTopicIds} module="case_files" />
             <ResponsibilityContextFields {...scope} onChange={patch=>setScope(previous=>({...previous,...patch}))}/>
             <ResponsibleSuggestion context={{topicIds,...scope}} onAccept={setSuggestedAssignee}/>
             {suggestedAssignee&&<p className="text-sm">Übergabe an {profiles.find(profile=>profile.user_id===suggestedAssignee)?.display_name ?? "ausgewählte Person"} beim Erstellen vorgemerkt. <Button type="button" variant="link" onClick={()=>setSuggestedAssignee(null)}>Zurücknehmen</Button></p>}

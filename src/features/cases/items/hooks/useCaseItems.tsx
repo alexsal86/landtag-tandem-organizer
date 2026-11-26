@@ -79,6 +79,8 @@ export interface CaseItemFormData {
   case_file_id?: string | null;
   case_scale?: string | null;
   visible_to_all?: boolean;
+  /** Replaces the central topic links; never stored in intake_payload. */
+  topic_ids?: string[];
 }
 
 export interface CaseItemInteractionFormData {
@@ -121,6 +123,40 @@ const normalizeCaseItem = (row: Partial<CaseItemRow> & { id: string }): CaseItem
   ...row,
 } as CaseItem);
 
+export const useCaseItemTopicIds = (caseItemId: string | null) => {
+  const [topicIds, setTopicIds] = useState<string[]>([]);
+  const { currentTenant } = useTenant();
+
+  useEffect(() => {
+    let cancelled = false;
+    if (!caseItemId || !currentTenant?.id) {
+      setTopicIds([]);
+      return;
+    }
+
+    void supabase
+      .from("case_item_topics")
+      .select("topic_id")
+      .eq("case_item_id", caseItemId)
+      .eq("tenant_id", currentTenant.id)
+      .then(({ data, error }) => {
+        if (cancelled) return;
+        if (error) {
+          debugConsole.error("Error fetching case item topics:", error);
+          setTopicIds([]);
+          return;
+        }
+        setTopicIds((data ?? []).map((row) => row.topic_id));
+      });
+
+    return () => {
+      cancelled = true;
+    };
+  }, [caseItemId, currentTenant?.id]);
+
+  return topicIds;
+};
+
 export const useCaseItems = () => {
   const [caseItems, setCaseItems] = useState<CaseItem[]>([]);
   const [loading, setLoading] = useState(true);
@@ -152,6 +188,41 @@ export const useCaseItems = () => {
       setLoading(false);
     }
   }, [user, currentTenant, toast]);
+
+  const setCaseItemTopics = async (caseItemId: string, topicIds: string[]) => {
+    if (!user || !currentTenant) return false;
+    const uniqueIds = [...new Set(topicIds)];
+
+    try {
+      const { error: deleteError } = await supabase
+        .from("case_item_topics")
+        .delete()
+        .eq("case_item_id", caseItemId)
+        .eq("tenant_id", currentTenant.id);
+      if (deleteError) throw deleteError;
+
+      if (uniqueIds.length > 0) {
+        const { error: insertError } = await supabase
+          .from("case_item_topics")
+          .insert(
+            uniqueIds.map((topicId) => ({
+              tenant_id: currentTenant.id,
+              case_item_id: caseItemId,
+              topic_id: topicId,
+              created_by: user.id,
+            })),
+          );
+        if (insertError) throw insertError;
+      }
+      return true;
+    } catch (error) {
+      debugConsole.error("Error setting case item topics:", error);
+      notify.error("Themen konnten nicht gespeichert werden", {
+        description: error instanceof Error ? error.message : undefined,
+      });
+      return false;
+    }
+  };
 
   const createCaseItem = async (data: CaseItemFormData) => {
     if (!user || !currentTenant) {
@@ -208,6 +279,10 @@ export const useCaseItems = () => {
 
       debugConsole.log("[createCaseItem] inserted with id:", caseItemId);
 
+      if (data.topic_ids !== undefined) {
+        await setCaseItemTopics(caseItemId, data.topic_ids);
+      }
+
       notify.success("Erfolgreich", {
         description: "Vorgang wurde erstellt."
 });
@@ -254,6 +329,10 @@ export const useCaseItems = () => {
       const { error } = await supabase.from("case_items").update(updateData).eq("id", id);
 
       if (error) throw error;
+
+      if (data.topic_ids !== undefined) {
+        await setCaseItemTopics(id, data.topic_ids);
+      }
 
       notify.success("Erfolgreich", {
         description: "Vorgang wurde aktualisiert."
@@ -460,6 +539,7 @@ export const useCaseItems = () => {
     loading,
     fetchCaseItems,
     createCaseItem,
+    setCaseItemTopics,
     updateCaseItem,
     deleteCaseItem,
     createCaseItemInteraction,

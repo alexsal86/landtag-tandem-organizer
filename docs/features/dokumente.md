@@ -45,7 +45,7 @@ _Auto-generiert mit `npm run update:feature-catalog` aus dem zentralen Funktions
 
 ## Datenbanktabellen
 
-`contacts`, `document_annotation_events`, `document_annotation_tasks`, `document_annotations`, `document_categories`, `document_contacts`, `document_folders`, `document_topics`, `documents`, `email_logs`, `letter_archive_settings`, `letter_attachments`, `letter_collaborators`, `letter_comments`, `letter_occasions`, `letter_template_assets`, `letter_template_settings`, `letter_templates`, `letter_workflow_history`, `letters`, `sender_information`, `tasks`
+`contacts`, `document_annotation_events`, `document_annotation_tasks`, `document_annotations`, `document_categories`, `document_contacts`, `document_folders`, `document_topics`, `documents`, `email_logs`, `letter_archive_settings`, `letter_attachments`, `letter_collaborators`, `letter_comments`, `letter_occasions`, `letter_template_assets`, `letter_template_settings`, `letter_templates`, `letter_workflow_history`, `letters`, `sender_information`, `tasks`, `topics`
 
 ## Selbsttest-Szenarien
 
@@ -95,7 +95,7 @@ Listet Dokumente mit Kategorien, Ordnern, Kontakten, Themen und Filterung; die L
 - Keine.
 
 ### `documents.upload-version` — Dokument hochladen und versionieren
-Lädt Dateien hoch, legt Versionen an und protokolliert Löschungen nachvollziehbar.
+Lädt Dateien hoch, legt Versionen an, verknüpft Themen über document_topics und protokolliert Löschungen nachvollziehbar.
 
 - **Kategorie:** fachlich
 - **Implementierung:** implementiert
@@ -104,12 +104,12 @@ Lädt Dateien hoch, legt Versionen an und protokolliert Löschungen nachvollzieh
 - **Letztes Testergebnis:** nicht-ausgefuehrt (nicht aus der Existenz einer Testdatei abgeleitet)
 - **Rollen:** `abgeordneter`, `bueroleitung`, `mitarbeiter`, `praktikant`
 - **Routen:** —
-- **Frontend-Komponenten:** `src/components/documents/DocumentDialogs.tsx`
-- **Services:** `src/components/documents/operationsContract.ts`
+- **Frontend-Komponenten:** `src/components/documents/DocumentDialogs.tsx`, `src/components/topics/TopicPicker.tsx`
+- **Services:** `src/components/documents/operationsContract.ts`, `src/features/topics/useEntityTopics.ts`
 - **Hooks:** —
 - **Edge Functions:** —
 - **Datenbankfunktionen:** `update_document_version`, `audit_document_deletion`
-- **Tabellen:** `documents`, `document_annotation_events`
+- **Tabellen:** `documents`, `document_topics`, `topics`, `document_annotation_events`
 - **Abhängigkeiten:** —
 - **Selbsttests:** —
 - **Unit-Tests:** —
