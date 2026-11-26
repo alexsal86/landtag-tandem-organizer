@@ -269,18 +269,19 @@ export function useDaySlipStore(userId: string, tenantId: string) {
     const templateLines = weekdayTemplate?.lines ?? [];
     const recurring = settings.recurringItems.filter(item => item.weekday === "all" || item.weekday === weekdayOfDayKey(todayKey)).map(item => item.text);
     const planned = settings.weekPlan?.applied ? settings.weekPlan.days[todayKey] ?? [] : [];
-    // Only a slip that has not begun gets the weekday template; an existing, half-used day stays untouched.
-    const needsTemplate = !todayData.dayTemplateInjected && templateLines.length > 0 && isUnstartedDaySlip(todayData);
+    // The weekday template is decided once per day even when nothing is inserted, so an emptied slip
+    // never receives it later (only a slip that has not begun gets the lines).
+    const needsTemplateDecision = !todayData.dayTemplateInjected;
     const needsRecurring = !todayData.recurringInjected && recurring.length > 0;
     const needsPlan = !todayData.weekPlanInjected && planned.length > 0;
-    if (!needsTemplate && !needsRecurring && !needsPlan) return;
+    if (!needsTemplateDecision && !needsRecurring && !needsPlan) return;
     changeDay(day => {
-      let next = day;
+      // Repeated here so a parallel edit between render and update cannot append the template to a started day.
       const templateApplies = templateLines.length > 0 && !day.dayTemplateInjected && isUnstartedDaySlip(day);
-      if (templateApplies) next = appendStructuredLines(next, templateLines);
+      let next = templateApplies ? appendStructuredLines(day, templateLines) : day;
       const texts = [...(!day.recurringInjected ? recurring : []), ...(!day.weekPlanInjected ? planned : [])];
       if (texts.length) next = appendEntries(next, texts.map(text => ({ id: crypto.randomUUID(), text })));
-      return { ...next, recurringInjected: true, weekPlanInjected: day.weekPlanInjected || planned.length > 0, dayTemplateInjected: day.dayTemplateInjected || templateApplies };
+      return { ...next, recurringInjected: true, weekPlanInjected: day.weekPlanInjected || planned.length > 0, dayTemplateInjected: true };
     }, true);
   }, [ready, todayData.completedAt, todayData.recurringInjected, todayData.weekPlanInjected, todayData.dayTemplateInjected, settings.recurringItems, settings.weekPlan, settings.dayTemplates, settings.weekdayTemplates, todayKey, changeDay]);
 

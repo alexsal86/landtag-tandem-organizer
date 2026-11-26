@@ -18,7 +18,7 @@ export interface DaySlipDayData {
   deadlineLineMap?: Record<string, string>;
   lineTimestamps?: Record<string, { addedAt: string; checkedAt?: string }>;
   dayMood?: 1 | 2 | 3 | 4 | 5;
-  /** Automatic weekday template was inserted; it is never applied twice. */
+  /** Weekday template decision for this day is done (inserted or deliberately nothing); never applied again. */
   dayTemplateInjected?: boolean;
 }
 
