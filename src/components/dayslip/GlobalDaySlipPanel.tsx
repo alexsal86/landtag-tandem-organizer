@@ -408,7 +408,10 @@ function DaySlipPanel({ userId, tenantId }: { userId: string; tenantId: string }
           aria-label="Tageszettel"
           className={cn(
             "flex flex-col border border-border/60 bg-background/95 backdrop-blur transition-[opacity,transform] duration-300 ease-out",
-            docked ? "relative h-full w-full border-y-0 border-r-0" : "fixed inset-0 z-50 h-dvh w-full overflow-hidden border-0 bg-background pt-[env(safe-area-inset-top)] pb-[env(safe-area-inset-bottom)] lg:inset-auto lg:bottom-24 lg:right-6 lg:h-[min(84vh,920px)] lg:w-[min(35rem,calc(100vw-3rem))] lg:max-w-[calc(100vw-1rem)] lg:rounded-2xl lg:border lg:bg-background/95 lg:shadow-2xl",
+            docked ? "relative h-full w-full border-y-0 border-r-0" : "fixed inset-0 z-50 h-dvh w-full overflow-hidden border-0 bg-background pt-[env(safe-area-inset-top)] pb-[env(safe-area-inset-bottom)] lg:inset-auto lg:bottom-24 lg:right-6 lg:h-[min(84vh,920px)] lg:max-w-[calc(100vw-1rem)] lg:rounded-2xl lg:border lg:bg-background/95 lg:shadow-2xl",
+            // Ohne Andockplatz schwebt der Zettel über dem Inhalt und startet dort
+            // schmaler, damit mehr vom Inhalt sichtbar bleibt.
+            !docked && (layout?.desktop && !layout.canDock ? "lg:w-[min(24rem,calc(100vw-3rem))]" : "lg:w-[min(35rem,calc(100vw-3rem))]"),
             closing ? "translate-y-3 opacity-0" : "translate-y-0 opacity-100",
           )}
           onDragOver={(event) => event.preventDefault()}
@@ -439,6 +442,10 @@ function DaySlipPanel({ userId, tenantId }: { userId: string; tenantId: string }
               <div className="min-w-0">
                 <p className="flex items-center gap-2 text-lg font-semibold"><ClipboardPen className="h-5 w-5" /> Tageszettel</p>
                 <p className="truncate text-xs text-muted-foreground">{formatDate(dayView.key)}</p>
+                {/* Der Pin ist ohne Andockplatz deaktiviert; der Hinweis nennt den Grund sichtbar. */}
+                {!docked && layout?.desktop && !layout.canDock && (
+                  <p className="mt-0.5 text-[11px] text-muted-foreground">Schwebt über dem Inhalt – Andocken ab {layout.minDockWidth} px</p>
+                )}
               </div>
               <div className="flex items-center gap-2">
                 <DaySlipCommandHelp />
