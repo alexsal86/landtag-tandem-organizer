@@ -11,10 +11,11 @@ Eindeutige Fehler werden im CI-Lauf ausgegeben und brechen die Prüfung ab; sie 
 - Review-Hinweise: **0**
 - Nicht zugeordnete Objekte: **1**, davon ohne Ausnahme: **0**
 
-## Funktionen ohne zugeordneten Test (137)
+## Funktionen ohne zugeordneten Test (138)
 
 - `mywork.tabs` — Meine Arbeit – Bereichsnavigation und Einstellungen
 - `mywork.quick-access` — Schnellzugriff und zuletzt besuchte Seiten
+- `mywork.navigation-previews` — Vorschauen für Kalender, Aufgaben und Akten
 - `notifications.inbox` — Benachrichtigungen lesen und als gelesen markieren
 - `notifications.preferences` — Benachrichtigungseinstellungen und Stummschaltung
 - `search.global` — Globale Suche und Befehlspalette
@@ -151,11 +152,12 @@ Eindeutige Fehler werden im CI-Lauf ausgegeben und brechen die Prüfung ab; sie 
 - `knowledge.global-question` — Globale Wissensfrage aus jedem Bereich
 - `knowledge.management` — Wissensverwaltung
 
-## Funktionen ohne Dokumentationsverweis (164)
+## Funktionen ohne Dokumentationsverweis (165)
 
 - `mywork.dashboard.today-priorities` — Heute zuerst
 - `mywork.tabs` — Meine Arbeit – Bereichsnavigation und Einstellungen
 - `mywork.quick-access` — Schnellzugriff und zuletzt besuchte Seiten
+- `mywork.navigation-previews` — Vorschauen für Kalender, Aufgaben und Akten
 - `notifications.preferences` — Benachrichtigungseinstellungen und Stummschaltung
 - `search.global` — Globale Suche und Befehlspalette
 - `quicknotes.offline` — Offline-Synchronisation für Schnellnotizen
@@ -331,7 +333,7 @@ Eindeutige Fehler werden im CI-Lauf ausgegeben und brechen die Prüfung ab; sie 
 - `events.legacy-rsvp` — Legacy-Einladungslinks (veraltet)
 - `cases.legacy-routes` — Legacy-Vorgangsrouten (veraltet)
 
-## Funktionen mit Einschränkungen oder offenen Punkten (70)
+## Funktionen mit Einschränkungen oder offenen Punkten (71)
 
 ### `mywork.dashboard`
 
@@ -344,6 +346,10 @@ Eindeutige Fehler werden im CI-Lauf ausgegeben und brechen die Prüfung ab; sie 
 ### `mywork.tabs`
 
 - Die Tab-Auswahl ist eine reine UI-Präferenz und hat keine eigene Geschäftsregel.
+
+### `mywork.navigation-previews`
+
+- In der Desktop-Navigation per Maus oder Pfeil nach rechts verfügbar. Die Terminvorschau blickt fünf Tage voraus und die Aktenvorschau berücksichtigt eigene oder zugewiesene Fallakten.
 
 ### `notifications.inbox`
 

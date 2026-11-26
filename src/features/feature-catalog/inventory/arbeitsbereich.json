@@ -190,6 +190,39 @@
       ]
     },
     {
+      "id": "mywork.navigation-previews",
+      "subarea": "Navigation",
+      "name": "Vorschauen für Kalender, Aufgaben und Akten",
+      "description": "Zeigt Vorschauen mit dem nächsten Termin samt Briefingstatus, einer offenen Aufgabe mit Frist und Zuständigkeit oder einer kürzlich aktualisierten Fallakte. Verlinkt den jeweiligen Eintrag und die Unterbereiche.",
+      "category": "fachlich",
+      "implementationStatus": "implementiert",
+      "integrationStatus": "ui",
+      "coverage": "keine",
+      "testResult": "nicht-ausgefuehrt",
+      "evidence": [
+        "src/components/navigation/AppNavigation.tsx",
+        "src/components/navigation/appNavigation/NavGroupPreview.tsx",
+        "src/components/navigation/appNavigation/useNavPanelData.ts"
+      ],
+      "components": [
+        "src/components/navigation/AppNavigation.tsx",
+        "src/components/navigation/appNavigation/NavGroupPreview.tsx"
+      ],
+      "hooks": [
+        "src/components/navigation/appNavigation/useNavPanelData.ts"
+      ],
+      "tables": [
+        "appointments",
+        "external_events",
+        "appointment_preparations",
+        "tasks",
+        "case_files"
+      ],
+      "limitations": [
+        "In der Desktop-Navigation per Maus oder Pfeil nach rechts verfügbar. Die Terminvorschau blickt fünf Tage voraus und die Aktenvorschau berücksichtigt eigene oder zugewiesene Fallakten."
+      ]
+    },
+    {
       "id": "notifications.inbox",
       "subarea": "Benachrichtigungen",
       "name": "Benachrichtigungen lesen und als gelesen markieren",

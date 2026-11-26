@@ -2,9 +2,12 @@ import { GlobalCreateMenu } from "@/components/layout/GlobalCreateMenu";
 import { useState, useEffect, useCallback, useMemo, type ElementType } from "react";
 import { useUserPreference } from "@/hooks/useUserPreference";
 import { SHOW_RECENT_PREF_KEY } from "@/components/settings/SidebarPreferencesCard";
+import { NavGroupPreview } from "./appNavigation/NavGroupPreview";
+import { asBriefingStatus, BRIEFING_STATUS_LABELS } from "@/features/appointments/briefing";
+import { ballAssigneeLabel } from "@/features/tasks/stafette";
 import { useNavPanelData } from "./appNavigation/useNavPanelData";
 import { NavDossierCapture } from "@/components/search/NavDossierCapture";
-import { useNavigate } from "react-router-dom";
+import { Link, useNavigate } from "react-router-dom";
 import { debugConsole } from '@/utils/debugConsole';
 import { 
   Home, 
@@ -72,7 +75,7 @@ import {
 } from "@/components/ui/dropdown-menu";
 import { navigationGroups, getNavigationGroups, NavGroup } from "@/components/navigation/navigationConfig";
 import { HelpDialog } from "@/components/navigation/HelpDialog";
-import { formatDistanceToNow, format, isToday, isYesterday, isTomorrow } from "date-fns";
+import { formatDistanceToNow, format, parseISO, isToday, isYesterday, isTomorrow } from "date-fns";
 import { de } from "date-fns/locale";
 import { Clock } from "lucide-react";
 import { useToast } from "@/components/ui/use-toast";
@@ -92,6 +95,7 @@ import type {
   NotificationFilter,
   QuickAccessAddCategory,
   NavigationProps,
+  NavPreviewGroup,
   UpcomingAppointmentItem,
 } from "./appNavigation/types";
 import { notify } from "@/lib/notify";
@@ -158,6 +162,7 @@ export function AppNavigation({
   
   // Panel state
   const [activePanel, setActivePanel] = useState<ActivePanel>('home');
+  const [previewGroup, setPreviewGroup] = useState<NavPreviewGroup | null>(null);
   
   // Expanded groups state
   const [expandedGroups, setExpandedGroups] = useState<Set<string>>(new Set());
@@ -175,6 +180,15 @@ export function AppNavigation({
   const {
     userProfile,
     upcomingAppointments,
+    nextAppointment,
+    appointmentsLoading,
+    appointmentsError,
+    briefing,
+    previewTask,
+    taskLoading,
+    taskError,
+    caseFilesLoading,
+    caseFilesError,
     pendingFeedbacks,
     caseFiles,
     quickAccessCaseItems,
@@ -185,6 +199,7 @@ export function AppNavigation({
     isEventPlanningsLoading,
   } = useNavPanelData({
     activePanel,
+    previewGroup,
     quickAccessPopoverOpen,
     quickAccessAddCategory,
   });
@@ -385,6 +400,69 @@ export function AppNavigation({
     );
   };
 
+  const previewLinkClass = "block w-full rounded-md px-2 py-1.5 text-left hover:bg-accent focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring";
+
+  const renderPreviewSummary = (groupId: NavPreviewGroup) => {
+    const renderEntry = (to: string, title: string, detail: string) => (
+      <Link to={to} className={previewLinkClass} onClick={() => setPreviewGroup(null)}>
+        <span className="block break-words text-sm font-medium">{title}</span>
+        <span className="block break-words text-xs text-muted-foreground">{detail}</span>
+      </Link>
+    );
+
+    let message: string;
+    if (groupId === "calendar") {
+      message = appointmentsLoading ? "Termine werden geladen …"
+        : appointmentsError ? "Termine konnten nicht geladen werden."
+        : "Keine anstehenden Termine in den nächsten fünf Tagen.";
+      if (nextAppointment) {
+        const date = parseISO(nextAppointment.start_time);
+        const when = isToday(date) ? "Heute" : isTomorrow(date) ? "Morgen" : format(date, "EEE, d. MMM", { locale: de });
+        const time = nextAppointment.is_all_day ? "Ganztägig" : format(date, "HH:mm");
+        const highlight = nextAppointment.isExternal ? `external-${nextAppointment.id}` : nextAppointment.id;
+        const status = asBriefingStatus(nextAppointment.briefingStatus);
+        return (
+          <>
+            {renderEntry(`/calendar?highlight=${highlight}`, nextAppointment.title, [when, time, nextAppointment.location].filter(Boolean).join(" · "))}
+            {nextAppointment.briefingStatus && status !== "none" && (
+              briefing
+                ? renderEntry(`/appointment-preparation/${briefing.id}?view=briefing`, "Briefing öffnen", BRIEFING_STATUS_LABELS[status])
+                : <p className="px-2 py-1 text-xs text-muted-foreground">{BRIEFING_STATUS_LABELS[status]}</p>
+            )}
+          </>
+        );
+      }
+    } else if (groupId === "tasks") {
+      message = taskLoading ? "Aufgaben werden geladen …"
+        : taskError ? "Aufgaben konnten nicht geladen werden."
+        : "Keine offenen Aufgaben.";
+      if (previewTask) {
+        const assignee = previewTask.ball_assignee_id === user?.id ? "Bei dir" : ballAssigneeLabel(previewTask).label;
+        const due = previewTask.next_action_due ?? previewTask.due_date;
+        return renderEntry(
+          `/tasks?task=${previewTask.id}`,
+          previewTask.title,
+          [assignee, due && `Fällig ${format(parseISO(due), "dd.MM.")}`, previewTask.next_action?.trim()].filter(Boolean).join(" · "),
+        );
+      }
+    } else {
+      message = caseFilesLoading ? "Fallakten werden geladen …"
+        : caseFilesError ? "Fallakten konnten nicht geladen werden."
+        : "Keine eigenen oder zugewiesenen Fallakten.";
+      const caseFile = caseFiles[0];
+      if (caseFile) {
+        const note = caseFile.current_status_note?.replace(/<[^>]*>/g, "").trim();
+        return renderEntry(
+          `/casefiles?caseFileId=${caseFile.id}`,
+          caseFile.title,
+          note ? note.slice(0, 140) + (note.length > 140 ? "…" : "") : caseFile.reference_number || "Zuletzt aktualisierte Fallakte",
+        );
+      }
+    }
+
+    return <p role="status" className="px-2 py-1.5 text-xs text-muted-foreground">{message}</p>;
+  };
+
   const renderNavGroup = (group: NavGroup) => {
     const badge = getGroupBadge(group);
     const isActive = isGroupActive(group);
@@ -400,36 +478,66 @@ export function AppNavigation({
       return renderNavItem(targetId, Icon, label, badge);
     }
 
+    const trigger = (
+      <button
+        onClick={() => {
+          toggleGroup(group.id);
+          if ((!isActive || group.id === 'calendar') && group.subItems) {
+            handleNavigationClick(group.subItems[0].id);
+          }
+        }}
+        className={cn(
+          "flex items-center w-full gap-2 h-8 px-2 rounded-md text-sm",
+          "transition-colors duration-fast ease-standard",
+          "focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-offset-1 focus-visible:ring-offset-background",
+          "hover:bg-[hsl(var(--nav-hover))]",
+          isActive && "font-medium"
+        )}
+      >
+        <div className="relative">
+          <group.icon className="h-4 w-4 shrink-0" />
+          {badge > 0 && (
+            <span className="absolute -top-1 -right-0.5 h-2 w-2 rounded-pill bg-destructive animate-pulse-slow" />
+          )}
+        </div>
+        <span className="truncate text-sm">{group.label}</span>
+        {isExpanded ? (
+          <ChevronDown className="ml-auto h-3 w-3 shrink-0 text-[hsl(var(--nav-muted))] transition-transform duration-fast ease-standard" />
+        ) : (
+          <ChevronRight className="ml-auto h-3 w-3 shrink-0 text-[hsl(var(--nav-muted))] transition-transform duration-fast ease-standard" />
+        )}
+      </button>
+    );
+    const id = group.id;
+    const supportsPreview = id === "calendar" || id === "tasks" || id === "files";
+
     return (
-      <div key={group.id}>
-        <button
-          onClick={() => {
-            toggleGroup(group.id);
-            if ((!isActive || group.id === 'calendar') && group.subItems) {
-              handleNavigationClick(group.subItems[0].id);
-            }
-          }}
-          className={cn(
-            "flex items-center w-full gap-2 h-8 px-2 rounded-md text-sm",
-            "transition-colors duration-fast ease-standard",
-            "focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-offset-1 focus-visible:ring-offset-background",
-            "hover:bg-[hsl(var(--nav-hover))]",
-            isActive && "font-medium"
-          )}
-        >
-          <div className="relative">
-            <group.icon className="h-4 w-4 shrink-0" />
-            {badge > 0 && (
-              <span className="absolute -top-1 -right-0.5 h-2 w-2 rounded-pill bg-destructive animate-pulse-slow" />
-            )}
-          </div>
-          <span className="truncate text-sm">{group.label}</span>
-          {isExpanded ? (
-            <ChevronDown className="ml-auto h-3 w-3 shrink-0 text-[hsl(var(--nav-muted))] transition-transform duration-fast ease-standard" />
-          ) : (
-            <ChevronRight className="ml-auto h-3 w-3 shrink-0 text-[hsl(var(--nav-muted))] transition-transform duration-fast ease-standard" />
-          )}
-        </button>
+      <div key={id}>
+        {supportsPreview && !isMobile ? (
+          <NavGroupPreview
+            label={group.label}
+            open={previewGroup === id}
+            onOpenChange={(open) => setPreviewGroup((current) => open ? id : current === id ? null : current)}
+            trigger={trigger}
+          >
+            {renderPreviewSummary(id)}
+            <div className="mt-2 border-t pt-2">
+              {group.subItems?.map((item) => (
+                <button
+                  key={item.id}
+                  type="button"
+                  className={cn(previewLinkClass, "text-sm")}
+                  onClick={() => {
+                    setPreviewGroup(null);
+                    void handleNavigationClick(item.id);
+                  }}
+                >
+                  {item.label}
+                </button>
+              ))}
+            </div>
+          </NavGroupPreview>
+        ) : trigger}
         {isExpanded && group.subItems && (
           <div className="mt-0.5">
             {group.subItems.map(item => 

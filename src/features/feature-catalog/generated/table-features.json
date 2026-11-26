@@ -200,6 +200,11 @@
       "id": "integration.ai-suggestions",
       "name": "KI-Vorschläge für Vorbereitung und Eingang",
       "area": "schnittstellen"
+    },
+    {
+      "id": "mywork.navigation-previews",
+      "name": "Vorschauen für Kalender, Aufgaben und Akten",
+      "area": "arbeitsbereich"
     }
   ],
   "appointment_reminder_dispatches": [
@@ -295,6 +300,11 @@
       "id": "integration.ics",
       "name": "ICS-Feeds und Einladungsdateien",
       "area": "schnittstellen"
+    },
+    {
+      "id": "mywork.navigation-previews",
+      "name": "Vorschauen für Kalender, Aufgaben und Akten",
+      "area": "arbeitsbereich"
     }
   ],
   "archived_meeting_protocol_tasks": [
@@ -610,6 +620,11 @@
       "id": "casefiles.status-workflow",
       "name": "Fallakten-Status und Bearbeitungsstatus",
       "area": "vorgaenge"
+    },
+    {
+      "id": "mywork.navigation-previews",
+      "name": "Vorschauen für Kalender, Aufgaben und Akten",
+      "area": "arbeitsbereich"
     }
   ],
   "case_item_categories": [
@@ -1978,6 +1993,11 @@
       "id": "integration.calendar-sync",
       "name": "Externe Kalender synchronisieren",
       "area": "schnittstellen"
+    },
+    {
+      "id": "mywork.navigation-previews",
+      "name": "Vorschauen für Kalender, Aufgaben und Akten",
+      "area": "arbeitsbereich"
     }
   ],
   "facts": [
@@ -3497,6 +3517,11 @@
       "id": "meetings.archive",
       "name": "Sitzung archivieren",
       "area": "organisation"
+    },
+    {
+      "id": "mywork.navigation-previews",
+      "name": "Vorschauen für Kalender, Aufgaben und Akten",
+      "area": "arbeitsbereich"
     },
     {
       "id": "tasks.archive",
