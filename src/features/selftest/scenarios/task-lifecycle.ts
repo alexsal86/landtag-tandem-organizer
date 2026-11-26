@@ -1,6 +1,6 @@
 import { supabase } from "@/integrations/supabase/client";
 import { CORE_TASK_STATUS_KEYS, missingCoreTaskStatuses } from "@/components/tasks/types";
-import { nextRecurrenceDate } from "@/features/tasks/templates";
+import { nextRecurrenceDate, subtaskProgress } from "@/features/tasks/templates";
 import { changeDeadline } from "@/hooks/useDeadlineActions";
 import type { DeadlineItem } from "@/types/dashboardDeadlines";
 import { formatDeadlineDateLabel, getDeadlineStatus, getReviewableOverdueDeadlines, groupDeadlineItems } from "@/utils/deadlineFormatting";
@@ -15,19 +15,20 @@ const timelineTexts = (raw: unknown) => Array.isArray(raw) ? raw.map((entry) => 
 export const taskLifecycleScenario: TestScenario = {
   id: "task-lifecycle",
   title: "Aufgaben-Lifecycle (Zuweisung → Frist → Entscheidung → Jour fixe → erledigt)",
-  description: "Prüft zuerst die Status-Registry, legt dann eine Aufgabe an, hängt ein Dokument an, weist sie zu, setzt eine Frist, prüft die Fristen-Gruppierung und das Verwerfen samt Rückgängig, erstellt daraus eine Entscheidung, markiert sie für den Jour fixe, schließt sie ab und prüft Erledigt-Stempel, Wiederholung und Ball-Rückgabe nach einem Votum.",
+  description: "Prüft zuerst die Status-Registry, legt dann eine Aufgabe an, hängt ein Dokument an, prüft Unteraufgaben samt Fortschritt, weist sie zu, setzt eine Frist, prüft die Fristen-Gruppierung und das Verwerfen samt Rückgängig, erstellt daraus eine Entscheidung, markiert sie für den Jour fixe, schließt sie ab und prüft Erledigt-Stempel, Wiederholung und Ball-Rückgabe nach einem Votum.",
   touches: ["tasks", "task_documents", "task_decisions", "task_decision_participants", "task_decision_responses", "task_statuses"],
   features: ["tasks", "decisions"],
   checks: [
     "Status-Registry führt die fünf Kernstatus",
     "Dokument hängt an der Aufgabe, bleibt auf eigene Aufgaben beschränkt und lässt sich wieder lösen",
+    "Unteraufgaben tragen parent_task_id, erscheinen nicht als eigene Hauptaufgabe und treiben den Fortschritt auf 50 bzw. 100 Prozent",
     "Fristen werden nach Berliner Tagen gruppiert; Verwerfen löscht nur die Frist und Rückgängig stellt sie wieder her",
     "Abschluss setzt completed_at, Wiederöffnen entfernt es",
     "Wiederholungsregel legt beim Abschluss genau eine Folgeaufgabe an",
     "Votum zu einer verknüpften Entscheidung holt den Ball zurück und erzeugt die Folgeaufgabe genau einmal",
   ],
   writes: [
-    { table: "tasks", columns: ["title", "description", "status", "priority", "user_id", "tenant_id", "assigned_to", "due_date", "progress", "pending_for_jour_fixe", "completed_at", "recurrence_rule", "ball_owner", "ball_assignee_id", "next_action", "next_action_due", "timeline"] },
+    { table: "tasks", columns: ["title", "description", "status", "priority", "user_id", "tenant_id", "assigned_to", "due_date", "progress", "pending_for_jour_fixe", "completed_at", "recurrence_rule", "parent_task_id", "ball_owner", "ball_assignee_id", "next_action", "next_action_due", "timeline"] },
     { table: "task_documents", columns: ["task_id", "user_id", "file_name", "file_path", "file_type", "file_size"] },
     { table: "task_decisions", columns: ["title", "description", "status", "created_by", "tenant_id", "task_id"] },
   ],
@@ -99,6 +100,65 @@ export const taskLifecycleScenario: TestScenario = {
             ? "Dokument hängt an der Aufgabe, erscheint in der Ablage und lässt sich wieder lösen; fremde Aufgaben bleiben gesperrt."
             : "Dokumentverknüpfung weicht ab.",
           details: { linked: linked.data, attached, foreignError: foreign.error, removed: removed.error, remaining: remaining.data },
+        };
+      },
+    },
+    {
+      id: "subtasks", label: "Unteraufgaben: Verknüpfung, Hauptliste und Fortschritt", kind: "workflow",
+      run: async (ctx) => {
+        const parent = await supabase.from("tasks").insert({
+          title: `${SELFTEST_PREFIX} Hauptaufgabe (${ctx.runId})`,
+          description: SELFTEST_MARKER,
+          status: "todo",
+          priority: "medium",
+          user_id: ctx.userId,
+          tenant_id: ctx.tenantId,
+        }).select("id").single();
+        if (parent.error || !parent.data) return { ok: false, message: describeError(parent.error) };
+        const parentId = parent.data.id;
+        ctx.trackRecord({ table: "tasks", id: parentId });
+        const childBase = {
+          description: SELFTEST_MARKER,
+          priority: "medium",
+          user_id: ctx.userId,
+          tenant_id: ctx.tenantId,
+          parent_task_id: parentId,
+        };
+        const inserted = await supabase.from("tasks").insert([
+          { ...childBase, title: `${SELFTEST_PREFIX} Unteraufgabe A (${ctx.runId})`, status: "todo" },
+          { ...childBase, title: `${SELFTEST_PREFIX} Unteraufgabe B (${ctx.runId})`, status: "completed", completed_at: new Date().toISOString() },
+        ]).select("id,title,status,parent_task_id");
+        if (inserted.error || !inserted.data) return { ok: false, message: describeError(inserted.error) };
+        for (const child of inserted.data) ctx.trackRecord({ table: "tasks", id: child.id });
+        const children = await supabase.from("tasks")
+          .select("id,title,status,parent_task_id")
+          .eq("parent_task_id", parentId).eq("tenant_id", ctx.tenantId);
+        if (children.error) return { ok: false, message: describeError(children.error) };
+        const first = (children.data ?? []).find((row) => row.status === "todo");
+        if (!first) return { ok: false, message: "Die offene Unteraufgabe fehlt." };
+        const root = await supabase.from("tasks").select("id")
+          .is("parent_task_id", null).in("id", [parentId, ...(children.data ?? []).map((row) => row.id)]);
+        if (root.error) return { ok: false, message: describeError(root.error) };
+        const progress = subtaskProgress(children.data ?? []);
+        const completed = await supabase.from("tasks").update({ status: "completed" }).eq("id", first.id).eq("tenant_id", ctx.tenantId);
+        if (completed.error) return { ok: false, message: describeError(completed.error) };
+        const refreshed = await supabase.from("tasks").select("id,status,parent_task_id").eq("parent_task_id", parentId).eq("tenant_id", ctx.tenantId);
+        const progressAfter = subtaskProgress(refreshed.data ?? []);
+        const allLinked = (children.data ?? []).length === 2
+          && (children.data ?? []).every((row) => row.parent_task_id === parentId)
+          && (refreshed.data ?? []).every((row) => row.parent_task_id === parentId);
+        const ok = allLinked
+          && (root.data ?? []).length === 1
+          && root.data?.[0]?.id === parentId
+          && progress.percent === 50
+          && progress.done === 1 && progress.total === 2
+          && progressAfter.percent === 100;
+        return {
+          ok,
+          message: ok
+            ? "Unteraufgaben hängen an der Hauptaufgabe, erscheinen nicht als eigene Hauptaufgabe und treiben den Fortschritt von 50 auf 100 Prozent."
+            : "Unteraufgaben-Verknüpfung oder Fortschritt weicht ab.",
+          details: { parentId, children: children.data, root: root.data, progress, progressAfter },
         };
       },
     },

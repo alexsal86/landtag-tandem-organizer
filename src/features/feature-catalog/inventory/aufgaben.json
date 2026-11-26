@@ -375,15 +375,17 @@
       "id": "tasks.subtasks",
       "subarea": "Bearbeitung",
       "name": "Unteraufgaben",
-      "description": "Zerlegt Aufgaben in Unteraufgaben und zeigt deren Fortschritt in der Hauptaufgabe.",
+      "description": "Zerlegt Aufgaben in Unteraufgaben und zeigt deren Fortschritt in der Hauptaufgabe. Der Selbsttest legt Unteraufgaben über parent_task_id an, prüft die Verknüpfung, ihre Ausblendung aus der Hauptliste und den Fortschritt.",
       "category": "fachlich",
       "implementationStatus": "implementiert",
       "integrationStatus": "ui",
-      "coverage": "keine",
+      "coverage": "selftest",
       "testResult": "nicht-ausgefuehrt",
       "evidence": [
         "src/components/tasks/TaskListRow.tsx",
-        "src/components/tasks/TaskCard.tsx"
+        "src/components/tasks/TaskCard.tsx",
+        "src/features/tasks/templates.ts",
+        "src/features/selftest/scenarios/task-lifecycle.ts"
       ],
       "components": [
         "src/components/tasks/TaskListRow.tsx",
@@ -399,8 +401,14 @@
         "mitarbeiter",
         "praktikant"
       ],
+      "scenarios": [
+        "task-lifecycle"
+      ],
       "reviewPoints": [
         "Die Unteraufgaben-Oberfläche wurde nicht im Browser geprüft; der Nachweis stützt sich auf Komponenten und Tabelle."
+      ],
+      "limitations": [
+        "Der Step prüft die Aufgaben-basierten Unteraufgaben (parent_task_id); die ältere Tabelle subtasks wird von der Oberfläche nicht gelesen."
       ],
       "dependsOn": ["tasks.create"]
     },

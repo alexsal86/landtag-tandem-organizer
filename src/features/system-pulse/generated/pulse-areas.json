@@ -863,10 +863,11 @@
         {
           "scenario": "task-lifecycle",
           "title": "Aufgaben-Lifecycle (Zuweisung → Frist → Entscheidung → Jour fixe → erledigt)",
-          "description": "Prüft zuerst die Status-Registry, legt dann eine Aufgabe an, hängt ein Dokument an, weist sie zu, setzt eine Frist, prüft die Fristen-Gruppierung und das Verwerfen samt Rückgängig, erstellt daraus eine Entscheidung, markiert sie für den Jour fixe, schließt sie ab und prüft Erledigt-Stempel, Wiederholung und Ball-Rückgabe nach einem Votum.",
+          "description": "Prüft zuerst die Status-Registry, legt dann eine Aufgabe an, hängt ein Dokument an, prüft Unteraufgaben samt Fortschritt, weist sie zu, setzt eine Frist, prüft die Fristen-Gruppierung und das Verwerfen samt Rückgängig, erstellt daraus eine Entscheidung, markiert sie für den Jour fixe, schließt sie ab und prüft Erledigt-Stempel, Wiederholung und Ball-Rückgabe nach einem Votum.",
           "checks": [
             "Status-Registry führt die fünf Kernstatus",
             "Dokument hängt an der Aufgabe, bleibt auf eigene Aufgaben beschränkt und lässt sich wieder lösen",
+            "Unteraufgaben tragen parent_task_id, erscheinen nicht als eigene Hauptaufgabe und treiben den Fortschritt auf 50 bzw. 100 Prozent",
             "Fristen werden nach Berliner Tagen gruppiert; Verwerfen löscht nur die Frist und Rückgängig stellt sie wieder her",
             "Abschluss setzt completed_at, Wiederöffnen entfernt es",
             "Wiederholungsregel legt beim Abschluss genau eine Folgeaufgabe an",
@@ -889,7 +890,8 @@
             "tasks.edit",
             "tasks.link-decision",
             "tasks.link-document",
-            "tasks.recurring"
+            "tasks.recurring",
+            "tasks.subtasks"
           ],
           "steps": [
             {
@@ -903,6 +905,10 @@
             {
               "id": "document-link",
               "label": "Dokument an Aufgabe hängen und wieder lösen"
+            },
+            {
+              "id": "subtasks",
+              "label": "Unteraufgaben: Verknüpfung, Hauptliste und Fortschritt"
             },
             {
               "id": "assign",

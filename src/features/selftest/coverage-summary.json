@@ -1721,6 +1721,7 @@
             "pending_for_jour_fixe",
             "completed_at",
             "recurrence_rule",
+            "parent_task_id",
             "ball_owner",
             "ball_assignee_id",
             "next_action",
@@ -5539,15 +5540,6 @@
         "tasks",
         "task_statuses",
         "task_categories"
-      ]
-    },
-    {
-      "id": "tasks.subtasks",
-      "name": "Unteraufgaben",
-      "area": "aufgaben",
-      "tables": [
-        "subtasks",
-        "tasks"
       ]
     },
     {

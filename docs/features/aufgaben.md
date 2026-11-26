@@ -8,7 +8,7 @@ _Auto-generiert mit `npm run update:feature-catalog` aus dem zentralen Funktions
 
 - Funktionen: **18** in **12** Unterbereichen
 - implementiert: **18**, teilweise: **0**, deaktiviert: **0**, potenziell verwaist: **0**
-- ohne zugeordneten Test: **2**
+- ohne zugeordneten Test: **1**
 - ohne Dokumentationsverweis: **9**
 
 ## Funktionen
@@ -18,7 +18,7 @@ _Auto-generiert mit `npm run update:feature-catalog` aus dem zentralen Funktions
 | `tasks.archive` Aufgabe archivieren und wiederherstellen | Archiv | fachlich | implementiert | UI | Selbsttest |
 | `tasks.complete` Aufgabe abschließen | Bearbeitung | fachlich | implementiert | rollenabhängig | Selbsttest |
 | `tasks.edit` Aufgabe bearbeiten | Bearbeitung | fachlich | implementiert | rollenabhängig | Selbsttest |
-| `tasks.subtasks` Unteraufgaben | Bearbeitung | fachlich | implementiert | UI | kein Test |
+| `tasks.subtasks` Unteraufgaben | Bearbeitung | fachlich | implementiert | UI | Selbsttest |
 | `tasks.create` Aufgabe erstellen | Erfassung | fachlich | implementiert | rollenabhängig | Selbsttest |
 | `tasks.nudge` Aufgabe anmahnen und Erinnerungen versenden | Erinnerungen | automatisiert | implementiert | systemseitig | Selbsttest |
 | `tasks.snooze` Aufgabe zurückstellen (Wiedervorlage) | Fristen | fachlich | implementiert | UI | Selbsttest |
@@ -63,7 +63,7 @@ _Auto-generiert mit `npm run update:feature-catalog` aus dem zentralen Funktions
 |---|---|---:|---:|---|
 | `annual-task-stafette` | Jahresaufgabe → Büroaufgabe → Jahresabschluss | 3 | 5 | — |
 | `decision-lifecycle` | Entscheidungs-Lifecycle (active → open → archived) | 3 | 0 | — |
-| `task-lifecycle` | Aufgaben-Lifecycle (Zuweisung → Frist → Entscheidung → Jour fixe → erledigt) | 6 | 6 | — |
+| `task-lifecycle` | Aufgaben-Lifecycle (Zuweisung → Frist → Entscheidung → Jour fixe → erledigt) | 6 | 7 | — |
 | `task-stafette-lifecycle` | Aufgaben-Stafette (Am Zug, Wiedervorlage, Freigabe) | 4 | 8 | — |
 
 ## Selbsttest-Schritte
@@ -94,6 +94,7 @@ Diese Schritte führen die Szenarien aus; „letzter Lauf“ stammt aus `src/fea
 | `task-lifecycle` | `status-registry` | Status-Registry führt die fünf Kernstatus | db | — |
 | `task-lifecycle` | `create` | Aufgabe anlegen | db | — |
 | `task-lifecycle` | `document-link` | Dokument an Aufgabe hängen und wieder lösen | db | — |
+| `task-lifecycle` | `subtasks` | Unteraufgaben: Verknüpfung, Hauptliste und Fortschritt | workflow | — |
 | `task-lifecycle` | `assign` | Aufgabe zuweisen + Frist setzen | db | — |
 | `task-lifecycle` | `deadline-review` | Fristen: Berliner Gruppierung, Verwerfen und Rückgängig | workflow | — |
 | `task-lifecycle` | `decision` | Entscheidung aus Aufgabe erstellen | db | — |
@@ -144,10 +145,11 @@ Keine Prüfungen deklariert.
 
 1. Status-Registry führt die fünf Kernstatus
 2. Dokument hängt an der Aufgabe, bleibt auf eigene Aufgaben beschränkt und lässt sich wieder lösen
-3. Fristen werden nach Berliner Tagen gruppiert; Verwerfen löscht nur die Frist und Rückgängig stellt sie wieder her
-4. Abschluss setzt completed_at, Wiederöffnen entfernt es
-5. Wiederholungsregel legt beim Abschluss genau eine Folgeaufgabe an
-6. Votum zu einer verknüpften Entscheidung holt den Ball zurück und erzeugt die Folgeaufgabe genau einmal
+3. Unteraufgaben tragen parent_task_id, erscheinen nicht als eigene Hauptaufgabe und treiben den Fortschritt auf 50 bzw. 100 Prozent
+4. Fristen werden nach Berliner Tagen gruppiert; Verwerfen löscht nur die Frist und Rückgängig stellt sie wieder her
+5. Abschluss setzt completed_at, Wiederöffnen entfernt es
+6. Wiederholungsregel legt beim Abschluss genau eine Folgeaufgabe an
+7. Votum zu einer verknüpften Entscheidung holt den Ball zurück und erzeugt die Folgeaufgabe genau einmal
 
 ### `task-stafette-lifecycle`
 
@@ -460,12 +462,12 @@ Verschiebt die Wiedervorlage einer Aufgabe, protokolliert den Zeitpunkt und blen
 - Ob Rückstellungen fachlich als Wiedervorlage oder nur als Anzeige-Unterdrückung gelten, ist im Code nicht abschließend dokumentiert.
 
 ### `tasks.subtasks` — Unteraufgaben
-Zerlegt Aufgaben in Unteraufgaben und zeigt deren Fortschritt in der Hauptaufgabe.
+Zerlegt Aufgaben in Unteraufgaben und zeigt deren Fortschritt in der Hauptaufgabe. Der Selbsttest legt Unteraufgaben über parent_task_id an, prüft die Verknüpfung, ihre Ausblendung aus der Hauptliste und den Fortschritt.
 
 - **Kategorie:** fachlich
 - **Implementierung:** implementiert
 - **Einbindung:** UI
-- **Testabdeckung:** kein Test
+- **Testabdeckung:** Selbsttest
 - **Letztes Testergebnis:** nicht-ausgefuehrt (kein Laufnachweis importiert; nicht aus der Existenz einer Testdatei abgeleitet)
 - **Rollen:** `abgeordneter`, `bueroleitung`, `mitarbeiter`, `praktikant`
 - **Routen:** —
@@ -476,7 +478,7 @@ Zerlegt Aufgaben in Unteraufgaben und zeigt deren Fortschritt in der Hauptaufgab
 - **Datenbankfunktionen:** —
 - **Tabellen:** `subtasks`, `tasks`
 - **Abhängigkeiten:** `tasks.create`
-- **Selbsttests:** —
+- **Selbsttests:** `task-lifecycle`
 - **Unit-Tests:** —
 - **Integrationstests:** —
 - **Browser-Tests:** —
@@ -486,10 +488,12 @@ Zerlegt Aufgaben in Unteraufgaben und zeigt deren Fortschritt in der Hauptaufgab
 
 - src/components/tasks/TaskListRow.tsx
 - src/components/tasks/TaskCard.tsx
+- src/features/tasks/templates.ts
+- src/features/selftest/scenarios/task-lifecycle.ts
 
 **Bekannte Einschränkungen**
 
-- Keine.
+- Der Step prüft die Aufgaben-basierten Unteraufgaben (parent_task_id); die ältere Tabelle subtasks wird von der Oberfläche nicht gelesen.
 
 **Offene Prüfpunkte**
 

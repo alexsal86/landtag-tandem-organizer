@@ -11,7 +11,7 @@ Eindeutige Fehler werden im CI-Lauf ausgegeben und brechen die Prüfung ab; sie 
 - Review-Hinweise: **0**
 - Nicht zugeordnete Objekte: **1**, davon ohne Ausnahme: **0**
 
-## Funktionen ohne zugeordneten Test (121)
+## Funktionen ohne zugeordneten Test (120)
 
 - `mywork.tabs` — Meine Arbeit – Bereichsnavigation und Einstellungen
 - `mywork.quick-access` — Schnellzugriff und zuletzt besuchte Seiten
@@ -22,7 +22,6 @@ Eindeutige Fehler werden im CI-Lauf ausgegeben und brechen die Prüfung ab; sie 
 - `platform.auth` — Anmeldung und Sitzung
 - `profile.edit` — Eigenes Profil bearbeiten
 - `mobile.app` — Mobile App (Expo)
-- `tasks.subtasks` — Unteraufgaben
 - `tasks.search-filter` — Aufgaben suchen, filtern und sortieren
 - `automation.conditions` — Regelbedingungen und Feldtypen
 - `automation.rule-validation` — Regelvalidierung im Editor
@@ -389,6 +388,7 @@ Eindeutige Fehler werden im CI-Lauf ausgegeben und brechen die Prüfung ab; sie 
 
 ### `tasks.subtasks`
 
+- Der Step prüft die Aufgaben-basierten Unteraufgaben (parent_task_id); die ältere Tabelle subtasks wird von der Oberfläche nicht gelesen.
 - Die Unteraufgaben-Oberfläche wurde nicht im Browser geprüft; der Nachweis stützt sich auf Komponenten und Tabelle.
 
 ### `tasks.link-document`

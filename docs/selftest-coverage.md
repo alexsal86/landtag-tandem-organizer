@@ -480,7 +480,6 @@ Diese implementierten Fachfunktionen haben laut Funktionskatalog keine Selbsttes
 | `redaktion.themenspeicher` | Themenspeicher und Hashtags | kommunikation | topic_backlog, social_hashtag_sets |
 | `search.global` | Globale Suche und Befehlspalette | arbeitsbereich | search_analytics |
 | `tasks.search-filter` | Aufgaben suchen, filtern und sortieren | aufgaben | tasks, task_statuses, task_categories |
-| `tasks.subtasks` | Unteraufgaben | aufgaben | subtasks, tasks |
 | `timetracking.entries` | Arbeitszeit erfassen | mitarbeit | time_entries, time_entry_corrections, time_entry_history |
 | `topics.convert-catalog` | Thema in Katalog überführen | organisation | topics, topic_catalog_links, employee_responsibilities |
 
@@ -564,7 +563,7 @@ Diese Manifeste sind keine Messung ausgeführter Assertions.
 - poll-lifecycle: `appointments`: title, description, start_time, end_time, category, status, priority, user_id, tenant_id, poll_id
 - quick-note-lifecycle: `quick_notes`: title, content, user_id, tenant_id, priority_level, color, category, tags, is_pinned, task_id, is_archived, archived_at
 - quick-note-lifecycle: `tasks`: title, description, user_id, tenant_id, status, priority
-- task-lifecycle: `tasks`: title, description, status, priority, user_id, tenant_id, assigned_to, due_date, progress, pending_for_jour_fixe, completed_at, recurrence_rule, ball_owner, ball_assignee_id, next_action, next_action_due, timeline
+- task-lifecycle: `tasks`: title, description, status, priority, user_id, tenant_id, assigned_to, due_date, progress, pending_for_jour_fixe, completed_at, recurrence_rule, parent_task_id, ball_owner, ball_assignee_id, next_action, next_action_due, timeline
 - task-lifecycle: `task_documents`: task_id, user_id, file_name, file_path, file_type, file_size
 - task-lifecycle: `task_decisions`: title, description, status, created_by, tenant_id, task_id
 - task-stafette-lifecycle: `tasks`: title, description, status, priority, tenant_id, user_id, ball_owner, ball_assignee_id, assigned_to, next_action, next_action_due, timeline

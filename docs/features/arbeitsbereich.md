@@ -57,7 +57,7 @@ _Auto-generiert mit `npm run update:feature-catalog` aus dem zentralen Funktions
 | `appointment-briefing-lifecycle` | Briefing-Lifecycle (vergeben → Aufgabe → vorlegen → freigeben) | 3 | 5 | — |
 | `decision-lifecycle` | Entscheidungs-Lifecycle (active → open → archived) | 3 | 0 | — |
 | `quick-note-lifecycle` | Notizen-Lifecycle (Anlegen → Priorität → Anheften → Aufgabe → Archiv) | 4 | 0 | — |
-| `task-lifecycle` | Aufgaben-Lifecycle (Zuweisung → Frist → Entscheidung → Jour fixe → erledigt) | 6 | 6 | — |
+| `task-lifecycle` | Aufgaben-Lifecycle (Zuweisung → Frist → Entscheidung → Jour fixe → erledigt) | 6 | 7 | — |
 
 ## Selbsttest-Schritte
 
@@ -103,6 +103,7 @@ Diese Schritte führen die Szenarien aus; „letzter Lauf“ stammt aus `src/fea
 | `task-lifecycle` | `status-registry` | Status-Registry führt die fünf Kernstatus | db | — |
 | `task-lifecycle` | `create` | Aufgabe anlegen | db | — |
 | `task-lifecycle` | `document-link` | Dokument an Aufgabe hängen und wieder lösen | db | — |
+| `task-lifecycle` | `subtasks` | Unteraufgaben: Verknüpfung, Hauptliste und Fortschritt | workflow | — |
 | `task-lifecycle` | `assign` | Aufgabe zuweisen + Frist setzen | db | — |
 | `task-lifecycle` | `deadline-review` | Fristen: Berliner Gruppierung, Verwerfen und Rückgängig | workflow | — |
 | `task-lifecycle` | `decision` | Entscheidung aus Aufgabe erstellen | db | — |
@@ -135,10 +136,11 @@ Keine Prüfungen deklariert.
 
 1. Status-Registry führt die fünf Kernstatus
 2. Dokument hängt an der Aufgabe, bleibt auf eigene Aufgaben beschränkt und lässt sich wieder lösen
-3. Fristen werden nach Berliner Tagen gruppiert; Verwerfen löscht nur die Frist und Rückgängig stellt sie wieder her
-4. Abschluss setzt completed_at, Wiederöffnen entfernt es
-5. Wiederholungsregel legt beim Abschluss genau eine Folgeaufgabe an
-6. Votum zu einer verknüpften Entscheidung holt den Ball zurück und erzeugt die Folgeaufgabe genau einmal
+3. Unteraufgaben tragen parent_task_id, erscheinen nicht als eigene Hauptaufgabe und treiben den Fortschritt auf 50 bzw. 100 Prozent
+4. Fristen werden nach Berliner Tagen gruppiert; Verwerfen löscht nur die Frist und Rückgängig stellt sie wieder her
+5. Abschluss setzt completed_at, Wiederöffnen entfernt es
+6. Wiederholungsregel legt beim Abschluss genau eine Folgeaufgabe an
+7. Votum zu einer verknüpften Entscheidung holt den Ball zurück und erzeugt die Folgeaufgabe genau einmal
 
 ## Funktionsdetails
 
