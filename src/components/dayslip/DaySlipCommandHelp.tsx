@@ -49,7 +49,8 @@ export function DaySlipCommandHelp() {
               <dd className="mt-1.5 rounded border border-priority-high/40 bg-priority-high/10 px-3 py-2">!! Wichtig</dd>
             </div>
           </dl>
-          <p className="border-t pt-2 text-xs text-muted-foreground">Text markieren, um die Formatierungsleiste zu öffnen.</p>
+          <p className="border-t pt-2 text-xs text-muted-foreground">Zeile abhaken: links an den Rand klicken oder <code>Alt+Enter</code> in der Zeile drücken.</p>
+          <p className="text-xs text-muted-foreground">Text markieren, um die Formatierungsleiste zu öffnen.</p>
         </TooltipContent>
       </Tooltip>
     </TooltipProvider>

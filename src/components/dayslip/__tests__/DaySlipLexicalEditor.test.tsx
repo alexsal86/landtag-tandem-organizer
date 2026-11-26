@@ -41,6 +41,19 @@ describe("Tageszettel editor", () => {
     expect(paragraphs.map(node => node.textContent)).toEqual(["Hello", " world"]);
     expect(new Set(paragraphs.map(node => node.dataset.lineId)).size).toBe(2);
   });
+  it("checks the active line off on Alt+Enter without splitting it", async () => {
+    let editor!: LexicalEditor;
+    const onToggleLine = vi.fn();
+    const view = render(<DaySlipLexicalEditor {...props(value => { editor = value; })} onToggleLine={onToggleLine} />);
+    await waitFor(() => expect(view.getByRole("textbox")).toHaveTextContent("Hello world"));
+    await act(async () => {
+      editor.update(() => { $getRoot().getFirstChildOrThrow<DaySlipLineNode>().getFirstChildOrThrow<TextNode>().select(5, 5); }, { discrete: true });
+      editor.dispatchCommand(KEY_ENTER_COMMAND, new KeyboardEvent("keydown", { key: "Enter", altKey: true }));
+    });
+    expect(onToggleLine).toHaveBeenCalledWith("original");
+    expect(view.container.querySelectorAll("p")).toHaveLength(1);
+  });
+
   it("retains an imported task link in both editor JSON and exported HTML", async () => {
     let editor!: LexicalEditor;
     const initial = props(value => { editor = value; });

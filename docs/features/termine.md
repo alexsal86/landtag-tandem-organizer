@@ -60,7 +60,7 @@ _Auto-generiert mit `npm run update:feature-catalog` aus dem zentralen Funktions
 | `appointment-lifecycle` | Termin-Lifecycle (Kalender + Briefing + Feedback) | 3 | 0 |
 | `appointment-request-lifecycle` | Terminanfragen-Lifecycle (Eingang → Sperre → Entscheidung → Termin) | 2 | 4 |
 | `daily-briefing-lifecycle` | Tages-Briefings (Vortag-Regel) | 1 | 0 |
-| `day-slip-lifecycle` | Tageszettel-Lifecycle (Links → Neuladen → Übernahme auf Folgetag) | 1 | 3 |
+| `day-slip-lifecycle` | Tageszettel-Lifecycle (Links → Neuladen → Übernahme auf Folgetag) | 1 | 6 |
 | `jour-fixe-platform-integration` | Jour Fixe: Plattformquellen & Stafetten-Abschluss | 4 | 4 |
 | `poll-lifecycle` | Terminabstimmung (Gewinner-Slot übernehmen + Nachfassen) | 5 | 6 |
 
@@ -543,7 +543,7 @@ Füllt die Jour-fixe-Agende aus Vorgängen, Aufgaben, Geburtstagen und weiteren 
 - Keine.
 
 ### `daily.briefing` — Tagesbriefing und Tageszettel
-Erzeugt Tagesbriefings und Tageszettel mit Terminen und Aufgaben, hält Lesebestätigungen fest und archiviert Tageszettel.
+Erzeugt Tagesbriefings und Tageszettel mit Terminen und Aufgaben, hält Lesebestätigungen fest und archiviert Tageszettel. Vergangene Zettel bleiben auch ohne Abschluss lesbar; Löschen ist rückgängig zu machen.
 
 - **Kategorie:** fachlich
 - **Implementierung:** implementiert
@@ -552,15 +552,15 @@ Erzeugt Tagesbriefings und Tageszettel mit Terminen und Aufgaben, hält Lesebest
 - **Letztes Testergebnis:** nicht-ausgefuehrt (nicht aus der Existenz einer Testdatei abgeleitet)
 - **Rollen:** `abgeordneter`, `bueroleitung`, `mitarbeiter`
 - **Routen:** —
-- **Frontend-Komponenten:** `src/features/briefings/components/TodayBriefingPanel.tsx`, `src/features/briefings/components/BriefingComposerCard.tsx`
+- **Frontend-Komponenten:** `src/features/briefings/components/TodayBriefingPanel.tsx`, `src/features/briefings/components/BriefingComposerCard.tsx`, `src/components/dayslip/GlobalDaySlipPanel.tsx`, `src/components/dayslip/DaySlipLexicalEditor.tsx`, `src/components/dayslip/DaySlipAppointments.tsx`, `src/components/dayslip/DaySlipCommandHelp.tsx`, `src/components/dayslip/WeekPlanningBanner.tsx`
 - **Services:** —
-- **Hooks:** `src/features/briefings/hooks/useTodayBriefings.ts`, `src/features/briefings/hooks/useMarkBriefingRead.ts`, `src/features/briefings/hooks/useMyDraftBriefing.ts`
+- **Hooks:** `src/features/briefings/hooks/useTodayBriefings.ts`, `src/features/briefings/hooks/useMarkBriefingRead.ts`, `src/features/briefings/hooks/useMyDraftBriefing.ts`, `src/components/dayslip/hooks/useDaySlipStore.ts`, `src/components/dayslip/hooks/useDaySlipPersistence.ts`
 - **Edge Functions:** —
 - **Datenbankfunktionen:** `can_view_daily_briefing_receipt`, `get_authored_daily_briefing_read_status`, `validate_daily_briefing_date`
 - **Tabellen:** `daily_briefings`, `daily_briefing_reads`, `day_slips`
 - **Abhängigkeiten:** —
 - **Selbsttests:** `daily-briefing-lifecycle`, `day-slip-lifecycle`
-- **Unit-Tests:** —
+- **Unit-Tests:** `src/components/dayslip/__tests__/GlobalDaySlipPanel.test.tsx`, `src/components/dayslip/__tests__/daySlipNavigation.test.ts`, `src/components/dayslip/__tests__/daySlipState.test.ts`, `src/components/dayslip/__tests__/DaySlipLexicalEditor.test.tsx`, `src/components/dayslip/__tests__/daySlipLifecycle.test.tsx`, `src/features/selftest/scenarios/day-slip-lifecycle.test.ts`
 - **Integrationstests:** —
 - **Browser-Tests:** —
 - **Dokumentation:** `docs/my-work-architecture.md`
@@ -569,11 +569,18 @@ Erzeugt Tagesbriefings und Tageszettel mit Terminen und Aufgaben, hält Lesebest
 
 - src/features/briefings/components/TodayBriefingPanel.tsx
 - src/features/briefings/hooks/useTodayBriefings.ts
+- src/components/dayslip/GlobalDaySlipPanel.tsx
+- src/components/dayslip/daySlipNavigation.ts
+- src/components/dayslip/daySlipState.ts
+- src/components/dayslip/hooks/useDaySlipStore.ts
+- src/components/dayslip/__tests__/daySlipNavigation.test.ts
 - src/features/selftest/scenarios/daily-briefing-lifecycle.ts
+- src/features/selftest/scenarios/day-slip-lifecycle.ts
 
 **Bekannte Einschränkungen**
 
-- Keine.
+- Vortage sind schreibgeschützt; abgeschlossen werden kann nur der aktuelle Tag.
+- Die Zuordnung am Tagesende bleibt Einzelarbeit je Zeile.
 
 **Offene Prüfpunkte**
 

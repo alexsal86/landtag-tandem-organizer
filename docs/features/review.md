@@ -331,7 +331,7 @@ Eindeutige Fehler werden im CI-Lauf ausgegeben und brechen die Prüfung ab; sie 
 - `events.legacy-rsvp` — Legacy-Einladungslinks (veraltet)
 - `cases.legacy-routes` — Legacy-Vorgangsrouten (veraltet)
 
-## Funktionen mit Einschränkungen oder offenen Punkten (69)
+## Funktionen mit Einschränkungen oder offenen Punkten (70)
 
 ### `mywork.dashboard`
 
@@ -518,6 +518,11 @@ Eindeutige Fehler werden im CI-Lauf ausgegeben und brechen die Prüfung ab; sie 
 ### `appointments.requests`
 
 - Ein direkter Statuswechsel wird durch einen Trigger blockiert; der Negativpfad ist im Szenario geprüft.
+
+### `daily.briefing`
+
+- Vortage sind schreibgeschützt; abgeschlossen werden kann nur der aktuelle Tag.
+- Die Zuordnung am Tagesende bleibt Einzelarbeit je Zeile.
 
 ### `calendar.holidays`
 

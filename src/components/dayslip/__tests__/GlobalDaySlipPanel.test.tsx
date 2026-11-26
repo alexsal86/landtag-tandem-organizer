@@ -1,5 +1,5 @@
 import "@testing-library/jest-dom/vitest";
-import { fireEvent, render, screen, waitFor } from "@testing-library/react";
+import { act, fireEvent, render, screen, waitFor } from "@testing-library/react";
 import { BrowserRouter } from "react-router-dom";
 import { QueryClient, QueryClientProvider } from "@tanstack/react-query";
 import { beforeEach, describe, expect, it, vi } from "vitest";
@@ -7,6 +7,7 @@ import { supabase } from "@/integrations/supabase/client";
 import { GlobalDaySlipPanel } from "../GlobalDaySlipPanel";
 import { DAY_SLIP_APPEND_EVENT } from "@/lib/daySlipBridge";
 import { toDayKey, toParagraphHtml } from "../dayslipTypes";
+import { shiftDayKey } from "../daySlipNavigation";
 import type { createBackend } from "./backend";
 
 const account = vi.hoisted(() => ({ userId: "user-a" }));
@@ -18,6 +19,11 @@ vi.mock("@/integrations/supabase/client", async () => {
   return { supabase: createBackend() };
 });
 vi.mock("@/components/lexical/FloatingTextFormatToolbar", () => ({ default: () => null }));
+const notifications = vi.hoisted(() => {
+  const toast = vi.fn();
+  return { toast: Object.assign(toast, { success: vi.fn(), error: vi.fn(), info: vi.fn(), warning: vi.fn(), message: vi.fn(), loading: vi.fn(), dismiss: vi.fn(), promise: vi.fn() }) };
+});
+vi.mock("sonner", () => ({ toast: notifications.toast }));
 const db = supabase as unknown as ReturnType<typeof createBackend>;
 const today = toDayKey(new Date());
 
@@ -92,6 +98,45 @@ describe("Tageszettel panel", () => {
     fireEvent.click(screen.getByRole("button", { name: "Tag wieder öffnen" }));
     await waitFor(() => expect(screen.getByRole("textbox")).toHaveAttribute("contenteditable", "true"));
   });
+  it("opens an unfinished past day read-only and returns to today", async () => {
+    const yesterday = shiftDayKey(today, -1);
+    db.tables.set("day_slips", [
+      { user_id: "user-a", day_key: yesterday, data: { html: toParagraphHtml({ id: "y", text: "Forgotten point" }), plainText: "Forgotten point" } },
+    ]);
+    render(view());
+    await waitFor(() => expect(screen.getByRole("button", { name: "Vorheriger Tageszettel" })).toBeEnabled());
+    fireEvent.click(screen.getByRole("button", { name: "Vorheriger Tageszettel" }));
+    await waitFor(() => expect(screen.getByRole("textbox")).toHaveTextContent("Forgotten point"));
+    expect(screen.getByRole("textbox")).toHaveAttribute("contenteditable", "false");
+    expect(screen.getByRole("status")).toHaveTextContent(/Nicht abgeschlossen/);
+    fireEvent.click(screen.getByRole("button", { name: "Heute" }));
+    await waitFor(() => expect(screen.queryByRole("button", { name: "Heute" })).not.toBeInTheDocument());
+  });
+
+  it("restores a deleted line through the undo action", async () => {
+    db.tables.set("day_slips", [{ user_id: "user-a", day_key: today, data: { html: toParagraphHtml({ id: "a", text: "Disposable" }), plainText: "Disposable", recurringInjected: true } }]);
+    render(view());
+    await waitFor(() => expect(screen.getByRole("textbox")).toHaveTextContent("Disposable"));
+    fireEvent.contextMenu(screen.getByRole("textbox").querySelector('[data-line-id="a"]')!);
+    fireEvent.click(screen.getByText("Löschen"));
+    await waitFor(() => expect(screen.getByRole("textbox")).not.toHaveTextContent("Disposable"));
+    const [, options] = notifications.toast.mock.calls.at(-1)! as [string, { action: { label: string; onClick: () => void } }];
+    expect(options.action.label).toBe("Rückgängig");
+    act(() => options.action.onClick());
+    await waitFor(() => expect(screen.getByRole("textbox")).toHaveTextContent("Disposable"));
+  });
+
+  it("marks the chosen triage target as pressed for assistive technology", async () => {
+    db.tables.set("day_slips", [{ user_id: "user-a", day_key: today, data: { html: toParagraphHtml({ id: "a", text: "Prepare briefing" }), plainText: "Prepare briefing", recurringInjected: true } }]);
+    render(view());
+    await waitFor(() => expect(screen.getByRole("textbox")).toHaveTextContent("Prepare briefing"));
+    fireEvent.click(screen.getByRole("button", { name: /Tag abschließen/ }));
+    expect(screen.getByRole("button", { name: "Als Notiz" })).toHaveAttribute("aria-pressed", "false");
+    fireEvent.click(screen.getByRole("button", { name: "Als Notiz" }));
+    expect(screen.getByRole("button", { name: "Als Notiz" })).toHaveAttribute("aria-pressed", "true");
+    expect(screen.getByRole("button", { name: "Als Aufgabe" })).toHaveAttribute("aria-pressed", "false");
+  });
+
   it("shows load failures and offers retry without mounting an empty editor", async () => {
     db.failures.set("day_slips:select", { message: "Network unavailable" });
     render(view());

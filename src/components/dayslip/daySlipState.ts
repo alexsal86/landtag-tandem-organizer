@@ -1,7 +1,7 @@
 import { readSourceFromDataset, writeSourceToDataset } from "@/components/lexical/DaySlipLineNode";
 import {
   type CarryLine, type DaySlipStore, type DaySlipDayData, type DaySlipSource,
-  type DaySlipLineEntry, extractLinesFromHtml, toParagraphHtml, normalizeLineText,
+  type DaySlipLineEntry, type ResolvedItem, extractLinesFromHtml, toParagraphHtml, normalizeLineText, isDayKey,
 } from "./dayslipTypes";
 
 export const emptyDay = (): DaySlipDayData => ({ html: "", plainText: "", struckLineIds: [] });
@@ -10,7 +10,7 @@ export function normalizeStore(value: unknown): DaySlipStore {
   if (!value || typeof value !== "object" || Array.isArray(value)) return {};
   const store: DaySlipStore = {};
   for (const [key, raw] of Object.entries(value)) {
-    if (!/^\d{4}-\d{2}-\d{2}$/.test(key) || !raw || typeof raw !== "object") continue;
+    if (!isDayKey(key) || !raw || typeof raw !== "object") continue;
     const day = raw as DaySlipDayData;
     if (typeof day.html !== "string") continue;
     const doc = new DOMParser().parseFromString(day.html, "text/html");
@@ -81,6 +81,95 @@ export function carryLines(store: DaySlipStore, today: string, lines: CarryLine[
   }
   next[today] = day;
   return next;
+}
+
+/** Everything needed to put a deleted line back exactly where it was. */
+export type RemovedDaySlipLine = {
+  lineId: string;
+  text: string;
+  html: string;
+  /** Position among the day's block elements, so undo restores the original order. */
+  index: number;
+  source?: DaySlipSource;
+  struck: boolean;
+  addedAt?: string;
+  checkedAt?: string;
+  resolved?: ResolvedItem;
+};
+
+/**
+ * Deletes one line. Lines whose export already happened stay: the linked object
+ * is the destination, not a draft that may disappear.
+ */
+export function removeLineFromDay(day: DaySlipDayData, lineId: string): { day: DaySlipDayData; removed: RemovedDaySlipLine | null } {
+  const resolved = day.resolved?.find(item => item.lineId === lineId);
+  if (resolved?.persisted) return { day, removed: null };
+  const doc = new DOMParser().parseFromString(day.html, "text/html");
+  const element = Array.from(doc.querySelectorAll("p")).find(paragraph => paragraph.dataset.lineId === lineId);
+  if (!element) return { day, removed: null };
+  const removed: RemovedDaySlipLine = {
+    lineId,
+    text: (element.textContent ?? "").trim(),
+    html: element.outerHTML,
+    index: Array.from(doc.body.children).indexOf(element),
+    source: day.sources?.[lineId],
+    struck: (day.struckLineIds ?? day.struckLines ?? []).includes(lineId),
+    addedAt: day.lineTimestamps?.[lineId]?.addedAt,
+    checkedAt: day.lineTimestamps?.[lineId]?.checkedAt,
+    resolved,
+  };
+  element.remove();
+  const html = doc.body.innerHTML;
+  const sources = { ...day.sources };
+  delete sources[lineId];
+  const lineTimestamps = { ...day.lineTimestamps };
+  delete lineTimestamps[lineId];
+  return {
+    removed,
+    day: {
+      ...day,
+      html,
+      plainText: extractLinesFromHtml(html).map(line => line.text).join("\n"),
+      nodes: undefined,
+      sources,
+      lineTimestamps,
+      struckLineIds: (day.struckLineIds ?? day.struckLines ?? []).filter(id => id !== lineId),
+      resolved: day.resolved?.filter(item => item.lineId !== lineId),
+    },
+  };
+}
+
+/** Undo for a deletion: restoring twice or into a day that already has the line changes nothing. */
+export function restoreLineToDay(day: DaySlipDayData, removed: RemovedDaySlipLine): DaySlipDayData {
+  const doc = new DOMParser().parseFromString(day.html, "text/html");
+  if (Array.from(doc.querySelectorAll("p")).some(paragraph => paragraph.dataset.lineId === removed.lineId)) return day;
+  const element = new DOMParser().parseFromString(removed.html, "text/html").body.firstElementChild;
+  if (!element) return day;
+  const children = Array.from(doc.body.children);
+  const position = Math.min(Math.max(removed.index, 0), children.length);
+  doc.body.insertBefore(doc.importNode(element, true), children[position] ?? null);
+  const html = doc.body.innerHTML;
+  const struck = new Set(day.struckLineIds ?? day.struckLines ?? []);
+  if (removed.struck) struck.add(removed.lineId); else struck.delete(removed.lineId);
+  const lineTimestamps = { ...day.lineTimestamps };
+  if (removed.addedAt || removed.checkedAt) {
+    lineTimestamps[removed.lineId] = {
+      addedAt: removed.addedAt ?? new Date().toISOString(),
+      ...(removed.checkedAt ? { checkedAt: removed.checkedAt } : {}),
+    };
+  }
+  return {
+    ...day,
+    html,
+    plainText: extractLinesFromHtml(html).map(line => line.text).join("\n"),
+    nodes: undefined,
+    sources: removed.source ? { ...day.sources, [removed.lineId]: removed.source } : day.sources,
+    lineTimestamps,
+    struckLineIds: [...struck],
+    resolved: removed.resolved && !day.resolved?.some(item => item.lineId === removed.lineId)
+      ? [...(day.resolved ?? []), removed.resolved]
+      : day.resolved,
+  };
 }
 
 export function sourcePath(source: DaySlipSource): string {

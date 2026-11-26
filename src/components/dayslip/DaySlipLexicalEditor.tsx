@@ -23,7 +23,7 @@ import { $createHorizontalRuleNode } from "@lexical/react/LexicalHorizontalRuleN
 import { BLUR_COMMAND, FOCUS_COMMAND } from "lexical";
 import { $generateNodesFromDOM } from "@lexical/html";
 import FloatingTextFormatToolbar from "@/components/lexical/FloatingTextFormatToolbar";
-import { $createDaySlipLineNode } from "@/components/lexical/DaySlipLineNode";
+import { $createDaySlipLineNode, DaySlipLineNode } from "@/components/lexical/DaySlipLineNode";
 import { $createLabeledHorizontalRuleNode } from "@/components/lexical/LabeledHorizontalRuleNode";
 import { parseRuleLine } from "./dayslipTypes";
 import { DaySlipPages } from "./DaySlipPages";
@@ -69,18 +69,29 @@ function InitialContentPlugin({ initialHtml, initialNodes, dayKey, forceReloadTo
   return null;
 }
 
-function DaySlipEnterBehaviorPlugin() {
+function DaySlipEnterBehaviorPlugin({ onToggleLine }: { onToggleLine?: (lineId: string) => void }) {
   const [editor] = useLexicalComposerContext();
   useEffect(() => {
     return editor.registerCommand(KEY_ENTER_COMMAND, (event) => {
       if (event?.shiftKey) return false;
       let currentText = "";
+      let lineId = "";
       let hasRangeSelection = false;
       editor.getEditorState().read(() => {
         const sel = $getSelection();
-        if ($isRangeSelection(sel)) { hasRangeSelection = true; currentText = sel.anchor.getNode().getTopLevelElementOrThrow().getTextContent().trim(); }
+        if (!$isRangeSelection(sel)) return;
+        hasRangeSelection = true;
+        const topLevel = sel.anchor.getNode().getTopLevelElementOrThrow();
+        currentText = topLevel.getTextContent().trim();
+        if (topLevel instanceof DaySlipLineNode) lineId = topLevel.getLineId();
       });
       if (!hasRangeSelection) return false;
+      // Alt+Enter checks the active line off from the keyboard, mirroring the left margin click.
+      if (event?.altKey) {
+        event.preventDefault();
+        if (lineId) onToggleLine?.(lineId);
+        return true;
+      }
       const ruleParsed = parseRuleLine(currentText);
       event?.preventDefault();
       editor.update(() => {
@@ -100,7 +111,7 @@ function DaySlipEnterBehaviorPlugin() {
       });
       return true;
     }, COMMAND_PRIORITY_CRITICAL);
-  }, [editor]);
+  }, [editor, onToggleLine]);
   return null;
 }
 
@@ -148,12 +159,14 @@ export interface DaySlipEditorProps {
   onEditorClick: (e: MouseEvent<HTMLDivElement>) => void;
   onEditorContextMenu: (e: MouseEvent<HTMLDivElement>) => void;
   onDrop: (e: DragEvent<HTMLElement>) => void;
+  /** Alt+Enter on the focused line (keyboard equivalent of the margin click). */
+  onToggleLine?: (lineId: string) => void;
   hidden?: boolean;
   readOnly?: boolean;
 }
 
 export const DaySlipLexicalEditor = memo(function DaySlipLexicalEditor(props: DaySlipEditorProps) {
-  const { initialHtml, initialNodes, dayKey, forceReloadToken, resolveMode, editorConfig, onEditorChange, onEditorReady, onEditorClick, onEditorContextMenu, onDrop, hidden, readOnly } = props;
+  const { initialHtml, initialNodes, dayKey, forceReloadToken, resolveMode, editorConfig, onEditorChange, onEditorReady, onEditorClick, onEditorContextMenu, onDrop, onToggleLine, hidden, readOnly } = props;
   const [isFocused, setIsFocused] = useState(false);
   const handleFocusChange = useCallback((focused: boolean) => setIsFocused(focused), []);
 
@@ -169,7 +182,7 @@ export const DaySlipLexicalEditor = memo(function DaySlipLexicalEditor(props: Da
         <EditorEditablePlugin editable={!resolveMode && !readOnly} />
         <DaySlipPages>
           <RichTextPlugin
-            contentEditable={<ContentEditable className="editor-input min-h-full flex-1 p-4 text-sm focus:outline-none" />}
+            contentEditable={<ContentEditable aria-keyshortcuts="Alt+Enter" className="editor-input min-h-full flex-1 p-4 text-sm focus:outline-none" />}
             placeholder={
               <div className={`pointer-events-none absolute left-4 top-4 whitespace-pre-line text-base italic text-muted-foreground transition-opacity duration-200 ${isFocused ? "opacity-0" : "opacity-100"}`}>
                 {"Was steht heute an? Einfach drauflos schreiben …\n\n— Rückruf Joschka\n— Pressemitteilung Schulgesetz abstimmen\n— Unterlagen Ausschusssitzung"}
@@ -183,7 +196,7 @@ export const DaySlipLexicalEditor = memo(function DaySlipLexicalEditor(props: Da
         <EditorReadyPlugin onEditorReady={onEditorReady} />
         <HistoryPlugin />
         <HorizontalRulePlugin />
-        <DaySlipEnterBehaviorPlugin />
+        <DaySlipEnterBehaviorPlugin onToggleLine={onToggleLine} />
         <FocusPlugin onFocusChange={handleFocusChange} />
         <InitialContentPlugin initialHtml={initialHtml} initialNodes={initialNodes} dayKey={dayKey} forceReloadToken={forceReloadToken} />
       </LexicalComposer>

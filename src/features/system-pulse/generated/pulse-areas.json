@@ -916,7 +916,10 @@
           "checks": [
             "Speichern und erneutes Laden",
             "Link-Erhalt bei Übernahme",
-            "Keine doppelte Übernahme"
+            "Keine doppelte Übernahme",
+            "Vortage ohne Abschluss bleiben lesbar",
+            "Snooze-Vorschläge ohne doppeltes Ziel",
+            "Löschen mit Rückgängig"
           ],
           "tables": [
             "day_slips"
@@ -940,6 +943,22 @@
             {
               "id": "no-duplicate-carry",
               "label": "Erneute Übernahme erzeugt keine doppelten Zeilen"
+            },
+            {
+              "id": "navigation-rules",
+              "label": "Vortage lesbar, Zukunft gesperrt"
+            },
+            {
+              "id": "open-past-days",
+              "label": "Offene Vortage werden aufgelistet"
+            },
+            {
+              "id": "snooze-presets",
+              "label": "Snooze-Vorschläge ohne doppeltes Ziel"
+            },
+            {
+              "id": "delete-undo",
+              "label": "Löschen mit Rückgängig erhält Reihenfolge und Verknüpfung"
             }
           ]
         }

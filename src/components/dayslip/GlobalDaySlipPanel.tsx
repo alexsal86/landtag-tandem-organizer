@@ -7,12 +7,13 @@ import { useTenant } from "@/hooks/useTenant";
 import { useTenantUsers } from "@/hooks/useTenantUsers";
 import { useNavigate } from "react-router-dom";
 import { toast } from "sonner";
-import { sourcePath, normalizeStore } from "./daySlipState";
+import { sourcePath, normalizeStore, emptyDay } from "./daySlipState";
+import { resolveDayView, openPastDays, openLineCount, snoozePresets } from "./daySlipNavigation";
 import type { DaySlipSource } from "./dayslipTypes";
 import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogDescription } from "@/components/ui/dialog";
 import {
   Check, ClipboardPen, Clock3, Folder, FolderArchive, ListTodo, NotebookPen,
-  Pencil, Plus, Scale, Settings, Trash2, X, ExternalLink, RotateCcw, PanelRightClose, PanelRightOpen,
+  Pencil, Plus, Scale, Settings, Trash2, X, ExternalLink, RotateCcw, PanelRightClose, PanelRightOpen, ChevronLeft, ChevronRight,
 } from "lucide-react";
 import { Popover, PopoverContent, PopoverTrigger } from "@/components/ui/popover";
 import { cn } from "@/lib/utils";
@@ -26,7 +27,7 @@ import { useDaySlipStore } from "@/components/dayslip/hooks/useDaySlipStore";
 import {
   type DayTemplate, type TaskOptions,
   WEEK_DAYS, WEEK_DAY_LABELS, DEFAULT_DAY_TEMPLATES,
-  STORAGE_KEY, RECURRING_STORAGE_KEY, DAY_TEMPLATE_STORAGE_KEY, formatDate, stripHtml, isRuleLine, formatTimeStamp, toDayKey, normalizeDayTemplates,
+  STORAGE_KEY, RECURRING_STORAGE_KEY, DAY_TEMPLATE_STORAGE_KEY, formatDate, stripHtml, isRuleLine, formatTimeStamp, normalizeDayTemplates,
 } from "@/components/dayslip/dayslipTypes";
 
 function DaySlipSurface({ children }: { children: ReactNode }) {
@@ -102,6 +103,16 @@ function DaySlipPanel({ userId, tenantId }: { userId: string; tenantId: string }
   const ds = useDaySlipStore(userId, tenantId);
   const canDropToDaySlip = ds.ready && !ds.todayData.completedAt && !ds.isProcessing;
 
+  // Past sheets stay reachable, including days that were never completed.
+  const [viewKey, setViewKey] = useState(() => ds.todayKey);
+  useEffect(() => { setViewKey(ds.todayKey); }, [ds.todayKey]);
+  useEffect(() => { if (!open) setViewKey(ds.todayKey); }, [open, ds.todayKey]);
+  const dayView = useMemo(() => resolveDayView(ds.store, ds.todayKey, viewKey), [ds.store, ds.todayKey, viewKey]);
+  const viewDay = useMemo(() => ds.store[dayView.key] ?? emptyDay(), [ds.store, dayView.key]);
+  const viewOpenCount = useMemo(() => openLineCount(viewDay), [viewDay]);
+  const pastOpenDays = useMemo(() => openPastDays(ds.store, ds.todayKey), [ds.store, ds.todayKey]);
+  const snoozeOptions = useMemo(() => snoozePresets(ds.todayKey), [ds.todayKey]);
+
   useEffect(() => {
     let timeout: ReturnType<typeof setTimeout> | undefined;
     const reset = () => {
@@ -164,7 +175,7 @@ function DaySlipPanel({ userId, tenantId }: { userId: string; tenantId: string }
   // Strike visual sync
   useEffect(() => {
     if (!ds.editorRef.current) return;
-    const struckSet = new Set(ds.struckLineIds);
+    const struckSet = new Set(viewDay.struckLineIds ?? viewDay.struckLines ?? []);
     requestAnimationFrame(() => {
       const nodes = document.querySelectorAll<HTMLElement>(".day-slip-item");
       nodes.forEach((node) => {
@@ -182,11 +193,11 @@ function DaySlipPanel({ userId, tenantId }: { userId: string; tenantId: string }
         node.classList.toggle("border-priority-high/40", isHighPriority);
         node.classList.toggle("bg-palette-amber/10", isPriority);
         node.classList.toggle("border-palette-amber/40", isPriority);
-        const stamp = ds.todayData.lineTimestamps?.[lineId];
+        const stamp = viewDay.lineTimestamps?.[lineId];
         node.title = stamp ? `Erfasst: ${formatTimeStamp(stamp.addedAt)} · Abgehakt: ${formatTimeStamp(stamp.checkedAt)}` : "";
       });
     });
-  }, [ds.editorRef, ds.struckLineIds, ds.todayData.html, ds.todayData.lineTimestamps, open, ds.editorReadyVersion]);
+  }, [ds.editorRef, viewDay, open, ds.editorReadyVersion]);
 
   // Changes are cached synchronously; closing also asks the queue to flush.
   const animateClosePanel = () => {
@@ -216,6 +227,7 @@ function DaySlipPanel({ userId, tenantId }: { userId: string; tenantId: string }
 
   const handleDropToDaySlip = useCallback((event: DragEvent<HTMLElement>) => {
     event.preventDefault();
+    if (!dayView.isToday) setViewKey(ds.todayKey);
     setIsDraggingToDaySlip(false);
     setIsOverDaySlipButton(false);
     const droppedTaskTitle = event.dataTransfer.getData("application/x-mywork-task-title").trim();
@@ -231,7 +243,7 @@ function DaySlipPanel({ userId, tenantId }: { userId: string; tenantId: string }
     const sourceType = ["task", "note", "case", "decision"].includes(droppedItemType) ? droppedItemType as "task" | "note" | "case" | "decision" : "task";
     ds.appendLinesToToday([withIcon], droppedTaskId ? { type: sourceType, id: droppedTaskId } : undefined);
     setOpen(true); ds.setResolveMode(false); setShowArchive(false); setShowSettings(false);
-  }, [ds]);
+  }, [ds, dayView.isToday]);
 
   useEffect(() => {
     const onAppend = (event: Event) => {
@@ -239,12 +251,13 @@ function DaySlipPanel({ userId, tenantId }: { userId: string; tenantId: string }
       const text = detail?.text?.trim();
       if (!text) return;
       if (ds.todayData.completedAt || !ds.ready || ds.isProcessing) { toast.info("Bitte den Tageszettel zuerst öffnen und den Tag gegebenenfalls wieder öffnen."); return; }
+      if (!dayView.isToday) setViewKey(ds.todayKey);
       ds.appendLinesToToday([withDaySlipSourceIcon(text, detail.source)], detail.source);
       toast.success("Auf den Tageszettel gesetzt");
     };
     window.addEventListener(DAY_SLIP_APPEND_EVENT, onAppend);
     return () => window.removeEventListener(DAY_SLIP_APPEND_EVENT, onAppend);
-  }, [ds]);
+  }, [ds, dayView.isToday]);
 
   const handleDaySlipButtonDragOver = useCallback((event: DragEvent<HTMLButtonElement>) => {
     const hasDaySlipData = event.dataTransfer.types.includes("application/x-mywork-task-title") || event.dataTransfer.types.includes("text/plain");
@@ -260,7 +273,7 @@ function DaySlipPanel({ userId, tenantId }: { userId: string; tenantId: string }
   }, [handleDropToDaySlip]);
 
   const handleEditorClick = useCallback((e: MouseEvent<HTMLDivElement>) => {
-    if (ds.todayData.completedAt || ds.isProcessing) return;
+    if (!dayView.isToday || ds.todayData.completedAt || ds.isProcessing) return;
     const target = e.target as HTMLElement;
     const item = target.closest(".day-slip-item") as HTMLElement | null;
     if (!item) return;
@@ -277,10 +290,10 @@ function DaySlipPanel({ userId, tenantId }: { userId: string; tenantId: string }
     const lineId = item.dataset.lineId;
     if (!lineId) return;
     ds.toggleStrike(lineId);
-  }, [ds, navigate]);
+  }, [ds, navigate, dayView.isToday]);
 
   const handleEditorContextMenu = useCallback((e: MouseEvent<HTMLDivElement>) => {
-    if (ds.todayData.completedAt || ds.isProcessing) return;
+    if (!dayView.isToday || ds.todayData.completedAt || ds.isProcessing) return;
     const target = e.target as HTMLElement;
     const item = target.closest(".day-slip-item") as HTMLElement | null;
     if (!item) return;
@@ -289,7 +302,25 @@ function DaySlipPanel({ userId, tenantId }: { userId: string; tenantId: string }
     if (!lineId || !text || isRuleLine(text)) return;
     e.preventDefault();
     setLineContextMenu({ x: e.clientX, y: e.clientY, lineId, text });
-  }, [ds.todayData.completedAt, ds.isProcessing]);
+  }, [ds.todayData.completedAt, ds.isProcessing, dayView.isToday]);
+
+  // The editor is a record while a past day is open; only today accepts changes.
+  const handleEditorChange = useCallback((...args: Parameters<typeof ds.onEditorChange>) => {
+    if (!dayView.isToday) return;
+    ds.onEditorChange(...args);
+  }, [dayView.isToday, ds]);
+
+  const toggleLineFromKeyboard = useCallback((lineId: string) => {
+    if (!dayView.isToday || ds.todayData.completedAt || ds.isProcessing) return;
+    ds.toggleStrike(lineId);
+  }, [dayView.isToday, ds]);
+
+  const handleDeleteLine = useCallback((lineId: string, text: string) => {
+    setLineContextMenu(null);
+    const removed = ds.deleteLine(lineId);
+    if (!removed) { toast.info("Bereits verknüpfte Zeilen bleiben erhalten."); return; }
+    toast("Zeile gelöscht", { description: text, duration: 8000, action: { label: "Rückgängig", onClick: () => ds.restoreLine(removed) } });
+  }, [ds]);
 
   const switchView = (view: "settings" | "archive" | "default") => {
     setContentTransitioning(true);
@@ -375,28 +406,62 @@ function DaySlipPanel({ userId, tenantId }: { userId: string; tenantId: string }
             }}
           />}
           {/* Header */}
-          <div className="flex items-center justify-between border-b border-border/60 px-4 py-3">
-            <div>
-              <p className="flex items-center gap-2 text-lg font-semibold"><ClipboardPen className="h-5 w-5" /> Tageszettel</p>
-              <p className="text-xs text-muted-foreground">{formatDate(ds.todayKey)}</p>
+          <div className="border-b border-border/60 px-4 py-3">
+            <div className="flex items-center justify-between gap-2">
+              <div className="min-w-0">
+                <p className="flex items-center gap-2 text-lg font-semibold"><ClipboardPen className="h-5 w-5" /> Tageszettel</p>
+                <p className="truncate text-xs text-muted-foreground">{formatDate(dayView.key)}</p>
+              </div>
+              <div className="flex items-center gap-2">
+                <DaySlipCommandHelp />
+                {layout?.desktop && <button type="button" className="rounded p-1 text-muted-foreground hover:bg-muted hover:text-foreground focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring" onClick={() => layout.setDocked(!docked)} aria-label={docked ? "Tageszettel schwebend anzeigen" : "Tageszettel rechts andocken"} title={docked ? "Schwebend anzeigen" : "Rechts andocken"}>
+                  {docked ? <PanelRightClose className="h-4 w-4" /> : <PanelRightOpen className="h-4 w-4" />}
+                </button>}
+                <button type="button" className="rounded p-1 text-muted-foreground hover:bg-muted hover:text-foreground" onClick={() => switchView(showSettings ? "default" : "settings")} aria-label="Einstellungen anzeigen"><Settings className="h-4 w-4" /></button>
+                <button type="button" className="rounded p-1 text-muted-foreground hover:bg-muted hover:text-foreground" onClick={() => switchView(showArchive ? "default" : "archive")} aria-label="Archiv anzeigen"><Folder className="h-4 w-4" /></button>
+                <button type="button" className="rounded p-1 text-muted-foreground hover:bg-muted hover:text-foreground" onClick={animateClosePanel} aria-label="Panel schließen"><X className="h-4 w-4" /></button>
+              </div>
             </div>
-            <div className="flex items-center gap-2">
-              <DaySlipCommandHelp />
-              {layout?.desktop && <button type="button" className="rounded p-1 text-muted-foreground hover:bg-muted hover:text-foreground focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring" onClick={() => layout.setDocked(!docked)} aria-label={docked ? "Tageszettel schwebend anzeigen" : "Tageszettel rechts andocken"} title={docked ? "Schwebend anzeigen" : "Rechts andocken"}>
-                {docked ? <PanelRightClose className="h-4 w-4" /> : <PanelRightOpen className="h-4 w-4" />}
-              </button>}
-              <button type="button" className="rounded p-1 text-muted-foreground hover:bg-muted hover:text-foreground" onClick={() => switchView(showSettings ? "default" : "settings")} aria-label="Einstellungen anzeigen"><Settings className="h-4 w-4" /></button>
-              <button type="button" className="rounded p-1 text-muted-foreground hover:bg-muted hover:text-foreground" onClick={() => switchView(showArchive ? "default" : "archive")} aria-label="Archiv anzeigen"><Folder className="h-4 w-4" /></button>
-              <button type="button" className="rounded p-1 text-muted-foreground hover:bg-muted hover:text-foreground" onClick={animateClosePanel} aria-label="Panel schließen"><X className="h-4 w-4" /></button>
+            <div className="mt-1 flex items-center justify-between gap-2">
+              <div className="flex items-center gap-1">
+                <button type="button" className="rounded p-1 text-muted-foreground hover:bg-muted hover:text-foreground disabled:opacity-40" disabled={!dayView.canGoPrevious} onClick={() => { if (dayView.previousKey) setViewKey(dayView.previousKey); }} aria-label="Vorheriger Tageszettel" title="Vorheriger gespeicherter Tag"><ChevronLeft className="h-4 w-4" /></button>
+                <button type="button" className="rounded p-1 text-muted-foreground hover:bg-muted hover:text-foreground disabled:opacity-40" disabled={!dayView.canGoNext} onClick={() => { if (dayView.nextKey) setViewKey(dayView.nextKey); }} aria-label="Nächster Tageszettel" title="Nächster gespeicherter Tag"><ChevronRight className="h-4 w-4" /></button>
+                <span className={cn("rounded border px-1.5 py-0.5 text-[10px]", dayView.isToday ? "border-border/60 text-muted-foreground" : dayView.completedAt ? "border-palette-green/40 bg-palette-green/10 text-palette-green" : "border-palette-amber/40 bg-palette-amber/10 text-palette-amber")}>
+                  {dayView.isToday ? "Heute" : dayView.completedAt ? "Abgeschlossen" : "Nicht abgeschlossen"}
+                </span>
+              </div>
+              <div className="flex items-center gap-2">
+                {pastOpenDays.length > 0 && (
+                  <Popover>
+                    <PopoverTrigger asChild>
+                      <button type="button" className="rounded border border-palette-amber/40 bg-palette-amber/10 px-2 py-0.5 text-[11px] text-palette-amber hover:bg-palette-amber/20">
+                        {pastOpenDays.length} offene {pastOpenDays.length === 1 ? "Vortag" : "Vortage"}
+                      </button>
+                    </PopoverTrigger>
+                    <PopoverContent className="w-64 p-1" align="end" sideOffset={4}>
+                      <p className="px-2 py-1 text-[11px] text-muted-foreground">Tage ohne Abschluss mit offenen Punkten</p>
+                      <div className="max-h-64 overflow-y-auto">
+                        {pastOpenDays.map(entry => (
+                          <button key={entry.dayKey} type="button" className="flex w-full items-center justify-between gap-2 rounded px-2 py-1.5 text-left text-xs hover:bg-muted" onClick={() => setViewKey(entry.dayKey)}>
+                            <span>{formatDate(entry.dayKey)}</span>
+                            <span className="text-muted-foreground">{entry.openCount} offen</span>
+                          </button>
+                        ))}
+                      </div>
+                    </PopoverContent>
+                  </Popover>
+                )}
+                {!dayView.isToday && <button type="button" className="rounded border border-border/60 px-2 py-0.5 text-[11px] hover:bg-muted" onClick={() => setViewKey(ds.todayKey)}>Heute</button>}
+              </div>
             </div>
           </div>
 
-          <div className="border-b px-4 py-2 text-xs" role="status" aria-live="polite">
+          {dayView.isToday && <div className="border-b px-4 py-2 text-xs" role="status" aria-live="polite">
             {ds.saveStatus === "loading" ? "Tageszettel wird geladen …" : ds.saveStatus === "saving" ? "Speichert …" : ds.saveStatus === "saved" ? "Gespeichert" : "Speichern fehlgeschlagen"}
             {ds.saveStatus === "error" && <><p className="mt-1 text-destructive">{ds.saveError}</p><button className="mt-1 underline" onClick={() => void ds.retrySave()}>Erneut versuchen</button></>}
             {ds.deadlineError && <p className="mt-1 text-destructive">Fristen konnten nicht aktualisiert werden. Die Aktualisierung wird erneut versucht.</p>}
-          </div>
-          {!showArchive && !showSettings && <DaySlipAppointments />}
+          </div>}
+          {!showArchive && !showSettings && dayView.isToday && <DaySlipAppointments />}
           {!ds.ready ? <div className="flex-1 p-4 text-sm text-muted-foreground">{ds.saveStatus === "error" ? "Deine lokalen Einträge bleiben erhalten. Bitte versuche das Laden erneut." : "Deine Einträge werden geladen …"}</div> : showSettings ? (
             <div className={`flex-1 space-y-4 overflow-y-auto p-4 transition-all duration-300 ease-out ${contentTransitioning ? "opacity-0 translate-y-1" : "opacity-100 translate-y-0"}`}>
               <div><p className="text-sm font-medium">Einstellungen</p><p className="text-xs text-muted-foreground">Wiederkehrende Punkte verwalten</p></div>
@@ -475,6 +540,32 @@ function DaySlipPanel({ userId, tenantId }: { userId: string; tenantId: string }
                 );
               })}
             </div>
+          ) : !dayView.isToday ? (
+            <div className="flex min-h-0 flex-1 flex-col">
+              <div className="border-b border-border/60 bg-muted/30 px-4 py-2 text-xs" role="status">
+                {dayView.completedAt
+                  ? <>Abgeschlossen am {new Date(dayView.completedAt).toLocaleString("de-DE", { dateStyle: "medium", timeStyle: "short" })}</>
+                  : <>Nicht abgeschlossen. {viewOpenCount > 0
+                    ? `${viewOpenCount} offene ${viewOpenCount === 1 ? "Punkt wird" : "Punkte werden"} dir heute zur Übernahme angeboten.`
+                    : "Alle Punkte sind abgehakt oder zugewiesen."}</>}
+              </div>
+              <DaySlipLexicalEditor
+                key={`editor-view-${dayView.key}`}
+                readOnly
+                hidden={false}
+                initialHtml={viewDay.html}
+                initialNodes={viewDay.nodes}
+                dayKey={dayView.key}
+                resolveMode={false}
+                editorConfig={ds.editorConfig}
+                onEditorChange={() => { /* Past days are a record and never accept edits. */ }}
+                onEditorReady={ds.handleEditorReady}
+                onEditorClick={handleEditorClick}
+                onEditorContextMenu={handleEditorContextMenu}
+                onDrop={handleDropToDaySlip}
+              />
+              {viewOpenCount === 0 && <p className="px-4 py-3 text-xs text-muted-foreground">Keine offenen Punkte an diesem Tag.</p>}
+            </div>
           ) : (
             <div className={`flex min-h-0 flex-1 flex-col transition-all duration-300 ease-out ${contentTransitioning ? "opacity-0 translate-y-1" : "opacity-100 translate-y-0"}`}>
               {!ds.todayData.completedAt && <WeekPlanningBanner key={`week-${ds.todayKey}`} recurringItems={ds.recurringItems} weekPlan={ds.weekPlan} onChangePlan={ds.setWeekPlan} />}
@@ -498,10 +589,11 @@ function DaySlipPanel({ userId, tenantId }: { userId: string; tenantId: string }
                 dayKey={ds.todayKey}
                 resolveMode={ds.resolveMode}
                 editorConfig={ds.editorConfig}
-                onEditorChange={ds.onEditorChange}
+                onEditorChange={handleEditorChange}
                 onEditorReady={ds.handleEditorReady}
                 onEditorClick={handleEditorClick}
                 onEditorContextMenu={handleEditorContextMenu}
+                onToggleLine={toggleLineFromKeyboard}
                 onDrop={handleDropToDaySlip}
               />
 
@@ -558,37 +650,26 @@ function DaySlipPanel({ userId, tenantId }: { userId: string; tenantId: string }
                             </span>
                           </div>
                           <fieldset disabled={ds.isProcessing || !!resolution?.persisted} className="flex items-center gap-1 flex-shrink-0 disabled:opacity-60">
-                            <button type="button" title="Als Notiz" className={buttonClass("note")} onClick={() => ds.toggleResolveLine(id, text, "note")}><NotebookPen className="h-4 w-4" /></button>
-                            <button type="button" title="Als Aufgabe" className={buttonClass("task")} onClick={() => ds.toggleResolveLine(id, text, "task")}><ListTodo className="h-4 w-4" /></button>
-                            <button type="button" title="Als Entscheidung" className={buttonClass("decision")} onClick={() => ds.toggleResolveLine(id, text, "decision")}><Scale className="h-4 w-4" /></button>
+                            <button type="button" title="Als Notiz" aria-label="Als Notiz" aria-pressed={activeTarget === "note"} className={buttonClass("note")} onClick={() => ds.toggleResolveLine(id, text, "note")}><NotebookPen className="h-4 w-4" /></button>
+                            <button type="button" title="Als Aufgabe" aria-label="Als Aufgabe" aria-pressed={activeTarget === "task"} className={buttonClass("task")} onClick={() => ds.toggleResolveLine(id, text, "task")}><ListTodo className="h-4 w-4" /></button>
+                            <button type="button" title="Als Entscheidung" aria-label="Als Entscheidung" aria-pressed={activeTarget === "decision"} className={buttonClass("decision")} onClick={() => ds.toggleResolveLine(id, text, "decision")}><Scale className="h-4 w-4" /></button>
                             <Popover>
                               <PopoverTrigger asChild>
-                                <button type="button" title="Snoozen" className={buttonClass("snoozed")}>
+                                <button type="button" title="Snoozen" aria-label="Snoozen" aria-pressed={activeTarget === "snoozed"} className={buttonClass("snoozed")}>
                                   <Clock3 className="h-4 w-4" />
                                 </button>
                               </PopoverTrigger>
                               <PopoverContent className="w-auto p-1" align="end" sideOffset={4}>
                                 <div className="flex flex-col">
-                                  {([
-                                    { label: "+1 Tag", days: 1 },
-                                    { label: "+3 Tage", days: 3 },
-                                    { label: "Nächste Woche", days: 7 },
-                                  ] as const).map(({ label, days }) => {
-                                    const d = new Date(); d.setDate(d.getDate() + days);
-                                    const until = toDayKey(d);
-                                    return (
-                                      <button key={days} type="button" className="rounded px-3 py-1.5 text-left text-sm hover:bg-muted" onClick={() => ds.toggleResolveLine(id, text, "snoozed", until)}>
-                                        {label} <span className="text-muted-foreground text-xs">({until})</span>
-                                      </button>
-                                    );
-                                  })}
-                                  <button type="button" className="rounded px-3 py-1.5 text-left text-sm hover:bg-muted" onClick={() => ds.toggleResolveLine(id, text, "snoozed")}>
-                                    Morgen
-                                  </button>
+                                  {snoozeOptions.map(({ label, until }) => (
+                                    <button key={until} type="button" className="rounded px-3 py-1.5 text-left text-sm hover:bg-muted" onClick={() => ds.toggleResolveLine(id, text, "snoozed", until)}>
+                                      {label} <span className="text-muted-foreground text-xs">({until})</span>
+                                    </button>
+                                  ))}
                                 </div>
                               </PopoverContent>
                             </Popover>
-                            <button type="button" title="Archivieren" className={buttonClass("archived")} onClick={() => ds.toggleResolveLine(id, text, "archived")}><FolderArchive className="h-4 w-4" /></button>
+                            <button type="button" title="Archivieren" aria-label="Archivieren" aria-pressed={activeTarget === "archived"} className={buttonClass("archived")} onClick={() => ds.toggleResolveLine(id, text, "archived")}><FolderArchive className="h-4 w-4" /></button>
                           </fieldset>
                         </div>
                       );
@@ -638,7 +719,7 @@ function DaySlipPanel({ userId, tenantId }: { userId: string; tenantId: string }
           <button className="flex w-full rounded px-2 py-1 text-left text-sm hover:bg-accent" onClick={async () => { setTaskDraft({ lineId: lineContextMenu.lineId, text: lineContextMenu.text, options: { assignedTo: userId } }); setLineContextMenu(null); }}>Als Aufgabe erstellen</button>
           <button className="flex w-full rounded px-2 py-1 text-left text-sm hover:bg-accent" onClick={async () => { if (await ds.createFromLine(lineContextMenu.lineId, lineContextMenu.text, "note")) { toast.success("Notiz erstellt / verknüpft"); setLineContextMenu(null); } else toast.error("Notiz konnte nicht gespeichert werden. Bitte erneut versuchen."); }}>Als Notiz speichern</button>
           <button className="flex w-full rounded px-2 py-1 text-left text-sm hover:bg-accent" onClick={() => { ds.toggleResolveLine(lineContextMenu.lineId, lineContextMenu.text, "snoozed"); setLineContextMenu(null); }}>Snoozen</button>
-          <button className="flex w-full rounded px-2 py-1 text-left text-sm text-destructive hover:bg-destructive/10" onClick={() => { ds.deleteLine(lineContextMenu.lineId); setLineContextMenu(null); }}>Löschen</button>
+          <button className="flex w-full rounded px-2 py-1 text-left text-sm text-destructive hover:bg-destructive/10" onClick={() => handleDeleteLine(lineContextMenu.lineId, lineContextMenu.text)}>Löschen</button>
         </div>
       )}
 

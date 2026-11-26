@@ -147,6 +147,8 @@ export const DEFAULT_DAY_TEMPLATES: DayTemplate[] = [
 
 // ─── Helpers ─────────────────────────────────────────────────────────────────
 
+export const isDayKey = (value: string) => /^\d{4}-\d{2}-\d{2}$/.test(value);
+
 export const toDayKey = (date: Date) => {
   const y = date.getFullYear();
   const m = String(date.getMonth() + 1).padStart(2, "0");

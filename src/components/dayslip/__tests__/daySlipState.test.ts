@@ -1,7 +1,7 @@
 import { describe, expect, it } from "vitest";
 import { webcrypto } from "node:crypto";
-import { appendEntries, carryLines, collectCarryLines, completedArchiveDays, emptyDay, exportId, normalizeStore, sourcePath } from "../daySlipState";
-import { extractLinesFromHtml, isRuleLine, stripHtml, toParagraphHtml, type DaySlipStore } from "../dayslipTypes";
+import { appendEntries, carryLines, collectCarryLines, completedArchiveDays, emptyDay, exportId, normalizeStore, removeLineFromDay, restoreLineToDay, sourcePath } from "../daySlipState";
+import { extractLinesFromHtml, isRuleLine, stripHtml, toParagraphHtml, toRuleHtml, type DaySlipStore } from "../dayslipTypes";
 
 const day = (id: string, text = id) => ({ html: toParagraphHtml({ id, text }), plainText: text });
 
@@ -72,6 +72,43 @@ describe("Tageszettel state", () => {
     expect(collectCarryLines(store, "2026-11-04").some((line) => line.id === "still-open")).toBe(true);
     expect(store["2026-11-01"].plainText).toBe("still-open");
     expect(completedArchiveDays({ ...store, "2026-11-04": { ...store["2026-11-04"], completedAt: undefined } }, "2026-11-04")).toEqual(["2026-11-02"]);
+  });
+
+  it("deletes a line and restores its text, position, link, check state and pending assignment", () => {
+    const linked = { type: "task" as const, id: "task-1" };
+    const html = toRuleHtml("Block") + toParagraphHtml({ id: "first", text: "First" }) + toParagraphHtml({ id: "second", text: "Second", source: linked });
+    const original = {
+      html,
+      plainText: "First\nSecond",
+      struckLineIds: ["second"],
+      sources: { second: linked },
+      lineTimestamps: { second: { addedAt: "2026-11-06T08:00:00.000Z", checkedAt: "2026-11-06T09:00:00.000Z" } },
+      resolved: [{ lineId: "second", text: "Second", target: "task" as const }],
+    };
+    const { day, removed } = removeLineFromDay(original, "second");
+    expect(removed).toMatchObject({ lineId: "second", text: "Second", source: linked, struck: true, index: 2 });
+    expect(extractLinesFromHtml(day.html).map(line => line.id)).toEqual(["first"]);
+    expect(day.html).toContain('data-label="Block"');
+    expect(day.sources?.second).toBeUndefined();
+    expect(day.struckLineIds).toEqual([]);
+    expect(day.resolved).toEqual([]);
+
+    const restored = restoreLineToDay(day, removed!);
+    expect(extractLinesFromHtml(restored.html).map(line => line.id)).toEqual(["first", "second"]);
+    expect(restored.html.indexOf('data-label="Block"')).toBeLessThan(restored.html.indexOf('data-line-id="first"'));
+    expect(restored.sources?.second).toEqual(linked);
+    expect(restored.struckLineIds).toEqual(["second"]);
+    expect(restored.lineTimestamps?.second).toEqual({ addedAt: "2026-11-06T08:00:00.000Z", checkedAt: "2026-11-06T09:00:00.000Z" });
+    expect(restored.resolved).toEqual([{ lineId: "second", text: "Second", target: "task" }]);
+    // Undo twice must not duplicate the line.
+    expect(restoreLineToDay(restored, removed!)).toBe(restored);
+  });
+
+  it("keeps lines whose object already exists instead of deleting a real destination", () => {
+    const exported = { ...day("exported"), resolved: [{ lineId: "exported", text: "exported", target: "task" as const, persisted: true }] };
+    const result = removeLineFromDay(exported, "exported");
+    expect(result.removed).toBeNull();
+    expect(result.day).toBe(exported);
   });
 
   it("uses stable export primary keys scoped to account, day, line and destination", async () => {
