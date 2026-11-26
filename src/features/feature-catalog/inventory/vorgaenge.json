@@ -345,7 +345,7 @@
       "id": "parlis.proceedings",
       "subarea": "Parlamentsdokumentation",
       "name": "Parlamentarische Vorgänge auswerten",
-      "description": "Lädt die Vorgänge der 18. Wahlperiode des Landtags Baden-Württemberg aus der Datenbank, gruppiert sie nach Datum und Merkmalen und verlinkt die Originaldokumente und verbindet namentlich zugeordnete Urheber über Mandate mit ihren Abgeordnetenprofilen. Die Links verwenden den vollständigen Urhebernamen aus der Quelle und die Parteikürzel werden farblich markiert.",
+      "description": "Lädt die Vorgänge der 18. Wahlperiode des Landtags Baden-Württemberg aus der Datenbank, gruppiert sie nach Datum und Merkmalen und verlinkt die Originaldokumente und verbindet namentlich zugeordnete Urheber über Mandate mit ihren Abgeordnetenprofilen. Zeigt Karten nach Datum und bietet Suche, Sortierung und Filter nach Typ, Fraktion, Zeitraum und Schlagwort. Urheberlinks verwenden den vollständigen Namen aus der Quelle und Parteikürzel werden farblich markiert.",
       "category": "fachlich",
       "implementationStatus": "implementiert",
       "integrationStatus": "ui",
@@ -357,6 +357,7 @@
       "components": [
         "src/components/admin/DataView.tsx",
         "src/features/parlis/ParlisView.tsx",
+        "src/features/parlis/DocumentCard.tsx",
         "src/features/election-analysis/DeputyDirectory.tsx"
       ],
       "tables": [
@@ -373,6 +374,7 @@
         "supabase/migrations/20261127143000_link_parlis_deputy_mandates.sql",
         "src/features/parlis/grouping.ts",
         "src/features/parlis/authors.ts",
+        "src/features/parlis/documents.ts",
         "src/features/selftest/scenarios/parlis.ts"
       ]
     }

@@ -2135,6 +2135,7 @@
           "title": "Parlamentarische Vorgänge",
           "description": "Prüft die Gruppierung und den Lesezugriff auf die Parlamentsdokumentation.",
           "checks": [
+            "Tagesgruppen, Schlagwörter und Fraktionsfilter",
             "Urhebertext mit Titeln und Namensbestandteilen bleibt vollständig",
             "Monatsgruppierung, eindeutige Schlagwörter und leere Ressorts",
             "Importierte Vorgänge sind lesbar",
@@ -2152,6 +2153,10 @@
             {
               "id": "parlis-inline-authors",
               "label": "Urhebernamen mit Titeln und Namensbestandteilen im Originaltext verlinken"
+            },
+            {
+              "id": "parlis-document-groups",
+              "label": "Tagesgruppen, Schlagwörter und Fraktionen berücksichtigen"
             },
             {
               "id": "parlis-import-readable",

@@ -1,8 +1,9 @@
-import { Fragment, useEffect, useMemo, useState } from "react";
-import { Link, useSearchParams } from "react-router-dom";
-import { getPartyColor } from "@/features/election-districts/partyColors";
-import { authorSegments } from "./authors";
-import { deputyProfileUrl } from "@/features/election-analysis/navigation";
+import { useEffect, useMemo, useState } from "react";
+import { useSearchParams } from "react-router-dom";
+import { ChevronDown, Search } from "lucide-react";
+import { DocumentCard, DocumentDateGroup } from "./DocumentCard";
+import { dateGroups, documentCount, documentParties, keywords, number } from "./documents";
+import "./parlis.css";
 import { useQuery } from "@tanstack/react-query";
 import { Input } from "@/components/ui/input";
 import { Button } from "@/components/ui/button";
@@ -10,7 +11,6 @@ import { dimensions, groupsFor, type Dimension } from "./grouping";
 import { supabase } from "@/integrations/supabase/client";
 
 const pageSize = 20;
-const number = new Intl.NumberFormat("de-DE");
 const month = new Intl.DateTimeFormat("de-DE", { month: "long", year: "numeric", timeZone: "UTC" });
 
 async function loadProceedings(signal: AbortSignal) {
@@ -56,15 +56,11 @@ async function loadDeputyProfiles(signal: AbortSignal) {
   }
 }
 
-type Proceeding = Awaited<ReturnType<typeof loadProceedings>>[number];
-
 function groupLabel(key: string, dimension: Dimension) {
   return dimension === "datum" ? month.format(new Date(key + "-01T00:00:00Z")) : key;
 }
 
-function documentLink(row: Proceeding) {
-  return [row.pdf_url, row.dokument_url].find(url => /^https:\/\/www\.landtag-bw\.de\//i.test(url));
-}
+const emptyFilters = { kind: "", party: "", from: "", to: "", topic: "" };
 
 export default function ParlisView() {
   const query = useQuery({
@@ -90,19 +86,58 @@ export default function ParlisView() {
   }, [profiles.data]);
   const deputyName = profiles.data?.find(profile => profile.key === deputyKey)?.name;
   const [search, setSearch] = useState("");
+  const [filters, setFilters] = useState(emptyFilters);
+  const [oldestFirst, setOldestFirst] = useState(false);
   const [dimension, setDimension] = useState<Dimension>("datum");
   const [selected, setSelected] = useState<string | null>(null);
   const [visible, setVisible] = useState(pageSize);
 
+  const indexed = useMemo(() => (query.data ?? []).map(row => ({
+    row,
+    parties: documentParties(row.urheber),
+    topics: keywords(row.deskriptoren),
+    text: [row.titel, row.drucksache, row.vorgangs_id, row.vorgangstyp, row.urheber, row.ressort, row.deskriptoren, row.datum]
+      .join(" ").toLocaleLowerCase("de-DE"),
+  })), [query.data]);
+  const options = useMemo(() => {
+    const sorted = (values: string[]) => [...new Set(values.filter(Boolean))].sort((a, b) => a.localeCompare(b, "de-DE"));
+    return {
+      kinds: sorted(indexed.map(({ row }) => row.vorgangstyp)),
+      parties: sorted(indexed.flatMap(({ parties }) => parties)),
+      topics: sorted(indexed.flatMap(({ topics }) => topics)),
+    };
+  }, [indexed]);
+  const hasFilters = !!(search || selected || deputyKey || oldestFirst || Object.values(filters).some(Boolean));
+
+  function resetResultWindow() {
+    setSelected(null);
+    setVisible(pageSize);
+  }
+
+  function updateFilter(key: keyof typeof emptyFilters, value: string) {
+    setFilters(current => ({ ...current, [key]: value }));
+    resetResultWindow();
+  }
+
+  function clearDeputy() {
+    const next = new URLSearchParams(params);
+    next.delete("urheber");
+    setParams(next);
+    resetResultWindow();
+  }
+
   const matches = useMemo(() => {
     const terms = search.trim().toLocaleLowerCase("de-DE").split(/\s+/).filter(Boolean);
-    return (query.data ?? []).filter(row => {
-      if (deputyKey && !profileByProceeding.get(row.vorgangs_id)?.has(deputyKey)) return false;
-      const searchable = [row.titel, row.drucksache, row.vorgangs_id, row.vorgangstyp, row.urheber, row.ressort, row.deskriptoren, row.datum]
-        .join(" ").toLocaleLowerCase("de-DE");
-      return terms.every(term => searchable.includes(term));
-    });
-  }, [query.data, search, deputyKey, profileByProceeding]);
+    return indexed.filter(({ row, parties, topics, text }) =>
+      (!deputyKey || profileByProceeding.get(row.vorgangs_id)?.has(deputyKey)) &&
+      (!filters.kind || row.vorgangstyp === filters.kind) &&
+      (!filters.party || (filters.party === "__unknown" ? !parties.length : parties.includes(filters.party))) &&
+      (!filters.from || row.datum >= filters.from) &&
+      (!filters.to || row.datum <= filters.to) &&
+      (!filters.topic || topics.includes(filters.topic)) &&
+      terms.every(term => text.includes(term))
+    ).map(({ row }) => row);
+  }, [indexed, search, deputyKey, profileByProceeding, filters]);
 
   const groups = useMemo(() => {
     const counts = new Map<string, number>();
@@ -114,7 +149,12 @@ export default function ParlisView() {
   }, [dimension, matches]);
   const chartGroups = dimension === "datum" ? groups : groups.slice(0, 12);
   const max = Math.max(1, ...chartGroups.map(([, count]) => count));
-  const filtered = selected === null ? matches : matches.filter(row => groupsFor(row, dimension).includes(selected));
+  const filtered = useMemo(() => {
+    const rows = selected === null ? [...matches] : matches.filter(row => groupsFor(row, dimension).includes(selected));
+    return rows.sort((a, b) => (oldestFirst ? a.datum.localeCompare(b.datum) : b.datum.localeCompare(a.datum))
+      || a.vorgangs_id.localeCompare(b.vorgangs_id));
+  }, [matches, selected, dimension, oldestFirst]);
+  const days = dateGroups(filtered, visible);
 
   useEffect(() => {
     if (selected !== null && !groups.some(([key]) => key === selected)) setSelected(null);
@@ -129,104 +169,110 @@ export default function ParlisView() {
   );
 
   return (
-    <section className="mx-auto max-w-6xl space-y-6">
-      <header className="space-y-1">
-        <h1 className="text-2xl font-semibold">Parlamentarische Vorgänge</h1>
-        <p className="text-muted-foreground">Landtag Baden-Württemberg · 18. Wahlperiode</p>
-      </header>
-      {profiles.isError && <p role="alert">Abgeordnetenverknüpfungen konnten nicht geladen werden.{" "}
-        <Button variant="link" onClick={() => void profiles.refetch()}>Erneut laden</Button>
-      </p>}
-      {deputyKey && <div className="flex flex-wrap items-center gap-2">
-        <span>{deputyName ? `Urheber: ${deputyName}` : "Vorgänge zum ausgewählten Abgeordnetenprofil"}</span>
-        <Button variant="outline" size="sm" onClick={() => {
-          const next = new URLSearchParams(params);
-          next.delete("urheber");
-          setParams(next);
-          setSelected(null);
-          setVisible(pageSize);
-        }}>Alle Urheber anzeigen</Button>
-      </div>}
-      <div className="grid gap-3 sm:grid-cols-2">
-        <label className="grid gap-1 text-sm font-medium">
-          Suche
-          <Input type="search" value={search} placeholder="Titel, Schlagwort, Drucksache …" onChange={event => {
-            setSearch(event.target.value);
-            setSelected(null);
-            setVisible(pageSize);
-          }} />
-        </label>
-        <label className="grid gap-1 text-sm font-medium">
-          Gruppieren nach
-          <select className="h-10 rounded-md border border-input bg-background px-3" value={dimension} onChange={event => {
-            setDimension(event.target.value as Dimension);
-            setSelected(null);
-            setVisible(pageSize);
-          }}>
-            {Object.entries(dimensions).map(([key, label]) => <option key={key} value={key}>{label}</option>)}
-          </select>
-        </label>
-      </div>
-      {chartGroups.length > 0 && (
-        <div className="space-y-2 rounded-lg border p-4" role="group" aria-label="Vorgänge je Gruppe">
-          <p className="text-sm text-muted-foreground">
-            {groups.length > chartGroups.length && "12 häufigste Gruppen · "}
-            {dimension === "deskriptoren" && "Mehrere Schlagwörter pro Vorgang möglich · "}
-            Balken auswählen, um die Treffer einzugrenzen
-          </p>
-          {chartGroups.map(([key, count]) => (
-            <button key={key} type="button" aria-pressed={selected === key}
-              className="grid w-full grid-cols-[minmax(0,1fr)_auto] gap-x-4 gap-y-1 rounded-md px-2 py-1 text-left text-sm hover:bg-muted aria-pressed:bg-accent"
-              onClick={() => {
-                setSelected(selected === key ? null : key);
-                setVisible(pageSize);
-              }}>
-              <span className="break-words">{groupLabel(key, dimension)}</span>
-              <span className="tabular-nums">{number.format(count)}</span>
-              <span className="col-span-2 h-1.5 rounded-full bg-muted" aria-hidden="true">
-                <span className="block h-full rounded-full bg-primary" style={{ width: `${count / max * 100}%` }} />
-              </span>
-            </button>
-          ))}
-        </div>
-      )}
-      <div className="space-y-3">
-        <h2 className="text-lg font-semibold" aria-live="polite">
-          {number.format(filtered.length)} von {number.format(query.data.length)} Vorgängen
-          {selected !== null && ` · ${groupLabel(selected, dimension)}`}
-        </h2>
-        {!filtered.length && <p className="text-muted-foreground">Keine Vorgänge gefunden.</p>}
-        <ul className="divide-y">
-          {filtered.slice(0, visible).map(row => {
-            const url = documentLink(row);
-            const deputies = profileByProceeding.get(row.vorgangs_id);
-            return (
-              <li key={row.vorgangs_id} className="space-y-1 py-3">
-                <h3 className="font-medium">{row.titel || row.vorgangs_id}</h3>
-                <p className="text-sm text-muted-foreground">
-                  {[row.datum.split("-").reverse().join("."), row.vorgangstyp, row.drucksache].filter(Boolean).join(" · ")}
-                  {row.urheber && <>{" · "}{authorSegments(row.urheber, deputies).map((segment, index) => {
-                    if (segment.profileKey) return (
-                      <Link key={index} className="text-primary underline" to={deputyProfileUrl(segment.profileKey)}>{segment.text}</Link>
-                    );
-                    const partyColor = segment.party && getPartyColor(segment.party);
-                    return <Fragment key={index}>
-                      {partyColor && partyColor !== getPartyColor() && (
-                        <span aria-hidden="true" className="mr-1 inline-block size-2 rounded-full align-middle" style={{ backgroundColor: partyColor }} />
-                      )}{segment.text}
-                    </Fragment>;
-                  })}</>}
-                  {row.ressort && ` · ${row.ressort}`}
-                </p>
-                {row.deskriptoren && <p className="text-sm">{row.deskriptoren}</p>}
-                {url && <a className="inline-block text-sm text-primary underline" href={url} target="_blank" rel="noreferrer">Originaldokument öffnen</a>}
-              </li>
-            );
-          })}
-        </ul>
-        {visible < filtered.length && (
-          <Button variant="outline" onClick={() => setVisible(visible + pageSize)}>Weitere Vorgänge anzeigen</Button>
-        )}
+    <section className="parlis-page">
+      <div className="parlis-content">
+        <header className="parlis-heading">
+          <h1>Parlamentarische Vorgänge</h1>
+          <p>Landtag Baden-Württemberg · 18. Wahlperiode</p>
+        </header>
+        {profiles.isError && <p role="alert">Abgeordnetenverknüpfungen konnten nicht geladen werden.{" "}
+          <Button variant="link" onClick={() => void profiles.refetch()}>Erneut laden</Button>
+        </p>}
+        <section className="parlis-filters" aria-label="Dokumente suchen und filtern">
+          <label className="parlis-search">
+            <span className="sr-only">Dokumente suchen</span>
+            <Search size={18} aria-hidden="true" />
+            <Input type="search" value={search} placeholder="Titel, Schlagwort, Drucksache …" onChange={event => {
+              setSearch(event.target.value);
+              resetResultWindow();
+            }} />
+          </label>
+          <div className="parlis-filter-grid">
+            <label>Dokumententyp<select aria-label="Dokumententyp" value={filters.kind} onChange={event => updateFilter("kind", event.target.value)}>
+              <option value="">Alle Typen</option>
+              {options.kinds.map(kind => <option key={kind}>{kind}</option>)}
+            </select></label>
+            <label>Fraktion<select aria-label="Fraktion" value={filters.party} onChange={event => updateFilter("party", event.target.value)}>
+              <option value="">Alle Fraktionen</option>
+              {options.parties.map(party => <option key={party}>{party}</option>)}
+              <option value="__unknown">Ohne Fraktionsangabe</option>
+            </select></label>
+            <label>Schlagwort<select aria-label="Schlagwort" value={filters.topic} onChange={event => updateFilter("topic", event.target.value)}>
+              <option value="">Alle Schlagwörter</option>
+              {options.topics.map(topic => <option key={topic}>{topic}</option>)}
+            </select></label>
+            <label>Datum von<Input type="date" value={filters.from} max={filters.to || undefined} onChange={event => updateFilter("from", event.target.value)} /></label>
+            <label>Datum bis<Input type="date" value={filters.to} min={filters.from || undefined} onChange={event => updateFilter("to", event.target.value)} /></label>
+            <label>Sortierung<select aria-label="Sortierung" value={oldestFirst ? "asc" : "desc"} onChange={event => {
+              setOldestFirst(event.target.value === "asc");
+              setVisible(pageSize);
+            }}>
+              <option value="desc">Neueste zuerst</option>
+              <option value="asc">Älteste zuerst</option>
+            </select></label>
+          </div>
+          <div className="parlis-filter-footer">
+            {deputyKey && <Button variant="outline" size="sm" onClick={clearDeputy}>
+              {deputyName || "Ausgewähltes Abgeordnetenprofil"} · Auswahl entfernen
+            </Button>}
+            {hasFilters && <Button variant="ghost" size="sm" onClick={() => {
+              setSearch("");
+              setFilters(emptyFilters);
+              setOldestFirst(false);
+              if (deputyKey) clearDeputy();
+              else resetResultWindow();
+            }}>Filter zurücksetzen</Button>}
+          </div>
+        </section>
+        <details className="parlis-analysis">
+          <summary>Auswertung <ChevronDown size={16} aria-hidden="true" /></summary>
+          <label>Gruppieren nach
+            <select aria-label="Gruppieren nach" value={dimension} onChange={event => {
+              setDimension(event.target.value as Dimension);
+              resetResultWindow();
+            }}>
+              {Object.entries(dimensions).map(([key, label]) => <option key={key} value={key}>{label}</option>)}
+            </select>
+          </label>
+          {chartGroups.length > 0 && (
+            <div className="space-y-2 rounded-lg border p-4" role="group" aria-label="Vorgänge je Gruppe">
+              <p className="text-sm text-muted-foreground">
+                {groups.length > chartGroups.length && "12 häufigste Gruppen · "}
+                {dimension === "deskriptoren" && "Mehrere Schlagwörter pro Vorgang möglich · "}
+                Balken auswählen, um die Treffer einzugrenzen
+              </p>
+              {chartGroups.map(([key, count]) => (
+                <button key={key} type="button" aria-pressed={selected === key}
+                  className="grid w-full grid-cols-[minmax(0,1fr)_auto] gap-x-4 gap-y-1 rounded-md px-2 py-1 text-left text-sm hover:bg-muted aria-pressed:bg-accent"
+                  onClick={() => {
+                    setSelected(selected === key ? null : key);
+                    setVisible(pageSize);
+                  }}>
+                  <span className="break-words">{groupLabel(key, dimension)}</span>
+                  <span className="tabular-nums">{number.format(count)}</span>
+                  <span className="col-span-2 h-1.5 rounded-full bg-muted" aria-hidden="true">
+                    <span className="block h-full rounded-full bg-primary" style={{ width: `${count / max * 100}%` }} />
+                  </span>
+                </button>
+              ))}
+            </div>
+          )}
+        </details>
+        <section className="parlis-results" aria-label="Dokumente">
+          <h2 aria-live="polite">
+            {documentCount(filtered.length)} <span>von {number.format(query.data.length)}</span>
+            {selected !== null && <span> · {groupLabel(selected, dimension)}</span>}
+          </h2>
+          {!filtered.length && <p className="parlis-empty">Keine Vorgänge gefunden.</p>}
+          {days.map(([date, day]) => <DocumentDateGroup key={date} date={date} count={day.count}>
+            {day.rows.map(row => <li key={row.vorgangs_id}>
+              <DocumentCard row={row} deputies={profileByProceeding.get(row.vorgangs_id)} />
+            </li>)}
+          </DocumentDateGroup>)}
+          {visible < filtered.length && (
+            <Button variant="outline" onClick={() => setVisible(visible + pageSize)}>Weitere Vorgänge anzeigen</Button>
+          )}
+        </section>
       </div>
     </section>
   );

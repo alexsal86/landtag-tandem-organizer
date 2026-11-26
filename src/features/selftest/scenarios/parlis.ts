@@ -1,3 +1,4 @@
+import { dateGroups, documentParties, keywords, type Proceeding } from "@/features/parlis/documents";
 import { authorSegments } from "@/features/parlis/authors";
 import { groupsFor } from "@/features/parlis/grouping";
 import { supabase } from "@/integrations/supabase/client";
@@ -9,7 +10,7 @@ export const parlisScenario: TestScenario = {
   description: "Prüft die Gruppierung und den Lesezugriff auf die Parlamentsdokumentation.",
   features: ["parlis.proceedings"],
   touches: [],
-  checks: ["Urhebertext mit Titeln und Namensbestandteilen bleibt vollständig", "Monatsgruppierung, eindeutige Schlagwörter und leere Ressorts", "Importierte Vorgänge sind lesbar", "Verknüpfte Urheber führen zu einem Mandat derselben Wahlperiode"],
+  checks: ["Tagesgruppen, Schlagwörter und Fraktionsfilter", "Urhebertext mit Titeln und Namensbestandteilen bleibt vollständig", "Monatsgruppierung, eindeutige Schlagwörter und leere Ressorts", "Importierte Vorgänge sind lesbar", "Verknüpfte Urheber führen zu einem Mandat derselben Wahlperiode"],
   steps: [{
     id: "parlis-groups",
     label: "Monate, Schlagwörter und fehlende Ressorts korrekt zuordnen",
@@ -37,6 +38,23 @@ export const parlisScenario: TestScenario = {
           && segments.find(segment => segment.profileKey === "wangenheim")?.text === "Uwe Freiherr von Wangenheim"
           && segments.flatMap(segment => segment.party ?? []).join() === "SPD,AfD",
         message: "Originalnamen und Parteiklammern bleiben erhalten und werden passend ausgezeichnet.",
+      };
+    },
+  }, {
+    id: "parlis-document-groups",
+    label: "Tagesgruppen, Schlagwörter und Fraktionen berücksichtigen",
+    kind: "logic",
+    run: async () => {
+      const row: Proceeding = {
+        datum: "2026-11-25", vorgangs_id: "a", titel: "", vorgangstyp: "", urheber: "",
+        ressort: "", drucksache: "", deskriptoren: "", pdf_url: "", dokument_url: "",
+      };
+      const days = dateGroups([row, { ...row, vorgangs_id: "b" }, { ...row, datum: "2026-11-24" }], 1);
+      return {
+        ok: days.length === 1 && days[0][1].count === 2 && days[0][1].rows.length === 1
+          && keywords(" Bildung ; ; Schule; Bildung").join() === "Bildung,Schule"
+          && documentParties("Fraktion GRÜNE, Fraktion der CDU").join() === "GRÜNE,CDU",
+        message: "Tageszahl umfasst alle Treffer, Schlagwörter sind eindeutig und Fraktionen werden erkannt.",
       };
     },
   }, {

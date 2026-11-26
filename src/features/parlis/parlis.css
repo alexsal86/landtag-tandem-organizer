@@ -1,0 +1,115 @@
+.parlis-page {
+  --surface-page: #f5f6f8;
+  --surface-card: #fff;
+  --surface-muted: #f1f3f5;
+  --text-primary: #1f2937;
+  --text-secondary: #6b7280;
+  --border-default: #e2e5e9;
+  --border-hover: #cbd5e1;
+  --accent-primary: #438d26;
+  --accent-text: #32691c;
+  --radius-card: 12px;
+  --radius-chip: 6px;
+  --spacing-card: 20px;
+  --spacing-card-gap: 12px;
+  --transition-fast: 150ms ease;
+  background: var(--surface-page);
+  color: var(--text-primary);
+  margin: 0 -1rem -1rem;
+  padding: 1rem 1rem 2rem;
+  min-width: 0;
+}
+
+.dark .parlis-page {
+  color-scheme: dark;
+  --surface-page: #14181d;
+  --surface-card: #1c2229;
+  --surface-muted: #282f38;
+  --text-primary: #edf1f5;
+  --text-secondary: #aeb8c4;
+  --border-default: #333d49;
+  --border-hover: #5b6879;
+  --accent-primary: #88c56d;
+  --accent-text: #a9db92;
+}
+
+.parlis-content { max-width: 76rem; margin: 0 auto; display: grid; gap: 1rem; }
+.parlis-heading h1 { font-size: clamp(1.55rem, 4vw, 2rem); font-weight: 650; letter-spacing: -.025em; }
+.parlis-heading p, .parlis-empty { color: var(--text-secondary); font-size: .875rem; }
+.parlis-filters, .parlis-analysis, .parlis-card {
+  background: var(--surface-card);
+  border: 1px solid var(--border-default);
+  border-radius: var(--radius-card);
+  min-width: 0;
+}
+.parlis-filters { display: grid; gap: .75rem; padding: 1rem; }
+.parlis-search { position: relative; }
+.parlis-search svg { position: absolute; inset: 50% auto auto .75rem; transform: translateY(-50%); color: var(--text-secondary); pointer-events: none; }
+.parlis-search input { padding-inline-start: 2.5rem; }
+.parlis-filter-grid { display: grid; grid-template-columns: repeat(auto-fit, minmax(min(100%, 9rem), 1fr)); gap: .75rem; }
+.parlis-filter-grid label, .parlis-analysis > label { min-width: 0; display: grid; gap: .3rem; font-size: .75rem; font-weight: 500; }
+.parlis-page select, .parlis-page input {
+  min-width: 0; width: 100%; min-height: 2.5rem; border: 1px solid var(--border-hover);
+  border-radius: var(--radius-chip); background: var(--surface-card); color: var(--text-primary); font-size: .875rem;
+}
+.parlis-page select { padding-inline: .5rem; text-overflow: ellipsis; }
+.parlis-page input[type="date"] { padding-inline: .5rem; color-scheme: light; }
+.dark .parlis-page input[type="date"] { color-scheme: dark; }
+.parlis-filter-footer { display: flex; flex-wrap: wrap; gap: .5rem; }
+.parlis-filter-footer:empty { display: none; }
+.parlis-filter-footer button { white-space: normal; height: auto; min-height: 2.5rem; }
+
+.parlis-analysis { padding: .25rem 1rem; }
+.parlis-analysis summary { display: flex; align-items: center; justify-content: space-between; min-height: 2.5rem; cursor: pointer; font-weight: 500; font-size: .875rem; }
+.parlis-analysis summary::-webkit-details-marker { display: none; }
+.parlis-analysis[open] summary svg { transform: rotate(180deg); }
+.parlis-analysis > label { max-width: 14rem; margin-block: .5rem .75rem; }
+.parlis-analysis > div { margin-bottom: .75rem; }
+
+.parlis-results { display: grid; gap: 1.25rem; min-width: 0; }
+.parlis-results h2 { font-size: .875rem; font-weight: 600; }
+.parlis-results h2 span { font-weight: 400; color: var(--text-secondary); }
+.parlis-results > button { justify-self: start; }
+.parlis-day { display: grid; gap: .65rem; min-width: 0; }
+.parlis-day > header { display: flex; flex-wrap: wrap; align-items: baseline; gap: .25rem .75rem; }
+.parlis-day h3 { font-size: 1.25rem; font-weight: 600; letter-spacing: -.015em; }
+.parlis-day header > span { font-size: .8125rem; color: var(--text-secondary); }
+.parlis-day > ul { display: grid; gap: var(--spacing-card-gap); }
+.parlis-card { display: grid; gap: .75rem; padding: var(--spacing-card); transition: border-color var(--transition-fast); overflow-wrap: anywhere; }
+.parlis-card:hover, .parlis-card:focus-within { border-color: var(--border-hover); }
+.parlis-meta { display: flex; align-items: center; flex-wrap: wrap; gap: .4rem .65rem; font-size: .8125rem; color: var(--text-secondary); }
+.parlis-kind, .parlis-keywords li { background: var(--surface-muted); border-radius: var(--radius-chip); padding: .2rem .5rem; }
+.parlis-kind { color: var(--text-primary); font-weight: 500; }
+.parlis-card h4 { font-size: 1.1875rem; font-weight: 600; line-height: 1.4; }
+.parlis-authors { display: flex; align-items: baseline; gap: .5rem; font-size: .875rem; }
+.parlis-authors > svg { flex: none; align-self: flex-start; margin-top: .25rem; color: var(--text-secondary); }
+.parlis-party { display: inline-flex; align-items: center; gap: .25rem; color: var(--text-secondary); }
+.parlis-party > span { width: .5rem; height: .5rem; border-radius: 50%; flex: none; }
+.dark .parlis-party > span { box-shadow: 0 0 0 1px var(--text-secondary); }
+.parlis-department { color: var(--text-secondary); font-size: .8125rem; }
+.parlis-keywords { display: flex; flex-wrap: wrap; gap: .375rem; }
+.parlis-keywords li { font-size: .75rem; max-width: 100%; }
+.parlis-card footer { border-top: 1px solid var(--border-default); padding-top: .55rem; }
+.parlis-card a { color: var(--accent-text); font-weight: 500; text-underline-offset: .2em; }
+.parlis-authors a { text-decoration: underline; }
+.parlis-card a:hover { text-decoration: underline; text-decoration-thickness: 2px; }
+.parlis-page :where(a, select, button, summary, input):focus-visible { outline: 2px solid var(--accent-primary); outline-offset: 2px; }
+.parlis-original { display: inline-flex; align-items: center; gap: .4rem; min-height: 2rem; font-size: .875rem; }
+.parlis-original svg { flex: none; }
+
+@media (min-width: 768px) {
+  .parlis-page { margin: 0 -1.5rem -1.5rem; padding: 1.5rem 1.5rem 3rem; }
+}
+@media (max-width: 639px) {
+  .parlis-page { --spacing-card: 16px; }
+  .parlis-filter-grid { grid-template-columns: repeat(2, minmax(0, 1fr)); }
+  .parlis-card h4 { font-size: 1.0625rem; }
+  .parlis-page input, .parlis-page select { font-size: 1rem; }
+}
+@media (pointer: coarse) {
+  .parlis-page :where(input, select, button, summary, .parlis-original) { min-height: 44px; }
+  .parlis-authors a { display: inline-block; padding-block: .35rem; }
+}
+@media (prefers-reduced-motion: reduce) {
+  .parlis-card { transition: none; }
+}
