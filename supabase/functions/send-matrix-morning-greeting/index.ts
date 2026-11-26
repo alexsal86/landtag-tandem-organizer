@@ -210,15 +210,15 @@ Deno.serve(withSafeHandler("send-matrix-morning-greeting", async (req) => {
           continue;
         }
 
-        // Log successful send
+        // Log successful send. matrix_bot_logs führt message_content, status und
+        // created_at; message, success und timestamp gibt es nicht (PGRST204).
         await supabaseAdmin.from("matrix_bot_logs").insert({
           user_id: setting.user_id,
           room_id: matrixSub.room_id,
-          message: message.substring(0, 255),
-          success: true,
+          message_content: message.substring(0, 255),
+          status: "sent",
           message_type: "morning_greeting",
           sent_date: today,
-          timestamp: new Date().toISOString(),
         });
 
         sentCount++;

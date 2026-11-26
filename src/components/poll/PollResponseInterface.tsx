@@ -62,7 +62,6 @@ export const PollResponseInterface = ({ pollId, token, participantId, isPreview 
   const [timeSlots, setTimeSlots] = useState<TimeSlot[]>([]);
   const [participant, setParticipant] = useState<Participant | null>(null);
   const [responses, setResponses] = useState<Record<string, Response>>({});
-  const [generalComment, setGeneralComment] = useState('');
   const [accessError, setAccessError] = useState<string | null>(null);
 
   useEffect(() => {
@@ -254,7 +253,6 @@ export const PollResponseInterface = ({ pollId, token, participantId, isPreview 
               status: r.status,
               comment: r.comment || null,
             })),
-            general_comment: generalComment || null,
           },
         });
         if (error || !data || data.error) {

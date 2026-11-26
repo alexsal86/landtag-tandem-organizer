@@ -155,8 +155,6 @@ async function handleMatrixMessage(
       user_id,
       decision_id,
       token,
-      response_type,
-      responded_at,
       task_decisions!inner(
         id,
         title,
@@ -178,12 +176,23 @@ async function handleMatrixMessage(
     return { success: false, error: 'Invalid token' };
   }
 
-  // Check if user has already responded
-  if (participant.responded_at) {
+  // Antworten stehen in task_decision_responses (eine Wurzelantwort je
+  // Teilnehmer). task_decision_participants kennt weder response_type noch
+  // responded_at; die Abfrage danach scheiterte mit 42703, sodass jeder
+  // Matrix-Befehl als "Ungültiger Token" endete.
+  const { data: existingResponse } = await supabase
+    .from('task_decision_responses')
+    .select('id, response_type')
+    .eq('decision_id', participant.decision_id)
+    .eq('participant_id', participant.id)
+    .is('parent_response_id', null)
+    .maybeSingle();
+
+  if (existingResponse) {
     console.log('⚠️ User has already responded to this decision');
 
     await sendMatrixResponse(message.room_id,
-      `ℹ️ Sie haben bereits geantwortet: ${participant.response_type}`,
+      `ℹ️ Sie haben bereits geantwortet: ${existingResponse.response_type}`,
       matrixToken, matrixHomeserver);
 
     return { success: false, error: 'Already responded' };
@@ -214,14 +223,16 @@ async function handleMatrixMessage(
       // Show current decision status
       const { data: allParticipants } = await supabase
         .from('task_decision_participants')
-        .select('response_type, responded_at')
+        .select('id, task_decision_responses(response_type, parent_response_id)')
         .eq('decision_id', participant.decision_id);
 
-      const responded = allParticipants?.filter((p: any) => p.responded_at).length || 0;
+      const rootResponses = (allParticipants ?? []).flatMap((p: any) =>
+        (p.task_decision_responses ?? []).filter((r: any) => !r.parent_response_id));
+      const responded = rootResponses.length;
       const total = allParticipants?.length || 0;
-      const yesCount = allParticipants?.filter((p: any) => p.response_type === 'yes').length || 0;
-      const noCount = allParticipants?.filter((p: any) => p.response_type === 'no').length || 0;
-      const questionCount = allParticipants?.filter((p: any) => p.response_type === 'question').length || 0;
+      const yesCount = rootResponses.filter((r: any) => r.response_type === 'yes').length;
+      const noCount = rootResponses.filter((r: any) => r.response_type === 'no').length;
+      const questionCount = rootResponses.filter((r: any) => r.response_type === 'question').length;
 
       await sendMatrixResponse(message.room_id,
         `📊 Status für "${decision.title}":\n` +
@@ -236,19 +247,19 @@ async function handleMatrixMessage(
       return { success: false, error: 'Unknown command' };
   }
 
-  // Update participant response
-  const { error: updateError } = await supabase
-    .from('task_decision_participants')
-    .update({
+  // Antwort als Wurzelantwort festhalten; Matrix-Kennung und Zeitpunkt ergeben
+  // sich aus decision_matrix_messages beziehungsweise created_at.
+  const { error: responseError } = await supabase
+    .from('task_decision_responses')
+    .insert({
+      decision_id: participant.decision_id,
+      participant_id: participant.id,
       response_type: responseType,
-      comments: comments,
-      responded_at: new Date().toISOString(),
-      matrix_user_id: message.sender
-    })
-    .eq('id', participant.id);
+      comment: comments,
+    });
 
-  if (updateError) {
-    console.error('❌ Error updating participant response:', updateError);
+  if (responseError) {
+    console.error('❌ Error storing participant response:', responseError);
 
     await sendMatrixResponse(message.room_id,
       '❌ Fehler beim Speichern der Antwort.',
@@ -289,10 +300,11 @@ async function handleMatrixMessage(
   // Check if all participants have responded
   const { data: allParticipants } = await supabase
     .from('task_decision_participants')
-    .select('responded_at')
+    .select('id, task_decision_responses(id, parent_response_id)')
     .eq('decision_id', participant.decision_id);
 
-  const allResponded = allParticipants?.every((p: any) => p.responded_at);
+  const allResponded = (allParticipants ?? []).length > 0
+    && allParticipants.every((p: any) => (p.task_decision_responses ?? []).some((r: any) => !r.parent_response_id));
 
   if (allResponded) {
     console.log('🎉 All participants have responded, notifying creator');
@@ -307,7 +319,8 @@ async function handleMatrixMessage(
         decision_id: participant.decision_id,
         completed_via_matrix: true
       },
-      priority_param: 'high'
+      priority_param: 'high',
+      tenant_id_param: decision.tenant_id
     });
   }
 

@@ -154,13 +154,21 @@ Deno.serve(withSafeHandler("workflow-dispatcher", async (req) => {
                   : (body.payload?.owner_user_id as string | undefined);
                 if (userId) {
                   await requireOfficeUser(userId);
-                  await supabase.from("notifications").insert({
-                    user_id: userId,
-                    tenant_id: body.tenant_id,
-                    title: renderTemplate(cfg.title ?? "Workflow", body.payload ?? {}),
-                    body: renderTemplate(cfg.body ?? "", body.payload ?? {}),
-                    type: "workflow",
+                  // notifications verlangt notification_type_id; body und type gibt es
+                  // nicht. create_notification prüft Mitgliedschaft und Typ, löst den
+                  // Mandanten auf und legt die Meldung an (Typ 'workflow' seit
+                  // 20261126190000). Der bisherige Direkt-INSERT endete mit PGRST204,
+                  // jeder Workflow-Hinweis ging dadurch verloren.
+                  const { error: notificationError } = await supabase.rpc("create_notification", {
+                    user_id_param: userId,
+                    type_name: "workflow",
+                    title_param: renderTemplate(cfg.title ?? "Workflow", body.payload ?? {}),
+                    message_param: renderTemplate(cfg.body ?? "", body.payload ?? {}),
+                    data_param: { workflow_id: def.id, workflow_run_id: run.id, action_index: i },
+                    priority_param: "medium",
+                    tenant_id_param: body.tenant_id,
                   });
+                  if (notificationError) throw notificationError;
                 }
                 logRow.status = "success";
                 break;
