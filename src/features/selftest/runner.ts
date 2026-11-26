@@ -11,7 +11,7 @@ export const SELFTEST_MARKER = "__SELFTEST__";
 const CLEANUP_ORDER = [
   "employee_meeting_action_items", "employee_meeting_requests", "employee_meetings",
   "task_decision_responses", "task_decision_participants", "task_decisions", "task_documents",
-  "document_annotations", "letter_attachments", "documents", "letters", "quick_notes",
+  "document_annotations", "letter_attachments", "documents", "letter_collaborators", "letters", "quick_notes",
   "funding_participants", "fundings", "contact_briefing_memory", "contact_topics",
   "distribution_list_members", "distribution_lists", "call_logs",
   "gdpr_requests", "map_flags", "map_flag_types",
@@ -24,7 +24,7 @@ const CLEANUP_ORDER = [
   "case_files", "day_slips", "appointment_requests",
   "meeting_agenda_documents", "meeting_agenda_items", "meeting_participants",
   "appointment_change_alerts", "appointment_feedback", "appointment_preparations", "appointment_contacts",
-  "appointment_guests", "appointments", "appointment_polls", "meetings", "event_planning_timeline_assignments",
+  "appointment_guests", "appointments", "appointment_polls", "meetings", "meeting_templates", "event_planning_timeline_assignments",
   "event_planning_checklist_items", "event_planning_contacts", "event_planning_speakers",
   "event_planning_dates", "event_plannings", "daily_briefings",
 ] as const;
