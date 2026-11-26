@@ -3,12 +3,14 @@
 // Die Folgeaufgabe hat genau einen Erzeuger: den Trigger trigger_letter_followup_task.
 // Die Edge Function archive-letter legt keine eigene Aufgabe mehr an, sondern
 // ermittelt die bestehende über das RPC create_letter_archive_follow_up_task.
-// Dieses RPC schreibt tasks.category; tasks_category_check akzeptiert nur eine
+// Trigger und RPC verknüpfen die Aufgabe über source_type/source_id mit dem Brief;
+// der zusammengebaute Titel ist nur noch Rückfall für den Altbestand. Das RPC
+// schreibt tasks.category, und tasks_category_check akzeptiert nur eine
 // geschlossene, kleingeschriebene Liste. Eine großgeschriebene Kategorie ließ die
 // Einfügung mit 23514 scheitern, weshalb der Brief-Selbsttest seine Folgeaufgabe
 // nie sah. Dieser Check liest die Kategorie aus der RPC-Migration und die
 // erlaubte Liste aus der Constraint-Migration; zusätzlich stellt er sicher, dass
-// die Edge Function weder eine Aufgabe einfügt noch eine Kategorie schreibt.
+// die Edge Function weder Aufgaben einfügt noch Kategorien schreibt.
 import assert from 'node:assert/strict';
 import { readFile } from 'node:fs/promises';
 import { PGlite } from '../tests/database/node_modules/@electric-sql/pglite/dist/index.js';
@@ -25,13 +27,30 @@ try {
 
   await db.exec(`CREATE TABLE tasks(id uuid PRIMARY KEY DEFAULT gen_random_uuid(), title text, category text, ${rule})`);
 
-  // Die Aufgabe entsteht nur noch in der Datenbankfunktion.
-  const rpcMigration = await read('../supabase/migrations/20261127200000_letter_archive_follow_up_task.sql');
-  const insert = /INSERT INTO public\.tasks[\s\S]*?VALUES \(([\s\S]*?)\)\s*RETURNING/i.exec(rpcMigration)?.[1];
-  assert.ok(insert, 'create_letter_archive_follow_up_task fügt die Aufgabe selbst ein');
+  // Die Aufgabe entsteht nur noch in der Datenbankfunktion, verknüpft über den Brief.
+  const linkMigration = await read('../supabase/migrations/20261127210000_letter_follow_up_source_link.sql');
+  const insertStart = linkMigration.indexOf('INSERT INTO public.tasks');
+  assert.ok(insertStart > -1, 'create_letter_archive_follow_up_task fügt die Aufgabe selbst ein');
+  const insert = linkMigration.slice(insertStart);
   const literals = [...insert.matchAll(/'([^']+)'/g)].map(match => match[1]);
   const taskCategory = literals.find(value => /brief/i.test(value));
   assert.ok(taskCategory, 'Die Folgeaufgabe trägt eine Briefkategorie');
+  assert.ok(
+    insert.includes("'letter_followup'") && insert.includes('v_letter.id'),
+    'Das RPC verknüpft die Aufgabe über source_type/source_id mit dem Brief',
+  );
+  assert.ok(
+    linkMigration.includes("AND t.source_type = 'letter_followup'"),
+    'Das RPC sucht die Aufgabe über source_type',
+  );
+  assert.ok(
+    linkMigration.indexOf("AND t.source_type = 'letter_followup'") < linkMigration.indexOf('AND t.title = v_title'),
+    'Die Verknüpfung entscheidet vor dem Titel-Rückfall',
+  );
+  assert.ok(
+    /INSERT INTO tasks \([^)]*source_type[^)]*source_id[^)]*\)/.test(linkMigration),
+    'Der Trigger stempelt source_type und source_id',
+  );
 
   const source = await read('../supabase/functions/archive-letter/index.ts');
   assert.ok(
@@ -60,7 +79,7 @@ try {
     'Die großgeschriebene Kategorie verletzt tasks_category_check weiterhin',
   );
 
-  console.log(`archive-letter task passed: genau ein Erzeuger, Kategorie "${taskCategory}" ist in tasks_category_check erlaubt (${allowed.join(', ')}); Großschreibung wird mit 23514 abgewiesen.`);
+  console.log(`archive-letter task passed: genau ein Erzeuger mit Verknüpfung source_type/source_id, Kategorie "${taskCategory}" ist in tasks_category_check erlaubt (${allowed.join(', ')}); Großschreibung wird mit 23514 abgewiesen.`);
 } catch (error) {
   console.error('FAILED:', error.code ?? '', error.message);
   process.exitCode = 1;

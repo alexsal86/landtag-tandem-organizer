@@ -1,5 +1,10 @@
 -- Folgeaufgabe zum versendeten Brief: ein kanonischer Weg in der Datenbank.
 --
+-- Hinweis: Die Suche über den zusammengebauten Titel unten ist durch
+-- 20261127210000_letter_follow_up_source_link.sql überholt. Dort stempelt der
+-- Trigger source_type/source_id, und das RPC sucht zuerst über diese
+-- Verknüpfung; der Titel bleibt nur Rückfall für den Altbestand.
+--
 -- Der Brief-Selbsttest meldet „Archivdokument oder Folgeaufgabe fehlt.“, obwohl
 -- das Archiv-PDF und der Dokumenteintrag entstehen. Ursache ist die
 -- Folgeaufgabe: `archive-letter` legt sie selbst an und verschluckt einen

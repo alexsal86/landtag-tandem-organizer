@@ -149,7 +149,7 @@ Keine Prüfungen deklariert.
 
 1. Datei hochladen und wieder herunterladen
 2. Prüfung und Freigabe über Anwendungsfunktionen
-3. Archivfunktion erzeugt PDF, Dokument und Folgeaufgabe
+3. Archivfunktion erzeugt PDF und Dokument; der Trigger legt die verknüpfte Folgeaufgabe an
 
 ## Funktionsdetails
 
@@ -658,7 +658,7 @@ Erzeugt beim Versand ein PDF-Archivdokument, verknüpft es und sichert die Folge
 
 **Bekannte Einschränkungen**
 
-- Die Folgeaufgabe hat genau einen Erzeuger: den Trigger trigger_letter_followup_task beim Wechsel auf sent. Die Archivfunktion erzeugt keine zweite Aufgabe, sondern liefert die bestehende ID über create_letter_archive_follow_up_task; ein Fehler dabei wird als followUpTaskError gemeldet, ohne den abgeschlossenen Versand abzubrechen. Der Client zieht die Aufgabe nur nach, wenn die Funktion keine ID liefert.
+- Die Folgeaufgabe hat genau einen Erzeuger: den Trigger trigger_letter_followup_task beim Wechsel auf sent. Die Archivfunktion erzeugt keine zweite Aufgabe, sondern liefert die bestehende ID über create_letter_archive_follow_up_task; ein Fehler dabei wird als followUpTaskError gemeldet, ohne den abgeschlossenen Versand abzubrechen. Der Client zieht die Aufgabe nur nach, wenn die Funktion keine ID liefert. Trigger und RPC verknüpfen die Aufgabe über source_type letter_followup und source_id des Briefes; der zusammengebaute Titel dient nur noch dem Altbestand und wird dabei in die Verknüpfung überführt.
 
 **Offene Prüfpunkte**
 
