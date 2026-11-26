@@ -20,11 +20,22 @@
 ALTER TABLE public.topics
   ADD COLUMN IF NOT EXISTS created_by uuid REFERENCES auth.users(id),
   ADD COLUMN IF NOT EXISTS updated_by uuid REFERENCES auth.users(id),
-  ADD COLUMN IF NOT EXISTS merged_into uuid REFERENCES public.topics(id),
+  ADD COLUMN IF NOT EXISTS merged_into uuid REFERENCES public.topics(id) ON DELETE CASCADE,
   ADD COLUMN IF NOT EXISTS merged_at timestamptz;
 
 -- Für Composite-Fremdschlüssel der Verknüpfungstabellen erforderlich.
-CREATE UNIQUE INDEX IF NOT EXISTS topics_tenant_id_id_key ON public.topics(tenant_id, id);
+-- topics_tenant_id_id_responsibilities existiert bereits in älteren Ständen;
+-- dann keinen zweiten Unique-Index auf dieselben Spalten anlegen.
+DO $$
+BEGIN
+  IF NOT EXISTS (
+    SELECT 1 FROM pg_indexes
+    WHERE schemaname = 'public' AND tablename = 'topics'
+      AND indexname IN ('topics_tenant_id_id_key', 'topics_tenant_id_id_responsibilities')
+  ) THEN
+    CREATE UNIQUE INDEX topics_tenant_id_id_key ON public.topics(tenant_id, id);
+  END IF;
+END $$;
 CREATE INDEX IF NOT EXISTS topics_tenant_label_lookup ON public.topics(tenant_id, (lower(label)));
 
 -- Doppelte Bezeichnungen innerhalb eines Büros verhindern. Vorhandene Dubletten
@@ -59,7 +70,7 @@ BEGIN
   UPDATE public.topics t
   SET tenant_id = s.tenant_id
   FROM (
-    SELECT topic_id, min(tenant_id) AS tenant_id
+    SELECT topic_id, (array_agg(DISTINCT tenant_id))[1] AS tenant_id
     FROM (
       SELECT tt.topic_id, p.tenant_id FROM public.task_topics tt JOIN public.tasks p ON p.id = tt.task_id
       UNION ALL
@@ -252,7 +263,7 @@ CREATE INDEX IF NOT EXISTS case_item_topics_case_item_idx
 
 -- Bestehende Vorgänge tragen ihre Themen bisher nur im JSON-Feld.
 INSERT INTO public.case_item_topics (tenant_id, case_item_id, topic_id)
-SELECT ci.tenant_id, ci.id, t.id
+SELECT ci.tenant_id, ci.id, coalesce(t.merged_into, t.id)
 FROM public.case_items ci
 CROSS JOIN LATERAL jsonb_array_elements_text(
   CASE WHEN jsonb_typeof(ci.intake_payload -> 'topic_ids') = 'array'
@@ -289,11 +300,11 @@ BEGIN
       SELECT 1
       FROM jsonb_array_elements_text(NEW.intake_payload -> 'topic_ids') AS e(value)
       JOIN public.topics t ON t.id::text = e.value AND t.tenant_id = NEW.tenant_id
-      WHERE t.id = cit.topic_id
+      WHERE coalesce(t.merged_into, t.id) = cit.topic_id
     );
 
   INSERT INTO public.case_item_topics (tenant_id, case_item_id, topic_id, created_by)
-  SELECT NEW.tenant_id, NEW.id, t.id, auth.uid()
+  SELECT NEW.tenant_id, NEW.id, coalesce(t.merged_into, t.id), auth.uid()
   FROM jsonb_array_elements_text(NEW.intake_payload -> 'topic_ids') AS e(value)
   JOIN public.topics t ON t.id::text = e.value AND t.tenant_id = NEW.tenant_id
   ON CONFLICT (case_item_id, topic_id) DO NOTHING;
@@ -553,6 +564,9 @@ BEGIN
   IF s.id = t.id OR s.tenant_id <> t.tenant_id THEN
     RAISE EXCEPTION 'Ungültige Themen' USING ERRCODE = '22023';
   END IF;
+  IF NOT t.is_active THEN
+    RAISE EXCEPTION 'Das Zielthema ist inaktiv.' USING ERRCODE = '22023';
+  END IF;
   IF NOT public.is_tenant_config_admin(s.tenant_id) THEN
     RAISE EXCEPTION 'Nur Abgeordnete und Büroleitung können Themen zusammenführen.' USING ERRCODE = '42501';
   END IF;
@@ -591,6 +605,13 @@ BEGIN
     EXECUTE format('UPDATE public.%I SET topic_id = $2 WHERE topic_id = $1', r.table_name)
       USING s.id, t.id;
   END LOOP;
+
+  -- Weiterleitungen, die auf die Quelle zeigen, direkt auf das neue Ziel
+  -- umlenken. So bleibt merged_into immer ein Ein-Hop-Verweis auf das
+  -- endgültige Ziel, auch wenn später erneut zusammengeführt wird.
+  UPDATE public.topics
+  SET merged_into = t.id
+  WHERE merged_into = s.id;
 
   UPDATE public.topics
   SET is_active = false,
