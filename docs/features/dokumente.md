@@ -551,7 +551,7 @@ Schlägt bei geänderter Dateiversion einen eindeutigen Textanker vor und verlan
 - Keine.
 
 ### `letters.create` — Brief erstellen und bearbeiten
-Erstellt Briefe im Lexical-Editor mit DIN-5008-Layout, direkt auf dem Blatt beschreibbarem Briefkopf (Empfänger, Betreff, Anrede), Adressen, Vorlagen und Anlagen; die Blattvorschau setzt den Fließtext auf das gespeicherte Zeilenraster (layout.content.lineHeight) und denselben Absatzabstand wie der PDF-Export und paginiert ohne leere Folgeseite. Speichern schreibt den Brief und lässt den Editor offen; Schließen und Verwerfen sind eigene Aktionen, die bei ungespeicherten Änderungen nachfragen.
+Erstellt Briefe im Lexical-Editor mit DIN-5008-Layout, direkt auf dem Blatt beschreibbarem Briefkopf (Empfänger, Betreff, Anrede), Adressen, Vorlagen und Anlagen; die Blattvorschau setzt den Fließtext auf das gespeicherte Zeilenraster (layout.content.lineHeight) und denselben Absatzabstand wie der PDF-Export und paginiert ohne leere Folgeseite. Speichern schreibt den Brief und lässt den Editor offen; Schließen und Verwerfen sind eigene Aktionen, die bei ungespeicherten Änderungen nachfragen. Auch das Verlassen der Briefseite (Browser-Zurück, interne Links, Reload) ist bei ungespeicherten Änderungen abgesichert.
 
 - **Kategorie:** fachlich
 - **Implementierung:** implementiert
@@ -560,7 +560,7 @@ Erstellt Briefe im Lexical-Editor mit DIN-5008-Layout, direkt auf dem Blatt besc
 - **Letztes Testergebnis:** unbekannt (kein Laufnachweis importiert; nicht aus der Existenz einer Testdatei abgeleitet)
 - **Rollen:** `abgeordneter`, `bueroleitung`, `mitarbeiter`
 - **Routen:** `/letters/:letterId`
-- **Frontend-Komponenten:** `src/pages/LetterDetail.tsx`, `src/features/letters/components/LetterEditor.tsx`, `src/components/letters/LetterEditorCanvas.tsx`, `src/components/letters/DIN5008LetterLayout.tsx`, `src/components/letters/InlineEditableText.tsx`, `src/components/letters/DIN5008AddressInfoSection.tsx`, `src/components/letters/din5008/headerMetrics.ts`, `src/components/letters/din5008/pagination.ts`
+- **Frontend-Komponenten:** `src/pages/LetterDetail.tsx`, `src/features/letters/useUnsavedChangesGuard.ts`, `src/features/letters/components/LetterEditor.tsx`, `src/components/letters/LetterEditorCanvas.tsx`, `src/components/letters/DIN5008LetterLayout.tsx`, `src/components/letters/InlineEditableText.tsx`, `src/components/letters/DIN5008AddressInfoSection.tsx`, `src/components/letters/din5008/headerMetrics.ts`, `src/components/letters/din5008/pagination.ts`
 - **Services:** —
 - **Hooks:** —
 - **Edge Functions:** —
@@ -568,7 +568,7 @@ Erstellt Briefe im Lexical-Editor mit DIN-5008-Layout, direkt auf dem Blatt besc
 - **Tabellen:** `letters`, `letter_template_settings`, `letter_attachments`
 - **Abhängigkeiten:** —
 - **Selbsttests:** —
-- **Unit-Tests:** `src/features/letters/components/__tests__/LetterEditorClose.test.tsx`, `src/components/letters/__tests__/types.test.ts`, `src/components/letters/din5008/headerMetrics.test.ts`, `src/components/letters/din5008/pagination.test.ts`, `src/components/letters/hooks/useLetterOperations.integration.test.tsx`
+- **Unit-Tests:** `src/features/letters/components/__tests__/LetterEditorClose.test.tsx`, `src/features/letters/__tests__/useUnsavedChangesGuard.test.tsx`, `src/components/letters/__tests__/types.test.ts`, `src/components/letters/din5008/headerMetrics.test.ts`, `src/components/letters/din5008/pagination.test.ts`, `src/components/letters/hooks/useLetterOperations.integration.test.tsx`
 - **Integrationstests:** —
 - **Browser-Tests:** —
 - **Dokumentation:** `docs/workflow-consistency.md`

@@ -79,9 +79,13 @@ interface LetterEditorProps {
   isOpen: boolean;
   onClose: () => void;
   onSave: () => void;
+  /** Meldet den Dirty-Zustand, damit die Seite das Verlassen absichern kann. */
+  onDirtyChange?: (dirty: boolean) => void;
+  /** Stellt der Seite denselben Speicherpfad wie der Editor-Button bereit. */
+  saveRef?: React.MutableRefObject<(() => Promise<boolean>) | null>;
 }
 
-const LetterEditor: React.FC<LetterEditorProps> = ({ letter, isOpen, onClose, onSave }) => {
+const LetterEditor: React.FC<LetterEditorProps> = ({ letter, isOpen, onClose, onSave, onDirtyChange, saveRef }) => {
   const { user } = useAuth();
   const { currentTenant } = useTenant();
 
@@ -420,6 +424,14 @@ const LetterEditor: React.FC<LetterEditorProps> = ({ letter, isOpen, onClose, on
     if (saveTimeoutRef.current) clearTimeout(saveTimeoutRef.current);
     finishClose();
   }, [finishClose]);
+
+  useEffect(() => { onDirtyChange?.(isDirty); }, [isDirty, onDirtyChange]);
+
+  useEffect(() => {
+    if (!saveRef) return;
+    saveRef.current = saveLetter;
+    return () => { saveRef.current = null; };
+  }, [saveRef, saveLetter]);
 
   if (!isOpen) return null;
 

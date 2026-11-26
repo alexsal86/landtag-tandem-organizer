@@ -413,7 +413,7 @@
       "id": "letters.create",
       "subarea": "Briefe",
       "name": "Brief erstellen und bearbeiten",
-      "description": "Erstellt Briefe im Lexical-Editor mit DIN-5008-Layout, direkt auf dem Blatt beschreibbarem Briefkopf (Empfänger, Betreff, Anrede), Adressen, Vorlagen und Anlagen; die Blattvorschau setzt den Fließtext auf das gespeicherte Zeilenraster (layout.content.lineHeight) und denselben Absatzabstand wie der PDF-Export und paginiert ohne leere Folgeseite. Speichern schreibt den Brief und lässt den Editor offen; Schließen und Verwerfen sind eigene Aktionen, die bei ungespeicherten Änderungen nachfragen.",
+      "description": "Erstellt Briefe im Lexical-Editor mit DIN-5008-Layout, direkt auf dem Blatt beschreibbarem Briefkopf (Empfänger, Betreff, Anrede), Adressen, Vorlagen und Anlagen; die Blattvorschau setzt den Fließtext auf das gespeicherte Zeilenraster (layout.content.lineHeight) und denselben Absatzabstand wie der PDF-Export und paginiert ohne leere Folgeseite. Speichern schreibt den Brief und lässt den Editor offen; Schließen und Verwerfen sind eigene Aktionen, die bei ungespeicherten Änderungen nachfragen. Auch das Verlassen der Briefseite (Browser-Zurück, interne Links, Reload) ist bei ungespeicherten Änderungen abgesichert.",
       "category": "fachlich",
       "implementationStatus": "implementiert",
       "integrationStatus": "rollenabhaengig",
@@ -429,6 +429,7 @@
       ],
       "components": [
         "src/pages/LetterDetail.tsx",
+        "src/features/letters/useUnsavedChangesGuard.ts",
         "src/features/letters/components/LetterEditor.tsx",
         "src/components/letters/LetterEditorCanvas.tsx",
         "src/components/letters/DIN5008LetterLayout.tsx",
@@ -449,6 +450,7 @@
       ],
       "unitTests": [
         "src/features/letters/components/__tests__/LetterEditorClose.test.tsx",
+        "src/features/letters/__tests__/useUnsavedChangesGuard.test.tsx",
         "src/components/letters/__tests__/types.test.ts",
         "src/components/letters/din5008/headerMetrics.test.ts",
         "src/components/letters/din5008/pagination.test.ts",
