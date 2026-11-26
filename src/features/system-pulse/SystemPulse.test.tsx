@@ -46,7 +46,10 @@ describe("SystemPulse: selftest_runs", () => {
     rpc.mockReturnValue(new Promise(() => {}));
     renderPulse();
 
-    expect(screen.getByText(/Testlage wird geladen/)).toBeInTheDocument();
+    // Kopfzeile und die noch leere Fehlertabelle melden den Ladezustand getrennt.
+    expect(within(screen.getByTestId("pulse-status")).getByText(/Testlage wird geladen/)).toBeInTheDocument();
+    const failedTests = screen.getByRole("region", { name: "Fehlgeschlagene Tests" });
+    expect(within(failedTests).getByText(/Testlage wird geladen/)).toBeInTheDocument();
     expect(screen.getAllByText("wird geladen …")).toHaveLength(PULSE_AREAS.length);
     expect(screen.queryByText("Noch nie getestet")).not.toBeInTheDocument();
   });
@@ -56,7 +59,9 @@ describe("SystemPulse: selftest_runs", () => {
     renderPulse();
 
     await waitFor(() => expect(screen.getAllByText("unbekannt")).toHaveLength(PULSE_AREAS.length));
-    expect(screen.getByText(/Testlage unbekannt/)).toBeInTheDocument();
+    expect(within(screen.getByTestId("pulse-status")).getByText(/Testlage unbekannt/)).toBeInTheDocument();
+    const failedTests = screen.getByRole("region", { name: "Fehlgeschlagene Tests" });
+    expect(within(failedTests).getByText(/es können keine Fehler angezeigt werden/)).toBeInTheDocument();
     expect(screen.queryByText("Noch nie getestet")).not.toBeInTheDocument();
   });
 

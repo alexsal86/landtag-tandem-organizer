@@ -268,7 +268,7 @@ export function SystemPulse({ gaps, gapsState }: Props) {
     <Card>
       <CardHeader>
         <CardTitle className="flex items-center gap-2"><Activity className="h-4 w-4" /> System-Puls</CardTitle>
-        <CardDescription>
+        <CardDescription data-testid="pulse-status">
           {loadingRuns ? "Testlage wird geladen …" : unknownRuns ? "Testlage unbekannt – Abfrage der gespeicherten Selbsttests fehlgeschlagen." : (
             <>
               {count("green")} grün · {count("yellow")} prüfen · {count("red")} Fehler · {count("grey")} ungetestet — aus den letzten funktionalen Selbsttests des Mandanten
