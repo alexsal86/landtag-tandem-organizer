@@ -418,27 +418,20 @@ export const TaskDecisionResponse = ({
                 priority_param: 'high',
               });
             } else if (responseType === 'reject') {
-              await supabase
-                .from('letters')
-                .update({ status: 'revision_requested', updated_at: now })
-                .eq('id', letterId);
+              // Rückgabe und Benachrichtigung laufen serverseitig über das RPC mit
+              // Rollenprüfung; die Begründung wird direkt am Brief gespeichert.
+              const { returnLetterForRevision } = await import('@/services/letterWorkflow');
+              await returnLetterForRevision({
+                letterId,
+                from: 'pending_approval',
+                userId: currentUser?.id || '',
+                reason: comment?.trim() || 'Zurückgewiesen ohne Begründung.',
+              });
 
               if (decisionData.tenant_id) {
                 const { createLetterRevisionTask } = await import('@/utils/letterWorkflowActions');
                 await createLetterRevisionTask(letterTitle, comment || '', decisionData.created_by, currentUser?.id || '', decisionData.tenant_id);
               }
-
-              // Notify letter creator about rejection with reason
-              await supabase.rpc('create_notification', {
-                user_id_param: decisionData.created_by,
-                type_name: LETTER_NOTIFICATION_TYPES.REVIEW_COMPLETED,
-                title_param: 'Brief zur Überarbeitung zurückgewiesen',
-                message_param: comment
-                  ? `Der Brief "${letterTitle}" wurde zurückgewiesen. Begründung: ${comment}`
-                  : `Der Brief "${letterTitle}" wurde zur Überarbeitung zurückgewiesen.`,
-                data_param: JSON.stringify({ letter_id: letterId, letter_title: letterTitle }),
-                priority_param: 'high',
-              });
             }
           }
         }

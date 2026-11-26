@@ -45,6 +45,10 @@ export interface Letter {
   salutation_override?: string;
   closing_formula?: string;
   closing_name?: string;
+  /** Begründung der letzten Rückgabe; nur bei revision_requested/draft sichtbar. */
+  revision_comment?: string | null;
+  revision_requested_at?: string | null;
+  revision_requested_by?: string | null;
 }
 
 export interface LetterTemplate extends LetterTemplateDataModel {

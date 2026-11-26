@@ -1,4 +1,4 @@
-import React, { useEffect, useState } from 'react';
+import React, { useState } from 'react';
 import { ArrowRight, CheckCircle, Clock, Edit3, FileText, RotateCcw, Send, Activity, AlertTriangle, Users } from 'lucide-react';
 import { Button } from '@/components/ui/button';
 import { Badge } from '@/components/ui/badge';
@@ -6,9 +6,9 @@ import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 import { Label } from '@/components/ui/label';
 import { Input } from '@/components/ui/input';
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
+import { Textarea } from '@/components/ui/textarea';
+import { Dialog, DialogContent, DialogDescription, DialogFooter, DialogHeader, DialogTitle } from '@/components/ui/dialog';
 import { STATUS_LABELS, SENT_METHOD_LABELS, getNextStatus } from './types';
-import { supabase } from '@/integrations/supabase/client';
-import { debugConsole } from '@/utils/debugConsole';
 import type { Letter } from './types';
 
 const STATUS_ICONS: Record<string, any> = {
@@ -27,40 +27,10 @@ interface LetterBriefDetailsProps {
   isReviewer: boolean;
   userProfiles: Record<string, { display_name: string; avatar_url?: string }>;
   onStatusTransition: (newStatus: string) => void;
-  onReturnLetter: () => void;
+  /** Muss true liefern, wenn die Rueckgabe gespeichert wurde. */
+  onReturnLetter: (reason: string) => boolean | Promise<boolean>;
   broadcastContentChange: (field: string, value: string) => void;
 }
-
-const useRevisionComment = (letterId?: string, status?: string) => {
-  const [revisionComment, setRevisionComment] = useState<string | null>(null);
-  useEffect(() => {
-    if (status !== 'revision_requested' || !letterId) { setRevisionComment(null); return; }
-    const fetchComment = async () => {
-      try {
-        const { data } = await supabase
-          .from('tasks')
-          .select('description')
-          .ilike('title', `%Brief überarbeiten%`)
-          .order('created_at', { ascending: false })
-          .limit(5);
-        if (data) {
-          const match = data.find((t: Record<string, any>) => t.description?.includes('Begründung der Zurückweisung'));
-          if (match?.description) {
-            const parts = match.description.split('Begründung der Zurückweisung:\n\n');
-            setRevisionComment(parts[1] || match.description);
-            return;
-          }
-        }
-        setRevisionComment(null);
-      } catch (e) {
-        debugConsole.error('Error fetching revision comment:', e);
-        setRevisionComment(null);
-      }
-    };
-    fetchComment();
-  }, [letterId, status]);
-  return revisionComment;
-};
 
 const LetterBriefDetails: React.FC<LetterBriefDetailsProps> = ({
   editedLetter,
@@ -73,7 +43,31 @@ const LetterBriefDetails: React.FC<LetterBriefDetailsProps> = ({
   broadcastContentChange,
 }) => {
   const status = editedLetter.status || 'draft';
-  const revisionComment = useRevisionComment((editedLetter as { id: string }).id, status);
+  // Die Begründung hängt am Brief selbst (letters.revision_comment), nicht an
+  // einer per Titel gesuchten Aufgabe.
+  const revisionComment = editedLetter.revision_comment?.trim() || null;
+  const revisionReviewer = editedLetter.revision_requested_by ? userProfiles[editedLetter.revision_requested_by] : undefined;
+  const [isReturnDialogOpen, setIsReturnDialogOpen] = useState(false);
+  const [returnReason, setReturnReason] = useState('');
+  const [isReturning, setIsReturning] = useState(false);
+
+  // Der Dialog schliesst nur bei tatsaechlichem Erfolg, damit eine fehlgeschlagene
+  // Rueckgabe die geschriebene Begruendung nicht verwirft.
+  const submitReturn = async () => {
+    if (!returnReason.trim() || isReturning) return;
+    setIsReturning(true);
+    try {
+      const succeeded = await onReturnLetter(returnReason);
+      if (succeeded) {
+        setIsReturnDialogOpen(false);
+        setReturnReason('');
+      }
+    } catch {
+      // Den Fehler meldet der Aufrufer; der Dialog bleibt bewusst offen.
+    } finally {
+      setIsReturning(false);
+    }
+  };
 
   return (
     <div className="border-b bg-card/30 p-4 overflow-y-auto max-h-[45vh]">
@@ -86,16 +80,23 @@ const LetterBriefDetails: React.FC<LetterBriefDetailsProps> = ({
         </CardHeader>
         <CardContent className="space-y-6">
           {/* Revision Banner */}
-          {status === 'revision_requested' && (
+          {(status === 'revision_requested' || status === 'draft') && revisionComment && (
             <div className="p-4 border border-palette-orange/30 rounded-lg bg-palette-orange/10">
               <div className="flex items-start gap-2">
                 <AlertTriangle className="h-4 w-4 text-palette-orange mt-0.5 flex-shrink-0" />
                 <div>
-                  <p className="text-sm font-medium text-palette-orange">Überarbeitung angefordert</p>
-                  {revisionComment ? (
-                    <p className="text-sm text-palette-orange mt-1 whitespace-pre-wrap">{revisionComment}</p>
-                  ) : (
-                    <p className="text-sm text-palette-orange mt-1">Keine Begründung angegeben.</p>
+                  <p className="text-sm font-medium text-palette-orange">
+                    {status === 'revision_requested' ? 'Überarbeitung angefordert' : 'Zurückgegeben mit Begründung'}
+                  </p>
+                  <p className="text-sm text-palette-orange mt-1 whitespace-pre-wrap">{revisionComment}</p>
+                  {(revisionReviewer?.display_name || editedLetter.revision_requested_at) && (
+                    <p className="text-xs text-palette-orange/80 mt-2">
+                      {revisionReviewer?.display_name ? `von ${revisionReviewer.display_name}` : ''}
+                      {revisionReviewer?.display_name && editedLetter.revision_requested_at ? ' · ' : ''}
+                      {editedLetter.revision_requested_at
+                        ? new Date(editedLetter.revision_requested_at).toLocaleDateString('de-DE', { day: '2-digit', month: '2-digit', year: 'numeric' })
+                        : ''}
+                    </p>
                   )}
                 </div>
               </div>
@@ -139,7 +140,7 @@ const LetterBriefDetails: React.FC<LetterBriefDetailsProps> = ({
             )}
 
             {(status === 'review' || status === 'pending_approval') && isReviewer && (
-              <Button size="sm" variant="outline" onClick={onReturnLetter} className="justify-start text-palette-orange hover:text-palette-orange mt-2">
+              <Button size="sm" variant="outline" onClick={() => setIsReturnDialogOpen(true)} className="justify-start text-palette-orange hover:text-palette-orange mt-2">
                 <RotateCcw className="h-4 w-4 mr-2" />
                 Brief zurückgeben
               </Button>
@@ -275,6 +276,48 @@ const LetterBriefDetails: React.FC<LetterBriefDetailsProps> = ({
           )}
         </CardContent>
       </Card>
+
+      <Dialog
+        open={isReturnDialogOpen}
+        onOpenChange={(open) => {
+          if (!open && isReturning) return;
+          setIsReturnDialogOpen(open);
+          if (!open) setReturnReason('');
+        }}
+      >
+        <DialogContent>
+          <DialogHeader>
+            <DialogTitle>Brief zurückgeben</DialogTitle>
+            <DialogDescription>
+              Die Begründung wird am Brief gespeichert, dem Ersteller angezeigt und als Benachrichtigung verschickt.
+            </DialogDescription>
+          </DialogHeader>
+          <div className="space-y-2">
+            <Label htmlFor="return-reason">Begründung</Label>
+            <Textarea
+              id="return-reason"
+              value={returnReason}
+              onChange={(event) => setReturnReason(event.target.value)}
+              placeholder="Was soll geändert werden?"
+              rows={5}
+              autoFocus
+            />
+            <p className="text-xs text-muted-foreground">
+              {status === 'pending_approval'
+                ? 'Der Brief wechselt in den Status „Überarbeitung“.'
+                : 'Der Brief wechselt zurück in den Entwurf.'}
+            </p>
+          </div>
+          <DialogFooter>
+            <Button variant="outline" disabled={isReturning} onClick={() => { setIsReturnDialogOpen(false); setReturnReason(''); }}>
+              Abbrechen
+            </Button>
+            <Button disabled={!returnReason.trim() || isReturning} onClick={() => { void submitReturn(); }}>
+              <RotateCcw className="h-4 w-4 mr-2" />{isReturning ? 'Wird zurückgegeben…' : 'Zurückgeben'}
+            </Button>
+          </DialogFooter>
+        </DialogContent>
+      </Dialog>
     </div>
   );
 };

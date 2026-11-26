@@ -35,6 +35,10 @@ export interface LetterRecord extends Pick<DbLetter,
   sent_method?: LetterSentMethod | null;
   user_id?: string;
   archived_at?: string | null;
+  workflow_locked?: boolean | null;
+  revision_comment?: string | null;
+  revision_requested_at?: string | null;
+  revision_requested_by?: string | null;
 }
 
 export type Letter = LetterRecord;

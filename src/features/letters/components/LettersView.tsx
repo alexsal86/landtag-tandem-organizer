@@ -15,6 +15,7 @@ import { useTenant } from '@/hooks/useTenant';
 import { debugConsole } from '@/utils/debugConsole';
 import { useViewPreference } from '@/hooks/useViewPreference';
 import LetterEditor from '@/features/letters/components/LetterEditor';
+import { LETTER_EDIT_SELECT, LETTER_LIST_SELECT } from '@/features/letters/letterSelect';
 import { LetterWizard } from '@/components/letters/LetterWizard';
 import LetterPDFExport from '@/features/letters/components/LetterPDFExport';
 import { ConfirmDialog } from '@/components/shared/ConfirmDialog';
@@ -72,7 +73,7 @@ const LettersView: React.FC = () => {
     try {
       const { data, error } = await supabase
         .from('letters')
-        .select('id, title, recipient_name, recipient_address, contact_id, template_id, sender_info_id, information_block_ids, status, sent_date, sent_method, expected_response_date, created_by, created_at, updated_at, tenant_id')
+        .select(LETTER_LIST_SELECT)
         .eq('tenant_id', currentTenant.id)
         .order('updated_at', { ascending: false });
 
@@ -130,8 +131,24 @@ const LettersView: React.FC = () => {
   };
 
   const handleEditLetter = async (letter: Letter) => {
-    const { data: full } = await supabase.from('letters').select('content, content_html').eq('id', letter.id).maybeSingle();
-    setSelectedLetter(full ? { ...letter, content: full.content ?? '', content_html: full.content_html ?? '' } : letter);
+    // Der Editor braucht den vollständigen Datensatz: ohne content_nodes
+    // überschreibt der erste Autosave die Formatierung mit reinem Text, ohne
+    // Betreff/Datum/Aktenzeichen zeigt und speichert er leere Kopffelder.
+    const { data: full, error } = await supabase
+      .from('letters')
+      .select(LETTER_EDIT_SELECT)
+      .eq('id', letter.id)
+      .maybeSingle();
+
+    if (error || !full) {
+      debugConsole.error('Error loading letter for editing:', error);
+      notify.error('Brief konnte nicht geöffnet werden', {
+        description: 'Der Brief wurde nicht vollständig geladen. Bitte erneut versuchen.',
+      });
+      return;
+    }
+
+    setSelectedLetter({ ...letter, ...full, content: full.content ?? '', content_html: full.content_html ?? '' } as Letter);
     setIsEditorOpen(true);
   };
 

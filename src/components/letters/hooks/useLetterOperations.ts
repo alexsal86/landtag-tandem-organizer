@@ -1,4 +1,4 @@
-import { letterTransitionUpdates, persistLetterTransition } from "@/services/letterWorkflow";
+import { letterTransitionUpdates, persistLetterTransition, returnLetterForRevision } from "@/services/letterWorkflow";
 import { useCallback, useRef } from 'react';
 import { supabase } from '@/integrations/supabase/client';
 import type { Letter, LetterTemplate } from '../types';
@@ -254,19 +254,41 @@ export function useLetterOperations(opts: UseLetterOperationsOptions) {
     }
   }, [letter?.id, userId, fetchComments, toast]);
 
-  const handleReturnLetter = useCallback(async () => {
-    if (!letter?.id || !userId) return;
+  /** Gibt `true` nur zurück, wenn der Statuswechsel wirklich gespeichert wurde. */
+  const handleReturnLetter = useCallback(async (reason: string): Promise<boolean> => {
+    if (!letter?.id || !userId) return false;
+    const trimmedReason = reason.trim();
+    if (!trimmedReason) {
+      notify.error('Begründung fehlt', { description: 'Bitte begründen Sie, warum der Brief zurückgeht.' });
+      return false;
+    }
+
+    setSaving(true);
     try {
-      setEditedLetter(prev => ({ ...prev, status: 'draft' }));
-      setIsProofreadingMode(true);
-      notify.success('Brief zurückgegeben', { description: 'Der Brief wurde zur Bearbeitung zurückgegeben.' 
-});
+      // Das RPC prüft Rolle und Mandant und benachrichtigt den Ersteller.
+      const result = await returnLetterForRevision({
+        letterId: letter.id,
+        from: editedLetter.status || 'draft',
+        userId,
+        reason: trimmedReason,
+      });
+      setEditedLetter(prev => ({ ...prev, ...(result.updates as Partial<Letter>) }));
+      setIsProofreadingMode(false);
+
+      notify.success('Brief zurückgegeben', {
+        description: 'Der Brief wurde mit Begründung zur Überarbeitung zurückgegeben.',
+      });
+      return true;
     } catch (error) {
       debugConsole.error('Error returning letter:', error);
-      notify.error('Fehler', { description: 'Der Brief konnte nicht zurückgegeben werden.'
-});
+      notify.error('Fehler beim Zurückgeben', {
+        description: error instanceof Error ? error.message : 'Der Brief konnte nicht zurückgegeben werden.',
+      });
+      return false;
+    } finally {
+      setSaving(false);
     }
-  }, [letter?.id, userId, setEditedLetter, setIsProofreadingMode, toast]);
+  }, [letter, editedLetter.status, userId, setEditedLetter, setIsProofreadingMode, setSaving, toast]);
 
   const handleAttachmentNameChange = useCallback(async (
     attachmentId: string,

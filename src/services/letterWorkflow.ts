@@ -19,8 +19,20 @@ export function letterTransitionUpdates(from: string, to: string, userId: string
   return updates;
 }
 
-/** Gemeinsamer Anwendungspfad für Editor und Selbsttest, inklusive Archivierung. */
-export async function persistLetterTransition(letterId: string, from: string, to: string, userId: string, locked = false) {
+/**
+ * Gemeinsamer Anwendungspfad für Editor und Selbsttest, inklusive Archivierung.
+ * `extraUpdates` wird im selben UPDATE wie der Statuswechsel geschrieben, damit
+ * z. B. eine Rückgabebegründung nie ohne den zugehörigen Status existiert. Beim
+ * Versand greift stattdessen die Archivierung, dort werden Extras ignoriert.
+ */
+export async function persistLetterTransition(
+  letterId: string,
+  from: string,
+  to: string,
+  userId: string,
+  locked = false,
+  extraUpdates: Database["public"]["Tables"]["letters"]["Update"] = {},
+) {
   const now = new Date().toISOString();
   const updates = letterTransitionUpdates(from, to, userId, locked, now);
   if (to === "sent") {
@@ -28,9 +40,55 @@ export async function persistLetterTransition(letterId: string, from: string, to
     if (!archive.success) throw new Error(archive.error || "Die Archivierung konnte nicht abgeschlossen werden.");
     return { updates, archive };
   }
-  const { error } = await supabase.from("letters").update({ ...updates, updated_at: now }).eq("id", letterId);
+  const { error } = await supabase.from("letters").update({ ...extraUpdates, ...updates, updated_at: now }).eq("id", letterId);
   if (error) throw error;
   return { updates, archive: undefined };
+}
+
+/** Zielstatus einer Rückgabe: Kollegenprüfung → Entwurf, Freigabe → Überarbeitung. */
+export type LetterReturnTarget = "draft" | "revision_requested";
+
+export function letterReturnTarget(from: string): LetterReturnTarget {
+  if (from === "review") return "draft";
+  if (from === "pending_approval") return "revision_requested";
+  throw new Error(`Zurückgeben ist aus ${from} nicht möglich.`);
+}
+
+/**
+ * Gibt einen Brief mit Begründung an den Ersteller zurück.
+ *
+ * Der Schreibvorgang läuft über das RPC `return_letter_for_revision`: Die
+ * Datenbank prüft Anmeldung, Mandant, Prüferzuordnung (`letter_collaborators`)
+ * und den Ausgangsstatus und setzt Status plus Revisionsfelder in einem Schritt.
+ * Ein direkter Statuswechsel auf draft/revision_requested wird vom
+ * Guard-Trigger abgewiesen, die UI-Beschränkung ist damit nicht umgehbar.
+ */
+export async function returnLetterForRevision(params: {
+  letterId: string;
+  from: string;
+  userId: string;
+  reason: string;
+}) {
+  const reason = params.reason.trim();
+  if (!reason) throw new Error("Für die Rückgabe ist eine Begründung erforderlich.");
+  // Spiegelt die Kanten des RPC und liefert einen klaren Fehler bei falschem Ausgangsstatus.
+  const expectedTarget = letterReturnTarget(params.from);
+
+  const { data, error } = await supabase.rpc("return_letter_for_revision", {
+    _letter_id: params.letterId,
+    _reason: reason,
+  });
+  if (error) throw error;
+
+  const target: LetterReturnTarget =
+    data === "draft" || data === "revision_requested" ? data : expectedTarget;
+  const updates: Database["public"]["Tables"]["letters"]["Update"] = {
+    status: target,
+    revision_comment: reason,
+    revision_requested_at: new Date().toISOString(),
+    revision_requested_by: params.userId,
+  };
+  return { target, reason, updates };
 }
 
 /**

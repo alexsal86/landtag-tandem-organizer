@@ -30,6 +30,46 @@ import {
 } from '@/components/letters/types';
 import type { LetterLayoutSettings } from '@/types/letterLayout';
 
+/**
+ * Felder, die der Autosave schreibt. Der Snapshot dient nur dem Vergleich:
+ * bloßes Öffnen eines Briefs darf keinen Schreibvorgang auslösen und keine
+ * noch nicht geladenen Felder (z. B. content_nodes) überschreiben.
+ */
+const AUTOSAVE_FIELDS = [
+  'title', 'subject', 'content', 'content_nodes', 'content_html',
+  'recipient_name', 'recipient_address', 'contact_id', 'template_id',
+  'reference_number', 'sender_info_id', 'information_block_ids',
+  'letter_date', 'expected_response_date', 'salutation_override',
+  'closing_formula', 'closing_name',
+] as const;
+
+/** content_nodes kommt je nach Quelle als Objekt (DB) oder JSON-String (Editor). */
+const parseContentNodes = (value: unknown): unknown => {
+  if (typeof value !== 'string') return value ?? null;
+  try { return JSON.parse(value); } catch { return value; }
+};
+
+/** Schlüsselreihenfolge-unabhängig, damit derselbe Inhalt nicht als Änderung zählt. */
+const stableStringify = (value: unknown): string => {
+  if (Array.isArray(value)) return `[${value.map(stableStringify).join(',')}]`;
+  if (value && typeof value === 'object') {
+    const entries = Object.keys(value as Record<string, unknown>)
+      .sort()
+      .map((key) => `${JSON.stringify(key)}:${stableStringify((value as Record<string, unknown>)[key])}`);
+    return `{${entries.join(',')}}`;
+  }
+  return JSON.stringify(value ?? null);
+};
+
+const autosaveSnapshot = (letter: Partial<Letter>, showPagination: boolean): string =>
+  stableStringify({
+    ...Object.fromEntries(AUTOSAVE_FIELDS.map((field) => [
+      field,
+      field === 'content_nodes' ? parseContentNodes(letter[field]) : letter[field] ?? null,
+    ])),
+    show_pagination: showPagination,
+  });
+
 interface LetterEditorProps {
   letter?: Letter;
   isOpen: boolean;
@@ -63,6 +103,9 @@ const LetterEditor: React.FC<LetterEditorProps> = ({ letter, isOpen, onClose, on
   const [draftContent, setDraftContent] = useState('');
   const [draftContentNodes, setDraftContentNodes] = useState<LetterContentNodes>(null);
   const [draftContentHtml, setDraftContentHtml] = useState<string | null>(null);
+  // Autosave erst, wenn der vollständige Datensatz in den Editor übernommen wurde.
+  const [isHydrated, setIsHydrated] = useState(false);
+  const hydratedSnapshotRef = useRef<string | null>(null);
 
   const saveTimeoutRef = useRef<NodeJS.Timeout>(null);
   const isUpdatingFromRemoteRef = useRef(false);
@@ -132,18 +175,31 @@ const LetterEditor: React.FC<LetterEditorProps> = ({ letter, isOpen, onClose, on
 
   useEffect(() => {
     if (letter) {
+      // Einheitlicher Stand für Editor, Vorschau und Snapshot; der Live-Sync
+      // schreibt den Text ebenfalls getrimmt zurück.
+      const hydrated = {
+        ...letter,
+        content: (letter.content || '').trim(),
+        content_html: letter.content_html || '',
+        content_nodes: letter.content_nodes || null,
+      };
       draftInitializedRef.current = false;
-      setEditedLetter({ ...letter, content_html: letter.content_html || '', content_nodes: letter.content_nodes || null });
-      setDraftContent(letter.content || ''); setDraftContentNodes(letter.content_nodes || null); setDraftContentHtml(letter.content_html || null);
-      latestContentRef.current = { content: letter.content || '', contentNodes: letter.content_nodes || null };
+      setEditedLetter(hydrated);
+      setDraftContent(hydrated.content); setDraftContentNodes(hydrated.content_nodes); setDraftContentHtml(hydrated.content_html);
+      latestContentRef.current = { content: hydrated.content, contentNodes: hydrated.content_nodes };
       draftInitializedRef.current = true;
       setIsProofreadingMode(letter.status === 'review' || letter.status === 'pending_approval');
       setShowPagination(letter.show_pagination || false);
+      hydratedSnapshotRef.current = autosaveSnapshot(hydrated, letter.show_pagination || false);
+      setIsHydrated(true);
     } else {
       const currentDate = new Date().toISOString().split('T')[0];
       setEditedLetter({ title: '', content: '', content_html: '', content_nodes: null, recipient_name: '', recipient_address: '', status: 'draft', letter_date: currentDate });
       setDraftContent(''); setDraftContentNodes(null); setDraftContentHtml(null);
       draftInitializedRef.current = true; setIsProofreadingMode(false); setShowPagination(true);
+      // Ein neuer Brief hat noch keine ID; gespeichert wird er über "Speichern".
+      hydratedSnapshotRef.current = null;
+      setIsHydrated(false);
     }
   }, [letter]);
 
@@ -169,11 +225,14 @@ const LetterEditor: React.FC<LetterEditorProps> = ({ letter, isOpen, onClose, on
   }, [isOpen, currentTenant, letter?.id, senderInfos.length, informationBlocks.length, fetchCurrentTemplate]);
 
   useEffect(() => {
+    if (!isHydrated) return;
     if (!canEdit || isUpdatingFromRemoteRef.current || !letter?.id) return;
+    // Unverändert gegenüber dem geladenen Stand: nichts zu speichern.
+    if (autosaveSnapshot(editedLetter, showPagination) === hydratedSnapshotRef.current) return;
     if (saveTimeoutRef.current) clearTimeout(saveTimeoutRef.current);
     saveTimeoutRef.current = setTimeout(() => { if (!isUpdatingFromRemoteRef.current && letter?.id) void handleAutoSave(); }, 3000);
     return () => { if (saveTimeoutRef.current) clearTimeout(saveTimeoutRef.current); };
-  }, [editedLetter, canEdit, letter?.id, showPagination, handleAutoSave]);
+  }, [editedLetter, canEdit, letter?.id, showPagination, isHydrated, handleAutoSave]);
 
   const handleTemplateChange = async (templateId: string) => {
     if (!templateId || templateId === 'none') {

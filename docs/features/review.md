@@ -443,6 +443,7 @@ Eindeutige Fehler werden im CI-Lauf ausgegeben und brechen die Prüfung ab; sie 
 
 - Die Statusmenge ist geschlossen (draft, review, pending_approval, approved, revision_requested, sent, archived); der CHECK-Constraint letters_status_check und der Client lehnen andere Werte ab.
 - Die erlaubten Wechsel prüft der Trigger enforce_letter_status_transition gegen letter_status_transitions; Quelle ist ALLOWED_TRANSITIONS, beide werden von check:state-artifact abgeglichen. Ein direkter Sprung wie draft → sent wird abgewiesen. Neuanlagen prüft weiterhin nur die Wertemenge.
+- Rückgaben laufen ausschließlich über das RPC return_letter_for_revision (SECURITY DEFINER): Es prüft Anmeldung, aktive Mandantzugehörigkeit und die Prüferzuordnung in letter_collaborators, setzt Status und Revisionsfelder in einem Schritt und benachrichtigt den Ersteller. Der Guard-Trigger guard_letter_return_transition weist direkte Statuswechsel review → draft bzw. pending_approval → revision_requested ohne das transaktionslokale Merkmal ab.
 
 ### `decisions.change-vote`
 

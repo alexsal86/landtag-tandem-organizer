@@ -55,7 +55,7 @@ _Auto-generiert mit `npm run update:feature-catalog` aus dem zentralen Funktions
 | `case-file-lifecycle` | Fallakte mit Folgetabellen (Container) im Unterschied zum Vorgang | 16 | 9 | — |
 | `document-annotation` | Dokument-Annotation | 6 | 14 | — |
 | `document-list` | Dokumente: Suche, Kategorien, Sortierung und Auswahl | 0 | 0 | — |
-| `letter-lifecycle` | Brief-Lifecycle (Entwurf → Prüfung → Freigabe → Archiv und Folgeaufgabe) | 4 | 3 | — |
+| `letter-lifecycle` | Brief-Lifecycle (Entwurf → Prüfung → Freigabe → Archiv und Folgeaufgabe) | 5 | 3 | — |
 
 ## Selbsttest-Schritte
 
@@ -103,6 +103,10 @@ Diese Schritte führen die Szenarien aus; „letzter Lauf“ stammt aus `src/fea
 | `letter-lifecycle` | `invalid-transition` | Direkter Sprung vom Entwurf zu versendet ist verboten | logic | — |
 | `letter-lifecycle` | `db-invalid-transition` | Datenbank weist Entwurf → versendet ab | workflow | — |
 | `letter-lifecycle` | `attachment` | Echte Anlage hochladen und Inhalt zurücklesen | workflow | — |
+| `letter-lifecycle` | `return-targets` | Rückgabeziele folgen dem Freigabemodell | logic | — |
+| `letter-lifecycle` | `assign-reviewer` | Aktuelles Konto als Prüfer zuweisen | workflow | — |
+| `letter-lifecycle` | `return-with-reason` | Brief mit Begründung aus der Prüfung zurückgeben | workflow | — |
+| `letter-lifecycle` | `resubmit-after-return` | Nach der Rückgabe erneut zur Prüfung einreichen | workflow | — |
 | `letter-lifecycle` | `archive` | Versandstatus, Archiv-PDF und Folgeaufgabe über Anwendungsfunktion | workflow | — |
 | `letter-lifecycle` | `verify-archive` | Archivdatei und Folgeaufgabe sind tatsächlich vorhanden | db | — |
 
@@ -584,7 +588,7 @@ Erstellt Briefe im Lexical-Editor mit DIN-5008-Layout, direkt auf dem Blatt besc
 - Keine.
 
 ### `letters.workflow` — Brief-Freigabeworkflow
-Führt Briefe durch Entwurf, Prüfung, Freigabe und Versand, protokolliert Statuswechsel und verhindert falsche Erfolgsmeldungen.
+Führt Briefe durch Entwurf, Prüfung, Freigabe und Versand, protokolliert Statuswechsel und verhindert falsche Erfolgsmeldungen. Eine Rückgabe speichert Begründung, Prüfer und Zeitpunkt am Brief und benachrichtigt den Ersteller.
 
 - **Kategorie:** fachlich
 - **Implementierung:** implementiert
@@ -597,7 +601,7 @@ Führt Briefe durch Entwurf, Prüfung, Freigabe und Versand, protokolliert Statu
 - **Services:** `src/services/letterWorkflow.ts`
 - **Hooks:** —
 - **Edge Functions:** `archive-letter`
-- **Datenbankfunktionen:** `handle_letter_status_change`, `log_letter_workflow_change`
+- **Datenbankfunktionen:** `handle_letter_status_change`, `log_letter_workflow_change`, `return_letter_for_revision`, `guard_letter_return_transition`
 - **Tabellen:** `letters`, `letter_workflow_history`, `letter_archive_settings`, `documents`
 - **Abhängigkeiten:** `letters.create`
 - **Selbsttests:** `letter-lifecycle`
@@ -616,6 +620,7 @@ Führt Briefe durch Entwurf, Prüfung, Freigabe und Versand, protokolliert Statu
 
 - Die Statusmenge ist geschlossen (draft, review, pending_approval, approved, revision_requested, sent, archived); der CHECK-Constraint letters_status_check und der Client lehnen andere Werte ab.
 - Die erlaubten Wechsel prüft der Trigger enforce_letter_status_transition gegen letter_status_transitions; Quelle ist ALLOWED_TRANSITIONS, beide werden von check:state-artifact abgeglichen. Ein direkter Sprung wie draft → sent wird abgewiesen. Neuanlagen prüft weiterhin nur die Wertemenge.
+- Rückgaben laufen ausschließlich über das RPC return_letter_for_revision (SECURITY DEFINER): Es prüft Anmeldung, aktive Mandantzugehörigkeit und die Prüferzuordnung in letter_collaborators, setzt Status und Revisionsfelder in einem Schritt und benachrichtigt den Ersteller. Der Guard-Trigger guard_letter_return_transition weist direkte Statuswechsel review → draft bzw. pending_approval → revision_requested ohne das transaktionslokale Merkmal ab.
 
 **Offene Prüfpunkte**
 

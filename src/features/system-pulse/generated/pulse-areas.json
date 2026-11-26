@@ -1665,6 +1665,7 @@
           "tables": [
             "letters",
             "letter_attachments",
+            "letter_collaborators",
             "documents",
             "tasks"
           ],
@@ -1688,6 +1689,22 @@
             {
               "id": "attachment",
               "label": "Echte Anlage hochladen und Inhalt zurücklesen"
+            },
+            {
+              "id": "return-targets",
+              "label": "Rückgabeziele folgen dem Freigabemodell"
+            },
+            {
+              "id": "assign-reviewer",
+              "label": "Aktuelles Konto als Prüfer zuweisen"
+            },
+            {
+              "id": "return-with-reason",
+              "label": "Brief mit Begründung aus der Prüfung zurückgeben"
+            },
+            {
+              "id": "resubmit-after-return",
+              "label": "Nach der Rückgabe erneut zur Prüfung einreichen"
             },
             {
               "id": "archive",

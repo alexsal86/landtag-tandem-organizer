@@ -1,6 +1,6 @@
 import { supabase } from "@/integrations/supabase/client";
 import { ALLOWED_TRANSITIONS, canTransitionStatus, LETTER_STATUSES } from "@/components/letters/types";
-import { persistLetterTransition, uploadLetterAttachment } from "@/services/letterWorkflow";
+import { letterReturnTarget, persistLetterTransition, returnLetterForRevision, uploadLetterAttachment } from "@/services/letterWorkflow";
 import type { TestScenario, TestStep } from "../types";
 import { SELFTEST_MARKER, SELFTEST_PREFIX } from "../runner";
 import { describeError, expectFields } from "../verify";
@@ -18,12 +18,13 @@ export const letterLifecycleScenario: TestScenario = {
   id: "letter-lifecycle",
   title: "Brief-Lifecycle (Entwurf → Prüfung → Freigabe → Archiv und Folgeaufgabe)",
   description: "Lädt eine echte Testdatei hoch und nutzt die Funktionen des Briefeditors für Statuswechsel und Archivierung. Prüft danach Dokument, PDF und Folgeaufgabe.",
-  touches: ["letters", "letter_attachments", "documents", "tasks"], features: ["letters", "documents", "tasks"],
+  touches: ["letters", "letter_attachments", "letter_collaborators", "documents", "tasks"], features: ["letters", "documents", "tasks"],
   checks: ["Datei hochladen und wieder herunterladen", "Prüfung und Freigabe über Anwendungsfunktionen", "Archivfunktion erzeugt PDF, Dokument und Folgeaufgabe"],
   limitations: ["Kein E-Mail-Versand an einen Empfänger", "Prüfung und Freigabe erfolgen mit dem aktuellen Konto", "Die Bedienung des Briefeditors wird separat getestet"],
   writes: [
-    { table: "letters", columns: ["title", "subject", "content", "content_html", "status", "created_by", "tenant_id", "recipient_name", "recipient_address", "letter_date", "submitted_for_review_at", "submitted_for_review_by", "approved_at", "approved_by", "sent_at", "sent_by", "sent_date", "workflow_locked", "archived_document_id"] },
+    { table: "letters", columns: ["title", "subject", "content", "content_html", "status", "created_by", "tenant_id", "recipient_name", "recipient_address", "letter_date", "submitted_for_review_at", "submitted_for_review_by", "approved_at", "approved_by", "sent_at", "sent_by", "sent_date", "workflow_locked", "archived_document_id", "revision_comment", "revision_requested_at", "revision_requested_by"] },
     { table: "letter_attachments", columns: ["letter_id", "file_name", "file_path", "file_type", "file_size", "uploaded_by"] },
+    { table: "letter_collaborators", columns: ["letter_id", "user_id", "role", "assigned_by"] },
   ],
   collectArtifacts: async ctx => {
     const id = ctx.data.letterId as string | undefined;
@@ -106,6 +107,52 @@ export const letterLifecycleScenario: TestScenario = {
       },
     },
     transition("draft", "review", "Zur Kollegenprüfung einreichen"),
+    {
+      id: "return-targets", label: "Rückgabeziele folgen dem Freigabemodell", kind: "logic",
+      run: async () => {
+        let draftRejected = false;
+        try { letterReturnTarget("draft"); } catch { draftRejected = true; }
+        const ok = letterReturnTarget("review") === "draft"
+          && letterReturnTarget("pending_approval") === "revision_requested"
+          && draftRejected;
+        return {
+          ok,
+          message: ok
+            ? "Rückgabe bildet Prüfung auf Entwurf und Freigabe auf Überarbeitung ab."
+            : "Die Rückgabeziele weichen vom Freigabemodell ab.",
+        };
+      },
+    },
+    {
+      id: "assign-reviewer", label: "Aktuelles Konto als Prüfer zuweisen", kind: "workflow",
+      run: async ctx => {
+        const { data, error } = await supabase
+          .from("letter_collaborators")
+          .insert({ letter_id: ctx.data.letterId as string, user_id: ctx.userId, assigned_by: ctx.userId, role: "reviewer" })
+          .select("id")
+          .single();
+        if (error || !data) return { ok: false, message: describeError(error) };
+        ctx.trackRecord({ table: "letter_collaborators", id: data.id });
+        return expectFields("letter_collaborators", data.id, { user_id: ctx.userId, role: "reviewer" }, "Prüferzuordnung");
+      },
+    },
+    {
+      id: "return-with-reason", label: "Brief mit Begründung aus der Prüfung zurückgeben", kind: "workflow",
+      run: async ctx => {
+        const reason = `${SELFTEST_MARKER} Bitte Absatz 2 kürzen.`;
+        const result = await returnLetterForRevision({ letterId: ctx.data.letterId as string, from: "review", userId: ctx.userId, reason });
+        return expectFields("letters", ctx.data.letterId as string, {
+          status: result.target, revision_comment: reason, revision_requested_by: ctx.userId,
+        }, "Rückgabe mit Begründung");
+      },
+    },
+    {
+      id: "resubmit-after-return", label: "Nach der Rückgabe erneut zur Prüfung einreichen", kind: "workflow",
+      run: async ctx => {
+        await persistLetterTransition(ctx.data.letterId as string, "draft", "review", ctx.userId);
+        return expectFields("letters", ctx.data.letterId as string, { status: "review" }, "Erneute Einreichung");
+      },
+    },
     transition("review", "pending_approval", "Nach Prüfung zur Freigabe einreichen"),
     transition("pending_approval", "approved", "Brief freigeben"),
     {

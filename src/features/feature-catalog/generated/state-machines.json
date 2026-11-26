@@ -5,7 +5,7 @@
   "sources": {
     "types": "src/integrations/supabase/types.ts",
     "migrationsDirectory": "supabase/migrations",
-    "migrationCount": 917,
+    "migrationCount": 918,
     "tsModules": [
       "src/components/letters/types.ts"
     ]
@@ -3853,10 +3853,6 @@
         "clientValues": [
           {
             "value": "approved",
-            "source": "src/components/task-decisions/TaskDecisionResponse.tsx"
-          },
-          {
-            "value": "revision_requested",
             "source": "src/components/task-decisions/TaskDecisionResponse.tsx"
           }
         ]

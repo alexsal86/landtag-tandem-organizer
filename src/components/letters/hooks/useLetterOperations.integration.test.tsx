@@ -78,13 +78,14 @@ type HookProps = {
   setEditedLetter: React.Dispatch<React.SetStateAction<Partial<Letter>>>;
 };
 
-function renderWorkflow(status: Letter['status']) {
-  let state: Partial<Letter> = { ...baseLetter, status };
+function renderWorkflow(status: Letter['status'], overrides: Partial<Letter> = {}) {
+  const letter: Letter = { ...baseLetter, status, ...overrides };
+  let state: Partial<Letter> = { ...letter };
   const setEditedLetter: React.Dispatch<React.SetStateAction<Partial<Letter>>> = update => {
     state = typeof update === 'function' ? update(state) : update;
   };
   const hook = renderHook(() => useLetterOperations({
-    letter: baseLetter, editedLetter: state, setEditedLetter, canEdit: true,
+    letter, editedLetter: state, setEditedLetter, canEdit: true,
     userId: 'user-1', tenantId: 'tenant-1', showPagination: false,
     latestContentRef: { current: { content: 'Hallo Welt', contentNodes: null } },
     isUpdatingFromRemoteRef: { current: false }, pendingMentionsRef: { current: new Set<string>() },
@@ -100,6 +101,46 @@ describe('useLetterOperations integration', () => {
     toastSpy.mockClear();
     archiveLetterMock.mockReset();
     mockSupabaseClient.setTableResult('letters', { data: [], error: null });
+  });
+
+  it('gibt einen Brief über das RPC zurück und übernimmt den neuen Status', async () => {
+    mockSupabaseClient.setRpcResult('return_letter_for_revision', { data: 'draft', error: null });
+    const flow = renderWorkflow('review', { created_by: 'author-1' });
+    let returned: boolean | undefined;
+    await act(async () => { returned = await flow.hook.result.current.handleReturnLetter('Absatz 2 bitte kürzen.'); });
+
+    expect(returned).toBe(true);
+    expect(mockSupabaseClient.rpcCalls).toEqual([
+      expect.objectContaining({
+        fn: 'return_letter_for_revision',
+        params: { _letter_id: 'letter-1', _reason: 'Absatz 2 bitte kürzen.' },
+      }),
+    ]);
+    expect(flow.state().status).toBe('draft');
+    expect(flow.state().revision_comment).toBe('Absatz 2 bitte kürzen.');
+    expect(flow.state().revision_requested_by).toBe('user-1');
+    expect(toastSpy).toHaveBeenCalledWith(expect.objectContaining({ title: 'Brief zurückgegeben' }));
+  });
+
+  it('meldet eine fehlgeschlagene Rückgabe als nicht erfolgreich, damit der Dialog nicht schließt', async () => {
+    mockSupabaseClient.setRpcResult('return_letter_for_revision', { data: null, error: new Error('Nur zugewiesene Prüfer dürfen den Brief zurückgeben') });
+    const flow = renderWorkflow('review', { created_by: 'author-1' });
+    let returned: boolean | undefined;
+    await act(async () => { returned = await flow.hook.result.current.handleReturnLetter('Absatz 2 bitte kürzen.'); });
+
+    expect(returned).toBe(false);
+    expect(flow.state().status).toBe('review');
+    expect(flow.state().revision_comment).toBeUndefined();
+    expect(toastSpy).toHaveBeenCalledWith(expect.objectContaining({ title: 'Fehler beim Zurückgeben', variant: 'destructive' }));
+  });
+
+  it('verweigert die Rückgabe ohne Begründung ohne Schreibzugriff', async () => {
+    const flow = renderWorkflow('review', { created_by: 'author-1' });
+    await act(async () => { await flow.hook.result.current.handleReturnLetter('   '); });
+
+    expect(flow.state().status).toBe('review');
+    expect(mockSupabaseClient.rpcCalls).toHaveLength(0);
+    expect(toastSpy).toHaveBeenCalledWith(expect.objectContaining({ title: 'Begründung fehlt', variant: 'destructive' }));
   });
 
   it('behält bei fehlgeschlagenem Speichern den bisherigen Status und zeigt keinen Erfolg', async () => {

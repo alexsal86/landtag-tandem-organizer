@@ -1,17 +1,19 @@
 import { beforeEach, describe, expect, it, vi } from "vitest";
-const mock = vi.hoisted(() => ({ archive: vi.fn(), update: vi.fn(), eq: vi.fn(), insert: vi.fn(), single: vi.fn(), upload: vi.fn(), remove: vi.fn() }));
+const mock = vi.hoisted(() => ({ archive: vi.fn(), update: vi.fn(), eq: vi.fn(), insert: vi.fn(), single: vi.fn(), upload: vi.fn(), remove: vi.fn(), rpc: vi.fn() }));
 vi.mock("@/utils/letterArchiving", () => ({ archiveLetter: mock.archive }));
 vi.mock("@/integrations/supabase/client", () => ({ supabase: {
   from: () => ({ update: mock.update, insert: mock.insert }),
+  rpc: mock.rpc,
   storage: { from: () => ({ upload: mock.upload, remove: mock.remove }) },
 } }));
-import { approveLetterWithoutReview, letterApprovalSteps, letterTransitionUpdates, persistLetterTransition, uploadLetterAttachment } from "./letterWorkflow";
+import { approveLetterWithoutReview, letterApprovalSteps, letterReturnTarget, letterTransitionUpdates, persistLetterTransition, returnLetterForRevision, uploadLetterAttachment } from "./letterWorkflow";
 beforeEach(() => {
   mock.update.mockReturnValue({ eq: mock.eq }); mock.eq.mockResolvedValue({ error: null });
   mock.insert.mockReturnValue({ select: () => ({ single: mock.single }) });
   mock.upload.mockResolvedValue({ error: null }); mock.remove.mockResolvedValue({ error: null });
   mock.single.mockResolvedValue({ data: { id: "attachment" }, error: null });
   mock.archive.mockResolvedValue({ success: true, documentId: "doc", followUpTaskId: "task" });
+  mock.rpc.mockResolvedValue({ data: "draft", error: null });
 });
 describe("Gemeinsamer Brief-Workflow", () => {
   it("verweigert übersprungene Freigaben vor jedem Schreibzugriff", async () => {
@@ -61,6 +63,45 @@ describe("Gemeinsamer Brief-Workflow", () => {
     expect(mock.insert).toHaveBeenCalledWith(expect.objectContaining({ letter_id: "letter-1", file_path: path, uploaded_by: "user-1" }));
     expect(attachment).toEqual({ id: "attachment" });
   });
+  it("gibt einen Brief aus der Prüfung über das RPC mit Begründung zurück", async () => {
+    const result = await returnLetterForRevision({ letterId: "letter", from: "review", userId: "reviewer", reason: "  Absatz 2 bitte kürzen.  " });
+    expect(mock.rpc).toHaveBeenCalledWith("return_letter_for_revision", {
+      _letter_id: "letter",
+      _reason: "Absatz 2 bitte kürzen.",
+    });
+    expect(result.target).toBe("draft");
+    expect(result.updates).toMatchObject({
+      status: "draft",
+      revision_comment: "Absatz 2 bitte kürzen.",
+      revision_requested_by: "reviewer",
+    });
+    // Der Status darf nicht zusätzlich direkt geschrieben werden.
+    expect(mock.update).not.toHaveBeenCalled();
+  });
+
+  it("übernimmt den Zielstatus aus der Datenbank", async () => {
+    mock.rpc.mockResolvedValue({ data: "revision_requested", error: null });
+    const result = await returnLetterForRevision({ letterId: "letter", from: "pending_approval", userId: "reviewer", reason: "Bitte überarbeiten" });
+    expect(result.target).toBe("revision_requested");
+    expect(result.updates).toMatchObject({ status: "revision_requested" });
+  });
+
+  it("meldet die Rollenprüfung des RPC als Fehler weiter", async () => {
+    mock.rpc.mockResolvedValue({ data: null, error: new Error("Nur zugewiesene Prüfer dürfen den Brief zurückgeben") });
+    await expect(returnLetterForRevision({ letterId: "letter", from: "review", userId: "fremd", reason: "Bitte kürzen" })).rejects.toThrow("zugewiesene Prüfer");
+  });
+
+  it("verlangt für die Rückgabe eine Begründung und ruft das RPC nicht auf", async () => {
+    await expect(returnLetterForRevision({ letterId: "letter", from: "review", userId: "reviewer", reason: "   " })).rejects.toThrow("Begründung");
+    expect(mock.rpc).not.toHaveBeenCalled();
+  });
+
+  it("verweigert Rückgaben aus Zuständen ohne Rückgabekante", async () => {
+    expect(() => letterReturnTarget("draft")).toThrow("nicht möglich");
+    await expect(returnLetterForRevision({ letterId: "letter", from: "approved", userId: "reviewer", reason: "zu spät" })).rejects.toThrow("nicht möglich");
+    expect(mock.rpc).not.toHaveBeenCalled();
+  });
+
   it("registriert einen Upload vor dem Datenbankeintrag und räumt bei INSERT-Fehler auf", async () => {
     const track = vi.fn();
     mock.single.mockResolvedValue({ data: null, error: new Error("INSERT fehlgeschlagen") });

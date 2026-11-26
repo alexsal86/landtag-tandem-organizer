@@ -20161,6 +20161,10 @@ export type Database = {
         Args: { _comment: string; _due_days?: number; _item: string }
         Returns: Json
       }
+      return_letter_for_revision: {
+        Args: { _letter_id: string; _reason: string }
+        Returns: string
+      }
       require_employee_meeting_access: {
         Args: { p_meeting_id: string; p_supervisor?: boolean }
         Returns: {

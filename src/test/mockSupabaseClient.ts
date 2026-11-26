@@ -12,6 +12,8 @@ const state = {
   tenantMemberships: [] as unknown[],
   tableResults: new Map<string, QueryResult>(),
   functionResults: new Map<string, { data?: unknown; error?: unknown }>(),
+  rpcResults: new Map<string, QueryResult>(),
+  rpcCalls: [] as { fn: string; params?: unknown }[],
   storageUploadResult: { data: null as unknown, error: null as unknown },
 };
 
@@ -82,6 +84,10 @@ export const mockSupabaseClient = {
     functions: {
       invoke: vi.fn((name: string) => Promise.resolve(state.functionResults.get(name) ?? { data: {}, error: null })),
     },
+    rpc: vi.fn((fn: string, params?: unknown) => {
+      state.rpcCalls.push({ fn, params });
+      return Promise.resolve(state.rpcResults.get(fn) ?? { data: null, error: null });
+    }),
     storage: {
       from: vi.fn((_bucket: string) => ({
         upload: vi.fn(() => Promise.resolve(state.storageUploadResult)),
@@ -109,6 +115,12 @@ export const mockSupabaseClient = {
   setFunctionResult(name: string, result: { data?: unknown; error?: unknown }) {
     state.functionResults.set(name, result);
   },
+  setRpcResult(name: string, result: QueryResult) {
+    state.rpcResults.set(name, result);
+  },
+  get rpcCalls() {
+    return state.rpcCalls;
+  },
   setStorageUploadResult(result: { data?: unknown; error?: unknown }) {
     state.storageUploadResult = { data: null, error: null, ...result };
   },
@@ -117,11 +129,14 @@ export const mockSupabaseClient = {
     state.tenantMemberships = [];
     state.tableResults.clear();
     state.functionResults.clear();
+    state.rpcResults.clear();
+    state.rpcCalls = [];
     state.storageUploadResult = { data: null, error: null };
 
     subscription.unsubscribe.mockClear();
     this.supabase.from.mockClear();
     this.supabase.functions.invoke.mockClear();
+    this.supabase.rpc.mockClear();
     this.supabase.storage.from.mockClear();
     this.supabase.auth.onAuthStateChange.mockClear();
     this.supabase.auth.getSession.mockClear();
