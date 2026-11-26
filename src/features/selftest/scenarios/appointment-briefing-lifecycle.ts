@@ -1,3 +1,4 @@
+import { buildTodayPriorities } from "@/components/my-work/todayPriorities";
 import { appointmentFocusMode, departureTime, focusCountdown, pickFocusAppointment } from "@/features/appointments/dashboardFocus";
 import { visibleSentChanges } from "@/features/appointments/change-alerts/sentChangeVisibility";
 import { debriefDuration, debriefReceivedAt, debriefSourceLabel, sortDebriefReports } from "@/features/appointments/briefing/officeDebriefInbox";
@@ -173,6 +174,30 @@ export const appointmentBriefingLifecycleScenario: TestScenario = {
           && debriefReceivedAt(promised.received_at, now) === "gestern 17:10"
           && debriefDuration(41) === "0:41" && debriefSourceLabel("phone", "Alexander Salomon") === "Telefonat mit Alexander";
         return { ok, message: ok ? "Sortierung, Berliner Eingangsuhrzeit, Diktatdauer und Quelle stimmen." : "Die Darstellung der Nachbereitung weicht ab." };
+      },
+    },
+    {
+      id: "today-priorities", label: "Heute zuerst: Rangfolge und Berliner Tagesgrenzen", kind: "logic",
+      run: async () => {
+        const now = new Date("2026-11-26T00:15:00+01:00");
+        const today = { id: "today", title: "Bürgerdialog", start_time: "2026-11-26T18:00:00+01:00",
+          briefing_due_at: "2026-11-26T00:05:00+01:00" };
+        const tomorrow = { ...today, id: "tomorrow", start_time: "2026-11-27T18:00:00+01:00", briefing_due_at: null };
+        const past = { ...today, id: "past", start_time: "2026-11-25T22:00:00+01:00" };
+        const event = { id: "missing", title: "Fraktionssitzung", starts_at: "2026-11-24T12:00:00+01:00",
+          deputy_name: null, is_external: false };
+        const report = { id: "report", title: "Besuch", starts_at: event.starts_at, deputy_name: null,
+          appointment_id: null, received_at: "2026-11-24T16:00:00Z", notes: "Bericht", entered_by: null, source: null,
+          confirmed_at: null, promise: "Rückruf", due_on: "2026-11-28", spoken_seconds: null, question: null };
+        const deadline = { id: "old", title: "Altfrist", dueDate: "2026-10-26", type: "task" as const, canSnooze: true };
+        const priorities = buildTodayPriorities(
+          [tomorrow, past, today], [report, { ...report, id: "promise", due_on: null }], [event],
+          [deadline, { ...deadline, id: "recent", dueDate: "2026-10-27" }], now,
+        );
+        const cleanup = priorities.find(entry => entry.kind === "deadlines");
+        const ok = priorities.map(entry => entry.kind).join(",") === "today,promise,report,followUp,deadlines"
+          && cleanup?.items.length === 1 && cleanup.items[0].id === deadline.id;
+        return { ok, message: ok ? "Rangfolge und Fristenauswahl stimmen." : "Rangfolge oder Fristenauswahl weicht ab." };
       },
     },
     {

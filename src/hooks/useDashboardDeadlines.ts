@@ -284,18 +284,18 @@ const useBerlinDayKey = (): string => {
   return dayKey;
 };
 
-export const useDashboardDeadlines = () => {
+export const useDashboardDeadlines = (enabled = true) => {
   const { user } = useAuth();
   const { currentTenant } = useTenant();
   const userId = user?.id;
   const tenantId = currentTenant?.id;
 
-  useDashboardRealtime(userId, tenantId);
+  useDashboardRealtime(enabled ? userId : undefined, tenantId);
 
   const query = useQuery({
     queryKey: ['dashboard-deadlines', userId, tenantId],
     queryFn: () => fetchDeadlineItems(userId!, tenantId),
-    enabled: !!userId,
+    enabled: enabled && !!userId,
     staleTime: STALE_TIME.LIST_WITH_REALTIME,
     // Kein Polling: alle Quellen (tasks, quick_notes, case_items, task_decisions, event_plannings
     // samt Timeline- und Checklisten-Zuweisungen) invalidieren diesen Key über useDashboardRealtime,

@@ -6,6 +6,9 @@ _Auto-generiert mit `npm run update:feature-catalog`. Nicht von Hand bearbeiten.
 
 | Funktion | hängt ab von |
 |---|---|
+| `mywork.dashboard.today-priorities` | `mywork.dashboard` |
+| `mywork.dashboard.today-priorities` | `appointments.briefing` |
+| `mywork.dashboard.today-priorities` | `appointments.debrief` |
 | `mywork.tabs` | `mywork.dashboard` |
 | `quicknotes.checklists` | `quicknotes.manage` |
 | `quicknotes.drag-sort` | `quicknotes.manage` |
@@ -238,6 +241,11 @@ _Auto-generiert mit `npm run update:feature-catalog`. Nicht von Hand bearbeiten.
 | `knowledge.global-question` | `knowledge.ask` |
 
 ## Bereichsübergänge
+
+### arbeitsbereich → termine
+
+- mywork.dashboard.today-priorities → appointments.briefing
+- mywork.dashboard.today-priorities → appointments.debrief
 
 ### aufgaben → entscheidungen
 

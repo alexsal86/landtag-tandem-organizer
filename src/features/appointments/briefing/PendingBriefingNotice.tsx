@@ -12,11 +12,10 @@ const time = (value: string) => new Intl.DateTimeFormat("de-DE", {
   timeZone: "Europe/Berlin", hour: "2-digit", minute: "2-digit",
 }).format(new Date(value));
 
-export function PendingBriefingNotice() {
+export function usePendingBriefings() {
   const { user } = useAuth();
   const { currentTenant } = useTenant();
-  const [editing, setEditing] = useState<{ id: string; title: string } | null>(null);
-  const { data = [], isError } = useQuery({
+  return useQuery({
     queryKey: ["appointment-briefing", "pending-reminders", currentTenant?.id, user?.id],
     enabled: !!currentTenant?.id && !!user?.id,
     refetchInterval: 60_000,
@@ -35,6 +34,11 @@ export function PendingBriefingNotice() {
         && needsBriefingReminder(appointment, user!.id, now));
     },
   });
+}
+
+export function PendingBriefingNotice() {
+  const [editing, setEditing] = useState<{ id: string; title: string } | null>(null);
+  const { data = [], isError } = usePendingBriefings();
 
   return (
     <>

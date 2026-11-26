@@ -165,7 +165,8 @@
           ],
           "features": [
             "appointments.briefing",
-            "appointments.briefing-live"
+            "appointments.briefing-live",
+            "mywork.dashboard.today-priorities"
           ],
           "steps": [
             {
@@ -191,6 +192,10 @@
             {
               "id": "office-debrief-inbox",
               "label": "Nachbereitung: Zusagen priorisieren und Quelle anzeigen"
+            },
+            {
+              "id": "today-priorities",
+              "label": "Heute zuerst: Rangfolge und Berliner Tagesgrenzen"
             },
             {
               "id": "office-feedback",

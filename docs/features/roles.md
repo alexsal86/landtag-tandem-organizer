@@ -187,9 +187,10 @@ Die Angaben sind deklarierte Mindestrollen. Die tatsächlich wirksame Berechtigu
 - `knowledge.global-question` — Globale Wissensfrage aus jedem Bereich
 - `knowledge.persons` — Wissenspersonen und Zuständigkeit
 
-### `bueroleitung` — 223 Funktionen
+### `bueroleitung` — 224 Funktionen
 
 - `mywork.dashboard` — Meine Arbeit – Dashboard
+- `mywork.dashboard.today-priorities` — Heute zuerst
 - `mywork.tabs` — Meine Arbeit – Bereichsnavigation und Einstellungen
 - `mywork.quick-access` — Schnellzugriff und zuletzt besuchte Seiten
 - `notifications.inbox` — Benachrichtigungen lesen und als gelesen markieren
@@ -413,9 +414,10 @@ Die Angaben sind deklarierte Mindestrollen. Die tatsächlich wirksame Berechtigu
 - `knowledge.persons` — Wissenspersonen und Zuständigkeit
 - `knowledge.management` — Wissensverwaltung
 
-### `mitarbeiter` — 183 Funktionen
+### `mitarbeiter` — 184 Funktionen
 
 - `mywork.dashboard` — Meine Arbeit – Dashboard
+- `mywork.dashboard.today-priorities` — Heute zuerst
 - `mywork.tabs` — Meine Arbeit – Bereichsnavigation und Einstellungen
 - `mywork.quick-access` — Schnellzugriff und zuletzt besuchte Seiten
 - `notifications.inbox` — Benachrichtigungen lesen und als gelesen markieren
@@ -599,9 +601,10 @@ Die Angaben sind deklarierte Mindestrollen. Die tatsächlich wirksame Berechtigu
 - `knowledge.persons` — Wissenspersonen und Zuständigkeit
 - `knowledge.management` — Wissensverwaltung
 
-### `praktikant` — 38 Funktionen
+### `praktikant` — 39 Funktionen
 
 - `mywork.dashboard` — Meine Arbeit – Dashboard
+- `mywork.dashboard.today-priorities` — Heute zuerst
 - `mywork.tabs` — Meine Arbeit – Bereichsnavigation und Einstellungen
 - `mywork.quick-access` — Schnellzugriff und zuletzt besuchte Seiten
 - `notifications.inbox` — Benachrichtigungen lesen und als gelesen markieren
@@ -977,6 +980,7 @@ Die Angaben sind deklarierte Mindestrollen. Die tatsächlich wirksame Berechtigu
 | `meetings.zombie-points` | `bueroleitung`, `abgeordneter`, `mitarbeiter` |
 | `mobile.app` | `abgeordneter`, `bueroleitung`, `mitarbeiter` |
 | `mywork.dashboard` | `abgeordneter`, `bueroleitung`, `mitarbeiter`, `praktikant` |
+| `mywork.dashboard.today-priorities` | `bueroleitung`, `mitarbeiter`, `praktikant` |
 | `mywork.quick-access` | `abgeordneter`, `bueroleitung`, `mitarbeiter`, `praktikant` |
 | `mywork.tabs` | `abgeordneter`, `bueroleitung`, `mitarbeiter`, `praktikant` |
 | `news.articles` | `abgeordneter`, `bueroleitung`, `mitarbeiter`, `praktikant` |

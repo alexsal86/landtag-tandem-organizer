@@ -2,6 +2,7 @@ import { useId, useRef, useState } from "react";
 import { useQuery } from "@tanstack/react-query";
 import { AlertTriangle, ChevronDown, ChevronRight, Mic } from "lucide-react";
 import { Link } from "react-router-dom";
+import { Dialog, DialogContent, DialogDescription, DialogHeader, DialogTitle } from "@/components/ui/dialog";
 import { ErrorState, LoadingState } from "@/components/ui-patterns";
 import { useAuth } from "@/hooks/useAuth";
 import { useResolvedUserRole } from "@/hooks/useResolvedUserRole";
@@ -29,7 +30,7 @@ export function OfficeDebriefInboxCard() {
 
 function DebriefInbox({ tenantId, userId }: { tenantId: string; userId: string }) {
   const { query, update } = useOfficeDebriefInbox(false);
-  const { createCaseItem } = useCaseItems();
+  const createCase = useDebriefCaseCreation(userId);
   const [openReport, setOpenReport] = useState<string | null>(null);
   const [openMissing, setOpenMissing] = useState<string | null>(null);
   const reports = sortDebriefReports(query.data?.reports ?? []);
@@ -50,13 +51,7 @@ function DebriefInbox({ tenantId, userId }: { tenantId: string; userId: string }
               : <p className="text-sm text-muted-foreground">Keine offenen Nachbereitungen.</p>}
             {reports.map(report => <ReportRow key={report.id} report={report} open={openReport === report.id}
               toggle={() => setOpenReport(openReport === report.id ? null : report.id)}
-              tenantId={tenantId} update={update} createCase={async text => {
-                const id = await createCaseItem({
-                  source_channel: "other", subject: text.slice(0, 120), summary: text, owner_user_id: userId,
-                  source_received_at: report.received_at, source_reference: `Termin-Nachbereitung ${report.id}`,
-                });
-                return !!id;
-              }} />)}
+              tenantId={tenantId} update={update} createCase={(text) => createCase(report, text)} />)}
             {missing.length > 0 && <div className="mt-5">
               <h3 className="mb-1.5 text-sm font-medium text-muted-foreground">Nachfrage nötig · {missing.length}</h3>
               {missing.map(event => <div key={event.id} className="border-b py-3 last:border-b-0">
@@ -85,8 +80,48 @@ function DebriefInbox({ tenantId, userId }: { tenantId: string; userId: string }
 
 type DebriefUpdate = ReturnType<typeof useOfficeDebriefInbox>["update"];
 
+function useDebriefCaseCreation(userId: string) {
+  const { createCaseItem } = useCaseItems();
+  return async (report: DebriefReport, text: string) => {
+    const id = await createCaseItem({
+      source_channel: "other", subject: text.slice(0, 120), summary: text, owner_user_id: userId,
+      source_received_at: report.received_at, source_reference: `Termin-Nachbereitung ${report.id}`,
+    });
+    return !!id;
+  };
+}
+
+export function OfficeDebriefActionDialog({ entry, tenantId, userId, update, close }: {
+  entry: { report: DebriefReport } | { event: DebriefEvent };
+  tenantId: string;
+  userId: string;
+  update: DebriefUpdate;
+  close: () => void;
+}) {
+  const createCase = useDebriefCaseCreation(userId);
+  const title = "report" in entry ? entry.report.title : entry.event.title;
+  return (
+    <Dialog open onOpenChange={open => { if (!open) close(); }}>
+      <DialogContent className="max-h-[85dvh] max-w-2xl overflow-y-auto">
+        <DialogHeader>
+          <DialogTitle>{"report" in entry ? "Nachbereitung öffnen" : "Rückmeldung eintragen"}</DialogTitle>
+          <DialogDescription>{title}</DialogDescription>
+        </DialogHeader>
+        {"report" in entry
+          ? <ReportRow report={entry.report} open tenantId={tenantId} update={update}
+              createCase={text => createCase(entry.report, text)} />
+          : <ProxyForm event={entry.event} busy={update.isPending} cancel={close}
+              save={(source, text, promise) => update.mutate({
+                _id: entry.event.id, _external: entry.event.is_external,
+                _action: "proxy", _source: source, _text: text, _promise: promise,
+              }, { onSuccess: close })} />}
+      </DialogContent>
+    </Dialog>
+  );
+}
+
 function ReportRow({ report, open, toggle, tenantId, update, createCase }: {
-  report: DebriefReport; open: boolean; toggle: () => void; tenantId: string; update: DebriefUpdate;
+  report: DebriefReport; open: boolean; toggle?: () => void; tenantId: string; update: DebriefUpdate;
   createCase: (text: string) => Promise<boolean>;
 }) {
   const detailsId = useId();
@@ -111,7 +146,7 @@ function ReportRow({ report, open, toggle, tenantId, update, createCase }: {
   const due = report.due_on ?? "";
   return (
     <article className="border-t">
-      <button type="button" aria-expanded={open} aria-controls={open ? detailsId : undefined} onClick={toggle}
+      {toggle && <button type="button" aria-expanded={open} aria-controls={open ? detailsId : undefined} onClick={toggle}
         className="flex w-full flex-wrap items-center gap-x-2 gap-y-1.5 py-3 text-left hover:bg-muted/30">
         <span aria-hidden="true" className={cn("size-2.5 shrink-0 rounded-full", missingDue ? "bg-amber-700" : "bg-blue-600")} />
         <span className="min-w-0 flex-1 basis-36">
@@ -122,7 +157,7 @@ function ReportRow({ report, open, toggle, tenantId, update, createCase }: {
         {report.promise && <span className={cn("rounded-full px-2 py-0.5 text-xs", amber)}>{missingDue ? "Zusage · Frist fehlt" : "Zusage"}</span>}
         {open ? <ChevronDown className="size-4 shrink-0 text-muted-foreground" aria-hidden="true" />
           : <ChevronRight className="size-4 shrink-0 text-muted-foreground" aria-hidden="true" />}
-      </button>
+      </button>}
       {open && <div id={detailsId} className="space-y-3 pb-4 pl-5">
         <p className="text-sm text-muted-foreground">{[
           report.title, report.source ? mode : report.deputy_name && `von ${report.deputy_name}`,

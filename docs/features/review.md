@@ -156,8 +156,9 @@ Eindeutige Fehler werden im CI-Lauf ausgegeben und brechen die Prüfung ab; sie 
 - `knowledge.global-question` — Globale Wissensfrage aus jedem Bereich
 - `knowledge.management` — Wissensverwaltung
 
-## Funktionen ohne Dokumentationsverweis (163)
+## Funktionen ohne Dokumentationsverweis (164)
 
+- `mywork.dashboard.today-priorities` — Heute zuerst
 - `mywork.tabs` — Meine Arbeit – Bereichsnavigation und Einstellungen
 - `mywork.quick-access` — Schnellzugriff und zuletzt besuchte Seiten
 - `notifications.preferences` — Benachrichtigungseinstellungen und Stummschaltung
@@ -335,11 +336,15 @@ Eindeutige Fehler werden im CI-Lauf ausgegeben und brechen die Prüfung ab; sie 
 - `events.legacy-rsvp` — Legacy-Einladungslinks (veraltet)
 - `cases.legacy-routes` — Legacy-Vorgangsrouten (veraltet)
 
-## Funktionen mit Einschränkungen oder offenen Punkten (66)
+## Funktionen mit Einschränkungen oder offenen Punkten (67)
 
 ### `mywork.dashboard`
 
 - Kein Szenario prüft die Dashboard-Aggregation selbst; die Zuordnung stützt sich auf die dort erzeugten Datensätze.
+
+### `mywork.dashboard.today-priorities`
+
+- Der Selbsttest prüft die Reihenfolge und die Berliner Tagesgrenzen. Die Dialoge verwenden die vorhandenen Aktionen.
 
 ### `mywork.tabs`
 

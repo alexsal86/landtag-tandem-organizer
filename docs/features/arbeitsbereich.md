@@ -6,10 +6,10 @@ _Auto-generiert mit `npm run update:feature-catalog` aus dem zentralen Funktions
 
 ## Kennzahlen
 
-- Funktionen: **13** in **7** Unterbereichen
-- implementiert: **12**, teilweise: **1**, deaktiviert: **0**, potenziell verwaist: **0**
+- Funktionen: **14** in **7** Unterbereichen
+- implementiert: **13**, teilweise: **1**, deaktiviert: **0**, potenziell verwaist: **0**
 - ohne zugeordneten Test: **8**
-- ohne Dokumentationsverweis: **8**
+- ohne Dokumentationsverweis: **9**
 
 ## Funktionen
 
@@ -17,6 +17,7 @@ _Auto-generiert mit `npm run update:feature-catalog` aus dem zentralen Funktions
 |---|---|---|---|---|---|
 | `notifications.inbox` Benachrichtigungen lesen und als gelesen markieren | Benachrichtigungen | fachlich | implementiert | UI | kein Test |
 | `notifications.preferences` Benachrichtigungseinstellungen und Stummschaltung | Benachrichtigungen | fachlich | implementiert | UI | kein Test |
+| `mywork.dashboard.today-priorities` Heute zuerst | Meine Arbeit | fachlich | implementiert | rollenabhängig | Selbsttest |
 | `mywork.tabs` Meine Arbeit – Bereichsnavigation und Einstellungen | Meine Arbeit | fachlich | implementiert | UI | kein Test |
 | `mywork.dashboard` Meine Arbeit – Dashboard | Meine Arbeit | fachlich | implementiert | rollenabhängig | Selbsttest |
 | `mywork.quick-access` Schnellzugriff und zuletzt besuchte Seiten | Meine Arbeit | fachlich | implementiert | UI | kein Test |
@@ -51,6 +52,7 @@ _Auto-generiert mit `npm run update:feature-catalog` aus dem zentralen Funktions
 
 | Szenario | Titel | deklarierte Tabellen | deklarierte Prüfungen |
 |---|---|---:|---:|
+| `appointment-briefing-lifecycle` | Briefing-Lifecycle (vergeben → Aufgabe → vorlegen → freigeben) | 3 | 5 |
 | `decision-lifecycle` | Entscheidungs-Lifecycle (active → open → archived) | 3 | 0 |
 | `quick-note-lifecycle` | Notizen-Lifecycle (Anlegen → Priorität → Anheften → Aufgabe → Archiv) | 4 | 0 |
 | `task-lifecycle` | Aufgaben-Lifecycle (Zuweisung → Frist → Entscheidung → Jour fixe → erledigt) | 3 | 0 |
@@ -94,6 +96,42 @@ Aggregiert Fristen, Termine, Aufgaben, Entscheidungen und Jour-fixe-Hinweise auf
 **Offene Prüfpunkte**
 
 - Kein Szenario prüft die Dashboard-Aggregation selbst; die Zuordnung stützt sich auf die dort erzeugten Datensätze.
+
+### `mywork.dashboard.today-priorities` — Heute zuerst
+Priorisiert im Mitarbeiter-Dashboard fällige Terminbriefings, Zusagen ohne Frist, eingegangene Nachbereitungen, fehlende Rückmeldungen und seit mehr als 30 Tagen überfällige Fristen. Öffnet den Briefing-Editor, die Nachbereitung oder den Fristen-Assistenten direkt aus der Übersicht.
+
+- **Kategorie:** fachlich
+- **Implementierung:** implementiert
+- **Einbindung:** rollenabhängig
+- **Testabdeckung:** Selbsttest
+- **Letztes Testergebnis:** nicht-ausgefuehrt (nicht aus der Existenz einer Testdatei abgeleitet)
+- **Rollen:** `bueroleitung`, `mitarbeiter`, `praktikant`
+- **Routen:** —
+- **Frontend-Komponenten:** `src/components/my-work/MyWorkDashboardTab.tsx`, `src/components/my-work/TodayPrioritiesCard.tsx`, `src/components/dashboard/DeadlineReviewDialog.tsx`
+- **Services:** —
+- **Hooks:** `src/features/appointments/briefing/useOfficeDebriefInbox.ts`, `src/hooks/useDashboardDeadlines.ts`
+- **Edge Functions:** —
+- **Datenbankfunktionen:** `list_office_debriefs`, `update_office_debrief`
+- **Tabellen:** —
+- **Abhängigkeiten:** `mywork.dashboard`, `appointments.briefing`, `appointments.debrief`
+- **Selbsttests:** `appointment-briefing-lifecycle`
+- **Unit-Tests:** —
+- **Integrationstests:** —
+- **Browser-Tests:** —
+- **Dokumentation:** —
+
+**Nachweise im Quellcode**
+
+- src/components/my-work/TodayPrioritiesCard.tsx
+- src/components/my-work/todayPriorities.ts
+
+**Bekannte Einschränkungen**
+
+- Keine.
+
+**Offene Prüfpunkte**
+
+- Der Selbsttest prüft die Reihenfolge und die Berliner Tagesgrenzen. Die Dialoge verwenden die vorhandenen Aktionen.
 
 ### `mywork.tabs` — Meine Arbeit – Bereichsnavigation und Einstellungen
 Schaltet zwischen Dashboard, Aufgaben, Vorgängen, Entscheidungen, Jour fixe, Planungen, Redaktion und Feedback um und speichert die persönliche Bereichsauswahl.

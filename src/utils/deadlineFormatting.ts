@@ -77,3 +77,8 @@ export function groupDeadlineItems(items: DeadlineItem[], now: Date = new Date()
   groups.overdue.sort((a, b) => (b.priority ?? 0) - (a.priority ?? 0) || new Date(b.dueDate).getTime() - new Date(a.dueDate).getTime());
   return groups;
 }
+
+/** Fristen, die der Aufräum-Assistent zur Prüfung anbietet. */
+export function getReviewableOverdueDeadlines(overdue: DeadlineItem[], now = new Date()) {
+  return overdue.filter(item => berlinDaysSince(item.dueDate, now) > 30);
+}

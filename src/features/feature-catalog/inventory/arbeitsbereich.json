@@ -66,6 +66,50 @@
       ]
     },
     {
+      "id": "mywork.dashboard.today-priorities",
+      "subarea": "Meine Arbeit",
+      "name": "Heute zuerst",
+      "description": "Priorisiert im Mitarbeiter-Dashboard fällige Terminbriefings, Zusagen ohne Frist, eingegangene Nachbereitungen, fehlende Rückmeldungen und seit mehr als 30 Tagen überfällige Fristen. Öffnet den Briefing-Editor, die Nachbereitung oder den Fristen-Assistenten direkt aus der Übersicht.",
+      "category": "fachlich",
+      "implementationStatus": "implementiert",
+      "integrationStatus": "rollenabhaengig",
+      "coverage": "selftest",
+      "testResult": "nicht-ausgefuehrt",
+      "evidence": [
+        "src/components/my-work/TodayPrioritiesCard.tsx",
+        "src/components/my-work/todayPriorities.ts"
+      ],
+      "components": [
+        "src/components/my-work/MyWorkDashboardTab.tsx",
+        "src/components/my-work/TodayPrioritiesCard.tsx",
+        "src/components/dashboard/DeadlineReviewDialog.tsx"
+      ],
+      "hooks": [
+        "src/features/appointments/briefing/useOfficeDebriefInbox.ts",
+        "src/hooks/useDashboardDeadlines.ts"
+      ],
+      "rpcs": [
+        "list_office_debriefs",
+        "update_office_debrief"
+      ],
+      "roles": [
+        "bueroleitung",
+        "mitarbeiter",
+        "praktikant"
+      ],
+      "scenarios": [
+        "appointment-briefing-lifecycle"
+      ],
+      "dependsOn": [
+        "mywork.dashboard",
+        "appointments.briefing",
+        "appointments.debrief"
+      ],
+      "reviewPoints": [
+        "Der Selbsttest prüft die Reihenfolge und die Berliner Tagesgrenzen. Die Dialoge verwenden die vorhandenen Aktionen."
+      ]
+    },
+    {
       "id": "mywork.tabs",
       "subarea": "Meine Arbeit",
       "name": "Meine Arbeit – Bereichsnavigation und Einstellungen",

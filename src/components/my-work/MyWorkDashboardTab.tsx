@@ -1,4 +1,5 @@
 import { DeputyAppointmentFocus } from "./DeputyAppointmentFocus";
+import { TodayPrioritiesCard } from "./TodayPrioritiesCard";
 import { SignatureFolder } from "./SignatureFolder";
 import { AppointmentChangeBanner, AppointmentChangeSentList, useAlerts as useChangeAlerts } from "@/features/appointments/change-alerts/AppointmentChangeAlerts";
 import { applyReportedStart, summarizeReportedChanges } from "@/features/appointments/change-alerts/changeModel";
@@ -116,8 +117,7 @@ function DashboardWidgetContainer({
   );
 }
 
-function DeadlinesWidget() {
-  const { items, grouped, isLoading, isError, failedSources, refetch } = useDashboardDeadlines();
+function DeadlinesWidget({ items, grouped, isLoading, isError, failedSources, refetch }: ReturnType<typeof useDashboardDeadlines>) {
 
   return (
     <DashboardWidgetContainer
@@ -211,6 +211,7 @@ function UrgentRequestsWidget() {
 
 export function MyWorkDashboardTab() {
   const { isDeputyView, isEmployeeView, loading } = useWorkspaceView();
+  const deadlines = useDashboardDeadlines(!loading && !isDeputyView);
   const [isLargeScreen, setIsLargeScreen] = useState(() =>
     typeof window !== "undefined" && window.matchMedia("(min-width: 1024px)").matches,
   );
@@ -233,6 +234,7 @@ export function MyWorkDashboardTab() {
       {isDeputyView && <TodayBriefingPanel />}
       <div className="grid grid-cols-1 gap-4 items-start lg:grid-cols-2">
         <div className="flex min-w-0 flex-col gap-4">
+          {isEmployeeView && <TodayPrioritiesCard deadlines={deadlines} />}
           <UrgentRequestsWidget />
           <AppointmentsWidget isDeputyView={isDeputyView} />
           {!isLargeScreen && <div className="w-full max-w-xs"><TeamRitualDashboardCard /></div>}
@@ -241,7 +243,7 @@ export function MyWorkDashboardTab() {
         </div>
         <div className="flex min-w-0 flex-col gap-4">
           {isEmployeeView && <BriefingComposerCard />}
-          {!isDeputyView && <DeadlinesWidget />}
+          {!isDeputyView && <DeadlinesWidget {...deadlines} />}
           <DashboardWidgetContainer
             icon={Vote} title={isDeputyView ? "Braucht deine Entscheidung" : "Entscheidungen"} animationDelay={60}
             errorMessage="Entscheidungen konnten nicht geladen werden."

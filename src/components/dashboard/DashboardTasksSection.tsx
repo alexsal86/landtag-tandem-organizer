@@ -11,6 +11,7 @@ import {
   formatDeadlineDateLabel,
   getDeadlineContextLabel,
   getDeadlineStatus,
+  getReviewableOverdueDeadlines,
   DEADLINE_STATUS_BAR_CLASS,
 } from '@/utils/deadlineFormatting';
 
@@ -43,7 +44,7 @@ export const DashboardTasksSection = ({ items, grouped }: DashboardTasksSectionP
   const [reviewOpen, setReviewOpen] = useState(false);
   const actions = useDeadlineActions();
   // 30-Tage-Grenze nach Berliner Kalendertagen, nicht nach UTC-Tageswechsel.
-  const oldItems = grouped.overdue.filter(item => berlinDaysSince(item.dueDate) > 30);
+  const oldItems = getReviewableOverdueDeadlines(grouped.overdue);
   const recentOverdue = grouped.overdue.filter(item => berlinDaysSince(item.dueDate) <= 30);
   const [showOldOverdue, setShowOldOverdue] = useState(false);
   const [showLater, setShowLater] = useState(false);
