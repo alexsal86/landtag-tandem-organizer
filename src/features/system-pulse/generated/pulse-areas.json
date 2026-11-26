@@ -919,7 +919,7 @@
             "Keine doppelte Übernahme",
             "Wochentag-Vorlage nur an unbegonnenen Zetteln, Entscheidung je Tag festgehalten",
             "Vorlagenentscheidung übersteht Speichern und Neuladen",
-            "Vortage ohne Abschluss bleiben lesbar",
+            "Frühere Tage ohne Abschluss bleiben lesbar",
             "Snooze-Vorschläge ohne doppeltes Ziel",
             "Löschen mit Rückgängig",
             "Getippte Kürzel ohne Automatik",
@@ -954,11 +954,11 @@
             },
             {
               "id": "navigation-rules",
-              "label": "Vortage lesbar, Zukunft gesperrt"
+              "label": "Frühere Tage lesbar, Zukunft gesperrt"
             },
             {
               "id": "open-past-days",
-              "label": "Offene Vortage werden aufgelistet"
+              "label": "Offene frühere Tage werden aufgelistet"
             },
             {
               "id": "snooze-presets",

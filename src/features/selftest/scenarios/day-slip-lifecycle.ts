@@ -16,11 +16,11 @@ export const daySlipLifecycleScenario: TestScenario = {
   description: "Schreibt einen Tageszettel mit verlinkten Zeilen (Notiz, Aufgabe, Vorgang, Entscheidung), lädt ihn neu, prüft die Sprungziele und überträgt offene Zeilen auf den Folgetag, ohne Links zu verlieren.",
   touches: ["day_slips"],
   features: ["dayslip"],
-  checks: ["Speichern und erneutes Laden", "Link-Erhalt bei Übernahme", "Keine doppelte Übernahme", "Wochentag-Vorlage nur an unbegonnenen Zetteln, Entscheidung je Tag festgehalten", "Vorlagenentscheidung übersteht Speichern und Neuladen", "Vortage ohne Abschluss bleiben lesbar", "Snooze-Vorschläge ohne doppeltes Ziel", "Löschen mit Rückgängig", "Getippte Kürzel ohne Automatik", "Archiv: erledigt/zugewiesen/offen, Suche, Datumsnachbarn"],
+  checks: ["Speichern und erneutes Laden", "Link-Erhalt bei Übernahme", "Keine doppelte Übernahme", "Wochentag-Vorlage nur an unbegonnenen Zetteln, Entscheidung je Tag festgehalten", "Vorlagenentscheidung übersteht Speichern und Neuladen", "Frühere Tage ohne Abschluss bleiben lesbar", "Snooze-Vorschläge ohne doppeltes Ziel", "Löschen mit Rückgängig", "Getippte Kürzel ohne Automatik", "Archiv: erledigt/zugewiesen/offen, Suche, Datumsnachbarn"],
   limitations: [
     "Die verlinkten Ziele sind Test-IDs; ihre Bedienung wird nicht geprüft.",
     "Kürzel belegen die Zuordnung nur vor; erstellt wird erst mit dem Abschluss, und Mehrdeutiges bleibt Text.",
-    "Vortage werden nur gelesen; abgeschlossen werden kann weiterhin ausschließlich der aktuelle Tag.",
+    "Frühere Tage werden nur gelesen; abgeschlossen werden kann weiterhin ausschließlich der aktuelle Tag.",
     "Die Vorlagenentscheidung wird als Regel und über den gespeicherten Zettel geprüft; das automatische Einfügen beim ersten Öffnen im Browser beobachtet der Selbsttest nicht.",
   ],
   writes: [{ table: "day_slips", columns: ["user_id", "tenant_id", "day_key", "data"] }],
@@ -102,7 +102,7 @@ export const daySlipLifecycleScenario: TestScenario = {
       },
     },
     {
-      id: "navigation-rules", label: "Vortage lesbar, Zukunft gesperrt", kind: "logic",
+      id: "navigation-rules", label: "Frühere Tage lesbar, Zukunft gesperrt", kind: "logic",
       run: async () => {
         const today = toDayKey(new Date());
         const openDay = shiftDayKey(today, -2);
@@ -124,11 +124,11 @@ export const daySlipLifecycleScenario: TestScenario = {
         const failed = Object.entries(checks).filter(([, ok]) => !ok).map(([name]) => name);
         return failed.length
           ? { ok: false, message: `Regeln verletzt: ${failed.join(", ")}`, details: checks }
-          : { ok: true, message: "Vortage lesbar, Rückweg zu heute frei, Zukunft gesperrt.", details: checks };
+          : { ok: true, message: "Frühere Tage lesbar, Rückweg zu heute frei, Zukunft gesperrt.", details: checks };
       },
     },
     {
-      id: "open-past-days", label: "Offene Vortage werden aufgelistet", kind: "logic",
+      id: "open-past-days", label: "Offene frühere Tage werden aufgelistet", kind: "logic",
       run: async () => {
         const today = toDayKey(new Date());
         const open = shiftDayKey(today, -1);
