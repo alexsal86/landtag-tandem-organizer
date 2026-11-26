@@ -18666,6 +18666,10 @@ export type Database = {
         }
         Returns: string
       }
+      create_decision_task: {
+        Args: { p_decision_id: string }
+        Returns: string
+      }
       create_default_checklist_items:
         | { Args: { planning_id: string }; Returns: undefined }
         | {
@@ -18703,6 +18707,10 @@ export type Database = {
       }
       create_meeting_action_task: {
         Args: { p_action_item_id: string }
+        Returns: string
+      }
+      create_note_work: {
+        Args: { p_kind: string; p_note_id: string }
         Returns: string
       }
       create_notification:
