@@ -50,7 +50,7 @@ function differenceSummary(details: unknown): string | undefined {
  * Workflow-Schritte liefern im Erfolgs- und im Fehlerfall dieselbe `message`;
  * ohne diesen Blick in die Details bliebe die Ursache unsichtbar.
  */
-function checkSummary(details: unknown): string | undefined {
+export function summarizeChecks(details: unknown): string | undefined {
   const entry = record(details);
   if (!entry) return undefined;
   const failed = Object.entries(entry)
@@ -88,7 +88,7 @@ export function stepDiagnostic(step: StoredStepResult): StepDiagnostic | null {
   const legacy = legacyMessage(text(step.message));
   const code = text(error?.code) ?? legacy.code;
   const summary = text(error?.details) ?? text(error?.hint) ?? differenceSummary(step.details)
-    ?? text(error?.message) ?? checkSummary(step.details) ?? legacy.summary;
+    ?? text(error?.message) ?? summarizeChecks(step.details) ?? legacy.summary;
   return {
     point: id && id !== label ? `${label} (${id})` : label,
     code,

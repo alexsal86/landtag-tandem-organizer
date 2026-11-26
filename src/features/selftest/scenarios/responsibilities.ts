@@ -7,6 +7,7 @@ import {
 import { formatInTimeZone } from "@/features/responsibilities/berlinDay";
 import { topicMentionIds, topicMentionToken } from "@/features/topics/topicMentions";
 import { supabase } from "@/integrations/supabase/client";
+import { summarizeChecks } from "../stepDiagnostics";
 import type { TestScenario } from "../types";
 export const responsibilitiesScenario: TestScenario = {
   id: "responsibilities",
@@ -170,16 +171,21 @@ export const responsibilitiesScenario: TestScenario = {
         const admin = ["bueroleitung", "abgeordneter"].includes(ctx.role ?? "");
         // Schreibende RPCs bleiben am Client-Guard fail-closed; die
         // serverseitige 42501-Prüfung ist aus dem Browser nicht auslösbar.
-        const foreignRejected = foreign.error?.code === "42501" || foreign.error?.code === "TENANT_SCOPE_CONFLICT";
+        const checks = {
+          foreignTenantWriteDenied:
+            foreign.error?.code === "42501" || foreign.error?.code === "TENANT_SCOPE_CONFLICT",
+          mergeOfSameEntryDenied: merge.error?.code === (admin ? "22023" : "42501"),
+        };
+        const errors = { foreign: foreign.error?.code, merge: merge.error?.code };
+        const ok = Object.values(checks).every(Boolean);
+        const success =
+          foreign.error?.code === "TENANT_SCOPE_CONFLICT"
+            ? "Fremdtenant-Schreiben wird bereits im Client abgewiesen; unzulässige Zusammenführung serverseitig."
+            : "Fremdtenant-Schreiben und unzulässige Zusammenführung werden serverseitig abgewiesen.";
         return {
-          ok:
-            foreignRejected &&
-            merge.error?.code === (admin ? "22023" : "42501"),
-          message:
-            foreign.error?.code === "TENANT_SCOPE_CONFLICT"
-              ? "Fremdtenant-Schreiben wird bereits im Client abgewiesen; unzulässige Zusammenführung serverseitig."
-              : "Fremdtenant-Schreiben und unzulässige Zusammenführung werden serverseitig abgewiesen.",
-          details: { foreignCode: foreign.error?.code, mergeCode: merge.error?.code },
+          ok,
+          message: ok ? success : summarizeChecks({ ...checks, errors }) ?? success,
+          details: { ...checks, errors },
         };
       },
     },

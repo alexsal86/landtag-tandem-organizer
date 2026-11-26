@@ -12,6 +12,7 @@ import {
   hrStepsFromEditor,
 } from "@/features/onboarding-hr/templates";
 import { supabase } from "@/integrations/supabase/client";
+import { summarizeChecks } from "../stepDiagnostics";
 import type { TestScenario } from "../types";
 export const onboardingHrScenario: TestScenario = {
   id: "onboarding-hr",
@@ -170,15 +171,21 @@ export const onboardingHrScenario: TestScenario = {
         const reminder = await supabase.rpc("remind_employee_hr", {
           p_lifecycle: crypto.randomUUID(),
         });
+        const checks = {
+          employmentWriteDenied:
+            result.error?.code === "42501" || result.error?.code === "TENANT_SCOPE_CONFLICT",
+          reminderWriteDenied: reminder.error?.code === "42501",
+        };
+        const errors = { employment: result.error?.code, reminder: reminder.error?.code };
+        const ok = Object.values(checks).every(Boolean);
+        const success =
+          result.error?.code === "TENANT_SCOPE_CONFLICT"
+            ? "Fremde Büro-ID wird bereits im Client abgewiesen; Rollen- und Serversperren bleiben bestehen."
+            : "Tenant- und Rollenprüfungen werden serverseitig erzwungen.";
         return {
-          ok:
-            (result.error?.code === "42501" || result.error?.code === "TENANT_SCOPE_CONFLICT") &&
-            reminder.error?.code === "42501",
-          message:
-            result.error?.code === "TENANT_SCOPE_CONFLICT"
-              ? "Fremde Büro-ID wird bereits im Client abgewiesen; Rollen- und Serversperren bleiben bestehen."
-              : "Tenant- und Rollenprüfungen werden serverseitig erzwungen.",
-          details: { lifecycleCode: result.error?.code, reminderCode: reminder.error?.code },
+          ok,
+          message: ok ? success : summarizeChecks({ ...checks, errors }) ?? success,
+          details: { ...checks, errors },
         };
       },
     },
