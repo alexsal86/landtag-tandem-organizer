@@ -18745,6 +18745,10 @@ export type Database = {
         }
         Returns: string
       }
+      create_preparation_followup: {
+        Args: { _point_id?: string | null; _preparation_id: string }
+        Returns: string
+      }
       create_work_decision: {
         Args: {
           p_data: Json
@@ -19224,6 +19228,14 @@ export type Database = {
       get_globally_shared_user_ids: {
         Args: { _user_id: string }
         Returns: string[]
+      }
+      get_latest_employee_meetings: {
+        Args: { p_employee_ids: string[] }
+        Returns: {
+          employee_id: string
+          meeting_id: string
+          meeting_date: string
+        }[]
       }
       get_latest_selftest_runs: {
         Args: { p_tenant_id: string }
