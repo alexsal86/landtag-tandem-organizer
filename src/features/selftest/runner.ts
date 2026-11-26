@@ -8,7 +8,9 @@ export const SELFTEST_PREFIX = "[SELFTEST]";
 export const SELFTEST_MARKER = "__SELFTEST__";
 
 // Fremdschlüssel: Antworten vor Teilnehmern, Anfragen vor Terminen, Kinder vor Eltern.
-const CLEANUP_ORDER = [
+// Jede Tabelle, die ein Szenario aufzeichnet, braucht hier einen Eintrag; sonst
+// scheitert der Lauf erst beim Aufräumen (siehe runner.test.ts).
+export const CLEANUP_ORDER = [
   "employee_meeting_action_items", "employee_meeting_requests", "employee_meetings",
   "task_decision_responses", "task_decision_participants", "task_decisions", "task_documents",
   "document_annotations", "letter_attachments", "documents", "letter_collaborators", "letters", "quick_notes",

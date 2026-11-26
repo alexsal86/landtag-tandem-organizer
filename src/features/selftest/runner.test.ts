@@ -26,11 +26,13 @@ vi.mock("@/integrations/supabase/client", () => ({ supabase: {
   storage: { from: () => ({ remove: async () => ({ error: mock.storageError ? new Error("Datei gesperrt") : null }) }) },
 } }));
 
-import { cleanupCreated, runScenario, runSuite } from "./runner";
+import { CLEANUP_ORDER, cleanupCreated, runScenario, runSuite } from "./runner";
 
 const scenario = (steps: TestStep[], extra: Partial<TestScenario> = {}): TestScenario => ({ id: "test", title: "Test", description: "Test", features: [], touches: ["tasks"], steps, ...extra });
 const options = () => ({ tenantId: "tenant-1", userId: "user-1", onUpdate: vi.fn<(state: ScenarioRunState) => void>() });
 const ok: TestStep = { id: "ok", label: "OK", run: async () => ({ ok: true, message: "OK" }) };
+// Quelltext aller Szenarien: geprüft wird, welche Tabellen sie aufzeichnen.
+const scenarioSources = import.meta.glob("./scenarios/*.ts", { query: "?raw", import: "default", eager: true }) as Record<string, string>;
 
 beforeEach(() => {
   mock.role = "bueroleitung"; mock.session = true; mock.membership = true; mock.denyDelete = false; mock.storageError = false;
@@ -112,5 +114,16 @@ describe("Selbsttest-Runner", () => {
     expect(result.cleanup.status).toBe("skipped"); expect(mock.rows.has("demo")).toBe(true);
     const failed = await runScenario(scenario([write, { ...ok, id: "fail", run: async () => ({ ok: false, message: "Fehler" }) }]), { ...options(), keepData: true });
     expect(failed.cleanup.status).toBe("ok"); expect(mock.rows.size).toBe(0);
+  });
+  it("kennt für jede aufgezeichnete Tabelle der Szenarien einen Aufräumeintrag", () => {
+    const tracked = new Map<string, string[]>();
+    for (const [file, source] of Object.entries(scenarioSources).filter(([file]) => !file.includes(".test."))) {
+      for (const match of source.matchAll(/trackRecord\(\{[\s\S]{0,120}?table:\s*["']([a-z_]+)["']/g)) {
+        tracked.set(match[1], [...(tracked.get(match[1]) ?? []), file.split("/").pop() ?? file]);
+      }
+    }
+    expect([...tracked.keys()]).toEqual(expect.arrayContaining(["annual_tasks", "annual_task_completions", "tasks"]));
+    const unknown = [...tracked].filter(([table]) => !(CLEANUP_ORDER as readonly string[]).includes(table));
+    expect(unknown.map(([table, files]) => `${table} (${files.join(", ")})`)).toEqual([]);
   });
 });
