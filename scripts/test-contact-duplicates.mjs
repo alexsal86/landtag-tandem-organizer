@@ -177,19 +177,32 @@ try {
 
   // Der Plan der Namenskandidaten liest den Trigramm-Index parameterisiert.
   // Der Abfragetext entspricht dem Rumpf der Migration.
-  const plan = (await q(`
-    EXPLAIN (COSTS OFF)
-    SELECT c1.id, c2.id
+  const candidateQuery = `
+    SELECT c1.id AS left_id, c2.id AS right_id
     FROM public.contacts c1
     JOIN LATERAL (
       SELECT other.id FROM public.contacts other
-      WHERE other.tenant_id = c1.tenant_id AND other.name % c1.name
+      WHERE other.tenant_id = c1.tenant_id
+        AND other.id::text > c1.id::text
+        AND other.name % c1.name
     ) c2 ON true
-    WHERE c1.tenant_id = '${office}' AND c1.name IS NOT NULL
-  `)).map((row) => row['QUERY PLAN']).join('\n');
+    WHERE c1.tenant_id = '${office}' AND c1.name IS NOT NULL`;
+  const plan = (await q(`EXPLAIN (COSTS OFF) ${candidateQuery}`))
+    .map((row) => row['QUERY PLAN']).join('\n');
   assert.match(plan, /idx_contacts_name_trgm/, `Plan ohne Trigramm-Index:\n${plan}`);
-  assert.doesNotMatch(plan, /Index Scan using contacts_pkey on contacts other/,
+  assert.doesNotMatch(plan, /contacts_pkey/,
     `Der Plan liest den Primärschlüssel statt des Trigramms:\n${plan}`);
+
+  // Jede Paarung entsteht genau einmal: keine gespiegelten Doppel, keine
+  // Selbstpaare, und die Orientierung folgt der Textordnung der id.
+  await asMe();
+  const candidates = await q(candidateQuery);
+  const keys = new Set(candidates.map((row) => `${row.left_id}|${row.right_id}`));
+  const mirrored = candidates.filter((row) => keys.has(`${row.right_id}|${row.left_id}`));
+  assert.equal(mirrored.length, 0, `${mirrored.length} gespiegelte Paare in ${candidates.length} Kandidaten`);
+  assert.ok(candidates.every((row) => row.left_id < row.right_id),
+    'Die Kandidaten sind nicht durchgehend in Textordnung ausgerichtet');
+  assert.ok(candidates.every((row) => row.left_id !== row.right_id), 'Selbstpaar im Kandidatensatz');
 
   // Der Scan läuft auch bei Bürogröße vollständig durch (das Zeitlimit der
   // Funktion liegt bei 30 s; hier wird deutlich früher abgebrochen).
@@ -198,6 +211,8 @@ try {
   const elapsed = Date.now() - started;
   assert.ok(bulk.length > 0, 'Der Scan liefert bei Bürogröße Treffer');
   assert.ok(elapsed < 20000, `Scan dauerte ${elapsed} ms`);
+  const unordered = bulk.map((row) => [row.contact1_id, row.contact2_id].sort().join('|'));
+  assert.equal(new Set(unordered).size, unordered.length, 'Die Funktion liefert eine Paarung mehrfach');
 
   console.log('Duplicate scan passed: function loads with the shipped signature, "M. Müller" ↔ "Max Müller" is found by name similarity, candidate names are read through idx_contacts_name_trgm (not the primary key), foreign offices are rejected, masking suppresses email-only pairs and email values.');
 } catch (error) {

@@ -16,6 +16,11 @@
 -- billig, weil sie auf Gleichheit normalisierter Werte filtern. Nicht lesbare
 -- Felder (Feldmaskierung) liefern wie bisher keine Kandidaten und keine Ausgabe.
 --
+-- Jede Paarung entsteht genau einmal: die Namenssuche vergleicht die id in
+-- Textordnung (strenge Totalordnung, aber für den uuid-Primärschlüssel nicht
+-- indexierbar), die Feldzweige nutzen dieselbe Ordnung. Erst danach führt ein
+-- UNION die Zweige zusammen, statt Doppel zu erzeugen und wieder zu entfernen.
+--
 -- Die Treffer, Bewertungen und Begründungen sind unverändert; das Zeitlimit
 -- bleibt nur als Sicherheitsnetz für sehr große Büros.
 
@@ -56,46 +61,52 @@ BEGIN
   WITH name_pairs AS (
     -- LATERAL hält die Suche am Index: c1.name ist der Suchbegriff, other.name
     -- die indizierte Spalte. Kein Vollvergleich aller Zeilenpaare.
-    -- Bewusst ohne id-Vergleich im Rumpf: sonst schiebt der Planer ihn in die
-    -- innere Abfrage und liest dort den Primärschlüssel statt des Trigramms.
+    --
+    -- Die Paarung entsteht genau einmal. Der Vergleich läuft über die
+    -- Textdarstellung der id: Sie ist eine strenge Totalordnung (also genau
+    -- eine Richtung je Paar), aber der Primärschlüssel-Index auf uuid kann sie
+    -- nicht bedienen. Ein direkter uuid-Vergleich hier würde vom Planer in die
+    -- innere Abfrage gezogen und dort als pk-Bereich gelesen — der
+    -- Trigramm-Index bliebe ungenutzt.
     SELECT c1.id AS id1, c2.id AS id2
     FROM public.contacts c1
     JOIN LATERAL (
       SELECT other.id
       FROM public.contacts other
       WHERE other.tenant_id = c1.tenant_id
+        AND other.id::text > c1.id::text
         AND other.name % c1.name
     ) c2 ON true
     WHERE c1.tenant_id = _tenant_id
       AND c1.name IS NOT NULL
   ),
+  -- Auch hier dieselbe Textordnung, damit beide Zweige ein Paar gleich
+  -- ausrichten und das abschließende UNION es nur noch zusammenführt.
   field_pairs AS (
     SELECT a.id AS id1, b.id AS id2
     FROM public.contacts a
-    JOIN public.contacts b ON b.tenant_id = a.tenant_id AND b.id > a.id
+    JOIN public.contacts b ON b.tenant_id = a.tenant_id
     WHERE a.tenant_id = _tenant_id
+      AND a.id::text < b.id::text
       AND v_email_readable
       AND coalesce(a.email, '') <> ''
       AND lower(btrim(a.email)) = lower(btrim(b.email))
     UNION
     SELECT a.id, b.id
     FROM public.contacts a
-    JOIN public.contacts b ON b.tenant_id = a.tenant_id AND b.id > a.id
+    JOIN public.contacts b ON b.tenant_id = a.tenant_id
     WHERE a.tenant_id = _tenant_id
+      AND a.id::text < b.id::text
       AND v_phone_readable
       AND length(regexp_replace(coalesce(a.phone, ''), '[^0-9]', '', 'g')) >= 6
       AND regexp_replace(coalesce(a.phone, ''), '[^0-9]', '', 'g')
           = regexp_replace(coalesce(b.phone, ''), '[^0-9]', '', 'g')
   ),
   candidate_pairs AS (
-    -- Jede Paarung genau einmal, unabhängig davon, welche Seite sie gefunden hat.
-    SELECT DISTINCT least(id1, id2) AS id1, greatest(id1, id2) AS id2
-    FROM (
-      SELECT id1, id2 FROM name_pairs
-      UNION ALL
-      SELECT id1, id2 FROM field_pairs
-    ) pairs
-    WHERE id1 <> id2
+    -- Nur noch das Zusammenführen der Zweige; jedes Paar liegt schon einmal vor.
+    SELECT id1, id2 FROM name_pairs
+    UNION
+    SELECT id1, id2 FROM field_pairs
   ),
   scored AS (
     SELECT
