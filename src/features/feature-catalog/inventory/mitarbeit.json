@@ -718,10 +718,12 @@
         "src/features/timetracking/arbzg.ts",
         "src/features/timetracking/weeklyTarget.ts"
       ],
+      "hooks": [
+        "src/components/my-work/hooks/useMyWorkTeamData.ts"
+      ],
       "rpcs": [
         "ensure_net_minutes",
         "get_daily_hours",
-        "get_latest_time_entry_dates",
         "auto_calculate_hours_per_month"
       ],
       "tables": [
