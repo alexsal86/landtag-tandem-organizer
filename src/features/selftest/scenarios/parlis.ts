@@ -10,7 +10,7 @@ export const parlisScenario: TestScenario = {
   description: "Prüft die Gruppierung und den Lesezugriff auf die Parlamentsdokumentation.",
   features: ["parlis.proceedings"],
   touches: [],
-  checks: ["Schlagwörter, Fraktionsfilter und mehrere Urheber", "Urhebertext mit Titeln und Namensbestandteilen bleibt vollständig", "Monatsgruppierung, eindeutige Schlagwörter und leere Ressorts", "Importierte Vorgänge sind lesbar", "Verknüpfte Urheber führen zu einem Mandat derselben Wahlperiode"],
+  checks: ["Serverseitige Suche und begrenzte Dokumentenseiten", "Schlagwörter, Fraktionsfilter und mehrere Urheber", "Urhebertext mit Titeln und Namensbestandteilen bleibt vollständig", "Monatsgruppierung, eindeutige Schlagwörter und leere Ressorts", "Importierte Vorgänge sind lesbar", "Verknüpfte Urheber führen zu einem Mandat derselben Wahlperiode"],
   steps: [{
     id: "parlis-groups",
     label: "Monate, Schlagwörter und fehlende Ressorts korrekt zuordnen",
@@ -74,6 +74,30 @@ export const parlisScenario: TestScenario = {
       return {
         ok: imports[0] >= 9855 && imports[1] >= 1036,
         message: `17. Wahlperiode: ${imports[0]} Vorgänge. 18. Wahlperiode: ${imports[1]} Vorgänge.`,
+      };
+    },
+  }, {
+    id: "parlis-pages",
+    label: "Dokumente in getrennten Seiten von höchstens 20 Vorgängen abrufen",
+    kind: "db",
+    run: async () => {
+      const [first, second, search] = await Promise.all([
+        supabase.rpc("parlis_page", { period: 17 }),
+        supabase.rpc("parlis_page", { period: 17, page_offset: 20 }),
+        supabase.rpc("parlis_page", { period: 18, search_text: "V-248711" }),
+      ]);
+      for (const page of [first, second, search]) if (page.error) throw page.error;
+      const ids = (value: typeof first.data) =>
+        value && typeof value === "object" && !Array.isArray(value) && Array.isArray(value.rows)
+          ? value.rows.flatMap(row => row && typeof row === "object" && !Array.isArray(row) && typeof row.vorgangs_id === "string" ? [row.vorgangs_id] : [])
+          : [];
+      const firstIds = ids(first.data);
+      const secondIds = ids(second.data);
+      return {
+        ok: firstIds.length === 20 && secondIds.length === 20
+          && secondIds.every(id => !firstIds.includes(id))
+          && ids(search.data).join() === "V-248711",
+        message: "Seiten bleiben begrenzt und die Suche findet Vorgänge außerhalb der geladenen Seite.",
       };
     },
   }, {

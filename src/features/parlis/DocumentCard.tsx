@@ -23,9 +23,8 @@ function KeywordChips({ value }: { value: string }) {
   </ul>;
 }
 
-export function DocumentCard({ row, deputies }: { row: Proceeding; deputies?: ReadonlyMap<string, string> }) {
-  const url = [row.pdf_url, row.dokument_url].find(value => /^https:\/\/www\.landtag-bw\.de\//i.test(value));
-  const authors = authorSegments(row.urheber, deputies, true);
+export function DocumentCard({ row }: { row: Proceeding }) {
+  const authors = authorSegments(row.urheber, new Map(row.deputies), true);
   const AuthorIcon = hasMultipleAuthors(row.urheber, authors) ? UsersRound : UserRound;
   return <article className="parlis-card">
     <div className="parlis-meta">
@@ -44,8 +43,8 @@ export function DocumentCard({ row, deputies }: { row: Proceeding; deputies?: Re
     </div>}
     {row.ressort && <p className="parlis-department">{row.ressort}</p>}
     <KeywordChips value={row.deskriptoren} />
-    {url && <footer>
-      <a className="parlis-original" href={url} target="_blank" rel="noreferrer">
+    {row.url && <footer>
+      <a className="parlis-original" href={row.url} target="_blank" rel="noreferrer">
         <FileText size={16} aria-hidden="true" />
         Originaldokument öffnen
         <ExternalLink size={13} aria-hidden="true" />

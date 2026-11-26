@@ -18158,6 +18158,10 @@ export type Database = {
       }
     }
     Functions: {
+      parlis_page: {
+        Args: { period: number; page_offset?: number; search_text?: string; document_kind?: string; faction?: string; topic?: string; date_from?: string; date_to?: string; deputy_key?: string; oldest_first?: boolean; chart_dimension?: string; chart_selection?: string; options_only?: boolean }
+        Returns: Json
+      }
       _briefing_task_event: {
         Args: { _task: string; _text: string }
         Returns: undefined

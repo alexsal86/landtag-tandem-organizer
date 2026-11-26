@@ -58,7 +58,7 @@ _Auto-generiert mit `npm run update:feature-catalog` aus dem zentralen Funktions
 |---|---|---:|---:|---|
 | `case-file-lifecycle` | Fallakte mit Folgetabellen (Container) im Unterschied zum Vorgang | 16 | 9 | — |
 | `case-item-lifecycle` | Vorgangs-Lifecycle (Am Zug → Schritt → Wiedervorlage → Entscheidung → Tageszettel → Abschluss) | 9 | 5 | — |
-| `parlis` | Parlamentarische Vorgänge | 0 | 5 | — |
+| `parlis` | Parlamentarische Vorgänge | 0 | 6 | — |
 
 ## Selbsttest-Schritte
 
@@ -97,6 +97,7 @@ Diese Schritte führen die Szenarien aus; „letzter Lauf“ stammt aus `src/fea
 | `parlis` | `parlis-inline-authors` | Urhebernamen mit Titeln und Namensbestandteilen im Originaltext verlinken | logic | — |
 | `parlis` | `parlis-author-presentation` | Parteien ohne Klammern und mehrere Urheber erkennen | logic | — |
 | `parlis` | `parlis-import-readable` | Importe der 17. und 18. Wahlperiode sind lesbar | db | — |
+| `parlis` | `parlis-pages` | Dokumente in getrennten Seiten von höchstens 20 Vorgängen abrufen | db | — |
 | `parlis` | `parlis-deputy-profile` | Weirauchs Anfrage aus Drucksache 18/763 führt zum Abgeordnetenprofil | db | — |
 
 ## Deklarierter Prüfumfang
@@ -123,11 +124,12 @@ Diese Schritte führen die Szenarien aus; „letzter Lauf“ stammt aus `src/fea
 
 ### `parlis`
 
-1. Schlagwörter, Fraktionsfilter und mehrere Urheber
-2. Urhebertext mit Titeln und Namensbestandteilen bleibt vollständig
-3. Monatsgruppierung, eindeutige Schlagwörter und leere Ressorts
-4. Importierte Vorgänge sind lesbar
-5. Verknüpfte Urheber führen zu einem Mandat derselben Wahlperiode
+1. Serverseitige Suche und begrenzte Dokumentenseiten
+2. Schlagwörter, Fraktionsfilter und mehrere Urheber
+3. Urhebertext mit Titeln und Namensbestandteilen bleibt vollständig
+4. Monatsgruppierung, eindeutige Schlagwörter und leere Ressorts
+5. Importierte Vorgänge sind lesbar
+6. Verknüpfte Urheber führen zu einem Mandat derselben Wahlperiode
 
 ## Funktionsdetails
 
@@ -742,7 +744,7 @@ Erfasst interne Notizen an einer Fallakte und zeigt sie im Verlauf; das Szenario
 - Keine.
 
 ### `parlis.proceedings` — Parlamentarische Vorgänge auswerten
-Lädt die Vorgänge der 17. und 18. Wahlperiode des Landtags Baden-Württemberg aus der Datenbank, gruppiert sie nach Datum und Merkmalen und verlinkt die Originaldokumente und verbindet namentlich zugeordnete Urheber über Mandate mit ihren Abgeordnetenprofilen. Zeigt das Datum direkt auf der Dokumentenkarte und bietet Suche, Sortierung und Filter nach Typ, Fraktion, Zeitraum und Schlagwort. Urheberlinks verwenden den vollständigen Namen aus der Quelle und Parteikürzel werden farblich markiert.
+Lädt die Vorgänge der 17. und 18. Wahlperiode des Landtags Baden-Württemberg aus der Datenbank, gruppiert sie nach Datum und Merkmalen und verlinkt die Originaldokumente und verbindet namentlich zugeordnete Urheber über Mandate mit ihren Abgeordnetenprofilen. Lädt Dokumentenkarten beim Scrollen seitenweise mit serverseitiger Suche und Filterung. Zeigt das Datum direkt auf der Dokumentenkarte und bietet Suche, Sortierung und Filter nach Typ, Fraktion, Zeitraum und Schlagwort. Urheberlinks verwenden den vollständigen Namen aus der Quelle und Parteikürzel werden farblich markiert.
 
 - **Kategorie:** fachlich
 - **Implementierung:** implementiert
@@ -755,7 +757,7 @@ Lädt die Vorgänge der 17. und 18. Wahlperiode des Landtags Baden-Württemberg 
 - **Services:** —
 - **Hooks:** —
 - **Edge Functions:** —
-- **Datenbankfunktionen:** —
+- **Datenbankfunktionen:** `parlis_page`
 - **Tabellen:** `parlis_proceedings`, `parlis_deputy_mandates`, `election_history_mandates`
 - **Abhängigkeiten:** —
 - **Selbsttests:** `parlis`
@@ -770,6 +772,8 @@ Lädt die Vorgänge der 17. und 18. Wahlperiode des Landtags Baden-Württemberg 
 - supabase/migrations/20261127141000_import_parlis_wp18.sql
 - supabase/migrations/20261127143000_link_parlis_deputy_mandates.sql
 - supabase/migrations/20261127144000_import_parlis_wp17.sql
+- supabase/migrations/20261127151000_page_parlis_proceedings.sql
+- src/features/parlis/page.ts
 - src/features/parlis/grouping.ts
 - src/features/parlis/authors.ts
 - src/features/parlis/documents.ts

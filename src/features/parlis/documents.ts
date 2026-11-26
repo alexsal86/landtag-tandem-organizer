@@ -3,7 +3,7 @@ import { getPartyColor } from "@/features/election-districts/partyColors";
 import { authorSegments } from "./authors";
 
 export type Proceeding = Pick<Database["public"]["Tables"]["parlis_proceedings"]["Row"],
-  "vorgangs_id" | "drucksache" | "vorgangstyp" | "datum" | "urheber" | "ressort" | "titel" | "deskriptoren" | "pdf_url" | "dokument_url">;
+  "vorgangs_id" | "drucksache" | "vorgangstyp" | "datum" | "urheber" | "ressort" | "titel" | "deskriptoren"> & { url: string | null; deputies: [string, string][] };
 
 export const number = new Intl.NumberFormat("de-DE");
 

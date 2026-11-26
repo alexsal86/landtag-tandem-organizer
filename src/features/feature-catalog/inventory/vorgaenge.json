@@ -345,7 +345,7 @@
       "id": "parlis.proceedings",
       "subarea": "Parlamentsdokumentation",
       "name": "Parlamentarische Vorgänge auswerten",
-      "description": "Lädt die Vorgänge der 17. und 18. Wahlperiode des Landtags Baden-Württemberg aus der Datenbank, gruppiert sie nach Datum und Merkmalen und verlinkt die Originaldokumente und verbindet namentlich zugeordnete Urheber über Mandate mit ihren Abgeordnetenprofilen. Zeigt das Datum direkt auf der Dokumentenkarte und bietet Suche, Sortierung und Filter nach Typ, Fraktion, Zeitraum und Schlagwort. Urheberlinks verwenden den vollständigen Namen aus der Quelle und Parteikürzel werden farblich markiert.",
+      "description": "Lädt die Vorgänge der 17. und 18. Wahlperiode des Landtags Baden-Württemberg aus der Datenbank, gruppiert sie nach Datum und Merkmalen und verlinkt die Originaldokumente und verbindet namentlich zugeordnete Urheber über Mandate mit ihren Abgeordnetenprofilen. Lädt Dokumentenkarten beim Scrollen seitenweise mit serverseitiger Suche und Filterung. Zeigt das Datum direkt auf der Dokumentenkarte und bietet Suche, Sortierung und Filter nach Typ, Fraktion, Zeitraum und Schlagwort. Urheberlinks verwenden den vollständigen Namen aus der Quelle und Parteikürzel werden farblich markiert.",
       "category": "fachlich",
       "implementationStatus": "implementiert",
       "integrationStatus": "ui",
@@ -360,6 +360,7 @@
         "src/features/parlis/DocumentCard.tsx",
         "src/features/election-analysis/DeputyDirectory.tsx"
       ],
+      "rpcs": ["parlis_page"],
       "tables": [
         "parlis_proceedings",
         "parlis_deputy_mandates",
@@ -373,6 +374,8 @@
         "supabase/migrations/20261127141000_import_parlis_wp18.sql",
         "supabase/migrations/20261127143000_link_parlis_deputy_mandates.sql",
         "supabase/migrations/20261127144000_import_parlis_wp17.sql",
+        "supabase/migrations/20261127151000_page_parlis_proceedings.sql",
+        "src/features/parlis/page.ts",
         "src/features/parlis/grouping.ts",
         "src/features/parlis/authors.ts",
         "src/features/parlis/documents.ts",
