@@ -14,7 +14,7 @@ const CLEANUP_ORDER = [
   "document_annotations", "letter_attachments", "documents", "letters", "quick_notes",
   "funding_participants", "fundings", "contact_briefing_memory", "contact_topics",
   "distribution_list_members", "distribution_lists", "call_logs",
-  "map_flags", "map_flag_types",
+  "gdpr_requests", "map_flags", "map_flag_types",
   "contact_usage_stats", "contact_activities", "contacts", "tasks",
   "case_item_topics", "knowledge_question_topics", "topics",
   "case_item_interactions", "case_items",

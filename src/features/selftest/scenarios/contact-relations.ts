@@ -43,6 +43,7 @@ export const contactRelationsScenario: TestScenario = {
     "Der Datenbank-Trigger setzt Rechtsgrundlage und Prüffrist: Bürger 24 Monate ab Erfassung, alle anderen bis 31.03.2031",
     "Die reinen Aufbewahrungsregeln (Fristberechnung, Fälligkeit, Regeltext) stimmen mit dem Trigger überein",
     "Eine Löschanfrage entsteht ausstehend unter der eigenen Identität; Eigenfreigabe per Update und per approve_gdpr_delete wird abgewiesen, Anfrage und Gegenstand bleiben unverändert",
+    "Der eigene ausstehende Antrag wird am Ende zurückgezogen, sodass der Lauf keinen offenen Löschantrag hinterlässt",
     "Die Vier-Augen-Regel erlaubt nur einer zweiten angemeldeten Person die Freigabe und verlangt deren eingetragenen Zustimmungszeitpunkt",
     "Importzuordnung ordnet deutsche und englische Spalten zu und zerlegt die Verteiler-Spalte an ; , und |",
     "CSV-Text (Komma und Semikolon) und VCF-Text werden eingelesen, zugeordnet und zu Kontaktwerten mit Anzeigename übersetzt",
@@ -65,7 +66,7 @@ export const contactRelationsScenario: TestScenario = {
     "Die Oberfläche selbst (Grid/Liste, Detail-Sheet, Formulare) wird nicht gerendert; geprüft werden die zugrunde liegenden Schreib- und Lesepfade.",
     "Feldbasierte Maskierung (field_permissions mit can_read=false) wird nicht verändert; geprüft wird die gesicherte Lesefunktion read_secured_contacts, nicht eine konfigurierte Maskierung.",
     "Die positive Freigabe einer Löschanfrage braucht die persönliche Anmeldung einer zweiten berechtigten Person und wird deshalb hier nur als Regel plus Datenbank-Abweisung der Eigenfreigabe geprüft; die Freigabe mit zwei Konten deckt der Rollback-Test der Migration ab.",
-    "Der ausstehende Löschantrag bleibt nach dem Lauf stehen, weil authenticated keine Löschrechte auf gdpr_requests hat; er ist am SELFTEST-Präfix erkennbar und einem SELFTEST-Kontakt zugeordnet.",
+    "Der Selbsttest zieht seinen eigenen ausstehenden Löschantrag am Ende zurück (DELETE-Policy nur für requested_by = auth.uid() und status = 'pending'); freigegebene oder fremde Anträge bleiben unlöschbar.",
     "Kartenflag, Flag-Typ, Koordinaten und Löschen sind geprüft; Kartenebenen (map_layers) und Flag-Themen (map_flag_topics) bleiben ausgeklammert.",
     "Die Rücknahme einer Sammelaktion verlangt Büroleitung oder Abgeordneten-Mandat; als Mitglied wird stattdessen die Abweisung geprüft.",
     "Der Import wird über seine reinen Regeln und den gemeinsamen Verteilerpfad geprüft: CSV- und VCF-Text werden eingelesen und zugeordnet, eine daraus gebaute Zeile wird gespeichert und den Verteilern zugeordnet. Der Datei-Dialog selbst und das Excel-/ODS-Einlesen laufen nicht im Selbsttest.",
@@ -230,6 +231,8 @@ export const contactRelationsScenario: TestScenario = {
         if (created.error || !created.data) return { ok: false, message: describeError(created.error) };
         const request = created.data;
         ctx.data.gdprRequestId = request.id;
+        // Auch ein abgebrochener Lauf darf keinen offenen Antrag hinterlassen.
+        ctx.trackRecord({ table: "gdpr_requests", id: request.id });
 
         // Beide Wege der Eigenfreigabe müssen die Datenbank-Bremse auslösen.
         const selfUpdate = await supabase.from("gdpr_requests")
@@ -261,6 +264,11 @@ export const contactRelationsScenario: TestScenario = {
           ...request, status: "approved", approved_by: ctx.userId, approved_at: new Date().toISOString(),
         });
 
+        // Aufräumen ohne Regelbruch: die eigene, weiterhin ausstehende Anfrage zurückziehen.
+        const withdrawn = await supabase.from("gdpr_requests").delete().eq("id", request.id);
+        const afterWithdraw = await supabase.from("gdpr_requests")
+          .select("id").eq("id", request.id).maybeSingle();
+
         const checks = {
           antragAngelegt: reload.data.status === "pending" && request.request_type === "delete"
             && request.requested_by === ctx.userId && request.approved_by === null,
@@ -276,16 +284,17 @@ export const contactRelationsScenario: TestScenario = {
           regelBlockiertSelbstfreigabe: !selfDecision.allowed,
           regelErlaubtZweitePerson: peerId ? (peerDecision.allowed && peerRoleEligible) : true,
           regelVerlangtZweitePerson: approvedRow && !selfApprovedRow,
+          zurueckgezogen: !withdrawn.error && afterWithdraw.error === null && afterWithdraw.data === null,
         };
         const failed = Object.entries(checks).filter(([, ok]) => !ok).map(([name]) => name);
         return {
           ok: failed.length === 0,
           message: failed.length === 0
             ? (peerId
-              ? "Löschanfrage entsteht ausstehend, Eigenfreigabe wird per Update und RPC abgewiesen; eine zweite berechtigte Person im Büro erfüllt die Vier-Augen-Regel."
-              : "Löschanfrage entsteht ausstehend, Eigenfreigabe wird per Update und RPC abgewiesen; im Büro fehlt eine zweite berechtigte Person, die Freigabe selbst bleibt hier ungeprüft.")
+              ? "Löschanfrage entsteht ausstehend, Eigenfreigabe wird per Update und RPC abgewiesen, eine zweite berechtigte Person erfüllt die Vier-Augen-Regel; der Antrag wird danach zurückgezogen."
+              : "Löschanfrage entsteht ausstehend, Eigenfreigabe wird per Update und RPC abgewiesen, im Büro fehlt eine zweite berechtigte Person; der Antrag wird danach zurückgezogen.")
             : `Fehlgeschlagen: ${failed.join(", ")}`,
-          details: { ...checks, requestId: request.id, secondPersonFound: Boolean(peerId) },
+          details: { ...checks, requestId: request.id, secondPersonFound: Boolean(peerId), withdrawn: !afterWithdraw.data },
         };
       },
     },
