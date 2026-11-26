@@ -1,4 +1,6 @@
 import { useEffect, useMemo, useState } from "react";
+import { Link, useSearchParams } from "react-router-dom";
+import { deputyProfileUrl } from "@/features/election-analysis/navigation";
 import { useQuery } from "@tanstack/react-query";
 import { Input } from "@/components/ui/input";
 import { Button } from "@/components/ui/button";
@@ -31,6 +33,27 @@ async function loadProceedings(signal: AbortSignal) {
   return proceedings;
 }
 
+async function loadDeputyProfiles(signal: AbortSignal) {
+  const profiles: { proceedingId: string; name: string; key: string }[] = [];
+  const batchSize = 500;
+  for (let offset = 0; ; offset += batchSize) {
+    const { data, error } = await supabase.from("parlis_deputy_profiles")
+      .select("vorgangs_id, deputy_name, profile_key")
+      .eq("legislature", 18)
+      .order("vorgangs_id")
+      .order("mandate_id")
+      .range(offset, offset + batchSize - 1)
+      .abortSignal(signal);
+    if (error) throw error;
+    for (const row of data) {
+      if (row.vorgangs_id && row.deputy_name && row.profile_key) {
+        profiles.push({ proceedingId: row.vorgangs_id, name: row.deputy_name, key: row.profile_key });
+      }
+    }
+    if (data.length < batchSize) return profiles;
+  }
+}
+
 type Proceeding = Awaited<ReturnType<typeof loadProceedings>>[number];
 
 function groupLabel(key: string, dimension: Dimension) {
@@ -47,6 +70,23 @@ export default function ParlisView() {
     queryFn: ({ signal }) => loadProceedings(signal),
     staleTime: 5 * 60 * 1000,
   });
+  const profiles = useQuery({
+    queryKey: ["parlis-deputy-profiles", 18],
+    queryFn: ({ signal }) => loadDeputyProfiles(signal),
+    staleTime: 5 * 60 * 1000,
+  });
+  const [params, setParams] = useSearchParams();
+  const deputyKey = params.get("urheber");
+  const profileByProceeding = useMemo(() => {
+    const index = new Map<string, Map<string, string>>();
+    for (const { proceedingId, key, name } of profiles.data ?? []) {
+      const authors = index.get(proceedingId) ?? new Map<string, string>();
+      authors.set(key, name);
+      index.set(proceedingId, authors);
+    }
+    return index;
+  }, [profiles.data]);
+  const deputyName = profiles.data?.find(profile => profile.key === deputyKey)?.name;
   const [search, setSearch] = useState("");
   const [dimension, setDimension] = useState<Dimension>("datum");
   const [selected, setSelected] = useState<string | null>(null);
@@ -55,11 +95,12 @@ export default function ParlisView() {
   const matches = useMemo(() => {
     const terms = search.trim().toLocaleLowerCase("de-DE").split(/\s+/).filter(Boolean);
     return (query.data ?? []).filter(row => {
+      if (deputyKey && !profileByProceeding.get(row.vorgangs_id)?.has(deputyKey)) return false;
       const searchable = [row.titel, row.drucksache, row.vorgangs_id, row.vorgangstyp, row.urheber, row.ressort, row.deskriptoren, row.datum]
         .join(" ").toLocaleLowerCase("de-DE");
       return terms.every(term => searchable.includes(term));
     });
-  }, [query.data, search]);
+  }, [query.data, search, deputyKey, profileByProceeding]);
 
   const groups = useMemo(() => {
     const counts = new Map<string, number>();
@@ -77,7 +118,7 @@ export default function ParlisView() {
     if (selected !== null && !groups.some(([key]) => key === selected)) setSelected(null);
   }, [groups, selected]);
 
-  if (query.isPending) return <p role="status">Parlamentarische Vorgänge werden geladen …</p>;
+  if (query.isPending || (deputyKey && profiles.isPending)) return <p role="status">Parlamentarische Vorgänge werden geladen …</p>;
   if (query.isError) return (
     <div className="space-y-3" role="alert">
       <p>Die parlamentarischen Vorgänge konnten nicht geladen werden.</p>
@@ -91,6 +132,19 @@ export default function ParlisView() {
         <h1 className="text-2xl font-semibold">Parlamentarische Vorgänge</h1>
         <p className="text-muted-foreground">Landtag Baden-Württemberg · 18. Wahlperiode</p>
       </header>
+      {profiles.isError && <p role="alert">Abgeordnetenverknüpfungen konnten nicht geladen werden.{" "}
+        <Button variant="link" onClick={() => void profiles.refetch()}>Erneut laden</Button>
+      </p>}
+      {deputyKey && <div className="flex flex-wrap items-center gap-2">
+        <span>{deputyName ? `Urheber: ${deputyName}` : "Vorgänge zum ausgewählten Abgeordnetenprofil"}</span>
+        <Button variant="outline" size="sm" onClick={() => {
+          const next = new URLSearchParams(params);
+          next.delete("urheber");
+          setParams(next);
+          setSelected(null);
+          setVisible(pageSize);
+        }}>Alle Urheber anzeigen</Button>
+      </div>}
       <div className="grid gap-3 sm:grid-cols-2">
         <label className="grid gap-1 text-sm font-medium">
           Suche
@@ -143,12 +197,16 @@ export default function ParlisView() {
         <ul className="divide-y">
           {filtered.slice(0, visible).map(row => {
             const url = documentLink(row);
+            const deputies = profileByProceeding.get(row.vorgangs_id);
             return (
               <li key={row.vorgangs_id} className="space-y-1 py-3">
                 <h3 className="font-medium">{row.titel || row.vorgangs_id}</h3>
                 <p className="text-sm text-muted-foreground">
                   {[row.datum.split("-").reverse().join("."), row.vorgangstyp, row.drucksache, row.urheber, row.ressort].filter(Boolean).join(" · ")}
                 </p>
+                {!!deputies?.size && <p className="flex flex-wrap gap-x-3 text-sm">
+                  {Array.from(deputies, ([key, name]) => <Link key={key} className="text-primary underline" to={deputyProfileUrl(key)}>{name}</Link>)}
+                </p>}
                 {row.deskriptoren && <p className="text-sm">{row.deskriptoren}</p>}
                 {url && <a className="inline-block text-sm text-primary underline" href={url} target="_blank" rel="noreferrer">Originaldokument öffnen</a>}
               </li>

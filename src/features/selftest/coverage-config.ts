@@ -235,7 +235,7 @@ export const COVERAGE_EXCEPTIONS: CoverageExceptionGroup[] = [
     kind: "deferred",
     reason: "Parlis: Der Selbsttest prüft importierte Referenzdaten lesend. Schreibzugriffe bleiben der Datenbankmigration vorbehalten.",
     expiresOn: "2027-06-30",
-    tables: ["parlis_proceedings"],
+    tables: ["parlis_proceedings", "parlis_deputy_mandates"],
   },
   {
     kind: "deferred",

@@ -8,7 +8,7 @@ export const parlisScenario: TestScenario = {
   description: "Prüft die Gruppierung und den Lesezugriff auf die Parlamentsdokumentation.",
   features: ["parlis.proceedings"],
   touches: [],
-  checks: ["Monatsgruppierung, eindeutige Schlagwörter und leere Ressorts", "Importierte Vorgänge sind lesbar"],
+  checks: ["Monatsgruppierung, eindeutige Schlagwörter und leere Ressorts", "Importierte Vorgänge sind lesbar", "Verknüpfte Urheber führen zu einem Mandat derselben Wahlperiode"],
   steps: [{
     id: "parlis-groups",
     label: "Monate, Schlagwörter und fehlende Ressorts korrekt zuordnen",
@@ -35,6 +35,22 @@ export const parlisScenario: TestScenario = {
         ok: (count ?? 0) >= 1036,
         message: `${count ?? 0} lesbare Vorgänge der 18. Wahlperiode (mindestens 1.036 erwartet).`,
       };
+    },
+  }, {
+    id: "parlis-deputy-profile",
+    label: "Weirauchs Anfrage aus Drucksache 18/763 führt zum Abgeordnetenprofil",
+    kind: "db",
+    run: async () => {
+      const { data: links, error } = await supabase.from("parlis_deputy_profiles")
+        .select("profile_key, mandate_id").eq("legislature", 18).eq("vorgangs_id", "V-248711");
+      if (error) throw error;
+      const link = links.length === 1 ? links[0] : undefined;
+      if (!link?.profile_key) return { ok: false, message: "Für die Anfrage fehlt ein eindeutiger Profillink." };
+      const { data: history, error: profileError } = await supabase.rpc("get_analysis_deputy", { name_key: link.profile_key });
+      if (profileError) throw profileError;
+      const ok = Array.isArray(history) && history.some(row => row && typeof row === "object" && !Array.isArray(row)
+        && row.id === link.mandate_id && row.period_number === 18);
+      return { ok, message: ok ? "Profil und Parlis sind über dasselbe Mandat verbunden." : "Mandat im Profil nicht gefunden." };
     },
   }],
 };

@@ -457,6 +457,7 @@ _Auto-generiert mit `npm run update:feature-catalog`. Nicht von Hand bearbeiten.
 | `document_categories` | dokumente, verwaltung |
 | `document_contacts` | dokumente, kontakte |
 | `election_districts` | schnittstellen, wahl |
+| `election_history_mandates` | vorgaenge, wahl |
 | `email_templates` | schnittstellen, verwaltung |
 | `employee_responsibilities` | mitarbeit, organisation |
 | `field_permissions` | kontakte, verwaltung |

@@ -5,7 +5,8 @@ import { DeputyStateListPlaces } from '@/features/election-history/DeputyStateLi
 import { DeputySeatDistribution } from './DeputySeatDistribution';
 import { deputyTenureCoverage } from './deputyTenure';
 import { DeputyElectionResult } from './DeputyElectionResult';
-import { Link } from "react-router-dom";
+import { Link, useSearchParams } from "react-router-dom";
+import { parlisDeputyUrl } from "@/features/parlis/navigation";
 import { districtProfileUrl } from "./navigation";
 import { formatMandateType } from '@/features/election-history/mandateLabel';
 import { useEffect, useId, useRef, useState, type CSSProperties } from 'react';
@@ -82,7 +83,10 @@ export default function DeputyDirectory() {
   const [mandate, setMandate] = useState('');
   const [offset, setOffset] = useState(0);
   const [view, setView] = useState<'cards' | 'list'>('cards');
-  const [profileOpen, setProfileOpen] = useState(false);
+  const [cardOpen, setCardOpen] = useState(false);
+  const [params, setParams] = useSearchParams();
+  const linkedProfile = params.get('abgeordneter');
+  const profileOpen = cardOpen || !!linkedProfile;
   const [person, setPerson] = useState<Deputy | null>(null);
   const [activePeriod, setActivePeriod] = useState<number | null>(null);
   const lastTrigger = useRef<HTMLButtonElement | null>(null);
@@ -111,18 +115,20 @@ export default function DeputyDirectory() {
       return data as unknown as Deputy[];
     }, retry: false, staleTime: 30_000,
   });
+  const profileKey = linkedProfile || person?.name_key;
   const detail = useQuery({
-    queryKey: ['election-history', user?.id, 'analysis-deputy-profile', person?.name_key], enabled: !!user && !!person && profileOpen,
+    queryKey: ['election-history', user?.id, 'analysis-deputy-profile', profileKey], enabled: !!user && !!profileKey && profileOpen,
     queryFn: async ({ signal }) => {
-      const { data, error } = await supabase.rpc('get_analysis_deputy', { name_key: person!.name_key }).abortSignal(signal);
+      const { data, error } = await supabase.rpc('get_analysis_deputy', { name_key: profileKey! }).abortSignal(signal);
       if (error) throw error;
       if (!Array.isArray(data) || data.length > 200) throw new Error('Die Mandatshistorie konnte nicht vollständig geladen werden.');
       return data as unknown as DeputyMandate[];
     }, retry: false, staleTime: 30_000,
   });
   const rows = detail.data || [];
+  const profileName = linkedProfile ? rows[0]?.name : person?.name;
   const confirmedPersonIds = [...new Set(rows.flatMap(row => row.person_id ? [row.person_id] : []))];
-  const candidacies = useDeputyCandidacies(person?.name_key, confirmedPersonIds, profileOpen);
+  const candidacies = useDeputyCandidacies(profileKey, confirmedPersonIds, profileOpen);
   const candidateRows = candidacies.data || [];
   const birth = rows.find(row => row.birthday || row.birth_year);
   const served = [...new Set(rows.map(row => row.period_number))].sort((a, b) => a - b);
@@ -187,7 +193,7 @@ export default function DeputyDirectory() {
           const bounds = event.currentTarget.getBoundingClientRect();
           event.currentTarget.style.setProperty('--deputy-mx', `${(event.clientX - bounds.left) / bounds.width * 100}%`);
           event.currentTarget.style.setProperty('--deputy-my', `${(event.clientY - bounds.top) / bounds.height * 100}%`);
-        }} onClick={event => { lastTrigger.current = event.currentTarget; setPerson(entry); setProfileOpen(true); setActivePeriod(period ? published.find(item => item.id === period)?.number ?? null : null); }} aria-label={`${entry.name}, ${entry.parties.join(', ')}. Mandatshistorie öffnen`}>
+        }} onClick={event => { lastTrigger.current = event.currentTarget; setPerson(entry); setCardOpen(true); setActivePeriod(period ? published.find(item => item.id === period)?.number ?? null : null); }} aria-label={`${entry.name}, ${entry.parties.join(', ')}. Mandatshistorie öffnen`}>
           <Portrait person={entry} />
           <span className="deputy-party">
             <span className="deputy-primary-faction"><i aria-hidden="true" />{primaryFaction}</span>
@@ -207,15 +213,22 @@ export default function DeputyDirectory() {
       })}
     </div>
     <nav aria-label="Abgeordnetenseiten" className="flex flex-wrap items-center justify-between gap-3 border-t pt-4"><p className="text-xs text-muted-foreground">Seite {offset / 25 + 1} · alphabetisch nach Namen</p><div className="flex gap-2"><Button variant="outline" disabled={directory.isFetching || offset === 0} onClick={() => setOffset(value => Math.max(0, value - 25))}>Zurück</Button><Button variant="outline" disabled={directory.isFetching || !directory.data || directory.data.length <= 25} onClick={() => setOffset(value => value + 25)}>Weitere 25</Button></div></nav>
-    <Sheet open={profileOpen} onOpenChange={setProfileOpen}>
+    <Sheet open={profileOpen} onOpenChange={open => {
+      setCardOpen(open);
+      if (!open && linkedProfile) {
+        const next = new URLSearchParams(params);
+        next.delete('abgeordneter');
+        setParams(next, { replace: true });
+      }
+    }}>
       <SheetContent side="right" aria-describedby={undefined} className="deputy-drawer w-full p-0 sm:max-w-5xl" style={{ '--deputy-party': getPartyColor(current?.party || selectedCandidate?.party || person?.latest?.party || person?.parties[0]) } as CSSProperties} overlayClassName="deputy-drawer-overlay" onCloseAutoFocus={event => { event.preventDefault(); lastTrigger.current?.focus(); }}>
         <SheetClose className="deputy-drawer-close" aria-label="Abgeordnetenprofil schließen"><X size={20} aria-hidden="true" /></SheetClose>
         <div className="deputy-profile">
-        <div className="deputy-profile-side" style={{ '--deputy-party': getPartyColor(current?.party || selectedCandidate?.party || person?.parties[0]) } as CSSProperties}>{person && <DeputyPortrait key={person.name_key} connectionId={person.name_key} name={person.name} editable={access.isSuperAdmin} variant="editorial" />}</div>
+        <div className="deputy-profile-side" style={{ '--deputy-party': getPartyColor(current?.party || selectedCandidate?.party || person?.parties[0]) } as CSSProperties}>{profileKey && profileName && <DeputyPortrait key={profileKey} connectionId={profileKey} name={profileName} editable={access.isSuperAdmin} variant="editorial" />}</div>
         <div className="deputy-profile-content" tabIndex={0} role="region" aria-label="Mandatshistorie und Profildetails">
           <div className="deputy-profile-faction-heading"><strong>{current?.party_label || current?.party || selectedCandidate?.party || person?.latest?.party || person?.parties.join(' · ')}</strong><span aria-hidden="true" /></div>
 
-          <SheetTitle className="deputy-heading deputy-profile-name mt-3"><DeputyName name={person?.name || ''} /></SheetTitle>
+          <SheetTitle className="deputy-heading deputy-profile-name mt-3">{profileName ? <DeputyName name={profileName} /> : 'Abgeordnetenprofil'}</SheetTitle>
           {detail.isLoading && <p role="status" className="mt-6">Lade Mandatshistorie …</p>}
           {detail.error && <div role="alert" className="mt-6">{historyError(detail.error)} <Button variant="outline" onClick={() => void detail.refetch()}>Erneut laden</Button></div>}
           {!detail.isLoading && !detail.error && rows.length === 0 && <p className="mt-6">Keine freigegebenen Mandate vorhanden.</p>}
@@ -230,7 +243,10 @@ export default function DeputyDirectory() {
               const profileUrl = districtProfileUrl(published.find(item => item.number === row.period_number)?.election_year ?? null, row.district_label);
               return <div key={row.id}><p>{formatMandateDateRange(row)}{row.end_is_expected ? ' (voraussichtliches Ende)' : ''}</p>{row.notes && <p className="whitespace-pre-wrap text-xs text-muted-foreground">{row.notes}</p>}{profileUrl && <Button variant="link" className="h-auto p-0 text-xs" asChild><Link to={profileUrl}>Wahlkreis-Steckbrief öffnen</Link></Button>}</div>;
             })}</div>}
-            {person && profileOpen && <DeputyStateListPlaces key={person.name_key} connectionId={person.name_key} />}
+            {profileKey && profileOpen && <DeputyStateListPlaces key={profileKey} connectionId={profileKey} />}
+            {profileKey && served.includes(18) && <Button variant="link" className="px-0" asChild>
+              <Link to={parlisDeputyUrl(profileKey)}>Parlamentarische Vorgänge anzeigen</Link>
+            </Button>}
             {current && profileOpen && <DeputyElectionResult key={current.id} mandateId={current.id}
               secondaryPanel={<DeputySeatDistribution period={published.find(item => item.number === current.period_number)} party={current.party} />}
             />}

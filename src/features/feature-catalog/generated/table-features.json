@@ -1634,6 +1634,11 @@
       "id": "election.history.periods",
       "name": "Wahlperioden verwalten",
       "area": "wahl"
+    },
+    {
+      "id": "parlis.proceedings",
+      "name": "Parlamentarische Vorgänge auswerten",
+      "area": "vorgaenge"
     }
   ],
   "election_history_people": [
@@ -2753,6 +2758,13 @@
       "id": "election.parliament-protocols",
       "name": "Plenarprotokolle auswerten",
       "area": "wahl"
+    }
+  ],
+  "parlis_deputy_mandates": [
+    {
+      "id": "parlis.proceedings",
+      "name": "Parlamentarische Vorgänge auswerten",
+      "area": "vorgaenge"
     }
   ],
   "parlis_proceedings": [

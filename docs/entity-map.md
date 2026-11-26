@@ -2,7 +2,7 @@
 
 _Auto-generiert mit `npm run update:feature-catalog` aus den Fremdschlüsseln in `src/integrations/supabase/types.ts`. Nicht von Hand bearbeiten._
 
-353 Tabellen, 485 Fremdschlüsselverweise. Die Karte zeigt, welche Tabelle auf welche zeigt; fachliche Bedeutung steht im [Funktionskatalog](./features/README.md).
+354 Tabellen, 487 Fremdschlüsselverweise. Die Karte zeigt, welche Tabelle auf welche zeigt; fachliche Bedeutung steht im [Funktionskatalog](./features/README.md).
 
 ## Zentrale Tabellen
 
@@ -530,6 +530,14 @@ Tabellen mit mindestens drei eingehenden Verweisen.
 | `social_content_item_channels` | `content_item_id` |
 | `social_content_variants` | `content_item_id` |
 
+### `election_history_mandates` — 3 eingehende Verweise
+
+| Von | Spalte |
+|---|---|
+| `election_history_1952_result_sources` | `source_mandate_id` |
+| `election_history_mandate_birthdays` | `mandate_id` |
+| `parlis_deputy_mandates` | `mandate_id` |
+
 ### `event_planning_checklist_items` — 3 eingehende Verweise
 
 | Von | Spalte |
@@ -918,6 +926,8 @@ Tabellen mit mindestens drei eingehenden Verweisen.
 | `notifications` | `notification_type_id` | `notification_types` |
 | `notifications` | `tenant_id` | `tenants` |
 | `office_debrief_state` | `feedback_id` | `appointment_feedback` |
+| `parlis_deputy_mandates` | `mandate_id` | `election_history_mandates` |
+| `parlis_deputy_mandates` | `legislature`, `vorgangs_id` | `parlis_proceedings` |
 | `planning_item_documents` | `tenant_id` | `tenants` |
 | `planning_templates` | `tenant_id` | `tenants` |
 | `poll_notifications` | `poll_id` | `appointment_polls` |

@@ -2,12 +2,12 @@
   "schemaVersion": 2,
   "source": "src/integrations/supabase/types.ts",
   "counts": {
-    "total": 353,
+    "total": 354,
     "scenario": 91,
-    "deferred": 117,
+    "deferred": 118,
     "excluded": 144,
     "missing": 1,
-    "exceptions": 261
+    "exceptions": 262
   },
   "exceptionGroups": [
     {
@@ -223,7 +223,8 @@
       "reason": "Parlis: Der Selbsttest prüft importierte Referenzdaten lesend. Schreibzugriffe bleiben der Datenbankmigration vorbehalten.",
       "expiresOn": "2027-06-30",
       "tables": [
-        "parlis_proceedings"
+        "parlis_proceedings",
+        "parlis_deputy_mandates"
       ]
     },
     {
@@ -4055,6 +4056,15 @@
       "exception": {
         "kind": "deferred",
         "expiresOn": "2027-03-31"
+      }
+    },
+    {
+      "table": "parlis_deputy_mandates",
+      "status": "deferred",
+      "scenarios": [],
+      "exception": {
+        "kind": "deferred",
+        "expiresOn": "2027-06-30"
       }
     },
     {

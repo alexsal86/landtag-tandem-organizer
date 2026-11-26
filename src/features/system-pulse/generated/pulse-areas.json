@@ -2136,7 +2136,8 @@
           "description": "Prüft die Gruppierung und den Lesezugriff auf die Parlamentsdokumentation.",
           "checks": [
             "Monatsgruppierung, eindeutige Schlagwörter und leere Ressorts",
-            "Importierte Vorgänge sind lesbar"
+            "Importierte Vorgänge sind lesbar",
+            "Verknüpfte Urheber führen zu einem Mandat derselben Wahlperiode"
           ],
           "tables": [],
           "features": [
@@ -2150,6 +2151,10 @@
             {
               "id": "parlis-import-readable",
               "label": "Import der 18. Wahlperiode ist lesbar"
+            },
+            {
+              "id": "parlis-deputy-profile",
+              "label": "Weirauchs Anfrage aus Drucksache 18/763 führt zum Abgeordnetenprofil"
             }
           ]
         }

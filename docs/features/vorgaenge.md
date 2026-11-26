@@ -50,7 +50,7 @@ _Auto-generiert mit `npm run update:feature-catalog` aus dem zentralen Funktions
 
 ## Datenbanktabellen
 
-`appointments`, `audit_log_entries`, `case_file_appointments`, `case_file_contacts`, `case_file_documents`, `case_file_letters`, `case_file_notes`, `case_file_participants`, `case_file_processing_statuses`, `case_file_status_history`, `case_file_tasks`, `case_file_timeline`, `case_file_topics`, `case_file_types`, `case_files`, `case_item_categories`, `case_item_escalation_suggestions`, `case_item_handover_log`, `case_item_interactions`, `case_item_participants`, `case_item_timeline`, `case_item_topics`, `case_items`, `documents`, `letters`, `parlis_proceedings`, `task_decisions`, `tasks`, `topic_module_settings`, `topics`
+`appointments`, `audit_log_entries`, `case_file_appointments`, `case_file_contacts`, `case_file_documents`, `case_file_letters`, `case_file_notes`, `case_file_participants`, `case_file_processing_statuses`, `case_file_status_history`, `case_file_tasks`, `case_file_timeline`, `case_file_topics`, `case_file_types`, `case_files`, `case_item_categories`, `case_item_escalation_suggestions`, `case_item_handover_log`, `case_item_interactions`, `case_item_participants`, `case_item_timeline`, `case_item_topics`, `case_items`, `documents`, `election_history_mandates`, `letters`, `parlis_deputy_mandates`, `parlis_proceedings`, `task_decisions`, `tasks`, `topic_module_settings`, `topics`
 
 ## Selbsttest-Szenarien
 
@@ -58,7 +58,7 @@ _Auto-generiert mit `npm run update:feature-catalog` aus dem zentralen Funktions
 |---|---|---:|---:|---|
 | `case-file-lifecycle` | Fallakte mit Folgetabellen (Container) im Unterschied zum Vorgang | 16 | 9 | — |
 | `case-item-lifecycle` | Vorgangs-Lifecycle (Am Zug → Schritt → Wiedervorlage → Entscheidung → Tageszettel → Abschluss) | 9 | 5 | — |
-| `parlis` | Parlamentarische Vorgänge | 0 | 2 | — |
+| `parlis` | Parlamentarische Vorgänge | 0 | 3 | — |
 
 ## Selbsttest-Schritte
 
@@ -95,6 +95,7 @@ Diese Schritte führen die Szenarien aus; „letzter Lauf“ stammt aus `src/fea
 | `case-item-lifecycle` | `tenant-boundary` | Vorgang lässt sich keinem fremden Büro zuordnen | workflow | — |
 | `parlis` | `parlis-groups` | Monate, Schlagwörter und fehlende Ressorts korrekt zuordnen | logic | — |
 | `parlis` | `parlis-import-readable` | Import der 18. Wahlperiode ist lesbar | db | — |
+| `parlis` | `parlis-deputy-profile` | Weirauchs Anfrage aus Drucksache 18/763 führt zum Abgeordnetenprofil | db | — |
 
 ## Deklarierter Prüfumfang
 
@@ -122,6 +123,7 @@ Diese Schritte führen die Szenarien aus; „letzter Lauf“ stammt aus `src/fea
 
 1. Monatsgruppierung, eindeutige Schlagwörter und leere Ressorts
 2. Importierte Vorgänge sind lesbar
+3. Verknüpfte Urheber führen zu einem Mandat derselben Wahlperiode
 
 ## Funktionsdetails
 
@@ -736,7 +738,7 @@ Erfasst interne Notizen an einer Fallakte und zeigt sie im Verlauf; das Szenario
 - Keine.
 
 ### `parlis.proceedings` — Parlamentarische Vorgänge auswerten
-Lädt die Vorgänge der 18. Wahlperiode des Landtags Baden-Württemberg aus der Datenbank, gruppiert sie nach Datum und Merkmalen und verlinkt die Originaldokumente.
+Lädt die Vorgänge der 18. Wahlperiode des Landtags Baden-Württemberg aus der Datenbank, gruppiert sie nach Datum und Merkmalen und verlinkt die Originaldokumente und verbindet namentlich zugeordnete Urheber über Mandate mit ihren Abgeordnetenprofilen.
 
 - **Kategorie:** fachlich
 - **Implementierung:** implementiert
@@ -745,12 +747,12 @@ Lädt die Vorgänge der 18. Wahlperiode des Landtags Baden-Württemberg aus der 
 - **Letztes Testergebnis:** nicht-ausgefuehrt (kein Laufnachweis importiert; nicht aus der Existenz einer Testdatei abgeleitet)
 - **Rollen:** Keine besondere Rolle deklariert
 - **Routen:** `/daten`
-- **Frontend-Komponenten:** `src/components/admin/DataView.tsx`, `src/features/parlis/ParlisView.tsx`
+- **Frontend-Komponenten:** `src/components/admin/DataView.tsx`, `src/features/parlis/ParlisView.tsx`, `src/features/election-analysis/DeputyDirectory.tsx`
 - **Services:** —
 - **Hooks:** —
 - **Edge Functions:** —
 - **Datenbankfunktionen:** —
-- **Tabellen:** `parlis_proceedings`
+- **Tabellen:** `parlis_proceedings`, `parlis_deputy_mandates`, `election_history_mandates`
 - **Abhängigkeiten:** —
 - **Selbsttests:** `parlis`
 - **Unit-Tests:** —
@@ -762,6 +764,7 @@ Lädt die Vorgänge der 18. Wahlperiode des Landtags Baden-Württemberg aus der 
 
 - supabase/migrations/20261127140000_create_parlis_proceedings.sql
 - supabase/migrations/20261127141000_import_parlis_wp18.sql
+- supabase/migrations/20261127143000_link_parlis_deputy_mandates.sql
 - src/features/parlis/grouping.ts
 - src/features/selftest/scenarios/parlis.ts
 

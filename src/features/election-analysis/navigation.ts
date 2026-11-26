@@ -81,3 +81,9 @@ export function districtProfileUrl(year: number | null, districtLabel: string | 
   params.set('analysisDistrict', String(district));
   return `/daten?${params}`;
 }
+
+export function deputyProfileUrl(profileKey: string) {
+  const params = analysisDestination(new URLSearchParams(), 'deputies');
+  params.set('abgeordneter', profileKey);
+  return `/daten?${params}`;
+}

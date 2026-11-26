@@ -14,6 +14,27 @@ export type Database = {
   }
   public: {
     Tables: {
+      parlis_deputy_mandates: {
+        Row: { legislature: number; vorgangs_id: string; mandate_id: string }
+        Insert: { legislature: number; vorgangs_id: string; mandate_id: string }
+        Update: { legislature?: number; vorgangs_id?: string; mandate_id?: string }
+        Relationships: [
+          {
+            foreignKeyName: "parlis_deputy_mandates_legislature_vorgangs_id_fkey"
+            columns: ["legislature", "vorgangs_id"]
+            isOneToOne: false
+            referencedRelation: "parlis_proceedings"
+            referencedColumns: ["legislature", "vorgangs_id"]
+          },
+          {
+            foreignKeyName: "parlis_deputy_mandates_mandate_id_fkey"
+            columns: ["mandate_id"]
+            isOneToOne: false
+            referencedRelation: "election_history_mandates"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
       parlis_proceedings: {
         Row: {
           datum: string
@@ -17909,6 +17930,16 @@ export type Database = {
       }
     }
     Views: {
+      parlis_deputy_profiles: {
+        Row: {
+          legislature: number | null
+          vorgangs_id: string | null
+          mandate_id: string | null
+          deputy_name: string | null
+          profile_key: string | null
+        }
+        Relationships: []
+      }
       archived_meeting_protocol_tasks: {
         Row: {
           archive_id: string | null
