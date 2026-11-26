@@ -4,7 +4,7 @@ import { Link } from "react-router-dom";
 import { useAuth } from "@/hooks/useAuth";
 import { useTenant } from "@/hooks/useTenant";
 import { EmptyState } from '@/components/ui-patterns';
-import { useQuery } from "@tanstack/react-query";
+import { useQuery, useQueryClient } from "@tanstack/react-query";
 import { supabase } from "@/integrations/supabase/client";
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
@@ -21,6 +21,8 @@ import { useState } from "react";
 import { notify } from "@/lib/notify";
 import { SystemPulse } from "@/features/system-pulse/SystemPulse";
 import { featureCatalogHref, featuresForTable } from "@/features/feature-catalog/securityLinks";
+import { retestScenariosForTable } from "@/features/selftest/tableRetests";
+import { loadScenarioSuite, runAndSaveScenarioSuite } from "@/features/selftest/suite";
 
 type Gap = {
   table_name: string;
@@ -56,6 +58,7 @@ const sevVariant = (s: Gap["severity"]): "default" | "secondary" | "destructive"
 export function SecurityCockpit(): JSX.Element {
   const { user } = useAuth();
   const { currentTenant } = useTenant();
+  const queryClient = useQueryClient();
   const [filter, setFilter] = useState("");
   const [onlyIssues, setOnlyIssues] = useState(true);
   const [retesting, setRetesting] = useState<string | null>(null);
@@ -128,21 +131,41 @@ export function SecurityCockpit(): JSX.Element {
     void snapshotsQuery.refetch();
   };
 
-  // Einzelnen Befund direkt an der Zeile neu prüfen, statt die ganze Tabelle
-  // neu zu laden und den Befund selbst wiederzufinden.
+  // Auffälligen Befund nachtesten: Es laufen die Selbsttests, die die betroffene
+  // Tabelle laut Coverage-Übersicht abdecken – nicht bloß die Lückenabfrage neu.
   const retestGap = async (gap: Gap) => {
     if (retesting) return;
+    const scenarioIds = retestScenariosForTable(gap.table_name);
+    if (scenarioIds.length === 0) return;
+    const tenantId = currentTenant?.id;
+    const userId = user?.id;
+    if (!tenantId || !userId) {
+      notify.error("Nachtest nicht möglich", { description: "Büro oder Anmeldung fehlt." });
+      return;
+    }
     setRetesting(gap.table_name);
     try {
-      const result = await gapsQuery.refetch();
-      if (result.error) throw result.error;
-      const current = (result.data ?? []).find((entry) => entry.table_name === gap.table_name);
-      if (!current || current.severity === "ok") {
-        notify.success(`${gap.table_name}: Befund behoben`);
-      } else if (current.severity === gap.severity) {
-        notify.warning(`${gap.table_name}: Befund besteht weiter (${current.severity})`, { description: current.reason });
+      const scenarios = await loadScenarioSuite(scenarioIds);
+      if (scenarios.length === 0) {
+        notify.error("Keine Szenarien zugeordnet", { description: gap.table_name });
+        return;
+      }
+      const writes = scenarios.some((scenario) => scenario.steps.some((step) => step.kind !== "logic"));
+      if (writes && !window.confirm(
+        `${scenarios.length} Selbsttest(s) für die Tabelle „${gap.table_name}“ jetzt starten?\n\nEs entstehen echte Testdatensätze und Dateien, die anschließend aufgeräumt werden.`,
+      )) return;
+
+      const results = await runAndSaveScenarioSuite(scenarios, { tenantId, userId, keepData: false });
+      // Der eingebettete System-Puls soll den frischen Lauf sofort zeigen.
+      await Promise.all([
+        queryClient.invalidateQueries({ queryKey: ["selftest_runs_pulse", tenantId] }),
+        queryClient.invalidateQueries({ queryKey: ["selftest_run_history", tenantId] }),
+      ]);
+      const failed = results.filter((result) => result.status !== "ok").length;
+      if (failed > 0) {
+        notify.error(`${gap.table_name}: ${failed} von ${results.length} Selbsttests nicht bestanden`);
       } else {
-        notify.info(`${gap.table_name}: Schwere geändert – jetzt ${current.severity}`, { description: current.reason });
+        notify.success(`${gap.table_name}: ${results.length} Selbsttest(s) bestanden`);
       }
     } catch (error) {
       notify.error("Nachtest fehlgeschlagen", {
@@ -257,50 +280,55 @@ export function SecurityCockpit(): JSX.Element {
                     </TableRow>
                   </TableHeader>
                   <TableBody>
-                    {filteredGaps.map((g) => (
-                      <TableRow key={g.table_name}>
-                        <TableCell>
-                          <Badge variant={sevVariant(g.severity)}>{g.severity}</Badge>
-                        </TableCell>
-                        <TableCell className="font-mono text-caption">{g.table_name}</TableCell>
-                        <TableCell className="text-caption">{g.reason}</TableCell>
-                        <TableCell className="text-right tabular-nums">{g.policy_count}</TableCell>
-                        <TableCell>{g.has_tenant_id ? "ja" : "—"}</TableCell>
-                        <TableCell>
-                          <div className="flex flex-wrap gap-1">
-                            {featuresForTable(g.table_name).map((feature) => (
-                              <Link
-                                key={feature.id}
-                                to={featureCatalogHref(feature.id)}
-                                className="rounded border px-1 py-0.5 font-mono text-[0.7rem] text-primary underline-offset-2 hover:underline"
-                                title={feature.name}
+                    {filteredGaps.map((g) => {
+                      const retestScenarios = retestScenariosForTable(g.table_name);
+                      return (
+                        <TableRow key={g.table_name}>
+                          <TableCell>
+                            <Badge variant={sevVariant(g.severity)}>{g.severity}</Badge>
+                          </TableCell>
+                          <TableCell className="font-mono text-caption">{g.table_name}</TableCell>
+                          <TableCell className="text-caption">{g.reason}</TableCell>
+                          <TableCell className="text-right tabular-nums">{g.policy_count}</TableCell>
+                          <TableCell>{g.has_tenant_id ? "ja" : "—"}</TableCell>
+                          <TableCell>
+                            <div className="flex flex-wrap gap-1">
+                              {featuresForTable(g.table_name).map((feature) => (
+                                <Link
+                                  key={feature.id}
+                                  to={featureCatalogHref(feature.id)}
+                                  className="rounded border px-1 py-0.5 font-mono text-[0.7rem] text-primary underline-offset-2 hover:underline"
+                                  title={feature.name}
+                                >
+                                  {feature.id}
+                                </Link>
+                              ))}
+                              {featuresForTable(g.table_name).length === 0 ? <span className="text-muted-foreground">—</span> : null}
+                            </div>
+                          </TableCell>
+                          <TableCell className="text-right">
+                            {g.severity === "ok" ? (
+                              <span className="text-muted-foreground">—</span>
+                            ) : retestScenarios.length === 0 ? (
+                              <span className="text-muted-foreground" title="Kein Selbsttest deckt diese Tabelle ab">—</span>
+                            ) : (
+                              <Button
+                                variant="outline"
+                                size="sm"
+                                className="h-7 px-2 text-[11px]"
+                                onClick={() => void retestGap(g)}
+                                disabled={retesting !== null}
+                                aria-label={`Selbsttests für ${g.table_name} nachtesten`}
+                                title={`${retestScenarios.length} Selbsttest(s) decken diese Tabelle ab`}
                               >
-                                {feature.id}
-                              </Link>
-                            ))}
-                            {featuresForTable(g.table_name).length === 0 ? <span className="text-muted-foreground">—</span> : null}
-                          </div>
-                        </TableCell>
-                        <TableCell className="text-right">
-                          {g.severity === "ok" ? (
-                            <span className="text-muted-foreground">—</span>
-                          ) : (
-                            <Button
-                              variant="outline"
-                              size="sm"
-                              className="h-7 px-2 text-[11px]"
-                              onClick={() => void retestGap(g)}
-                              disabled={retesting !== null}
-                              aria-label={`Befund für ${g.table_name} nachtesten`}
-                              title="Diesen RLS-Befund erneut prüfen"
-                            >
-                              <RefreshCw className={retesting === g.table_name ? "mr-1 h-3 w-3 animate-spin" : "mr-1 h-3 w-3"} />
-                              {retesting === g.table_name ? "Prüft …" : "Nachtesten"}
-                            </Button>
-                          )}
-                        </TableCell>
-                      </TableRow>
-                    ))}
+                                <RefreshCw className={retesting === g.table_name ? "mr-1 h-3 w-3 animate-spin" : "mr-1 h-3 w-3"} />
+                                {retesting === g.table_name ? "Läuft …" : "Nachtesten"}
+                              </Button>
+                            )}
+                          </TableCell>
+                        </TableRow>
+                      );
+                    })}
                     {filteredGaps.length === 0 && (
                       <TableRow>
                         <TableCell colSpan={7} className="text-center text-muted-foreground py-6">

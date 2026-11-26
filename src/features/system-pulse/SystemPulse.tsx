@@ -14,6 +14,7 @@ import { useTenant } from "@/hooks/useTenant";
 import { supabase } from "@/integrations/supabase/client";
 import { featureCatalogHref } from "@/features/feature-catalog/securityLinks";
 import { stepDiagnostic } from "@/features/selftest/stepDiagnostics";
+import { loadScenarioSuite, runAndSaveScenarioSuite } from "@/features/selftest/suite";
 import {
   PULSE_AREAS, PULSE_GROUPS, areaAssessment, assessRun, consecutiveFailures, durationTrend,
   failedTestRows, gapSummary, historyByScenario, latestRunDetails, latestRuns, latestRunSteps, mergeRuns,
@@ -164,6 +165,18 @@ export function SystemPulse({ gaps, gapsState }: Props) {
     () => failedTestRows(PULSE_AREAS, runDetails, stepsByScenario),
     [runDetails, stepsByScenario],
   );
+  // Mehrere fehlgeschlagene Schritte desselben Szenarios ergeben mehrere
+  // Zeilen, aber nur einen Nachtest. Die Zeilen eines Szenarios stehen
+  // zusammen, deshalb hält die Karte den ersten Index und die Zeilenzahl.
+  const failedScenarioGroups = useMemo(() => {
+    const groups = new Map<string, { first: number; count: number }>();
+    failedRows.forEach((row, index) => {
+      const existing = groups.get(row.scenarioId);
+      if (existing) existing.count += 1;
+      else groups.set(row.scenarioId, { first: index, count: 1 });
+    });
+    return groups;
+  }, [failedRows]);
   const latest = runsQuery.data?.[0]?.created_at;
   const now = Date.now();
   const assessScenario = (scenarioId: string) => assessRun(runDetails[scenarioId], { now, currentVersion: CURRENT_VERSION });
@@ -186,14 +199,7 @@ export function SystemPulse({ gaps, gapsState }: Props) {
     const tenantId = currentTenant.id;
     const userId = user.id;
     try {
-      const [{ SELFTEST_SCENARIOS }, { runSuite }, { saveRun }] = await Promise.all([
-        import("@/features/selftest/registry"),
-        import("@/features/selftest/runner"),
-        import("@/features/selftest/history"),
-      ]);
-      const scenarios = ids
-        .map((id) => SELFTEST_SCENARIOS.find((scenario) => scenario.id === id))
-        .filter((scenario): scenario is (typeof SELFTEST_SCENARIOS)[number] => scenario !== undefined);
+      const scenarios = await loadScenarioSuite(ids);
       if (scenarios.length === 0) {
         notify.error("Keine Szenarien zugeordnet", { description: area.title });
         return;
@@ -206,14 +212,10 @@ export function SystemPulse({ gaps, gapsState }: Props) {
       setLastRunNotice("");
       const activeController = new AbortController();
       controller.current = activeController;
-      const results = await runSuite(scenarios, {
+      const results = await runAndSaveScenarioSuite(scenarios, {
         tenantId, userId, keepData: false, signal: activeController.signal,
         onUpdate: (state) => setLiveRuns((previous) => ({ ...previous, [state.scenarioId]: state.status })),
       });
-      for (const result of results) {
-        const scenario = SELFTEST_SCENARIOS.find((entry) => entry.id === result.scenarioId);
-        if (scenario) await saveRun(result, { tenantId, userId, title: scenario.title, keepData: false });
-      }
       await Promise.all([
         queryClient.invalidateQueries({ queryKey: ["selftest_runs_pulse", tenantId] }),
         queryClient.invalidateQueries({ queryKey: ["selftest_run_history", tenantId] }),
@@ -313,31 +315,36 @@ export function SystemPulse({ gaps, gapsState }: Props) {
                   </TableRow>
                 </TableHeader>
                 <TableBody>
-                  {failedRows.map((row, index) => (
-                    <TableRow key={`${row.scenario}-${row.test}-${index}`}>
-                      <TableCell className="whitespace-nowrap align-top text-caption">{row.area}</TableCell>
-                      <TableCell className="align-top text-caption">
-                        <span className="block">{row.test}</span>
-                        <code className="text-[10px] text-muted-foreground">{row.scenario}</code>
-                      </TableCell>
-                      <TableCell className="align-top text-caption text-destructive">{row.error}</TableCell>
-                      <TableCell className="whitespace-nowrap align-top text-right">
-                        <Button
-                          size="sm"
-                          variant="outline"
-                          className="h-7 px-2 text-[11px]"
-                          onClick={() => retestFailed(row)}
-                          disabled={runningArea !== null}
-                          aria-label={`${row.test} nachtesten`}
-                          title={`Nur „${row.scenario}“ erneut ausführen`}
-                        >
-                          {runningArea === `scenario:${row.scenarioId}`
-                            ? <><RotateCw aria-hidden className="mr-1 h-3 w-3 animate-spin" /> Läuft …</>
-                            : <><RotateCw aria-hidden className="mr-1 h-3 w-3" /> Nachtesten</>}
-                        </Button>
-                      </TableCell>
-                    </TableRow>
-                  ))}
+                  {failedRows.map((row, index) => {
+                    const group = failedScenarioGroups.get(row.scenarioId);
+                    return (
+                      <TableRow key={`${row.scenario}-${row.test}-${index}`}>
+                        <TableCell className="whitespace-nowrap align-top text-caption">{row.area}</TableCell>
+                        <TableCell className="align-top text-caption">
+                          <span className="block">{row.test}</span>
+                          <code className="text-[10px] text-muted-foreground">{row.scenario}</code>
+                        </TableCell>
+                        <TableCell className="align-top text-caption text-destructive">{row.error}</TableCell>
+                        {group?.first === index && (
+                          <TableCell rowSpan={group.count} className="whitespace-nowrap text-right align-middle">
+                            <Button
+                              size="sm"
+                              variant="outline"
+                              className="h-7 px-2 text-[11px]"
+                              onClick={() => retestFailed(row)}
+                              disabled={runningArea !== null}
+                              aria-label={`${row.scenario} nachtesten`}
+                              title={`Nur „${row.scenario}“ erneut ausführen`}
+                            >
+                              {runningArea === `scenario:${row.scenarioId}`
+                                ? <><RotateCw aria-hidden className="mr-1 h-3 w-3 animate-spin" /> Läuft …</>
+                                : <><RotateCw aria-hidden className="mr-1 h-3 w-3" /> Nachtesten</>}
+                            </Button>
+                          </TableCell>
+                        )}
+                      </TableRow>
+                    );
+                  })}
                 </TableBody>
               </Table>
             </div>

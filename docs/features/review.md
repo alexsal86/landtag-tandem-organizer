@@ -11,7 +11,7 @@ Eindeutige Fehler werden im CI-Lauf ausgegeben und brechen die Prüfung ab; sie 
 - Review-Hinweise: **0**
 - Nicht zugeordnete Objekte: **1**, davon ohne Ausnahme: **0**
 
-## Funktionen ohne zugeordneten Test (137)
+## Funktionen ohne zugeordneten Test (136)
 
 - `mywork.tabs` — Meine Arbeit – Bereichsnavigation und Einstellungen
 - `mywork.quick-access` — Schnellzugriff und zuletzt besuchte Seiten
@@ -116,7 +116,6 @@ Eindeutige Fehler werden im CI-Lauf ausgegeben und brechen die Prüfung ab; sie 
 - `admin.audit-log` — Audit-Trail einsehen und exportieren
 - `admin.bulk-audit` — Massenaktions-Audit
 - `admin.gdpr` — DSGVO-Löschanträge
-- `admin.security-cockpit` — Security-Cockpit
 - `admin.edge-function-security` — Edge-Function-Sicherheitsklassifikation
 - `admin.data-lint` — Datenqualitätsprüfung
 - `admin.performance` — Performance- und Größen-Dashboard
@@ -555,6 +554,8 @@ Eindeutige Fehler werden im CI-Lauf ausgegeben und brechen die Prüfung ab; sie 
 
 - Eine vorhandene RLS-Policy ist kein Nachweis für korrekte Mandantentrennung; das Cockpit liefert nur Befunde.
 - Policy-Details stammen live aus pg_policies und bewerten weder die Funktion noch ihre Tests.
+- Der Nachtest führt die Selbsttests aus, die die Tabelle laut Coverage-Übersicht abdecken; er beweist nicht, dass genau die beanstandete Policy korrekt ist.
+- Für Tabellen ohne abdeckendes Selbsttest-Szenario bleibt die Nachtest-Zelle leer; diese Lücke schließt nur ein neues Szenario in src/features/selftest/scenarios.
 - Funktionen ohne Tabellenbezug erhalten keinen RLS-Bezug; ob das fachlich korrekt ist, bleibt je Funktion zu prüfen.
 
 ### `admin.system-pulse`

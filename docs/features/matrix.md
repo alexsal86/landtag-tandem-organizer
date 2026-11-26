@@ -203,7 +203,7 @@ Die Spalten zählen **zugeordnete** Prüfungen, nicht bestandene Läufe. „Erge
 | `admin.field-permissions` | verwaltung | sicherheit | implementiert | rollenabhängig | Selbsttest | nicht-ausgefuehrt | 1 | 0 | 0 | 0 | ja |
 | `admin.permissions-explorer` | verwaltung | administrativ | implementiert | UI | Unit-Test | unbekannt | 0 | 1 | 0 | 0 | ja |
 | `admin.edge-function-security` | verwaltung | sicherheit | implementiert | nicht anwendbar | kein Test | unbekannt | 0 | 0 | 0 | 0 | ja |
-| `admin.security-cockpit` | verwaltung | sicherheit | implementiert | rollenabhängig | kein Test | nicht-ausgefuehrt | 0 | 0 | 0 | 0 | ja |
+| `admin.security-cockpit` | verwaltung | sicherheit | implementiert | rollenabhängig | Unit-Test | bestanden | 0 | 2 | 0 | 0 | ja |
 | `admin.access-boundaries` | verwaltung | sicherheit | implementiert | nicht anwendbar | Selbsttest | nicht-ausgefuehrt | 1 | 1 | 0 | 0 | ja |
 | `platform.notification-dispatch` | verwaltung | technisch | implementiert | systemseitig | kein Test | nicht-ausgefuehrt | 0 | 0 | 0 | 0 | nein |
 | `cases.close-archive` | vorgaenge | fachlich | implementiert | rollenabhängig | Selbsttest | nicht-ausgefuehrt | 1 | 0 | 0 | 0 | nein |

@@ -32,7 +32,10 @@ const renderPulse = (gaps: Array<{ table_name: string; severity: string }> = [])
   );
 };
 
-const tile = (name: RegExp) => screen.getByRole("button", { name });
+// Nur die Bereichskachel ist ein Aufklapp-Button (aria-expanded); die
+// Nachtest-Buttons der Fehlertabelle nennen denselben Bereich im Namen.
+const tile = (name: RegExp) => screen.getAllByRole("button", { name })
+  .find((button) => button.hasAttribute("aria-expanded"))!;
 const ago = (ms: number) => new Date(Date.now() - ms).toISOString();
 
 beforeEach(() => {
@@ -183,15 +186,18 @@ describe("SystemPulse: selftest_runs", () => {
     expect(screen.queryByText("Alles in Ordnung")).not.toBeInTheDocument();
   });
 
-  it("testet einen fehlgeschlagenen Test direkt aus der Fehlertabelle nach", async () => {
+  it("bündelt den Nachtest je Szenario und startet nur dieses Szenario", async () => {
     rpc.mockImplementation((name: string) => Promise.resolve(
       name === "get_selftest_run_history"
         ? { data: [], error: null }
         : {
           data: [{
             scenario_id: "contact-lifecycle", scenario_title: "Kontakt-Lifecycle", status: "failed", created_at: ago(3_600_000),
-            duration_ms: 500, failed_steps: 1, total_steps: 1, keep_data: false, cleanup: { status: "ok" },
-            steps: [{ id: "create", label: "Anlegen", status: "failed", message: "Anlegen fehlgeschlagen" }],
+            duration_ms: 500, failed_steps: 2, total_steps: 2, keep_data: false, cleanup: { status: "ok" },
+            steps: [
+              { id: "create", label: "Anlegen", status: "failed", message: "Anlegen fehlgeschlagen" },
+              { id: "search", label: "Suche prüfen", status: "failed", message: "Suche fehlgeschlagen" },
+            ],
           }],
           error: null,
         },
@@ -200,7 +206,11 @@ describe("SystemPulse: selftest_runs", () => {
     renderPulse();
 
     const failedTests = screen.getByRole("region", { name: "Fehlgeschlagene Tests" });
-    fireEvent.click(await within(failedTests).findByRole("button", { name: "Anlegen nachtesten" }));
+    // Beide Schritte stehen als Zeile in der Tabelle, aber nur ein Nachtest.
+    expect(await within(failedTests).findByText("Suche prüfen")).toBeInTheDocument();
+    const retestButtons = within(failedTests).getAllByRole("button", { name: /nachtesten/i });
+    expect(retestButtons).toHaveLength(1);
+    fireEvent.click(retestButtons[0]);
 
     // Nur das betroffene Szenario läuft, nicht der ganze Bereich.
     await waitFor(() => expect(runSuite).toHaveBeenCalled());
