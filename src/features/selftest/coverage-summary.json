@@ -3,9 +3,9 @@
   "source": "src/integrations/supabase/types.ts",
   "counts": {
     "total": 351,
-    "scenario": 76,
-    "deferred": 123,
-    "excluded": 152,
+    "scenario": 83,
+    "deferred": 119,
+    "excluded": 149,
     "missing": 0
   },
   "scenarios": [
@@ -491,6 +491,128 @@
             "tenant_id",
             "user_id",
             "usage_count"
+          ]
+        }
+      ],
+      "registered": true
+    },
+    {
+      "id": "contact-relations",
+      "title": "Kontakt-Beziehungen (Datenschutz → Themen → Duplikate → Sammelaktion → Verteiler → Wissen → Förderungen)",
+      "touches": [
+        "contacts",
+        "contact_activities",
+        "contact_topics",
+        "topics",
+        "call_logs",
+        "distribution_lists",
+        "distribution_list_members",
+        "contact_briefing_memory",
+        "fundings",
+        "funding_participants"
+      ],
+      "features": [
+        "contacts"
+      ],
+      "writes": [
+        {
+          "table": "contacts",
+          "columns": [
+            "name",
+            "user_id",
+            "tenant_id",
+            "email",
+            "phone",
+            "category",
+            "tags",
+            "notes",
+            "created_at"
+          ]
+        },
+        {
+          "table": "contact_activities",
+          "columns": [
+            "contact_id",
+            "tenant_id",
+            "created_by",
+            "activity_type",
+            "title",
+            "description"
+          ]
+        },
+        {
+          "table": "contact_topics",
+          "columns": [
+            "tenant_id",
+            "contact_id",
+            "topic_id"
+          ]
+        },
+        {
+          "table": "topics",
+          "columns": [
+            "label",
+            "tenant_id"
+          ]
+        },
+        {
+          "table": "call_logs",
+          "columns": [
+            "contact_id",
+            "user_id",
+            "call_type",
+            "duration_minutes",
+            "notes",
+            "follow_up_required",
+            "priority"
+          ]
+        },
+        {
+          "table": "distribution_lists",
+          "columns": [
+            "user_id",
+            "tenant_id",
+            "name",
+            "description",
+            "topic"
+          ]
+        },
+        {
+          "table": "distribution_list_members",
+          "columns": [
+            "distribution_list_id",
+            "contact_id"
+          ]
+        },
+        {
+          "table": "contact_briefing_memory",
+          "columns": [
+            "tenant_id",
+            "contact_id",
+            "kind",
+            "content",
+            "question",
+            "answer",
+            "pinned_by"
+          ]
+        },
+        {
+          "table": "fundings",
+          "columns": [
+            "tenant_id",
+            "title",
+            "total_amount",
+            "status",
+            "created_by"
+          ]
+        },
+        {
+          "table": "funding_participants",
+          "columns": [
+            "funding_id",
+            "contact_id",
+            "allocated_amount",
+            "role"
           ]
         }
       ],
@@ -1585,8 +1707,10 @@
     },
     {
       "table": "call_logs",
-      "status": "deferred",
-      "scenarios": []
+      "status": "scenario",
+      "scenarios": [
+        "contact-relations"
+      ]
     },
     {
       "table": "carryover_items",
@@ -1750,18 +1874,23 @@
       "table": "contact_activities",
       "status": "scenario",
       "scenarios": [
-        "contact-lifecycle"
+        "contact-lifecycle",
+        "contact-relations"
       ]
     },
     {
       "table": "contact_briefing_memory",
-      "status": "deferred",
-      "scenarios": []
+      "status": "scenario",
+      "scenarios": [
+        "contact-relations"
+      ]
     },
     {
       "table": "contact_topics",
-      "status": "excluded",
-      "scenarios": []
+      "status": "scenario",
+      "scenarios": [
+        "contact-relations"
+      ]
     },
     {
       "table": "contact_usage_stats",
@@ -1775,7 +1904,8 @@
       "status": "scenario",
       "scenarios": [
         "case-file-lifecycle",
-        "contact-lifecycle"
+        "contact-lifecycle",
+        "contact-relations"
       ]
     },
     {
@@ -1835,13 +1965,17 @@
     },
     {
       "table": "distribution_list_members",
-      "status": "excluded",
-      "scenarios": []
+      "status": "scenario",
+      "scenarios": [
+        "contact-relations"
+      ]
     },
     {
       "table": "distribution_lists",
-      "status": "deferred",
-      "scenarios": []
+      "status": "scenario",
+      "scenarios": [
+        "contact-relations"
+      ]
     },
     {
       "table": "district_notes",
@@ -2356,13 +2490,17 @@
     },
     {
       "table": "funding_participants",
-      "status": "excluded",
-      "scenarios": []
+      "status": "scenario",
+      "scenarios": [
+        "contact-relations"
+      ]
     },
     {
       "table": "fundings",
-      "status": "deferred",
-      "scenarios": []
+      "status": "scenario",
+      "scenarios": [
+        "contact-relations"
+      ]
     },
     {
       "table": "gdpr_requests",
@@ -3253,6 +3391,7 @@
       "table": "topics",
       "status": "scenario",
       "scenarios": [
+        "contact-relations",
         "topic-linking"
       ]
     },
