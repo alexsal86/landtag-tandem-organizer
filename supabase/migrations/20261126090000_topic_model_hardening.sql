@@ -261,20 +261,63 @@ CREATE INDEX IF NOT EXISTS case_item_topics_tenant_topic_idx
 CREATE INDEX IF NOT EXISTS case_item_topics_case_item_idx
   ON public.case_item_topics (case_item_id);
 
--- Bestehende Vorgänge tragen ihre Themen bisher nur im JSON-Feld.
-INSERT INTO public.case_item_topics (tenant_id, case_item_id, topic_id)
-SELECT ci.tenant_id, ci.id, coalesce(t.merged_into, t.id)
-FROM public.case_items ci
-CROSS JOIN LATERAL jsonb_array_elements_text(
-  CASE WHEN jsonb_typeof(ci.intake_payload -> 'topic_ids') = 'array'
-       THEN ci.intake_payload -> 'topic_ids'
-       ELSE '[]'::jsonb
-  END
-) AS e(value)
-JOIN public.topics t
-  ON t.tenant_id = ci.tenant_id
- AND t.id::text = e.value
-ON CONFLICT (case_item_id, topic_id) DO NOTHING;
+-- Bestehende Vorgänge tragen ihre Themen bisher nur im JSON-Feld. Jeder
+-- Vorgang wird einzeln verarbeitet: eine defekte Struktur, ein nicht
+-- auflösbarer Eintrag oder ein fehlgeschlagener Insert wird protokolliert und
+-- übersprungen, ohne die übrigen Vorgänge oder die Migration abzubrechen.
+DO $$
+DECLARE
+  r record;
+  v_ok integer := 0;
+  v_failed integer := 0;
+  v_bad_structure integer;
+  v_unresolved integer;
+BEGIN
+  SELECT count(*) INTO v_bad_structure
+  FROM public.case_items ci
+  WHERE ci.intake_payload IS NOT NULL
+    AND ci.intake_payload ? 'topic_ids'
+    AND coalesce(jsonb_typeof(ci.intake_payload -> 'topic_ids'), 'null') <> 'array';
+
+  SELECT count(*) INTO v_unresolved
+  FROM public.case_items ci
+  CROSS JOIN LATERAL jsonb_array_elements(
+    CASE WHEN jsonb_typeof(ci.intake_payload -> 'topic_ids') = 'array'
+         THEN ci.intake_payload -> 'topic_ids'
+         ELSE '[]'::jsonb
+    END
+  ) AS e(value)
+  LEFT JOIN public.topics t
+    ON jsonb_typeof(e.value) = 'string'
+   AND t.tenant_id = ci.tenant_id
+   AND t.id::text = lower(e.value #>> '{}')
+  WHERE t.id IS NULL;
+
+  FOR r IN
+    SELECT ci.id, ci.tenant_id, ci.intake_payload
+    FROM public.case_items ci
+    WHERE jsonb_typeof(ci.intake_payload -> 'topic_ids') = 'array'
+  LOOP
+    BEGIN
+      INSERT INTO public.case_item_topics (tenant_id, case_item_id, topic_id)
+      SELECT r.tenant_id, r.id, coalesce(t.merged_into, t.id)
+      FROM jsonb_array_elements(r.intake_payload -> 'topic_ids') AS e(value)
+      JOIN public.topics t
+        ON jsonb_typeof(e.value) = 'string'
+       AND t.tenant_id = r.tenant_id
+       AND t.id::text = lower(e.value #>> '{}')
+      ON CONFLICT (case_item_id, topic_id) DO NOTHING;
+      v_ok := v_ok + 1;
+    EXCEPTION WHEN OTHERS THEN
+      v_failed := v_failed + 1;
+      RAISE WARNING 'Zentrale Themen: Vorgang % (Mandant %) konnte nicht übernommen werden: % (SQLSTATE %)',
+        r.id, r.tenant_id, SQLERRM, SQLSTATE;
+    END;
+  END LOOP;
+
+  RAISE NOTICE 'Zentrale Themen: Vorgangs-Backfill – % Vorgänge verarbeitet, % fehlgeschlagen, % mit ungültiger topic_ids-Struktur und % nicht auflösbare Einträge übersprungen.',
+    v_ok, v_failed, v_bad_structure, v_unresolved;
+END $$;
 
 -- Neue Vorgänge schreiben weiterhin JSON; die Verknüpfung wird daraus gepflegt,
 -- bis die Oberfläche auf set_entity_topics umgestellt ist.
@@ -298,15 +341,21 @@ BEGIN
   WHERE cit.case_item_id = NEW.id
     AND NOT EXISTS (
       SELECT 1
-      FROM jsonb_array_elements_text(NEW.intake_payload -> 'topic_ids') AS e(value)
-      JOIN public.topics t ON t.id::text = e.value AND t.tenant_id = NEW.tenant_id
+      FROM jsonb_array_elements(NEW.intake_payload -> 'topic_ids') AS e(value)
+      JOIN public.topics t
+        ON jsonb_typeof(e.value) = 'string'
+       AND t.id::text = lower(e.value #>> '{}')
+       AND t.tenant_id = NEW.tenant_id
       WHERE coalesce(t.merged_into, t.id) = cit.topic_id
     );
 
   INSERT INTO public.case_item_topics (tenant_id, case_item_id, topic_id, created_by)
   SELECT NEW.tenant_id, NEW.id, coalesce(t.merged_into, t.id), auth.uid()
-  FROM jsonb_array_elements_text(NEW.intake_payload -> 'topic_ids') AS e(value)
-  JOIN public.topics t ON t.id::text = e.value AND t.tenant_id = NEW.tenant_id
+  FROM jsonb_array_elements(NEW.intake_payload -> 'topic_ids') AS e(value)
+  JOIN public.topics t
+    ON jsonb_typeof(e.value) = 'string'
+   AND t.id::text = lower(e.value #>> '{}')
+   AND t.tenant_id = NEW.tenant_id
   ON CONFLICT (case_item_id, topic_id) DO NOTHING;
 
   RETURN NEW;
@@ -344,16 +393,49 @@ CREATE INDEX IF NOT EXISTS knowledge_question_topics_tenant_topic_idx
   ON public.knowledge_question_topics (tenant_id, topic_id);
 
 -- Wissen-Tags wurden bisher per Trigger in topics gespiegelt; hier werden die
--- vorhandenen Zuordnungen auf Themen-IDs umgestellt.
-INSERT INTO public.knowledge_question_topics (tenant_id, question_id, topic_id)
-SELECT qt.tenant_id, qt.question_id, t.id
-FROM public.knowledge_question_tags qt
-JOIN public.knowledge_tags kt
-  ON kt.id = qt.tag_id AND kt.tenant_id = qt.tenant_id
-JOIN public.topics t
-  ON t.tenant_id = qt.tenant_id
- AND lower(t.label) = lower(kt.name)
-ON CONFLICT (question_id, topic_id) DO NOTHING;
+-- vorhandenen Zuordnungen auf Themen-IDs umgestellt. Defekte oder nicht
+-- auflösbare Zuordnungen werden einzeln protokolliert und übersprungen.
+DO $$
+DECLARE
+  r record;
+  v_ok integer := 0;
+  v_failed integer := 0;
+  v_unmatched integer;
+BEGIN
+  SELECT count(*) INTO v_unmatched
+  FROM public.knowledge_question_tags qt
+  JOIN public.knowledge_tags kt
+    ON kt.id = qt.tag_id AND kt.tenant_id = qt.tenant_id
+  WHERE NOT EXISTS (
+    SELECT 1 FROM public.topics t
+    WHERE t.tenant_id = qt.tenant_id
+      AND lower(t.label) = lower(btrim(kt.name))
+  );
+
+  FOR r IN
+    SELECT qt.tenant_id, qt.question_id, kt.name
+    FROM public.knowledge_question_tags qt
+    JOIN public.knowledge_tags kt
+      ON kt.id = qt.tag_id AND kt.tenant_id = qt.tenant_id
+  LOOP
+    BEGIN
+      INSERT INTO public.knowledge_question_topics (tenant_id, question_id, topic_id)
+      SELECT r.tenant_id, r.question_id, t.id
+      FROM public.topics t
+      WHERE t.tenant_id = r.tenant_id
+        AND lower(t.label) = lower(btrim(r.name))
+      ON CONFLICT (question_id, topic_id) DO NOTHING;
+      v_ok := v_ok + 1;
+    EXCEPTION WHEN OTHERS THEN
+      v_failed := v_failed + 1;
+      RAISE WARNING 'Zentrale Themen: Wissensfrage % (Mandant %, Tag "%") konnte nicht übernommen werden: % (SQLSTATE %)',
+        r.question_id, r.tenant_id, r.name, SQLERRM, SQLSTATE;
+    END;
+  END LOOP;
+
+  RAISE NOTICE 'Zentrale Themen: Wissens-Backfill – % Zuordnungen verarbeitet, % fehlgeschlagen, % ohne passendes Thema übersprungen.',
+    v_ok, v_failed, v_unmatched;
+END $$;
 
 -- ---------------------------------------------------------------------------
 -- 5. Büro-Steuerung pro Modul
@@ -695,48 +777,106 @@ GRANT EXECUTE ON FUNCTION public.topic_usage(uuid) TO authenticated;
 -- 9. Altbestand nachziehen (idempotent)
 -- ---------------------------------------------------------------------------
 
+-- Jede Tag-Gruppe wird einzeln verarbeitet. Ungültige Längen, defekte Werte
+-- und Insert-Fehler werden protokolliert, aber nicht fatal; _ensure_topic und
+-- ON CONFLICT halten den Lauf idempotent.
 DO $$
 DECLARE
   r record;
   v_topic uuid;
+  v_ok integer;
+  v_failed integer;
+  v_skipped integer;
 BEGIN
+  -- Kontakte
+  v_ok := 0; v_failed := 0; v_skipped := 0;
   FOR r IN
-    SELECT DISTINCT tenant_id, btrim(t) AS tag, id
+    SELECT DISTINCT tenant_id, btrim(t) AS tag
     FROM public.contacts, unnest(tags) t
-    WHERE tenant_id IS NOT NULL AND length(btrim(t)) BETWEEN 2 AND 40
+    WHERE tenant_id IS NOT NULL AND t IS NOT NULL
   LOOP
-    v_topic := public._ensure_topic(r.tenant_id, r.tag);
-    INSERT INTO public.contact_topics (tenant_id, contact_id, topic_id)
-    VALUES (r.tenant_id, r.id, v_topic)
-    ON CONFLICT (contact_id, topic_id) DO NOTHING;
+    IF length(r.tag) NOT BETWEEN 2 AND 40 THEN
+      v_skipped := v_skipped + 1;
+      CONTINUE;
+    END IF;
+    BEGIN
+      v_topic := public._ensure_topic(r.tenant_id, r.tag);
+      INSERT INTO public.contact_topics (tenant_id, contact_id, topic_id)
+      SELECT r.tenant_id, c.id, v_topic
+      FROM public.contacts c, unnest(c.tags) t
+      WHERE c.tenant_id = r.tenant_id AND btrim(t) = r.tag
+      ON CONFLICT (contact_id, topic_id) DO NOTHING;
+      v_ok := v_ok + 1;
+    EXCEPTION WHEN OTHERS THEN
+      v_failed := v_failed + 1;
+      RAISE WARNING 'Zentrale Themen: Kontakt-Tag "%" (Mandant %) übersprungen: % (SQLSTATE %)',
+        r.tag, r.tenant_id, SQLERRM, SQLSTATE;
+    END;
   END LOOP;
+  RAISE NOTICE 'Zentrale Themen: Kontakt-Tags – % Tag-Gruppen verarbeitet, % fehlgeschlagen, % wegen ungültiger Länge übersprungen.',
+    v_ok, v_failed, v_skipped;
 
+  -- Fallakten
+  v_ok := 0; v_failed := 0; v_skipped := 0;
   FOR r IN
-    SELECT DISTINCT tenant_id, btrim(t) AS tag, id
+    SELECT DISTINCT tenant_id, btrim(t) AS tag
     FROM public.case_files, unnest(tags) t
-    WHERE tenant_id IS NOT NULL AND length(btrim(t)) BETWEEN 2 AND 40
+    WHERE tenant_id IS NOT NULL AND t IS NOT NULL
   LOOP
-    v_topic := public._ensure_topic(r.tenant_id, r.tag);
-    INSERT INTO public.case_file_topics (tenant_id, case_file_id, topic_id)
-    VALUES (r.tenant_id, r.id, v_topic)
-    ON CONFLICT (case_file_id, topic_id) DO NOTHING;
+    IF length(r.tag) NOT BETWEEN 2 AND 40 THEN
+      v_skipped := v_skipped + 1;
+      CONTINUE;
+    END IF;
+    BEGIN
+      v_topic := public._ensure_topic(r.tenant_id, r.tag);
+      INSERT INTO public.case_file_topics (tenant_id, case_file_id, topic_id)
+      SELECT r.tenant_id, cf.id, v_topic
+      FROM public.case_files cf, unnest(cf.tags) t
+      WHERE cf.tenant_id = r.tenant_id AND btrim(t) = r.tag
+      ON CONFLICT (case_file_id, topic_id) DO NOTHING;
+      v_ok := v_ok + 1;
+    EXCEPTION WHEN OTHERS THEN
+      v_failed := v_failed + 1;
+      RAISE WARNING 'Zentrale Themen: Fallakten-Tag "%" (Mandant %) übersprungen: % (SQLSTATE %)',
+        r.tag, r.tenant_id, SQLERRM, SQLSTATE;
+    END;
   END LOOP;
+  RAISE NOTICE 'Zentrale Themen: Fallakten-Tags – % Tag-Gruppen verarbeitet, % fehlgeschlagen, % wegen ungültiger Länge übersprungen.',
+    v_ok, v_failed, v_skipped;
 
   -- documents.tags enthält auch Systemwerte (knowledge:<id>, email, file);
   -- diese sind keine Nutzer-Themen und werden nicht übernommen.
+  v_ok := 0; v_failed := 0; v_skipped := 0;
   FOR r IN
-    SELECT DISTINCT tenant_id, btrim(t) AS tag, id
+    SELECT DISTINCT tenant_id, btrim(t) AS tag
     FROM public.documents, unnest(tags) t
-    WHERE tenant_id IS NOT NULL
-      AND length(btrim(t)) BETWEEN 2 AND 40
+    WHERE tenant_id IS NOT NULL AND t IS NOT NULL
       AND lower(btrim(t)) NOT IN ('email', 'file')
-      AND btrim(t) NOT LIKE 'knowledge:%'
+      AND lower(btrim(t)) NOT LIKE 'knowledge:%'
   LOOP
-    v_topic := public._ensure_topic(r.tenant_id, r.tag);
-    INSERT INTO public.document_topics (tenant_id, document_id, topic_id)
-    VALUES (r.tenant_id, r.id, v_topic)
-    ON CONFLICT (document_id, topic_id) DO NOTHING;
+    IF length(r.tag) NOT BETWEEN 2 AND 40 THEN
+      v_skipped := v_skipped + 1;
+      CONTINUE;
+    END IF;
+    BEGIN
+      v_topic := public._ensure_topic(r.tenant_id, r.tag);
+      INSERT INTO public.document_topics (tenant_id, document_id, topic_id)
+      SELECT r.tenant_id, d.id, v_topic
+      FROM public.documents d, unnest(d.tags) t
+      WHERE d.tenant_id = r.tenant_id
+        AND btrim(t) = r.tag
+        AND lower(btrim(t)) NOT IN ('email', 'file')
+        AND lower(btrim(t)) NOT LIKE 'knowledge:%'
+      ON CONFLICT (document_id, topic_id) DO NOTHING;
+      v_ok := v_ok + 1;
+    EXCEPTION WHEN OTHERS THEN
+      v_failed := v_failed + 1;
+      RAISE WARNING 'Zentrale Themen: Dokument-Tag "%" (Mandant %) übersprungen: % (SQLSTATE %)',
+        r.tag, r.tenant_id, SQLERRM, SQLSTATE;
+    END;
   END LOOP;
+  RAISE NOTICE 'Zentrale Themen: Dokument-Tags – % Tag-Gruppen verarbeitet, % fehlgeschlagen, % wegen ungültiger Länge übersprungen.',
+    v_ok, v_failed, v_skipped;
 END $$;
 
 NOTIFY pgrst, 'reload schema';
