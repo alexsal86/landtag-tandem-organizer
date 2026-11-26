@@ -18184,6 +18184,7 @@ export type Database = {
       }
       v_rls_coverage: {
         Row: {
+          client_grant: boolean | null
           has_tenant_id: boolean | null
           has_user_id: boolean | null
           policy_count: number | null

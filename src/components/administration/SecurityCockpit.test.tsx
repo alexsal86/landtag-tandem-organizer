@@ -42,6 +42,8 @@ vi.mock("@/components/ui/tabs", () => {
 const gaps = [
   { table_name: "contacts", severity: "critical", reason: "Ohne Tenant-Spalte", has_tenant_id: false, policy_count: 0 },
   { table_name: "action_permissions", severity: "warning", reason: "Eine Policy", has_tenant_id: true, policy_count: 1 },
+  // RLS aktiv, keine Policy, aber kein Client-Grant: beabsichtigtes Deny-all.
+  { table_name: "team_fun_facts", severity: "ok", reason: "Deny-all ohne Client-Grant (beabsichtigt)", has_tenant_id: true, policy_count: 0 },
 ];
 
 const renderCockpit = () => {
@@ -91,5 +93,23 @@ describe("SecurityCockpit: Nachtest je Befund", () => {
     expect(mock.notify.success).toHaveBeenCalledWith("contacts: 1 Selbsttest(s) bestanden");
     // Der Button testet; er lädt die Lückenabfrage nicht erneut.
     expect(auditReads()).toBe(readsBefore);
+  });
+
+  it("führt Tabellen ohne Client-Grant als beabsichtigtes Deny-all statt als kritisch", async () => {
+    renderCockpit();
+
+    // Standardfilter „Nur Probleme“: die Deny-all-Tabelle erscheint nicht als Befund.
+    await screen.findByRole("button", { name: "Selbsttests für contacts nachtesten" });
+    expect(screen.getAllByText("critical")).toHaveLength(1);
+    expect(screen.queryByText("team_fun_facts")).not.toBeInTheDocument();
+
+    fireEvent.click(screen.getByRole("button", { name: "Nur Probleme" }));
+
+    // Sichtbar wird die Tabelle erst ohne Problemfilter – und dann als ok mit Begründung.
+    await screen.findByText("team_fun_facts");
+    expect(screen.getByText("Deny-all ohne Client-Grant (beabsichtigt)")).toBeInTheDocument();
+    expect(screen.getAllByText("ok").length).toBeGreaterThan(0);
+    expect(screen.getAllByText("critical")).toHaveLength(1);
+    expect(screen.queryByRole("button", { name: "Selbsttests für team_fun_facts nachtesten" })).not.toBeInTheDocument();
   });
 });

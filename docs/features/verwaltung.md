@@ -437,7 +437,7 @@ Verwaltet Löschanträge mit Vier-Augen-Freigabe durch die Datenbank und atomare
 - Keine.
 
 ### `admin.security-cockpit` — Security-Cockpit
-Zeigt RLS-Lücken, Policies, Snapshots und Audit-Trail als eigenständige Sicherheitssicht; Befunde verweisen auf die betroffenen Funktionen und sind von fachlichen Testergebnissen getrennt. Auffällige Befunde lassen sich je Zeile nachtesten: Es laufen die Selbsttests, die die betroffene Tabelle laut Coverage-Übersicht abdecken; Tabellen ohne abdeckendes Szenario bieten keinen Button.
+Zeigt RLS-Lücken, Policies, Snapshots und Audit-Trail als eigenständige Sicherheitssicht; Befunde verweisen auf die betroffenen Funktionen und sind von fachlichen Testergebnissen getrennt. Tabellen ohne Client-Grant (anon/authenticated) gelten trotz fehlender Policy als beabsichtigtes Deny-all und werden nicht als kritisch gemeldet; erreichbare Tabellen ohne Policy bleiben kritisch. Auffällige Befunde lassen sich je Zeile nachtesten: Es laufen die Selbsttests, die die betroffene Tabelle laut Coverage-Übersicht abdecken; Tabellen ohne abdeckendes Szenario bieten keinen Button.
 
 - **Kategorie:** sicherheit
 - **Implementierung:** implementiert

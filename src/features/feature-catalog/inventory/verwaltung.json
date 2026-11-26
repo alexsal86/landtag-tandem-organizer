@@ -175,7 +175,7 @@
       "id": "admin.security-cockpit",
       "subarea": "Sicherheit",
       "name": "Security-Cockpit",
-      "description": "Zeigt RLS-Lücken, Policies, Snapshots und Audit-Trail als eigenständige Sicherheitssicht; Befunde verweisen auf die betroffenen Funktionen und sind von fachlichen Testergebnissen getrennt. Auffällige Befunde lassen sich je Zeile nachtesten: Es laufen die Selbsttests, die die betroffene Tabelle laut Coverage-Übersicht abdecken; Tabellen ohne abdeckendes Szenario bieten keinen Button.",
+      "description": "Zeigt RLS-Lücken, Policies, Snapshots und Audit-Trail als eigenständige Sicherheitssicht; Befunde verweisen auf die betroffenen Funktionen und sind von fachlichen Testergebnissen getrennt. Tabellen ohne Client-Grant (anon/authenticated) gelten trotz fehlender Policy als beabsichtigtes Deny-all und werden nicht als kritisch gemeldet; erreichbare Tabellen ohne Policy bleiben kritisch. Auffällige Befunde lassen sich je Zeile nachtesten: Es laufen die Selbsttests, die die betroffene Tabelle laut Coverage-Übersicht abdecken; Tabellen ohne abdeckendes Szenario bieten keinen Button.",
       "category": "sicherheit",
       "implementationStatus": "implementiert",
       "integrationStatus": "rollenabhaengig",
