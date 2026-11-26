@@ -448,6 +448,7 @@
         "mitarbeiter"
       ],
       "unitTests": [
+        "src/features/letters/components/__tests__/LetterEditorClose.test.tsx",
         "src/components/letters/__tests__/types.test.ts",
         "src/components/letters/din5008/headerMetrics.test.ts",
         "src/components/letters/din5008/pagination.test.ts",
