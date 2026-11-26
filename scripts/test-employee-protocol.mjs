@@ -1,6 +1,8 @@
-// Isolated PostgreSQL check for the positive employee-protocol workflow.
-// The real RPCs run in selftest_employee_protocol and are rolled back there, because a
-// released or audited meeting is deliberately undeletable. No live database is used.
+// Isolated PostgreSQL check for the employee protocol: the release guard (42501 for direct
+// status writes, 22023 before completion, 40001 for a stale autosave, also after repairing a
+// drifted instance) and the positive workflow. The real RPCs run in selftest_employee_protocol
+// and are rolled back there, because a released or audited meeting is deliberately undeletable.
+// No live database is used.
 import assert from 'node:assert/strict';
 import { readFile } from 'node:fs/promises';
 import { PGlite } from '../tests/database/node_modules/@electric-sql/pglite/dist/index.js';
@@ -298,11 +300,77 @@ try {
   await assert.rejects(q('DELETE FROM employee_meeting_audit'), error => error.code === '42501',
     'The audit table stays read-only for clients');
 
+  // --- release-guard: 42501 für direkte Statuswechsel, 22023 für Freigabe,
+  // Bestätigung und Wiedereröffnung vor Abschluss, 40001 für einen veralteten
+  // Autosave. Der Abschnitt bildet zuerst eine Instanz nach, auf der die Regel
+  // fehlt (alter reopen-Code, Trigger verloren, UPDATE wieder erteilt), und
+  // prüft nach der Reparaturmigration alle fünf Codes.
+  const guard = 'bbbbbbbb-bbbb-4bbb-8bbb-bbbbbbbbbbbb';
+  await db.exec('RESET ROLE');
+  await db.query(
+    `INSERT INTO employee_meetings(id,employee_id,conducted_by,tenant_id,meeting_date,status,protocol_data)
+     VALUES($1,$2,$2,$3,now()+interval '3 days','scheduled','{"goals":"Sperrprüfung"}')`,
+    [guard, staff, office],
+  );
+  await db.exec('GRANT UPDATE ON public.employee_meetings TO authenticated');
+  await db.exec('DROP TRIGGER guard_employee_protocol ON public.employee_meetings');
+  await actor(staff);
+
+  const codeOf = async run => {
+    await db.exec('SAVEPOINT guard_case');
+    let failure = null;
+    try {
+      await run();
+    } catch (error) {
+      failure = error;
+    }
+    await db.exec('ROLLBACK TO SAVEPOINT guard_case');
+    await db.exec('RELEASE SAVEPOINT guard_case');
+    return failure?.code ?? null;
+  };
+  const directWrite = () => q("UPDATE employee_meetings SET status='pending_acknowledgement' WHERE id=$1", [guard]);
+
+  await db.exec('BEGIN');
+  try {
+    assert.equal(await codeOf(directWrite), null,
+      'Ohne Trigger und mit UPDATE-Recht geht der direkte Statuswechsel durch – die Ausgangslage der Instanz');
+    assert.equal(await codeOf(() => q('SELECT reopen_meeting_protocol($1,$2)', [guard, 'Selbsttest'])), 'P0001',
+      'Die alte Wiedereröffnung meldet den Standardcode statt 22023');
+
+    await db.exec('RESET ROLE');
+    await apply('20261127160000_release_guard_rule_repair.sql');
+    // Ein zweiter Lauf darf nichts ändern (DROP/CREATE, REVOKE und Triggerprüfung).
+    await apply('20261127160000_release_guard_rule_repair.sql');
+    await actor(staff);
+
+    const codes = {
+      directWriteDenied: await codeOf(directWrite),
+      releaseBeforeCompletion: await codeOf(() => q('SELECT request_protocol_acknowledgement($1)', [guard])),
+      acknowledgeBeforeRelease: await codeOf(() => q('SELECT acknowledge_meeting_protocol($1)', [guard])),
+      reopenBeforeCompletion: await codeOf(() => q('SELECT reopen_meeting_protocol($1,$2)', [guard, 'Selbsttest'])),
+      staleVersionRejected: await codeOf(() => q('SELECT save_employee_meeting($1,$2,$3::jsonb)',
+        [guard, 5, '{"protocol_data":{"goals":"veraltet"}}'])),
+    };
+    assert.deepEqual(codes, {
+      directWriteDenied: '42501', releaseBeforeCompletion: '22023', acknowledgeBeforeRelease: '22023',
+      reopenBeforeCompletion: '22023', staleVersionRejected: '40001',
+    }, 'Die Reparatur stellt alle Freigabesperren her');
+    assert.equal((await q('SELECT status FROM employee_meetings WHERE id=$1', [guard]))[0].status, 'scheduled',
+      'Keine Sperrprüfung verändert den Status');
+    assert.equal((await q('SELECT count(*)::int AS n FROM employee_meeting_audit WHERE meeting_id=$1', [guard]))[0].n, 0,
+      'Keine Sperrprüfung schreibt eine Auditzeile');
+  } finally {
+    await db.exec('ROLLBACK');
+    await db.exec('RESET ROLE');
+  }
+
+  await db.query('DELETE FROM employee_meetings WHERE id=$1', [guard]);
+
   await db.exec('RESET ROLE');
   await db.query('DELETE FROM employee_meeting_audit WHERE meeting_id=$1', [audited]);
   await db.query('DELETE FROM employee_meetings WHERE id = ANY($1::uuid[])', [[draft, audited, finished, closed, two]]);
   assert.equal((await q('SELECT * FROM employee_meetings')).length, 0);
-  console.log('Employee protocol selftest passed: completion, release, acknowledgement, task hand-off, reopening and objection run through the real RPCs with a separate session per role (leader and affected person); every write is rolled back and all guards stay active.');
+  console.log('Employee protocol selftest passed: completion, release, acknowledgement, task hand-off, reopening and objection run through the real RPCs with a separate session per role (leader and affected person); the release guard answers 42501/22023/40001 even after the repair of a drifted instance, and every write is rolled back.');
 } catch (error) {
   console.error('FAILED:', error.code ?? '', error.message);
   process.exitCode = 1;
