@@ -467,29 +467,27 @@ export function AppNavigation({
     const badge = getGroupBadge(group);
     const isActive = isGroupActive(group);
     const isExpanded = expandedGroups.has(group.id);
-    const hasSubItems = group.subItems && group.subItems.length > 1;
+    const subItems = group.subItems ?? [];
+    const targetId = group.route ? group.route.slice(1) : (subItems[0]?.id || group.id);
 
-    if (!hasSubItems) {
-      const targetId = group.route 
-        ? group.route.slice(1) 
-        : (group.subItems?.[0]?.id || group.id);
-      const Icon = group.subItems?.[0]?.icon || group.icon;
-      const label = group.subItems?.[0]?.label || group.label;
+    if (subItems.length <= 1) {
+      const Icon = subItems[0]?.icon || group.icon;
+      const label = subItems[0]?.label || group.label;
       return renderNavItem(targetId, Icon, label, badge);
     }
 
+    const submenuId = `app-nav-submenu-${isMobile ? "mobile" : "desktop"}-${group.id}`;
+    const Chevron = isExpanded ? ChevronDown : ChevronRight;
+
     const trigger = (
       <button
-        onClick={() => {
-          toggleGroup(group.id);
-          if ((!isActive || group.id === 'calendar') && group.subItems) {
-            handleNavigationClick(group.subItems[0].id);
-          }
-        }}
+        type="button"
+        onClick={() => handleNavigationClick(targetId)}
+        aria-current={activeSection === targetId ? "page" : undefined}
         className={cn(
-          "flex items-center w-full gap-2 h-8 px-2 rounded-md text-sm",
+          "flex min-w-0 flex-1 items-center gap-2 h-8 px-2 rounded-l-md text-sm",
           "transition-colors duration-fast ease-standard",
-          "focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-offset-1 focus-visible:ring-offset-background",
+          "focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-inset focus-visible:ring-ring",
           "hover:bg-[hsl(var(--nav-hover))]",
           isActive && "font-medium"
         )}
@@ -501,11 +499,6 @@ export function AppNavigation({
           )}
         </div>
         <span className="truncate text-sm">{group.label}</span>
-        {isExpanded ? (
-          <ChevronDown className="ml-auto h-3 w-3 shrink-0 text-[hsl(var(--nav-muted))] transition-transform duration-fast ease-standard" />
-        ) : (
-          <ChevronRight className="ml-auto h-3 w-3 shrink-0 text-[hsl(var(--nav-muted))] transition-transform duration-fast ease-standard" />
-        )}
       </button>
     );
     const id = group.id;
@@ -513,38 +506,48 @@ export function AppNavigation({
 
     return (
       <div key={id}>
-        {supportsPreview && !isMobile ? (
-          <NavGroupPreview
-            label={group.label}
-            open={previewGroup === id}
-            onOpenChange={(open) => setPreviewGroup((current) => open ? id : current === id ? null : current)}
-            trigger={trigger}
+        <div className="flex items-center">
+          {supportsPreview && !isMobile ? (
+            <NavGroupPreview
+              label={group.label}
+              open={previewGroup === id}
+              onOpenChange={(open) => setPreviewGroup((current) => open ? id : current === id ? null : current)}
+              trigger={trigger}
+            >
+              {renderPreviewSummary(id)}
+              <div className="mt-2 border-t pt-2">
+                {subItems.map((item) => (
+                  <button
+                    key={item.id}
+                    type="button"
+                    className={cn(previewLinkClass, "text-sm")}
+                    onClick={() => {
+                      setPreviewGroup(null);
+                      void handleNavigationClick(item.id);
+                    }}
+                  >
+                    {item.label}
+                  </button>
+                ))}
+              </div>
+            </NavGroupPreview>
+          ) : trigger}
+          <button
+            type="button"
+            onClick={() => toggleGroup(group.id)}
+            aria-label={`${group.label}: Untermenü ${isExpanded ? "einklappen" : "ausklappen"}`}
+            aria-expanded={isExpanded}
+            aria-controls={submenuId}
+            className="flex h-8 w-8 shrink-0 items-center justify-center rounded-r-md text-[hsl(var(--nav-muted))] transition-colors hover:bg-[hsl(var(--nav-hover))] focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-inset focus-visible:ring-ring"
           >
-            {renderPreviewSummary(id)}
-            <div className="mt-2 border-t pt-2">
-              {group.subItems?.map((item) => (
-                <button
-                  key={item.id}
-                  type="button"
-                  className={cn(previewLinkClass, "text-sm")}
-                  onClick={() => {
-                    setPreviewGroup(null);
-                    void handleNavigationClick(item.id);
-                  }}
-                >
-                  {item.label}
-                </button>
-              ))}
-            </div>
-          </NavGroupPreview>
-        ) : trigger}
-        {isExpanded && group.subItems && (
-          <div className="mt-0.5">
-            {group.subItems.map(item => 
-              renderNavItem(item.id, item.icon, item.label, navigationCounts[item.id] || 0, true)
-            )}
-          </div>
-        )}
+            <Chevron aria-hidden="true" className="h-3 w-3" />
+          </button>
+        </div>
+        <div id={submenuId} hidden={!isExpanded} className="mt-0.5">
+          {isExpanded && subItems.map(item =>
+            renderNavItem(item.id, item.icon, item.label, navigationCounts[item.id] || 0, true)
+          )}
+        </div>
       </div>
     );
   };
