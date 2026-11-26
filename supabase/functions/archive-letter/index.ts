@@ -269,7 +269,8 @@ serve(withSafeHandler("archive-letter", async (req) => {
           due_date: dueDate.toISOString(),
           priority: 'medium',
           status: 'todo',
-          category: 'Abgeordnetenbrief',
+          // tasks_category_check erlaubt nur den kleingeschriebenen Wert.
+          category: 'abgeordnetenbrief',
           assigned_to: null // Assigned to the creator (user_id)
         })
         .select()
