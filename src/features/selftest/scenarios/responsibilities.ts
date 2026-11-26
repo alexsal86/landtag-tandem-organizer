@@ -16,6 +16,7 @@ export const responsibilitiesScenario: TestScenario = {
   features: ["employees", "permissions"],
   limitations: [
     "Der Fremdtenant-Lesetest verwendet für das angemeldete Konto nicht zugängliche IDs. Zwei echte Sitzungen und RPC-Schreibtests werden zusätzlich im isolierten Datenbanktest geprüft.",
+    "Fremdtenant-Schreibversuche über RPCs fängt bereits der Client-Guard (TENANT_SCOPE_CONFLICT) ab; die serverseitige 42501-Prüfung ist aus dem Browser nicht auslösbar und bleibt Datenbanktest/SQL vorbehalten.",
     "Die positive Themen-Meldung (Empfänger mit Primärzuständigkeit) braucht ein zweites Konto und wird nur im isolierten Datenbanktest geprüft; hier wird die Servergrenze des Anlaufs abgesichert.",
   ],
   steps: [
@@ -167,12 +168,18 @@ export const responsibilitiesScenario: TestScenario = {
           p_target: id,
         });
         const admin = ["bueroleitung", "abgeordneter"].includes(ctx.role ?? "");
+        // Schreibende RPCs bleiben am Client-Guard fail-closed; die
+        // serverseitige 42501-Prüfung ist aus dem Browser nicht auslösbar.
+        const foreignRejected = foreign.error?.code === "42501" || foreign.error?.code === "TENANT_SCOPE_CONFLICT";
         return {
           ok:
-            foreign.error?.code === "42501" &&
+            foreignRejected &&
             merge.error?.code === (admin ? "22023" : "42501"),
           message:
-            "Fremdtenant-Schreiben und unzulässige Zusammenführung werden serverseitig abgewiesen.",
+            foreign.error?.code === "TENANT_SCOPE_CONFLICT"
+              ? "Fremdtenant-Schreiben wird bereits im Client abgewiesen; unzulässige Zusammenführung serverseitig."
+              : "Fremdtenant-Schreiben und unzulässige Zusammenführung werden serverseitig abgewiesen.",
+          details: { foreignCode: foreign.error?.code, mergeCode: merge.error?.code },
         };
       },
     },

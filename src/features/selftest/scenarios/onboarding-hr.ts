@@ -35,6 +35,7 @@ export const onboardingHrScenario: TestScenario = {
   requiredRoles: ["abgeordneter", "bueroleitung"],
   limitations: [
     "Der Servertest rollt seine vollständigen Fixtures zurück. Echte Zustellung und der 15-Minuten-Job benötigen eine bereitgestellte Datenbank.",
+    "Fremdtenant-Schreibversuche über RPCs fängt bereits der Client-Guard (TENANT_SCOPE_CONFLICT) ab; die serverseitige 42501-Prüfung von save_employee_lifecycle ist aus dem Browser nicht auslösbar.",
   ],
   steps: [
     {
@@ -171,8 +172,13 @@ export const onboardingHrScenario: TestScenario = {
         });
         return {
           ok:
-            result.error?.code === "42501" && reminder.error?.code === "42501",
-          message: "Tenant- und Rollenprüfungen werden serverseitig erzwungen.",
+            (result.error?.code === "42501" || result.error?.code === "TENANT_SCOPE_CONFLICT") &&
+            reminder.error?.code === "42501",
+          message:
+            result.error?.code === "TENANT_SCOPE_CONFLICT"
+              ? "Fremde Büro-ID wird bereits im Client abgewiesen; Rollen- und Serversperren bleiben bestehen."
+              : "Tenant- und Rollenprüfungen werden serverseitig erzwungen.",
+          details: { lifecycleCode: result.error?.code, reminderCode: reminder.error?.code },
         };
       },
     },

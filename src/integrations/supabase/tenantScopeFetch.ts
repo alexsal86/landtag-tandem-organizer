@@ -90,8 +90,10 @@ const READ_ONLY_TENANT_RPCS = new Set([
   "knowledge_qa_list",
   "read_secured_contacts",
   "read_secured_letters",
-  // Prüft die aktive Mitgliedschaft selbst und liefert sonst nur einen Fehler.
+  // Beide prüfen die aktive Mitgliedschaft selbst und antworten sonst nur mit
+  // einem Fehler.
   "get_poll_availability",
+  "find_contact_duplicates_trgm",
 ]);
 
 function validateTenantArguments(payload: Record<string, unknown>, scope: ActiveTenantScope): void {

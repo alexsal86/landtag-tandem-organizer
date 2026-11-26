@@ -603,7 +603,7 @@ export const contactRelationsScenario: TestScenario = {
         const checks = {
           paarGefunden: Boolean(pair),
           begruendung: Boolean(pair?.match_reasons.some((reason) => reason.includes("E-Mail"))),
-          fremderMandantAbgewiesen: Boolean(foreign.error),
+          fremderMandantAbgewiesen: /Kein Zugriff/i.test(foreign.error?.message ?? ""),
         };
         const failed = Object.entries(checks).filter(([, ok]) => !ok).map(([name]) => name);
         return {
