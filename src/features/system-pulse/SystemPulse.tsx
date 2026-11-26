@@ -289,8 +289,8 @@ export function SystemPulse({ gaps, gapsState }: Props) {
           </div>
           {failedRows.length === 0 ? (
             <p className="px-3 py-2 text-xs text-muted-foreground">
-              {loadingRuns ? "Testlage wird geladen …"
-                : unknownRuns ? "Testlage unbekannt – es können keine Fehler angezeigt werden."
+              {loadingRuns ? "Fehler werden geladen …"
+                : unknownRuns ? "Fehler können derzeit nicht angezeigt werden."
                   : "Kein Test ist derzeit fehlgeschlagen."}
             </p>
           ) : (
