@@ -742,9 +742,9 @@ Erfasst Arbeitszeiten, Pausen und Korrekturen mit Verlauf und Prüfung der Arbei
 - **Routen:** —
 - **Frontend-Komponenten:** `src/features/timetracking/components/TimeTrackingView.tsx`
 - **Services:** `src/features/timetracking/arbzg.ts`, `src/features/timetracking/weeklyTarget.ts`
-- **Hooks:** —
+- **Hooks:** `src/components/my-work/hooks/useMyWorkTeamData.ts`
 - **Edge Functions:** —
-- **Datenbankfunktionen:** `ensure_net_minutes`, `get_daily_hours`, `get_latest_time_entry_dates`, `auto_calculate_hours_per_month`
+- **Datenbankfunktionen:** `ensure_net_minutes`, `get_daily_hours`, `auto_calculate_hours_per_month`
 - **Tabellen:** `time_entries`, `time_entry_corrections`, `time_entry_history`
 - **Abhängigkeiten:** —
 - **Selbsttests:** —
