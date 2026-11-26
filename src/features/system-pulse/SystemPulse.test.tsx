@@ -127,6 +127,13 @@ describe("SystemPulse: selftest_runs", () => {
     expect(screen.getByLabelText(/Letzte 3 Läufe/)).toBeInTheDocument();
     expect(screen.getByText(/Dauer -9 % zum Vorlauf/)).toBeInTheDocument();
     expect(screen.getByText(/langsamster Schritt: Kontakt mit allen Stammdaten anlegen \(120 ms\)/)).toBeInTheDocument();
+    // Die Übersicht der längsten Abschnitte ist einklappbar und lädt erst beim Öffnen.
+    const slowest = screen.getByTestId("pulse-slowest");
+    expect(within(slowest).queryByRole("table")).not.toBeInTheDocument();
+    fireEvent.click(within(slowest).getByRole("button", { name: /Längste Testabschnitte/ }));
+    expect(within(slowest).getByText(/je Test die zwei langsamsten Schritte/)).toBeInTheDocument();
+    expect(within(slowest).getByText("Kontakt mit allen Stammdaten anlegen")).toBeInTheDocument();
+    expect(within(slowest).getByText("120 ms")).toBeInTheDocument();
     expect(screen.getAllByRole("button", { name: /erneut testen/ }).length).toBeGreaterThan(0);
     const catalogLink = screen.getAllByRole("link", { name: /im Funktionskatalog öffnen/ })[0];
     expect(catalogLink.getAttribute("href")).toContain("/funktionskatalog?feature=");

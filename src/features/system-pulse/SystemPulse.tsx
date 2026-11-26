@@ -1,7 +1,7 @@
 import type { ReactElement } from "react";
 import { Fragment, useEffect, useMemo, useRef, useState } from "react";
 import { useQuery, useQueryClient } from "@tanstack/react-query";
-import { Activity, AlertTriangle, ArrowDown, ArrowLeft, ArrowRight, ExternalLink, RotateCw, Shield } from "lucide-react";
+import { Activity, AlertTriangle, ArrowDown, ArrowLeft, ArrowRight, ChevronDown, ExternalLink, RotateCw, Shield } from "lucide-react";
 import { Link, useNavigate } from "react-router-dom";
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
@@ -17,6 +17,7 @@ import { stepDiagnostic } from "@/features/selftest/stepDiagnostics";
 import {
   PULSE_AREAS, PULSE_GROUPS, areaAssessment, assessRun, consecutiveFailures, durationTrend,
   failedTestRows, gapSummary, historyByScenario, latestRunDetails, latestRuns, latestRunSteps, mergeRuns,
+  slowestTestSteps,
   type AreaAssessment, type FailedTestRow, type GapsState, type HistoryRun, type PersistedRun, type PulseArea,
   type PulseLevel, type PulseWorkflow,
 } from "./pulse";
@@ -115,6 +116,7 @@ export function SystemPulse({ gaps, gapsState }: Props) {
   const [open, setOpen] = useState<string | null>(null);
   const [openStep, setOpenStep] = useState<string | null>(null);
   const [onlyFailed, setOnlyFailed] = useState(false);
+  const [showSlowest, setShowSlowest] = useState(false);
   const [liveRuns, setLiveRuns] = useState<Record<string, string>>({});
   const [runningArea, setRunningArea] = useState<string | null>(null);
   const [lastRunNotice, setLastRunNotice] = useState("");
@@ -162,6 +164,10 @@ export function SystemPulse({ gaps, gapsState }: Props) {
   const unknownRuns = !currentTenant?.id || runsQuery.isError;
   const failedRows = useMemo(
     () => failedTestRows(PULSE_AREAS, runDetails, stepsByScenario),
+    [runDetails, stepsByScenario],
+  );
+  const slowestTests = useMemo(
+    () => slowestTestSteps(PULSE_AREAS, runDetails, stepsByScenario),
     [runDetails, stepsByScenario],
   );
   const latest = runsQuery.data?.[0]?.created_at;
@@ -342,6 +348,65 @@ export function SystemPulse({ gaps, gapsState }: Props) {
               </Table>
             </div>
           )}
+        </section>
+        <section data-testid="pulse-slowest" aria-label="Längste Testabschnitte" className="rounded-lg border">
+          <button type="button" onClick={() => setShowSlowest((value) => !value)} aria-expanded={showSlowest}
+            className="flex w-full items-center justify-between gap-2 px-3 py-2 text-left text-xs font-medium hover:bg-muted">
+            <span>
+              Längste Testabschnitte
+              <span className="ml-1.5 font-normal text-muted-foreground">
+                – je Test die zwei langsamsten Schritte, längster oben
+              </span>
+            </span>
+            <ChevronDown aria-hidden className={cn("h-4 w-4 shrink-0 transition-transform", showSlowest && "rotate-180")} />
+          </button>
+          {showSlowest && (slowestTests.length === 0 ? (
+            <p className="border-t px-3 py-2 text-xs text-muted-foreground">Kein Test ausführbar.</p>
+          ) : (
+            <div className="max-h-72 overflow-auto border-t">
+              <Table>
+                <TableHeader>
+                  <TableRow>
+                    <TableHead>Bereich</TableHead>
+                    <TableHead>Test</TableHead>
+                    <TableHead>1. Abschnitt (langsamster)</TableHead>
+                    <TableHead>2. Abschnitt</TableHead>
+                  </TableRow>
+                </TableHeader>
+                <TableBody>
+                  {slowestTests.map((row) => (
+                    <TableRow key={row.scenario}>
+                      <TableCell className="whitespace-nowrap align-top text-caption">{row.area}</TableCell>
+                      <TableCell className="align-top text-caption">
+                        <span className="block">{row.title}</span>
+                        <code className="text-[10px] text-muted-foreground">{row.scenario}</code>
+                        {row.totalMs !== undefined && (
+                          <span className="block text-[10px] tabular-nums text-muted-foreground">gesamt {formatDuration(row.totalMs)}</span>
+                        )}
+                      </TableCell>
+                      {[0, 1].map((index) => {
+                        const step = row.steps[index];
+                        return (
+                          <TableCell key={index} className="align-top text-caption">
+                            {step ? (
+                              <>
+                                <span className="block">{step.label}</span>
+                                <span className="text-[10px] tabular-nums text-muted-foreground">{formatDuration(step.durationMs)}</span>
+                              </>
+                            ) : (
+                              <span className="text-muted-foreground">
+                                {index === 0 ? (loadingRuns ? "wird geladen …" : "noch keine Dauer gespeichert") : "—"}
+                              </span>
+                            )}
+                          </TableCell>
+                        );
+                      })}
+                    </TableRow>
+                  ))}
+                </TableBody>
+              </Table>
+            </div>
+          ))}
         </section>
         <details className="rounded-lg border p-2 text-xs text-muted-foreground">
           <summary className="cursor-pointer">Was bedeuten die Farben?</summary>
