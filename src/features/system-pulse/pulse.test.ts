@@ -2,7 +2,7 @@ import { describe, expect, it } from "vitest";
 import { SELFTEST_SCENARIOS } from "@/features/selftest/registry";
 import {
   PULSE_AREAS, PULSE_GROUPS, areaAssessment, areaLevel, assessRun, consecutiveFailures,
-  durationTrend, gapSummary, historyByScenario, latestRunDetails, latestRuns, latestRunSteps, mergeRuns,
+  durationTrend, failedTestRows, gapSummary, historyByScenario, latestRunDetails, latestRuns, latestRunSteps, mergeRuns,
   slowestTestSteps,
   type HistoryRun, type PulseArea,
 } from "./pulse";
@@ -27,6 +27,12 @@ describe("assessRun", () => {
   });
   it("ist rot bei fehlgeschlagenem Lauf", () => {
     expect(assessRun(detail({ status: "failed" }), { now: NOW }).level).toBe("red");
+  });
+  it("nennt das Aufräumen als Grund, wenn kein Prüfschritt fehlschlug", () => {
+    expect(assessRun(detail({ status: "failed", failedSteps: 0, cleanupStatus: "failed" }), { now: NOW }))
+      .toEqual({ level: "red", reason: "Aufräumen fehlgeschlagen" });
+    expect(assessRun(detail({ status: "failed", failedSteps: 1, cleanupStatus: "failed" }), { now: NOW }).reason)
+      .toBe("Test fehlgeschlagen");
   });
   it("ist gelb bei abgebrochenem oder blockiertem Lauf", () => {
     expect(assessRun(detail({ status: "cancelled" }), { now: NOW }).reason).toBe("Test abgebrochen");
@@ -97,17 +103,20 @@ describe("latestRunDetails", () => {
       { scenario_id: "s1", scenario_title: "Alter Name", status: "failed", created_at: "2026-11-20T10:00:00Z", duration_ms: 50, failed_steps: 2, total_steps: 5 },
       {
         scenario_id: "s1", scenario_title: "Kontakt-Lifecycle", status: "ok", created_at: "2026-11-22T10:00:00Z",
-        duration_ms: 820, failed_steps: 0, total_steps: 7, app_version: "abc", keep_data: true, cleanup: { status: "failed" },
+        duration_ms: 820, failed_steps: 0, total_steps: 7, app_version: "abc", keep_data: true,
+        cleanup: { status: "failed", message: "meeting_templates/abc: Kein Cleanup für meeting_templates definiert." },
       },
       { scenario_id: "s2", status: "ok", created_at: "2026-11-21T10:00:00Z", duration_ms: null },
     ])).toEqual({
       s1: {
         status: "ok", createdAt: "2026-11-22T10:00:00Z", title: "Kontakt-Lifecycle", durationMs: 820,
         failedSteps: 0, totalSteps: 7, appVersion: "abc", keepData: true, cleanupStatus: "failed",
+        cleanupMessage: "meeting_templates/abc: Kein Cleanup für meeting_templates definiert.",
       },
       s2: {
         status: "ok", createdAt: "2026-11-21T10:00:00Z", title: undefined, durationMs: undefined,
         failedSteps: undefined, totalSteps: undefined, appVersion: undefined, keepData: false, cleanupStatus: undefined,
+        cleanupMessage: undefined,
       },
     });
   });
@@ -141,6 +150,45 @@ describe("latestRunSteps", () => {
     expect(latestRunSteps([
       { scenario_id: "s1", status: "ok", created_at: "2026-11-20T10:00:00Z", steps: [null, "x", { id: 1 }, { id: "ok", status: "ok" }] },
     ])).toEqual({ s1: { ok: { id: "ok", status: "ok", message: undefined, durationMs: undefined, label: undefined } } });
+  });
+});
+
+describe("failedTestRows", () => {
+  const areas: PulseArea[] = [{ id: "meetings", title: "Jour fixe", scenarios: ["meeting-lifecycle"], tables: [], workflows: [] }];
+  const row = (test: string, error: string) => ({
+    area: "Jour fixe", areaId: "meetings", scenario: "meeting-lifecycle",
+    scenarioId: "meeting-lifecycle", test, error,
+  });
+
+  it("nennt ein fehlgeschlagenes Aufräumen mit der gespeicherten Meldung als eigene Zeile", () => {
+    const message = "meeting_templates/abc: Kein Cleanup für meeting_templates definiert.";
+    expect(failedTestRows(areas, {
+      "meeting-lifecycle": { status: "failed", createdAt: "", failedSteps: 0, cleanupStatus: "failed", cleanupMessage: message },
+    }, {
+      "meeting-lifecycle": { create: { id: "create", label: "Meeting anlegen", status: "ok" } },
+    })).toEqual([row("Aufräumen der Testdaten", message)]);
+  });
+
+  it("ergänzt die Aufräumzeile auch neben fehlgeschlagenen Schritten", () => {
+    const rows = failedTestRows(areas, {
+      "meeting-lifecycle": { status: "failed", createdAt: "", failedSteps: 1, cleanupStatus: "failed", cleanupMessage: "1/3 Datensätze entfernt." },
+    }, {
+      "meeting-lifecycle": { check: { id: "check", label: "Prüfen", status: "failed", message: "Prüfung kaputt" } },
+    });
+    expect(rows.map((entry) => entry.test)).toEqual(["Prüfen", "Aufräumen der Testdaten"]);
+    expect(rows[1].error).toBe("1/3 Datensätze entfernt.");
+  });
+
+  it("bleibt ohne Aufräumbefund bei der Zeile für den gesamten Testlauf", () => {
+    expect(failedTestRows(areas, {
+      "meeting-lifecycle": { status: "failed", createdAt: "", failedSteps: 0, cleanupStatus: "ok" },
+    }, {})).toEqual([row("gesamter Testlauf", "Test fehlgeschlagen")]);
+  });
+
+  it("benennt ein Aufräumen ohne gespeicherte Meldung trotzdem", () => {
+    expect(failedTestRows(areas, {
+      "meeting-lifecycle": { status: "failed", createdAt: "", cleanupStatus: "failed" },
+    }, {})).toEqual([row("Aufräumen der Testdaten", "Aufräumen fehlgeschlagen")]);
   });
 });
 

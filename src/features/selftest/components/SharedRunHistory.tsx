@@ -26,6 +26,7 @@ export function SharedRunHistory({ tenantId, refreshKey }: { tenantId: string; r
             {step.details !== undefined && <pre className="whitespace-pre-wrap break-all text-xs">{JSON.stringify(step.details, null, 2)}</pre>}
           </li>;
         })}</ul>
+        {run.cleanup?.status === "failed" && <p className="text-destructive">Aufräumen fehlgeschlagen{run.cleanup.message ? `: ${run.cleanup.message}` : "."}</p>}
       </details>;
     })}
   </CardContent></Card>;

@@ -62,7 +62,16 @@ export function assessRun(
   options: { now?: number; currentVersion?: string } = {},
 ): RunAssessment {
   if (!run) return { level: "grey", reason: "noch nicht getestet" };
-  if (run.status === "failed") return { level: "red", reason: statusReason(run.status) };
+  if (run.status === "failed") {
+    // Ein Lauf kann alle Prüfschritte bestehen und trotzdem rot sein, weil die
+    // Testdaten liegen blieben. Dann ist das Aufräumen der Grund, nicht ein Test.
+    return {
+      level: "red",
+      reason: run.cleanupStatus === "failed" && (run.failedSteps ?? 0) === 0
+        ? "Aufräumen fehlgeschlagen"
+        : statusReason(run.status),
+    };
+  }
   if (run.status !== "ok") return { level: "yellow", reason: statusReason(run.status) };
   if (run.keepData) return { level: "yellow", reason: "Demo-Lauf mit behaltenen Daten" };
   if (run.cleanupStatus === "failed") return { level: "yellow", reason: "Aufräumen fehlgeschlagen" };
@@ -159,6 +168,7 @@ export interface RunDetails {
   appVersion?: string;
   keepData?: boolean;
   cleanupStatus?: string;
+  cleanupMessage?: string;
 }
 
 export interface HistoryRun {
@@ -214,6 +224,7 @@ export function latestRunDetails(rows: PersistedRun[]): Record<string, RunDetail
     appVersion: typeof row.app_version === "string" ? row.app_version : undefined,
     keepData: row.keep_data === true,
     cleanupStatus: typeof row.cleanup?.status === "string" ? row.cleanup.status : undefined,
+    cleanupMessage: typeof row.cleanup?.message === "string" ? row.cleanup.message : undefined,
   }]));
 }
 
@@ -245,6 +256,8 @@ export function latestRunSteps(rows: PersistedRun[]): Record<string, Record<stri
  * bestandene Schritte. Jede Zeile nennt, was geprüft wurde (Schrittlabel) und
  * welcher Fehler gespeichert ist. Fehlt bei einem fehlgeschlagenen Lauf die
  * Schrittliste (ältere Läufe), erscheint eine Zeile für den gesamten Testlauf.
+ * Ein fehlgeschlagenes Aufräumen erhält immer eine eigene Zeile mit der
+ * gespeicherten Meldung – sonst bliebe ein Lauf ohne Fehlschritt ohne Text.
  */
 export interface FailedTestRow {
   area: string;
@@ -267,14 +280,16 @@ export function failedTestRows(
       if (!run || run.status !== "failed") continue;
       const scenarioTitle = run.title ?? scenarioId;
       const failedSteps = Object.values(steps[scenarioId] ?? {}).filter((step) => step.status === "failed");
+      const cleanupFailed = run.cleanupStatus === "failed";
+      const cleanupMessage = run.cleanupMessage?.trim();
       if (failedSteps.length === 0) {
         rows.push({
           area: area.title,
           areaId: area.id,
           scenario: scenarioTitle,
           scenarioId,
-          test: "gesamter Testlauf",
-          error: "Test fehlgeschlagen",
+          test: cleanupFailed ? "Aufräumen der Testdaten" : "gesamter Testlauf",
+          error: (cleanupFailed ? cleanupMessage : undefined) || "Test fehlgeschlagen",
         });
         continue;
       }
@@ -290,6 +305,16 @@ export function failedTestRows(
           scenarioId,
           test: step.label ?? step.id,
           error: error || "Test fehlgeschlagen",
+        });
+      }
+      if (cleanupFailed) {
+        rows.push({
+          area: area.title,
+          areaId: area.id,
+          scenario: scenarioTitle,
+          scenarioId,
+          test: "Aufräumen der Testdaten",
+          error: cleanupMessage || "Aufräumen fehlgeschlagen",
         });
       }
     }
