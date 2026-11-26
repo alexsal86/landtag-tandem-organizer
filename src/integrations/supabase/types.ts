@@ -1075,19 +1075,25 @@ export type Database = {
         Row: {
           appointment_id: string
           created_at: string
+          created_by: string | null
           id: string
+          tenant_id: string
           topic_id: string
         }
         Insert: {
           appointment_id: string
           created_at?: string
+          created_by?: string | null
           id?: string
+          tenant_id: string
           topic_id: string
         }
         Update: {
           appointment_id?: string
           created_at?: string
+          created_by?: string | null
           id?: string
+          tenant_id?: string
           topic_id?: string
         }
         Relationships: [
@@ -1097,6 +1103,13 @@ export type Database = {
             isOneToOne: false
             referencedRelation: "appointments"
             referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "appointment_topics_tenant_topic_fkey"
+            columns: ["tenant_id", "topic_id"]
+            isOneToOne: false
+            referencedRelation: "topics"
+            referencedColumns: ["tenant_id", "id"]
           },
           {
             foreignKeyName: "appointment_topics_topic_id_fkey"
@@ -2309,7 +2322,7 @@ export type Database = {
           created_at?: string
           created_by?: string | null
           id?: string
-          tenant_id?: string
+          tenant_id: string
           topic_id: string
         }
         Update: {
@@ -2327,6 +2340,13 @@ export type Database = {
             isOneToOne: false
             referencedRelation: "case_files"
             referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "case_file_topics_tenant_topic_fkey"
+            columns: ["tenant_id", "topic_id"]
+            isOneToOne: false
+            referencedRelation: "topics"
+            referencedColumns: ["tenant_id", "id"]
           },
           {
             foreignKeyName: "case_file_topics_topic_id_fkey"
@@ -2782,48 +2802,6 @@ export type Database = {
           },
         ]
       }
-      case_item_topics: {
-        Row: {
-          case_item_id: string
-          created_at: string
-          created_by: string | null
-          id: string
-          tenant_id: string
-          topic_id: string
-        }
-        Insert: {
-          case_item_id: string
-          created_at?: string
-          created_by?: string | null
-          id?: string
-          tenant_id: string
-          topic_id: string
-        }
-        Update: {
-          case_item_id?: string
-          created_at?: string
-          created_by?: string | null
-          id?: string
-          tenant_id?: string
-          topic_id?: string
-        }
-        Relationships: [
-          {
-            foreignKeyName: "case_item_topics_case_item_id_fkey"
-            columns: ["case_item_id"]
-            isOneToOne: false
-            referencedRelation: "case_items"
-            referencedColumns: ["id"]
-          },
-          {
-            foreignKeyName: "case_item_topics_tenant_id_topic_id_fkey"
-            columns: ["tenant_id", "topic_id"]
-            isOneToOne: false
-            referencedRelation: "topics"
-            referencedColumns: ["tenant_id", "id"]
-          },
-        ]
-      }
       case_item_timeline: {
         Row: {
           case_item_id: string
@@ -2872,6 +2850,55 @@ export type Database = {
             isOneToOne: false
             referencedRelation: "tenants"
             referencedColumns: ["id"]
+          },
+        ]
+      }
+      case_item_topics: {
+        Row: {
+          case_item_id: string
+          created_at: string
+          created_by: string | null
+          id: string
+          tenant_id: string
+          topic_id: string
+        }
+        Insert: {
+          case_item_id: string
+          created_at?: string
+          created_by?: string | null
+          id?: string
+          tenant_id: string
+          topic_id: string
+        }
+        Update: {
+          case_item_id?: string
+          created_at?: string
+          created_by?: string | null
+          id?: string
+          tenant_id?: string
+          topic_id?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "case_item_topics_case_item_id_fkey"
+            columns: ["case_item_id"]
+            isOneToOne: false
+            referencedRelation: "case_items"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "case_item_topics_tenant_id_fkey"
+            columns: ["tenant_id"]
+            isOneToOne: false
+            referencedRelation: "tenants"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "case_item_topics_tenant_id_topic_id_fkey"
+            columns: ["tenant_id", "topic_id"]
+            isOneToOne: false
+            referencedRelation: "topics"
+            referencedColumns: ["tenant_id", "id"]
           },
         ]
       }
@@ -3248,7 +3275,7 @@ export type Database = {
           created_at?: string
           created_by?: string | null
           id?: string
-          tenant_id?: string
+          tenant_id: string
           topic_id: string
         }
         Update: {
@@ -3266,6 +3293,13 @@ export type Database = {
             isOneToOne: false
             referencedRelation: "contacts"
             referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "contact_topics_tenant_topic_fkey"
+            columns: ["tenant_id", "topic_id"]
+            isOneToOne: false
+            referencedRelation: "topics"
+            referencedColumns: ["tenant_id", "id"]
           },
           {
             foreignKeyName: "contact_topics_topic_id_fkey"
@@ -4334,7 +4368,7 @@ export type Database = {
           created_by?: string | null
           document_id: string
           id?: string
-          tenant_id?: string
+          tenant_id: string
           topic_id: string
         }
         Update: {
@@ -4352,6 +4386,13 @@ export type Database = {
             isOneToOne: false
             referencedRelation: "documents"
             referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "document_topics_tenant_topic_fkey"
+            columns: ["tenant_id", "topic_id"]
+            isOneToOne: false
+            referencedRelation: "topics"
+            referencedColumns: ["tenant_id", "id"]
           },
           {
             foreignKeyName: "document_topics_topic_id_fkey"
@@ -9129,20 +9170,26 @@ export type Database = {
       knowledge_document_topics: {
         Row: {
           created_at: string
+          created_by: string | null
           document_id: string
           id: string
+          tenant_id: string
           topic_id: string
         }
         Insert: {
           created_at?: string
+          created_by?: string | null
           document_id: string
           id?: string
+          tenant_id: string
           topic_id: string
         }
         Update: {
           created_at?: string
+          created_by?: string | null
           document_id?: string
           id?: string
+          tenant_id?: string
           topic_id?: string
         }
         Relationships: [
@@ -9152,6 +9199,13 @@ export type Database = {
             isOneToOne: false
             referencedRelation: "knowledge_documents"
             referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "knowledge_document_topics_tenant_topic_fkey"
+            columns: ["tenant_id", "topic_id"]
+            isOneToOne: false
+            referencedRelation: "topics"
+            referencedColumns: ["tenant_id", "id"]
           },
           {
             foreignKeyName: "knowledge_document_topics_topic_id_fkey"
@@ -9707,6 +9761,20 @@ export type Database = {
             isOneToOne: false
             referencedRelation: "tenants"
             referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "knowledge_question_topics_tenant_id_question_id_fkey"
+            columns: ["tenant_id", "question_id"]
+            isOneToOne: false
+            referencedRelation: "knowledge_question_cards"
+            referencedColumns: ["tenant_id", "id"]
+          },
+          {
+            foreignKeyName: "knowledge_question_topics_tenant_id_question_id_fkey"
+            columns: ["tenant_id", "question_id"]
+            isOneToOne: false
+            referencedRelation: "knowledge_question_summaries"
+            referencedColumns: ["tenant_id", "id"]
           },
           {
             foreignKeyName: "knowledge_question_topics_tenant_id_question_id_fkey"
@@ -10630,20 +10698,26 @@ export type Database = {
       map_flag_topics: {
         Row: {
           created_at: string | null
+          created_by: string | null
           flag_id: string
           id: string
+          tenant_id: string
           topic_id: string
         }
         Insert: {
           created_at?: string | null
+          created_by?: string | null
           flag_id: string
           id?: string
+          tenant_id: string
           topic_id: string
         }
         Update: {
           created_at?: string | null
+          created_by?: string | null
           flag_id?: string
           id?: string
+          tenant_id?: string
           topic_id?: string
         }
         Relationships: [
@@ -10653,6 +10727,13 @@ export type Database = {
             isOneToOne: false
             referencedRelation: "map_flags"
             referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "map_flag_topics_tenant_topic_fkey"
+            columns: ["tenant_id", "topic_id"]
+            isOneToOne: false
+            referencedRelation: "topics"
+            referencedColumns: ["tenant_id", "id"]
           },
           {
             foreignKeyName: "map_flag_topics_topic_id_fkey"
@@ -15380,20 +15461,26 @@ export type Database = {
       task_decision_topics: {
         Row: {
           created_at: string
+          created_by: string | null
           decision_id: string
           id: string
+          tenant_id: string
           topic_id: string
         }
         Insert: {
           created_at?: string
+          created_by?: string | null
           decision_id: string
           id?: string
+          tenant_id: string
           topic_id: string
         }
         Update: {
           created_at?: string
+          created_by?: string | null
           decision_id?: string
           id?: string
+          tenant_id?: string
           topic_id?: string
         }
         Relationships: [
@@ -15403,6 +15490,13 @@ export type Database = {
             isOneToOne: false
             referencedRelation: "task_decisions"
             referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "task_decision_topics_tenant_topic_fkey"
+            columns: ["tenant_id", "topic_id"]
+            isOneToOne: false
+            referencedRelation: "topics"
+            referencedColumns: ["tenant_id", "id"]
           },
           {
             foreignKeyName: "task_decision_topics_topic_id_fkey"
@@ -15623,20 +15717,26 @@ export type Database = {
       task_topics: {
         Row: {
           created_at: string
+          created_by: string | null
           id: string
           task_id: string
+          tenant_id: string
           topic_id: string
         }
         Insert: {
           created_at?: string
+          created_by?: string | null
           id?: string
           task_id: string
+          tenant_id: string
           topic_id: string
         }
         Update: {
           created_at?: string
+          created_by?: string | null
           id?: string
           task_id?: string
+          tenant_id?: string
           topic_id?: string
         }
         Relationships: [
@@ -15646,6 +15746,13 @@ export type Database = {
             isOneToOne: false
             referencedRelation: "tasks"
             referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "task_topics_tenant_topic_fkey"
+            columns: ["tenant_id", "topic_id"]
+            isOneToOne: false
+            referencedRelation: "topics"
+            referencedColumns: ["tenant_id", "id"]
           },
           {
             foreignKeyName: "task_topics_topic_id_fkey"
@@ -16966,6 +17073,13 @@ export type Database = {
         }
         Relationships: [
           {
+            foreignKeyName: "topics_merged_into_fkey"
+            columns: ["merged_into"]
+            isOneToOne: false
+            referencedRelation: "topics"
+            referencedColumns: ["id"]
+          },
+          {
             foreignKeyName: "topics_tenant_id_fkey"
             columns: ["tenant_id"]
             isOneToOne: false
@@ -18005,14 +18119,6 @@ export type Database = {
       }
       auto_archive_completed_preparations: { Args: never; Returns: undefined }
       auto_update_poll_status: { Args: never; Returns: undefined }
-      batch_task_stafette_action: {
-        Args: { _action: string; _task_ids: string[]; _tenant_id: string }
-        Returns: Json
-      }
-      batch_task_stafette_preview: {
-        Args: { _action: string; _task_ids: string[]; _tenant_id: string }
-        Returns: Json
-      }
       bulk_update_contact_fields: {
         Args: {
           _ids: string[]
@@ -18347,6 +18453,7 @@ export type Database = {
         Args: { p_kind: string; p_region_kind?: string; p_topic: string }
         Returns: Json
       }
+      core_task_status_keys: { Args: never; Returns: string[] }
       create_appointment_poll_with_details: {
         Args: {
           p_deadline?: string
@@ -18369,25 +18476,12 @@ export type Database = {
         }
         Returns: string
       }
-      create_case_file_task: {
-        Args: {
-          p_assigned_to?: string | null
-          p_case_file_id: string
-          p_id: string
-          p_title: string
-        }
-        Returns: string
-      }
       create_default_checklist_items:
         | { Args: { planning_id: string }; Returns: undefined }
         | {
             Args: { planning_id: string; template_id_param?: string }
             Returns: undefined
           }
-      create_decision_task: {
-        Args: { p_decision_id: string }
-        Returns: string
-      }
       create_document_annotation_task: {
         Args: { _annotation: string; _assignee?: string; _title?: string }
         Returns: string
@@ -18441,20 +18535,12 @@ export type Database = {
             }
             Returns: string
           }
-      create_note_work: {
-        Args: { p_kind: string; p_note_id: string }
-        Returns: string
-      }
       create_poll_notification: {
         Args: {
           _notification_type: string
           _participant_id: string
           _poll_id: string
         }
-        Returns: string
-      }
-      create_preparation_followup: {
-        Args: { _point_id?: string; _preparation_id: string }
         Returns: string
       }
       create_work_decision: {
@@ -18611,14 +18697,10 @@ export type Database = {
         Returns: string
       }
       ensure_topic: {
-        Args: { p_label: string; p_module?: string | null; p_tenant: string }
+        Args: { p_label: string; p_module?: string; p_tenant: string }
         Returns: string
       }
       ensure_weekly_question: { Args: { p_tenant: string }; Returns: string }
-      escalate_task: {
-        Args: { _note?: string; _task_id: string }
-        Returns: undefined
-      }
       execute_annual_automation_routine: {
         Args: { _annual_task_id: string; _rule_id: string; _year: number }
         Returns: Json
@@ -18936,14 +19018,6 @@ export type Database = {
       get_globally_shared_user_ids: {
         Args: { _user_id: string }
         Returns: string[]
-      }
-      get_latest_employee_meetings: {
-        Args: { p_employee_ids: string[] }
-        Returns: {
-          employee_id: string
-          meeting_date: string
-          meeting_id: string
-        }[]
       }
       get_latest_selftest_runs: {
         Args: { p_tenant_id: string }
@@ -19273,42 +19347,27 @@ export type Database = {
         Args: { p_follow: boolean; p_question: string }
         Returns: undefined
       }
-      knowledge_qa_list:
-        | {
-            Args: {
-              p_cursor?: Json
-              p_limit?: number
-              p_query?: string
-              p_tenant: string
-              p_view?: string
-            }
-            Returns: {
-              items: Json
-              next_cursor: Json
-              total_count: number
-            }[]
-          }
-        | {
-            Args: {
-              p_assignee?: string
-              p_cursor?: Json
-              p_limit?: number
-              p_query?: string
-              p_quick?: string
-              p_sort?: string
-              p_status?: string
-              p_tag?: string
-              p_tenant: string
-              p_view?: string
-            }
-            Returns: {
-              counts: Json
-              items: Json
-              next_cursor: Json
-              topics: Json
-              total_count: number
-            }[]
-          }
+      knowledge_qa_list: {
+        Args: {
+          p_assignee?: string
+          p_cursor?: Json
+          p_limit?: number
+          p_query?: string
+          p_quick?: string
+          p_sort?: string
+          p_status?: string
+          p_tag?: string
+          p_tenant: string
+          p_view?: string
+        }
+        Returns: {
+          counts: Json
+          items: Json
+          next_cursor: Json
+          topics: Json
+          total_count: number
+        }[]
+      }
       knowledge_qa_manage: {
         Args: {
           p_action: string
@@ -19612,6 +19671,14 @@ export type Database = {
         }[]
       }
       knowledge_qa_tag_topics: {
+        Args: { p_tenant: string }
+        Returns: {
+          count: number
+          id: string
+          name: string
+        }[]
+      }
+      knowledge_qa_topic_counts: {
         Args: { p_tenant: string }
         Returns: {
           count: number
@@ -19976,6 +20043,18 @@ export type Database = {
         }
         Returns: Json
       }
+      rename_config_item_unprotected: {
+        Args: {
+          _color?: string
+          _icon?: string
+          _id: string
+          _label: string
+          _set_color?: boolean
+          _set_icon?: boolean
+          _table: string
+        }
+        Returns: Json
+      }
       reopen_meeting_protocol: {
         Args: { p_meeting_id: string; p_reason: string }
         Returns: undefined
@@ -20056,10 +20135,6 @@ export type Database = {
           isOneToOne: true
           isSetofReturn: false
         }
-      }
-      restore_archived_task: {
-        Args: { _archived_id: string; _tenant_id: string }
-        Returns: number
       }
       run_data_lint: {
         Args: { _tenant_id: string }
@@ -20306,7 +20381,6 @@ export type Database = {
         Args: { _item_id?: string; _meeting_id: string }
         Returns: Json
       }
-      task_approval_sla: { Args: { _tenant_id: string }; Returns: Json }
       team_bingo_config: { Args: { p_tenant: string }; Returns: Json }
       team_ritual_employment: { Args: { p_tenant: string }; Returns: Json }
       team_ritual_enabled: { Args: { p_tenant: string }; Returns: boolean }
@@ -20347,7 +20421,6 @@ export type Database = {
         }[]
       }
       undo_contact_bulk_action: { Args: { _audit_id: string }; Returns: number }
-      undo_task_batch_action: { Args: { _batch_id: string }; Returns: number }
       update_contact_usage: {
         Args: { p_contact_id: string; p_tenant_id?: string; p_user_id?: string }
         Returns: undefined
