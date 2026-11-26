@@ -68,7 +68,7 @@ const ICON_MAP: Record<string, React.ComponentType<{ className?: string }>> = {
 
 const makeId = () => crypto.randomUUID();
 
-export function PressOccasionManager() {
+export function PressOccasionManager({ templateRevision }: { templateRevision: number }) {
   const { currentTenant } = useTenant();
   const [occasions, setOccasions] = useState<PressOccasion[]>([]);
   const [templates, setTemplates] = useState<PressTemplate[]>([]);
@@ -85,9 +85,12 @@ export function PressOccasionManager() {
   useEffect(() => {
     if (currentTenant) {
       void loadOccasions();
-      void loadTemplates();
     }
   }, [currentTenant]);
+
+  useEffect(() => {
+    if (currentTenant) void loadTemplates();
+  }, [currentTenant, templateRevision]);
 
   const loadOccasions = async () => {
     if (!currentTenant) return;

@@ -73,6 +73,7 @@
     "test:feature-catalog": "node --test scripts/__tests__/feature-catalog.test.mjs scripts/__tests__/state-artifact.test.mjs scripts/__tests__/pulse-areas.test.mjs && vitest run src/features/feature-catalog src/features/system-pulse",
     "test:selftest": "vitest run src/features/selftest src/services/letterWorkflow.test.ts src/components/letters/__tests__/types.test.ts src/components/letters/hooks/useLetterOperations.integration.test.tsx",
     "typecheck:selftest": "tsc -p tsconfig.selftest.json --noEmit",
+    "typecheck:app-selftest": "npm run typecheck:baseline-global && npm run typecheck:selftest",
     "typecheck:supabase-real-types": "tsc -p tsconfig.supabase-real-types.json --noEmit",
     "test:selftest:coverage-check": "node --test scripts/__tests__/selftest-coverage.test.mjs",
     "test:supabase-rpc-types": "node --test scripts/__tests__/supabase-rpc-types.test.mjs",

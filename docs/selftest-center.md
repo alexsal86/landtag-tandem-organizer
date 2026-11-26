@@ -58,12 +58,12 @@ Reine Geschäftsregeln brauchen keine Anmeldung und keinen Datenbankzugriff. Die
 npm ci --legacy-peer-deps
 npm run check:selftest-coverage
 npm run test:selftest:coverage-check
-npm run typecheck:selftest
+npm run typecheck:app-selftest   # tsconfig.app.json und tsconfig.selftest.json (vor dem Push)
 npm run test:selftest
 npm run build
 ```
 
-Die eigenständige CI in `.github/workflows/selftests.yml` führt diese Center-Prüfungen und den öffentlichen Browsertest verbindlich aus. Fehlgeschlagene Prüfungen werden nicht automatisch heruntergestuft. Die übrige Projekt-CI und ihre breitere Testsuite bestehen daneben weiter.
+`npm run typecheck:app-selftest` ist das gemeinsame Typ-Gate: Es prüft die App-Konfiguration und die Selbsttest-Konfiguration nacheinander. Ein reines `npx tsc --noEmit` genügt dafür nicht, weil die Wurzel-`tsconfig.json` nur Referenzen ohne Dateien enthält und damit nichts prüft. Die Projekt-CI führt dasselbe Gate als eigenen Schritt aus; die eigenständige CI in `.github/workflows/selftests.yml` führt diese Center-Prüfungen und den öffentlichen Browsertest verbindlich aus. Fehlgeschlagene Prüfungen werden nicht automatisch heruntergestuft. Die übrige Projekt-CI und ihre breitere Testsuite bestehen daneben weiter.
 
 Die bisherigen Speichersimulationen heißen ausdrücklich Modell-Smokes (`npm run test:model-smoke`). Bestehende `test:e2e:smoke-*`-Aufrufe bleiben als Kompatibilitätsaufrufe erhalten und weisen in ihrer Ausgabe auf den simulierten Umfang hin. Echte Browsertests laufen mit `npm run test:e2e`.
 

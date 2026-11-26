@@ -171,13 +171,11 @@ jobs:
       - name: Mandatory Supabase RPC type check
         run: npm run check:supabase-rpc-types
 
-      - name: Type Check (falls TS)
-        run: |
-          if [ -f tsconfig.json ]; then
-            npx tsc --noEmit
-          else
-            echo "Kein tsconfig.json – überspringe Type Check."
-          fi
+      # Früher lief hier `npx tsc --noEmit` gegen die Solution-Config
+      # (tsconfig.json mit "files": [] und nur references) und prüfte damit
+      # nichts. Beide echten Konfigurationen laufen jetzt verbindlich.
+      - name: Type Check App und Selbsttests (tsconfig.app.json + tsconfig.selftest.json)
+        run: npm run typecheck:app-selftest
 
       - name: Lint Knowledge-Bereich (blockierend)
         run: npm run lint:knowledge
