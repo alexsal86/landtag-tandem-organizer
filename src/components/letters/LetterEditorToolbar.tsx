@@ -1,6 +1,6 @@
 import React from 'react';
 import { Tooltip, TooltipContent, TooltipProvider, TooltipTrigger } from '@/components/ui/tooltip';
-import { Save, Users, Eye, AlertTriangle, FileText, MessageSquare, Paperclip, Settings, Layout, Building, Info } from 'lucide-react';
+import { Save, Users, Eye, AlertTriangle, FileText, MessageSquare, Paperclip, Settings, Layout, Building, Info, ZoomIn, ZoomOut, RotateCcw } from 'lucide-react';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
 import { Textarea } from '@/components/ui/textarea';
@@ -29,6 +29,8 @@ interface LetterEditorToolbarProps {
   activeUsers: string[];
   showDINPreview: boolean;
   setShowDINPreview: (v: boolean) => void;
+  zoom: number;
+  onZoomChange: (zoom: number) => void;
   showBriefDetails: boolean;
   setShowBriefDetails: (v: boolean) => void;
   showPagination: boolean;
@@ -47,13 +49,13 @@ export const LetterEditorToolbar: React.FC<LetterEditorToolbarProps> = React.mem
   letter, editedLetter, setEditedLetter, currentTemplate, canEdit,
   saving, lastSaved, hasUnsavedChanges, activeUsers,
   showDINPreview, setShowDINPreview, showBriefDetails, setShowBriefDetails,
-  showPagination, setShowPagination,
+  showPagination, setShowPagination, zoom, onZoomChange,
   attachments, fetchAttachments, senderInfos, informationBlocks, templates,
   computedSalutation, onTemplateChange, onAutoSaveSchedule,
 }) => {
   return (
     <div className="flex-none border-b bg-card/50 p-4">
-      <div className="flex items-center justify-between">
+      <div className="flex flex-wrap items-center justify-between gap-2">
         <div className="flex items-center gap-3">
           <FileText className="h-5 w-5 text-primary" />
           <div className="flex items-center gap-2">
@@ -63,7 +65,7 @@ export const LetterEditorToolbar: React.FC<LetterEditorToolbarProps> = React.mem
             )}
           </div>
         </div>
-        <div className="flex items-center gap-2">
+        <div className="flex flex-wrap items-center gap-2">
           {saving && <Badge variant="outline" className="text-xs animate-pulse">•••</Badge>}
           {lastSaved && !saving && (
             <Badge variant="outline" className="text-xs opacity-60">✓ {lastSaved.toLocaleTimeString('de-DE', { hour: '2-digit', minute: '2-digit' })}</Badge>
@@ -235,6 +237,22 @@ export const LetterEditorToolbar: React.FC<LetterEditorToolbarProps> = React.mem
               </div>
             </DropdownMenuContent>
           </DropdownMenu>
+
+          <div className="flex items-center gap-1" role="group" aria-label="Zoom">
+            <Button variant="outline" size="icon" aria-label="Verkleinern"
+              onClick={() => onZoomChange(Math.max(0.3, zoom - 0.1))}>
+              <ZoomOut className="h-4 w-4" />
+            </Button>
+            <span className="min-w-12 text-center text-xs font-medium">{Math.round(zoom * 100)}%</span>
+            <Button variant="outline" size="icon" aria-label="Vergrößern"
+              onClick={() => onZoomChange(Math.min(1.5, zoom + 0.1))}>
+              <ZoomIn className="h-4 w-4" />
+            </Button>
+            <Button variant="outline" size="icon" aria-label="Zoom auf 100 Prozent zurücksetzen"
+              onClick={() => onZoomChange(1)}>
+              <RotateCcw className="h-4 w-4" />
+            </Button>
+          </div>
 
           {/* Workflow Buttons */}
           <Button variant="outline" size="sm" onClick={() => {}}>

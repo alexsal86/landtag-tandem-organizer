@@ -72,7 +72,7 @@ const Index = (): React.JSX.Element => {
   const { loading: tenantLoading, currentTenant } = useTenant();
   const navigate = useNavigate();
   const location = useLocation();
-  const { section, subId } = useParams();
+  const { subId, letterId } = useParams();
   
   // Wait for both auth AND tenant to be loaded before rendering
   const loading = authLoading || (user && tenantLoading);
@@ -229,8 +229,8 @@ const Index = (): React.JSX.Element => {
       case "kreisverbände":
         return withSectionBoundary('Kreisverbände', <PartyAssociationsMapView />);
       case "documents":
-        if (section === 'letters' && subId) {
-          return withSectionBoundary('Brief', <LetterDetail />);
+        if (letterId) {
+          return withSectionBoundary('Brief', <LetterDetail key={letterId} />);
         }
         return withSectionBoundary('Dokumente', <DocumentsView />);
       case "knowledge":

@@ -291,7 +291,7 @@ const LetterEditor: React.FC<LetterEditorProps> = ({ letter, isOpen, onClose, on
   if (!isOpen) return null;
 
   return (
-    <div className="flex flex-col h-full bg-background border rounded-lg overflow-hidden">
+    <div className="flex flex-col bg-background border rounded-lg">
       <LetterEditorToolbar
         letter={letter}
         editedLetter={editedLetter}
@@ -304,6 +304,8 @@ const LetterEditor: React.FC<LetterEditorProps> = ({ letter, isOpen, onClose, on
         activeUsers={activeUsers}
         showDINPreview={showDINPreview}
         setShowDINPreview={setShowDINPreview}
+        zoom={previewZoom}
+        onZoomChange={setPreviewZoom}
         showBriefDetails={showBriefDetails}
         setShowBriefDetails={setShowBriefDetails}
         showPagination={showPagination}
@@ -342,124 +344,114 @@ const LetterEditor: React.FC<LetterEditorProps> = ({ letter, isOpen, onClose, on
       )}
 
       {/* Content */}
-      <div className="flex-1 flex overflow-hidden">
-        <div className="flex-1 flex flex-col overflow-hidden">
-          {showDINPreview ? (
-            <div className="flex-1 flex flex-col overflow-hidden">
-              <div className="flex-none flex items-center justify-between p-3 border-b bg-muted/30">
-                <h3 className="text-sm font-medium">Druckvorschau (schreibgeschützt)</h3>
-                <div className="flex items-center gap-2">
-                  <Button variant={showLayoutDebug ? 'default' : 'outline'} size="sm" className="h-7" onClick={() => setShowLayoutDebug(!showLayoutDebug)}><Ruler className="h-3.5 w-3.5 mr-1" />Layout</Button>
-                  <Button variant="outline" size="sm" className="h-7 px-2" onClick={() => setPreviewZoom(Math.max(0.3, previewZoom - 0.1))}>-</Button>
-                  <span className="text-xs min-w-[40px] text-center">{Math.round(previewZoom * 100)}%</span>
-                  <Button variant="outline" size="sm" className="h-7 px-2" onClick={() => setPreviewZoom(Math.min(1.2, previewZoom + 0.1))}>+</Button>
-                  <Button variant="outline" size="sm" className="h-7 px-2" onClick={() => setPreviewZoom(0.75)}>Reset</Button>
-                </div>
-              </div>
-              <div className="flex-1 overflow-auto bg-muted/50 p-6">
-                <div style={{ transform: `scale(${previewZoom})`, transformOrigin: 'top center', marginBottom: `${(previewZoom - 1) * 297}mm` }}>
-                  <div className="mx-auto" style={{ width: '210mm', boxShadow: '0 4px 24px rgba(0,0,0,0.12)' }}>
-                    <DIN5008LetterLayout template={layoutTemplate} senderInfo={senderInfos.find(s => s.id === editedLetter.sender_info_id)}
-                      informationBlock={informationBlocks.find(b => editedLetter.information_block_ids?.includes(b.id)) ? [informationBlocks.find(b => editedLetter.information_block_ids?.includes(b.id))!] : undefined}
-                      recipientAddress={editedLetter.recipient_address ? { name: editedLetter.recipient_name, address: editedLetter.recipient_address } : undefined}
-                      subject={editedLetter.subject} letterDate={editedLetter.letter_date} referenceNumber={editedLetter.reference_number}
-                      content={editedLetter.content_html || editedLetter.content || ''} attachments={attachments} showPagination={showPagination} debugMode={showLayoutDebug}
-                      salutation={editedLetter.salutation_override || computedSalutation} layoutSettings={getLayoutSettings()}
-                      addressFieldElements={substitutedBlocks.canvasBlocks.addressField} returnAddressElements={substitutedBlocks.canvasBlocks.returnAddress}
-                      infoBlockElements={substitutedBlocks.canvasBlocks.infoBlock} subjectElements={substitutedBlocks.canvasBlocks.subject}
-                      attachmentElements={substitutedBlocks.canvasBlocks.attachments} footerTextElements={substitutedBlocks.canvasBlocks.footer}
-                      addressFieldLines={substitutedBlocks.lineBlocks.addressField} returnAddressLines={substitutedBlocks.lineBlocks.returnAddress}
-                      infoBlockLines={substitutedBlocks.lineBlocks.infoBlock} />
-                  </div>
-                </div>
-              </div>
+      {showDINPreview ? (
+        <div className="flex-1 flex flex-col min-w-0">
+          <div className="flex-none flex items-center justify-between p-3 border-b bg-muted/30">
+            <h3 className="text-sm font-medium">Druckvorschau (schreibgeschützt)</h3>
+            <div className="flex items-center gap-2">
+              <Button variant={showLayoutDebug ? 'default' : 'outline'} size="sm" className="h-7" onClick={() => setShowLayoutDebug(!showLayoutDebug)}><Ruler className="h-3.5 w-3.5 mr-1" />Layout</Button>
             </div>
-          ) : (
-            <div className="flex-1 flex overflow-hidden">
-              {viewMode === 'split' && showTextSplitEditor && (
-                <div className="w-[52%] min-w-[420px] border-r bg-background flex flex-col">
-                  <div className="flex items-center justify-between gap-2 px-3 py-2 border-b bg-muted/20">
-                    <div className="flex items-center gap-2">
-                      <Edit3 className="h-4 w-4 text-muted-foreground" /><h3 className="text-sm font-medium">Brieftext</h3>
-                      <Badge variant="secondary" className="text-[10px] px-1.5 py-0">Live</Badge>
-                    </div>
-                    <Button size="sm" variant="default" className="h-7 px-2" disabled={!canEdit || saving}
-                      onClick={() => handleManualSave(latestContentRef.current.content, toSerializedContentNodes(latestContentRef.current.contentNodes ?? undefined))}>
-                      <Save className="h-3.5 w-3.5 mr-1" />Speichern
-                    </Button>
-                    <Button size="sm" variant="ghost" className="h-7 px-2" onClick={() => setShowTextSplitEditor(false)}><X className="h-3.5 w-3.5" /></Button>
-                  </div>
-                  <div className="flex-1 overflow-auto p-3">
-                    <EnhancedLexicalEditor key={letter?.id || 'new'} content={draftContent || letter?.content || ''} contentNodes={toSerializedContentNodes(draftContentNodes ?? letter?.content_nodes)}
-                      onChange={({ plainText, nodesJson, html }) => { setDraftContent(plainText || ''); setDraftContentNodes(nodesJson && nodesJson.trim() !== '' ? nodesJson : null); setDraftContentHtml(html || null); }}
-                      placeholder="Brieftext hier eingeben..." documentId={letter?.id} showToolbar={canEdit} editable={canEdit}
-                      onMentionInsert={(userId) => pendingMentionsRef.current.add(userId)} defaultFontFamily={templateDefaultFontFamily} />
-                  </div>
+          </div>
+          <div className="flex-1 bg-muted/50 p-6">
+            <div className="mx-auto" style={{ zoom: previewZoom, width: '210mm', boxShadow: '0 4px 24px rgba(0,0,0,0.12)' }}>
+              <DIN5008LetterLayout template={layoutTemplate} senderInfo={senderInfos.find(s => s.id === editedLetter.sender_info_id)}
+                informationBlock={informationBlocks.find(b => editedLetter.information_block_ids?.includes(b.id)) ? [informationBlocks.find(b => editedLetter.information_block_ids?.includes(b.id))!] : undefined}
+                recipientAddress={editedLetter.recipient_address ? { name: editedLetter.recipient_name, address: editedLetter.recipient_address } : undefined}
+                subject={editedLetter.subject} letterDate={editedLetter.letter_date} referenceNumber={editedLetter.reference_number}
+                content={editedLetter.content_html || editedLetter.content || ''} attachments={attachments} showPagination={showPagination} debugMode={showLayoutDebug}
+                salutation={editedLetter.salutation_override || computedSalutation} layoutSettings={getLayoutSettings()}
+                addressFieldElements={substitutedBlocks.canvasBlocks.addressField} returnAddressElements={substitutedBlocks.canvasBlocks.returnAddress}
+                infoBlockElements={substitutedBlocks.canvasBlocks.infoBlock} subjectElements={substitutedBlocks.canvasBlocks.subject}
+                attachmentElements={substitutedBlocks.canvasBlocks.attachments} footerTextElements={substitutedBlocks.canvasBlocks.footer}
+                addressFieldLines={substitutedBlocks.lineBlocks.addressField} returnAddressLines={substitutedBlocks.lineBlocks.returnAddress}
+                infoBlockLines={substitutedBlocks.lineBlocks.infoBlock} />
+            </div>
+          </div>
+        </div>
+      ) : (
+        <div className="flex-1 flex min-w-0">
+          {viewMode === 'split' && showTextSplitEditor && (
+            <div className="w-[52%] min-w-[420px] border-r bg-background flex flex-col">
+              <div className="flex items-center justify-between gap-2 px-3 py-2 border-b bg-muted/20">
+                <div className="flex items-center gap-2">
+                  <Edit3 className="h-4 w-4 text-muted-foreground" /><h3 className="text-sm font-medium">Brieftext</h3>
+                  <Badge variant="secondary" className="text-[10px] px-1.5 py-0">Live</Badge>
                 </div>
-              )}
-              <div className="flex-1 overflow-auto bg-muted/30 p-4">
-                <div className="flex items-center gap-2 mb-3">
-                  <div className="inline-flex rounded-md border bg-background p-0.5" role="group" aria-label="Ansicht">
-                    <Button size="sm" variant={viewMode === 'page' ? 'default' : 'ghost'} className="h-7 px-3"
-                      onClick={() => { setShowTextSplitEditor(true); setViewMode('page'); }}>Auf der Seite schreiben</Button>
-                    <Button size="sm" variant={viewMode === 'split' ? 'default' : 'ghost'} className="h-7 px-3"
-                      onClick={() => setViewMode('split')}>Geteilte Ansicht</Button>
-                  </div>
-                  {viewMode === 'page' && (
-                    <Button size="sm" variant="default" className="h-7 px-2 ml-auto" disabled={!canEdit || saving}
-                      onClick={() => handleManualSave(latestContentRef.current.content, toSerializedContentNodes(latestContentRef.current.contentNodes ?? undefined))}>
-                      <Save className="h-3.5 w-3.5 mr-1" />Speichern
-                    </Button>
-                  )}
-                </div>
-                {viewMode === 'page' && canEdit && <div ref={pageToolbarRef} className="sticky top-0 z-sticky mb-3 rounded-md border bg-background shadow-sm" />}
-                {viewMode === 'split' && !showTextSplitEditor && (
-                  <div className="flex items-center gap-2 mb-3">
-                    <Button size="sm" variant="outline" onClick={() => {
-                      setDraftContent(editedLetter.content || ''); setDraftContentNodes(editedLetter.content_nodes || null); setDraftContentHtml(editedLetter.content_html || null); setShowTextSplitEditor(true);
-                    }}><Edit3 className="h-4 w-4 mr-2" />Editor öffnen</Button>
-                  </div>
-                )}
-                <LetterEditorCanvas template={layoutTemplate} subject={editedLetter.subject} salutation={editedLetter.salutation_override || computedSalutation}
-                  content={editedLetter.content_html || editedLetter.content || ''} contentNodes={toSerializedContentNodes(editedLetter.content_nodes ?? undefined)}
-                  recipientAddress={editedLetter.recipient_address ? { name: editedLetter.recipient_name, address: editedLetter.recipient_address } : undefined}
-                  letterDate={editedLetter.letter_date} referenceNumber={editedLetter.reference_number} attachments={attachments}
-                  showPagination={showPagination} senderInfo={senderInfos.find(s => s.id === editedLetter.sender_info_id)}
-                  informationBlock={informationBlocks.find(b => editedLetter.information_block_ids?.includes(b.id)) ? [informationBlocks.find(b => editedLetter.information_block_ids?.includes(b.id))!] : undefined} layoutSettings={getLayoutSettings()}
-                  displayContentHtml={viewMode === 'page' ? (draftContentHtml ?? editedLetter.content_html ?? editedLetter.content ?? '') : (editedLetter.content_html || editedLetter.content || '')}
-                  inlineEditor={viewMode === 'page' ? (
-                    <EnhancedLexicalEditor key={`page-${letter?.id || 'new'}`} bare content={draftContent || letter?.content || ''} contentNodes={toSerializedContentNodes(draftContentNodes ?? letter?.content_nodes)}
-                      onChange={({ plainText, nodesJson, html }) => { setDraftContent(plainText || ''); setDraftContentNodes(nodesJson && nodesJson.trim() !== '' ? nodesJson : null); setDraftContentHtml(html || null); }}
-                      placeholder="Hier direkt auf dem Brief schreiben…" documentId={letter?.id} showToolbar={canEdit} editable={canEdit}
-                      renderToolbarPortal={pageToolbarRef}
-                      onMentionInsert={(userId) => pendingMentionsRef.current.add(userId)} defaultFontFamily={templateDefaultFontFamily} />
-                  ) : undefined}
-                  addressFieldElements={substitutedBlocks.canvasBlocks.addressField} returnAddressElements={substitutedBlocks.canvasBlocks.returnAddress}
-                  infoBlockElements={substitutedBlocks.canvasBlocks.infoBlock} subjectElements={substitutedBlocks.canvasBlocks.subject}
-                  attachmentElements={substitutedBlocks.canvasBlocks.attachments} footerTextElements={substitutedBlocks.canvasBlocks.footer}
-                  addressFieldLines={substitutedBlocks.lineBlocks.addressField} returnAddressLines={substitutedBlocks.lineBlocks.returnAddress}
-                  infoBlockLines={substitutedBlocks.lineBlocks.infoBlock} canEdit={canEdit} documentId={letter?.id}
-                  onContentChange={(content, nodes, html) => { setDraftContent(content || ''); setDraftContentNodes(nodes && nodes.trim() !== '' ? nodes : null); setDraftContentHtml(html || null); }}
-                  onSubjectChange={(value) => setEditedLetter(prev => ({ ...prev, subject: value, title: value }))}
-                  onSalutationChange={(value) => setEditedLetter(prev => ({ ...prev, salutation_override: value }))}
-                  onRecipientNameChange={(value) => setEditedLetter(prev => ({ ...prev, recipient_name: value }))}
-                  onRecipientAddressChange={(value) => setEditedLetter(prev => ({ ...prev, recipient_address: value }))}
-                  onRecipientContactSelect={(contact) => {
-                     const contactRecord = contact as Contact & { formatted_address?: string; address?: string };
-                     const recipientAddress = contactRecord.formatted_address || contactRecord.address || '';
-                     setEditedLetter(prev => ({ ...prev, contact_id: contactRecord.id, recipient_name: contactRecord.name, recipient_address: recipientAddress }));
-                  }}
-                  onSenderChange={(value) => setEditedLetter(prev => ({ ...prev, sender_info_id: value || undefined }))}
-                  onInfoBlockChange={(newIds) => setEditedLetter(prev => ({ ...prev, information_block_ids: newIds }))}
-                  onAttachmentNameChange={(attachmentId, displayName) => handleAttachmentNameChange(attachmentId, displayName, attachments, fetchAttachments)}
-                  senderInfos={senderInfos} informationBlocks={informationBlocks} selectedSenderId={editedLetter.sender_info_id}
-                  selectedRecipientContactId={editedLetter.contact_id} selectedInfoBlockIds={editedLetter.information_block_ids || []}
-                  templateName={currentTemplate?.name} zoom={previewZoom} onZoomChange={setPreviewZoom} />
+                <Button size="sm" variant="default" className="h-7 px-2" disabled={!canEdit || saving}
+                  onClick={() => handleManualSave(latestContentRef.current.content, toSerializedContentNodes(latestContentRef.current.contentNodes ?? undefined))}>
+                  <Save className="h-3.5 w-3.5 mr-1" />Speichern
+                </Button>
+                <Button size="sm" variant="ghost" className="h-7 px-2" onClick={() => setShowTextSplitEditor(false)}><X className="h-3.5 w-3.5" /></Button>
+              </div>
+              <div className="p-3">
+                <EnhancedLexicalEditor key={letter?.id || 'new'} content={draftContent || letter?.content || ''} contentNodes={toSerializedContentNodes(draftContentNodes ?? letter?.content_nodes)}
+                  onChange={({ plainText, nodesJson, html }) => { setDraftContent(plainText || ''); setDraftContentNodes(nodesJson && nodesJson.trim() !== '' ? nodesJson : null); setDraftContentHtml(html || null); }}
+                  placeholder="Brieftext hier eingeben..." documentId={letter?.id} showToolbar={canEdit} editable={canEdit}
+                  onMentionInsert={(userId) => pendingMentionsRef.current.add(userId)} defaultFontFamily={templateDefaultFontFamily} />
               </div>
             </div>
           )}
+          <div className="flex-1 min-w-0 bg-muted/30 p-4">
+            <div className="flex flex-wrap items-center gap-2 mb-3">
+              <div className="inline-flex rounded-md border bg-background p-0.5" role="group" aria-label="Ansicht">
+                <Button size="sm" variant={viewMode === 'page' ? 'default' : 'ghost'} className="h-7 px-3"
+                  onClick={() => { setShowTextSplitEditor(true); setViewMode('page'); }}>Auf der Seite schreiben</Button>
+                <Button size="sm" variant={viewMode === 'split' ? 'default' : 'ghost'} className="h-7 px-3"
+                  onClick={() => setViewMode('split')}>Geteilte Ansicht</Button>
+              </div>
+              {viewMode === 'page' && (
+                <Button size="sm" variant="default" className="h-7 px-2 ml-auto" disabled={!canEdit || saving}
+                  onClick={() => handleManualSave(latestContentRef.current.content, toSerializedContentNodes(latestContentRef.current.contentNodes ?? undefined))}>
+                  <Save className="h-3.5 w-3.5 mr-1" />Speichern
+                </Button>
+              )}
+            </div>
+            {viewMode === 'page' && canEdit && <div ref={pageToolbarRef} className="sticky top-0 z-sticky mb-3 rounded-md border bg-background shadow-sm" />}
+            {viewMode === 'split' && !showTextSplitEditor && (
+              <div className="flex flex-wrap items-center gap-2 mb-3">
+                <Button size="sm" variant="outline" onClick={() => {
+                  setDraftContent(editedLetter.content || ''); setDraftContentNodes(editedLetter.content_nodes || null); setDraftContentHtml(editedLetter.content_html || null); setShowTextSplitEditor(true);
+                }}><Edit3 className="h-4 w-4 mr-2" />Editor öffnen</Button>
+              </div>
+            )}
+            <LetterEditorCanvas template={layoutTemplate} subject={editedLetter.subject} salutation={editedLetter.salutation_override || computedSalutation}
+              content={editedLetter.content_html || editedLetter.content || ''} contentNodes={toSerializedContentNodes(editedLetter.content_nodes ?? undefined)}
+              recipientAddress={editedLetter.recipient_address ? { name: editedLetter.recipient_name, address: editedLetter.recipient_address } : undefined}
+              letterDate={editedLetter.letter_date} referenceNumber={editedLetter.reference_number} attachments={attachments}
+              showPagination={showPagination} senderInfo={senderInfos.find(s => s.id === editedLetter.sender_info_id)}
+              informationBlock={informationBlocks.find(b => editedLetter.information_block_ids?.includes(b.id)) ? [informationBlocks.find(b => editedLetter.information_block_ids?.includes(b.id))!] : undefined} layoutSettings={getLayoutSettings()}
+              displayContentHtml={viewMode === 'page' ? (draftContentHtml ?? editedLetter.content_html ?? editedLetter.content ?? '') : (editedLetter.content_html || editedLetter.content || '')}
+              inlineEditor={viewMode === 'page' ? (
+                <EnhancedLexicalEditor key={`page-${letter?.id || 'new'}`} bare content={draftContent || letter?.content || ''} contentNodes={toSerializedContentNodes(draftContentNodes ?? letter?.content_nodes)}
+                  onChange={({ plainText, nodesJson, html }) => { setDraftContent(plainText || ''); setDraftContentNodes(nodesJson && nodesJson.trim() !== '' ? nodesJson : null); setDraftContentHtml(html || null); }}
+                  placeholder="Hier direkt auf dem Brief schreiben…" documentId={letter?.id} showToolbar={canEdit} editable={canEdit}
+                  renderToolbarPortal={pageToolbarRef}
+                  onMentionInsert={(userId) => pendingMentionsRef.current.add(userId)} defaultFontFamily={templateDefaultFontFamily} />
+              ) : undefined}
+              addressFieldElements={substitutedBlocks.canvasBlocks.addressField} returnAddressElements={substitutedBlocks.canvasBlocks.returnAddress}
+              infoBlockElements={substitutedBlocks.canvasBlocks.infoBlock} subjectElements={substitutedBlocks.canvasBlocks.subject}
+              attachmentElements={substitutedBlocks.canvasBlocks.attachments} footerTextElements={substitutedBlocks.canvasBlocks.footer}
+              addressFieldLines={substitutedBlocks.lineBlocks.addressField} returnAddressLines={substitutedBlocks.lineBlocks.returnAddress}
+              infoBlockLines={substitutedBlocks.lineBlocks.infoBlock} canEdit={canEdit} documentId={letter?.id}
+              onContentChange={(content, nodes, html) => { setDraftContent(content || ''); setDraftContentNodes(nodes && nodes.trim() !== '' ? nodes : null); setDraftContentHtml(html || null); }}
+              onSubjectChange={(value) => setEditedLetter(prev => ({ ...prev, subject: value, title: value }))}
+              onSalutationChange={(value) => setEditedLetter(prev => ({ ...prev, salutation_override: value }))}
+              onRecipientNameChange={(value) => setEditedLetter(prev => ({ ...prev, recipient_name: value }))}
+              onRecipientAddressChange={(value) => setEditedLetter(prev => ({ ...prev, recipient_address: value }))}
+              onRecipientContactSelect={(contact) => {
+                 const contactRecord = contact as Contact & { formatted_address?: string; address?: string };
+                 const recipientAddress = contactRecord.formatted_address || contactRecord.address || '';
+                 setEditedLetter(prev => ({ ...prev, contact_id: contactRecord.id, recipient_name: contactRecord.name, recipient_address: recipientAddress }));
+              }}
+              onSenderChange={(value) => setEditedLetter(prev => ({ ...prev, sender_info_id: value || undefined }))}
+              onInfoBlockChange={(newIds) => setEditedLetter(prev => ({ ...prev, information_block_ids: newIds }))}
+              onAttachmentNameChange={(attachmentId, displayName) => handleAttachmentNameChange(attachmentId, displayName, attachments, fetchAttachments)}
+              senderInfos={senderInfos} informationBlocks={informationBlocks} selectedSenderId={editedLetter.sender_info_id}
+              selectedRecipientContactId={editedLetter.contact_id} selectedInfoBlockIds={editedLetter.information_block_ids || []}
+              zoom={previewZoom} />
+          </div>
         </div>
-      </div>
+      )}
 
       {showCommentDialog && <LetterCommentDialog onSubmit={(content) => { void handleAddComment(content); setShowCommentDialog(false); }} onClose={() => setShowCommentDialog(false)} />}
 

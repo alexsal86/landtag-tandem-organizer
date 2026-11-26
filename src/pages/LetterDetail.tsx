@@ -1,4 +1,4 @@
-import { useCallback, useEffect, useMemo, useState } from 'react';
+import { useCallback, useEffect, useState } from 'react';
 import { useNavigate, useParams } from 'react-router-dom';
 import { ArrowLeft, Loader2 } from 'lucide-react';
 import LetterEditor from '@/features/letters/components/LetterEditor';
@@ -7,11 +7,6 @@ import { useTenant } from '@/hooks/useTenant';
 import { supabase } from '@/integrations/supabase/client';
 import { Button } from '@/components/ui/button';
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card';
-import { AppNavigation, getNavigationGroups } from '@/components/navigation/AppNavigation';
-import { AppHeader } from '@/components/layout/AppHeader';
-import { SubNavigation } from '@/components/layout/SubNavigation';
-import { MobileHeader } from '@/components/navigation/MobileHeader';
-import { MobileSubNavigation } from '@/components/layout/MobileSubNavigation';
 import { debugConsole } from '@/utils/debugConsole';
 import type { LetterRecord } from '@/components/letter-pdf/types';
 
@@ -25,22 +20,6 @@ const LetterDetail = () => {
 
   const [loading, setLoading] = useState(true);
   const [letter, setLetter] = useState<LetterRecord | null>(null);
-  const activeSection = 'documents';
-
-  const navGroups = useMemo(() => getNavigationGroups(), []);
-  const activeGroup = useMemo(
-    () => navGroups.find((group) =>
-      group.subItems?.some((item) => item.id === activeSection)
-      || (group.route && group.route.slice(1) === activeSection)
-      || group.id === activeSection,
-    ),
-    [navGroups],
-  );
-
-  const handleSectionChange = useCallback((section: string) => {
-    const path = section === 'dashboard' ? '/' : `/${section}`;
-    navigate(path);
-  }, [navigate]);
 
   const fetchLetter = useCallback(async (): Promise<void> => {
     if (!letterId || !currentTenant) {
@@ -85,93 +64,54 @@ const LetterDetail = () => {
     navigate('/documents?tab=letters');
   }, [navigate]);
 
-  const renderMain = () => {
-    if (authLoading || tenantLoading || loading) {
-      return (
-        <div className="flex items-center justify-center min-h-[320px]">
-          <Loader2 className="h-8 w-8 animate-spin" />
-        </div>
-      );
-    }
-
-    if (!letter) {
-      return (
-        <div className="p-6">
-          <Card className="max-w-2xl mx-auto mt-12">
-            <CardHeader>
-              <CardTitle>Brief nicht gefunden</CardTitle>
-              <CardDescription>
-                Dieser Brief existiert nicht oder Sie haben keinen Zugriff darauf.
-              </CardDescription>
-            </CardHeader>
-            <CardContent>
-              <Button onClick={handleBackToLetters}>
-                Zurück zu Briefen
-              </Button>
-            </CardContent>
-          </Card>
-        </div>
-      );
-    }
-
+  if (authLoading || tenantLoading || loading) {
     return (
-      <div className="p-4 md:p-6">
-        <div className="max-w-[1800px] mx-auto space-y-4">
-          <Button variant="outline" onClick={handleBackToLetters}>
-            <ArrowLeft className="h-4 w-4 mr-2" />
-            Zurück zu Briefen
-          </Button>
-
-          <div className="h-[calc(100vh-12rem)] min-h-[600px]">
-            <LetterEditor
-              letter={{
-                ...letter,
-                recipient_name: letter.recipient_name ?? undefined,
-                recipient_address: letter.recipient_address ?? undefined,
-              } as import('@/components/letters/types').Letter}
-              isOpen
-              onClose={handleBackToLetters}
-              onSave={fetchLetter}
-            />
-          </div>
-        </div>
+      <div className="flex items-center justify-center min-h-[320px]">
+        <Loader2 className="h-8 w-8 animate-spin" />
       </div>
     );
-  };
+  }
+
+  if (!letter) {
+    return (
+      <div className="p-6">
+        <Card className="max-w-2xl mx-auto mt-12">
+          <CardHeader>
+            <CardTitle>Brief nicht gefunden</CardTitle>
+            <CardDescription>
+              Dieser Brief existiert nicht oder Sie haben keinen Zugriff darauf.
+            </CardDescription>
+          </CardHeader>
+          <CardContent>
+            <Button onClick={handleBackToLetters}>
+              Zurück zu Briefen
+            </Button>
+          </CardContent>
+        </Card>
+      </div>
+    );
+  }
 
   return (
-    <>
-      <div className="flex min-h-screen w-full bg-background overflow-hidden">
-        <div className="hidden md:block sticky top-0 h-screen z-30">
-          <AppNavigation activeSection={activeSection} onSectionChange={handleSectionChange} />
-        </div>
-        <div className="flex flex-col flex-1 overflow-y-auto h-screen">
-          <div className="hidden md:block sticky top-0 z-40">
-            <AppHeader />
-            {activeGroup?.subItems && activeGroup.subItems.length > 1 ? (
-              <SubNavigation
-                items={activeGroup.subItems}
-                activeItem={activeSection}
-                onItemChange={handleSectionChange}
-              />
-            ) : null}
-          </div>
-          <MobileHeader />
-          <div className="md:hidden">
-            {activeGroup?.subItems && activeGroup.subItems.length > 1 ? (
-              <MobileSubNavigation
-                items={activeGroup.subItems}
-                activeItem={activeSection}
-                onItemChange={handleSectionChange}
-              />
-            ) : null}
-          </div>
-          <main id="main-content" className="flex-1 bg-gradient-to-b from-background to-muted/20" tabIndex={-1}>
-            {renderMain()}
-          </main>
-        </div>
+    <div className="p-4 md:p-6">
+      <div className="max-w-[1800px] mx-auto space-y-4">
+        <Button variant="outline" onClick={handleBackToLetters}>
+          <ArrowLeft className="h-4 w-4 mr-2" />
+          Zurück zu Briefen
+        </Button>
+
+        <LetterEditor
+          letter={{
+            ...letter,
+            recipient_name: letter.recipient_name ?? undefined,
+            recipient_address: letter.recipient_address ?? undefined,
+          } as import('@/components/letters/types').Letter}
+          isOpen
+          onClose={handleBackToLetters}
+          onSave={fetchLetter}
+        />
       </div>
-    </>
+    </div>
   );
 };
 
