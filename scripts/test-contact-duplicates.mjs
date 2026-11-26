@@ -83,8 +83,10 @@ try {
     END $$;
 
     CREATE EXTENSION IF NOT EXISTS pg_trgm;
+    -- Bewusst nur der Trigramm-Index: ein zusätzlicher tenant_id-Index wäre bei
+    -- kleinen Tabellen nur ein Kostenwettbewerb und würde die Plan-Zusage an
+    -- Schätzungen binden, obwohl hier der Namenspfad geprüft wird.
     CREATE INDEX idx_contacts_name_trgm ON public.contacts USING gin (name gin_trgm_ops);
-    CREATE INDEX idx_contacts_tenant_id ON public.contacts (tenant_id);
     GRANT SELECT ON public.contacts TO authenticated;
     GRANT EXECUTE ON FUNCTION auth.uid(), auth.role() TO authenticated;
 
@@ -187,11 +189,38 @@ try {
         AND other.name % c1.name
     ) c2 ON true
     WHERE c1.tenant_id = '${office}' AND c1.name IS NOT NULL`;
+  // Struktur: der gelieferte Index ist eine Trigramm-GIN-Spalte.
+  const indexDef = await q(`
+    SELECT pg_get_indexdef(i.indexrelid) AS def
+    FROM pg_index i JOIN pg_class c ON c.oid = i.indexrelid
+    WHERE c.relname = 'idx_contacts_name_trgm'
+  `);
+  assert.equal(indexDef.length, 1, 'idx_contacts_name_trgm fehlt');
+  assert.match(indexDef[0].def, /gin_trgm_ops/, `Falscher Opclass: ${indexDef[0].def}`);
+
+  // Die Indexnutzung wird erzwungen statt aus Kostenschätzungen abgelesen:
+  // Sequenzielles Lesen, einfache Index-Scans und die mengenbasierten Joins
+  // (Hash/Merge) sind abgeschaltet. Übrig bleibt der Nested Loop, dessen innere
+  // Seite den Trigramm-Index als Bitmap liest. Damit hängt die Prüfung weder an
+  // Tabellengröße noch an Statistiken oder der Planer-Version; wäre der Operator
+  // dort nicht indizierbar, bliebe nur ein (strafbewehrter) Seq Scan übrig und
+  // die Zusicherung schlüge fehl.
+  await db.exec('SET enable_seqscan = off; SET enable_indexscan = off; SET enable_hashjoin = off; SET enable_mergejoin = off;');
+
+  const alonePlan = (await q(`
+    EXPLAIN (COSTS OFF)
+    SELECT other.id FROM public.contacts other
+    WHERE other.name % 'Max Müller'
+  `)).map((row) => row['QUERY PLAN']).join('\n');
+  assert.match(alonePlan, /Bitmap Index Scan on idx_contacts_name_trgm/,
+    `Der Trigramm-Operator ist nicht indizierbar:\n${alonePlan}`);
+
   const plan = (await q(`EXPLAIN (COSTS OFF) ${candidateQuery}`))
     .map((row) => row['QUERY PLAN']).join('\n');
   assert.match(plan, /idx_contacts_name_trgm/, `Plan ohne Trigramm-Index:\n${plan}`);
   assert.doesNotMatch(plan, /contacts_pkey/,
     `Der Plan liest den Primärschlüssel statt des Trigramms:\n${plan}`);
+  await db.exec('RESET enable_seqscan; RESET enable_indexscan; RESET enable_hashjoin; RESET enable_mergejoin;');
 
   // Jede Paarung entsteht genau einmal: keine gespiegelten Doppel, keine
   // Selbstpaare, und die Orientierung folgt der Textordnung der id.
