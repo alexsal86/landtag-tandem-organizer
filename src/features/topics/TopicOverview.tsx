@@ -20,6 +20,7 @@ import {
   Calendar,
   CheckSquare,
   FileText,
+  Inbox,
   Lightbulb,
   Users,
 } from "lucide-react";
@@ -67,6 +68,12 @@ async function loadGroups(
   const atIds = ids(at.data, "appointment_id");
   const ttIds = ids(tt.data, "task_id");
 
+  const ci = await supabase
+    .from("case_item_topics")
+    .select("case_item_id")
+    .eq("topic_id", topicId);
+  const ciIds = ids(ci.data, "case_item_id");
+
   const tag = await supabase
     .from("knowledge_tags")
     .select("id")
@@ -82,7 +89,7 @@ async function loadGroups(
   const qIds = ids(qt.data, "question_id");
 
   const none = Promise.resolve({ data: [] as Record<string, unknown>[] });
-  const [files, contacts, docs, appts, tasks, questions] = await Promise.all([
+  const [files, contacts, docs, appts, tasks, questions, caseItems] = await Promise.all([
     cfIds.length
       ? supabase
           .from("case_files")
@@ -127,6 +134,13 @@ async function loadGroups(
           .is("archived_at", null)
           .limit(50)
       : none,
+    ciIds.length
+      ? supabase
+          .from("case_items")
+          .select("id,subject,status")
+          .in("id", ciIds)
+          .limit(50)
+      : none,
   ]);
   const rows = (r: { data: unknown }) =>
     Array.isArray(r.data) ? (r.data as Record<string, unknown>[]) : [];
@@ -144,6 +158,17 @@ async function loadGroups(
         label: s(r.title),
         meta: s(r.status),
         href: `/casefiles?caseFileId=${s(r.id)}`,
+      })),
+    },
+    {
+      key: "items",
+      title: "Vorgänge",
+      icon: Inbox,
+      items: rows(caseItems).map((r) => ({
+        id: s(r.id),
+        label: s(r.subject) || "Ohne Betreff",
+        meta: s(r.status),
+        href: `/vorgaenge/${s(r.id)}`,
       })),
     },
     {

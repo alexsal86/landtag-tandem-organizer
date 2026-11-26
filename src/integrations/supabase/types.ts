@@ -2776,6 +2776,48 @@ export type Database = {
           },
         ]
       }
+      case_item_topics: {
+        Row: {
+          case_item_id: string
+          created_at: string
+          created_by: string | null
+          id: string
+          tenant_id: string
+          topic_id: string
+        }
+        Insert: {
+          case_item_id: string
+          created_at?: string
+          created_by?: string | null
+          id?: string
+          tenant_id: string
+          topic_id: string
+        }
+        Update: {
+          case_item_id?: string
+          created_at?: string
+          created_by?: string | null
+          id?: string
+          tenant_id?: string
+          topic_id?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "case_item_topics_case_item_id_fkey"
+            columns: ["case_item_id"]
+            isOneToOne: false
+            referencedRelation: "case_items"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "case_item_topics_tenant_id_topic_id_fkey"
+            columns: ["tenant_id", "topic_id"]
+            isOneToOne: false
+            referencedRelation: "topics"
+            referencedColumns: ["tenant_id", "id"]
+          },
+        ]
+      }
       case_item_timeline: {
         Row: {
           case_item_id: string

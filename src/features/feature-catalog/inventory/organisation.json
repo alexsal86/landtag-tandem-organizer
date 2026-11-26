@@ -539,12 +539,16 @@
       "rpcs": [
         "ensure_topic",
         "merge_topics",
-        "topic_name_from_label"
+        "topic_name_from_label",
+        "topic_usage"
       ],
       "tables": [
         "topics",
         "committees",
-        "regions"
+        "regions",
+        "case_item_topics",
+        "knowledge_question_topics",
+        "topic_module_settings"
       ],
       "roles": [
         "abgeordneter",
