@@ -15097,6 +15097,53 @@ export type Database = {
           },
         ]
       }
+      task_batch_actions: {
+        Row: {
+          action: string
+          actor_id: string
+          affected_count: number
+          created_at: string
+          id: string
+          skipped_count: number
+          tenant_id: string
+          undo_payload: Json
+          undone_at: string | null
+          undone_by: string | null
+        }
+        Insert: {
+          action: string
+          actor_id: string
+          affected_count: number
+          created_at?: string
+          id?: string
+          skipped_count?: number
+          tenant_id: string
+          undo_payload: Json
+          undone_at?: string | null
+          undone_by?: string | null
+        }
+        Update: {
+          action?: string
+          actor_id?: string
+          affected_count?: number
+          created_at?: string
+          id?: string
+          skipped_count?: number
+          tenant_id?: string
+          undo_payload?: Json
+          undone_at?: string | null
+          undone_by?: string | null
+        }
+        Relationships: [
+          {
+            foreignKeyName: "task_batch_actions_tenant_id_fkey"
+            columns: ["tenant_id"]
+            isOneToOne: false
+            referencedRelation: "tenants"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
       task_categories: {
         Row: {
           color: string | null
@@ -18119,6 +18166,14 @@ export type Database = {
       }
       auto_archive_completed_preparations: { Args: never; Returns: undefined }
       auto_update_poll_status: { Args: never; Returns: undefined }
+      batch_task_stafette_action: {
+        Args: { _action: string; _task_ids: string[]; _tenant_id: string }
+        Returns: Json
+      }
+      batch_task_stafette_preview: {
+        Args: { _action: string; _task_ids: string[]; _tenant_id: string }
+        Returns: Json
+      }
       bulk_update_contact_fields: {
         Args: {
           _ids: string[]
@@ -18701,6 +18756,10 @@ export type Database = {
         Returns: string
       }
       ensure_weekly_question: { Args: { p_tenant: string }; Returns: string }
+      escalate_task: {
+        Args: { _note?: string; _task_id: string }
+        Returns: undefined
+      }
       execute_annual_automation_routine: {
         Args: { _annual_task_id: string; _rule_id: string; _year: number }
         Returns: Json
@@ -20136,6 +20195,10 @@ export type Database = {
           isSetofReturn: false
         }
       }
+      restore_archived_task: {
+        Args: { _archived_id: string; _tenant_id: string }
+        Returns: number
+      }
       run_data_lint: {
         Args: { _tenant_id: string }
         Returns: {
@@ -20381,6 +20444,22 @@ export type Database = {
         Args: { _item_id?: string; _meeting_id: string }
         Returns: Json
       }
+      task_approval_sla: { Args: { _tenant_id: string }; Returns: Json }
+      task_batch_plan: {
+        Args: { _action: string; _task_ids: string[]; _tenant_id: string }
+        Returns: {
+          after_text: string
+          before_text: string
+          eligible: boolean
+          reason: string
+          task_id: string
+          title: string
+        }[]
+      }
+      task_stafette_batch_snapshot: {
+        Args: { _task: Database["public"]["Tables"]["tasks"]["Row"] }
+        Returns: Json
+      }
       team_bingo_config: { Args: { p_tenant: string }; Returns: Json }
       team_ritual_employment: { Args: { p_tenant: string }; Returns: Json }
       team_ritual_enabled: { Args: { p_tenant: string }; Returns: boolean }
@@ -20421,6 +20500,7 @@ export type Database = {
         }[]
       }
       undo_contact_bulk_action: { Args: { _audit_id: string }; Returns: number }
+      undo_task_batch_action: { Args: { _batch_id: string }; Returns: number }
       update_contact_usage: {
         Args: { p_contact_id: string; p_tenant_id?: string; p_user_id?: string }
         Returns: undefined
