@@ -408,7 +408,7 @@ export const taskLifecycleScenario: TestScenario = {
       run: async (ctx) => {
         const id = ctx.data.taskId as string;
         // Der Client-Schutz wirft teils, statt einen Fehler zurückzugeben; beides ist ein gültiger Abschlag.
-        let error: { code?: string; message?: string } | null = null;
+        let error: { code?: string; message?: string } | null;
         try {
           const result = await supabase.from("tasks").update({ tenant_id: crypto.randomUUID() }).eq("id", id);
           error = result.error;
