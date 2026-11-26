@@ -2,7 +2,7 @@ import { supabase } from "@/integrations/supabase/client";
 import type { Json } from "@/integrations/supabase/types";
 import type { TestScenario } from "../types";
 import { describeError } from "../verify";
-import { appendEntries, carryLines, collectCarryLines, normalizeStore, removeLineFromDay, restoreLineToDay, sourcePath } from "@/components/dayslip/daySlipState";
+import { appendEntries, carryLines, collectCarryLines, decideDayTemplate, normalizeStore, removeLineFromDay, restoreLineToDay, sourcePath } from "@/components/dayslip/daySlipState";
 import { openLineCount, openPastDays, resolveDayView, shiftDayKey, snoozePresets } from "@/components/dayslip/daySlipNavigation";
 import { parseDaySlipLine } from "@/components/dayslip/daySlipShorthand";
 import { archiveNeighbours, buildArchiveEntry, matchesArchiveQuery } from "@/components/dayslip/daySlipArchive";
@@ -16,11 +16,12 @@ export const daySlipLifecycleScenario: TestScenario = {
   description: "Schreibt einen Tageszettel mit verlinkten Zeilen (Notiz, Aufgabe, Vorgang, Entscheidung), lädt ihn neu, prüft die Sprungziele und überträgt offene Zeilen auf den Folgetag, ohne Links zu verlieren.",
   touches: ["day_slips"],
   features: ["dayslip"],
-  checks: ["Speichern und erneutes Laden", "Link-Erhalt bei Übernahme", "Keine doppelte Übernahme", "Vortage ohne Abschluss bleiben lesbar", "Snooze-Vorschläge ohne doppeltes Ziel", "Löschen mit Rückgängig", "Getippte Kürzel ohne Automatik", "Archiv: erledigt/zugewiesen/offen, Suche, Datumsnachbarn"],
+  checks: ["Speichern und erneutes Laden", "Link-Erhalt bei Übernahme", "Keine doppelte Übernahme", "Wochentag-Vorlage nur an unbegonnenen Zetteln, Entscheidung je Tag festgehalten", "Vortage ohne Abschluss bleiben lesbar", "Snooze-Vorschläge ohne doppeltes Ziel", "Löschen mit Rückgängig", "Getippte Kürzel ohne Automatik", "Archiv: erledigt/zugewiesen/offen, Suche, Datumsnachbarn"],
   limitations: [
     "Die verlinkten Ziele sind Test-IDs; ihre Bedienung wird nicht geprüft.",
     "Kürzel belegen die Zuordnung nur vor; erstellt wird erst mit dem Abschluss, und Mehrdeutiges bleibt Text.",
     "Vortage werden nur gelesen; abgeschlossen werden kann weiterhin ausschließlich der aktuelle Tag.",
+    "Die Vorlagenentscheidung wird als reine Regel geprüft; das Öffnen des Zettels im Browser beobachtet der Selbsttest nicht.",
   ],
   writes: [{ table: "day_slips", columns: ["user_id", "tenant_id", "day_key", "data"] }],
   steps: [
@@ -128,6 +129,32 @@ export const daySlipLifecycleScenario: TestScenario = {
           && targets.every(target => target > today)
           && targets.every((target, index) => index === 0 || target > targets[index - 1]);
         return { ok, message: ok ? `${presets.length} eindeutige Wiedervorlagen.` : `Doppelte oder ungültige Ziele: ${targets.join(", ")}`, details: { targets } };
+      },
+    },
+    {
+      id: "template-decision", label: "Wochentag-Vorlage nur an unbegonnenen Zetteln, Entscheidung je Tag festgehalten", kind: "logic",
+      run: async () => {
+        const template = ["Plenartag", "Fraktionssitzung"];
+        const started: DaySlipDayData = { html: toParagraphHtml({ id: "own", text: "Eigene Zeile" }), plainText: "Eigene Zeile" };
+        const startedDecision = decideDayTemplate(started, template);
+        const emptied: DaySlipDayData = { html: "", plainText: "", struckLineIds: [], dayTemplateInjected: true };
+        const emptiedDecision = decideDayTemplate(emptied, template);
+        const reloaded = normalizeStore({ "2026-11-26": emptiedDecision.day })["2026-11-26"];
+        const freshDecision = decideDayTemplate(undefined, template);
+        const noTemplateDecision = decideDayTemplate(undefined, []);
+        const checks = {
+          begonnenOhneVorlage: !startedDecision.applies && startedDecision.day.html === started.html,
+          begonnenEntschieden: startedDecision.day.dayTemplateInjected === true,
+          geleertBleibtLeer: !emptiedDecision.applies && emptiedDecision.day.html === "",
+          nachNeuladenUnveraendert: reloaded.dayTemplateInjected === true && extractLinesFromHtml(reloaded.html).length === 0,
+          leerBekommtVorlage: freshDecision.applies && freshDecision.day.dayTemplateInjected === true
+            && extractLinesFromHtml(freshDecision.day.html).map(line => line.text).join() === template.join(),
+          ohneZuordnungEntschieden: !noTemplateDecision.applies && noTemplateDecision.day.dayTemplateInjected === true,
+        };
+        const failed = Object.entries(checks).filter(([, ok]) => !ok).map(([name]) => name);
+        return failed.length
+          ? { ok: false, message: `Fehler: ${failed.join(", ")}`, details: checks }
+          : { ok: true, message: "Begonnene Zettel bleiben ohne Vorlage; geleerte Zettel bleiben auch nach Neuladen unverändert, weil die Entscheidung festgehalten ist.", details: checks };
       },
     },
     {

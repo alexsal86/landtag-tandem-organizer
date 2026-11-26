@@ -83,6 +83,23 @@ export function isUnstartedDaySlip(day?: DaySlipDayData): boolean {
   return (day.resolved ?? []).length === 0;
 }
 
+/** The weekday template is decided once per day, whether or not any line was inserted. */
+export type DayTemplateDecision = { day: DaySlipDayData; applies: boolean };
+
+/**
+ * One weekday-template decision per day: lines only go into a slip that has not begun,
+ * and the decision is recorded even when nothing is inserted, so a slip that is emptied
+ * later (and reloaded) never receives the template afterwards.
+ */
+export function decideDayTemplate(day: DaySlipDayData | undefined, lines: string[]): DayTemplateDecision {
+  const base = day ?? emptyDay();
+  const applies = lines.length > 0 && isUnstartedDaySlip(base);
+  return {
+    applies,
+    day: { ...(applies ? appendStructuredLines(base, lines) : base), dayTemplateInjected: true },
+  };
+}
+
 /** Template lines keep their section rules and priorities; they are not plain text entries. */
 export function appendStructuredLines(day: DaySlipDayData, lines: string[]): DaySlipDayData {
   const trimmed = lines.map(line => line.trim()).filter(Boolean);

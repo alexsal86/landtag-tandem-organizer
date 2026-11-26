@@ -12,7 +12,7 @@ import {
   type ResolvedItem, type ResolveTarget, type TaskOptions, type DaySlipSettings,
   toDayKey, extractLinesFromHtml, templateForDayKey, weekdayOfDayKey,
 } from "../dayslipTypes";
-import { appendEntries, appendStructuredLines, carryLines, collectCarryLines, completedArchiveDays, emptyDay, exportId, isUnstartedDaySlip, removeLineFromDay, restoreLineToDay, type RemovedDaySlipLine } from "../daySlipState";
+import { appendEntries, appendStructuredLines, carryLines, collectCarryLines, completedArchiveDays, decideDayTemplate, emptyDay, exportId, removeLineFromDay, restoreLineToDay, type RemovedDaySlipLine } from "../daySlipState";
 
 const errorMessage = (error: unknown) => error && typeof error === "object" && "message" in error ? String(error.message) : String(error);
 
@@ -277,11 +277,10 @@ export function useDaySlipStore(userId: string, tenantId: string) {
     if (!needsTemplateDecision && !needsRecurring && !needsPlan) return;
     changeDay(day => {
       // Repeated here so a parallel edit between render and update cannot append the template to a started day.
-      const templateApplies = templateLines.length > 0 && !day.dayTemplateInjected && isUnstartedDaySlip(day);
-      let next = templateApplies ? appendStructuredLines(day, templateLines) : day;
+      const decision = decideDayTemplate(day, templateLines);
       const texts = [...(!day.recurringInjected ? recurring : []), ...(!day.weekPlanInjected ? planned : [])];
-      if (texts.length) next = appendEntries(next, texts.map(text => ({ id: crypto.randomUUID(), text })));
-      return { ...next, recurringInjected: true, weekPlanInjected: day.weekPlanInjected || planned.length > 0, dayTemplateInjected: true };
+      const next = texts.length ? appendEntries(decision.day, texts.map(text => ({ id: crypto.randomUUID(), text }))) : decision.day;
+      return { ...next, recurringInjected: true, weekPlanInjected: day.weekPlanInjected || planned.length > 0 };
     }, true);
   }, [ready, todayData.completedAt, todayData.recurringInjected, todayData.weekPlanInjected, todayData.dayTemplateInjected, settings.recurringItems, settings.weekPlan, settings.dayTemplates, settings.weekdayTemplates, todayKey, changeDay]);
 

@@ -60,7 +60,7 @@ _Auto-generiert mit `npm run update:feature-catalog` aus dem zentralen Funktions
 | `appointment-lifecycle` | Termin-Lifecycle (Kalender + Briefing + Feedback) | 3 | 0 |
 | `appointment-request-lifecycle` | Terminanfragen-Lifecycle (Eingang → Sperre → Entscheidung → Termin) | 2 | 4 |
 | `daily-briefing-lifecycle` | Tages-Briefings (Vortag-Regel) | 1 | 0 |
-| `day-slip-lifecycle` | Tageszettel-Lifecycle (Links → Neuladen → Übernahme auf Folgetag) | 1 | 8 |
+| `day-slip-lifecycle` | Tageszettel-Lifecycle (Links → Neuladen → Übernahme auf Folgetag) | 1 | 9 |
 | `jour-fixe-platform-integration` | Jour Fixe: Plattformquellen & Stafetten-Abschluss | 4 | 4 |
 | `poll-lifecycle` | Terminabstimmung (Gewinner-Slot übernehmen + Nachfassen) | 5 | 6 |
 

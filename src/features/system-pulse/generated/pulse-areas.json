@@ -917,6 +917,7 @@
             "Speichern und erneutes Laden",
             "Link-Erhalt bei Übernahme",
             "Keine doppelte Übernahme",
+            "Wochentag-Vorlage nur an unbegonnenen Zetteln, Entscheidung je Tag festgehalten",
             "Vortage ohne Abschluss bleiben lesbar",
             "Snooze-Vorschläge ohne doppeltes Ziel",
             "Löschen mit Rückgängig",
@@ -957,6 +958,10 @@
             {
               "id": "snooze-presets",
               "label": "Snooze-Vorschläge ohne doppeltes Ziel"
+            },
+            {
+              "id": "template-decision",
+              "label": "Wochentag-Vorlage nur an unbegonnenen Zetteln, Entscheidung je Tag festgehalten"
             },
             {
               "id": "delete-undo",
