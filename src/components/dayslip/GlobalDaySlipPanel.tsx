@@ -529,6 +529,11 @@ function DaySlipPanel({ userId, tenantId }: { userId: string; tenantId: string }
                 <div className="space-y-1 rounded border border-border/50 p-2">
                   <p className="text-[11px] font-medium">Automatisch je Wochentag</p>
                   <p className="text-[11px] text-muted-foreground">Zum Beispiel Dienstag = Plenartag, Donnerstag = Ausschuss. Gilt einmal pro Tag und nur an noch leeren Zetteln; begonnene Zettel bleiben auch nach späterem Leeren unverändert.</p>
+                  <p className="text-[11px] text-muted-foreground">
+                    {ds.todayData.dayTemplateInjected
+                      ? "Für heute ist die Entscheidung gefallen: automatisch kommt keine Vorlage mehr dazu. Jede Vorlage bleibt manuell wählbar."
+                      : "Beim ersten Öffnen eines noch leeren Zettels wird die Vorlage für heute automatisch eingefügt."}
+                  </p>
                   {WEEK_DAYS.filter((day) => day !== "all").map((day) => (
                     <label key={day} className="flex items-center gap-2 text-xs">
                       <span className="w-20 shrink-0">{WEEK_DAY_LABELS[day]}</span>

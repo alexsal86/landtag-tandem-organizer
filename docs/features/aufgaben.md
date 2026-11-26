@@ -59,12 +59,87 @@ _Auto-generiert mit `npm run update:feature-catalog` aus dem zentralen Funktions
 
 ## Selbsttest-Szenarien
 
-| Szenario | Titel | deklarierte Tabellen | deklarierte Prüfungen |
-|---|---|---:|---:|
-| `annual-task-stafette` | Jahresaufgabe → Büroaufgabe → Jahresabschluss | 3 | 5 |
-| `decision-lifecycle` | Entscheidungs-Lifecycle (active → open → archived) | 3 | 0 |
-| `task-lifecycle` | Aufgaben-Lifecycle (Zuweisung → Frist → Entscheidung → Jour fixe → erledigt) | 3 | 0 |
-| `task-stafette-lifecycle` | Aufgaben-Stafette (Am Zug, Wiedervorlage, Freigabe) | 1 | 4 |
+| Szenario | Titel | deklarierte Tabellen | deklarierte Prüfungen | letzter Lauf |
+|---|---|---:|---:|---|
+| `annual-task-stafette` | Jahresaufgabe → Büroaufgabe → Jahresabschluss | 3 | 5 | — |
+| `decision-lifecycle` | Entscheidungs-Lifecycle (active → open → archived) | 3 | 0 | — |
+| `task-lifecycle` | Aufgaben-Lifecycle (Zuweisung → Frist → Entscheidung → Jour fixe → erledigt) | 3 | 0 | — |
+| `task-stafette-lifecycle` | Aufgaben-Stafette (Am Zug, Wiedervorlage, Freigabe) | 1 | 4 | — |
+
+## Selbsttest-Schritte
+
+Diese Schritte führen die Szenarien aus; „letzter Lauf“ stammt aus `src/features/selftest/last-runs.json`, nicht aus dieser Doku.
+
+| Szenario | Schritt | Bezeichnung | Art | letzter Lauf |
+|---|---|---|---|---|
+| `annual-task-stafette` | `seasonal-office-backend` | Büropakete: Backend und Abschluss im Folgejahr | workflow | — |
+| `annual-task-stafette` | `seasonal-office-packages` | Bürojahr: alle Pakete, Vorlauf, Jahreswechsel und Terminbestätigung | logic | — |
+| `annual-task-stafette` | `annual-overview` | Jahresübersicht: Statusfilter und Berliner Tagesgrenze | logic | — |
+| `annual-task-stafette` | `unified-routine` | Jahresroutine im gemeinsamen Regel-Assistenten prüfen | logic | — |
+| `annual-task-stafette` | `rules` | Stichtage und System-Routinen prüfen | logic | — |
+| `annual-task-stafette` | `create` | Organisatorische Jahresaufgabe anlegen | db | — |
+| `annual-task-stafette` | `delegate` | Übergeben: Stafette, Frist und Quelle lesen | workflow | — |
+| `annual-task-stafette` | `duplicate` | Erneute Übergabe liefert dieselbe Aufgabe | workflow | — |
+| `annual-task-stafette` | `guard` | Jahresabschluss außerhalb der Büroaufgabe blockiert | db | — |
+| `decision-lifecycle` | `dashboard-nudges` | Anstupsen: zehn Sekunden und 24-Stunden-Sperre | logic | — |
+| `decision-lifecycle` | `dashboard-voting` | Dashboard: nur eigene ausstehende Abstimmungen, keine eigenen Anfragen | logic | — |
+| `decision-lifecycle` | `create` | Entscheidung anlegen (active) | db | — |
+| `decision-lifecycle` | `add-participant` | Teilnehmer (sich selbst) hinzufügen | db | — |
+| `decision-lifecycle` | `withdraw-responses` | Ja, Nein und Rückfrage speichern und nachweisbar zurücknehmen | workflow | — |
+| `decision-lifecycle` | `check-options` | Default-Antwortoptionen prüfen | db | — |
+| `decision-lifecycle` | `set-open` | Status auf 'open' | db | — |
+| `decision-lifecycle` | `archive` | Archivieren | db | — |
+| `decision-lifecycle` | `verify` | Verifikation | db | — |
+| `decision-lifecycle` | `nudge-boundary` | Fremde oder unbekannte Entscheidung lässt sich nicht anstupsen | workflow | — |
+| `task-lifecycle` | `status-registry` | Status-Registry führt die fünf Kernstatus | db | — |
+| `task-lifecycle` | `create` | Aufgabe anlegen | db | — |
+| `task-lifecycle` | `assign` | Aufgabe zuweisen + Frist setzen | db | — |
+| `task-lifecycle` | `decision` | Entscheidung aus Aufgabe erstellen | db | — |
+| `task-lifecycle` | `jour-fixe` | Für Jour fixe markieren | db | — |
+| `task-lifecycle` | `complete` | Status → completed | db | — |
+| `task-lifecycle` | `tenant-boundary` | Aufgabe lässt sich keinem fremden Büro zuordnen | workflow | — |
+| `task-stafette-lifecycle` | `nudge` | Anstupsen: Empfänger sieht Aufgabe oben, 24h-Limit | logic | — |
+| `task-stafette-lifecycle` | `checklist-batch` | Checkpunkt im Verlauf, Frist +1 Woche | logic | — |
+| `task-stafette-lifecycle` | `reminder` | Fällige Erinnerung holt wartende Aufgabe in Mein Zug | logic | — |
+| `task-stafette-lifecycle` | `set-step` | Frist bleibt sichtbar; eine ausdrückliche Wiedervorlage verschiebt die Anzeige | logic | — |
+| `task-stafette-lifecycle` | `handover` | Zur Freigabe vorlegen → Wartet auf andere + Verlauf | logic | — |
+| `task-stafette-lifecycle` | `return` | Rückgabe ans Büro → wieder Mein Zug | logic | — |
+| `task-stafette-lifecycle` | `complete` | Abschluss: verschwindet aus allen Zonen + Verlauf | logic | — |
+| `task-stafette-lifecycle` | `recurrence` | Wiederholung: nächste Frist korrekt berechnet | logic | — |
+| `task-stafette-lifecycle` | `template-validation` | Aufgabenpakete: Fristen und Unteraufgaben verbindlich | logic | — |
+| `task-stafette-lifecycle` | `template-automation-rule` | Aufgabenpaket ist eine manuelle Automatisierungsregel | logic | — |
+| `task-stafette-lifecycle` | `template-subtasks` | Vorlage legt Hauptaufgabe mit verknüpften Unteraufgaben an | logic | — |
+| `task-stafette-lifecycle` | `week-review` | Wochenreview findet fehlende Schritte, namenlose Bälle, Stille und Duplikate | logic | — |
+| `task-stafette-lifecycle` | `task-command` | Einzeiler-Befehle und SLA-Stufen | logic | — |
+| `task-stafette-lifecycle` | `batch-create` | Sammelaktion: Aufgabe ohne Frist wird übersprungen | db | — |
+| `task-stafette-lifecycle` | `batch-keeps-step` | Sammelaktion: Freigabe behält den vorhandenen nächsten Schritt | db | — |
+| `task-stafette-lifecycle` | `batch-undo` | Sammelaktion: Frist +1 Woche samt Rücknahme | db | — |
+| `task-stafette-lifecycle` | `nudge-boundary` | Anstupsen erreicht keine Aufgabe außerhalb des eigenen Büros | workflow | — |
+
+## Deklarierter Prüfumfang
+
+### `annual-task-stafette`
+
+1. Exakte Stichtage
+2. System-Routinen nicht delegierbar
+3. Eine Aufgabe pro Jahr
+4. Abschluss und Wiederöffnung synchron
+5. Direkter Jahresabschluss gesperrt
+
+### `decision-lifecycle`
+
+Keine Prüfungen deklariert.
+
+### `task-lifecycle`
+
+Keine Prüfungen deklariert.
+
+### `task-stafette-lifecycle`
+
+1. Zonen Mein Zug / Wartet / Wiedervorlage
+2. Verlaufseinträge bei Übergaben und Erledigungen
+3. Sammelaktionen: Vorschau ohne erfundene Frist, ohne überschriebene Schritte, mit Rücknahme
+4. Wochenreview, Eskalationsgründe, Einzeiler-Befehle und SLA-Stufen als reine Regeln
 
 ## Funktionsdetails
 
@@ -75,7 +150,7 @@ Legt eine Aufgabe mit Titel, Beschreibung, Fälligkeit, Priorität, Kategorie, E
 - **Implementierung:** implementiert
 - **Einbindung:** rollenabhängig
 - **Testabdeckung:** Selbsttest
-- **Letztes Testergebnis:** nicht-ausgefuehrt (nicht aus der Existenz einer Testdatei abgeleitet)
+- **Letztes Testergebnis:** nicht-ausgefuehrt (kein Laufnachweis importiert; nicht aus der Existenz einer Testdatei abgeleitet)
 - **Rollen:** `abgeordneter`, `bueroleitung`, `mitarbeiter`, `praktikant`
 - **Routen:** `/tasks/new`, `/tasks/:taskId`
 - **Frontend-Komponenten:** `src/pages/CreateTask.tsx`, `src/features/tasks/components/TodoCreateDialog.tsx`
@@ -112,7 +187,7 @@ Legt eine Aufgabe mit Titel, Beschreibung, Fälligkeit, Priorität, Kategorie, E
 - **Implementierung:** implementiert
 - **Einbindung:** rollenabhängig
 - **Testabdeckung:** Selbsttest
-- **Letztes Testergebnis:** nicht-ausgefuehrt (nicht aus der Existenz einer Testdatei abgeleitet)
+- **Letztes Testergebnis:** nicht-ausgefuehrt (kein Laufnachweis importiert; nicht aus der Existenz einer Testdatei abgeleitet)
 - **Rollen:** `abgeordneter`, `bueroleitung`, `mitarbeiter`, `praktikant`
 - **Routen:** —
 - **Frontend-Komponenten:** `src/features/tasks/components/TaskDetailSidebar.tsx`, `src/components/tasks/TaskDialogs.tsx`
@@ -148,7 +223,7 @@ Setzt eine Aufgabe auf abgeschlossen, stempelt die Erledigung und stößt Folgep
 - **Implementierung:** implementiert
 - **Einbindung:** rollenabhängig
 - **Testabdeckung:** Selbsttest
-- **Letztes Testergebnis:** nicht-ausgefuehrt (nicht aus der Existenz einer Testdatei abgeleitet)
+- **Letztes Testergebnis:** nicht-ausgefuehrt (kein Laufnachweis importiert; nicht aus der Existenz einer Testdatei abgeleitet)
 - **Rollen:** `abgeordneter`, `bueroleitung`, `mitarbeiter`, `praktikant`
 - **Routen:** —
 - **Frontend-Komponenten:** —
@@ -184,7 +259,7 @@ Weist eine oder mehrere Personen zu, hält die Zuweisungsliste synchron und erla
 - **Implementierung:** implementiert
 - **Einbindung:** rollenabhängig
 - **Testabdeckung:** Selbsttest
-- **Letztes Testergebnis:** nicht-ausgefuehrt (nicht aus der Existenz einer Testdatei abgeleitet)
+- **Letztes Testergebnis:** nicht-ausgefuehrt (kein Laufnachweis importiert; nicht aus der Existenz einer Testdatei abgeleitet)
 - **Rollen:** `abgeordneter`, `bueroleitung`, `mitarbeiter`, `praktikant`
 - **Routen:** —
 - **Frontend-Komponenten:** —
@@ -221,7 +296,7 @@ Weist eine oder mehrere Personen zu, hält die Zuweisungsliste synchron und erla
 - **Implementierung:** implementiert
 - **Einbindung:** UI
 - **Testabdeckung:** Selbsttest
-- **Letztes Testergebnis:** nicht-ausgefuehrt (nicht aus der Existenz einer Testdatei abgeleitet)
+- **Letztes Testergebnis:** nicht-ausgefuehrt (kein Laufnachweis importiert; nicht aus der Existenz einer Testdatei abgeleitet)
 - **Rollen:** `abgeordneter`, `bueroleitung`, `mitarbeiter`
 - **Routen:** —
 - **Frontend-Komponenten:** —
@@ -257,7 +332,7 @@ Bestimmt aus Status, Zuweisung und Stafette, bei wem die Aufgabe liegt, und zeig
 - **Implementierung:** implementiert
 - **Einbindung:** UI
 - **Testabdeckung:** Unit-Test
-- **Letztes Testergebnis:** unbekannt (nicht aus der Existenz einer Testdatei abgeleitet)
+- **Letztes Testergebnis:** unbekannt (kein Laufnachweis importiert; nicht aus der Existenz einer Testdatei abgeleitet)
 - **Rollen:** `abgeordneter`, `bueroleitung`, `mitarbeiter`, `praktikant`
 - **Routen:** —
 - **Frontend-Komponenten:** `src/components/tasks/TaskBadges.tsx`
@@ -294,7 +369,7 @@ Setzt Fälligkeiten, hebt überfällige Aufgaben hervor und speist Fristen-Widge
 - **Implementierung:** implementiert
 - **Einbindung:** UI
 - **Testabdeckung:** kein Test
-- **Letztes Testergebnis:** nicht-ausgefuehrt (nicht aus der Existenz einer Testdatei abgeleitet)
+- **Letztes Testergebnis:** nicht-ausgefuehrt (kein Laufnachweis importiert; nicht aus der Existenz einer Testdatei abgeleitet)
 - **Rollen:** `abgeordneter`, `bueroleitung`, `mitarbeiter`, `praktikant`
 - **Routen:** —
 - **Frontend-Komponenten:** `src/components/dashboard/DeadlineReviewDialog.tsx`, `src/components/dashboard/TasksSummary.tsx`
@@ -331,7 +406,7 @@ Verschiebt die Wiedervorlage einer Aufgabe, protokolliert den Zeitpunkt und blen
 - **Implementierung:** implementiert
 - **Einbindung:** UI
 - **Testabdeckung:** kein Test
-- **Letztes Testergebnis:** nicht-ausgefuehrt (nicht aus der Existenz einer Testdatei abgeleitet)
+- **Letztes Testergebnis:** nicht-ausgefuehrt (kein Laufnachweis importiert; nicht aus der Existenz einer Testdatei abgeleitet)
 - **Rollen:** `abgeordneter`, `bueroleitung`, `mitarbeiter`, `praktikant`
 - **Routen:** —
 - **Frontend-Komponenten:** `src/components/dashboard/DeadlineSnoozeButton.tsx`, `src/components/notifications/SnoozeManagementSidebar.tsx`
@@ -367,7 +442,7 @@ Zerlegt Aufgaben in Unteraufgaben und zeigt deren Fortschritt in der Hauptaufgab
 - **Implementierung:** implementiert
 - **Einbindung:** UI
 - **Testabdeckung:** kein Test
-- **Letztes Testergebnis:** nicht-ausgefuehrt (nicht aus der Existenz einer Testdatei abgeleitet)
+- **Letztes Testergebnis:** nicht-ausgefuehrt (kein Laufnachweis importiert; nicht aus der Existenz einer Testdatei abgeleitet)
 - **Rollen:** `abgeordneter`, `bueroleitung`, `mitarbeiter`, `praktikant`
 - **Routen:** —
 - **Frontend-Komponenten:** `src/components/tasks/TaskListRow.tsx`, `src/components/tasks/TaskCard.tsx`
@@ -403,7 +478,7 @@ Erzeugt aus einer Aufgabe eine Entscheidung oder verknüpft sie; nach der Abstim
 - **Implementierung:** implementiert
 - **Einbindung:** rollenabhängig
 - **Testabdeckung:** Selbsttest
-- **Letztes Testergebnis:** nicht-ausgefuehrt (nicht aus der Existenz einer Testdatei abgeleitet)
+- **Letztes Testergebnis:** nicht-ausgefuehrt (kein Laufnachweis importiert; nicht aus der Existenz einer Testdatei abgeleitet)
 - **Rollen:** `abgeordneter`, `bueroleitung`, `mitarbeiter`
 - **Routen:** —
 - **Frontend-Komponenten:** `src/components/shared/NoteDecisionCreator.tsx`, `src/components/task-decisions`
@@ -439,7 +514,7 @@ Verknüpft Aufgaben mit Vorgängen und Fallakten und synchronisiert Schritt- und
 - **Implementierung:** implementiert
 - **Einbindung:** systemseitig
 - **Testabdeckung:** Unit-Test
-- **Letztes Testergebnis:** unbekannt (nicht aus der Existenz einer Testdatei abgeleitet)
+- **Letztes Testergebnis:** unbekannt (kein Laufnachweis importiert; nicht aus der Existenz einer Testdatei abgeleitet)
 - **Rollen:** `abgeordneter`, `bueroleitung`, `mitarbeiter`
 - **Routen:** —
 - **Frontend-Komponenten:** —
@@ -475,7 +550,7 @@ Hängt Dokumente an Aufgaben und öffnet sie aus der Aufgabenansicht.
 - **Implementierung:** implementiert
 - **Einbindung:** UI
 - **Testabdeckung:** kein Test
-- **Letztes Testergebnis:** nicht-ausgefuehrt (nicht aus der Existenz einer Testdatei abgeleitet)
+- **Letztes Testergebnis:** nicht-ausgefuehrt (kein Laufnachweis importiert; nicht aus der Existenz einer Testdatei abgeleitet)
 - **Rollen:** `abgeordneter`, `bueroleitung`, `mitarbeiter`, `praktikant`
 - **Routen:** —
 - **Frontend-Komponenten:** `src/components/tasks/TaskDocumentDialog.tsx`
@@ -510,7 +585,7 @@ Erzeugt beim Abschluss automatisch die nächste Aufgabe anhand einer Wiederholun
 - **Implementierung:** implementiert
 - **Einbindung:** systemseitig
 - **Testabdeckung:** Unit-Test
-- **Letztes Testergebnis:** unbekannt (nicht aus der Existenz einer Testdatei abgeleitet)
+- **Letztes Testergebnis:** unbekannt (kein Laufnachweis importiert; nicht aus der Existenz einer Testdatei abgeleitet)
 - **Rollen:** `system`
 - **Routen:** —
 - **Frontend-Komponenten:** —
@@ -546,7 +621,7 @@ Speichert Mandats-/Bürovorlagen und wendet sie beim Anlegen an, inklusive Frist
 - **Implementierung:** implementiert
 - **Einbindung:** UI
 - **Testabdeckung:** Unit-Test
-- **Letztes Testergebnis:** unbekannt (nicht aus der Existenz einer Testdatei abgeleitet)
+- **Letztes Testergebnis:** unbekannt (kein Laufnachweis importiert; nicht aus der Existenz einer Testdatei abgeleitet)
 - **Rollen:** `bueroleitung`, `mitarbeiter`, `admin`
 - **Routen:** —
 - **Frontend-Komponenten:** —
@@ -582,7 +657,7 @@ Verschiebt abgeschlossene Aufgaben ins Archiv, erlaubt Wiederherstellung und pro
 - **Implementierung:** implementiert
 - **Einbindung:** UI
 - **Testabdeckung:** kein Test
-- **Letztes Testergebnis:** nicht-ausgefuehrt (nicht aus der Existenz einer Testdatei abgeleitet)
+- **Letztes Testergebnis:** nicht-ausgefuehrt (kein Laufnachweis importiert; nicht aus der Existenz einer Testdatei abgeleitet)
 - **Rollen:** `abgeordneter`, `bueroleitung`, `mitarbeiter`
 - **Routen:** `/tasks/archive`
 - **Frontend-Komponenten:** `src/features/tasks/components/TaskArchiveView.tsx`, `src/features/tasks/components/TaskArchiveModal.tsx`
@@ -618,7 +693,7 @@ Filtert Aufgaben nach Status, Kategorie, Zuständigkeit, Frist und Text und sort
 - **Implementierung:** implementiert
 - **Einbindung:** UI
 - **Testabdeckung:** kein Test
-- **Letztes Testergebnis:** nicht-ausgefuehrt (nicht aus der Existenz einer Testdatei abgeleitet)
+- **Letztes Testergebnis:** nicht-ausgefuehrt (kein Laufnachweis importiert; nicht aus der Existenz einer Testdatei abgeleitet)
 - **Rollen:** `abgeordneter`, `bueroleitung`, `mitarbeiter`, `praktikant`
 - **Routen:** —
 - **Frontend-Komponenten:** `src/features/tasks/components/TasksView.tsx`
@@ -654,7 +729,7 @@ Erlaubt Anmahnen über eine RPC mit 24-Stunden-Grenze und versendet fällige Eri
 - **Implementierung:** implementiert
 - **Einbindung:** systemseitig
 - **Testabdeckung:** kein Test
-- **Letztes Testergebnis:** nicht-ausgefuehrt (nicht aus der Existenz einer Testdatei abgeleitet)
+- **Letztes Testergebnis:** nicht-ausgefuehrt (kein Laufnachweis importiert; nicht aus der Existenz einer Testdatei abgeleitet)
 - **Rollen:** `abgeordneter`, `bueroleitung`, `mitarbeiter`, `system`
 - **Routen:** —
 - **Frontend-Komponenten:** —
@@ -690,7 +765,7 @@ Führt wiederkehrende Jahresaufgaben mit Abschlusshistorie, Sperre je Jahr und �
 - **Implementierung:** implementiert
 - **Einbindung:** systemseitig
 - **Testabdeckung:** Selbsttest
-- **Letztes Testergebnis:** nicht-ausgefuehrt (nicht aus der Existenz einer Testdatei abgeleitet)
+- **Letztes Testergebnis:** nicht-ausgefuehrt (kein Laufnachweis importiert; nicht aus der Existenz einer Testdatei abgeleitet)
 - **Rollen:** `bueroleitung`, `admin`, `system`
 - **Routen:** —
 - **Frontend-Komponenten:** —

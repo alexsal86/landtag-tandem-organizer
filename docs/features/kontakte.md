@@ -52,9 +52,29 @@ _Auto-generiert mit `npm run update:feature-catalog` aus dem zentralen Funktions
 
 ## Selbsttest-Szenarien
 
-| Szenario | Titel | deklarierte Tabellen | deklarierte Prüfungen |
-|---|---|---:|---:|
-| `contact-lifecycle` | Kontakt-Lifecycle (Anlegen → Kategorie/Tags → Aktivität → Suche) | 3 | 0 |
+| Szenario | Titel | deklarierte Tabellen | deklarierte Prüfungen | letzter Lauf |
+|---|---|---:|---:|---|
+| `contact-lifecycle` | Kontakt-Lifecycle (Anlegen → Kategorie/Tags → Aktivität → Suche) | 3 | 0 | — |
+
+## Selbsttest-Schritte
+
+Diese Schritte führen die Szenarien aus; „letzter Lauf“ stammt aus `src/features/selftest/last-runs.json`, nicht aus dieser Doku.
+
+| Szenario | Schritt | Bezeichnung | Art | letzter Lauf |
+|---|---|---|---|---|
+| `contact-lifecycle` | `create` | Kontakt mit allen Stammdaten anlegen | db | — |
+| `contact-lifecycle` | `categorize` | Kategorie + Schlagworte ändern | db | — |
+| `contact-lifecycle` | `activity` | Aktivität protokollieren | db | — |
+| `contact-lifecycle` | `import-duplicate-resolution` | Import-Duplikate werden zusammengeführt oder überschrieben statt neu angelegt | logic | — |
+| `contact-lifecycle` | `merge-contact-guardrails` | Zusammenführen verlangt gültige Kontakte und unveränderliche Identitätsfelder | workflow | — |
+| `contact-lifecycle` | `merge-contact-atomic` | Zusammenführen ist atomar: Verknüpfungen wandern, Kollisionen behalten ihre Daten | workflow | — |
+| `contact-lifecycle` | `search` | Kontakt über Namenssuche auffindbar | db | — |
+
+## Deklarierter Prüfumfang
+
+### `contact-lifecycle`
+
+Keine Prüfungen deklariert.
 
 ## Funktionsdetails
 
@@ -65,7 +85,7 @@ Legt Personen und Organisationen mit Stammdaten, Kategorien, Themen und Zuordnun
 - **Implementierung:** implementiert
 - **Einbindung:** rollenabhängig
 - **Testabdeckung:** Selbsttest
-- **Letztes Testergebnis:** nicht-ausgefuehrt (nicht aus der Existenz einer Testdatei abgeleitet)
+- **Letztes Testergebnis:** nicht-ausgefuehrt (kein Laufnachweis importiert; nicht aus der Existenz einer Testdatei abgeleitet)
 - **Rollen:** `abgeordneter`, `bueroleitung`, `mitarbeiter`, `praktikant`
 - **Routen:** `/contacts/new`, `/contacts?action=new`
 - **Frontend-Komponenten:** `src/pages/CreateContact.tsx`, `src/features/contacts/components/ContactEditForm.tsx`
@@ -102,7 +122,7 @@ Legt Personen und Organisationen mit Stammdaten, Kategorien, Themen und Zuordnun
 - **Implementierung:** implementiert
 - **Einbindung:** rollenabhängig
 - **Testabdeckung:** Selbsttest
-- **Letztes Testergebnis:** nicht-ausgefuehrt (nicht aus der Existenz einer Testdatei abgeleitet)
+- **Letztes Testergebnis:** nicht-ausgefuehrt (kein Laufnachweis importiert; nicht aus der Existenz einer Testdatei abgeleitet)
 - **Rollen:** `abgeordneter`, `bueroleitung`, `mitarbeiter`
 - **Routen:** `/contacts/:id/edit`
 - **Frontend-Komponenten:** `src/pages/EditContact.tsx`, `src/features/contacts/components/ContactEditForm.tsx`
@@ -138,7 +158,7 @@ Zeigt Stammdaten, Aktivitäten, Dokumente, Finanzierungen, Themen, Vorgänge und
 - **Implementierung:** implementiert
 - **Einbindung:** UI
 - **Testabdeckung:** kein Test
-- **Letztes Testergebnis:** nicht-ausgefuehrt (nicht aus der Existenz einer Testdatei abgeleitet)
+- **Letztes Testergebnis:** nicht-ausgefuehrt (kein Laufnachweis importiert; nicht aus der Existenz einer Testdatei abgeleitet)
 - **Rollen:** `abgeordneter`, `bueroleitung`, `mitarbeiter`, `praktikant`
 - **Routen:** `/contacts/:id`
 - **Frontend-Komponenten:** `src/pages/ContactDetail.tsx`, `src/features/contacts/components/ContactDetailPanel.tsx`, `src/components/contacts/ContactInfoTab.tsx`, `src/components/contacts/ActivityTimeline.tsx`
@@ -174,7 +194,7 @@ Importiert Kontakte aus CSV/VCF/MSG, erkennt Dubletten und ordnet Spalten zu.
 - **Implementierung:** implementiert
 - **Einbindung:** UI
 - **Testabdeckung:** kein Test
-- **Letztes Testergebnis:** nicht-ausgefuehrt (nicht aus der Existenz einer Testdatei abgeleitet)
+- **Letztes Testergebnis:** nicht-ausgefuehrt (kein Laufnachweis importiert; nicht aus der Existenz einer Testdatei abgeleitet)
 - **Rollen:** `abgeordneter`, `bueroleitung`, `mitarbeiter`
 - **Routen:** `/contacts/import`
 - **Frontend-Komponenten:** `src/pages/ImportContacts.tsx`, `src/features/contacts/components/ContactImport.tsx`, `src/components/contacts/ContactImportDuplicateDialog.tsx`
@@ -211,7 +231,7 @@ Findet ähnliche Kontakte über Trigramm-Suche und zeigt Dublettenprüfungen in 
 - **Implementierung:** implementiert
 - **Einbindung:** rollenabhängig
 - **Testabdeckung:** kein Test
-- **Letztes Testergebnis:** nicht-ausgefuehrt (nicht aus der Existenz einer Testdatei abgeleitet)
+- **Letztes Testergebnis:** nicht-ausgefuehrt (kein Laufnachweis importiert; nicht aus der Existenz einer Testdatei abgeleitet)
 - **Rollen:** `abgeordneter`, `bueroleitung`, `mitarbeiter`, `admin`
 - **Routen:** —
 - **Frontend-Komponenten:** `src/features/contacts/components/DuplicateWarning.tsx`, `src/components/contacts/DuplicateContactsSheet.tsx`, `src/components/administration/DuplicateScanDashboard.tsx`
@@ -247,7 +267,7 @@ Führt zwei Kontakte transaktional zusammen, verschiebt alle Verweise und bricht
 - **Implementierung:** implementiert
 - **Einbindung:** rollenabhängig
 - **Testabdeckung:** Selbsttest
-- **Letztes Testergebnis:** nicht-ausgefuehrt (nicht aus der Existenz einer Testdatei abgeleitet)
+- **Letztes Testergebnis:** nicht-ausgefuehrt (kein Laufnachweis importiert; nicht aus der Existenz einer Testdatei abgeleitet)
 - **Rollen:** `abgeordneter`, `bueroleitung`, `mitarbeiter`
 - **Routen:** —
 - **Frontend-Komponenten:** `src/components/contacts/MergeContactsDialog.tsx`
@@ -283,7 +303,7 @@ Erstellt und bearbeitet Verteilerlisten, ordnet Mitglieder zu und wandelt Stakeh
 - **Implementierung:** implementiert
 - **Einbindung:** UI
 - **Testabdeckung:** kein Test
-- **Letztes Testergebnis:** nicht-ausgefuehrt (nicht aus der Existenz einer Testdatei abgeleitet)
+- **Letztes Testergebnis:** nicht-ausgefuehrt (kein Laufnachweis importiert; nicht aus der Existenz einer Testdatei abgeleitet)
 - **Rollen:** `abgeordneter`, `bueroleitung`, `mitarbeiter`
 - **Routen:** `/contacts?tab=distributionlists`
 - **Frontend-Komponenten:** `src/pages/CreateDistributionList.tsx`, `src/pages/EditDistributionList.tsx`, `src/features/contacts/components/DistributionListForm.tsx`, `src/components/contacts/DistributionListsTab.tsx`
@@ -320,7 +340,7 @@ Zeigt Stakeholder auf Karten, verwaltet Flags, Ebenen und Netzwerk-Tags.
 - **Implementierung:** implementiert
 - **Einbindung:** UI
 - **Testabdeckung:** kein Test
-- **Letztes Testergebnis:** nicht-ausgefuehrt (nicht aus der Existenz einer Testdatei abgeleitet)
+- **Letztes Testergebnis:** nicht-ausgefuehrt (kein Laufnachweis importiert; nicht aus der Existenz einer Testdatei abgeleitet)
 - **Rollen:** `abgeordneter`, `bueroleitung`, `mitarbeiter`
 - **Routen:** `/contacts/netzwerk`, `/contacts/stakeholder`
 - **Frontend-Komponenten:** `src/features/contacts/components/StakeholderView.tsx`, `src/components/contacts/StakeholderNetworkPage.tsx`, `src/components/dashboard/StakeholderNetworkWidget.tsx`
@@ -356,7 +376,7 @@ Vergibt Themen an Kontakte über contact_topics und zeigt sie in Liste, Detail u
 - **Implementierung:** implementiert
 - **Einbindung:** UI
 - **Testabdeckung:** kein Test
-- **Letztes Testergebnis:** nicht-ausgefuehrt (nicht aus der Existenz einer Testdatei abgeleitet)
+- **Letztes Testergebnis:** nicht-ausgefuehrt (kein Laufnachweis importiert; nicht aus der Existenz einer Testdatei abgeleitet)
 - **Rollen:** `abgeordneter`, `bueroleitung`, `mitarbeiter`
 - **Routen:** —
 - **Frontend-Komponenten:** —
@@ -393,7 +413,7 @@ Zeigt Datenschutzhinweise, berechnet Aufbewahrungsfristen und maskiert geschütz
 - **Implementierung:** implementiert
 - **Einbindung:** UI
 - **Testabdeckung:** kein Test
-- **Letztes Testergebnis:** nicht-ausgefuehrt (nicht aus der Existenz einer Testdatei abgeleitet)
+- **Letztes Testergebnis:** nicht-ausgefuehrt (kein Laufnachweis importiert; nicht aus der Existenz einer Testdatei abgeleitet)
 - **Rollen:** `admin`, `bueroleitung`, `mitarbeiter`
 - **Routen:** —
 - **Frontend-Komponenten:** `src/features/contacts/privacy/ContactPrivacyCard.tsx`
@@ -429,7 +449,7 @@ Aktualisiert Felder für viele Kontakte gleichzeitig, protokolliert die Aktion u
 - **Implementierung:** implementiert
 - **Einbindung:** rollenabhängig
 - **Testabdeckung:** kein Test
-- **Letztes Testergebnis:** nicht-ausgefuehrt (nicht aus der Existenz einer Testdatei abgeleitet)
+- **Letztes Testergebnis:** nicht-ausgefuehrt (kein Laufnachweis importiert; nicht aus der Existenz einer Testdatei abgeleitet)
 - **Rollen:** `abgeordneter`, `bueroleitung`, `mitarbeiter`
 - **Routen:** —
 - **Frontend-Komponenten:** `src/components/contacts/BulkActionsToolbar.tsx`
@@ -464,7 +484,7 @@ Protokolliert Anrufe, E-Mails, Treffen und Notizen am Kontakt und zeigt sie im V
 - **Implementierung:** implementiert
 - **Einbindung:** UI
 - **Testabdeckung:** kein Test
-- **Letztes Testergebnis:** nicht-ausgefuehrt (nicht aus der Existenz einer Testdatei abgeleitet)
+- **Letztes Testergebnis:** nicht-ausgefuehrt (kein Laufnachweis importiert; nicht aus der Existenz einer Testdatei abgeleitet)
 - **Rollen:** `abgeordneter`, `bueroleitung`, `mitarbeiter`, `praktikant`
 - **Routen:** —
 - **Frontend-Komponenten:** `src/components/contacts/ActivityTimeline.tsx`, `src/components/my-work/CallNoteQuickCapture.tsx`, `src/components/my-work/EmailQuickCapture.tsx`
@@ -500,7 +520,7 @@ Merkt sich Gesprächswissen und Vorlieben je Kontakt für Terminbriefings.
 - **Implementierung:** implementiert
 - **Einbindung:** UI
 - **Testabdeckung:** kein Test
-- **Letztes Testergebnis:** nicht-ausgefuehrt (nicht aus der Existenz einer Testdatei abgeleitet)
+- **Letztes Testergebnis:** nicht-ausgefuehrt (kein Laufnachweis importiert; nicht aus der Existenz einer Testdatei abgeleitet)
 - **Rollen:** `abgeordneter`, `bueroleitung`, `mitarbeiter`
 - **Routen:** —
 - **Frontend-Komponenten:** `src/components/contacts/ContactBriefingMemoryTab.tsx`
@@ -536,7 +556,7 @@ Erfasst Finanzierungen, beteiligte Kontakte und Budgetbezüge.
 - **Implementierung:** implementiert
 - **Einbindung:** UI
 - **Testabdeckung:** kein Test
-- **Letztes Testergebnis:** nicht-ausgefuehrt (nicht aus der Existenz einer Testdatei abgeleitet)
+- **Letztes Testergebnis:** nicht-ausgefuehrt (kein Laufnachweis importiert; nicht aus der Existenz einer Testdatei abgeleitet)
 - **Rollen:** `abgeordneter`, `bueroleitung`, `mitarbeiter`
 - **Routen:** —
 - **Frontend-Komponenten:** `src/components/contacts/FundingDialog.tsx`, `src/components/contacts/ContactFundingsList.tsx`

@@ -46,9 +46,32 @@ _Auto-generiert mit `npm run update:feature-catalog` aus dem zentralen Funktions
 
 ## Selbsttest-Szenarien
 
-| Szenario | Titel | deklarierte Tabellen | deklarierte Prüfungen |
-|---|---|---:|---:|
-| `decision-lifecycle` | Entscheidungs-Lifecycle (active → open → archived) | 3 | 0 |
+| Szenario | Titel | deklarierte Tabellen | deklarierte Prüfungen | letzter Lauf |
+|---|---|---:|---:|---|
+| `decision-lifecycle` | Entscheidungs-Lifecycle (active → open → archived) | 3 | 0 | — |
+
+## Selbsttest-Schritte
+
+Diese Schritte führen die Szenarien aus; „letzter Lauf“ stammt aus `src/features/selftest/last-runs.json`, nicht aus dieser Doku.
+
+| Szenario | Schritt | Bezeichnung | Art | letzter Lauf |
+|---|---|---|---|---|
+| `decision-lifecycle` | `dashboard-nudges` | Anstupsen: zehn Sekunden und 24-Stunden-Sperre | logic | — |
+| `decision-lifecycle` | `dashboard-voting` | Dashboard: nur eigene ausstehende Abstimmungen, keine eigenen Anfragen | logic | — |
+| `decision-lifecycle` | `create` | Entscheidung anlegen (active) | db | — |
+| `decision-lifecycle` | `add-participant` | Teilnehmer (sich selbst) hinzufügen | db | — |
+| `decision-lifecycle` | `withdraw-responses` | Ja, Nein und Rückfrage speichern und nachweisbar zurücknehmen | workflow | — |
+| `decision-lifecycle` | `check-options` | Default-Antwortoptionen prüfen | db | — |
+| `decision-lifecycle` | `set-open` | Status auf 'open' | db | — |
+| `decision-lifecycle` | `archive` | Archivieren | db | — |
+| `decision-lifecycle` | `verify` | Verifikation | db | — |
+| `decision-lifecycle` | `nudge-boundary` | Fremde oder unbekannte Entscheidung lässt sich nicht anstupsen | workflow | — |
+
+## Deklarierter Prüfumfang
+
+### `decision-lifecycle`
+
+Keine Prüfungen deklariert.
 
 ## Funktionsdetails
 
@@ -59,7 +82,7 @@ Erstellt eine Entscheidung mit Optionen, Frist, Teilnehmenden, Anhängen und Bez
 - **Implementierung:** implementiert
 - **Einbindung:** rollenabhängig
 - **Testabdeckung:** Selbsttest
-- **Letztes Testergebnis:** nicht-ausgefuehrt (nicht aus der Existenz einer Testdatei abgeleitet)
+- **Letztes Testergebnis:** nicht-ausgefuehrt (kein Laufnachweis importiert; nicht aus der Existenz einer Testdatei abgeleitet)
 - **Rollen:** `abgeordneter`, `bueroleitung`, `mitarbeiter`
 - **Routen:** `/decisions`
 - **Frontend-Komponenten:** `src/pages/Decisions.tsx`, `src/components/task-decisions`
@@ -95,7 +118,7 @@ Bestimmt den Teilnehmerkreis, erzeugt eindeutige Antwort-Token und schützt den 
 - **Implementierung:** implementiert
 - **Einbindung:** rollenabhängig
 - **Testabdeckung:** Selbsttest
-- **Letztes Testergebnis:** nicht-ausgefuehrt (nicht aus der Existenz einer Testdatei abgeleitet)
+- **Letztes Testergebnis:** nicht-ausgefuehrt (kein Laufnachweis importiert; nicht aus der Existenz einer Testdatei abgeleitet)
 - **Rollen:** `oeffentlich`, `abgeordneter`, `bueroleitung`, `mitarbeiter`
 - **Routen:** `/decision-response/:participantId`
 - **Frontend-Komponenten:** `src/pages/DecisionResponse.tsx`
@@ -131,7 +154,7 @@ Nimmt Ja/Nein/Enthaltung an, protokolliert die Antwort und stößt Benachrichtig
 - **Implementierung:** implementiert
 - **Einbindung:** UI
 - **Testabdeckung:** Selbsttest
-- **Letztes Testergebnis:** nicht-ausgefuehrt (nicht aus der Existenz einer Testdatei abgeleitet)
+- **Letztes Testergebnis:** nicht-ausgefuehrt (kein Laufnachweis importiert; nicht aus der Existenz einer Testdatei abgeleitet)
 - **Rollen:** `abgeordneter`, `bueroleitung`, `mitarbeiter`
 - **Routen:** —
 - **Frontend-Komponenten:** —
@@ -167,7 +190,7 @@ Erlaubt die Änderung einer abgegebenen Antwort und hält die Antwort-Historie r
 - **Implementierung:** implementiert
 - **Einbindung:** UI
 - **Testabdeckung:** kein Test
-- **Letztes Testergebnis:** nicht-ausgefuehrt (nicht aus der Existenz einer Testdatei abgeleitet)
+- **Letztes Testergebnis:** nicht-ausgefuehrt (kein Laufnachweis importiert; nicht aus der Existenz einer Testdatei abgeleitet)
 - **Rollen:** `abgeordneter`, `bueroleitung`, `mitarbeiter`
 - **Routen:** —
 - **Frontend-Komponenten:** —
@@ -202,7 +225,7 @@ Ermöglicht Kommentare zu Entscheidungen, Antworten auf Kommentare und Emoji-Rea
 - **Implementierung:** implementiert
 - **Einbindung:** UI
 - **Testabdeckung:** kein Test
-- **Letztes Testergebnis:** nicht-ausgefuehrt (nicht aus der Existenz einer Testdatei abgeleitet)
+- **Letztes Testergebnis:** nicht-ausgefuehrt (kein Laufnachweis importiert; nicht aus der Existenz einer Testdatei abgeleitet)
 - **Rollen:** `abgeordneter`, `bueroleitung`, `mitarbeiter`
 - **Routen:** —
 - **Frontend-Komponenten:** `src/components/shared/DecisionResponseSummary.tsx`
@@ -238,7 +261,7 @@ Lädt Anhänge zu Entscheidungen hoch, verknüpft sie und stellt sie Teilnehmend
 - **Implementierung:** implementiert
 - **Einbindung:** UI
 - **Testabdeckung:** kein Test
-- **Letztes Testergebnis:** nicht-ausgefuehrt (nicht aus der Existenz einer Testdatei abgeleitet)
+- **Letztes Testergebnis:** nicht-ausgefuehrt (kein Laufnachweis importiert; nicht aus der Existenz einer Testdatei abgeleitet)
 - **Rollen:** `abgeordneter`, `bueroleitung`, `mitarbeiter`
 - **Routen:** —
 - **Frontend-Komponenten:** —
@@ -273,7 +296,7 @@ Zeigt offene Entscheidungen im Abgeordneten-Dashboard und erlaubt gezielte Erinn
 - **Implementierung:** implementiert
 - **Einbindung:** UI
 - **Testabdeckung:** kein Test
-- **Letztes Testergebnis:** nicht-ausgefuehrt (nicht aus der Existenz einer Testdatei abgeleitet)
+- **Letztes Testergebnis:** nicht-ausgefuehrt (kein Laufnachweis importiert; nicht aus der Existenz einer Testdatei abgeleitet)
 - **Rollen:** `abgeordneter`, `bueroleitung`
 - **Routen:** —
 - **Frontend-Komponenten:** `src/features/decisions/DeputyWaitingCard.tsx`, `src/components/dashboard/DashboardDecisionsWidget.tsx`
@@ -309,7 +332,7 @@ Archiviert abgeschlossene Entscheidungen automatisch oder manuell und hält die 
 - **Implementierung:** implementiert
 - **Einbindung:** systemseitig
 - **Testabdeckung:** kein Test
-- **Letztes Testergebnis:** nicht-ausgefuehrt (nicht aus der Existenz einer Testdatei abgeleitet)
+- **Letztes Testergebnis:** nicht-ausgefuehrt (kein Laufnachweis importiert; nicht aus der Existenz einer Testdatei abgeleitet)
 - **Rollen:** `admin`, `bueroleitung`, `system`
 - **Routen:** —
 - **Frontend-Komponenten:** `src/components/administration/DecisionArchiveSettings.tsx`
@@ -345,7 +368,7 @@ Versendet Einladungs- und Erinnerungs-E-Mails zu Entscheidungen auf Basis konfig
 - **Implementierung:** implementiert
 - **Einbindung:** rollenabhängig
 - **Testabdeckung:** kein Test
-- **Letztes Testergebnis:** nicht-ausgefuehrt (nicht aus der Existenz einer Testdatei abgeleitet)
+- **Letztes Testergebnis:** nicht-ausgefuehrt (kein Laufnachweis importiert; nicht aus der Existenz einer Testdatei abgeleitet)
 - **Rollen:** `abgeordneter`, `bueroleitung`, `mitarbeiter`
 - **Routen:** —
 - **Frontend-Komponenten:** —
@@ -381,7 +404,7 @@ Nimmt Antworten über einen Matrix-Handler entgegen und protokolliert die Zustel
 - **Implementierung:** implementiert
 - **Einbindung:** systemseitig
 - **Testabdeckung:** kein Test
-- **Letztes Testergebnis:** nicht-ausgefuehrt (nicht aus der Existenz einer Testdatei abgeleitet)
+- **Letztes Testergebnis:** nicht-ausgefuehrt (kein Laufnachweis importiert; nicht aus der Existenz einer Testdatei abgeleitet)
 - **Rollen:** `system`, `abgeordneter`
 - **Routen:** —
 - **Frontend-Komponenten:** —

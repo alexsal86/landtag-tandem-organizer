@@ -54,15 +54,155 @@ _Auto-generiert mit `npm run update:feature-catalog` aus dem zentralen Funktions
 
 ## Selbsttest-Szenarien
 
-| Szenario | Titel | deklarierte Tabellen | deklarierte Prüfungen |
-|---|---|---:|---:|
-| `appointment-briefing-lifecycle` | Briefing-Lifecycle (vergeben → Aufgabe → vorlegen → freigeben) | 3 | 5 |
-| `appointment-lifecycle` | Termin-Lifecycle (Kalender + Briefing + Feedback) | 3 | 0 |
-| `appointment-request-lifecycle` | Terminanfragen-Lifecycle (Eingang → Sperre → Entscheidung → Termin) | 2 | 4 |
-| `daily-briefing-lifecycle` | Tages-Briefings (Vortag-Regel) | 1 | 0 |
-| `day-slip-lifecycle` | Tageszettel-Lifecycle (Links → Neuladen → Übernahme auf Folgetag) | 1 | 10 |
-| `jour-fixe-platform-integration` | Jour Fixe: Plattformquellen & Stafetten-Abschluss | 4 | 4 |
-| `poll-lifecycle` | Terminabstimmung (Gewinner-Slot übernehmen + Nachfassen) | 5 | 6 |
+| Szenario | Titel | deklarierte Tabellen | deklarierte Prüfungen | letzter Lauf |
+|---|---|---:|---:|---|
+| `appointment-briefing-lifecycle` | Briefing-Lifecycle (vergeben → Aufgabe → vorlegen → freigeben) | 3 | 5 | — |
+| `appointment-lifecycle` | Termin-Lifecycle (Kalender + Briefing + Feedback) | 3 | 0 | — |
+| `appointment-request-lifecycle` | Terminanfragen-Lifecycle (Eingang → Sperre → Entscheidung → Termin) | 2 | 4 | — |
+| `daily-briefing-lifecycle` | Tages-Briefings (Vortag-Regel) | 1 | 0 | — |
+| `day-slip-lifecycle` | Tageszettel-Lifecycle (Links → Neuladen → Übernahme auf Folgetag) | 3 | 14 | — |
+| `jour-fixe-platform-integration` | Jour Fixe: Plattformquellen & Stafetten-Abschluss | 4 | 4 | — |
+| `poll-lifecycle` | Terminabstimmung (Gewinner-Slot übernehmen + Nachfassen) | 5 | 6 | — |
+
+## Selbsttest-Schritte
+
+Diese Schritte führen die Szenarien aus; „letzter Lauf“ stammt aus `src/features/selftest/last-runs.json`, nicht aus dieser Doku.
+
+| Szenario | Schritt | Bezeichnung | Art | letzter Lauf |
+|---|---|---|---|---|
+| `appointment-briefing-lifecycle` | `personal-sent-changes` | Gemeldete Änderungen nur heute und persönlich ausblendbar | logic | — |
+| `appointment-briefing-lifecycle` | `day-appointment-progress` | Dein Tag: vergangen, laufend und als nächstes | logic | — |
+| `appointment-briefing-lifecycle` | `appointment-change-rules` | Terminänderung: Schnellwahl, eigene Zeit, Ort und Hinweis-Chip | logic | — |
+| `appointment-briefing-lifecycle` | `dashboard-briefing-status` | Dashboard-Briefing: Auftrag, Entscheidung und Freigabe | logic | — |
+| `appointment-briefing-lifecycle` | `appointment-dashboard-focus` | Termin-Fokus: Größe, Abfahrt und laufender Termin | logic | — |
+| `appointment-briefing-lifecycle` | `office-debrief-inbox` | Nachbereitung: Zusagen priorisieren und Quelle anzeigen | logic | — |
+| `appointment-briefing-lifecycle` | `today-priorities` | Heute zuerst: Rangfolge und Berliner Tagesgrenzen | logic | — |
+| `appointment-briefing-lifecycle` | `office-feedback` | Bürorückmeldung: Abschluss, Erinnerung und ältere Termine | logic | — |
+| `appointment-briefing-lifecycle` | `day-summary` | Tagesüberblick: leere Tage, laufende Termine, Briefings und offene Rückmeldungen | logic | — |
+| `appointment-briefing-lifecycle` | `reminder` | Briefing-Hinweis: Zuständigkeit, Vorlauf und Montag | logic | — |
+| `appointment-briefing-lifecycle` | `rules` | Regeln: nur Entscheider geben frei; Frist am Vortag 12:00 | logic | — |
+| `appointment-briefing-lifecycle` | `model` | Regeln: Kurz/Dossier-Umrechnung, Live nur am Termintag, Folgeaufgabe, Abschluss | logic | — |
+| `appointment-briefing-lifecycle` | `create` | Termin anlegen (Briefing offen) | db | — |
+| `appointment-briefing-lifecycle` | `change-alert` | Eil-Änderung mit neuer Zeit und Hinweis speichern | workflow | — |
+| `appointment-briefing-lifecycle` | `assign` | Briefing vergeben → Aufgabe entsteht | workflow | — |
+| `appointment-briefing-lifecycle` | `submit` | Vorlegen → Ball bei Abgeordnete/r | workflow | — |
+| `appointment-briefing-lifecycle` | `approve` | Freigeben → Aufgabe erledigt | workflow | — |
+| `appointment-briefing-lifecycle` | `none` | „Kein Briefing“ setzt Status und löst Aufgabe | workflow | — |
+| `appointment-briefing-lifecycle` | `accept-with-briefing` | Zusage im Jour Fixe vergibt Briefing in einem Schritt | workflow | — |
+| `appointment-lifecycle` | `birthday-congratulations-options` | Dashboard und Jour fixe teilen die Glückwunsch-Optionen | logic | — |
+| `appointment-lifecycle` | `dashboard-occasions` | Geburtstage und ganztägige Termine getrennt darstellen | logic | — |
+| `appointment-lifecycle` | `invitation-uid-sequence` | Einladungen: stabile UID und fortlaufende SEQUENCE | logic | — |
+| `appointment-lifecycle` | `invitation-guest-identity` | Einladungen: Gäste per E-Mail angleichen, RSVP und Antwortlink erhalten | logic | — |
+| `appointment-lifecycle` | `poll-slot-suggestions` | Terminabstimmung: Slots aus Frei/Gebucht samt Puffer | logic | — |
+| `appointment-lifecycle` | `poll-answer-followup` | Terminabstimmung: automatisches Nachfassen ohne Antwort | logic | — |
+| `appointment-lifecycle` | `poll-followup-queue` | Terminabstimmung: Versandwarteschlange mit Wiederholungen | logic | — |
+| `appointment-lifecycle` | `appointment-reminder-due` | Termin-Erinnerung: Vorlauf, Fälligkeit und ein Versand je Termin | logic | — |
+| `appointment-lifecycle` | `appointment-reminder-reset-on-move` | Terminverschiebung macht die Erinnerung wieder scharf | logic | — |
+| `appointment-lifecycle` | `create-appointment` | Termin anlegen (heute, 2h Block) | db | — |
+| `appointment-lifecycle` | `create-preparation` | Briefing/Vorbereitung mit allen Strukturfeldern | db | — |
+| `appointment-lifecycle` | `create-feedback` | Feedback (abgeschlossen, mit Notizen) | db | — |
+| `appointment-lifecycle` | `feedback-unique` | Zweite Rückmeldung zum selben Termin wird abgewiesen | workflow | — |
+| `appointment-request-lifecycle` | `create` | Anfrage anlegen | db | — |
+| `appointment-request-lifecycle` | `guard` | Direkte Statusänderung wird blockiert | db | — |
+| `appointment-request-lifecycle` | `decide` | Über Freigabe-Funktion zusagen → Termin entsteht | workflow | — |
+| `appointment-request-lifecycle` | `repeat-decision` | Erneute Zusage wird abgewiesen; kein doppelter Termin | workflow | — |
+| `daily-briefing-lifecycle` | `relative-read-day` | Lesebestätigung unterscheidet heute und gestern in Berlin | logic | — |
+| `daily-briefing-lifecycle` | `read-ahead` | Vorliegende Tagesbriefings vorab lesen | logic | — |
+| `daily-briefing-lifecycle` | `collapse-read-briefing` | Nur gelesene Tagesbriefings einklappen | logic | — |
+| `daily-briefing-lifecycle` | `read-receipt-time` | Lesezeitpunkt als Berliner Uhrzeit anzeigen | logic | — |
+| `daily-briefing-lifecycle` | `date-chips` | Morgen und übermorgen sind Berliner Kalendertage | logic | — |
+| `daily-briefing-lifecycle` | `reject-today` | Vortag-Regel: Briefing für heute wird abgelehnt | db | — |
+| `daily-briefing-lifecycle` | `create-yesterday` | Briefing für morgen anlegen | db | — |
+| `daily-briefing-lifecycle` | `create-today` | Briefing für übermorgen anlegen | db | — |
+| `daily-briefing-lifecycle` | `verify-list` | Beide Briefings für Tenant lesbar | db | — |
+| `day-slip-lifecycle` | `write` | Tageszettel mit 4 verlinkten Zeilen speichern | db | — |
+| `day-slip-lifecycle` | `reload` | Neuladen: alle Links + Sprungziele vorhanden | db | — |
+| `day-slip-lifecycle` | `carry` | Offene Zeilen auf Folgetag übernehmen (Links bleiben) | db | — |
+| `day-slip-lifecycle` | `no-duplicate-carry` | Erneute Übernahme erzeugt keine doppelten Zeilen | logic | — |
+| `day-slip-lifecycle` | `template-flag-persisted` | Vorlagenentscheidung bleibt nach Speichern und Neuladen erhalten | db | — |
+| `day-slip-lifecycle` | `start-injection-once` | Vorlage, Wochenplan und Routinen entscheiden einmal pro Tag | logic | — |
+| `day-slip-lifecycle` | `navigation-rules` | Frühere Tage lesbar, Zukunft gesperrt | logic | — |
+| `day-slip-lifecycle` | `open-past-days` | Offene frühere Tage werden aufgelistet | logic | — |
+| `day-slip-lifecycle` | `snooze-presets` | Snooze-Vorschläge ohne doppeltes Ziel | logic | — |
+| `day-slip-lifecycle` | `template-decision` | Wochentag-Vorlage nur an unbegonnenen Zetteln, Entscheidung je Tag festgehalten | logic | — |
+| `day-slip-lifecycle` | `export-idempotent` | Export trifft dasselbe Ziel ohne Dublette | db | — |
+| `day-slip-lifecycle` | `foreign-slip-blocked` | Fremder Zettel bleibt schreib- und lesegeschützt | db | — |
+| `day-slip-lifecycle` | `mood-persisted` | Stimmung bleibt nach Speichern und Neuladen erhalten | db | — |
+| `day-slip-lifecycle` | `archive-after-reload` | Archiv trennt abgeschlossene und offene Tage nach dem Neuladen | db | — |
+| `day-slip-lifecycle` | `delete-undo` | Löschen mit Rückgängig erhält Reihenfolge und Verknüpfung | logic | — |
+| `day-slip-lifecycle` | `line-shortcuts` | Getippte Kürzel werden erkannt und aufgelöst | logic | — |
+| `day-slip-lifecycle` | `archive-status` | Archiv trennt erledigt von zugewiesen und bleibt durchsuchbar | logic | — |
+| `jour-fixe-platform-integration` | `agenda-combine` | Agenda: Hauptpunkt mit Unterpunkten unter anderen Hauptpunkt verschieben | logic | — |
+| `jour-fixe-platform-integration` | `agenda-timing` | Agenda: nur Hauptpunkte zählen, Altbestand ohne erfundene Endzeit | logic | — |
+| `jour-fixe-platform-integration` | `radar-rules` | Radar: mehrfache Anstupser, 7-Tage-Grenze und abgeschlossene Aufgaben | logic | — |
+| `jour-fixe-platform-integration` | `horizon-rules` | Zeitfenster: Redaktion 10, Briefings/Abwesenheiten 14 und Veranstaltungen 60 Tage | logic | — |
+| `jour-fixe-platform-integration` | `zombie-points` | Agenda: Zombie-Punkte ab der dritten Verschiebung | logic | — |
+| `jour-fixe-platform-integration` | `actual-times` | Agenda: Ist-Zeiten, Rundung und Abweichung | logic | — |
+| `jour-fixe-platform-integration` | `meeting-decision-note` | Beschluss: Entscheidungsblock verliert keine bestehende Notiz | logic | — |
+| `jour-fixe-platform-integration` | `create` | Sitzung, Hauptpunkt, alle Systemtypen und zwei gleichnamige Entscheidungen | db | — |
+| `jour-fixe-platform-integration` | `archive` | Gemeinsamen Sitzungsabschluss ausführen und Stafetten-Aufgabe zurücklesen | workflow | — |
+| `jour-fixe-platform-integration` | `retry` | Erneuter Abschluss erzeugt keine zweite Folgeaufgabe | workflow | — |
+| `poll-lifecycle` | `create-poll` | Abstimmung mit Slots und Teilnehmern anlegen | db | — |
+| `poll-lifecycle` | `confirm-winner` | Gewinner-Slot übernehmen (idempotent, genau ein Termin) | db | — |
+| `poll-lifecycle` | `confirm-winner-guards` | Ersteller-, Slot- und Mandantenprüfung | db | — |
+
+## Deklarierter Prüfumfang
+
+### `appointment-briefing-lifecycle`
+
+1. Regeln für Freigabe und Fristvorschlag
+2. Aufgabe entsteht beim Vergeben
+3. Ball wechselt bei Vorlage
+4. Freigabe erledigt Aufgabe
+5. Kein Briefing schließt Aufgabe
+
+### `appointment-lifecycle`
+
+Keine Prüfungen deklariert.
+
+### `appointment-request-lifecycle`
+
+1. Statussperre bei direktem Schreiben
+2. Zusage über die Anwendungs-RPC
+3. Verknüpfter Termin
+4. Wiederholung erzeugt keinen zweiten Termin
+
+### `daily-briefing-lifecycle`
+
+Keine Prüfungen deklariert.
+
+### `day-slip-lifecycle`
+
+1. Speichern und erneutes Laden
+2. Link-Erhalt bei Übernahme
+3. Keine doppelte Übernahme
+4. Wochentag-Vorlage, Wochenplan und Routinen entscheiden einmal pro Tag; nur leere Zettel erhalten Vorlage und Plan
+5. Archivierte Vorlagenentscheidung übersteht Speichern und Neuladen
+6. Export trifft dasselbe Ziel ohne Dublette (Aufgabe und Notiz)
+7. Schreiben in einen fremden Zettel wird verweigert, fremde Zettel bleiben unlesbar
+8. Stimmung übersteht Speichern und Neuladen
+9. Archiv trennt abgeschlossene und offene Tage nach dem Neuladen
+10. Frühere Tage ohne Abschluss bleiben lesbar
+11. Snooze-Vorschläge ohne doppeltes Ziel
+12. Löschen mit Rückgängig
+13. Getippte Kürzel ohne Automatik
+14. Archiv: erledigt/zugewiesen/offen, Suche, Datumsnachbarn
+
+### `jour-fixe-platform-integration`
+
+1. Quellenabfragen unter bestehenden Zugriffsrechten
+2. Folgeaufgaben mit Zuständigkeit und Verlauf
+3. Notizen ändern keine Abstimmung
+4. Wiederholung erzeugt keine Duplikate
+
+### `poll-lifecycle`
+
+1. confirm_poll_winner legt genau einen Termin an und verknüpft ihn mit der Abstimmung
+2. Zweiter Aufruf (gleicher und anderer Slot) liefert denselben Termin und den tatsächlich gespeicherten Slot
+3. Externe Teilnehmer werden als Gäste am Termin angelegt, interne nicht
+4. Fremde Slots und unbekannte Abstimmungen werden abgelehnt
+5. Fremde Abstimmungen im Mandanten können nicht übernommen werden
+6. get_poll_availability verweigert fremde Mandanten
 
 ## Funktionsdetails
 
@@ -73,7 +213,7 @@ Stellt Termine in Monats-, Wochen- und Tagesansicht dar, inklusive Quellen, Koll
 - **Implementierung:** implementiert
 - **Einbindung:** UI
 - **Testabdeckung:** Selbsttest
-- **Letztes Testergebnis:** nicht-ausgefuehrt (nicht aus der Existenz einer Testdatei abgeleitet)
+- **Letztes Testergebnis:** nicht-ausgefuehrt (kein Laufnachweis importiert; nicht aus der Existenz einer Testdatei abgeleitet)
 - **Rollen:** `abgeordneter`, `bueroleitung`, `mitarbeiter`, `praktikant`
 - **Routen:** `/calendar`
 - **Frontend-Komponenten:** `src/features/calendar/components/CalendarView.tsx`, `src/components/calendar/EnhancedCalendar.tsx`, `src/components/calendar/MonthView.tsx`, `src/components/calendar/WeekView.tsx`, `src/components/calendar/DayView.tsx`
@@ -110,7 +250,7 @@ Legt Termine mit Zeitraum, Ort, Kategorie, Kontakten, Gästen und Vorbereitungsb
 - **Implementierung:** implementiert
 - **Einbindung:** rollenabhängig
 - **Testabdeckung:** Selbsttest
-- **Letztes Testergebnis:** nicht-ausgefuehrt (nicht aus der Existenz einer Testdatei abgeleitet)
+- **Letztes Testergebnis:** nicht-ausgefuehrt (kein Laufnachweis importiert; nicht aus der Existenz einer Testdatei abgeleitet)
 - **Rollen:** `abgeordneter`, `bueroleitung`, `mitarbeiter`, `praktikant`
 - **Routen:** —
 - **Frontend-Komponenten:** `src/features/appointments/components/CreateAppointmentDialog.tsx`
@@ -146,7 +286,7 @@ Legt Termine mit Zeitraum, Ort, Kategorie, Kontakten, Gästen und Vorbereitungsb
 - **Implementierung:** implementiert
 - **Einbindung:** UI
 - **Testabdeckung:** kein Test
-- **Letztes Testergebnis:** nicht-ausgefuehrt (nicht aus der Existenz einer Testdatei abgeleitet)
+- **Letztes Testergebnis:** nicht-ausgefuehrt (kein Laufnachweis importiert; nicht aus der Existenz einer Testdatei abgeleitet)
 - **Rollen:** `abgeordneter`, `bueroleitung`, `mitarbeiter`
 - **Routen:** —
 - **Frontend-Komponenten:** `src/features/appointments/change-alerts/AppointmentChangeAlerts.tsx`
@@ -182,7 +322,7 @@ Verwaltet Termingäste, Standardgäste und Zu-/Absagen mit E-Mail-Normalisierung
 - **Implementierung:** implementiert
 - **Einbindung:** UI
 - **Testabdeckung:** kein Test
-- **Letztes Testergebnis:** nicht-ausgefuehrt (nicht aus der Existenz einer Testdatei abgeleitet)
+- **Letztes Testergebnis:** nicht-ausgefuehrt (kein Laufnachweis importiert; nicht aus der Existenz einer Testdatei abgeleitet)
 - **Rollen:** `abgeordneter`, `bueroleitung`, `mitarbeiter`, `praktikant`
 - **Routen:** —
 - **Frontend-Komponenten:** `src/features/appointments/components/GuestManager.tsx`, `src/features/appointments/components/DefaultGuestsAdmin.tsx`
@@ -218,7 +358,7 @@ Versendet In-App-, Push- und optional E-Mail-Erinnerungen gemäß reminder_minut
 - **Implementierung:** implementiert
 - **Einbindung:** systemseitig
 - **Testabdeckung:** kein Test
-- **Letztes Testergebnis:** nicht-ausgefuehrt (nicht aus der Existenz einer Testdatei abgeleitet)
+- **Letztes Testergebnis:** nicht-ausgefuehrt (kein Laufnachweis importiert; nicht aus der Existenz einer Testdatei abgeleitet)
 - **Rollen:** `system`, `abgeordneter`, `bueroleitung`, `mitarbeiter`
 - **Routen:** —
 - **Frontend-Komponenten:** —
@@ -255,7 +395,7 @@ Erzeugt ICS-Einladungen, versendet sie und stempelt den Versand am Termin.
 - **Implementierung:** implementiert
 - **Einbindung:** UI
 - **Testabdeckung:** Unit-Test
-- **Letztes Testergebnis:** unbekannt (nicht aus der Existenz einer Testdatei abgeleitet)
+- **Letztes Testergebnis:** unbekannt (kein Laufnachweis importiert; nicht aus der Existenz einer Testdatei abgeleitet)
 - **Rollen:** `abgeordneter`, `bueroleitung`, `mitarbeiter`
 - **Routen:** —
 - **Frontend-Komponenten:** —
@@ -292,7 +432,7 @@ Erfasst Terminanfragen in einer eigenen Tabelle; nur die Entscheiderrolle darf �
 - **Implementierung:** implementiert
 - **Einbindung:** rollenabhängig
 - **Testabdeckung:** Selbsttest
-- **Letztes Testergebnis:** nicht-ausgefuehrt (nicht aus der Existenz einer Testdatei abgeleitet)
+- **Letztes Testergebnis:** nicht-ausgefuehrt (kein Laufnachweis importiert; nicht aus der Existenz einer Testdatei abgeleitet)
 - **Rollen:** `abgeordneter`, `bueroleitung`, `mitarbeiter`
 - **Routen:** —
 - **Frontend-Komponenten:** `src/features/appointment-requests/AppointmentRequestHost.tsx`, `src/features/appointment-requests/AppointmentRequestCreateDialog.tsx`, `src/features/appointment-requests/AppointmentRequestDetailDialog.tsx`, `src/features/appointment-requests/AppointmentRequestList.tsx`
@@ -329,7 +469,7 @@ Erstellt Kurz-, 7-Phasen- und Live-Briefings auf einem gemeinsamen preparation_d
 - **Implementierung:** implementiert
 - **Einbindung:** rollenabhängig
 - **Testabdeckung:** Selbsttest
-- **Letztes Testergebnis:** nicht-ausgefuehrt (nicht aus der Existenz einer Testdatei abgeleitet)
+- **Letztes Testergebnis:** nicht-ausgefuehrt (kein Laufnachweis importiert; nicht aus der Existenz einer Testdatei abgeleitet)
 - **Rollen:** `abgeordneter`, `bueroleitung`, `mitarbeiter`
 - **Routen:** `/appointment-preparation/:id`
 - **Frontend-Komponenten:** `src/features/appointments/components/AppointmentPreparationSidebar.tsx`, `src/features/appointments/briefing/CompactBriefingEditor.tsx`, `src/features/appointments/briefing/AppointmentBriefingStatusCard.tsx`
@@ -366,7 +506,7 @@ Führt das Briefing im Termin, erlaubt Statusfortschritt und erzeugt Nachbereitu
 - **Implementierung:** implementiert
 - **Einbindung:** UI
 - **Testabdeckung:** Selbsttest
-- **Letztes Testergebnis:** nicht-ausgefuehrt (nicht aus der Existenz einer Testdatei abgeleitet)
+- **Letztes Testergebnis:** nicht-ausgefuehrt (kein Laufnachweis importiert; nicht aus der Existenz einer Testdatei abgeleitet)
 - **Rollen:** `abgeordneter`, `bueroleitung`, `mitarbeiter`
 - **Routen:** `/briefing-live/:id`
 - **Frontend-Komponenten:** `src/pages/BriefingLivePage.tsx`, `src/features/appointments/briefing/PendingBriefingNotice.tsx`
@@ -403,7 +543,7 @@ Sammelt Rückmeldungen aus dem Termin, zeigt offene Nachbereitungen und schließ
 - **Implementierung:** implementiert
 - **Einbindung:** UI
 - **Testabdeckung:** kein Test
-- **Letztes Testergebnis:** nicht-ausgefuehrt (nicht aus der Existenz einer Testdatei abgeleitet)
+- **Letztes Testergebnis:** nicht-ausgefuehrt (kein Laufnachweis importiert; nicht aus der Existenz einer Testdatei abgeleitet)
 - **Rollen:** `abgeordneter`, `bueroleitung`, `mitarbeiter`
 - **Routen:** —
 - **Frontend-Komponenten:** `src/features/appointments/briefing/OfficeDebriefInboxCard.tsx`, `src/features/appointments/briefing/OfficeFeedbackCard.tsx`, `src/features/appointments/briefing/DeputyDebriefReview.tsx`
@@ -440,7 +580,7 @@ Erfasst Feedback zu vergangenen Terminen, erzeugt Feedback-Einträge automatisch
 - **Implementierung:** implementiert
 - **Einbindung:** systemseitig
 - **Testabdeckung:** kein Test
-- **Letztes Testergebnis:** nicht-ausgefuehrt (nicht aus der Existenz einer Testdatei abgeleitet)
+- **Letztes Testergebnis:** nicht-ausgefuehrt (kein Laufnachweis importiert; nicht aus der Existenz einer Testdatei abgeleitet)
 - **Rollen:** `abgeordneter`, `bueroleitung`, `mitarbeiter`, `system`
 - **Routen:** —
 - **Frontend-Komponenten:** `src/components/dashboard/AppointmentFeedbackWidget.tsx`
@@ -476,7 +616,7 @@ Bereitet Termine mit Dokumenten, Themen, Kontaktwissen und KI-Vorschlägen vor.
 - **Implementierung:** implementiert
 - **Einbindung:** UI
 - **Testabdeckung:** kein Test
-- **Letztes Testergebnis:** nicht-ausgefuehrt (nicht aus der Existenz einer Testdatei abgeleitet)
+- **Letztes Testergebnis:** nicht-ausgefuehrt (kein Laufnachweis importiert; nicht aus der Existenz einer Testdatei abgeleitet)
 - **Rollen:** `abgeordneter`, `bueroleitung`, `mitarbeiter`
 - **Routen:** `/appointment-preparation/:id`
 - **Frontend-Komponenten:** `src/pages/AppointmentPreparationDetail.tsx`, `src/components/appointment-preparations`
@@ -512,7 +652,7 @@ Füllt die Jour-fixe-Agende aus Vorgängen, Aufgaben, Geburtstagen und weiteren 
 - **Implementierung:** implementiert
 - **Einbindung:** UI
 - **Testabdeckung:** Selbsttest
-- **Letztes Testergebnis:** nicht-ausgefuehrt (nicht aus der Existenz einer Testdatei abgeleitet)
+- **Letztes Testergebnis:** nicht-ausgefuehrt (kein Laufnachweis importiert; nicht aus der Existenz einer Testdatei abgeleitet)
 - **Rollen:** `abgeordneter`, `bueroleitung`, `mitarbeiter`
 - **Routen:** —
 - **Frontend-Komponenten:** `src/components/meetings/PlatformAgendaSection.tsx`, `src/components/meetings/PendingJourFixeCaseItems.tsx`, `src/components/meetings/PendingJourFixeNotes.tsx`
@@ -549,7 +689,7 @@ Erzeugt Tagesbriefings und Tageszettel mit Terminen und Aufgaben, hält Lesebest
 - **Implementierung:** implementiert
 - **Einbindung:** UI
 - **Testabdeckung:** Selbsttest
-- **Letztes Testergebnis:** nicht-ausgefuehrt (nicht aus der Existenz einer Testdatei abgeleitet)
+- **Letztes Testergebnis:** nicht-ausgefuehrt (kein Laufnachweis importiert; nicht aus der Existenz einer Testdatei abgeleitet)
 - **Rollen:** `abgeordneter`, `bueroleitung`, `mitarbeiter`
 - **Routen:** —
 - **Frontend-Komponenten:** `src/features/briefings/components/TodayBriefingPanel.tsx`, `src/features/briefings/components/BriefingComposerCard.tsx`, `src/components/dayslip/GlobalDaySlipPanel.tsx`, `src/components/dayslip/DaySlipLexicalEditor.tsx`, `src/components/dayslip/DaySlipAppointments.tsx`, `src/components/dayslip/DaySlipCommandHelp.tsx`, `src/components/dayslip/DaySlipMoodTrend.tsx`, `src/components/dayslip/WeekPlanningBanner.tsx`
@@ -582,7 +722,7 @@ Erzeugt Tagesbriefings und Tageszettel mit Terminen und Aufgaben, hält Lesebest
 **Bekannte Einschränkungen**
 
 - Frühere Tage sind schreibgeschützt; abgeschlossen werden kann nur der aktuelle Tag.
-- Die automatische Wochentag-Vorlage wird nur einmal pro Tag, nur an noch leeren Zetteln und nie an abgeschlossenen oder bereits begonnenen Tagen eingefügt; die Entscheidung wird auch dann für den Tag festgehalten, wenn nichts eingefügt wurde, damit späteres Leeren und erneutes Laden die Vorlage nicht nachträglich erscheinen lässt. Manuell gewählte Vorlagen ersetzen sie für den Tag.
+- Wochentag-Vorlage, Wochenplan und wiederkehrende Punkte werden als eine Startentscheidung einmal pro Tag getroffen: Vorlage und Wochenplan kommen nur in noch unbegonnene Zettel und auch nach späterem Leeren nicht nachträglich; Routinen höchstens einmal, auch auf einem bereits begonnenen Zettel. Die Entscheidung wird auch dann festgehalten, wenn nichts eingefügt wurde. Manuell gewählte Vorlagen ersetzen sie für den Tag.
 - Kürzel belegen die Zuordnung nur vor; mehrdeutige Namen und unbekannte Fälligkeiten bleiben Text und werden in der Zuordnung geklärt.
 
 **Offene Prüfpunkte**
@@ -596,7 +736,7 @@ Verwaltet konfigurierbare Terminkategorien, Status und Orte in der Administratio
 - **Implementierung:** implementiert
 - **Einbindung:** rollenabhängig
 - **Testabdeckung:** kein Test
-- **Letztes Testergebnis:** nicht-ausgefuehrt (nicht aus der Existenz einer Testdatei abgeleitet)
+- **Letztes Testergebnis:** nicht-ausgefuehrt (kein Laufnachweis importiert; nicht aus der Existenz einer Testdatei abgeleitet)
 - **Rollen:** `admin`, `bueroleitung`
 - **Routen:** —
 - **Frontend-Komponenten:** `src/components/administration/ConfigurableTypeSettings.tsx`
@@ -632,7 +772,7 @@ Erstellt Terminumfragen mit Zeitfenstern und Teilnehmenden und wertet Antworten 
 - **Implementierung:** implementiert
 - **Einbindung:** UI
 - **Testabdeckung:** Selbsttest
-- **Letztes Testergebnis:** nicht-ausgefuehrt (nicht aus der Existenz einer Testdatei abgeleitet)
+- **Letztes Testergebnis:** nicht-ausgefuehrt (kein Laufnachweis importiert; nicht aus der Existenz einer Testdatei abgeleitet)
 - **Rollen:** `abgeordneter`, `bueroleitung`, `mitarbeiter`
 - **Routen:** —
 - **Frontend-Komponenten:** —
@@ -668,7 +808,7 @@ Lädt gesetzliche Feiertage und stellt sie Kalender- und Fristberechnungen zur V
 - **Implementierung:** implementiert
 - **Einbindung:** systemseitig
 - **Testabdeckung:** kein Test
-- **Letztes Testergebnis:** nicht-ausgefuehrt (nicht aus der Existenz einer Testdatei abgeleitet)
+- **Letztes Testergebnis:** nicht-ausgefuehrt (kein Laufnachweis importiert; nicht aus der Existenz einer Testdatei abgeleitet)
 - **Rollen:** `system`
 - **Routen:** —
 - **Frontend-Komponenten:** —

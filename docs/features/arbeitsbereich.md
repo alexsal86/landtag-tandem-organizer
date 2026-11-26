@@ -50,12 +50,83 @@ _Auto-generiert mit `npm run update:feature-catalog` aus dem zentralen Funktions
 
 ## Selbsttest-Szenarien
 
-| Szenario | Titel | deklarierte Tabellen | deklarierte Prüfungen |
-|---|---|---:|---:|
-| `appointment-briefing-lifecycle` | Briefing-Lifecycle (vergeben → Aufgabe → vorlegen → freigeben) | 3 | 5 |
-| `decision-lifecycle` | Entscheidungs-Lifecycle (active → open → archived) | 3 | 0 |
-| `quick-note-lifecycle` | Notizen-Lifecycle (Anlegen → Priorität → Anheften → Aufgabe → Archiv) | 4 | 0 |
-| `task-lifecycle` | Aufgaben-Lifecycle (Zuweisung → Frist → Entscheidung → Jour fixe → erledigt) | 3 | 0 |
+| Szenario | Titel | deklarierte Tabellen | deklarierte Prüfungen | letzter Lauf |
+|---|---|---:|---:|---|
+| `appointment-briefing-lifecycle` | Briefing-Lifecycle (vergeben → Aufgabe → vorlegen → freigeben) | 3 | 5 | — |
+| `decision-lifecycle` | Entscheidungs-Lifecycle (active → open → archived) | 3 | 0 | — |
+| `quick-note-lifecycle` | Notizen-Lifecycle (Anlegen → Priorität → Anheften → Aufgabe → Archiv) | 4 | 0 | — |
+| `task-lifecycle` | Aufgaben-Lifecycle (Zuweisung → Frist → Entscheidung → Jour fixe → erledigt) | 3 | 0 | — |
+
+## Selbsttest-Schritte
+
+Diese Schritte führen die Szenarien aus; „letzter Lauf“ stammt aus `src/features/selftest/last-runs.json`, nicht aus dieser Doku.
+
+| Szenario | Schritt | Bezeichnung | Art | letzter Lauf |
+|---|---|---|---|---|
+| `appointment-briefing-lifecycle` | `personal-sent-changes` | Gemeldete Änderungen nur heute und persönlich ausblendbar | logic | — |
+| `appointment-briefing-lifecycle` | `day-appointment-progress` | Dein Tag: vergangen, laufend und als nächstes | logic | — |
+| `appointment-briefing-lifecycle` | `appointment-change-rules` | Terminänderung: Schnellwahl, eigene Zeit, Ort und Hinweis-Chip | logic | — |
+| `appointment-briefing-lifecycle` | `dashboard-briefing-status` | Dashboard-Briefing: Auftrag, Entscheidung und Freigabe | logic | — |
+| `appointment-briefing-lifecycle` | `appointment-dashboard-focus` | Termin-Fokus: Größe, Abfahrt und laufender Termin | logic | — |
+| `appointment-briefing-lifecycle` | `office-debrief-inbox` | Nachbereitung: Zusagen priorisieren und Quelle anzeigen | logic | — |
+| `appointment-briefing-lifecycle` | `today-priorities` | Heute zuerst: Rangfolge und Berliner Tagesgrenzen | logic | — |
+| `appointment-briefing-lifecycle` | `office-feedback` | Bürorückmeldung: Abschluss, Erinnerung und ältere Termine | logic | — |
+| `appointment-briefing-lifecycle` | `day-summary` | Tagesüberblick: leere Tage, laufende Termine, Briefings und offene Rückmeldungen | logic | — |
+| `appointment-briefing-lifecycle` | `reminder` | Briefing-Hinweis: Zuständigkeit, Vorlauf und Montag | logic | — |
+| `appointment-briefing-lifecycle` | `rules` | Regeln: nur Entscheider geben frei; Frist am Vortag 12:00 | logic | — |
+| `appointment-briefing-lifecycle` | `model` | Regeln: Kurz/Dossier-Umrechnung, Live nur am Termintag, Folgeaufgabe, Abschluss | logic | — |
+| `appointment-briefing-lifecycle` | `create` | Termin anlegen (Briefing offen) | db | — |
+| `appointment-briefing-lifecycle` | `change-alert` | Eil-Änderung mit neuer Zeit und Hinweis speichern | workflow | — |
+| `appointment-briefing-lifecycle` | `assign` | Briefing vergeben → Aufgabe entsteht | workflow | — |
+| `appointment-briefing-lifecycle` | `submit` | Vorlegen → Ball bei Abgeordnete/r | workflow | — |
+| `appointment-briefing-lifecycle` | `approve` | Freigeben → Aufgabe erledigt | workflow | — |
+| `appointment-briefing-lifecycle` | `none` | „Kein Briefing“ setzt Status und löst Aufgabe | workflow | — |
+| `appointment-briefing-lifecycle` | `accept-with-briefing` | Zusage im Jour Fixe vergibt Briefing in einem Schritt | workflow | — |
+| `decision-lifecycle` | `dashboard-nudges` | Anstupsen: zehn Sekunden und 24-Stunden-Sperre | logic | — |
+| `decision-lifecycle` | `dashboard-voting` | Dashboard: nur eigene ausstehende Abstimmungen, keine eigenen Anfragen | logic | — |
+| `decision-lifecycle` | `create` | Entscheidung anlegen (active) | db | — |
+| `decision-lifecycle` | `add-participant` | Teilnehmer (sich selbst) hinzufügen | db | — |
+| `decision-lifecycle` | `withdraw-responses` | Ja, Nein und Rückfrage speichern und nachweisbar zurücknehmen | workflow | — |
+| `decision-lifecycle` | `check-options` | Default-Antwortoptionen prüfen | db | — |
+| `decision-lifecycle` | `set-open` | Status auf 'open' | db | — |
+| `decision-lifecycle` | `archive` | Archivieren | db | — |
+| `decision-lifecycle` | `verify` | Verifikation | db | — |
+| `decision-lifecycle` | `nudge-boundary` | Fremde oder unbekannte Entscheidung lässt sich nicht anstupsen | workflow | — |
+| `quick-note-lifecycle` | `dictation-commands` | Notizen: Diktatbefehle und Rechtszitate erkennen | logic | — |
+| `quick-note-lifecycle` | `create` | Notiz mit Priorität, Farbe und Schlagworten anlegen | db | — |
+| `quick-note-lifecycle` | `pin` | Anheften + Priorität erhöhen | db | — |
+| `quick-note-lifecycle` | `to-task` | Aus Notiz eine Aufgabe machen (verknüpft) | db | — |
+| `quick-note-lifecycle` | `decision-links` | Entscheidung atomar verknüpfen und Folgeaufgabe mit Herkunft erzeugen | workflow | — |
+| `quick-note-lifecycle` | `archive` | Archivieren | db | — |
+| `task-lifecycle` | `status-registry` | Status-Registry führt die fünf Kernstatus | db | — |
+| `task-lifecycle` | `create` | Aufgabe anlegen | db | — |
+| `task-lifecycle` | `assign` | Aufgabe zuweisen + Frist setzen | db | — |
+| `task-lifecycle` | `decision` | Entscheidung aus Aufgabe erstellen | db | — |
+| `task-lifecycle` | `jour-fixe` | Für Jour fixe markieren | db | — |
+| `task-lifecycle` | `complete` | Status → completed | db | — |
+| `task-lifecycle` | `tenant-boundary` | Aufgabe lässt sich keinem fremden Büro zuordnen | workflow | — |
+
+## Deklarierter Prüfumfang
+
+### `appointment-briefing-lifecycle`
+
+1. Regeln für Freigabe und Fristvorschlag
+2. Aufgabe entsteht beim Vergeben
+3. Ball wechselt bei Vorlage
+4. Freigabe erledigt Aufgabe
+5. Kein Briefing schließt Aufgabe
+
+### `decision-lifecycle`
+
+Keine Prüfungen deklariert.
+
+### `quick-note-lifecycle`
+
+Keine Prüfungen deklariert.
+
+### `task-lifecycle`
+
+Keine Prüfungen deklariert.
 
 ## Funktionsdetails
 
@@ -66,7 +137,7 @@ Aggregiert Fristen, Termine, Aufgaben, Entscheidungen und Jour-fixe-Hinweise auf
 - **Implementierung:** implementiert
 - **Einbindung:** rollenabhängig
 - **Testabdeckung:** Selbsttest
-- **Letztes Testergebnis:** nicht-ausgefuehrt (nicht aus der Existenz einer Testdatei abgeleitet)
+- **Letztes Testergebnis:** nicht-ausgefuehrt (kein Laufnachweis importiert; nicht aus der Existenz einer Testdatei abgeleitet)
 - **Rollen:** `abgeordneter`, `bueroleitung`, `mitarbeiter`, `praktikant`
 - **Routen:** `/mywork`, `/mywork?tab=dashboard`, `/dashboard/*`
 - **Frontend-Komponenten:** `src/features/dashboard/components/MyWorkView.tsx`, `src/components/dashboard/DashboardTasksSection.tsx`, `src/components/dashboard/DashboardDecisionsWidget.tsx`, `src/components/dashboard/DashboardJourFixeWidget.tsx`
@@ -104,7 +175,7 @@ Priorisiert im Mitarbeiter-Dashboard fällige Terminbriefings, Zusagen ohne Fris
 - **Implementierung:** implementiert
 - **Einbindung:** rollenabhängig
 - **Testabdeckung:** Selbsttest
-- **Letztes Testergebnis:** nicht-ausgefuehrt (nicht aus der Existenz einer Testdatei abgeleitet)
+- **Letztes Testergebnis:** nicht-ausgefuehrt (kein Laufnachweis importiert; nicht aus der Existenz einer Testdatei abgeleitet)
 - **Rollen:** `bueroleitung`, `mitarbeiter`, `praktikant`
 - **Routen:** —
 - **Frontend-Komponenten:** `src/components/my-work/MyWorkDashboardTab.tsx`, `src/components/my-work/TodayPrioritiesCard.tsx`, `src/components/dashboard/DeadlineReviewDialog.tsx`
@@ -140,7 +211,7 @@ Schaltet zwischen Dashboard, Aufgaben, Vorgängen, Entscheidungen, Jour fixe, Pl
 - **Implementierung:** implementiert
 - **Einbindung:** UI
 - **Testabdeckung:** kein Test
-- **Letztes Testergebnis:** nicht-ausgefuehrt (nicht aus der Existenz einer Testdatei abgeleitet)
+- **Letztes Testergebnis:** nicht-ausgefuehrt (kein Laufnachweis importiert; nicht aus der Existenz einer Testdatei abgeleitet)
 - **Rollen:** `abgeordneter`, `bueroleitung`, `mitarbeiter`, `praktikant`
 - **Routen:** `/mywork?tab=tasks`, `/mywork?tab=cases`, `/mywork?tab=decisions`, `/mywork?tab=jourfixe`, `/mywork?tab=plannings`, `/mywork?tab=redaktion`
 - **Frontend-Komponenten:** —
@@ -178,7 +249,7 @@ Merkt sich zuletzt besuchte Bereiche und stellt konfigurierbare Schnellzugriffe 
 - **Implementierung:** implementiert
 - **Einbindung:** UI
 - **Testabdeckung:** kein Test
-- **Letztes Testergebnis:** nicht-ausgefuehrt (nicht aus der Existenz einer Testdatei abgeleitet)
+- **Letztes Testergebnis:** nicht-ausgefuehrt (kein Laufnachweis importiert; nicht aus der Existenz einer Testdatei abgeleitet)
 - **Rollen:** `abgeordneter`, `bueroleitung`, `mitarbeiter`, `praktikant`
 - **Routen:** —
 - **Frontend-Komponenten:** `src/components/shared/QuickAccessMenuItem.tsx`
@@ -215,7 +286,7 @@ Zeigt In-App-Benachrichtigungen, ungelesene Zähler und Deep-Links in den auslö
 - **Implementierung:** implementiert
 - **Einbindung:** UI
 - **Testabdeckung:** kein Test
-- **Letztes Testergebnis:** nicht-ausgefuehrt (nicht aus der Existenz einer Testdatei abgeleitet)
+- **Letztes Testergebnis:** nicht-ausgefuehrt (kein Laufnachweis importiert; nicht aus der Existenz einer Testdatei abgeleitet)
 - **Rollen:** `abgeordneter`, `bueroleitung`, `mitarbeiter`, `praktikant`
 - **Routen:** `/notifications`
 - **Frontend-Komponenten:** `src/pages/NotificationsPage.tsx`, `src/components/notifications/NotificationCenter.tsx`, `src/components/notifications/NotificationBell.tsx`, `src/components/notifications/NotificationDot.tsx`
@@ -252,7 +323,7 @@ Steuert Anzeige- und Versandpräferenzen je Benachrichtigungstyp und verwaltet z
 - **Implementierung:** implementiert
 - **Einbindung:** UI
 - **Testabdeckung:** kein Test
-- **Letztes Testergebnis:** nicht-ausgefuehrt (nicht aus der Existenz einer Testdatei abgeleitet)
+- **Letztes Testergebnis:** nicht-ausgefuehrt (kein Laufnachweis importiert; nicht aus der Existenz einer Testdatei abgeleitet)
 - **Rollen:** `abgeordneter`, `bueroleitung`, `mitarbeiter`, `praktikant`
 - **Routen:** —
 - **Frontend-Komponenten:** `src/components/notifications/NotificationSettings.tsx`, `src/components/notifications/SnoozeManagementSidebar.tsx`
@@ -288,7 +359,7 @@ Durchsucht Kontakte, Aufgaben, Dokumente und weitere Objekte über eine Befehlsp
 - **Implementierung:** implementiert
 - **Einbindung:** UI
 - **Testabdeckung:** kein Test
-- **Letztes Testergebnis:** nicht-ausgefuehrt (nicht aus der Existenz einer Testdatei abgeleitet)
+- **Letztes Testergebnis:** nicht-ausgefuehrt (kein Laufnachweis importiert; nicht aus der Existenz einer Testdatei abgeleitet)
 - **Rollen:** `abgeordneter`, `bueroleitung`, `mitarbeiter`, `praktikant`
 - **Routen:** —
 - **Frontend-Komponenten:** `src/components/search/GlobalSearchCommand.tsx`, `src/components/search/GlobalQuickNoteDialog.tsx`
@@ -324,7 +395,7 @@ Erfasst Notizen mit Priorität, Anheften, Verknüpfungen zu Entscheidungen und A
 - **Implementierung:** implementiert
 - **Einbindung:** UI
 - **Testabdeckung:** Selbsttest
-- **Letztes Testergebnis:** nicht-ausgefuehrt (nicht aus der Existenz einer Testdatei abgeleitet)
+- **Letztes Testergebnis:** nicht-ausgefuehrt (kein Laufnachweis importiert; nicht aus der Existenz einer Testdatei abgeleitet)
 - **Rollen:** `abgeordneter`, `bueroleitung`, `mitarbeiter`, `praktikant`
 - **Routen:** —
 - **Frontend-Komponenten:** `src/components/shared/QuickNotesList.tsx`, `src/components/shared/NoteCard.tsx`, `src/components/shared/NoteShareDialog.tsx`, `src/components/shared/NoteDecisionCreator.tsx`
@@ -361,7 +432,7 @@ Hält Notizen lokal vor, synchronisiert Schreibvorgänge mit Belegquittungen und
 - **Implementierung:** implementiert
 - **Einbindung:** UI
 - **Testabdeckung:** Unit-Test
-- **Letztes Testergebnis:** unbekannt (nicht aus der Existenz einer Testdatei abgeleitet)
+- **Letztes Testergebnis:** unbekannt (kein Laufnachweis importiert; nicht aus der Existenz einer Testdatei abgeleitet)
 - **Rollen:** `abgeordneter`, `bueroleitung`, `mitarbeiter`, `praktikant`
 - **Routen:** —
 - **Frontend-Komponenten:** `src/features/quick-notes/QuickNotesSyncStatus.tsx`
@@ -399,7 +470,7 @@ Wandelt Notizinhalte in Checklisten um und hält Erledigt-Zustände beim Speiche
 - **Implementierung:** implementiert
 - **Einbindung:** UI
 - **Testabdeckung:** Unit-Test
-- **Letztes Testergebnis:** unbekannt (nicht aus der Existenz einer Testdatei abgeleitet)
+- **Letztes Testergebnis:** unbekannt (kein Laufnachweis importiert; nicht aus der Existenz einer Testdatei abgeleitet)
 - **Rollen:** `abgeordneter`, `bueroleitung`, `mitarbeiter`, `praktikant`
 - **Routen:** —
 - **Frontend-Komponenten:** —
@@ -435,7 +506,7 @@ Ordnet angeheftete Notizen per Ziehen neu und persistiert die Reihenfolge.
 - **Implementierung:** implementiert
 - **Einbindung:** UI
 - **Testabdeckung:** Unit-Test
-- **Letztes Testergebnis:** unbekannt (nicht aus der Existenz einer Testdatei abgeleitet)
+- **Letztes Testergebnis:** unbekannt (kein Laufnachweis importiert; nicht aus der Existenz einer Testdatei abgeleitet)
 - **Rollen:** `abgeordneter`, `bueroleitung`, `mitarbeiter`, `praktikant`
 - **Routen:** —
 - **Frontend-Komponenten:** —
@@ -471,7 +542,7 @@ Meldet Benutzer an, stellt die Sitzung wieder her und leitet auf die geschützte
 - **Implementierung:** implementiert
 - **Einbindung:** UI
 - **Testabdeckung:** kein Test
-- **Letztes Testergebnis:** nicht-ausgefuehrt (nicht aus der Existenz einer Testdatei abgeleitet)
+- **Letztes Testergebnis:** nicht-ausgefuehrt (kein Laufnachweis importiert; nicht aus der Existenz einer Testdatei abgeleitet)
 - **Rollen:** `oeffentlich`, `abgeordneter`, `bueroleitung`, `mitarbeiter`, `praktikant`
 - **Routen:** `/auth`
 - **Frontend-Komponenten:** `src/pages/Auth.tsx`, `src/components/layout`
@@ -508,7 +579,7 @@ Meldet Benutzer an, stellt die Sitzung wieder her und leitet auf die geschützte
 - **Implementierung:** implementiert
 - **Einbindung:** UI
 - **Testabdeckung:** kein Test
-- **Letztes Testergebnis:** nicht-ausgefuehrt (nicht aus der Existenz einer Testdatei abgeleitet)
+- **Letztes Testergebnis:** nicht-ausgefuehrt (kein Laufnachweis importiert; nicht aus der Existenz einer Testdatei abgeleitet)
 - **Rollen:** `abgeordneter`, `bueroleitung`, `mitarbeiter`, `praktikant`
 - **Routen:** `/profile/edit`, `/profile-edit`
 - **Frontend-Komponenten:** `src/pages/EditProfile.tsx`
@@ -544,7 +615,7 @@ Eigenständige Expo-App im Workspace mit eigener Navigation und Build-Profilen; 
 - **Implementierung:** teilweise
 - **Einbindung:** ohne Einbindung
 - **Testabdeckung:** kein Test
-- **Letztes Testergebnis:** nicht-ausgefuehrt (nicht aus der Existenz einer Testdatei abgeleitet)
+- **Letztes Testergebnis:** nicht-ausgefuehrt (kein Laufnachweis importiert; nicht aus der Existenz einer Testdatei abgeleitet)
 - **Rollen:** `abgeordneter`, `bueroleitung`, `mitarbeiter`
 - **Routen:** —
 - **Frontend-Komponenten:** —

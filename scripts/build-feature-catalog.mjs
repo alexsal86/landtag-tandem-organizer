@@ -28,6 +28,10 @@ const IMPLEMENTATION = ['implementiert', 'teilweise', 'deaktiviert', 'verwaist',
 const INTEGRATION = ['ui', 'system', 'rollenabhaengig', 'feature-flag', 'ohne-einbindung', 'ungeprueft', 'nicht-anwendbar'];
 const COVERAGE = ['selftest', 'unit', 'integration', 'browser', 'security', 'teilweise', 'keine', 'ungeprueft'];
 const RESULTS = ['bestanden', 'fehlgeschlagen', 'nicht-ausgefuehrt', 'uebersprungen', 'voraussetzung-fehl', 'veraltet', 'unbekannt'];
+export const LAST_RUNS_FILE = 'src/features/selftest/last-runs.json';
+const RESULT_BY_STATUS = { ok: 'bestanden', failed: 'fehlgeschlagen', blocked: 'voraussetzung-fehl', cancelled: 'uebersprungen' };
+/** Results older than this are shown as `veraltet` instead of claiming a current run. */
+const STALE_DAYS = 45;
 const ROLES = ['abgeordneter', 'bueroleitung', 'mitarbeiter', 'praktikant', 'admin', 'superadmin', 'oeffentlich', 'system'];
 
 const FEATURE_FIELDS = new Set([
@@ -89,6 +93,7 @@ export function collectScenarios(root) {
           .map((step) => ({
             id: literal(member(step, 'id')?.initializer),
             label: literal(member(step, 'label')?.initializer),
+            kind: literal(member(step, 'kind')?.initializer) ?? 'db',
           }))
           .filter((step) => typeof step.id === 'string' && typeof step.label === 'string')
         : [];
@@ -347,6 +352,8 @@ export function validateCatalog(root, inventory) {
   const warnings = [];
   const scenarios = collectScenarios(root);
   const scenarioById = new Map(scenarios.map((scenario) => [scenario.id, scenario]));
+  const lastRuns = loadLastRuns(root);
+  warnings.push(...lastRuns.warnings);
   const routes = collectRoutes(root);
   const edgeFunctions = collectEdgeFunctions(root);
   const edgeNames = new Set(edgeFunctions.map((entry) => entry.name));
@@ -429,6 +436,10 @@ export function validateCatalog(root, inventory) {
       if (!scenarioById.has(scenario)) errors.push(`${label}: unbekannte Selbsttest-ID ${scenario}`);
       else if (!scenarioById.get(scenario).registered) warnings.push(`${label}: Selbsttest ${scenario} ist nicht registriert`);
     }
+    const runSummary = lastRunSummary(feature, { lastRuns });
+    if (runSummary && runSummary.result !== feature.testResult) {
+      warnings.push(`${label}: Katalog führt ${feature.testResult}, letzter Selbsttest-Lauf (${runSummary.latest.scenarioId}) ${runSummary.result}`);
+    }
     for (const route of feature.routes) referencedRoutes.add(route);
     for (const reference of [...feature.evidence, ...feature.components]) {
       if (reference.startsWith('src/pages/')) referencedPages.add(reference);
@@ -439,6 +450,10 @@ export function validateCatalog(root, inventory) {
     if (feature.coverage !== 'keine' && feature.coverage !== 'ungeprueft' && !hasTest) {
       errors.push(`${label}: Abdeckung "${feature.coverage}" ohne zugeordneten Test`);
     }
+  }
+
+  for (const scenarioId of lastRuns.byScenario.keys()) {
+    if (!scenarioById.has(scenarioId)) warnings.push(`${LAST_RUNS_FILE}: unbekanntes Szenario ${scenarioId}`);
   }
 
   for (const feature of inventory.features) {
@@ -495,6 +510,7 @@ export function validateCatalog(root, inventory) {
     inventory,
     scenarios,
     scenarioById,
+    lastRuns,
     routes,
     edgeFunctions,
     rpcs,
@@ -511,6 +527,53 @@ export function validateCatalog(root, inventory) {
     referencedRpcs,
   };
 }
+
+/**
+ * Importierte Laufergebnisse aus dem Selbsttest-Center (`scripts/sync-selftest-results.mjs`).
+ * Ohne Datei bleibt der Katalog bei den deklarierten Ergebnissen.
+ */
+export function loadLastRuns(root) {
+  const path = join(root, LAST_RUNS_FILE);
+  const warnings = [];
+  if (!existsSync(path)) return { byScenario: new Map(), generatedAt: null, warnings };
+  let parsed;
+  try {
+    parsed = JSON.parse(readFileSync(path, 'utf8'));
+  } catch (error) {
+    throw new Error(`${LAST_RUNS_FILE}: ungültiges JSON (${error.message})`);
+  }
+  if (parsed?.schemaVersion !== 1 || !Array.isArray(parsed.runs)) {
+    throw new Error(`${LAST_RUNS_FILE}: schemaVersion 1 und eine runs-Liste erwartet`);
+  }
+  const byScenario = new Map();
+  for (const run of parsed.runs) {
+    if (typeof run?.scenarioId !== 'string' || !RESULTS.includes(run.result)) {
+      warnings.push(`${LAST_RUNS_FILE}: Lauf ohne gültige scenarioId oder result übersprungen`);
+      continue;
+    }
+    byScenario.set(run.scenarioId, run);
+  }
+  return { byScenario, generatedAt: parsed.generatedAt ?? null, warnings };
+}
+
+/** Kennzahl eines Features aus den importierten Läufen; null ohne Laufnachweis. */
+export function lastRunSummary(feature, state) {
+  const runs = feature.scenarios.map((id) => state.lastRuns.byScenario.get(id)).filter(Boolean);
+  if (!runs.length) return null;
+  const latest = [...runs].sort((a, b) => String(b.finishedAt ?? '').localeCompare(String(a.finishedAt ?? '')))[0];
+  const results = runs.map((run) => run.result);
+  const stale = runs.every((run) => {
+    const time = Date.parse(run.finishedAt ?? '');
+    return !Number.isFinite(time) || Date.now() - time > STALE_DAYS * 86_400_000;
+  });
+  const result = results.includes('fehlgeschlagen') ? 'fehlgeschlagen'
+    : results.includes('voraussetzung-fehl') ? 'voraussetzung-fehl'
+      : results.every((value) => value === 'bestanden') ? 'bestanden' : 'unbekannt';
+  return { runs, latest, result: stale ? 'veraltet' : result };
+}
+
+/** Angezeigtes Ergebnis: importierter Lauf, sonst der deklarierte Katalogwert. */
+export const effectiveResult = (feature, state) => lastRunSummary(feature, state)?.result ?? feature.testResult;
 
 function loadExceptions(root, errors) {
   const path = join(root, EXCEPTIONS_FILE);
@@ -582,7 +645,8 @@ function formatRoles(roles) {
   return roles.length ? roles.map(code).join(', ') : 'Keine besondere Rolle deklariert';
 }
 
-function featureDetail(feature) {
+function featureDetail(feature, state) {
+  const summary = lastRunSummary(feature, state);
   const blocks = [
     `### ${code(feature.id)} — ${feature.name}`,
     feature.description,
@@ -591,7 +655,9 @@ function featureDetail(feature) {
     `- **Implementierung:** ${feature.implementationStatus}`,
     `- **Einbindung:** ${labels.integration[feature.integrationStatus]}`,
     `- **Testabdeckung:** ${labels.coverage[feature.coverage]}`,
-    `- **Letztes Testergebnis:** ${feature.testResult} (nicht aus der Existenz einer Testdatei abgeleitet)`,
+    `- **Letztes Testergebnis:** ${summary
+      ? `${summary.result} (Szenario ${code(summary.latest.scenarioId)}, ${summary.latest.finishedAt ?? 'ohne Zeitstempel'})`
+      : `${feature.testResult} (kein Laufnachweis importiert; nicht aus der Existenz einer Testdatei abgeleitet)`}`,
     `- **Rollen:** ${formatRoles(feature.roles)}`,
     `- **Routen:** ${codeList(feature.routes)}`,
     `- **Frontend-Komponenten:** ${codeList(feature.components)}`,
@@ -637,7 +703,14 @@ function renderArea(area, state) {
   const scenarios = unique(features.flatMap((feature) => feature.scenarios)).sort();
   const scenarioRows = scenarios.map((id) => {
     const scenario = state.scenarioById.get(id);
-    return `| ${code(id)} | ${cell(scenario?.title ?? 'unbekannt')} | ${scenario?.touches.length ?? 0} | ${scenario?.checks.length ?? 0} |`;
+    const run = state.lastRuns.byScenario.get(id);
+    return `| ${code(id)} | ${cell(scenario?.title ?? 'unbekannt')} | ${scenario?.touches.length ?? 0} | ${scenario?.checks.length ?? 0} | ${run ? `${run.result} (${run.finishedAt ?? 'ohne Datum'})` : '—'} |`;
+  });
+  const stepRows = scenarios.flatMap((id) => {
+    const scenario = state.scenarioById.get(id);
+    const statuses = new Map((state.lastRuns.byScenario.get(id)?.steps ?? []).map((step) => [step.id, step.status]));
+    return (scenario?.steps ?? []).map((step) =>
+      `| ${code(id)} | ${code(step.id)} | ${cell(step.label)} | ${step.kind ?? 'db'} | ${statuses.get(step.id) ?? '—'} |`);
   });
   return `# ${area.title}\n\n` +
     `${GENERATED_MARKER} aus dem zentralen Funktionskatalog (\`${INVENTORY_DIR}/${area.id}.json\`). Nicht von Hand bearbeiten._\n\n` +
@@ -653,9 +726,20 @@ function renderArea(area, state) {
     `## Datenbanktabellen\n\n${codeList(unique(features.flatMap((feature) => feature.tables)).sort())}\n\n` +
     `## Selbsttest-Szenarien\n\n` +
     (scenarioRows.length
-      ? `| Szenario | Titel | deklarierte Tabellen | deklarierte Prüfungen |\n|---|---|---:|---:|\n${scenarioRows.join('\n')}`
+      ? `| Szenario | Titel | deklarierte Tabellen | deklarierte Prüfungen | letzter Lauf |\n|---|---|---:|---:|---|\n${scenarioRows.join('\n')}`
       : 'Keine Szenarien zugeordnet. Das bedeutet nicht, dass der Bereich ungetestet ist – es fehlt eine Selbsttest-Abdeckung.') +
-    `\n\n## Funktionsdetails\n\n${features.map(featureDetail).join('\n\n')}\n\n` +
+    `\n\n## Selbsttest-Schritte\n\n` +
+    (stepRows.length
+      ? `Diese Schritte führen die Szenarien aus; „letzter Lauf“ stammt aus \`${LAST_RUNS_FILE}\`, nicht aus dieser Doku.\n\n| Szenario | Schritt | Bezeichnung | Art | letzter Lauf |\n|---|---|---|---|---|\n${stepRows.join('\n')}`
+      : 'Keine Schritte deklariert.') +
+    `\n\n## Deklarierter Prüfumfang\n\n` +
+    (scenarios.length
+      ? scenarios.map((id) => {
+        const checks = state.scenarioById.get(id)?.checks ?? [];
+        return `### ${code(id)}\n\n${checks.length ? checks.map((check, index) => `${index + 1}. ${check}`).join('\n') : 'Keine Prüfungen deklariert.'}`;
+      }).join('\n\n')
+      : 'Keine Prüfungen deklariert.') +
+    `\n\n## Funktionsdetails\n\n${features.map((feature) => featureDetail(feature, state)).join('\n\n')}\n\n` +
     `## Regeln\n\nFachliche Invarianten stehen in [AGENTS.md](../../AGENTS.md); Rollen und Rechte in [rollenrechte-matrix.md](../rollenrechte-matrix.md).\n`;
 }
 
@@ -720,13 +804,13 @@ function renderIndex(areas, features, state) {
     `Verbindlich: Abschnitt „Funktionskatalog\" in [AGENTS.md](../../AGENTS.md).\n`;
 }
 
-function renderMatrix(features) {
+function renderMatrix(features, state) {
   const rows = features
     .slice()
     .sort((a, b) => a.area.localeCompare(b.area) || a.subarea.localeCompare(b.subarea, 'de') || a.name.localeCompare(b.name, 'de'))
-    .map((feature) => `| ${code(feature.id)} | ${cell(feature.area)} | ${feature.category} | ${feature.implementationStatus} | ${labels.integration[feature.integrationStatus]} | ${labels.coverage[feature.coverage]} | ${feature.testResult} | ${feature.scenarios.length} | ${feature.unitTests.length} | ${feature.integrationTests.length} | ${feature.e2eTests.length} | ${feature.docs.length ? 'ja' : 'nein'} |`);
+    .map((feature) => `| ${code(feature.id)} | ${cell(feature.area)} | ${feature.category} | ${feature.implementationStatus} | ${labels.integration[feature.integrationStatus]} | ${labels.coverage[feature.coverage]} | ${effectiveResult(feature, state)} | ${feature.scenarios.length} | ${feature.unitTests.length} | ${feature.integrationTests.length} | ${feature.e2eTests.length} | ${feature.docs.length ? 'ja' : 'nein'} |`);
   return `# Funktions- und Testabdeckungsmatrix\n\n${GENERATED_MARKER}. Nicht von Hand bearbeiten._\n\n` +
-    `Die Spalten zählen **zugeordnete** Prüfungen, nicht bestandene Läufe. „Ergebnis\" ist das zuletzt bekannte Ergebnis und bleibt ohne Laufnachweis \`nicht-ausgefuehrt\` oder \`unbekannt\`.\n\n` +
+    `Die Spalten zählen **zugeordnete** Prüfungen, nicht bestandene Läufe. „Ergebnis\" stammt aus \`${LAST_RUNS_FILE}\" (importiert mit \`npm run sync:selftest-results\`); ohne Laufnachweis steht dort der deklarierte Katalogwert \`nicht-ausgefuehrt\` oder \`unbekannt\`.\n\n` +
     `| Funktion | Bereich | Kategorie | Implementierung | Einbindung | Abdeckung | Ergebnis | Selbsttests | Unit | Integration | Browser | Doku |\n` +
     `|---|---|---|---|---|---|---|---:|---:|---:|---:|---|\n${rows.join('\n')}\n`;
 }
@@ -868,7 +952,7 @@ export function renderCatalog(state, root = process.cwd()) {
     .sort((a, b) => a.title.localeCompare(b.title, 'de'));
   const files = new Map();
   files.set('docs/features/README.md', renderIndex(areas, features, state));
-  files.set('docs/features/matrix.md', renderMatrix(features));
+  files.set('docs/features/matrix.md', renderMatrix(features, state));
   files.set('docs/features/roles.md', renderRoles(features));
   files.set('docs/features/dependencies.md', renderDependencies(features, areas));
   files.set('docs/features/review.md', renderReview(features, state));

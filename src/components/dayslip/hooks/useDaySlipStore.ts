@@ -12,7 +12,8 @@ import {
   type ResolvedItem, type ResolveTarget, type TaskOptions, type DaySlipSettings,
   toDayKey, extractLinesFromHtml, templateForDayKey, weekdayOfDayKey,
 } from "../dayslipTypes";
-import { appendEntries, appendStructuredLines, carryLines, collectCarryLines, completedArchiveDays, decideDayTemplate, emptyDay, exportId, removeLineFromDay, restoreLineToDay, type RemovedDaySlipLine } from "../daySlipState";
+import { appendEntries, appendStructuredLines, carryLines, collectCarryLines, completedArchiveDays, decideDayStart, emptyDay, removeLineFromDay, restoreLineToDay, type RemovedDaySlipLine } from "../daySlipState";
+import { createExportTarget, isExportTarget } from "../daySlipExport";
 
 const errorMessage = (error: unknown) => error && typeof error === "object" && "message" in error ? String(error.message) : String(error);
 
@@ -97,7 +98,7 @@ export function useDaySlipStore(userId: string, tenantId: string) {
     changeDay(day => appendEntries(day, lines.map(text => ({ id: crypto.randomUUID(), text: text.trim(), source }))), true);
   }, [changeDay]);
   const insertStructuredLines = useCallback((lines: string[]) => {
-    // A manually applied template is this day's template; the weekday one must not duplicate it.
+    // A manually applied template is this day's template and plan; the automatic one must not duplicate it.
     changeDay(day => ({ ...appendStructuredLines(day, lines), dayTemplateInjected: true }), true);
   }, [changeDay]);
   /** Returns what was removed so the UI can offer undo; null when nothing was deleted. */
@@ -143,35 +144,11 @@ export function useDaySlipStore(userId: string, tenantId: string) {
   }, [ready, setStore, storeRef, todayKey]);
 
   const createResolvedItem = useCallback(async (item: ResolvedItem, key: string) => {
-    if (item.target !== "note" && item.target !== "task" && item.target !== "decision") return;
-    const day = storeRef.current[key];
-    const existingSource = day?.sources?.[item.lineId];
-    // An existing linked task/note/decision is already the destination, not a new record to duplicate.
-    if (existingSource?.type === item.target) return existingSource.id;
-    const id = item.entityId ?? await exportId(userId, key, item.lineId, item.target);
-    const find = () => item.target === "task"
-      ? supabase.from("tasks").select("id").eq("id", id).eq("user_id", userId).maybeSingle()
-      : item.target === "note"
-        ? supabase.from("quick_notes").select("id").eq("id", id).eq("user_id", userId).maybeSingle()
-        : supabase.from("task_decisions").select("id").eq("id", id).eq("created_by", userId).maybeSingle();
-    const found = await find();
-    if (found.error) throw found.error;
-    if (found.data) return id;
-    const title = item.text.replace(/^!{1,2}\s*/, "").trim();
-    if (!title) throw new Error("Der Eintrag benötigt einen Titel.");
-    const description = `Aus Tageszettel (${key})`;
-    const response = item.target === "note"
-      ? await supabase.from("quick_notes").insert({ id, user_id: userId, tenant_id: tenantId, title, content: description })
-      : item.target === "task"
-        ? await supabase.from("tasks").insert({ id, user_id: userId, tenant_id: tenantId, title, description, status: "open", priority: item.text.startsWith("!!") ? "high" : "medium", category: "allgemein", assigned_to: item.taskOptions?.assignedTo || userId, due_date: item.taskOptions?.dueDate ? new Date(`${item.taskOptions.dueDate}T12:00:00`).toISOString() : null })
-        : await supabase.from("task_decisions").insert({ id, created_by: userId, tenant_id: tenantId, title, description, status: "open" });
-    if (response.error) {
-      // Concurrent creation or a response lost on a previous attempt: verify the exact destination.
-      if (response.error.code !== "23505") throw response.error;
-      const concurrent = await find();
-      if (concurrent.error || !concurrent.data) throw response.error;
-    }
-    return id;
+    if (!isExportTarget(item.target)) return;
+    return createExportTarget({
+      userId, tenantId, dayKey: key, lineId: item.lineId, text: item.text, target: item.target,
+      taskOptions: item.taskOptions, entityId: item.entityId, existingSource: storeRef.current[key]?.sources?.[item.lineId],
+    });
   }, [storeRef, userId, tenantId]);
 
   const persistResolvedItems = useCallback(async (key = todayKey, onlyLineId?: string): Promise<boolean> => {
@@ -262,26 +239,19 @@ export function useDaySlipStore(userId: string, tenantId: string) {
   }, [ready, storeRef, todayKey, setStore]);
   const handleEditorReady = useCallback((editor: LexicalEditor) => { editorRef.current = editor; setEditorReadyVersion(version => version + 1); }, []);
 
-  // Initialize the weekday template, routines and the scoped week plan only after hydration; never race a remote load.
+  // One automatic start decision per day for the weekday template, the week plan and the routines; never race a remote load.
   useEffect(() => {
     if (!ready || todayData.completedAt) return;
     const weekdayTemplate = templateForDayKey(todayKey, settings.dayTemplates, settings.weekdayTemplates);
     const templateLines = weekdayTemplate?.lines ?? [];
     const recurring = settings.recurringItems.filter(item => item.weekday === "all" || item.weekday === weekdayOfDayKey(todayKey)).map(item => item.text);
     const planned = settings.weekPlan?.applied ? settings.weekPlan.days[todayKey] ?? [] : [];
-    // The weekday template is decided once per day even when nothing is inserted, so an emptied slip
-    // never receives it later (only a slip that has not begun gets the lines).
-    const needsTemplateDecision = !todayData.dayTemplateInjected;
-    const needsRecurring = !todayData.recurringInjected && recurring.length > 0;
-    const needsPlan = !todayData.weekPlanInjected && planned.length > 0;
-    if (!needsTemplateDecision && !needsRecurring && !needsPlan) return;
-    changeDay(day => {
-      // Repeated here so a parallel edit between render and update cannot append the template to a started day.
-      const decision = decideDayTemplate(day, templateLines);
-      const texts = [...(!day.recurringInjected ? recurring : []), ...(!day.weekPlanInjected ? planned : [])];
-      const next = texts.length ? appendEntries(decision.day, texts.map(text => ({ id: crypto.randomUUID(), text }))) : decision.day;
-      return { ...next, recurringInjected: true, weekPlanInjected: day.weekPlanInjected || planned.length > 0 };
-    }, true);
+    // The decision is taken once per day even when nothing is inserted, so an emptied slip never
+    // receives the template or the plan later; only a slip that has not begun gets those lines.
+    const pending = !todayData.dayTemplateInjected || !todayData.recurringInjected || (!todayData.weekPlanInjected && planned.length > 0);
+    if (!pending) return;
+    // Repeated inside the update so a parallel edit between render and update cannot add lines to a started slip.
+    changeDay(day => decideDayStart(day, { templateLines, recurringLines: recurring, weekPlanLines: planned }).day, true);
   }, [ready, todayData.completedAt, todayData.recurringInjected, todayData.weekPlanInjected, todayData.dayTemplateInjected, settings.recurringItems, settings.weekPlan, settings.dayTemplates, settings.weekdayTemplates, todayKey, changeDay]);
 
   // Refresh deadlines after reconnect/focus and periodically, including deadlines added later in the day.

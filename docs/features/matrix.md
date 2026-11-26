@@ -2,7 +2,7 @@
 
 _Auto-generiert mit `npm run update:feature-catalog`. Nicht von Hand bearbeiten._
 
-Die Spalten zählen **zugeordnete** Prüfungen, nicht bestandene Läufe. „Ergebnis" ist das zuletzt bekannte Ergebnis und bleibt ohne Laufnachweis `nicht-ausgefuehrt` oder `unbekannt`.
+Die Spalten zählen **zugeordnete** Prüfungen, nicht bestandene Läufe. „Ergebnis" stammt aus `src/features/selftest/last-runs.json" (importiert mit `npm run sync:selftest-results`); ohne Laufnachweis steht dort der deklarierte Katalogwert `nicht-ausgefuehrt` oder `unbekannt`.
 
 | Funktion | Bereich | Kategorie | Implementierung | Einbindung | Abdeckung | Ergebnis | Selbsttests | Unit | Integration | Browser | Doku |
 |---|---|---|---|---|---|---|---:|---:|---:|---:|---|

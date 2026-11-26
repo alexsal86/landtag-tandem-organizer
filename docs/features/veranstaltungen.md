@@ -41,10 +41,42 @@ _Auto-generiert mit `npm run update:feature-catalog` aus dem zentralen Funktions
 
 ## Selbsttest-Szenarien
 
-| Szenario | Titel | deklarierte Tabellen | deklarierte Prüfungen |
-|---|---|---:|---:|
-| `event-planning-lifecycle` | Event-Planung (komplett: Termine, Speaker, Checkliste, Timeline) | 6 | 0 |
-| `poll-lifecycle` | Terminabstimmung (Gewinner-Slot übernehmen + Nachfassen) | 5 | 6 |
+| Szenario | Titel | deklarierte Tabellen | deklarierte Prüfungen | letzter Lauf |
+|---|---|---:|---:|---|
+| `event-planning-lifecycle` | Event-Planung (komplett: Termine, Speaker, Checkliste, Timeline) | 6 | 0 | — |
+| `poll-lifecycle` | Terminabstimmung (Gewinner-Slot übernehmen + Nachfassen) | 5 | 6 | — |
+
+## Selbsttest-Schritte
+
+Diese Schritte führen die Szenarien aus; „letzter Lauf“ stammt aus `src/features/selftest/last-runs.json`, nicht aus dieser Doku.
+
+| Szenario | Schritt | Bezeichnung | Art | letzter Lauf |
+|---|---|---|---|---|
+| `event-planning-lifecycle` | `create-event-planning` | Event-Planung anlegen | db | — |
+| `event-planning-lifecycle` | `create-dates` | Zwei Terminoptionen (eine bestätigt) | db | — |
+| `event-planning-lifecycle` | `create-speakers` | Speaker (2) | db | — |
+| `event-planning-lifecycle` | `create-contact` | Ansprechpartner anlegen | db | — |
+| `event-planning-lifecycle` | `create-checklist` | Checkliste mit social_media + rsvp Items | db | — |
+| `event-planning-lifecycle` | `create-timeline` | Timeline-Zuweisung für erstes Item | db | — |
+| `event-planning-lifecycle` | `verify` | Vollständigkeit prüfen | db | — |
+| `poll-lifecycle` | `create-poll` | Abstimmung mit Slots und Teilnehmern anlegen | db | — |
+| `poll-lifecycle` | `confirm-winner` | Gewinner-Slot übernehmen (idempotent, genau ein Termin) | db | — |
+| `poll-lifecycle` | `confirm-winner-guards` | Ersteller-, Slot- und Mandantenprüfung | db | — |
+
+## Deklarierter Prüfumfang
+
+### `event-planning-lifecycle`
+
+Keine Prüfungen deklariert.
+
+### `poll-lifecycle`
+
+1. confirm_poll_winner legt genau einen Termin an und verknüpft ihn mit der Abstimmung
+2. Zweiter Aufruf (gleicher und anderer Slot) liefert denselben Termin und den tatsächlich gespeicherten Slot
+3. Externe Teilnehmer werden als Gäste am Termin angelegt, interne nicht
+4. Fremde Slots und unbekannte Abstimmungen werden abgelehnt
+5. Fremde Abstimmungen im Mandanten können nicht übernommen werden
+6. get_poll_availability verweigert fremde Mandanten
 
 ## Funktionsdetails
 
@@ -55,7 +87,7 @@ Plant Veranstaltungen mit Terminen, Checklisten, Rednern, Dokumenten, Beteiligte
 - **Implementierung:** implementiert
 - **Einbindung:** rollenabhängig
 - **Testabdeckung:** Selbsttest
-- **Letztes Testergebnis:** nicht-ausgefuehrt (nicht aus der Existenz einer Testdatei abgeleitet)
+- **Letztes Testergebnis:** nicht-ausgefuehrt (kein Laufnachweis importiert; nicht aus der Existenz einer Testdatei abgeleitet)
 - **Rollen:** `abgeordneter`, `bueroleitung`, `mitarbeiter`
 - **Routen:** `/eventplanning`
 - **Frontend-Komponenten:** `src/features/event-planning/components/EventPlanningView.tsx`, `src/components/event-planning/useEventPlanningData.ts`
@@ -93,7 +125,7 @@ Führt Checklistenpunkte und Aktionen je Veranstaltung und protokolliert deren A
 - **Implementierung:** implementiert
 - **Einbindung:** UI
 - **Testabdeckung:** Selbsttest
-- **Letztes Testergebnis:** nicht-ausgefuehrt (nicht aus der Existenz einer Testdatei abgeleitet)
+- **Letztes Testergebnis:** nicht-ausgefuehrt (kein Laufnachweis importiert; nicht aus der Existenz einer Testdatei abgeleitet)
 - **Rollen:** `abgeordneter`, `bueroleitung`, `mitarbeiter`
 - **Routen:** —
 - **Frontend-Komponenten:** —
@@ -128,7 +160,7 @@ Verwaltet Redner, Dokumente und Gästelisten einer Veranstaltung.
 - **Implementierung:** implementiert
 - **Einbindung:** UI
 - **Testabdeckung:** kein Test
-- **Letztes Testergebnis:** nicht-ausgefuehrt (nicht aus der Existenz einer Testdatei abgeleitet)
+- **Letztes Testergebnis:** nicht-ausgefuehrt (kein Laufnachweis importiert; nicht aus der Existenz einer Testdatei abgeleitet)
 - **Rollen:** `abgeordneter`, `bueroleitung`, `mitarbeiter`
 - **Routen:** —
 - **Frontend-Komponenten:** —
@@ -163,7 +195,7 @@ Versendet Einladungen auf Basis von Vorlagen und protokolliert den Versand.
 - **Implementierung:** implementiert
 - **Einbindung:** rollenabhängig
 - **Testabdeckung:** kein Test
-- **Letztes Testergebnis:** nicht-ausgefuehrt (nicht aus der Existenz einer Testdatei abgeleitet)
+- **Letztes Testergebnis:** nicht-ausgefuehrt (kein Laufnachweis importiert; nicht aus der Existenz einer Testdatei abgeleitet)
 - **Rollen:** `abgeordneter`, `bueroleitung`, `mitarbeiter`
 - **Routen:** —
 - **Frontend-Komponenten:** `src/components/administration/EventEmailTemplateManager.tsx`
@@ -199,7 +231,7 @@ Lädt Gastdaten ausschließlich über einen starken public_code und nimmt Zu-/Ab
 - **Implementierung:** implementiert
 - **Einbindung:** UI
 - **Testabdeckung:** Integrationstest
-- **Letztes Testergebnis:** unbekannt (nicht aus der Existenz einer Testdatei abgeleitet)
+- **Letztes Testergebnis:** unbekannt (kein Laufnachweis importiert; nicht aus der Existenz einer Testdatei abgeleitet)
 - **Rollen:** `oeffentlich`
 - **Routen:** `/einladung/:code`
 - **Frontend-Komponenten:** `src/pages/EventRSVP.tsx`
@@ -236,7 +268,7 @@ Leitet alte Einladungs- und Gastlinks auf die aktuellen Pfade um, solange Altlin
 - **Implementierung:** veraltet
 - **Einbindung:** UI
 - **Testabdeckung:** kein Test
-- **Letztes Testergebnis:** nicht-ausgefuehrt (nicht aus der Existenz einer Testdatei abgeleitet)
+- **Letztes Testergebnis:** nicht-ausgefuehrt (kein Laufnachweis importiert; nicht aus der Existenz einer Testdatei abgeleitet)
 - **Rollen:** `oeffentlich`
 - **Routen:** `/event-rsvp/:eventId`, `/guest-response/:token`
 - **Frontend-Komponenten:** `src/pages/LegacyEventRSVPRedirect.tsx`, `src/pages/GuestResponse.tsx`
@@ -272,7 +304,7 @@ Erlaubt angemeldeten und öffentlichen Teilnehmenden die Abgabe und Änderung vo
 - **Implementierung:** implementiert
 - **Einbindung:** UI
 - **Testabdeckung:** Selbsttest
-- **Letztes Testergebnis:** nicht-ausgefuehrt (nicht aus der Existenz einer Testdatei abgeleitet)
+- **Letztes Testergebnis:** nicht-ausgefuehrt (kein Laufnachweis importiert; nicht aus der Existenz einer Testdatei abgeleitet)
 - **Rollen:** `oeffentlich`, `abgeordneter`, `bueroleitung`, `mitarbeiter`
 - **Routen:** `/poll-guest/:pollId`
 - **Frontend-Komponenten:** `src/pages/PollGuest.tsx`
@@ -309,7 +341,7 @@ Versendet Einladungen und Erinnerungen, wertet Antworten aus und bestätigt Gewi
 - **Implementierung:** implementiert
 - **Einbindung:** UI
 - **Testabdeckung:** Selbsttest
-- **Letztes Testergebnis:** nicht-ausgefuehrt (nicht aus der Existenz einer Testdatei abgeleitet)
+- **Letztes Testergebnis:** nicht-ausgefuehrt (kein Laufnachweis importiert; nicht aus der Existenz einer Testdatei abgeleitet)
 - **Rollen:** `abgeordneter`, `bueroleitung`, `mitarbeiter`
 - **Routen:** —
 - **Frontend-Komponenten:** —
@@ -345,7 +377,7 @@ Ermittelt freie Zeitfenster und Verfügbarkeiten Beteiligter und schlägt Termin
 - **Implementierung:** implementiert
 - **Einbindung:** UI
 - **Testabdeckung:** Unit-Test
-- **Letztes Testergebnis:** unbekannt (nicht aus der Existenz einer Testdatei abgeleitet)
+- **Letztes Testergebnis:** unbekannt (kein Laufnachweis importiert; nicht aus der Existenz einer Testdatei abgeleitet)
 - **Rollen:** `abgeordneter`, `bueroleitung`, `mitarbeiter`
 - **Routen:** —
 - **Frontend-Komponenten:** —

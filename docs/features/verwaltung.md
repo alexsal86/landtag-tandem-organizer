@@ -64,10 +64,50 @@ _Auto-generiert mit `npm run update:feature-catalog` aus dem zentralen Funktions
 
 ## Selbsttest-Szenarien
 
-| Szenario | Titel | deklarierte Tabellen | deklarierte Prüfungen |
-|---|---|---:|---:|
-| `access-boundaries` | Zugriffsschutz (Bürogrenzen und Entscheiderrolle) | 1 | 4 |
-| `admin-controls` | Adminregeln: Feldschutz, Aktionen, Export, Rücknahme und Feeds | 0 | 4 |
+| Szenario | Titel | deklarierte Tabellen | deklarierte Prüfungen | letzter Lauf |
+|---|---|---:|---:|---|
+| `access-boundaries` | Zugriffsschutz (Bürogrenzen und Entscheiderrolle) | 1 | 4 | — |
+| `admin-controls` | Adminregeln: Feldschutz, Aktionen, Export, Rücknahme und Feeds | 0 | 4 | — |
+
+## Selbsttest-Schritte
+
+Diese Schritte führen die Szenarien aus; „letzter Lauf“ stammt aus `src/features/selftest/last-runs.json`, nicht aus dieser Doku.
+
+| Szenario | Schritt | Bezeichnung | Art | letzter Lauf |
+|---|---|---|---|---|
+| `access-boundaries` | `edge-tenant-role-boundary` | Erhöhte Rechte gelten nur im ausgewählten Büro | logic | — |
+| `access-boundaries` | `active-tenant-query-guard` | Fachdatenabfragen bleiben im aktiven Büro | logic | — |
+| `access-boundaries` | `admin-sort-guard` | Konfigurationssortierung: Rollenprüfung und Tabellen-Whitelist | workflow | — |
+| `access-boundaries` | `calendar-schedule` | Kalenderplan: Minuten, Sommerzeit und Wiederholungsstunde | workflow | — |
+| `access-boundaries` | `office-default-template` | Meeting-Standardvorlage ist pro Büro eindeutig | workflow | — |
+| `access-boundaries` | `admin-role-guard` | Globale Rollenänderung: Plattformrecht und gültige Rolle erforderlich | workflow | — |
+| `access-boundaries` | `foreign-tenant` | Schreiben mit nicht zugehöriger Büro-ID wird verweigert | workflow | — |
+| `access-boundaries` | `create-request` | Eigene Testanfrage für Rollenprüfung anlegen | db | — |
+| `access-boundaries` | `role-decision` | Entscheidungsfunktion respektiert die aktuelle Rolle | workflow | — |
+| `admin-controls` | `feed-rules` | Feedtest sperrt lokale Ziele, Zugangsdaten und Sonderports | logic | — |
+| `admin-controls` | `full-export` | Gesamtexport paginiert und schützt vor Formelauswertung | logic | — |
+| `admin-controls` | `module-routes` | Direktlinks der Module sind dem jeweiligen Schalter zugeordnet | logic | — |
+| `admin-controls` | `module-tabs` | Redaktions-Reiter hängt am Modulschalter | logic | — |
+| `admin-controls` | `redaktion-meldungen` | Redaktionsmeldungen sind je Mandant angelegt | workflow | — |
+| `admin-controls` | `field-modes` | Leseregeln liefern erlauben, Feld ausblenden oder Datensatz sperren | workflow | — |
+| `admin-controls` | `foreign-action` | Aktionsprüfung kann nicht für eine fremde Identität aufgerufen werden | workflow | — |
+| `admin-controls` | `invalid-bulk` | Leere Sammelaktion und unbekannte Rücknahme verändern keine Kontakte | workflow | — |
+
+## Deklarierter Prüfumfang
+
+### `access-boundaries`
+
+1. Fachdatenabfragen werden zentral auf das aktive Büro begrenzt
+2. Schreibversuch mit fremder Büro-ID scheitert am Client-Schutz oder an RLS
+3. Unberechtigte Rolle darf nicht entscheiden
+4. Berechtigte Rolle darf ablehnen
+
+### `admin-controls`
+
+1. Export über 1000 Einträge ohne CSV-Formeln
+2. Private Feedziele abgewiesen
+3. Beide Feldlesemodi im aktuellen Büro
+4. Fremde Aktion und ungültige Rücknahme abgewiesen
 
 ## Funktionsdetails
 
@@ -78,7 +118,7 @@ Bündelt administrative Themen in einer eigenen Oberfläche, prüft den Zugriff 
 - **Implementierung:** implementiert
 - **Einbindung:** rollenabhängig
 - **Testabdeckung:** Unit-Test
-- **Letztes Testergebnis:** unbekannt (nicht aus der Existenz einer Testdatei abgeleitet)
+- **Letztes Testergebnis:** unbekannt (kein Laufnachweis importiert; nicht aus der Existenz einer Testdatei abgeleitet)
 - **Rollen:** `admin`, `bueroleitung`, `superadmin`
 - **Routen:** `/administration`
 - **Frontend-Komponenten:** `src/pages/Administration.tsx`, `src/components/administration/AdminSidebar.tsx`
@@ -116,7 +156,7 @@ Vergibt und entzieht Rollen je Büro, verhindert inkonsistente Doppelrollen und 
 - **Implementierung:** implementiert
 - **Einbindung:** rollenabhängig
 - **Testabdeckung:** Selbsttest
-- **Letztes Testergebnis:** nicht-ausgefuehrt (nicht aus der Existenz einer Testdatei abgeleitet)
+- **Letztes Testergebnis:** nicht-ausgefuehrt (kein Laufnachweis importiert; nicht aus der Existenz einer Testdatei abgeleitet)
 - **Rollen:** `admin`, `bueroleitung`, `superadmin`
 - **Routen:** —
 - **Frontend-Komponenten:** `src/components/administration/UserRolesManager.tsx`, `src/components/admin/UserAssignmentDialog.tsx`
@@ -152,7 +192,7 @@ Erklärt, warum eine Rolle eine Aktion, ein Feld oder ein Feature darf, und mach
 - **Implementierung:** implementiert
 - **Einbindung:** UI
 - **Testabdeckung:** Unit-Test
-- **Letztes Testergebnis:** unbekannt (nicht aus der Existenz einer Testdatei abgeleitet)
+- **Letztes Testergebnis:** unbekannt (kein Laufnachweis importiert; nicht aus der Existenz einer Testdatei abgeleitet)
 - **Rollen:** `admin`, `bueroleitung`, `superadmin`
 - **Routen:** —
 - **Frontend-Komponenten:** `src/features/permissions/PermissionExplorer.tsx`
@@ -188,7 +228,7 @@ Beschränkt Lese- und Schreibrechte auf einzelne Felder und erzwingt sie zusätz
 - **Implementierung:** implementiert
 - **Einbindung:** rollenabhängig
 - **Testabdeckung:** Selbsttest
-- **Letztes Testergebnis:** nicht-ausgefuehrt (nicht aus der Existenz einer Testdatei abgeleitet)
+- **Letztes Testergebnis:** nicht-ausgefuehrt (kein Laufnachweis importiert; nicht aus der Existenz einer Testdatei abgeleitet)
 - **Rollen:** `admin`, `bueroleitung`
 - **Routen:** —
 - **Frontend-Komponenten:** `src/components/administration/PermissionsManager.tsx`
@@ -224,7 +264,7 @@ Schaltet Funktionen je Mandant oder global über Flags und macht die Entscheidun
 - **Implementierung:** implementiert
 - **Einbindung:** Feature Flag
 - **Testabdeckung:** kein Test
-- **Letztes Testergebnis:** nicht-ausgefuehrt (nicht aus der Existenz einer Testdatei abgeleitet)
+- **Letztes Testergebnis:** nicht-ausgefuehrt (kein Laufnachweis importiert; nicht aus der Existenz einer Testdatei abgeleitet)
 - **Rollen:** `admin`, `superadmin`
 - **Routen:** —
 - **Frontend-Komponenten:** —
@@ -260,7 +300,7 @@ Legt je Aktion fest, welche Rollen sie ausführen dürfen, und prüft sie in UI 
 - **Implementierung:** implementiert
 - **Einbindung:** rollenabhängig
 - **Testabdeckung:** Selbsttest
-- **Letztes Testergebnis:** nicht-ausgefuehrt (nicht aus der Existenz einer Testdatei abgeleitet)
+- **Letztes Testergebnis:** nicht-ausgefuehrt (kein Laufnachweis importiert; nicht aus der Existenz einer Testdatei abgeleitet)
 - **Rollen:** `admin`, `bueroleitung`, `abgeordneter`, `mitarbeiter`
 - **Routen:** —
 - **Frontend-Komponenten:** —
@@ -296,7 +336,7 @@ Protokolliert sicherheits- und fachrelevante Änderungen und erlaubt Suche und E
 - **Implementierung:** implementiert
 - **Einbindung:** rollenabhängig
 - **Testabdeckung:** kein Test
-- **Letztes Testergebnis:** nicht-ausgefuehrt (nicht aus der Existenz einer Testdatei abgeleitet)
+- **Letztes Testergebnis:** nicht-ausgefuehrt (kein Laufnachweis importiert; nicht aus der Existenz einer Testdatei abgeleitet)
 - **Rollen:** `admin`, `bueroleitung`, `superadmin`
 - **Routen:** —
 - **Frontend-Komponenten:** `src/components/administration/AuditLogViewer.tsx`
@@ -332,7 +372,7 @@ Protokolliert Massenänderungen, erlaubt Rücknahme und räumt alte Audit-Eintr�
 - **Implementierung:** implementiert
 - **Einbindung:** rollenabhängig
 - **Testabdeckung:** kein Test
-- **Letztes Testergebnis:** nicht-ausgefuehrt (nicht aus der Existenz einer Testdatei abgeleitet)
+- **Letztes Testergebnis:** nicht-ausgefuehrt (kein Laufnachweis importiert; nicht aus der Existenz einer Testdatei abgeleitet)
 - **Rollen:** `admin`, `bueroleitung`
 - **Routen:** —
 - **Frontend-Komponenten:** `src/components/administration/BulkActionAuditViewer.tsx`
@@ -367,7 +407,7 @@ Verwaltet Löschanträge mit Vier-Augen-Freigabe durch die Datenbank und atomare
 - **Implementierung:** implementiert
 - **Einbindung:** rollenabhängig
 - **Testabdeckung:** kein Test
-- **Letztes Testergebnis:** nicht-ausgefuehrt (nicht aus der Existenz einer Testdatei abgeleitet)
+- **Letztes Testergebnis:** nicht-ausgefuehrt (kein Laufnachweis importiert; nicht aus der Existenz einer Testdatei abgeleitet)
 - **Rollen:** `admin`, `superadmin`
 - **Routen:** —
 - **Frontend-Komponenten:** `src/components/administration/GdprRequestsManager.tsx`
@@ -403,7 +443,7 @@ Zeigt RLS-Lücken, Policies, Snapshots und Audit-Trail als eigenständige Sicher
 - **Implementierung:** implementiert
 - **Einbindung:** rollenabhängig
 - **Testabdeckung:** kein Test
-- **Letztes Testergebnis:** nicht-ausgefuehrt (nicht aus der Existenz einer Testdatei abgeleitet)
+- **Letztes Testergebnis:** nicht-ausgefuehrt (kein Laufnachweis importiert; nicht aus der Existenz einer Testdatei abgeleitet)
 - **Rollen:** `admin`, `superadmin`
 - **Routen:** —
 - **Frontend-Komponenten:** `src/components/administration/SecurityCockpit.tsx`, `src/features/feature-catalog/useTableSecurity.ts`, `src/features/feature-catalog/securityLinks.ts`
@@ -442,7 +482,7 @@ Bildet alle registrierten Selbsttest-Szenarien in fachlichen Bereichen ab und ze
 - **Implementierung:** implementiert
 - **Einbindung:** rollenabhängig
 - **Testabdeckung:** Unit-Test
-- **Letztes Testergebnis:** bestanden (nicht aus der Existenz einer Testdatei abgeleitet)
+- **Letztes Testergebnis:** bestanden (kein Laufnachweis importiert; nicht aus der Existenz einer Testdatei abgeleitet)
 - **Rollen:** `admin`, `superadmin`
 - **Routen:** —
 - **Frontend-Komponenten:** `src/features/system-pulse/SystemPulse.tsx`, `src/features/system-pulse/pulse.ts`, `src/features/system-pulse/pulse-areas.config.json`, `src/features/system-pulse/generated/pulse-areas.json`
@@ -492,7 +532,7 @@ Klassifiziert jede Edge Function nach verify_jwt und Zusatzschutz und prüft die
 - **Implementierung:** implementiert
 - **Einbindung:** nicht anwendbar
 - **Testabdeckung:** kein Test
-- **Letztes Testergebnis:** unbekannt (nicht aus der Existenz einer Testdatei abgeleitet)
+- **Letztes Testergebnis:** unbekannt (kein Laufnachweis importiert; nicht aus der Existenz einer Testdatei abgeleitet)
 - **Rollen:** `system`, `superadmin`
 - **Routen:** —
 - **Frontend-Komponenten:** —
@@ -529,7 +569,7 @@ Prüft Bürogrenzen und Entscheiderrollen über ein eigenes Selbsttest-Szenario.
 - **Implementierung:** implementiert
 - **Einbindung:** nicht anwendbar
 - **Testabdeckung:** Selbsttest
-- **Letztes Testergebnis:** nicht-ausgefuehrt (nicht aus der Existenz einer Testdatei abgeleitet)
+- **Letztes Testergebnis:** nicht-ausgefuehrt (kein Laufnachweis importiert; nicht aus der Existenz einer Testdatei abgeleitet)
 - **Rollen:** `system`, `abgeordneter`, `bueroleitung`, `mitarbeiter`
 - **Routen:** —
 - **Frontend-Komponenten:** —
@@ -565,7 +605,7 @@ Führt Datenlint-Regeln aus, zeigt Befunde und unterstützt die Bereinigung.
 - **Implementierung:** implementiert
 - **Einbindung:** rollenabhängig
 - **Testabdeckung:** kein Test
-- **Letztes Testergebnis:** nicht-ausgefuehrt (nicht aus der Existenz einer Testdatei abgeleitet)
+- **Letztes Testergebnis:** nicht-ausgefuehrt (kein Laufnachweis importiert; nicht aus der Existenz einer Testdatei abgeleitet)
 - **Rollen:** `admin`, `bueroleitung`
 - **Routen:** —
 - **Frontend-Komponenten:** `src/components/administration/DataLintDashboard.tsx`
@@ -600,7 +640,7 @@ Zeigt Tabellen- und Datenbankgrößen sowie Betriebskennzahlen.
 - **Implementierung:** implementiert
 - **Einbindung:** rollenabhängig
 - **Testabdeckung:** kein Test
-- **Letztes Testergebnis:** nicht-ausgefuehrt (nicht aus der Existenz einer Testdatei abgeleitet)
+- **Letztes Testergebnis:** nicht-ausgefuehrt (kein Laufnachweis importiert; nicht aus der Existenz einer Testdatei abgeleitet)
 - **Rollen:** `admin`, `superadmin`
 - **Routen:** —
 - **Frontend-Komponenten:** `src/components/administration/PerformanceDashboard.tsx`
@@ -635,7 +675,7 @@ Verwaltet Büros, Mitgliedschaften und Gesundheitskennzahlen; Superadmins sehen 
 - **Implementierung:** implementiert
 - **Einbindung:** rollenabhängig
 - **Testabdeckung:** kein Test
-- **Letztes Testergebnis:** nicht-ausgefuehrt (nicht aus der Existenz einer Testdatei abgeleitet)
+- **Letztes Testergebnis:** nicht-ausgefuehrt (kein Laufnachweis importiert; nicht aus der Existenz einer Testdatei abgeleitet)
 - **Rollen:** `superadmin`, `admin`
 - **Routen:** —
 - **Frontend-Komponenten:** `src/components/administration/SuperadminTenantManagement.tsx`, `src/components/administration/tenant-wizard`
@@ -671,7 +711,7 @@ Legt Benutzer an, setzt MFA zurück und meldet Sitzungen global ab.
 - **Implementierung:** implementiert
 - **Einbindung:** rollenabhängig
 - **Testabdeckung:** kein Test
-- **Letztes Testergebnis:** nicht-ausgefuehrt (nicht aus der Existenz einer Testdatei abgeleitet)
+- **Letztes Testergebnis:** nicht-ausgefuehrt (kein Laufnachweis importiert; nicht aus der Existenz einer Testdatei abgeleitet)
 - **Rollen:** `admin`, `superadmin`, `abgeordneter`, `bueroleitung`, `mitarbeiter`
 - **Routen:** —
 - **Frontend-Komponenten:** `src/components/admin/NewUserForm.tsx`, `src/components/admin/TwoFactorSettings.tsx`
@@ -707,7 +747,7 @@ Verwaltet Kategorien, Status und Typen zentral, prüft Abhängigkeiten vor dem L
 - **Implementierung:** implementiert
 - **Einbindung:** rollenabhängig
 - **Testabdeckung:** kein Test
-- **Letztes Testergebnis:** nicht-ausgefuehrt (nicht aus der Existenz einer Testdatei abgeleitet)
+- **Letztes Testergebnis:** nicht-ausgefuehrt (kein Laufnachweis importiert; nicht aus der Existenz einer Testdatei abgeleitet)
 - **Rollen:** `admin`, `bueroleitung`
 - **Routen:** —
 - **Frontend-Komponenten:** `src/components/administration/ConfigurableTypeSettings.tsx`, `src/features/admin/ConfigDeleteDialog.tsx`
@@ -744,7 +784,7 @@ Verwaltet Onboarding-Folien und passt die Anmeldeseite je Mandant an.
 - **Implementierung:** implementiert
 - **Einbindung:** rollenabhängig
 - **Testabdeckung:** kein Test
-- **Letztes Testergebnis:** nicht-ausgefuehrt (nicht aus der Existenz einer Testdatei abgeleitet)
+- **Letztes Testergebnis:** nicht-ausgefuehrt (kein Laufnachweis importiert; nicht aus der Existenz einer Testdatei abgeleitet)
 - **Rollen:** `admin`, `bueroleitung`, `abgeordneter`, `mitarbeiter`
 - **Routen:** —
 - **Frontend-Komponenten:** `src/components/administration/OnboardingSlidesManager.tsx`, `src/components/administration/LoginCustomization.tsx`
@@ -780,7 +820,7 @@ Pflegt E-Mail-Vorlagen, Planungsvorlagen, Anlässe, Absenderinformationen und In
 - **Implementierung:** implementiert
 - **Einbindung:** rollenabhängig
 - **Testabdeckung:** kein Test
-- **Letztes Testergebnis:** nicht-ausgefuehrt (nicht aus der Existenz einer Testdatei abgeleitet)
+- **Letztes Testergebnis:** nicht-ausgefuehrt (kein Laufnachweis importiert; nicht aus der Existenz einer Testdatei abgeleitet)
 - **Rollen:** `admin`, `bueroleitung`
 - **Routen:** —
 - **Frontend-Komponenten:** `src/components/administration/PlanningTemplateManager.tsx`, `src/components/administration/PressTemplateManager.tsx`, `src/components/administration/PressOccasionManager.tsx`, `src/components/administration/InformationBlockManager.tsx`
@@ -817,7 +857,7 @@ Bereinigt Caches, veraltete Nachrichten, Workflow-Läufe und Testdaten über aut
 - **Implementierung:** implementiert
 - **Einbindung:** systemseitig
 - **Testabdeckung:** kein Test
-- **Letztes Testergebnis:** nicht-ausgefuehrt (nicht aus der Existenz einer Testdatei abgeleitet)
+- **Letztes Testergebnis:** nicht-ausgefuehrt (kein Laufnachweis importiert; nicht aus der Existenz einer Testdatei abgeleitet)
 - **Rollen:** `system`
 - **Routen:** —
 - **Frontend-Komponenten:** —
@@ -852,7 +892,7 @@ Führt registrierte Prüfszenarien gegen die Anwendung aus, protokolliert Läufe
 - **Implementierung:** implementiert
 - **Einbindung:** rollenabhängig
 - **Testabdeckung:** Selbsttest
-- **Letztes Testergebnis:** nicht-ausgefuehrt (nicht aus der Existenz einer Testdatei abgeleitet)
+- **Letztes Testergebnis:** nicht-ausgefuehrt (kein Laufnachweis importiert; nicht aus der Existenz einer Testdatei abgeleitet)
 - **Rollen:** `admin`, `bueroleitung`, `abgeordneter`, `mitarbeiter`
 - **Routen:** `/selftest`
 - **Frontend-Komponenten:** `src/features/selftest/components`
@@ -890,7 +930,7 @@ Führt den vollständigen, versionierten Funktionskatalog, gleicht ihn mit Route
 - **Implementierung:** implementiert
 - **Einbindung:** rollenabhängig
 - **Testabdeckung:** Unit-Test
-- **Letztes Testergebnis:** unbekannt (nicht aus der Existenz einer Testdatei abgeleitet)
+- **Letztes Testergebnis:** unbekannt (kein Laufnachweis importiert; nicht aus der Existenz einer Testdatei abgeleitet)
 - **Rollen:** `admin`, `bueroleitung`
 - **Routen:** `/funktionskatalog`
 - **Frontend-Komponenten:** `src/features/feature-catalog/FeatureCatalogView.tsx`, `src/features/feature-catalog/FeatureMap.tsx`, `src/features/feature-catalog/StateMachineView.tsx`, `src/features/feature-catalog/StateMachineGraph.tsx`
@@ -931,7 +971,7 @@ Erzeugt Benachrichtigungen, Push-Aufträge und Audit-Einträge aus Datenbankänd
 - **Implementierung:** implementiert
 - **Einbindung:** systemseitig
 - **Testabdeckung:** kein Test
-- **Letztes Testergebnis:** nicht-ausgefuehrt (nicht aus der Existenz einer Testdatei abgeleitet)
+- **Letztes Testergebnis:** nicht-ausgefuehrt (kein Laufnachweis importiert; nicht aus der Existenz einer Testdatei abgeleitet)
 - **Rollen:** `system`
 - **Routen:** —
 - **Frontend-Komponenten:** —

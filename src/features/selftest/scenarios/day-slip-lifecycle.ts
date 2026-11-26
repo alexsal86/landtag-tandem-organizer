@@ -2,7 +2,8 @@ import { supabase } from "@/integrations/supabase/client";
 import type { Json } from "@/integrations/supabase/types";
 import type { TestScenario } from "../types";
 import { describeError } from "../verify";
-import { appendEntries, carryLines, collectCarryLines, decideDayTemplate, normalizeStore, removeLineFromDay, restoreLineToDay, sourcePath } from "@/components/dayslip/daySlipState";
+import { appendEntries, carryLines, collectCarryLines, completedArchiveDays, decideDayStart, decideDayTemplate, normalizeStore, removeLineFromDay, restoreLineToDay, sourcePath } from "@/components/dayslip/daySlipState";
+import { createExportTarget } from "@/components/dayslip/daySlipExport";
 import { openLineCount, openPastDays, resolveDayView, shiftDayKey, snoozePresets } from "@/components/dayslip/daySlipNavigation";
 import { parseDaySlipLine } from "@/components/dayslip/daySlipShorthand";
 import { archiveNeighbours, buildArchiveEntry, matchesArchiveQuery } from "@/components/dayslip/daySlipArchive";
@@ -13,17 +14,22 @@ import { testDay } from "../fixtures";
 export const daySlipLifecycleScenario: TestScenario = {
   id: "day-slip-lifecycle",
   title: "Tageszettel-Lifecycle (Links → Neuladen → Übernahme auf Folgetag)",
-  description: "Schreibt einen Tageszettel mit verlinkten Zeilen (Notiz, Aufgabe, Vorgang, Entscheidung), lädt ihn neu, prüft die Sprungziele und überträgt offene Zeilen auf den Folgetag, ohne Links zu verlieren.",
-  touches: ["day_slips"],
+  description: "Schreibt einen Tageszettel mit verlinkten Zeilen (Notiz, Aufgabe, Vorgang, Entscheidung), lädt ihn neu, prüft Vorlagen-, Wochenplan- und Routinenentscheidung, die Übernahme auf den Folgetag und den Export ohne Dublette.",
+  touches: ["day_slips", "tasks", "quick_notes"],
   features: ["dayslip"],
-  checks: ["Speichern und erneutes Laden", "Link-Erhalt bei Übernahme", "Keine doppelte Übernahme", "Wochentag-Vorlage nur an unbegonnenen Zetteln, Entscheidung je Tag festgehalten", "Vorlagenentscheidung übersteht Speichern und Neuladen", "Frühere Tage ohne Abschluss bleiben lesbar", "Snooze-Vorschläge ohne doppeltes Ziel", "Löschen mit Rückgängig", "Getippte Kürzel ohne Automatik", "Archiv: erledigt/zugewiesen/offen, Suche, Datumsnachbarn"],
+  checks: ["Speichern und erneutes Laden", "Link-Erhalt bei Übernahme", "Keine doppelte Übernahme", "Wochentag-Vorlage, Wochenplan und Routinen entscheiden einmal pro Tag; nur leere Zettel erhalten Vorlage und Plan", "Archivierte Vorlagenentscheidung übersteht Speichern und Neuladen", "Export trifft dasselbe Ziel ohne Dublette (Aufgabe und Notiz)", "Schreiben in einen fremden Zettel wird verweigert, fremde Zettel bleiben unlesbar", "Stimmung übersteht Speichern und Neuladen", "Archiv trennt abgeschlossene und offene Tage nach dem Neuladen", "Frühere Tage ohne Abschluss bleiben lesbar", "Snooze-Vorschläge ohne doppeltes Ziel", "Löschen mit Rückgängig", "Getippte Kürzel ohne Automatik", "Archiv: erledigt/zugewiesen/offen, Suche, Datumsnachbarn"],
   limitations: [
     "Die verlinkten Ziele sind Test-IDs; ihre Bedienung wird nicht geprüft.",
     "Kürzel belegen die Zuordnung nur vor; erstellt wird erst mit dem Abschluss, und Mehrdeutiges bleibt Text.",
     "Frühere Tage werden nur gelesen; abgeschlossen werden kann weiterhin ausschließlich der aktuelle Tag.",
-    "Die Vorlagenentscheidung wird als Regel und über den gespeicherten Zettel geprüft; das automatische Einfügen beim ersten Öffnen im Browser beobachtet der Selbsttest nicht.",
+    "Die Startentscheidung wird als Regel und über den gespeicherten Zettel geprüft; das automatische Einfügen beim ersten Öffnen im Browser beobachtet der Selbsttest nicht.",
+    "Die Lesesperre fremder Zettel wird mit einer erfundenen Nutzer-ID geprüft, nicht mit einem zweiten angemeldeten Konto.",
   ],
-  writes: [{ table: "day_slips", columns: ["user_id", "tenant_id", "day_key", "data"] }],
+  writes: [
+    { table: "day_slips", columns: ["user_id", "tenant_id", "day_key", "data"] },
+    { table: "tasks", columns: ["id", "user_id", "tenant_id", "title", "description", "status", "priority", "category", "assigned_to", "due_date"] },
+    { table: "quick_notes", columns: ["id", "user_id", "tenant_id", "title", "content"] },
+  ],
   steps: [
     {
       id: "write", label: "Tageszettel mit 4 verlinkten Zeilen speichern", critical: true,
@@ -99,6 +105,36 @@ export const daySlipLifecycleScenario: TestScenario = {
         return failed.length
           ? { ok: false, message: `Fehler: ${failed.join(", ")}`, details: checks }
           : { ok: true, message: "Gespeicherte Vorlagenentscheidung bleibt nach dem Neuladen erhalten; der geleerte Zettel bekommt keine Vorlage.", details: checks };
+      },
+    },
+    {
+      id: "start-injection-once", label: "Vorlage, Wochenplan und Routinen entscheiden einmal pro Tag", kind: "logic",
+      run: async () => {
+        const template = ["Plenartag", "Fraktionssitzung"];
+        const plan = ["Ausschuss 14:00"];
+        const routines = ["Postfach leeren"];
+        const texts = (day: DaySlipDayData) => extractLinesFromHtml(day.html).map(line => line.text);
+        const fresh = decideDayStart(undefined, { templateLines: template, recurringLines: routines, weekPlanLines: plan });
+        const again = decideDayStart(fresh.day, { templateLines: template, recurringLines: routines, weekPlanLines: plan });
+        const started: DaySlipDayData = { html: toParagraphHtml({ id: "own", text: "Eigene Zeile" }), plainText: "Eigene Zeile" };
+        const startedDecision = decideDayStart(started, { templateLines: template, recurringLines: routines, weekPlanLines: plan });
+        const decided: DaySlipDayData = { html: "", plainText: "", struckLineIds: [], dayTemplateInjected: true, recurringInjected: true, weekPlanInjected: true };
+        const emptied = decideDayStart(decided, { templateLines: template, recurringLines: routines, weekPlanLines: plan });
+        const noTemplate = decideDayStart(undefined, { templateLines: [], recurringLines: [], weekPlanLines: plan });
+        const checks = {
+          leerBekommtAlles: fresh.templateApplied && fresh.weekPlanApplied && fresh.recurringApplied
+            && [...template, ...plan, ...routines].every(text => texts(fresh.day).includes(text)),
+          routinenNurEinmal: !again.recurringApplied && !again.templateApplied && texts(again.day).length === texts(fresh.day).length,
+          begonnenNurRoutinen: !startedDecision.templateApplied && !startedDecision.weekPlanApplied && startedDecision.recurringApplied
+            && texts(startedDecision.day).join() === "Eigene Zeile,Postfach leeren",
+          entscheidungImmerFestgehalten: fresh.day.dayTemplateInjected === true && fresh.day.weekPlanInjected === true && fresh.day.recurringInjected === true,
+          geleertBleibtLeer: !emptied.templateApplied && !emptied.weekPlanApplied && emptied.day.html === "",
+          planOhneVorlageMoeglich: !noTemplate.templateApplied && noTemplate.weekPlanApplied && noTemplate.day.dayTemplateInjected === true,
+        };
+        const failed = Object.entries(checks).filter(([, ok]) => !ok).map(([name]) => name);
+        return failed.length
+          ? { ok: false, message: `Fehler: ${failed.join(", ")}`, details: checks }
+          : { ok: true, message: "Nur ein unbegonnener Zettel erhält Vorlage und Wochenplan; Routinen kommen höchstens einmal, und jede Entscheidung wird festgehalten.", details: checks };
       },
     },
     {
@@ -179,6 +215,102 @@ export const daySlipLifecycleScenario: TestScenario = {
         return failed.length
           ? { ok: false, message: `Fehler: ${failed.join(", ")}`, details: checks }
           : { ok: true, message: "Begonnene Zettel bleiben ohne Vorlage; geleerte Zettel bleiben auch nach Neuladen unverändert, weil die Entscheidung festgehalten ist.", details: checks };
+      },
+    },
+    {
+      id: "export-idempotent", label: "Export trifft dasselbe Ziel ohne Dublette",
+      run: async (ctx) => {
+        const DAY = testDay(ctx.runId, 3);
+        const taskLine = crypto.randomUUID();
+        const noteLine = crypto.randomUUID();
+        const text = `Selbsttest Export ${ctx.runId}`;
+        const base = { userId: ctx.userId, tenantId: ctx.tenantId, dayKey: DAY, text };
+        const taskId = await createExportTarget({ ...base, lineId: taskLine, target: "task" });
+        ctx.trackRecord({ table: "tasks", id: taskId });
+        const taskAgain = await createExportTarget({ ...base, lineId: taskLine, target: "task" });
+        const noteId = await createExportTarget({ ...base, lineId: noteLine, target: "note" });
+        ctx.trackRecord({ table: "quick_notes", id: noteId });
+        const noteAgain = await createExportTarget({ ...base, lineId: noteLine, target: "note" });
+        const tasks = await supabase.from("tasks").select("id").eq("description", `Aus Tageszettel (${DAY})`);
+        const notes = await supabase.from("quick_notes").select("id").eq("content", `Aus Tageszettel (${DAY})`);
+        if (tasks.error || notes.error) return { ok: false, message: describeError(tasks.error ?? notes.error) };
+        const checks = {
+          gleicheAufgabe: taskId === taskAgain,
+          gleicheNotiz: noteId === noteAgain,
+          genauEineAufgabe: tasks.data?.length === 1 && tasks.data[0].id === taskId,
+          genauEineNotiz: notes.data?.length === 1 && notes.data[0].id === noteId,
+        };
+        const failed = Object.entries(checks).filter(([, ok]) => !ok).map(([name]) => name);
+        return failed.length
+          ? { ok: false, message: `Fehler: ${failed.join(", ")}`, details: { checks, taskCount: tasks.data?.length, noteCount: notes.data?.length } }
+          : { ok: true, message: "Wiederholter Export liefert dieselbe Aufgabe und Notiz, ohne zweite Zeile.", details: checks };
+      },
+    },
+    {
+      id: "foreign-slip-blocked", label: "Fremder Zettel bleibt schreib- und lesegeschützt",
+      run: async (ctx) => {
+        const DAY = testDay(ctx.runId, 4);
+        const foreignUser = crypto.randomUUID();
+        const written = await supabase.from("day_slips").insert({ user_id: foreignUser, tenant_id: ctx.tenantId, day_key: DAY, data: {} as Json }).select("id").single();
+        if (written.data) ctx.trackRecord({ table: "day_slips", id: written.data.id });
+        const read = await supabase.from("day_slips").select("id").eq("user_id", foreignUser);
+        const checks = {
+          schreibenVerweigert: Boolean(written.error),
+          lesenLeer: !read.error && (read.data?.length ?? 0) === 0,
+        };
+        const failed = Object.entries(checks).filter(([, ok]) => !ok).map(([name]) => name);
+        return failed.length
+          ? { ok: false, message: `Fehler: ${failed.join(", ")}`, details: { checks, writeError: written.error, readError: read.error } }
+          : { ok: true, message: "RLS verweigert den fremden Schreibversuch und liefert keine fremden Zettel.", details: { checks, code: written.error?.code } };
+      },
+    },
+    {
+      id: "mood-persisted", label: "Stimmung bleibt nach Speichern und Neuladen erhalten",
+      run: async (ctx) => {
+        const DAY = testDay(ctx.runId, 5);
+        const day: DaySlipDayData = { html: toParagraphHtml({ id: "mood", text: "Stimmung" }), plainText: "Stimmung", struckLineIds: [], dayMood: 4 };
+        const { data, error } = await supabase.from("day_slips").insert({ user_id: ctx.userId, tenant_id: ctx.tenantId, day_key: DAY, data: day as unknown as Json }).select("id").single();
+        if (error || !data) return { ok: false, message: describeError(error) };
+        ctx.trackRecord({ table: "day_slips", id: data.id });
+        const { data: back, error: readError } = await supabase.from("day_slips").select("data").eq("id", data.id).single();
+        if (readError) return { ok: false, message: describeError(readError) };
+        const reloaded = normalizeStore({ [DAY]: back?.data })[DAY];
+        const checks = {
+          stimmungErhalten: reloaded?.dayMood === 4,
+          zeileErhalten: extractLinesFromHtml(reloaded?.html ?? "").map(line => line.text).join() === "Stimmung",
+        };
+        const failed = Object.entries(checks).filter(([, ok]) => !ok).map(([name]) => name);
+        return failed.length
+          ? { ok: false, message: `Fehler: ${failed.join(", ")}`, details: checks }
+          : { ok: true, message: "Stimmung 4 und Zeile überstehen Speichern und Neuladen.", details: checks };
+      },
+    },
+    {
+      id: "archive-after-reload", label: "Archiv trennt abgeschlossene und offene Tage nach dem Neuladen",
+      run: async (ctx) => {
+        const DONE = testDay(ctx.runId, 6);
+        const OPEN = testDay(ctx.runId, 7);
+        const done: DaySlipDayData = { html: toParagraphHtml({ id: "done", text: "Abgeschlossen" }), plainText: "Abgeschlossen", struckLineIds: [], completedAt: `${DONE}T17:00:00.000Z` };
+        const open: DaySlipDayData = { html: toParagraphHtml({ id: "open", text: "Offen" }), plainText: "Offen", struckLineIds: [] };
+        const inserted = await supabase.from("day_slips").insert([
+          { user_id: ctx.userId, tenant_id: ctx.tenantId, day_key: DONE, data: done as unknown as Json },
+          { user_id: ctx.userId, tenant_id: ctx.tenantId, day_key: OPEN, data: open as unknown as Json },
+        ]).select("id,day_key");
+        if (inserted.error || !inserted.data) return { ok: false, message: describeError(inserted.error) };
+        inserted.data.forEach(row => ctx.trackRecord({ table: "day_slips", id: row.id }));
+        const { data: back, error } = await supabase.from("day_slips").select("day_key,data").in("id", inserted.data.map(row => row.id));
+        if (error) return { ok: false, message: describeError(error) };
+        const store = normalizeStore(Object.fromEntries((back ?? []).map(row => [row.day_key, row.data])));
+        const archive = completedArchiveDays(store, OPEN);
+        const checks = {
+          abgeschlossenerTagImArchiv: archive.includes(DONE),
+          offenerTagNichtImArchiv: !archive.includes(OPEN),
+          offenerTagBleibtLesbar: extractLinesFromHtml(store[OPEN]?.html ?? "").length === 1,
+        };
+        const failed = Object.entries(checks).filter(([, ok]) => !ok).map(([name]) => name);
+        return failed.length
+          ? { ok: false, message: `Fehler: ${failed.join(", ")}`, details: { checks, archive } }
+          : { ok: true, message: "Nach dem Neuladen steht nur der ausdrücklich abgeschlossene Tag im Archiv.", details: checks };
       },
     },
     {

@@ -56,13 +56,93 @@ _Auto-generiert mit `npm run update:feature-catalog` aus dem zentralen Funktions
 
 ## Selbsttest-Szenarien
 
-| Szenario | Titel | deklarierte Tabellen | deklarierte Prüfungen |
-|---|---|---:|---:|
-| `election-analysis` | Wahlanalyse: Datenqualität und Vergleichbarkeit | 0 | 4 |
-| `election-deputy-reader` | Wahlanalyse: Abgeordnetenübersicht | 0 | 0 |
-| `election-history-workbench` | Wahldaten: Problemfälle und Landeslisten | 0 | 0 |
-| `election-map` | Wahlkreiskarte: Suche und Grenzdaten | 0 | 0 |
-| `security-hardening` | Sicherheitsregeln: Porträtdateien und E-Mail-Inhalte | 0 | 4 |
+| Szenario | Titel | deklarierte Tabellen | deklarierte Prüfungen | letzter Lauf |
+|---|---|---:|---:|---|
+| `election-analysis` | Wahlanalyse: Datenqualität und Vergleichbarkeit | 0 | 4 | — |
+| `election-deputy-reader` | Wahlanalyse: Abgeordnetenübersicht | 0 | 0 | — |
+| `election-history-workbench` | Wahldaten: Problemfälle und Landeslisten | 0 | 0 | — |
+| `election-map` | Wahlkreiskarte: Suche und Grenzdaten | 0 | 0 | — |
+| `security-hardening` | Sicherheitsregeln: Porträtdateien und E-Mail-Inhalte | 0 | 4 | — |
+
+## Selbsttest-Schritte
+
+Diese Schritte führen die Szenarien aus; „letzter Lauf“ stammt aus `src/features/selftest/last-runs.json`, nicht aus dieser Doku.
+
+| Szenario | Schritt | Bezeichnung | Art | letzter Lauf |
+|---|---|---|---|---|
+| `election-analysis` | `district-series-year-limit` | Wahlkreis-Steckbrief: alle Wahljahre innerhalb der RPC-Grenze laden | logic | — |
+| `election-analysis` | `analysis-four-pillars-navigation` | Wahlanalyse: vier Säulen, alte Links und zentrale Datenprüfung im Super-Admin | logic | — |
+| `election-analysis` | `candidacy-admin-import` | Kandidatenimport: deutsche Zahlen, reine Liste und Wahlkreiszwang | logic | — |
+| `election-analysis` | `boundary-difference-rendering` | Grenzänderungen als Teilflächen ohne erfundene Ergebniswerte | logic | — |
+| `election-analysis` | `state-history-denominators-and-matrix` | Landesgeschichte: Bezugsgrößen und gerichtete Wanderungsmatrix | logic | — |
+| `election-analysis` | `election-shape-packages` | Wahlkreisformen: gemeinsame 68 Formen wiederverwenden, nur Änderungen laden | logic | — |
+| `election-analysis` | `election-topology-years` | TopoJSON: Grenzstände, gemeinsame und umgekehrte Grenzlinien | logic | — |
+| `election-analysis` | `swing-atlas-selection` | Swing-Atlas: exakte Suche, getrennte Ranglisten und feste Skala | logic | — |
+| `election-analysis` | `analysis-reports` | Bericht: sichtbare Werte einfrieren und aktive Inhalte entfernen | logic | — |
+| `election-analysis` | `election-workspaces` | Sitze, Mandatsschwellen, private Szenarien und Gemeinde-Nullwerte | logic | — |
+| `election-analysis` | `research-lab` | Wahlforschung: explorative Gruppen, OLS, Szenarien und Annahmen | logic | — |
+| `election-analysis` | `mandate-analysis` | Mandate: Identitäten, Nachrücker und tatsächliche Amtszeit | logic | — |
+| `election-analysis` | `turnout-statistics` | Beteiligung: vollständige Paare und symmetrische Stimmenzerlegung | logic | — |
+| `election-analysis` | `analysis-presentation` | Shapley aktiv, Zahlenzitat, Sankey, Wabenraster und generiertes Kurzfazit | logic | — |
+| `election-analysis` | `election-quality` | Fehlende Werte, Stimmenarten, Beteiligung und Grenzen | logic | — |
+| `election-deputy-reader` | `published-deputy-history` | Suche und Detail zeigen ausschließlich freigegebene Legislaturperioden | db | — |
+| `election-history-workbench` | `candidate-state-list-place` | Kandidaturergebnisse: bestätigte Listenplätze mit Konfliktschutz und gemeinsamer Navigation | logic | — |
+| `election-history-workbench` | `state-list-candidacy-role` | Listenplätze: Ersatzbewerbung und reine Liste bleiben von Direktbewerbung getrennt | logic | — |
+| `election-history-workbench` | `central-factions` | Fraktionen: eindeutige Schreibweisen und historische Gruppen | logic | — |
+| `election-history-workbench` | `period-seat-snapshot` | Sitzverteilung: unbekannte Gesamtsitze und Teilmengen bleiben unterscheidbar | logic | — |
+| `election-history-workbench` | `candidate-before-member` | Erfolglose Kandidatur bleibt mit späterem Mandat verbunden, ohne selbst als Mandat zu zählen | logic | — |
+| `election-history-workbench` | `state-list-identity` | Landeslisten: keine automatische Auswahl bei mehreren gleichnamigen Historien | logic | — |
+| `election-history-workbench` | `cross-period-issues` | Problemfälle: begrenzte globale Suche und Filter nach Problemart | db | — |
+| `election-map` | `deputy-candidacy-without-tenure` | Profilzeitleiste: erfolglose Wahlteilnahme bleibt von einer Mitgliedschaft getrennt | logic | — |
+| `election-map` | `deputy-parliament-party-order` | Landes- und Profilgrafik ordnen Sitze in der vorgegebenen Parteienfolge | logic | — |
+| `election-map` | `deputy-tenure-coverage` | Mandatsbalken zeigen echte Teilzeiten, Lücken und keine zukünftige Mitgliedschaft | logic | — |
+| `election-map` | `deputy-profile-election-bars` | Profil zeigt eigene Kandidatur, bekannte Gegenkandidaturen und nur belegte Reststimmen | logic | — |
+| `election-map` | `assembled-candidacy-result-provenance` | Automatische Ergebnisübernahme bewahrt manuelle Zahlen und fehlende Werte | logic | — |
+| `election-map` | `candidate-result-conflicts` | Persönliche Ergebnisse und zugeordnete Wahlkreisergebnisse bleiben getrennt | logic | — |
+| `election-map` | `deputy-portrait-crop` | Porträtausschnitt füllt den 3:4-Rahmen; sichere Bildnachweise bleiben an ihrer Mandatsverbindung | logic | — |
+| `election-map` | `completed-deputy-history` | Zusammengefasste Personen öffnen eine chronologische Übersicht ohne weitere Bestätigungsaufforderung | logic | — |
+| `election-map` | `deputy-explicit-selection` | Mandatsverbindungen bestätigen, erweitern und bei Datumskorrekturen erhalten | logic | — |
+| `election-map` | `regional-1952-source` | 1952: 74 Quellen, regionale Nummern und keine technische Mandatszuordnung | logic | — |
+| `election-map` | `district-detail-assets` | Detailkarten teilen bestätigte Grenzstände ohne Ersatz für fehlende Jahre | logic | — |
+| `election-map` | `historical-geometry-confirmation` | Historische Geometrie nur nach Bestätigung und nur für die gewählte Periode | logic | — |
+| `election-map` | `time-travel-order` | Zeitreise beginnt bei der ältesten Periode und folgt den Wahljahren | logic | — |
+| `election-map` | `party-filter-stable` | Parteifilter bleibt beim Wechsel der Legislaturperiode erhalten | logic | — |
+| `election-map` | `morph-geometry` | Periodenwechsel morpht gleiche Wahlkreise und blendet den Rest über | logic | — |
+| `election-map` | `search` | Wahlkreise nach Name oder exakter Nummer finden | logic | — |
+| `election-map` | `boundaries` | Fehlende, leere und projizierte Grenzdaten erkennen | logic | — |
+| `security-hardening` | `portrait-files` | Porträtdateien: WebP-Signatur, RIFF-Länge und Pflichtmaße | logic | — |
+| `security-hardening` | `portrait-source` | Porträtquelle: nur http(s) ohne Zugangsdaten und mit Feldgrenzen | logic | — |
+| `security-hardening` | `portrait-record` | Porträt-Metadaten: Verbindung, Versions-ID und feste Dateinamen | logic | — |
+| `security-hardening` | `portrait-crop` | Bildzuschnitt: 3:4-Rahmen, begrenzter Zoom und geklemmter Versatz | logic | — |
+| `security-hardening` | `email-html` | E-Mail-HTML: maskieren, sichere Links und entfernte aktive Inhalte | logic | — |
+
+## Deklarierter Prüfumfang
+
+### `election-analysis`
+
+1. Unbekannt gegenüber echter Null
+2. Getrennte Stimmenarten und gemeinsame Beteiligung
+3. Keine erfundenen historischen Identitäten
+4. AfD vor Parteigründung
+
+### `election-deputy-reader`
+
+Keine Prüfungen deklariert.
+
+### `election-history-workbench`
+
+Keine Prüfungen deklariert.
+
+### `election-map`
+
+Keine Prüfungen deklariert.
+
+### `security-hardening`
+
+1. Porträt-WebP: Signatur, RIFF-Länge und Pflichtmaße je Variante
+2. Porträt-Metadaten: Quelle, Verbindung und Dateinamen
+3. Bildzuschnitt deckt das 3:4-Format und begrenzt Zoom sowie Versatz
+4. E-Mail-HTML entfernt Skripte, Ereignis-Handler und aktive URLs
 
 ## Funktionsdetails
 
@@ -73,7 +153,7 @@ Wertet Ergebnisse nach Jahren, Parteien, Wahlkreisen und Mandaten aus und stellt
 - **Implementierung:** implementiert
 - **Einbindung:** rollenabhängig
 - **Testabdeckung:** Selbsttest
-- **Letztes Testergebnis:** nicht-ausgefuehrt (nicht aus der Existenz einer Testdatei abgeleitet)
+- **Letztes Testergebnis:** nicht-ausgefuehrt (kein Laufnachweis importiert; nicht aus der Existenz einer Testdatei abgeleitet)
 - **Rollen:** `abgeordneter`, `bueroleitung`, `mitarbeiter`
 - **Routen:** `/daten`
 - **Frontend-Komponenten:** `src/features/election-analysis/ElectionAnalysis.tsx`, `src/features/election-analysis/AnalysisToolbar.tsx`, `src/features/election-analysis/AnalysisInfo.tsx`
@@ -110,7 +190,7 @@ Navigiert zwischen Analyseebenen und speichert Analyse-Szenarien.
 - **Implementierung:** implementiert
 - **Einbindung:** UI
 - **Testabdeckung:** Unit-Test
-- **Letztes Testergebnis:** unbekannt (nicht aus der Existenz einer Testdatei abgeleitet)
+- **Letztes Testergebnis:** unbekannt (kein Laufnachweis importiert; nicht aus der Existenz einer Testdatei abgeleitet)
 - **Rollen:** `abgeordneter`, `bueroleitung`, `mitarbeiter`
 - **Routen:** —
 - **Frontend-Komponenten:** `src/features/election-analysis/research/SavedScenariosPanel.tsx`
@@ -146,7 +226,7 @@ Zeigt Analyseergebnisse auf Karten und verknüpft Wahlkreise mit Analyseversione
 - **Implementierung:** implementiert
 - **Einbindung:** UI
 - **Testabdeckung:** kein Test
-- **Letztes Testergebnis:** nicht-ausgefuehrt (nicht aus der Existenz einer Testdatei abgeleitet)
+- **Letztes Testergebnis:** nicht-ausgefuehrt (kein Laufnachweis importiert; nicht aus der Existenz einer Testdatei abgeleitet)
 - **Rollen:** `abgeordneter`, `bueroleitung`, `mitarbeiter`
 - **Routen:** —
 - **Frontend-Komponenten:** `src/features/election-analysis/research/AnalysisMap.tsx`
@@ -182,7 +262,7 @@ Stellt Wahlbeteiligung im Zeitvergleich und je Gebiet dar.
 - **Implementierung:** implementiert
 - **Einbindung:** UI
 - **Testabdeckung:** kein Test
-- **Letztes Testergebnis:** nicht-ausgefuehrt (nicht aus der Existenz einer Testdatei abgeleitet)
+- **Letztes Testergebnis:** nicht-ausgefuehrt (kein Laufnachweis importiert; nicht aus der Existenz einer Testdatei abgeleitet)
 - **Rollen:** `abgeordneter`, `bueroleitung`, `mitarbeiter`
 - **Routen:** —
 - **Frontend-Komponenten:** `src/features/election-analysis/TurnoutPanel.tsx`
@@ -218,7 +298,7 @@ Berechnet Sitzverteilungen und stellt sie als Hemizykel und Parteienvergleich da
 - **Implementierung:** implementiert
 - **Einbindung:** UI
 - **Testabdeckung:** kein Test
-- **Letztes Testergebnis:** nicht-ausgefuehrt (nicht aus der Existenz einer Testdatei abgeleitet)
+- **Letztes Testergebnis:** nicht-ausgefuehrt (kein Laufnachweis importiert; nicht aus der Existenz einer Testdatei abgeleitet)
 - **Rollen:** `abgeordneter`, `bueroleitung`, `mitarbeiter`
 - **Routen:** —
 - **Frontend-Komponenten:** `src/features/election-analysis/ParliamentHemicycle.tsx`, `src/features/election-analysis/StateSeatDistribution.tsx`
@@ -254,7 +334,7 @@ Zeigt persönliche Wahlergebnisse, Kandidaturen und Mandatszeiträume je Person.
 - **Implementierung:** implementiert
 - **Einbindung:** UI
 - **Testabdeckung:** Unit-Test
-- **Letztes Testergebnis:** unbekannt (nicht aus der Existenz einer Testdatei abgeleitet)
+- **Letztes Testergebnis:** unbekannt (kein Laufnachweis importiert; nicht aus der Existenz einer Testdatei abgeleitet)
 - **Rollen:** `abgeordneter`, `bueroleitung`, `mitarbeiter`
 - **Routen:** —
 - **Frontend-Komponenten:** `src/features/election-analysis/DeputyElectionResult.tsx`, `src/features/election-analysis/DeputyCandidacyResult.tsx`, `src/features/election-analysis/DeputySeatDistribution.tsx`
@@ -291,7 +371,7 @@ Stellt landesweite Ergebnisse, Parteienanteile und historische Vergleichsreihen 
 - **Implementierung:** implementiert
 - **Einbindung:** UI
 - **Testabdeckung:** Unit-Test
-- **Letztes Testergebnis:** unbekannt (nicht aus der Existenz einer Testdatei abgeleitet)
+- **Letztes Testergebnis:** unbekannt (kein Laufnachweis importiert; nicht aus der Existenz einer Testdatei abgeleitet)
 - **Rollen:** `abgeordneter`, `bueroleitung`, `mitarbeiter`
 - **Routen:** —
 - **Frontend-Komponenten:** `src/features/election-analysis/StateHistoryPanels.tsx`, `src/features/election-analysis/StateShareChart.tsx`
@@ -327,7 +407,7 @@ Führt Forschungsauswertungen, kommunale Ergebnisse, Kandidatenabdeckung und Rel
 - **Implementierung:** implementiert
 - **Einbindung:** rollenabhängig
 - **Testabdeckung:** kein Test
-- **Letztes Testergebnis:** nicht-ausgefuehrt (nicht aus der Existenz einer Testdatei abgeleitet)
+- **Letztes Testergebnis:** nicht-ausgefuehrt (kein Laufnachweis importiert; nicht aus der Existenz einer Testdatei abgeleitet)
 - **Rollen:** `superadmin`, `bueroleitung`
 - **Routen:** —
 - **Frontend-Komponenten:** `src/features/election-analysis/research/ResearchWorkbench.tsx`, `src/features/election-analysis/research/MunicipalPanel.tsx`, `src/features/election-analysis/research/CandidateCoverageReview.tsx`, `src/features/election-analysis/research/ReleaseCockpit.tsx`
@@ -363,7 +443,7 @@ Zeigt Wahlkreise auf einer interaktiven Karte mit Ergebnissen, Notizen und Ebene
 - **Implementierung:** implementiert
 - **Einbindung:** UI
 - **Testabdeckung:** Selbsttest
-- **Letztes Testergebnis:** nicht-ausgefuehrt (nicht aus der Existenz einer Testdatei abgeleitet)
+- **Letztes Testergebnis:** nicht-ausgefuehrt (kein Laufnachweis importiert; nicht aus der Existenz einer Testdatei abgeleitet)
 - **Rollen:** `abgeordneter`, `bueroleitung`, `mitarbeiter`
 - **Routen:** `/karten`, `/maps`
 - **Frontend-Komponenten:** `src/pages/MapsView.tsx`, `src/features/election-districts/components`
@@ -403,7 +483,7 @@ Importiert Wahlkreise, Karlsruher Stadtteile und administrative Grenzen.
 - **Implementierung:** implementiert
 - **Einbindung:** rollenabhängig
 - **Testabdeckung:** kein Test
-- **Letztes Testergebnis:** nicht-ausgefuehrt (nicht aus der Existenz einer Testdatei abgeleitet)
+- **Letztes Testergebnis:** nicht-ausgefuehrt (kein Laufnachweis importiert; nicht aus der Existenz einer Testdatei abgeleitet)
 - **Rollen:** `admin`, `superadmin`
 - **Routen:** —
 - **Frontend-Komponenten:** `src/components/administration/GeoDataImport.tsx`
@@ -440,7 +520,7 @@ Importiert Mandatsträger und Parteiassoziationen und ordnet sie Wahlkreisen zu.
 - **Implementierung:** implementiert
 - **Einbindung:** rollenabhängig
 - **Testabdeckung:** kein Test
-- **Letztes Testergebnis:** nicht-ausgefuehrt (nicht aus der Existenz einer Testdatei abgeleitet)
+- **Letztes Testergebnis:** nicht-ausgefuehrt (kein Laufnachweis importiert; nicht aus der Existenz einer Testdatei abgeleitet)
 - **Rollen:** `admin`, `superadmin`
 - **Routen:** —
 - **Frontend-Komponenten:** —
@@ -476,7 +556,7 @@ Pflegt Legislaturperioden mit Sitzzahlen, Parteien-Snapshots und Veröffentlichu
 - **Implementierung:** implementiert
 - **Einbindung:** rollenabhängig
 - **Testabdeckung:** Selbsttest
-- **Letztes Testergebnis:** nicht-ausgefuehrt (nicht aus der Existenz einer Testdatei abgeleitet)
+- **Letztes Testergebnis:** nicht-ausgefuehrt (kein Laufnachweis importiert; nicht aus der Existenz einer Testdatei abgeleitet)
 - **Rollen:** `superadmin`, `abgeordneter`, `bueroleitung`
 - **Routen:** `/daten?tab=wahlhistorie`
 - **Frontend-Komponenten:** `src/features/election-history/ElectionHistoryAdmin.tsx`, `src/features/election-history/PeriodSeatSummary.tsx`, `src/features/election-history/ElectionPeriodPreview.tsx`
@@ -512,7 +592,7 @@ Erfasst Mandatszeiträume mit Vererbung aus der Periode, Nachfolge- und Übersch
 - **Implementierung:** implementiert
 - **Einbindung:** rollenabhängig
 - **Testabdeckung:** Selbsttest
-- **Letztes Testergebnis:** nicht-ausgefuehrt (nicht aus der Existenz einer Testdatei abgeleitet)
+- **Letztes Testergebnis:** nicht-ausgefuehrt (kein Laufnachweis importiert; nicht aus der Existenz einer Testdatei abgeleitet)
 - **Rollen:** `superadmin`
 - **Routen:** —
 - **Frontend-Komponenten:** `src/features/election-history/admin/HistoryDataGrid.tsx`
@@ -548,7 +628,7 @@ Erfasst Kandidaturen mit persönlichen Ergebnissen, getrennt von tatsächlichen 
 - **Implementierung:** implementiert
 - **Einbindung:** rollenabhängig
 - **Testabdeckung:** Selbsttest
-- **Letztes Testergebnis:** nicht-ausgefuehrt (nicht aus der Existenz einer Testdatei abgeleitet)
+- **Letztes Testergebnis:** nicht-ausgefuehrt (kein Laufnachweis importiert; nicht aus der Existenz einer Testdatei abgeleitet)
 - **Rollen:** `superadmin`
 - **Routen:** —
 - **Frontend-Komponenten:** `src/features/election-history/CandidateDistrictResults.tsx`, `src/features/election-history/admin/CandidacyImportDialog.tsx`
@@ -584,7 +664,7 @@ Führt Personen über Perioden hinweg, verknüpft Kandidaturen und Mandate und z
 - **Implementierung:** implementiert
 - **Einbindung:** rollenabhängig
 - **Testabdeckung:** Selbsttest
-- **Letztes Testergebnis:** nicht-ausgefuehrt (nicht aus der Existenz einer Testdatei abgeleitet)
+- **Letztes Testergebnis:** nicht-ausgefuehrt (kein Laufnachweis importiert; nicht aus der Existenz einer Testdatei abgeleitet)
 - **Rollen:** `superadmin`, `abgeordneter`, `bueroleitung`
 - **Routen:** —
 - **Frontend-Komponenten:** `src/features/election-history/ElectionDeputyDirectory.tsx`, `src/features/election-history/PersonCareer.tsx`, `src/features/election-history/PersonElectionSummary.tsx`
@@ -620,7 +700,7 @@ Erfasst Landeslisten und Listenplätze ab Periode 18 ohne Personen, Mandate oder
 - **Implementierung:** implementiert
 - **Einbindung:** rollenabhängig
 - **Testabdeckung:** kein Test
-- **Letztes Testergebnis:** nicht-ausgefuehrt (nicht aus der Existenz einer Testdatei abgeleitet)
+- **Letztes Testergebnis:** nicht-ausgefuehrt (kein Laufnachweis importiert; nicht aus der Existenz einer Testdatei abgeleitet)
 - **Rollen:** `superadmin`, `abgeordneter`
 - **Routen:** —
 - **Frontend-Komponenten:** `src/features/election-history/DeputyStateListPlaces.tsx`
@@ -656,7 +736,7 @@ Pflegt Fraktionskatalog, Aliase und relationale Verweise in Mandaten, Kandidatur
 - **Implementierung:** implementiert
 - **Einbindung:** rollenabhängig
 - **Testabdeckung:** kein Test
-- **Letztes Testergebnis:** nicht-ausgefuehrt (nicht aus der Existenz einer Testdatei abgeleitet)
+- **Letztes Testergebnis:** nicht-ausgefuehrt (kein Laufnachweis importiert; nicht aus der Existenz einer Testdatei abgeleitet)
 - **Rollen:** `superadmin`
 - **Routen:** —
 - **Frontend-Komponenten:** `src/features/election-history/admin/FactionsAdmin.tsx`
@@ -692,7 +772,7 @@ Prüft Datenqualität und Quellenabgleich, zeigt Befunde paginiert und lädt nur
 - **Implementierung:** implementiert
 - **Einbindung:** rollenabhängig
 - **Testabdeckung:** Selbsttest
-- **Letztes Testergebnis:** nicht-ausgefuehrt (nicht aus der Existenz einer Testdatei abgeleitet)
+- **Letztes Testergebnis:** nicht-ausgefuehrt (kein Laufnachweis importiert; nicht aus der Existenz einer Testdatei abgeleitet)
 - **Rollen:** `superadmin`
 - **Routen:** —
 - **Frontend-Komponenten:** `src/features/election-history/admin/ElectionDataChecks.tsx`
@@ -728,7 +808,7 @@ Protokolliert Änderungen an historischen Daten und zeigt Audit-Einträge.
 - **Implementierung:** implementiert
 - **Einbindung:** rollenabhängig
 - **Testabdeckung:** kein Test
-- **Letztes Testergebnis:** nicht-ausgefuehrt (nicht aus der Existenz einer Testdatei abgeleitet)
+- **Letztes Testergebnis:** nicht-ausgefuehrt (kein Laufnachweis importiert; nicht aus der Existenz einer Testdatei abgeleitet)
 - **Rollen:** `superadmin`
 - **Routen:** —
 - **Frontend-Komponenten:** `src/features/election-history/ElectionHistoryAudit.tsx`
@@ -763,7 +843,7 @@ Setzt bestätigte Verbindungen in Personen und ursprüngliche Kandidaturen um, o
 - **Implementierung:** implementiert
 - **Einbindung:** systemseitig
 - **Testabdeckung:** kein Test
-- **Letztes Testergebnis:** nicht-ausgefuehrt (nicht aus der Existenz einer Testdatei abgeleitet)
+- **Letztes Testergebnis:** nicht-ausgefuehrt (kein Laufnachweis importiert; nicht aus der Existenz einer Testdatei abgeleitet)
 - **Rollen:** `superadmin`, `system`
 - **Routen:** —
 - **Frontend-Komponenten:** `src/features/election-history/CandidacyAssemblyStatus.tsx`
@@ -798,7 +878,7 @@ Ordnet historische Wahlkreise zu, zeigt Grenzverläufe und kennzeichnet Rekonstr
 - **Implementierung:** implementiert
 - **Einbindung:** rollenabhängig
 - **Testabdeckung:** kein Test
-- **Letztes Testergebnis:** nicht-ausgefuehrt (nicht aus der Existenz einer Testdatei abgeleitet)
+- **Letztes Testergebnis:** nicht-ausgefuehrt (kein Laufnachweis importiert; nicht aus der Existenz einer Testdatei abgeleitet)
 - **Rollen:** `superadmin`, `abgeordneter`, `bueroleitung`
 - **Routen:** —
 - **Frontend-Komponenten:** `src/features/election-history/DistrictBoundaryMap.tsx`, `src/features/election-history/DistrictBoundarySection.tsx`, `src/features/election-history/HistoricalGeometryNotice.tsx`
@@ -834,7 +914,7 @@ Analysiert Plenarprotokolle und ordnet Reden und Sitzungen auswertbar zu.
 - **Implementierung:** implementiert
 - **Einbindung:** systemseitig
 - **Testabdeckung:** kein Test
-- **Letztes Testergebnis:** nicht-ausgefuehrt (nicht aus der Existenz einer Testdatei abgeleitet)
+- **Letztes Testergebnis:** nicht-ausgefuehrt (kein Laufnachweis importiert; nicht aus der Existenz einer Testdatei abgeleitet)
 - **Rollen:** `system`, `bueroleitung`
 - **Routen:** —
 - **Frontend-Komponenten:** —
@@ -869,7 +949,7 @@ Schneidet Porträts zu, erzeugt WebP und Thumbnail und committet sie über einen
 - **Implementierung:** implementiert
 - **Einbindung:** rollenabhängig
 - **Testabdeckung:** Selbsttest
-- **Letztes Testergebnis:** nicht-ausgefuehrt (nicht aus der Existenz einer Testdatei abgeleitet)
+- **Letztes Testergebnis:** nicht-ausgefuehrt (kein Laufnachweis importiert; nicht aus der Existenz einer Testdatei abgeleitet)
 - **Rollen:** `superadmin`
 - **Routen:** —
 - **Frontend-Komponenten:** `src/features/election-history/DeputyPortrait.tsx`, `src/features/election-history/DeputyPortraitEditor.tsx`

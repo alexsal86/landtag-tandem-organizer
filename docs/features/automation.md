@@ -52,11 +52,85 @@ _Auto-generiert mit `npm run update:feature-catalog` aus dem zentralen Funktions
 
 ## Selbsttest-Szenarien
 
-| Szenario | Titel | deklarierte Tabellen | deklarierte Prüfungen |
-|---|---|---:|---:|
-| `admin-controls` | Adminregeln: Feldschutz, Aktionen, Export, Rücknahme und Feeds | 0 | 4 |
-| `annual-task-stafette` | Jahresaufgabe → Büroaufgabe → Jahresabschluss | 3 | 5 |
-| `workflow-rules` | Geschäftsregeln (Freigabe, Rollen, Fristen) | 0 | 3 |
+| Szenario | Titel | deklarierte Tabellen | deklarierte Prüfungen | letzter Lauf |
+|---|---|---:|---:|---|
+| `admin-controls` | Adminregeln: Feldschutz, Aktionen, Export, Rücknahme und Feeds | 0 | 4 | — |
+| `annual-task-stafette` | Jahresaufgabe → Büroaufgabe → Jahresabschluss | 3 | 5 | — |
+| `workflow-rules` | Geschäftsregeln (Freigabe, Rollen, Fristen) | 0 | 3 | — |
+
+## Selbsttest-Schritte
+
+Diese Schritte führen die Szenarien aus; „letzter Lauf“ stammt aus `src/features/selftest/last-runs.json`, nicht aus dieser Doku.
+
+| Szenario | Schritt | Bezeichnung | Art | letzter Lauf |
+|---|---|---|---|---|
+| `admin-controls` | `feed-rules` | Feedtest sperrt lokale Ziele, Zugangsdaten und Sonderports | logic | — |
+| `admin-controls` | `full-export` | Gesamtexport paginiert und schützt vor Formelauswertung | logic | — |
+| `admin-controls` | `module-routes` | Direktlinks der Module sind dem jeweiligen Schalter zugeordnet | logic | — |
+| `admin-controls` | `module-tabs` | Redaktions-Reiter hängt am Modulschalter | logic | — |
+| `admin-controls` | `redaktion-meldungen` | Redaktionsmeldungen sind je Mandant angelegt | workflow | — |
+| `admin-controls` | `field-modes` | Leseregeln liefern erlauben, Feld ausblenden oder Datensatz sperren | workflow | — |
+| `admin-controls` | `foreign-action` | Aktionsprüfung kann nicht für eine fremde Identität aufgerufen werden | workflow | — |
+| `admin-controls` | `invalid-bulk` | Leere Sammelaktion und unbekannte Rücknahme verändern keine Kontakte | workflow | — |
+| `annual-task-stafette` | `seasonal-office-backend` | Büropakete: Backend und Abschluss im Folgejahr | workflow | — |
+| `annual-task-stafette` | `seasonal-office-packages` | Bürojahr: alle Pakete, Vorlauf, Jahreswechsel und Terminbestätigung | logic | — |
+| `annual-task-stafette` | `annual-overview` | Jahresübersicht: Statusfilter und Berliner Tagesgrenze | logic | — |
+| `annual-task-stafette` | `unified-routine` | Jahresroutine im gemeinsamen Regel-Assistenten prüfen | logic | — |
+| `annual-task-stafette` | `rules` | Stichtage und System-Routinen prüfen | logic | — |
+| `annual-task-stafette` | `create` | Organisatorische Jahresaufgabe anlegen | db | — |
+| `annual-task-stafette` | `delegate` | Übergeben: Stafette, Frist und Quelle lesen | workflow | — |
+| `annual-task-stafette` | `duplicate` | Erneute Übergabe liefert dieselbe Aufgabe | workflow | — |
+| `annual-task-stafette` | `guard` | Jahresabschluss außerhalb der Büroaufgabe blockiert | db | — |
+| `workflow-rules` | `dashboard-greetings` | My Work: Begrüßungen nach Tageszeit, Wochentag und Monat | logic | — |
+| `workflow-rules` | `team-weekly-target` | Team: Wochen-Soll aus individuellem Arbeitsplan, Abwesenheiten und BW-Feiertagen | logic | — |
+| `workflow-rules` | `arbzg-breaks` | Zeiterfassung: Pausenpflicht und Tagesgrenze nach ArbZG | logic | — |
+| `workflow-rules` | `seat-poll-basis` | Mandatssimulator: Umfragewerte als Ausgangsbasis | logic | — |
+| `workflow-rules` | `seat-district-model` | Mandatssimulator: Zweitstimmen auf Wahlkreise übertragen | logic | — |
+| `workflow-rules` | `seat-other-vote-offset` | Mandatssimulator: Gegenbuchung bei den Sonstigen | logic | — |
+| `workflow-rules` | `seat-district-transfer` | Mandatssimulator: knappen Wahlkreis durch Erststimmenübertragung kippen | logic | — |
+| `workflow-rules` | `routine-relative-deadlines-deputies` | Routinen: relative Fristen und Abwesenheitsvertretung konfigurieren | logic | — |
+| `workflow-rules` | `shared-condition-dates` | Regeln: identische Datumsauswertung für Vorschau und Server | logic | — |
+| `workflow-rules` | `rule-editor-preview` | Regel-Editor: JSON, verschachtelte Vorschau und unbedingte Regeln | logic | — |
+| `workflow-rules` | `routine-dependencies-preview` | Routinen: Freigaben, Abhängigkeiten und Jahreswechsel bleiben nachvollziehbar | logic | — |
+| `workflow-rules` | `routine-step-types` | Routinen: Schritttypen bleiben vollständig und abwärtskompatibel | logic | — |
+| `workflow-rules` | `calendar-automation` | Stichtage: Jahresdatum, Monatsende, Quartal und doppelte Ausführung | logic | — |
+| `workflow-rules` | `automation-hub-links` | Automatisierung: alte Workflow- und RSS-Links bleiben erreichbar | logic | — |
+| `workflow-rules` | `administration-access` | Administration: Büro- und Plattformrechte bleiben getrennt | logic | — |
+| `workflow-rules` | `permission-explorer` | Rechte-Explorer: Rolle, Modul und Feldrecht erklären und Widersprüche finden | logic | — |
+| `workflow-rules` | `config-delete-impact` | Konfiguration: Verwendung vor dem Löschen ausweisen | logic | — |
+| `workflow-rules` | `config-rename-cascade` | Konfiguration: Umbenennen zieht Verweise mit und lehnt Mehrdeutigkeit ab | logic | — |
+| `workflow-rules` | `config-delete-guard` | Konfiguration: Löschen verlangt eine frische, bestätigte Zählung | logic | — |
+| `workflow-rules` | `letter-rules` | Brief: Freigabe erforderlich; versendete Briefe bleiben abgeschlossen | logic | — |
+| `workflow-rules` | `status-values` | Statuswerte: Brief und Aufgabe nutzen dieselbe Menge wie die Datenbank | logic | — |
+| `workflow-rules` | `decider-roles` | Terminanfragen: nur Abgeordnete und Büroleitung entscheiden | logic | — |
+| `workflow-rules` | `deadlines` | Ministeriumsfrist; fällige Vorgänge verlassen die Wiedervorlage | logic | — |
+| `workflow-rules` | `redaktion-planner` | Redaktion: Verschieben behält Uhrzeit, volle Tage, Bildzuschnitt | logic | — |
+| `workflow-rules` | `redaktion-freigabe` | Redaktion: Freigabe nur durch Leitung, Änderungswunsch mit Frist | logic | — |
+| `workflow-rules` | `topic-entity-junctions` | Zentrale Themen: Kontakte, Dokumente und Fallakten nutzen Junctions | logic | — |
+| `workflow-rules` | `topic-module-rules` | Zentrale Themen: Modulregeln begrenzen Auswahl und Anlage | logic | — |
+
+## Deklarierter Prüfumfang
+
+### `admin-controls`
+
+1. Export über 1000 Einträge ohne CSV-Formeln
+2. Private Feedziele abgewiesen
+3. Beide Feldlesemodi im aktuellen Büro
+4. Fremde Aktion und ungültige Rücknahme abgewiesen
+
+### `annual-task-stafette`
+
+1. Exakte Stichtage
+2. System-Routinen nicht delegierbar
+3. Eine Aufgabe pro Jahr
+4. Abschluss und Wiederöffnung synchron
+5. Direkter Jahresabschluss gesperrt
+
+### `workflow-rules`
+
+1. Erlaubte und verbotene Brief-Statuswechsel
+2. Entscheiderrollen
+3. Ministeriumsfrist und Wiedervorlage
 
 ## Funktionsdetails
 
@@ -67,7 +141,7 @@ Erstellt, bearbeitet und löscht Regeln mit Auslöser, Bedingungen und Aktionen 
 - **Implementierung:** implementiert
 - **Einbindung:** rollenabhängig
 - **Testabdeckung:** Selbsttest
-- **Letztes Testergebnis:** nicht-ausgefuehrt (nicht aus der Existenz einer Testdatei abgeleitet)
+- **Letztes Testergebnis:** nicht-ausgefuehrt (kein Laufnachweis importiert; nicht aus der Existenz einer Testdatei abgeleitet)
 - **Rollen:** `admin`, `bueroleitung`
 - **Routen:** —
 - **Frontend-Komponenten:** `src/components/administration/AutomationRulesManager.tsx`, `src/components/administration/AutomationRulesList.tsx`, `src/components/administration/AutomationRuleWizard.tsx`
@@ -103,7 +177,7 @@ Wertet Bedingungsbäume in Browser und Executor identisch aus und vergleicht Dat
 - **Implementierung:** implementiert
 - **Einbindung:** systemseitig
 - **Testabdeckung:** kein Test
-- **Letztes Testergebnis:** nicht-ausgefuehrt (nicht aus der Existenz einer Testdatei abgeleitet)
+- **Letztes Testergebnis:** nicht-ausgefuehrt (kein Laufnachweis importiert; nicht aus der Existenz einer Testdatei abgeleitet)
 - **Rollen:** `system`, `admin`
 - **Routen:** —
 - **Frontend-Komponenten:** —
@@ -139,7 +213,7 @@ Prüft Regeldefinitionen feldgenau, zeigt Inline-Fehler und verlinkt sie mit der
 - **Implementierung:** implementiert
 - **Einbindung:** UI
 - **Testabdeckung:** kein Test
-- **Letztes Testergebnis:** nicht-ausgefuehrt (nicht aus der Existenz einer Testdatei abgeleitet)
+- **Letztes Testergebnis:** nicht-ausgefuehrt (kein Laufnachweis importiert; nicht aus der Existenz einer Testdatei abgeleitet)
 - **Rollen:** `admin`, `bueroleitung`
 - **Routen:** —
 - **Frontend-Komponenten:** `src/components/administration/automationRule/RuleValidationContext.tsx`, `src/components/administration/automationRule/RuleEditorSummary.tsx`
@@ -175,7 +249,7 @@ Versioniert Regeln automatisch, zeigt Fassungen und erlaubt Import und Export.
 - **Implementierung:** implementiert
 - **Einbindung:** UI
 - **Testabdeckung:** kein Test
-- **Letztes Testergebnis:** nicht-ausgefuehrt (nicht aus der Existenz einer Testdatei abgeleitet)
+- **Letztes Testergebnis:** nicht-ausgefuehrt (kein Laufnachweis importiert; nicht aus der Existenz einer Testdatei abgeleitet)
 - **Rollen:** `admin`, `bueroleitung`
 - **Routen:** —
 - **Frontend-Komponenten:** `src/components/administration/AutomationRuleVersions.tsx`, `src/components/administration/AutomationRuleImportExport.tsx`
@@ -211,7 +285,7 @@ Protokolliert Läufe und Schritte, zeigt Fehler und erlaubt die Nachverfolgung.
 - **Implementierung:** implementiert
 - **Einbindung:** UI
 - **Testabdeckung:** kein Test
-- **Letztes Testergebnis:** nicht-ausgefuehrt (nicht aus der Existenz einer Testdatei abgeleitet)
+- **Letztes Testergebnis:** nicht-ausgefuehrt (kein Laufnachweis importiert; nicht aus der Existenz einer Testdatei abgeleitet)
 - **Rollen:** `admin`, `bueroleitung`
 - **Routen:** —
 - **Frontend-Komponenten:** `src/components/administration/AutomationErrorDashboard.tsx`
@@ -246,7 +320,7 @@ Synchronisiert Jahresroutinen transaktional mit Jahresaufgaben und sperrt den Ja
 - **Implementierung:** implementiert
 - **Einbindung:** rollenabhängig
 - **Testabdeckung:** Unit-Test
-- **Letztes Testergebnis:** unbekannt (nicht aus der Existenz einer Testdatei abgeleitet)
+- **Letztes Testergebnis:** unbekannt (kein Laufnachweis importiert; nicht aus der Existenz einer Testdatei abgeleitet)
 - **Rollen:** `admin`, `bueroleitung`
 - **Routen:** —
 - **Frontend-Komponenten:** `src/components/administration/AnnualRoutinesOverview.tsx`
@@ -282,7 +356,7 @@ Stellt editierbare Standardpakete bereit und erzeugt Haupt- und Unteraufgaben at
 - **Implementierung:** implementiert
 - **Einbindung:** rollenabhängig
 - **Testabdeckung:** Unit-Test
-- **Letztes Testergebnis:** unbekannt (nicht aus der Existenz einer Testdatei abgeleitet)
+- **Letztes Testergebnis:** unbekannt (kein Laufnachweis importiert; nicht aus der Existenz einer Testdatei abgeleitet)
 - **Rollen:** `admin`, `bueroleitung`
 - **Routen:** —
 - **Frontend-Komponenten:** `src/components/administration/OfficeRoutineTemplates.tsx`, `src/components/administration/RoutinePackageProgress.tsx`
@@ -318,7 +392,7 @@ Snapshotet Schritte, führt sie unter Sperre und Savepoints aus und lässt nur d
 - **Implementierung:** implementiert
 - **Einbindung:** systemseitig
 - **Testabdeckung:** kein Test
-- **Letztes Testergebnis:** nicht-ausgefuehrt (nicht aus der Existenz einer Testdatei abgeleitet)
+- **Letztes Testergebnis:** nicht-ausgefuehrt (kein Laufnachweis importiert; nicht aus der Existenz einer Testdatei abgeleitet)
 - **Rollen:** `system`, `admin`, `bueroleitung`
 - **Routen:** —
 - **Frontend-Komponenten:** —
@@ -354,7 +428,7 @@ Erzeugt aus Aufgabenpaketen mehrere Aufgaben und führt manuelle und ausgelöste
 - **Implementierung:** implementiert
 - **Einbindung:** rollenabhängig
 - **Testabdeckung:** kein Test
-- **Letztes Testergebnis:** nicht-ausgefuehrt (nicht aus der Existenz einer Testdatei abgeleitet)
+- **Letztes Testergebnis:** nicht-ausgefuehrt (kein Laufnachweis importiert; nicht aus der Existenz einer Testdatei abgeleitet)
 - **Rollen:** `admin`, `bueroleitung`
 - **Routen:** —
 - **Frontend-Komponenten:** `src/components/administration/automationRule/TaskPackageFields.tsx`
@@ -389,7 +463,7 @@ Führt fällige Regeln, Workflows und geplante E-Mails über Cron- und Dispatche
 - **Implementierung:** implementiert
 - **Einbindung:** systemseitig
 - **Testabdeckung:** kein Test
-- **Letztes Testergebnis:** nicht-ausgefuehrt (nicht aus der Existenz einer Testdatei abgeleitet)
+- **Letztes Testergebnis:** nicht-ausgefuehrt (kein Laufnachweis importiert; nicht aus der Existenz einer Testdatei abgeleitet)
 - **Rollen:** `system`
 - **Routen:** —
 - **Frontend-Komponenten:** —
@@ -426,7 +500,7 @@ Nimmt externe Webhook-Aufrufe je Regel mit Secret-Prüfung und Ratenbegrenzung e
 - **Implementierung:** implementiert
 - **Einbindung:** systemseitig
 - **Testabdeckung:** kein Test
-- **Letztes Testergebnis:** nicht-ausgefuehrt (nicht aus der Existenz einer Testdatei abgeleitet)
+- **Letztes Testergebnis:** nicht-ausgefuehrt (kein Laufnachweis importiert; nicht aus der Existenz einer Testdatei abgeleitet)
 - **Rollen:** `system`
 - **Routen:** —
 - **Frontend-Komponenten:** —
@@ -461,7 +535,7 @@ Definiert mehrstufige Workflows, validiert sie und führt Läufe mit Aktionen un
 - **Implementierung:** implementiert
 - **Einbindung:** rollenabhängig
 - **Testabdeckung:** Selbsttest
-- **Letztes Testergebnis:** nicht-ausgefuehrt (nicht aus der Existenz einer Testdatei abgeleitet)
+- **Letztes Testergebnis:** nicht-ausgefuehrt (kein Laufnachweis importiert; nicht aus der Existenz einer Testdatei abgeleitet)
 - **Rollen:** `admin`, `bueroleitung`
 - **Routen:** —
 - **Frontend-Komponenten:** `src/components/administration/WorkflowEngineManager.tsx`, `src/components/workflow/WorkflowLinks.tsx`
@@ -497,7 +571,7 @@ Verwaltet RSS-Quellen, testet Feeds und überwacht eingehende Meldungen.
 - **Implementierung:** implementiert
 - **Einbindung:** rollenabhängig
 - **Testabdeckung:** Selbsttest
-- **Letztes Testergebnis:** nicht-ausgefuehrt (nicht aus der Existenz einer Testdatei abgeleitet)
+- **Letztes Testergebnis:** nicht-ausgefuehrt (kein Laufnachweis importiert; nicht aus der Existenz einer Testdatei abgeleitet)
 - **Rollen:** `admin`, `bueroleitung`
 - **Routen:** —
 - **Frontend-Komponenten:** `src/components/administration/RSSSourceManager.tsx`, `src/components/administration/RSSMonitoringManager.tsx`, `src/components/administration/RSSSettingsManager.tsx`
@@ -533,7 +607,7 @@ Stellt vorgefertigte Regelvorlagen zur Auswahl und Übernahme bereit.
 - **Implementierung:** implementiert
 - **Einbindung:** UI
 - **Testabdeckung:** kein Test
-- **Letztes Testergebnis:** nicht-ausgefuehrt (nicht aus der Existenz einer Testdatei abgeleitet)
+- **Letztes Testergebnis:** nicht-ausgefuehrt (kein Laufnachweis importiert; nicht aus der Existenz einer Testdatei abgeleitet)
 - **Rollen:** `admin`, `bueroleitung`
 - **Routen:** —
 - **Frontend-Komponenten:** `src/components/administration/AutomationTemplateGallery.tsx`
@@ -568,7 +642,7 @@ Berechnet Berliner Vorkommensschlüssel und Vorschauen für kalenderbezogene Reg
 - **Implementierung:** implementiert
 - **Einbindung:** systemseitig
 - **Testabdeckung:** Unit-Test
-- **Letztes Testergebnis:** unbekannt (nicht aus der Existenz einer Testdatei abgeleitet)
+- **Letztes Testergebnis:** unbekannt (kein Laufnachweis importiert; nicht aus der Existenz einer Testdatei abgeleitet)
 - **Rollen:** `system`
 - **Routen:** —
 - **Frontend-Komponenten:** —

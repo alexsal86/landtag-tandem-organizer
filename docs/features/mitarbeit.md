@@ -54,13 +54,100 @@ _Auto-generiert mit `npm run update:feature-catalog` aus dem zentralen Funktions
 
 ## Selbsttest-Szenarien
 
-| Szenario | Titel | deklarierte Tabellen | deklarierte Prüfungen |
-|---|---|---:|---:|
-| `employee-meetings` | Mitarbeitergespräche (Anfrage → Termin → Vorbereitung → Freigabe/Sperre) | 5 | 7 |
-| `employee-protection` | Mitarbeiterschutz: Protokollsperre, Belastungsgrenzen und Vorbereitung | 0 | 6 |
-| `onboarding-hr` | HR-Onboarding und Offboarding | 11 | 0 |
-| `responsibilities` | Zuständigkeiten & Matrix | 1 | 0 |
-| `team-rituals` | Freiwillige Team-Rituale | 0 | 0 |
+| Szenario | Titel | deklarierte Tabellen | deklarierte Prüfungen | letzter Lauf |
+|---|---|---:|---:|---|
+| `employee-meetings` | Mitarbeitergespräche (Anfrage → Termin → Vorbereitung → Freigabe/Sperre) | 5 | 7 | — |
+| `employee-protection` | Mitarbeiterschutz: Protokollsperre, Belastungsgrenzen und Vorbereitung | 0 | 6 | — |
+| `onboarding-hr` | HR-Onboarding und Offboarding | 11 | 0 | — |
+| `responsibilities` | Zuständigkeiten & Matrix | 1 | 0 | — |
+| `team-rituals` | Freiwillige Team-Rituale | 0 | 0 | — |
+
+## Selbsttest-Schritte
+
+Diese Schritte führen die Szenarien aus; „letzter Lauf“ stammt aus `src/features/selftest/last-runs.json`, nicht aus dieser Doku.
+
+| Szenario | Schritt | Bezeichnung | Art | letzter Lauf |
+|---|---|---|---|---|
+| `employee-meetings` | `preparation-and-lock-rule` | Reine Regel: Sieben-Tage-Fenster und Protokollsperre | logic | — |
+| `employee-meetings` | `create-request` | Gesprächsanfrage anlegen und zurücklesen | db | — |
+| `employee-meetings` | `create-meetings` | Zwei Termine anlegen (außerhalb und innerhalb des Vorbereitungsfensters) | db | — |
+| `employee-meetings` | `preparation-window` | Vorbereitung: außerhalb gesperrt, innerhalb speicherbar | db | — |
+| `employee-meetings` | `private-notes` | Private Notizen getrennt von den geteilten Vorbereitungsfeldern speichern | db | — |
+| `employee-meetings` | `action-item` | Maßnahme über die RPC anlegen und zurücklesen | db | — |
+| `employee-meetings` | `release-guard` | Freigabe nur über den Workflow: direkte und vorzeitige Wechsel sind gesperrt | db | — |
+| `employee-meetings` | `release-workflow` | Positiver Pfad: Abschluss, Freigabe, Bestätigung, Wiedereröffnung und Einspruch | db | — |
+| `employee-protection` | `protocol-lock` | Protokoll: bearbeitbar nur im Gespräch, gesperrt nach Freigabe | logic | — |
+| `employee-protection` | `wellbeing-thresholds` | Wohlbefinden: nur abgeschlossene Gespräche, gehaltene Belastung und fallende Werte | logic | — |
+| `employee-protection` | `preparation-window` | Vorbereitung: sieben Berliner Kalendertage vor dem Gespräch | logic | — |
+| `employee-protection` | `preparation-suggestions` | Vorbereitung: Vorschläge füllen nur leere Protokollfelder | logic | — |
+| `employee-protection` | `previous-meeting` | Vorbefund: nur ein früheres, abgeschlossenes Gespräch derselben Person | logic | — |
+| `employee-protection` | `action-task` | Maßnahme: eine Aufgabe, Ball bei der Person, Begleitung durch die Führungskraft | logic | — |
+| `onboarding-hr` | `gdpr-edit-validation` | Datenschutztext: vollständige Vorlage und Eingabegrenzen prüfen | logic | — |
+| `onboarding-hr` | `gdpr-personal-confirmation` | DSGVO: nur persönlich und erst nach dem Textende bestätigen | logic | — |
+| `onboarding-hr` | `deadlines` | Eintrittsfristen, Überfälligkeit und anstehende Austritte | logic | — |
+| `onboarding-hr` | `progress` | Pflicht und optionale Punkte getrennt zählen | logic | — |
+| `onboarding-hr` | `roles` | Betroffene sehen nur eigene HR-Punkte; Leitung sieht das Team | logic | — |
+| `onboarding-hr` | `templates` | Drei Rollenvorlagen und Offboarding behalten Phasen und Nachweise | logic | — |
+| `onboarding-hr` | `start-once` | Vorlage starten, wiederholen und Nachweissperre prüfen (vollständig zurückgerollt) | workflow | — |
+| `onboarding-hr` | `foreign-tenant` | Fremdtenant darf weder Beschäftigung noch Erinnerung schreiben | workflow | — |
+| `responsibilities` | `topic-conversion-boundary` | Themenumwandlung verlangt Tenant und Leitungsrolle | workflow | — |
+| `responsibilities` | `matrix-multiple-primary` | Mehrere Primärpersonen und unterschiedliche Abdeckungslücken | logic | — |
+| `responsibilities` | `priority` | Thema und Region, Primärstufe und deterministische Gleichstände | logic | — |
+| `responsibilities` | `confirmed-handover` | Bestätigte Übergabe erhält Ball-Kategorie und ist wiederholbar | workflow | — |
+| `responsibilities` | `catalog-write-boundary` | Katalogänderungen und Zusammenführen erzwingen Tenant und Rolle | workflow | — |
+| `responsibilities` | `topic-mention-token` | Themen-Token hält die ID stabil und wird aus HTML wie Text gelesen | logic | — |
+| `responsibilities` | `topic-mention-server-only` | Themen-Meldungen löst nur der serverseitige Ruhephase-Anlauf aus | db | — |
+| `responsibilities` | `topic-mention-delivery` | Themen-Meldung kommt genau einmal an, ohne Primärzuständigkeit gar nicht | workflow | — |
+| `responsibilities` | `suggest` | Sekundärzuständigkeit bei Abwesenheit vorschlagen | logic | — |
+| `responsibilities` | `gaps` | Lücken erkennen | logic | — |
+| `responsibilities` | `berlin-day` | Abwesenheit nach Berliner Kalendertag abfragen | logic | — |
+| `responsibilities` | `foreign-tenant` | Fremdtenant darf keine Matrixdaten liefern | db | — |
+| `team-rituals` | `dashboard-urgency` | Wochenfrage: Restzeit und Eil-Änderungen | logic | — |
+| `team-rituals` | `ritual-history` | Wiederverwendbare Wochenfragen und getrenntes Archiv | logic | — |
+| `team-rituals` | `weekly-answer-reveal` | Teamantworten erst nach eigenem Beitrag anzeigen | logic | — |
+| `team-rituals` | `dashboard-discovery` | Team-Rituale bleiben im Dashboard auffindbar, ohne automatische Teilnahme | logic | — |
+| `team-rituals` | `ritual-deeplink` | Dashboard-Einstieg öffnet direkt den Team-Rituale-Tab | logic | — |
+| `team-rituals` | `team-routine-templates` | Editierbare freiwillige Team-Vorlagen | logic | — |
+| `team-rituals` | `bingo-rules` | Bingo-Reihen und lokaler Wochenzustand | logic | — |
+| `team-rituals` | `two-truths-profile` | Drei verschiedene Aussagen und genau eine Lüge | logic | — |
+| `team-rituals` | `employee-access-anniversary` | Leitungsrollen und automatische Eintrittsjubiläen | logic | — |
+| `team-rituals` | `answer-length` | Freiwillige Antworten mit höchstens 280 Zeichen | logic | — |
+| `team-rituals` | `rotation` | Fragen erst nach vollständigem Durchlauf wiederholen | logic | — |
+| `team-rituals` | `berlin-week` | Wochenwechsel am Berliner Montag | logic | — |
+| `team-rituals` | `team-events` | Datumsfreigabe, Schaltjahr und Jahreswechsel | logic | — |
+
+## Deklarierter Prüfumfang
+
+### `employee-meetings`
+
+1. Anfrage und Termin werden als echte Datensätze angelegt und zurückgelesen
+2. Vorbereitung wird vor dem Sieben-Tage-Fenster mit 55000 abgewiesen und innerhalb des Fensters gespeichert
+3. Private Notizen liegen in employee_meeting_private_notes und nicht in den geteilten Vorbereitungsfeldern
+4. Maßnahme wird über mutate_employee_meeting_action angelegt und zurückgelesen
+5. Direkte Statusänderung ist gesperrt; Freigabe, Bestätigung und Wiedereröffnung werden vor Abschluss mit 22023 abgewiesen
+6. Ein veralteter Autosave-Stand wird mit 40001 abgewiesen
+7. Abschluss, Freigabe, Bestätigung, Wiedereröffnung und Einspruch laufen im positiven Pfad über die echten RPCs und werden vollständig zurückgerollt: Status, Auditzeilen, Maßnahmen-Aufgabe, Benachrichtigungen und der letzte Gesprächstermin bleiben unverändert
+
+### `employee-protection`
+
+1. Protokoll ist nur während des Gesprächs bearbeitbar und nach Freigabe gesperrt
+2. Wohlbefindens-Trend zählt nur abgeschlossene Gespräche und respektiert Schwellen
+3. Vorbereitung öffnet sieben Berliner Kalendertage vor dem Gespräch
+4. Vorschläge füllen nur leere Protokollfelder und verändern die Vorlage nicht
+5. Vorbefund stammt nur aus einem früheren, abgeschlossenen Gespräch derselben Person
+6. Bei gemeinsamer Maßnahme hält die Führungskraft die Aufgabe, die Person den Ball
+
+### `onboarding-hr`
+
+Keine Prüfungen deklariert.
+
+### `responsibilities`
+
+Keine Prüfungen deklariert.
+
+### `team-rituals`
+
+Keine Prüfungen deklariert.
 
 ## Funktionsdetails
 
@@ -71,7 +158,7 @@ Plant Gespräche, verwaltet Anfragen und führt das Gespräch mit Protokoll, Ma�
 - **Implementierung:** implementiert
 - **Einbindung:** rollenabhängig
 - **Testabdeckung:** Selbsttest
-- **Letztes Testergebnis:** nicht-ausgefuehrt (nicht aus der Existenz einer Testdatei abgeleitet)
+- **Letztes Testergebnis:** nicht-ausgefuehrt (kein Laufnachweis importiert; nicht aus der Existenz einer Testdatei abgeleitet)
 - **Rollen:** `abgeordneter`, `bueroleitung`, `mitarbeiter`
 - **Routen:** `/employee`, `/employee-meeting/:id`
 - **Frontend-Komponenten:** `src/features/employees/components/EmployeesView.tsx`, `src/features/employees/components/EmployeeMeetingScheduler.tsx`, `src/pages/EmployeeMeetingDetail.tsx`
@@ -108,7 +195,7 @@ Führt Protokolle durch Freigabe, Widerspruch und Wiedereröffnung, schützt ein
 - **Implementierung:** implementiert
 - **Einbindung:** rollenabhängig
 - **Testabdeckung:** Selbsttest
-- **Letztes Testergebnis:** nicht-ausgefuehrt (nicht aus der Existenz einer Testdatei abgeleitet)
+- **Letztes Testergebnis:** nicht-ausgefuehrt (kein Laufnachweis importiert; nicht aus der Existenz einer Testdatei abgeleitet)
 - **Rollen:** `abgeordneter`, `bueroleitung`, `mitarbeiter`
 - **Routen:** —
 - **Frontend-Komponenten:** `src/features/employees/components/EmployeeMeetingProtocol.tsx`
@@ -145,7 +232,7 @@ Erzeugt nach unbestrittener Protokollabnahme genau eine Aufgabe mit Ball bei der
 - **Implementierung:** implementiert
 - **Einbindung:** systemseitig
 - **Testabdeckung:** Selbsttest
-- **Letztes Testergebnis:** nicht-ausgefuehrt (nicht aus der Existenz einer Testdatei abgeleitet)
+- **Letztes Testergebnis:** nicht-ausgefuehrt (kein Laufnachweis importiert; nicht aus der Existenz einer Testdatei abgeleitet)
 - **Rollen:** `abgeordneter`, `bueroleitung`, `mitarbeiter`, `system`
 - **Routen:** —
 - **Frontend-Komponenten:** —
@@ -180,7 +267,7 @@ Erzeugt nach unbestrittener Protokollabnahme genau eine Aufgabe mit Ball bei der
 - **Implementierung:** implementiert
 - **Einbindung:** systemseitig
 - **Testabdeckung:** Selbsttest
-- **Letztes Testergebnis:** nicht-ausgefuehrt (nicht aus der Existenz einer Testdatei abgeleitet)
+- **Letztes Testergebnis:** nicht-ausgefuehrt (kein Laufnachweis importiert; nicht aus der Existenz einer Testdatei abgeleitet)
 - **Rollen:** `mitarbeiter`, `bueroleitung`, `system`
 - **Routen:** —
 - **Frontend-Komponenten:** —
@@ -215,7 +302,7 @@ Vergleicht mit dem letzten abgeschlossenen Gespräch, übernimmt offene Maßnahm
 - **Implementierung:** implementiert
 - **Einbindung:** UI
 - **Testabdeckung:** Selbsttest
-- **Letztes Testergebnis:** nicht-ausgefuehrt (nicht aus der Existenz einer Testdatei abgeleitet)
+- **Letztes Testergebnis:** nicht-ausgefuehrt (kein Laufnachweis importiert; nicht aus der Existenz einer Testdatei abgeleitet)
 - **Rollen:** `abgeordneter`, `bueroleitung`
 - **Routen:** —
 - **Frontend-Komponenten:** `src/features/employees/components/PreviousMeetingReview.tsx`
@@ -251,7 +338,7 @@ Erfasst Wohlbefinden als geschützte JSON-Daten und zeigt Trends ausschließlich
 - **Implementierung:** implementiert
 - **Einbindung:** rollenabhängig
 - **Testabdeckung:** Selbsttest
-- **Letztes Testergebnis:** nicht-ausgefuehrt (nicht aus der Existenz einer Testdatei abgeleitet)
+- **Letztes Testergebnis:** nicht-ausgefuehrt (kein Laufnachweis importiert; nicht aus der Existenz einer Testdatei abgeleitet)
 - **Rollen:** `mitarbeiter`, `bueroleitung`
 - **Routen:** —
 - **Frontend-Komponenten:** `src/features/employees/components/WellbeingTrend.tsx`
@@ -287,7 +374,7 @@ Erlaubt Mitarbeitenden, Gespräche anzufragen, und gleicht Anfragen mit geplante
 - **Implementierung:** implementiert
 - **Einbindung:** rollenabhängig
 - **Testabdeckung:** kein Test
-- **Letztes Testergebnis:** nicht-ausgefuehrt (nicht aus der Existenz einer Testdatei abgeleitet)
+- **Letztes Testergebnis:** nicht-ausgefuehrt (kein Laufnachweis importiert; nicht aus der Existenz einer Testdatei abgeleitet)
 - **Rollen:** `mitarbeiter`, `bueroleitung`, `abgeordneter`
 - **Routen:** —
 - **Frontend-Komponenten:** `src/features/employees/components/EmployeeMeetingRequestManager.tsx`, `src/features/employees/components/EmployeeMeetingRequestDialog.tsx`
@@ -323,7 +410,7 @@ Exportiert Protokolle als PDF und erzeugt Jahresstatistiken je Mitarbeiter.
 - **Implementierung:** implementiert
 - **Einbindung:** UI
 - **Testabdeckung:** kein Test
-- **Letztes Testergebnis:** nicht-ausgefuehrt (nicht aus der Existenz einer Testdatei abgeleitet)
+- **Letztes Testergebnis:** nicht-ausgefuehrt (kein Laufnachweis importiert; nicht aus der Existenz einer Testdatei abgeleitet)
 - **Rollen:** `abgeordneter`, `bueroleitung`, `mitarbeiter`
 - **Routen:** —
 - **Frontend-Komponenten:** `src/features/employees/components/EmployeeMeetingPDFExport.tsx`, `src/features/employees/components/EmployeeYearlyStatsView.tsx`
@@ -359,7 +446,7 @@ Führt neue Mitarbeitende durch einen Routineablauf mit Schritten, Nachweisen, F
 - **Implementierung:** implementiert
 - **Einbindung:** rollenabhängig
 - **Testabdeckung:** Selbsttest
-- **Letztes Testergebnis:** nicht-ausgefuehrt (nicht aus der Existenz einer Testdatei abgeleitet)
+- **Letztes Testergebnis:** nicht-ausgefuehrt (kein Laufnachweis importiert; nicht aus der Existenz einer Testdatei abgeleitet)
 - **Rollen:** `bueroleitung`, `admin`, `mitarbeiter`
 - **Routen:** —
 - **Frontend-Komponenten:** `src/features/onboarding-hr/HrWorkspace.tsx`, `src/features/onboarding-hr/EmploymentFields.tsx`, `src/features/onboarding-hr/EmployeeEmploymentEditor.tsx`
@@ -396,7 +483,7 @@ Verwaltet Onboarding-/Offboarding-Vorlagen, Standardfelder und die datenschutzre
 - **Implementierung:** implementiert
 - **Einbindung:** rollenabhängig
 - **Testabdeckung:** Unit-Test
-- **Letztes Testergebnis:** unbekannt (nicht aus der Existenz einer Testdatei abgeleitet)
+- **Letztes Testergebnis:** unbekannt (kein Laufnachweis importiert; nicht aus der Existenz einer Testdatei abgeleitet)
 - **Rollen:** `admin`, `bueroleitung`
 - **Routen:** —
 - **Frontend-Komponenten:** `src/features/onboarding-hr/HrTemplateEditor.tsx`, `src/features/onboarding-hr/GdprDeclarationDialog.tsx`
@@ -433,7 +520,7 @@ Führt Offboarding-Schritte aus, bewahrt Ball-Owner bei Übergaben und schließt
 - **Implementierung:** implementiert
 - **Einbindung:** systemseitig
 - **Testabdeckung:** Selbsttest
-- **Letztes Testergebnis:** nicht-ausgefuehrt (nicht aus der Existenz einer Testdatei abgeleitet)
+- **Letztes Testergebnis:** nicht-ausgefuehrt (kein Laufnachweis importiert; nicht aus der Existenz einer Testdatei abgeleitet)
 - **Rollen:** `bueroleitung`, `admin`, `mitarbeiter`
 - **Routen:** —
 - **Frontend-Komponenten:** —
@@ -469,7 +556,7 @@ Ordnet Themen und Bereiche mehreren Hauptzuständigkeiten zu und schreibt die Ma
 - **Implementierung:** implementiert
 - **Einbindung:** UI
 - **Testabdeckung:** Selbsttest
-- **Letztes Testergebnis:** nicht-ausgefuehrt (nicht aus der Existenz einer Testdatei abgeleitet)
+- **Letztes Testergebnis:** nicht-ausgefuehrt (kein Laufnachweis importiert; nicht aus der Existenz einer Testdatei abgeleitet)
 - **Rollen:** `bueroleitung`, `admin`, `mitarbeiter`
 - **Routen:** —
 - **Frontend-Komponenten:** `src/features/responsibilities/ResponsibilityMatrix.tsx`
@@ -505,7 +592,7 @@ Schlägt anhand von Thema, Region und Kontakt die zuständige Person vor und ken
 - **Implementierung:** implementiert
 - **Einbindung:** UI
 - **Testabdeckung:** Unit-Test
-- **Letztes Testergebnis:** unbekannt (nicht aus der Existenz einer Testdatei abgeleitet)
+- **Letztes Testergebnis:** unbekannt (kein Laufnachweis importiert; nicht aus der Existenz einer Testdatei abgeleitet)
 - **Rollen:** `abgeordneter`, `bueroleitung`, `mitarbeiter`
 - **Routen:** —
 - **Frontend-Komponenten:** `src/features/responsibilities/ResponsibleSuggestion.tsx`, `src/features/responsibilities/AssignmentPicker.tsx`
@@ -541,7 +628,7 @@ Unterscheidet fehlenden Hauptansprechpartner von gänzlich unbesetzten Bereichen
 - **Implementierung:** implementiert
 - **Einbindung:** UI
 - **Testabdeckung:** Unit-Test
-- **Letztes Testergebnis:** unbekannt (nicht aus der Existenz einer Testdatei abgeleitet)
+- **Letztes Testergebnis:** unbekannt (kein Laufnachweis importiert; nicht aus der Existenz einer Testdatei abgeleitet)
 - **Rollen:** `bueroleitung`, `admin`
 - **Routen:** —
 - **Frontend-Komponenten:** —
@@ -577,7 +664,7 @@ Stellt wöchentliche Fragen, sammelt Antworten und zeigt Teilnahme sowie Histori
 - **Implementierung:** implementiert
 - **Einbindung:** rollenabhängig
 - **Testabdeckung:** Selbsttest
-- **Letztes Testergebnis:** nicht-ausgefuehrt (nicht aus der Existenz einer Testdatei abgeleitet)
+- **Letztes Testergebnis:** nicht-ausgefuehrt (kein Laufnachweis importiert; nicht aus der Existenz einer Testdatei abgeleitet)
 - **Rollen:** `abgeordneter`, `bueroleitung`, `mitarbeiter`, `praktikant`
 - **Routen:** —
 - **Frontend-Komponenten:** `src/features/team-rituals/TeamRitualWorkspace.tsx`, `src/features/team-rituals/WeeklyQuestionWidget.tsx`, `src/features/team-rituals/WeeklyAnswers.tsx`
@@ -613,7 +700,7 @@ Betreibt Bingo, Zwei-Wahrheiten-Runden und Fun-Facts mit Monatsarchiv und Teilne
 - **Implementierung:** implementiert
 - **Einbindung:** UI
 - **Testabdeckung:** Unit-Test
-- **Letztes Testergebnis:** unbekannt (nicht aus der Existenz einer Testdatei abgeleitet)
+- **Letztes Testergebnis:** unbekannt (kein Laufnachweis importiert; nicht aus der Existenz einer Testdatei abgeleitet)
 - **Rollen:** `abgeordneter`, `bueroleitung`, `mitarbeiter`, `praktikant`
 - **Routen:** —
 - **Frontend-Komponenten:** `src/features/team-rituals/BingoWidget.tsx`, `src/features/team-rituals/TwoTruthsWidget.tsx`, `src/features/team-rituals/FunFactsEditor.tsx`
@@ -650,7 +737,7 @@ Erfasst Arbeitszeiten, Pausen und Korrekturen mit Verlauf und Prüfung der Arbei
 - **Implementierung:** implementiert
 - **Einbindung:** rollenabhängig
 - **Testabdeckung:** kein Test
-- **Letztes Testergebnis:** nicht-ausgefuehrt (nicht aus der Existenz einer Testdatei abgeleitet)
+- **Letztes Testergebnis:** nicht-ausgefuehrt (kein Laufnachweis importiert; nicht aus der Existenz einer Testdatei abgeleitet)
 - **Rollen:** `abgeordneter`, `bueroleitung`, `mitarbeiter`, `praktikant`
 - **Routen:** —
 - **Frontend-Komponenten:** `src/features/timetracking/components/TimeTrackingView.tsx`
@@ -686,7 +773,7 @@ Beantragt Urlaub, berechnet Anspruch und Resttage, überträgt Resturlaub und ar
 - **Implementierung:** implementiert
 - **Einbindung:** rollenabhängig
 - **Testabdeckung:** Unit-Test
-- **Letztes Testergebnis:** unbekannt (nicht aus der Existenz einer Testdatei abgeleitet)
+- **Letztes Testergebnis:** unbekannt (kein Laufnachweis importiert; nicht aus der Existenz einer Testdatei abgeleitet)
 - **Rollen:** `abgeordneter`, `bueroleitung`, `mitarbeiter`, `praktikant`
 - **Routen:** —
 - **Frontend-Komponenten:** `src/features/timetracking/components/VacationHistoryDialog.tsx`, `src/components/administration/VacationChecklistAdmin.tsx`
@@ -723,7 +810,7 @@ Korrigiert Zeiten, zeigt Teamauswertungen und schützt sensible Datensätze durc
 - **Implementierung:** implementiert
 - **Einbindung:** rollenabhängig
 - **Testabdeckung:** kein Test
-- **Letztes Testergebnis:** nicht-ausgefuehrt (nicht aus der Existenz einer Testdatei abgeleitet)
+- **Letztes Testergebnis:** nicht-ausgefuehrt (kein Laufnachweis importiert; nicht aus der Existenz einer Testdatei abgeleitet)
 - **Rollen:** `bueroleitung`, `admin`
 - **Routen:** —
 - **Frontend-Komponenten:** `src/features/timetracking/components/AdminTimeEntryEditor.tsx`, `src/components/admin/AdminTimeTrackingView.tsx`
@@ -759,7 +846,7 @@ Zeigt und erledigt jährliche Pflichtaufgaben mit Fristen und Abschlusshistorie.
 - **Implementierung:** implementiert
 - **Einbindung:** UI
 - **Testabdeckung:** Unit-Test
-- **Letztes Testergebnis:** unbekannt (nicht aus der Existenz einer Testdatei abgeleitet)
+- **Letztes Testergebnis:** unbekannt (kein Laufnachweis importiert; nicht aus der Existenz einer Testdatei abgeleitet)
 - **Rollen:** `abgeordneter`, `bueroleitung`, `mitarbeiter`
 - **Routen:** —
 - **Frontend-Komponenten:** `src/features/timetracking/components/AnnualTasksView.tsx`

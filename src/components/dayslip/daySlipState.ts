@@ -72,15 +72,25 @@ export function appendEntries(day: DaySlipDayData, entries: Array<DaySlipLineEnt
 }
 
 /**
+ * Whether a slip already carries work of its own. Completion flags are not part of this:
+ * the automatic start decision needs to look at content, independent of earlier decisions.
+ */
+export function hasDaySlipContent(day?: DaySlipDayData): boolean {
+  if (!day) return false;
+  if (day.completedAt) return true;
+  if (extractLinesFromHtml(day.html).length > 0 || day.html.includes("labeled-hr")) return true;
+  if (Object.keys(day.sources ?? {}).length > 0 || Object.keys(day.lineTimestamps ?? {}).length > 0) return true;
+  return (day.resolved ?? []).length > 0;
+}
+
+/**
  * A slip counts as not started while it has no lines, links, rules, triage entries or timestamps.
  * The automatic weekday template must never be inserted into a slip that is already in use.
  */
 export function isUnstartedDaySlip(day?: DaySlipDayData): boolean {
   if (!day) return true;
-  if (day.completedAt || day.dayTemplateInjected) return false;
-  if (extractLinesFromHtml(day.html).length > 0 || day.html.includes("labeled-hr")) return false;
-  if (Object.keys(day.sources ?? {}).length > 0 || Object.keys(day.lineTimestamps ?? {}).length > 0) return false;
-  return (day.resolved ?? []).length === 0;
+  if (day.dayTemplateInjected) return false;
+  return !hasDaySlipContent(day);
 }
 
 /** The weekday template is decided once per day, whether or not any line was inserted. */
@@ -97,6 +107,50 @@ export function decideDayTemplate(day: DaySlipDayData | undefined, lines: string
   return {
     applies,
     day: { ...(applies ? appendStructuredLines(base, lines) : base), dayTemplateInjected: true },
+  };
+}
+
+export type DayStartInput = {
+  templateLines: string[];
+  recurringLines: string[];
+  weekPlanLines: string[];
+};
+
+export type DayStartDecision = {
+  day: DaySlipDayData;
+  templateApplied: boolean;
+  weekPlanApplied: boolean;
+  recurringApplied: boolean;
+};
+
+/**
+ * The one automatic start decision per day for every source: weekday template, week plan and
+ * recurring routines. The slip is judged once, before any source inserts, so the template and
+ * the day's planned lines only go into a slip that has not begun; a slip that is already in use
+ * never receives them later. Recurring routines are daily to-dos and still join a started slip,
+ * but only once. Every flag is recorded, including a deliberate “nothing”, so a slip that is
+ * emptied later never receives the template or the plan afterwards.
+ */
+export function decideDayStart(day: DaySlipDayData | undefined, input: DayStartInput): DayStartDecision {
+  const base = day ?? emptyDay();
+  const unstarted = !hasDaySlipContent(base);
+  let next = base;
+  const templateApplied = input.templateLines.length > 0 && unstarted && !base.dayTemplateInjected;
+  if (templateApplied) next = appendStructuredLines(next, input.templateLines);
+  const weekPlanApplied = input.weekPlanLines.length > 0 && unstarted && !base.weekPlanInjected;
+  if (weekPlanApplied) next = appendEntries(next, input.weekPlanLines.map(text => ({ id: crypto.randomUUID(), text })));
+  const recurringApplied = input.recurringLines.length > 0 && !base.recurringInjected;
+  if (recurringApplied) next = appendEntries(next, input.recurringLines.map(text => ({ id: crypto.randomUUID(), text })));
+  return {
+    day: {
+      ...next,
+      dayTemplateInjected: true,
+      recurringInjected: true,
+      weekPlanInjected: base.weekPlanInjected || input.weekPlanLines.length > 0,
+    },
+    templateApplied,
+    weekPlanApplied,
+    recurringApplied,
   };
 }
 

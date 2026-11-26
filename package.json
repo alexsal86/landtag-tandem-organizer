@@ -57,6 +57,7 @@
     "check:security-doc-drift": "node scripts/check-security-doc-drift.mjs",
     "check:dangerouslysetinnerhtml-inventory": "node scripts/check-dangerouslysetinnerhtml-inventory.mjs",
     "check:selftest-coverage": "node scripts/check-selftest-coverage.mjs",
+    "sync:selftest-results": "node scripts/sync-selftest-results.mjs",
     "check:supabase-rpc-types": "node scripts/check-supabase-rpc-types.mjs",
     "update:selftest-coverage": "node scripts/check-selftest-coverage.mjs --write",
     "check:feature-catalog": "node scripts/build-state-artifact.mjs && node scripts/build-feature-catalog.mjs && node scripts/build-pulse-areas.mjs",

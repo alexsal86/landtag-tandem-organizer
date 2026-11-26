@@ -523,7 +523,9 @@
       "id": "day-slip-lifecycle",
       "title": "Tageszettel-Lifecycle (Links → Neuladen → Übernahme auf Folgetag)",
       "touches": [
-        "day_slips"
+        "day_slips",
+        "tasks",
+        "quick_notes"
       ],
       "features": [
         "dayslip"
@@ -536,6 +538,31 @@
             "tenant_id",
             "day_key",
             "data"
+          ]
+        },
+        {
+          "table": "tasks",
+          "columns": [
+            "id",
+            "user_id",
+            "tenant_id",
+            "title",
+            "description",
+            "status",
+            "priority",
+            "category",
+            "assigned_to",
+            "due_date"
+          ]
+        },
+        {
+          "table": "quick_notes",
+          "columns": [
+            "id",
+            "user_id",
+            "tenant_id",
+            "title",
+            "content"
           ]
         }
       ],
@@ -2823,6 +2850,7 @@
       "table": "quick_notes",
       "status": "scenario",
       "scenarios": [
+        "day-slip-lifecycle",
         "quick-note-lifecycle"
       ]
     },
@@ -3077,6 +3105,7 @@
         "appointment-briefing-lifecycle",
         "case-file-lifecycle",
         "case-item-lifecycle",
+        "day-slip-lifecycle",
         "document-annotation",
         "jour-fixe-platform-integration",
         "letter-lifecycle",

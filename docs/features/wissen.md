@@ -53,10 +53,59 @@ _Auto-generiert mit `npm run update:feature-catalog` aus dem zentralen Funktions
 
 ## Selbsttest-Szenarien
 
-| Szenario | Titel | deklarierte Tabellen | deklarierte Prüfungen |
-|---|---|---:|---:|
-| `access-boundaries` | Zugriffsschutz (Bürogrenzen und Entscheiderrolle) | 1 | 4 |
-| `knowledge-lifecycle` | Wissen: Fragen, Antworten und manuelle Prüfung | 3 | 7 |
+| Szenario | Titel | deklarierte Tabellen | deklarierte Prüfungen | letzter Lauf |
+|---|---|---:|---:|---|
+| `access-boundaries` | Zugriffsschutz (Bürogrenzen und Entscheiderrolle) | 1 | 4 | — |
+| `knowledge-lifecycle` | Wissen: Fragen, Antworten und manuelle Prüfung | 3 | 7 | — |
+
+## Selbsttest-Schritte
+
+Diese Schritte führen die Szenarien aus; „letzter Lauf“ stammt aus `src/features/selftest/last-runs.json`, nicht aus dieser Doku.
+
+| Szenario | Schritt | Bezeichnung | Art | letzter Lauf |
+|---|---|---|---|---|
+| `access-boundaries` | `edge-tenant-role-boundary` | Erhöhte Rechte gelten nur im ausgewählten Büro | logic | — |
+| `access-boundaries` | `active-tenant-query-guard` | Fachdatenabfragen bleiben im aktiven Büro | logic | — |
+| `access-boundaries` | `admin-sort-guard` | Konfigurationssortierung: Rollenprüfung und Tabellen-Whitelist | workflow | — |
+| `access-boundaries` | `calendar-schedule` | Kalenderplan: Minuten, Sommerzeit und Wiederholungsstunde | workflow | — |
+| `access-boundaries` | `office-default-template` | Meeting-Standardvorlage ist pro Büro eindeutig | workflow | — |
+| `access-boundaries` | `admin-role-guard` | Globale Rollenänderung: Plattformrecht und gültige Rolle erforderlich | workflow | — |
+| `access-boundaries` | `foreign-tenant` | Schreiben mit nicht zugehöriger Büro-ID wird verweigert | workflow | — |
+| `access-boundaries` | `create-request` | Eigene Testanfrage für Rollenprüfung anlegen | db | — |
+| `access-boundaries` | `role-decision` | Entscheidungsfunktion respektiert die aktuelle Rolle | workflow | — |
+| `knowledge-lifecycle` | `person-presentation` | Stabile Avatarfarben, Initialen und fehlende Zuordnung | logic | — |
+| `knowledge-lifecycle` | `notification-delivery` | Serverzustellung, Einstellungen und dauerhafte Duplikatsperre | workflow | — |
+| `knowledge-lifecycle` | `manage-workflow` | Pflegeberechtigung, Bearbeiten, Archiv und Duplikat mit Revisionsschutz | workflow | — |
+| `knowledge-lifecycle` | `notification-question-link` | Benachrichtigungen öffnen die konkrete Wissensfrage | logic | — |
+| `knowledge-lifecycle` | `filter-state` | Ansichten und Filter aus URL wiederherstellen | logic | — |
+| `knowledge-lifecycle` | `bounded-list` | Kompakte Seite mit explizitem Cursor und Gesamtzahl | workflow | — |
+| `knowledge-lifecycle` | `real-workflow` | Echte Speicherung, Verlauf, Prüfbestätigung und Rücksetzung ohne bleibende Testdaten | workflow | — |
+| `knowledge-lifecycle` | `question-input` | Frage ohne Kategorien oder Zuständigkeit zulässig | logic | — |
+| `knowledge-lifecycle` | `answer-input` | Antworttext und Links sicher validieren | logic | — |
+| `knowledge-lifecycle` | `short-answer-input` | Kurzantwort ist Pflicht und auf 500 Zeichen begrenzt | logic | — |
+| `knowledge-lifecycle` | `citation-output` | Zitat enthält Kurzantwort, Stand und Prüfstatus | logic | — |
+| `knowledge-lifecycle` | `review-status` | Ungeprüft, manuell bestätigt und fällige Überprüfung unterscheiden | logic | — |
+| `knowledge-lifecycle` | `attachment-input` | Nur unterstützte Dateien innerhalb der Größenbegrenzung | logic | — |
+| `knowledge-lifecycle` | `foreign-office-search` | Suche mit nicht zugehöriger Büro-ID liefert keine Daten | workflow | — |
+
+## Deklarierter Prüfumfang
+
+### `access-boundaries`
+
+1. Fachdatenabfragen werden zentral auf das aktive Büro begrenzt
+2. Schreibversuch mit fremder Büro-ID scheitert am Client-Schutz oder an RLS
+3. Unberechtigte Rolle darf nicht entscheiden
+4. Berechtigte Rolle darf ablehnen
+
+### `knowledge-lifecycle`
+
+1. Frage als einziges Pflichtfeld
+2. Kurzantwort als Pflichtangabe
+3. Validierte Antwort und sichere Links
+4. Drei Prüfzustände und Fälligkeit
+5. Zitat mit Kurzantwort, Stand und Status
+6. Anhanggrenzen
+7. Lesen außerhalb des eigenen Büros
 
 ## Funktionsdetails
 
@@ -67,7 +116,7 @@ Erstellt eine Frage mit Titel, Kontext, Frist, Zuständigkeit, Tags und optional
 - **Implementierung:** implementiert
 - **Einbindung:** UI
 - **Testabdeckung:** Selbsttest
-- **Letztes Testergebnis:** nicht-ausgefuehrt (nicht aus der Existenz einer Testdatei abgeleitet)
+- **Letztes Testergebnis:** nicht-ausgefuehrt (kein Laufnachweis importiert; nicht aus der Existenz einer Testdatei abgeleitet)
 - **Rollen:** `abgeordneter`, `bueroleitung`, `mitarbeiter`, `praktikant`
 - **Routen:** `/knowledge`, `/wissen`
 - **Frontend-Komponenten:** `src/features/knowledge/components/KnowledgeBaseView.tsx`, `src/features/knowledge/components/AskQuestionDialog.tsx`, `src/features/knowledge/components/KnowledgeQuestionCard.tsx`
@@ -104,7 +153,7 @@ Verfasst und speichert Antworten mit Kurzantwort und Rich-Text, speichert Versio
 - **Implementierung:** implementiert
 - **Einbindung:** UI
 - **Testabdeckung:** Selbsttest
-- **Letztes Testergebnis:** nicht-ausgefuehrt (nicht aus der Existenz einer Testdatei abgeleitet)
+- **Letztes Testergebnis:** nicht-ausgefuehrt (kein Laufnachweis importiert; nicht aus der Existenz einer Testdatei abgeleitet)
 - **Rollen:** `abgeordneter`, `bueroleitung`, `mitarbeiter`
 - **Routen:** —
 - **Frontend-Komponenten:** `src/features/knowledge/components/KnowledgeAnswerEditor.tsx`, `src/features/knowledge/components/KnowledgeDetailPanel.tsx`
@@ -140,7 +189,7 @@ Verlangt beim Beantworten eine Kurzantwort mit 1–3 Sätzen, zeigt sie in Liste
 - **Implementierung:** implementiert
 - **Einbindung:** UI
 - **Testabdeckung:** Selbsttest
-- **Letztes Testergebnis:** nicht-ausgefuehrt (nicht aus der Existenz einer Testdatei abgeleitet)
+- **Letztes Testergebnis:** nicht-ausgefuehrt (kein Laufnachweis importiert; nicht aus der Existenz einer Testdatei abgeleitet)
 - **Rollen:** `abgeordneter`, `bueroleitung`, `mitarbeiter`
 - **Routen:** —
 - **Frontend-Komponenten:** `src/features/knowledge/components/KnowledgeAnswerEditor.tsx`, `src/features/knowledge/components/KnowledgeQuestionCard.tsx`, `src/features/knowledge/components/KnowledgeQuestionRow.tsx`, `src/features/knowledge/components/KnowledgeDetailPanel.tsx`
@@ -177,7 +226,7 @@ Führt Antworten durch Review, setzt Prüffristen, versendet Review-Erinnerungen
 - **Implementierung:** implementiert
 - **Einbindung:** rollenabhängig
 - **Testabdeckung:** Selbsttest
-- **Letztes Testergebnis:** nicht-ausgefuehrt (nicht aus der Existenz einer Testdatei abgeleitet)
+- **Letztes Testergebnis:** nicht-ausgefuehrt (kein Laufnachweis importiert; nicht aus der Existenz einer Testdatei abgeleitet)
 - **Rollen:** `bueroleitung`, `admin`, `mitarbeiter`
 - **Routen:** —
 - **Frontend-Komponenten:** `src/features/knowledge/components/ReviewPanel.tsx`
@@ -213,7 +262,7 @@ Führt Antworten durch Review, setzt Prüffristen, versendet Review-Erinnerungen
 - **Implementierung:** implementiert
 - **Einbindung:** systemseitig
 - **Testabdeckung:** Unit-Test
-- **Letztes Testergebnis:** unbekannt (nicht aus der Existenz einer Testdatei abgeleitet)
+- **Letztes Testergebnis:** unbekannt (kein Laufnachweis importiert; nicht aus der Existenz einer Testdatei abgeleitet)
 - **Rollen:** `system`, `bueroleitung`, `mitarbeiter`
 - **Routen:** —
 - **Frontend-Komponenten:** —
@@ -249,7 +298,7 @@ Verknüpft Wissensfragen direkt mit zentralen Themen; Modulregeln begrenzen Anza
 - **Implementierung:** implementiert
 - **Einbindung:** UI
 - **Testabdeckung:** Unit-Test
-- **Letztes Testergebnis:** unbekannt (nicht aus der Existenz einer Testdatei abgeleitet)
+- **Letztes Testergebnis:** unbekannt (kein Laufnachweis importiert; nicht aus der Existenz einer Testdatei abgeleitet)
 - **Rollen:** `abgeordneter`, `bueroleitung`, `mitarbeiter`
 - **Routen:** —
 - **Frontend-Komponenten:** `src/features/knowledge/components/KnowledgeTagsPanel.tsx`
@@ -285,7 +334,7 @@ Hinterlegt Quellen, prüft sie und protokolliert Quellenänderungen.
 - **Implementierung:** implementiert
 - **Einbindung:** UI
 - **Testabdeckung:** kein Test
-- **Letztes Testergebnis:** nicht-ausgefuehrt (nicht aus der Existenz einer Testdatei abgeleitet)
+- **Letztes Testergebnis:** nicht-ausgefuehrt (kein Laufnachweis importiert; nicht aus der Existenz einer Testdatei abgeleitet)
 - **Rollen:** `abgeordneter`, `bueroleitung`, `mitarbeiter`
 - **Routen:** —
 - **Frontend-Komponenten:** `src/features/knowledge/components/KnowledgeSourcesPanel.tsx`
@@ -320,7 +369,7 @@ Reserviert Uploads, prüft Dateitypen und schließt Anhänge an Fragen ab.
 - **Implementierung:** implementiert
 - **Einbindung:** UI
 - **Testabdeckung:** kein Test
-- **Letztes Testergebnis:** nicht-ausgefuehrt (nicht aus der Existenz einer Testdatei abgeleitet)
+- **Letztes Testergebnis:** nicht-ausgefuehrt (kein Laufnachweis importiert; nicht aus der Existenz einer Testdatei abgeleitet)
 - **Rollen:** `abgeordneter`, `bueroleitung`, `mitarbeiter`
 - **Routen:** —
 - **Frontend-Komponenten:** `src/features/knowledge/components/KnowledgeAttachments.tsx`
@@ -355,7 +404,7 @@ Kommentiert Fragen und Antworten, folgt Fragen und steuert Benachrichtigungen f�
 - **Implementierung:** implementiert
 - **Einbindung:** UI
 - **Testabdeckung:** kein Test
-- **Letztes Testergebnis:** nicht-ausgefuehrt (nicht aus der Existenz einer Testdatei abgeleitet)
+- **Letztes Testergebnis:** nicht-ausgefuehrt (kein Laufnachweis importiert; nicht aus der Existenz einer Testdatei abgeleitet)
 - **Rollen:** `abgeordneter`, `bueroleitung`, `mitarbeiter`
 - **Routen:** —
 - **Frontend-Komponenten:** `src/features/knowledge/components/KnowledgeConversationPanel.tsx`
@@ -390,7 +439,7 @@ Durchsucht Fragen, Kurzantworten und Langantworten mit gepflegtem Suchindex und 
 - **Implementierung:** implementiert
 - **Einbindung:** UI
 - **Testabdeckung:** Selbsttest
-- **Letztes Testergebnis:** nicht-ausgefuehrt (nicht aus der Existenz einer Testdatei abgeleitet)
+- **Letztes Testergebnis:** nicht-ausgefuehrt (kein Laufnachweis importiert; nicht aus der Existenz einer Testdatei abgeleitet)
 - **Rollen:** `abgeordneter`, `bueroleitung`, `mitarbeiter`
 - **Routen:** —
 - **Frontend-Komponenten:** —
@@ -426,7 +475,7 @@ Erzeugt Snapshots von Wissensdokumenten und zeigt frühere Fassungen im Verlauf.
 - **Implementierung:** implementiert
 - **Einbindung:** UI
 - **Testabdeckung:** kein Test
-- **Letztes Testergebnis:** nicht-ausgefuehrt (nicht aus der Existenz einer Testdatei abgeleitet)
+- **Letztes Testergebnis:** nicht-ausgefuehrt (kein Laufnachweis importiert; nicht aus der Existenz einer Testdatei abgeleitet)
 - **Rollen:** `abgeordneter`, `bueroleitung`, `mitarbeiter`
 - **Routen:** —
 - **Frontend-Komponenten:** `src/features/knowledge/components/HistoryPanel.tsx`
@@ -461,7 +510,7 @@ Beschränkt Wissensdokumente auf berechtigte Personen und prüft Lesen und Bearb
 - **Implementierung:** implementiert
 - **Einbindung:** systemseitig
 - **Testabdeckung:** Selbsttest
-- **Letztes Testergebnis:** nicht-ausgefuehrt (nicht aus der Existenz einer Testdatei abgeleitet)
+- **Letztes Testergebnis:** nicht-ausgefuehrt (kein Laufnachweis importiert; nicht aus der Existenz einer Testdatei abgeleitet)
 - **Rollen:** `abgeordneter`, `bueroleitung`, `mitarbeiter`
 - **Routen:** —
 - **Frontend-Komponenten:** —
@@ -497,7 +546,7 @@ Synchronisiert Wissensdokumente in Echtzeit über einen eigenen Kollaborationska
 - **Implementierung:** implementiert
 - **Einbindung:** systemseitig
 - **Testabdeckung:** kein Test
-- **Letztes Testergebnis:** nicht-ausgefuehrt (nicht aus der Existenz einer Testdatei abgeleitet)
+- **Letztes Testergebnis:** nicht-ausgefuehrt (kein Laufnachweis importiert; nicht aus der Existenz einer Testdatei abgeleitet)
 - **Rollen:** `abgeordneter`, `bueroleitung`, `mitarbeiter`
 - **Routen:** —
 - **Frontend-Komponenten:** —
@@ -533,7 +582,7 @@ Synchronisiert Wissensdokumente in Echtzeit über einen eigenen Kollaborationska
 - **Implementierung:** implementiert
 - **Einbindung:** UI
 - **Testabdeckung:** kein Test
-- **Letztes Testergebnis:** nicht-ausgefuehrt (nicht aus der Existenz einer Testdatei abgeleitet)
+- **Letztes Testergebnis:** nicht-ausgefuehrt (kein Laufnachweis importiert; nicht aus der Existenz einer Testdatei abgeleitet)
 - **Rollen:** `abgeordneter`, `bueroleitung`, `mitarbeiter`
 - **Routen:** —
 - **Frontend-Komponenten:** `src/features/knowledge/components/GlobalKnowledgeQuestionHost.tsx`
@@ -569,7 +618,7 @@ Verknüpft Wissensfragen mit Personen und zeigt Ansprechpartner für Themen.
 - **Implementierung:** implementiert
 - **Einbindung:** UI
 - **Testabdeckung:** Unit-Test
-- **Letztes Testergebnis:** unbekannt (nicht aus der Existenz einer Testdatei abgeleitet)
+- **Letztes Testergebnis:** unbekannt (kein Laufnachweis importiert; nicht aus der Existenz einer Testdatei abgeleitet)
 - **Rollen:** `abgeordneter`, `bueroleitung`, `mitarbeiter`
 - **Routen:** —
 - **Frontend-Komponenten:** `src/features/knowledge/components/KnowledgePersonAvatar.tsx`
@@ -605,7 +654,7 @@ Verwaltet Tags, Berechtigungen, Review-Zuweisungen und administrative Wissensein
 - **Implementierung:** implementiert
 - **Einbindung:** rollenabhängig
 - **Testabdeckung:** kein Test
-- **Letztes Testergebnis:** nicht-ausgefuehrt (nicht aus der Existenz einer Testdatei abgeleitet)
+- **Letztes Testergebnis:** nicht-ausgefuehrt (kein Laufnachweis importiert; nicht aus der Existenz einer Testdatei abgeleitet)
 - **Rollen:** `bueroleitung`, `admin`, `mitarbeiter`
 - **Routen:** —
 - **Frontend-Komponenten:** `src/features/knowledge/components/ManagementPanel.tsx`

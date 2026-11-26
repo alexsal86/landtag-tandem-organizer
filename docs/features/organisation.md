@@ -52,10 +52,64 @@ _Auto-generiert mit `npm run update:feature-catalog` aus dem zentralen Funktions
 
 ## Selbsttest-Szenarien
 
-| Szenario | Titel | deklarierte Tabellen | deklarierte Prüfungen |
-|---|---|---:|---:|
-| `meeting-lifecycle` | Meeting-Lifecycle (vollständig + Field-Verifikation) | 9 | 0 |
-| `topic-linking` | Themenverknüpfung und Modul-Steuerung | 5 | 9 |
+| Szenario | Titel | deklarierte Tabellen | deklarierte Prüfungen | letzter Lauf |
+|---|---|---:|---:|---|
+| `meeting-lifecycle` | Meeting-Lifecycle (vollständig + Field-Verifikation) | 9 | 0 | — |
+| `topic-linking` | Themenverknüpfung und Modul-Steuerung | 5 | 9 | — |
+
+## Selbsttest-Schritte
+
+Diese Schritte führen die Szenarien aus; „letzter Lauf“ stammt aus `src/features/selftest/last-runs.json`, nicht aus dieser Doku.
+
+| Szenario | Schritt | Bezeichnung | Art | letzter Lauf |
+|---|---|---|---|---|
+| `meeting-lifecycle` | `create-meeting` | Meeting anlegen | db | — |
+| `meeting-lifecycle` | `create-appointment` | Verknüpften Kalender-Termin erzeugen | db | — |
+| `meeting-lifecycle` | `add-participant` | Teilnehmer (sich selbst) hinzufügen | db | — |
+| `meeting-lifecycle` | `add-regular-agenda` | Reguläre Agenda-Punkte (3) anlegen | db | — |
+| `meeting-lifecycle` | `add-system-agenda` | System-Agenda-Punkte (Geburtstage, Termine, Notes, Aufgaben, Vorgänge, Entscheidungen) | db | — |
+| `meeting-lifecycle` | `add-sub-agenda` | Sub-Agenda-Punkt mit parent_id anlegen | db | — |
+| `meeting-lifecycle` | `add-agenda-document` | Agenda-Dokument anhängen | db | — |
+| `meeting-lifecycle` | `create-task-link` | Aufgabe erzeugen und mit Sub-Agenda verknüpfen | db | — |
+| `meeting-lifecycle` | `complete-agenda-item` | Agenda-Punkt abschließen (notes + result) | db | — |
+| `meeting-lifecycle` | `mark-carryover` | Carry-Over markieren | db | — |
+| `meeting-lifecycle` | `create-followup-meeting` | Folge-Meeting (rekursiv) mit Carry-Over anlegen | db | — |
+| `meeting-lifecycle` | `verify-links` | Verknüpfungen vollständig prüfen | db | — |
+| `meeting-lifecycle` | `complete-task` | Aufgabe abschließen | db | — |
+| `meeting-lifecycle` | `archive-meetings` | Meetings archivieren | db | — |
+| `meeting-lifecycle` | `protocol-record` | Anwesenheit, Protokollführung und Nachtrag dokumentieren | workflow | — |
+| `meeting-lifecycle` | `agenda-template-icon` | Symbole aus der Meeting-Vorlage übernehmen | workflow | — |
+| `meeting-lifecycle` | `jour-fixe-reservations` | Vormerkungen ausschließlich im übernommenen Jour fixe kennzeichnen | workflow | — |
+| `meeting-lifecycle` | `system-agenda-subpoints` | System-Unterpunkte nummerieren und Reihenfolge erhalten | logic | — |
+| `meeting-lifecycle` | `live-agenda-position` | Position der laufenden Tagesordnung bestimmen | logic | — |
+| `meeting-lifecycle` | `agenda-drop-level` | Agenda-Punkte per Ziehen hoch- und herunterstufen | logic | — |
+| `meeting-lifecycle` | `protocol-task-status` | Aufgabenstatus und Rückblickquote berechnen | logic | — |
+| `topic-linking` | `catalog` | Thema anlegen, bereinigen und wiederfinden | db | — |
+| `topic-linking` | `module-settings` | Modul-Steuerung lesen und Wertebereiche prüfen | db | — |
+| `topic-linking` | `module-write` | Modul-Steuerung ändern und wiederherstellen | db | — |
+| `topic-linking` | `module-policy` | Anlageregel je Modul beachten | db | — |
+| `topic-linking` | `case-item-link` | Vorgang mit Thema verknüpfen und Duplikate sperren | db | — |
+| `topic-linking` | `merge-redirect` | Themen zusammenführen und Weiterleitung prüfen | db | — |
+| `topic-linking` | `usage` | Verwendung je Modul zählen | db | — |
+| `topic-linking` | `knowledge-topics` | Wissensfragen-Verknüpfung lesen und Schreibversuch abweisen | db | — |
+
+## Deklarierter Prüfumfang
+
+### `meeting-lifecycle`
+
+Keine Prüfungen deklariert.
+
+### `topic-linking`
+
+1. ensure_topic bereinigt Leerzeichen, bildet den Schlüssel aus dem Label und liefert für dieselbe Bezeichnung dasselbe Thema
+2. Themenlabels außerhalb von 2–40 Zeichen werden abgewiesen (22023)
+3. Die Modul-Steuerung führt alle zehn Module; Wertebereiche für Modul und max_topics sind gesperrt (23514)
+4. Nur die Büroleitung ändert die Modul-Steuerung; die Prüfung stellt die Ausgangswerte wieder her
+5. ensure_topic mit Modul folgt creation_policy: bei 'admins' nur für die Büroleitung, bei 'members' auch für Mitglieder
+6. Ein Vorgang verknüpft Themen über intake_payload; der Trigger setzt tenant_id und created_by, Entfernen im Payload löscht die Verknüpfung
+7. Doppelte Verknüpfungen sind gesperrt (23505); auch ein direkter Insert ohne tenant_id wird dem Büro zugeordnet
+8. merge_topics zieht Verknüpfungen auf das Zielthema, deaktiviert die Quelle als Weiterleitung und ensure_topic folgt der Weiterleitung
+9. topic_usage zählt die Verknüpfungen je Modul und liefert die Summe
 
 ## Funktionsdetails
 
@@ -66,7 +120,7 @@ Legt Sitzungen mit Teilnehmenden, Agenda und Vorlagen an, lädt ein und führt d
 - **Implementierung:** implementiert
 - **Einbindung:** rollenabhängig
 - **Testabdeckung:** Selbsttest
-- **Letztes Testergebnis:** nicht-ausgefuehrt (nicht aus der Existenz einer Testdatei abgeleitet)
+- **Letztes Testergebnis:** nicht-ausgefuehrt (kein Laufnachweis importiert; nicht aus der Existenz einer Testdatei abgeleitet)
 - **Rollen:** `abgeordneter`, `bueroleitung`, `mitarbeiter`
 - **Routen:** `/meetings`
 - **Frontend-Komponenten:** `src/features/meetings/components/MeetingsView.tsx`, `src/components/meetings/MeetingCreateDialog.tsx`, `src/components/meetings/MeetingParticipantsManager.tsx`
@@ -102,7 +156,7 @@ Füllt und sortiert Agenda-Punkte aus Vorgängen, Aufgaben, Geburtstagen, Dokume
 - **Implementierung:** implementiert
 - **Einbindung:** UI
 - **Testabdeckung:** Selbsttest
-- **Letztes Testergebnis:** nicht-ausgefuehrt (nicht aus der Existenz einer Testdatei abgeleitet)
+- **Letztes Testergebnis:** nicht-ausgefuehrt (kein Laufnachweis importiert; nicht aus der Existenz einer Testdatei abgeleitet)
 - **Rollen:** `abgeordneter`, `bueroleitung`, `mitarbeiter`
 - **Routen:** —
 - **Frontend-Komponenten:** `src/components/meetings/AgendaEditorPanel.tsx`, `src/components/meetings/SystemAgendaItem.tsx`, `src/components/meetings/AgendaResultEditor.tsx`
@@ -138,7 +192,7 @@ Schreibt und aktualisiert Protokolle, erlaubt Wiedereröffnung und erzeugt best�
 - **Implementierung:** implementiert
 - **Einbindung:** rollenabhängig
 - **Testabdeckung:** Selbsttest
-- **Letztes Testergebnis:** nicht-ausgefuehrt (nicht aus der Existenz einer Testdatei abgeleitet)
+- **Letztes Testergebnis:** nicht-ausgefuehrt (kein Laufnachweis importiert; nicht aus der Existenz einer Testdatei abgeleitet)
 - **Rollen:** `abgeordneter`, `bueroleitung`, `mitarbeiter`
 - **Routen:** —
 - **Frontend-Komponenten:** `src/features/meetings/components/MeetingProtocolView.tsx`
@@ -173,7 +227,7 @@ Hält Entscheidungen zu Agenda-Punkten fest, ohne Abstimmungen zu erfinden, und 
 - **Implementierung:** implementiert
 - **Einbindung:** UI
 - **Testabdeckung:** Selbsttest
-- **Letztes Testergebnis:** nicht-ausgefuehrt (nicht aus der Existenz einer Testdatei abgeleitet)
+- **Letztes Testergebnis:** nicht-ausgefuehrt (kein Laufnachweis importiert; nicht aus der Existenz einer Testdatei abgeleitet)
 - **Rollen:** `abgeordneter`, `bueroleitung`, `mitarbeiter`
 - **Routen:** —
 - **Frontend-Komponenten:** `src/features/meetings/components/MeetingDecisionDialog.tsx`, `src/features/meetings/components/OpenDecisionsCockpit.tsx`
@@ -209,7 +263,7 @@ Archiviert Sitzungen samt Stafette-Folgen und hält die Herkunft je Sitzung eind
 - **Implementierung:** implementiert
 - **Einbindung:** rollenabhängig
 - **Testabdeckung:** Selbsttest
-- **Letztes Testergebnis:** nicht-ausgefuehrt (nicht aus der Existenz einer Testdatei abgeleitet)
+- **Letztes Testergebnis:** nicht-ausgefuehrt (kein Laufnachweis importiert; nicht aus der Existenz einer Testdatei abgeleitet)
 - **Rollen:** `abgeordneter`, `bueroleitung`, `mitarbeiter`
 - **Routen:** —
 - **Frontend-Komponenten:** `src/features/meetings/components/MeetingArchiveView.tsx`
@@ -244,7 +298,7 @@ Verwaltet Sitzungsvorlagen mit Standardagenda und Teilnehmern.
 - **Implementierung:** implementiert
 - **Einbindung:** rollenabhängig
 - **Testabdeckung:** kein Test
-- **Letztes Testergebnis:** nicht-ausgefuehrt (nicht aus der Existenz einer Testdatei abgeleitet)
+- **Letztes Testergebnis:** nicht-ausgefuehrt (kein Laufnachweis importiert; nicht aus der Existenz einer Testdatei abgeleitet)
 - **Rollen:** `admin`, `bueroleitung`
 - **Routen:** —
 - **Frontend-Komponenten:** `src/components/administration/MeetingTemplateManager.tsx`
@@ -279,7 +333,7 @@ Erkennt seit mehreren Sitzungen offene Punkte und zeigt sie im Entscheidungs-Coc
 - **Implementierung:** implementiert
 - **Einbindung:** UI
 - **Testabdeckung:** kein Test
-- **Letztes Testergebnis:** nicht-ausgefuehrt (nicht aus der Existenz einer Testdatei abgeleitet)
+- **Letztes Testergebnis:** nicht-ausgefuehrt (kein Laufnachweis importiert; nicht aus der Existenz einer Testdatei abgeleitet)
 - **Rollen:** `bueroleitung`, `abgeordneter`, `mitarbeiter`
 - **Routen:** —
 - **Frontend-Komponenten:** —
@@ -314,7 +368,7 @@ Führt Dossiers mit Zusammenfassung, Qualitätsfeldern, Review-Erinnerungen und 
 - **Implementierung:** implementiert
 - **Einbindung:** UI
 - **Testabdeckung:** kein Test
-- **Letztes Testergebnis:** nicht-ausgefuehrt (nicht aus der Existenz einer Testdatei abgeleitet)
+- **Letztes Testergebnis:** nicht-ausgefuehrt (kein Laufnachweis importiert; nicht aus der Existenz einer Testdatei abgeleitet)
 - **Rollen:** `abgeordneter`, `bueroleitung`, `mitarbeiter`
 - **Routen:** —
 - **Frontend-Komponenten:** `src/features/dossiers/components/DossiersMainView.tsx`, `src/features/dossiers/components/DossierDetailView.tsx`, `src/features/dossiers/components/DossierQualityFields.tsx`
@@ -350,7 +404,7 @@ Erfasst Einträge, ordnet sie chronologisch und verknüpft Quellen.
 - **Implementierung:** implementiert
 - **Einbindung:** UI
 - **Testabdeckung:** kein Test
-- **Letztes Testergebnis:** nicht-ausgefuehrt (nicht aus der Existenz einer Testdatei abgeleitet)
+- **Letztes Testergebnis:** nicht-ausgefuehrt (kein Laufnachweis importiert; nicht aus der Existenz einer Testdatei abgeleitet)
 - **Rollen:** `abgeordneter`, `bueroleitung`, `mitarbeiter`
 - **Routen:** —
 - **Frontend-Komponenten:** `src/features/dossiers/components/EntryCard.tsx`, `src/features/dossiers/components/EntryTimeline.tsx`
@@ -386,7 +440,7 @@ Verknüpft Dossiers mit Kontakten, Dokumenten und anderen Dossiers und zeigt Bet
 - **Implementierung:** implementiert
 - **Einbindung:** UI
 - **Testabdeckung:** kein Test
-- **Letztes Testergebnis:** nicht-ausgefuehrt (nicht aus der Existenz einer Testdatei abgeleitet)
+- **Letztes Testergebnis:** nicht-ausgefuehrt (kein Laufnachweis importiert; nicht aus der Existenz einer Testdatei abgeleitet)
 - **Rollen:** `abgeordneter`, `bueroleitung`, `mitarbeiter`
 - **Routen:** —
 - **Frontend-Komponenten:** `src/features/dossiers/components/DossierLinksView.tsx`, `src/features/dossiers/components/DossierStakeholdersTab.tsx`
@@ -422,7 +476,7 @@ Hält Gesprächspunkte und Positionsfassungen je Dossier fest.
 - **Implementierung:** implementiert
 - **Einbindung:** UI
 - **Testabdeckung:** kein Test
-- **Letztes Testergebnis:** nicht-ausgefuehrt (nicht aus der Existenz einer Testdatei abgeleitet)
+- **Letztes Testergebnis:** nicht-ausgefuehrt (kein Laufnachweis importiert; nicht aus der Existenz einer Testdatei abgeleitet)
 - **Rollen:** `abgeordneter`, `bueroleitung`, `mitarbeiter`
 - **Routen:** —
 - **Frontend-Komponenten:** `src/features/dossiers/components/DossierTalkingPoints.tsx`
@@ -458,7 +512,7 @@ Erfasst Dossier-Einträge aus dem Alltag und zeigt persönlich relevante Dossier
 - **Implementierung:** implementiert
 - **Einbindung:** UI
 - **Testabdeckung:** kein Test
-- **Letztes Testergebnis:** nicht-ausgefuehrt (nicht aus der Existenz einer Testdatei abgeleitet)
+- **Letztes Testergebnis:** nicht-ausgefuehrt (kein Laufnachweis importiert; nicht aus der Existenz einer Testdatei abgeleitet)
 - **Rollen:** `abgeordneter`, `bueroleitung`, `mitarbeiter`
 - **Routen:** —
 - **Frontend-Komponenten:** `src/features/dossiers/components/SmartCapture.tsx`, `src/features/dossiers/components/QuickCapture.tsx`, `src/features/dossiers/components/MeinRadarView.tsx`, `src/features/dossiers/components/DossierReviewReminder.tsx`
@@ -494,7 +548,7 @@ Beobachtet externe Quellen und synchronisiert neue Einträge in Dossiers.
 - **Implementierung:** implementiert
 - **Einbindung:** systemseitig
 - **Testabdeckung:** kein Test
-- **Letztes Testergebnis:** nicht-ausgefuehrt (nicht aus der Existenz einer Testdatei abgeleitet)
+- **Letztes Testergebnis:** nicht-ausgefuehrt (kein Laufnachweis importiert; nicht aus der Existenz einer Testdatei abgeleitet)
 - **Rollen:** `abgeordneter`, `bueroleitung`, `mitarbeiter`, `system`
 - **Routen:** —
 - **Frontend-Komponenten:** `src/features/dossiers/components/DossierSourceWatchersPanel.tsx`
@@ -530,7 +584,7 @@ Durchsucht Dossier-Einträge und Dossiers zentral und öffnet Treffer im Kontext
 - **Implementierung:** implementiert
 - **Einbindung:** UI
 - **Testabdeckung:** kein Test
-- **Letztes Testergebnis:** nicht-ausgefuehrt (nicht aus der Existenz einer Testdatei abgeleitet)
+- **Letztes Testergebnis:** nicht-ausgefuehrt (kein Laufnachweis importiert; nicht aus der Existenz einer Testdatei abgeleitet)
 - **Rollen:** `abgeordneter`, `bueroleitung`, `mitarbeiter`
 - **Routen:** —
 - **Frontend-Komponenten:** `src/features/dossiers/components/GlobalEntrySearch.tsx`
@@ -565,7 +619,7 @@ Listet parlamentarische Drucksachen mit Bezug zu Themen und Dokumenten.
 - **Implementierung:** teilweise
 - **Einbindung:** UI
 - **Testabdeckung:** kein Test
-- **Letztes Testergebnis:** nicht-ausgefuehrt (nicht aus der Existenz einer Testdatei abgeleitet)
+- **Letztes Testergebnis:** nicht-ausgefuehrt (kein Laufnachweis importiert; nicht aus der Existenz einer Testdatei abgeleitet)
 - **Rollen:** `abgeordneter`, `bueroleitung`, `mitarbeiter`
 - **Routen:** —
 - **Frontend-Komponenten:** `src/features/drucksachen/components/DrucksachenView.tsx`
@@ -601,7 +655,7 @@ Pflegt Themen mit Zuständigkeiten, Verknüpfungen und Sichtbarkeit.
 - **Implementierung:** implementiert
 - **Einbindung:** UI
 - **Testabdeckung:** Selbsttest
-- **Letztes Testergebnis:** nicht-ausgefuehrt (nicht aus der Existenz einer Testdatei abgeleitet)
+- **Letztes Testergebnis:** nicht-ausgefuehrt (kein Laufnachweis importiert; nicht aus der Existenz einer Testdatei abgeleitet)
 - **Rollen:** `abgeordneter`, `bueroleitung`, `mitarbeiter`
 - **Routen:** —
 - **Frontend-Komponenten:** `src/features/topics/TopicOverview.tsx`, `src/components/topics/TopicSelector.tsx`
@@ -639,7 +693,7 @@ Wandelt ein Thema atomar in einen Katalogeintrag um, erhält historische Verknü
 - **Implementierung:** implementiert
 - **Einbindung:** UI
 - **Testabdeckung:** kein Test
-- **Letztes Testergebnis:** nicht-ausgefuehrt (nicht aus der Existenz einer Testdatei abgeleitet)
+- **Letztes Testergebnis:** nicht-ausgefuehrt (kein Laufnachweis importiert; nicht aus der Existenz einer Testdatei abgeleitet)
 - **Rollen:** `bueroleitung`, `admin`
 - **Routen:** —
 - **Frontend-Komponenten:** `src/features/topics/TopicConversionButton.tsx`
@@ -675,7 +729,7 @@ Verwaltet Fakten mit Quellen, Nutzungszähler und CSV-Import/-Export.
 - **Implementierung:** implementiert
 - **Einbindung:** UI
 - **Testabdeckung:** kein Test
-- **Letztes Testergebnis:** nicht-ausgefuehrt (nicht aus der Existenz einer Testdatei abgeleitet)
+- **Letztes Testergebnis:** nicht-ausgefuehrt (kein Laufnachweis importiert; nicht aus der Existenz einer Testdatei abgeleitet)
 - **Rollen:** `abgeordneter`, `bueroleitung`, `mitarbeiter`
 - **Routen:** —
 - **Frontend-Komponenten:** `src/features/facts/components`

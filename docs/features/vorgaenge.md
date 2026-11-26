@@ -51,10 +51,64 @@ _Auto-generiert mit `npm run update:feature-catalog` aus dem zentralen Funktions
 
 ## Selbsttest-Szenarien
 
-| Szenario | Titel | deklarierte Tabellen | deklarierte Prüfungen |
-|---|---|---:|---:|
-| `case-file-lifecycle` | Fallakte mit Folgetabellen (Container) im Unterschied zum Vorgang | 14 | 8 |
-| `case-item-lifecycle` | Vorgangs-Lifecycle (Am Zug → Schritt → Wiedervorlage → Entscheidung → Tageszettel → Abschluss) | 9 | 5 |
+| Szenario | Titel | deklarierte Tabellen | deklarierte Prüfungen | letzter Lauf |
+|---|---|---:|---:|---|
+| `case-file-lifecycle` | Fallakte mit Folgetabellen (Container) im Unterschied zum Vorgang | 14 | 8 | — |
+| `case-item-lifecycle` | Vorgangs-Lifecycle (Am Zug → Schritt → Wiedervorlage → Entscheidung → Tageszettel → Abschluss) | 9 | 5 | — |
+
+## Selbsttest-Schritte
+
+Diese Schritte führen die Szenarien aus; „letzter Lauf“ stammt aus `src/features/selftest/last-runs.json`, nicht aus dieser Doku.
+
+| Szenario | Schritt | Bezeichnung | Art | letzter Lauf |
+|---|---|---|---|---|
+| `case-file-lifecycle` | `create` | Fallakte anlegen und Standardwerte prüfen | db | — |
+| `case-file-lifecycle` | `scale-guard` | Ungültige Akten-Größe wird abgewiesen | db | — |
+| `case-file-lifecycle` | `processing-status` | Bearbeitungsstatus setzen und Statusverlauf schreiben | db | — |
+| `case-file-lifecycle` | `participants` | Beteiligte eintragen; Doppelung ist gesperrt | db | — |
+| `case-file-lifecycle` | `notes-and-timeline` | Notiz und Verlaufseintrag zur Akte speichern | db | — |
+| `case-file-lifecycle` | `links-contact-task` | Kontakt verknüpfen und Aufgabe über die Akten-RPC erzeugen | db | — |
+| `case-file-lifecycle` | `links-appointment-letter` | Termin und Brief mit der Akte verknüpfen | db | — |
+| `case-file-lifecycle` | `counts` | Akten-RPC zählt die Verknüpfungen | db | — |
+| `case-file-lifecycle` | `vorgang-vs-akte` | Unterschied zum Vorgang: eigener Ball, geerbte Sichtbarkeit | db | — |
+| `case-file-lifecycle` | `delete-detaches` | Akte löschen: Folgetabellen weg, Vorgang bleibt | db | — |
+| `case-item-lifecycle` | `rules` | Regeln prüfen: Schritt, Wiedervorlage, Fristen (ohne Datenbank) | logic | — |
+| `case-item-lifecycle` | `create` | Vorgang anlegen + Standardwerte (Büro am Zug, kein Schritt) | db | — |
+| `case-item-lifecycle` | `interactions` | Interaktionen erfassen (Anruf, Mail, Treffen) | db | — |
+| `case-item-lifecycle` | `draft-no-resubmission` | Am Zug nur vorbereiten → keine Wiedervorlage | db | — |
+| `case-item-lifecycle` | `set-step` | Schritt festlegen mit Frist → Wiedervorlage + Verlauf | db | — |
+| `case-item-lifecycle` | `office-task` | Büroschritt erzeugt genau eine verknüpfte Aufgabe | workflow | — |
+| `case-item-lifecycle` | `reverse-task` | Aufgabe erledigen schließt den zugehörigen Vorgangsschritt | workflow | — |
+| `case-item-lifecycle` | `ministry` | Am Zug: Ministerium (21-Tage-Frist + Verlauf) | db | — |
+| `case-item-lifecycle` | `handover` | Übergabe an zweite Person über Freigabe-Funktion | workflow | — |
+| `case-item-lifecycle` | `decision` | Entscheidung anfordern + abstimmen | db | — |
+| `case-item-lifecycle` | `dayslip` | Auf Tageszettel → Link übersteht erneutes Laden | db | — |
+| `case-item-lifecycle` | `jour-fixe` | Auf Jour fixe setzen | db | — |
+| `case-item-lifecycle` | `onsite` | Ortstermin anfragen (Eingang per: Vorgang) | db | — |
+| `case-item-lifecycle` | `step-done` | Schritt erledigt → Schritt leer, „Schritt festlegen“ erscheint wieder | db | — |
+| `case-item-lifecycle` | `complete` | Vorgang abschließen | db | — |
+| `case-item-lifecycle` | `tenant-boundary` | Vorgang lässt sich keinem fremden Büro zuordnen | workflow | — |
+
+## Deklarierter Prüfumfang
+
+### `case-file-lifecycle`
+
+1. Fallakte wird mit Typ, Größe, Status und Standard-Sichtbarkeit „private“ angelegt und zurückgelesen
+2. Ungültige Größe (case_scale) wird von der Datenbank abgewiesen
+3. Bearbeitungsstatus und Statusverlauf werden gespeichert; derselbe Beteiligte kann nicht doppelt eingetragen werden
+4. Kontakt, Aufgabe, Termin und Brief werden über die jeweilige Folgetabelle verknüpft; doppelte Verknüpfungen sind gesperrt
+5. Die Aufgabe entsteht über create_case_file_task als offene Aufgabe für die anlegende Person mit source_type 'case_file' und Quellbezug; eine Wiederholung liefert dieselbe Aufgabe und keine zweite Verknüpfung
+6. get_case_files_with_counts liefert die Verknüpfungen der Akte als Zählwerte
+7. Ein Vorgang an einer privaten Akte ist für Büro-Kolleginnen unsichtbar, an einer öffentlichen Akte sichtbar (Sichtbarkeitsvererbung)
+8. Das Löschen der Akte entfernt ihre Folgetabellen, lässt den Vorgang aber mit case_file_id = null bestehen
+
+### `case-item-lifecycle`
+
+1. Geschäftsregeln für Wiedervorlage und Fristen
+2. Übergabe über die Anwendungs-RPC
+3. Entscheidung und Abstimmung
+4. Tageszettel-Link nach erneutem Laden
+5. Vorgang bleibt im eigenen Büro
 
 ## Funktionsdetails
 
@@ -65,7 +119,7 @@ Legt einen Vorgang mit Kategorie, Priorität, Anliegen, Kontaktbezug, zentralen 
 - **Implementierung:** implementiert
 - **Einbindung:** rollenabhängig
 - **Testabdeckung:** Selbsttest
-- **Letztes Testergebnis:** nicht-ausgefuehrt (nicht aus der Existenz einer Testdatei abgeleitet)
+- **Letztes Testergebnis:** nicht-ausgefuehrt (kein Laufnachweis importiert; nicht aus der Existenz einer Testdatei abgeleitet)
 - **Rollen:** `abgeordneter`, `bueroleitung`, `mitarbeiter`, `praktikant`
 - **Routen:** `/vorgaenge/:caseItemId`
 - **Frontend-Komponenten:** `src/components/my-work/CaseItemCreateDialog.tsx`, `src/features/cases/items/pages/CaseItemDetail.tsx`, `src/components/my-work/MyWorkCasesWorkspace.tsx`
@@ -102,7 +156,7 @@ Bestimmt Ball-Owner, nächsten Schritt und Fälligkeit aus Kategorie, Status und
 - **Implementierung:** implementiert
 - **Einbindung:** UI
 - **Testabdeckung:** Unit-Test
-- **Letztes Testergebnis:** unbekannt (nicht aus der Existenz einer Testdatei abgeleitet)
+- **Letztes Testergebnis:** unbekannt (kein Laufnachweis importiert; nicht aus der Existenz einer Testdatei abgeleitet)
 - **Rollen:** `abgeordneter`, `bueroleitung`, `mitarbeiter`
 - **Routen:** —
 - **Frontend-Komponenten:** —
@@ -138,7 +192,7 @@ Bestimmt Ball-Owner, nächsten Schritt und Fälligkeit aus Kategorie, Status und
 - **Implementierung:** implementiert
 - **Einbindung:** rollenabhängig
 - **Testabdeckung:** Selbsttest
-- **Letztes Testergebnis:** nicht-ausgefuehrt (nicht aus der Existenz einer Testdatei abgeleitet)
+- **Letztes Testergebnis:** nicht-ausgefuehrt (kein Laufnachweis importiert; nicht aus der Existenz einer Testdatei abgeleitet)
 - **Rollen:** `abgeordneter`, `bueroleitung`, `mitarbeiter`
 - **Routen:** —
 - **Frontend-Komponenten:** —
@@ -174,7 +228,7 @@ Legt Schritte mit Frist und Zuständigkeit an und erzeugt daraus Büro-Aufgaben,
 - **Implementierung:** implementiert
 - **Einbindung:** systemseitig
 - **Testabdeckung:** Unit-Test
-- **Letztes Testergebnis:** unbekannt (nicht aus der Existenz einer Testdatei abgeleitet)
+- **Letztes Testergebnis:** unbekannt (kein Laufnachweis importiert; nicht aus der Existenz einer Testdatei abgeleitet)
 - **Rollen:** `abgeordneter`, `bueroleitung`, `mitarbeiter`, `system`
 - **Routen:** —
 - **Frontend-Komponenten:** —
@@ -210,7 +264,7 @@ Erfasst Gespräche, E-Mails und Notizen mit Sichtbarkeitsstufe und verlangt vor 
 - **Implementierung:** implementiert
 - **Einbindung:** UI
 - **Testabdeckung:** kein Test
-- **Letztes Testergebnis:** nicht-ausgefuehrt (nicht aus der Existenz einer Testdatei abgeleitet)
+- **Letztes Testergebnis:** nicht-ausgefuehrt (kein Laufnachweis importiert; nicht aus der Existenz einer Testdatei abgeleitet)
 - **Rollen:** `abgeordneter`, `bueroleitung`, `mitarbeiter`
 - **Routen:** —
 - **Frontend-Komponenten:** `src/components/my-work/CaseItemInteractionQuickCapture.tsx`, `src/features/cases/files/components/CaseItemInteractionsTimeline.tsx`
@@ -246,7 +300,7 @@ Zeigt Statuswechsel, Übergaben, Aufgaben und Interaktionen chronologisch und pr
 - **Implementierung:** implementiert
 - **Einbindung:** UI
 - **Testabdeckung:** Unit-Test
-- **Letztes Testergebnis:** unbekannt (nicht aus der Existenz einer Testdatei abgeleitet)
+- **Letztes Testergebnis:** unbekannt (kein Laufnachweis importiert; nicht aus der Existenz einer Testdatei abgeleitet)
 - **Rollen:** `abgeordneter`, `bueroleitung`, `mitarbeiter`
 - **Routen:** —
 - **Frontend-Komponenten:** —
@@ -282,7 +336,7 @@ Verknüpft Vorgänge mit Terminen und Fallakten und zeigt anstehende Gespräche 
 - **Implementierung:** implementiert
 - **Einbindung:** UI
 - **Testabdeckung:** Unit-Test
-- **Letztes Testergebnis:** unbekannt (nicht aus der Existenz einer Testdatei abgeleitet)
+- **Letztes Testergebnis:** unbekannt (kein Laufnachweis importiert; nicht aus der Existenz einer Testdatei abgeleitet)
 - **Rollen:** `abgeordneter`, `bueroleitung`, `mitarbeiter`
 - **Routen:** —
 - **Frontend-Komponenten:** —
@@ -318,7 +372,7 @@ Erzeugt aus einem Vorgang einen Briefentwurf mit Adress- und Bezugsdaten und ver
 - **Implementierung:** implementiert
 - **Einbindung:** UI
 - **Testabdeckung:** Unit-Test
-- **Letztes Testergebnis:** unbekannt (nicht aus der Existenz einer Testdatei abgeleitet)
+- **Letztes Testergebnis:** unbekannt (kein Laufnachweis importiert; nicht aus der Existenz einer Testdatei abgeleitet)
 - **Rollen:** `abgeordneter`, `bueroleitung`, `mitarbeiter`
 - **Routen:** —
 - **Frontend-Komponenten:** —
@@ -354,7 +408,7 @@ Verknüpft Entscheidungen mit einem Vorgang und prüft die Zulässigkeit der Ver
 - **Implementierung:** implementiert
 - **Einbindung:** systemseitig
 - **Testabdeckung:** kein Test
-- **Letztes Testergebnis:** nicht-ausgefuehrt (nicht aus der Existenz einer Testdatei abgeleitet)
+- **Letztes Testergebnis:** nicht-ausgefuehrt (kein Laufnachweis importiert; nicht aus der Existenz einer Testdatei abgeleitet)
 - **Rollen:** `abgeordneter`, `bueroleitung`, `mitarbeiter`
 - **Routen:** —
 - **Frontend-Komponenten:** —
@@ -389,7 +443,7 @@ Erkennt liegengebliebene Vorgänge und schlägt Eskalationen vor, ohne sie autom
 - **Implementierung:** implementiert
 - **Einbindung:** systemseitig
 - **Testabdeckung:** kein Test
-- **Letztes Testergebnis:** nicht-ausgefuehrt (nicht aus der Existenz einer Testdatei abgeleitet)
+- **Letztes Testergebnis:** nicht-ausgefuehrt (kein Laufnachweis importiert; nicht aus der Existenz einer Testdatei abgeleitet)
 - **Rollen:** `system`, `bueroleitung`
 - **Routen:** —
 - **Frontend-Komponenten:** —
@@ -424,7 +478,7 @@ Schließt Vorgänge nach dokumentierter Reaktion, erledigt offene Schritte und a
 - **Implementierung:** implementiert
 - **Einbindung:** rollenabhängig
 - **Testabdeckung:** Selbsttest
-- **Letztes Testergebnis:** nicht-ausgefuehrt (nicht aus der Existenz einer Testdatei abgeleitet)
+- **Letztes Testergebnis:** nicht-ausgefuehrt (kein Laufnachweis importiert; nicht aus der Existenz einer Testdatei abgeleitet)
 - **Rollen:** `abgeordneter`, `bueroleitung`, `mitarbeiter`
 - **Routen:** —
 - **Frontend-Komponenten:** `src/features/cases/items/components/CaseItemsArchiveSheet.tsx`
@@ -460,7 +514,7 @@ Leitet alte Vorgangs- und Fallaktenrouten auf die aktuellen Arbeitsbereiche um.
 - **Implementierung:** veraltet
 - **Einbindung:** UI
 - **Testabdeckung:** kein Test
-- **Letztes Testergebnis:** nicht-ausgefuehrt (nicht aus der Existenz einer Testdatei abgeleitet)
+- **Letztes Testergebnis:** nicht-ausgefuehrt (kein Laufnachweis importiert; nicht aus der Existenz einer Testdatei abgeleitet)
 - **Rollen:** `abgeordneter`, `bueroleitung`, `mitarbeiter`
 - **Routen:** `/cases`, `/cases/:caseItemId`, `/vorgaenge`
 - **Frontend-Komponenten:** `src/router/routes.tsx`
@@ -495,7 +549,7 @@ Führt Fallakten mit Typ, Status, Risiken, Chancen, nächsten Schritten, Beteili
 - **Implementierung:** implementiert
 - **Einbindung:** rollenabhängig
 - **Testabdeckung:** Selbsttest
-- **Letztes Testergebnis:** nicht-ausgefuehrt (nicht aus der Existenz einer Testdatei abgeleitet)
+- **Letztes Testergebnis:** nicht-ausgefuehrt (kein Laufnachweis importiert; nicht aus der Existenz einer Testdatei abgeleitet)
 - **Rollen:** `abgeordneter`, `bueroleitung`, `mitarbeiter`
 - **Routen:** `/casefiles`
 - **Frontend-Komponenten:** `src/features/casefiles/components/CaseFilesView.tsx`, `src/features/cases/files/components/CaseFileDetail.tsx`, `src/features/cases/files/components/CaseFileCreateDialog.tsx`, `src/components/topics/TopicPicker.tsx`
@@ -532,7 +586,7 @@ Führt Fallakten mit Typ, Status, Risiken, Chancen, nächsten Schritten, Beteili
 - **Implementierung:** implementiert
 - **Einbindung:** UI
 - **Testabdeckung:** Selbsttest
-- **Letztes Testergebnis:** nicht-ausgefuehrt (nicht aus der Existenz einer Testdatei abgeleitet)
+- **Letztes Testergebnis:** nicht-ausgefuehrt (kein Laufnachweis importiert; nicht aus der Existenz einer Testdatei abgeleitet)
 - **Rollen:** `abgeordneter`, `bueroleitung`, `mitarbeiter`
 - **Routen:** —
 - **Frontend-Komponenten:** `src/features/cases/files/components/CaseFileCurrentStatus.tsx`, `src/features/cases/files/components/CaseFileNextSteps.tsx`
@@ -568,7 +622,7 @@ Verknüpft Dokumente, Kontakte, Themen und Notizen mit einer Fallakte und zeigt 
 - **Implementierung:** implementiert
 - **Einbindung:** UI
 - **Testabdeckung:** Selbsttest
-- **Letztes Testergebnis:** nicht-ausgefuehrt (nicht aus der Existenz einer Testdatei abgeleitet)
+- **Letztes Testergebnis:** nicht-ausgefuehrt (kein Laufnachweis importiert; nicht aus der Existenz einer Testdatei abgeleitet)
 - **Rollen:** `abgeordneter`, `bueroleitung`, `mitarbeiter`
 - **Routen:** —
 - **Frontend-Komponenten:** `src/features/cases/files/components/CaseFileDocumentsCard.tsx`, `src/features/cases/files/components/CaseFileUnifiedTimeline.tsx`
@@ -604,7 +658,7 @@ Erfasst interne Notizen an einer Fallakte und zeigt sie im Verlauf; das Szenario
 - **Implementierung:** implementiert
 - **Einbindung:** UI
 - **Testabdeckung:** Selbsttest
-- **Letztes Testergebnis:** nicht-ausgefuehrt (nicht aus der Existenz einer Testdatei abgeleitet)
+- **Letztes Testergebnis:** nicht-ausgefuehrt (kein Laufnachweis importiert; nicht aus der Existenz einer Testdatei abgeleitet)
 - **Rollen:** `abgeordneter`, `bueroleitung`, `mitarbeiter`
 - **Routen:** —
 - **Frontend-Komponenten:** `src/features/cases/files/components/CaseFileRightSidebar.tsx`

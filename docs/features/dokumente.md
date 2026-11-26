@@ -49,11 +49,78 @@ _Auto-generiert mit `npm run update:feature-catalog` aus dem zentralen Funktions
 
 ## Selbsttest-Szenarien
 
-| Szenario | Titel | deklarierte Tabellen | deklarierte Prüfungen |
-|---|---|---:|---:|
-| `document-annotation` | Dokument-Annotation | 6 | 14 |
-| `document-list` | Dokumente: Suche, Kategorien, Sortierung und Auswahl | 0 | 0 |
-| `letter-lifecycle` | Brief-Lifecycle (Entwurf → Prüfung → Freigabe → Archiv und Folgeaufgabe) | 4 | 3 |
+| Szenario | Titel | deklarierte Tabellen | deklarierte Prüfungen | letzter Lauf |
+|---|---|---:|---:|---|
+| `document-annotation` | Dokument-Annotation | 6 | 14 | — |
+| `document-list` | Dokumente: Suche, Kategorien, Sortierung und Auswahl | 0 | 0 | — |
+| `letter-lifecycle` | Brief-Lifecycle (Entwurf → Prüfung → Freigabe → Archiv und Folgeaufgabe) | 4 | 3 | — |
+
+## Selbsttest-Schritte
+
+Diese Schritte führen die Szenarien aus; „letzter Lauf“ stammt aus `src/features/selftest/last-runs.json`, nicht aus dieser Doku.
+
+| Szenario | Schritt | Bezeichnung | Art | letzter Lauf |
+|---|---|---|---|---|
+| `document-annotation` | `search-navigation` | Kommentar, Antwort und Text durchsuchen und Treffer zyklisch anspringen | logic | — |
+| `document-annotation` | `ocr-export-version-history` | OCR-Bruchteile, PDF-Exportkoordinaten, Textanker und Verlauf | logic | — |
+| `document-annotation` | `multipage-text-selection` | Mehrseitige Textmarkierungen bleiben seitengetreu bearbeitbar | logic | — |
+| `document-annotation` | `annotation-task-status` | Aufgabenstatus anzeigen und Anmerkungen bewusst abschließen | logic | — |
+| `document-annotation` | `file-kind` | Unterstützte Dateitypen | logic | — |
+| `document-annotation` | `fractions` | Koordinaten normalisieren und begrenzen | logic | — |
+| `document-annotation` | `polygon` | Polygon benötigt mindestens drei Punkte | logic | — |
+| `document-annotation` | `edit-geometry` | Markierungen verschieben, Eckpunkte anpassen und Zoom begrenzen | logic | — |
+| `document-annotation` | `annotation-presentation` | Nummern, Filter, Anker und Polygonabschluss | logic | — |
+| `document-annotation` | `edit-history` | Bearbeitungen rückgängig und wiederholen, ohne fremde Änderungen zu überschreiben | logic | — |
+| `document-annotation` | `arrow-note-shortcuts` | Pfeile, Notiz-Nadeln und Tastaturbelegung | logic | — |
+| `document-annotation` | `arrow-pin-anchor` | Pfeilnummer bleibt bei jeder Richtung am Startpunkt | logic | — |
+| `document-annotation` | `pdf-text-layer` | PDF-Textmarker ist direkt aktiv und Textschicht erhält ihre Skalierungswerte | logic | — |
+| `document-annotation` | `zoom-invariance` | Zoom- und Koordinatentreue bei 25 bis 400 Prozent | logic | — |
+| `document-annotation` | `permission-matrix` | Autor, Mitarbeitende, Leitung und fehlende Mitgliedschaft unterscheiden | logic | — |
+| `document-annotation` | `mention-link` | Erwähnungen eindeutig auflösen und direkt zum Thread verlinken | logic | — |
+| `document-annotation` | `annotation-task-rules` | Zuständigkeit, Mein-Filter und Stafette-Vorgaben | logic | — |
+| `document-annotation` | `annotation-task-storage` | Zuweisung und eindeutige Stafette-Aufgabe atomar speichern | workflow | — |
+| `document-annotation` | `schema` | Antwortspalte im aktiven Backend vorhanden | db | — |
+| `document-annotation` | `server-mentions` | Client und Datenbank erkennen dieselben erwähnten Personen | db | — |
+| `document-annotation` | `server-permissions` | Serverrollen, Löschpolicy und aktive Schutz-Trigger prüfen | db | — |
+| `document-annotation` | `persistence` | Anlegen → Antworten → Erledigen → Löschen; Rechte prüfen | db | — |
+| `document-list` | `filters` | Suche und Kategorie-Chips im aktuellen Ordner kombinieren | logic | — |
+| `document-list` | `sort` | Titel und Erstelldatum in beiden Richtungen sortieren | logic | — |
+| `document-list` | `selection` | Mehrfachauswahl und Alle auswählen auf sichtbare Dokumente begrenzen | logic | — |
+| `letter-lifecycle` | `create-letter` | Briefentwurf mit Empfänger anlegen | db | — |
+| `letter-lifecycle` | `invalid-transition` | Direkter Sprung vom Entwurf zu versendet ist verboten | logic | — |
+| `letter-lifecycle` | `db-invalid-transition` | Datenbank weist Entwurf → versendet ab | workflow | — |
+| `letter-lifecycle` | `attachment` | Echte Anlage hochladen und Inhalt zurücklesen | workflow | — |
+| `letter-lifecycle` | `archive` | Versandstatus, Archiv-PDF und Folgeaufgabe über Anwendungsfunktion | workflow | — |
+| `letter-lifecycle` | `verify-archive` | Archivdatei und Folgeaufgabe sind tatsächlich vorhanden | db | — |
+
+## Deklarierter Prüfumfang
+
+### `document-annotation`
+
+1. Mehrseitige Textauswahl
+2. Suche und Navigation
+3. OCR-Geometrie
+4. PDF-Exportkoordinaten
+5. Textanker und Änderungsverlauf
+6. Dateityp
+7. Bruchteil-Koordinaten
+8. Polygon-Mindestpunkte
+9. Verschieben und Eckpunkte
+10. Zoomgrenzen
+11. Anlegen, Antworten, Erledigen und Löschen
+12. Fremde Autorenschaft und Mandatsgrenzen
+13. Serverrollen und aktive RLS/Trigger
+14. Erwähnungen mit Thread-Link
+
+### `document-list`
+
+Keine Prüfungen deklariert.
+
+### `letter-lifecycle`
+
+1. Datei hochladen und wieder herunterladen
+2. Prüfung und Freigabe über Anwendungsfunktionen
+3. Archivfunktion erzeugt PDF, Dokument und Folgeaufgabe
 
 ## Funktionsdetails
 
@@ -64,7 +131,7 @@ Listet Dokumente mit Kategorien, Ordnern, Kontakten, Themen und Filterung; die L
 - **Implementierung:** implementiert
 - **Einbindung:** UI
 - **Testabdeckung:** Selbsttest
-- **Letztes Testergebnis:** nicht-ausgefuehrt (nicht aus der Existenz einer Testdatei abgeleitet)
+- **Letztes Testergebnis:** nicht-ausgefuehrt (kein Laufnachweis importiert; nicht aus der Existenz einer Testdatei abgeleitet)
 - **Rollen:** `abgeordneter`, `bueroleitung`, `mitarbeiter`, `praktikant`
 - **Routen:** `/documents`
 - **Frontend-Komponenten:** `src/features/documents/components/DocumentsView.tsx`
@@ -101,7 +168,7 @@ Lädt Dateien hoch, legt Versionen an, verknüpft Themen über document_topics u
 - **Implementierung:** implementiert
 - **Einbindung:** UI
 - **Testabdeckung:** kein Test
-- **Letztes Testergebnis:** nicht-ausgefuehrt (nicht aus der Existenz einer Testdatei abgeleitet)
+- **Letztes Testergebnis:** nicht-ausgefuehrt (kein Laufnachweis importiert; nicht aus der Existenz einer Testdatei abgeleitet)
 - **Rollen:** `abgeordneter`, `bueroleitung`, `mitarbeiter`, `praktikant`
 - **Routen:** —
 - **Frontend-Komponenten:** `src/components/documents/DocumentDialogs.tsx`, `src/components/topics/TopicPicker.tsx`
@@ -137,7 +204,7 @@ Ordnet Dokumente Kontakten zu und zeigt sie im Kontaktprofil.
 - **Implementierung:** implementiert
 - **Einbindung:** UI
 - **Testabdeckung:** kein Test
-- **Letztes Testergebnis:** nicht-ausgefuehrt (nicht aus der Existenz einer Testdatei abgeleitet)
+- **Letztes Testergebnis:** nicht-ausgefuehrt (kein Laufnachweis importiert; nicht aus der Existenz einer Testdatei abgeleitet)
 - **Rollen:** `abgeordneter`, `bueroleitung`, `mitarbeiter`
 - **Routen:** —
 - **Frontend-Komponenten:** `src/components/documents/DocumentContactManager.tsx`
@@ -173,7 +240,7 @@ Versendet Dokumente als E-Mail-Anhang über eine Edge Function und protokolliert
 - **Implementierung:** implementiert
 - **Einbindung:** UI
 - **Testabdeckung:** kein Test
-- **Letztes Testergebnis:** nicht-ausgefuehrt (nicht aus der Existenz einer Testdatei abgeleitet)
+- **Letztes Testergebnis:** nicht-ausgefuehrt (kein Laufnachweis importiert; nicht aus der Existenz einer Testdatei abgeleitet)
 - **Rollen:** `abgeordneter`, `bueroleitung`, `mitarbeiter`
 - **Routen:** —
 - **Frontend-Komponenten:** —
@@ -208,7 +275,7 @@ Setzt Markierungen, Hervorhebungen und Kommentare auf PDF- und Bildseiten in rel
 - **Implementierung:** implementiert
 - **Einbindung:** UI
 - **Testabdeckung:** Selbsttest
-- **Letztes Testergebnis:** nicht-ausgefuehrt (nicht aus der Existenz einer Testdatei abgeleitet)
+- **Letztes Testergebnis:** nicht-ausgefuehrt (kein Laufnachweis importiert; nicht aus der Existenz einer Testdatei abgeleitet)
 - **Rollen:** `abgeordneter`, `bueroleitung`, `mitarbeiter`
 - **Routen:** —
 - **Frontend-Komponenten:** `src/features/annotations/components`
@@ -245,7 +312,7 @@ Führt einen ausschließlich per Trigger geschriebenen, für Clients lesenden Ve
 - **Implementierung:** implementiert
 - **Einbindung:** UI
 - **Testabdeckung:** Unit-Test
-- **Letztes Testergebnis:** unbekannt (nicht aus der Existenz einer Testdatei abgeleitet)
+- **Letztes Testergebnis:** unbekannt (kein Laufnachweis importiert; nicht aus der Existenz einer Testdatei abgeleitet)
 - **Rollen:** `abgeordneter`, `bueroleitung`, `mitarbeiter`
 - **Routen:** —
 - **Frontend-Komponenten:** —
@@ -281,7 +348,7 @@ Erzeugt atomar eine Stafette-Aufgabe aus einer Annotation und hält die Verknüp
 - **Implementierung:** implementiert
 - **Einbindung:** UI
 - **Testabdeckung:** Selbsttest
-- **Letztes Testergebnis:** nicht-ausgefuehrt (nicht aus der Existenz einer Testdatei abgeleitet)
+- **Letztes Testergebnis:** nicht-ausgefuehrt (kein Laufnachweis importiert; nicht aus der Existenz einer Testdatei abgeleitet)
 - **Rollen:** `abgeordneter`, `bueroleitung`, `mitarbeiter`
 - **Routen:** —
 - **Frontend-Komponenten:** —
@@ -316,7 +383,7 @@ Erkennt Text lokal über selbst gehostete Tesseract-Assets und erlaubt das Anleg
 - **Implementierung:** implementiert
 - **Einbindung:** UI
 - **Testabdeckung:** kein Test
-- **Letztes Testergebnis:** nicht-ausgefuehrt (nicht aus der Existenz einer Testdatei abgeleitet)
+- **Letztes Testergebnis:** nicht-ausgefuehrt (kein Laufnachweis importiert; nicht aus der Existenz einer Testdatei abgeleitet)
 - **Rollen:** `abgeordneter`, `bueroleitung`, `mitarbeiter`
 - **Routen:** —
 - **Frontend-Komponenten:** —
@@ -353,7 +420,7 @@ Exportiert annotierte Dokumente als separate PDF-Kopie, ohne das Original zu ver
 - **Implementierung:** implementiert
 - **Einbindung:** UI
 - **Testabdeckung:** kein Test
-- **Letztes Testergebnis:** nicht-ausgefuehrt (nicht aus der Existenz einer Testdatei abgeleitet)
+- **Letztes Testergebnis:** nicht-ausgefuehrt (kein Laufnachweis importiert; nicht aus der Existenz einer Testdatei abgeleitet)
 - **Rollen:** `abgeordneter`, `bueroleitung`, `mitarbeiter`
 - **Routen:** —
 - **Frontend-Komponenten:** —
@@ -390,7 +457,7 @@ Schlägt bei geänderter Dateiversion einen eindeutigen Textanker vor und verlan
 - **Implementierung:** implementiert
 - **Einbindung:** UI
 - **Testabdeckung:** kein Test
-- **Letztes Testergebnis:** nicht-ausgefuehrt (nicht aus der Existenz einer Testdatei abgeleitet)
+- **Letztes Testergebnis:** nicht-ausgefuehrt (kein Laufnachweis importiert; nicht aus der Existenz einer Testdatei abgeleitet)
 - **Rollen:** `abgeordneter`, `bueroleitung`, `mitarbeiter`
 - **Routen:** —
 - **Frontend-Komponenten:** —
@@ -426,7 +493,7 @@ Erstellt Briefe im Lexical-Editor mit DIN-5008-Layout, direkt auf dem Blatt besc
 - **Implementierung:** implementiert
 - **Einbindung:** rollenabhängig
 - **Testabdeckung:** Unit-Test
-- **Letztes Testergebnis:** unbekannt (nicht aus der Existenz einer Testdatei abgeleitet)
+- **Letztes Testergebnis:** unbekannt (kein Laufnachweis importiert; nicht aus der Existenz einer Testdatei abgeleitet)
 - **Rollen:** `abgeordneter`, `bueroleitung`, `mitarbeiter`
 - **Routen:** `/letters/:letterId`
 - **Frontend-Komponenten:** `src/pages/LetterDetail.tsx`, `src/features/letters/components/LetterEditor.tsx`, `src/components/letters/LetterEditorCanvas.tsx`, `src/components/letters/DIN5008LetterLayout.tsx`, `src/components/letters/InlineEditableText.tsx`, `src/components/letters/DIN5008AddressInfoSection.tsx`, `src/components/letters/din5008/headerMetrics.ts`, `src/components/letters/din5008/pagination.ts`
@@ -463,7 +530,7 @@ Führt Briefe durch Entwurf, Prüfung, Freigabe und Versand, protokolliert Statu
 - **Implementierung:** implementiert
 - **Einbindung:** rollenabhängig
 - **Testabdeckung:** Selbsttest
-- **Letztes Testergebnis:** nicht-ausgefuehrt (nicht aus der Existenz einer Testdatei abgeleitet)
+- **Letztes Testergebnis:** nicht-ausgefuehrt (kein Laufnachweis importiert; nicht aus der Existenz einer Testdatei abgeleitet)
 - **Rollen:** `abgeordneter`, `bueroleitung`, `mitarbeiter`
 - **Routen:** —
 - **Frontend-Komponenten:** —
@@ -501,7 +568,7 @@ Erzeugt beim Versand ein PDF-Archivdokument, verknüpft es und legt optional ein
 - **Implementierung:** implementiert
 - **Einbindung:** systemseitig
 - **Testabdeckung:** Selbsttest
-- **Letztes Testergebnis:** nicht-ausgefuehrt (nicht aus der Existenz einer Testdatei abgeleitet)
+- **Letztes Testergebnis:** nicht-ausgefuehrt (kein Laufnachweis importiert; nicht aus der Existenz einer Testdatei abgeleitet)
 - **Rollen:** `abgeordneter`, `bueroleitung`, `mitarbeiter`, `system`
 - **Routen:** —
 - **Frontend-Komponenten:** —
@@ -538,7 +605,7 @@ Verwaltet Briefvorlagen, Anlassarten, Absenderdaten und Textbausteine.
 - **Implementierung:** implementiert
 - **Einbindung:** rollenabhängig
 - **Testabdeckung:** kein Test
-- **Letztes Testergebnis:** nicht-ausgefuehrt (nicht aus der Existenz einer Testdatei abgeleitet)
+- **Letztes Testergebnis:** nicht-ausgefuehrt (kein Laufnachweis importiert; nicht aus der Existenz einer Testdatei abgeleitet)
 - **Rollen:** `admin`, `bueroleitung`, `abgeordneter`, `mitarbeiter`
 - **Routen:** —
 - **Frontend-Komponenten:** `src/features/letters/components/LetterTemplateManager.tsx`, `src/components/letters/LetterTemplateIntegration.tsx`
@@ -575,7 +642,7 @@ Erzeugt PDF- und DOCX-Ausgaben aus dem Editorinhalt inklusive Layout und Anlagen
 - **Implementierung:** implementiert
 - **Einbindung:** UI
 - **Testabdeckung:** Unit-Test
-- **Letztes Testergebnis:** nicht-ausgefuehrt (nicht aus der Existenz einer Testdatei abgeleitet)
+- **Letztes Testergebnis:** nicht-ausgefuehrt (kein Laufnachweis importiert; nicht aus der Existenz einer Testdatei abgeleitet)
 - **Rollen:** `abgeordneter`, `bueroleitung`, `mitarbeiter`
 - **Routen:** —
 - **Frontend-Komponenten:** `src/features/letters/components/LetterPDFExport.tsx`, `src/features/letters/components/LetterDOCXExport.tsx`, `src/components/letter-pdf`, `src/components/letter-pdf/carlitoFont.ts`, `src/components/letters/din5008/headerMetrics.ts`, `src/components/letters/din5008/pagination.ts`
@@ -611,7 +678,7 @@ Erlaubt Kommentare, Mitwirkende und Zugriffsschutz für gemeinsam bearbeitete Br
 - **Implementierung:** implementiert
 - **Einbindung:** UI
 - **Testabdeckung:** kein Test
-- **Letztes Testergebnis:** nicht-ausgefuehrt (nicht aus der Existenz einer Testdatei abgeleitet)
+- **Letztes Testergebnis:** nicht-ausgefuehrt (kein Laufnachweis importiert; nicht aus der Existenz einer Testdatei abgeleitet)
 - **Rollen:** `abgeordneter`, `bueroleitung`, `mitarbeiter`
 - **Routen:** —
 - **Frontend-Komponenten:** `src/components/letters/LetterCommentDialog.tsx`
@@ -646,7 +713,7 @@ Fügt Anlagen hinzu, entfernt sie und hält sie beim Archivieren am Dokument.
 - **Implementierung:** implementiert
 - **Einbindung:** UI
 - **Testabdeckung:** kein Test
-- **Letztes Testergebnis:** nicht-ausgefuehrt (nicht aus der Existenz einer Testdatei abgeleitet)
+- **Letztes Testergebnis:** nicht-ausgefuehrt (kein Laufnachweis importiert; nicht aus der Existenz einer Testdatei abgeleitet)
 - **Rollen:** `abgeordneter`, `bueroleitung`, `mitarbeiter`
 - **Routen:** —
 - **Frontend-Komponenten:** `src/components/letters/LetterAttachmentManager.tsx`

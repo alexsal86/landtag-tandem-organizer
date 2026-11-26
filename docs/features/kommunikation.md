@@ -50,6 +50,14 @@ _Auto-generiert mit `npm run update:feature-catalog` aus dem zentralen Funktions
 
 Keine Szenarien zugeordnet. Das bedeutet nicht, dass der Bereich ungetestet ist – es fehlt eine Selbsttest-Abdeckung.
 
+## Selbsttest-Schritte
+
+Keine Schritte deklariert.
+
+## Deklarierter Prüfumfang
+
+Keine Prüfungen deklariert.
+
 ## Funktionsdetails
 
 ### `redaktion.planner` — Social-Media-Planung
@@ -59,7 +67,7 @@ Plant Beiträge im Kalender, ordnet Kanäle und Varianten zu und führt den Reda
 - **Implementierung:** implementiert
 - **Einbindung:** UI
 - **Testabdeckung:** kein Test
-- **Letztes Testergebnis:** nicht-ausgefuehrt (nicht aus der Existenz einer Testdatei abgeleitet)
+- **Letztes Testergebnis:** nicht-ausgefuehrt (kein Laufnachweis importiert; nicht aus der Existenz einer Testdatei abgeleitet)
 - **Rollen:** `abgeordneter`, `bueroleitung`, `mitarbeiter`
 - **Routen:** `/mywork?tab=redaktion`, `/redaktion`
 - **Frontend-Komponenten:** `src/features/redaktion/components/RedaktionFeature.tsx`, `src/features/redaktion/components/PlannerBoard.tsx`, `src/features/redaktion/components/PlannerCalendarGrid.tsx`
@@ -95,7 +103,7 @@ Führt Beiträge durch Freigabe, fordert Änderungen an, protokolliert Entscheid
 - **Implementierung:** implementiert
 - **Einbindung:** rollenabhängig
 - **Testabdeckung:** kein Test
-- **Letztes Testergebnis:** nicht-ausgefuehrt (nicht aus der Existenz einer Testdatei abgeleitet)
+- **Letztes Testergebnis:** nicht-ausgefuehrt (kein Laufnachweis importiert; nicht aus der Existenz einer Testdatei abgeleitet)
 - **Rollen:** `abgeordneter`, `bueroleitung`, `mitarbeiter`
 - **Routen:** —
 - **Frontend-Komponenten:** —
@@ -131,7 +139,7 @@ Verwaltet Bild-/Video-Assets und fasst Beiträge zu Kampagnen zusammen.
 - **Implementierung:** implementiert
 - **Einbindung:** UI
 - **Testabdeckung:** kein Test
-- **Letztes Testergebnis:** nicht-ausgefuehrt (nicht aus der Existenz einer Testdatei abgeleitet)
+- **Letztes Testergebnis:** nicht-ausgefuehrt (kein Laufnachweis importiert; nicht aus der Existenz einer Testdatei abgeleitet)
 - **Rollen:** `abgeordneter`, `bueroleitung`, `mitarbeiter`
 - **Routen:** —
 - **Frontend-Komponenten:** —
@@ -167,7 +175,7 @@ Sammelt Themenvorrat, überführt Notizen in den Themenspeicher und verwaltet Ha
 - **Implementierung:** implementiert
 - **Einbindung:** UI
 - **Testabdeckung:** kein Test
-- **Letztes Testergebnis:** nicht-ausgefuehrt (nicht aus der Existenz einer Testdatei abgeleitet)
+- **Letztes Testergebnis:** nicht-ausgefuehrt (kein Laufnachweis importiert; nicht aus der Existenz einer Testdatei abgeleitet)
 - **Rollen:** `abgeordneter`, `bueroleitung`, `mitarbeiter`
 - **Routen:** —
 - **Frontend-Komponenten:** `src/features/redaktion/components/Themenspeicher.tsx`, `src/features/redaktion/components/TransferToThemenspeicherDialog.tsx`
@@ -203,7 +211,7 @@ Zeigt Redaktionstermine und besondere Tage und versendet Erinnerungen für gepla
 - **Implementierung:** implementiert
 - **Einbindung:** systemseitig
 - **Testabdeckung:** kein Test
-- **Letztes Testergebnis:** nicht-ausgefuehrt (nicht aus der Existenz einer Testdatei abgeleitet)
+- **Letztes Testergebnis:** nicht-ausgefuehrt (kein Laufnachweis importiert; nicht aus der Existenz einer Testdatei abgeleitet)
 - **Rollen:** `abgeordneter`, `bueroleitung`, `mitarbeiter`, `system`
 - **Routen:** —
 - **Frontend-Komponenten:** `src/features/redaktion/components/Kalenderansicht.tsx`
@@ -239,7 +247,7 @@ Verfasst Pressemitteilungen im Wizard, pflegt Revisionen und Kommentare und verf
 - **Implementierung:** implementiert
 - **Einbindung:** UI
 - **Testabdeckung:** kein Test
-- **Letztes Testergebnis:** nicht-ausgefuehrt (nicht aus der Existenz einer Testdatei abgeleitet)
+- **Letztes Testergebnis:** nicht-ausgefuehrt (kein Laufnachweis importiert; nicht aus der Existenz einer Testdatei abgeleitet)
 - **Rollen:** `abgeordneter`, `bueroleitung`, `mitarbeiter`
 - **Routen:** `/news`
 - **Frontend-Komponenten:** `src/components/press/PressReleasesList.tsx`, `src/components/press/PressReleaseWizard.tsx`, `src/components/press/PressReleaseEditor.tsx`, `src/components/press/RevisionCommentDialog.tsx`
@@ -275,7 +283,7 @@ Veröffentlicht Pressemitteilungen über die Ghost-API und protokolliert den Ver
 - **Implementierung:** implementiert
 - **Einbindung:** rollenabhängig
 - **Testabdeckung:** kein Test
-- **Letztes Testergebnis:** nicht-ausgefuehrt (nicht aus der Existenz einer Testdatei abgeleitet)
+- **Letztes Testergebnis:** nicht-ausgefuehrt (kein Laufnachweis importiert; nicht aus der Existenz einer Testdatei abgeleitet)
 - **Rollen:** `bueroleitung`, `mitarbeiter`
 - **Routen:** —
 - **Frontend-Komponenten:** `src/components/press/GhostPublishDialog.tsx`
@@ -311,7 +319,7 @@ Zeigt News-Artikel, speichert Lesestatus und bereinigt alte Artikel.
 - **Implementierung:** implementiert
 - **Einbindung:** UI
 - **Testabdeckung:** kein Test
-- **Letztes Testergebnis:** nicht-ausgefuehrt (nicht aus der Existenz einer Testdatei abgeleitet)
+- **Letztes Testergebnis:** nicht-ausgefuehrt (kein Laufnachweis importiert; nicht aus der Existenz einer Testdatei abgeleitet)
 - **Rollen:** `abgeordneter`, `bueroleitung`, `mitarbeiter`, `praktikant`
 - **Routen:** `/news`
 - **Frontend-Komponenten:** `src/pages/NewsPage.tsx`
@@ -346,7 +354,7 @@ Versendet News-Artikel als E-Mail auf Basis von Vorlagen.
 - **Implementierung:** implementiert
 - **Einbindung:** rollenabhängig
 - **Testabdeckung:** kein Test
-- **Letztes Testergebnis:** nicht-ausgefuehrt (nicht aus der Existenz einer Testdatei abgeleitet)
+- **Letztes Testergebnis:** nicht-ausgefuehrt (kein Laufnachweis importiert; nicht aus der Existenz einer Testdatei abgeleitet)
 - **Rollen:** `bueroleitung`, `mitarbeiter`
 - **Routen:** —
 - **Frontend-Komponenten:** `src/components/administration/NewsEmailTemplateManager.tsx`
@@ -382,7 +390,7 @@ Stellt Räume, Nachrichten, Reaktionen, Anhänge und Lesestatus über den Matrix
 - **Implementierung:** implementiert
 - **Einbindung:** UI
 - **Testabdeckung:** kein Test
-- **Letztes Testergebnis:** nicht-ausgefuehrt (nicht aus der Existenz einer Testdatei abgeleitet)
+- **Letztes Testergebnis:** nicht-ausgefuehrt (kein Laufnachweis importiert; nicht aus der Existenz einer Testdatei abgeleitet)
 - **Rollen:** `abgeordneter`, `bueroleitung`, `mitarbeiter`, `praktikant`
 - **Routen:** `/chat`
 - **Frontend-Komponenten:** `src/components/chat/MatrixChatView.tsx`, `src/components/chat/ChatMessages.tsx`, `src/components/chat/RoomList.tsx`
@@ -418,7 +426,7 @@ Veröffentlicht News-Artikel in Matrix-Räumen und protokolliert die Zustellung.
 - **Implementierung:** implementiert
 - **Einbindung:** systemseitig
 - **Testabdeckung:** kein Test
-- **Letztes Testergebnis:** nicht-ausgefuehrt (nicht aus der Existenz einer Testdatei abgeleitet)
+- **Letztes Testergebnis:** nicht-ausgefuehrt (kein Laufnachweis importiert; nicht aus der Existenz einer Testdatei abgeleitet)
 - **Rollen:** `bueroleitung`, `mitarbeiter`, `system`
 - **Routen:** —
 - **Frontend-Komponenten:** `src/components/admin/MatrixSettings.tsx`
@@ -454,7 +462,7 @@ Verbindet das Büro mit einem Matrix-Bot und versendet morgendliche Zusammenfass
 - **Implementierung:** implementiert
 - **Einbindung:** systemseitig
 - **Testabdeckung:** kein Test
-- **Letztes Testergebnis:** nicht-ausgefuehrt (nicht aus der Existenz einer Testdatei abgeleitet)
+- **Letztes Testergebnis:** nicht-ausgefuehrt (kein Laufnachweis importiert; nicht aus der Existenz einer Testdatei abgeleitet)
 - **Rollen:** `system`, `abgeordneter`, `bueroleitung`
 - **Routen:** —
 - **Frontend-Komponenten:** —
@@ -490,7 +498,7 @@ Veröffentlicht Ankündigungen im Team und merkt sich Ausblendungen je Nutzer.
 - **Implementierung:** implementiert
 - **Einbindung:** UI
 - **Testabdeckung:** kein Test
-- **Letztes Testergebnis:** nicht-ausgefuehrt (nicht aus der Existenz einer Testdatei abgeleitet)
+- **Letztes Testergebnis:** nicht-ausgefuehrt (kein Laufnachweis importiert; nicht aus der Existenz einer Testdatei abgeleitet)
 - **Rollen:** `abgeordneter`, `bueroleitung`, `mitarbeiter`
 - **Routen:** —
 - **Frontend-Komponenten:** —
@@ -525,7 +533,7 @@ Bindet einen Website-Chat als Matrix-Widget ein und nimmt Rückmeldungen und Ver
 - **Implementierung:** implementiert
 - **Einbindung:** UI
 - **Testabdeckung:** kein Test
-- **Letztes Testergebnis:** nicht-ausgefuehrt (nicht aus der Existenz einer Testdatei abgeleitet)
+- **Letztes Testergebnis:** nicht-ausgefuehrt (kein Laufnachweis importiert; nicht aus der Existenz einer Testdatei abgeleitet)
 - **Rollen:** `oeffentlich`, `admin`, `bueroleitung`
 - **Routen:** —
 - **Frontend-Komponenten:** `src/features/matrix-widget/MatrixWebsiteWidget.tsx`, `src/components/administration/MatrixWidgetAdmin.tsx`

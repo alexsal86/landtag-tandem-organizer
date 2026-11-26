@@ -20,7 +20,7 @@ Von 351 Tabellen haben 76 ein registriertes Szenario. 123 sind als Ausbau offen,
 | `case-item-lifecycle` | Vorgangs-Lifecycle (Am Zug → Schritt → Wiedervorlage → Entscheidung → Tageszettel → Abschluss) | case_items, case_item_interactions, case_item_handover_log, task_decisions, task_decision_participants, task_decision_responses, appointment_requests, day_slips, tasks |
 | `contact-lifecycle` | Kontakt-Lifecycle (Anlegen → Kategorie/Tags → Aktivität → Suche) | contacts, contact_activities, contact_usage_stats |
 | `daily-briefing-lifecycle` | Tages-Briefings (Vortag-Regel) | daily_briefings |
-| `day-slip-lifecycle` | Tageszettel-Lifecycle (Links → Neuladen → Übernahme auf Folgetag) | day_slips |
+| `day-slip-lifecycle` | Tageszettel-Lifecycle (Links → Neuladen → Übernahme auf Folgetag) | day_slips, tasks, quick_notes |
 | `decision-lifecycle` | Entscheidungs-Lifecycle (active → open → archived) | task_decisions, task_decision_participants, task_decision_responses |
 | `document-annotation` | Dokument-Annotation | documents, document_annotations, document_annotation_events, document_annotation_tasks, tasks, task_assignees |
 | `document-list` | Dokumente: Suche, Kategorien, Sortierung und Auswahl | Keine (reine Regeln) |
@@ -310,7 +310,7 @@ Von 351 Tabellen haben 76 ein registriertes Szenario. 123 sind als Ausbau offen,
 | `quick_note_topic_mention_deliveries` | Ausgenommen (nicht geprüft) | — |
 | `quick_note_versions` | Ausgenommen (nicht geprüft) | — |
 | `quick_note_write_receipts` | Ausgenommen (nicht geprüft) | — |
-| `quick_notes` | Szenario vorhanden | quick-note-lifecycle |
+| `quick_notes` | Szenario vorhanden | day-slip-lifecycle, quick-note-lifecycle |
 | `regions` | Ausstehend | — |
 | `rls_policy_snapshot_20261124` | Ausgenommen (nicht geprüft) | — |
 | `routine_package_runs` | Szenario vorhanden | onboarding-hr |
@@ -355,7 +355,7 @@ Von 351 Tabellen haben 76 ein registriertes Szenario. 123 sind als Ausbau offen,
 | `task_snoozes` | Ausgenommen (nicht geprüft) | — |
 | `task_statuses` | Szenario vorhanden | task-lifecycle |
 | `task_topics` | Ausgenommen (nicht geprüft) | — |
-| `tasks` | Szenario vorhanden | annual-task-stafette, appointment-briefing-lifecycle, case-file-lifecycle, case-item-lifecycle, document-annotation, jour-fixe-platform-integration, letter-lifecycle, meeting-lifecycle, onboarding-hr, quick-note-lifecycle, responsibilities, task-lifecycle, task-stafette-lifecycle |
+| `tasks` | Szenario vorhanden | annual-task-stafette, appointment-briefing-lifecycle, case-file-lifecycle, case-item-lifecycle, day-slip-lifecycle, document-annotation, jour-fixe-platform-integration, letter-lifecycle, meeting-lifecycle, onboarding-hr, quick-note-lifecycle, responsibilities, task-lifecycle, task-stafette-lifecycle |
 | `team_announcement_dismissals` | Ausgenommen (nicht geprüft) | — |
 | `team_announcements` | Ausstehend | — |
 | `team_bingo_settings` | Ausgenommen (nicht geprüft) | — |
@@ -437,6 +437,8 @@ Diese Manifeste sind keine Messung ausgeführter Assertions.
 - contact-lifecycle: `contact_usage_stats`: contact_id, tenant_id, user_id, usage_count
 - daily-briefing-lifecycle: `daily_briefings`: tenant_id, author_id, briefing_date, title, content
 - day-slip-lifecycle: `day_slips`: user_id, tenant_id, day_key, data
+- day-slip-lifecycle: `tasks`: id, user_id, tenant_id, title, description, status, priority, category, assigned_to, due_date
+- day-slip-lifecycle: `quick_notes`: id, user_id, tenant_id, title, content
 - decision-lifecycle: `task_decisions`: title, description, status, created_by, tenant_id, visible_to_all, priority, response_deadline, archived_at, archived_by
 - decision-lifecycle: `task_decision_participants`: decision_id, user_id
 - decision-lifecycle: `task_decision_responses`: decision_id, participant_id, response_type, comment

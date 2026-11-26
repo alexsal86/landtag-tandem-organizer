@@ -46,9 +46,30 @@ _Auto-generiert mit `npm run update:feature-catalog` aus dem zentralen Funktions
 
 ## Selbsttest-Szenarien
 
-| Szenario | Titel | deklarierte Tabellen | deklarierte Prüfungen |
-|---|---|---:|---:|
-| `security-hardening` | Sicherheitsregeln: Porträtdateien und E-Mail-Inhalte | 0 | 4 |
+| Szenario | Titel | deklarierte Tabellen | deklarierte Prüfungen | letzter Lauf |
+|---|---|---:|---:|---|
+| `security-hardening` | Sicherheitsregeln: Porträtdateien und E-Mail-Inhalte | 0 | 4 | — |
+
+## Selbsttest-Schritte
+
+Diese Schritte führen die Szenarien aus; „letzter Lauf“ stammt aus `src/features/selftest/last-runs.json`, nicht aus dieser Doku.
+
+| Szenario | Schritt | Bezeichnung | Art | letzter Lauf |
+|---|---|---|---|---|
+| `security-hardening` | `portrait-files` | Porträtdateien: WebP-Signatur, RIFF-Länge und Pflichtmaße | logic | — |
+| `security-hardening` | `portrait-source` | Porträtquelle: nur http(s) ohne Zugangsdaten und mit Feldgrenzen | logic | — |
+| `security-hardening` | `portrait-record` | Porträt-Metadaten: Verbindung, Versions-ID und feste Dateinamen | logic | — |
+| `security-hardening` | `portrait-crop` | Bildzuschnitt: 3:4-Rahmen, begrenzter Zoom und geklemmter Versatz | logic | — |
+| `security-hardening` | `email-html` | E-Mail-HTML: maskieren, sichere Links und entfernte aktive Inhalte | logic | — |
+
+## Deklarierter Prüfumfang
+
+### `security-hardening`
+
+1. Porträt-WebP: Signatur, RIFF-Länge und Pflichtmaße je Variante
+2. Porträt-Metadaten: Quelle, Verbindung und Dateinamen
+3. Bildzuschnitt deckt das 3:4-Format und begrenzt Zoom sowie Versatz
+4. E-Mail-HTML entfernt Skripte, Ereignis-Handler und aktive URLs
 
 ## Funktionsdetails
 
@@ -59,7 +80,7 @@ Synchronisiert verbundene externe Kalender bidirektional, claimt Zeitfenster ato
 - **Implementierung:** implementiert
 - **Einbindung:** rollenabhängig
 - **Testabdeckung:** kein Test
-- **Letztes Testergebnis:** nicht-ausgefuehrt (nicht aus der Existenz einer Testdatei abgeleitet)
+- **Letztes Testergebnis:** nicht-ausgefuehrt (kein Laufnachweis importiert; nicht aus der Existenz einer Testdatei abgeleitet)
 - **Rollen:** `abgeordneter`, `bueroleitung`, `mitarbeiter`, `system`
 - **Routen:** —
 - **Frontend-Komponenten:** `src/features/calendar/components/ExternalCalendarSettings.tsx`, `src/components/administration/CalendarSyncSettings.tsx`, `src/features/calendar/components/CalendarSyncDebug.tsx`
@@ -96,7 +117,7 @@ Erzeugt ICS-Dateien, prüft ICS-Zugriffe und stellt Feed-Endpunkte für Abonneme
 - **Implementierung:** implementiert
 - **Einbindung:** rollenabhängig
 - **Testabdeckung:** Unit-Test
-- **Letztes Testergebnis:** unbekannt (nicht aus der Existenz einer Testdatei abgeleitet)
+- **Letztes Testergebnis:** unbekannt (kein Laufnachweis importiert; nicht aus der Existenz einer Testdatei abgeleitet)
 - **Rollen:** `admin`, `bueroleitung`, `abgeordneter`
 - **Routen:** —
 - **Frontend-Komponenten:** —
@@ -132,7 +153,7 @@ Versendet E-Mails über zentrale Vorlagen, protokolliert Zustellungen und verarb
 - **Implementierung:** implementiert
 - **Einbindung:** systemseitig
 - **Testabdeckung:** Selbsttest
-- **Letztes Testergebnis:** nicht-ausgefuehrt (nicht aus der Existenz einer Testdatei abgeleitet)
+- **Letztes Testergebnis:** nicht-ausgefuehrt (kein Laufnachweis importiert; nicht aus der Existenz einer Testdatei abgeleitet)
 - **Rollen:** `system`, `admin`
 - **Routen:** —
 - **Frontend-Komponenten:** —
@@ -168,7 +189,7 @@ Registriert Push-Token, versendet Push-Nachrichten für Benachrichtigungen und r
 - **Implementierung:** implementiert
 - **Einbindung:** systemseitig
 - **Testabdeckung:** kein Test
-- **Letztes Testergebnis:** nicht-ausgefuehrt (nicht aus der Existenz einer Testdatei abgeleitet)
+- **Letztes Testergebnis:** nicht-ausgefuehrt (kein Laufnachweis importiert; nicht aus der Existenz einer Testdatei abgeleitet)
 - **Rollen:** `system`, `abgeordneter`, `bueroleitung`, `mitarbeiter`
 - **Routen:** —
 - **Frontend-Komponenten:** —
@@ -204,7 +225,7 @@ Geokodiert Kontaktadressen einzeln und im Batch und triggert Geocoding bei Adres
 - **Implementierung:** implementiert
 - **Einbindung:** systemseitig
 - **Testabdeckung:** kein Test
-- **Letztes Testergebnis:** nicht-ausgefuehrt (nicht aus der Existenz einer Testdatei abgeleitet)
+- **Letztes Testergebnis:** nicht-ausgefuehrt (kein Laufnachweis importiert; nicht aus der Existenz einer Testdatei abgeleitet)
 - **Rollen:** `system`, `mitarbeiter`, `bueroleitung`
 - **Routen:** —
 - **Frontend-Komponenten:** —
@@ -240,7 +261,7 @@ Erzeugt Vorbereitungsvorschläge und Aufgaben-Vorschläge aus freiem Text über 
 - **Implementierung:** implementiert
 - **Einbindung:** rollenabhängig
 - **Testabdeckung:** kein Test
-- **Letztes Testergebnis:** nicht-ausgefuehrt (nicht aus der Existenz einer Testdatei abgeleitet)
+- **Letztes Testergebnis:** nicht-ausgefuehrt (kein Laufnachweis importiert; nicht aus der Existenz einer Testdatei abgeleitet)
 - **Rollen:** `abgeordneter`, `bueroleitung`, `mitarbeiter`
 - **Routen:** —
 - **Frontend-Komponenten:** —
@@ -277,7 +298,7 @@ Transkribiert Sprachaufnahmen serverseitig für Notizen und Brieftexte.
 - **Implementierung:** implementiert
 - **Einbindung:** rollenabhängig
 - **Testabdeckung:** kein Test
-- **Letztes Testergebnis:** nicht-ausgefuehrt (nicht aus der Existenz einer Testdatei abgeleitet)
+- **Letztes Testergebnis:** nicht-ausgefuehrt (kein Laufnachweis importiert; nicht aus der Existenz einer Testdatei abgeleitet)
 - **Rollen:** `abgeordneter`, `bueroleitung`, `mitarbeiter`
 - **Routen:** —
 - **Frontend-Komponenten:** —
@@ -313,7 +334,7 @@ Sucht passende Bilder über Unsplash und übernimmt sie in Pressemitteilungen un
 - **Implementierung:** implementiert
 - **Einbindung:** UI
 - **Testabdeckung:** kein Test
-- **Letztes Testergebnis:** nicht-ausgefuehrt (nicht aus der Existenz einer Testdatei abgeleitet)
+- **Letztes Testergebnis:** nicht-ausgefuehrt (kein Laufnachweis importiert; nicht aus der Existenz einer Testdatei abgeleitet)
 - **Rollen:** `abgeordneter`, `bueroleitung`, `mitarbeiter`
 - **Routen:** —
 - **Frontend-Komponenten:** `src/components/dashboard/UnsplashImagePicker.tsx`, `src/components/press/FeatureImagePicker.tsx`
@@ -349,7 +370,7 @@ Sammelt Egress-Metriken, erkennt Anomalien und stellt sie im Betriebs-Dashboard 
 - **Implementierung:** implementiert
 - **Einbindung:** systemseitig
 - **Testabdeckung:** kein Test
-- **Letztes Testergebnis:** nicht-ausgefuehrt (nicht aus der Existenz einer Testdatei abgeleitet)
+- **Letztes Testergebnis:** nicht-ausgefuehrt (kein Laufnachweis importiert; nicht aus der Existenz einer Testdatei abgeleitet)
 - **Rollen:** `system`, `admin`
 - **Routen:** —
 - **Frontend-Komponenten:** —
@@ -385,7 +406,7 @@ Prüft Auth-, Rollen- und Mandantengrenzen der Edge Functions über Contract-Tes
 - **Implementierung:** implementiert
 - **Einbindung:** nicht anwendbar
 - **Testabdeckung:** Security-Test
-- **Letztes Testergebnis:** unbekannt (nicht aus der Existenz einer Testdatei abgeleitet)
+- **Letztes Testergebnis:** unbekannt (kein Laufnachweis importiert; nicht aus der Existenz einer Testdatei abgeleitet)
 - **Rollen:** `system`
 - **Routen:** —
 - **Frontend-Komponenten:** —

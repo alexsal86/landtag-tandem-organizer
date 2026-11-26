@@ -912,13 +912,17 @@
         {
           "scenario": "day-slip-lifecycle",
           "title": "Tageszettel-Lifecycle (Links → Neuladen → Übernahme auf Folgetag)",
-          "description": "Schreibt einen Tageszettel mit verlinkten Zeilen (Notiz, Aufgabe, Vorgang, Entscheidung), lädt ihn neu, prüft die Sprungziele und überträgt offene Zeilen auf den Folgetag, ohne Links zu verlieren.",
+          "description": "Schreibt einen Tageszettel mit verlinkten Zeilen (Notiz, Aufgabe, Vorgang, Entscheidung), lädt ihn neu, prüft Vorlagen-, Wochenplan- und Routinenentscheidung, die Übernahme auf den Folgetag und den Export ohne Dublette.",
           "checks": [
             "Speichern und erneutes Laden",
             "Link-Erhalt bei Übernahme",
             "Keine doppelte Übernahme",
-            "Wochentag-Vorlage nur an unbegonnenen Zetteln, Entscheidung je Tag festgehalten",
-            "Vorlagenentscheidung übersteht Speichern und Neuladen",
+            "Wochentag-Vorlage, Wochenplan und Routinen entscheiden einmal pro Tag; nur leere Zettel erhalten Vorlage und Plan",
+            "Archivierte Vorlagenentscheidung übersteht Speichern und Neuladen",
+            "Export trifft dasselbe Ziel ohne Dublette (Aufgabe und Notiz)",
+            "Schreiben in einen fremden Zettel wird verweigert, fremde Zettel bleiben unlesbar",
+            "Stimmung übersteht Speichern und Neuladen",
+            "Archiv trennt abgeschlossene und offene Tage nach dem Neuladen",
             "Frühere Tage ohne Abschluss bleiben lesbar",
             "Snooze-Vorschläge ohne doppeltes Ziel",
             "Löschen mit Rückgängig",
@@ -926,7 +930,9 @@
             "Archiv: erledigt/zugewiesen/offen, Suche, Datumsnachbarn"
           ],
           "tables": [
-            "day_slips"
+            "day_slips",
+            "tasks",
+            "quick_notes"
           ],
           "features": [
             "daily.briefing"
@@ -953,6 +959,10 @@
               "label": "Vorlagenentscheidung bleibt nach Speichern und Neuladen erhalten"
             },
             {
+              "id": "start-injection-once",
+              "label": "Vorlage, Wochenplan und Routinen entscheiden einmal pro Tag"
+            },
+            {
               "id": "navigation-rules",
               "label": "Frühere Tage lesbar, Zukunft gesperrt"
             },
@@ -967,6 +977,22 @@
             {
               "id": "template-decision",
               "label": "Wochentag-Vorlage nur an unbegonnenen Zetteln, Entscheidung je Tag festgehalten"
+            },
+            {
+              "id": "export-idempotent",
+              "label": "Export trifft dasselbe Ziel ohne Dublette"
+            },
+            {
+              "id": "foreign-slip-blocked",
+              "label": "Fremder Zettel bleibt schreib- und lesegeschützt"
+            },
+            {
+              "id": "mood-persisted",
+              "label": "Stimmung bleibt nach Speichern und Neuladen erhalten"
+            },
+            {
+              "id": "archive-after-reload",
+              "label": "Archiv trennt abgeschlossene und offene Tage nach dem Neuladen"
             },
             {
               "id": "delete-undo",
