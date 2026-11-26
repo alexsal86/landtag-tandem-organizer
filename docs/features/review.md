@@ -523,7 +523,7 @@ Eindeutige Fehler werden im CI-Lauf ausgegeben und brechen die Prüfung ab; sie 
 ### `daily.briefing`
 
 - Frühere Tage sind schreibgeschützt; abgeschlossen werden kann nur der aktuelle Tag.
-- Wochentag-Vorlage, Wochenplan und wiederkehrende Punkte werden als eine Startentscheidung einmal pro Tag getroffen: Vorlage und Wochenplan kommen nur in noch unbegonnene Zettel und auch nach späterem Leeren nicht nachträglich; Routinen höchstens einmal, auch auf einem bereits begonnenen Zettel. Die Entscheidung wird auch dann festgehalten, wenn nichts eingefügt wurde. Manuell gewählte Vorlagen ersetzen sie für den Tag.
+- Wochentag-Vorlage, Wochenplan und wiederkehrende Punkte werden als eine Startentscheidung einmal pro Tag getroffen: Vorlage und Wochenplan kommen nur in noch unbegonnene Zettel und auch nach späterem Leeren nicht nachträglich; Routinen höchstens einmal, auch auf einem bereits begonnenen Zettel. Die Entscheidung wird auch dann festgehalten, wenn nichts eingefügt wurde. Manuell gewählte Vorlagen ersetzen sie für den Tag. Fehlende Wochenplan-Zeilen eines bereits begonnenen Zettels zeigt der Zettel mit Anzahl und manueller Übernahme an, statt sie stillschweigend zu übergehen.
 - Kürzel belegen die Zuordnung nur vor; mehrdeutige Namen und unbekannte Fälligkeiten bleiben Text und werden in der Zuordnung geklärt.
 
 ### `calendar.holidays`

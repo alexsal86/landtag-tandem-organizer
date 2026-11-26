@@ -963,6 +963,10 @@
               "label": "Vorlage, Wochenplan und Routinen entscheiden einmal pro Tag"
             },
             {
+              "id": "week-plan-manual-adoption",
+              "label": "Fehlende Wochenplan-Zeilen bleiben sichtbar und lassen sich nachtragen"
+            },
+            {
               "id": "navigation-rules",
               "label": "Frühere Tage lesbar, Zukunft gesperrt"
             },

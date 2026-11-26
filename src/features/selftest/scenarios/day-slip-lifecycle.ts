@@ -2,7 +2,7 @@ import { supabase } from "@/integrations/supabase/client";
 import type { Json } from "@/integrations/supabase/types";
 import type { TestScenario } from "../types";
 import { describeError } from "../verify";
-import { appendEntries, carryLines, collectCarryLines, completedArchiveDays, decideDayStart, decideDayTemplate, normalizeStore, removeLineFromDay, restoreLineToDay, sourcePath } from "@/components/dayslip/daySlipState";
+import { appendEntries, carryLines, collectCarryLines, completedArchiveDays, decideDayStart, missingDaySlipLines, normalizeStore, removeLineFromDay, restoreLineToDay, sourcePath } from "@/components/dayslip/daySlipState";
 import { createExportTarget } from "@/components/dayslip/daySlipExport";
 import { openLineCount, openPastDays, resolveDayView, shiftDayKey, snoozePresets } from "@/components/dayslip/daySlipNavigation";
 import { parseDaySlipLine } from "@/components/dayslip/daySlipShorthand";
@@ -94,10 +94,10 @@ export const daySlipLifecycleScenario: TestScenario = {
         const { data: back, error: readError } = await supabase.from("day_slips").select("data").eq("id", data.id).single();
         if (readError) return { ok: false, message: describeError(readError) };
         const reloaded = normalizeStore({ [DAY3]: back?.data })[DAY3];
-        const decision = decideDayTemplate(reloaded, ["Plenartag", "Fraktionssitzung"]);
+        const decision = decideDayStart(reloaded, { templateLines: ["Plenartag", "Fraktionssitzung"], weekPlanLines: [], recurringLines: [] });
         const checks = {
           entscheidungGespeichert: reloaded?.dayTemplateInjected === true,
-          keineVorlageNachher: !decision.applies,
+          keineVorlageNachher: !decision.templateApplied,
           geleerterZettelBleibtLeer: decision.day.html === "" && extractLinesFromHtml(decision.day.html).length === 0,
           entscheidungBleibt: decision.day.dayTemplateInjected === true,
         };
@@ -135,6 +135,26 @@ export const daySlipLifecycleScenario: TestScenario = {
         return failed.length
           ? { ok: false, message: `Fehler: ${failed.join(", ")}`, details: checks }
           : { ok: true, message: "Nur ein unbegonnener Zettel erhält Vorlage und Wochenplan; Routinen kommen höchstens einmal, und jede Entscheidung wird festgehalten.", details: checks };
+      },
+    },
+    {
+      id: "week-plan-manual-adoption", label: "Fehlende Wochenplan-Zeilen bleiben sichtbar und lassen sich nachtragen", kind: "logic",
+      run: async () => {
+        const plan = ["Ausschuss 14:00", "Eigene Zeile"];
+        const started: DaySlipDayData = { html: toParagraphHtml({ id: "own", text: "Eigene Zeile" }), plainText: "Eigene Zeile" };
+        const decision = decideDayStart(started, { templateLines: [], recurringLines: [], weekPlanLines: plan });
+        const missing = missingDaySlipLines(decision.day, plan);
+        const adopted = appendEntries(decision.day, missing.map(text => ({ id: crypto.randomUUID(), text })));
+        const checks = {
+          automatischNichts: !decision.weekPlanApplied && extractLinesFromHtml(decision.day.html).length === 1,
+          fehlendeZeileSichtbar: missing.length === 1 && missing[0] === "Ausschuss 14:00",
+          nachtragenOhneDublette: extractLinesFromHtml(adopted.html).map(line => line.text).join() === "Eigene Zeile,Ausschuss 14:00",
+          danachNichtsOffen: missingDaySlipLines(adopted, plan).length === 0,
+        };
+        const failed = Object.entries(checks).filter(([, ok]) => !ok).map(([name]) => name);
+        return failed.length
+          ? { ok: false, message: `Fehler: ${failed.join(", ")}`, details: checks }
+          : { ok: true, message: "Ein begonnener Zettel bekommt den Plan nicht automatisch, zeigt aber genau die fehlenden Zeilen und übernimmt sie ohne Dublette.", details: checks };
       },
     },
     {
@@ -196,20 +216,21 @@ export const daySlipLifecycleScenario: TestScenario = {
       run: async () => {
         const template = ["Plenartag", "Fraktionssitzung"];
         const started: DaySlipDayData = { html: toParagraphHtml({ id: "own", text: "Eigene Zeile" }), plainText: "Eigene Zeile" };
-        const startedDecision = decideDayTemplate(started, template);
+        const decisionInput = { templateLines: template, weekPlanLines: [], recurringLines: [] };
+        const startedDecision = decideDayStart(started, decisionInput);
         const emptied: DaySlipDayData = { html: "", plainText: "", struckLineIds: [], dayTemplateInjected: true };
-        const emptiedDecision = decideDayTemplate(emptied, template);
+        const emptiedDecision = decideDayStart(emptied, decisionInput);
         const reloaded = normalizeStore({ "2026-11-26": emptiedDecision.day })["2026-11-26"];
-        const freshDecision = decideDayTemplate(undefined, template);
-        const noTemplateDecision = decideDayTemplate(undefined, []);
+        const freshDecision = decideDayStart(undefined, decisionInput);
+        const noTemplateDecision = decideDayStart(undefined, { templateLines: [], weekPlanLines: [], recurringLines: [] });
         const checks = {
-          begonnenOhneVorlage: !startedDecision.applies && startedDecision.day.html === started.html,
+          begonnenOhneVorlage: !startedDecision.templateApplied && startedDecision.day.html === started.html,
           begonnenEntschieden: startedDecision.day.dayTemplateInjected === true,
-          geleertBleibtLeer: !emptiedDecision.applies && emptiedDecision.day.html === "",
+          geleertBleibtLeer: !emptiedDecision.templateApplied && emptiedDecision.day.html === "",
           nachNeuladenUnveraendert: reloaded.dayTemplateInjected === true && extractLinesFromHtml(reloaded.html).length === 0,
-          leerBekommtVorlage: freshDecision.applies && freshDecision.day.dayTemplateInjected === true
+          leerBekommtVorlage: freshDecision.templateApplied && freshDecision.day.dayTemplateInjected === true
             && extractLinesFromHtml(freshDecision.day.html).map(line => line.text).join() === template.join(),
-          ohneZuordnungEntschieden: !noTemplateDecision.applies && noTemplateDecision.day.dayTemplateInjected === true,
+          ohneZuordnungEntschieden: !noTemplateDecision.templateApplied && noTemplateDecision.day.dayTemplateInjected === true,
         };
         const failed = Object.entries(checks).filter(([, ok]) => !ok).map(([name]) => name);
         return failed.length

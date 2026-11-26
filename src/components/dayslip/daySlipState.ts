@@ -84,30 +84,14 @@ export function hasDaySlipContent(day?: DaySlipDayData): boolean {
 }
 
 /**
- * A slip counts as not started while it has no lines, links, rules, triage entries or timestamps.
- * The automatic weekday template must never be inserted into a slip that is already in use.
+ * Planned lines of a day that its slip does not carry yet, compared by normalized text.
+ * Used for the manual adoption offered on a slip that was already started, where the automatic
+ * start decision deliberately inserts nothing.
  */
-export function isUnstartedDaySlip(day?: DaySlipDayData): boolean {
-  if (!day) return true;
-  if (day.dayTemplateInjected) return false;
-  return !hasDaySlipContent(day);
-}
-
-/** The weekday template is decided once per day, whether or not any line was inserted. */
-export type DayTemplateDecision = { day: DaySlipDayData; applies: boolean };
-
-/**
- * One weekday-template decision per day: lines only go into a slip that has not begun,
- * and the decision is recorded even when nothing is inserted, so a slip that is emptied
- * later (and reloaded) never receives the template afterwards.
- */
-export function decideDayTemplate(day: DaySlipDayData | undefined, lines: string[]): DayTemplateDecision {
-  const base = day ?? emptyDay();
-  const applies = lines.length > 0 && isUnstartedDaySlip(base);
-  return {
-    applies,
-    day: { ...(applies ? appendStructuredLines(base, lines) : base), dayTemplateInjected: true },
-  };
+export function missingDaySlipLines(day: DaySlipDayData | undefined, lines: string[]): string[] {
+  if (!day) return lines.filter(line => line.trim());
+  const present = new Set(extractLinesFromHtml(day.html).map(line => normalizeLineText(line.text)));
+  return lines.filter(line => line.trim() && !present.has(normalizeLineText(line)));
 }
 
 export type DayStartInput = {

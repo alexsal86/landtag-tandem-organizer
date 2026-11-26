@@ -121,6 +121,7 @@ Diese Schritte führen die Szenarien aus; „letzter Lauf“ stammt aus `src/fea
 | `day-slip-lifecycle` | `no-duplicate-carry` | Erneute Übernahme erzeugt keine doppelten Zeilen | logic | — |
 | `day-slip-lifecycle` | `template-flag-persisted` | Vorlagenentscheidung bleibt nach Speichern und Neuladen erhalten | db | — |
 | `day-slip-lifecycle` | `start-injection-once` | Vorlage, Wochenplan und Routinen entscheiden einmal pro Tag | logic | — |
+| `day-slip-lifecycle` | `week-plan-manual-adoption` | Fehlende Wochenplan-Zeilen bleiben sichtbar und lassen sich nachtragen | logic | — |
 | `day-slip-lifecycle` | `navigation-rules` | Frühere Tage lesbar, Zukunft gesperrt | logic | — |
 | `day-slip-lifecycle` | `open-past-days` | Offene frühere Tage werden aufgelistet | logic | — |
 | `day-slip-lifecycle` | `snooze-presets` | Snooze-Vorschläge ohne doppeltes Ziel | logic | — |
@@ -722,7 +723,7 @@ Erzeugt Tagesbriefings und Tageszettel mit Terminen und Aufgaben, hält Lesebest
 **Bekannte Einschränkungen**
 
 - Frühere Tage sind schreibgeschützt; abgeschlossen werden kann nur der aktuelle Tag.
-- Wochentag-Vorlage, Wochenplan und wiederkehrende Punkte werden als eine Startentscheidung einmal pro Tag getroffen: Vorlage und Wochenplan kommen nur in noch unbegonnene Zettel und auch nach späterem Leeren nicht nachträglich; Routinen höchstens einmal, auch auf einem bereits begonnenen Zettel. Die Entscheidung wird auch dann festgehalten, wenn nichts eingefügt wurde. Manuell gewählte Vorlagen ersetzen sie für den Tag.
+- Wochentag-Vorlage, Wochenplan und wiederkehrende Punkte werden als eine Startentscheidung einmal pro Tag getroffen: Vorlage und Wochenplan kommen nur in noch unbegonnene Zettel und auch nach späterem Leeren nicht nachträglich; Routinen höchstens einmal, auch auf einem bereits begonnenen Zettel. Die Entscheidung wird auch dann festgehalten, wenn nichts eingefügt wurde. Manuell gewählte Vorlagen ersetzen sie für den Tag. Fehlende Wochenplan-Zeilen eines bereits begonnenen Zettels zeigt der Zettel mit Anzahl und manueller Übernahme an, statt sie stillschweigend zu übergehen.
 - Kürzel belegen die Zuordnung nur vor; mehrdeutige Namen und unbekannte Fälligkeiten bleiben Text und werden in der Zuordnung geklärt.
 
 **Offene Prüfpunkte**

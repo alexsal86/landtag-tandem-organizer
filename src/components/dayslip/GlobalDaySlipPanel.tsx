@@ -7,7 +7,7 @@ import { useTenant } from "@/hooks/useTenant";
 import { useTenantUsers } from "@/hooks/useTenantUsers";
 import { useNavigate } from "react-router-dom";
 import { toast } from "sonner";
-import { sourcePath, normalizeStore, emptyDay } from "./daySlipState";
+import { sourcePath, normalizeStore, emptyDay, missingDaySlipLines } from "./daySlipState";
 import { resolveDayView, openPastDays, openLineCount, snoozePresets } from "./daySlipNavigation";
 import { parseDaySlipLine } from "./daySlipShorthand";
 import { archiveNeighbours, archiveStatusLabel, buildArchiveEntry, filterArchive } from "./daySlipArchive";
@@ -122,6 +122,11 @@ function DaySlipPanel({ userId, tenantId }: { userId: string; tenantId: string }
   const dayView = useMemo(() => resolveDayView(ds.store, ds.todayKey, viewKey), [ds.store, ds.todayKey, viewKey]);
   const viewDay = useMemo(() => ds.store[dayView.key] ?? emptyDay(), [ds.store, dayView.key]);
   const viewOpenCount = useMemo(() => openLineCount(viewDay), [viewDay]);
+  // Planned lines the automatic start decision left out because today's slip had already begun.
+  const missingPlanLines = useMemo(() => {
+    if (!ds.weekPlan?.applied || !ds.todayData.weekPlanInjected) return [];
+    return missingDaySlipLines(ds.todayData, ds.weekPlan.days[ds.todayKey] ?? []);
+  }, [ds.weekPlan, ds.todayData, ds.todayKey]);
   const pastOpenDays = useMemo(() => openPastDays(ds.store, ds.todayKey), [ds.store, ds.todayKey]);
   const snoozeOptions = useMemo(() => snoozePresets(ds.todayKey), [ds.todayKey]);
 
@@ -647,6 +652,25 @@ function DaySlipPanel({ userId, tenantId }: { userId: string; tenantId: string }
           ) : (
             <div className={`flex min-h-0 flex-1 flex-col transition-all duration-300 ease-out ${contentTransitioning ? "opacity-0 translate-y-1" : "opacity-100 translate-y-0"}`}>
               {!ds.todayData.completedAt && <WeekPlanningBanner key={`week-${ds.todayKey}`} recurringItems={ds.recurringItems} weekPlan={ds.weekPlan} onChangePlan={ds.setWeekPlan} />}
+              {!ds.todayData.completedAt && missingPlanLines.length > 0 && (
+                <div className="border-b border-primary/30 bg-primary/5 px-4 py-2 text-sm" role="status">
+                  <p>
+                    <span className="font-semibold">Wochenplan für heute:</span>{" "}
+                    {missingPlanLines.length === 1 ? "1 geplante Zeile fehlt" : `${missingPlanLines.length} geplante Zeilen fehlen`}{" "}
+                    <span className="text-muted-foreground">– sie wurden nicht automatisch ergänzt, weil der Zettel heute bereits begonnen war.</span>
+                  </p>
+                  <div className="mt-1 flex items-center justify-between gap-2 text-xs">
+                    <span className="min-w-0 truncate text-muted-foreground" title={missingPlanLines.join(" · ")}>{missingPlanLines.join(" · ")}</span>
+                    <button
+                      type="button"
+                      className="shrink-0 rounded border border-primary/40 bg-primary/10 px-2 py-0.5 font-medium text-primary hover:bg-primary/20"
+                      onClick={() => ds.appendLinesToToday(missingPlanLines)}
+                    >
+                      Jetzt nachtragen
+                    </button>
+                  </div>
+                </div>
+              )}
               {ds.carryEntries.length > 0 && !ds.todayData.completedAt && (
                 <div className="border-b border-palette-amber/40 bg-palette-amber/10 px-4 py-2 text-sm text-palette-amber   ">
                   <span className="font-semibold">Noch offen oder wieder fällig:</span>{" "}&ldquo;{ds.carryEntries[0].text}&rdquo;{ds.carryEntries.length > 1 ? ` +${ds.carryEntries.length - 1}` : ""}
