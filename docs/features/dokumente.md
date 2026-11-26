@@ -6,10 +6,10 @@ _Auto-generiert mit `npm run update:feature-catalog` aus dem zentralen Funktions
 
 ## Kennzahlen
 
-- Funktionen: **17** in **3** Unterbereichen
-- implementiert: **17**, teilweise: **0**, deaktiviert: **0**, potenziell verwaist: **0**
-- ohne zugeordneten Test: **9**
-- ohne Dokumentationsverweis: **13**
+- Funktionen: **18** in **3** Unterbereichen
+- implementiert: **18**, teilweise: **0**, deaktiviert: **0**, potenziell verwaist: **0**
+- ohne zugeordneten Test: **10**
+- ohne Dokumentationsverweis: **14**
 
 ## Funktionen
 
@@ -29,6 +29,7 @@ _Auto-generiert mit `npm run update:feature-catalog` aus dem zentralen Funktions
 | `letters.attachments` Briefanlagen verwalten | Briefe | fachlich | implementiert | UI | kein Test |
 | `letters.templates` Briefvorlagen und Anlässe | Briefe | administrativ | implementiert | rollenabhängig | kein Test |
 | `documents.upload-version` Dokument hochladen und versionieren | Dokumente | fachlich | implementiert | UI | kein Test |
+| `documents.details` Dokumentdetails und Verknüpfungen | Dokumente | fachlich | implementiert | UI | kein Test |
 | `documents.contacts` Dokumente mit Kontakten verknüpfen | Dokumente | fachlich | implementiert | UI | kein Test |
 | `documents.email` Dokumente per E-Mail versenden | Dokumente | integration | implementiert | UI | kein Test |
 | `documents.list` Dokumentenliste und Suche | Dokumente | fachlich | implementiert | UI | Selbsttest |
@@ -45,12 +46,13 @@ _Auto-generiert mit `npm run update:feature-catalog` aus dem zentralen Funktions
 
 ## Datenbanktabellen
 
-`contacts`, `document_annotation_events`, `document_annotation_tasks`, `document_annotations`, `document_categories`, `document_contacts`, `document_folders`, `document_topics`, `documents`, `email_logs`, `letter_archive_settings`, `letter_attachments`, `letter_collaborators`, `letter_comments`, `letter_occasions`, `letter_template_assets`, `letter_template_settings`, `letter_templates`, `letter_workflow_history`, `letters`, `sender_information`, `tasks`, `topics`
+`case_file_documents`, `contacts`, `document_annotation_events`, `document_annotation_tasks`, `document_annotations`, `document_categories`, `document_contacts`, `document_folders`, `document_topics`, `documents`, `email_logs`, `letter_archive_settings`, `letter_attachments`, `letter_collaborators`, `letter_comments`, `letter_occasions`, `letter_template_assets`, `letter_template_settings`, `letter_templates`, `letter_workflow_history`, `letters`, `sender_information`, `tasks`, `topics`
 
 ## Selbsttest-Szenarien
 
 | Szenario | Titel | deklarierte Tabellen | deklarierte Prüfungen | letzter Lauf |
 |---|---|---:|---:|---|
+| `case-file-lifecycle` | Fallakte mit Folgetabellen (Container) im Unterschied zum Vorgang | 16 | 9 | — |
 | `document-annotation` | Dokument-Annotation | 6 | 14 | — |
 | `document-list` | Dokumente: Suche, Kategorien, Sortierung und Auswahl | 0 | 0 | — |
 | `letter-lifecycle` | Brief-Lifecycle (Entwurf → Prüfung → Freigabe → Archiv und Folgeaufgabe) | 4 | 3 | — |
@@ -61,6 +63,17 @@ Diese Schritte führen die Szenarien aus; „letzter Lauf“ stammt aus `src/fea
 
 | Szenario | Schritt | Bezeichnung | Art | letzter Lauf |
 |---|---|---|---|---|
+| `case-file-lifecycle` | `create` | Fallakte anlegen und Standardwerte prüfen | db | — |
+| `case-file-lifecycle` | `scale-guard` | Ungültige Akten-Größe wird abgewiesen | db | — |
+| `case-file-lifecycle` | `processing-status` | Bearbeitungsstatus setzen und Statusverlauf schreiben | db | — |
+| `case-file-lifecycle` | `participants` | Beteiligte eintragen; Doppelung ist gesperrt | db | — |
+| `case-file-lifecycle` | `notes-and-timeline` | Notiz und Verlaufseintrag zur Akte speichern | db | — |
+| `case-file-lifecycle` | `links-contact-task` | Kontakt verknüpfen und Aufgabe über die Akten-RPC erzeugen | db | — |
+| `case-file-lifecycle` | `links-appointment-letter` | Termin und Brief mit der Akte verknüpfen | db | — |
+| `case-file-lifecycle` | `upload-document` | Datei in der Akte ablegen und über die Dokumentensuche finden | db | — |
+| `case-file-lifecycle` | `counts` | Akten-RPC zählt die Verknüpfungen | db | — |
+| `case-file-lifecycle` | `vorgang-vs-akte` | Unterschied zum Vorgang: eigener Ball, geerbte Sichtbarkeit | db | — |
+| `case-file-lifecycle` | `delete-detaches` | Akte löschen: Folgetabellen weg, Vorgang bleibt | db | — |
 | `document-annotation` | `search-navigation` | Kommentar, Antwort und Text durchsuchen und Treffer zyklisch anspringen | logic | — |
 | `document-annotation` | `ocr-export-version-history` | OCR-Bruchteile, PDF-Exportkoordinaten, Textanker und Verlauf | logic | — |
 | `document-annotation` | `multipage-text-selection` | Mehrseitige Textmarkierungen bleiben seitengetreu bearbeitbar | logic | — |
@@ -95,6 +108,18 @@ Diese Schritte führen die Szenarien aus; „letzter Lauf“ stammt aus `src/fea
 
 ## Deklarierter Prüfumfang
 
+### `case-file-lifecycle`
+
+1. Fallakte wird mit Typ, Größe, Status und Standard-Sichtbarkeit „private“ angelegt und zurückgelesen
+2. Ungültige Größe (case_scale) wird von der Datenbank abgewiesen
+3. Bearbeitungsstatus und Statusverlauf werden gespeichert; derselbe Beteiligte kann nicht doppelt eingetragen werden
+4. Kontakt, Aufgabe, Termin und Brief werden über die jeweilige Folgetabelle verknüpft; doppelte Verknüpfungen sind gesperrt
+5. Die Aufgabe entsteht über create_case_file_task als offene Aufgabe für die anlegende Person mit source_type 'case_file' und Quellbezug; eine Wiederholung liefert dieselbe Aufgabe und keine zweite Verknüpfung
+6. Eine hochgeladene Datei ist mit der Akte verknüpft und über die serverseitige Dokumentensuche auffindbar
+7. get_case_files_with_counts liefert die Verknüpfungen der Akte als Zählwerte
+8. Ein Vorgang an einer privaten Akte ist für Büro-Kolleginnen unsichtbar, an einer öffentlichen Akte sichtbar (Sichtbarkeitsvererbung)
+9. Das Löschen der Akte entfernt ihre Folgetabellen, lässt den Vorgang aber mit case_file_id = null bestehen
+
 ### `document-annotation`
 
 1. Mehrseitige Textauswahl
@@ -125,7 +150,7 @@ Keine Prüfungen deklariert.
 ## Funktionsdetails
 
 ### `documents.list` — Dokumentenliste und Suche
-Listet Dokumente mit Kategorien, Ordnern, Kontakten, Themen und Filterung; die Listenlogik liegt in einem eigenen Modul.
+Durchsucht Titel, Beschreibung und Dateinamen serverseitig über alle Ordner des Büros oder optional im aktuellen Ordner und wendet Kategorien sowie Sortierung vor der Seiteneinteilung an.
 
 - **Kategorie:** fachlich
 - **Implementierung:** implementiert
@@ -135,13 +160,13 @@ Listet Dokumente mit Kategorien, Ordnern, Kontakten, Themen und Filterung; die L
 - **Rollen:** `abgeordneter`, `bueroleitung`, `mitarbeiter`, `praktikant`
 - **Routen:** `/documents`
 - **Frontend-Komponenten:** `src/features/documents/components/DocumentsView.tsx`
-- **Services:** `src/features/documents/documentListModel.ts`
-- **Hooks:** —
+- **Services:** `src/features/documents/documentListModel.ts`, `src/features/documents/documentSearch.ts`
+- **Hooks:** `src/components/documents/hooks/useDocumentsData.ts`
 - **Edge Functions:** —
 - **Datenbankfunktionen:** —
 - **Tabellen:** `documents`, `document_categories`, `document_folders`, `document_contacts`, `document_topics`
 - **Abhängigkeiten:** —
-- **Selbsttests:** `document-list`
+- **Selbsttests:** `document-list`, `case-file-lifecycle`
 - **Unit-Tests:** —
 - **Integrationstests:** —
 - **Browser-Tests:** —
@@ -152,6 +177,41 @@ Listet Dokumente mit Kategorien, Ordnern, Kontakten, Themen und Filterung; die L
 - src/features/documents/components/DocumentsView.tsx
 - src/features/documents/documentListModel.ts
 - src/features/selftest/scenarios/document-list.ts
+
+**Bekannte Einschränkungen**
+
+- Keine.
+
+**Offene Prüfpunkte**
+
+- Keine.
+
+### `documents.details` — Dokumentdetails und Verknüpfungen
+Öffnet ein Dokument aus der Liste oder einer Akte und zeigt berechtigte Verweise auf Akten, Kontakte und Aufgaben aus Annotationen.
+
+- **Kategorie:** fachlich
+- **Implementierung:** implementiert
+- **Einbindung:** UI
+- **Testabdeckung:** kein Test
+- **Letztes Testergebnis:** nicht-ausgefuehrt (kein Laufnachweis importiert; nicht aus der Existenz einer Testdatei abgeleitet)
+- **Rollen:** `abgeordneter`, `bueroleitung`, `mitarbeiter`, `praktikant`
+- **Routen:** —
+- **Frontend-Komponenten:** `src/features/documents/components/DocumentDetailsDialog.tsx`
+- **Services:** —
+- **Hooks:** —
+- **Edge Functions:** —
+- **Datenbankfunktionen:** —
+- **Tabellen:** `documents`, `case_file_documents`, `document_contacts`, `document_annotation_tasks`
+- **Abhängigkeiten:** `documents.list`
+- **Selbsttests:** —
+- **Unit-Tests:** —
+- **Integrationstests:** —
+- **Browser-Tests:** —
+- **Dokumentation:** —
+
+**Nachweise im Quellcode**
+
+- src/features/documents/components/DocumentDetailsDialog.tsx
 
 **Bekannte Einschränkungen**
 

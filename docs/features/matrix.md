@@ -68,9 +68,10 @@ Die Spalten zählen **zugeordnete** Prüfungen, nicht bestandene Läufe. „Erge
 | `letters.attachments` | dokumente | fachlich | implementiert | UI | kein Test | nicht-ausgefuehrt | 0 | 0 | 0 | 0 | nein |
 | `letters.templates` | dokumente | administrativ | implementiert | rollenabhängig | kein Test | nicht-ausgefuehrt | 0 | 0 | 0 | 0 | nein |
 | `documents.upload-version` | dokumente | fachlich | implementiert | UI | kein Test | nicht-ausgefuehrt | 0 | 0 | 0 | 0 | nein |
+| `documents.details` | dokumente | fachlich | implementiert | UI | kein Test | nicht-ausgefuehrt | 0 | 0 | 0 | 0 | nein |
 | `documents.contacts` | dokumente | fachlich | implementiert | UI | kein Test | nicht-ausgefuehrt | 0 | 0 | 0 | 0 | nein |
 | `documents.email` | dokumente | integration | implementiert | UI | kein Test | nicht-ausgefuehrt | 0 | 0 | 0 | 0 | nein |
-| `documents.list` | dokumente | fachlich | implementiert | UI | Selbsttest | nicht-ausgefuehrt | 1 | 0 | 0 | 0 | ja |
+| `documents.list` | dokumente | fachlich | implementiert | UI | Selbsttest | nicht-ausgefuehrt | 2 | 0 | 0 | 0 | ja |
 | `decisions.vote` | entscheidungen | fachlich | implementiert | UI | Selbsttest | nicht-ausgefuehrt | 1 | 0 | 0 | 0 | nein |
 | `decisions.change-vote` | entscheidungen | fachlich | implementiert | UI | kein Test | nicht-ausgefuehrt | 0 | 0 | 0 | 0 | nein |
 | `decisions.comments` | entscheidungen | fachlich | implementiert | UI | kein Test | nicht-ausgefuehrt | 0 | 0 | 0 | 0 | ja |
@@ -214,6 +215,7 @@ Die Spalten zählen **zugeordnete** Prüfungen, nicht bestandene Läufe. „Erge
 | `cases.steps` | vorgaenge | fachlich | implementiert | systemseitig | Unit-Test | unbekannt | 0 | 1 | 0 | 0 | nein |
 | `cases.legacy-routes` | vorgaenge | fachlich | veraltet | UI | kein Test | nicht-ausgefuehrt | 0 | 0 | 0 | 0 | nein |
 | `cases.create` | vorgaenge | fachlich | implementiert | rollenabhängig | Selbsttest | nicht-ausgefuehrt | 1 | 0 | 0 | 0 | ja |
+| `casefiles.document-upload` | vorgaenge | fachlich | implementiert | UI | Selbsttest | nicht-ausgefuehrt | 1 | 0 | 0 | 0 | nein |
 | `casefiles.manage` | vorgaenge | fachlich | implementiert | rollenabhängig | Selbsttest | nicht-ausgefuehrt | 1 | 0 | 0 | 0 | ja |
 | `casefiles.links` | vorgaenge | fachlich | implementiert | UI | Selbsttest | nicht-ausgefuehrt | 1 | 0 | 0 | 0 | nein |
 | `casefiles.notes` | vorgaenge | fachlich | implementiert | UI | Selbsttest | nicht-ausgefuehrt | 1 | 0 | 0 | 0 | nein |

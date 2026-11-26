@@ -264,19 +264,65 @@
       "id": "casefiles.links",
       "subarea": "Fallakten",
       "name": "Fallakte verknüpfen (Dokumente, Kontakte, Themen, Notizen)",
-      "description": "Verknüpft Dokumente, Kontakte, Themen und Notizen mit einer Fallakte und zeigt sie in der Akte; das Szenario prüft Kontakt-, Aufgaben-, Termin- und Briefverknüpfung samt doppelter Verknüpfungssperre.",
+      "description": "Verknüpft vorhandene Dokumente, Kontakte, Themen und Notizen mit einer Fallakte und zeigt sie in der Akte. Die Dokumentenauswahl durchsucht alle Ordner serverseitig.",
       "category": "fachlich",
       "implementationStatus": "implementiert",
       "integrationStatus": "ui",
       "coverage": "selftest",
       "scenarios": ["case-file-lifecycle"],
       "testResult": "nicht-ausgefuehrt",
-      "limitations": ["Dokument- und Themenverknüpfung prüft kein Szenario: dafür sind eine echte Datei bzw. ein eigener Themenkatalog nötig."],
+      "limitations": ["Die Themenverknüpfung prüft kein Szenario, weil der Themenkatalog einem eigenen Szenario gehört."],
       "evidence": ["src/features/cases/files/components/CaseFileDocumentsCard.tsx", "src/features/cases/files/components/CaseFileUnifiedTimeline.tsx"],
       "components": ["src/features/cases/files/components/CaseFileDocumentsCard.tsx", "src/features/cases/files/components/CaseFileUnifiedTimeline.tsx"],
       "tables": ["case_file_documents", "case_file_contacts", "case_file_topics", "case_file_notes"],
       "roles": ["abgeordneter", "bueroleitung", "mitarbeiter"],
       "dependsOn": ["casefiles.manage", "documents.upload-version", "contacts.create"]
+    },
+    {
+      "id": "casefiles.document-upload",
+      "subarea": "Fallakten",
+      "name": "Datei aus der Akte ablegen",
+      "description": "Lädt eine Datei in einen privaten Speicherbereich und speichert Dokument, Aktenverknüpfung und Verlaufseintrag gemeinsam. Sichtbare Dateien lassen sich in der Dokumentenliste finden und aus der Akte öffnen.",
+      "category": "fachlich",
+      "implementationStatus": "implementiert",
+      "integrationStatus": "ui",
+      "coverage": "selftest",
+      "testResult": "nicht-ausgefuehrt",
+      "scenarios": [
+        "case-file-lifecycle"
+      ],
+      "limitations": [
+        "Der Selbsttest deckt Upload, Verknüpfung, Verlauf und einen Suchtreffer ab. Die Bedienoberfläche ist nicht abgedeckt."
+      ],
+      "evidence": [
+        "src/features/cases/files/components/tabs/CaseFileDocumentsTab.tsx",
+        "supabase/migrations/20261127130000_case_file_document_upload.sql"
+      ],
+      "components": [
+        "src/features/cases/files/components/tabs/CaseFileDocumentsTab.tsx",
+        "src/features/cases/files/components/CaseFileDocumentsCard.tsx"
+      ],
+      "hooks": [
+        "src/features/cases/files/hooks/useCaseFileDetails.tsx"
+      ],
+      "rpcs": [
+        "create_case_file_document"
+      ],
+      "tables": [
+        "documents",
+        "case_file_documents",
+        "case_file_timeline"
+      ],
+      "roles": [
+        "abgeordneter",
+        "bueroleitung",
+        "mitarbeiter"
+      ],
+      "dependsOn": [
+        "casefiles.links",
+        "documents.list",
+        "documents.details"
+      ]
     },
     {
       "id": "casefiles.notes",

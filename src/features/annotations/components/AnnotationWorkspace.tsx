@@ -1,3 +1,4 @@
+import { documentBucket } from "@/features/documents/documentStorage";
 import { useEffect, useMemo, useRef, useState } from "react";
 import { useNavigate } from "react-router-dom";
 import { useAnnotationMembers } from "../useAnnotationMembers";
@@ -78,7 +79,7 @@ export function AnnotationWorkspace({ document: doc, open, onOpenChange, initial
   const file = useQuery({
     queryKey: ["annotation-file", doc?.file_path], enabled: open && !!doc && !!kind, staleTime: 5 * 60_000,
     queryFn: async () => {
-      const { data, error } = await supabase.storage.from("documents").download(doc!.file_path);
+      const { data, error } = await supabase.storage.from(documentBucket(doc!.file_path)).download(doc!.file_path);
       if (error) throw error;
       return data;
     },

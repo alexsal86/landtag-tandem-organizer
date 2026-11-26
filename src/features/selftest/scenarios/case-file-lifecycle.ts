@@ -1,3 +1,5 @@
+import { documentSearchFilter } from "@/features/documents/documentSearch";
+import { CASE_DOCUMENT_BUCKET } from "@/features/documents/documentStorage";
 import { supabase } from "@/integrations/supabase/client";
 import { SELFTEST_MARKER, SELFTEST_PREFIX } from "../runner";
 import type { TestScenario } from "../types";
@@ -19,6 +21,8 @@ export const caseFileLifecycleScenario: TestScenario = {
     "case_file_notes",
     "case_file_timeline",
     "case_file_contacts",
+    "case_file_documents",
+    "documents",
     "case_file_tasks",
     "case_file_appointments",
     "case_file_letters",
@@ -35,12 +39,13 @@ export const caseFileLifecycleScenario: TestScenario = {
     "Bearbeitungsstatus und Statusverlauf werden gespeichert; derselbe Beteiligte kann nicht doppelt eingetragen werden",
     "Kontakt, Aufgabe, Termin und Brief werden über die jeweilige Folgetabelle verknüpft; doppelte Verknüpfungen sind gesperrt",
     "Die Aufgabe entsteht über create_case_file_task als offene Aufgabe für die anlegende Person mit source_type 'case_file' und Quellbezug; eine Wiederholung liefert dieselbe Aufgabe und keine zweite Verknüpfung",
+    "Eine hochgeladene Datei ist mit der Akte verknüpft und über die serverseitige Dokumentensuche auffindbar",
     "get_case_files_with_counts liefert die Verknüpfungen der Akte als Zählwerte",
     "Ein Vorgang an einer privaten Akte ist für Büro-Kolleginnen unsichtbar, an einer öffentlichen Akte sichtbar (Sichtbarkeitsvererbung)",
     "Das Löschen der Akte entfernt ihre Folgetabellen, lässt den Vorgang aber mit case_file_id = null bestehen",
   ],
   limitations: [
-    "Die Verknüpfungstabellen für Dokumente und Themen bleiben offen: Eine Dokumentverknüpfung braucht eine echte Datei, und der Themenkatalog gehört einem eigenen Szenario. Die Akte wird deshalb auch ohne tags angelegt, weil sync_tags_to_topics daraus büroweite topics-Zeilen anlegen würde.",
+    "Die Themenverknüpfung bleibt offen, weil der Themenkatalog einem eigenen Szenario gehört. Die Akte wird deshalb auch ohne tags angelegt, weil sync_tags_to_topics daraus büroweite topics-Zeilen anlegen würde.",
     "Die Sichtbarkeitsvererbung wird über user_can_access_case_item geprüft. Ohne zweite aktive Person im Büro bleibt nur die eigene Sicht und der Schritt meldet das ausdrücklich.",
     "Keine Bedienprüfung der Fallakten-Oberfläche; geprüft werden die Anwendungspfade und Regeln in der Datenbank.",
   ],
@@ -50,6 +55,8 @@ export const caseFileLifecycleScenario: TestScenario = {
     { table: "case_file_status_history", columns: ["case_file_id", "content", "user_id", "user_display_name"] },
     { table: "case_file_notes", columns: ["case_file_id", "user_id", "content", "is_pinned"] },
     { table: "case_file_timeline", columns: ["case_file_id", "event_date", "event_type", "title", "description", "created_by"] },
+    { table: "documents", columns: ["tenant_id", "user_id", "title", "file_name", "file_path", "file_size", "file_type", "status"] },
+    { table: "case_file_documents", columns: ["case_file_id", "document_id", "relevance", "notes"] },
     { table: "case_file_contacts", columns: ["case_file_id", "contact_id", "role"] },
     { table: "case_file_tasks", columns: ["case_file_id", "task_id"] },
     { table: "case_file_appointments", columns: ["case_file_id", "appointment_id", "notes"] },
@@ -238,6 +245,38 @@ export const caseFileLifecycleScenario: TestScenario = {
       },
     },
     {
+      id: "upload-document", label: "Datei in der Akte ablegen und über die Dokumentensuche finden",
+      run: async ctx => {
+        const caseId = ctx.data.caseFileId as string;
+        const file = new Blob([SELFTEST_MARKER], { type: "text/plain" });
+        const path = `case-files/${ctx.tenantId}/${ctx.userId}/${caseId}/${crypto.randomUUID()}.txt`;
+        const uploaded = await supabase.storage.from(CASE_DOCUMENT_BUCKET).upload(path, file);
+        if (uploaded.error) return { ok: false, message: `Datei: ${describeError(uploaded.error)}` };
+        ctx.trackStorage({ bucket: CASE_DOCUMENT_BUCKET, path });
+        const title = tag(ctx.runId, "Aktenanlage [Entwurf]");
+        const result = await supabase.rpc("create_case_file_document", {
+          p_case_file_id: caseId, p_tenant_id: ctx.tenantId, p_title: title,
+          p_file_name: "anlage.txt", p_file_path: path, p_file_size: file.size, p_file_type: file.type,
+          p_relevance: "reference", p_notes: SELFTEST_MARKER,
+        });
+        if (result.error) return { ok: false, message: `Dokument ablegen: ${describeError(result.error)}` };
+        ctx.trackRecord({ table: "documents", id: result.data });
+        const [link, matches, timeline] = await Promise.all([
+          supabase.from("case_file_documents").select("relevance, notes")
+            .eq("case_file_id", caseId).eq("document_id", result.data).single(),
+          supabase.from("documents").select("id")
+            .eq("tenant_id", ctx.tenantId).or(documentSearchFilter(title)),
+          supabase.from("case_file_timeline").select("id")
+            .eq("case_file_id", caseId).eq("source_id", result.data).eq("event_type", "document").single(),
+        ]);
+        return {
+          ok: link.data?.relevance === "reference" && link.data.notes === SELFTEST_MARKER
+            && !!matches.data?.some(row => row.id === result.data) && !!timeline.data,
+          message: "Dokument, Aktenverknüpfung und Verlauf sind vorhanden und die Dokumentensuche liefert einen Treffer.",
+        };
+      },
+    },
+    {
       id: "counts", label: "Akten-RPC zählt die Verknüpfungen",
       run: async ctx => {
         const id = ctx.data.caseFileId as string;
@@ -250,11 +289,11 @@ export const caseFileLifecycleScenario: TestScenario = {
           tasks: row.tasks_count === 1,
           appointments: row.appointments_count === 1,
           letters: row.letters_count === 1,
-          documents: row.documents_count === 0,
+          documents: row.documents_count === 1,
         };
         return {
           ok: Object.values(checks).every(Boolean),
-          message: "Die Akte meldet genau die verknüpften Kontakte, Aufgaben, Termine und Briefe.",
+          message: "Die Akte meldet genau die verknüpften Kontakte, Aufgaben, Termine, Briefe und Dokumente.",
           details: { ...checks, counts: { contacts: row.contacts_count, tasks: row.tasks_count, appointments: row.appointments_count, letters: row.letters_count, documents: row.documents_count } },
         };
       },

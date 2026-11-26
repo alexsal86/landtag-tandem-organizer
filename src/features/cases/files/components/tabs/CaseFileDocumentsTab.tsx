@@ -1,9 +1,12 @@
 import { useState, useEffect } from "react";
+import { Link } from "react-router-dom";
+import { Input } from "@/components/ui/input";
+import { documentSearchFilter } from "@/features/documents/documentSearch";
 import { CaseFileDocument, DOCUMENT_RELEVANCE } from "@/features/cases/files/hooks";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
 import { Badge } from "@/components/ui/badge";
-import { Plus, Trash2, FileText, ExternalLink } from "lucide-react";
+import { Plus, Trash2, FileText } from "lucide-react";
 import { format } from "date-fns";
 import { de } from "date-fns/locale";
 import { supabase } from "@/integrations/supabase/client";
@@ -24,8 +27,11 @@ import { ScrollArea } from "@/components/ui/scroll-area";
 interface CaseFileDocumentsTabProps {
   documents: CaseFileDocument[];
   onAdd: (documentId: string, relevance: string, notes?: string, title?: string) => Promise<boolean>;
+  onUpload: (file: File, title: string, relevance: string, notes: string, tenantId: string) => Promise<boolean>;
   onRemove: (id: string) => Promise<boolean>;
 }
+
+const PAGE_SIZE = 50;
 
 type AvailableDocument = {
   id: string;
@@ -35,7 +41,7 @@ type AvailableDocument = {
   created_at: string;
 };
 
-export function CaseFileDocumentsTab({ documents, onAdd, onRemove }: CaseFileDocumentsTabProps) {
+export function CaseFileDocumentsTab({ documents, onAdd, onUpload, onRemove }: CaseFileDocumentsTabProps) {
   const { currentTenant } = useTenant();
   const [dialogOpen, setDialogOpen] = useState(false);
   const [availableDocuments, setAvailableDocuments] = useState<AvailableDocument[]>([]);
@@ -45,34 +51,59 @@ export function CaseFileDocumentsTab({ documents, onAdd, onRemove }: CaseFileDoc
   const [isSubmitting, setIsSubmitting] = useState(false);
   const [searchTerm, setSearchTerm] = useState("");
 
-  useEffect(() => {
-    if (dialogOpen && currentTenant) {
-      loadDocuments();
-    }
-  }, [dialogOpen, currentTenant]);
+  const [mode, setMode] = useState<"existing" | "upload">("existing");
+  const [file, setFile] = useState<File | null>(null);
+  const [title, setTitle] = useState("");
+  const [page, setPage] = useState(0);
+  const [hasMore, setHasMore] = useState(false);
+  const [searchStatus, setSearchStatus] = useState<"loading" | "ready" | "error">("loading");
+  const tenantId = currentTenant?.id;
 
-  const loadDocuments = async () => {
-    if (!currentTenant) return;
-    const { data } = await supabase
-      .from('documents')
-      .select('id, title, file_name, file_type, created_at')
-      .eq('tenant_id', currentTenant.id)
-      .order('created_at', { ascending: false })
-      .limit(100);
-    setAvailableDocuments((data as AvailableDocument[] | null) || []);
-  };
+  useEffect(() => {
+    if (!dialogOpen || !tenantId || mode !== "existing") return;
+    let cancelled = false;
+    setSearchStatus("loading");
+    const timer = window.setTimeout(async () => {
+      let query = supabase.from("documents")
+        .select("id, title, file_name, file_type, created_at")
+        .eq("tenant_id", tenantId);
+      if (searchTerm.trim()) query = query.or(documentSearchFilter(searchTerm));
+      const from = page * PAGE_SIZE;
+      const { data, error } = await query.order("created_at", { ascending: false })
+        .order("id").range(from, from + PAGE_SIZE);
+      if (cancelled) return;
+      if (!error) {
+        const rows = data?.slice(0, PAGE_SIZE) ?? [];
+        setAvailableDocuments(current => page === 0 ? rows : [...current, ...rows]);
+        setHasMore((data?.length ?? 0) > PAGE_SIZE);
+      }
+      setSearchStatus(error ? "error" : "ready");
+    }, 200);
+    return () => {
+      cancelled = true;
+      window.clearTimeout(timer);
+    };
+  }, [dialogOpen, tenantId, mode, searchTerm, page]);
 
   const handleAdd = async () => {
-    if (!selectedDocumentId) return;
+    if (isSubmitting || !tenantId) return;
+    const selectedDoc = filteredDocuments.find(doc => doc.id === selectedDocumentId);
+    if (mode === "upload" ? !file || !title.trim() : !selectedDoc) return;
     setIsSubmitting(true);
-    const selectedDoc = availableDocuments.find(d => d.id === selectedDocumentId);
-    const success = await onAdd(selectedDocumentId, relevance, notes || undefined, selectedDoc?.title);
-    setIsSubmitting(false);
-    if (success) {
-      setDialogOpen(false);
-      setSelectedDocumentId(null);
-      setRelevance("supporting");
-      setNotes("");
+    try {
+      const success = mode === "upload"
+        ? await onUpload(file!, title.trim(), relevance, notes, tenantId)
+        : await onAdd(selectedDoc!.id, relevance, notes || undefined, selectedDoc!.title);
+      if (success) {
+        setDialogOpen(false);
+        setSelectedDocumentId(null);
+        setFile(null);
+        setTitle("");
+        setRelevance("supporting");
+        setNotes("");
+      }
+    } finally {
+      setIsSubmitting(false);
     }
   };
 
@@ -80,12 +111,8 @@ export function CaseFileDocumentsTab({ documents, onAdd, onRemove }: CaseFileDoc
     return DOCUMENT_RELEVANCE.find(r => r.value === value)?.label || value;
   };
 
-  const filteredDocuments = availableDocuments.filter(doc =>
-    doc.title.toLowerCase().includes(searchTerm.toLowerCase()) ||
-    doc.file_name.toLowerCase().includes(searchTerm.toLowerCase())
-  );
-
-  const linkedDocumentIds = documents.map(d => d.document_id);
+  const linkedDocumentIds = new Set(documents.map(doc => doc.document_id));
+  const filteredDocuments = availableDocuments.filter(doc => !linkedDocumentIds.has(doc.id));
 
   return (
     <Card>
@@ -94,7 +121,7 @@ export function CaseFileDocumentsTab({ documents, onAdd, onRemove }: CaseFileDoc
           <FileText className="h-5 w-5" />
           Verknüpfte Dokumente
         </CardTitle>
-        <Button onClick={() => setDialogOpen(true)}>
+        <Button onClick={() => { setPage(0); setSelectedDocumentId(null); setSearchStatus("loading"); setDialogOpen(true); }}>
           <Plus className="mr-2 h-4 w-4" />
           Dokument hinzufügen
         </Button>
@@ -114,7 +141,9 @@ export function CaseFileDocumentsTab({ documents, onAdd, onRemove }: CaseFileDoc
                 <div className="flex items-center gap-3">
                   <FileText className="h-8 w-8 text-muted-foreground" />
                   <div>
-                    <div className="font-medium">{item.document?.title}</div>
+                    {item.document && <Link className="font-medium hover:underline" to={`/documents?document=${item.document_id}`}>
+                      {item.document.title}
+                    </Link>}
                     <div className="text-sm text-muted-foreground">
                       {item.document?.file_name}
                       {item.document?.created_at && (
@@ -143,46 +172,61 @@ export function CaseFileDocumentsTab({ documents, onAdd, onRemove }: CaseFileDoc
         )}
       </CardContent>
 
-      <Dialog open={dialogOpen} onOpenChange={setDialogOpen}>
+      <Dialog open={dialogOpen} onOpenChange={open => { if (!isSubmitting) setDialogOpen(open); }}>
         <DialogContent className="max-w-lg">
           <DialogHeader>
-            <DialogTitle>Dokument verknüpfen</DialogTitle>
+            <DialogTitle>Dokument hinzufügen</DialogTitle>
             <DialogDescription>
-              Wählen Sie ein Dokument aus und definieren Sie dessen Relevanz.
+              Laden Sie eine Datei hoch oder wählen Sie ein vorhandenes Dokument aus.
             </DialogDescription>
           </DialogHeader>
           <div className="grid gap-4 py-4">
-            <div className="grid gap-2">
-              <Label>Dokument suchen</Label>
-              <input
-                type="text"
-                className="flex h-10 w-full rounded-md border border-input bg-background px-3 py-2 text-sm"
-                placeholder="Suchen..."
-                value={searchTerm}
-                onChange={(e) => setSearchTerm(e.target.value)}
-              />
-              <ScrollArea className="h-48 border rounded-md">
-                <div className="p-2 space-y-1">
-                  {filteredDocuments
-                    .filter(doc => !linkedDocumentIds.includes(doc.id))
-                    .map((doc) => (
-                      <div
-                        key={doc.id}
-                        className={`p-2 rounded cursor-pointer hover:bg-muted ${selectedDocumentId === doc.id ? 'bg-muted' : ''}`}
-                        onClick={() => setSelectedDocumentId(doc.id)}
-                      >
-                        <div className="font-medium text-sm">{doc.title}</div>
-                        <div className="text-xs text-muted-foreground">{doc.file_name}</div>
-                      </div>
-                    ))}
-                  {filteredDocuments.filter(doc => !linkedDocumentIds.includes(doc.id)).length === 0 && (
-                    <p className="text-sm text-muted-foreground text-center py-4">
-                      Keine verfügbaren Dokumente gefunden
+            <div className="flex flex-wrap gap-2">
+              <Button type="button" variant={mode === "existing" ? "default" : "outline"} disabled={isSubmitting}
+                onClick={() => { if (mode === "existing") return; setPage(0); setSelectedDocumentId(null); setSearchStatus("loading"); setMode("existing"); }}>Vorhandenes Dokument</Button>
+              <Button type="button" variant={mode === "upload" ? "default" : "outline"} disabled={isSubmitting}
+                onClick={() => setMode("upload")}>Datei hochladen</Button>
+            </div>
+            {mode === "upload" ? <div className="grid gap-3">
+              <Label htmlFor="case-document-file">Datei</Label>
+              <Input id="case-document-file" type="file" disabled={isSubmitting}
+                accept=".pdf,.doc,.docx,.txt,.png,.jpg,.jpeg" onChange={event => {
+                  const nextFile = event.target.files?.[0] ?? null;
+                  setFile(nextFile);
+                  setTitle(nextFile?.name ?? "");
+                }} />
+              <Label htmlFor="case-document-title">Titel</Label>
+              <Input id="case-document-title" value={title} disabled={isSubmitting} onChange={event => setTitle(event.target.value)} />
+            </div> : <div className="grid gap-2">
+              <Label htmlFor="case-document-search">In allen Ordnern suchen</Label>
+              <Input id="case-document-search" value={searchTerm} disabled={isSubmitting} onChange={event => {
+                setSearchTerm(event.target.value);
+                setPage(0);
+                setSelectedDocumentId(null);
+                setSearchStatus("loading");
+              }} />
+              <ScrollArea className="h-48 rounded-md border">
+                <div className="space-y-1 p-2">
+                  {searchStatus === "ready" && filteredDocuments.map(doc => (
+                    <button key={doc.id} type="button" disabled={isSubmitting}
+                      aria-pressed={selectedDocumentId === doc.id}
+                      className={`block w-full rounded p-2 text-left hover:bg-muted ${selectedDocumentId === doc.id ? "bg-muted" : ""}`}
+                      onClick={() => setSelectedDocumentId(doc.id)}>
+                      <span className="block text-sm font-medium">{doc.title}</span>
+                      <span className="block text-xs text-muted-foreground">{doc.file_name}</span>
+                    </button>
+                  ))}
+                  {searchStatus !== "ready" || filteredDocuments.length === 0 ? (
+                    <p role="status" className="py-4 text-center text-sm text-muted-foreground">
+                      {searchStatus === "loading" ? "Dokumente werden gesucht …" : searchStatus === "error"
+                        ? "Die Suche ist fehlgeschlagen." : "Keine verfügbaren Dokumente gefunden"}
                     </p>
-                  )}
+                  ) : null}
+                  {searchStatus === "ready" && hasMore && <Button type="button" variant="ghost" disabled={isSubmitting}
+                    onClick={() => setPage(current => current + 1)}>Weitere Dokumente laden</Button>}
                 </div>
               </ScrollArea>
-            </div>
+            </div>}
             <div className="grid gap-2">
               <Label>Relevanz</Label>
               <Select value={relevance} onValueChange={setRelevance}>
@@ -208,11 +252,11 @@ export function CaseFileDocumentsTab({ documents, onAdd, onRemove }: CaseFileDoc
             </div>
           </div>
           <DialogFooter>
-            <Button variant="outline" onClick={() => setDialogOpen(false)}>
+            <Button variant="outline" disabled={isSubmitting} onClick={() => setDialogOpen(false)}>
               Abbrechen
             </Button>
-            <Button onClick={handleAdd} disabled={!selectedDocumentId || isSubmitting}>
-              {isSubmitting ? "Füge hinzu..." : "Hinzufügen"}
+            <Button onClick={handleAdd} disabled={isSubmitting || (mode === "upload" ? !file || !title.trim() : searchStatus !== "ready" || !filteredDocuments.some(doc => doc.id === selectedDocumentId))}>
+              {mode === "upload" ? "Hochladen und ablegen" : "Dokument verknüpfen"}
             </Button>
           </DialogFooter>
         </DialogContent>

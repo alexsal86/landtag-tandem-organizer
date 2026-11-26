@@ -380,7 +380,7 @@ const CaseItemDetail = () => {
 
                     <TabsContent value="timeline"><CaseFileTimelineTab timeline={caseFileDetails.timeline} onAddEntry={caseFileDetails.addTimelineEntry} onDeleteEntry={caseFileDetails.deleteTimelineEntry} /></TabsContent>
                     <TabsContent value="contacts"><CaseFileContactsTab contacts={caseFileDetails.contacts} onAdd={caseFileDetails.addContact} onRemove={caseFileDetails.removeContact} /></TabsContent>
-                    <TabsContent value="documents"><CaseFileDocumentsTab documents={caseFileDetails.documents} onAdd={caseFileDetails.addDocument} onRemove={caseFileDetails.removeDocument} /></TabsContent>
+                    <TabsContent value="documents"><CaseFileDocumentsTab documents={caseFileDetails.documents} onAdd={caseFileDetails.addDocument} onUpload={caseFileDetails.uploadDocument} onRemove={caseFileDetails.removeDocument} /></TabsContent>
                     <TabsContent value="tasks"><CaseFileTasksTab tasks={caseFileDetails.tasks} onAdd={caseFileDetails.addTask} onRemove={caseFileDetails.removeTask} /></TabsContent>
                     <TabsContent value="appointments"><CaseFileAppointmentsTab appointments={caseFileDetails.appointments} onAdd={caseFileDetails.addAppointment} onRemove={caseFileDetails.removeAppointment} /></TabsContent>
                     <TabsContent value="letters"><CaseFileLettersTab letters={caseFileDetails.letters} onAdd={caseFileDetails.addLetter} onRemove={caseFileDetails.removeLetter} /></TabsContent>

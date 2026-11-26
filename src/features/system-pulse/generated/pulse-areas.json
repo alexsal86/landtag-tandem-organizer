@@ -600,6 +600,7 @@
             "Bearbeitungsstatus und Statusverlauf werden gespeichert; derselbe Beteiligte kann nicht doppelt eingetragen werden",
             "Kontakt, Aufgabe, Termin und Brief werden über die jeweilige Folgetabelle verknüpft; doppelte Verknüpfungen sind gesperrt",
             "Die Aufgabe entsteht über create_case_file_task als offene Aufgabe für die anlegende Person mit source_type 'case_file' und Quellbezug; eine Wiederholung liefert dieselbe Aufgabe und keine zweite Verknüpfung",
+            "Eine hochgeladene Datei ist mit der Akte verknüpft und über die serverseitige Dokumentensuche auffindbar",
             "get_case_files_with_counts liefert die Verknüpfungen der Akte als Zählwerte",
             "Ein Vorgang an einer privaten Akte ist für Büro-Kolleginnen unsichtbar, an einer öffentlichen Akte sichtbar (Sichtbarkeitsvererbung)",
             "Das Löschen der Akte entfernt ihre Folgetabellen, lässt den Vorgang aber mit case_file_id = null bestehen"
@@ -611,6 +612,8 @@
             "case_file_notes",
             "case_file_timeline",
             "case_file_contacts",
+            "case_file_documents",
+            "documents",
             "case_file_tasks",
             "case_file_appointments",
             "case_file_letters",
@@ -621,10 +624,12 @@
             "letters"
           ],
           "features": [
+            "casefiles.document-upload",
             "casefiles.links",
             "casefiles.manage",
             "casefiles.notes",
-            "casefiles.status-workflow"
+            "casefiles.status-workflow",
+            "documents.list"
           ],
           "steps": [
             {
@@ -654,6 +659,10 @@
             {
               "id": "links-appointment-letter",
               "label": "Termin und Brief mit der Akte verknüpfen"
+            },
+            {
+              "id": "upload-document",
+              "label": "Datei in der Akte ablegen und über die Dokumentensuche finden"
             },
             {
               "id": "counts",

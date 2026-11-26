@@ -263,11 +263,16 @@ export function CaseFileDetail({ caseFileId, onBack }: CaseFileDetailProps) {
 
       {/* Add Document Dialog */}
       {showAddDocument && (
-        <DialogWrapper open={showAddDocument} onClose={() => setShowAddDocument(false)} title="Dokument verknüpfen">
+        <DialogWrapper open={showAddDocument} onClose={() => setShowAddDocument(false)} title="Dokumente der Akte">
           <CaseFileDocumentsTab
             documents={documents}
             onAdd={async (...args) => {
               const result = await details.addDocument(...args);
+              if (result) setShowAddDocument(false);
+              return result;
+            }}
+            onUpload={async (...args) => {
+              const result = await details.uploadDocument(...args);
               if (result) setShowAddDocument(false);
               return result;
             }}

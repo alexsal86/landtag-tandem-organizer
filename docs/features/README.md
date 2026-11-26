@@ -8,24 +8,24 @@ Der Katalog ist das führende Verzeichnis des tatsächlich implementierten Funkt
 
 | Kennzahl | Wert |
 |---|---:|
-| Erfasste Funktionen | 256 |
+| Erfasste Funktionen | 258 |
 | Funktionsbereiche | 16 |
 | Unterbereiche | 109 |
-| Implementiert | 252 |
+| Implementiert | 254 |
 | Teilweise implementiert | 2 |
 | Deaktiviert | 0 |
 | Potenziell verwaist | 0 |
 | Prüfkandidaten (offene Punkte) | 52 |
-| Funktionen mit Selbsttest | 99 |
+| Funktionen mit Selbsttest | 100 |
 | Funktionen mit Unit-Test | 61 |
 | Funktionen mit Integrationstest | 1 |
 | Funktionen mit Browser-Test | 4 |
 | Funktionen mit Security-Test | 1 |
-| Funktionen ohne zugeordneten Test | 120 |
-| Funktionen ohne Dokumentationsverweis | 165 |
-| Funktionen mit bekannten Einschränkungen | 53 |
+| Funktionen ohne zugeordneten Test | 121 |
+| Funktionen ohne Dokumentationsverweis | 167 |
+| Funktionen mit bekannten Einschränkungen | 54 |
 | Nicht nachweisbar eingebundene Funktionen | 1 |
-| Technische Zuordnungen | 1260 |
+| Technische Zuordnungen | 1267 |
 
 ## Funktionsbereiche
 
@@ -34,7 +34,7 @@ Der Katalog ist das führende Verzeichnis des tatsächlich implementierten Funkt
 | [Administration, Sicherheit & Qualität](./verwaltung.md) | 11 | 24 | 24 | 14 | 9 |
 | [Aufgaben & Stafette](./aufgaben.md) | 12 | 18 | 18 | 1 | 9 |
 | [Automatisierung & Workflows](./automation.md) | 8 | 15 | 15 | 9 | 8 |
-| [Dokumente, Briefe & Annotationen](./dokumente.md) | 3 | 17 | 17 | 9 | 13 |
+| [Dokumente, Briefe & Annotationen](./dokumente.md) | 3 | 18 | 18 | 10 | 14 |
 | [Entscheidungen](./entscheidungen.md) | 7 | 10 | 10 | 7 | 8 |
 | [Externe Schnittstellen](./schnittstellen.md) | 7 | 10 | 10 | 7 | 5 |
 | [Jour fixe, Dossiers & Themen](./organisation.md) | 5 | 18 | 17 | 12 | 15 |
@@ -44,7 +44,7 @@ Der Katalog ist das führende Verzeichnis des tatsächlich implementierten Funkt
 | [Redaktion, News & Chat](./kommunikation.md) | 5 | 14 | 14 | 14 | 10 |
 | [Termine, Anfragen & Briefings](./termine.md) | 8 | 17 | 17 | 8 | 11 |
 | [Veranstaltungen & Umfragen](./veranstaltungen.md) | 3 | 9 | 8 | 3 | 6 |
-| [Vorgänge & Fallakten](./vorgaenge.md) | 6 | 16 | 15 | 4 | 11 |
+| [Vorgänge & Fallakten](./vorgaenge.md) | 6 | 17 | 16 | 4 | 12 |
 | [Wahlanalyse & Wahlhistorie](./wahl.md) | 4 | 23 | 23 | 12 | 15 |
 | [Wissensbereich](./wissen.md) | 8 | 16 | 16 | 7 | 11 |
 
@@ -52,7 +52,7 @@ Der Katalog ist das führende Verzeichnis des tatsächlich implementierten Funkt
 
 | Kategorie | Funktionen |
 |---|---:|
-| fachlich | 166 |
+| fachlich | 168 |
 | administrativ | 26 |
 | automatisiert | 20 |
 | integration | 27 |
@@ -63,7 +63,7 @@ Der Katalog ist das führende Verzeichnis des tatsächlich implementierten Funkt
 
 | Status | Funktionen |
 |---|---:|
-| implementiert | 252 |
+| implementiert | 254 |
 | teilweise | 2 |
 | deaktiviert | 0 |
 | verwaist | 0 |
@@ -75,7 +75,7 @@ Der Katalog ist das führende Verzeichnis des tatsächlich implementierten Funkt
 
 | Einbindung | Funktionen |
 |---|---:|
-| UI | 126 |
+| UI | 128 |
 | systemseitig | 36 |
 | rollenabhängig | 89 |
 | Feature Flag | 1 |
@@ -87,18 +87,18 @@ Der Katalog ist das führende Verzeichnis des tatsächlich implementierten Funkt
 
 | Abdeckung | Funktionen |
 |---|---:|
-| Selbsttest | 98 |
+| Selbsttest | 99 |
 | Unit-Test | 36 |
 | Integrationstest | 1 |
 | Browser-Test | 0 |
 | Security-Test | 1 |
 | teilweise | 0 |
-| kein Test | 120 |
+| kein Test | 121 |
 | ungeprüft | 0 |
 
 ## Konsistenz
 
-Der Generator inventarisiert Routen, Edge Functions, wirksame Datenbankfunktionen, Tabellen, Testszenarien und Testdateien. Aktuell **0** nicht zugeordnete Prüfkandidaten und **0** Review-Hinweise. Eindeutige Inkonsistenzen brechen `npm run check:feature-catalog` ab; Details: [Prüfbericht](./review.md).
+Der Generator inventarisiert Routen, Edge Functions, wirksame Datenbankfunktionen, Tabellen, Testszenarien und Testdateien. Aktuell **1** nicht zugeordnete Prüfkandidaten und **1** Review-Hinweise. Eindeutige Inkonsistenzen brechen `npm run check:feature-catalog` ab; Details: [Prüfbericht](./review.md).
 
 ## Dokumentation
 

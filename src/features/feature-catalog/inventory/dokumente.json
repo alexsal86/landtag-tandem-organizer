@@ -9,7 +9,7 @@
       "id": "documents.list",
       "subarea": "Dokumente",
       "name": "Dokumentenliste und Suche",
-      "description": "Listet Dokumente mit Kategorien, Ordnern, Kontakten, Themen und Filterung; die Listenlogik liegt in einem eigenen Modul.",
+      "description": "Durchsucht Titel, Beschreibung und Dateinamen serverseitig über alle Ordner des Büros oder optional im aktuellen Ordner und wendet Kategorien sowie Sortierung vor der Seiteneinteilung an.",
       "category": "fachlich",
       "implementationStatus": "implementiert",
       "integrationStatus": "ui",
@@ -27,7 +27,8 @@
         "src/features/documents/components/DocumentsView.tsx"
       ],
       "services": [
-        "src/features/documents/documentListModel.ts"
+        "src/features/documents/documentListModel.ts",
+        "src/features/documents/documentSearch.ts"
       ],
       "tables": [
         "documents",
@@ -43,10 +44,46 @@
         "praktikant"
       ],
       "scenarios": [
-        "document-list"
+        "document-list",
+        "case-file-lifecycle"
       ],
       "docs": [
         "docs/knowledge-validity.md"
+      ],
+      "hooks": [
+        "src/components/documents/hooks/useDocumentsData.ts"
+      ]
+    },
+    {
+      "id": "documents.details",
+      "subarea": "Dokumente",
+      "name": "Dokumentdetails und Verknüpfungen",
+      "description": "Öffnet ein Dokument aus der Liste oder einer Akte und zeigt berechtigte Verweise auf Akten, Kontakte und Aufgaben aus Annotationen.",
+      "category": "fachlich",
+      "implementationStatus": "implementiert",
+      "integrationStatus": "ui",
+      "coverage": "keine",
+      "testResult": "nicht-ausgefuehrt",
+      "evidence": [
+        "src/features/documents/components/DocumentDetailsDialog.tsx"
+      ],
+      "components": [
+        "src/features/documents/components/DocumentDetailsDialog.tsx"
+      ],
+      "tables": [
+        "documents",
+        "case_file_documents",
+        "document_contacts",
+        "document_annotation_tasks"
+      ],
+      "roles": [
+        "abgeordneter",
+        "bueroleitung",
+        "mitarbeiter",
+        "praktikant"
+      ],
+      "dependsOn": [
+        "documents.list"
       ]
     },
     {

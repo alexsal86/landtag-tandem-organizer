@@ -1,3 +1,4 @@
+import { documentBucket } from "@/features/documents/documentStorage";
 import { supabase } from "@/integrations/supabase/client";
 
 interface DownloadDocumentOptions {
@@ -15,7 +16,7 @@ export const downloadDocument = async ({
 }: DownloadDocumentOptions) => {
   try {
     const { data, error } = await supabase.storage
-      .from('documents')
+      .from(documentBucket(filePath))
       .download(filePath);
 
     if (error) throw error;

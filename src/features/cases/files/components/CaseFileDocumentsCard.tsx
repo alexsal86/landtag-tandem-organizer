@@ -1,3 +1,4 @@
+import { Link } from "react-router-dom";
 import { CaseFileDocument } from "@/features/cases/files/hooks";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
@@ -65,7 +66,9 @@ export function CaseFileDocumentsCard({ documents, onAdd }: CaseFileDocumentsCar
                   <FileText className="h-4 w-4" />
                 </div>
                 <div className="flex-1 min-w-0">
-                  <p className="text-sm font-medium truncate leading-tight">{title}</p>
+                  {doc.document ? <Link to={`/documents?document=${doc.document_id}`} className="block truncate text-sm font-medium leading-tight hover:underline">
+                    {title}
+                  </Link> : <p className="truncate text-sm font-medium leading-tight">{title}</p>}
                   <p className="text-[11px] text-muted-foreground mt-0.5">
                     {ext}
                     {size && <> · {size}</>}

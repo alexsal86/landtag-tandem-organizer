@@ -6,7 +6,7 @@ Die Angaben sind deklarierte Mindestrollen. Die tatsächlich wirksame Berechtigu
 
 ## Funktionen je Rolle
 
-### `abgeordneter` — 178 Funktionen
+### `abgeordneter` — 180 Funktionen
 
 - `mywork.dashboard` — Meine Arbeit – Dashboard
 - `mywork.tabs` — Meine Arbeit – Bereichsnavigation und Einstellungen
@@ -37,6 +37,7 @@ Die Angaben sind deklarierte Mindestrollen. Die tatsächlich wirksame Berechtigu
 - `tasks.search-filter` — Aufgaben suchen, filtern und sortieren
 - `tasks.nudge` — Aufgabe anmahnen und Erinnerungen versenden
 - `documents.list` — Dokumentenliste und Suche
+- `documents.details` — Dokumentdetails und Verknüpfungen
 - `documents.upload-version` — Dokument hochladen und versionieren
 - `documents.contacts` — Dokumente mit Kontakten verknüpfen
 - `documents.email` — Dokumente per E-Mail versenden
@@ -160,6 +161,7 @@ Die Angaben sind deklarierte Mindestrollen. Die tatsächlich wirksame Berechtigu
 - `casefiles.manage` — Fallakte anlegen und führen
 - `casefiles.status-workflow` — Fallakten-Status und Bearbeitungsstatus
 - `casefiles.links` — Fallakte verknüpfen (Dokumente, Kontakte, Themen, Notizen)
+- `casefiles.document-upload` — Datei aus der Akte ablegen
 - `casefiles.notes` — Fallakten-Notizen
 - `election.analysis` — Wahlanalyse durchführen
 - `election.analysis-navigation` — Analyse-Navigation und gespeicherte Szenarien
@@ -187,7 +189,7 @@ Die Angaben sind deklarierte Mindestrollen. Die tatsächlich wirksame Berechtigu
 - `knowledge.global-question` — Globale Wissensfrage aus jedem Bereich
 - `knowledge.persons` — Wissenspersonen und Zuständigkeit
 
-### `bueroleitung` — 224 Funktionen
+### `bueroleitung` — 226 Funktionen
 
 - `mywork.dashboard` — Meine Arbeit – Dashboard
 - `mywork.dashboard.today-priorities` — Heute zuerst
@@ -232,6 +234,7 @@ Die Angaben sind deklarierte Mindestrollen. Die tatsächlich wirksame Berechtigu
 - `automation.rss` — RSS-Quellen und Monitoring
 - `automation.templates` — Automatisierungs-Vorlagen
 - `documents.list` — Dokumentenliste und Suche
+- `documents.details` — Dokumentdetails und Verknüpfungen
 - `documents.upload-version` — Dokument hochladen und versionieren
 - `documents.contacts` — Dokumente mit Kontakten verknüpfen
 - `documents.email` — Dokumente per E-Mail versenden
@@ -383,6 +386,7 @@ Die Angaben sind deklarierte Mindestrollen. Die tatsächlich wirksame Berechtigu
 - `casefiles.manage` — Fallakte anlegen und führen
 - `casefiles.status-workflow` — Fallakten-Status und Bearbeitungsstatus
 - `casefiles.links` — Fallakte verknüpfen (Dokumente, Kontakte, Themen, Notizen)
+- `casefiles.document-upload` — Datei aus der Akte ablegen
 - `casefiles.notes` — Fallakten-Notizen
 - `election.analysis` — Wahlanalyse durchführen
 - `election.analysis-navigation` — Analyse-Navigation und gespeicherte Szenarien
@@ -414,7 +418,7 @@ Die Angaben sind deklarierte Mindestrollen. Die tatsächlich wirksame Berechtigu
 - `knowledge.persons` — Wissenspersonen und Zuständigkeit
 - `knowledge.management` — Wissensverwaltung
 
-### `mitarbeiter` — 184 Funktionen
+### `mitarbeiter` — 186 Funktionen
 
 - `mywork.dashboard` — Meine Arbeit – Dashboard
 - `mywork.dashboard.today-priorities` — Heute zuerst
@@ -447,6 +451,7 @@ Die Angaben sind deklarierte Mindestrollen. Die tatsächlich wirksame Berechtigu
 - `tasks.search-filter` — Aufgaben suchen, filtern und sortieren
 - `tasks.nudge` — Aufgabe anmahnen und Erinnerungen versenden
 - `documents.list` — Dokumentenliste und Suche
+- `documents.details` — Dokumentdetails und Verknüpfungen
 - `documents.upload-version` — Dokument hochladen und versionieren
 - `documents.contacts` — Dokumente mit Kontakten verknüpfen
 - `documents.email` — Dokumente per E-Mail versenden
@@ -575,6 +580,7 @@ Die Angaben sind deklarierte Mindestrollen. Die tatsächlich wirksame Berechtigu
 - `casefiles.manage` — Fallakte anlegen und führen
 - `casefiles.status-workflow` — Fallakten-Status und Bearbeitungsstatus
 - `casefiles.links` — Fallakte verknüpfen (Dokumente, Kontakte, Themen, Notizen)
+- `casefiles.document-upload` — Datei aus der Akte ablegen
 - `casefiles.notes` — Fallakten-Notizen
 - `election.analysis` — Wahlanalyse durchführen
 - `election.analysis-navigation` — Analyse-Navigation und gespeicherte Szenarien
@@ -601,7 +607,7 @@ Die Angaben sind deklarierte Mindestrollen. Die tatsächlich wirksame Berechtigu
 - `knowledge.persons` — Wissenspersonen und Zuständigkeit
 - `knowledge.management` — Wissensverwaltung
 
-### `praktikant` — 39 Funktionen
+### `praktikant` — 40 Funktionen
 
 - `mywork.dashboard` — Meine Arbeit – Dashboard
 - `mywork.dashboard.today-priorities` — Heute zuerst
@@ -627,6 +633,7 @@ Die Angaben sind deklarierte Mindestrollen. Die tatsächlich wirksame Berechtigu
 - `tasks.link-document` — Aufgabe mit Dokument verknüpfen
 - `tasks.search-filter` — Aufgaben suchen, filtern und sortieren
 - `documents.list` — Dokumentenliste und Suche
+- `documents.details` — Dokumentdetails und Verknüpfungen
 - `documents.upload-version` — Dokument hochladen und versionieren
 - `news.articles` — News-Artikel und Lesestatus
 - `chat.messages` — Interner Chat über Matrix
@@ -841,6 +848,7 @@ Die Angaben sind deklarierte Mindestrollen. Die tatsächlich wirksame Berechtigu
 | `calendar.polls` | `abgeordneter`, `bueroleitung`, `mitarbeiter` |
 | `calendar.reminders` | `system`, `abgeordneter`, `bueroleitung`, `mitarbeiter` |
 | `calendar.view` | `abgeordneter`, `bueroleitung`, `mitarbeiter`, `praktikant` |
+| `casefiles.document-upload` | `abgeordneter`, `bueroleitung`, `mitarbeiter` |
 | `casefiles.links` | `abgeordneter`, `bueroleitung`, `mitarbeiter` |
 | `casefiles.manage` | `abgeordneter`, `bueroleitung`, `mitarbeiter` |
 | `casefiles.notes` | `abgeordneter`, `bueroleitung`, `mitarbeiter` |
@@ -886,6 +894,7 @@ Die Angaben sind deklarierte Mindestrollen. Die tatsächlich wirksame Berechtigu
 | `decisions.remind` | `abgeordneter`, `bueroleitung` |
 | `decisions.vote` | `abgeordneter`, `bueroleitung`, `mitarbeiter` |
 | `documents.contacts` | `abgeordneter`, `bueroleitung`, `mitarbeiter` |
+| `documents.details` | `abgeordneter`, `bueroleitung`, `mitarbeiter`, `praktikant` |
 | `documents.email` | `abgeordneter`, `bueroleitung`, `mitarbeiter` |
 | `documents.list` | `abgeordneter`, `bueroleitung`, `mitarbeiter`, `praktikant` |
 | `documents.upload-version` | `abgeordneter`, `bueroleitung`, `mitarbeiter`, `praktikant` |

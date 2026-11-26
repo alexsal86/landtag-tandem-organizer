@@ -1,3 +1,4 @@
+import { documentBucket } from "@/features/documents/documentStorage";
 import { supabase } from "@/integrations/supabase/client";
 import type { CreatedRecord, StorageObject } from "./types";
 import { errorFacts, describeError } from "./verify";
@@ -38,7 +39,8 @@ export async function recoverArtifacts(records: CreatedRecord[], storageObjects:
     if (!recovered.some(r => r.table === record.table && r.id === record.id)) recovered.push(record);
   };
   const addFile = (path: string) => {
-    if (!objects.some(o => o.bucket === "documents" && o.path === path)) objects.push({ bucket: "documents", path });
+    const bucket = documentBucket(path);
+    if (!objects.some(o => o.bucket === bucket && o.path === path)) objects.push({ bucket, path });
   };
   for (const record of records) {
     try {

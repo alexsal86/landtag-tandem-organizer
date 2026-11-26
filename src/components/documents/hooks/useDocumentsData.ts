@@ -1,4 +1,4 @@
-import { useState, useEffect } from "react";
+import { useState, useEffect, useRef } from "react";
 import { supabase } from "@/integrations/supabase/client";
 import { useAuth } from "@/hooks/useAuth";
 import { useTenant } from "@/hooks/useTenant";
@@ -7,7 +7,17 @@ import { fetchEntityTopicIds } from "@/features/topics/useEntityTopics";
 import type { Document, DocumentFolder, Letter } from "../types";
 import { notify } from "@/lib/notify";
 
-export function useDocumentsData(activeTab: string) {
+import { documentSearchFilter } from "@/features/documents/documentSearch";
+import type { DocumentSort } from "@/features/documents/documentListModel";
+
+interface DocumentListOptions {
+  search: string;
+  categories: readonly string[];
+  folderId: string | null | undefined;
+  sort: DocumentSort;
+}
+
+export function useDocumentsData(activeTab: string, options?: DocumentListOptions) {
   const { user } = useAuth();
   const { currentTenant } = useTenant();
 
@@ -21,29 +31,36 @@ export function useDocumentsData(activeTab: string) {
   const [totalDocuments, setTotalDocuments] = useState(0);
   const [hasMore, setHasMore] = useState(true);
 
+  const request = useRef(0);
+  const scope = JSON.stringify([currentTenant?.id, activeTab, options]);
+  const activeScope = useRef(scope);
+  activeScope.current = scope;
+  const [loadedScope, setLoadedScope] = useState<string>();
+
   const fetchDocuments = async (page = 0, append = false) => {
     if (!currentTenant) return;
-    if (!append) setLoading(true);
+    if (activeScope.current !== scope) return;
+    const requestId = ++request.current;
+    const isCurrent = () => request.current === requestId && activeScope.current === scope;
+    setLoading(true);
     try {
-      // Get total count (head-only query, minimal egress)
-      if (!append) {
-        const { count } = await supabase
-          .from('documents')
-          .select('id', { count: 'exact', head: true })
-          .eq('tenant_id', currentTenant.id);
-        setTotalDocuments(count || 0);
-      }
-
       const from = page * PAGE_SIZE;
-      const to = from + PAGE_SIZE - 1;
-
-      const { data, error } = await supabase
+      let query = supabase
         .from('documents')
-        .select('id, title, description, file_name, file_path, file_size, file_type, category, status, folder_id, document_type, archived_attachments, created_at, updated_at, user_id, tenant_id')
-        .eq('tenant_id', currentTenant.id)
-        .order('created_at', { ascending: false })
-        .range(from, to);
+        .select('id, title, description, file_name, file_path, file_size, file_type, category, status, folder_id, document_type, source_letter_id, archived_attachments, created_at, updated_at, user_id, tenant_id', { count: 'exact' })
+        .eq('tenant_id', currentTenant.id);
 
+      if (options?.folderId === null) query = query.is('folder_id', null);
+      if (options?.folderId) query = query.eq('folder_id', options.folderId);
+      if (options?.categories.length) query = query.in('category', options.categories);
+      if (options?.search.trim()) query = query.or(documentSearchFilter(options.search));
+
+      const { data, error, count } = await query
+        .order(options?.sort.key ?? 'created_at', { ascending: options?.sort.direction === 'asc' })
+        .order('id', { ascending: true })
+        .range(from, from + PAGE_SIZE - 1);
+
+      if (!isCurrent()) return;
       if (error) throw error;
 
       const topicMap = await fetchEntityTopicIds(
@@ -57,19 +74,28 @@ export function useDocumentsData(activeTab: string) {
         archived_attachments: Array.isArray(doc.archived_attachments) ? doc.archived_attachments : []
       })) as Document[];
 
+      if (!isCurrent()) return;
       if (append) {
         setDocuments(prev => [...prev, ...mappedDocs]);
       } else {
         setDocuments(mappedDocs);
       }
 
-      setHasMore((data?.length || 0) >= PAGE_SIZE);
+      setLoadedScope(scope);
+      setTotalDocuments(count ?? mappedDocs.length);
+      setHasMore(from + mappedDocs.length < (count ?? 0));
       setCurrentPage(page);
     } catch (error: unknown) {
+      if (!isCurrent()) return;
+      setLoadedScope(scope);
+      if (!append) {
+        setDocuments([]);
+        setHasMore(false);
+      }
       notify.error("Fehler beim Laden", { description: error instanceof Error ? error.message : String(error)
 });
     } finally {
-      setLoading(false);
+      if (isCurrent()) setLoading(false);
     }
   };
 
@@ -138,7 +164,6 @@ export function useDocumentsData(activeTab: string) {
   useEffect(() => {
     if (user && currentTenant) {
       if (activeTab === 'documents') {
-        fetchDocuments();
         fetchFolders();
       } else {
         fetchLetters();
@@ -146,10 +171,21 @@ export function useDocumentsData(activeTab: string) {
     }
   }, [user, currentTenant, activeTab]);
 
+  useEffect(() => {
+    if (!user || !currentTenant || activeTab !== 'documents') return;
+    const timer = window.setTimeout(() => void fetchDocuments(), options?.search.trim() ? 200 : 0);
+    return () => {
+      window.clearTimeout(timer);
+      request.current++;
+    };
+  }, [user, scope]);
+
+  const matchesScope = loadedScope === scope;
   return {
-    documents, letters, folders, loading, setLoading,
+    documents: matchesScope ? documents : [], letters, folders,
+    loading: loading || (activeTab === 'documents' && !!currentTenant && !matchesScope), setLoading,
     fetchDocuments, fetchFolders, fetchLetters, loadMoreDocuments,
-    hasMore, totalDocuments, currentPage,
+    hasMore: matchesScope && hasMore, totalDocuments, currentPage,
     user, currentTenant,
   };
 }

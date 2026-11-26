@@ -56,7 +56,8 @@ import { notify } from "@/lib/notify";
 import { AnnotationWorkspace } from "@/features/annotations/components/AnnotationWorkspace";
 import { getAnnotationFileKind } from "@/features/annotations/annotationModel";
 import { useAnnotationCounts } from "@/features/annotations/useAnnotations";
-import { visibleDocuments, nextDocumentSort, selectVisibleDocuments, type DocumentSort } from "../documentListModel";
+import { DocumentDetailsDialog } from "./DocumentDetailsDialog";
+import { nextDocumentSort, selectVisibleDocuments, type DocumentSort } from "../documentListModel";
 
 const AUTO_ARCHIVE_DEFAULT_DAYS = 30;
 const AUTO_ARCHIVE_SETTING_KEY = "letters_auto_archive_days";
@@ -143,7 +144,14 @@ export function DocumentsView() {
   const [showArchivedLetterDetails, setShowArchivedLetterDetails] = useState(false);
   const [selectedArchivedDocument, setSelectedArchivedDocument] = useState<Document | null>(null);
 
-  const data = useDocumentsData(activeTab);
+  const [searchCurrentFolder, setSearchCurrentFolder] = useState(false);
+  const isSearching = searchTerm.trim().length > 0;
+  const data = useDocumentsData(activeTab, {
+    search: searchTerm.trim(),
+    categories: selectedCategories,
+    folderId: isSearching && !searchCurrentFolder ? undefined : currentFolder,
+    sort: documentSort,
+  });
   const ops = useDocumentOperations({
     user: data.user, currentTenant: data.currentTenant,
     fetchDocuments: data.fetchDocuments, fetchFolders: data.fetchFolders,
@@ -234,14 +242,24 @@ export function DocumentsView() {
   };
 
 
-  const filteredDocuments = visibleDocuments(data.documents, { search: searchTerm, categories: selectedCategories,
-    folderId: currentFolder, sort: documentSort });
+  const detailDocumentId = searchParams.get("document");
+  const setDetailDocumentId = (id: string | null) => {
+    const next = new URLSearchParams(searchParams);
+    if (id) next.set("document", id);
+    else next.delete("document");
+    setSearchParams(next, { replace: true });
+  };
+
+  const filteredDocuments = data.documents;
+  const folderLocation = (folderId?: string | null) => folderId
+    ? data.folders.find(folder => folder.id === folderId)?.name ?? "Ordner"
+    : "Hauptablage";
   const visibleDocumentIds = filteredDocuments.map(doc => doc.id);
   const selectedVisibleCount = visibleDocumentIds.filter(id => selectedDocumentIds.has(id)).length;
   const allDocumentsSelected = visibleDocumentIds.length > 0 && selectedVisibleCount === visibleDocumentIds.length;
   const selectAllDocuments = (checked: boolean) => setSelectedDocumentIds(current => selectVisibleDocuments(current, visibleDocumentIds, checked));
   const selectDocument = (id: string, checked: boolean) => setSelectedDocumentIds(current => selectVisibleDocuments(current, [id], checked));
-  useEffect(() => { setSelectedDocumentIds(new Set()); }, [searchTerm, selectedCategories, currentFolder, data.currentTenant?.id]);
+  useEffect(() => { setSelectedDocumentIds(new Set()); }, [searchTerm, selectedCategories, currentFolder, searchCurrentFolder, documentSort, data.currentTenant?.id]);
   const sortButton = (key: DocumentSort["key"], label: string) => {
     const Icon = documentSort.key !== key ? ArrowUpDown : documentSort.direction === "asc" ? ArrowUp : ArrowDown;
     const next = nextDocumentSort(documentSort, key);
@@ -250,7 +268,7 @@ export function DocumentsView() {
       onClick={() => setDocumentSort(next)}>{label}<Icon className="h-4 w-4" aria-hidden="true" /></button>;
   };
 
-  const currentFolderSubfolders = data.folders.filter(f => f.parent_folder_id === currentFolder);
+  const currentFolderSubfolders = isSearching ? [] : data.folders.filter(f => f.parent_folder_id === currentFolder);
 
   const filteredLetters = data.letters.filter(letter => {
     const matchesSearch = letter.title.toLowerCase().includes(searchTerm.toLowerCase()) || (letter.recipient_address ?? '').toLowerCase().includes(searchTerm.toLowerCase()) || letter.recipient_name?.toLowerCase().includes(searchTerm.toLowerCase());
@@ -482,6 +500,10 @@ export function DocumentsView() {
                   <Input className="bg-white pl-10 text-slate-900 placeholder:text-slate-500" aria-label={activeTab === 'documents' ? "Dokumente durchsuchen" : "Briefe durchsuchen"}
                     placeholder={activeTab === 'documents' ? "Dokumente durchsuchen..." : "Briefe durchsuchen..."} value={searchTerm} onChange={e => setSearchTerm(e.target.value)} />
                 </div>
+                {activeTab === 'documents' && isSearching && <label className="flex items-center gap-2 text-sm">
+                  <Checkbox checked={searchCurrentFolder} onCheckedChange={checked => setSearchCurrentFolder(checked === true)} />
+                  Nur aktueller Ordner
+                </label>}
                 {activeTab === 'documents' ? <div className="flex min-w-[180px] flex-1 flex-wrap items-center gap-2" role="group" aria-label="Kategorien auswählen">
                   <Button size="sm" variant={selectedCategories.length === 0 ? "default" : "outline"}
                     className={`rounded-full ${selectedCategories.length === 0 ? "" : "bg-white text-slate-900 hover:bg-slate-50"}`}
@@ -553,21 +575,25 @@ export function DocumentsView() {
               {viewType === 'card' && <label className="flex cursor-pointer items-center gap-2"><Checkbox
                 checked={allDocumentsSelected ? true : selectedVisibleCount > 0 ? "indeterminate" : false}
                 onCheckedChange={checked => selectAllDocuments(checked === true)} />Alle auswählen</label>}
-              <span role="status">{selectedVisibleCount > 0 ? `${selectedVisibleCount} ausgewählt` : `${filteredDocuments.length} Dokumente`}</span>
+              <span role="status">{selectedVisibleCount > 0 ? `${selectedVisibleCount} ausgewählt` : `${filteredDocuments.length} von ${data.totalDocuments} Dokumenten`}</span>
               {selectedVisibleCount > 0 && <Button variant="ghost" size="sm" onClick={() => setSelectedDocumentIds(new Set())}>Auswahl aufheben</Button>}
             </div>}
 
             {/* Documents */}
             {filteredDocuments.length === 0 && currentFolderSubfolders.length === 0 ? (
-              <Card><CardContent className="p-8 text-center"><FileText className="h-12 w-12 text-muted-foreground mx-auto mb-4" /><h3 className="text-lg font-semibold mb-2">Keine Dokumente gefunden</h3><p className="text-muted-foreground mb-4">{data.documents.length === 0 ? "Laden Sie Ihr erstes Dokument hoch." : "Keine Dokumente entsprechen Ihren Filterkriterien."}</p>{data.documents.length === 0 && <Button onClick={() => setShowUploadDialog(true)} className="gap-2"><Plus className="h-4 w-4" />Erstes Dokument hochladen</Button>}</CardContent></Card>
+              <Card><CardContent className="p-8 text-center"><FileText className="h-12 w-12 text-muted-foreground mx-auto mb-4" /><h3 className="text-lg font-semibold mb-2">Keine Dokumente gefunden</h3><p className="text-muted-foreground mb-4">Keine Dokumente entsprechen Ihren Filterkriterien.</p></CardContent></Card>
             ) : viewType === 'card' ? (
               <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
                 {filteredDocuments.map(doc => (
                   <Card key={doc.id} className={`hover:shadow-lg transition-shadow overflow-hidden ${selectedDocumentIds.has(doc.id) ? "ring-2 ring-primary" : ""}`}>
-                    <CardHeader className="pb-3"><div className="flex items-start justify-between gap-2 min-w-0"><div className="flex items-center gap-2 min-w-0 flex-1 overflow-hidden"><Checkbox aria-label={`${doc.title} auswählen`} checked={selectedDocumentIds.has(doc.id)} onCheckedChange={checked => selectDocument(doc.id, checked === true)} /><FileText className="h-5 w-5 text-primary flex-shrink-0" /><CardTitle className="text-lg truncate">{doc.title}</CardTitle></div></div>{doc.description && <CardDescription className="line-clamp-2 break-words">{doc.description}</CardDescription>}</CardHeader>
+                    <CardHeader className="pb-3"><div className="flex items-start justify-between gap-2 min-w-0"><div className="flex items-center gap-2 min-w-0 flex-1 overflow-hidden"><Checkbox aria-label={`${doc.title} auswählen`} checked={selectedDocumentIds.has(doc.id)} onCheckedChange={checked => selectDocument(doc.id, checked === true)} /><FileText className="h-5 w-5 text-primary flex-shrink-0" /><CardTitle className="min-w-0 text-lg"><button type="button" className="block max-w-full truncate text-left hover:underline"
+                      onClick={() => setDetailDocumentId(doc.id)}>{doc.title}</button></CardTitle></div></div>{doc.description && <CardDescription className="line-clamp-2 break-words">{doc.description}</CardDescription>}</CardHeader>
                     <CardContent className="space-y-4">
                       <div className="space-y-2 text-sm text-muted-foreground">
                         <div className="flex items-center gap-2"><Folder className="h-4 w-4 flex-shrink-0" /><span className="truncate">{getCategoryLabel(doc.category ?? '')}</span></div>
+                        {isSearching && !searchCurrentFolder && <div className="flex items-center gap-2">
+                          <Folder className="h-4 w-4 shrink-0" /><span className="truncate">{folderLocation(doc.folder_id)}</span>
+                        </div>}
                         <div className="flex items-center gap-2"><Calendar className="h-4 w-4 flex-shrink-0" /><span>{format(new Date(doc.created_at), "dd.MM.yyyy", { locale: de })}</span></div>
                         <div className="flex items-center gap-2"><FileType className="h-4 w-4 flex-shrink-0" /><span className="truncate">{doc.file_name}</span></div>
                       </div>
@@ -599,7 +625,7 @@ export function DocumentsView() {
                 <TableHead>Kontakte</TableHead><TableHead className="text-right">Aktionen</TableHead>
               </TableRow></TableHeader><TableBody>
                 {filteredDocuments.map(doc => (
-                  <TableRow key={doc.id} data-state={selectedDocumentIds.has(doc.id) ? "selected" : undefined}><TableCell><Checkbox aria-label={`${doc.title} auswählen`} checked={selectedDocumentIds.has(doc.id)} onCheckedChange={checked => selectDocument(doc.id, checked === true)} /></TableCell><TableCell className="font-medium"><div className="flex items-center gap-2"><FileText className="h-4 w-4 text-muted-foreground" /><div><div className="flex items-center gap-2">{doc.title}{annotationBadge(doc, true)}</div>{doc.description && <div className="text-xs text-muted-foreground truncate max-w-[200px]">{doc.description}</div>}</div></div></TableCell><TableCell>{getCategoryLabel(doc.category ?? '')}</TableCell><TableCell>{format(new Date(doc.created_at), "dd.MM.yyyy", { locale: de })}</TableCell><TableCell><DocumentContactManager documentId={doc.id} compact /></TableCell>
+                  <TableRow key={doc.id} data-state={selectedDocumentIds.has(doc.id) ? "selected" : undefined}><TableCell><Checkbox aria-label={`${doc.title} auswählen`} checked={selectedDocumentIds.has(doc.id)} onCheckedChange={checked => selectDocument(doc.id, checked === true)} /></TableCell><TableCell className="font-medium"><div className="flex items-center gap-2"><FileText className="h-4 w-4 text-muted-foreground" /><div><div className="flex items-center gap-2"><button type="button" className="text-left hover:underline" onClick={() => setDetailDocumentId(doc.id)}>{doc.title}</button>{annotationBadge(doc, true)}</div>{isSearching && !searchCurrentFolder && <div className="text-xs text-muted-foreground">{folderLocation(doc.folder_id)}</div>}{doc.description && <div className="text-xs text-muted-foreground truncate max-w-[200px]">{doc.description}</div>}</div></div></TableCell><TableCell>{getCategoryLabel(doc.category ?? '')}</TableCell><TableCell>{format(new Date(doc.created_at), "dd.MM.yyyy", { locale: de })}</TableCell><TableCell><DocumentContactManager documentId={doc.id} compact /></TableCell>
                   <TableCell className="text-right"><TooltipProvider><div className="flex items-center gap-1 justify-end">
                     {doc.document_type === 'archived_letter' && doc.source_letter_id && <Tooltip><TooltipTrigger asChild><Button variant="ghost" size="sm" onClick={() => { setSelectedArchivedDocument(doc); setShowArchivedLetterDetails(true); }}><Info className="h-4 w-4" /></Button></TooltipTrigger><TooltipContent>Details</TooltipContent></Tooltip>}
                     {doc.document_type !== 'archived_letter' && <Tooltip><TooltipTrigger asChild><Button variant="ghost" size="sm" onClick={() => handleEditDocument(doc)}><Edit className="h-4 w-4" /></Button></TooltipTrigger><TooltipContent>Bearbeiten</TooltipContent></Tooltip>}
@@ -609,6 +635,9 @@ export function DocumentsView() {
                 ))}
               </TableBody></Table></Card>
             )}
+            {data.hasMore && <Button className="mt-4" variant="outline" disabled={data.loading} onClick={data.loadMoreDocuments}>
+              Weitere Dokumente laden
+            </Button>}
           </>
         ) : (
           /* Letters tab */
@@ -645,6 +674,12 @@ export function DocumentsView() {
         {/* Letter Editor (only for new unsaved letters) */}
         {/* @ts-expect-error LettersView Letter type differs from LetterEditor's Letter type (legacy duplicate) */}
         <LetterEditor letter={selectedLetter} isOpen={lettersEnabled && showLetterEditor && !selectedLetter?.id} onClose={() => { setShowLetterEditor(false); setSelectedLetter(undefined); data.fetchLetters(); }} onSave={() => data.fetchLetters()} />
+
+        {detailDocumentId && data.currentTenant && <DocumentDetailsDialog
+          documentId={detailDocumentId} tenantId={data.currentTenant.id}
+          onClose={() => setDetailDocumentId(null)} onDownload={ops.handleDownload}
+          onAnnotate={document => { setDetailDocumentId(null); setAnnotateDoc(document); }}
+        />}
 
         <DocumentDialogs
           showEditDialog={dialogState.showEditDialog} setShowEditDialog={setShowEditDialog}

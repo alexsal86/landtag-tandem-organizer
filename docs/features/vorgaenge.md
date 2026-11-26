@@ -6,10 +6,10 @@ _Auto-generiert mit `npm run update:feature-catalog` aus dem zentralen Funktions
 
 ## Kennzahlen
 
-- Funktionen: **16** in **6** Unterbereichen
-- implementiert: **15**, teilweise: **0**, deaktiviert: **0**, potenziell verwaist: **0**
+- Funktionen: **17** in **6** Unterbereichen
+- implementiert: **16**, teilweise: **0**, deaktiviert: **0**, potenziell verwaist: **0**
 - ohne zugeordneten Test: **4**
-- ohne Dokumentationsverweis: **11**
+- ohne Dokumentationsverweis: **12**
 
 ## Funktionen
 
@@ -22,6 +22,7 @@ _Auto-generiert mit `npm run update:feature-catalog` aus dem zentralen Funktions
 | `cases.steps` Vorgangsschritte und Aufgaben | Bearbeitung | fachlich | implementiert | systemseitig | Unit-Test |
 | `cases.legacy-routes` Legacy-Vorgangsrouten | Erfassung | fachlich | veraltet | UI | kein Test |
 | `cases.create` Vorgang erfassen | Erfassung | fachlich | implementiert | rollenabhängig | Selbsttest |
+| `casefiles.document-upload` Datei aus der Akte ablegen | Fallakten | fachlich | implementiert | UI | Selbsttest |
 | `casefiles.manage` Fallakte anlegen und führen | Fallakten | fachlich | implementiert | rollenabhängig | Selbsttest |
 | `casefiles.links` Fallakte verknüpfen (Dokumente, Kontakte, Themen, Notizen) | Fallakten | fachlich | implementiert | UI | Selbsttest |
 | `casefiles.notes` Fallakten-Notizen | Fallakten | fachlich | implementiert | UI | Selbsttest |
@@ -47,13 +48,13 @@ _Auto-generiert mit `npm run update:feature-catalog` aus dem zentralen Funktions
 
 ## Datenbanktabellen
 
-`appointments`, `audit_log_entries`, `case_file_appointments`, `case_file_contacts`, `case_file_documents`, `case_file_letters`, `case_file_notes`, `case_file_participants`, `case_file_processing_statuses`, `case_file_status_history`, `case_file_tasks`, `case_file_timeline`, `case_file_topics`, `case_file_types`, `case_files`, `case_item_categories`, `case_item_escalation_suggestions`, `case_item_handover_log`, `case_item_interactions`, `case_item_participants`, `case_item_timeline`, `case_item_topics`, `case_items`, `letters`, `task_decisions`, `tasks`, `topic_module_settings`, `topics`
+`appointments`, `audit_log_entries`, `case_file_appointments`, `case_file_contacts`, `case_file_documents`, `case_file_letters`, `case_file_notes`, `case_file_participants`, `case_file_processing_statuses`, `case_file_status_history`, `case_file_tasks`, `case_file_timeline`, `case_file_topics`, `case_file_types`, `case_files`, `case_item_categories`, `case_item_escalation_suggestions`, `case_item_handover_log`, `case_item_interactions`, `case_item_participants`, `case_item_timeline`, `case_item_topics`, `case_items`, `documents`, `letters`, `task_decisions`, `tasks`, `topic_module_settings`, `topics`
 
 ## Selbsttest-Szenarien
 
 | Szenario | Titel | deklarierte Tabellen | deklarierte Prüfungen | letzter Lauf |
 |---|---|---:|---:|---|
-| `case-file-lifecycle` | Fallakte mit Folgetabellen (Container) im Unterschied zum Vorgang | 14 | 8 | — |
+| `case-file-lifecycle` | Fallakte mit Folgetabellen (Container) im Unterschied zum Vorgang | 16 | 9 | — |
 | `case-item-lifecycle` | Vorgangs-Lifecycle (Am Zug → Schritt → Wiedervorlage → Entscheidung → Tageszettel → Abschluss) | 9 | 5 | — |
 
 ## Selbsttest-Schritte
@@ -69,6 +70,7 @@ Diese Schritte führen die Szenarien aus; „letzter Lauf“ stammt aus `src/fea
 | `case-file-lifecycle` | `notes-and-timeline` | Notiz und Verlaufseintrag zur Akte speichern | db | — |
 | `case-file-lifecycle` | `links-contact-task` | Kontakt verknüpfen und Aufgabe über die Akten-RPC erzeugen | db | — |
 | `case-file-lifecycle` | `links-appointment-letter` | Termin und Brief mit der Akte verknüpfen | db | — |
+| `case-file-lifecycle` | `upload-document` | Datei in der Akte ablegen und über die Dokumentensuche finden | db | — |
 | `case-file-lifecycle` | `counts` | Akten-RPC zählt die Verknüpfungen | db | — |
 | `case-file-lifecycle` | `vorgang-vs-akte` | Unterschied zum Vorgang: eigener Ball, geerbte Sichtbarkeit | db | — |
 | `case-file-lifecycle` | `delete-detaches` | Akte löschen: Folgetabellen weg, Vorgang bleibt | db | — |
@@ -98,9 +100,10 @@ Diese Schritte führen die Szenarien aus; „letzter Lauf“ stammt aus `src/fea
 3. Bearbeitungsstatus und Statusverlauf werden gespeichert; derselbe Beteiligte kann nicht doppelt eingetragen werden
 4. Kontakt, Aufgabe, Termin und Brief werden über die jeweilige Folgetabelle verknüpft; doppelte Verknüpfungen sind gesperrt
 5. Die Aufgabe entsteht über create_case_file_task als offene Aufgabe für die anlegende Person mit source_type 'case_file' und Quellbezug; eine Wiederholung liefert dieselbe Aufgabe und keine zweite Verknüpfung
-6. get_case_files_with_counts liefert die Verknüpfungen der Akte als Zählwerte
-7. Ein Vorgang an einer privaten Akte ist für Büro-Kolleginnen unsichtbar, an einer öffentlichen Akte sichtbar (Sichtbarkeitsvererbung)
-8. Das Löschen der Akte entfernt ihre Folgetabellen, lässt den Vorgang aber mit case_file_id = null bestehen
+6. Eine hochgeladene Datei ist mit der Akte verknüpft und über die serverseitige Dokumentensuche auffindbar
+7. get_case_files_with_counts liefert die Verknüpfungen der Akte als Zählwerte
+8. Ein Vorgang an einer privaten Akte ist für Büro-Kolleginnen unsichtbar, an einer öffentlichen Akte sichtbar (Sichtbarkeitsvererbung)
+9. Das Löschen der Akte entfernt ihre Folgetabellen, lässt den Vorgang aber mit case_file_id = null bestehen
 
 ### `case-item-lifecycle`
 
@@ -616,7 +619,7 @@ Führt Fallakten mit Typ, Status, Risiken, Chancen, nächsten Schritten, Beteili
 - Keine.
 
 ### `casefiles.links` — Fallakte verknüpfen (Dokumente, Kontakte, Themen, Notizen)
-Verknüpft Dokumente, Kontakte, Themen und Notizen mit einer Fallakte und zeigt sie in der Akte; das Szenario prüft Kontakt-, Aufgaben-, Termin- und Briefverknüpfung samt doppelter Verknüpfungssperre.
+Verknüpft vorhandene Dokumente, Kontakte, Themen und Notizen mit einer Fallakte und zeigt sie in der Akte. Die Dokumentenauswahl durchsucht alle Ordner serverseitig.
 
 - **Kategorie:** fachlich
 - **Implementierung:** implementiert
@@ -645,7 +648,43 @@ Verknüpft Dokumente, Kontakte, Themen und Notizen mit einer Fallakte und zeigt 
 
 **Bekannte Einschränkungen**
 
-- Dokument- und Themenverknüpfung prüft kein Szenario: dafür sind eine echte Datei bzw. ein eigener Themenkatalog nötig.
+- Die Themenverknüpfung prüft kein Szenario, weil der Themenkatalog einem eigenen Szenario gehört.
+
+**Offene Prüfpunkte**
+
+- Keine.
+
+### `casefiles.document-upload` — Datei aus der Akte ablegen
+Lädt eine Datei in einen privaten Speicherbereich und speichert Dokument, Aktenverknüpfung und Verlaufseintrag gemeinsam. Sichtbare Dateien lassen sich in der Dokumentenliste finden und aus der Akte öffnen.
+
+- **Kategorie:** fachlich
+- **Implementierung:** implementiert
+- **Einbindung:** UI
+- **Testabdeckung:** Selbsttest
+- **Letztes Testergebnis:** nicht-ausgefuehrt (kein Laufnachweis importiert; nicht aus der Existenz einer Testdatei abgeleitet)
+- **Rollen:** `abgeordneter`, `bueroleitung`, `mitarbeiter`
+- **Routen:** —
+- **Frontend-Komponenten:** `src/features/cases/files/components/tabs/CaseFileDocumentsTab.tsx`, `src/features/cases/files/components/CaseFileDocumentsCard.tsx`
+- **Services:** —
+- **Hooks:** `src/features/cases/files/hooks/useCaseFileDetails.tsx`
+- **Edge Functions:** —
+- **Datenbankfunktionen:** `create_case_file_document`
+- **Tabellen:** `documents`, `case_file_documents`, `case_file_timeline`
+- **Abhängigkeiten:** `casefiles.links`, `documents.list`, `documents.details`
+- **Selbsttests:** `case-file-lifecycle`
+- **Unit-Tests:** —
+- **Integrationstests:** —
+- **Browser-Tests:** —
+- **Dokumentation:** —
+
+**Nachweise im Quellcode**
+
+- src/features/cases/files/components/tabs/CaseFileDocumentsTab.tsx
+- supabase/migrations/20261127130000_case_file_document_upload.sql
+
+**Bekannte Einschränkungen**
+
+- Der Selbsttest deckt Upload, Verknüpfung, Verlauf und einen Suchtreffer ab. Die Bedienoberfläche ist nicht abgedeckt.
 
 **Offene Prüfpunkte**
 

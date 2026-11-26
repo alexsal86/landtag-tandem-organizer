@@ -1,3 +1,4 @@
+import { CASE_DOCUMENT_BUCKET } from "@/features/documents/documentStorage";
 import { useState, useEffect, useCallback } from "react";
 import { supabase } from "@/integrations/supabase/client";
 import { useAuth } from "@/hooks/useAuth";
@@ -467,6 +468,47 @@ export const useCaseFileDetails = (caseFileId: string | null) => {
     }
   };
 
+  const uploadDocument = async (file: File, title: string, relevance: string, notes: string, tenantId: string) => {
+    if (!caseFileId || !user) return false;
+    const storage = supabase.storage.from(CASE_DOCUMENT_BUCKET);
+    const extension = file.name.match(/\.[a-z0-9]+$/i)?.[0] ?? "";
+    const path = `case-files/${tenantId}/${user.id}/${caseFileId}/${crypto.randomUUID()}${extension}`;
+    const upload = await storage.upload(path, file);
+    if (upload.error) {
+      notify.error("Datei konnte nicht hochgeladen werden", { description: upload.error.message });
+      return false;
+    }
+
+    const result = await supabase.rpc("create_case_file_document", {
+      p_case_file_id: caseFileId,
+      p_tenant_id: tenantId,
+      p_title: title,
+      p_file_name: file.name,
+      p_file_path: path,
+      p_file_size: file.size,
+      p_file_type: file.type,
+      p_relevance: relevance,
+      p_notes: notes,
+    });
+    if (result.error) {
+      // A connection failure can happen after commit. Remove the file only after a confirmed rejection.
+      const rejected = /^[0-9A-Z]{5}$/.test(result.error.code) || result.error.code === "PGRST202";
+      if (rejected) {
+        const cleanup = await storage.remove([path]);
+        if (cleanup.error) debugConsole.error("Error removing rejected case file upload:", cleanup.error);
+      }
+      await fetchDocuments();
+      notify.error(rejected ? "Dokument konnte nicht abgelegt werden" : "Ablage konnte nicht bestätigt werden", {
+        description: rejected ? result.error.message : "Prüfen Sie die Dokumentenliste der Akte, bevor Sie es erneut versuchen.",
+      });
+      return false;
+    }
+
+    await Promise.all([fetchDocuments(), fetchTimeline()]);
+    notify.success("Dokument in der Akte abgelegt");
+    return true;
+  };
+
   const removeDocument = async (id: string) => {
     try {
       const { error } = await supabase.from('case_file_documents').delete().eq('id', id);
@@ -876,6 +918,7 @@ export const useCaseFileDetails = (caseFileId: string | null) => {
     addContact,
     removeContact,
     addDocument,
+    uploadDocument,
     removeDocument,
     addTask,
     removeTask,

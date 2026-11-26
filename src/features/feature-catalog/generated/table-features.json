@@ -522,9 +522,19 @@
   ],
   "case_file_documents": [
     {
+      "id": "casefiles.document-upload",
+      "name": "Datei aus der Akte ablegen",
+      "area": "vorgaenge"
+    },
+    {
       "id": "casefiles.links",
       "name": "Fallakte verknüpfen (Dokumente, Kontakte, Themen, Notizen)",
       "area": "vorgaenge"
+    },
+    {
+      "id": "documents.details",
+      "name": "Dokumentdetails und Verknüpfungen",
+      "area": "dokumente"
     }
   ],
   "case_file_letters": [
@@ -590,6 +600,11 @@
     }
   ],
   "case_file_timeline": [
+    {
+      "id": "casefiles.document-upload",
+      "name": "Datei aus der Akte ablegen",
+      "area": "vorgaenge"
+    },
     {
       "id": "casefiles.manage",
       "name": "Fallakte anlegen und führen",
@@ -1044,6 +1059,11 @@
       "id": "annotations.tasks",
       "name": "Folgeaufgabe aus Annotation",
       "area": "dokumente"
+    },
+    {
+      "id": "documents.details",
+      "name": "Dokumentdetails und Verknüpfungen",
+      "area": "dokumente"
     }
   ],
   "document_annotations": [
@@ -1107,6 +1127,11 @@
       "area": "dokumente"
     },
     {
+      "id": "documents.details",
+      "name": "Dokumentdetails und Verknüpfungen",
+      "area": "dokumente"
+    },
+    {
       "id": "documents.list",
       "name": "Dokumentenliste und Suche",
       "area": "dokumente"
@@ -1153,8 +1178,18 @@
       "area": "dokumente"
     },
     {
+      "id": "casefiles.document-upload",
+      "name": "Datei aus der Akte ablegen",
+      "area": "vorgaenge"
+    },
+    {
       "id": "documents.contacts",
       "name": "Dokumente mit Kontakten verknüpfen",
+      "area": "dokumente"
+    },
+    {
+      "id": "documents.details",
+      "name": "Dokumentdetails und Verknüpfungen",
       "area": "dokumente"
     },
     {

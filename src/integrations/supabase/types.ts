@@ -18531,6 +18531,29 @@ export type Database = {
         }
         Returns: string
       }
+      create_case_file_document: {
+        Args: {
+          p_case_file_id: string
+          p_file_name: string
+          p_file_path: string
+          p_file_size: number
+          p_file_type: string
+          p_notes: string
+          p_relevance: string
+          p_tenant_id: string
+          p_title: string
+        }
+        Returns: string
+      }
+      create_case_file_task: {
+        Args: {
+          p_assigned_to?: string | null
+          p_case_file_id: string
+          p_id: string
+          p_title: string
+        }
+        Returns: string
+      }
       create_default_checklist_items:
         | { Args: { planning_id: string }; Returns: undefined }
         | {

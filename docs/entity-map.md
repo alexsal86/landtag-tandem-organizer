@@ -2,13 +2,13 @@
 
 _Auto-generiert mit `npm run update:feature-catalog` aus den Fremdschlüsseln in `src/integrations/supabase/types.ts`. Nicht von Hand bearbeiten._
 
-351 Tabellen, 472 Fremdschlüsselverweise. Die Karte zeigt, welche Tabelle auf welche zeigt; fachliche Bedeutung steht im [Funktionskatalog](./features/README.md).
+352 Tabellen, 485 Fremdschlüsselverweise. Die Karte zeigt, welche Tabelle auf welche zeigt; fachliche Bedeutung steht im [Funktionskatalog](./features/README.md).
 
 ## Zentrale Tabellen
 
 Tabellen mit mindestens drei eingehenden Verweisen.
 
-### `tenants` — 140 eingehende Verweise
+### `tenants` — 142 eingehende Verweise
 
 | Von | Spalte |
 |---|---|
@@ -41,6 +41,7 @@ Tabellen mit mindestens drei eingehenden Verweisen.
 | `case_item_escalation_suggestions` | `tenant_id` |
 | `case_item_interactions` | `tenant_id` |
 | `case_item_timeline` | `tenant_id` |
+| `case_item_topics` | `tenant_id` |
 | `case_items` | `tenant_id` |
 | `committees` | `tenant_id` |
 | `contacts` | `tenant_id` |
@@ -124,6 +125,7 @@ Tabellen mit mindestens drei eingehenden Verweisen.
 | `social_planner_notes` | `tenant_id` |
 | `starred_appointments` | `tenant_id` |
 | `tags` | `tenant_id` |
+| `task_batch_actions` | `tenant_id` |
 | `task_categories` | `tenant_id` |
 | `task_decisions` | `tenant_id` |
 | `tasks` | `tenant_id` |
@@ -152,6 +154,34 @@ Tabellen mit mindestens drei eingehenden Verweisen.
 | `user_status` | `tenant_id` |
 | `user_tenant_memberships` | `tenant_id` |
 | `vacation_checklist_templates` | `tenant_id` |
+
+### `topics` — 23 eingehende Verweise
+
+| Von | Spalte |
+|---|---|
+| `appointment_topics` | `tenant_id`, `topic_id` |
+| `appointment_topics` | `topic_id` |
+| `case_file_topics` | `tenant_id`, `topic_id` |
+| `case_file_topics` | `topic_id` |
+| `case_item_topics` | `tenant_id`, `topic_id` |
+| `contact_topics` | `tenant_id`, `topic_id` |
+| `contact_topics` | `topic_id` |
+| `document_topics` | `tenant_id`, `topic_id` |
+| `document_topics` | `topic_id` |
+| `dossiers` | `topic_id` |
+| `employee_responsibilities` | `tenant_id`, `topic_id` |
+| `knowledge_document_topics` | `tenant_id`, `topic_id` |
+| `knowledge_document_topics` | `topic_id` |
+| `knowledge_question_topics` | `tenant_id`, `topic_id` |
+| `map_flag_topics` | `tenant_id`, `topic_id` |
+| `map_flag_topics` | `topic_id` |
+| `quick_note_topic_mention_deliveries` | `topic_id` |
+| `task_decision_topics` | `tenant_id`, `topic_id` |
+| `task_decision_topics` | `topic_id` |
+| `task_topics` | `tenant_id`, `topic_id` |
+| `task_topics` | `topic_id` |
+| `topic_catalog_links` | `tenant_id`, `topic_id` |
+| `topics` | `merged_into` |
 
 ### `profiles` — 17 eingehende Verweise
 
@@ -195,25 +225,6 @@ Tabellen mit mindestens drei eingehenden Verweisen.
 | `case_items` | `case_file_id` |
 | `knowledge_question_sources` | `case_id` |
 | `task_decisions` | `case_file_id` |
-
-### `topics` — 14 eingehende Verweise
-
-| Von | Spalte |
-|---|---|
-| `appointment_topics` | `topic_id` |
-| `case_file_topics` | `topic_id` |
-| `case_item_topics` | `tenant_id`, `topic_id` |
-| `contact_topics` | `topic_id` |
-| `document_topics` | `topic_id` |
-| `dossiers` | `topic_id` |
-| `employee_responsibilities` | `tenant_id`, `topic_id` |
-| `knowledge_document_topics` | `topic_id` |
-| `knowledge_question_topics` | `tenant_id`, `topic_id` |
-| `map_flag_topics` | `topic_id` |
-| `quick_note_topic_mention_deliveries` | `topic_id` |
-| `task_decision_topics` | `topic_id` |
-| `task_topics` | `topic_id` |
-| `topic_catalog_links` | `tenant_id`, `topic_id` |
 
 ### `tasks` — 13 eingehende Verweise
 
@@ -344,6 +355,34 @@ Tabellen mit mindestens drei eingehenden Verweisen.
 | `employee_hr_evidence` | `document_id` |
 | `knowledge_question_sources` | `document_id` |
 
+### `knowledge_question_cards` — 9 eingehende Verweise
+
+| Von | Spalte |
+|---|---|
+| `knowledge_question_attachments` | `tenant_id`, `question_id` |
+| `knowledge_question_comments` | `tenant_id`, `question_id` |
+| `knowledge_question_events` | `tenant_id`, `question_id` |
+| `knowledge_question_followers` | `tenant_id`, `question_id` |
+| `knowledge_question_outdated_reports` | `tenant_id`, `question_id` |
+| `knowledge_question_sources` | `tenant_id`, `question_id` |
+| `knowledge_question_tags` | `tenant_id`, `question_id` |
+| `knowledge_question_topics` | `tenant_id`, `question_id` |
+| `knowledge_questions` | `tenant_id`, `merged_into` |
+
+### `knowledge_question_summaries` — 9 eingehende Verweise
+
+| Von | Spalte |
+|---|---|
+| `knowledge_question_attachments` | `tenant_id`, `question_id` |
+| `knowledge_question_comments` | `tenant_id`, `question_id` |
+| `knowledge_question_events` | `tenant_id`, `question_id` |
+| `knowledge_question_followers` | `tenant_id`, `question_id` |
+| `knowledge_question_outdated_reports` | `tenant_id`, `question_id` |
+| `knowledge_question_sources` | `tenant_id`, `question_id` |
+| `knowledge_question_tags` | `tenant_id`, `question_id` |
+| `knowledge_question_topics` | `tenant_id`, `question_id` |
+| `knowledge_questions` | `tenant_id`, `merged_into` |
+
 ### `knowledge_questions` — 9 eingehende Verweise
 
 | Von | Spalte |
@@ -383,32 +422,6 @@ Tabellen mit mindestens drei eingehenden Verweisen.
 | `event_planning_speakers` | `event_planning_id` |
 | `event_planning_timeline_assignments` | `event_planning_id` |
 | `event_rsvps` | `event_planning_id` |
-
-### `knowledge_question_cards` — 8 eingehende Verweise
-
-| Von | Spalte |
-|---|---|
-| `knowledge_question_attachments` | `tenant_id`, `question_id` |
-| `knowledge_question_comments` | `tenant_id`, `question_id` |
-| `knowledge_question_events` | `tenant_id`, `question_id` |
-| `knowledge_question_followers` | `tenant_id`, `question_id` |
-| `knowledge_question_outdated_reports` | `tenant_id`, `question_id` |
-| `knowledge_question_sources` | `tenant_id`, `question_id` |
-| `knowledge_question_tags` | `tenant_id`, `question_id` |
-| `knowledge_questions` | `tenant_id`, `merged_into` |
-
-### `knowledge_question_summaries` — 8 eingehende Verweise
-
-| Von | Spalte |
-|---|---|
-| `knowledge_question_attachments` | `tenant_id`, `question_id` |
-| `knowledge_question_comments` | `tenant_id`, `question_id` |
-| `knowledge_question_events` | `tenant_id`, `question_id` |
-| `knowledge_question_followers` | `tenant_id`, `question_id` |
-| `knowledge_question_outdated_reports` | `tenant_id`, `question_id` |
-| `knowledge_question_sources` | `tenant_id`, `question_id` |
-| `knowledge_question_tags` | `tenant_id`, `question_id` |
-| `knowledge_questions` | `tenant_id`, `merged_into` |
 
 ### `election_history_periods` — 7 eingehende Verweise
 
@@ -608,6 +621,7 @@ Tabellen mit mindestens drei eingehenden Verweisen.
 | `appointment_requests` | `tenant_id` | `tenants` |
 | `appointment_statuses` | `tenant_id` | `tenants` |
 | `appointment_topics` | `appointment_id` | `appointments` |
+| `appointment_topics` | `tenant_id`, `topic_id` | `topics` |
 | `appointment_topics` | `topic_id` | `topics` |
 | `appointments` | `poll_id` | `appointment_polls` |
 | `appointments` | `call_log_id` | `call_logs` |
@@ -644,6 +658,7 @@ Tabellen mit mindestens drei eingehenden Verweisen.
 | `case_file_tasks` | `task_id` | `tasks` |
 | `case_file_timeline` | `case_file_id` | `case_files` |
 | `case_file_topics` | `case_file_id` | `case_files` |
+| `case_file_topics` | `tenant_id`, `topic_id` | `topics` |
 | `case_file_topics` | `topic_id` | `topics` |
 | `case_file_types` | `tenant_id` | `tenants` |
 | `case_files` | `tenant_id` | `tenants` |
@@ -662,6 +677,7 @@ Tabellen mit mindestens drei eingehenden Verweisen.
 | `case_item_timeline` | `case_item_id` | `case_items` |
 | `case_item_timeline` | `tenant_id` | `tenants` |
 | `case_item_topics` | `case_item_id` | `case_items` |
+| `case_item_topics` | `tenant_id` | `tenants` |
 | `case_item_topics` | `tenant_id`, `topic_id` | `topics` |
 | `case_items` | `case_file_id` | `case_files` |
 | `case_items` | `contact_id` | `contacts` |
@@ -671,6 +687,7 @@ Tabellen mit mindestens drei eingehenden Verweisen.
 | `contact_activities` | `contact_id` | `contacts` |
 | `contact_briefing_memory` | `contact_id` | `contacts` |
 | `contact_topics` | `contact_id` | `contacts` |
+| `contact_topics` | `tenant_id`, `topic_id` | `topics` |
 | `contact_topics` | `topic_id` | `topics` |
 | `contacts` | `organization_id` | `contacts` |
 | `contacts` | `tenant_id` | `tenants` |
@@ -699,6 +716,7 @@ Tabellen mit mindestens drei eingehenden Verweisen.
 | `document_contacts` | `document_id` | `documents` |
 | `document_folders` | `parent_folder_id` | `document_folders` |
 | `document_topics` | `document_id` | `documents` |
+| `document_topics` | `tenant_id`, `topic_id` | `topics` |
 | `document_topics` | `topic_id` | `topics` |
 | `documents` | `folder_id` | `document_folders` |
 | `documents` | `tenant_id` | `tenants` |
@@ -816,6 +834,7 @@ Tabellen mit mindestens drei eingehenden Verweisen.
 | `knowledge_document_collaborators` | `document_id` | `knowledge_documents` |
 | `knowledge_document_permissions` | `document_id` | `knowledge_documents` |
 | `knowledge_document_topics` | `document_id` | `knowledge_documents` |
+| `knowledge_document_topics` | `tenant_id`, `topic_id` | `topics` |
 | `knowledge_document_topics` | `topic_id` | `topics` |
 | `knowledge_document_versions` | `document_id` | `knowledge_documents` |
 | `knowledge_document_versions` | `tenant_id` | `tenants` |
@@ -844,6 +863,8 @@ Tabellen mit mindestens drei eingehenden Verweisen.
 | `knowledge_question_tags` | `tenant_id`, `question_id` | `knowledge_question_summaries` |
 | `knowledge_question_tags` | `tenant_id`, `question_id` | `knowledge_questions` |
 | `knowledge_question_tags` | `tenant_id`, `tag_id` | `knowledge_tags` |
+| `knowledge_question_topics` | `tenant_id`, `question_id` | `knowledge_question_cards` |
+| `knowledge_question_topics` | `tenant_id`, `question_id` | `knowledge_question_summaries` |
 | `knowledge_question_topics` | `tenant_id`, `question_id` | `knowledge_questions` |
 | `knowledge_question_topics` | `tenant_id` | `tenants` |
 | `knowledge_question_topics` | `tenant_id`, `topic_id` | `topics` |
@@ -865,6 +886,7 @@ Tabellen mit mindestens drei eingehenden Verweisen.
 | `letters` | `sender_information_id` | `sender_information` |
 | `login_customization` | `tenant_id` | `tenants` |
 | `map_flag_topics` | `flag_id` | `map_flags` |
+| `map_flag_topics` | `tenant_id`, `topic_id` | `topics` |
 | `map_flag_topics` | `topic_id` | `topics` |
 | `map_flag_types` | `tenant_id` | `tenants` |
 | `map_flags` | `flag_type_id` | `map_flag_types` |
@@ -976,6 +998,7 @@ Tabellen mit mindestens drei eingehenden Verweisen.
 | `task_assignees` | `assigned_by` | `profiles` |
 | `task_assignees` | `user_id` | `profiles` |
 | `task_assignees` | `task_id` | `tasks` |
+| `task_batch_actions` | `tenant_id` | `tenants` |
 | `task_categories` | `tenant_id` | `tenants` |
 | `task_comments` | `parent_id` | `task_comments` |
 | `task_comments` | `task_id` | `tasks` |
@@ -991,6 +1014,7 @@ Tabellen mit mindestens drei eingehenden Verweisen.
 | `task_decision_responses` | `parent_response_id` | `task_decision_responses` |
 | `task_decision_responses` | `decision_id` | `task_decisions` |
 | `task_decision_topics` | `decision_id` | `task_decisions` |
+| `task_decision_topics` | `tenant_id`, `topic_id` | `topics` |
 | `task_decision_topics` | `topic_id` | `topics` |
 | `task_decisions` | `case_file_id` | `case_files` |
 | `task_decisions` | `case_item_id` | `case_items` |
@@ -998,6 +1022,7 @@ Tabellen mit mindestens drei eingehenden Verweisen.
 | `task_decisions` | `task_id` | `tasks` |
 | `task_decisions` | `tenant_id` | `tenants` |
 | `task_topics` | `task_id` | `tasks` |
+| `task_topics` | `tenant_id`, `topic_id` | `topics` |
 | `task_topics` | `topic_id` | `topics` |
 | `tasks` | `call_log_id` | `call_logs` |
 | `tasks` | `meeting_id` | `meetings` |
@@ -1037,6 +1062,7 @@ Tabellen mit mindestens drei eingehenden Verweisen.
 | `topic_catalog_links` | `tenant_id`, `topic_id` | `topics` |
 | `topic_module_settings` | `tenant_id` | `tenants` |
 | `topics` | `tenant_id` | `tenants` |
+| `topics` | `merged_into` | `topics` |
 | `user_notification_settings` | `notification_type_id` | `notification_types` |
 | `user_onboarding_state` | `tenant_id` | `tenants` |
 | `user_planning_preferences` | `tenant_id` | `tenants` |

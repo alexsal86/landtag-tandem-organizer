@@ -52,6 +52,7 @@ _Auto-generiert mit `npm run update:feature-catalog`. Nicht von Hand bearbeiten.
 | `automation.scheduler` | `integration.email` |
 | `automation.webhooks` | `automation.rules` |
 | `automation.templates` | `automation.rules` |
+| `documents.details` | `documents.list` |
 | `documents.contacts` | `contacts.create` |
 | `documents.email` | `documents.upload-version` |
 | `documents.email` | `integration.email` |
@@ -199,6 +200,9 @@ _Auto-generiert mit `npm run update:feature-catalog`. Nicht von Hand bearbeiten.
 | `casefiles.links` | `casefiles.manage` |
 | `casefiles.links` | `documents.upload-version` |
 | `casefiles.links` | `contacts.create` |
+| `casefiles.document-upload` | `casefiles.links` |
+| `casefiles.document-upload` | `documents.list` |
+| `casefiles.document-upload` | `documents.details` |
 | `casefiles.notes` | `casefiles.manage` |
 | `election.analysis-navigation` | `election.analysis` |
 | `election.analysis-map` | `election.analysis` |
@@ -396,6 +400,8 @@ _Auto-generiert mit `npm run update:feature-catalog`. Nicht von Hand bearbeiten.
 
 - cases.link-letter → letters.create
 - casefiles.links → documents.upload-version
+- casefiles.document-upload → documents.list
+- casefiles.document-upload → documents.details
 
 ### vorgaenge → entscheidungen
 
@@ -420,13 +426,13 @@ _Auto-generiert mit `npm run update:feature-catalog`. Nicht von Hand bearbeiten.
 | `topics` | dokumente, kontakte, mitarbeit, organisation, vorgaenge, wissen |
 | `contacts` | arbeitsbereich, dokumente, kontakte, schnittstellen, verwaltung |
 | `appointments` | arbeitsbereich, schnittstellen, termine, vorgaenge |
+| `documents` | aufgaben, dokumente, organisation, vorgaenge |
 | `profiles` | arbeitsbereich, aufgaben, verwaltung, wissen |
 | `annual_task_completions` | aufgaben, automation, mitarbeit |
 | `annual_tasks` | aufgaben, automation, mitarbeit |
 | `appointment_preparations` | arbeitsbereich, schnittstellen, termine |
 | `audit_log_entries` | kontakte, verwaltung, vorgaenge |
 | `bulk_action_audit` | aufgaben, kontakte, verwaltung |
-| `documents` | aufgaben, dokumente, organisation |
 | `external_events` | arbeitsbereich, schnittstellen, termine |
 | `letters` | dokumente, schnittstellen, vorgaenge |
 | `press_releases` | kommunikation, schnittstellen, verwaltung |
@@ -441,6 +447,7 @@ _Auto-generiert mit `npm run update:feature-catalog`. Nicht von Hand bearbeiten.
 | `appointment_requests` | termine, verwaltung |
 | `calendar_sync_settings` | automation, schnittstellen |
 | `case_file_contacts` | arbeitsbereich, vorgaenge |
+| `case_file_documents` | dokumente, vorgaenge |
 | `case_file_tasks` | aufgaben, vorgaenge |
 | `case_files` | arbeitsbereich, vorgaenge |
 | `case_item_timeline` | aufgaben, vorgaenge |

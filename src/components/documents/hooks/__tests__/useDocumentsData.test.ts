@@ -3,8 +3,7 @@ import { renderHook, waitFor, act } from "@testing-library/react";
 
 type DbError = { message: string };
 type SelectOptions = { count?: "exact"; head?: boolean };
-type CountResponse = { count: number };
-type QueryResponse<TData> = { data: TData; error: DbError | null };
+type QueryResponse<TData> = { data: TData; error: DbError | null; count?: number };
 
 type ChainMethods =
   | "eq"
@@ -19,7 +18,7 @@ type ChainMethods =
   | "maybeSingle";
 
 interface MockQueryChain<TData> extends PromiseLike<QueryResponse<TData>> {
-  select: (selection?: string, options?: SelectOptions) => MockQueryChain<TData> | Promise<CountResponse>;
+  select: (selection?: string, options?: SelectOptions) => MockQueryChain<TData>;
   range: (from: number, to: number) => Promise<QueryResponse<TData>>;
   eq: (column: string, value: unknown) => MockQueryChain<TData>;
   neq: (column: string, value: unknown) => MockQueryChain<TData>;
@@ -97,13 +96,9 @@ const createChain = <TData>(resolved: QueryResponse<TData>): MockQueryChain<TDat
 };
 
 const { mockSupabase, mockToast, mockUser, mockTenant } = vi.hoisted(() => {
-  const defaultChain = createChain<unknown[]>(
-    { data: [], error: null },
-  );
-
   return {
     mockSupabase: {
-      from: vi.fn(() => defaultChain),
+      from: vi.fn(),
     },
     mockToast: vi.fn(),
     mockUser: { id: "user-1", email: "test@example.com" },
@@ -114,7 +109,7 @@ const { mockSupabase, mockToast, mockUser, mockTenant } = vi.hoisted(() => {
 vi.mock("@/integrations/supabase/client", () => ({ supabase: mockSupabase }));
 vi.mock("@/hooks/useAuth", () => ({ useAuth: () => ({ user: mockUser }) }));
 vi.mock("@/hooks/useTenant", () => ({ useTenant: () => ({ currentTenant: mockTenant }) }));
-vi.mock("@/hooks/use-toast", () => ({ useToast: () => ({ toast: mockToast }) }));
+vi.mock("@/lib/notify", () => ({ notify: { error: mockToast } }));
 vi.mock("@/utils/debugConsole", () => ({
   debugConsole: { log: vi.fn(), info: vi.fn(), warn: vi.fn(), error: vi.fn() },
 }));
@@ -132,15 +127,7 @@ describe("useDocumentsData", () => {
 
     mockSupabase.from.mockImplementation((table: string) => {
       if (table === "documents") {
-        const documentChain = createChain<DocumentFixture[]>({ data: docsData, error: null });
-        documentChain.select = vi.fn((_selection?: string, options?: SelectOptions) => {
-          if (options?.count === "exact" && options.head) {
-            return Promise.resolve({ count: 2 });
-          }
-          return documentChain;
-        });
-
-        return documentChain;
+        return createChain<DocumentFixture[]>({ data: docsData, error: null, count: 1 });
       }
 
       if (table === "document_folders") {
@@ -179,10 +166,7 @@ describe("useDocumentsData", () => {
           data: docsData,
           error: null,
         });
-        documentChain.select = vi.fn((selection?: string, options?: SelectOptions) => {
-          if (options?.count === "exact" && options.head) {
-            return Promise.resolve({ count: 1 });
-          }
+        documentChain.select = vi.fn((selection?: string) => {
           if (selection === "folder_id") {
             return createChain<Array<{ folder_id: string | null }>>({ data: folderDocsData, error: null });
           }
@@ -237,7 +221,7 @@ describe("useDocumentsData", () => {
 
     await waitFor(() => {
       expect(mockToast).toHaveBeenCalledWith(
-        expect.objectContaining({ variant: "destructive" }),
+        "Fehler beim Laden", expect.any(Object),
       );
     });
   });
@@ -263,13 +247,9 @@ describe("useDocumentsData", () => {
     mockSupabase.from.mockImplementation((table: string) => {
       if (table === "documents") {
         const documentChain = createChain<DocumentFixture[]>({ data: page1, error: null });
-        documentChain.select = vi.fn((_selection?: string, options?: SelectOptions) => {
-          if (options?.count === "exact") return Promise.resolve({ count: 51 });
-          return documentChain;
-        });
         documentChain.range = vi.fn(() => {
           documentFetchCount += 1;
-          return Promise.resolve({ data: documentFetchCount === 1 ? page1 : page2, error: null });
+          return Promise.resolve({ data: documentFetchCount === 1 ? page1 : page2, error: null, count: 51 });
         });
 
         return documentChain;
@@ -307,10 +287,6 @@ describe("useDocumentsData", () => {
     mockSupabase.from.mockImplementation((table: string) => {
       if (table === "documents") {
         const documentChain = createChain<DocumentFixture[] | null>({ data: null, error: null });
-        documentChain.select = vi.fn((_selection?: string, options?: SelectOptions) => {
-          if (options?.count === "exact") return Promise.resolve({ count: 1 });
-          return documentChain;
-        });
         documentChain.range = vi.fn(() => {
           attempt += 1;
           if (attempt === 1) {
@@ -335,7 +311,7 @@ describe("useDocumentsData", () => {
     const { result } = renderHook(() => useDocumentsData("documents"));
 
     await waitFor(() => {
-      expect(mockToast).toHaveBeenCalledWith(expect.objectContaining({ variant: "destructive" }));
+      expect(mockToast).toHaveBeenCalledWith("Fehler beim Laden", expect.any(Object));
     });
 
     await act(async () => {

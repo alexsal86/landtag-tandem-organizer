@@ -1,3 +1,4 @@
+import { documentBucket } from "@/features/documents/documentStorage";
 import { useState } from "react";
 import { useNavigate } from "react-router-dom";
 import type { User } from "@supabase/supabase-js";
@@ -97,7 +98,7 @@ export function useDocumentOperations({
 
   const handleDownload = async (document: Document): Promise<void> => {
     try {
-      const { data, error } = await supabase.storage.from("documents").download(document.file_path);
+      const { data, error } = await supabase.storage.from(documentBucket(document.file_path)).download(document.file_path);
       if (error) throw error;
       const url = URL.createObjectURL(data);
       const link = window.document.createElement("a");
@@ -117,7 +118,7 @@ export function useDocumentOperations({
     if (!confirm("Sind Sie sicher, dass Sie dieses Dokument löschen möchten?")) return { success: false, message: "Abgebrochen" };
     try {
       if (document.document_type !== "archived_letter") {
-        const { error: storageError } = await supabase.storage.from("documents").remove([document.file_path]);
+        const { error: storageError } = await supabase.storage.from(documentBucket(document.file_path)).remove([document.file_path]);
         if (storageError) debugConsole.warn("Storage deletion error:", storageError);
       }
       const { error: dbError } = await supabase.from("documents").delete().eq("id", document.id);

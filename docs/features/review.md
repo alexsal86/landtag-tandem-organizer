@@ -8,10 +8,14 @@ Dieser Bericht trennt **eindeutig nachweisbare Inkonsistenzen** von **heuristisc
 
 Eindeutige Fehler werden im CI-Lauf ausgegeben und brechen die Prüfung ab; sie werden hier nicht dupliziert. Dieser Bericht listet die verbleibenden Review-Hinweise und Prüfkandidaten.
 
-- Review-Hinweise: **0**
-- Nicht zugeordnete Objekte: **1**, davon ohne Ausnahme: **0**
+- Review-Hinweise: **1**
+- Nicht zugeordnete Objekte: **2**, davon ohne Ausnahme: **1**
 
-## Funktionen ohne zugeordneten Test (120)
+### Review-Hinweise
+
+- Prüfkandidat ohne Funktionszuordnung (rpc): rename_config_item_unprotected
+
+## Funktionen ohne zugeordneten Test (121)
 
 - `mywork.tabs` — Meine Arbeit – Bereichsnavigation und Einstellungen
 - `mywork.quick-access` — Schnellzugriff und zuletzt besuchte Seiten
@@ -32,6 +36,7 @@ Eindeutige Fehler werden im CI-Lauf ausgegeben und brechen die Prüfung ab; sie 
 - `automation.scheduler` — Zeitgesteuerte Automatisierung
 - `automation.webhooks` — Automatisierungs-Webhooks
 - `automation.templates` — Automatisierungs-Vorlagen
+- `documents.details` — Dokumentdetails und Verknüpfungen
 - `documents.upload-version` — Dokument hochladen und versionieren
 - `documents.contacts` — Dokumente mit Kontakten verknüpfen
 - `documents.email` — Dokumente per E-Mail versenden
@@ -134,7 +139,7 @@ Eindeutige Fehler werden im CI-Lauf ausgegeben und brechen die Prüfung ab; sie 
 - `knowledge.global-question` — Globale Wissensfrage aus jedem Bereich
 - `knowledge.management` — Wissensverwaltung
 
-## Funktionen ohne Dokumentationsverweis (165)
+## Funktionen ohne Dokumentationsverweis (167)
 
 - `mywork.dashboard.today-priorities` — Heute zuerst
 - `mywork.tabs` — Meine Arbeit – Bereichsnavigation und Einstellungen
@@ -163,6 +168,7 @@ Eindeutige Fehler werden im CI-Lauf ausgegeben und brechen die Prüfung ab; sie 
 - `automation.task-packages` — Aufgabenpakete
 - `automation.templates` — Automatisierungs-Vorlagen
 - `automation.calendar-schedule` — Kalenderbezogene Zeitberechnung
+- `documents.details` — Dokumentdetails und Verknüpfungen
 - `documents.upload-version` — Dokument hochladen und versionieren
 - `documents.contacts` — Dokumente mit Kontakten verknüpfen
 - `documents.email` — Dokumente per E-Mail versenden
@@ -274,6 +280,7 @@ Eindeutige Fehler werden im CI-Lauf ausgegeben und brechen die Prüfung ab; sie 
 - `cases.legacy-routes` — Legacy-Vorgangsrouten
 - `casefiles.status-workflow` — Fallakten-Status und Bearbeitungsstatus
 - `casefiles.links` — Fallakte verknüpfen (Dokumente, Kontakte, Themen, Notizen)
+- `casefiles.document-upload` — Datei aus der Akte ablegen
 - `casefiles.notes` — Fallakten-Notizen
 - `election.analysis-navigation` — Analyse-Navigation und gespeicherte Szenarien
 - `election.turnout` — Wahlbeteiligung
@@ -315,7 +322,7 @@ Eindeutige Fehler werden im CI-Lauf ausgegeben und brechen die Prüfung ab; sie 
 - `events.legacy-rsvp` — Legacy-Einladungslinks (veraltet)
 - `cases.legacy-routes` — Legacy-Vorgangsrouten (veraltet)
 
-## Funktionen mit Einschränkungen oder offenen Punkten (83)
+## Funktionen mit Einschränkungen oder offenen Punkten (84)
 
 ### `mywork.dashboard`
 
@@ -668,7 +675,11 @@ Eindeutige Fehler werden im CI-Lauf ausgegeben und brechen die Prüfung ab; sie 
 
 ### `casefiles.links`
 
-- Dokument- und Themenverknüpfung prüft kein Szenario: dafür sind eine echte Datei bzw. ein eigener Themenkatalog nötig.
+- Die Themenverknüpfung prüft kein Szenario, weil der Themenkatalog einem eigenen Szenario gehört.
+
+### `casefiles.document-upload`
+
+- Der Selbsttest deckt Upload, Verknüpfung, Verlauf und einen Suchtreffer ab. Die Bedienoberfläche ist nicht abgedeckt.
 
 ### `election.seat-distribution`
 
@@ -707,11 +718,11 @@ Eindeutige Fehler werden im CI-Lauf ausgegeben und brechen die Prüfung ab; sie 
 
 - Keine.
 
-### Datenbankfunktionen ohne Zuordnung (0)
+### Datenbankfunktionen ohne Zuordnung (1)
 
 Diese Liste ist heuristisch gefiltert (technische Präfixe gelten als Hilfsfunktionen). Sie ist ein Prüfauftrag, keine automatische Aussage über Verwaistheit.
 
-- Keine.
+- `rename_config_item_unprotected` (src/integrations/supabase/types.ts)
 
 ### Registrierte Selbsttests ohne Funktionszuordnung (0)
 
