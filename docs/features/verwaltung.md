@@ -476,7 +476,7 @@ Zeigt RLS-Lücken, Policies, Snapshots und Audit-Trail als eigenständige Sicher
 - Funktionen ohne Tabellenbezug erhalten keinen RLS-Bezug; ob das fachlich korrekt ist, bleibt je Funktion zu prüfen.
 
 ### `admin.system-pulse` — System-Puls
-Bildet alle registrierten Selbsttest-Szenarien in fachlichen Bereichen ab und zeigt je Funktionsbereich die letzten funktionalen Selbsttest-Ergebnisse als Ampel, startet die zugeordneten Szenarien aus der Detailkarte im Hintergrund, stellt die deklarierten Szenario-Schritte als Prozesskette mit gespeicherten Schritt-Ergebnissen dar und nennt bei fehlgeschlagenen Schritten Prüfpunkt, Fehlercode und Kurzdetails, zeigt je Workflow Testname, Zeitpunkt, Dauer, Beschreibung und Prüfumfang, bewertet Frische, App-Version, Demo- und Aufräumstatus, nennt Abdeckung und Verlauf, erlaubt gezielte Nachläufe und verknüpft betroffene Katalogfunktionen sowie RLS-Befunde, während RLS-Lücken als eigene Kennzahl getrennt von den Testergebnissen aus.
+Bildet alle registrierten Selbsttest-Szenarien in fachlichen Bereichen ab und zeigt je Funktionsbereich die letzten funktionalen Selbsttest-Ergebnisse als Ampel, startet die zugeordneten Szenarien aus der Detailkarte im Hintergrund, stellt die deklarierten Szenario-Schritte als Prozesskette mit gespeicherten Schritt-Ergebnissen dar und nennt bei fehlgeschlagenen Schritten Prüfpunkt, Fehlercode und Kurzdetails, listet alle fehlgeschlagenen Tests als kompakte Tabelle oberhalb der Bereichskacheln mit Bereich, geprüftem Schritt und Fehler auf, erklärt die Bedeutung der Ampelfarben, zeigt je Workflow Testname, Zeitpunkt, Dauer, Beschreibung und Prüfumfang, bewertet Frische, App-Version, Demo- und Aufräumstatus, nennt Abdeckung und Verlauf, erlaubt gezielte Nachläufe und verknüpft betroffene Katalogfunktionen sowie RLS-Befunde, während RLS-Lücken als eigene Kennzahl getrennt von den Testergebnissen aus.
 
 - **Kategorie:** administrativ
 - **Implementierung:** implementiert
@@ -517,6 +517,7 @@ Bildet alle registrierten Selbsttest-Szenarien in fachlichen Bereichen ab und ze
 - Verlauf und Dauertrend benötigen die separate RPC get_selftest_run_history; ohne sie bleibt die Ampel nutzbar, aber ohne Trend und Wiederholungszähler.
 - Der Live-Teststart schreibt echte Testdaten und Dateien, ist bestätigungspflichtig und räumt anschließend auf; fehlende Rollen führen zu „Voraussetzung fehlt“.
 - Die Bereichsampel bewertet ausschließlich funktionale Selbsttests; RLS-Lücken bleiben eine getrennte Kennzahl und ergeben keine Gesamtbewertung.
+- Die Fehlertabelle über den Bereichskacheln zeigt nur den neuesten gespeicherten Lauf je Szenario; ältere Läufe ohne Schrittliste erscheinen dort als eine Zeile „gesamter Testlauf“.
 - Ausgeführt wurden Unit-, Generator- und Komponententests mit gemocktem RPC; RPC-Antwort, angewendete Migration und Darstellung im Browser wurden nicht gegen ein laufendes Backend geprüft.
 - Die Ampel zeigt den neuesten Lauf je Szenario über alle Mitglieder des Mandanten, nicht nur den letzten Lauf des angemeldeten Nutzers.
 
