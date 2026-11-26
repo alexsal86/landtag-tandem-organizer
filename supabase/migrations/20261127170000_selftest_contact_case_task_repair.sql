@@ -27,6 +27,8 @@
 --    lesbar gemacht; unveränderlich bleiben sie durch den Trigger.
 --
 -- 4) Kontakte · „Dubletten-Scan …“ meldet 57014 (statement timeout).
+--    Hinweis: die hier eingeführte Blockade auf den ersten zwei Namenszeichen
+--    ist zu eng und wird von 20261127180000 durch Trigramm-Kandidaten ersetzt.
 --    find_contact_duplicates_trgm verglich über ein OR im Join jede Zeile mit
 --    jeder (n² similarity-Aufrufe) und las dazu alle Kontakte durch
 --    read_secured_contacts, das je Zeile sieben Feldregeln auflöst. Die
