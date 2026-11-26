@@ -1,3 +1,4 @@
+import { authorSegments } from "@/features/parlis/authors";
 import { groupsFor } from "@/features/parlis/grouping";
 import { supabase } from "@/integrations/supabase/client";
 import type { TestScenario } from "../types";
@@ -8,7 +9,7 @@ export const parlisScenario: TestScenario = {
   description: "Prüft die Gruppierung und den Lesezugriff auf die Parlamentsdokumentation.",
   features: ["parlis.proceedings"],
   touches: [],
-  checks: ["Monatsgruppierung, eindeutige Schlagwörter und leere Ressorts", "Importierte Vorgänge sind lesbar", "Verknüpfte Urheber führen zu einem Mandat derselben Wahlperiode"],
+  checks: ["Urhebertext mit Titeln und Namensbestandteilen bleibt vollständig", "Monatsgruppierung, eindeutige Schlagwörter und leere Ressorts", "Importierte Vorgänge sind lesbar", "Verknüpfte Urheber führen zu einem Mandat derselben Wahlperiode"],
   steps: [{
     id: "parlis-groups",
     label: "Monate, Schlagwörter und fehlende Ressorts korrekt zuordnen",
@@ -20,6 +21,22 @@ export const parlisScenario: TestScenario = {
           && groupsFor(row, "deskriptoren").join() === "Verkehr,Nahverkehr"
           && groupsFor(row, "ressort").join() === "Ohne Angabe",
         message: "Jeder Vorgang zählt pro Schlagwort einmal und bleibt bei fehlendem Ressort sichtbar.",
+      };
+    },
+  }, {
+    id: "parlis-inline-authors",
+    label: "Urhebernamen mit Titeln und Namensbestandteilen im Originaltext verlinken",
+    kind: "logic",
+    run: async () => {
+      const text = "Prof. Dr. Boris Weirauch (SPD), Uwe Freiherr von Wangenheim (AfD) u. a.";
+      const deputies = new Map([["weirauch", "Boris Weirauch"], ["wangenheim", "Uwe von Wangenheim"]]);
+      const segments = authorSegments(text, deputies);
+      return {
+        ok: segments.map(segment => segment.text).join("") === text
+          && segments.find(segment => segment.profileKey === "weirauch")?.text === "Prof. Dr. Boris Weirauch"
+          && segments.find(segment => segment.profileKey === "wangenheim")?.text === "Uwe Freiherr von Wangenheim"
+          && segments.flatMap(segment => segment.party ?? []).join() === "SPD,AfD",
+        message: "Originalnamen und Parteiklammern bleiben erhalten und werden passend ausgezeichnet.",
       };
     },
   }, {

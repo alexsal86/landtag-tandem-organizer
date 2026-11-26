@@ -1,5 +1,7 @@
-import { useEffect, useMemo, useState } from "react";
+import { Fragment, useEffect, useMemo, useState } from "react";
 import { Link, useSearchParams } from "react-router-dom";
+import { getPartyColor } from "@/features/election-districts/partyColors";
+import { authorSegments } from "./authors";
 import { deputyProfileUrl } from "@/features/election-analysis/navigation";
 import { useQuery } from "@tanstack/react-query";
 import { Input } from "@/components/ui/input";
@@ -202,11 +204,20 @@ export default function ParlisView() {
               <li key={row.vorgangs_id} className="space-y-1 py-3">
                 <h3 className="font-medium">{row.titel || row.vorgangs_id}</h3>
                 <p className="text-sm text-muted-foreground">
-                  {[row.datum.split("-").reverse().join("."), row.vorgangstyp, row.drucksache, row.urheber, row.ressort].filter(Boolean).join(" · ")}
+                  {[row.datum.split("-").reverse().join("."), row.vorgangstyp, row.drucksache].filter(Boolean).join(" · ")}
+                  {row.urheber && <>{" · "}{authorSegments(row.urheber, deputies).map((segment, index) => {
+                    if (segment.profileKey) return (
+                      <Link key={index} className="text-primary underline" to={deputyProfileUrl(segment.profileKey)}>{segment.text}</Link>
+                    );
+                    const partyColor = segment.party && getPartyColor(segment.party);
+                    return <Fragment key={index}>
+                      {partyColor && partyColor !== getPartyColor() && (
+                        <span aria-hidden="true" className="mr-1 inline-block size-2 rounded-full align-middle" style={{ backgroundColor: partyColor }} />
+                      )}{segment.text}
+                    </Fragment>;
+                  })}</>}
+                  {row.ressort && ` · ${row.ressort}`}
                 </p>
-                {!!deputies?.size && <p className="flex flex-wrap gap-x-3 text-sm">
-                  {Array.from(deputies, ([key, name]) => <Link key={key} className="text-primary underline" to={deputyProfileUrl(key)}>{name}</Link>)}
-                </p>}
                 {row.deskriptoren && <p className="text-sm">{row.deskriptoren}</p>}
                 {url && <a className="inline-block text-sm text-primary underline" href={url} target="_blank" rel="noreferrer">Originaldokument öffnen</a>}
               </li>
