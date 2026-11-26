@@ -54,16 +54,16 @@ BEGIN
 
   RETURN QUERY
   WITH name_pairs AS (
-    -- LATERAL hält die Suche am Index: c1.name ist der Suchbegriff, match.name
+    -- LATERAL hält die Suche am Index: c1.name ist der Suchbegriff, other.name
     -- die indizierte Spalte. Kein Vollvergleich aller Zeilenpaare.
     SELECT c1.id AS id1, c2.id AS id2
     FROM public.contacts c1
     JOIN LATERAL (
-      SELECT match.id
-      FROM public.contacts match
-      WHERE match.tenant_id = c1.tenant_id
-        AND match.id <> c1.id
-        AND match.name % c1.name
+      SELECT other.id
+      FROM public.contacts other
+      WHERE other.tenant_id = c1.tenant_id
+        AND other.id <> c1.id
+        AND other.name % c1.name
     ) c2 ON true
     WHERE c1.tenant_id = _tenant_id
       AND c1.name IS NOT NULL
