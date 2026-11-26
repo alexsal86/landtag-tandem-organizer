@@ -23,9 +23,10 @@ import { AgendaSystemRow } from "./agenda-editor/AgendaSystemRow";
 import { AddAgendaMenu } from "./agenda-editor/AddAgendaMenu";
 import { agendaItemKey, resolveAgendaDrop } from "./agenda-editor/agendaDrop";
 import { agendaTiming } from "./agenda-editor/agendaTiming";
-import { systemAgendaOption } from "./systemAgendaRegistry";
+import { buildSystemDescriptions, resolveAgendaDescription } from "./agenda-editor/agendaDescriptions";
+import { createAgendaNumbering } from "./agenda-editor/agendaNumbering";
+import { useAgendaDocuments } from "./agenda-editor/useAgendaDocuments";
 import type { SystemAgendaType } from "@/components/meetings/types";
-import { debugConsole } from "@/utils/debugConsole";
 import { useState, useEffect, useRef, useCallback } from "react";
 import { Button } from "@/components/ui/button";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
@@ -45,7 +46,6 @@ import { JourFixeRequestsCard } from "@/features/appointment-requests/JourFixeRe
 import { format } from "date-fns";
 import { de } from "date-fns/locale";
 import { cn } from "@/lib/utils";
-import { supabase } from "@/integrations/supabase/client";
 import type {
   AgendaItem,
   Meeting,
@@ -56,7 +56,6 @@ import type {
   RelevantDecision,
   AgendaDocument,
 } from "@/components/meetings/types";
-import { notify } from "@/lib/notify";
 
 interface AgendaEditorPanelProps {
   selectedMeeting: Meeting;
@@ -193,57 +192,22 @@ export function AgendaEditorPanel({
   const inspectorItem = systemInspectorItem ?? selectedItem;
   const inspectorIndex = inspectorItem ? agendaItems.indexOf(inspectorItem) : -1;
   const meetingNotes = linkedQuickNotes.filter(note => note.meeting_id === selectedMeeting.id);
-  const countByPerson = (label: string, people: (string | null | undefined)[]) => {
-    const counts = new Map<string, number>();
-    for (const person of people) {
-      if (person) counts.set(person, (counts.get(person) ?? 0) + 1);
-    }
-    return [
-      label,
-      ...Array.from(counts, ([id, count]) =>
-        `${count}× ${profiles.find(profile => profile.user_id === id)?.display_name || "Unbekannte Person"}`),
-    ].join(" · ");
-  };
-  const taskCount = meetingLinkedTasks.length;
-  const caseCount = meetingLinkedCaseItems.length;
-  const decisionCount = meetingRelevantDecisions.filter(decision => decision.status === "active").length;
-  const descriptions: Partial<Record<SystemAgendaType, string>> = {
-    quick_notes: countByPerson(
-      meetingNotes.length === 0 ? "Keine Notiz vorhanden" : meetingNotes.length === 1 ? "1 Notiz" : `${meetingNotes.length} Notizen`,
-      meetingNotes.map(note => note.user_id),
-    ),
-    tasks: countByPerson(taskCount === 0 ? "Keine Aufgabe vorhanden" : taskCount === 1 ? "1 Aufgabe" : `${taskCount} Aufgaben`,
-      meetingLinkedTasks.map(task => task.assigned_to)),
-    case_items: countByPerson(caseCount === 0 ? "Kein Vorgang vorhanden" : caseCount === 1 ? "1 Vorgang" : `${caseCount} Vorgänge`,
-      meetingLinkedCaseItems.map(item => item.owner_user_id)),
-    decisions: decisionCount === 0
-      ? "Keine Entscheidung steht aus"
-      : decisionCount === 1 ? "1 Entscheidung steht aus" : `${decisionCount} Entscheidungen stehen aus`,
-  };
-  const descriptionFor = (item: AgendaItem, index: number) => {
-    const type = item.system_type as SystemAgendaType | undefined;
-    if (!type) return item.description ?? undefined;
-
-    const description = stripHtml(item.description ?? "");
-    // Earlier versions stored the generated note summary in the description.
-    const legacyNoteSummary = type === "quick_notes" &&
-      /^\d+ Notiz(?:en)?(?:(?: · |\. )\d+× .+)+$/.test(description);
-    if (description && !legacyNoteSummary) return item.description ?? undefined;
-
-    const key = getItemKey(item, index);
-    const count = systemCounts[key];
-    if (type === "upcoming_appointments") {
-      const appointments = live?.upcomingAppointments.length ?? count;
-      if (appointments === 0) return "Kein Termin vorhanden";
-      if (appointments != null) return appointments === 1 ? "1 Termin" : `${appointments} Termine`;
-    }
-
-    if (type === "appointment_requests" && count != null && count > 0) {
-      return count === 1 ? "1 offener Eintrag" : `${count} offene Einträge`;
-    }
-    return descriptions[type] ?? remoteDescriptions[`${selectedMeeting.id}:${key}`]
-      ?? (count === 0 ? systemAgendaOption(type)?.emptyDescription : undefined);
-  };
+  const descriptions = buildSystemDescriptions({
+    profiles,
+    meetingNotes,
+    meetingLinkedTasks,
+    meetingLinkedCaseItems,
+    meetingRelevantDecisions,
+  });
+  const descriptionFor = (item: AgendaItem, index: number) =>
+    resolveAgendaDescription(item, index, {
+      meetingId: selectedMeeting.id,
+      getItemKey,
+      systemCounts,
+      remoteDescriptions,
+      descriptions,
+      upcomingAppointmentCount: live?.upcomingAppointments.length,
+    });
   const change = (index: number, field: keyof AgendaItem, value: unknown) => {
     if (!hasEditPermission) return;
     setDirty(true);
@@ -395,143 +359,10 @@ export function AgendaEditorPanel({
   const hiddenItems = new Set(agendaItems.filter(itemIsHidden));
   const dropPreview = dragUpdate && resolveAgendaDrop(agendaItems, dragUpdate, hiddenItems);
 
-  const showDocumentActionError = (
-    action: "download" | "upload" | "delete",
-    error: unknown,
-  ) => {
-    debugConsole.error(
-      `${action[0].toUpperCase()}${action.slice(1)} error:`,
-      error,
-    );
-
-    const actionText: Record<typeof action, string> = {
-      download: "Datei konnte nicht heruntergeladen werden.",
-      upload: "Dokument konnte nicht hochgeladen werden.",
-      delete: "Dokument konnte nicht gelöscht werden.",
-    };
-
-    const titleText: Record<typeof action, string> = {
-      download: "Download-Fehler",
-      upload: "Upload-Fehler",
-      delete: "Lösch-Fehler",
-    };
-
-    notify.error(titleText[action], {
-      description: actionText[action],
-    });
-  };
-
-  const persistAgendaItemIfNeeded = async (item: AgendaItem, index: number) => {
-    if (item.id) return item.id;
-
-    const { data: savedItem, error: saveError } = await supabase
-      .from("meeting_agenda_items")
-      .insert([
-        {
-          meeting_id: selectedMeeting.id!,
-          title: item.title || "Agenda-Punkt",
-          description: item.description || "",
-          notes: item.notes || "",
-          parent_id: item.parent_id || null,
-          order_index: item.order_index,
-          icon_config: item.icon_config ?? null,
-          duration_minutes:
-            item.parent_id || item.parentLocalKey
-              ? null
-              : (item.duration_minutes ?? null),
-          assigned_to: item.assigned_to,
-          carry_over_to_next: item.carry_over_to_next,
-          is_completed: Boolean(item.is_completed),
-          is_recurring: Boolean(item.is_recurring),
-        },
-      ])
-      .select()
-      .single();
-
-    if (saveError) throw saveError;
-
-    onSetAgendaItems((prevItems) =>
-      prevItems.map((prevItem, prevIndex) =>
-        prevIndex === index ? { ...prevItem, id: savedItem.id } : prevItem,
-      ),
-    );
-
-    return savedItem.id;
-  };
-
-  const handleAgendaDocumentUpload = async (
-    item: AgendaItem,
-    index: number,
-  ) => {
-    const fileInput = document.createElement("input");
-    fileInput.type = "file";
-    fileInput.accept = ".pdf,.doc,.docx,.txt,.png,.jpg,.jpeg";
-
-    fileInput.onchange = async (e) => {
-      const file = (e.target as HTMLInputElement).files?.[0];
-
-      if (!file || !selectedMeeting?.id) return;
-
-      try {
-        const itemId = await persistAgendaItemIfNeeded(item, index);
-        await onUploadAgendaDocument(itemId, file);
-        notify.success("Dokument hochgeladen", {
-          description: "Das Dokument wurde erfolgreich hinzugefügt.",
-        });
-      } catch (error) {
-        showDocumentActionError("upload", error);
-      }
-    };
-
-    fileInput.click();
-  };
-
-  const parentByItemKey = new Map<string, AgendaItem>();
-  agendaItems.forEach((agendaItem) => {
-    if (agendaItem.id) parentByItemKey.set(agendaItem.id, agendaItem);
-    if (agendaItem.localKey)
-      parentByItemKey.set(agendaItem.localKey, agendaItem);
-  });
-
-  const mainItems = agendaItems
-    .filter(
-      (agendaItem) => !(agendaItem.parentLocalKey || agendaItem.parent_id),
-    )
-    .sort((a, b) => a.order_index - b.order_index);
-
-  const mainNumberByKey = new Map<string, number>();
-  const subNumberByKey = new Map<string, number>();
-
-  const generatedEntryCounts: Record<string, number> = {
-    upcoming_appointments: live?.upcomingAppointments.length ?? 0,
-    quick_notes: linkedQuickNotes.length,
-    tasks: meetingLinkedTasks.length,
-    case_items: meetingLinkedCaseItems.length,
-  };
-
-  mainItems.forEach((mainItem, mainIndex) => {
-    const number = mainIndex + 1;
-    if (mainItem.id) mainNumberByKey.set(mainItem.id, number);
-    if (mainItem.localKey) mainNumberByKey.set(mainItem.localKey, number);
-
-    const subItems = agendaItems
-      .filter((agendaItem) => {
-        if (!mainItem.id && !mainItem.localKey) return false;
-        return (
-          (mainItem.id && agendaItem.parent_id === mainItem.id) ||
-          (mainItem.localKey && agendaItem.parentLocalKey === mainItem.localKey)
-        );
-      })
-      .sort((a, b) => a.order_index - b.order_index);
-
-    const generatedCount = generatedEntries[getItemKey(mainItem, agendaItems.indexOf(mainItem))]?.length
-      ?? systemCounts[getItemKey(mainItem, agendaItems.indexOf(mainItem))]
-      ?? generatedEntryCounts[mainItem.system_type ?? ""] ?? 0;
-    subItems.forEach((subItem, subIndex) => {
-      const subNumber = generatedCount + subIndex + 1;
-      if (subItem.id) subNumberByKey.set(subItem.id, subNumber);
-      if (subItem.localKey) subNumberByKey.set(subItem.localKey, subNumber);
-    });
+  const { handleAgendaDocumentUpload, showDocumentActionError } = useAgendaDocuments({
+    meetingId: selectedMeeting.id,
+    onSetAgendaItems,
+    onUploadAgendaDocument,
   });
 
   const handleTitleKeyDown = (
@@ -577,28 +408,18 @@ export function AgendaEditorPanel({
   });
   const actualMinutes = actualTotalMinutes(agendaItems);
 
-  const getAgendaNumber = (agendaItem: AgendaItem) => {
-    const key = agendaItem.id || agendaItem.localKey;
-    if (!key) return undefined;
-
-    const directMain = mainNumberByKey.get(key);
-    if (directMain) return `${directMain}.`;
-
-    const parentKey = agendaItem.parent_id || agendaItem.parentLocalKey;
-    if (!parentKey) return undefined;
-
-    const parentMain = mainNumberByKey.get(parentKey);
-    const subNumber = subNumberByKey.get(key);
-    if (parentMain && subNumber) return `${parentMain}.${subNumber}`;
-
-    const parentItem = parentByItemKey.get(parentKey);
-    if (!parentItem) return undefined;
-    const fallbackParentKey = parentItem.id || parentItem.localKey;
-    if (!fallbackParentKey) return undefined;
-    const fallbackMain = mainNumberByKey.get(fallbackParentKey);
-    if (!fallbackMain || !subNumber) return undefined;
-    return `${fallbackMain}.${subNumber}`;
-  };
+  const getAgendaNumber = createAgendaNumbering({
+    agendaItems,
+    getItemKey,
+    generatedEntries,
+    systemCounts,
+    generatedEntryCounts: {
+      upcoming_appointments: live?.upcomingAppointments.length ?? 0,
+      quick_notes: linkedQuickNotes.length,
+      tasks: meetingLinkedTasks.length,
+      case_items: meetingLinkedCaseItems.length,
+    },
+  });
 
   return (
     <>

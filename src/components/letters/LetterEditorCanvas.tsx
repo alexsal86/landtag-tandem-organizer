@@ -1,6 +1,6 @@
 import React, { useEffect, useLayoutEffect, useState, useRef, useCallback } from 'react';
 import { sanitizeRichHtml } from '@/utils/htmlSanitizer';
-import { ZoomIn, ZoomOut, RotateCcw, Layout, Pencil, Search } from 'lucide-react';
+import { ZoomIn, ZoomOut, RotateCcw, Layout, Search } from 'lucide-react';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
 import { Textarea } from '@/components/ui/textarea';
@@ -20,7 +20,6 @@ import {
   resolvePage2TopMm,
 } from './din5008/headerMetrics';
 import { computePageBreaks } from './din5008/pagination';
-import { LetterAttachmentList, LetterClosingBlock } from './LetterContentBlocks';
 import type {
   InformationBlockRecord,
   LetterBlockLine,
@@ -31,57 +30,22 @@ import type {
   SenderInformationRecord,
 } from '@/types/letterLayout';
 
-// ─── DIN A4 constants ────────────────────────────────────────────────────────
-const PAGE_W_MM = 210;
-const PAGE_H_MM = 297;
-const MARGIN_L_MM = 25;
-const MARGIN_R_MM = 20;
-const CONTENT_W_MM = PAGE_W_MM - MARGIN_L_MM - MARGIN_R_MM; // 165 mm
-
-// 1 mm = 3.7795 px @ 96 dpi
-const MM_TO_PX = 3.7795;
-const mmToPx = (mm: number) => mm * MM_TO_PX;
-const pxToMm = (px: number) => px / MM_TO_PX;
-
-interface EditableAttachment {
-  id: string;
-  file_name?: string;
-  display_name?: string;
-}
-
-/**
- * Display-only dedupe for the inline recipient block, mirroring the DIN layout:
- * when the stored address starts with the recipient name, that line is hidden.
- * `hiddenPrefix` lets an edit write the original leading lines back unchanged.
- */
-const dedupeRecipientAddress = (
-  name: string | undefined,
-  address: string | undefined,
-): { display: string; hiddenPrefix: string } => {
-  const raw = (address ?? '').replace(/\r\n?/g, '\n');
-  const trimmedName = (name ?? '').trim();
-  if (!raw || !trimmedName) return { display: raw, hiddenPrefix: '' };
-
-  const lines = raw.split('\n');
-  const firstContentIndex = lines.findIndex((line) => line.trim() !== '');
-  if (firstContentIndex === -1 || lines[firstContentIndex].trim() !== trimmedName) {
-    return { display: raw, hiddenPrefix: '' };
-  }
-
-  let restIndex = firstContentIndex + 1;
-  while (restIndex < lines.length && lines[restIndex].trim() === '') restIndex += 1;
-
-  return {
-    display: lines.slice(restIndex).join('\n'),
-    hiddenPrefix: `${lines.slice(0, restIndex).join('\n')}\n`,
-  };
-};
-
-const isEditableAttachment = (value: unknown): value is EditableAttachment => {
-  if (!value || typeof value !== 'object' || Array.isArray(value)) return false;
-  const candidate = value as Record<string, unknown>;
-  return typeof candidate.id === 'string';
-};
+import {
+  CONTENT_W_MM,
+  MARGIN_L_MM,
+  MARGIN_R_MM,
+  MM_TO_PX,
+  PAGE_H_MM,
+  PAGE_W_MM,
+  pxToMm,
+} from './letterPageGeometry';
+import {
+  dedupeRecipientAddress,
+  isEditableAttachment,
+  type EditableAttachment,
+} from './letterRecipient';
+import { LetterAttachmentsSection } from './LetterAttachmentsSection';
+import { LetterClosingSection } from './LetterClosingSection';
 
 // ─── Types ───────────────────────────────────────────────────────────────────
 interface LetterEditorCanvasProps {
@@ -419,100 +383,31 @@ export const LetterEditorCanvas: React.FC<LetterEditorCanvasProps> = ({
   const addressZoneHeight: number = layout.addressField?.addressZoneHeight ?? 27.3;
 
   // ── closing block ──
-  const renderClosing = () => {
-    return (
-      <div style={{
-        color: '#000',
-        fontFamily: 'Calibri,Carlito,"Segoe UI",Arial,sans-serif',
-      }}>
-        <LetterClosingBlock
-          formula={closingFormula}
-          signatureImagePath={closingImagePath}
-          signatureName={closingName}
-          signatureTitle={closingTitle}
-          fontSizePt={closingFontSizePt}
-        />
-      </div>
-    );
-  };
+  const renderClosing = () => (
+    <LetterClosingSection
+      formula={closingFormula}
+      signatureImagePath={closingImagePath}
+      signatureName={closingName}
+      signatureTitle={closingTitle}
+      fontSizePt={closingFontSizePt}
+    />
+  );
 
   // ── attachment list ──
-  const renderAttachments = () => {
-    const canEditAttachments = canEdit && !!onAttachmentNameChange && editableAttachmentList.length > 0;
-
-    return (
-      <LetterAttachmentList
-        attachments={attachments}
-        hasSignature={Boolean(closingFormula)}
-        fontSizePt={contentFontSizePt}
-        dash="–"
-        containerStyle={{
-          color: '#000',
-          fontFamily: 'Calibri,Carlito,"Segoe UI",Arial,sans-serif',
-          position: 'relative',
-          zIndex: 25,
-          pointerEvents: 'auto',
-          border: canEditAttachments && (isAttachmentOverlayHovered || isAttachmentOverlayOpen)
-            ? '1.5px dashed rgba(59, 130, 246, 0.6)'
-            : '1.5px dashed transparent',
-          background: canEditAttachments && (isAttachmentOverlayHovered || isAttachmentOverlayOpen)
-            ? 'rgba(59, 130, 246, 0.03)'
-            : 'transparent',
-          borderRadius: '6px',
-          padding: canEditAttachments ? '2mm' : 0,
-        }}
-        onMouseEnter={() => canEditAttachments && setIsAttachmentOverlayHovered(true)}
-        onMouseLeave={() => canEditAttachments && !isAttachmentOverlayOpen && setIsAttachmentOverlayHovered(false)}
-      >
-        {canEditAttachments && (isAttachmentOverlayHovered || isAttachmentOverlayOpen) && (
-          <Popover
-            open={isAttachmentOverlayOpen}
-            onOpenChange={(open) => {
-              setIsAttachmentOverlayOpen(open);
-              if (!open) setIsAttachmentOverlayHovered(false);
-            }}
-          >
-            <PopoverTrigger asChild>
-              <button
-                type="button"
-                title="Anlagen bearbeiten"
-                style={{
-                  position: 'absolute',
-                  top: '-8px',
-                  right: '-8px',
-                  width: '26px',
-                  height: '26px',
-                }}
-                className="rounded-full bg-palette-green text-white shadow-md flex items-center justify-center hover:bg-palette-green transition-colors z-30"
-              >
-                <Pencil className="h-3 w-3" />
-              </button>
-            </PopoverTrigger>
-            <PopoverContent className="w-80 z-50" side="right" align="start" sideOffset={8}>
-              <div className="space-y-3">
-                <h4 className="font-medium text-sm">Anlagen</h4>
-                <div className="space-y-2 max-h-64 overflow-y-auto">
-                  {editableAttachmentList.map((attachment) => (
-                    <div key={attachment.id} className="space-y-1">
-                      <Label className="text-xs">{attachment.file_name || 'Anlage'}</Label>
-                      <Input
-                        className="h-8 text-xs"
-                        defaultValue={attachment.display_name || attachment.file_name || ''}
-                        onBlur={(event) => {
-                          onAttachmentNameChange?.(attachment.id, event.target.value.trim());
-                        }}
-                        placeholder="Anzeigename"
-                      />
-                    </div>
-                  ))}
-                </div>
-              </div>
-            </PopoverContent>
-          </Popover>
-        )}
-      </LetterAttachmentList>
-    );
-  };
+  const renderAttachments = () => (
+    <LetterAttachmentsSection
+      attachments={attachments}
+      hasSignature={Boolean(closingFormula)}
+      fontSizePt={contentFontSizePt}
+      canEdit={canEdit}
+      editableAttachments={editableAttachmentList}
+      onAttachmentNameChange={onAttachmentNameChange}
+      hovered={isAttachmentOverlayHovered}
+      open={isAttachmentOverlayOpen}
+      onHoveredChange={setIsAttachmentOverlayHovered}
+      onOpenChange={setIsAttachmentOverlayOpen}
+    />
+  );
 
   const editableAttachmentList: EditableAttachment[] = (attachments ?? []).map(a => ({
     id: a.id,

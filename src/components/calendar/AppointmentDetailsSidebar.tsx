@@ -26,6 +26,18 @@ import { AppointmentBriefingStatusCard } from "@/features/appointments/briefing/
 import { canDecide } from "@/features/appointment-requests/logic";
 import { invitationGuestKey, selectNewGuestEmails } from "@/features/appointments/invitations/invitationRules";
 import { useResolvedUserRole } from "@/hooks/useResolvedUserRole";
+import {
+  getEventTypeColor,
+  getEventTypeLabel,
+  getPriorityColor,
+  getPriorityLabel,
+  getGuestStatusColor,
+  getGuestStatusText,
+  getFeedbackStatusLabel,
+  getFeedbackStatusColor,
+} from "./appointmentLabels";
+import { fetchAppointmentFeedback, fetchAppointmentGuests } from "./appointmentQueries";
+import { planningCreatePath, socialPostPath } from "./appointmentNavigation";
 
 interface AppointmentDetailsSidebarProps {
   appointment: CalendarEvent | null;
@@ -125,17 +137,10 @@ export function AppointmentDetailsSidebar({
 
   const fetchGuests = async () => {
     if (!appointment || !appointment.id || appointment.id.startsWith('blocked-')) return;
-    
+
     setIsLoadingGuests(true);
     try {
-      const { data: guestsData, error } = await supabase
-        .from('appointment_guests')
-        .select('id, name, email, status, responded_at, response_note')
-        .eq('appointment_id', appointment.id)
-        .order('name');
-
-      if (error) throw error;
-      setGuests(guestsData || []);
+      setGuests(await fetchAppointmentGuests(appointment.id));
     } catch (error) {
       debugConsole.error('Error fetching guests:', error);
     } finally {
@@ -145,27 +150,9 @@ export function AppointmentDetailsSidebar({
 
   const fetchFeedback = async () => {
     if (!appointment || !appointment.id || appointment.id.startsWith('blocked-')) return;
-    
-    try {
-      const { data, error } = await supabase
-        .from('appointment_feedback')
-        .select('id, feedback_status, notes, completed_at, has_documents, has_tasks')
-        .eq('appointment_id', appointment.id)
-        .maybeSingle();
 
-      if (error) throw error;
-      if (data) {
-        setFeedback({
-          id: data.id,
-          feedback_status: data.feedback_status as 'pending' | 'completed' | 'skipped',
-          notes: data.notes,
-          completed_at: data.completed_at,
-          has_documents: data.has_documents || false,
-          has_tasks: data.has_tasks || false,
-        });
-      } else {
-        setFeedback(null);
-      }
+    try {
+      setFeedback(await fetchAppointmentFeedback(appointment.id));
     } catch (error) {
       debugConsole.error('Error fetching feedback:', error);
     }
@@ -237,35 +224,12 @@ export function AppointmentDetailsSidebar({
 
   const handlePlanningCreate = () => {
     if (!appointment) return;
-    
-    const params = new URLSearchParams({
-      appointmentId: appointment.id,
-      title: appointment.title,
-      date: appointment.date.toISOString(),
-      time: appointment.time,
-      location: appointment.location || ''
-    });
-    navigate(`/appointment-preparation?${params.toString()}`);
+    navigate(planningCreatePath(appointment));
   };
 
   const handleSocialPostCreate = (mode: "announcement" | "recap") => {
     if (!appointment) return;
-    // Ankündigung: 1 Tag vorher um 09:00. Rückblick: 1 Tag danach um 09:00.
-    const base = new Date(appointment.date);
-    base.setDate(base.getDate() + (mode === "announcement" ? -1 : 1));
-    const yyyy = base.getFullYear();
-    const mm = String(base.getMonth() + 1).padStart(2, "0");
-    const dd = String(base.getDate()).padStart(2, "0");
-
-    const titlePrefix = mode === "announcement" ? "Ankündigung" : "Rückblick";
-    const params = new URLSearchParams({
-      tab: "redaktion",
-      socialAppointmentId: appointment.id,
-      socialTopic: `${titlePrefix}: ${appointment.title}`,
-      socialScheduledDate: `${yyyy}-${mm}-${dd}`,
-      socialMode: mode,
-    });
-    navigate(`/mywork?${params.toString()}`);
+    navigate(socialPostPath(appointment, mode));
   };
 
   const handleSave = async () => {
@@ -463,86 +427,6 @@ export function AppointmentDetailsSidebar({
     }
   };
 
-  const getEventTypeColor = (type: CalendarEvent["type"]) => {
-    switch (type) {
-      case "session":
-        return "bg-primary text-primary-foreground";
-      case "meeting":
-        return "bg-government-blue text-white";
-      case "appointment":
-        return "bg-secondary text-secondary-foreground";
-      case "deadline":
-        return "bg-destructive text-destructive-foreground";
-      case "blocked":
-        return "bg-palette-orange text-white";
-      default:
-        return "bg-muted text-muted-foreground";
-    }
-  };
-
-  const getEventTypeLabel = (type: CalendarEvent["type"]) => {
-    // Try to find the category in the loaded appointment categories first
-    const category = appointmentCategories.find(cat => cat.name === type);
-    if (category) {
-      return category.label;
-    }
-    
-    // Fallback to hardcoded labels
-    switch (type) {
-      case "session":
-        return "Sitzung";
-      case "meeting":
-        return "Besprechung";
-      case "appointment":
-        return "Termin";
-      case "deadline":
-        return "Frist";
-      case "blocked":
-        return "Geplant";
-      default:
-        return "Unbekannt";
-    }
-  };
-
-  const getPriorityLabel = (priority: CalendarEvent["priority"]) => {
-    switch (priority) {
-      case "high":
-        return "Hoch";
-      case "medium":
-        return "Mittel";
-      case "low":
-        return "Niedrig";
-      default:
-        return "Unbekannt";
-    }
-  };
-
-  const getPriorityColor = (priority: CalendarEvent["priority"]) => {
-    switch (priority) {
-      case "high":
-        return "bg-destructive text-destructive-foreground";
-      case "medium":
-        return "bg-palette-yellow text-white";
-      case "low":
-        return "bg-palette-green text-white";
-      default:
-        return "bg-muted text-muted-foreground";
-    }
-  };
-
-  const getGuestStatusColor = (status: string) => {
-    switch (status) {
-      case "confirmed":
-        return "bg-palette-green/20 text-palette-green border-palette-green/40";
-      case "declined":
-        return "bg-palette-red/20 text-palette-red border-palette-red/40";
-      case "invited":
-        return "bg-palette-blue/20 text-palette-blue border-palette-blue/40";
-      default:
-        return "bg-muted text-foreground border-border";
-    }
-  };
-
   const getGuestStatusIcon = (status: string) => {
     switch (status) {
       case "confirmed":
@@ -553,45 +437,6 @@ export function AppointmentDetailsSidebar({
         return <Mail className="h-3 w-3" />;
       default:
         return null;
-    }
-  };
-
-  const getGuestStatusText = (status: string) => {
-    switch (status) {
-      case "confirmed":
-        return "Zugesagt";
-      case "declined":
-        return "Abgesagt";
-      case "invited":
-        return "Eingeladen";
-      default:
-        return status;
-    }
-  };
-
-  const getFeedbackStatusLabel = (status: 'pending' | 'completed' | 'skipped') => {
-    switch (status) {
-      case 'pending':
-        return 'Ausstehend';
-      case 'completed':
-        return 'Abgeschlossen';
-      case 'skipped':
-        return 'Übersprungen';
-      default:
-        return status;
-    }
-  };
-
-  const getFeedbackStatusColor = (status: 'pending' | 'completed' | 'skipped') => {
-    switch (status) {
-      case 'pending':
-        return 'bg-palette-yellow/20 text-palette-yellow border-palette-yellow/40';
-      case 'completed':
-        return 'bg-palette-green/20 text-palette-green border-palette-green/40';
-      case 'skipped':
-        return 'bg-muted text-foreground border-border';
-      default:
-        return 'bg-muted text-foreground border-border';
     }
   };
 
@@ -639,7 +484,7 @@ export function AppointmentDetailsSidebar({
                 <h2 className="text-2xl font-semibold mb-2">{appointment.title}</h2>
                 <div className="flex gap-2">
                   <Badge className={getEventTypeColor(appointment.type)}>
-                    {getEventTypeLabel(appointment.type)}
+                    {getEventTypeLabel(appointment.type, appointmentCategories)}
                   </Badge>
                   <Badge className={getPriorityColor(appointment.priority)}>
                     Priorität: {getPriorityLabel(appointment.priority)}
@@ -954,7 +799,7 @@ export function AppointmentDetailsSidebar({
                   </Select>
                 ) : (
                   <div className="text-sm text-muted-foreground">
-                    {getEventTypeLabel(appointment.type)}
+                    {getEventTypeLabel(appointment.type, appointmentCategories)}
                   </div>
                 )}
               </div>

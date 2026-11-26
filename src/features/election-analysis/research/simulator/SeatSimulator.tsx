@@ -23,6 +23,8 @@ import { districtLabel } from "./districtLabels";
 import { SeatDistricts } from "./SeatDistricts";
 import { DistrictModelPanel } from "./DistrictModelPanel";
 import { DISTRICT_MODEL_VERSION, readDistrictModel } from "./districtModel";
+import { applySeatParam, resetSeatBaselineParams } from "./seatScenarioParams";
+import { buildSensitivityCurve } from "./sensitivityCurve";
 import {
   parseElectionFile,
   shiftElection,
@@ -101,55 +103,10 @@ function Seat2026() {
       .map(([key, value]) => [key.slice("seatFlip_".length), value]),
   );
   const set = (key: string, value: string) =>
-    setParams((old) => {
-      const next = new URLSearchParams(old);
-      if (key.startsWith("seatFlip_") && !value) next.delete(key);
-      else next.set(key, value);
-      if (
-        ["seatBalancing", "seatDistrictModel"].includes(key) ||
-        [
-          "seatFirst_",
-          "seatSecond_",
-          "seatDirect_",
-          "seatDistrictLot_",
-          "seatFlip_",
-        ].some((prefix) => key.startsWith(prefix))
-      ) {
-        next.delete("seatCorrections");
-        next.delete("seatSpecialFirst");
-      }
-      return next;
-    });
+    setParams((old) => applySeatParam(old, key, value));
   const switchBaseline = (nextPoll = "", keepSaved = false) => {
     setDistrictsRequested(false);
-    setParams((old) => {
-      const next = new URLSearchParams(old);
-      for (const key of new Set(next.keys())) {
-        if (
-          [
-            ...(keepSaved ? [] : ["savedScenario"]),
-            "seatPoll",
-            "seatDistrictModel",
-            "seatBalancing",
-            "seatLotOrder",
-            "seatCorrections",
-            "seatSpecialFirst",
-            "seatThresholdParty",
-            "seatTab",
-          ].includes(key) ||
-          [
-            "seatFirst_",
-            "seatSecond_",
-            "seatDirect_",
-            "seatDistrictLot_",
-            "seatFlip_",
-          ].some((prefix) => key.startsWith(prefix))
-        )
-          next.delete(key);
-      }
-      if (nextPoll && !keepSaved) next.set("seatPoll", nextPoll);
-      return next;
-    });
+    setParams((old) => resetSeatBaselineParams(old, { nextPoll, keepSaved }));
   };
   const hasManualDirect = state.data?.some(
     (row) =>
@@ -485,30 +442,7 @@ function Seat2026() {
   const sensitivity = useMemo(() => {
     if (tab !== "threshold" || !computed.value || !basis.value || !target)
       return [];
-    const input = computed.value.input;
-    return Array.from({ length: 41 }, (_, i) => {
-      const delta = (i - 20) / 10;
-      const scenario = attempt(() => {
-        const next = secondVoteScenario(
-          input.parties,
-          input.validSecond,
-          { [target]: delta },
-          balancing,
-        );
-        return allocateBw2026({
-          ...input,
-          parties: next.parties,
-          excludedSecondVotes:
-            delta === 0 ? input.excludedSecondVotes : undefined,
-        });
-      });
-      return {
-        delta,
-        total: scenario.value?.total ?? null,
-        seats: scenario.value?.rows.find((r) => r.id === target)?.total ?? null,
-        error: scenario.error,
-      };
-    });
+    return buildSensitivityCurve(computed.value.input, target, balancing);
   }, [tab, computed.value, basis.value, target, balancing]);
   const snapshot = () => ({
     parties: basis.value?.parties,
