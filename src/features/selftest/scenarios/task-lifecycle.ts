@@ -1,20 +1,34 @@
 import { supabase } from "@/integrations/supabase/client";
 import { CORE_TASK_STATUS_KEYS, missingCoreTaskStatuses } from "@/components/tasks/types";
+import { nextRecurrenceDate } from "@/features/tasks/templates";
 import type { TestScenario } from "../types";
 import { SELFTEST_MARKER, SELFTEST_PREFIX } from "../runner";
 import { describeError, expectFields } from "../verify";
 
 const dueIn = (d: number) => { const n = new Date(); n.setDate(n.getDate() + d); return n.toISOString(); };
+const dayIn = (d: number) => { const n = new Date(); n.setDate(n.getDate() + d); return `${n.getFullYear()}-${String(n.getMonth() + 1).padStart(2, "0")}-${String(n.getDate()).padStart(2, "0")}`; };
+const timelineTexts = (raw: unknown) => Array.isArray(raw) ? raw.map((entry) => String((entry as { text?: unknown }).text ?? "")) : [];
 
 export const taskLifecycleScenario: TestScenario = {
   id: "task-lifecycle",
   title: "Aufgaben-Lifecycle (Zuweisung → Frist → Entscheidung → Jour fixe → erledigt)",
-  description: "Prüft zuerst die Status-Registry, legt dann eine Aufgabe an, weist sie zu, setzt eine Frist, erstellt daraus eine Entscheidung, markiert sie für den Jour fixe und schließt sie ab.",
-  touches: ["tasks", "task_decisions", "task_statuses"],
+  description: "Prüft zuerst die Status-Registry, legt dann eine Aufgabe an, hängt ein Dokument an, weist sie zu, setzt eine Frist, erstellt daraus eine Entscheidung, markiert sie für den Jour fixe, schließt sie ab und prüft Erledigt-Stempel, Wiederholung und Ball-Rückgabe nach einem Votum.",
+  touches: ["tasks", "task_documents", "task_decisions", "task_decision_participants", "task_decision_responses", "task_statuses"],
   features: ["tasks", "decisions"],
+  checks: [
+    "Status-Registry führt die fünf Kernstatus",
+    "Dokument hängt an der Aufgabe, bleibt auf eigene Aufgaben beschränkt und lässt sich wieder lösen",
+    "Abschluss setzt completed_at, Wiederöffnen entfernt es",
+    "Wiederholungsregel legt beim Abschluss genau eine Folgeaufgabe an",
+    "Votum zu einer verknüpften Entscheidung holt den Ball zurück und erzeugt die Folgeaufgabe genau einmal",
+  ],
   writes: [
-    { table: "tasks", columns: ["title", "description", "status", "priority", "user_id", "tenant_id", "assigned_to", "due_date", "progress", "pending_for_jour_fixe"] },
+    { table: "tasks", columns: ["title", "description", "status", "priority", "user_id", "tenant_id", "assigned_to", "due_date", "progress", "pending_for_jour_fixe", "completed_at", "recurrence_rule", "ball_owner", "ball_assignee_id", "next_action", "next_action_due", "timeline"] },
+    { table: "task_documents", columns: ["task_id", "user_id", "file_name", "file_path", "file_type", "file_size"] },
     { table: "task_decisions", columns: ["title", "description", "status", "created_by", "tenant_id", "task_id"] },
+  ],
+  limitations: [
+    "Die Dokumentdatei selbst wird nicht in den Storage-Bucket geladen; der Step prüft die Datenbank-Verknüpfung samt Zugriffssperre und das Wiederlösen.",
   ],
   steps: [
     {
@@ -43,6 +57,45 @@ export const taskLifecycleScenario: TestScenario = {
         ctx.trackRecord({ table: "tasks", id: data.id });
         ctx.data.taskId = data.id;
         return expectFields("tasks", data.id, payload, "Aufgabe");
+      },
+    },
+    {
+      id: "document-link", label: "Dokument an Aufgabe hängen und wieder lösen", kind: "db",
+      run: async (ctx) => {
+        const taskId = ctx.data.taskId as string;
+        if (!taskId) return { ok: false, message: "Die Aufgabe aus dem Anlegen-Schritt fehlt." };
+        const fileName = `${SELFTEST_PREFIX} Notiz (${ctx.runId}).pdf`;
+        const filePath = `tasks/${taskId}/${ctx.runId}.pdf`;
+        const linked = await supabase.from("task_documents").insert({
+          task_id: taskId, user_id: ctx.userId, file_name: fileName, file_path: filePath,
+          file_type: "application/pdf", file_size: 1024,
+        }).select("id,task_id,user_id,file_name,file_path,file_type,file_size").single();
+        if (linked.error || !linked.data) return { ok: false, message: describeError(linked.error) };
+        ctx.trackRecord({ table: "task_documents", id: linked.data.id });
+        const listed = await supabase.from("task_documents").select("id,file_name,file_path").eq("task_id", taskId);
+        if (listed.error) return { ok: false, message: describeError(listed.error) };
+        const attached = (listed.data ?? []).find((row) => row.id === linked.data.id);
+        const foreign = await supabase.from("task_documents").insert({
+          task_id: crypto.randomUUID(), user_id: ctx.userId,
+          file_name: `${SELFTEST_PREFIX} Fremd (${ctx.runId}).pdf`, file_path: `tasks/fremd/${ctx.runId}.pdf`,
+        });
+        const blocked = !!foreign.error && (foreign.error.code === "42501" || foreign.error.code === "23503");
+        const removed = await supabase.from("task_documents").delete().eq("id", linked.data.id);
+        const remaining = await supabase.from("task_documents").select("id").eq("id", linked.data.id).maybeSingle();
+        const ok = linked.data.task_id === taskId
+          && linked.data.user_id === ctx.userId
+          && linked.data.file_name === fileName
+          && attached?.file_path === filePath
+          && blocked
+          && !removed.error
+          && remaining.data === null;
+        return {
+          ok,
+          message: ok
+            ? "Dokument hängt an der Aufgabe, erscheint in der Ablage und lässt sich wieder lösen; fremde Aufgaben bleiben gesperrt."
+            : "Dokumentverknüpfung weicht ab.",
+          details: { linked: linked.data, attached, foreignError: foreign.error, removed: removed.error, remaining: remaining.data },
+        };
       },
     },
     {
@@ -81,6 +134,131 @@ export const taskLifecycleScenario: TestScenario = {
         const { error } = await supabase.from("tasks").update({ status: "completed", progress: 100 }).eq("id", id);
         if (error) return { ok: false, message: describeError(error) };
         return expectFields("tasks", id, { status: "completed", progress: 100 }, "completed");
+      },
+    },
+    {
+      id: "completion-stamp", label: "Abschluss stempelt completed_at, Wiederöffnen löscht den Stempel",
+      run: async (ctx) => {
+        const id = ctx.data.taskId as string;
+        const closed = await supabase.from("tasks").select("completed_at").eq("id", id).eq("tenant_id", ctx.tenantId).single();
+        if (closed.error || !closed.data) return { ok: false, message: describeError(closed.error) };
+        if (!closed.data.completed_at) return { ok: false, message: "Der Abschluss hat completed_at nicht gestempelt." };
+        const reopened = await supabase.from("tasks").update({ status: "todo" }).eq("id", id).eq("tenant_id", ctx.tenantId);
+        if (reopened.error) return { ok: false, message: describeError(reopened.error) };
+        const afterReopen = await supabase.from("tasks").select("completed_at").eq("id", id).single();
+        const reclosed = await supabase.from("tasks").update({ status: "completed" }).eq("id", id).eq("tenant_id", ctx.tenantId);
+        if (reclosed.error) return { ok: false, message: describeError(reclosed.error) };
+        const afterReclose = await supabase.from("tasks").select("completed_at").eq("id", id).single();
+        const ok = afterReopen.data?.completed_at === null && !!afterReclose.data?.completed_at;
+        return {
+          ok,
+          message: ok
+            ? "completed_at folgt dem Status in beide Richtungen."
+            : "completed_at folgt dem Status nicht.",
+          details: { completed: closed.data.completed_at, reopened: afterReopen.data?.completed_at, reclosed: afterReclose.data?.completed_at },
+        };
+      },
+    },
+    {
+      id: "recurrence-spawn", label: "Wiederholung legt beim Abschluss genau eine Folgeaufgabe an", kind: "workflow",
+      run: async (ctx) => {
+        const due = dayIn(5);
+        const title = `${SELFTEST_PREFIX} Wiederholung (${ctx.runId})`;
+        const created = await supabase.from("tasks").insert({
+          title,
+          description: SELFTEST_MARKER,
+          status: "todo",
+          priority: "medium",
+          user_id: ctx.userId,
+          tenant_id: ctx.tenantId,
+          due_date: due,
+          recurrence_rule: "weekly",
+          ball_owner: "office",
+          ball_assignee_id: ctx.userId,
+        }).select("id").single();
+        if (created.error || !created.data) return { ok: false, message: describeError(created.error) };
+        ctx.trackRecord({ table: "tasks", id: created.data.id });
+        const completed = await supabase.from("tasks").update({ status: "completed" }).eq("id", created.data.id).eq("tenant_id", ctx.tenantId);
+        if (completed.error) return { ok: false, message: describeError(completed.error) };
+        const spawned = await supabase.from("tasks").select("id,due_date,status,recurrence_rule,timeline").eq("tenant_id", ctx.tenantId).eq("title", title).neq("id", created.data.id);
+        if (spawned.error) return { ok: false, message: describeError(spawned.error) };
+        const child = spawned.data?.[0];
+        if (child) ctx.trackRecord({ table: "tasks", id: child.id });
+        const expected = nextRecurrenceDate(due, "weekly");
+        const texts = timelineTexts(child?.timeline);
+        const firstOk = spawned.data?.length === 1
+          && child?.due_date === expected
+          && child?.status === "todo"
+          && child?.recurrence_rule === "weekly"
+          && texts.includes("Wiederkehrende Aufgabe automatisch neu angelegt");
+        const again = await supabase.from("tasks").update({ status: "completed" }).eq("id", created.data.id).eq("tenant_id", ctx.tenantId);
+        const all = await supabase.from("tasks").select("id").eq("tenant_id", ctx.tenantId).eq("title", title);
+        const exactlyOnce = !again.error && all.data?.length === 2;
+        const ok = firstOk && exactlyOnce;
+        return {
+          ok,
+          message: ok
+            ? `Folgeaufgabe mit Frist ${expected} angelegt; erneutes Abschließen erzeugt keine zweite.`
+            : "Wiederholung weicht ab.",
+          details: { due, expected, spawned: spawned.data, repeatedCount: all.data?.length },
+        };
+      },
+    },
+    {
+      id: "decision-ball", label: "Votum holt den Ball zurück; Folgeaufgabe entsteht genau einmal", kind: "workflow",
+      run: async (ctx) => {
+        const taskId = ctx.data.taskId as string;
+        const decision = await supabase.from("task_decisions").insert({
+          title: `${SELFTEST_PREFIX} Votum (${ctx.runId})`,
+          description: SELFTEST_MARKER,
+          status: "active",
+          created_by: ctx.userId,
+          tenant_id: ctx.tenantId,
+          task_id: taskId,
+          visible_to_all: false,
+        }).select("id").single();
+        if (decision.error || !decision.data) return { ok: false, message: describeError(decision.error) };
+        ctx.trackRecord({ table: "task_decisions", id: decision.data.id });
+        const participant = await supabase.from("task_decision_participants")
+          .insert({ decision_id: decision.data.id, user_id: ctx.userId }).select("id").single();
+        if (participant.error || !participant.data) return { ok: false, message: describeError(participant.error) };
+        ctx.trackRecord({ table: "task_decision_participants", id: participant.data.id });
+        const response = await supabase.from("task_decision_responses")
+          .insert({ decision_id: decision.data.id, participant_id: participant.data.id, response_type: "yes", comment: SELFTEST_MARKER })
+          .select("id").single();
+        if (response.error || !response.data) return { ok: false, message: describeError(response.error) };
+        ctx.trackRecord({ table: "task_decision_responses", id: response.data.id });
+        const task = await supabase.from("tasks")
+          .select("ball_owner,ball_assignee_id,next_action,next_action_due,timeline")
+          .eq("id", taskId).eq("tenant_id", ctx.tenantId).single();
+        if (task.error || !task.data) return { ok: false, message: describeError(task.error) };
+        const ballBack = task.data.ball_owner === "office"
+          && task.data.ball_assignee_id === ctx.userId
+          && task.data.next_action === "Freigabe umsetzen"
+          && task.data.next_action_due === null
+          && timelineTexts(task.data.timeline).some((text) => text.startsWith("Votum zu"));
+        const generated = await supabase.rpc("create_decision_task", { p_decision_id: decision.data.id });
+        if (generated.error || !generated.data) return { ok: false, message: describeError(generated.error) };
+        ctx.trackRecord({ table: "tasks", id: generated.data });
+        const followUp = await supabase.from("tasks")
+          .select("source_type,source_id,status,assigned_to,title,description")
+          .eq("id", generated.data).eq("tenant_id", ctx.tenantId).single();
+        if (followUp.error || !followUp.data) return { ok: false, message: describeError(followUp.error) };
+        const repeated = await supabase.rpc("create_decision_task", { p_decision_id: decision.data.id });
+        const follow = followUp.data;
+        const followUpOk = follow.source_type === "decision"
+          && follow.source_id === decision.data.id
+          && follow.status === "todo"
+          && (follow.assigned_to ?? "").includes(ctx.userId)
+          && (follow.description ?? "").includes("Angenommen");
+        const ok = ballBack && followUpOk && !repeated.error && repeated.data === generated.data;
+        return {
+          ok,
+          message: ok
+            ? "Ball liegt wieder im Büro; die Folgeaufgabe entsteht nur einmal."
+            : "Ball-Rückgabe oder Folgeaufgabe weicht ab.",
+          details: { task: task.data, followUp: follow, repeated: repeated.data },
+        };
       },
     },
     {

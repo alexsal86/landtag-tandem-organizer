@@ -759,11 +759,20 @@
         {
           "scenario": "task-lifecycle",
           "title": "Aufgaben-Lifecycle (Zuweisung → Frist → Entscheidung → Jour fixe → erledigt)",
-          "description": "Prüft zuerst die Status-Registry, legt dann eine Aufgabe an, weist sie zu, setzt eine Frist, erstellt daraus eine Entscheidung, markiert sie für den Jour fixe und schließt sie ab.",
-          "checks": [],
+          "description": "Prüft zuerst die Status-Registry, legt dann eine Aufgabe an, hängt ein Dokument an, weist sie zu, setzt eine Frist, erstellt daraus eine Entscheidung, markiert sie für den Jour fixe, schließt sie ab und prüft Erledigt-Stempel, Wiederholung und Ball-Rückgabe nach einem Votum.",
+          "checks": [
+            "Status-Registry führt die fünf Kernstatus",
+            "Dokument hängt an der Aufgabe, bleibt auf eigene Aufgaben beschränkt und lässt sich wieder lösen",
+            "Abschluss setzt completed_at, Wiederöffnen entfernt es",
+            "Wiederholungsregel legt beim Abschluss genau eine Folgeaufgabe an",
+            "Votum zu einer verknüpften Entscheidung holt den Ball zurück und erzeugt die Folgeaufgabe genau einmal"
+          ],
           "tables": [
             "tasks",
+            "task_documents",
             "task_decisions",
+            "task_decision_participants",
+            "task_decision_responses",
             "task_statuses"
           ],
           "features": [
@@ -771,7 +780,10 @@
             "tasks.assign",
             "tasks.complete",
             "tasks.create",
-            "tasks.edit"
+            "tasks.edit",
+            "tasks.link-decision",
+            "tasks.link-document",
+            "tasks.recurring"
           ],
           "steps": [
             {
@@ -781,6 +793,10 @@
             {
               "id": "create",
               "label": "Aufgabe anlegen"
+            },
+            {
+              "id": "document-link",
+              "label": "Dokument an Aufgabe hängen und wieder lösen"
             },
             {
               "id": "assign",
@@ -799,6 +815,18 @@
               "label": "Status → completed"
             },
             {
+              "id": "completion-stamp",
+              "label": "Abschluss stempelt completed_at, Wiederöffnen löscht den Stempel"
+            },
+            {
+              "id": "recurrence-spawn",
+              "label": "Wiederholung legt beim Abschluss genau eine Folgeaufgabe an"
+            },
+            {
+              "id": "decision-ball",
+              "label": "Votum holt den Ball zurück; Folgeaufgabe entsteht genau einmal"
+            },
+            {
               "id": "tenant-boundary",
               "label": "Aufgabe lässt sich keinem fremden Büro zuordnen"
             }
@@ -807,20 +835,31 @@
         {
           "scenario": "task-stafette-lifecycle",
           "title": "Aufgaben-Stafette (Am Zug, Wiedervorlage, Freigabe)",
-          "description": "Spielt den Weg einer Aufgabe durch: Schritt festlegen, Wiedervorlage, Freigabe vorlegen, Rückgabe und Abschluss.",
+          "description": "Spielt den Weg einer Aufgabe durch: Schritt festlegen, Wiedervorlage, Freigabe vorlegen, Rückgabe, Abschluss, Mehrfachzuweisung, Vertretungsübergabe, Anstupsen mit Quittung sowie Archivieren und Wiederherstellen.",
           "checks": [
             "Zonen Mein Zug / Wartet / Wiedervorlage",
             "Verlaufseinträge bei Übergaben und Erledigungen",
             "Sammelaktionen: Vorschau ohne erfundene Frist, ohne überschriebene Schritte, mit Rücknahme",
-            "Wochenreview, Eskalationsgründe, Einzeiler-Befehle und SLA-Stufen als reine Regeln"
+            "Wochenreview, Eskalationsgründe, Einzeiler-Befehle und SLA-Stufen als reine Regeln",
+            "Mehrfachzuweisung hält task_assignees und assigned_to synchron",
+            "Vertretungsübergabe verschiebt nur eigene Bälle und verweigert Selbstübergabe",
+            "Anstupsen: 24-Stunden-Sperre in der Datenbank und Quittung im Verlauf",
+            "Wiedervorlage kennt genau ein Ziel; Archivieren räumt sie mit ab, Wiederherstellen bringt die Aufgabe zurück"
           ],
           "tables": [
-            "tasks"
+            "tasks",
+            "task_assignees",
+            "task_snoozes",
+            "archived_tasks"
           ],
           "features": [
+            "tasks.archive",
             "tasks.assign",
+            "tasks.ball-owner",
             "tasks.complete",
-            "tasks.handover-stafette"
+            "tasks.handover-stafette",
+            "tasks.nudge",
+            "tasks.snooze"
           ],
           "steps": [
             {
@@ -890,6 +929,26 @@
             {
               "id": "nudge-boundary",
               "label": "Anstupsen erreicht keine Aufgabe außerhalb des eigenen Büros"
+            },
+            {
+              "id": "multi-assign",
+              "label": "Mehrfachzuweisung hält task_assignees und assigned_to synchron"
+            },
+            {
+              "id": "deputy-handover",
+              "label": "Vertretungsübergabe: nur Leitung, nie an sich selbst, verschiebt den Ball"
+            },
+            {
+              "id": "nudge-ack",
+              "label": "Anstupsen: 24-Stunden-Sperre der Datenbank und Quittung im Verlauf"
+            },
+            {
+              "id": "snooze-rows",
+              "label": "Wiedervorlage: task_snoozes je Person, genau ein Ziel"
+            },
+            {
+              "id": "archive-restore",
+              "label": "Archivieren entfernt Aufgabe und Wiedervorlage, Wiederherstellen holt sie zurück"
             }
           ]
         }

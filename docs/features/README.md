@@ -16,14 +16,14 @@ Der Katalog ist das führende Verzeichnis des tatsächlich implementierten Funkt
 | Deaktiviert | 0 |
 | Potenziell verwaist | 0 |
 | Prüfkandidaten (offene Punkte) | 51 |
-| Funktionen mit Selbsttest | 80 |
-| Funktionen mit Unit-Test | 58 |
+| Funktionen mit Selbsttest | 86 |
+| Funktionen mit Unit-Test | 60 |
 | Funktionen mit Integrationstest | 1 |
 | Funktionen mit Browser-Test | 4 |
 | Funktionen mit Security-Test | 1 |
-| Funktionen ohne zugeordneten Test | 137 |
+| Funktionen ohne zugeordneten Test | 133 |
 | Funktionen ohne Dokumentationsverweis | 164 |
-| Funktionen mit bekannten Einschränkungen | 35 |
+| Funktionen mit bekannten Einschränkungen | 40 |
 | Nicht nachweisbar eingebundene Funktionen | 1 |
 | Technische Zuordnungen | 1254 |
 
@@ -32,7 +32,7 @@ Der Katalog ist das führende Verzeichnis des tatsächlich implementierten Funkt
 | Bereich | Unterbereiche | Funktionen | implementiert | ohne Test | ohne Doku |
 |---|---:|---:|---:|---:|---:|
 | [Administration, Sicherheit & Qualität](./verwaltung.md) | 11 | 24 | 24 | 15 | 9 |
-| [Aufgaben & Stafette](./aufgaben.md) | 12 | 18 | 18 | 7 | 9 |
+| [Aufgaben & Stafette](./aufgaben.md) | 12 | 18 | 18 | 3 | 9 |
 | [Automatisierung & Workflows](./automation.md) | 8 | 15 | 15 | 9 | 8 |
 | [Dokumente, Briefe & Annotationen](./dokumente.md) | 3 | 17 | 17 | 9 | 13 |
 | [Entscheidungen](./entscheidungen.md) | 7 | 10 | 10 | 7 | 8 |
@@ -87,13 +87,13 @@ Der Katalog ist das führende Verzeichnis des tatsächlich implementierten Funkt
 
 | Abdeckung | Funktionen |
 |---|---:|
-| Selbsttest | 79 |
-| Unit-Test | 37 |
+| Selbsttest | 85 |
+| Unit-Test | 35 |
 | Integrationstest | 1 |
 | Browser-Test | 0 |
 | Security-Test | 1 |
 | teilweise | 0 |
-| kein Test | 137 |
+| kein Test | 133 |
 | ungeprüft | 0 |
 
 ## Konsistenz
