@@ -69,7 +69,7 @@ const Index = (): React.JSX.Element => {
     setDaySlipNavWidth?.(navWidth);
   }, [setDaySlipNavWidth, navWidth]);
   const { user, loading: authLoading } = useAuth();
-  const { loading: tenantLoading } = useTenant();
+  const { loading: tenantLoading, currentTenant } = useTenant();
   const navigate = useNavigate();
   const location = useLocation();
   const { section, subId } = useParams();
@@ -343,7 +343,7 @@ const Index = (): React.JSX.Element => {
                   <Loader2 className="h-8 w-8 animate-spin text-primary" />
                 </div>
               }>
-                <MatrixClientProvider>
+                <MatrixClientProvider key={`${user?.id ?? ""}:${currentTenant?.id ?? ""}`}>
                   {renderActiveSection()}
                 </MatrixClientProvider>
               </Suspense>

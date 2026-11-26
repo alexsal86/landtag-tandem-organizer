@@ -1,4 +1,4 @@
-export type NavPreviewGroup = "calendar" | "tasks" | "files";
+export type NavPreviewGroup = "calendar" | "tasks" | "files" | "communication" | "people";
 
 export type ActivePanel = 'home' | 'notifications' | 'casefiles' | 'appointments';
 export type NotificationFilter = 'unread' | 'all';

@@ -117,7 +117,7 @@ export function useNavPanelData({
         .sort((a, b) => new Date(a.start_time).getTime() - new Date(b.start_time).getTime())
         .slice(0, 20);
     },
-    enabled: !!tenantId && !!user?.id && (activePanel === "appointments" || previewGroup === "calendar"),
+    enabled: !!tenantId && !!user?.id && (activePanel === "appointments" || previewGroup === "calendar" || previewGroup === "people"),
     staleTime: STALE,
   });
 
@@ -205,8 +205,44 @@ export function useNavPanelData({
       if (error) throw error;
       return data || [];
     },
-    enabled: !!tenantId && !!user?.id && (activePanel === "casefiles" || previewGroup === "files"),
+    enabled: !!tenantId && !!user?.id && (activePanel === "casefiles" || previewGroup === "files" || previewGroup === "people"),
     staleTime: STALE,
+  });
+
+  const contactAppointment = nextAppointment?.isExternal ? undefined : nextAppointment;
+  const contactCase = caseFiles[0];
+  const { data: previewContact, isLoading: contactLoading, isError: contactError } = useQuery({
+    queryKey: ["nav-contact-preview", tenantId, user?.id, contactAppointment?.id, contactCase?.id],
+    enabled: previewGroup === "people" && !!tenantId && !!user?.id && !appointmentsLoading && !caseFilesLoading,
+    staleTime: STALE,
+    queryFn: async () => {
+      const columns = "contacts!inner(id, name, organization, position), role";
+      if (contactAppointment) {
+        const { data, error } = await supabase.from("appointment_contacts").select(columns)
+          .eq("appointment_id", contactAppointment.id)
+          .eq("contacts.tenant_id", tenantId!)
+          .order("created_at").limit(1).maybeSingle();
+        if (error) throw error;
+        if (data?.contacts) {
+          return { contact: data.contacts, role: data.role, context: `Zum Termin „${contactAppointment.title}“` };
+        }
+      }
+      if (contactCase) {
+        const { data, error } = await supabase.from("case_file_contacts").select(columns)
+          .eq("case_file_id", contactCase.id)
+          .eq("contacts.tenant_id", tenantId!)
+          .order("created_at", { ascending: false }).limit(1).maybeSingle();
+        if (error) throw error;
+        if (data?.contacts) {
+          return { contact: data.contacts, role: data.role, context: `Aus der Fallakte „${contactCase.title}“` };
+        }
+      }
+      const { data, error } = await supabase.from("contacts").select("id, name, organization, position")
+        .eq("tenant_id", tenantId!).eq("user_id", user!.id).eq("is_favorite", true)
+        .order("updated_at", { ascending: false }).limit(1).maybeSingle();
+      if (error) throw error;
+      return data ? { contact: data, role: null, context: "Favorit" } : null;
+    },
   });
 
   // Quick access: case items
@@ -322,6 +358,9 @@ export function useNavPanelData({
     taskError,
     caseFilesLoading,
     caseFilesError,
+    previewContact,
+    contactLoading: contactLoading || appointmentsLoading || caseFilesLoading,
+    contactError,
     pendingFeedbacks,
     caseFiles,
     quickAccessCaseItems,

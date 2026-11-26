@@ -22,7 +22,7 @@ _Auto-generiert mit `npm run update:feature-catalog` aus dem zentralen Funktions
 | `mywork.dashboard` Meine Arbeit – Dashboard | Meine Arbeit | fachlich | implementiert | rollenabhängig | Selbsttest |
 | `mywork.quick-access` Schnellzugriff und zuletzt besuchte Seiten | Meine Arbeit | fachlich | implementiert | UI | kein Test |
 | `mobile.app` Mobile App (Expo) | Mobile | fachlich | teilweise | ohne Einbindung | kein Test |
-| `mywork.navigation-previews` Vorschauen für Kalender, Aufgaben und Akten | Navigation | fachlich | implementiert | UI | kein Test |
+| `mywork.navigation-previews` Vorschauen für Kalender, Aufgaben, Akten, Chat und Kontakte | Navigation | fachlich | implementiert | UI | kein Test |
 | `profile.edit` Eigenes Profil bearbeiten | Profil | fachlich | implementiert | UI | kein Test |
 | `quicknotes.checklists` Checklisten in Schnellnotizen | Schnellnotizen | fachlich | implementiert | UI | Unit-Test |
 | `quicknotes.drag-sort` Notizen per Drag-and-drop sortieren | Schnellnotizen | fachlich | implementiert | UI | Unit-Test |
@@ -48,7 +48,7 @@ _Auto-generiert mit `npm run update:feature-catalog` aus dem zentralen Funktions
 
 ## Datenbanktabellen
 
-`appointment_preparations`, `appointments`, `case_files`, `dashboard_layouts`, `external_events`, `message_confirmations`, `notification_navigation_mapping`, `notification_types`, `notifications`, `profiles`, `quick_note_global_shares`, `quick_note_shares`, `quick_note_versions`, `quick_note_write_receipts`, `quick_notes`, `search_analytics`, `task_snoozes`, `tasks`, `user_mywork_settings`, `user_navigation_visits`, `user_notification_settings`, `user_planning_preferences`, `user_preferences`, `user_sessions`, `user_tenant_memberships`, `widget_configurations`
+`appointment_contacts`, `appointment_preparations`, `appointments`, `case_file_contacts`, `case_files`, `contacts`, `dashboard_layouts`, `external_events`, `message_confirmations`, `notification_navigation_mapping`, `notification_types`, `notifications`, `profiles`, `quick_note_global_shares`, `quick_note_shares`, `quick_note_versions`, `quick_note_write_receipts`, `quick_notes`, `search_analytics`, `task_snoozes`, `tasks`, `user_mywork_settings`, `user_navigation_visits`, `user_notification_settings`, `user_planning_preferences`, `user_preferences`, `user_sessions`, `user_tenant_memberships`, `widget_configurations`
 
 ## Selbsttest-Szenarien
 
@@ -281,8 +281,8 @@ Merkt sich zuletzt besuchte Bereiche und stellt konfigurierbare Schnellzugriffe 
 
 - Keine.
 
-### `mywork.navigation-previews` — Vorschauen für Kalender, Aufgaben und Akten
-Zeigt Vorschauen mit dem nächsten Termin samt Briefingstatus, einer offenen Aufgabe mit Frist und Zuständigkeit oder einer kürzlich aktualisierten Fallakte. Verlinkt den jeweiligen Eintrag und die Unterbereiche.
+### `mywork.navigation-previews` — Vorschauen für Kalender, Aufgaben, Akten, Chat und Kontakte
+Zeigt Vorschauen mit dem nächsten Termin samt Briefingstatus, einer offenen Aufgabe mit Frist und Zuständigkeit, einer kürzlich aktualisierten Fallakte, einem ungelesenen Chat oder einem Kontakt mit Bezug zum nächsten Termin oder einer Fallakte. Verlinkt den jeweiligen Eintrag und die Unterbereiche.
 
 - **Kategorie:** fachlich
 - **Implementierung:** implementiert
@@ -296,7 +296,7 @@ Zeigt Vorschauen mit dem nächsten Termin samt Briefingstatus, einer offenen Auf
 - **Hooks:** `src/components/navigation/appNavigation/useNavPanelData.ts`
 - **Edge Functions:** —
 - **Datenbankfunktionen:** —
-- **Tabellen:** `appointments`, `external_events`, `appointment_preparations`, `tasks`, `case_files`
+- **Tabellen:** `appointments`, `external_events`, `appointment_preparations`, `tasks`, `case_files`, `appointment_contacts`, `case_file_contacts`, `contacts`
 - **Abhängigkeiten:** —
 - **Selbsttests:** —
 - **Unit-Tests:** —
@@ -309,10 +309,14 @@ Zeigt Vorschauen mit dem nächsten Termin samt Briefingstatus, einer offenen Auf
 - src/components/navigation/AppNavigation.tsx
 - src/components/navigation/appNavigation/NavGroupPreview.tsx
 - src/components/navigation/appNavigation/useNavPanelData.ts
+- src/contexts/MatrixUnreadContext.tsx
+- src/components/chat/MatrixChatView.tsx
 
 **Bekannte Einschränkungen**
 
 - In der Desktop-Navigation per Maus oder Pfeil nach rechts verfügbar. Die Terminvorschau blickt fünf Tage voraus und die Aktenvorschau berücksichtigt eigene oder zugewiesene Fallakten.
+- Chat-Hervorhebungen stammen von Matrix. Die Vorschau zeigt Raumnamen und Zähler. Der zuletzt geöffnete Chat wird für die aktuelle Sitzung gemerkt.
+- Ohne Kontakt am nächsten Termin oder in der jüngsten eigenen oder zugewiesenen Fallakte wird ein eigener Favorit angezeigt.
 
 **Offene Prüfpunkte**
 
