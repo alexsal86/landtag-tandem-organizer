@@ -1,6 +1,9 @@
 import { supabase } from "@/integrations/supabase/client";
 import { CORE_TASK_STATUS_KEYS, missingCoreTaskStatuses } from "@/components/tasks/types";
 import { nextRecurrenceDate } from "@/features/tasks/templates";
+import { changeDeadline } from "@/hooks/useDeadlineActions";
+import type { DeadlineItem } from "@/types/dashboardDeadlines";
+import { formatDeadlineDateLabel, getDeadlineStatus, getReviewableOverdueDeadlines, groupDeadlineItems } from "@/utils/deadlineFormatting";
 import type { TestScenario } from "../types";
 import { SELFTEST_MARKER, SELFTEST_PREFIX } from "../runner";
 import { describeError, expectFields } from "../verify";
@@ -12,12 +15,13 @@ const timelineTexts = (raw: unknown) => Array.isArray(raw) ? raw.map((entry) => 
 export const taskLifecycleScenario: TestScenario = {
   id: "task-lifecycle",
   title: "Aufgaben-Lifecycle (Zuweisung → Frist → Entscheidung → Jour fixe → erledigt)",
-  description: "Prüft zuerst die Status-Registry, legt dann eine Aufgabe an, hängt ein Dokument an, weist sie zu, setzt eine Frist, erstellt daraus eine Entscheidung, markiert sie für den Jour fixe, schließt sie ab und prüft Erledigt-Stempel, Wiederholung und Ball-Rückgabe nach einem Votum.",
+  description: "Prüft zuerst die Status-Registry, legt dann eine Aufgabe an, hängt ein Dokument an, weist sie zu, setzt eine Frist, prüft die Fristen-Gruppierung und das Verwerfen samt Rückgängig, erstellt daraus eine Entscheidung, markiert sie für den Jour fixe, schließt sie ab und prüft Erledigt-Stempel, Wiederholung und Ball-Rückgabe nach einem Votum.",
   touches: ["tasks", "task_documents", "task_decisions", "task_decision_participants", "task_decision_responses", "task_statuses"],
   features: ["tasks", "decisions"],
   checks: [
     "Status-Registry führt die fünf Kernstatus",
     "Dokument hängt an der Aufgabe, bleibt auf eigene Aufgaben beschränkt und lässt sich wieder lösen",
+    "Fristen werden nach Berliner Tagen gruppiert; Verwerfen löscht nur die Frist und Rückgängig stellt sie wieder her",
     "Abschluss setzt completed_at, Wiederöffnen entfernt es",
     "Wiederholungsregel legt beim Abschluss genau eine Folgeaufgabe an",
     "Votum zu einer verknüpften Entscheidung holt den Ball zurück und erzeugt die Folgeaufgabe genau einmal",
@@ -106,6 +110,79 @@ export const taskLifecycleScenario: TestScenario = {
         const { error } = await supabase.from("tasks").update(update).eq("id", id);
         if (error) return { ok: false, message: describeError(error) };
         return expectFields("tasks", id, update, "Zuweisung");
+      },
+    },
+    {
+      id: "deadline-review", label: "Fristen: Berliner Gruppierung, Verwerfen und Rückgängig", kind: "workflow",
+      run: async (ctx) => {
+        const now = new Date("2026-11-25T12:00:00Z");
+        const items: DeadlineItem[] = [
+          { id: "old", title: "Alt", dueDate: "2026-10-01", type: "task", canSnooze: true },
+          { id: "high", title: "Wichtig", dueDate: "2026-11-20", type: "task", canSnooze: true, priority: 2 },
+          { id: "today", title: "Heute", dueDate: "2026-11-25", type: "note", canSnooze: true },
+          { id: "week", title: "Woche", dueDate: "2026-11-29", type: "task", canSnooze: true },
+          { id: "later", title: "Später", dueDate: "2026-12-20", type: "decision", canSnooze: true },
+        ];
+        const grouped = groupDeadlineItems(items, now);
+        const reviewable = getReviewableOverdueDeadlines(grouped.overdue, now);
+        const groupingOk = grouped.overdue.map((item) => item.id).join(",") === "high,old"
+          && grouped.today.map((item) => item.id).join(",") === "today"
+          && grouped.thisWeek.map((item) => item.id).join(",") === "week"
+          && grouped.later.map((item) => item.id).join(",") === "later"
+          && reviewable.map((item) => item.id).join(",") === "old"
+          && getDeadlineStatus("2026-11-29", now) === "soon"
+          && getDeadlineStatus("2026-11-30", now) === "later"
+          && formatDeadlineDateLabel("2026-11-25", now) === "Heute"
+          && formatDeadlineDateLabel("2026-11-24", now) === "seit 1 Tag überfällig"
+          && formatDeadlineDateLabel("2026-11-26", now) === "Morgen";
+
+        const created = await supabase.from("tasks").insert({
+          title: `${SELFTEST_PREFIX} Frist (${ctx.runId})`,
+          description: SELFTEST_MARKER,
+          status: "todo",
+          priority: "medium",
+          user_id: ctx.userId,
+          tenant_id: ctx.tenantId,
+          due_date: dayIn(3),
+        }).select("id,due_date,title").single();
+        if (created.error || !created.data) return { ok: false, message: describeError(created.error) };
+        const id = created.data.id;
+        ctx.trackRecord({ table: "tasks", id });
+        const item: DeadlineItem = { id, title: created.data.title, dueDate: created.data.due_date!, type: "task", canSnooze: true };
+        let undo: (() => Promise<void>) | undefined;
+        let actionError: string | null = null;
+        try {
+          undo = await changeDeadline(item, "discard");
+        } catch (error) {
+          actionError = error instanceof Error ? error.message : String(error);
+        }
+        if (actionError || !undo) return { ok: false, message: `Verwerfen der Frist fehlgeschlagen: ${actionError ?? "kein Rückgängig-Schritt"}` };
+        const cleared = await supabase.from("tasks").select("due_date").eq("id", id).single();
+        let undoFailed = false;
+        try {
+          await undo();
+        } catch {
+          undoFailed = true;
+        }
+        const restored = await supabase.from("tasks").select("due_date").eq("id", id).single();
+        let forbidden = false;
+        try {
+          await changeDeadline({ ...item, canSnooze: false }, "discard");
+        } catch {
+          forbidden = true;
+        }
+        const ok = groupingOk
+          && cleared.data?.due_date === null
+          && !undoFailed
+          && restored.data?.due_date === item.dueDate
+          && forbidden;
+        return {
+          ok,
+          message: ok
+            ? "Fristen sind nach Berliner Tagen gruppiert; Verwerfen löscht nur die Frist, Rückgängig stellt sie wieder her."
+            : "Fristen-Gruppierung oder Verwerfen weicht ab.",
+          details: { grouped, reviewable: reviewable.map((entry) => entry.id), cleared: cleared.data, restored: restored.data, undoFailed, forbidden },
+        };
       },
     },
     {

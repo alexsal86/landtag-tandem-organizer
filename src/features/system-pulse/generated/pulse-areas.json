@@ -863,10 +863,11 @@
         {
           "scenario": "task-lifecycle",
           "title": "Aufgaben-Lifecycle (Zuweisung → Frist → Entscheidung → Jour fixe → erledigt)",
-          "description": "Prüft zuerst die Status-Registry, legt dann eine Aufgabe an, hängt ein Dokument an, weist sie zu, setzt eine Frist, erstellt daraus eine Entscheidung, markiert sie für den Jour fixe, schließt sie ab und prüft Erledigt-Stempel, Wiederholung und Ball-Rückgabe nach einem Votum.",
+          "description": "Prüft zuerst die Status-Registry, legt dann eine Aufgabe an, hängt ein Dokument an, weist sie zu, setzt eine Frist, prüft die Fristen-Gruppierung und das Verwerfen samt Rückgängig, erstellt daraus eine Entscheidung, markiert sie für den Jour fixe, schließt sie ab und prüft Erledigt-Stempel, Wiederholung und Ball-Rückgabe nach einem Votum.",
           "checks": [
             "Status-Registry führt die fünf Kernstatus",
             "Dokument hängt an der Aufgabe, bleibt auf eigene Aufgaben beschränkt und lässt sich wieder lösen",
+            "Fristen werden nach Berliner Tagen gruppiert; Verwerfen löscht nur die Frist und Rückgängig stellt sie wieder her",
             "Abschluss setzt completed_at, Wiederöffnen entfernt es",
             "Wiederholungsregel legt beim Abschluss genau eine Folgeaufgabe an",
             "Votum zu einer verknüpften Entscheidung holt den Ball zurück und erzeugt die Folgeaufgabe genau einmal"
@@ -884,6 +885,7 @@
             "tasks.assign",
             "tasks.complete",
             "tasks.create",
+            "tasks.deadline",
             "tasks.edit",
             "tasks.link-decision",
             "tasks.link-document",
@@ -905,6 +907,10 @@
             {
               "id": "assign",
               "label": "Aufgabe zuweisen + Frist setzen"
+            },
+            {
+              "id": "deadline-review",
+              "label": "Fristen: Berliner Gruppierung, Verwerfen und Rückgängig"
             },
             {
               "id": "decision",

@@ -479,7 +479,6 @@ Diese implementierten Fachfunktionen haben laut Funktionskatalog keine Selbsttes
 | `redaktion.planner` | Social-Media-Planung | kommunikation | social_content_items, social_content_channels, social_content_item_channels, social_content_variants |
 | `redaktion.themenspeicher` | Themenspeicher und Hashtags | kommunikation | topic_backlog, social_hashtag_sets |
 | `search.global` | Globale Suche und Befehlspalette | arbeitsbereich | search_analytics |
-| `tasks.deadline` | Frist setzen und überwachen | aufgaben | tasks, task_snoozes |
 | `tasks.search-filter` | Aufgaben suchen, filtern und sortieren | aufgaben | tasks, task_statuses, task_categories |
 | `tasks.subtasks` | Unteraufgaben | aufgaben | subtasks, tasks |
 | `timetracking.entries` | Arbeitszeit erfassen | mitarbeit | time_entries, time_entry_corrections, time_entry_history |

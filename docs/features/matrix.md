@@ -28,7 +28,7 @@ Die Spalten zählen **zugeordnete** Prüfungen, nicht bestandene Läufe. „Erge
 | `tasks.create` | aufgaben | fachlich | implementiert | rollenabhängig | Selbsttest | nicht-ausgefuehrt | 1 | 0 | 0 | 0 | ja |
 | `tasks.nudge` | aufgaben | automatisiert | implementiert | systemseitig | Selbsttest | nicht-ausgefuehrt | 1 | 0 | 0 | 0 | ja |
 | `tasks.snooze` | aufgaben | fachlich | implementiert | UI | Selbsttest | nicht-ausgefuehrt | 1 | 1 | 0 | 0 | nein |
-| `tasks.deadline` | aufgaben | fachlich | implementiert | UI | kein Test | nicht-ausgefuehrt | 0 | 0 | 0 | 0 | ja |
+| `tasks.deadline` | aufgaben | fachlich | implementiert | UI | Selbsttest | nicht-ausgefuehrt | 1 | 0 | 0 | 0 | ja |
 | `tasks.annual` | aufgaben | automatisiert | implementiert | systemseitig | Selbsttest | nicht-ausgefuehrt | 1 | 1 | 0 | 0 | ja |
 | `tasks.handover-stafette` | aufgaben | fachlich | implementiert | UI | Selbsttest | nicht-ausgefuehrt | 1 | 1 | 0 | 0 | ja |
 | `tasks.ball-owner` | aufgaben | fachlich | implementiert | UI | Selbsttest | nicht-ausgefuehrt | 1 | 1 | 0 | 0 | nein |

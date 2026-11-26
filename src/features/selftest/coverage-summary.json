@@ -5532,15 +5532,6 @@
       ]
     },
     {
-      "id": "tasks.deadline",
-      "name": "Frist setzen und überwachen",
-      "area": "aufgaben",
-      "tables": [
-        "tasks",
-        "task_snoozes"
-      ]
-    },
-    {
       "id": "tasks.search-filter",
       "name": "Aufgaben suchen, filtern und sortieren",
       "area": "aufgaben",

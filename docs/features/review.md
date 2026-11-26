@@ -11,7 +11,7 @@ Eindeutige Fehler werden im CI-Lauf ausgegeben und brechen die Prüfung ab; sie 
 - Review-Hinweise: **0**
 - Nicht zugeordnete Objekte: **1**, davon ohne Ausnahme: **0**
 
-## Funktionen ohne zugeordneten Test (122)
+## Funktionen ohne zugeordneten Test (121)
 
 - `mywork.tabs` — Meine Arbeit – Bereichsnavigation und Einstellungen
 - `mywork.quick-access` — Schnellzugriff und zuletzt besuchte Seiten
@@ -22,7 +22,6 @@ Eindeutige Fehler werden im CI-Lauf ausgegeben und brechen die Prüfung ab; sie 
 - `platform.auth` — Anmeldung und Sitzung
 - `profile.edit` — Eigenes Profil bearbeiten
 - `mobile.app` — Mobile App (Expo)
-- `tasks.deadline` — Frist setzen und überwachen
 - `tasks.subtasks` — Unteraufgaben
 - `tasks.search-filter` — Aufgaben suchen, filtern und sortieren
 - `automation.conditions` — Regelbedingungen und Feldtypen
@@ -317,7 +316,7 @@ Eindeutige Fehler werden im CI-Lauf ausgegeben und brechen die Prüfung ab; sie 
 - `events.legacy-rsvp` — Legacy-Einladungslinks (veraltet)
 - `cases.legacy-routes` — Legacy-Vorgangsrouten (veraltet)
 
-## Funktionen mit Einschränkungen oder offenen Punkten (82)
+## Funktionen mit Einschränkungen oder offenen Punkten (83)
 
 ### `mywork.dashboard`
 
@@ -378,6 +377,10 @@ Eindeutige Fehler werden im CI-Lauf ausgegeben und brechen die Prüfung ab; sie 
 ### `tasks.ball-owner`
 
 - Die Zonenregel ist im Selbsttest als Logic-Step und über die Stafette-RPCs geprüft; die Anzeige in allen Listen ist nicht durchgängig geprüft.
+
+### `tasks.deadline`
+
+- Der Step prüft Gruppierung und Verwerfen/Rückgängig; Widget-Darstellung und der stündliche Erinnerungsversand werden nicht ausgelöst.
 
 ### `tasks.snooze`
 

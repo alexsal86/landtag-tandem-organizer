@@ -283,16 +283,18 @@
       "id": "tasks.deadline",
       "subarea": "Fristen",
       "name": "Frist setzen und überwachen",
-      "description": "Setzt Fälligkeiten, hebt überfällige Aufgaben hervor und speist Fristen-Widgets und Erinnerungen.",
+      "description": "Setzt Fälligkeiten, hebt überfällige Aufgaben hervor und speist Fristen-Widgets und Erinnerungen. Der Selbsttest prüft die Gruppierung nach Berliner Tagen, die Auswahl der Aufräum-Fristen sowie Verwerfen und Rückgängig.",
       "category": "fachlich",
       "implementationStatus": "implementiert",
       "integrationStatus": "ui",
-      "coverage": "keine",
+      "coverage": "selftest",
       "testResult": "nicht-ausgefuehrt",
       "evidence": [
         "src/hooks/useDashboardDeadlines.ts",
         "src/components/dashboard/DeadlineReviewDialog.tsx",
-        "src/components/dashboard/TasksSummary.tsx"
+        "src/components/dashboard/TasksSummary.tsx",
+        "src/utils/deadlineFormatting.ts",
+        "src/features/selftest/scenarios/task-lifecycle.ts"
       ],
       "components": [
         "src/components/dashboard/DeadlineReviewDialog.tsx",
@@ -312,8 +314,14 @@
         "mitarbeiter",
         "praktikant"
       ],
+      "scenarios": [
+        "task-lifecycle"
+      ],
       "docs": [
         "docs/my-work-architecture.md"
+      ],
+      "limitations": [
+        "Der Step prüft Gruppierung und Verwerfen/Rückgängig; Widget-Darstellung und der stündliche Erinnerungsversand werden nicht ausgelöst."
       ],
       "dependsOn": ["tasks.create"]
     },

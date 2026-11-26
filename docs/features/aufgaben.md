@@ -8,7 +8,7 @@ _Auto-generiert mit `npm run update:feature-catalog` aus dem zentralen Funktions
 
 - Funktionen: **18** in **12** Unterbereichen
 - implementiert: **18**, teilweise: **0**, deaktiviert: **0**, potenziell verwaist: **0**
-- ohne zugeordneten Test: **3**
+- ohne zugeordneten Test: **2**
 - ohne Dokumentationsverweis: **9**
 
 ## Funktionen
@@ -22,7 +22,7 @@ _Auto-generiert mit `npm run update:feature-catalog` aus dem zentralen Funktions
 | `tasks.create` Aufgabe erstellen | Erfassung | fachlich | implementiert | rollenabhängig | Selbsttest |
 | `tasks.nudge` Aufgabe anmahnen und Erinnerungen versenden | Erinnerungen | automatisiert | implementiert | systemseitig | Selbsttest |
 | `tasks.snooze` Aufgabe zurückstellen (Wiedervorlage) | Fristen | fachlich | implementiert | UI | Selbsttest |
-| `tasks.deadline` Frist setzen und überwachen | Fristen | fachlich | implementiert | UI | kein Test |
+| `tasks.deadline` Frist setzen und überwachen | Fristen | fachlich | implementiert | UI | Selbsttest |
 | `tasks.annual` Jahresaufgaben und Jahresabschluss | Jahresaufgaben | automatisiert | implementiert | systemseitig | Selbsttest |
 | `tasks.handover-stafette` Aufgabe weitergeben (Stafette) | Stafette | fachlich | implementiert | UI | Selbsttest |
 | `tasks.ball-owner` Wer ist am Zug? (Ball-Owner) | Stafette | fachlich | implementiert | UI | Selbsttest |
@@ -63,7 +63,7 @@ _Auto-generiert mit `npm run update:feature-catalog` aus dem zentralen Funktions
 |---|---|---:|---:|---|
 | `annual-task-stafette` | Jahresaufgabe → Büroaufgabe → Jahresabschluss | 3 | 5 | — |
 | `decision-lifecycle` | Entscheidungs-Lifecycle (active → open → archived) | 3 | 0 | — |
-| `task-lifecycle` | Aufgaben-Lifecycle (Zuweisung → Frist → Entscheidung → Jour fixe → erledigt) | 6 | 5 | — |
+| `task-lifecycle` | Aufgaben-Lifecycle (Zuweisung → Frist → Entscheidung → Jour fixe → erledigt) | 6 | 6 | — |
 | `task-stafette-lifecycle` | Aufgaben-Stafette (Am Zug, Wiedervorlage, Freigabe) | 4 | 8 | — |
 
 ## Selbsttest-Schritte
@@ -95,6 +95,7 @@ Diese Schritte führen die Szenarien aus; „letzter Lauf“ stammt aus `src/fea
 | `task-lifecycle` | `create` | Aufgabe anlegen | db | — |
 | `task-lifecycle` | `document-link` | Dokument an Aufgabe hängen und wieder lösen | db | — |
 | `task-lifecycle` | `assign` | Aufgabe zuweisen + Frist setzen | db | — |
+| `task-lifecycle` | `deadline-review` | Fristen: Berliner Gruppierung, Verwerfen und Rückgängig | workflow | — |
 | `task-lifecycle` | `decision` | Entscheidung aus Aufgabe erstellen | db | — |
 | `task-lifecycle` | `jour-fixe` | Für Jour fixe markieren | db | — |
 | `task-lifecycle` | `complete` | Status → completed | db | — |
@@ -143,9 +144,10 @@ Keine Prüfungen deklariert.
 
 1. Status-Registry führt die fünf Kernstatus
 2. Dokument hängt an der Aufgabe, bleibt auf eigene Aufgaben beschränkt und lässt sich wieder lösen
-3. Abschluss setzt completed_at, Wiederöffnen entfernt es
-4. Wiederholungsregel legt beim Abschluss genau eine Folgeaufgabe an
-5. Votum zu einer verknüpften Entscheidung holt den Ball zurück und erzeugt die Folgeaufgabe genau einmal
+3. Fristen werden nach Berliner Tagen gruppiert; Verwerfen löscht nur die Frist und Rückgängig stellt sie wieder her
+4. Abschluss setzt completed_at, Wiederöffnen entfernt es
+5. Wiederholungsregel legt beim Abschluss genau eine Folgeaufgabe an
+6. Votum zu einer verknüpften Entscheidung holt den Ball zurück und erzeugt die Folgeaufgabe genau einmal
 
 ### `task-stafette-lifecycle`
 
@@ -382,12 +384,12 @@ Bestimmt aus Status, Zuweisung und Stafette, bei wem die Aufgabe liegt, und zeig
 - Die Zonenregel ist im Selbsttest als Logic-Step und über die Stafette-RPCs geprüft; die Anzeige in allen Listen ist nicht durchgängig geprüft.
 
 ### `tasks.deadline` — Frist setzen und überwachen
-Setzt Fälligkeiten, hebt überfällige Aufgaben hervor und speist Fristen-Widgets und Erinnerungen.
+Setzt Fälligkeiten, hebt überfällige Aufgaben hervor und speist Fristen-Widgets und Erinnerungen. Der Selbsttest prüft die Gruppierung nach Berliner Tagen, die Auswahl der Aufräum-Fristen sowie Verwerfen und Rückgängig.
 
 - **Kategorie:** fachlich
 - **Implementierung:** implementiert
 - **Einbindung:** UI
-- **Testabdeckung:** kein Test
+- **Testabdeckung:** Selbsttest
 - **Letztes Testergebnis:** nicht-ausgefuehrt (kein Laufnachweis importiert; nicht aus der Existenz einer Testdatei abgeleitet)
 - **Rollen:** `abgeordneter`, `bueroleitung`, `mitarbeiter`, `praktikant`
 - **Routen:** —
@@ -398,7 +400,7 @@ Setzt Fälligkeiten, hebt überfällige Aufgaben hervor und speist Fristen-Widge
 - **Datenbankfunktionen:** —
 - **Tabellen:** `tasks`, `task_snoozes`
 - **Abhängigkeiten:** `tasks.create`
-- **Selbsttests:** —
+- **Selbsttests:** `task-lifecycle`
 - **Unit-Tests:** —
 - **Integrationstests:** —
 - **Browser-Tests:** —
@@ -409,10 +411,12 @@ Setzt Fälligkeiten, hebt überfällige Aufgaben hervor und speist Fristen-Widge
 - src/hooks/useDashboardDeadlines.ts
 - src/components/dashboard/DeadlineReviewDialog.tsx
 - src/components/dashboard/TasksSummary.tsx
+- src/utils/deadlineFormatting.ts
+- src/features/selftest/scenarios/task-lifecycle.ts
 
 **Bekannte Einschränkungen**
 
-- Keine.
+- Der Step prüft Gruppierung und Verwerfen/Rückgängig; Widget-Darstellung und der stündliche Erinnerungsversand werden nicht ausgelöst.
 
 **Offene Prüfpunkte**
 
