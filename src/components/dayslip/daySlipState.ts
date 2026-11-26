@@ -1,7 +1,7 @@
 import { readSourceFromDataset, writeSourceToDataset } from "@/components/lexical/DaySlipLineNode";
 import {
   type CarryLine, type DaySlipStore, type DaySlipDayData, type DaySlipSource,
-  type DaySlipLineEntry, type ResolvedItem, extractLinesFromHtml, toParagraphHtml, normalizeLineText, isDayKey,
+  type DaySlipLineEntry, type ResolvedItem, extractLinesFromHtml, toParagraphHtml, toRuleHtml, parseRuleLine, toDayKey, normalizeLineText, isDayKey,
 } from "./dayslipTypes";
 
 export const emptyDay = (): DaySlipDayData => ({ html: "", plainText: "", struckLineIds: [] });
@@ -69,6 +69,18 @@ export function appendEntries(day: DaySlipDayData, entries: Array<DaySlipLineEnt
   });
   if (!added.length) return day;
   return { ...day, html: day.html + added.map(toParagraphHtml).join(""), plainText: [...existing, ...added].map(line => line.text).join("\n"), nodes: undefined, sources, lineTimestamps: timestamps };
+}
+
+/** Template lines keep their section rules and priorities; they are not plain text entries. */
+export function appendStructuredLines(day: DaySlipDayData, lines: string[]): DaySlipDayData {
+  const trimmed = lines.map(line => line.trim()).filter(Boolean);
+  if (!trimmed.length) return day;
+  const html = trimmed.map(text => {
+    const rule = parseRuleLine(text);
+    return rule.isRule ? toRuleHtml(rule.label) : toParagraphHtml({ id: crypto.randomUUID(), text });
+  }).join("");
+  const nextHtml = day.html + html;
+  return { ...day, html: nextHtml, plainText: extractLinesFromHtml(nextHtml).map(line => line.text).join("\n"), nodes: undefined };
 }
 
 export function carryLines(store: DaySlipStore, today: string, lines: CarryLine[]): DaySlipStore {
@@ -185,6 +197,24 @@ export async function exportId(userId: string, dayKey: string, lineId: string, t
   bytes[8] = (bytes[8] & 0x3f) | 0x80;
   const hex = Array.from(bytes.slice(0, 16), b => b.toString(16).padStart(2, "0")).join("");
   return `${hex.slice(0, 8)}-${hex.slice(8, 12)}-${hex.slice(12, 16)}-${hex.slice(16, 20)}-${hex.slice(20)}`;
+}
+
+export type MoodTrendPoint = {
+  dayKey: string;
+  weekday: string;
+  mood: 1 | 2 | 3 | 4 | 5 | null;
+};
+
+/** Last `days` calendar days ending today, oldest first; missing moods stay gaps, never zeros. */
+export function moodTrend(store: DaySlipStore, todayKey: string, days = 14): MoodTrendPoint[] {
+  const base = new Date(`${todayKey}T12:00:00`);
+  const weekday = new Intl.DateTimeFormat("de-DE", { weekday: "short" });
+  return Array.from({ length: days }, (_, index) => {
+    const date = new Date(base);
+    date.setDate(base.getDate() - (days - 1 - index));
+    const dayKey = toDayKey(date);
+    return { dayKey, weekday: weekday.format(date), mood: store[dayKey]?.dayMood ?? null };
+  });
 }
 
 /** Saving a working day is not the same as explicitly completing it. */

@@ -1,7 +1,7 @@
 import { useCallback, useEffect, useRef, useState, type SetStateAction } from "react";
 import { supabase } from "@/integrations/supabase/client";
 import type { Json } from "@/integrations/supabase/types";
-import { DEFAULT_DAY_TEMPLATES, STORAGE_KEY, normalizeDayTemplates, type DaySlipSettings, type DaySlipStore } from "../dayslipTypes";
+import { DEFAULT_DAY_TEMPLATES, DEFAULT_WEEKDAY_TEMPLATES, STORAGE_KEY, normalizeDayTemplates, normalizeWeekdayTemplates, type DaySlipSettings, type DaySlipStore } from "../dayslipTypes";
 import { normalizeStore } from "../daySlipState";
 
 export type SaveStatus = "loading" | "saving" | "saved" | "error";
@@ -11,7 +11,7 @@ interface Cache {
   dirtyDays: string[];
   settingsDirty: boolean;
 }
-const defaultSettings = (): DaySlipSettings => ({ recurringItems: [], dayTemplates: DEFAULT_DAY_TEMPLATES, weekPlan: null });
+const defaultSettings = (): DaySlipSettings => ({ recurringItems: [], dayTemplates: DEFAULT_DAY_TEMPLATES, weekdayTemplates: { ...DEFAULT_WEEKDAY_TEMPLATES }, weekPlan: null });
 export const daySlipCacheKey = (userId: string, tenantId: string) => `${STORAGE_KEY}:${userId}:${tenantId}`;
 
 function readCache(key: string): Cache {
@@ -19,7 +19,14 @@ function readCache(key: string): Cache {
     const raw = localStorage.getItem(key);
     if (raw) {
       const parsed = JSON.parse(raw) as Cache;
-      return { store: normalizeStore(parsed.store), settings: { ...defaultSettings(), ...parsed.settings }, dirtyDays: Array.isArray(parsed.dirtyDays) ? parsed.dirtyDays : [], settingsDirty: !!parsed.settingsDirty };
+      const merged = { ...defaultSettings(), ...parsed.settings };
+      const dayTemplates = normalizeDayTemplates(merged.dayTemplates);
+      return {
+        store: normalizeStore(parsed.store),
+        settings: { ...merged, dayTemplates, weekdayTemplates: normalizeWeekdayTemplates(merged.weekdayTemplates, dayTemplates) },
+        dirtyDays: Array.isArray(parsed.dirtyDays) ? parsed.dirtyDays : [],
+        settingsDirty: !!parsed.settingsDirty,
+      };
     }
   } catch { /* A broken cache must never be uploaded. */ }
   return { store: {}, settings: defaultSettings(), dirtyDays: [], settingsDirty: false };
@@ -148,9 +155,16 @@ export function useDaySlipPersistence(userId: string, tenantId: string) {
         if (!settingsVersion.current) {
           const prefs = new Map((preferences.data ?? []).map(row => [row.key, row.value]));
           const v3 = prefs.get("dayslip_settings_v3") as unknown as DaySlipSettings | undefined;
-          const next: DaySlipSettings = v3 ? { ...defaultSettings(), ...v3, dayTemplates: normalizeDayTemplates(v3.dayTemplates) } : {
+          const dayTemplates = normalizeDayTemplates(v3 ? v3.dayTemplates : prefs.get("dayslip_day_templates"));
+          const next: DaySlipSettings = v3 ? {
+            ...defaultSettings(),
+            ...v3,
+            dayTemplates,
+            weekdayTemplates: normalizeWeekdayTemplates(v3.weekdayTemplates, dayTemplates),
+          } : {
             recurringItems: Array.isArray(prefs.get("dayslip_recurring")) ? prefs.get("dayslip_recurring") as unknown as DaySlipSettings["recurringItems"] : [],
-            dayTemplates: normalizeDayTemplates(prefs.get("dayslip_day_templates")),
+            dayTemplates,
+            weekdayTemplates: normalizeWeekdayTemplates(undefined, dayTemplates),
             weekPlan: (prefs.get("dayslip_week_plan") as unknown as DaySlipSettings["weekPlan"]) ?? null,
           };
           settingsRef.current = next; renderSettings(next);

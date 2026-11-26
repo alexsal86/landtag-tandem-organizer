@@ -24,6 +24,7 @@ import { WeekPlanningBanner } from "@/components/dayslip/WeekPlanningBanner";
 import { DaySlipLexicalEditor } from "@/components/dayslip/DaySlipLexicalEditor";
 import { DaySlipCommandHelp } from "@/components/dayslip/DaySlipCommandHelp";
 import { DaySlipPages } from "@/components/dayslip/DaySlipPages";
+import { DaySlipMoodTrend } from "@/components/dayslip/DaySlipMoodTrend";
 import { useDaySlipLayout } from "@/components/dayslip/DaySlipLayout";
 import { useDaySlipStore } from "@/components/dayslip/hooks/useDaySlipStore";
 import {
@@ -383,6 +384,11 @@ function DaySlipPanel({ userId, tenantId }: { userId: string; tenantId: string }
   };
   const removeDayTemplate = (templateId: string) => {
     ds.setDayTemplates((prev) => { const next = prev.filter((t) => t.id !== templateId); return next.length > 0 ? next : DEFAULT_DAY_TEMPLATES; });
+    ds.setWeekdayTemplates((prev) => {
+      const next = { ...prev };
+      for (const key of Object.keys(next) as Array<keyof typeof next>) if (next[key] === templateId) delete next[key];
+      return next;
+    });
     if (dayTemplateEditId === templateId) resetTemplateDraft();
   };
 
@@ -519,7 +525,25 @@ function DaySlipPanel({ userId, tenantId }: { userId: string; tenantId: string }
               </div>
               <div className="space-y-2 rounded-lg border border-border/60 p-3">
                 <p className="text-xs font-medium uppercase tracking-wide text-muted-foreground">Tagesvorlagen</p>
-                <p className="text-xs text-muted-foreground">Fügt vordefinierte Blöcke inkl. HR-Trennlinien ein.</p>
+                <p className="text-xs text-muted-foreground">Fügt vordefinierte Blöcke inkl. HR-Trennlinien ein. Die Wochentag-Zuordnung wird beim Öffnen eines neuen Tages automatisch übernommen.</p>
+                <div className="space-y-1 rounded border border-border/50 p-2">
+                  <p className="text-[11px] font-medium">Automatisch je Wochentag</p>
+                  <p className="text-[11px] text-muted-foreground">Zum Beispiel Dienstag = Plenartag, Donnerstag = Ausschuss. Gilt einmal pro Tag.</p>
+                  {WEEK_DAYS.filter((day) => day !== "all").map((day) => (
+                    <label key={day} className="flex items-center gap-2 text-xs">
+                      <span className="w-20 shrink-0">{WEEK_DAY_LABELS[day]}</span>
+                      <select
+                        aria-label={`Vorlage für ${WEEK_DAY_LABELS[day]}`}
+                        className="h-7 flex-1 rounded border border-border/60 bg-background px-1 text-xs"
+                        value={ds.weekdayTemplates[day] ?? ""}
+                        onChange={(event) => ds.setWeekdayTemplates((prev) => ({ ...prev, [day]: event.target.value || undefined }))}
+                      >
+                        <option value="">Keine Vorlage</option>
+                        {ds.dayTemplates.map((template) => <option key={template.id} value={template.id}>{template.name}</option>)}
+                      </select>
+                    </label>
+                  ))}
+                </div>
                 <div className="space-y-1.5">
                   {ds.dayTemplates.map((template) => (
                     <div key={template.id} className="flex items-center gap-1.5">
@@ -739,6 +763,9 @@ function DaySlipPanel({ userId, tenantId }: { userId: string; tenantId: string }
               </div>}
               {/* Footer */}
               <div className="shrink-0 space-y-2 p-3">
+                <div className="rounded-lg border border-border/60 px-3 py-2">
+                  <DaySlipMoodTrend store={ds.store} todayKey={ds.todayKey} />
+                </div>
                 {ds.resolveMode && (
                   <div className="rounded-lg border border-border/60 px-3 py-2">
                     <p className="mb-1 text-[11px] text-muted-foreground">Wie war dein Tag?</p>

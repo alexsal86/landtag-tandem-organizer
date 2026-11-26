@@ -523,6 +523,7 @@ Eindeutige Fehler werden im CI-Lauf ausgegeben und brechen die Prüfung ab; sie 
 ### `daily.briefing`
 
 - Vortage sind schreibgeschützt; abgeschlossen werden kann nur der aktuelle Tag.
+- Die automatische Wochentag-Vorlage wird nur einmal pro Tag und nie an abgeschlossenen Tagen eingefügt; manuell gewählte Vorlagen ersetzen sie für den Tag.
 - Kürzel belegen die Zuordnung nur vor; mehrdeutige Namen und unbekannte Fälligkeiten bleiben Text und werden in der Zuordnung geklärt.
 
 ### `calendar.holidays`

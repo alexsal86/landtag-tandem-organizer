@@ -18,6 +18,8 @@ export interface DaySlipDayData {
   deadlineLineMap?: Record<string, string>;
   lineTimestamps?: Record<string, { addedAt: string; checkedAt?: string }>;
   dayMood?: 1 | 2 | 3 | 4 | 5;
+  /** Automatic weekday template was inserted; it is never applied twice. */
+  dayTemplateInjected?: boolean;
 }
 
 /** nextActionLabel: line mirrors a case's "next step"; striking it clears that step if still unchanged. */
@@ -35,9 +37,12 @@ export interface WeekPlan {
   days: Record<string, string[]>;
 }
 
+export type WeekdayTemplates = Partial<Record<(typeof WEEK_DAYS)[number], string>>;
+
 export interface DaySlipSettings {
   recurringItems: RecurringTemplate[];
   dayTemplates: DayTemplate[];
+  weekdayTemplates: WeekdayTemplates;
   weekPlan: WeekPlan | null;
 }
 
@@ -80,6 +85,11 @@ export const WEEK_DAY_LABELS: Record<(typeof WEEK_DAYS)[number], string> = {
   friday: "Freitag",
   saturday: "Samstag",
   sunday: "Sonntag",
+};
+
+export const DEFAULT_WEEKDAY_TEMPLATES: WeekdayTemplates = {
+  tuesday: "plenary-day",
+  thursday: "committee-day",
 };
 
 export const DEFAULT_DAY_TEMPLATES: DayTemplate[] = [
@@ -221,9 +231,31 @@ export const weekdayKey = (date: Date): (typeof WEEK_DAYS)[number] => {
   return "saturday";
 };
 
+export const weekdayOfDayKey = (dayKey: string): (typeof WEEK_DAYS)[number] => weekdayKey(new Date(`${dayKey}T12:00:00`));
+
+/** The template mapped to that weekday, if the mapping still points at an existing template. */
+export const templateForDayKey = (dayKey: string, templates: DayTemplate[], weekdayTemplates: WeekdayTemplates): DayTemplate | undefined => {
+  const id = weekdayTemplates[weekdayOfDayKey(dayKey)];
+  return id ? templates.find(template => template.id === id) : undefined;
+};
+
 export const formatTimeStamp = (iso?: string) => {
   if (!iso) return "—";
   return new Date(iso).toLocaleTimeString("de-DE", { hour: "2-digit", minute: "2-digit" });
+};
+
+export const normalizeWeekdayTemplates = (value: unknown, templates: DayTemplate[]): WeekdayTemplates => {
+  const known = new Set(templates.map(template => template.id));
+  const source = value && typeof value === "object" && !Array.isArray(value) ? value as Record<string, unknown> : null;
+  // Settings from before the weekday mapping keep the domain default (Dienstag Plenum, Donnerstag Ausschuss).
+  if (!source) return Object.fromEntries(Object.entries(DEFAULT_WEEKDAY_TEMPLATES).filter(([, id]) => known.has(id))) as WeekdayTemplates;
+  const result: WeekdayTemplates = {};
+  for (const day of WEEK_DAYS) {
+    if (day === "all") continue;
+    const id = source[day];
+    if (typeof id === "string" && known.has(id)) result[day] = id;
+  }
+  return result;
 };
 
 export const normalizeDayTemplates = (value: unknown): DayTemplate[] => {

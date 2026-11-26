@@ -543,7 +543,7 @@ Füllt die Jour-fixe-Agende aus Vorgängen, Aufgaben, Geburtstagen und weiteren 
 - Keine.
 
 ### `daily.briefing` — Tagesbriefing und Tageszettel
-Erzeugt Tagesbriefings und Tageszettel mit Terminen und Aufgaben, hält Lesebestätigungen fest und archiviert Tageszettel. Vergangene Zettel bleiben auch ohne Abschluss lesbar; Löschen ist rückgängig zu machen. Getippte Kürzel (+ Aufgabe, ~ Notiz, ? Entscheidung, @Person, >Fälligkeit) belegen die Zuordnung am Tagesende vor. Das Archiv ist durchsuchbar, per Datum anwählbar und zeigt je Zeile, ob sie erledigt, zugewiesen oder offen ist.
+Erzeugt Tagesbriefings und Tageszettel mit Terminen und Aufgaben, hält Lesebestätigungen fest und archiviert Tageszettel. Vergangene Zettel bleiben auch ohne Abschluss lesbar; Löschen ist rückgängig zu machen. Getippte Kürzel (+ Aufgabe, ~ Notiz, ? Entscheidung, @Person, >Fälligkeit) belegen die Zuordnung am Tagesende vor. Das Archiv ist durchsuchbar, per Datum anwählbar und zeigt je Zeile, ob sie erledigt, zugewiesen oder offen ist. Der Stimmungsverlauf der letzten 14 Tage steht als schmale Leiste neben dem Tagesabschluss. Tagesvorlagen lassen sich je Wochentag fest zuordnen (Standard: Dienstag Plenartag, Donnerstag Ausschusstag) und werden beim Öffnen eines neuen Tages einmalig automatisch eingefügt.
 
 - **Kategorie:** fachlich
 - **Implementierung:** implementiert
@@ -552,7 +552,7 @@ Erzeugt Tagesbriefings und Tageszettel mit Terminen und Aufgaben, hält Lesebest
 - **Letztes Testergebnis:** nicht-ausgefuehrt (nicht aus der Existenz einer Testdatei abgeleitet)
 - **Rollen:** `abgeordneter`, `bueroleitung`, `mitarbeiter`
 - **Routen:** —
-- **Frontend-Komponenten:** `src/features/briefings/components/TodayBriefingPanel.tsx`, `src/features/briefings/components/BriefingComposerCard.tsx`, `src/components/dayslip/GlobalDaySlipPanel.tsx`, `src/components/dayslip/DaySlipLexicalEditor.tsx`, `src/components/dayslip/DaySlipAppointments.tsx`, `src/components/dayslip/DaySlipCommandHelp.tsx`, `src/components/dayslip/WeekPlanningBanner.tsx`
+- **Frontend-Komponenten:** `src/features/briefings/components/TodayBriefingPanel.tsx`, `src/features/briefings/components/BriefingComposerCard.tsx`, `src/components/dayslip/GlobalDaySlipPanel.tsx`, `src/components/dayslip/DaySlipLexicalEditor.tsx`, `src/components/dayslip/DaySlipAppointments.tsx`, `src/components/dayslip/DaySlipCommandHelp.tsx`, `src/components/dayslip/DaySlipMoodTrend.tsx`, `src/components/dayslip/WeekPlanningBanner.tsx`
 - **Services:** —
 - **Hooks:** `src/features/briefings/hooks/useTodayBriefings.ts`, `src/features/briefings/hooks/useMarkBriefingRead.ts`, `src/features/briefings/hooks/useMyDraftBriefing.ts`, `src/components/dayslip/hooks/useDaySlipStore.ts`, `src/components/dayslip/hooks/useDaySlipPersistence.ts`
 - **Edge Functions:** —
@@ -582,6 +582,7 @@ Erzeugt Tagesbriefings und Tageszettel mit Terminen und Aufgaben, hält Lesebest
 **Bekannte Einschränkungen**
 
 - Vortage sind schreibgeschützt; abgeschlossen werden kann nur der aktuelle Tag.
+- Die automatische Wochentag-Vorlage wird nur einmal pro Tag und nie an abgeschlossenen Tagen eingefügt; manuell gewählte Vorlagen ersetzen sie für den Tag.
 - Kürzel belegen die Zuordnung nur vor; mehrdeutige Namen und unbekannte Fälligkeiten bleiben Text und werden in der Zuordnung geklärt.
 
 **Offene Prüfpunkte**

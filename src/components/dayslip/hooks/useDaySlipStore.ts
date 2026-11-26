@@ -10,9 +10,9 @@ import { useDaySlipPersistence } from "./useDaySlipPersistence";
 import {
   type DaySlipDayData, type DaySlipLineEntry, type DaySlipSource,
   type ResolvedItem, type ResolveTarget, type TaskOptions, type DaySlipSettings,
-  toDayKey, extractLinesFromHtml, parseRuleLine, toParagraphHtml, toRuleHtml, weekdayKey,
+  toDayKey, extractLinesFromHtml, templateForDayKey, weekdayOfDayKey,
 } from "../dayslipTypes";
-import { appendEntries, carryLines, collectCarryLines, completedArchiveDays, emptyDay, exportId, removeLineFromDay, restoreLineToDay, type RemovedDaySlipLine } from "../daySlipState";
+import { appendEntries, appendStructuredLines, carryLines, collectCarryLines, completedArchiveDays, emptyDay, exportId, removeLineFromDay, restoreLineToDay, type RemovedDaySlipLine } from "../daySlipState";
 
 const errorMessage = (error: unknown) => error && typeof error === "object" && "message" in error ? String(error.message) : String(error);
 
@@ -62,6 +62,7 @@ export function useDaySlipStore(userId: string, tenantId: string) {
   const setRecurringItems = useCallback((action: SetStateAction<DaySlipSettings["recurringItems"]>) => setSetting("recurringItems", action), [setSetting]);
   const setDayTemplates = useCallback((action: SetStateAction<DaySlipSettings["dayTemplates"]>) => setSetting("dayTemplates", action), [setSetting]);
   const setWeekPlan = useCallback((action: SetStateAction<DaySlipSettings["weekPlan"]>) => setSetting("weekPlan", action), [setSetting]);
+  const setWeekdayTemplates = useCallback((action: SetStateAction<DaySlipSettings["weekdayTemplates"]>) => setSetting("weekdayTemplates", action), [setSetting]);
 
   const setLineDone = useCallback((lineId: string, done: boolean, key = todayKey) => {
     // The node carries the state so it survives in html and JSON; day data mirrors it for triage and carry.
@@ -96,14 +97,8 @@ export function useDaySlipStore(userId: string, tenantId: string) {
     changeDay(day => appendEntries(day, lines.map(text => ({ id: crypto.randomUUID(), text: text.trim(), source }))), true);
   }, [changeDay]);
   const insertStructuredLines = useCallback((lines: string[]) => {
-    changeDay(day => {
-      const html = lines.map(text => {
-        const rule = parseRuleLine(text);
-        return rule.isRule ? toRuleHtml(rule.label) : toParagraphHtml({ id: crypto.randomUUID(), text });
-      }).join("");
-      const nextHtml = day.html + html;
-      return { ...day, html: nextHtml, plainText: extractLinesFromHtml(nextHtml).map(line => line.text).join("\n"), nodes: undefined };
-    }, true);
+    // A manually applied template is this day's template; the weekday one must not duplicate it.
+    changeDay(day => ({ ...appendStructuredLines(day, lines), dayTemplateInjected: true }), true);
   }, [changeDay]);
   /** Returns what was removed so the UI can offer undo; null when nothing was deleted. */
   const deleteLine = useCallback((lineId: string): RemovedDaySlipLine | null => {
@@ -267,17 +262,25 @@ export function useDaySlipStore(userId: string, tenantId: string) {
   }, [ready, storeRef, todayKey, setStore]);
   const handleEditorReady = useCallback((editor: LexicalEditor) => { editorRef.current = editor; setEditorReadyVersion(version => version + 1); }, []);
 
-  // Initialize routines and the scoped week plan only after hydration; never race a remote load.
+  // Initialize the weekday template, routines and the scoped week plan only after hydration; never race a remote load.
   useEffect(() => {
     if (!ready || todayData.completedAt) return;
-    const recurring = settings.recurringItems.filter(item => item.weekday === "all" || item.weekday === weekdayKey(new Date())).map(item => item.text);
+    const weekdayTemplate = templateForDayKey(todayKey, settings.dayTemplates, settings.weekdayTemplates);
+    const templateLines = weekdayTemplate?.lines ?? [];
+    const recurring = settings.recurringItems.filter(item => item.weekday === "all" || item.weekday === weekdayOfDayKey(todayKey)).map(item => item.text);
     const planned = settings.weekPlan?.applied ? settings.weekPlan.days[todayKey] ?? [] : [];
-    if (todayData.recurringInjected && (todayData.weekPlanInjected || !planned.length)) return;
+    const needsTemplate = !todayData.dayTemplateInjected && templateLines.length > 0;
+    const needsRecurring = !todayData.recurringInjected && recurring.length > 0;
+    const needsPlan = !todayData.weekPlanInjected && planned.length > 0;
+    if (!needsTemplate && !needsRecurring && !needsPlan) return;
     changeDay(day => {
+      let next = day;
+      if (!day.dayTemplateInjected && templateLines.length > 0) next = appendStructuredLines(next, templateLines);
       const texts = [...(!day.recurringInjected ? recurring : []), ...(!day.weekPlanInjected ? planned : [])];
-      return { ...appendEntries(day, texts.map(text => ({ id: crypto.randomUUID(), text }))), recurringInjected: true, weekPlanInjected: day.weekPlanInjected || planned.length > 0 };
+      if (texts.length) next = appendEntries(next, texts.map(text => ({ id: crypto.randomUUID(), text })));
+      return { ...next, recurringInjected: true, weekPlanInjected: day.weekPlanInjected || planned.length > 0, dayTemplateInjected: day.dayTemplateInjected || templateLines.length > 0 };
     }, true);
-  }, [ready, todayData.completedAt, todayData.recurringInjected, todayData.weekPlanInjected, settings.recurringItems, settings.weekPlan, todayKey, changeDay]);
+  }, [ready, todayData.completedAt, todayData.recurringInjected, todayData.weekPlanInjected, todayData.dayTemplateInjected, settings.recurringItems, settings.weekPlan, settings.dayTemplates, settings.weekdayTemplates, todayKey, changeDay]);
 
   // Refresh deadlines after reconnect/focus and periodically, including deadlines added later in the day.
   const [deadlineRefresh, setDeadlineRefresh] = useState(0);
@@ -352,6 +355,7 @@ export function useDaySlipStore(userId: string, tenantId: string) {
   return {
     ...persistence, todayKey, todayData, resolveMode, setResolveMode, isProcessing,
     recurringItems: settings.recurringItems, setRecurringItems, dayTemplates: settings.dayTemplates, setDayTemplates,
+    weekdayTemplates: settings.weekdayTemplates, setWeekdayTemplates,
     weekPlan: settings.weekPlan, setWeekPlan, setMood,
     editorRef, editorReadyVersion, editorReloadToken, editorConfig,
     allLineEntries, struckLineIds, resolvedItems, resolvedByLineId, openLines, unresolvedCount: openLines.length, triageEntries, archiveDays,
