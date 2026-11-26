@@ -4,7 +4,7 @@ _Auto-generiert mit `npm run update:selftest-coverage`._
 
 Quelle: `src/integrations/supabase/types.ts`. Die Angaben beschreiben deklarierte Prüfumfänge, keine erfolgreichen Testläufe und keine Code-Coverage.
 
-Von 351 Tabellen haben 72 ein registriertes Szenario. 124 sind als Ausbau offen, 155 ausgenommen und 0 noch nicht eingeordnet. Ausnahmen zählen nicht als bestanden.
+Von 351 Tabellen haben 76 ein registriertes Szenario. 123 sind als Ausbau offen, 152 ausgenommen und 0 noch nicht eingeordnet. Ausnahmen zählen nicht als bestanden.
 
 ## Szenarien
 
@@ -43,6 +43,7 @@ Von 351 Tabellen haben 72 ein registriertes Szenario. 124 sind als Ausbau offen,
 | `task-lifecycle` | Aufgaben-Lifecycle (Zuweisung → Frist → Entscheidung → Jour fixe → erledigt) | tasks, task_decisions, task_statuses |
 | `task-stafette-lifecycle` | Aufgaben-Stafette (Am Zug, Wiedervorlage, Freigabe) | tasks |
 | `team-rituals` | Freiwillige Team-Rituale | Keine (reine Regeln) |
+| `topic-linking` | Themenverknüpfung und Modul-Steuerung | topics, case_item_topics, case_items, knowledge_question_topics, topic_module_settings |
 | `workflow-rules` | Geschäftsregeln (Freigabe, Rollen, Fristen) | Keine (reine Regeln) |
 
 ## Tabellen
@@ -102,8 +103,8 @@ Von 351 Tabellen haben 72 ein registriertes Szenario. 124 sind als Ausbau offen,
 | `case_item_interactions` | Szenario vorhanden | case-item-lifecycle |
 | `case_item_participants` | Ausgenommen (nicht geprüft) | — |
 | `case_item_timeline` | Ausgenommen (nicht geprüft) | — |
-| `case_item_topics` | Ausgenommen (nicht geprüft) | — |
-| `case_items` | Szenario vorhanden | case-file-lifecycle, case-item-lifecycle |
+| `case_item_topics` | Szenario vorhanden | topic-linking |
+| `case_items` | Szenario vorhanden | case-file-lifecycle, case-item-lifecycle, topic-linking |
 | `celebration_animations` | Ausgenommen (nicht geprüft) | — |
 | `celebration_settings` | Ausgenommen (nicht geprüft) | — |
 | `committees` | Ausstehend | — |
@@ -239,7 +240,7 @@ Von 351 Tabellen haben 72 ein registriertes Szenario. 124 sind als Ausbau offen,
 | `knowledge_question_outdated_reports` | Ausstehend | — |
 | `knowledge_question_sources` | Ausstehend | — |
 | `knowledge_question_tags` | Ausstehend | — |
-| `knowledge_question_topics` | Ausgenommen (nicht geprüft) | — |
+| `knowledge_question_topics` | Szenario vorhanden | topic-linking |
 | `knowledge_questions` | Szenario vorhanden | knowledge-lifecycle |
 | `knowledge_tags` | Ausstehend | — |
 | `leave_requests` | Ausstehend | — |
@@ -380,8 +381,8 @@ Von 351 Tabellen haben 72 ein registriertes Szenario. 124 sind als Ausbau offen,
 | `todos` | Ausstehend | — |
 | `topic_backlog` | Ausstehend | — |
 | `topic_catalog_links` | Ausgenommen (nicht geprüft) | — |
-| `topic_module_settings` | Ausgenommen (nicht geprüft) | — |
-| `topics` | Ausstehend | — |
+| `topic_module_settings` | Szenario vorhanden | topic-linking |
+| `topics` | Szenario vorhanden | topic-linking |
 | `user_mywork_settings` | Ausgenommen (nicht geprüft) | — |
 | `user_navigation_visits` | Ausgenommen (nicht geprüft) | — |
 | `user_notification_settings` | Ausgenommen (nicht geprüft) | — |
@@ -472,3 +473,7 @@ Diese Manifeste sind keine Messung ausgeführter Assertions.
 - task-lifecycle: `tasks`: title, description, status, priority, user_id, tenant_id, assigned_to, due_date, progress, pending_for_jour_fixe
 - task-lifecycle: `task_decisions`: title, description, status, created_by, tenant_id, task_id
 - task-stafette-lifecycle: `tasks`: title, description, status, priority, tenant_id, user_id, ball_owner, ball_assignee_id, next_action, next_action_due, timeline
+- topic-linking: `topics`: name, label, icon, color, order_index, is_active, tenant_id, created_by, merged_into, merged_at, updated_by
+- topic-linking: `case_items`: subject, summary, user_id, tenant_id, intake_payload
+- topic-linking: `case_item_topics`: tenant_id, case_item_id, topic_id, created_by
+- topic-linking: `topic_module_settings`: requirement, max_topics, creation_policy, show_filter, is_enabled, updated_by

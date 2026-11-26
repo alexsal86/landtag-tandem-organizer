@@ -523,11 +523,12 @@
       "category": "fachlich",
       "implementationStatus": "implementiert",
       "integrationStatus": "ui",
-      "coverage": "keine",
+      "coverage": "selftest",
       "testResult": "nicht-ausgefuehrt",
       "evidence": [
         "src/features/topics/TopicOverview.tsx",
-        "src/hooks/useTopics.tsx"
+        "src/hooks/useTopics.tsx",
+        "src/features/selftest/scenarios/topic-linking.ts"
       ],
       "components": [
         "src/features/topics/TopicOverview.tsx",
@@ -554,6 +555,13 @@
         "abgeordneter",
         "bueroleitung",
         "mitarbeiter"
+      ],
+      "scenarios": [
+        "topic-linking"
+      ],
+      "limitations": [
+        "knowledge_question_topics hat nur eine Lesepolicy; Clients können Wissensfragen noch nicht selbst mit Themen verknüpfen, das Szenario prüft Lesbarkeit und die Abweisung des direkten Inserts.",
+        "merge_topics und Änderungen an topic_module_settings setzen eine Büroleitung voraus; als Mitglied prüft das Szenario die Abweisung."
       ]
     },
     {

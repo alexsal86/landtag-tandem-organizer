@@ -3,9 +3,9 @@
   "source": "src/integrations/supabase/types.ts",
   "counts": {
     "total": 351,
-    "scenario": 72,
-    "deferred": 124,
-    "excluded": 155,
+    "scenario": 76,
+    "deferred": 123,
+    "excluded": 152,
     "missing": 0
   },
   "scenarios": [
@@ -1299,6 +1299,70 @@
       "registered": true
     },
     {
+      "id": "topic-linking",
+      "title": "Themenverknüpfung und Modul-Steuerung",
+      "touches": [
+        "topics",
+        "case_item_topics",
+        "case_items",
+        "knowledge_question_topics",
+        "topic_module_settings"
+      ],
+      "features": [
+        "topics",
+        "knowledge"
+      ],
+      "writes": [
+        {
+          "table": "topics",
+          "columns": [
+            "name",
+            "label",
+            "icon",
+            "color",
+            "order_index",
+            "is_active",
+            "tenant_id",
+            "created_by",
+            "merged_into",
+            "merged_at",
+            "updated_by"
+          ]
+        },
+        {
+          "table": "case_items",
+          "columns": [
+            "subject",
+            "summary",
+            "user_id",
+            "tenant_id",
+            "intake_payload"
+          ]
+        },
+        {
+          "table": "case_item_topics",
+          "columns": [
+            "tenant_id",
+            "case_item_id",
+            "topic_id",
+            "created_by"
+          ]
+        },
+        {
+          "table": "topic_module_settings",
+          "columns": [
+            "requirement",
+            "max_topics",
+            "creation_policy",
+            "show_filter",
+            "is_enabled",
+            "updated_by"
+          ]
+        }
+      ],
+      "registered": true
+    },
+    {
       "id": "workflow-rules",
       "title": "Geschäftsregeln (Freigabe, Rollen, Fristen)",
       "touches": [],
@@ -1626,15 +1690,18 @@
     },
     {
       "table": "case_item_topics",
-      "status": "excluded",
-      "scenarios": []
+      "status": "scenario",
+      "scenarios": [
+        "topic-linking"
+      ]
     },
     {
       "table": "case_items",
       "status": "scenario",
       "scenarios": [
         "case-file-lifecycle",
-        "case-item-lifecycle"
+        "case-item-lifecycle",
+        "topic-linking"
       ]
     },
     {
@@ -2371,8 +2438,10 @@
     },
     {
       "table": "knowledge_question_topics",
-      "status": "excluded",
-      "scenarios": []
+      "status": "scenario",
+      "scenarios": [
+        "topic-linking"
+      ]
     },
     {
       "table": "knowledge_questions",
@@ -3146,13 +3215,17 @@
     },
     {
       "table": "topic_module_settings",
-      "status": "excluded",
-      "scenarios": []
+      "status": "scenario",
+      "scenarios": [
+        "topic-linking"
+      ]
     },
     {
       "table": "topics",
-      "status": "deferred",
-      "scenarios": []
+      "status": "scenario",
+      "scenarios": [
+        "topic-linking"
+      ]
     },
     {
       "table": "user_mywork_settings",

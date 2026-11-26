@@ -12,6 +12,7 @@ const CLEANUP_ORDER = [
   "employee_meeting_action_items", "employee_meeting_requests", "employee_meetings",
   "task_decision_responses", "task_decision_participants", "task_decisions",
   "document_annotations", "letter_attachments", "documents", "letters", "quick_notes", "contact_usage_stats", "contact_activities", "contacts", "tasks",
+  "case_item_topics", "knowledge_question_topics", "topics",
   "case_item_interactions", "case_items",
   "case_file_status_history", "case_file_timeline", "case_file_notes", "case_file_documents", "case_file_topics",
   "case_file_participants", "case_file_letters", "case_file_appointments", "case_file_tasks", "case_file_contacts",

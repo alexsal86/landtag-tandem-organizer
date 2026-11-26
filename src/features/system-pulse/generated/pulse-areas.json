@@ -27,7 +27,8 @@
       "title": "Dokumente & Wissen",
       "areas": [
         "documents",
-        "knowledge"
+        "knowledge",
+        "topics"
       ]
     },
     {
@@ -1517,6 +1518,82 @@
             {
               "id": "foreign-office-search",
               "label": "Suche mit nicht zugehöriger Büro-ID liefert keine Daten"
+            }
+          ]
+        }
+      ]
+    },
+    {
+      "id": "topics",
+      "title": "Themen & Verknüpfungen",
+      "primaryTags": [
+        "topics"
+      ],
+      "scenarioIds": [],
+      "scenarios": [
+        "topic-linking"
+      ],
+      "tables": [
+        "topics"
+      ],
+      "workflows": [
+        {
+          "scenario": "topic-linking",
+          "title": "Themenverknüpfung und Modul-Steuerung",
+          "description": "Legt Themen über ensure_topic an, prüft Bereinigung, Groß-/Kleinschreibung und Längengrenzen sowie die Anlageregel je Modul, verknüpft einen Vorgang über intake_payload (Trigger) und direkt, prüft Duplikatsperre und Mandantenzuordnung, führt Themen zusammen und belegt Weiterleitung samt mitgezogenen Verknüpfungen. Dazu kommen die Modul-Steuerung mit ihren Wertebereichen und die Zählwerte aus topic_usage.",
+          "checks": [
+            "ensure_topic bereinigt Leerzeichen, bildet den Schlüssel aus dem Label und liefert für dieselbe Bezeichnung dasselbe Thema",
+            "Themenlabels außerhalb von 2–40 Zeichen werden abgewiesen (22023)",
+            "Die Modul-Steuerung führt alle zehn Module; Wertebereiche für Modul und max_topics sind gesperrt (23514)",
+            "Nur die Büroleitung ändert die Modul-Steuerung; die Prüfung stellt die Ausgangswerte wieder her",
+            "ensure_topic mit Modul folgt creation_policy: bei 'admins' nur für die Büroleitung, bei 'members' auch für Mitglieder",
+            "Ein Vorgang verknüpft Themen über intake_payload; der Trigger setzt tenant_id und created_by, Entfernen im Payload löscht die Verknüpfung",
+            "Doppelte Verknüpfungen sind gesperrt (23505); auch ein direkter Insert ohne tenant_id wird dem Büro zugeordnet",
+            "merge_topics zieht Verknüpfungen auf das Zielthema, deaktiviert die Quelle als Weiterleitung und ensure_topic folgt der Weiterleitung",
+            "topic_usage zählt die Verknüpfungen je Modul und liefert die Summe"
+          ],
+          "tables": [
+            "topics",
+            "case_item_topics",
+            "case_items",
+            "knowledge_question_topics",
+            "topic_module_settings"
+          ],
+          "features": [
+            "topics.manage"
+          ],
+          "steps": [
+            {
+              "id": "catalog",
+              "label": "Thema anlegen, bereinigen und wiederfinden"
+            },
+            {
+              "id": "module-settings",
+              "label": "Modul-Steuerung lesen und Wertebereiche prüfen"
+            },
+            {
+              "id": "module-write",
+              "label": "Modul-Steuerung ändern und wiederherstellen"
+            },
+            {
+              "id": "module-policy",
+              "label": "Anlageregel je Modul beachten"
+            },
+            {
+              "id": "case-item-link",
+              "label": "Vorgang mit Thema verknüpfen und Duplikate sperren"
+            },
+            {
+              "id": "merge-redirect",
+              "label": "Themen zusammenführen und Weiterleitung prüfen"
+            },
+            {
+              "id": "usage",
+              "label": "Verwendung je Modul zählen"
+            },
+            {
+              "id": "knowledge-topics",
+              "label": "Wissensfragen-Verknüpfung lesen und Schreibversuch abweisen"
             }
           ]
         }
