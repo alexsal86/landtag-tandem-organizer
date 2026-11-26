@@ -9663,6 +9663,49 @@ export type Database = {
           },
         ]
       }
+      knowledge_question_topics: {
+        Row: {
+          created_at: string
+          question_id: string
+          tenant_id: string
+          topic_id: string
+        }
+        Insert: {
+          created_at?: string
+          question_id: string
+          tenant_id: string
+          topic_id: string
+        }
+        Update: {
+          created_at?: string
+          question_id?: string
+          tenant_id?: string
+          topic_id?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "knowledge_question_topics_tenant_id_fkey"
+            columns: ["tenant_id"]
+            isOneToOne: false
+            referencedRelation: "tenants"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "knowledge_question_topics_tenant_id_question_id_fkey"
+            columns: ["tenant_id", "question_id"]
+            isOneToOne: false
+            referencedRelation: "knowledge_questions"
+            referencedColumns: ["tenant_id", "id"]
+          },
+          {
+            foreignKeyName: "knowledge_question_topics_tenant_id_topic_id_fkey"
+            columns: ["tenant_id", "topic_id"]
+            isOneToOne: false
+            referencedRelation: "topics"
+            referencedColumns: ["tenant_id", "id"]
+          },
+        ]
+      }
       knowledge_questions: {
         Row: {
           answer_content: Json | null
@@ -16807,6 +16850,50 @@ export type Database = {
           },
         ]
       }
+      topic_module_settings: {
+        Row: {
+          creation_policy: string
+          is_enabled: boolean
+          max_topics: number
+          module: string
+          requirement: string
+          show_filter: boolean
+          tenant_id: string
+          updated_at: string
+          updated_by: string | null
+        }
+        Insert: {
+          creation_policy?: string
+          is_enabled?: boolean
+          max_topics?: number
+          module: string
+          requirement?: string
+          show_filter?: boolean
+          tenant_id: string
+          updated_at?: string
+          updated_by?: string | null
+        }
+        Update: {
+          creation_policy?: string
+          is_enabled?: boolean
+          max_topics?: number
+          module?: string
+          requirement?: string
+          show_filter?: boolean
+          tenant_id?: string
+          updated_at?: string
+          updated_by?: string | null
+        }
+        Relationships: [
+          {
+            foreignKeyName: "topic_module_settings_tenant_id_fkey"
+            columns: ["tenant_id"]
+            isOneToOne: false
+            referencedRelation: "tenants"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
       topics: {
         Row: {
           color: string | null
@@ -18252,21 +18339,21 @@ export type Database = {
         }
         Returns: string
       }
-      create_default_checklist_items:
-        | { Args: { planning_id: string }; Returns: undefined }
-        | {
-            Args: { planning_id: string; template_id_param?: string }
-            Returns: undefined
-          }
       create_case_file_task: {
         Args: {
-          p_assigned_to?: string
+          p_assigned_to?: string | null
           p_case_file_id: string
           p_id: string
           p_title: string
         }
         Returns: string
       }
+      create_default_checklist_items:
+        | { Args: { planning_id: string }; Returns: undefined }
+        | {
+            Args: { planning_id: string; template_id_param?: string }
+            Returns: undefined
+          }
       create_decision_task: {
         Args: { p_decision_id: string }
         Returns: string

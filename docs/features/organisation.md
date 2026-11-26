@@ -48,7 +48,7 @@ _Auto-generiert mit `npm run update:feature-catalog` aus dem zentralen Funktions
 
 ## Datenbanktabellen
 
-`archived_meeting_protocol_tasks`, `case_items`, `committees`, `documents`, `dossier_entries`, `dossier_links`, `dossier_position_versions`, `dossier_source_watchers`, `dossier_stakeholders`, `dossier_talking_points`, `dossiers`, `employee_responsibilities`, `facts`, `meeting_agenda_documents`, `meeting_agenda_items`, `meeting_participants`, `meeting_protocol_details`, `meeting_templates`, `meetings`, `protocol_agenda_items`, `protocol_sessions`, `protocol_speeches`, `regions`, `tasks`, `topic_catalog_links`, `topics`
+`archived_meeting_protocol_tasks`, `case_item_topics`, `case_items`, `committees`, `documents`, `dossier_entries`, `dossier_links`, `dossier_position_versions`, `dossier_source_watchers`, `dossier_stakeholders`, `dossier_talking_points`, `dossiers`, `employee_responsibilities`, `facts`, `knowledge_question_topics`, `meeting_agenda_documents`, `meeting_agenda_items`, `meeting_participants`, `meeting_protocol_details`, `meeting_templates`, `meetings`, `protocol_agenda_items`, `protocol_sessions`, `protocol_speeches`, `regions`, `tasks`, `topic_catalog_links`, `topic_module_settings`, `topics`
 
 ## Selbsttest-Szenarien
 
@@ -607,8 +607,8 @@ Pflegt Themen mit Zuständigkeiten, Verknüpfungen und Sichtbarkeit.
 - **Services:** —
 - **Hooks:** `src/hooks/useTopics.tsx`
 - **Edge Functions:** —
-- **Datenbankfunktionen:** `ensure_topic`, `merge_topics`, `topic_name_from_label`
-- **Tabellen:** `topics`, `committees`, `regions`
+- **Datenbankfunktionen:** `ensure_topic`, `merge_topics`, `topic_name_from_label`, `topic_usage`
+- **Tabellen:** `topics`, `committees`, `regions`, `case_item_topics`, `knowledge_question_topics`, `topic_module_settings`
 - **Abhängigkeiten:** —
 - **Selbsttests:** —
 - **Unit-Tests:** —

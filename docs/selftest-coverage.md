@@ -4,7 +4,7 @@ _Auto-generiert mit `npm run update:selftest-coverage`._
 
 Quelle: `src/integrations/supabase/types.ts`. Die Angaben beschreiben deklarierte Prüfumfänge, keine erfolgreichen Testläufe und keine Code-Coverage.
 
-Von 348 Tabellen haben 63 ein registriertes Szenario. 125 sind als Ausbau offen, 160 ausgenommen und 0 noch nicht eingeordnet. Ausnahmen zählen nicht als bestanden.
+Von 351 Tabellen haben 72 ein registriertes Szenario. 124 sind als Ausbau offen, 155 ausgenommen und 0 noch nicht eingeordnet. Ausnahmen zählen nicht als bestanden.
 
 ## Szenarien
 
@@ -16,6 +16,7 @@ Von 348 Tabellen haben 63 ein registriertes Szenario. 125 sind als Ausbau offen,
 | `appointment-briefing-lifecycle` | Briefing-Lifecycle (vergeben → Aufgabe → vorlegen → freigeben) | appointments, tasks, appointment_change_alerts |
 | `appointment-lifecycle` | Termin-Lifecycle (Kalender + Briefing + Feedback) | appointments, appointment_preparations, appointment_feedback |
 | `appointment-request-lifecycle` | Terminanfragen-Lifecycle (Eingang → Sperre → Entscheidung → Termin) | appointment_requests, appointments |
+| `case-file-lifecycle` | Fallakte mit Folgetabellen (Container) im Unterschied zum Vorgang | case_files, case_file_participants, case_file_status_history, case_file_notes, case_file_timeline, case_file_contacts, case_file_tasks, case_file_appointments, case_file_letters, case_items, contacts, tasks, appointments, letters |
 | `case-item-lifecycle` | Vorgangs-Lifecycle (Am Zug → Schritt → Wiedervorlage → Entscheidung → Tageszettel → Abschluss) | case_items, case_item_interactions, case_item_handover_log, task_decisions, task_decision_participants, task_decision_responses, appointment_requests, day_slips, tasks |
 | `contact-lifecycle` | Kontakt-Lifecycle (Anlegen → Kategorie/Tags → Aktivität → Suche) | contacts, contact_activities, contact_usage_stats |
 | `daily-briefing-lifecycle` | Tages-Briefings (Vortag-Regel) | daily_briefings |
@@ -69,7 +70,7 @@ Von 348 Tabellen haben 63 ein registriertes Szenario. 125 sind als Ausbau offen,
 | `appointment_requests` | Szenario vorhanden | access-boundaries, appointment-request-lifecycle, case-item-lifecycle |
 | `appointment_statuses` | Ausgenommen (nicht geprüft) | — |
 | `appointment_topics` | Ausgenommen (nicht geprüft) | — |
-| `appointments` | Szenario vorhanden | appointment-briefing-lifecycle, appointment-lifecycle, appointment-request-lifecycle, meeting-lifecycle, poll-lifecycle |
+| `appointments` | Szenario vorhanden | appointment-briefing-lifecycle, appointment-lifecycle, appointment-request-lifecycle, case-file-lifecycle, meeting-lifecycle, poll-lifecycle |
 | `archived_tasks` | Ausstehend | — |
 | `audit_log_entries` | Ausgenommen (nicht geprüft) | — |
 | `automation_rate_limits` | Ausgenommen (nicht geprüft) | — |
@@ -81,19 +82,19 @@ Von 348 Tabellen haben 63 ein registriertes Szenario. 125 sind als Ausbau offen,
 | `calendar_sync_settings` | Ausgenommen (nicht geprüft) | — |
 | `call_logs` | Ausstehend | — |
 | `carryover_items` | Ausstehend | — |
-| `case_file_appointments` | Ausgenommen (nicht geprüft) | — |
-| `case_file_contacts` | Ausgenommen (nicht geprüft) | — |
+| `case_file_appointments` | Szenario vorhanden | case-file-lifecycle |
+| `case_file_contacts` | Szenario vorhanden | case-file-lifecycle |
 | `case_file_documents` | Ausgenommen (nicht geprüft) | — |
-| `case_file_letters` | Ausgenommen (nicht geprüft) | — |
-| `case_file_notes` | Ausgenommen (nicht geprüft) | — |
-| `case_file_participants` | Ausgenommen (nicht geprüft) | — |
+| `case_file_letters` | Szenario vorhanden | case-file-lifecycle |
+| `case_file_notes` | Szenario vorhanden | case-file-lifecycle |
+| `case_file_participants` | Szenario vorhanden | case-file-lifecycle |
 | `case_file_processing_statuses` | Ausgenommen (nicht geprüft) | — |
-| `case_file_status_history` | Ausgenommen (nicht geprüft) | — |
-| `case_file_tasks` | Ausgenommen (nicht geprüft) | — |
-| `case_file_timeline` | Ausgenommen (nicht geprüft) | — |
+| `case_file_status_history` | Szenario vorhanden | case-file-lifecycle |
+| `case_file_tasks` | Szenario vorhanden | case-file-lifecycle |
+| `case_file_timeline` | Szenario vorhanden | case-file-lifecycle |
 | `case_file_topics` | Ausgenommen (nicht geprüft) | — |
 | `case_file_types` | Ausgenommen (nicht geprüft) | — |
-| `case_files` | Ausstehend | — |
+| `case_files` | Szenario vorhanden | case-file-lifecycle |
 | `case_item_attachments` | Ausstehend | — |
 | `case_item_categories` | Ausgenommen (nicht geprüft) | — |
 | `case_item_escalation_suggestions` | Ausgenommen (nicht geprüft) | — |
@@ -101,7 +102,8 @@ Von 348 Tabellen haben 63 ein registriertes Szenario. 125 sind als Ausbau offen,
 | `case_item_interactions` | Szenario vorhanden | case-item-lifecycle |
 | `case_item_participants` | Ausgenommen (nicht geprüft) | — |
 | `case_item_timeline` | Ausgenommen (nicht geprüft) | — |
-| `case_items` | Szenario vorhanden | case-item-lifecycle |
+| `case_item_topics` | Ausgenommen (nicht geprüft) | — |
+| `case_items` | Szenario vorhanden | case-file-lifecycle, case-item-lifecycle |
 | `celebration_animations` | Ausgenommen (nicht geprüft) | — |
 | `celebration_settings` | Ausgenommen (nicht geprüft) | — |
 | `committees` | Ausstehend | — |
@@ -109,7 +111,7 @@ Von 348 Tabellen haben 63 ein registriertes Szenario. 125 sind als Ausbau offen,
 | `contact_briefing_memory` | Ausstehend | — |
 | `contact_topics` | Ausgenommen (nicht geprüft) | — |
 | `contact_usage_stats` | Szenario vorhanden | contact-lifecycle |
-| `contacts` | Szenario vorhanden | contact-lifecycle |
+| `contacts` | Szenario vorhanden | case-file-lifecycle, contact-lifecycle |
 | `daily_briefing_reads` | Ausstehend | — |
 | `daily_briefings` | Szenario vorhanden | daily-briefing-lifecycle |
 | `dashboard_decision_nudges` | Ausstehend | — |
@@ -237,6 +239,7 @@ Von 348 Tabellen haben 63 ein registriertes Szenario. 125 sind als Ausbau offen,
 | `knowledge_question_outdated_reports` | Ausstehend | — |
 | `knowledge_question_sources` | Ausstehend | — |
 | `knowledge_question_tags` | Ausstehend | — |
+| `knowledge_question_topics` | Ausgenommen (nicht geprüft) | — |
 | `knowledge_questions` | Szenario vorhanden | knowledge-lifecycle |
 | `knowledge_tags` | Ausstehend | — |
 | `leave_requests` | Ausstehend | — |
@@ -250,7 +253,7 @@ Von 348 Tabellen haben 63 ein registriertes Szenario. 125 sind als Ausbau offen,
 | `letter_template_settings` | Ausgenommen (nicht geprüft) | — |
 | `letter_templates` | Ausgenommen (nicht geprüft) | — |
 | `letter_workflow_history` | Ausgenommen (nicht geprüft) | — |
-| `letters` | Szenario vorhanden | letter-lifecycle |
+| `letters` | Szenario vorhanden | case-file-lifecycle, letter-lifecycle |
 | `login_customization` | Ausgenommen (nicht geprüft) | — |
 | `map_flag_topics` | Ausgenommen (nicht geprüft) | — |
 | `map_flag_types` | Ausgenommen (nicht geprüft) | — |
@@ -351,7 +354,7 @@ Von 348 Tabellen haben 63 ein registriertes Szenario. 125 sind als Ausbau offen,
 | `task_snoozes` | Ausgenommen (nicht geprüft) | — |
 | `task_statuses` | Szenario vorhanden | task-lifecycle |
 | `task_topics` | Ausgenommen (nicht geprüft) | — |
-| `tasks` | Szenario vorhanden | annual-task-stafette, appointment-briefing-lifecycle, case-item-lifecycle, document-annotation, jour-fixe-platform-integration, letter-lifecycle, meeting-lifecycle, onboarding-hr, quick-note-lifecycle, responsibilities, task-lifecycle, task-stafette-lifecycle |
+| `tasks` | Szenario vorhanden | annual-task-stafette, appointment-briefing-lifecycle, case-file-lifecycle, case-item-lifecycle, document-annotation, jour-fixe-platform-integration, letter-lifecycle, meeting-lifecycle, onboarding-hr, quick-note-lifecycle, responsibilities, task-lifecycle, task-stafette-lifecycle |
 | `team_announcement_dismissals` | Ausgenommen (nicht geprüft) | — |
 | `team_announcements` | Ausstehend | — |
 | `team_bingo_settings` | Ausgenommen (nicht geprüft) | — |
@@ -377,6 +380,7 @@ Von 348 Tabellen haben 63 ein registriertes Szenario. 125 sind als Ausbau offen,
 | `todos` | Ausstehend | — |
 | `topic_backlog` | Ausstehend | — |
 | `topic_catalog_links` | Ausgenommen (nicht geprüft) | — |
+| `topic_module_settings` | Ausgenommen (nicht geprüft) | — |
 | `topics` | Ausstehend | — |
 | `user_mywork_settings` | Ausgenommen (nicht geprüft) | — |
 | `user_navigation_visits` | Ausgenommen (nicht geprüft) | — |
@@ -407,6 +411,20 @@ Diese Manifeste sind keine Messung ausgeführter Assertions.
 - appointment-lifecycle: `appointment_preparations`: appointment_id, tenant_id, created_by, title, status, preparation_data, checklist_items, notes
 - appointment-lifecycle: `appointment_feedback`: appointment_id, user_id, tenant_id, feedback_status, notes, event_type, completed_at
 - appointment-request-lifecycle: `appointment_requests`: title, tenant_id, requested_date, requested_time, duration_minutes, channel, requester, location, notes
+- case-file-lifecycle: `case_files`: title, description, case_type, case_scale, status, priority, reference_number, start_date, target_date, user_id, tenant_id, visibility, processing_status, current_status_note
+- case-file-lifecycle: `case_file_participants`: case_file_id, user_id, role
+- case-file-lifecycle: `case_file_status_history`: case_file_id, content, user_id, user_display_name
+- case-file-lifecycle: `case_file_notes`: case_file_id, user_id, content, is_pinned
+- case-file-lifecycle: `case_file_timeline`: case_file_id, event_date, event_type, title, description, created_by
+- case-file-lifecycle: `case_file_contacts`: case_file_id, contact_id, role
+- case-file-lifecycle: `case_file_tasks`: case_file_id, task_id
+- case-file-lifecycle: `case_file_appointments`: case_file_id, appointment_id, notes
+- case-file-lifecycle: `case_file_letters`: case_file_id, letter_id, notes
+- case-file-lifecycle: `case_items`: subject, summary, user_id, tenant_id, case_file_id, case_scale
+- case-file-lifecycle: `contacts`: name, user_id, tenant_id, category, notes
+- case-file-lifecycle: `tasks`: title, user_id, tenant_id, assigned_to, priority, category, status, source_type, source_id
+- case-file-lifecycle: `appointments`: title, user_id, tenant_id, start_time, end_time, category, status
+- case-file-lifecycle: `letters`: title, subject, content, content_html, status, created_by, tenant_id, recipient_name, recipient_address, letter_date
 - case-item-lifecycle: `case_items`: subject, summary, user_id, tenant_id, status, ball_owner, next_action_label, next_action_due_at, next_action_assignee_id, intake_payload, pending_for_jour_fixe, completion_note, completed_at, resolution_summary
 - case-item-lifecycle: `case_item_interactions`: case_item_id, tenant_id, interaction_type, direction, interaction_at, summary, visibility, created_by
 - case-item-lifecycle: `case_item_handover_log`: case_item_id, tenant_id, from_user_id, to_user_id, handed_over_by

@@ -515,7 +515,7 @@ export const workflowRulesScenario: TestScenario = {
         const taskRegistry = [...CORE_TASK_STATUS_KEYS];
         const taskValues = TASK_STATUSES as readonly string[];
         const undetected = missingCoreTaskStatuses(["todo", "in_progress"]);
-        const taskOk = taskValues.every((value) => taskRegistry.includes(value))
+        const taskOk = taskValues.every((value) => (taskRegistry as readonly string[]).includes(value))
           && !taskValues.includes("in-progress")
           && taskValues.includes("in_progress")
           && missingCoreTaskStatuses(taskRegistry).length === 0

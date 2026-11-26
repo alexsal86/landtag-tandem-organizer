@@ -109,7 +109,7 @@ describe("SystemPulse: selftest_runs", () => {
     expect(within(tile(/Kontakte/)).getByText("1/1 geprüft")).toBeInTheDocument();
     expect(within(tile(/Jour fixe/)).getByText("Test fehlgeschlagen")).toBeInTheDocument();
     expect(within(tile(/Vorgänge/)).getByText("Noch nie getestet")).toBeInTheDocument();
-    expect(within(tile(/Vorgänge/)).getByText("0/1 geprüft")).toBeInTheDocument();
+    expect(within(tile(/Vorgänge/)).getByText("0/2 geprüft")).toBeInTheDocument();
 
     fireEvent.click(tile(/Kontakte/));
     expect(await screen.findByLabelText(/Kontakt mit allen Stammdaten anlegen: bestanden/)).toBeInTheDocument();

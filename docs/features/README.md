@@ -16,16 +16,16 @@ Der Katalog ist das führende Verzeichnis des tatsächlich implementierten Funkt
 | Deaktiviert | 0 |
 | Potenziell verwaist | 0 |
 | Prüfkandidaten (offene Punkte) | 51 |
-| Funktionen mit Selbsttest | 75 |
+| Funktionen mit Selbsttest | 79 |
 | Funktionen mit Unit-Test | 56 |
 | Funktionen mit Integrationstest | 1 |
 | Funktionen mit Browser-Test | 4 |
 | Funktionen mit Security-Test | 1 |
-| Funktionen ohne zugeordneten Test | 142 |
+| Funktionen ohne zugeordneten Test | 138 |
 | Funktionen ohne Dokumentationsverweis | 164 |
-| Funktionen mit bekannten Einschränkungen | 31 |
+| Funktionen mit bekannten Einschränkungen | 32 |
 | Nicht nachweisbar eingebundene Funktionen | 1 |
-| Technische Zuordnungen | 1240 |
+| Technische Zuordnungen | 1241 |
 
 ## Funktionsbereiche
 
@@ -44,7 +44,7 @@ Der Katalog ist das führende Verzeichnis des tatsächlich implementierten Funkt
 | [Redaktion, News & Chat](./kommunikation.md) | 5 | 14 | 14 | 14 | 10 |
 | [Termine, Anfragen & Briefings](./termine.md) | 8 | 17 | 17 | 8 | 11 |
 | [Veranstaltungen & Umfragen](./veranstaltungen.md) | 3 | 9 | 8 | 3 | 6 |
-| [Vorgänge & Fallakten](./vorgaenge.md) | 6 | 16 | 15 | 8 | 11 |
+| [Vorgänge & Fallakten](./vorgaenge.md) | 6 | 16 | 15 | 4 | 11 |
 | [Wahlanalyse & Wahlhistorie](./wahl.md) | 4 | 23 | 23 | 12 | 15 |
 | [Wissensbereich](./wissen.md) | 8 | 16 | 16 | 7 | 11 |
 
@@ -87,13 +87,13 @@ Der Katalog ist das führende Verzeichnis des tatsächlich implementierten Funkt
 
 | Abdeckung | Funktionen |
 |---|---:|
-| Selbsttest | 74 |
+| Selbsttest | 78 |
 | Unit-Test | 37 |
 | Integrationstest | 1 |
 | Browser-Test | 0 |
 | Security-Test | 1 |
 | teilweise | 0 |
-| kein Test | 142 |
+| kein Test | 138 |
 | ungeprüft | 0 |
 
 ## Konsistenz

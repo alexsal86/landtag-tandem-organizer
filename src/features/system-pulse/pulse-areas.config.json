@@ -49,8 +49,8 @@
     },
     {
       "id": "cases",
-      "title": "Vorgänge",
-      "primaryTags": ["case-items"]
+      "title": "Vorgänge & Fallakten",
+      "primaryTags": ["case-items", "case-files"]
     },
     {
       "id": "tasks",

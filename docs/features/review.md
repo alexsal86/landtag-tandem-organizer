@@ -11,7 +11,7 @@ Eindeutige Fehler werden im CI-Lauf ausgegeben und brechen die Prüfung ab; sie 
 - Review-Hinweise: **0**
 - Nicht zugeordnete Objekte: **1**, davon ohne Ausnahme: **0**
 
-## Funktionen ohne zugeordneten Test (142)
+## Funktionen ohne zugeordneten Test (138)
 
 - `mywork.tabs` — Meine Arbeit – Bereichsnavigation und Einstellungen
 - `mywork.quick-access` — Schnellzugriff und zuletzt besuchte Seiten
@@ -132,10 +132,6 @@ Eindeutige Fehler werden im CI-Lauf ausgegeben und brechen die Prüfung ab; sie 
 - `cases.link-decision` — Vorgang mit Entscheidung verknüpfen
 - `cases.escalation` — Eskalationsvorschläge
 - `cases.legacy-routes` — Legacy-Vorgangsrouten
-- `casefiles.manage` — Fallakte anlegen und führen
-- `casefiles.status-workflow` — Fallakten-Status und Bearbeitungsstatus
-- `casefiles.links` — Fallakte verknüpfen (Dokumente, Kontakte, Themen, Notizen)
-- `casefiles.notes` — Fallakten-Notizen
 - `election.analysis-map` — Analyse-Karten und Wahlkreiszuschnitt
 - `election.turnout` — Wahlbeteiligung
 - `election.seat-distribution` — Sitzverteilung und Hemizykel
@@ -336,7 +332,7 @@ Eindeutige Fehler werden im CI-Lauf ausgegeben und brechen die Prüfung ab; sie 
 - `events.legacy-rsvp` — Legacy-Einladungslinks (veraltet)
 - `cases.legacy-routes` — Legacy-Vorgangsrouten (veraltet)
 
-## Funktionen mit Einschränkungen oder offenen Punkten (67)
+## Funktionen mit Einschränkungen oder offenen Punkten (68)
 
 ### `mywork.dashboard`
 
@@ -606,7 +602,11 @@ Eindeutige Fehler werden im CI-Lauf ausgegeben und brechen die Prüfung ab; sie 
 
 ### `casefiles.manage`
 
-- Die Fallakte hat kein eigenes Selbsttest-Szenario; der Nachweis ist die Komponenten-/RPC-Kette.
+- Die Akte bleibt der Container: kein Ball und kein nächster Schritt wie beim Vorgang, dafür Typ, Sichtbarkeit und Bearbeitungsstatus.
+
+### `casefiles.links`
+
+- Dokument- und Themenverknüpfung prüft kein Szenario: dafür sind eine echte Datei bzw. ein eigener Themenkatalog nötig.
 
 ### `election.seat-distribution`
 

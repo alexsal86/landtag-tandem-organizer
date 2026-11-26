@@ -445,18 +445,100 @@
     },
     {
       "id": "cases",
-      "title": "Vorgänge",
+      "title": "Vorgänge & Fallakten",
       "primaryTags": [
-        "case-items"
+        "case-items",
+        "case-files"
       ],
       "scenarioIds": [],
       "scenarios": [
+        "case-file-lifecycle",
         "case-item-lifecycle"
       ],
       "tables": [
+        "case_files",
         "case_items"
       ],
       "workflows": [
+        {
+          "scenario": "case-file-lifecycle",
+          "title": "Fallakte mit Folgetabellen (Container) im Unterschied zum Vorgang",
+          "description": "Legt eine Fallakte an, prüft Typ, Größe, Sichtbarkeit und den Wechsel des Bearbeitungsstatus, verknüpft Kontakt, Aufgabe, Termin und Brief samt Notizen, Verlauf und Beteiligten und liest die Zählwerte über die Akten-RPC. Anschließend belegt ein Vorgang an derselben Akte den Unterschied: Der Vorgang führt Ball und nächsten Schritt, erbt seine Sichtbarkeit von der Akte und überlebt deren Löschung.",
+          "checks": [
+            "Fallakte wird mit Typ, Größe, Status und Standard-Sichtbarkeit „private“ angelegt und zurückgelesen",
+            "Ungültige Größe (case_scale) wird von der Datenbank abgewiesen",
+            "Bearbeitungsstatus und Statusverlauf werden gespeichert; derselbe Beteiligte kann nicht doppelt eingetragen werden",
+            "Kontakt, Aufgabe, Termin und Brief werden über die jeweilige Folgetabelle verknüpft; doppelte Verknüpfungen sind gesperrt",
+            "Die Aufgabe entsteht über create_case_file_task als offene Aufgabe für die anlegende Person mit source_type 'case_file' und Quellbezug; eine Wiederholung liefert dieselbe Aufgabe und keine zweite Verknüpfung",
+            "get_case_files_with_counts liefert die Verknüpfungen der Akte als Zählwerte",
+            "Ein Vorgang an einer privaten Akte ist für Büro-Kolleginnen unsichtbar, an einer öffentlichen Akte sichtbar (Sichtbarkeitsvererbung)",
+            "Das Löschen der Akte entfernt ihre Folgetabellen, lässt den Vorgang aber mit case_file_id = null bestehen"
+          ],
+          "tables": [
+            "case_files",
+            "case_file_participants",
+            "case_file_status_history",
+            "case_file_notes",
+            "case_file_timeline",
+            "case_file_contacts",
+            "case_file_tasks",
+            "case_file_appointments",
+            "case_file_letters",
+            "case_items",
+            "contacts",
+            "tasks",
+            "appointments",
+            "letters"
+          ],
+          "features": [
+            "casefiles.links",
+            "casefiles.manage",
+            "casefiles.notes",
+            "casefiles.status-workflow"
+          ],
+          "steps": [
+            {
+              "id": "create",
+              "label": "Fallakte anlegen und Standardwerte prüfen"
+            },
+            {
+              "id": "scale-guard",
+              "label": "Ungültige Akten-Größe wird abgewiesen"
+            },
+            {
+              "id": "processing-status",
+              "label": "Bearbeitungsstatus setzen und Statusverlauf schreiben"
+            },
+            {
+              "id": "participants",
+              "label": "Beteiligte eintragen; Doppelung ist gesperrt"
+            },
+            {
+              "id": "notes-and-timeline",
+              "label": "Notiz und Verlaufseintrag zur Akte speichern"
+            },
+            {
+              "id": "links-contact-task",
+              "label": "Kontakt verknüpfen und Aufgabe über die Akten-RPC erzeugen"
+            },
+            {
+              "id": "links-appointment-letter",
+              "label": "Termin und Brief mit der Akte verknüpfen"
+            },
+            {
+              "id": "counts",
+              "label": "Akten-RPC zählt die Verknüpfungen"
+            },
+            {
+              "id": "vorgang-vs-akte",
+              "label": "Unterschied zum Vorgang: eigener Ball, geerbte Sichtbarkeit"
+            },
+            {
+              "id": "delete-detaches",
+              "label": "Akte löschen: Folgetabellen weg, Vorgang bleibt"
+            }
+          ]
+        },
         {
           "scenario": "case-item-lifecycle",
           "title": "Vorgangs-Lifecycle (Am Zug → Schritt → Wiedervorlage → Entscheidung → Tageszettel → Abschluss)",

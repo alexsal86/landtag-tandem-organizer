@@ -8,7 +8,7 @@ _Auto-generiert mit `npm run update:feature-catalog` aus dem zentralen Funktions
 
 - Funktionen: **16** in **6** Unterbereichen
 - implementiert: **15**, teilweise: **0**, deaktiviert: **0**, potenziell verwaist: **0**
-- ohne zugeordneten Test: **8**
+- ohne zugeordneten Test: **4**
 - ohne Dokumentationsverweis: **11**
 
 ## Funktionen
@@ -22,10 +22,10 @@ _Auto-generiert mit `npm run update:feature-catalog` aus dem zentralen Funktions
 | `cases.steps` Vorgangsschritte und Aufgaben | Bearbeitung | fachlich | implementiert | systemseitig | Unit-Test |
 | `cases.legacy-routes` Legacy-Vorgangsrouten | Erfassung | fachlich | veraltet | UI | kein Test |
 | `cases.create` Vorgang erfassen | Erfassung | fachlich | implementiert | rollenabhängig | Selbsttest |
-| `casefiles.manage` Fallakte anlegen und führen | Fallakten | fachlich | implementiert | rollenabhängig | kein Test |
-| `casefiles.links` Fallakte verknüpfen (Dokumente, Kontakte, Themen, Notizen) | Fallakten | fachlich | implementiert | UI | kein Test |
-| `casefiles.notes` Fallakten-Notizen | Fallakten | fachlich | implementiert | UI | kein Test |
-| `casefiles.status-workflow` Fallakten-Status und Bearbeitungsstatus | Fallakten | fachlich | implementiert | UI | kein Test |
+| `casefiles.manage` Fallakte anlegen und führen | Fallakten | fachlich | implementiert | rollenabhängig | Selbsttest |
+| `casefiles.links` Fallakte verknüpfen (Dokumente, Kontakte, Themen, Notizen) | Fallakten | fachlich | implementiert | UI | Selbsttest |
+| `casefiles.notes` Fallakten-Notizen | Fallakten | fachlich | implementiert | UI | Selbsttest |
+| `casefiles.status-workflow` Fallakten-Status und Bearbeitungsstatus | Fallakten | fachlich | implementiert | UI | Selbsttest |
 | `cases.triage` Vorgang triagieren (Wer ist am Zug?) | Triage | fachlich | implementiert | UI | Unit-Test |
 | `cases.handover` Vorgang weitergeben | Triage | fachlich | implementiert | rollenabhängig | Selbsttest |
 | `cases.link-letter` Vorgang mit Brief verknüpfen | Verknüpfung | fachlich | implementiert | UI | Unit-Test |
@@ -53,6 +53,7 @@ _Auto-generiert mit `npm run update:feature-catalog` aus dem zentralen Funktions
 
 | Szenario | Titel | deklarierte Tabellen | deklarierte Prüfungen |
 |---|---|---:|---:|
+| `case-file-lifecycle` | Fallakte mit Folgetabellen (Container) im Unterschied zum Vorgang | 14 | 8 |
 | `case-item-lifecycle` | Vorgangs-Lifecycle (Am Zug → Schritt → Wiedervorlage → Entscheidung → Tageszettel → Abschluss) | 9 | 5 |
 
 ## Funktionsdetails
@@ -488,12 +489,12 @@ Leitet alte Vorgangs- und Fallaktenrouten auf die aktuellen Arbeitsbereiche um.
 - Offen: Altlinks zählen, bevor die Routen entfernt werden.
 
 ### `casefiles.manage` — Fallakte anlegen und führen
-Führt Fallakten mit Typ, Status, Risiken, Chancen, nächsten Schritten, Beteiligten und Dokumenten.
+Führt Fallakten mit Typ, Status, Risiken, Chancen, nächsten Schritten, Beteiligten und Dokumenten; das Szenario prüft Anlage, Standardwerte, Sichtbarkeit, Folgetabellen und die Zählwerte der Akten-RPC.
 
 - **Kategorie:** fachlich
 - **Implementierung:** implementiert
 - **Einbindung:** rollenabhängig
-- **Testabdeckung:** kein Test
+- **Testabdeckung:** Selbsttest
 - **Letztes Testergebnis:** nicht-ausgefuehrt (nicht aus der Existenz einer Testdatei abgeleitet)
 - **Rollen:** `abgeordneter`, `bueroleitung`, `mitarbeiter`
 - **Routen:** `/casefiles`
@@ -504,7 +505,7 @@ Führt Fallakten mit Typ, Status, Risiken, Chancen, nächsten Schritten, Beteili
 - **Datenbankfunktionen:** `get_case_files_with_counts`
 - **Tabellen:** `case_files`, `case_file_types`, `case_file_participants`, `case_file_status_history`, `case_file_timeline`
 - **Abhängigkeiten:** —
-- **Selbsttests:** —
+- **Selbsttests:** `case-file-lifecycle`
 - **Unit-Tests:** —
 - **Integrationstests:** —
 - **Browser-Tests:** —
@@ -514,6 +515,7 @@ Führt Fallakten mit Typ, Status, Risiken, Chancen, nächsten Schritten, Beteili
 
 - src/features/casefiles/components/CaseFilesView.tsx
 - src/features/cases/files/components/CaseFileDetail.tsx
+- src/features/selftest/scenarios/case-file-lifecycle.ts
 
 **Bekannte Einschränkungen**
 
@@ -521,15 +523,15 @@ Führt Fallakten mit Typ, Status, Risiken, Chancen, nächsten Schritten, Beteili
 
 **Offene Prüfpunkte**
 
-- Die Fallakte hat kein eigenes Selbsttest-Szenario; der Nachweis ist die Komponenten-/RPC-Kette.
+- Die Akte bleibt der Container: kein Ball und kein nächster Schritt wie beim Vorgang, dafür Typ, Sichtbarkeit und Bearbeitungsstatus.
 
 ### `casefiles.status-workflow` — Fallakten-Status und Bearbeitungsstatus
-Ändert den Bearbeitungsstatus einer Fallakte, protokolliert den Verlauf und zeigt offene Schritte.
+Ändert den Bearbeitungsstatus einer Fallakte, protokolliert den Verlauf und zeigt offene Schritte; das Szenario prüft den Statuswechsel samt Verlaufseintrag.
 
 - **Kategorie:** fachlich
 - **Implementierung:** implementiert
 - **Einbindung:** UI
-- **Testabdeckung:** kein Test
+- **Testabdeckung:** Selbsttest
 - **Letztes Testergebnis:** nicht-ausgefuehrt (nicht aus der Existenz einer Testdatei abgeleitet)
 - **Rollen:** `abgeordneter`, `bueroleitung`, `mitarbeiter`
 - **Routen:** —
@@ -540,7 +542,7 @@ Führt Fallakten mit Typ, Status, Risiken, Chancen, nächsten Schritten, Beteili
 - **Datenbankfunktionen:** —
 - **Tabellen:** `case_files`, `case_file_processing_statuses`, `case_file_status_history`
 - **Abhängigkeiten:** `casefiles.manage`
-- **Selbsttests:** —
+- **Selbsttests:** `case-file-lifecycle`
 - **Unit-Tests:** —
 - **Integrationstests:** —
 - **Browser-Tests:** —
@@ -560,12 +562,12 @@ Führt Fallakten mit Typ, Status, Risiken, Chancen, nächsten Schritten, Beteili
 - Keine.
 
 ### `casefiles.links` — Fallakte verknüpfen (Dokumente, Kontakte, Themen, Notizen)
-Verknüpft Dokumente, Kontakte, Themen und Notizen mit einer Fallakte und zeigt sie in der Akte.
+Verknüpft Dokumente, Kontakte, Themen und Notizen mit einer Fallakte und zeigt sie in der Akte; das Szenario prüft Kontakt-, Aufgaben-, Termin- und Briefverknüpfung samt doppelter Verknüpfungssperre.
 
 - **Kategorie:** fachlich
 - **Implementierung:** implementiert
 - **Einbindung:** UI
-- **Testabdeckung:** kein Test
+- **Testabdeckung:** Selbsttest
 - **Letztes Testergebnis:** nicht-ausgefuehrt (nicht aus der Existenz einer Testdatei abgeleitet)
 - **Rollen:** `abgeordneter`, `bueroleitung`, `mitarbeiter`
 - **Routen:** —
@@ -576,7 +578,7 @@ Verknüpft Dokumente, Kontakte, Themen und Notizen mit einer Fallakte und zeigt 
 - **Datenbankfunktionen:** —
 - **Tabellen:** `case_file_documents`, `case_file_contacts`, `case_file_topics`, `case_file_notes`
 - **Abhängigkeiten:** `casefiles.manage`, `documents.upload-version`, `contacts.create`
-- **Selbsttests:** —
+- **Selbsttests:** `case-file-lifecycle`
 - **Unit-Tests:** —
 - **Integrationstests:** —
 - **Browser-Tests:** —
@@ -589,19 +591,19 @@ Verknüpft Dokumente, Kontakte, Themen und Notizen mit einer Fallakte und zeigt 
 
 **Bekannte Einschränkungen**
 
-- Keine.
+- Dokument- und Themenverknüpfung prüft kein Szenario: dafür sind eine echte Datei bzw. ein eigener Themenkatalog nötig.
 
 **Offene Prüfpunkte**
 
 - Keine.
 
 ### `casefiles.notes` — Fallakten-Notizen
-Erfasst interne Notizen an einer Fallakte und zeigt sie im Verlauf.
+Erfasst interne Notizen an einer Fallakte und zeigt sie im Verlauf; das Szenario prüft Notiz und Verlaufseintrag an der Akte.
 
 - **Kategorie:** fachlich
 - **Implementierung:** implementiert
 - **Einbindung:** UI
-- **Testabdeckung:** kein Test
+- **Testabdeckung:** Selbsttest
 - **Letztes Testergebnis:** nicht-ausgefuehrt (nicht aus der Existenz einer Testdatei abgeleitet)
 - **Rollen:** `abgeordneter`, `bueroleitung`, `mitarbeiter`
 - **Routen:** —
@@ -612,7 +614,7 @@ Erfasst interne Notizen an einer Fallakte und zeigt sie im Verlauf.
 - **Datenbankfunktionen:** —
 - **Tabellen:** `case_file_notes`, `case_files`
 - **Abhängigkeiten:** `casefiles.manage`
-- **Selbsttests:** —
+- **Selbsttests:** `case-file-lifecycle`
 - **Unit-Tests:** —
 - **Integrationstests:** —
 - **Browser-Tests:** —

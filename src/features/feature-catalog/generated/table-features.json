@@ -679,6 +679,13 @@
       "area": "aufgaben"
     }
   ],
+  "case_item_topics": [
+    {
+      "id": "topics.manage",
+      "name": "Themen verwalten",
+      "area": "organisation"
+    }
+  ],
   "case_items": [
     {
       "id": "admin.access-boundaries",
@@ -2175,6 +2182,13 @@
       "id": "knowledge.tags",
       "name": "Tags und Themenzuordnung",
       "area": "wissen"
+    }
+  ],
+  "knowledge_question_topics": [
+    {
+      "id": "topics.manage",
+      "name": "Themen verwalten",
+      "area": "organisation"
     }
   ],
   "knowledge_questions": [
@@ -3716,6 +3730,13 @@
     {
       "id": "topics.convert-catalog",
       "name": "Thema in Katalog überführen",
+      "area": "organisation"
+    }
+  ],
+  "topic_module_settings": [
+    {
+      "id": "topics.manage",
+      "name": "Themen verwalten",
       "area": "organisation"
     }
   ],

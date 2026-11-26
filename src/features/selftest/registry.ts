@@ -20,6 +20,7 @@ import { taskLifecycleScenario } from "./scenarios/task-lifecycle";
 import { taskStafetteLifecycleScenario } from "./scenarios/task-stafette-lifecycle";
 import { letterLifecycleScenario } from "./scenarios/letter-lifecycle";
 import { caseItemLifecycleScenario } from "./scenarios/case-item-lifecycle";
+import { caseFileLifecycleScenario } from "./scenarios/case-file-lifecycle";
 import { decisionLifecycleScenario } from "./scenarios/decision-lifecycle";
 import { appointmentLifecycleScenario } from "./scenarios/appointment-lifecycle";
 import { dailyBriefingLifecycleScenario } from "./scenarios/daily-briefing-lifecycle";
@@ -58,6 +59,7 @@ export const SELFTEST_SCENARIOS: TestScenario[] = [
   eventPlanningLifecycleScenario,
   letterLifecycleScenario,
   caseItemLifecycleScenario,
+  caseFileLifecycleScenario,
   appointmentRequestLifecycleScenario,
   appointmentBriefingLifecycleScenario,
   daySlipLifecycleScenario,
