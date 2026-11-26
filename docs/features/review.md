@@ -139,7 +139,7 @@ Eindeutige Fehler werden im CI-Lauf ausgegeben und brechen die Prüfung ab; sie 
 - `knowledge.global-question` — Globale Wissensfrage aus jedem Bereich
 - `knowledge.management` — Wissensverwaltung
 
-## Funktionen ohne Dokumentationsverweis (167)
+## Funktionen ohne Dokumentationsverweis (168)
 
 - `mywork.dashboard.today-priorities` — Heute zuerst
 - `mywork.tabs` — Meine Arbeit – Bereichsnavigation und Einstellungen
@@ -282,6 +282,7 @@ Eindeutige Fehler werden im CI-Lauf ausgegeben und brechen die Prüfung ab; sie 
 - `casefiles.links` — Fallakte verknüpfen (Dokumente, Kontakte, Themen, Notizen)
 - `casefiles.document-upload` — Datei aus der Akte ablegen
 - `casefiles.notes` — Fallakten-Notizen
+- `parlis.proceedings` — Parlamentarische Vorgänge auswerten
 - `election.analysis-navigation` — Analyse-Navigation und gespeicherte Szenarien
 - `election.turnout` — Wahlbeteiligung
 - `election.seat-distribution` — Sitzverteilung und Hemizykel

@@ -6,10 +6,10 @@ _Auto-generiert mit `npm run update:feature-catalog` aus dem zentralen Funktions
 
 ## Kennzahlen
 
-- Funktionen: **17** in **6** Unterbereichen
-- implementiert: **16**, teilweise: **0**, deaktiviert: **0**, potenziell verwaist: **0**
+- Funktionen: **18** in **7** Unterbereichen
+- implementiert: **17**, teilweise: **0**, deaktiviert: **0**, potenziell verwaist: **0**
 - ohne zugeordneten Test: **4**
-- ohne Dokumentationsverweis: **12**
+- ohne Dokumentationsverweis: **13**
 
 ## Funktionen
 
@@ -27,6 +27,7 @@ _Auto-generiert mit `npm run update:feature-catalog` aus dem zentralen Funktions
 | `casefiles.links` Fallakte verknüpfen (Dokumente, Kontakte, Themen, Notizen) | Fallakten | fachlich | implementiert | UI | Selbsttest |
 | `casefiles.notes` Fallakten-Notizen | Fallakten | fachlich | implementiert | UI | Selbsttest |
 | `casefiles.status-workflow` Fallakten-Status und Bearbeitungsstatus | Fallakten | fachlich | implementiert | UI | Selbsttest |
+| `parlis.proceedings` Parlamentarische Vorgänge auswerten | Parlamentsdokumentation | fachlich | implementiert | UI | Selbsttest |
 | `cases.triage` Vorgang triagieren (Wer ist am Zug?) | Triage | fachlich | implementiert | UI | Unit-Test |
 | `cases.handover` Vorgang weitergeben | Triage | fachlich | implementiert | rollenabhängig | Selbsttest |
 | `cases.link-letter` Vorgang mit Brief verknüpfen | Verknüpfung | fachlich | implementiert | UI | Unit-Test |
@@ -41,6 +42,7 @@ _Auto-generiert mit `npm run update:feature-catalog` aus dem zentralen Funktions
 - Verknüpfung
 - Abschluss
 - Fallakten
+- Parlamentsdokumentation
 
 ## Rollen
 
@@ -48,7 +50,7 @@ _Auto-generiert mit `npm run update:feature-catalog` aus dem zentralen Funktions
 
 ## Datenbanktabellen
 
-`appointments`, `audit_log_entries`, `case_file_appointments`, `case_file_contacts`, `case_file_documents`, `case_file_letters`, `case_file_notes`, `case_file_participants`, `case_file_processing_statuses`, `case_file_status_history`, `case_file_tasks`, `case_file_timeline`, `case_file_topics`, `case_file_types`, `case_files`, `case_item_categories`, `case_item_escalation_suggestions`, `case_item_handover_log`, `case_item_interactions`, `case_item_participants`, `case_item_timeline`, `case_item_topics`, `case_items`, `documents`, `letters`, `task_decisions`, `tasks`, `topic_module_settings`, `topics`
+`appointments`, `audit_log_entries`, `case_file_appointments`, `case_file_contacts`, `case_file_documents`, `case_file_letters`, `case_file_notes`, `case_file_participants`, `case_file_processing_statuses`, `case_file_status_history`, `case_file_tasks`, `case_file_timeline`, `case_file_topics`, `case_file_types`, `case_files`, `case_item_categories`, `case_item_escalation_suggestions`, `case_item_handover_log`, `case_item_interactions`, `case_item_participants`, `case_item_timeline`, `case_item_topics`, `case_items`, `documents`, `letters`, `parlis_proceedings`, `task_decisions`, `tasks`, `topic_module_settings`, `topics`
 
 ## Selbsttest-Szenarien
 
@@ -56,6 +58,7 @@ _Auto-generiert mit `npm run update:feature-catalog` aus dem zentralen Funktions
 |---|---|---:|---:|---|
 | `case-file-lifecycle` | Fallakte mit Folgetabellen (Container) im Unterschied zum Vorgang | 16 | 9 | — |
 | `case-item-lifecycle` | Vorgangs-Lifecycle (Am Zug → Schritt → Wiedervorlage → Entscheidung → Tageszettel → Abschluss) | 9 | 5 | — |
+| `parlis` | Parlamentarische Vorgänge | 0 | 2 | — |
 
 ## Selbsttest-Schritte
 
@@ -90,6 +93,8 @@ Diese Schritte führen die Szenarien aus; „letzter Lauf“ stammt aus `src/fea
 | `case-item-lifecycle` | `step-done` | Schritt erledigt → Schritt leer, „Schritt festlegen“ erscheint wieder | db | — |
 | `case-item-lifecycle` | `complete` | Vorgang abschließen | db | — |
 | `case-item-lifecycle` | `tenant-boundary` | Vorgang lässt sich keinem fremden Büro zuordnen | workflow | — |
+| `parlis` | `parlis-groups` | Monate, Schlagwörter und fehlende Ressorts korrekt zuordnen | logic | — |
+| `parlis` | `parlis-import-readable` | Import der 18. Wahlperiode ist lesbar | db | — |
 
 ## Deklarierter Prüfumfang
 
@@ -112,6 +117,11 @@ Diese Schritte führen die Szenarien aus; „letzter Lauf“ stammt aus `src/fea
 3. Entscheidung und Abstimmung
 4. Tageszettel-Link nach erneutem Laden
 5. Vorgang bleibt im eigenen Büro
+
+### `parlis`
+
+1. Monatsgruppierung, eindeutige Schlagwörter und leere Ressorts
+2. Importierte Vorgänge sind lesbar
 
 ## Funktionsdetails
 
@@ -716,6 +726,44 @@ Erfasst interne Notizen an einer Fallakte und zeigt sie im Verlauf; das Szenario
 **Nachweise im Quellcode**
 
 - src/features/cases/files/components/CaseFileRightSidebar.tsx
+
+**Bekannte Einschränkungen**
+
+- Keine.
+
+**Offene Prüfpunkte**
+
+- Keine.
+
+### `parlis.proceedings` — Parlamentarische Vorgänge auswerten
+Lädt die Vorgänge der 18. Wahlperiode des Landtags Baden-Württemberg aus der Datenbank, gruppiert sie nach Datum und Merkmalen und verlinkt die Originaldokumente.
+
+- **Kategorie:** fachlich
+- **Implementierung:** implementiert
+- **Einbindung:** UI
+- **Testabdeckung:** Selbsttest
+- **Letztes Testergebnis:** nicht-ausgefuehrt (kein Laufnachweis importiert; nicht aus der Existenz einer Testdatei abgeleitet)
+- **Rollen:** Keine besondere Rolle deklariert
+- **Routen:** `/daten`
+- **Frontend-Komponenten:** `src/components/admin/DataView.tsx`, `src/features/parlis/ParlisView.tsx`
+- **Services:** —
+- **Hooks:** —
+- **Edge Functions:** —
+- **Datenbankfunktionen:** —
+- **Tabellen:** `parlis_proceedings`
+- **Abhängigkeiten:** —
+- **Selbsttests:** `parlis`
+- **Unit-Tests:** —
+- **Integrationstests:** —
+- **Browser-Tests:** —
+- **Dokumentation:** —
+
+**Nachweise im Quellcode**
+
+- supabase/migrations/20261127140000_create_parlis_proceedings.sql
+- supabase/migrations/20261127141000_import_parlis_wp18.sql
+- src/features/parlis/grouping.ts
+- src/features/selftest/scenarios/parlis.ts
 
 **Bekannte Einschränkungen**
 

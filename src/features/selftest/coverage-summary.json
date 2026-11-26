@@ -2,12 +2,12 @@
   "schemaVersion": 2,
   "source": "src/integrations/supabase/types.ts",
   "counts": {
-    "total": 351,
-    "scenario": 89,
-    "deferred": 116,
-    "excluded": 146,
-    "missing": 0,
-    "exceptions": 262
+    "total": 353,
+    "scenario": 91,
+    "deferred": 117,
+    "excluded": 144,
+    "missing": 1,
+    "exceptions": 261
   },
   "exceptionGroups": [
     {
@@ -216,6 +216,14 @@
         "knowledge_question_sources",
         "knowledge_question_tags",
         "knowledge_tags"
+      ]
+    },
+    {
+      "kind": "deferred",
+      "reason": "Parlis: Der Selbsttest prüft importierte Referenzdaten lesend. Schreibzugriffe bleiben der Datenbankmigration vorbehalten.",
+      "expiresOn": "2027-06-30",
+      "tables": [
+        "parlis_proceedings"
       ]
     },
     {
@@ -505,6 +513,8 @@
         "case_file_notes",
         "case_file_timeline",
         "case_file_contacts",
+        "case_file_documents",
+        "documents",
         "case_file_tasks",
         "case_file_appointments",
         "case_file_letters",
@@ -573,6 +583,28 @@
             "title",
             "description",
             "created_by"
+          ]
+        },
+        {
+          "table": "documents",
+          "columns": [
+            "tenant_id",
+            "user_id",
+            "title",
+            "file_name",
+            "file_path",
+            "file_size",
+            "file_type",
+            "status"
+          ]
+        },
+        {
+          "table": "case_file_documents",
+          "columns": [
+            "case_file_id",
+            "document_id",
+            "relevance",
+            "notes"
           ]
         },
         {
@@ -1406,6 +1438,7 @@
       "touches": [
         "letters",
         "letter_attachments",
+        "letter_collaborators",
         "documents",
         "tasks"
       ],
@@ -1436,7 +1469,10 @@
             "sent_by",
             "sent_date",
             "workflow_locked",
-            "archived_document_id"
+            "archived_document_id",
+            "revision_comment",
+            "revision_requested_at",
+            "revision_requested_by"
           ]
         },
         {
@@ -1448,6 +1484,15 @@
             "file_type",
             "file_size",
             "uploaded_by"
+          ]
+        },
+        {
+          "table": "letter_collaborators",
+          "columns": [
+            "letter_id",
+            "user_id",
+            "role",
+            "assigned_by"
           ]
         }
       ],
@@ -1579,6 +1624,16 @@
         "employees",
         "automation",
         "permissions"
+      ],
+      "writes": [],
+      "registered": true
+    },
+    {
+      "id": "parlis",
+      "title": "Parlamentarische Vorgänge",
+      "touches": [],
+      "features": [
+        "parlis.proceedings"
       ],
       "writes": [],
       "registered": true
@@ -2246,12 +2301,11 @@
     },
     {
       "table": "case_file_documents",
-      "status": "excluded",
-      "scenarios": [],
-      "exception": {
-        "kind": "excluded",
-        "expiresOn": "2027-06-30"
-      }
+      "status": "scenario",
+      "scenarios": [
+        "case-file-lifecycle"
+      ],
+      "exception": null
     },
     {
       "table": "case_file_letters",
@@ -2672,6 +2726,7 @@
       "table": "documents",
       "status": "scenario",
       "scenarios": [
+        "case-file-lifecycle",
         "document-annotation",
         "letter-lifecycle"
       ],
@@ -3654,12 +3709,11 @@
     },
     {
       "table": "letter_collaborators",
-      "status": "excluded",
-      "scenarios": [],
-      "exception": {
-        "kind": "excluded",
-        "expiresOn": "2027-06-30"
-      }
+      "status": "scenario",
+      "scenarios": [
+        "letter-lifecycle"
+      ],
+      "exception": null
     },
     {
       "table": "letter_comments",
@@ -4001,6 +4055,15 @@
       "exception": {
         "kind": "deferred",
         "expiresOn": "2027-03-31"
+      }
+    },
+    {
+      "table": "parlis_proceedings",
+      "status": "deferred",
+      "scenarios": [],
+      "exception": {
+        "kind": "deferred",
+        "expiresOn": "2027-06-30"
       }
     },
     {
@@ -4491,6 +4554,12 @@
         "document-annotation",
         "task-stafette-lifecycle"
       ],
+      "exception": null
+    },
+    {
+      "table": "task_batch_actions",
+      "status": "missing",
+      "scenarios": [],
       "exception": null
     },
     {
@@ -5201,6 +5270,17 @@
       ]
     },
     {
+      "id": "documents.details",
+      "name": "Dokumentdetails und Verknüpfungen",
+      "area": "dokumente",
+      "tables": [
+        "documents",
+        "case_file_documents",
+        "document_contacts",
+        "document_annotation_tasks"
+      ]
+    },
+    {
       "id": "documents.upload-version",
       "name": "Dokument hochladen und versionieren",
       "area": "dokumente",
@@ -5595,5 +5675,9 @@
       ]
     }
   ],
-  "errors": []
+  "errors": [
+    "Ausnahme für case_file_documents ist überflüssig: bereits durch case-file-lifecycle gedeckt.",
+    "Ausnahme für letter_collaborators ist überflüssig: bereits durch letter-lifecycle gedeckt.",
+    "Neue Tabelle ohne Einordnung: task_batch_actions"
+  ]
 }

@@ -1900,14 +1900,16 @@
       "primaryTags": [
         "election-districts",
         "election-analysis",
-        "election-history"
+        "election-history",
+        "parlis.proceedings"
       ],
       "scenarioIds": [],
       "scenarios": [
         "election-analysis",
         "election-deputy-reader",
         "election-history-workbench",
-        "election-map"
+        "election-map",
+        "parlis"
       ],
       "tables": [],
       "workflows": [
@@ -2125,6 +2127,29 @@
             {
               "id": "boundaries",
               "label": "Fehlende, leere und projizierte Grenzdaten erkennen"
+            }
+          ]
+        },
+        {
+          "scenario": "parlis",
+          "title": "Parlamentarische Vorgänge",
+          "description": "Prüft die Gruppierung und den Lesezugriff auf die Parlamentsdokumentation.",
+          "checks": [
+            "Monatsgruppierung, eindeutige Schlagwörter und leere Ressorts",
+            "Importierte Vorgänge sind lesbar"
+          ],
+          "tables": [],
+          "features": [
+            "parlis.proceedings"
+          ],
+          "steps": [
+            {
+              "id": "parlis-groups",
+              "label": "Monate, Schlagwörter und fehlende Ressorts korrekt zuordnen"
+            },
+            {
+              "id": "parlis-import-readable",
+              "label": "Import der 18. Wahlperiode ist lesbar"
             }
           ]
         }

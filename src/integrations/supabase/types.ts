@@ -14,6 +14,57 @@ export type Database = {
   }
   public: {
     Tables: {
+      parlis_proceedings: {
+        Row: {
+          datum: string
+          deskriptoren: string
+          dokument_url: string
+          dokumentnummer_intern: string
+          drucksache: string
+          id: string
+          legislature: number
+          pdf_url: string
+          ressort: string
+          titel: string
+          urheber: string
+          vorgang_text: string
+          vorgangs_id: string
+          vorgangstyp: string
+        }
+        Insert: {
+          datum: string
+          deskriptoren: string
+          dokument_url: string
+          dokumentnummer_intern: string
+          drucksache: string
+          id: string
+          legislature: number
+          pdf_url: string
+          ressort: string
+          titel: string
+          urheber: string
+          vorgang_text: string
+          vorgangs_id: string
+          vorgangstyp: string
+        }
+        Update: {
+          datum?: string
+          deskriptoren?: string
+          dokument_url?: string
+          dokumentnummer_intern?: string
+          drucksache?: string
+          id?: string
+          legislature?: number
+          pdf_url?: string
+          ressort?: string
+          titel?: string
+          urheber?: string
+          vorgang_text?: string
+          vorgangs_id?: string
+          vorgangstyp?: string
+        }
+        Relationships: []
+      }
       action_permissions: {
         Row: {
           action_key: string

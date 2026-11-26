@@ -340,6 +340,36 @@
       "tables": ["case_file_notes", "case_files"],
       "roles": ["abgeordneter", "bueroleitung", "mitarbeiter"],
       "dependsOn": ["casefiles.manage"]
+    },
+    {
+      "id": "parlis.proceedings",
+      "subarea": "Parlamentsdokumentation",
+      "name": "Parlamentarische Vorgänge auswerten",
+      "description": "Lädt die Vorgänge der 18. Wahlperiode des Landtags Baden-Württemberg aus der Datenbank, gruppiert sie nach Datum und Merkmalen und verlinkt die Originaldokumente.",
+      "category": "fachlich",
+      "implementationStatus": "implementiert",
+      "integrationStatus": "ui",
+      "coverage": "selftest",
+      "testResult": "nicht-ausgefuehrt",
+      "routes": [
+        "/daten"
+      ],
+      "components": [
+        "src/components/admin/DataView.tsx",
+        "src/features/parlis/ParlisView.tsx"
+      ],
+      "tables": [
+        "parlis_proceedings"
+      ],
+      "scenarios": [
+        "parlis"
+      ],
+      "evidence": [
+        "supabase/migrations/20261127140000_create_parlis_proceedings.sql",
+        "supabase/migrations/20261127141000_import_parlis_wp18.sql",
+        "src/features/parlis/grouping.ts",
+        "src/features/selftest/scenarios/parlis.ts"
+      ]
     }
   ]
 }

@@ -90,7 +90,7 @@
     {
       "id": "elections",
       "title": "Wahlen & Analyse",
-      "primaryTags": ["election-districts", "election-analysis", "election-history"]
+      "primaryTags": ["election-districts", "election-analysis", "election-history", "parlis.proceedings"]
     },
     {
       "id": "employees",

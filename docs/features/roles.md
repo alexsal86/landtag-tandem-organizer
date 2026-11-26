@@ -998,6 +998,7 @@ Die Angaben sind deklarierte Mindestrollen. Die tatsächlich wirksame Berechtigu
 | `news.matrix` | `bueroleitung`, `mitarbeiter`, `system` |
 | `notifications.inbox` | `abgeordneter`, `bueroleitung`, `mitarbeiter`, `praktikant` |
 | `notifications.preferences` | `abgeordneter`, `bueroleitung`, `mitarbeiter`, `praktikant` |
+| `parlis.proceedings` | Keine besondere Rolle deklariert |
 | `platform.auth` | `oeffentlich`, `abgeordneter`, `bueroleitung`, `mitarbeiter`, `praktikant` |
 | `platform.notification-dispatch` | `system` |
 | `polls.availability` | `abgeordneter`, `bueroleitung`, `mitarbeiter` |

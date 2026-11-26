@@ -2755,6 +2755,13 @@
       "area": "wahl"
     }
   ],
+  "parlis_proceedings": [
+    {
+      "id": "parlis.proceedings",
+      "name": "Parlamentarische Vorgänge auswerten",
+      "area": "vorgaenge"
+    }
+  ],
   "party_associations": [
     {
       "id": "contacts.create",
