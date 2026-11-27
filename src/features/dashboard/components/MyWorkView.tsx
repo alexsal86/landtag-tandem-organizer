@@ -1,3 +1,4 @@
+import { DashboardDaylight } from "./DashboardDaylight";
 import { useWorkspaceView } from "@/contexts/WorkspaceViewContext";
 import { useEffect, useState, Suspense } from "react";
 import { lazyWithRetry } from "@/lib/lazyWithRetry";
@@ -112,7 +113,8 @@ export function MyWorkView() {
   );
 
   return (
-    <div className="min-h-[calc(100vh-8rem)] w-full">
+    <div className={`min-h-[calc(100vh-8rem)] w-full ${activeTab === "dashboard" ? "relative isolate" : ""}`}>
+      {activeTab === "dashboard" && <DashboardDaylight />}
       <div className="flex w-full items-center justify-between gap-3 border-b border-border bg-white px-4 md:px-6 lg:px-8">
         <div className="flex min-w-0 flex-1 overflow-x-auto">
           {visibleTabs.map((tab) => {

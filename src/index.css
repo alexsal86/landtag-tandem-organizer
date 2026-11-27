@@ -872,3 +872,39 @@ All colors MUST be HSL.
 .dashboard-motion .dashboard-motion-card:hover { box-shadow: var(--shadow-dashboard-card-hover); }
 .dark .dashboard-motion .dashboard-motion-card { box-shadow: none; }
 .dark .dashboard-motion .dashboard-motion-card:hover { box-shadow: var(--shadow-dashboard-card-hover); }
+
+@property --dashboard-daylight-tone {
+  syntax: "<color>";
+  inherits: false;
+  initial-value: transparent;
+}
+
+@property --dashboard-daylight-position {
+  syntax: "<percentage>";
+  inherits: false;
+  initial-value: 72%;
+}
+
+.dashboard-daylight {
+  position: fixed;
+  inset: 0 0 auto;
+  z-index: -1;
+  height: 460px;
+  pointer-events: none;
+  background: radial-gradient(
+    1000px 420px at var(--dashboard-daylight-position, 72%) -80px,
+    var(--dashboard-daylight-tone, transparent),
+    transparent 72%
+  );
+  transition: --dashboard-daylight-tone 2s ease, --dashboard-daylight-position 2s ease;
+}
+
+.dark .dashboard-daylight {
+  opacity: 0.67;
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .dashboard-daylight {
+    transition: none;
+  }
+}
