@@ -467,6 +467,25 @@ try {
     assert.equal(await codeOf(() => q('SELECT save_employee_meeting($1,$2,$3::jsonb)',
       [guard, 5, '{"protocol_data":{"goals":"veraltet"}}'])), 'PT409',
       'Der veraltete Stand meldet den PostgREST-Konfliktcode statt 40001');
+
+    // --- Derselbe Konflikt beim Bestätigen: ein abweichender Freigabe-Hash ist
+    // ebenfalls ein Konflikt und meldet PT409. Der Selbsttest des positiven Pfads
+    // muss beide Fassungen erkennen, damit er auch auf einer nicht nachgezogenen
+    // Instanz nicht hart scheitert.
+    await db.exec('RESET ROLE');
+    await apply('20261128080000_employee_protocol_conflict_status.sql');
+    await apply('20261128080000_employee_protocol_conflict_status.sql');
+    const ackDef = (await q(`SELECT pg_get_functiondef(oid) AS d FROM pg_proc
+      WHERE pronamespace='public'::regnamespace AND proname='acknowledge_meeting_protocol'`))[0].d;
+    assert.ok(ackDef.includes("'PT409'") && !ackDef.includes('40001'),
+      'Die Bestätigung meldet den abweichenden Hash als PT409, nicht als 40001');
+    const helperDef = (await q(`SELECT pg_get_functiondef(oid) AS d FROM pg_proc
+      WHERE pronamespace='public'::regnamespace AND proname='selftest_employee_protocol'`))[0].d;
+    assert.ok(helperDef.includes("'PT409'") && helperDef.includes("'40001'"),
+      'Der Protokoll-Selbsttest erkennt PT409 und die alte Antwort 40001');
+    // Zurück in die Rolle des Mitarbeiters: die folgenden Sperrprüfungen messen
+    // die Rechte dieses Kontos, nicht die des Superusers.
+    await actor(staff);
     assert.equal(await codeOf(() => q('SELECT save_employee_meeting($1,$2,$3::jsonb)',
       [guard, null, '{"protocol_data":{"goals":"ohne Stand"}}'])), 'PT409',
       'Auch ein fehlender Stand meldet den Konfliktcode');
@@ -504,7 +523,7 @@ try {
   await db.query('DELETE FROM employee_meeting_audit WHERE meeting_id=$1', [audited]);
   await db.query('DELETE FROM employee_meetings WHERE id = ANY($1::uuid[])', [[draft, audited, finished, closed, two]]);
   assert.equal((await q('SELECT * FROM employee_meetings')).length, 0);
-  console.log('Employee protocol selftest passed: completion, release, acknowledgement, task hand-off, reopening and objection run through the real RPCs with a separate session per role (leader and affected person); the release guard answers 42501/22023 and the conflict code PT409 even after the repair of a drifted instance (including an autosave without a version check and a missing version), the repaired autosave carries the positive path, and every write is rolled back.');
+  console.log('Employee protocol selftest passed: completion, release, acknowledgement, task hand-off, reopening and objection run through the real RPCs with a separate session per role (leader and affected person); the release guard answers 42501/22023 and the conflict code PT409 for a stale autosave and for an outdated release hash even after the repair of a drifted instance (including an autosave without a version check and a missing version), the repaired autosave carries the positive path, and every write is rolled back.');
 } catch (error) {
   console.error('FAILED:', error.code ?? '', error.message);
   process.exitCode = 1;
