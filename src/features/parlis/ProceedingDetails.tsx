@@ -21,7 +21,7 @@ function Section({ title, body }: { title: string; body: string }) {
   if (!body) return null;
   return <section className="parlis-details-section">
     <h4>{title}</h4>
-    <p>{body}</p>
+    <p className="parlis-details-text">{body}</p>
   </section>;
 }
 
