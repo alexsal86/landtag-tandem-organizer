@@ -2463,7 +2463,7 @@
             "Private Notizen liegen in employee_meeting_private_notes und nicht in den geteilten Vorbereitungsfeldern",
             "Maßnahme wird über mutate_employee_meeting_action angelegt und zurückgelesen",
             "Direkte Statusänderung ist gesperrt; Freigabe, Bestätigung und Wiedereröffnung werden vor Abschluss mit 22023 abgewiesen",
-            "Ein veralteter Autosave-Stand wird mit 40001 abgewiesen",
+            "Ein veralteter Autosave-Stand wird mit PT409 abgewiesen",
             "Abschluss, Freigabe, Bestätigung, Wiedereröffnung und Einspruch laufen im positiven Pfad über die echten RPCs und werden vollständig zurückgerollt: Status, Auditzeilen, Maßnahmen-Aufgabe, Benachrichtigungen und der letzte Gesprächstermin bleiben unverändert"
           ],
           "tables": [

@@ -64,7 +64,7 @@ export const employeeMeetingsScenario: TestScenario = {
     "Private Notizen liegen in employee_meeting_private_notes und nicht in den geteilten Vorbereitungsfeldern",
     "Maßnahme wird über mutate_employee_meeting_action angelegt und zurückgelesen",
     "Direkte Statusänderung ist gesperrt; Freigabe, Bestätigung und Wiedereröffnung werden vor Abschluss mit 22023 abgewiesen",
-    "Ein veralteter Autosave-Stand wird mit 40001 abgewiesen",
+    "Ein veralteter Autosave-Stand wird mit PT409 abgewiesen",
     "Abschluss, Freigabe, Bestätigung, Wiedereröffnung und Einspruch laufen im positiven Pfad über die echten RPCs und werden vollständig zurückgerollt: Status, Auditzeilen, Maßnahmen-Aufgabe, Benachrichtigungen und der letzte Gesprächstermin bleiben unverändert",
   ],
   limitations: [
@@ -248,6 +248,11 @@ export const employeeMeetingsScenario: TestScenario = {
         // damit sie nicht als falsche Serverantwort durchgeht.
         const outcome = (item: GuardCall) =>
           item.timedOut ? `Zeitüberschreitung ${item.ms} ms` : item.failed ?? item.value?.error?.code;
+        // Ein veralteter Stand ist ein Konflikt, kein wiederholbarer
+        // Transaktionskonflikt: seit Migration 20261128070000 meldet die RPC PT409
+        // (HTTP 409). Ältere Instanzen antworten noch mit 40001.
+        const CONFLICT_CODES = ["PT409", "40001"];
+        const conflict = (item: GuardCall) => CONFLICT_CODES.includes(String(outcome(item)));
         const errors = Object.fromEntries(calls.map(item => [item.key, outcome(item)]));
         const durationsMs = Object.fromEntries(calls.map(item => [item.key, item.ms]));
         const readSignal = AbortSignal.timeout(GUARD_CALL_TIMEOUT_MS);
@@ -267,7 +272,7 @@ export const employeeMeetingsScenario: TestScenario = {
           releaseBeforeCompletion: outcome(prematureRequest) === "22023",
           acknowledgeBeforeRelease: outcome(prematureAck) === "22023",
           reopenBeforeCompletion: outcome(prematureReopen) === "22023",
-          staleVersionRejected: outcome(stale) === "40001" || (staleDirect !== null && outcome(staleDirect) === "40001"),
+          staleVersionRejected: conflict(stale) || (staleDirect !== null && conflict(staleDirect)),
           noAuditRows: !audit.timedOut && !audit.value?.error && (audit.value?.data ?? []).length === 0,
         };
         const ok = Object.values(checks).every(Boolean);

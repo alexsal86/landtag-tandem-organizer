@@ -230,7 +230,7 @@ export function EmployeeMeetingProtocol({ meetingId, onBack }: EmployeeMeetingPr
         p_meeting_id: meetingId, p_version: versionRef.current, p_patch: updates as Json, p_private_notes: privateNotes,
       });
       if (error) {
-        if (error.code === "40001") { conflictRef.current = true; setHasConflict(true); }
+        if (error.code === "PT409" || error.code === "40001") { conflictRef.current = true; setHasConflict(true); }
         throw error;
       }
       versionRef.current = data;
@@ -290,7 +290,7 @@ export function EmployeeMeetingProtocol({ meetingId, onBack }: EmployeeMeetingPr
       setSaving(true);
       const { data, error } = await supabase.rpc("save_employee_meeting", { p_meeting_id: meetingId, p_version: versionRef.current, p_patch: patch });
       if (error) {
-        if (error.code === "40001") { conflictRef.current = true; setHasConflict(true); }
+        if (error.code === "PT409" || error.code === "40001") { conflictRef.current = true; setHasConflict(true); }
         throw error;
       }
       versionRef.current = data;

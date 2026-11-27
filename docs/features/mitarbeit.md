@@ -125,7 +125,7 @@ Diese Schritte führen die Szenarien aus; „letzter Lauf“ stammt aus `src/fea
 3. Private Notizen liegen in employee_meeting_private_notes und nicht in den geteilten Vorbereitungsfeldern
 4. Maßnahme wird über mutate_employee_meeting_action angelegt und zurückgelesen
 5. Direkte Statusänderung ist gesperrt; Freigabe, Bestätigung und Wiedereröffnung werden vor Abschluss mit 22023 abgewiesen
-6. Ein veralteter Autosave-Stand wird mit 40001 abgewiesen
+6. Ein veralteter Autosave-Stand wird mit PT409 abgewiesen
 7. Abschluss, Freigabe, Bestätigung, Wiedereröffnung und Einspruch laufen im positiven Pfad über die echten RPCs und werden vollständig zurückgerollt: Status, Auditzeilen, Maßnahmen-Aufgabe, Benachrichtigungen und der letzte Gesprächstermin bleiben unverändert
 
 ### `employee-protection`

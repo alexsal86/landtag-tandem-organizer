@@ -451,6 +451,26 @@ try {
       [guard, 5, '{"protocol_data":{"goals":"veraltet"}}'])), '40001',
       'Auch nach dem Nachzug weist die RPC den veralteten Stand ab');
 
+    // --- Konfliktcode: 40001 ist die SQLSTATE-Klasse der wiederholbaren
+    // Transaktionskonflikte; die Instanz beantwortet genau diesen Aufruf nicht,
+    // er läuft in die Zeitüberschreitung, während 42501/22023/55000 sofort
+    // kommen. PostgREST trägt dieselbe Abweisung als PT409 (HTTP 409).
+    await db.exec('RESET ROLE');
+    await apply('20261128070000_employee_meeting_conflict_status.sql');
+    // Auch dieser Rumpf muss sich beliebig oft einspielen lassen.
+    await apply('20261128070000_employee_meeting_conflict_status.sql');
+    const markeKonflikt = await q(`SELECT obj_description(oid,'pg_proc') AS marke FROM pg_proc
+      WHERE pronamespace='public'::regnamespace AND proname='save_employee_meeting'`);
+    assert.equal(markeKonflikt[0].marke, 'version-guard 20261128070000',
+      'Der Konfliktcode ist als installiert markiert');
+    await actor(staff);
+    assert.equal(await codeOf(() => q('SELECT save_employee_meeting($1,$2,$3::jsonb)',
+      [guard, 5, '{"protocol_data":{"goals":"veraltet"}}'])), 'PT409',
+      'Der veraltete Stand meldet den PostgREST-Konfliktcode statt 40001');
+    assert.equal(await codeOf(() => q('SELECT save_employee_meeting($1,$2,$3::jsonb)',
+      [guard, null, '{"protocol_data":{"goals":"ohne Stand"}}'])), 'PT409',
+      'Auch ein fehlender Stand meldet den Konfliktcode');
+
     const codes = {
       directWriteDenied: await codeOf(directWrite),
       releaseBeforeCompletion: await codeOf(() => q('SELECT request_protocol_acknowledgement($1)', [guard])),
@@ -461,7 +481,7 @@ try {
     };
     assert.deepEqual(codes, {
       directWriteDenied: '42501', releaseBeforeCompletion: '22023', acknowledgeBeforeRelease: '22023',
-      reopenBeforeCompletion: '22023', staleVersionRejected: '40001',
+      reopenBeforeCompletion: '22023', staleVersionRejected: 'PT409',
     }, 'Die Reparatur stellt alle Freigabesperren her');
     assert.equal((await q('SELECT status FROM employee_meetings WHERE id=$1', [guard]))[0].status, 'scheduled',
       'Keine Sperrprüfung verändert den Status');
@@ -484,7 +504,7 @@ try {
   await db.query('DELETE FROM employee_meeting_audit WHERE meeting_id=$1', [audited]);
   await db.query('DELETE FROM employee_meetings WHERE id = ANY($1::uuid[])', [[draft, audited, finished, closed, two]]);
   assert.equal((await q('SELECT * FROM employee_meetings')).length, 0);
-  console.log('Employee protocol selftest passed: completion, release, acknowledgement, task hand-off, reopening and objection run through the real RPCs with a separate session per role (leader and affected person); the release guard answers 42501/22023/40001 even after the repair of a drifted instance (including an autosave without a version check and a missing version), the repaired autosave carries the positive path, and every write is rolled back.');
+  console.log('Employee protocol selftest passed: completion, release, acknowledgement, task hand-off, reopening and objection run through the real RPCs with a separate session per role (leader and affected person); the release guard answers 42501/22023 and the conflict code PT409 even after the repair of a drifted instance (including an autosave without a version check and a missing version), the repaired autosave carries the positive path, and every write is rolled back.');
 } catch (error) {
   console.error('FAILED:', error.code ?? '', error.message);
   process.exitCode = 1;
