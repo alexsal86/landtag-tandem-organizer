@@ -32,6 +32,7 @@ import { isLetterNotificationType } from '@/utils/letterNotificationTypes';
 
 interface NotificationCenterProps {
   onClose?: () => void;
+  greenUnreadBadge?: boolean;
 }
 
 type NotificationPriorityBadgeVariant = 'default' | 'secondary' | 'outline' | 'destructive';
@@ -156,6 +157,7 @@ interface NotificationItemProps {
   onMarkRead: (id: string) => Promise<void>;
   onDelete: (id: string) => Promise<void>;
   onClose?: () => void;
+  greenUnreadBadge?: boolean;
 }
 
 const NotificationItem = ({ notification, onMarkRead, onDelete, onClose }: NotificationItemProps): JSX.Element => {
@@ -253,7 +255,7 @@ const NotificationItem = ({ notification, onMarkRead, onDelete, onClose }: Notif
   );
 };
 
-export const NotificationCenter = ({ onClose }: NotificationCenterProps): JSX.Element => {
+export const NotificationCenter = ({ onClose, greenUnreadBadge = false }: NotificationCenterProps): JSX.Element => {
   const { notifications, unreadCount, loading, markAsRead, markAllAsRead, deleteNotification } = useNotifications();
   const navigate = useNavigate();
 
@@ -269,7 +271,7 @@ export const NotificationCenter = ({ onClose }: NotificationCenterProps): JSX.El
           <Bell className="h-5 w-5" />
           <h3 className="font-semibold">Benachrichtigungen</h3>
           {unreadCount > 0 && (
-            <Badge variant="secondary" className="text-xs">
+            <Badge variant="secondary" className={cn("text-xs", greenUnreadBadge && "bg-[#2e6018] text-white hover:bg-[#2e6018]")}>
               {unreadCount}
             </Badge>
           )}

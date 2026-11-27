@@ -1,6 +1,6 @@
 import { DashboardDaylight } from "./DashboardDaylight";
 import { useWorkspaceView } from "@/contexts/WorkspaceViewContext";
-import { useState, Suspense } from "react";
+import { useLayoutEffect, useRef, useState, Suspense } from "react";
 import { lazyWithRetry } from "@/lib/lazyWithRetry";
 import { useNavigate } from "react-router-dom";
 
@@ -13,8 +13,6 @@ import {
   DropdownMenuTrigger,
 } from "@/components/ui/dropdown-menu";
 import { CheckSquare, Vote, Briefcase, StickyNote, Calendar, Plus, Search } from "lucide-react";
-import { PageHelpButton } from "@/components/shared/PageHelpButton";
-import { MYWORK_HELP_CONTENT } from "@/config/helpContent";
 
 import { useMyWorkNewCounts } from "@/hooks/useMyWorkNewCounts";
 import { useOpenApprovalCount } from "@/features/redaktion/hooks/useOpenApprovalCount";
@@ -63,6 +61,24 @@ export function MyWorkView() {
   const navigationTabs = isDeputyView
     ? visibleTabs.filter(tab => tab.value !== "jourFixe" && tab.value !== "redaktion")
     : visibleTabs;
+
+  const tabTrack = useRef<HTMLDivElement>(null);
+
+  useLayoutEffect(() => {
+    const track = tabTrack.current;
+    if (!track) return;
+    const current = track.querySelector<HTMLButtonElement>('[aria-current="page"]');
+    const positionIndicator = () => {
+      track.style.setProperty("--active-tab-x", `${current?.offsetLeft ?? 0}px`);
+      track.style.setProperty("--active-tab-width", `${current?.offsetWidth ?? 0}px`);
+    };
+
+    positionIndicator();
+    if (typeof ResizeObserver === "undefined") return;
+    const observer = new ResizeObserver(positionIndicator);
+    track.querySelectorAll("button").forEach(button => observer.observe(button));
+    return () => observer.disconnect();
+  }, [activeTab, visibleTabs, isDeputyView]);
 
   const { newCounts, markTabAsVisited, refreshCounts } = useMyWorkNewCounts();
   const { openApprovals, isEnabled: isRedaktionEnabled } = useOpenApprovalCount();
@@ -114,46 +130,49 @@ export function MyWorkView() {
     <div className={`min-h-[calc(100vh-8rem)] w-full ${activeTab === "dashboard" ? "relative isolate" : ""}`}>
       {activeTab === "dashboard" && <DashboardDaylight />}
       <div className="flex w-full flex-col items-end gap-3 px-4 pt-4 sm:flex-row sm:items-center sm:justify-between md:px-6 lg:px-8">
-        <nav aria-label="Meine Arbeit" className="flex max-w-full min-w-0 self-stretch items-center gap-1 overflow-x-auto rounded-full border border-border/80 bg-card/90 p-1 shadow-lg shadow-black/8 backdrop-blur-sm [scrollbar-width:none]">
-          {navigationTabs.map((tab) => {
-            const hasNew = tab.countKey ? newCounts[tab.countKey] > 0 : false;
-            const isActiveTab = activeTab === tab.value;
+        <nav aria-label="Meine Arbeit" className="flex max-w-full min-w-0 self-stretch overflow-x-auto rounded-full border border-border/80 bg-card/90 shadow-lg shadow-black/8 backdrop-blur-sm [scrollbar-width:none]">
+          <div ref={tabTrack} className="relative isolate flex w-max min-w-full items-center gap-1 p-1">
+            <span aria-hidden="true" className="pointer-events-none absolute inset-y-1 left-0 -z-10 w-(--active-tab-width) translate-x-(--active-tab-x) rounded-full bg-slate-900 shadow-sm transition-[translate,width] duration-350 ease-in-out motion-reduce:transition-none dark:bg-slate-100" />
+            {navigationTabs.map((tab) => {
+              const hasNew = tab.countKey ? newCounts[tab.countKey] > 0 : false;
+              const isActiveTab = activeTab === tab.value;
 
-            return (
-              <button
-                key={tab.value}
-                onClick={() => handleTabChange(tab.value)}
-                data-help-id={`mywork-tab-${tab.value}`}
-                type="button"
-                aria-current={isActiveTab ? "page" : undefined}
-                className={`flex min-h-10 shrink-0 items-center gap-2 whitespace-nowrap rounded-full px-4 text-sm font-medium transition-colors focus-visible:outline-2 focus-visible:-outline-offset-2 focus-visible:outline-ring ${
-                  isActiveTab
-                    ? "bg-slate-900 text-white shadow-sm dark:bg-slate-100 dark:text-slate-950"
-                    : "text-muted-foreground hover:bg-muted hover:text-foreground"
-                }`}
-              >
-                {tab.value === "dashboard" ? "Heute" : tab.label}
-                {hasNew && !isActiveTab && (
-                  <span className="size-2 rounded-full bg-[#397d16] dark:bg-[#83c84e]">
-                    <span className="sr-only">Neue Einträge</span>
-                  </span>
-                )}
-                {tab.value === "redaktion" && isRedaktionEnabled && openApprovals > 0 && (
-                  <span
-                    className="ml-1 rounded-full bg-primary/10 px-1.5 py-0.5 text-xs font-semibold tabular-nums text-primary"
-                    aria-label={`${openApprovals} offene ${openApprovals === 1 ? "Freigabe" : "Freigaben"}`}
-                  >
-                    {openApprovals}
-                  </span>
-                )}
-              </button>
-            );
-          })}
+              return (
+                <button
+                  key={tab.value}
+                  onClick={() => handleTabChange(tab.value)}
+                  data-help-id={`mywork-tab-${tab.value}`}
+                  type="button"
+                  aria-current={isActiveTab ? "page" : undefined}
+                  className={`flex min-h-10 shrink-0 items-center gap-2 whitespace-nowrap rounded-full px-4 text-sm font-medium transition-colors focus-visible:outline-2 focus-visible:-outline-offset-2 focus-visible:outline-ring ${
+                    isActiveTab
+                      ? "text-white dark:text-slate-950"
+                      : "text-muted-foreground hover:bg-muted hover:text-foreground"
+                  }`}
+                >
+                  {tab.value === "dashboard" ? "Heute" : tab.label}
+                  {hasNew && !isActiveTab && (
+                    <span className="size-2 rounded-full bg-[#397d16] dark:bg-[#83c84e]">
+                      <span className="sr-only">Neue Einträge</span>
+                    </span>
+                  )}
+                  {tab.value === "redaktion" && isRedaktionEnabled && openApprovals > 0 && (
+                    <span
+                      className="ml-1 rounded-full bg-primary/10 px-1.5 py-0.5 text-xs font-semibold tabular-nums text-primary"
+                      aria-label={`${openApprovals} offene ${openApprovals === 1 ? "Freigabe" : "Freigaben"}`}
+                    >
+                      {openApprovals}
+                    </span>
+                  )}
+                </button>
+              );
+            })}
+          </div>
         </nav>
 
         <div className="flex shrink-0 items-center gap-2">
           <Button type="button" variant="outline" aria-label="Global suchen" aria-keyshortcuts="Control+K Meta+K"
-            className="size-11 rounded-full border-border/80 bg-card/90 p-0 text-muted-foreground shadow-sm lg:w-auto lg:px-4"
+            className="size-11 rounded-full border-border/80 bg-card/90 p-0 text-muted-foreground shadow-sm hover:border-[#2e6018] hover:bg-card/90 hover:text-muted-foreground lg:w-auto lg:px-4"
             onClick={() => window.dispatchEvent(new CustomEvent("openGlobalSearch"))}>
             <Search aria-hidden="true" />
             <span className="hidden lg:inline">Suchen</span>
@@ -200,14 +219,6 @@ export function MyWorkView() {
               </DropdownMenuItem>
             </DropdownMenuContent>
           </DropdownMenu>
-
-          {MYWORK_HELP_CONTENT[activeTab] && (
-            <PageHelpButton
-              title={MYWORK_HELP_CONTENT[activeTab].title}
-              description={MYWORK_HELP_CONTENT[activeTab].description}
-              features={MYWORK_HELP_CONTENT[activeTab].features}
-            />
-          )}
         </div>
       </div>
 
