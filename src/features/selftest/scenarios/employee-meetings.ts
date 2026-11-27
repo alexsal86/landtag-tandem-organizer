@@ -8,6 +8,18 @@ import { describeError, expectFields } from "../verify";
 
 const tag = (run: string) => `${SELFTEST_PREFIX} Mitarbeitergespräch (${run})`;
 const daysFromNow = (days: number) => new Date(Date.now() + days * 86_400_000).toISOString();
+/** Zeitlimit je Serveraufruf im Freigabe-Schritt: ein hängender Weg soll den Schritt nicht blockieren. */
+const GUARD_CALL_TIMEOUT_MS = 20_000;
+
+/** Einzelner Serveraufruf des Freigabe-Schritts: Dauer, Abbruch und Fehlercode. */
+interface GuardCall {
+  key: string;
+  ms: number;
+  timedOut: boolean;
+  /** Grund, falls der Client den Aufruf nicht als Fehlerobjekt zurückgibt. */
+  failed: string | undefined;
+  value: { error: { code?: string } | null } | null;
+}
 
 export const employeeMeetingsScenario: TestScenario = {
   id: "employee-meetings",
@@ -163,64 +175,93 @@ export const employeeMeetingsScenario: TestScenario = {
         if (typeof nearVersion !== "number") {
           return { ok: false, message: "Der Autosave-Versionsstand fehlt; der veraltete Stand lässt sich nicht prüfen." };
         }
-        // Die Dauer je Aufruf steht im Befund: ein langsamer Serverweg soll nicht
-        // nur als „Schritt hängt" auffallen, sondern benannt sein.
-        const run = async <T>(key: string, call: () => PromiseLike<T>) => {
+        // Jeder Aufruf hat sein eigenes Zeitlimit: ein hängender Serverweg soll den
+        // Schritt nicht blockieren, sondern als Zeitüberschreitung mit Name und Dauer
+        // des Aufrufs im Befund stehen. Die Dauer steht auch im Erfolgsfall in den
+        // Details, damit ein langsamer Weg erkennbar bleibt.
+        // Der Client liefert die Antwort auch bei Abbruch als Fehlerobjekt; der
+        // geworfene Zweig bleibt für Aufrufe da, die den Abbruch durchreichen.
+        const run = async <B extends PromiseLike<unknown>>(key: string, call: (signal: AbortSignal) => B) => {
           const started = performance.now();
-          const value = await call();
-          return { key, value, ms: Math.round(performance.now() - started) };
+          const elapsed = () => Math.round(performance.now() - started);
+          const signal = AbortSignal.timeout(GUARD_CALL_TIMEOUT_MS);
+          try {
+            const value = await call(signal);
+            return { key, ms: elapsed(), timedOut: signal.aborted, value, failed: undefined as string | undefined };
+          } catch (error) {
+            return {
+              key, ms: elapsed(), timedOut: signal.aborted, value: null as Awaited<B> | null,
+              failed: error instanceof Error ? error.message : String(error),
+            };
+          }
         };
         // Die vier Abweisungen ändern nichts und sind voneinander unabhängig; parallel
         // kostet der Schritt die Zeit des langsamsten Aufrufs statt der Summe aller.
         const denials = await Promise.all([
-          run("direct", () => supabase.from("employee_meetings")
-            .update({ status: "pending_acknowledgement" }).eq("id", near).select("id")),
-          run("release", () => supabase.rpc("request_protocol_acknowledgement", { p_meeting_id: near })),
-          run("acknowledge", () => supabase.rpc("acknowledge_meeting_protocol", { p_meeting_id: near })),
-          run("reopen", () => supabase.rpc("reopen_meeting_protocol", { p_meeting_id: near, p_reason: tag(ctx.runId) })),
+          run("direct", signal => supabase.from("employee_meetings")
+            .update({ status: "pending_acknowledgement" }).eq("id", near).select("id").abortSignal(signal)),
+          run("release", signal => supabase.rpc("request_protocol_acknowledgement", { p_meeting_id: near }).abortSignal(signal)),
+          run("acknowledge", signal => supabase.rpc("acknowledge_meeting_protocol", { p_meeting_id: near }).abortSignal(signal)),
+          run("reopen", signal => supabase.rpc("reopen_meeting_protocol", { p_meeting_id: near, p_reason: tag(ctx.runId) }).abortSignal(signal)),
         ]);
-        const direct = denials[0].value;
-        const prematureRequest = denials[1].value;
-        const prematureAck = denials[2].value;
-        const prematureReopen = denials[3].value;
-        const stale = await run("stale", () => supabase.rpc("save_employee_meeting", {
+        const [direct, prematureRequest, prematureAck, prematureReopen] = denials;
+        const stale = await run("stale", signal => supabase.rpc("save_employee_meeting", {
           p_meeting_id: near, p_version: nearVersion - 1, p_patch: { protocol_data: { goals: tag(ctx.runId) } },
-        }));
-        const staleSave = stale.value;
-        const audit = await supabase.from("employee_meeting_audit").select("id").eq("meeting_id", near);
-        const read = await expectFields("employee_meetings", near, { status: "scheduled" }, "Status nach Sperrprüfung");
+        }).abortSignal(signal));
+        const audit = await run("audit", signal => supabase.from("employee_meeting_audit")
+          .select("id").eq("meeting_id", near).abortSignal(signal));
+        const calls = [...denials, stale, audit];
+        // Eine Zeitüberschreitung ist kein Fehlercode; sie wird als solche benannt,
+        // damit sie nicht als falsche Serverantwort durchgeht.
+        const outcome = (item: GuardCall) =>
+          item.timedOut ? `Zeitüberschreitung ${item.ms} ms` : item.failed ?? item.value?.error?.code;
+        const errors = Object.fromEntries(calls.map(item => [item.key, outcome(item)]));
+        const durationsMs = Object.fromEntries(calls.map(item => [item.key, item.ms]));
+        const readSignal = AbortSignal.timeout(GUARD_CALL_TIMEOUT_MS);
+        const read = await expectFields("employee_meetings", near, { status: "scheduled" }, "Status nach Sperrprüfung", readSignal);
+        if (!read.ok) {
+          // Auch der Re-Read hat ein Zeitlimit und wird wie die übrigen Aufrufe benannt.
+          return readSignal.aborted
+            ? {
+              ok: false,
+              message: `Zeitüberschreitung nach ${GUARD_CALL_TIMEOUT_MS / 1000} s beim Re-Read „Status nach Sperrprüfung".`,
+              details: { errors, durationsMs },
+            }
+            : read;
+        }
         const checks = {
-          directWriteDenied: direct.error?.code === "42501",
-          releaseBeforeCompletion: prematureRequest.error?.code === "22023",
-          acknowledgeBeforeRelease: prematureAck.error?.code === "22023",
-          reopenBeforeCompletion: prematureReopen.error?.code === "22023",
-          staleVersionRejected: staleSave.error?.code === "40001",
-          noAuditRows: !audit.error && (audit.data ?? []).length === 0,
+          directWriteDenied: outcome(direct) === "42501",
+          releaseBeforeCompletion: outcome(prematureRequest) === "22023",
+          acknowledgeBeforeRelease: outcome(prematureAck) === "22023",
+          reopenBeforeCompletion: outcome(prematureReopen) === "22023",
+          staleVersionRejected: outcome(stale) === "40001",
+          noAuditRows: !audit.timedOut && !audit.value?.error && (audit.value?.data ?? []).length === 0,
         };
-        if (!read.ok) return read;
         const ok = Object.values(checks).every(Boolean);
         // Wurde der veraltete Stand angenommen, ist die Versionsprüfung der Instanz
         // wirkungslos; der gespeicherte Zähler belegt, ob wirklich geschrieben wurde
         // und ob nur der Fehlercode abwich.
-        const versionProbe = checks.staleVersionRejected ? null
-          : await supabase.from("employee_meetings").select("version").eq("id", near).maybeSingle();
+        const versionProbe = checks.staleVersionRejected || stale.timedOut ? null
+          : await run("stale-version", signal => supabase.from("employee_meetings")
+            .select("version").eq("id", near).abortSignal(signal).maybeSingle());
+        const timedOut = calls.filter(item => item.timedOut);
         return {
           ok,
           message: ok
             ? "Alle unzulässigen Änderungen wurden ohne Auditzeile abgewiesen."
-            : checks.staleVersionRejected
-              ? "Mindestens eine Workflow-Sperre oder die Auditprüfung wich vom erwarteten Ergebnis ab."
-              : `Der veraltete Stand ${nearVersion - 1} wurde ${staleSave.error ? `mit ${staleSave.error.code} statt 40001` : "angenommen"} (gespeichert: ${versionProbe?.data?.version ?? "unbekannt"}). Die Versionsprüfung der Instanz greift nicht; Migration 20261128040000 einspielen.`,
+            : timedOut.length > 0
+              ? `Zeitüberschreitung nach ${GUARD_CALL_TIMEOUT_MS / 1000} s bei ${timedOut.map(item => `${item.key} (${item.ms} ms)`).join(", ")}.`
+              : checks.staleVersionRejected
+                ? "Mindestens eine Workflow-Sperre oder die Auditprüfung wich vom erwarteten Ergebnis ab."
+                : `Der veraltete Stand ${nearVersion - 1} wurde ${outcome(stale) ? `mit ${outcome(stale)} statt 40001` : "angenommen"} (gespeichert: ${versionProbe?.value?.data?.version ?? "unbekannt"}). Die Versionsprüfung der Instanz greift nicht; Migration 20261128040000 einspielen.`,
           details: {
             ...checks,
-            errors: {
-              direct: direct.error?.code, release: prematureRequest.error?.code, acknowledge: prematureAck.error?.code,
-              reopen: prematureReopen.error?.code, stale: staleSave.error?.code, audit: audit.error?.code,
-            },
-            durationsMs: Object.fromEntries([...denials, stale].map(item => [item.key, item.ms])),
+            errors,
+            durationsMs,
             ...(versionProbe ? {
               staleVersionProbe: {
-                expected: nearVersion, stored: versionProbe.data?.version ?? null, error: versionProbe.error?.code ?? null,
+                expected: nearVersion, stored: versionProbe.value?.data?.version ?? null,
+                error: versionProbe.timedOut ? "Zeitüberschreitung" : versionProbe.value?.error?.code ?? null,
               },
             } : {}),
           },

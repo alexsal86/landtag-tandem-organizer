@@ -39,11 +39,14 @@ export async function expectFields(
   id: string,
   expected: Record<string, unknown>,
   label = "Felder",
+  /** Optionales Zeitlimit; ohne Angabe wartet der Aufruf wie bisher. */
+  signal?: AbortSignal,
 ): Promise<StepResult> {
   const columns = Object.keys(expected).join(",");
-  const { data, error } = await selftestDatabase.from(table)
+  const query = selftestDatabase.from(table)
     .select(columns)
-    .eq("id", id)
+    .eq("id", id);
+  const { data, error } = await (signal ? query.abortSignal(signal) : query)
     .single();
   if (error || !data) {
     return { ok: false, message: `${label}: Re-Read fehlgeschlagen — ${error?.message ?? "leer"}` };
