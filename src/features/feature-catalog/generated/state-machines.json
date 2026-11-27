@@ -5,7 +5,7 @@
   "sources": {
     "types": "src/integrations/supabase/types.ts",
     "migrationsDirectory": "supabase/migrations",
-    "migrationCount": 944,
+    "migrationCount": 947,
     "tsModules": [
       "src/components/letters/types.ts"
     ]
@@ -2281,7 +2281,11 @@
         {
           "value": "acknowledged",
           "sources": [
-            "check:supabase/migrations/20261113120000_employee_protocol_acknowledgement.sql"
+            "check:supabase/migrations/20261113120000_employee_protocol_acknowledgement.sql",
+            "guard:supabase/migrations/20261113120000_employee_protocol_acknowledgement.sql",
+            "guard:supabase/migrations/20261127160000_release_guard_rule_repair.sql",
+            "guard:supabase/migrations/20261128040000_employee_meeting_version_guard_repair.sql",
+            "guard:supabase/migrations/20261128050000_employee_meeting_version_guard_force.sql"
           ]
         },
         {
@@ -2315,7 +2319,11 @@
           "value": "pending_acknowledgement",
           "sources": [
             "check:supabase/migrations/20261113120000_employee_protocol_acknowledgement.sql",
-            "write:supabase/migrations/20261113120000_employee_protocol_acknowledgement.sql"
+            "write:supabase/migrations/20261113120000_employee_protocol_acknowledgement.sql",
+            "guard:supabase/migrations/20261113120000_employee_protocol_acknowledgement.sql",
+            "guard:supabase/migrations/20261127160000_release_guard_rule_repair.sql",
+            "guard:supabase/migrations/20261128040000_employee_meeting_version_guard_repair.sql",
+            "guard:supabase/migrations/20261128050000_employee_meeting_version_guard_force.sql"
           ]
         },
         {
@@ -2356,7 +2364,9 @@
           "sources": [
             "supabase/migrations/20261113120000_employee_protocol_acknowledgement.sql"
           ],
-          "guards": []
+          "guards": [
+            "guard_employee_protocol"
+          ]
         },
         {
           "from": null,
@@ -2369,10 +2379,99 @@
           "guards": []
         }
       ],
-      "guards": [],
+      "guards": [
+        {
+          "trigger": "guard_employee_protocol",
+          "function": "guard_employee_protocol",
+          "timing": "before",
+          "events": "insert or update or delete",
+          "source": "supabase/migrations/20261113120000_employee_protocol_acknowledgement.sql",
+          "functionSource": "supabase/migrations/20261128060000_employee_meeting_version_guard_minimal.sql",
+          "kind": "guard",
+          "readsOld": true,
+          "readsNew": true,
+          "raises": true,
+          "message": "Freigegebene oder auditierte Gespräche können nicht gelöscht werden",
+          "checks": [
+            {
+              "side": "OLD",
+              "operator": "in",
+              "negated": false,
+              "values": [
+                "acknowledged",
+                "pending_acknowledgement"
+              ]
+            },
+            {
+              "side": "OLD",
+              "operator": "in",
+              "negated": false,
+              "values": [
+                "acknowledged",
+                "pending_acknowledgement"
+              ]
+            },
+            {
+              "side": "OLD",
+              "operator": "in",
+              "negated": false,
+              "values": [
+                "acknowledged",
+                "pending_acknowledgement"
+              ]
+            },
+            {
+              "side": "NEW",
+              "operator": "in",
+              "negated": false,
+              "values": [
+                "acknowledged",
+                "pending_acknowledgement"
+              ]
+            },
+            {
+              "side": "NEW",
+              "operator": "in",
+              "negated": false,
+              "values": [
+                "acknowledged",
+                "pending_acknowledgement"
+              ]
+            }
+          ],
+          "states": [
+            "acknowledged",
+            "pending_acknowledgement"
+          ],
+          "blockedTo": [
+            "acknowledged",
+            "pending_acknowledgement"
+          ],
+          "blockedFrom": [
+            "acknowledged",
+            "pending_acknowledgement"
+          ],
+          "allowedTo": [
+            "cancelled",
+            "cancelled_by_employee",
+            "completed",
+            "in_progress",
+            "rescheduled",
+            "scheduled"
+          ],
+          "allowedFrom": [
+            "cancelled",
+            "cancelled_by_employee",
+            "completed",
+            "in_progress",
+            "rescheduled",
+            "scheduled"
+          ]
+        }
+      ],
       "reconciliation": null,
       "limitations": [
-        "Kein Trigger im Migrationsbestand gefunden; Übergänge sind nicht durch Trigger abgesichert.",
+        "Guards werden zitiert, aber nicht als vollständiger Automat interpretiert; abgeleitet werden nur belegte Schreibvorgänge.",
         "Übergänge ohne belegten Ausgangszustand sind mit \"from\": null gekennzeichnet."
       ],
       "findings": [

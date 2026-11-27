@@ -17,21 +17,21 @@ Der Katalog ist das führende Verzeichnis des tatsächlich implementierten Funkt
 | Potenziell verwaist | 0 |
 | Prüfkandidaten (offene Punkte) | 52 |
 | Funktionen mit Selbsttest | 104 |
-| Funktionen mit Unit-Test | 61 |
-| Funktionen mit Integrationstest | 1 |
+| Funktionen mit Unit-Test | 62 |
+| Funktionen mit Integrationstest | 2 |
 | Funktionen mit Browser-Test | 4 |
 | Funktionen mit Security-Test | 1 |
-| Funktionen ohne zugeordneten Test | 121 |
+| Funktionen ohne zugeordneten Test | 120 |
 | Funktionen ohne Dokumentationsverweis | 171 |
-| Funktionen mit bekannten Einschränkungen | 57 |
+| Funktionen mit bekannten Einschränkungen | 58 |
 | Nicht nachweisbar eingebundene Funktionen | 1 |
-| Technische Zuordnungen | 1297 |
+| Technische Zuordnungen | 1299 |
 
 ## Funktionsbereiche
 
 | Bereich | Unterbereiche | Funktionen | implementiert | ohne Test | ohne Doku |
 |---|---:|---:|---:|---:|---:|
-| [Administration, Sicherheit & Qualität](./verwaltung.md) | 11 | 24 | 24 | 14 | 9 |
+| [Administration, Sicherheit & Qualität](./verwaltung.md) | 11 | 24 | 24 | 13 | 9 |
 | [Aufgaben & Stafette](./aufgaben.md) | 12 | 18 | 18 | 1 | 9 |
 | [Automatisierung & Workflows](./automation.md) | 8 | 15 | 15 | 9 | 8 |
 | [Dokumente, Briefe & Annotationen](./dokumente.md) | 3 | 18 | 18 | 10 | 14 |
@@ -88,12 +88,12 @@ Der Katalog ist das führende Verzeichnis des tatsächlich implementierten Funkt
 | Abdeckung | Funktionen |
 |---|---:|
 | Selbsttest | 103 |
-| Unit-Test | 36 |
+| Unit-Test | 37 |
 | Integrationstest | 1 |
 | Browser-Test | 0 |
 | Security-Test | 1 |
 | teilweise | 0 |
-| kein Test | 121 |
+| kein Test | 120 |
 | ungeprüft | 0 |
 
 ## Konsistenz
