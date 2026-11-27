@@ -49,7 +49,7 @@ _Auto-generiert mit `npm run update:feature-catalog` aus dem zentralen Funktions
 
 ## Rollen
 
-`abgeordneter`, `bueroleitung`, `mitarbeiter`, `praktikant`, `system`
+`abgeordneter`, `bueroleitung`, `mitarbeiter`, `praktikant`, `system`, `superadmin`
 
 ## Datenbanktabellen
 
@@ -61,7 +61,7 @@ _Auto-generiert mit `npm run update:feature-catalog` aus dem zentralen Funktions
 |---|---|---:|---:|---|
 | `case-file-lifecycle` | Fallakte mit Folgetabellen (Container) im Unterschied zum Vorgang | 17 | 10 | — |
 | `case-item-lifecycle` | Vorgangs-Lifecycle (Am Zug → Schritt → Wiedervorlage → Entscheidung → Tageszettel → Abschluss) | 9 | 5 | — |
-| `parlis` | Parlamentarische Vorgänge | 0 | 13 | — |
+| `parlis` | Parlamentarische Vorgänge | 0 | 14 | — |
 
 ## Selbsttest-Schritte
 
@@ -97,6 +97,7 @@ Diese Schritte führen die Szenarien aus; „letzter Lauf“ stammt aus `src/fea
 | `case-item-lifecycle` | `step-done` | Schritt erledigt → Schritt leer, „Schritt festlegen“ erscheint wieder | db | — |
 | `case-item-lifecycle` | `complete` | Vorgang abschließen | db | — |
 | `case-item-lifecycle` | `tenant-boundary` | Vorgang lässt sich keinem fremden Büro zuordnen | workflow | — |
+| `parlis` | `parlis-ministry-current-period` | Administration führt nur die Ministerien der laufenden Wahlperiode | logic | — |
 | `parlis` | `parlis-ministry-history` | Namensgeschichte der Ministerien belegt und den Ressortlinien zugeordnet | logic | — |
 | `parlis` | `parlis-groups` | Monate, Schlagwörter und fehlende Ressorts korrekt zuordnen | logic | — |
 | `parlis` | `parlis-inline-authors` | Urhebernamen mit Titeln und Namensbestandteilen im Originaltext verlinken | logic | — |
@@ -140,16 +141,17 @@ Diese Schritte führen die Szenarien aus; „letzter Lauf“ stammt aus `src/fea
 1. Geprüfte Namensvarianten auf die richtigen Abgeordnetenprofile verlinken
 2. Gespeicherte Initiativenbilanz mit begrenzten Ranglisten
 3. Ressortvorschläge für mehrere Wahlperioden
-4. Vorgangstypen der 17. Wahlperiode im Profil zusammenfassen
-5. Fünf persönlich zugeordnete Anträge mit gefiltertem Link im Profil
-6. Schlagwortvorschläge bei Eingabe begrenzen
-7. Serverseitige Suche und begrenzte Dokumentenseiten
-8. Schlagwörter, Fraktionsfilter und mehrere Urheber
-9. Urhebertext mit Titeln und Namensbestandteilen bleibt vollständig
-10. Monatsgruppierung, eindeutige Schlagwörter und leere Ressorts
-11. Unterzeichner und Texte kommen aus dem Detail-JSON und bleiben unvollständig lesbar
-12. Importierte Vorgänge sind lesbar
-13. Verknüpfte Urheber führen zu einem Mandat derselben Wahlperiode
+4. Laufende Wahlperiode und ihre Ministerien in der Administration
+5. Vorgangstypen der 17. Wahlperiode im Profil zusammenfassen
+6. Fünf persönlich zugeordnete Anträge mit gefiltertem Link im Profil
+7. Schlagwortvorschläge bei Eingabe begrenzen
+8. Serverseitige Suche und begrenzte Dokumentenseiten
+9. Schlagwörter, Fraktionsfilter und mehrere Urheber
+10. Urhebertext mit Titeln und Namensbestandteilen bleibt vollständig
+11. Monatsgruppierung, eindeutige Schlagwörter und leere Ressorts
+12. Unterzeichner und Texte kommen aus dem Detail-JSON und bleiben unvollständig lesbar
+13. Importierte Vorgänge sind lesbar
+14. Verknüpfte Urheber führen zu einem Mandat derselben Wahlperiode
 
 ## Funktionsdetails
 
@@ -764,7 +766,7 @@ Erfasst interne Notizen an einer Fallakte und zeigt sie im Verlauf; das Szenario
 - Keine.
 
 ### `parlis.ministry-topics` — Ministerien und zentrale Themen zuordnen
-Vergleicht PARLIS-Ministerien nach Wahlperiode, schlägt Ressortlinien vor und speichert überprüfte Zuordnungen und zentrale Themen pro Arbeitsbereich.
+Stellt die Ministerien der laufenden Wahlperiode in den Mittelpunkt, führt PARLIS-Ressorts mit den hinterlegten Vorschlägen zusammen, ordnet sie den Ressortlinien zu und speichert zentrale Themen pro Arbeitsbereich. Frühere Wahlperioden bleiben als Zuordnungsarchiv aufklappbar; die Namens- und Ministerhistorie zeigt der Super-Admin-Bereich.
 
 - **Kategorie:** fachlich
 - **Implementierung:** implementiert
@@ -789,6 +791,7 @@ Vergleicht PARLIS-Ministerien nach Wahlperiode, schlägt Ressortlinien vor und s
 **Nachweise im Quellcode**
 
 - supabase/migrations/20261128000000_parlis_ministry_topics.sql
+- src/features/parlis/ministryAdminModel.ts
 - src/features/selftest/scenarios/parlis.ts
 
 **Bekannte Einschränkungen**
@@ -800,16 +803,16 @@ Vergleicht PARLIS-Ministerien nach Wahlperiode, schlägt Ressortlinien vor und s
 - Keine.
 
 ### `parlis.ministry-history` — Namensgeschichte der Ministerien seit 1952 nachschlagen
-Listet die amtlichen Bezeichnungen der Ministerien Baden-Württembergs seit 1952 mit Laufzeit, Ressortlinie und Gesetzblatt-Fundstelle (alle Phasen im Original belegt, einschließlich der Stufen ab 2001 und der Fassung des Ländlichen Raums von 1987/1988), ordnet sie den Wahlperioden auf Basis der Systemzeiträume aus election_history_periods zu, nennt je Ressortlinie die Ministerinnen und Minister mit Amtszeit und dokumentiert geprüfte Abweichungen zu Chronik und Ministeriumsartikeln.
+Listet im Super-Admin-Bereich die amtlichen Bezeichnungen der Ministerien Baden-Württembergs seit 1952 mit Laufzeit, Ressortlinie und Gesetzblatt-Fundstelle (alle Phasen im Original belegt, einschließlich der Stufen ab 2001 und der Fassung des Ländlichen Raums von 1987/1988), ordnet sie den Wahlperioden auf Basis der Systemzeiträume aus election_history_periods zu, nennt je Ressortlinie die Ministerinnen und Minister mit Amtszeit und dokumentiert geprüfte Abweichungen zu Chronik und Ministeriumsartikeln. Die Administration „Ministerien & Themen“ zeigt diese Historie bewusst nicht, sondern nur die Zuordnung der laufenden Wahlperiode.
 
 - **Kategorie:** fachlich
 - **Implementierung:** implementiert
 - **Einbindung:** UI
 - **Testabdeckung:** Selbsttest
 - **Letztes Testergebnis:** nicht-ausgefuehrt (kein Laufnachweis importiert; nicht aus der Existenz einer Testdatei abgeleitet)
-- **Rollen:** `abgeordneter`, `bueroleitung`, `mitarbeiter`
-- **Routen:** `/daten`
-- **Frontend-Komponenten:** `src/features/ministries-history/MinistryHistoryView.tsx`, `src/components/admin/DataView.tsx`
+- **Rollen:** `superadmin`
+- **Routen:** `/administration`
+- **Frontend-Komponenten:** `src/features/ministries-history/MinistryHistoryView.tsx`, `src/pages/Administration.tsx`, `src/components/administration/AdminSidebar.tsx`
 - **Services:** —
 - **Hooks:** —
 - **Edge Functions:** —

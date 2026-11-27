@@ -6,7 +6,7 @@ Die Angaben sind deklarierte Mindestrollen. Die tatsächlich wirksame Berechtigu
 
 ## Funktionen je Rolle
 
-### `abgeordneter` — 182 Funktionen
+### `abgeordneter` — 181 Funktionen
 
 - `mywork.dashboard` — Meine Arbeit – Dashboard
 - `mywork.tabs` — Meine Arbeit – Bereichsnavigation und Einstellungen
@@ -164,7 +164,6 @@ Die Angaben sind deklarierte Mindestrollen. Die tatsächlich wirksame Berechtigu
 - `casefiles.document-upload` — Datei aus der Akte ablegen
 - `casefiles.notes` — Fallakten-Notizen
 - `parlis.ministry-topics` — Ministerien und zentrale Themen zuordnen
-- `parlis.ministry-history` — Namensgeschichte der Ministerien seit 1952 nachschlagen
 - `election.analysis` — Wahlanalyse durchführen
 - `election.analysis-navigation` — Analyse-Navigation und gespeicherte Szenarien
 - `election.analysis-map` — Analyse-Karten und Wahlkreiszuschnitt
@@ -191,7 +190,7 @@ Die Angaben sind deklarierte Mindestrollen. Die tatsächlich wirksame Berechtigu
 - `knowledge.global-question` — Globale Wissensfrage aus jedem Bereich
 - `knowledge.persons` — Wissenspersonen und Zuständigkeit
 
-### `bueroleitung` — 227 Funktionen
+### `bueroleitung` — 226 Funktionen
 
 - `mywork.dashboard` — Meine Arbeit – Dashboard
 - `mywork.dashboard.today-priorities` — Heute zuerst
@@ -390,7 +389,6 @@ Die Angaben sind deklarierte Mindestrollen. Die tatsächlich wirksame Berechtigu
 - `casefiles.document-upload` — Datei aus der Akte ablegen
 - `casefiles.notes` — Fallakten-Notizen
 - `parlis.ministry-topics` — Ministerien und zentrale Themen zuordnen
-- `parlis.ministry-history` — Namensgeschichte der Ministerien seit 1952 nachschlagen
 - `election.analysis` — Wahlanalyse durchführen
 - `election.analysis-navigation` — Analyse-Navigation und gespeicherte Szenarien
 - `election.analysis-map` — Analyse-Karten und Wahlkreiszuschnitt
@@ -421,7 +419,7 @@ Die Angaben sind deklarierte Mindestrollen. Die tatsächlich wirksame Berechtigu
 - `knowledge.persons` — Wissenspersonen und Zuständigkeit
 - `knowledge.management` — Wissensverwaltung
 
-### `mitarbeiter` — 187 Funktionen
+### `mitarbeiter` — 186 Funktionen
 
 - `mywork.dashboard` — Meine Arbeit – Dashboard
 - `mywork.dashboard.today-priorities` — Heute zuerst
@@ -585,7 +583,6 @@ Die Angaben sind deklarierte Mindestrollen. Die tatsächlich wirksame Berechtigu
 - `casefiles.links` — Fallakte verknüpfen (Dokumente, Kontakte, Themen, Notizen)
 - `casefiles.document-upload` — Datei aus der Akte ablegen
 - `casefiles.notes` — Fallakten-Notizen
-- `parlis.ministry-history` — Namensgeschichte der Ministerien seit 1952 nachschlagen
 - `election.analysis` — Wahlanalyse durchführen
 - `election.analysis-navigation` — Analyse-Navigation und gespeicherte Szenarien
 - `election.analysis-map` — Analyse-Karten und Wahlkreiszuschnitt
@@ -711,7 +708,7 @@ Die Angaben sind deklarierte Mindestrollen. Die tatsächlich wirksame Berechtigu
 - `knowledge.review` — Wissensantwort prüfen und freigeben
 - `knowledge.management` — Wissensverwaltung
 
-### `superadmin` — 27 Funktionen
+### `superadmin` — 28 Funktionen
 
 - `admin.workspace` — Administrationsbereich und Zugriff
 - `admin.roles` — Benutzerrollen verwalten
@@ -726,6 +723,7 @@ Die Angaben sind deklarierte Mindestrollen. Die tatsächlich wirksame Berechtigu
 - `admin.tenants` — Mandantenverwaltung
 - `admin.users-sessions` — Benutzer, MFA und Sitzungen
 - `admin.feature-catalog` — Funktionskatalog und Inventarisierung
+- `parlis.ministry-history` — Namensgeschichte der Ministerien seit 1952 nachschlagen
 - `election.research-workbench` — Analyse-Workbench und Kommunalpanel
 - `election.districts-import` — Wahlkreise und Gebiete importieren
 - `election.representatives` — Abgeordnete und Parteiassoziationen importieren
@@ -1004,7 +1002,7 @@ Die Angaben sind deklarierte Mindestrollen. Die tatsächlich wirksame Berechtigu
 | `notifications.inbox` | `abgeordneter`, `bueroleitung`, `mitarbeiter`, `praktikant` |
 | `notifications.preferences` | `abgeordneter`, `bueroleitung`, `mitarbeiter`, `praktikant` |
 | `parlis.initiative-rankings` | Keine besondere Rolle deklariert |
-| `parlis.ministry-history` | `abgeordneter`, `bueroleitung`, `mitarbeiter` |
+| `parlis.ministry-history` | `superadmin` |
 | `parlis.ministry-topics` | `abgeordneter`, `bueroleitung` |
 | `parlis.proceedings` | Keine besondere Rolle deklariert |
 | `platform.auth` | `oeffentlich`, `abgeordneter`, `bueroleitung`, `mitarbeiter`, `praktikant` |

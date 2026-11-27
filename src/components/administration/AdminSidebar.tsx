@@ -170,6 +170,7 @@ export const adminMenuItems: AdminMenuItem[] = [
     superAdminOnly: true,
     children: [
       { id: "election-history", label: "Wahldaten & Mandatshistorie", icon: Landmark },
+      { id: "ministry-history", label: "Ministerien-Historie", icon: Landmark },
       { id: "tenants", label: "Tenants", icon: Building2 },
       { id: "feature-catalog", label: "Funktionskatalog", icon: BookOpen },
       { id: "push-tests", label: "Push-System Tests", icon: Bell },

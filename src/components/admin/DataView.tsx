@@ -4,9 +4,8 @@ import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs';
 
 const ElectionAnalysis = lazy(() => import('@/features/election-analysis/ElectionAnalysis'));
 const ParlisView = lazy(() => import('@/features/parlis/ParlisView'));
-const MinistryHistoryView = lazy(() => import('@/features/ministries-history/MinistryHistoryView'));
 
-const bereiche = ['wahl', 'parlis', 'ministerien'] as const;
+const bereiche = ['wahl', 'parlis'] as const;
 type Bereich = (typeof bereiche)[number];
 
 export function DataView() {
@@ -25,7 +24,6 @@ export function DataView() {
         <TabsList className="h-auto flex-wrap" aria-label="Datenbereiche">
           <TabsTrigger value="wahl">Wahlanalyse</TabsTrigger>
           <TabsTrigger value="parlis">Parlamentarische Vorgänge</TabsTrigger>
-          <TabsTrigger value="ministerien">Ministerien seit 1952</TabsTrigger>
         </TabsList>
         <TabsContent value="wahl">
           <Suspense fallback={<p role="status">Wahlanalyse wird geladen …</p>}>
@@ -35,11 +33,6 @@ export function DataView() {
         <TabsContent value="parlis">
           <Suspense fallback={<p role="status">Parlamentarische Vorgänge werden geladen …</p>}>
             <ParlisView />
-          </Suspense>
-        </TabsContent>
-        <TabsContent value="ministerien">
-          <Suspense fallback={<p role="status">Ministerienübersicht wird geladen …</p>}>
-            <MinistryHistoryView />
           </Suspense>
         </TabsContent>
       </Tabs>
