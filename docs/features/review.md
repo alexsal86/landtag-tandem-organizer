@@ -105,7 +105,7 @@ Eindeutige Fehler werden im CI-Lauf ausgegeben und brechen die Prüfung ab; sie 
 - `knowledge.collaboration` — Kollaborative Wissensbearbeitung
 - `knowledge.management` — Wissensverwaltung
 
-## Funktionen ohne Dokumentationsverweis (171)
+## Funktionen ohne Dokumentationsverweis (172)
 
 - `mywork.dashboard.today-priorities` — Heute zuerst
 - `mywork.tabs` — Meine Arbeit – Bereichsnavigation und Einstellungen
@@ -250,6 +250,7 @@ Eindeutige Fehler werden im CI-Lauf ausgegeben und brechen die Prüfung ab; sie 
 - `casefiles.document-upload` — Datei aus der Akte ablegen
 - `casefiles.notes` — Fallakten-Notizen
 - `parlis.ministry-topics` — Ministerien und zentrale Themen zuordnen
+- `parlis.ministry-history` — Namensgeschichte der Ministerien seit 1952 nachschlagen
 - `parlis.initiative-rankings` — Initiativenbilanz einer abgeschlossenen Wahlperiode anzeigen
 - `parlis.proceedings` — Parlamentarische Vorgänge auswerten
 - `election.analysis-navigation` — Analyse-Navigation und gespeicherte Szenarien

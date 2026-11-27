@@ -2,6 +2,7 @@ import { parlisDeputyUrl } from "@/features/parlis/navigation";
 import { documentParties, keywords } from "@/features/parlis/documents";
 import { authorSegments, hasMultipleAuthors } from "@/features/parlis/authors";
 import { groupsFor } from "@/features/parlis/grouping";
+import { ministryPhases, periodsForPhase, phasesForLine, ressortLines } from "@/features/ministries-history/data";
 import { supabase } from "@/integrations/supabase/client";
 import type { TestScenario } from "../types";
 
@@ -9,10 +10,28 @@ export const parlisScenario: TestScenario = {
   id: "parlis",
   title: "Parlamentarische Vorgänge",
   description: "Prüft die Gruppierung und den Lesezugriff auf die Parlamentsdokumentation.",
-  features: ["parlis.proceedings", "parlis.ministry-topics", "parlis.initiative-rankings"],
+  features: ["parlis.proceedings", "parlis.ministry-topics", "parlis.initiative-rankings", "parlis.ministry-history"],
   touches: [],
   checks: ["Geprüfte Namensvarianten auf die richtigen Abgeordnetenprofile verlinken", "Gespeicherte Initiativenbilanz mit begrenzten Ranglisten", "Ressortvorschläge für mehrere Wahlperioden", "Vorgangstypen der 17. Wahlperiode im Profil zusammenfassen", "Fünf persönlich zugeordnete Anträge mit gefiltertem Link im Profil", "Schlagwortvorschläge bei Eingabe begrenzen", "Serverseitige Suche und begrenzte Dokumentenseiten", "Schlagwörter, Fraktionsfilter und mehrere Urheber", "Urhebertext mit Titeln und Namensbestandteilen bleibt vollständig", "Monatsgruppierung, eindeutige Schlagwörter und leere Ressorts", "Importierte Vorgänge sind lesbar", "Verknüpfte Urheber führen zu einem Mandat derselben Wahlperiode"],
   steps: [{
+    id: "parlis-ministry-history",
+    label: "Namensgeschichte der Ministerien belegt und den Ressortlinien zugeordnet",
+    kind: "logic",
+    run: async () => {
+      const lineIds = new Set(ressortLines.map(line => line.id));
+      const sourced = ministryPhases.every(phase => phase.source.citation.length > 0 && lineIds.has(phase.lineId));
+      const kultus = phasesForLine("education").find(phase => phase.from === "1954-08-06");
+      const sozial = ministryPhases.find(phase => phase.id === "social-1996");
+      return {
+        ok: sourced
+          && ministryPhases.length >= 40
+          && kultus?.source.citation === "GBl. 1954 S. 109"
+          && sozial?.name === "Sozialministerium (SM)"
+          && sozial !== undefined && periodsForPhase(sozial).includes(12),
+        message: "Jede Phase nennt Quelle und Ressortlinie; Kultus 1954 und Sozialministerium 1996 fallen in die erwarteten Wahlperioden.",
+      };
+    },
+  }, {
     id: "parlis-groups",
     label: "Monate, Schlagwörter und fehlende Ressorts korrekt zuordnen",
     kind: "logic",

@@ -1732,7 +1732,8 @@
       "features": [
         "parlis.proceedings",
         "parlis.ministry-topics",
-        "parlis.initiative-rankings"
+        "parlis.initiative-rankings",
+        "parlis.ministry-history"
       ],
       "writes": [],
       "registered": true

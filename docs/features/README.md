@@ -8,24 +8,24 @@ Der Katalog ist das führende Verzeichnis des tatsächlich implementierten Funkt
 
 | Kennzahl | Wert |
 |---|---:|
-| Erfasste Funktionen | 262 |
+| Erfasste Funktionen | 263 |
 | Funktionsbereiche | 16 |
 | Unterbereiche | 110 |
-| Implementiert | 258 |
+| Implementiert | 259 |
 | Teilweise implementiert | 2 |
 | Deaktiviert | 0 |
 | Potenziell verwaist | 0 |
 | Prüfkandidaten (offene Punkte) | 52 |
-| Funktionen mit Selbsttest | 133 |
-| Funktionen mit Unit-Test | 62 |
+| Funktionen mit Selbsttest | 134 |
+| Funktionen mit Unit-Test | 63 |
 | Funktionen mit Integrationstest | 2 |
 | Funktionen mit Browser-Test | 4 |
 | Funktionen mit Security-Test | 1 |
 | Funktionen ohne zugeordneten Test | 91 |
-| Funktionen ohne Dokumentationsverweis | 171 |
+| Funktionen ohne Dokumentationsverweis | 172 |
 | Funktionen mit bekannten Einschränkungen | 80 |
 | Nicht nachweisbar eingebundene Funktionen | 1 |
-| Technische Zuordnungen | 1302 |
+| Technische Zuordnungen | 1305 |
 
 ## Funktionsbereiche
 
@@ -44,7 +44,7 @@ Der Katalog ist das führende Verzeichnis des tatsächlich implementierten Funkt
 | [Redaktion, News & Chat](./kommunikation.md) | 5 | 14 | 14 | 11 | 10 |
 | [Termine, Anfragen & Briefings](./termine.md) | 8 | 17 | 17 | 4 | 11 |
 | [Veranstaltungen & Umfragen](./veranstaltungen.md) | 3 | 9 | 8 | 2 | 6 |
-| [Vorgänge & Fallakten](./vorgaenge.md) | 7 | 20 | 19 | 2 | 15 |
+| [Vorgänge & Fallakten](./vorgaenge.md) | 7 | 21 | 20 | 2 | 16 |
 | [Wahlanalyse & Wahlhistorie](./wahl.md) | 4 | 23 | 23 | 12 | 15 |
 | [Wissensbereich](./wissen.md) | 8 | 16 | 16 | 5 | 11 |
 
@@ -52,7 +52,7 @@ Der Katalog ist das führende Verzeichnis des tatsächlich implementierten Funkt
 
 | Kategorie | Funktionen |
 |---|---:|
-| fachlich | 171 |
+| fachlich | 172 |
 | administrativ | 26 |
 | automatisiert | 21 |
 | integration | 27 |
@@ -63,7 +63,7 @@ Der Katalog ist das führende Verzeichnis des tatsächlich implementierten Funkt
 
 | Status | Funktionen |
 |---|---:|
-| implementiert | 258 |
+| implementiert | 259 |
 | teilweise | 2 |
 | deaktiviert | 0 |
 | verwaist | 0 |
@@ -75,7 +75,7 @@ Der Katalog ist das führende Verzeichnis des tatsächlich implementierten Funkt
 
 | Einbindung | Funktionen |
 |---|---:|
-| UI | 130 |
+| UI | 131 |
 | systemseitig | 37 |
 | rollenabhängig | 90 |
 | Feature Flag | 1 |
@@ -87,7 +87,7 @@ Der Katalog ist das führende Verzeichnis des tatsächlich implementierten Funkt
 
 | Abdeckung | Funktionen |
 |---|---:|
-| Selbsttest | 115 |
+| Selbsttest | 116 |
 | Unit-Test | 38 |
 | Integrationstest | 1 |
 | Browser-Test | 0 |

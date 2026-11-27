@@ -2378,10 +2378,15 @@
           "tables": [],
           "features": [
             "parlis.initiative-rankings",
+            "parlis.ministry-history",
             "parlis.ministry-topics",
             "parlis.proceedings"
           ],
           "steps": [
+            {
+              "id": "parlis-ministry-history",
+              "label": "Namensgeschichte der Ministerien belegt und den Ressortlinien zugeordnet"
+            },
             {
               "id": "parlis-groups",
               "label": "Monate, Schlagwörter und fehlende Ressorts korrekt zuordnen"

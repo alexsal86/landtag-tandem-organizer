@@ -366,6 +366,24 @@
       "scenarios": ["parlis"]
     },
     {
+      "id": "parlis.ministry-history",
+      "subarea": "Parlamentsdokumentation",
+      "name": "Namensgeschichte der Ministerien seit 1952 nachschlagen",
+      "description": "Listet die amtlichen Bezeichnungen der Ministerien Baden-Württembergs seit 1952 mit Laufzeit, Ressortlinie und Gesetzblatt-Fundstelle, ordnet sie den Wahlperioden zu und dokumentiert geprüfte Abweichungen zu Chronik und Ministeriumsartikeln.",
+      "category": "fachlich",
+      "implementationStatus": "implementiert",
+      "integrationStatus": "ui",
+      "coverage": "selftest",
+      "testResult": "nicht-ausgefuehrt",
+      "routes": ["/daten"],
+      "components": ["src/features/ministries-history/MinistryHistoryView.tsx", "src/components/admin/DataView.tsx"],
+      "evidence": ["src/features/ministries-history/data.ts", "src/features/selftest/scenarios/parlis.ts"],
+      "tables": [],
+      "roles": ["abgeordneter", "bueroleitung", "mitarbeiter"],
+      "scenarios": ["parlis"],
+      "unitTests": ["src/features/ministries-history/data.test.ts"]
+    },
+    {
       "id": "parlis.initiative-rankings",
       "subarea": "Parlamentsdokumentation",
       "name": "Initiativenbilanz einer abgeschlossenen Wahlperiode anzeigen",

@@ -6,10 +6,10 @@ _Auto-generiert mit `npm run update:feature-catalog` aus dem zentralen Funktions
 
 ## Kennzahlen
 
-- Funktionen: **20** in **7** Unterbereichen
-- implementiert: **19**, teilweise: **0**, deaktiviert: **0**, potenziell verwaist: **0**
+- Funktionen: **21** in **7** Unterbereichen
+- implementiert: **20**, teilweise: **0**, deaktiviert: **0**, potenziell verwaist: **0**
 - ohne zugeordneten Test: **2**
-- ohne Dokumentationsverweis: **15**
+- ohne Dokumentationsverweis: **16**
 
 ## Funktionen
 
@@ -29,6 +29,7 @@ _Auto-generiert mit `npm run update:feature-catalog` aus dem zentralen Funktions
 | `casefiles.status-workflow` Fallakten-Status und Bearbeitungsstatus | Fallakten | fachlich | implementiert | UI | Selbsttest |
 | `parlis.initiative-rankings` Initiativenbilanz einer abgeschlossenen Wahlperiode anzeigen | Parlamentsdokumentation | fachlich | implementiert | UI | Selbsttest |
 | `parlis.ministry-topics` Ministerien und zentrale Themen zuordnen | Parlamentsdokumentation | fachlich | implementiert | rollenabhängig | Selbsttest |
+| `parlis.ministry-history` Namensgeschichte der Ministerien seit 1952 nachschlagen | Parlamentsdokumentation | fachlich | implementiert | UI | Selbsttest |
 | `parlis.proceedings` Parlamentarische Vorgänge auswerten | Parlamentsdokumentation | fachlich | implementiert | UI | Selbsttest |
 | `cases.triage` Vorgang triagieren (Wer ist am Zug?) | Triage | fachlich | implementiert | UI | Unit-Test |
 | `cases.handover` Vorgang weitergeben | Triage | fachlich | implementiert | rollenabhängig | Selbsttest |
@@ -96,6 +97,7 @@ Diese Schritte führen die Szenarien aus; „letzter Lauf“ stammt aus `src/fea
 | `case-item-lifecycle` | `step-done` | Schritt erledigt → Schritt leer, „Schritt festlegen“ erscheint wieder | db | — |
 | `case-item-lifecycle` | `complete` | Vorgang abschließen | db | — |
 | `case-item-lifecycle` | `tenant-boundary` | Vorgang lässt sich keinem fremden Büro zuordnen | workflow | — |
+| `parlis` | `parlis-ministry-history` | Namensgeschichte der Ministerien belegt und den Ressortlinien zugeordnet | logic | — |
 | `parlis` | `parlis-groups` | Monate, Schlagwörter und fehlende Ressorts korrekt zuordnen | logic | — |
 | `parlis` | `parlis-inline-authors` | Urhebernamen mit Titeln und Namensbestandteilen im Originaltext verlinken | logic | — |
 | `parlis` | `parlis-author-presentation` | Parteien ohne Klammern und mehrere Urheber erkennen | logic | — |
@@ -785,6 +787,42 @@ Vergleicht PARLIS-Ministerien nach Wahlperiode, schlägt Ressortlinien vor und s
 **Nachweise im Quellcode**
 
 - supabase/migrations/20261128000000_parlis_ministry_topics.sql
+- src/features/selftest/scenarios/parlis.ts
+
+**Bekannte Einschränkungen**
+
+- Keine.
+
+**Offene Prüfpunkte**
+
+- Keine.
+
+### `parlis.ministry-history` — Namensgeschichte der Ministerien seit 1952 nachschlagen
+Listet die amtlichen Bezeichnungen der Ministerien Baden-Württembergs seit 1952 mit Laufzeit, Ressortlinie und Gesetzblatt-Fundstelle, ordnet sie den Wahlperioden zu und dokumentiert geprüfte Abweichungen zu Chronik und Ministeriumsartikeln.
+
+- **Kategorie:** fachlich
+- **Implementierung:** implementiert
+- **Einbindung:** UI
+- **Testabdeckung:** Selbsttest
+- **Letztes Testergebnis:** nicht-ausgefuehrt (kein Laufnachweis importiert; nicht aus der Existenz einer Testdatei abgeleitet)
+- **Rollen:** `abgeordneter`, `bueroleitung`, `mitarbeiter`
+- **Routen:** `/daten`
+- **Frontend-Komponenten:** `src/features/ministries-history/MinistryHistoryView.tsx`, `src/components/admin/DataView.tsx`
+- **Services:** —
+- **Hooks:** —
+- **Edge Functions:** —
+- **Datenbankfunktionen:** —
+- **Tabellen:** —
+- **Abhängigkeiten:** —
+- **Selbsttests:** `parlis`
+- **Unit-Tests:** `src/features/ministries-history/data.test.ts`
+- **Integrationstests:** —
+- **Browser-Tests:** —
+- **Dokumentation:** —
+
+**Nachweise im Quellcode**
+
+- src/features/ministries-history/data.ts
 - src/features/selftest/scenarios/parlis.ts
 
 **Bekannte Einschränkungen**
