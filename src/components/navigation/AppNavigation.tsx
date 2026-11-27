@@ -600,72 +600,13 @@ export function AppNavigation({
   // ─── Panel renderers ───
 
   const renderHomePanel = () => (
-    <>
-      {/* Main Navigation */}
-      <div className="flex-1 flex flex-col py-2 px-2 gap-0.5 overflow-y-auto">
+    <div className="min-h-0 flex-1 overflow-y-auto px-2 py-2">
+      <div className="flex flex-col gap-0.5">
         {visibleGroups.map(group => renderNavGroup(group))}
       </div>
 
-      {/* Recently Visited */}
-      {showRecent && recentPages.length > 0 && (
-        <div className="px-2 py-2 border-t border-border">
-          <div className="flex items-center px-2 mb-1">
-            <span className="text-[11px] font-medium text-[hsl(var(--nav-muted))] uppercase tracking-wider">
-              Kürzlich besucht
-            </span>
-          </div>
-          {recentPages.slice(0, 5).map(page => {
-            const hasTabRoute = page.route.includes('?');
-            const quickAccessActive = isInQuickAccess(page.id);
-            const handleClick = () => {
-              if (hasTabRoute) {
-                navigate(page.route);
-                setActivePanel('home');
-              } else {
-                // Extract section id from route or use page.id
-                const sectionId = page.route.startsWith('/') ? page.route.slice(1) : page.id;
-                handleNavigationClick(sectionId);
-              }
-            };
-            return (
-              <div key={page.id} className="group flex items-center">
-                <button
-                  onClick={handleClick}
-                  className={cn(
-                    "flex-1 flex items-center gap-2 py-1 px-2 rounded-md text-[12px] transition-colors truncate",
-                    "hover:bg-[hsl(var(--nav-hover))]",
-                    activeSection === page.id && "bg-[hsl(var(--nav-active-bg))] font-medium"
-                  )}
-                >
-                  <Clock className="h-3 w-3 text-[hsl(var(--nav-muted))] shrink-0" />
-                  <span className="truncate">{page.label}</span>
-                </button>
-                <button
-                  onClick={() => {
-                    if (quickAccessActive) {
-                      removePage(page.id);
-                    } else {
-                      addPage({ id: page.id, label: page.label, icon: page.icon, route: page.route });
-                    }
-                  }}
-                  className={cn(
-                    "h-5 w-5 rounded flex items-center justify-center transition-all shrink-0",
-                    quickAccessActive
-                      ? "opacity-100"
-                      : "opacity-0 group-hover:opacity-100 hover:bg-[hsl(var(--nav-hover))]"
-                  )}
-                  aria-label={quickAccessActive ? "Aus Schnellzugriff entfernen" : "Zum Schnellzugriff hinzufügen"}
-                >
-                  <Star className={cn("h-3 w-3", quickAccessActive ? "fill-current text-palette-amber" : "text-[hsl(var(--nav-muted))]")} />
-                </button>
-              </div>
-            );
-          })}
-        </div>
-      )}
-
       {/* Quick Access / Favoriten */}
-      <div className="px-2 py-2 border-t border-border">
+      <div className="mt-3 border-t border-border pt-2">
         {(() => {
           const QUICK_ACCESS_PAGE_SIZE = 8;
           const quickAccessPageCount = Math.max(1, Math.ceil(quickAccessPages.length / QUICK_ACCESS_PAGE_SIZE));
@@ -895,7 +836,64 @@ export function AppNavigation({
         })()}
       </div>
 
-    </>
+      {/* Recently Visited */}
+      {showRecent && recentPages.length > 0 && (
+        <div className="mt-3 border-t border-border pt-2">
+          <div className="flex items-center px-2 mb-1">
+            <span className="text-[11px] font-medium text-[hsl(var(--nav-muted))] uppercase tracking-wider">
+              Kürzlich besucht
+            </span>
+          </div>
+          {recentPages.slice(0, 5).map(page => {
+            const hasTabRoute = page.route.includes('?');
+            const quickAccessActive = isInQuickAccess(page.id);
+            const handleClick = () => {
+              if (hasTabRoute) {
+                navigate(page.route);
+                setActivePanel('home');
+              } else {
+                // Extract section id from route or use page.id
+                const sectionId = page.route.startsWith('/') ? page.route.slice(1) : page.id;
+                handleNavigationClick(sectionId);
+              }
+            };
+            return (
+              <div key={page.id} className="group flex items-center">
+                <button
+                  onClick={handleClick}
+                  className={cn(
+                    "flex-1 flex items-center gap-2 py-1 px-2 rounded-md text-[12px] transition-colors truncate",
+                    "hover:bg-[hsl(var(--nav-hover))]",
+                    activeSection === page.id && "bg-[hsl(var(--nav-active-bg))] font-medium"
+                  )}
+                >
+                  <Clock className="h-3 w-3 text-[hsl(var(--nav-muted))] shrink-0" />
+                  <span className="truncate">{page.label}</span>
+                </button>
+                <button
+                  onClick={() => {
+                    if (quickAccessActive) {
+                      removePage(page.id);
+                    } else {
+                      addPage({ id: page.id, label: page.label, icon: page.icon, route: page.route });
+                    }
+                  }}
+                  className={cn(
+                    "h-5 w-5 rounded flex items-center justify-center transition-all shrink-0",
+                    quickAccessActive
+                      ? "opacity-100"
+                      : "opacity-0 group-hover:opacity-100 hover:bg-[hsl(var(--nav-hover))]"
+                  )}
+                  aria-label={quickAccessActive ? "Aus Schnellzugriff entfernen" : "Zum Schnellzugriff hinzufügen"}
+                >
+                  <Star className={cn("h-3 w-3", quickAccessActive ? "fill-current text-palette-amber" : "text-[hsl(var(--nav-muted))]")} />
+                </button>
+              </div>
+            );
+          })}
+        </div>
+      )}
+    </div>
   );
 
   const renderNotificationsPanel = () => {

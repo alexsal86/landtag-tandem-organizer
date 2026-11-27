@@ -2,8 +2,8 @@ import { useState, useCallback, useRef, useEffect } from 'react';
 
 const NAV_WIDTH_KEY = 'nav-sidebar-width';
 /** Die Navigation nimmt nie weniger Platz ein; das Layout nutzt diesen Wert als festen Anteil. */
-export const NAV_MIN_WIDTH = 270;
-const DEFAULT_WIDTH = NAV_MIN_WIDTH;
+export const NAV_MIN_WIDTH = 200;
+const DEFAULT_WIDTH = 220;
 const MIN_WIDTH = NAV_MIN_WIDTH;
 const MAX_WIDTH = 400;
 

@@ -201,7 +201,7 @@ All colors MUST be HSL.
     --radius: 0.5rem;
 
     /* Navigation Light Mode - etwas dunkler für klarere Abhebung */
-    --nav: 0 0% 92%;
+    --nav: 0 0% 100%;
     --nav-foreground: 0 0% 15%;
     --nav-accent: 0 0% 80%;
     --nav-hover: 0 0% 88%;
