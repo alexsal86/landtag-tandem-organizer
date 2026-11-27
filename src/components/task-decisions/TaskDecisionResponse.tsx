@@ -15,6 +15,7 @@ import { ResponseOption, getColorClasses, getDefaultOptions } from "@/lib/decisi
 import { LETTER_NOTIFICATION_TYPES } from '@/utils/letterNotificationTypes';
 import type { DecisionParticipantProfile } from './types/domain';
 import { notify } from "@/lib/notify";
+import { getDecisionRecommendationStyle } from "./recommendationStyle";
 
 interface ResponseSubmitMeta {
   responseType: string;
@@ -585,7 +586,8 @@ export const TaskDecisionResponse = ({
     if (!option?.recommended) return null;
 
     const badge = (
-      <span className="ml-1 rounded bg-palette-amber/20 px-1 py-0.5 text-[10px] font-medium text-palette-amber">
+      <span style={getDecisionRecommendationStyle(option.color)}
+        className="ml-1 rounded-full bg-(--recommendation-background) px-1.5 py-0.5 text-[10px] font-medium text-(color:--recommendation-text)">
         Empfohlen
       </span>
     );
@@ -628,9 +630,12 @@ export const TaskDecisionResponse = ({
     const solidColorClasses = getSolidColorClasses(option.color);
     const isSelected = selectedResponseKey === option.key;
 
-    const baseButtonClasses = isSelected
-      ? `${solidColorClasses} border`
-      : `${colorClasses.textClass} ${colorClasses.borderClass} hover:${colorClasses.bgClass} ${option.recommended ? "ring-1 ring-palette-amber/70" : ""}`;
+    const recommendationStyle = option.recommended ? getDecisionRecommendationStyle(option.color) : undefined;
+    const baseButtonClasses = recommendationStyle
+      ? "border-(--recommendation-border) text-(color:--recommendation-text) ring-4 ring-(--recommendation-background) hover:bg-(--recommendation-background) hover:text-(color:--recommendation-text) focus-visible:ring-2 focus-visible:ring-(--recommendation-border)"
+      : isSelected
+        ? `${solidColorClasses} border`
+        : `${colorClasses.textClass} ${colorClasses.borderClass} hover:${colorClasses.bgClass}`;
 
     const button = option.requires_comment ? (
       <Dialog key={option.key} open={isQuestionDialogOpen} onOpenChange={setIsQuestionDialogOpen}>
@@ -639,6 +644,7 @@ export const TaskDecisionResponse = ({
             variant="outline"
             size="sm"
             disabled={isLoading}
+            style={recommendationStyle}
             className={baseButtonClasses}
           >
             {getIcon(option.icon)}
@@ -711,6 +717,7 @@ export const TaskDecisionResponse = ({
           handleResponse(option.key, questionComment.trim() || undefined);
         }}
         disabled={isLoading}
+        style={recommendationStyle}
         className={baseButtonClasses}
       >
         {getIcon(option.icon)}

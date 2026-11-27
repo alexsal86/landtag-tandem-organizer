@@ -8,6 +8,7 @@ import { useAuth } from '@/hooks/useAuth';
 import { berlinDateShort, berlinDaysSince, berlinWeekday, berlinWeekdayDate } from '@/utils/berlinDate';
 import { useMyWorkDecisionsData } from '@/hooks/useMyWorkDecisionsData';
 import { needsOwnDecision, resetOwnDecisionResponse, MyWorkDecision } from '@/components/my-work/decisions/types';
+import { getDecisionRecommendationStyle } from '@/components/task-decisions/recommendationStyle';
 import { TaskDecisionResponse } from '@/components/task-decisions/TaskDecisionResponse';
 import { Button } from '@/components/ui/button';
 import { supabase } from '@/integrations/supabase/client';
@@ -37,20 +38,6 @@ const PROMPT_COLOR_CLASS: Record<string, string> = {
   default: 'border-border bg-muted/40',
 };
 
-// Textfarbe jeweils als dunkle Variante der Chip-Farbe, damit "Büro: …" auf dem
-// hellen Chip lesbar bleibt. Für Grün gilt das schon im Geburtstags-Chip genutzte
-// Dunkelgrün, die übrigen Töne entsprechen den 700er-Stufen derselben Hues.
-const RECOMMENDATION_COLOR_CLASS: Record<string, { background: string; text: string }> = {
-  green: { background: 'bg-[#eaf5df]', text: 'text-[#397d16]' },
-  red: { background: 'bg-palette-red/10', text: 'text-[#b91c1c]' },
-  orange: { background: 'bg-palette-orange/10', text: 'text-[#c2410c]' },
-  yellow: { background: 'bg-palette-yellow/10', text: 'text-[#a16207]' },
-  blue: { background: 'bg-palette-blue/10', text: 'text-[#1d4ed8]' },
-  purple: { background: 'bg-palette-purple/10', text: 'text-[#7e22ce]' },
-  lime: { background: 'bg-palette-lime/10', text: 'text-[#4d7c0f]' },
-  gray: { background: 'bg-palette-gray/10', text: 'text-[#374151]' },
-};
-
 interface DecisionRowProps {
   decision: MyWorkDecision;
   expanded: boolean;
@@ -66,7 +53,7 @@ interface DecisionRowProps {
 
 function DecisionRow({ decision, expanded, onToggle, nudge, onDismissConfirmed, onOpen, onPromptOpen, onPromptClose, onUndoConfirmed, forcePrompt }: DecisionRowProps) {
   const recommendation = decision.response_options?.find(option => option.recommended);
-  const recommendationColor = RECOMMENDATION_COLOR_CLASS[recommendation?.color ?? ''] ?? RECOMMENDATION_COLOR_CLASS.green;
+  const recommendationColor = getDecisionRecommendationStyle(recommendation?.color);
   const { label, isOverdue } = formatDeadline(decision.response_deadline);
   const [undoing, setUndoing] = useState(false);
   const [exiting, setExiting] = useState(false);
@@ -166,7 +153,7 @@ function DecisionRow({ decision, expanded, onToggle, nudge, onDismissConfirmed, 
           <span className="block break-words text-body-lg font-medium">{decision.title}</span>
           {label && <span className={`mt-1 block text-meta ${isOverdue ? "text-destructive" : "text-muted-foreground"}`}>{label}</span>}
         </span>
-        {recommendation && <span className={`ml-auto max-w-[45%] shrink-0 rounded-full px-2.5 py-1 text-caption font-medium ${recommendationColor.background} ${recommendationColor.text}`}>
+        {recommendation && <span style={recommendationColor} className="ml-auto max-w-[45%] shrink-0 rounded-full bg-(--recommendation-background) px-2.5 py-1 text-caption font-medium text-(color:--recommendation-text)">
           Büro: {recommendation.label}
         </span>}
         <ChevronRight className={cn("mt-1 h-4 w-4 shrink-0 transition-transform duration-500 motion-reduce:transition-none", expanded && "rotate-90")} aria-hidden="true" />
@@ -179,11 +166,11 @@ function DecisionRow({ decision, expanded, onToggle, nudge, onDismissConfirmed, 
         <div className="min-h-0 overflow-hidden">
           <div onClick={() => { if (!exiting) onOpen(decision.id); }}>
             {recommendation?.recommendation_reason?.trim() && (
-              <p className={`mb-3 rounded-xl px-3 py-2 text-meta text-foreground ${recommendationColor.background}`}><span className={cn("font-bold", recommendationColor.text)}>Büro empfiehlt: {recommendation.label}.</span> {recommendation.recommendation_reason.trim()}</p>
+              <p style={recommendationColor} className="mb-3 rounded-xl bg-(--recommendation-background) px-3 py-2 text-meta text-foreground"><span className="font-bold text-(color:--recommendation-text)">Büro empfiehlt: {recommendation.label}.</span> {recommendation.recommendation_reason.trim()}</p>
             )}
 
             {decision.isParticipant && decision.participant_id && !decision.hasResponded && !prompt && (
-              <div className="[&_button]:text-body [&_button]:font-medium" onClick={(e) => e.stopPropagation()}>
+              <div className="p-1 [&_button]:text-body [&_button]:font-medium" onClick={(e) => e.stopPropagation()}>
                 <TaskDecisionResponse
                   decisionId={decision.id}
                   participantId={decision.participant_id}
