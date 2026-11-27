@@ -1269,7 +1269,7 @@ export function AppNavigation({
         </div>
 
         {setView && (
-          <label className="mx-3 flex shrink-0 flex-wrap items-center gap-2 rounded-md border border-border px-2 py-2 text-xs">
+          <label className="mx-3 flex shrink-0 flex-wrap items-center gap-2 px-2 py-2 text-xs">
             <Switch
               aria-label="Abgeordnetenansicht"
               checked={isDeputyView}
@@ -1369,18 +1369,20 @@ export function AppNavigation({
           <UserStatusSelector showOnlineUsers>
             <button
               className="relative size-10 shrink-0 rounded-full flex items-center justify-center hover:bg-[hsl(var(--nav-hover))] transition-colors"
-              aria-label="Profil"
+              aria-label={statusDisplay ? `Profil · ${statusDisplay.label}` : "Profil"}
             >
-              <Avatar className="h-6 w-6">
+              <Avatar className="size-9">
                 <AvatarImage src={userProfile?.avatar_url || undefined} />
-                <AvatarFallback className="text-[10px]">
+                <AvatarFallback className="text-xs">
                   {userProfile?.display_name?.charAt(0)?.toUpperCase() || user?.email?.charAt(0)?.toUpperCase() || 'U'}
                 </AvatarFallback>
               </Avatar>
               {statusDisplay && (
-                <span className="absolute -bottom-0.5 -right-0.5 text-[10px]">
-                  {statusDisplay.emoji}
-                </span>
+                <span
+                  className="absolute bottom-0 right-0 size-3.5 rounded-full border-2 border-white"
+                  style={{ backgroundColor: statusDisplay.color }}
+                  title={statusDisplay.label}
+                />
               )}
             </button>
           </UserStatusSelector>
