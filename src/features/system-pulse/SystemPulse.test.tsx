@@ -105,6 +105,7 @@ describe("SystemPulse: selftest_runs", () => {
         steps: [{
           id: "agenda-combine", label: "Agenda: Hauptpunkt verschieben", status: "failed", message: "Agenda konnte nicht verschoben werden.", durationMs: 35,
           details: { step: { id: "agenda-combine", label: "Agenda: Hauptpunkt verschieben" }, error: { code: "42501", details: "policy meeting_agenda_update" } },
+          detailsTruncated: true, detailsOmitted: 180,
         }],
       },
     ];
@@ -167,6 +168,8 @@ describe("SystemPulse: selftest_runs", () => {
     const diagnostic = within(screen.getAllByTestId("pulse-step")[0]).getByTestId("pulse-step-diagnostic");
     expect(diagnostic).toHaveTextContent("Code 42501");
     expect(diagnostic).toHaveTextContent("policy meeting_agenda_update");
+    expect(within(screen.getAllByTestId("pulse-step")[0]).getByTestId("pulse-step-truncation"))
+      .toHaveTextContent("Details gekürzt: 180 Einträge ausgelassen");
 
     const failedStep = screen.getByRole("button", { name: /Agenda: Hauptpunkt.*fehlgeschlagen/ });
     fireEvent.click(failedStep);

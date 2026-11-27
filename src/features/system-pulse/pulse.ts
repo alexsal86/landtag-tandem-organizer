@@ -156,7 +156,11 @@ export interface PersistedRun {
   cleanup?: { status?: string; message?: string } | null;
   steps?: unknown;
 }
-export interface PersistedStep { id: string; label?: string; status: string; message?: string; durationMs?: number; details?: unknown }
+export interface PersistedStep {
+  id: string; label?: string; status: string; message?: string; durationMs?: number; details?: unknown;
+  detailsTruncated?: boolean;
+  detailsOmitted?: number;
+}
 
 export interface RunDetails {
   status: string;
@@ -244,6 +248,8 @@ export function latestRunSteps(rows: PersistedRun[]): Record<string, Record<stri
         message: typeof step.message === "string" ? step.message : undefined,
         durationMs: typeof step.durationMs === "number" ? step.durationMs : undefined,
         ...(step.details !== undefined ? { details: step.details } : {}),
+        ...(step.detailsTruncated === true ? { detailsTruncated: true } : {}),
+        ...(typeof step.detailsOmitted === "number" ? { detailsOmitted: step.detailsOmitted } : {}),
       };
     }
     result[scenarioId] = steps;
@@ -297,7 +303,11 @@ export function failedTestRows(
         const diagnostic = stepDiagnostic(step);
         // Der Puls zeigt den Fehler vollständig; gekürzt wird nur in den
         // kompakten Verlaufslisten des Selbsttest-Centers.
-        const error = [diagnostic?.code ? `Code ${diagnostic.code}` : "", diagnostic?.fullSummary ?? diagnostic?.summary ?? ""]
+        const error = [
+          diagnostic?.code ? `Code ${diagnostic.code}` : "",
+          diagnostic?.fullSummary ?? diagnostic?.summary ?? "",
+          diagnostic?.truncationNote ?? "",
+        ]
           .filter(Boolean)
           .join(" · ");
         rows.push({

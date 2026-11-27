@@ -13,7 +13,7 @@ import { useAuth } from "@/hooks/useAuth";
 import { useTenant } from "@/hooks/useTenant";
 import { supabase } from "@/integrations/supabase/client";
 import { featureCatalogHref } from "@/features/feature-catalog/securityLinks";
-import { stepDiagnostic } from "@/features/selftest/stepDiagnostics";
+import { detailsTruncationNote, stepDiagnostic } from "@/features/selftest/stepDiagnostics";
 import { loadScenarioSuite, runAndSaveScenarioSuite } from "@/features/selftest/suite";
 import {
   PULSE_AREAS, PULSE_GROUPS, areaAssessment, assessRun, consecutiveFailures, durationTrend,
@@ -654,6 +654,15 @@ export function SystemPulse({ gaps, gapsState }: Props) {
                                     {diagnostic.code ? <span className="font-mono">Code {diagnostic.code}</span> : null}
                                     {diagnostic.code && diagnosticText ? " · " : ""}
                                     {diagnosticText}
+                                  </div>
+                                );
+                              })()}
+                              {(() => {
+                                const note = result ? detailsTruncationNote(result) : undefined;
+                                if (!note) return null;
+                                return (
+                                  <div data-testid="pulse-step-truncation" className="mt-0.5 break-words text-[10px] leading-snug text-muted-foreground">
+                                    {note}
                                   </div>
                                 );
                               })()}
