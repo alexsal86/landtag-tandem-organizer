@@ -480,7 +480,7 @@ Eindeutige Fehler werden im CI-Lauf ausgegeben und brechen die Prüfung ab; sie 
 
 ### `redaktion.approval`
 
-- Einreichen, Freigeben, Änderungswunsch mit Folgeaufgabe und das automatische Wiederöffnen nach geänderter Kanaltext-Zeile laufen im Selbsttest über die echten Trigger und RPCs samt Protokoll. Freie Kommentare ohne Änderungswunsch, Emoji-Reaktionen, die Push-Zustellung der Meldungen sowie Matrix-Chat und externe Veröffentlichung prüft das Szenario nicht. Den Fallback beim Wiederöffnen ohne hinterlegte verantwortliche Person (Meldung an die Leitung, keine Aufgabe) prüft das Szenario nicht; es setzt vor dem Wiederöffnen eine verantwortliche Person.
+- Einreichen, Freigeben, Änderungswunsch mit Folgeaufgabe und das automatische Wiederöffnen nach geänderter Kanaltext-Zeile laufen im Selbsttest über die echten Trigger und RPCs samt Protokoll. Freie Kommentare ohne Änderungswunsch, Emoji-Reaktionen, die Push-Zustellung der Meldungen sowie Matrix-Chat und externe Veröffentlichung prüft das Szenario nicht. Den Fallback ohne hinterlegte verantwortliche Person (Aufgabe an die anlegende Person) prüft das Szenario nicht; es setzt von Anfang an eine verantwortliche Person und belegt die Auflösung über profiles.id zur Login-ID.
 
 ### `redaktion.themenspeicher`
 

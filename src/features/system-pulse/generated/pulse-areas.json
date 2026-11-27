@@ -2012,7 +2012,7 @@
             "Freigeben setzt Freigeber und Zeitpunkt aus der Sitzung, auch wenn der Client beide Felder leert",
             "Das Protokoll enthält danach genau submitted und approved mit den passenden Zuständen und dem handelnden Profil",
             "Ein Änderungswunsch setzt den Beitrag auf Entwurf/abgelehnt, speichert den Kommentar und protokolliert rejected aus approved",
-            "Der Änderungswunsch legt genau eine Folgeaufgabe beim Verantwortlichen an (Ball Büro, Frist aus der Rückgabe) und meldet sie ihm",
+            "Der Änderungswunsch löst die hinterlegte Profil-ID zur Login-ID auf: Folgeaufgabe, task_assignees, Meldung und Rückgabe adressieren die verantwortliche Person als Konto, nicht ihre Profil-ID",
             "Nach erneutem Einreichen und Freigeben öffnet eine geänderte Kanaltext-Zeile die Freigabe automatisch wieder, leert Freigeber und Zeitpunkt und protokolliert reopened",
             "Das Wiederöffnen verwendet die offene Folgeaufgabe weiter (keine zweite Aufgabe) und stellt sie auf „Freigabe erneut einholen“ mit Frist in der Zukunft"
           ],

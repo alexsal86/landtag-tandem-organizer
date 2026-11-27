@@ -77,7 +77,7 @@ Diese Schritte führen die Szenarien aus; „letzter Lauf“ stammt aus `src/fea
 4. Freigeben setzt Freigeber und Zeitpunkt aus der Sitzung, auch wenn der Client beide Felder leert
 5. Das Protokoll enthält danach genau submitted und approved mit den passenden Zuständen und dem handelnden Profil
 6. Ein Änderungswunsch setzt den Beitrag auf Entwurf/abgelehnt, speichert den Kommentar und protokolliert rejected aus approved
-7. Der Änderungswunsch legt genau eine Folgeaufgabe beim Verantwortlichen an (Ball Büro, Frist aus der Rückgabe) und meldet sie ihm
+7. Der Änderungswunsch löst die hinterlegte Profil-ID zur Login-ID auf: Folgeaufgabe, task_assignees, Meldung und Rückgabe adressieren die verantwortliche Person als Konto, nicht ihre Profil-ID
 8. Nach erneutem Einreichen und Freigeben öffnet eine geänderte Kanaltext-Zeile die Freigabe automatisch wieder, leert Freigeber und Zeitpunkt und protokolliert reopened
 9. Das Wiederöffnen verwendet die offene Folgeaufgabe weiter (keine zweite Aufgabe) und stellt sie auf „Freigabe erneut einholen“ mit Frist in der Zukunft
 
@@ -149,7 +149,7 @@ Führt Beiträge durch Freigabe, fordert Änderungen an, protokolliert Entscheid
 
 **Bekannte Einschränkungen**
 
-- Einreichen, Freigeben, Änderungswunsch mit Folgeaufgabe und das automatische Wiederöffnen nach geänderter Kanaltext-Zeile laufen im Selbsttest über die echten Trigger und RPCs samt Protokoll. Freie Kommentare ohne Änderungswunsch, Emoji-Reaktionen, die Push-Zustellung der Meldungen sowie Matrix-Chat und externe Veröffentlichung prüft das Szenario nicht. Den Fallback beim Wiederöffnen ohne hinterlegte verantwortliche Person (Meldung an die Leitung, keine Aufgabe) prüft das Szenario nicht; es setzt vor dem Wiederöffnen eine verantwortliche Person.
+- Einreichen, Freigeben, Änderungswunsch mit Folgeaufgabe und das automatische Wiederöffnen nach geänderter Kanaltext-Zeile laufen im Selbsttest über die echten Trigger und RPCs samt Protokoll. Freie Kommentare ohne Änderungswunsch, Emoji-Reaktionen, die Push-Zustellung der Meldungen sowie Matrix-Chat und externe Veröffentlichung prüft das Szenario nicht. Den Fallback ohne hinterlegte verantwortliche Person (Aufgabe an die anlegende Person) prüft das Szenario nicht; es setzt von Anfang an eine verantwortliche Person und belegt die Auflösung über profiles.id zur Login-ID.
 
 **Offene Prüfpunkte**
 

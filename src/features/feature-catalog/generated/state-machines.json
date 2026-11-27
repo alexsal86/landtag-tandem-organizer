@@ -5,7 +5,7 @@
   "sources": {
     "types": "src/integrations/supabase/types.ts",
     "migrationsDirectory": "supabase/migrations",
-    "migrationCount": 950,
+    "migrationCount": 951,
     "tsModules": [
       "src/components/letters/types.ts"
     ]
@@ -4878,7 +4878,8 @@
           "value": "draft",
           "sources": [
             "check:supabase/migrations/20260317113000_add_social_content_domain.sql",
-            "write:supabase/migrations/20261124200000_editorial_approval_workflow.sql"
+            "write:supabase/migrations/20261124200000_editorial_approval_workflow.sql",
+            "write:supabase/migrations/20261128070000_social_change_request_resolve_assignee.sql"
           ]
         },
         {
@@ -4924,7 +4925,8 @@
           "kind": "write",
           "param": null,
           "sources": [
-            "supabase/migrations/20261124200000_editorial_approval_workflow.sql"
+            "supabase/migrations/20261124200000_editorial_approval_workflow.sql",
+            "supabase/migrations/20261128070000_social_change_request_resolve_assignee.sql"
           ],
           "guards": []
         },
@@ -5347,9 +5349,11 @@
             "insert:supabase/migrations/20261127170000_selftest_contact_case_task_repair.sql",
             "insert:supabase/migrations/20261127200000_letter_archive_follow_up_task.sql",
             "insert:supabase/migrations/20261127210000_letter_follow_up_source_link.sql",
+            "insert:supabase/migrations/20261128070000_social_change_request_resolve_assignee.sql",
             "write:supabase/migrations/20261109100000_connect_appointment_preparation_workflow.sql",
             "write:supabase/migrations/20261124200000_editorial_approval_workflow.sql",
-            "write:supabase/migrations/20261124280000_social_approval_reopen_notifications.sql"
+            "write:supabase/migrations/20261124280000_social_approval_reopen_notifications.sql",
+            "write:supabase/migrations/20261128070000_social_change_request_resolve_assignee.sql"
           ]
         }
       ],
@@ -5459,7 +5463,8 @@
             "supabase/migrations/20261127120000_selftest_client_rpc_and_trgm_repair.sql",
             "supabase/migrations/20261127170000_selftest_contact_case_task_repair.sql",
             "supabase/migrations/20261127200000_letter_archive_follow_up_task.sql",
-            "supabase/migrations/20261127210000_letter_follow_up_source_link.sql"
+            "supabase/migrations/20261127210000_letter_follow_up_source_link.sql",
+            "supabase/migrations/20261128070000_social_change_request_resolve_assignee.sql"
           ],
           "guards": [
             "case_step_reverse"
@@ -5473,7 +5478,8 @@
           "sources": [
             "supabase/migrations/20261109100000_connect_appointment_preparation_workflow.sql",
             "supabase/migrations/20261124200000_editorial_approval_workflow.sql",
-            "supabase/migrations/20261124280000_social_approval_reopen_notifications.sql"
+            "supabase/migrations/20261124280000_social_approval_reopen_notifications.sql",
+            "supabase/migrations/20261128070000_social_change_request_resolve_assignee.sql"
           ],
           "guards": [
             "case_step_reverse"

@@ -22,13 +22,14 @@ export const socialContentLifecycleScenario: TestScenario = {
     "Freigeben setzt Freigeber und Zeitpunkt aus der Sitzung, auch wenn der Client beide Felder leert",
     "Das Protokoll enthält danach genau submitted und approved mit den passenden Zuständen und dem handelnden Profil",
     "Ein Änderungswunsch setzt den Beitrag auf Entwurf/abgelehnt, speichert den Kommentar und protokolliert rejected aus approved",
-    "Der Änderungswunsch legt genau eine Folgeaufgabe beim Verantwortlichen an (Ball Büro, Frist aus der Rückgabe) und meldet sie ihm",
+    "Der Änderungswunsch löst die hinterlegte Profil-ID zur Login-ID auf: Folgeaufgabe, task_assignees, Meldung und Rückgabe adressieren die verantwortliche Person als Konto, nicht ihre Profil-ID",
     "Nach erneutem Einreichen und Freigeben öffnet eine geänderte Kanaltext-Zeile die Freigabe automatisch wieder, leert Freigeber und Zeitpunkt und protokolliert reopened",
     "Das Wiederöffnen verwendet die offene Folgeaufgabe weiter (keine zweite Aufgabe) und stellt sie auf „Freigabe erneut einholen“ mit Frist in der Zukunft",
   ],
   limitations: [
     "Matrix-Chat und die externe Zustellung/Veröffentlichung eines Beitrags sind nicht Teil des Szenarios; es wird nichts veröffentlicht oder an Plattformen gesendet.",
     "Freie Freigabe-Kommentare ohne Änderungswunsch, Emoji-Reaktionen und die Push-Zustellung der Meldungen prüft das Szenario nicht; geprüft werden die Datenbankzeilen, das Protokoll und die Folgeaufgabe.",
+    "Der Fallback ohne verantwortliche Person (Aufgabe an die anlegende Person) wird nicht geprüft: Das Szenario hinterlegt von Anfang an eine verantwortliche Person und belegt damit den Auflösungspfad über profiles.id.",
     "Die Bedienung von Kalender, Board und Freigabedialog wird nicht über die Oberfläche geprüft.",
   ],
   writes: [
@@ -102,6 +103,7 @@ export const socialContentLifecycleScenario: TestScenario = {
           approval_required: true,
           workflow_status: "draft",
           approval_state: "draft",
+          responsible_user_id: profileId,
         };
         const { data, error } = await supabase.from("social_content_items").insert(payload).select("id").single();
         if (error || !data) return { ok: false, message: `Beitrag anlegen: ${describeError(error)}` };
@@ -293,6 +295,13 @@ export const socialContentLifecycleScenario: TestScenario = {
           ctx.trackRecord({ table: "tasks", id: task.id });
         }
 
+        // Die verantwortliche Person ist als Profil-ID hinterlegt; Aufgabe und
+        // task_assignees müssen die aufgelöste Login-ID tragen.
+        const assignees = task
+          ? await supabase.from("task_assignees").select("user_id").eq("task_id", task.id)
+          : { data: [], error: null };
+        if (assignees.error) return { ok: false, message: `Aufgabenzuordnung lesen: ${describeError(assignees.error)}` };
+
         const notifications = await supabase.from("notifications")
           .select("id,title").eq("user_id", ctx.userId).contains("data", { content_item_id: itemId });
         if (notifications.error) return { ok: false, message: `Meldung lesen: ${describeError(notifications.error)}` };
@@ -316,8 +325,10 @@ export const socialContentLifecycleScenario: TestScenario = {
           taskAssigned: task?.assigned_to === ctx.userId && task?.status === "todo"
             && task?.ball_owner === "office" && task?.next_action === "Änderungswunsch umsetzen"
             && task?.next_action_due === result.due_date,
+          assigneeRowIsLoginId: (assignees.data ?? []).some(row => row.user_id === ctx.userId),
           notificationQueued: (notifications.data ?? []).length >= 1,
-          assigneeIsOwner: result.assignee === ctx.userId,
+          assigneeIsOwner: result.assignee === ctx.userId
+            && result.assignee !== profileId,
           eventRecorded: rejected?.from_state === "approved" && rejected?.to_state === "rejected",
         };
         const failed = Object.entries(checks).filter(([, ok]) => !ok).map(([name]) => name);
@@ -336,7 +347,7 @@ export const socialContentLifecycleScenario: TestScenario = {
         const itemId = ctx.data.itemId as string;
         const profileId = ctx.data.profileId as string;
         const submitted = await supabase.from("social_content_items")
-          .update({ workflow_status: "approval", approval_state: "pending_approval", responsible_user_id: profileId })
+          .update({ workflow_status: "approval", approval_state: "pending_approval" })
           .eq("id", itemId).eq("tenant_id", ctx.tenantId);
         if (submitted.error) return { ok: false, message: `Erneut einreichen: ${describeError(submitted.error)}` };
         const approved = await supabase.from("social_content_items")
