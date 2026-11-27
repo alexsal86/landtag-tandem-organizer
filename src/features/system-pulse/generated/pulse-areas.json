@@ -340,6 +340,10 @@
               "label": "Bürorückmeldung: Vorschläge für Zusagen"
             },
             {
+              "id": "office-debrief-edit-promise",
+              "label": "Nachbereitung: Zusage und Frist im Büro bearbeiten"
+            },
+            {
               "id": "day-summary",
               "label": "Tagesüberblick: leere Tage, laufende Termine, Briefings und offene Rückmeldungen"
             },

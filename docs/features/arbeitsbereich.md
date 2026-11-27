@@ -76,6 +76,7 @@ Diese Schritte führen die Szenarien aus; „letzter Lauf“ stammt aus `src/fea
 | `appointment-briefing-lifecycle` | `today-priorities` | Heute zuerst: Rangfolge und Berliner Tagesgrenzen | logic | — |
 | `appointment-briefing-lifecycle` | `office-feedback` | Bürorückmeldung: Abschluss, Erinnerung und ältere Termine | logic | — |
 | `appointment-briefing-lifecycle` | `office-feedback-promise-suggestions` | Bürorückmeldung: Vorschläge für Zusagen | logic | — |
+| `appointment-briefing-lifecycle` | `office-debrief-edit-promise` | Nachbereitung: Zusage und Frist im Büro bearbeiten | logic | — |
 | `appointment-briefing-lifecycle` | `day-summary` | Tagesüberblick: leere Tage, laufende Termine, Briefings und offene Rückmeldungen | logic | — |
 | `appointment-briefing-lifecycle` | `reminder` | Briefing-Hinweis: Zuständigkeit, Vorlauf und Montag | logic | — |
 | `appointment-briefing-lifecycle` | `rules` | Regeln: nur Entscheider geben frei; Frist am Vortag 12:00 | logic | — |

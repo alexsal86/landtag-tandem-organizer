@@ -79,6 +79,7 @@ Diese Schritte führen die Szenarien aus; „letzter Lauf“ stammt aus `src/fea
 | `appointment-briefing-lifecycle` | `today-priorities` | Heute zuerst: Rangfolge und Berliner Tagesgrenzen | logic | — |
 | `appointment-briefing-lifecycle` | `office-feedback` | Bürorückmeldung: Abschluss, Erinnerung und ältere Termine | logic | — |
 | `appointment-briefing-lifecycle` | `office-feedback-promise-suggestions` | Bürorückmeldung: Vorschläge für Zusagen | logic | — |
+| `appointment-briefing-lifecycle` | `office-debrief-edit-promise` | Nachbereitung: Zusage und Frist im Büro bearbeiten | logic | — |
 | `appointment-briefing-lifecycle` | `day-summary` | Tagesüberblick: leere Tage, laufende Termine, Briefings und offene Rückmeldungen | logic | — |
 | `appointment-briefing-lifecycle` | `reminder` | Briefing-Hinweis: Zuständigkeit, Vorlauf und Montag | logic | — |
 | `appointment-briefing-lifecycle` | `rules` | Regeln: nur Entscheider geben frei; Frist am Vortag 12:00 | logic | — |
@@ -539,7 +540,7 @@ Führt das Briefing im Termin, erlaubt Statusfortschritt und erzeugt Nachbereitu
 - Keine.
 
 ### `appointments.debrief` — Nachbereitung und Büro-Feedback
-Sammelt Rückmeldungen aus dem Termin, zeigt offene Nachbereitungen und schließt Feedback-Erinnerungen. Nach dem Diktat können Abgeordnete Zusagen bestätigen und regelbasierte Vorschläge vor dem Versand bearbeiten.
+Sammelt Rückmeldungen aus dem Termin, zeigt offene Nachbereitungen und schließt Feedback-Erinnerungen. Nach dem Diktat können Abgeordnete Zusagen bestätigen und regelbasierte Vorschläge vor dem Versand bearbeiten. Mitarbeitende können Zusagen und Fristen in offenen Nachbereitungen ergänzen, ändern oder entfernen.
 
 - **Kategorie:** fachlich
 - **Implementierung:** implementiert

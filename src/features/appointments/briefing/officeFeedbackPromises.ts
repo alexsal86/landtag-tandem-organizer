@@ -16,3 +16,11 @@ export function suggestOfficeFeedbackPromises(text: string): string {
   }
   return [...suggestions].join("\n").slice(0, officeFeedbackPromiseMaxLength);
 }
+
+export function officeDebriefPromiseEdit(hasPromise: boolean, text: string, due: string) {
+  const promise = hasPromise ? text.trim() : "";
+  return {
+    _promise: promise || undefined,
+    _due: promise && due ? due : undefined,
+  };
+}
