@@ -20,9 +20,13 @@ function groupLabel(key: string, dimension: Dimension) {
 
 const emptyFilters = { party: "", from: "", to: "", topic: "" };
 
+// Älteste ausgewertete Wahlperiode ist die 9. (1984-1988); neueste ist die 18.
+const legislatures = Array.from({ length: 18 - 9 + 1 }, (_, index) => 18 - index);
+
 export default function ParlisView() {
   const [params, setParams] = useSearchParams();
-  const legislature = params.get("wahlperiode") === "17" ? 17 : 18;
+  const requested = Number(params.get("wahlperiode"));
+  const legislature = Number.isInteger(requested) && requested >= 9 && requested <= 18 ? requested : 18;
   return <ProceedingsForLegislature key={legislature} legislature={legislature} changeLegislature={value => {
     const next = new URLSearchParams(params);
     next.set("wahlperiode", value);
@@ -125,8 +129,9 @@ function ProceedingsForLegislature({ legislature, changeLegislature }: {
           </div>
           <label>Wahlperiode
             <select aria-label="Wahlperiode" value={legislature} onChange={event => changeLegislature(event.target.value)}>
-              <option value={18}>18. Wahlperiode</option>
-              <option value={17}>17. Wahlperiode</option>
+              {legislatures.map(period => (
+                <option key={period} value={period}>{period}. Wahlperiode</option>
+              ))}
             </select>
           </label>
         </header>
