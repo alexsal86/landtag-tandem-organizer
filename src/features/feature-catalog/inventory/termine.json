@@ -409,7 +409,7 @@
       "id": "appointments.debrief",
       "subarea": "Nachbereitung",
       "name": "Nachbereitung und Büro-Feedback",
-      "description": "Sammelt Rückmeldungen aus dem Termin, zeigt offene Nachbereitungen und schließt Feedback-Erinnerungen.",
+      "description": "Sammelt Rückmeldungen aus dem Termin, zeigt offene Nachbereitungen und schließt Feedback-Erinnerungen. Nach dem Diktat können Abgeordnete Zusagen bestätigen und regelbasierte Vorschläge vor dem Versand bearbeiten.",
       "category": "fachlich",
       "implementationStatus": "implementiert",
       "integrationStatus": "ui",
@@ -427,7 +427,8 @@
       ],
       "services": [
         "src/features/appointments/briefing/officeDebriefInbox.ts",
-        "src/features/appointments/briefing/officeFeedback.ts"
+        "src/features/appointments/briefing/officeFeedback.ts",
+        "src/features/appointments/briefing/officeFeedbackPromises.ts"
       ],
       "rpcs": [
         "list_office_debriefs",
@@ -445,7 +446,8 @@
       ],
       "dependsOn": ["appointments.briefing"],
       "scenarios": [
-        "appointment-lifecycle"
+        "appointment-lifecycle",
+        "appointment-briefing-lifecycle"
       ]
     },
     {

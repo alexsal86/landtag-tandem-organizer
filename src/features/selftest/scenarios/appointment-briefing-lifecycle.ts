@@ -1,3 +1,4 @@
+import { suggestOfficeFeedbackPromises } from "@/features/appointments/briefing/officeFeedbackPromises";
 import { buildTodayPriorities } from "@/components/my-work/todayPriorities";
 import { appointmentFocusMode, departureTime, focusCountdown, pickFocusAppointment } from "@/features/appointments/dashboardFocus";
 import { visibleSentChanges } from "@/features/appointments/change-alerts/sentChangeVisibility";
@@ -234,6 +235,19 @@ export const appointmentBriefingLifecycleScenario: TestScenario = {
           !isOlderOfficeFeedback("2026-11-21T08:00:00+01:00", now),
         ];
         return { ok: checks.every(Boolean), message: `${checks.filter(Boolean).length}/${checks.length} Rückmelderegeln bestanden.` };
+      },
+    },
+    {
+      id: "office-feedback-promise-suggestions", label: "Bürorückmeldung: Vorschläge für Zusagen", kind: "logic",
+      run: async () => {
+        const text = "Das Treffen lief gut. Ich habe zugesagt, die Unterlagen bis zum 12.12. zu schicken. "
+          + "Wir werden beim Ministerium nachfragen. Ich habe nichts versprochen. Werden wir die Planung ändern? "
+          + "Zusage: Rückruf am Freitag.";
+        const expected = "Ich habe zugesagt, die Unterlagen bis zum 12.12. zu schicken.\n"
+          + "Wir werden beim Ministerium nachfragen.\nRückruf am Freitag.";
+        const ok = suggestOfficeFeedbackPromises(text) === expected
+          && suggestOfficeFeedbackPromises("Die Unterlagen wurden besprochen.") === "";
+        return { ok, message: ok ? "Zusagen werden vorgeschlagen." : "Die Vorschläge weichen ab." };
       },
     },
     {
