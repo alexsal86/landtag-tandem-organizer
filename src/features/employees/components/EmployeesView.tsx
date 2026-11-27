@@ -8,7 +8,10 @@ import { Badge } from "@/components/ui/badge";
 import { Avatar, AvatarFallback, AvatarImage } from "@/components/ui/avatar";
 import { Button } from "@/components/ui/button";
 import { Calendar, BarChart3, Clock, Loader2, MessageSquare, Plus, Network, UserRound, UserRoundCog, UsersRound } from "lucide-react";
-import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
+import { Tabs, TabsContent } from "@/components/ui/tabs";
+import * as TabsPrimitive from "@radix-ui/react-tabs";
+import { NavigationIslandTrack, navigationIslandClass, navigationIslandItemClass } from "@/components/layout/NavigationIsland";
+import { WorkspaceToolbar } from "@/components/layout/WorkspaceToolbar";
 import { Dialog, DialogContent, DialogDescription, DialogHeader, DialogTitle } from "@/components/ui/dialog";
 import { EmployeeMeetingScheduler } from "@/features/employees/components/EmployeeMeetingScheduler";
 import { EmployeeMeetingHistory } from "@/features/employees/components/EmployeeMeetingHistory";
@@ -67,51 +70,79 @@ export function EmployeesView() {
     return () => { document.head.removeChild(canonical); document.head.removeChild(meta); };
   }, []);
 
+  const visibleTab = !data.isAdmin && (activeTab === "meetings" || activeTab === "timetracking")
+    ? "overview"
+    : activeTab;
+  const tabs = [
+    { value: "overview", label: data.isAdmin ? "Übersicht" : "Mein Profil", icon: data.isAdmin ? Calendar : UserRound },
+    ...(data.isAdmin ? [{ value: "meetings", label: "Gespräche", icon: MessageSquare }] : []),
+    { value: "responsibilities", label: "Zuständigkeiten", icon: Network },
+    { value: "hr", label: "HR-Onboarding & Offboarding", icon: UserRoundCog },
+    { value: "rituals", label: "Team-Rituale", icon: UsersRound },
+    ...(data.isAdmin ? [{ value: "timetracking", label: "Zeiterfassung", icon: Clock }] : []),
+  ];
+  const toolbar = (
+    <WorkspaceToolbar>
+      <TabsPrimitive.List aria-label="Mitarbeiterverwaltung" className={navigationIslandClass}>
+        <NavigationIslandTrack activeItem={visibleTab}>
+          {tabs.map(({ value, label, icon: Icon }) => (
+            <TabsPrimitive.Trigger key={value} value={value} className={navigationIslandItemClass}>
+              <Icon aria-hidden="true" className="size-4" />
+              {label}
+            </TabsPrimitive.Trigger>
+          ))}
+        </NavigationIslandTrack>
+      </TabsPrimitive.List>
+    </WorkspaceToolbar>
+  );
+
   if (!data.isAdmin) {
     return (
-      <div><Tabs value={["responsibilities", "hr", "rituals"].includes(activeTab) ? activeTab : "overview"} onValueChange={handleTabChange}><TabsList className="h-auto flex-wrap"><TabsTrigger value="overview">Mein Profil</TabsTrigger><TabsTrigger value="responsibilities"><Network className="h-4 w-4 mr-2" aria-hidden="true" />Zuständigkeiten</TabsTrigger><TabsTrigger value="hr"><UserRoundCog className="h-4 w-4 mr-2" aria-hidden="true" />HR-Onboarding & Offboarding</TabsTrigger><TabsTrigger value="rituals"><UsersRound className="h-4 w-4 mr-2" aria-hidden="true" />Team-Rituale</TabsTrigger></TabsList><TabsContent value="responsibilities"><ResponsibilityMatrix /></TabsContent><TabsContent value="hr"><HrWorkspace /></TabsContent><TabsContent value="rituals"><TeamRitualWorkspace /></TabsContent><TabsContent value="overview"><EmployeeSelfView
-        loading={data.loading}
-        selfSettings={data.selfSettings}
-        selfLeaveAgg={data.selfLeaveAgg}
-        selfProfile={data.selfProfile}
-      /></TabsContent></Tabs></div>
+      <Tabs value={visibleTab} onValueChange={handleTabChange}>
+        {toolbar}
+        <TabsContent value="responsibilities"><ResponsibilityMatrix /></TabsContent>
+        <TabsContent value="hr"><HrWorkspace /></TabsContent>
+        <TabsContent value="rituals"><TeamRitualWorkspace /></TabsContent>
+        <TabsContent value="overview">
+          <EmployeeSelfView
+            loading={data.loading}
+            selfSettings={data.selfSettings}
+            selfLeaveAgg={data.selfLeaveAgg}
+            selfProfile={data.selfProfile}
+          />
+        </TabsContent>
+      </Tabs>
     );
   }
 
   return (
-    <div className="min-h-0 p-3 sm:p-6">
-      <header>
-        <div className="flex items-center justify-between flex-wrap gap-2">
-          <div>
-            <h1 className="text-2xl font-semibold">Mitarbeiterverwaltung</h1>
-            <p className="text-muted-foreground">Überblick über Mitarbeitende, Stunden & Abwesenheiten</p>
-            {data.loading && (
-              <div className="mt-2 inline-flex items-center gap-2 text-sm text-muted-foreground">
-                <Loader2 className="h-4 w-4 animate-spin" />
-                Lade Mitarbeiterdaten ...
-              </div>
-            )}
-          </div>
-          <div className="flex items-center gap-2 flex-wrap">
-            <Button variant="outline" onClick={() => setYearlyStatsOpen(true)} className="flex items-center gap-2">
-              <BarChart3 className="h-4 w-4" />Jahresstatistik
-            </Button>
-            {data.pendingRequestsCount > 0 && (
-              <Button onClick={() => setRequestManagerOpen(true)} className="flex items-center gap-2">
-                <Calendar className="h-4 w-4" />Gesprächsanfragen<Badge variant="secondary">{data.pendingRequestsCount}</Badge>
+    <Tabs value={visibleTab} onValueChange={handleTabChange}>
+      {toolbar}
+      <div className="min-h-0 p-3 sm:p-6">
+        <header className="mb-4">
+          <div className="flex items-center justify-between flex-wrap gap-2">
+            <div>
+              <h1 className="text-2xl font-semibold">Mitarbeiterverwaltung</h1>
+              <p className="text-muted-foreground">Überblick über Mitarbeitende, Stunden & Abwesenheiten</p>
+              {data.loading && (
+                <div className="mt-2 inline-flex items-center gap-2 text-sm text-muted-foreground">
+                  <Loader2 className="h-4 w-4 animate-spin" />
+                  Lade Mitarbeiterdaten ...
+                </div>
+              )}
+            </div>
+            <div className="flex items-center gap-2 flex-wrap">
+              <Button variant="outline" onClick={() => setYearlyStatsOpen(true)} className="flex items-center gap-2">
+                <BarChart3 className="h-4 w-4" />Jahresstatistik
               </Button>
-            )}
+              {data.pendingRequestsCount > 0 && (
+                <Button onClick={() => setRequestManagerOpen(true)} className="flex items-center gap-2">
+                  <Calendar className="h-4 w-4" />Gesprächsanfragen<Badge variant="secondary">{data.pendingRequestsCount}</Badge>
+                </Button>
+              )}
+            </div>
           </div>
-        </div>
-      </header>
-
-      <Tabs value={activeTab} onValueChange={handleTabChange} className="mt-4">
-        <TabsList className="mb-4 h-auto flex-wrap">
-          <TabsTrigger value="overview"><Calendar className="h-4 w-4 mr-2" />Übersicht</TabsTrigger>
-          <TabsTrigger value="meetings"><MessageSquare className="h-4 w-4 mr-2" />Gespräche</TabsTrigger>
-          <TabsTrigger value="responsibilities"><Network className="h-4 w-4 mr-2" aria-hidden="true" />Zuständigkeiten</TabsTrigger><TabsTrigger value="hr"><UserRoundCog className="h-4 w-4 mr-2" aria-hidden="true" />HR-Onboarding & Offboarding</TabsTrigger><TabsTrigger value="rituals"><UsersRound className="h-4 w-4 mr-2" aria-hidden="true" />Team-Rituale</TabsTrigger>
-          <TabsTrigger value="timetracking"><Clock className="h-4 w-4 mr-2" />Zeiterfassung</TabsTrigger>
-        </TabsList>
+        </header>
 
         <TabsContent value="overview" className="space-y-6">
           <PendingLeavesTable
@@ -141,7 +172,7 @@ export function EmployeesView() {
         <TabsContent value="timetracking">
           <AdminTimeTrackingView />
         </TabsContent>
-      </Tabs>
+      </div>
 
       <Dialog open={newEmployeeOpen} onOpenChange={setNewEmployeeOpen}>
         <DialogContent className="max-h-[90vh] overflow-y-auto sm:max-w-2xl">
@@ -198,7 +229,7 @@ export function EmployeesView() {
       </Dialog>
 
       <EmployeeYearlyStatsView isOpen={yearlyStatsOpen} onClose={() => setYearlyStatsOpen(false)} />
-    </div>
+    </Tabs>
   );
 }
 

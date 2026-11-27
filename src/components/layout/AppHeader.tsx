@@ -4,7 +4,6 @@ import { useNavigate, useLocation } from 'react-router-dom';
 import { Settings, LogOut, User, Plus, Calendar, Users, FileText, CheckSquare, ChevronRight } from 'lucide-react';
 import { Button } from '@/components/ui/button';
 import { Avatar, AvatarImage, AvatarFallback } from '@/components/ui/avatar';
-import { NotificationBell } from '@/components/notifications/NotificationBell';
 import { OnlineUsersWidget } from '@/components/status/OnlineUsersWidget';
 import { UserStatusSelector } from '@/components/status/UserStatusSelector';
 
@@ -233,8 +232,6 @@ export const AppHeader = ({ onOpenSearch }: AppHeaderProps): React.JSX.Element =
       {/* Right: Actions with Office Info */}
       <div className="flex items-center gap-3 ml-auto">
         <GlobalCreateMenu />
-        {/* Notifications */}
-        <NotificationBell />
 
         {/* User Avatar with Dropdown */}
         <DropdownMenu>

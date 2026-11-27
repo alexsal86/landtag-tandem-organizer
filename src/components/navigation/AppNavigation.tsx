@@ -13,9 +13,7 @@ import {
   Home, 
   Shield,
   HelpCircle,
-  Bell,
   Briefcase,
-  Search,
   ChevronRight,
   ChevronDown,
   ChevronLeft,
@@ -23,10 +21,7 @@ import {
   X,
   Star,
   Check,
-  CheckCheck,
-  Trash2,
   Calendar,
-  ListFilter,
   Upload,
   Settings,
   LogOut,
@@ -44,7 +39,6 @@ import { useAppSettings } from "@/hooks/useAppSettings";
 import { useFavicon } from "@/hooks/useFavicon";
 import { useQuickAccessPages, QuickAccessPage } from "@/hooks/useQuickAccessPages";
 import { useRecentlyVisited } from "@/hooks/useRecentlyVisited";
-import { useNotifications } from "@/contexts/NotificationContext";
 import { useAuth } from "@/hooks/useAuth";
 import { useUserStatus } from "@/hooks/useUserStatus";
 import { useTenant } from "@/hooks/useTenant";
@@ -74,24 +68,21 @@ import {
 } from "@/components/ui/dropdown-menu";
 import { navigationGroups, getNavigationGroups, NavGroup } from "@/components/navigation/navigationConfig";
 import { HelpDialog } from "@/components/navigation/HelpDialog";
-import { formatDistanceToNow, format, parseISO, isToday, isYesterday, isTomorrow } from "date-fns";
+import { format, parseISO, isToday, isTomorrow } from "date-fns";
 import { de } from "date-fns/locale";
 import { Clock } from "lucide-react";
-import { useToast } from "@/components/ui/use-toast";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import { Collapsible, CollapsibleContent, CollapsibleTrigger } from "@/components/ui/collapsible";
 
 import { useAppointmentRequest } from "@/hooks/useAppointmentRequest";
-import { buildDeepLinkPath } from "@/utils/notificationDeepLinks";
 
 // Re-export for backward compatibility
 export { getNavigationGroups };
 
 import type {
   ActivePanel,
-  NotificationFilter,
   QuickAccessAddCategory,
   NavigationProps,
   NavPreviewGroup,
@@ -140,7 +131,6 @@ export function AppNavigation({
   const { pages: quickAccessPages, addPage, removePage, isInQuickAccess } = useQuickAccessPages();
   const { recentPages, trackVisit } = useRecentlyVisited();
   const [showRecent] = useUserPreference<boolean>(SHOW_RECENT_PREF_KEY, false);
-  const { notifications, unreadCount, markAsRead, markAllAsRead, deleteNotification } = useNotifications();
   const { user, signOut } = useAuth();
   const { currentStatus, getStatusDisplay } = useUserStatus();
   const { currentTenant } = useTenant();
@@ -165,8 +155,7 @@ export function AppNavigation({
   const [isQuickRequestOpen, setIsQuickRequestOpen] = useState(false);
   
   // Panel state
-  const [selectedPanel, setActivePanel] = useState<ActivePanel>('home');
-  const activePanel = activeSection === 'mywork' && selectedPanel === 'notifications' ? 'home' : selectedPanel;
+  const [activePanel, setActivePanel] = useState<ActivePanel>('home');
   const [previewGroup, setPreviewGroup] = useState<NavPreviewGroup | null>(null);
   
   // Expanded groups state
@@ -178,7 +167,6 @@ export function AppNavigation({
   const [helpDialogOpen, setHelpDialogOpen] = useState(false);
   const [quickAccessPopoverOpen, setQuickAccessPopoverOpen] = useState(false);
   const [quickAccessAddCategory, setQuickAccessAddCategory] = useState<QuickAccessAddCategory | null>(null);
-  const [notificationFilter, setNotificationFilter] = useState<NotificationFilter>('unread');
   const [quickAccessPageIndex, setQuickAccessPageIndex] = useState(0);
   
   // User profile + panel data extracted to dedicated hook
@@ -896,162 +884,6 @@ export function AppNavigation({
     </div>
   );
 
-  const renderNotificationsPanel = () => {
-    const filteredNotifications = notifications.filter((notification) => (
-      notificationFilter === 'all' ? true : !notification.is_read
-    ));
-    const showAllReadState = notificationFilter === 'unread' && notifications.length > 0 && filteredNotifications.length === 0;
-
-    return (
-    <div className="flex-1 flex flex-col overflow-hidden">
-      <div className="flex items-center justify-between px-3 py-2 border-b border-border">
-        <div className="flex items-center gap-2">
-          <span className="text-sm font-semibold text-[hsl(var(--nav-foreground))]">
-            Benachrichtigungen {unreadCount > 0 && `(${unreadCount})`}
-          </span>
-          <DropdownMenu>
-            <DropdownMenuTrigger asChild>
-              <button
-                className="h-6 w-6 rounded-md flex items-center justify-center hover:bg-[hsl(var(--nav-hover))] transition-colors"
-                aria-label="Benachrichtigungen filtern"
-              >
-                <ListFilter className="h-3.5 w-3.5 text-[hsl(var(--nav-muted))]" />
-              </button>
-            </DropdownMenuTrigger>
-            <DropdownMenuContent align="start" className="w-56">
-              <DropdownMenuLabel>Filter</DropdownMenuLabel>
-              <DropdownMenuSeparator />
-              <DropdownMenuItem onClick={() => setNotificationFilter('all')}>
-                <span className="flex-1">Ungelesen und gelesen</span>
-                {notificationFilter === 'all' && <Check className="h-4 w-4" />}
-              </DropdownMenuItem>
-              <DropdownMenuItem onClick={() => setNotificationFilter('unread')}>
-                <span className="flex-1">Ungelesen</span>
-                {notificationFilter === 'unread' && <Check className="h-4 w-4" />}
-              </DropdownMenuItem>
-            </DropdownMenuContent>
-          </DropdownMenu>
-        </div>
-        {unreadCount > 0 && (
-          <button
-            onClick={() => markAllAsRead()}
-            className="text-[11px] text-[hsl(var(--nav-muted))] hover:text-[hsl(var(--nav-foreground))] transition-colors"
-          >
-            Alle gelesen
-          </button>
-        )}
-      </div>
-      <ScrollArea className="flex-1">
-        {showAllReadState ? (
-          <div className="px-4 py-12 h-full flex flex-col items-center justify-center text-center">
-            <CheckCheck className="h-12 w-12 mb-4 text-[hsl(var(--nav-muted))]" />
-            <p className="text-2xl mb-4 text-[hsl(var(--nav-foreground))]">Du bist auf dem neuesten Stand</p>
-            <DropdownMenu>
-              <DropdownMenuTrigger asChild>
-                <Button variant="outline" size="sm">Filter bearbeiten</Button>
-              </DropdownMenuTrigger>
-              <DropdownMenuContent align="center" className="w-56">
-                <DropdownMenuLabel>Filter</DropdownMenuLabel>
-                <DropdownMenuSeparator />
-                <DropdownMenuItem onClick={() => setNotificationFilter('all')}>
-                  <span className="flex-1">Ungelesen und gelesen</span>
-                  {(notificationFilter as NotificationFilter) === 'all' && <Check className="h-4 w-4" />}
-                </DropdownMenuItem>
-                <DropdownMenuItem onClick={() => setNotificationFilter('unread')}>
-                  <span className="flex-1">Ungelesen</span>
-                  {notificationFilter === 'unread' && <Check className="h-4 w-4" />}
-                </DropdownMenuItem>
-              </DropdownMenuContent>
-            </DropdownMenu>
-          </div>
-        ) : notifications.length === 0 ? (
-          <div className="px-4 py-12 text-center">
-            <Bell className="h-8 w-8 mx-auto mb-2 text-[hsl(var(--nav-muted))]" />
-            <p className="text-sm text-[hsl(var(--nav-muted))]">Keine Benachrichtigungen</p>
-          </div>
-        ) : (() => {
-          // Group notifications by date
-          const groups: { label: string; items: typeof filteredNotifications }[] = [];
-          const todayItems = filteredNotifications.filter(n => isToday(new Date(n.created_at)));
-          const yesterdayItems = filteredNotifications.filter(n => isYesterday(new Date(n.created_at)));
-          const olderItems = filteredNotifications.filter(n => {
-            const d = new Date(n.created_at);
-            return !isToday(d) && !isYesterday(d);
-          });
-          if (todayItems.length > 0) groups.push({ label: 'Heute', items: todayItems });
-          if (yesterdayItems.length > 0) groups.push({ label: 'Gestern', items: yesterdayItems });
-          if (olderItems.length > 0) groups.push({ label: 'Älter', items: olderItems });
-
-          const renderNotificationItem = (n: typeof filteredNotifications[0]) => (
-              <div
-                key={n.id}
-                className={cn(
-                  "flex items-start gap-2 px-2 py-2 rounded-md text-[12px] group cursor-pointer transition-colors",
-                  "hover:bg-[hsl(var(--nav-hover))]",
-                  !n.is_read && "bg-[hsl(var(--nav-active-bg))]"
-                )}
-                onClick={() => {
-                  if (!n.is_read) markAsRead(n.id);
-                  const path = buildDeepLinkPath(n);
-                  const target = new URL(path, window.location.href);
-                  if (target.origin !== window.location.origin) {
-                    window.location.assign(target.href);
-                  } else {
-                    navigate(target.pathname + target.search + target.hash);
-                  }
-                  if (isMobile) onSectionChange(activeSection);
-                }}
-              >
-                <div className="flex-1 min-w-0">
-                  <p className={cn("text-[12px]", !n.is_read && "font-medium")}>
-                    {n.title}
-                  </p>
-                  {n.message && (
-                    <p className="text-[11px] text-[hsl(var(--nav-muted))] line-clamp-2 mt-0.5">{n.message}</p>
-                  )}
-                  <p className="text-[10px] text-[hsl(var(--nav-muted))] mt-1">
-                    {formatDistanceToNow(new Date(n.created_at), { addSuffix: true, locale: de })}
-                  </p>
-                </div>
-                <div className="flex items-center gap-0.5 opacity-0 group-hover:opacity-100 shrink-0">
-                  {!n.is_read && (
-                    <button
-                      onClick={(e) => { e.stopPropagation(); markAsRead(n.id); }}
-                      className="h-5 w-5 rounded flex items-center justify-center hover:bg-[hsl(var(--nav-active-bg))]"
-                    >
-                      <Check className="h-3 w-3" />
-                    </button>
-                  )}
-                  <button
-                    onClick={(e) => { e.stopPropagation(); deleteNotification(n.id); }}
-                    className="h-5 w-5 rounded flex items-center justify-center hover:bg-[hsl(var(--nav-active-bg))]"
-                  >
-                    <Trash2 className="h-3 w-3" />
-                  </button>
-                </div>
-              </div>
-          );
-
-          return (
-            <div className="p-2 space-y-3">
-              {groups.map(group => (
-                <div key={group.label}>
-                  <p className="text-[11px] font-semibold text-[hsl(var(--nav-muted))] uppercase tracking-wider px-2 mb-1">
-                    {group.label}
-                  </p>
-                  <div className="space-y-0.5">
-                    {group.items.map(renderNotificationItem)}
-                  </div>
-                </div>
-              ))}
-            </div>
-          );
-        })()
-        }
-      </ScrollArea>
-    </div>
-  )};
-
   const renderAppointmentsPanel = () => {
     // Group appointments by day
     const grouped: Record<string, typeof upcomingAppointments> = {};
@@ -1299,28 +1131,6 @@ export function AppNavigation({
             {activePanel !== 'home' && <TooltipContent side="bottom" className="text-xs">Navigation</TooltipContent>}
           </Tooltip>
 
-          {activeSection !== "mywork" && <>
-            {/* Notifications */}
-            <Tooltip>
-              <TooltipTrigger asChild>
-                <button
-                  onClick={() => setActivePanel(activePanel === 'notifications' ? 'home' : 'notifications')}
-                  className={cn(
-                    "h-7 rounded-md flex items-center gap-1.5 px-2 transition-colors relative",
-                    activePanel === 'notifications' ? "bg-[hsl(var(--nav-active-bg))] font-medium" : "hover:bg-[hsl(var(--nav-hover))]"
-                  )}
-                >
-                  <Bell className="h-4 w-4 shrink-0" />
-                  {activePanel === 'notifications' && <span className="text-xs">Inbox</span>}
-                  {activePanel !== 'notifications' && unreadCount > 0 && (
-                    <span className="absolute -top-0.5 -right-0.5 h-2 w-2 rounded-full bg-destructive animate-pulse" />
-                  )}
-                </button>
-              </TooltipTrigger>
-              {activePanel !== 'notifications' && <TooltipContent side="bottom" className="text-xs">Benachrichtigungen</TooltipContent>}
-            </Tooltip>
-
-          </>}
           {/* Appointments */}
           <Tooltip>
             <TooltipTrigger asChild>
@@ -1341,27 +1151,10 @@ export function AppNavigation({
           <div className="ml-auto">
             <GlobalCreateMenu />
           </div>
-          {activeSection !== "mywork" && <>
-            {/* Search (dialog trigger, not a panel) */}
-            <Tooltip>
-              <TooltipTrigger asChild>
-                <button
-                  onClick={() => {
-                    window.dispatchEvent(new CustomEvent('openGlobalSearch', { detail: { query: '' } }));
-                  }}
-                  className="h-7 rounded-md flex items-center gap-1.5 px-2 hover:bg-[hsl(var(--nav-hover))] transition-colors"
-                >
-                  <Search className="h-4 w-4 shrink-0" />
-                </button>
-              </TooltipTrigger>
-              <TooltipContent side="bottom" className="text-xs">Suche (⌘K)</TooltipContent>
-            </Tooltip>
-          </>}
         </div>
 
         {/* Panel Content */}
         {activePanel === 'home' && renderHomePanel()}
-        {activePanel === 'notifications' && renderNotificationsPanel()}
         {activePanel === 'appointments' && renderAppointmentsPanel()}
         {activePanel === 'casefiles' && renderCasefilesPanel()}
 

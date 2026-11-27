@@ -1,6 +1,7 @@
-import { Navigate, Route, useLocation, useParams } from "react-router-dom";
+import { Navigate, Outlet, Route, useLocation, useParams } from "react-router-dom";
 import { lazyWithRetry } from "@/lib/lazyWithRetry";
 import { ProtectedRoute } from "./ProtectedRoute";
+import { WorkspaceToolbar } from "@/components/layout/WorkspaceToolbar";
 
 const Index = lazyWithRetry(() => import("@/pages/Index"));
 const CreateTask = lazyWithRetry(() => import("@/pages/CreateTask"));
@@ -76,6 +77,17 @@ function FeatureCatalogRedirect() {
   return <Navigate to={{ pathname: "/administration", search: params.toString(), hash }} replace />;
 }
 
+function StandaloneWorkspace() {
+  return (
+    <>
+      <header className="sticky top-0 z-40 bg-background">
+        <WorkspaceToolbar />
+      </header>
+      <Outlet />
+    </>
+  );
+}
+
 export const AppRoutes = () => (
   <>
     {/* Öffentliche Routen – kein Login erforderlich */}
@@ -91,15 +103,18 @@ export const AppRoutes = () => (
       <Route path="/" element={<Navigate to="/mywork" replace />} />
       <Route path="/dashboard/*" element={<Navigate to="/mywork?tab=dashboard" replace />} />
       <Route path="/contacts/new" element={<Navigate to="/contacts?action=new" replace />} />
+      <Route element={<StandaloneWorkspace />}>
+        <Route path="/contacts/:id" element={<ContactDetail />} />
+        <Route path="/contacts/:id/edit" element={<EditContact />} />
+        <Route path="/tasks/new" element={<CreateTask />} />
+        <Route path="/tasks/archive" element={<TaskArchiveView />} />
+        <Route path="/contacts/import" element={<ImportContacts />} />
+        <Route path="*" element={<NotFound />} />
+      </Route>
       <Route path="/contacts/netzwerk" element={<Index />} />
       <Route path="/contacts/stakeholder" element={<Index />} />
-      <Route path="/contacts/:id" element={<ContactDetail />} />
-      <Route path="/contacts/:id/edit" element={<EditContact />} />
-      <Route path="/tasks/new" element={<CreateTask />} />
-      <Route path="/tasks/archive" element={<TaskArchiveView />} />
       <Route path="/tasks" element={<Index />} />
       <Route path="/tasks/:taskId" element={<TaskWorkspaceRedirect />} />
-      <Route path="/contacts/import" element={<ImportContacts />} />
       <Route path="/maps" element={<Navigate to="/karten" replace />} />
       <Route path="/profile/edit" element={<Navigate to="/profile-edit" replace />} />
       <Route path="/letters/:letterId" element={<Index />} />
@@ -112,7 +127,6 @@ export const AppRoutes = () => (
       {/* ADD ALL CUSTOM ROUTES ABOVE THE CATCH-ALL "*" ROUTE */}
       <Route path="/:section/:subId" element={<Index />} />
       <Route path="/:section" element={<Index />} />
-      <Route path="*" element={<NotFound />} />
     </Route>
   </>
 );

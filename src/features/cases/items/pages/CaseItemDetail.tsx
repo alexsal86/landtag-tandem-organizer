@@ -25,7 +25,7 @@ import { AppNavigation, getNavigationGroups } from "@/components/navigation/AppN
 import { AppHeader } from "@/components/layout/AppHeader";
 import { SubNavigation } from "@/components/layout/SubNavigation";
 import { MobileHeader } from "@/components/navigation/MobileHeader";
-import { MobileSubNavigation } from "@/components/layout/MobileSubNavigation";
+import { WorkspaceToolbar } from "@/components/layout/WorkspaceToolbar";
 import { notify } from "@/lib/notify";
 
 type CaseScale = "small" | "large";
@@ -252,18 +252,15 @@ const CaseItemDetail = () => {
         <div className="hidden md:block sticky top-0 h-screen z-30">
           <AppNavigation activeSection={activeSection} onSectionChange={handleSectionChange} />
         </div>
-        <div className="flex flex-col flex-1 overflow-y-auto h-screen">
-          <div className="hidden md:block sticky top-0 z-40">
-            <AppHeader />
-            {activeGroup?.subItems && activeGroup.subItems.length > 1 ? (
-              <SubNavigation items={activeGroup.subItems} activeItem={activeSection} onItemChange={handleSectionChange} />
-            ) : null}
-          </div>
-          <MobileHeader />
-          <div className="md:hidden">
-            {activeGroup?.subItems && activeGroup.subItems.length > 1 ? (
-              <MobileSubNavigation items={activeGroup.subItems} activeItem={activeSection} onItemChange={handleSectionChange} />
-            ) : null}
+        <div className="flex min-w-0 flex-1 flex-col overflow-y-auto h-screen">
+          <div className="sticky top-0 z-40 bg-background">
+            <div className="hidden md:block"><AppHeader /></div>
+            <MobileHeader />
+            <WorkspaceToolbar>
+              {activeGroup?.subItems && activeGroup.subItems.length > 1 && (
+                <SubNavigation items={activeGroup.subItems} activeItem={activeSection} onItemChange={handleSectionChange} />
+              )}
+            </WorkspaceToolbar>
           </div>
 
           <main className="flex-1 p-4 md:p-6 bg-gradient-to-b from-background to-muted/20">

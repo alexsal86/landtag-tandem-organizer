@@ -1,18 +1,12 @@
-import { memo, useCallback } from "react";
-import { cn } from "@/lib/utils";
-import { LucideIcon } from "lucide-react";
+import { memo } from "react";
+import type { LucideIcon } from "lucide-react";
 import { Badge } from "@/components/ui/badge";
 import { useNavigationNotifications } from "@/hooks/useNavigationNotifications";
 import { prefetchRoute } from "@/lib/routePrefetch";
-
-interface SubNavigationItem {
-  id: string;
-  label: string;
-  icon: LucideIcon;
-}
+import { NavigationIslandTrack, navigationIslandClass, navigationIslandItemClass } from "./NavigationIsland";
 
 interface SubNavigationProps {
-  items: SubNavigationItem[];
+  items: { id: string; label: string; icon: LucideIcon }[];
   activeItem: string;
   onItemChange: (id: string) => void;
 }
@@ -20,41 +14,26 @@ interface SubNavigationProps {
 export const SubNavigation = memo(function SubNavigation({ items, activeItem, onItemChange }: SubNavigationProps) {
   const { navigationCounts } = useNavigationNotifications();
 
-  const handleMouseEnter = useCallback((id: string) => {
-    prefetchRoute(id);
-  }, []);
-  
-  if (items.length <= 1) return null;
-
   return (
-    <div className="h-10 border-b border-border bg-background flex items-center px-4 gap-1">
-      {items.map((item) => {
-        const Icon = item.icon;
-        const isActive = activeItem === item.id;
-        const badgeCount = navigationCounts[item.id] || 0;
-        
-        return (
+    <nav aria-label="Bereiche" className={navigationIslandClass}>
+      <NavigationIslandTrack activeItem={activeItem}>
+        {items.map(({ id, label, icon: Icon }) => (
           <button
-            key={item.id}
-            onClick={() => onItemChange(item.id)}
-            onMouseEnter={() => handleMouseEnter(item.id)}
-            className={cn(
-              "px-3 py-1.5 text-sm rounded-md transition-colors flex items-center gap-1.5",
-              isActive
-                ? "bg-primary/10 text-primary font-medium"
-                : "text-muted-foreground hover:bg-accent hover:text-accent-foreground"
-            )}
+            key={id}
+            type="button"
+            aria-current={activeItem === id ? "page" : undefined}
+            onClick={() => onItemChange(id)}
+            onMouseEnter={() => prefetchRoute(id)}
+            className={navigationIslandItemClass}
           >
-            <Icon className="h-4 w-4" />
-            {item.label}
-            {badgeCount > 0 && (
-              <Badge variant="destructive" className="h-5 min-w-5 px-1.5 text-xs">
-                {badgeCount}
-              </Badge>
+            <Icon aria-hidden="true" className="size-4" />
+            {label}
+            {navigationCounts[id] > 0 && (
+              <Badge variant="destructive" className="h-5 min-w-5 px-1.5 text-xs">{navigationCounts[id]}</Badge>
             )}
           </button>
-        );
-      })}
-    </div>
+        ))}
+      </NavigationIslandTrack>
+    </nav>
   );
 });

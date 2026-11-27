@@ -52,7 +52,7 @@ import { MobileHeader } from "@/components/navigation/MobileHeader";
 import { ErrorBoundary } from "@/components/shared/ErrorBoundary";
 import { cn } from "@/lib/utils";
 import { SubNavigation } from "@/components/layout/SubNavigation";
-import { MobileSubNavigation } from "@/components/layout/MobileSubNavigation";
+import { WorkspaceToolbar } from "@/components/layout/WorkspaceToolbar";
 const CreateContact = lazyWithRetry(() => import("./CreateContact"));
 const NotFound = lazyWithRetry(() => import("./NotFound"));
 
@@ -97,6 +97,7 @@ const Index = (): React.JSX.Element => {
   const isCreateContactRoute = activeSection === "contacts" && searchParams.get("action") === "new";
   const isContactsWorkspace = activeSection === "contacts" && subId !== "new" && !isCreateContactRoute;
   const isTeamPage = activeSection === "employee";
+  const hasSectionToolbar = activeSection === "mywork" || isTeamPage || (activeSection === "employee-meeting" && !subId);
   
   // Dialog state management
   const [showCreateAppointmentDialog, setShowCreateAppointmentDialog] = useState<boolean>(false);
@@ -314,28 +315,18 @@ const Index = (): React.JSX.Element => {
           />
         </div>
         <div className="flex min-w-0 flex-col flex-1 h-app overflow-hidden">
-          {/* Header und SubNavigation fixiert am oberen Rand */}
-          <div className="hidden md:block sticky top-0 z-40">
-            {/* Sekundäre Navigation für aktive Gruppe */}
-            {activeGroup?.subItems && activeGroup.subItems.length > 1 ? (
-              <SubNavigation
-                items={activeGroup.subItems}
-                activeItem={activeSection}
-                onItemChange={handleSectionChange}
-              />
-            ) : null}
-          </div>
           <MobileHeader />
-          {/* Mobile Sub-Navigation */}
-          <div className="md:hidden">
-            {activeGroup?.subItems && activeGroup.subItems.length > 1 ? (
-              <MobileSubNavigation
-                items={activeGroup.subItems}
-                activeItem={activeSection}
-                onItemChange={handleSectionChange}
-              />
-            ) : null}
-          </div>
+          {!hasSectionToolbar && (
+            <WorkspaceToolbar>
+              {activeGroup?.subItems && activeGroup.subItems.length > 1 && (
+                <SubNavigation
+                  items={activeGroup.subItems}
+                  activeItem={activeSection}
+                  onItemChange={handleSectionChange}
+                />
+              )}
+            </WorkspaceToolbar>
+          )}
           <main
             id="main-content"
             className={cn(

@@ -1,7 +1,6 @@
 export type NavPreviewGroup = "calendar" | "tasks" | "files" | "communication" | "people";
 
-export type ActivePanel = 'home' | 'notifications' | 'casefiles' | 'appointments';
-export type NotificationFilter = 'unread' | 'all';
+export type ActivePanel = 'home' | 'casefiles' | 'appointments';
 export type QuickAccessAddCategory = 'pages' | 'case-items' | 'documents' | 'event-plannings';
 
 export interface NavigationProps {
