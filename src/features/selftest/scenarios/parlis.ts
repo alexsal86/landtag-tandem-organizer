@@ -2,7 +2,7 @@ import { parlisDeputyUrl } from "@/features/parlis/navigation";
 import { documentParties, keywords } from "@/features/parlis/documents";
 import { authorSegments, hasMultipleAuthors } from "@/features/parlis/authors";
 import { groupsFor } from "@/features/parlis/grouping";
-import { parseDocumentDetails, signerSummary } from "@/features/parlis/details";
+import { parseDocumentDetails, signerSummary, textSegments } from "@/features/parlis/details";
 import { legislativePeriods, ministers, ministryPhases, periodsForPhase, phasesForLine, ressortLines } from "@/features/ministries-history/data";
 import { currentLegislature, knownLegislatures, ministriesForLegislature } from "@/features/parlis/ministryAdminModel";
 import { supabase } from "@/integrations/supabase/client";
@@ -14,7 +14,7 @@ export const parlisScenario: TestScenario = {
   description: "Prüft die Gruppierung und den Lesezugriff auf die Parlamentsdokumentation.",
   features: ["parlis.proceedings", "parlis.ministry-topics", "parlis.initiative-rankings", "parlis.ministry-history"],
   touches: [],
-  checks: ["Geprüfte Namensvarianten auf die richtigen Abgeordnetenprofile verlinken", "Gespeicherte Initiativenbilanz mit begrenzten Ranglisten", "Ressortvorschläge für mehrere Wahlperioden", "Laufende Wahlperiode und ihre Ministerien in der Administration", "Vorgangstypen der 17. Wahlperiode im Profil zusammenfassen", "Fünf persönlich zugeordnete Anträge mit gefiltertem Link im Profil", "Schlagwortvorschläge bei Eingabe begrenzen", "Serverseitige Suche und begrenzte Dokumentenseiten", "Schlagwörter, Fraktionsfilter und mehrere Urheber", "Urhebertext mit Titeln und Namensbestandteilen bleibt vollständig", "Monatsgruppierung, eindeutige Schlagwörter und leere Ressorts", "Unterzeichner und Texte kommen aus dem Detail-JSON und bleiben unvollständig lesbar", "Importierte Vorgänge sind lesbar", "Verknüpfte Urheber führen zu einem Mandat derselben Wahlperiode"],
+  checks: ["Geprüfte Namensvarianten auf die richtigen Abgeordnetenprofile verlinken", "Gespeicherte Initiativenbilanz mit begrenzten Ranglisten", "Ressortvorschläge für mehrere Wahlperioden", "Laufende Wahlperiode und ihre Ministerien in der Administration", "Vorgangstypen der 17. Wahlperiode im Profil zusammenfassen", "Fünf persönlich zugeordnete Anträge mit gefiltertem Link im Profil", "Schlagwortvorschläge bei Eingabe begrenzen", "Serverseitige Suche und begrenzte Dokumentenseiten", "Schlagwörter, Fraktionsfilter und mehrere Urheber", "Urhebertext mit Titeln und Namensbestandteilen bleibt vollständig", "Monatsgruppierung, eindeutige Schlagwörter und leere Ressorts", "Unterzeichner, Texte und Tabellenzeilen kommen aus dem Detail-JSON", "Importierte Vorgänge sind lesbar", "Verknüpfte Urheber führen zu einem Mandat derselben Wahlperiode"],
   steps: [{
     id: "parlis-ministry-current-period",
     label: "Administration führt nur die Ministerien der laufenden Wahlperiode",
@@ -145,12 +145,25 @@ export const parlisScenario: TestScenario = {
         answerText: "Mit Schreiben vom 26. Mai 2026",
       });
       const broken = parseDocumentDetails({ drucksache: "18/6" });
+      const withTable = parseDocumentDetails({
+        vorgangsId: "V-246382",
+        questionText: "Vorbemerkung\n<<TABELLE 1>>\nNachbemerkung",
+        tables: [{ page: 6, rows: [["", "2015", "2016"], ["Rems-Murr-Kreis"], ["Beschäftigte", "139.311", "143.353"]] }],
+      });
+      const segments = textSegments(withTable!.questionText, withTable!.tables);
+      const table = segments.find(segment => segment.kind === "table");
       return {
         ok: signerSummary(details!) === "Sascha Binder, Dorothea Kliche-Behnke, Boris Weirauch (SPD, gesamte Fraktion)"
           && details?.answer.signatory === "Hoffmeister-Kraut"
           && details?.questionText === "Der Landtag wolle beschließen,"
-          && broken === null,
-        message: "Unterzeichner, Antwort und Texte werden gelesen; ein JSON ohne Vorgangs-ID gilt als unbrauchbar.",
+          && broken === null
+          && segments.length === 3
+          && segments[0].kind === "text" && segments[2].kind === "text"
+          && table?.kind === "table"
+          && table.table.rows.length === 3
+          && table.table.rows[2][1] === "139.311"
+          && table.table.page === 6,
+        message: "Unterzeichner, Antwort und Texte werden gelesen; Tabellenmarker werden zur Tabelle mit Zeilen und Seitenzahl; ein JSON ohne Vorgangs-ID gilt als unbrauchbar.",
       };
     },
   }, {

@@ -18,6 +18,11 @@ export interface DocumentAnswer {
   mode: string;
 }
 
+export interface DocumentTable {
+  page: number;
+  rows: string[][];
+}
+
 export interface DocumentDetails {
   vorgangsId: string;
   drucksache: string;
@@ -36,6 +41,7 @@ export interface DocumentDetails {
   reasoningText: string;
   answerText: string;
   rotatedPages: number[];
+  tables: DocumentTable[];
   pdfUrl: string;
 }
 
@@ -46,6 +52,45 @@ const strings = (value: unknown) =>
 
 const numbers = (value: unknown) =>
   Array.isArray(value) ? value.filter((entry): entry is number => typeof entry === "number") : [];
+
+function tableList(value: unknown): DocumentTable[] {
+  if (!Array.isArray(value)) return [];
+  return value.flatMap(entry => {
+    if (!entry || typeof entry !== "object") return [];
+    const table = entry as Record<string, unknown>;
+    if (!Array.isArray(table.rows)) return [];
+    const rows = table.rows
+      .filter((row): row is unknown[] => Array.isArray(row))
+      .map(row => row.map(cell => (cell == null ? "" : String(cell))));
+    if (rows.length === 0) return [];
+    return [{ page: typeof table.page === "number" ? table.page : 0, rows }];
+  });
+}
+
+export type DocumentSegment =
+  | { kind: "text"; text: string }
+  | { kind: "table"; table: DocumentTable };
+
+/**
+ * Zerlegt einen Textabschnitt an den Tabellenmarkern (`<<TABELLE 1>>`), damit
+ * Tabellen dort erscheinen, wo sie im Dokument stehen, statt als Zahlenfluss.
+ */
+export function textSegments(text: string, tables: DocumentTable[]): DocumentSegment[] {
+  const segments: DocumentSegment[] = [];
+  text.split(/<<TABELLE (\d+)>>/).forEach((part, index) => {
+    if (index % 2 === 1) {
+      const table = tables[Number(part) - 1];
+      if (table) {
+        segments.push({ kind: "table", table });
+        return;
+      }
+      return; // Marker ohne Tabelle: Zahl nicht als Text ausgeben
+    }
+    const trimmed = part.trim();
+    if (trimmed) segments.push({ kind: "text", text: trimmed });
+  });
+  return segments;
+}
 
 export function parseDocumentDetails(raw: unknown): DocumentDetails | null {
   if (!raw || typeof raw !== "object" || Array.isArray(raw)) return null;
@@ -79,6 +124,7 @@ export function parseDocumentDetails(raw: unknown): DocumentDetails | null {
     reasoningText: text(data.reasoningText),
     answerText: text(data.answerText),
     rotatedPages: numbers(data.rotatedPages),
+    tables: tableList(data.tables),
     pdfUrl: text(data.pdfUrl),
   };
 }

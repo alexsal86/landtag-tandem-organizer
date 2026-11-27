@@ -2373,7 +2373,7 @@
             "Schlagwörter, Fraktionsfilter und mehrere Urheber",
             "Urhebertext mit Titeln und Namensbestandteilen bleibt vollständig",
             "Monatsgruppierung, eindeutige Schlagwörter und leere Ressorts",
-            "Unterzeichner und Texte kommen aus dem Detail-JSON und bleiben unvollständig lesbar",
+            "Unterzeichner, Texte und Tabellenzeilen kommen aus dem Detail-JSON",
             "Importierte Vorgänge sind lesbar",
             "Verknüpfte Urheber führen zu einem Mandat derselben Wahlperiode"
           ],

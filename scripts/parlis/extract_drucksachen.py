@@ -306,10 +306,139 @@ def is_item(line: str) -> bool:
     return bool(match) and int(match.group(1)) <= 20
 
 
-def read_blocks(pdf: bytes) -> tuple[list[str], dict, int, list[int]]:
+NUMBER_CELL_RE = re.compile(r"^[-–]?\d[\d.,]*%?$|^[-–]$|^\d{4}/\d+$")
+TABLE_MARKER_RE = re.compile(r"^<<TABELLE (\d+)>>$")
+
+
+def split_cells(line: str) -> list[str]:
+    """Zerlegt eine Tabellenzeile in Zellen.
+
+    Die PDFs setzen Tabellen als Textzeilen; Spalten sind im extrahierten Text
+    nur noch an den Leerzeichen erkennbar. Gibt es 2+ Leerzeichen, sind das die
+    Spaltengrenzen. Sonst trennt der Beginn der Zahlenspalten die Beschriftung
+    von den Werten: 'Beschäftigte insgesamt1) A-U 139.311 143.353' ->
+    ['Beschäftigte insgesamt1) A-U', '139.311', '143.353'].
+    """
+    wide = [part.strip() for part in re.split(r"\s{2,}", line) if part.strip()]
+    if len(wide) >= 3:
+        cells = wide
+    else:
+        tokens = line.split()
+        if len(tokens) < 3:
+            return [line.strip()]
+        start = len(tokens)
+        for index in range(len(tokens) - 1, -1, -1):
+            if NUMBER_CELL_RE.match(tokens[index]):
+                start = index
+            else:
+                break
+        if len(tokens) - start < 3:
+            return [line.strip()]
+        label = " ".join(tokens[:start]).strip()
+        cells = ([label] if label else [""]) + tokens[start:]
+    # In der ersten Zelle kann eine Zahl haengen, die eine eigene Spalte ist:
+    # 'Rems-Murr-Kreis 11.493' -> ['Rems-Murr-Kreis', '11.493', ...].
+    if len(cells) >= 3 and cells[0]:
+        tokens = cells[0].split()
+        start = len(tokens)
+        while start > 0 and NUMBER_CELL_RE.match(tokens[start - 1]):
+            start -= 1
+        if 0 < start < len(tokens) and len(tokens) - start <= 6:
+            cells = [" ".join(tokens[:start])] + tokens[start:] + cells[1:]
+    # Zeichenabstaende im PDF reissen Zahlen auseinander ('12 .7 3 1').
+    return [re.sub(r"(?<=[\d.,])\s+(?=[\d.,])", "", cell) for cell in cells]
+
+
+def is_tabular(line: str) -> bool:
+    return len(split_cells(line)) >= 3
+
+
+def is_header(line: str) -> bool:
+    """Kopfzeile einer Tabelle: nur Zahlen, z. B. '2015 2016 … 2025'."""
+    tokens = line.split()
+    return len(tokens) >= 3 and all(NUMBER_CELL_RE.match(token) for token in tokens)
+
+
+def is_group_label(line: str) -> bool:
+    """Zwischenzeile innerhalb einer Tabelle, z. B. 'Baden-Württemberg'."""
+    if len(split_cells(line)) != 1:
+        return False
+    words = line.split()
+    return 1 <= len(words) <= 6 and not re.search(r"[.;:!?]$", line)
+
+
+def collect_tables(lines: list[tuple[int, str]]) -> tuple[list[str], list[dict]]:
+    """Ersetzt zusammenhaengende Tabellenzeilen durch einen Marker.
+
+    Eine Tabelle ist ein Lauf von mindestens zwei Tabellenzeilen auf derselben
+    Seite, die Zahlen in mehreren Spalten fuehren. Die Kopfzeile mit den Jahren
+    und Zwischenlabels wie 'Baden-Württemberg' gehoeren dazu, sonst waeren die
+    Zahlenspalten ohne Bedeutung. Der Marker bleibt als eigene Zeile im Text,
+    damit die Reihenfolge erhalten bleibt.
+    """
+    stream: list[str] = []
+    tables: list[dict] = []
+    index = 0
+    while index < len(lines):
+        page, line = lines[index]
+        header: str | None = None
+        if (
+            is_header(line)
+            and index + 1 < len(lines)
+            and lines[index + 1][0] == page
+            and is_tabular(lines[index + 1][1])
+        ):
+            header = line
+            start = index + 1
+        elif is_tabular(line):
+            start = index
+        else:
+            stream.append(line)
+            index += 1
+            continue
+        end = start
+        rows: list[list[str]] = []
+        while end < len(lines) and lines[end][0] == page:
+            current = lines[end][1]
+            if is_tabular(current):
+                rows.append(split_cells(current))
+                end += 1
+                continue
+            if (
+                is_group_label(current)
+                and end + 1 < len(lines)
+                and lines[end + 1][0] == page
+                and is_tabular(lines[end + 1][1])
+            ):
+                rows.append(split_cells(current))
+                end += 1
+                continue
+            break
+        numeric_rows = sum(
+            1 for row in rows if sum(1 for cell in row if NUMBER_CELL_RE.match(cell)) >= 2
+        )
+        # Eine Tabelle hat Beschriftungen in der ersten Spalte. Reine Zahlen-
+        # kolonnen sind Achsenbeschriftungen aus Grafiken und bleiben Text.
+        labeled_rows = sum(
+            1 for row in rows if row[0] and not NUMBER_CELL_RE.match(row[0])
+        )
+        if numeric_rows >= 2 and labeled_rows >= 2 and len(rows) >= 3:
+            if header:
+                rows.insert(0, split_cells(header))
+            tables.append({"page": page, "rows": rows})
+            stream.append(f"<<TABELLE {len(tables)}>>")
+            index = end
+            continue
+        for position in range(index, end):
+            stream.append(lines[position][1])
+        index = end
+    return stream, tables
+
+
+def read_blocks(pdf: bytes) -> tuple[list[str], dict, int, list[int], list[dict]]:
     reader = PdfReader(io.BytesIO(pdf))
     meta: dict = {}
-    raw: list[str] = []
+    raw: list[tuple[int, str]] = []
     rotated_pages: list[int] = []
     for number, page in enumerate(reader.pages, start=1):
         if rotated_text_share(page) >= 0.3:
@@ -327,21 +456,22 @@ def read_blocks(pdf: bytes) -> tuple[list[str], dict, int, list[int]]:
                 meta["eingegangen"] = iso(*match.group(1, 2, 3))
                 meta["ausgegeben"] = iso(*match.group(4, 5, 6))
                 continue
-            raw.append(line)
-    kept = []
-    for line in raw:
+            raw.append((number, line))
+    kept: list[tuple[int, str]] = []
+    for page, line in raw:
         if any(pattern.match(line) for pattern in FURNITURE_RE):
             continue
         match = DATE_RE.match(line)
         if match and meta.get("eingegangen") == iso(*match.group(1, 2, 3)):
             continue  # Fußzeilendatum = Eingangsdatum
-        kept.append(line)
+        kept.append((page, line))
+    kept_lines, tables = collect_tables(kept)
     blocks: list[str] = []
     modes: list[str] = []
-    for line in kept:
+    for line in kept_lines:
         heading = bool(
             HEAD_RE.match(line) or DATE_RE.match(line) or ANCHOR_RE.match(line)
-            or MINISTER_RE.match(line)
+            or MINISTER_RE.match(line) or TABLE_MARKER_RE.match(line)
         )
         if not blocks or heading or is_item(line) or SECTION_RE.match(line):
             blocks.append(line)
@@ -359,8 +489,11 @@ def read_blocks(pdf: bytes) -> tuple[list[str], dict, int, list[int]]:
             modes.append("item")
         else:
             blocks[-1] = previous + " " + line
-    cleaned = [re.sub(r"[ \t]{2,}", " ", block).strip() for block in blocks]
-    return [block for block in cleaned if block], meta, len(reader.pages), rotated_pages
+    cleaned = [
+        block if TABLE_MARKER_RE.match(block) else re.sub(r"[ \t]{2,}", " ", block).strip()
+        for block in blocks
+    ]
+    return [block for block in cleaned if block], meta, len(reader.pages), rotated_pages, tables
 
 
 def parse_name_list(block: str) -> tuple[list[str], str] | None:
@@ -435,7 +568,7 @@ def resolve_signer(name: str, party: str, roster: list[dict]) -> tuple[str, str]
 
 
 def parse_document(pdf: bytes, row: dict, roster: list[dict]) -> dict:
-    blocks, meta, pages, rotated_pages = read_blocks(pdf)
+    blocks, meta, pages, rotated_pages, tables = read_blocks(pdf)
     start = next((i for i, block in enumerate(blocks) if ANCHOR_RE.match(block)), 0)
     body = blocks[start:]
     begin = next((i for i, block in enumerate(body) if block == "Begründung"), None)
@@ -482,6 +615,7 @@ def parse_document(pdf: bytes, row: dict, roster: list[dict]) -> dict:
         "pdf_seiten": pages,
         "pdf_bytes": len(pdf),
         "rotated_pages": ";".join(str(page) for page in rotated_pages),
+        "tables": tables,
         "signers": "; ".join(signers),
         "signer_count": len(signers),
         "signer_party": signature["party"] or party_hint,
@@ -611,6 +745,7 @@ def details_payload(row: dict) -> dict:
         "reasoningText": row["reasoning_text"],
         "answerText": row["answer_text"],
         "rotatedPages": [int(page) for page in (row["rotated_pages"] or "").split(";") if page],
+        "tables": row.get("tables") or [],
         "pdfUrl": row["pdf_url"],
     }
 

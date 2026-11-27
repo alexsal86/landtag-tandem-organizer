@@ -152,6 +152,39 @@
   padding-top: 1.35rem;
 }
 .parlis-details-section h4 { font-size: .75rem; font-weight: 600; letter-spacing: .01em; color: var(--text-secondary); }
+.parlis-details-body { display: grid; gap: .85rem; min-width: 0; }
+.parlis-table-figure { display: grid; gap: .3rem; margin: 0; min-width: 0; }
+.parlis-table-scroll {
+  overflow-x: auto;
+  max-width: 100%;
+  border: 1px solid var(--border-default);
+  border-radius: var(--radius-chip);
+  background: var(--surface-card);
+}
+.parlis-table { border-collapse: collapse; font-size: .8125rem; }
+.parlis-table th, .parlis-table td {
+  padding: .35rem .6rem;
+  border-bottom: 1px solid var(--border-default);
+  white-space: nowrap;
+}
+.parlis-table tr:last-child th, .parlis-table tr:last-child td { border-bottom: 0; }
+.parlis-table thead th { background: var(--surface-muted); font-weight: 600; text-align: right; }
+.parlis-table thead th:first-child { text-align: left; }
+.parlis-table tbody th[scope="row"] {
+  min-width: 11rem;
+  max-width: 22rem;
+  text-align: left;
+  font-weight: 400;
+  white-space: normal;
+}
+.parlis-table td { text-align: right; font-variant-numeric: tabular-nums; }
+.parlis-table tbody th.parlis-table-group {
+  background: var(--surface-muted);
+  text-align: left;
+  font-weight: 600;
+  white-space: normal;
+}
+.parlis-table-figure figcaption { font-size: .75rem; color: var(--text-secondary); }
 .parlis-details-text {
   max-width: 68ch;
   margin: 0;

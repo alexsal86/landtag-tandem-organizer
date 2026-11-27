@@ -1,6 +1,12 @@
 import type { ReactNode } from "react";
 import { useQuery } from "@tanstack/react-query";
-import { documentDetailsUrl, parseDocumentDetails, signerSummary } from "./details";
+import {
+  documentDetailsUrl,
+  parseDocumentDetails,
+  signerSummary,
+  textSegments,
+  type DocumentTable,
+} from "./details";
 
 async function loadDetails(vorgangsId: string, signal: AbortSignal) {
   const response = await fetch(documentDetailsUrl(vorgangsId), { signal });
@@ -17,11 +23,45 @@ function Row({ label, children }: { label: string; children: ReactNode }) {
   </>;
 }
 
-function Section({ title, body }: { title: string; body: string }) {
+const NUMBER_CELL = /^[-–]?[\d.,]+%?$/;
+
+function TableFigure({ table }: { table: DocumentTable }) {
+  const [first, ...rest] = table.rows;
+  // Kopfzeile nur, wenn nach der Beschriftung reine Zahlen folgen (Jahre o. Ä.).
+  const numbered = first.length > 1 && first.slice(1).every(cell => !cell || NUMBER_CELL.test(cell));
+  const head = numbered ? first : null;
+  const body = numbered ? rest : table.rows;
+  const columns = Math.max(1, ...table.rows.map(row => row.length));
+
+  return <figure className="parlis-table-figure">
+    <div className="parlis-table-scroll">
+      <table className="parlis-table">
+        {head && <thead>
+          <tr>{head.map((cell, index) => <th key={index} scope="col">{cell}</th>)}</tr>
+        </thead>}
+        <tbody>{body.map((row, rowIndex) => <tr key={rowIndex}>
+          {row.length === 1
+            ? <th className="parlis-table-group" scope="colgroup" colSpan={columns}>{row[0]}</th>
+            : row.map((cell, cellIndex) => cellIndex === 0
+              ? <th key={cellIndex} scope="row">{cell}</th>
+              : <td key={cellIndex}>{cell}</td>)}
+        </tr>)}</tbody>
+      </table>
+    </div>
+    <figcaption>Tabelle{table.page ? ` · Seite ${table.page}` : ""}</figcaption>
+  </figure>;
+}
+
+function Section({ title, body, tables }: { title: string; body: string; tables: DocumentTable[] }) {
   if (!body) return null;
+  const segments = textSegments(body, tables);
   return <section className="parlis-details-section">
     <h4>{title}</h4>
-    <p className="parlis-details-text">{body}</p>
+    <div className="parlis-details-body">
+      {segments.map((segment, index) => segment.kind === "text"
+        ? <p className="parlis-details-text" key={index}>{segment.text}</p>
+        : <TableFigure key={index} table={segment.table} />)}
+    </div>
   </section>;
 }
 
@@ -64,8 +104,8 @@ export default function ProceedingDetails({ vorgangsId }: { vorgangsId: string }
         {details.rotatedPages.join(", ")}
       </Row>}
     </dl>
-    <Section title="Frage" body={details.questionText} />
-    <Section title="Begründung" body={details.reasoningText} />
-    <Section title="Antwort" body={details.answerText} />
+    <Section title="Frage" body={details.questionText} tables={details.tables} />
+    <Section title="Begründung" body={details.reasoningText} tables={details.tables} />
+    <Section title="Antwort" body={details.answerText} tables={details.tables} />
   </div>;
 }
