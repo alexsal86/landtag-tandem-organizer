@@ -173,7 +173,42 @@ describe("SystemPulse: selftest_runs", () => {
 
     const failedStep = screen.getByRole("button", { name: /Agenda: Hauptpunkt.*fehlgeschlagen/ });
     fireEvent.click(failedStep);
-    expect(screen.getByRole("alert")).toHaveTextContent("Agenda konnte nicht verschoben werden.");
+    const details = screen.getByTestId("pulse-step-details");
+    expect(details).toHaveTextContent("Agenda konnte nicht verschoben werden.");
+    expect(details).toHaveTextContent("Code 42501");
+    expect(details).toHaveTextContent("Details gekürzt: 180 Einträge ausgelassen");
+    // Der volle Fehler steht als Details-JSON darunter, nicht nur die Meldung.
+    expect(details.querySelector("pre")).toHaveTextContent("policy meeting_agenda_update");
+  });
+
+  it("klappt auch ergänzte Schritte auf und zeigt dort den vollen Fehler samt Details", async () => {
+    rpc.mockImplementation((name: string) => Promise.resolve(
+      name === "get_selftest_run_history"
+        ? { data: [], error: null }
+        : {
+          data: [{
+            scenario_id: "jour-fixe-platform-integration", scenario_title: "Jour fixe (Plattform)", status: "failed",
+            created_at: ago(3_600_000), duration_ms: 900, failed_steps: 1, total_steps: 2, keep_data: false, cleanup: { status: "ok" },
+            steps: [{
+              id: "dynamic-failed", label: "Ergänzter Schritt", status: "failed", message: "Ergänzter Fehler",
+              details: { step: { id: "dynamic-failed" }, error: { code: "P0001", details: "raised in trigger" } },
+              detailsTruncated: true, detailsOmitted: 12,
+            }],
+          }],
+          error: null,
+        },
+    ));
+    renderPulse();
+
+    await waitFor(() => expect(within(tile(/Jour fixe/)).getByText("Test fehlgeschlagen")).toBeInTheDocument());
+    fireEvent.click(tile(/Jour fixe/));
+    fireEvent.click(await screen.findByRole("button", { name: /Ergänzter Schritt: fehlgeschlagen/ }));
+
+    const details = screen.getByTestId("pulse-step-details");
+    expect(details).toHaveTextContent("Ergänzter Fehler");
+    expect(details).toHaveTextContent("Code P0001");
+    expect(details).toHaveTextContent("Details gekürzt: 12 Einträge ausgelassen");
+    expect(details.querySelector("pre")).toHaveTextContent("raised in trigger");
   });
 
   it("verwirft lokale Live-Statuswerte nach dem Lauf statt einen Erfolg zu erfinden", async () => {
