@@ -163,14 +163,30 @@ export const employeeMeetingsScenario: TestScenario = {
         if (typeof nearVersion !== "number") {
           return { ok: false, message: "Der Autosave-Versionsstand fehlt; der veraltete Stand lässt sich nicht prüfen." };
         }
-        const direct = await supabase.from("employee_meetings")
-          .update({ status: "pending_acknowledgement" }).eq("id", near).select("id");
-        const prematureRequest = await supabase.rpc("request_protocol_acknowledgement", { p_meeting_id: near });
-        const prematureAck = await supabase.rpc("acknowledge_meeting_protocol", { p_meeting_id: near });
-        const prematureReopen = await supabase.rpc("reopen_meeting_protocol", { p_meeting_id: near, p_reason: tag(ctx.runId) });
-        const staleSave = await supabase.rpc("save_employee_meeting", {
+        // Die Dauer je Aufruf steht im Befund: ein langsamer Serverweg soll nicht
+        // nur als „Schritt hängt" auffallen, sondern benannt sein.
+        const run = async <T>(key: string, call: () => PromiseLike<T>) => {
+          const started = performance.now();
+          const value = await call();
+          return { key, value, ms: Math.round(performance.now() - started) };
+        };
+        // Die vier Abweisungen ändern nichts und sind voneinander unabhängig; parallel
+        // kostet der Schritt die Zeit des langsamsten Aufrufs statt der Summe aller.
+        const denials = await Promise.all([
+          run("direct", () => supabase.from("employee_meetings")
+            .update({ status: "pending_acknowledgement" }).eq("id", near).select("id")),
+          run("release", () => supabase.rpc("request_protocol_acknowledgement", { p_meeting_id: near })),
+          run("acknowledge", () => supabase.rpc("acknowledge_meeting_protocol", { p_meeting_id: near })),
+          run("reopen", () => supabase.rpc("reopen_meeting_protocol", { p_meeting_id: near, p_reason: tag(ctx.runId) })),
+        ]);
+        const direct = denials[0].value;
+        const prematureRequest = denials[1].value;
+        const prematureAck = denials[2].value;
+        const prematureReopen = denials[3].value;
+        const stale = await run("stale", () => supabase.rpc("save_employee_meeting", {
           p_meeting_id: near, p_version: nearVersion - 1, p_patch: { protocol_data: { goals: tag(ctx.runId) } },
-        });
+        }));
+        const staleSave = stale.value;
         const audit = await supabase.from("employee_meeting_audit").select("id").eq("meeting_id", near);
         const read = await expectFields("employee_meetings", near, { status: "scheduled" }, "Status nach Sperrprüfung");
         const checks = {
@@ -183,17 +199,30 @@ export const employeeMeetingsScenario: TestScenario = {
         };
         if (!read.ok) return read;
         const ok = Object.values(checks).every(Boolean);
+        // Wurde der veraltete Stand angenommen, ist die Versionsprüfung der Instanz
+        // wirkungslos; der gespeicherte Zähler belegt, ob wirklich geschrieben wurde
+        // und ob nur der Fehlercode abwich.
+        const versionProbe = checks.staleVersionRejected ? null
+          : await supabase.from("employee_meetings").select("version").eq("id", near).maybeSingle();
         return {
           ok,
           message: ok
             ? "Alle unzulässigen Änderungen wurden ohne Auditzeile abgewiesen."
-            : "Mindestens eine Workflow-Sperre oder die Auditprüfung wich vom erwarteten Ergebnis ab.",
+            : checks.staleVersionRejected
+              ? "Mindestens eine Workflow-Sperre oder die Auditprüfung wich vom erwarteten Ergebnis ab."
+              : `Der veraltete Stand ${nearVersion - 1} wurde ${staleSave.error ? `mit ${staleSave.error.code} statt 40001` : "angenommen"} (gespeichert: ${versionProbe?.data?.version ?? "unbekannt"}). Die Versionsprüfung der Instanz greift nicht; Migration 20261128040000 einspielen.`,
           details: {
             ...checks,
             errors: {
               direct: direct.error?.code, release: prematureRequest.error?.code, acknowledge: prematureAck.error?.code,
               reopen: prematureReopen.error?.code, stale: staleSave.error?.code, audit: audit.error?.code,
             },
+            durationsMs: Object.fromEntries([...denials, stale].map(item => [item.key, item.ms])),
+            ...(versionProbe ? {
+              staleVersionProbe: {
+                expected: nearVersion, stored: versionProbe.data?.version ?? null, error: versionProbe.error?.code ?? null,
+              },
+            } : {}),
           },
         };
       },
