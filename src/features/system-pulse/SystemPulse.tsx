@@ -330,7 +330,7 @@ export function SystemPulse({ gaps, gapsState }: Props) {
                           <span className="block">{row.test}</span>
                           <code className="text-[10px] text-muted-foreground">{row.scenario}</code>
                         </TableCell>
-                        <TableCell className="align-top text-caption text-destructive">{row.error}</TableCell>
+                        <TableCell className="min-w-48 whitespace-normal break-words align-top text-caption text-destructive">{row.error}</TableCell>
                         {group?.first === index && (
                           <TableCell rowSpan={group.count} className="whitespace-nowrap text-right align-middle">
                             <Button
@@ -647,12 +647,13 @@ export function SystemPulse({ gaps, gapsState }: Props) {
                               )}
                               {(() => {
                                 const diagnostic = result ? stepDiagnostic(result) : null;
-                                if (!diagnostic || (!diagnostic.code && !diagnostic.summary)) return null;
+                                const diagnosticText = diagnostic?.fullSummary ?? diagnostic?.summary;
+                                if (!diagnostic || (!diagnostic.code && !diagnosticText)) return null;
                                 return (
                                   <div data-testid="pulse-step-diagnostic" className="mt-0.5 break-words text-[10px] leading-snug text-destructive">
                                     {diagnostic.code ? <span className="font-mono">Code {diagnostic.code}</span> : null}
-                                    {diagnostic.code && diagnostic.summary ? " · " : ""}
-                                    {diagnostic.summary}
+                                    {diagnostic.code && diagnosticText ? " · " : ""}
+                                    {diagnosticText}
                                   </div>
                                 );
                               })()}

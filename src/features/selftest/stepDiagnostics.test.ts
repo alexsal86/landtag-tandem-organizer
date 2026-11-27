@@ -6,14 +6,20 @@ describe("Schritt-Diagnose", () => {
     expect(stepDiagnostic({
       id: "archive", label: "Archivierung", status: "failed", message: "RLS verweigert (new row violates row-level security policy).",
       details: { step: { id: "archive", label: "Archivierung" }, error: { code: "42501", message: "new row violates row-level security policy", details: "policy letters_insert", hint: "Büro prüfen" } },
-    })).toEqual({ point: "Archivierung (archive)", code: "42501", summary: "policy letters_insert" });
+    })).toEqual({
+      point: "Archivierung (archive)", code: "42501", summary: "policy letters_insert", fullSummary: "policy letters_insert",
+    });
   });
 
   it("trennt den Code aus älteren Meldungen ohne strukturierte Details", () => {
     expect(stepDiagnostic({
       id: "check", label: "Prüfen", status: "failed",
       message: "Prüfung kaputt · Code 23503 · Details: Key (task_id)=(abc) is not present",
-    })).toEqual({ point: "Prüfen (check)", code: "23503", summary: "Prüfung kaputt · Details: Key (task_id)=(abc) is not present" });
+    })).toEqual({
+      point: "Prüfen (check)", code: "23503",
+      summary: "Prüfung kaputt · Details: Key (task_id)=(abc) is not present",
+      fullSummary: "Prüfung kaputt · Details: Key (task_id)=(abc) is not present",
+    });
   });
 
   it("fasst Soll/Ist-Abweichungen kurz zusammen", () => {
@@ -66,6 +72,8 @@ describe("Schritt-Diagnose", () => {
     const long = stepDiagnostic({ id: "x", label: "Langer Befund", status: "failed", message: "x".repeat(200) });
     expect(long?.summary?.length).toBeLessThanOrEqual(140);
     expect(long?.summary?.endsWith("…")).toBe(true);
+    // Der volle Text bleibt daneben erhalten, damit der System-Puls ihn zeigen kann.
+    expect(long?.fullSummary).toBe("x".repeat(200));
     expect(stepDiagnostic({ id: "ok", label: "OK", status: "ok", message: "bestanden" })).toBeNull();
   });
 });

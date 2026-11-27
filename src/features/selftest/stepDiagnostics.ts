@@ -14,6 +14,8 @@ export interface StepDiagnostic {
   code?: string;
   /** Kurzdetails für Listen; gekürzt, damit die Darstellung nicht umbricht. */
   summary?: string;
+  /** Derselbe Text ungekürzt – für Stellen, die den vollen Fehler zeigen sollen. */
+  fullSummary?: string;
 }
 
 const MAX_SUMMARY = 140;
@@ -93,5 +95,6 @@ export function stepDiagnostic(step: StoredStepResult): StepDiagnostic | null {
     point: id && id !== label ? `${label} (${id})` : label,
     code,
     summary: summary ? truncate(summary) : undefined,
+    fullSummary: summary,
   };
 }

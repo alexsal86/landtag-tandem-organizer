@@ -237,6 +237,27 @@ describe("SystemPulse: selftest_runs", () => {
     await waitFor(() => expect(saveRun).toHaveBeenCalled());
   });
 
+  it("zeigt den gespeicherten Fehlertext in der Fehlertabelle vollständig statt gekürzt", async () => {
+    const message = `Fehler beim Speichern: ${"Zeile ".repeat(30)}Ende der Meldung.`;
+    rpc.mockImplementation((name: string) => Promise.resolve(
+      name === "get_selftest_run_history"
+        ? { data: [], error: null }
+        : {
+          data: [{
+            scenario_id: "contact-lifecycle", scenario_title: "Kontakt-Lifecycle", status: "failed", created_at: ago(3_600_000),
+            duration_ms: 500, failed_steps: 1, total_steps: 1, keep_data: false, cleanup: { status: "ok" },
+            steps: [{ id: "create", label: "Anlegen", status: "failed", message }],
+          }],
+          error: null,
+        },
+    ));
+    renderPulse();
+
+    const failedTests = screen.getByRole("region", { name: "Fehlgeschlagene Tests" });
+    expect(await within(failedTests).findByText(message)).toBeInTheDocument();
+    expect(within(failedTests).queryByText(/…/)).not.toBeInTheDocument();
+  });
+
   it("verknüpft RLS-Befunde mit Bereich und Workflow", async () => {
     rpc.mockImplementation((name: string) => Promise.resolve(
       name === "get_selftest_run_history"

@@ -289,13 +289,15 @@ export function failedTestRows(
           scenario: scenarioTitle,
           scenarioId,
           test: cleanupFailed ? "Aufräumen der Testdaten" : "gesamter Testlauf",
-          error: (cleanupFailed ? cleanupMessage : undefined) || "Test fehlgeschlagen",
+          error: (cleanupFailed ? cleanupMessage || "Aufräumen fehlgeschlagen" : undefined) || "Test fehlgeschlagen",
         });
         continue;
       }
       for (const step of failedSteps) {
         const diagnostic = stepDiagnostic(step);
-        const error = [diagnostic?.code ? `Code ${diagnostic.code}` : "", diagnostic?.summary ?? ""]
+        // Der Puls zeigt den Fehler vollständig; gekürzt wird nur in den
+        // kompakten Verlaufslisten des Selbsttest-Centers.
+        const error = [diagnostic?.code ? `Code ${diagnostic.code}` : "", diagnostic?.fullSummary ?? diagnostic?.summary ?? ""]
           .filter(Boolean)
           .join(" · ");
         rows.push({
