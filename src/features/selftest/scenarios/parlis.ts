@@ -174,7 +174,11 @@ export const parlisScenario: TestScenario = {
       const withTable = parseDocumentDetails({
         vorgangsId: "V-246382",
         questionText: "Vorbemerkung\n<<TABELLE 1>>\nNachbemerkung",
-        tables: [{ page: 6, rows: [["", "2015", "2016"], ["Rems-Murr-Kreis"], ["Beschäftigte", "139.311", "143.353"]] }],
+        tables: [{ page: 6, header: true, rows: [["", "2015", "2016"], ["Rems-Murr-Kreis"], ["Beschäftigte", "139.311", "143.353"]] }],
+      });
+      const withoutFlag = parseDocumentDetails({
+        vorgangsId: "V-246382",
+        tables: [{ page: 7, rows: [["Gebietseinheit", "2015", "2016"], ["Baden-Württemberg", "385.495", "400.463"]] }],
       });
       const segments = textSegments(withTable!.questionText, withTable!.tables);
       const table = segments.find(segment => segment.kind === "table");
@@ -188,8 +192,11 @@ export const parlisScenario: TestScenario = {
           && table?.kind === "table"
           && table.table.rows.length === 3
           && table.table.rows[2][1] === "139.311"
-          && table.table.page === 6,
-        message: "Unterzeichner, Antwort und Texte werden gelesen; Tabellenmarker werden zur Tabelle mit Zeilen und Seitenzahl; ein JSON ohne Vorgangs-ID gilt als unbrauchbar.",
+          && table.table.page === 6
+          && table.table.header === true
+          && withoutFlag?.tables[0].header === true
+          && withTable!.tables[0].header === true,
+        message: "Unterzeichner, Antwort und Texte werden gelesen; Tabellenmarker werden zur Tabelle mit Zeilen, Seitenzahl und Kopfzeile; ein JSON ohne Vorgangs-ID gilt als unbrauchbar.",
       };
     },
   }, {

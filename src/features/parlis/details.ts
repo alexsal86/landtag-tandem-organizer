@@ -21,6 +21,18 @@ export interface DocumentAnswer {
 export interface DocumentTable {
   page: number;
   rows: string[][];
+  /** Erste Zeile ist die Kopfzeile der Tabelle (Spaltentitel). */
+  header: boolean;
+}
+
+const NUMBER_CELL = /^[-–]?[\d.,]+%?$/;
+
+/**
+ * Kopfzeile ohne Kennzeichnung im JSON: nach der Beschriftung folgen reine
+ * Zahlen, wie bei einer Jahresreihe ('Gebietseinheit 2015 2016 …').
+ */
+function looksLikeHeader(row: string[]) {
+  return row.length > 1 && row.slice(1).every(cell => !cell || NUMBER_CELL.test(cell));
 }
 
 export interface DocumentDetails {
@@ -63,7 +75,11 @@ function tableList(value: unknown): DocumentTable[] {
       .filter((row): row is unknown[] => Array.isArray(row))
       .map(row => row.map(cell => (cell == null ? "" : String(cell))));
     if (rows.length === 0) return [];
-    return [{ page: typeof table.page === "number" ? table.page : 0, rows }];
+    return [{
+      page: typeof table.page === "number" ? table.page : 0,
+      rows,
+      header: table.header === true || looksLikeHeader(rows[0]),
+    }];
   });
 }
 

@@ -23,14 +23,12 @@ function Row({ label, children }: { label: string; children: ReactNode }) {
   </>;
 }
 
-const NUMBER_CELL = /^[-–]?[\d.,]+%?$/;
-
 function TableFigure({ table }: { table: DocumentTable }) {
   const [first, ...rest] = table.rows;
-  // Kopfzeile nur, wenn nach der Beschriftung reine Zahlen folgen (Jahre o. Ä.).
-  const numbered = first.length > 1 && first.slice(1).every(cell => !cell || NUMBER_CELL.test(cell));
-  const head = numbered ? first : null;
-  const body = numbered ? rest : table.rows;
+  // Die Kopfzeile steht im PDF über den Datenzeilen; ohne sie sind die
+  // Zahlenspalten nicht zu lesen.
+  const head = table.header && rest.length > 0 ? first : null;
+  const body = head ? rest : table.rows;
   const columns = Math.max(1, ...table.rows.map(row => row.length));
 
   return <figure className="parlis-table-figure">

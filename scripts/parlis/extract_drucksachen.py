@@ -309,6 +309,7 @@ def is_item(line: str) -> bool:
 # Zahlen, Platzhalter ('-', '–', '.', '...') und Drucksachennummern gelten als
 # Zellwerte; ohne die Platzhalter reissen Zeilen wie 'Kolleg 15 . .' die Tabelle auf.
 NUMBER_CELL_RE = re.compile(r"^(?:[-–.]+|\d[\d.,]*%?|\d{4}/\d+)$")
+YEAR_CELL_RE = re.compile(r"^(?:\d{4}|\d{1,2}\.\d{1,2}\.\d{4})$")
 TABLE_MARKER_RE = re.compile(r"^<<TABELLE (\d+)>>$")
 
 
@@ -353,14 +354,67 @@ def split_cells(line: str) -> list[str]:
     return [re.sub(r"(?<=[\d.,])\s+(?=[\d.,])", "", cell) for cell in cells]
 
 
+# Spaltenüberschriften beginnen mit diesen Begriffen; daran wird eine Kopfzeile
+# in ihre Zellen zerlegt.
+HEADER_WORD_RE = re.compile(
+    r"\b(?:Schulart|Schulform|Gebietseinheit|Region|Kreis|Stadtkreis|Landkreis|Jahr|Stichtag"
+    r"|Stand|Gesamtzahl|Gesamt|Anzahl|Prozentzahl|Prozentanteil|Anteil|davon|darunter"
+    r"|aktuelle Dauer|Dauer|Maßnahme|Bereich|Merkmal|Merkmale|Insgesamt)\b"
+)
+
+
+# Abschnittsüberschrift, die im PDF vor den Spaltentiteln steht ('5.1 Regierungs-
+# bezirk Freiburg', 'Anlage 5').
+HEADER_SECTION_RE = re.compile(r"^(?:\d+(?:\.\d+)+\.?\s|Anlage\s+\d+|Übersicht\s+\d+)")
+
+
+def split_header(line: str, columns: int) -> tuple[list[str] | None, str]:
+    """Zerlegt eine Kopfzeile in ihre Spaltentitel.
+
+    Im PDF stehen die Titel nebeneinander in einer Zeile, getrennt nur durch
+    Leerzeichen ('Schulart Gesamtzahl der Schulen Anzahl vakanter …'). Die
+    Zellgrenzen ergeben sich aus den Begriffen, mit denen Spaltentitel beginnen;
+    passt die Zahl der Teile nicht zur Spaltenzahl der Tabelle, bleibt die Zeile
+    Text.
+    """
+    if not line or len(line) > 700 or re.search(r"[.!?]$", line) or columns < 2:
+        return None, ""
+    # Endet der Text auf einem Wert, ist die erste Datenzeile mit hineingeraten.
+    if re.search(r"\d\s*$", line):
+        return None, ""
+    starts = [match.start() for match in HEADER_WORD_RE.finditer(line) if match.start() > 0]
+    if not starts:
+        return None, ""
+    parts, last = [], 0
+    for start in starts:
+        parts.append(line[last:start].strip())
+        last = start
+    parts.append(line[last:].strip())
+    parts = [part for part in parts if part]
+    # Ohne Leerzeichen zusammengeklebte Titel ('AbgängeRegionale Einheit') sind
+    # ein Zeichen dafür, dass die Spaltenreihenfolge nicht stimmt.
+    if any(re.search(r"[a-zäöüß][A-ZÄÖÜ]", part) for part in parts):
+        return None, ""
+    heading = ""
+    if len(parts) == columns + 1 and HEADER_SECTION_RE.match(parts[0]):
+        heading, parts = parts[0], parts[1:]
+    if len(parts) != columns or any(len(part.split()) > 14 for part in parts):
+        return None, ""
+    return parts, heading
+
+
 def is_tabular(line: str) -> bool:
     return len(split_cells(line)) >= 3
 
 
 def is_header(line: str) -> bool:
-    """Kopfzeile einer Tabelle: nur Zahlen, z. B. '2015 2016 … 2025'."""
+    """Kopfzeile einer Tabelle: nur Jahre, z. B. '2015 2016 … 2025'.
+
+    Reine Zahlenzeilen sind keine Kopfzeilen: '2008 8333 3,8 4,3' ist eine
+    Datenzeile ohne Beschriftung.
+    """
     tokens = line.split()
-    return len(tokens) >= 3 and all(NUMBER_CELL_RE.match(token) for token in tokens)
+    return len(tokens) >= 3 and all(YEAR_CELL_RE.match(token) for token in tokens)
 
 
 def is_group_label(line: str) -> bool:
@@ -376,7 +430,28 @@ def is_group_label(line: str) -> bool:
     return 1 <= len(words) <= 10 and not re.search(r"[.;:!?]$", line)
 
 
-def collect_tables(lines: list[tuple[int, str]]) -> tuple[list[str], list[dict]]:
+# Auf um 90 Grad gedrehten Seiten ist die Lesereihenfolge von pypdf nicht
+# verlässlich; dort wird eine Kopfzeile nur übernommen, wenn sie mit einer
+# eindeutigen Beschriftungsspalte beginnt.
+HEADER_LABEL_RE = re.compile(
+    r"^(?:Schulart|Schulform|Jahr|Stichtag|Gebietseinheit|Region|Kreis|Landkreis"
+    r"|Stadtkreis|Stand|Maßnahme|Bereich|Merkmal|Merkmale|Einheit|Gebiet)$",
+    re.IGNORECASE,
+)
+
+
+def is_year_header(row: list[str]) -> bool:
+    """Kopfzeile mit Jahres- oder Stichtagsspalten ('', '2015', '2016', …)."""
+    rest = row[1:]
+    if len(rest) < 2:
+        return False
+    years = sum(1 for cell in rest if YEAR_CELL_RE.match(cell))
+    return years >= max(2, len(rest) - 1)
+
+
+def collect_tables(
+    lines: list[tuple[int, str]], rotated_pages: list[int] | None = None
+) -> tuple[list[str], list[dict]]:
     """Ersetzt zusammenhaengende Tabellenzeilen durch einen Marker.
 
     Eine Tabelle ist ein Lauf von mindestens zwei Tabellenzeilen auf derselben
@@ -430,13 +505,61 @@ def collect_tables(lines: list[tuple[int, str]]) -> tuple[list[str], list[dict]]
         )
         # Eine Tabelle hat Beschriftungen in der ersten Spalte. Reine Zahlen-
         # kolonnen sind Achsenbeschriftungen aus Grafiken und bleiben Text.
+        # Tabellen ohne Beschriftungsspalte ('2020 50 3,57') haben eine leere
+        # erste Zelle; die fällt weg, damit Kopfzeile und Datenzeilen passen.
+        if rows and all(row and row[0] == "" for row in rows):
+            rows = [row[1:] for row in rows]
+        # Jahres- und Stichtagstabellen (Anlage 1) haben keine Beschriftungs-
+        # spalte; ihr Bezug ist das Jahr.
         labeled_rows = sum(
-            1 for row in rows if row[0] and not NUMBER_CELL_RE.match(row[0])
+            1
+            for row in rows
+            if (row[0] or (row[1] if len(row) > 1 else ""))
+            and (
+                not NUMBER_CELL_RE.match(row[0] or row[1])
+                or YEAR_CELL_RE.match(row[0] or row[1])
+            )
         )
         if numeric_rows >= 2 and labeled_rows >= 2 and len(rows) >= 3:
-            if header:
+            columns = max(len(row) for row in rows)
+            header_cells: list[str] | None = None
+            # Kopfzeile über der Tabelle: mehrere Zeilen ohne Zellen, die sich
+            # genau in die Spaltenzahl zerlegen lassen. pypdf setzt bei senkrecht
+            # zentrierten Titeln erst die ganze erste Spalte, dann die zweite –
+            # die Titelblöcke stehen also hintereinander, nicht nebeneinander.
+            for span in range(1, 21):
+                if index - span < 0:
+                    break
+                tail = [lines[index - back][1] for back in range(span, 0, -1)]
+                if any(lines[index - back][0] != page for back in range(1, span + 1)):
+                    break
+                if any(len(split_cells(item)) != 1 for item in tail):
+                    break
+                header_cells, heading = split_header(" ".join(tail), columns)
+                # Nur übernehmen, wenn die Zeilen wirklich noch im Text stehen;
+                # sonst bliebe die Kopfzeile doppelt erhalten.
+                if header_cells and page in (rotated_pages or []):
+                    if not HEADER_LABEL_RE.match(header_cells[0]):
+                        header_cells = None
+                if header_cells and stream[-span:] == tail:
+                    del stream[-span:]
+                    if heading:
+                        stream.append(heading)
+                    break
+                header_cells = None
+            if header_cells:
+                rows.insert(0, header_cells)
+                if header:
+                    # Zeile, die als Kopfzeile galt, ist eine Datenzeile.
+                    cells = split_cells(header)
+                    rows.insert(1, cells[1:] if cells and cells[0] == "" else cells)
+            elif header:
                 rows.insert(0, split_cells(header))
-            tables.append({"page": page, "rows": rows})
+            tables.append({
+                "page": page,
+                "rows": rows,
+                "header": bool(header_cells) or bool(header) or is_year_header(rows[0]),
+            })
             stream.append(f"<<TABELLE {len(tables)}>>")
             # Beschriftungen ohne folgende Zahlenzeile bleiben Text.
             stream.extend(pending)
@@ -478,7 +601,7 @@ def read_blocks(pdf: bytes) -> tuple[list[str], dict, int, list[int], list[dict]
         if match and meta.get("eingegangen") == iso(*match.group(1, 2, 3)):
             continue  # Fußzeilendatum = Eingangsdatum
         kept.append((page, line))
-    kept_lines, tables = collect_tables(kept)
+    kept_lines, tables = collect_tables(kept, rotated_pages)
     blocks: list[str] = []
     modes: list[str] = []
     for line in kept_lines:
