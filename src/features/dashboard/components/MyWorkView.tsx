@@ -109,10 +109,14 @@ export function MyWorkView() {
     />
   );
 
+  const contentWidth = activeTab === "dashboard" || activeTab === "capture"
+    ? "mx-auto w-full max-w-6xl px-4 md:px-6 lg:px-8"
+    : undefined;
+
   return (
     <div className={`min-h-[calc(100vh-8rem)] w-full ${activeTab === "dashboard" ? "relative isolate" : ""}`}>
       {activeTab === "dashboard" && <DashboardDaylight />}
-      <WorkspaceToolbar className="pb-0" actions={
+      <WorkspaceToolbar className={`pb-0 ${contentWidth ?? ""}`} actions={
           <DropdownMenu>
             <DropdownMenuTrigger asChild>
               <Button
@@ -190,7 +194,7 @@ export function MyWorkView() {
         </nav>
       </WorkspaceToolbar>
 
-      <div className={activeTab === "dashboard" ? "mx-auto w-full max-w-6xl px-4 py-6 md:px-6 lg:px-8" : "p-6"}>
+      <div className={contentWidth ? `${contentWidth} py-6` : "p-6"}>
       <OnboardingChecklistCard className="mb-4" />
       {countLoadError && (
         <Alert className="mb-4" variant="destructive">
@@ -214,7 +218,7 @@ export function MyWorkView() {
       {activeTab === "capture" && (
         <ErrorBoundary fallback={tabError("Quick Notes")}>
           <Suspense fallback={tabFallback}>
-            <div className="mx-auto flex w-full max-w-6xl flex-col gap-6">
+            <div className="flex w-full flex-col gap-6">
               <MyWorkQuickCapture onNoteSaved={handleNoteSaved} />
               <MyWorkNotesList refreshTrigger={refreshTrigger} />
             </div>
