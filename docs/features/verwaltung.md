@@ -8,7 +8,7 @@ _Auto-generiert mit `npm run update:feature-catalog` aus dem zentralen Funktions
 
 - Funktionen: **24** in **11** Unterbereichen
 - implementiert: **24**, teilweise: **0**, deaktiviert: **0**, potenziell verwaist: **0**
-- ohne zugeordneten Test: **14**
+- ohne zugeordneten Test: **13**
 - ohne Dokumentationsverweis: **9**
 
 ## Funktionen
@@ -26,7 +26,7 @@ _Auto-generiert mit `npm run update:feature-catalog` aus dem zentralen Funktions
 | `admin.configuration` Konfigurierbare Stammdaten pflegen | Konfiguration | administrativ | implementiert | rollenabhängig | kein Test |
 | `admin.onboarding-login` Onboarding-Folien und Login-Anpassung | Konfiguration | administrativ | implementiert | rollenabhängig | kein Test |
 | `admin.users-sessions` Benutzer, MFA und Sitzungen | Mandanten | administrativ | implementiert | rollenabhängig | kein Test |
-| `admin.tenants` Mandantenverwaltung | Mandanten | administrativ | implementiert | rollenabhängig | kein Test |
+| `admin.tenants` Mandantenverwaltung | Mandanten | administrativ | implementiert | rollenabhängig | Unit-Test |
 | `admin.feature-catalog` Funktionskatalog und Inventarisierung | Qualität | administrativ | implementiert | rollenabhängig | Unit-Test |
 | `admin.selftest-center` Selbsttest-Center | Qualität | administrativ | implementiert | rollenabhängig | Selbsttest |
 | `admin.system-pulse` System-Puls | Qualität | administrativ | implementiert | rollenabhängig | Unit-Test |
@@ -673,25 +673,25 @@ Zeigt Tabellen- und Datenbankgrößen sowie Betriebskennzahlen.
 - Keine.
 
 ### `admin.tenants` — Mandantenverwaltung
-Verwaltet Büros, Mitgliedschaften und Gesundheitskennzahlen; Superadmins sehen alle Mandanten.
+Verwaltet Büros, Mitgliedschaften und Gesundheitskennzahlen; Superadmins legen neue Büros ausschließlich im Provisioning-Wizard an (Standard, Vorlage, leer) und sehen die offenen Übergabeschritte je Büro.
 
 - **Kategorie:** administrativ
 - **Implementierung:** implementiert
 - **Einbindung:** rollenabhängig
-- **Testabdeckung:** kein Test
-- **Letztes Testergebnis:** nicht-ausgefuehrt (kein Laufnachweis importiert; nicht aus der Existenz einer Testdatei abgeleitet)
+- **Testabdeckung:** Unit-Test
+- **Letztes Testergebnis:** unbekannt (kein Laufnachweis importiert; nicht aus der Existenz einer Testdatei abgeleitet)
 - **Rollen:** `superadmin`, `admin`
 - **Routen:** —
-- **Frontend-Komponenten:** `src/components/administration/SuperadminTenantManagement.tsx`, `src/components/administration/tenant-wizard`
-- **Services:** —
+- **Frontend-Komponenten:** `src/components/administration/SuperadminTenantManagement.tsx`, `src/components/administration/tenant-wizard`, `src/components/administration/tenant-wizard/TenantHandoverChecklist.tsx`
+- **Services:** `src/components/administration/tenant-wizard/steps.ts`
 - **Hooks:** —
 - **Edge Functions:** `manage-tenant-user`, `create-admin-user`, `create-demo-users`
 - **Datenbankfunktionen:** `get_admin_tenant_health`, `get_user_tenant_ids`, `get_user_primary_tenant_id`, `user_belongs_to_tenant`, `user_has_tenant_access`
 - **Tabellen:** `tenants`, `user_tenant_memberships`, `tenant_collaborations`, `superadmin_users`
 - **Abhängigkeiten:** —
 - **Selbsttests:** —
-- **Unit-Tests:** —
-- **Integrationstests:** —
+- **Unit-Tests:** `src/components/administration/tenant-wizard/steps.test.ts`
+- **Integrationstests:** `scripts/test-tenant-provisioning.mjs`
 - **Browser-Tests:** —
 - **Dokumentation:** `docs/rollenrechte-matrix.md`
 
@@ -699,10 +699,17 @@ Verwaltet Büros, Mitgliedschaften und Gesundheitskennzahlen; Superadmins sehen 
 
 - src/components/administration/SuperadminTenantManagement.tsx
 - src/components/administration/tenant-wizard
+- src/components/administration/tenant-wizard/TenantHandoverChecklist.tsx
+- src/components/administration/tenant-wizard/steps.test.ts
 
 **Bekannte Einschränkungen**
 
-- Keine.
+- Neue Büros entstehen nur über provisionTenant im Wizard. Der frühere direkte Anlegezweig im Bearbeiten-Dialog samt initializeTenant-Action wurde entfernt, weil er Seeding und Admin-Benutzer umging.
+- Das Anlegen ist nicht transaktional: schlägt das Seeding teilweise fehl, bleibt das Büro bestehen und die Lücken sind nur über Kennzahlen und Hinweise sichtbar.
+- Ein fehlgeschlagener Admin-Benutzer erscheint als Hinweis; das Büro gilt dann nicht als startklar und es gibt kein Passwort.
+- Standard-Setup legt einen neutralen Absender aus den Stammdaten an; Klonen kopiert bewusst keinen Absender und behält App-Name/Untertitel aus Schritt 1.
+- Standard-Seed und Klon werden in scripts/test-tenant-provisioning.mjs gegen die generierten Typen geprüft (erfundene und fehlende Pflichtspalten). Briefanlässe entsprechen der App-Liste aus LetterOccasionManager.
+- Logo und Kalender stehen in der Mandantenzeile nicht als Kennzahl bereit und werden dort nicht bewertet.
 
 **Offene Prüfpunkte**
 

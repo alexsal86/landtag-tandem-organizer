@@ -94,7 +94,16 @@ export function SuperadminTenantManagement(): React.JSX.Element {
   const [assignTenantId, setAssignTenantId] = useState<string>("");
   const [assignRole, setAssignRole] = useState<string>("mitarbeiter");
 
-  const handleSaveTenant = async (): Promise<void> => {
+  // Nur Bearbeiten: Anlegen läuft ausschließlich über den Provisioning-Wizard,
+  // weil nur dort Seeding und Admin-Benutzer gemeinsam entstehen.
+  const handleUpdateTenant = async (): Promise<void> => {
+    if (!editingTenant) {
+      notify.error("Nur Bearbeiten möglich", {
+        description: "Neue Büros werden über „Neuer Tenant“ angelegt.",
+      });
+      return;
+    }
+
     if (!formName.trim()) {
       notify.error("Fehler", { description: "Name ist erforderlich"
 });
@@ -159,39 +168,6 @@ export function SuperadminTenantManagement(): React.JSX.Element {
         }
 
         notify.success("Gespeichert", { description: "Tenant wurde aktualisiert" 
-});
-      } else {
-        // Create new tenant
-        const { data: newTenant, error } = await supabase
-          .from("tenants")
-          .insert([{
-            name: formName.trim(),
-            description: formDescription.trim() || null,
-            is_active: formIsActive,
-            settings: settingsData,
-          }])
-          .select('id')
-          .single();
-
-        if (error) throw error;
-
-        // Initialize tenant with default settings including app name/subtitle
-        if (newTenant) {
-          const { error: initError } = await supabase.functions.invoke('manage-tenant-user', {
-            body: {
-              action: 'initializeTenant',
-              tenantId: newTenant.id,
-              appName: formAppName.trim() || 'LandtagsOS',
-              appSubtitle: formAppSubtitle.trim() || 'Koordinationssystem',
-            }
-          });
-          
-          if (initError) {
-            debugConsole.error('Error initializing tenant:', initError);
-          }
-        }
-
-        notify.success("Erstellt", { description: "Neuer Tenant wurde angelegt und initialisiert" 
 });
       }
 
@@ -830,9 +806,7 @@ export function SuperadminTenantManagement(): React.JSX.Element {
         <Dialog open={dialogOpen} onOpenChange={setDialogOpen}>
           <DialogContent className="max-w-2xl max-h-[90vh] overflow-y-auto">
             <DialogHeader>
-              <DialogTitle>
-                {editingTenant ? "Tenant bearbeiten" : "Neuer Tenant"}
-              </DialogTitle>
+              <DialogTitle>Tenant bearbeiten</DialogTitle>
             </DialogHeader>
             <div className="space-y-6 py-4">
               {/* Grunddaten */}
@@ -1014,9 +988,7 @@ export function SuperadminTenantManagement(): React.JSX.Element {
               <Button variant="outline" onClick={() => setDialogOpen(false)}>
                 Abbrechen
               </Button>
-              <Button onClick={handleSaveTenant}>
-                {editingTenant ? "Speichern" : "Erstellen"}
-              </Button>
+              <Button onClick={handleUpdateTenant}>Speichern</Button>
             </div>
           </DialogContent>
         </Dialog>

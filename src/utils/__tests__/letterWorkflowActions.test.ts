@@ -1,10 +1,15 @@
 import { beforeEach, describe, expect, it, vi } from 'vitest';
 
-const insertMock = vi.fn();
-const fromMock = vi.fn(() => ({
-  insert: insertMock,
-}));
-const debugErrorMock = vi.fn();
+// vi.mock wird an den Dateianfang gezogen; die Factory darf deshalb nur auf
+// vi.hoisted() zugreifen, sonst laufen die Mocks in die Temporal Dead Zone.
+const { insertMock, fromMock, debugErrorMock } = vi.hoisted(() => {
+  const insert = vi.fn();
+  return {
+    insertMock: insert,
+    fromMock: vi.fn(() => ({ insert })),
+    debugErrorMock: vi.fn(),
+  };
+});
 
 vi.mock('@/integrations/supabase/client', () => ({
   supabase: {

@@ -210,9 +210,12 @@ Deno.serve(withSafeHandler("send-matrix-morning-greeting", async (req) => {
           continue;
         }
 
-        // Log successful send. matrix_bot_logs führt message_content, status und
-        // created_at; message, success und timestamp gibt es nicht (PGRST204).
+        // Log successful send. matrix_bot_logs führt message_content, status,
+        // event_type und created_at; message, success und timestamp gibt es
+        // nicht (PGRST204). Ohne event_type schlug der Log-Eintrag fehl und der
+        // Doppelversand-Check am selben Tag griff nicht.
         await supabaseAdmin.from("matrix_bot_logs").insert({
+          event_type: "morning_greeting_sent",
           user_id: setting.user_id,
           room_id: matrixSub.room_id,
           message_content: message.substring(0, 255),

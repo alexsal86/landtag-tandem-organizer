@@ -11,7 +11,7 @@ Eindeutige Fehler werden im CI-Lauf ausgegeben und brechen die Prüfung ab; sie 
 - Review-Hinweise: **0**
 - Nicht zugeordnete Objekte: **1**, davon ohne Ausnahme: **0**
 
-## Funktionen ohne zugeordneten Test (121)
+## Funktionen ohne zugeordneten Test (120)
 
 - `mywork.tabs` — Meine Arbeit – Bereichsnavigation und Einstellungen
 - `mywork.quick-access` — Schnellzugriff und zuletzt besuchte Seiten
@@ -104,7 +104,6 @@ Eindeutige Fehler werden im CI-Lauf ausgegeben und brechen die Prüfung ab; sie 
 - `admin.edge-function-security` — Edge-Function-Sicherheitsklassifikation
 - `admin.data-lint` — Datenqualitätsprüfung
 - `admin.performance` — Performance- und Größen-Dashboard
-- `admin.tenants` — Mandantenverwaltung
 - `admin.users-sessions` — Benutzer, MFA und Sitzungen
 - `admin.configuration` — Konfigurierbare Stammdaten pflegen
 - `admin.onboarding-login` — Onboarding-Folien und Login-Anpassung
@@ -646,6 +645,15 @@ Eindeutige Fehler werden im CI-Lauf ausgegeben und brechen die Prüfung ab; sie 
 ### `admin.edge-function-security`
 
 - Die Sicherheitsmatrix ist teilweise unvollständig formatiert; der Drift-Check ist als Prüfung vorhanden, wurde hier aber nicht ausgeführt.
+
+### `admin.tenants`
+
+- Neue Büros entstehen nur über provisionTenant im Wizard. Der frühere direkte Anlegezweig im Bearbeiten-Dialog samt initializeTenant-Action wurde entfernt, weil er Seeding und Admin-Benutzer umging.
+- Das Anlegen ist nicht transaktional: schlägt das Seeding teilweise fehl, bleibt das Büro bestehen und die Lücken sind nur über Kennzahlen und Hinweise sichtbar.
+- Ein fehlgeschlagener Admin-Benutzer erscheint als Hinweis; das Büro gilt dann nicht als startklar und es gibt kein Passwort.
+- Standard-Setup legt einen neutralen Absender aus den Stammdaten an; Klonen kopiert bewusst keinen Absender und behält App-Name/Untertitel aus Schritt 1.
+- Standard-Seed und Klon werden in scripts/test-tenant-provisioning.mjs gegen die generierten Typen geprüft (erfundene und fehlende Pflichtspalten). Briefanlässe entsprechen der App-Liste aus LetterOccasionManager.
+- Logo und Kalender stehen in der Mandantenzeile nicht als Kennzahl bereit und werden dort nicht bewertet.
 
 ### `admin.configuration`
 
