@@ -146,6 +146,13 @@ describe("latestRunSteps", () => {
     }]);
     expect(steps.s1.check.details).toEqual({ error: { code: "42501", details: "policy tasks_update" } });
   });
+  it("nimmt den Kürzungshinweis der gespeicherten Details mit", () => {
+    const steps = latestRunSteps([{
+      scenario_id: "s1", status: "failed", created_at: "2026-11-22T10:00:00Z",
+      steps: [{ id: "verify", label: "Felder prüfen", status: "failed", details: [{ field: "status" }], detailsTruncated: true, detailsOmitted: 42 }],
+    }]);
+    expect(steps.s1.verify).toMatchObject({ detailsTruncated: true, detailsOmitted: 42 });
+  });
   it("ignoriert unbrauchbare Schritt-Einträge", () => {
     expect(latestRunSteps([
       { scenario_id: "s1", status: "ok", created_at: "2026-11-20T10:00:00Z", steps: [null, "x", { id: 1 }, { id: "ok", status: "ok" }] },
@@ -183,6 +190,20 @@ describe("failedTestRows", () => {
     expect(failedTestRows(areas, {
       "meeting-lifecycle": { status: "failed", createdAt: "", failedSteps: 0, cleanupStatus: "ok" },
     }, {})).toEqual([row("gesamter Testlauf", "Test fehlgeschlagen")]);
+  });
+
+  it("nennt gekürzte Details in der Fehlerzeile", () => {
+    expect(failedTestRows(areas, {
+      "meeting-lifecycle": { status: "failed", createdAt: "", failedSteps: 1 },
+    }, {
+      "meeting-lifecycle": {
+        verify: {
+          id: "verify", label: "Felder prüfen", status: "failed",
+          details: [{ field: "status", expected: "sent", actual: "draft" }],
+          detailsTruncated: true, detailsOmitted: 7,
+        },
+      },
+    })).toEqual([row("Felder prüfen", "1 Abweichung(en) — status: Soll sent, Ist draft · Details gekürzt: 7 Einträge ausgelassen")]);
   });
 
   it("benennt ein Aufräumen ohne gespeicherte Meldung trotzdem", () => {

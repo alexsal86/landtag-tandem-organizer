@@ -13,7 +13,7 @@ import { useAuth } from "@/hooks/useAuth";
 import { useTenant } from "@/hooks/useTenant";
 import { supabase } from "@/integrations/supabase/client";
 import { featureCatalogHref } from "@/features/feature-catalog/securityLinks";
-import { stepDiagnostic } from "@/features/selftest/stepDiagnostics";
+import { detailsTruncationNote, stepDiagnostic } from "@/features/selftest/stepDiagnostics";
 import { loadScenarioSuite, runAndSaveScenarioSuite } from "@/features/selftest/suite";
 import {
   PULSE_AREAS, PULSE_GROUPS, areaAssessment, assessRun, consecutiveFailures, durationTrend,
@@ -657,6 +657,15 @@ export function SystemPulse({ gaps, gapsState }: Props) {
                                   </div>
                                 );
                               })()}
+                              {(() => {
+                                const note = result ? detailsTruncationNote(result) : undefined;
+                                if (!note) return null;
+                                return (
+                                  <div data-testid="pulse-step-truncation" className="mt-0.5 break-words text-[10px] leading-snug text-muted-foreground">
+                                    {note}
+                                  </div>
+                                );
+                              })()}
                               {result?.durationMs !== undefined && (
                                 <div className="mt-1 text-[10px] tabular-nums text-muted-foreground">{formatDuration(result.durationMs)}</div>
                               )}
@@ -676,13 +685,36 @@ export function SystemPulse({ gaps, gapsState }: Props) {
                         {extraSteps.length} Schritt(e) aus dem Lauf ergänzt – nicht im Artefakt deklariert.
                       </p>
                     )}
-                    {workflow.steps.map((step) => ({ step, result: results[step.id] }))
-                      .filter(({ step, result }) => openStep === `${workflow.scenario}:${step.id}` && result?.message)
-                      .map(({ step, result }) => (
-                        <p key={step.id} role="alert" className="rounded border border-destructive/40 bg-destructive/5 p-2 text-xs text-destructive">
-                          {result?.message}
-                        </p>
-                      ))}
+                    {chain
+                      .filter((step) => openStep === `${workflow.scenario}:${step.id}`)
+                      .map((step) => {
+                        const result = results[step.id];
+                        // Aufgeklappt wird nur ein fehlgeschlagener Schritt – deklariert oder ergänzt.
+                        if (!result || result.status !== "failed") return null;
+                        const diagnostic = stepDiagnostic(result);
+                        const note = detailsTruncationNote(result);
+                        const details = result.details === undefined ? undefined : JSON.stringify(result.details, null, 2);
+                        return (
+                          <div key={step.id} role="alert" data-testid="pulse-step-details"
+                            className="space-y-1 rounded border border-destructive/40 bg-destructive/5 p-2 text-xs text-destructive">
+                            <p className="break-words font-medium">{step.label}</p>
+                            {result.message && <p className="break-words">{result.message}</p>}
+                            {diagnostic && (diagnostic.code || diagnostic.fullSummary) && (
+                              <p className="break-words">
+                                {diagnostic.code ? <span className="font-mono">Code {diagnostic.code}</span> : null}
+                                {diagnostic.code && diagnostic.fullSummary ? " · " : ""}
+                                {diagnostic.fullSummary}
+                              </p>
+                            )}
+                            {note && <p className="break-words text-muted-foreground">{note}</p>}
+                            {details && (
+                              <pre className="whitespace-pre-wrap break-all rounded bg-background/70 p-1.5 font-mono text-[10px]">
+                                {details}
+                              </pre>
+                            )}
+                          </div>
+                        );
+                      })}
                   </div>
                 );
               })}

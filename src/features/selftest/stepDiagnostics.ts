@@ -5,6 +5,10 @@ export interface StoredStepResult {
   status?: string;
   message?: string;
   details?: unknown;
+  /** Gesetzt, wenn die gespeicherten Details beim Ablegen gekürzt wurden. */
+  detailsTruncated?: boolean;
+  /** Anzahl der beim Kürzen ausgelassenen Listen- bzw. Objekteinträge. */
+  detailsOmitted?: number;
 }
 
 export interface StepDiagnostic {
@@ -16,6 +20,22 @@ export interface StepDiagnostic {
   summary?: string;
   /** Derselbe Text ungekürzt – für Stellen, die den vollen Fehler zeigen sollen. */
   fullSummary?: string;
+  /** Hinweis, wenn die gespeicherten Details unvollständig sind (gekürzt beim Speichern). */
+  truncationNote?: string;
+}
+
+/**
+ * Sagt am Prüfpunkt, dass die gespeicherten Details gekürzt wurden, damit eine
+ * verkürzte Soll/Ist-Liste nicht wie eine vollständige wirkt.
+ */
+export function detailsTruncationNote(
+  step: Pick<StoredStepResult, "detailsTruncated" | "detailsOmitted">,
+): string | undefined {
+  if (step.detailsTruncated !== true) return undefined;
+  const omitted = typeof step.detailsOmitted === "number" && step.detailsOmitted > 0 ? step.detailsOmitted : 0;
+  return omitted > 0
+    ? `Details gekürzt: ${omitted} Einträge ausgelassen`
+    : "Details gekürzt: Liste unvollständig";
 }
 
 const MAX_SUMMARY = 140;
@@ -100,5 +120,6 @@ export function stepDiagnostic(step: StoredStepResult): StepDiagnostic | null {
     code,
     summary: summary ? truncate(summary) : undefined,
     fullSummary: summary,
+    truncationNote: detailsTruncationNote(step),
   };
 }

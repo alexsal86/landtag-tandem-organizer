@@ -198,15 +198,28 @@ Deno.serve(withSafeHandler("workflow-dispatcher", async (req) => {
               }
               case "create_task": {
                 const cfg = a.config as { title?: string; assigned_to?: string; description?: string };
-                if (cfg.assigned_to) {
-                  for (const userId of cfg.assigned_to.split(",").map(id => id.trim()).filter(Boolean)) await requireOfficeUser(userId);
+                const assignees = (cfg.assigned_to ?? "").split(",").map(id => id.trim()).filter(Boolean);
+                for (const userId of assignees) await requireOfficeUser(userId);
+                // tasks.user_id ist Pflicht. Reihenfolge wie in run-automation-rule:
+                // handelnde Person, Eigentümer aus dem Auslöser, sonst erster Zugewiesener.
+                const ownerId = actor?.userId
+                  ?? (body.payload?.owner_user_id as string | undefined)
+                  ?? assignees[0];
+                if (!ownerId) {
+                  logRow.status = "error";
+                  logRow.result = { reason: "create_task needs an owner: actor, payload.owner_user_id or assigned_to" };
+                  break;
                 }
                 await supabase.from("tasks").insert({
                   tenant_id: body.tenant_id,
+                  user_id: ownerId,
                   title: renderTemplate(cfg.title ?? "Workflow-Task", body.payload ?? {}),
                   description: renderTemplate(cfg.description ?? "", body.payload ?? {}),
                   assigned_to: cfg.assigned_to ?? null,
-                  status: "open",
+                  // "open" ist kein registrierter Aufgabenstatus; enforce_task_status
+                  // lehnt ihn mit 22023 ab (Kernstatus: todo, in_progress, completed,
+                  // cancelled, review). "todo" ist der Spalten-Default.
+                  status: "todo",
                 });
                 logRow.status = "success";
                 break;

@@ -51,6 +51,29 @@ describe("Schritt-Diagnose", () => {
     })).toMatchObject({ summary: "Ist-Codes: lifecycle 23503" });
   });
 
+  it("weist gekürzte Details am Prüfpunkt aus, statt sie vollständig wirken zu lassen", () => {
+    expect(stepDiagnostic({
+      id: "verify", label: "Felder prüfen", status: "failed", message: "Felder: 12 Abweichung(en)",
+      details: [{ field: "status", expected: "sent", actual: "draft" }],
+      detailsTruncated: true, detailsOmitted: 180,
+    })).toMatchObject({
+      point: "Felder prüfen (verify)",
+      truncationNote: "Details gekürzt: 180 Einträge ausgelassen",
+    });
+  });
+
+  it("meldet gekürzte Details ohne Zählwert als unvollständige Liste", () => {
+    expect(stepDiagnostic({
+      id: "check", label: "Prüfen", status: "failed", message: "Prüfung kaputt", detailsTruncated: true,
+    })?.truncationNote).toBe("Details gekürzt: Liste unvollständig");
+  });
+
+  it("schweigt, wenn die Details vollständig gespeichert wurden", () => {
+    expect(stepDiagnostic({
+      id: "check", label: "Prüfen", status: "failed", message: "Prüfung kaputt",
+    })?.truncationNote).toBeUndefined();
+  });
+
   it("liest die Codes älterer Läufe auch aus Schlüsseln wie lifecycleCode", () => {
     expect(stepDiagnostic({
       id: "foreign-tenant", label: "Fremdtenant", status: "failed",

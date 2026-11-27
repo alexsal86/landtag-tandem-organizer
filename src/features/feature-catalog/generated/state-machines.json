@@ -5,7 +5,7 @@
   "sources": {
     "types": "src/integrations/supabase/types.ts",
     "migrationsDirectory": "supabase/migrations",
-    "migrationCount": 948,
+    "migrationCount": 950,
     "tsModules": [
       "src/components/letters/types.ts"
     ]
@@ -2284,7 +2284,8 @@
             "check:supabase/migrations/20261113120000_employee_protocol_acknowledgement.sql",
             "guard:supabase/migrations/20261113120000_employee_protocol_acknowledgement.sql",
             "guard:supabase/migrations/20261127160000_release_guard_rule_repair.sql",
-            "guard:supabase/migrations/20261128040000_employee_meeting_version_guard_repair.sql"
+            "guard:supabase/migrations/20261128040000_employee_meeting_version_guard_repair.sql",
+            "guard:supabase/migrations/20261128050000_employee_meeting_version_guard_force.sql"
           ]
         },
         {
@@ -2321,7 +2322,8 @@
             "write:supabase/migrations/20261113120000_employee_protocol_acknowledgement.sql",
             "guard:supabase/migrations/20261113120000_employee_protocol_acknowledgement.sql",
             "guard:supabase/migrations/20261127160000_release_guard_rule_repair.sql",
-            "guard:supabase/migrations/20261128040000_employee_meeting_version_guard_repair.sql"
+            "guard:supabase/migrations/20261128040000_employee_meeting_version_guard_repair.sql",
+            "guard:supabase/migrations/20261128050000_employee_meeting_version_guard_force.sql"
           ]
         },
         {
@@ -2384,7 +2386,7 @@
           "timing": "before",
           "events": "insert or update or delete",
           "source": "supabase/migrations/20261113120000_employee_protocol_acknowledgement.sql",
-          "functionSource": "supabase/migrations/20261128040000_employee_meeting_version_guard_repair.sql",
+          "functionSource": "supabase/migrations/20261128060000_employee_meeting_version_guard_minimal.sql",
           "kind": "guard",
           "readsOld": true,
           "readsNew": true,

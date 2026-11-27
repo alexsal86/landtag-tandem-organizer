@@ -6,6 +6,8 @@ type DynResult<T> = PromiseLike<{ data: T; error: { message: string } | null }>;
 interface DynFilter<T> extends DynResult<T> {
   eq(column: string, value: unknown): DynFilter<T>;
   like(column: string, pattern: string): DynFilter<T>;
+  /** Zeitlimit für den Aufruf; ohne Signal gilt das Standardverhalten des Clients. */
+  abortSignal(signal: AbortSignal): DynFilter<T>;
   single(): DynResult<Record<string, unknown> | null>;
   maybeSingle(): DynResult<Record<string, unknown> | null>;
 }
