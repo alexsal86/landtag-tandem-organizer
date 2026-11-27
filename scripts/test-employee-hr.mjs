@@ -53,6 +53,9 @@ try{
  const gdpr=await sql('20261113203000_employee_hr_gdpr_acknowledgement.sql');await db.exec(gdpr);await db.exec(gdpr);
  await db.exec(await sql('20261113190000_unify_employee_hr_creation.sql'));
  const editable=await sql('20261113210000_editable_employee_hr_gdpr.sql');await db.exec(editable);await db.exec(editable);
+ // Versionskonflikt als PT409 (HTTP 409) statt 40001; zweimal, weil die
+ // Migration die installierte Fassung liest und sich wiederholen lassen muss.
+ const conflictCodes=await sql('20261128090000_conflict_codes_pt409.sql');await db.exec(conflictCodes);await db.exec(conflictCodes);
  await actor(lead);
  const check=(await q('SELECT selftest_employee_hr($1) result',[a]))[0].result;
  assert.ok(Object.values(check).every(Boolean),JSON.stringify(check));
@@ -107,7 +110,7 @@ try{
  const changed=declaration.title+'\n\n'+declaration.sections.map(s=>s.title+'\n'+s.text).join('\n\n')+'\nErgänzung: Rückfragen an die Büroleitung.';
  await assert.rejects(q("SELECT save_employee_hr_gdpr_declaration($1,'kurz','2026-11-13.1')",[a]),e=>e.code==='22023');
  const customVersion=(await q("SELECT save_employee_hr_gdpr_declaration($1,$2,'2026-11-13.1') version",[a,changed]))[0].version;
- await assert.rejects(q("SELECT save_employee_hr_gdpr_declaration($1,$2,'2026-11-13.1')",[a,changed]),e=>e.code==='40001');
+ await assert.rejects(q("SELECT save_employee_hr_gdpr_declaration($1,$2,'2026-11-13.1')",[a,changed]),e=>e.code==='PT409');
  const nextEmployment=(await q("SELECT save_employee_lifecycle($1,$2,'hilfskraft',current_date-31,current_date+10) id",[a,staff]))[0].id;
  const nextRun=(await q('SELECT start_employee_hr($1,$2) id',[nextEmployment,template]))[0].id;
  const nextProof=(await q("SELECT id FROM routine_package_steps WHERE run_id=$1 AND hr_evidence_kind='gdpr'",[nextRun]))[0].id;
