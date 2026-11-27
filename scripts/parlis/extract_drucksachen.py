@@ -505,6 +505,15 @@ def collect_tables(
         )
         # Eine Tabelle hat Beschriftungen in der ersten Spalte. Reine Zahlen-
         # kolonnen sind Achsenbeschriftungen aus Grafiken und bleiben Text.
+        # Bricht das PDF die letzte Zelle um, beginnt die nächste Zeile mit dem
+        # Wert davor: 'Grundschulen 464 33 7,1% 29 87,9%' / '16 Grund- und
+        # Hauptschulen / …'. Der Wert gehört zur vorigen Zeile.
+        columns = max(len(row) for row in rows)
+        for position in range(1, len(rows)):
+            match = re.match(r"^(\d[\d.,]*)\s+([A-ZÄÖÜ].*)$", rows[position][0] or "")
+            if match and columns > 2 and len(rows[position - 1]) == columns - 1:
+                rows[position - 1] = rows[position - 1] + [match.group(1)]
+                rows[position][0] = match.group(2)
         # Tabellen ohne Beschriftungsspalte ('2020 50 3,57') haben eine leere
         # erste Zelle; die fällt weg, damit Kopfzeile und Datenzeilen passen.
         if rows and all(row and row[0] == "" for row in rows):
