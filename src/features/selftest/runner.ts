@@ -13,8 +13,9 @@ export const SELFTEST_MARKER = "__SELFTEST__";
 // scheitert der Lauf erst beim Aufräumen (siehe runner.test.ts).
 export const CLEANUP_ORDER = [
   "employee_meeting_action_items", "employee_meeting_requests", "employee_meetings",
+  "task_decision_comment_reactions", "task_decision_comments", "task_decision_attachments",
   "task_decision_responses", "task_decision_participants", "task_decisions", "task_documents",
-  "document_annotations", "letter_attachments", "documents", "letter_collaborators", "letters", "quick_notes",
+  "document_annotations", "document_contacts", "letter_comments", "letter_attachments", "documents", "letter_collaborators", "letters", "quick_notes",
   "funding_participants", "fundings", "contact_briefing_memory", "contact_topics",
   "distribution_list_members", "distribution_lists", "call_logs",
   "gdpr_requests", "map_flags", "map_flag_types",
