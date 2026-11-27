@@ -80,14 +80,12 @@ const gbl = (year: number, page: number, issue: string, detail?: string, file?: 
   url: file ? `https://www.landtag-bw.de/files/live/sites/LTBW/files/dokumente/gesetzblaetter/${year}/${file}` : undefined,
 });
 
-const chronik = (citation: string, detail?: string): MinistrySource => ({ kind: "chronik", citation, detail });
 const system = (detail?: string): MinistrySource => ({
   kind: "system",
   citation: "election_history_periods (Wahlperioden-Blatt 1952–2026)",
   detail,
   url: "https://www.landtag-bw.de/resource/blob/618426/0fbd0f925d6293b2ad676a2761069f3f/17_0139_28012026.pdf",
 });
-const sekundaer = (citation: string, detail?: string): MinistrySource => ({ kind: "sekundaer", citation, detail });
 
 export const ressortLines: RessortLine[] = [
   { id: "state", label: "Staatsministerium", marker: "●" },
@@ -162,16 +160,30 @@ export const ministryPhases: MinistryPhase[] = [
     verified: true,
   },
   {
-    id: "interior-1992", lineId: "interior", name: "Innenministerium mit Vertriebenen, Flüchtlingen, Aussiedlern und Kriegsgeschädigten sowie Lastenausgleich", from: "1992-07-14", to: "2026-05-12",
+    id: "interior-1992", lineId: "interior", name: "Innenministerium mit Vertriebenen, Flüchtlingen, Aussiedlern und Kriegsgeschädigten sowie Lastenausgleich", from: "1992-07-14", to: "2016-05-11",
     note: "Abschnitt III Nr. 11 und 12 in der Fassung von 1992.",
     source: gbl(1992, 621, "Nr. 23 vom 29.9.1992", "Bekanntmachung vom 14. Juli 1992", "GBl199223.pdf"),
     verified: true,
   },
   {
+    id: "interior-2016", lineId: "interior", name: "Ministerium für Inneres, Digitalisierung und Migration (Innenministerium, IM)", from: "2016-05-12", to: "2021-05-11",
+    source: gbl(2016, 456, "Nr. 15 vom 5.8.2016", "Bekanntmachung vom 26. Juli 2016, Abschnitt II, in Kraft 12.5.2016", "GBl201615.pdf"),
+    verified: true,
+  },
+  {
+    id: "interior-2021", lineId: "interior", name: "Ministerium des Inneren, für Digitalisierung und Kommunen (Innenministerium, IM)", from: "2021-05-12", to: "2026-05-12",
+    source: gbl(2021, 606, "Nr. 22 vom 21.7.2021", "Bekanntmachung vom 15. Juli 2021, Abschnitt II, in Kraft 12.5.2021", "GBl202122.pdf"),
+    verified: true,
+  },
+  {
     id: "interior-2026", lineId: "interior", name: "Ministerium des Inneren, für Digitalisierung und Europa", from: "2026-05-13", to: null,
-    note: "Namensstand der 18. Wahlperiode aus dem PARLIS-Ressortbestand; kein Gesetzblattabgleich.",
-    source: sekundaer("PARLIS-Ressortbestand, 18. Wahlperiode"),
-    verified: false,
+    source: {
+      kind: "gesetzblatt",
+      citation: "GBl. 2026 Nr. 70",
+      detail: "Bekanntmachung vom 7. Juli 2026, Abschnitt II, in Kraft 13.5.2026",
+      url: "https://www.baden-wuerttemberg.de/de/service/gesetze-und-verordnungen/gesetzblatt/detail/2026-70",
+    },
+    verified: true,
   },
 
   // Justiz
@@ -182,21 +194,37 @@ export const ministryPhases: MinistryPhase[] = [
     verified: true,
   },
   {
-    id: "justice-1991", lineId: "justice", name: "Justizministerium (JuM)", from: "1991-02-12", to: "2026-05-12",
-    source: gbl(1991, 65, "Bekanntmachung vom 4. Februar 1991, in Kraft 12.2.1991", "Abschnitt II, Kurzzeichen JuM"),
+    id: "justice-1991", lineId: "justice", name: "Justizministerium (JuM)", from: "1991-02-12", to: "2016-05-11",
+    source: gbl(1991, 65, "Bekanntmachung vom 4. Februar 1991, in Kraft 12.2.1991", "Abschnitt II, Kurzzeichen JuM", "GBl199103.pdf"),
     verified: true,
   },
   {
-    id: "justice-2026", lineId: "justice", name: "Ministerium der Justiz und für Migration", from: "2026-05-13", to: null,
-    source: sekundaer("PARLIS-Ressortbestand, 18. Wahlperiode"),
-    verified: false,
+    id: "justice-2016", lineId: "justice", name: "Ministerium der Justiz und für Europa (Justizministerium, JuM)", from: "2016-05-12", to: "2021-05-11",
+    source: gbl(2016, 456, "Nr. 15 vom 5.8.2016", "Bekanntmachung vom 26. Juli 2016, Abschnitt X, in Kraft 12.5.2016", "GBl201615.pdf"),
+    verified: true,
+  },
+  {
+    id: "justice-2021", lineId: "justice", name: "Ministerium der Justiz und für Migration (Justizministerium, JuM)", from: "2021-05-12", to: null,
+    note: "Die Bezeichnung bleibt 2026 unverändert.",
+    source: gbl(2021, 606, "Nr. 22 vom 21.7.2021", "Bekanntmachung vom 15. Juli 2021, Abschnitt IX, in Kraft 12.5.2021", "GBl202122.pdf"),
+    verified: true,
   },
 
   // Finanzen
   {
-    id: "finance-1952", lineId: "finance", name: "Finanzministerium", from: "1952-07-08", to: null,
+    id: "finance-1952", lineId: "finance", name: "Finanzministerium", from: "1952-07-08", to: "2011-05-11",
     note: "Abschnitt V: Finanzpolitik, Haushalt, Landesvermögen, Besoldung, Steuern, Statistik.",
     source: gbl(1952, 21, "Nr. 7 vom 15.7.1952", "Abschnitt V", "GBl195207.pdf"),
+    verified: true,
+  },
+  {
+    id: "finance-2011", lineId: "finance", name: "Ministerium für Finanzen und Wirtschaft (Finanz- und Wirtschaftsministerium, MFW)", from: "2011-05-12", to: "2016-05-11",
+    source: gbl(2011, 205, "Nr. 9 vom 6.6.2011", "Bekanntmachung vom 31. Mai 2011, Abschnitt II, in Kraft 12.5.2011", "GBl201109.pdf"),
+    verified: true,
+  },
+  {
+    id: "finance-2016", lineId: "finance", name: "Ministerium für Finanzen (Finanzministerium, FM)", from: "2016-05-12", to: null,
+    source: gbl(2016, 456, "Nr. 15 vom 5.8.2016", "Bekanntmachung vom 26. Juli 2016, Abschnitt III, in Kraft 12.5.2016", "GBl201615.pdf"),
     verified: true,
   },
 
@@ -220,9 +248,15 @@ export const ministryPhases: MinistryPhase[] = [
     verified: true,
   },
   {
-    id: "education-2026", lineId: "education", name: "Ministerium für Kultus", from: "2026-05-13", to: null,
-    source: sekundaer("PARLIS-Ressortbestand, 18. Wahlperiode"),
-    verified: false,
+    id: "education-2026", lineId: "education", name: "Ministerium für Kultus (Kultusministerium, KM)", from: "2026-05-13", to: null,
+    note: "„Jugend und Sport“ entfällt aus dem Namen.",
+    source: {
+      kind: "gesetzblatt",
+      citation: "GBl. 2026 Nr. 70",
+      detail: "Bekanntmachung vom 7. Juli 2026, Abschnitt IV, in Kraft 13.5.2026",
+      url: "https://www.baden-wuerttemberg.de/de/service/gesetze-und-verordnungen/gesetzblatt/detail/2026-70",
+    },
+    verified: true,
   },
 
   // Wissenschaft
@@ -253,15 +287,42 @@ export const ministryPhases: MinistryPhase[] = [
     verified: true,
   },
   {
-    id: "economy-1984", lineId: "economy", name: "Ministerium für Wirtschaft, Mittelstand und Technologie", from: "1984-07-15", to: "2026-05-12",
-    note: "Der Verkehr geht 1984 an das Innenministerium. Ob die Langform zwischen 1992 und 2001 geändert wurde, ist nicht im Original geklärt; „Wirtschaftsministerium“ ist ab 1993 als Kurzform belegt.",
+    id: "economy-1984", lineId: "economy", name: "Ministerium für Wirtschaft, Mittelstand und Technologie", from: "1984-07-15", to: "1992-07-13",
+    note: "Der Verkehr geht 1984 an das Innenministerium.",
     source: gbl(1984, 390, "Nr. 14 vom 13.7.1984", "Bekanntmachung vom 2. Juli 1984", "GBl198414.pdf"),
     verified: true,
   },
   {
+    id: "economy-1992", lineId: "economy", name: "Wirtschaftsministerium (WM)", from: "1992-07-14", to: "2011-05-11",
+    note: "Der lange Ressorttitel entfällt 1992; „Wirtschaftsministerium“ wird amtliche Überschrift.",
+    source: gbl(1992, 621, "Nr. 23 vom 29.9.1992", "Bekanntmachung vom 14. Juli 1992, Abschnitt VII", "GBl199223.pdf"),
+    verified: true,
+  },
+  {
+    id: "economy-2011", lineId: "economy", name: "Ministerium für Finanzen und Wirtschaft (Finanz- und Wirtschaftsministerium, MFW)", from: "2011-05-12", to: "2016-05-11",
+    note: "Wirtschaft wird mit den Finanzen in einem Haus geführt.",
+    source: gbl(2011, 205, "Nr. 9 vom 6.6.2011", "Bekanntmachung vom 31. Mai 2011, Abschnitt II, in Kraft 12.5.2011", "GBl201109.pdf"),
+    verified: true,
+  },
+  {
+    id: "economy-2016", lineId: "economy", name: "Ministerium für Wirtschaft, Arbeit und Wohnungsbau (Wirtschaftsministerium, WM)", from: "2016-05-12", to: "2021-05-11",
+    source: gbl(2016, 456, "Nr. 15 vom 5.8.2016", "Bekanntmachung vom 26. Juli 2016, Abschnitt VII, in Kraft 12.5.2016", "GBl201615.pdf"),
+    verified: true,
+  },
+  {
+    id: "economy-2021", lineId: "economy", name: "Ministerium für Wirtschaft, Arbeit und Tourismus (Wirtschaftsministerium, WM)", from: "2021-05-12", to: "2026-05-12",
+    source: gbl(2021, 606, "Nr. 22 vom 21.7.2021", "Bekanntmachung vom 15. Juli 2021, Abschnitt VII, in Kraft 12.5.2021", "GBl202122.pdf"),
+    verified: true,
+  },
+  {
     id: "economy-2026", lineId: "economy", name: "Ministerium für Wirtschaft, Handwerk und Tourismus", from: "2026-05-13", to: null,
-    source: sekundaer("PARLIS-Ressortbestand, 18. Wahlperiode"),
-    verified: false,
+    source: {
+      kind: "gesetzblatt",
+      citation: "GBl. 2026 Nr. 70",
+      detail: "Bekanntmachung vom 7. Juli 2026, Abschnitt VII, in Kraft 13.5.2026",
+      url: "https://www.baden-wuerttemberg.de/de/service/gesetze-und-verordnungen/gesetzblatt/detail/2026-70",
+    },
+    verified: true,
   },
 
   // Arbeit und Soziales
@@ -301,15 +362,41 @@ export const ministryPhases: MinistryPhase[] = [
     verified: true,
   },
   {
-    id: "social-1996", lineId: "social", name: "Sozialministerium (SM)", from: "1996-06-18", to: "2026-05-12",
+    id: "social-1996", lineId: "social", name: "Sozialministerium (SM)", from: "1996-06-18", to: "2005-05-02",
     note: "Der Kurzname wird zur alleinigen amtlichen Bezeichnung – nicht erst 2001.",
     source: gbl(1996, 490, "Nr. 18 vom 26.7.1996", "Bekanntmachung vom 18. Juni 1996, Abschnitt IX", "GBl199618.pdf"),
     verified: true,
   },
   {
+    id: "social-2005", lineId: "social", name: "Ministerium für Arbeit und Soziales (SM)", from: "2005-05-03", to: "2011-05-11",
+    source: gbl(2005, 410, "Nr. 9 vom 27.6.2005", "Bekanntmachung vom 14. Juni 2005, Abschnitt IX, in Kraft 3.5.2005", "GBl200509.pdf"),
+    verified: true,
+  },
+  {
+    id: "social-2011", lineId: "social", name: "Ministerium für Arbeit und Sozialordnung, Familie, Frauen und Senioren (Sozialministerium, SM)", from: "2011-05-12", to: "2016-05-11",
+    source: gbl(2011, 205, "Nr. 9 vom 6.6.2011", "Bekanntmachung vom 31. Mai 2011, Abschnitt VII, in Kraft 12.5.2011", "GBl201109.pdf"),
+    verified: true,
+  },
+  {
+    id: "social-2016", lineId: "social", name: "Ministerium für Soziales und Integration (Sozialministerium, SM)", from: "2016-05-12", to: "2021-05-11",
+    note: "Das 2011 geschaffene Integrationsministerium geht in diesem Haus auf.",
+    source: gbl(2016, 456, "Nr. 15 vom 5.8.2016", "Bekanntmachung vom 26. Juli 2016, Abschnitt VIII, in Kraft 12.5.2016", "GBl201615.pdf"),
+    verified: true,
+  },
+  {
+    id: "social-2021", lineId: "social", name: "Ministerium für Soziales, Gesundheit und Integration (Sozialministerium, SM)", from: "2021-05-12", to: "2026-05-12",
+    source: gbl(2021, 606, "Nr. 22 vom 21.7.2021", "Bekanntmachung vom 15. Juli 2021, Abschnitt VIII, in Kraft 12.5.2021", "GBl202122.pdf"),
+    verified: true,
+  },
+  {
     id: "social-2026", lineId: "social", name: "Ministerium für Soziales, Arbeit und Gesundheit", from: "2026-05-13", to: null,
-    source: sekundaer("PARLIS-Ressortbestand, 18. Wahlperiode"),
-    verified: false,
+    source: {
+      kind: "gesetzblatt",
+      citation: "GBl. 2026 Nr. 70",
+      detail: "Bekanntmachung vom 7. Juli 2026, Abschnitt VIII, in Kraft 13.5.2026",
+      url: "https://www.baden-wuerttemberg.de/de/service/gesetze-und-verordnungen/gesetzblatt/detail/2026-70",
+    },
+    verified: true,
   },
 
   // Landwirtschaft
@@ -333,26 +420,52 @@ export const ministryPhases: MinistryPhase[] = [
   },
   {
     id: "rural-1972", lineId: "rural", name: "Ministerium für Ernährung, Landwirtschaft und Umwelt", from: "1972-10-01", to: "1987-06-30",
-    note: "Umwelt und Naturschutz kommen 1972 hinzu. Die Zwischenstufen „Umwelt und Forsten“ (ab 1980/81) und die Zusammenführung zum „Ländlichen Raum“ sind nicht im Original geprüft.",
+    note: "Umwelt und Naturschutz kommen 1972 hinzu. Eine Zwischenstufe „Umwelt und Forsten“ (um 1980/81) ist nicht im Original geprüft; belegt ist die Neufassung zum 1.7.1987.",
     source: gbl(1972, 404, "Nr. 16 vom 16.8.1972", "Bekanntmachung vom 25. Juli 1972, Abschnitt VII", "GBl197216.pdf"),
     verified: true,
   },
   {
-    id: "rural-1987", lineId: "rural", name: "Ministerium für Ländlichen Raum, Ernährung, Landwirtschaft und Forsten", from: "1987-07-01", to: "1996-06-17",
-    note: "So die Ressortbezeichnung der 11. Wahlperiode (Chronik); kein Gesetzblattabgleich.",
-    source: chronik("Chronik der Landesregierungen, 11. Wahlperiode 1992–1996"),
-    verified: false,
+    id: "rural-1987", lineId: "rural", name: "Ministerium für ländlichen Raum, Landwirtschaft und Forsten (MLR)", from: "1987-07-01", to: "1988-07-05",
+    note: "Neu zugeschnitten mit der Bildung des Umweltministeriums. Das Gesetzblatt schreibt „ländlichen“ klein und nennt kein „Ernährung“.",
+    source: gbl(1987, 191, "Nr. 9 vom 30.6.1987", "Bekanntmachung vom 22. Juni 1987, Abschnitt VIII und neuer Abschnitt X, in Kraft 1.7.1987", "GBl198709.pdf"),
+    verified: true,
   },
   {
-    id: "rural-1996", lineId: "rural", name: "Ministerium Ländlicher Raum (MLR)", from: "1996-06-18", to: "2026-05-12",
+    id: "rural-1988", lineId: "rural", name: "Ministerium für Ländlichen Raum, Ernährung, Landwirtschaft und Forsten (Ministerium Ländlicher Raum; MLR)", from: "1988-07-06", to: "1996-06-17",
+    note: "„Ernährung“ kommt erst mit dieser Fassung hinzu – ein Jahr nach der Bildung des Ländlicher-Raum-Ressorts.",
+    source: gbl(1988, 173, "Nr. 9 vom 5.7.1988", "Bekanntmachung vom 30. Mai 1988, Abschnitt VIII", "GBl198809.pdf"),
+    verified: true,
+  },
+  {
+    id: "rural-1996", lineId: "rural", name: "Ministerium Ländlicher Raum (MLR)", from: "1996-06-18", to: "2001-07-23",
     note: "Die Kurzform wird erst 1996 amtliche Überschrift – nicht schon 1987.",
     source: gbl(1996, 490, "Nr. 18 vom 26.7.1996", "Bekanntmachung vom 18. Juni 1996, Abschnitt VIII", "GBl199618.pdf"),
     verified: true,
   },
   {
+    id: "rural-2001", lineId: "rural", name: "Ministerium für Ernährung und Ländlichen Raum (MLR)", from: "2001-07-24", to: "2011-05-11",
+    source: gbl(2001, 590, "Nr. 16 vom 9.11.2001", "Bekanntmachung vom 24. Juli 2001, Abschnitt VIII, in Kraft 24.7.2001", "GBl200116.pdf"),
+    verified: true,
+  },
+  {
+    id: "rural-2011", lineId: "rural", name: "Ministerium für Ländlichen Raum und Verbraucherschutz (MLR)", from: "2011-05-12", to: "2021-05-11",
+    source: gbl(2011, 205, "Nr. 9 vom 6.6.2011", "Bekanntmachung vom 31. Mai 2011, Abschnitt VIII, in Kraft 12.5.2011", "GBl201109.pdf"),
+    verified: true,
+  },
+  {
+    id: "rural-2021", lineId: "rural", name: "Ministerium für Ernährung, Ländlichen Raum und Verbraucherschutz (MLR)", from: "2021-05-12", to: "2026-05-12",
+    source: gbl(2021, 606, "Nr. 22 vom 21.7.2021", "Bekanntmachung vom 15. Juli 2021, Abschnitt XI, in Kraft 12.5.2021", "GBl202122.pdf"),
+    verified: true,
+  },
+  {
     id: "rural-2026", lineId: "rural", name: "Ministerium für Ländlichen Raum, Landwirtschaft und Heimat", from: "2026-05-13", to: null,
-    source: sekundaer("PARLIS-Ressortbestand, 18. Wahlperiode"),
-    verified: false,
+    source: {
+      kind: "gesetzblatt",
+      citation: "GBl. 2026 Nr. 70",
+      detail: "Bekanntmachung vom 7. Juli 2026, Abschnitt XI, in Kraft 13.5.2026",
+      url: "https://www.baden-wuerttemberg.de/de/service/gesetze-und-verordnungen/gesetzblatt/detail/2026-70",
+    },
+    verified: true,
   },
 
   // Umwelt
@@ -362,15 +475,22 @@ export const ministryPhases: MinistryPhase[] = [
     verified: true,
   },
   {
-    id: "environment-1996", lineId: "environment", name: "Ministerium für Umwelt und Verkehr (UVM)", from: "1996-06-18", to: "2026-05-12",
+    id: "environment-1996", lineId: "environment", name: "Ministerium für Umwelt und Verkehr (UVM)", from: "1996-06-18", to: "2005-05-02",
     note: "Das Verkehrsministerium wird 1996 in dieses Haus eingegliedert.",
     source: gbl(1996, 490, "Nr. 18 vom 26.7.1996", "Bekanntmachung vom 18. Juni 1996, Abschnitt X", "GBl199618.pdf"),
     verified: true,
   },
   {
-    id: "environment-2026", lineId: "environment", name: "Ministerium für Umwelt, Klima und Energiewirtschaft", from: "2026-05-13", to: null,
-    source: sekundaer("PARLIS-Ressortbestand, 18. Wahlperiode"),
-    verified: false,
+    id: "environment-2005", lineId: "environment", name: "Umweltministerium (UM)", from: "2005-05-03", to: "2011-05-11",
+    note: "„und Verkehr“ entfällt aus dem Namen; 2011 entsteht wieder ein eigenes Verkehrsministerium.",
+    source: gbl(2005, 410, "Nr. 9 vom 27.6.2005", "Bekanntmachung vom 14. Juni 2005, Abschnitt X, in Kraft 3.5.2005", "GBl200509.pdf"),
+    verified: true,
+  },
+  {
+    id: "environment-2011", lineId: "environment", name: "Ministerium für Umwelt, Klima und Energiewirtschaft (Umweltministerium, UM)", from: "2011-05-12", to: null,
+    note: "Die Bezeichnung bleibt 2016, 2021 und 2026 unverändert.",
+    source: gbl(2011, 205, "Nr. 9 vom 6.6.2011", "Bekanntmachung vom 31. Mai 2011, Abschnitt VI, in Kraft 12.5.2011", "GBl201109.pdf"),
+    verified: true,
   },
 
   // Verkehr
@@ -381,22 +501,28 @@ export const ministryPhases: MinistryPhase[] = [
     verified: true,
   },
   {
-    id: "transport-1996", lineId: "transport", name: "Abschnitt gestrichen; Verkehr im Ministerium für Umwelt und Verkehr", from: "1996-06-18", to: "2026-05-12",
+    id: "transport-1996", lineId: "transport", name: "Abschnitt gestrichen; Verkehr im Ministerium für Umwelt und Verkehr", from: "1996-06-18", to: "2011-05-11",
     source: gbl(1996, 490, "Nr. 18 vom 26.7.1996", "Bekanntmachung vom 18. Juni 1996, Artikel 1 Nr. 9", "GBl199618.pdf"),
     verified: true,
   },
   {
-    id: "transport-2026", lineId: "transport", name: "Ministerium für Verkehr", from: "2026-05-13", to: null,
-    source: sekundaer("PARLIS-Ressortbestand, 18. Wahlperiode"),
-    verified: false,
+    id: "transport-2011", lineId: "transport", name: "Ministerium für Verkehr und Infrastruktur (MVI)", from: "2011-05-12", to: "2016-05-11",
+    source: gbl(2011, 205, "Nr. 9 vom 6.6.2011", "Bekanntmachung vom 31. Mai 2011, Abschnitt X, in Kraft 12.5.2011", "GBl201109.pdf"),
+    verified: true,
+  },
+  {
+    id: "transport-2016", lineId: "transport", name: "Ministerium für Verkehr (Verkehrsministerium, VM)", from: "2016-05-12", to: null,
+    note: "„und Infrastruktur“ entfällt 2016; die Bezeichnung bleibt 2021 und 2026 unverändert.",
+    source: gbl(2016, 456, "Nr. 15 vom 5.8.2016", "Bekanntmachung vom 26. Juli 2016, Abschnitt XI, in Kraft 12.5.2016", "GBl201615.pdf"),
+    verified: true,
   },
 
   // Landesentwicklung und Wohnen
   {
-    id: "housing-2026", lineId: "housing", name: "Ministerium für Landesentwicklung und Wohnen", from: "2026-05-13", to: null,
-    note: "Zuvor eigenständig seit 2011; davor beim Wirtschafts- bzw. Innenressort. Kein Gesetzblattabgleich.",
-    source: sekundaer("PARLIS-Ressortbestand, 18. Wahlperiode"),
-    verified: false,
+    id: "housing-2021", lineId: "housing", name: "Ministerium für Landesentwicklung und Wohnen (MLW)", from: "2021-05-12", to: null,
+    note: "2021 neu gebildet; im Gesetzblatt als Abschnitt XII geführt, obwohl der Einleitungssatz nur „Abschnitte I bis XI“ nennt. Die Bezeichnung bleibt 2026 unverändert.",
+    source: gbl(2021, 606, "Nr. 22 vom 21.7.2021", "Bekanntmachung vom 15. Juli 2021, Abschnitt XII, in Kraft 12.5.2021", "GBl202122.pdf"),
+    verified: true,
   },
 
   // Vertriebene
@@ -541,6 +667,41 @@ export const findings: Finding[] = [
     corrected: "Weder 1952 noch 1972 existiert ein Abschnitt für Bundesangelegenheiten; die Minister für Bundesangelegenheiten hatten keinen eigenen Geschäftsbereich.",
     source: gbl(1952, 21, "Nr. 7 vom 15.7.1952", "Abschnitt I Nr. 3 (Beziehungen zum Bund)", "GBl195207.pdf"),
   },
+  {
+    id: "rural-1987",
+    topic: "Ländlicher Raum",
+    previous: "1987 „Ministerium für Ländlichen Raum, Ernährung, Landwirtschaft und Forsten“",
+    corrected: "Zum 1.7.1987 lautet die Überschrift „Ministerium für ländlichen Raum, Landwirtschaft und Forsten“ – ohne „Ernährung“. „Ernährung“ kommt erst mit der Fassung vom 30.5.1988 hinzu.",
+    source: gbl(1988, 173, "Nr. 9 vom 5.7.1988", "Bekanntmachung vom 30. Mai 1988, Abschnitt VIII", "GBl198809.pdf"),
+  },
+  {
+    id: "economy-1992",
+    topic: "Wirtschaftsministerium",
+    previous: "„Wirtschaft, Mittelstand und Technologie“ bis 1996",
+    corrected: "Bereits zum 14.7.1992 wird die Überschrift auf „Wirtschaftsministerium (WM)“ verkürzt.",
+    source: gbl(1992, 621, "Nr. 23 vom 29.9.1992", "Bekanntmachung vom 14. Juli 1992, Abschnitt VII", "GBl199223.pdf"),
+  },
+  {
+    id: "social-2005",
+    topic: "Arbeit und Soziales",
+    previous: "Sozialministerium unverändert ab 1996",
+    corrected: "Zum 3.5.2005 wird das Haus in „Ministerium für Arbeit und Soziales“ umbenannt; 2011 folgt „Arbeit und Sozialordnung, Familie, Frauen und Senioren“.",
+    source: gbl(2005, 410, "Nr. 9 vom 27.6.2005", "Bekanntmachung vom 14. Juni 2005, Abschnitt IX", "GBl200509.pdf"),
+  },
+  {
+    id: "environment-2005",
+    topic: "Umweltministerium",
+    previous: "„Umwelt und Verkehr“ bis 2011",
+    corrected: "„und Verkehr“ entfällt zum 3.5.2005; das Haus heizt wieder „Umweltministerium (UM)“. Ein eigenes Verkehrsministerium gibt es erst 2011 wieder.",
+    source: gbl(2005, 410, "Nr. 9 vom 27.6.2005", "Bekanntmachung vom 14. Juni 2005, Abschnitt X", "GBl200509.pdf"),
+  },
+  {
+    id: "finance-2011",
+    topic: "Finanzen und Wirtschaft",
+    previous: "Finanzministerium durchgehend seit 1952",
+    corrected: "2011–2016 werden Finanzen und Wirtschaft als „Ministerium für Finanzen und Wirtschaft“ geführt; 2016 werden beide wieder getrennt.",
+    source: gbl(2011, 205, "Nr. 9 vom 6.6.2011", "Bekanntmachung vom 31. Mai 2011, Abschnitt II", "GBl201109.pdf"),
+  },
 ];
 
 /**
@@ -576,8 +737,8 @@ export const ministers: MinisterTerm[] = [
   { id: "interior-schaeuble", lineId: "interior", name: "Thomas Schäuble", party: "CDU", from: "1996-06-11", to: "2004-07-14" },
   { id: "interior-rech", lineId: "interior", name: "Heribert Rech", party: "CDU", from: "2004-07-14", to: "2011-05-12" },
   { id: "interior-gall", lineId: "interior", name: "Reinhold Gall", party: "SPD", from: "2011-05-12", to: "2016-05-12" },
-  { id: "interior-strobl", lineId: "interior", name: "Thomas Strobl", party: "CDU", from: "2016-05-12", to: "2026-05-13" },
-  { id: "interior-hagel", lineId: "interior", name: "Manuel Hagel", party: "CDU", from: "2026-05-13", to: null },
+  { id: "interior-strobl", lineId: "interior", name: "Thomas Strobl", party: "CDU", from: "2016-05-12", to: "2026-05-13", office: "Inneres, Digitalisierung und Migration, ab 2021 auch Kommunen" },
+  { id: "interior-hagel", lineId: "interior", name: "Manuel Hagel", party: "CDU", from: "2026-05-13", to: null, office: "Inneres, für Digitalisierung und Europa" },
 
   // Justiz
   { id: "justice-renner", lineId: "justice", name: "Viktor Renner", party: "SPD", from: "1952-04-25", to: "1953-05-15" },
@@ -594,9 +755,9 @@ export const ministers: MinisterTerm[] = [
   { id: "justice-werwigk", lineId: "justice", name: "Corinna Werwigk-Hertneck", party: "FDP/DVP", from: "2002-12-12", to: "2004-07-22" },
   { id: "justice-goll-2", lineId: "justice", name: "Ulrich Goll", party: "FDP/DVP", from: "2004-07-28", to: "2011-05-12" },
   { id: "justice-stickelberger", lineId: "justice", name: "Rainer Stickelberger", party: "SPD", from: "2011-05-12", to: "2016-05-12" },
-  { id: "justice-wolf", lineId: "justice", name: "Guido Wolf", party: "CDU", from: "2016-05-12", to: "2021-05-12" },
-  { id: "justice-gentges", lineId: "justice", name: "Marion Gentges", party: "CDU", from: "2021-05-12", to: "2026-05-13" },
-  { id: "justice-oppelt", lineId: "justice", name: "Moritz Oppelt", party: "CDU", from: "2026-05-13", to: null },
+  { id: "justice-wolf", lineId: "justice", name: "Guido Wolf", party: "CDU", from: "2016-05-12", to: "2021-05-12", office: "Justiz und für Europa" },
+  { id: "justice-gentges", lineId: "justice", name: "Marion Gentges", party: "CDU", from: "2021-05-12", to: "2026-05-13", office: "Justiz und für Migration" },
+  { id: "justice-oppelt", lineId: "justice", name: "Moritz Oppelt", party: "CDU", from: "2026-05-13", to: null, office: "Justiz und für Migration" },
 
   // Finanzen
   { id: "finance-frank", lineId: "finance", name: "Karl Frank", party: "FDP/DVP", from: "1952-04-25", to: "1960-06-23" },
@@ -607,7 +768,7 @@ export const ministers: MinisterTerm[] = [
   { id: "finance-mayervorfelder", lineId: "finance", name: "Gerhard Mayer-Vorfelder", party: "CDU", from: "1991-01-22", to: "1998-11-11" },
   { id: "finance-stratthaus", lineId: "finance", name: "Gerhard Stratthaus", party: "CDU", from: "1998-11-11", to: "2008-06-04" },
   { id: "finance-staechele", lineId: "finance", name: "Willi Stächele", party: "CDU", from: "2008-06-04", to: "2011-05-12" },
-  { id: "finance-schmid", lineId: "finance", name: "Nils Schmid", party: "SPD", from: "2011-05-12", to: "2016-05-12" },
+  { id: "finance-schmid", lineId: "finance", name: "Nils Schmid", party: "SPD", from: "2011-05-12", to: "2016-05-12", office: "Finanzen und Wirtschaft" },
   { id: "finance-sitzmann", lineId: "finance", name: "Edith Sitzmann", party: "GRÜNE", from: "2016-05-12", to: "2021-05-12" },
   { id: "finance-bayaz", lineId: "finance", name: "Danyal Bayaz", party: "GRÜNE", from: "2021-05-12", to: null },
 
@@ -625,8 +786,8 @@ export const ministers: MinisterTerm[] = [
   { id: "education-warminski", lineId: "education", name: "Gabriele Warminski-Leitheußer", party: "SPD", from: "2011-05-12", to: "2013-01-23" },
   { id: "education-stoch", lineId: "education", name: "Andreas Stoch", party: "SPD", from: "2013-01-23", to: "2016-05-12" },
   { id: "education-eisenmann", lineId: "education", name: "Susanne Eisenmann", party: "CDU", from: "2016-05-12", to: "2021-05-12" },
-  { id: "education-schopper", lineId: "education", name: "Theresa Schopper", party: "GRÜNE", from: "2021-05-12", to: "2026-05-13" },
-  { id: "education-jung", lineId: "education", name: "Andreas Jung", party: "CDU", from: "2026-05-13", to: null },
+  { id: "education-schopper", lineId: "education", name: "Theresa Schopper", party: "GRÜNE", from: "2021-05-12", to: "2026-05-13", office: "Kultus, Jugend und Sport" },
+  { id: "education-jung", lineId: "education", name: "Andreas Jung", party: "CDU", from: "2026-05-13", to: null, office: "Kultus" },
 
   // Wissenschaft, Forschung und Kunst
   { id: "science-engler", lineId: "science", name: "Helmut Engler", party: "CDU", from: "1978-05-11", to: "1991-01-13", office: "Wissenschaft und Kunst" },
@@ -659,8 +820,8 @@ export const ministers: MinisterTerm[] = [
   { id: "social-vetter", lineId: "social", name: "Erwin Vetter", party: "CDU", from: "1996-06-12", to: "1998-11-11", office: "Sozialministerium" },
   { id: "social-repnik", lineId: "social", name: "Friedhelm Repnik", party: "CDU", from: "1998-11-11", to: "2004-07-14", office: "Sozialministerium" },
   { id: "social-goenner", lineId: "social", name: "Tanja Gönner", party: "CDU", from: "2004-07-14", to: "2005-04-29", office: "Sozialministerium" },
-  { id: "social-renner", lineId: "social", name: "Andreas Renner", party: "CDU", from: "2005-04-29", to: "2006-02-01", office: "Sozialministerium" },
-  { id: "social-stolz", lineId: "social", name: "Monika Stolz", party: "CDU", from: "2006-02-01", to: "2011-05-12", office: "Arbeit und Soziales, ab 2010 Arbeit und Sozialordnung, Familien und Senioren" },
+  { id: "social-renner", lineId: "social", name: "Andreas Renner", party: "CDU", from: "2005-04-29", to: "2006-02-01", office: "Sozialministerium, ab 3.5.2005 Ministerium für Arbeit und Soziales" },
+  { id: "social-stolz", lineId: "social", name: "Monika Stolz", party: "CDU", from: "2006-02-01", to: "2011-05-12", office: "Ministerium für Arbeit und Soziales" },
   { id: "social-altpeter", lineId: "social", name: "Katrin Altpeter", party: "SPD", from: "2011-05-12", to: "2016-05-12", office: "Arbeit und Sozialordnung, Familie, Frauen und Senioren" },
   { id: "social-lucha", lineId: "social", name: "Manne Lucha", party: "GRÜNE", from: "2016-05-12", to: "2026-05-13", office: "Soziales und Integration, ab 2021 Soziales, Gesundheit und Integration" },
   { id: "social-hildenbrand", lineId: "social", name: "Oliver Hildenbrand", party: "GRÜNE", from: "2026-05-13", to: null, office: "Soziales, Arbeit und Gesundheit" },
@@ -669,13 +830,13 @@ export const ministers: MinisterTerm[] = [
   { id: "rural-herrmann", lineId: "rural", name: "Friedrich Herrmann", party: "FDP/DVP", from: "1952-04-25", to: "1953-10-07", office: "Landwirtschaftsministerium" },
   { id: "rural-leibfried", lineId: "rural", name: "Eugen Leibfried", party: "CDU", from: "1953-10-07", to: "1968-06-12", office: "Ernährung, Landwirtschaft und Forsten, ab 1962 mit Weinbau" },
   { id: "rural-bruenner", lineId: "rural", name: "Friedrich Brünner", party: "CDU", from: "1968-06-12", to: "1976-06-02", office: "Ernährung, Landwirtschaft, Weinbau und Forsten" },
-  { id: "rural-weiser", lineId: "rural", name: "Gerhard Weiser", party: "CDU", from: "1976-06-02", to: "1996-06-10", office: "Ernährung, Landwirtschaft und Umwelt, ab 1987 Ländlicher Raum" },
+  { id: "rural-weiser", lineId: "rural", name: "Gerhard Weiser", party: "CDU", from: "1976-06-02", to: "1996-06-10", office: "Ernährung, Landwirtschaft und Umwelt, ab 1.7.1987 ländlicher Raum, ab 6.7.1988 mit Ernährung" },
   { id: "rural-staiblin", lineId: "rural", name: "Gerdi Staiblin", party: "CDU", from: "1996-06-11", to: "2001-06-11", office: "Ministerium Ländlicher Raum" },
   { id: "rural-staechele", lineId: "rural", name: "Willi Stächele", party: "CDU", from: "2001-06-12", to: "2005-04-28", office: "Ernährung und Ländlicher Raum" },
-  { id: "rural-hauk-1", lineId: "rural", name: "Peter Hauk", party: "CDU", from: "2005-04-29", to: "2010-02-23", office: "Ländlicher Raum, ab 2006 mit Verbraucherschutz" },
-  { id: "rural-koeberle", lineId: "rural", name: "Rudolf Köberle", party: "CDU", from: "2010-02-24", to: "2011-05-11", office: "Ländlicher Raum und Verbraucherschutz" },
+  { id: "rural-hauk-1", lineId: "rural", name: "Peter Hauk", party: "CDU", from: "2005-04-29", to: "2010-02-23", office: "Ernährung und Ländlicher Raum" },
+  { id: "rural-koeberle", lineId: "rural", name: "Rudolf Köberle", party: "CDU", from: "2010-02-24", to: "2011-05-11", office: "Ernährung und Ländlicher Raum" },
   { id: "rural-bonde", lineId: "rural", name: "Alexander Bonde", party: "GRÜNE", from: "2011-05-12", to: "2016-05-11", office: "Ländlicher Raum und Verbraucherschutz" },
-  { id: "rural-hauk-2", lineId: "rural", name: "Peter Hauk", party: "CDU", from: "2016-05-12", to: "2026-05-12", office: "Ländlicher Raum, Landwirtschaft und Verbraucherschutz" },
+  { id: "rural-hauk-2", lineId: "rural", name: "Peter Hauk", party: "CDU", from: "2016-05-12", to: "2026-05-12", office: "Ländlicher Raum und Verbraucherschutz, ab 2021 Ernährung, Ländlichen Raum und Verbraucherschutz" },
   { id: "rural-gentges", lineId: "rural", name: "Marion Gentges", party: "CDU", from: "2026-05-13", to: null, office: "Ländlicher Raum, Landwirtschaft und Heimat" },
 
   // Umwelt
@@ -686,7 +847,7 @@ export const ministers: MinisterTerm[] = [
   { id: "environment-schaeuble", lineId: "environment", name: "Thomas Schäuble", party: "CDU", from: "1998-10-14", to: "1998-11-10", office: "Umwelt und Verkehr" },
   { id: "environment-mueller", lineId: "environment", name: "Ulrich Müller", party: "CDU", from: "1998-11-11", to: "2004-07-13", office: "Umwelt und Verkehr" },
   { id: "environment-mappus", lineId: "environment", name: "Stefan Mappus", party: "CDU", from: "2004-07-14", to: "2005-04-28", office: "Umwelt und Verkehr" },
-  { id: "environment-goenner", lineId: "environment", name: "Tanja Gönner", party: "CDU", from: "2005-04-29", to: "2011-05-11", office: "Umwelt und Verkehr, ab 2010 Umwelt" },
+  { id: "environment-goenner", lineId: "environment", name: "Tanja Gönner", party: "CDU", from: "2005-04-29", to: "2011-05-11", office: "Umwelt und Verkehr, ab 3.5.2005 Umweltministerium" },
   { id: "environment-untersteller", lineId: "environment", name: "Franz Untersteller", party: "GRÜNE", from: "2011-05-12", to: "2021-05-11", office: "Umwelt, Klima und Energiewirtschaft" },
   { id: "environment-walker", lineId: "environment", name: "Thekla Walker", party: "GRÜNE", from: "2021-05-12", to: null, office: "Umwelt, Klima und Energiewirtschaft" },
 
@@ -699,7 +860,7 @@ export const ministers: MinisterTerm[] = [
   { id: "transport-mappus", lineId: "transport", name: "Stefan Mappus", party: "CDU", from: "2004-07-14", to: "2005-04-28" },
   { id: "transport-rech", lineId: "transport", name: "Heribert Rech", party: "CDU", from: "2005-04-29", to: "2010-02-23", note: "Verkehr als Abteilung des Innenministeriums" },
   { id: "transport-goenner", lineId: "transport", name: "Tanja Gönner", party: "CDU", from: "2010-02-24", to: "2011-05-11" },
-  { id: "transport-hermann", lineId: "transport", name: "Winfried Hermann", party: "GRÜNE", from: "2011-05-12", to: "2026-05-12" },
+  { id: "transport-hermann", lineId: "transport", name: "Winfried Hermann", party: "GRÜNE", from: "2011-05-12", to: "2026-05-12", office: "Verkehr und Infrastruktur, ab 2016 Verkehr" },
   { id: "transport-razavi", lineId: "transport", name: "Nicole Razavi", party: "CDU", from: "2026-05-13", to: null },
 
   // Landesentwicklung und Wohnen

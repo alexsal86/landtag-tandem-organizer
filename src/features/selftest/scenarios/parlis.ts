@@ -26,6 +26,8 @@ export const parlisScenario: TestScenario = {
         && legislativePeriods.length === 18
         && legislativePeriods[17]?.to === "2031-04-30";
       const ministerLines = new Set(ministers.map(term => term.lineId));
+      const alleBelegt = ministryPhases.every(phase => phase.verified);
+      const laendlicherRaum = ministryPhases.find(phase => phase.id === "rural-1987");
       return {
         ok: sourced
           && ministryPhases.length >= 40
@@ -33,8 +35,11 @@ export const parlisScenario: TestScenario = {
           && sozial?.name === "Sozialministerium (SM)"
           && sozial !== undefined && periodsForPhase(sozial).includes(12)
           && periodDates
+          && alleBelegt
+          && laendlicherRaum?.name.includes("ländlichen Raum") === true
+          && laendlicherRaum.name.includes("Ernährung") === false
           && ressortLines.every(line => ministerLines.has(line.id)),
-        message: "Jede Phase nennt Quelle und Ressortlinie; die Wahlperioden nutzen die Systemzeiträume, und jede Ressortlinie hat mindestens eine belegte Amtszeit.",
+        message: "Jede Phase ist im Gesetzblatt belegt und nennt ihre Ressortlinie; die Wahlperioden nutzen die Systemzeiträume, und jede Ressortlinie hat mindestens eine belegte Amtszeit.",
       };
     },
   }, {

@@ -45,6 +45,34 @@ describe("Ministerien seit 1952", () => {
     expect(findings.length).toBeGreaterThanOrEqual(9);
   });
 
+  it("belegt alle Namensphasen im Gesetzblatt", () => {
+    const unverified = ministryPhases.filter(phase => !phase.verified).map(phase => phase.id);
+    expect(unverified).toEqual([]);
+    for (const phase of ministryPhases) {
+      expect(["gesetzblatt", "system"], phase.id).toContain(phase.source.kind);
+    }
+  });
+
+  it("trennt den Ländlichen Raum 1987 von der Fassung mit Ernährung 1988", () => {
+    const gruendung = ministryPhases.find(phase => phase.id === "rural-1987");
+    expect(gruendung?.name).toContain("ländlichen Raum");
+    expect(gruendung?.name).not.toContain("Ernährung");
+    expect(gruendung?.source.citation).toBe("GBl. 1987 S. 191");
+
+    const ernaehrung = ministryPhases.find(phase => phase.id === "rural-1988");
+    expect(ernaehrung?.from).toBe("1988-07-06");
+    expect(ernaehrung?.name).toContain("Ernährung");
+    expect(ministryPhases.find(phase => phase.id === "rural-1987")?.to).toBe("1988-07-05");
+  });
+
+  it("führt die Namensstufen ab 2001 lückenlos", () => {
+    const erwartet = ["economy-1992", "economy-2011", "economy-2016", "economy-2021", "social-2005", "social-2011", "social-2016", "social-2021", "rural-2001", "rural-2011", "rural-2021", "transport-2011", "housing-2021", "justice-2016", "interior-2016"];
+    for (const id of erwartet) expect(ministryPhases.some(phase => phase.id === id), id).toBe(true);
+    expect(ministryPhases.find(phase => phase.id === "social-2005")?.from).toBe("2005-05-03");
+    expect(ministryPhases.find(phase => phase.id === "economy-1992")?.name).toBe("Wirtschaftsministerium (WM)");
+    expect(ministryPhases.filter(phase => phase.from === "2026-05-13").every(phase => phase.source.citation === "GBl. 2026 Nr. 70")).toBe(true);
+  });
+
   it("ordnet Namensphasen den Wahlperioden über die Systemzeiträume zu", () => {
     const gruendung = ministryPhases.find(phase => phase.id === "interior-1952");
     expect(gruendung && periodsForPhase(gruendung)).toContain(1);
@@ -58,12 +86,13 @@ describe("Ministerien seit 1952", () => {
     expect(kultus1996 && periodsForPhase(kultus1996)).toContain(17);
 
     const umwelt1996 = ministryPhases.find(phase => phase.id === "environment-1996");
-    // Periode 18 beginnt am 1.5.2026, die Bezeichnung gilt bis 12.5.2026.
-    expect(umwelt1996 && periodsForPhase(umwelt1996)).toEqual([12, 13, 14, 15, 16, 17, 18]);
+    expect(umwelt1996 && periodsForPhase(umwelt1996)).toEqual([12, 13]);
 
+    const period13 = phasesForPeriod(13);
+    expect(period13.some(phase => phase.lineId === "environment" && phase.name.includes("Umwelt und Verkehr"))).toBe(true);
     const period16 = phasesForPeriod(16);
-    expect(period16.some(phase => phase.lineId === "environment" && phase.name.includes("Umwelt und Verkehr"))).toBe(true);
     expect(period16.every(phase => periodsForPhase(phase).includes(16))).toBe(true);
+    expect(period16.find(phase => phase.id === "social-2016")?.name).toContain("Soziales und Integration");
   });
 
   it("führt für jede Ressortlinie mindestens eine Amtszeit", () => {

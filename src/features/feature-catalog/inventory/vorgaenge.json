@@ -369,7 +369,7 @@
       "id": "parlis.ministry-history",
       "subarea": "Parlamentsdokumentation",
       "name": "Namensgeschichte der Ministerien seit 1952 nachschlagen",
-      "description": "Listet die amtlichen Bezeichnungen der Ministerien Baden-Württembergs seit 1952 mit Laufzeit, Ressortlinie und Gesetzblatt-Fundstelle, ordnet sie den Wahlperioden auf Basis der Systemzeiträume aus election_history_periods zu, nennt je Ressortlinie die Ministerinnen und Minister mit Amtszeit und dokumentiert geprüfte Abweichungen zu Chronik und Ministeriumsartikeln.",
+      "description": "Listet die amtlichen Bezeichnungen der Ministerien Baden-Württembergs seit 1952 mit Laufzeit, Ressortlinie und Gesetzblatt-Fundstelle (alle Phasen im Original belegt, einschließlich der Stufen ab 2001 und der Fassung des Ländlichen Raums von 1987/1988), ordnet sie den Wahlperioden auf Basis der Systemzeiträume aus election_history_periods zu, nennt je Ressortlinie die Ministerinnen und Minister mit Amtszeit und dokumentiert geprüfte Abweichungen zu Chronik und Ministeriumsartikeln.",
       "category": "fachlich",
       "implementationStatus": "implementiert",
       "integrationStatus": "ui",
