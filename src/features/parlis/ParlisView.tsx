@@ -4,6 +4,7 @@ import { ChevronDown, Search } from "lucide-react";
 import { useInfiniteQuery, useQuery } from "@tanstack/react-query";
 import { Input } from "@/components/ui/input";
 import { Button } from "@/components/ui/button";
+import { InitiativeRankings } from "./InitiativeRankings";
 import { TopicFilter } from "./TopicFilter";
 import { DocumentCard } from "./DocumentCard";
 import { documentCount, number } from "./documents";
@@ -132,6 +133,7 @@ function ProceedingsForLegislature({ legislature, changeLegislature }: {
         {options.isError && <p role="alert">Filteroptionen konnten nicht geladen werden.{" "}
           <Button variant="link" onClick={() => void options.refetch()}>Erneut laden</Button>
         </p>}
+        {legislature === 17 && <InitiativeRankings legislature={legislature} />}
         <section className="parlis-filters" aria-label="Dokumente suchen und filtern">
           <label className="parlis-search">
             <span className="sr-only">Dokumente suchen</span>

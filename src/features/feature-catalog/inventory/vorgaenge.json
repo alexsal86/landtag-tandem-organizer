@@ -360,6 +360,23 @@
       "scenarios": ["parlis"]
     },
     {
+      "id": "parlis.initiative-rankings",
+      "subarea": "Parlamentsdokumentation",
+      "name": "Initiativenbilanz einer abgeschlossenen Wahlperiode anzeigen",
+      "description": "Zeigt für die 17. Wahlperiode vorab berechnete Ranglisten für Abgeordnete, Fraktionen und Ministerien sowie Fraktionsanteile an Kleinen Anfragen, Großen Anfragen und Anträgen.",
+      "category": "fachlich",
+      "implementationStatus": "implementiert",
+      "integrationStatus": "ui",
+      "coverage": "selftest",
+      "testResult": "nicht-ausgefuehrt",
+      "routes": ["/daten"],
+      "components": ["src/features/parlis/InitiativeRankings.tsx", "src/features/parlis/ParlisView.tsx"],
+      "evidence": ["supabase/migrations/20261128010000_snapshot_parlis_initiative_rankings.sql", "src/features/selftest/scenarios/parlis.ts"],
+      "rpcs": ["get_parlis_initiative_rankings"],
+      "tables": ["parlis_proceedings", "parlis_deputy_mandates"],
+      "scenarios": ["parlis"]
+    },
+    {
       "id": "parlis.proceedings",
       "subarea": "Parlamentsdokumentation",
       "name": "Parlamentarische Vorgänge auswerten",

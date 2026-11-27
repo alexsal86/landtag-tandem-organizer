@@ -2136,6 +2136,7 @@
           "title": "Parlamentarische Vorgänge",
           "description": "Prüft die Gruppierung und den Lesezugriff auf die Parlamentsdokumentation.",
           "checks": [
+            "Gespeicherte Initiativenbilanz mit begrenzten Ranglisten",
             "Ressortvorschläge für mehrere Wahlperioden",
             "Vorgangstypen der 17. Wahlperiode im Profil zusammenfassen",
             "Fünf persönlich zugeordnete Anträge mit gefiltertem Link im Profil",
@@ -2149,6 +2150,7 @@
           ],
           "tables": [],
           "features": [
+            "parlis.initiative-rankings",
             "parlis.ministry-topics",
             "parlis.proceedings"
           ],
@@ -2188,6 +2190,10 @@
             {
               "id": "parlis-ministry-suggestions",
               "label": "Ressortvorschläge verbinden ministerielle Quellen über Wahlperioden"
+            },
+            {
+              "id": "parlis-initiative-rankings",
+              "label": "Initiativenbilanz der 17. Wahlperiode vollständig und begrenzt abrufen"
             },
             {
               "id": "parlis-deputy-profile",

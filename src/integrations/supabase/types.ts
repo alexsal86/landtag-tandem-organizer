@@ -17967,6 +17967,10 @@ export type Database = {
         Row: { profile_key: string | null; document_kind: string | null; document_count: number | null }
         Relationships: []
       }
+      parlis_initiative_rankings: {
+        Row: { legislature: number | null; rankings: Json | null }
+        Relationships: []
+      }
       parlis_deputy_profiles: {
         Row: {
           legislature: number | null
@@ -18196,6 +18200,10 @@ export type Database = {
       }
     }
     Functions: {
+      get_parlis_initiative_rankings: {
+        Args: { period: number }
+        Returns: Json
+      }
       get_parlis_ministry_sources: {
         Args: Record<PropertyKey, never>
         Returns: { legislature: number; ressort: string; requests: number; suggested_line: string | null }[]

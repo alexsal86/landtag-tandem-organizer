@@ -2762,6 +2762,11 @@
   ],
   "parlis_deputy_mandates": [
     {
+      "id": "parlis.initiative-rankings",
+      "name": "Initiativenbilanz einer abgeschlossenen Wahlperiode anzeigen",
+      "area": "vorgaenge"
+    },
+    {
       "id": "parlis.proceedings",
       "name": "Parlamentarische Vorgänge auswerten",
       "area": "vorgaenge"
@@ -2796,6 +2801,11 @@
     }
   ],
   "parlis_proceedings": [
+    {
+      "id": "parlis.initiative-rankings",
+      "name": "Initiativenbilanz einer abgeschlossenen Wahlperiode anzeigen",
+      "area": "vorgaenge"
+    },
     {
       "id": "parlis.proceedings",
       "name": "Parlamentarische Vorgänge auswerten",

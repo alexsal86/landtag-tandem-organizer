@@ -9,9 +9,9 @@ export const parlisScenario: TestScenario = {
   id: "parlis",
   title: "Parlamentarische Vorgänge",
   description: "Prüft die Gruppierung und den Lesezugriff auf die Parlamentsdokumentation.",
-  features: ["parlis.proceedings", "parlis.ministry-topics"],
+  features: ["parlis.proceedings", "parlis.ministry-topics", "parlis.initiative-rankings"],
   touches: [],
-  checks: ["Ressortvorschläge für mehrere Wahlperioden", "Vorgangstypen der 17. Wahlperiode im Profil zusammenfassen", "Fünf persönlich zugeordnete Anträge mit gefiltertem Link im Profil", "Schlagwortvorschläge bei Eingabe begrenzen", "Serverseitige Suche und begrenzte Dokumentenseiten", "Schlagwörter, Fraktionsfilter und mehrere Urheber", "Urhebertext mit Titeln und Namensbestandteilen bleibt vollständig", "Monatsgruppierung, eindeutige Schlagwörter und leere Ressorts", "Importierte Vorgänge sind lesbar", "Verknüpfte Urheber führen zu einem Mandat derselben Wahlperiode"],
+  checks: ["Gespeicherte Initiativenbilanz mit begrenzten Ranglisten", "Ressortvorschläge für mehrere Wahlperioden", "Vorgangstypen der 17. Wahlperiode im Profil zusammenfassen", "Fünf persönlich zugeordnete Anträge mit gefiltertem Link im Profil", "Schlagwortvorschläge bei Eingabe begrenzen", "Serverseitige Suche und begrenzte Dokumentenseiten", "Schlagwörter, Fraktionsfilter und mehrere Urheber", "Urhebertext mit Titeln und Namensbestandteilen bleibt vollständig", "Monatsgruppierung, eindeutige Schlagwörter und leere Ressorts", "Importierte Vorgänge sind lesbar", "Verknüpfte Urheber führen zu einem Mandat derselben Wahlperiode"],
   steps: [{
     id: "parlis-groups",
     label: "Monate, Schlagwörter und fehlende Ressorts korrekt zuordnen",
@@ -183,6 +183,24 @@ export const parlisScenario: TestScenario = {
           && interior.some(row => row.legislature === period))
           && !data.some(row => row.ressort.startsWith("Ausschuss")),
         message: "Identische und geänderte Ressortnamen bleiben je Wahlperiode sichtbar.",
+      };
+    },
+  }, {
+    id: "parlis-initiative-rankings",
+    label: "Initiativenbilanz der 17. Wahlperiode vollständig und begrenzt abrufen",
+    kind: "db",
+    run: async () => {
+      const { data, error } = await supabase.rpc("get_parlis_initiative_rankings", { period: 17 });
+      if (error) throw error;
+      const snapshot = data && typeof data === "object" && !Array.isArray(data) ? data : null;
+      const kinds = snapshot?.kinds;
+      return {
+        ok: typeof snapshot?.total === "number" && snapshot.total >= 7352
+          && !!kinds && typeof kinds === "object" && !Array.isArray(kinds)
+          && Object.values(kinds).reduce<number>((sum, value) => sum + (typeof value === "number" ? value : 0), 0) === snapshot.total
+          && Array.isArray(snapshot.deputiesMost) && snapshot.deputiesMost.length === 10
+          && Array.isArray(snapshot.deputiesLeast) && snapshot.deputiesLeast.length === 10,
+        message: "Gespeicherte Typzahlen ergeben die Gesamtzahl; beide Personenranglisten sind auf zehn Plätze begrenzt.",
       };
     },
   }, {

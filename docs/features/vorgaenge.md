@@ -6,10 +6,10 @@ _Auto-generiert mit `npm run update:feature-catalog` aus dem zentralen Funktions
 
 ## Kennzahlen
 
-- Funktionen: **19** in **7** Unterbereichen
-- implementiert: **18**, teilweise: **0**, deaktiviert: **0**, potenziell verwaist: **0**
+- Funktionen: **20** in **7** Unterbereichen
+- implementiert: **19**, teilweise: **0**, deaktiviert: **0**, potenziell verwaist: **0**
 - ohne zugeordneten Test: **4**
-- ohne Dokumentationsverweis: **14**
+- ohne Dokumentationsverweis: **15**
 
 ## Funktionen
 
@@ -27,6 +27,7 @@ _Auto-generiert mit `npm run update:feature-catalog` aus dem zentralen Funktions
 | `casefiles.links` Fallakte verknüpfen (Dokumente, Kontakte, Themen, Notizen) | Fallakten | fachlich | implementiert | UI | Selbsttest |
 | `casefiles.notes` Fallakten-Notizen | Fallakten | fachlich | implementiert | UI | Selbsttest |
 | `casefiles.status-workflow` Fallakten-Status und Bearbeitungsstatus | Fallakten | fachlich | implementiert | UI | Selbsttest |
+| `parlis.initiative-rankings` Initiativenbilanz einer abgeschlossenen Wahlperiode anzeigen | Parlamentsdokumentation | fachlich | implementiert | UI | Selbsttest |
 | `parlis.ministry-topics` Ministerien und zentrale Themen zuordnen | Parlamentsdokumentation | fachlich | implementiert | rollenabhängig | Selbsttest |
 | `parlis.proceedings` Parlamentarische Vorgänge auswerten | Parlamentsdokumentation | fachlich | implementiert | UI | Selbsttest |
 | `cases.triage` Vorgang triagieren (Wer ist am Zug?) | Triage | fachlich | implementiert | UI | Unit-Test |
@@ -59,7 +60,7 @@ _Auto-generiert mit `npm run update:feature-catalog` aus dem zentralen Funktions
 |---|---|---:|---:|---|
 | `case-file-lifecycle` | Fallakte mit Folgetabellen (Container) im Unterschied zum Vorgang | 16 | 9 | — |
 | `case-item-lifecycle` | Vorgangs-Lifecycle (Am Zug → Schritt → Wiedervorlage → Entscheidung → Tageszettel → Abschluss) | 9 | 5 | — |
-| `parlis` | Parlamentarische Vorgänge | 0 | 10 | — |
+| `parlis` | Parlamentarische Vorgänge | 0 | 11 | — |
 
 ## Selbsttest-Schritte
 
@@ -103,6 +104,7 @@ Diese Schritte führen die Szenarien aus; „letzter Lauf“ stammt aus `src/fea
 | `parlis` | `parlis-deputy-motions` | Profilvorschau auf fünf persönlich zugeordnete Anträge begrenzen | db | — |
 | `parlis` | `parlis-wp17-activity` | Gespeicherte Typzahlen der 17. Wahlperiode entsprechen der PARLIS-Liste | db | — |
 | `parlis` | `parlis-ministry-suggestions` | Ressortvorschläge verbinden ministerielle Quellen über Wahlperioden | db | — |
+| `parlis` | `parlis-initiative-rankings` | Initiativenbilanz der 17. Wahlperiode vollständig und begrenzt abrufen | db | — |
 | `parlis` | `parlis-deputy-profile` | Weirauchs Anfrage aus Drucksache 18/763 führt zum Abgeordnetenprofil | db | — |
 
 ## Deklarierter Prüfumfang
@@ -129,16 +131,17 @@ Diese Schritte führen die Szenarien aus; „letzter Lauf“ stammt aus `src/fea
 
 ### `parlis`
 
-1. Ressortvorschläge für mehrere Wahlperioden
-2. Vorgangstypen der 17. Wahlperiode im Profil zusammenfassen
-3. Fünf persönlich zugeordnete Anträge mit gefiltertem Link im Profil
-4. Schlagwortvorschläge bei Eingabe begrenzen
-5. Serverseitige Suche und begrenzte Dokumentenseiten
-6. Schlagwörter, Fraktionsfilter und mehrere Urheber
-7. Urhebertext mit Titeln und Namensbestandteilen bleibt vollständig
-8. Monatsgruppierung, eindeutige Schlagwörter und leere Ressorts
-9. Importierte Vorgänge sind lesbar
-10. Verknüpfte Urheber führen zu einem Mandat derselben Wahlperiode
+1. Gespeicherte Initiativenbilanz mit begrenzten Ranglisten
+2. Ressortvorschläge für mehrere Wahlperioden
+3. Vorgangstypen der 17. Wahlperiode im Profil zusammenfassen
+4. Fünf persönlich zugeordnete Anträge mit gefiltertem Link im Profil
+5. Schlagwortvorschläge bei Eingabe begrenzen
+6. Serverseitige Suche und begrenzte Dokumentenseiten
+7. Schlagwörter, Fraktionsfilter und mehrere Urheber
+8. Urhebertext mit Titeln und Namensbestandteilen bleibt vollständig
+9. Monatsgruppierung, eindeutige Schlagwörter und leere Ressorts
+10. Importierte Vorgänge sind lesbar
+11. Verknüpfte Urheber führen zu einem Mandat derselben Wahlperiode
 
 ## Funktionsdetails
 
@@ -778,6 +781,42 @@ Vergleicht PARLIS-Ministerien nach Wahlperiode, schlägt Ressortlinien vor und s
 **Nachweise im Quellcode**
 
 - supabase/migrations/20261128000000_parlis_ministry_topics.sql
+- src/features/selftest/scenarios/parlis.ts
+
+**Bekannte Einschränkungen**
+
+- Keine.
+
+**Offene Prüfpunkte**
+
+- Keine.
+
+### `parlis.initiative-rankings` — Initiativenbilanz einer abgeschlossenen Wahlperiode anzeigen
+Zeigt für die 17. Wahlperiode vorab berechnete Ranglisten für Abgeordnete, Fraktionen und Ministerien sowie Fraktionsanteile an Kleinen Anfragen, Großen Anfragen und Anträgen.
+
+- **Kategorie:** fachlich
+- **Implementierung:** implementiert
+- **Einbindung:** UI
+- **Testabdeckung:** Selbsttest
+- **Letztes Testergebnis:** nicht-ausgefuehrt (kein Laufnachweis importiert; nicht aus der Existenz einer Testdatei abgeleitet)
+- **Rollen:** Keine besondere Rolle deklariert
+- **Routen:** `/daten`
+- **Frontend-Komponenten:** `src/features/parlis/InitiativeRankings.tsx`, `src/features/parlis/ParlisView.tsx`
+- **Services:** —
+- **Hooks:** —
+- **Edge Functions:** —
+- **Datenbankfunktionen:** `get_parlis_initiative_rankings`
+- **Tabellen:** `parlis_proceedings`, `parlis_deputy_mandates`
+- **Abhängigkeiten:** —
+- **Selbsttests:** `parlis`
+- **Unit-Tests:** —
+- **Integrationstests:** —
+- **Browser-Tests:** —
+- **Dokumentation:** —
+
+**Nachweise im Quellcode**
+
+- supabase/migrations/20261128010000_snapshot_parlis_initiative_rankings.sql
 - src/features/selftest/scenarios/parlis.ts
 
 **Bekannte Einschränkungen**
