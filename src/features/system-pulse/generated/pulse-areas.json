@@ -2365,6 +2365,7 @@
             "Geprüfte Namensvarianten auf die richtigen Abgeordnetenprofile verlinken",
             "Gespeicherte Initiativenbilanz mit begrenzten Ranglisten",
             "Ressortvorschläge für mehrere Wahlperioden",
+            "Laufende Wahlperiode und ihre Ministerien in der Administration",
             "Vorgangstypen der 17. Wahlperiode im Profil zusammenfassen",
             "Fünf persönlich zugeordnete Anträge mit gefiltertem Link im Profil",
             "Schlagwortvorschläge bei Eingabe begrenzen",
@@ -2383,6 +2384,10 @@
             "parlis.proceedings"
           ],
           "steps": [
+            {
+              "id": "parlis-ministry-current-period",
+              "label": "Administration führt nur die Ministerien der laufenden Wahlperiode"
+            },
             {
               "id": "parlis-ministry-history",
               "label": "Namensgeschichte der Ministerien belegt und den Ressortlinien zugeordnet"

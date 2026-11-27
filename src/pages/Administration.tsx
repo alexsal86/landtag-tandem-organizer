@@ -18,6 +18,7 @@ import { resolveNavigationState } from "@/components/administration/adminNavigat
 import { normalizeAutomationParams } from "@/components/administration/automationNavigation";
 
 const MinistryAdmin = lazy(() => import("@/features/parlis/MinistryAdmin"));
+const MinistryHistoryView = lazy(() => import("@/features/ministries-history/MinistryHistoryView"));
 const ElectionHistoryAdmin = lazy(() => import("@/features/election-history/ElectionHistoryAdmin"));
 const HrTemplateEditor = lazy(() => import("@/features/onboarding-hr/HrTemplateEditor"));
 const PlanningDefaultCollaboratorsSettings = lazy(() => import("@/components/administration/PlanningDefaultCollaboratorsSettings").then(module => ({ default: module.PlanningDefaultCollaboratorsSettings })));
@@ -412,6 +413,7 @@ export default function Administration(): React.JSX.Element | null {
         case "tenants": return <SuperadminTenantManagement />;
         case "election-history": return <ElectionHistoryAdmin />;
         case "feature-catalog": return <FeatureCatalogView />;
+        case "ministry-history": return <MinistryHistoryView />;
         case "push-tests":
           return (
             <Card>

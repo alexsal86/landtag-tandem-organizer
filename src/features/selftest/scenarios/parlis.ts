@@ -3,6 +3,7 @@ import { documentParties, keywords } from "@/features/parlis/documents";
 import { authorSegments, hasMultipleAuthors } from "@/features/parlis/authors";
 import { groupsFor } from "@/features/parlis/grouping";
 import { legislativePeriods, ministers, ministryPhases, periodsForPhase, phasesForLine, ressortLines } from "@/features/ministries-history/data";
+import { currentLegislature, knownLegislatures, ministriesForLegislature } from "@/features/parlis/ministryAdminModel";
 import { supabase } from "@/integrations/supabase/client";
 import type { TestScenario } from "../types";
 
@@ -12,8 +13,41 @@ export const parlisScenario: TestScenario = {
   description: "Prüft die Gruppierung und den Lesezugriff auf die Parlamentsdokumentation.",
   features: ["parlis.proceedings", "parlis.ministry-topics", "parlis.initiative-rankings", "parlis.ministry-history"],
   touches: [],
-  checks: ["Geprüfte Namensvarianten auf die richtigen Abgeordnetenprofile verlinken", "Gespeicherte Initiativenbilanz mit begrenzten Ranglisten", "Ressortvorschläge für mehrere Wahlperioden", "Vorgangstypen der 17. Wahlperiode im Profil zusammenfassen", "Fünf persönlich zugeordnete Anträge mit gefiltertem Link im Profil", "Schlagwortvorschläge bei Eingabe begrenzen", "Serverseitige Suche und begrenzte Dokumentenseiten", "Schlagwörter, Fraktionsfilter und mehrere Urheber", "Urhebertext mit Titeln und Namensbestandteilen bleibt vollständig", "Monatsgruppierung, eindeutige Schlagwörter und leere Ressorts", "Importierte Vorgänge sind lesbar", "Verknüpfte Urheber führen zu einem Mandat derselben Wahlperiode"],
+  checks: ["Geprüfte Namensvarianten auf die richtigen Abgeordnetenprofile verlinken", "Gespeicherte Initiativenbilanz mit begrenzten Ranglisten", "Ressortvorschläge für mehrere Wahlperioden", "Laufende Wahlperiode und ihre Ministerien in der Administration", "Vorgangstypen der 17. Wahlperiode im Profil zusammenfassen", "Fünf persönlich zugeordnete Anträge mit gefiltertem Link im Profil", "Schlagwortvorschläge bei Eingabe begrenzen", "Serverseitige Suche und begrenzte Dokumentenseiten", "Schlagwörter, Fraktionsfilter und mehrere Urheber", "Urhebertext mit Titeln und Namensbestandteilen bleibt vollständig", "Monatsgruppierung, eindeutige Schlagwörter und leere Ressorts", "Importierte Vorgänge sind lesbar", "Verknüpfte Urheber führen zu einem Mandat derselben Wahlperiode"],
   steps: [{
+    id: "parlis-ministry-current-period",
+    label: "Administration führt nur die Ministerien der laufenden Wahlperiode",
+    kind: "logic",
+    run: async () => {
+      const periods = [
+        { number: 17, starts_on: "2021-05-01", ends_on: "2026-04-30", is_current: false },
+        { number: 18, starts_on: "2026-05-01", ends_on: "2031-04-30", is_current: true },
+      ];
+      const sources = [
+        { legislature: 17, ressort: "Ministerium für Kultus, Jugend und Sport", requests: 40, suggested_line: "education" },
+        { legislature: 18, ressort: "Ministerium für Kultus", requests: 12, suggested_line: "education" },
+      ];
+      const suggestions = [
+        { legislature: 18, ressort: "Ministerium für Kultus", line_id: "education" },
+        { legislature: 18, ressort: "Staatsministerium", line_id: "state" },
+      ];
+      const current = currentLegislature(periods, sources, "2026-11-27");
+      const rows = ministriesForLegislature(18, sources, suggestions);
+      const dateOnly = currentLegislature(periods.map(period => ({ ...period, is_current: false })), sources, "2026-11-27");
+      const fallback = currentLegislature([], [{ legislature: 12 }, { legislature: 18 }], "2026-11-27");
+      const kultus = rows.find(row => row.ressort === "Ministerium für Kultus");
+      const state = rows.find(row => row.ressort === "Staatsministerium");
+      return {
+        ok: current === 18 && dateOnly === 18 && fallback === 18
+          && rows.length === 2
+          && kultus?.requests === 12 && kultus.suggestedLine === "education"
+          && state?.requests === 0 && state.suggestedLine === "state"
+          && !rows.some(row => row.ressort.includes("Jugend und Sport"))
+          && knownLegislatures(sources, suggestions).join() === "17,18",
+        message: "Die Administration zeigt die markierte laufende Wahlperiode samt Vorschlägen ohne Anfragen und blendet frühere Ministerien aus der Hauptliste aus.",
+      };
+    },
+  }, {
     id: "parlis-ministry-history",
     label: "Namensgeschichte der Ministerien belegt und den Ressortlinien zugeordnet",
     kind: "logic",
