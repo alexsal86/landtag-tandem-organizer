@@ -6,9 +6,20 @@ import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { supabase } from "@/integrations/supabase/client";
 import { number } from "./documents";
 
-type MinistrySource = Awaited<ReturnType<typeof readMinistries>>["sources"][number];
+// Die Zeilentypen stehen hier ausdrücklich: der Query-Wrapper liefert die
+// Antworten ohne generische Bindung, sonst bleibt `data` unknown und jede
+// Ableitung daraus (Wahlperioden, Zuordnungen) verliert ihren Typ.
+type MinistrySource = { legislature: number; ressort: string; requests: number; suggested_line: string | null };
+type MinistryLine = { id: string; label: string };
+type MinistryAssignment = { legislature: number; ressort: string; line_id: string | null };
+type MinistryLink = { line_id: string; topic_id: string };
+type MinistryTopic = { id: string; label: string; is_active: boolean };
+type MinistryData = {
+  sources: MinistrySource[]; lines: MinistryLine[]; assignments: MinistryAssignment[];
+  links: MinistryLink[]; topics: MinistryTopic[];
+};
 
-async function readMinistries(tenantId: string, signal: AbortSignal) {
+async function readMinistries(tenantId: string, signal: AbortSignal): Promise<MinistryData> {
   const [sources, lines, assignments, links, topics] = await Promise.all([
     supabase.rpc("get_parlis_ministry_sources").abortSignal(signal),
     supabase.from("parlis_ministry_lines").select("id,label").order("label").abortSignal(signal),
@@ -19,8 +30,9 @@ async function readMinistries(tenantId: string, signal: AbortSignal) {
   ]);
   for (const response of [sources, lines, assignments, links, topics]) if (response.error) throw response.error;
   return {
-    sources: sources.data ?? [], lines: lines.data ?? [], assignments: assignments.data ?? [],
-    links: links.data ?? [], topics: topics.data ?? [],
+    sources: (sources.data ?? []) as MinistrySource[], lines: (lines.data ?? []) as MinistryLine[],
+    assignments: (assignments.data ?? []) as MinistryAssignment[], links: (links.data ?? []) as MinistryLink[],
+    topics: (topics.data ?? []) as MinistryTopic[],
   };
 }
 
