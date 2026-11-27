@@ -36,6 +36,8 @@ import { eventPlanningLifecycleScenario } from "./scenarios/event-planning-lifec
 import { workflowRulesScenario } from "./scenarios/workflow-rules";
 import { accessBoundariesScenario } from "./scenarios/access-boundaries";
 import { jourFixePlatformIntegrationScenario } from './scenarios/jour-fixe-platform-integration';
+import { socialContentLifecycleScenario } from './scenarios/social-content-lifecycle';
+import { notificationInboxScenario } from './scenarios/notification-inbox';
 
 export const SELFTEST_SCENARIOS: TestScenario[] = [
   onboardingHrScenario,
@@ -75,4 +77,6 @@ export const SELFTEST_SCENARIOS: TestScenario[] = [
   contactLifecycleScenario,
   contactRelationsScenario,
   pollLifecycleScenario,
+  socialContentLifecycleScenario,
+  notificationInboxScenario,
 ];

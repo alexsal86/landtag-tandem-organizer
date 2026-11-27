@@ -138,6 +138,12 @@ schedule = "0 17 * * *"
 [functions.log-audit-event]
 verify_jwt = true
 
+# Fehlgeschlagene Anmeldeversuche entstehen ohne Sitzung; der Endpunkt ist deshalb
+# ohne JWT erreichbar und stattdessen durch feste Aktionsliste, Größenlimits und
+# IP-/E-Mail-Rate-Limits begrenzt. Siehe docs/security-function-matrix.md.
+[functions.log-auth-failure]
+verify_jwt = false
+
 [functions.execute-annual-tasks]
 verify_jwt = false
 schedule = "0 6 * * *"

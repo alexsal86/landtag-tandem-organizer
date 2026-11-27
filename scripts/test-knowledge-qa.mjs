@@ -26,7 +26,7 @@ const save = async (q, text, short = 'Kurzantwort für den Test.') => (await rea
 const review = async (q, verified = true, due = null) => (await read('SELECT * FROM knowledge_qa_review($1,$2,$3,$4)', [q.id, q.revision, verified, due]))[0];
 const search = (office, term = '', view = 'answers') => read('SELECT * FROM search_knowledge_questions($1,$2,$3)', [office, term, view]);
 const denied = operation => assert.rejects(operation, error => error.code === '42501');
-const stale = operation => assert.rejects(operation, error => error.code === '40001');
+const stale = operation => assert.rejects(operation, error => error.code === 'PT409');
 try {
   await db.exec(`
     CREATE ROLE authenticated; CREATE ROLE anon; CREATE ROLE service_role;
@@ -86,6 +86,11 @@ try {
   // older view definition cannot be replayed on top of them.
   await db.exec(await readFile(new URL('../supabase/migrations/20261111100800_knowledge_tags.sql', import.meta.url), 'utf8'));
   await db.exec(await readFile(new URL('../supabase/migrations/20261125230000_knowledge_answer_short.sql', import.meta.url), 'utf8'));
+  // Versionskonflikt als PT409 (HTTP 409) statt 40001; zweimal, weil die
+  // Migration die installierten Rümpfe liest und sich wiederholen lassen muss.
+  const conflictCodes = await readFile(new URL('../supabase/migrations/20261128090000_conflict_codes_pt409.sql', import.meta.url), 'utf8');
+  await db.exec(conflictCodes);
+  await db.exec(conflictCodes);
   const listConfiguration=(await read("SELECT proconfig FROM pg_proc WHERE oid='public.knowledge_qa_list(uuid,text,text,integer,jsonb,text,text,text,text,text)'::regprocedure"))[0].proconfig;
   assert.ok(!listConfiguration.some(setting=>setting.startsWith('pg_trgm.')), 'List creation and execution require no extension parameter privileges');
   await db.query('INSERT INTO profiles VALUES($1,$2,$3,$4),($5,$6,$7,$8),($9,$2,$10,$11)',[alice,officeA,'Alice Beispiel','https://example.test/alice.png',bob,officeB,'Bob Privat','https://example.test/private.png',clara,'Clara Beispiel','https://example.test/clara.png']);

@@ -28,3 +28,6 @@ e2e/.env
 
 __pycache__/
 .pytest_cache/
+
+# Lokale Exporte (z. B. PARLIS-CSV)
+exports/

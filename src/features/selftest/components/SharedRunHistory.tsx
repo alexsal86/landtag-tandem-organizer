@@ -1,6 +1,6 @@
 import { useEffect, useState } from "react";
 import { compareRuns, loadHistory, type HistoryRun } from "../history";
-import { stepDiagnostic } from "../stepDiagnostics";
+import { detailsTruncationNote, stepDiagnostic } from "../stepDiagnostics";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 
 export function SharedRunHistory({ tenantId, refreshKey }: { tenantId: string; refreshKey: string }) {
@@ -23,9 +23,11 @@ export function SharedRunHistory({ tenantId, refreshKey }: { tenantId: string; r
             {diagnostic
               ? <>{diagnostic.code ? ` · Code ${diagnostic.code}` : ""}{diagnostic.summary ? ` · ${diagnostic.summary}` : ""}</>
               : step.message ? ` ${step.message}` : ""}
+            {detailsTruncationNote(step) && <span className="block text-xs text-muted-foreground">{detailsTruncationNote(step)}</span>}
             {step.details !== undefined && <pre className="whitespace-pre-wrap break-all text-xs">{JSON.stringify(step.details, null, 2)}</pre>}
           </li>;
         })}</ul>
+        {run.cleanup?.status === "failed" && <p className="text-destructive">Aufräumen fehlgeschlagen{run.cleanup.message ? `: ${run.cleanup.message}` : "."}</p>}
       </details>;
     })}
   </CardContent></Card>;

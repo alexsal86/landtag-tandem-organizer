@@ -18,15 +18,17 @@ type AdminClient = {
 // STANDARD SEEDS
 // ──────────────────────────────────────────────────────────────────────────────
 
+// case_file_types kennt nur name/label/color/icon/order_index – kein description.
+// label und name sind Pflicht und tragen hier denselben Anzeigenamen.
 export const STANDARD_CASE_FILE_TYPES = [
-  { name: "Bürgeranfrage", description: "Anfrage einer Bürgerin oder eines Bürgers", color: "#3b82f6", icon: "MessageSquare" },
-  { name: "Beschwerde", description: "Förmliche Beschwerde mit Bearbeitungsbedarf", color: "#ef4444", icon: "AlertTriangle" },
-  { name: "Anfrage Behörde", description: "Anfrage an oder von einer Behörde", color: "#8b5cf6", icon: "Building" },
-  { name: "Petition", description: "Petition oder Sammeleingabe", color: "#f59e0b", icon: "FileSignature" },
-  { name: "Glückwunsch", description: "Glückwunsch- oder Grußanlass", color: "#10b981", icon: "PartyPopper" },
-  { name: "Termin-Vorbereitung", description: "Vorbereitung eines politischen Termins", color: "#06b6d4", icon: "Calendar" },
-  { name: "Veranstaltung", description: "Eigene oder fremde Veranstaltung", color: "#ec4899", icon: "Megaphone" },
-  { name: "Sonstiges", description: "Allgemeiner Vorgang ohne klare Kategorie", color: "#6b7280", icon: "Folder" },
+  { name: "Bürgeranfrage", color: "#3b82f6", icon: "MessageSquare" },
+  { name: "Beschwerde", color: "#ef4444", icon: "AlertTriangle" },
+  { name: "Anfrage Behörde", color: "#8b5cf6", icon: "Building" },
+  { name: "Petition", color: "#f59e0b", icon: "FileSignature" },
+  { name: "Glückwunsch", color: "#10b981", icon: "PartyPopper" },
+  { name: "Termin-Vorbereitung", color: "#06b6d4", icon: "Calendar" },
+  { name: "Veranstaltung", color: "#ec4899", icon: "Megaphone" },
+  { name: "Sonstiges", color: "#6b7280", icon: "Folder" },
 ];
 
 export const STANDARD_NOTIFICATION_TYPES = [
@@ -58,14 +60,18 @@ export const STANDARD_NOTIFICATION_TYPES = [
   { name: "social_post_approval_reopened", label: "Social Post – Freigabe erneut nötig", category: "editorial" },
 ];
 
+// Kanonische Briefanlässe – wortgleich mit DEFAULT_OCCASIONS in
+// src/components/administration/LetterOccasionManager.tsx, damit der Seed und
+// die Nachpflege in der Verwaltung nicht auseinanderlaufen.
+// letter_occasions verlangt key und label; die Muster dienen der Vorlagenwahl.
 export const STANDARD_LETTER_OCCASIONS = [
-  { name: "Geburtstag", description: "Geburtstagsglückwunsch" },
-  { name: "Kondolenz", description: "Beileidsschreiben" },
-  { name: "Hochzeit", description: "Glückwunsch zur Hochzeit" },
-  { name: "Jubiläum", description: "Geschäfts- oder Vereinsjubiläum" },
-  { name: "Glückwunsch", description: "Allgemeiner Glückwunsch" },
-  { name: "Dankschreiben", description: "Dank an Bürger oder Institution" },
-  { name: "Antwort Bürgeranfrage", description: "Antwort auf Bürgeranfrage" },
+  { key: "buergeranliegen", label: "Bürgeranliegen", description: "Antwort auf Anfragen von Bürgern", icon: "Users", color: "bg-palette-blue", patterns: ["bürger", "anliegen", "antwort", "citizen"] },
+  { key: "ministerium", label: "Ministerium", description: "Formelle Korrespondenz mit Ministerien", icon: "Building2", color: "bg-palette-purple", patterns: ["minister", "formal", "amt"] },
+  { key: "einladung", label: "Einladung", description: "Veranstaltungseinladungen", icon: "PartyPopper", color: "bg-palette-amber", patterns: ["einladung", "invitation", "event"] },
+  { key: "gruss", label: "Gruß & Dank", description: "Glückwünsche, Beileid, Dankschreiben", icon: "Heart", color: "bg-palette-rose", patterns: ["gruß", "gruss", "dank", "beileid", "glückwunsch"] },
+  { key: "parlamentarische_anfrage", label: "Parlamentarische Anfrage", description: "Anfragen an die Regierung", icon: "FileQuestion", color: "bg-palette-teal", patterns: ["anfrage", "parlament", "regierung"] },
+  { key: "stellungnahme", label: "Stellungnahme", description: "Offizielle Positionierung", icon: "MessageSquare", color: "bg-palette-indigo", patterns: ["stellungnahme", "position", "statement"] },
+  { key: "sonstiges", label: "Sonstiges", description: "Freie Briefform", icon: "FileText", color: "bg-muted-foreground", patterns: [] },
 ];
 
 export const STANDARD_MEETING_TEMPLATES = [
@@ -162,7 +168,13 @@ async function safeInsert(
 export async function seedStandardData(
   admin: AdminClient,
   tenantId: string,
-  opts: { appName?: string; appSubtitle?: string },
+  opts: {
+    appName?: string;
+    appSubtitle?: string;
+    /** Der anlegende Super-Admin; meeting_templates/planning_templates verlangen user_id. */
+    createdBy: string;
+    senderInfo?: Omit<SenderSeedInput, "createdBy">;
+  },
 ): Promise<SeedReport> {
   const report = emptyReport();
 
@@ -179,7 +191,13 @@ export async function seedStandardData(
   await safeInsert(
     admin,
     "case_file_types",
-    STANDARD_CASE_FILE_TYPES.map((t) => ({ ...t, tenant_id: tenantId, is_active: true })),
+    STANDARD_CASE_FILE_TYPES.map((t, index) => ({
+      ...t,
+      label: t.name,
+      tenant_id: tenantId,
+      is_active: true,
+      order_index: index,
+    })),
     report,
     "case_file_types",
   );
@@ -197,35 +215,137 @@ export async function seedStandardData(
   await safeInsert(
     admin,
     "letter_occasions",
-    STANDARD_LETTER_OCCASIONS.map((o) => ({ ...o, tenant_id: tenantId, is_active: true })),
+    STANDARD_LETTER_OCCASIONS.map((o, index) => ({
+      tenant_id: tenantId,
+      key: o.key,
+      label: o.label,
+      description: o.description,
+      icon: o.icon,
+      color: o.color,
+      sort_order: index,
+      template_match_patterns: o.patterns,
+      is_active: true,
+    })),
     report,
     "letter_occasions",
   );
 
-  // meeting_templates (best effort; column shape varies)
+  // meeting_templates: Agenda liegt in template_items (Array mit title),
+  // user_id ist Pflichtspalte.
   await safeInsert(
     admin,
     "meeting_templates",
     STANDARD_MEETING_TEMPLATES.map((m) => ({
       tenant_id: tenantId,
+      user_id: opts.createdBy,
       name: m.name,
       description: m.description,
-      agenda_items: m.agenda_items,
+      template_items: m.agenda_items.map((title, index) => ({ title, order_index: index })),
+      default_participants: [],
+      default_recurrence: null,
+      auto_create_count: 3,
+      is_default: false,
     })),
     report,
     "meeting_templates",
   );
 
-  // planning_templates
+  // planning_templates: user_id ist Pflichtspalte.
   await safeInsert(
     admin,
     "planning_templates",
-    STANDARD_PLANNING_TEMPLATES.map((p) => ({ ...p, tenant_id: tenantId })),
+    STANDARD_PLANNING_TEMPLATES.map((p) => ({ ...p, tenant_id: tenantId, user_id: opts.createdBy })),
     report,
     "planning_templates",
   );
 
+  // sender_information: one complete default block, so letters can be written
+  // immediately. The office edits the real address later in the settings.
+  if (opts.senderInfo) {
+    await safeInsert(
+      admin,
+      "sender_information",
+      [buildDefaultSender(tenantId, { ...opts.senderInfo, createdBy: opts.createdBy })],
+      report,
+      "sender_information",
+    );
+  }
+
   return report;
+}
+
+export interface SenderSeedInput {
+  name: string;
+  party?: string;
+  city?: string;
+  email?: string;
+  /** Der anlegende Super-Admin; `sender_information.created_by` ist Pflicht. */
+  createdBy: string;
+}
+
+/**
+ * Neutraler Standard-Absender mit den aktuell vorhandenen Spalten.
+ * Anschrift und Kontaktdaten bleiben leer, bis das Büro sie selbst pflegt.
+ */
+export function buildDefaultSender(tenantId: string, input: SenderSeedInput) {
+  return {
+    tenant_id: tenantId,
+    created_by: input.createdBy,
+    name: input.name.trim() || "Abgeordnetenbüro",
+    organization: input.party?.trim() || "Abgeordnetenbüro",
+    wahlkreis_city: input.city?.trim() || null,
+    wahlkreis_email: input.email?.trim() || null,
+    is_default: true,
+    is_active: true,
+  };
+}
+
+// ──────────────────────────────────────────────────────────────────────────────
+// STANDARD DATA CREATED BY DATABASE TRIGGERS
+// ──────────────────────────────────────────────────────────────────────────────
+
+/**
+ * Standarddaten, die Trigger beim Anlegen des Büros erzeugen. Sie stehen nicht im
+ * Seed-Report oben, weil sie nicht diese Funktion schreibt, sondern die Datenbank.
+ */
+export interface GeneratedDefaults {
+  topics: number;
+  ministry_topic_links: number;
+  topic_module_settings: number;
+  notification_types_total: number;
+}
+
+const GENERATED_COUNTS: Array<{ key: keyof GeneratedDefaults; table: string; column: string }> = [
+  { key: "topics", table: "topics", column: "id" },
+  { key: "ministry_topic_links", table: "parlis_ministry_topics", column: "topic_id" },
+  { key: "topic_module_settings", table: "topic_module_settings", column: "module" },
+  { key: "notification_types_total", table: "notification_types", column: "id" },
+];
+
+/**
+ * Zählt nach dem Anlegen, was im neuen Büro tatsächlich steht – inklusive der
+ * Trigger-Daten (Themen-Wolke, Modul-Steuerung, zusätzliche Notification-Typen).
+ * Fehlende Tabellen oder Spalten ergeben 0 statt eines Abbruchs.
+ */
+export async function countSeededDefaults(admin: any, tenantId: string): Promise<GeneratedDefaults> {
+  const result: GeneratedDefaults = {
+    topics: 0,
+    ministry_topic_links: 0,
+    topic_module_settings: 0,
+    notification_types_total: 0,
+  };
+  for (const { key, table, column } of GENERATED_COUNTS) {
+    try {
+      const { count } = await admin
+        .from(table)
+        .select(column, { count: "exact", head: true })
+        .eq("tenant_id", tenantId);
+      result[key] = count ?? 0;
+    } catch {
+      result[key] = 0;
+    }
+  }
+  return result;
 }
 
 // ──────────────────────────────────────────────────────────────────────────────
@@ -238,7 +358,9 @@ const CLONE_TABLES: Array<{ table: string; key: keyof SeedReport }> = [
   { table: "notification_types", key: "notification_types" },
   { table: "letter_occasions", key: "letter_occasions" },
   { table: "letter_templates", key: "letter_templates" },
-  { table: "sender_information", key: "sender_information" },
+  // sender_information ist bewusst nicht dabei: Name, Anschrift und Kontakt des
+  // Quellbüros gehören nicht in ein neues Büro. Der Wizard legt stattdessen
+  // einen neutralen Standard-Absender aus den eingegebenen Stammdaten an.
   { table: "meeting_templates", key: "meeting_templates" },
   { table: "planning_templates", key: "planning_templates" },
   { table: "appointment_preparation_templates", key: "appointment_preparation_templates" },
@@ -259,11 +381,21 @@ function rewriteRow(row: Record<string, unknown>, targetTenantId: string): Recor
   return out;
 }
 
+/// Owner-Spalten, die beim Klonen auf den handelnden Super-Admin zeigen,
+/// statt auf Personen des Quellbüros.
+const CLONE_OWNER_COLUMNS: Record<string, "created_by" | "user_id"> = {
+  meeting_templates: "user_id",
+  planning_templates: "user_id",
+  letter_templates: "created_by",
+  appointment_preparation_templates: "created_by",
+};
+
 export async function cloneTenantData(
   // We use a more permissive client type here because we need .select with filters.
   admin: any,
   sourceTenantId: string,
   targetTenantId: string,
+  opts: { createdBy?: string } = {},
 ): Promise<SeedReport> {
   const report = emptyReport();
 
@@ -289,6 +421,11 @@ export async function cloneTenantData(
       const rewritten = (srcRows as Record<string, unknown>[]).map((r) =>
         rewriteRow(r, targetTenantId),
       );
+
+      const ownerColumn = CLONE_OWNER_COLUMNS[table];
+      if (ownerColumn && opts.createdBy) {
+        for (const row of rewritten) row[ownerColumn] = opts.createdBy;
+      }
 
       await safeInsert(admin, table, rewritten, report, key);
     } catch (err) {

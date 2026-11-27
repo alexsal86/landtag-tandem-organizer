@@ -8,29 +8,29 @@ _Auto-generiert mit `npm run update:feature-catalog` aus dem zentralen Funktions
 
 - Funktionen: **18** in **3** Unterbereichen
 - implementiert: **18**, teilweise: **0**, deaktiviert: **0**, potenziell verwaist: **0**
-- ohne zugeordneten Test: **10**
+- ohne zugeordneten Test: **2**
 - ohne Dokumentationsverweis: **14**
 
 ## Funktionen
 
 | Funktion | Unterbereich | Kategorie | Implementierung | Einbindung | Abdeckung |
 |---|---|---|---|---|---|
-| `annotations.relocate` Annotationen bei neuer Dateiversion verschieben | Annotationen | fachlich | implementiert | UI | kein Test |
-| `annotations.export` Annotationen exportieren | Annotationen | fachlich | implementiert | UI | kein Test |
+| `annotations.relocate` Annotationen bei neuer Dateiversion verschieben | Annotationen | fachlich | implementiert | UI | teilweise |
+| `annotations.export` Annotationen exportieren | Annotationen | fachlich | implementiert | UI | teilweise |
 | `annotations.history` Annotationsverlauf | Annotationen | fachlich | implementiert | UI | Unit-Test |
 | `annotations.create` Dokumente annotieren | Annotationen | fachlich | implementiert | UI | Selbsttest |
 | `annotations.tasks` Folgeaufgabe aus Annotation | Annotationen | fachlich | implementiert | UI | Selbsttest |
-| `annotations.ocr` OCR für gescannte Dokumente | Annotationen | fachlich | implementiert | UI | kein Test |
+| `annotations.ocr` OCR für gescannte Dokumente | Annotationen | fachlich | implementiert | UI | teilweise |
 | `letters.export` Brief als PDF oder DOCX exportieren | Briefe | fachlich | implementiert | UI | Unit-Test |
 | `letters.archive` Brief archivieren und Folgeaufgabe anlegen | Briefe | automatisiert | implementiert | systemseitig | Selbsttest |
 | `letters.create` Brief erstellen und bearbeiten | Briefe | fachlich | implementiert | rollenabhängig | Unit-Test |
 | `letters.workflow` Brief-Freigabeworkflow | Briefe | fachlich | implementiert | rollenabhängig | Selbsttest |
-| `letters.collaboration` Brief-Kommentare und Zusammenarbeit | Briefe | fachlich | implementiert | UI | kein Test |
-| `letters.attachments` Briefanlagen verwalten | Briefe | fachlich | implementiert | UI | kein Test |
+| `letters.collaboration` Brief-Kommentare und Zusammenarbeit | Briefe | fachlich | implementiert | UI | Selbsttest |
+| `letters.attachments` Briefanlagen verwalten | Briefe | fachlich | implementiert | UI | Selbsttest |
 | `letters.templates` Briefvorlagen und Anlässe | Briefe | administrativ | implementiert | rollenabhängig | kein Test |
-| `documents.upload-version` Dokument hochladen und versionieren | Dokumente | fachlich | implementiert | UI | kein Test |
-| `documents.details` Dokumentdetails und Verknüpfungen | Dokumente | fachlich | implementiert | UI | kein Test |
-| `documents.contacts` Dokumente mit Kontakten verknüpfen | Dokumente | fachlich | implementiert | UI | kein Test |
+| `documents.upload-version` Dokument hochladen und versionieren | Dokumente | fachlich | implementiert | UI | teilweise |
+| `documents.details` Dokumentdetails und Verknüpfungen | Dokumente | fachlich | implementiert | UI | teilweise |
+| `documents.contacts` Dokumente mit Kontakten verknüpfen | Dokumente | fachlich | implementiert | UI | Selbsttest |
 | `documents.email` Dokumente per E-Mail versenden | Dokumente | integration | implementiert | UI | kein Test |
 | `documents.list` Dokumentenliste und Suche | Dokumente | fachlich | implementiert | UI | Selbsttest |
 
@@ -52,10 +52,10 @@ _Auto-generiert mit `npm run update:feature-catalog` aus dem zentralen Funktions
 
 | Szenario | Titel | deklarierte Tabellen | deklarierte Prüfungen | letzter Lauf |
 |---|---|---:|---:|---|
-| `case-file-lifecycle` | Fallakte mit Folgetabellen (Container) im Unterschied zum Vorgang | 16 | 9 | — |
+| `case-file-lifecycle` | Fallakte mit Folgetabellen (Container) im Unterschied zum Vorgang | 17 | 10 | — |
 | `document-annotation` | Dokument-Annotation | 6 | 14 | — |
 | `document-list` | Dokumente: Suche, Kategorien, Sortierung und Auswahl | 0 | 0 | — |
-| `letter-lifecycle` | Brief-Lifecycle (Entwurf → Prüfung → Freigabe → Archiv und Folgeaufgabe) | 5 | 3 | — |
+| `letter-lifecycle` | Brief-Lifecycle (Entwurf → Prüfung → Freigabe → Archiv und Folgeaufgabe) | 6 | 4 | — |
 
 ## Selbsttest-Schritte
 
@@ -71,6 +71,7 @@ Diese Schritte führen die Szenarien aus; „letzter Lauf“ stammt aus `src/fea
 | `case-file-lifecycle` | `links-contact-task` | Kontakt verknüpfen und Aufgabe über die Akten-RPC erzeugen | db | — |
 | `case-file-lifecycle` | `links-appointment-letter` | Termin und Brief mit der Akte verknüpfen | db | — |
 | `case-file-lifecycle` | `upload-document` | Datei in der Akte ablegen und über die Dokumentensuche finden | db | — |
+| `case-file-lifecycle` | `document-contact-link` | Dokument mit Kontakt verknüpfen; Doppelung ist gesperrt | db | — |
 | `case-file-lifecycle` | `counts` | Akten-RPC zählt die Verknüpfungen | db | — |
 | `case-file-lifecycle` | `vorgang-vs-akte` | Unterschied zum Vorgang: eigener Ball, geerbte Sichtbarkeit | db | — |
 | `case-file-lifecycle` | `delete-detaches` | Akte löschen: Folgetabellen weg, Vorgang bleibt | db | — |
@@ -105,6 +106,7 @@ Diese Schritte führen die Szenarien aus; „letzter Lauf“ stammt aus `src/fea
 | `letter-lifecycle` | `attachment` | Echte Anlage hochladen und Inhalt zurücklesen | workflow | — |
 | `letter-lifecycle` | `return-targets` | Rückgabeziele folgen dem Freigabemodell | logic | — |
 | `letter-lifecycle` | `assign-reviewer` | Aktuelles Konto als Prüfer zuweisen | workflow | — |
+| `letter-lifecycle` | `comment-on-passage` | Kommentar mit Textstelle anlegen und als erledigt markieren | workflow | — |
 | `letter-lifecycle` | `return-with-reason` | Brief mit Begründung aus der Prüfung zurückgeben | workflow | — |
 | `letter-lifecycle` | `resubmit-after-return` | Nach der Rückgabe erneut zur Prüfung einreichen | workflow | — |
 | `letter-lifecycle` | `archive` | Versandstatus, Archiv-PDF und Folgeaufgabe über Anwendungsfunktion | workflow | — |
@@ -118,11 +120,12 @@ Diese Schritte führen die Szenarien aus; „letzter Lauf“ stammt aus `src/fea
 2. Ungültige Größe (case_scale) wird von der Datenbank abgewiesen
 3. Bearbeitungsstatus und Statusverlauf werden gespeichert; derselbe Beteiligte kann nicht doppelt eingetragen werden
 4. Kontakt, Aufgabe, Termin und Brief werden über die jeweilige Folgetabelle verknüpft; doppelte Verknüpfungen sind gesperrt
-5. Die Aufgabe entsteht über create_case_file_task als offene Aufgabe für die anlegende Person mit source_type 'case_file' und Quellbezug; eine Wiederholung liefert dieselbe Aufgabe und keine zweite Verknüpfung
-6. Eine hochgeladene Datei ist mit der Akte verknüpft und über die serverseitige Dokumentensuche auffindbar
-7. get_case_files_with_counts liefert die Verknüpfungen der Akte als Zählwerte
-8. Ein Vorgang an einer privaten Akte ist für Büro-Kolleginnen unsichtbar, an einer öffentlichen Akte sichtbar (Sichtbarkeitsvererbung)
-9. Das Löschen der Akte entfernt ihre Folgetabellen, lässt den Vorgang aber mit case_file_id = null bestehen
+5. Das Akten-Dokument lässt sich mit dem Akten-Kontakt verknüpfen; Beziehung und Notiz werden gespeichert, eine Doppelung ist gesperrt
+6. Die Aufgabe entsteht über create_case_file_task als offene Aufgabe für die anlegende Person mit source_type 'case_file' und Quellbezug; eine Wiederholung liefert dieselbe Aufgabe und keine zweite Verknüpfung
+7. Eine hochgeladene Datei ist mit der Akte verknüpft und über die serverseitige Dokumentensuche auffindbar
+8. get_case_files_with_counts liefert die Verknüpfungen der Akte als Zählwerte
+9. Ein Vorgang an einer privaten Akte ist für Büro-Kolleginnen unsichtbar, an einer öffentlichen Akte sichtbar (Sichtbarkeitsvererbung)
+10. Das Löschen der Akte entfernt ihre Folgetabellen, lässt den Vorgang aber mit case_file_id = null bestehen
 
 ### `document-annotation`
 
@@ -150,6 +153,7 @@ Keine Prüfungen deklariert.
 1. Datei hochladen und wieder herunterladen
 2. Prüfung und Freigabe über Anwendungsfunktionen
 3. Archivfunktion erzeugt PDF, Dokument und Folgeaufgabe
+4. Prüferzuordnung und Kommentar mit Textstelle werden gespeichert, erledigt markiert und wieder entfernt
 
 ## Funktionsdetails
 
@@ -196,7 +200,7 @@ Durchsucht Titel, Beschreibung und Dateinamen serverseitig über alle Ordner des
 - **Kategorie:** fachlich
 - **Implementierung:** implementiert
 - **Einbindung:** UI
-- **Testabdeckung:** kein Test
+- **Testabdeckung:** teilweise
 - **Letztes Testergebnis:** nicht-ausgefuehrt (kein Laufnachweis importiert; nicht aus der Existenz einer Testdatei abgeleitet)
 - **Rollen:** `abgeordneter`, `bueroleitung`, `mitarbeiter`, `praktikant`
 - **Routen:** —
@@ -207,7 +211,7 @@ Durchsucht Titel, Beschreibung und Dateinamen serverseitig über alle Ordner des
 - **Datenbankfunktionen:** —
 - **Tabellen:** `documents`, `case_file_documents`, `document_contacts`, `document_annotation_tasks`
 - **Abhängigkeiten:** `documents.list`
-- **Selbsttests:** —
+- **Selbsttests:** `case-file-lifecycle`, `document-annotation`
 - **Unit-Tests:** —
 - **Integrationstests:** —
 - **Browser-Tests:** —
@@ -219,7 +223,7 @@ Durchsucht Titel, Beschreibung und Dateinamen serverseitig über alle Ordner des
 
 **Bekannte Einschränkungen**
 
-- Keine.
+- Die Detailansicht selbst (Zählwerte, Vorschau, Sprungziele) hat keinen Schritt. Geprüft sind die Verknüpfungen dahinter: Akten-Dokument, Dokument-Kontakt und die Aufgabenanlage aus einer Anmerkung.
 
 **Offene Prüfpunkte**
 
@@ -231,7 +235,7 @@ Lädt Dateien hoch, legt Versionen an, verknüpft Themen über document_topics u
 - **Kategorie:** fachlich
 - **Implementierung:** implementiert
 - **Einbindung:** UI
-- **Testabdeckung:** kein Test
+- **Testabdeckung:** teilweise
 - **Letztes Testergebnis:** nicht-ausgefuehrt (kein Laufnachweis importiert; nicht aus der Existenz einer Testdatei abgeleitet)
 - **Rollen:** `abgeordneter`, `bueroleitung`, `mitarbeiter`, `praktikant`
 - **Routen:** —
@@ -242,7 +246,7 @@ Lädt Dateien hoch, legt Versionen an, verknüpft Themen über document_topics u
 - **Datenbankfunktionen:** `update_document_version`, `audit_document_deletion`
 - **Tabellen:** `documents`, `document_topics`, `topics`, `document_annotation_events`
 - **Abhängigkeiten:** —
-- **Selbsttests:** —
+- **Selbsttests:** `case-file-lifecycle`
 - **Unit-Tests:** —
 - **Integrationstests:** —
 - **Browser-Tests:** —
@@ -255,7 +259,7 @@ Lädt Dateien hoch, legt Versionen an, verknüpft Themen über document_topics u
 
 **Bekannte Einschränkungen**
 
-- Keine.
+- Hochladen samt Ablage, Suche und Aktenverknüpfung ist geprüft; eine zweite Dateiversion und die Versionskennzeichnung haben keinen Schritt.
 
 **Offene Prüfpunkte**
 
@@ -267,7 +271,7 @@ Ordnet Dokumente Kontakten zu und zeigt sie im Kontaktprofil.
 - **Kategorie:** fachlich
 - **Implementierung:** implementiert
 - **Einbindung:** UI
-- **Testabdeckung:** kein Test
+- **Testabdeckung:** Selbsttest
 - **Letztes Testergebnis:** nicht-ausgefuehrt (kein Laufnachweis importiert; nicht aus der Existenz einer Testdatei abgeleitet)
 - **Rollen:** `abgeordneter`, `bueroleitung`, `mitarbeiter`
 - **Routen:** —
@@ -278,7 +282,7 @@ Ordnet Dokumente Kontakten zu und zeigt sie im Kontaktprofil.
 - **Datenbankfunktionen:** —
 - **Tabellen:** `document_contacts`, `documents`, `contacts`
 - **Abhängigkeiten:** `contacts.create`
-- **Selbsttests:** —
+- **Selbsttests:** `case-file-lifecycle`
 - **Unit-Tests:** —
 - **Integrationstests:** —
 - **Browser-Tests:** —
@@ -446,7 +450,7 @@ Erkennt Text lokal über selbst gehostete Tesseract-Assets und erlaubt das Anleg
 - **Kategorie:** fachlich
 - **Implementierung:** implementiert
 - **Einbindung:** UI
-- **Testabdeckung:** kein Test
+- **Testabdeckung:** teilweise
 - **Letztes Testergebnis:** nicht-ausgefuehrt (kein Laufnachweis importiert; nicht aus der Existenz einer Testdatei abgeleitet)
 - **Rollen:** `abgeordneter`, `bueroleitung`, `mitarbeiter`
 - **Routen:** —
@@ -457,7 +461,7 @@ Erkennt Text lokal über selbst gehostete Tesseract-Assets und erlaubt das Anleg
 - **Datenbankfunktionen:** —
 - **Tabellen:** `documents`, `document_annotations`
 - **Abhängigkeiten:** `documents.upload-version`
-- **Selbsttests:** —
+- **Selbsttests:** `document-annotation`
 - **Unit-Tests:** —
 - **Integrationstests:** —
 - **Browser-Tests:** —
@@ -471,6 +475,7 @@ Erkennt Text lokal über selbst gehostete Tesseract-Assets und erlaubt das Anleg
 
 **Bekannte Einschränkungen**
 
+- Der Schritt prüft nur die Umrechnung der OCR-Bruchteile (Pixel → Seitenanteile), das Verwerfen leerer Wörter und die Textanker. Die lokale Tesseract-Erkennung mit Worker und Sprachpaketen läuft nicht; Trefferqualität und Textauswahl bleiben offen.
 - OCR-Qualität hängt vom Scan ab; ein automatisierter Qualitätstest existiert nicht.
 
 **Offene Prüfpunkte**
@@ -483,7 +488,7 @@ Exportiert annotierte Dokumente als separate PDF-Kopie, ohne das Original zu ver
 - **Kategorie:** fachlich
 - **Implementierung:** implementiert
 - **Einbindung:** UI
-- **Testabdeckung:** kein Test
+- **Testabdeckung:** teilweise
 - **Letztes Testergebnis:** nicht-ausgefuehrt (kein Laufnachweis importiert; nicht aus der Existenz einer Testdatei abgeleitet)
 - **Rollen:** `abgeordneter`, `bueroleitung`, `mitarbeiter`
 - **Routen:** —
@@ -494,7 +499,7 @@ Exportiert annotierte Dokumente als separate PDF-Kopie, ohne das Original zu ver
 - **Datenbankfunktionen:** —
 - **Tabellen:** `documents`, `document_annotations`
 - **Abhängigkeiten:** `annotations.create`
-- **Selbsttests:** —
+- **Selbsttests:** `document-annotation`
 - **Unit-Tests:** —
 - **Integrationstests:** —
 - **Browser-Tests:** —
@@ -508,7 +513,7 @@ Exportiert annotierte Dokumente als separate PDF-Kopie, ohne das Original zu ver
 
 **Bekannte Einschränkungen**
 
-- Keine.
+- Die Exportkoordinaten sind als Regel geprüft; das erzeugte PDF und seine Darstellung nicht. Die Originaldatei bleibt unverändert, weil der Export eine eigene Kopie erzeugt.
 
 **Offene Prüfpunkte**
 
@@ -520,7 +525,7 @@ Schlägt bei geänderter Dateiversion einen eindeutigen Textanker vor und verlan
 - **Kategorie:** fachlich
 - **Implementierung:** implementiert
 - **Einbindung:** UI
-- **Testabdeckung:** kein Test
+- **Testabdeckung:** teilweise
 - **Letztes Testergebnis:** nicht-ausgefuehrt (kein Laufnachweis importiert; nicht aus der Existenz einer Testdatei abgeleitet)
 - **Rollen:** `abgeordneter`, `bueroleitung`, `mitarbeiter`
 - **Routen:** —
@@ -531,7 +536,7 @@ Schlägt bei geänderter Dateiversion einen eindeutigen Textanker vor und verlan
 - **Datenbankfunktionen:** —
 - **Tabellen:** `document_annotations`, `documents`
 - **Abhängigkeiten:** `annotations.create`, `documents.upload-version`
-- **Selbsttests:** —
+- **Selbsttests:** `document-annotation`
 - **Unit-Tests:** —
 - **Integrationstests:** —
 - **Browser-Tests:** —
@@ -544,7 +549,7 @@ Schlägt bei geänderter Dateiversion einen eindeutigen Textanker vor und verlan
 
 **Bekannte Einschränkungen**
 
-- Keine.
+- Der eindeutige Textanker ist als Regel geprüft; das Anbieten und Bestätigen einer Verschiebung nach neuer Dateiversion hat keinen Datenbankschritt.
 
 **Offene Prüfpunkte**
 
@@ -628,7 +633,7 @@ Führt Briefe durch Entwurf, Prüfung, Freigabe und Versand, protokolliert Statu
 - Keine.
 
 ### `letters.archive` — Brief archivieren und Folgeaufgabe anlegen
-Erzeugt beim Versand ein PDF-Archivdokument, verknüpft es und legt optional eine Folgeaufgabe an.
+Erzeugt beim Versand ein PDF-Archivdokument, verknüpft es und sichert die Folgeaufgabe: Die Archivfunktion legt keine eigene Aufgabe mehr an, sondern ermittelt die des Briefes über das RPC create_letter_archive_follow_up_task, das sie nur anlegt, wenn keine existiert.
 
 - **Kategorie:** automatisiert
 - **Implementierung:** implementiert
@@ -641,7 +646,7 @@ Erzeugt beim Versand ein PDF-Archivdokument, verknüpft es und legt optional ein
 - **Services:** —
 - **Hooks:** `src/hooks/useLetterArchiving.tsx`
 - **Edge Functions:** `archive-letter`
-- **Datenbankfunktionen:** `create_letter_followup_task`
+- **Datenbankfunktionen:** `create_letter_followup_task`, `create_letter_archive_follow_up_task`
 - **Tabellen:** `letters`, `documents`, `letter_attachments`, `tasks`
 - **Abhängigkeiten:** `letters.workflow`, `tasks.create`
 - **Selbsttests:** `letter-lifecycle`
@@ -658,7 +663,7 @@ Erzeugt beim Versand ein PDF-Archivdokument, verknüpft es und legt optional ein
 
 **Bekannte Einschränkungen**
 
-- Keine.
+- Die Folgeaufgabe hat genau einen Erzeuger: den Trigger trigger_letter_followup_task beim Wechsel auf sent. Die Archivfunktion erzeugt keine zweite Aufgabe, sondern liefert die bestehende ID über create_letter_archive_follow_up_task; ein Fehler dabei wird als followUpTaskError gemeldet, ohne den abgeschlossenen Versand abzubrechen. Der Client zieht die Aufgabe nur nach, wenn die Funktion keine ID liefert. Trigger und RPC verknüpfen die Aufgabe über source_type letter_followup und source_id des Briefes; der zusammengebaute Titel dient nur noch dem Altbestand und wird dabei in die Verknüpfung überführt.
 
 **Offene Prüfpunkte**
 
@@ -743,7 +748,7 @@ Erlaubt Kommentare, Mitwirkende und Zugriffsschutz für gemeinsam bearbeitete Br
 - **Kategorie:** fachlich
 - **Implementierung:** implementiert
 - **Einbindung:** UI
-- **Testabdeckung:** kein Test
+- **Testabdeckung:** Selbsttest
 - **Letztes Testergebnis:** nicht-ausgefuehrt (kein Laufnachweis importiert; nicht aus der Existenz einer Testdatei abgeleitet)
 - **Rollen:** `abgeordneter`, `bueroleitung`, `mitarbeiter`
 - **Routen:** —
@@ -754,7 +759,7 @@ Erlaubt Kommentare, Mitwirkende und Zugriffsschutz für gemeinsam bearbeitete Br
 - **Datenbankfunktionen:** `can_access_letter_for_collaboration`, `letters_secured`
 - **Tabellen:** `letter_comments`, `letter_collaborators`, `letters`
 - **Abhängigkeiten:** `letters.create`
-- **Selbsttests:** —
+- **Selbsttests:** `letter-lifecycle`
 - **Unit-Tests:** —
 - **Integrationstests:** —
 - **Browser-Tests:** —
@@ -778,7 +783,7 @@ Fügt Anlagen hinzu, entfernt sie und hält sie beim Archivieren am Dokument.
 - **Kategorie:** fachlich
 - **Implementierung:** implementiert
 - **Einbindung:** UI
-- **Testabdeckung:** kein Test
+- **Testabdeckung:** Selbsttest
 - **Letztes Testergebnis:** nicht-ausgefuehrt (kein Laufnachweis importiert; nicht aus der Existenz einer Testdatei abgeleitet)
 - **Rollen:** `abgeordneter`, `bueroleitung`, `mitarbeiter`
 - **Routen:** —
@@ -789,7 +794,7 @@ Fügt Anlagen hinzu, entfernt sie und hält sie beim Archivieren am Dokument.
 - **Datenbankfunktionen:** —
 - **Tabellen:** `letter_attachments`, `letters`
 - **Abhängigkeiten:** `letters.create`
-- **Selbsttests:** —
+- **Selbsttests:** `letter-lifecycle`
 - **Unit-Tests:** —
 - **Integrationstests:** —
 - **Browser-Tests:** —

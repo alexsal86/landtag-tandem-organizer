@@ -139,11 +139,13 @@ const handler = async (req: Request): Promise<Response> => {
       }
       const supabase = getSupabaseClient();
 
+      // event_planning_action_logs hat kein error_message; Details gehören in
+      // execution_details (jsonb), sonst bricht der Protokolleintrag mit PGRST204.
       await supabase.from("event_planning_action_logs").insert({
         action_id: actionId,
         checklist_item_id: checklistItemId,
         execution_status: "failed",
-        error_message: getErrorMessage(error),
+        execution_details: { error: getErrorMessage(error) },
       });
     } catch (logError) {
       console.error("Failed to log error:", logError);

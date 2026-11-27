@@ -355,7 +355,7 @@
       "category": "fachlich",
       "implementationStatus": "implementiert",
       "integrationStatus": "ui",
-      "coverage": "keine",
+      "coverage": "teilweise",
       "testResult": "nicht-ausgefuehrt",
       "evidence": [
         "src/features/knowledge/components/KnowledgeConversationPanel.tsx"
@@ -378,7 +378,13 @@
         "bueroleitung",
         "mitarbeiter"
       ],
-      "dependsOn": ["knowledge.ask"]
+      "dependsOn": ["knowledge.ask"],
+      "scenarios": [
+        "knowledge-lifecycle"
+      ],
+      "limitations": [
+        "Geprüft ist die Zustellung von Wissensbenachrichtigungen samt Duplikatsperre. Kommentare und Folgen (knowledge_question_comments, knowledge_question_followers) haben keinen Schritt."
+      ]
     },
     {
       "id": "knowledge.search",
@@ -532,7 +538,7 @@
       "category": "fachlich",
       "implementationStatus": "implementiert",
       "integrationStatus": "ui",
-      "coverage": "keine",
+      "coverage": "teilweise",
       "testResult": "nicht-ausgefuehrt",
       "evidence": [
         "src/features/knowledge/globalQuestion.ts",
@@ -555,7 +561,13 @@
       "docs": [
         "docs/knowledge-global-question.md"
       ],
-      "dependsOn": ["knowledge.ask"]
+      "dependsOn": ["knowledge.ask"],
+      "scenarios": [
+        "knowledge-lifecycle"
+      ],
+      "limitations": [
+        "Frageanlage und Validierung sind geprüft. Der Aufruf aus einem fremden Bereich heraus ist ein Oberflächenpfad und wird nicht automatisiert geprüft."
+      ]
     },
     {
       "id": "knowledge.persons",

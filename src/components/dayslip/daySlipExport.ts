@@ -43,7 +43,7 @@ export async function createExportTarget(input: ExportTargetInput): Promise<stri
   const response = target === "note"
     ? await supabase.from("quick_notes").insert({ id, user_id: userId, tenant_id: tenantId, title, content: description })
     : target === "task"
-      ? await supabase.from("tasks").insert({ id, user_id: userId, tenant_id: tenantId, title, description, status: "open", priority: text.startsWith("!!") ? "high" : "medium", category: "allgemein", assigned_to: taskOptions?.assignedTo || userId, due_date: taskOptions?.dueDate ? new Date(`${taskOptions.dueDate}T12:00:00`).toISOString() : null })
+      ? await supabase.from("tasks").insert({ id, user_id: userId, tenant_id: tenantId, title, description, status: "todo", priority: text.startsWith("!!") ? "high" : "medium", category: "allgemein", assigned_to: taskOptions?.assignedTo || userId, due_date: taskOptions?.dueDate ? new Date(`${taskOptions.dueDate}T12:00:00`).toISOString() : null })
       : await supabase.from("task_decisions").insert({ id, created_by: userId, tenant_id: tenantId, title, description, status: "open" });
   if (response.error) {
     // Concurrent creation or a response lost on a previous attempt: verify the exact destination.

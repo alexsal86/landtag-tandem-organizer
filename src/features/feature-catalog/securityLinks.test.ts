@@ -13,6 +13,6 @@ describe("Sicherheitsverknüpfung des Funktionskatalogs", () => {
   });
 
   it("kodiert Funktions-IDs im Deep-Link", () => {
-    expect(featureCatalogHref("events.plan")).toBe("/funktionskatalog?feature=events.plan");
+    expect(featureCatalogHref("events.plan")).toBe("/administration?adminSection=superadmin&adminSubSection=feature-catalog&feature=events.plan");
   });
 });

@@ -73,6 +73,46 @@ test('unbekannte und mehrfach eingetragene Ausnahmen werden abgewiesen', t => {
   assert.ok(report.errors.some(e => e.includes('mehrfach als Ausnahme')));
 });
 
+test('warnt, wenn eine Funktion ohne Test Tabellen eines registrierten Szenarios berührt', t => {
+  const inventory = {
+    area: { id: 'aufgaben', title: 'Aufgaben' },
+    features: [
+      { id: 'tasks.search', name: 'Aufgaben suchen', category: 'fachlich', implementationStatus: 'implementiert', coverage: 'keine', tables: ['tasks'] },
+      { id: 'tasks.none', name: 'Ohne Berührung', category: 'fachlich', implementationStatus: 'implementiert', coverage: 'keine', tables: ['notes'] },
+    ],
+  };
+  const report = collectCoverage(fixture(t, { inventory }), { today: TODAY });
+  assert.deepEqual(report.warnings, [
+    'Funktion tasks.search hat coverage "keine", aber ihre Tabellen tasks werden von task-flow berührt.',
+  ]);
+  assert.ok(!report.errors.some(e => e.includes('tasks.search')));
+  assert.match(renderCoverage(report), /Fachfunktionen ohne Selbsttest/);
+});
+
+test('warnt nicht, wenn das Szenario nicht registriert ist', t => {
+  const inventory = {
+    area: { id: 'aufgaben', title: 'Aufgaben' },
+    features: [
+      { id: 'tasks.search', name: 'Aufgaben suchen', category: 'fachlich', implementationStatus: 'implementiert', coverage: 'keine', tables: ['tasks'] },
+    ],
+  };
+  const report = collectCoverage(fixture(t, { inventory, registered: false }), { today: TODAY });
+  assert.deepEqual(report.warnings, []);
+});
+
+test('verlangt für coverage selftest einen Szenariobezug', t => {
+  const inventory = {
+    area: { id: 'aufgaben', title: 'Aufgaben' },
+    features: [
+      { id: 'tasks.create', name: 'Aufgabe erstellen', category: 'fachlich', implementationStatus: 'implementiert', coverage: 'selftest', tables: ['tasks'], scenarios: [] },
+      { id: 'tasks.list', name: 'Aufgabenliste', category: 'fachlich', implementationStatus: 'implementiert', coverage: 'selftest', tables: ['tasks'], scenarios: ['task-flow'] },
+    ],
+  };
+  const report = collectCoverage(fixture(t, { inventory }), { today: TODAY });
+  assert.ok(report.errors.some(e => e.includes('tasks.create') && e.includes('ohne Szenariobezug')));
+  assert.ok(!report.errors.some(e => e.includes('tasks.list')));
+});
+
 test('listet Fachfunktionen ohne Selbsttest aus dem Katalog', t => {
   const inventory = {
     area: { id: 'aufgaben', title: 'Aufgaben' },

@@ -143,6 +143,7 @@ _Auto-generiert mit `npm run update:feature-catalog`. Nicht von Hand bearbeiten.
 | `dossiers.search` | `dossiers.manage` |
 | `topics.convert-catalog` | `topics.manage` |
 | `topics.convert-catalog` | `responsibilities.matrix` |
+| `topics.ministry-cloud` | `topics.manage` |
 | `integration.calendar-sync` | `calendar.create-appointment` |
 | `integration.ics` | `calendar.create-appointment` |
 | `integration.email` | `admin.templates-senders` |
@@ -468,6 +469,8 @@ _Auto-generiert mit `npm run update:feature-catalog`. Nicht von Hand bearbeiten.
 | `meetings` | organisation, termine |
 | `message_confirmations` | arbeitsbereich, kommunikation |
 | `news_articles` | kommunikation, verwaltung |
+| `parlis_ministry_lines` | organisation, vorgaenge |
+| `parlis_ministry_topics` | organisation, vorgaenge |
 | `party_associations` | kontakte, wahl |
 | `poll_participants` | termine, veranstaltungen |
 | `poll_time_slots` | termine, veranstaltungen |
@@ -483,6 +486,7 @@ _Auto-generiert mit `npm run update:feature-catalog`. Nicht von Hand bearbeiten.
 | `task_decision_participants` | aufgaben, entscheidungen |
 | `task_snoozes` | arbeitsbereich, aufgaben |
 | `task_statuses` | aufgaben, verwaltung |
+| `tenants` | organisation, verwaltung |
 | `user_sessions` | arbeitsbereich, verwaltung |
 | `user_tenant_memberships` | arbeitsbereich, verwaltung |
 | `workflow_runs` | automation, verwaltung |
@@ -525,6 +529,7 @@ _Auto-generiert mit `npm run update:feature-catalog`. Nicht von Hand bearbeiten.
 | `import-representatives` | wahl |
 | `knowledge-collaboration` | wissen |
 | `log-audit-event` | verwaltung |
+| `log-auth-failure` | verwaltung |
 | `manage-tenant-user` | verwaltung |
 | `matrix-bot-handler` | kommunikation |
 | `matrix-decision-handler` | entscheidungen |

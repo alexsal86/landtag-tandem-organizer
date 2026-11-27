@@ -1,6 +1,8 @@
-// Isolated PostgreSQL check for the positive employee-protocol workflow.
-// The real RPCs run in selftest_employee_protocol and are rolled back there, because a
-// released or audited meeting is deliberately undeletable. No live database is used.
+// Isolated PostgreSQL check for the employee protocol: the release guard (42501 for direct
+// status writes, 22023 before completion, 40001 for a stale autosave, also after repairing a
+// drifted instance) and the positive workflow. The real RPCs run in selftest_employee_protocol
+// and are rolled back there, because a released or audited meeting is deliberately undeletable.
+// No live database is used.
 import assert from 'node:assert/strict';
 import { readFile } from 'node:fs/promises';
 import { PGlite } from '../tests/database/node_modules/@electric-sql/pglite/dist/index.js';
@@ -104,7 +106,7 @@ try {
     CREATE TABLE tasks(
       id uuid PRIMARY KEY DEFAULT gen_random_uuid(), user_id uuid, tenant_id uuid, title text, description text,
       assigned_to text, status text, priority text, category text, due_date timestamptz, ball_owner text,
-      ball_assignee_id uuid, next_action text, next_action_due date, source_type text, source_id text,
+      ball_assignee_id uuid, next_action text, next_action_due date, source_type text, source_id uuid,
       timeline jsonb, updated_at timestamptz DEFAULT now());
     CREATE TABLE task_assignees(task_id uuid, user_id uuid, assigned_by uuid);
     -- Lesen genügt: geschrieben wird ausschließlich über die Workflow-RPCs.
@@ -115,6 +117,16 @@ try {
   // The realtime publication of the hosted database is not part of this isolated instance.
   const stafette = await sql('20261113121000_employee_action_stafette.sql');
   await db.exec(stafette.slice(0, stafette.indexOf('DO $$ BEGIN')));
+  // source_id ist im Grundschema eine uuid (20260305230409). Die isolierte Tabelle
+  // deklarierte sie als text und verdeckte damit den Fehler 42804 der Instanz
+  // ("column source_id is of type uuid but expression is of type text"); die
+  // Spalte ist deshalb hier uuid, und die Korrektur wird zweimal eingespielt.
+  await apply('20261128100000_employee_action_task_source_uuid.sql');
+  await apply('20261128100000_employee_action_task_source_uuid.sql');
+  const taskDefinition = (await q(`SELECT pg_get_functiondef(oid) AS definition FROM pg_proc
+    WHERE pronamespace='public'::regnamespace AND proname='create_meeting_action_task'`))[0].definition;
+  assert.ok(!taskDefinition.includes('a.id::text'),
+    'Die Maßnahmen-Aufgabe legt die Maßnahmen-ID ohne Textumbau in source_id ab (sonst 42804)');
   await apply('20261126080000_selftest_employee_protocol.sql');
 
   const meeting = async (id, status, employee = staff, conducted = staff) => {
@@ -298,11 +310,230 @@ try {
   await assert.rejects(q('DELETE FROM employee_meeting_audit'), error => error.code === '42501',
     'The audit table stays read-only for clients');
 
+  // --- release-guard: 42501 für direkte Statuswechsel, 22023 für Freigabe,
+  // Bestätigung und Wiedereröffnung vor Abschluss, 40001 für einen veralteten
+  // Autosave. Der Abschnitt bildet zuerst eine Instanz nach, auf der die Regel
+  // fehlt (alter reopen-Code, Trigger verloren, UPDATE wieder erteilt), und
+  // prüft nach der Reparaturmigration alle fünf Codes.
+  const guard = 'bbbbbbbb-bbbb-4bbb-8bbb-bbbbbbbbbbbb';
+  await db.exec('RESET ROLE');
+  await db.query(
+    `INSERT INTO employee_meetings(id,employee_id,conducted_by,tenant_id,meeting_date,status,protocol_data)
+     VALUES($1,$2,$2,$3,now()+interval '3 days','scheduled','{"goals":"Sperrprüfung"}')`,
+    [guard, staff, office],
+  );
+  await db.exec('GRANT UPDATE ON public.employee_meetings TO authenticated');
+  await db.exec('DROP TRIGGER guard_employee_protocol ON public.employee_meetings');
+  await actor(staff);
+
+  const codeOf = async run => {
+    await db.exec('SAVEPOINT guard_case');
+    let failure = null;
+    try {
+      await run();
+    } catch (error) {
+      failure = error;
+    }
+    await db.exec('ROLLBACK TO SAVEPOINT guard_case');
+    await db.exec('RELEASE SAVEPOINT guard_case');
+    return failure?.code ?? null;
+  };
+  const directWrite = () => q("UPDATE employee_meetings SET status='pending_acknowledgement' WHERE id=$1", [guard]);
+
+  await db.exec('BEGIN');
+  try {
+    assert.equal(await codeOf(directWrite), null,
+      'Ohne Trigger und mit UPDATE-Recht geht der direkte Statuswechsel durch – die Ausgangslage der Instanz');
+    assert.equal(await codeOf(() => q('SELECT reopen_meeting_protocol($1,$2)', [guard, 'Selbsttest'])), 'P0001',
+      'Die alte Wiedereröffnung meldet den Standardcode statt 22023');
+
+    await db.exec('RESET ROLE');
+    await apply('20261127160000_release_guard_rule_repair.sql');
+    // Ein zweiter Lauf darf nichts ändern (DROP/CREATE, REVOKE und Triggerprüfung).
+    await apply('20261127160000_release_guard_rule_repair.sql');
+    await actor(staff);
+
+    // --- Versionssperre: eine ältere Fassung von save_employee_meeting auf der
+    // Instanz prüft p_version nicht. Genau dieser Drift lässt den veralteten
+    // Autosave durch und lässt den Selbsttest staleVersionRejected melden.
+    await db.exec('RESET ROLE');
+    await db.exec(`CREATE OR REPLACE FUNCTION public.save_employee_meeting(p_meeting_id uuid,p_version integer,p_patch jsonb,p_private_notes text DEFAULT NULL)
+      RETURNS integer LANGUAGE plpgsql SECURITY DEFINER SET search_path=public AS $$
+      DECLARE m public.employee_meetings;
+      BEGIN
+        m:=public.require_employee_meeting_access(p_meeting_id);
+        IF m.status NOT IN ('scheduled','in_progress') THEN RAISE EXCEPTION 'Protokoll ist gesperrt.' USING ERRCODE='55000'; END IF;
+        UPDATE public.employee_meetings SET protocol_data=CASE WHEN p_patch ? 'protocol_data' THEN p_patch->'protocol_data' ELSE protocol_data END WHERE id=m.id;
+        RETURN m.version+1;
+      END $$;`);
+    await actor(staff);
+    assert.equal(await codeOf(() => q('SELECT save_employee_meeting($1,$2,$3::jsonb)',
+      [guard, 5, '{"protocol_data":{"goals":"veraltet"}}'])), null,
+      'Die alte Fassung nimmt jeden Stand an – der Drift der Instanz');
+
+    await db.exec('RESET ROLE');
+    await apply('20261128040000_employee_meeting_version_guard_repair.sql');
+    // Auch der Nachtrag muss wiederholbar sein.
+    await apply('20261128040000_employee_meeting_version_guard_repair.sql');
+    await actor(staff);
+    assert.equal(await codeOf(() => q('SELECT save_employee_meeting($1,$2,$3::jsonb)',
+      [guard, 5, '{"protocol_data":{"goals":"veraltet"}}'])), '40001',
+      'Die Reparatur weist den veralteten Stand ab');
+    assert.equal(await codeOf(() => q('SELECT save_employee_meeting($1,$2,$3::jsonb)',
+      [guard, null, '{"protocol_data":{"goals":"ohne Stand"}}'])), '40001',
+      'Ein fehlender Versionsstand ist kein aktueller Stand');
+    await db.exec('SAVEPOINT current_save');
+    const returned = (await q('SELECT save_employee_meeting($1,$2,$3::jsonb) AS version',
+      [guard, 0, '{"protocol_data":{"goals":"aktuell"}}']))[0].version;
+    assert.equal(returned, (await q('SELECT version FROM employee_meetings WHERE id=$1', [guard]))[0].version,
+      'Die RPC gibt den tatsächlich gespeicherten Stand zurück');
+    await db.exec('ROLLBACK TO SAVEPOINT current_save');
+    await db.exec('RELEASE SAVEPOINT current_save');
+
+    // --- Erzwingende Fassung: der Selbsttest blieb trotz mehrerer Einspielversuche
+    // von 20261128040000 unverändert. Die Nachfolgemigration muss deshalb alle
+    // Varianten entfernen, NULL-Stände nachziehen und sich selbst nachweisen.
+    await db.exec('RESET ROLE');
+    await db.exec('ALTER TABLE public.employee_meetings ALTER COLUMN version DROP NOT NULL');
+    // Ohne Trigger bleibt ein gesetzter NULL-Stand stehen; mit Trigger würde er
+    // sofort auf OLD.version+1 überschrieben. Der fehlende Trigger ist genau der
+    // Drift, aus dem ein Gespräch ohne Versionsstand stammt.
+    await db.exec('DROP TRIGGER guard_employee_protocol ON public.employee_meetings');
+    await db.query('UPDATE public.employee_meetings SET version=NULL WHERE id=$1', [guard]);
+    assert.equal((await q('SELECT version FROM employee_meetings WHERE id=$1', [guard]))[0].version, null,
+      'Ausgangslage: ein Gespräch ohne Versionsstand (NULL)');
+
+    await apply('20261128050000_employee_meeting_version_guard_force.sql');
+    // Auch die erzwingende Fassung muss wiederholbar sein.
+    await apply('20261128050000_employee_meeting_version_guard_force.sql');
+
+    const varianten = await q(`SELECT count(*)::int AS n FROM pg_proc
+      WHERE pronamespace='public'::regnamespace AND proname='save_employee_meeting'`);
+    assert.equal(varianten[0].n, 1, 'Die erzwingende Fassung hinterlässt genau eine Variante');
+    const marke = await q(`SELECT obj_description(oid,'pg_proc') AS marke FROM pg_proc
+      WHERE pronamespace='public'::regnamespace AND proname='save_employee_meeting'`);
+    assert.equal(marke[0].marke, 'version-guard 20261128050000',
+      'Die installierte Fassung trägt die Marke der erzwingenden Migration');
+    const nachlauf = await q(`SELECT version, (SELECT is_nullable FROM information_schema.columns
+      WHERE table_schema='public' AND table_name='employee_meetings' AND column_name='version') AS nullable
+      FROM employee_meetings WHERE id=$1`, [guard]);
+    assert.equal(nachlauf[0].version, 0, 'Ein fehlender Versionsstand wird auf 0 nachgezogen');
+    assert.equal(nachlauf[0].nullable, 'NO', 'Der Versionszähler ist danach verpflichtend');
+    assert.equal((await q(`SELECT count(*)::int AS n FROM pg_trigger
+      WHERE tgrelid='public.employee_meetings'::regclass AND tgname='guard_employee_protocol' AND tgenabled<>'D'`))[0].n, 1,
+      'Der Trigger ist genau einmal aktiv');
+
+    // Der Nachweis, den das Ergebnisfenster des SQL-Editors zeigt, muss selbst stimmen.
+    const datei = await sql('20261128050000_employee_meeting_version_guard_force.sql');
+    const nachweis = datei.slice(datei.indexOf('-- 8. Nachweis'));
+    const zeile = (await q(nachweis.slice(nachweis.indexOf('SELECT'))))[0];
+    assert.deepEqual(
+      { varianten: zeile.varianten, prueft_stand: zeile.prueft_stand, trigger_aktiv: zeile.trigger_aktiv,
+        ohne_stand: zeile.ohne_stand, marke: zeile.marke },
+      { varianten: 1, prueft_stand: true, trigger_aktiv: 1, ohne_stand: 0, marke: 'version-guard 20261128050000' },
+      'Der Nachweis der Migration zeigt genau eine aktive, prüfende Fassung',
+    );
+
+    // --- Sperrfreie Fassung: die bisherigen Migrationen brauchten ACCESS EXCLUSIVE
+    // auf employee_meetings (DROP TRIGGER, ALTER TABLE) und kamen deshalb nie an
+    // die Sperre, solange die alte RPC auf der Tabelle hing. Diese Fassung ersetzt
+    // nur Funktionen und muss auch bei einer Bestandszeile ohne Stand greifen.
+    await db.exec('RESET ROLE');
+    await db.exec('DROP TRIGGER guard_employee_protocol ON public.employee_meetings');
+    await db.exec('ALTER TABLE public.employee_meetings ALTER COLUMN version DROP NOT NULL');
+    await db.query('UPDATE public.employee_meetings SET version=NULL WHERE id=$1', [guard]);
+    await db.exec(`CREATE TRIGGER guard_employee_protocol BEFORE INSERT OR UPDATE OR DELETE ON public.employee_meetings
+      FOR EACH ROW EXECUTE FUNCTION public.guard_employee_protocol()`);
+    assert.equal((await q('SELECT version FROM employee_meetings WHERE id=$1', [guard]))[0].version, null,
+      'Ausgangslage: Trigger vorhanden, Bestandszeile ohne Versionsstand');
+
+    await apply('20261128060000_employee_meeting_version_guard_minimal.sql');
+    await apply('20261128060000_employee_meeting_version_guard_minimal.sql');
+    assert.equal((await q('SELECT version FROM employee_meetings WHERE id=$1', [guard]))[0].version, 1,
+      'Die sperrfreie Fassung zieht den fehlenden Versionsstand über den Trigger nach');
+    const markeMinimal = await q(`SELECT obj_description(oid,'pg_proc') AS marke FROM pg_proc
+      WHERE pronamespace='public'::regnamespace AND proname='save_employee_meeting'`);
+    assert.equal(markeMinimal[0].marke, 'version-guard 20261128060000',
+      'Die sperrfreie Fassung ist als installiert markiert');
+
+    await actor(staff);
+    assert.equal(await codeOf(() => q('SELECT save_employee_meeting($1,$2,$3::jsonb)',
+      [guard, 5, '{"protocol_data":{"goals":"veraltet"}}'])), '40001',
+      'Auch nach dem Nachzug weist die RPC den veralteten Stand ab');
+
+    // --- Konfliktcode: 40001 ist die SQLSTATE-Klasse der wiederholbaren
+    // Transaktionskonflikte; die Instanz beantwortet genau diesen Aufruf nicht,
+    // er läuft in die Zeitüberschreitung, während 42501/22023/55000 sofort
+    // kommen. PostgREST trägt dieselbe Abweisung als PT409 (HTTP 409).
+    await db.exec('RESET ROLE');
+    await apply('20261128070000_employee_meeting_conflict_status.sql');
+    // Auch dieser Rumpf muss sich beliebig oft einspielen lassen.
+    await apply('20261128070000_employee_meeting_conflict_status.sql');
+    const markeKonflikt = await q(`SELECT obj_description(oid,'pg_proc') AS marke FROM pg_proc
+      WHERE pronamespace='public'::regnamespace AND proname='save_employee_meeting'`);
+    assert.equal(markeKonflikt[0].marke, 'version-guard 20261128070000',
+      'Der Konfliktcode ist als installiert markiert');
+    await actor(staff);
+    assert.equal(await codeOf(() => q('SELECT save_employee_meeting($1,$2,$3::jsonb)',
+      [guard, 5, '{"protocol_data":{"goals":"veraltet"}}'])), 'PT409',
+      'Der veraltete Stand meldet den PostgREST-Konfliktcode statt 40001');
+
+    // --- Derselbe Konflikt beim Bestätigen: ein abweichender Freigabe-Hash ist
+    // ebenfalls ein Konflikt und meldet PT409. Der Selbsttest des positiven Pfads
+    // muss beide Fassungen erkennen, damit er auch auf einer nicht nachgezogenen
+    // Instanz nicht hart scheitert.
+    await db.exec('RESET ROLE');
+    await apply('20261128080000_employee_protocol_conflict_status.sql');
+    await apply('20261128080000_employee_protocol_conflict_status.sql');
+    const ackDef = (await q(`SELECT pg_get_functiondef(oid) AS d FROM pg_proc
+      WHERE pronamespace='public'::regnamespace AND proname='acknowledge_meeting_protocol'`))[0].d;
+    assert.ok(ackDef.includes("'PT409'") && !ackDef.includes('40001'),
+      'Die Bestätigung meldet den abweichenden Hash als PT409, nicht als 40001');
+    const helperDef = (await q(`SELECT pg_get_functiondef(oid) AS d FROM pg_proc
+      WHERE pronamespace='public'::regnamespace AND proname='selftest_employee_protocol'`))[0].d;
+    assert.ok(helperDef.includes("'PT409'") && helperDef.includes("'40001'"),
+      'Der Protokoll-Selbsttest erkennt PT409 und die alte Antwort 40001');
+    // Zurück in die Rolle des Mitarbeiters: die folgenden Sperrprüfungen messen
+    // die Rechte dieses Kontos, nicht die des Superusers.
+    await actor(staff);
+    assert.equal(await codeOf(() => q('SELECT save_employee_meeting($1,$2,$3::jsonb)',
+      [guard, null, '{"protocol_data":{"goals":"ohne Stand"}}'])), 'PT409',
+      'Auch ein fehlender Stand meldet den Konfliktcode');
+
+    const codes = {
+      directWriteDenied: await codeOf(directWrite),
+      releaseBeforeCompletion: await codeOf(() => q('SELECT request_protocol_acknowledgement($1)', [guard])),
+      acknowledgeBeforeRelease: await codeOf(() => q('SELECT acknowledge_meeting_protocol($1)', [guard])),
+      reopenBeforeCompletion: await codeOf(() => q('SELECT reopen_meeting_protocol($1,$2)', [guard, 'Selbsttest'])),
+      staleVersionRejected: await codeOf(() => q('SELECT save_employee_meeting($1,$2,$3::jsonb)',
+        [guard, 5, '{"protocol_data":{"goals":"veraltet"}}'])),
+    };
+    assert.deepEqual(codes, {
+      directWriteDenied: '42501', releaseBeforeCompletion: '22023', acknowledgeBeforeRelease: '22023',
+      reopenBeforeCompletion: '22023', staleVersionRejected: 'PT409',
+    }, 'Die Reparatur stellt alle Freigabesperren her');
+    assert.equal((await q('SELECT status FROM employee_meetings WHERE id=$1', [guard]))[0].status, 'scheduled',
+      'Keine Sperrprüfung verändert den Status');
+    assert.equal((await q('SELECT count(*)::int AS n FROM employee_meeting_audit WHERE meeting_id=$1', [guard]))[0].n, 0,
+      'Keine Sperrprüfung schreibt eine Auditzeile');
+
+    // Der reparierte Autosave trägt auch den positiven Freigabepfad: der
+    // Versionsstand wandert durch alle echten RPCs und alles wird zurückgerollt.
+    const positive = (await q('SELECT selftest_employee_protocol($1) AS result', [draft]))[0].result;
+    assert.ok(Object.values(positive).every(value => value === true),
+      `Der Freigabepfad läuft mit dem reparierten Autosave: ${JSON.stringify(positive)}`);
+  } finally {
+    await db.exec('ROLLBACK');
+    await db.exec('RESET ROLE');
+  }
+
+  await db.query('DELETE FROM employee_meetings WHERE id=$1', [guard]);
+
   await db.exec('RESET ROLE');
   await db.query('DELETE FROM employee_meeting_audit WHERE meeting_id=$1', [audited]);
   await db.query('DELETE FROM employee_meetings WHERE id = ANY($1::uuid[])', [[draft, audited, finished, closed, two]]);
   assert.equal((await q('SELECT * FROM employee_meetings')).length, 0);
-  console.log('Employee protocol selftest passed: completion, release, acknowledgement, task hand-off, reopening and objection run through the real RPCs with a separate session per role (leader and affected person); every write is rolled back and all guards stay active.');
+  console.log('Employee protocol selftest passed: completion, release, acknowledgement, task hand-off, reopening and objection run through the real RPCs with a separate session per role (leader and affected person); the release guard answers 42501/22023 and the conflict code PT409 for a stale autosave and for an outdated release hash even after the repair of a drifted instance (including an autosave without a version check and a missing version), the repaired autosave carries the positive path, and every write is rolled back.');
 } catch (error) {
   console.error('FAILED:', error.code ?? '', error.message);
   process.exitCode = 1;

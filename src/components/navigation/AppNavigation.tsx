@@ -123,7 +123,7 @@ export function AppNavigation({
   const { navigationCounts, markNavigationAsVisited } = useNavigationNotifications();
   const { totalUnreadCount: matrixUnreadCount, hasCredentials: hasChatCredentials, unreadRooms, recentRoom } = useMatrixUnread();
   const { role: userRole, hasAdminAccess, loading: isRoleLoading } = useResolvedUserRole();
-  // Bereiche mit `adminOnly` bleiben Mitarbeitenden verborgen (z. B. Funktionskatalog).
+  // Bereiche mit `adminOnly` bleiben Mitarbeitenden verborgen.
   const visibleGroups = useMemo(
     () => getNavigationGroups().map((group) => group.subItems
       ? { ...group, subItems: group.subItems.filter((item) => !item.adminOnly || hasAdminAccess) }

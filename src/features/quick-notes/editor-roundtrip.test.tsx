@@ -5,7 +5,14 @@ import SimpleRichTextEditor from "@/components/ui/SimpleRichTextEditor";
 vi.mock("@/components/plugins/MentionsPlugin", () => ({ MentionsPlugin: () => null }));
 vi.mock("@/components/shared/SpeechCommandsDialog", () => ({ SpeechCommandsDialog: () => null }));
 vi.mock("@/components/shared/SpeechSessionStats", () => ({ SpeechSessionStats: () => null }));
-vi.mock("@/hooks/useSpeechDictation", () => ({ useSpeechDictation: () => ({ speechSupported: false }) }));
+// Nur die Aufnahme wird ersetzt, die übrigen Exporte bleiben die echten. Der
+// Editor liest aus demselben Modul auch SPEECH_INTERIM_UPDATE_TAG; ein
+// unvollständiger Mock lässt Vitest beim Zugriff darauf werfen, der
+// Update-Listener bricht ab und es kommt keine onChange-Meldung mehr an.
+vi.mock("@/hooks/useSpeechDictation", async importOriginal => ({
+  ...(await importOriginal<typeof import("@/hooks/useSpeechDictation")>()),
+  useSpeechDictation: () => ({ speechSupported: false }),
+}));
 
 describe("Lexical checklist editing", () => {
   it("does not rebuild the editor DOM when its own exported checklist HTML is fed back", async () => {

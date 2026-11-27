@@ -1,241 +1,258 @@
-import { Fragment, useEffect, useMemo, useState } from "react";
-import { Link, useSearchParams } from "react-router-dom";
-import { getPartyColor } from "@/features/election-districts/partyColors";
-import { authorSegments } from "./authors";
-import { deputyProfileUrl } from "@/features/election-analysis/navigation";
-import { useQuery } from "@tanstack/react-query";
+import { useEffect, useRef, useState } from "react";
+import { useSearchParams } from "react-router-dom";
+import { ChevronDown, Search } from "lucide-react";
+import { useInfiniteQuery, useQuery } from "@tanstack/react-query";
 import { Input } from "@/components/ui/input";
 import { Button } from "@/components/ui/button";
-import { dimensions, groupsFor, type Dimension } from "./grouping";
-import ProceedingDetails from "./ProceedingDetails";
-import { supabase } from "@/integrations/supabase/client";
+import { InitiativeRankings } from "./InitiativeRankings";
+import { TopicFilter } from "./TopicFilter";
+import { DocumentCard } from "./DocumentCard";
+import { documentCount, number } from "./documents";
+import { dimensions, type Dimension } from "./grouping";
+import { loadOptions, loadPage, pageSize } from "./page";
+import "./parlis.css";
 
-const pageSize = 20;
-const number = new Intl.NumberFormat("de-DE");
 const month = new Intl.DateTimeFormat("de-DE", { month: "long", year: "numeric", timeZone: "UTC" });
 
-async function loadProceedings(signal: AbortSignal) {
-  const fetchPage = (offset: number) => supabase
-    .from("parlis_proceedings")
-    .select("vorgangs_id, drucksache, vorgangstyp, datum, urheber, ressort, titel, deskriptoren, pdf_url, dokument_url")
-    .eq("legislature", 18)
-    .order("datum", { ascending: false })
-    .order("vorgangs_id")
-    .range(offset, offset + 499)
-    .abortSignal(signal);
-
-  const first = await fetchPage(0);
-  if (first.error) throw first.error;
-  const proceedings = first.data;
-  for (let offset = proceedings.length; offset > 0 && offset % 500 === 0; offset = proceedings.length) {
-    const next = await fetchPage(offset);
-    if (next.error) throw next.error;
-    if (!next.data.length) break;
-    proceedings.push(...next.data);
-  }
-  return proceedings;
-}
-
-async function loadDeputyProfiles(signal: AbortSignal) {
-  const profiles: { proceedingId: string; name: string; key: string }[] = [];
-  const batchSize = 500;
-  for (let offset = 0; ; offset += batchSize) {
-    const { data, error } = await supabase.from("parlis_deputy_profiles")
-      .select("vorgangs_id, deputy_name, profile_key")
-      .eq("legislature", 18)
-      .order("vorgangs_id")
-      .order("mandate_id")
-      .range(offset, offset + batchSize - 1)
-      .abortSignal(signal);
-    if (error) throw error;
-    for (const row of data) {
-      if (row.vorgangs_id && row.deputy_name && row.profile_key) {
-        profiles.push({ proceedingId: row.vorgangs_id, name: row.deputy_name, key: row.profile_key });
-      }
-    }
-    if (data.length < batchSize) return profiles;
-  }
-}
-
-type Proceeding = Awaited<ReturnType<typeof loadProceedings>>[number];
-
 function groupLabel(key: string, dimension: Dimension) {
-  return dimension === "datum" ? month.format(new Date(key + "-01T00:00:00Z")) : key;
+  return dimension === "datum" && key !== "Ohne Angabe" ? month.format(new Date(key + "-01T00:00:00Z")) : key;
 }
 
-function documentLink(row: Proceeding) {
-  return [row.pdf_url, row.dokument_url].find(url => /^https:\/\/www\.landtag-bw\.de\//i.test(url));
-}
+const emptyFilters = { party: "", from: "", to: "", topic: "" };
+
+// Älteste ausgewertete Wahlperiode ist die 9. (1984-1988); neueste ist die 18.
+const legislatures = Array.from({ length: 18 - 9 + 1 }, (_, index) => 18 - index);
 
 export default function ParlisView() {
-  const query = useQuery({
-    queryKey: ["parlis-proceedings", 18],
-    queryFn: ({ signal }) => loadProceedings(signal),
-    staleTime: 5 * 60 * 1000,
-  });
-  const profiles = useQuery({
-    queryKey: ["parlis-deputy-profiles", 18],
-    queryFn: ({ signal }) => loadDeputyProfiles(signal),
-    staleTime: 5 * 60 * 1000,
-  });
+  const [params, setParams] = useSearchParams();
+  const requested = Number(params.get("wahlperiode"));
+  const legislature = Number.isInteger(requested) && requested >= 9 && requested <= 18 ? requested : 18;
+  return <ProceedingsForLegislature key={legislature} legislature={legislature} changeLegislature={value => {
+    const next = new URLSearchParams(params);
+    next.set("wahlperiode", value);
+    next.delete("ressort");
+    setParams(next);
+  }} />;
+}
+
+function ProceedingsForLegislature({ legislature, changeLegislature }: {
+  legislature: number;
+  changeLegislature: (value: string) => void;
+}) {
   const [params, setParams] = useSearchParams();
   const deputyKey = params.get("urheber");
-  const profileByProceeding = useMemo(() => {
-    const index = new Map<string, Map<string, string>>();
-    for (const { proceedingId, key, name } of profiles.data ?? []) {
-      const authors = index.get(proceedingId) ?? new Map<string, string>();
-      authors.set(key, name);
-      index.set(proceedingId, authors);
-    }
-    return index;
-  }, [profiles.data]);
-  const deputyName = profiles.data?.find(profile => profile.key === deputyKey)?.name;
+  const ministry = params.get("ressort");
+  const documentKind = params.get("vorgangstyp") ?? "";
   const [search, setSearch] = useState("");
+  const [searchText, setSearchText] = useState("");
+  const [filters, setFilters] = useState(emptyFilters);
+  const [oldestFirst, setOldestFirst] = useState(false);
   const [dimension, setDimension] = useState<Dimension>("datum");
+  const [analysisOpen, setAnalysisOpen] = useState(false);
   const [selected, setSelected] = useState<string | null>(null);
-  const [visible, setVisible] = useState(pageSize);
-  const [openDetails, setOpenDetails] = useState<string | null>(null);
-
-  const matches = useMemo(() => {
-    const terms = search.trim().toLocaleLowerCase("de-DE").split(/\s+/).filter(Boolean);
-    return (query.data ?? []).filter(row => {
-      if (deputyKey && !profileByProceeding.get(row.vorgangs_id)?.has(deputyKey)) return false;
-      const searchable = [row.titel, row.drucksache, row.vorgangs_id, row.vorgangstyp, row.urheber, row.ressort, row.deskriptoren, row.datum]
-        .join(" ").toLocaleLowerCase("de-DE");
-      return terms.every(term => searchable.includes(term));
-    });
-  }, [query.data, search, deputyKey, profileByProceeding]);
-
-  const groups = useMemo(() => {
-    const counts = new Map<string, number>();
-    for (const row of matches) {
-      for (const key of groupsFor(row, dimension)) counts.set(key, (counts.get(key) ?? 0) + 1);
-    }
-    return [...counts].sort(([a, countA], [b, countB]) =>
-      (dimension === "datum" ? 0 : countB - countA) || a.localeCompare(b, "de-DE"));
-  }, [dimension, matches]);
-  const chartGroups = dimension === "datum" ? groups : groups.slice(0, 12);
-  const max = Math.max(1, ...chartGroups.map(([, count]) => count));
-  const filtered = selected === null ? matches : matches.filter(row => groupsFor(row, dimension).includes(selected));
+  const loadMore = useRef<HTMLButtonElement>(null);
 
   useEffect(() => {
-    if (selected !== null && !groups.some(([key]) => key === selected)) setSelected(null);
-  }, [groups, selected]);
+    const timer = window.setTimeout(() => setSearchText(search.trim()), 250);
+    return () => window.clearTimeout(timer);
+  }, [search]);
 
-  if (query.isPending || (deputyKey && profiles.isPending)) return <p role="status">Parlamentarische Vorgänge werden geladen …</p>;
-  if (query.isError) return (
-    <div className="space-y-3" role="alert">
-      <p>Die parlamentarischen Vorgänge konnten nicht geladen werden.</p>
-      <Button variant="outline" onClick={() => void query.refetch()}>Erneut laden</Button>
-    </div>
-  );
+  const args = {
+    period: legislature,
+    search_text: searchText,
+    document_kind: documentKind,
+    faction: filters.party,
+    topic: filters.topic,
+    date_from: filters.from || undefined,
+    date_to: filters.to || undefined,
+    deputy_key: deputyKey ?? undefined,
+    oldest_first: oldestFirst,
+    chart_dimension: ministry ? "ressort" : analysisOpen || selected !== null ? dimension : undefined,
+    chart_selection: ministry ?? selected ?? undefined,
+  };
+  const query = useInfiniteQuery({
+    queryKey: ["parlis-pages", args],
+    queryFn: ({ signal, pageParam }) => loadPage({ ...args, page_offset: pageParam }, signal),
+    initialPageParam: 0,
+    getNextPageParam: (last, [first], offset) =>
+      last.rows.length === pageSize && offset + pageSize < (first.count ?? 0) ? offset + pageSize : undefined,
+    staleTime: 5 * 60 * 1000,
+    refetchOnMount: false,
+    refetchOnWindowFocus: false,
+    refetchOnReconnect: false,
+  });
+  const options = useQuery({
+    queryKey: ["parlis-filter-options", legislature],
+    queryFn: ({ signal }) => loadOptions(legislature, signal),
+    staleTime: 60 * 60 * 1000,
+    gcTime: 60 * 60 * 1000,
+  });
+
+  const { fetchNextPage, hasNextPage, isFetching, isFetchNextPageError } = query;
+  useEffect(() => {
+    if (!loadMore.current || !hasNextPage || isFetching || isFetchNextPageError ||
+      search.trim() !== searchText || typeof IntersectionObserver === "undefined") return;
+    const observer = new IntersectionObserver(([entry]) => {
+      if (entry.isIntersecting) void fetchNextPage({ cancelRefetch: false });
+    }, { rootMargin: "0px 0px 120px 0px" });
+    observer.observe(loadMore.current);
+    return () => observer.disconnect();
+  }, [fetchNextPage, hasNextPage, isFetching, isFetchNextPageError, search, searchText]);
+
+  const first = query.data?.pages[0];
+  const rows = query.data?.pages.flatMap(page => page.rows) ?? [];
+  const deputyName = deputyKey ? rows.find(row => row.deputies.some(([key]) => key === deputyKey))
+    ?.deputies.find(([key]) => key === deputyKey)?.[1] : undefined;
+  const chartGroups = first?.groups ?? [];
+  const max = Math.max(1, ...chartGroups.map(([, count]) => count));
+  const hasFilters = !!(search || documentKind || ministry || selected || deputyKey || oldestFirst || Object.values(filters).some(Boolean));
+
+  function updateFilter(key: keyof typeof emptyFilters, value: string) {
+    setFilters(current => ({ ...current, [key]: value }));
+    setSelected(null);
+  }
+
+  function clearDeputy() {
+    const next = new URLSearchParams(params);
+    next.delete("urheber");
+    setParams(next);
+    setSelected(null);
+  }
 
   return (
-    <section className="mx-auto max-w-6xl space-y-6">
-      <header className="space-y-1">
-        <h1 className="text-2xl font-semibold">Parlamentarische Vorgänge</h1>
-        <p className="text-muted-foreground">Landtag Baden-Württemberg · 18. Wahlperiode</p>
-      </header>
-      {profiles.isError && <p role="alert">Abgeordnetenverknüpfungen konnten nicht geladen werden.{" "}
-        <Button variant="link" onClick={() => void profiles.refetch()}>Erneut laden</Button>
-      </p>}
-      {deputyKey && <div className="flex flex-wrap items-center gap-2">
-        <span>{deputyName ? `Urheber: ${deputyName}` : "Vorgänge zum ausgewählten Abgeordnetenprofil"}</span>
-        <Button variant="outline" size="sm" onClick={() => {
-          const next = new URLSearchParams(params);
-          next.delete("urheber");
-          setParams(next);
-          setSelected(null);
-          setVisible(pageSize);
-        }}>Alle Urheber anzeigen</Button>
-      </div>}
-      <div className="grid gap-3 sm:grid-cols-2">
-        <label className="grid gap-1 text-sm font-medium">
-          Suche
-          <Input type="search" value={search} placeholder="Titel, Schlagwort, Drucksache …" onChange={event => {
-            setSearch(event.target.value);
-            setSelected(null);
-            setVisible(pageSize);
-          }} />
-        </label>
-        <label className="grid gap-1 text-sm font-medium">
-          Gruppieren nach
-          <select className="h-10 rounded-md border border-input bg-background px-3" value={dimension} onChange={event => {
-            setDimension(event.target.value as Dimension);
-            setSelected(null);
-            setVisible(pageSize);
-          }}>
-            {Object.entries(dimensions).map(([key, label]) => <option key={key} value={key}>{label}</option>)}
-          </select>
-        </label>
-      </div>
-      {chartGroups.length > 0 && (
-        <div className="space-y-2 rounded-lg border p-4" role="group" aria-label="Vorgänge je Gruppe">
-          <p className="text-sm text-muted-foreground">
-            {groups.length > chartGroups.length && "12 häufigste Gruppen · "}
-            {dimension === "deskriptoren" && "Mehrere Schlagwörter pro Vorgang möglich · "}
-            Balken auswählen, um die Treffer einzugrenzen
-          </p>
-          {chartGroups.map(([key, count]) => (
-            <button key={key} type="button" aria-pressed={selected === key}
-              className="grid w-full grid-cols-[minmax(0,1fr)_auto] gap-x-4 gap-y-1 rounded-md px-2 py-1 text-left text-sm hover:bg-muted aria-pressed:bg-accent"
-              onClick={() => {
-                setSelected(selected === key ? null : key);
-                setVisible(pageSize);
-              }}>
-              <span className="break-words">{groupLabel(key, dimension)}</span>
-              <span className="tabular-nums">{number.format(count)}</span>
-              <span className="col-span-2 h-1.5 rounded-full bg-muted" aria-hidden="true">
-                <span className="block h-full rounded-full bg-primary" style={{ width: `${count / max * 100}%` }} />
-              </span>
-            </button>
-          ))}
-        </div>
-      )}
-      <div className="space-y-3">
-        <h2 className="text-lg font-semibold" aria-live="polite">
-          {number.format(filtered.length)} von {number.format(query.data.length)} Vorgängen
-          {selected !== null && ` · ${groupLabel(selected, dimension)}`}
-        </h2>
-        {!filtered.length && <p className="text-muted-foreground">Keine Vorgänge gefunden.</p>}
-        <ul className="divide-y">
-          {filtered.slice(0, visible).map(row => {
-            const url = documentLink(row);
-            const deputies = profileByProceeding.get(row.vorgangs_id);
-            return (
-              <li key={row.vorgangs_id} className="space-y-1 py-3">
-                <h3 className="font-medium">{row.titel || row.vorgangs_id}</h3>
-                <p className="text-sm text-muted-foreground">
-                  {[row.datum.split("-").reverse().join("."), row.vorgangstyp, row.drucksache].filter(Boolean).join(" · ")}
-                  {row.urheber && <>{" · "}{authorSegments(row.urheber, deputies).map((segment, index) => {
-                    if (segment.profileKey) return (
-                      <Link key={index} className="text-primary underline" to={deputyProfileUrl(segment.profileKey)}>{segment.text}</Link>
-                    );
-                    const partyColor = segment.party && getPartyColor(segment.party);
-                    return <Fragment key={index}>
-                      {partyColor && partyColor !== getPartyColor() && (
-                        <span aria-hidden="true" className="mr-1 inline-block size-2 rounded-full align-middle" style={{ backgroundColor: partyColor }} />
-                      )}{segment.text}
-                    </Fragment>;
-                  })}</>}
-                  {row.ressort && ` · ${row.ressort}`}
-                </p>
-                {row.deskriptoren && <p className="text-sm">{row.deskriptoren}</p>}
-                <div className="flex flex-wrap items-center gap-4">
-                  {url && <a className="inline-block text-sm text-primary underline" href={url} target="_blank" rel="noreferrer">Originaldokument öffnen</a>}
-                  <Button variant="link" size="sm" className="h-auto p-0" aria-expanded={openDetails === row.vorgangs_id}
-                    onClick={() => setOpenDetails(openDetails === row.vorgangs_id ? null : row.vorgangs_id)}>
-                    {openDetails === row.vorgangs_id ? "Text ausblenden" : "Text und Unterzeichner anzeigen"}
-                  </Button>
-                </div>
-                {openDetails === row.vorgangs_id && <ProceedingDetails vorgangsId={row.vorgangs_id} />}
-              </li>
-            );
-          })}
-        </ul>
-        {visible < filtered.length && (
-          <Button variant="outline" onClick={() => setVisible(visible + pageSize)}>Weitere Vorgänge anzeigen</Button>
-        )}
+    <section className="parlis-page">
+      <div className="parlis-content">
+        <header className="parlis-heading">
+          <div>
+            <h1>Parlamentarische Vorgänge</h1>
+            <p>Landtag Baden-Württemberg</p>
+          </div>
+          <label>Wahlperiode
+            <select aria-label="Wahlperiode" value={legislature} onChange={event => changeLegislature(event.target.value)}>
+              {legislatures.map(period => (
+                <option key={period} value={period}>{period}. Wahlperiode</option>
+              ))}
+            </select>
+          </label>
+        </header>
+        {options.isError && <p role="alert">Filteroptionen konnten nicht geladen werden.{" "}
+          <Button variant="link" onClick={() => void options.refetch()}>Erneut laden</Button>
+        </p>}
+        {legislature === 17 && <InitiativeRankings legislature={legislature} />}
+        <section className="parlis-filters" aria-label="Dokumente suchen und filtern">
+          <label className="parlis-search">
+            <span className="sr-only">Dokumente suchen</span>
+            <Search size={18} aria-hidden="true" />
+            <Input type="search" value={search} placeholder="Titel, Schlagwort, Drucksache …" onChange={event => {
+              setSearch(event.target.value);
+              setSelected(null);
+            }} />
+          </label>
+          <div className="parlis-filter-grid">
+            <label>Dokumententyp<select aria-label="Dokumententyp" value={documentKind} onChange={event => {
+              const next = new URLSearchParams(params);
+              if (event.target.value) next.set("vorgangstyp", event.target.value);
+              else next.delete("vorgangstyp");
+              setParams(next);
+              setSelected(null);
+            }}>
+              <option value="">Alle Typen</option>
+              {documentKind && !options.data?.kinds.includes(documentKind) && <option>{documentKind}</option>}
+              {options.data?.kinds.map(kind => <option key={kind}>{kind}</option>)}
+            </select></label>
+            <label>Fraktion<select aria-label="Fraktion" value={filters.party} onChange={event => updateFilter("party", event.target.value)}>
+              <option value="">Alle Fraktionen</option>
+              {options.data?.parties.map(party => <option key={party}>{party}</option>)}
+              <option value="__unknown">Ohne Fraktionsangabe</option>
+            </select></label>
+            <TopicFilter period={legislature} value={filters.topic} onChange={value => updateFilter("topic", value)} />
+            <label>Datum von<Input type="date" value={filters.from} max={filters.to || undefined} onChange={event => updateFilter("from", event.target.value)} /></label>
+            <label>Datum bis<Input type="date" value={filters.to} min={filters.from || undefined} onChange={event => updateFilter("to", event.target.value)} /></label>
+            <label>Sortierung<select aria-label="Sortierung" value={oldestFirst ? "asc" : "desc"} onChange={event => {
+              setOldestFirst(event.target.value === "asc");
+            }}>
+              <option value="desc">Neueste zuerst</option>
+              <option value="asc">Älteste zuerst</option>
+            </select></label>
+          </div>
+          <div className="parlis-filter-footer">
+            {ministry && <Button variant="outline" size="sm" onClick={() => {
+              const next = new URLSearchParams(params);
+              next.delete("ressort");
+              setParams(next);
+            }}>{ministry} · Auswahl entfernen</Button>}
+            {deputyKey && <Button variant="outline" size="sm" onClick={clearDeputy}>
+              {deputyName || "Ausgewähltes Abgeordnetenprofil"} · Auswahl entfernen
+            </Button>}
+            {hasFilters && <Button variant="ghost" size="sm" onClick={() => {
+              setSearch("");
+              setSearchText("");
+              setFilters(emptyFilters);
+              setOldestFirst(false);
+              const next = new URLSearchParams(params);
+              next.delete("urheber");
+              next.delete("vorgangstyp");
+              next.delete("ressort");
+              setParams(next);
+              setSelected(null);
+            }}>Filter zurücksetzen</Button>}
+          </div>
+        </section>
+        {!ministry && <details className="parlis-analysis" onToggle={event => setAnalysisOpen(event.currentTarget.open)}>
+          <summary>Auswertung <ChevronDown size={16} aria-hidden="true" /></summary>
+          <label>Gruppieren nach
+            <select aria-label="Gruppieren nach" value={dimension} onChange={event => {
+              setDimension(event.target.value as Dimension);
+              setSelected(null);
+            }}>
+              {Object.entries(dimensions).map(([key, label]) => <option key={key} value={key}>{label}</option>)}
+            </select>
+          </label>
+          {chartGroups.length > 0 && (
+            <div className="space-y-2 rounded-lg border p-4" role="group" aria-label="Vorgänge je Gruppe">
+              <p className="text-sm text-muted-foreground">
+                {dimension !== "datum" && chartGroups.length === 12 && "Bis zu 12 häufigste Gruppen · "}
+                {dimension === "deskriptoren" && "Mehrere Schlagwörter pro Vorgang möglich · "}
+                Balken auswählen, um die Treffer einzugrenzen
+              </p>
+              {chartGroups.map(([key, count]) => (
+                <button key={key} type="button" aria-pressed={selected === key}
+                  className="grid w-full grid-cols-[minmax(0,1fr)_auto] gap-x-4 gap-y-1 rounded-md px-2 py-1 text-left text-sm hover:bg-muted aria-pressed:bg-accent"
+                  onClick={() => setSelected(selected === key ? null : key)}>
+                  <span className="break-words">{groupLabel(key, dimension)}</span>
+                  <span className="tabular-nums">{number.format(count)}</span>
+                  <span className="col-span-2 h-1.5 rounded-full bg-muted" aria-hidden="true">
+                    <span className="block h-full rounded-full bg-primary" style={{ width: `${count / max * 100}%` }} />
+                  </span>
+                </button>
+              ))}
+            </div>
+          )}
+        </details>}
+        <section className="parlis-results" aria-label="Dokumente" aria-busy={isFetching}>
+          {query.isPending ? <p role="status">Parlamentarische Vorgänge werden geladen …</p> : !first ? (
+            <div role="alert">
+              <p>Die parlamentarischen Vorgänge konnten nicht geladen werden.</p>
+              <Button variant="outline" onClick={() => void query.refetch()}>Erneut laden</Button>
+            </div>
+          ) : <>
+            <h2 aria-live="polite">
+              {documentCount(first.count ?? 0)} <span>von {number.format(first.total ?? 0)}</span>
+              {selected !== null && <span> · {groupLabel(selected, dimension)}</span>}
+            </h2>
+            {!rows.length && <p className="parlis-empty">Keine Vorgänge gefunden.</p>}
+            {rows.length > 0 && <ul className="parlis-card-list">
+              {rows.map(row => <li key={row.vorgangs_id}><DocumentCard row={row} /></li>)}
+            </ul>}
+            {hasNextPage && (
+              <Button ref={loadMore} variant="outline" disabled={isFetching}
+                onClick={() => void fetchNextPage({ cancelRefetch: false })}>
+                {query.isFetchingNextPage ? "Weitere Vorgänge werden geladen …"
+                  : isFetchNextPageError ? "Nachladen erneut versuchen" : "Weitere Vorgänge anzeigen"}
+              </Button>
+            )}
+          </>}
+        </section>
       </div>
     </section>
   );

@@ -92,7 +92,7 @@
       "category": "fachlich",
       "implementationStatus": "implementiert",
       "integrationStatus": "ui",
-      "coverage": "keine",
+      "coverage": "teilweise",
       "testResult": "nicht-ausgefuehrt",
       "evidence": [
         "src/features/event-planning/components/EventPlanningView.tsx"
@@ -106,7 +106,13 @@
         "bueroleitung",
         "mitarbeiter"
       ],
-      "dependsOn": ["events.plan", "documents.upload-version"]
+      "dependsOn": ["events.plan", "documents.upload-version"],
+      "scenarios": [
+        "event-planning-lifecycle"
+      ],
+      "limitations": [
+        "Redner samt Reihenfolge und Rückschreiben sind geprüft; event_planning_documents hat keinen Schritt."
+      ]
     },
     {
       "id": "events.invitations",

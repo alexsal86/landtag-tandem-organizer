@@ -2,13 +2,13 @@
 
 _Auto-generiert mit `npm run update:feature-catalog` aus den Fremdschlüsseln in `src/integrations/supabase/types.ts`. Nicht von Hand bearbeiten._
 
-354 Tabellen, 487 Fremdschlüsselverweise. Die Karte zeigt, welche Tabelle auf welche zeigt; fachliche Bedeutung steht im [Funktionskatalog](./features/README.md).
+358 Tabellen, 493 Fremdschlüsselverweise. Die Karte zeigt, welche Tabelle auf welche zeigt; fachliche Bedeutung steht im [Funktionskatalog](./features/README.md).
 
 ## Zentrale Tabellen
 
 Tabellen mit mindestens drei eingehenden Verweisen.
 
-### `tenants` — 142 eingehende Verweise
+### `tenants` — 144 eingehende Verweise
 
 | Von | Spalte |
 |---|---|
@@ -99,6 +99,8 @@ Tabellen mit mindestens drei eingehenden Verweisen.
 | `news_email_templates` | `tenant_id` |
 | `notification_types` | `tenant_id` |
 | `notifications` | `tenant_id` |
+| `parlis_ministry_assignments` | `tenant_id` |
+| `parlis_ministry_topics` | `tenant_id` |
 | `planning_item_documents` | `tenant_id` |
 | `planning_templates` | `tenant_id` |
 | `press_releases` | `tenant_id` |
@@ -155,7 +157,7 @@ Tabellen mit mindestens drei eingehenden Verweisen.
 | `user_tenant_memberships` | `tenant_id` |
 | `vacation_checklist_templates` | `tenant_id` |
 
-### `topics` — 23 eingehende Verweise
+### `topics` — 24 eingehende Verweise
 
 | Von | Spalte |
 |---|---|
@@ -175,6 +177,7 @@ Tabellen mit mindestens drei eingehenden Verweisen.
 | `knowledge_question_topics` | `tenant_id`, `topic_id` |
 | `map_flag_topics` | `tenant_id`, `topic_id` |
 | `map_flag_topics` | `topic_id` |
+| `parlis_ministry_topics` | `tenant_id`, `topic_id` |
 | `quick_note_topic_mention_deliveries` | `topic_id` |
 | `task_decision_topics` | `tenant_id`, `topic_id` |
 | `task_decision_topics` | `topic_id` |
@@ -570,6 +573,14 @@ Tabellen mit mindestens drei eingehenden Verweisen.
 | `protocol_sessions` | `protocol_id` |
 | `protocol_speeches` | `protocol_id` |
 
+### `parlis_ministry_lines` — 3 eingehende Verweise
+
+| Von | Spalte |
+|---|---|
+| `parlis_ministry_assignments` | `line_id` |
+| `parlis_ministry_suggestions` | `line_id` |
+| `parlis_ministry_topics` | `line_id` |
+
 ### `sender_information` — 3 eingehende Verweise
 
 | Von | Spalte |
@@ -928,6 +939,12 @@ Tabellen mit mindestens drei eingehenden Verweisen.
 | `office_debrief_state` | `feedback_id` | `appointment_feedback` |
 | `parlis_deputy_mandates` | `mandate_id` | `election_history_mandates` |
 | `parlis_deputy_mandates` | `legislature`, `vorgangs_id` | `parlis_proceedings` |
+| `parlis_ministry_assignments` | `line_id` | `parlis_ministry_lines` |
+| `parlis_ministry_assignments` | `tenant_id` | `tenants` |
+| `parlis_ministry_suggestions` | `line_id` | `parlis_ministry_lines` |
+| `parlis_ministry_topics` | `line_id` | `parlis_ministry_lines` |
+| `parlis_ministry_topics` | `tenant_id` | `tenants` |
+| `parlis_ministry_topics` | `tenant_id`, `topic_id` | `topics` |
 | `planning_item_documents` | `tenant_id` | `tenants` |
 | `planning_templates` | `tenant_id` | `tenants` |
 | `poll_notifications` | `poll_id` | `appointment_polls` |

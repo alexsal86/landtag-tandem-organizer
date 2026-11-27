@@ -277,7 +277,7 @@
       "category": "fachlich",
       "implementationStatus": "implementiert",
       "integrationStatus": "rollenabhaengig",
-      "coverage": "keine",
+      "coverage": "selftest",
       "testResult": "nicht-ausgefuehrt",
       "evidence": [
         "src/features/employees/components/EmployeeMeetingRequestManager.tsx",
@@ -299,7 +299,13 @@
         "bueroleitung",
         "abgeordneter"
       ],
-      "dependsOn": ["employees.meetings"]
+      "dependsOn": ["employees.meetings"],
+      "scenarios": [
+        "employee-meetings"
+      ],
+      "limitations": [
+        "Anfrage und offener Status sind geprüft; das Annehmen oder Ablehnen einer Anfrage durch die Gesprächsleitung hat keinen eigenen Schritt."
+      ]
     },
     {
       "id": "employees.export-stats",
@@ -333,7 +339,10 @@
         "bueroleitung",
         "mitarbeiter"
       ],
-      "dependsOn": ["employees.protocol", "employees.meetings"]
+      "dependsOn": ["employees.protocol", "employees.meetings"],
+      "limitations": [
+        "Kein Selbsttest: die PDF-Erzeugung des Gesprächs und die Jahresstatistik haben keinen Schritt; geprüft wird nur das Gespräch selbst."
+      ]
     },
     {
       "id": "hr.onboarding",

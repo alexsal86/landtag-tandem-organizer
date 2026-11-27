@@ -1,6 +1,8 @@
 // Isolated PostgreSQL check of the case-file contracts the selftest scenario relies on:
-// case_scale limits on both tables, create_case_file_task (status, source_type,
-// assignment, idempotency) and a letter draft insert. Real migration SQL, no live data.
+// case_scale limits on both tables (including the repair for instances where the
+// original ADD CONSTRAINT aborted on legacy values), create_case_file_task
+// (status, source_type, assignment, idempotency) and a letter draft insert.
+// Real migration SQL, no live data.
 import assert from 'node:assert/strict';
 import { readFile } from 'node:fs/promises';
 import { PGlite } from '../tests/database/node_modules/@electric-sql/pglite/dist/index.js';
@@ -62,7 +64,36 @@ try {
   assert.equal((await q('SELECT case_scale FROM case_files WHERE id=$1', [file]))[0].case_scale, 'small');
   assert.equal((await q('SELECT case_scale FROM case_items WHERE id=$1', [item]))[0].case_scale, 'large');
 
-  // 2. Real create_case_file_task: task contract and idempotency.
+  // 2. Repair: on an instance where the original migration never installed the
+  //    rule (it aborts on legacy values), the repair normalises the stock and
+  //    restores both constraints – the rule itself stays as strict as before.
+  await db.exec('ALTER TABLE case_files DROP CONSTRAINT case_files_case_scale_check');
+  await db.exec('ALTER TABLE case_items DROP CONSTRAINT case_items_case_scale_check');
+  await db.query("UPDATE case_files SET case_scale='riesig' WHERE id=$1", [file]);
+  await db.query("UPDATE case_items SET case_scale='klein' WHERE id=$1", [item]);
+
+  const repair = await migration('20261127150000_case_scale_rule_repair.sql');
+  await db.exec(repair);
+  assert.equal((await q('SELECT case_scale FROM case_files WHERE id=$1', [file]))[0].case_scale, null,
+    'unknown legacy values become NULL and the UI derives the scale from the case type');
+  assert.equal((await q('SELECT case_scale FROM case_items WHERE id=$1', [item]))[0].case_scale, 'small',
+    'known spellings are translated');
+  await assert.rejects(db.query("UPDATE case_files SET case_scale='huge' WHERE id=$1", [file]),
+    error => error.code === '23514', 'the repaired rule still rejects case_files');
+  await assert.rejects(db.query("UPDATE case_items SET case_scale='huge' WHERE id=$1", [item]),
+    error => error.code === '23514', 'the repaired rule still rejects case_items');
+  const validated = await q(`SELECT c.conname, c.convalidated FROM pg_constraint c
+    WHERE c.conname IN ('case_files_case_scale_check','case_items_case_scale_check') ORDER BY c.conname`);
+  assert.deepEqual(validated, [
+    { conname: 'case_files_case_scale_check', convalidated: true },
+    { conname: 'case_items_case_scale_check', convalidated: true },
+  ], 'both rules are validated for the stored stock');
+  await db.exec(repair);
+  await db.query("UPDATE case_files SET case_scale='large' WHERE id=$1", [file]);
+  assert.equal((await q('SELECT case_scale FROM case_files WHERE id=$1', [file]))[0].case_scale, 'large',
+    'a second repair run changes nothing and the rule stays usable');
+
+  // 3. Real create_case_file_task: task contract and idempotency.
   const consistency = await migration('20261107150000_workflow_consistency.sql');
   await db.exec(slice(consistency,
     'CREATE FUNCTION public.create_case_file_task',
@@ -82,7 +113,7 @@ try {
   assert.equal((await q('SELECT * FROM case_file_tasks')).length, 1, 'A retry creates no second link');
   assert.equal((await q('SELECT count(*)::int AS total FROM tasks')).length, 1);
 
-  // 3. The blanks the scenario relies on: a draft letter is insertable as-is.
+  // 4. The blanks the scenario relies on: a draft letter is insertable as-is.
   await db.exec('RESET ROLE');
   const letters = await migration('20250829231458_174e86d4-df6b-43d6-8438-585d11673e6b.sql');
   await db.exec(slice(letters, 'CREATE TABLE public.letters', ');') + ');');
@@ -101,7 +132,7 @@ try {
   assert.equal(letter.content_html, '<p>__SELFTEST__</p>');
   assert.equal(letter.content, '__SELFTEST__');
 
-  console.log('Case-file contracts passed: case_scale limited on case_files and case_items, create_case_file_task keeps status/source/idempotency, and a draft letter inserts without extra columns.');
+  console.log('Case-file contracts passed: case_scale limited on case_files and case_items (also after the repair of a missing rule), create_case_file_task keeps status/source/idempotency, and a draft letter inserts without extra columns.');
 } catch (error) {
   console.error('FAILED:', error.code ?? '', error.message);
   process.exitCode = 1;

@@ -338,6 +338,11 @@
       "area": "verwaltung"
     },
     {
+      "id": "admin.gdpr",
+      "name": "DSGVO-Löschanträge",
+      "area": "verwaltung"
+    },
+    {
       "id": "admin.security-cockpit",
       "name": "Security-Cockpit",
       "area": "verwaltung"
@@ -2762,12 +2767,60 @@
   ],
   "parlis_deputy_mandates": [
     {
+      "id": "parlis.initiative-rankings",
+      "name": "Initiativenbilanz einer abgeschlossenen Wahlperiode anzeigen",
+      "area": "vorgaenge"
+    },
+    {
       "id": "parlis.proceedings",
       "name": "Parlamentarische Vorgänge auswerten",
       "area": "vorgaenge"
     }
   ],
+  "parlis_ministry_assignments": [
+    {
+      "id": "parlis.ministry-topics",
+      "name": "Ministerien und zentrale Themen zuordnen",
+      "area": "vorgaenge"
+    }
+  ],
+  "parlis_ministry_lines": [
+    {
+      "id": "parlis.ministry-topics",
+      "name": "Ministerien und zentrale Themen zuordnen",
+      "area": "vorgaenge"
+    },
+    {
+      "id": "topics.ministry-cloud",
+      "name": "Standarddaten für neue Büros",
+      "area": "organisation"
+    }
+  ],
+  "parlis_ministry_suggestions": [
+    {
+      "id": "parlis.ministry-topics",
+      "name": "Ministerien und zentrale Themen zuordnen",
+      "area": "vorgaenge"
+    }
+  ],
+  "parlis_ministry_topics": [
+    {
+      "id": "parlis.ministry-topics",
+      "name": "Ministerien und zentrale Themen zuordnen",
+      "area": "vorgaenge"
+    },
+    {
+      "id": "topics.ministry-cloud",
+      "name": "Standarddaten für neue Büros",
+      "area": "organisation"
+    }
+  ],
   "parlis_proceedings": [
+    {
+      "id": "parlis.initiative-rankings",
+      "name": "Initiativenbilanz einer abgeschlossenen Wahlperiode anzeigen",
+      "area": "vorgaenge"
+    },
     {
       "id": "parlis.proceedings",
       "name": "Parlamentarische Vorgänge auswerten",
@@ -3310,6 +3363,13 @@
       "area": "aufgaben"
     }
   ],
+  "task_batch_actions": [
+    {
+      "id": "tasks.handover-stafette",
+      "name": "Aufgabe weitergeben (Stafette)",
+      "area": "aufgaben"
+    }
+  ],
   "task_categories": [
     {
       "id": "admin.configuration",
@@ -3791,6 +3851,11 @@
       "id": "admin.tenants",
       "name": "Mandantenverwaltung",
       "area": "verwaltung"
+    },
+    {
+      "id": "topics.ministry-cloud",
+      "name": "Standarddaten für neue Büros",
+      "area": "organisation"
     }
   ],
   "time_entries": [
@@ -3855,6 +3920,11 @@
       "id": "topics.manage",
       "name": "Themen verwalten",
       "area": "organisation"
+    },
+    {
+      "id": "topics.ministry-cloud",
+      "name": "Standarddaten für neue Büros",
+      "area": "organisation"
     }
   ],
   "topics": [
@@ -3879,6 +3949,11 @@
       "area": "wissen"
     },
     {
+      "id": "parlis.ministry-topics",
+      "name": "Ministerien und zentrale Themen zuordnen",
+      "area": "vorgaenge"
+    },
+    {
       "id": "responsibilities.matrix",
       "name": "Zuständigkeitsmatrix",
       "area": "mitarbeit"
@@ -3896,6 +3971,11 @@
     {
       "id": "topics.manage",
       "name": "Themen verwalten",
+      "area": "organisation"
+    },
+    {
+      "id": "topics.ministry-cloud",
+      "name": "Standarddaten für neue Büros",
       "area": "organisation"
     }
   ],

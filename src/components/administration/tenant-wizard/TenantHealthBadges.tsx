@@ -1,7 +1,8 @@
 import { useQuery } from "@tanstack/react-query";
 import { Badge } from "@/components/ui/badge";
 import { supabase } from "@/integrations/supabase/client";
-import { Users, FileText, Bell } from "lucide-react";
+import { Users, FileText, Bell, ClipboardCheck } from "lucide-react";
+import { buildTenantSteps, openTenantSteps, TENANT_STEPS } from "./steps";
 
 interface Health {
   users: number;
@@ -48,6 +49,10 @@ export function TenantHealthBadges({ tenantId, reloadKey }: Props): React.JSX.El
       ? "bg-palette-amber/10 text-palette-amber border-palette-amber/30"
       : "bg-palette-green/10 text-palette-green border-palette-green/30";
 
+  const openSteps = openTenantSteps(
+    buildTenantSteps({ users: health.users, senderCount: health.sender_information }),
+  );
+
   return (
     <div className="flex flex-wrap gap-1">
       <Badge variant="outline" className={`gap-1 text-xs ${tone(health.users)}`}>
@@ -61,6 +66,24 @@ export function TenantHealthBadges({ tenantId, reloadKey }: Props): React.JSX.El
       <Badge variant="outline" className={`gap-1 text-xs ${tone(health.notification_types)}`}>
         <Bell className="h-3 w-3" />
         {health.notification_types}
+      </Badge>
+      <Badge
+        variant="outline"
+        className={`gap-1 text-xs ${
+          openSteps.length
+            ? "bg-palette-amber/10 text-palette-amber border-palette-amber/30"
+            : "bg-palette-green/10 text-palette-green border-palette-green/30"
+        }`}
+        title={
+          openSteps.length
+            ? `Offen: ${openSteps
+                .map((key) => TENANT_STEPS.find((step) => step.key === key)?.label ?? key)
+                .join(", ")}`
+            : "Übergabe vollständig"
+        }
+      >
+        <ClipboardCheck className="h-3 w-3" />
+        {openSteps.length ? `${openSteps.length} offen` : "fertig"}
       </Badge>
     </div>
   );

@@ -8,6 +8,9 @@ import {
   cloneTenantData,
   getTenantHealth,
   buildStandardAppSettings,
+  buildDefaultSender,
+  countSeededDefaults,
+  type SeedReport,
 } from "../_shared/tenant-seed.ts";
 const corsHeaders = {
   'Access-Control-Allow-Origin': '*',
@@ -71,6 +74,7 @@ async function logAdminAction(
   const { error } = await supabaseAdmin
     .from('audit_log_entries')
     .insert({
+      action,
       user_id: actorUserId,
       tenant_id: tenantId,
       payload,
@@ -511,51 +515,6 @@ serve(withSafeHandler("manage-tenant-user", async (req) => {
         });
       }
 
-      case 'initializeTenant': {
-        // Superadmin only - initialize default settings for a new tenant
-        if (!isPlatformAdmin) {
-          throw new Error('Only superadmin can initialize tenants');
-        }
-
-        const { tenantId, appName, appSubtitle } = body;
-        if (!tenantId) {
-          throw new Error('tenantId is required');
-        }
-
-        console.log(`Initializing tenant: ${tenantId}`);
-
-        // Default app settings for new tenant (use provided values or defaults)
-        const defaultSettings = [
-          { tenant_id: tenantId, setting_key: 'app_name', setting_value: appName || 'LandtagsOS' },
-          { tenant_id: tenantId, setting_key: 'app_subtitle', setting_value: appSubtitle || 'Koordinationssystem' },
-          { tenant_id: tenantId, setting_key: 'app_logo_url', setting_value: '' },
-          { tenant_id: tenantId, setting_key: 'default_dashboard_cover_url', setting_value: 'https://images.unsplash.com/photo-1518611012118-696072aa579a?w=1920' },
-          { tenant_id: tenantId, setting_key: 'default_dashboard_cover_position', setting_value: 'center' },
-        ];
-
-        const { error: settingsError } = await supabaseAdmin
-          .from('app_settings')
-          .insert(defaultSettings);
-
-        if (settingsError) {
-          console.error('Error creating default settings:', settingsError);
-        }
-
-        console.log(`Tenant ${tenantId} initialized successfully`);
-        await logAdminAction(
-          supabaseAdmin,
-          user.id,
-          user.email,
-          'platform_admin.initialize_tenant',
-          { tenant_id: tenantId, app_name: appName, app_subtitle: appSubtitle },
-          tenantId,
-        );
-
-        return new Response(JSON.stringify({ success: true }), {
-          headers: { ...corsHeaders, 'Content-Type': 'application/json' }
-        });
-      }
-
       case 'provisionTenant': {
         if (!isPlatformAdmin) {
           throw new HttpError(403, 'Only superadmin can provision tenants');
@@ -608,13 +567,47 @@ serve(withSafeHandler("manage-tenant-user", async (req) => {
         const tenantId = newTenant.id;
 
         // 2) Seed default data
-        let report;
+        let report: SeedReport;
         if (seedMode === 'clone' && cloneFromTenantId) {
           // Insert the standard app_settings first so the cloned ones can override.
           await supabaseAdmin
             .from('app_settings')
             .insert(buildStandardAppSettings(tenantId, { appName, appSubtitle }));
-          report = await cloneTenantData(supabaseAdmin, cloneFromTenantId, tenantId);
+          report = await cloneTenantData(supabaseAdmin, cloneFromTenantId, tenantId, { createdBy: user.id });
+
+          // Der Wizard hat App-Name und Untertitel bereits gesetzt; die Vorlage
+          // darf sie nicht wieder mit den Werten des Quellbüros überschreiben.
+          if (appName || appSubtitle) {
+            const { error: nameError } = await supabaseAdmin
+              .from('app_settings')
+              .update({ setting_value: appName || 'LandtagsOS' })
+              .eq('tenant_id', tenantId)
+              .eq('setting_key', 'app_name');
+            if (!nameError && appSubtitle) {
+              await supabaseAdmin
+                .from('app_settings')
+                .update({ setting_value: appSubtitle })
+                .eq('tenant_id', tenantId)
+                .eq('setting_key', 'app_subtitle');
+            }
+          }
+
+          // Ebenso wenig darf die Absenderidentität des Quellbüros mitwandern.
+          const cloneSettings = (settings ?? {}) as Record<string, unknown>;
+          const cloneText = (value: unknown) => (typeof value === 'string' ? value : undefined);
+          const { error: senderError } = await supabaseAdmin.from('sender_information').insert([
+            buildDefaultSender(tenantId, {
+              name: cloneText(cloneSettings.constituency) || name.trim(),
+              party: cloneText(cloneSettings.party),
+              city: cloneText(cloneSettings.city),
+              createdBy: user.id,
+            }),
+          ]);
+          if (senderError) {
+            report.errors.push(`sender_information: ${senderError.message}`);
+          } else {
+            report.sender_information += 1;
+          }
         } else if (seedMode === 'empty') {
           await supabaseAdmin
             .from('app_settings')
@@ -626,16 +619,38 @@ serve(withSafeHandler("manage-tenant-user", async (req) => {
             letter_occasions: 0,
             meeting_templates: 0,
             planning_templates: 0,
+            letter_templates: 0,
+            sender_information: 0,
+            appointment_preparation_templates: 0,
+            event_email_templates: 0,
+            news_email_templates: 0,
+            vacation_checklist_templates: 0,
             errors: [],
           };
         } else {
+          const officeSettings = (settings ?? {}) as Record<string, unknown>;
+          const asText = (value: unknown) => (typeof value === "string" ? value : undefined);
           report = await seedStandardData(supabaseAdmin as unknown as Parameters<typeof seedStandardData>[0], tenantId, {
             appName,
             appSubtitle,
+            createdBy: user.id,
+            senderInfo: {
+              name: asText(officeSettings.constituency) || name.trim(),
+              party: asText(officeSettings.party),
+              city: asText(officeSettings.city),
+            },
           });
         }
 
-        // 3) Optional admin user
+        // 3) Zusätzlich angelegte Standarddaten aus der Datenbank zählen, damit der
+        //    Erfolgsdialog den echten Ist-Stand zeigt (Trigger: Themen-Wolke,
+        //    Modul-Steuerung, weitere Notification-Typen).
+        (report as { generated?: unknown }).generated = await countSeededDefaults(
+          supabaseAdmin,
+          tenantId,
+        );
+
+        // 4) Optional admin user
         let adminPassword: string | undefined;
         let adminEmail: string | undefined;
         if (adminUser?.email && adminUser?.displayName) {
@@ -651,7 +666,11 @@ serve(withSafeHandler("manage-tenant-user", async (req) => {
 
           if (createError || !createdUser?.user) {
             console.error('Admin user creation failed:', createError);
-            (report as any).errors?.push(`admin user: ${createError?.message ?? 'unknown'}`);
+            // The office itself exists; keep the handover usable and report the gap.
+            adminPassword = undefined;
+            report.errors.push(
+              `admin user: ${createError?.message || 'Benutzer konnte nicht angelegt werden'}`,
+            );
           } else {
             const newUserId = createdUser.user.id;
             await supabaseAdmin.from('profiles').insert({
@@ -710,7 +729,9 @@ serve(withSafeHandler("manage-tenant-user", async (req) => {
           throw new HttpError(400, 'source and target must differ');
         }
 
-        const report = await cloneTenantData(supabaseAdmin, sourceTenantId, targetTenantId);
+        const report = await cloneTenantData(supabaseAdmin, sourceTenantId, targetTenantId, {
+          createdBy: user.id,
+        });
 
         await logAdminAction(
           supabaseAdmin,

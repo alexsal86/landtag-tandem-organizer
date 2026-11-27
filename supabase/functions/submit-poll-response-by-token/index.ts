@@ -28,7 +28,6 @@ const BodySchema = z.object({
   poll_id: z.string().uuid(),
   token: z.string().min(8).max(256),
   responses: z.array(ResponseSchema).max(100),
-  general_comment: z.string().max(2000).optional().nullable(),
 });
 
 Deno.serve(async (req) => {
@@ -40,7 +39,7 @@ Deno.serve(async (req) => {
     if (!parsed.success) {
       return json({ error: "invalid_input", details: parsed.error.flatten() }, 400);
     }
-    const { poll_id, token, responses, general_comment } = parsed.data;
+    const { poll_id, token, responses } = parsed.data;
 
     const supabase = createServiceRoleClient();
 
@@ -103,14 +102,6 @@ Deno.serve(async (req) => {
       if (insErr) throw insErr;
     }
 
-    if (general_comment !== undefined) {
-      // best effort — column may not exist on all schemas
-      await supabase
-        .from("poll_participants")
-        .update({ general_comment })
-        .eq("id", participant.id)
-        .then(() => {}, () => {});
-    }
 
     return json({ ok: true, saved: responses.length });
   } catch (err) {

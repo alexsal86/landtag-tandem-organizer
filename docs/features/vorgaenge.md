@@ -6,10 +6,10 @@ _Auto-generiert mit `npm run update:feature-catalog` aus dem zentralen Funktions
 
 ## Kennzahlen
 
-- Funktionen: **18** in **7** Unterbereichen
-- implementiert: **17**, teilweise: **0**, deaktiviert: **0**, potenziell verwaist: **0**
-- ohne zugeordneten Test: **4**
-- ohne Dokumentationsverweis: **13**
+- Funktionen: **21** in **7** Unterbereichen
+- implementiert: **20**, teilweise: **0**, deaktiviert: **0**, potenziell verwaist: **0**
+- ohne zugeordneten Test: **2**
+- ohne Dokumentationsverweis: **16**
 
 ## Funktionen
 
@@ -17,7 +17,7 @@ _Auto-generiert mit `npm run update:feature-catalog` aus dem zentralen Funktions
 |---|---|---|---|---|---|
 | `cases.close-archive` Vorgang abschließen und archivieren | Abschluss | fachlich | implementiert | rollenabhängig | Selbsttest |
 | `cases.escalation` Eskalationsvorschläge | Bearbeitung | automatisiert | implementiert | systemseitig | kein Test |
-| `cases.interactions` Kontakte und Interaktionen am Vorgang | Bearbeitung | fachlich | implementiert | UI | kein Test |
+| `cases.interactions` Kontakte und Interaktionen am Vorgang | Bearbeitung | fachlich | implementiert | UI | Selbsttest |
 | `cases.timeline` Vorgangs-Timeline und Änderungsprotokoll | Bearbeitung | fachlich | implementiert | UI | Unit-Test |
 | `cases.steps` Vorgangsschritte und Aufgaben | Bearbeitung | fachlich | implementiert | systemseitig | Unit-Test |
 | `cases.legacy-routes` Legacy-Vorgangsrouten | Erfassung | fachlich | veraltet | UI | kein Test |
@@ -27,11 +27,14 @@ _Auto-generiert mit `npm run update:feature-catalog` aus dem zentralen Funktions
 | `casefiles.links` Fallakte verknüpfen (Dokumente, Kontakte, Themen, Notizen) | Fallakten | fachlich | implementiert | UI | Selbsttest |
 | `casefiles.notes` Fallakten-Notizen | Fallakten | fachlich | implementiert | UI | Selbsttest |
 | `casefiles.status-workflow` Fallakten-Status und Bearbeitungsstatus | Fallakten | fachlich | implementiert | UI | Selbsttest |
+| `parlis.initiative-rankings` Initiativenbilanz einer abgeschlossenen Wahlperiode anzeigen | Parlamentsdokumentation | fachlich | implementiert | UI | Selbsttest |
+| `parlis.ministry-topics` Ministerien und zentrale Themen zuordnen | Parlamentsdokumentation | fachlich | implementiert | rollenabhängig | Selbsttest |
+| `parlis.ministry-history` Namensgeschichte der Ministerien seit 1952 nachschlagen | Parlamentsdokumentation | fachlich | implementiert | UI | Selbsttest |
 | `parlis.proceedings` Parlamentarische Vorgänge auswerten | Parlamentsdokumentation | fachlich | implementiert | UI | Selbsttest |
 | `cases.triage` Vorgang triagieren (Wer ist am Zug?) | Triage | fachlich | implementiert | UI | Unit-Test |
 | `cases.handover` Vorgang weitergeben | Triage | fachlich | implementiert | rollenabhängig | Selbsttest |
 | `cases.link-letter` Vorgang mit Brief verknüpfen | Verknüpfung | fachlich | implementiert | UI | Unit-Test |
-| `cases.link-decision` Vorgang mit Entscheidung verknüpfen | Verknüpfung | fachlich | implementiert | systemseitig | kein Test |
+| `cases.link-decision` Vorgang mit Entscheidung verknüpfen | Verknüpfung | fachlich | implementiert | systemseitig | Selbsttest |
 | `cases.link-appointment` Vorgang mit Termin verknüpfen | Verknüpfung | fachlich | implementiert | UI | Unit-Test |
 
 ## Unterbereiche
@@ -50,15 +53,15 @@ _Auto-generiert mit `npm run update:feature-catalog` aus dem zentralen Funktions
 
 ## Datenbanktabellen
 
-`appointments`, `audit_log_entries`, `case_file_appointments`, `case_file_contacts`, `case_file_documents`, `case_file_letters`, `case_file_notes`, `case_file_participants`, `case_file_processing_statuses`, `case_file_status_history`, `case_file_tasks`, `case_file_timeline`, `case_file_topics`, `case_file_types`, `case_files`, `case_item_categories`, `case_item_escalation_suggestions`, `case_item_handover_log`, `case_item_interactions`, `case_item_participants`, `case_item_timeline`, `case_item_topics`, `case_items`, `documents`, `election_history_mandates`, `letters`, `parlis_deputy_mandates`, `parlis_proceedings`, `task_decisions`, `tasks`, `topic_module_settings`, `topics`
+`appointments`, `audit_log_entries`, `case_file_appointments`, `case_file_contacts`, `case_file_documents`, `case_file_letters`, `case_file_notes`, `case_file_participants`, `case_file_processing_statuses`, `case_file_status_history`, `case_file_tasks`, `case_file_timeline`, `case_file_topics`, `case_file_types`, `case_files`, `case_item_categories`, `case_item_escalation_suggestions`, `case_item_handover_log`, `case_item_interactions`, `case_item_participants`, `case_item_timeline`, `case_item_topics`, `case_items`, `documents`, `election_history_mandates`, `letters`, `parlis_deputy_mandates`, `parlis_ministry_assignments`, `parlis_ministry_lines`, `parlis_ministry_suggestions`, `parlis_ministry_topics`, `parlis_proceedings`, `task_decisions`, `tasks`, `topic_module_settings`, `topics`
 
 ## Selbsttest-Szenarien
 
 | Szenario | Titel | deklarierte Tabellen | deklarierte Prüfungen | letzter Lauf |
 |---|---|---:|---:|---|
-| `case-file-lifecycle` | Fallakte mit Folgetabellen (Container) im Unterschied zum Vorgang | 16 | 9 | — |
+| `case-file-lifecycle` | Fallakte mit Folgetabellen (Container) im Unterschied zum Vorgang | 17 | 10 | — |
 | `case-item-lifecycle` | Vorgangs-Lifecycle (Am Zug → Schritt → Wiedervorlage → Entscheidung → Tageszettel → Abschluss) | 9 | 5 | — |
-| `parlis` | Parlamentarische Vorgänge | 0 | 5 | — |
+| `parlis` | Parlamentarische Vorgänge | 0 | 13 | — |
 
 ## Selbsttest-Schritte
 
@@ -74,6 +77,7 @@ Diese Schritte führen die Szenarien aus; „letzter Lauf“ stammt aus `src/fea
 | `case-file-lifecycle` | `links-contact-task` | Kontakt verknüpfen und Aufgabe über die Akten-RPC erzeugen | db | — |
 | `case-file-lifecycle` | `links-appointment-letter` | Termin und Brief mit der Akte verknüpfen | db | — |
 | `case-file-lifecycle` | `upload-document` | Datei in der Akte ablegen und über die Dokumentensuche finden | db | — |
+| `case-file-lifecycle` | `document-contact-link` | Dokument mit Kontakt verknüpfen; Doppelung ist gesperrt | db | — |
 | `case-file-lifecycle` | `counts` | Akten-RPC zählt die Verknüpfungen | db | — |
 | `case-file-lifecycle` | `vorgang-vs-akte` | Unterschied zum Vorgang: eigener Ball, geerbte Sichtbarkeit | db | — |
 | `case-file-lifecycle` | `delete-detaches` | Akte löschen: Folgetabellen weg, Vorgang bleibt | db | — |
@@ -93,10 +97,19 @@ Diese Schritte führen die Szenarien aus; „letzter Lauf“ stammt aus `src/fea
 | `case-item-lifecycle` | `step-done` | Schritt erledigt → Schritt leer, „Schritt festlegen“ erscheint wieder | db | — |
 | `case-item-lifecycle` | `complete` | Vorgang abschließen | db | — |
 | `case-item-lifecycle` | `tenant-boundary` | Vorgang lässt sich keinem fremden Büro zuordnen | workflow | — |
+| `parlis` | `parlis-ministry-history` | Namensgeschichte der Ministerien belegt und den Ressortlinien zugeordnet | logic | — |
 | `parlis` | `parlis-groups` | Monate, Schlagwörter und fehlende Ressorts korrekt zuordnen | logic | — |
 | `parlis` | `parlis-inline-authors` | Urhebernamen mit Titeln und Namensbestandteilen im Originaltext verlinken | logic | — |
+| `parlis` | `parlis-author-presentation` | Parteien ohne Klammern und mehrere Urheber erkennen | logic | — |
 | `parlis` | `parlis-document-details` | Detail-JSON liefert Unterzeichner und Texte, unbrauchbare Daten werden verworfen | logic | — |
-| `parlis` | `parlis-import-readable` | Import der 18. Wahlperiode ist lesbar | db | — |
+| `parlis` | `parlis-import-readable` | Importe der 17. und 18. Wahlperiode sind lesbar | db | — |
+| `parlis` | `parlis-pages` | Dokumente in getrennten Seiten von höchstens 20 Vorgängen abrufen | db | — |
+| `parlis` | `parlis-topic-suggestions` | Schlagwörter erst auf Suche und höchstens 20 Vorschläge abrufen | db | — |
+| `parlis` | `parlis-deputy-motions` | Profilvorschau auf fünf persönlich zugeordnete Anträge begrenzen | db | — |
+| `parlis` | `parlis-wp17-activity` | Gespeicherte Typzahlen der 17. Wahlperiode entsprechen der PARLIS-Liste | db | — |
+| `parlis` | `parlis-ministry-suggestions` | Ressortvorschläge verbinden ministerielle Quellen über Wahlperioden | db | — |
+| `parlis` | `parlis-initiative-rankings` | Initiativenbilanz der 17. Wahlperiode vollständig und begrenzt abrufen | db | — |
+| `parlis` | `parlis-reviewed-author-aliases` | Geprüfte Urhebernamen aus der 17. Wahlperiode verlinken | db | — |
 | `parlis` | `parlis-deputy-profile` | Weirauchs Anfrage aus Drucksache 18/763 führt zum Abgeordnetenprofil | db | — |
 
 ## Deklarierter Prüfumfang
@@ -107,11 +120,12 @@ Diese Schritte führen die Szenarien aus; „letzter Lauf“ stammt aus `src/fea
 2. Ungültige Größe (case_scale) wird von der Datenbank abgewiesen
 3. Bearbeitungsstatus und Statusverlauf werden gespeichert; derselbe Beteiligte kann nicht doppelt eingetragen werden
 4. Kontakt, Aufgabe, Termin und Brief werden über die jeweilige Folgetabelle verknüpft; doppelte Verknüpfungen sind gesperrt
-5. Die Aufgabe entsteht über create_case_file_task als offene Aufgabe für die anlegende Person mit source_type 'case_file' und Quellbezug; eine Wiederholung liefert dieselbe Aufgabe und keine zweite Verknüpfung
-6. Eine hochgeladene Datei ist mit der Akte verknüpft und über die serverseitige Dokumentensuche auffindbar
-7. get_case_files_with_counts liefert die Verknüpfungen der Akte als Zählwerte
-8. Ein Vorgang an einer privaten Akte ist für Büro-Kolleginnen unsichtbar, an einer öffentlichen Akte sichtbar (Sichtbarkeitsvererbung)
-9. Das Löschen der Akte entfernt ihre Folgetabellen, lässt den Vorgang aber mit case_file_id = null bestehen
+5. Das Akten-Dokument lässt sich mit dem Akten-Kontakt verknüpfen; Beziehung und Notiz werden gespeichert, eine Doppelung ist gesperrt
+6. Die Aufgabe entsteht über create_case_file_task als offene Aufgabe für die anlegende Person mit source_type 'case_file' und Quellbezug; eine Wiederholung liefert dieselbe Aufgabe und keine zweite Verknüpfung
+7. Eine hochgeladene Datei ist mit der Akte verknüpft und über die serverseitige Dokumentensuche auffindbar
+8. get_case_files_with_counts liefert die Verknüpfungen der Akte als Zählwerte
+9. Ein Vorgang an einer privaten Akte ist für Büro-Kolleginnen unsichtbar, an einer öffentlichen Akte sichtbar (Sichtbarkeitsvererbung)
+10. Das Löschen der Akte entfernt ihre Folgetabellen, lässt den Vorgang aber mit case_file_id = null bestehen
 
 ### `case-item-lifecycle`
 
@@ -123,11 +137,19 @@ Diese Schritte führen die Szenarien aus; „letzter Lauf“ stammt aus `src/fea
 
 ### `parlis`
 
-1. Urhebertext mit Titeln und Namensbestandteilen bleibt vollständig
-2. Monatsgruppierung, eindeutige Schlagwörter und leere Ressorts
-3. Unterzeichner und Texte kommen aus dem Detail-JSON und bleiben unvollständig lesbar
-4. Importierte Vorgänge sind lesbar
-5. Verknüpfte Urheber führen zu einem Mandat derselben Wahlperiode
+1. Geprüfte Namensvarianten auf die richtigen Abgeordnetenprofile verlinken
+2. Gespeicherte Initiativenbilanz mit begrenzten Ranglisten
+3. Ressortvorschläge für mehrere Wahlperioden
+4. Vorgangstypen der 17. Wahlperiode im Profil zusammenfassen
+5. Fünf persönlich zugeordnete Anträge mit gefiltertem Link im Profil
+6. Schlagwortvorschläge bei Eingabe begrenzen
+7. Serverseitige Suche und begrenzte Dokumentenseiten
+8. Schlagwörter, Fraktionsfilter und mehrere Urheber
+9. Urhebertext mit Titeln und Namensbestandteilen bleibt vollständig
+10. Monatsgruppierung, eindeutige Schlagwörter und leere Ressorts
+11. Unterzeichner und Texte kommen aus dem Detail-JSON und bleiben unvollständig lesbar
+12. Importierte Vorgänge sind lesbar
+13. Verknüpfte Urheber führen zu einem Mandat derselben Wahlperiode
 
 ## Funktionsdetails
 
@@ -282,7 +304,7 @@ Erfasst Gespräche, E-Mails und Notizen mit Sichtbarkeitsstufe und verlangt vor 
 - **Kategorie:** fachlich
 - **Implementierung:** implementiert
 - **Einbindung:** UI
-- **Testabdeckung:** kein Test
+- **Testabdeckung:** Selbsttest
 - **Letztes Testergebnis:** nicht-ausgefuehrt (kein Laufnachweis importiert; nicht aus der Existenz einer Testdatei abgeleitet)
 - **Rollen:** `abgeordneter`, `bueroleitung`, `mitarbeiter`
 - **Routen:** —
@@ -293,7 +315,7 @@ Erfasst Gespräche, E-Mails und Notizen mit Sichtbarkeitsstufe und verlangt vor 
 - **Datenbankfunktionen:** `require_resolution_interaction_on_case_close`, `user_can_access_case_item_interaction`
 - **Tabellen:** `case_item_interactions`, `case_items`
 - **Abhängigkeiten:** `cases.create`, `contacts.create`
-- **Selbsttests:** —
+- **Selbsttests:** `case-item-lifecycle`
 - **Unit-Tests:** —
 - **Integrationstests:** —
 - **Browser-Tests:** —
@@ -426,7 +448,7 @@ Verknüpft Entscheidungen mit einem Vorgang und prüft die Zulässigkeit der Ver
 - **Kategorie:** fachlich
 - **Implementierung:** implementiert
 - **Einbindung:** systemseitig
-- **Testabdeckung:** kein Test
+- **Testabdeckung:** Selbsttest
 - **Letztes Testergebnis:** nicht-ausgefuehrt (kein Laufnachweis importiert; nicht aus der Existenz einer Testdatei abgeleitet)
 - **Rollen:** `abgeordneter`, `bueroleitung`, `mitarbeiter`
 - **Routen:** —
@@ -437,7 +459,7 @@ Verknüpft Entscheidungen mit einem Vorgang und prüft die Zulässigkeit der Ver
 - **Datenbankfunktionen:** `validate_decision_case_file`
 - **Tabellen:** `task_decisions`, `case_file_tasks`, `case_items`
 - **Abhängigkeiten:** `cases.create`, `decisions.create`
-- **Selbsttests:** —
+- **Selbsttests:** `case-item-lifecycle`
 - **Unit-Tests:** —
 - **Integrationstests:** —
 - **Browser-Tests:** —
@@ -741,8 +763,80 @@ Erfasst interne Notizen an einer Fallakte und zeigt sie im Verlauf; das Szenario
 
 - Keine.
 
-### `parlis.proceedings` — Parlamentarische Vorgänge auswerten
-Lädt die Vorgänge der 18. Wahlperiode des Landtags Baden-Württemberg aus der Datenbank, gruppiert sie nach Datum und Merkmalen und verlinkt die Originaldokumente und verbindet namentlich zugeordnete Urheber über Mandate mit ihren Abgeordnetenprofilen. Die Links verwenden den vollständigen Urhebernamen aus der Quelle und die Parteikürzel werden farblich markiert. Für Kleine und Große Anfragen sowie Anträge werden die Unterzeichner aus dem Originaldokument ergänzt (semikolongetrennt in signers, ohne Haupteinbringer) und nur gegen Abgeordnete der laufenden Wahlperiode aufgelöst; mehrdeutige Nachnamen bleiben unverknüpft. Der Batch-Extraktor weist zusätzlich gedrehte Seiten aus, deren Tabellen nicht aus Zeichenkoordinaten rekonstruiert werden dürfen. Frage, Begründung, Antwort und Unterzeichner liegen nicht in der Datenbank, sondern als JSON je Vorgang unter public/parlis und werden erst beim Öffnen eines Vorgangs nachgeladen.
+### `parlis.ministry-topics` — Ministerien und zentrale Themen zuordnen
+Vergleicht PARLIS-Ministerien nach Wahlperiode, schlägt Ressortlinien vor und speichert überprüfte Zuordnungen und zentrale Themen pro Arbeitsbereich.
+
+- **Kategorie:** fachlich
+- **Implementierung:** implementiert
+- **Einbindung:** rollenabhängig
+- **Testabdeckung:** Selbsttest
+- **Letztes Testergebnis:** nicht-ausgefuehrt (kein Laufnachweis importiert; nicht aus der Existenz einer Testdatei abgeleitet)
+- **Rollen:** `abgeordneter`, `bueroleitung`
+- **Routen:** `/administration`, `/daten`
+- **Frontend-Komponenten:** `src/features/parlis/MinistryAdmin.tsx`, `src/features/parlis/ParlisView.tsx`
+- **Services:** —
+- **Hooks:** —
+- **Edge Functions:** —
+- **Datenbankfunktionen:** `get_parlis_ministry_sources`, `move_parlis_ministry_topics_after_merge`
+- **Tabellen:** `parlis_ministry_lines`, `parlis_ministry_suggestions`, `parlis_ministry_assignments`, `parlis_ministry_topics`, `topics`
+- **Abhängigkeiten:** —
+- **Selbsttests:** `parlis`
+- **Unit-Tests:** —
+- **Integrationstests:** —
+- **Browser-Tests:** —
+- **Dokumentation:** —
+
+**Nachweise im Quellcode**
+
+- supabase/migrations/20261128000000_parlis_ministry_topics.sql
+- src/features/selftest/scenarios/parlis.ts
+
+**Bekannte Einschränkungen**
+
+- Keine.
+
+**Offene Prüfpunkte**
+
+- Keine.
+
+### `parlis.ministry-history` — Namensgeschichte der Ministerien seit 1952 nachschlagen
+Listet die amtlichen Bezeichnungen der Ministerien Baden-Württembergs seit 1952 mit Laufzeit, Ressortlinie und Gesetzblatt-Fundstelle (alle Phasen im Original belegt, einschließlich der Stufen ab 2001 und der Fassung des Ländlichen Raums von 1987/1988), ordnet sie den Wahlperioden auf Basis der Systemzeiträume aus election_history_periods zu, nennt je Ressortlinie die Ministerinnen und Minister mit Amtszeit und dokumentiert geprüfte Abweichungen zu Chronik und Ministeriumsartikeln.
+
+- **Kategorie:** fachlich
+- **Implementierung:** implementiert
+- **Einbindung:** UI
+- **Testabdeckung:** Selbsttest
+- **Letztes Testergebnis:** nicht-ausgefuehrt (kein Laufnachweis importiert; nicht aus der Existenz einer Testdatei abgeleitet)
+- **Rollen:** `abgeordneter`, `bueroleitung`, `mitarbeiter`
+- **Routen:** `/daten`
+- **Frontend-Komponenten:** `src/features/ministries-history/MinistryHistoryView.tsx`, `src/components/admin/DataView.tsx`
+- **Services:** —
+- **Hooks:** —
+- **Edge Functions:** —
+- **Datenbankfunktionen:** —
+- **Tabellen:** —
+- **Abhängigkeiten:** —
+- **Selbsttests:** `parlis`
+- **Unit-Tests:** `src/features/ministries-history/data.test.ts`
+- **Integrationstests:** —
+- **Browser-Tests:** —
+- **Dokumentation:** —
+
+**Nachweise im Quellcode**
+
+- src/features/ministries-history/data.ts
+- src/features/selftest/scenarios/parlis.ts
+
+**Bekannte Einschränkungen**
+
+- Keine.
+
+**Offene Prüfpunkte**
+
+- Keine.
+
+### `parlis.initiative-rankings` — Initiativenbilanz einer abgeschlossenen Wahlperiode anzeigen
+Zeigt für die 17. Wahlperiode vorab berechnete Ranglisten für Abgeordnete, Fraktionen und Ministerien sowie Fraktionsanteile an Kleinen Anfragen, Großen Anfragen und Anträgen.
 
 - **Kategorie:** fachlich
 - **Implementierung:** implementiert
@@ -751,11 +845,47 @@ Lädt die Vorgänge der 18. Wahlperiode des Landtags Baden-Württemberg aus der 
 - **Letztes Testergebnis:** nicht-ausgefuehrt (kein Laufnachweis importiert; nicht aus der Existenz einer Testdatei abgeleitet)
 - **Rollen:** Keine besondere Rolle deklariert
 - **Routen:** `/daten`
-- **Frontend-Komponenten:** `src/components/admin/DataView.tsx`, `src/features/parlis/ParlisView.tsx`, `src/features/parlis/ProceedingDetails.tsx`, `src/features/parlis/details.ts`, `src/features/election-analysis/DeputyDirectory.tsx`
+- **Frontend-Komponenten:** `src/features/parlis/InitiativeRankings.tsx`, `src/features/parlis/ParlisView.tsx`
 - **Services:** —
 - **Hooks:** —
 - **Edge Functions:** —
-- **Datenbankfunktionen:** —
+- **Datenbankfunktionen:** `get_parlis_initiative_rankings`
+- **Tabellen:** `parlis_proceedings`, `parlis_deputy_mandates`
+- **Abhängigkeiten:** —
+- **Selbsttests:** `parlis`
+- **Unit-Tests:** —
+- **Integrationstests:** —
+- **Browser-Tests:** —
+- **Dokumentation:** —
+
+**Nachweise im Quellcode**
+
+- supabase/migrations/20261128010000_snapshot_parlis_initiative_rankings.sql
+- src/features/selftest/scenarios/parlis.ts
+
+**Bekannte Einschränkungen**
+
+- Keine.
+
+**Offene Prüfpunkte**
+
+- Keine.
+
+### `parlis.proceedings` — Parlamentarische Vorgänge auswerten
+Lädt die Vorgänge der Wahlperioden 9 bis 18 des Landtags Baden-Württemberg aus der Datenbank, gruppiert sie nach Datum und Merkmalen, verlinkt die Originaldokumente und verbindet namentlich zugeordnete Urheber über Mandate mit ihren Abgeordnetenprofilen. Lädt Dokumentenkarten beim Scrollen seitenweise mit serverseitiger Suche und Filterung, Schlagwortvorschläge bei Eingabe. Zeigt das Datum direkt auf der Dokumentkarte und bietet Suche, Sortierung und Filter nach Typ, Fraktion, Zeitraum und Schlagwort. Abgeordnetenprofile zeigen bis zu fünf persönlich zugeordnete Anträge der ausgewählten Wahlperiode und für die 17. Wahlperiode gespeicherte Zähler je Vorgangstyp mit gefilterten Links. Geprüfte PARLIS-Namensvarianten lösen auf bestehende Mandate auf; Urheberlinks verwenden den vollständigen Namen aus der Quelle und Parteikürzel werden farblich markiert. Für Kleine und Große Anfragen sowie Anträge ergänzt der Batch-Extraktor die Unterzeichner aus dem Originaldokument (semikolongetrennt in signers, ohne Haupteinbringer), aufgelöst nur gegen Abgeordnete der laufenden Wahlperiode; mehrdeutige Nachnamen bleiben unverknüpft, gedrehte Seiten werden ausgewiesen. Frage, Begründung, Antwort und Unterzeichner liegen nicht in der Datenbank, sondern als JSON je Vorgang unter public/parlis und werden erst beim Öffnen eines Vorgangs nachgeladen.
+
+- **Kategorie:** fachlich
+- **Implementierung:** implementiert
+- **Einbindung:** UI
+- **Testabdeckung:** Selbsttest
+- **Letztes Testergebnis:** nicht-ausgefuehrt (kein Laufnachweis importiert; nicht aus der Existenz einer Testdatei abgeleitet)
+- **Rollen:** Keine besondere Rolle deklariert
+- **Routen:** `/daten`
+- **Frontend-Komponenten:** `src/components/admin/DataView.tsx`, `src/features/parlis/ParlisView.tsx`, `src/features/parlis/DocumentCard.tsx`, `src/features/parlis/TopicFilter.tsx`, `src/features/parlis/DeputyMotions.tsx`, `src/features/parlis/DeputyActivity.tsx`, `src/features/parlis/ProceedingDetails.tsx`, `src/features/parlis/details.ts`, `src/features/election-analysis/DeputyDirectory.tsx`
+- **Services:** —
+- **Hooks:** —
+- **Edge Functions:** —
+- **Datenbankfunktionen:** `parlis_page`, `parlis_filter_options`, `parlis_topic_suggestions`, `get_parlis_deputy_motions`, `get_parlis_wp17_deputy_activity`
 - **Tabellen:** `parlis_proceedings`, `parlis_deputy_mandates`, `election_history_mandates`
 - **Abhängigkeiten:** —
 - **Selbsttests:** `parlis`
@@ -769,10 +899,24 @@ Lädt die Vorgänge der 18. Wahlperiode des Landtags Baden-Württemberg aus der 
 - supabase/migrations/20261127140000_create_parlis_proceedings.sql
 - supabase/migrations/20261127141000_import_parlis_wp18.sql
 - supabase/migrations/20261127143000_link_parlis_deputy_mandates.sql
+- supabase/migrations/20261127144000_import_parlis_wp17.sql
+- supabase/migrations/20261127151000_page_parlis_proceedings.sql
+- supabase/migrations/20261127161000_search_parlis_topics.sql
+- supabase/migrations/20261128031000_import_parlis_wp9.sql
+- supabase/migrations/20261128031100_import_parlis_wp10.sql
+- supabase/migrations/20261128031500_import_parlis_wp14.sql
+- supabase/migrations/20261128031900_import_parlis_wp18.sql
+- scripts/fetch_parlis_vorgaenge.py
+- scripts/generate_parlis_import_sql.py
+- supabase/migrations/20261128021000_link_reviewed_parlis_wp17_author_aliases.sql
+- supabase/migrations/20261127211000_get_parlis_deputy_motions.sql
+- supabase/migrations/20261127212000_snapshot_parlis_wp17_activity.sql
 - supabase/migrations/20261127160000_add_parlis_signers.sql
 - scripts/parlis/extract_drucksachen.py
+- src/features/parlis/page.ts
 - src/features/parlis/grouping.ts
 - src/features/parlis/authors.ts
+- src/features/parlis/documents.ts
 - src/features/parlis/details.ts
 - public/parlis/V-246384.json
 - src/features/selftest/scenarios/parlis.ts

@@ -71,12 +71,14 @@ try {
  const foreignRegion=(await q("SELECT save_responsibility_catalog($1,'region','Fremdort') id",[b]))[0].id;
  await assert.rejects(q("SELECT save_responsibility_catalog($1,'committee','Angriff')",[a]),e=>e.code==='42501');
  await actor(staff);
+ await assert.rejects(q("SELECT merge_responsibility_catalog($1,'region',$2,$2)",[a,region]),e=>e.code==='42501');
  assert.equal((await q('SELECT * FROM regions')).length,1,'Staff sees own populated tenant only');
  await assert.rejects(q("SELECT set_employee_responsibility($1,$2,'region',$3,'primary')",[a,staff,region]),e=>e.code==='42501');
  await assert.rejects(q("SELECT save_responsibility_catalog($1,'committee','Angriff')",[a]),e=>e.code==='42501');
  await assert.rejects(q("INSERT INTO committees(tenant_id,name) VALUES($1,'Bypass')",[a]),e=>e.code==='42501');
  await assert.rejects(q('UPDATE employee_responsibilities SET level=\'primary\''),e=>e.code==='42501');
  await actor(lead);
+ await assert.rejects(q("SELECT merge_responsibility_catalog($1,'region',$2,$2)",[a,region]),e=>e.code==='22023');
  await assert.rejects(q("SELECT set_employee_responsibility($1,$2,'region',$3,'primary')",[a,staff,foreignRegion]),e=>e.code==='23503');
  await assert.rejects(q("SELECT merge_responsibility_catalog($1,'region',$2,$3)",[a,foreignRegion,region]),e=>e.code==='42501');
  await q("SELECT set_employee_responsibility($1,$2,'region',$3,'secondary')",[a,staff,region]);

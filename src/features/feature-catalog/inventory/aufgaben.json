@@ -214,6 +214,7 @@
         "tasks",
         "task_assignees",
         "task_snoozes",
+        "task_batch_actions",
         "bulk_action_audit"
       ],
       "roles": [
@@ -698,7 +699,10 @@
       "reviewPoints": [
         "Die Filterlogik liegt in der Ansicht; eine eigene getestete Regeldatei existiert nicht."
       ],
-      "dependsOn": ["tasks.create"]
+      "dependsOn": ["tasks.create"],
+      "limitations": [
+        "Kein Selbsttest: Filter- und Sortierlogik liegen in der Ansicht; eine eigene getestete Regeldatei fehlt."
+      ]
     },
     {
       "id": "tasks.nudge",

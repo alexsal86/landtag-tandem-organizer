@@ -7,6 +7,7 @@ import {
 import { formatInTimeZone } from "@/features/responsibilities/berlinDay";
 import { topicMentionIds, topicMentionToken } from "@/features/topics/topicMentions";
 import { supabase } from "@/integrations/supabase/client";
+import { summarizeChecks } from "../stepDiagnostics";
 import type { TestScenario } from "../types";
 export const responsibilitiesScenario: TestScenario = {
   id: "responsibilities",
@@ -16,6 +17,7 @@ export const responsibilitiesScenario: TestScenario = {
   features: ["employees", "permissions"],
   limitations: [
     "Der Fremdtenant-Lesetest verwendet für das angemeldete Konto nicht zugängliche IDs. Zwei echte Sitzungen und RPC-Schreibtests werden zusätzlich im isolierten Datenbanktest geprüft.",
+    "Fremdtenant-Schreibversuche über RPCs fängt bereits der Client-Guard (TENANT_SCOPE_CONFLICT) ab; die serverseitige 42501-Prüfung ist aus dem Browser nicht auslösbar und bleibt Datenbanktest/SQL vorbehalten.",
     "Die positive Themen-Meldung (Empfänger mit Primärzuständigkeit) braucht ein zweites Konto und wird nur im isolierten Datenbanktest geprüft; hier wird die Servergrenze des Anlaufs abgesichert.",
   ],
   steps: [
@@ -167,12 +169,23 @@ export const responsibilitiesScenario: TestScenario = {
           p_target: id,
         });
         const admin = ["bueroleitung", "abgeordneter"].includes(ctx.role ?? "");
+        // Schreibende RPCs bleiben am Client-Guard fail-closed; die
+        // serverseitige 42501-Prüfung ist aus dem Browser nicht auslösbar.
+        const checks = {
+          foreignTenantWriteDenied:
+            foreign.error?.code === "42501" || foreign.error?.code === "TENANT_SCOPE_CONFLICT",
+          mergeOfSameEntryDenied: merge.error?.code === (admin ? "22023" : "42501"),
+        };
+        const errors = { foreign: foreign.error?.code, merge: merge.error?.code };
+        const ok = Object.values(checks).every(Boolean);
+        const success =
+          foreign.error?.code === "TENANT_SCOPE_CONFLICT"
+            ? "Fremdtenant-Schreiben wird bereits im Client abgewiesen; unzulässige Zusammenführung serverseitig."
+            : "Fremdtenant-Schreiben und unzulässige Zusammenführung werden serverseitig abgewiesen.";
         return {
-          ok:
-            foreign.error?.code === "42501" &&
-            merge.error?.code === (admin ? "22023" : "42501"),
-          message:
-            "Fremdtenant-Schreiben und unzulässige Zusammenführung werden serverseitig abgewiesen.",
+          ok,
+          message: ok ? success : summarizeChecks({ ...checks, errors }) ?? success,
+          details: { ...checks, errors },
         };
       },
     },
@@ -202,10 +215,12 @@ export const responsibilitiesScenario: TestScenario = {
       label: "Themen-Meldungen löst nur der serverseitige Ruhephase-Anlauf aus",
       kind: "db",
       run: async () => {
-        const callServerOnly = supabase.rpc as unknown as (
+        // Gebunden aufrufen: supabase.rpc ist eine Methode und greift auf
+        // this.rest zu; ein losgelöster Aufruf scheitert an `undefined.rest`.
+        const callServerOnly = (supabase.rpc as unknown as (
           fn: string,
           args?: Record<string, unknown>,
-        ) => Promise<{ error: { code?: string } | null }>;
+        ) => Promise<{ error: { code?: string } | null }>).bind(supabase);
         const direct = await callServerOnly("dispatch_topic_mentions_for_note", {
           p_note_id: crypto.randomUUID(),
         });
@@ -217,6 +232,7 @@ export const responsibilitiesScenario: TestScenario = {
           ok: direct.error?.code === "42501" && settled.error?.code === "42501",
           message:
             "Weder der Kern noch der verzögerte Anlauf sind für Clients aufrufbar; Meldungen entstehen ausschließlich in der Datenbank und erst nach der Ruhephase.",
+          details: { errors: { direct: direct.error?.code, settled: settled.error?.code } },
         };
       },
     },
@@ -226,10 +242,12 @@ export const responsibilitiesScenario: TestScenario = {
       label: "Themen-Meldung kommt genau einmal an, ohne Primärzuständigkeit gar nicht",
       kind: "workflow",
       run: async (ctx) => {
-        const callSelftest = supabase.rpc as unknown as (
+        // Gebunden aufrufen: supabase.rpc ist eine Methode und greift auf
+        // this.rest zu; ein losgelöster Aufruf scheitert an `undefined.rest`.
+        const callSelftest = (supabase.rpc as unknown as (
           fn: string,
           args?: Record<string, unknown>,
-        ) => Promise<{ data: unknown; error: { code?: string; message?: string } | null }>;
+        ) => Promise<{ data: unknown; error: { code?: string; message?: string } | null }>).bind(supabase);
         const response = await callSelftest("topic_mention_selftest", {
           p_tenant: ctx.tenantId,
         });

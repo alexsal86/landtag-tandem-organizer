@@ -81,14 +81,19 @@ export function scopeTenantUrl(url: URL, table: string, scope: ActiveTenantScope
 
 /**
  * Lesefunktionen, deren Mandantenargument nur ein Filter ist: RLS und die
- * Funktionen selbst liefern für fremde Büros keine Zeilen. Der Selbsttest
- * prüft genau diese Trennung am Server und darf dafür nicht am Client-Guard
- * scheitern. Schreibende RPCs bleiben unverändert fail-closed.
+ * Funktionen selbst liefern für fremde Büros keine Zeilen oder weisen sie
+ * ab. Der Selbsttest prüft genau diese Trennung am Server und darf dafür
+ * nicht am Client-Guard scheitern. Schreibende RPCs bleiben unverändert
+ * fail-closed.
  */
 const READ_ONLY_TENANT_RPCS = new Set([
   "knowledge_qa_list",
   "read_secured_contacts",
   "read_secured_letters",
+  // Beide prüfen die aktive Mitgliedschaft selbst und antworten sonst nur mit
+  // einem Fehler.
+  "get_poll_availability",
+  "find_contact_duplicates_trgm",
 ]);
 
 function validateTenantArguments(payload: Record<string, unknown>, scope: ActiveTenantScope): void {

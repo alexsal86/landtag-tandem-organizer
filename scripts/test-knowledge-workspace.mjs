@@ -32,7 +32,7 @@ const save = async (q, text, short = 'Kurzantwort für den Test.') => (await rea
 const review = async (q, verified = true, due = null) => (await read('SELECT * FROM knowledge_qa_review($1,$2,$3,$4)', [q.id, q.revision, verified, due]))[0];
 const search = (office, term = '', view = 'answers') => read('SELECT * FROM search_knowledge_questions($1,$2,$3)', [office, term, view]);
 const denied = operation => assert.rejects(operation, error => error.code === '42501');
-const stale = operation => assert.rejects(operation, error => error.code === '40001');
+const stale = operation => assert.rejects(operation, error => error.code === 'PT409');
 try {
   await db.exec(`
     CREATE ROLE authenticated; CREATE ROLE anon; CREATE ROLE service_role;
@@ -102,6 +102,11 @@ try {
     const migration=await readFile(new URL(`../supabase/migrations/${file}`,import.meta.url),'utf8');
     await db.exec(migration); await db.exec(migration);
   }
+  // Versionskonflikt als PT409 (HTTP 409) statt 40001; zweimal, weil die
+  // Migration die installierten Rümpfe liest und sich wiederholen lassen muss.
+  const conflictCodes = await readFile(new URL('../supabase/migrations/20261128090000_conflict_codes_pt409.sql', import.meta.url), 'utf8');
+  await db.exec(conflictCodes);
+  await db.exec(conflictCodes);
   await db.exec(`
     INSERT INTO topics(id,tenant_id,label) VALUES
       ('${topicA}','${officeA}','Urlaub'),('${topicB}','${officeA}','Büro'),('${topicC}','${officeA}','Team'),

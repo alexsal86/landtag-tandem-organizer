@@ -9,8 +9,10 @@ import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@
 import { RadioGroup, RadioGroupItem } from "@/components/ui/radio-group";
 import { useToast } from "@/components/ui/use-toast";
 import { supabase } from "@/integrations/supabase/client";
-import { Building2, ChevronRight, ChevronLeft, Loader2, Copy, Check, Sparkles } from "lucide-react";
+import { Building2, ChevronRight, ChevronLeft, Loader2, Copy, Check, Sparkles, AlertTriangle } from "lucide-react";
 import { notify } from "@/lib/notify";
+import { TenantHandoverChecklist } from "./TenantHandoverChecklist";
+import { buildTenantSteps, type TenantStepKey, type TenantStepState } from "./steps";
 
 const BUNDESLAENDER = [
   "Baden-Württemberg", "Bayern", "Berlin", "Brandenburg", "Bremen",
@@ -19,7 +21,16 @@ const BUNDESLAENDER = [
   "Sachsen-Anhalt", "Schleswig-Holstein", "Thüringen",
 ];
 
+/** Standarddaten, die Trigger beim Anlegen des Büros erzeugen (nicht das Setup). */
+export interface GeneratedDefaults {
+  topics: number;
+  ministry_topic_links: number;
+  topic_module_settings: number;
+  notification_types_total: number;
+}
+
 export interface SeedReport {
+  generated?: GeneratedDefaults;
   app_settings: number;
   case_file_types: number;
   notification_types: number;
@@ -68,6 +79,25 @@ export function SeedReportView({ report }: { report: SeedReport }): React.JSX.El
           ))}
         </ul>
       )}
+      {report.generated && (
+        <div className="space-y-1 pt-1">
+          <div className="font-medium">Automatisch aus der Datenbank:</div>
+          <ul className="list-disc list-inside space-y-0.5 text-muted-foreground">
+            <li>
+              <span className="text-foreground font-medium">{report.generated.topics}×</span> zentrale Themen (Themen-Wolke)
+            </li>
+            <li>
+              <span className="text-foreground font-medium">{report.generated.ministry_topic_links}×</span> Verknüpfung mit den Ressortlinien
+            </li>
+            <li>
+              <span className="text-foreground font-medium">{report.generated.topic_module_settings}×</span> Modul-Regeln der Themen-Steuerung
+            </li>
+            <li>
+              <span className="text-foreground font-medium">{report.generated.notification_types_total}×</span> Notification-Typen insgesamt (inkl. Trigger)
+            </li>
+          </ul>
+        </div>
+      )}
       {report.errors?.length > 0 && (
         <div className="mt-2">
           <div className="text-palette-amber text-xs font-medium">Hinweise:</div>
@@ -103,6 +133,7 @@ interface ProvisionResult {
   report: SeedReport;
   adminPassword?: string;
   adminEmail?: string;
+  steps?: Record<TenantStepKey, TenantStepState>;
 }
 
 export function TenantProvisioningWizard({ open, onOpenChange, templateTenants, onCreated }: Props): React.JSX.Element {
@@ -212,15 +243,25 @@ export function TenantProvisioningWizard({ open, onOpenChange, templateTenants, 
       if (error) throw error;
       if (!data?.success) throw new Error(data?.error || "Anlegen fehlgeschlagen");
 
+      const report = data.report as SeedReport;
       setResult({
         tenantId: data.tenantId,
         tenantName: name.trim(),
-        report: data.report,
+        report,
         adminPassword: data.adminPassword,
         adminEmail: data.adminEmail,
+        // Der Admin zählt nur, wenn das Passwort wirklich zurückkam; sonst
+        // bleibt der erste Übergabeschritt sichtbar offen.
+        steps: buildTenantSteps({
+          users: data.adminPassword ? 1 : 0,
+          senderCount: report.sender_information ?? 0,
+          // Ein neues Büro startet ohne Logo und ohne verbundenen Kalender.
+          hasLogo: false,
+          calendars: 0,
+        }),
       });
       setStep(4);
-      notify.success("Tenant angelegt", { description: `${name.trim()} ist startklar.` 
+      notify.success("Tenant angelegt", { description: `${name.trim()} ist startklar.`
 });
     } catch (err) {
       notify.error("Fehler", {
@@ -240,7 +281,17 @@ export function TenantProvisioningWizard({ open, onOpenChange, templateTenants, 
 
   return (
     <Dialog open={open} onOpenChange={handleClose}>
-      <DialogContent className="max-w-2xl max-h-[90vh] overflow-y-auto">
+      <DialogContent
+        className="max-w-2xl max-h-[90vh] overflow-y-auto"
+        // Ein versehentlicher Klick daneben darf weder das laufende Anlegen noch
+        // das einmalig sichtbare Admin-Passwort verwerfen.
+        onInteractOutside={(event) => {
+          if (submitting || result) event.preventDefault();
+        }}
+        onEscapeKeyDown={(event) => {
+          if (submitting || result) event.preventDefault();
+        }}
+      >
         <DialogHeader>
           <DialogTitle className="flex items-center gap-2">
             <Building2 className="h-5 w-5" />
@@ -353,7 +404,10 @@ export function TenantProvisioningWizard({ open, onOpenChange, templateTenants, 
                     Standard-Setup
                   </Label>
                   <p className="text-xs text-muted-foreground mt-1">
-                    Legt 8 Falltypen, 7 Briefanlässe, 24 Notification-Typen, 2 Meeting-Vorlagen und Standard-App-Einstellungen an.
+                    Legt 8 Falltypen, 7 Briefanlässe, 26 Notification-Typen, 2 Meeting-Vorlagen,
+                    1 Planungs-Vorlage, einen Standard-Absender und die App-Einstellungen an.
+                    Dazu kommen automatisch 69 zentrale Themen mit Ressortverknüpfung und 10
+                    Modul-Regeln der Themen-Steuerung.
                   </p>
                 </div>
               </div>
@@ -365,7 +419,8 @@ export function TenantProvisioningWizard({ open, onOpenChange, templateTenants, 
                     Aus Vorlage klonen
                   </Label>
                   <p className="text-xs text-muted-foreground mt-1">
-                    Übernimmt alle Templates, Kategorien und Konfigurationen eines bestehenden Tenants 1:1.
+                    Übernimmt Templates, Kategorien und Konfigurationen eines bestehenden Tenants. App-Name
+                    und Absender bleiben die hier eingegebenen – das Quellbüro wandert nicht mit.
                   </p>
                   {seedMode === "clone" && (
                     <Select value={cloneFromTenantId} onValueChange={setCloneFromTenantId}>
@@ -439,14 +494,33 @@ export function TenantProvisioningWizard({ open, onOpenChange, templateTenants, 
         {/* STEP 4: Success */}
         {step === 4 && result && (
           <div className="space-y-4 py-2">
-            <div className="p-4 rounded-lg bg-palette-green/10 border border-palette-green/30">
-              <div className="font-medium text-palette-green">
-                ✓ {result.tenantName} ist startklar
+            {result.steps?.admin.open ? (
+              <div className="p-4 rounded-lg bg-palette-amber/10 border border-palette-amber/30">
+                <div className="font-medium text-palette-amber flex items-center gap-2">
+                  <AlertTriangle className="h-4 w-4" /> {result.tenantName} wurde angelegt – ohne Admin-Zugang
+                </div>
+                <p className="text-xs text-muted-foreground mt-1">
+                  Das Büro existiert, die Anmeldung fehlt aber noch. Benutzer im Tab „Benutzer" anlegen
+                  oder einen bestehenden Benutzer zuweisen.
+                </p>
               </div>
-              <div className="text-xs text-muted-foreground mt-1 font-mono">
-                Tenant-ID: {result.tenantId}
+            ) : (
+              <div className="p-4 rounded-lg bg-palette-green/10 border border-palette-green/30">
+                <div className="font-medium text-palette-green">
+                  ✓ {result.tenantName} ist startklar
+                </div>
+                <div className="text-xs text-muted-foreground mt-1 font-mono">
+                  Tenant-ID: {result.tenantId}
+                </div>
               </div>
-            </div>
+            )}
+
+            {result.steps && (
+              <div className="p-3 rounded-lg border">
+                <div className="text-sm font-medium mb-2">Übergabe an das Büro</div>
+                <TenantHandoverChecklist steps={result.steps} />
+              </div>
+            )}
 
             <SeedReportView report={result.report} />
 
@@ -464,7 +538,8 @@ export function TenantProvisioningWizard({ open, onOpenChange, templateTenants, 
                   </Button>
                 </div>
                 <p className="text-xs text-muted-foreground mt-2">
-                  Nur einmal sichtbar — bitte sicher übergeben.
+                  Nur einmal sichtbar — bitte sicher übergeben. Der Abgeordnete sollte das Passwort
+                  nach der ersten Anmeldung ändern.
                 </p>
               </div>
             )}

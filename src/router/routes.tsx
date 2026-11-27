@@ -68,6 +68,14 @@ function RedaktionRedirect() {
   return <Navigate to={{ pathname: "/mywork", search: `?${params.toString()}`, hash }} replace />;
 }
 
+function FeatureCatalogRedirect() {
+  const { search, hash } = useLocation();
+  const params = new URLSearchParams(search);
+  params.set("adminSection", "superadmin");
+  params.set("adminSubSection", "feature-catalog");
+  return <Navigate to={{ pathname: "/administration", search: params.toString(), hash }} replace />;
+}
+
 export const AppRoutes = () => (
   <>
     {/* Öffentliche Routen – kein Login erforderlich */}
@@ -100,6 +108,7 @@ export const AppRoutes = () => (
       <Route path="/cases/:caseItemId" element={<LegacyCaseItemRedirect />} />
       <Route path="/vorgaenge/:caseItemId" element={<CaseItemDetail />} />
       <Route path="/redaktion" element={<RedaktionRedirect />} />
+      <Route path="/funktionskatalog" element={<FeatureCatalogRedirect />} />
       {/* ADD ALL CUSTOM ROUTES ABOVE THE CATCH-ALL "*" ROUTE */}
       <Route path="/:section/:subId" element={<Index />} />
       <Route path="/:section" element={<Index />} />

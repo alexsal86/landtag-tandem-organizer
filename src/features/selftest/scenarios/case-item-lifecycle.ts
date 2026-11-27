@@ -214,8 +214,30 @@ export const caseItemLifecycleScenario: TestScenario = {
         const { data: r, error: re } = await supabase.from("task_decision_responses").insert({ decision_id: data.id, participant_id: p.id, response_type: "yes", comment: SELFTEST_MARKER }).select("id").single();
         if (re || !r) return { ok: false, message: `Stimme: ${describeError(re)}` };
         ctx.trackRecord({ table: "task_decision_responses", id: r.id });
-        const { data: linked } = await supabase.from("task_decisions").select("id").eq("case_item_id", ctx.data.caseItemId as string);
-        return linked?.length ? { ok: true, message: "Entscheidung verknüpft, Stimme abgegeben." } : { ok: false, message: "Entscheidung am Vorgang nicht auffindbar." };
+        const caseItemId = ctx.data.caseItemId as string;
+        const stored = await supabase.from("task_decisions")
+          .select("id,case_item_id,tenant_id").eq("id", data.id).maybeSingle();
+        if (stored.error || !stored.data) return { ok: false, message: `Entscheidung lesen: ${describeError(stored.error)}` };
+        const linked = await supabase.from("task_decisions")
+          .select("id").eq("case_item_id", caseItemId).eq("tenant_id", ctx.tenantId);
+        if (linked.error) return { ok: false, message: `Entscheidungen am Vorgang lesen: ${describeError(linked.error)}` };
+        const linkedIds = (linked.data ?? []).map(row => row.id);
+        const votes = await supabase.from("task_decision_responses")
+          .select("id").eq("decision_id", data.id).eq("response_type", "yes");
+        if (votes.error) return { ok: false, message: `Stimme lesen: ${describeError(votes.error)}` };
+        const checks = {
+          decisionPointsToCaseItem: stored.data.case_item_id === caseItemId && stored.data.tenant_id === ctx.tenantId,
+          listedExactlyOnce: linkedIds.length === 1 && linkedIds[0] === data.id,
+          votePersisted: (votes.data ?? []).length === 1,
+        };
+        const failed = Object.entries(checks).filter(([, ok]) => !ok).map(([name]) => name);
+        return {
+          ok: failed.length === 0,
+          message: failed.length === 0
+            ? "Die Entscheidung zeigt auf den Vorgang, wird dort als einzige gefunden und die Ja-Stimme ist gespeichert."
+            : `Verknüpfung unvollständig: ${failed.join(", ")}`,
+          details: { ...checks, linkedIds },
+        };
       }),
     },
     {

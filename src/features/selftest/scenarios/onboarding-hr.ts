@@ -12,6 +12,7 @@ import {
   hrStepsFromEditor,
 } from "@/features/onboarding-hr/templates";
 import { supabase } from "@/integrations/supabase/client";
+import { summarizeChecks } from "../stepDiagnostics";
 import type { TestScenario } from "../types";
 export const onboardingHrScenario: TestScenario = {
   id: "onboarding-hr",
@@ -35,6 +36,7 @@ export const onboardingHrScenario: TestScenario = {
   requiredRoles: ["abgeordneter", "bueroleitung"],
   limitations: [
     "Der Servertest rollt seine vollständigen Fixtures zurück. Echte Zustellung und der 15-Minuten-Job benötigen eine bereitgestellte Datenbank.",
+    "Fremdtenant-Schreibversuche über RPCs fängt bereits der Client-Guard (TENANT_SCOPE_CONFLICT) ab; die serverseitige 42501-Prüfung von save_employee_lifecycle ist aus dem Browser nicht auslösbar.",
   ],
   steps: [
     {
@@ -169,10 +171,21 @@ export const onboardingHrScenario: TestScenario = {
         const reminder = await supabase.rpc("remind_employee_hr", {
           p_lifecycle: crypto.randomUUID(),
         });
+        const checks = {
+          employmentWriteDenied:
+            result.error?.code === "42501" || result.error?.code === "TENANT_SCOPE_CONFLICT",
+          reminderWriteDenied: reminder.error?.code === "42501",
+        };
+        const errors = { employment: result.error?.code, reminder: reminder.error?.code };
+        const ok = Object.values(checks).every(Boolean);
+        const success =
+          result.error?.code === "TENANT_SCOPE_CONFLICT"
+            ? "Fremde Büro-ID wird bereits im Client abgewiesen; Rollen- und Serversperren bleiben bestehen."
+            : "Tenant- und Rollenprüfungen werden serverseitig erzwungen.";
         return {
-          ok:
-            result.error?.code === "42501" && reminder.error?.code === "42501",
-          message: "Tenant- und Rollenprüfungen werden serverseitig erzwungen.",
+          ok,
+          message: ok ? success : summarizeChecks({ ...checks, errors }) ?? success,
+          details: { ...checks, errors },
         };
       },
     },

@@ -8,7 +8,7 @@ _Auto-generiert mit `npm run update:feature-catalog` aus dem zentralen Funktions
 
 - Funktionen: **16** in **8** Unterbereichen
 - implementiert: **16**, teilweise: **0**, deaktiviert: **0**, potenziell verwaist: **0**
-- ohne zugeordneten Test: **7**
+- ohne zugeordneten Test: **5**
 - ohne Dokumentationsverweis: **11**
 
 ## Funktionen
@@ -18,7 +18,7 @@ _Auto-generiert mit `npm run update:feature-catalog` aus dem zentralen Funktions
 | `knowledge.management` Wissensverwaltung | Administration | administrativ | implementiert | rollenabhängig | kein Test |
 | `knowledge.answer` Frage beantworten | Antworten | fachlich | implementiert | UI | Selbsttest |
 | `knowledge.short-answer` Kurzantwort neben der Langantwort | Antworten | fachlich | implementiert | UI | Selbsttest |
-| `knowledge.global-question` Globale Wissensfrage aus jedem Bereich | Fragen | fachlich | implementiert | UI | kein Test |
+| `knowledge.global-question` Globale Wissensfrage aus jedem Bereich | Fragen | fachlich | implementiert | UI | teilweise |
 | `knowledge.ask` Wissensfrage stellen | Fragen | fachlich | implementiert | UI | Selbsttest |
 | `knowledge.validity` Gültigkeit und Veraltung | Qualität | automatisiert | implementiert | systemseitig | Unit-Test |
 | `knowledge.versions` Snapshots und Versionen | Qualität | fachlich | implementiert | UI | kein Test |
@@ -30,7 +30,7 @@ _Auto-generiert mit `npm run update:feature-catalog` aus dem zentralen Funktions
 | `knowledge.persons` Wissenspersonen und Zuständigkeit | Struktur | fachlich | implementiert | UI | Unit-Test |
 | `knowledge.search` Wissenssuche | Suchen | fachlich | implementiert | UI | Selbsttest |
 | `knowledge.collaboration` Kollaborative Wissensbearbeitung | Zusammenarbeit | integration | implementiert | systemseitig | kein Test |
-| `knowledge.comments-follow` Kommentare und Folgen | Zusammenarbeit | fachlich | implementiert | UI | kein Test |
+| `knowledge.comments-follow` Kommentare und Folgen | Zusammenarbeit | fachlich | implementiert | UI | teilweise |
 
 ## Unterbereiche
 
@@ -403,7 +403,7 @@ Kommentiert Fragen und Antworten, folgt Fragen und steuert Benachrichtigungen f�
 - **Kategorie:** fachlich
 - **Implementierung:** implementiert
 - **Einbindung:** UI
-- **Testabdeckung:** kein Test
+- **Testabdeckung:** teilweise
 - **Letztes Testergebnis:** nicht-ausgefuehrt (kein Laufnachweis importiert; nicht aus der Existenz einer Testdatei abgeleitet)
 - **Rollen:** `abgeordneter`, `bueroleitung`, `mitarbeiter`
 - **Routen:** —
@@ -414,7 +414,7 @@ Kommentiert Fragen und Antworten, folgt Fragen und steuert Benachrichtigungen f�
 - **Datenbankfunktionen:** `knowledge_qa_comment`, `knowledge_qa_follow`, `knowledge_qa_auto_follow`
 - **Tabellen:** `knowledge_question_comments`, `knowledge_question_followers`, `knowledge_qa_notification_deliveries`
 - **Abhängigkeiten:** `knowledge.ask`
-- **Selbsttests:** —
+- **Selbsttests:** `knowledge-lifecycle`
 - **Unit-Tests:** —
 - **Integrationstests:** —
 - **Browser-Tests:** —
@@ -426,7 +426,7 @@ Kommentiert Fragen und Antworten, folgt Fragen und steuert Benachrichtigungen f�
 
 **Bekannte Einschränkungen**
 
-- Keine.
+- Geprüft ist die Zustellung von Wissensbenachrichtigungen samt Duplikatsperre. Kommentare und Folgen (knowledge_question_comments, knowledge_question_followers) haben keinen Schritt.
 
 **Offene Prüfpunkte**
 
@@ -581,7 +581,7 @@ Synchronisiert Wissensdokumente in Echtzeit über einen eigenen Kollaborationska
 - **Kategorie:** fachlich
 - **Implementierung:** implementiert
 - **Einbindung:** UI
-- **Testabdeckung:** kein Test
+- **Testabdeckung:** teilweise
 - **Letztes Testergebnis:** nicht-ausgefuehrt (kein Laufnachweis importiert; nicht aus der Existenz einer Testdatei abgeleitet)
 - **Rollen:** `abgeordneter`, `bueroleitung`, `mitarbeiter`
 - **Routen:** —
@@ -592,7 +592,7 @@ Synchronisiert Wissensdokumente in Echtzeit über einen eigenen Kollaborationska
 - **Datenbankfunktionen:** —
 - **Tabellen:** `knowledge_questions`
 - **Abhängigkeiten:** `knowledge.ask`
-- **Selbsttests:** —
+- **Selbsttests:** `knowledge-lifecycle`
 - **Unit-Tests:** —
 - **Integrationstests:** —
 - **Browser-Tests:** —
@@ -605,7 +605,7 @@ Synchronisiert Wissensdokumente in Echtzeit über einen eigenen Kollaborationska
 
 **Bekannte Einschränkungen**
 
-- Keine.
+- Frageanlage und Validierung sind geprüft. Der Aufruf aus einem fremden Bereich heraus ist ein Oberflächenpfad und wird nicht automatisiert geprüft.
 
 **Offene Prüfpunkte**
 

@@ -6,10 +6,10 @@ _Auto-generiert mit `npm run update:feature-catalog` aus dem zentralen Funktions
 
 ## Kennzahlen
 
-- Funktionen: **18** in **5** Unterbereichen
-- implementiert: **17**, teilweise: **1**, deaktiviert: **0**, potenziell verwaist: **0**
-- ohne zugeordneten Test: **12**
-- ohne Dokumentationsverweis: **15**
+- Funktionen: **19** in **5** Unterbereichen
+- implementiert: **18**, teilweise: **1**, deaktiviert: **0**, potenziell verwaist: **0**
+- ohne zugeordneten Test: **10**
+- ohne Dokumentationsverweis: **16**
 
 ## Funktionen
 
@@ -26,12 +26,13 @@ _Auto-generiert mit `npm run update:feature-catalog` aus dem zentralen Funktions
 | `facts.manage` Fakten und Argumente pflegen | Fakten | fachlich | implementiert | UI | kein Test |
 | `meetings.agenda` Agenda führen | Jour fixe | fachlich | implementiert | UI | Selbsttest |
 | `meetings.jour-fixe` Jour-fixe-Sitzung planen und durchführen | Jour fixe | fachlich | implementiert | rollenabhängig | Selbsttest |
-| `meetings.zombie-points` Liegengebliebene Agenda-Punkte | Jour fixe | fachlich | implementiert | UI | kein Test |
+| `meetings.zombie-points` Liegengebliebene Agenda-Punkte | Jour fixe | fachlich | implementiert | UI | Selbsttest |
 | `meetings.archive` Sitzung archivieren | Jour fixe | fachlich | implementiert | rollenabhängig | Selbsttest |
 | `meetings.decisions` Sitzungsentscheidungen dokumentieren | Jour fixe | fachlich | implementiert | UI | Selbsttest |
 | `meetings.protocol` Sitzungsprotokoll | Jour fixe | fachlich | implementiert | rollenabhängig | Selbsttest |
 | `meetings.templates` Sitzungsvorlagen | Jour fixe | administrativ | implementiert | rollenabhängig | kein Test |
-| `topics.convert-catalog` Thema in Katalog überführen | Themen | fachlich | implementiert | UI | kein Test |
+| `topics.ministry-cloud` Standarddaten für neue Büros | Themen | automatisiert | implementiert | systemseitig | Selbsttest |
+| `topics.convert-catalog` Thema in Katalog überführen | Themen | fachlich | implementiert | UI | Selbsttest |
 | `topics.manage` Themen verwalten | Themen | fachlich | implementiert | UI | Selbsttest |
 
 ## Unterbereiche
@@ -48,14 +49,15 @@ _Auto-generiert mit `npm run update:feature-catalog` aus dem zentralen Funktions
 
 ## Datenbanktabellen
 
-`archived_meeting_protocol_tasks`, `case_item_topics`, `case_items`, `committees`, `documents`, `dossier_entries`, `dossier_links`, `dossier_position_versions`, `dossier_source_watchers`, `dossier_stakeholders`, `dossier_talking_points`, `dossiers`, `employee_responsibilities`, `facts`, `knowledge_question_topics`, `meeting_agenda_documents`, `meeting_agenda_items`, `meeting_participants`, `meeting_protocol_details`, `meeting_templates`, `meetings`, `protocol_agenda_items`, `protocol_sessions`, `protocol_speeches`, `regions`, `tasks`, `topic_catalog_links`, `topic_module_settings`, `topics`
+`archived_meeting_protocol_tasks`, `case_item_topics`, `case_items`, `committees`, `documents`, `dossier_entries`, `dossier_links`, `dossier_position_versions`, `dossier_source_watchers`, `dossier_stakeholders`, `dossier_talking_points`, `dossiers`, `employee_responsibilities`, `facts`, `knowledge_question_topics`, `meeting_agenda_documents`, `meeting_agenda_items`, `meeting_participants`, `meeting_protocol_details`, `meeting_templates`, `meetings`, `parlis_ministry_lines`, `parlis_ministry_topics`, `protocol_agenda_items`, `protocol_sessions`, `protocol_speeches`, `regions`, `tasks`, `tenants`, `topic_catalog_links`, `topic_module_settings`, `topics`
 
 ## Selbsttest-Szenarien
 
 | Szenario | Titel | deklarierte Tabellen | deklarierte Prüfungen | letzter Lauf |
 |---|---|---:|---:|---|
+| `jour-fixe-platform-integration` | Jour Fixe: Plattformquellen & Stafetten-Abschluss | 4 | 4 | — |
 | `meeting-lifecycle` | Meeting-Lifecycle (vollständig + Field-Verifikation) | 9 | 0 | — |
-| `topic-linking` | Themenverknüpfung und Modul-Steuerung | 5 | 9 | — |
+| `topic-linking` | Themenverknüpfung und Modul-Steuerung | 9 | 15 | — |
 
 ## Selbsttest-Schritte
 
@@ -63,6 +65,16 @@ Diese Schritte führen die Szenarien aus; „letzter Lauf“ stammt aus `src/fea
 
 | Szenario | Schritt | Bezeichnung | Art | letzter Lauf |
 |---|---|---|---|---|
+| `jour-fixe-platform-integration` | `agenda-combine` | Agenda: Hauptpunkt mit Unterpunkten unter anderen Hauptpunkt verschieben | logic | — |
+| `jour-fixe-platform-integration` | `agenda-timing` | Agenda: nur Hauptpunkte zählen, Altbestand ohne erfundene Endzeit | logic | — |
+| `jour-fixe-platform-integration` | `radar-rules` | Radar: mehrfache Anstupser, 7-Tage-Grenze und abgeschlossene Aufgaben | logic | — |
+| `jour-fixe-platform-integration` | `horizon-rules` | Zeitfenster: Redaktion 10, Briefings/Abwesenheiten 14 und Veranstaltungen 60 Tage | logic | — |
+| `jour-fixe-platform-integration` | `zombie-points` | Agenda: Zombie-Punkte ab der dritten Verschiebung | logic | — |
+| `jour-fixe-platform-integration` | `actual-times` | Agenda: Ist-Zeiten, Rundung und Abweichung | logic | — |
+| `jour-fixe-platform-integration` | `meeting-decision-note` | Beschluss: Entscheidungsblock verliert keine bestehende Notiz | logic | — |
+| `jour-fixe-platform-integration` | `create` | Sitzung, Hauptpunkt, alle Systemtypen und zwei gleichnamige Entscheidungen | db | — |
+| `jour-fixe-platform-integration` | `archive` | Gemeinsamen Sitzungsabschluss ausführen und Stafetten-Aufgabe zurücklesen | workflow | — |
+| `jour-fixe-platform-integration` | `retry` | Erneuter Abschluss erzeugt keine zweite Folgeaufgabe | workflow | — |
 | `meeting-lifecycle` | `create-meeting` | Meeting anlegen | db | — |
 | `meeting-lifecycle` | `create-appointment` | Verknüpften Kalender-Termin erzeugen | db | — |
 | `meeting-lifecycle` | `add-participant` | Teilnehmer (sich selbst) hinzufügen | db | — |
@@ -91,9 +103,19 @@ Diese Schritte führen die Szenarien aus; „letzter Lauf“ stammt aus `src/fea
 | `topic-linking` | `case-item-link` | Vorgang mit Thema verknüpfen und Duplikate sperren | db | — |
 | `topic-linking` | `merge-redirect` | Themen zusammenführen und Weiterleitung prüfen | db | — |
 | `topic-linking` | `usage` | Verwendung je Modul zählen | db | — |
+| `topic-linking` | `ministry-topic-cloud` | Neue Büros erhalten die Themen-Wolke automatisch | db | — |
+| `topic-linking` | `module-rules-seed` | Neue Büros erhalten die Modul-Steuerung automatisch | db | — |
 | `topic-linking` | `knowledge-topics` | Wissensfragen-Verknüpfung lesen und Schreibversuch abweisen | db | — |
+| `topic-linking` | `convert-catalog-success` | Thema in den Katalog überführen und Gremien/Regionen zusammenführen | workflow | — |
 
 ## Deklarierter Prüfumfang
+
+### `jour-fixe-platform-integration`
+
+1. Quellenabfragen unter bestehenden Zugriffsrechten
+2. Folgeaufgaben mit Zuständigkeit und Verlauf
+3. Notizen ändern keine Abstimmung
+4. Wiederholung erzeugt keine Duplikate
 
 ### `meeting-lifecycle`
 
@@ -110,6 +132,12 @@ Keine Prüfungen deklariert.
 7. Doppelte Verknüpfungen sind gesperrt (23505); auch ein direkter Insert ohne tenant_id wird dem Büro zugeordnet
 8. merge_topics zieht Verknüpfungen auf das Zielthema, deaktiviert die Quelle als Weiterleitung und ensure_topic folgt der Weiterleitung
 9. topic_usage zählt die Verknüpfungen je Modul und liefert die Summe
+10. Ein neu angelegtes Büro erhält über den Trigger 69 Themen und 85 Ressortverknüpfungen (5–10 je Linie); ein zweiter Lauf verdoppelt nichts und eigene Beschreibungen bleiben stehen
+11. Ein neu angelegtes Büro erhält alle zehn Modul-Regeln der Themen-Steuerung mit den Standardwerten; ein zweiter Lauf verdoppelt nichts
+12. Die Konvertierung erhält Thema und historischen Vorgangslink, schreibt den Katalogeintrag und verschiebt Zuständigkeiten auf das Ziel
+13. Ein zweiter Konvertierungsaufruf nutzt den vorhandenen Link weiter, statt einen zweiten Eintrag anzulegen
+14. Andere Primaries bleiben erhalten: eine zweite Person wird mitgezogen, eine unabhängige Primärzuständigkeit bleibt unverändert (nur mit zweitem aktivem Büromitglied prüfbar; sonst weist der Lauf diesen Teil als ungeprüft aus)
+15. Beim Zusammenführen von Gremien bzw. Regionen zeigen die topic_catalog_links auf das Ziel, die Quelle verschwindet und kollidierende Zuständigkeiten bleiben als genau eine Primary-Zeile bestehen
 
 ## Funktionsdetails
 
@@ -332,7 +360,7 @@ Erkennt seit mehreren Sitzungen offene Punkte und zeigt sie im Entscheidungs-Coc
 - **Kategorie:** fachlich
 - **Implementierung:** implementiert
 - **Einbindung:** UI
-- **Testabdeckung:** kein Test
+- **Testabdeckung:** Selbsttest
 - **Letztes Testergebnis:** nicht-ausgefuehrt (kein Laufnachweis importiert; nicht aus der Existenz einer Testdatei abgeleitet)
 - **Rollen:** `bueroleitung`, `abgeordneter`, `mitarbeiter`
 - **Routen:** —
@@ -343,7 +371,7 @@ Erkennt seit mehreren Sitzungen offene Punkte und zeigt sie im Entscheidungs-Coc
 - **Datenbankfunktionen:** —
 - **Tabellen:** `meeting_agenda_items`
 - **Abhängigkeiten:** `meetings.agenda`
-- **Selbsttests:** —
+- **Selbsttests:** `jour-fixe-platform-integration`, `meeting-lifecycle`
 - **Unit-Tests:** —
 - **Integrationstests:** —
 - **Browser-Tests:** —
@@ -692,7 +720,7 @@ Wandelt ein Thema atomar in einen Katalogeintrag um, erhält historische Verknü
 - **Kategorie:** fachlich
 - **Implementierung:** implementiert
 - **Einbindung:** UI
-- **Testabdeckung:** kein Test
+- **Testabdeckung:** Selbsttest
 - **Letztes Testergebnis:** nicht-ausgefuehrt (kein Laufnachweis importiert; nicht aus der Existenz einer Testdatei abgeleitet)
 - **Rollen:** `bueroleitung`, `admin`
 - **Routen:** —
@@ -700,10 +728,10 @@ Wandelt ein Thema atomar in einen Katalogeintrag um, erhält historische Verknü
 - **Services:** —
 - **Hooks:** `src/features/topics/useTopicCatalogLinks.ts`
 - **Edge Functions:** —
-- **Datenbankfunktionen:** `convert_topic_to_catalog`
+- **Datenbankfunktionen:** `convert_topic_to_catalog`, `merge_responsibility_catalog`, `topic_catalog_conversion_selftest`
 - **Tabellen:** `topics`, `topic_catalog_links`, `employee_responsibilities`
 - **Abhängigkeiten:** `topics.manage`, `responsibilities.matrix`
-- **Selbsttests:** —
+- **Selbsttests:** `topic-linking`
 - **Unit-Tests:** —
 - **Integrationstests:** —
 - **Browser-Tests:** —
@@ -716,7 +744,46 @@ Wandelt ein Thema atomar in einen Katalogeintrag um, erhält historische Verknü
 
 **Bekannte Einschränkungen**
 
+- Der Erfolgspfad (Katalogziel anlegen, Zuständigkeiten umhängen, topic_catalog_links schreiben, Quelle deaktivieren, Wiederholung und Zusammenführen) läuft über topic_catalog_conversion_selftest und wird vollständig zurückgerollt, damit keine Stammdaten zurückbleiben.
+- Ohne Leitungsrolle prüft der Schritt nur die Abweisung; die Bedienung des Konvertierungsdialogs wird nicht über die Oberfläche geprüft.
+- Der Nachweis, dass eine zweite Primary-Person mitwandert, braucht ein zweites aktives Büromitglied. Fehlt es, meldet der Server-Selbsttest den Modus checked_without_second_member mit unverified second_primary_moved; die Anforderung „andere Primaries bleiben erhalten“ ist dann nur für unabhängige Zuständigkeiten belegt.
+
+**Offene Prüfpunkte**
+
 - Keine.
+
+### `topics.ministry-cloud` — Standarddaten für neue Büros
+Legt im Themenkatalog jedes Büros automatisch den Grundbestand an ministerienbezogenen Themen an, füllt leere Beschreibungen, verknüpft die Ressortlinien der Parlamentsdokumentation und legt die zehn Modul-Regeln der Themen-Steuerung an. Der Anlage-Dialog zählt diese Daten nach dem Anlegen aus der Datenbank nach.
+
+- **Kategorie:** automatisiert
+- **Implementierung:** implementiert
+- **Einbindung:** systemseitig
+- **Testabdeckung:** Selbsttest
+- **Letztes Testergebnis:** nicht-ausgefuehrt (kein Laufnachweis importiert; nicht aus der Existenz einer Testdatei abgeleitet)
+- **Rollen:** `system`
+- **Routen:** —
+- **Frontend-Komponenten:** —
+- **Services:** —
+- **Hooks:** —
+- **Edge Functions:** —
+- **Datenbankfunktionen:** `ministry_topic_cloud_selftest`, `topic_module_settings_selftest`
+- **Tabellen:** `topics`, `parlis_ministry_lines`, `parlis_ministry_topics`, `topic_module_settings`, `tenants`
+- **Abhängigkeiten:** `topics.manage`
+- **Selbsttests:** `topic-linking`
+- **Unit-Tests:** —
+- **Integrationstests:** —
+- **Browser-Tests:** —
+- **Dokumentation:** —
+
+**Nachweise im Quellcode**
+
+- supabase/migrations/20261128020000_seed_ministry_topic_cloud.sql
+- src/features/selftest/scenarios/topic-linking.ts
+
+**Bekannte Einschränkungen**
+
+- Der Selbsttest legt ein Testbüro an und rollt es zurück; die Anzeige der Themen in der Administration wird dabei nicht über die Oberfläche geprüft.
+- Der Erfolgsdialog des Anlage-Wizards zählt die Standarddaten nur; ob sie fachlich passen, prüft er nicht.
 
 **Offene Prüfpunkte**
 

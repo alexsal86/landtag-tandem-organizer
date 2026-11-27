@@ -77,3 +77,4 @@ Diese Matrix klassifiziert alle Supabase Edge Functions nach Sicherheitsmodell.
 
 | workflow-dispatcher | true | authenticated | Service-Role für Ausführung; angemeldete Büro-Admins mit Aktionsrecht dürfen explizite Dry-Runs ausführen. |
 | propose-task-from-intake | true | authenticated | JWT und requireAuth; erzeugt nur einen Aufgaben-Vorschlag aus Text, kein Datenbankzugriff; Längenlimit und AI-Ratenbegrenzung über die zentrale Client-Konfiguration. |
+| log-auth-failure | false | public-webhook | Kein Secret im Browser hinterlegbar; Schutz durch feste Aktionsliste (auth.login_failed/auth.mfa_failed), geprüfte E-Mail-Syntax, 80-Zeichen-Grund, IP- und E-Mail-Rate-Limit und ausschließlich append-only Audit-Schreiben ohne Lesezugriff. |

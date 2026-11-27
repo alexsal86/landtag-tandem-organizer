@@ -29,6 +29,23 @@ describe("Gemeinsamer Brief-Workflow", () => {
     const result = await persistLetterTransition("letter", "approved", "sent", "sender");
     expect(mock.archive).toHaveBeenCalledWith("letter", "sender"); expect(mock.update).not.toHaveBeenCalled(); expect(result.archive?.documentId).toBe("doc");
   });
+  it("zieht die Folgeaufgabe über das RPC nach, wenn die Archivfunktion keine ID meldet", async () => {
+    mock.archive.mockResolvedValue({ success: true, documentId: "doc", followUpTaskId: null });
+    mock.rpc.mockResolvedValue({ data: "task-from-db", error: null });
+    const result = await persistLetterTransition("letter", "approved", "sent", "sender");
+    expect(mock.rpc).toHaveBeenCalledWith("create_letter_archive_follow_up_task", { _letter_id: "letter" });
+    expect(result.archive?.followUpTaskId).toBe("task-from-db");
+    expect(result.archive?.documentId).toBe("doc");
+  });
+  it("fragt das RPC nicht, wenn die Archivfunktion eine Folgeaufgabe meldet", async () => {
+    await persistLetterTransition("letter", "approved", "sent", "sender");
+    expect(mock.rpc).not.toHaveBeenCalledWith("create_letter_archive_follow_up_task", expect.anything());
+  });
+  it("verschweigt einen Fehler der Folgeaufgabe nicht", async () => {
+    mock.archive.mockResolvedValue({ success: true, documentId: "doc", followUpTaskId: null });
+    mock.rpc.mockResolvedValue({ data: null, error: new Error("Folgeaufgabe nur für versendete Briefe") });
+    await expect(persistLetterTransition("letter", "approved", "sent", "sender")).rejects.toThrow("versendete Briefe");
+  });
   it("verschweigt fehlgeschlagene Archivierung nicht", async () => {
     mock.archive.mockResolvedValue({ success: false, error: "PDF fehlgeschlagen" });
     await expect(persistLetterTransition("letter", "approved", "sent", "sender")).rejects.toThrow("PDF fehlgeschlagen");

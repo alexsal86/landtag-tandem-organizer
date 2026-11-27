@@ -70,6 +70,10 @@ serve(withSafeHandler("create-admin-user", async (req) => {
     if (!email || !displayName) {
       throw new Error('Email and display name are required');
     }
+    // profiles und team_dashboards verlangen tenant_id; ohne Büro kein Profil.
+    if (!tenantId) {
+      throw new Error('Office is required');
+    }
 
     // Validate the selected office before creating an account.
     const callerClient = createClient(
@@ -113,7 +117,8 @@ serve(withSafeHandler("create-admin-user", async (req) => {
       .from('profiles')
       .insert({
         user_id: newUser.user.id,
-        display_name: displayName
+        display_name: displayName,
+        tenant_id: tenantId
       });
 
     if (profileError) {
@@ -228,6 +233,7 @@ serve(withSafeHandler("create-admin-user", async (req) => {
       .from('team_dashboards')
       .insert({
         owner_id: newUser.user.id,
+        tenant_id: tenantId,
         name: 'Standard Layout',
         description: 'Standard Dashboard Layout',
         layout_data: standardDashboardLayout,

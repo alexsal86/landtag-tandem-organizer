@@ -35,9 +35,42 @@ export type Database = {
           },
         ]
       }
+      parlis_ministry_lines: {
+        Row: { id: string; label: string }
+        Insert: { id: string; label: string }
+        Update: { id?: string; label?: string }
+        Relationships: []
+      }
+      parlis_ministry_assignments: {
+        Row: { tenant_id: string; legislature: number; ressort: string; line_id: string | null }
+        Insert: { tenant_id: string; legislature: number; ressort: string; line_id?: string | null }
+        Update: { line_id?: string | null }
+        Relationships: [
+          { foreignKeyName: "parlis_ministry_assignments_tenant_id_fkey"; columns: ["tenant_id"]; isOneToOne: false; referencedRelation: "tenants"; referencedColumns: ["id"] },
+          { foreignKeyName: "parlis_ministry_assignments_line_id_fkey"; columns: ["line_id"]; isOneToOne: false; referencedRelation: "parlis_ministry_lines"; referencedColumns: ["id"] },
+        ]
+      }
+      parlis_ministry_topics: {
+        Row: { tenant_id: string; line_id: string; topic_id: string }
+        Insert: { tenant_id: string; line_id: string; topic_id: string }
+        Update: { tenant_id?: string; line_id?: string; topic_id?: string }
+        Relationships: [
+          { foreignKeyName: "parlis_ministry_topics_tenant_id_fkey"; columns: ["tenant_id"]; isOneToOne: false; referencedRelation: "tenants"; referencedColumns: ["id"] },
+          { foreignKeyName: "parlis_ministry_topics_line_id_fkey"; columns: ["line_id"]; isOneToOne: false; referencedRelation: "parlis_ministry_lines"; referencedColumns: ["id"] },
+          { foreignKeyName: "parlis_ministry_topics_tenant_id_topic_id_fkey"; columns: ["tenant_id", "topic_id"]; isOneToOne: false; referencedRelation: "topics"; referencedColumns: ["tenant_id", "id"] },
+        ]
+      }
+      parlis_ministry_suggestions: {
+        Row: { legislature: number; ressort: string; line_id: string }
+        Insert: { legislature: number; ressort: string; line_id: string }
+        Update: { legislature?: number; ressort?: string; line_id?: string }
+        Relationships: [
+          { foreignKeyName: "parlis_ministry_suggestions_line_id_fkey"; columns: ["line_id"]; isOneToOne: false; referencedRelation: "parlis_ministry_lines"; referencedColumns: ["id"] },
+        ]
+      }
       parlis_proceedings: {
         Row: {
-          datum: string
+          datum: string | null
           deskriptoren: string
           dokument_url: string
           dokumentnummer_intern: string
@@ -58,7 +91,7 @@ export type Database = {
           vorgangstyp: string
         }
         Insert: {
-          datum: string
+          datum: string | null
           deskriptoren: string
           dokument_url: string
           dokumentnummer_intern: string
@@ -79,7 +112,7 @@ export type Database = {
           vorgangstyp: string
         }
         Update: {
-          datum?: string
+          datum?: string | null
           deskriptoren?: string
           dokument_url?: string
           dokumentnummer_intern?: string
@@ -1459,6 +1492,7 @@ export type Database = {
       }
       audit_log_entries: {
         Row: {
+          action: string
           created_at: string
           id: string
           ip_address: string | null
@@ -1467,6 +1501,7 @@ export type Database = {
           user_id: string | null
         }
         Insert: {
+          action?: string
           created_at?: string
           id?: string
           ip_address?: string | null
@@ -1475,6 +1510,7 @@ export type Database = {
           user_id?: string | null
         }
         Update: {
+          action?: string
           created_at?: string
           id?: string
           ip_address?: string | null
@@ -17945,6 +17981,14 @@ export type Database = {
       }
     }
     Views: {
+      parlis_wp17_deputy_activity: {
+        Row: { profile_key: string | null; document_kind: string | null; document_count: number | null }
+        Relationships: []
+      }
+      parlis_initiative_rankings: {
+        Row: { legislature: number | null; rankings: Json | null }
+        Relationships: []
+      }
       parlis_deputy_profiles: {
         Row: {
           legislature: number | null
@@ -18162,6 +18206,7 @@ export type Database = {
       }
       v_rls_coverage: {
         Row: {
+          client_grant: boolean | null
           has_tenant_id: boolean | null
           has_user_id: boolean | null
           policy_count: number | null
@@ -18173,6 +18218,40 @@ export type Database = {
       }
     }
     Functions: {
+      get_parlis_initiative_rankings: {
+        Args: { period: number }
+        Returns: Json
+      }
+      get_parlis_ministry_sources: {
+        Args: Record<PropertyKey, never>
+        Returns: { legislature: number; ressort: string; requests: number; suggested_line: string | null }[]
+      }
+      get_parlis_wp17_deputy_activity: {
+        Args: { deputy_key: string }
+        Returns: { document_kind: string; document_count: number }[]
+      }
+      get_parlis_deputy_motions: {
+        Args: { period: number; deputy_key: string }
+        Returns: {
+          vorgangs_id: string
+          titel: string
+          datum: string | null
+          drucksache: string
+          pdf_url: string | null
+        }[]
+      }
+      parlis_filter_options: {
+        Args: { period: number }
+        Returns: Json
+      }
+      parlis_topic_suggestions: {
+        Args: { period: number; term: string }
+        Returns: string[]
+      }
+      parlis_page: {
+        Args: { period: number; page_offset?: number; search_text?: string; document_kind?: string; faction?: string; topic?: string; date_from?: string; date_to?: string; deputy_key?: string; oldest_first?: boolean; chart_dimension?: string; chart_selection?: string; options_only?: boolean }
+        Returns: Json
+      }
       _briefing_task_event: {
         Args: { _task: string; _text: string }
         Returns: undefined
@@ -18239,6 +18318,7 @@ export type Database = {
         Args: { p_id: string; p_kind: string; p_tenant: string; p_user: string }
         Returns: undefined
       }
+      audit_request_ip: { Args: never; Returns: string | null }
       audit_rls_gaps: {
         Args: never
         Returns: {
@@ -18651,6 +18731,10 @@ export type Database = {
         }
         Returns: string
       }
+      create_decision_task: {
+        Args: { p_decision_id: string }
+        Returns: string
+      }
       create_default_checklist_items:
         | { Args: { planning_id: string }; Returns: undefined }
         | {
@@ -18682,8 +18766,16 @@ export type Database = {
             }
             Returns: string
           }
+      create_letter_archive_follow_up_task: {
+        Args: { _letter_id: string }
+        Returns: string
+      }
       create_meeting_action_task: {
         Args: { p_action_item_id: string }
+        Returns: string
+      }
+      create_note_work: {
+        Args: { p_kind: string; p_note_id: string }
         Returns: string
       }
       create_notification:
@@ -18718,6 +18810,10 @@ export type Database = {
         }
         Returns: string
       }
+      create_preparation_followup: {
+        Args: { _point_id?: string | null; _preparation_id: string }
+        Returns: string
+      }
       create_work_decision: {
         Args: {
           p_data: Json
@@ -18738,6 +18834,7 @@ export type Database = {
         }
         Returns: string
       }
+      decision_nudge_selftest: { Args: { p_tenant: string }; Returns: Json }
       delete_config_item: {
         Args: { _expected_refs: number; _id: string; _table: string }
         Returns: Json
@@ -18966,7 +19063,7 @@ export type Database = {
         }[]
       }
       find_contact_duplicates_trgm: {
-        Args: { _limit?: number; _tenant_id: string; _threshold?: number }
+        Args: { _contact_id?: string; _limit?: number; _tenant_id: string; _threshold?: number }
         Returns: {
           contact1_email: string
           contact1_id: string
@@ -19197,6 +19294,14 @@ export type Database = {
       get_globally_shared_user_ids: {
         Args: { _user_id: string }
         Returns: string[]
+      }
+      get_latest_employee_meetings: {
+        Args: { p_employee_ids: string[] }
+        Returns: {
+          employee_id: string
+          meeting_id: string
+          meeting_date: string
+        }[]
       }
       get_latest_selftest_runs: {
         Args: { p_tenant_id: string }
@@ -20205,6 +20310,10 @@ export type Database = {
           updated_request_id: string
         }[]
       }
+      record_audit_entry: {
+        Args: { _action: string; _payload?: Json; _tenant_id?: string | null }
+        Returns: string
+      }
       refresh_routine_package: {
         Args: { _retry_step_id?: string; _run_id: string }
         Returns: undefined
@@ -20604,6 +20713,7 @@ export type Database = {
           user_id: string
         }[]
       }
+      topic_catalog_conversion_selftest: { Args: { p_tenant: string }; Returns: Json }
       topic_mention_selftest: { Args: { p_tenant: string }; Returns: Json }
       topic_name_from_label: { Args: { p_label: string }; Returns: string }
       topic_usage: {

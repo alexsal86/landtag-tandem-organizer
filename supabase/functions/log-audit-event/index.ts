@@ -3,9 +3,42 @@ import {
   corsHeaders,
   requireAuth,
   unauthorizedResponse,
-  safeErrorResponse,
   withSafeHandler,
 } from "../_shared/security.ts";
+import { resolveTenantMembership } from "../_shared/tenant-policy.ts";
+
+const ACTION_PATTERN = /^[A-Za-z0-9_.:-]{1,80}$/;
+
+function clientIp(req: Request): string {
+  return req.headers.get('x-forwarded-for')?.split(',')[0]?.trim()
+    || req.headers.get('x-real-ip')
+    || req.headers.get('cf-connecting-ip')
+    || 'unknown';
+}
+
+/**
+ * Ordnet den Eintrag einem Büro zu, damit die SELECT-Policy ihn sichtbar macht.
+ * Die Auswahl folgt der gemeinsamen Mandantenregel: ein ausdrücklich genanntes
+ * Büro zählt nur bei aktiver Mitgliedschaft, mehrere Büros ohne Angabe bleiben
+ * mandantenfrei (nur Plattformadministration sichtbar) statt zu raten.
+ */
+async function resolveTenantId(
+  admin: ReturnType<typeof createClient>,
+  userId: string,
+  requested: unknown,
+): Promise<string | null> {
+  const { data } = await admin
+    .from('user_tenant_memberships')
+    .select('tenant_id, role')
+    .eq('user_id', userId)
+    .eq('is_active', true)
+    .limit(20);
+  const membership = resolveTenantMembership(
+    (data ?? []) as { tenant_id: string; role: string | null }[],
+    typeof requested === 'string' ? requested : null,
+  );
+  return membership?.tenant_id ?? null;
+}
 
 Deno.serve(withSafeHandler("log-audit-event", async (req) => {
   const supabaseUrl = Deno.env.get('SUPABASE_URL')!;
@@ -16,15 +49,11 @@ Deno.serve(withSafeHandler("log-audit-event", async (req) => {
   const auth = await requireAuth(req);
   if (!auth) return unauthorizedResponse();
 
-  const ipAddress = req.headers.get('x-forwarded-for')?.split(',')[0]?.trim()
-    || req.headers.get('x-real-ip')
-    || req.headers.get('cf-connecting-ip')
-    || 'unknown';
-
+  const ipAddress = clientIp(req);
   const userAgent = req.headers.get('user-agent') || 'unknown';
 
   const body = await req.json();
-  const { action, details, email } = body;
+  const { action, details, email, tenant_id: requestedTenantId } = body;
 
   if (!action) {
     return new Response(
@@ -32,6 +61,15 @@ Deno.serve(withSafeHandler("log-audit-event", async (req) => {
       { status: 400, headers: { ...corsHeaders, 'Content-Type': 'application/json' } }
     );
   }
+
+  if (typeof action !== 'string' || !ACTION_PATTERN.test(action)) {
+    return new Response(
+      JSON.stringify({ error: 'Invalid action' }),
+      { status: 400, headers: { ...corsHeaders, 'Content-Type': 'application/json' } }
+    );
+  }
+
+  const tenantId = await resolveTenantId(supabase, auth.userId, requestedTenantId);
 
   const payload = {
     action,
@@ -41,11 +79,11 @@ Deno.serve(withSafeHandler("log-audit-event", async (req) => {
     timestamp: new Date().toISOString(),
   };
 
-  console.log(`📝 Logging audit event: ${action} for user ${auth.userId} from IP ${ipAddress}`);
-
   const { error: insertError } = await supabase
     .from('audit_log_entries')
     .insert({
+      action,
+      tenant_id: tenantId,
       user_id: auth.userId,
       ip_address: ipAddress,
       payload,
@@ -58,8 +96,6 @@ Deno.serve(withSafeHandler("log-audit-event", async (req) => {
       { status: 500, headers: { ...corsHeaders, 'Content-Type': 'application/json' } }
     );
   }
-
-  console.log(`✅ Audit event logged successfully: ${action}`);
 
   return new Response(
     JSON.stringify({ success: true }),

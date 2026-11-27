@@ -8,15 +8,15 @@ _Auto-generiert mit `npm run update:feature-catalog` aus dem zentralen Funktions
 
 - Funktionen: **15** in **8** Unterbereichen
 - implementiert: **14**, teilweise: **1**, deaktiviert: **0**, potenziell verwaist: **0**
-- ohne zugeordneten Test: **9**
+- ohne zugeordneten Test: **7**
 - ohne Dokumentationsverweis: **10**
 
 ## Funktionen
 
 | Funktion | Unterbereich | Kategorie | Implementierung | Einbindung | Abdeckung |
 |---|---|---|---|---|---|
-| `notifications.inbox` Benachrichtigungen lesen und als gelesen markieren | Benachrichtigungen | fachlich | implementiert | UI | kein Test |
-| `notifications.preferences` Benachrichtigungseinstellungen und Stummschaltung | Benachrichtigungen | fachlich | implementiert | UI | kein Test |
+| `notifications.inbox` Benachrichtigungen lesen und als gelesen markieren | Benachrichtigungen | fachlich | implementiert | UI | Selbsttest |
+| `notifications.preferences` Benachrichtigungseinstellungen und Stummschaltung | Benachrichtigungen | fachlich | implementiert | UI | teilweise |
 | `mywork.dashboard.today-priorities` Heute zuerst | Meine Arbeit | fachlich | implementiert | rollenabhängig | Selbsttest |
 | `mywork.tabs` Meine Arbeit – Bereichsnavigation und Einstellungen | Meine Arbeit | fachlich | implementiert | UI | kein Test |
 | `mywork.dashboard` Meine Arbeit – Dashboard | Meine Arbeit | fachlich | implementiert | rollenabhängig | Selbsttest |
@@ -55,9 +55,11 @@ _Auto-generiert mit `npm run update:feature-catalog` aus dem zentralen Funktions
 | Szenario | Titel | deklarierte Tabellen | deklarierte Prüfungen | letzter Lauf |
 |---|---|---:|---:|---|
 | `appointment-briefing-lifecycle` | Briefing-Lifecycle (vergeben → Aufgabe → vorlegen → freigeben) | 3 | 5 | — |
-| `decision-lifecycle` | Entscheidungs-Lifecycle (active → open → archived) | 3 | 0 | — |
+| `decision-lifecycle` | Entscheidungs-Lifecycle (active → open → archived) | 8 | 6 | — |
+| `notification-inbox` | Benachrichtigungs-Inbox (Erzeugen, Gelesen-Markieren, Zurücksetzen und Zugriffsgrenze) | 1 | 4 | — |
 | `quick-note-lifecycle` | Notizen-Lifecycle (Anlegen → Priorität → Anheften → Aufgabe → Archiv) | 4 | 0 | — |
 | `task-lifecycle` | Aufgaben-Lifecycle (Zuweisung → Frist → Entscheidung → Jour fixe → erledigt) | 6 | 7 | — |
+| `task-stafette-lifecycle` | Aufgaben-Stafette (Am Zug, Wiedervorlage, Freigabe) | 5 | 8 | — |
 
 ## Selbsttest-Schritte
 
@@ -90,10 +92,18 @@ Diese Schritte führen die Szenarien aus; „letzter Lauf“ stammt aus `src/fea
 | `decision-lifecycle` | `add-participant` | Teilnehmer (sich selbst) hinzufügen | db | — |
 | `decision-lifecycle` | `withdraw-responses` | Ja, Nein und Rückfrage speichern und nachweisbar zurücknehmen | workflow | — |
 | `decision-lifecycle` | `check-options` | Default-Antwortoptionen prüfen | db | — |
+| `decision-lifecycle` | `change-vote-history` | Antwort ändern und den bisherigen Stand im Verlauf behalten | workflow | — |
+| `decision-lifecycle` | `decision-attachments` | Anhang-Metadaten an die Entscheidung hängen, lesen und entfernen | workflow | — |
+| `decision-lifecycle` | `comments-and-reactions` | Kommentar, Antwort und Emoji-Reaktion speichern und entfernen | workflow | — |
 | `decision-lifecycle` | `set-open` | Status auf 'open' | db | — |
 | `decision-lifecycle` | `archive` | Archivieren | db | — |
 | `decision-lifecycle` | `verify` | Verifikation | db | — |
 | `decision-lifecycle` | `nudge-boundary` | Fremde oder unbekannte Entscheidung lässt sich nicht anstupsen | workflow | — |
+| `decision-lifecycle` | `nudge-open-decision` | Offene Entscheidung anmahnen: Eintrag und 24-Stunden-Sperre | workflow | — |
+| `notification-inbox` | `create-notification` | Benachrichtigung erzeugen | db | — |
+| `notification-inbox` | `mark-read` | Benachrichtigung als gelesen markieren | db | — |
+| `notification-inbox` | `reset-unread` | Benachrichtigung wieder auf ungelesen zurücksetzen | db | — |
+| `notification-inbox` | `access-boundary` | Fremde Benachrichtigungen bleiben unlesbar und unverändert | db | — |
 | `quick-note-lifecycle` | `dictation-commands` | Notizen: Diktatbefehle und Rechtszitate erkennen | logic | — |
 | `quick-note-lifecycle` | `create` | Notiz mit Priorität, Farbe und Schlagworten anlegen | db | — |
 | `quick-note-lifecycle` | `pin` | Anheften + Priorität erhöhen | db | — |
@@ -113,6 +123,28 @@ Diese Schritte führen die Szenarien aus; „letzter Lauf“ stammt aus `src/fea
 | `task-lifecycle` | `recurrence-spawn` | Wiederholung legt beim Abschluss genau eine Folgeaufgabe an | workflow | — |
 | `task-lifecycle` | `decision-ball` | Votum holt den Ball zurück; Folgeaufgabe entsteht genau einmal | workflow | — |
 | `task-lifecycle` | `tenant-boundary` | Aufgabe lässt sich keinem fremden Büro zuordnen | workflow | — |
+| `task-stafette-lifecycle` | `nudge` | Anstupsen: Empfänger sieht Aufgabe oben, 24h-Limit | logic | — |
+| `task-stafette-lifecycle` | `checklist-batch` | Checkpunkt im Verlauf, Frist +1 Woche | logic | — |
+| `task-stafette-lifecycle` | `reminder` | Fällige Erinnerung holt wartende Aufgabe in Mein Zug | logic | — |
+| `task-stafette-lifecycle` | `set-step` | Frist bleibt sichtbar; eine ausdrückliche Wiedervorlage verschiebt die Anzeige | logic | — |
+| `task-stafette-lifecycle` | `handover` | Zur Freigabe vorlegen → Wartet auf andere + Verlauf | logic | — |
+| `task-stafette-lifecycle` | `return` | Rückgabe ans Büro → wieder Mein Zug | logic | — |
+| `task-stafette-lifecycle` | `complete` | Abschluss: verschwindet aus allen Zonen + Verlauf | logic | — |
+| `task-stafette-lifecycle` | `recurrence` | Wiederholung: nächste Frist korrekt berechnet | logic | — |
+| `task-stafette-lifecycle` | `template-validation` | Aufgabenpakete: Fristen und Unteraufgaben verbindlich | logic | — |
+| `task-stafette-lifecycle` | `template-automation-rule` | Aufgabenpaket ist eine manuelle Automatisierungsregel | logic | — |
+| `task-stafette-lifecycle` | `template-subtasks` | Vorlage legt Hauptaufgabe mit verknüpften Unteraufgaben an | logic | — |
+| `task-stafette-lifecycle` | `week-review` | Wochenreview findet fehlende Schritte, namenlose Bälle, Stille und Duplikate | logic | — |
+| `task-stafette-lifecycle` | `task-command` | Einzeiler-Befehle und SLA-Stufen | logic | — |
+| `task-stafette-lifecycle` | `batch-create` | Sammelaktion: Aufgabe ohne Frist wird übersprungen | db | — |
+| `task-stafette-lifecycle` | `batch-keeps-step` | Sammelaktion: Freigabe behält den vorhandenen nächsten Schritt | db | — |
+| `task-stafette-lifecycle` | `batch-undo` | Sammelaktion: Frist +1 Woche samt Rücknahme | db | — |
+| `task-stafette-lifecycle` | `nudge-boundary` | Anstupsen erreicht keine Aufgabe außerhalb des eigenen Büros | workflow | — |
+| `task-stafette-lifecycle` | `multi-assign` | Mehrfachzuweisung hält task_assignees und assigned_to synchron | db | — |
+| `task-stafette-lifecycle` | `deputy-handover` | Vertretungsübergabe: nur Leitung, nie an sich selbst, verschiebt den Ball | workflow | — |
+| `task-stafette-lifecycle` | `nudge-ack` | Anstupsen: 24-Stunden-Sperre der Datenbank und Quittung im Verlauf | workflow | — |
+| `task-stafette-lifecycle` | `snooze-rows` | Wiedervorlage: task_snoozes je Person, genau ein Ziel | db | — |
+| `task-stafette-lifecycle` | `archive-restore` | Archivieren entfernt Aufgabe und Wiedervorlage, Wiederherstellen holt sie zurück | workflow | — |
 
 ## Deklarierter Prüfumfang
 
@@ -126,7 +158,19 @@ Diese Schritte führen die Szenarien aus; „letzter Lauf“ stammt aus `src/fea
 
 ### `decision-lifecycle`
 
-Keine Prüfungen deklariert.
+1. Ja, Nein und Rückfrage werden gespeichert und nachweisbar zurückgenommen
+2. Eine geänderte Antwort schreibt den bisherigen und den neuen Stand in task_decision_response_history
+3. Anhang-Metadaten hängen an der Entscheidung, sind für Teilnehmende lesbar und wieder entfernbar (ohne Datei-Upload)
+4. Kommentar und Antwort werden gespeichert; Emoji-Reaktionen folgen der Allowlist, sind je Person eindeutig und wieder entfernbar
+5. Das Anmahnen speichert den Eintrag mit Absender und Notiz und weist die zweite Mahnung innerhalb von 24 Stunden ab
+6. Anstupsen ist auf die eigene offene Entscheidung beschränkt; ohne wartenden Abgeordneten wird abgewiesen
+
+### `notification-inbox`
+
+1. Eine Benachrichtigung wird mit Mandant, Typ und Deep-Link-Daten angelegt und ist ungelesen
+2. Als-gelesen-Markieren setzt is_read und read_at und ist erneut lesbar
+3. Zurücksetzen setzt die Benachrichtigung wieder auf ungelesen und leert read_at
+4. Fremde Benachrichtigungen liefern keine Zeilen, und ein Update mit fremdem Nutzerbezug ändert die eigene Zeile nicht
 
 ### `quick-note-lifecycle`
 
@@ -141,6 +185,17 @@ Keine Prüfungen deklariert.
 5. Abschluss setzt completed_at, Wiederöffnen entfernt es
 6. Wiederholungsregel legt beim Abschluss genau eine Folgeaufgabe an
 7. Votum zu einer verknüpften Entscheidung holt den Ball zurück und erzeugt die Folgeaufgabe genau einmal
+
+### `task-stafette-lifecycle`
+
+1. Zonen Mein Zug / Wartet / Wiedervorlage
+2. Verlaufseinträge bei Übergaben und Erledigungen
+3. Sammelaktionen: Vorschau ohne erfundene Frist, ohne überschriebene Schritte, mit Rücknahme
+4. Wochenreview, Eskalationsgründe, Einzeiler-Befehle und SLA-Stufen als reine Regeln
+5. Mehrfachzuweisung hält task_assignees und assigned_to synchron
+6. Vertretungsübergabe verschiebt nur eigene Bälle und verweigert Selbstübergabe
+7. Anstupsen: 24-Stunden-Sperre in der Datenbank und Quittung im Verlauf
+8. Wiedervorlage kennt genau ein Ziel; Archivieren räumt sie mit ab, Wiederherstellen bringt die Aufgabe zurück
 
 ## Funktionsdetails
 
@@ -329,6 +384,7 @@ Zeigt Vorschauen mit dem nächsten Termin samt Briefingstatus, einer offenen Auf
 - In der Desktop-Navigation per Maus oder Pfeil nach rechts verfügbar. Die Terminvorschau blickt fünf Tage voraus und die Aktenvorschau berücksichtigt eigene oder zugewiesene Fallakten.
 - Chat-Hervorhebungen stammen von Matrix. Die Vorschau zeigt Raumnamen und Zähler. Der zuletzt geöffnete Chat wird für die aktuelle Sitzung gemerkt.
 - Ohne Kontakt am nächsten Termin oder in der jüngsten eigenen oder zugewiesenen Fallakte wird ein eigener Favorit angezeigt.
+- Kein Selbsttest: die Vorschauen sind ein reiner Oberflächenpfad der Desktop-Navigation. Geprüft werden nur die zugrunde liegenden Datensätze in den Szenarien der jeweiligen Bereiche.
 
 **Offene Prüfpunkte**
 
@@ -340,7 +396,7 @@ Zeigt In-App-Benachrichtigungen, ungelesene Zähler und Deep-Links in den auslö
 - **Kategorie:** fachlich
 - **Implementierung:** implementiert
 - **Einbindung:** UI
-- **Testabdeckung:** kein Test
+- **Testabdeckung:** Selbsttest
 - **Letztes Testergebnis:** nicht-ausgefuehrt (kein Laufnachweis importiert; nicht aus der Existenz einer Testdatei abgeleitet)
 - **Rollen:** `abgeordneter`, `bueroleitung`, `mitarbeiter`, `praktikant`
 - **Routen:** `/notifications`
@@ -351,7 +407,7 @@ Zeigt In-App-Benachrichtigungen, ungelesene Zähler und Deep-Links in den auslö
 - **Datenbankfunktionen:** `get_unread_notification_counts`, `get_authored_messages`
 - **Tabellen:** `notifications`, `notification_types`, `notification_navigation_mapping`, `message_confirmations`
 - **Abhängigkeiten:** —
-- **Selbsttests:** —
+- **Selbsttests:** `notification-inbox`
 - **Unit-Tests:** —
 - **Integrationstests:** —
 - **Browser-Tests:** —
@@ -365,7 +421,7 @@ Zeigt In-App-Benachrichtigungen, ungelesene Zähler und Deep-Links in den auslö
 
 **Bekannte Einschränkungen**
 
-- Keine.
+- Erzeugen, Gelesen-Markieren und Zurücksetzen laufen über die Inbox-Tabelle; die Zustellung je Fach-Trigger (Aufgaben, Termine, Nachrichten, Freigaben) sowie Push und Oberfläche prüft das Szenario nicht.
 
 **Offene Prüfpunkte**
 
@@ -377,7 +433,7 @@ Steuert Anzeige- und Versandpräferenzen je Benachrichtigungstyp und verwaltet z
 - **Kategorie:** fachlich
 - **Implementierung:** implementiert
 - **Einbindung:** UI
-- **Testabdeckung:** kein Test
+- **Testabdeckung:** teilweise
 - **Letztes Testergebnis:** nicht-ausgefuehrt (kein Laufnachweis importiert; nicht aus der Existenz einer Testdatei abgeleitet)
 - **Rollen:** `abgeordneter`, `bueroleitung`, `mitarbeiter`, `praktikant`
 - **Routen:** —
@@ -388,7 +444,7 @@ Steuert Anzeige- und Versandpräferenzen je Benachrichtigungstyp und verwaltet z
 - **Datenbankfunktionen:** —
 - **Tabellen:** `user_notification_settings`, `task_snoozes`
 - **Abhängigkeiten:** —
-- **Selbsttests:** —
+- **Selbsttests:** `task-stafette-lifecycle`
 - **Unit-Tests:** —
 - **Integrationstests:** —
 - **Browser-Tests:** —
@@ -401,7 +457,7 @@ Steuert Anzeige- und Versandpräferenzen je Benachrichtigungstyp und verwaltet z
 
 **Bekannte Einschränkungen**
 
-- Keine.
+- Geprüft ist die Wiedervorlage je Person in task_snoozes (genau ein Ziel, Aufräumen). user_notification_settings und die Stummschaltung je Benachrichtigungstyp haben im Selbsttest keinen Schritt; sie werden nur über die Oberfläche gesetzt.
 
 **Offene Prüfpunkte**
 

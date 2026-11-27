@@ -2,16 +2,7 @@ import { fireEvent, render, screen } from "@testing-library/react";
 import { MemoryRouter } from "react-router-dom";
 import { beforeEach, describe, expect, it, vi } from "vitest";
 
-const roleState = vi.hoisted(() => ({ hasAdminAccess: true, loading: false }));
 const securityState = vi.hoisted(() => ({ policiesUnavailable: false }));
-
-vi.mock("@/hooks/useResolvedUserRole", () => ({
-  useResolvedUserRole: () => ({
-    hasAdminAccess: roleState.hasAdminAccess,
-    loading: roleState.loading,
-    role: roleState.hasAdminAccess ? "bueroleitung" : "mitarbeiter",
-  }),
-}));
 
 vi.mock("./useTableSecurity", async (importOriginal) => {
   const actual = await importOriginal<typeof import("./useTableSecurity")>();
@@ -56,43 +47,24 @@ vi.mock("./useTableSecurity", async (importOriginal) => {
 
 import { FeatureCatalogView } from "./FeatureCatalogView";
 
-const renderCatalog = (entry = "/funktionskatalog") =>
+const renderCatalog = (entry = "/administration?adminSection=superadmin&adminSubSection=feature-catalog") =>
   render(
     <MemoryRouter initialEntries={[entry]}>
       <FeatureCatalogView />
     </MemoryRouter>,
   );
 
-describe("Funktionskatalog: Zugriff", () => {
+describe("Funktionskatalog", () => {
   beforeEach(() => {
-    roleState.hasAdminAccess = true;
-    roleState.loading = false;
     securityState.policiesUnavailable = false;
   });
 
-  it("zeigt Administration und Büroleitung den Katalog", () => {
+  it("zeigt den Katalog mit seinen Bereichen", () => {
     renderCatalog();
 
     expect(screen.getByRole("navigation", { name: "Katalogbereiche" })).toBeTruthy();
     expect(screen.getByRole("button", { name: "Übersicht" })).toBeTruthy();
     expect(screen.getByRole("heading", { name: "Katalog" })).toBeTruthy();
-  });
-
-  it("verweigert Mitarbeitenden Inhalt und Bereiche", () => {
-    roleState.hasAdminAccess = false;
-    renderCatalog();
-
-    expect(screen.getByText(/nur für Administration und Büroleitung/)).toBeTruthy();
-    expect(screen.queryByRole("navigation", { name: "Katalogbereiche" })).toBeNull();
-    expect(screen.queryByRole("heading", { level: 1, name: "Funktionskatalog" })).toBeNull();
-  });
-
-  it("zeigt während der Rollenprüfung keinen Inhalt", () => {
-    roleState.loading = true;
-    renderCatalog();
-
-    expect(screen.getByText(/Zugriff wird geprüft/)).toBeTruthy();
-    expect(screen.queryByRole("navigation", { name: "Katalogbereiche" })).toBeNull();
   });
 
   it("zeigt die abgeleitete Funktionslandkarte mit Bereichen und Wirkungsketten", async () => {
@@ -123,7 +95,7 @@ describe("Funktionskatalog: Zugriff", () => {
   });
 
   it("öffnet eine Funktion per Deep-Link und trennt RLS-Befunde von Testergebnissen", async () => {
-    renderCatalog("/funktionskatalog?feature=events.plan");
+    renderCatalog("/administration?adminSection=superadmin&adminSubSection=feature-catalog&feature=events.plan");
 
     expect(await screen.findByRole("heading", { name: "Veranstaltung planen" })).toBeTruthy();
     expect(screen.getByText("Sicherheitsbezug (RLS)")).toBeTruthy();
@@ -136,7 +108,7 @@ describe("Funktionskatalog: Zugriff", () => {
 
   it("degradiert klar, wenn die Policy-Migration noch fehlt, ohne den RLS-Befund zu verbergen", async () => {
     securityState.policiesUnavailable = true;
-    renderCatalog("/funktionskatalog?feature=events.plan");
+    renderCatalog("/administration?adminSection=superadmin&adminSubSection=feature-catalog&feature=events.plan");
 
     expect(await screen.findByText(/Policy-Details sind nicht verfügbar/)).toBeTruthy();
     expect(screen.getByText("20261125160000_feature_security_policy_links.sql")).toBeTruthy();

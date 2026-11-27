@@ -298,6 +298,7 @@ Findet ähnliche Kontakte über Trigramm-Suche und zeigt Dublettenprüfungen in 
 **Bekannte Einschränkungen**
 
 - Der Trigramm-Scan wird mit zwei eigens angelegten Kontakten geprüft; die Trefferqualität für den Bestand bleibt ungemessen.
+- Die Administrationsliste zeigt höchstens 200 Paare; bei gleicher Punktzahl entscheidet die Zeilenreihenfolge. Der Selbsttest fragt sein Paar deshalb kontaktbezogen ab (find_contact_duplicates_trgm mit _contact_id).
 
 **Offene Prüfpunkte**
 

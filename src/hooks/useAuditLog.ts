@@ -1,24 +1,43 @@
 import { supabase } from "@/integrations/supabase/client";
+import { getActiveTenantScope } from "@/integrations/supabase/tenantScope";
 import { debugConsole } from "@/utils/debugConsole";
 
 interface AuditLogParams {
   action: string;
   details?: Record<string, unknown>;
   email?: string;
+  reason?: string;
 }
 
-export const logAuditEvent = async ({ action, details, email }: AuditLogParams): Promise<void> => {
+/**
+ * Ereignisse, die vor einer Anmeldung entstehen. Sie können nicht über
+ * log-audit-event laufen, weil dieser Endpunkt requireAuth erzwingt; dafür gibt
+ * es den begrenzten, rate-limitierten Endpunkt log-auth-failure.
+ */
+const PRE_AUTH_ACTIONS = new Set(["auth.login_failed", "auth.mfa_failed"]);
+
+export const logAuditEvent = async ({ action, details, email, reason }: AuditLogParams): Promise<void> => {
   try {
-    const { error } = await supabase.functions.invoke('log-audit-event', {
-      body: { action, details, email }
-    });
-    
+    const preAuth = PRE_AUTH_ACTIONS.has(action);
+    const { error } = preAuth
+      ? await supabase.functions.invoke("log-auth-failure", {
+          body: { action, email, reason: reason ?? null },
+        })
+      : await supabase.functions.invoke("log-audit-event", {
+          body: {
+            action,
+            details,
+            email,
+            tenant_id: getActiveTenantScope()?.tenantId ?? null,
+          },
+        });
+
     if (error) {
-      debugConsole.error('Failed to log audit event:', error);
+      debugConsole.error("Failed to log audit event:", error);
     }
   } catch (err) {
     // Silently fail - audit logging should not break the app
-    debugConsole.error('Audit logging error:', err);
+    debugConsole.error("Audit logging error:", err);
   }
 };
 
@@ -32,17 +51,23 @@ export const AuditActions = {
   PASSWORD_CHANGED: 'auth.password_changed',
   MFA_VERIFIED: 'auth.mfa_verified',
   MFA_FAILED: 'auth.mfa_failed',
-  
+
+  // Security events (geschrieben über record_audit_entry bzw. Datenbank-Trigger)
+  ACCESS_DENIED: 'security.access_denied',
+  GDPR_DELETE_APPROVED: 'security.gdpr.delete_approved',
+  GDPR_DELETE_COMPLETED: 'security.gdpr.delete_completed',
+  GDPR_EXPORT_COMPLETED: 'security.gdpr.export_completed',
+
   // Letter events
   LETTER_SENT: 'letter.sent',
   LETTER_DELETED: 'letter.deleted',
-  
+
   // Document events
   DOCUMENT_DELETED: 'document.deleted',
-  
+
   // User role events
   ROLE_CHANGED: 'user.role_changed',
-  
+
   // Admin events
   SETTINGS_CHANGED: 'admin.settings_changed',
 } as const;

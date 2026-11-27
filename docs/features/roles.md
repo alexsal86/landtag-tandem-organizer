@@ -6,7 +6,7 @@ Die Angaben sind deklarierte Mindestrollen. Die tatsächlich wirksame Berechtigu
 
 ## Funktionen je Rolle
 
-### `abgeordneter` — 180 Funktionen
+### `abgeordneter` — 182 Funktionen
 
 - `mywork.dashboard` — Meine Arbeit – Dashboard
 - `mywork.tabs` — Meine Arbeit – Bereichsnavigation und Einstellungen
@@ -163,6 +163,8 @@ Die Angaben sind deklarierte Mindestrollen. Die tatsächlich wirksame Berechtigu
 - `casefiles.links` — Fallakte verknüpfen (Dokumente, Kontakte, Themen, Notizen)
 - `casefiles.document-upload` — Datei aus der Akte ablegen
 - `casefiles.notes` — Fallakten-Notizen
+- `parlis.ministry-topics` — Ministerien und zentrale Themen zuordnen
+- `parlis.ministry-history` — Namensgeschichte der Ministerien seit 1952 nachschlagen
 - `election.analysis` — Wahlanalyse durchführen
 - `election.analysis-navigation` — Analyse-Navigation und gespeicherte Szenarien
 - `election.analysis-map` — Analyse-Karten und Wahlkreiszuschnitt
@@ -189,7 +191,7 @@ Die Angaben sind deklarierte Mindestrollen. Die tatsächlich wirksame Berechtigu
 - `knowledge.global-question` — Globale Wissensfrage aus jedem Bereich
 - `knowledge.persons` — Wissenspersonen und Zuständigkeit
 
-### `bueroleitung` — 226 Funktionen
+### `bueroleitung` — 227 Funktionen
 
 - `mywork.dashboard` — Meine Arbeit – Dashboard
 - `mywork.dashboard.today-priorities` — Heute zuerst
@@ -370,7 +372,6 @@ Die Angaben sind deklarierte Mindestrollen. Die tatsächlich wirksame Berechtigu
 - `admin.onboarding-login` — Onboarding-Folien und Login-Anpassung
 - `admin.templates-senders` — Administrative Vorlagen und Absenderdaten
 - `admin.selftest-center` — Selbsttest-Center
-- `admin.feature-catalog` — Funktionskatalog und Inventarisierung
 - `cases.create` — Vorgang erfassen
 - `cases.triage` — Vorgang triagieren (Wer ist am Zug?)
 - `cases.handover` — Vorgang weitergeben
@@ -388,6 +389,8 @@ Die Angaben sind deklarierte Mindestrollen. Die tatsächlich wirksame Berechtigu
 - `casefiles.links` — Fallakte verknüpfen (Dokumente, Kontakte, Themen, Notizen)
 - `casefiles.document-upload` — Datei aus der Akte ablegen
 - `casefiles.notes` — Fallakten-Notizen
+- `parlis.ministry-topics` — Ministerien und zentrale Themen zuordnen
+- `parlis.ministry-history` — Namensgeschichte der Ministerien seit 1952 nachschlagen
 - `election.analysis` — Wahlanalyse durchführen
 - `election.analysis-navigation` — Analyse-Navigation und gespeicherte Szenarien
 - `election.analysis-map` — Analyse-Karten und Wahlkreiszuschnitt
@@ -418,7 +421,7 @@ Die Angaben sind deklarierte Mindestrollen. Die tatsächlich wirksame Berechtigu
 - `knowledge.persons` — Wissenspersonen und Zuständigkeit
 - `knowledge.management` — Wissensverwaltung
 
-### `mitarbeiter` — 186 Funktionen
+### `mitarbeiter` — 187 Funktionen
 
 - `mywork.dashboard` — Meine Arbeit – Dashboard
 - `mywork.dashboard.today-priorities` — Heute zuerst
@@ -582,6 +585,7 @@ Die Angaben sind deklarierte Mindestrollen. Die tatsächlich wirksame Berechtigu
 - `casefiles.links` — Fallakte verknüpfen (Dokumente, Kontakte, Themen, Notizen)
 - `casefiles.document-upload` — Datei aus der Akte ablegen
 - `casefiles.notes` — Fallakten-Notizen
+- `parlis.ministry-history` — Namensgeschichte der Ministerien seit 1952 nachschlagen
 - `election.analysis` — Wahlanalyse durchführen
 - `election.analysis-navigation` — Analyse-Navigation und gespeicherte Szenarien
 - `election.analysis-map` — Analyse-Karten und Wahlkreiszuschnitt
@@ -650,7 +654,7 @@ Die Angaben sind deklarierte Mindestrollen. Die tatsächlich wirksame Berechtigu
 - `cases.create` — Vorgang erfassen
 - `knowledge.ask` — Wissensfrage stellen
 
-### `admin` — 55 Funktionen
+### `admin` — 54 Funktionen
 
 - `tasks.templates` — Aufgabenvorlagen anwenden und pflegen
 - `tasks.annual` — Jahresaufgaben und Jahresabschluss
@@ -702,13 +706,12 @@ Die Angaben sind deklarierte Mindestrollen. Die tatsächlich wirksame Berechtigu
 - `admin.onboarding-login` — Onboarding-Folien und Login-Anpassung
 - `admin.templates-senders` — Administrative Vorlagen und Absenderdaten
 - `admin.selftest-center` — Selbsttest-Center
-- `admin.feature-catalog` — Funktionskatalog und Inventarisierung
 - `election.districts-import` — Wahlkreise und Gebiete importieren
 - `election.representatives` — Abgeordnete und Parteiassoziationen importieren
 - `knowledge.review` — Wissensantwort prüfen und freigeben
 - `knowledge.management` — Wissensverwaltung
 
-### `superadmin` — 26 Funktionen
+### `superadmin` — 27 Funktionen
 
 - `admin.workspace` — Administrationsbereich und Zugriff
 - `admin.roles` — Benutzerrollen verwalten
@@ -722,6 +725,7 @@ Die Angaben sind deklarierte Mindestrollen. Die tatsächlich wirksame Berechtigu
 - `admin.performance` — Performance- und Größen-Dashboard
 - `admin.tenants` — Mandantenverwaltung
 - `admin.users-sessions` — Benutzer, MFA und Sitzungen
+- `admin.feature-catalog` — Funktionskatalog und Inventarisierung
 - `election.research-workbench` — Analyse-Workbench und Kommunalpanel
 - `election.districts-import` — Wahlkreise und Gebiete importieren
 - `election.representatives` — Abgeordnete und Parteiassoziationen importieren
@@ -746,7 +750,7 @@ Die Angaben sind deklarierte Mindestrollen. Die tatsächlich wirksame Berechtigu
 - `events.legacy-rsvp` — Legacy-Einladungslinks
 - `polls.respond` — An Umfrage teilnehmen
 
-### `system` — 35 Funktionen
+### `system` — 36 Funktionen
 
 - `tasks.recurring` — Wiederkehrende Aufgabe
 - `tasks.nudge` — Aufgabe anmahnen und Erinnerungen versenden
@@ -765,6 +769,7 @@ Die Angaben sind deklarierte Mindestrollen. Die tatsächlich wirksame Berechtigu
 - `employees.action-tasks` — Maßnahmen als Aufgaben
 - `employees.preparation` — Gesprächsvorbereitung und Erinnerungen
 - `dossiers.sources` — Dossier-Quellenbeobachtung
+- `topics.ministry-cloud` — Standarddaten für neue Büros
 - `integration.calendar-sync` — Externe Kalender synchronisieren
 - `integration.email` — Transaktions-E-Mail-Versand
 - `integration.push` — Push-Benachrichtigungen
@@ -795,7 +800,7 @@ Die Angaben sind deklarierte Mindestrollen. Die tatsächlich wirksame Berechtigu
 | `admin.configuration` | `admin`, `bueroleitung` |
 | `admin.data-lint` | `admin`, `bueroleitung` |
 | `admin.edge-function-security` | `system`, `superadmin` |
-| `admin.feature-catalog` | `admin`, `bueroleitung` |
+| `admin.feature-catalog` | `superadmin` |
 | `admin.feature-flags` | `admin`, `superadmin` |
 | `admin.field-permissions` | `admin`, `bueroleitung` |
 | `admin.gdpr` | `admin`, `superadmin` |
@@ -998,6 +1003,9 @@ Die Angaben sind deklarierte Mindestrollen. Die tatsächlich wirksame Berechtigu
 | `news.matrix` | `bueroleitung`, `mitarbeiter`, `system` |
 | `notifications.inbox` | `abgeordneter`, `bueroleitung`, `mitarbeiter`, `praktikant` |
 | `notifications.preferences` | `abgeordneter`, `bueroleitung`, `mitarbeiter`, `praktikant` |
+| `parlis.initiative-rankings` | Keine besondere Rolle deklariert |
+| `parlis.ministry-history` | `abgeordneter`, `bueroleitung`, `mitarbeiter` |
+| `parlis.ministry-topics` | `abgeordneter`, `bueroleitung` |
 | `parlis.proceedings` | Keine besondere Rolle deklariert |
 | `platform.auth` | `oeffentlich`, `abgeordneter`, `bueroleitung`, `mitarbeiter`, `praktikant` |
 | `platform.notification-dispatch` | `system` |
@@ -1046,4 +1054,5 @@ Die Angaben sind deklarierte Mindestrollen. Die tatsächlich wirksame Berechtigu
 | `timetracking.vacation` | `abgeordneter`, `bueroleitung`, `mitarbeiter`, `praktikant` |
 | `topics.convert-catalog` | `bueroleitung`, `admin` |
 | `topics.manage` | `abgeordneter`, `bueroleitung`, `mitarbeiter` |
+| `topics.ministry-cloud` | `system` |
 | `widget.matrix-website` | `oeffentlich`, `admin`, `bueroleitung` |

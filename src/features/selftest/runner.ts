@@ -1,4 +1,5 @@
 import { supabase } from "@/integrations/supabase/client";
+import { CLEANABLE_STORAGE_BUCKETS, documentBucket } from "@/features/documents/documentStorage";
 import type { CreatedRecord, ScenarioRunState, StorageObject, TestContext, TestScenario } from "./types";
 import { recoverArtifacts } from "./artifacts";
 import { selftestDatabase } from "./database";
@@ -8,24 +9,29 @@ export const SELFTEST_PREFIX = "[SELFTEST]";
 export const SELFTEST_MARKER = "__SELFTEST__";
 
 // Fremdschlüssel: Antworten vor Teilnehmern, Anfragen vor Terminen, Kinder vor Eltern.
-const CLEANUP_ORDER = [
+// Jede Tabelle, die ein Szenario aufzeichnet, braucht hier einen Eintrag; sonst
+// scheitert der Lauf erst beim Aufräumen (siehe runner.test.ts).
+export const CLEANUP_ORDER = [
   "employee_meeting_action_items", "employee_meeting_requests", "employee_meetings",
+  "task_decision_comment_reactions", "task_decision_comments", "task_decision_attachments",
   "task_decision_responses", "task_decision_participants", "task_decisions", "task_documents",
-  "document_annotations", "letter_attachments", "documents", "letters", "quick_notes",
+  "document_annotations", "document_contacts", "letter_comments", "letter_attachments", "documents", "letter_collaborators", "letters", "quick_notes",
   "funding_participants", "fundings", "contact_briefing_memory", "contact_topics",
   "distribution_list_members", "distribution_lists", "call_logs",
   "gdpr_requests", "map_flags", "map_flag_types",
-  "contact_usage_stats", "contact_activities", "contacts", "tasks",
+  "contact_usage_stats", "contact_activities", "contacts",
+  "annual_task_completions", "annual_tasks", "tasks",
   "case_item_topics", "knowledge_question_topics", "topics",
+  "social_content_variants", "social_content_item_channels", "social_content_items", "topic_backlog", "social_content_channels",
   "case_item_interactions", "case_items",
   "case_file_status_history", "case_file_timeline", "case_file_notes", "case_file_documents", "case_file_topics",
   "case_file_participants", "case_file_letters", "case_file_appointments", "case_file_tasks", "case_file_contacts",
   "case_files", "day_slips", "appointment_requests",
   "meeting_agenda_documents", "meeting_agenda_items", "meeting_participants",
-  "appointment_feedback", "appointment_preparations", "appointment_contacts",
-  "appointment_guests", "appointments", "appointment_polls", "meetings", "event_planning_timeline_assignments",
+  "appointment_change_alerts", "appointment_feedback", "appointment_preparations", "appointment_contacts",
+  "appointment_guests", "appointments", "appointment_polls", "meetings", "meeting_templates", "event_planning_timeline_assignments",
   "event_planning_checklist_items", "event_planning_contacts", "event_planning_speakers",
-  "event_planning_dates", "event_plannings", "daily_briefings",
+  "event_planning_dates", "event_plannings", "daily_briefings", "notifications",
 ] as const;
 
 export async function cleanupCreated(records: CreatedRecord[], storageObjects: StorageObject[] = [], onDiscover?: (records: CreatedRecord[], objects: StorageObject[]) => void, archiveOwner?: string) {
@@ -38,7 +44,12 @@ export async function cleanupCreated(records: CreatedRecord[], storageObjects: S
   const errors: string[] = [...recovered.errors];
   for (const object of storageObjects) {
     try {
-      if (object.bucket !== "documents" || !object.path) throw new Error("Unbekanntes Testdatei-Ziel.");
+      // Akten-Dateien liegen im Bucket case-file-documents, alles andere in
+      // documents. Der Pfad bestimmt den erwarteten Bucket; ein abweichender
+      // Eintrag wird nicht gelöscht, statt in einem fremden Ziel aufzuräumen.
+      if (!object.path || !CLEANABLE_STORAGE_BUCKETS.has(object.bucket) || object.bucket !== documentBucket(object.path)) {
+        throw new Error("Unbekanntes Testdatei-Ziel.");
+      }
       const { error } = await supabase.storage.from(object.bucket).remove([object.path]);
       if (error) throw error;
     } catch (error) {

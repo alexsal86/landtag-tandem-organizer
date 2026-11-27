@@ -21,13 +21,17 @@ export const topicLinkingScenario: TestScenario = {
   id: "topic-linking",
   title: "Themenverknüpfung und Modul-Steuerung",
   description:
-    "Legt Themen über ensure_topic an, prüft Bereinigung, Groß-/Kleinschreibung und Längengrenzen sowie die Anlageregel je Modul, verknüpft einen Vorgang über intake_payload (Trigger) und direkt, prüft Duplikatsperre und Mandantenzuordnung, führt Themen zusammen und belegt Weiterleitung samt mitgezogenen Verknüpfungen. Dazu kommen die Modul-Steuerung mit ihren Wertebereichen und die Zählwerte aus topic_usage.",
+    "Legt Themen über ensure_topic an, prüft Bereinigung, Groß-/Kleinschreibung und Längengrenzen sowie die Anlageregel je Modul, prüft den direkten Schreibpfad für Themenverknüpfungen und die Unabhängigkeit vom intake_payload, prüft Duplikatsperre und Mandantenzuordnung, führt Themen zusammen und belegt Weiterleitung samt mitgezogenen Verknüpfungen. Dazu kommen die Modul-Steuerung mit ihren Wertebereichen und die Zählwerte aus topic_usage.",
   touches: [
     "topics",
     "case_item_topics",
     "case_items",
     "knowledge_question_topics",
     "topic_module_settings",
+    "committees",
+    "regions",
+    "employee_responsibilities",
+    "topic_catalog_links",
   ],
   features: ["topics", "knowledge"],
   checks: [
@@ -40,17 +44,31 @@ export const topicLinkingScenario: TestScenario = {
     "Doppelte Verknüpfungen sind gesperrt (23505); auch ein direkter Insert ohne tenant_id wird dem Büro zugeordnet",
     "merge_topics zieht Verknüpfungen auf das Zielthema, deaktiviert die Quelle als Weiterleitung und ensure_topic folgt der Weiterleitung",
     "topic_usage zählt die Verknüpfungen je Modul und liefert die Summe",
+    "Ein neu angelegtes Büro erhält über den Trigger 69 Themen und 85 Ressortverknüpfungen (5–10 je Linie); ein zweiter Lauf verdoppelt nichts und eigene Beschreibungen bleiben stehen",
+    "Ein neu angelegtes Büro erhält alle zehn Modul-Regeln der Themen-Steuerung mit den Standardwerten; ein zweiter Lauf verdoppelt nichts",
+    "Die Konvertierung erhält Thema und historischen Vorgangslink, schreibt den Katalogeintrag und verschiebt Zuständigkeiten auf das Ziel",
+    "Ein zweiter Konvertierungsaufruf nutzt den vorhandenen Link weiter, statt einen zweiten Eintrag anzulegen",
+    "Andere Primaries bleiben erhalten: eine zweite Person wird mitgezogen, eine unabhängige Primärzuständigkeit bleibt unverändert (nur mit zweitem aktivem Büromitglied prüfbar; sonst weist der Lauf diesen Teil als ungeprüft aus)",
+    "Beim Zusammenführen von Gremien bzw. Regionen zeigen die topic_catalog_links auf das Ziel, die Quelle verschwindet und kollidierende Zuständigkeiten bleiben als genau eine Primary-Zeile bestehen",
   ],
   limitations: [
     "knowledge_question_topics hat derzeit keinen Client-Schreibpfad (nur eine Lesepolicy); geprüft werden Lesbarkeit und die Abweisung eines direkten Inserts, nicht eine UI-Verknüpfung.",
     "Für merge_topics und Änderungen an der Modul-Steuerung braucht das Szenario eine Büroleitung; als Mitglied werden die Abweisungen geprüft statt der Wirkung.",
     "Die Modul-Steuerung kennt keine id-Spalte; geprüft wird auf der vorhandenen Standardzeile, die anschließend wiederhergestellt wird.",
+    "Die Themen-Wolke neuer Büros prüft der Server-Selbsttest an einem Testbüro, das anschließend zurückgerollt wird; die Anzeige im Themenkatalog wird dabei nicht über die Oberfläche geprüft.",
+    "Der Erfolgspfad der Konvertierung läuft über topic_catalog_conversion_selftest und wird vollständig zurückgerollt. Gremien, Regionen, Links und Zuständigkeiten bleiben dadurch nicht zurück; die Oberfläche des Konvertierungsdialogs wird nicht bedient.",
+    "Ohne Leitungsrolle belegt der Schritt nur die Abweisung, weil convert_topic_to_catalog Stammdaten schreiben würde.",
+    "Ohne zweites aktives Büromitglied bleibt second_primary_moved ungeprüft: Der Server-Selbsttest meldet dann den Modus checked_without_second_member mit unverified second_primary_moved, statt den Check stillschweigend als bestanden zu zählen.",
   ],
   writes: [
     { table: "topics", columns: ["name", "label", "icon", "color", "order_index", "is_active", "tenant_id", "created_by", "merged_into", "merged_at", "updated_by"] },
     { table: "case_items", columns: ["subject", "summary", "user_id", "tenant_id", "intake_payload"] },
     { table: "case_item_topics", columns: ["tenant_id", "case_item_id", "topic_id", "created_by"] },
     { table: "topic_module_settings", columns: ["requirement", "max_topics", "creation_policy", "show_filter", "is_enabled", "updated_by"] },
+    { table: "committees", columns: ["tenant_id", "name", "is_active", "order_index"] },
+    { table: "regions", columns: ["tenant_id", "name", "kind", "is_active", "order_index"] },
+    { table: "employee_responsibilities", columns: ["tenant_id", "user_id", "kind", "topic_id", "committee_id", "region_id", "role_focus", "level"] },
+    { table: "topic_catalog_links", columns: ["tenant_id", "topic_id", "kind", "committee_id", "region_id"] },
   ],
   steps: [
     {
@@ -267,6 +285,12 @@ export const topicLinkingScenario: TestScenario = {
       run: async ctx => {
         const source = ctx.data.topicId as string;
         const label = ctx.data.topicLabel as string;
+        const caseItemId = ctx.data.caseItemId as string;
+        // Der vorherige Schritt hat das Löschen der Zuordnung geprüft.
+        const link = await supabase.from("case_item_topics").insert({
+          case_item_id: caseItemId, topic_id: source, tenant_id: ctx.tenantId, created_by: ctx.userId,
+        });
+        if (link.error) return { ok: false, message: `Quellthema verknüpfen: ${describeError(link.error)}` };
         const target = await supabase.rpc("ensure_topic", { p_tenant: ctx.tenantId, p_label: topicLabel(ctx.runId, "Zielthema") });
         if (target.error || !target.data) {
           return { ok: false, message: `Zielthema anlegen: ${describeError(target.error)}` };
@@ -286,9 +310,10 @@ export const topicLinkingScenario: TestScenario = {
         }
 
         const merged = await supabase.rpc("merge_topics", { p_source: source, p_target: targetId });
+        if (merged.error) return { ok: false, message: `Themen zusammenführen: ${describeError(merged.error)}` };
         const sourceRow = await supabase.from("topics").select("is_active,merged_into,merged_at").eq("id", source).single();
         const links = await supabase.from("case_item_topics")
-          .select("case_item_id,topic_id").eq("case_item_id", ctx.data.caseItemId as string);
+          .select("case_item_id,topic_id").eq("case_item_id", caseItemId);
         const redirect = await supabase.rpc("ensure_topic", { p_tenant: ctx.tenantId, p_label: label });
         const again = await supabase.rpc("merge_topics", { p_source: source, p_target: targetId });
         const checks = {
@@ -298,17 +323,23 @@ export const topicLinkingScenario: TestScenario = {
           redirect: !redirect.error && redirect.data === targetId,
           mergeTwiceBlocked: again.error?.code === "22023",
         };
+        const ok = Object.values(checks).every(Boolean);
         return {
-          ok: Object.values(checks).every(Boolean) && !merged.error,
-          message: "Die Quelle leitet auf das Ziel weiter; Verknüpfungen sind mitgezogen.",
-          details: checks,
+          ok,
+          message: ok
+            ? "Die Quelle leitet auf das Ziel weiter; Verknüpfungen sind mitgezogen."
+            : "Zusammenführung oder Weiterleitung entspricht nicht dem erwarteten Ergebnis.",
+          details: {
+            ...checks,
+            errors: { source: sourceRow.error?.code, links: links.error?.code, redirect: redirect.error?.code, repeatedMerge: again.error?.code },
+          },
         };
       },
     },
     {
       id: "usage", label: "Verwendung je Modul zählen",
       run: async ctx => {
-        const topicId = (ctx.data.targetTopicId as string | undefined) ?? (ctx.data.topicId as string);
+        const topicId = (ctx.data.moduleIsAdmin ? ctx.data.targetTopicId : ctx.data.topicId) as string;
         const usage = await supabase.rpc("topic_usage", { p_tenant: ctx.tenantId });
         if (usage.error || !usage.data) {
           return { ok: false, message: `Verwendung lesen: ${describeError(usage.error)}` };
@@ -332,6 +363,78 @@ export const topicLinkingScenario: TestScenario = {
       },
     },
     {
+      id: "ministry-topic-cloud", label: "Neue Büros erhalten die Themen-Wolke automatisch",
+      kind: "db",
+      run: async ctx => {
+        // Gebunden aufrufen: supabase.rpc ist eine Methode und greift auf
+        // this.rest zu; ein losgelöster Aufruf scheitert an `undefined.rest`.
+        const callSelftest = (supabase.rpc as unknown as (
+          fn: string,
+          args?: Record<string, unknown>,
+        ) => Promise<{ data: unknown; error: { code?: string; message?: string } | null }>).bind(supabase);
+        const response = await callSelftest("ministry_topic_cloud_selftest", {
+          p_tenant: ctx.tenantId,
+        });
+        if (response.error) {
+          return {
+            ok: false,
+            message:
+              response.error.message ??
+              response.error.code ??
+              "Server-Selbsttest nicht ausführbar",
+          };
+        }
+        const result =
+          response.data && typeof response.data === "object" && !Array.isArray(response.data)
+            ? (response.data as { ok?: boolean; message?: string; checks?: Record<string, boolean> })
+            : null;
+        return {
+          ok: result?.ok === true,
+          message:
+            result?.ok === true
+              ? "Ein neu angelegtes Büro erhält 69 Themen mit 85 Ressortverknüpfungen; der zweite Lauf verdoppelt nichts und eigene Beschreibungen bleiben stehen."
+              : result?.message ?? "Der Server-Selbsttest liefert kein Ergebnis.",
+          details: result?.checks,
+        };
+      },
+    },
+    {
+      id: "module-rules-seed", label: "Neue Büros erhalten die Modul-Steuerung automatisch",
+      kind: "db",
+      run: async ctx => {
+        // Gebunden aufrufen: supabase.rpc ist eine Methode und greift auf
+        // this.rest zu; ein losgelöster Aufruf scheitert an `undefined.rest`.
+        const callSelftest = (supabase.rpc as unknown as (
+          fn: string,
+          args?: Record<string, unknown>,
+        ) => Promise<{ data: unknown; error: { code?: string; message?: string } | null }>).bind(supabase);
+        const response = await callSelftest("topic_module_settings_selftest", {
+          p_tenant: ctx.tenantId,
+        });
+        if (response.error) {
+          return {
+            ok: false,
+            message:
+              response.error.message ??
+              response.error.code ??
+              "Server-Selbsttest nicht ausführbar",
+          };
+        }
+        const result =
+          response.data && typeof response.data === "object" && !Array.isArray(response.data)
+            ? (response.data as { ok?: boolean; message?: string; checks?: Record<string, boolean> })
+            : null;
+        return {
+          ok: result?.ok === true,
+          message:
+            result?.ok === true
+              ? "Ein neu angelegtes Büro erhält alle zehn Modul-Regeln mit den Standardwerten; ein zweiter Lauf verdoppelt nichts."
+              : result?.message ?? "Der Server-Selbsttest liefert kein Ergebnis.",
+          details: result?.checks,
+        };
+      },
+    },
+    {
       id: "knowledge-topics", label: "Wissensfragen-Verknüpfung lesen und Schreibversuch abweisen",
       run: async ctx => {
         const readable = await supabase.from("knowledge_question_topics").select("topic_id").limit(1);
@@ -348,6 +451,42 @@ export const topicLinkingScenario: TestScenario = {
           ok: Object.values(checks).every(Boolean),
           message: "Die Wissensfragen-Verknüpfung ist lesbar; ein direkter Client-Insert wird abgewiesen.",
           details: { ...checks, code: attempt.error?.code ?? null },
+        };
+      },
+    },
+    {
+      id: "convert-catalog-success", label: "Thema in den Katalog überführen und Gremien/Regionen zusammenführen", kind: "workflow",
+      run: async ctx => {
+        const response = await supabase.rpc("topic_catalog_conversion_selftest", { p_tenant: ctx.tenantId });
+        if (response.error) return { ok: false, message: `Konvertierung: ${describeError(response.error)}` };
+        const report = response.data && typeof response.data === "object" && !Array.isArray(response.data)
+          ? response.data as { ok?: boolean; mode?: string; message?: string; complete?: boolean; unverified?: string[]; checks?: Record<string, unknown> }
+          : null;
+        if (!report) return { ok: false, message: "Der Server-Selbsttest liefert kein Ergebnis." };
+        const details = report.checks ?? {};
+        if (report.mode === "role_denied") {
+          return {
+            ok: report.ok === true,
+            message: "Ohne Leitungsrolle prüft der Schritt nur die Abweisung; der Erfolgspfad der Konvertierung bleibt offen.",
+            details,
+          };
+        }
+        if (report.mode === "checked_without_second_member") {
+          const unverified = report.unverified ?? ["second_primary_moved"];
+          return {
+            ok: report.ok === true,
+            message: report.ok === true
+              ? `Teilweise geprüft: Ohne zweites aktives Büromitglied ist nicht belegt, dass eine zweite Primary-Person mitwandert (ungeprüft: ${unverified.join(", ")}).`
+              : `Konvertierung fehlgeschlagen: ${report.message ?? "unbekannter Grund"}`,
+            details: { ...details, complete: false, unverified },
+          };
+        }
+        return {
+          ok: report.ok === true,
+          message: report.ok === true
+            ? "Konvertierung, Wiederholung und Zusammenführen von Gremien und Regionen halten Thema, Historie und Zuständigkeiten; alle Schreibzugriffe wurden zurückgerollt."
+            : `Konvertierung fehlgeschlagen: ${report.message ?? "unbekannter Grund"}`,
+          details,
         };
       },
     },

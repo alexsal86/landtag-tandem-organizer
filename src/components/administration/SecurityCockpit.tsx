@@ -23,6 +23,11 @@ import { SystemPulse } from "@/features/system-pulse/SystemPulse";
 import { featureCatalogHref, featuresForTable } from "@/features/feature-catalog/securityLinks";
 import { retestScenariosForTable } from "@/features/selftest/tableRetests";
 import { loadScenarioSuite, runAndSaveScenarioSuite } from "@/features/selftest/suite";
+import {
+  AUDIT_FILTER_OPTIONS,
+  auditActionsFor,
+  type AuditFilter,
+} from "./auditSecurityFilter";
 
 type Gap = {
   table_name: string;
@@ -46,6 +51,7 @@ type AuditLog = {
   created_at: string;
   user_id: string | null;
   ip_address: string | null;
+  action: string;
   payload: Record<string, unknown>;
 };
 
@@ -62,6 +68,7 @@ export function SecurityCockpit(): JSX.Element {
   const [filter, setFilter] = useState("");
   const [onlyIssues, setOnlyIssues] = useState(true);
   const [retesting, setRetesting] = useState<string | null>(null);
+  const [auditFilter, setAuditFilter] = useState<AuditFilter>("all");
 
   const gapsQuery = useQuery({
     queryKey: ["rls_gaps", user?.id],
@@ -87,14 +94,20 @@ export function SecurityCockpit(): JSX.Element {
     staleTime: 60_000,
   });
 
+  const auditActions = useMemo(() => auditActionsFor(auditFilter), [auditFilter]);
+
   const auditQuery = useQuery({
-    queryKey: ["audit_log_recent", user?.id, currentTenant?.id],
+    queryKey: ["audit_log_recent", user?.id, currentTenant?.id, auditFilter],
     queryFn: async () => {
-      const { data, error } = await supabase
+      // Der Filter läuft in der Datenbank und damit vor dem Limit. Nur so findet
+      // er auch ältere Sicherheitsereignisse; eine Auswahl im Browser würde bloß
+      // die zuletzt geladenen Zeilen durchsuchen und wäre damit irreführend.
+      let query = supabase
         .from("audit_log_entries")
-        .select("id, created_at, user_id, ip_address, payload")
-        .order("created_at", { ascending: false })
-        .limit(100);
+        .select("id, created_at, user_id, ip_address, action, payload")
+        .order("created_at", { ascending: false });
+      if (auditActions) query = query.in("action", auditActions);
+      const { data, error } = await query.limit(100);
       if (error) throw error;
       return (data ?? []) as AuditLog[];
     },
@@ -192,7 +205,7 @@ export function SecurityCockpit(): JSX.Element {
             RLS-Coverage, Audit-Trail und Snapshots zur Datenbanksicherheit. Jede Tabelle verweist auf die
             zugeordneten Funktionen; dort stehen auch die Policies und der Befund je Funktion. Sicherheitsbefunde
             bleiben von fachlichen Testergebnissen getrennt und ergeben keine pauschale Funktionsbewertung.{" "}
-            <Link to="/funktionskatalog" className="font-medium text-primary underline underline-offset-2">
+            <Link to={featureCatalogHref()} className="font-medium text-primary underline underline-offset-2">
               Funktionskatalog
             </Link>
           </p>
@@ -392,7 +405,25 @@ export function SecurityCockpit(): JSX.Element {
         <TabsContent value="audit">
           <Card>
             <CardHeader>
-              <CardTitle>Audit-Trail (letzte 100)</CardTitle>
+              <CardTitle>Audit-Trail (letzte 100 Ereignisse)</CardTitle>
+              <CardDescription>
+                Sicherheitskritische Ereignisse lassen sich filtern. Der Filter greift in der Datenbank und damit
+                auch auf ältere Einträge, nicht nur auf die zuletzt geladenen Zeilen.
+              </CardDescription>
+              <div className="flex flex-wrap items-center gap-2 pt-2" role="group" aria-label="Audit-Trail filtern">
+                {AUDIT_FILTER_OPTIONS.map((option) => (
+                  <Button
+                    key={option.id}
+                    size="sm"
+                    variant={auditFilter === option.id ? "default" : "outline"}
+                    aria-pressed={auditFilter === option.id}
+                    title={option.title}
+                    onClick={() => setAuditFilter(option.id)}
+                  >
+                    {option.label}
+                  </Button>
+                ))}
+              </div>
             </CardHeader>
             <CardContent>
               {auditQuery.isPending ? <p role="status">Wird geladen …</p> : auditQuery.isError ? (
@@ -402,6 +433,7 @@ export function SecurityCockpit(): JSX.Element {
                   <TableHeader>
                     <TableRow>
                       <TableHead>Zeit</TableHead>
+                      <TableHead>Ereignis</TableHead>
                       <TableHead>Nutzer</TableHead>
                       <TableHead>IP</TableHead>
                       <TableHead>Payload</TableHead>
@@ -413,6 +445,7 @@ export function SecurityCockpit(): JSX.Element {
                         <TableCell className="text-caption">
                           {format(parseISO(a.created_at), "dd.MM HH:mm:ss", { locale: de })}
                         </TableCell>
+                        <TableCell className="font-mono text-caption">{a.action}</TableCell>
                         <TableCell className="font-mono text-caption">{a.user_id?.slice(0, 8) ?? "—"}</TableCell>
                         <TableCell className="font-mono text-caption">{a.ip_address ?? "—"}</TableCell>
                         <TableCell className="text-caption max-w-md truncate">
@@ -422,8 +455,10 @@ export function SecurityCockpit(): JSX.Element {
                     ))}
                     {(auditQuery.data ?? []).length === 0 && (
                       <TableRow>
-                        <TableCell colSpan={4} className="text-center text-muted-foreground py-6">
-                          Keine Einträge.
+                        <TableCell colSpan={5} className="text-center text-muted-foreground py-6">
+                          {auditFilter === "all"
+                            ? "Keine Einträge."
+                            : `Keine Ereignisse für „${AUDIT_FILTER_OPTIONS.find((option) => option.id === auditFilter)?.title ?? auditFilter}“ — auch nicht in älteren Einträgen.`}
                         </TableCell>
                       </TableRow>
                     )}

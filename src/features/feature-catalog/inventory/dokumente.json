@@ -62,7 +62,7 @@
       "category": "fachlich",
       "implementationStatus": "implementiert",
       "integrationStatus": "ui",
-      "coverage": "keine",
+      "coverage": "teilweise",
       "testResult": "nicht-ausgefuehrt",
       "evidence": [
         "src/features/documents/components/DocumentDetailsDialog.tsx"
@@ -84,6 +84,13 @@
       ],
       "dependsOn": [
         "documents.list"
+      ],
+      "scenarios": [
+        "case-file-lifecycle",
+        "document-annotation"
+      ],
+      "limitations": [
+        "Die Detailansicht selbst (Zählwerte, Vorschau, Sprungziele) hat keinen Schritt. Geprüft sind die Verknüpfungen dahinter: Akten-Dokument, Dokument-Kontakt und die Aufgabenanlage aus einer Anmerkung."
       ]
     },
     {
@@ -94,7 +101,7 @@
       "category": "fachlich",
       "implementationStatus": "implementiert",
       "integrationStatus": "ui",
-      "coverage": "keine",
+      "coverage": "teilweise",
       "testResult": "nicht-ausgefuehrt",
       "evidence": [
         "src/components/documents/DocumentDialogs.tsx",
@@ -123,6 +130,12 @@
         "bueroleitung",
         "mitarbeiter",
         "praktikant"
+      ],
+      "scenarios": [
+        "case-file-lifecycle"
+      ],
+      "limitations": [
+        "Hochladen samt Ablage, Suche und Aktenverknüpfung ist geprüft; eine zweite Dateiversion und die Versionskennzeichnung haben keinen Schritt."
       ]
     },
     {
@@ -133,7 +146,7 @@
       "category": "fachlich",
       "implementationStatus": "implementiert",
       "integrationStatus": "ui",
-      "coverage": "keine",
+      "coverage": "selftest",
       "testResult": "nicht-ausgefuehrt",
       "evidence": [
         "src/components/documents/DocumentContactManager.tsx",
@@ -156,7 +169,10 @@
         "bueroleitung",
         "mitarbeiter"
       ],
-      "dependsOn": ["contacts.create"]
+      "dependsOn": ["contacts.create"],
+      "scenarios": [
+        "case-file-lifecycle"
+      ]
     },
     {
       "id": "documents.email",
@@ -321,7 +337,7 @@
       "category": "fachlich",
       "implementationStatus": "implementiert",
       "integrationStatus": "ui",
-      "coverage": "keine",
+      "coverage": "teilweise",
       "testResult": "nicht-ausgefuehrt",
       "evidence": [
         "src/features/annotations/ocrModel.ts",
@@ -344,9 +360,13 @@
         "mitarbeiter"
       ],
       "limitations": [
+        "Der Schritt prüft nur die Umrechnung der OCR-Bruchteile (Pixel → Seitenanteile), das Verwerfen leerer Wörter und die Textanker. Die lokale Tesseract-Erkennung mit Worker und Sprachpaketen läuft nicht; Trefferqualität und Textauswahl bleiben offen.",
         "OCR-Qualität hängt vom Scan ab; ein automatisierter Qualitätstest existiert nicht."
       ],
-      "dependsOn": ["documents.upload-version"]
+      "dependsOn": ["documents.upload-version"],
+      "scenarios": [
+        "document-annotation"
+      ]
     },
     {
       "id": "annotations.export",
@@ -356,7 +376,7 @@
       "category": "fachlich",
       "implementationStatus": "implementiert",
       "integrationStatus": "ui",
-      "coverage": "keine",
+      "coverage": "teilweise",
       "testResult": "nicht-ausgefuehrt",
       "evidence": [
         "src/features/annotations/exportModel.ts",
@@ -378,6 +398,12 @@
       ],
       "dependsOn": [
         "annotations.create"
+      ],
+      "scenarios": [
+        "document-annotation"
+      ],
+      "limitations": [
+        "Die Exportkoordinaten sind als Regel geprüft; das erzeugte PDF und seine Darstellung nicht. Die Originaldatei bleibt unverändert, weil der Export eine eigene Kopie erzeugt."
       ]
     },
     {
@@ -388,7 +414,7 @@
       "category": "fachlich",
       "implementationStatus": "implementiert",
       "integrationStatus": "ui",
-      "coverage": "keine",
+      "coverage": "teilweise",
       "testResult": "nicht-ausgefuehrt",
       "evidence": [
         "src/features/annotations/relocateText.ts",
@@ -407,7 +433,13 @@
         "bueroleitung",
         "mitarbeiter"
       ],
-      "dependsOn": ["annotations.create", "documents.upload-version"]
+      "dependsOn": ["annotations.create", "documents.upload-version"],
+      "scenarios": [
+        "document-annotation"
+      ],
+      "limitations": [
+        "Der eindeutige Textanker ist als Regel geprüft; das Anbieten und Bestätigen einer Verschiebung nach neuer Dateiversion hat keinen Datenbankschritt."
+      ]
     },
     {
       "id": "letters.create",
@@ -526,7 +558,7 @@
       "id": "letters.archive",
       "subarea": "Briefe",
       "name": "Brief archivieren und Folgeaufgabe anlegen",
-      "description": "Erzeugt beim Versand ein PDF-Archivdokument, verknüpft es und legt optional eine Folgeaufgabe an.",
+      "description": "Erzeugt beim Versand ein PDF-Archivdokument, verknüpft es und sichert die Folgeaufgabe: Die Archivfunktion legt keine eigene Aufgabe mehr an, sondern ermittelt die des Briefes über das RPC create_letter_archive_follow_up_task, das sie nur anlegt, wenn keine existiert.",
       "category": "automatisiert",
       "implementationStatus": "implementiert",
       "integrationStatus": "system",
@@ -544,7 +576,8 @@
         "archive-letter"
       ],
       "rpcs": [
-        "create_letter_followup_task"
+        "create_letter_followup_task",
+        "create_letter_archive_follow_up_task"
       ],
       "tables": [
         "letters",
@@ -564,6 +597,9 @@
       "dependsOn": [
         "letters.workflow",
         "tasks.create"
+      ],
+      "limitations": [
+        "Die Folgeaufgabe hat genau einen Erzeuger: den Trigger trigger_letter_followup_task beim Wechsel auf sent. Die Archivfunktion erzeugt keine zweite Aufgabe, sondern liefert die bestehende ID über create_letter_archive_follow_up_task; ein Fehler dabei wird als followUpTaskError gemeldet, ohne den abgeschlossenen Versand abzubrechen. Der Client zieht die Aufgabe nur nach, wenn die Funktion keine ID liefert. Trigger und RPC verknüpfen die Aufgabe über source_type letter_followup und source_id des Briefes; der zusammengebaute Titel dient nur noch dem Altbestand und wird dabei in die Verknüpfung überführt."
       ]
     },
     {
@@ -644,7 +680,7 @@
       "category": "fachlich",
       "implementationStatus": "implementiert",
       "integrationStatus": "ui",
-      "coverage": "keine",
+      "coverage": "selftest",
       "testResult": "nicht-ausgefuehrt",
       "evidence": [
         "src/components/letters/LetterCommentDialog.tsx"
@@ -666,7 +702,10 @@
         "bueroleitung",
         "mitarbeiter"
       ],
-      "dependsOn": ["letters.create"]
+      "dependsOn": ["letters.create"],
+      "scenarios": [
+        "letter-lifecycle"
+      ]
     },
     {
       "id": "letters.attachments",
@@ -676,7 +715,7 @@
       "category": "fachlich",
       "implementationStatus": "implementiert",
       "integrationStatus": "ui",
-      "coverage": "keine",
+      "coverage": "selftest",
       "testResult": "nicht-ausgefuehrt",
       "evidence": [
         "src/components/letters/LetterAttachmentManager.tsx"
@@ -693,7 +732,10 @@
         "bueroleitung",
         "mitarbeiter"
       ],
-      "dependsOn": ["letters.create"]
+      "dependsOn": ["letters.create"],
+      "scenarios": [
+        "letter-lifecycle"
+      ]
     }
   ]
 }

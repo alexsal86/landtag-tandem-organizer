@@ -154,13 +154,21 @@ Deno.serve(withSafeHandler("workflow-dispatcher", async (req) => {
                   : (body.payload?.owner_user_id as string | undefined);
                 if (userId) {
                   await requireOfficeUser(userId);
-                  await supabase.from("notifications").insert({
-                    user_id: userId,
-                    tenant_id: body.tenant_id,
-                    title: renderTemplate(cfg.title ?? "Workflow", body.payload ?? {}),
-                    body: renderTemplate(cfg.body ?? "", body.payload ?? {}),
-                    type: "workflow",
+                  // notifications verlangt notification_type_id; body und type gibt es
+                  // nicht. create_notification prüft Mitgliedschaft und Typ, löst den
+                  // Mandanten auf und legt die Meldung an (Typ 'workflow' seit
+                  // 20261126190000). Der bisherige Direkt-INSERT endete mit PGRST204,
+                  // jeder Workflow-Hinweis ging dadurch verloren.
+                  const { error: notificationError } = await supabase.rpc("create_notification", {
+                    user_id_param: userId,
+                    type_name: "workflow",
+                    title_param: renderTemplate(cfg.title ?? "Workflow", body.payload ?? {}),
+                    message_param: renderTemplate(cfg.body ?? "", body.payload ?? {}),
+                    data_param: { workflow_id: def.id, workflow_run_id: run.id, action_index: i },
+                    priority_param: "medium",
+                    tenant_id_param: body.tenant_id,
                   });
+                  if (notificationError) throw notificationError;
                 }
                 logRow.status = "success";
                 break;
@@ -190,15 +198,28 @@ Deno.serve(withSafeHandler("workflow-dispatcher", async (req) => {
               }
               case "create_task": {
                 const cfg = a.config as { title?: string; assigned_to?: string; description?: string };
-                if (cfg.assigned_to) {
-                  for (const userId of cfg.assigned_to.split(",").map(id => id.trim()).filter(Boolean)) await requireOfficeUser(userId);
+                const assignees = (cfg.assigned_to ?? "").split(",").map(id => id.trim()).filter(Boolean);
+                for (const userId of assignees) await requireOfficeUser(userId);
+                // tasks.user_id ist Pflicht. Reihenfolge wie in run-automation-rule:
+                // handelnde Person, Eigentümer aus dem Auslöser, sonst erster Zugewiesener.
+                const ownerId = actor?.userId
+                  ?? (body.payload?.owner_user_id as string | undefined)
+                  ?? assignees[0];
+                if (!ownerId) {
+                  logRow.status = "error";
+                  logRow.result = { reason: "create_task needs an owner: actor, payload.owner_user_id or assigned_to" };
+                  break;
                 }
                 await supabase.from("tasks").insert({
                   tenant_id: body.tenant_id,
+                  user_id: ownerId,
                   title: renderTemplate(cfg.title ?? "Workflow-Task", body.payload ?? {}),
                   description: renderTemplate(cfg.description ?? "", body.payload ?? {}),
                   assigned_to: cfg.assigned_to ?? null,
-                  status: "open",
+                  // "open" ist kein registrierter Aufgabenstatus; enforce_task_status
+                  // lehnt ihn mit 22023 ab (Kernstatus: todo, in_progress, completed,
+                  // cancelled, review). "todo" ist der Spalten-Default.
+                  status: "todo",
                 });
                 logRow.status = "success";
                 break;

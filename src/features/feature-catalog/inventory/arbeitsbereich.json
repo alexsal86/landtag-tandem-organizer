@@ -226,7 +226,8 @@
       "limitations": [
         "In der Desktop-Navigation per Maus oder Pfeil nach rechts verfügbar. Die Terminvorschau blickt fünf Tage voraus und die Aktenvorschau berücksichtigt eigene oder zugewiesene Fallakten.",
         "Chat-Hervorhebungen stammen von Matrix. Die Vorschau zeigt Raumnamen und Zähler. Der zuletzt geöffnete Chat wird für die aktuelle Sitzung gemerkt.",
-        "Ohne Kontakt am nächsten Termin oder in der jüngsten eigenen oder zugewiesenen Fallakte wird ein eigener Favorit angezeigt."
+        "Ohne Kontakt am nächsten Termin oder in der jüngsten eigenen oder zugewiesenen Fallakte wird ein eigener Favorit angezeigt.",
+        "Kein Selbsttest: die Vorschauen sind ein reiner Oberflächenpfad der Desktop-Navigation. Geprüft werden nur die zugrunde liegenden Datensätze in den Szenarien der jeweiligen Bereiche."
       ]
     },
     {
@@ -237,7 +238,7 @@
       "category": "fachlich",
       "implementationStatus": "implementiert",
       "integrationStatus": "ui",
-      "coverage": "keine",
+      "coverage": "selftest",
       "testResult": "nicht-ausgefuehrt",
       "evidence": [
         "src/pages/NotificationsPage.tsx",
@@ -280,6 +281,12 @@
       ],
       "reviewPoints": [
         "Benachrichtigungen entstehen über viele Datenbank-Trigger; die Zuordnung ist bereichsübergreifend und nicht vollständig je Trigger geprüft."
+      ],
+      "limitations": [
+        "Erzeugen, Gelesen-Markieren und Zurücksetzen laufen über die Inbox-Tabelle; die Zustellung je Fach-Trigger (Aufgaben, Termine, Nachrichten, Freigaben) sowie Push und Oberfläche prüft das Szenario nicht."
+      ],
+      "scenarios": [
+        "notification-inbox"
       ]
     },
     {
@@ -290,7 +297,7 @@
       "category": "fachlich",
       "implementationStatus": "implementiert",
       "integrationStatus": "ui",
-      "coverage": "keine",
+      "coverage": "teilweise",
       "testResult": "nicht-ausgefuehrt",
       "evidence": [
         "src/components/notifications/NotificationSettings.tsx",
@@ -313,6 +320,12 @@
         "bueroleitung",
         "mitarbeiter",
         "praktikant"
+      ],
+      "scenarios": [
+        "task-stafette-lifecycle"
+      ],
+      "limitations": [
+        "Geprüft ist die Wiedervorlage je Person in task_snoozes (genau ein Ziel, Aufräumen). user_notification_settings und die Stummschaltung je Benachrichtigungstyp haben im Selbsttest keinen Schritt; sie werden nur über die Oberfläche gesetzt."
       ]
     },
     {

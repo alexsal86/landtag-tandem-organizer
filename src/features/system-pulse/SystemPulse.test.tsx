@@ -105,6 +105,7 @@ describe("SystemPulse: selftest_runs", () => {
         steps: [{
           id: "agenda-combine", label: "Agenda: Hauptpunkt verschieben", status: "failed", message: "Agenda konnte nicht verschoben werden.", durationMs: 35,
           details: { step: { id: "agenda-combine", label: "Agenda: Hauptpunkt verschieben" }, error: { code: "42501", details: "policy meeting_agenda_update" } },
+          detailsTruncated: true, detailsOmitted: 180,
         }],
       },
     ];
@@ -150,7 +151,7 @@ describe("SystemPulse: selftest_runs", () => {
     expect(within(slowest).getByText("120 ms")).toBeInTheDocument();
     expect(screen.getAllByRole("button", { name: /erneut testen/ }).length).toBeGreaterThan(0);
     const catalogLink = screen.getAllByRole("link", { name: /im Funktionskatalog öffnen/ })[0];
-    expect(catalogLink.getAttribute("href")).toContain("/funktionskatalog?feature=");
+    expect(catalogLink.getAttribute("href")).toContain("/administration?adminSection=superadmin&adminSubSection=feature-catalog&feature=");
     expect(screen.getAllByText(/Betroffene Funktionen/).length).toBeGreaterThan(0);
 
     fireEvent.click(tile(/Jour fixe/));
@@ -167,10 +168,47 @@ describe("SystemPulse: selftest_runs", () => {
     const diagnostic = within(screen.getAllByTestId("pulse-step")[0]).getByTestId("pulse-step-diagnostic");
     expect(diagnostic).toHaveTextContent("Code 42501");
     expect(diagnostic).toHaveTextContent("policy meeting_agenda_update");
+    expect(within(screen.getAllByTestId("pulse-step")[0]).getByTestId("pulse-step-truncation"))
+      .toHaveTextContent("Details gekürzt: 180 Einträge ausgelassen");
 
     const failedStep = screen.getByRole("button", { name: /Agenda: Hauptpunkt.*fehlgeschlagen/ });
     fireEvent.click(failedStep);
-    expect(screen.getByRole("alert")).toHaveTextContent("Agenda konnte nicht verschoben werden.");
+    const details = screen.getByTestId("pulse-step-details");
+    expect(details).toHaveTextContent("Agenda konnte nicht verschoben werden.");
+    expect(details).toHaveTextContent("Code 42501");
+    expect(details).toHaveTextContent("Details gekürzt: 180 Einträge ausgelassen");
+    // Der volle Fehler steht als Details-JSON darunter, nicht nur die Meldung.
+    expect(details.querySelector("pre")).toHaveTextContent("policy meeting_agenda_update");
+  });
+
+  it("klappt auch ergänzte Schritte auf und zeigt dort den vollen Fehler samt Details", async () => {
+    rpc.mockImplementation((name: string) => Promise.resolve(
+      name === "get_selftest_run_history"
+        ? { data: [], error: null }
+        : {
+          data: [{
+            scenario_id: "jour-fixe-platform-integration", scenario_title: "Jour fixe (Plattform)", status: "failed",
+            created_at: ago(3_600_000), duration_ms: 900, failed_steps: 1, total_steps: 2, keep_data: false, cleanup: { status: "ok" },
+            steps: [{
+              id: "dynamic-failed", label: "Ergänzter Schritt", status: "failed", message: "Ergänzter Fehler",
+              details: { step: { id: "dynamic-failed" }, error: { code: "P0001", details: "raised in trigger" } },
+              detailsTruncated: true, detailsOmitted: 12,
+            }],
+          }],
+          error: null,
+        },
+    ));
+    renderPulse();
+
+    await waitFor(() => expect(within(tile(/Jour fixe/)).getByText("Test fehlgeschlagen")).toBeInTheDocument());
+    fireEvent.click(tile(/Jour fixe/));
+    fireEvent.click(await screen.findByRole("button", { name: /Ergänzter Schritt: fehlgeschlagen/ }));
+
+    const details = screen.getByTestId("pulse-step-details");
+    expect(details).toHaveTextContent("Ergänzter Fehler");
+    expect(details).toHaveTextContent("Code P0001");
+    expect(details).toHaveTextContent("Details gekürzt: 12 Einträge ausgelassen");
+    expect(details.querySelector("pre")).toHaveTextContent("raised in trigger");
   });
 
   it("verwirft lokale Live-Statuswerte nach dem Lauf statt einen Erfolg zu erfinden", async () => {
@@ -235,6 +273,27 @@ describe("SystemPulse: selftest_runs", () => {
     const [scenarios] = runSuite.mock.calls[0] as [Array<{ id: string }>];
     expect(scenarios.map((scenario) => scenario.id)).toEqual(["contact-lifecycle"]);
     await waitFor(() => expect(saveRun).toHaveBeenCalled());
+  });
+
+  it("zeigt den gespeicherten Fehlertext in der Fehlertabelle vollständig statt gekürzt", async () => {
+    const message = `Fehler beim Speichern: ${"Zeile ".repeat(30)}Ende der Meldung.`;
+    rpc.mockImplementation((name: string) => Promise.resolve(
+      name === "get_selftest_run_history"
+        ? { data: [], error: null }
+        : {
+          data: [{
+            scenario_id: "contact-lifecycle", scenario_title: "Kontakt-Lifecycle", status: "failed", created_at: ago(3_600_000),
+            duration_ms: 500, failed_steps: 1, total_steps: 1, keep_data: false, cleanup: { status: "ok" },
+            steps: [{ id: "create", label: "Anlegen", status: "failed", message }],
+          }],
+          error: null,
+        },
+    ));
+    renderPulse();
+
+    const failedTests = screen.getByRole("region", { name: "Fehlgeschlagene Tests" });
+    expect(await within(failedTests).findByText(message)).toBeInTheDocument();
+    expect(within(failedTests).queryByText(/…/)).not.toBeInTheDocument();
   });
 
   it("verknüpft RLS-Befunde mit Bereich und Workflow", async () => {

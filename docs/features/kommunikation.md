@@ -8,7 +8,7 @@ _Auto-generiert mit `npm run update:feature-catalog` aus dem zentralen Funktions
 
 - Funktionen: **14** in **5** Unterbereichen
 - implementiert: **14**, teilweise: **0**, deaktiviert: **0**, potenziell verwaist: **0**
-- ohne zugeordneten Test: **14**
+- ohne zugeordneten Test: **11**
 - ohne Dokumentationsverweis: **10**
 
 ## Funktionen
@@ -26,9 +26,9 @@ _Auto-generiert mit `npm run update:feature-catalog` aus dem zentralen Funktions
 | `press.releases` Pressemitteilungen erstellen und freigeben | Presse | fachlich | implementiert | UI | kein Test |
 | `redaktion.calendar-reminders` Redaktionskalender und Erinnerungen | Social Planner | automatisiert | implementiert | systemseitig | kein Test |
 | `redaktion.assets-campaigns` Social-Assets und Kampagnen | Social Planner | fachlich | implementiert | UI | kein Test |
-| `redaktion.approval` Social-Media-Freigabe | Social Planner | fachlich | implementiert | rollenabhängig | kein Test |
-| `redaktion.planner` Social-Media-Planung | Social Planner | fachlich | implementiert | UI | kein Test |
-| `redaktion.themenspeicher` Themenspeicher und Hashtags | Social Planner | fachlich | implementiert | UI | kein Test |
+| `redaktion.approval` Social-Media-Freigabe | Social Planner | fachlich | implementiert | rollenabhängig | teilweise |
+| `redaktion.planner` Social-Media-Planung | Social Planner | fachlich | implementiert | UI | Selbsttest |
+| `redaktion.themenspeicher` Themenspeicher und Hashtags | Social Planner | fachlich | implementiert | UI | teilweise |
 
 ## Unterbereiche
 
@@ -48,15 +48,38 @@ _Auto-generiert mit `npm run update:feature-catalog` aus dem zentralen Funktions
 
 ## Selbsttest-Szenarien
 
-Keine Szenarien zugeordnet. Das bedeutet nicht, dass der Bereich ungetestet ist – es fehlt eine Selbsttest-Abdeckung.
+| Szenario | Titel | deklarierte Tabellen | deklarierte Prüfungen | letzter Lauf |
+|---|---|---:|---:|---|
+| `social-content-lifecycle` | Social-Content-Lifecycle (Planung, Kanalvariante, Freigabe und Ereignisprotokoll) | 10 | 9 | — |
 
 ## Selbsttest-Schritte
 
-Keine Schritte deklariert.
+Diese Schritte führen die Szenarien aus; „letzter Lauf“ stammt aus `src/features/selftest/last-runs.json`, nicht aus dieser Doku.
+
+| Szenario | Schritt | Bezeichnung | Art | letzter Lauf |
+|---|---|---|---|---|
+| `social-content-lifecycle` | `plan-topic` | Thema im Themenspeicher anlegen | db | — |
+| `social-content-lifecycle` | `plan-item` | Beitrag mit Briefing anlegen | db | — |
+| `social-content-lifecycle` | `channel-variant` | Kanal zuordnen und Kanalvariante speichern | db | — |
+| `social-content-lifecycle` | `submit` | Beitrag zur Freigabe einreichen | db | — |
+| `social-content-lifecycle` | `approve` | Beitrag freigeben und Freigabe aus der Sitzung prüfen | db | — |
+| `social-content-lifecycle` | `request-changes` | Änderungswunsch mit Folgeaufgabe, Meldung und Protokoll | db | — |
+| `social-content-lifecycle` | `resubmit-approve` | Nach dem Änderungswunsch erneut einreichen und freigeben | db | — |
+| `social-content-lifecycle` | `variant-reopens-approval` | Geänderter Kanaltext öffnet die Freigabe automatisch wieder | db | — |
 
 ## Deklarierter Prüfumfang
 
-Keine Prüfungen deklariert.
+### `social-content-lifecycle`
+
+1. Thema im Themenspeicher und Beitrag mit Briefing-Feldern werden angelegt und unverändert zurückgelesen
+2. Kanalzuordnung und Kanalvariante werden gespeichert, ohne den Freigabestand zu verändern
+3. Einreichen setzt den Beitrag auf Freigabe und protokolliert genau ein Ereignis submitted
+4. Freigeben setzt Freigeber und Zeitpunkt aus der Sitzung, auch wenn der Client beide Felder leert
+5. Das Protokoll enthält danach genau submitted und approved mit den passenden Zuständen und dem handelnden Profil
+6. Ein Änderungswunsch setzt den Beitrag auf Entwurf/abgelehnt, speichert den Kommentar und protokolliert rejected aus approved
+7. Der Änderungswunsch löst die hinterlegte Profil-ID zur Login-ID auf: Folgeaufgabe, task_assignees, Meldung und Rückgabe adressieren die verantwortliche Person als Konto, nicht ihre Profil-ID
+8. Nach erneutem Einreichen und Freigeben öffnet eine geänderte Kanaltext-Zeile die Freigabe automatisch wieder, leert Freigeber und Zeitpunkt und protokolliert reopened
+9. Das Wiederöffnen verwendet die offene Folgeaufgabe weiter (keine zweite Aufgabe) und stellt sie auf „Freigabe erneut einholen“ mit Frist in der Zukunft
 
 ## Funktionsdetails
 
@@ -66,7 +89,7 @@ Plant Beiträge im Kalender, ordnet Kanäle und Varianten zu und führt den Reda
 - **Kategorie:** fachlich
 - **Implementierung:** implementiert
 - **Einbindung:** UI
-- **Testabdeckung:** kein Test
+- **Testabdeckung:** Selbsttest
 - **Letztes Testergebnis:** nicht-ausgefuehrt (kein Laufnachweis importiert; nicht aus der Existenz einer Testdatei abgeleitet)
 - **Rollen:** `abgeordneter`, `bueroleitung`, `mitarbeiter`
 - **Routen:** `/mywork?tab=redaktion`, `/redaktion`
@@ -77,7 +100,7 @@ Plant Beiträge im Kalender, ordnet Kanäle und Varianten zu und führt den Reda
 - **Datenbankfunktionen:** —
 - **Tabellen:** `social_content_items`, `social_content_channels`, `social_content_item_channels`, `social_content_variants`
 - **Abhängigkeiten:** `redaktion.themenspeicher`
-- **Selbsttests:** —
+- **Selbsttests:** `social-content-lifecycle`
 - **Unit-Tests:** —
 - **Integrationstests:** —
 - **Browser-Tests:** —
@@ -90,7 +113,7 @@ Plant Beiträge im Kalender, ordnet Kanäle und Varianten zu und führt den Reda
 
 **Bekannte Einschränkungen**
 
-- Keine.
+- Der Selbsttest prüft Anlegen von Thema und Beitrag, Kanalzuordnung und Kanalvariante über die echten Tabellen; Kalenderansicht, Board-Bedienung und Echtzeit-Aktualisierung werden nicht über die Oberfläche geprüft.
 
 **Offene Prüfpunkte**
 
@@ -102,7 +125,7 @@ Führt Beiträge durch Freigabe, fordert Änderungen an, protokolliert Entscheid
 - **Kategorie:** fachlich
 - **Implementierung:** implementiert
 - **Einbindung:** rollenabhängig
-- **Testabdeckung:** kein Test
+- **Testabdeckung:** teilweise
 - **Letztes Testergebnis:** nicht-ausgefuehrt (kein Laufnachweis importiert; nicht aus der Existenz einer Testdatei abgeleitet)
 - **Rollen:** `abgeordneter`, `bueroleitung`, `mitarbeiter`
 - **Routen:** —
@@ -113,7 +136,7 @@ Führt Beiträge durch Freigabe, fordert Änderungen an, protokolliert Entscheid
 - **Datenbankfunktionen:** `request_social_post_changes`, `notify_social_post_approved`, `queue_social_content_reapproval`, `reopen_social_content_after_variant_change`, `enforce_social_content_approval_permissions`, `log_social_content_approval_event`
 - **Tabellen:** `social_content_items`, `social_content_approval_events`, `social_approval_comments`
 - **Abhängigkeiten:** `redaktion.planner`
-- **Selbsttests:** —
+- **Selbsttests:** `social-content-lifecycle`
 - **Unit-Tests:** —
 - **Integrationstests:** —
 - **Browser-Tests:** —
@@ -126,7 +149,7 @@ Führt Beiträge durch Freigabe, fordert Änderungen an, protokolliert Entscheid
 
 **Bekannte Einschränkungen**
 
-- Keine.
+- Einreichen, Freigeben, Änderungswunsch mit Folgeaufgabe und das automatische Wiederöffnen nach geänderter Kanaltext-Zeile laufen im Selbsttest über die echten Trigger und RPCs samt Protokoll. Freie Kommentare ohne Änderungswunsch, Emoji-Reaktionen, die Push-Zustellung der Meldungen sowie Matrix-Chat und externe Veröffentlichung prüft das Szenario nicht. Den Fallback ohne hinterlegte verantwortliche Person (Aufgabe an die anlegende Person) prüft das Szenario nicht; es setzt von Anfang an eine verantwortliche Person und belegt die Auflösung über profiles.id zur Login-ID.
 
 **Offene Prüfpunkte**
 
@@ -174,7 +197,7 @@ Sammelt Themenvorrat, überführt Notizen in den Themenspeicher und verwaltet Ha
 - **Kategorie:** fachlich
 - **Implementierung:** implementiert
 - **Einbindung:** UI
-- **Testabdeckung:** kein Test
+- **Testabdeckung:** teilweise
 - **Letztes Testergebnis:** nicht-ausgefuehrt (kein Laufnachweis importiert; nicht aus der Existenz einer Testdatei abgeleitet)
 - **Rollen:** `abgeordneter`, `bueroleitung`, `mitarbeiter`
 - **Routen:** —
@@ -185,7 +208,7 @@ Sammelt Themenvorrat, überführt Notizen in den Themenspeicher und verwaltet Ha
 - **Datenbankfunktionen:** `queue_social_content_reapproval`
 - **Tabellen:** `topic_backlog`, `social_hashtag_sets`
 - **Abhängigkeiten:** —
-- **Selbsttests:** —
+- **Selbsttests:** `social-content-lifecycle`
 - **Unit-Tests:** —
 - **Integrationstests:** —
 - **Browser-Tests:** —
@@ -198,7 +221,7 @@ Sammelt Themenvorrat, überführt Notizen in den Themenspeicher und verwaltet Ha
 
 **Bekannte Einschränkungen**
 
-- Keine.
+- Das Szenario legt ein Thema im Themenspeicher an und verwendet es für den Beitrag. Hashtag-Sets und der Transfer-Dialog werden nicht geprüft.
 
 **Offene Prüfpunkte**
 

@@ -5,7 +5,7 @@
   "sources": {
     "types": "src/integrations/supabase/types.ts",
     "migrationsDirectory": "supabase/migrations",
-    "migrationCount": 922,
+    "migrationCount": 969,
     "tsModules": [
       "src/components/letters/types.ts"
     ]
@@ -288,7 +288,8 @@
             "write:supabase/migrations/20251008075550_f365c460-b9d4-4210-94a0-395006e7ea46.sql",
             "write:supabase/migrations/20261124220000_poll_result_and_followups.sql",
             "write:supabase/migrations/20261124230000_poll_winner_guests_and_list_result.sql",
-            "write:supabase/migrations/20261124240000_poll_followup_queue_and_scope.sql"
+            "write:supabase/migrations/20261124240000_poll_followup_queue_and_scope.sql",
+            "write:supabase/migrations/20261127230000_poll_winner_slot_guard.sql"
           ]
         }
       ],
@@ -339,7 +340,8 @@
           "sources": [
             "supabase/migrations/20261124220000_poll_result_and_followups.sql",
             "supabase/migrations/20261124230000_poll_winner_guests_and_list_result.sql",
-            "supabase/migrations/20261124240000_poll_followup_queue_and_scope.sql"
+            "supabase/migrations/20261124240000_poll_followup_queue_and_scope.sql",
+            "supabase/migrations/20261127230000_poll_winner_slot_guard.sql"
           ],
           "guards": []
         }
@@ -822,6 +824,7 @@
             "insert:supabase/migrations/20261124230000_poll_winner_guests_and_list_result.sql",
             "insert:supabase/migrations/20261124240000_poll_followup_queue_and_scope.sql",
             "insert:supabase/migrations/20261125113000_appointment_dashboard_focus.sql",
+            "insert:supabase/migrations/20261127230000_poll_winner_slot_guard.sql",
             "write:supabase/migrations/20261125113000_appointment_dashboard_focus.sql"
           ]
         },
@@ -856,7 +859,8 @@
             "supabase/migrations/20261124220000_poll_result_and_followups.sql",
             "supabase/migrations/20261124230000_poll_winner_guests_and_list_result.sql",
             "supabase/migrations/20261124240000_poll_followup_queue_and_scope.sql",
-            "supabase/migrations/20261125113000_appointment_dashboard_focus.sql"
+            "supabase/migrations/20261125113000_appointment_dashboard_focus.sql",
+            "supabase/migrations/20261127230000_poll_winner_slot_guard.sql"
           ],
           "guards": []
         },
@@ -2277,7 +2281,11 @@
         {
           "value": "acknowledged",
           "sources": [
-            "check:supabase/migrations/20261113120000_employee_protocol_acknowledgement.sql"
+            "check:supabase/migrations/20261113120000_employee_protocol_acknowledgement.sql",
+            "guard:supabase/migrations/20261113120000_employee_protocol_acknowledgement.sql",
+            "guard:supabase/migrations/20261127160000_release_guard_rule_repair.sql",
+            "guard:supabase/migrations/20261128040000_employee_meeting_version_guard_repair.sql",
+            "guard:supabase/migrations/20261128050000_employee_meeting_version_guard_force.sql"
           ]
         },
         {
@@ -2303,14 +2311,19 @@
           "sources": [
             "check:supabase/migrations/20261113120000_employee_protocol_acknowledgement.sql",
             "write:supabase/migrations/20261113120000_employee_protocol_acknowledgement.sql",
-            "write:supabase/migrations/20261126180000_protocol_error_code_and_matrix_timeline.sql"
+            "write:supabase/migrations/20261126180000_protocol_error_code_and_matrix_timeline.sql",
+            "write:supabase/migrations/20261127160000_release_guard_rule_repair.sql"
           ]
         },
         {
           "value": "pending_acknowledgement",
           "sources": [
             "check:supabase/migrations/20261113120000_employee_protocol_acknowledgement.sql",
-            "write:supabase/migrations/20261113120000_employee_protocol_acknowledgement.sql"
+            "write:supabase/migrations/20261113120000_employee_protocol_acknowledgement.sql",
+            "guard:supabase/migrations/20261113120000_employee_protocol_acknowledgement.sql",
+            "guard:supabase/migrations/20261127160000_release_guard_rule_repair.sql",
+            "guard:supabase/migrations/20261128040000_employee_meeting_version_guard_repair.sql",
+            "guard:supabase/migrations/20261128050000_employee_meeting_version_guard_force.sql"
           ]
         },
         {
@@ -2338,7 +2351,8 @@
           "param": null,
           "sources": [
             "supabase/migrations/20261113120000_employee_protocol_acknowledgement.sql",
-            "supabase/migrations/20261126180000_protocol_error_code_and_matrix_timeline.sql"
+            "supabase/migrations/20261126180000_protocol_error_code_and_matrix_timeline.sql",
+            "supabase/migrations/20261127160000_release_guard_rule_repair.sql"
           ],
           "guards": []
         },
@@ -2350,7 +2364,9 @@
           "sources": [
             "supabase/migrations/20261113120000_employee_protocol_acknowledgement.sql"
           ],
-          "guards": []
+          "guards": [
+            "guard_employee_protocol"
+          ]
         },
         {
           "from": null,
@@ -2363,10 +2379,99 @@
           "guards": []
         }
       ],
-      "guards": [],
+      "guards": [
+        {
+          "trigger": "guard_employee_protocol",
+          "function": "guard_employee_protocol",
+          "timing": "before",
+          "events": "insert or update or delete",
+          "source": "supabase/migrations/20261113120000_employee_protocol_acknowledgement.sql",
+          "functionSource": "supabase/migrations/20261128060000_employee_meeting_version_guard_minimal.sql",
+          "kind": "guard",
+          "readsOld": true,
+          "readsNew": true,
+          "raises": true,
+          "message": "Freigegebene oder auditierte Gespräche können nicht gelöscht werden",
+          "checks": [
+            {
+              "side": "OLD",
+              "operator": "in",
+              "negated": false,
+              "values": [
+                "acknowledged",
+                "pending_acknowledgement"
+              ]
+            },
+            {
+              "side": "OLD",
+              "operator": "in",
+              "negated": false,
+              "values": [
+                "acknowledged",
+                "pending_acknowledgement"
+              ]
+            },
+            {
+              "side": "OLD",
+              "operator": "in",
+              "negated": false,
+              "values": [
+                "acknowledged",
+                "pending_acknowledgement"
+              ]
+            },
+            {
+              "side": "NEW",
+              "operator": "in",
+              "negated": false,
+              "values": [
+                "acknowledged",
+                "pending_acknowledgement"
+              ]
+            },
+            {
+              "side": "NEW",
+              "operator": "in",
+              "negated": false,
+              "values": [
+                "acknowledged",
+                "pending_acknowledgement"
+              ]
+            }
+          ],
+          "states": [
+            "acknowledged",
+            "pending_acknowledgement"
+          ],
+          "blockedTo": [
+            "acknowledged",
+            "pending_acknowledgement"
+          ],
+          "blockedFrom": [
+            "acknowledged",
+            "pending_acknowledgement"
+          ],
+          "allowedTo": [
+            "cancelled",
+            "cancelled_by_employee",
+            "completed",
+            "in_progress",
+            "rescheduled",
+            "scheduled"
+          ],
+          "allowedFrom": [
+            "cancelled",
+            "cancelled_by_employee",
+            "completed",
+            "in_progress",
+            "rescheduled",
+            "scheduled"
+          ]
+        }
+      ],
       "reconciliation": null,
       "limitations": [
-        "Kein Trigger im Migrationsbestand gefunden; Übergänge sind nicht durch Trigger abgesichert.",
+        "Guards werden zitiert, aber nicht als vollständiger Automat interpretiert; abgeleitet werden nur belegte Schreibvorgänge.",
         "Übergänge ohne belegten Ausgangszustand sind mit \"from\": null gekennzeichnet."
       ],
       "findings": [
@@ -2554,6 +2659,7 @@
           "sources": [
             "check:supabase/migrations/20260507190106_964aec00-97b8-4df7-817d-fba76bba4038.sql",
             "write:supabase/migrations/20261103234405_6bbdc076-40ca-4b87-bdb0-601eb9590bc9.sql",
+            "write:supabase/migrations/20261128110000_audit_writepath_security_events.sql",
             "guard:supabase/migrations/20260507190106_964aec00-97b8-4df7-817d-fba76bba4038.sql"
           ]
         },
@@ -2576,6 +2682,7 @@
             "check:supabase/migrations/20260507190106_964aec00-97b8-4df7-817d-fba76bba4038.sql",
             "default:supabase/migrations/20260507190106_964aec00-97b8-4df7-817d-fba76bba4038.sql",
             "write:supabase/migrations/20261103234405_6bbdc076-40ca-4b87-bdb0-601eb9590bc9.sql",
+            "write:supabase/migrations/20261128110000_audit_writepath_security_events.sql",
             "guard:supabase/migrations/20260507190106_964aec00-97b8-4df7-817d-fba76bba4038.sql"
           ]
         },
@@ -2646,7 +2753,8 @@
           "kind": "write",
           "param": null,
           "sources": [
-            "supabase/migrations/20261103234405_6bbdc076-40ca-4b87-bdb0-601eb9590bc9.sql"
+            "supabase/migrations/20261103234405_6bbdc076-40ca-4b87-bdb0-601eb9590bc9.sql",
+            "supabase/migrations/20261128110000_audit_writepath_security_events.sql"
           ],
           "guards": [
             "trg_gdpr_four_eyes"
@@ -3240,13 +3348,15 @@
         {
           "value": "pending_approval",
           "sources": [
-            "insert:supabase/migrations/20261125150000_enforce_letter_status_transitions.sql"
+            "insert:supabase/migrations/20261125150000_enforce_letter_status_transitions.sql",
+            "insert:supabase/migrations/20261127190000_letter_return_rpc_repair.sql"
           ]
         },
         {
           "value": "review",
           "sources": [
-            "insert:supabase/migrations/20261125150000_enforce_letter_status_transitions.sql"
+            "insert:supabase/migrations/20261125150000_enforce_letter_status_transitions.sql",
+            "insert:supabase/migrations/20261127190000_letter_return_rpc_repair.sql"
           ]
         },
         {
@@ -3290,7 +3400,8 @@
           "kind": "initial",
           "param": null,
           "sources": [
-            "supabase/migrations/20261125150000_enforce_letter_status_transitions.sql"
+            "supabase/migrations/20261125150000_enforce_letter_status_transitions.sql",
+            "supabase/migrations/20261127190000_letter_return_rpc_repair.sql"
           ],
           "guards": []
         },
@@ -3300,7 +3411,8 @@
           "kind": "initial",
           "param": null,
           "sources": [
-            "supabase/migrations/20261125150000_enforce_letter_status_transitions.sql"
+            "supabase/migrations/20261125150000_enforce_letter_status_transitions.sql",
+            "supabase/migrations/20261127190000_letter_return_rpc_repair.sql"
           ],
           "guards": []
         },
@@ -3351,7 +3463,8 @@
         {
           "value": "draft",
           "sources": [
-            "insert:supabase/migrations/20261125150000_enforce_letter_status_transitions.sql"
+            "insert:supabase/migrations/20261125150000_enforce_letter_status_transitions.sql",
+            "insert:supabase/migrations/20261127190000_letter_return_rpc_repair.sql"
           ]
         },
         {
@@ -3369,7 +3482,8 @@
         {
           "value": "revision_requested",
           "sources": [
-            "insert:supabase/migrations/20261125150000_enforce_letter_status_transitions.sql"
+            "insert:supabase/migrations/20261125150000_enforce_letter_status_transitions.sql",
+            "insert:supabase/migrations/20261127190000_letter_return_rpc_repair.sql"
           ]
         },
         {
@@ -3404,7 +3518,8 @@
           "kind": "initial",
           "param": null,
           "sources": [
-            "supabase/migrations/20261125150000_enforce_letter_status_transitions.sql"
+            "supabase/migrations/20261125150000_enforce_letter_status_transitions.sql",
+            "supabase/migrations/20261127190000_letter_return_rpc_repair.sql"
           ],
           "guards": []
         },
@@ -3434,7 +3549,8 @@
           "kind": "initial",
           "param": null,
           "sources": [
-            "supabase/migrations/20261125150000_enforce_letter_status_transitions.sql"
+            "supabase/migrations/20261125150000_enforce_letter_status_transitions.sql",
+            "supabase/migrations/20261127190000_letter_return_rpc_repair.sql"
           ],
           "guards": []
         },
@@ -3524,7 +3640,6 @@
             "check:supabase/migrations/20261125130000_align_task_and_letter_status_values.sql",
             "write:supabase/migrations/20250901004624_e4007eaf-ea99-4c2f-b696-71dea9c3655d.sql",
             "guard:supabase/migrations/20250901000838_15dd536a-931d-4dab-8bc6-21294035b6e9.sql",
-            "guard:supabase/migrations/20250901095901_db66aa45-6db8-4471-85ac-ca8edf369ca8.sql",
             "guard:supabase/migrations/20251206234031_61179556-148b-4c5d-845a-0bf784e35260.sql"
           ]
         }
@@ -3668,60 +3783,6 @@
           "message": null,
           "checks": [],
           "states": [],
-          "blockedTo": [],
-          "blockedFrom": [],
-          "allowedTo": [
-            "approved",
-            "archived",
-            "draft",
-            "pending_approval",
-            "review",
-            "revision_requested",
-            "sent"
-          ],
-          "allowedFrom": [
-            "approved",
-            "archived",
-            "draft",
-            "pending_approval",
-            "review",
-            "revision_requested",
-            "sent"
-          ]
-        },
-        {
-          "trigger": "trigger_letter_followup_task",
-          "function": "create_letter_followup_task",
-          "timing": "after",
-          "events": "update",
-          "source": "supabase/migrations/20250901095901_db66aa45-6db8-4471-85ac-ca8edf369ca8.sql",
-          "functionSource": "supabase/migrations/20250901095950_1e2b8e44-b0e3-47f7-b40b-9036adb4239f.sql",
-          "kind": "trigger",
-          "readsOld": true,
-          "readsNew": true,
-          "raises": false,
-          "message": null,
-          "checks": [
-            {
-              "side": "OLD",
-              "operator": "!=",
-              "negated": true,
-              "values": [
-                "sent"
-              ]
-            },
-            {
-              "side": "NEW",
-              "operator": "=",
-              "negated": false,
-              "values": [
-                "sent"
-              ]
-            }
-          ],
-          "states": [
-            "sent"
-          ],
           "blockedTo": [],
           "blockedFrom": [],
           "allowedTo": [
@@ -4820,7 +4881,8 @@
           "value": "draft",
           "sources": [
             "check:supabase/migrations/20260317113000_add_social_content_domain.sql",
-            "write:supabase/migrations/20261124200000_editorial_approval_workflow.sql"
+            "write:supabase/migrations/20261124200000_editorial_approval_workflow.sql",
+            "write:supabase/migrations/20261128070000_social_change_request_resolve_assignee.sql"
           ]
         },
         {
@@ -4866,7 +4928,8 @@
           "kind": "write",
           "param": null,
           "sources": [
-            "supabase/migrations/20261124200000_editorial_approval_workflow.sql"
+            "supabase/migrations/20261124200000_editorial_approval_workflow.sql",
+            "supabase/migrations/20261128070000_social_change_request_resolve_assignee.sql"
           ],
           "guards": []
         },
@@ -5089,12 +5152,14 @@
           "value": "open",
           "sources": [
             "check:supabase/migrations/20260209094422_7cce038b-0e7e-4f45-931d-19b0fc237929.sql",
+            "insert:supabase/migrations/20261128040000_decision_nudge_selftest.sql",
             "write:supabase/migrations/20260209100456_1f1d79dc-a773-4379-82bd-99a16d806d49.sql"
           ]
         }
       ],
       "initialStates": [
-        "active"
+        "active",
+        "open"
       ],
       "transitions": [
         {
@@ -5133,6 +5198,16 @@
             "supabase/migrations/20251008092243_13bc77ce-3770-4a50-b88c-2444fb69206c.sql"
           ],
           "guards": []
+        },
+        {
+          "from": null,
+          "to": "open",
+          "kind": "initial",
+          "param": null,
+          "sources": [
+            "supabase/migrations/20261128040000_decision_nudge_selftest.sql"
+          ],
+          "guards": []
         }
       ],
       "guards": [],
@@ -5169,14 +5244,6 @@
             "approved"
           ],
           "message": "Der Client schreibt Zustandswerte, die in Migrationen oder Typen nicht belegt sind."
-        },
-        {
-          "kind": "unerreichbar",
-          "severity": "warn",
-          "states": [
-            "open"
-          ],
-          "message": "Zustände ohne belegten Eingang: weder Startzustand noch Ziel eines Übergangs."
         },
         {
           "kind": "sackgasse",
@@ -5282,9 +5349,14 @@
             "insert:supabase/migrations/20261126143838_cadcf4a9-f075-4030-847b-2de0f37da556.sql",
             "insert:supabase/migrations/20261126170000_selftest_rpc_signature_repair.sql",
             "insert:supabase/migrations/20261127120000_selftest_client_rpc_and_trgm_repair.sql",
+            "insert:supabase/migrations/20261127170000_selftest_contact_case_task_repair.sql",
+            "insert:supabase/migrations/20261127200000_letter_archive_follow_up_task.sql",
+            "insert:supabase/migrations/20261127210000_letter_follow_up_source_link.sql",
+            "insert:supabase/migrations/20261128070000_social_change_request_resolve_assignee.sql",
             "write:supabase/migrations/20261109100000_connect_appointment_preparation_workflow.sql",
             "write:supabase/migrations/20261124200000_editorial_approval_workflow.sql",
-            "write:supabase/migrations/20261124280000_social_approval_reopen_notifications.sql"
+            "write:supabase/migrations/20261124280000_social_approval_reopen_notifications.sql",
+            "write:supabase/migrations/20261128070000_social_change_request_resolve_assignee.sql"
           ]
         }
       ],
@@ -5391,7 +5463,11 @@
             "supabase/migrations/20261125111000_office_debrief_inbox.sql",
             "supabase/migrations/20261126143838_cadcf4a9-f075-4030-847b-2de0f37da556.sql",
             "supabase/migrations/20261126170000_selftest_rpc_signature_repair.sql",
-            "supabase/migrations/20261127120000_selftest_client_rpc_and_trgm_repair.sql"
+            "supabase/migrations/20261127120000_selftest_client_rpc_and_trgm_repair.sql",
+            "supabase/migrations/20261127170000_selftest_contact_case_task_repair.sql",
+            "supabase/migrations/20261127200000_letter_archive_follow_up_task.sql",
+            "supabase/migrations/20261127210000_letter_follow_up_source_link.sql",
+            "supabase/migrations/20261128070000_social_change_request_resolve_assignee.sql"
           ],
           "guards": [
             "case_step_reverse"
@@ -5405,7 +5481,8 @@
           "sources": [
             "supabase/migrations/20261109100000_connect_appointment_preparation_workflow.sql",
             "supabase/migrations/20261124200000_editorial_approval_workflow.sql",
-            "supabase/migrations/20261124280000_social_approval_reopen_notifications.sql"
+            "supabase/migrations/20261124280000_social_approval_reopen_notifications.sql",
+            "supabase/migrations/20261128070000_social_change_request_resolve_assignee.sql"
           ],
           "guards": [
             "case_step_reverse"

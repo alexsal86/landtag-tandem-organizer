@@ -22,6 +22,34 @@ const json = (data: unknown, status = 200) =>
     headers: { ...corsHeaders, "Content-Type": "application/json" },
   });
 
+/**
+ * Abschluss einer DSGVO-Anfrage im Audit-Trail. Die Freigabe selbst wird von der
+ * Datenbank (approve_gdpr_delete) protokolliert; hier steht die tatsächliche
+ * Ausführung, damit Export und Löschung nachvollziehbar bleiben.
+ */
+async function recordGdprEvent(
+  admin: any,
+  action: "security.gdpr.export_completed" | "security.gdpr.delete_completed",
+  request: { id: string; tenant_id: string; request_type: string },
+  actorId: string,
+  ipAddress: string,
+) {
+  const { error } = await admin.from("audit_log_entries").insert({
+    action,
+    tenant_id: request.tenant_id,
+    user_id: actorId,
+    ip_address: ipAddress,
+    payload: {
+      action,
+      request_id: request.id,
+      request_type: request.request_type,
+      source: "gdpr-process",
+      timestamp: new Date().toISOString(),
+    },
+  });
+  if (error) console.error("gdpr-process: audit event failed", error.message);
+}
+
 Deno.serve(withSafeHandler("gdpr-process", async (req) => {
   if (req.method === "OPTIONS") return new Response("ok", { headers: corsHeaders });
 
@@ -30,6 +58,11 @@ Deno.serve(withSafeHandler("gdpr-process", async (req) => {
     if (!actor) return json({ error: "unauthorized" }, 401);
     const actorId = actor.userId;
     const admin = createServiceRoleClient();
+    const ipAddress =
+      req.headers.get("x-forwarded-for")?.split(",")[0]?.trim() ||
+      req.headers.get("x-real-ip") ||
+      req.headers.get("cf-connecting-ip") ||
+      "unknown";
 
     const body = (await req.json()) as Body;
     if (!body?.request_id) return json({ error: "request_id required" }, 400);
@@ -85,6 +118,7 @@ Deno.serve(withSafeHandler("gdpr-process", async (req) => {
           result_summary: result.summary,
         })
         .eq("id", request.id);
+      await recordGdprEvent(admin, "security.gdpr.export_completed", request, actorId, ipAddress);
       return json({ ok: true, path: result.path, summary: result.summary });
     }
 
@@ -99,6 +133,7 @@ Deno.serve(withSafeHandler("gdpr-process", async (req) => {
         })
         .eq("id", request.id);
       if (completionError) throw completionError;
+      await recordGdprEvent(admin, "security.gdpr.delete_completed", request, actorId, ipAddress);
       return json({ ok: true, summary });
     }
 

@@ -4,7 +4,7 @@ _Auto-generiert mit `npm run update:selftest-coverage`._
 
 Quelle: `src/integrations/supabase/types.ts`. Die Angaben beschreiben deklarierte Prüfumfänge, keine erfolgreichen Testläufe und keine Code-Coverage.
 
-Von 354 Tabellen haben 91 ein registriertes Szenario; 1 sind noch nicht eingeordnet. 262 sind befristet ausgenommen, davon 118 als Ausbau offen und 144 als technisch oder fachlich ausgenommen. Ausnahmen zählen nicht als bestanden.
+Von 358 Tabellen haben 110 ein registriertes Szenario; 0 sind noch nicht eingeordnet. 248 sind befristet ausgenommen, davon 112 als Ausbau offen und 136 als technisch oder fachlich ausgenommen. Ausnahmen zählen nicht als bestanden.
 
 ## Szenarien
 
@@ -16,13 +16,13 @@ Von 354 Tabellen haben 91 ein registriertes Szenario; 1 sind noch nicht eingeord
 | `appointment-briefing-lifecycle` | Briefing-Lifecycle (vergeben → Aufgabe → vorlegen → freigeben) | appointments, tasks, appointment_change_alerts |
 | `appointment-lifecycle` | Termin-Lifecycle (Kalender + Briefing + Feedback) | appointments, appointment_preparations, appointment_feedback |
 | `appointment-request-lifecycle` | Terminanfragen-Lifecycle (Eingang → Sperre → Entscheidung → Termin) | appointment_requests, appointments |
-| `case-file-lifecycle` | Fallakte mit Folgetabellen (Container) im Unterschied zum Vorgang | case_files, case_file_participants, case_file_status_history, case_file_notes, case_file_timeline, case_file_contacts, case_file_documents, documents, case_file_tasks, case_file_appointments, case_file_letters, case_items, contacts, tasks, appointments, letters |
+| `case-file-lifecycle` | Fallakte mit Folgetabellen (Container) im Unterschied zum Vorgang | case_files, case_file_participants, case_file_status_history, case_file_notes, case_file_timeline, case_file_contacts, case_file_documents, documents, case_file_tasks, case_file_appointments, case_file_letters, document_contacts, case_items, contacts, tasks, appointments, letters |
 | `case-item-lifecycle` | Vorgangs-Lifecycle (Am Zug → Schritt → Wiedervorlage → Entscheidung → Tageszettel → Abschluss) | case_items, case_item_interactions, case_item_handover_log, task_decisions, task_decision_participants, task_decision_responses, appointment_requests, day_slips, tasks |
 | `contact-lifecycle` | Kontakt-Lifecycle (Anlegen → Kategorie/Tags → Aktivität → Suche) | contacts, contact_activities, contact_usage_stats |
 | `contact-relations` | Kontakt-Beziehungen (Datenschutz → Themen → Duplikate → Sammelaktion → Verteiler → Wissen → Förderungen) | contacts, contact_activities, contact_topics, topics, call_logs, distribution_lists, distribution_list_members, gdpr_requests, map_flags, map_flag_types, contact_briefing_memory, fundings, funding_participants |
 | `daily-briefing-lifecycle` | Tages-Briefings (Vortag-Regel) | daily_briefings |
 | `day-slip-lifecycle` | Tageszettel-Lifecycle (Links → Neuladen → Übernahme auf Folgetag) | day_slips, tasks, quick_notes |
-| `decision-lifecycle` | Entscheidungs-Lifecycle (active → open → archived) | task_decisions, task_decision_participants, task_decision_responses |
+| `decision-lifecycle` | Entscheidungs-Lifecycle (active → open → archived) | task_decisions, task_decision_participants, task_decision_responses, task_decision_response_history, task_decision_attachments, task_decision_comments, task_decision_comment_reactions, dashboard_decision_nudges |
 | `document-annotation` | Dokument-Annotation | documents, document_annotations, document_annotation_events, document_annotation_tasks, tasks, task_assignees |
 | `document-list` | Dokumente: Suche, Kategorien, Sortierung und Auswahl | Keine (reine Regeln) |
 | `election-analysis` | Wahlanalyse: Datenqualität und Vergleichbarkeit | Keine (reine Regeln) |
@@ -34,18 +34,20 @@ Von 354 Tabellen haben 91 ein registriertes Szenario; 1 sind noch nicht eingeord
 | `event-planning-lifecycle` | Event-Planung (komplett: Termine, Speaker, Checkliste, Timeline) | event_plannings, event_planning_dates, event_planning_speakers, event_planning_contacts, event_planning_checklist_items, event_planning_timeline_assignments |
 | `jour-fixe-platform-integration` | Jour Fixe: Plattformquellen & Stafetten-Abschluss | meetings, meeting_agenda_items, tasks, task_decisions |
 | `knowledge-lifecycle` | Wissen: Fragen, Antworten und manuelle Prüfung | knowledge_questions, knowledge_question_events, knowledge_qa_notification_deliveries |
-| `letter-lifecycle` | Brief-Lifecycle (Entwurf → Prüfung → Freigabe → Archiv und Folgeaufgabe) | letters, letter_attachments, letter_collaborators, documents, tasks |
+| `letter-lifecycle` | Brief-Lifecycle (Entwurf → Prüfung → Freigabe → Archiv und Folgeaufgabe) | letters, letter_attachments, letter_collaborators, letter_comments, documents, tasks |
 | `meeting-lifecycle` | Meeting-Lifecycle (vollständig + Field-Verifikation) | meetings, meeting_templates, meeting_protocol_details, meeting_protocol_addenda, meeting_agenda_items, meeting_agenda_documents, meeting_participants, appointments, tasks |
+| `notification-inbox` | Benachrichtigungs-Inbox (Erzeugen, Gelesen-Markieren, Zurücksetzen und Zugriffsgrenze) | notifications |
 | `onboarding-hr` | HR-Onboarding und Offboarding | employee_lifecycle, employee_hr_templates, routine_package_runs, routine_package_steps, employee_hr_evidence, employee_hr_gdpr_declarations, employee_hr_reminder_log, notification_types, notifications, tasks, subtasks |
 | `parlis` | Parlamentarische Vorgänge | Keine (reine Regeln) |
 | `poll-lifecycle` | Terminabstimmung (Gewinner-Slot übernehmen + Nachfassen) | appointment_polls, poll_time_slots, poll_participants, appointments, appointment_guests |
 | `quick-note-lifecycle` | Notizen-Lifecycle (Anlegen → Priorität → Anheften → Aufgabe → Archiv) | quick_notes, tasks, task_decisions, task_decision_participants |
 | `responsibilities` | Zuständigkeiten & Matrix | tasks |
 | `security-hardening` | Sicherheitsregeln: Porträtdateien und E-Mail-Inhalte | Keine (reine Regeln) |
+| `social-content-lifecycle` | Social-Content-Lifecycle (Planung, Kanalvariante, Freigabe und Ereignisprotokoll) | topic_backlog, social_content_items, social_content_channels, social_content_item_channels, social_content_variants, social_content_approval_events, social_approval_comments, tasks, task_assignees, notifications |
 | `task-lifecycle` | Aufgaben-Lifecycle (Zuweisung → Frist → Entscheidung → Jour fixe → erledigt) | tasks, task_documents, task_decisions, task_decision_participants, task_decision_responses, task_statuses |
-| `task-stafette-lifecycle` | Aufgaben-Stafette (Am Zug, Wiedervorlage, Freigabe) | tasks, task_assignees, task_snoozes, archived_tasks |
+| `task-stafette-lifecycle` | Aufgaben-Stafette (Am Zug, Wiedervorlage, Freigabe) | tasks, task_assignees, task_snoozes, archived_tasks, task_batch_actions |
 | `team-rituals` | Freiwillige Team-Rituale | Keine (reine Regeln) |
-| `topic-linking` | Themenverknüpfung und Modul-Steuerung | topics, case_item_topics, case_items, knowledge_question_topics, topic_module_settings |
+| `topic-linking` | Themenverknüpfung und Modul-Steuerung | topics, case_item_topics, case_items, knowledge_question_topics, topic_module_settings, committees, regions, employee_responsibilities, topic_catalog_links |
 | `workflow-rules` | Geschäftsregeln (Freigabe, Rollen, Fristen) | Keine (reine Regeln) |
 
 ## Tabellen
@@ -109,7 +111,7 @@ Von 354 Tabellen haben 91 ein registriertes Szenario; 1 sind noch nicht eingeord
 | `case_items` | Szenario vorhanden | case-file-lifecycle, case-item-lifecycle, topic-linking |
 | `celebration_animations` | Ausgenommen bis 2027-06-30 | — |
 | `celebration_settings` | Ausgenommen bis 2027-06-30 | — |
-| `committees` | Ausstehend bis 2027-03-31 | — |
+| `committees` | Szenario vorhanden | topic-linking |
 | `contact_activities` | Szenario vorhanden | contact-lifecycle, contact-relations |
 | `contact_briefing_memory` | Szenario vorhanden | contact-relations |
 | `contact_topics` | Szenario vorhanden | contact-relations |
@@ -117,7 +119,7 @@ Von 354 Tabellen haben 91 ein registriertes Szenario; 1 sind noch nicht eingeord
 | `contacts` | Szenario vorhanden | case-file-lifecycle, contact-lifecycle, contact-relations |
 | `daily_briefing_reads` | Ausstehend bis 2027-03-31 | — |
 | `daily_briefings` | Szenario vorhanden | daily-briefing-lifecycle |
-| `dashboard_decision_nudges` | Ausstehend bis 2027-03-31 | — |
+| `dashboard_decision_nudges` | Szenario vorhanden | decision-lifecycle |
 | `dashboard_layouts` | Ausgenommen bis 2027-06-30 | — |
 | `data_lint_findings` | Ausgenommen bis 2027-06-30 | — |
 | `day_slips` | Szenario vorhanden | case-item-lifecycle, day-slip-lifecycle |
@@ -133,7 +135,7 @@ Von 354 Tabellen haben 91 ein registriertes Szenario; 1 sind noch nicht eingeord
 | `document_annotation_tasks` | Szenario vorhanden | document-annotation |
 | `document_annotations` | Szenario vorhanden | document-annotation |
 | `document_categories` | Ausgenommen bis 2027-06-30 | — |
-| `document_contacts` | Ausgenommen bis 2027-06-30 | — |
+| `document_contacts` | Szenario vorhanden | case-file-lifecycle |
 | `document_folders` | Ausstehend bis 2027-03-31 | — |
 | `document_topics` | Ausgenommen bis 2027-06-30 | — |
 | `documents` | Szenario vorhanden | case-file-lifecycle, document-annotation, letter-lifecycle |
@@ -197,7 +199,7 @@ Von 354 Tabellen haben 91 ein registriertes Szenario; 1 sind noch nicht eingeord
 | `employee_meeting_private_notes` | Szenario vorhanden | employee-meetings |
 | `employee_meeting_requests` | Szenario vorhanden | employee-meetings |
 | `employee_meetings` | Szenario vorhanden | employee-meetings |
-| `employee_responsibilities` | Ausstehend bis 2027-03-31 | — |
+| `employee_responsibilities` | Szenario vorhanden | topic-linking |
 | `employee_settings` | Ausgenommen bis 2027-06-30 | — |
 | `employee_settings_history` | Ausgenommen bis 2027-06-30 | — |
 | `employee_yearly_stats` | Ausgenommen bis 2027-06-30 | — |
@@ -249,7 +251,7 @@ Von 354 Tabellen haben 91 ein registriertes Szenario; 1 sind noch nicht eingeord
 | `letter_archive_settings` | Ausgenommen bis 2027-06-30 | — |
 | `letter_attachments` | Szenario vorhanden | letter-lifecycle |
 | `letter_collaborators` | Szenario vorhanden | letter-lifecycle |
-| `letter_comments` | Ausgenommen bis 2027-06-30 | — |
+| `letter_comments` | Szenario vorhanden | letter-lifecycle |
 | `letter_occasions` | Ausgenommen bis 2027-06-30 | — |
 | `letter_status_transitions` | Ausgenommen bis 2027-06-30 | — |
 | `letter_template_assets` | Ausgenommen bis 2027-06-30 | — |
@@ -285,10 +287,14 @@ Von 354 Tabellen haben 91 ein registriertes Szenario; 1 sind noch nicht eingeord
 | `news_email_templates` | Ausgenommen bis 2027-06-30 | — |
 | `notification_navigation_mapping` | Ausgenommen bis 2027-06-30 | — |
 | `notification_types` | Szenario vorhanden | onboarding-hr |
-| `notifications` | Szenario vorhanden | onboarding-hr |
+| `notifications` | Szenario vorhanden | notification-inbox, onboarding-hr, social-content-lifecycle |
 | `office_debrief_state` | Ausstehend bis 2027-03-31 | — |
 | `parliament_protocols` | Ausstehend bis 2027-03-31 | — |
 | `parlis_deputy_mandates` | Ausstehend bis 2027-06-30 | — |
+| `parlis_ministry_assignments` | Ausstehend bis 2027-06-30 | — |
+| `parlis_ministry_lines` | Ausstehend bis 2027-06-30 | — |
+| `parlis_ministry_suggestions` | Ausstehend bis 2027-06-30 | — |
+| `parlis_ministry_topics` | Ausstehend bis 2027-06-30 | — |
 | `parlis_proceedings` | Ausstehend bis 2027-06-30 | — |
 | `party_associations` | Ausstehend bis 2027-03-31 | — |
 | `planning_item_comments` | Ausgenommen bis 2027-06-30 | — |
@@ -315,7 +321,7 @@ Von 354 Tabellen haben 91 ein registriertes Szenario; 1 sind noch nicht eingeord
 | `quick_note_versions` | Ausgenommen bis 2027-06-30 | — |
 | `quick_note_write_receipts` | Ausgenommen bis 2027-06-30 | — |
 | `quick_notes` | Szenario vorhanden | day-slip-lifecycle, quick-note-lifecycle |
-| `regions` | Ausstehend bis 2027-03-31 | — |
+| `regions` | Szenario vorhanden | topic-linking |
 | `rls_policy_snapshot_20261124` | Ausgenommen bis 2027-06-30 | — |
 | `routine_package_runs` | Szenario vorhanden | onboarding-hr |
 | `routine_package_steps` | Szenario vorhanden | onboarding-hr |
@@ -328,14 +334,14 @@ Von 354 Tabellen haben 91 ein registriertes Szenario; 1 sind noch nicht eingeord
 | `selftest_runs` | Ausgenommen bis 2027-06-30 | — |
 | `sender_information` | Ausstehend bis 2027-03-31 | — |
 | `sick_days` | Ausstehend bis 2027-03-31 | — |
-| `social_approval_comments` | Ausstehend bis 2027-03-31 | — |
+| `social_approval_comments` | Szenario vorhanden | social-content-lifecycle |
 | `social_assets` | Ausstehend bis 2027-03-31 | — |
 | `social_campaigns` | Ausstehend bis 2027-03-31 | — |
-| `social_content_approval_events` | Ausgenommen bis 2027-06-30 | — |
-| `social_content_channels` | Ausstehend bis 2027-03-31 | — |
-| `social_content_item_channels` | Ausstehend bis 2027-03-31 | — |
-| `social_content_items` | Ausstehend bis 2027-03-31 | — |
-| `social_content_variants` | Ausstehend bis 2027-03-31 | — |
+| `social_content_approval_events` | Szenario vorhanden | social-content-lifecycle |
+| `social_content_channels` | Szenario vorhanden | social-content-lifecycle |
+| `social_content_item_channels` | Szenario vorhanden | social-content-lifecycle |
+| `social_content_items` | Szenario vorhanden | social-content-lifecycle |
+| `social_content_variants` | Szenario vorhanden | social-content-lifecycle |
 | `social_hashtag_sets` | Ausstehend bis 2027-03-31 | — |
 | `social_planner_notes` | Ausstehend bis 2027-03-31 | — |
 | `starred_appointments` | Ausgenommen bis 2027-06-30 | — |
@@ -344,15 +350,15 @@ Von 354 Tabellen haben 91 ein registriertes Szenario; 1 sind noch nicht eingeord
 | `system_health` | Ausgenommen bis 2027-06-30 | — |
 | `tags` | Ausgenommen bis 2027-06-30 | — |
 | `task_archive_settings` | Ausgenommen bis 2027-06-30 | — |
-| `task_assignees` | Szenario vorhanden | document-annotation, task-stafette-lifecycle |
-| `task_batch_actions` | Einordnung fehlt | — |
+| `task_assignees` | Szenario vorhanden | document-annotation, social-content-lifecycle, task-stafette-lifecycle |
+| `task_batch_actions` | Szenario vorhanden | task-stafette-lifecycle |
 | `task_categories` | Ausgenommen bis 2027-06-30 | — |
 | `task_comments` | Ausgenommen bis 2027-06-30 | — |
-| `task_decision_attachments` | Ausgenommen bis 2027-06-30 | — |
-| `task_decision_comment_reactions` | Ausgenommen bis 2027-06-30 | — |
-| `task_decision_comments` | Ausgenommen bis 2027-06-30 | — |
+| `task_decision_attachments` | Szenario vorhanden | decision-lifecycle |
+| `task_decision_comment_reactions` | Szenario vorhanden | decision-lifecycle |
+| `task_decision_comments` | Szenario vorhanden | decision-lifecycle |
 | `task_decision_participants` | Szenario vorhanden | case-item-lifecycle, decision-lifecycle, quick-note-lifecycle, task-lifecycle |
-| `task_decision_response_history` | Ausgenommen bis 2027-06-30 | — |
+| `task_decision_response_history` | Szenario vorhanden | decision-lifecycle |
 | `task_decision_responses` | Szenario vorhanden | case-item-lifecycle, decision-lifecycle, task-lifecycle |
 | `task_decision_topics` | Ausgenommen bis 2027-06-30 | — |
 | `task_decisions` | Szenario vorhanden | case-item-lifecycle, decision-lifecycle, jour-fixe-platform-integration, quick-note-lifecycle, task-lifecycle |
@@ -360,7 +366,7 @@ Von 354 Tabellen haben 91 ein registriertes Szenario; 1 sind noch nicht eingeord
 | `task_snoozes` | Szenario vorhanden | task-stafette-lifecycle |
 | `task_statuses` | Szenario vorhanden | task-lifecycle |
 | `task_topics` | Ausgenommen bis 2027-06-30 | — |
-| `tasks` | Szenario vorhanden | annual-task-stafette, appointment-briefing-lifecycle, case-file-lifecycle, case-item-lifecycle, day-slip-lifecycle, document-annotation, jour-fixe-platform-integration, letter-lifecycle, meeting-lifecycle, onboarding-hr, quick-note-lifecycle, responsibilities, task-lifecycle, task-stafette-lifecycle |
+| `tasks` | Szenario vorhanden | annual-task-stafette, appointment-briefing-lifecycle, case-file-lifecycle, case-item-lifecycle, day-slip-lifecycle, document-annotation, jour-fixe-platform-integration, letter-lifecycle, meeting-lifecycle, onboarding-hr, quick-note-lifecycle, responsibilities, social-content-lifecycle, task-lifecycle, task-stafette-lifecycle |
 | `team_announcement_dismissals` | Ausgenommen bis 2027-06-30 | — |
 | `team_announcements` | Ausstehend bis 2027-03-31 | — |
 | `team_bingo_settings` | Ausgenommen bis 2027-06-30 | — |
@@ -384,8 +390,8 @@ Von 354 Tabellen haben 91 ein registriertes Szenario; 1 sind noch nicht eingeord
 | `time_entry_history` | Ausgenommen bis 2027-06-30 | — |
 | `todo_categories` | Ausgenommen bis 2027-06-30 | — |
 | `todos` | Ausstehend bis 2027-03-31 | — |
-| `topic_backlog` | Ausstehend bis 2027-03-31 | — |
-| `topic_catalog_links` | Ausgenommen bis 2027-06-30 | — |
+| `topic_backlog` | Szenario vorhanden | social-content-lifecycle |
+| `topic_catalog_links` | Szenario vorhanden | topic-linking |
 | `topic_module_settings` | Szenario vorhanden | topic-linking |
 | `topics` | Szenario vorhanden | contact-relations, topic-linking |
 | `user_mywork_settings` | Ausgenommen bis 2027-06-30 | — |
@@ -415,13 +421,14 @@ Jede Ausnahme verlangt eine Begründung und ein Ablaufdatum. Abgelaufene, unbegr
 |---|---|---|---|
 | Ausgenommen | 2027-06-30 | 20 Tabellen | Technische Infrastruktur-, Push-, Cache- oder Protokolltabelle ohne eigenen fachlichen Workflow; geprüft wird die auslösende Funktion. |
 | Ausgenommen | 2027-06-30 | 55 Tabellen | Konfigurations-, Lookup- oder Einstellungstabelle; das fachlich relevante Verhalten prüfen die Szenarien der zugehörigen Funktion. |
-| Ausgenommen | 2027-06-30 | 29 Tabellen | Audit-, Verlaufs- oder Versionsprotokoll; wird von Datenbankfunktionen geschrieben und im Szenario der auslösenden Funktion mitgeprüft. |
-| Ausgenommen | 2027-06-30 | 42 Tabellen | Reine Verknüpfungstabelle ohne eigene Fachlogik; die Beziehung entsteht im Szenario der zugehörigen Funktion. |
+| Ausgenommen | 2027-06-30 | 27 Tabellen | Audit-, Verlaufs- oder Versionsprotokoll; wird von Datenbankfunktionen geschrieben und im Szenario der auslösenden Funktion mitgeprüft. |
+| Ausgenommen | 2027-06-30 | 34 Tabellen | Reine Verknüpfungstabelle ohne eigene Fachlogik; die Beziehung entsteht im Szenario der zugehörigen Funktion. |
 | Ausstehend | 2027-06-30 | 12 Tabellen | Sicherheits-, Onboarding- oder Automationsablauf: Für diese Tabelle fehlt ein eigenes Szenario; der Ausbau ist geplant. |
 | Ausstehend | 2027-06-30 | 8 Tabellen | Knowledge 11–14 nutzen eine gezielte Abnahme-Suite; ein Live-Selbsttest-Szenario für diese Tabelle steht aus. |
 | Ausstehend | 2027-06-30 | `parlis_proceedings`, `parlis_deputy_mandates` | Parlis: Der Selbsttest prüft importierte Referenzdaten lesend. Schreibzugriffe bleiben der Datenbankmigration vorbehalten. |
 | Ausstehend | 2027-06-30 | 36 Tabellen | Wahlanalyse und Wahlhistorie: Szenarien prüfen Regeln und Lesezugriffe, schreiben aber bewusst keine importierten Bestandsdaten. |
-| Ausstehend | 2027-03-31 | 60 Tabellen | Fachlicher Ausbau offen: Für diese Tabelle fehlt noch ein Szenario oder Step; der Eintrag muss bis zum Ablauf geprüft werden. |
+| Ausstehend | 2027-03-31 | 50 Tabellen | Fachlicher Ausbau offen: Für diese Tabelle fehlt noch ein Szenario oder Step; der Eintrag muss bis zum Ablauf geprüft werden. |
+| Ausstehend | 2027-06-30 | `parlis_ministry_assignments`, `parlis_ministry_lines`, `parlis_ministry_suggestions`, `parlis_ministry_topics` | Parlis-Ministerienzuordnung: Die Szenarien lesen Ressortlinien und Vorschläge nur; Zuordnungen schreibt die Administration, die Themen-Wolke der Trigger auf neue Büros. |
 
 ## Fachfunktionen ohne Selbsttest
 
@@ -429,24 +436,8 @@ Diese implementierten Fachfunktionen haben laut Funktionskatalog keine Selbsttes
 
 | Funktion | Name | Bereich | Tabellen |
 |---|---|---|---|
-| `annotations.export` | Annotationen exportieren | dokumente | documents, document_annotations |
-| `annotations.ocr` | OCR für gescannte Dokumente | dokumente | documents, document_annotations |
-| `annotations.relocate` | Annotationen bei neuer Dateiversion verschieben | dokumente | document_annotations, documents |
-| `appointments.debrief` | Nachbereitung und Büro-Feedback | termine | appointment_feedback, appointment_preparations |
-| `appointments.preparation` | Terminvorbereitung mit Vorschlägen | termine | appointment_preparations, appointment_preparation_templates, appointment_topics, appointment_preparation_documents |
-| `calendar.edit-move` | Termin bearbeiten und verschieben | termine | appointments, appointment_change_alerts, appointment_reminder_dispatches |
-| `calendar.guests` | Gäste und Teilnehmende verwalten | termine | appointment_guests, default_appointment_guests, appointments |
-| `cases.interactions` | Kontakte und Interaktionen am Vorgang | vorgaenge | case_item_interactions, case_items |
-| `cases.link-decision` | Vorgang mit Entscheidung verknüpfen | vorgaenge | task_decisions, case_file_tasks, case_items |
 | `chat.messages` | Interner Chat über Matrix | kommunikation | messages, message_recipients, message_confirmations |
 | `chat.team-announcements` | Team-Ankündigungen | kommunikation | team_announcements, team_announcement_dismissals |
-| `decisions.attachments` | Anhänge an Entscheidungen | entscheidungen | task_decision_attachments, task_decisions |
-| `decisions.change-vote` | Antwort ändern und Verlauf einsehen | entscheidungen | task_decision_responses, task_decision_response_history |
-| `decisions.comments` | Kommentare und Reaktionen | entscheidungen | task_decision_comments, task_decision_comment_reactions |
-| `decisions.remind` | Offene Entscheidungen anmahnen | entscheidungen | dashboard_decision_nudges, task_decisions |
-| `documents.contacts` | Dokumente mit Kontakten verknüpfen | dokumente | document_contacts, documents, contacts |
-| `documents.details` | Dokumentdetails und Verknüpfungen | dokumente | documents, case_file_documents, document_contacts, document_annotation_tasks |
-| `documents.upload-version` | Dokument hochladen und versionieren | dokumente | documents, document_topics, topics, document_annotation_events |
 | `dossiers.capture-radar` | Schnellerfassung und Mein Radar | organisation | dossiers, dossier_entries |
 | `dossiers.entries` | Dossier-Einträge und Timeline | organisation | dossier_entries, dossiers |
 | `dossiers.links-stakeholders` | Dossier-Verknüpfungen und Stakeholder | organisation | dossier_links, dossier_stakeholders |
@@ -461,33 +452,20 @@ Diese implementierten Fachfunktionen haben laut Funktionskatalog keine Selbsttes
 | `election.seat-distribution` | Sitzverteilung und Hemizykel | wahl | election_analysis_state, election_analysis_bw_polls |
 | `election.turnout` | Wahlbeteiligung | wahl | election_analysis_turnout |
 | `employees.export-stats` | Gesprächs-PDF und Jahresstatistik | mitarbeit | employee_yearly_stats, employee_meetings |
-| `employees.requests` | Gesprächsanfragen der Mitarbeitenden | mitarbeit | employee_meeting_requests, employee_meetings |
-| `events.speakers-documents` | Redner und Dokumente zur Veranstaltung | veranstaltungen | event_planning_speakers, event_planning_documents |
 | `facts.manage` | Fakten und Argumente pflegen | organisation | facts |
 | `knowledge.attachments` | Anhänge an Wissensfragen | wissen | knowledge_question_attachments |
-| `knowledge.comments-follow` | Kommentare und Folgen | wissen | knowledge_question_comments, knowledge_question_followers, knowledge_qa_notification_deliveries |
-| `knowledge.global-question` | Globale Wissensfrage aus jedem Bereich | wissen | knowledge_questions |
 | `knowledge.sources` | Quellen und Belege | wissen | knowledge_question_sources |
 | `knowledge.versions` | Snapshots und Versionen | wissen | knowledge_document_versions, knowledge_document_snapshots |
-| `letters.attachments` | Briefanlagen verwalten | dokumente | letter_attachments, letters |
-| `letters.collaboration` | Brief-Kommentare und Zusammenarbeit | dokumente | letter_comments, letter_collaborators, letters |
-| `meetings.zombie-points` | Liegengebliebene Agenda-Punkte | organisation | meeting_agenda_items |
 | `mywork.navigation-previews` | Vorschauen für Kalender, Aufgaben, Akten, Chat und Kontakte | arbeitsbereich | appointments, external_events, appointment_preparations, tasks, case_files, appointment_contacts, case_file_contacts, contacts |
 | `mywork.quick-access` | Schnellzugriff und zuletzt besuchte Seiten | arbeitsbereich | user_navigation_visits, user_preferences |
 | `mywork.tabs` | Meine Arbeit – Bereichsnavigation und Einstellungen | arbeitsbereich | user_mywork_settings, user_planning_preferences |
 | `news.articles` | News-Artikel und Lesestatus | kommunikation | news_articles, news_article_states |
-| `notifications.inbox` | Benachrichtigungen lesen und als gelesen markieren | arbeitsbereich | notifications, notification_types, notification_navigation_mapping, message_confirmations |
-| `notifications.preferences` | Benachrichtigungseinstellungen und Stummschaltung | arbeitsbereich | user_notification_settings, task_snoozes |
 | `press.releases` | Pressemitteilungen erstellen und freigeben | kommunikation | press_releases |
 | `profile.edit` | Eigenes Profil bearbeiten | arbeitsbereich | profiles, user_preferences, user_notification_settings |
-| `redaktion.approval` | Social-Media-Freigabe | kommunikation | social_content_items, social_content_approval_events, social_approval_comments |
 | `redaktion.assets-campaigns` | Social-Assets und Kampagnen | kommunikation | social_assets, social_campaigns |
-| `redaktion.planner` | Social-Media-Planung | kommunikation | social_content_items, social_content_channels, social_content_item_channels, social_content_variants |
-| `redaktion.themenspeicher` | Themenspeicher und Hashtags | kommunikation | topic_backlog, social_hashtag_sets |
 | `search.global` | Globale Suche und Befehlspalette | arbeitsbereich | search_analytics |
 | `tasks.search-filter` | Aufgaben suchen, filtern und sortieren | aufgaben | tasks, task_statuses, task_categories |
 | `timetracking.entries` | Arbeitszeit erfassen | mitarbeit | time_entries, time_entry_corrections, time_entry_history |
-| `topics.convert-catalog` | Thema in Katalog überführen | organisation | topics, topic_catalog_links, employee_responsibilities |
 
 ## Deklarierte Schreibfelder
 
@@ -510,6 +488,7 @@ Diese Manifeste sind keine Messung ausgeführter Assertions.
 - case-file-lifecycle: `case_file_tasks`: case_file_id, task_id
 - case-file-lifecycle: `case_file_appointments`: case_file_id, appointment_id, notes
 - case-file-lifecycle: `case_file_letters`: case_file_id, letter_id, notes
+- case-file-lifecycle: `document_contacts`: document_id, contact_id, relationship_type, notes, created_by
 - case-file-lifecycle: `case_items`: subject, summary, user_id, tenant_id, case_file_id, case_scale
 - case-file-lifecycle: `contacts`: name, user_id, tenant_id, category, notes
 - case-file-lifecycle: `tasks`: title, user_id, tenant_id, assigned_to, priority, category, status, source_type, source_id
@@ -544,6 +523,11 @@ Diese Manifeste sind keine Messung ausgeführter Assertions.
 - decision-lifecycle: `task_decisions`: title, description, status, created_by, tenant_id, visible_to_all, priority, response_deadline, archived_at, archived_by
 - decision-lifecycle: `task_decision_participants`: decision_id, user_id
 - decision-lifecycle: `task_decision_responses`: decision_id, participant_id, response_type, comment
+- decision-lifecycle: `task_decision_response_history`: response_id, decision_id, participant_id, response_type, comment, changed_by
+- decision-lifecycle: `task_decision_attachments`: decision_id, file_name, file_path, file_size, file_type, uploaded_by
+- decision-lifecycle: `task_decision_comments`: decision_id, user_id, parent_id, content
+- decision-lifecycle: `task_decision_comment_reactions`: comment_id, user_id, emoji
+- decision-lifecycle: `dashboard_decision_nudges`: decision_id, tenant_id, nudged_by, note
 - employee-meetings: `employee_meeting_requests`: employee_id, tenant_id, reason, urgency, status
 - employee-meetings: `employee_meetings`: employee_id, conducted_by, tenant_id, meeting_date, meeting_type, status, employee_preparation
 - employee-meetings: `employee_meeting_private_notes`: meeting_id, user_id, notes
@@ -562,12 +546,14 @@ Diese Manifeste sind keine Messung ausgeführter Assertions.
 - letter-lifecycle: `letters`: title, subject, content, content_html, status, created_by, tenant_id, recipient_name, recipient_address, letter_date, submitted_for_review_at, submitted_for_review_by, approved_at, approved_by, sent_at, sent_by, sent_date, workflow_locked, archived_document_id, revision_comment, revision_requested_at, revision_requested_by
 - letter-lifecycle: `letter_attachments`: letter_id, file_name, file_path, file_type, file_size, uploaded_by
 - letter-lifecycle: `letter_collaborators`: letter_id, user_id, role, assigned_by
+- letter-lifecycle: `letter_comments`: letter_id, user_id, content, text_position, text_length, comment_type, resolved
 - meeting-lifecycle: `meetings`: title, description, meeting_date, meeting_time, status, user_id, tenant_id, is_public, parent_meeting_id, is_recurring_instance
 - meeting-lifecycle: `meeting_agenda_items`: meeting_id, title, description, order_index, is_completed, is_recurring, system_type, is_visible, is_optional, parent_id, task_id, notes, result_text, carry_over_to_next, carryover_notes, carried_over_from, original_meeting_date, original_meeting_title
 - meeting-lifecycle: `meeting_agenda_documents`: meeting_agenda_item_id, user_id, file_name, file_path, file_type, file_size
 - meeting-lifecycle: `meeting_participants`: meeting_id, user_id, role, status
 - meeting-lifecycle: `appointments`: title, description, start_time, end_time, category, status, user_id, tenant_id, meeting_id
 - meeting-lifecycle: `tasks`: title, description, status, priority, user_id, tenant_id
+- notification-inbox: `notifications`: tenant_id, user_id, notification_type_id, title, message, data, priority, is_read, read_at
 - poll-lifecycle: `appointment_polls`: title, description, deadline, status, user_id, tenant_id, confirmed_slot_id, confirmed_appointment_id
 - poll-lifecycle: `poll_time_slots`: poll_id, start_time, end_time, order_index
 - poll-lifecycle: `poll_participants`: poll_id, email, name, is_external, token
@@ -575,6 +561,16 @@ Diese Manifeste sind keine Messung ausgeführter Assertions.
 - poll-lifecycle: `appointments`: title, description, start_time, end_time, category, status, priority, user_id, tenant_id, poll_id
 - quick-note-lifecycle: `quick_notes`: title, content, user_id, tenant_id, priority_level, color, category, tags, is_pinned, task_id, is_archived, archived_at
 - quick-note-lifecycle: `tasks`: title, description, user_id, tenant_id, status, priority
+- social-content-lifecycle: `topic_backlog`: tenant_id, topic, short_description, status, priority, tags, created_by
+- social-content-lifecycle: `social_content_items`: tenant_id, topic_backlog_id, created_by, format, hook, core_message, draft_text, cta, hashtags, approval_required, workflow_status, approval_state, approved_at, approved_by
+- social-content-lifecycle: `social_content_channels`: tenant_id, name, slug
+- social-content-lifecycle: `social_content_item_channels`: content_item_id, channel_id, tenant_id, created_by, is_primary
+- social-content-lifecycle: `social_content_variants`: tenant_id, content_item_id, channel_id, created_by, caption, first_comment, media_type, asset_ids, platform_status
+- social-content-lifecycle: `social_content_approval_events`: tenant_id, content_item_id, actor_id, actor_user_id, actor_name, action, from_state, to_state
+- social-content-lifecycle: `social_approval_comments`: tenant_id, content_item_id, author_id, comment, is_change_request
+- social-content-lifecycle: `tasks`: user_id, tenant_id, title, description, assigned_to, status, priority, category, due_date, ball_owner, ball_assignee_id, next_action, next_action_due, source_type, source_id, timeline
+- social-content-lifecycle: `task_assignees`: task_id, user_id, assigned_by
+- social-content-lifecycle: `notifications`: tenant_id, user_id, notification_type_id, title, message, data, priority
 - task-lifecycle: `tasks`: title, description, status, priority, user_id, tenant_id, assigned_to, due_date, progress, pending_for_jour_fixe, completed_at, recurrence_rule, parent_task_id, ball_owner, ball_assignee_id, next_action, next_action_due, timeline
 - task-lifecycle: `task_documents`: task_id, user_id, file_name, file_path, file_type, file_size
 - task-lifecycle: `task_decisions`: title, description, status, created_by, tenant_id, task_id
@@ -582,7 +578,12 @@ Diese Manifeste sind keine Messung ausgeführter Assertions.
 - task-stafette-lifecycle: `task_assignees`: task_id, user_id, assigned_by
 - task-stafette-lifecycle: `task_snoozes`: user_id, task_id, snoozed_until
 - task-stafette-lifecycle: `archived_tasks`: task_id, user_id, title, archived_at
+- task-stafette-lifecycle: `task_batch_actions`: tenant_id, actor_id, action, affected_count, skipped_count, undo_payload, undone_at, undone_by
 - topic-linking: `topics`: name, label, icon, color, order_index, is_active, tenant_id, created_by, merged_into, merged_at, updated_by
 - topic-linking: `case_items`: subject, summary, user_id, tenant_id, intake_payload
 - topic-linking: `case_item_topics`: tenant_id, case_item_id, topic_id, created_by
 - topic-linking: `topic_module_settings`: requirement, max_topics, creation_policy, show_filter, is_enabled, updated_by
+- topic-linking: `committees`: tenant_id, name, is_active, order_index
+- topic-linking: `regions`: tenant_id, name, kind, is_active, order_index
+- topic-linking: `employee_responsibilities`: tenant_id, user_id, kind, topic_id, committee_id, region_id, role_focus, level
+- topic-linking: `topic_catalog_links`: tenant_id, topic_id, kind, committee_id, region_id

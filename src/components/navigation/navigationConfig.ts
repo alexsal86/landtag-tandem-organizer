@@ -14,7 +14,6 @@ import {
   Vote,
   FileText,
   Calculator,
-  BookOpen,
 } from "lucide-react";
 
 export interface NavSubItem {
@@ -98,7 +97,6 @@ export const navigationGroups: NavGroup[] = [
     subItems: [
       { id: "karten", label: "Karten", icon: MapPin },
       { id: "daten", label: "Daten", icon: Calculator },
-      { id: "funktionskatalog", label: "Funktionskatalog", icon: BookOpen, adminOnly: true },
     ]
   }
 ];

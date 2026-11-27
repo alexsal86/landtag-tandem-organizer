@@ -3,7 +3,7 @@ import type { ScenarioRunState, TestScenario, TestStep } from "./types";
 
 const mock = vi.hoisted(() => ({
   role: "bueroleitung", session: true, membership: true, denyDelete: false,
-  rows: new Set<string>(), deletes: [] as string[], storageError: false,
+  rows: new Set<string>(), deletes: [] as string[], storageDeletes: [] as string[], storageError: false,
   getSession: vi.fn(),
 }));
 vi.mock("@/integrations/supabase/client", () => ({ supabase: {
@@ -23,18 +23,24 @@ vi.mock("@/integrations/supabase/client", () => ({ supabase: {
     };
     return query;
   },
-  storage: { from: () => ({ remove: async () => ({ error: mock.storageError ? new Error("Datei gesperrt") : null }) }) },
+  storage: { from: (bucket: string) => ({ remove: async (paths: string[]) => {
+    paths.forEach(path => mock.storageDeletes.push(`${bucket}/${path}`));
+    return { error: mock.storageError ? new Error("Datei gesperrt") : null };
+  } }) },
 } }));
 
-import { cleanupCreated, runScenario, runSuite } from "./runner";
+import { CASE_DOCUMENT_BUCKET, CLEANABLE_STORAGE_BUCKETS } from "@/features/documents/documentStorage";
+import { CLEANUP_ORDER, cleanupCreated, runScenario, runSuite } from "./runner";
 
 const scenario = (steps: TestStep[], extra: Partial<TestScenario> = {}): TestScenario => ({ id: "test", title: "Test", description: "Test", features: [], touches: ["tasks"], steps, ...extra });
 const options = () => ({ tenantId: "tenant-1", userId: "user-1", onUpdate: vi.fn<(state: ScenarioRunState) => void>() });
 const ok: TestStep = { id: "ok", label: "OK", run: async () => ({ ok: true, message: "OK" }) };
+// Quelltext aller Szenarien: geprüft wird, welche Tabellen sie aufzeichnen.
+const scenarioSources = import.meta.glob("./scenarios/*.ts", { query: "?raw", import: "default", eager: true }) as Record<string, string>;
 
 beforeEach(() => {
   mock.role = "bueroleitung"; mock.session = true; mock.membership = true; mock.denyDelete = false; mock.storageError = false;
-  mock.rows.clear(); mock.deletes.length = 0;
+  mock.rows.clear(); mock.deletes.length = 0; mock.storageDeletes.length = 0;
   mock.getSession.mockImplementation(async () => ({ data: { session: mock.session ? { access_token: "test-only", user: { id: "user-1" } } : null }, error: null }));
 });
 
@@ -95,6 +101,23 @@ describe("Selbsttest-Runner", () => {
     const result = await cleanupCreated([{ table: "user_roles", id: "unrelated" }]);
     expect(result.ok).toBe(false); expect(mock.deletes).not.toContain("user_roles/unrelated");
   });
+  it("räumt Testdateien in Dokumenten- und Akten-Bucket auf", async () => {
+    const result = await cleanupCreated([], [
+      { bucket: "documents", path: "user-1/letter-1/anlage.txt" },
+      { bucket: "case-file-documents", path: "case-files/tenant-1/user-1/case-1/anlage.txt" },
+    ]);
+    expect(result.ok).toBe(true);
+    expect(mock.storageDeletes).toEqual([
+      "documents/user-1/letter-1/anlage.txt",
+      "case-file-documents/case-files/tenant-1/user-1/case-1/anlage.txt",
+    ]);
+  });
+  it("löscht eine Datei nicht, wenn Bucket und Pfad nicht zusammenpassen", async () => {
+    const result = await cleanupCreated([], [{ bucket: "documents", path: "case-files/tenant-1/case-1/anlage.txt" }]);
+    expect(result.ok).toBe(false); expect(result.storageRemaining).toHaveLength(1);
+    expect(mock.storageDeletes).toEqual([]);
+    expect(result.errors.some(message => message.includes("Unbekanntes Testdatei-Ziel"))).toBe(true);
+  });
   it("berücksichtigt fehlgeschlagenes Datei-Cleanup", async () => {
     mock.storageError = true;
     const result = await cleanupCreated([], [{ bucket: "documents", path: "test/file.txt" }]);
@@ -112,5 +135,34 @@ describe("Selbsttest-Runner", () => {
     expect(result.cleanup.status).toBe("skipped"); expect(mock.rows.has("demo")).toBe(true);
     const failed = await runScenario(scenario([write, { ...ok, id: "fail", run: async () => ({ ok: false, message: "Fehler" }) }]), { ...options(), keepData: true });
     expect(failed.cleanup.status).toBe("ok"); expect(mock.rows.size).toBe(0);
+  });
+  it("kennt für jeden in Szenarien aufgezeichneten Storage-Bucket ein Cleanup-Ziel", () => {
+    // Ein neuer Bucket soll hier scheitern, nicht erst beim Aufräumen eines Laufs.
+    const constants: Record<string, string> = { CASE_DOCUMENT_BUCKET };
+    const buckets = new Map<string, string[]>();
+    for (const [file, source] of Object.entries(scenarioSources).filter(([file]) => !file.includes(".test."))) {
+      for (const match of source.matchAll(/trackStorage\(\{[\s\S]{0,200}?bucket:\s*([^,}\n]+)/g)) {
+        const token = match[1].trim();
+        const bucket = constants[token] ?? /^["'](.+)["']$/.exec(token)?.[1]
+          ?? `unbekannter Ausdruck \`${token}\``;
+        buckets.set(bucket, [...(buckets.get(bucket) ?? []), file.split("/").pop() ?? file]);
+      }
+    }
+    expect([...buckets.keys()]).toEqual(expect.arrayContaining(["documents", CASE_DOCUMENT_BUCKET]));
+    const unsupported = [...buckets]
+      .filter(([bucket]) => !CLEANABLE_STORAGE_BUCKETS.has(bucket))
+      .map(([bucket, files]) => `${bucket} (${files.join(", ")}) – in CLEANABLE_STORAGE_BUCKETS und documentBucket ergänzen`);
+    expect(unsupported).toEqual([]);
+  });
+  it("kennt für jede aufgezeichnete Tabelle der Szenarien einen Aufräumeintrag", () => {
+    const tracked = new Map<string, string[]>();
+    for (const [file, source] of Object.entries(scenarioSources).filter(([file]) => !file.includes(".test."))) {
+      for (const match of source.matchAll(/trackRecord\(\{[\s\S]{0,120}?table:\s*["']([a-z_]+)["']/g)) {
+        tracked.set(match[1], [...(tracked.get(match[1]) ?? []), file.split("/").pop() ?? file]);
+      }
+    }
+    expect([...tracked.keys()]).toEqual(expect.arrayContaining(["annual_tasks", "annual_task_completions", "tasks"]));
+    const unknown = [...tracked].filter(([table]) => !(CLEANUP_ORDER as readonly string[]).includes(table));
+    expect(unknown.map(([table, files]) => `${table} (${files.join(", ")})`)).toEqual([]);
   });
 });

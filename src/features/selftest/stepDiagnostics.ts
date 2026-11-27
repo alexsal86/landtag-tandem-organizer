@@ -5,6 +5,10 @@ export interface StoredStepResult {
   status?: string;
   message?: string;
   details?: unknown;
+  /** Gesetzt, wenn die gespeicherten Details beim Ablegen gekürzt wurden. */
+  detailsTruncated?: boolean;
+  /** Anzahl der beim Kürzen ausgelassenen Listen- bzw. Objekteinträge. */
+  detailsOmitted?: number;
 }
 
 export interface StepDiagnostic {
@@ -14,6 +18,24 @@ export interface StepDiagnostic {
   code?: string;
   /** Kurzdetails für Listen; gekürzt, damit die Darstellung nicht umbricht. */
   summary?: string;
+  /** Derselbe Text ungekürzt – für Stellen, die den vollen Fehler zeigen sollen. */
+  fullSummary?: string;
+  /** Hinweis, wenn die gespeicherten Details unvollständig sind (gekürzt beim Speichern). */
+  truncationNote?: string;
+}
+
+/**
+ * Sagt am Prüfpunkt, dass die gespeicherten Details gekürzt wurden, damit eine
+ * verkürzte Soll/Ist-Liste nicht wie eine vollständige wirkt.
+ */
+export function detailsTruncationNote(
+  step: Pick<StoredStepResult, "detailsTruncated" | "detailsOmitted">,
+): string | undefined {
+  if (step.detailsTruncated !== true) return undefined;
+  const omitted = typeof step.detailsOmitted === "number" && step.detailsOmitted > 0 ? step.detailsOmitted : 0;
+  return omitted > 0
+    ? `Details gekürzt: ${omitted} Einträge ausgelassen`
+    : "Details gekürzt: Liste unvollständig";
 }
 
 const MAX_SUMMARY = 140;
@@ -44,6 +66,32 @@ function differenceSummary(details: unknown): string | undefined {
   return `${details.length} Abweichung(en) — ${items.slice(0, 2).join(" · ")}${items.length > 2 ? " …" : ""}`;
 }
 
+/**
+ * Fehlgeschlagene Teilprüfungen und die dabei beobachteten Fehlercodes aus
+ * `details`, z. B. `{ staleVersionRejected: false, errors: { stale: "40001" } }`.
+ * Workflow-Schritte liefern im Erfolgs- und im Fehlerfall dieselbe `message`;
+ * ohne diesen Blick in die Details bliebe die Ursache unsichtbar.
+ */
+export function summarizeChecks(details: unknown): string | undefined {
+  const entry = record(details);
+  if (!entry) return undefined;
+  const failed = Object.entries(entry)
+    .filter(([key, value]) => key !== "errors" && value === false)
+    .map(([key]) => key);
+  // Ältere Läufe legten die Codes direkt unter Schlüsseln wie `lifecycleCode` ab
+  // statt unter `errors`; sie bleiben so am Prüfpunkt lesbar.
+  const legacyCodes = Object.entries(entry)
+    .filter(([key, value]) => key !== "errors" && /code$/i.test(key) && typeof value === "string");
+  const codes = [...Object.entries(record(entry.errors) ?? {}), ...legacyCodes]
+    .map(([key, value]) => ({ key, code: text(value) }))
+    .filter((item): item is { key: string; code: string } => item.code !== undefined);
+  if (failed.length === 0 && codes.length === 0) return undefined;
+  return [
+    failed.length > 0 ? `Nicht erfüllt: ${failed.join(", ")}` : "",
+    codes.length > 0 ? `Ist-Codes: ${codes.map((item) => `${item.key} ${item.code}`).join(", ")}` : "",
+  ].filter(Boolean).join(" · ");
+}
+
 /** Ältere Meldungen tragen den Code als Text; er wird abgetrennt und separat ausgewiesen. */
 function legacyMessage(message?: string): { code?: string; summary?: string } {
   if (!message) return {};
@@ -66,10 +114,12 @@ export function stepDiagnostic(step: StoredStepResult): StepDiagnostic | null {
   const legacy = legacyMessage(text(step.message));
   const code = text(error?.code) ?? legacy.code;
   const summary = text(error?.details) ?? text(error?.hint) ?? differenceSummary(step.details)
-    ?? text(error?.message) ?? legacy.summary;
+    ?? text(error?.message) ?? summarizeChecks(step.details) ?? legacy.summary;
   return {
     point: id && id !== label ? `${label} (${id})` : label,
     code,
     summary: summary ? truncate(summary) : undefined,
+    fullSummary: summary,
+    truncationNote: detailsTruncationNote(step),
   };
 }

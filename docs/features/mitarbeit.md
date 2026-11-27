@@ -8,7 +8,7 @@ _Auto-generiert mit `npm run update:feature-catalog` aus dem zentralen Funktions
 
 - Funktionen: **20** in **5** Unterbereichen
 - implementiert: **20**, teilweise: **0**, deaktiviert: **0**, potenziell verwaist: **0**
-- ohne zugeordneten Test: **4**
+- ohne zugeordneten Test: **3**
 - ohne Dokumentationsverweis: **14**
 
 ## Funktionen
@@ -16,7 +16,7 @@ _Auto-generiert mit `npm run update:feature-catalog` aus dem zentralen Funktions
 | Funktion | Unterbereich | Kategorie | Implementierung | Einbindung | Abdeckung |
 |---|---|---|---|---|---|
 | `employees.export-stats` Gesprächs-PDF und Jahresstatistik | Mitarbeitergespräche | fachlich | implementiert | UI | kein Test |
-| `employees.requests` Gesprächsanfragen der Mitarbeitenden | Mitarbeitergespräche | fachlich | implementiert | rollenabhängig | kein Test |
+| `employees.requests` Gesprächsanfragen der Mitarbeitenden | Mitarbeitergespräche | fachlich | implementiert | rollenabhängig | Selbsttest |
 | `employees.protocol` Gesprächsprotokoll freigeben und sperren | Mitarbeitergespräche | fachlich | implementiert | rollenabhängig | Selbsttest |
 | `employees.preparation` Gesprächsvorbereitung und Erinnerungen | Mitarbeitergespräche | automatisiert | implementiert | systemseitig | Selbsttest |
 | `employees.action-tasks` Maßnahmen als Aufgaben | Mitarbeitergespräche | fachlich | implementiert | systemseitig | Selbsttest |
@@ -125,7 +125,7 @@ Diese Schritte führen die Szenarien aus; „letzter Lauf“ stammt aus `src/fea
 3. Private Notizen liegen in employee_meeting_private_notes und nicht in den geteilten Vorbereitungsfeldern
 4. Maßnahme wird über mutate_employee_meeting_action angelegt und zurückgelesen
 5. Direkte Statusänderung ist gesperrt; Freigabe, Bestätigung und Wiedereröffnung werden vor Abschluss mit 22023 abgewiesen
-6. Ein veralteter Autosave-Stand wird mit 40001 abgewiesen
+6. Ein veralteter Autosave-Stand wird mit PT409 abgewiesen
 7. Abschluss, Freigabe, Bestätigung, Wiedereröffnung und Einspruch laufen im positiven Pfad über die echten RPCs und werden vollständig zurückgerollt: Status, Auditzeilen, Maßnahmen-Aufgabe, Benachrichtigungen und der letzte Gesprächstermin bleiben unverändert
 
 ### `employee-protection`
@@ -373,7 +373,7 @@ Erlaubt Mitarbeitenden, Gespräche anzufragen, und gleicht Anfragen mit geplante
 - **Kategorie:** fachlich
 - **Implementierung:** implementiert
 - **Einbindung:** rollenabhängig
-- **Testabdeckung:** kein Test
+- **Testabdeckung:** Selbsttest
 - **Letztes Testergebnis:** nicht-ausgefuehrt (kein Laufnachweis importiert; nicht aus der Existenz einer Testdatei abgeleitet)
 - **Rollen:** `mitarbeiter`, `bueroleitung`, `abgeordneter`
 - **Routen:** —
@@ -384,7 +384,7 @@ Erlaubt Mitarbeitenden, Gespräche anzufragen, und gleicht Anfragen mit geplante
 - **Datenbankfunktionen:** `reconcile_employee_meeting_requests`
 - **Tabellen:** `employee_meeting_requests`, `employee_meetings`
 - **Abhängigkeiten:** `employees.meetings`
-- **Selbsttests:** —
+- **Selbsttests:** `employee-meetings`
 - **Unit-Tests:** —
 - **Integrationstests:** —
 - **Browser-Tests:** —
@@ -397,7 +397,7 @@ Erlaubt Mitarbeitenden, Gespräche anzufragen, und gleicht Anfragen mit geplante
 
 **Bekannte Einschränkungen**
 
-- Keine.
+- Anfrage und offener Status sind geprüft; das Annehmen oder Ablehnen einer Anfrage durch die Gesprächsleitung hat keinen eigenen Schritt.
 
 **Offene Prüfpunkte**
 
@@ -433,7 +433,7 @@ Exportiert Protokolle als PDF und erzeugt Jahresstatistiken je Mitarbeiter.
 
 **Bekannte Einschränkungen**
 
-- Keine.
+- Kein Selbsttest: die PDF-Erzeugung des Gesprächs und die Jahresstatistik haben keinen Schritt; geprüft wird nur das Gespräch selbst.
 
 **Offene Prüfpunkte**
 

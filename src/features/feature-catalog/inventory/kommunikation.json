@@ -13,7 +13,7 @@
       "category": "fachlich",
       "implementationStatus": "implementiert",
       "integrationStatus": "ui",
-      "coverage": "keine",
+      "coverage": "selftest",
       "testResult": "nicht-ausgefuehrt",
       "evidence": [
         "src/features/redaktion/components/RedaktionFeature.tsx",
@@ -45,7 +45,13 @@
       "docs": [
         "docs/emoji-reactions-dod-v1.md"
       ],
-      "dependsOn": ["redaktion.themenspeicher"]
+      "dependsOn": ["redaktion.themenspeicher"],
+      "scenarios": [
+        "social-content-lifecycle"
+      ],
+      "limitations": [
+        "Der Selbsttest prüft Anlegen von Thema und Beitrag, Kanalzuordnung und Kanalvariante über die echten Tabellen; Kalenderansicht, Board-Bedienung und Echtzeit-Aktualisierung werden nicht über die Oberfläche geprüft."
+      ]
     },
     {
       "id": "redaktion.approval",
@@ -55,7 +61,7 @@
       "category": "fachlich",
       "implementationStatus": "implementiert",
       "integrationStatus": "rollenabhaengig",
-      "coverage": "keine",
+      "coverage": "teilweise",
       "testResult": "nicht-ausgefuehrt",
       "evidence": [
         "src/features/redaktion/approval.ts",
@@ -82,7 +88,13 @@
         "bueroleitung",
         "mitarbeiter"
       ],
-      "dependsOn": ["redaktion.planner"]
+      "dependsOn": ["redaktion.planner"],
+      "scenarios": [
+        "social-content-lifecycle"
+      ],
+      "limitations": [
+        "Einreichen, Freigeben, Änderungswunsch mit Folgeaufgabe und das automatische Wiederöffnen nach geänderter Kanaltext-Zeile laufen im Selbsttest über die echten Trigger und RPCs samt Protokoll. Freie Kommentare ohne Änderungswunsch, Emoji-Reaktionen, die Push-Zustellung der Meldungen sowie Matrix-Chat und externe Veröffentlichung prüft das Szenario nicht. Den Fallback ohne hinterlegte verantwortliche Person (Aufgabe an die anlegende Person) prüft das Szenario nicht; es setzt von Anfang an eine verantwortliche Person und belegt die Auflösung über profiles.id zur Login-ID."
+      ]
     },
     {
       "id": "redaktion.assets-campaigns",
@@ -121,7 +133,7 @@
       "category": "fachlich",
       "implementationStatus": "implementiert",
       "integrationStatus": "ui",
-      "coverage": "keine",
+      "coverage": "teilweise",
       "testResult": "nicht-ausgefuehrt",
       "evidence": [
         "src/features/redaktion/components/Themenspeicher.tsx",
@@ -146,6 +158,12 @@
         "abgeordneter",
         "bueroleitung",
         "mitarbeiter"
+      ],
+      "scenarios": [
+        "social-content-lifecycle"
+      ],
+      "limitations": [
+        "Das Szenario legt ein Thema im Themenspeicher an und verwendet es für den Beitrag. Hashtag-Sets und der Transfer-Dialog werden nicht geprüft."
       ]
     },
     {

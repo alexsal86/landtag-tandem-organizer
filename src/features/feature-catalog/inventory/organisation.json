@@ -233,7 +233,7 @@
       "category": "fachlich",
       "implementationStatus": "implementiert",
       "integrationStatus": "ui",
-      "coverage": "keine",
+      "coverage": "selftest",
       "testResult": "nicht-ausgefuehrt",
       "evidence": [
         "src/features/meetings/zombiePoints.ts"
@@ -252,7 +252,11 @@
       "reviewPoints": [
         "Für zombiePoints.ts ist keine Testdatei vorhanden."
       ],
-      "dependsOn": ["meetings.agenda"]
+      "dependsOn": ["meetings.agenda"],
+      "scenarios": [
+        "jour-fixe-platform-integration",
+        "meeting-lifecycle"
+      ]
     },
     {
       "id": "dossiers.manage",
@@ -579,7 +583,7 @@
       "category": "fachlich",
       "implementationStatus": "implementiert",
       "integrationStatus": "ui",
-      "coverage": "keine",
+      "coverage": "selftest",
       "testResult": "nicht-ausgefuehrt",
       "evidence": [
         "src/features/topics/TopicConversionButton.tsx",
@@ -592,7 +596,9 @@
         "src/features/topics/useTopicCatalogLinks.ts"
       ],
       "rpcs": [
-        "convert_topic_to_catalog"
+        "convert_topic_to_catalog",
+        "merge_responsibility_catalog",
+        "topic_catalog_conversion_selftest"
       ],
       "tables": [
         "topics",
@@ -606,7 +612,54 @@
       "docs": [
         "docs/entity-map.md"
       ],
-      "dependsOn": ["topics.manage", "responsibilities.matrix"]
+      "dependsOn": ["topics.manage", "responsibilities.matrix"],
+      "scenarios": [
+        "topic-linking"
+      ],
+      "limitations": [
+        "Der Erfolgspfad (Katalogziel anlegen, Zuständigkeiten umhängen, topic_catalog_links schreiben, Quelle deaktivieren, Wiederholung und Zusammenführen) läuft über topic_catalog_conversion_selftest und wird vollständig zurückgerollt, damit keine Stammdaten zurückbleiben.",
+        "Ohne Leitungsrolle prüft der Schritt nur die Abweisung; die Bedienung des Konvertierungsdialogs wird nicht über die Oberfläche geprüft.",
+        "Der Nachweis, dass eine zweite Primary-Person mitwandert, braucht ein zweites aktives Büromitglied. Fehlt es, meldet der Server-Selbsttest den Modus checked_without_second_member mit unverified second_primary_moved; die Anforderung „andere Primaries bleiben erhalten“ ist dann nur für unabhängige Zuständigkeiten belegt."
+      ]
+    },
+    {
+      "id": "topics.ministry-cloud",
+      "subarea": "Themen",
+      "name": "Standarddaten für neue Büros",
+      "description": "Legt im Themenkatalog jedes Büros automatisch den Grundbestand an ministerienbezogenen Themen an, füllt leere Beschreibungen, verknüpft die Ressortlinien der Parlamentsdokumentation und legt die zehn Modul-Regeln der Themen-Steuerung an. Der Anlage-Dialog zählt diese Daten nach dem Anlegen aus der Datenbank nach.",
+      "category": "automatisiert",
+      "implementationStatus": "implementiert",
+      "integrationStatus": "system",
+      "coverage": "selftest",
+      "testResult": "nicht-ausgefuehrt",
+      "evidence": [
+        "supabase/migrations/20261128020000_seed_ministry_topic_cloud.sql",
+        "src/features/selftest/scenarios/topic-linking.ts"
+      ],
+      "rpcs": [
+        "ministry_topic_cloud_selftest",
+        "topic_module_settings_selftest"
+      ],
+      "tables": [
+        "topics",
+        "parlis_ministry_lines",
+        "parlis_ministry_topics",
+        "topic_module_settings",
+        "tenants"
+      ],
+      "roles": [
+        "system"
+      ],
+      "scenarios": [
+        "topic-linking"
+      ],
+      "limitations": [
+        "Der Selbsttest legt ein Testbüro an und rollt es zurück; die Anzeige der Themen in der Administration wird dabei nicht über die Oberfläche geprüft.",
+        "Der Erfolgsdialog des Anlage-Wizards zählt die Standarddaten nur; ob sie fachlich passen, prüft er nicht."
+      ],
+      "dependsOn": [
+        "topics.manage"
+      ]
     },
     {
       "id": "facts.manage",

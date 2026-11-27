@@ -3,7 +3,7 @@
     {
       "id": "operations",
       "title": "Vorgangs- & Mandatsbetrieb",
-      "areas": ["contacts", "cases", "tasks", "decisions", "meetings", "day-slip"]
+      "areas": ["contacts", "cases", "tasks", "decisions", "meetings", "day-slip", "notifications"]
     },
     {
       "id": "representation",
@@ -13,7 +13,7 @@
     {
       "id": "documents",
       "title": "Dokumente & Wissen",
-      "areas": ["documents", "knowledge", "topics"]
+      "areas": ["documents", "knowledge", "topics", "redaktion"]
     },
     {
       "id": "elections",
@@ -86,6 +86,16 @@
       "id": "topics",
       "title": "Themen & Verknüpfungen",
       "primaryTags": ["topics"]
+    },
+    {
+      "id": "redaktion",
+      "title": "Redaktion & Social Media",
+      "primaryTags": ["redaktion"]
+    },
+    {
+      "id": "notifications",
+      "title": "Benachrichtigungen",
+      "primaryTags": ["notifications"]
     },
     {
       "id": "elections",

@@ -4,6 +4,7 @@ import { nextRecurrenceDate, subtaskProgress } from "@/features/tasks/templates"
 import { changeDeadline } from "@/hooks/useDeadlineActions";
 import type { DeadlineItem } from "@/types/dashboardDeadlines";
 import { formatDeadlineDateLabel, getDeadlineStatus, getReviewableOverdueDeadlines, groupDeadlineItems } from "@/utils/deadlineFormatting";
+import { berlinDayKey } from "@/utils/berlinDate";
 import type { TestScenario } from "../types";
 import { SELFTEST_MARKER, SELFTEST_PREFIX } from "../runner";
 import { describeError, expectFields } from "../verify";
@@ -323,8 +324,12 @@ export const taskLifecycleScenario: TestScenario = {
         if (child) ctx.trackRecord({ table: "tasks", id: child.id });
         const expected = nextRecurrenceDate(due, "weekly");
         const texts = timelineTexts(child?.timeline);
+        // due_date ist timestamptz: Der Trigger rechnet die Frist in Tagen weiter,
+        // die Datenbank liefert dazu einen Zeitstempel (00:00 UTC). Verglichen wird
+        // deshalb der Berliner Kalendertag der Folgeaufgabe, nicht die Zeichenkette.
+        const spawnedDay = child?.due_date ? berlinDayKey(child.due_date) : null;
         const firstOk = spawned.data?.length === 1
-          && child?.due_date === expected
+          && spawnedDay === expected
           && child?.status === "todo"
           && child?.recurrence_rule === "weekly"
           && texts.includes("Wiederkehrende Aufgabe automatisch neu angelegt");
@@ -337,7 +342,7 @@ export const taskLifecycleScenario: TestScenario = {
           message: ok
             ? `Folgeaufgabe mit Frist ${expected} angelegt; erneutes Abschließen erzeugt keine zweite.`
             : "Wiederholung weicht ab.",
-          details: { due, expected, spawned: spawned.data, repeatedCount: all.data?.length },
+          details: { due, expected, spawnedDay, spawned: spawned.data, repeatedCount: all.data?.length },
         };
       },
     },
@@ -403,7 +408,7 @@ export const taskLifecycleScenario: TestScenario = {
       run: async (ctx) => {
         const id = ctx.data.taskId as string;
         // Der Client-Schutz wirft teils, statt einen Fehler zurückzugeben; beides ist ein gültiger Abschlag.
-        let error: { code?: string; message?: string } | null = null;
+        let error: { code?: string; message?: string } | null;
         try {
           const result = await supabase.from("tasks").update({ tenant_id: crypto.randomUUID() }).eq("id", id);
           error = result.error;
