@@ -78,6 +78,7 @@ Diese Schritte führen die Szenarien aus; „letzter Lauf“ stammt aus `src/fea
 | `appointment-briefing-lifecycle` | `office-debrief-inbox` | Nachbereitung: Zusagen priorisieren und Quelle anzeigen | logic | — |
 | `appointment-briefing-lifecycle` | `today-priorities` | Heute zuerst: Rangfolge und Berliner Tagesgrenzen | logic | — |
 | `appointment-briefing-lifecycle` | `office-feedback` | Bürorückmeldung: Abschluss, Erinnerung und ältere Termine | logic | — |
+| `appointment-briefing-lifecycle` | `office-feedback-promise-suggestions` | Bürorückmeldung: Vorschläge für Zusagen | logic | — |
 | `appointment-briefing-lifecycle` | `day-summary` | Tagesüberblick: leere Tage, laufende Termine, Briefings und offene Rückmeldungen | logic | — |
 | `appointment-briefing-lifecycle` | `reminder` | Briefing-Hinweis: Zuständigkeit, Vorlauf und Montag | logic | — |
 | `appointment-briefing-lifecycle` | `rules` | Regeln: nur Entscheider geben frei; Frist am Vortag 12:00 | logic | — |
@@ -538,7 +539,7 @@ Führt das Briefing im Termin, erlaubt Statusfortschritt und erzeugt Nachbereitu
 - Keine.
 
 ### `appointments.debrief` — Nachbereitung und Büro-Feedback
-Sammelt Rückmeldungen aus dem Termin, zeigt offene Nachbereitungen und schließt Feedback-Erinnerungen.
+Sammelt Rückmeldungen aus dem Termin, zeigt offene Nachbereitungen und schließt Feedback-Erinnerungen. Nach dem Diktat können Abgeordnete Zusagen bestätigen und regelbasierte Vorschläge vor dem Versand bearbeiten.
 
 - **Kategorie:** fachlich
 - **Implementierung:** implementiert
@@ -548,13 +549,13 @@ Sammelt Rückmeldungen aus dem Termin, zeigt offene Nachbereitungen und schließ
 - **Rollen:** `abgeordneter`, `bueroleitung`, `mitarbeiter`
 - **Routen:** —
 - **Frontend-Komponenten:** `src/features/appointments/briefing/OfficeDebriefInboxCard.tsx`, `src/features/appointments/briefing/OfficeFeedbackCard.tsx`, `src/features/appointments/briefing/DeputyDebriefReview.tsx`
-- **Services:** `src/features/appointments/briefing/officeDebriefInbox.ts`, `src/features/appointments/briefing/officeFeedback.ts`
+- **Services:** `src/features/appointments/briefing/officeDebriefInbox.ts`, `src/features/appointments/briefing/officeFeedback.ts`, `src/features/appointments/briefing/officeFeedbackPromises.ts`
 - **Hooks:** —
 - **Edge Functions:** —
 - **Datenbankfunktionen:** `list_office_debriefs`, `update_office_debrief`, `close_office_feedback_reminder`
 - **Tabellen:** `appointment_feedback`, `appointment_preparations`
 - **Abhängigkeiten:** `appointments.briefing`
-- **Selbsttests:** `appointment-lifecycle`
+- **Selbsttests:** `appointment-lifecycle`, `appointment-briefing-lifecycle`
 - **Unit-Tests:** —
 - **Integrationstests:** —
 - **Browser-Tests:** —

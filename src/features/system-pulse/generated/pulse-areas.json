@@ -298,6 +298,7 @@
           "features": [
             "appointments.briefing",
             "appointments.briefing-live",
+            "appointments.debrief",
             "calendar.edit-move",
             "mywork.dashboard.today-priorities"
           ],
@@ -333,6 +334,10 @@
             {
               "id": "office-feedback",
               "label": "Bürorückmeldung: Abschluss, Erinnerung und ältere Termine"
+            },
+            {
+              "id": "office-feedback-promise-suggestions",
+              "label": "Bürorückmeldung: Vorschläge für Zusagen"
             },
             {
               "id": "day-summary",

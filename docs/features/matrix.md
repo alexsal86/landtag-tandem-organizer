@@ -170,7 +170,7 @@ Die Spalten zählen **zugeordnete** Prüfungen, nicht bestandene Läufe. „Erge
 | `calendar.reminders` | termine | automatisiert | implementiert | systemseitig | kein Test | nicht-ausgefuehrt | 0 | 0 | 0 | 0 | ja |
 | `calendar.view` | termine | fachlich | implementiert | UI | Selbsttest | nicht-ausgefuehrt | 1 | 0 | 0 | 0 | ja |
 | `calendar.categories-locations` | termine | administrativ | implementiert | rollenabhängig | kein Test | nicht-ausgefuehrt | 0 | 0 | 0 | 0 | nein |
-| `appointments.debrief` | termine | fachlich | implementiert | UI | Selbsttest | nicht-ausgefuehrt | 1 | 0 | 0 | 0 | nein |
+| `appointments.debrief` | termine | fachlich | implementiert | UI | Selbsttest | nicht-ausgefuehrt | 2 | 0 | 0 | 0 | nein |
 | `appointments.feedback` | termine | automatisiert | implementiert | systemseitig | kein Test | nicht-ausgefuehrt | 0 | 0 | 0 | 0 | nein |
 | `daily.briefing` | termine | fachlich | implementiert | UI | Selbsttest | nicht-ausgefuehrt | 2 | 8 | 0 | 0 | ja |
 | `calendar.polls` | termine | fachlich | implementiert | UI | Selbsttest | nicht-ausgefuehrt | 1 | 0 | 0 | 0 | nein |

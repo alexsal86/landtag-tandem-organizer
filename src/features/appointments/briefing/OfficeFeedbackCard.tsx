@@ -1,3 +1,4 @@
+import { officeFeedbackPromiseMaxLength, suggestOfficeFeedbackPromises } from "./officeFeedbackPromises";
 import { officeFeedbackDraftKey, readOfficeFeedbackDraft, writeOfficeFeedbackDraft } from "./officeFeedbackDraft";
 import { useCallback, useEffect, useMemo, useRef, useState } from "react";
 import { useQueryClient } from "@tanstack/react-query";
@@ -33,7 +34,7 @@ function OfficeFeedbackForm() {
   const feedback = useAppointmentFeedback();
   const { isAbgeordneter } = useResolvedUserRole();
   const reviews = useOfficeDebriefInbox(true, isAbgeordneter);
-  const [promises, setPromises] = useState<Record<string, string>>({});
+  const [promises, setPromises] = useState<Record<string, { hasPromise: boolean; text?: string }>>({});
   const spokenSeconds = useRef<Record<string, number>>({});
   const recordingStarted = useRef<number | null>(null);
   const dictated = useRef(false);
@@ -105,6 +106,7 @@ function OfficeFeedbackForm() {
   const current = pending.find(event => eventKey(event) === selected) ?? due[0] ?? visible[0];
   const key = current ? eventKey(current) : "";
   const text = drafts[key] ?? readOfficeFeedbackDraft(storedKey(key));
+  const promise = promises[key];
   const deferred = pending.filter(event => isDeferred(event) && eventKey(event) !== key);
   const others = visible.filter(event => eventKey(event) !== key);
   const older = others.filter(event => isOlderOfficeFeedback(event.start_time, now));
@@ -148,9 +150,10 @@ function OfficeFeedbackForm() {
     if (!user || !currentTenant) throw new Error("Bitte anmelden und ein Büro wählen.");
     if (isAbgeordneter) {
       const key = eventKey(event);
+      const promise = promises[key];
       const result = await supabase.rpc("update_office_debrief", {
         _tenant: currentTenant.id, _action: status === "completed" ? "submit" : "skip", _id: event.id, _external: event.event_type === "external_event",
-        _text: notes, _promise: notes ? promises[key]?.trim() || undefined : undefined, _seconds: notes ? spokenSeconds.current[key] : undefined,
+        _text: notes, _promise: notes && promise?.hasPromise ? promise.text?.trim() || undefined : undefined, _seconds: notes ? spokenSeconds.current[key] : undefined,
       });
       if (result.error) throw result.error;
       return;
@@ -243,7 +246,10 @@ function OfficeFeedbackForm() {
 
   const review = async () => {
     if (recording && !(await speech.stop())) return;
-    if ((draftsRef.current[key] ?? readOfficeFeedbackDraft(storedKey(key))).trim()) setMode("review");
+    if ((draftsRef.current[key] ?? readOfficeFeedbackDraft(storedKey(key))).trim()) {
+      setSelected(key);
+      setMode("review");
+    }
   };
 
   return (
@@ -284,11 +290,26 @@ function OfficeFeedbackForm() {
             {mode === "review" ? (
               <div className="animate-fade-up space-y-3">
                 <p className="whitespace-pre-wrap rounded-2xl bg-muted/60 p-3 text-sm">{text}</p>
-                {isAbgeordneter && <input aria-label="Zusage" placeholder="Zusage, falls vereinbart" value={promises[key] ?? ""}
-                  onChange={event => setPromises(previous => ({ ...previous, [key]: event.target.value }))}
-                  maxLength={1000} className="w-full rounded-xl border bg-background p-2" />}
+                {isAbgeordneter && (
+                  <fieldset disabled={busy} className="space-y-2">
+                    <legend className="mb-2 text-sm font-medium">Hast du eine Zusage gemacht?</legend>
+                    <div className="flex gap-2">
+                      {[true, false].map(answer => (
+                        <button key={String(answer)} type="button" aria-pressed={promise?.hasPromise === answer}
+                          className={`rounded-xl border px-4 py-2 text-sm ${promise?.hasPromise === answer ? green : "bg-muted"}`}
+                          onClick={() => setPromises(previous => ({
+                            ...previous,
+                            [key]: { hasPromise: answer, text: previous[key]?.text ?? (answer ? suggestOfficeFeedbackPromises(text) : undefined) },
+                          }))}>{answer ? "Ja" : "Nein"}</button>
+                      ))}
+                    </div>
+                    {promise?.hasPromise && <textarea aria-label="Zusagen" placeholder="Zusagen hier eintragen" value={promise.text ?? ""}
+                      onChange={event => setPromises(previous => ({ ...previous, [key]: { hasPromise: true, text: event.target.value } }))}
+                      rows={3} maxLength={officeFeedbackPromiseMaxLength} className="w-full rounded-xl border bg-background p-2 text-sm" />}
+                  </fieldset>
+                )}
                 <div className="flex flex-wrap gap-2">
-                  <button type="button" disabled={busy} className={`rounded-xl px-4 py-2 text-sm ${green}`} onClick={() => void finish([current], text.trim())}>{busy ? "Wird gesendet…" : "Ans Büro senden"}</button>
+                  <button type="button" disabled={busy || (isAbgeordneter && (!promise || (promise.hasPromise && !promise.text?.trim())))} className={`rounded-xl px-4 py-2 text-sm disabled:opacity-40 ${green}`} onClick={() => void finish([current], text.trim())}>{busy ? "Wird gesendet…" : "Ans Büro senden"}</button>
                   <button type="button" disabled={busy} className="px-3 py-2 text-sm text-muted-foreground" onClick={() => setMode("write")}>Zurück</button>
                 </div>
               </div>
@@ -304,7 +325,7 @@ function OfficeFeedbackForm() {
                   <button type="button" aria-label={recording ? "Diktat beenden" : "Rückmeldung diktieren"} aria-pressed={recording}
                     disabled={busy || !speech.supported || speechState === "stopping"} title={speech.supported ? "Diktieren" : "Spracherkennung wird von diesem Browser nicht unterstützt"}
                     className="flex h-8 w-8 shrink-0 items-center justify-center rounded-full bg-[#eaf5df] text-[#55ad21] disabled:opacity-40"
-                    onClick={() => { if (recording) void speech.stop(); else { setSelected(key); speechTarget.current = key; recordingStarted.current = Date.now(); dictated.current = false; speech.start(); } }}>
+                    onClick={() => { if (recording) void review(); else { setSelected(key); speechTarget.current = key; recordingStarted.current = Date.now(); dictated.current = false; speech.start(); } }}>
                     {recording ? <Square className="h-4 w-4" /> : <Mic className="h-5 w-5" />}
                   </button>
                   <button type="button" disabled={busy || (!text.trim() && !recording)} className={`h-8 shrink-0 rounded-2xl px-4 text-body font-medium disabled:opacity-40 ${green}`} onClick={() => void review()}>Weiter</button>
