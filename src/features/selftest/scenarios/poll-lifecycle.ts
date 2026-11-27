@@ -230,8 +230,8 @@ export const pollLifecycleScenario: TestScenario = {
           _emails: [`selbsttest-intern-${ctx.runId}@example.invalid`],
         });
         if (!foreignTenant.error) return { ok: false, message: "Frei/Gebucht darf fremde Mandanten nicht auswerten." };
-        if (!/Kein Zugriff/i.test(foreignTenant.error.message)) {
-          return { ok: false, message: `Unerwarteter Fehler für fremden Mandanten: ${foreignTenant.error.message}` };
+        if (foreignTenant.error.code !== "42501") {
+          return { ok: false, message: `Frei/Gebucht: ${describeError(foreignTenant.error)}` };
         }
         notes.push("fremder Mandant abgelehnt");
 

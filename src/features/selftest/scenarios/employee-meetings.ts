@@ -176,14 +176,17 @@ export const employeeMeetingsScenario: TestScenario = {
           noAuditRows: !audit.error && (audit.data ?? []).length === 0,
         };
         if (!read.ok) return read;
+        const ok = Object.values(checks).every(Boolean);
         return {
-          ok: Object.values(checks).every(Boolean),
-          message: "Direkte Statusänderung, vorzeitige Freigabe, Bestätigung und Wiedereröffnung werden abgewiesen; der veraltete Autosave-Stand ebenfalls, ohne Auditzeile.",
+          ok,
+          message: ok
+            ? "Alle unzulässigen Änderungen wurden ohne Auditzeile abgewiesen."
+            : "Mindestens eine Workflow-Sperre oder die Auditprüfung wich vom erwarteten Ergebnis ab.",
           details: {
             ...checks,
             errors: {
               direct: direct.error?.code, release: prematureRequest.error?.code, acknowledge: prematureAck.error?.code,
-              reopen: prematureReopen.error?.code, stale: staleSave.error?.code,
+              reopen: prematureReopen.error?.code, stale: staleSave.error?.code, audit: audit.error?.code,
             },
           },
         };

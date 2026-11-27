@@ -21,7 +21,7 @@ export const topicLinkingScenario: TestScenario = {
   id: "topic-linking",
   title: "Themenverknüpfung und Modul-Steuerung",
   description:
-    "Legt Themen über ensure_topic an, prüft Bereinigung, Groß-/Kleinschreibung und Längengrenzen sowie die Anlageregel je Modul, verknüpft einen Vorgang über intake_payload (Trigger) und direkt, prüft Duplikatsperre und Mandantenzuordnung, führt Themen zusammen und belegt Weiterleitung samt mitgezogenen Verknüpfungen. Dazu kommen die Modul-Steuerung mit ihren Wertebereichen und die Zählwerte aus topic_usage.",
+    "Legt Themen über ensure_topic an, prüft Bereinigung, Groß-/Kleinschreibung und Längengrenzen sowie die Anlageregel je Modul, prüft den direkten Schreibpfad für Themenverknüpfungen und die Unabhängigkeit vom intake_payload, prüft Duplikatsperre und Mandantenzuordnung, führt Themen zusammen und belegt Weiterleitung samt mitgezogenen Verknüpfungen. Dazu kommen die Modul-Steuerung mit ihren Wertebereichen und die Zählwerte aus topic_usage.",
   touches: [
     "topics",
     "case_item_topics",
@@ -267,6 +267,12 @@ export const topicLinkingScenario: TestScenario = {
       run: async ctx => {
         const source = ctx.data.topicId as string;
         const label = ctx.data.topicLabel as string;
+        const caseItemId = ctx.data.caseItemId as string;
+        // Der vorherige Schritt hat das Löschen der Zuordnung geprüft.
+        const link = await supabase.from("case_item_topics").insert({
+          case_item_id: caseItemId, topic_id: source, tenant_id: ctx.tenantId, created_by: ctx.userId,
+        });
+        if (link.error) return { ok: false, message: `Quellthema verknüpfen: ${describeError(link.error)}` };
         const target = await supabase.rpc("ensure_topic", { p_tenant: ctx.tenantId, p_label: topicLabel(ctx.runId, "Zielthema") });
         if (target.error || !target.data) {
           return { ok: false, message: `Zielthema anlegen: ${describeError(target.error)}` };
@@ -286,9 +292,10 @@ export const topicLinkingScenario: TestScenario = {
         }
 
         const merged = await supabase.rpc("merge_topics", { p_source: source, p_target: targetId });
+        if (merged.error) return { ok: false, message: `Themen zusammenführen: ${describeError(merged.error)}` };
         const sourceRow = await supabase.from("topics").select("is_active,merged_into,merged_at").eq("id", source).single();
         const links = await supabase.from("case_item_topics")
-          .select("case_item_id,topic_id").eq("case_item_id", ctx.data.caseItemId as string);
+          .select("case_item_id,topic_id").eq("case_item_id", caseItemId);
         const redirect = await supabase.rpc("ensure_topic", { p_tenant: ctx.tenantId, p_label: label });
         const again = await supabase.rpc("merge_topics", { p_source: source, p_target: targetId });
         const checks = {
@@ -298,17 +305,23 @@ export const topicLinkingScenario: TestScenario = {
           redirect: !redirect.error && redirect.data === targetId,
           mergeTwiceBlocked: again.error?.code === "22023",
         };
+        const ok = Object.values(checks).every(Boolean);
         return {
-          ok: Object.values(checks).every(Boolean) && !merged.error,
-          message: "Die Quelle leitet auf das Ziel weiter; Verknüpfungen sind mitgezogen.",
-          details: checks,
+          ok,
+          message: ok
+            ? "Die Quelle leitet auf das Ziel weiter; Verknüpfungen sind mitgezogen."
+            : "Zusammenführung oder Weiterleitung entspricht nicht dem erwarteten Ergebnis.",
+          details: {
+            ...checks,
+            errors: { source: sourceRow.error?.code, links: links.error?.code, redirect: redirect.error?.code, repeatedMerge: again.error?.code },
+          },
         };
       },
     },
     {
       id: "usage", label: "Verwendung je Modul zählen",
       run: async ctx => {
-        const topicId = (ctx.data.targetTopicId as string | undefined) ?? (ctx.data.topicId as string);
+        const topicId = (ctx.data.moduleIsAdmin ? ctx.data.targetTopicId : ctx.data.topicId) as string;
         const usage = await supabase.rpc("topic_usage", { p_tenant: ctx.tenantId });
         if (usage.error || !usage.data) {
           return { ok: false, message: `Verwendung lesen: ${describeError(usage.error)}` };

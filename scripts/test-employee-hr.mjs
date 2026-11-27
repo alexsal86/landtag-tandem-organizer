@@ -72,6 +72,9 @@ try{
  assert.equal((await q('SELECT * FROM employee_lifecycle')).length,0,'Same-tenant colleagues cannot read private HR data');
  assert.equal((await q('SELECT * FROM subtasks')).length,0);
  await actor(other);
+ await assert.rejects(q("SELECT save_employee_lifecycle($1,$2,'praktikum',current_date)",[a,staff]),e=>e.code==='42501');
+ await assert.rejects(q('SELECT remind_employee_hr($1)',[employment]),e=>e.code==='42501');
+ await assert.rejects(q('SELECT remind_employee_hr(gen_random_uuid())'),e=>e.code==='42501');
  await assert.rejects(q("SELECT confirm_employee_hr_gdpr($1,'2026-11-13.1')",[proof.id]),e=>e.code==='42501');
  assert.equal((await q('SELECT * FROM employee_lifecycle')).length,0);
  assert.equal((await q('SELECT * FROM routine_package_runs')).length,0);

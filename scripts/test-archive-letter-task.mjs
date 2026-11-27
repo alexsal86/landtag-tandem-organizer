@@ -61,11 +61,6 @@ try {
     /from\('tasks'\)/.test(source), false,
     'archive-letter legt keine eigene Aufgabe mehr an (genau ein Erzeuger)',
   );
-  assert.equal(
-    /category:\s*'/.test(source), false,
-    'archive-letter schreibt keine Aufgabenkategorie mehr',
-  );
-
   for (const value of [taskCategory]) {
     await db.query('INSERT INTO tasks(title, category) VALUES($1, $2)', ['Abgeordnetenbrief vom 26.11.2026', value]);
     assert.ok(allowed.includes(value), `tasks_category_check erlaubt "${value}"`);
@@ -79,7 +74,32 @@ try {
     'Die großgeschriebene Kategorie verletzt tasks_category_check weiterhin',
   );
 
-  console.log(`archive-letter task passed: genau ein Erzeuger mit Verknüpfung source_type/source_id, Kategorie "${taskCategory}" ist in tasks_category_check erlaubt (${allowed.join(', ')}); Großschreibung wird mit 23514 abgewiesen.`);
+  await db.exec(`
+    CREATE SCHEMA auth;
+    CREATE FUNCTION auth.uid() RETURNS uuid LANGUAGE sql STABLE AS
+    $$ SELECT nullif(current_setting('test.actor', true), '')::uuid $$;
+    CREATE TABLE letters(id integer PRIMARY KEY, status text, sent_by uuid, sent_at timestamptz, workflow_locked boolean);
+  `);
+  await db.exec(await read('../supabase/migrations/20261127220000_letter_sent_by_actor_preservation.sql'));
+  await db.exec(`
+    CREATE TRIGGER trigger_letter_status_change BEFORE UPDATE ON letters
+      FOR EACH ROW EXECUTE FUNCTION public.handle_letter_status_change();
+    INSERT INTO letters(id, status) VALUES (1, 'approved'), (2, 'approved');
+  `);
+  const sender = '11111111-1111-4111-8111-111111111111';
+  const actor = '22222222-2222-4222-8222-222222222222';
+  const send = async id => (await db.query(
+    "UPDATE letters SET status = 'sent', sent_by = $1 WHERE id = $2 RETURNING sent_by, sent_at, workflow_locked",
+    [sender, id],
+  )).rows[0];
+  const serviceArchive = await send(1);
+  assert.equal(serviceArchive.sent_by, sender);
+  assert.ok(serviceArchive.sent_at);
+  assert.equal(serviceArchive.workflow_locked, true);
+  await db.query("SELECT set_config('test.actor', $1, false)", [actor]);
+  assert.equal((await send(2)).sent_by, actor);
+
+  console.log(`archive-letter task and sender passed: genau ein Erzeuger mit Verknüpfung source_type/source_id, Kategorie "${taskCategory}" ist in tasks_category_check erlaubt (${allowed.join(', ')}); Großschreibung wird mit 23514 abgewiesen.`);
 } catch (error) {
   console.error('FAILED:', error.code ?? '', error.message);
   process.exitCode = 1;

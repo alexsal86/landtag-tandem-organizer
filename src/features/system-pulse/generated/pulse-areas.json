@@ -1836,7 +1836,7 @@
         {
           "scenario": "topic-linking",
           "title": "Themenverknüpfung und Modul-Steuerung",
-          "description": "Legt Themen über ensure_topic an, prüft Bereinigung, Groß-/Kleinschreibung und Längengrenzen sowie die Anlageregel je Modul, verknüpft einen Vorgang über intake_payload (Trigger) und direkt, prüft Duplikatsperre und Mandantenzuordnung, führt Themen zusammen und belegt Weiterleitung samt mitgezogenen Verknüpfungen. Dazu kommen die Modul-Steuerung mit ihren Wertebereichen und die Zählwerte aus topic_usage.",
+          "description": "Legt Themen über ensure_topic an, prüft Bereinigung, Groß-/Kleinschreibung und Längengrenzen sowie die Anlageregel je Modul, prüft den direkten Schreibpfad für Themenverknüpfungen und die Unabhängigkeit vom intake_payload, prüft Duplikatsperre und Mandantenzuordnung, führt Themen zusammen und belegt Weiterleitung samt mitgezogenen Verknüpfungen. Dazu kommen die Modul-Steuerung mit ihren Wertebereichen und die Zählwerte aus topic_usage.",
           "checks": [
             "ensure_topic bereinigt Leerzeichen, bildet den Schlüssel aus dem Label und liefert für dieselbe Bezeichnung dasselbe Thema",
             "Themenlabels außerhalb von 2–40 Zeichen werden abgewiesen (22023)",
