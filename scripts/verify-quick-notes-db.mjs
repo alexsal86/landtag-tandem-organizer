@@ -62,6 +62,11 @@ update quick_notes set meeting_id='${id(51)}' where id='${n1}';
 for (const migration of ['20261104120000_delete_quick_note_with_links_atomically.sql', '20261104220000_quick_notes_tenants_and_sync.sql']) {
   await db.exec(await readFile(new URL(`../supabase/migrations/${migration}`, import.meta.url), 'utf8'));
 }
+// Der Notizkonflikt ist ein Anwendungsfall, kein wiederholbarer Transaktionskonflikt:
+// PT409 (HTTP 409) statt 40001, damit die Antwort nicht ausbleibt. Zweimal, weil die
+// Migration die installierte Fassung liest und sich wiederholen lassen muss.
+const conflictCode = await readFile(new URL('../supabase/migrations/20261128110000_note_conflict_pt409.sql', import.meta.url), 'utf8');
+await db.exec(conflictCode); await db.exec(conflictCode);
 let passed = 0;
 const test = async (name, work) => { await work(); passed++; console.log(`PASS ${name}`); };
 const actor = async user => db.exec(`reset role; set role authenticated; set test.uid='${user ?? ''}';`);
@@ -103,7 +108,9 @@ await test('cross-tenant shares and links are rejected at the database', async (
 });
 await test('save snapshots history atomically and rejects stale revisions', async () => {
  const saved=await save(); assert.equal(saved.revision,1); assert.equal(saved.content,'Edited');
- await assert.rejects(save({op:id(102),content:'stale'}), /NOTE_CONFLICT/);
+ await assert.rejects(save({op:id(102),content:'stale'}),
+   error => error.code === 'PT409' && /NOTE_CONFLICT/.test(error.message),
+   'Ein veralteter Notizstand meldet PT409 (HTTP 409) und behält die Marke NOTE_CONFLICT');
  assert.equal(await value(`select content as value from quick_notes where id='${n1}'`),'Edited');
  assert.equal(await value(`select count(*)::int as value from quick_note_versions where note_id='${n1}'`),2);
 });
