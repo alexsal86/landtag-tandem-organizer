@@ -7,7 +7,7 @@
  * Nicht geprüfte Zwischenstufen sind ausdrücklich als solche gekennzeichnet.
  */
 
-export type SourceKind = "gesetzblatt" | "chronik" | "sekundaer";
+export type SourceKind = "gesetzblatt" | "chronik" | "system" | "sekundaer";
 
 export interface MinistrySource {
   kind: SourceKind;
@@ -34,9 +34,28 @@ export interface MinistryPhase {
 
 export interface LegislativePeriod {
   number: number;
+  /** Beginn laut election_history_periods (starts_on). */
   from: string;
+  /** Ende laut election_history_periods (ends_on bzw. erwartetes Ende). */
   to: string;
   cabinet: string;
+  /** true = Ende steht noch aus (erwartetes Ende). */
+  expected?: boolean;
+  source: MinistrySource;
+}
+
+/** Eine Ministerin oder ein Minister mit Amtszeit und Ressortlinie. */
+export interface MinisterTerm {
+  id: string;
+  lineId: string;
+  name: string;
+  party: string;
+  from: string;
+  /** null = im Amt. */
+  to: string | null;
+  /** Ressortbezeichnung während der Amtszeit, wenn sie vom Linientitel abweicht. */
+  office?: string;
+  note?: string;
 }
 
 export interface Finding {
@@ -62,6 +81,12 @@ const gbl = (year: number, page: number, issue: string, detail?: string, file?: 
 });
 
 const chronik = (citation: string, detail?: string): MinistrySource => ({ kind: "chronik", citation, detail });
+const system = (detail?: string): MinistrySource => ({
+  kind: "system",
+  citation: "election_history_periods (Wahlperioden-Blatt 1952–2026)",
+  detail,
+  url: "https://www.landtag-bw.de/resource/blob/618426/0fbd0f925d6293b2ad676a2761069f3f/17_0139_28012026.pdf",
+});
 const sekundaer = (citation: string, detail?: string): MinistrySource => ({ kind: "sekundaer", citation, detail });
 
 export const ressortLines: RessortLine[] = [
@@ -82,25 +107,30 @@ export const ressortLines: RessortLine[] = [
   { id: "family", label: "Familie, Frauen, Weiterbildung und Kunst (1992–1996)", marker: "○" },
 ];
 
+/**
+ * Beginn und Ende stammen aus der Systemtabelle election_history_periods, gefüllt aus dem
+ * geprüften Wahlperioden-Blatt der Arbeitsmappe. Die Enden sind keine Schätzungen: es sind die
+ * in der Tabelle hinterlegten (bzw. bei Periode 18 das erwartete) Enden.
+ */
 export const legislativePeriods: LegislativePeriod[] = [
-  { number: 1, from: "1952-04-25", to: "1956-05-08", cabinet: "Maier / Müller I" },
-  { number: 2, from: "1956-05-09", to: "1960-06-22", cabinet: "Müller II / Kiesinger I" },
-  { number: 3, from: "1960-06-23", to: "1964-06-10", cabinet: "Kiesinger II" },
-  { number: 4, from: "1964-06-11", to: "1968-06-11", cabinet: "Kiesinger III / Filbinger I" },
-  { number: 5, from: "1968-06-12", to: "1972-06-11", cabinet: "Filbinger II" },
-  { number: 6, from: "1972-06-12", to: "1976-06-01", cabinet: "Filbinger III" },
-  { number: 7, from: "1976-06-02", to: "1980-05-31", cabinet: "Filbinger IV" },
-  { number: 8, from: "1980-06-01", to: "1984-05-31", cabinet: "Späth I" },
-  { number: 9, from: "1984-06-01", to: "1988-05-31", cabinet: "Späth II" },
-  { number: 10, from: "1988-06-01", to: "1992-06-10", cabinet: "Späth III / Teufel I" },
-  { number: 11, from: "1992-06-11", to: "1996-06-11", cabinet: "Teufel II" },
-  { number: 12, from: "1996-06-12", to: "2001-06-11", cabinet: "Teufel III" },
-  { number: 13, from: "2001-06-12", to: "2006-06-10", cabinet: "Teufel IV / Oettinger I" },
-  { number: 14, from: "2006-06-11", to: "2011-05-11", cabinet: "Oettinger II / Mappus" },
-  { number: 15, from: "2011-05-12", to: "2016-05-11", cabinet: "Kretschmann I" },
-  { number: 16, from: "2016-05-12", to: "2021-05-11", cabinet: "Kretschmann II" },
-  { number: 17, from: "2021-05-12", to: "2026-05-12", cabinet: "Kretschmann III" },
-  { number: 18, from: "2026-05-13", to: "2031-05-12", cabinet: "Özdemir" },
+  { number: 1, from: "1952-03-25", to: "1956-03-31", cabinet: "Maier / Müller I", source: system("Beginn der Verfassunggebenden Landesversammlung; ab 19.11.1953 erster Landtag.") },
+  { number: 2, from: "1956-04-01", to: "1960-03-31", cabinet: "Müller II / Kiesinger I", source: system("Sonderregelung: vor der 3. Wahlperiode lagen April und Mai 1960.") },
+  { number: 3, from: "1960-06-01", to: "1964-05-31", cabinet: "Kiesinger II", source: system("Wiederholungswahl am 12.03.1961 in zwei Wahlkreisen.") },
+  { number: 4, from: "1964-06-01", to: "1968-05-31", cabinet: "Kiesinger III / Filbinger I", source: system() },
+  { number: 5, from: "1968-06-01", to: "1972-05-31", cabinet: "Filbinger II", source: system() },
+  { number: 6, from: "1972-06-01", to: "1976-05-31", cabinet: "Filbinger III", source: system() },
+  { number: 7, from: "1976-06-01", to: "1980-05-31", cabinet: "Filbinger IV / Späth I", source: system() },
+  { number: 8, from: "1980-06-01", to: "1984-05-31", cabinet: "Späth I", source: system() },
+  { number: 9, from: "1984-06-01", to: "1988-05-31", cabinet: "Späth II", source: system() },
+  { number: 10, from: "1988-06-01", to: "1992-05-31", cabinet: "Späth III / Teufel I", source: system() },
+  { number: 11, from: "1992-06-01", to: "1996-05-31", cabinet: "Teufel II", source: system() },
+  { number: 12, from: "1996-06-01", to: "2001-05-31", cabinet: "Teufel III", source: system("Erste regulär fünfjährige Wahlperiode.") },
+  { number: 13, from: "2001-06-01", to: "2006-05-31", cabinet: "Teufel IV / Oettinger I", source: system() },
+  { number: 14, from: "2006-06-01", to: "2011-04-30", cabinet: "Oettinger II / Mappus", source: system("Wahlperiode wegen Verfassungsänderung 2008 um einen Monat verkürzt.") },
+  { number: 15, from: "2011-05-01", to: "2016-04-30", cabinet: "Kretschmann I", source: system() },
+  { number: 16, from: "2016-05-01", to: "2021-04-30", cabinet: "Kretschmann II", source: system() },
+  { number: 17, from: "2021-05-01", to: "2026-04-30", cabinet: "Kretschmann III", source: system() },
+  { number: 18, from: "2026-05-01", to: "2031-04-30", cabinet: "Özdemir", expected: true, source: system("Reguläres, noch zukünftiges Ende; vorbehaltlich vorzeitiger Auflösung.") },
 ];
 
 export const ministryPhases: MinistryPhase[] = [
@@ -513,8 +543,185 @@ export const findings: Finding[] = [
   },
 ];
 
+/**
+ * Amtszeiten der Ministerinnen und Minister je Ressortlinie.
+ * Grundlage sind die Chronik der Landesregierungen (LpB) und die Ministerlisten der Ressorts;
+ * "bis" ist der belegte Amtsantritt der Nachfolge, nicht ein geschätztes Enddatum.
+ */
+export const ministerSourceNote = "Chronik der Landesregierungen (LpB) und Ministerlisten der Ressorts; „bis“ = Amtsantritt der Nachfolge.";
+
+export const ministers: MinisterTerm[] = [
+  // Staatsministerium / Minister im Staatsministerium
+  { id: "state-vetter", lineId: "state", name: "Erwin Vetter", party: "CDU", from: "1992-06-11", to: "1996-06-12", office: "Minister im Staatsministerium (Bundes- und Europaangelegenheiten, Verwaltungsreform, Medienpolitik)" },
+  { id: "state-palmer", lineId: "state", name: "Christoph-E. Palmer", party: "CDU", from: "1998-11-11", to: "2004-11-10", office: "Staatsministerium, ab 2001 auch europäische Angelegenheiten" },
+  { id: "state-mueller", lineId: "state", name: "Ulrich Müller", party: "CDU", from: "2004-11-10", to: "2005-04-21", office: "Staatsministerium und europäische Angelegenheiten" },
+  { id: "state-staechele", lineId: "state", name: "Willi Stächele", party: "CDU", from: "2005-04-21", to: "2008-06-04", office: "Staatsministerium und europäische Angelegenheiten" },
+  { id: "state-reinhart", lineId: "state", name: "Wolfgang Reinhart", party: "CDU", from: "2008-06-04", to: "2010-02-10", office: "Staatsministerium, Bundes- und Europaangelegenheiten" },
+  { id: "state-rau", lineId: "state", name: "Helmut Rau", party: "CDU", from: "2010-02-24", to: "2011-05-12", office: "Minister im Staatsministerium" },
+  { id: "state-krebs", lineId: "state", name: "Silke Krebs", party: "GRÜNE", from: "2011-05-12", to: "2016-03-18", office: "Ministerin im Staatsministerium" },
+  { id: "state-schopper", lineId: "state", name: "Theresa Schopper", party: "GRÜNE", from: "2018-10-09", to: "2021-05-12", office: "Staatsministerin (politische Koordination)" },
+
+  // Inneres
+  { id: "interior-ulrich", lineId: "interior", name: "Fritz Ulrich", party: "SPD", from: "1952-04-25", to: "1956-05-09" },
+  { id: "interior-renner", lineId: "interior", name: "Viktor Renner", party: "SPD", from: "1956-05-09", to: "1960-06-23" },
+  { id: "interior-filbinger", lineId: "interior", name: "Hans Filbinger", party: "CDU", from: "1960-06-23", to: "1966-12-16" },
+  { id: "interior-krause", lineId: "interior", name: "Walter Krause", party: "SPD", from: "1966-12-16", to: "1972-06-08" },
+  { id: "interior-schiess", lineId: "interior", name: "Karl Schiess", party: "CDU", from: "1972-06-08", to: "1978-02-22" },
+  { id: "interior-spaeth", lineId: "interior", name: "Lothar Späth", party: "CDU", from: "1978-02-22", to: "1978-08-30" },
+  { id: "interior-palm", lineId: "interior", name: "Guntram Palm", party: "CDU", from: "1978-08-30", to: "1980-06-04" },
+  { id: "interior-herzog", lineId: "interior", name: "Roman Herzog", party: "CDU", from: "1980-06-04", to: "1983-10-05" },
+  { id: "interior-eyrich", lineId: "interior", name: "Heinz Eyrich", party: "CDU", from: "1983-10-05", to: "1984-06-06", note: "zugleich Justizminister" },
+  { id: "interior-schlee", lineId: "interior", name: "Dietmar Schlee", party: "CDU", from: "1984-06-06", to: "1992-06-11" },
+  { id: "interior-birzele", lineId: "interior", name: "Frieder Birzele", party: "SPD", from: "1992-06-11", to: "1996-06-11" },
+  { id: "interior-schaeuble", lineId: "interior", name: "Thomas Schäuble", party: "CDU", from: "1996-06-11", to: "2004-07-14" },
+  { id: "interior-rech", lineId: "interior", name: "Heribert Rech", party: "CDU", from: "2004-07-14", to: "2011-05-12" },
+  { id: "interior-gall", lineId: "interior", name: "Reinhold Gall", party: "SPD", from: "2011-05-12", to: "2016-05-12" },
+  { id: "interior-strobl", lineId: "interior", name: "Thomas Strobl", party: "CDU", from: "2016-05-12", to: "2026-05-13" },
+  { id: "interior-hagel", lineId: "interior", name: "Manuel Hagel", party: "CDU", from: "2026-05-13", to: null },
+
+  // Justiz
+  { id: "justice-renner", lineId: "justice", name: "Viktor Renner", party: "SPD", from: "1952-04-25", to: "1953-05-15" },
+  { id: "justice-maier", lineId: "justice", name: "Reinhold Maier", party: "FDP/DVP", from: "1953-05-15", to: "1953-07-11", note: "kommissarisch" },
+  { id: "justice-schmid", lineId: "justice", name: "Richard Schmid", party: "SPD", from: "1953-07-11", to: "1953-10-07", note: "Staatssekretär mit der Leitung des Ministeriums beauftragt" },
+  { id: "justice-haussmann", lineId: "justice", name: "Wolfgang Haußmann", party: "FDP/DVP", from: "1953-10-07", to: "1966-12-16" },
+  { id: "justice-schieler", lineId: "justice", name: "Rudolf Schieler", party: "SPD", from: "1966-12-16", to: "1972-06-08" },
+  { id: "justice-bender", lineId: "justice", name: "Traugott Bender", party: "CDU", from: "1972-06-08", to: "1977-11-02" },
+  { id: "justice-palm", lineId: "justice", name: "Guntram Palm", party: "CDU", from: "1977-11-02", to: "1978-08-30" },
+  { id: "justice-eyrich", lineId: "justice", name: "Heinz Eyrich", party: "CDU", from: "1978-08-30", to: "1991-01-13" },
+  { id: "justice-ohnewald", lineId: "justice", name: "Helmut Ohnewald", party: "CDU", from: "1991-01-22", to: "1992-06-11" },
+  { id: "justice-schaeuble", lineId: "justice", name: "Thomas Schäuble", party: "CDU", from: "1992-06-11", to: "1996-06-11" },
+  { id: "justice-goll-1", lineId: "justice", name: "Ulrich Goll", party: "FDP/DVP", from: "1996-06-11", to: "2002-12-12" },
+  { id: "justice-werwigk", lineId: "justice", name: "Corinna Werwigk-Hertneck", party: "FDP/DVP", from: "2002-12-12", to: "2004-07-22" },
+  { id: "justice-goll-2", lineId: "justice", name: "Ulrich Goll", party: "FDP/DVP", from: "2004-07-28", to: "2011-05-12" },
+  { id: "justice-stickelberger", lineId: "justice", name: "Rainer Stickelberger", party: "SPD", from: "2011-05-12", to: "2016-05-12" },
+  { id: "justice-wolf", lineId: "justice", name: "Guido Wolf", party: "CDU", from: "2016-05-12", to: "2021-05-12" },
+  { id: "justice-gentges", lineId: "justice", name: "Marion Gentges", party: "CDU", from: "2021-05-12", to: "2026-05-13" },
+  { id: "justice-oppelt", lineId: "justice", name: "Moritz Oppelt", party: "CDU", from: "2026-05-13", to: null },
+
+  // Finanzen
+  { id: "finance-frank", lineId: "finance", name: "Karl Frank", party: "FDP/DVP", from: "1952-04-25", to: "1960-06-23" },
+  { id: "finance-mueller", lineId: "finance", name: "Hermann Müller", party: "FDP/DVP", from: "1960-06-23", to: "1966-12-16" },
+  { id: "finance-angstmann", lineId: "finance", name: "Kurt Angstmann", party: "SPD", from: "1966-12-16", to: "1968-06-12" },
+  { id: "finance-gleichauf", lineId: "finance", name: "Robert Gleichauf", party: "CDU", from: "1968-06-12", to: "1980-06-04" },
+  { id: "finance-palm", lineId: "finance", name: "Guntram Palm", party: "CDU", from: "1980-06-04", to: "1991-01-13" },
+  { id: "finance-mayervorfelder", lineId: "finance", name: "Gerhard Mayer-Vorfelder", party: "CDU", from: "1991-01-22", to: "1998-11-11" },
+  { id: "finance-stratthaus", lineId: "finance", name: "Gerhard Stratthaus", party: "CDU", from: "1998-11-11", to: "2008-06-04" },
+  { id: "finance-staechele", lineId: "finance", name: "Willi Stächele", party: "CDU", from: "2008-06-04", to: "2011-05-12" },
+  { id: "finance-schmid", lineId: "finance", name: "Nils Schmid", party: "SPD", from: "2011-05-12", to: "2016-05-12" },
+  { id: "finance-sitzmann", lineId: "finance", name: "Edith Sitzmann", party: "GRÜNE", from: "2016-05-12", to: "2021-05-12" },
+  { id: "finance-bayaz", lineId: "finance", name: "Danyal Bayaz", party: "GRÜNE", from: "2021-05-12", to: null },
+
+  // Kultus und Schule
+  { id: "education-schenkel", lineId: "education", name: "Gotthilf Schenkel", party: "SPD", from: "1952-04-25", to: "1953-10-07" },
+  { id: "education-simpfendoerfer", lineId: "education", name: "Wilhelm Simpfendörfer", party: "CDU", from: "1953-10-07", to: "1958-07-21" },
+  { id: "education-storz", lineId: "education", name: "Gerhard Storz", party: "CDU", from: "1958-07-21", to: "1964-06-11" },
+  { id: "education-hahn", lineId: "education", name: "Wilhelm Hahn", party: "CDU", from: "1964-06-11", to: "1978-05-11" },
+  { id: "education-herzog", lineId: "education", name: "Roman Herzog", party: "CDU", from: "1978-05-11", to: "1980-06-04" },
+  { id: "education-mayervorfelder", lineId: "education", name: "Gerhard Mayer-Vorfelder", party: "CDU", from: "1980-06-04", to: "1991-01-13" },
+  { id: "education-schultzhector", lineId: "education", name: "Marianne Schultz-Hector", party: "CDU", from: "1991-01-13", to: "1995-07-19" },
+  { id: "education-schavan", lineId: "education", name: "Annette Schavan", party: "CDU", from: "1995-07-19", to: "2005-10-05" },
+  { id: "education-rau", lineId: "education", name: "Helmut Rau", party: "CDU", from: "2005-10-05", to: "2010-02-24" },
+  { id: "education-schick", lineId: "education", name: "Marion Schick", party: "parteilos", from: "2010-02-24", to: "2011-05-12" },
+  { id: "education-warminski", lineId: "education", name: "Gabriele Warminski-Leitheußer", party: "SPD", from: "2011-05-12", to: "2013-01-23" },
+  { id: "education-stoch", lineId: "education", name: "Andreas Stoch", party: "SPD", from: "2013-01-23", to: "2016-05-12" },
+  { id: "education-eisenmann", lineId: "education", name: "Susanne Eisenmann", party: "CDU", from: "2016-05-12", to: "2021-05-12" },
+  { id: "education-schopper", lineId: "education", name: "Theresa Schopper", party: "GRÜNE", from: "2021-05-12", to: "2026-05-13" },
+  { id: "education-jung", lineId: "education", name: "Andreas Jung", party: "CDU", from: "2026-05-13", to: null },
+
+  // Wissenschaft, Forschung und Kunst
+  { id: "science-engler", lineId: "science", name: "Helmut Engler", party: "CDU", from: "1978-05-11", to: "1991-01-13", office: "Wissenschaft und Kunst" },
+  { id: "science-trotha", lineId: "science", name: "Klaus von Trotha", party: "CDU", from: "1991-01-13", to: "2001-06-12", office: "Wissenschaft und Kunst, ab 1992 Wissenschaft und Forschung" },
+  { id: "science-frankenberg", lineId: "science", name: "Peter Frankenberg", party: "CDU", from: "2001-06-12", to: "2011-05-12", office: "Wissenschaft, Forschung und Kunst" },
+  { id: "science-bauer", lineId: "science", name: "Theresia Bauer", party: "GRÜNE", from: "2011-05-12", to: "2022-09-28" },
+  { id: "science-olschowski", lineId: "science", name: "Petra Olschowski", party: "GRÜNE", from: "2022-09-28", to: null },
+
+  // Wirtschaft
+  { id: "economy-veit", lineId: "economy", name: "Hermann Veit", party: "SPD", from: "1952-04-25", to: "1960-06-23" },
+  { id: "economy-leuze", lineId: "economy", name: "Eduard Leuze", party: "FDP/DVP", from: "1960-06-23", to: "1966-12-16" },
+  { id: "economy-schwarz", lineId: "economy", name: "Hans-Otto Schwarz", party: "SPD", from: "1966-12-16", to: "1972-06-08" },
+  { id: "economy-eberle", lineId: "economy", name: "Rudolf Eberle", party: "CDU", from: "1972-06-08", to: "1984-11-17", note: "im Amt verstorben; ab 1972 mit Verkehr" },
+  { id: "economy-herzog", lineId: "economy", name: "Martin Herzog", party: "CDU", from: "1984-12-11", to: "1989-09-27" },
+  { id: "economy-schaufler", lineId: "economy", name: "Hermann Schaufler", party: "CDU", from: "1989-09-27", to: "1992-06-11" },
+  { id: "economy-spoeri", lineId: "economy", name: "Dieter Spöri", party: "SPD", from: "1992-06-11", to: "1996-06-12" },
+  { id: "economy-doering", lineId: "economy", name: "Walter Döring", party: "FDP/DVP", from: "1996-06-12", to: "2004-07-14" },
+  { id: "economy-pfister", lineId: "economy", name: "Ernst Pfister", party: "FDP/DVP", from: "2004-07-14", to: "2011-05-12" },
+  { id: "economy-schmid", lineId: "economy", name: "Nils Schmid", party: "SPD", from: "2011-05-12", to: "2016-05-12", office: "Finanzen und Wirtschaft" },
+  { id: "economy-hoffmeister", lineId: "economy", name: "Nicole Hoffmeister-Kraut", party: "CDU", from: "2016-05-12", to: null, office: "Wirtschaft, Arbeit und Wohnungsbau; ab 2021 Wirtschaft, Arbeit und Tourismus; ab 2026 Wirtschaft, Handwerk und Tourismus" },
+
+  // Arbeit und Soziales
+  { id: "social-hohlwegler", lineId: "social", name: "Ermin Hohlwegler", party: "SPD", from: "1952-04-25", to: "1960-06-23", office: "Arbeitsministerium" },
+  { id: "social-schuettler", lineId: "social", name: "Josef Schüttler", party: "CDU", from: "1960-06-23", to: "1968-06-12", office: "Arbeitsministerium, ab 16.12.1966 Arbeits- und Sozialministerium" },
+  { id: "social-hirrlinger", lineId: "social", name: "Walter Hirrlinger", party: "SPD", from: "1968-06-12", to: "1972-06-08", office: "Arbeits- und Sozialministerium" },
+  { id: "social-griesinger", lineId: "social", name: "Annemarie Griesinger", party: "CDU", from: "1972-06-08", to: "1980-06-04", office: "Arbeit, Gesundheit und Sozialordnung" },
+  { id: "social-schlee", lineId: "social", name: "Dietmar Schlee", party: "CDU", from: "1980-06-04", to: "1984-06-06", office: "Arbeit, Gesundheit und Sozialordnung" },
+  { id: "social-schaefer", lineId: "social", name: "Barbara Schäfer", party: "CDU", from: "1984-06-06", to: "1992-06-11", office: "Arbeit, Gesundheit, Familie und Sozialordnung" },
+  { id: "social-solinger", lineId: "social", name: "Helga Solinger", party: "SPD", from: "1992-06-11", to: "1996-06-12", office: "Arbeit, Gesundheit und Sozialordnung" },
+  { id: "social-vetter", lineId: "social", name: "Erwin Vetter", party: "CDU", from: "1996-06-12", to: "1998-11-11", office: "Sozialministerium" },
+  { id: "social-repnik", lineId: "social", name: "Friedhelm Repnik", party: "CDU", from: "1998-11-11", to: "2004-07-14", office: "Sozialministerium" },
+  { id: "social-goenner", lineId: "social", name: "Tanja Gönner", party: "CDU", from: "2004-07-14", to: "2005-04-29", office: "Sozialministerium" },
+  { id: "social-renner", lineId: "social", name: "Andreas Renner", party: "CDU", from: "2005-04-29", to: "2006-02-01", office: "Sozialministerium" },
+  { id: "social-stolz", lineId: "social", name: "Monika Stolz", party: "CDU", from: "2006-02-01", to: "2011-05-12", office: "Arbeit und Soziales, ab 2010 Arbeit und Sozialordnung, Familien und Senioren" },
+  { id: "social-altpeter", lineId: "social", name: "Katrin Altpeter", party: "SPD", from: "2011-05-12", to: "2016-05-12", office: "Arbeit und Sozialordnung, Familie, Frauen und Senioren" },
+  { id: "social-lucha", lineId: "social", name: "Manne Lucha", party: "GRÜNE", from: "2016-05-12", to: "2026-05-13", office: "Soziales und Integration, ab 2021 Soziales, Gesundheit und Integration" },
+  { id: "social-hildenbrand", lineId: "social", name: "Oliver Hildenbrand", party: "GRÜNE", from: "2026-05-13", to: null, office: "Soziales, Arbeit und Gesundheit" },
+
+  // Landwirtschaft und Ländlicher Raum
+  { id: "rural-herrmann", lineId: "rural", name: "Friedrich Herrmann", party: "FDP/DVP", from: "1952-04-25", to: "1953-10-07", office: "Landwirtschaftsministerium" },
+  { id: "rural-leibfried", lineId: "rural", name: "Eugen Leibfried", party: "CDU", from: "1953-10-07", to: "1968-06-12", office: "Ernährung, Landwirtschaft und Forsten, ab 1962 mit Weinbau" },
+  { id: "rural-bruenner", lineId: "rural", name: "Friedrich Brünner", party: "CDU", from: "1968-06-12", to: "1976-06-02", office: "Ernährung, Landwirtschaft, Weinbau und Forsten" },
+  { id: "rural-weiser", lineId: "rural", name: "Gerhard Weiser", party: "CDU", from: "1976-06-02", to: "1996-06-10", office: "Ernährung, Landwirtschaft und Umwelt, ab 1987 Ländlicher Raum" },
+  { id: "rural-staiblin", lineId: "rural", name: "Gerdi Staiblin", party: "CDU", from: "1996-06-11", to: "2001-06-11", office: "Ministerium Ländlicher Raum" },
+  { id: "rural-staechele", lineId: "rural", name: "Willi Stächele", party: "CDU", from: "2001-06-12", to: "2005-04-28", office: "Ernährung und Ländlicher Raum" },
+  { id: "rural-hauk-1", lineId: "rural", name: "Peter Hauk", party: "CDU", from: "2005-04-29", to: "2010-02-23", office: "Ländlicher Raum, ab 2006 mit Verbraucherschutz" },
+  { id: "rural-koeberle", lineId: "rural", name: "Rudolf Köberle", party: "CDU", from: "2010-02-24", to: "2011-05-11", office: "Ländlicher Raum und Verbraucherschutz" },
+  { id: "rural-bonde", lineId: "rural", name: "Alexander Bonde", party: "GRÜNE", from: "2011-05-12", to: "2016-05-11", office: "Ländlicher Raum und Verbraucherschutz" },
+  { id: "rural-hauk-2", lineId: "rural", name: "Peter Hauk", party: "CDU", from: "2016-05-12", to: "2026-05-12", office: "Ländlicher Raum, Landwirtschaft und Verbraucherschutz" },
+  { id: "rural-gentges", lineId: "rural", name: "Marion Gentges", party: "CDU", from: "2026-05-13", to: null, office: "Ländlicher Raum, Landwirtschaft und Heimat" },
+
+  // Umwelt
+  { id: "environment-weiser", lineId: "environment", name: "Gerhard Weiser", party: "CDU", from: "1976-06-02", to: "1987-06-30", office: "Umwelt im Geschäftsbereich Landwirtschaft", note: "kein eigenes Umweltministerium" },
+  { id: "environment-vetter", lineId: "environment", name: "Erwin Vetter", party: "CDU", from: "1987-07-01", to: "1992-06-11" },
+  { id: "environment-schaefer", lineId: "environment", name: "Harald B. Schäfer", party: "SPD", from: "1992-06-11", to: "1996-06-11" },
+  { id: "environment-schaufler", lineId: "environment", name: "Hermann Schaufler", party: "CDU", from: "1996-06-11", to: "1998-10-13", office: "Umwelt und Verkehr" },
+  { id: "environment-schaeuble", lineId: "environment", name: "Thomas Schäuble", party: "CDU", from: "1998-10-14", to: "1998-11-10", office: "Umwelt und Verkehr" },
+  { id: "environment-mueller", lineId: "environment", name: "Ulrich Müller", party: "CDU", from: "1998-11-11", to: "2004-07-13", office: "Umwelt und Verkehr" },
+  { id: "environment-mappus", lineId: "environment", name: "Stefan Mappus", party: "CDU", from: "2004-07-14", to: "2005-04-28", office: "Umwelt und Verkehr" },
+  { id: "environment-goenner", lineId: "environment", name: "Tanja Gönner", party: "CDU", from: "2005-04-29", to: "2011-05-11", office: "Umwelt und Verkehr, ab 2010 Umwelt" },
+  { id: "environment-untersteller", lineId: "environment", name: "Franz Untersteller", party: "GRÜNE", from: "2011-05-12", to: "2021-05-11", office: "Umwelt, Klima und Energiewirtschaft" },
+  { id: "environment-walker", lineId: "environment", name: "Thekla Walker", party: "GRÜNE", from: "2021-05-12", to: null, office: "Umwelt, Klima und Energiewirtschaft" },
+
+  // Verkehr
+  { id: "transport-eberle", lineId: "transport", name: "Rudolf Eberle", party: "CDU", from: "1972-06-08", to: "1984-11-17", note: "Verkehr im Wirtschaftsressort, kein eigenes Ministerium" },
+  { id: "transport-schaeuble-1", lineId: "transport", name: "Thomas Schäuble", party: "CDU", from: "1991-01-13", to: "1992-06-10" },
+  { id: "transport-schaufler", lineId: "transport", name: "Hermann Schaufler", party: "CDU", from: "1992-06-11", to: "1998-10-13" },
+  { id: "transport-schaeuble-2", lineId: "transport", name: "Thomas Schäuble", party: "CDU", from: "1998-10-14", to: "1998-11-10" },
+  { id: "transport-mueller", lineId: "transport", name: "Ulrich Müller", party: "CDU", from: "1998-11-11", to: "2004-07-13" },
+  { id: "transport-mappus", lineId: "transport", name: "Stefan Mappus", party: "CDU", from: "2004-07-14", to: "2005-04-28" },
+  { id: "transport-rech", lineId: "transport", name: "Heribert Rech", party: "CDU", from: "2005-04-29", to: "2010-02-23", note: "Verkehr als Abteilung des Innenministeriums" },
+  { id: "transport-goenner", lineId: "transport", name: "Tanja Gönner", party: "CDU", from: "2010-02-24", to: "2011-05-11" },
+  { id: "transport-hermann", lineId: "transport", name: "Winfried Hermann", party: "GRÜNE", from: "2011-05-12", to: "2026-05-12" },
+  { id: "transport-razavi", lineId: "transport", name: "Nicole Razavi", party: "CDU", from: "2026-05-13", to: null },
+
+  // Landesentwicklung und Wohnen
+  { id: "housing-razavi", lineId: "housing", name: "Nicole Razavi", party: "CDU", from: "2021-05-12", to: "2026-05-12" },
+  { id: "housing-schopper", lineId: "housing", name: "Theresa Schopper", party: "GRÜNE", from: "2026-05-13", to: null },
+
+  // Vertriebene
+  { id: "displaced-fiedler", lineId: "displaced", name: "Eduard Fiedler", party: "BHE", from: "1952-04-25", to: "1960-06-23", office: "für Heimatvertriebene und Kriegsgeschädigte, ab 1953 für Vertriebene, Flüchtlinge und Kriegsgeschädigte" },
+
+  // Bundes- und Europaangelegenheiten
+  { id: "europe-farny", lineId: "europe", name: "Oskar Farny", party: "CDU", from: "1953-10-07", to: "1960-06-23", office: "Minister für Bundesangelegenheiten (ohne eigenes Ministerium)" },
+  { id: "europe-seifriz", lineId: "europe", name: "Adalbert Seifriz", party: "CDU", from: "1966-12-16", to: "1972-06-08", office: "Minister für Bundesangelegenheiten (ohne eigenes Ministerium)" },
+  { id: "europe-eyrich", lineId: "europe", name: "Heinz Eyrich", party: "CDU", from: "1991-01-22", to: "1992-06-11", office: "Minister für Bundes- und Europaangelegenheiten" },
+  { id: "europe-vetter", lineId: "europe", name: "Erwin Vetter", party: "CDU", from: "1992-06-11", to: "1996-06-12", office: "Minister im Staatsministerium" },
+
+  // Familie, Frauen, Weiterbildung und Kunst
+  { id: "family-ungersoyka", lineId: "family", name: "Brigitte Unger-Soyka", party: "SPD", from: "1992-06-11", to: "1996-06-11" },
+];
+
 export const sourceKindLabels: Record<SourceKind, string> = {
   gesetzblatt: "Gesetzblatt",
   chronik: "Chronik",
+  system: "Systemdaten",
   sekundaer: "Sekundärquelle",
 };

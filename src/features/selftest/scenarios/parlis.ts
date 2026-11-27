@@ -2,7 +2,7 @@ import { parlisDeputyUrl } from "@/features/parlis/navigation";
 import { documentParties, keywords } from "@/features/parlis/documents";
 import { authorSegments, hasMultipleAuthors } from "@/features/parlis/authors";
 import { groupsFor } from "@/features/parlis/grouping";
-import { ministryPhases, periodsForPhase, phasesForLine, ressortLines } from "@/features/ministries-history/data";
+import { legislativePeriods, ministers, ministryPhases, periodsForPhase, phasesForLine, ressortLines } from "@/features/ministries-history/data";
 import { supabase } from "@/integrations/supabase/client";
 import type { TestScenario } from "../types";
 
@@ -22,13 +22,19 @@ export const parlisScenario: TestScenario = {
       const sourced = ministryPhases.every(phase => phase.source.citation.length > 0 && lineIds.has(phase.lineId));
       const kultus = phasesForLine("education").find(phase => phase.from === "1954-08-06");
       const sozial = ministryPhases.find(phase => phase.id === "social-1996");
+      const periodDates = legislativePeriods[0]?.from === "1952-03-25"
+        && legislativePeriods.length === 18
+        && legislativePeriods[17]?.to === "2031-04-30";
+      const ministerLines = new Set(ministers.map(term => term.lineId));
       return {
         ok: sourced
           && ministryPhases.length >= 40
           && kultus?.source.citation === "GBl. 1954 S. 109"
           && sozial?.name === "Sozialministerium (SM)"
-          && sozial !== undefined && periodsForPhase(sozial).includes(12),
-        message: "Jede Phase nennt Quelle und Ressortlinie; Kultus 1954 und Sozialministerium 1996 fallen in die erwarteten Wahlperioden.",
+          && sozial !== undefined && periodsForPhase(sozial).includes(12)
+          && periodDates
+          && ressortLines.every(line => ministerLines.has(line.id)),
+        message: "Jede Phase nennt Quelle und Ressortlinie; die Wahlperioden nutzen die Systemzeiträume, und jede Ressortlinie hat mindestens eine belegte Amtszeit.",
       };
     },
   }, {

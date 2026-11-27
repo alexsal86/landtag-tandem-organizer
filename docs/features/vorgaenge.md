@@ -798,7 +798,7 @@ Vergleicht PARLIS-Ministerien nach Wahlperiode, schlägt Ressortlinien vor und s
 - Keine.
 
 ### `parlis.ministry-history` — Namensgeschichte der Ministerien seit 1952 nachschlagen
-Listet die amtlichen Bezeichnungen der Ministerien Baden-Württembergs seit 1952 mit Laufzeit, Ressortlinie und Gesetzblatt-Fundstelle, ordnet sie den Wahlperioden zu und dokumentiert geprüfte Abweichungen zu Chronik und Ministeriumsartikeln.
+Listet die amtlichen Bezeichnungen der Ministerien Baden-Württembergs seit 1952 mit Laufzeit, Ressortlinie und Gesetzblatt-Fundstelle, ordnet sie den Wahlperioden auf Basis der Systemzeiträume aus election_history_periods zu, nennt je Ressortlinie die Ministerinnen und Minister mit Amtszeit und dokumentiert geprüfte Abweichungen zu Chronik und Ministeriumsartikeln.
 
 - **Kategorie:** fachlich
 - **Implementierung:** implementiert
