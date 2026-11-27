@@ -19,7 +19,16 @@ const BUNDESLAENDER = [
   "Sachsen-Anhalt", "Schleswig-Holstein", "Thüringen",
 ];
 
+/** Standarddaten, die Trigger beim Anlegen des Büros erzeugen (nicht das Setup). */
+export interface GeneratedDefaults {
+  topics: number;
+  ministry_topic_links: number;
+  topic_module_settings: number;
+  notification_types_total: number;
+}
+
 export interface SeedReport {
+  generated?: GeneratedDefaults;
   app_settings: number;
   case_file_types: number;
   notification_types: number;
@@ -67,6 +76,25 @@ export function SeedReportView({ report }: { report: SeedReport }): React.JSX.El
             </li>
           ))}
         </ul>
+      )}
+      {report.generated && (
+        <div className="space-y-1 pt-1">
+          <div className="font-medium">Automatisch aus der Datenbank:</div>
+          <ul className="list-disc list-inside space-y-0.5 text-muted-foreground">
+            <li>
+              <span className="text-foreground font-medium">{report.generated.topics}×</span> zentrale Themen (Themen-Wolke)
+            </li>
+            <li>
+              <span className="text-foreground font-medium">{report.generated.ministry_topic_links}×</span> Verknüpfung mit den Ressortlinien
+            </li>
+            <li>
+              <span className="text-foreground font-medium">{report.generated.topic_module_settings}×</span> Modul-Regeln der Themen-Steuerung
+            </li>
+            <li>
+              <span className="text-foreground font-medium">{report.generated.notification_types_total}×</span> Notification-Typen insgesamt (inkl. Trigger)
+            </li>
+          </ul>
+        </div>
       )}
       {report.errors?.length > 0 && (
         <div className="mt-2">
@@ -353,7 +381,7 @@ export function TenantProvisioningWizard({ open, onOpenChange, templateTenants, 
                     Standard-Setup
                   </Label>
                   <p className="text-xs text-muted-foreground mt-1">
-                    Legt 8 Falltypen, 7 Briefanlässe, 24 Notification-Typen, 2 Meeting-Vorlagen und Standard-App-Einstellungen an.
+                    Legt 8 Falltypen, 7 Briefanlässe, 24 Notification-Typen, 2 Meeting-Vorlagen und Standard-App-Einstellungen an. Dazu kommen automatisch 69 zentrale Themen mit Ressortverknüpfung und 10 Modul-Regeln der Themen-Steuerung.
                   </p>
                 </div>
               </div>

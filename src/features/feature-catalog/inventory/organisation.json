@@ -611,8 +611,8 @@
     {
       "id": "topics.ministry-cloud",
       "subarea": "Themen",
-      "name": "Themen-Wolke für neue Büros",
-      "description": "Legt im Themenkatalog jedes Büros automatisch den Grundbestand an ministerienbezogenen Themen an, füllt leere Beschreibungen und verknüpft die Ressortlinien der Parlamentsdokumentation.",
+      "name": "Standarddaten für neue Büros",
+      "description": "Legt im Themenkatalog jedes Büros automatisch den Grundbestand an ministerienbezogenen Themen an, füllt leere Beschreibungen, verknüpft die Ressortlinien der Parlamentsdokumentation und legt die zehn Modul-Regeln der Themen-Steuerung an. Der Anlage-Dialog zählt diese Daten nach dem Anlegen aus der Datenbank nach.",
       "category": "automatisiert",
       "implementationStatus": "implementiert",
       "integrationStatus": "system",
@@ -623,13 +623,14 @@
         "src/features/selftest/scenarios/topic-linking.ts"
       ],
       "rpcs": [
-        "seed_ministry_topic_cloud",
-        "ministry_topic_cloud_selftest"
+        "ministry_topic_cloud_selftest",
+        "topic_module_settings_selftest"
       ],
       "tables": [
         "topics",
         "parlis_ministry_lines",
         "parlis_ministry_topics",
+        "topic_module_settings",
         "tenants"
       ],
       "roles": [
@@ -639,7 +640,8 @@
         "topic-linking"
       ],
       "limitations": [
-        "Der Selbsttest legt ein Testbüro an und rollt es zurück; die Anzeige der Themen in der Administration wird dabei nicht über die Oberfläche geprüft."
+        "Der Selbsttest legt ein Testbüro an und rollt es zurück; die Anzeige der Themen in der Administration wird dabei nicht über die Oberfläche geprüft.",
+        "Der Erfolgsdialog des Anlage-Wizards zählt die Standarddaten nur; ob sie fachlich passen, prüft er nicht."
       ],
       "dependsOn": [
         "topics.manage"

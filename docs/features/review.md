@@ -234,7 +234,7 @@ Eindeutige Fehler werden im CI-Lauf ausgegeben und brechen die Prüfung ab; sie 
 - `dossiers.search` — Globale Dossier-Suche
 - `drucksachen.view` — Drucksachen anzeigen
 - `topics.manage` — Themen verwalten
-- `topics.ministry-cloud` — Themen-Wolke für neue Büros
+- `topics.ministry-cloud` — Standarddaten für neue Büros
 - `facts.manage` — Fakten und Argumente pflegen
 - `integration.email` — Transaktions-E-Mail-Versand
 - `integration.geocoding` — Adress-Geocoding
@@ -566,6 +566,7 @@ Eindeutige Fehler werden im CI-Lauf ausgegeben und brechen die Prüfung ab; sie 
 ### `topics.ministry-cloud`
 
 - Der Selbsttest legt ein Testbüro an und rollt es zurück; die Anzeige der Themen in der Administration wird dabei nicht über die Oberfläche geprüft.
+- Der Erfolgsdialog des Anlage-Wizards zählt die Standarddaten nur; ob sie fachlich passen, prüft er nicht.
 
 ### `integration.calendar-sync`
 

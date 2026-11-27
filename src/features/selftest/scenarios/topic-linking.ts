@@ -41,6 +41,7 @@ export const topicLinkingScenario: TestScenario = {
     "merge_topics zieht Verknüpfungen auf das Zielthema, deaktiviert die Quelle als Weiterleitung und ensure_topic folgt der Weiterleitung",
     "topic_usage zählt die Verknüpfungen je Modul und liefert die Summe",
     "Ein neu angelegtes Büro erhält über den Trigger 69 Themen und 85 Ressortverknüpfungen (5–10 je Linie); ein zweiter Lauf verdoppelt nichts und eigene Beschreibungen bleiben stehen",
+    "Ein neu angelegtes Büro erhält alle zehn Modul-Regeln der Themen-Steuerung mit den Standardwerten; ein zweiter Lauf verdoppelt nichts",
   ],
   limitations: [
     "knowledge_question_topics hat derzeit keinen Client-Schreibpfad (nur eine Lesepolicy); geprüft werden Lesbarkeit und die Abweisung eines direkten Inserts, nicht eine UI-Verknüpfung.",
@@ -375,6 +376,40 @@ export const topicLinkingScenario: TestScenario = {
           message:
             result?.ok === true
               ? "Ein neu angelegtes Büro erhält 69 Themen mit 85 Ressortverknüpfungen; der zweite Lauf verdoppelt nichts und eigene Beschreibungen bleiben stehen."
+              : result?.message ?? "Der Server-Selbsttest liefert kein Ergebnis.",
+          details: result?.checks,
+        };
+      },
+    },
+    {
+      id: "module-rules-seed", label: "Neue Büros erhalten die Modul-Steuerung automatisch",
+      kind: "db",
+      run: async ctx => {
+        const callSelftest = supabase.rpc as unknown as (
+          fn: string,
+          args?: Record<string, unknown>,
+        ) => Promise<{ data: unknown; error: { code?: string; message?: string } | null }>;
+        const response = await callSelftest("topic_module_settings_selftest", {
+          p_tenant: ctx.tenantId,
+        });
+        if (response.error) {
+          return {
+            ok: false,
+            message:
+              response.error.message ??
+              response.error.code ??
+              "Server-Selbsttest nicht ausführbar",
+          };
+        }
+        const result =
+          response.data && typeof response.data === "object" && !Array.isArray(response.data)
+            ? (response.data as { ok?: boolean; message?: string; checks?: Record<string, boolean> })
+            : null;
+        return {
+          ok: result?.ok === true,
+          message:
+            result?.ok === true
+              ? "Ein neu angelegtes Büro erhält alle zehn Modul-Regeln mit den Standardwerten; ein zweiter Lauf verdoppelt nichts."
               : result?.message ?? "Der Server-Selbsttest liefert kein Ergebnis.",
           details: result?.checks,
         };

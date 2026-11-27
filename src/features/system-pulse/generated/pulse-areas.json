@@ -1847,7 +1847,8 @@
             "Doppelte Verknüpfungen sind gesperrt (23505); auch ein direkter Insert ohne tenant_id wird dem Büro zugeordnet",
             "merge_topics zieht Verknüpfungen auf das Zielthema, deaktiviert die Quelle als Weiterleitung und ensure_topic folgt der Weiterleitung",
             "topic_usage zählt die Verknüpfungen je Modul und liefert die Summe",
-            "Ein neu angelegtes Büro erhält über den Trigger 69 Themen und 85 Ressortverknüpfungen (5–10 je Linie); ein zweiter Lauf verdoppelt nichts und eigene Beschreibungen bleiben stehen"
+            "Ein neu angelegtes Büro erhält über den Trigger 69 Themen und 85 Ressortverknüpfungen (5–10 je Linie); ein zweiter Lauf verdoppelt nichts und eigene Beschreibungen bleiben stehen",
+            "Ein neu angelegtes Büro erhält alle zehn Modul-Regeln der Themen-Steuerung mit den Standardwerten; ein zweiter Lauf verdoppelt nichts"
           ],
           "tables": [
             "topics",
@@ -1892,6 +1893,10 @@
             {
               "id": "ministry-topic-cloud",
               "label": "Neue Büros erhalten die Themen-Wolke automatisch"
+            },
+            {
+              "id": "module-rules-seed",
+              "label": "Neue Büros erhalten die Modul-Steuerung automatisch"
             },
             {
               "id": "knowledge-topics",

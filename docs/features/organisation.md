@@ -31,9 +31,9 @@ _Auto-generiert mit `npm run update:feature-catalog` aus dem zentralen Funktions
 | `meetings.decisions` Sitzungsentscheidungen dokumentieren | Jour fixe | fachlich | implementiert | UI | Selbsttest |
 | `meetings.protocol` Sitzungsprotokoll | Jour fixe | fachlich | implementiert | rollenabhängig | Selbsttest |
 | `meetings.templates` Sitzungsvorlagen | Jour fixe | administrativ | implementiert | rollenabhängig | kein Test |
+| `topics.ministry-cloud` Standarddaten für neue Büros | Themen | automatisiert | implementiert | systemseitig | Selbsttest |
 | `topics.convert-catalog` Thema in Katalog überführen | Themen | fachlich | implementiert | UI | kein Test |
 | `topics.manage` Themen verwalten | Themen | fachlich | implementiert | UI | Selbsttest |
-| `topics.ministry-cloud` Themen-Wolke für neue Büros | Themen | automatisiert | implementiert | systemseitig | Selbsttest |
 
 ## Unterbereiche
 
@@ -56,7 +56,7 @@ _Auto-generiert mit `npm run update:feature-catalog` aus dem zentralen Funktions
 | Szenario | Titel | deklarierte Tabellen | deklarierte Prüfungen | letzter Lauf |
 |---|---|---:|---:|---|
 | `meeting-lifecycle` | Meeting-Lifecycle (vollständig + Field-Verifikation) | 9 | 0 | — |
-| `topic-linking` | Themenverknüpfung und Modul-Steuerung | 5 | 10 | — |
+| `topic-linking` | Themenverknüpfung und Modul-Steuerung | 5 | 11 | — |
 
 ## Selbsttest-Schritte
 
@@ -93,6 +93,7 @@ Diese Schritte führen die Szenarien aus; „letzter Lauf“ stammt aus `src/fea
 | `topic-linking` | `merge-redirect` | Themen zusammenführen und Weiterleitung prüfen | db | — |
 | `topic-linking` | `usage` | Verwendung je Modul zählen | db | — |
 | `topic-linking` | `ministry-topic-cloud` | Neue Büros erhalten die Themen-Wolke automatisch | db | — |
+| `topic-linking` | `module-rules-seed` | Neue Büros erhalten die Modul-Steuerung automatisch | db | — |
 | `topic-linking` | `knowledge-topics` | Wissensfragen-Verknüpfung lesen und Schreibversuch abweisen | db | — |
 
 ## Deklarierter Prüfumfang
@@ -113,6 +114,7 @@ Keine Prüfungen deklariert.
 8. merge_topics zieht Verknüpfungen auf das Zielthema, deaktiviert die Quelle als Weiterleitung und ensure_topic folgt der Weiterleitung
 9. topic_usage zählt die Verknüpfungen je Modul und liefert die Summe
 10. Ein neu angelegtes Büro erhält über den Trigger 69 Themen und 85 Ressortverknüpfungen (5–10 je Linie); ein zweiter Lauf verdoppelt nichts und eigene Beschreibungen bleiben stehen
+11. Ein neu angelegtes Büro erhält alle zehn Modul-Regeln der Themen-Steuerung mit den Standardwerten; ein zweiter Lauf verdoppelt nichts
 
 ## Funktionsdetails
 
@@ -725,8 +727,8 @@ Wandelt ein Thema atomar in einen Katalogeintrag um, erhält historische Verknü
 
 - Keine.
 
-### `topics.ministry-cloud` — Themen-Wolke für neue Büros
-Legt im Themenkatalog jedes Büros automatisch den Grundbestand an ministerienbezogenen Themen an, füllt leere Beschreibungen und verknüpft die Ressortlinien der Parlamentsdokumentation.
+### `topics.ministry-cloud` — Standarddaten für neue Büros
+Legt im Themenkatalog jedes Büros automatisch den Grundbestand an ministerienbezogenen Themen an, füllt leere Beschreibungen, verknüpft die Ressortlinien der Parlamentsdokumentation und legt die zehn Modul-Regeln der Themen-Steuerung an. Der Anlage-Dialog zählt diese Daten nach dem Anlegen aus der Datenbank nach.
 
 - **Kategorie:** automatisiert
 - **Implementierung:** implementiert
@@ -739,8 +741,8 @@ Legt im Themenkatalog jedes Büros automatisch den Grundbestand an ministerienbe
 - **Services:** —
 - **Hooks:** —
 - **Edge Functions:** —
-- **Datenbankfunktionen:** `seed_ministry_topic_cloud`, `ministry_topic_cloud_selftest`
-- **Tabellen:** `topics`, `parlis_ministry_lines`, `parlis_ministry_topics`, `tenants`
+- **Datenbankfunktionen:** `ministry_topic_cloud_selftest`, `topic_module_settings_selftest`
+- **Tabellen:** `topics`, `parlis_ministry_lines`, `parlis_ministry_topics`, `topic_module_settings`, `tenants`
 - **Abhängigkeiten:** `topics.manage`
 - **Selbsttests:** `topic-linking`
 - **Unit-Tests:** —
@@ -756,6 +758,7 @@ Legt im Themenkatalog jedes Büros automatisch den Grundbestand an ministerienbe
 **Bekannte Einschränkungen**
 
 - Der Selbsttest legt ein Testbüro an und rollt es zurück; die Anzeige der Themen in der Administration wird dabei nicht über die Oberfläche geprüft.
+- Der Erfolgsdialog des Anlage-Wizards zählt die Standarddaten nur; ob sie fachlich passen, prüft er nicht.
 
 **Offene Prüfpunkte**
 

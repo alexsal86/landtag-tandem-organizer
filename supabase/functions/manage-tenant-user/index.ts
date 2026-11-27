@@ -8,6 +8,7 @@ import {
   cloneTenantData,
   getTenantHealth,
   buildStandardAppSettings,
+  countSeededDefaults,
 } from "../_shared/tenant-seed.ts";
 const corsHeaders = {
   'Access-Control-Allow-Origin': '*',
@@ -635,7 +636,15 @@ serve(withSafeHandler("manage-tenant-user", async (req) => {
           });
         }
 
-        // 3) Optional admin user
+        // 3) Zusätzlich angelegte Standarddaten aus der Datenbank zählen, damit der
+        //    Erfolgsdialog den echten Ist-Stand zeigt (Trigger: Themen-Wolke,
+        //    Modul-Steuerung, weitere Notification-Typen).
+        (report as { generated?: unknown }).generated = await countSeededDefaults(
+          supabaseAdmin,
+          tenantId,
+        );
+
+        // 4) Optional admin user
         let adminPassword: string | undefined;
         let adminEmail: string | undefined;
         if (adminUser?.email && adminUser?.displayName) {

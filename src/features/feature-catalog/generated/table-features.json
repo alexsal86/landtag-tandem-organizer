@@ -2787,7 +2787,7 @@
     },
     {
       "id": "topics.ministry-cloud",
-      "name": "Themen-Wolke für neue Büros",
+      "name": "Standarddaten für neue Büros",
       "area": "organisation"
     }
   ],
@@ -2806,7 +2806,7 @@
     },
     {
       "id": "topics.ministry-cloud",
-      "name": "Themen-Wolke für neue Büros",
+      "name": "Standarddaten für neue Büros",
       "area": "organisation"
     }
   ],
@@ -3849,7 +3849,7 @@
     },
     {
       "id": "topics.ministry-cloud",
-      "name": "Themen-Wolke für neue Büros",
+      "name": "Standarddaten für neue Büros",
       "area": "organisation"
     }
   ],
@@ -3915,6 +3915,11 @@
       "id": "topics.manage",
       "name": "Themen verwalten",
       "area": "organisation"
+    },
+    {
+      "id": "topics.ministry-cloud",
+      "name": "Standarddaten für neue Büros",
+      "area": "organisation"
     }
   ],
   "topics": [
@@ -3965,7 +3970,7 @@
     },
     {
       "id": "topics.ministry-cloud",
-      "name": "Themen-Wolke für neue Büros",
+      "name": "Standarddaten für neue Büros",
       "area": "organisation"
     }
   ],

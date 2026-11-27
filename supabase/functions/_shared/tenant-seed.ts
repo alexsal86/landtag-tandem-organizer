@@ -229,6 +229,54 @@ export async function seedStandardData(
 }
 
 // ──────────────────────────────────────────────────────────────────────────────
+// STANDARD DATA CREATED BY DATABASE TRIGGERS
+// ──────────────────────────────────────────────────────────────────────────────
+
+/**
+ * Standarddaten, die Trigger beim Anlegen des Büros erzeugen. Sie stehen nicht im
+ * Seed-Report oben, weil sie nicht diese Funktion schreibt, sondern die Datenbank.
+ */
+export interface GeneratedDefaults {
+  topics: number;
+  ministry_topic_links: number;
+  topic_module_settings: number;
+  notification_types_total: number;
+}
+
+const GENERATED_COUNTS: Array<{ key: keyof GeneratedDefaults; table: string; column: string }> = [
+  { key: "topics", table: "topics", column: "id" },
+  { key: "ministry_topic_links", table: "parlis_ministry_topics", column: "topic_id" },
+  { key: "topic_module_settings", table: "topic_module_settings", column: "module" },
+  { key: "notification_types_total", table: "notification_types", column: "id" },
+];
+
+/**
+ * Zählt nach dem Anlegen, was im neuen Büro tatsächlich steht – inklusive der
+ * Trigger-Daten (Themen-Wolke, Modul-Steuerung, zusätzliche Notification-Typen).
+ * Fehlende Tabellen oder Spalten ergeben 0 statt eines Abbruchs.
+ */
+export async function countSeededDefaults(admin: any, tenantId: string): Promise<GeneratedDefaults> {
+  const result: GeneratedDefaults = {
+    topics: 0,
+    ministry_topic_links: 0,
+    topic_module_settings: 0,
+    notification_types_total: 0,
+  };
+  for (const { key, table, column } of GENERATED_COUNTS) {
+    try {
+      const { count } = await admin
+        .from(table)
+        .select(column, { count: "exact", head: true })
+        .eq("tenant_id", tenantId);
+      result[key] = count ?? 0;
+    } catch {
+      result[key] = 0;
+    }
+  }
+  return result;
+}
+
+// ──────────────────────────────────────────────────────────────────────────────
 // CLONE FROM ANOTHER TENANT
 // ──────────────────────────────────────────────────────────────────────────────
 

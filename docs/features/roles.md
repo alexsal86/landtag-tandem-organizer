@@ -767,7 +767,7 @@ Die Angaben sind deklarierte Mindestrollen. Die tatsächlich wirksame Berechtigu
 - `employees.action-tasks` — Maßnahmen als Aufgaben
 - `employees.preparation` — Gesprächsvorbereitung und Erinnerungen
 - `dossiers.sources` — Dossier-Quellenbeobachtung
-- `topics.ministry-cloud` — Themen-Wolke für neue Büros
+- `topics.ministry-cloud` — Standarddaten für neue Büros
 - `integration.calendar-sync` — Externe Kalender synchronisieren
 - `integration.email` — Transaktions-E-Mail-Versand
 - `integration.push` — Push-Benachrichtigungen
