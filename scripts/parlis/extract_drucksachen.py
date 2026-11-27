@@ -306,7 +306,9 @@ def is_item(line: str) -> bool:
     return bool(match) and int(match.group(1)) <= 20
 
 
-NUMBER_CELL_RE = re.compile(r"^[-–]?\d[\d.,]*%?$|^[-–]$|^\d{4}/\d+$")
+# Zahlen, Platzhalter ('-', '–', '.', '...') und Drucksachennummern gelten als
+# Zellwerte; ohne die Platzhalter reissen Zeilen wie 'Kolleg 15 . .' die Tabelle auf.
+NUMBER_CELL_RE = re.compile(r"^(?:[-–.]+|\d[\d.,]*%?|\d{4}/\d+)$")
 TABLE_MARKER_RE = re.compile(r"^<<TABELLE (\d+)>>$")
 
 
@@ -319,6 +321,8 @@ def split_cells(line: str) -> list[str]:
     von den Werten: 'Beschäftigte insgesamt1) A-U 139.311 143.353' ->
     ['Beschäftigte insgesamt1) A-U', '139.311', '143.353'].
     """
+    # '30,7 %' ist ein Wert, kein Wert plus Spalte.
+    line = re.sub(r"(?<=\d)\s+%", "%", line)
     wide = [part.strip() for part in re.split(r"\s{2,}", line) if part.strip()]
     if len(wide) >= 3:
         cells = wide
@@ -360,11 +364,16 @@ def is_header(line: str) -> bool:
 
 
 def is_group_label(line: str) -> bool:
-    """Zwischenzeile innerhalb einer Tabelle, z. B. 'Baden-Württemberg'."""
+    """Beschriftungszeile innerhalb einer Tabelle.
+
+    Sie kann selbst mehrzeilig sein: '- davon Straftaten gegen das' / 'Leben'
+    gehören zur selben Tabellenzeile. Erkannt wird sie daran, dass sie keine
+    Zellen hat, kurz ist und keinen Satz beendet.
+    """
     if len(split_cells(line)) != 1:
         return False
     words = line.split()
-    return 1 <= len(words) <= 6 and not re.search(r"[.;:!?]$", line)
+    return 1 <= len(words) <= 10 and not re.search(r"[.;:!?]$", line)
 
 
 def collect_tables(lines: list[tuple[int, str]]) -> tuple[list[str], list[dict]]:
@@ -398,19 +407,21 @@ def collect_tables(lines: list[tuple[int, str]]) -> tuple[list[str], list[dict]]
             continue
         end = start
         rows: list[list[str]] = []
+        pending: list[str] = []
         while end < len(lines) and lines[end][0] == page:
             current = lines[end][1]
             if is_tabular(current):
-                rows.append(split_cells(current))
+                cells = split_cells(current)
+                if pending:
+                    # Umbrochene Beschriftung gehoert zur naechsten Zahlenzeile.
+                    label = " ".join(pending)
+                    cells = ([f"{label} {cells[0]}".strip()] + cells[1:]) if cells[0] else ([label] + cells[1:])
+                    pending = []
+                rows.append(cells)
                 end += 1
                 continue
-            if (
-                is_group_label(current)
-                and end + 1 < len(lines)
-                and lines[end + 1][0] == page
-                and is_tabular(lines[end + 1][1])
-            ):
-                rows.append(split_cells(current))
+            if is_group_label(current):
+                pending.append(current)
                 end += 1
                 continue
             break
@@ -427,6 +438,8 @@ def collect_tables(lines: list[tuple[int, str]]) -> tuple[list[str], list[dict]]
                 rows.insert(0, split_cells(header))
             tables.append({"page": page, "rows": rows})
             stream.append(f"<<TABELLE {len(tables)}>>")
+            # Beschriftungen ohne folgende Zahlenzeile bleiben Text.
+            stream.extend(pending)
             index = end
             continue
         for position in range(index, end):
@@ -567,6 +580,35 @@ def resolve_signer(name: str, party: str, roster: list[dict]) -> tuple[str, str]
     return name, ("mehrdeutig" if unique else "unbekannt")
 
 
+def renumber_tables(sections: list[str], tables: list[dict]) -> tuple[list[str], list[dict]]:
+    """Nummeriert die Tabellen nach ihrer Reihenfolge im ausgelieferten Text.
+
+    Tabellen vor dem Dokumentenanfang (Titelseite) fallen aus dem Text heraus;
+    ohne Neunummerierung zeigten die Marker dann auf die falsche Tabelle.
+    """
+    order: list[int] = []
+    for section in sections:
+        for match in re.finditer(r"<<TABELLE (\d+)>>", section):
+            number = int(match.group(1))
+            if number not in order and 0 < number <= len(tables):
+                order.append(number)
+    if order == list(range(1, len(order) + 1)) and len(order) == len(tables):
+        return sections, tables
+    mapping = {old: position + 1 for position, old in enumerate(order)}
+    kept = [tables[old - 1] for old in order]
+    rewritten = [
+        re.sub(
+            r"<<TABELLE (\d+)>>",
+            lambda match: f"<<TABELLE {mapping[int(match.group(1))]}>>"
+            if int(match.group(1)) in mapping
+            else "",
+            section,
+        ).replace("\n\n", "\n")
+        for section in sections
+    ]
+    return [section.strip() for section in rewritten], kept
+
+
 def parse_document(pdf: bytes, row: dict, roster: list[dict]) -> dict:
     blocks, meta, pages, rotated_pages, tables = read_blocks(pdf)
     start = next((i for i, block in enumerate(blocks) if ANCHOR_RE.match(block)), 0)
@@ -607,6 +649,10 @@ def parse_document(pdf: bytes, row: dict, roster: list[dict]) -> dict:
         signers.append(full_name)
 
     full_text = "\n".join(blocks)
+    sections, tables = renumber_tables(
+        ["\n".join(question).strip(), "\n".join(reasoning).strip(), "\n".join(answer).strip()],
+        tables,
+    )
     result = {
         **row,
         **meta,
@@ -625,9 +671,9 @@ def parse_document(pdf: bytes, row: dict, roster: list[dict]) -> dict:
         "answer_signatory": answer_signature.get("name", ""),
         "answer_signatory_role": answer_signature.get("role", ""),
         "question_count": 0,
-        "question_text": "\n".join(question).strip(),
-        "reasoning_text": "\n".join(reasoning).strip(),
-        "answer_text": "\n".join(answer).strip(),
+        "question_text": sections[0],
+        "reasoning_text": sections[1],
+        "answer_text": sections[2],
     }
 
     match = re.search(
