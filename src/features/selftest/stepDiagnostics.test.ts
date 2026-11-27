@@ -51,6 +51,16 @@ describe("Schritt-Diagnose", () => {
     })).toMatchObject({ summary: "Ist-Codes: lifecycle 23503" });
   });
 
+  it("liest die Codes älterer Läufe auch aus Schlüsseln wie lifecycleCode", () => {
+    expect(stepDiagnostic({
+      id: "foreign-tenant", label: "Fremdtenant", status: "failed",
+      message: "Tenant- und Rollenprüfungen werden serverseitig erzwungen.",
+      details: { lifecycleCode: "PGRST202", reminderCode: "42501" },
+    })).toMatchObject({
+      summary: "Ist-Codes: lifecycleCode PGRST202, reminderCode 42501",
+    });
+  });
+
   it("lässt Details ohne Prüfergebnis und ohne Codes unangetastet", () => {
     expect(stepDiagnostic({
       id: "save", label: "Speichern", status: "failed", message: "Speichern fehlgeschlagen",

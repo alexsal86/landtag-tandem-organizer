@@ -343,6 +343,43 @@ try {
     await apply('20261127160000_release_guard_rule_repair.sql');
     await actor(staff);
 
+    // --- Versionssperre: eine ältere Fassung von save_employee_meeting auf der
+    // Instanz prüft p_version nicht. Genau dieser Drift lässt den veralteten
+    // Autosave durch und lässt den Selbsttest staleVersionRejected melden.
+    await db.exec('RESET ROLE');
+    await db.exec(`CREATE OR REPLACE FUNCTION public.save_employee_meeting(p_meeting_id uuid,p_version integer,p_patch jsonb,p_private_notes text DEFAULT NULL)
+      RETURNS integer LANGUAGE plpgsql SECURITY DEFINER SET search_path=public AS $$
+      DECLARE m public.employee_meetings;
+      BEGIN
+        m:=public.require_employee_meeting_access(p_meeting_id);
+        IF m.status NOT IN ('scheduled','in_progress') THEN RAISE EXCEPTION 'Protokoll ist gesperrt.' USING ERRCODE='55000'; END IF;
+        UPDATE public.employee_meetings SET protocol_data=CASE WHEN p_patch ? 'protocol_data' THEN p_patch->'protocol_data' ELSE protocol_data END WHERE id=m.id;
+        RETURN m.version+1;
+      END $$;`);
+    await actor(staff);
+    assert.equal(await codeOf(() => q('SELECT save_employee_meeting($1,$2,$3::jsonb)',
+      [guard, 5, '{"protocol_data":{"goals":"veraltet"}}'])), null,
+      'Die alte Fassung nimmt jeden Stand an – der Drift der Instanz');
+
+    await db.exec('RESET ROLE');
+    await apply('20261128040000_employee_meeting_version_guard_repair.sql');
+    // Auch der Nachtrag muss wiederholbar sein.
+    await apply('20261128040000_employee_meeting_version_guard_repair.sql');
+    await actor(staff);
+    assert.equal(await codeOf(() => q('SELECT save_employee_meeting($1,$2,$3::jsonb)',
+      [guard, 5, '{"protocol_data":{"goals":"veraltet"}}'])), '40001',
+      'Die Reparatur weist den veralteten Stand ab');
+    assert.equal(await codeOf(() => q('SELECT save_employee_meeting($1,$2,$3::jsonb)',
+      [guard, null, '{"protocol_data":{"goals":"ohne Stand"}}'])), '40001',
+      'Ein fehlender Versionsstand ist kein aktueller Stand');
+    await db.exec('SAVEPOINT current_save');
+    const returned = (await q('SELECT save_employee_meeting($1,$2,$3::jsonb) AS version',
+      [guard, 0, '{"protocol_data":{"goals":"aktuell"}}']))[0].version;
+    assert.equal(returned, (await q('SELECT version FROM employee_meetings WHERE id=$1', [guard]))[0].version,
+      'Die RPC gibt den tatsächlich gespeicherten Stand zurück');
+    await db.exec('ROLLBACK TO SAVEPOINT current_save');
+    await db.exec('RELEASE SAVEPOINT current_save');
+
     const codes = {
       directWriteDenied: await codeOf(directWrite),
       releaseBeforeCompletion: await codeOf(() => q('SELECT request_protocol_acknowledgement($1)', [guard])),
@@ -359,6 +396,12 @@ try {
       'Keine Sperrprüfung verändert den Status');
     assert.equal((await q('SELECT count(*)::int AS n FROM employee_meeting_audit WHERE meeting_id=$1', [guard]))[0].n, 0,
       'Keine Sperrprüfung schreibt eine Auditzeile');
+
+    // Der reparierte Autosave trägt auch den positiven Freigabepfad: der
+    // Versionsstand wandert durch alle echten RPCs und alles wird zurückgerollt.
+    const positive = (await q('SELECT selftest_employee_protocol($1) AS result', [draft]))[0].result;
+    assert.ok(Object.values(positive).every(value => value === true),
+      `Der Freigabepfad läuft mit dem reparierten Autosave: ${JSON.stringify(positive)}`);
   } finally {
     await db.exec('ROLLBACK');
     await db.exec('RESET ROLE');
@@ -370,7 +413,7 @@ try {
   await db.query('DELETE FROM employee_meeting_audit WHERE meeting_id=$1', [audited]);
   await db.query('DELETE FROM employee_meetings WHERE id = ANY($1::uuid[])', [[draft, audited, finished, closed, two]]);
   assert.equal((await q('SELECT * FROM employee_meetings')).length, 0);
-  console.log('Employee protocol selftest passed: completion, release, acknowledgement, task hand-off, reopening and objection run through the real RPCs with a separate session per role (leader and affected person); the release guard answers 42501/22023/40001 even after the repair of a drifted instance, and every write is rolled back.');
+  console.log('Employee protocol selftest passed: completion, release, acknowledgement, task hand-off, reopening and objection run through the real RPCs with a separate session per role (leader and affected person); the release guard answers 42501/22023/40001 even after the repair of a drifted instance (including an autosave without a version check and a missing version), the repaired autosave carries the positive path, and every write is rolled back.');
 } catch (error) {
   console.error('FAILED:', error.code ?? '', error.message);
   process.exitCode = 1;

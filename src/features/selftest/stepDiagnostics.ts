@@ -58,7 +58,11 @@ export function summarizeChecks(details: unknown): string | undefined {
   const failed = Object.entries(entry)
     .filter(([key, value]) => key !== "errors" && value === false)
     .map(([key]) => key);
-  const codes = Object.entries(record(entry.errors) ?? {})
+  // Ältere Läufe legten die Codes direkt unter Schlüsseln wie `lifecycleCode` ab
+  // statt unter `errors`; sie bleiben so am Prüfpunkt lesbar.
+  const legacyCodes = Object.entries(entry)
+    .filter(([key, value]) => key !== "errors" && /code$/i.test(key) && typeof value === "string");
+  const codes = [...Object.entries(record(entry.errors) ?? {}), ...legacyCodes]
     .map(([key, value]) => ({ key, code: text(value) }))
     .filter((item): item is { key: string; code: string } => item.code !== undefined);
   if (failed.length === 0 && codes.length === 0) return undefined;

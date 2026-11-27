@@ -157,13 +157,19 @@ export const employeeMeetingsScenario: TestScenario = {
       id: "release-guard", label: "Freigabe nur über den Workflow: direkte und vorzeitige Wechsel sind gesperrt",
       run: async ctx => {
         const near = ctx.data.nearMeetingId as string;
+        const nearVersion = ctx.data.nearVersion;
+        // Ohne echten Stand wäre der Aufruf kein veralteter Autosave: ein fehlender
+        // Wert ginge als null an die Datenbank und die Prüfung wäre wertlos.
+        if (typeof nearVersion !== "number") {
+          return { ok: false, message: "Der Autosave-Versionsstand fehlt; der veraltete Stand lässt sich nicht prüfen." };
+        }
         const direct = await supabase.from("employee_meetings")
           .update({ status: "pending_acknowledgement" }).eq("id", near).select("id");
         const prematureRequest = await supabase.rpc("request_protocol_acknowledgement", { p_meeting_id: near });
         const prematureAck = await supabase.rpc("acknowledge_meeting_protocol", { p_meeting_id: near });
         const prematureReopen = await supabase.rpc("reopen_meeting_protocol", { p_meeting_id: near, p_reason: tag(ctx.runId) });
         const staleSave = await supabase.rpc("save_employee_meeting", {
-          p_meeting_id: near, p_version: (ctx.data.nearVersion as number) - 1, p_patch: { protocol_data: { goals: tag(ctx.runId) } },
+          p_meeting_id: near, p_version: nearVersion - 1, p_patch: { protocol_data: { goals: tag(ctx.runId) } },
         });
         const audit = await supabase.from("employee_meeting_audit").select("id").eq("meeting_id", near);
         const read = await expectFields("employee_meetings", near, { status: "scheduled" }, "Status nach Sperrprüfung");

@@ -232,6 +232,7 @@ export const responsibilitiesScenario: TestScenario = {
           ok: direct.error?.code === "42501" && settled.error?.code === "42501",
           message:
             "Weder der Kern noch der verzögerte Anlauf sind für Clients aufrufbar; Meldungen entstehen ausschließlich in der Datenbank und erst nach der Ruhephase.",
+          details: { errors: { direct: direct.error?.code, settled: settled.error?.code } },
         };
       },
     },
