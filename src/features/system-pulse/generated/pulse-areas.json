@@ -12,7 +12,8 @@
         "tasks",
         "decisions",
         "meetings",
-        "day-slip"
+        "day-slip",
+        "notifications"
       ]
     },
     {
@@ -28,7 +29,8 @@
       "areas": [
         "documents",
         "knowledge",
-        "topics"
+        "topics",
+        "redaktion"
       ]
     },
     {
@@ -296,6 +298,7 @@
           "features": [
             "appointments.briefing",
             "appointments.briefing-live",
+            "calendar.edit-move",
             "mywork.dashboard.today-priorities"
           ],
           "steps": [
@@ -388,7 +391,11 @@
             "appointment_feedback"
           ],
           "features": [
+            "appointments.debrief",
+            "appointments.preparation",
             "calendar.create-appointment",
+            "calendar.edit-move",
+            "calendar.guests",
             "calendar.view"
           ],
           "steps": [
@@ -552,6 +559,7 @@
             "appointment_guests"
           ],
           "features": [
+            "calendar.guests",
             "calendar.polls",
             "polls.manage",
             "polls.respond"
@@ -599,6 +607,7 @@
             "Ungültige Größe (case_scale) wird von der Datenbank abgewiesen",
             "Bearbeitungsstatus und Statusverlauf werden gespeichert; derselbe Beteiligte kann nicht doppelt eingetragen werden",
             "Kontakt, Aufgabe, Termin und Brief werden über die jeweilige Folgetabelle verknüpft; doppelte Verknüpfungen sind gesperrt",
+            "Das Akten-Dokument lässt sich mit dem Akten-Kontakt verknüpfen; Beziehung und Notiz werden gespeichert, eine Doppelung ist gesperrt",
             "Die Aufgabe entsteht über create_case_file_task als offene Aufgabe für die anlegende Person mit source_type 'case_file' und Quellbezug; eine Wiederholung liefert dieselbe Aufgabe und keine zweite Verknüpfung",
             "Eine hochgeladene Datei ist mit der Akte verknüpft und über die serverseitige Dokumentensuche auffindbar",
             "get_case_files_with_counts liefert die Verknüpfungen der Akte als Zählwerte",
@@ -617,6 +626,7 @@
             "case_file_tasks",
             "case_file_appointments",
             "case_file_letters",
+            "document_contacts",
             "case_items",
             "contacts",
             "tasks",
@@ -629,7 +639,10 @@
             "casefiles.manage",
             "casefiles.notes",
             "casefiles.status-workflow",
-            "documents.list"
+            "documents.contacts",
+            "documents.details",
+            "documents.list",
+            "documents.upload-version"
           ],
           "steps": [
             {
@@ -663,6 +676,10 @@
             {
               "id": "upload-document",
               "label": "Datei in der Akte ablegen und über die Dokumentensuche finden"
+            },
+            {
+              "id": "document-contact-link",
+              "label": "Dokument mit Kontakt verknüpfen; Doppelung ist gesperrt"
             },
             {
               "id": "counts",
@@ -703,7 +720,9 @@
           "features": [
             "cases.close-archive",
             "cases.create",
-            "cases.handover"
+            "cases.handover",
+            "cases.interactions",
+            "cases.link-decision"
           ],
           "steps": [
             {
@@ -1004,6 +1023,7 @@
             "task_batch_actions"
           ],
           "features": [
+            "notifications.preferences",
             "tasks.archive",
             "tasks.assign",
             "tasks.ball-owner",
@@ -1242,15 +1262,31 @@
           "scenario": "decision-lifecycle",
           "title": "Entscheidungs-Lifecycle (active → open → archived)",
           "description": "Erstellt eine Entscheidung, fügt sich selbst als Teilnehmer hinzu, prüft die Default-Antwortoptionen, archiviert die Entscheidung und liest jedes geschriebene Feld zurück.",
-          "checks": [],
+          "checks": [
+            "Ja, Nein und Rückfrage werden gespeichert und nachweisbar zurückgenommen",
+            "Eine geänderte Antwort schreibt den bisherigen und den neuen Stand in task_decision_response_history",
+            "Anhang-Metadaten hängen an der Entscheidung, sind für Teilnehmende lesbar und wieder entfernbar (ohne Datei-Upload)",
+            "Kommentar und Antwort werden gespeichert; Emoji-Reaktionen folgen der Allowlist, sind je Person eindeutig und wieder entfernbar",
+            "Das Anmahnen speichert den Eintrag mit Absender und Notiz und weist die zweite Mahnung innerhalb von 24 Stunden ab",
+            "Anstupsen ist auf die eigene offene Entscheidung beschränkt; ohne wartenden Abgeordneten wird abgewiesen"
+          ],
           "tables": [
             "task_decisions",
             "task_decision_participants",
-            "task_decision_responses"
+            "task_decision_responses",
+            "task_decision_response_history",
+            "task_decision_attachments",
+            "task_decision_comments",
+            "task_decision_comment_reactions",
+            "dashboard_decision_nudges"
           ],
           "features": [
+            "decisions.attachments",
+            "decisions.change-vote",
+            "decisions.comments",
             "decisions.create",
             "decisions.participants",
+            "decisions.remind",
             "decisions.vote",
             "mywork.dashboard",
             "tasks.link-decision"
@@ -1281,6 +1317,18 @@
               "label": "Default-Antwortoptionen prüfen"
             },
             {
+              "id": "change-vote-history",
+              "label": "Antwort ändern und den bisherigen Stand im Verlauf behalten"
+            },
+            {
+              "id": "decision-attachments",
+              "label": "Anhang-Metadaten an die Entscheidung hängen, lesen und entfernen"
+            },
+            {
+              "id": "comments-and-reactions",
+              "label": "Kommentar, Antwort und Emoji-Reaktion speichern und entfernen"
+            },
+            {
               "id": "set-open",
               "label": "Status auf 'open'"
             },
@@ -1295,6 +1343,10 @@
             {
               "id": "nudge-boundary",
               "label": "Fremde oder unbekannte Entscheidung lässt sich nicht anstupsen"
+            },
+            {
+              "id": "nudge-open-decision",
+              "label": "Offene Entscheidung anmahnen: Eintrag und 24-Stunden-Sperre"
             }
           ]
         }
@@ -1332,7 +1384,8 @@
             "task_decisions"
           ],
           "features": [
-            "appointments.jour-fixe"
+            "appointments.jour-fixe",
+            "meetings.zombie-points"
           ],
           "steps": [
             {
@@ -1398,7 +1451,8 @@
             "meetings.archive",
             "meetings.decisions",
             "meetings.jour-fixe",
-            "meetings.protocol"
+            "meetings.protocol",
+            "meetings.zombie-points"
           ],
           "steps": [
             {
@@ -1537,7 +1591,11 @@
           ],
           "features": [
             "annotations.create",
-            "annotations.tasks"
+            "annotations.export",
+            "annotations.ocr",
+            "annotations.relocate",
+            "annotations.tasks",
+            "documents.details"
           ],
           "steps": [
             {
@@ -1661,17 +1719,21 @@
           "checks": [
             "Datei hochladen und wieder herunterladen",
             "Prüfung und Freigabe über Anwendungsfunktionen",
-            "Archivfunktion erzeugt PDF, Dokument und Folgeaufgabe"
+            "Archivfunktion erzeugt PDF, Dokument und Folgeaufgabe",
+            "Prüferzuordnung und Kommentar mit Textstelle werden gespeichert, erledigt markiert und wieder entfernt"
           ],
           "tables": [
             "letters",
             "letter_attachments",
             "letter_collaborators",
+            "letter_comments",
             "documents",
             "tasks"
           ],
           "features": [
             "letters.archive",
+            "letters.attachments",
+            "letters.collaboration",
             "letters.workflow"
           ],
           "steps": [
@@ -1698,6 +1760,10 @@
             {
               "id": "assign-reviewer",
               "label": "Aktuelles Konto als Prüfer zuweisen"
+            },
+            {
+              "id": "comment-on-passage",
+              "label": "Kommentar mit Textstelle anlegen und als erledigt markieren"
             },
             {
               "id": "return-with-reason",
@@ -1754,6 +1820,8 @@
           "features": [
             "knowledge.answer",
             "knowledge.ask",
+            "knowledge.comments-follow",
+            "knowledge.global-question",
             "knowledge.review",
             "knowledge.search",
             "knowledge.short-answer"
@@ -1848,16 +1916,25 @@
             "merge_topics zieht Verknüpfungen auf das Zielthema, deaktiviert die Quelle als Weiterleitung und ensure_topic folgt der Weiterleitung",
             "topic_usage zählt die Verknüpfungen je Modul und liefert die Summe",
             "Ein neu angelegtes Büro erhält über den Trigger 69 Themen und 85 Ressortverknüpfungen (5–10 je Linie); ein zweiter Lauf verdoppelt nichts und eigene Beschreibungen bleiben stehen",
-            "Ein neu angelegtes Büro erhält alle zehn Modul-Regeln der Themen-Steuerung mit den Standardwerten; ein zweiter Lauf verdoppelt nichts"
+            "Ein neu angelegtes Büro erhält alle zehn Modul-Regeln der Themen-Steuerung mit den Standardwerten; ein zweiter Lauf verdoppelt nichts",
+            "Die Konvertierung erhält Thema und historischen Vorgangslink, schreibt den Katalogeintrag und verschiebt Zuständigkeiten auf das Ziel",
+            "Ein zweiter Konvertierungsaufruf nutzt den vorhandenen Link weiter, statt einen zweiten Eintrag anzulegen",
+            "Andere Primaries bleiben erhalten: eine zweite Person wird mitgezogen, eine unabhängige Primärzuständigkeit bleibt unverändert (nur mit zweitem aktivem Büromitglied prüfbar; sonst weist der Lauf diesen Teil als ungeprüft aus)",
+            "Beim Zusammenführen von Gremien bzw. Regionen zeigen die topic_catalog_links auf das Ziel, die Quelle verschwindet und kollidierende Zuständigkeiten bleiben als genau eine Primary-Zeile bestehen"
           ],
           "tables": [
             "topics",
             "case_item_topics",
             "case_items",
             "knowledge_question_topics",
-            "topic_module_settings"
+            "topic_module_settings",
+            "committees",
+            "regions",
+            "employee_responsibilities",
+            "topic_catalog_links"
           ],
           "features": [
+            "topics.convert-catalog",
             "topics.manage",
             "topics.ministry-cloud"
           ],
@@ -1901,6 +1978,144 @@
             {
               "id": "knowledge-topics",
               "label": "Wissensfragen-Verknüpfung lesen und Schreibversuch abweisen"
+            },
+            {
+              "id": "convert-catalog-success",
+              "label": "Thema in den Katalog überführen und Gremien/Regionen zusammenführen"
+            }
+          ]
+        }
+      ]
+    },
+    {
+      "id": "redaktion",
+      "title": "Redaktion & Social Media",
+      "primaryTags": [
+        "redaktion"
+      ],
+      "scenarioIds": [],
+      "scenarios": [
+        "social-content-lifecycle"
+      ],
+      "tables": [
+        "topic_backlog"
+      ],
+      "workflows": [
+        {
+          "scenario": "social-content-lifecycle",
+          "title": "Social-Content-Lifecycle (Planung, Kanalvariante, Freigabe und Ereignisprotokoll)",
+          "description": "Legt ein Thema im Themenspeicher und einen Beitrag an, ergänzt Kanalzuordnung und Kanalvariante, reicht den Beitrag ein und gibt ihn frei. Danach fordert das Szenario Änderungen an, prüft Folgeaufgabe und Meldung, gibt erneut frei und belegt, dass eine geänderte Kanaltext-Zeile die Freigabe wieder öffnet. Geprüft werden Status, Freigabe aus der Sitzung und die Protokolleinträge des Freigabe-Triggers.",
+          "checks": [
+            "Thema im Themenspeicher und Beitrag mit Briefing-Feldern werden angelegt und unverändert zurückgelesen",
+            "Kanalzuordnung und Kanalvariante werden gespeichert, ohne den Freigabestand zu verändern",
+            "Einreichen setzt den Beitrag auf Freigabe und protokolliert genau ein Ereignis submitted",
+            "Freigeben setzt Freigeber und Zeitpunkt aus der Sitzung, auch wenn der Client beide Felder leert",
+            "Das Protokoll enthält danach genau submitted und approved mit den passenden Zuständen und dem handelnden Profil",
+            "Ein Änderungswunsch setzt den Beitrag auf Entwurf/abgelehnt, speichert den Kommentar und protokolliert rejected aus approved",
+            "Der Änderungswunsch legt genau eine Folgeaufgabe beim Verantwortlichen an (Ball Büro, Frist aus der Rückgabe) und meldet sie ihm",
+            "Nach erneutem Einreichen und Freigeben öffnet eine geänderte Kanaltext-Zeile die Freigabe automatisch wieder, leert Freigeber und Zeitpunkt und protokolliert reopened",
+            "Das Wiederöffnen verwendet die offene Folgeaufgabe weiter (keine zweite Aufgabe) und stellt sie auf „Freigabe erneut einholen“ mit Frist in der Zukunft"
+          ],
+          "tables": [
+            "topic_backlog",
+            "social_content_items",
+            "social_content_channels",
+            "social_content_item_channels",
+            "social_content_variants",
+            "social_content_approval_events",
+            "social_approval_comments",
+            "tasks",
+            "task_assignees",
+            "notifications"
+          ],
+          "features": [
+            "redaktion.approval",
+            "redaktion.planner",
+            "redaktion.themenspeicher"
+          ],
+          "steps": [
+            {
+              "id": "plan-topic",
+              "label": "Thema im Themenspeicher anlegen"
+            },
+            {
+              "id": "plan-item",
+              "label": "Beitrag mit Briefing anlegen"
+            },
+            {
+              "id": "channel-variant",
+              "label": "Kanal zuordnen und Kanalvariante speichern"
+            },
+            {
+              "id": "submit",
+              "label": "Beitrag zur Freigabe einreichen"
+            },
+            {
+              "id": "approve",
+              "label": "Beitrag freigeben und Freigabe aus der Sitzung prüfen"
+            },
+            {
+              "id": "request-changes",
+              "label": "Änderungswunsch mit Folgeaufgabe, Meldung und Protokoll"
+            },
+            {
+              "id": "resubmit-approve",
+              "label": "Nach dem Änderungswunsch erneut einreichen und freigeben"
+            },
+            {
+              "id": "variant-reopens-approval",
+              "label": "Geänderter Kanaltext öffnet die Freigabe automatisch wieder"
+            }
+          ]
+        }
+      ]
+    },
+    {
+      "id": "notifications",
+      "title": "Benachrichtigungen",
+      "primaryTags": [
+        "notifications"
+      ],
+      "scenarioIds": [],
+      "scenarios": [
+        "notification-inbox"
+      ],
+      "tables": [
+        "notifications"
+      ],
+      "workflows": [
+        {
+          "scenario": "notification-inbox",
+          "title": "Benachrichtigungs-Inbox (Erzeugen, Gelesen-Markieren, Zurücksetzen und Zugriffsgrenze)",
+          "description": "Erzeugt eine echte In-App-Benachrichtigung im eigenen Büro, markiert sie als gelesen, setzt sie wieder auf ungelesen zurück und prüft, dass fremde Benachrichtigungen weder lesbar noch über einen fremden Nutzerbezug änderbar sind.",
+          "checks": [
+            "Eine Benachrichtigung wird mit Mandant, Typ und Deep-Link-Daten angelegt und ist ungelesen",
+            "Als-gelesen-Markieren setzt is_read und read_at und ist erneut lesbar",
+            "Zurücksetzen setzt die Benachrichtigung wieder auf ungelesen und leert read_at",
+            "Fremde Benachrichtigungen liefern keine Zeilen, und ein Update mit fremdem Nutzerbezug ändert die eigene Zeile nicht"
+          ],
+          "tables": [
+            "notifications"
+          ],
+          "features": [
+            "notifications.inbox"
+          ],
+          "steps": [
+            {
+              "id": "create-notification",
+              "label": "Benachrichtigung erzeugen"
+            },
+            {
+              "id": "mark-read",
+              "label": "Benachrichtigung als gelesen markieren"
+            },
+            {
+              "id": "reset-unread",
+              "label": "Benachrichtigung wieder auf ungelesen zurücksetzen"
+            },
+            {
+              "id": "access-boundary",
+              "label": "Fremde Benachrichtigungen bleiben unlesbar und unverändert"
             }
           ]
         }
@@ -2261,7 +2476,8 @@
           "features": [
             "employees.action-tasks",
             "employees.meetings",
-            "employees.protocol"
+            "employees.protocol",
+            "employees.requests"
           ],
           "steps": [
             {
@@ -2573,7 +2789,8 @@
           ],
           "features": [
             "events.checklist",
-            "events.plan"
+            "events.plan",
+            "events.speakers-documents"
           ],
           "steps": [
             {

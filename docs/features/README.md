@@ -16,16 +16,16 @@ Der Katalog ist das führende Verzeichnis des tatsächlich implementierten Funkt
 | Deaktiviert | 0 |
 | Potenziell verwaist | 0 |
 | Prüfkandidaten (offene Punkte) | 52 |
-| Funktionen mit Selbsttest | 104 |
+| Funktionen mit Selbsttest | 133 |
 | Funktionen mit Unit-Test | 61 |
 | Funktionen mit Integrationstest | 1 |
 | Funktionen mit Browser-Test | 4 |
 | Funktionen mit Security-Test | 1 |
-| Funktionen ohne zugeordneten Test | 121 |
+| Funktionen ohne zugeordneten Test | 92 |
 | Funktionen ohne Dokumentationsverweis | 171 |
-| Funktionen mit bekannten Einschränkungen | 57 |
+| Funktionen mit bekannten Einschränkungen | 79 |
 | Nicht nachweisbar eingebundene Funktionen | 1 |
-| Technische Zuordnungen | 1297 |
+| Technische Zuordnungen | 1300 |
 
 ## Funktionsbereiche
 
@@ -34,19 +34,19 @@ Der Katalog ist das führende Verzeichnis des tatsächlich implementierten Funkt
 | [Administration, Sicherheit & Qualität](./verwaltung.md) | 11 | 24 | 24 | 14 | 9 |
 | [Aufgaben & Stafette](./aufgaben.md) | 12 | 18 | 18 | 1 | 9 |
 | [Automatisierung & Workflows](./automation.md) | 8 | 15 | 15 | 9 | 8 |
-| [Dokumente, Briefe & Annotationen](./dokumente.md) | 3 | 18 | 18 | 10 | 14 |
-| [Entscheidungen](./entscheidungen.md) | 7 | 10 | 10 | 7 | 8 |
+| [Dokumente, Briefe & Annotationen](./dokumente.md) | 3 | 18 | 18 | 2 | 14 |
+| [Entscheidungen](./entscheidungen.md) | 7 | 10 | 10 | 3 | 8 |
 | [Externe Schnittstellen](./schnittstellen.md) | 7 | 10 | 10 | 7 | 5 |
-| [Jour fixe, Dossiers & Themen](./organisation.md) | 5 | 19 | 18 | 12 | 16 |
+| [Jour fixe, Dossiers & Themen](./organisation.md) | 5 | 19 | 18 | 10 | 16 |
 | [Kontakte & Netzwerk](./kontakte.md) | 9 | 14 | 14 | 0 | 10 |
-| [Meine Arbeit & Benachrichtigungen](./arbeitsbereich.md) | 8 | 15 | 14 | 9 | 10 |
-| [Mitarbeit, Personal & Zeit](./mitarbeit.md) | 5 | 20 | 20 | 4 | 14 |
-| [Redaktion, News & Chat](./kommunikation.md) | 5 | 14 | 14 | 14 | 10 |
-| [Termine, Anfragen & Briefings](./termine.md) | 8 | 17 | 17 | 8 | 11 |
-| [Veranstaltungen & Umfragen](./veranstaltungen.md) | 3 | 9 | 8 | 3 | 6 |
-| [Vorgänge & Fallakten](./vorgaenge.md) | 7 | 20 | 19 | 4 | 15 |
+| [Meine Arbeit & Benachrichtigungen](./arbeitsbereich.md) | 8 | 15 | 14 | 7 | 10 |
+| [Mitarbeit, Personal & Zeit](./mitarbeit.md) | 5 | 20 | 20 | 3 | 14 |
+| [Redaktion, News & Chat](./kommunikation.md) | 5 | 14 | 14 | 11 | 10 |
+| [Termine, Anfragen & Briefings](./termine.md) | 8 | 17 | 17 | 4 | 11 |
+| [Veranstaltungen & Umfragen](./veranstaltungen.md) | 3 | 9 | 8 | 2 | 6 |
+| [Vorgänge & Fallakten](./vorgaenge.md) | 7 | 20 | 19 | 2 | 15 |
 | [Wahlanalyse & Wahlhistorie](./wahl.md) | 4 | 23 | 23 | 12 | 15 |
-| [Wissensbereich](./wissen.md) | 8 | 16 | 16 | 7 | 11 |
+| [Wissensbereich](./wissen.md) | 8 | 16 | 16 | 5 | 11 |
 
 ## Kategorien
 
@@ -87,13 +87,13 @@ Der Katalog ist das führende Verzeichnis des tatsächlich implementierten Funkt
 
 | Abdeckung | Funktionen |
 |---|---:|
-| Selbsttest | 103 |
-| Unit-Test | 36 |
+| Selbsttest | 115 |
+| Unit-Test | 37 |
 | Integrationstest | 1 |
 | Browser-Test | 0 |
 | Security-Test | 1 |
-| teilweise | 0 |
-| kein Test | 121 |
+| teilweise | 16 |
+| kein Test | 92 |
 | ungeprüft | 0 |
 
 ## Konsistenz

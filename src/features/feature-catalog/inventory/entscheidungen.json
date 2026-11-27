@@ -136,7 +136,7 @@
       "category": "fachlich",
       "implementationStatus": "implementiert",
       "integrationStatus": "ui",
-      "coverage": "keine",
+      "coverage": "selftest",
       "testResult": "nicht-ausgefuehrt",
       "evidence": [
         "src/pages/DecisionResponse.tsx"
@@ -156,7 +156,10 @@
       "rpcs": [
         "check_archive_after_creator_response"
       ],
-      "dependsOn": ["decisions.vote"]
+      "dependsOn": ["decisions.vote"],
+      "scenarios": [
+        "decision-lifecycle"
+      ]
     },
     {
       "id": "decisions.comments",
@@ -166,7 +169,7 @@
       "category": "fachlich",
       "implementationStatus": "implementiert",
       "integrationStatus": "ui",
-      "coverage": "keine",
+      "coverage": "selftest",
       "testResult": "nicht-ausgefuehrt",
       "evidence": [
         "src/hooks/useDecisionComments.ts",
@@ -191,7 +194,13 @@
         "docs/task-decision-reactions-rollout.md",
         "docs/emoji-reactions-dod-v1.md"
       ],
-      "dependsOn": ["decisions.create"]
+      "dependsOn": ["decisions.create"],
+      "scenarios": [
+        "decision-lifecycle"
+      ],
+      "limitations": [
+        "Geprüft sind Anlegen, Antwort, Reaktion samt Emoji-Allowlist und Entfernen. Das Bearbeiten eigener Kommentare und die Sichtbarkeitsgrenze für Nicht-Beteiligte haben keinen Schritt."
+      ]
     },
     {
       "id": "decisions.attachments",
@@ -201,7 +210,7 @@
       "category": "fachlich",
       "implementationStatus": "implementiert",
       "integrationStatus": "ui",
-      "coverage": "keine",
+      "coverage": "teilweise",
       "testResult": "nicht-ausgefuehrt",
       "evidence": [
         "src/hooks/useDecisionAttachmentUpload.ts"
@@ -218,7 +227,13 @@
         "bueroleitung",
         "mitarbeiter"
       ],
-      "dependsOn": ["decisions.create"]
+      "dependsOn": ["decisions.create"],
+      "scenarios": [
+        "decision-lifecycle"
+      ],
+      "limitations": [
+        "Der Schritt prüft die Metadatenzeile, ihre Zuordnung und das Entfernen, aber keinen echten Datei-Upload oder -Download. Bucket-Policies, Vorschau und Zugriff auf die gespeicherte Datei bleiben offen."
+      ]
     },
     {
       "id": "decisions.remind",
@@ -228,7 +243,7 @@
       "category": "fachlich",
       "implementationStatus": "implementiert",
       "integrationStatus": "ui",
-      "coverage": "keine",
+      "coverage": "teilweise",
       "testResult": "nicht-ausgefuehrt",
       "evidence": [
         "src/features/decisions/DeputyWaitingCard.tsx",
@@ -244,7 +259,8 @@
       "rpcs": [
         "nudge_dashboard_decision",
         "get_deputy_dashboard_decisions",
-        "get_my_work_decisions"
+        "get_my_work_decisions",
+        "decision_nudge_selftest"
       ],
       "tables": [
         "dashboard_decision_nudges",
@@ -254,7 +270,14 @@
         "abgeordneter",
         "bueroleitung"
       ],
-      "dependsOn": ["decisions.create"]
+      "dependsOn": ["decisions.create"],
+      "scenarios": [
+        "decision-lifecycle"
+      ],
+      "limitations": [
+        "Der echte Anstups-RPC läuft über decision_nudge_selftest und wird vollständig zurückgerollt: Eintrag mit Absender und Notiz sowie die 24-Stunden-Sperre sind belegt. Ohne zweites aktives Abgeordnetenkonto oder mit einer nicht anmahnenden Rolle prüft der Aufruf nur die Abweisung.",
+        "Die Zustellung der Anstups-Benachrichtigung an den Abgeordneten wird nicht geprüft; sie entsteht im zurückgerollten Prüfpfad."
+      ]
     },
     {
       "id": "decisions.archive",

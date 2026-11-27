@@ -62,7 +62,7 @@ _Auto-generiert mit `npm run update:feature-catalog` aus dem zentralen Funktions
 | Szenario | Titel | deklarierte Tabellen | deklarierte Prüfungen | letzter Lauf |
 |---|---|---:|---:|---|
 | `annual-task-stafette` | Jahresaufgabe → Büroaufgabe → Jahresabschluss | 3 | 5 | — |
-| `decision-lifecycle` | Entscheidungs-Lifecycle (active → open → archived) | 3 | 0 | — |
+| `decision-lifecycle` | Entscheidungs-Lifecycle (active → open → archived) | 8 | 6 | — |
 | `task-lifecycle` | Aufgaben-Lifecycle (Zuweisung → Frist → Entscheidung → Jour fixe → erledigt) | 6 | 7 | — |
 | `task-stafette-lifecycle` | Aufgaben-Stafette (Am Zug, Wiedervorlage, Freigabe) | 5 | 8 | — |
 
@@ -87,10 +87,14 @@ Diese Schritte führen die Szenarien aus; „letzter Lauf“ stammt aus `src/fea
 | `decision-lifecycle` | `add-participant` | Teilnehmer (sich selbst) hinzufügen | db | — |
 | `decision-lifecycle` | `withdraw-responses` | Ja, Nein und Rückfrage speichern und nachweisbar zurücknehmen | workflow | — |
 | `decision-lifecycle` | `check-options` | Default-Antwortoptionen prüfen | db | — |
+| `decision-lifecycle` | `change-vote-history` | Antwort ändern und den bisherigen Stand im Verlauf behalten | workflow | — |
+| `decision-lifecycle` | `decision-attachments` | Anhang-Metadaten an die Entscheidung hängen, lesen und entfernen | workflow | — |
+| `decision-lifecycle` | `comments-and-reactions` | Kommentar, Antwort und Emoji-Reaktion speichern und entfernen | workflow | — |
 | `decision-lifecycle` | `set-open` | Status auf 'open' | db | — |
 | `decision-lifecycle` | `archive` | Archivieren | db | — |
 | `decision-lifecycle` | `verify` | Verifikation | db | — |
 | `decision-lifecycle` | `nudge-boundary` | Fremde oder unbekannte Entscheidung lässt sich nicht anstupsen | workflow | — |
+| `decision-lifecycle` | `nudge-open-decision` | Offene Entscheidung anmahnen: Eintrag und 24-Stunden-Sperre | workflow | — |
 | `task-lifecycle` | `status-registry` | Status-Registry führt die fünf Kernstatus | db | — |
 | `task-lifecycle` | `create` | Aufgabe anlegen | db | — |
 | `task-lifecycle` | `document-link` | Dokument an Aufgabe hängen und wieder lösen | db | — |
@@ -139,7 +143,12 @@ Diese Schritte führen die Szenarien aus; „letzter Lauf“ stammt aus `src/fea
 
 ### `decision-lifecycle`
 
-Keine Prüfungen deklariert.
+1. Ja, Nein und Rückfrage werden gespeichert und nachweisbar zurückgenommen
+2. Eine geänderte Antwort schreibt den bisherigen und den neuen Stand in task_decision_response_history
+3. Anhang-Metadaten hängen an der Entscheidung, sind für Teilnehmende lesbar und wieder entfernbar (ohne Datei-Upload)
+4. Kommentar und Antwort werden gespeichert; Emoji-Reaktionen folgen der Allowlist, sind je Person eindeutig und wieder entfernbar
+5. Das Anmahnen speichert den Eintrag mit Absender und Notiz und weist die zweite Mahnung innerhalb von 24 Stunden ab
+6. Anstupsen ist auf die eigene offene Entscheidung beschränkt; ohne wartenden Abgeordneten wird abgewiesen
 
 ### `task-lifecycle`
 
@@ -747,7 +756,7 @@ Filtert Aufgaben nach Status, Kategorie, Zuständigkeit, Frist und Text und sort
 
 **Bekannte Einschränkungen**
 
-- Keine.
+- Kein Selbsttest: Filter- und Sortierlogik liegen in der Ansicht; eine eigene getestete Regeldatei fehlt.
 
 **Offene Prüfpunkte**
 

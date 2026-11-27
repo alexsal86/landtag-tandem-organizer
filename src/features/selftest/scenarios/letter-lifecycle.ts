@@ -18,13 +18,14 @@ export const letterLifecycleScenario: TestScenario = {
   id: "letter-lifecycle",
   title: "Brief-Lifecycle (Entwurf → Prüfung → Freigabe → Archiv und Folgeaufgabe)",
   description: "Lädt eine echte Testdatei hoch und nutzt die Funktionen des Briefeditors für Statuswechsel und Archivierung. Prüft danach Dokument, PDF und Folgeaufgabe.",
-  touches: ["letters", "letter_attachments", "letter_collaborators", "documents", "tasks"], features: ["letters", "documents", "tasks"],
-  checks: ["Datei hochladen und wieder herunterladen", "Prüfung und Freigabe über Anwendungsfunktionen", "Archivfunktion erzeugt PDF, Dokument und Folgeaufgabe"],
+  touches: ["letters", "letter_attachments", "letter_collaborators", "letter_comments", "documents", "tasks"], features: ["letters", "documents", "tasks"],
+  checks: ["Datei hochladen und wieder herunterladen", "Prüfung und Freigabe über Anwendungsfunktionen", "Archivfunktion erzeugt PDF, Dokument und Folgeaufgabe", "Prüferzuordnung und Kommentar mit Textstelle werden gespeichert, erledigt markiert und wieder entfernt"],
   limitations: ["Kein E-Mail-Versand an einen Empfänger", "Prüfung und Freigabe erfolgen mit dem aktuellen Konto", "Die Bedienung des Briefeditors wird separat getestet"],
   writes: [
     { table: "letters", columns: ["title", "subject", "content", "content_html", "status", "created_by", "tenant_id", "recipient_name", "recipient_address", "letter_date", "submitted_for_review_at", "submitted_for_review_by", "approved_at", "approved_by", "sent_at", "sent_by", "sent_date", "workflow_locked", "archived_document_id", "revision_comment", "revision_requested_at", "revision_requested_by"] },
     { table: "letter_attachments", columns: ["letter_id", "file_name", "file_path", "file_type", "file_size", "uploaded_by"] },
     { table: "letter_collaborators", columns: ["letter_id", "user_id", "role", "assigned_by"] },
+    { table: "letter_comments", columns: ["letter_id", "user_id", "content", "text_position", "text_length", "comment_type", "resolved"] },
   ],
   collectArtifacts: async ctx => {
     const id = ctx.data.letterId as string | undefined;
@@ -134,6 +135,43 @@ export const letterLifecycleScenario: TestScenario = {
         if (error || !data) return { ok: false, message: describeError(error) };
         ctx.trackRecord({ table: "letter_collaborators", id: data.id });
         return expectFields("letter_collaborators", data.id, { user_id: ctx.userId, role: "reviewer" }, "Prüferzuordnung");
+      },
+    },
+    {
+      id: "comment-on-passage", label: "Kommentar mit Textstelle anlegen und als erledigt markieren", kind: "workflow",
+      run: async ctx => {
+        const letterId = ctx.data.letterId as string;
+        const comment = await supabase.from("letter_comments")
+          .insert({
+            letter_id: letterId, user_id: ctx.userId, content: `${SELFTEST_MARKER} Bitte Absatz 2 kürzen.`,
+            text_position: 120, text_length: 18, comment_type: "suggestion",
+          })
+          .select("id,text_position,text_length,comment_type")
+          .single();
+        if (comment.error || !comment.data) return { ok: false, message: describeError(comment.error) };
+        ctx.trackRecord({ table: "letter_comments", id: comment.data.id });
+
+        const resolved = await supabase.from("letter_comments")
+          .update({ resolved: true }).eq("id", comment.data.id)
+          .select("resolved,content").single();
+        if (resolved.error || !resolved.data) return { ok: false, message: describeError(resolved.error) };
+        const removed = await supabase.from("letter_comments")
+          .delete().eq("id", comment.data.id).select("id");
+        const after = await supabase.from("letter_comments").select("id").eq("letter_id", letterId);
+        const checks = {
+          storedAtPassage: comment.data.text_position === 120 && comment.data.text_length === 18
+            && comment.data.comment_type === "suggestion",
+          resolved: resolved.data.resolved === true && resolved.data.content.includes("Absatz 2"),
+          removed: !removed.error && removed.data?.length === 1 && !after.error && (after.data ?? []).length === 0,
+        };
+        const failed = Object.entries(checks).filter(([, ok]) => !ok).map(([name]) => name);
+        return {
+          ok: failed.length === 0,
+          message: failed.length === 0
+            ? "Der Kommentar hängt an der Textstelle, ist erledigt markierbar und wieder entfernbar."
+            : `Fehlgeschlagen: ${failed.join(", ")}`,
+          details: checks,
+        };
       },
     },
     {

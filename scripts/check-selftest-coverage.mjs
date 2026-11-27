@@ -83,14 +83,37 @@ export function collectCoverage(root, { today = new Date() } = {}) {
       exception: exception ? { kind: exception.kind, expiresOn: exception.expiresOn } : null };
   });
   const inventory = join(root, 'src/features/feature-catalog/inventory');
-  const uncoveredFeatures = existsSync(inventory)
+  const inventoryFeatures = existsSync(inventory)
     ? readdirSync(inventory).filter(file => file.endsWith('.json')).flatMap(file => {
         const area = JSON.parse(readFileSync(join(inventory, file), 'utf8'));
-        return (area.features ?? [])
-          .filter(feature => feature.category === 'fachlich' && feature.implementationStatus === 'implementiert' && feature.coverage === 'keine')
-          .map(feature => ({ id: feature.id, name: feature.name, area: area.area?.id ?? file.replace(/\.json$/, ''), tables: feature.tables ?? [] }));
-      }).sort((a, b) => a.id.localeCompare(b.id))
+        return (area.features ?? []).map(feature => ({ ...feature, area: area.area?.id ?? file.replace(/\.json$/, '') }));
+      })
     : [];
+  const uncoveredFeatures = inventoryFeatures
+    .filter(feature => feature.category === 'fachlich' && feature.implementationStatus === 'implementiert' && feature.coverage === 'keine')
+    .map(feature => ({ id: feature.id, name: feature.name, area: feature.area, tables: feature.tables ?? [] }))
+    .sort((a, b) => a.id.localeCompare(b.id));
+  const registeredScenarios = scenarios.filter(s => s.registered);
+  const scenarioIdsByTable = new Map();
+  for (const scenario of registeredScenarios) {
+    for (const table of scenario.touches) {
+      const ids = scenarioIdsByTable.get(table) ?? [];
+      ids.push(scenario.id);
+      scenarioIdsByTable.set(table, ids);
+    }
+  }
+  const warnings = inventoryFeatures
+    .filter(feature => feature.coverage === 'keine')
+    .map(feature => ({
+      feature,
+      touched: (feature.tables ?? []).filter(table => scenarioIdsByTable.has(table)),
+    }))
+    .filter(entry => entry.touched.length > 0)
+    .sort((a, b) => a.feature.id.localeCompare(b.feature.id))
+    .map(entry => {
+      const scenarioIds = [...new Set(entry.touched.flatMap(table => scenarioIdsByTable.get(table) ?? []))].sort();
+      return `Funktion ${entry.feature.id} hat coverage "keine", aber ihre Tabellen ${entry.touched.join(', ')} werden von ${scenarioIds.join(', ')} berührt.`;
+    });
   const errors = [
     ...exceptionErrors,
     ...scenarios.filter(s => !s.registered).map(s => `Nicht registriertes Szenario: ${s.id}`),
@@ -99,12 +122,15 @@ export function collectCoverage(root, { today = new Date() } = {}) {
     ...rows.filter(r => r.status === 'scenario' && exceptions.has(r.table))
       .map(r => `Ausnahme für ${r.table} ist überflüssig: bereits durch ${r.scenarios.join(', ')} gedeckt.`),
     ...rows.filter(r => r.status === 'missing').map(r => `Neue Tabelle ohne Einordnung: ${r.table}`),
+    ...inventoryFeatures
+      .filter(feature => feature.coverage === 'selftest' && !(Array.isArray(feature.scenarios) && feature.scenarios.length > 0))
+      .map(feature => `Funktion ${feature.id} hat coverage "selftest" ohne Szenariobezug.`),
   ];
   return { schemaVersion: 2, source: 'src/integrations/supabase/types.ts',
     counts: { total: tables.length, scenario: rows.filter(r => r.status === 'scenario').length,
       deferred: rows.filter(r => r.status === 'deferred').length, excluded: rows.filter(r => r.status === 'excluded').length,
       missing: rows.filter(r => r.status === 'missing').length, exceptions: rows.filter(r => !!r.exception).length },
-    exceptionGroups: exceptionSummaries, scenarios, tables: rows, uncoveredFeatures, errors };
+    exceptionGroups: exceptionSummaries, scenarios, tables: rows, uncoveredFeatures, errors, warnings };
 }
 
 export function renderCoverage(report) {
@@ -133,9 +159,17 @@ export function renderCoverage(report) {
 if (resolve(process.argv[1] ?? '') === fileURLToPath(import.meta.url)) {
   const root = process.cwd();
   const report = collectCoverage(root);
+  // Der Bericht bleibt unverändert: Warnungen sind ein Prüfhinweis und gehören
+  // nicht in die versionierte Zusammenfassung. Alle übrigen Felder werden
+  // übernommen, damit neue Berichtsfelder nicht stillschweigend herausfallen.
+  // Object.fromEntries erhält die Reihenfolge der Schlüssel, die Datei bleibt
+  // dadurch byte-gleich.
+  const summary = Object.fromEntries(
+    Object.entries(report).filter(([key]) => key !== 'warnings'),
+  );
   const files = new Map([
     ['docs/selftest-coverage.md', renderCoverage(report)],
-    ['src/features/selftest/coverage-summary.json', JSON.stringify(report, null, 2) + '\n'],
+    ['src/features/selftest/coverage-summary.json', JSON.stringify(summary, null, 2) + '\n'],
     ['src/features/selftest/__schema-snapshot__/public-tables.json', JSON.stringify(report.tables.map(r => r.table), null, 2) + '\n'],
   ]);
   const errors = [...report.errors];
@@ -149,6 +183,7 @@ if (resolve(process.argv[1] ?? '') === fileURLToPath(import.meta.url)) {
   }
   console.log('[selftest-coverage]', report.counts);
   console.log(`[selftest-coverage] Fachfunktionen ohne Selbsttest: ${report.uncoveredFeatures.length}`);
+  for (const warning of report.warnings) console.warn(`[selftest-coverage] Warnung: ${warning}`);
   for (const error of errors) console.error(error);
   process.exitCode = errors.length ? 1 : 0;
 }

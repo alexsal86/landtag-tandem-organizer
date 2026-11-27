@@ -3,11 +3,11 @@
   "source": "src/integrations/supabase/types.ts",
   "counts": {
     "total": 358,
-    "scenario": 92,
-    "deferred": 122,
-    "excluded": 144,
+    "scenario": 110,
+    "deferred": 112,
+    "excluded": 136,
     "missing": 0,
-    "exceptions": 266
+    "exceptions": 248
   },
   "exceptionGroups": [
     {
@@ -126,8 +126,6 @@
         "quick_note_versions",
         "rss_cache",
         "search_analytics",
-        "social_content_approval_events",
-        "task_decision_response_history",
         "time_entry_corrections",
         "time_entry_history",
         "user_sessions",
@@ -148,7 +146,6 @@
         "case_file_topics",
         "case_item_escalation_suggestions",
         "case_item_participants",
-        "document_contacts",
         "document_topics",
         "dossier_links",
         "dossier_stakeholders",
@@ -164,7 +161,6 @@
         "knowledge_document_collaborators",
         "knowledge_document_permissions",
         "knowledge_document_topics",
-        "letter_comments",
         "message_confirmations",
         "message_recipients",
         "planning_item_comments",
@@ -172,14 +168,10 @@
         "planning_item_subtasks",
         "starred_appointments",
         "task_comments",
-        "task_decision_attachments",
-        "task_decision_comment_reactions",
-        "task_decision_comments",
         "task_decision_topics",
         "task_topics",
         "team_announcement_dismissals",
-        "team_dashboard_members",
-        "topic_catalog_links"
+        "team_dashboard_members"
       ]
     },
     {
@@ -276,15 +268,12 @@
         "automation_rules",
         "carryover_items",
         "case_item_attachments",
-        "committees",
         "daily_briefing_reads",
-        "dashboard_decision_nudges",
         "district_notes",
         "district_support_assignments",
         "document_folders",
         "dossier_entries",
         "dossiers",
-        "employee_responsibilities",
         "expenses",
         "habit_completions",
         "habits",
@@ -307,17 +296,11 @@
         "public_holidays",
         "quick_note_global_shares",
         "quick_note_shares",
-        "regions",
         "scheduled_emails",
         "sender_information",
         "sick_days",
-        "social_approval_comments",
         "social_assets",
         "social_campaigns",
-        "social_content_channels",
-        "social_content_item_channels",
-        "social_content_items",
-        "social_content_variants",
         "social_hashtag_sets",
         "social_planner_notes",
         "team_announcements",
@@ -331,7 +314,6 @@
         "tenant_collaborations",
         "time_entries",
         "todos",
-        "topic_backlog",
         "vacation_checklist_responses"
       ]
     },
@@ -528,6 +510,7 @@
         "case_file_tasks",
         "case_file_appointments",
         "case_file_letters",
+        "document_contacts",
         "case_items",
         "contacts",
         "tasks",
@@ -646,6 +629,16 @@
             "case_file_id",
             "letter_id",
             "notes"
+          ]
+        },
+        {
+          "table": "document_contacts",
+          "columns": [
+            "document_id",
+            "contact_id",
+            "relationship_type",
+            "notes",
+            "created_by"
           ]
         },
         {
@@ -1097,7 +1090,12 @@
       "touches": [
         "task_decisions",
         "task_decision_participants",
-        "task_decision_responses"
+        "task_decision_responses",
+        "task_decision_response_history",
+        "task_decision_attachments",
+        "task_decision_comments",
+        "task_decision_comment_reactions",
+        "dashboard_decision_nudges"
       ],
       "features": [
         "decisions"
@@ -1132,6 +1130,54 @@
             "participant_id",
             "response_type",
             "comment"
+          ]
+        },
+        {
+          "table": "task_decision_response_history",
+          "columns": [
+            "response_id",
+            "decision_id",
+            "participant_id",
+            "response_type",
+            "comment",
+            "changed_by"
+          ]
+        },
+        {
+          "table": "task_decision_attachments",
+          "columns": [
+            "decision_id",
+            "file_name",
+            "file_path",
+            "file_size",
+            "file_type",
+            "uploaded_by"
+          ]
+        },
+        {
+          "table": "task_decision_comments",
+          "columns": [
+            "decision_id",
+            "user_id",
+            "parent_id",
+            "content"
+          ]
+        },
+        {
+          "table": "task_decision_comment_reactions",
+          "columns": [
+            "comment_id",
+            "user_id",
+            "emoji"
+          ]
+        },
+        {
+          "table": "dashboard_decision_nudges",
+          "columns": [
+            "decision_id",
+            "tenant_id",
+            "nudged_by",
+            "note"
           ]
         }
       ],
@@ -1449,6 +1495,7 @@
         "letters",
         "letter_attachments",
         "letter_collaborators",
+        "letter_comments",
         "documents",
         "tasks"
       ],
@@ -1503,6 +1550,18 @@
             "user_id",
             "role",
             "assigned_by"
+          ]
+        },
+        {
+          "table": "letter_comments",
+          "columns": [
+            "letter_id",
+            "user_id",
+            "content",
+            "text_position",
+            "text_length",
+            "comment_type",
+            "resolved"
           ]
         }
       ],
@@ -1609,6 +1668,34 @@
             "priority",
             "user_id",
             "tenant_id"
+          ]
+        }
+      ],
+      "registered": true
+    },
+    {
+      "id": "notification-inbox",
+      "title": "Benachrichtigungs-Inbox (Erzeugen, Gelesen-Markieren, Zurücksetzen und Zugriffsgrenze)",
+      "touches": [
+        "notifications"
+      ],
+      "features": [
+        "notifications",
+        "dashboard"
+      ],
+      "writes": [
+        {
+          "table": "notifications",
+          "columns": [
+            "tenant_id",
+            "user_id",
+            "notification_type_id",
+            "title",
+            "message",
+            "data",
+            "priority",
+            "is_read",
+            "read_at"
           ]
         }
       ],
@@ -1793,6 +1880,156 @@
       "registered": true
     },
     {
+      "id": "social-content-lifecycle",
+      "title": "Social-Content-Lifecycle (Planung, Kanalvariante, Freigabe und Ereignisprotokoll)",
+      "touches": [
+        "topic_backlog",
+        "social_content_items",
+        "social_content_channels",
+        "social_content_item_channels",
+        "social_content_variants",
+        "social_content_approval_events",
+        "social_approval_comments",
+        "tasks",
+        "task_assignees",
+        "notifications"
+      ],
+      "features": [
+        "redaktion",
+        "social-content"
+      ],
+      "writes": [
+        {
+          "table": "topic_backlog",
+          "columns": [
+            "tenant_id",
+            "topic",
+            "short_description",
+            "status",
+            "priority",
+            "tags",
+            "created_by"
+          ]
+        },
+        {
+          "table": "social_content_items",
+          "columns": [
+            "tenant_id",
+            "topic_backlog_id",
+            "created_by",
+            "format",
+            "hook",
+            "core_message",
+            "draft_text",
+            "cta",
+            "hashtags",
+            "approval_required",
+            "workflow_status",
+            "approval_state",
+            "approved_at",
+            "approved_by"
+          ]
+        },
+        {
+          "table": "social_content_channels",
+          "columns": [
+            "tenant_id",
+            "name",
+            "slug"
+          ]
+        },
+        {
+          "table": "social_content_item_channels",
+          "columns": [
+            "content_item_id",
+            "channel_id",
+            "tenant_id",
+            "created_by",
+            "is_primary"
+          ]
+        },
+        {
+          "table": "social_content_variants",
+          "columns": [
+            "tenant_id",
+            "content_item_id",
+            "channel_id",
+            "created_by",
+            "caption",
+            "first_comment",
+            "media_type",
+            "asset_ids",
+            "platform_status"
+          ]
+        },
+        {
+          "table": "social_content_approval_events",
+          "columns": [
+            "tenant_id",
+            "content_item_id",
+            "actor_id",
+            "actor_user_id",
+            "actor_name",
+            "action",
+            "from_state",
+            "to_state"
+          ]
+        },
+        {
+          "table": "social_approval_comments",
+          "columns": [
+            "tenant_id",
+            "content_item_id",
+            "author_id",
+            "comment",
+            "is_change_request"
+          ]
+        },
+        {
+          "table": "tasks",
+          "columns": [
+            "user_id",
+            "tenant_id",
+            "title",
+            "description",
+            "assigned_to",
+            "status",
+            "priority",
+            "category",
+            "due_date",
+            "ball_owner",
+            "ball_assignee_id",
+            "next_action",
+            "next_action_due",
+            "source_type",
+            "source_id",
+            "timeline"
+          ]
+        },
+        {
+          "table": "task_assignees",
+          "columns": [
+            "task_id",
+            "user_id",
+            "assigned_by"
+          ]
+        },
+        {
+          "table": "notifications",
+          "columns": [
+            "tenant_id",
+            "user_id",
+            "notification_type_id",
+            "title",
+            "message",
+            "data",
+            "priority"
+          ]
+        }
+      ],
+      "registered": true
+    },
+    {
       "id": "task-lifecycle",
       "title": "Aufgaben-Lifecycle (Zuweisung → Frist → Entscheidung → Jour fixe → erledigt)",
       "touches": [
@@ -1946,7 +2183,11 @@
         "case_item_topics",
         "case_items",
         "knowledge_question_topics",
-        "topic_module_settings"
+        "topic_module_settings",
+        "committees",
+        "regions",
+        "employee_responsibilities",
+        "topic_catalog_links"
       ],
       "features": [
         "topics",
@@ -1997,6 +2238,48 @@
             "show_filter",
             "is_enabled",
             "updated_by"
+          ]
+        },
+        {
+          "table": "committees",
+          "columns": [
+            "tenant_id",
+            "name",
+            "is_active",
+            "order_index"
+          ]
+        },
+        {
+          "table": "regions",
+          "columns": [
+            "tenant_id",
+            "name",
+            "kind",
+            "is_active",
+            "order_index"
+          ]
+        },
+        {
+          "table": "employee_responsibilities",
+          "columns": [
+            "tenant_id",
+            "user_id",
+            "kind",
+            "topic_id",
+            "committee_id",
+            "region_id",
+            "role_focus",
+            "level"
+          ]
+        },
+        {
+          "table": "topic_catalog_links",
+          "columns": [
+            "tenant_id",
+            "topic_id",
+            "kind",
+            "committee_id",
+            "region_id"
           ]
         }
       ],
@@ -2515,12 +2798,11 @@
     },
     {
       "table": "committees",
-      "status": "deferred",
-      "scenarios": [],
-      "exception": {
-        "kind": "deferred",
-        "expiresOn": "2027-03-31"
-      }
+      "status": "scenario",
+      "scenarios": [
+        "topic-linking"
+      ],
+      "exception": null
     },
     {
       "table": "contact_activities",
@@ -2584,12 +2866,11 @@
     },
     {
       "table": "dashboard_decision_nudges",
-      "status": "deferred",
-      "scenarios": [],
-      "exception": {
-        "kind": "deferred",
-        "expiresOn": "2027-03-31"
-      }
+      "status": "scenario",
+      "scenarios": [
+        "decision-lifecycle"
+      ],
+      "exception": null
     },
     {
       "table": "dashboard_layouts",
@@ -2723,12 +3004,11 @@
     },
     {
       "table": "document_contacts",
-      "status": "excluded",
-      "scenarios": [],
-      "exception": {
-        "kind": "excluded",
-        "expiresOn": "2027-06-30"
-      }
+      "status": "scenario",
+      "scenarios": [
+        "case-file-lifecycle"
+      ],
+      "exception": null
     },
     {
       "table": "document_folders",
@@ -3290,12 +3570,11 @@
     },
     {
       "table": "employee_responsibilities",
-      "status": "deferred",
-      "scenarios": [],
-      "exception": {
-        "kind": "deferred",
-        "expiresOn": "2027-03-31"
-      }
+      "status": "scenario",
+      "scenarios": [
+        "topic-linking"
+      ],
+      "exception": null
     },
     {
       "table": "employee_settings",
@@ -3743,12 +4022,11 @@
     },
     {
       "table": "letter_comments",
-      "status": "excluded",
-      "scenarios": [],
-      "exception": {
-        "kind": "excluded",
-        "expiresOn": "2027-06-30"
-      }
+      "status": "scenario",
+      "scenarios": [
+        "letter-lifecycle"
+      ],
+      "exception": null
     },
     {
       "table": "letter_occasions",
@@ -4061,7 +4339,9 @@
       "table": "notifications",
       "status": "scenario",
       "scenarios": [
-        "onboarding-hr"
+        "notification-inbox",
+        "onboarding-hr",
+        "social-content-lifecycle"
       ],
       "exception": null
     },
@@ -4362,12 +4642,11 @@
     },
     {
       "table": "regions",
-      "status": "deferred",
-      "scenarios": [],
-      "exception": {
-        "kind": "deferred",
-        "expiresOn": "2027-03-31"
-      }
+      "status": "scenario",
+      "scenarios": [
+        "topic-linking"
+      ],
+      "exception": null
     },
     {
       "table": "rls_policy_snapshot_20261124",
@@ -4477,12 +4756,11 @@
     },
     {
       "table": "social_approval_comments",
-      "status": "deferred",
-      "scenarios": [],
-      "exception": {
-        "kind": "deferred",
-        "expiresOn": "2027-03-31"
-      }
+      "status": "scenario",
+      "scenarios": [
+        "social-content-lifecycle"
+      ],
+      "exception": null
     },
     {
       "table": "social_assets",
@@ -4504,48 +4782,43 @@
     },
     {
       "table": "social_content_approval_events",
-      "status": "excluded",
-      "scenarios": [],
-      "exception": {
-        "kind": "excluded",
-        "expiresOn": "2027-06-30"
-      }
+      "status": "scenario",
+      "scenarios": [
+        "social-content-lifecycle"
+      ],
+      "exception": null
     },
     {
       "table": "social_content_channels",
-      "status": "deferred",
-      "scenarios": [],
-      "exception": {
-        "kind": "deferred",
-        "expiresOn": "2027-03-31"
-      }
+      "status": "scenario",
+      "scenarios": [
+        "social-content-lifecycle"
+      ],
+      "exception": null
     },
     {
       "table": "social_content_item_channels",
-      "status": "deferred",
-      "scenarios": [],
-      "exception": {
-        "kind": "deferred",
-        "expiresOn": "2027-03-31"
-      }
+      "status": "scenario",
+      "scenarios": [
+        "social-content-lifecycle"
+      ],
+      "exception": null
     },
     {
       "table": "social_content_items",
-      "status": "deferred",
-      "scenarios": [],
-      "exception": {
-        "kind": "deferred",
-        "expiresOn": "2027-03-31"
-      }
+      "status": "scenario",
+      "scenarios": [
+        "social-content-lifecycle"
+      ],
+      "exception": null
     },
     {
       "table": "social_content_variants",
-      "status": "deferred",
-      "scenarios": [],
-      "exception": {
-        "kind": "deferred",
-        "expiresOn": "2027-03-31"
-      }
+      "status": "scenario",
+      "scenarios": [
+        "social-content-lifecycle"
+      ],
+      "exception": null
     },
     {
       "table": "social_hashtag_sets",
@@ -4623,6 +4896,7 @@
       "status": "scenario",
       "scenarios": [
         "document-annotation",
+        "social-content-lifecycle",
         "task-stafette-lifecycle"
       ],
       "exception": null
@@ -4655,30 +4929,27 @@
     },
     {
       "table": "task_decision_attachments",
-      "status": "excluded",
-      "scenarios": [],
-      "exception": {
-        "kind": "excluded",
-        "expiresOn": "2027-06-30"
-      }
+      "status": "scenario",
+      "scenarios": [
+        "decision-lifecycle"
+      ],
+      "exception": null
     },
     {
       "table": "task_decision_comment_reactions",
-      "status": "excluded",
-      "scenarios": [],
-      "exception": {
-        "kind": "excluded",
-        "expiresOn": "2027-06-30"
-      }
+      "status": "scenario",
+      "scenarios": [
+        "decision-lifecycle"
+      ],
+      "exception": null
     },
     {
       "table": "task_decision_comments",
-      "status": "excluded",
-      "scenarios": [],
-      "exception": {
-        "kind": "excluded",
-        "expiresOn": "2027-06-30"
-      }
+      "status": "scenario",
+      "scenarios": [
+        "decision-lifecycle"
+      ],
+      "exception": null
     },
     {
       "table": "task_decision_participants",
@@ -4693,12 +4964,11 @@
     },
     {
       "table": "task_decision_response_history",
-      "status": "excluded",
-      "scenarios": [],
-      "exception": {
-        "kind": "excluded",
-        "expiresOn": "2027-06-30"
-      }
+      "status": "scenario",
+      "scenarios": [
+        "decision-lifecycle"
+      ],
+      "exception": null
     },
     {
       "table": "task_decision_responses",
@@ -4780,6 +5050,7 @@
         "onboarding-hr",
         "quick-note-lifecycle",
         "responsibilities",
+        "social-content-lifecycle",
         "task-lifecycle",
         "task-stafette-lifecycle"
       ],
@@ -4994,21 +5265,19 @@
     },
     {
       "table": "topic_backlog",
-      "status": "deferred",
-      "scenarios": [],
-      "exception": {
-        "kind": "deferred",
-        "expiresOn": "2027-03-31"
-      }
+      "status": "scenario",
+      "scenarios": [
+        "social-content-lifecycle"
+      ],
+      "exception": null
     },
     {
       "table": "topic_catalog_links",
-      "status": "excluded",
-      "scenarios": [],
-      "exception": {
-        "kind": "excluded",
-        "expiresOn": "2027-06-30"
-      }
+      "status": "scenario",
+      "scenarios": [
+        "topic-linking"
+      ],
+      "exception": null
     },
     {
       "table": "topic_module_settings",
@@ -5192,92 +5461,6 @@
   ],
   "uncoveredFeatures": [
     {
-      "id": "annotations.export",
-      "name": "Annotationen exportieren",
-      "area": "dokumente",
-      "tables": [
-        "documents",
-        "document_annotations"
-      ]
-    },
-    {
-      "id": "annotations.ocr",
-      "name": "OCR für gescannte Dokumente",
-      "area": "dokumente",
-      "tables": [
-        "documents",
-        "document_annotations"
-      ]
-    },
-    {
-      "id": "annotations.relocate",
-      "name": "Annotationen bei neuer Dateiversion verschieben",
-      "area": "dokumente",
-      "tables": [
-        "document_annotations",
-        "documents"
-      ]
-    },
-    {
-      "id": "appointments.debrief",
-      "name": "Nachbereitung und Büro-Feedback",
-      "area": "termine",
-      "tables": [
-        "appointment_feedback",
-        "appointment_preparations"
-      ]
-    },
-    {
-      "id": "appointments.preparation",
-      "name": "Terminvorbereitung mit Vorschlägen",
-      "area": "termine",
-      "tables": [
-        "appointment_preparations",
-        "appointment_preparation_templates",
-        "appointment_topics",
-        "appointment_preparation_documents"
-      ]
-    },
-    {
-      "id": "calendar.edit-move",
-      "name": "Termin bearbeiten und verschieben",
-      "area": "termine",
-      "tables": [
-        "appointments",
-        "appointment_change_alerts",
-        "appointment_reminder_dispatches"
-      ]
-    },
-    {
-      "id": "calendar.guests",
-      "name": "Gäste und Teilnehmende verwalten",
-      "area": "termine",
-      "tables": [
-        "appointment_guests",
-        "default_appointment_guests",
-        "appointments"
-      ]
-    },
-    {
-      "id": "cases.interactions",
-      "name": "Kontakte und Interaktionen am Vorgang",
-      "area": "vorgaenge",
-      "tables": [
-        "case_item_interactions",
-        "case_items"
-      ]
-    },
-    {
-      "id": "cases.link-decision",
-      "name": "Vorgang mit Entscheidung verknüpfen",
-      "area": "vorgaenge",
-      "tables": [
-        "task_decisions",
-        "case_file_tasks",
-        "case_items"
-      ]
-    },
-    {
       "id": "chat.messages",
       "name": "Interner Chat über Matrix",
       "area": "kommunikation",
@@ -5294,74 +5477,6 @@
       "tables": [
         "team_announcements",
         "team_announcement_dismissals"
-      ]
-    },
-    {
-      "id": "decisions.attachments",
-      "name": "Anhänge an Entscheidungen",
-      "area": "entscheidungen",
-      "tables": [
-        "task_decision_attachments",
-        "task_decisions"
-      ]
-    },
-    {
-      "id": "decisions.change-vote",
-      "name": "Antwort ändern und Verlauf einsehen",
-      "area": "entscheidungen",
-      "tables": [
-        "task_decision_responses",
-        "task_decision_response_history"
-      ]
-    },
-    {
-      "id": "decisions.comments",
-      "name": "Kommentare und Reaktionen",
-      "area": "entscheidungen",
-      "tables": [
-        "task_decision_comments",
-        "task_decision_comment_reactions"
-      ]
-    },
-    {
-      "id": "decisions.remind",
-      "name": "Offene Entscheidungen anmahnen",
-      "area": "entscheidungen",
-      "tables": [
-        "dashboard_decision_nudges",
-        "task_decisions"
-      ]
-    },
-    {
-      "id": "documents.contacts",
-      "name": "Dokumente mit Kontakten verknüpfen",
-      "area": "dokumente",
-      "tables": [
-        "document_contacts",
-        "documents",
-        "contacts"
-      ]
-    },
-    {
-      "id": "documents.details",
-      "name": "Dokumentdetails und Verknüpfungen",
-      "area": "dokumente",
-      "tables": [
-        "documents",
-        "case_file_documents",
-        "document_contacts",
-        "document_annotation_tasks"
-      ]
-    },
-    {
-      "id": "documents.upload-version",
-      "name": "Dokument hochladen und versionieren",
-      "area": "dokumente",
-      "tables": [
-        "documents",
-        "document_topics",
-        "topics",
-        "document_annotation_events"
       ]
     },
     {
@@ -5495,24 +5610,6 @@
       ]
     },
     {
-      "id": "employees.requests",
-      "name": "Gesprächsanfragen der Mitarbeitenden",
-      "area": "mitarbeit",
-      "tables": [
-        "employee_meeting_requests",
-        "employee_meetings"
-      ]
-    },
-    {
-      "id": "events.speakers-documents",
-      "name": "Redner und Dokumente zur Veranstaltung",
-      "area": "veranstaltungen",
-      "tables": [
-        "event_planning_speakers",
-        "event_planning_documents"
-      ]
-    },
-    {
       "id": "facts.manage",
       "name": "Fakten und Argumente pflegen",
       "area": "organisation",
@@ -5526,24 +5623,6 @@
       "area": "wissen",
       "tables": [
         "knowledge_question_attachments"
-      ]
-    },
-    {
-      "id": "knowledge.comments-follow",
-      "name": "Kommentare und Folgen",
-      "area": "wissen",
-      "tables": [
-        "knowledge_question_comments",
-        "knowledge_question_followers",
-        "knowledge_qa_notification_deliveries"
-      ]
-    },
-    {
-      "id": "knowledge.global-question",
-      "name": "Globale Wissensfrage aus jedem Bereich",
-      "area": "wissen",
-      "tables": [
-        "knowledge_questions"
       ]
     },
     {
@@ -5561,33 +5640,6 @@
       "tables": [
         "knowledge_document_versions",
         "knowledge_document_snapshots"
-      ]
-    },
-    {
-      "id": "letters.attachments",
-      "name": "Briefanlagen verwalten",
-      "area": "dokumente",
-      "tables": [
-        "letter_attachments",
-        "letters"
-      ]
-    },
-    {
-      "id": "letters.collaboration",
-      "name": "Brief-Kommentare und Zusammenarbeit",
-      "area": "dokumente",
-      "tables": [
-        "letter_comments",
-        "letter_collaborators",
-        "letters"
-      ]
-    },
-    {
-      "id": "meetings.zombie-points",
-      "name": "Liegengebliebene Agenda-Punkte",
-      "area": "organisation",
-      "tables": [
-        "meeting_agenda_items"
       ]
     },
     {
@@ -5633,26 +5685,6 @@
       ]
     },
     {
-      "id": "notifications.inbox",
-      "name": "Benachrichtigungen lesen und als gelesen markieren",
-      "area": "arbeitsbereich",
-      "tables": [
-        "notifications",
-        "notification_types",
-        "notification_navigation_mapping",
-        "message_confirmations"
-      ]
-    },
-    {
-      "id": "notifications.preferences",
-      "name": "Benachrichtigungseinstellungen und Stummschaltung",
-      "area": "arbeitsbereich",
-      "tables": [
-        "user_notification_settings",
-        "task_snoozes"
-      ]
-    },
-    {
       "id": "press.releases",
       "name": "Pressemitteilungen erstellen und freigeben",
       "area": "kommunikation",
@@ -5671,42 +5703,12 @@
       ]
     },
     {
-      "id": "redaktion.approval",
-      "name": "Social-Media-Freigabe",
-      "area": "kommunikation",
-      "tables": [
-        "social_content_items",
-        "social_content_approval_events",
-        "social_approval_comments"
-      ]
-    },
-    {
       "id": "redaktion.assets-campaigns",
       "name": "Social-Assets und Kampagnen",
       "area": "kommunikation",
       "tables": [
         "social_assets",
         "social_campaigns"
-      ]
-    },
-    {
-      "id": "redaktion.planner",
-      "name": "Social-Media-Planung",
-      "area": "kommunikation",
-      "tables": [
-        "social_content_items",
-        "social_content_channels",
-        "social_content_item_channels",
-        "social_content_variants"
-      ]
-    },
-    {
-      "id": "redaktion.themenspeicher",
-      "name": "Themenspeicher und Hashtags",
-      "area": "kommunikation",
-      "tables": [
-        "topic_backlog",
-        "social_hashtag_sets"
       ]
     },
     {
@@ -5735,16 +5737,6 @@
         "time_entries",
         "time_entry_corrections",
         "time_entry_history"
-      ]
-    },
-    {
-      "id": "topics.convert-catalog",
-      "name": "Thema in Katalog überführen",
-      "area": "organisation",
-      "tables": [
-        "topics",
-        "topic_catalog_links",
-        "employee_responsibilities"
       ]
     }
   ],

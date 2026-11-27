@@ -8,7 +8,7 @@ _Auto-generiert mit `npm run update:feature-catalog` aus dem zentralen Funktions
 
 - Funktionen: **9** in **3** Unterbereichen
 - implementiert: **8**, teilweise: **0**, deaktiviert: **0**, potenziell verwaist: **0**
-- ohne zugeordneten Test: **3**
+- ohne zugeordneten Test: **2**
 - ohne Dokumentationsverweis: **6**
 
 ## Funktionen
@@ -18,7 +18,7 @@ _Auto-generiert mit `npm run update:feature-catalog` aus dem zentralen Funktions
 | `events.legacy-rsvp` Legacy-Einladungslinks | Einladungen | fachlich | veraltet | UI | kein Test |
 | `events.rsvp-public` Öffentliche Veranstaltungs-Rückmeldung | Einladungen | integration | implementiert | UI | Integrationstest |
 | `events.invitations` Veranstaltungseinladungen versenden | Einladungen | integration | implementiert | rollenabhängig | kein Test |
-| `events.speakers-documents` Redner und Dokumente zur Veranstaltung | Planung | fachlich | implementiert | UI | kein Test |
+| `events.speakers-documents` Redner und Dokumente zur Veranstaltung | Planung | fachlich | implementiert | UI | teilweise |
 | `events.plan` Veranstaltung planen | Planung | fachlich | implementiert | rollenabhängig | Selbsttest |
 | `events.checklist` Veranstaltungs-Checkliste und Aufgaben | Planung | fachlich | implementiert | UI | Selbsttest |
 | `polls.respond` An Umfrage teilnehmen | Umfragen | fachlich | implementiert | UI | Selbsttest |
@@ -159,7 +159,7 @@ Verwaltet Redner, Dokumente und Gästelisten einer Veranstaltung.
 - **Kategorie:** fachlich
 - **Implementierung:** implementiert
 - **Einbindung:** UI
-- **Testabdeckung:** kein Test
+- **Testabdeckung:** teilweise
 - **Letztes Testergebnis:** nicht-ausgefuehrt (kein Laufnachweis importiert; nicht aus der Existenz einer Testdatei abgeleitet)
 - **Rollen:** `abgeordneter`, `bueroleitung`, `mitarbeiter`
 - **Routen:** —
@@ -170,7 +170,7 @@ Verwaltet Redner, Dokumente und Gästelisten einer Veranstaltung.
 - **Datenbankfunktionen:** —
 - **Tabellen:** `event_planning_speakers`, `event_planning_documents`
 - **Abhängigkeiten:** `events.plan`, `documents.upload-version`
-- **Selbsttests:** —
+- **Selbsttests:** `event-planning-lifecycle`
 - **Unit-Tests:** —
 - **Integrationstests:** —
 - **Browser-Tests:** —
@@ -182,7 +182,7 @@ Verwaltet Redner, Dokumente und Gästelisten einer Veranstaltung.
 
 **Bekannte Einschränkungen**
 
-- Keine.
+- Redner samt Reihenfolge und Rückschreiben sind geprüft; event_planning_documents hat keinen Schritt.
 
 **Offene Prüfpunkte**
 

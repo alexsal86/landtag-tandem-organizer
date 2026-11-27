@@ -28,6 +28,10 @@ export const topicLinkingScenario: TestScenario = {
     "case_items",
     "knowledge_question_topics",
     "topic_module_settings",
+    "committees",
+    "regions",
+    "employee_responsibilities",
+    "topic_catalog_links",
   ],
   features: ["topics", "knowledge"],
   checks: [
@@ -42,18 +46,29 @@ export const topicLinkingScenario: TestScenario = {
     "topic_usage zählt die Verknüpfungen je Modul und liefert die Summe",
     "Ein neu angelegtes Büro erhält über den Trigger 69 Themen und 85 Ressortverknüpfungen (5–10 je Linie); ein zweiter Lauf verdoppelt nichts und eigene Beschreibungen bleiben stehen",
     "Ein neu angelegtes Büro erhält alle zehn Modul-Regeln der Themen-Steuerung mit den Standardwerten; ein zweiter Lauf verdoppelt nichts",
+    "Die Konvertierung erhält Thema und historischen Vorgangslink, schreibt den Katalogeintrag und verschiebt Zuständigkeiten auf das Ziel",
+    "Ein zweiter Konvertierungsaufruf nutzt den vorhandenen Link weiter, statt einen zweiten Eintrag anzulegen",
+    "Andere Primaries bleiben erhalten: eine zweite Person wird mitgezogen, eine unabhängige Primärzuständigkeit bleibt unverändert (nur mit zweitem aktivem Büromitglied prüfbar; sonst weist der Lauf diesen Teil als ungeprüft aus)",
+    "Beim Zusammenführen von Gremien bzw. Regionen zeigen die topic_catalog_links auf das Ziel, die Quelle verschwindet und kollidierende Zuständigkeiten bleiben als genau eine Primary-Zeile bestehen",
   ],
   limitations: [
     "knowledge_question_topics hat derzeit keinen Client-Schreibpfad (nur eine Lesepolicy); geprüft werden Lesbarkeit und die Abweisung eines direkten Inserts, nicht eine UI-Verknüpfung.",
     "Für merge_topics und Änderungen an der Modul-Steuerung braucht das Szenario eine Büroleitung; als Mitglied werden die Abweisungen geprüft statt der Wirkung.",
     "Die Modul-Steuerung kennt keine id-Spalte; geprüft wird auf der vorhandenen Standardzeile, die anschließend wiederhergestellt wird.",
     "Die Themen-Wolke neuer Büros prüft der Server-Selbsttest an einem Testbüro, das anschließend zurückgerollt wird; die Anzeige im Themenkatalog wird dabei nicht über die Oberfläche geprüft.",
+    "Der Erfolgspfad der Konvertierung läuft über topic_catalog_conversion_selftest und wird vollständig zurückgerollt. Gremien, Regionen, Links und Zuständigkeiten bleiben dadurch nicht zurück; die Oberfläche des Konvertierungsdialogs wird nicht bedient.",
+    "Ohne Leitungsrolle belegt der Schritt nur die Abweisung, weil convert_topic_to_catalog Stammdaten schreiben würde.",
+    "Ohne zweites aktives Büromitglied bleibt second_primary_moved ungeprüft: Der Server-Selbsttest meldet dann den Modus checked_without_second_member mit unverified second_primary_moved, statt den Check stillschweigend als bestanden zu zählen.",
   ],
   writes: [
     { table: "topics", columns: ["name", "label", "icon", "color", "order_index", "is_active", "tenant_id", "created_by", "merged_into", "merged_at", "updated_by"] },
     { table: "case_items", columns: ["subject", "summary", "user_id", "tenant_id", "intake_payload"] },
     { table: "case_item_topics", columns: ["tenant_id", "case_item_id", "topic_id", "created_by"] },
     { table: "topic_module_settings", columns: ["requirement", "max_topics", "creation_policy", "show_filter", "is_enabled", "updated_by"] },
+    { table: "committees", columns: ["tenant_id", "name", "is_active", "order_index"] },
+    { table: "regions", columns: ["tenant_id", "name", "kind", "is_active", "order_index"] },
+    { table: "employee_responsibilities", columns: ["tenant_id", "user_id", "kind", "topic_id", "committee_id", "region_id", "role_focus", "level"] },
+    { table: "topic_catalog_links", columns: ["tenant_id", "topic_id", "kind", "committee_id", "region_id"] },
   ],
   steps: [
     {
@@ -436,6 +451,42 @@ export const topicLinkingScenario: TestScenario = {
           ok: Object.values(checks).every(Boolean),
           message: "Die Wissensfragen-Verknüpfung ist lesbar; ein direkter Client-Insert wird abgewiesen.",
           details: { ...checks, code: attempt.error?.code ?? null },
+        };
+      },
+    },
+    {
+      id: "convert-catalog-success", label: "Thema in den Katalog überführen und Gremien/Regionen zusammenführen", kind: "workflow",
+      run: async ctx => {
+        const response = await supabase.rpc("topic_catalog_conversion_selftest", { p_tenant: ctx.tenantId });
+        if (response.error) return { ok: false, message: `Konvertierung: ${describeError(response.error)}` };
+        const report = response.data && typeof response.data === "object" && !Array.isArray(response.data)
+          ? response.data as { ok?: boolean; mode?: string; message?: string; complete?: boolean; unverified?: string[]; checks?: Record<string, unknown> }
+          : null;
+        if (!report) return { ok: false, message: "Der Server-Selbsttest liefert kein Ergebnis." };
+        const details = report.checks ?? {};
+        if (report.mode === "role_denied") {
+          return {
+            ok: report.ok === true,
+            message: "Ohne Leitungsrolle prüft der Schritt nur die Abweisung; der Erfolgspfad der Konvertierung bleibt offen.",
+            details,
+          };
+        }
+        if (report.mode === "checked_without_second_member") {
+          const unverified = report.unverified ?? ["second_primary_moved"];
+          return {
+            ok: report.ok === true,
+            message: report.ok === true
+              ? `Teilweise geprüft: Ohne zweites aktives Büromitglied ist nicht belegt, dass eine zweite Primary-Person mitwandert (ungeprüft: ${unverified.join(", ")}).`
+              : `Konvertierung fehlgeschlagen: ${report.message ?? "unbekannter Grund"}`,
+            details: { ...details, complete: false, unverified },
+          };
+        }
+        return {
+          ok: report.ok === true,
+          message: report.ok === true
+            ? "Konvertierung, Wiederholung und Zusammenführen von Gremien und Regionen halten Thema, Historie und Zuständigkeiten; alle Schreibzugriffe wurden zurückgerollt."
+            : `Konvertierung fehlgeschlagen: ${report.message ?? "unbekannter Grund"}`,
+          details,
         };
       },
     },

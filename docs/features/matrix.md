@@ -6,8 +6,8 @@ Die Spalten zählen **zugeordnete** Prüfungen, nicht bestandene Läufe. „Erge
 
 | Funktion | Bereich | Kategorie | Implementierung | Einbindung | Abdeckung | Ergebnis | Selbsttests | Unit | Integration | Browser | Doku |
 |---|---|---|---|---|---|---|---:|---:|---:|---:|---|
-| `notifications.inbox` | arbeitsbereich | fachlich | implementiert | UI | kein Test | nicht-ausgefuehrt | 0 | 0 | 0 | 0 | ja |
-| `notifications.preferences` | arbeitsbereich | fachlich | implementiert | UI | kein Test | nicht-ausgefuehrt | 0 | 0 | 0 | 0 | nein |
+| `notifications.inbox` | arbeitsbereich | fachlich | implementiert | UI | Selbsttest | nicht-ausgefuehrt | 1 | 0 | 0 | 0 | ja |
+| `notifications.preferences` | arbeitsbereich | fachlich | implementiert | UI | teilweise | nicht-ausgefuehrt | 1 | 0 | 0 | 0 | nein |
 | `mywork.dashboard.today-priorities` | arbeitsbereich | fachlich | implementiert | rollenabhängig | Selbsttest | nicht-ausgefuehrt | 1 | 0 | 0 | 0 | nein |
 | `mywork.tabs` | arbeitsbereich | fachlich | implementiert | UI | kein Test | nicht-ausgefuehrt | 0 | 0 | 0 | 0 | nein |
 | `mywork.dashboard` | arbeitsbereich | fachlich | implementiert | rollenabhängig | Selbsttest | nicht-ausgefuehrt | 2 | 0 | 0 | 0 | ja |
@@ -54,32 +54,32 @@ Die Spalten zählen **zugeordnete** Prüfungen, nicht bestandene Läufe. „Erge
 | `automation.webhooks` | automation | integration | implementiert | systemseitig | kein Test | nicht-ausgefuehrt | 0 | 0 | 0 | 0 | ja |
 | `automation.calendar-schedule` | automation | technisch | implementiert | systemseitig | Unit-Test | unbekannt | 0 | 1 | 0 | 0 | nein |
 | `automation.scheduler` | automation | automatisiert | implementiert | systemseitig | kein Test | nicht-ausgefuehrt | 0 | 0 | 0 | 0 | ja |
-| `annotations.relocate` | dokumente | fachlich | implementiert | UI | kein Test | nicht-ausgefuehrt | 0 | 0 | 0 | 0 | nein |
-| `annotations.export` | dokumente | fachlich | implementiert | UI | kein Test | nicht-ausgefuehrt | 0 | 0 | 0 | 0 | nein |
+| `annotations.relocate` | dokumente | fachlich | implementiert | UI | teilweise | nicht-ausgefuehrt | 1 | 0 | 0 | 0 | nein |
+| `annotations.export` | dokumente | fachlich | implementiert | UI | teilweise | nicht-ausgefuehrt | 1 | 0 | 0 | 0 | nein |
 | `annotations.history` | dokumente | fachlich | implementiert | UI | Unit-Test | unbekannt | 0 | 1 | 0 | 0 | nein |
 | `annotations.create` | dokumente | fachlich | implementiert | UI | Selbsttest | nicht-ausgefuehrt | 1 | 1 | 0 | 0 | ja |
 | `annotations.tasks` | dokumente | fachlich | implementiert | UI | Selbsttest | nicht-ausgefuehrt | 1 | 0 | 0 | 0 | nein |
-| `annotations.ocr` | dokumente | fachlich | implementiert | UI | kein Test | nicht-ausgefuehrt | 0 | 0 | 0 | 0 | nein |
+| `annotations.ocr` | dokumente | fachlich | implementiert | UI | teilweise | nicht-ausgefuehrt | 1 | 0 | 0 | 0 | nein |
 | `letters.export` | dokumente | fachlich | implementiert | UI | Unit-Test | nicht-ausgefuehrt | 0 | 3 | 0 | 0 | nein |
 | `letters.archive` | dokumente | automatisiert | implementiert | systemseitig | Selbsttest | nicht-ausgefuehrt | 1 | 0 | 0 | 0 | nein |
 | `letters.create` | dokumente | fachlich | implementiert | rollenabhängig | Unit-Test | unbekannt | 0 | 6 | 0 | 0 | ja |
 | `letters.workflow` | dokumente | fachlich | implementiert | rollenabhängig | Selbsttest | nicht-ausgefuehrt | 1 | 1 | 1 | 0 | ja |
-| `letters.collaboration` | dokumente | fachlich | implementiert | UI | kein Test | nicht-ausgefuehrt | 0 | 0 | 0 | 0 | nein |
-| `letters.attachments` | dokumente | fachlich | implementiert | UI | kein Test | nicht-ausgefuehrt | 0 | 0 | 0 | 0 | nein |
+| `letters.collaboration` | dokumente | fachlich | implementiert | UI | Selbsttest | nicht-ausgefuehrt | 1 | 0 | 0 | 0 | nein |
+| `letters.attachments` | dokumente | fachlich | implementiert | UI | Selbsttest | nicht-ausgefuehrt | 1 | 0 | 0 | 0 | nein |
 | `letters.templates` | dokumente | administrativ | implementiert | rollenabhängig | kein Test | nicht-ausgefuehrt | 0 | 0 | 0 | 0 | nein |
-| `documents.upload-version` | dokumente | fachlich | implementiert | UI | kein Test | nicht-ausgefuehrt | 0 | 0 | 0 | 0 | nein |
-| `documents.details` | dokumente | fachlich | implementiert | UI | kein Test | nicht-ausgefuehrt | 0 | 0 | 0 | 0 | nein |
-| `documents.contacts` | dokumente | fachlich | implementiert | UI | kein Test | nicht-ausgefuehrt | 0 | 0 | 0 | 0 | nein |
+| `documents.upload-version` | dokumente | fachlich | implementiert | UI | teilweise | nicht-ausgefuehrt | 1 | 0 | 0 | 0 | nein |
+| `documents.details` | dokumente | fachlich | implementiert | UI | teilweise | nicht-ausgefuehrt | 2 | 0 | 0 | 0 | nein |
+| `documents.contacts` | dokumente | fachlich | implementiert | UI | Selbsttest | nicht-ausgefuehrt | 1 | 0 | 0 | 0 | nein |
 | `documents.email` | dokumente | integration | implementiert | UI | kein Test | nicht-ausgefuehrt | 0 | 0 | 0 | 0 | nein |
 | `documents.list` | dokumente | fachlich | implementiert | UI | Selbsttest | nicht-ausgefuehrt | 2 | 0 | 0 | 0 | ja |
 | `decisions.vote` | entscheidungen | fachlich | implementiert | UI | Selbsttest | nicht-ausgefuehrt | 1 | 0 | 0 | 0 | nein |
-| `decisions.change-vote` | entscheidungen | fachlich | implementiert | UI | kein Test | nicht-ausgefuehrt | 0 | 0 | 0 | 0 | nein |
-| `decisions.comments` | entscheidungen | fachlich | implementiert | UI | kein Test | nicht-ausgefuehrt | 0 | 0 | 0 | 0 | ja |
-| `decisions.attachments` | entscheidungen | fachlich | implementiert | UI | kein Test | nicht-ausgefuehrt | 0 | 0 | 0 | 0 | nein |
+| `decisions.change-vote` | entscheidungen | fachlich | implementiert | UI | Selbsttest | nicht-ausgefuehrt | 1 | 0 | 0 | 0 | nein |
+| `decisions.comments` | entscheidungen | fachlich | implementiert | UI | Selbsttest | nicht-ausgefuehrt | 1 | 0 | 0 | 0 | ja |
+| `decisions.attachments` | entscheidungen | fachlich | implementiert | UI | teilweise | nicht-ausgefuehrt | 1 | 0 | 0 | 0 | nein |
 | `decisions.create` | entscheidungen | fachlich | implementiert | rollenabhängig | Selbsttest | nicht-ausgefuehrt | 1 | 0 | 0 | 0 | ja |
 | `decisions.archive` | entscheidungen | automatisiert | implementiert | systemseitig | kein Test | nicht-ausgefuehrt | 0 | 0 | 0 | 0 | nein |
 | `decisions.email` | entscheidungen | integration | implementiert | rollenabhängig | kein Test | nicht-ausgefuehrt | 0 | 0 | 0 | 0 | nein |
-| `decisions.remind` | entscheidungen | fachlich | implementiert | UI | kein Test | nicht-ausgefuehrt | 0 | 0 | 0 | 0 | nein |
+| `decisions.remind` | entscheidungen | fachlich | implementiert | UI | teilweise | nicht-ausgefuehrt | 1 | 0 | 0 | 0 | nein |
 | `decisions.matrix` | entscheidungen | integration | implementiert | systemseitig | kein Test | nicht-ausgefuehrt | 0 | 0 | 0 | 0 | nein |
 | `decisions.participants` | entscheidungen | fachlich | implementiert | rollenabhängig | Selbsttest | nicht-ausgefuehrt | 1 | 0 | 0 | 0 | nein |
 | `chat.messages` | kommunikation | fachlich | implementiert | UI | kein Test | nicht-ausgefuehrt | 0 | 0 | 0 | 0 | nein |
@@ -93,9 +93,9 @@ Die Spalten zählen **zugeordnete** Prüfungen, nicht bestandene Läufe. „Erge
 | `press.releases` | kommunikation | fachlich | implementiert | UI | kein Test | nicht-ausgefuehrt | 0 | 0 | 0 | 0 | nein |
 | `redaktion.calendar-reminders` | kommunikation | automatisiert | implementiert | systemseitig | kein Test | nicht-ausgefuehrt | 0 | 0 | 0 | 0 | nein |
 | `redaktion.assets-campaigns` | kommunikation | fachlich | implementiert | UI | kein Test | nicht-ausgefuehrt | 0 | 0 | 0 | 0 | nein |
-| `redaktion.approval` | kommunikation | fachlich | implementiert | rollenabhängig | kein Test | nicht-ausgefuehrt | 0 | 0 | 0 | 0 | nein |
-| `redaktion.planner` | kommunikation | fachlich | implementiert | UI | kein Test | nicht-ausgefuehrt | 0 | 0 | 0 | 0 | ja |
-| `redaktion.themenspeicher` | kommunikation | fachlich | implementiert | UI | kein Test | nicht-ausgefuehrt | 0 | 0 | 0 | 0 | nein |
+| `redaktion.approval` | kommunikation | fachlich | implementiert | rollenabhängig | teilweise | nicht-ausgefuehrt | 1 | 0 | 0 | 0 | nein |
+| `redaktion.planner` | kommunikation | fachlich | implementiert | UI | Selbsttest | nicht-ausgefuehrt | 1 | 0 | 0 | 0 | ja |
+| `redaktion.themenspeicher` | kommunikation | fachlich | implementiert | UI | teilweise | nicht-ausgefuehrt | 1 | 0 | 0 | 0 | nein |
 | `contacts.bulk` | kontakte | fachlich | implementiert | rollenabhängig | Selbsttest | nicht-ausgefuehrt | 1 | 0 | 0 | 0 | nein |
 | `contacts.briefing-memory` | kontakte | fachlich | implementiert | UI | Selbsttest | nicht-ausgefuehrt | 1 | 0 | 0 | 0 | nein |
 | `contacts.fundings` | kontakte | fachlich | implementiert | UI | Selbsttest | nicht-ausgefuehrt | 1 | 0 | 0 | 0 | nein |
@@ -111,7 +111,7 @@ Die Spalten zählen **zugeordnete** Prüfungen, nicht bestandene Läufe. „Erge
 | `contacts.tags-topics` | kontakte | fachlich | implementiert | UI | Selbsttest | nicht-ausgefuehrt | 1 | 0 | 0 | 0 | nein |
 | `contacts.distribution-lists` | kontakte | fachlich | implementiert | UI | Selbsttest | nicht-ausgefuehrt | 1 | 0 | 0 | 0 | nein |
 | `employees.export-stats` | mitarbeit | fachlich | implementiert | UI | kein Test | nicht-ausgefuehrt | 0 | 0 | 0 | 0 | nein |
-| `employees.requests` | mitarbeit | fachlich | implementiert | rollenabhängig | kein Test | nicht-ausgefuehrt | 0 | 0 | 0 | 0 | nein |
+| `employees.requests` | mitarbeit | fachlich | implementiert | rollenabhängig | Selbsttest | nicht-ausgefuehrt | 1 | 0 | 0 | 0 | nein |
 | `employees.protocol` | mitarbeit | fachlich | implementiert | rollenabhängig | Selbsttest | nicht-ausgefuehrt | 2 | 0 | 0 | 0 | ja |
 | `employees.preparation` | mitarbeit | automatisiert | implementiert | systemseitig | Selbsttest | nicht-ausgefuehrt | 1 | 0 | 0 | 0 | ja |
 | `employees.action-tasks` | mitarbeit | fachlich | implementiert | systemseitig | Selbsttest | nicht-ausgefuehrt | 2 | 0 | 0 | 0 | nein |
@@ -141,13 +141,13 @@ Die Spalten zählen **zugeordnete** Prüfungen, nicht bestandene Läufe. „Erge
 | `facts.manage` | organisation | fachlich | implementiert | UI | kein Test | nicht-ausgefuehrt | 0 | 0 | 0 | 0 | nein |
 | `meetings.agenda` | organisation | fachlich | implementiert | UI | Selbsttest | nicht-ausgefuehrt | 1 | 0 | 0 | 0 | nein |
 | `meetings.jour-fixe` | organisation | fachlich | implementiert | rollenabhängig | Selbsttest | nicht-ausgefuehrt | 1 | 0 | 0 | 0 | ja |
-| `meetings.zombie-points` | organisation | fachlich | implementiert | UI | kein Test | nicht-ausgefuehrt | 0 | 0 | 0 | 0 | nein |
+| `meetings.zombie-points` | organisation | fachlich | implementiert | UI | Selbsttest | nicht-ausgefuehrt | 2 | 0 | 0 | 0 | nein |
 | `meetings.archive` | organisation | fachlich | implementiert | rollenabhängig | Selbsttest | nicht-ausgefuehrt | 1 | 0 | 0 | 0 | nein |
 | `meetings.decisions` | organisation | fachlich | implementiert | UI | Selbsttest | nicht-ausgefuehrt | 1 | 0 | 0 | 0 | nein |
 | `meetings.protocol` | organisation | fachlich | implementiert | rollenabhängig | Selbsttest | nicht-ausgefuehrt | 1 | 0 | 0 | 0 | nein |
 | `meetings.templates` | organisation | administrativ | implementiert | rollenabhängig | kein Test | nicht-ausgefuehrt | 0 | 0 | 0 | 0 | nein |
 | `topics.ministry-cloud` | organisation | automatisiert | implementiert | systemseitig | Selbsttest | nicht-ausgefuehrt | 1 | 0 | 0 | 0 | nein |
-| `topics.convert-catalog` | organisation | fachlich | implementiert | UI | kein Test | nicht-ausgefuehrt | 0 | 0 | 0 | 0 | ja |
+| `topics.convert-catalog` | organisation | fachlich | implementiert | UI | Selbsttest | nicht-ausgefuehrt | 1 | 0 | 0 | 0 | ja |
 | `topics.manage` | organisation | fachlich | implementiert | UI | Selbsttest | nicht-ausgefuehrt | 1 | 1 | 0 | 0 | nein |
 | `integration.push` | schnittstellen | integration | implementiert | systemseitig | kein Test | nicht-ausgefuehrt | 0 | 0 | 0 | 0 | ja |
 | `integration.edge-contract-tests` | schnittstellen | sicherheit | implementiert | nicht anwendbar | Security-Test | unbekannt | 0 | 1 | 0 | 0 | ja |
@@ -163,23 +163,23 @@ Die Spalten zählen **zugeordnete** Prüfungen, nicht bestandene Läufe. „Erge
 | `appointments.briefing` | termine | fachlich | implementiert | rollenabhängig | Selbsttest | nicht-ausgefuehrt | 1 | 1 | 0 | 0 | ja |
 | `appointments.jour-fixe` | termine | fachlich | implementiert | UI | Selbsttest | nicht-ausgefuehrt | 1 | 0 | 0 | 0 | ja |
 | `calendar.holidays` | termine | automatisiert | implementiert | systemseitig | kein Test | nicht-ausgefuehrt | 0 | 0 | 0 | 0 | nein |
-| `calendar.guests` | termine | fachlich | implementiert | UI | kein Test | nicht-ausgefuehrt | 0 | 0 | 0 | 0 | nein |
+| `calendar.guests` | termine | fachlich | implementiert | UI | teilweise | nicht-ausgefuehrt | 2 | 0 | 0 | 0 | nein |
 | `calendar.create-appointment` | termine | fachlich | implementiert | rollenabhängig | Selbsttest | nicht-ausgefuehrt | 1 | 0 | 0 | 0 | nein |
-| `calendar.edit-move` | termine | fachlich | implementiert | UI | kein Test | nicht-ausgefuehrt | 0 | 0 | 0 | 0 | nein |
+| `calendar.edit-move` | termine | fachlich | implementiert | UI | teilweise | nicht-ausgefuehrt | 2 | 0 | 0 | 0 | nein |
 | `calendar.invitations` | termine | integration | implementiert | UI | Unit-Test | unbekannt | 0 | 1 | 0 | 0 | nein |
 | `calendar.reminders` | termine | automatisiert | implementiert | systemseitig | kein Test | nicht-ausgefuehrt | 0 | 0 | 0 | 0 | ja |
 | `calendar.view` | termine | fachlich | implementiert | UI | Selbsttest | nicht-ausgefuehrt | 1 | 0 | 0 | 0 | ja |
 | `calendar.categories-locations` | termine | administrativ | implementiert | rollenabhängig | kein Test | nicht-ausgefuehrt | 0 | 0 | 0 | 0 | nein |
-| `appointments.debrief` | termine | fachlich | implementiert | UI | kein Test | nicht-ausgefuehrt | 0 | 0 | 0 | 0 | nein |
+| `appointments.debrief` | termine | fachlich | implementiert | UI | Selbsttest | nicht-ausgefuehrt | 1 | 0 | 0 | 0 | nein |
 | `appointments.feedback` | termine | automatisiert | implementiert | systemseitig | kein Test | nicht-ausgefuehrt | 0 | 0 | 0 | 0 | nein |
 | `daily.briefing` | termine | fachlich | implementiert | UI | Selbsttest | nicht-ausgefuehrt | 2 | 8 | 0 | 0 | ja |
 | `calendar.polls` | termine | fachlich | implementiert | UI | Selbsttest | nicht-ausgefuehrt | 1 | 0 | 0 | 0 | nein |
 | `appointments.requests` | termine | fachlich | implementiert | rollenabhängig | Selbsttest | nicht-ausgefuehrt | 1 | 0 | 0 | 0 | ja |
-| `appointments.preparation` | termine | fachlich | implementiert | UI | kein Test | nicht-ausgefuehrt | 0 | 0 | 0 | 0 | nein |
+| `appointments.preparation` | termine | fachlich | implementiert | UI | teilweise | nicht-ausgefuehrt | 1 | 0 | 0 | 0 | nein |
 | `events.legacy-rsvp` | veranstaltungen | fachlich | veraltet | UI | kein Test | nicht-ausgefuehrt | 0 | 0 | 0 | 0 | nein |
 | `events.rsvp-public` | veranstaltungen | integration | implementiert | UI | Integrationstest | unbekannt | 0 | 0 | 0 | 1 | ja |
 | `events.invitations` | veranstaltungen | integration | implementiert | rollenabhängig | kein Test | nicht-ausgefuehrt | 0 | 0 | 0 | 0 | ja |
-| `events.speakers-documents` | veranstaltungen | fachlich | implementiert | UI | kein Test | nicht-ausgefuehrt | 0 | 0 | 0 | 0 | nein |
+| `events.speakers-documents` | veranstaltungen | fachlich | implementiert | UI | teilweise | nicht-ausgefuehrt | 1 | 0 | 0 | 0 | nein |
 | `events.plan` | veranstaltungen | fachlich | implementiert | rollenabhängig | Selbsttest | nicht-ausgefuehrt | 1 | 0 | 0 | 0 | ja |
 | `events.checklist` | veranstaltungen | fachlich | implementiert | UI | Selbsttest | nicht-ausgefuehrt | 1 | 0 | 0 | 0 | nein |
 | `polls.respond` | veranstaltungen | fachlich | implementiert | UI | Selbsttest | nicht-ausgefuehrt | 1 | 0 | 0 | 0 | nein |
@@ -198,7 +198,7 @@ Die Spalten zählen **zugeordnete** Prüfungen, nicht bestandene Läufe. „Erge
 | `admin.users-sessions` | verwaltung | administrativ | implementiert | rollenabhängig | kein Test | nicht-ausgefuehrt | 0 | 0 | 0 | 0 | ja |
 | `admin.tenants` | verwaltung | administrativ | implementiert | rollenabhängig | kein Test | nicht-ausgefuehrt | 0 | 0 | 0 | 0 | ja |
 | `admin.feature-catalog` | verwaltung | administrativ | implementiert | rollenabhängig | Unit-Test | unbekannt | 0 | 7 | 0 | 0 | ja |
-| `admin.selftest-center` | verwaltung | administrativ | implementiert | rollenabhängig | Selbsttest | nicht-ausgefuehrt | 0 | 3 | 0 | 1 | ja |
+| `admin.selftest-center` | verwaltung | administrativ | implementiert | rollenabhängig | Unit-Test | nicht-ausgefuehrt | 0 | 3 | 0 | 1 | ja |
 | `admin.system-pulse` | verwaltung | administrativ | implementiert | rollenabhängig | Unit-Test | bestanden | 0 | 3 | 0 | 0 | ja |
 | `admin.action-permissions` | verwaltung | sicherheit | implementiert | rollenabhängig | Selbsttest | nicht-ausgefuehrt | 1 | 0 | 0 | 0 | nein |
 | `admin.roles` | verwaltung | administrativ | implementiert | rollenabhängig | Selbsttest | nicht-ausgefuehrt | 1 | 0 | 0 | 0 | ja |
@@ -211,7 +211,7 @@ Die Spalten zählen **zugeordnete** Prüfungen, nicht bestandene Läufe. „Erge
 | `platform.notification-dispatch` | verwaltung | technisch | implementiert | systemseitig | kein Test | nicht-ausgefuehrt | 0 | 0 | 0 | 0 | nein |
 | `cases.close-archive` | vorgaenge | fachlich | implementiert | rollenabhängig | Selbsttest | nicht-ausgefuehrt | 1 | 0 | 0 | 0 | nein |
 | `cases.escalation` | vorgaenge | automatisiert | implementiert | systemseitig | kein Test | nicht-ausgefuehrt | 0 | 0 | 0 | 0 | nein |
-| `cases.interactions` | vorgaenge | fachlich | implementiert | UI | kein Test | nicht-ausgefuehrt | 0 | 0 | 0 | 0 | ja |
+| `cases.interactions` | vorgaenge | fachlich | implementiert | UI | Selbsttest | nicht-ausgefuehrt | 1 | 0 | 0 | 0 | ja |
 | `cases.timeline` | vorgaenge | fachlich | implementiert | UI | Unit-Test | unbekannt | 0 | 1 | 0 | 0 | nein |
 | `cases.steps` | vorgaenge | fachlich | implementiert | systemseitig | Unit-Test | unbekannt | 0 | 1 | 0 | 0 | nein |
 | `cases.legacy-routes` | vorgaenge | fachlich | veraltet | UI | kein Test | nicht-ausgefuehrt | 0 | 0 | 0 | 0 | nein |
@@ -227,7 +227,7 @@ Die Spalten zählen **zugeordnete** Prüfungen, nicht bestandene Läufe. „Erge
 | `cases.triage` | vorgaenge | fachlich | implementiert | UI | Unit-Test | unbekannt | 0 | 1 | 0 | 0 | ja |
 | `cases.handover` | vorgaenge | fachlich | implementiert | rollenabhängig | Selbsttest | nicht-ausgefuehrt | 1 | 1 | 0 | 0 | ja |
 | `cases.link-letter` | vorgaenge | fachlich | implementiert | UI | Unit-Test | unbekannt | 0 | 1 | 0 | 0 | nein |
-| `cases.link-decision` | vorgaenge | fachlich | implementiert | systemseitig | kein Test | nicht-ausgefuehrt | 0 | 0 | 0 | 0 | nein |
+| `cases.link-decision` | vorgaenge | fachlich | implementiert | systemseitig | Selbsttest | nicht-ausgefuehrt | 1 | 0 | 0 | 0 | nein |
 | `cases.link-appointment` | vorgaenge | fachlich | implementiert | UI | Unit-Test | unbekannt | 0 | 1 | 0 | 0 | nein |
 | `election.deputy-results` | wahl | fachlich | implementiert | UI | Unit-Test | unbekannt | 1 | 0 | 0 | 0 | nein |
 | `election.analysis-map` | wahl | fachlich | implementiert | UI | kein Test | nicht-ausgefuehrt | 0 | 0 | 0 | 0 | ja |
@@ -255,7 +255,7 @@ Die Spalten zählen **zugeordnete** Prüfungen, nicht bestandene Läufe. „Erge
 | `knowledge.management` | wissen | administrativ | implementiert | rollenabhängig | kein Test | nicht-ausgefuehrt | 0 | 0 | 0 | 0 | nein |
 | `knowledge.answer` | wissen | fachlich | implementiert | UI | Selbsttest | nicht-ausgefuehrt | 1 | 1 | 0 | 0 | nein |
 | `knowledge.short-answer` | wissen | fachlich | implementiert | UI | Selbsttest | nicht-ausgefuehrt | 1 | 1 | 0 | 0 | nein |
-| `knowledge.global-question` | wissen | fachlich | implementiert | UI | kein Test | nicht-ausgefuehrt | 0 | 0 | 0 | 0 | ja |
+| `knowledge.global-question` | wissen | fachlich | implementiert | UI | teilweise | nicht-ausgefuehrt | 1 | 0 | 0 | 0 | ja |
 | `knowledge.ask` | wissen | fachlich | implementiert | UI | Selbsttest | nicht-ausgefuehrt | 1 | 0 | 0 | 0 | ja |
 | `knowledge.validity` | wissen | automatisiert | implementiert | systemseitig | Unit-Test | unbekannt | 0 | 1 | 0 | 0 | ja |
 | `knowledge.versions` | wissen | fachlich | implementiert | UI | kein Test | nicht-ausgefuehrt | 0 | 0 | 0 | 0 | nein |
@@ -267,4 +267,4 @@ Die Spalten zählen **zugeordnete** Prüfungen, nicht bestandene Läufe. „Erge
 | `knowledge.persons` | wissen | fachlich | implementiert | UI | Unit-Test | unbekannt | 0 | 1 | 0 | 0 | nein |
 | `knowledge.search` | wissen | fachlich | implementiert | UI | Selbsttest | nicht-ausgefuehrt | 1 | 0 | 0 | 2 | nein |
 | `knowledge.collaboration` | wissen | integration | implementiert | systemseitig | kein Test | nicht-ausgefuehrt | 0 | 0 | 0 | 0 | nein |
-| `knowledge.comments-follow` | wissen | fachlich | implementiert | UI | kein Test | nicht-ausgefuehrt | 0 | 0 | 0 | 0 | nein |
+| `knowledge.comments-follow` | wissen | fachlich | implementiert | UI | teilweise | nicht-ausgefuehrt | 1 | 0 | 0 | 0 | nein |

@@ -18815,6 +18815,7 @@ export type Database = {
         }
         Returns: string
       }
+      decision_nudge_selftest: { Args: { p_tenant: string }; Returns: Json }
       delete_config_item: {
         Args: { _expected_refs: number; _id: string; _table: string }
         Returns: Json
@@ -20689,6 +20690,7 @@ export type Database = {
           user_id: string
         }[]
       }
+      topic_catalog_conversion_selftest: { Args: { p_tenant: string }; Returns: Json }
       topic_mention_selftest: { Args: { p_tenant: string }; Returns: Json }
       topic_name_from_label: { Args: { p_label: string }; Returns: string }
       topic_usage: {

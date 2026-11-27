@@ -89,7 +89,7 @@
       "category": "fachlich",
       "implementationStatus": "implementiert",
       "integrationStatus": "ui",
-      "coverage": "keine",
+      "coverage": "selftest",
       "testResult": "nicht-ausgefuehrt",
       "evidence": ["src/components/my-work/CaseItemInteractionQuickCapture.tsx", "src/features/cases/files/components/CaseItemInteractionsTimeline.tsx"],
       "components": ["src/components/my-work/CaseItemInteractionQuickCapture.tsx", "src/features/cases/files/components/CaseItemInteractionsTimeline.tsx"],
@@ -97,7 +97,10 @@
       "tables": ["case_item_interactions", "case_items"],
       "roles": ["abgeordneter", "bueroleitung", "mitarbeiter"],
       "docs": ["docs/case-items-intake-validation.md"],
-      "dependsOn": ["cases.create", "contacts.create"]
+      "dependsOn": ["cases.create", "contacts.create"],
+      "scenarios": [
+        "case-item-lifecycle"
+      ]
     },
     {
       "id": "cases.timeline",
@@ -159,14 +162,17 @@
       "category": "fachlich",
       "implementationStatus": "implementiert",
       "integrationStatus": "system",
-      "coverage": "keine",
+      "coverage": "selftest",
       "testResult": "nicht-ausgefuehrt",
       "evidence": ["src/features/cases/items/pages/CaseItemDetail.tsx"],
       "rpcs": ["validate_decision_case_file"],
       "tables": ["task_decisions", "case_file_tasks", "case_items"],
       "roles": ["abgeordneter", "bueroleitung", "mitarbeiter"],
       "reviewPoints": ["Die Verknüpfung wird nur über eine Validierungsfunktion und nicht über einen eigenen UI-Nachweis belegt."],
-      "dependsOn": ["cases.create", "decisions.create"]
+      "dependsOn": ["cases.create", "decisions.create"],
+      "scenarios": [
+        "case-item-lifecycle"
+      ]
     },
     {
       "id": "cases.escalation",

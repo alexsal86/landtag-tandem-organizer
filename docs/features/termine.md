@@ -8,7 +8,7 @@ _Auto-generiert mit `npm run update:feature-catalog` aus dem zentralen Funktions
 
 - Funktionen: **17** in **8** Unterbereichen
 - implementiert: **17**, teilweise: **0**, deaktiviert: **0**, potenziell verwaist: **0**
-- ohne zugeordneten Test: **8**
+- ohne zugeordneten Test: **4**
 - ohne Dokumentationsverweis: **11**
 
 ## Funktionen
@@ -19,19 +19,19 @@ _Auto-generiert mit `npm run update:feature-catalog` aus dem zentralen Funktions
 | `appointments.briefing` Terminbriefing erstellen | Briefings | fachlich | implementiert | rollenabhängig | Selbsttest |
 | `appointments.jour-fixe` Jour-fixe-Agende und Systempunkte | Jour fixe | fachlich | implementiert | UI | Selbsttest |
 | `calendar.holidays` Feiertage synchronisieren | Kalender | automatisiert | implementiert | systemseitig | kein Test |
-| `calendar.guests` Gäste und Teilnehmende verwalten | Kalender | fachlich | implementiert | UI | kein Test |
+| `calendar.guests` Gäste und Teilnehmende verwalten | Kalender | fachlich | implementiert | UI | teilweise |
 | `calendar.create-appointment` Termin anlegen | Kalender | fachlich | implementiert | rollenabhängig | Selbsttest |
-| `calendar.edit-move` Termin bearbeiten und verschieben | Kalender | fachlich | implementiert | UI | kein Test |
+| `calendar.edit-move` Termin bearbeiten und verschieben | Kalender | fachlich | implementiert | UI | teilweise |
 | `calendar.invitations` Termineinladungen und Kalendereinträge versenden | Kalender | integration | implementiert | UI | Unit-Test |
 | `calendar.reminders` Terminerinnerungen | Kalender | automatisiert | implementiert | systemseitig | kein Test |
 | `calendar.view` Terminkalender anzeigen | Kalender | fachlich | implementiert | UI | Selbsttest |
 | `calendar.categories-locations` Terminkategorien und -orte pflegen | Kalender | administrativ | implementiert | rollenabhängig | kein Test |
-| `appointments.debrief` Nachbereitung und Büro-Feedback | Nachbereitung | fachlich | implementiert | UI | kein Test |
+| `appointments.debrief` Nachbereitung und Büro-Feedback | Nachbereitung | fachlich | implementiert | UI | Selbsttest |
 | `appointments.feedback` Termin-Feedback erfassen | Nachbereitung | automatisiert | implementiert | systemseitig | kein Test |
 | `daily.briefing` Tagesbriefing und Tageszettel | Tagesbriefing | fachlich | implementiert | UI | Selbsttest |
 | `calendar.polls` Terminumfrage erstellen | Terminabstimmung | fachlich | implementiert | UI | Selbsttest |
 | `appointments.requests` Terminanfrage stellen und entscheiden | Terminanfragen | fachlich | implementiert | rollenabhängig | Selbsttest |
-| `appointments.preparation` Terminvorbereitung mit Vorschlägen | Vorbereitung | fachlich | implementiert | UI | kein Test |
+| `appointments.preparation` Terminvorbereitung mit Vorschlägen | Vorbereitung | fachlich | implementiert | UI | teilweise |
 
 ## Unterbereiche
 
@@ -286,7 +286,7 @@ Legt Termine mit Zeitraum, Ort, Kategorie, Kontakten, Gästen und Vorbereitungsb
 - **Kategorie:** fachlich
 - **Implementierung:** implementiert
 - **Einbindung:** UI
-- **Testabdeckung:** kein Test
+- **Testabdeckung:** teilweise
 - **Letztes Testergebnis:** nicht-ausgefuehrt (kein Laufnachweis importiert; nicht aus der Existenz einer Testdatei abgeleitet)
 - **Rollen:** `abgeordneter`, `bueroleitung`, `mitarbeiter`
 - **Routen:** —
@@ -297,7 +297,7 @@ Legt Termine mit Zeitraum, Ort, Kategorie, Kontakten, Gästen und Vorbereitungsb
 - **Datenbankfunktionen:** `reset_appointment_reminders_on_move`, `reopen_changed_appointment_briefing`
 - **Tabellen:** `appointments`, `appointment_change_alerts`, `appointment_reminder_dispatches`
 - **Abhängigkeiten:** `calendar.create-appointment`
-- **Selbsttests:** —
+- **Selbsttests:** `appointment-lifecycle`, `appointment-briefing-lifecycle`
 - **Unit-Tests:** —
 - **Integrationstests:** —
 - **Browser-Tests:** —
@@ -310,7 +310,7 @@ Legt Termine mit Zeitraum, Ort, Kategorie, Kontakten, Gästen und Vorbereitungsb
 
 **Bekannte Einschränkungen**
 
-- Keine.
+- Geprüft sind die Verschieberegel für Erinnerungen und das Lesen von Änderungshinweisen. Ein echter Termin wird nicht verschoben; die Hinweise entstehen im Client und nicht über einen Datenbanktrigger.
 
 **Offene Prüfpunkte**
 
@@ -322,7 +322,7 @@ Verwaltet Termingäste, Standardgäste und Zu-/Absagen mit E-Mail-Normalisierung
 - **Kategorie:** fachlich
 - **Implementierung:** implementiert
 - **Einbindung:** UI
-- **Testabdeckung:** kein Test
+- **Testabdeckung:** teilweise
 - **Letztes Testergebnis:** nicht-ausgefuehrt (kein Laufnachweis importiert; nicht aus der Existenz einer Testdatei abgeleitet)
 - **Rollen:** `abgeordneter`, `bueroleitung`, `mitarbeiter`, `praktikant`
 - **Routen:** —
@@ -333,7 +333,7 @@ Verwaltet Termingäste, Standardgäste und Zu-/Absagen mit E-Mail-Normalisierung
 - **Datenbankfunktionen:** `upsert_appointment_guests`, `normalize_appointment_guest_email`
 - **Tabellen:** `appointment_guests`, `default_appointment_guests`, `appointments`
 - **Abhängigkeiten:** `calendar.create-appointment`
-- **Selbsttests:** —
+- **Selbsttests:** `appointment-lifecycle`, `poll-lifecycle`
 - **Unit-Tests:** —
 - **Integrationstests:** —
 - **Browser-Tests:** —
@@ -346,7 +346,7 @@ Verwaltet Termingäste, Standardgäste und Zu-/Absagen mit E-Mail-Normalisierung
 
 **Bekannte Einschränkungen**
 
-- Keine.
+- Geprüft sind Gästeabgleich und RSVP-Regeln bei Einladungen sowie die Gästezeilen aus einer Terminabstimmung. default_appointment_guests und das nachträgliche Entfernen eines Gastes haben keinen Schritt.
 
 **Offene Prüfpunkte**
 
@@ -543,7 +543,7 @@ Sammelt Rückmeldungen aus dem Termin, zeigt offene Nachbereitungen und schließ
 - **Kategorie:** fachlich
 - **Implementierung:** implementiert
 - **Einbindung:** UI
-- **Testabdeckung:** kein Test
+- **Testabdeckung:** Selbsttest
 - **Letztes Testergebnis:** nicht-ausgefuehrt (kein Laufnachweis importiert; nicht aus der Existenz einer Testdatei abgeleitet)
 - **Rollen:** `abgeordneter`, `bueroleitung`, `mitarbeiter`
 - **Routen:** —
@@ -554,7 +554,7 @@ Sammelt Rückmeldungen aus dem Termin, zeigt offene Nachbereitungen und schließ
 - **Datenbankfunktionen:** `list_office_debriefs`, `update_office_debrief`, `close_office_feedback_reminder`
 - **Tabellen:** `appointment_feedback`, `appointment_preparations`
 - **Abhängigkeiten:** `appointments.briefing`
-- **Selbsttests:** —
+- **Selbsttests:** `appointment-lifecycle`
 - **Unit-Tests:** —
 - **Integrationstests:** —
 - **Browser-Tests:** —
@@ -616,7 +616,7 @@ Bereitet Termine mit Dokumenten, Themen, Kontaktwissen und KI-Vorschlägen vor.
 - **Kategorie:** fachlich
 - **Implementierung:** implementiert
 - **Einbindung:** UI
-- **Testabdeckung:** kein Test
+- **Testabdeckung:** teilweise
 - **Letztes Testergebnis:** nicht-ausgefuehrt (kein Laufnachweis importiert; nicht aus der Existenz einer Testdatei abgeleitet)
 - **Rollen:** `abgeordneter`, `bueroleitung`, `mitarbeiter`
 - **Routen:** `/appointment-preparation/:id`
@@ -627,7 +627,7 @@ Bereitet Termine mit Dokumenten, Themen, Kontaktwissen und KI-Vorschlägen vor.
 - **Datenbankfunktionen:** —
 - **Tabellen:** `appointment_preparations`, `appointment_preparation_templates`, `appointment_topics`, `appointment_preparation_documents`
 - **Abhängigkeiten:** `appointments.briefing`, `integration.ai-suggestions`
-- **Selbsttests:** —
+- **Selbsttests:** `appointment-lifecycle`
 - **Unit-Tests:** —
 - **Integrationstests:** —
 - **Browser-Tests:** —
@@ -640,7 +640,7 @@ Bereitet Termine mit Dokumenten, Themen, Kontaktwissen und KI-Vorschlägen vor.
 
 **Bekannte Einschränkungen**
 
-- Keine.
+- Vorbereitungsstruktur, Checkliste und Notizen sind vollständig geprüft. Vorlagen, Themenverknüpfung und vorbereitete Dokumente haben keinen Schritt.
 
 **Offene Prüfpunkte**
 

@@ -11,13 +11,11 @@ Eindeutige Fehler werden im CI-Lauf ausgegeben und brechen die Prüfung ab; sie 
 - Review-Hinweise: **0**
 - Nicht zugeordnete Objekte: **1**, davon ohne Ausnahme: **0**
 
-## Funktionen ohne zugeordneten Test (121)
+## Funktionen ohne zugeordneten Test (92)
 
 - `mywork.tabs` — Meine Arbeit – Bereichsnavigation und Einstellungen
 - `mywork.quick-access` — Schnellzugriff und zuletzt besuchte Seiten
 - `mywork.navigation-previews` — Vorschauen für Kalender, Aufgaben, Akten, Chat und Kontakte
-- `notifications.inbox` — Benachrichtigungen lesen und als gelesen markieren
-- `notifications.preferences` — Benachrichtigungseinstellungen und Stummschaltung
 - `search.global` — Globale Suche und Befehlspalette
 - `platform.auth` — Anmeldung und Sitzung
 - `profile.edit` — Eigenes Profil bearbeiten
@@ -32,27 +30,12 @@ Eindeutige Fehler werden im CI-Lauf ausgegeben und brechen die Prüfung ab; sie 
 - `automation.scheduler` — Zeitgesteuerte Automatisierung
 - `automation.webhooks` — Automatisierungs-Webhooks
 - `automation.templates` — Automatisierungs-Vorlagen
-- `documents.details` — Dokumentdetails und Verknüpfungen
-- `documents.upload-version` — Dokument hochladen und versionieren
-- `documents.contacts` — Dokumente mit Kontakten verknüpfen
 - `documents.email` — Dokumente per E-Mail versenden
-- `annotations.ocr` — OCR für gescannte Dokumente
-- `annotations.export` — Annotationen exportieren
-- `annotations.relocate` — Annotationen bei neuer Dateiversion verschieben
 - `letters.templates` — Briefvorlagen und Anlässe
-- `letters.collaboration` — Brief-Kommentare und Zusammenarbeit
-- `letters.attachments` — Briefanlagen verwalten
-- `decisions.change-vote` — Antwort ändern und Verlauf einsehen
-- `decisions.comments` — Kommentare und Reaktionen
-- `decisions.attachments` — Anhänge an Entscheidungen
-- `decisions.remind` — Offene Entscheidungen anmahnen
 - `decisions.archive` — Entscheidungen archivieren
 - `decisions.email` — Entscheidungs-E-Mails
 - `decisions.matrix` — Entscheidungen über Matrix beantworten
-- `redaktion.planner` — Social-Media-Planung
-- `redaktion.approval` — Social-Media-Freigabe
 - `redaktion.assets-campaigns` — Social-Assets und Kampagnen
-- `redaktion.themenspeicher` — Themenspeicher und Hashtags
 - `redaktion.calendar-reminders` — Redaktionskalender und Erinnerungen
 - `press.releases` — Pressemitteilungen erstellen und freigeben
 - `press.ghost` — Pressemitteilung nach Ghost veröffentlichen
@@ -63,12 +46,10 @@ Eindeutige Fehler werden im CI-Lauf ausgegeben und brechen die Prüfung ab; sie 
 - `chat.matrix-bot` — Matrix-Bot und morgendliche Begrüßung
 - `chat.team-announcements` — Team-Ankündigungen
 - `widget.matrix-website` — Matrix-Website-Widget
-- `employees.requests` — Gesprächsanfragen der Mitarbeitenden
 - `employees.export-stats` — Gesprächs-PDF und Jahresstatistik
 - `timetracking.entries` — Arbeitszeit erfassen
 - `timetracking.admin` — Zeiterfassung administrieren
 - `meetings.templates` — Sitzungsvorlagen
-- `meetings.zombie-points` — Liegengebliebene Agenda-Punkte
 - `dossiers.manage` — Dossier anlegen und führen
 - `dossiers.entries` — Dossier-Einträge und Timeline
 - `dossiers.links-stakeholders` — Dossier-Verknüpfungen und Stakeholder
@@ -77,7 +58,6 @@ Eindeutige Fehler werden im CI-Lauf ausgegeben und brechen die Prüfung ab; sie 
 - `dossiers.sources` — Dossier-Quellenbeobachtung
 - `dossiers.search` — Globale Dossier-Suche
 - `drucksachen.view` — Drucksachen anzeigen
-- `topics.convert-catalog` — Thema in Katalog überführen
 - `facts.manage` — Fakten und Argumente pflegen
 - `integration.calendar-sync` — Externe Kalender synchronisieren
 - `integration.push` — Push-Benachrichtigungen
@@ -86,15 +66,10 @@ Eindeutige Fehler werden im CI-Lauf ausgegeben und brechen die Prüfung ab; sie 
 - `integration.transcription` — Sprachaufnahme transkribieren
 - `integration.unsplash` — Bildsuche für Beiträge
 - `integration.egress-monitoring` — Egress-Überwachung
-- `calendar.edit-move` — Termin bearbeiten und verschieben
-- `calendar.guests` — Gäste und Teilnehmende verwalten
 - `calendar.reminders` — Terminerinnerungen
-- `appointments.debrief` — Nachbereitung und Büro-Feedback
 - `appointments.feedback` — Termin-Feedback erfassen
-- `appointments.preparation` — Terminvorbereitung mit Vorschlägen
 - `calendar.categories-locations` — Terminkategorien und -orte pflegen
 - `calendar.holidays` — Feiertage synchronisieren
-- `events.speakers-documents` — Redner und Dokumente zur Veranstaltung
 - `events.invitations` — Veranstaltungseinladungen versenden
 - `events.legacy-rsvp` — Legacy-Einladungslinks
 - `admin.feature-flags` — Feature Flags
@@ -111,8 +86,6 @@ Eindeutige Fehler werden im CI-Lauf ausgegeben und brechen die Prüfung ab; sie 
 - `admin.templates-senders` — Administrative Vorlagen und Absenderdaten
 - `admin.maintenance` — Wartungs- und Aufräumläufe
 - `platform.notification-dispatch` — Benachrichtigungs- und Audit-Trigger
-- `cases.interactions` — Kontakte und Interaktionen am Vorgang
-- `cases.link-decision` — Vorgang mit Entscheidung verknüpfen
 - `cases.escalation` — Eskalationsvorschläge
 - `cases.legacy-routes` — Legacy-Vorgangsrouten
 - `election.analysis-map` — Analyse-Karten und Wahlkreiszuschnitt
@@ -129,10 +102,8 @@ Eindeutige Fehler werden im CI-Lauf ausgegeben und brechen die Prüfung ab; sie 
 - `election.parliament-protocols` — Plenarprotokolle auswerten
 - `knowledge.sources` — Quellen und Belege
 - `knowledge.attachments` — Anhänge an Wissensfragen
-- `knowledge.comments-follow` — Kommentare und Folgen
 - `knowledge.versions` — Snapshots und Versionen
 - `knowledge.collaboration` — Kollaborative Wissensbearbeitung
-- `knowledge.global-question` — Globale Wissensfrage aus jedem Bereich
 - `knowledge.management` — Wissensverwaltung
 
 ## Funktionen ohne Dokumentationsverweis (171)
@@ -322,7 +293,7 @@ Eindeutige Fehler werden im CI-Lauf ausgegeben und brechen die Prüfung ab; sie 
 - `events.legacy-rsvp` — Legacy-Einladungslinks (veraltet)
 - `cases.legacy-routes` — Legacy-Vorgangsrouten (veraltet)
 
-## Funktionen mit Einschränkungen oder offenen Punkten (87)
+## Funktionen mit Einschränkungen oder offenen Punkten (107)
 
 ### `mywork.dashboard`
 
@@ -341,10 +312,16 @@ Eindeutige Fehler werden im CI-Lauf ausgegeben und brechen die Prüfung ab; sie 
 - In der Desktop-Navigation per Maus oder Pfeil nach rechts verfügbar. Die Terminvorschau blickt fünf Tage voraus und die Aktenvorschau berücksichtigt eigene oder zugewiesene Fallakten.
 - Chat-Hervorhebungen stammen von Matrix. Die Vorschau zeigt Raumnamen und Zähler. Der zuletzt geöffnete Chat wird für die aktuelle Sitzung gemerkt.
 - Ohne Kontakt am nächsten Termin oder in der jüngsten eigenen oder zugewiesenen Fallakte wird ein eigener Favorit angezeigt.
+- Kein Selbsttest: die Vorschauen sind ein reiner Oberflächenpfad der Desktop-Navigation. Geprüft werden nur die zugrunde liegenden Datensätze in den Szenarien der jeweiligen Bereiche.
 
 ### `notifications.inbox`
 
+- Erzeugen, Gelesen-Markieren und Zurücksetzen laufen über die Inbox-Tabelle; die Zustellung je Fach-Trigger (Aufgaben, Termine, Nachrichten, Freigaben) sowie Push und Oberfläche prüft das Szenario nicht.
 - Benachrichtigungen entstehen über viele Datenbank-Trigger; die Zuordnung ist bereichsübergreifend und nicht vollständig je Trigger geprüft.
+
+### `notifications.preferences`
+
+- Geprüft ist die Wiedervorlage je Person in task_snoozes (genau ein Ziel, Aufräumen). user_notification_settings und die Stummschaltung je Benachrichtigungstyp haben im Selbsttest keinen Schritt; sie werden nur über die Oberfläche gesetzt.
 
 ### `search.global`
 
@@ -412,6 +389,7 @@ Eindeutige Fehler werden im CI-Lauf ausgegeben und brechen die Prüfung ab; sie 
 
 ### `tasks.search-filter`
 
+- Kein Selbsttest: Filter- und Sortierlogik liegen in der Ansicht; eine eigene getestete Regeldatei fehlt.
 - Die Filterlogik liegt in der Ansicht; eine eigene getestete Regeldatei existiert nicht.
 
 ### `tasks.nudge`
@@ -435,9 +413,26 @@ Eindeutige Fehler werden im CI-Lauf ausgegeben und brechen die Prüfung ab; sie 
 
 - Reine Hilfsfunktion; fachlich den Kalender- und Automatisierungsfunktionen zugeordnet.
 
+### `documents.details`
+
+- Die Detailansicht selbst (Zählwerte, Vorschau, Sprungziele) hat keinen Schritt. Geprüft sind die Verknüpfungen dahinter: Akten-Dokument, Dokument-Kontakt und die Aufgabenanlage aus einer Anmerkung.
+
+### `documents.upload-version`
+
+- Hochladen samt Ablage, Suche und Aktenverknüpfung ist geprüft; eine zweite Dateiversion und die Versionskennzeichnung haben keinen Schritt.
+
 ### `annotations.ocr`
 
+- Der Schritt prüft nur die Umrechnung der OCR-Bruchteile (Pixel → Seitenanteile), das Verwerfen leerer Wörter und die Textanker. Die lokale Tesseract-Erkennung mit Worker und Sprachpaketen läuft nicht; Trefferqualität und Textauswahl bleiben offen.
 - OCR-Qualität hängt vom Scan ab; ein automatisierter Qualitätstest existiert nicht.
+
+### `annotations.export`
+
+- Die Exportkoordinaten sind als Regel geprüft; das erzeugte PDF und seine Darstellung nicht. Die Originaldatei bleibt unverändert, weil der Export eine eigene Kopie erzeugt.
+
+### `annotations.relocate`
+
+- Der eindeutige Textanker ist als Regel geprüft; das Anbieten und Bestätigen einer Verschiebung nach neuer Dateiversion hat keinen Datenbankschritt.
 
 ### `letters.create`
 
@@ -458,6 +453,19 @@ Eindeutige Fehler werden im CI-Lauf ausgegeben und brechen die Prüfung ab; sie 
 
 - Die Änderungsmöglichkeit ist im Szenario nur als Folgepfad, nicht als eigener Prüfschritt abgedeckt.
 
+### `decisions.comments`
+
+- Geprüft sind Anlegen, Antwort, Reaktion samt Emoji-Allowlist und Entfernen. Das Bearbeiten eigener Kommentare und die Sichtbarkeitsgrenze für Nicht-Beteiligte haben keinen Schritt.
+
+### `decisions.attachments`
+
+- Der Schritt prüft die Metadatenzeile, ihre Zuordnung und das Entfernen, aber keinen echten Datei-Upload oder -Download. Bucket-Policies, Vorschau und Zugriff auf die gespeicherte Datei bleiben offen.
+
+### `decisions.remind`
+
+- Der echte Anstups-RPC läuft über decision_nudge_selftest und wird vollständig zurückgerollt: Eintrag mit Absender und Notiz sowie die 24-Stunden-Sperre sind belegt. Ohne zweites aktives Abgeordnetenkonto oder mit einer nicht anmahnenden Rolle prüft der Aufruf nur die Abweisung.
+- Die Zustellung der Anstups-Benachrichtigung an den Abgeordneten wird nicht geprüft; sie entsteht im zurückgerollten Prüfpfad.
+
 ### `decisions.archive`
 
 - Der Cron-Lauf wurde hier nicht ausgeführt; der Nachweis ist die Funktion plus Einstellungsdialog.
@@ -466,6 +474,18 @@ Eindeutige Fehler werden im CI-Lauf ausgegeben und brechen die Prüfung ab; sie 
 
 - Der Handler ist öffentlich erreichbar und benötigt einen eigenen Signatur-/Secret-Schutz; die Härtung ist offen.
 - Sicherheitsklassifikation public-webhook; zusätzlicher Schutz im Code nicht nachgewiesen.
+
+### `redaktion.planner`
+
+- Der Selbsttest prüft Anlegen von Thema und Beitrag, Kanalzuordnung und Kanalvariante über die echten Tabellen; Kalenderansicht, Board-Bedienung und Echtzeit-Aktualisierung werden nicht über die Oberfläche geprüft.
+
+### `redaktion.approval`
+
+- Einreichen, Freigeben, Änderungswunsch mit Folgeaufgabe und das automatische Wiederöffnen nach geänderter Kanaltext-Zeile laufen im Selbsttest über die echten Trigger und RPCs samt Protokoll. Freie Kommentare ohne Änderungswunsch, Emoji-Reaktionen, die Push-Zustellung der Meldungen sowie Matrix-Chat und externe Veröffentlichung prüft das Szenario nicht. Den Fallback beim Wiederöffnen ohne hinterlegte verantwortliche Person (Meldung an die Leitung, keine Aufgabe) prüft das Szenario nicht; es setzt vor dem Wiederöffnen eine verantwortliche Person.
+
+### `redaktion.themenspeicher`
+
+- Das Szenario legt ein Thema im Themenspeicher an und verwendet es für den Beitrag. Hashtag-Sets und der Transfer-Dialog werden nicht geprüft.
 
 ### `chat.matrix-bot`
 
@@ -545,6 +565,14 @@ Eindeutige Fehler werden im CI-Lauf ausgegeben und brechen die Prüfung ab; sie 
 - Schwellenwerte liegen im reinen Modul; teamweite Auswertungen sind ausdrücklich ausgeschlossen.
 - Kein Test für die Datenbankpolitik der Wohlbefindensdaten vorhanden.
 
+### `employees.requests`
+
+- Anfrage und offener Status sind geprüft; das Annehmen oder Ablehnen einer Anfrage durch die Gesprächsleitung hat keinen eigenen Schritt.
+
+### `employees.export-stats`
+
+- Kein Selbsttest: die PDF-Erzeugung des Gesprächs und die Jahresstatistik haben keinen Schritt; geprüft wird nur das Gespräch selbst.
+
 ### `timetracking.entries`
 
 - Arbeitszeitregeln sind als reine Funktionen vorhanden, aber ohne dedizierten Test für arbzg.ts.
@@ -562,6 +590,12 @@ Eindeutige Fehler werden im CI-Lauf ausgegeben und brechen die Prüfung ab; sie 
 
 - knowledge_question_topics hat nur eine Lesepolicy; Clients können Wissensfragen noch nicht selbst mit Themen verknüpfen, das Szenario prüft Lesbarkeit und die Abweisung des direkten Inserts.
 - merge_topics und Änderungen an topic_module_settings setzen eine Büroleitung voraus; als Mitglied prüft das Szenario die Abweisung.
+
+### `topics.convert-catalog`
+
+- Der Erfolgspfad (Katalogziel anlegen, Zuständigkeiten umhängen, topic_catalog_links schreiben, Quelle deaktivieren, Wiederholung und Zusammenführen) läuft über topic_catalog_conversion_selftest und wird vollständig zurückgerollt, damit keine Stammdaten zurückbleiben.
+- Ohne Leitungsrolle prüft der Schritt nur die Abweisung; die Bedienung des Konvertierungsdialogs wird nicht über die Oberfläche geprüft.
+- Der Nachweis, dass eine zweite Primary-Person mitwandert, braucht ein zweites aktives Büromitglied. Fehlt es, meldet der Server-Selbsttest den Modus checked_without_second_member mit unverified second_primary_moved; die Anforderung „andere Primaries bleiben erhalten“ ist dann nur für unabhängige Zuständigkeiten belegt.
 
 ### `topics.ministry-cloud`
 
@@ -586,9 +620,21 @@ Eindeutige Fehler werden im CI-Lauf ausgegeben und brechen die Prüfung ab; sie 
 
 - Die Contract-Tests wurden hier nicht ausgeführt; der Nachweis ist die Datei.
 
+### `calendar.edit-move`
+
+- Geprüft sind die Verschieberegel für Erinnerungen und das Lesen von Änderungshinweisen. Ein echter Termin wird nicht verschoben; die Hinweise entstehen im Client und nicht über einen Datenbanktrigger.
+
+### `calendar.guests`
+
+- Geprüft sind Gästeabgleich und RSVP-Regeln bei Einladungen sowie die Gästezeilen aus einer Terminabstimmung. default_appointment_guests und das nachträgliche Entfernen eines Gastes haben keinen Schritt.
+
 ### `appointments.requests`
 
 - Ein direkter Statuswechsel wird durch einen Trigger blockiert; der Negativpfad ist im Szenario geprüft.
+
+### `appointments.preparation`
+
+- Vorbereitungsstruktur, Checkliste und Notizen sind vollständig geprüft. Vorlagen, Themenverknüpfung und vorbereitete Dokumente haben keinen Schritt.
 
 ### `daily.briefing`
 
@@ -599,6 +645,10 @@ Eindeutige Fehler werden im CI-Lauf ausgegeben und brechen die Prüfung ab; sie 
 ### `calendar.holidays`
 
 - Der Sync-Lauf wurde nicht ausgeführt; Datenquelle und Aktualisierungsintervall sind nicht dokumentiert.
+
+### `events.speakers-documents`
+
+- Redner samt Reihenfolge und Rückschreiben sind geprüft; event_planning_documents hat keinen Schritt.
 
 ### `events.rsvp-public`
 
@@ -719,10 +769,18 @@ Eindeutige Fehler werden im CI-Lauf ausgegeben und brechen die Prüfung ab; sie 
 
 - Ein Upload gilt erst nach Veröffentlichung des Repository-Commits durch den Hosting-Anbieter als sichtbar.
 
+### `knowledge.comments-follow`
+
+- Geprüft ist die Zustellung von Wissensbenachrichtigungen samt Duplikatsperre. Kommentare und Folgen (knowledge_question_comments, knowledge_question_followers) haben keinen Schritt.
+
 ### `knowledge.collaboration`
 
 - Öffentlicher Kollaborationsendpunkt; ein zusätzlicher serverseitiger Guard ist laut Sicherheitsmatrix empfohlen.
 - Sicherheitsklassifikation public-webhook; Schutzbedarf prüfen.
+
+### `knowledge.global-question`
+
+- Frageanlage und Validierung sind geprüft. Der Aufruf aus einem fremden Bereich heraus ist ein Oberflächenpfad und wird nicht automatisiert geprüft.
 
 ## Nicht zugeordnete Prüfkandidaten
 

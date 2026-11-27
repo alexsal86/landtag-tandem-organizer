@@ -92,7 +92,7 @@
       "category": "fachlich",
       "implementationStatus": "implementiert",
       "integrationStatus": "ui",
-      "coverage": "keine",
+      "coverage": "teilweise",
       "testResult": "nicht-ausgefuehrt",
       "evidence": [
         "src/features/appointments/change-alerts/AppointmentChangeAlerts.tsx",
@@ -118,7 +118,14 @@
         "bueroleitung",
         "mitarbeiter"
       ],
-      "dependsOn": ["calendar.create-appointment"]
+      "dependsOn": ["calendar.create-appointment"],
+      "scenarios": [
+        "appointment-lifecycle",
+        "appointment-briefing-lifecycle"
+      ],
+      "limitations": [
+        "Geprüft sind die Verschieberegel für Erinnerungen und das Lesen von Änderungshinweisen. Ein echter Termin wird nicht verschoben; die Hinweise entstehen im Client und nicht über einen Datenbanktrigger."
+      ]
     },
     {
       "id": "calendar.guests",
@@ -128,7 +135,7 @@
       "category": "fachlich",
       "implementationStatus": "implementiert",
       "integrationStatus": "ui",
-      "coverage": "keine",
+      "coverage": "teilweise",
       "testResult": "nicht-ausgefuehrt",
       "evidence": [
         "src/features/appointments/components/GuestManager.tsx",
@@ -153,7 +160,14 @@
         "mitarbeiter",
         "praktikant"
       ],
-      "dependsOn": ["calendar.create-appointment"]
+      "dependsOn": ["calendar.create-appointment"],
+      "scenarios": [
+        "appointment-lifecycle",
+        "poll-lifecycle"
+      ],
+      "limitations": [
+        "Geprüft sind Gästeabgleich und RSVP-Regeln bei Einladungen sowie die Gästezeilen aus einer Terminabstimmung. default_appointment_guests und das nachträgliche Entfernen eines Gastes haben keinen Schritt."
+      ]
     },
     {
       "id": "calendar.reminders",
@@ -399,7 +413,7 @@
       "category": "fachlich",
       "implementationStatus": "implementiert",
       "integrationStatus": "ui",
-      "coverage": "keine",
+      "coverage": "selftest",
       "testResult": "nicht-ausgefuehrt",
       "evidence": [
         "src/features/appointments/briefing/OfficeDebriefInboxCard.tsx",
@@ -429,7 +443,10 @@
         "bueroleitung",
         "mitarbeiter"
       ],
-      "dependsOn": ["appointments.briefing"]
+      "dependsOn": ["appointments.briefing"],
+      "scenarios": [
+        "appointment-lifecycle"
+      ]
     },
     {
       "id": "appointments.feedback",
@@ -478,7 +495,7 @@
       "category": "fachlich",
       "implementationStatus": "implementiert",
       "integrationStatus": "ui",
-      "coverage": "keine",
+      "coverage": "teilweise",
       "testResult": "nicht-ausgefuehrt",
       "evidence": [
         "src/pages/AppointmentPreparationDetail.tsx",
@@ -513,6 +530,12 @@
       "dependsOn": [
         "appointments.briefing",
         "integration.ai-suggestions"
+      ],
+      "scenarios": [
+        "appointment-lifecycle"
+      ],
+      "limitations": [
+        "Vorbereitungsstruktur, Checkliste und Notizen sind vollständig geprüft. Vorlagen, Themenverknüpfung und vorbereitete Dokumente haben keinen Schritt."
       ]
     },
     {

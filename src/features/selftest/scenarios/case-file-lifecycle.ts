@@ -26,6 +26,7 @@ export const caseFileLifecycleScenario: TestScenario = {
     "case_file_tasks",
     "case_file_appointments",
     "case_file_letters",
+    "document_contacts",
     "case_items",
     "contacts",
     "tasks",
@@ -38,6 +39,7 @@ export const caseFileLifecycleScenario: TestScenario = {
     "Ungültige Größe (case_scale) wird von der Datenbank abgewiesen",
     "Bearbeitungsstatus und Statusverlauf werden gespeichert; derselbe Beteiligte kann nicht doppelt eingetragen werden",
     "Kontakt, Aufgabe, Termin und Brief werden über die jeweilige Folgetabelle verknüpft; doppelte Verknüpfungen sind gesperrt",
+    "Das Akten-Dokument lässt sich mit dem Akten-Kontakt verknüpfen; Beziehung und Notiz werden gespeichert, eine Doppelung ist gesperrt",
     "Die Aufgabe entsteht über create_case_file_task als offene Aufgabe für die anlegende Person mit source_type 'case_file' und Quellbezug; eine Wiederholung liefert dieselbe Aufgabe und keine zweite Verknüpfung",
     "Eine hochgeladene Datei ist mit der Akte verknüpft und über die serverseitige Dokumentensuche auffindbar",
     "get_case_files_with_counts liefert die Verknüpfungen der Akte als Zählwerte",
@@ -61,6 +63,7 @@ export const caseFileLifecycleScenario: TestScenario = {
     { table: "case_file_tasks", columns: ["case_file_id", "task_id"] },
     { table: "case_file_appointments", columns: ["case_file_id", "appointment_id", "notes"] },
     { table: "case_file_letters", columns: ["case_file_id", "letter_id", "notes"] },
+    { table: "document_contacts", columns: ["document_id", "contact_id", "relationship_type", "notes", "created_by"] },
     { table: "case_items", columns: ["subject", "summary", "user_id", "tenant_id", "case_file_id", "case_scale"] },
     { table: "contacts", columns: ["name", "user_id", "tenant_id", "category", "notes"] },
     { table: "tasks", columns: ["title", "user_id", "tenant_id", "assigned_to", "priority", "category", "status", "source_type", "source_id"] },
@@ -180,6 +183,7 @@ export const caseFileLifecycleScenario: TestScenario = {
           .select("id").single();
         if (contact.error || !contact.data) return { ok: false, message: `Kontakt: ${describeError(contact.error)}` };
         ctx.trackRecord({ table: "contacts", id: contact.data.id });
+        ctx.data.contactId = contact.data.id;
         const link = await supabase.from("case_file_contacts")
           .insert({ case_file_id: id, contact_id: contact.data.id, role: "stakeholder" }).select("id").single();
         if (link.error || !link.data) return { ok: false, message: `Kontaktverknüpfung: ${describeError(link.error)}` };
@@ -261,6 +265,7 @@ export const caseFileLifecycleScenario: TestScenario = {
         });
         if (result.error) return { ok: false, message: `Dokument ablegen: ${describeError(result.error)}` };
         ctx.trackRecord({ table: "documents", id: result.data });
+        ctx.data.documentId = result.data as string;
         const [link, matches, timeline] = await Promise.all([
           supabase.from("case_file_documents").select("relevance, notes")
             .eq("case_file_id", caseId).eq("document_id", result.data).single(),
@@ -273,6 +278,38 @@ export const caseFileLifecycleScenario: TestScenario = {
           ok: link.data?.relevance === "reference" && link.data.notes === SELFTEST_MARKER
             && !!matches.data?.some(row => row.id === result.data) && !!timeline.data,
           message: "Dokument, Aktenverknüpfung und Verlauf sind vorhanden und die Dokumentensuche liefert einen Treffer.",
+        };
+      },
+    },
+    {
+      id: "document-contact-link", label: "Dokument mit Kontakt verknüpfen; Doppelung ist gesperrt",
+      run: async ctx => {
+        const documentId = ctx.data.documentId as string;
+        const contactId = ctx.data.contactId as string;
+        if (!documentId || !contactId) return { ok: false, message: "Dokument oder Kontakt fehlt für die Verknüpfung." };
+        const link = await supabase.from("document_contacts")
+          .insert({ document_id: documentId, contact_id: contactId, relationship_type: "sender", notes: SELFTEST_MARKER, created_by: ctx.userId })
+          .select("id,relationship_type,notes")
+          .single();
+        if (link.error || !link.data) return { ok: false, message: `Dokumentkontakt: ${describeError(link.error)}` };
+        ctx.trackRecord({ table: "document_contacts", id: link.data.id });
+        const duplicate = await supabase.from("document_contacts")
+          .insert({ document_id: documentId, contact_id: contactId, created_by: ctx.userId });
+        const removed = await supabase.from("document_contacts").delete().eq("id", link.data.id).select("id");
+        const after = await supabase.from("document_contacts")
+          .select("id").eq("document_id", documentId).eq("contact_id", contactId);
+        const checks = {
+          linkStored: link.data.relationship_type === "sender" && link.data.notes === SELFTEST_MARKER,
+          duplicateRejected: duplicate.error?.code === "23505",
+          removed: !removed.error && removed.data?.length === 1 && !after.error && (after.data ?? []).length === 0,
+        };
+        const failed = Object.entries(checks).filter(([, ok]) => !ok).map(([name]) => name);
+        return {
+          ok: failed.length === 0,
+          message: failed.length === 0
+            ? "Das Dokument trägt genau eine Kontaktverknüpfung mit Beziehung und Notiz; eine Doppelung wird von der Datenbank abgewiesen."
+            : `Fehlgeschlagen: ${failed.join(", ")}`,
+          details: { ...checks, code: duplicate.error?.code },
         };
       },
     },

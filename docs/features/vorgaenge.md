@@ -8,7 +8,7 @@ _Auto-generiert mit `npm run update:feature-catalog` aus dem zentralen Funktions
 
 - Funktionen: **20** in **7** Unterbereichen
 - implementiert: **19**, teilweise: **0**, deaktiviert: **0**, potenziell verwaist: **0**
-- ohne zugeordneten Test: **4**
+- ohne zugeordneten Test: **2**
 - ohne Dokumentationsverweis: **15**
 
 ## Funktionen
@@ -17,7 +17,7 @@ _Auto-generiert mit `npm run update:feature-catalog` aus dem zentralen Funktions
 |---|---|---|---|---|---|
 | `cases.close-archive` Vorgang abschließen und archivieren | Abschluss | fachlich | implementiert | rollenabhängig | Selbsttest |
 | `cases.escalation` Eskalationsvorschläge | Bearbeitung | automatisiert | implementiert | systemseitig | kein Test |
-| `cases.interactions` Kontakte und Interaktionen am Vorgang | Bearbeitung | fachlich | implementiert | UI | kein Test |
+| `cases.interactions` Kontakte und Interaktionen am Vorgang | Bearbeitung | fachlich | implementiert | UI | Selbsttest |
 | `cases.timeline` Vorgangs-Timeline und Änderungsprotokoll | Bearbeitung | fachlich | implementiert | UI | Unit-Test |
 | `cases.steps` Vorgangsschritte und Aufgaben | Bearbeitung | fachlich | implementiert | systemseitig | Unit-Test |
 | `cases.legacy-routes` Legacy-Vorgangsrouten | Erfassung | fachlich | veraltet | UI | kein Test |
@@ -33,7 +33,7 @@ _Auto-generiert mit `npm run update:feature-catalog` aus dem zentralen Funktions
 | `cases.triage` Vorgang triagieren (Wer ist am Zug?) | Triage | fachlich | implementiert | UI | Unit-Test |
 | `cases.handover` Vorgang weitergeben | Triage | fachlich | implementiert | rollenabhängig | Selbsttest |
 | `cases.link-letter` Vorgang mit Brief verknüpfen | Verknüpfung | fachlich | implementiert | UI | Unit-Test |
-| `cases.link-decision` Vorgang mit Entscheidung verknüpfen | Verknüpfung | fachlich | implementiert | systemseitig | kein Test |
+| `cases.link-decision` Vorgang mit Entscheidung verknüpfen | Verknüpfung | fachlich | implementiert | systemseitig | Selbsttest |
 | `cases.link-appointment` Vorgang mit Termin verknüpfen | Verknüpfung | fachlich | implementiert | UI | Unit-Test |
 
 ## Unterbereiche
@@ -58,7 +58,7 @@ _Auto-generiert mit `npm run update:feature-catalog` aus dem zentralen Funktions
 
 | Szenario | Titel | deklarierte Tabellen | deklarierte Prüfungen | letzter Lauf |
 |---|---|---:|---:|---|
-| `case-file-lifecycle` | Fallakte mit Folgetabellen (Container) im Unterschied zum Vorgang | 16 | 9 | — |
+| `case-file-lifecycle` | Fallakte mit Folgetabellen (Container) im Unterschied zum Vorgang | 17 | 10 | — |
 | `case-item-lifecycle` | Vorgangs-Lifecycle (Am Zug → Schritt → Wiedervorlage → Entscheidung → Tageszettel → Abschluss) | 9 | 5 | — |
 | `parlis` | Parlamentarische Vorgänge | 0 | 12 | — |
 
@@ -76,6 +76,7 @@ Diese Schritte führen die Szenarien aus; „letzter Lauf“ stammt aus `src/fea
 | `case-file-lifecycle` | `links-contact-task` | Kontakt verknüpfen und Aufgabe über die Akten-RPC erzeugen | db | — |
 | `case-file-lifecycle` | `links-appointment-letter` | Termin und Brief mit der Akte verknüpfen | db | — |
 | `case-file-lifecycle` | `upload-document` | Datei in der Akte ablegen und über die Dokumentensuche finden | db | — |
+| `case-file-lifecycle` | `document-contact-link` | Dokument mit Kontakt verknüpfen; Doppelung ist gesperrt | db | — |
 | `case-file-lifecycle` | `counts` | Akten-RPC zählt die Verknüpfungen | db | — |
 | `case-file-lifecycle` | `vorgang-vs-akte` | Unterschied zum Vorgang: eigener Ball, geerbte Sichtbarkeit | db | — |
 | `case-file-lifecycle` | `delete-detaches` | Akte löschen: Folgetabellen weg, Vorgang bleibt | db | — |
@@ -116,11 +117,12 @@ Diese Schritte führen die Szenarien aus; „letzter Lauf“ stammt aus `src/fea
 2. Ungültige Größe (case_scale) wird von der Datenbank abgewiesen
 3. Bearbeitungsstatus und Statusverlauf werden gespeichert; derselbe Beteiligte kann nicht doppelt eingetragen werden
 4. Kontakt, Aufgabe, Termin und Brief werden über die jeweilige Folgetabelle verknüpft; doppelte Verknüpfungen sind gesperrt
-5. Die Aufgabe entsteht über create_case_file_task als offene Aufgabe für die anlegende Person mit source_type 'case_file' und Quellbezug; eine Wiederholung liefert dieselbe Aufgabe und keine zweite Verknüpfung
-6. Eine hochgeladene Datei ist mit der Akte verknüpft und über die serverseitige Dokumentensuche auffindbar
-7. get_case_files_with_counts liefert die Verknüpfungen der Akte als Zählwerte
-8. Ein Vorgang an einer privaten Akte ist für Büro-Kolleginnen unsichtbar, an einer öffentlichen Akte sichtbar (Sichtbarkeitsvererbung)
-9. Das Löschen der Akte entfernt ihre Folgetabellen, lässt den Vorgang aber mit case_file_id = null bestehen
+5. Das Akten-Dokument lässt sich mit dem Akten-Kontakt verknüpfen; Beziehung und Notiz werden gespeichert, eine Doppelung ist gesperrt
+6. Die Aufgabe entsteht über create_case_file_task als offene Aufgabe für die anlegende Person mit source_type 'case_file' und Quellbezug; eine Wiederholung liefert dieselbe Aufgabe und keine zweite Verknüpfung
+7. Eine hochgeladene Datei ist mit der Akte verknüpft und über die serverseitige Dokumentensuche auffindbar
+8. get_case_files_with_counts liefert die Verknüpfungen der Akte als Zählwerte
+9. Ein Vorgang an einer privaten Akte ist für Büro-Kolleginnen unsichtbar, an einer öffentlichen Akte sichtbar (Sichtbarkeitsvererbung)
+10. Das Löschen der Akte entfernt ihre Folgetabellen, lässt den Vorgang aber mit case_file_id = null bestehen
 
 ### `case-item-lifecycle`
 
@@ -298,7 +300,7 @@ Erfasst Gespräche, E-Mails und Notizen mit Sichtbarkeitsstufe und verlangt vor 
 - **Kategorie:** fachlich
 - **Implementierung:** implementiert
 - **Einbindung:** UI
-- **Testabdeckung:** kein Test
+- **Testabdeckung:** Selbsttest
 - **Letztes Testergebnis:** nicht-ausgefuehrt (kein Laufnachweis importiert; nicht aus der Existenz einer Testdatei abgeleitet)
 - **Rollen:** `abgeordneter`, `bueroleitung`, `mitarbeiter`
 - **Routen:** —
@@ -309,7 +311,7 @@ Erfasst Gespräche, E-Mails und Notizen mit Sichtbarkeitsstufe und verlangt vor 
 - **Datenbankfunktionen:** `require_resolution_interaction_on_case_close`, `user_can_access_case_item_interaction`
 - **Tabellen:** `case_item_interactions`, `case_items`
 - **Abhängigkeiten:** `cases.create`, `contacts.create`
-- **Selbsttests:** —
+- **Selbsttests:** `case-item-lifecycle`
 - **Unit-Tests:** —
 - **Integrationstests:** —
 - **Browser-Tests:** —
@@ -442,7 +444,7 @@ Verknüpft Entscheidungen mit einem Vorgang und prüft die Zulässigkeit der Ver
 - **Kategorie:** fachlich
 - **Implementierung:** implementiert
 - **Einbindung:** systemseitig
-- **Testabdeckung:** kein Test
+- **Testabdeckung:** Selbsttest
 - **Letztes Testergebnis:** nicht-ausgefuehrt (kein Laufnachweis importiert; nicht aus der Existenz einer Testdatei abgeleitet)
 - **Rollen:** `abgeordneter`, `bueroleitung`, `mitarbeiter`
 - **Routen:** —
@@ -453,7 +455,7 @@ Verknüpft Entscheidungen mit einem Vorgang und prüft die Zulässigkeit der Ver
 - **Datenbankfunktionen:** `validate_decision_case_file`
 - **Tabellen:** `task_decisions`, `case_file_tasks`, `case_items`
 - **Abhängigkeiten:** `cases.create`, `decisions.create`
-- **Selbsttests:** —
+- **Selbsttests:** `case-item-lifecycle`
 - **Unit-Tests:** —
 - **Integrationstests:** —
 - **Browser-Tests:** —

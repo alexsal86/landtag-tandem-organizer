@@ -8,7 +8,7 @@ _Auto-generiert mit `npm run update:feature-catalog` aus dem zentralen Funktions
 
 - Funktionen: **19** in **5** Unterbereichen
 - implementiert: **18**, teilweise: **1**, deaktiviert: **0**, potenziell verwaist: **0**
-- ohne zugeordneten Test: **12**
+- ohne zugeordneten Test: **10**
 - ohne Dokumentationsverweis: **16**
 
 ## Funktionen
@@ -26,13 +26,13 @@ _Auto-generiert mit `npm run update:feature-catalog` aus dem zentralen Funktions
 | `facts.manage` Fakten und Argumente pflegen | Fakten | fachlich | implementiert | UI | kein Test |
 | `meetings.agenda` Agenda führen | Jour fixe | fachlich | implementiert | UI | Selbsttest |
 | `meetings.jour-fixe` Jour-fixe-Sitzung planen und durchführen | Jour fixe | fachlich | implementiert | rollenabhängig | Selbsttest |
-| `meetings.zombie-points` Liegengebliebene Agenda-Punkte | Jour fixe | fachlich | implementiert | UI | kein Test |
+| `meetings.zombie-points` Liegengebliebene Agenda-Punkte | Jour fixe | fachlich | implementiert | UI | Selbsttest |
 | `meetings.archive` Sitzung archivieren | Jour fixe | fachlich | implementiert | rollenabhängig | Selbsttest |
 | `meetings.decisions` Sitzungsentscheidungen dokumentieren | Jour fixe | fachlich | implementiert | UI | Selbsttest |
 | `meetings.protocol` Sitzungsprotokoll | Jour fixe | fachlich | implementiert | rollenabhängig | Selbsttest |
 | `meetings.templates` Sitzungsvorlagen | Jour fixe | administrativ | implementiert | rollenabhängig | kein Test |
 | `topics.ministry-cloud` Standarddaten für neue Büros | Themen | automatisiert | implementiert | systemseitig | Selbsttest |
-| `topics.convert-catalog` Thema in Katalog überführen | Themen | fachlich | implementiert | UI | kein Test |
+| `topics.convert-catalog` Thema in Katalog überführen | Themen | fachlich | implementiert | UI | Selbsttest |
 | `topics.manage` Themen verwalten | Themen | fachlich | implementiert | UI | Selbsttest |
 
 ## Unterbereiche
@@ -55,8 +55,9 @@ _Auto-generiert mit `npm run update:feature-catalog` aus dem zentralen Funktions
 
 | Szenario | Titel | deklarierte Tabellen | deklarierte Prüfungen | letzter Lauf |
 |---|---|---:|---:|---|
+| `jour-fixe-platform-integration` | Jour Fixe: Plattformquellen & Stafetten-Abschluss | 4 | 4 | — |
 | `meeting-lifecycle` | Meeting-Lifecycle (vollständig + Field-Verifikation) | 9 | 0 | — |
-| `topic-linking` | Themenverknüpfung und Modul-Steuerung | 5 | 11 | — |
+| `topic-linking` | Themenverknüpfung und Modul-Steuerung | 9 | 15 | — |
 
 ## Selbsttest-Schritte
 
@@ -64,6 +65,16 @@ Diese Schritte führen die Szenarien aus; „letzter Lauf“ stammt aus `src/fea
 
 | Szenario | Schritt | Bezeichnung | Art | letzter Lauf |
 |---|---|---|---|---|
+| `jour-fixe-platform-integration` | `agenda-combine` | Agenda: Hauptpunkt mit Unterpunkten unter anderen Hauptpunkt verschieben | logic | — |
+| `jour-fixe-platform-integration` | `agenda-timing` | Agenda: nur Hauptpunkte zählen, Altbestand ohne erfundene Endzeit | logic | — |
+| `jour-fixe-platform-integration` | `radar-rules` | Radar: mehrfache Anstupser, 7-Tage-Grenze und abgeschlossene Aufgaben | logic | — |
+| `jour-fixe-platform-integration` | `horizon-rules` | Zeitfenster: Redaktion 10, Briefings/Abwesenheiten 14 und Veranstaltungen 60 Tage | logic | — |
+| `jour-fixe-platform-integration` | `zombie-points` | Agenda: Zombie-Punkte ab der dritten Verschiebung | logic | — |
+| `jour-fixe-platform-integration` | `actual-times` | Agenda: Ist-Zeiten, Rundung und Abweichung | logic | — |
+| `jour-fixe-platform-integration` | `meeting-decision-note` | Beschluss: Entscheidungsblock verliert keine bestehende Notiz | logic | — |
+| `jour-fixe-platform-integration` | `create` | Sitzung, Hauptpunkt, alle Systemtypen und zwei gleichnamige Entscheidungen | db | — |
+| `jour-fixe-platform-integration` | `archive` | Gemeinsamen Sitzungsabschluss ausführen und Stafetten-Aufgabe zurücklesen | workflow | — |
+| `jour-fixe-platform-integration` | `retry` | Erneuter Abschluss erzeugt keine zweite Folgeaufgabe | workflow | — |
 | `meeting-lifecycle` | `create-meeting` | Meeting anlegen | db | — |
 | `meeting-lifecycle` | `create-appointment` | Verknüpften Kalender-Termin erzeugen | db | — |
 | `meeting-lifecycle` | `add-participant` | Teilnehmer (sich selbst) hinzufügen | db | — |
@@ -95,8 +106,16 @@ Diese Schritte führen die Szenarien aus; „letzter Lauf“ stammt aus `src/fea
 | `topic-linking` | `ministry-topic-cloud` | Neue Büros erhalten die Themen-Wolke automatisch | db | — |
 | `topic-linking` | `module-rules-seed` | Neue Büros erhalten die Modul-Steuerung automatisch | db | — |
 | `topic-linking` | `knowledge-topics` | Wissensfragen-Verknüpfung lesen und Schreibversuch abweisen | db | — |
+| `topic-linking` | `convert-catalog-success` | Thema in den Katalog überführen und Gremien/Regionen zusammenführen | workflow | — |
 
 ## Deklarierter Prüfumfang
+
+### `jour-fixe-platform-integration`
+
+1. Quellenabfragen unter bestehenden Zugriffsrechten
+2. Folgeaufgaben mit Zuständigkeit und Verlauf
+3. Notizen ändern keine Abstimmung
+4. Wiederholung erzeugt keine Duplikate
 
 ### `meeting-lifecycle`
 
@@ -115,6 +134,10 @@ Keine Prüfungen deklariert.
 9. topic_usage zählt die Verknüpfungen je Modul und liefert die Summe
 10. Ein neu angelegtes Büro erhält über den Trigger 69 Themen und 85 Ressortverknüpfungen (5–10 je Linie); ein zweiter Lauf verdoppelt nichts und eigene Beschreibungen bleiben stehen
 11. Ein neu angelegtes Büro erhält alle zehn Modul-Regeln der Themen-Steuerung mit den Standardwerten; ein zweiter Lauf verdoppelt nichts
+12. Die Konvertierung erhält Thema und historischen Vorgangslink, schreibt den Katalogeintrag und verschiebt Zuständigkeiten auf das Ziel
+13. Ein zweiter Konvertierungsaufruf nutzt den vorhandenen Link weiter, statt einen zweiten Eintrag anzulegen
+14. Andere Primaries bleiben erhalten: eine zweite Person wird mitgezogen, eine unabhängige Primärzuständigkeit bleibt unverändert (nur mit zweitem aktivem Büromitglied prüfbar; sonst weist der Lauf diesen Teil als ungeprüft aus)
+15. Beim Zusammenführen von Gremien bzw. Regionen zeigen die topic_catalog_links auf das Ziel, die Quelle verschwindet und kollidierende Zuständigkeiten bleiben als genau eine Primary-Zeile bestehen
 
 ## Funktionsdetails
 
@@ -337,7 +360,7 @@ Erkennt seit mehreren Sitzungen offene Punkte und zeigt sie im Entscheidungs-Coc
 - **Kategorie:** fachlich
 - **Implementierung:** implementiert
 - **Einbindung:** UI
-- **Testabdeckung:** kein Test
+- **Testabdeckung:** Selbsttest
 - **Letztes Testergebnis:** nicht-ausgefuehrt (kein Laufnachweis importiert; nicht aus der Existenz einer Testdatei abgeleitet)
 - **Rollen:** `bueroleitung`, `abgeordneter`, `mitarbeiter`
 - **Routen:** —
@@ -348,7 +371,7 @@ Erkennt seit mehreren Sitzungen offene Punkte und zeigt sie im Entscheidungs-Coc
 - **Datenbankfunktionen:** —
 - **Tabellen:** `meeting_agenda_items`
 - **Abhängigkeiten:** `meetings.agenda`
-- **Selbsttests:** —
+- **Selbsttests:** `jour-fixe-platform-integration`, `meeting-lifecycle`
 - **Unit-Tests:** —
 - **Integrationstests:** —
 - **Browser-Tests:** —
@@ -697,7 +720,7 @@ Wandelt ein Thema atomar in einen Katalogeintrag um, erhält historische Verknü
 - **Kategorie:** fachlich
 - **Implementierung:** implementiert
 - **Einbindung:** UI
-- **Testabdeckung:** kein Test
+- **Testabdeckung:** Selbsttest
 - **Letztes Testergebnis:** nicht-ausgefuehrt (kein Laufnachweis importiert; nicht aus der Existenz einer Testdatei abgeleitet)
 - **Rollen:** `bueroleitung`, `admin`
 - **Routen:** —
@@ -705,10 +728,10 @@ Wandelt ein Thema atomar in einen Katalogeintrag um, erhält historische Verknü
 - **Services:** —
 - **Hooks:** `src/features/topics/useTopicCatalogLinks.ts`
 - **Edge Functions:** —
-- **Datenbankfunktionen:** `convert_topic_to_catalog`
+- **Datenbankfunktionen:** `convert_topic_to_catalog`, `merge_responsibility_catalog`, `topic_catalog_conversion_selftest`
 - **Tabellen:** `topics`, `topic_catalog_links`, `employee_responsibilities`
 - **Abhängigkeiten:** `topics.manage`, `responsibilities.matrix`
-- **Selbsttests:** —
+- **Selbsttests:** `topic-linking`
 - **Unit-Tests:** —
 - **Integrationstests:** —
 - **Browser-Tests:** —
@@ -721,7 +744,9 @@ Wandelt ein Thema atomar in einen Katalogeintrag um, erhält historische Verknü
 
 **Bekannte Einschränkungen**
 
-- Keine.
+- Der Erfolgspfad (Katalogziel anlegen, Zuständigkeiten umhängen, topic_catalog_links schreiben, Quelle deaktivieren, Wiederholung und Zusammenführen) läuft über topic_catalog_conversion_selftest und wird vollständig zurückgerollt, damit keine Stammdaten zurückbleiben.
+- Ohne Leitungsrolle prüft der Schritt nur die Abweisung; die Bedienung des Konvertierungsdialogs wird nicht über die Oberfläche geprüft.
+- Der Nachweis, dass eine zweite Primary-Person mitwandert, braucht ein zweites aktives Büromitglied. Fehlt es, meldet der Server-Selbsttest den Modus checked_without_second_member mit unverified second_primary_moved; die Anforderung „andere Primaries bleiben erhalten“ ist dann nur für unabhängige Zuständigkeiten belegt.
 
 **Offene Prüfpunkte**
 

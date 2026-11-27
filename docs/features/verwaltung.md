@@ -28,7 +28,7 @@ _Auto-generiert mit `npm run update:feature-catalog` aus dem zentralen Funktions
 | `admin.users-sessions` Benutzer, MFA und Sitzungen | Mandanten | administrativ | implementiert | rollenabhängig | kein Test |
 | `admin.tenants` Mandantenverwaltung | Mandanten | administrativ | implementiert | rollenabhängig | kein Test |
 | `admin.feature-catalog` Funktionskatalog und Inventarisierung | Qualität | administrativ | implementiert | rollenabhängig | Unit-Test |
-| `admin.selftest-center` Selbsttest-Center | Qualität | administrativ | implementiert | rollenabhängig | Selbsttest |
+| `admin.selftest-center` Selbsttest-Center | Qualität | administrativ | implementiert | rollenabhängig | Unit-Test |
 | `admin.system-pulse` System-Puls | Qualität | administrativ | implementiert | rollenabhängig | Unit-Test |
 | `admin.action-permissions` Aktionsberechtigungen | Rollen & Rechte | sicherheit | implementiert | rollenabhängig | Selbsttest |
 | `admin.roles` Benutzerrollen verwalten | Rollen & Rechte | administrativ | implementiert | rollenabhängig | Selbsttest |
@@ -895,7 +895,7 @@ Führt registrierte Prüfszenarien gegen die Anwendung aus, protokolliert Läufe
 - **Kategorie:** administrativ
 - **Implementierung:** implementiert
 - **Einbindung:** rollenabhängig
-- **Testabdeckung:** Selbsttest
+- **Testabdeckung:** Unit-Test
 - **Letztes Testergebnis:** nicht-ausgefuehrt (kein Laufnachweis importiert; nicht aus der Existenz einer Testdatei abgeleitet)
 - **Rollen:** `admin`, `bueroleitung`, `abgeordneter`, `mitarbeiter`
 - **Routen:** `/selftest`
