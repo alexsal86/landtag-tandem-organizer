@@ -241,7 +241,10 @@ export const employeeMeetingsScenario: TestScenario = {
         // Wurde der veraltete Stand angenommen, ist die Versionsprüfung der Instanz
         // wirkungslos; der gespeicherte Zähler belegt, ob wirklich geschrieben wurde
         // und ob nur der Fehlercode abwich.
-        const versionProbe = checks.staleVersionRejected || stale.timedOut ? null
+        // Auch nach einer Zeitüberschreitung des Schreibaufrufs wird der gespeicherte
+        // Stand gelesen: antwortet diese Lesung schnell, hängt der Schreibaufruf
+        // selbst und nicht die Datenbank.
+        const versionProbe = checks.staleVersionRejected ? null
           : await run("stale-version", signal => supabase.from("employee_meetings")
             .select("version").eq("id", near).abortSignal(signal).maybeSingle());
         const timedOut = calls.filter(item => item.timedOut);
@@ -250,7 +253,9 @@ export const employeeMeetingsScenario: TestScenario = {
           message: ok
             ? "Alle unzulässigen Änderungen wurden ohne Auditzeile abgewiesen."
             : timedOut.length > 0
-              ? `Zeitüberschreitung nach ${GUARD_CALL_TIMEOUT_MS / 1000} s bei ${timedOut.map(item => `${item.key} (${item.ms} ms)`).join(", ")}.`
+              ? `Zeitüberschreitung nach ${GUARD_CALL_TIMEOUT_MS / 1000} s bei ${timedOut.map(item => `${item.key} (${item.ms} ms)`).join(", ")}. ${versionProbe === null ? "" : versionProbe.timedOut
+                ? "Auch die Kontrolllesung des Versionsstands antwortet nicht — der ganze Datenbankweg steht."
+                : `Die Datenbank antwortet weiterhin: Versionsstand ${versionProbe.value?.data?.version ?? "unbekannt"} in ${versionProbe.ms} ms — der Hänger liegt im Schreibaufruf selbst.`}`.trim()
               : checks.staleVersionRejected
                 ? "Mindestens eine Workflow-Sperre oder die Auditprüfung wich vom erwarteten Ergebnis ab."
                 : `Der veraltete Stand ${nearVersion - 1} wurde ${outcome(stale) ? `mit ${outcome(stale)} statt 40001` : "angenommen"} (gespeichert: ${versionProbe?.value?.data?.version ?? "unbekannt"}). Die Versionsprüfung der Instanz greift nicht; Migration 20261128040000 einspielen.`,
@@ -260,7 +265,7 @@ export const employeeMeetingsScenario: TestScenario = {
             durationsMs,
             ...(versionProbe ? {
               staleVersionProbe: {
-                expected: nearVersion, stored: versionProbe.value?.data?.version ?? null,
+                expected: nearVersion, stored: versionProbe.value?.data?.version ?? null, ms: versionProbe.ms,
                 error: versionProbe.timedOut ? "Zeitüberschreitung" : versionProbe.value?.error?.code ?? null,
               },
             } : {}),
