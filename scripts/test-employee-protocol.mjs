@@ -424,6 +424,28 @@ try {
       'Der Nachweis der Migration zeigt genau eine aktive, prüfende Fassung',
     );
 
+    // --- Sperrfreie Fassung: die bisherigen Migrationen brauchten ACCESS EXCLUSIVE
+    // auf employee_meetings (DROP TRIGGER, ALTER TABLE) und kamen deshalb nie an
+    // die Sperre, solange die alte RPC auf der Tabelle hing. Diese Fassung ersetzt
+    // nur Funktionen und muss auch bei einer Bestandszeile ohne Stand greifen.
+    await db.exec('RESET ROLE');
+    await db.exec('DROP TRIGGER guard_employee_protocol ON public.employee_meetings');
+    await db.exec('ALTER TABLE public.employee_meetings ALTER COLUMN version DROP NOT NULL');
+    await db.query('UPDATE public.employee_meetings SET version=NULL WHERE id=$1', [guard]);
+    await db.exec(`CREATE TRIGGER guard_employee_protocol BEFORE INSERT OR UPDATE OR DELETE ON public.employee_meetings
+      FOR EACH ROW EXECUTE FUNCTION public.guard_employee_protocol()`);
+    assert.equal((await q('SELECT version FROM employee_meetings WHERE id=$1', [guard]))[0].version, null,
+      'Ausgangslage: Trigger vorhanden, Bestandszeile ohne Versionsstand');
+
+    await apply('20261128060000_employee_meeting_version_guard_minimal.sql');
+    await apply('20261128060000_employee_meeting_version_guard_minimal.sql');
+    assert.equal((await q('SELECT version FROM employee_meetings WHERE id=$1', [guard]))[0].version, 1,
+      'Die sperrfreie Fassung zieht den fehlenden Versionsstand über den Trigger nach');
+    const markeMinimal = await q(`SELECT obj_description(oid,'pg_proc') AS marke FROM pg_proc
+      WHERE pronamespace='public'::regnamespace AND proname='save_employee_meeting'`);
+    assert.equal(markeMinimal[0].marke, 'version-guard 20261128060000',
+      'Die sperrfreie Fassung ist als installiert markiert');
+
     await actor(staff);
     assert.equal(await codeOf(() => q('SELECT save_employee_meeting($1,$2,$3::jsonb)',
       [guard, 5, '{"protocol_data":{"goals":"veraltet"}}'])), '40001',
