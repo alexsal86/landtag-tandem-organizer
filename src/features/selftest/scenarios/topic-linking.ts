@@ -351,10 +351,12 @@ export const topicLinkingScenario: TestScenario = {
       id: "ministry-topic-cloud", label: "Neue Büros erhalten die Themen-Wolke automatisch",
       kind: "db",
       run: async ctx => {
-        const callSelftest = supabase.rpc as unknown as (
+        // Gebunden aufrufen: supabase.rpc ist eine Methode und greift auf
+        // this.rest zu; ein losgelöster Aufruf scheitert an `undefined.rest`.
+        const callSelftest = (supabase.rpc as unknown as (
           fn: string,
           args?: Record<string, unknown>,
-        ) => Promise<{ data: unknown; error: { code?: string; message?: string } | null }>;
+        ) => Promise<{ data: unknown; error: { code?: string; message?: string } | null }>).bind(supabase);
         const response = await callSelftest("ministry_topic_cloud_selftest", {
           p_tenant: ctx.tenantId,
         });
@@ -385,10 +387,12 @@ export const topicLinkingScenario: TestScenario = {
       id: "module-rules-seed", label: "Neue Büros erhalten die Modul-Steuerung automatisch",
       kind: "db",
       run: async ctx => {
-        const callSelftest = supabase.rpc as unknown as (
+        // Gebunden aufrufen: supabase.rpc ist eine Methode und greift auf
+        // this.rest zu; ein losgelöster Aufruf scheitert an `undefined.rest`.
+        const callSelftest = (supabase.rpc as unknown as (
           fn: string,
           args?: Record<string, unknown>,
-        ) => Promise<{ data: unknown; error: { code?: string; message?: string } | null }>;
+        ) => Promise<{ data: unknown; error: { code?: string; message?: string } | null }>).bind(supabase);
         const response = await callSelftest("topic_module_settings_selftest", {
           p_tenant: ctx.tenantId,
         });

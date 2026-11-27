@@ -215,10 +215,12 @@ export const responsibilitiesScenario: TestScenario = {
       label: "Themen-Meldungen löst nur der serverseitige Ruhephase-Anlauf aus",
       kind: "db",
       run: async () => {
-        const callServerOnly = supabase.rpc as unknown as (
+        // Gebunden aufrufen: supabase.rpc ist eine Methode und greift auf
+        // this.rest zu; ein losgelöster Aufruf scheitert an `undefined.rest`.
+        const callServerOnly = (supabase.rpc as unknown as (
           fn: string,
           args?: Record<string, unknown>,
-        ) => Promise<{ error: { code?: string } | null }>;
+        ) => Promise<{ error: { code?: string } | null }>).bind(supabase);
         const direct = await callServerOnly("dispatch_topic_mentions_for_note", {
           p_note_id: crypto.randomUUID(),
         });
@@ -239,10 +241,12 @@ export const responsibilitiesScenario: TestScenario = {
       label: "Themen-Meldung kommt genau einmal an, ohne Primärzuständigkeit gar nicht",
       kind: "workflow",
       run: async (ctx) => {
-        const callSelftest = supabase.rpc as unknown as (
+        // Gebunden aufrufen: supabase.rpc ist eine Methode und greift auf
+        // this.rest zu; ein losgelöster Aufruf scheitert an `undefined.rest`.
+        const callSelftest = (supabase.rpc as unknown as (
           fn: string,
           args?: Record<string, unknown>,
-        ) => Promise<{ data: unknown; error: { code?: string; message?: string } | null }>;
+        ) => Promise<{ data: unknown; error: { code?: string; message?: string } | null }>).bind(supabase);
         const response = await callSelftest("topic_mention_selftest", {
           p_tenant: ctx.tenantId,
         });
