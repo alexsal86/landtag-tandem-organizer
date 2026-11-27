@@ -11,6 +11,31 @@ const daysFromNow = (days: number) => new Date(Date.now() + days * 86_400_000).t
 /** Zeitlimit je Serveraufruf im Freigabe-Schritt: ein hängender Weg soll den Schritt nicht blockieren. */
 const GUARD_CALL_TIMEOUT_MS = 20_000;
 
+/**
+ * Derselbe RPC-Aufruf am Client-Wrapper vorbei, direkt über HTTP. Damit bleibt die
+ * serverseitige Sperre prüfbar, wenn der Weg über den Supabase-Client in die
+ * Zeitüberschreitung läuft — und der Befund nennt den hängenden Weg.
+ */
+async function directScopedRpc(fn: string, args: Record<string, unknown>, signal: AbortSignal) {
+  const client = supabase as unknown as { supabaseUrl: string; supabaseKey: string };
+  const { data } = await supabase.auth.getSession();
+  const token = data.session?.access_token ?? client.supabaseKey;
+  const response = await fetch(`${client.supabaseUrl}/rest/v1/rpc/${fn}`, {
+    method: "POST",
+    signal,
+    headers: {
+      apikey: client.supabaseKey,
+      Authorization: `Bearer ${token}`,
+      "Content-Type": "application/json",
+      Accept: "application/json",
+    },
+    body: JSON.stringify(args),
+  });
+  if (response.ok) return { error: null };
+  const payload = await response.json().catch(() => null) as { code?: string; message?: string } | null;
+  return { error: { code: payload?.code ?? `HTTP ${response.status}`, message: payload?.message } };
+}
+
 /** Einzelner Serveraufruf des Freigabe-Schritts: Dauer, Abbruch und Fehlercode. */
 interface GuardCall {
   key: string;
@@ -208,9 +233,17 @@ export const employeeMeetingsScenario: TestScenario = {
         const stale = await run("stale", signal => supabase.rpc("save_employee_meeting", {
           p_meeting_id: near, p_version: nearVersion - 1, p_patch: { protocol_data: { goals: tag(ctx.runId) } },
         }).abortSignal(signal));
+        // Antwortet der Client-Weg nicht, wird derselbe Aufruf direkt über HTTP
+        // wiederholt: die Sperre bleibt prüfbar, und der Befund nennt den Weg, der
+        // hängt, statt nur eine Zeitüberschreitung zu melden.
+        const staleDirect = stale.timedOut
+          ? await run("stale-direct", signal => directScopedRpc("save_employee_meeting", {
+            p_meeting_id: near, p_version: nearVersion - 1, p_patch: { protocol_data: { goals: tag(ctx.runId) } },
+          }, signal))
+          : null;
         const audit = await run("audit", signal => supabase.from("employee_meeting_audit")
           .select("id").eq("meeting_id", near).abortSignal(signal));
-        const calls = [...denials, stale, audit];
+        const calls = [...denials, stale, ...(staleDirect ? [staleDirect] : []), audit];
         // Eine Zeitüberschreitung ist kein Fehlercode; sie wird als solche benannt,
         // damit sie nicht als falsche Serverantwort durchgeht.
         const outcome = (item: GuardCall) =>
@@ -234,7 +267,7 @@ export const employeeMeetingsScenario: TestScenario = {
           releaseBeforeCompletion: outcome(prematureRequest) === "22023",
           acknowledgeBeforeRelease: outcome(prematureAck) === "22023",
           reopenBeforeCompletion: outcome(prematureReopen) === "22023",
-          staleVersionRejected: outcome(stale) === "40001",
+          staleVersionRejected: outcome(stale) === "40001" || (staleDirect !== null && outcome(staleDirect) === "40001"),
           noAuditRows: !audit.timedOut && !audit.value?.error && (audit.value?.data ?? []).length === 0,
         };
         const ok = Object.values(checks).every(Boolean);
@@ -251,14 +284,16 @@ export const employeeMeetingsScenario: TestScenario = {
         return {
           ok,
           message: ok
-            ? "Alle unzulässigen Änderungen wurden ohne Auditzeile abgewiesen."
+            ? staleDirect
+              ? `Die Versionssperre greift: der direkte HTTP-Aufruf antwortet mit ${outcome(staleDirect)}; der Weg über den Supabase-Client lief zuvor in die Zeitüberschreitung. Alle übrigen Sperren wurden ohne Auditzeile abgewiesen.`
+              : "Alle unzulässigen Änderungen wurden ohne Auditzeile abgewiesen."
             : timedOut.length > 0
               ? `Zeitüberschreitung nach ${GUARD_CALL_TIMEOUT_MS / 1000} s bei ${timedOut.map(item => `${item.key} (${item.ms} ms)`).join(", ")}. ${versionProbe === null ? "" : versionProbe.timedOut
                 ? "Auch die Kontrolllesung des Versionsstands antwortet nicht — der ganze Datenbankweg steht."
                 : `Die Datenbank antwortet weiterhin: Versionsstand ${versionProbe.value?.data?.version ?? "unbekannt"} in ${versionProbe.ms} ms — der Hänger liegt im Schreibaufruf selbst.`}`.trim()
               : checks.staleVersionRejected
                 ? "Mindestens eine Workflow-Sperre oder die Auditprüfung wich vom erwarteten Ergebnis ab."
-                : `Der veraltete Stand ${nearVersion - 1} wurde ${outcome(stale) ? `mit ${outcome(stale)} statt 40001` : "angenommen"} (gespeichert: ${versionProbe?.value?.data?.version ?? "unbekannt"}). Die Versionsprüfung der Instanz greift nicht; Migration 20261128040000 einspielen.`,
+                : `Der veraltete Stand ${nearVersion - 1} wurde ${outcome(stale) ? `mit ${outcome(stale)} statt 40001` : "angenommen"} (gespeichert: ${versionProbe?.value?.data?.version ?? "unbekannt"}). Die Versionsprüfung der Instanz greift nicht; Migration 20261128060000 einspielen.`,
           details: {
             ...checks,
             errors,
