@@ -6,44 +6,6 @@ export type Json =
   | { [key: string]: Json | undefined }
   | Json[]
 
-type MinistryHistoryEntry = {
-  id: string
-  kind: string
-  line_id: string | null
-  name: string
-  starts_on: string
-  ends_on: string | null
-  party: string | null
-  office: string | null
-  note: string | null
-  citation: string
-  source_detail: string | null
-  source_url: string | null
-  source_verified: boolean
-  assignment_confirmed: boolean
-  revision: number
-}
-
-type MinistryHistoryEntryInsert = Partial<MinistryHistoryEntry>
-  & Pick<MinistryHistoryEntry, "kind" | "name" | "starts_on" | "citation">
-
-type MinistryHistoryLink = {
-  predecessor_id: string
-  successor_id: string
-  effective_on: string
-  note: string
-}
-
-type MinistryHistoryChange = {
-  id: string
-  entry_id: string
-  revision: number
-  changed_at: string
-  changed_by: string | null
-  before_data: Json | null
-  after_data: Json
-}
-
 export type Database = {
   // Allows to automatically instantiate createClient with right options
   // instead of createClient<Database, { PostgrestVersion: 'XX' }>(URL, KEY)
@@ -52,157 +14,6 @@ export type Database = {
   }
   public: {
     Tables: {
-      ministry_history_lines: {
-        Row: { id: string; label: string }
-        Insert: { id?: string; label: string }
-        Update: { id?: string; label?: string }
-        Relationships: []
-      }
-      ministry_history_entries: {
-        Row: MinistryHistoryEntry
-        Insert: MinistryHistoryEntryInsert
-        Update: Partial<MinistryHistoryEntry>
-        Relationships: [
-          { foreignKeyName: "ministry_history_entries_line_id_fkey"; columns: ["line_id"]; isOneToOne: false; referencedRelation: "ministry_history_lines"; referencedColumns: ["id"] },
-        ]
-      }
-      ministry_history_links: {
-        Row: MinistryHistoryLink
-        Insert: MinistryHistoryLink
-        Update: Partial<MinistryHistoryLink>
-        Relationships: [
-          { foreignKeyName: "ministry_history_links_predecessor_id_fkey"; columns: ["predecessor_id"]; isOneToOne: false; referencedRelation: "ministry_history_lines"; referencedColumns: ["id"] },
-          { foreignKeyName: "ministry_history_links_successor_id_fkey"; columns: ["successor_id"]; isOneToOne: false; referencedRelation: "ministry_history_lines"; referencedColumns: ["id"] },
-        ]
-      }
-      ministry_history_changes: {
-        Row: MinistryHistoryChange
-        Insert: Partial<MinistryHistoryChange> & Pick<MinistryHistoryChange, "entry_id" | "revision" | "after_data">
-        Update: Partial<MinistryHistoryChange>
-        Relationships: [
-          { foreignKeyName: "ministry_history_changes_entry_id_fkey"; columns: ["entry_id"]; isOneToOne: false; referencedRelation: "ministry_history_entries"; referencedColumns: ["id"] },
-        ]
-      }
-      parlis_deputy_mandates: {
-        Row: { legislature: number; vorgangs_id: string; mandate_id: string }
-        Insert: { legislature: number; vorgangs_id: string; mandate_id: string }
-        Update: { legislature?: number; vorgangs_id?: string; mandate_id?: string }
-        Relationships: [
-          {
-            foreignKeyName: "parlis_deputy_mandates_legislature_vorgangs_id_fkey"
-            columns: ["legislature", "vorgangs_id"]
-            isOneToOne: false
-            referencedRelation: "parlis_proceedings"
-            referencedColumns: ["legislature", "vorgangs_id"]
-          },
-          {
-            foreignKeyName: "parlis_deputy_mandates_mandate_id_fkey"
-            columns: ["mandate_id"]
-            isOneToOne: false
-            referencedRelation: "election_history_mandates"
-            referencedColumns: ["id"]
-          },
-        ]
-      }
-      parlis_ministry_lines: {
-        Row: { id: string; label: string }
-        Insert: { id: string; label: string }
-        Update: { id?: string; label?: string }
-        Relationships: []
-      }
-      parlis_ministry_assignments: {
-        Row: { tenant_id: string; legislature: number; ressort: string; line_id: string | null }
-        Insert: { tenant_id: string; legislature: number; ressort: string; line_id?: string | null }
-        Update: { line_id?: string | null }
-        Relationships: [
-          { foreignKeyName: "parlis_ministry_assignments_tenant_id_fkey"; columns: ["tenant_id"]; isOneToOne: false; referencedRelation: "tenants"; referencedColumns: ["id"] },
-          { foreignKeyName: "parlis_ministry_assignments_line_id_fkey"; columns: ["line_id"]; isOneToOne: false; referencedRelation: "parlis_ministry_lines"; referencedColumns: ["id"] },
-        ]
-      }
-      parlis_ministry_topics: {
-        Row: { tenant_id: string; line_id: string; topic_id: string }
-        Insert: { tenant_id: string; line_id: string; topic_id: string }
-        Update: { tenant_id?: string; line_id?: string; topic_id?: string }
-        Relationships: [
-          { foreignKeyName: "parlis_ministry_topics_tenant_id_fkey"; columns: ["tenant_id"]; isOneToOne: false; referencedRelation: "tenants"; referencedColumns: ["id"] },
-          { foreignKeyName: "parlis_ministry_topics_line_id_fkey"; columns: ["line_id"]; isOneToOne: false; referencedRelation: "parlis_ministry_lines"; referencedColumns: ["id"] },
-          { foreignKeyName: "parlis_ministry_topics_tenant_id_topic_id_fkey"; columns: ["tenant_id", "topic_id"]; isOneToOne: false; referencedRelation: "topics"; referencedColumns: ["tenant_id", "id"] },
-        ]
-      }
-      parlis_ministry_suggestions: {
-        Row: { legislature: number; ressort: string; line_id: string }
-        Insert: { legislature: number; ressort: string; line_id: string }
-        Update: { legislature?: number; ressort?: string; line_id?: string }
-        Relationships: [
-          { foreignKeyName: "parlis_ministry_suggestions_line_id_fkey"; columns: ["line_id"]; isOneToOne: false; referencedRelation: "parlis_ministry_lines"; referencedColumns: ["id"] },
-        ]
-      }
-      parlis_proceedings: {
-        Row: {
-          datum: string | null
-          deskriptoren: string
-          dokument_url: string
-          dokumentnummer_intern: string
-          drucksache: string
-          faction_co_signed: boolean
-          id: string
-          legislature: number
-          pdf_url: string
-          ressort: string
-          signer_count: number
-          signer_party: string
-          signers: string
-          signers_raw: string
-          titel: string
-          urheber: string
-          vorgang_text: string
-          vorgangs_id: string
-          vorgangstyp: string
-        }
-        Insert: {
-          datum: string | null
-          deskriptoren: string
-          dokument_url: string
-          dokumentnummer_intern: string
-          drucksache: string
-          faction_co_signed?: boolean
-          id: string
-          legislature: number
-          pdf_url: string
-          ressort: string
-          signer_count?: number
-          signer_party?: string
-          signers?: string
-          signers_raw?: string
-          titel: string
-          urheber: string
-          vorgang_text: string
-          vorgangs_id: string
-          vorgangstyp: string
-        }
-        Update: {
-          datum?: string | null
-          deskriptoren?: string
-          dokument_url?: string
-          dokumentnummer_intern?: string
-          drucksache?: string
-          faction_co_signed?: boolean
-          id?: string
-          legislature?: number
-          pdf_url?: string
-          ressort?: string
-          signer_count?: number
-          signer_party?: string
-          signers?: string
-          signers_raw?: string
-          titel?: string
-          urheber?: string
-          vorgang_text?: string
-          vorgangs_id?: string
-          vorgangstyp?: string
-        }
-        Relationships: []
-      }
       action_permissions: {
         Row: {
           action_key: string
@@ -11956,6 +11767,157 @@ export type Database = {
           },
         ]
       }
+      ministry_history_changes: {
+        Row: {
+          after_data: Json
+          before_data: Json | null
+          changed_at: string
+          changed_by: string | null
+          entry_id: string
+          id: string
+          revision: number
+        }
+        Insert: {
+          after_data: Json
+          before_data?: Json | null
+          changed_at?: string
+          changed_by?: string | null
+          entry_id: string
+          id?: string
+          revision: number
+        }
+        Update: {
+          after_data?: Json
+          before_data?: Json | null
+          changed_at?: string
+          changed_by?: string | null
+          entry_id?: string
+          id?: string
+          revision?: number
+        }
+        Relationships: [
+          {
+            foreignKeyName: "ministry_history_changes_entry_id_fkey"
+            columns: ["entry_id"]
+            isOneToOne: false
+            referencedRelation: "ministry_history_entries"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
+      ministry_history_entries: {
+        Row: {
+          assignment_confirmed: boolean
+          citation: string
+          ends_on: string | null
+          id: string
+          kind: string
+          line_id: string | null
+          name: string
+          note: string | null
+          office: string | null
+          party: string | null
+          revision: number
+          source_detail: string | null
+          source_url: string | null
+          source_verified: boolean
+          starts_on: string
+        }
+        Insert: {
+          assignment_confirmed?: boolean
+          citation: string
+          ends_on?: string | null
+          id?: string
+          kind: string
+          line_id?: string | null
+          name: string
+          note?: string | null
+          office?: string | null
+          party?: string | null
+          revision?: number
+          source_detail?: string | null
+          source_url?: string | null
+          source_verified?: boolean
+          starts_on: string
+        }
+        Update: {
+          assignment_confirmed?: boolean
+          citation?: string
+          ends_on?: string | null
+          id?: string
+          kind?: string
+          line_id?: string | null
+          name?: string
+          note?: string | null
+          office?: string | null
+          party?: string | null
+          revision?: number
+          source_detail?: string | null
+          source_url?: string | null
+          source_verified?: boolean
+          starts_on?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "ministry_history_entries_line_id_fkey"
+            columns: ["line_id"]
+            isOneToOne: false
+            referencedRelation: "ministry_history_lines"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
+      ministry_history_lines: {
+        Row: {
+          id: string
+          label: string
+        }
+        Insert: {
+          id?: string
+          label: string
+        }
+        Update: {
+          id?: string
+          label?: string
+        }
+        Relationships: []
+      }
+      ministry_history_links: {
+        Row: {
+          effective_on: string
+          note: string
+          predecessor_id: string
+          successor_id: string
+        }
+        Insert: {
+          effective_on: string
+          note: string
+          predecessor_id: string
+          successor_id: string
+        }
+        Update: {
+          effective_on?: string
+          note?: string
+          predecessor_id?: string
+          successor_id?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "ministry_history_links_predecessor_id_fkey"
+            columns: ["predecessor_id"]
+            isOneToOne: false
+            referencedRelation: "ministry_history_lines"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "ministry_history_links_successor_id_fkey"
+            columns: ["successor_id"]
+            isOneToOne: false
+            referencedRelation: "ministry_history_lines"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
       mobile_push_tokens: {
         Row: {
           app_version: string | null
@@ -12375,6 +12337,207 @@ export type Database = {
           tenant_id?: string
           updated_at?: string
           uploaded_by?: string
+        }
+        Relationships: []
+      }
+      parlis_deputy_mandates: {
+        Row: {
+          legislature: number
+          mandate_id: string
+          vorgangs_id: string
+        }
+        Insert: {
+          legislature: number
+          mandate_id: string
+          vorgangs_id: string
+        }
+        Update: {
+          legislature?: number
+          mandate_id?: string
+          vorgangs_id?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "parlis_deputy_mandates_legislature_vorgangs_id_fkey"
+            columns: ["legislature", "vorgangs_id"]
+            isOneToOne: false
+            referencedRelation: "parlis_proceedings"
+            referencedColumns: ["legislature", "vorgangs_id"]
+          },
+          {
+            foreignKeyName: "parlis_deputy_mandates_mandate_id_fkey"
+            columns: ["mandate_id"]
+            isOneToOne: false
+            referencedRelation: "election_history_mandates"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
+      parlis_ministry_assignments: {
+        Row: {
+          legislature: number
+          line_id: string | null
+          ressort: string
+          tenant_id: string
+        }
+        Insert: {
+          legislature: number
+          line_id?: string | null
+          ressort: string
+          tenant_id: string
+        }
+        Update: {
+          legislature?: number
+          line_id?: string | null
+          ressort?: string
+          tenant_id?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "parlis_ministry_assignments_line_id_fkey"
+            columns: ["line_id"]
+            isOneToOne: false
+            referencedRelation: "parlis_ministry_lines"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "parlis_ministry_assignments_tenant_id_fkey"
+            columns: ["tenant_id"]
+            isOneToOne: false
+            referencedRelation: "tenants"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
+      parlis_ministry_lines: {
+        Row: {
+          id: string
+          label: string
+        }
+        Insert: {
+          id: string
+          label: string
+        }
+        Update: {
+          id?: string
+          label?: string
+        }
+        Relationships: []
+      }
+      parlis_ministry_suggestions: {
+        Row: {
+          legislature: number
+          line_id: string
+          ressort: string
+        }
+        Insert: {
+          legislature: number
+          line_id: string
+          ressort: string
+        }
+        Update: {
+          legislature?: number
+          line_id?: string
+          ressort?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "parlis_ministry_suggestions_line_id_fkey"
+            columns: ["line_id"]
+            isOneToOne: false
+            referencedRelation: "parlis_ministry_lines"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
+      parlis_ministry_topics: {
+        Row: {
+          line_id: string
+          tenant_id: string
+          topic_id: string
+        }
+        Insert: {
+          line_id: string
+          tenant_id: string
+          topic_id: string
+        }
+        Update: {
+          line_id?: string
+          tenant_id?: string
+          topic_id?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "parlis_ministry_topics_line_id_fkey"
+            columns: ["line_id"]
+            isOneToOne: false
+            referencedRelation: "parlis_ministry_lines"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "parlis_ministry_topics_tenant_id_fkey"
+            columns: ["tenant_id"]
+            isOneToOne: false
+            referencedRelation: "tenants"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "parlis_ministry_topics_tenant_id_topic_id_fkey"
+            columns: ["tenant_id", "topic_id"]
+            isOneToOne: false
+            referencedRelation: "topics"
+            referencedColumns: ["tenant_id", "id"]
+          },
+        ]
+      }
+      parlis_proceedings: {
+        Row: {
+          datum: string | null
+          deskriptoren: string
+          dokument_url: string
+          dokumentnummer_intern: string
+          drucksache: string
+          id: string
+          legislature: number
+          pdf_url: string
+          ressort: string
+          titel: string
+          urheber: string
+          vorgang_text: string
+          vorgangs_id: string
+          vorgangstyp: string
+        }
+        Insert: {
+          datum?: string | null
+          deskriptoren: string
+          dokument_url: string
+          dokumentnummer_intern: string
+          drucksache: string
+          id: string
+          legislature: number
+          pdf_url: string
+          ressort: string
+          titel: string
+          urheber: string
+          vorgang_text: string
+          vorgangs_id: string
+          vorgangstyp: string
+        }
+        Update: {
+          datum?: string | null
+          deskriptoren?: string
+          dokument_url?: string
+          dokumentnummer_intern?: string
+          drucksache?: string
+          id?: string
+          legislature?: number
+          pdf_url?: string
+          ressort?: string
+          titel?: string
+          urheber?: string
+          vorgang_text?: string
+          vorgangs_id?: string
+          vorgangstyp?: string
         }
         Relationships: []
       }
@@ -15891,7 +16054,15 @@ export type Database = {
           updated_at?: string
           user_id?: string
         }
-        Relationships: []
+        Relationships: [
+          {
+            foreignKeyName: "task_documents_task_id_fkey"
+            columns: ["task_id"]
+            isOneToOne: false
+            referencedRelation: "tasks"
+            referencedColumns: ["id"]
+          },
+        ]
       }
       task_snoozes: {
         Row: {
@@ -18050,24 +18221,6 @@ export type Database = {
       }
     }
     Views: {
-      parlis_wp17_deputy_activity: {
-        Row: { profile_key: string | null; document_kind: string | null; document_count: number | null }
-        Relationships: []
-      }
-      parlis_initiative_rankings: {
-        Row: { legislature: number | null; rankings: Json | null }
-        Relationships: []
-      }
-      parlis_deputy_profiles: {
-        Row: {
-          legislature: number | null
-          vorgangs_id: string | null
-          mandate_id: string | null
-          deputy_name: string | null
-          profile_key: string | null
-        }
-        Relationships: []
-      }
       archived_meeting_protocol_tasks: {
         Row: {
           archive_id: string | null
@@ -18273,6 +18426,46 @@ export type Database = {
         }
         Relationships: []
       }
+      parlis_deputy_profiles: {
+        Row: {
+          deputy_name: string | null
+          legislature: number | null
+          mandate_id: string | null
+          profile_key: string | null
+          vorgangs_id: string | null
+        }
+        Relationships: [
+          {
+            foreignKeyName: "parlis_deputy_mandates_legislature_vorgangs_id_fkey"
+            columns: ["legislature", "vorgangs_id"]
+            isOneToOne: false
+            referencedRelation: "parlis_proceedings"
+            referencedColumns: ["legislature", "vorgangs_id"]
+          },
+          {
+            foreignKeyName: "parlis_deputy_mandates_mandate_id_fkey"
+            columns: ["mandate_id"]
+            isOneToOne: false
+            referencedRelation: "election_history_mandates"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
+      parlis_initiative_rankings: {
+        Row: {
+          legislature: number | null
+          rankings: Json | null
+        }
+        Relationships: []
+      }
+      parlis_wp17_deputy_activity: {
+        Row: {
+          document_count: number | null
+          document_kind: string | null
+          profile_key: string | null
+        }
+        Relationships: []
+      }
       v_rls_coverage: {
         Row: {
           client_grant: boolean | null
@@ -18287,55 +18480,6 @@ export type Database = {
       }
     }
     Functions: {
-      confirm_ministry_history_assignments: {
-        Args: { expected_entries: Json }
-        Returns: number
-      }
-      get_parlis_initiative_rankings: {
-        Args: { period: number }
-        Returns: Json
-      }
-      get_parlis_ministry_sources: {
-        Args: Record<PropertyKey, never>
-        Returns: { legislature: number; ressort: string; requests: number; suggested_line: string | null }[]
-      }
-      get_parlis_wp17_deputy_activity: {
-        Args: { deputy_key: string }
-        Returns: { document_kind: string; document_count: number }[]
-      }
-      get_parlis_deputy_motions: {
-        Args: { period: number; deputy_key: string }
-        Returns: {
-          vorgangs_id: string
-          titel: string
-          datum: string | null
-          drucksache: string
-          pdf_url: string | null
-        }[]
-      }
-      parlis_filter_options: {
-        Args: { period: number }
-        Returns: Json
-      }
-      get_office_feedback_promise_hint_stats: {
-        Args: Record<PropertyKey, never>
-        Returns: {
-          shown: number
-          unchanged: number
-          edited: number
-          discarded: number
-          users: number
-          last_updated: string | null
-        }[]
-      }
-      parlis_topic_suggestions: {
-        Args: { period: number; term: string }
-        Returns: string[]
-      }
-      parlis_page: {
-        Args: { period: number; page_offset?: number; search_text?: string; document_kind?: string; faction?: string; topic?: string; date_from?: string; date_to?: string; deputy_key?: string; oldest_first?: boolean; chart_dimension?: string; chart_selection?: string; options_only?: boolean }
-        Returns: Json
-      }
       _briefing_task_event: {
         Args: { _task: string; _text: string }
         Returns: undefined
@@ -18350,6 +18494,17 @@ export type Database = {
       }
       _meeting_default_end: { Args: { _date: string }; Returns: string }
       _meeting_default_start: { Args: { _date: string }; Returns: string }
+      _ministry_topic_cloud: {
+        Args: never
+        Returns: {
+          color: string
+          description: string
+          icon: string
+          label: string
+          lines: string[]
+          sort: number
+        }[]
+      }
       ack_task_nudge: {
         Args: { _reply?: string; _task_id: string }
         Returns: undefined
@@ -18402,7 +18557,7 @@ export type Database = {
         Args: { p_id: string; p_kind: string; p_tenant: string; p_user: string }
         Returns: undefined
       }
-      audit_request_ip: { Args: never; Returns: string | null }
+      audit_request_ip: { Args: never; Returns: string }
       audit_rls_gaps: {
         Args: never
         Returns: {
@@ -18592,6 +18747,10 @@ export type Database = {
           _planning_id: string
         }
         Returns: string
+      }
+      confirm_ministry_history_assignments: {
+        Args: { expected_entries: Json }
+        Returns: number
       }
       confirm_poll_winner: {
         Args: { _poll_id: string; _slot_id: string }
@@ -18808,17 +18967,14 @@ export type Database = {
       }
       create_case_file_task: {
         Args: {
-          p_assigned_to?: string | null
+          p_assigned_to?: string
           p_case_file_id: string
           p_id: string
           p_title: string
         }
         Returns: string
       }
-      create_decision_task: {
-        Args: { p_decision_id: string }
-        Returns: string
-      }
+      create_decision_task: { Args: { p_decision_id: string }; Returns: string }
       create_default_checklist_items:
         | { Args: { planning_id: string }; Returns: undefined }
         | {
@@ -18894,10 +19050,6 @@ export type Database = {
         }
         Returns: string
       }
-      create_preparation_followup: {
-        Args: { _point_id?: string | null; _preparation_id: string }
-        Returns: string
-      }
       create_work_decision: {
         Args: {
           p_data: Json
@@ -18918,7 +19070,6 @@ export type Database = {
         }
         Returns: string
       }
-      decision_nudge_selftest: { Args: { p_tenant: string }; Returns: Json }
       delete_config_item: {
         Args: { _expected_refs: number; _id: string; _table: string }
         Returns: Json
@@ -19147,7 +19298,12 @@ export type Database = {
         }[]
       }
       find_contact_duplicates_trgm: {
-        Args: { _contact_id?: string; _limit?: number; _tenant_id: string; _threshold?: number }
+        Args: {
+          _contact_id?: string
+          _limit?: number
+          _tenant_id: string
+          _threshold?: number
+        }
         Returns: {
           contact1_email: string
           contact1_id: string
@@ -19379,14 +19535,6 @@ export type Database = {
         Args: { _user_id: string }
         Returns: string[]
       }
-      get_latest_employee_meetings: {
-        Args: { p_employee_ids: string[] }
-        Returns: {
-          employee_id: string
-          meeting_id: string
-          meeting_date: string
-        }[]
-      }
       get_latest_selftest_runs: {
         Args: { p_tenant_id: string }
         Returns: {
@@ -19418,6 +19566,47 @@ export type Database = {
       get_my_work_new_counts: {
         Args: { p_contexts?: string[]; p_user_id: string }
         Returns: Json
+      }
+      get_office_feedback_promise_hint_stats: {
+        Args: never
+        Returns: {
+          discarded: number
+          edited: number
+          last_updated: string
+          shown: number
+          unchanged: number
+          users: number
+        }[]
+      }
+      get_parlis_deputy_motions: {
+        Args: { deputy_key: string; period: number }
+        Returns: {
+          datum: string
+          drucksache: string
+          pdf_url: string
+          titel: string
+          vorgangs_id: string
+        }[]
+      }
+      get_parlis_initiative_rankings: {
+        Args: { period: number }
+        Returns: Json
+      }
+      get_parlis_ministry_sources: {
+        Args: never
+        Returns: {
+          legislature: number
+          requests: number
+          ressort: string
+          suggested_line: string
+        }[]
+      }
+      get_parlis_wp17_deputy_activity: {
+        Args: { deputy_key: string }
+        Returns: {
+          document_count: number
+          document_kind: string
+        }[]
       }
       get_poll_availability: {
         Args: {
@@ -19539,6 +19728,10 @@ export type Database = {
       is_admin: { Args: { _user_id: string }; Returns: boolean }
       is_admin_for_audit_logs: { Args: { _user_id: string }; Returns: boolean }
       is_admin_of: { Args: { employee: string }; Returns: boolean }
+      is_case_file_participant: {
+        Args: { _case_file_id: string; _user_id: string }
+        Returns: boolean
+      }
       is_deputy_for: {
         Args: { _absent_user_id: string; _deputy_id: string }
         Returns: boolean
@@ -20170,6 +20363,10 @@ export type Database = {
         Args: { p_source: string; p_target: string }
         Returns: undefined
       }
+      ministry_topic_cloud_selftest: {
+        Args: { p_tenant: string }
+        Returns: Json
+      }
       mutate_employee_meeting_action: {
         Args: {
           p_action: string
@@ -20223,6 +20420,29 @@ export type Database = {
         }[]
       }
       own_team_fun_facts: { Args: { p_tenant: string }; Returns: Json }
+      parlis_filter_options: { Args: { period: number }; Returns: Json }
+      parlis_page: {
+        Args: {
+          chart_dimension?: string
+          chart_selection?: string
+          date_from?: string
+          date_to?: string
+          deputy_key?: string
+          document_kind?: string
+          faction?: string
+          oldest_first?: boolean
+          options_only?: boolean
+          page_offset?: number
+          period: number
+          search_text?: string
+          topic?: string
+        }
+        Returns: Json
+      }
+      parlis_topic_suggestions: {
+        Args: { period: number; term: string }
+        Returns: string[]
+      }
       parse_task_assignee_ids: {
         Args: { p_assigned_to: string }
         Returns: string[]
@@ -20395,7 +20615,7 @@ export type Database = {
         }[]
       }
       record_audit_entry: {
-        Args: { _action: string; _payload?: Json; _tenant_id?: string | null }
+        Args: { _action: string; _payload?: Json; _tenant_id?: string }
         Returns: string
       }
       refresh_routine_package: {
@@ -20450,10 +20670,6 @@ export type Database = {
       request_social_post_changes: {
         Args: { _comment: string; _due_days?: number; _item: string }
         Returns: Json
-      }
-      return_letter_for_revision: {
-        Args: { _letter_id: string; _reason: string }
-        Returns: string
       }
       require_employee_meeting_access: {
         Args: { p_meeting_id: string; p_supervisor?: boolean }
@@ -20515,6 +20731,10 @@ export type Database = {
       restore_archived_task: {
         Args: { _archived_id: string; _tenant_id: string }
         Returns: number
+      }
+      return_letter_for_revision: {
+        Args: { _letter_id: string; _reason: string }
+        Returns: string
       }
       run_data_lint: {
         Args: { _tenant_id: string }
@@ -20693,6 +20913,14 @@ export type Database = {
         Args: { p_tenant: string }
         Returns: undefined
       }
+      seed_ministry_topic_cloud: {
+        Args: { p_tenant: string }
+        Returns: undefined
+      }
+      seed_topic_module_settings: {
+        Args: { p_tenant: string }
+        Returns: number
+      }
       selftest_employee_hr: { Args: { p_tenant: string }; Returns: Json }
       selftest_employee_protocol: {
         Args: { p_meeting_id: string }
@@ -20751,6 +20979,7 @@ export type Database = {
         Args: { p_lifecycle: string; p_template: string }
         Returns: string
       }
+      storage_folder_uuid: { Args: { p_folder: string }; Returns: string }
       sync_analysis_history_links: {
         Args: { selected_year: number }
         Returns: undefined
@@ -20797,8 +21026,11 @@ export type Database = {
           user_id: string
         }[]
       }
-      topic_catalog_conversion_selftest: { Args: { p_tenant: string }; Returns: Json }
       topic_mention_selftest: { Args: { p_tenant: string }; Returns: Json }
+      topic_module_settings_selftest: {
+        Args: { p_tenant: string }
+        Returns: Json
+      }
       topic_name_from_label: { Args: { p_label: string }; Returns: string }
       topic_usage: {
         Args: { p_tenant: string }
