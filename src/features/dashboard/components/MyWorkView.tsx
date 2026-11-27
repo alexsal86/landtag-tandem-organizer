@@ -60,6 +60,10 @@ export function MyWorkView() {
   });
 
 
+  const navigationTabs = isDeputyView
+    ? visibleTabs.filter(tab => tab.value !== "jourFixe" && tab.value !== "redaktion")
+    : visibleTabs;
+
   const { newCounts, markTabAsVisited, refreshCounts } = useMyWorkNewCounts();
   const { openApprovals, isEnabled: isRedaktionEnabled } = useOpenApprovalCount();
 
@@ -111,7 +115,7 @@ export function MyWorkView() {
       {activeTab === "dashboard" && <DashboardDaylight />}
       <div className="flex w-full flex-col items-end gap-3 px-4 pt-4 sm:flex-row sm:items-center sm:justify-between md:px-6 lg:px-8">
         <nav aria-label="Meine Arbeit" className="flex max-w-full min-w-0 self-stretch items-center gap-1 overflow-x-auto rounded-full border border-border/80 bg-card/90 p-1 shadow-lg shadow-black/8 backdrop-blur-sm [scrollbar-width:none]">
-          {visibleTabs.map((tab) => {
+          {navigationTabs.map((tab) => {
             const hasNew = tab.countKey ? newCounts[tab.countKey] > 0 : false;
             const isActiveTab = activeTab === tab.value;
 
