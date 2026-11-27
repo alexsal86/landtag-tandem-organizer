@@ -52,10 +52,6 @@ export function CalendarHeader({
 
   return (
     <div className="h-full border-r bg-muted/30 p-4 overflow-y-auto">
-      <div className="mb-6 border-b pb-4">
-        <h1 className="text-2xl font-bold text-foreground mb-1">Terminkalender</h1>
-      </div>
-
       <div className="space-y-2">
         <Button className="w-full justify-start gap-2 min-h-[44px]" onClick={createAppointment}>
           <Plus className="h-4 w-4" />
