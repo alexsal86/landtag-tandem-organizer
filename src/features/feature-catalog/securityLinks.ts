@@ -13,6 +13,7 @@ export function featuresForTable(table: string): TableFeatureRef[] {
   return byTable[table] ?? [];
 }
 
-export function featureCatalogHref(featureId: string): string {
-  return `/funktionskatalog?feature=${encodeURIComponent(featureId)}`;
+export function featureCatalogHref(featureId?: string): string {
+  const catalog = "/administration?adminSection=superadmin&adminSubSection=feature-catalog";
+  return featureId ? `${catalog}&feature=${encodeURIComponent(featureId)}` : catalog;
 }

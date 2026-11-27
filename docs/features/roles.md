@@ -191,7 +191,7 @@ Die Angaben sind deklarierte Mindestrollen. Die tatsächlich wirksame Berechtigu
 - `knowledge.global-question` — Globale Wissensfrage aus jedem Bereich
 - `knowledge.persons` — Wissenspersonen und Zuständigkeit
 
-### `bueroleitung` — 228 Funktionen
+### `bueroleitung` — 227 Funktionen
 
 - `mywork.dashboard` — Meine Arbeit – Dashboard
 - `mywork.dashboard.today-priorities` — Heute zuerst
@@ -372,7 +372,6 @@ Die Angaben sind deklarierte Mindestrollen. Die tatsächlich wirksame Berechtigu
 - `admin.onboarding-login` — Onboarding-Folien und Login-Anpassung
 - `admin.templates-senders` — Administrative Vorlagen und Absenderdaten
 - `admin.selftest-center` — Selbsttest-Center
-- `admin.feature-catalog` — Funktionskatalog und Inventarisierung
 - `cases.create` — Vorgang erfassen
 - `cases.triage` — Vorgang triagieren (Wer ist am Zug?)
 - `cases.handover` — Vorgang weitergeben
@@ -655,7 +654,7 @@ Die Angaben sind deklarierte Mindestrollen. Die tatsächlich wirksame Berechtigu
 - `cases.create` — Vorgang erfassen
 - `knowledge.ask` — Wissensfrage stellen
 
-### `admin` — 55 Funktionen
+### `admin` — 54 Funktionen
 
 - `tasks.templates` — Aufgabenvorlagen anwenden und pflegen
 - `tasks.annual` — Jahresaufgaben und Jahresabschluss
@@ -707,13 +706,12 @@ Die Angaben sind deklarierte Mindestrollen. Die tatsächlich wirksame Berechtigu
 - `admin.onboarding-login` — Onboarding-Folien und Login-Anpassung
 - `admin.templates-senders` — Administrative Vorlagen und Absenderdaten
 - `admin.selftest-center` — Selbsttest-Center
-- `admin.feature-catalog` — Funktionskatalog und Inventarisierung
 - `election.districts-import` — Wahlkreise und Gebiete importieren
 - `election.representatives` — Abgeordnete und Parteiassoziationen importieren
 - `knowledge.review` — Wissensantwort prüfen und freigeben
 - `knowledge.management` — Wissensverwaltung
 
-### `superadmin` — 26 Funktionen
+### `superadmin` — 27 Funktionen
 
 - `admin.workspace` — Administrationsbereich und Zugriff
 - `admin.roles` — Benutzerrollen verwalten
@@ -727,6 +725,7 @@ Die Angaben sind deklarierte Mindestrollen. Die tatsächlich wirksame Berechtigu
 - `admin.performance` — Performance- und Größen-Dashboard
 - `admin.tenants` — Mandantenverwaltung
 - `admin.users-sessions` — Benutzer, MFA und Sitzungen
+- `admin.feature-catalog` — Funktionskatalog und Inventarisierung
 - `election.research-workbench` — Analyse-Workbench und Kommunalpanel
 - `election.districts-import` — Wahlkreise und Gebiete importieren
 - `election.representatives` — Abgeordnete und Parteiassoziationen importieren
@@ -801,7 +800,7 @@ Die Angaben sind deklarierte Mindestrollen. Die tatsächlich wirksame Berechtigu
 | `admin.configuration` | `admin`, `bueroleitung` |
 | `admin.data-lint` | `admin`, `bueroleitung` |
 | `admin.edge-function-security` | `system`, `superadmin` |
-| `admin.feature-catalog` | `admin`, `bueroleitung` |
+| `admin.feature-catalog` | `superadmin` |
 | `admin.feature-flags` | `admin`, `superadmin` |
 | `admin.field-permissions` | `admin`, `bueroleitung` |
 | `admin.gdpr` | `admin`, `superadmin` |

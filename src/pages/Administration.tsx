@@ -72,6 +72,7 @@ const OfficeSocialMediaSettings = lazy(() => import("@/components/administration
 const CelebrationSettingsCard = lazy(() => import("@/components/administration/CelebrationSettingsCard").then(module => ({ default: module.CelebrationSettingsCard })));
 const SelftestView = lazy(() => import("@/features/selftest/components/SelftestView").then(module => ({ default: module.SelftestView })));
 const PerformanceDashboard = lazy(() => import("@/components/administration/PerformanceDashboard").then(module => ({ default: module.PerformanceDashboard })));
+const FeatureCatalogView = lazy(() => import("@/features/feature-catalog/FeatureCatalogView").then(module => ({ default: module.FeatureCatalogView })));
 const SecurityCockpit = lazy(() => import("@/components/administration/SecurityCockpit").then(module => ({ default: module.SecurityCockpit })));
 const GdprRequestsManager = lazy(() => import("@/components/administration/GdprRequestsManager").then(module => ({ default: module.GdprRequestsManager })));
 
@@ -167,6 +168,7 @@ export default function Administration(): React.JSX.Element | null {
       params.delete("automationTab");
       params.delete("rssTab");
       params.delete("letterTab");
+      if (activeSubSection === "feature-catalog") params.delete("feature");
     }
     params.set("adminSection", nextNavigation.section);
     if (nextNavigation.subSection) {
@@ -409,6 +411,7 @@ export default function Administration(): React.JSX.Element | null {
       switch (activeSubSection) {
         case "tenants": return <SuperadminTenantManagement />;
         case "election-history": return <ElectionHistoryAdmin />;
+        case "feature-catalog": return <FeatureCatalogView />;
         case "push-tests":
           return (
             <Card>

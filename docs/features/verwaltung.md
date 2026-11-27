@@ -950,8 +950,8 @@ Führt den vollständigen, versionierten Funktionskatalog, gleicht ihn mit Route
 - **Einbindung:** rollenabhängig
 - **Testabdeckung:** Unit-Test
 - **Letztes Testergebnis:** unbekannt (kein Laufnachweis importiert; nicht aus der Existenz einer Testdatei abgeleitet)
-- **Rollen:** `admin`, `bueroleitung`
-- **Routen:** `/funktionskatalog`
+- **Rollen:** `superadmin`
+- **Routen:** `/administration?adminSection=superadmin&adminSubSection=feature-catalog`, `/funktionskatalog`
 - **Frontend-Komponenten:** `src/features/feature-catalog/FeatureCatalogView.tsx`, `src/features/feature-catalog/FeatureMap.tsx`, `src/features/feature-catalog/StateMachineView.tsx`, `src/features/feature-catalog/StateMachineGraph.tsx`
 - **Services:** `scripts/build-feature-catalog.mjs`, `scripts/build-state-artifact.mjs`, `src/features/feature-catalog/metrics.ts`, `src/features/feature-catalog/map.ts`, `src/features/feature-catalog/stateMachines.ts`, `src/features/feature-catalog/graphLayout.ts`
 - **Hooks:** —

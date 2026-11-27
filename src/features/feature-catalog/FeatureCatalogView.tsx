@@ -1,7 +1,6 @@
 import { useEffect, useMemo, useState } from "react";
 import { ChevronDown, ChevronRight, Search, ShieldCheck } from "lucide-react";
 import { useSearchParams } from "react-router-dom";
-import { useResolvedUserRole } from "@/hooks/useResolvedUserRole";
 import { Badge } from "@/components/ui/badge";
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
 import { Input } from "@/components/ui/input";
@@ -304,43 +303,24 @@ function FilterSelect({
 }
 
 export function FeatureCatalogView() {
-  const { hasAdminAccess, loading } = useResolvedUserRole();
   const [view, setView] = useState<View>({ type: "overview" });
   const [filters, setFilters] = useState<FeatureFilters>(EMPTY_FILTERS);
   const [searchParams] = useSearchParams();
+  const linkedFeatureId = searchParams.get("feature");
   const [expandedAreas, setExpandedAreas] = useState<Set<string>>(new Set());
   const pages = useMemo(() => [...catalogPages, entityPage], []);
 
   useEffect(() => {
-    const featureId = searchParams.get("feature");
-    if (featureId && catalogFeatures.some((feature) => feature.id === featureId)) {
-      setView({ type: "feature", id: featureId });
+    if (linkedFeatureId && catalogFeatures.some((feature) => feature.id === linkedFeatureId)) {
+      setView({ type: "feature", id: linkedFeatureId });
+    } else {
+      setView({ type: "overview" });
     }
-  }, [searchParams]);
+  }, [linkedFeatureId]);
 
   const filtered = useMemo(() => filterFeatures(catalogFeatures, filters), [filters]);
   const metrics = useMemo(() => computeMetrics(filtered), [filtered]);
   const allMetrics = useMemo(() => computeMetrics(catalogFeatures), []);
-
-  if (loading) {
-    return <div className="p-6 text-sm text-muted-foreground">Zugriff wird geprüft …</div>;
-  }
-
-  if (!hasAdminAccess) {
-    return (
-      <div className="p-4 md:p-6">
-        <Card className="max-w-lg">
-          <CardHeader>
-            <CardTitle className="text-base">Kein Zugriff</CardTitle>
-            <CardDescription>
-              Der Funktionskatalog zeigt Tabellen- und Beziehungswissen und ist nur für Administration und Büroleitung
-              sichtbar. Bitte wenden Sie sich an die Büroleitung.
-            </CardDescription>
-          </CardHeader>
-        </Card>
-      </div>
-    );
-  }
 
   const setFilter = <K extends keyof FeatureFilters>(key: K, value: FeatureFilters[K]) =>
     setFilters((current) => ({ ...current, [key]: value }));

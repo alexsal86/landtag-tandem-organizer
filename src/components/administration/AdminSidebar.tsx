@@ -7,6 +7,7 @@ import { Collapsible, CollapsibleContent, CollapsibleTrigger } from "@/component
 import { Badge } from "@/components/ui/badge";
 import {
   Shield,
+  BookOpen,
   Users2,
   CalendarDays,
   Database,
@@ -170,6 +171,7 @@ export const adminMenuItems: AdminMenuItem[] = [
     children: [
       { id: "election-history", label: "Wahldaten & Mandatshistorie", icon: Landmark },
       { id: "tenants", label: "Tenants", icon: Building2 },
+      { id: "feature-catalog", label: "Funktionskatalog", icon: BookOpen },
       { id: "push-tests", label: "Push-System Tests", icon: Bell },
       { id: "roles", label: "Rechte & Rollen", icon: UserCheck },
       { id: "associations", label: "Kreisverbände", icon: Landmark },

@@ -205,7 +205,7 @@ export function SecurityCockpit(): JSX.Element {
             RLS-Coverage, Audit-Trail und Snapshots zur Datenbanksicherheit. Jede Tabelle verweist auf die
             zugeordneten Funktionen; dort stehen auch die Policies und der Befund je Funktion. Sicherheitsbefunde
             bleiben von fachlichen Testergebnissen getrennt und ergeben keine pauschale Funktionsbewertung.{" "}
-            <Link to="/funktionskatalog" className="font-medium text-primary underline underline-offset-2">
+            <Link to={featureCatalogHref()} className="font-medium text-primary underline underline-offset-2">
               Funktionskatalog
             </Link>
           </p>

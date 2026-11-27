@@ -151,7 +151,7 @@ describe("SystemPulse: selftest_runs", () => {
     expect(within(slowest).getByText("120 ms")).toBeInTheDocument();
     expect(screen.getAllByRole("button", { name: /erneut testen/ }).length).toBeGreaterThan(0);
     const catalogLink = screen.getAllByRole("link", { name: /im Funktionskatalog öffnen/ })[0];
-    expect(catalogLink.getAttribute("href")).toContain("/funktionskatalog?feature=");
+    expect(catalogLink.getAttribute("href")).toContain("/administration?adminSection=superadmin&adminSubSection=feature-catalog&feature=");
     expect(screen.getAllByText(/Betroffene Funktionen/).length).toBeGreaterThan(0);
 
     fireEvent.click(tile(/Jour fixe/));
