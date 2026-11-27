@@ -11,7 +11,7 @@ export const parlisScenario: TestScenario = {
   description: "Prüft die Gruppierung und den Lesezugriff auf die Parlamentsdokumentation.",
   features: ["parlis.proceedings", "parlis.ministry-topics", "parlis.initiative-rankings"],
   touches: [],
-  checks: ["Gespeicherte Initiativenbilanz mit begrenzten Ranglisten", "Ressortvorschläge für mehrere Wahlperioden", "Vorgangstypen der 17. Wahlperiode im Profil zusammenfassen", "Fünf persönlich zugeordnete Anträge mit gefiltertem Link im Profil", "Schlagwortvorschläge bei Eingabe begrenzen", "Serverseitige Suche und begrenzte Dokumentenseiten", "Schlagwörter, Fraktionsfilter und mehrere Urheber", "Urhebertext mit Titeln und Namensbestandteilen bleibt vollständig", "Monatsgruppierung, eindeutige Schlagwörter und leere Ressorts", "Importierte Vorgänge sind lesbar", "Verknüpfte Urheber führen zu einem Mandat derselben Wahlperiode"],
+  checks: ["Geprüfte Namensvarianten auf die richtigen Abgeordnetenprofile verlinken", "Gespeicherte Initiativenbilanz mit begrenzten Ranglisten", "Ressortvorschläge für mehrere Wahlperioden", "Vorgangstypen der 17. Wahlperiode im Profil zusammenfassen", "Fünf persönlich zugeordnete Anträge mit gefiltertem Link im Profil", "Schlagwortvorschläge bei Eingabe begrenzen", "Serverseitige Suche und begrenzte Dokumentenseiten", "Schlagwörter, Fraktionsfilter und mehrere Urheber", "Urhebertext mit Titeln und Namensbestandteilen bleibt vollständig", "Monatsgruppierung, eindeutige Schlagwörter und leere Ressorts", "Importierte Vorgänge sind lesbar", "Verknüpfte Urheber führen zu einem Mandat derselben Wahlperiode"],
   steps: [{
     id: "parlis-groups",
     label: "Monate, Schlagwörter und fehlende Ressorts korrekt zuordnen",
@@ -201,6 +201,30 @@ export const parlisScenario: TestScenario = {
           && Array.isArray(snapshot.deputiesMost) && snapshot.deputiesMost.length === 10
           && Array.isArray(snapshot.deputiesLeast) && snapshot.deputiesLeast.length === 10,
         message: "Gespeicherte Typzahlen ergeben die Gesamtzahl; beide Personenranglisten sind auf zehn Plätze begrenzt.",
+      };
+    },
+  }, {
+    id: "parlis-reviewed-author-aliases",
+    label: "Geprüfte Urhebernamen aus der 17. Wahlperiode verlinken",
+    kind: "db",
+    run: async () => {
+      const assignments = [
+        { proceeding: "V-245681", source: "Gabriele Rolland", display: ["Gabi Rolland", "Gabriele Rolland"] },
+        { proceeding: "V-216519", source: "Josef Frey", display: ["Josha Frey", "Josef Frey"] },
+      ];
+      const checks = await Promise.all(assignments.map(async ({ proceeding, source, display }) => {
+        const { data, error } = await supabase.from("parlis_deputy_profiles").select("profile_key,deputy_name")
+          .eq("legislature", 17).eq("vorgangs_id", proceeding).in("deputy_name", display);
+        if (error) throw error;
+        const candidate = data.length === 1 ? data[0] : undefined;
+        if (!candidate?.profile_key || !candidate.deputy_name) return false;
+        const text = `${source} (${source === "Josef Frey" ? "GRÜNE" : "SPD"})`;
+        return authorSegments(text, new Map([[candidate.profile_key, candidate.deputy_name]]))
+          .some(segment => segment.profileKey === candidate.profile_key && segment.text === source);
+      }));
+      return {
+        ok: checks.every(Boolean),
+        message: "Die ursprünglichen PARLIS-Namen verlinken auf genau ein Profil.",
       };
     },
   }, {

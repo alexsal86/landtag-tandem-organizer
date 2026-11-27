@@ -7,6 +7,15 @@ function authorKey(name: string) {
   const key = ordered.replace(/\b(?:dr|prof)\.\s*/gi, "")
     .trim().replace(/\s+/g, " ").toLocaleLowerCase("de-DE");
   switch (key) {
+    case "gabriele rolland": return "gabi rolland";
+    case "josef frey": return "josha frey";
+    case "nikolai reith": return "niko reith";
+    case "alena fink-trauschel": return "alena trauschel";
+    case "klaus martin burger": return "klaus burger";
+    case "christine neumann-martin": return "christine neumann";
+    case "michael joukov-schwelling": return "michael joukov";
+    case "hans-ulrich sckerl": return "uli sckerl";
+    case "n stefan fulst-blei": return "stefan fulst-blei";
     case "uwe freiherr von wangenheim": return "uwe von wangenheim";
     case "med. michael preusch": return "michael preusch";
     case "n hans-peter hörner": return "hans-peter hörner";

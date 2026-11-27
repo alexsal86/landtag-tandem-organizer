@@ -60,7 +60,7 @@ _Auto-generiert mit `npm run update:feature-catalog` aus dem zentralen Funktions
 |---|---|---:|---:|---|
 | `case-file-lifecycle` | Fallakte mit Folgetabellen (Container) im Unterschied zum Vorgang | 16 | 9 | — |
 | `case-item-lifecycle` | Vorgangs-Lifecycle (Am Zug → Schritt → Wiedervorlage → Entscheidung → Tageszettel → Abschluss) | 9 | 5 | — |
-| `parlis` | Parlamentarische Vorgänge | 0 | 11 | — |
+| `parlis` | Parlamentarische Vorgänge | 0 | 12 | — |
 
 ## Selbsttest-Schritte
 
@@ -105,6 +105,7 @@ Diese Schritte führen die Szenarien aus; „letzter Lauf“ stammt aus `src/fea
 | `parlis` | `parlis-wp17-activity` | Gespeicherte Typzahlen der 17. Wahlperiode entsprechen der PARLIS-Liste | db | — |
 | `parlis` | `parlis-ministry-suggestions` | Ressortvorschläge verbinden ministerielle Quellen über Wahlperioden | db | — |
 | `parlis` | `parlis-initiative-rankings` | Initiativenbilanz der 17. Wahlperiode vollständig und begrenzt abrufen | db | — |
+| `parlis` | `parlis-reviewed-author-aliases` | Geprüfte Urhebernamen aus der 17. Wahlperiode verlinken | db | — |
 | `parlis` | `parlis-deputy-profile` | Weirauchs Anfrage aus Drucksache 18/763 führt zum Abgeordnetenprofil | db | — |
 
 ## Deklarierter Prüfumfang
@@ -131,17 +132,18 @@ Diese Schritte führen die Szenarien aus; „letzter Lauf“ stammt aus `src/fea
 
 ### `parlis`
 
-1. Gespeicherte Initiativenbilanz mit begrenzten Ranglisten
-2. Ressortvorschläge für mehrere Wahlperioden
-3. Vorgangstypen der 17. Wahlperiode im Profil zusammenfassen
-4. Fünf persönlich zugeordnete Anträge mit gefiltertem Link im Profil
-5. Schlagwortvorschläge bei Eingabe begrenzen
-6. Serverseitige Suche und begrenzte Dokumentenseiten
-7. Schlagwörter, Fraktionsfilter und mehrere Urheber
-8. Urhebertext mit Titeln und Namensbestandteilen bleibt vollständig
-9. Monatsgruppierung, eindeutige Schlagwörter und leere Ressorts
-10. Importierte Vorgänge sind lesbar
-11. Verknüpfte Urheber führen zu einem Mandat derselben Wahlperiode
+1. Geprüfte Namensvarianten auf die richtigen Abgeordnetenprofile verlinken
+2. Gespeicherte Initiativenbilanz mit begrenzten Ranglisten
+3. Ressortvorschläge für mehrere Wahlperioden
+4. Vorgangstypen der 17. Wahlperiode im Profil zusammenfassen
+5. Fünf persönlich zugeordnete Anträge mit gefiltertem Link im Profil
+6. Schlagwortvorschläge bei Eingabe begrenzen
+7. Serverseitige Suche und begrenzte Dokumentenseiten
+8. Schlagwörter, Fraktionsfilter und mehrere Urheber
+9. Urhebertext mit Titeln und Namensbestandteilen bleibt vollständig
+10. Monatsgruppierung, eindeutige Schlagwörter und leere Ressorts
+11. Importierte Vorgänge sind lesbar
+12. Verknüpfte Urheber führen zu einem Mandat derselben Wahlperiode
 
 ## Funktionsdetails
 
@@ -828,7 +830,7 @@ Zeigt für die 17. Wahlperiode vorab berechnete Ranglisten für Abgeordnete, Fra
 - Keine.
 
 ### `parlis.proceedings` — Parlamentarische Vorgänge auswerten
-Lädt die Vorgänge der 17. und 18. Wahlperiode des Landtags Baden-Württemberg aus der Datenbank, gruppiert sie nach Datum und Merkmalen und verlinkt die Originaldokumente und verbindet namentlich zugeordnete Urheber über Mandate mit ihren Abgeordnetenprofilen. Lädt Dokumentenkarten beim Scrollen seitenweise mit serverseitiger Suche und Filterung. Schlagwortvorschläge werden bei Eingabe geladen. Zeigt das Datum direkt auf der Dokumentenkarte und bietet Suche, Sortierung und Filter nach Typ, Fraktion, Zeitraum und Schlagwort. Abgeordnetenprofile zeigen bis zu fünf persönlich zugeordnete Anträge der ausgewählten Wahlperiode und für die 17. Wahlperiode gespeicherte Zähler je Vorgangstyp mit gefilterten Links. Urheberlinks verwenden den vollständigen Namen aus der Quelle und Parteikürzel werden farblich markiert.
+Lädt die Vorgänge der 17. und 18. Wahlperiode des Landtags Baden-Württemberg aus der Datenbank, gruppiert sie nach Datum und Merkmalen und verlinkt die Originaldokumente und verbindet namentlich zugeordnete Urheber über Mandate mit ihren Abgeordnetenprofilen. Lädt Dokumentenkarten beim Scrollen seitenweise mit serverseitiger Suche und Filterung. Schlagwortvorschläge werden bei Eingabe geladen. Zeigt das Datum direkt auf der Dokumentenkarte und bietet Suche, Sortierung und Filter nach Typ, Fraktion, Zeitraum und Schlagwort. Abgeordnetenprofile zeigen bis zu fünf persönlich zugeordnete Anträge der ausgewählten Wahlperiode und für die 17. Wahlperiode gespeicherte Zähler je Vorgangstyp mit gefilterten Links. Geprüfte PARLIS-Namensvarianten lösen auf bestehende Mandate auf. Urheberlinks verwenden den vollständigen Namen aus der Quelle und Parteikürzel werden farblich markiert.
 
 - **Kategorie:** fachlich
 - **Implementierung:** implementiert
@@ -858,6 +860,7 @@ Lädt die Vorgänge der 17. und 18. Wahlperiode des Landtags Baden-Württemberg 
 - supabase/migrations/20261127144000_import_parlis_wp17.sql
 - supabase/migrations/20261127151000_page_parlis_proceedings.sql
 - supabase/migrations/20261127161000_search_parlis_topics.sql
+- supabase/migrations/20261128021000_link_reviewed_parlis_wp17_author_aliases.sql
 - supabase/migrations/20261127211000_get_parlis_deputy_motions.sql
 - supabase/migrations/20261127212000_snapshot_parlis_wp17_activity.sql
 - src/features/parlis/page.ts
