@@ -2,12 +2,12 @@
   "schemaVersion": 2,
   "source": "src/integrations/supabase/types.ts",
   "counts": {
-    "total": 354,
+    "total": 358,
     "scenario": 92,
-    "deferred": 118,
+    "deferred": 122,
     "excluded": 144,
     "missing": 0,
-    "exceptions": 262
+    "exceptions": 266
   },
   "exceptionGroups": [
     {
@@ -333,6 +333,17 @@
         "todos",
         "topic_backlog",
         "vacation_checklist_responses"
+      ]
+    },
+    {
+      "kind": "deferred",
+      "reason": "Parlis-Ministerienzuordnung: Die Szenarien lesen Ressortlinien und Vorschläge nur; Zuordnungen schreibt die Administration, die Themen-Wolke der Trigger auf neue Büros.",
+      "expiresOn": "2027-06-30",
+      "tables": [
+        "parlis_ministry_assignments",
+        "parlis_ministry_lines",
+        "parlis_ministry_suggestions",
+        "parlis_ministry_topics"
       ]
     }
   ],
@@ -1632,7 +1643,9 @@
       "title": "Parlamentarische Vorgänge",
       "touches": [],
       "features": [
-        "parlis.proceedings"
+        "parlis.proceedings",
+        "parlis.ministry-topics",
+        "parlis.initiative-rankings"
       ],
       "writes": [],
       "registered": true
@@ -4072,6 +4085,42 @@
     },
     {
       "table": "parlis_deputy_mandates",
+      "status": "deferred",
+      "scenarios": [],
+      "exception": {
+        "kind": "deferred",
+        "expiresOn": "2027-06-30"
+      }
+    },
+    {
+      "table": "parlis_ministry_assignments",
+      "status": "deferred",
+      "scenarios": [],
+      "exception": {
+        "kind": "deferred",
+        "expiresOn": "2027-06-30"
+      }
+    },
+    {
+      "table": "parlis_ministry_lines",
+      "status": "deferred",
+      "scenarios": [],
+      "exception": {
+        "kind": "deferred",
+        "expiresOn": "2027-06-30"
+      }
+    },
+    {
+      "table": "parlis_ministry_suggestions",
+      "status": "deferred",
+      "scenarios": [],
+      "exception": {
+        "kind": "deferred",
+        "expiresOn": "2027-06-30"
+      }
+    },
+    {
+      "table": "parlis_ministry_topics",
       "status": "deferred",
       "scenarios": [],
       "exception": {

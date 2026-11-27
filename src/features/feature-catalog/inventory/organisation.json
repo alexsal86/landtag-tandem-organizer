@@ -609,6 +609,43 @@
       "dependsOn": ["topics.manage", "responsibilities.matrix"]
     },
     {
+      "id": "topics.ministry-cloud",
+      "subarea": "Themen",
+      "name": "Themen-Wolke für neue Büros",
+      "description": "Legt im Themenkatalog jedes Büros automatisch den Grundbestand an ministerienbezogenen Themen an, füllt leere Beschreibungen und verknüpft die Ressortlinien der Parlamentsdokumentation.",
+      "category": "automatisiert",
+      "implementationStatus": "implementiert",
+      "integrationStatus": "system",
+      "coverage": "selftest",
+      "testResult": "nicht-ausgefuehrt",
+      "evidence": [
+        "supabase/migrations/20261128020000_seed_ministry_topic_cloud.sql",
+        "src/features/selftest/scenarios/topic-linking.ts"
+      ],
+      "rpcs": [
+        "seed_ministry_topic_cloud",
+        "ministry_topic_cloud_selftest"
+      ],
+      "tables": [
+        "topics",
+        "parlis_ministry_lines",
+        "parlis_ministry_topics",
+        "tenants"
+      ],
+      "roles": [
+        "system"
+      ],
+      "scenarios": [
+        "topic-linking"
+      ],
+      "limitations": [
+        "Der Selbsttest legt ein Testbüro an und rollt es zurück; die Anzeige der Themen in der Administration wird dabei nicht über die Oberfläche geprüft."
+      ],
+      "dependsOn": [
+        "topics.manage"
+      ]
+    },
+    {
       "id": "facts.manage",
       "subarea": "Fakten",
       "name": "Fakten und Argumente pflegen",

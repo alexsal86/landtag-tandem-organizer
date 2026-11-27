@@ -40,11 +40,13 @@ export const topicLinkingScenario: TestScenario = {
     "Doppelte Verknüpfungen sind gesperrt (23505); auch ein direkter Insert ohne tenant_id wird dem Büro zugeordnet",
     "merge_topics zieht Verknüpfungen auf das Zielthema, deaktiviert die Quelle als Weiterleitung und ensure_topic folgt der Weiterleitung",
     "topic_usage zählt die Verknüpfungen je Modul und liefert die Summe",
+    "Ein neu angelegtes Büro erhält über den Trigger 69 Themen und 85 Ressortverknüpfungen (5–10 je Linie); ein zweiter Lauf verdoppelt nichts und eigene Beschreibungen bleiben stehen",
   ],
   limitations: [
     "knowledge_question_topics hat derzeit keinen Client-Schreibpfad (nur eine Lesepolicy); geprüft werden Lesbarkeit und die Abweisung eines direkten Inserts, nicht eine UI-Verknüpfung.",
     "Für merge_topics und Änderungen an der Modul-Steuerung braucht das Szenario eine Büroleitung; als Mitglied werden die Abweisungen geprüft statt der Wirkung.",
     "Die Modul-Steuerung kennt keine id-Spalte; geprüft wird auf der vorhandenen Standardzeile, die anschließend wiederhergestellt wird.",
+    "Die Themen-Wolke neuer Büros prüft der Server-Selbsttest an einem Testbüro, das anschließend zurückgerollt wird; die Anzeige im Themenkatalog wird dabei nicht über die Oberfläche geprüft.",
   ],
   writes: [
     { table: "topics", columns: ["name", "label", "icon", "color", "order_index", "is_active", "tenant_id", "created_by", "merged_into", "merged_at", "updated_by"] },
@@ -341,6 +343,40 @@ export const topicLinkingScenario: TestScenario = {
           ok: Object.values(checks).every(Boolean),
           message: "topic_usage zählt die Verknüpfungen je Modul und bildet die Summe korrekt.",
           details: { ...checks, case_items: Number(row.case_items), total: Number(row.total) },
+        };
+      },
+    },
+    {
+      id: "ministry-topic-cloud", label: "Neue Büros erhalten die Themen-Wolke automatisch",
+      kind: "db",
+      run: async ctx => {
+        const callSelftest = supabase.rpc as unknown as (
+          fn: string,
+          args?: Record<string, unknown>,
+        ) => Promise<{ data: unknown; error: { code?: string; message?: string } | null }>;
+        const response = await callSelftest("ministry_topic_cloud_selftest", {
+          p_tenant: ctx.tenantId,
+        });
+        if (response.error) {
+          return {
+            ok: false,
+            message:
+              response.error.message ??
+              response.error.code ??
+              "Server-Selbsttest nicht ausführbar",
+          };
+        }
+        const result =
+          response.data && typeof response.data === "object" && !Array.isArray(response.data)
+            ? (response.data as { ok?: boolean; message?: string; checks?: Record<string, boolean> })
+            : null;
+        return {
+          ok: result?.ok === true,
+          message:
+            result?.ok === true
+              ? "Ein neu angelegtes Büro erhält 69 Themen mit 85 Ressortverknüpfungen; der zweite Lauf verdoppelt nichts und eigene Beschreibungen bleiben stehen."
+              : result?.message ?? "Der Server-Selbsttest liefert kein Ergebnis.",
+          details: result?.checks,
         };
       },
     },

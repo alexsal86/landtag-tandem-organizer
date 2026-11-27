@@ -748,7 +748,7 @@ Die Angaben sind deklarierte Mindestrollen. Die tatsächlich wirksame Berechtigu
 - `events.legacy-rsvp` — Legacy-Einladungslinks
 - `polls.respond` — An Umfrage teilnehmen
 
-### `system` — 35 Funktionen
+### `system` — 36 Funktionen
 
 - `tasks.recurring` — Wiederkehrende Aufgabe
 - `tasks.nudge` — Aufgabe anmahnen und Erinnerungen versenden
@@ -767,6 +767,7 @@ Die Angaben sind deklarierte Mindestrollen. Die tatsächlich wirksame Berechtigu
 - `employees.action-tasks` — Maßnahmen als Aufgaben
 - `employees.preparation` — Gesprächsvorbereitung und Erinnerungen
 - `dossiers.sources` — Dossier-Quellenbeobachtung
+- `topics.ministry-cloud` — Themen-Wolke für neue Büros
 - `integration.calendar-sync` — Externe Kalender synchronisieren
 - `integration.email` — Transaktions-E-Mail-Versand
 - `integration.push` — Push-Benachrichtigungen
@@ -1050,4 +1051,5 @@ Die Angaben sind deklarierte Mindestrollen. Die tatsächlich wirksame Berechtigu
 | `timetracking.vacation` | `abgeordneter`, `bueroleitung`, `mitarbeiter`, `praktikant` |
 | `topics.convert-catalog` | `bueroleitung`, `admin` |
 | `topics.manage` | `abgeordneter`, `bueroleitung`, `mitarbeiter` |
+| `topics.ministry-cloud` | `system` |
 | `widget.matrix-website` | `oeffentlich`, `admin`, `bueroleitung` |

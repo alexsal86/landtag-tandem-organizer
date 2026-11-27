@@ -345,4 +345,15 @@ export const COVERAGE_EXCEPTIONS: CoverageExceptionGroup[] = [
       "vacation_checklist_responses",
     ],
   },
+  {
+    kind: "deferred",
+    reason: "Parlis-Ministerienzuordnung: Die Szenarien lesen Ressortlinien und Vorschläge nur; Zuordnungen schreibt die Administration, die Themen-Wolke der Trigger auf neue Büros.",
+    expiresOn: "2027-06-30",
+    tables: [
+      "parlis_ministry_assignments",
+      "parlis_ministry_lines",
+      "parlis_ministry_suggestions",
+      "parlis_ministry_topics",
+    ],
+  },
 ];

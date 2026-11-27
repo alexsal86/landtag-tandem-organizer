@@ -4,7 +4,7 @@ _Auto-generiert mit `npm run update:selftest-coverage`._
 
 Quelle: `src/integrations/supabase/types.ts`. Die Angaben beschreiben deklarierte Prüfumfänge, keine erfolgreichen Testläufe und keine Code-Coverage.
 
-Von 354 Tabellen haben 92 ein registriertes Szenario; 0 sind noch nicht eingeordnet. 262 sind befristet ausgenommen, davon 118 als Ausbau offen und 144 als technisch oder fachlich ausgenommen. Ausnahmen zählen nicht als bestanden.
+Von 358 Tabellen haben 92 ein registriertes Szenario; 0 sind noch nicht eingeordnet. 266 sind befristet ausgenommen, davon 122 als Ausbau offen und 144 als technisch oder fachlich ausgenommen. Ausnahmen zählen nicht als bestanden.
 
 ## Szenarien
 
@@ -289,6 +289,10 @@ Von 354 Tabellen haben 92 ein registriertes Szenario; 0 sind noch nicht eingeord
 | `office_debrief_state` | Ausstehend bis 2027-03-31 | — |
 | `parliament_protocols` | Ausstehend bis 2027-03-31 | — |
 | `parlis_deputy_mandates` | Ausstehend bis 2027-06-30 | — |
+| `parlis_ministry_assignments` | Ausstehend bis 2027-06-30 | — |
+| `parlis_ministry_lines` | Ausstehend bis 2027-06-30 | — |
+| `parlis_ministry_suggestions` | Ausstehend bis 2027-06-30 | — |
+| `parlis_ministry_topics` | Ausstehend bis 2027-06-30 | — |
 | `parlis_proceedings` | Ausstehend bis 2027-06-30 | — |
 | `party_associations` | Ausstehend bis 2027-03-31 | — |
 | `planning_item_comments` | Ausgenommen bis 2027-06-30 | — |
@@ -422,6 +426,7 @@ Jede Ausnahme verlangt eine Begründung und ein Ablaufdatum. Abgelaufene, unbegr
 | Ausstehend | 2027-06-30 | `parlis_proceedings`, `parlis_deputy_mandates` | Parlis: Der Selbsttest prüft importierte Referenzdaten lesend. Schreibzugriffe bleiben der Datenbankmigration vorbehalten. |
 | Ausstehend | 2027-06-30 | 36 Tabellen | Wahlanalyse und Wahlhistorie: Szenarien prüfen Regeln und Lesezugriffe, schreiben aber bewusst keine importierten Bestandsdaten. |
 | Ausstehend | 2027-03-31 | 60 Tabellen | Fachlicher Ausbau offen: Für diese Tabelle fehlt noch ein Szenario oder Step; der Eintrag muss bis zum Ablauf geprüft werden. |
+| Ausstehend | 2027-06-30 | `parlis_ministry_assignments`, `parlis_ministry_lines`, `parlis_ministry_suggestions`, `parlis_ministry_topics` | Parlis-Ministerienzuordnung: Die Szenarien lesen Ressortlinien und Vorschläge nur; Zuordnungen schreibt die Administration, die Themen-Wolke der Trigger auf neue Büros. |
 
 ## Fachfunktionen ohne Selbsttest
 

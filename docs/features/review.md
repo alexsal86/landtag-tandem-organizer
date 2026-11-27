@@ -8,12 +8,8 @@ Dieser Bericht trennt **eindeutig nachweisbare Inkonsistenzen** von **heuristisc
 
 Eindeutige Fehler werden im CI-Lauf ausgegeben und brechen die Prüfung ab; sie werden hier nicht dupliziert. Dieser Bericht listet die verbleibenden Review-Hinweise und Prüfkandidaten.
 
-- Review-Hinweise: **1**
-- Nicht zugeordnete Objekte: **2**, davon ohne Ausnahme: **1**
-
-### Review-Hinweise
-
-- Prüfkandidat ohne Funktionszuordnung (rpc): rename_config_item_unprotected
+- Review-Hinweise: **0**
+- Nicht zugeordnete Objekte: **1**, davon ohne Ausnahme: **0**
 
 ## Funktionen ohne zugeordneten Test (121)
 
@@ -139,7 +135,7 @@ Eindeutige Fehler werden im CI-Lauf ausgegeben und brechen die Prüfung ab; sie 
 - `knowledge.global-question` — Globale Wissensfrage aus jedem Bereich
 - `knowledge.management` — Wissensverwaltung
 
-## Funktionen ohne Dokumentationsverweis (170)
+## Funktionen ohne Dokumentationsverweis (171)
 
 - `mywork.dashboard.today-priorities` — Heute zuerst
 - `mywork.tabs` — Meine Arbeit – Bereichsnavigation und Einstellungen
@@ -238,6 +234,7 @@ Eindeutige Fehler werden im CI-Lauf ausgegeben und brechen die Prüfung ab; sie 
 - `dossiers.search` — Globale Dossier-Suche
 - `drucksachen.view` — Drucksachen anzeigen
 - `topics.manage` — Themen verwalten
+- `topics.ministry-cloud` — Themen-Wolke für neue Büros
 - `facts.manage` — Fakten und Argumente pflegen
 - `integration.email` — Transaktions-E-Mail-Versand
 - `integration.geocoding` — Adress-Geocoding
@@ -325,7 +322,7 @@ Eindeutige Fehler werden im CI-Lauf ausgegeben und brechen die Prüfung ab; sie 
 - `events.legacy-rsvp` — Legacy-Einladungslinks (veraltet)
 - `cases.legacy-routes` — Legacy-Vorgangsrouten (veraltet)
 
-## Funktionen mit Einschränkungen oder offenen Punkten (86)
+## Funktionen mit Einschränkungen oder offenen Punkten (87)
 
 ### `mywork.dashboard`
 
@@ -566,6 +563,10 @@ Eindeutige Fehler werden im CI-Lauf ausgegeben und brechen die Prüfung ab; sie 
 - knowledge_question_topics hat nur eine Lesepolicy; Clients können Wissensfragen noch nicht selbst mit Themen verknüpfen, das Szenario prüft Lesbarkeit und die Abweisung des direkten Inserts.
 - merge_topics und Änderungen an topic_module_settings setzen eine Büroleitung voraus; als Mitglied prüft das Szenario die Abweisung.
 
+### `topics.ministry-cloud`
+
+- Der Selbsttest legt ein Testbüro an und rollt es zurück; die Anzeige der Themen in der Administration wird dabei nicht über die Oberfläche geprüft.
+
 ### `integration.calendar-sync`
 
 - Ein echter Sync gegen einen externen Anbieter ist nicht ausgeführt worden; nur Code und Contract-Tests liegen vor.
@@ -732,11 +733,11 @@ Eindeutige Fehler werden im CI-Lauf ausgegeben und brechen die Prüfung ab; sie 
 
 - Keine.
 
-### Datenbankfunktionen ohne Zuordnung (1)
+### Datenbankfunktionen ohne Zuordnung (0)
 
 Diese Liste ist heuristisch gefiltert (technische Präfixe gelten als Hilfsfunktionen). Sie ist ein Prüfauftrag, keine automatische Aussage über Verwaistheit.
 
-- `rename_config_item_unprotected` (src/integrations/supabase/types.ts)
+- Keine.
 
 ### Registrierte Selbsttests ohne Funktionszuordnung (0)
 

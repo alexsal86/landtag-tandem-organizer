@@ -6,10 +6,10 @@ _Auto-generiert mit `npm run update:feature-catalog` aus dem zentralen Funktions
 
 ## Kennzahlen
 
-- Funktionen: **18** in **5** Unterbereichen
-- implementiert: **17**, teilweise: **1**, deaktiviert: **0**, potenziell verwaist: **0**
+- Funktionen: **19** in **5** Unterbereichen
+- implementiert: **18**, teilweise: **1**, deaktiviert: **0**, potenziell verwaist: **0**
 - ohne zugeordneten Test: **12**
-- ohne Dokumentationsverweis: **15**
+- ohne Dokumentationsverweis: **16**
 
 ## Funktionen
 
@@ -33,6 +33,7 @@ _Auto-generiert mit `npm run update:feature-catalog` aus dem zentralen Funktions
 | `meetings.templates` Sitzungsvorlagen | Jour fixe | administrativ | implementiert | rollenabhängig | kein Test |
 | `topics.convert-catalog` Thema in Katalog überführen | Themen | fachlich | implementiert | UI | kein Test |
 | `topics.manage` Themen verwalten | Themen | fachlich | implementiert | UI | Selbsttest |
+| `topics.ministry-cloud` Themen-Wolke für neue Büros | Themen | automatisiert | implementiert | systemseitig | Selbsttest |
 
 ## Unterbereiche
 
@@ -48,14 +49,14 @@ _Auto-generiert mit `npm run update:feature-catalog` aus dem zentralen Funktions
 
 ## Datenbanktabellen
 
-`archived_meeting_protocol_tasks`, `case_item_topics`, `case_items`, `committees`, `documents`, `dossier_entries`, `dossier_links`, `dossier_position_versions`, `dossier_source_watchers`, `dossier_stakeholders`, `dossier_talking_points`, `dossiers`, `employee_responsibilities`, `facts`, `knowledge_question_topics`, `meeting_agenda_documents`, `meeting_agenda_items`, `meeting_participants`, `meeting_protocol_details`, `meeting_templates`, `meetings`, `protocol_agenda_items`, `protocol_sessions`, `protocol_speeches`, `regions`, `tasks`, `topic_catalog_links`, `topic_module_settings`, `topics`
+`archived_meeting_protocol_tasks`, `case_item_topics`, `case_items`, `committees`, `documents`, `dossier_entries`, `dossier_links`, `dossier_position_versions`, `dossier_source_watchers`, `dossier_stakeholders`, `dossier_talking_points`, `dossiers`, `employee_responsibilities`, `facts`, `knowledge_question_topics`, `meeting_agenda_documents`, `meeting_agenda_items`, `meeting_participants`, `meeting_protocol_details`, `meeting_templates`, `meetings`, `parlis_ministry_lines`, `parlis_ministry_topics`, `protocol_agenda_items`, `protocol_sessions`, `protocol_speeches`, `regions`, `tasks`, `tenants`, `topic_catalog_links`, `topic_module_settings`, `topics`
 
 ## Selbsttest-Szenarien
 
 | Szenario | Titel | deklarierte Tabellen | deklarierte Prüfungen | letzter Lauf |
 |---|---|---:|---:|---|
 | `meeting-lifecycle` | Meeting-Lifecycle (vollständig + Field-Verifikation) | 9 | 0 | — |
-| `topic-linking` | Themenverknüpfung und Modul-Steuerung | 5 | 9 | — |
+| `topic-linking` | Themenverknüpfung und Modul-Steuerung | 5 | 10 | — |
 
 ## Selbsttest-Schritte
 
@@ -91,6 +92,7 @@ Diese Schritte führen die Szenarien aus; „letzter Lauf“ stammt aus `src/fea
 | `topic-linking` | `case-item-link` | Vorgang mit Thema verknüpfen und Duplikate sperren | db | — |
 | `topic-linking` | `merge-redirect` | Themen zusammenführen und Weiterleitung prüfen | db | — |
 | `topic-linking` | `usage` | Verwendung je Modul zählen | db | — |
+| `topic-linking` | `ministry-topic-cloud` | Neue Büros erhalten die Themen-Wolke automatisch | db | — |
 | `topic-linking` | `knowledge-topics` | Wissensfragen-Verknüpfung lesen und Schreibversuch abweisen | db | — |
 
 ## Deklarierter Prüfumfang
@@ -110,6 +112,7 @@ Keine Prüfungen deklariert.
 7. Doppelte Verknüpfungen sind gesperrt (23505); auch ein direkter Insert ohne tenant_id wird dem Büro zugeordnet
 8. merge_topics zieht Verknüpfungen auf das Zielthema, deaktiviert die Quelle als Weiterleitung und ensure_topic folgt der Weiterleitung
 9. topic_usage zählt die Verknüpfungen je Modul und liefert die Summe
+10. Ein neu angelegtes Büro erhält über den Trigger 69 Themen und 85 Ressortverknüpfungen (5–10 je Linie); ein zweiter Lauf verdoppelt nichts und eigene Beschreibungen bleiben stehen
 
 ## Funktionsdetails
 
@@ -717,6 +720,42 @@ Wandelt ein Thema atomar in einen Katalogeintrag um, erhält historische Verknü
 **Bekannte Einschränkungen**
 
 - Keine.
+
+**Offene Prüfpunkte**
+
+- Keine.
+
+### `topics.ministry-cloud` — Themen-Wolke für neue Büros
+Legt im Themenkatalog jedes Büros automatisch den Grundbestand an ministerienbezogenen Themen an, füllt leere Beschreibungen und verknüpft die Ressortlinien der Parlamentsdokumentation.
+
+- **Kategorie:** automatisiert
+- **Implementierung:** implementiert
+- **Einbindung:** systemseitig
+- **Testabdeckung:** Selbsttest
+- **Letztes Testergebnis:** nicht-ausgefuehrt (kein Laufnachweis importiert; nicht aus der Existenz einer Testdatei abgeleitet)
+- **Rollen:** `system`
+- **Routen:** —
+- **Frontend-Komponenten:** —
+- **Services:** —
+- **Hooks:** —
+- **Edge Functions:** —
+- **Datenbankfunktionen:** `seed_ministry_topic_cloud`, `ministry_topic_cloud_selftest`
+- **Tabellen:** `topics`, `parlis_ministry_lines`, `parlis_ministry_topics`, `tenants`
+- **Abhängigkeiten:** `topics.manage`
+- **Selbsttests:** `topic-linking`
+- **Unit-Tests:** —
+- **Integrationstests:** —
+- **Browser-Tests:** —
+- **Dokumentation:** —
+
+**Nachweise im Quellcode**
+
+- supabase/migrations/20261128020000_seed_ministry_topic_cloud.sql
+- src/features/selftest/scenarios/topic-linking.ts
+
+**Bekannte Einschränkungen**
+
+- Der Selbsttest legt ein Testbüro an und rollt es zurück; die Anzeige der Themen in der Administration wird dabei nicht über die Oberfläche geprüft.
 
 **Offene Prüfpunkte**
 

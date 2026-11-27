@@ -2784,6 +2784,11 @@
       "id": "parlis.ministry-topics",
       "name": "Ministerien und zentrale Themen zuordnen",
       "area": "vorgaenge"
+    },
+    {
+      "id": "topics.ministry-cloud",
+      "name": "Themen-Wolke für neue Büros",
+      "area": "organisation"
     }
   ],
   "parlis_ministry_suggestions": [
@@ -2798,6 +2803,11 @@
       "id": "parlis.ministry-topics",
       "name": "Ministerien und zentrale Themen zuordnen",
       "area": "vorgaenge"
+    },
+    {
+      "id": "topics.ministry-cloud",
+      "name": "Themen-Wolke für neue Büros",
+      "area": "organisation"
     }
   ],
   "parlis_proceedings": [
@@ -3836,6 +3846,11 @@
       "id": "admin.tenants",
       "name": "Mandantenverwaltung",
       "area": "verwaltung"
+    },
+    {
+      "id": "topics.ministry-cloud",
+      "name": "Themen-Wolke für neue Büros",
+      "area": "organisation"
     }
   ],
   "time_entries": [
@@ -3946,6 +3961,11 @@
     {
       "id": "topics.manage",
       "name": "Themen verwalten",
+      "area": "organisation"
+    },
+    {
+      "id": "topics.ministry-cloud",
+      "name": "Themen-Wolke für neue Büros",
       "area": "organisation"
     }
   ],
