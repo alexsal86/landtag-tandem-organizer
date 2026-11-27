@@ -73,6 +73,23 @@ describe("Ministerien seit 1952", () => {
     expect(ministryPhases.filter(phase => phase.from === "2026-05-13").every(phase => phase.source.citation === "GBl. 2026 Nr. 70")).toBe(true);
   });
 
+  it("belegt die 1980er und 2010er Zwischenstufen im Gesetzblatt", () => {
+    const forsten = ministryPhases.find(phase => phase.id === "rural-1980");
+    expect(forsten?.name).toBe("Ministerium für Ernährung, Landwirtschaft, Umwelt und Forsten");
+    expect(forsten?.from).toBe("1980-06-04");
+    expect(forsten?.source.citation).toBe("GBl. 1980 S. 361");
+    expect(ministryPhases.find(phase => phase.id === "rural-1972")?.to).toBe("1980-06-03");
+
+    const umwelt = ministryPhases.find(phase => phase.id === "environment-2010");
+    expect(umwelt?.name).toContain("Umwelt, Naturschutz und Verkehr");
+    expect(umwelt?.source.citation).toBe("GBl. 2010 S. 321");
+    expect(ministryPhases.find(phase => phase.id === "environment-2005")?.to).toBe("2010-02-28");
+    expect(ministryPhases.find(phase => phase.id === "rural-2010")?.name).toContain("Verbraucherschutz");
+    expect(ministryPhases.find(phase => phase.id === "social-2010")?.name).toContain("Familien und Senioren");
+    expect(ministryPhases.find(phase => phase.id === "transport-2005")?.name).toContain("Innenministerium");
+    expect(ministryPhases.find(phase => phase.id === "transport-2010")?.name).toContain("Umwelt, Naturschutz und Verkehr");
+  });
+
   it("ordnet Namensphasen den Wahlperioden über die Systemzeiträume zu", () => {
     const gruendung = ministryPhases.find(phase => phase.id === "interior-1952");
     expect(gruendung && periodsForPhase(gruendung)).toContain(1);

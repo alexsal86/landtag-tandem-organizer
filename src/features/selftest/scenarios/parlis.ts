@@ -28,6 +28,8 @@ export const parlisScenario: TestScenario = {
       const ministerLines = new Set(ministers.map(term => term.lineId));
       const alleBelegt = ministryPhases.every(phase => phase.verified);
       const laendlicherRaum = ministryPhases.find(phase => phase.id === "rural-1987");
+      const forsten = ministryPhases.find(phase => phase.id === "rural-1980");
+      const umwelt2010 = ministryPhases.find(phase => phase.id === "environment-2010");
       return {
         ok: sourced
           && ministryPhases.length >= 40
@@ -38,6 +40,8 @@ export const parlisScenario: TestScenario = {
           && alleBelegt
           && laendlicherRaum?.name.includes("ländlichen Raum") === true
           && laendlicherRaum.name.includes("Ernährung") === false
+          && forsten?.source.citation === "GBl. 1980 S. 361"
+          && umwelt2010?.source.citation === "GBl. 2010 S. 321"
           && ressortLines.every(line => ministerLines.has(line.id)),
         message: "Jede Phase ist im Gesetzblatt belegt und nennt ihre Ressortlinie; die Wahlperioden nutzen die Systemzeiträume, und jede Ressortlinie hat mindestens eine belegte Amtszeit.",
       };
