@@ -194,18 +194,34 @@
   white-space: normal;
 }
 .parlis-table-figure figcaption { font-size: .75rem; color: var(--text-secondary); }
+/* Der Text nutzt die volle Breite der rechten Spalte; umbrechen nur an Wörtern. */
 .parlis-details-text {
-  max-width: 68ch;
   margin: 0;
-  padding-left: 1rem;
+  padding-left: .9rem;
   border-left: 2px solid var(--border-default);
   line-height: 1.7;
-  white-space: pre-line;
-  overflow-wrap: anywhere;
+  overflow-wrap: break-word;
+  hyphens: auto;
 }
 @media (min-width: 768px) {
   .parlis-details-text { padding-left: 1.15rem; }
 }
+.parlis-details-paragraph { margin: 0; }
+.parlis-details-paragraph + .parlis-details-paragraph { margin-top: .7rem; }
+/* Fragen: hängende Einrückung, damit die Nummer vor dem Text steht. */
+.parlis-details-paragraph-question {
+  margin-top: 1.15rem;
+  padding-left: 1.1rem;
+  text-indent: -1.1rem;
+}
+.parlis-details-paragraph-question + .parlis-details-paragraph { margin-top: .35rem; }
+/* In der Antwort sind die wiederholten Fragen zitiert. */
+.parlis-details-paragraph-quoted {
+  font-style: italic;
+  color: var(--text-secondary);
+  margin-bottom: .75rem;
+}
+.parlis-details-paragraph-quoted + .parlis-details-paragraph { margin-top: .15rem; }
 @media (min-width: 640px) {
   .parlis-details-grid { grid-template-columns: minmax(0, 10rem) minmax(0, 1fr); gap: .6rem 1.5rem; }
   .parlis-details-grid dt { margin-top: 0; padding-top: .1rem; }

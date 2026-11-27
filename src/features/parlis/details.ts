@@ -83,6 +83,32 @@ function tableList(value: unknown): DocumentTable[] {
   });
 }
 
+const QUESTION_ITEM = /^\d{1,2}[.)]\s/;
+const QUESTION_SUB = /^[a-h]\s*[)]\s/;
+
+export interface DetailParagraph {
+  text: string;
+  /** Absatz beginnt eine Frage ("1. …") oder setzt sie mit "a) …" fort. */
+  question: boolean;
+}
+
+/**
+ * Zerlegt einen Textabschnitt in Absätze. Ein Absatz beginnt an jedem
+ * Zeilenumbruch; nummerierte Fragen und ihre Unterpunkte werden markiert, damit
+ * sie eingerückt und in der Antwort kursiv gesetzt werden können.
+ */
+export function textParagraphs(text: string): DetailParagraph[] {
+  const paragraphs: DetailParagraph[] = [];
+  for (const raw of text.split("\n")) {
+    const line = raw.trim();
+    if (!line) continue;
+    const previous = paragraphs[paragraphs.length - 1];
+    const question = QUESTION_ITEM.test(line) || Boolean(previous?.question && QUESTION_SUB.test(line));
+    paragraphs.push({ text: line, question });
+  }
+  return paragraphs;
+}
+
 export type DocumentSegment =
   | { kind: "text"; text: string }
   | { kind: "table"; table: DocumentTable };

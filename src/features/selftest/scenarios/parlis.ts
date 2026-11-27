@@ -2,7 +2,7 @@ import { parlisDeputyUrl } from "@/features/parlis/navigation";
 import { documentParties, keywords } from "@/features/parlis/documents";
 import { authorSegments, hasMultipleAuthors } from "@/features/parlis/authors";
 import { groupsFor } from "@/features/parlis/grouping";
-import { parseDocumentDetails, signerSummary, textSegments } from "@/features/parlis/details";
+import { parseDocumentDetails, signerSummary, textParagraphs, textSegments } from "@/features/parlis/details";
 import { legislativePeriods, ministers, ministryPhases, periodsForPhase, phasesForLine, ressortLines } from "@/features/ministries-history/data";
 import { dateWarnings, historySlices, type HistoryEntry } from "@/features/ministries-history/historyModel";
 import { currentLegislature, knownLegislatures, ministriesForLegislature } from "@/features/parlis/ministryAdminModel";
@@ -182,6 +182,9 @@ export const parlisScenario: TestScenario = {
       });
       const segments = textSegments(withTable!.questionText, withTable!.tables);
       const table = segments.find(segment => segment.kind === "table");
+      const paragraphs = textParagraphs(
+        "1. Wie viele Stellen?\nDie Antwort folgt hier.\n2. Und wie lange?\na) nach Schularten",
+      );
       return {
         ok: signerSummary(details!) === "Sascha Binder, Dorothea Kliche-Behnke, Boris Weirauch (SPD, gesamte Fraktion)"
           && details?.answer.signatory === "Hoffmeister-Kraut"
@@ -195,8 +198,11 @@ export const parlisScenario: TestScenario = {
           && table.table.page === 6
           && table.table.header === true
           && withoutFlag?.tables[0].header === true
-          && withTable!.tables[0].header === true,
-        message: "Unterzeichner, Antwort und Texte werden gelesen; Tabellenmarker werden zur Tabelle mit Zeilen, Seitenzahl und Kopfzeile; ein JSON ohne Vorgangs-ID gilt als unbrauchbar.",
+          && withTable!.tables[0].header === true
+          && paragraphs.length === 4
+          && paragraphs[0].question && !paragraphs[1].question
+          && paragraphs[2].question && paragraphs[3].question,
+        message: "Unterzeichner, Antwort und Texte werden gelesen; Tabellenmarker werden zur Tabelle mit Zeilen, Seitenzahl und Kopfzeile; Fragen und ihre Unterpunkte werden als solche erkannt; ein JSON ohne Vorgangs-ID gilt als unbrauchbar.",
       };
     },
   }, {

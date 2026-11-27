@@ -4,6 +4,7 @@ import {
   documentDetailsUrl,
   parseDocumentDetails,
   signerSummary,
+  textParagraphs,
   textSegments,
   type DocumentTable,
 } from "./details";
@@ -50,14 +51,25 @@ function TableFigure({ table }: { table: DocumentTable }) {
   </figure>;
 }
 
-function Section({ title, body, tables }: { title: string; body: string; tables: DocumentTable[] }) {
+function Section({
+  title, body, tables, quoteQuestions,
+}: { title: string; body: string; tables: DocumentTable[]; quoteQuestions?: boolean }) {
   if (!body) return null;
   const segments = textSegments(body, tables);
   return <section className="parlis-details-section">
     <h4>{title}</h4>
     <div className="parlis-details-body">
       {segments.map((segment, index) => segment.kind === "text"
-        ? <p className="parlis-details-text" key={index}>{segment.text}</p>
+        ? <div className="parlis-details-text" key={index}>
+          {textParagraphs(segment.text).map((paragraph, position) => <p
+            key={position}
+            className={[
+              "parlis-details-paragraph",
+              paragraph.question ? "parlis-details-paragraph-question" : "",
+              paragraph.question && quoteQuestions ? "parlis-details-paragraph-quoted" : "",
+            ].filter(Boolean).join(" ")}
+          >{paragraph.text}</p>)}
+        </div>
         : <TableFigure key={index} table={segment.table} />)}
     </div>
   </section>;
@@ -104,6 +116,6 @@ export default function ProceedingDetails({ vorgangsId }: { vorgangsId: string }
     </dl>
     <Section title="Frage" body={details.questionText} tables={details.tables} />
     <Section title="Begründung" body={details.reasoningText} tables={details.tables} />
-    <Section title="Antwort" body={details.answerText} tables={details.tables} />
+    <Section title="Antwort" body={details.answerText} tables={details.tables} quoteQuestions />
   </div>;
 }
