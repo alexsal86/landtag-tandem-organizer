@@ -26,6 +26,7 @@ interface ContactListTableProps {
   selectedContactIds: Set<string>;
   onToggleSelection: (id: string) => void;
   footer?: React.ReactNode;
+  scrollContainer?: HTMLDivElement | null;
 }
 
 function SortableTableHead({ children, sortKey, sortColumn, sortDirection, onSort, className = "" }: {
@@ -58,7 +59,7 @@ function splitName(name: string): { firstName: string; lastName: string } {
 
 export function ContactListTable({
   contacts, sortColumn, sortDirection, onSort, onContactClick, onToggleFavorite,
-  isSelectionMode, selectedContactIds, onToggleSelection, footer,
+  isSelectionMode, selectedContactIds, onToggleSelection, footer, scrollContainer,
 }: ContactListTableProps) {
   const [splitNameMode, setSplitNameMode] = useState(() => {
     try { return localStorage.getItem("contacts-split-name") === "true"; } catch { return false; }
@@ -70,11 +71,11 @@ export function ContactListTable({
     try { return localStorage.getItem("contacts-org-column") === "true"; } catch { return false; }
   });
 
-  const scrollRef = useRef<HTMLDivElement>(null);
+  const tableWrapperRef = useRef<HTMLDivElement>(null);
   const bodyRef = useRef<HTMLTableSectionElement>(null);
   const [scrollMargin, setScrollMargin] = useState(0);
   const virtual = contacts.length > 40;
-  const rows = useVirtualRows(contacts, () => virtual ? scrollRef.current : null, 44, (contact) => contact.id, 6, scrollMargin);
+  const rows = useVirtualRows(contacts, () => virtual ? (scrollContainer ?? tableWrapperRef.current) : null, 44, (contact) => contact.id, 6, scrollMargin);
   const windowRows = rows.getVirtualItems();
   const visibleRows = virtual ? windowRows : contacts.map((_, index) => ({ index }));
   const topSpace = windowRows.length ? windowRows[0].start - scrollMargin : 0;
@@ -84,15 +85,18 @@ export function ContactListTable({
 
   useLayoutEffect(() => {
     const body = bodyRef.current;
-    const scroll = scrollRef.current;
+    const scroll = scrollContainer ?? tableWrapperRef.current;
     const header = body?.previousElementSibling;
     if (!body || !scroll || !header || !virtual) return;
     const measure = () => setScrollMargin(body.getBoundingClientRect().top - scroll.getBoundingClientRect().top + scroll.scrollTop);
     measure();
     const observer = new ResizeObserver(measure);
     observer.observe(header);
+    if (scrollContainer && scroll.firstElementChild) {
+      observer.observe(scroll.firstElementChild);
+    }
     return () => observer.disconnect();
-  }, [virtual]);
+  }, [virtual, scrollContainer]);
 
   const toggleSplitName = () => {
     const next = !splitNameMode;
@@ -111,7 +115,7 @@ export function ContactListTable({
   };
 
   return (
-    <div ref={scrollRef} className={virtual ? "max-h-[65vh] overflow-auto [&>div]:overflow-visible" : "overflow-visible [&>div]:overflow-visible"}>
+    <div ref={tableWrapperRef} className={virtual && !scrollContainer ? "max-h-[65vh] overflow-auto [&>div]:overflow-visible" : "[&>div]:overflow-visible"}>
       <Table>
         <TableHeader>
           <TableRow>

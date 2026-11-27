@@ -25,10 +25,11 @@ export function ContactsView() {
   const s = useContactsViewState();
   const isMobile = useIsMobile();
   const [mobilePanelOpen, setMobilePanelOpen] = useState(false);
+  const [scrollContainer, setScrollContainer] = useState<HTMLDivElement | null>(null);
 
   if (!s.user || s.tenantLoading) {
     return (
-      <div className="min-h-screen bg-gradient-subtle p-6 flex items-center justify-center">
+      <div className="h-full p-6 flex items-center justify-center">
         <div className="text-center">
           <div className="animate-spin rounded-full h-8 w-8 border-b-2 border-primary mx-auto mb-4"></div>
           <p className="text-muted-foreground">System wird geladen...</p>
@@ -39,7 +40,7 @@ export function ContactsView() {
 
   if (!s.currentTenant) {
     return (
-      <div className="min-h-screen bg-gradient-subtle p-6 flex items-center justify-center">
+      <div className="h-full p-6 flex items-center justify-center">
         <div className="text-center max-w-md">
           <h2 className="text-2xl font-bold text-foreground mb-4">Kein Zugriff</h2>
           <p className="text-muted-foreground mb-6">Sie haben keinen Zugriff auf einen Mandanten.</p>
@@ -51,7 +52,7 @@ export function ContactsView() {
 
   if (s.loading && s.contacts.length === 0) {
     return (
-      <div className="min-h-screen bg-gradient-subtle p-6 flex items-center justify-center">
+      <div className="h-full p-6 flex items-center justify-center">
         <div className="text-center">
           <div className="animate-spin rounded-full h-8 w-8 border-b-2 border-primary mx-auto mb-4"></div>
           <p className="text-muted-foreground">Kontakte werden geladen...</p>
@@ -92,7 +93,7 @@ export function ContactsView() {
   );
 
   return (
-    <div className="flex min-h-0 min-w-0 flex-col md:h-[calc(100dvh-3.5rem)] md:flex-row">
+    <div className="flex h-full w-full min-w-0 flex-col md:flex-row">
       {isMobile ? (
         <Sheet open={mobilePanelOpen} onOpenChange={setMobilePanelOpen}>
           <div className="flex shrink-0 items-center gap-2 border-b p-3">
@@ -118,8 +119,8 @@ export function ContactsView() {
       ) : sidePanel}
 
       {/* Main Content */}
-      <div className="min-h-0 min-w-0 flex-1 overflow-y-auto">
-        <div className="min-h-0 bg-gradient-subtle p-3 sm:p-6">
+      <div ref={setScrollContainer} className="min-h-0 min-w-0 flex-1 overflow-auto">
+        <div className="p-3 sm:p-6">
           {/* Toolbar: View toggle, Filter, Select */}
           {s.activeTab !== "stakeholder-network" && (
             <div className="flex gap-2 mb-6 items-center flex-wrap">
@@ -189,7 +190,7 @@ export function ContactsView() {
                     <ContactListTable contacts={s.contacts} sortColumn={s.sortColumn} sortDirection={s.sortDirection} onSort={s.handleSort}
                       onContactClick={(id) => s.setSelectedContactId(id)} onToggleFavorite={s.toggleFavorite}
                       isSelectionMode={s.isSelectionMode} selectedContactIds={s.selectedContactIds}
-                      onToggleSelection={s.toggleContactSelection} footer={contactPagination} />
+                      onToggleSelection={s.toggleContactSelection} footer={contactPagination} scrollContainer={scrollContainer} />
                   )}
                   {!s.loadError && !s.loading && s.contacts.length === 0 && (
                     <Card className="bg-card shadow-card border-border"><CardContent className="text-center py-12">

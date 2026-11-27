@@ -93,7 +93,10 @@ const Index = (): React.JSX.Element => {
   // one frame and can rewrite the new route's search params (e.g. its tab).
   const activeSection = getActiveSectionFromPath(location.pathname);
   const isCalendar = activeSection === "calendar";
-  const isCreateContactRoute = activeSection === "contacts" && new URLSearchParams(location.search).get("action") === "new";
+  const searchParams = new URLSearchParams(location.search);
+  const isCreateContactRoute = activeSection === "contacts" && searchParams.get("action") === "new";
+  const isContactsWorkspace = activeSection === "contacts" && subId !== "new" && !isCreateContactRoute;
+  const isTeamPage = activeSection === "employee";
   
   // Dialog state management
   const [showCreateAppointmentDialog, setShowCreateAppointmentDialog] = useState<boolean>(false);
@@ -333,7 +336,15 @@ const Index = (): React.JSX.Element => {
               />
             ) : null}
           </div>
-          <main id="main-content" className={cn("flex-1 min-h-0 bg-gradient-to-b from-background to-muted/20", isCalendar ? "overflow-hidden" : "overflow-y-auto has-[[data-task-detail]]:[scrollbar-gutter:stable]") } tabIndex={-1}>
+          <main
+            id="main-content"
+            className={cn(
+              "min-h-0 flex-1",
+              isContactsWorkspace || isTeamPage ? "bg-background" : "bg-gradient-to-b from-background to-muted/20",
+              isCalendar || isContactsWorkspace ? "overflow-hidden" : "overflow-y-auto has-[[data-task-detail]]:[scrollbar-gutter:stable]",
+            )}
+            tabIndex={-1}
+          >
             <ErrorBoundary>
               <Suspense fallback={
                 <div className="flex items-center justify-center h-64">
