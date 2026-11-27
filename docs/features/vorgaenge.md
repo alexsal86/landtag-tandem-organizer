@@ -29,7 +29,7 @@ _Auto-generiert mit `npm run update:feature-catalog` aus dem zentralen Funktions
 | `casefiles.status-workflow` Fallakten-Status und Bearbeitungsstatus | Fallakten | fachlich | implementiert | UI | Selbsttest |
 | `parlis.initiative-rankings` Initiativenbilanz einer abgeschlossenen Wahlperiode anzeigen | Parlamentsdokumentation | fachlich | implementiert | UI | Selbsttest |
 | `parlis.ministry-topics` Ministerien und zentrale Themen zuordnen | Parlamentsdokumentation | fachlich | implementiert | rollenabhängig | Selbsttest |
-| `parlis.ministry-history` Namensgeschichte der Ministerien seit 1952 nachschlagen | Parlamentsdokumentation | fachlich | implementiert | UI | Selbsttest |
+| `parlis.ministry-history` Ministerien-Historie seit 1952 nachschlagen und pflegen | Parlamentsdokumentation | fachlich | implementiert | UI | Selbsttest |
 | `parlis.proceedings` Parlamentarische Vorgänge auswerten | Parlamentsdokumentation | fachlich | implementiert | UI | Selbsttest |
 | `cases.triage` Vorgang triagieren (Wer ist am Zug?) | Triage | fachlich | implementiert | UI | Unit-Test |
 | `cases.handover` Vorgang weitergeben | Triage | fachlich | implementiert | rollenabhängig | Selbsttest |
@@ -53,7 +53,7 @@ _Auto-generiert mit `npm run update:feature-catalog` aus dem zentralen Funktions
 
 ## Datenbanktabellen
 
-`appointments`, `audit_log_entries`, `case_file_appointments`, `case_file_contacts`, `case_file_documents`, `case_file_letters`, `case_file_notes`, `case_file_participants`, `case_file_processing_statuses`, `case_file_status_history`, `case_file_tasks`, `case_file_timeline`, `case_file_topics`, `case_file_types`, `case_files`, `case_item_categories`, `case_item_escalation_suggestions`, `case_item_handover_log`, `case_item_interactions`, `case_item_participants`, `case_item_timeline`, `case_item_topics`, `case_items`, `documents`, `election_history_mandates`, `letters`, `parlis_deputy_mandates`, `parlis_ministry_assignments`, `parlis_ministry_lines`, `parlis_ministry_suggestions`, `parlis_ministry_topics`, `parlis_proceedings`, `task_decisions`, `tasks`, `topic_module_settings`, `topics`
+`appointments`, `audit_log_entries`, `case_file_appointments`, `case_file_contacts`, `case_file_documents`, `case_file_letters`, `case_file_notes`, `case_file_participants`, `case_file_processing_statuses`, `case_file_status_history`, `case_file_tasks`, `case_file_timeline`, `case_file_topics`, `case_file_types`, `case_files`, `case_item_categories`, `case_item_escalation_suggestions`, `case_item_handover_log`, `case_item_interactions`, `case_item_participants`, `case_item_timeline`, `case_item_topics`, `case_items`, `documents`, `election_history_mandates`, `letters`, `ministry_history_changes`, `ministry_history_entries`, `ministry_history_lines`, `ministry_history_links`, `parlis_deputy_mandates`, `parlis_ministry_assignments`, `parlis_ministry_lines`, `parlis_ministry_suggestions`, `parlis_ministry_topics`, `parlis_proceedings`, `task_decisions`, `tasks`, `topic_module_settings`, `topics`
 
 ## Selbsttest-Szenarien
 
@@ -61,7 +61,7 @@ _Auto-generiert mit `npm run update:feature-catalog` aus dem zentralen Funktions
 |---|---|---:|---:|---|
 | `case-file-lifecycle` | Fallakte mit Folgetabellen (Container) im Unterschied zum Vorgang | 17 | 10 | — |
 | `case-item-lifecycle` | Vorgangs-Lifecycle (Am Zug → Schritt → Wiedervorlage → Entscheidung → Tageszettel → Abschluss) | 9 | 5 | — |
-| `parlis` | Parlamentarische Vorgänge | 0 | 14 | — |
+| `parlis` | Parlamentarische Vorgänge | 0 | 15 | — |
 
 ## Selbsttest-Schritte
 
@@ -98,6 +98,7 @@ Diese Schritte führen die Szenarien aus; „letzter Lauf“ stammt aus `src/fea
 | `case-item-lifecycle` | `complete` | Vorgang abschließen | db | — |
 | `case-item-lifecycle` | `tenant-boundary` | Vorgang lässt sich keinem fremden Büro zuordnen | workflow | — |
 | `parlis` | `parlis-ministry-current-period` | Administration führt nur die Ministerien der laufenden Wahlperiode | logic | — |
+| `parlis` | `parlis-ministry-history-timeline` | Zeitleiste trennt Umbenennung und Amtswechsel und meldet Datumsprobleme | logic | — |
 | `parlis` | `parlis-ministry-history` | Namensgeschichte der Ministerien belegt und den Ressortlinien zugeordnet | logic | — |
 | `parlis` | `parlis-groups` | Monate, Schlagwörter und fehlende Ressorts korrekt zuordnen | logic | — |
 | `parlis` | `parlis-inline-authors` | Urhebernamen mit Titeln und Namensbestandteilen im Originaltext verlinken | logic | — |
@@ -138,20 +139,21 @@ Diese Schritte führen die Szenarien aus; „letzter Lauf“ stammt aus `src/fea
 
 ### `parlis`
 
-1. Geprüfte Namensvarianten auf die richtigen Abgeordnetenprofile verlinken
-2. Gespeicherte Initiativenbilanz mit begrenzten Ranglisten
-3. Ressortvorschläge für mehrere Wahlperioden
-4. Laufende Wahlperiode und ihre Ministerien in der Administration
-5. Vorgangstypen der 17. Wahlperiode im Profil zusammenfassen
-6. Fünf persönlich zugeordnete Anträge mit gefiltertem Link im Profil
-7. Schlagwortvorschläge bei Eingabe begrenzen
-8. Serverseitige Suche und begrenzte Dokumentenseiten
-9. Schlagwörter, Fraktionsfilter und mehrere Urheber
-10. Urhebertext mit Titeln und Namensbestandteilen bleibt vollständig
-11. Monatsgruppierung, eindeutige Schlagwörter und leere Ressorts
-12. Unterzeichner, Texte und Tabellenzeilen kommen aus dem Detail-JSON
-13. Importierte Vorgänge sind lesbar
-14. Verknüpfte Urheber führen zu einem Mandat derselben Wahlperiode
+1. Zeitleiste der Ministerien trennt Umbenennung und Amtswechsel
+2. Geprüfte Namensvarianten auf die richtigen Abgeordnetenprofile verlinken
+3. Gespeicherte Initiativenbilanz mit begrenzten Ranglisten
+4. Ressortvorschläge für mehrere Wahlperioden
+5. Laufende Wahlperiode und ihre Ministerien in der Administration
+6. Vorgangstypen der 17. Wahlperiode im Profil zusammenfassen
+7. Fünf persönlich zugeordnete Anträge mit gefiltertem Link im Profil
+8. Schlagwortvorschläge bei Eingabe begrenzen
+9. Serverseitige Suche und begrenzte Dokumentenseiten
+10. Schlagwörter, Fraktionsfilter und mehrere Urheber
+11. Urhebertext mit Titeln und Namensbestandteilen bleibt vollständig
+12. Monatsgruppierung, eindeutige Schlagwörter und leere Ressorts
+13. Unterzeichner, Texte und Tabellenzeilen kommen aus dem Detail-JSON
+14. Importierte Vorgänge sind lesbar
+15. Verknüpfte Urheber führen zu einem Mandat derselben Wahlperiode
 
 ## Funktionsdetails
 
@@ -802,8 +804,8 @@ Stellt die Ministerien der laufenden Wahlperiode in den Mittelpunkt, führt PARL
 
 - Keine.
 
-### `parlis.ministry-history` — Namensgeschichte der Ministerien seit 1952 nachschlagen
-Listet im Super-Admin-Bereich die amtlichen Bezeichnungen der Ministerien Baden-Württembergs seit 1952 mit Laufzeit, Ressortlinie und Gesetzblatt-Fundstelle (alle Phasen im Original belegt, einschließlich der Stufen ab 2001 und der Fassung des Ländlichen Raums von 1987/1988), ordnet sie den Wahlperioden auf Basis der Systemzeiträume aus election_history_periods zu, nennt je Ressortlinie die Ministerinnen und Minister mit Amtszeit und dokumentiert geprüfte Abweichungen zu Chronik und Ministeriumsartikeln. Die Administration „Ministerien & Themen“ zeigt diese Historie bewusst nicht, sondern nur die Zuordnung der laufenden Wahlperiode.
+### `parlis.ministry-history` — Ministerien-Historie seit 1952 nachschlagen und pflegen
+Zeigt Namensphasen und Amtszeiten je Ressortlinie auf einer gemeinsamen Zeitleiste und in einer Tabelle mit Quellen. Super-Admins bearbeiten Zeiträume, Namen und Quellen, prüfen und bestätigen Ressortzuordnungen einzeln oder gesammelt, ergänzen Einträge und verknüpfen Vorgänger und Nachfolger. Änderungen an Namensphasen und Amtszeiten werden versioniert. Wahlperioden dienen als zeitlicher Filter.
 
 - **Kategorie:** fachlich
 - **Implementierung:** implementiert
@@ -811,13 +813,13 @@ Listet im Super-Admin-Bereich die amtlichen Bezeichnungen der Ministerien Baden-
 - **Testabdeckung:** Selbsttest
 - **Letztes Testergebnis:** nicht-ausgefuehrt (kein Laufnachweis importiert; nicht aus der Existenz einer Testdatei abgeleitet)
 - **Rollen:** `superadmin`
-- **Routen:** `/administration`
-- **Frontend-Komponenten:** `src/features/ministries-history/MinistryHistoryView.tsx`, `src/pages/Administration.tsx`, `src/components/administration/AdminSidebar.tsx`
-- **Services:** —
+- **Routen:** `/administration?adminSection=superadmin&adminSubSection=ministry-history`
+- **Frontend-Komponenten:** `src/features/ministries-history/MinistryHistoryView.tsx`, `src/features/ministries-history/HistoryEntryDialog.tsx`, `src/features/ministries-history/HistoryLineDialog.tsx`, `src/pages/Administration.tsx`, `src/components/administration/AdminSidebar.tsx`
+- **Services:** `src/features/ministries-history/historyApi.ts`, `src/features/ministries-history/historyModel.ts`
 - **Hooks:** —
 - **Edge Functions:** —
-- **Datenbankfunktionen:** —
-- **Tabellen:** —
+- **Datenbankfunktionen:** `confirm_ministry_history_assignments`
+- **Tabellen:** `ministry_history_lines`, `ministry_history_entries`, `ministry_history_links`, `ministry_history_changes`
 - **Abhängigkeiten:** —
 - **Selbsttests:** `parlis`
 - **Unit-Tests:** `src/features/ministries-history/data.test.ts`
@@ -827,12 +829,14 @@ Listet im Super-Admin-Bereich die amtlichen Bezeichnungen der Ministerien Baden-
 
 **Nachweise im Quellcode**
 
+- supabase/migrations/20261128130000_ministry_history_workspace.sql
 - src/features/ministries-history/data.ts
 - src/features/selftest/scenarios/parlis.ts
 
 **Bekannte Einschränkungen**
 
-- Keine.
+- Korrekturen an Personennamen gelten für die ausgewählte Amtszeit. Die importierten Amtszeiten besitzen keine übergreifend geprüften Personen-IDs.
+- Der Selbsttest deckt die Quelldaten und Zeitabschnitte ab. Die Speicherung und das Rollenverhalten der Arbeitsansicht wurden hier nicht ausgeführt.
 
 **Offene Prüfpunkte**
 

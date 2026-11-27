@@ -2,7 +2,7 @@
 
 _Auto-generiert mit `npm run update:feature-catalog` aus den Fremdschlüsseln in `src/integrations/supabase/types.ts`. Nicht von Hand bearbeiten._
 
-358 Tabellen, 493 Fremdschlüsselverweise. Die Karte zeigt, welche Tabelle auf welche zeigt; fachliche Bedeutung steht im [Funktionskatalog](./features/README.md).
+362 Tabellen, 497 Fremdschlüsselverweise. Die Karte zeigt, welche Tabelle auf welche zeigt; fachliche Bedeutung steht im [Funktionskatalog](./features/README.md).
 
 ## Zentrale Tabellen
 
@@ -565,6 +565,14 @@ Tabellen mit mindestens drei eingehenden Verweisen.
 | `letter_collaborators` | `letter_id` |
 | `letter_comments` | `letter_id` |
 
+### `ministry_history_lines` — 3 eingehende Verweise
+
+| Von | Spalte |
+|---|---|
+| `ministry_history_entries` | `line_id` |
+| `ministry_history_links` | `predecessor_id` |
+| `ministry_history_links` | `successor_id` |
+
 ### `parliament_protocols` — 3 eingehende Verweise
 
 | Von | Spalte |
@@ -929,6 +937,10 @@ Tabellen mit mindestens drei eingehenden Verweisen.
 | `message_confirmations` | `message_id` | `messages` |
 | `message_recipients` | `message_id` | `messages` |
 | `messages` | `tenant_id` | `tenants` |
+| `ministry_history_changes` | `entry_id` | `ministry_history_entries` |
+| `ministry_history_entries` | `line_id` | `ministry_history_lines` |
+| `ministry_history_links` | `predecessor_id` | `ministry_history_lines` |
+| `ministry_history_links` | `successor_id` | `ministry_history_lines` |
 | `news_article_states` | `tenant_id`, `article_id` | `news_articles` |
 | `news_article_states` | `tenant_id` | `tenants` |
 | `news_articles` | `tenant_id` | `tenants` |

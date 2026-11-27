@@ -6,6 +6,44 @@ export type Json =
   | { [key: string]: Json | undefined }
   | Json[]
 
+type MinistryHistoryEntry = {
+  id: string
+  kind: string
+  line_id: string | null
+  name: string
+  starts_on: string
+  ends_on: string | null
+  party: string | null
+  office: string | null
+  note: string | null
+  citation: string
+  source_detail: string | null
+  source_url: string | null
+  source_verified: boolean
+  assignment_confirmed: boolean
+  revision: number
+}
+
+type MinistryHistoryEntryInsert = Partial<MinistryHistoryEntry>
+  & Pick<MinistryHistoryEntry, "kind" | "name" | "starts_on" | "citation">
+
+type MinistryHistoryLink = {
+  predecessor_id: string
+  successor_id: string
+  effective_on: string
+  note: string
+}
+
+type MinistryHistoryChange = {
+  id: string
+  entry_id: string
+  revision: number
+  changed_at: string
+  changed_by: string | null
+  before_data: Json | null
+  after_data: Json
+}
+
 export type Database = {
   // Allows to automatically instantiate createClient with right options
   // instead of createClient<Database, { PostgrestVersion: 'XX' }>(URL, KEY)
@@ -14,6 +52,37 @@ export type Database = {
   }
   public: {
     Tables: {
+      ministry_history_lines: {
+        Row: { id: string; label: string }
+        Insert: { id?: string; label: string }
+        Update: { id?: string; label?: string }
+        Relationships: []
+      }
+      ministry_history_entries: {
+        Row: MinistryHistoryEntry
+        Insert: MinistryHistoryEntryInsert
+        Update: Partial<MinistryHistoryEntry>
+        Relationships: [
+          { foreignKeyName: "ministry_history_entries_line_id_fkey"; columns: ["line_id"]; isOneToOne: false; referencedRelation: "ministry_history_lines"; referencedColumns: ["id"] },
+        ]
+      }
+      ministry_history_links: {
+        Row: MinistryHistoryLink
+        Insert: MinistryHistoryLink
+        Update: Partial<MinistryHistoryLink>
+        Relationships: [
+          { foreignKeyName: "ministry_history_links_predecessor_id_fkey"; columns: ["predecessor_id"]; isOneToOne: false; referencedRelation: "ministry_history_lines"; referencedColumns: ["id"] },
+          { foreignKeyName: "ministry_history_links_successor_id_fkey"; columns: ["successor_id"]; isOneToOne: false; referencedRelation: "ministry_history_lines"; referencedColumns: ["id"] },
+        ]
+      }
+      ministry_history_changes: {
+        Row: MinistryHistoryChange
+        Insert: Partial<MinistryHistoryChange> & Pick<MinistryHistoryChange, "entry_id" | "revision" | "after_data">
+        Update: Partial<MinistryHistoryChange>
+        Relationships: [
+          { foreignKeyName: "ministry_history_changes_entry_id_fkey"; columns: ["entry_id"]; isOneToOne: false; referencedRelation: "ministry_history_entries"; referencedColumns: ["id"] },
+        ]
+      }
       parlis_deputy_mandates: {
         Row: { legislature: number; vorgangs_id: string; mandate_id: string }
         Insert: { legislature: number; vorgangs_id: string; mandate_id: string }
@@ -18218,6 +18287,10 @@ export type Database = {
       }
     }
     Functions: {
+      confirm_ministry_history_assignments: {
+        Args: { expected_entries: Json }
+        Returns: number
+      }
       get_parlis_initiative_rankings: {
         Args: { period: number }
         Returns: Json

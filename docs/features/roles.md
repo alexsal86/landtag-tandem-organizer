@@ -723,7 +723,7 @@ Die Angaben sind deklarierte Mindestrollen. Die tatsächlich wirksame Berechtigu
 - `admin.tenants` — Mandantenverwaltung
 - `admin.users-sessions` — Benutzer, MFA und Sitzungen
 - `admin.feature-catalog` — Funktionskatalog und Inventarisierung
-- `parlis.ministry-history` — Namensgeschichte der Ministerien seit 1952 nachschlagen
+- `parlis.ministry-history` — Ministerien-Historie seit 1952 nachschlagen und pflegen
 - `election.research-workbench` — Analyse-Workbench und Kommunalpanel
 - `election.districts-import` — Wahlkreise und Gebiete importieren
 - `election.representatives` — Abgeordnete und Parteiassoziationen importieren
