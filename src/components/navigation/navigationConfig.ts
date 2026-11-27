@@ -85,6 +85,12 @@ export const navigationGroups: NavGroup[] = [
     route: "/contacts"
   },
   {
+    id: "employee",
+    label: "Team",
+    icon: Users,
+    route: "/employee"
+  },
+  {
     id: "news",
     label: "News",
     icon: Newspaper,
