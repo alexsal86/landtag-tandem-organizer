@@ -1,6 +1,6 @@
 import { DashboardDaylight } from "./DashboardDaylight";
 import { useWorkspaceView } from "@/contexts/WorkspaceViewContext";
-import { useEffect, useState, Suspense } from "react";
+import { useState, Suspense } from "react";
 import { lazyWithRetry } from "@/lib/lazyWithRetry";
 import { useNavigate } from "react-router-dom";
 
@@ -12,13 +12,13 @@ import {
   DropdownMenuItem,
   DropdownMenuTrigger,
 } from "@/components/ui/dropdown-menu";
-import { CheckSquare, Vote, Briefcase, StickyNote, Calendar, Plus } from "lucide-react";
+import { CheckSquare, Vote, Briefcase, StickyNote, Calendar, Plus, Search } from "lucide-react";
 import { PageHelpButton } from "@/components/shared/PageHelpButton";
 import { MYWORK_HELP_CONTENT } from "@/config/helpContent";
 
 import { useMyWorkNewCounts } from "@/hooks/useMyWorkNewCounts";
 import { useOpenApprovalCount } from "@/features/redaktion/hooks/useOpenApprovalCount";
-import { useAppSettings } from "@/hooks/useAppSettings";
+import { NotificationBell } from "@/components/notifications/NotificationBell";
 import { MyWorkTabErrorState } from "@/components/my-work/MyWorkTabErrorState";
 import { ErrorBoundary } from "@/components/shared/ErrorBoundary";
 import { MY_WORK_TAB_VISIT_CONTEXTS } from "@/components/my-work/myWorkTabs";
@@ -43,10 +43,8 @@ const MyWorkDashboardTab = lazyWithRetry(() => import("@/components/my-work/MyWo
 
 export function MyWorkView() {
   const { isDeputyView } = useWorkspaceView();
-  const { app_logo_url } = useAppSettings();
   const navigate = useNavigate();
   const [refreshTrigger, setRefreshTrigger] = useState(0);
-  const [isTabLogoError, setIsTabLogoError] = useState(false);
   const {
     countLoadError,
     feedbackFeedCoreRolesOnly,
@@ -64,10 +62,6 @@ export function MyWorkView() {
 
   const { newCounts, markTabAsVisited, refreshCounts } = useMyWorkNewCounts();
   const { openApprovals, isEnabled: isRedaktionEnabled } = useOpenApprovalCount();
-
-  useEffect(() => {
-    setIsTabLogoError(false);
-  }, [app_logo_url]);
 
   const handleTabChange = (tab: keyof typeof MY_WORK_TAB_VISIT_CONTEXTS) => {
     setActiveTab(tab);
@@ -115,24 +109,10 @@ export function MyWorkView() {
   return (
     <div className={`min-h-[calc(100vh-8rem)] w-full ${activeTab === "dashboard" ? "relative isolate" : ""}`}>
       {activeTab === "dashboard" && <DashboardDaylight />}
-      <div className="flex w-full items-center justify-between gap-3 border-b border-border bg-white px-4 md:px-6 lg:px-8">
-        <div className="flex min-w-0 flex-1 overflow-x-auto">
+      <div className="flex w-full flex-col items-end gap-3 px-4 pt-4 sm:flex-row sm:items-center sm:justify-between md:px-6 lg:px-8">
+        <nav aria-label="Meine Arbeit" className="flex max-w-full min-w-0 self-stretch items-center gap-1 overflow-x-auto rounded-full border border-border/80 bg-card/90 p-1 shadow-lg shadow-black/8 backdrop-blur-sm [scrollbar-width:none]">
           {visibleTabs.map((tab) => {
-            const Icon = tab.icon;
-            const hasNew = (() => {
-              if (tab.value === "feedbackfeed") return (newCounts.feedbackFeed || 0) > 0;
-              if (!tab.countKey) return false;
-              if (tab.countKey === "team") return (newCounts.team || 0) > 0;
-              const newCountsMap: Record<string, keyof typeof newCounts> = {
-                tasks: "tasks",
-                decisions: "decisions",
-                jourFixe: "jourFixe",
-                cases: "cases",
-                plannings: "plannings",
-              };
-              const key = newCountsMap[tab.countKey];
-              return key ? (newCounts[key] || 0) > 0 : false;
-            })();
+            const hasNew = tab.countKey ? newCounts[tab.countKey] > 0 : false;
             const isActiveTab = activeTab === tab.value;
 
             return (
@@ -140,29 +120,20 @@ export function MyWorkView() {
                 key={tab.value}
                 onClick={() => handleTabChange(tab.value)}
                 data-help-id={`mywork-tab-${tab.value}`}
-                className={`relative flex items-center gap-1.5 ${tab.isLogo ? "px-2" : "px-4"} py-2.5 text-sm font-medium border-b-2 transition-colors whitespace-nowrap ${
+                type="button"
+                aria-current={isActiveTab ? "page" : undefined}
+                className={`flex min-h-10 shrink-0 items-center gap-2 whitespace-nowrap rounded-full px-4 text-sm font-medium transition-colors focus-visible:outline-2 focus-visible:-outline-offset-2 focus-visible:outline-ring ${
                   isActiveTab
-                    ? "border-primary text-primary"
-                    : "border-transparent text-muted-foreground hover:text-foreground"
+                    ? "bg-slate-900 text-white shadow-sm dark:bg-slate-100 dark:text-slate-950"
+                    : "text-muted-foreground hover:bg-muted hover:text-foreground"
                 }`}
               >
-                {tab.isLogo && app_logo_url && !isTabLogoError ? (
-                  <img
-                    src={app_logo_url}
-                    alt="Logo"
-                    className="h-8 w-8 object-contain rounded flex-shrink-0"
-                    crossOrigin="anonymous"
-                    onError={() => setIsTabLogoError(true)}
-                  />
-                ) : (
-                  <span className="relative inline-flex">
-                    <Icon className="h-4 w-4" />
-                    {hasNew && !isActiveTab && (
-                      <span className="absolute -top-0.5 -right-1 h-1.5 w-1.5 rounded-full bg-primary animate-pulse" aria-hidden />
-                    )}
+                {tab.value === "dashboard" ? "Heute" : tab.label}
+                {hasNew && !isActiveTab && (
+                  <span className="size-2 rounded-full bg-[#397d16] dark:bg-[#83c84e]">
+                    <span className="sr-only">Neue Einträge</span>
                   </span>
                 )}
-                {tab.label}
                 {tab.value === "redaktion" && isRedaktionEnabled && openApprovals > 0 && (
                   <span
                     className="ml-1 rounded-full bg-primary/10 px-1.5 py-0.5 text-xs font-semibold tabular-nums text-primary"
@@ -174,20 +145,26 @@ export function MyWorkView() {
               </button>
             );
           })}
-        </div>
+        </nav>
 
-        <div className="flex shrink-0 items-center gap-2 pb-2">
+        <div className="flex shrink-0 items-center gap-2">
+          <Button type="button" variant="outline" aria-label="Global suchen" aria-keyshortcuts="Control+K Meta+K"
+            className="size-11 rounded-full border-border/80 bg-card/90 p-0 text-muted-foreground shadow-sm lg:w-auto lg:px-4"
+            onClick={() => window.dispatchEvent(new CustomEvent("openGlobalSearch"))}>
+            <Search aria-hidden="true" />
+            <span className="hidden lg:inline">Suchen</span>
+            <kbd aria-hidden="true" className="hidden rounded-md bg-muted px-1.5 text-xs xl:inline">⌘K</kbd>
+          </Button>
+          <NotificationBell variant="island" />
           <DropdownMenu>
             <DropdownMenuTrigger asChild>
               <Button
                 size="sm"
-                className="group h-9 w-9 gap-0 rounded-full px-0 transition-all duration-200 ease-out hover:w-[5.25rem] hover:gap-1 hover:px-3 focus-visible:w-[5.25rem] focus-visible:gap-1 focus-visible:px-3 data-[state=open]:w-[5.25rem] data-[state=open]:gap-1 data-[state=open]:px-3"
+                className="size-11 rounded-full bg-[#2e6018] p-0 text-white shadow-sm hover:bg-[#244b13]"
+                aria-label="Neu erstellen"
                 data-help-id="mywork-new-menu"
               >
-                <Plus className="h-4 w-4" />
-                <span className="max-w-0 overflow-hidden whitespace-nowrap opacity-0 transition-all duration-200 ease-out group-hover:ml-1 group-hover:max-w-12 group-hover:opacity-100 group-focus-visible:ml-1 group-focus-visible:max-w-12 group-focus-visible:opacity-100 group-data-[state=open]:ml-1 group-data-[state=open]:max-w-12 group-data-[state=open]:opacity-100">
-                  Neu
-                </span>
+                <Plus aria-hidden="true" />
               </Button>
             </DropdownMenuTrigger>
             <DropdownMenuContent align="end" className="w-48">

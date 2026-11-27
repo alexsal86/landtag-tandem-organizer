@@ -161,7 +161,8 @@ export function AppNavigation({
   const [isQuickRequestOpen, setIsQuickRequestOpen] = useState(false);
   
   // Panel state
-  const [activePanel, setActivePanel] = useState<ActivePanel>('home');
+  const [selectedPanel, setActivePanel] = useState<ActivePanel>('home');
+  const activePanel = activeSection === 'mywork' && selectedPanel === 'notifications' ? 'home' : selectedPanel;
   const [previewGroup, setPreviewGroup] = useState<NavPreviewGroup | null>(null);
   
   // Expanded groups state
@@ -1300,26 +1301,28 @@ export function AppNavigation({
             {activePanel !== 'home' && <TooltipContent side="bottom" className="text-xs">Navigation</TooltipContent>}
           </Tooltip>
 
-          {/* Notifications */}
-          <Tooltip>
-            <TooltipTrigger asChild>
-              <button
-                onClick={() => setActivePanel(activePanel === 'notifications' ? 'home' : 'notifications')}
-                className={cn(
-                  "h-7 rounded-md flex items-center gap-1.5 px-2 transition-colors relative",
-                  activePanel === 'notifications' ? "bg-[hsl(var(--nav-active-bg))] font-medium" : "hover:bg-[hsl(var(--nav-hover))]"
-                )}
-              >
-                <Bell className="h-4 w-4 shrink-0" />
-                {activePanel === 'notifications' && <span className="text-xs">Inbox</span>}
-                {activePanel !== 'notifications' && unreadCount > 0 && (
-                  <span className="absolute -top-0.5 -right-0.5 h-2 w-2 rounded-full bg-destructive animate-pulse" />
-                )}
-              </button>
-            </TooltipTrigger>
-            {activePanel !== 'notifications' && <TooltipContent side="bottom" className="text-xs">Benachrichtigungen</TooltipContent>}
-          </Tooltip>
+          {activeSection !== "mywork" && <>
+            {/* Notifications */}
+            <Tooltip>
+              <TooltipTrigger asChild>
+                <button
+                  onClick={() => setActivePanel(activePanel === 'notifications' ? 'home' : 'notifications')}
+                  className={cn(
+                    "h-7 rounded-md flex items-center gap-1.5 px-2 transition-colors relative",
+                    activePanel === 'notifications' ? "bg-[hsl(var(--nav-active-bg))] font-medium" : "hover:bg-[hsl(var(--nav-hover))]"
+                  )}
+                >
+                  <Bell className="h-4 w-4 shrink-0" />
+                  {activePanel === 'notifications' && <span className="text-xs">Inbox</span>}
+                  {activePanel !== 'notifications' && unreadCount > 0 && (
+                    <span className="absolute -top-0.5 -right-0.5 h-2 w-2 rounded-full bg-destructive animate-pulse" />
+                  )}
+                </button>
+              </TooltipTrigger>
+              {activePanel !== 'notifications' && <TooltipContent side="bottom" className="text-xs">Benachrichtigungen</TooltipContent>}
+            </Tooltip>
 
+          </>}
           {/* Appointments */}
           <Tooltip>
             <TooltipTrigger asChild>
@@ -1340,20 +1343,22 @@ export function AppNavigation({
           <div className="ml-auto">
             <GlobalCreateMenu />
           </div>
-          {/* Search (dialog trigger, not a panel) */}
-          <Tooltip>
-            <TooltipTrigger asChild>
-              <button
-                onClick={() => {
-                  window.dispatchEvent(new CustomEvent('openGlobalSearch', { detail: { query: '' } }));
-                }}
-                className="h-7 rounded-md flex items-center gap-1.5 px-2 hover:bg-[hsl(var(--nav-hover))] transition-colors"
-              >
-                <Search className="h-4 w-4 shrink-0" />
-              </button>
-            </TooltipTrigger>
-            <TooltipContent side="bottom" className="text-xs">Suche (⌘K)</TooltipContent>
-          </Tooltip>
+          {activeSection !== "mywork" && <>
+            {/* Search (dialog trigger, not a panel) */}
+            <Tooltip>
+              <TooltipTrigger asChild>
+                <button
+                  onClick={() => {
+                    window.dispatchEvent(new CustomEvent('openGlobalSearch', { detail: { query: '' } }));
+                  }}
+                  className="h-7 rounded-md flex items-center gap-1.5 px-2 hover:bg-[hsl(var(--nav-hover))] transition-colors"
+                >
+                  <Search className="h-4 w-4 shrink-0" />
+                </button>
+              </TooltipTrigger>
+              <TooltipContent side="bottom" className="text-xs">Suche (⌘K)</TooltipContent>
+            </Tooltip>
+          </>}
         </div>
 
         {/* Panel Content */}

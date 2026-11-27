@@ -146,19 +146,21 @@ export function MobileHeader() {
           {/* Right: Actions */}
           <div className="flex items-center gap-1">
             <GlobalCreateMenu />
-            {/* Search Button */}
-            <Button 
-              variant="ghost" 
-              size="icon" 
-              onClick={() => setShowMobileSearch(true)}
-              className="text-[hsl(var(--nav-foreground))] hover:bg-[hsl(var(--nav-hover))]"
-            >
-              <Search className="h-5 w-5" />
-              <span className="sr-only">Suchen</span>
-            </Button>
+            {activeSection !== "mywork" && <>
+              {/* Search Button */}
+              <Button
+                variant="ghost"
+                size="icon"
+                onClick={() => setShowMobileSearch(true)}
+                className="text-[hsl(var(--nav-foreground))] hover:bg-[hsl(var(--nav-hover))]"
+              >
+                <Search className="h-5 w-5" />
+                <span className="sr-only">Suchen</span>
+              </Button>
 
-            {/* Notifications */}
-            <NotificationBell />
+              {/* Notifications */}
+              <NotificationBell />
+            </>}
 
             {/* User Avatar */}
             <DropdownMenu>
