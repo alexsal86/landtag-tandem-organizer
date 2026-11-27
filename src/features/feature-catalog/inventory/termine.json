@@ -409,7 +409,7 @@
       "id": "appointments.debrief",
       "subarea": "Nachbereitung",
       "name": "Nachbereitung und Büro-Feedback",
-      "description": "Sammelt Rückmeldungen aus dem Termin, zeigt offene Nachbereitungen und schließt Feedback-Erinnerungen. Nach dem Diktat können Abgeordnete Zusagen bestätigen und regelbasierte Vorschläge vor dem Versand bearbeiten.",
+      "description": "Sammelt Rückmeldungen aus dem Termin, zeigt offene Nachbereitungen und schließt Feedback-Erinnerungen. Nach dem Diktat können Abgeordnete Zusagen bestätigen und regelbasierte Vorschläge vor dem Versand bearbeiten. Mitarbeitende können Zusagen und Fristen in offenen Nachbereitungen ergänzen, ändern oder entfernen.",
       "category": "fachlich",
       "implementationStatus": "implementiert",
       "integrationStatus": "ui",

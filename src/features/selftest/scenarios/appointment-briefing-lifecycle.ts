@@ -1,4 +1,4 @@
-import { suggestOfficeFeedbackPromises } from "@/features/appointments/briefing/officeFeedbackPromises";
+import { officeDebriefPromiseEdit, suggestOfficeFeedbackPromises } from "@/features/appointments/briefing/officeFeedbackPromises";
 import { buildTodayPriorities } from "@/components/my-work/todayPriorities";
 import { appointmentFocusMode, departureTime, focusCountdown, pickFocusAppointment } from "@/features/appointments/dashboardFocus";
 import { visibleSentChanges } from "@/features/appointments/change-alerts/sentChangeVisibility";
@@ -248,6 +248,16 @@ export const appointmentBriefingLifecycleScenario: TestScenario = {
         const ok = suggestOfficeFeedbackPromises(text) === expected
           && suggestOfficeFeedbackPromises("Die Unterlagen wurden besprochen.") === "";
         return { ok, message: ok ? "Zusagen werden vorgeschlagen." : "Die Vorschläge weichen ab." };
+      },
+    },
+    {
+      id: "office-debrief-edit-promise", label: "Nachbereitung: Zusage und Frist im Büro bearbeiten", kind: "logic",
+      run: async () => {
+        const saved = officeDebriefPromiseEdit(true, " Rückruf ", "2026-12-01");
+        const cleared = officeDebriefPromiseEdit(false, "Rückruf", "2026-12-01");
+        const ok = saved._promise === "Rückruf" && saved._due === "2026-12-01"
+          && cleared._promise === undefined && cleared._due === undefined;
+        return { ok, message: ok ? "Zusage und Frist werden gemeinsam übergeben oder entfernt." : "Die Zusagedaten weichen ab." };
       },
     },
     {

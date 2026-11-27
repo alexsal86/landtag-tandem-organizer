@@ -13,6 +13,7 @@ import { notify } from "@/lib/notify";
 import { cn } from "@/lib/utils";
 import { berlinDateShort, berlinDaysSince, berlinWeekdayShortDate } from "@/utils/berlinDate";
 import { debriefDuration, debriefReceivedAt, debriefSourceLabel, debriefSources, sortDebriefReports, type DebriefEvent, type DebriefReport, type DebriefSource } from "./officeDebriefInbox";
+import { officeDebriefPromiseEdit, officeFeedbackPromiseMaxLength, suggestOfficeFeedbackPromises } from "./officeFeedbackPromises";
 import { useOfficeDebriefInbox } from "./useOfficeDebriefInbox";
 
 export const debriefButton = "rounded-xl bg-muted px-3 py-2 text-sm font-medium hover:bg-muted/70 disabled:opacity-50";
@@ -127,6 +128,7 @@ function ReportRow({ report, open, toggle, tenantId, update, createCase }: {
   const detailsId = useId();
   const transcript = useRef<HTMLDivElement>(null);
   const [selection, setSelection] = useState("");
+  const [editingPromise, setEditingPromise] = useState(false);
   const [asking, setAsking] = useState(false);
   const [question, setQuestion] = useState("");
   const [creatingCase, setCreatingCase] = useState(false);
@@ -165,7 +167,7 @@ function ReportRow({ report, open, toggle, tenantId, update, createCase }: {
           unconfirmed ? "noch nicht bestätigt" : report.source ? "bestätigt" : null,
           report.spoken_seconds && `${debriefDuration(report.spoken_seconds)} · nur Text gespeichert`,
         ].filter(Boolean).join(" · ")}</p>
-        {report.promise && <div className={cn("flex flex-wrap items-center justify-between gap-2 rounded-2xl p-3", amber)}>
+        {report.promise && !editingPromise && <div className={cn("flex flex-wrap items-center justify-between gap-2 rounded-2xl p-3", amber)}>
           <div className="flex min-w-0 flex-1 basis-36 items-start gap-2">
             <AlertTriangle className="mt-0.5 size-4 shrink-0" aria-hidden="true" />
             <p className="break-words"><strong>Zusage:</strong> {report.promise}</p>
@@ -178,6 +180,9 @@ function ReportRow({ report, open, toggle, tenantId, update, createCase }: {
               }} />
           </label>
         </div>}
+        {editingPromise ? <PromiseEditor report={report} update={update} close={() => setEditingPromise(false)} />
+          : <button type="button" className={debriefButton} disabled={update.isPending}
+              onClick={() => setEditingPromise(true)}>{report.promise ? "Zusage bearbeiten" : "Zusage ergänzen"}</button>}
         <div ref={transcript} tabIndex={0} onPointerUp={pick} onKeyUp={pick}
           className="whitespace-pre-wrap break-words rounded-2xl bg-muted p-3 text-base leading-relaxed">
           <DebriefTranscript report={report} tenantId={tenantId} />
@@ -214,12 +219,49 @@ function ReportRow({ report, open, toggle, tenantId, update, createCase }: {
         <div className="flex flex-wrap gap-2 pt-1">
           {!report.question && <button type="button" className={debriefButton} aria-expanded={asking} onClick={() => setAsking(!asking)}>
             {asking ? "Abbrechen" : "Rückfrage an Abgeordneten"}</button>}
-          <button type="button" className={debriefButton} disabled={update.isPending}
+          <button type="button" className={debriefButton} disabled={update.isPending || editingPromise}
             onClick={() => update.mutate({ _id: report.id, _action: "done" })}>Erledigt</button>
         </div>
       </div>}
     </article>
   );
+}
+
+function PromiseEditor({ report, update, close }: { report: DebriefReport; update: DebriefUpdate; close: () => void }) {
+  const [draft, setDraft] = useState(report.promise ?? suggestOfficeFeedbackPromises(report.notes));
+  const [due, setDue] = useState(report.due_on ?? "");
+  const [hasPromise, setHasPromise] = useState(true);
+
+  return <form className="space-y-3 rounded-2xl bg-muted p-3" onSubmit={event => {
+    event.preventDefault();
+    if (update.isPending || (hasPromise && !draft.trim())) return;
+    update.mutate({ _id: report.id, _action: "edit_promise", ...officeDebriefPromiseEdit(hasPromise, draft, due) },
+      { onSuccess: close });
+  }}>
+    <fieldset disabled={update.isPending} className="space-y-2">
+      <legend className="mb-2 text-sm font-medium">Wurde etwas zugesagt?</legend>
+      <div className="flex gap-2">
+        <button type="button" aria-pressed={hasPromise} className={hasPromise ? debriefPrimary : debriefButton}
+          onClick={() => setHasPromise(true)}>Ja</button>
+        <button type="button" aria-pressed={!hasPromise} className={!hasPromise ? debriefPrimary : debriefButton}
+          onClick={() => setHasPromise(false)}>Nein</button>
+      </div>
+      {hasPromise && <>
+        <textarea aria-label="Zusagen" placeholder="Zusagen hier eintragen" rows={3} required
+          maxLength={officeFeedbackPromiseMaxLength} className="w-full rounded-xl border bg-background p-2"
+          value={draft} onChange={event => setDraft(event.target.value)} />
+        <label className="flex flex-wrap items-center gap-2 text-sm">
+          Frist der Zusage
+          <input type="date" value={due} onChange={event => setDue(event.target.value)}
+            className="rounded-lg border bg-background p-2" />
+        </label>
+      </>}
+    </fieldset>
+    <div className="flex flex-wrap gap-2">
+      <button type="submit" className={debriefPrimary} disabled={update.isPending || (hasPromise && !draft.trim())}>Speichern</button>
+      <button type="button" className={debriefButton} disabled={update.isPending} onClick={close}>Abbrechen</button>
+    </div>
+  </form>;
 }
 
 function DebriefTranscript({ report, tenantId }: { report: DebriefReport; tenantId: string }) {
@@ -261,10 +303,10 @@ function ProxyForm({ event, busy, cancel, save }: {
   const [source, setSource] = useState<DebriefSource | null>(null);
   const [text, setText] = useState("");
   const [hasPromise, setHasPromise] = useState(false);
-  const [promise, setPromise] = useState("");
+  const [promise, setPromise] = useState<string>();
   return <form className="mt-3 space-y-3 rounded-2xl bg-muted p-3" onSubmit={submission => {
     submission.preventDefault();
-    if (source && text.trim() && (!hasPromise || promise.trim()) && !busy) save(source, text.trim(), hasPromise ? promise.trim() : undefined);
+    if (source && text.trim() && (!hasPromise || promise?.trim()) && !busy) save(source, text.trim(), hasPromise ? promise?.trim() : undefined);
   }}>
     <fieldset>
       <legend className="mb-2 text-sm font-semibold uppercase text-muted-foreground">Woher weißt du es?</legend>
@@ -278,14 +320,14 @@ function ProxyForm({ event, busy, cancel, save }: {
       <legend className="mb-1 font-medium">Wurde etwas zugesagt?</legend>
       <div className="flex gap-2">
         <button type="button" aria-pressed={!hasPromise} className={!hasPromise ? debriefPrimary : debriefButton} onClick={() => setHasPromise(false)}>Nein</button>
-        <button type="button" aria-pressed={hasPromise} className={hasPromise ? debriefPrimary : debriefButton} onClick={() => setHasPromise(true)}>Ja</button>
+        <button type="button" aria-pressed={hasPromise} className={hasPromise ? debriefPrimary : debriefButton} onClick={() => { setHasPromise(true); setPromise(previous => previous ?? suggestOfficeFeedbackPromises(text)); }}>Ja</button>
       </div>
-      {hasPromise && <input aria-label="Zusage" placeholder="Was? z. B. Besuch im Landtag" value={promise} onChange={change => setPromise(change.target.value)}
-        required maxLength={1000} className="mt-2 w-full rounded-xl border bg-background p-2" />}
+      {hasPromise && <textarea aria-label="Zusage" placeholder="Was? z. B. Besuch im Landtag" rows={2} value={promise ?? ""} onChange={change => setPromise(change.target.value)}
+        required maxLength={officeFeedbackPromiseMaxLength} className="mt-2 w-full rounded-xl border bg-background p-2" />}
     </fieldset>
     <p className="text-sm text-muted-foreground">Der Abgeordnete sieht, wer die Rückmeldung eingetragen hat, und kann sie bestätigen oder korrigieren.</p>
     <div className="flex flex-wrap gap-2">
-      <button type="submit" className={debriefPrimary} disabled={busy || !source || !text.trim() || (hasPromise && !promise.trim())}>Eintragen</button>
+      <button type="submit" className={debriefPrimary} disabled={busy || !source || !text.trim() || (hasPromise && !promise?.trim())}>Eintragen</button>
       <button type="button" className={debriefButton} onClick={cancel}>Abbrechen</button>
     </div>
   </form>;
