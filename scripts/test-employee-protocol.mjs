@@ -106,7 +106,7 @@ try {
     CREATE TABLE tasks(
       id uuid PRIMARY KEY DEFAULT gen_random_uuid(), user_id uuid, tenant_id uuid, title text, description text,
       assigned_to text, status text, priority text, category text, due_date timestamptz, ball_owner text,
-      ball_assignee_id uuid, next_action text, next_action_due date, source_type text, source_id text,
+      ball_assignee_id uuid, next_action text, next_action_due date, source_type text, source_id uuid,
       timeline jsonb, updated_at timestamptz DEFAULT now());
     CREATE TABLE task_assignees(task_id uuid, user_id uuid, assigned_by uuid);
     -- Lesen genügt: geschrieben wird ausschließlich über die Workflow-RPCs.
@@ -117,6 +117,16 @@ try {
   // The realtime publication of the hosted database is not part of this isolated instance.
   const stafette = await sql('20261113121000_employee_action_stafette.sql');
   await db.exec(stafette.slice(0, stafette.indexOf('DO $$ BEGIN')));
+  // source_id ist im Grundschema eine uuid (20260305230409). Die isolierte Tabelle
+  // deklarierte sie als text und verdeckte damit den Fehler 42804 der Instanz
+  // ("column source_id is of type uuid but expression is of type text"); die
+  // Spalte ist deshalb hier uuid, und die Korrektur wird zweimal eingespielt.
+  await apply('20261128100000_employee_action_task_source_uuid.sql');
+  await apply('20261128100000_employee_action_task_source_uuid.sql');
+  const taskDefinition = (await q(`SELECT pg_get_functiondef(oid) AS definition FROM pg_proc
+    WHERE pronamespace='public'::regnamespace AND proname='create_meeting_action_task'`))[0].definition;
+  assert.ok(!taskDefinition.includes('a.id::text'),
+    'Die Maßnahmen-Aufgabe legt die Maßnahmen-ID ohne Textumbau in source_id ab (sonst 42804)');
   await apply('20261126080000_selftest_employee_protocol.sql');
 
   const meeting = async (id, status, employee = staff, conducted = staff) => {
