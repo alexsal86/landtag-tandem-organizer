@@ -17,15 +17,15 @@ Der Katalog ist das führende Verzeichnis des tatsächlich implementierten Funkt
 | Potenziell verwaist | 0 |
 | Prüfkandidaten (offene Punkte) | 52 |
 | Funktionen mit Selbsttest | 134 |
-| Funktionen mit Unit-Test | 64 |
+| Funktionen mit Unit-Test | 65 |
 | Funktionen mit Integrationstest | 4 |
 | Funktionen mit Browser-Test | 4 |
 | Funktionen mit Security-Test | 1 |
 | Funktionen ohne zugeordneten Test | 89 |
 | Funktionen ohne Dokumentationsverweis | 172 |
-| Funktionen mit bekannten Einschränkungen | 82 |
+| Funktionen mit bekannten Einschränkungen | 83 |
 | Nicht nachweisbar eingebundene Funktionen | 1 |
-| Technische Zuordnungen | 1322 |
+| Technische Zuordnungen | 1325 |
 
 ## Funktionsbereiche
 

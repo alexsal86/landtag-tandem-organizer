@@ -1,4 +1,4 @@
-import { detectSpeechCommand, findLastDictatedSentenceStart, formatDictatedText, parseSpeechInput } from './speechCommandUtils';
+import { appendDictatedText, detectSpeechCommand, findLastDictatedSentenceStart, formatDictatedText, parseSpeechInput } from './speechCommandUtils';
 
 describe('speechCommandUtils stop-listening parser', () => {
   it('detects strict stop command as full phrase', () => {
@@ -48,6 +48,13 @@ describe('speechCommandUtils formatting', () => {
     expect(formatDictatedText('hallo.welt')).toBe('Hallo. Welt');
   });
 
+  it('treats dates and ordinals as part of the sentence', () => {
+    expect(formatDictatedText('die unterlagen bis zum 12.12. zu schicken'))
+      .toBe('Die unterlagen bis zum 12.12. zu schicken');
+    expect(formatDictatedText('hallo punkt wir treffen uns am 3. mai'))
+      .toBe('Hallo. Wir treffen uns am 3. mai');
+  });
+
   it.each([
     ['drucksache 17 schrägstrich 1234', 'Drs. 17/1234'],
     ['siehe drs. 17 / 42', 'Siehe Drs. 17/42'],
@@ -60,6 +67,33 @@ describe('speechCommandUtils formatting', () => {
     ['er sagte anführungszeichen auf ja anführungszeichen zu', 'Er sagte „ja“'],
   ])('formats parliamentary dictation "%s"', (input, expected) => {
     expect(formatDictatedText(input)).toBe(expected);
+  });
+});
+
+describe('appendDictatedText', () => {
+  it('setzt gesprochene Satzzeichen ohne Leerzeichen an den Vortext', () => {
+    expect(appendDictatedText('Hallo', 'punkt wie geht es dir')).toBe('Hallo. Wie geht es dir');
+    expect(appendDictatedText('Hallo', 'komma die Unterlagen')).toBe('Hallo, die Unterlagen');
+  });
+
+  it('beginnt ohne Vortext mit dem formatierten Abschnitt', () => {
+    expect(appendDictatedText('', 'hallo punkt wie geht es dir')).toBe('Hallo. Wie geht es dir');
+    expect(appendDictatedText('   ', 'nach paragraf 3 absatz zwei')).toBe('Nach § 3 Abs. 2');
+  });
+
+  it('trennt normale Diktatabschnitte mit einem Leerzeichen', () => {
+    expect(appendDictatedText('Das Treffen lief gut', 'ich habe zugesagt die Unterlagen zu schicken'))
+      .toBe('Das Treffen lief gut Ich habe zugesagt die Unterlagen zu schicken');
+  });
+
+  it('wendet die parlamentarischen Schreibweisen an', () => {
+    expect(appendDictatedText('Notiz', 'nach paragraf 3 absatz zwei')).toBe('Notiz Nach § 3 Abs. 2');
+    expect(appendDictatedText('Drs.', 'drucksache 17 schrägstrich 1234')).toBe('Drs. Drs. 17/1234');
+  });
+
+  it('lässt leere Abschnitte unverändert', () => {
+    expect(appendDictatedText('Hallo', '   ')).toBe('Hallo');
+    expect(appendDictatedText('', '   ')).toBe('');
   });
 });
 

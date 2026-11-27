@@ -188,7 +188,9 @@ export const formatDictatedText = (text: string): string => {
 
   // Capitalize after sentence-ending punctuation (. ! ?) and after newlines
   const withSentenceCase = formatted
-    .replace(/([.!?])\s*(\p{L})/gu, (_, punct: string, letter: string) => `${punct} ${letter.toUpperCase()}`)
+    // Nach einem Datum oder einer Ordnungszahl („12.12. zu schicken“) beginnt kein neuer Satz.
+    .replace(/([.!?])\s*(\p{L})/gu, (match: string, punct: string, letter: string, offset: number, whole: string) =>
+      punct === "." && /\d/.test(whole[offset - 1] ?? "") ? match : `${punct} ${letter.toUpperCase()}`)
     .replace(/\n\s*(\p{L})/gu, (_, letter: string) => `\n${letter.toUpperCase()}`)
     .replace(/^„?(\p{L})/u, (start: string) => start.toUpperCase());
 
@@ -205,6 +207,20 @@ export const formatDictatedText = (text: string): string => {
     .replace(/\s{2,}/g, ' ')
     .replace(/\s*\n\s*/g, '\n')
     .trim();
+};
+
+/**
+ * Hängt einen diktierten Abschnitt an vorhandenen Text an. Gesprochene Satzzeichen werden – wie
+ * im Brief- und Protokoll-Editor – über formatDictatedText eingesetzt; Satzzeichen kommen ohne
+ * trennendes Leerzeichen an den Vortext, alles andere mit einem Leerzeichen.
+ */
+export const appendDictatedText = (current: string, chunk: string): string => {
+  const formatted = formatDictatedText(chunk);
+  if (!formatted) return current;
+  const base = current.trimEnd();
+  if (!base) return formatted;
+  if (/^[,.;:!?„“)\]}]/u.test(formatted)) return base + formatted;
+  return `${base} ${formatted}`;
 };
 
 const CITATION_ABBREVIATION = /(?:^|[^\p{L}\p{N}])(?:abs|art|bd|buchst|drs|hrsg|lit|nr|rn|satznr|s|vgl|ziff)$/iu;

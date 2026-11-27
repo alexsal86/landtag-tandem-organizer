@@ -76,6 +76,7 @@ const PerformanceDashboard = lazy(() => import("@/components/administration/Perf
 const FeatureCatalogView = lazy(() => import("@/features/feature-catalog/FeatureCatalogView").then(module => ({ default: module.FeatureCatalogView })));
 const SecurityCockpit = lazy(() => import("@/components/administration/SecurityCockpit").then(module => ({ default: module.SecurityCockpit })));
 const GdprRequestsManager = lazy(() => import("@/components/administration/GdprRequestsManager").then(module => ({ default: module.GdprRequestsManager })));
+const PromiseHintStatsReadout = lazy(() => import("@/features/appointments/briefing/PromiseHintStatsReadout").then(module => ({ default: module.PromiseHintStatsReadout })));
 
 export default function Administration(): React.JSX.Element | null {
   const { user, loading } = useAuth();
@@ -410,7 +411,13 @@ export default function Administration(): React.JSX.Element | null {
     // SECTION 7: Super-Admin
     if (activeSection === "superadmin" && isSuperAdmin) {
       switch (activeSubSection) {
-        case "tenants": return <SuperadminTenantManagement />;
+        case "tenants":
+          return (
+            <div className="space-y-4">
+              <PromiseHintStatsReadout />
+              <SuperadminTenantManagement />
+            </div>
+          );
         case "election-history": return <ElectionHistoryAdmin />;
         case "feature-catalog": return <FeatureCatalogView />;
         case "ministry-history": return <MinistryHistoryView />;

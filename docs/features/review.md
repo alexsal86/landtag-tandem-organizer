@@ -291,7 +291,7 @@ Eindeutige Fehler werden im CI-Lauf ausgegeben und brechen die Prüfung ab; sie 
 - `events.legacy-rsvp` — Legacy-Einladungslinks (veraltet)
 - `cases.legacy-routes` — Legacy-Vorgangsrouten (veraltet)
 
-## Funktionen mit Einschränkungen oder offenen Punkten (110)
+## Funktionen mit Einschränkungen oder offenen Punkten (111)
 
 ### `mywork.dashboard`
 
@@ -629,6 +629,13 @@ Eindeutige Fehler werden im CI-Lauf ausgegeben und brechen die Prüfung ab; sie 
 ### `appointments.requests`
 
 - Ein direkter Statuswechsel wird durch einen Trigger blockiert; der Negativpfad ist im Szenario geprüft.
+
+### `appointments.debrief`
+
+- Die Messung liegt als Zähler-JSON in user_preferences (pro Nutzer und Tenant) und hat keine Auswertungsoberfläche; per RLS sind nur die eigenen Zähler sichtbar, eine Gesamtauswertung braucht SQL mit Service-Rolle.
+- Ein Vorschlag zählt einmal pro Termin als erschienen, auch wenn mehrere Trigger (Diktat-Ende, Stopp, Weiter) denselben Vorschlag melden; erneutes Diktat zum selben Termin erhöht shown nicht.
+- shown zählt auch ohne gesendete Rückmeldung; die Trefferquote ist gegen shown zu rechnen, nicht gegen die Summe der Ausgänge. Abgebrochene Sitzungen bleiben als wirkungslos stehen.
+- Die Erhöhung läuft clientseitig und um 500 ms entprellt; ein sofort geschlossener Tab kann die letzte Erhöhung verlieren. Der Zähler wird nie vom Gesprächsinhalt abgeleitet, sondern nur aus Vorschlag und gesendeter Zusage.
 
 ### `appointments.preparation`
 

@@ -708,8 +708,9 @@ Die Angaben sind deklarierte Mindestrollen. Die tatsächlich wirksame Berechtigu
 - `knowledge.review` — Wissensantwort prüfen und freigeben
 - `knowledge.management` — Wissensverwaltung
 
-### `superadmin` — 28 Funktionen
+### `superadmin` — 29 Funktionen
 
+- `appointments.debrief` — Nachbereitung und Büro-Feedback
 - `admin.workspace` — Administrationsbereich und Zugriff
 - `admin.roles` — Benutzerrollen verwalten
 - `admin.permissions-explorer` — Rechte-Explorer und Rechteerklärung
@@ -822,7 +823,7 @@ Die Angaben sind deklarierte Mindestrollen. Die tatsächlich wirksame Berechtigu
 | `annotations.tasks` | `abgeordneter`, `bueroleitung`, `mitarbeiter` |
 | `appointments.briefing` | `abgeordneter`, `bueroleitung`, `mitarbeiter` |
 | `appointments.briefing-live` | `abgeordneter`, `bueroleitung`, `mitarbeiter` |
-| `appointments.debrief` | `abgeordneter`, `bueroleitung`, `mitarbeiter` |
+| `appointments.debrief` | `abgeordneter`, `bueroleitung`, `mitarbeiter`, `superadmin` |
 | `appointments.feedback` | `abgeordneter`, `bueroleitung`, `mitarbeiter`, `system` |
 | `appointments.jour-fixe` | `abgeordneter`, `bueroleitung`, `mitarbeiter` |
 | `appointments.preparation` | `abgeordneter`, `bueroleitung`, `mitarbeiter` |

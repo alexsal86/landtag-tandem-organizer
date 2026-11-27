@@ -1,4 +1,9 @@
-import { officeDebriefPromiseEdit, suggestOfficeFeedbackPromises } from "@/features/appointments/briefing/officeFeedbackPromises";
+import { mergeDetectedPromise, officeDebriefPromiseEdit, suggestOfficeFeedbackPromises } from "@/features/appointments/briefing/officeFeedbackPromises";
+import {
+  countPromiseHint, countPromiseHintShown, emptyPromiseHintStats, normalizePromiseHintStats,
+  promiseHintOutcome, promiseHintsWithoutFeedback,
+} from "@/features/appointments/briefing/officeFeedbackPromiseHintStats";
+import { appendDictatedText } from "@/lib/speechCommandUtils";
 import { buildTodayPriorities } from "@/components/my-work/todayPriorities";
 import { appointmentFocusMode, departureTime, focusCountdown, pickFocusAppointment } from "@/features/appointments/dashboardFocus";
 import { visibleSentChanges } from "@/features/appointments/change-alerts/sentChangeVisibility";
@@ -245,9 +250,76 @@ export const appointmentBriefingLifecycleScenario: TestScenario = {
           + "Zusage: Rückruf am Freitag.";
         const expected = "Ich habe zugesagt, die Unterlagen bis zum 12.12. zu schicken.\n"
           + "Wir werden beim Ministerium nachfragen.\nRückruf am Freitag.";
-        const ok = suggestOfficeFeedbackPromises(text) === expected
-          && suggestOfficeFeedbackPromises("Die Unterlagen wurden besprochen.") === "";
-        return { ok, message: ok ? "Zusagen werden vorgeschlagen." : "Die Vorschläge weichen ab." };
+        const checks = [
+          suggestOfficeFeedbackPromises(text) === expected,
+          suggestOfficeFeedbackPromises("Die Unterlagen wurden besprochen.") === "",
+          // Diktat ohne Satzzeichen: „nicht“ im Folgesatz verwirft die Zusage nicht.
+          suggestOfficeFeedbackPromises("das treffen war gut ich habe zugesagt die unterlagen zu schicken "
+            + "ich habe nicht vor das zu vergessen") === "ich habe zugesagt die unterlagen zu schicken",
+          // Passiv ist nicht pauschal eine Zusage: „ich werde gefragt“ nicht, unpersönliches Passiv schon.
+          suggestOfficeFeedbackPromises("ich werde gefragt ob die unterlagen schon da sind") === "",
+          suggestOfficeFeedbackPromises("ich werde gefragt ob ich die unterlagen schicken kann") === "",
+          suggestOfficeFeedbackPromises("wir werden morgen informiert") === "",
+          suggestOfficeFeedbackPromises("Die Unterlagen werden bis Freitag geschickt.")
+            === "Die Unterlagen werden bis Freitag geschickt.",
+          suggestOfficeFeedbackPromises("Die Unterlagen werden nicht geschickt.") === "",
+          // Typische Formulierungen ohne „zugesagt“.
+          suggestOfficeFeedbackPromises("ich kümmere mich um die Anfrage") === "ich kümmere mich um die Anfrage",
+          suggestOfficeFeedbackPromises("wir schicken die Unterlagen bis Montag") === "wir schicken die Unterlagen bis Montag",
+          suggestOfficeFeedbackPromises("ich rufe die Bürgerin morgen zurück") === "ich rufe die Bürgerin morgen zurück",
+          suggestOfficeFeedbackPromises("Ich melde mich nächste Woche.") === "Ich melde mich nächste Woche.",
+          // Abkürzung schneidet den Satz nicht ab.
+          suggestOfficeFeedbackPromises("Ich habe zugesagt, Dr. Müller zu informieren.")
+            === "Ich habe zugesagt, Dr. Müller zu informieren.",
+          // „nicht nur“ ist keine Verneinung.
+          suggestOfficeFeedbackPromises("Ich habe zugesagt, nicht nur die Unterlagen zu schicken, sondern auch den Termin zu nennen.")
+            === "Ich habe zugesagt, nicht nur die Unterlagen zu schicken, sondern auch den Termin zu nennen.",
+          // Verneinte Zusagen bleiben verneint.
+          suggestOfficeFeedbackPromises("Ich habe nichts zugesagt.") === "",
+          suggestOfficeFeedbackPromises("Ich melde mich nicht.") === "",
+          // Randfälle: eine Verneinung im Relativsatz hebt die Zusage nicht auf.
+          suggestOfficeFeedbackPromises("Ich kümmere mich um die Anfrage der Bürgerin, die sich nicht gemeldet hat.")
+            === "Ich kümmere mich um die Anfrage der Bürgerin, die sich nicht gemeldet hat.",
+          // „dass/weil“ bindet den Nebensatz an die Zusage, statt den Teilsatz abzuschneiden.
+          suggestOfficeFeedbackPromises("Ich habe zugesagt, dass ich die Unterlagen schicke.")
+            === "Ich habe zugesagt, dass ich die Unterlagen schicke.",
+          suggestOfficeFeedbackPromises("Ich habe zugesagt, weil ich die Unterlagen schicke.")
+            === "Ich habe zugesagt, weil ich die Unterlagen schicke.",
+          // „Kontakt … auf“ und „kein Problem“ sind eine Zusage bzw. keine Verneinung.
+          suggestOfficeFeedbackPromises("Ich nehme morgen Kontakt mit dem Ministerium auf.")
+            === "Ich nehme morgen Kontakt mit dem Ministerium auf.",
+          suggestOfficeFeedbackPromises("Ich schicke die Unterlagen, kein Problem.")
+            === "Ich schicke die Unterlagen, kein Problem.",
+          // „aber“ trennt den Zusage-Teilsatz; der Folgesatz gehört nicht in den Vorschlag.
+          suggestOfficeFeedbackPromises("Ich habe zugesagt die Unterlagen zu schicken aber ich habe es nicht geschafft")
+            === "Ich habe zugesagt die Unterlagen zu schicken",
+          // Diktat wird wie im Brief-/Protokoll-Editor aufbereitet; gesprochene Satzzeichen helfen der Erkennung.
+          suggestOfficeFeedbackPromises(appendDictatedText("", "ich habe zugesagt die unterlagen bis zum 12.12. zu schicken "
+            + "punkt ich habe nicht vor das zu vergessen")) === "Ich habe zugesagt die unterlagen bis zum 12.12. zu schicken.",
+          // Der Diktat-Vorschlag füllt das Feld, überschreibt aber keine eigene Formulierung.
+          mergeDetectedPromise(undefined, undefined, "Rückruf am Freitag").text === "Rückruf am Freitag",
+          mergeDetectedPromise({ hasPromise: true, text: "Rückruf am Freitag" }, "Rückruf am Freitag", "Unterlagen schicken").text
+            === "Unterlagen schicken",
+          mergeDetectedPromise({ hasPromise: true, text: "Eigene Formulierung" }, "Rückruf am Freitag", "Unterlagen schicken").text
+            === "Eigene Formulierung",
+          // Messung: nur Anzahlen, kein Text – unverändert, geändert, verworfen, ohne Vorschlag gar nichts.
+          promiseHintOutcome("Rückruf am Freitag", "Rückruf am Freitag") === "unchanged",
+          promiseHintOutcome("Rückruf am Freitag", "Rückruf am Montag") === "edited",
+          promiseHintOutcome("Rückruf am Freitag", "") === "discarded",
+          promiseHintOutcome(undefined, "Rückruf am Freitag") === null,
+          countPromiseHint(countPromiseHint(emptyPromiseHintStats, "unchanged"), "discarded").unchanged === 1,
+          // Kaputte, alte oder fehlende Zähler zählen ab 0 weiter und werfen nie.
+          normalizePromiseHintStats(undefined).edited === 0,
+          normalizePromiseHintStats({ shown: 3 }).discarded === 0,
+          normalizePromiseHintStats("kaputt").unchanged === 0,
+          countPromiseHint({ unchanged: Number.NaN }, "edited").edited === 1,
+          // Erschienene Vorschläge zählen mit, damit wirkungslose Hinweise sichtbar bleiben.
+          countPromiseHintShown(emptyPromiseHintStats).shown === 1,
+          promiseHintsWithoutFeedback(countPromiseHintShown(emptyPromiseHintStats)) === 1,
+          promiseHintsWithoutFeedback(countPromiseHint(countPromiseHintShown(emptyPromiseHintStats), "edited")) === 0,
+          normalizePromiseHintStats({ unchanged: 2, edited: 1 }).shown === 3,
+        ];
+        return { ok: checks.every(Boolean), message: `${checks.filter(Boolean).length}/${checks.length} Zusagenregeln bestanden.` };
       },
     },
     {

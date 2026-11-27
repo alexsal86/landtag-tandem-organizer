@@ -1,8 +1,12 @@
-import { officeFeedbackPromiseMaxLength, suggestOfficeFeedbackPromises } from "./officeFeedbackPromises";
+import { mergeDetectedPromise, officeFeedbackPromiseMaxLength, suggestOfficeFeedbackPromises } from "./officeFeedbackPromises";
+import {
+  countPromiseHint, countPromiseHintShown, emptyPromiseHintStats, promiseHintOutcome, type PromiseHintOutcome,
+} from "./officeFeedbackPromiseHintStats";
+import { debugConsole } from "@/utils/debugConsole";
 import { officeFeedbackDraftKey, readOfficeFeedbackDraft, writeOfficeFeedbackDraft } from "./officeFeedbackDraft";
 import { useCallback, useEffect, useMemo, useRef, useState } from "react";
 import { useQueryClient } from "@tanstack/react-query";
-import { AlarmClock, Mic, Square } from "lucide-react";
+import { AlarmClock, Mic, Sparkles, Square } from "lucide-react";
 import { useAppointmentFeedback, type AppointmentWithFeedback } from "@/hooks/useAppointmentFeedback";
 import { useUserPreference } from "@/hooks/useUserPreference";
 import { useAuth } from "@/hooks/useAuth";
@@ -12,6 +16,7 @@ import { useOfficeDebriefInbox } from "./useOfficeDebriefInbox";
 import { useTenant } from "@/hooks/useTenant";
 import { supabase } from "@/integrations/supabase/client";
 import { WebSpeechToTextAdapter, type SpeechToTextState } from "@/lib/speechToTextAdapter";
+import { appendDictatedText } from "@/lib/speechCommandUtils";
 import { notify } from "@/lib/notify";
 import { isOfficeReminderDue, isOlderOfficeFeedback, needsOfficeFeedback, officeReminderLabel, officeReminderTime, readOfficeSnooze, showsOfficeTaskHint, type OfficeSnooze, type ReminderChoice } from "./officeFeedback";
 
@@ -20,6 +25,26 @@ const eventKey = (event: AppointmentWithFeedback) => event.event_type + ":" + ev
 const clock = (value: string) => new Intl.DateTimeFormat("de-DE", {
   timeZone: "Europe/Berlin", hour: "2-digit", minute: "2-digit",
 }).format(new Date(value));
+
+/** Bearbeitbarer Vorschlag nach dem Diktat; gesendet wird er erst mit „Ans Büro senden“.**/
+function PromiseSuggestion({ text, disabled, onChange, onDiscard }: {
+  text: string; disabled: boolean; onChange: (value: string) => void; onDiscard: () => void;
+}) {
+  return (
+    <div role="status" className="animate-fade-up rounded-2xl border border-[#55ad21]/40 bg-[#eaf5df] p-3">
+      <p className="inline-flex items-center gap-1.5 text-meta font-medium text-[#4c9c1e]">
+        <Sparkles className="h-3.5 w-3.5 shrink-0" aria-hidden="true" />Mögliche Zusage erkannt
+      </p>
+      <p className="mt-1 text-caption text-muted-foreground">Aus dem Diktat übernommen. Bitte prüfen, ändern oder verwerfen.</p>
+      <textarea aria-label="Erkannte Zusage" placeholder="Zusagen hier eintragen" rows={2} disabled={disabled}
+        maxLength={officeFeedbackPromiseMaxLength} value={text}
+        onChange={event => onChange(event.target.value)}
+        className="mt-2 w-full rounded-xl border bg-background p-2 text-sm" />
+      <button type="button" disabled={disabled} className="mt-2 text-meta font-medium text-muted-foreground hover:text-foreground"
+        onClick={onDiscard}>Keine Zusage</button>
+    </div>
+  );
+}
 
 export function OfficeFeedbackCard() {
   const { user } = useAuth();
@@ -35,6 +60,11 @@ function OfficeFeedbackForm() {
   const { isAbgeordneter } = useResolvedUserRole();
   const reviews = useOfficeDebriefInbox(true, isAbgeordneter);
   const [promises, setPromises] = useState<Record<string, { hasPromise: boolean; text?: string }>>({});
+  const [detected, setDetected] = useState<Record<string, string>>({});
+  const detectedRef = useRef(detected);
+  detectedRef.current = detected;
+  // Vorschlag bleibt für die Zählung gemerkt, auch wenn er verworfen und aus `detected` entfernt wird.
+  const hintSuggestionRef = useRef<Record<string, string>>({});
   const spokenSeconds = useRef<Record<string, number>>({});
   const recordingStarted = useRef<number | null>(null);
   const dictated = useRef(false);
@@ -42,6 +72,11 @@ function OfficeFeedbackForm() {
   const [snoozes, setSnoozes] = useUserPreference<Record<string, string | OfficeSnooze>>(
     `office-feedback-snoozes:${currentTenant?.id}:${user?.id}`, {},
   );
+  // Nur Anzahlen, nie der Gesprächsinhalt: wie kommt der Zusagen-Vorschlag an?
+  const [, setHintStats] = useUserPreference<unknown>(
+    `office-feedback-promise-hints:${currentTenant?.id}:${user?.id}`, emptyPromiseHintStats,
+  );
+  // Erschienene Vorschläge zählen einmal pro Termin; kein weiterer State nötig.
   const [now, setNow] = useState(() => new Date());
   const [selected, setSelected] = useState<string | null>(null);
   const [drafts, setDrafts] = useState<Record<string, string>>({});
@@ -57,6 +92,32 @@ function OfficeFeedbackForm() {
   const [interim, setInterim] = useState("");
   const speech = useMemo(() => new WebSpeechToTextAdapter(), []);
   const speechTarget = useRef<string | null>(null);
+  // Über eine Ref, damit eine späte Rollenauflösung das laufende Diktat nicht neu startet.
+  const isDeputyRef = useRef(isAbgeordneter);
+  isDeputyRef.current = isAbgeordneter;
+  // Immer die aktuelle Fassung, ohne die Diktat-Handler neu zu abonnieren.
+  const detectPromiseRef = useRef<(targetKey: string) => void>(() => {});
+  detectPromiseRef.current = targetKey => {
+    if (!isDeputyRef.current) return;
+    const spoken = draftsRef.current[targetKey] ?? readOfficeFeedbackDraft(storedKey(targetKey));
+    const suggestion = suggestOfficeFeedbackPromises(spoken);
+    if (!suggestion) return;
+    // Erschienene Vorschläge zählen, auch wenn danach keine Rückmeldung gesendet wird.
+    // Einmal pro Termin, weil mehrere Trigger (idle, Stopp, „Weiter“) denselben Vorschlag melden.
+    if (!hintSuggestionRef.current[targetKey]) {
+      try {
+        setHintStats(previous => countPromiseHintShown(previous));
+      } catch (error) {
+        debugConsole.error("Zusagen-Messung: Sichtbarkeit nicht gezählt", error);
+      }
+    }
+    hintSuggestionRef.current[targetKey] = suggestion;
+    setDetected(previous => ({ ...previous, [targetKey]: suggestion }));
+    setPromises(previous => ({
+      ...previous,
+      [targetKey]: mergeDetectedPromise(previous[targetKey], detectedRef.current[targetKey], suggestion),
+    }));
+  };
 
   useEffect(() => {
     const interval = window.setInterval(() => {
@@ -70,8 +131,12 @@ function OfficeFeedbackForm() {
       setSpeechState(state);
       const key = speechTarget.current;
       if (state === "idle" && recordingStarted.current !== null) {
-        if (key && dictated.current) spokenSeconds.current[key] = (spokenSeconds.current[key] ?? 0)
-          + Math.max(1, Math.round((Date.now() - recordingStarted.current) / 1000));
+        if (key && dictated.current) {
+          spokenSeconds.current[key] = (spokenSeconds.current[key] ?? 0)
+            + Math.max(1, Math.round((Date.now() - recordingStarted.current) / 1000));
+          // Direkt nach dem Diktat prüfen, nicht erst hinter „Hast du eine Zusage gemacht? → Ja“.
+          detectPromiseRef.current(key);
+        }
         recordingStarted.current = null;
         dictated.current = false;
       }
@@ -82,7 +147,8 @@ function OfficeFeedbackForm() {
       if (key) {
         dictated.current = true;
         const localKey = storedKey(key);
-        const next = { ...draftsRef.current, [key]: [draftsRef.current[key] ?? readOfficeFeedbackDraft(localKey), text].filter(Boolean).join(" ") };
+        // Wie in Brief- und Protokoll-Editor: gesprochene Satzzeichen und Zitationsformen anwenden.
+        const next = { ...draftsRef.current, [key]: appendDictatedText(draftsRef.current[key] ?? readOfficeFeedbackDraft(localKey), text) };
         draftsRef.current = next;
         setDrafts(next);
       }
@@ -177,6 +243,8 @@ function OfficeFeedbackForm() {
   const finish = async (events: AppointmentWithFeedback[], report?: string) => {
     if (busy || !events.length) return;
     setBusy(true);
+    // Erst nach dem Senden zählen; die Messung darf den Versand nie kippen.
+    let hinted: (PromiseHintOutcome | null)[] = [];
     try {
       if (recording && !(await speech.stop())) return;
       const results = await Promise.allSettled(events.map(event => persist(event, report ? "completed" : "skipped", report)));
@@ -194,8 +262,18 @@ function OfficeFeedbackForm() {
           : `${failed.length} Rückmeldung(en) konnten nicht abgeschlossen werden.`, { description: details });
       }
       if (!saved.length) return;
+      hinted = report ? saved.map(event => {
+        const entry = promises[eventKey(event)];
+        return promiseHintOutcome(hintSuggestionRef.current[eventKey(event)], entry?.hasPromise ? entry.text : undefined);
+      }) : [];
+      saved.forEach(event => { delete hintSuggestionRef.current[eventKey(event)]; });
       setCompleted(failed.length ? null : report ? "sent" : "empty");
       setPromises(previous => {
+        const next = { ...previous };
+        saved.forEach(event => { delete next[eventKey(event)]; });
+        return next;
+      });
+      setDetected(previous => {
         const next = { ...previous };
         saved.forEach(event => { delete next[eventKey(event)]; });
         return next;
@@ -217,8 +295,17 @@ function OfficeFeedbackForm() {
       });
     } catch {
       notify.error("Rückmeldung konnte nicht gespeichert werden. Dein Text bleibt erhalten.");
+      hinted = [];
     } finally {
       setBusy(false);
+    }
+    // Außerhalb des Fehlerpfads: Ein kaputter Zähler erzeugt keinen Hinweis und keinen Abbruch.
+    if (hinted.length) {
+      try {
+        setHintStats(previous => hinted.reduce(countPromiseHint, previous));
+      } catch (error) {
+        debugConsole.error("Zusagen-Messung: Zähler nicht aktualisiert", error);
+      }
     }
   };
 
@@ -244,12 +331,31 @@ function OfficeFeedbackForm() {
     setMode("write");
   };
 
+  // Nach dem Diktat in der Schreibansicht bleiben; erst „Weiter“ führt zur Bestätigung.
+  const stopDictation = async () => {
+    if (!recording) return;
+    if (!(await speech.stop())) return;
+    // Falls beim Stoppen kein idle-Ereignis mehr kam, die Erkennung hier nachziehen.
+    if (dictated.current) detectPromiseRef.current(key);
+  };
+
   const review = async () => {
     if (recording && !(await speech.stop())) return;
     if ((draftsRef.current[key] ?? readOfficeFeedbackDraft(storedKey(key))).trim()) {
+      // Falls beim Stoppen kein idle-Ereignis mehr kam, hier nachziehen.
+      if (dictated.current) detectPromiseRef.current(key);
       setSelected(key);
       setMode("review");
     }
+  };
+
+  const discardDetected = () => {
+    setDetected(previous => {
+      const next = { ...previous };
+      delete next[key];
+      return next;
+    });
+    setPromises(previous => ({ ...previous, [key]: { hasPromise: false } }));
   };
 
   return (
@@ -290,7 +396,11 @@ function OfficeFeedbackForm() {
             {mode === "review" ? (
               <div className="animate-fade-up space-y-3">
                 <p className="whitespace-pre-wrap rounded-2xl bg-muted/60 p-3 text-sm">{text}</p>
-                {isAbgeordneter && (
+                {isAbgeordneter && (detected[key] ? (
+                  <PromiseSuggestion text={promise?.text ?? detected[key]} disabled={busy}
+                    onChange={value => setPromises(previous => ({ ...previous, [key]: { hasPromise: true, text: value } }))}
+                    onDiscard={discardDetected} />
+                ) : (
                   <fieldset disabled={busy} className="space-y-2">
                     <legend className="mb-2 text-sm font-medium">Hast du eine Zusage gemacht?</legend>
                     <div className="flex gap-2">
@@ -307,7 +417,7 @@ function OfficeFeedbackForm() {
                       onChange={event => setPromises(previous => ({ ...previous, [key]: { hasPromise: true, text: event.target.value } }))}
                       rows={3} maxLength={officeFeedbackPromiseMaxLength} className="w-full rounded-xl border bg-background p-2 text-sm" />}
                   </fieldset>
-                )}
+                ))}
                 <div className="flex flex-wrap gap-2">
                   <button type="button" disabled={busy || (isAbgeordneter && (!promise || (promise.hasPromise && !promise.text?.trim())))} className={`rounded-xl px-4 py-2 text-sm disabled:opacity-40 ${green}`} onClick={() => void finish([current], text.trim())}>{busy ? "Wird gesendet…" : "Ans Büro senden"}</button>
                   <button type="button" disabled={busy} className="px-3 py-2 text-sm text-muted-foreground" onClick={() => setMode("write")}>Zurück</button>
@@ -325,7 +435,7 @@ function OfficeFeedbackForm() {
                   <button type="button" aria-label={recording ? "Diktat beenden" : "Rückmeldung diktieren"} aria-pressed={recording}
                     disabled={busy || !speech.supported || speechState === "stopping"} title={speech.supported ? "Diktieren" : "Spracherkennung wird von diesem Browser nicht unterstützt"}
                     className="flex h-8 w-8 shrink-0 items-center justify-center rounded-full bg-[#eaf5df] text-[#55ad21] disabled:opacity-40"
-                    onClick={() => { if (recording) void review(); else { setSelected(key); speechTarget.current = key; recordingStarted.current = Date.now(); dictated.current = false; speech.start(); } }}>
+                    onClick={() => { if (recording) void stopDictation(); else { setSelected(key); speechTarget.current = key; recordingStarted.current = Date.now(); dictated.current = false; speech.start(); } }}>
                     {recording ? <Square className="h-4 w-4" /> : <Mic className="h-5 w-5" />}
                   </button>
                   <button type="button" disabled={busy || (!text.trim() && !recording)} className={`h-8 shrink-0 rounded-2xl px-4 text-body font-medium disabled:opacity-40 ${green}`} onClick={() => void review()}>Weiter</button>
@@ -336,6 +446,13 @@ function OfficeFeedbackForm() {
                     ))}
                   </div>
                 {recording && <p role="status" className="mt-2 text-xs text-muted-foreground">{interim || "Ich höre zu …"}</p>}
+                {isAbgeordneter && detected[key] && !recording && (
+                  <div className="mt-3">
+                    <PromiseSuggestion text={promise?.text ?? detected[key]} disabled={busy}
+                      onChange={value => setPromises(previous => ({ ...previous, [key]: { hasPromise: true, text: value } }))}
+                      onDiscard={discardDetected} />
+                  </div>
+                )}
                 <div className="mt-2 flex flex-wrap gap-x-5 gap-y-1 text-meta font-medium text-muted-foreground">
                   <button type="button" disabled={busy} className="py-1 hover:text-foreground" onClick={() => { setSelected(key); setMode("remind"); }}>Später erinnern</button>
                   <button type="button" disabled={busy} className="py-1 hover:text-foreground" onClick={() => void finish([current])}>Nichts zu berichten</button>

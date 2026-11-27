@@ -18317,6 +18317,17 @@ export type Database = {
         Args: { period: number }
         Returns: Json
       }
+      get_office_feedback_promise_hint_stats: {
+        Args: Record<PropertyKey, never>
+        Returns: {
+          shown: number
+          unchanged: number
+          edited: number
+          discarded: number
+          users: number
+          last_updated: string | null
+        }[]
+      }
       parlis_topic_suggestions: {
         Args: { period: number; term: string }
         Returns: string[]

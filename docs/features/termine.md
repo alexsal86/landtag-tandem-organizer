@@ -46,7 +46,7 @@ _Auto-generiert mit `npm run update:feature-catalog` aus dem zentralen Funktions
 
 ## Rollen
 
-`abgeordneter`, `bueroleitung`, `mitarbeiter`, `praktikant`, `system`, `admin`
+`abgeordneter`, `bueroleitung`, `mitarbeiter`, `praktikant`, `system`, `superadmin`, `admin`
 
 ## Datenbanktabellen
 
@@ -540,24 +540,24 @@ Führt das Briefing im Termin, erlaubt Statusfortschritt und erzeugt Nachbereitu
 - Keine.
 
 ### `appointments.debrief` — Nachbereitung und Büro-Feedback
-Sammelt Rückmeldungen aus dem Termin, zeigt offene Nachbereitungen und schließt Feedback-Erinnerungen. Nach dem Diktat können Abgeordnete Zusagen bestätigen und regelbasierte Vorschläge vor dem Versand bearbeiten. Mitarbeitende können Zusagen und Fristen in offenen Nachbereitungen ergänzen, ändern oder entfernen.
+Sammelt Rückmeldungen aus dem Termin, zeigt offene Nachbereitungen und schließt Feedback-Erinnerungen. Nach dem Diktat können Abgeordnete Zusagen bestätigen und regelbasierte Vorschläge vor dem Versand bearbeiten. Mitarbeitende können Zusagen und Fristen in offenen Nachbereitungen ergänzen, ändern oder entfernen. Wie der Zusagen-Vorschlag ankommt, wird ohne Gesprächsinhalt gemessen: erschienene Vorschläge sowie die Ausgänge unverändert gesendet, geändert und verworfen.
 
 - **Kategorie:** fachlich
 - **Implementierung:** implementiert
 - **Einbindung:** UI
 - **Testabdeckung:** Selbsttest
 - **Letztes Testergebnis:** nicht-ausgefuehrt (kein Laufnachweis importiert; nicht aus der Existenz einer Testdatei abgeleitet)
-- **Rollen:** `abgeordneter`, `bueroleitung`, `mitarbeiter`
+- **Rollen:** `abgeordneter`, `bueroleitung`, `mitarbeiter`, `superadmin`
 - **Routen:** —
-- **Frontend-Komponenten:** `src/features/appointments/briefing/OfficeDebriefInboxCard.tsx`, `src/features/appointments/briefing/OfficeFeedbackCard.tsx`, `src/features/appointments/briefing/DeputyDebriefReview.tsx`
-- **Services:** `src/features/appointments/briefing/officeDebriefInbox.ts`, `src/features/appointments/briefing/officeFeedback.ts`, `src/features/appointments/briefing/officeFeedbackPromises.ts`
+- **Frontend-Komponenten:** `src/features/appointments/briefing/OfficeDebriefInboxCard.tsx`, `src/features/appointments/briefing/OfficeFeedbackCard.tsx`, `src/features/appointments/briefing/DeputyDebriefReview.tsx`, `src/features/appointments/briefing/PromiseHintStatsReadout.tsx`
+- **Services:** `src/features/appointments/briefing/officeDebriefInbox.ts`, `src/features/appointments/briefing/officeFeedback.ts`, `src/features/appointments/briefing/officeFeedbackPromises.ts`, `src/features/appointments/briefing/officeFeedbackPromiseHintStats.ts`
 - **Hooks:** —
 - **Edge Functions:** —
-- **Datenbankfunktionen:** `list_office_debriefs`, `update_office_debrief`, `close_office_feedback_reminder`
+- **Datenbankfunktionen:** `list_office_debriefs`, `update_office_debrief`, `close_office_feedback_reminder`, `get_office_feedback_promise_hint_stats`
 - **Tabellen:** `appointment_feedback`, `appointment_preparations`
 - **Abhängigkeiten:** `appointments.briefing`
 - **Selbsttests:** `appointment-lifecycle`, `appointment-briefing-lifecycle`
-- **Unit-Tests:** —
+- **Unit-Tests:** `src/features/appointments/briefing/officeFeedbackPromises.test.ts`, `src/features/appointments/briefing/officeFeedbackPromiseHintStats.test.ts`
 - **Integrationstests:** —
 - **Browser-Tests:** —
 - **Dokumentation:** —
@@ -567,10 +567,14 @@ Sammelt Rückmeldungen aus dem Termin, zeigt offene Nachbereitungen und schließ
 - src/features/appointments/briefing/OfficeDebriefInboxCard.tsx
 - src/features/appointments/briefing/officeDebriefInbox.ts
 - src/features/appointments/briefing/OfficeFeedbackCard.tsx
+- src/features/appointments/briefing/PromiseHintStatsReadout.tsx
 
 **Bekannte Einschränkungen**
 
-- Keine.
+- Die Messung liegt als Zähler-JSON in user_preferences (pro Nutzer und Tenant) und hat keine Auswertungsoberfläche; per RLS sind nur die eigenen Zähler sichtbar, eine Gesamtauswertung braucht SQL mit Service-Rolle.
+- Ein Vorschlag zählt einmal pro Termin als erschienen, auch wenn mehrere Trigger (Diktat-Ende, Stopp, Weiter) denselben Vorschlag melden; erneutes Diktat zum selben Termin erhöht shown nicht.
+- shown zählt auch ohne gesendete Rückmeldung; die Trefferquote ist gegen shown zu rechnen, nicht gegen die Summe der Ausgänge. Abgebrochene Sitzungen bleiben als wirkungslos stehen.
+- Die Erhöhung läuft clientseitig und um 500 ms entprellt; ein sofort geschlossener Tab kann die letzte Erhöhung verlieren. Der Zähler wird nie vom Gesprächsinhalt abgeleitet, sondern nur aus Vorschlag und gesendeter Zusage.
 
 **Offene Prüfpunkte**
 
