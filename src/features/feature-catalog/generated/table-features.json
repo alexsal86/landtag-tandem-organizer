@@ -338,6 +338,11 @@
       "area": "verwaltung"
     },
     {
+      "id": "admin.gdpr",
+      "name": "DSGVO-Löschanträge",
+      "area": "verwaltung"
+    },
+    {
       "id": "admin.security-cockpit",
       "name": "Security-Cockpit",
       "area": "verwaltung"

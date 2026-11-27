@@ -121,20 +121,28 @@
       "id": "admin.audit-log",
       "subarea": "Audit",
       "name": "Audit-Trail einsehen und exportieren",
-      "description": "Protokolliert sicherheits- und fachrelevante Änderungen und erlaubt Suche und Export.",
+      "description": "Protokolliert sicherheits- und fachrelevante Änderungen und erlaubt Suche und Export. Jeder Eintrag trägt eine eigene action-Spalte und eine tenant_id; Rollenänderungen werden je Büro der betroffenen Person geschrieben, DSGVO-Freigaben und -Ausführungen sowie beobachtete Berechtigungsfehler (42501) erscheinen als eigene Ereignisse. Fehlgeschlagene Anmeldungen laufen über den begrenzten Endpunkt log-auth-failure, weil vor der Anmeldung keine Sitzung für log-audit-event besteht; DSGVO-Anträge werden beim Anlegen und Zurückziehen protokolliert.",
       "category": "sicherheit",
       "implementationStatus": "implementiert",
       "integrationStatus": "rollenabhaengig",
-      "coverage": "keine",
+      "coverage": "unit",
       "testResult": "nicht-ausgefuehrt",
-      "evidence": ["src/components/administration/AuditLogViewer.tsx", "src/hooks/useAuditLog.ts"],
+      "evidence": ["src/components/administration/AuditLogViewer.tsx", "src/hooks/useAuditLog.ts", "src/integrations/supabase/securityEventFetch.ts"],
       "components": ["src/components/administration/AuditLogViewer.tsx"],
       "hooks": ["src/hooks/useAuditLog.ts"],
-      "edgeFunctions": ["log-audit-event"],
-      "rpcs": ["log_audit_event", "search_admin_audit_logs", "export_admin_audit_logs", "is_admin_for_audit_logs"],
+      "unitTests": ["src/integrations/supabase/securityEventFetch.test.ts"],
+      "integrationTests": ["scripts/test-audit-writepath.mjs"],
+      "edgeFunctions": ["log-audit-event", "log-auth-failure"],
+      "rpcs": ["log_audit_event", "record_audit_entry", "audit_request_ip", "search_admin_audit_logs", "export_admin_audit_logs", "is_admin_for_audit_logs"],
       "tables": ["audit_log_entries"],
       "roles": ["admin", "bueroleitung", "superadmin"],
-      "docs": ["docs/security-function-matrix.md"]
+      "docs": ["docs/security-function-matrix.md", "docs/audit-writepath.md"],
+      "limitations": [
+        "Der PGlite-Harness scripts/test-audit-writepath.mjs prüft nur die Schreiblogik; Vier-Augen-Trigger, RLS und die Wirkung der Grants sind dort nicht abgedeckt (siehe docs/audit-writepath.md).",
+        "Eine im selben Statement verworfene Anfrage (42501) kann keinen eigenen Eintrag behalten; protokolliert wird die vom Client beobachtete Ablehnung über record_audit_entry.",
+        "Fehlgeschlagene Anmeldungen haben keine tenant_id, weil ohne Sitzung keine verlässliche Bürozuordnung möglich ist; sichtbar sind sie für die Plattformadministration.",
+        "Für audit_log_entries gibt es weiterhin keine Aufbewahrungs- oder Anonymisierungsroutine."
+      ]
     },
     {
       "id": "admin.bulk-audit",
@@ -156,26 +164,30 @@
       "id": "admin.gdpr",
       "subarea": "Datenschutz",
       "name": "DSGVO-Löschanträge",
-      "description": "Verwaltet Löschanträge mit Vier-Augen-Freigabe durch die Datenbank und atomarem Claim vor destruktiver Ausführung.",
+      "description": "Verwaltet Löschanträge mit Vier-Augen-Freigabe durch die Datenbank und atomarem Claim vor destruktiver Ausführung. Anlegen und Zurückziehen eines Antrags, die Freigabe und die Ausführung von Löschung oder Export werden als eigene Audit-Ereignisse mit Büro und Urheber protokolliert.",
       "category": "sicherheit",
       "implementationStatus": "implementiert",
       "integrationStatus": "rollenabhaengig",
-      "coverage": "keine",
-      "testResult": "nicht-ausgefuehrt",
-      "evidence": ["src/components/administration/GdprRequestsManager.tsx", "supabase/functions/gdpr-process/index.ts"],
+      "coverage": "integration",
+      "testResult": "bestanden",
+      "evidence": ["src/components/administration/GdprRequestsManager.tsx", "supabase/functions/gdpr-process/index.ts", "supabase/migrations/20261128120000_audit_gdpr_request_events.sql"],
       "components": ["src/components/administration/GdprRequestsManager.tsx"],
       "edgeFunctions": ["gdpr-process"],
-      "rpcs": ["approve_gdpr_delete", "gdpr_check_four_eyes", "gdpr_set_updated_at"],
-      "tables": ["gdpr_requests", "contacts"],
+      "rpcs": ["approve_gdpr_delete", "record_audit_entry", "audit_gdpr_request_changes", "gdpr_check_four_eyes", "gdpr_set_updated_at"],
+      "tables": ["gdpr_requests", "contacts", "audit_log_entries"],
       "roles": ["admin", "superadmin"],
-      "docs": ["docs/disaster-recovery.md"],
-      "limitations": ["Der Vier-Augen-Prozess ist nur über Code und Migration nachgewiesen; kein Testlauf gegen eine Datenbank in dieser Umgebung."]
+      "docs": ["docs/disaster-recovery.md", "docs/audit-writepath.md"],
+      "integrationTests": ["scripts/test-audit-writepath.mjs"],
+      "limitations": [
+        "Der Vier-Augen-Trigger selbst wird nicht in PGlite geprüft: scripts/test-audit-writepath.mjs deckt Statuswechsel, Freigabe-Ereignis und das Anlegen/Zurückziehen von Anträgen ab; die Regel prüfen scripts/test-gdpr-personal-approval.sql und scripts/test-gdpr-subject-rule.mjs.",
+        "Das Audit-Ereignis eines Antrags enthält bewusst keine Personendaten (keine E-Mail, kein Name, kein Kontaktbezug)."
+      ]
     },
     {
       "id": "admin.security-cockpit",
       "subarea": "Sicherheit",
       "name": "Security-Cockpit",
-      "description": "Zeigt RLS-Lücken, Policies, Snapshots und Audit-Trail als eigenständige Sicherheitssicht; Befunde verweisen auf die betroffenen Funktionen und sind von fachlichen Testergebnissen getrennt. Tabellen ohne Client-Grant (anon/authenticated) gelten trotz fehlender Policy als beabsichtigtes Deny-all und werden nicht als kritisch gemeldet; erreichbare Tabellen ohne Policy bleiben kritisch. Auffällige Befunde lassen sich je Zeile nachtesten: Es laufen die Selbsttests, die die betroffene Tabelle laut Coverage-Übersicht abdecken; Tabellen ohne abdeckendes Szenario bieten keinen Button.",
+      "description": "Zeigt RLS-Lücken, Policies, Snapshots und Audit-Trail als eigenständige Sicherheitssicht; Befunde verweisen auf die betroffenen Funktionen und sind von fachlichen Testergebnissen getrennt. Tabellen ohne Client-Grant (anon/authenticated) gelten trotz fehlender Policy als beabsichtigtes Deny-all und werden nicht als kritisch gemeldet; erreichbare Tabellen ohne Policy bleiben kritisch. Auffällige Befunde lassen sich je Zeile nachtesten: Es laufen die Selbsttests, die die betroffene Tabelle laut Coverage-Übersicht abdecken; Tabellen ohne abdeckendes Szenario bieten keinen Button. Der Audit-Trail zeigt die Ereignisart als eigene Spalte und filtert sicherheitskritische Ereignisse (DSGVO, Rollen/Rechte, fehlgeschlagene Anmeldungen, verweigerte Zugriffe) in der Datenbank vor dem Limit, sodass auch ältere Ereignisse gefunden werden.",
       "category": "sicherheit",
       "implementationStatus": "implementiert",
       "integrationStatus": "rollenabhaengig",
@@ -183,17 +195,20 @@
       "testResult": "bestanden",
       "evidence": [
         "src/components/administration/SecurityCockpit.tsx",
+        "src/components/administration/auditSecurityFilter.ts",
         "src/features/feature-catalog/useTableSecurity.ts",
         "src/features/feature-catalog/securityLinks.ts",
         "supabase/migrations/20261125160000_feature_security_policy_links.sql"
       ],
       "components": [
         "src/components/administration/SecurityCockpit.tsx",
+        "src/components/administration/auditSecurityFilter.ts",
         "src/features/feature-catalog/useTableSecurity.ts",
         "src/features/feature-catalog/securityLinks.ts"
       ],
       "unitTests": [
         "src/components/administration/SecurityCockpit.test.tsx",
+        "src/components/administration/auditSecurityFilter.test.ts",
         "src/features/selftest/tableRetests.test.ts"
       ],
       "rpcs": ["audit_rls_gaps", "audit_rls_policies", "snapshot_rls_coverage", "snapshot_rls_coverage_internal"],
@@ -204,7 +219,8 @@
         "Eine vorhandene RLS-Policy ist kein Nachweis für korrekte Mandantentrennung; das Cockpit liefert nur Befunde.",
         "Policy-Details stammen live aus pg_policies und bewerten weder die Funktion noch ihre Tests.",
         "Der Nachtest führt die Selbsttests aus, die die Tabelle laut Coverage-Übersicht abdecken; er beweist nicht, dass genau die beanstandete Policy korrekt ist.",
-        "Für Tabellen ohne abdeckendes Selbsttest-Szenario bleibt die Nachtest-Zelle leer; diese Lücke schließt nur ein neues Szenario in src/features/selftest/scenarios."
+        "Für Tabellen ohne abdeckendes Selbsttest-Szenario bleibt die Nachtest-Zelle leer; diese Lücke schließt nur ein neues Szenario in src/features/selftest/scenarios.",
+        "Der Audit-Filter ordnet Ereignisarten über eine feste Liste in src/components/administration/auditSecurityFilter.ts zu; eine neue Aktion erscheint erst nach Ergänzung dort unter Sicherheit."
       ],
       "reviewPoints": ["Funktionen ohne Tabellenbezug erhalten keinen RLS-Bezug; ob das fachlich korrekt ist, bleibt je Funktion zu prüfen."]
     },
@@ -511,7 +527,7 @@
       "coverage": "keine",
       "testResult": "nicht-ausgefuehrt",
       "evidence": ["supabase/migrations", "supabase/functions/_shared/security.ts"],
-      "rpcs": ["create_notification", "handle_task_notifications", "handle_document_notifications", "handle_meeting_notifications", "handle_message_notifications", "handle_appointment_notifications", "handle_leave_request_notifications", "notify_push_on_insert", "audit_contact_field_updates", "audit_letter_changes", "audit_user_role_changes", "audit_document_deletion"],
+      "rpcs": ["create_notification", "handle_task_notifications", "handle_document_notifications", "handle_meeting_notifications", "handle_message_notifications", "handle_appointment_notifications", "handle_leave_request_notifications", "notify_push_on_insert", "audit_contact_field_updates", "audit_letter_changes", "audit_user_role_changes", "audit_document_deletion", "audit_gdpr_request_changes"],
       "tables": ["notifications", "audit_log_entries", "push_subscriptions"],
       "roles": ["system"],
       "limitations": ["Reine Querschnittsfunktion; den zugehörigen Fachfunktionen untergeordnet, kein eigenständiger Fachumfang."],

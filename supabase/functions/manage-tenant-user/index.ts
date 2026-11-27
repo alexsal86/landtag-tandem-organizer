@@ -74,6 +74,7 @@ async function logAdminAction(
   const { error } = await supabaseAdmin
     .from('audit_log_entries')
     .insert({
+      action,
       user_id: actorUserId,
       tenant_id: tenantId,
       payload,

@@ -1477,6 +1477,7 @@ export type Database = {
       }
       audit_log_entries: {
         Row: {
+          action: string
           created_at: string
           id: string
           ip_address: string | null
@@ -1485,6 +1486,7 @@ export type Database = {
           user_id: string | null
         }
         Insert: {
+          action?: string
           created_at?: string
           id?: string
           ip_address?: string | null
@@ -1493,6 +1495,7 @@ export type Database = {
           user_id?: string | null
         }
         Update: {
+          action?: string
           created_at?: string
           id?: string
           ip_address?: string | null
@@ -18300,6 +18303,7 @@ export type Database = {
         Args: { p_id: string; p_kind: string; p_tenant: string; p_user: string }
         Returns: undefined
       }
+      audit_request_ip: { Args: never; Returns: string | null }
       audit_rls_gaps: {
         Args: never
         Returns: {
@@ -20290,6 +20294,10 @@ export type Database = {
           linked_meeting_id: string
           updated_request_id: string
         }[]
+      }
+      record_audit_entry: {
+        Args: { _action: string; _payload?: Json; _tenant_id?: string | null }
+        Returns: string
       }
       refresh_routine_package: {
         Args: { _retry_step_id?: string; _run_id: string }

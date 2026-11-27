@@ -186,12 +186,12 @@ Die Spalten zählen **zugeordnete** Prüfungen, nicht bestandene Läufe. „Erge
 | `polls.manage` | veranstaltungen | fachlich | implementiert | UI | Selbsttest | nicht-ausgefuehrt | 1 | 1 | 0 | 0 | nein |
 | `polls.availability` | veranstaltungen | fachlich | implementiert | UI | Unit-Test | unbekannt | 0 | 1 | 0 | 0 | nein |
 | `admin.workspace` | verwaltung | administrativ | implementiert | rollenabhängig | Unit-Test | unbekannt | 0 | 2 | 0 | 0 | ja |
-| `admin.audit-log` | verwaltung | sicherheit | implementiert | rollenabhängig | kein Test | nicht-ausgefuehrt | 0 | 0 | 0 | 0 | ja |
+| `admin.audit-log` | verwaltung | sicherheit | implementiert | rollenabhängig | Unit-Test | nicht-ausgefuehrt | 0 | 1 | 1 | 0 | ja |
 | `admin.bulk-audit` | verwaltung | sicherheit | implementiert | rollenabhängig | kein Test | nicht-ausgefuehrt | 0 | 0 | 0 | 0 | nein |
 | `admin.performance` | verwaltung | administrativ | implementiert | rollenabhängig | kein Test | nicht-ausgefuehrt | 0 | 0 | 0 | 0 | ja |
 | `admin.maintenance` | verwaltung | automatisiert | implementiert | systemseitig | kein Test | nicht-ausgefuehrt | 0 | 0 | 0 | 0 | nein |
 | `admin.data-lint` | verwaltung | administrativ | implementiert | rollenabhängig | kein Test | nicht-ausgefuehrt | 0 | 0 | 0 | 0 | nein |
-| `admin.gdpr` | verwaltung | sicherheit | implementiert | rollenabhängig | kein Test | nicht-ausgefuehrt | 0 | 0 | 0 | 0 | ja |
+| `admin.gdpr` | verwaltung | sicherheit | implementiert | rollenabhängig | Integrationstest | bestanden | 0 | 0 | 1 | 0 | ja |
 | `admin.templates-senders` | verwaltung | administrativ | implementiert | rollenabhängig | kein Test | nicht-ausgefuehrt | 0 | 0 | 0 | 0 | nein |
 | `admin.configuration` | verwaltung | administrativ | implementiert | rollenabhängig | kein Test | nicht-ausgefuehrt | 0 | 0 | 0 | 0 | nein |
 | `admin.onboarding-login` | verwaltung | administrativ | implementiert | rollenabhängig | kein Test | nicht-ausgefuehrt | 0 | 0 | 0 | 0 | nein |
@@ -206,7 +206,7 @@ Die Spalten zählen **zugeordnete** Prüfungen, nicht bestandene Läufe. „Erge
 | `admin.field-permissions` | verwaltung | sicherheit | implementiert | rollenabhängig | Selbsttest | nicht-ausgefuehrt | 1 | 0 | 0 | 0 | ja |
 | `admin.permissions-explorer` | verwaltung | administrativ | implementiert | UI | Unit-Test | unbekannt | 0 | 1 | 0 | 0 | ja |
 | `admin.edge-function-security` | verwaltung | sicherheit | implementiert | nicht anwendbar | kein Test | unbekannt | 0 | 0 | 0 | 0 | ja |
-| `admin.security-cockpit` | verwaltung | sicherheit | implementiert | rollenabhängig | Unit-Test | bestanden | 0 | 2 | 0 | 0 | ja |
+| `admin.security-cockpit` | verwaltung | sicherheit | implementiert | rollenabhängig | Unit-Test | bestanden | 0 | 3 | 0 | 0 | ja |
 | `admin.access-boundaries` | verwaltung | sicherheit | implementiert | nicht anwendbar | Selbsttest | nicht-ausgefuehrt | 1 | 1 | 0 | 0 | ja |
 | `platform.notification-dispatch` | verwaltung | technisch | implementiert | systemseitig | kein Test | nicht-ausgefuehrt | 0 | 0 | 0 | 0 | nein |
 | `cases.close-archive` | vorgaenge | fachlich | implementiert | rollenabhängig | Selbsttest | nicht-ausgefuehrt | 1 | 0 | 0 | 0 | nein |

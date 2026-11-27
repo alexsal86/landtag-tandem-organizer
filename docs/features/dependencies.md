@@ -529,6 +529,7 @@ _Auto-generiert mit `npm run update:feature-catalog`. Nicht von Hand bearbeiten.
 | `import-representatives` | wahl |
 | `knowledge-collaboration` | wissen |
 | `log-audit-event` | verwaltung |
+| `log-auth-failure` | verwaltung |
 | `manage-tenant-user` | verwaltung |
 | `matrix-bot-handler` | kommunikation |
 | `matrix-decision-handler` | entscheidungen |

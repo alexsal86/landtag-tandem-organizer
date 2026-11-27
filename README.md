@@ -150,6 +150,7 @@ Rollen werden in einer separaten `user_roles`-Tabelle gespeichert (nicht auf `pr
 | `send-decision-email` | Entscheidungs-E-Mails versenden | JWT |
 | `process-decision-response` | Gast-Antworten verarbeiten | Public |
 | `log-audit-event` | Audit-Log-Einträge schreiben | JWT |
+| `log-auth-failure` | Fehlgeschlagene Anmeldungen erfassen (Rate-Limit) | Kein JWT |
 | `run-automation-rule` | No-Code-Automatisierungen ausführen | JWT |
 | `suggest-case-escalations` | Eskalationsvorschläge für Vorgänge | JWT |
 | `global-logout` | Alle Sessions eines Users beenden | JWT |

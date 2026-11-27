@@ -467,6 +467,12 @@
       "rule": "missing-webhook-secret",
       "reviewer": "@security-reviewer",
       "reason": "Public RSVP write endpoint intentionally relies on a high-entropy public_code plus server-side validation/rate limiting instead of a second shared secret."
+    },
+    {
+      "functionName": "log-auth-failure",
+      "rule": "missing-webhook-secret",
+      "reviewer": "@security-reviewer",
+      "reason": "A browser cannot hold a shared secret for pre-session login-failure reporting. Protection is a fixed two-action allowlist, validated email syntax, an 80-character reason, IP and per-email rate limits, and append-only audit writes with no read access."
     }
   ]
 }

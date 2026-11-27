@@ -11,7 +11,7 @@ Eindeutige Fehler werden im CI-Lauf ausgegeben und brechen die Prüfung ab; sie 
 - Review-Hinweise: **0**
 - Nicht zugeordnete Objekte: **1**, davon ohne Ausnahme: **0**
 
-## Funktionen ohne zugeordneten Test (91)
+## Funktionen ohne zugeordneten Test (89)
 
 - `mywork.tabs` — Meine Arbeit – Bereichsnavigation und Einstellungen
 - `mywork.quick-access` — Schnellzugriff und zuletzt besuchte Seiten
@@ -73,9 +73,7 @@ Eindeutige Fehler werden im CI-Lauf ausgegeben und brechen die Prüfung ab; sie 
 - `events.invitations` — Veranstaltungseinladungen versenden
 - `events.legacy-rsvp` — Legacy-Einladungslinks
 - `admin.feature-flags` — Feature Flags
-- `admin.audit-log` — Audit-Trail einsehen und exportieren
 - `admin.bulk-audit` — Massenaktions-Audit
-- `admin.gdpr` — DSGVO-Löschanträge
 - `admin.edge-function-security` — Edge-Function-Sicherheitsklassifikation
 - `admin.data-lint` — Datenqualitätsprüfung
 - `admin.performance` — Performance- und Größen-Dashboard
@@ -293,7 +291,7 @@ Eindeutige Fehler werden im CI-Lauf ausgegeben und brechen die Prüfung ab; sie 
 - `events.legacy-rsvp` — Legacy-Einladungslinks (veraltet)
 - `cases.legacy-routes` — Legacy-Vorgangsrouten (veraltet)
 
-## Funktionen mit Einschränkungen oder offenen Punkten (108)
+## Funktionen mit Einschränkungen oder offenen Punkten (109)
 
 ### `mywork.dashboard`
 
@@ -667,9 +665,17 @@ Eindeutige Fehler werden im CI-Lauf ausgegeben und brechen die Prüfung ab; sie 
 
 - Die Menge der tatsächlich ausgewerteten Flags ist nicht zentral deklariert; UI-Flächen wurden nicht einzeln geprüft.
 
+### `admin.audit-log`
+
+- Der PGlite-Harness scripts/test-audit-writepath.mjs prüft nur die Schreiblogik; Vier-Augen-Trigger, RLS und die Wirkung der Grants sind dort nicht abgedeckt (siehe docs/audit-writepath.md).
+- Eine im selben Statement verworfene Anfrage (42501) kann keinen eigenen Eintrag behalten; protokolliert wird die vom Client beobachtete Ablehnung über record_audit_entry.
+- Fehlgeschlagene Anmeldungen haben keine tenant_id, weil ohne Sitzung keine verlässliche Bürozuordnung möglich ist; sichtbar sind sie für die Plattformadministration.
+- Für audit_log_entries gibt es weiterhin keine Aufbewahrungs- oder Anonymisierungsroutine.
+
 ### `admin.gdpr`
 
-- Der Vier-Augen-Prozess ist nur über Code und Migration nachgewiesen; kein Testlauf gegen eine Datenbank in dieser Umgebung.
+- Der Vier-Augen-Trigger selbst wird nicht in PGlite geprüft: scripts/test-audit-writepath.mjs deckt Statuswechsel, Freigabe-Ereignis und das Anlegen/Zurückziehen von Anträgen ab; die Regel prüfen scripts/test-gdpr-personal-approval.sql und scripts/test-gdpr-subject-rule.mjs.
+- Das Audit-Ereignis eines Antrags enthält bewusst keine Personendaten (keine E-Mail, kein Name, kein Kontaktbezug).
 
 ### `admin.security-cockpit`
 
@@ -677,6 +683,7 @@ Eindeutige Fehler werden im CI-Lauf ausgegeben und brechen die Prüfung ab; sie 
 - Policy-Details stammen live aus pg_policies und bewerten weder die Funktion noch ihre Tests.
 - Der Nachtest führt die Selbsttests aus, die die Tabelle laut Coverage-Übersicht abdecken; er beweist nicht, dass genau die beanstandete Policy korrekt ist.
 - Für Tabellen ohne abdeckendes Selbsttest-Szenario bleibt die Nachtest-Zelle leer; diese Lücke schließt nur ein neues Szenario in src/features/selftest/scenarios.
+- Der Audit-Filter ordnet Ereignisarten über eine feste Liste in src/components/administration/auditSecurityFilter.ts zu; eine neue Aktion erscheint erst nach Ergänzung dort unter Sicherheit.
 - Funktionen ohne Tabellenbezug erhalten keinen RLS-Bezug; ob das fachlich korrekt ist, bleibt je Funktion zu prüfen.
 
 ### `admin.system-pulse`

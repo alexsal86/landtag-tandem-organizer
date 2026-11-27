@@ -5,7 +5,7 @@
   "sources": {
     "types": "src/integrations/supabase/types.ts",
     "migrationsDirectory": "supabase/migrations",
-    "migrationCount": 966,
+    "migrationCount": 968,
     "tsModules": [
       "src/components/letters/types.ts"
     ]
@@ -2659,6 +2659,7 @@
           "sources": [
             "check:supabase/migrations/20260507190106_964aec00-97b8-4df7-817d-fba76bba4038.sql",
             "write:supabase/migrations/20261103234405_6bbdc076-40ca-4b87-bdb0-601eb9590bc9.sql",
+            "write:supabase/migrations/20261128110000_audit_writepath_security_events.sql",
             "guard:supabase/migrations/20260507190106_964aec00-97b8-4df7-817d-fba76bba4038.sql"
           ]
         },
@@ -2681,6 +2682,7 @@
             "check:supabase/migrations/20260507190106_964aec00-97b8-4df7-817d-fba76bba4038.sql",
             "default:supabase/migrations/20260507190106_964aec00-97b8-4df7-817d-fba76bba4038.sql",
             "write:supabase/migrations/20261103234405_6bbdc076-40ca-4b87-bdb0-601eb9590bc9.sql",
+            "write:supabase/migrations/20261128110000_audit_writepath_security_events.sql",
             "guard:supabase/migrations/20260507190106_964aec00-97b8-4df7-817d-fba76bba4038.sql"
           ]
         },
@@ -2751,7 +2753,8 @@
           "kind": "write",
           "param": null,
           "sources": [
-            "supabase/migrations/20261103234405_6bbdc076-40ca-4b87-bdb0-601eb9590bc9.sql"
+            "supabase/migrations/20261103234405_6bbdc076-40ca-4b87-bdb0-601eb9590bc9.sql",
+            "supabase/migrations/20261128110000_audit_writepath_security_events.sql"
           ],
           "guards": [
             "trg_gdpr_four_eyes"
