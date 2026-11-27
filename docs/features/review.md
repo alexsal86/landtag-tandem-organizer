@@ -248,7 +248,7 @@ Eindeutige Fehler werden im CI-Lauf ausgegeben und brechen die Prüfung ab; sie 
 - `casefiles.document-upload` — Datei aus der Akte ablegen
 - `casefiles.notes` — Fallakten-Notizen
 - `parlis.ministry-topics` — Ministerien und zentrale Themen zuordnen
-- `parlis.ministry-history` — Namensgeschichte der Ministerien seit 1952 nachschlagen
+- `parlis.ministry-history` — Ministerien-Historie seit 1952 nachschlagen und pflegen
 - `parlis.initiative-rankings` — Initiativenbilanz einer abgeschlossenen Wahlperiode anzeigen
 - `parlis.proceedings` — Parlamentarische Vorgänge auswerten
 - `election.analysis-navigation` — Analyse-Navigation und gespeicherte Szenarien
@@ -291,7 +291,7 @@ Eindeutige Fehler werden im CI-Lauf ausgegeben und brechen die Prüfung ab; sie 
 - `events.legacy-rsvp` — Legacy-Einladungslinks (veraltet)
 - `cases.legacy-routes` — Legacy-Vorgangsrouten (veraltet)
 
-## Funktionen mit Einschränkungen oder offenen Punkten (109)
+## Funktionen mit Einschränkungen oder offenen Punkten (110)
 
 ### `mywork.dashboard`
 
@@ -762,6 +762,11 @@ Eindeutige Fehler werden im CI-Lauf ausgegeben und brechen die Prüfung ab; sie 
 ### `casefiles.document-upload`
 
 - Der Selbsttest deckt Upload, Verknüpfung, Verlauf und einen Suchtreffer ab. Die Bedienoberfläche ist nicht abgedeckt.
+
+### `parlis.ministry-history`
+
+- Korrekturen an Personennamen gelten für die ausgewählte Amtszeit. Die importierten Amtszeiten besitzen keine übergreifend geprüften Personen-IDs.
+- Der Selbsttest deckt die Quelldaten und Zeitabschnitte ab. Die Speicherung und das Rollenverhalten der Arbeitsansicht wurden hier nicht ausgeführt.
 
 ### `election.seat-distribution`
 

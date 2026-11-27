@@ -2362,6 +2362,7 @@
           "title": "Parlamentarische Vorgänge",
           "description": "Prüft die Gruppierung und den Lesezugriff auf die Parlamentsdokumentation.",
           "checks": [
+            "Zeitleiste der Ministerien trennt Umbenennung und Amtswechsel",
             "Geprüfte Namensvarianten auf die richtigen Abgeordnetenprofile verlinken",
             "Gespeicherte Initiativenbilanz mit begrenzten Ranglisten",
             "Ressortvorschläge für mehrere Wahlperioden",
@@ -2388,6 +2389,10 @@
             {
               "id": "parlis-ministry-current-period",
               "label": "Administration führt nur die Ministerien der laufenden Wahlperiode"
+            },
+            {
+              "id": "parlis-ministry-history-timeline",
+              "label": "Zeitleiste trennt Umbenennung und Amtswechsel und meldet Datumsprobleme"
             },
             {
               "id": "parlis-ministry-history",

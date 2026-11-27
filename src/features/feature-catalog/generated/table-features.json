@@ -2674,6 +2674,34 @@
       "area": "kommunikation"
     }
   ],
+  "ministry_history_changes": [
+    {
+      "id": "parlis.ministry-history",
+      "name": "Ministerien-Historie seit 1952 nachschlagen und pflegen",
+      "area": "vorgaenge"
+    }
+  ],
+  "ministry_history_entries": [
+    {
+      "id": "parlis.ministry-history",
+      "name": "Ministerien-Historie seit 1952 nachschlagen und pflegen",
+      "area": "vorgaenge"
+    }
+  ],
+  "ministry_history_lines": [
+    {
+      "id": "parlis.ministry-history",
+      "name": "Ministerien-Historie seit 1952 nachschlagen und pflegen",
+      "area": "vorgaenge"
+    }
+  ],
+  "ministry_history_links": [
+    {
+      "id": "parlis.ministry-history",
+      "name": "Ministerien-Historie seit 1952 nachschlagen und pflegen",
+      "area": "vorgaenge"
+    }
+  ],
   "mobile_push_tokens": [
     {
       "id": "integration.push",

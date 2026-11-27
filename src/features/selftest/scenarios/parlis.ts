@@ -4,6 +4,7 @@ import { authorSegments, hasMultipleAuthors } from "@/features/parlis/authors";
 import { groupsFor } from "@/features/parlis/grouping";
 import { parseDocumentDetails, signerSummary } from "@/features/parlis/details";
 import { legislativePeriods, ministers, ministryPhases, periodsForPhase, phasesForLine, ressortLines } from "@/features/ministries-history/data";
+import { dateWarnings, historySlices, type HistoryEntry } from "@/features/ministries-history/historyModel";
 import { currentLegislature, knownLegislatures, ministriesForLegislature } from "@/features/parlis/ministryAdminModel";
 import { supabase } from "@/integrations/supabase/client";
 import type { TestScenario } from "../types";
@@ -14,7 +15,7 @@ export const parlisScenario: TestScenario = {
   description: "Prüft die Gruppierung und den Lesezugriff auf die Parlamentsdokumentation.",
   features: ["parlis.proceedings", "parlis.ministry-topics", "parlis.initiative-rankings", "parlis.ministry-history"],
   touches: [],
-  checks: ["Geprüfte Namensvarianten auf die richtigen Abgeordnetenprofile verlinken", "Gespeicherte Initiativenbilanz mit begrenzten Ranglisten", "Ressortvorschläge für mehrere Wahlperioden", "Laufende Wahlperiode und ihre Ministerien in der Administration", "Vorgangstypen der 17. Wahlperiode im Profil zusammenfassen", "Fünf persönlich zugeordnete Anträge mit gefiltertem Link im Profil", "Schlagwortvorschläge bei Eingabe begrenzen", "Serverseitige Suche und begrenzte Dokumentenseiten", "Schlagwörter, Fraktionsfilter und mehrere Urheber", "Urhebertext mit Titeln und Namensbestandteilen bleibt vollständig", "Monatsgruppierung, eindeutige Schlagwörter und leere Ressorts", "Unterzeichner und Texte kommen aus dem Detail-JSON und bleiben unvollständig lesbar", "Importierte Vorgänge sind lesbar", "Verknüpfte Urheber führen zu einem Mandat derselben Wahlperiode"],
+  checks: ["Zeitleiste der Ministerien trennt Umbenennung und Amtswechsel", "Geprüfte Namensvarianten auf die richtigen Abgeordnetenprofile verlinken", "Gespeicherte Initiativenbilanz mit begrenzten Ranglisten", "Ressortvorschläge für mehrere Wahlperioden", "Laufende Wahlperiode und ihre Ministerien in der Administration", "Vorgangstypen der 17. Wahlperiode im Profil zusammenfassen", "Fünf persönlich zugeordnete Anträge mit gefiltertem Link im Profil", "Schlagwortvorschläge bei Eingabe begrenzen", "Serverseitige Suche und begrenzte Dokumentenseiten", "Schlagwörter, Fraktionsfilter und mehrere Urheber", "Urhebertext mit Titeln und Namensbestandteilen bleibt vollständig", "Monatsgruppierung, eindeutige Schlagwörter und leere Ressorts", "Unterzeichner und Texte kommen aus dem Detail-JSON und bleiben unvollständig lesbar", "Importierte Vorgänge sind lesbar", "Verknüpfte Urheber führen zu einem Mandat derselben Wahlperiode"],
   steps: [{
     id: "parlis-ministry-current-period",
     label: "Administration führt nur die Ministerien der laufenden Wahlperiode",
@@ -46,6 +47,31 @@ export const parlisScenario: TestScenario = {
           && !rows.some(row => row.ressort.includes("Jugend und Sport"))
           && knownLegislatures(sources, suggestions).join() === "17,18",
         message: "Die Administration zeigt die markierte laufende Wahlperiode samt Vorschlägen ohne Anfragen und blendet frühere Ministerien aus der Hauptliste aus.",
+      };
+    },
+  }, {
+    id: "parlis-ministry-history-timeline",
+    label: "Zeitleiste trennt Umbenennung und Amtswechsel und meldet Datumsprobleme",
+    kind: "logic",
+    run: async () => {
+      const base: HistoryEntry = {
+        id: "phase-before", kind: "phase", line_id: "education", name: "Erster Name",
+        starts_on: "1990-01-01", ends_on: "1990-06-30", party: null, office: null, note: null,
+        citation: "Beispieldaten", source_detail: null, source_url: null, source_verified: true,
+        assignment_confirmed: true, revision: 1,
+      };
+      const renamed = { ...base, id: "phase-after", name: "Zweiter Name", starts_on: "1990-07-01", ends_on: null };
+      const term = { ...base, id: "term-one", kind: "term", name: "Leitung", ends_on: "1990-12-31" };
+      const successor = { ...term, id: "term-two", name: "Nachfolge", starts_on: "1990-12-31", ends_on: null };
+      const entries = [base, renamed, term, successor];
+      const slices = historySlices(entries);
+      return {
+        ok: slices.length === 3
+          && slices[1]?.phases[0]?.id === renamed.id && slices[1]?.terms[0]?.id === term.id
+          && slices[2]?.terms.length === 1 && slices[2]?.terms[0]?.id === successor.id
+          && dateWarnings({ ...renamed, starts_on: "1990-06-30" }, entries, renamed.id).some(warning => warning.startsWith("Überschneidung"))
+          && dateWarnings({ ...renamed, starts_on: "1990-07-02" }, entries, renamed.id).some(warning => warning.startsWith("Lücke")),
+        message: "Eine Umbenennung teilt die Anzeige bei fortlaufender Amtszeit. Ein gemeinsamer Übergabetag wird als Amtswechsel dargestellt. Geänderte Datumsgrenzen melden Lücken und Überschneidungen.",
       };
     },
   }, {
