@@ -8,30 +8,30 @@ Der Katalog ist das führende Verzeichnis des tatsächlich implementierten Funkt
 
 | Kennzahl | Wert |
 |---|---:|
-| Erfasste Funktionen | 263 |
+| Erfasste Funktionen | 264 |
 | Funktionsbereiche | 16 |
-| Unterbereiche | 110 |
-| Implementiert | 259 |
+| Unterbereiche | 111 |
+| Implementiert | 260 |
 | Teilweise implementiert | 2 |
 | Deaktiviert | 0 |
 | Potenziell verwaist | 0 |
 | Prüfkandidaten (offene Punkte) | 52 |
-| Funktionen mit Selbsttest | 134 |
-| Funktionen mit Unit-Test | 65 |
+| Funktionen mit Selbsttest | 135 |
+| Funktionen mit Unit-Test | 67 |
 | Funktionen mit Integrationstest | 4 |
 | Funktionen mit Browser-Test | 4 |
 | Funktionen mit Security-Test | 1 |
-| Funktionen ohne zugeordneten Test | 89 |
-| Funktionen ohne Dokumentationsverweis | 172 |
-| Funktionen mit bekannten Einschränkungen | 83 |
+| Funktionen ohne zugeordneten Test | 88 |
+| Funktionen ohne Dokumentationsverweis | 173 |
+| Funktionen mit bekannten Einschränkungen | 84 |
 | Nicht nachweisbar eingebundene Funktionen | 1 |
-| Technische Zuordnungen | 1325 |
+| Technische Zuordnungen | 1331 |
 
 ## Funktionsbereiche
 
 | Bereich | Unterbereiche | Funktionen | implementiert | ohne Test | ohne Doku |
 |---|---:|---:|---:|---:|---:|
-| [Administration, Sicherheit & Qualität](./verwaltung.md) | 11 | 24 | 24 | 11 | 9 |
+| [Administration, Sicherheit & Qualität](./verwaltung.md) | 12 | 25 | 25 | 10 | 10 |
 | [Aufgaben & Stafette](./aufgaben.md) | 12 | 18 | 18 | 1 | 9 |
 | [Automatisierung & Workflows](./automation.md) | 8 | 15 | 15 | 9 | 8 |
 | [Dokumente, Briefe & Annotationen](./dokumente.md) | 3 | 18 | 18 | 2 | 14 |
@@ -57,13 +57,13 @@ Der Katalog ist das führende Verzeichnis des tatsächlich implementierten Funkt
 | automatisiert | 21 |
 | integration | 27 |
 | sicherheit | 15 |
-| technisch | 2 |
+| technisch | 3 |
 
 ## Implementierungsstatus
 
 | Status | Funktionen |
 |---|---:|
-| implementiert | 259 |
+| implementiert | 260 |
 | teilweise | 2 |
 | deaktiviert | 0 |
 | verwaist | 0 |
@@ -75,7 +75,7 @@ Der Katalog ist das führende Verzeichnis des tatsächlich implementierten Funkt
 
 | Einbindung | Funktionen |
 |---|---:|
-| UI | 131 |
+| UI | 132 |
 | systemseitig | 37 |
 | rollenabhängig | 90 |
 | Feature Flag | 1 |
@@ -88,17 +88,17 @@ Der Katalog ist das führende Verzeichnis des tatsächlich implementierten Funkt
 | Abdeckung | Funktionen |
 |---|---:|
 | Selbsttest | 116 |
-| Unit-Test | 39 |
+| Unit-Test | 40 |
 | Integrationstest | 2 |
 | Browser-Test | 0 |
 | Security-Test | 1 |
-| teilweise | 16 |
-| kein Test | 89 |
+| teilweise | 17 |
+| kein Test | 88 |
 | ungeprüft | 0 |
 
 ## Konsistenz
 
-Der Generator inventarisiert Routen, Edge Functions, wirksame Datenbankfunktionen, Tabellen, Testszenarien und Testdateien. Aktuell **0** nicht zugeordnete Prüfkandidaten und **0** Review-Hinweise. Eindeutige Inkonsistenzen brechen `npm run check:feature-catalog` ab; Details: [Prüfbericht](./review.md).
+Der Generator inventarisiert Routen, Edge Functions, wirksame Datenbankfunktionen, Tabellen, Testszenarien und Testdateien. Aktuell **1** nicht zugeordnete Prüfkandidaten und **1** Review-Hinweise. Eindeutige Inkonsistenzen brechen `npm run check:feature-catalog` ab; Details: [Prüfbericht](./review.md).
 
 ## Dokumentation
 

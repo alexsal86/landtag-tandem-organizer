@@ -4,6 +4,7 @@ import {
 } from "../../../../supabase/functions/_shared/deputyPortrait";
 import { escapeHtml, safeUrl, sanitizeEmailHtml } from "../../../../supabase/functions/_shared/html";
 import type { TestScenario } from "../types";
+import { allowsAppServiceWorker } from "@/lib/appServiceWorker";
 
 const WEBP_LENGTH = 40;
 
@@ -47,6 +48,18 @@ export const securityHardeningScenario: TestScenario = {
     "E-Mail-Versand, Zustellung und Rendering in fremden Clients bleiben ungeprüft; ausgeführt wird nur die gemeinsame Vorprüfung.",
   ],
   steps: [
+    {
+      id: "preview-worker-safety", label: "Vorschau ohne App-Shell-Cache; produktiver Push bleibt verfügbar", kind: "logic",
+      run: async () => {
+        const checks = {
+          previewBlocked: !allowsAppServiceWorker("id-preview--7d09a65d-5cbe-421b-a580-38a4fe244277.lovable.app", true, false),
+          devBlocked: !allowsAppServiceWorker("localhost", false, false),
+          iframeBlocked: !allowsAppServiceWorker("landtag-tandem-organizer.lovable.app", true, true),
+          productionAllowed: allowsAppServiceWorker("landtag-tandem-organizer.lovable.app", true, false),
+        };
+        return { ok: Object.values(checks).every(Boolean), message: "Preview-Schutz und Produktionsfreigabe geprüft.", details: checks };
+      },
+    },
     {
       id: "portrait-files", label: "Porträtdateien: WebP-Signatur, RIFF-Länge und Pflichtmaße", kind: "logic",
       run: async () => {

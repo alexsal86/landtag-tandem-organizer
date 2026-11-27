@@ -1,4 +1,5 @@
 import { GlobalCreateMenu } from "@/components/layout/GlobalCreateMenu";
+import { SunflowerThemeToggle } from "@/components/ui/sunflower-theme-toggle";
 import { useState, useEffect, useCallback, useMemo, type ElementType, type ReactElement } from "react";
 import { useUserPreference } from "@/hooks/useUserPreference";
 import { SHOW_RECENT_PREF_KEY } from "@/components/settings/SidebarPreferencesCard";
@@ -1221,6 +1222,11 @@ export function AppNavigation({
                     <p className="text-xs text-muted-foreground">{user?.email}</p>
                   </div>
                 </DropdownMenuLabel>
+                <DropdownMenuSeparator />
+                <div className="flex items-center justify-between gap-3 px-2 py-2">
+                  <span className="text-label">Dunkelmodus</span>
+                  <SunflowerThemeToggle />
+                </div>
                 <DropdownMenuSeparator />
                 <DropdownMenuItem onClick={() => { onSectionChange('profile-edit'); setActivePanel('home'); }}>
                   <User className="mr-2 h-4 w-4" />

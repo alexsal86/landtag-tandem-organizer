@@ -6,10 +6,10 @@ _Auto-generiert mit `npm run update:feature-catalog` aus dem zentralen Funktions
 
 ## Kennzahlen
 
-- Funktionen: **24** in **11** Unterbereichen
-- implementiert: **24**, teilweise: **0**, deaktiviert: **0**, potenziell verwaist: **0**
-- ohne zugeordneten Test: **11**
-- ohne Dokumentationsverweis: **9**
+- Funktionen: **25** in **12** Unterbereichen
+- implementiert: **25**, teilweise: **0**, deaktiviert: **0**, potenziell verwaist: **0**
+- ohne zugeordneten Test: **10**
+- ohne Dokumentationsverweis: **10**
 
 ## Funktionen
 
@@ -20,6 +20,7 @@ _Auto-generiert mit `npm run update:feature-catalog` aus dem zentralen Funktions
 | `admin.bulk-audit` Massenaktions-Audit | Audit | sicherheit | implementiert | rollenabhängig | kein Test |
 | `admin.performance` Performance- und Größen-Dashboard | Betrieb | administrativ | implementiert | rollenabhängig | kein Test |
 | `admin.maintenance` Wartungs- und Aufräumläufe | Betrieb | automatisiert | implementiert | systemseitig | kein Test |
+| `platform.theme-selection` Hell-/Dunkelmodus auswählen | Darstellung | technisch | implementiert | UI | Unit-Test |
 | `admin.data-lint` Datenqualitätsprüfung | Datenqualität | administrativ | implementiert | rollenabhängig | kein Test |
 | `admin.gdpr` DSGVO-Löschanträge | Datenschutz | sicherheit | implementiert | rollenabhängig | Integrationstest |
 | `admin.templates-senders` Administrative Vorlagen und Absenderdaten | Konfiguration | administrativ | implementiert | rollenabhängig | kein Test |
@@ -38,10 +39,11 @@ _Auto-generiert mit `npm run update:feature-catalog` aus dem zentralen Funktions
 | `admin.edge-function-security` Edge-Function-Sicherheitsklassifikation | Sicherheit | sicherheit | implementiert | nicht anwendbar | kein Test |
 | `admin.security-cockpit` Security-Cockpit | Sicherheit | sicherheit | implementiert | rollenabhängig | Unit-Test |
 | `admin.access-boundaries` Zugriffsschutzprüfung | Sicherheit | sicherheit | implementiert | nicht anwendbar | Selbsttest |
-| `platform.notification-dispatch` Benachrichtigungs- und Audit-Trigger | Technische Basisfunktionen | technisch | implementiert | systemseitig | kein Test |
+| `platform.notification-dispatch` Benachrichtigungs- und Audit-Trigger | Technische Basisfunktionen | technisch | implementiert | systemseitig | teilweise |
 
 ## Unterbereiche
 
+- Darstellung
 - Administration
 - Rollen & Rechte
 - Audit
@@ -68,6 +70,7 @@ _Auto-generiert mit `npm run update:feature-catalog` aus dem zentralen Funktions
 |---|---|---:|---:|---|
 | `access-boundaries` | Zugriffsschutz (Bürogrenzen und Entscheiderrolle) | 1 | 4 | — |
 | `admin-controls` | Adminregeln: Feldschutz, Aktionen, Export, Rücknahme und Feeds | 0 | 4 | — |
+| `security-hardening` | Sicherheitsregeln: Porträtdateien und E-Mail-Inhalte | 0 | 4 | — |
 
 ## Selbsttest-Schritte
 
@@ -92,6 +95,12 @@ Diese Schritte führen die Szenarien aus; „letzter Lauf“ stammt aus `src/fea
 | `admin-controls` | `field-modes` | Leseregeln liefern erlauben, Feld ausblenden oder Datensatz sperren | workflow | — |
 | `admin-controls` | `foreign-action` | Aktionsprüfung kann nicht für eine fremde Identität aufgerufen werden | workflow | — |
 | `admin-controls` | `invalid-bulk` | Leere Sammelaktion und unbekannte Rücknahme verändern keine Kontakte | workflow | — |
+| `security-hardening` | `preview-worker-safety` | Vorschau ohne App-Shell-Cache; produktiver Push bleibt verfügbar | logic | — |
+| `security-hardening` | `portrait-files` | Porträtdateien: WebP-Signatur, RIFF-Länge und Pflichtmaße | logic | — |
+| `security-hardening` | `portrait-source` | Porträtquelle: nur http(s) ohne Zugangsdaten und mit Feldgrenzen | logic | — |
+| `security-hardening` | `portrait-record` | Porträt-Metadaten: Verbindung, Versions-ID und feste Dateinamen | logic | — |
+| `security-hardening` | `portrait-crop` | Bildzuschnitt: 3:4-Rahmen, begrenzter Zoom und geklemmter Versatz | logic | — |
+| `security-hardening` | `email-html` | E-Mail-HTML: maskieren, sichere Links und entfernte aktive Inhalte | logic | — |
 
 ## Deklarierter Prüfumfang
 
@@ -109,7 +118,50 @@ Diese Schritte führen die Szenarien aus; „letzter Lauf“ stammt aus `src/fea
 3. Beide Feldlesemodi im aktuellen Büro
 4. Fremde Aktion und ungültige Rücknahme abgewiesen
 
+### `security-hardening`
+
+1. Porträt-WebP: Signatur, RIFF-Länge und Pflichtmaße je Variante
+2. Porträt-Metadaten: Quelle, Verbindung und Dateinamen
+3. Bildzuschnitt deckt das 3:4-Format und begrenzt Zoom sowie Versatz
+4. E-Mail-HTML entfernt Skripte, Ereignis-Handler und aktive URLs
+
 ## Funktionsdetails
+
+### `platform.theme-selection` — Hell-/Dunkelmodus auswählen
+Wechselt das gesamte App-Design über die Sonnenblume in Einstellungen oder im Sidebar-Benutzermenü; die Auswahl bleibt gespeichert. Dunkle Karten und Popovers haben eine eigene erhöhte Tiefenstaffelung.
+
+- **Kategorie:** technisch
+- **Implementierung:** implementiert
+- **Einbindung:** UI
+- **Testabdeckung:** Unit-Test
+- **Letztes Testergebnis:** bestanden (kein Laufnachweis importiert; nicht aus der Existenz einer Testdatei abgeleitet)
+- **Rollen:** Keine besondere Rolle deklariert
+- **Routen:** —
+- **Frontend-Komponenten:** `src/components/ui/sunflower-theme-toggle.tsx`, `src/components/navigation/AppNavigation.tsx`, `src/components/admin/SettingsView.tsx`
+- **Services:** —
+- **Hooks:** —
+- **Edge Functions:** —
+- **Datenbankfunktionen:** —
+- **Tabellen:** —
+- **Abhängigkeiten:** —
+- **Selbsttests:** —
+- **Unit-Tests:** `src/components/ui/sunflower-theme-toggle.test.tsx`
+- **Integrationstests:** —
+- **Browser-Tests:** —
+- **Dokumentation:** —
+
+**Nachweise im Quellcode**
+
+- src/components/ui/sunflower-theme-toggle.tsx
+- src/index.css
+
+**Bekannte Einschränkungen**
+
+- Der angemeldete Sidebar-Menüpfad wurde nicht mit einer echten Supabase-Sitzung geprüft.
+
+**Offene Prüfpunkte**
+
+- Keine.
 
 ### `admin.workspace` — Administrationsbereich und Zugriff
 Bündelt administrative Themen in einer eigenen Oberfläche, prüft den Zugriff und führt die administrative Navigation.
@@ -984,24 +1036,24 @@ Führt den vollständigen, versionierten Funktionskatalog, gleicht ihn mit Route
 - Der Katalog ist so vollständig wie die manuelle Inventarisierung; heuristische Lücken werden im Review-Bericht ausgewiesen.
 
 ### `platform.notification-dispatch` — Benachrichtigungs- und Audit-Trigger
-Erzeugt Benachrichtigungen, Push-Aufträge und Audit-Einträge aus Datenbankänderungen über zentrale Trigger-Funktionen.
+Erzeugt Benachrichtigungen, Push-Aufträge und Audit-Einträge aus Datenbankänderungen über zentrale Trigger-Funktionen. Der kombinierte App-/Push-Worker nutzt eine gemeinsame Registrierung, die Entwicklung und Vorschau ausschließt und nur eigene Shell-Caches bereinigt; separate Messaging-Worker bleiben unangetastet.
 
 - **Kategorie:** technisch
 - **Implementierung:** implementiert
 - **Einbindung:** systemseitig
-- **Testabdeckung:** kein Test
+- **Testabdeckung:** teilweise
 - **Letztes Testergebnis:** nicht-ausgefuehrt (kein Laufnachweis importiert; nicht aus der Existenz einer Testdatei abgeleitet)
 - **Rollen:** `system`
 - **Routen:** —
 - **Frontend-Komponenten:** —
-- **Services:** —
+- **Services:** `src/lib/appServiceWorker.ts`
 - **Hooks:** —
 - **Edge Functions:** —
 - **Datenbankfunktionen:** `create_notification`, `handle_task_notifications`, `handle_document_notifications`, `handle_meeting_notifications`, `handle_message_notifications`, `handle_appointment_notifications`, `handle_leave_request_notifications`, `notify_push_on_insert`, `audit_contact_field_updates`, `audit_letter_changes`, `audit_user_role_changes`, `audit_document_deletion`, `audit_gdpr_request_changes`
 - **Tabellen:** `notifications`, `audit_log_entries`, `push_subscriptions`
 - **Abhängigkeiten:** —
-- **Selbsttests:** —
-- **Unit-Tests:** —
+- **Selbsttests:** `security-hardening`
+- **Unit-Tests:** `src/lib/appServiceWorker.test.ts`
 - **Integrationstests:** —
 - **Browser-Tests:** —
 - **Dokumentation:** —

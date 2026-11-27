@@ -227,10 +227,10 @@ All colors MUST be HSL.
     --background: 222 84% 3%;            /* Noch dunkler */
     --foreground: 210 40% 98%;           /* Heller für besseren Kontrast */
 
-    --card: 222 84% 5%;                  /* Leicht aufgehellt */
+    --card: 222 84% 7%;                  /* Sichtbare Tiefenstaffelung */
     --card-foreground: 210 40% 98%;
 
-    --popover: 222 84% 5%;
+    --popover: 222 84% 7%;
     --popover-foreground: 210 40% 98%;
 
     /* Grünen-CI für Dark Mode - optimiert */

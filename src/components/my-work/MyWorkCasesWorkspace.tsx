@@ -799,10 +799,10 @@ export function MyWorkCasesWorkspace() {
   }, []);
 
   const handleAddInteraction = useCallback(async (files: File[] = []) => {
-    if (!editableCaseItem || !detailItemId) return;
+    if (!editableCaseItem || !detailItemId || !tenantId) return false;
     if (!editableCaseItem.interactionType) {
       notify.error("Bitte zuerst eine Interaktion auswählen.");
-      return;
+      return false;
     }
     const typeMeta = interactionTypeOptions.find((opt) => opt.value === editableCaseItem.interactionType);
     const contact = editableCaseItem.interactionContact.trim();
@@ -814,11 +814,11 @@ export function MyWorkCasesWorkspace() {
     if (editableCaseItem.interactionType === "dokument") {
       if (!currentTenant?.id || !user?.id) {
         notify.error("Dokument-Upload ist aktuell nicht verfügbar.");
-        return;
+        return false;
       }
       if (files.length === 0) {
         notify.error("Bitte mindestens ein Dokument auswählen.");
-        return;
+        return false;
       }
 
       const uploaded: CaseItemInteractionDocument[] = [];
@@ -829,7 +829,7 @@ export function MyWorkCasesWorkspace() {
         const { error: uploadError } = await supabase.storage.from("documents").upload(storagePath, file);
         if (uploadError) {
           notify.error(`Upload fehlgeschlagen: ${file.name}`);
-          return;
+          return false;
         }
 
         const { data: documentRow, error: insertError } = await supabase
@@ -848,7 +848,7 @@ export function MyWorkCasesWorkspace() {
 
         if (insertError || !documentRow) {
           notify.error(`Dokument konnte nicht gespeichert werden: ${file.name}`);
-          return;
+          return false;
         }
 
         uploaded.push({
@@ -896,10 +896,10 @@ export function MyWorkCasesWorkspace() {
     const saved = await applyItemOptimisticUpdate(
       detailItemId,
       (row) => ({ ...row, intake_payload: nextIntakePayload as unknown as CaseItem["intake_payload"] }),
-      () => supabase.from("case_items").update({ intake_payload: nextIntakePayload as unknown as TablesUpdate<"case_items">["intake_payload"] }).eq("id", detailItemId),
+      () => supabase.from("case_items").update({ intake_payload: nextIntakePayload as unknown as TablesUpdate<"case_items">["intake_payload"] }).eq("id", detailItemId).eq("tenant_id", tenantId),
       "Interaktion konnte nicht gespeichert werden.",
     );
-    if (!saved) return;
+    if (!saved) return false;
 
     updateEdit({
       timelineEvents: nextTimelineEvents,
@@ -913,7 +913,8 @@ export function MyWorkCasesWorkspace() {
         ? (uploadedDocuments.length > 1 ? `${uploadedDocuments.length} Dokumente hinzugefügt.` : "Dokument hinzugefügt.")
         : "Interaktion gespeichert.",
     );
-  }, [applyItemOptimisticUpdate, currentTenant?.id, detailItem, detailItemId, editableCaseItem, formatInteractionTimestamp, teamUsers, updateEdit, user?.id]);
+    return true;
+  }, [applyItemOptimisticUpdate, currentTenant?.id, detailItem, detailItemId, editableCaseItem, formatInteractionTimestamp, teamUsers, tenantId, updateEdit, user?.id]);
 
   const handleRequestDecision = useCallback(() => {
     if (!editableCaseItem || !detailItemId) return;

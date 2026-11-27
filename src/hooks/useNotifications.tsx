@@ -7,6 +7,7 @@ import { toast } from './use-toast';
 import { debugConsole } from '@/utils/debugConsole';
 import type { UnknownRecord } from '@/utils/typeSafety';
 import { notify } from "@/lib/notify";
+import { registerAppServiceWorker } from '@/lib/appServiceWorker';
 
 export interface NotificationFeedbackContext {
   target?: {
@@ -387,10 +388,9 @@ export const useNotifications = () => {
     return outputArray;
   };
 
-  const SW_URL = '/sw.js?v=2026-04-15-v1';
-
   const getPushRegistration = useCallback(async (): Promise<PushManagerRegistration> => {
-    const registration = await navigator.serviceWorker.register(SW_URL);
+    const registration = await registerAppServiceWorker();
+    if (!registration) throw new Error('Push ist nur in der veröffentlichten Anwendung verfügbar.');
     // Wait for the SW to become active
     if (!registration.active) {
       await new Promise<void>((resolve) => {

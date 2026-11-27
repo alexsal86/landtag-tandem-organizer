@@ -1008,6 +1008,7 @@ Die Angaben sind deklarierte Mindestrollen. Die tatsächlich wirksame Berechtigu
 | `parlis.proceedings` | Keine besondere Rolle deklariert |
 | `platform.auth` | `oeffentlich`, `abgeordneter`, `bueroleitung`, `mitarbeiter`, `praktikant` |
 | `platform.notification-dispatch` | `system` |
+| `platform.theme-selection` | Keine besondere Rolle deklariert |
 | `polls.availability` | `abgeordneter`, `bueroleitung`, `mitarbeiter` |
 | `polls.manage` | `abgeordneter`, `bueroleitung`, `mitarbeiter` |
 | `polls.respond` | `oeffentlich`, `abgeordneter`, `bueroleitung`, `mitarbeiter` |

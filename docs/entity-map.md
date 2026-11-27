@@ -2,7 +2,7 @@
 
 _Auto-generiert mit `npm run update:feature-catalog` aus den Fremdschlüsseln in `src/integrations/supabase/types.ts`. Nicht von Hand bearbeiten._
 
-362 Tabellen, 497 Fremdschlüsselverweise. Die Karte zeigt, welche Tabelle auf welche zeigt; fachliche Bedeutung steht im [Funktionskatalog](./features/README.md).
+362 Tabellen, 498 Fremdschlüsselverweise. Die Karte zeigt, welche Tabelle auf welche zeigt; fachliche Bedeutung steht im [Funktionskatalog](./features/README.md).
 
 ## Zentrale Tabellen
 
@@ -229,7 +229,7 @@ Tabellen mit mindestens drei eingehenden Verweisen.
 | `knowledge_question_sources` | `case_id` |
 | `task_decisions` | `case_file_id` |
 
-### `tasks` — 13 eingehende Verweise
+### `tasks` — 14 eingehende Verweise
 
 | Von | Spalte |
 |---|---|
@@ -244,6 +244,7 @@ Tabellen mit mindestens drei eingehenden Verweisen.
 | `task_assignees` | `task_id` |
 | `task_comments` | `task_id` |
 | `task_decisions` | `task_id` |
+| `task_documents` | `task_id` |
 | `task_topics` | `task_id` |
 | `tasks` | `parent_task_id` |
 
@@ -1060,6 +1061,7 @@ Tabellen mit mindestens drei eingehenden Verweisen.
 | `task_decisions` | `meeting_id` | `meetings` |
 | `task_decisions` | `task_id` | `tasks` |
 | `task_decisions` | `tenant_id` | `tenants` |
+| `task_documents` | `task_id` | `tasks` |
 | `task_topics` | `task_id` | `tasks` |
 | `task_topics` | `tenant_id`, `topic_id` | `topics` |
 | `task_topics` | `topic_id` | `topics` |

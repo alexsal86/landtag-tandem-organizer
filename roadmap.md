@@ -1,5 +1,13 @@
 # Roadmap Aufgaben
 
+# Vorgang, Dark Theme und Preview (27.11.2026)
+- [x] Vorhandene Sofortspeicherung und inbound-Selbsttest geprüft; Erfassen gegen Doppelklick gesichert und Bürofilter ergänzt.
+- [x] Dark-Mode-Karten/Popovers angehoben und Sonnenblumen-Schalter ins Sidebar-Benutzermenü aufgenommen.
+- [x] Gemeinsamen Preview-Schutz für App- und Push-Registrierung ergänzt; nur eigene Shell-Caches bereinigen.
+- [x] Zwölf gezielte Tests bestanden; Browser: keine Preview-Worker, Dark-Card-Token 7 %, Vorschau-Build OK; Katalog aktualisiert, Check/Audit bestanden.
+- [ ] Gesamter Katalog-Test und bestehende Provider-Tests — Altfehler: unzugeordneter storage_folder_uuid-Helfer bzw. unvollständiger useAuth-Testmock; außerhalb der drei gewünschten Änderungen.
+- [ ] Angemeldeten Vorgangs- und Sidebar-Ablauf prüfen — verwaltete Testsitzung für externes Supabase nicht verfügbar.
+
 # Aufgabenpakete im Automatisierungs-Hub (21.11.2026)
 - [x] Neun bestehende Pakete einschließlich Fristen und Unteraufgaben als manuelle Regeln migriert; separate Pakettabelle und Spezialfunktionen entfernt.
 - [x] Paketaktion im gemeinsamen Regel-Editor, Aufgaben-Vorlagendialog und Ausführer verbunden.

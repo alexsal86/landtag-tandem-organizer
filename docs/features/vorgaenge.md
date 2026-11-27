@@ -303,7 +303,7 @@ Legt Schritte mit Frist und Zuständigkeit an und erzeugt daraus Büro-Aufgaben,
 - Keine.
 
 ### `cases.interactions` — Kontakte und Interaktionen am Vorgang
-Erfasst Gespräche, E-Mails und Notizen mit Sichtbarkeitsstufe und verlangt vor dem Abschluss eine dokumentierte Reaktion.
+Erfasst Gespräche, E-Mails und Notizen mit Sichtbarkeitsstufe und verlangt vor dem Abschluss eine dokumentierte Reaktion. Im Vorgangs-Workspace speichert Erfassen die Timeline sofort unabhängig von Kategorie und globalem Speichern; laufendes Erfassen ist gegen Doppelklick gesperrt.
 
 - **Kategorie:** fachlich
 - **Implementierung:** implementiert
@@ -312,7 +312,7 @@ Erfasst Gespräche, E-Mails und Notizen mit Sichtbarkeitsstufe und verlangt vor 
 - **Letztes Testergebnis:** nicht-ausgefuehrt (kein Laufnachweis importiert; nicht aus der Existenz einer Testdatei abgeleitet)
 - **Rollen:** `abgeordneter`, `bueroleitung`, `mitarbeiter`
 - **Routen:** —
-- **Frontend-Komponenten:** `src/components/my-work/CaseItemInteractionQuickCapture.tsx`, `src/features/cases/files/components/CaseItemInteractionsTimeline.tsx`
+- **Frontend-Komponenten:** `src/components/my-work/CaseItemInteractionQuickCapture.tsx`, `src/features/cases/files/components/CaseItemInteractionsTimeline.tsx`, `src/components/my-work/CaseItemDetailPanel.tsx`, `src/components/my-work/MyWorkCasesWorkspace.tsx`
 - **Services:** —
 - **Hooks:** —
 - **Edge Functions:** —

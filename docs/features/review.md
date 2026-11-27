@@ -8,10 +8,14 @@ Dieser Bericht trennt **eindeutig nachweisbare Inkonsistenzen** von **heuristisc
 
 Eindeutige Fehler werden im CI-Lauf ausgegeben und brechen die Prüfung ab; sie werden hier nicht dupliziert. Dieser Bericht listet die verbleibenden Review-Hinweise und Prüfkandidaten.
 
-- Review-Hinweise: **0**
-- Nicht zugeordnete Objekte: **1**, davon ohne Ausnahme: **0**
+- Review-Hinweise: **1**
+- Nicht zugeordnete Objekte: **2**, davon ohne Ausnahme: **1**
 
-## Funktionen ohne zugeordneten Test (89)
+### Review-Hinweise
+
+- Prüfkandidat ohne Funktionszuordnung (rpc): storage_folder_uuid
+
+## Funktionen ohne zugeordneten Test (88)
 
 - `mywork.tabs` — Meine Arbeit – Bereichsnavigation und Einstellungen
 - `mywork.quick-access` — Schnellzugriff und zuletzt besuchte Seiten
@@ -82,7 +86,6 @@ Eindeutige Fehler werden im CI-Lauf ausgegeben und brechen die Prüfung ab; sie 
 - `admin.onboarding-login` — Onboarding-Folien und Login-Anpassung
 - `admin.templates-senders` — Administrative Vorlagen und Absenderdaten
 - `admin.maintenance` — Wartungs- und Aufräumläufe
-- `platform.notification-dispatch` — Benachrichtigungs- und Audit-Trigger
 - `cases.escalation` — Eskalationsvorschläge
 - `cases.legacy-routes` — Legacy-Vorgangsrouten
 - `election.analysis-map` — Analyse-Karten und Wahlkreiszuschnitt
@@ -103,7 +106,7 @@ Eindeutige Fehler werden im CI-Lauf ausgegeben und brechen die Prüfung ab; sie 
 - `knowledge.collaboration` — Kollaborative Wissensbearbeitung
 - `knowledge.management` — Wissensverwaltung
 
-## Funktionen ohne Dokumentationsverweis (172)
+## Funktionen ohne Dokumentationsverweis (173)
 
 - `mywork.dashboard.today-priorities` — Heute zuerst
 - `mywork.tabs` — Meine Arbeit – Bereichsnavigation und Einstellungen
@@ -226,6 +229,7 @@ Eindeutige Fehler werden im CI-Lauf ausgegeben und brechen die Prüfung ab; sie 
 - `polls.respond` — An Umfrage teilnehmen
 - `polls.manage` — Umfragen verwalten und auswerten
 - `polls.availability` — Verfügbarkeit und Zeitfenster
+- `platform.theme-selection` — Hell-/Dunkelmodus auswählen
 - `admin.feature-flags` — Feature Flags
 - `admin.action-permissions` — Aktionsberechtigungen
 - `admin.bulk-audit` — Massenaktions-Audit
@@ -291,7 +295,7 @@ Eindeutige Fehler werden im CI-Lauf ausgegeben und brechen die Prüfung ab; sie 
 - `events.legacy-rsvp` — Legacy-Einladungslinks (veraltet)
 - `cases.legacy-routes` — Legacy-Vorgangsrouten (veraltet)
 
-## Funktionen mit Einschränkungen oder offenen Punkten (111)
+## Funktionen mit Einschränkungen oder offenen Punkten (112)
 
 ### `mywork.dashboard`
 
@@ -664,6 +668,10 @@ Eindeutige Fehler werden im CI-Lauf ausgegeben und brechen die Prüfung ab; sie 
 - Bewusst nur Kompatibilität; das Entfernungsdatum hängt vom Ende alter Mailings ab.
 - Offen: Prüfen, ob noch Altlinks aktiv sind, bevor die Route entfernt wird.
 
+### `platform.theme-selection`
+
+- Der angemeldete Sidebar-Menüpfad wurde nicht mit einer echten Supabase-Sitzung geprüft.
+
 ### `admin.workspace`
 
 - Der Zugriff ist über Hook-Tests abgedeckt, aber nicht in einem Selbsttest-Szenario.
@@ -820,11 +828,11 @@ Eindeutige Fehler werden im CI-Lauf ausgegeben und brechen die Prüfung ab; sie 
 
 - Keine.
 
-### Datenbankfunktionen ohne Zuordnung (0)
+### Datenbankfunktionen ohne Zuordnung (1)
 
 Diese Liste ist heuristisch gefiltert (technische Präfixe gelten als Hilfsfunktionen). Sie ist ein Prüfauftrag, keine automatische Aussage über Verwaistheit.
 
-- Keine.
+- `storage_folder_uuid` (src/integrations/supabase/types.ts)
 
 ### Registrierte Selbsttests ohne Funktionszuordnung (0)
 

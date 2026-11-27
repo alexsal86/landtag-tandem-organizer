@@ -110,7 +110,7 @@ export function CaseItemDetailPanel({
   activeTab: DetailTab;
   onDecisionRequest: () => void;
   onDecisionReceived: () => void;
-  onAddInteraction: (files?: File[]) => void;
+  onAddInteraction: (files?: File[]) => Promise<boolean>;
   onDownloadDocument: (document: CaseItemInteractionDocument) => Promise<void> | void;
   onRenameDocument: (documentId: string, title: string) => Promise<void> | void;
   onDeleteDocument: (documentId: string) => Promise<void> | void;
@@ -128,6 +128,8 @@ export function CaseItemDetailPanel({
 }) {
   const [activeSection, setActiveSection] = useState<"sachlage" | TimelineInteractionType | "entscheidung">("sachlage");
   const [interactionFiles, setInteractionFiles] = useState<File[]>([]);
+  const [capturingInteraction, setCapturingInteraction] = useState(false);
+  const captureInFlight = useRef(false);
   const [editingDocumentId, setEditingDocumentId] = useState<string | null>(null);
   const [editingDocumentTitle, setEditingDocumentTitle] = useState("");
   const [contactSearchResults, setContactSearchResults] = useState<Array<{ id: string; name: string; email: string | null; phone: string | null; organization: string | null }>>([]);
@@ -700,8 +702,18 @@ export function CaseItemDetailPanel({
               {activeSection === "sachlage" ? (
                 <span className="ml-auto text-xs text-muted-foreground">Wird mit „Speichern“ übernommen</span>
               ) : (
-                <Button type="button" className="ml-auto h-9 rounded-lg bg-success px-5 font-semibold text-success-foreground hover:bg-success/90" onClick={() => onAddInteraction(interactionFiles)}>
-                  Erfassen
+                <Button type="button" disabled={capturingInteraction} className="ml-auto h-9 rounded-lg bg-success px-5 font-semibold text-success-foreground hover:bg-success/90" onClick={async () => {
+                  if (captureInFlight.current) return;
+                  captureInFlight.current = true;
+                  setCapturingInteraction(true);
+                  try {
+                    if (await onAddInteraction(interactionFiles)) setInteractionFiles([]);
+                  } finally {
+                    captureInFlight.current = false;
+                    setCapturingInteraction(false);
+                  }
+                }}>
+                  {capturingInteraction ? "Speichert …" : "Erfassen"}
                 </Button>
               )}
             </div>

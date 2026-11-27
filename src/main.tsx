@@ -2,6 +2,7 @@ import { createRoot } from 'react-dom/client'
 import App from './App.tsx'
 import './index.css'
 import { evaluateCoiCapabilityStatus, setCoiCapabilityStatus } from './lib/coiRuntime'
+import { registerAppServiceWorker } from './lib/appServiceWorker'
 
 async function unregisterAllServiceWorkers(
   shouldUnregister: (registration: ServiceWorkerRegistration) => boolean = () => true,
@@ -23,6 +24,8 @@ async function setupCrossOriginIsolation(): Promise<void> {
   const coiStatus = evaluateCoiCapabilityStatus();
   setCoiCapabilityStatus(coiStatus);
   const isTopLevel = window.self === window.top;
+  // Also remove stale app-shell workers in standalone preview windows.
+  await registerAppServiceWorker();
   const debugLog = (...args: unknown[]) => {
     if (import.meta.env.DEV) {
       console.info('[COI]', ...args);
@@ -71,7 +74,6 @@ async function setupCrossOriginIsolation(): Promise<void> {
       host: window.location.hostname,
       isPreviewHost: coiStatus.isPreviewHost,
     });
-    await navigator.serviceWorker.register('/sw.js?v=2026-11-04-notes');
     return;
   }
 
@@ -82,7 +84,9 @@ async function setupCrossOriginIsolation(): Promise<void> {
 }
 
 function bootstrap() {
-  createRoot(document.getElementById('root')!).render(<App />);
+  const root = document.getElementById('root');
+  if (!root) return;
+  createRoot(root).render(<App />);
 
   void Promise.race([
     setupCrossOriginIsolation(),

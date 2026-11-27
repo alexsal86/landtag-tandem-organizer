@@ -190,6 +190,7 @@ Die Spalten zählen **zugeordnete** Prüfungen, nicht bestandene Läufe. „Erge
 | `admin.bulk-audit` | verwaltung | sicherheit | implementiert | rollenabhängig | kein Test | nicht-ausgefuehrt | 0 | 0 | 0 | 0 | nein |
 | `admin.performance` | verwaltung | administrativ | implementiert | rollenabhängig | kein Test | nicht-ausgefuehrt | 0 | 0 | 0 | 0 | ja |
 | `admin.maintenance` | verwaltung | automatisiert | implementiert | systemseitig | kein Test | nicht-ausgefuehrt | 0 | 0 | 0 | 0 | nein |
+| `platform.theme-selection` | verwaltung | technisch | implementiert | UI | Unit-Test | bestanden | 0 | 1 | 0 | 0 | nein |
 | `admin.data-lint` | verwaltung | administrativ | implementiert | rollenabhängig | kein Test | nicht-ausgefuehrt | 0 | 0 | 0 | 0 | nein |
 | `admin.gdpr` | verwaltung | sicherheit | implementiert | rollenabhängig | Integrationstest | bestanden | 0 | 0 | 1 | 0 | ja |
 | `admin.templates-senders` | verwaltung | administrativ | implementiert | rollenabhängig | kein Test | nicht-ausgefuehrt | 0 | 0 | 0 | 0 | nein |
@@ -208,7 +209,7 @@ Die Spalten zählen **zugeordnete** Prüfungen, nicht bestandene Läufe. „Erge
 | `admin.edge-function-security` | verwaltung | sicherheit | implementiert | nicht anwendbar | kein Test | unbekannt | 0 | 0 | 0 | 0 | ja |
 | `admin.security-cockpit` | verwaltung | sicherheit | implementiert | rollenabhängig | Unit-Test | bestanden | 0 | 3 | 0 | 0 | ja |
 | `admin.access-boundaries` | verwaltung | sicherheit | implementiert | nicht anwendbar | Selbsttest | nicht-ausgefuehrt | 1 | 1 | 0 | 0 | ja |
-| `platform.notification-dispatch` | verwaltung | technisch | implementiert | systemseitig | kein Test | nicht-ausgefuehrt | 0 | 0 | 0 | 0 | nein |
+| `platform.notification-dispatch` | verwaltung | technisch | implementiert | systemseitig | teilweise | nicht-ausgefuehrt | 1 | 1 | 0 | 0 | nein |
 | `cases.close-archive` | vorgaenge | fachlich | implementiert | rollenabhängig | Selbsttest | nicht-ausgefuehrt | 1 | 0 | 0 | 0 | nein |
 | `cases.escalation` | vorgaenge | automatisiert | implementiert | systemseitig | kein Test | nicht-ausgefuehrt | 0 | 0 | 0 | 0 | nein |
 | `cases.interactions` | vorgaenge | fachlich | implementiert | UI | Selbsttest | nicht-ausgefuehrt | 1 | 0 | 0 | 0 | ja |

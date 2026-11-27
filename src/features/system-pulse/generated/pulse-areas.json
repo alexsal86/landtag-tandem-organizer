@@ -3132,9 +3132,14 @@
           "tables": [],
           "features": [
             "election.history.portraits",
-            "integration.email"
+            "integration.email",
+            "platform.notification-dispatch"
           ],
           "steps": [
+            {
+              "id": "preview-worker-safety",
+              "label": "Vorschau ohne App-Shell-Cache; produktiver Push bleibt verfügbar"
+            },
             {
               "id": "portrait-files",
               "label": "Porträtdateien: WebP-Signatur, RIFF-Länge und Pflichtmaße"

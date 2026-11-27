@@ -110,6 +110,7 @@ Diese Schritte führen die Szenarien aus; „letzter Lauf“ stammt aus `src/fea
 | `election-map` | `morph-geometry` | Periodenwechsel morpht gleiche Wahlkreise und blendet den Rest über | logic | — |
 | `election-map` | `search` | Wahlkreise nach Name oder exakter Nummer finden | logic | — |
 | `election-map` | `boundaries` | Fehlende, leere und projizierte Grenzdaten erkennen | logic | — |
+| `security-hardening` | `preview-worker-safety` | Vorschau ohne App-Shell-Cache; produktiver Push bleibt verfügbar | logic | — |
 | `security-hardening` | `portrait-files` | Porträtdateien: WebP-Signatur, RIFF-Länge und Pflichtmaße | logic | — |
 | `security-hardening` | `portrait-source` | Porträtquelle: nur http(s) ohne Zugangsdaten und mit Feldgrenzen | logic | — |
 | `security-hardening` | `portrait-record` | Porträt-Metadaten: Verbindung, Versions-ID und feste Dateinamen | logic | — |
