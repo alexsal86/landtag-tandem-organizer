@@ -1,4 +1,5 @@
 import { authorSegments } from "@/features/parlis/authors";
+import { parseDocumentDetails, signerSummary } from "@/features/parlis/details";
 import { groupsFor } from "@/features/parlis/grouping";
 import { supabase } from "@/integrations/supabase/client";
 import type { TestScenario } from "../types";
@@ -9,7 +10,7 @@ export const parlisScenario: TestScenario = {
   description: "Prüft die Gruppierung und den Lesezugriff auf die Parlamentsdokumentation.",
   features: ["parlis.proceedings"],
   touches: [],
-  checks: ["Urhebertext mit Titeln und Namensbestandteilen bleibt vollständig", "Monatsgruppierung, eindeutige Schlagwörter und leere Ressorts", "Importierte Vorgänge sind lesbar", "Verknüpfte Urheber führen zu einem Mandat derselben Wahlperiode"],
+  checks: ["Urhebertext mit Titeln und Namensbestandteilen bleibt vollständig", "Monatsgruppierung, eindeutige Schlagwörter und leere Ressorts", "Unterzeichner und Texte kommen aus dem Detail-JSON und bleiben unvollständig lesbar", "Importierte Vorgänge sind lesbar", "Verknüpfte Urheber führen zu einem Mandat derselben Wahlperiode"],
   steps: [{
     id: "parlis-groups",
     label: "Monate, Schlagwörter und fehlende Ressorts korrekt zuordnen",
@@ -37,6 +38,30 @@ export const parlisScenario: TestScenario = {
           && segments.find(segment => segment.profileKey === "wangenheim")?.text === "Uwe Freiherr von Wangenheim"
           && segments.flatMap(segment => segment.party ?? []).join() === "SPD,AfD",
         message: "Originalnamen und Parteiklammern bleiben erhalten und werden passend ausgezeichnet.",
+      };
+    },
+  }, {
+    id: "parlis-document-details",
+    label: "Detail-JSON liefert Unterzeichner und Texte, unbrauchbare Daten werden verworfen",
+    kind: "logic",
+    run: async () => {
+      const details = parseDocumentDetails({
+        vorgangsId: "V-246384",
+        drucksache: "18/6",
+        signers: ["Sascha Binder", "Dorothea Kliche-Behnke", "Boris Weirauch"],
+        signerParty: "SPD",
+        wholeFaction: true,
+        answer: { signatory: "Hoffmeister-Kraut", role: "Ministerin für Wirtschaft" },
+        questionText: "Der Landtag wolle beschließen,",
+        answerText: "Mit Schreiben vom 26. Mai 2026",
+      });
+      const broken = parseDocumentDetails({ drucksache: "18/6" });
+      return {
+        ok: signerSummary(details!) === "Sascha Binder, Dorothea Kliche-Behnke, Boris Weirauch (SPD, gesamte Fraktion)"
+          && details?.answer.signatory === "Hoffmeister-Kraut"
+          && details?.questionText === "Der Landtag wolle beschließen,"
+          && broken === null,
+        message: "Unterzeichner, Antwort und Texte werden gelesen; ein JSON ohne Vorgangs-ID gilt als unbrauchbar.",
       };
     },
   }, {

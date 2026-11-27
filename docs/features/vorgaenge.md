@@ -58,7 +58,7 @@ _Auto-generiert mit `npm run update:feature-catalog` aus dem zentralen Funktions
 |---|---|---:|---:|---|
 | `case-file-lifecycle` | Fallakte mit Folgetabellen (Container) im Unterschied zum Vorgang | 16 | 9 | — |
 | `case-item-lifecycle` | Vorgangs-Lifecycle (Am Zug → Schritt → Wiedervorlage → Entscheidung → Tageszettel → Abschluss) | 9 | 5 | — |
-| `parlis` | Parlamentarische Vorgänge | 0 | 4 | — |
+| `parlis` | Parlamentarische Vorgänge | 0 | 5 | — |
 
 ## Selbsttest-Schritte
 
@@ -95,6 +95,7 @@ Diese Schritte führen die Szenarien aus; „letzter Lauf“ stammt aus `src/fea
 | `case-item-lifecycle` | `tenant-boundary` | Vorgang lässt sich keinem fremden Büro zuordnen | workflow | — |
 | `parlis` | `parlis-groups` | Monate, Schlagwörter und fehlende Ressorts korrekt zuordnen | logic | — |
 | `parlis` | `parlis-inline-authors` | Urhebernamen mit Titeln und Namensbestandteilen im Originaltext verlinken | logic | — |
+| `parlis` | `parlis-document-details` | Detail-JSON liefert Unterzeichner und Texte, unbrauchbare Daten werden verworfen | logic | — |
 | `parlis` | `parlis-import-readable` | Import der 18. Wahlperiode ist lesbar | db | — |
 | `parlis` | `parlis-deputy-profile` | Weirauchs Anfrage aus Drucksache 18/763 führt zum Abgeordnetenprofil | db | — |
 
@@ -124,8 +125,9 @@ Diese Schritte führen die Szenarien aus; „letzter Lauf“ stammt aus `src/fea
 
 1. Urhebertext mit Titeln und Namensbestandteilen bleibt vollständig
 2. Monatsgruppierung, eindeutige Schlagwörter und leere Ressorts
-3. Importierte Vorgänge sind lesbar
-4. Verknüpfte Urheber führen zu einem Mandat derselben Wahlperiode
+3. Unterzeichner und Texte kommen aus dem Detail-JSON und bleiben unvollständig lesbar
+4. Importierte Vorgänge sind lesbar
+5. Verknüpfte Urheber führen zu einem Mandat derselben Wahlperiode
 
 ## Funktionsdetails
 
@@ -740,7 +742,7 @@ Erfasst interne Notizen an einer Fallakte und zeigt sie im Verlauf; das Szenario
 - Keine.
 
 ### `parlis.proceedings` — Parlamentarische Vorgänge auswerten
-Lädt die Vorgänge der 18. Wahlperiode des Landtags Baden-Württemberg aus der Datenbank, gruppiert sie nach Datum und Merkmalen und verlinkt die Originaldokumente und verbindet namentlich zugeordnete Urheber über Mandate mit ihren Abgeordnetenprofilen. Die Links verwenden den vollständigen Urhebernamen aus der Quelle und die Parteikürzel werden farblich markiert.
+Lädt die Vorgänge der 18. Wahlperiode des Landtags Baden-Württemberg aus der Datenbank, gruppiert sie nach Datum und Merkmalen und verlinkt die Originaldokumente und verbindet namentlich zugeordnete Urheber über Mandate mit ihren Abgeordnetenprofilen. Die Links verwenden den vollständigen Urhebernamen aus der Quelle und die Parteikürzel werden farblich markiert. Für Kleine und Große Anfragen sowie Anträge werden die Unterzeichner aus dem Originaldokument ergänzt (semikolongetrennt in signers, ohne Haupteinbringer) und nur gegen Abgeordnete der laufenden Wahlperiode aufgelöst; mehrdeutige Nachnamen bleiben unverknüpft. Der Batch-Extraktor weist zusätzlich gedrehte Seiten aus, deren Tabellen nicht aus Zeichenkoordinaten rekonstruiert werden dürfen. Frage, Begründung, Antwort und Unterzeichner liegen nicht in der Datenbank, sondern als JSON je Vorgang unter public/parlis und werden erst beim Öffnen eines Vorgangs nachgeladen.
 
 - **Kategorie:** fachlich
 - **Implementierung:** implementiert
@@ -749,7 +751,7 @@ Lädt die Vorgänge der 18. Wahlperiode des Landtags Baden-Württemberg aus der 
 - **Letztes Testergebnis:** nicht-ausgefuehrt (kein Laufnachweis importiert; nicht aus der Existenz einer Testdatei abgeleitet)
 - **Rollen:** Keine besondere Rolle deklariert
 - **Routen:** `/daten`
-- **Frontend-Komponenten:** `src/components/admin/DataView.tsx`, `src/features/parlis/ParlisView.tsx`, `src/features/election-analysis/DeputyDirectory.tsx`
+- **Frontend-Komponenten:** `src/components/admin/DataView.tsx`, `src/features/parlis/ParlisView.tsx`, `src/features/parlis/ProceedingDetails.tsx`, `src/features/parlis/details.ts`, `src/features/election-analysis/DeputyDirectory.tsx`
 - **Services:** —
 - **Hooks:** —
 - **Edge Functions:** —
@@ -767,8 +769,12 @@ Lädt die Vorgänge der 18. Wahlperiode des Landtags Baden-Württemberg aus der 
 - supabase/migrations/20261127140000_create_parlis_proceedings.sql
 - supabase/migrations/20261127141000_import_parlis_wp18.sql
 - supabase/migrations/20261127143000_link_parlis_deputy_mandates.sql
+- supabase/migrations/20261127160000_add_parlis_signers.sql
+- scripts/parlis/extract_drucksachen.py
 - src/features/parlis/grouping.ts
 - src/features/parlis/authors.ts
+- src/features/parlis/details.ts
+- public/parlis/V-246384.json
 - src/features/selftest/scenarios/parlis.ts
 
 **Bekannte Einschränkungen**

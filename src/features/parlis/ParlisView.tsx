@@ -7,6 +7,7 @@ import { useQuery } from "@tanstack/react-query";
 import { Input } from "@/components/ui/input";
 import { Button } from "@/components/ui/button";
 import { dimensions, groupsFor, type Dimension } from "./grouping";
+import ProceedingDetails from "./ProceedingDetails";
 import { supabase } from "@/integrations/supabase/client";
 
 const pageSize = 20;
@@ -93,6 +94,7 @@ export default function ParlisView() {
   const [dimension, setDimension] = useState<Dimension>("datum");
   const [selected, setSelected] = useState<string | null>(null);
   const [visible, setVisible] = useState(pageSize);
+  const [openDetails, setOpenDetails] = useState<string | null>(null);
 
   const matches = useMemo(() => {
     const terms = search.trim().toLocaleLowerCase("de-DE").split(/\s+/).filter(Boolean);
@@ -219,7 +221,14 @@ export default function ParlisView() {
                   {row.ressort && ` · ${row.ressort}`}
                 </p>
                 {row.deskriptoren && <p className="text-sm">{row.deskriptoren}</p>}
-                {url && <a className="inline-block text-sm text-primary underline" href={url} target="_blank" rel="noreferrer">Originaldokument öffnen</a>}
+                <div className="flex flex-wrap items-center gap-4">
+                  {url && <a className="inline-block text-sm text-primary underline" href={url} target="_blank" rel="noreferrer">Originaldokument öffnen</a>}
+                  <Button variant="link" size="sm" className="h-auto p-0" aria-expanded={openDetails === row.vorgangs_id}
+                    onClick={() => setOpenDetails(openDetails === row.vorgangs_id ? null : row.vorgangs_id)}>
+                    {openDetails === row.vorgangs_id ? "Text ausblenden" : "Text und Unterzeichner anzeigen"}
+                  </Button>
+                </div>
+                {openDetails === row.vorgangs_id && <ProceedingDetails vorgangsId={row.vorgangs_id} />}
               </li>
             );
           })}

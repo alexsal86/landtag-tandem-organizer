@@ -42,10 +42,15 @@ export type Database = {
           dokument_url: string
           dokumentnummer_intern: string
           drucksache: string
+          faction_co_signed: boolean
           id: string
           legislature: number
           pdf_url: string
           ressort: string
+          signer_count: number
+          signer_party: string
+          signers: string
+          signers_raw: string
           titel: string
           urheber: string
           vorgang_text: string
@@ -58,10 +63,15 @@ export type Database = {
           dokument_url: string
           dokumentnummer_intern: string
           drucksache: string
+          faction_co_signed?: boolean
           id: string
           legislature: number
           pdf_url: string
           ressort: string
+          signer_count?: number
+          signer_party?: string
+          signers?: string
+          signers_raw?: string
           titel: string
           urheber: string
           vorgang_text: string
@@ -74,10 +84,15 @@ export type Database = {
           dokument_url?: string
           dokumentnummer_intern?: string
           drucksache?: string
+          faction_co_signed?: boolean
           id?: string
           legislature?: number
           pdf_url?: string
           ressort?: string
+          signer_count?: number
+          signer_party?: string
+          signers?: string
+          signers_raw?: string
           titel?: string
           urheber?: string
           vorgang_text?: string
