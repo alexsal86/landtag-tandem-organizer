@@ -876,6 +876,11 @@
       "area": "kontakte"
     },
     {
+      "id": "contacts.list-search",
+      "name": "Kontaktliste mit Suche und Filtern",
+      "area": "kontakte"
+    },
+    {
       "id": "contacts.merge",
       "name": "Kontakte zusammenführen",
       "area": "kontakte"
@@ -925,6 +930,11 @@
     {
       "id": "contacts.import",
       "name": "Kontakte importieren",
+      "area": "kontakte"
+    },
+    {
+      "id": "contacts.list-search",
+      "name": "Kontaktliste mit Suche und Filtern",
       "area": "kontakte"
     },
     {

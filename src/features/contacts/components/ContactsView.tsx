@@ -147,12 +147,16 @@ export function ContactsView() {
           {/* Type & Category Filters */}
           {s.activeTab === "contacts" && s.showFilters && (
             <div className="mb-6 space-y-3">
+              {/* Personen und Organisationen sind getrennte Tabs; ein Typfilter
+                  innerhalb eines Tabs würde sich mit dessen festem Typfilter
+                  widersprechen und die Liste leeren. */}
               <div className="flex gap-2 overflow-x-auto">
-                {["all", "person", "organization"].map(t => (
-                  <Button key={t} variant={s.selectedType === t ? "default" : "outline"} size="sm" onClick={() => s.setSelectedType(t)} className="whitespace-nowrap">
-                    {t === "all" ? `Alle (${s.contacts.length})` : t === "person" ? `Personen (${s.contacts.filter(c => c.contact_type === "person").length})` : `Organisationen (${s.contacts.filter(c => c.contact_type === "organization").length})`}
-                  </Button>
-                ))}
+                <Button variant="default" size="sm" onClick={() => s.navigate("/contacts")} className="whitespace-nowrap">
+                  Personen ({s.contactsCount})
+                </Button>
+                <Button variant="outline" size="sm" onClick={() => s.navigate("/contacts/stakeholder")} className="whitespace-nowrap">
+                  Organisationen ({s.stakeholdersCount})
+                </Button>
               </div>
               <div className="flex gap-2 overflow-x-auto">
                 {s.categories.map(cat => (
@@ -196,7 +200,7 @@ export function ContactsView() {
                     <Card className="bg-card shadow-card border-border"><CardContent className="text-center py-12">
                       <User className="h-12 w-12 text-muted-foreground mx-auto mb-4" />
                       <h3 className="text-lg font-semibold mb-2">Keine Kontakte gefunden</h3>
-                      <p className="text-muted-foreground mb-4">{s.searchTerm || s.selectedCategory !== "all" || s.selectedType !== "all" ? "Versuchen Sie es mit anderen Suchkriterien." : "Erstellen Sie Ihren ersten Kontakt."}</p>
+                      <p className="text-muted-foreground mb-4">{s.searchTerm || s.selectedCategory !== "all" ? "Versuchen Sie es mit anderen Suchkriterien." : "Erstellen Sie Ihren ersten Kontakt."}</p>
                       <Link to="/contacts/new"><Button className="gap-2"><Plus className="h-4 w-4" />Neuen Kontakt erstellen</Button></Link>
                     </CardContent></Card>
                   )}

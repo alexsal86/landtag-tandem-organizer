@@ -24,8 +24,6 @@ export interface UseContactsViewStateResult {
   setSearchTerm: Dispatch<SetStateAction<string>>;
   selectedCategory: string;
   setSelectedCategory: Dispatch<SetStateAction<string>>;
-  selectedType: string;
-  setSelectedType: Dispatch<SetStateAction<string>>;
   distributionLists: ReturnType<typeof useContactsDistributionLists>["distributionLists"];
   distributionListsLoading: boolean;
   selectedContactId: string | null;
@@ -115,7 +113,6 @@ export function useContactsViewState(): UseContactsViewStateResult {
   } = useInfiniteContacts({
     searchTerm: filtersAndSorting.debouncedSearchTerm,
     selectedCategory: filtersAndSorting.selectedCategory,
-    selectedType: filtersAndSorting.selectedType,
     activeTab: preferences.activeTab,
     sortColumn: filtersAndSorting.activeSortColumn,
     sortDirection: filtersAndSorting.activeSortDirection,
@@ -174,8 +171,6 @@ export function useContactsViewState(): UseContactsViewStateResult {
     setSearchTerm: filtersAndSorting.setSearchTerm,
     selectedCategory: filtersAndSorting.selectedCategory,
     setSelectedCategory: filtersAndSorting.setSelectedCategory,
-    selectedType: filtersAndSorting.selectedType,
-    setSelectedType: filtersAndSorting.setSelectedType,
     distributionLists: distributionListsState.distributionLists,
     distributionListsLoading: distributionListsState.distributionListsLoading,
     selectedContactId: selection.selectedContactId,

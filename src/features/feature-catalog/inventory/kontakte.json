@@ -150,6 +150,63 @@
       ]
     },
     {
+      "id": "contacts.list-search",
+      "subarea": "Recherche",
+      "name": "Kontaktliste mit Suche und Filtern",
+      "description": "Zeigt Kontakte und Organisationen in Liste oder Grid, durchsucht Name, Organisation, Position, E-Mail, Telefon und Adresse mit Sonderzeichen-sicherer Filterung und filtert nach Kategorie, Favoriten, Themen und Prüffrist.",
+      "category": "fachlich",
+      "implementationStatus": "implementiert",
+      "integrationStatus": "ui",
+      "coverage": "selftest",
+      "testResult": "nicht-ausgefuehrt",
+      "evidence": [
+        "src/features/contacts/components/ContactsView.tsx",
+        "src/hooks/useInfiniteContacts.tsx",
+        "src/features/contacts/search/contactSearch.ts"
+      ],
+      "routes": [
+        "/contacts"
+      ],
+      "components": [
+        "src/features/contacts/components/ContactsView.tsx",
+        "src/components/contacts/ContactListTable.tsx",
+        "src/components/contacts/ContactGridCard.tsx"
+      ],
+      "hooks": [
+        "src/components/contacts/hooks/useContactsViewState.ts",
+        "src/components/contacts/hooks/useContactsFiltersAndSorting.ts"
+      ],
+      "services": [
+        "src/features/contacts/search/contactSearch.ts"
+      ],
+      "rpcs": [
+        "read_secured_contacts",
+        "get_contact_counts"
+      ],
+      "tables": [
+        "contacts",
+        "contact_topics"
+      ],
+      "roles": [
+        "abgeordneter",
+        "bueroleitung",
+        "mitarbeiter",
+        "praktikant"
+      ],
+      "dependsOn": [
+        "contacts.create"
+      ],
+      "scenarios": [
+        "contact-relations"
+      ],
+      "limitations": [
+        "Telefonnummern werden als Teilzeichenkette der gespeicherten Schreibweise gefunden; Vorwahl, Leerzeichen und Trennzeichen werden nicht normalisiert.",
+        "Personen und Organisationen sind getrennte Tabs; ein Typfilter innerhalb eines Tabs entfällt, weil er dem Typ des Tabs widersprach.",
+        "Die Kategorie-Chips zählen weiterhin nur die geladenen Zeilen, nicht den gesamten Bestand.",
+        "Die Liste selbst wird im Selbsttest nicht gerendert; geprüft wird die reine Filterregel."
+      ]
+    },
+    {
       "id": "contacts.import",
       "subarea": "Import",
       "name": "Kontakte importieren",
@@ -184,9 +241,6 @@
       "docs": [
         "docs/contacts-overhaul-proposals.md"
       ],
-      "rpcs": [
-        "insert_sample_contacts"
-      ],
       "dependsOn": [
         "contacts.create"
       ],
@@ -195,7 +249,8 @@
       ],
       "limitations": [
         "CSV-Text (Komma und Semikolon) und VCF-Text werden eingelesen, Spalten automatisch zugeordnet und Zeilen samt Namen, E-Mail-Prüfung und Verteiler-Spalte zu Kontaktwerten verarbeitet; eine daraus gebaute Zeile wird gespeichert und über denselben Verteilerpfad wie die Oberfläche zugeordnet.",
-        "Der Datei-Dialog selbst, das Excel-/ODS-Einlesen und die Duplikatdialoge der Oberfläche laufen nicht im Selbsttest."
+        "Der Datei-Dialog selbst, das Excel-/ODS-Einlesen und die Duplikatdialoge der Oberfläche laufen nicht im Selbsttest.",
+        "Beispielkontakte werden nicht mehr automatisch eingefügt; die Datenbankfunktion insert_sample_contacts ist im Client nicht mehr angebunden."
       ]
     },
     {

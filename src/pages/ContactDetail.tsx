@@ -38,7 +38,6 @@ export default function ContactDetail() {
         .from('contacts')
         .select('id, name, role:position, organization, email, phone, location, category, priority, last_contact, avatar_url, notes')
         .eq('id', id!)
-        .eq('user_id', user!.id)
         .single();
 
       if (error) throw error;
@@ -195,8 +194,7 @@ export default function ContactDetail() {
       const { error } = await supabase
         .from('contacts')
         .delete()
-        .eq('id', contact.id)
-        .eq('user_id', user!.id);
+        .eq('id', contact.id);
 
       if (error) throw error;
 
@@ -359,13 +357,31 @@ export default function ContactDetail() {
                 
                 {/* Action Buttons */}
                 <div className="flex gap-4 mt-8 pt-6 border-t border-border">
-                  <Button className="flex-1">
-                    <Mail className="h-4 w-4 mr-2" />
-                    E-Mail senden
+                  <Button className="flex-1" asChild={Boolean(contact.email)} disabled={!contact.email}>
+                    {contact.email ? (
+                      <a href={`mailto:${contact.email}`}>
+                        <Mail className="h-4 w-4 mr-2" />
+                        E-Mail senden
+                      </a>
+                    ) : (
+                      <span>
+                        <Mail className="h-4 w-4 mr-2" />
+                        E-Mail senden
+                      </span>
+                    )}
                   </Button>
-                  <Button variant="outline" className="flex-1">
-                    <Phone className="h-4 w-4 mr-2" />
-                    Anrufen
+                  <Button variant="outline" className="flex-1" asChild={Boolean(contact.phone)} disabled={!contact.phone}>
+                    {contact.phone ? (
+                      <a href={`tel:${contact.phone}`}>
+                        <Phone className="h-4 w-4 mr-2" />
+                        Anrufen
+                      </a>
+                    ) : (
+                      <span>
+                        <Phone className="h-4 w-4 mr-2" />
+                        Anrufen
+                      </span>
+                    )}
                   </Button>
                 </div>
               </CardContent>

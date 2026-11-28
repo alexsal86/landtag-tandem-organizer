@@ -14,6 +14,9 @@ import {
   defaultLegalBasis, defaultReviewDate, isReviewDue, retentionRuleText,
 } from "@/features/contacts/privacy/retention";
 import {
+  CONTACT_SEARCH_FIELDS, buildContactSearchFilter, normalizeContactSearchTerm, quotePostgrestPattern,
+} from "@/features/contacts/search/contactSearch";
+import {
   GDPR_APPROVER_ROLES, canApproveGdprDelete, isApprovedBySecondPerson,
 } from "@/features/contacts/privacy/gdprApproval";
 
@@ -42,6 +45,7 @@ export const contactRelationsScenario: TestScenario = {
   checks: [
     "Der Datenbank-Trigger setzt Rechtsgrundlage und Prüffrist: Bürger 24 Monate ab Erfassung, alle anderen bis 31.03.2031",
     "Die reinen Aufbewahrungsregeln (Fristberechnung, Fälligkeit, Regeltext) stimmen mit dem Trigger überein",
+    "Die Kontaktsuche zitiert Kommas, Klammern und Anführungszeichen, durchsucht Telefonfelder und weist leere Eingaben ab",
     "Eine Löschanfrage entsteht ausstehend unter der eigenen Identität; Eigenfreigabe per Update und per approve_gdpr_delete wird abgewiesen, Anfrage und Gegenstand bleiben unverändert",
     "Der eigene ausstehende Antrag wird am Ende zurückgezogen, sodass der Lauf keinen offenen Löschantrag hinterlässt",
     "Die Vier-Augen-Regel erlaubt nur einer zweiten angemeldeten Person die Freigabe und verlangt deren eingetragenen Zustimmungszeitpunkt",
@@ -64,6 +68,7 @@ export const contactRelationsScenario: TestScenario = {
   ],
   limitations: [
     "Die Oberfläche selbst (Grid/Liste, Detail-Sheet, Formulare) wird nicht gerendert; geprüft werden die zugrunde liegenden Schreib- und Lesepfade.",
+    "Die Suche wird als reine Filterregel geprüft; die tatsächliche PostgREST-Antwort auf den erzeugten Ausdruck liest der Selbsttest nicht.",
     "Feldbasierte Maskierung (field_permissions mit can_read=false) wird nicht verändert; geprüft wird die gesicherte Lesefunktion read_secured_contacts, nicht eine konfigurierte Maskierung.",
     "Die positive Freigabe einer Löschanfrage braucht die persönliche Anmeldung einer zweiten berechtigten Person und wird deshalb hier nur als Regel plus Datenbank-Abweisung der Eigenfreigabe geprüft; die Freigabe mit zwei Konten deckt der Rollback-Test der Migration ab.",
     "Der Selbsttest zieht seinen eigenen ausstehenden Löschantrag am Ende zurück (DELETE-Policy nur für requested_by = auth.uid() und status = 'pending'); freigegebene oder fremde Anträge bleiben unlöschbar.",
@@ -144,6 +149,32 @@ export const contactRelationsScenario: TestScenario = {
             ? "Bürgerkontakte erhalten 24 Monate ab Erfassung, alle anderen das Legislaturende 31.03.2031."
             : `Fehlgeschlagen: ${failed.join(", ")}`,
           details: checks,
+        };
+      },
+    },
+    {
+      id: "search-filter", label: "Kontaktsuche: Sonderzeichen, Telefonfelder und leere Eingaben", kind: "logic", critical: false,
+      run: async () => {
+        const withComma = buildContactSearchFilter("Müller, Hans");
+        const withParentheses = buildContactSearchFilter("Caritas (KV)");
+        const phone = buildContactSearchFilter("0721 123456");
+        const checks = {
+          kommaZitiert: withComma === 'name.ilike."%Müller, Hans%",organization.ilike."%Müller, Hans%",position.ilike."%Müller, Hans%",email.ilike."%Müller, Hans%",phone.ilike."%Müller, Hans%",mobile_phone.ilike."%Müller, Hans%",business_phone.ilike."%Müller, Hans%",address.ilike."%Müller, Hans%"',
+          klammernZitiert: withParentheses?.includes('organization.ilike."%Caritas (KV)%"') === true,
+          telefonUndAdresse: ["phone", "mobile_phone", "business_phone", "address"]
+            .every((field) => phone?.includes(`${field}.ilike.`) === true),
+          alleFelder: CONTACT_SEARCH_FIELDS.length === 8,
+          leerAbgewiesen: buildContactSearchFilter("") === null && buildContactSearchFilter("   ") === null,
+          anfuehrungMaskiert: quotePostgrestPattern('a"b') === '"%a\\"b%"',
+          whitespaceGefaltet: normalizeContactSearchTerm("  Müller \n Hans  ") === "Müller Hans",
+        };
+        const failed = Object.entries(checks).filter(([, ok]) => !ok).map(([name]) => name);
+        return {
+          ok: failed.length === 0,
+          message: failed.length === 0
+            ? "Suchfilter zitiert Sonderzeichen, deckt Telefon und Adresse ab und weist leere Eingaben ab."
+            : `Abweichungen: ${failed.join(", ")}`,
+          details: { checks, withComma, withParentheses, phone },
         };
       },
     },

@@ -6,10 +6,10 @@ _Auto-generiert mit `npm run update:feature-catalog` aus dem zentralen Funktions
 
 ## Kennzahlen
 
-- Funktionen: **14** in **9** Unterbereichen
-- implementiert: **14**, teilweise: **0**, deaktiviert: **0**, potenziell verwaist: **0**
+- Funktionen: **15** in **10** Unterbereichen
+- implementiert: **15**, teilweise: **0**, deaktiviert: **0**, potenziell verwaist: **0**
 - ohne zugeordneten Test: **0**
-- ohne Dokumentationsverweis: **10**
+- ohne Dokumentationsverweis: **11**
 
 ## Funktionen
 
@@ -24,6 +24,7 @@ _Auto-generiert mit `npm run update:feature-catalog` aus dem zentralen Funktions
 | `contacts.stakeholders` Stakeholder-Netzwerk | Netzwerk | fachlich | implementiert | UI | Selbsttest |
 | `contacts.duplicates` Dubletten finden | Qualität | fachlich | implementiert | rollenabhängig | Selbsttest |
 | `contacts.merge` Kontakte zusammenführen | Qualität | fachlich | implementiert | rollenabhängig | Selbsttest |
+| `contacts.list-search` Kontaktliste mit Suche und Filtern | Recherche | fachlich | implementiert | UI | Selbsttest |
 | `contacts.create` Kontakt anlegen | Stammdaten | fachlich | implementiert | rollenabhängig | Selbsttest |
 | `contacts.edit` Kontakt bearbeiten | Stammdaten | fachlich | implementiert | rollenabhängig | Selbsttest |
 | `contacts.detail` Kontaktprofil mit Aktivitäten | Stammdaten | fachlich | implementiert | UI | Selbsttest |
@@ -33,6 +34,7 @@ _Auto-generiert mit `npm run update:feature-catalog` aus dem zentralen Funktions
 ## Unterbereiche
 
 - Stammdaten
+- Recherche
 - Import
 - Qualität
 - Verteiler
@@ -55,7 +57,7 @@ _Auto-generiert mit `npm run update:feature-catalog` aus dem zentralen Funktions
 | Szenario | Titel | deklarierte Tabellen | deklarierte Prüfungen | letzter Lauf |
 |---|---|---:|---:|---|
 | `contact-lifecycle` | Kontakt-Lifecycle (Anlegen → Kategorie/Tags → Aktivität → Suche) | 3 | 0 | — |
-| `contact-relations` | Kontakt-Beziehungen (Datenschutz → Themen → Duplikate → Sammelaktion → Verteiler → Wissen → Förderungen) | 13 | 21 | — |
+| `contact-relations` | Kontakt-Beziehungen (Datenschutz → Themen → Duplikate → Sammelaktion → Verteiler → Wissen → Förderungen) | 13 | 22 | — |
 
 ## Selbsttest-Schritte
 
@@ -72,6 +74,7 @@ Diese Schritte führen die Szenarien aus; „letzter Lauf“ stammt aus `src/fea
 | `contact-lifecycle` | `search` | Kontakt über Namenssuche auffindbar | db | — |
 | `contact-relations` | `setup` | Ausgangskontakt für die Beziehungsprüfungen anlegen | db | — |
 | `contact-relations` | `retention-defaults` | Aufbewahrungsfristen werden beim Anlegen aus der Kategorie gesetzt | db | — |
+| `contact-relations` | `search-filter` | Kontaktsuche: Sonderzeichen, Telefonfelder und leere Eingaben | logic | — |
 | `contact-relations` | `retention-rules` | Aufbewahrungsregeln rechnen und prüfen | logic | — |
 | `contact-relations` | `gdpr-four-eyes` | Vier-Augen-Regel der Löschanfrage als reine Regel prüfen | logic | — |
 | `contact-relations` | `gdpr-deletion` | Löschanfrage anlegen, Eigenfreigabe abweisen und zweite berechtigte Person prüfen | db | — |
@@ -98,25 +101,26 @@ Keine Prüfungen deklariert.
 
 1. Der Datenbank-Trigger setzt Rechtsgrundlage und Prüffrist: Bürger 24 Monate ab Erfassung, alle anderen bis 31.03.2031
 2. Die reinen Aufbewahrungsregeln (Fristberechnung, Fälligkeit, Regeltext) stimmen mit dem Trigger überein
-3. Eine Löschanfrage entsteht ausstehend unter der eigenen Identität; Eigenfreigabe per Update und per approve_gdpr_delete wird abgewiesen, Anfrage und Gegenstand bleiben unverändert
-4. Der eigene ausstehende Antrag wird am Ende zurückgezogen, sodass der Lauf keinen offenen Löschantrag hinterlässt
-5. Die Vier-Augen-Regel erlaubt nur einer zweiten angemeldeten Person die Freigabe und verlangt deren eingetragenen Zustimmungszeitpunkt
-6. Importzuordnung ordnet deutsche und englische Spalten zu und zerlegt die Verteiler-Spalte an ; , und |
-7. CSV-Text (Komma und Semikolon) und VCF-Text werden eingelesen, zugeordnet und zu Kontaktwerten mit Anzeigename übersetzt
-8. Zeilen ohne Namen und mit ungültiger E-Mail-Adresse werden abgewiesen; eine echte Importzeile legt den Kontakt an und ordnet ihn den Verteilern zu, ohne Mitgliedschaften zu verdoppeln
-9. Die Import-Duplikaterkennung findet gleiche E-Mail- oder Telefonnummern und ignoriert unähnliche Kontakte
-10. Anlegen, Bearbeiten und ein Anrufprotokoll erzeugen die passenden contact_activities über Trigger
-11. Themen werden über contact_topics verknüpft, doppelte Verknüpfungen sind gesperrt und topic_usage zählt Kontakte
-12. find_contact_duplicates_trgm findet ein Dublettenpaar im Büro und weist fremde Mandanten ab
-13. bulk_update_contact_fields ändert Kategorie und Schlagworte für mehrere Kontakte, protokolliert die Sammelaktion und weist ungültige Eingaben ab
-14. undo_contact_bulk_action stellt die vorherigen Werte wieder her (Büroleitung) bzw. wird für Mitglieder abgewiesen
-15. Verteilerlisten nehmen mehrere Kontakte auf, doppelte Mitglieder sind gesperrt, das Löschen der Liste entfernt die Mitglieder
-16. Ein Stakeholder wird als Organisation angelegt und die zugeordnete Person über assign_contact_to_organization verknüpft
-17. Ein Kartenflag wird mit eigenem Flag-Typ und Koordinaten angelegt, mit Typ, Büro und Tags zurückgelesen und wieder gelöscht
-18. Briefingwissen wird angelegt, geändert und gelöscht
-19. Eine Förderung mit Beteiligung des Kontakts wird angelegt, gelesen und doppelte Beteiligungen sind gesperrt
-20. Die gesicherte Kontaktlesung liefert den eigenen Kontakt und keine Zeilen aus fremden Büros
-21. Zusammenführen verschiebt Themen und Briefingwissen mit und löscht den Zweitkontakt
+3. Die Kontaktsuche zitiert Kommas, Klammern und Anführungszeichen, durchsucht Telefonfelder und weist leere Eingaben ab
+4. Eine Löschanfrage entsteht ausstehend unter der eigenen Identität; Eigenfreigabe per Update und per approve_gdpr_delete wird abgewiesen, Anfrage und Gegenstand bleiben unverändert
+5. Der eigene ausstehende Antrag wird am Ende zurückgezogen, sodass der Lauf keinen offenen Löschantrag hinterlässt
+6. Die Vier-Augen-Regel erlaubt nur einer zweiten angemeldeten Person die Freigabe und verlangt deren eingetragenen Zustimmungszeitpunkt
+7. Importzuordnung ordnet deutsche und englische Spalten zu und zerlegt die Verteiler-Spalte an ; , und |
+8. CSV-Text (Komma und Semikolon) und VCF-Text werden eingelesen, zugeordnet und zu Kontaktwerten mit Anzeigename übersetzt
+9. Zeilen ohne Namen und mit ungültiger E-Mail-Adresse werden abgewiesen; eine echte Importzeile legt den Kontakt an und ordnet ihn den Verteilern zu, ohne Mitgliedschaften zu verdoppeln
+10. Die Import-Duplikaterkennung findet gleiche E-Mail- oder Telefonnummern und ignoriert unähnliche Kontakte
+11. Anlegen, Bearbeiten und ein Anrufprotokoll erzeugen die passenden contact_activities über Trigger
+12. Themen werden über contact_topics verknüpft, doppelte Verknüpfungen sind gesperrt und topic_usage zählt Kontakte
+13. find_contact_duplicates_trgm findet ein Dublettenpaar im Büro und weist fremde Mandanten ab
+14. bulk_update_contact_fields ändert Kategorie und Schlagworte für mehrere Kontakte, protokolliert die Sammelaktion und weist ungültige Eingaben ab
+15. undo_contact_bulk_action stellt die vorherigen Werte wieder her (Büroleitung) bzw. wird für Mitglieder abgewiesen
+16. Verteilerlisten nehmen mehrere Kontakte auf, doppelte Mitglieder sind gesperrt, das Löschen der Liste entfernt die Mitglieder
+17. Ein Stakeholder wird als Organisation angelegt und die zugeordnete Person über assign_contact_to_organization verknüpft
+18. Ein Kartenflag wird mit eigenem Flag-Typ und Koordinaten angelegt, mit Typ, Büro und Tags zurückgelesen und wieder gelöscht
+19. Briefingwissen wird angelegt, geändert und gelöscht
+20. Eine Förderung mit Beteiligung des Kontakts wird angelegt, gelesen und doppelte Beteiligungen sind gesperrt
+21. Die gesicherte Kontaktlesung liefert den eigenen Kontakt und keine Zeilen aus fremden Büros
+22. Zusammenführen verschiebt Themen und Briefingwissen mit und löscht den Zweitkontakt
 
 ## Funktionsdetails
 
@@ -229,6 +233,46 @@ Zeigt Stammdaten, Aktivitäten, Dokumente, Finanzierungen, Themen, Vorgänge und
 
 - Keine.
 
+### `contacts.list-search` — Kontaktliste mit Suche und Filtern
+Zeigt Kontakte und Organisationen in Liste oder Grid, durchsucht Name, Organisation, Position, E-Mail, Telefon und Adresse mit Sonderzeichen-sicherer Filterung und filtert nach Kategorie, Favoriten, Themen und Prüffrist.
+
+- **Kategorie:** fachlich
+- **Implementierung:** implementiert
+- **Einbindung:** UI
+- **Testabdeckung:** Selbsttest
+- **Letztes Testergebnis:** nicht-ausgefuehrt (kein Laufnachweis importiert; nicht aus der Existenz einer Testdatei abgeleitet)
+- **Rollen:** `abgeordneter`, `bueroleitung`, `mitarbeiter`, `praktikant`
+- **Routen:** `/contacts`
+- **Frontend-Komponenten:** `src/features/contacts/components/ContactsView.tsx`, `src/components/contacts/ContactListTable.tsx`, `src/components/contacts/ContactGridCard.tsx`
+- **Services:** `src/features/contacts/search/contactSearch.ts`
+- **Hooks:** `src/components/contacts/hooks/useContactsViewState.ts`, `src/components/contacts/hooks/useContactsFiltersAndSorting.ts`
+- **Edge Functions:** —
+- **Datenbankfunktionen:** `read_secured_contacts`, `get_contact_counts`
+- **Tabellen:** `contacts`, `contact_topics`
+- **Abhängigkeiten:** `contacts.create`
+- **Selbsttests:** `contact-relations`
+- **Unit-Tests:** —
+- **Integrationstests:** —
+- **Browser-Tests:** —
+- **Dokumentation:** —
+
+**Nachweise im Quellcode**
+
+- src/features/contacts/components/ContactsView.tsx
+- src/hooks/useInfiniteContacts.tsx
+- src/features/contacts/search/contactSearch.ts
+
+**Bekannte Einschränkungen**
+
+- Telefonnummern werden als Teilzeichenkette der gespeicherten Schreibweise gefunden; Vorwahl, Leerzeichen und Trennzeichen werden nicht normalisiert.
+- Personen und Organisationen sind getrennte Tabs; ein Typfilter innerhalb eines Tabs entfällt, weil er dem Typ des Tabs widersprach.
+- Die Kategorie-Chips zählen weiterhin nur die geladenen Zeilen, nicht den gesamten Bestand.
+- Die Liste selbst wird im Selbsttest nicht gerendert; geprüft wird die reine Filterregel.
+
+**Offene Prüfpunkte**
+
+- Keine.
+
 ### `contacts.import` — Kontakte importieren
 Importiert Kontakte aus CSV/XLSX/VCF, erkennt Dubletten und ordnet Spalten samt Verteilern zu.
 
@@ -243,7 +287,7 @@ Importiert Kontakte aus CSV/XLSX/VCF, erkennt Dubletten und ordnet Spalten samt 
 - **Services:** —
 - **Hooks:** —
 - **Edge Functions:** —
-- **Datenbankfunktionen:** `insert_sample_contacts`
+- **Datenbankfunktionen:** —
 - **Tabellen:** `contacts`, `contact_activities`
 - **Abhängigkeiten:** `contacts.create`
 - **Selbsttests:** `contact-relations`
@@ -262,6 +306,7 @@ Importiert Kontakte aus CSV/XLSX/VCF, erkennt Dubletten und ordnet Spalten samt 
 
 - CSV-Text (Komma und Semikolon) und VCF-Text werden eingelesen, Spalten automatisch zugeordnet und Zeilen samt Namen, E-Mail-Prüfung und Verteiler-Spalte zu Kontaktwerten verarbeitet; eine daraus gebaute Zeile wird gespeichert und über denselben Verteilerpfad wie die Oberfläche zugeordnet.
 - Der Datei-Dialog selbst, das Excel-/ODS-Einlesen und die Duplikatdialoge der Oberfläche laufen nicht im Selbsttest.
+- Beispielkontakte werden nicht mehr automatisch eingefügt; die Datenbankfunktion insert_sample_contacts ist im Client nicht mehr angebunden.
 
 **Offene Prüfpunkte**
 

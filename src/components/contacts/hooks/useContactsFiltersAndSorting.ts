@@ -10,8 +10,6 @@ export interface UseContactsFiltersAndSortingResult {
   debouncedSearchTerm: string;
   selectedCategory: string;
   setSelectedCategory: Dispatch<SetStateAction<string>>;
-  selectedType: string;
-  setSelectedType: Dispatch<SetStateAction<string>>;
   selectedTagFilter: string;
   setSelectedTagFilter: Dispatch<SetStateAction<string>>;
   sortColumn: string | null;
@@ -28,7 +26,6 @@ export function useContactsFiltersAndSorting(activeTab: string): UseContactsFilt
   const [searchTerm, setSearchTerm] = useState("");
   const [debouncedSearchTerm, setDebouncedSearchTerm] = useState("");
   const [selectedCategory, setSelectedCategory] = useState<string>("all");
-  const [selectedType, setSelectedType] = useState<string>("all");
   const [sortColumn, setSortColumn] = useState<string | null>(null);
   const [sortDirection, setSortDirection] = useState<ContactsSortDirection>("asc");
   const [stakeholderSortColumn, setStakeholderSortColumn] = useState<string | null>(null);
@@ -67,8 +64,6 @@ export function useContactsFiltersAndSorting(activeTab: string): UseContactsFilt
     debouncedSearchTerm,
     selectedCategory,
     setSelectedCategory,
-    selectedType,
-    setSelectedType,
     selectedTagFilter,
     setSelectedTagFilter,
     sortColumn,

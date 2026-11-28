@@ -134,6 +134,7 @@
           "checks": [
             "Der Datenbank-Trigger setzt Rechtsgrundlage und Prüffrist: Bürger 24 Monate ab Erfassung, alle anderen bis 31.03.2031",
             "Die reinen Aufbewahrungsregeln (Fristberechnung, Fälligkeit, Regeltext) stimmen mit dem Trigger überein",
+            "Die Kontaktsuche zitiert Kommas, Klammern und Anführungszeichen, durchsucht Telefonfelder und weist leere Eingaben ab",
             "Eine Löschanfrage entsteht ausstehend unter der eigenen Identität; Eigenfreigabe per Update und per approve_gdpr_delete wird abgewiesen, Anfrage und Gegenstand bleiben unverändert",
             "Der eigene ausstehende Antrag wird am Ende zurückgezogen, sodass der Lauf keinen offenen Löschantrag hinterlässt",
             "Die Vier-Augen-Regel erlaubt nur einer zweiten angemeldeten Person die Freigabe und verlangt deren eingetragenen Zustimmungszeitpunkt",
@@ -178,6 +179,7 @@
             "contacts.duplicates",
             "contacts.fundings",
             "contacts.import",
+            "contacts.list-search",
             "contacts.merge",
             "contacts.privacy",
             "contacts.stakeholders",
@@ -191,6 +193,10 @@
             {
               "id": "retention-defaults",
               "label": "Aufbewahrungsfristen werden beim Anlegen aus der Kategorie gesetzt"
+            },
+            {
+              "id": "search-filter",
+              "label": "Kontaktsuche: Sonderzeichen, Telefonfelder und leere Eingaben"
             },
             {
               "id": "retention-rules",

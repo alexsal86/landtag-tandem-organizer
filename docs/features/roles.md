@@ -6,7 +6,7 @@ Die Angaben sind deklarierte Mindestrollen. Die tatsächlich wirksame Berechtigu
 
 ## Funktionen je Rolle
 
-### `abgeordneter` — 181 Funktionen
+### `abgeordneter` — 182 Funktionen
 
 - `mywork.dashboard` — Meine Arbeit – Dashboard
 - `mywork.tabs` — Meine Arbeit – Bereichsnavigation und Einstellungen
@@ -76,6 +76,7 @@ Die Angaben sind deklarierte Mindestrollen. Die tatsächlich wirksame Berechtigu
 - `contacts.create` — Kontakt anlegen
 - `contacts.edit` — Kontakt bearbeiten
 - `contacts.detail` — Kontaktprofil mit Aktivitäten
+- `contacts.list-search` — Kontaktliste mit Suche und Filtern
 - `contacts.import` — Kontakte importieren
 - `contacts.duplicates` — Dubletten finden
 - `contacts.merge` — Kontakte zusammenführen
@@ -190,7 +191,7 @@ Die Angaben sind deklarierte Mindestrollen. Die tatsächlich wirksame Berechtigu
 - `knowledge.global-question` — Globale Wissensfrage aus jedem Bereich
 - `knowledge.persons` — Wissenspersonen und Zuständigkeit
 
-### `bueroleitung` — 226 Funktionen
+### `bueroleitung` — 227 Funktionen
 
 - `mywork.dashboard` — Meine Arbeit – Dashboard
 - `mywork.dashboard.today-priorities` — Heute zuerst
@@ -278,6 +279,7 @@ Die Angaben sind deklarierte Mindestrollen. Die tatsächlich wirksame Berechtigu
 - `contacts.create` — Kontakt anlegen
 - `contacts.edit` — Kontakt bearbeiten
 - `contacts.detail` — Kontaktprofil mit Aktivitäten
+- `contacts.list-search` — Kontaktliste mit Suche und Filtern
 - `contacts.import` — Kontakte importieren
 - `contacts.duplicates` — Dubletten finden
 - `contacts.merge` — Kontakte zusammenführen
@@ -419,7 +421,7 @@ Die Angaben sind deklarierte Mindestrollen. Die tatsächlich wirksame Berechtigu
 - `knowledge.persons` — Wissenspersonen und Zuständigkeit
 - `knowledge.management` — Wissensverwaltung
 
-### `mitarbeiter` — 186 Funktionen
+### `mitarbeiter` — 187 Funktionen
 
 - `mywork.dashboard` — Meine Arbeit – Dashboard
 - `mywork.dashboard.today-priorities` — Heute zuerst
@@ -491,6 +493,7 @@ Die Angaben sind deklarierte Mindestrollen. Die tatsächlich wirksame Berechtigu
 - `contacts.create` — Kontakt anlegen
 - `contacts.edit` — Kontakt bearbeiten
 - `contacts.detail` — Kontaktprofil mit Aktivitäten
+- `contacts.list-search` — Kontaktliste mit Suche und Filtern
 - `contacts.import` — Kontakte importieren
 - `contacts.duplicates` — Dubletten finden
 - `contacts.merge` — Kontakte zusammenführen
@@ -608,7 +611,7 @@ Die Angaben sind deklarierte Mindestrollen. Die tatsächlich wirksame Berechtigu
 - `knowledge.persons` — Wissenspersonen und Zuständigkeit
 - `knowledge.management` — Wissensverwaltung
 
-### `praktikant` — 40 Funktionen
+### `praktikant` — 41 Funktionen
 
 - `mywork.dashboard` — Meine Arbeit – Dashboard
 - `mywork.dashboard.today-priorities` — Heute zuerst
@@ -640,6 +643,7 @@ Die Angaben sind deklarierte Mindestrollen. Die tatsächlich wirksame Berechtigu
 - `chat.messages` — Interner Chat über Matrix
 - `contacts.create` — Kontakt anlegen
 - `contacts.detail` — Kontaktprofil mit Aktivitäten
+- `contacts.list-search` — Kontaktliste mit Suche und Filtern
 - `contacts.activities` — Kontaktaktivitäten und Anrufe
 - `teamrituals.weekly` — Wöchentliche Teamfrage
 - `teamrituals.games` — Teamspiele (Bingo, Zwei Wahrheiten, Fun Facts)
@@ -882,6 +886,7 @@ Die Angaben sind deklarierte Mindestrollen. Die tatsächlich wirksame Berechtigu
 | `contacts.edit` | `abgeordneter`, `bueroleitung`, `mitarbeiter` |
 | `contacts.fundings` | `abgeordneter`, `bueroleitung`, `mitarbeiter` |
 | `contacts.import` | `abgeordneter`, `bueroleitung`, `mitarbeiter` |
+| `contacts.list-search` | `abgeordneter`, `bueroleitung`, `mitarbeiter`, `praktikant` |
 | `contacts.merge` | `abgeordneter`, `bueroleitung`, `mitarbeiter` |
 | `contacts.privacy` | `admin`, `bueroleitung`, `mitarbeiter` |
 | `contacts.stakeholders` | `abgeordneter`, `bueroleitung`, `mitarbeiter` |

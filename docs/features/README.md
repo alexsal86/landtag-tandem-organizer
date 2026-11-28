@@ -8,24 +8,24 @@ Der Katalog ist das führende Verzeichnis des tatsächlich implementierten Funkt
 
 | Kennzahl | Wert |
 |---|---:|
-| Erfasste Funktionen | 264 |
+| Erfasste Funktionen | 265 |
 | Funktionsbereiche | 16 |
-| Unterbereiche | 111 |
-| Implementiert | 260 |
+| Unterbereiche | 112 |
+| Implementiert | 261 |
 | Teilweise implementiert | 2 |
 | Deaktiviert | 0 |
 | Potenziell verwaist | 0 |
 | Prüfkandidaten (offene Punkte) | 52 |
-| Funktionen mit Selbsttest | 135 |
+| Funktionen mit Selbsttest | 136 |
 | Funktionen mit Unit-Test | 67 |
 | Funktionen mit Integrationstest | 4 |
 | Funktionen mit Browser-Test | 4 |
 | Funktionen mit Security-Test | 1 |
 | Funktionen ohne zugeordneten Test | 88 |
-| Funktionen ohne Dokumentationsverweis | 173 |
-| Funktionen mit bekannten Einschränkungen | 85 |
+| Funktionen ohne Dokumentationsverweis | 174 |
+| Funktionen mit bekannten Einschränkungen | 86 |
 | Nicht nachweisbar eingebundene Funktionen | 1 |
-| Technische Zuordnungen | 1332 |
+| Technische Zuordnungen | 1340 |
 
 ## Funktionsbereiche
 
@@ -38,7 +38,7 @@ Der Katalog ist das führende Verzeichnis des tatsächlich implementierten Funkt
 | [Entscheidungen](./entscheidungen.md) | 7 | 10 | 10 | 3 | 8 |
 | [Externe Schnittstellen](./schnittstellen.md) | 7 | 10 | 10 | 7 | 5 |
 | [Jour fixe, Dossiers & Themen](./organisation.md) | 5 | 19 | 18 | 10 | 16 |
-| [Kontakte & Netzwerk](./kontakte.md) | 9 | 14 | 14 | 0 | 10 |
+| [Kontakte & Netzwerk](./kontakte.md) | 10 | 15 | 15 | 0 | 11 |
 | [Meine Arbeit & Benachrichtigungen](./arbeitsbereich.md) | 8 | 15 | 14 | 7 | 10 |
 | [Mitarbeit, Personal & Zeit](./mitarbeit.md) | 5 | 20 | 20 | 3 | 14 |
 | [Redaktion, News & Chat](./kommunikation.md) | 5 | 14 | 14 | 11 | 10 |
@@ -52,7 +52,7 @@ Der Katalog ist das führende Verzeichnis des tatsächlich implementierten Funkt
 
 | Kategorie | Funktionen |
 |---|---:|
-| fachlich | 172 |
+| fachlich | 173 |
 | administrativ | 26 |
 | automatisiert | 21 |
 | integration | 27 |
@@ -63,7 +63,7 @@ Der Katalog ist das führende Verzeichnis des tatsächlich implementierten Funkt
 
 | Status | Funktionen |
 |---|---:|
-| implementiert | 260 |
+| implementiert | 261 |
 | teilweise | 2 |
 | deaktiviert | 0 |
 | verwaist | 0 |
@@ -75,7 +75,7 @@ Der Katalog ist das führende Verzeichnis des tatsächlich implementierten Funkt
 
 | Einbindung | Funktionen |
 |---|---:|
-| UI | 132 |
+| UI | 133 |
 | systemseitig | 37 |
 | rollenabhängig | 90 |
 | Feature Flag | 1 |
@@ -87,7 +87,7 @@ Der Katalog ist das führende Verzeichnis des tatsächlich implementierten Funkt
 
 | Abdeckung | Funktionen |
 |---|---:|
-| Selbsttest | 116 |
+| Selbsttest | 117 |
 | Unit-Test | 40 |
 | Integrationstest | 2 |
 | Browser-Test | 0 |
@@ -98,7 +98,7 @@ Der Katalog ist das führende Verzeichnis des tatsächlich implementierten Funkt
 
 ## Konsistenz
 
-Der Generator inventarisiert Routen, Edge Functions, wirksame Datenbankfunktionen, Tabellen, Testszenarien und Testdateien. Aktuell **1** nicht zugeordnete Prüfkandidaten und **1** Review-Hinweise. Eindeutige Inkonsistenzen brechen `npm run check:feature-catalog` ab; Details: [Prüfbericht](./review.md).
+Der Generator inventarisiert Routen, Edge Functions, wirksame Datenbankfunktionen, Tabellen, Testszenarien und Testdateien. Aktuell **2** nicht zugeordnete Prüfkandidaten und **2** Review-Hinweise. Eindeutige Inkonsistenzen brechen `npm run check:feature-catalog` ab; Details: [Prüfbericht](./review.md).
 
 ## Dokumentation
 

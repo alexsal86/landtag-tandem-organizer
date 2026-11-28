@@ -8,11 +8,12 @@ Dieser Bericht trennt **eindeutig nachweisbare Inkonsistenzen** von **heuristisc
 
 Eindeutige Fehler werden im CI-Lauf ausgegeben und brechen die Prüfung ab; sie werden hier nicht dupliziert. Dieser Bericht listet die verbleibenden Review-Hinweise und Prüfkandidaten.
 
-- Review-Hinweise: **1**
-- Nicht zugeordnete Objekte: **2**, davon ohne Ausnahme: **1**
+- Review-Hinweise: **2**
+- Nicht zugeordnete Objekte: **3**, davon ohne Ausnahme: **2**
 
 ### Review-Hinweise
 
+- Prüfkandidat ohne Funktionszuordnung (rpc): insert_sample_contacts
 - Prüfkandidat ohne Funktionszuordnung (rpc): storage_folder_uuid
 
 ## Funktionen ohne zugeordneten Test (88)
@@ -106,7 +107,7 @@ Eindeutige Fehler werden im CI-Lauf ausgegeben und brechen die Prüfung ab; sie 
 - `knowledge.collaboration` — Kollaborative Wissensbearbeitung
 - `knowledge.management` — Wissensverwaltung
 
-## Funktionen ohne Dokumentationsverweis (173)
+## Funktionen ohne Dokumentationsverweis (174)
 
 - `mywork.dashboard.today-priorities` — Heute zuerst
 - `mywork.tabs` — Meine Arbeit – Bereichsnavigation und Einstellungen
@@ -169,6 +170,7 @@ Eindeutige Fehler werden im CI-Lauf ausgegeben und brechen die Prüfung ab; sie 
 - `chat.team-announcements` — Team-Ankündigungen
 - `contacts.edit` — Kontakt bearbeiten
 - `contacts.detail` — Kontaktprofil mit Aktivitäten
+- `contacts.list-search` — Kontaktliste mit Suche und Filtern
 - `contacts.duplicates` — Dubletten finden
 - `contacts.distribution-lists` — Verteilerlisten verwalten
 - `contacts.stakeholders` — Stakeholder-Netzwerk
@@ -295,7 +297,7 @@ Eindeutige Fehler werden im CI-Lauf ausgegeben und brechen die Prüfung ab; sie 
 - `events.legacy-rsvp` — Legacy-Einladungslinks (veraltet)
 - `cases.legacy-routes` — Legacy-Vorgangsrouten (veraltet)
 
-## Funktionen mit Einschränkungen oder offenen Punkten (112)
+## Funktionen mit Einschränkungen oder offenen Punkten (113)
 
 ### `mywork.dashboard`
 
@@ -501,10 +503,18 @@ Eindeutige Fehler werden im CI-Lauf ausgegeben und brechen die Prüfung ab; sie 
 
 - Gerendert wird das Detail-Sheet nicht; geprüft werden die gesicherte Kontaktlesung und die verknüpften Datenpfade (Aktivitäten, Briefingwissen, Förderungen).
 
+### `contacts.list-search`
+
+- Telefonnummern werden als Teilzeichenkette der gespeicherten Schreibweise gefunden; Vorwahl, Leerzeichen und Trennzeichen werden nicht normalisiert.
+- Personen und Organisationen sind getrennte Tabs; ein Typfilter innerhalb eines Tabs entfällt, weil er dem Typ des Tabs widersprach.
+- Die Kategorie-Chips zählen weiterhin nur die geladenen Zeilen, nicht den gesamten Bestand.
+- Die Liste selbst wird im Selbsttest nicht gerendert; geprüft wird die reine Filterregel.
+
 ### `contacts.import`
 
 - CSV-Text (Komma und Semikolon) und VCF-Text werden eingelesen, Spalten automatisch zugeordnet und Zeilen samt Namen, E-Mail-Prüfung und Verteiler-Spalte zu Kontaktwerten verarbeitet; eine daraus gebaute Zeile wird gespeichert und über denselben Verteilerpfad wie die Oberfläche zugeordnet.
 - Der Datei-Dialog selbst, das Excel-/ODS-Einlesen und die Duplikatdialoge der Oberfläche laufen nicht im Selbsttest.
+- Beispielkontakte werden nicht mehr automatisch eingefügt; die Datenbankfunktion insert_sample_contacts ist im Client nicht mehr angebunden.
 
 ### `contacts.duplicates`
 
@@ -832,10 +842,11 @@ Eindeutige Fehler werden im CI-Lauf ausgegeben und brechen die Prüfung ab; sie 
 
 - Keine.
 
-### Datenbankfunktionen ohne Zuordnung (1)
+### Datenbankfunktionen ohne Zuordnung (2)
 
 Diese Liste ist heuristisch gefiltert (technische Präfixe gelten als Hilfsfunktionen). Sie ist ein Prüfauftrag, keine automatische Aussage über Verwaistheit.
 
+- `insert_sample_contacts` (supabase/migrations/20250725220743-5efa0a86-327e-45df-a74c-0bf535959ecc.sql)
 - `storage_folder_uuid` (src/integrations/supabase/types.ts)
 
 ### Registrierte Selbsttests ohne Funktionszuordnung (0)

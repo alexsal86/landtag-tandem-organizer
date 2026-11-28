@@ -107,8 +107,24 @@ export function ContactGridCard({
             {contact.last_contact && <div className="pt-2 border-t border-border"><span className="text-xs text-muted-foreground">Letzter Kontakt: {contact.last_contact}</span></div>}
           </div>
           <div className="flex gap-2 mt-4">
-            <Button size="sm" variant="outline" className="flex-1"><Mail className="h-4 w-4 mr-1" />E-Mail</Button>
-            <Button size="sm" variant="outline" className="flex-1"><Phone className="h-4 w-4 mr-1" />Anrufen</Button>
+            <Button size="sm" variant="outline" className="flex-1" asChild={Boolean(contact.email)} disabled={!contact.email}>
+              {contact.email ? (
+                <a href={`mailto:${contact.email}`} onClick={(event) => event.stopPropagation()} aria-label={`E-Mail an ${contact.name} schreiben`}>
+                  <Mail className="h-4 w-4 mr-1" />E-Mail
+                </a>
+              ) : (
+                <span><Mail className="h-4 w-4 mr-1" />E-Mail</span>
+              )}
+            </Button>
+            <Button size="sm" variant="outline" className="flex-1" asChild={Boolean(contact.phone)} disabled={!contact.phone}>
+              {contact.phone ? (
+                <a href={`tel:${contact.phone}`} onClick={(event) => event.stopPropagation()} aria-label={`${contact.name} anrufen`}>
+                  <Phone className="h-4 w-4 mr-1" />Anrufen
+                </a>
+              ) : (
+                <span><Phone className="h-4 w-4 mr-1" />Anrufen</span>
+              )}
+            </Button>
             <Button
               size="sm"
               variant="ghost"

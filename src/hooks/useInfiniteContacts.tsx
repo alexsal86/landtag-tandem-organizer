@@ -5,13 +5,13 @@ import { useTenant } from "@/hooks/useTenant";
 import { debugConsole } from '@/utils/debugConsole';
 import { fetchEntityTopicIds } from "@/features/topics/useEntityTopics";
 import type { Contact } from "@/types/contact";
+import { buildContactSearchFilter } from "@/features/contacts/search/contactSearch";
 import { notify } from "@/lib/notify";
 export type { Contact } from "@/types/contact";
 
 interface UseInfiniteContactsProps {
   searchTerm?: string;
   selectedCategory?: string;
-  selectedType?: string;
   activeTab?: "contacts" | "stakeholders" | "stakeholder-network" | "distribution-lists" | "archive";
   sortColumn?: string | null;
   sortDirection?: "asc" | "desc";
@@ -23,7 +23,6 @@ const ITEMS_PER_PAGE = 50;
 export const useInfiniteContacts = ({
   searchTerm = "",
   selectedCategory = "all",
-  selectedType = "all",
   activeTab = "contacts",
   sortColumn = null,
   sortDirection = "asc",
@@ -67,9 +66,11 @@ export const useInfiniteContacts = ({
       query = query.eq('name', 'Archivierter Kontakt');
     }
 
-    // Search filter
-    if (searchTerm) {
-      query = query.or(`name.ilike.%${searchTerm}%,organization.ilike.%${searchTerm}%,position.ilike.%${searchTerm}%,email.ilike.%${searchTerm}%`);
+    // Search filter: quoted values keep commas and parentheses literal, and the
+    // phone/address fields make a number typed from a letterhead findable.
+    const searchFilter = buildContactSearchFilter(searchTerm);
+    if (searchFilter) {
+      query = query.or(searchFilter);
     }
 
     // Category filter
@@ -82,11 +83,6 @@ export const useInfiniteContacts = ({
       } else {
         query = query.eq('category', selectedCategory);
       }
-    }
-
-    // Type filter
-    if (selectedType !== "all") {
-      query = query.eq('contact_type', selectedType);
     }
 
     // Sorting
@@ -109,30 +105,7 @@ export const useInfiniteContacts = ({
     query = query.range(offset, offset + limit - 1);
 
     return query;
-  }, [tenantId, activeTab, searchTerm, selectedCategory, selectedType, selectedTagFilter, sortColumn, sortDirection]);
-
-  const insertSampleContacts = useCallback(async () => {
-    if (!userId) return false;
-    try {
-      const { error } = await supabase.rpc('insert_sample_contacts', {
-        target_user_id: userId
-      });
-
-      if (error) throw error;
-
-      notify.success("Willkommen!", {
-        description: "Beispielkontakte wurden zu Ihrem Account hinzugefügt."
-});
-
-      return true;
-    } catch (error) {
-      debugConsole.error('Error inserting sample contacts:', error);
-      notify.error("Fehler", {
-        description: "Beispielkontakte konnten nicht erstellt werden."
-});
-      return false;
-    }
-  }, [userId]);
+  }, [tenantId, activeTab, searchTerm, selectedCategory, selectedTagFilter, sortColumn, sortDirection]);
 
   const fetchContacts = useCallback(async (isLoadMore: boolean, generation: number) => {
     if (!userId || !tenantId) {
@@ -217,50 +190,6 @@ export const useInfiniteContacts = ({
       } else {
         setContacts(formattedContacts);
         pageRef.current = 1;
-
-        // Insert sample data if no contacts exist and no filters are applied
-        if (formattedContacts.length === 0 && !searchTerm && selectedCategory === "all" && selectedType === "all" && activeTab === "contacts") {
-          const sampleInserted = await insertSampleContacts();
-          if (sampleInserted && generation === fetchGenerationRef.current) {
-            const { data: newData, error: newError, count: newCount } = await buildQuery(0, ITEMS_PER_PAGE);
-            const newTopicMap = await fetchEntityTopicIds(
-              "contact",
-              ((newData ?? []) as Array<Record<string, any>>).map((contact) => contact.id),
-              tenantId,
-            );
-            if (!newError && newData && generation === fetchGenerationRef.current) {
-              const newFormattedContacts = newData.map((contact: Record<string, any>) => ({
-                id: contact.id,
-                contact_type: (contact.contact_type as "person" | "organization" | "archive") || "person",
-                name: contact.name,
-                role: contact.role,
-                organization: contact.organization,
-                organization_id: contact.organization_id,
-                email: contact.email,
-                phone: contact.phone,
-                address: contact.address,
-                birthday: contact.birthday,
-                linkedin: contact.linkedin,
-                category: contact.category as Contact["category"],
-                priority: contact.priority as Contact["priority"],
-                last_contact: contact.last_contact,
-                avatar_url: contact.avatar_url,
-                notes: contact.notes,
-                is_favorite: contact.is_favorite,
-                gender: contact.gender,
-                topic_ids: newTopicMap[contact.id] ?? [],
-              }));
-              setContacts(newFormattedContacts);
-              setTotalCount(newCount || 0);
-              setHasMore(newFormattedContacts.length === ITEMS_PER_PAGE);
-            }
-          }
-          if (generation === fetchGenerationRef.current) {
-            setLoading(false);
-            setLoadingMore(false);
-          }
-          return;
-        }
       }
 
       setTotalCount(count || 0);
@@ -283,7 +212,7 @@ export const useInfiniteContacts = ({
         setLoadingMore(false);
       }
     }
-  }, [userId, tenantId, buildQuery, searchTerm, selectedCategory, selectedType, activeTab, insertSampleContacts]);
+  }, [userId, tenantId, buildQuery, searchTerm, selectedCategory, activeTab]);
 
   const loadMore = useCallback(() => {
     if (!loading && !loadingMore && hasMore) {
@@ -341,7 +270,7 @@ export const useInfiniteContacts = ({
       setLoadingMore(false);
     }
     return () => { fetchGenerationRef.current += 1; };
-  }, [userId, tenantId, searchTerm, selectedCategory, selectedType, selectedTagFilter, activeTab, sortColumn, sortDirection, fetchContacts]);
+  }, [userId, tenantId, searchTerm, selectedCategory, selectedTagFilter, activeTab, sortColumn, sortDirection, fetchContacts]);
 
   const refreshContacts = useCallback(() => {
     if (!userId || !tenantId) return;

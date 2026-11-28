@@ -5,6 +5,12 @@ const { range, notifyError } = vi.hoisted(() => ({ range: vi.fn(), notifyError: 
 vi.mock("@/hooks/useAuth", () => ({ useAuth: () => ({ user: { id: "user-1" } }) }));
 vi.mock("@/hooks/useTenant", () => ({ useTenant: () => ({ currentTenant: { id: "tenant-1" } }) }));
 vi.mock("@/lib/notify", () => ({ notify: { error: notifyError, success: vi.fn() } }));
+// Die Themenzuordnung läuft über einen eigenen Supabase-Pfad; ohne diesen Mock
+// scheitert jede Kontaktseite am fehlenden Query-Builder und der Test prüft
+// nicht mehr die Lade-/Retry-Logik des Hooks.
+vi.mock("@/features/topics/useEntityTopics", () => ({
+  fetchEntityTopicIds: vi.fn(async () => ({})),
+}));
 vi.mock("@/integrations/supabase/client", () => ({
   supabase: { from: () => {
     const query = { select: () => query, eq: () => query, neq: () => query, order: () => query, range };
