@@ -468,7 +468,8 @@ Eindeutige Fehler werden im CI-Lauf ausgegeben und brechen die Prüfung ab; sie 
 
 ### `decisions.withdraw-vote`
 
-- Die Rücknahme an einer verknüpften Aufgabe mit gespeichertem Vorher-Zustand belegt der Datenbanktest scripts/test-decision-vote-withdrawal.mjs; das Selbsttest-Szenario nimmt bisher nur die Antwort einer eigenständigen Entscheidung zurück.
+- Die Zustellung der Votum-Benachrichtigung lässt sich nicht zurückholen; die Rücknahme berührt sie nicht, weil sie zum Votum gehört hat.
+- Ein Votum aus der Zeit vor dem Snapshot (Migration 20261128090000) hat keinen gespeicherten Vorher-Zustand; seine Rücknahme vermerkt das im Verlauf und lässt den Ball beim Büro.
 
 ### `decisions.change-vote`
 

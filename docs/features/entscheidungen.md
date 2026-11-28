@@ -49,7 +49,8 @@ _Auto-generiert mit `npm run update:feature-catalog` aus dem zentralen Funktions
 
 | Szenario | Titel | deklarierte Tabellen | deklarierte Prüfungen | letzter Lauf |
 |---|---|---:|---:|---|
-| `decision-lifecycle` | Entscheidungs-Lifecycle (active → open → archived) | 10 | 7 | — |
+| `decision-lifecycle` | Entscheidungs-Lifecycle (active → open → archived) | 11 | 8 | — |
+| `task-lifecycle` | Aufgaben-Lifecycle (Zuweisung → Frist → Entscheidung → Jour fixe → erledigt) | 6 | 8 | — |
 
 ## Selbsttest-Schritte
 
@@ -62,6 +63,7 @@ Diese Schritte führen die Szenarien aus; „letzter Lauf“ stammt aus `src/fea
 | `decision-lifecycle` | `create` | Entscheidung anlegen (active) | db | — |
 | `decision-lifecycle` | `add-participant` | Teilnehmer (sich selbst) hinzufügen | db | — |
 | `decision-lifecycle` | `withdraw-responses` | Ja, Nein und Rückfrage speichern und nachweisbar zurücknehmen | workflow | — |
+| `decision-lifecycle` | `withdraw-task-vote` | Rücknahme eines Votums an einer verknüpften Aufgabe | workflow | — |
 | `decision-lifecycle` | `check-options` | Default-Antwortoptionen prüfen | db | — |
 | `decision-lifecycle` | `change-vote-history` | Antwort ändern und den bisherigen Stand im Verlauf behalten | workflow | — |
 | `decision-lifecycle` | `decision-attachments` | Anhang-Metadaten an die Entscheidung hängen, lesen und entfernen | workflow | — |
@@ -72,18 +74,44 @@ Diese Schritte führen die Szenarien aus; „letzter Lauf“ stammt aus `src/fea
 | `decision-lifecycle` | `verify` | Verifikation | db | — |
 | `decision-lifecycle` | `nudge-boundary` | Fremde oder unbekannte Entscheidung lässt sich nicht anstupsen | workflow | — |
 | `decision-lifecycle` | `nudge-open-decision` | Offene Entscheidung anmahnen: Eintrag, Meldung und 24-Stunden-Sperre | workflow | — |
+| `task-lifecycle` | `status-registry` | Status-Registry führt die fünf Kernstatus | db | — |
+| `task-lifecycle` | `create` | Aufgabe anlegen | db | — |
+| `task-lifecycle` | `document-link` | Dokument an Aufgabe hängen und wieder lösen | db | — |
+| `task-lifecycle` | `subtasks` | Unteraufgaben: Verknüpfung, Hauptliste und Fortschritt | workflow | — |
+| `task-lifecycle` | `assign` | Aufgabe zuweisen + Frist setzen | db | — |
+| `task-lifecycle` | `deadline-review` | Fristen: Berliner Gruppierung, Verwerfen und Rückgängig | workflow | — |
+| `task-lifecycle` | `decision` | Entscheidung aus Aufgabe erstellen | db | — |
+| `task-lifecycle` | `jour-fixe` | Für Jour fixe markieren | db | — |
+| `task-lifecycle` | `complete` | Status → completed | db | — |
+| `task-lifecycle` | `completion-stamp` | Abschluss stempelt completed_at, Wiederöffnen löscht den Stempel | db | — |
+| `task-lifecycle` | `recurrence-spawn` | Wiederholung legt beim Abschluss genau eine Folgeaufgabe an | workflow | — |
+| `task-lifecycle` | `decision-ball` | Votum holt den Ball zurück; Folgeaufgabe entsteht genau einmal | workflow | — |
+| `task-lifecycle` | `decision-ball-withdrawal` | Rücknahme des Votums stellt Ball und Schritt wieder her | workflow | — |
+| `task-lifecycle` | `tenant-boundary` | Aufgabe lässt sich keinem fremden Büro zuordnen | workflow | — |
 
 ## Deklarierter Prüfumfang
 
 ### `decision-lifecycle`
 
 1. Ja, Nein und Rückfrage werden gespeichert und nachweisbar zurückgenommen
-2. Eine geänderte Antwort schreibt den bisherigen und den neuen Stand in task_decision_response_history
-3. Anhang-Metadaten hängen an der Entscheidung, sind für Teilnehmende lesbar und wieder entfernbar (ohne Datei-Upload)
-4. Kommentar und Antwort werden gespeichert; Emoji-Reaktionen folgen der Allowlist, sind je Person eindeutig und wieder entfernbar
-5. Das Anmahnen speichert den Eintrag mit Absender und Notiz und weist die zweite Mahnung innerhalb von 24 Stunden ab
-6. Anstupsen ist auf die eigene offene Entscheidung beschränkt; ohne wartenden Abgeordneten wird abgewiesen
-7. Anfrage-, Kommentar-, Reaktions-, Ersteller-Antwort- und Abschlussmeldung entstehen im Mandanten der Entscheidung
+2. Die Rücknahme eines Votums an einer verknüpften Aufgabe gibt Ball und nächsten Schritt zurück und entfernt den Votum-Eintrag
+3. Eine geänderte Antwort schreibt den bisherigen und den neuen Stand in task_decision_response_history
+4. Anhang-Metadaten hängen an der Entscheidung, sind für Teilnehmende lesbar und wieder entfernbar (ohne Datei-Upload)
+5. Kommentar und Antwort werden gespeichert; Emoji-Reaktionen folgen der Allowlist, sind je Person eindeutig und wieder entfernbar
+6. Das Anmahnen speichert den Eintrag mit Absender und Notiz und weist die zweite Mahnung innerhalb von 24 Stunden ab
+7. Anstupsen ist auf die eigene offene Entscheidung beschränkt; ohne wartenden Abgeordneten wird abgewiesen
+8. Anfrage-, Kommentar-, Reaktions-, Ersteller-Antwort- und Abschlussmeldung entstehen im Mandanten der Entscheidung
+
+### `task-lifecycle`
+
+1. Status-Registry führt die fünf Kernstatus
+2. Dokument hängt an der Aufgabe, bleibt auf eigene Aufgaben beschränkt und lässt sich wieder lösen
+3. Unteraufgaben tragen parent_task_id, erscheinen nicht als eigene Hauptaufgabe und treiben den Fortschritt auf 50 bzw. 100 Prozent
+4. Fristen werden nach Berliner Tagen gruppiert; Verwerfen löscht nur die Frist und Rückgängig stellt sie wieder her
+5. Abschluss setzt completed_at, Wiederöffnen entfernt es
+6. Wiederholungsregel legt beim Abschluss genau eine Folgeaufgabe an
+7. Votum zu einer verknüpften Entscheidung holt den Ball zurück und erzeugt die Folgeaufgabe genau einmal
+8. Rücknahme des Votums gibt Ball, nächsten Schritt und Frist zurück und entfernt den Votum-Eintrag; eine weitergelaufene Aufgabe bleibt stehen und wird nur vermerkt
 
 ## Funktionsdetails
 
@@ -214,7 +242,7 @@ Nimmt die eigene Antwort samt ihrer Aufgabenwirkung zurück: Ball, nächster Sch
 - **Datenbankfunktionen:** `withdraw_decision_response`
 - **Tabellen:** `task_decision_responses`, `task_decision_vote_effects`, `task_decision_participants`, `tasks`
 - **Abhängigkeiten:** `decisions.vote`
-- **Selbsttests:** `decision-lifecycle`
+- **Selbsttests:** `decision-lifecycle`, `task-lifecycle`
 - **Unit-Tests:** —
 - **Integrationstests:** —
 - **Browser-Tests:** —
@@ -227,7 +255,8 @@ Nimmt die eigene Antwort samt ihrer Aufgabenwirkung zurück: Ball, nächster Sch
 
 **Bekannte Einschränkungen**
 
-- Die Rücknahme an einer verknüpften Aufgabe mit gespeichertem Vorher-Zustand belegt der Datenbanktest scripts/test-decision-vote-withdrawal.mjs; das Selbsttest-Szenario nimmt bisher nur die Antwort einer eigenständigen Entscheidung zurück.
+- Die Zustellung der Votum-Benachrichtigung lässt sich nicht zurückholen; die Rücknahme berührt sie nicht, weil sie zum Votum gehört hat.
+- Ein Votum aus der Zeit vor dem Snapshot (Migration 20261128090000) hat keinen gespeicherten Vorher-Zustand; seine Rücknahme vermerkt das im Verlauf und lässt den Ball beim Büro.
 
 **Offene Prüfpunkte**
 

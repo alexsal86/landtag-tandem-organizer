@@ -22,7 +22,7 @@ Von 363 Tabellen haben 111 ein registriertes Szenario; 4 sind noch nicht eingeor
 | `contact-relations` | Kontakt-Beziehungen (Datenschutz → Themen → Duplikate → Sammelaktion → Verteiler → Wissen → Förderungen) | contacts, contact_activities, contact_topics, topics, call_logs, distribution_lists, distribution_list_members, gdpr_requests, map_flags, map_flag_types, contact_briefing_memory, fundings, funding_participants |
 | `daily-briefing-lifecycle` | Tages-Briefings (Vortag-Regel) | daily_briefings |
 | `day-slip-lifecycle` | Tageszettel-Lifecycle (Links → Neuladen → Übernahme auf Folgetag) | day_slips, tasks, quick_notes |
-| `decision-lifecycle` | Entscheidungs-Lifecycle (active → open → archived) | task_decisions, task_decision_participants, task_decision_responses, task_decision_response_history, task_decision_vote_effects, task_decision_attachments, task_decision_comments, task_decision_comment_reactions, dashboard_decision_nudges, notifications |
+| `decision-lifecycle` | Entscheidungs-Lifecycle (active → open → archived) | task_decisions, task_decision_participants, task_decision_responses, task_decision_response_history, task_decision_vote_effects, tasks, task_decision_attachments, task_decision_comments, task_decision_comment_reactions, dashboard_decision_nudges, notifications |
 | `document-annotation` | Dokument-Annotation | documents, document_annotations, document_annotation_events, document_annotation_tasks, tasks, task_assignees |
 | `document-list` | Dokumente: Suche, Kategorien, Sortierung und Auswahl | Keine (reine Regeln) |
 | `election-analysis` | Wahlanalyse: Datenqualität und Vergleichbarkeit | Keine (reine Regeln) |
@@ -371,7 +371,7 @@ Von 363 Tabellen haben 111 ein registriertes Szenario; 4 sind noch nicht eingeor
 | `task_snoozes` | Szenario vorhanden | task-stafette-lifecycle |
 | `task_statuses` | Szenario vorhanden | task-lifecycle |
 | `task_topics` | Ausgenommen bis 2027-06-30 | — |
-| `tasks` | Szenario vorhanden | annual-task-stafette, appointment-briefing-lifecycle, case-file-lifecycle, case-item-lifecycle, day-slip-lifecycle, document-annotation, jour-fixe-platform-integration, letter-lifecycle, meeting-lifecycle, onboarding-hr, quick-note-lifecycle, responsibilities, social-content-lifecycle, task-lifecycle, task-stafette-lifecycle |
+| `tasks` | Szenario vorhanden | annual-task-stafette, appointment-briefing-lifecycle, case-file-lifecycle, case-item-lifecycle, day-slip-lifecycle, decision-lifecycle, document-annotation, jour-fixe-platform-integration, letter-lifecycle, meeting-lifecycle, onboarding-hr, quick-note-lifecycle, responsibilities, social-content-lifecycle, task-lifecycle, task-stafette-lifecycle |
 | `team_announcement_dismissals` | Ausgenommen bis 2027-06-30 | — |
 | `team_announcements` | Ausstehend bis 2027-03-31 | — |
 | `team_bingo_settings` | Ausgenommen bis 2027-06-30 | — |
@@ -529,6 +529,7 @@ Diese Manifeste sind keine Messung ausgeführter Assertions.
 - decision-lifecycle: `task_decision_participants`: decision_id, user_id
 - decision-lifecycle: `task_decision_responses`: decision_id, participant_id, response_type, comment
 - decision-lifecycle: `task_decision_response_history`: response_id, decision_id, participant_id, response_type, comment, changed_by
+- decision-lifecycle: `tasks`: title, description, status, priority, user_id, tenant_id, ball_owner, ball_assignee_id, next_action, timeline
 - decision-lifecycle: `task_decision_attachments`: decision_id, file_name, file_path, file_size, file_type, uploaded_by
 - decision-lifecycle: `task_decision_comments`: decision_id, user_id, parent_id, content
 - decision-lifecycle: `task_decision_comment_reactions`: comment_id, user_id, emoji

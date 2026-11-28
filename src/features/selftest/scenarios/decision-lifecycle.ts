@@ -18,6 +18,7 @@ export const decisionLifecycleScenario: TestScenario = {
     "task_decision_responses",
     "task_decision_response_history",
     "task_decision_vote_effects",
+    "tasks",
     "task_decision_attachments",
     "task_decision_comments",
     "task_decision_comment_reactions",
@@ -27,6 +28,7 @@ export const decisionLifecycleScenario: TestScenario = {
   features: ["decisions"],
   checks: [
     "Ja, Nein und Rückfrage werden gespeichert und nachweisbar zurückgenommen",
+    "Die Rücknahme eines Votums an einer verknüpften Aufgabe gibt Ball und nächsten Schritt zurück und entfernt den Votum-Eintrag",
     "Eine geänderte Antwort schreibt den bisherigen und den neuen Stand in task_decision_response_history",
     "Anhang-Metadaten hängen an der Entscheidung, sind für Teilnehmende lesbar und wieder entfernbar (ohne Datei-Upload)",
     "Kommentar und Antwort werden gespeichert; Emoji-Reaktionen folgen der Allowlist, sind je Person eindeutig und wieder entfernbar",
@@ -43,6 +45,7 @@ export const decisionLifecycleScenario: TestScenario = {
     { table: "task_decision_participants", columns: ["decision_id", "user_id"] },
     { table: "task_decision_responses", columns: ["decision_id", "participant_id", "response_type", "comment"] },
     { table: "task_decision_response_history", columns: ["response_id", "decision_id", "participant_id", "response_type", "comment", "changed_by"] },
+    { table: "tasks", columns: ["title", "description", "status", "priority", "user_id", "tenant_id", "ball_owner", "ball_assignee_id", "next_action", "timeline"] },
     { table: "task_decision_attachments", columns: ["decision_id", "file_name", "file_path", "file_size", "file_type", "uploaded_by"] },
     { table: "task_decision_comments", columns: ["decision_id", "user_id", "parent_id", "content"] },
     { table: "task_decision_comment_reactions", columns: ["comment_id", "user_id", "emoji"] },
@@ -154,6 +157,79 @@ export const decisionLifecycleScenario: TestScenario = {
           if (readError || remaining?.length) return { ok: false, message: readError?.message ?? "Antwort bleibt nach Rücknahme bestehen." };
         }
         return { ok: true, message: "Ja, Nein und Rückfrage jeweils erfolgreich zurückgenommen." };
+      },
+    },
+    {
+      id: "withdraw-task-vote",
+      label: "Rücknahme eines Votums an einer verknüpften Aufgabe",
+      kind: "workflow",
+      run: async (ctx) => {
+        const task = await supabase.from("tasks").insert({
+          title: `${SELFTEST_PREFIX} Rücknahme (${ctx.runId})`,
+          description: SELFTEST_MARKER,
+          status: "todo",
+          priority: "medium",
+          user_id: ctx.userId,
+          tenant_id: ctx.tenantId,
+          ball_owner: "deputy",
+          ball_assignee_id: ctx.userId,
+          next_action: "Rückmeldung prüfen",
+        }).select("id").single();
+        if (task.error || !task.data) return { ok: false, message: describeError(task.error) };
+        ctx.trackRecord({ table: "tasks", id: task.data.id });
+
+        const linked = await supabase.from("task_decisions").insert({
+          title: `${SELFTEST_PREFIX} Verknüpfte Rücknahme (${ctx.runId})`,
+          description: SELFTEST_MARKER,
+          status: "active",
+          created_by: ctx.userId,
+          tenant_id: ctx.tenantId,
+          task_id: task.data.id,
+          visible_to_all: false,
+        }).select("id").single();
+        if (linked.error || !linked.data) return { ok: false, message: describeError(linked.error) };
+        ctx.trackRecord({ table: "task_decisions", id: linked.data.id });
+        const participant = await supabase.from("task_decision_participants")
+          .insert({ decision_id: linked.data.id, user_id: ctx.userId }).select("id").single();
+        if (participant.error || !participant.data) return { ok: false, message: describeError(participant.error) };
+        ctx.trackRecord({ table: "task_decision_participants", id: participant.data.id });
+
+        const response = await supabase.from("task_decision_responses")
+          .insert({ decision_id: linked.data.id, participant_id: participant.data.id, response_type: "yes", comment: SELFTEST_MARKER })
+          .select("id").single();
+        if (response.error || !response.data) return { ok: false, message: describeError(response.error) };
+        const voted = await supabase.from("tasks")
+          .select("ball_owner,next_action,timeline").eq("id", task.data.id).single();
+
+        const withdrawal = await supabase.rpc("withdraw_decision_response", {
+          _decision_id: linked.data.id, _participant_id: participant.data.id,
+        });
+        if (withdrawal.error) return { ok: false, message: describeError(withdrawal.error) };
+        const report = withdrawal.data as { status?: string } | null;
+        const restored = await supabase.from("tasks")
+          .select("ball_owner,ball_assignee_id,next_action,timeline").eq("id", task.data.id).single();
+        const remaining = await supabase.from("task_decision_responses")
+          .select("id").eq("participant_id", participant.data.id);
+        const timelineTexts = (raw: unknown) => Array.isArray(raw)
+          ? raw.map((entry) => String((entry as { text?: unknown }).text ?? ""))
+          : [];
+
+        const checks = {
+          voteReturnedBall: !voted.error && voted.data?.ball_owner === "office" && voted.data?.next_action === "Freigabe umsetzen",
+          rpcRestored: report?.status === "restored",
+          taskRestored: !restored.error && restored.data?.ball_owner === "deputy"
+            && restored.data?.ball_assignee_id === ctx.userId && restored.data?.next_action === "Rückmeldung prüfen",
+          voteNoteGone: !restored.error && !timelineTexts(restored.data?.timeline).some((text) => text.includes("Verknüpfte Rücknahme")),
+          responseGone: !remaining.error && (remaining.data ?? []).length === 0,
+        };
+        const failed = Object.entries(checks).filter(([, ok]) => !ok).map(([name]) => name);
+        return {
+          ok: failed.length === 0,
+          message: failed.length === 0
+            ? "Die Rücknahme des Votums gibt Ball und nächsten Schritt an die Abgeordnete zurück, entfernt den Votum-Eintrag und lässt keine Antwort stehen."
+            : `Fehlgeschlagen: ${failed.join(", ")}`,
+          details: { ...checks, report, voted: voted.data, restored: restored.data },
+        };
       },
     },
     {

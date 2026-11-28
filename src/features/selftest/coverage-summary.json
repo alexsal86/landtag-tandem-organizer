@@ -1096,6 +1096,7 @@
         "task_decision_responses",
         "task_decision_response_history",
         "task_decision_vote_effects",
+        "tasks",
         "task_decision_attachments",
         "task_decision_comments",
         "task_decision_comment_reactions",
@@ -1146,6 +1147,21 @@
             "response_type",
             "comment",
             "changed_by"
+          ]
+        },
+        {
+          "table": "tasks",
+          "columns": [
+            "title",
+            "description",
+            "status",
+            "priority",
+            "user_id",
+            "tenant_id",
+            "ball_owner",
+            "ball_assignee_id",
+            "next_action",
+            "timeline"
           ]
         },
         {
@@ -5095,6 +5111,7 @@
         "case-file-lifecycle",
         "case-item-lifecycle",
         "day-slip-lifecycle",
+        "decision-lifecycle",
         "document-annotation",
         "jour-fixe-platform-integration",
         "letter-lifecycle",
