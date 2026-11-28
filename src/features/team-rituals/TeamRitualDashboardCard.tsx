@@ -36,8 +36,8 @@ export function TeamRitualDashboardCard() {
     !!data?.own?.opted_in,
   );
   return (
-    <section className="animate-rise space-y-3 border-t border-border pt-3" aria-label="Team-Rituale" style={{ animationDelay: "120ms" }}>
-      <h2>
+    <section className="animate-rise border-t border-border pt-3" aria-label="Team-Rituale" style={{ animationDelay: "120ms" }}>
+      <h2 className={compact ? undefined : "mb-0.5"}>
         {compact ? <button type="button" onClick={() => setOpenedAlertKey(alertKey)} aria-expanded={false}
           className="inline-flex items-center gap-1.5 rounded-sm text-[11px] font-semibold uppercase tracking-wider text-muted-foreground focus-visible:outline focus-visible:outline-2 focus-visible:outline-ring">
           FRAGE DER WOCHE · {hasAnswered ? 'beantwortet' : 'noch offen'}<ArrowRight className="h-3 w-3" aria-hidden="true" />
