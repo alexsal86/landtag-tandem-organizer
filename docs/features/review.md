@@ -327,7 +327,11 @@ Eindeutige Fehler werden im CI-Lauf ausgegeben und brechen die Prüfung ab; sie 
 
 ### `search.global`
 
+- Die Suche bleibt ein PostgREST-Fan-out je Entität: kein serverseitiges Ranking, keine Tippfehler-Toleranz und keine Volltextsuche über Dokument- oder Briefinhalte.
+- Fehlgeschlagene Quellen werden sichtbar gemeldet und können erneut geladen werden; die übrigen Bereiche bleiben nutzbar.
 - Die Suche nutzt PostgREST-Abfragen je Entität; eine vollständige Liste der durchsuchten Tabellen ist nicht zentral deklariert.
+- Sprungziele sind zentral in appTargets.ts hinterlegt; neue Trefferarten und Quick-Access-Ziele müssen dort ergänzt werden.
+- Kategorie- und Statusfilter gelten nur im gewählten Bereich, weil die Wertelisten je Bereich unterschiedlich sind.
 
 ### `quicknotes.manage`
 
