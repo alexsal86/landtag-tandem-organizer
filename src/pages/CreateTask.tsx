@@ -198,6 +198,7 @@ export default function CreateTask() {
               senderName: senderProfile?.display_name,
               itemTitle: insertedTask.title,
               itemId: insertedTask.id,
+              tenantId: currentTenant?.id,
             })
           )
         );

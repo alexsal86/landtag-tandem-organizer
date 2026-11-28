@@ -333,14 +333,17 @@ export const TaskDecisionResponse = ({
               }
 
               // Notify letter creator about approval
-              await supabase.rpc('create_notification', {
-                user_id_param: decisionData.created_by,
-                type_name: LETTER_NOTIFICATION_TYPES.REVIEW_COMPLETED,
-                title_param: 'Brief freigegeben',
-                message_param: `Der Brief "${letterTitle}" wurde freigegeben.`,
-                data_param: JSON.stringify({ letter_id: letterId, letter_title: letterTitle }),
-                priority_param: 'high',
-              });
+              if (decisionData.tenant_id) {
+                await supabase.rpc('create_tenant_notification', {
+                  user_id_param: decisionData.created_by,
+                  tenant_id_param: decisionData.tenant_id,
+                  type_name: LETTER_NOTIFICATION_TYPES.REVIEW_COMPLETED,
+                  title_param: 'Brief freigegeben',
+                  message_param: `Der Brief "${letterTitle}" wurde freigegeben.`,
+                  data_param: JSON.stringify({ letter_id: letterId, letter_title: letterTitle }),
+                  priority_param: 'high',
+                });
+              }
             } else if (responseType === 'reject') {
               // Rückgabe und Benachrichtigung laufen serverseitig über das RPC mit
               // Rollenprüfung; die Begründung wird direkt am Brief gespeichert.

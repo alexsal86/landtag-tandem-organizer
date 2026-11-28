@@ -169,8 +169,9 @@ export function useTeamAnnouncements() {
           .neq("user_id", userId);
         if (members && members.length > 0) {
           const notifications = members.map((m: { user_id: string }) =>
-            supabase.rpc("create_notification", {
+            supabase.rpc("create_tenant_notification", {
               user_id_param: m.user_id,
+              tenant_id_param: tenantId,
               type_name: "team_news",
               title_param: `Team-Mitteilung: ${input.title}`,
               message_param: input.message.substring(0, 200),

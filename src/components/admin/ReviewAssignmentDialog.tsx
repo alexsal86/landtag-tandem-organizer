@@ -97,10 +97,12 @@ const ReviewAssignmentDialog: React.FC<ReviewAssignmentDialogProps> = ({
   };
 
   const sendNotifications = async (userIds: string[], type: string, title: string, message: string) => {
+    if (!currentTenant?.id) return;
     for (const uid of userIds) {
       try {
-        await supabase.rpc('create_notification', {
+        await supabase.rpc('create_tenant_notification', {
           user_id_param: uid,
+          tenant_id_param: currentTenant.id,
           type_name: type,
           title_param: title,
           message_param: message,

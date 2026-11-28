@@ -98,8 +98,9 @@ export function useApprovalComments(contentItemId: string | null) {
 
       if (isChangeRequest && recipientUserId && recipientUserId !== user.id) {
         try {
-          await supabase.rpc("create_notification", {
+          await supabase.rpc("create_tenant_notification", {
             user_id_param: recipientUserId,
+            tenant_id_param: currentTenant.id,
             type_name: "social_post_change_requested",
             title_param: `Änderung gewünscht: ${topicTitle || "Social Post"}`,
             message_param: trimmed.length > 240 ? `${trimmed.slice(0, 237)}…` : trimmed,

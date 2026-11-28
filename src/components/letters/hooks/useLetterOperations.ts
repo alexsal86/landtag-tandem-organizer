@@ -170,8 +170,9 @@ export function useLetterOperations(opts: UseLetterOperationsOptions) {
         const mentionPromises = Array.from(pendingMentionsRef.current).map(async (mentionedUserId) => {
           if (mentionedUserId === userId) return;
           try {
-            await supabase.rpc('create_notification', {
+            await supabase.rpc('create_tenant_notification', {
               user_id_param: mentionedUserId,
+              tenant_id_param: tenantId,
               type_name: 'document_mention',
               title_param: 'Erwähnung in Brief',
               message_param: `Sie wurden in dem Brief "${editedLetter.title || 'Unbenannt'}" erwähnt`,

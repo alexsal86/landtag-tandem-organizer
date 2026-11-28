@@ -145,8 +145,9 @@ export function EmployeeMeetingScheduler({
       if (updateError) debugConsole.error("Error updating employee settings:", updateError);
 
       // Create notification for employee
-      await supabase.rpc("create_notification", {
+      await supabase.rpc("create_tenant_notification", {
         user_id_param: employeeId,
+        tenant_id_param: currentTenant.id,
         type_name: "employee_meeting_scheduled",
         title_param: "Mitarbeitergespräch terminiert",
         message_param: `Ein Mitarbeitergespräch wurde für den ${meetingDateLabel} um ${meetingTimeLabel} Uhr (${tenantTimeZone}) geplant.`,

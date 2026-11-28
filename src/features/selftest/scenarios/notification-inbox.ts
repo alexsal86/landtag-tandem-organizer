@@ -18,11 +18,13 @@ export const notificationInboxScenario: TestScenario = {
     "Zurücksetzen setzt die Benachrichtigung wieder auf ungelesen und leert read_at",
     "Alle clientseitig erzeugten Meldungstypen sind im Büro aktiv vorhanden",
     "Fremde Benachrichtigungen liefern keine Zeilen, und ein Update mit fremdem Nutzerbezug ändert die eigene Zeile nicht",
+    "Die mandantengebundene Meldung entsteht im eigenen Mandanten und wird für einen fremden Mandanten mit 42501 abgewiesen",
   ],
   limitations: [
     "Die Zustellung je Fach-Trigger (Aufgaben, Termine, Nachrichten, Freigaben) prüft das Szenario nicht; es erzeugt seine Benachrichtigung direkt über die Inbox-Tabelle.",
     "Push-Versand, Glocke, Realtime-Aktualisierung und die Oberfläche der Benachrichtigungsseite werden nicht geprüft.",
     "Der Schritt braucht mindestens einen aktiven Benachrichtigungstyp im Büro; fehlt er, meldet das Szenario das als Befund statt still zu bestehen.",
+    "Die mandantengebundene Meldung wird nur mit dem eigenen Mandanten und einem zufälligen Fremdmandanten geprüft; die Zustellung an einzelne Empfängerrollen deckt sie nicht ab.",
   ],
   writes: [
     { table: "notifications", columns: ["tenant_id", "user_id", "notification_type_id", "title", "message", "data", "priority", "is_read", "read_at"] },
@@ -39,6 +41,7 @@ export const notificationInboxScenario: TestScenario = {
           return { ok: false, message: "Im Büro fehlt ein aktiver Benachrichtigungstyp; ohne Typ lässt sich keine Inbox-Benachrichtigung anlegen." };
         }
         ctx.data.notificationTypeId = type.data.id;
+        ctx.data.notificationTypeName = type.data.name;
 
         const payload = {
           tenant_id: ctx.tenantId,
@@ -174,6 +177,45 @@ export const notificationInboxScenario: TestScenario = {
             ? "Fremde Postfächer sind weder lesbar noch über einen fremden Nutzerbezug änderbar; die eigene Zeile bleibt ungelesen."
             : "Die Zugriffsgrenze der Inbox hält nicht: fremde Zeilen waren sichtbar oder der Fremdbezug hat die eigene Zeile geändert.",
           details: { ...checks, foreignUserId: foreignId, hasSecondMember: Boolean(other.data) },
+        };
+      },
+    },
+    {
+      id: "tenant-rpc", label: "Mandantengebundene Meldung nur im eigenen Büro",
+      run: async ctx => {
+        const typeName = ctx.data.notificationTypeName as string | undefined;
+        if (!typeName) return { ok: false, message: "Kein Meldungstyp aus dem ersten Schritt verfügbar." };
+
+        const own = await supabase.rpc("create_tenant_notification", {
+          user_id_param: ctx.userId,
+          type_name: typeName,
+          title_param: tag(ctx.runId, "Mandanten-RPC"),
+          message_param: "Selbsttest: Meldung im eigenen Mandanten.",
+          data_param: { selftest: ctx.runId, route: "/notifications" },
+          priority_param: "low",
+          tenant_id_param: ctx.tenantId,
+        });
+        if (own.error || !own.data) {
+          return { ok: false, message: `Eigene Meldung: ${describeError(own.error)}` };
+        }
+        ctx.trackRecord({ table: "notifications", id: own.data });
+
+        const foreign = await supabase.rpc("create_tenant_notification", {
+          user_id_param: ctx.userId,
+          type_name: typeName,
+          title_param: tag(ctx.runId, "Fremdmandant"),
+          message_param: "Selbsttest: darf nicht entstehen.",
+          data_param: { selftest: ctx.runId },
+          priority_param: "low",
+          tenant_id_param: crypto.randomUUID(),
+        });
+        const blocked = !foreign.data && foreign.error?.code === "42501";
+        return {
+          ok: blocked,
+          message: blocked
+            ? "Die Meldung entsteht im eigenen Mandanten; ein fremder Mandant wird mit 42501 abgewiesen."
+            : `Fremder Mandant wurde nicht abgewiesen (${foreign.error?.code ?? "ohne Fehler"}).`,
+          details: { ownId: own.data, foreignError: foreign.error?.code ?? null },
         };
       },
     },

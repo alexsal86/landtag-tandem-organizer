@@ -57,7 +57,7 @@ _Auto-generiert mit `npm run update:feature-catalog` aus dem zentralen Funktions
 |---|---|---:|---:|---|
 | `appointment-briefing-lifecycle` | Briefing-Lifecycle (vergeben → Aufgabe → vorlegen → freigeben) | 3 | 5 | — |
 | `decision-lifecycle` | Entscheidungs-Lifecycle (active → open → archived) | 9 | 7 | — |
-| `notification-inbox` | Benachrichtigungs-Inbox (Erzeugen, Gelesen-Markieren, Zurücksetzen und Zugriffsgrenze) | 1 | 5 | — |
+| `notification-inbox` | Benachrichtigungs-Inbox (Erzeugen, Gelesen-Markieren, Zurücksetzen und Zugriffsgrenze) | 1 | 6 | — |
 | `quick-note-lifecycle` | Notizen-Lifecycle (Anlegen → Priorität → Anheften → Aufgabe → Archiv) | 4 | 0 | — |
 | `task-lifecycle` | Aufgaben-Lifecycle (Zuweisung → Frist → Entscheidung → Jour fixe → erledigt) | 6 | 7 | — |
 | `task-stafette-lifecycle` | Aufgaben-Stafette (Am Zug, Wiedervorlage, Freigabe) | 5 | 8 | — |
@@ -109,6 +109,7 @@ Diese Schritte führen die Szenarien aus; „letzter Lauf“ stammt aus `src/fea
 | `notification-inbox` | `mark-read` | Benachrichtigung als gelesen markieren | db | — |
 | `notification-inbox` | `reset-unread` | Benachrichtigung wieder auf ungelesen zurücksetzen | db | — |
 | `notification-inbox` | `access-boundary` | Fremde Benachrichtigungen bleiben unlesbar und unverändert | db | — |
+| `notification-inbox` | `tenant-rpc` | Mandantengebundene Meldung nur im eigenen Büro | db | — |
 | `quick-note-lifecycle` | `dictation-commands` | Notizen: Diktatbefehle und Rechtszitate erkennen | logic | — |
 | `quick-note-lifecycle` | `note-deep-links` | Notizen: Deep Links zeigen auf die eigene Notizseite | logic | — |
 | `quick-note-lifecycle` | `notification-types` | Notiz-Meldungstypen sind für den Mandanten geseedet | db | — |
@@ -181,6 +182,7 @@ Diese Schritte führen die Szenarien aus; „letzter Lauf“ stammt aus `src/fea
 3. Zurücksetzen setzt die Benachrichtigung wieder auf ungelesen und leert read_at
 4. Alle clientseitig erzeugten Meldungstypen sind im Büro aktiv vorhanden
 5. Fremde Benachrichtigungen liefern keine Zeilen, und ein Update mit fremdem Nutzerbezug ändert die eigene Zeile nicht
+6. Die mandantengebundene Meldung entsteht im eigenen Mandanten und wird für einen fremden Mandanten mit 42501 abgewiesen
 
 ### `quick-note-lifecycle`
 
@@ -401,7 +403,7 @@ Zeigt Vorschauen mit dem nächsten Termin samt Briefingstatus, einer offenen Auf
 - Keine.
 
 ### `notifications.inbox` — Benachrichtigungen lesen und als gelesen markieren
-Zeigt In-App-Benachrichtigungen, ungelesene Zähler und Deep-Links in den auslösenden Fachbereich; Lesen wird pro Nutzer persistiert. Liste, Ungelesen-Zähler, Realtime-Kanal sowie Gelesen-Markieren und Löschen sind auf den aktiven Mandanten begrenzt; beim Mandantenwechsel werden sie geleert und neu geladen. Jeder clientseitig erzeugte Meldungstyp ist im Büro geseedet und hat ein ausdrückliches Deep-Link-Ziel. Die Kategorie-Schlüssel entsprechen den Anzeige-Gruppen der Einstellungsseite (calendar, cases, documents, editorial, team …).
+Zeigt In-App-Benachrichtigungen, ungelesene Zähler und Deep-Links in den auslösenden Fachbereich; Lesen wird pro Nutzer persistiert. Liste, Ungelesen-Zähler, Realtime-Kanal sowie Gelesen-Markieren und Löschen sind auf den aktiven Mandanten begrenzt; beim Mandantenwechsel werden sie geleert und neu geladen. Meldungen aus dem Client laufen über create_tenant_notification und tragen den Mandanten des Fachobjekts; die Funktion weist Fremdmandanten mit 42501 ab. Jeder clientseitig erzeugte Meldungstyp ist im Büro geseedet und hat ein ausdrückliches Deep-Link-Ziel. Die Kategorie-Schlüssel entsprechen den Anzeige-Gruppen der Einstellungsseite (calendar, cases, documents, editorial, team …).
 
 - **Kategorie:** fachlich
 - **Implementierung:** implementiert
@@ -414,14 +416,14 @@ Zeigt In-App-Benachrichtigungen, ungelesene Zähler und Deep-Links in den auslö
 - **Services:** —
 - **Hooks:** `src/hooks/useNotifications.tsx`, `src/hooks/useNavigationNotifications.tsx`, `src/hooks/useNewItemIndicators.tsx`, `src/hooks/useNotificationHighlight.tsx`
 - **Edge Functions:** —
-- **Datenbankfunktionen:** `get_unread_notification_counts`, `get_authored_messages`
+- **Datenbankfunktionen:** `get_unread_notification_counts`, `get_authored_messages`, `create_tenant_notification`
 - **Tabellen:** `notifications`, `notification_types`, `notification_navigation_mapping`, `message_confirmations`
 - **Abhängigkeiten:** —
 - **Selbsttests:** `notification-inbox`
 - **Unit-Tests:** —
 - **Integrationstests:** —
 - **Browser-Tests:** —
-- **Dokumentation:** `docs/ci-quality-gates.md`
+- **Dokumentation:** `docs/ci-quality-gates.md`, `docs/tenant-notifications.md`
 
 **Nachweise im Quellcode**
 
@@ -430,6 +432,7 @@ Zeigt In-App-Benachrichtigungen, ungelesene Zähler und Deep-Links in den auslö
 - src/hooks/useNotifications.tsx
 - scripts/check-notification-types.mjs
 - src/features/selftest/notificationTypeExpectations.ts
+- supabase/migrations/20261128214000_create_tenant_notification.sql
 
 **Bekannte Einschränkungen**
 

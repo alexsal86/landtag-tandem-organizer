@@ -234,7 +234,7 @@
       "id": "notifications.inbox",
       "subarea": "Benachrichtigungen",
       "name": "Benachrichtigungen lesen und als gelesen markieren",
-      "description": "Zeigt In-App-Benachrichtigungen, ungelesene Zähler und Deep-Links in den auslösenden Fachbereich; Lesen wird pro Nutzer persistiert. Liste, Ungelesen-Zähler, Realtime-Kanal sowie Gelesen-Markieren und Löschen sind auf den aktiven Mandanten begrenzt; beim Mandantenwechsel werden sie geleert und neu geladen. Jeder clientseitig erzeugte Meldungstyp ist im Büro geseedet und hat ein ausdrückliches Deep-Link-Ziel. Die Kategorie-Schlüssel entsprechen den Anzeige-Gruppen der Einstellungsseite (calendar, cases, documents, editorial, team …).",
+      "description": "Zeigt In-App-Benachrichtigungen, ungelesene Zähler und Deep-Links in den auslösenden Fachbereich; Lesen wird pro Nutzer persistiert. Liste, Ungelesen-Zähler, Realtime-Kanal sowie Gelesen-Markieren und Löschen sind auf den aktiven Mandanten begrenzt; beim Mandantenwechsel werden sie geleert und neu geladen. Meldungen aus dem Client laufen über create_tenant_notification und tragen den Mandanten des Fachobjekts; die Funktion weist Fremdmandanten mit 42501 ab. Jeder clientseitig erzeugte Meldungstyp ist im Büro geseedet und hat ein ausdrückliches Deep-Link-Ziel. Die Kategorie-Schlüssel entsprechen den Anzeige-Gruppen der Einstellungsseite (calendar, cases, documents, editorial, team …).",
       "category": "fachlich",
       "implementationStatus": "implementiert",
       "integrationStatus": "ui",
@@ -245,7 +245,8 @@
         "src/components/notifications/NotificationCenter.tsx",
         "src/hooks/useNotifications.tsx",
         "scripts/check-notification-types.mjs",
-        "src/features/selftest/notificationTypeExpectations.ts"
+        "src/features/selftest/notificationTypeExpectations.ts",
+        "supabase/migrations/20261128214000_create_tenant_notification.sql"
       ],
       "routes": [
         "/notifications"
@@ -264,7 +265,8 @@
       ],
       "rpcs": [
         "get_unread_notification_counts",
-        "get_authored_messages"
+        "get_authored_messages",
+        "create_tenant_notification"
       ],
       "tables": [
         "notifications",
@@ -279,7 +281,8 @@
         "praktikant"
       ],
       "docs": [
-        "docs/ci-quality-gates.md"
+        "docs/ci-quality-gates.md",
+        "docs/tenant-notifications.md"
       ],
       "reviewPoints": [
         "Benachrichtigungen entstehen über viele Datenbank-Trigger; die Zuordnung ist bereichsübergreifend und nicht vollständig je Trigger geprüft."

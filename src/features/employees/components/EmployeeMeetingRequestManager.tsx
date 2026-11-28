@@ -79,7 +79,7 @@ export function EmployeeMeetingRequestManager({ onPendingCountChange, onMeetingS
   };
 
   const confirmDecline = async () => {
-    if (!selectedRequest || !user) return;
+    if (!selectedRequest || !user || !currentTenant?.id) return;
     setDeclining(true);
     try {
       const { error } = await supabase
@@ -95,8 +95,9 @@ export function EmployeeMeetingRequestManager({ onPendingCountChange, onMeetingS
       if (error) throw error;
 
       // Send notification to employee
-      await supabase.rpc("create_notification", {
+      await supabase.rpc("create_tenant_notification", {
         user_id_param: selectedRequest.employee_id,
+        tenant_id_param: currentTenant.id,
         type_name: "employee_meeting_request_declined",
         title_param: "Gesprächsanfrage abgelehnt",
         message_param: `Ihre Gesprächsanfrage wurde abgelehnt. Grund: ${declineReason}`,

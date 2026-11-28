@@ -12,13 +12,14 @@ import { notify } from "@/lib/notify";
  */
 export function useTimeEntryReminder(
   userId: string | null,
+  tenantId: string | null,
   options: { softDays?: number; hardDays?: number } = {}
 ) {
   const { softDays = 3, hardDays = 7 } = options;
   const hasRun = useRef(false);
 
   useEffect(() => {
-    if (!userId || hasRun.current) return;
+    if (!userId || !tenantId || hasRun.current) return;
 
     const sessionKey = `time_entry_reminder_${userId}`;
     if (sessionStorage.getItem(sessionKey)) return;
@@ -26,11 +27,11 @@ export function useTimeEntryReminder(
     hasRun.current = true;
     sessionStorage.setItem(sessionKey, "1");
 
-    checkMissingEntries(userId, softDays, hardDays);
-  }, [userId, softDays, hardDays]);
+    checkMissingEntries(userId, tenantId, softDays, hardDays);
+  }, [userId, tenantId, softDays, hardDays]);
 }
 
-async function checkMissingEntries(userId: string, softDays: number, hardDays: number) {
+async function checkMissingEntries(userId: string, tenantId: string, softDays: number, hardDays: number) {
   try {
     const today = new Date();
     const checkFrom = subDays(today, hardDays + 2);
@@ -80,8 +81,9 @@ async function checkMissingEntries(userId: string, softDays: number, hardDays: n
 
     if (missingDates.length >= hardDays) {
       try {
-        await supabase.rpc("create_notification", {
+        await supabase.rpc("create_tenant_notification", {
           user_id_param: userId,
+          tenant_id_param: tenantId,
           title_param: "Fehlende Zeiteinträge",
           message_param: `Du hast ${missingDates.length} Arbeitstage ohne Zeiteintrag. Bitte trage deine Arbeitszeiten nach.`,
           type_name: "time_tracking",

@@ -485,6 +485,7 @@ export function useMyWorkTaskActions({
             senderName: senderProfile?.display_name,
             itemTitle: existingTask?.title,
             itemId: assignTaskId,
+            tenantId: (existingTask as { tenant_id?: string | null } | undefined)?.tenant_id ?? null,
           }),
         ),
       );

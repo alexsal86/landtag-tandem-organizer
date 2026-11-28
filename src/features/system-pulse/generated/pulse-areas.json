@@ -2137,7 +2137,8 @@
             "Als-gelesen-Markieren setzt is_read und read_at und ist erneut lesbar",
             "Zurücksetzen setzt die Benachrichtigung wieder auf ungelesen und leert read_at",
             "Alle clientseitig erzeugten Meldungstypen sind im Büro aktiv vorhanden",
-            "Fremde Benachrichtigungen liefern keine Zeilen, und ein Update mit fremdem Nutzerbezug ändert die eigene Zeile nicht"
+            "Fremde Benachrichtigungen liefern keine Zeilen, und ein Update mit fremdem Nutzerbezug ändert die eigene Zeile nicht",
+            "Die mandantengebundene Meldung entsteht im eigenen Mandanten und wird für einen fremden Mandanten mit 42501 abgewiesen"
           ],
           "tables": [
             "notifications"
@@ -2165,6 +2166,10 @@
             {
               "id": "access-boundary",
               "label": "Fremde Benachrichtigungen bleiben unlesbar und unverändert"
+            },
+            {
+              "id": "tenant-rpc",
+              "label": "Mandantengebundene Meldung nur im eigenen Büro"
             }
           ]
         }

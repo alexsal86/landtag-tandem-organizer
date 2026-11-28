@@ -217,8 +217,8 @@ export function useMeetingArchive(deps: ArchiveDeps) {
         const meetingDateFormatted = format(new Date(meeting.meeting_date), 'dd.MM.yyyy', { locale: de });
         for (const recipientId of notifyUserIds) {
           try {
-            await supabase.rpc('create_notification', {
-              user_id_param: recipientId, type_name: 'meeting_archived',
+            await supabase.rpc('create_tenant_notification', {
+              user_id_param: recipientId, tenant_id_param: currentTenant.id, type_name: 'meeting_archived',
               title_param: `Besprechung archiviert: ${meeting.title}`,
               message_param: `Die Besprechung "${meeting.title}" vom ${meetingDateFormatted} wurde archiviert. Prüfen Sie Ihre neuen Aufgaben.`,
               priority_param: 'medium',

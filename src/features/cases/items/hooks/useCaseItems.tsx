@@ -289,8 +289,9 @@ export const useCaseItems = () => {
 
       // Notify assigned owner (if different from creator)
       if (data.owner_user_id && data.owner_user_id !== user.id) {
-        supabase.rpc("create_notification", {
+        supabase.rpc("create_tenant_notification", {
           user_id_param: data.owner_user_id,
+          tenant_id_param: currentTenant.id,
           type_name: "case_item_assigned",
           title_param: "Vorgang zugewiesen",
           message_param: `Ihnen wurde der Vorgang "${data.subject || 'Ohne Betreff'}" zugewiesen.`,
@@ -346,8 +347,9 @@ export const useCaseItems = () => {
         if (existing.user_id && existing.user_id !== user.id) notifyIds.add(existing.user_id);
         if (existing.owner_user_id && existing.owner_user_id !== user.id) notifyIds.add(existing.owner_user_id);
         for (const recipientId of notifyIds) {
-          supabase.rpc("create_notification", {
+          supabase.rpc("create_tenant_notification", {
             user_id_param: recipientId,
+            tenant_id_param: currentTenant.id,
             type_name: "case_item_status_changed",
             title_param: "Vorgang-Status geändert",
             message_param: `Der Status von "${subject}" wurde auf "${data.status}" geändert.`,
@@ -361,8 +363,9 @@ export const useCaseItems = () => {
 
       // Notify on assignment change
       if (data.owner_user_id && data.owner_user_id !== user.id && data.owner_user_id !== existing?.owner_user_id) {
-        supabase.rpc("create_notification", {
+        supabase.rpc("create_tenant_notification", {
           user_id_param: data.owner_user_id,
+          tenant_id_param: currentTenant.id,
           type_name: "case_item_assigned",
           title_param: "Vorgang zugewiesen",
           message_param: `Ihnen wurde der Vorgang "${subject}" zugewiesen.`,
@@ -432,8 +435,9 @@ export const useCaseItems = () => {
         if (caseItem.user_id && caseItem.user_id !== user.id) notifyIds.add(caseItem.user_id);
         if (caseItem.owner_user_id && caseItem.owner_user_id !== user.id) notifyIds.add(caseItem.owner_user_id);
         for (const recipientId of notifyIds) {
-          supabase.rpc("create_notification", {
+          supabase.rpc("create_tenant_notification", {
             user_id_param: recipientId,
+            tenant_id_param: currentTenant.id,
             type_name: "case_item_comment",
             title_param: "Neuer Kommentar zum Vorgang",
             message_param: `Neuer Kommentar zum Vorgang "${caseItem.subject || 'Ohne Betreff'}".`,

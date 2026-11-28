@@ -19064,6 +19064,18 @@ export type Database = {
             }
             Returns: string
           }
+      create_tenant_notification: {
+        Args: {
+          data_param?: Json
+          message_param: string
+          priority_param?: string
+          tenant_id_param: string
+          title_param: string
+          type_name: string
+          user_id_param: string
+        }
+        Returns: string | null
+      }
       create_poll_notification: {
         Args: {
           _notification_type: string

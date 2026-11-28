@@ -184,7 +184,7 @@ export const NewsShareDialog: React.FC<NewsShareDialogProps> = ({
       }
 
       // Create in-app notifications for internal recipients
-      if (selectedUserIds.length > 0) {
+      if (selectedUserIds.length > 0 && currentTenant?.id) {
         const notificationTitle = `News geteilt: ${article.title}`;
         const notificationMessage = personalMessage
           ? `${senderName}: ${personalMessage}`
@@ -200,8 +200,9 @@ export const NewsShareDialog: React.FC<NewsShareDialogProps> = ({
         };
 
         const notificationCalls = selectedUserIds.map((recipientUserId) =>
-          supabase.rpc('create_notification', {
+          supabase.rpc('create_tenant_notification', {
             user_id_param: recipientUserId,
+            tenant_id_param: currentTenant.id,
             type_name: 'news_shared_internal',
             title_param: notificationTitle,
             message_param: notificationMessage,

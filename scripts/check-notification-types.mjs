@@ -59,12 +59,12 @@ function walk(dir, files = []) {
   return files;
 }
 
-/** Typnamen aus echten supabase.rpc('create_notification', …)-Aufrufen. */
+/** Typnamen aus echten supabase.rpc('create_notification'|'create_tenant_notification', …)-Aufrufen. */
 function readClientUsage() {
   const usage = new Map();
   for (const file of walk(SOURCE_ROOT)) {
     const source = read(file);
-    for (const call of source.matchAll(/\.rpc\(\s*['"]create_notification['"]/g)) {
+    for (const call of source.matchAll(/\.rpc\(\s*['"]create_(?:tenant_)?notification['"]/g)) {
       const block = source.slice(call.index, call.index + 900);
       const type = block.match(/type_name\s*:\s*['"]([a-z0-9_]+)['"]/);
       if (type) {

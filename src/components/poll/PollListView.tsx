@@ -20,6 +20,7 @@ import { format } from 'date-fns';
 import { de } from 'date-fns/locale';
 import { supabase } from '@/integrations/supabase/client';
 import { useAuth } from '@/hooks/useAuth';
+import { useTenant } from '@/hooks/useTenant';
 import { PollResultsDashboard } from './PollResultsDashboard';
 import { PollEditDialog } from './PollEditDialog';
 import { debugConsole } from '@/utils/debugConsole';
@@ -43,6 +44,7 @@ interface Poll {
 
 export const PollListView = () => {
   const { user } = useAuth();
+  const { currentTenant } = useTenant();
   const [polls, setPolls] = useState<Poll[]>([]);
   const [loading, setLoading] = useState(true);
   const [selectedPoll, setSelectedPoll] = useState<string | null>(null);
@@ -142,6 +144,7 @@ export const PollListView = () => {
   };
 
   const restorePoll = async (pollId: string) => {
+    if (!currentTenant?.id) return;
     try {
       const { error } = await supabase
         .from('appointment_polls')
@@ -151,8 +154,9 @@ export const PollListView = () => {
       if (error) throw error;
 
       // Send notification about restoration
-      await supabase.rpc('create_notification', {
+      await supabase.rpc('create_tenant_notification', {
         user_id_param: user!.id,
+        tenant_id_param: currentTenant.id,
         type_name: 'poll_restored',
         title_param: 'Abstimmung wiederhergestellt',
         message_param: 'Die Terminabstimmung wurde wiederhergestellt und ist wieder aktiv.',

@@ -8,6 +8,8 @@ type ShareNotificationParams = {
   senderName?: string | null;
   itemTitle?: string | null;
   itemId?: string | null;
+  /** Mandant des geteilten Fachobjekts; ohne ihn wird nicht zugestellt. */
+  tenantId?: string | null;
 };
 
 const getSenderLabel = (senderName?: string | null): string => senderName?.trim() || 'Ein Teammitglied';
@@ -19,14 +21,21 @@ const createShareNotification = async (
   title: string,
   message: string,
   data: NotificationData,
+  tenantId?: string | null,
 ): Promise<void> => {
-  const { error } = await supabase.rpc('create_notification', {
+  if (!tenantId) {
+    debugConsole.warn(`Kein Mandant für ${typeName}-Meldung; sie wird nicht zugestellt.`);
+    return;
+  }
+
+  const { error } = await supabase.rpc('create_tenant_notification', {
     user_id_param: recipientUserId,
     type_name: typeName,
     title_param: title,
     message_param: message,
     data_param: asJson(data),
     priority_param: 'medium',
+    tenant_id_param: tenantId,
   });
 
   if (error) {
@@ -44,6 +53,7 @@ export const notifyTaskShared = async ({
   senderName,
   itemTitle,
   itemId,
+  tenantId,
 }: ShareNotificationParams): Promise<void> => {
   await createShareNotification(
     recipientUserId,
@@ -51,5 +61,6 @@ export const notifyTaskShared = async ({
     'Aufgabe mit dir geteilt',
     `${getSenderLabel(senderName)} hat dir die Aufgabe "${getItemLabel(itemTitle)}" zugewiesen.`,
     { taskId: itemId ?? null, task_id: itemId ?? null },
+    tenantId,
   );
 };

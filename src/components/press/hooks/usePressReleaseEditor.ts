@@ -195,8 +195,8 @@ export function usePressReleaseEditor({ pressReleaseId, initialDraft, onBack }: 
           const promises = Array.from(pendingMentionsRef.current).map(async (mid) => {
             if (mid === user.id) return;
             try {
-              await supabase.rpc("create_notification", {
-                user_id_param: mid, type_name: "document_mention",
+              await supabase.rpc("create_tenant_notification", {
+                user_id_param: mid, tenant_id_param: currentTenant.id, type_name: "document_mention",
                 title_param: "Erwähnung in Pressemitteilung",
                 message_param: `Sie wurden in der Pressemitteilung "${title}" erwähnt`,
                 data_param: JSON.stringify({ documentId: pressRelease.id, documentType: "press_release" }),

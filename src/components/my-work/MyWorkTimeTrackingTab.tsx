@@ -72,7 +72,7 @@ export function MyWorkTimeTrackingTab() {
   const [absences, setAbsences] = useState<WeeklyAbsence[]>([]);
 
   // Check for missing time entries and remind user
-  useTimeEntryReminder(user?.id ?? null);
+  useTimeEntryReminder(user?.id ?? null, currentTenant?.id ?? null);
   useVacationReminders();
 
   // Form state

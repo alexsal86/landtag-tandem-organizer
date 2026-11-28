@@ -18,10 +18,11 @@ export function useQuickNoteFollowUps(notes: QuickNote[], userId?: string, tenan
     if (!due.length) return;
     running.current = true;
     void Promise.all(due.map(async note => {
-      const { error } = await supabase.rpc("create_notification", {
+      const { error } = await supabase.rpc("create_tenant_notification", {
         user_id_param: userId, type_name: "note_follow_up", title_param: "Fällige Wiedervorlage",
         message_param: `Notiz „${note.title?.replace(/<[^>]*>/g, "") || "Ohne Titel"}“ hat eine fällige Wiedervorlage`,
         data_param: JSON.stringify({ noteId: note.id, date: today }), priority_param: "high",
+        tenant_id_param: tenantId,
       });
       if (!error) sent.push(note.id);
     })).then(() => { try { localStorage.setItem(key, JSON.stringify(sent)); } catch { /* Notification is still delivered. */ } })

@@ -143,6 +143,7 @@ export const AppointmentFeedbackWidget = ({
   const FEEDBACK_NOTIFICATION_TYPE_ID = 'c51a3c97-a10d-40f9-9900-1931479a89c8';
 
   const handleSaveNote = async (feedbackId: string, userName: string, appointmentTitle: string) => {
+    if (!currentTenant?.id) return;
     if (!noteText || noteText === '<p></p>' || noteText.trim() === '') {
       notify.error('Fehler', { description: 'Bitte geben Sie eine Notiz ein.'
 });
@@ -168,8 +169,9 @@ export const AppointmentFeedbackWidget = ({
         const feedbackContext = createFeedbackContext(feedbackId, { type: 'feedback', id: feedbackId });
         await Promise.all(
           otherUsers.map(u =>
-            supabase.rpc('create_notification', {
+            supabase.rpc('create_tenant_notification', {
               user_id_param: u.user_id,
+              tenant_id_param: currentTenant.id,
               type_name: 'appointment_feedback',
               title_param: `Rückmeldung: ${appointmentTitle}`,
               message_param: plainText,
@@ -277,8 +279,9 @@ export const AppointmentFeedbackWidget = ({
         tenantUsers
           .filter((member) => member.user_id !== user.id)
           .map((member) =>
-            supabase.rpc('create_notification', {
+            supabase.rpc('create_tenant_notification', {
               user_id_param: member.user_id,
+              tenant_id_param: currentTenant.id,
               type_name: 'appointment_feedback',
               title_param: `Aufgabe aus Rückmeldung: ${appointmentTitle}`,
               message_param: taskTitle,
