@@ -322,7 +322,7 @@ Eindeutige Fehler werden im CI-Lauf ausgegeben und brechen die Prüfung ab; sie 
 
 ### `notifications.inbox`
 
-- Erzeugen, Gelesen-Markieren und Zurücksetzen laufen über die Inbox-Tabelle; die Zustellung je Fach-Trigger (Aufgaben, Termine, Nachrichten, Freigaben) sowie Push und Oberfläche prüft das Szenario nicht.
+- Erzeugen, Gelesen-Markieren und Zurücksetzen laufen über die Inbox-Tabelle; die Zustellung je Fach-Trigger (Aufgaben, Termine, Nachrichten, Freigaben) sowie Push und Oberfläche prüft das Szenario nicht. Die mandantenscharfe Begrenzung von Liste, Zähler und Realtime ist eine Client-Regel und wird dort nicht geprüft.
 - Benachrichtigungen entstehen über viele Datenbank-Trigger; die Zuordnung ist bereichsübergreifend und nicht vollständig je Trigger geprüft.
 
 ### `notifications.preferences`
@@ -341,7 +341,7 @@ Eindeutige Fehler werden im CI-Lauf ausgegeben und brechen die Prüfung ab; sie 
 
 - Das Szenario prüft den Lebenszyklus, nicht jede Teilen-Variante.
 - Die Meldungstypen note_follow_up und quick_note_shared werden je Mandant per Migration nachgezogen und für neue Mandanten per Tenant-Trigger angelegt; der Selbsttest prüft nur den aktuellen Mandanten.
-- Freigabe-Meldungen entstehen per Trigger auf quick_note_shares im Mandanten der Notiz; der Hinweis-Pfad für bloße Erwähnungen ohne Freigabezeile meldet weiterhin clientseitig.
+- Freigabe-Meldungen entstehen per Trigger auf quick_note_shares im Mandanten der Notiz. Erwähnungen in Vorgangs-Interaktionen meldet der Trigger auf case_item_interactions ebenfalls dort, wo der Vorgang liegt.
 
 ### `quicknotes.offline`
 

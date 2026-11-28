@@ -21052,6 +21052,7 @@ export type Database = {
         }[]
       }
       topic_mention_selftest: { Args: { p_tenant: string }; Returns: Json }
+      case_interaction_mention_selftest: { Args: { p_tenant: string }; Returns: Json }
       quick_note_share_notification_selftest: { Args: { p_tenant: string }; Returns: Json }
       topic_module_settings_selftest: {
         Args: { p_tenant: string }

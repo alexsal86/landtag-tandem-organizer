@@ -35,25 +35,10 @@ const createShareNotification = async (
 };
 
 /**
- * Nur noch für Hinweis-Meldungen ohne Freigabezeile (z. B. Erwähnungen aus einem
- * Vorgang). Echte Notizfreigaben meldet der Trigger auf quick_note_shares, weil nur
- * die Datenbank den Mandanten der Notiz sicher kennt.
+ * Notizfreigaben und Vorgangs-Erwähnungen meldet die Datenbank (Trigger auf
+ * quick_note_shares bzw. case_item_interactions), weil nur sie den Mandanten des
+ * Datensatzes sicher kennt. Hier bleibt nur der Aufgaben-Hinweis ohne Freigabezeile.
  */
-export const notifyQuickNoteShared = async ({
-  recipientUserId,
-  senderName,
-  itemTitle,
-  itemId,
-}: ShareNotificationParams): Promise<void> => {
-  await createShareNotification(
-    recipientUserId,
-    'quick_note_shared',
-    'Quick Note mit dir geteilt',
-    `${getSenderLabel(senderName)} hat die Notiz "${getItemLabel(itemTitle)}" mit dir geteilt.`,
-    { noteId: itemId ?? null },
-  );
-};
-
 export const notifyTaskShared = async ({
   recipientUserId,
   senderName,

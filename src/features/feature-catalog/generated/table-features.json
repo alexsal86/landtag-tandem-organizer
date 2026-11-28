@@ -2764,6 +2764,11 @@
   ],
   "notification_types": [
     {
+      "id": "cases.interactions",
+      "name": "Kontakte und Interaktionen am Vorgang",
+      "area": "vorgaenge"
+    },
+    {
       "id": "notifications.inbox",
       "name": "Benachrichtigungen lesen und als gelesen markieren",
       "area": "arbeitsbereich"
@@ -2779,6 +2784,11 @@
       "id": "calendar.reminders",
       "name": "Terminerinnerungen",
       "area": "termine"
+    },
+    {
+      "id": "cases.interactions",
+      "name": "Kontakte und Interaktionen am Vorgang",
+      "area": "vorgaenge"
     },
     {
       "id": "integration.push",

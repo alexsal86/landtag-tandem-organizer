@@ -48,6 +48,7 @@ export const STANDARD_NOTIFICATION_TYPES = [
   { name: "letter_rejected", label: "Brief – Zurückgewiesen", category: "letters" },
   { name: "case_file_assigned", label: "Vorgang zugewiesen", category: "casefiles" },
   { name: "case_file_status_changed", label: "Vorgang – Status geändert", category: "casefiles" },
+  { name: "case_interaction_mention", label: "In Vorgang erwähnt", category: "casefiles" },
   { name: "decision_requested", label: "Entscheidung erbeten", category: "decisions" },
   { name: "decision_finalized", label: "Entscheidung getroffen", category: "decisions" },
   { name: "meeting_invitation", label: "Meeting-Einladung", category: "meetings" },

@@ -53,7 +53,7 @@ _Auto-generiert mit `npm run update:feature-catalog` aus dem zentralen Funktions
 
 ## Datenbanktabellen
 
-`appointments`, `audit_log_entries`, `case_file_appointments`, `case_file_contacts`, `case_file_documents`, `case_file_letters`, `case_file_notes`, `case_file_participants`, `case_file_processing_statuses`, `case_file_status_history`, `case_file_tasks`, `case_file_timeline`, `case_file_topics`, `case_file_types`, `case_files`, `case_item_categories`, `case_item_escalation_suggestions`, `case_item_handover_log`, `case_item_interactions`, `case_item_participants`, `case_item_timeline`, `case_item_topics`, `case_items`, `documents`, `election_history_mandates`, `letters`, `ministry_history_changes`, `ministry_history_entries`, `ministry_history_lines`, `ministry_history_links`, `parlis_deputy_mandates`, `parlis_ministry_assignments`, `parlis_ministry_lines`, `parlis_ministry_suggestions`, `parlis_ministry_topics`, `parlis_proceedings`, `task_decisions`, `tasks`, `topic_module_settings`, `topics`
+`appointments`, `audit_log_entries`, `case_file_appointments`, `case_file_contacts`, `case_file_documents`, `case_file_letters`, `case_file_notes`, `case_file_participants`, `case_file_processing_statuses`, `case_file_status_history`, `case_file_tasks`, `case_file_timeline`, `case_file_topics`, `case_file_types`, `case_files`, `case_item_categories`, `case_item_escalation_suggestions`, `case_item_handover_log`, `case_item_interactions`, `case_item_participants`, `case_item_timeline`, `case_item_topics`, `case_items`, `documents`, `election_history_mandates`, `letters`, `ministry_history_changes`, `ministry_history_entries`, `ministry_history_lines`, `ministry_history_links`, `notification_types`, `notifications`, `parlis_deputy_mandates`, `parlis_ministry_assignments`, `parlis_ministry_lines`, `parlis_ministry_suggestions`, `parlis_ministry_topics`, `parlis_proceedings`, `task_decisions`, `tasks`, `topic_module_settings`, `topics`
 
 ## Selbsttest-Szenarien
 
@@ -84,6 +84,7 @@ Diese Schritte führen die Szenarien aus; „letzter Lauf“ stammt aus `src/fea
 | `case-item-lifecycle` | `rules` | Regeln prüfen: Schritt, Wiedervorlage, Fristen (ohne Datenbank) | logic | — |
 | `case-item-lifecycle` | `create` | Vorgang anlegen + Standardwerte (Büro am Zug, kein Schritt) | db | — |
 | `case-item-lifecycle` | `interactions` | Interaktionen erfassen (Anruf, Mail, Treffen) | db | — |
+| `case-item-lifecycle` | `interaction-mention` | Erwähnung in Interaktion → Meldung im Mandanten des Vorgangs | db | — |
 | `case-item-lifecycle` | `draft-no-resubmission` | Am Zug nur vorbereiten → keine Wiedervorlage | db | — |
 | `case-item-lifecycle` | `set-step` | Schritt festlegen mit Frist → Wiedervorlage + Verlauf | db | — |
 | `case-item-lifecycle` | `office-task` | Büroschritt erzeugt genau eine verknüpfte Aufgabe | workflow | — |
@@ -303,7 +304,7 @@ Legt Schritte mit Frist und Zuständigkeit an und erzeugt daraus Büro-Aufgaben,
 - Keine.
 
 ### `cases.interactions` — Kontakte und Interaktionen am Vorgang
-Erfasst Gespräche, E-Mails und Notizen mit Sichtbarkeitsstufe und verlangt vor dem Abschluss eine dokumentierte Reaktion. Im Vorgangs-Workspace speichert Erfassen die Timeline sofort unabhängig von Kategorie und globalem Speichern; laufendes Erfassen ist gegen Doppelklick gesperrt.
+Erfasst Gespräche, E-Mails und Notizen mit Sichtbarkeitsstufe und verlangt vor dem Abschluss eine dokumentierte Reaktion. Im Vorgangs-Workspace speichert Erfassen die Timeline sofort unabhängig von Kategorie und globalem Speichern; laufendes Erfassen ist gegen Doppelklick gesperrt. Erwähnungen im Detail-HTML meldet ein Trigger im Mandanten des Vorgangs.
 
 - **Kategorie:** fachlich
 - **Implementierung:** implementiert
@@ -316,8 +317,8 @@ Erfasst Gespräche, E-Mails und Notizen mit Sichtbarkeitsstufe und verlangt vor 
 - **Services:** —
 - **Hooks:** —
 - **Edge Functions:** —
-- **Datenbankfunktionen:** `require_resolution_interaction_on_case_close`, `user_can_access_case_item_interaction`
-- **Tabellen:** `case_item_interactions`, `case_items`
+- **Datenbankfunktionen:** `require_resolution_interaction_on_case_close`, `user_can_access_case_item_interaction`, `case_interaction_mention_selftest`
+- **Tabellen:** `case_item_interactions`, `case_items`, `notifications`, `notification_types`
 - **Abhängigkeiten:** `cases.create`, `contacts.create`
 - **Selbsttests:** `case-item-lifecycle`
 - **Unit-Tests:** —
@@ -329,6 +330,7 @@ Erfasst Gespräche, E-Mails und Notizen mit Sichtbarkeitsstufe und verlangt vor 
 
 - src/components/my-work/CaseItemInteractionQuickCapture.tsx
 - src/features/cases/files/components/CaseItemInteractionsTimeline.tsx
+- supabase/migrations/20261128180000_case_interaction_mention_notifications.sql
 
 **Bekannte Einschränkungen**
 

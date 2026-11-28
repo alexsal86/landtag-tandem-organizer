@@ -120,6 +120,16 @@ export const caseItemLifecycleScenario: TestScenario = {
       }),
     },
     {
+      id: "interaction-mention", label: "Erwähnung in Interaktion → Meldung im Mandanten des Vorgangs",
+      run: wrap(async (ctx) => {
+        const { data, error } = await supabase.rpc("case_interaction_mention_selftest", { p_tenant: ctx.tenantId });
+        if (error) return { ok: false, message: describeError(error) };
+        const result = data as { ok: boolean; skipped?: string; delivered?: number; message?: string };
+        if (!result?.ok) return { ok: false, message: result?.message ?? "Selbsttest fehlgeschlagen" };
+        return { ok: true, message: result.skipped ?? `${result.delivered ?? 0} Meldung(en) im Mandanten des Vorgangs zugestellt.` };
+      }),
+    },
+    {
       id: "draft-no-resubmission", label: "Am Zug nur vorbereiten → keine Wiedervorlage",
       run: wrap(async (ctx) => {
         // In der UI ist das ein lokaler Entwurf; gespeichert wird erst bei „Schritt festlegen“.

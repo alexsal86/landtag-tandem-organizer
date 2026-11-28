@@ -55,3 +55,23 @@ Diese Regeln beschreiben die erwartete Validierung für die neuen strukturierten
 - Pflicht: `subject`
 - Pflicht: `summary`
 - Empfohlen: `source_reference` oder strukturierte Angaben im `intake_payload`
+
+## Benachrichtigungen bei Erwähnungen in Interaktionen
+
+Erwähnte Personen (`data-lexical-mention-user-id` im HTML von `details`) werden vom
+Trigger `trg_case_interaction_mention_notification` auf `case_item_interactions`
+benachrichtigt. Der Client verschickt dafür keine eigene Meldung mehr: die
+6-Argument-Fassung von `create_notification` löst den Mandanten über den
+Hauptmandanten der Person auf und trifft bei mehreren Mitgliedschaften den falschen
+Arbeitsbereich.
+
+- Der Mandant kommt aus der Interaktion bzw. – falls leer – aus Vorgang oder
+  Fallakte; Empfänger müssen aktive Mitglieder dieses Büros sein.
+- Die erzeugende Person erhält keine Meldung über die eigene Erwähnung. Beim
+  Bearbeiten von `details` werden nur neu hinzugekommene Erwähnungen gemeldet.
+- Typ `case_interaction_mention` („In Vorgang erwähnt“) wird in bestehenden Büros
+  nachgezogen und für neue Büros am Tenant-Trigger angelegt.
+- Der Deep Link öffnet den Vorgang (`/mywork?tab=cases&caseItemId=…`), ohne Vorgang
+  die Fallakte (`/casefiles?caseFileId=…`).
+- `case_interaction_mention_selftest(p_tenant)` prüft die Zustellung mit einer echten
+  Interaktion und rollt sie anschließend zurück.

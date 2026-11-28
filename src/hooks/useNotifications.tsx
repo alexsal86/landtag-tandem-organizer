@@ -1,8 +1,9 @@
 // @refresh reset
-import { useState, useEffect, useCallback } from 'react';
+import { useState, useEffect, useCallback, useRef } from 'react';
 import type { RealtimePostgresChangesPayload } from '@supabase/supabase-js';
 import { supabase } from '@/integrations/supabase/client';
 import { useAuth } from './useAuth';
+import { useOptionalTenant } from './useTenant';
 import { toast } from './use-toast';
 import { debugConsole } from '@/utils/debugConsole';
 import type { UnknownRecord } from '@/utils/typeSafety';
@@ -100,6 +101,7 @@ type NotificationRow = {
   created_at: string;
   navigation_context: string | null;
   notification_types: Notification['notification_types'];
+  tenant_id?: string | null;
 };
 
 type NotificationUpdateRow = Pick<NotificationRow, 'id' | 'is_read'>;
@@ -159,6 +161,13 @@ const handleNotificationRealtimeEvent = (
 
 export const useNotifications = () => {
   const { user } = useAuth();
+  // Meldungen gehören immer zu genau einem Büro. Ohne aufgelösten Mandanten wird
+  // bewusst nichts geladen, statt Meldungen aus allen Mitgliedschaften zu mischen.
+  const tenantContext = useOptionalTenant();
+  const tenantId = tenantContext?.currentTenant?.id ?? null;
+  // Antworten eines alten Mandanten dürfen einen Wechsel nicht überschreiben.
+  const tenantRef = useRef<string | null>(tenantId);
+  tenantRef.current = tenantId;
   const [notifications, setNotifications] = useState<Notification[]>([]);
   const [unreadCount, setUnreadCount] = useState<number>(0);
   const [loading, setLoading] = useState<boolean>(false);
@@ -179,13 +188,14 @@ export const useNotifications = () => {
   }, []);
 
   const loadNotifications = useCallback(async (): Promise<void> => {
-    if (!user) {
+    if (!user || !tenantId) {
       setNotifications([]);
       setUnreadCount(0);
       setLoading(false);
       return;
     }
 
+    const scopeTenant = tenantId;
     setLoading(true);
     try {
       const { data, error } = await supabase
@@ -202,16 +212,19 @@ export const useNotifications = () => {
           notification_types(name, label)
         `)
         .eq('user_id', user.id)
+        .eq('tenant_id', tenantId)
         .order('created_at', { ascending: false })
         .limit(50);
 
       if (error) throw error;
+      if (tenantRef.current !== scopeTenant) return;
 
       const notificationRows: NotificationRow[] = (data ?? []) as NotificationRow[];
       const mappedNotifications = notificationRows.map(mapNotificationRow);
       setNotifications(mappedNotifications);
       setUnreadCount(mappedNotifications.filter((notification: Notification) => !notification.is_read).length);
     } catch (error: unknown) {
+      if (tenantRef.current !== scopeTenant) return;
       const errorMessage = error instanceof Error ? error.message : String(error);
       debugConsole.error('Error loading notifications:', errorMessage, error);
       // Preserve existing notifications (stale data > no data)
@@ -222,13 +235,13 @@ export const useNotifications = () => {
 });
       }
     } finally {
-      setLoading(false);
+      if (tenantRef.current === scopeTenant) setLoading(false);
     }
     // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [user?.id, toast]);
+  }, [user?.id, tenantId, toast]);
 
   const markAsRead = useCallback(async (notificationId: string): Promise<void> => {
-    if (!user) {
+    if (!user || !tenantId) {
       return;
     }
 
@@ -247,7 +260,8 @@ export const useNotifications = () => {
           read_at: new Date().toISOString(),
         })
         .eq('id', notificationId)
-        .eq('user_id', user.id);
+        .eq('user_id', user.id)
+        .eq('tenant_id', tenantId);
 
       if (error) throw error;
 
@@ -272,10 +286,10 @@ export const useNotifications = () => {
       );
       setUnreadCount((prev: number) => prev + 1);
     }
-  }, [user]);
+  }, [user, tenantId]);
 
   const deleteNotification = useCallback(async (notificationId: string): Promise<void> => {
-    if (!user) {
+    if (!user || !tenantId) {
       return;
     }
 
@@ -294,7 +308,8 @@ export const useNotifications = () => {
         .from('notifications')
         .delete()
         .eq('id', notificationId)
-        .eq('user_id', user.id);
+        .eq('user_id', user.id)
+        .eq('tenant_id', tenantId);
 
       if (error) throw error;
 
@@ -303,10 +318,10 @@ export const useNotifications = () => {
       debugConsole.error('Error deleting notification:', error);
       await loadNotifications();
     }
-  }, [user, notifications, loadNotifications]);
+  }, [user, tenantId, notifications, loadNotifications]);
 
   const markAllAsRead = useCallback(async (): Promise<void> => {
-    if (!user) {
+    if (!user || !tenantId) {
       return;
     }
 
@@ -328,6 +343,7 @@ export const useNotifications = () => {
         .from('notifications')
         .select('id, is_read')
         .eq('user_id', user.id)
+        .eq('tenant_id', tenantId)
         .eq('is_read', false);
 
       if (fetchError) throw fetchError;
@@ -373,7 +389,7 @@ export const useNotifications = () => {
 });
       }
     }
-  }, [user, toast, notifications, unreadCount, loadNotifications]);
+  }, [user, tenantId, toast, notifications, unreadCount, loadNotifications]);
 
   const urlBase64ToUint8Array = (base64String: string): Uint8Array => {
     const padding = '='.repeat((4 - (base64String.length % 4)) % 4);
@@ -602,7 +618,7 @@ export const useNotifications = () => {
   }, [pushSupported, subscribeToPush, toast]);
 
   useEffect(() => {
-    if (!user) {
+    if (!user || !tenantId) {
       return;
     }
 
@@ -639,10 +655,10 @@ export const useNotifications = () => {
         void supabase.removeChannel(currentChannel);
       }
 
-      debugConsole.log(`Setting up notifications realtime subscription for user: ${user.id} (attempt ${retryCount + 1})`);
+      debugConsole.log(`Setting up notifications realtime subscription for user: ${user.id}, tenant ${tenantId} (attempt ${retryCount + 1})`);
 
       currentChannel = supabase
-        .channel(`user-notifications:${user.id}:${Date.now()}`)
+        .channel(`user-notifications:${user.id}:${tenantId}:${Date.now()}`)
         .on(
           'postgres_changes',
           {
@@ -666,6 +682,10 @@ export const useNotifications = () => {
                   return;
                 }
 
+                // Realtime kennt nur einen Filter (user_id); fremde Büros werden hier verworfen.
+                // Der INSERT-Payload enthält ohne `select` die ganze Zeile. Trotzdem entscheidet
+                // die mandantengefilterte Nachladung: fehlt `tenant_id` im Payload (z. B. durch
+                // eine spätere Spaltenauswahl), geht eine echte Meldung nicht verloren.
                 const { data: fullNotification } = await supabase
                   .from('notifications')
                   .select(`
@@ -680,11 +700,18 @@ export const useNotifications = () => {
                     notification_types(name, label)
                   `)
                   .eq('id', insertedId)
+                  .eq('tenant_id', tenantId)
                   .maybeSingle();
+
+                if (!fullNotification && insertEventPayload.new.tenant_id !== tenantId) {
+                  return;
+                }
 
                 const newNotification = fullNotification
                   ? mapNotificationRow(fullNotification as NotificationRow)
                   : mapNotificationRow(insertEventPayload.new);
+
+                if (tenantRef.current !== tenantId) return;
 
                 setNotifications((prev: Notification[]) => {
                   const exists = prev.some((notification: Notification) => notification.id === newNotification.id);
@@ -728,6 +755,10 @@ export const useNotifications = () => {
                   : null;
 
                 if (!updatedId) {
+                  return;
+                }
+
+                if (!updateEventPayload.new.tenant_id || updateEventPayload.new.tenant_id !== tenantId) {
                   return;
                 }
 
@@ -798,7 +829,13 @@ export const useNotifications = () => {
       window.removeEventListener('storage', handleStorageChange);
     };
     // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [user?.id, toast]);
+  }, [user?.id, tenantId, toast]);
+
+  // Beim Mandanten- oder Kontowechsel darf kein fremder Bestand kurz weiterleuchten.
+  useEffect(() => {
+    setNotifications([]);
+    setUnreadCount(0);
+  }, [tenantId, user?.id]);
 
   useEffect(() => {
     void loadNotifications();

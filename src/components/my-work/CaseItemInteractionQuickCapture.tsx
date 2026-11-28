@@ -5,14 +5,7 @@ import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
 import SimpleRichTextEditor from "@/components/ui/SimpleRichTextEditor";
-import { MentionSharePromptDialog } from "@/components/shared/MentionSharePromptDialog";
-import { extractMentionedUserIds } from "@/utils/noteMentions";
-import { notifyQuickNoteShared } from "@/utils/shareNotifications";
-import { useAuth } from "@/hooks/useAuth";
-import { useTenant } from "@/hooks/useTenant";
-import { supabase } from "@/integrations/supabase/client";
 import type { TimelineInteractionType } from "@/components/my-work/hooks/useCaseItemEdit";
-import { notify } from "@/lib/notify";
 
 export type InteractionType = "call" | "email" | "social" | "meeting" | "note" | "letter" | "system";
 export type InteractionDirection = "inbound" | "outbound" | "internal";
@@ -28,11 +21,6 @@ const QUICK_CAPTURE_TO_TIMELINE_TYPE: Record<InteractionType, TimelineInteractio
 };
 
 type SourceType = "contacts" | "documents" | "letters" | "tasks";
-
-interface MentionedUser {
-  id: string;
-  displayName: string;
-}
 
 interface Props {
   title: string;
@@ -52,10 +40,13 @@ interface Props {
   }) => Promise<boolean>;
 }
 
+/**
+ * Erwähnungen im Detail-HTML meldet der Trigger auf case_item_interactions im Mandanten
+ * des Vorgangs. Der Client verschickt dafür bewusst keine eigene Meldung mehr: die
+ * 6-Argument-Fassung von create_notification löst den Mandanten über den Hauptmandanten
+ * der Person auf und landet bei mehreren Mitgliedschaften im falschen Arbeitsbereich.
+ */
 export function CaseItemInteractionQuickCapture({ title, interactionType, defaultDirection, caseFileId, onCreate }: Props) {
-  const { user } = useAuth();
-  const { currentTenant } = useTenant();
-
   const [subject, setSubject] = useState("");
   const [details, setDetails] = useState("");
   const [detailsEditorKey, setDetailsEditorKey] = useState(0);
@@ -64,10 +55,6 @@ export function CaseItemInteractionQuickCapture({ title, interactionType, defaul
   const [sourceType, setSourceType] = useState<SourceType | "none">("none");
   const [sourceId, setSourceId] = useState("");
   const [saving, setSaving] = useState(false);
-
-  const [mentionPromptOpen, setMentionPromptOpen] = useState(false);
-  const [mentionedUsers, setMentionedUsers] = useState<MentionedUser[]>([]);
-  const [lastSavedNoteId, setLastSavedNoteId] = useState<string | null>(null);
 
   const canSubmit = useMemo(() => subject.trim().length > 0 && !saving, [subject, saving]);
 
@@ -86,31 +73,7 @@ export function CaseItemInteractionQuickCapture({ title, interactionType, defaul
       source_id: sourceId.trim() || undefined,
     });
 
-    if (success && user) {
-      // Check for mentions in details HTML
-      const mentionedUserIds = extractMentionedUserIds(details).filter(
-        (id) => id !== user.id
-      );
-
-      if (mentionedUserIds.length > 0 && currentTenant?.id) {
-        const { data: profiles } = await supabase
-          .from("profiles")
-          .select("user_id, display_name")
-          .eq("tenant_id", currentTenant.id)
-          .in("user_id", mentionedUserIds);
-
-        setMentionedUsers(
-          mentionedUserIds.map((userId) => ({
-            id: userId,
-            displayName:
-              profiles?.find((p) => p.user_id === userId)?.display_name || "Unbekannt",
-          }))
-        );
-        // We don't have a note_id from case items, but we can still notify
-        setLastSavedNoteId(null);
-        setMentionPromptOpen(true);
-      }
-
+    if (success) {
       setSubject("");
       setDetails("");
       setDetailsEditorKey((k) => k + 1);
@@ -123,35 +86,8 @@ export function CaseItemInteractionQuickCapture({ title, interactionType, defaul
     setSaving(false);
   };
 
-  const handleShareMentionedUsers = async (userIds: string[], _permission: "view" | "edit") => {
-    if (!user?.id || userIds.length === 0) return;
-
-    // Send notifications to mentioned users
-    const { data: senderProfile } = await supabase
-      .from("profiles")
-      .select("display_name")
-      .eq("user_id", user.id)
-      .maybeSingle();
-
-    await Promise.all(
-      userIds
-        .filter((recipientUserId) => recipientUserId !== user.id)
-        .map((recipientUserId) =>
-          notifyQuickNoteShared({
-            recipientUserId,
-            senderName: senderProfile?.display_name,
-            itemTitle: subject.trim() || null,
-            itemId: lastSavedNoteId,
-          })
-        )
-    );
-
-    notify.success("Erwähnte Personen wurden benachrichtigt");
-  };
-
   return (
-    <>
-      <Card>
+    <Card>
         <CardHeader className="pb-2">
           <CardTitle className="text-sm">{title}</CardTitle>
         </CardHeader>
@@ -208,14 +144,6 @@ export function CaseItemInteractionQuickCapture({ title, interactionType, defaul
             {saving ? "Speichern..." : "Interaktion speichern"}
           </Button>
         </CardContent>
-      </Card>
-
-      <MentionSharePromptDialog
-        open={mentionPromptOpen}
-        onOpenChange={setMentionPromptOpen}
-        users={mentionedUsers}
-        onConfirm={handleShareMentionedUsers}
-      />
-    </>
+    </Card>
   );
 }

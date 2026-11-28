@@ -24,6 +24,7 @@ const state = vi.hoisted(() => ({
   notificationsResult: { data: [], error: null } as NotificationResult,
   unreadResult: { data: [], error: null } as UnreadResult,
   updateResult: { error: null } as UpdateResult,
+  eqCalls: [] as Array<[string, unknown]>,
 }));
 
 class NotificationsQueryBuilder {
@@ -34,7 +35,10 @@ class NotificationsQueryBuilder {
     return this;
   });
 
-  eq = vi.fn(() => this);
+  eq = vi.fn((column: string, value: unknown) => {
+    state.eqCalls.push([column, value]);
+    return this;
+  });
   order = vi.fn(() => this);
   limit = vi.fn(async () => {
     if (this.selectClause === 'id') {
@@ -50,20 +54,34 @@ class NotificationsQueryBuilder {
     ).then(onfulfilled, onrejected);
 }
 
-const fromMock = vi.fn((_table: string) => new NotificationsQueryBuilder());
+const fromMock = vi.hoisted(() => vi.fn());
+fromMock.mockImplementation((_table: string) => new NotificationsQueryBuilder());
 
-vi.mock('@/integrations/supabase/client', () => ({
-  supabase: {
-    from: fromMock,
-  },
-}));
+vi.mock('@/integrations/supabase/client', () => {
+  const channel = {
+    on: () => channel,
+    subscribe: () => channel,
+  };
+  return {
+    supabase: {
+      from: fromMock,
+      channel: () => channel,
+      removeChannel: () => undefined,
+    },
+  };
+});
 
 vi.mock('@/hooks/useAuth', () => ({
   useAuth: () => useAuthMock(),
 }));
 
+vi.mock('@/hooks/useTenant', () => ({
+  useOptionalTenant: () => ({ currentTenant: { id: 'tenant-1' } }),
+}));
+
 vi.mock('@/hooks/use-toast', () => ({
   useToast: () => ({ toast: toastSpy }),
+  toast: (...args: unknown[]) => toastSpy(...args),
 }));
 
 vi.mock('@/utils/debugConsole', () => ({
@@ -101,6 +119,7 @@ describe('useNotifications', () => {
   beforeEach(() => {
     vi.clearAllMocks();
     localStorage.clear();
+    state.eqCalls = [];
     useAuthMock.mockReturnValue({ user: { id: 'user-1' } });
     state.notificationsResult = { data: notificationsFixture, error: null };
     state.unreadResult = { data: [{ id: 'n1' }], error: null };
@@ -115,6 +134,7 @@ describe('useNotifications', () => {
     });
 
     expect(result.current.unreadCount).toBe(1);
+    expect(state.eqCalls).toContainEqual(['tenant_id', 'tenant-1']);
 
     await act(async () => {
       await result.current.markAllAsRead();

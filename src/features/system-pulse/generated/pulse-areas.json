@@ -759,6 +759,10 @@
               "label": "Interaktionen erfassen (Anruf, Mail, Treffen)"
             },
             {
+              "id": "interaction-mention",
+              "label": "Erwähnung in Interaktion → Meldung im Mandanten des Vorgangs"
+            },
+            {
               "id": "draft-no-resubmission",
               "label": "Am Zug nur vorbereiten → keine Wiedervorlage"
             },

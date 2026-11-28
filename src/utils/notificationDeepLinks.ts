@@ -1,5 +1,5 @@
 import { annotationDocumentPath } from "@/features/annotations/mentions";
-import { buildAdminHref, buildQuickNoteHref } from "@/lib/appTargets";
+import { buildAdminHref, buildCaseItemHref, buildQuickNoteHref, buildSearchHref } from "@/lib/appTargets";
 import { knowledgeQuestionPath } from '@/features/knowledge/logic';
 import type { Notification, NotificationData } from '@/hooks/useNotifications';
 import { isLetterNotificationType } from '@/utils/letterNotificationTypes';
@@ -111,6 +111,16 @@ export const buildDeepLinkPath = (notification: Notification): string => {
     case 'note_follow_up':
     case 'quick_note_shared':
       return buildQuickNoteHref(getNotificationDataId(data, 'noteId'));
+
+    case 'case_interaction_mention': {
+      // Erwähnungen aus einer Vorgangs-Interaktion öffnen den Vorgang; nur ohne Vorgang
+      // bleibt der Sprung in die Fallakte.
+      const caseItemId = getNotificationDataId(data, 'caseItemId', 'case_item_id');
+      if (caseItemId) return buildCaseItemHref(caseItemId);
+
+      const caseFileId = getNotificationDataId(data, 'caseFileId', 'case_file_id');
+      return caseFileId ? buildSearchHref('caseFile', { id: caseFileId }) : '/mywork?tab=cases';
+    }
 
     case 'topic_mention':
       return buildQuickNoteHref(getNotificationDataId(data, 'note_id', 'noteId'));

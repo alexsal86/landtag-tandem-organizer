@@ -424,9 +424,9 @@ _Auto-generiert mit `npm run update:feature-catalog`. Nicht von Hand bearbeiten.
 | Tabelle | Bereiche |
 |---|---|
 | `tasks` | arbeitsbereich, aufgaben, automation, dokumente, entscheidungen, mitarbeit, organisation, schnittstellen, termine, vorgaenge, wissen |
+| `notifications` | arbeitsbereich, aufgaben, schnittstellen, termine, verwaltung, vorgaenge, wissen |
 | `case_items` | automation, mitarbeit, organisation, termine, verwaltung, vorgaenge |
 | `email_logs` | dokumente, entscheidungen, kommunikation, schnittstellen, termine, veranstaltungen |
-| `notifications` | arbeitsbereich, aufgaben, schnittstellen, termine, verwaltung, wissen |
 | `topics` | dokumente, kontakte, mitarbeit, organisation, vorgaenge, wissen |
 | `contacts` | arbeitsbereich, dokumente, kontakte, schnittstellen, verwaltung |
 | `appointments` | arbeitsbereich, schnittstellen, termine, vorgaenge |
@@ -472,6 +472,7 @@ _Auto-generiert mit `npm run update:feature-catalog`. Nicht von Hand bearbeiten.
 | `meetings` | organisation, termine |
 | `message_confirmations` | arbeitsbereich, kommunikation |
 | `news_articles` | kommunikation, verwaltung |
+| `notification_types` | arbeitsbereich, vorgaenge |
 | `parlis_ministry_lines` | organisation, vorgaenge |
 | `parlis_ministry_topics` | organisation, vorgaenge |
 | `party_associations` | kontakte, wahl |

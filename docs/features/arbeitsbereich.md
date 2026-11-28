@@ -397,7 +397,7 @@ Zeigt Vorschauen mit dem nächsten Termin samt Briefingstatus, einer offenen Auf
 - Keine.
 
 ### `notifications.inbox` — Benachrichtigungen lesen und als gelesen markieren
-Zeigt In-App-Benachrichtigungen, ungelesene Zähler und Deep-Links in den auslösenden Fachbereich; Lesen wird pro Nutzer persistiert.
+Zeigt In-App-Benachrichtigungen, ungelesene Zähler und Deep-Links in den auslösenden Fachbereich; Lesen wird pro Nutzer persistiert. Liste, Ungelesen-Zähler, Realtime-Kanal sowie Gelesen-Markieren und Löschen sind auf den aktiven Mandanten begrenzt; beim Mandantenwechsel werden sie geleert und neu geladen.
 
 - **Kategorie:** fachlich
 - **Implementierung:** implementiert
@@ -427,7 +427,7 @@ Zeigt In-App-Benachrichtigungen, ungelesene Zähler und Deep-Links in den auslö
 
 **Bekannte Einschränkungen**
 
-- Erzeugen, Gelesen-Markieren und Zurücksetzen laufen über die Inbox-Tabelle; die Zustellung je Fach-Trigger (Aufgaben, Termine, Nachrichten, Freigaben) sowie Push und Oberfläche prüft das Szenario nicht.
+- Erzeugen, Gelesen-Markieren und Zurücksetzen laufen über die Inbox-Tabelle; die Zustellung je Fach-Trigger (Aufgaben, Termine, Nachrichten, Freigaben) sowie Push und Oberfläche prüft das Szenario nicht. Die mandantenscharfe Begrenzung von Liste, Zähler und Realtime ist eine Client-Regel und wird dort nicht geprüft.
 
 **Offene Prüfpunkte**
 
@@ -546,7 +546,7 @@ Erfasst Notizen mit Priorität, Anheften, Verknüpfungen zu Entscheidungen und A
 
 - Das Szenario prüft den Lebenszyklus, nicht jede Teilen-Variante.
 - Die Meldungstypen note_follow_up und quick_note_shared werden je Mandant per Migration nachgezogen und für neue Mandanten per Tenant-Trigger angelegt; der Selbsttest prüft nur den aktuellen Mandanten.
-- Freigabe-Meldungen entstehen per Trigger auf quick_note_shares im Mandanten der Notiz; der Hinweis-Pfad für bloße Erwähnungen ohne Freigabezeile meldet weiterhin clientseitig.
+- Freigabe-Meldungen entstehen per Trigger auf quick_note_shares im Mandanten der Notiz. Erwähnungen in Vorgangs-Interaktionen meldet der Trigger auf case_item_interactions ebenfalls dort, wo der Vorgang liegt.
 
 **Offene Prüfpunkte**
 
