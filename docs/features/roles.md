@@ -6,7 +6,7 @@ Die Angaben sind deklarierte Mindestrollen. Die tatsächlich wirksame Berechtigu
 
 ## Funktionen je Rolle
 
-### `abgeordneter` — 185 Funktionen
+### `abgeordneter` — 186 Funktionen
 
 - `mywork.dashboard` — Meine Arbeit – Dashboard
 - `mywork.tabs` — Meine Arbeit – Bereichsnavigation und Einstellungen
@@ -61,6 +61,7 @@ Die Angaben sind deklarierte Mindestrollen. Die tatsächlich wirksame Berechtigu
 - `decisions.withdraw-vote` — Votum zurücknehmen
 - `decisions.change-vote` — Antwort ändern und Verlauf einsehen
 - `decisions.comments` — Kommentare und Reaktionen
+- `decisions.notification-digest` — Gebündelte Entscheidungs-Meldungen
 - `decisions.attachments` — Anhänge an Entscheidungen
 - `decisions.remind` — Offene Entscheidungen anmahnen
 - `decisions.email` — Entscheidungs-E-Mails
@@ -194,7 +195,7 @@ Die Angaben sind deklarierte Mindestrollen. Die tatsächlich wirksame Berechtigu
 - `knowledge.global-question` — Globale Wissensfrage aus jedem Bereich
 - `knowledge.persons` — Wissenspersonen und Zuständigkeit
 
-### `bueroleitung` — 230 Funktionen
+### `bueroleitung` — 231 Funktionen
 
 - `mywork.dashboard` — Meine Arbeit – Dashboard
 - `mywork.dashboard.today-priorities` — Heute zuerst
@@ -263,6 +264,7 @@ Die Angaben sind deklarierte Mindestrollen. Die tatsächlich wirksame Berechtigu
 - `decisions.withdraw-vote` — Votum zurücknehmen
 - `decisions.change-vote` — Antwort ändern und Verlauf einsehen
 - `decisions.comments` — Kommentare und Reaktionen
+- `decisions.notification-digest` — Gebündelte Entscheidungs-Meldungen
 - `decisions.attachments` — Anhänge an Entscheidungen
 - `decisions.remind` — Offene Entscheidungen anmahnen
 - `decisions.archive` — Entscheidungen archivieren
@@ -427,7 +429,7 @@ Die Angaben sind deklarierte Mindestrollen. Die tatsächlich wirksame Berechtigu
 - `knowledge.persons` — Wissenspersonen und Zuständigkeit
 - `knowledge.management` — Wissensverwaltung
 
-### `mitarbeiter` — 190 Funktionen
+### `mitarbeiter` — 191 Funktionen
 
 - `mywork.dashboard` — Meine Arbeit – Dashboard
 - `mywork.dashboard.today-priorities` — Heute zuerst
@@ -484,6 +486,7 @@ Die Angaben sind deklarierte Mindestrollen. Die tatsächlich wirksame Berechtigu
 - `decisions.withdraw-vote` — Votum zurücknehmen
 - `decisions.change-vote` — Antwort ändern und Verlauf einsehen
 - `decisions.comments` — Kommentare und Reaktionen
+- `decisions.notification-digest` — Gebündelte Entscheidungs-Meldungen
 - `decisions.attachments` — Anhänge an Entscheidungen
 - `decisions.email` — Entscheidungs-E-Mails
 - `redaktion.planner` — Social-Media-Planung
@@ -911,6 +914,7 @@ Die Angaben sind deklarierte Mindestrollen. Die tatsächlich wirksame Berechtigu
 | `decisions.create` | `abgeordneter`, `bueroleitung`, `mitarbeiter` |
 | `decisions.email` | `abgeordneter`, `bueroleitung`, `mitarbeiter` |
 | `decisions.matrix` | `system`, `abgeordneter` |
+| `decisions.notification-digest` | `abgeordneter`, `bueroleitung`, `mitarbeiter` |
 | `decisions.participants` | `oeffentlich`, `abgeordneter`, `bueroleitung`, `mitarbeiter` |
 | `decisions.remind` | `abgeordneter`, `bueroleitung` |
 | `decisions.vote` | `abgeordneter`, `bueroleitung`, `mitarbeiter` |

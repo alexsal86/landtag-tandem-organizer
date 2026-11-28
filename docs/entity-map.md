@@ -2,13 +2,13 @@
 
 _Auto-generiert mit `npm run update:feature-catalog` aus den Fremdschlüsseln in `src/integrations/supabase/types.ts`. Nicht von Hand bearbeiten._
 
-364 Tabellen, 505 Fremdschlüsselverweise. Die Karte zeigt, welche Tabelle auf welche zeigt; fachliche Bedeutung steht im [Funktionskatalog](./features/README.md).
+365 Tabellen, 506 Fremdschlüsselverweise. Die Karte zeigt, welche Tabelle auf welche zeigt; fachliche Bedeutung steht im [Funktionskatalog](./features/README.md).
 
 ## Zentrale Tabellen
 
 Tabellen mit mindestens drei eingehenden Verweisen.
 
-### `tenants` — 146 eingehende Verweise
+### `tenants` — 147 eingehende Verweise
 
 | Von | Spalte |
 |---|---|
@@ -144,6 +144,7 @@ Tabellen mit mindestens drei eingehenden Verweisen.
 | `tenant_collaborations` | `tenant_a_id` |
 | `tenant_collaborations` | `tenant_b_id` |
 | `tenant_feature_flags` | `tenant_id` |
+| `tenant_notification_settings` | `tenant_id` |
 | `tenant_onboarding_checklist_items` | `tenant_id` |
 | `tenant_onboarding_slides` | `tenant_id` |
 | `time_entries` | `tenant_id` |
@@ -1109,6 +1110,7 @@ Tabellen mit mindestens drei eingehenden Verweisen.
 | `tenant_collaborations` | `tenant_a_id` | `tenants` |
 | `tenant_collaborations` | `tenant_b_id` | `tenants` |
 | `tenant_feature_flags` | `tenant_id` | `tenants` |
+| `tenant_notification_settings` | `tenant_id` | `tenants` |
 | `tenant_onboarding_checklist_items` | `tenant_id` | `tenants` |
 | `tenant_onboarding_slides` | `tenant_id` | `tenants` |
 | `time_entries` | `tenant_id` | `tenants` |

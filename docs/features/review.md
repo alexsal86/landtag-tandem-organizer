@@ -300,7 +300,7 @@ Eindeutige Fehler werden im CI-Lauf ausgegeben und brechen die Prüfung ab; sie 
 - `events.legacy-rsvp` — Legacy-Einladungslinks (veraltet)
 - `cases.legacy-routes` — Legacy-Vorgangsrouten (veraltet)
 
-## Funktionen mit Einschränkungen oder offenen Punkten (116)
+## Funktionen mit Einschränkungen oder offenen Punkten (117)
 
 ### `mywork.dashboard`
 
@@ -478,6 +478,10 @@ Eindeutige Fehler werden im CI-Lauf ausgegeben und brechen die Prüfung ab; sie 
 ### `decisions.comments`
 
 - Geprüft sind Anlegen, Antwort, Reaktion samt Emoji-Allowlist, Entfernen, die Fünf-Minuten-Sperre samt Ablauf und der Ausschluss von Nicht-Mitgliedern. Das Bearbeiten eigener Kommentare und die Sichtbarkeitsgrenze für Nicht-Beteiligte haben keinen Schritt.
+
+### `decisions.notification-digest`
+
+- Nicht geprüft: echter Cron-Lauf, tatsächlicher Push-Versand, parallele Flush-Läufe und eine Oberfläche für die Mandanteneinstellung. Die Einstellung ist derzeit nur über set_decision_notification_timing erreichbar.
 
 ### `decisions.attachments`
 

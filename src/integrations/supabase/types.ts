@@ -17031,6 +17031,38 @@ export type Database = {
           },
         ]
       }
+      tenant_notification_settings: {
+        Row: {
+          decision_digest_minutes: number
+          decision_reaction_window_minutes: number
+          tenant_id: string
+          updated_at: string
+          updated_by: string | null
+        }
+        Insert: {
+          decision_digest_minutes?: number
+          decision_reaction_window_minutes?: number
+          tenant_id: string
+          updated_at?: string
+          updated_by?: string | null
+        }
+        Update: {
+          decision_digest_minutes?: number
+          decision_reaction_window_minutes?: number
+          tenant_id?: string
+          updated_at?: string
+          updated_by?: string | null
+        }
+        Relationships: [
+          {
+            foreignKeyName: "tenant_notification_settings_tenant_id_fkey"
+            columns: ["tenant_id"]
+            isOneToOne: true
+            referencedRelation: "tenants"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
       tenant_onboarding_checklist_items: {
         Row: {
           active: boolean
@@ -19244,7 +19276,13 @@ export type Database = {
         }
         Returns: Json
       }
+      decision_digest_selftest: { Args: { p_tenant: string }; Returns: Json }
       decision_invitation_dispatch_selftest: { Args: { p_tenant: string }; Returns: Json }
+      flush_decision_notification_digests: { Args: never; Returns: number }
+      set_decision_notification_timing: {
+        Args: { _tenant_id: string; _reaction_minutes: number; _digest_minutes: number }
+        Returns: Json
+      }
       decision_lifecycle_notification_selftest: { Args: { p_tenant: string }; Returns: Json }
       request_decision_email_invites: { Args: { _decision_id: string }; Returns: boolean }
       decision_notification_selftest: { Args: { p_tenant: string }; Returns: Json }

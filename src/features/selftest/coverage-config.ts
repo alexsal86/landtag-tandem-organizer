@@ -62,6 +62,7 @@ export const COVERAGE_EXCEPTIONS: CoverageExceptionGroup[] = [
       "appointment_locations",
       "appointment_statuses",
       "calendar_sync_settings",
+      "tenant_notification_settings",
       "case_file_processing_statuses",
       "case_file_types",
       "case_item_categories",

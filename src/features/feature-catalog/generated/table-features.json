@@ -2776,6 +2776,11 @@
       "area": "vorgaenge"
     },
     {
+      "id": "decisions.notification-digest",
+      "name": "Gebündelte Entscheidungs-Meldungen",
+      "area": "entscheidungen"
+    },
+    {
       "id": "notifications.inbox",
       "name": "Benachrichtigungen lesen und als gelesen markieren",
       "area": "arbeitsbereich"
@@ -2796,6 +2801,11 @@
       "id": "cases.interactions",
       "name": "Kontakte und Interaktionen am Vorgang",
       "area": "vorgaenge"
+    },
+    {
+      "id": "decisions.notification-digest",
+      "name": "Gebündelte Entscheidungs-Meldungen",
+      "area": "entscheidungen"
     },
     {
       "id": "integration.push",
@@ -3912,6 +3922,13 @@
       "id": "admin.permissions-explorer",
       "name": "Rechte-Explorer und Rechteerklärung",
       "area": "verwaltung"
+    }
+  ],
+  "tenant_notification_settings": [
+    {
+      "id": "decisions.notification-digest",
+      "name": "Gebündelte Entscheidungs-Meldungen",
+      "area": "entscheidungen"
     }
   ],
   "tenant_onboarding_checklist_items": [

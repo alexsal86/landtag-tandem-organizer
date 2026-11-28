@@ -83,6 +83,7 @@ Die Spalten zählen **zugeordnete** Prüfungen, nicht bestandene Läufe. „Erge
 | `decisions.email` | entscheidungen | integration | implementiert | rollenabhängig | kein Test | nicht-ausgefuehrt | 0 | 0 | 0 | 0 | nein |
 | `decisions.remind` | entscheidungen | fachlich | implementiert | UI | teilweise | nicht-ausgefuehrt | 1 | 0 | 0 | 0 | nein |
 | `decisions.matrix` | entscheidungen | integration | implementiert | systemseitig | kein Test | nicht-ausgefuehrt | 0 | 0 | 0 | 0 | nein |
+| `decisions.notification-digest` | entscheidungen | fachlich | implementiert | rollenabhängig | Selbsttest | nicht-ausgefuehrt | 1 | 0 | 0 | 0 | ja |
 | `decisions.participants` | entscheidungen | fachlich | implementiert | rollenabhängig | Selbsttest | nicht-ausgefuehrt | 1 | 0 | 0 | 0 | nein |
 | `chat.messages` | kommunikation | fachlich | implementiert | UI | kein Test | nicht-ausgefuehrt | 0 | 0 | 0 | 0 | nein |
 | `chat.matrix-bot` | kommunikation | integration | implementiert | systemseitig | kein Test | nicht-ausgefuehrt | 0 | 0 | 0 | 0 | nein |

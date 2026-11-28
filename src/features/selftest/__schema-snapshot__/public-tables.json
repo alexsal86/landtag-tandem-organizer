@@ -334,6 +334,7 @@
   "tenant_collaborations",
   "tenant_feature_flags",
   "tenant_onboarding_checklist_items",
+  "tenant_notification_settings",
   "tenant_onboarding_slides",
   "tenants",
   "time_entries",

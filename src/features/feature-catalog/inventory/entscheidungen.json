@@ -268,6 +268,47 @@
       ]
     },
     {
+      "id": "decisions.notification-digest",
+      "subarea": "Meldungen",
+      "name": "Gebündelte Entscheidungs-Meldungen",
+      "description": "Fasst offene Kommentar-, Antwort- und Reaktionsmeldungen je Empfänger und Entscheidung nach einem mandantenweit konfigurierbaren Intervall zu einer Digest-Meldung zusammen. Ersetzte Einzelmeldungen werden als gelesen und ersetzt markiert; Push geht nur für den Digest raus. Das Reaktionsfenster ist ebenfalls je Mandant einstellbar.",
+      "category": "fachlich",
+      "implementationStatus": "implementiert",
+      "integrationStatus": "rollenabhaengig",
+      "coverage": "selftest",
+      "testResult": "nicht-ausgefuehrt",
+      "evidence": [
+        "supabase/migrations/20261128219000_decision_notification_digest.sql",
+        "supabase/migrations/20261128220000_decision_notification_digest_selftest.sql",
+        "src/features/selftest/scenarios/decision-lifecycle.ts"
+      ],
+      "rpcs": [
+        "flush_decision_notification_digests",
+        "set_decision_notification_timing",
+        "decision_digest_selftest"
+      ],
+      "tables": [
+        "notifications",
+        "notification_types",
+        "tenant_notification_settings"
+      ],
+      "roles": [
+        "abgeordneter",
+        "bueroleitung",
+        "mitarbeiter"
+      ],
+      "dependsOn": ["decisions.comments"],
+      "scenarios": [
+        "decision-lifecycle"
+      ],
+      "docs": [
+        "docs/decision-notification-digest.md"
+      ],
+      "limitations": [
+        "Nicht geprüft: echter Cron-Lauf, tatsächlicher Push-Versand, parallele Flush-Läufe und eine Oberfläche für die Mandanteneinstellung. Die Einstellung ist derzeit nur über set_decision_notification_timing erreichbar."
+      ]
+    },
+    {
       "id": "decisions.attachments",
       "subarea": "Anlegen",
       "name": "Anhänge an Entscheidungen",

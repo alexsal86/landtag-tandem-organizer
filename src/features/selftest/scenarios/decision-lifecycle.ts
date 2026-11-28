@@ -448,6 +448,21 @@ export const decisionLifecycleScenario: TestScenario = {
       },
     },
     {
+      id: "digest", label: "Meldungen werden gebündelt und nur der Digest wird gepusht", kind: "workflow",
+      run: async (ctx) => {
+        const { data, error } = await supabase.rpc("decision_digest_selftest", { p_tenant: ctx.tenantId });
+        if (error) return { ok: false, message: describeError(error) };
+        const report = data as { ok?: boolean; message?: string; skipped?: string; checks?: Record<string, unknown> } | null;
+        return {
+          ok: report?.ok === true,
+          message: report?.ok === true
+            ? "Offene Kommentar- und Reaktionsmeldungen wurden zu einem Digest gebündelt, die Einzelmeldungen als ersetzt markiert und das Reaktionsfenster aus der Mandanteneinstellung gelesen."
+            : (report?.skipped ?? report?.message ?? "Digest-Selbsttest fehlgeschlagen."),
+          details: report?.checks,
+        };
+      },
+    },
+    {
       id: "set-open",
       label: "Status auf 'open'",
       run: async (ctx) => {

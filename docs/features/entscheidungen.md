@@ -6,8 +6,8 @@ _Auto-generiert mit `npm run update:feature-catalog` aus dem zentralen Funktions
 
 ## Kennzahlen
 
-- Funktionen: **11** in **7** Unterbereichen
-- implementiert: **11**, teilweise: **0**, deaktiviert: **0**, potenziell verwaist: **0**
+- Funktionen: **12** in **8** Unterbereichen
+- implementiert: **12**, teilweise: **0**, deaktiviert: **0**, potenziell verwaist: **0**
 - ohne zugeordneten Test: **3**
 - ohne Dokumentationsverweis: **9**
 
@@ -25,6 +25,7 @@ _Auto-generiert mit `npm run update:feature-catalog` aus dem zentralen Funktions
 | `decisions.email` Entscheidungs-E-Mails | Benachrichtigung | integration | implementiert | rollenabhängig | kein Test |
 | `decisions.remind` Offene Entscheidungen anmahnen | Erinnerungen | fachlich | implementiert | UI | teilweise |
 | `decisions.matrix` Entscheidungen über Matrix beantworten | Integration | integration | implementiert | systemseitig | kein Test |
+| `decisions.notification-digest` Gebündelte Entscheidungs-Meldungen | Meldungen | fachlich | implementiert | rollenabhängig | Selbsttest |
 | `decisions.participants` Teilnehmende und Antwort-Token verwalten | Teilnehmende | fachlich | implementiert | rollenabhängig | Selbsttest |
 
 ## Unterbereiche
@@ -32,6 +33,7 @@ _Auto-generiert mit `npm run update:feature-catalog` aus dem zentralen Funktions
 - Anlegen
 - Teilnehmende
 - Abstimmung
+- Meldungen
 - Erinnerungen
 - Archiv
 - Benachrichtigung
@@ -43,7 +45,7 @@ _Auto-generiert mit `npm run update:feature-catalog` aus dem zentralen Funktions
 
 ## Datenbanktabellen
 
-`dashboard_decision_nudges`, `decision_archive_settings`, `decision_email_templates`, `decision_invitation_dispatches`, `decision_matrix_messages`, `email_logs`, `task_decision_attachments`, `task_decision_comment_reactions`, `task_decision_comments`, `task_decision_participants`, `task_decision_response_history`, `task_decision_responses`, `task_decision_topics`, `task_decision_vote_effects`, `task_decisions`, `tasks`
+`dashboard_decision_nudges`, `decision_archive_settings`, `decision_email_templates`, `decision_invitation_dispatches`, `decision_matrix_messages`, `email_logs`, `notification_types`, `notifications`, `task_decision_attachments`, `task_decision_comment_reactions`, `task_decision_comments`, `task_decision_participants`, `task_decision_response_history`, `task_decision_responses`, `task_decision_topics`, `task_decision_vote_effects`, `task_decisions`, `tasks`, `tenant_notification_settings`
 
 ## Selbsttest-Szenarien
 
@@ -71,6 +73,7 @@ Diese Schritte führen die Szenarien aus; „letzter Lauf“ stammt aus `src/fea
 | `decision-lifecycle` | `notifications` | Meldungen entstehen im Mandanten der Entscheidung | workflow | — |
 | `decision-lifecycle` | `invitation-dispatch` | Einladungsversand wird serverseitig eingestellt und übernommen | workflow | — |
 | `decision-lifecycle` | `lifecycle-notifications` | Frist, Rückzug, Ergebnis und direkte Antwort melden | workflow | — |
+| `decision-lifecycle` | `digest` | Meldungen werden gebündelt und nur der Digest wird gepusht | workflow | — |
 | `decision-lifecycle` | `set-open` | Status auf 'open' | db | — |
 | `decision-lifecycle` | `archive` | Archivieren | db | — |
 | `decision-lifecycle` | `verify` | Verifikation | db | — |
@@ -337,6 +340,43 @@ Ermöglicht Kommentare zu Entscheidungen, Antworten auf Kommentare und Emoji-Rea
 **Bekannte Einschränkungen**
 
 - Geprüft sind Anlegen, Antwort, Reaktion samt Emoji-Allowlist, Entfernen, die Fünf-Minuten-Sperre samt Ablauf und der Ausschluss von Nicht-Mitgliedern. Das Bearbeiten eigener Kommentare und die Sichtbarkeitsgrenze für Nicht-Beteiligte haben keinen Schritt.
+
+**Offene Prüfpunkte**
+
+- Keine.
+
+### `decisions.notification-digest` — Gebündelte Entscheidungs-Meldungen
+Fasst offene Kommentar-, Antwort- und Reaktionsmeldungen je Empfänger und Entscheidung nach einem mandantenweit konfigurierbaren Intervall zu einer Digest-Meldung zusammen. Ersetzte Einzelmeldungen werden als gelesen und ersetzt markiert; Push geht nur für den Digest raus. Das Reaktionsfenster ist ebenfalls je Mandant einstellbar.
+
+- **Kategorie:** fachlich
+- **Implementierung:** implementiert
+- **Einbindung:** rollenabhängig
+- **Testabdeckung:** Selbsttest
+- **Letztes Testergebnis:** nicht-ausgefuehrt (kein Laufnachweis importiert; nicht aus der Existenz einer Testdatei abgeleitet)
+- **Rollen:** `abgeordneter`, `bueroleitung`, `mitarbeiter`
+- **Routen:** —
+- **Frontend-Komponenten:** —
+- **Services:** —
+- **Hooks:** —
+- **Edge Functions:** —
+- **Datenbankfunktionen:** `flush_decision_notification_digests`, `set_decision_notification_timing`, `decision_digest_selftest`
+- **Tabellen:** `notifications`, `notification_types`, `tenant_notification_settings`
+- **Abhängigkeiten:** `decisions.comments`
+- **Selbsttests:** `decision-lifecycle`
+- **Unit-Tests:** —
+- **Integrationstests:** —
+- **Browser-Tests:** —
+- **Dokumentation:** `docs/decision-notification-digest.md`
+
+**Nachweise im Quellcode**
+
+- supabase/migrations/20261128219000_decision_notification_digest.sql
+- supabase/migrations/20261128220000_decision_notification_digest_selftest.sql
+- src/features/selftest/scenarios/decision-lifecycle.ts
+
+**Bekannte Einschränkungen**
+
+- Nicht geprüft: echter Cron-Lauf, tatsächlicher Push-Versand, parallele Flush-Läufe und eine Oberfläche für die Mandanteneinstellung. Die Einstellung ist derzeit nur über set_decision_notification_timing erreichbar.
 
 **Offene Prüfpunkte**
 
