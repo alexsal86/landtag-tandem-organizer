@@ -107,7 +107,7 @@ Eindeutige Fehler werden im CI-Lauf ausgegeben und brechen die Prüfung ab; sie 
 - `knowledge.collaboration` — Kollaborative Wissensbearbeitung
 - `knowledge.management` — Wissensverwaltung
 
-## Funktionen ohne Dokumentationsverweis (174)
+## Funktionen ohne Dokumentationsverweis (175)
 
 - `mywork.dashboard.today-priorities` — Heute zuerst
 - `mywork.tabs` — Meine Arbeit – Bereichsnavigation und Einstellungen
@@ -118,6 +118,7 @@ Eindeutige Fehler werden im CI-Lauf ausgegeben und brechen die Prüfung ab; sie 
 - `quicknotes.offline` — Offline-Synchronisation für Schnellnotizen
 - `quicknotes.checklists` — Checklisten in Schnellnotizen
 - `quicknotes.drag-sort` — Notizen per Drag-and-drop sortieren
+- `quicknotes.page` — Eigene Notizseite mit Deep Links
 - `profile.edit` — Eigenes Profil bearbeiten
 - `tasks.edit` — Aufgabe bearbeiten
 - `tasks.assign` — Aufgabe zuweisen
@@ -297,7 +298,7 @@ Eindeutige Fehler werden im CI-Lauf ausgegeben und brechen die Prüfung ab; sie 
 - `events.legacy-rsvp` — Legacy-Einladungslinks (veraltet)
 - `cases.legacy-routes` — Legacy-Vorgangsrouten (veraltet)
 
-## Funktionen mit Einschränkungen oder offenen Punkten (113)
+## Funktionen mit Einschränkungen oder offenen Punkten (114)
 
 ### `mywork.dashboard`
 
@@ -338,10 +339,16 @@ Eindeutige Fehler werden im CI-Lauf ausgegeben und brechen die Prüfung ab; sie 
 ### `quicknotes.manage`
 
 - Das Szenario prüft den Lebenszyklus, nicht jede Teilen-Variante.
+- Die Meldungstypen note_follow_up und quick_note_shared werden je Mandant per Migration nachgezogen und für neue Mandanten per Tenant-Trigger angelegt; der Selbsttest prüft nur den aktuellen Mandanten.
+- Freigabe-Meldungen entstehen per Trigger auf quick_note_shares im Mandanten der Notiz; der Hinweis-Pfad für bloße Erwähnungen ohne Freigabezeile meldet weiterhin clientseitig.
 
 ### `quicknotes.offline`
 
 - Offline-Verhalten ist nur über Unit-Tests belegt; ein echter Browser-Offline-Test existiert nicht.
+
+### `quicknotes.page`
+
+- Die Seite teilt Erfassung und Liste mit dem Reiter in Meine Arbeit; ein eigener Layout-Selbsttest existiert nicht.
 
 ### `platform.auth`
 

@@ -95,6 +95,7 @@ import { notify } from "@/lib/notify";
 // Available pages for quick access
 const availableQuickPages: QuickAccessPage[] = [
   { id: "mywork", label: "Meine Arbeit", icon: "NotebookTabs", route: "/mywork" },
+  { id: "notes", label: "Notizen", icon: "StickyNote", route: "/notes" },
   { id: "calendar", label: "Kalender", icon: "Calendar", route: "/calendar" },
   { id: "tasks", label: "Aufgaben", icon: "CheckSquare", route: "/tasks" },
   { id: "contacts", label: "Kontakte", icon: "Users", route: "/contacts" },

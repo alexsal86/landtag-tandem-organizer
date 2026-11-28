@@ -1,5 +1,5 @@
 import { annotationDocumentPath } from "@/features/annotations/mentions";
-import { buildAdminHref } from "@/lib/appTargets";
+import { buildAdminHref, buildQuickNoteHref } from "@/lib/appTargets";
 import { knowledgeQuestionPath } from '@/features/knowledge/logic';
 import type { Notification, NotificationData } from '@/hooks/useNotifications';
 import { isLetterNotificationType } from '@/utils/letterNotificationTypes';
@@ -110,10 +110,10 @@ export const buildDeepLinkPath = (notification: Notification): string => {
 
     case 'note_follow_up':
     case 'quick_note_shared':
-      return buildHighlightPath('/mywork?tab=notes', getNotificationDataId(data, 'noteId'));
+      return buildQuickNoteHref(getNotificationDataId(data, 'noteId'));
 
     case 'topic_mention':
-      return buildHighlightPath('/mywork?tab=notes', getNotificationDataId(data, 'note_id', 'noteId'));
+      return buildQuickNoteHref(getNotificationDataId(data, 'note_id', 'noteId'));
 
     case 'appointment_feedback': {
       if (data.office_debrief_question === true) return '/mywork?tab=dashboard';

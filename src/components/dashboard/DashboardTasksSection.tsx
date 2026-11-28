@@ -7,6 +7,7 @@ import { DeadlineReviewDialog } from './DeadlineReviewDialog';
 import { DeadlineSnoozeButton } from './DeadlineSnoozeButton';
 import { WidgetListFooter } from '@/components/ui-patterns';
 import { berlinDaysSince } from '@/utils/berlinDate';
+import { buildQuickNoteHref } from '@/lib/appTargets';
 import {
   formatDeadlineDateLabel,
   getDeadlineContextLabel,
@@ -17,7 +18,7 @@ import {
 
 const TYPE_CONFIG = {
   task: { label: 'Aufgabe', tabBase: '/mywork?tab=tasks', Icon: ListTodo },
-  note: { label: 'Notiz', tabBase: '/mywork?tab=capture', Icon: StickyNote },
+  note: { label: 'Notiz', tabBase: '/notes', Icon: StickyNote },
   case: { label: 'Vorgang', tabBase: '/mywork?tab=cases', Icon: BriefcaseBusiness },
   caseAction: { label: 'Nächster Schritt', tabBase: '/mywork?tab=cases', Icon: BriefcaseBusiness },
   decision: { label: 'Entscheidung', tabBase: '/mywork?tab=decisions', Icon: ClipboardCheck },
@@ -94,7 +95,7 @@ export const DashboardTasksSection = ({ items, grouped }: DashboardTasksSectionP
           <GripVertical className="h-4 w-4 shrink-0" />
         </span>
 
-        <button type="button" className="flex-1 min-w-0 text-left rounded focus-visible:outline-primary" onClick={() => navigate(item.type === 'eventPlanning' && item.planningId ? `${cfg.tabBase}/${item.planningId}` : `${cfg.tabBase}&highlight=${item.id}`)} title={`${cfg.label} öffnen`}>
+        <button type="button" className="flex-1 min-w-0 text-left rounded focus-visible:outline-primary" onClick={() => navigate(item.type === 'note' ? buildQuickNoteHref(item.id) : item.type === 'eventPlanning' && item.planningId ? `${cfg.tabBase}/${item.planningId}` : `${cfg.tabBase}&highlight=${item.id}`)} title={`${cfg.label} öffnen`}>
           <div className="text-body font-medium text-foreground truncate">{item.title}</div>
           <div className="flex items-center gap-1 text-caption text-gray-500 dark:text-gray-400 tabular-nums mt-1">
             <cfg.Icon className="h-3.5 w-3.5 shrink-0" aria-hidden="true" /> {contextLabel} · {dateLabel}

@@ -6,10 +6,10 @@ _Auto-generiert mit `npm run update:feature-catalog` aus dem zentralen Funktions
 
 ## Kennzahlen
 
-- Funktionen: **15** in **8** Unterbereichen
-- implementiert: **14**, teilweise: **1**, deaktiviert: **0**, potenziell verwaist: **0**
+- Funktionen: **16** in **8** Unterbereichen
+- implementiert: **15**, teilweise: **1**, deaktiviert: **0**, potenziell verwaist: **0**
 - ohne zugeordneten Test: **7**
-- ohne Dokumentationsverweis: **10**
+- ohne Dokumentationsverweis: **11**
 
 ## Funktionen
 
@@ -25,6 +25,7 @@ _Auto-generiert mit `npm run update:feature-catalog` aus dem zentralen Funktions
 | `mywork.navigation-previews` Vorschauen für Kalender, Aufgaben, Akten, Chat und Kontakte | Navigation | fachlich | implementiert | UI | kein Test |
 | `profile.edit` Eigenes Profil bearbeiten | Profil | fachlich | implementiert | UI | kein Test |
 | `quicknotes.checklists` Checklisten in Schnellnotizen | Schnellnotizen | fachlich | implementiert | UI | Unit-Test |
+| `quicknotes.page` Eigene Notizseite mit Deep Links | Schnellnotizen | fachlich | implementiert | UI | Selbsttest |
 | `quicknotes.drag-sort` Notizen per Drag-and-drop sortieren | Schnellnotizen | fachlich | implementiert | UI | Unit-Test |
 | `quicknotes.offline` Offline-Synchronisation für Schnellnotizen | Schnellnotizen | fachlich | implementiert | UI | Unit-Test |
 | `quicknotes.manage` Schnellnotizen anlegen, bearbeiten und verlinken | Schnellnotizen | fachlich | implementiert | UI | Selbsttest |
@@ -107,6 +108,9 @@ Diese Schritte führen die Szenarien aus; „letzter Lauf“ stammt aus `src/fea
 | `notification-inbox` | `reset-unread` | Benachrichtigung wieder auf ungelesen zurücksetzen | db | — |
 | `notification-inbox` | `access-boundary` | Fremde Benachrichtigungen bleiben unlesbar und unverändert | db | — |
 | `quick-note-lifecycle` | `dictation-commands` | Notizen: Diktatbefehle und Rechtszitate erkennen | logic | — |
+| `quick-note-lifecycle` | `note-deep-links` | Notizen: Deep Links zeigen auf die eigene Notizseite | logic | — |
+| `quick-note-lifecycle` | `notification-types` | Notiz-Meldungstypen sind für den Mandanten geseedet | db | — |
+| `quick-note-lifecycle` | `share-notification-tenant` | Notiz-Freigabe meldet im Mandanten der Notiz | db | — |
 | `quick-note-lifecycle` | `create` | Notiz mit Priorität, Farbe und Schlagworten anlegen | db | — |
 | `quick-note-lifecycle` | `pin` | Anheften + Priorität erhöhen | db | — |
 | `quick-note-lifecycle` | `to-task` | Aus Notiz eine Aufgabe machen (verknüpft) | db | — |
@@ -519,8 +523,8 @@ Erfasst Notizen mit Priorität, Anheften, Verknüpfungen zu Entscheidungen und A
 - **Services:** —
 - **Hooks:** `src/features/quick-notes/useQuickNoteActions.ts`, `src/features/quick-notes/useQuickNoteEditor.ts`, `src/features/quick-notes/useQuickNoteLinks.ts`, `src/features/quick-notes/useQuickNoteFollowUps.ts`, `src/features/quick-notes/useQuickNotesData.ts`, `supabase/migrations/20261125140000_topic_mention_selftest.sql`
 - **Edge Functions:** —
-- **Datenbankfunktionen:** `save_quick_note`, `delete_quick_note_with_links`, `list_quick_notes`, `quick_note_access`, `create_note_work`, `quick_note_member`, `quick_note_owned`, `topic_mention_selftest`
-- **Tabellen:** `quick_notes`, `quick_note_shares`, `quick_note_global_shares`, `quick_note_versions`, `quick_note_write_receipts`
+- **Datenbankfunktionen:** `save_quick_note`, `delete_quick_note_with_links`, `list_quick_notes`, `quick_note_access`, `create_note_work`, `quick_note_member`, `quick_note_owned`, `topic_mention_selftest`, `quick_note_share_notification_selftest`
+- **Tabellen:** `quick_notes`, `quick_note_shares`, `quick_note_global_shares`, `quick_note_versions`, `quick_note_write_receipts`, `notification_types`
 - **Abhängigkeiten:** —
 - **Selbsttests:** `quick-note-lifecycle`
 - **Unit-Tests:** `src/features/quick-notes/repository.test.ts`
@@ -533,10 +537,16 @@ Erfasst Notizen mit Priorität, Anheften, Verknüpfungen zu Entscheidungen und A
 - src/features/quick-notes/useQuickNoteActions.ts
 - src/features/quick-notes/useQuickNoteEditor.ts
 - src/components/shared/QuickNotesList.tsx
+- supabase/functions/_shared/tenant-seed.ts
+- supabase/migrations/20261128160000_quick_note_notification_types.sql
+- src/utils/shareNotifications.ts
+- supabase/migrations/20261128170000_quick_note_share_notification_tenant.sql
 
 **Bekannte Einschränkungen**
 
 - Das Szenario prüft den Lebenszyklus, nicht jede Teilen-Variante.
+- Die Meldungstypen note_follow_up und quick_note_shared werden je Mandant per Migration nachgezogen und für neue Mandanten per Tenant-Trigger angelegt; der Selbsttest prüft nur den aktuellen Mandanten.
+- Freigabe-Meldungen entstehen per Trigger auf quick_note_shares im Mandanten der Notiz; der Hinweis-Pfad für bloße Erwähnungen ohne Freigabezeile meldet weiterhin clientseitig.
 
 **Offene Prüfpunkte**
 
@@ -647,6 +657,44 @@ Ordnet angeheftete Notizen per Ziehen neu und persistiert die Reihenfolge.
 **Bekannte Einschränkungen**
 
 - Keine.
+
+**Offene Prüfpunkte**
+
+- Keine.
+
+### `quicknotes.page` — Eigene Notizseite mit Deep Links
+Öffnet Schnellnotizen unter /notes mit Erfassung, Filtern, Archiv und Hervorhebung der verlinkten Notiz. Benachrichtigungen, Tageszettel und Suche verlinken dorthin; der Quick-Notes-Reiter in Meine Arbeit bleibt als eigener Einstieg mit unveränderter Oberfläche bestehen.
+
+- **Kategorie:** fachlich
+- **Implementierung:** implementiert
+- **Einbindung:** UI
+- **Testabdeckung:** Selbsttest
+- **Letztes Testergebnis:** nicht-ausgefuehrt (kein Laufnachweis importiert; nicht aus der Existenz einer Testdatei abgeleitet)
+- **Rollen:** `abgeordneter`, `bueroleitung`, `mitarbeiter`, `praktikant`
+- **Routen:** `/notes`
+- **Frontend-Komponenten:** `src/pages/QuickNotes.tsx`, `src/features/quick-notes/components/QuickNotesWorkspace.tsx`
+- **Services:** —
+- **Hooks:** `src/utils/notificationDeepLinks.ts`
+- **Edge Functions:** —
+- **Datenbankfunktionen:** —
+- **Tabellen:** —
+- **Abhängigkeiten:** `quicknotes.manage`
+- **Selbsttests:** `quick-note-lifecycle`
+- **Unit-Tests:** —
+- **Integrationstests:** —
+- **Browser-Tests:** —
+- **Dokumentation:** —
+
+**Nachweise im Quellcode**
+
+- src/pages/QuickNotes.tsx
+- src/features/quick-notes/components/QuickNotesWorkspace.tsx
+- src/utils/notificationDeepLinks.ts
+- src/lib/appTargets.ts
+
+**Bekannte Einschränkungen**
+
+- Die Seite teilt Erfassung und Liste mit dem Reiter in Meine Arbeit; ein eigener Layout-Selbsttest existiert nicht.
 
 **Offene Prüfpunkte**
 

@@ -899,12 +899,25 @@
             "task_decision_participants"
           ],
           "features": [
-            "quicknotes.manage"
+            "quicknotes.manage",
+            "quicknotes.page"
           ],
           "steps": [
             {
               "id": "dictation-commands",
               "label": "Notizen: Diktatbefehle und Rechtszitate erkennen"
+            },
+            {
+              "id": "note-deep-links",
+              "label": "Notizen: Deep Links zeigen auf die eigene Notizseite"
+            },
+            {
+              "id": "notification-types",
+              "label": "Notiz-Meldungstypen sind für den Mandanten geseedet"
+            },
+            {
+              "id": "share-notification-tenant",
+              "label": "Notiz-Freigabe meldet im Mandanten der Notiz"
             },
             {
               "id": "create",

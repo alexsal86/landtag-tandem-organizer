@@ -14,6 +14,7 @@ import {
   Vote,
   FileText,
   Calculator,
+  StickyNote,
 } from "lucide-react";
 
 export interface NavSubItem {
@@ -40,6 +41,12 @@ export const navigationGroups: NavGroup[] = [
     label: "Meine Arbeit",
     icon: NotebookTabs,
     route: "/mywork"
+  },
+  {
+    id: "notes",
+    label: "Notizen",
+    icon: StickyNote,
+    route: "/notes"
   },
   {
     id: "communication",

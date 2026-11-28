@@ -1,8 +1,7 @@
 import { DashboardDaylight } from "./DashboardDaylight";
 import { useWorkspaceView } from "@/contexts/WorkspaceViewContext";
-import { useState, Suspense } from "react";
+import { Suspense } from "react";
 import { lazyWithRetry } from "@/lib/lazyWithRetry";
-import { useNavigate } from "react-router-dom";
 
 import { Button } from "@/components/ui/button";
 import { Alert, AlertDescription } from "@/components/ui/alert";
@@ -27,8 +26,6 @@ import { trackPageVisit } from "@/hooks/useRecentlyVisited";
 import { MY_WORK_TABS } from "@/components/my-work/myWorkTabs";
 import { OnboardingChecklistCard } from "@/components/onboarding/OnboardingChecklistCard";
 
-const MyWorkQuickCapture = lazyWithRetry(() => import("@/components/my-work/MyWorkQuickCapture").then(m => ({ default: m.MyWorkQuickCapture })));
-const MyWorkNotesList = lazyWithRetry(() => import("@/components/my-work/MyWorkNotesList").then(m => ({ default: m.MyWorkNotesList })));
 const MyWorkTasksTab = lazyWithRetry(() => import("@/components/my-work/MyWorkTasksTab").then(m => ({ default: m.MyWorkTasksTab })));
 const MyWorkDecisionsTab = lazyWithRetry(() => import("@/components/my-work/MyWorkDecisionsTab").then(m => ({ default: m.MyWorkDecisionsTab })));
 const MyWorkCasesWorkspace = lazyWithRetry(() => import("@/components/my-work/MyWorkCasesWorkspace").then(m => ({ default: m.MyWorkCasesWorkspace })));
@@ -39,11 +36,10 @@ const MyWorkTimeTrackingTab = lazyWithRetry(() => import("@/components/my-work/M
 const MyWorkAppointmentFeedbackTab = lazyWithRetry(() => import("@/components/my-work/MyWorkAppointmentFeedbackTab").then(m => ({ default: m.MyWorkAppointmentFeedbackTab })));
 const MyWorkFeedbackFeedTab = lazyWithRetry(() => import("@/components/my-work/MyWorkFeedbackFeedTab").then(m => ({ default: m.MyWorkFeedbackFeedTab })));
 const MyWorkDashboardTab = lazyWithRetry(() => import("@/components/my-work/MyWorkDashboardTab").then(m => ({ default: m.MyWorkDashboardTab })));
+const QuickNotesWorkspace = lazyWithRetry(() => import("@/features/quick-notes/components/QuickNotesWorkspace").then(m => ({ default: m.QuickNotesWorkspace })));
 
 export function MyWorkView() {
   const { isDeputyView } = useWorkspaceView();
-  const navigate = useNavigate();
-  const [refreshTrigger, setRefreshTrigger] = useState(0);
   const {
     countLoadError,
     feedbackFeedCoreRolesOnly,
@@ -89,10 +85,6 @@ export function MyWorkView() {
       markTabAsVisited(context as Parameters<typeof markTabAsVisited>[0]);
     });
     refreshCounts(contexts as Parameters<typeof refreshCounts>[0]);
-  };
-
-  const handleNoteSaved = () => {
-    setRefreshTrigger(prev => prev + 1);
   };
 
   const tabFallback = (
@@ -218,10 +210,7 @@ export function MyWorkView() {
       {activeTab === "capture" && (
         <ErrorBoundary fallback={tabError("Quick Notes")}>
           <Suspense fallback={tabFallback}>
-            <div className="flex w-full flex-col gap-6">
-              <MyWorkQuickCapture onNoteSaved={handleNoteSaved} />
-              <MyWorkNotesList refreshTrigger={refreshTrigger} />
-            </div>
+            <QuickNotesWorkspace />
           </Suspense>
         </ErrorBoundary>
       )}

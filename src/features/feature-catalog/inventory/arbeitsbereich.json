@@ -383,7 +383,11 @@
       "evidence": [
         "src/features/quick-notes/useQuickNoteActions.ts",
         "src/features/quick-notes/useQuickNoteEditor.ts",
-        "src/components/shared/QuickNotesList.tsx"
+        "src/components/shared/QuickNotesList.tsx",
+        "supabase/functions/_shared/tenant-seed.ts",
+        "supabase/migrations/20261128160000_quick_note_notification_types.sql",
+        "src/utils/shareNotifications.ts",
+        "supabase/migrations/20261128170000_quick_note_share_notification_tenant.sql"
       ],
       "components": [
         "src/components/shared/QuickNotesList.tsx",
@@ -407,14 +411,16 @@
         "create_note_work",
         "quick_note_member",
         "quick_note_owned",
-        "topic_mention_selftest"
+        "topic_mention_selftest",
+        "quick_note_share_notification_selftest"
       ],
       "tables": [
         "quick_notes",
         "quick_note_shares",
         "quick_note_global_shares",
         "quick_note_versions",
-        "quick_note_write_receipts"
+        "quick_note_write_receipts",
+        "notification_types"
       ],
       "roles": [
         "abgeordneter",
@@ -432,7 +438,9 @@
         "docs/quick-notes"
       ],
       "limitations": [
-        "Das Szenario prüft den Lebenszyklus, nicht jede Teilen-Variante."
+        "Das Szenario prüft den Lebenszyklus, nicht jede Teilen-Variante.",
+        "Die Meldungstypen note_follow_up und quick_note_shared werden je Mandant per Migration nachgezogen und für neue Mandanten per Tenant-Trigger angelegt; der Selbsttest prüft nur den aktuellen Mandanten.",
+        "Freigabe-Meldungen entstehen per Trigger auf quick_note_shares im Mandanten der Notiz; der Hinweis-Pfad für bloße Erwähnungen ohne Freigabezeile meldet weiterhin clientseitig."
       ]
     },
     {
@@ -542,6 +550,48 @@
       ],
       "dependsOn": [
         "quicknotes.manage"
+      ]
+    },
+    {
+      "id": "quicknotes.page",
+      "subarea": "Schnellnotizen",
+      "name": "Eigene Notizseite mit Deep Links",
+      "description": "Öffnet Schnellnotizen unter /notes mit Erfassung, Filtern, Archiv und Hervorhebung der verlinkten Notiz. Benachrichtigungen, Tageszettel und Suche verlinken dorthin; der Quick-Notes-Reiter in Meine Arbeit bleibt als eigener Einstieg mit unveränderter Oberfläche bestehen.",
+      "category": "fachlich",
+      "implementationStatus": "implementiert",
+      "integrationStatus": "ui",
+      "coverage": "selftest",
+      "testResult": "nicht-ausgefuehrt",
+      "evidence": [
+        "src/pages/QuickNotes.tsx",
+        "src/features/quick-notes/components/QuickNotesWorkspace.tsx",
+        "src/utils/notificationDeepLinks.ts",
+        "src/lib/appTargets.ts"
+      ],
+      "routes": [
+        "/notes"
+      ],
+      "components": [
+        "src/pages/QuickNotes.tsx",
+        "src/features/quick-notes/components/QuickNotesWorkspace.tsx"
+      ],
+      "hooks": [
+        "src/utils/notificationDeepLinks.ts"
+      ],
+      "roles": [
+        "abgeordneter",
+        "bueroleitung",
+        "mitarbeiter",
+        "praktikant"
+      ],
+      "dependsOn": [
+        "quicknotes.manage"
+      ],
+      "scenarios": [
+        "quick-note-lifecycle"
+      ],
+      "limitations": [
+        "Die Seite teilt Erfassung und Liste mit dem Reiter in Meine Arbeit; ein eigener Layout-Selbsttest existiert nicht."
       ]
     },
     {

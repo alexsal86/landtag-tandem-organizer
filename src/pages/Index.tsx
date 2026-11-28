@@ -36,6 +36,7 @@ const MyWorkView = lazyWithRetry(() => import("@/features/dashboard/components/M
 const DataView = lazyWithRetry(() => import("@/components/admin/DataView").then(m => ({ default: m.DataView })));
 const EditProfile = lazyWithRetry(() => import("@/pages/EditProfile"));
 const NotificationsPage = lazyWithRetry(() => import("@/pages/NotificationsPage"));
+const QuickNotes = lazyWithRetry(() => import("@/pages/QuickNotes"));
 const LetterDetail = lazyWithRetry(() => import("@/pages/LetterDetail"));
 const EmployeeMeetingDetail = lazyWithRetry(() => import("@/pages/EmployeeMeetingDetail"));
 const AppointmentPreparationDetail = lazyWithRetry(() => import("@/pages/AppointmentPreparationDetail"));
@@ -210,6 +211,8 @@ const Index = (): React.JSX.Element => {
         return withSectionBoundary('News', <NewsPage />);
       case "mywork":
         return withSectionBoundary('Meine Arbeit', <MyWorkView />);
+      case "notes":
+        return withSectionBoundary('Notizen', <QuickNotes />);
       case "calendar":
         return withSectionBoundary('Kalender', <CalendarView />);
       case "contacts":

@@ -253,7 +253,7 @@ export function restoreLineToDay(day: DaySlipDayData, removed: RemovedDaySlipLin
 
 export function sourcePath(source: DaySlipSource): string {
   if (source.type === "case") return `/mywork?tab=cases&caseItemId=${encodeURIComponent(source.id)}&highlight=${encodeURIComponent(source.id)}`;
-  const base = { task: "/tasks", note: "/mywork?tab=capture", decision: "/decisions" }[source.type];
+  const base = { task: "/tasks", note: "/notes", decision: "/decisions" }[source.type];
   return `${base}${base.includes("?") ? "&" : "?"}highlight=${encodeURIComponent(source.id)}`;
 }
 

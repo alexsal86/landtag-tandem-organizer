@@ -118,6 +118,7 @@ export const AppRoutes = () => (
       <Route path="/maps" element={<Navigate to="/karten" replace />} />
       <Route path="/profile/edit" element={<Navigate to="/profile-edit" replace />} />
       <Route path="/letters/:letterId" element={<Index />} />
+      <Route path="/notes" element={<Index />} />
       <Route path="/vorgaenge" element={<CasesRedirect />} />
       <Route path="/cases" element={<CasesRedirect />} />
       <Route path="/cases/:caseItemId" element={<LegacyCaseItemRedirect />} />

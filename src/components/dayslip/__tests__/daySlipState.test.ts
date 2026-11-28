@@ -119,7 +119,7 @@ describe("Tageszettel state", () => {
     expect(await exportId("user-1", "2026-11-04", "line", "note")).not.toBe(id);
     expect(id).toMatch(/^[a-f0-9]{8}-[a-f0-9]{4}-5[a-f0-9]{3}-[89ab][a-f0-9]{3}-[a-f0-9]{12}$/);
     expect(sourcePath({ type: "task", id: "task-1" })).toBe("/tasks?highlight=task-1");
-    expect(sourcePath({ type: "note", id: "note-1" })).toBe("/mywork?tab=capture&highlight=note-1");
+    expect(sourcePath({ type: "note", id: "note-1" })).toBe("/notes?highlight=note-1");
     expect(sourcePath({ type: "case", id: "case-1" })).toBe("/mywork?tab=cases&caseItemId=case-1&highlight=case-1");
   });
 });

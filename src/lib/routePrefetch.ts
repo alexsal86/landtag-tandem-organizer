@@ -9,6 +9,7 @@ const prefetchMap: Record<string, ImportFn> = {
   news: () => import("@/pages/NewsPage"),
   dashboard: () => import("@/features/dashboard/components/MyWorkView"),
   mywork: () => import("@/features/dashboard/components/MyWorkView"),
+  notes: () => import("@/pages/QuickNotes"),
   calendar: () => import("@/features/calendar/components/CalendarView"),
   contacts: () => import("@/features/contacts/components/ContactsView"),
   tasks: () => import("@/components/my-work/MyWorkTasksTab"),

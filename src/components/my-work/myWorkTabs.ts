@@ -66,6 +66,8 @@ export const MY_WORK_TABS: MyWorkTabConfig[] = [
 ];
 
 export const LEGACY_TAB_MAP: Record<string, TabValue> = {
+  // Altlinks mit dem früheren Parameternamen landen wieder auf dem Notiz-Reiter.
+  notes: "capture",
   caseitems: "cases",
   casefiles: "cases",
   appointmentfeedback: "feedbackfeed",

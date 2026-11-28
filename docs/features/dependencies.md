@@ -12,6 +12,7 @@ _Auto-generiert mit `npm run update:feature-catalog`. Nicht von Hand bearbeiten.
 | `mywork.tabs` | `mywork.dashboard` |
 | `quicknotes.checklists` | `quicknotes.manage` |
 | `quicknotes.drag-sort` | `quicknotes.manage` |
+| `quicknotes.page` | `quicknotes.manage` |
 | `profile.edit` | `platform.auth` |
 | `tasks.edit` | `tasks.create` |
 | `tasks.complete` | `tasks.create` |

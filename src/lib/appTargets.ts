@@ -15,6 +15,7 @@ export type SearchEntityType =
   | "contact"
   | "appointment"
   | "task"
+  | "quickNote"
   | "archivedTask"
   | "document"
   | "letter"
@@ -40,6 +41,11 @@ const withQuery = (path: string, params: Record<string, string>): string => {
 /** Dokument in der Dokumentenliste öffnen. */
 export function buildDocumentHref(documentId: string): string {
   return withQuery("/documents", { document: documentId });
+}
+
+/** Notiz auf der eigenen Notizseite öffnen (Deep Link aus Benachrichtigungen und Suche). */
+export function buildQuickNoteHref(noteId?: string | null): string {
+  return noteId ? withQuery("/notes", { highlight: noteId }) : "/notes";
 }
 
 /** Vorgang in der Vorgangsliste von „Meine Arbeit“ öffnen. */
@@ -73,6 +79,8 @@ export function buildSearchHref(type: SearchEntityType, row: SearchTargetRow): s
     }
     case "task":
       return withQuery("/tasks", { task: id });
+    case "quickNote":
+      return buildQuickNoteHref(id);
     case "archivedTask":
       return withQuery("/tasks/archive", { highlight: id });
     case "document":

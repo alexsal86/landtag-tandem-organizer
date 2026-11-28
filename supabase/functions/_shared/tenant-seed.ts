@@ -6,6 +6,7 @@
 type AdminClient = {
   from: (table: string) => {
     insert: (rows: unknown) => Promise<{ error: unknown | null }>;
+    upsert: (rows: unknown, options?: { onConflict?: string }) => Promise<{ error: unknown | null }>;
     select: (cols: string) => {
       eq: (col: string, val: unknown) => {
         limit: (n: number) => Promise<{ data: unknown[] | null; error: unknown | null }>;
@@ -52,6 +53,8 @@ export const STANDARD_NOTIFICATION_TYPES = [
   { name: "meeting_invitation", label: "Meeting-Einladung", category: "meetings" },
   { name: "meeting_archived", label: "Meeting archiviert", category: "meetings" },
   { name: "document_mention", label: "In Dokument erwähnt", category: "documents" },
+  { name: "note_follow_up", label: "Wiedervorlage fällig", category: "notes" },
+  { name: "quick_note_shared", label: "Notiz geteilt", category: "notes" },
   { name: "team_news", label: "Team-News", category: "team" },
   { name: "vacation_request", label: "Urlaubsantrag", category: "team" },
   { name: "social_post_change_requested", label: "Social Post – Änderung gewünscht", category: "editorial" },
@@ -137,10 +140,14 @@ async function safeInsert(
   rows: Record<string, unknown>[],
   report: SeedReport,
   reportKey: keyof SeedReport,
+  /** Konfliktziel für Tabellen, die auch per Tenant-Trigger gefüllt werden (idempotenter Seed). */
+  onConflict?: string,
 ): Promise<void> {
   if (!rows.length) return;
   try {
-    const { error } = await admin.from(table).insert(rows);
+    const { error } = onConflict
+      ? await admin.from(table).upsert(rows, { onConflict })
+      : await admin.from(table).insert(rows);
     if (error) {
       const msg = (error as { message?: string }).message ?? String(error);
       // Tolerate duplicates and missing tables — we treat seeds as best-effort
@@ -209,6 +216,9 @@ export async function seedStandardData(
     STANDARD_NOTIFICATION_TYPES.map((t) => ({ ...t, tenant_id: tenantId, is_active: true })),
     report,
     "notification_types",
+    // note_follow_up/quick_note_shared legt bereits der Tenant-Trigger an; ohne
+    // Konfliktziel würde der gesamte Insert scheitern und die übrigen Typen fehlen.
+    "tenant_id,name",
   );
 
   // letter_occasions

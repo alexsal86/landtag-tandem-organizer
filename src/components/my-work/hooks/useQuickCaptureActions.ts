@@ -5,7 +5,6 @@ import { useAuth } from "@/hooks/useAuth";
 import { useTenant } from "@/hooks/useTenant";
 import { debugConsole } from "@/utils/debugConsole";
 import { extractMentionedUsers } from "@/utils/noteMentions";
-import { notifyQuickNoteShared } from "@/utils/shareNotifications";
 import { stripHtml } from "@/components/my-work/utils/editorContent";
 import { notify } from "@/lib/notify";
 
@@ -97,31 +96,8 @@ export function useQuickCaptureActions({
       return;
     }
 
-    const { data: senderProfile } = await supabase
-      .from("profiles")
-      .select("display_name")
-      .eq("user_id", user.id)
-      .maybeSingle();
-
-    const { data: noteData } = await supabase
-      .from("quick_notes")
-      .select("title")
-      .eq("id", newNoteId)
-      .maybeSingle();
-
-    await Promise.all(
-      userIds
-        .filter((recipientUserId) => recipientUserId !== user.id)
-        .map((recipientUserId) =>
-          notifyQuickNoteShared({
-            recipientUserId,
-            senderName: senderProfile?.display_name,
-            itemTitle: noteData?.title,
-            itemId: newNoteId,
-          })
-        )
-    );
-
+    // Die Freigabe-Meldungen stellt der DB-Trigger aus quick_note_shares zu – im
+    // Mandanten der Notiz, nicht im Hauptmandanten der Empfängerin.
     notify.success("Notiz für erwähnte Personen freigegeben");
   };
 

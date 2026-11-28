@@ -6,7 +6,7 @@ Die Angaben sind deklarierte Mindestrollen. Die tatsächlich wirksame Berechtigu
 
 ## Funktionen je Rolle
 
-### `abgeordneter` — 182 Funktionen
+### `abgeordneter` — 183 Funktionen
 
 - `mywork.dashboard` — Meine Arbeit – Dashboard
 - `mywork.tabs` — Meine Arbeit – Bereichsnavigation und Einstellungen
@@ -18,6 +18,7 @@ Die Angaben sind deklarierte Mindestrollen. Die tatsächlich wirksame Berechtigu
 - `quicknotes.offline` — Offline-Synchronisation für Schnellnotizen
 - `quicknotes.checklists` — Checklisten in Schnellnotizen
 - `quicknotes.drag-sort` — Notizen per Drag-and-drop sortieren
+- `quicknotes.page` — Eigene Notizseite mit Deep Links
 - `platform.auth` — Anmeldung und Sitzung
 - `profile.edit` — Eigenes Profil bearbeiten
 - `mobile.app` — Mobile App (Expo)
@@ -191,7 +192,7 @@ Die Angaben sind deklarierte Mindestrollen. Die tatsächlich wirksame Berechtigu
 - `knowledge.global-question` — Globale Wissensfrage aus jedem Bereich
 - `knowledge.persons` — Wissenspersonen und Zuständigkeit
 
-### `bueroleitung` — 227 Funktionen
+### `bueroleitung` — 228 Funktionen
 
 - `mywork.dashboard` — Meine Arbeit – Dashboard
 - `mywork.dashboard.today-priorities` — Heute zuerst
@@ -204,6 +205,7 @@ Die Angaben sind deklarierte Mindestrollen. Die tatsächlich wirksame Berechtigu
 - `quicknotes.offline` — Offline-Synchronisation für Schnellnotizen
 - `quicknotes.checklists` — Checklisten in Schnellnotizen
 - `quicknotes.drag-sort` — Notizen per Drag-and-drop sortieren
+- `quicknotes.page` — Eigene Notizseite mit Deep Links
 - `platform.auth` — Anmeldung und Sitzung
 - `profile.edit` — Eigenes Profil bearbeiten
 - `mobile.app` — Mobile App (Expo)
@@ -421,7 +423,7 @@ Die Angaben sind deklarierte Mindestrollen. Die tatsächlich wirksame Berechtigu
 - `knowledge.persons` — Wissenspersonen und Zuständigkeit
 - `knowledge.management` — Wissensverwaltung
 
-### `mitarbeiter` — 187 Funktionen
+### `mitarbeiter` — 188 Funktionen
 
 - `mywork.dashboard` — Meine Arbeit – Dashboard
 - `mywork.dashboard.today-priorities` — Heute zuerst
@@ -434,6 +436,7 @@ Die Angaben sind deklarierte Mindestrollen. Die tatsächlich wirksame Berechtigu
 - `quicknotes.offline` — Offline-Synchronisation für Schnellnotizen
 - `quicknotes.checklists` — Checklisten in Schnellnotizen
 - `quicknotes.drag-sort` — Notizen per Drag-and-drop sortieren
+- `quicknotes.page` — Eigene Notizseite mit Deep Links
 - `platform.auth` — Anmeldung und Sitzung
 - `profile.edit` — Eigenes Profil bearbeiten
 - `mobile.app` — Mobile App (Expo)
@@ -611,7 +614,7 @@ Die Angaben sind deklarierte Mindestrollen. Die tatsächlich wirksame Berechtigu
 - `knowledge.persons` — Wissenspersonen und Zuständigkeit
 - `knowledge.management` — Wissensverwaltung
 
-### `praktikant` — 41 Funktionen
+### `praktikant` — 42 Funktionen
 
 - `mywork.dashboard` — Meine Arbeit – Dashboard
 - `mywork.dashboard.today-priorities` — Heute zuerst
@@ -624,6 +627,7 @@ Die Angaben sind deklarierte Mindestrollen. Die tatsächlich wirksame Berechtigu
 - `quicknotes.offline` — Offline-Synchronisation für Schnellnotizen
 - `quicknotes.checklists` — Checklisten in Schnellnotizen
 - `quicknotes.drag-sort` — Notizen per Drag-and-drop sortieren
+- `quicknotes.page` — Eigene Notizseite mit Deep Links
 - `platform.auth` — Anmeldung und Sitzung
 - `profile.edit` — Eigenes Profil bearbeiten
 - `tasks.create` — Aufgabe erstellen
@@ -1024,6 +1028,7 @@ Die Angaben sind deklarierte Mindestrollen. Die tatsächlich wirksame Berechtigu
 | `quicknotes.drag-sort` | `abgeordneter`, `bueroleitung`, `mitarbeiter`, `praktikant` |
 | `quicknotes.manage` | `abgeordneter`, `bueroleitung`, `mitarbeiter`, `praktikant` |
 | `quicknotes.offline` | `abgeordneter`, `bueroleitung`, `mitarbeiter`, `praktikant` |
+| `quicknotes.page` | `abgeordneter`, `bueroleitung`, `mitarbeiter`, `praktikant` |
 | `redaktion.approval` | `abgeordneter`, `bueroleitung`, `mitarbeiter` |
 | `redaktion.assets-campaigns` | `abgeordneter`, `bueroleitung`, `mitarbeiter` |
 | `redaktion.calendar-reminders` | `abgeordneter`, `bueroleitung`, `mitarbeiter`, `system` |

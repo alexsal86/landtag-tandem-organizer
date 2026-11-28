@@ -2762,6 +2762,11 @@
       "id": "notifications.inbox",
       "name": "Benachrichtigungen lesen und als gelesen markieren",
       "area": "arbeitsbereich"
+    },
+    {
+      "id": "quicknotes.manage",
+      "name": "Schnellnotizen anlegen, bearbeiten und verlinken",
+      "area": "arbeitsbereich"
     }
   ],
   "notifications": [

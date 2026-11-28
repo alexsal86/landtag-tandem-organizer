@@ -5,6 +5,7 @@ import { Link } from "react-router-dom";
 import { supabase } from "@/integrations/supabase/client";
 import { useTenant } from "@/hooks/useTenant";
 import { TaskDecisionDetails } from "@/components/task-decisions/TaskDecisionDetails";
+import { buildQuickNoteHref } from "@/lib/appTargets";
 
 export function WorkflowLinks({ taskId, caseFileId }: { taskId?: string; caseFileId?: string }) {
   const { currentTenant } = useTenant();
@@ -48,7 +49,7 @@ export function WorkflowLinks({ taskId, caseFileId }: { taskId?: string; caseFil
     {source?.source_type === "knowledge_review" && source.source_id && <Link className="text-primary underline" to={`/wissen?frage=${source.source_id}`}>Wissensantwort prüfen und freigeben</Link>}
     {source?.source_type === "case_step" && source.source_id && <Link className="text-primary underline" to={`/mywork?tab=cases&caseItemId=${source.source_id}`}>Zugehörigen Vorgang öffnen</Link>}
     {source?.source_type === "case_file" && source.source_id && <Link className="text-primary underline" to={`/casefiles?caseFileId=${source.source_id}`}>Zugehörige Akte öffnen</Link>}
-    {source?.source_type === "quick_note" && source.source_id && <Link className="text-primary underline" to={`/mywork?tab=capture&highlight=${source.source_id}`}>Ursprüngliche Notiz öffnen</Link>}
+    {source?.source_type === "quick_note" && source.source_id && <Link className="text-primary underline" to={buildQuickNoteHref(source.source_id)}>Ursprüngliche Notiz öffnen</Link>}
     {source?.source_type === "news" && query.data?.newsArticle && (
       <a
         className="block text-primary underline break-words"

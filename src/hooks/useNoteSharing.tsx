@@ -4,7 +4,6 @@ import { useQuery, useQueryClient } from "@tanstack/react-query";
 import { supabase } from "@/integrations/supabase/client";
 import { useAuth } from "@/hooks/useAuth";
 import { debugConsole } from '@/utils/debugConsole';
-import { notifyQuickNoteShared } from "@/utils/shareNotifications";
 import { STALE_TIME } from "@/lib/query-cache";
 import { notify } from "@/lib/notify";
 
@@ -88,25 +87,9 @@ export const useNoteSharing = (noteId?: string) => {
         return false;
       }
 
+      // Die Freigabe-Meldung stellt der DB-Trigger aus quick_note_shares zu – im
+      // Mandanten der Notiz, nicht im Hauptmandanten der Empfängerin.
       notify.success("Notiz erfolgreich freigegeben");
-
-      const { data: senderProfile } = await supabase
-        .from("profiles")
-        .select("display_name")
-        .eq("user_id", user.id)
-        .maybeSingle();
-      const { data: noteData } = await supabase
-        .from("quick_notes")
-        .select("title")
-        .eq("id", targetNoteId)
-        .maybeSingle();
-
-      await notifyQuickNoteShared({
-        recipientUserId: sharedWithUserId,
-        senderName: senderProfile?.display_name,
-        itemTitle: noteData?.title,
-        itemId: targetNoteId,
-      });
 
       invalidate();
       return true;

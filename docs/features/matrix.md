@@ -16,6 +16,7 @@ Die Spalten zählen **zugeordnete** Prüfungen, nicht bestandene Läufe. „Erge
 | `mywork.navigation-previews` | arbeitsbereich | fachlich | implementiert | UI | kein Test | nicht-ausgefuehrt | 0 | 0 | 0 | 0 | nein |
 | `profile.edit` | arbeitsbereich | fachlich | implementiert | UI | kein Test | nicht-ausgefuehrt | 0 | 0 | 0 | 0 | nein |
 | `quicknotes.checklists` | arbeitsbereich | fachlich | implementiert | UI | Unit-Test | unbekannt | 0 | 1 | 0 | 0 | nein |
+| `quicknotes.page` | arbeitsbereich | fachlich | implementiert | UI | Selbsttest | nicht-ausgefuehrt | 1 | 0 | 0 | 0 | nein |
 | `quicknotes.drag-sort` | arbeitsbereich | fachlich | implementiert | UI | Unit-Test | unbekannt | 0 | 1 | 0 | 0 | nein |
 | `quicknotes.offline` | arbeitsbereich | fachlich | implementiert | UI | Unit-Test | unbekannt | 0 | 2 | 0 | 0 | nein |
 | `quicknotes.manage` | arbeitsbereich | fachlich | implementiert | UI | Selbsttest | nicht-ausgefuehrt | 1 | 1 | 0 | 0 | ja |

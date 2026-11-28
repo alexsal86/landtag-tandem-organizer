@@ -34,6 +34,11 @@ const createShareNotification = async (
   }
 };
 
+/**
+ * Nur noch für Hinweis-Meldungen ohne Freigabezeile (z. B. Erwähnungen aus einem
+ * Vorgang). Echte Notizfreigaben meldet der Trigger auf quick_note_shares, weil nur
+ * die Datenbank den Mandanten der Notiz sicher kennt.
+ */
 export const notifyQuickNoteShared = async ({
   recipientUserId,
   senderName,
