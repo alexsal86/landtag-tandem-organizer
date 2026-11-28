@@ -97,7 +97,7 @@ export const DashboardHeader = ({ showTeamRituals = true }: { showTeamRituals?: 
           <div key={item.city} className="flex shrink-0 items-center gap-1.5 text-body">
             {(() => {
               const Icon = getWeatherLucideIcon(item.icon);
-              return <Icon className={`h-7 w-7 shrink-0 ${Icon === Sun ? "text-[rgb(188,152,84)]" : "text-muted-foreground"}`} />;
+              return <Icon className={`h-5 w-5 shrink-0 ${Icon === Sun ? "text-[rgb(188,152,84)]" : "text-muted-foreground"}`} />;
             })()}
             <div className="flex items-center gap-1.5">
               <p className="text-body text-muted-foreground">{item.city}</p>
