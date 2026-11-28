@@ -88,6 +88,7 @@ Diese Schritte führen die Szenarien aus; „letzter Lauf“ stammt aus `src/fea
 | `decision-lifecycle` | `deadline-reminders` | Frist-Erinnerungen 24 h/2 h einmalig und mit Ruhezeiten | workflow | — |
 | `decision-lifecycle` | `inbox-hygiene` | Anfrage-Meldungen beim Öffnen lesen und beim Archivieren verfallen lassen | workflow | — |
 | `decision-lifecycle` | `digest-result-person` | Digest-Ergebnis ohne Person, Kommentar und Reaktion mit Person | workflow | — |
+| `decision-lifecycle` | `quiet-push-catchup` | Ruhezeit-Pushes nach Ende der Ruhezeit einmalig nachholen | workflow | — |
 | `decision-lifecycle` | `daily-digest` | Optionaler Tagesüberblick über mehrere Entscheidungen | workflow | — |
 | `decision-lifecycle` | `notification-metrics` | Zustellungen, Abschaltquote, Antwortzeit, Anstupser und Trigger-Fehler messen | workflow | — |
 | `decision-lifecycle` | `notification-actions` | Aus der Meldung abstimmen und Antwort aktualisieren | workflow | — |
@@ -452,7 +453,7 @@ Freiwilliger morgendlicher Überblick über alle offenen Entscheidungen einer Pe
 - **Services:** —
 - **Hooks:** —
 - **Edge Functions:** —
-- **Datenbankfunktionen:** `mark_decision_request_notifications_read`, `decision_inbox_hygiene_selftest`
+- **Datenbankfunktionen:** `mark_decision_request_notifications_read`, `expire_decision_notifications`, `decision_inbox_hygiene_selftest`
 - **Tabellen:** `notifications`, `notification_types`, `task_decisions`
 - **Abhängigkeiten:** `decisions.notification-digest`
 - **Selbsttests:** `decision-lifecycle`
@@ -591,7 +592,7 @@ Der Digest speichert seine gebündelten Kommentare, Antworten, Reaktionen und Er
 - Keine.
 
 ### `decisions.delivery-preferences` — Persönliche Zustellfrequenz und Ruhezeiten
-Erlaubt je Person und Mandant sofort, gebündelt oder aus, wählbar in den Benachrichtigungseinstellungen; Ruhezeiten blockieren Pushes, kritische Frist- und Rückzugsmeldungen gehen weiterhin sofort durch. Bestehende Mitgliedschaften wurden auf gebündelt gesetzt, neue starten mit sofort.
+Erlaubt je Person und Mandant sofort, gebündelt oder aus, wählbar in den Benachrichtigungseinstellungen; Ruhezeiten blockieren Pushes, kritische Frist- und Rückzugsmeldungen gehen weiterhin sofort durch. Während der Ruhezeit blockierte Sofortmeldungen und Digests werden nach deren Ende genau einmal nachgeholt; Einzelmeldungen im Digest-Modus nicht. Bestehende Mitgliedschaften wurden auf gebündelt gesetzt, neue starten mit sofort.
 
 - **Kategorie:** fachlich
 - **Implementierung:** implementiert
@@ -604,26 +605,28 @@ Erlaubt je Person und Mandant sofort, gebündelt oder aus, wählbar in den Benac
 - **Services:** —
 - **Hooks:** —
 - **Edge Functions:** —
-- **Datenbankfunktionen:** `set_decision_notification_preference`, `decision_push_allowed`, `decision_delivery_preference_selftest`
+- **Datenbankfunktionen:** `set_decision_notification_preference`, `decision_push_allowed`, `decision_quiet_hours_end_at`, `dispatch_deferred_decision_pushes`, `decision_delivery_preference_selftest`, `decision_quiet_push_catchup_selftest`
 - **Tabellen:** `decision_notification_preferences`, `user_notification_settings`, `notifications`
 - **Abhängigkeiten:** —
 - **Selbsttests:** `decision-lifecycle`
 - **Unit-Tests:** —
 - **Integrationstests:** —
 - **Browser-Tests:** —
-- **Dokumentation:** `docs/decision-delivery-preferences.md`
+- **Dokumentation:** `docs/decision-delivery-preferences.md`, `docs/decision-quiet-push-catchup.md`
 
 **Nachweise im Quellcode**
 
 - supabase/migrations/20261128229000_decision_delivery_preferences.sql
 - supabase/migrations/20261128230000_decision_delivery_preferences_selftest.sql
 - supabase/migrations/20261128239000_backfill_decision_delivery_mode.sql
+- supabase/migrations/20261128244000_decision_quiet_push_catchup.sql
+- supabase/migrations/20261128245000_decision_quiet_push_catchup_selftest.sql
 - src/components/notifications/NotificationSettings.tsx
 - src/features/selftest/scenarios/decision-lifecycle.ts
 
 **Bekannte Einschränkungen**
 
-- Echter Push-Versand und die Darstellung der Karte im Browser sind nicht geprüft.
+- Echter Push-Versand, Cron-Lauf, Mobile-Zustellung und die Darstellung der Karte im Browser sind nicht geprüft.
 
 **Offene Prüfpunkte**
 

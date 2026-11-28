@@ -372,6 +372,7 @@
       ],
       "rpcs": [
         "mark_decision_request_notifications_read",
+        "expire_decision_notifications",
         "decision_inbox_hygiene_selftest"
       ],
       "tables": [
@@ -525,7 +526,7 @@
       "id": "decisions.delivery-preferences",
       "subarea": "Meldungen",
       "name": "Persönliche Zustellfrequenz und Ruhezeiten",
-      "description": "Erlaubt je Person und Mandant sofort, gebündelt oder aus, wählbar in den Benachrichtigungseinstellungen; Ruhezeiten blockieren Pushes, kritische Frist- und Rückzugsmeldungen gehen weiterhin sofort durch. Bestehende Mitgliedschaften wurden auf gebündelt gesetzt, neue starten mit sofort.",
+      "description": "Erlaubt je Person und Mandant sofort, gebündelt oder aus, wählbar in den Benachrichtigungseinstellungen; Ruhezeiten blockieren Pushes, kritische Frist- und Rückzugsmeldungen gehen weiterhin sofort durch. Während der Ruhezeit blockierte Sofortmeldungen und Digests werden nach deren Ende genau einmal nachgeholt; Einzelmeldungen im Digest-Modus nicht. Bestehende Mitgliedschaften wurden auf gebündelt gesetzt, neue starten mit sofort.",
       "category": "fachlich",
       "implementationStatus": "implementiert",
       "integrationStatus": "rollenabhaengig",
@@ -535,13 +536,18 @@
         "supabase/migrations/20261128229000_decision_delivery_preferences.sql",
         "supabase/migrations/20261128230000_decision_delivery_preferences_selftest.sql",
         "supabase/migrations/20261128239000_backfill_decision_delivery_mode.sql",
+        "supabase/migrations/20261128244000_decision_quiet_push_catchup.sql",
+        "supabase/migrations/20261128245000_decision_quiet_push_catchup_selftest.sql",
         "src/components/notifications/NotificationSettings.tsx",
         "src/features/selftest/scenarios/decision-lifecycle.ts"
       ],
       "rpcs": [
         "set_decision_notification_preference",
         "decision_push_allowed",
-        "decision_delivery_preference_selftest"
+        "decision_quiet_hours_end_at",
+        "dispatch_deferred_decision_pushes",
+        "decision_delivery_preference_selftest",
+        "decision_quiet_push_catchup_selftest"
       ],
       "tables": [
         "decision_notification_preferences",
@@ -557,10 +563,11 @@
         "decision-lifecycle"
       ],
       "docs": [
-        "docs/decision-delivery-preferences.md"
+        "docs/decision-delivery-preferences.md",
+        "docs/decision-quiet-push-catchup.md"
       ],
       "limitations": [
-        "Echter Push-Versand und die Darstellung der Karte im Browser sind nicht geprüft."
+        "Echter Push-Versand, Cron-Lauf, Mobile-Zustellung und die Darstellung der Karte im Browser sind nicht geprüft."
       ]
     },
     {

@@ -541,6 +541,21 @@ export const decisionLifecycleScenario: TestScenario = {
       },
     },
     {
+      id: "quiet-push-catchup", label: "Ruhezeit-Pushes nach Ende der Ruhezeit einmalig nachholen", kind: "workflow",
+      run: async (ctx) => {
+        const { data, error } = await supabase.rpc("decision_quiet_push_catchup_selftest", { p_tenant: ctx.tenantId });
+        if (error) return { ok: false, message: describeError(error) };
+        const report = data as { ok?: boolean; message?: string; skipped?: string; checks?: Record<string, unknown> } | null;
+        return {
+          ok: report?.ok === true,
+          message: report?.ok === true
+            ? "Sofortmeldungen und Digests werden während der Ruhezeit gepuffert, nach ihrem Ende genau einmal nachgeholt und nicht doppelt gepusht."
+            : (report?.skipped ?? report?.message ?? "Ruhezeit-Catch-up-Selbsttest fehlgeschlagen."),
+          details: report?.checks,
+        };
+      },
+    },
+    {
       id: "daily-digest", label: "Optionaler Tagesüberblick über mehrere Entscheidungen", kind: "workflow",
       run: async (ctx) => {
         const { data, error } = await supabase.rpc("decision_daily_digest_selftest", { p_tenant: ctx.tenantId });

@@ -29,6 +29,15 @@ Frist-, Rückzugs-, Alarm- und Erwähnungsmeldungen bleiben von der Frequenz aus
 Ruhezeiten und `off`. Die typbezogene Abschaltung über
 `user_notification_settings.is_enabled` bleibt davon unberührt.
 
+## Ruhezeiten-Catch-up
+
+Wird ein Push ausschließlich wegen der Ruhezeit unterdrückt, setzt der zentrale
+Push-Trigger `push_deferred_until` auf das Ende der Ruhezeit. Der alle fünf Minuten
+laufende `dispatch_deferred_decision_pushes()` holt die Meldung danach genau einmal
+nach; bereits gelesene oder inzwischen ungültige Meldungen werden übersprungen.
+Einzelmeldungen im Modus „gebündelt“ bleiben vom Catch-up ausgenommen, weil der
+Digest sie bündelt. Details: [decision-quiet-push-catchup.md](decision-quiet-push-catchup.md).
+
 ## Durchsetzung
 
 - `create_notification` verwirft unkritische Entscheidungs-Meldungen bei `off`.
@@ -43,5 +52,7 @@ Ruhezeiten und `off`. Die typbezogene Abschaltung über
 
 `decision_delivery_preference_selftest` prüft Bündelung, Unterdrückung bei `off`,
 Ruhezeiten 22:00–08:00, Push außerhalb der Ruhezeiten und die sofortige Friständerung
-trotz `off`. Der Szenario-Schritt heißt `delivery-preferences`. Nicht geprüft: echter
-Push-Versand und die Darstellung der Karte im Browser.
+trotz `off`. `decision_quiet_push_catchup_selftest` prüft den einmaligen Nachholversand
+und die Vermeidung doppelter Pushes. Die Szenario-Schritte heißen
+`delivery-preferences` und `quiet-push-catchup`. Nicht geprüft: echter Push-Versand,
+Cron-Lauf und die Darstellung der Karte im Browser.

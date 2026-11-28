@@ -48,5 +48,10 @@ Ergebnisanteil, `is_read`, `superseded` und dass der Ersteller keinen Digest erh
 nur eine Reaktionsmeldung erzeugt. Alles wird zurückgerollt. Der Szenario-Schritt
 `digest` ruft ihn auf.
 
+Wird der Digest während der Ruhezeit erzeugt, wird sein Push nach Ende der Ruhezeit
+genau einmal über `dispatch_deferred_decision_pushes()` nachgeholt; die gebündelten
+Einzelmeldungen selbst bleiben ohne eigenen Push. Details:
+[decision-quiet-push-catchup.md](decision-quiet-push-catchup.md).
+
 Nicht geprüft: echter Cron-Lauf, tatsächlicher Push-Versand, Gleichzeitigkeit zweier
 Flush-Läufe und die Oberfläche der Einstellung.

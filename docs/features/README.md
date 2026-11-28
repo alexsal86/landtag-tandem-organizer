@@ -25,7 +25,7 @@ Der Katalog ist das führende Verzeichnis des tatsächlich implementierten Funkt
 | Funktionen ohne Dokumentationsverweis | 178 |
 | Funktionen mit bekannten Einschränkungen | 100 |
 | Nicht nachweisbar eingebundene Funktionen | 1 |
-| Technische Zuordnungen | 1406 |
+| Technische Zuordnungen | 1410 |
 
 ## Funktionsbereiche
 
@@ -98,7 +98,7 @@ Der Katalog ist das führende Verzeichnis des tatsächlich implementierten Funkt
 
 ## Konsistenz
 
-Der Generator inventarisiert Routen, Edge Functions, wirksame Datenbankfunktionen, Tabellen, Testszenarien und Testdateien. Aktuell **3** nicht zugeordnete Prüfkandidaten und **3** Review-Hinweise. Eindeutige Inkonsistenzen brechen `npm run check:feature-catalog` ab; Details: [Prüfbericht](./review.md).
+Der Generator inventarisiert Routen, Edge Functions, wirksame Datenbankfunktionen, Tabellen, Testszenarien und Testdateien. Aktuell **2** nicht zugeordnete Prüfkandidaten und **2** Review-Hinweise. Eindeutige Inkonsistenzen brechen `npm run check:feature-catalog` ab; Details: [Prüfbericht](./review.md).
 
 ## Dokumentation
 

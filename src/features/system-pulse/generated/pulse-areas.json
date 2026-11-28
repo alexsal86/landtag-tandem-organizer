@@ -1429,6 +1429,10 @@
               "label": "Digest-Ergebnis ohne Person, Kommentar und Reaktion mit Person"
             },
             {
+              "id": "quiet-push-catchup",
+              "label": "Ruhezeit-Pushes nach Ende der Ruhezeit einmalig nachholen"
+            },
+            {
               "id": "daily-digest",
               "label": "Optionaler Tagesüberblick über mehrere Entscheidungen"
             },

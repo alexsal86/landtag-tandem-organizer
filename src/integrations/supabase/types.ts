@@ -12404,6 +12404,8 @@ export type Database = {
           navigation_context: string | null
           notification_type_id: string
           priority: string
+          push_catchup_sent_at: string | null
+          push_deferred_until: string | null
           push_sent_at: string | null
           read_at: string | null
           tenant_id: string | null
@@ -12422,6 +12424,8 @@ export type Database = {
           navigation_context?: string | null
           notification_type_id: string
           priority?: string
+          push_catchup_sent_at?: string | null
+          push_deferred_until?: string | null
           push_sent_at?: string | null
           read_at?: string | null
           tenant_id?: string | null
@@ -12440,6 +12444,8 @@ export type Database = {
           navigation_context?: string | null
           notification_type_id?: string
           priority?: string
+          push_catchup_sent_at?: string | null
+          push_deferred_until?: string | null
           push_sent_at?: string | null
           read_at?: string | null
           tenant_id?: string | null
@@ -19452,6 +19458,18 @@ export type Database = {
       decision_push_allowed: {
         Args: { _user_id: string; _tenant_id: string; _type_name: string; _at?: string }
         Returns: boolean
+      }
+      decision_quiet_hours_end_at: {
+        Args: { _user_id: string; _tenant_id: string; _type_name: string; _at?: string }
+        Returns: string | null
+      }
+      dispatch_deferred_decision_pushes: {
+        Args: { _at?: string; _deliver?: boolean }
+        Returns: number
+      }
+      decision_quiet_push_catchup_selftest: {
+        Args: { p_tenant: string }
+        Returns: Json
       }
       set_decision_notification_preference: {
         Args: { _tenant_id: string; _delivery_mode: string }

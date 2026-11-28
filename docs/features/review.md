@@ -8,12 +8,11 @@ Dieser Bericht trennt **eindeutig nachweisbare Inkonsistenzen** von **heuristisc
 
 Eindeutige Fehler werden im CI-Lauf ausgegeben und brechen die Prüfung ab; sie werden hier nicht dupliziert. Dieser Bericht listet die verbleibenden Review-Hinweise und Prüfkandidaten.
 
-- Review-Hinweise: **3**
-- Nicht zugeordnete Objekte: **4**, davon ohne Ausnahme: **3**
+- Review-Hinweise: **2**
+- Nicht zugeordnete Objekte: **3**, davon ohne Ausnahme: **2**
 
 ### Review-Hinweise
 
-- Prüfkandidat ohne Funktionszuordnung (rpc): expire_decision_notifications
 - Prüfkandidat ohne Funktionszuordnung (rpc): insert_sample_contacts
 - Prüfkandidat ohne Funktionszuordnung (rpc): storage_folder_uuid
 
@@ -512,7 +511,7 @@ Eindeutige Fehler werden im CI-Lauf ausgegeben und brechen die Prüfung ab; sie 
 
 ### `decisions.delivery-preferences`
 
-- Echter Push-Versand und die Darstellung der Karte im Browser sind nicht geprüft.
+- Echter Push-Versand, Cron-Lauf, Mobile-Zustellung und die Darstellung der Karte im Browser sind nicht geprüft.
 
 ### `decisions.notification-metrics`
 
@@ -904,11 +903,10 @@ Eindeutige Fehler werden im CI-Lauf ausgegeben und brechen die Prüfung ab; sie 
 
 - Keine.
 
-### Datenbankfunktionen ohne Zuordnung (3)
+### Datenbankfunktionen ohne Zuordnung (2)
 
 Diese Liste ist heuristisch gefiltert (technische Präfixe gelten als Hilfsfunktionen). Sie ist ein Prüfauftrag, keine automatische Aussage über Verwaistheit.
 
-- `expire_decision_notifications` (supabase/migrations/20261128237000_decision_inbox_hygiene.sql)
 - `insert_sample_contacts` (supabase/migrations/20250725220743-5efa0a86-327e-45df-a74c-0bf535959ecc.sql)
 - `storage_folder_uuid` (src/integrations/supabase/types.ts)
 

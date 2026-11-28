@@ -100,6 +100,7 @@ Diese Schritte führen die Szenarien aus; „letzter Lauf“ stammt aus `src/fea
 | `decision-lifecycle` | `deadline-reminders` | Frist-Erinnerungen 24 h/2 h einmalig und mit Ruhezeiten | workflow | — |
 | `decision-lifecycle` | `inbox-hygiene` | Anfrage-Meldungen beim Öffnen lesen und beim Archivieren verfallen lassen | workflow | — |
 | `decision-lifecycle` | `digest-result-person` | Digest-Ergebnis ohne Person, Kommentar und Reaktion mit Person | workflow | — |
+| `decision-lifecycle` | `quiet-push-catchup` | Ruhezeit-Pushes nach Ende der Ruhezeit einmalig nachholen | workflow | — |
 | `decision-lifecycle` | `daily-digest` | Optionaler Tagesüberblick über mehrere Entscheidungen | workflow | — |
 | `decision-lifecycle` | `notification-metrics` | Zustellungen, Abschaltquote, Antwortzeit, Anstupser und Trigger-Fehler messen | workflow | — |
 | `decision-lifecycle` | `notification-actions` | Aus der Meldung abstimmen und Antwort aktualisieren | workflow | — |
