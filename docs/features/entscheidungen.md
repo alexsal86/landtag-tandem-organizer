@@ -350,7 +350,7 @@ Ermöglicht Kommentare zu Entscheidungen, Antworten auf Kommentare und Emoji-Rea
 - Keine.
 
 ### `decisions.notification-digest` — Gebündelte Entscheidungs-Meldungen
-Fasst offene Kommentar-, Antwort- und Reaktionsmeldungen je Empfänger und Entscheidung nach einem mandantenweit konfigurierbaren Intervall zu einer Digest-Meldung zusammen. Ersetzte Einzelmeldungen werden als gelesen und ersetzt markiert; Push geht nur für den Digest raus. Das Reaktionsfenster ist ebenfalls je Mandant einstellbar.
+Fasst offene Kommentar-, Antwort- und Reaktionsmeldungen sowie Ergebnismeldungen für Teilnehmende je Empfänger und Entscheidung nach einem mandantenweit konfigurierbaren Intervall zu einer Digest-Meldung zusammen. Der Ersteller erhält sein Ergebnis sofort; Frist- und Rückzugsmeldungen bleiben sofort. Ersetzte Einzelmeldungen werden als gelesen und ersetzt markiert; Push geht nur für den Digest raus. Das Reaktionsfenster ist ebenfalls je Mandant einstellbar.
 
 - **Kategorie:** fachlich
 - **Implementierung:** implementiert
@@ -380,7 +380,7 @@ Fasst offene Kommentar-, Antwort- und Reaktionsmeldungen je Empfänger und Entsc
 
 **Bekannte Einschränkungen**
 
-- Nicht geprüft: echter Cron-Lauf, tatsächlicher Push-Versand, parallele Flush-Läufe und eine Oberfläche für die Mandanteneinstellung. Die Einstellung ist derzeit nur über set_decision_notification_timing erreichbar.
+- Nicht geprüft: echter Cron-Lauf, tatsächlicher Push-Versand, parallele Flush-Läufe und eine Oberfläche für die Mandanteneinstellung. Die Einstellung ist derzeit nur über set_decision_notification_timing erreichbar. Der Ersteller erhält kein Ergebnis-Digest; Frist und Rückzug werden bewusst nicht gebündelt.
 
 **Offene Prüfpunkte**
 

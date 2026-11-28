@@ -274,7 +274,7 @@
       "id": "decisions.notification-digest",
       "subarea": "Meldungen",
       "name": "Gebündelte Entscheidungs-Meldungen",
-      "description": "Fasst offene Kommentar-, Antwort- und Reaktionsmeldungen je Empfänger und Entscheidung nach einem mandantenweit konfigurierbaren Intervall zu einer Digest-Meldung zusammen. Ersetzte Einzelmeldungen werden als gelesen und ersetzt markiert; Push geht nur für den Digest raus. Das Reaktionsfenster ist ebenfalls je Mandant einstellbar.",
+      "description": "Fasst offene Kommentar-, Antwort- und Reaktionsmeldungen sowie Ergebnismeldungen für Teilnehmende je Empfänger und Entscheidung nach einem mandantenweit konfigurierbaren Intervall zu einer Digest-Meldung zusammen. Der Ersteller erhält sein Ergebnis sofort; Frist- und Rückzugsmeldungen bleiben sofort. Ersetzte Einzelmeldungen werden als gelesen und ersetzt markiert; Push geht nur für den Digest raus. Das Reaktionsfenster ist ebenfalls je Mandant einstellbar.",
       "category": "fachlich",
       "implementationStatus": "implementiert",
       "integrationStatus": "rollenabhaengig",
@@ -308,7 +308,7 @@
         "docs/decision-notification-digest.md"
       ],
       "limitations": [
-        "Nicht geprüft: echter Cron-Lauf, tatsächlicher Push-Versand, parallele Flush-Läufe und eine Oberfläche für die Mandanteneinstellung. Die Einstellung ist derzeit nur über set_decision_notification_timing erreichbar."
+        "Nicht geprüft: echter Cron-Lauf, tatsächlicher Push-Versand, parallele Flush-Läufe und eine Oberfläche für die Mandanteneinstellung. Die Einstellung ist derzeit nur über set_decision_notification_timing erreichbar. Der Ersteller erhält kein Ergebnis-Digest; Frist und Rückzug werden bewusst nicht gebündelt."
       ]
     },
     {
